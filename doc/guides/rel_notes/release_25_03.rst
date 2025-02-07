@@ -101,6 +101,10 @@ New Features
 
   * Added support for the TCP Segmentation Offload (TSO).
 
+* **Updated Intel e1000 driver.**
+
+  * Added support for the Intel i225-series NICs (previously handled by net/igc).
+
 * **Updated Marvell cnxk net driver.**
 
   * Added flow rules support for CN20K SoC.
@@ -170,11 +174,20 @@ API Changes
   ``__rte_packed_begin`` / ``__rte_packed_end``.
 
 * build: The Intel networking drivers:
-  cpfl, e1000, fm10k, i40e, iavf, ice, idpf, igc, ipn3ke and ixgbe,
+  cpfl, e1000, fm10k, i40e, iavf, ice, idpf, ipn3ke and ixgbe,
   have been moved from ``drivers/net`` to a new ``drivers/net/intel`` directory.
   The resulting build output, including the driver filenames, is the same,
   but to enable/disable these drivers via Meson option requires use of the new paths.
   For example, ``-Denable_drivers=/net/i40e`` becomes ``-Denable_drivers=/net/intel/i40e``.
+
+* build: The Intel IGC networking driver was merged with e1000 driver
+  and is no longer provided as a separate driver.
+  The resulting build output will not have the ``librte_net_igc.*`` driver files any more,
+  but the ``librte_net_e1000.*`` driver files will provide support
+  for all of the devices and features of the old driver.
+  In addition, to enable/disable the driver via Meson option,
+  the path has changed from ``-Denable_drivers=net/igc``
+  to ``-Denable_drivers=net/intel/e1000``.
 
 
 ABI Changes

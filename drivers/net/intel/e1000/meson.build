@@ -14,4 +14,15 @@ sources = files(
         'igb_rxtx.c',
 )
 
+# do not build IGC on Windows
+if not is_windows
+        sources += files(
+                'igc_ethdev.c',
+                'igc_logs.c',
+                'igc_filter.c',
+                'igc_flow.c',
+                'igc_txrx.c',
+        )
+endif
+
 includes += include_directories('base')

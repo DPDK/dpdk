@@ -13,7 +13,7 @@
 #include <rte_malloc.h>
 #include <rte_alarm.h>
 
-#include "igc_logs.h"
+#include "e1000_logs.h"
 #include "igc_txrx.h"
 #include "igc_filter.h"
 #include "igc_flow.h"
@@ -106,18 +106,18 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 };
 
 static const struct rte_pci_id pci_id_igc_map[] = {
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_LM) },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_LMVP) },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_V)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_I)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_IT)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I225_K)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I226_K)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I226_LMVP)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I226_LM)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I226_V)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I226_IT)  },
-	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, IGC_DEV_ID_I226_BLANK_NVM)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I225_LM) },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I225_LMVP) },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I225_V)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I225_I)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I225_IT)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I225_K)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I226_K)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I226_LMVP)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I226_LM)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I226_V)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I226_IT)  },
+	{ RTE_PCI_DEVICE(IGC_INTEL_VENDOR_ID, E1000_DEV_ID_I226_BLANK_NVM)  },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -128,64 +128,64 @@ struct rte_igc_xstats_name_off {
 };
 
 static const struct rte_igc_xstats_name_off rte_igc_stats_strings[] = {
-	{"rx_crc_errors", offsetof(struct igc_hw_stats, crcerrs)},
-	{"rx_align_errors", offsetof(struct igc_hw_stats, algnerrc)},
-	{"rx_errors", offsetof(struct igc_hw_stats, rxerrc)},
-	{"rx_missed_packets", offsetof(struct igc_hw_stats, mpc)},
-	{"tx_single_collision_packets", offsetof(struct igc_hw_stats, scc)},
-	{"tx_multiple_collision_packets", offsetof(struct igc_hw_stats, mcc)},
-	{"tx_excessive_collision_packets", offsetof(struct igc_hw_stats,
+	{"rx_crc_errors", offsetof(struct e1000_hw_stats, crcerrs)},
+	{"rx_align_errors", offsetof(struct e1000_hw_stats, algnerrc)},
+	{"rx_errors", offsetof(struct e1000_hw_stats, rxerrc)},
+	{"rx_missed_packets", offsetof(struct e1000_hw_stats, mpc)},
+	{"tx_single_collision_packets", offsetof(struct e1000_hw_stats, scc)},
+	{"tx_multiple_collision_packets", offsetof(struct e1000_hw_stats, mcc)},
+	{"tx_excessive_collision_packets", offsetof(struct e1000_hw_stats,
 		ecol)},
-	{"tx_late_collisions", offsetof(struct igc_hw_stats, latecol)},
-	{"tx_total_collisions", offsetof(struct igc_hw_stats, colc)},
-	{"tx_deferred_packets", offsetof(struct igc_hw_stats, dc)},
-	{"tx_no_carrier_sense_packets", offsetof(struct igc_hw_stats, tncrs)},
-	{"tx_discarded_packets", offsetof(struct igc_hw_stats, htdpmc)},
-	{"rx_length_errors", offsetof(struct igc_hw_stats, rlec)},
-	{"rx_xon_packets", offsetof(struct igc_hw_stats, xonrxc)},
-	{"tx_xon_packets", offsetof(struct igc_hw_stats, xontxc)},
-	{"rx_xoff_packets", offsetof(struct igc_hw_stats, xoffrxc)},
-	{"tx_xoff_packets", offsetof(struct igc_hw_stats, xofftxc)},
-	{"rx_flow_control_unsupported_packets", offsetof(struct igc_hw_stats,
+	{"tx_late_collisions", offsetof(struct e1000_hw_stats, latecol)},
+	{"tx_total_collisions", offsetof(struct e1000_hw_stats, colc)},
+	{"tx_deferred_packets", offsetof(struct e1000_hw_stats, dc)},
+	{"tx_no_carrier_sense_packets", offsetof(struct e1000_hw_stats, tncrs)},
+	{"tx_discarded_packets", offsetof(struct e1000_hw_stats, htdpmc)},
+	{"rx_length_errors", offsetof(struct e1000_hw_stats, rlec)},
+	{"rx_xon_packets", offsetof(struct e1000_hw_stats, xonrxc)},
+	{"tx_xon_packets", offsetof(struct e1000_hw_stats, xontxc)},
+	{"rx_xoff_packets", offsetof(struct e1000_hw_stats, xoffrxc)},
+	{"tx_xoff_packets", offsetof(struct e1000_hw_stats, xofftxc)},
+	{"rx_flow_control_unsupported_packets", offsetof(struct e1000_hw_stats,
 		fcruc)},
-	{"rx_size_64_packets", offsetof(struct igc_hw_stats, prc64)},
-	{"rx_size_65_to_127_packets", offsetof(struct igc_hw_stats, prc127)},
-	{"rx_size_128_to_255_packets", offsetof(struct igc_hw_stats, prc255)},
-	{"rx_size_256_to_511_packets", offsetof(struct igc_hw_stats, prc511)},
-	{"rx_size_512_to_1023_packets", offsetof(struct igc_hw_stats,
+	{"rx_size_64_packets", offsetof(struct e1000_hw_stats, prc64)},
+	{"rx_size_65_to_127_packets", offsetof(struct e1000_hw_stats, prc127)},
+	{"rx_size_128_to_255_packets", offsetof(struct e1000_hw_stats, prc255)},
+	{"rx_size_256_to_511_packets", offsetof(struct e1000_hw_stats, prc511)},
+	{"rx_size_512_to_1023_packets", offsetof(struct e1000_hw_stats,
 		prc1023)},
-	{"rx_size_1024_to_max_packets", offsetof(struct igc_hw_stats,
+	{"rx_size_1024_to_max_packets", offsetof(struct e1000_hw_stats,
 		prc1522)},
-	{"rx_broadcast_packets", offsetof(struct igc_hw_stats, bprc)},
-	{"rx_multicast_packets", offsetof(struct igc_hw_stats, mprc)},
-	{"rx_undersize_errors", offsetof(struct igc_hw_stats, ruc)},
-	{"rx_fragment_errors", offsetof(struct igc_hw_stats, rfc)},
-	{"rx_oversize_errors", offsetof(struct igc_hw_stats, roc)},
-	{"rx_jabber_errors", offsetof(struct igc_hw_stats, rjc)},
-	{"rx_no_buffers", offsetof(struct igc_hw_stats, rnbc)},
-	{"rx_management_packets", offsetof(struct igc_hw_stats, mgprc)},
-	{"rx_management_dropped", offsetof(struct igc_hw_stats, mgpdc)},
-	{"tx_management_packets", offsetof(struct igc_hw_stats, mgptc)},
-	{"rx_total_packets", offsetof(struct igc_hw_stats, tpr)},
-	{"tx_total_packets", offsetof(struct igc_hw_stats, tpt)},
-	{"rx_total_bytes", offsetof(struct igc_hw_stats, tor)},
-	{"tx_total_bytes", offsetof(struct igc_hw_stats, tot)},
-	{"tx_size_64_packets", offsetof(struct igc_hw_stats, ptc64)},
-	{"tx_size_65_to_127_packets", offsetof(struct igc_hw_stats, ptc127)},
-	{"tx_size_128_to_255_packets", offsetof(struct igc_hw_stats, ptc255)},
-	{"tx_size_256_to_511_packets", offsetof(struct igc_hw_stats, ptc511)},
-	{"tx_size_512_to_1023_packets", offsetof(struct igc_hw_stats,
+	{"rx_broadcast_packets", offsetof(struct e1000_hw_stats, bprc)},
+	{"rx_multicast_packets", offsetof(struct e1000_hw_stats, mprc)},
+	{"rx_undersize_errors", offsetof(struct e1000_hw_stats, ruc)},
+	{"rx_fragment_errors", offsetof(struct e1000_hw_stats, rfc)},
+	{"rx_oversize_errors", offsetof(struct e1000_hw_stats, roc)},
+	{"rx_jabber_errors", offsetof(struct e1000_hw_stats, rjc)},
+	{"rx_no_buffers", offsetof(struct e1000_hw_stats, rnbc)},
+	{"rx_management_packets", offsetof(struct e1000_hw_stats, mgprc)},
+	{"rx_management_dropped", offsetof(struct e1000_hw_stats, mgpdc)},
+	{"tx_management_packets", offsetof(struct e1000_hw_stats, mgptc)},
+	{"rx_total_packets", offsetof(struct e1000_hw_stats, tpr)},
+	{"tx_total_packets", offsetof(struct e1000_hw_stats, tpt)},
+	{"rx_total_bytes", offsetof(struct e1000_hw_stats, tor)},
+	{"tx_total_bytes", offsetof(struct e1000_hw_stats, tot)},
+	{"tx_size_64_packets", offsetof(struct e1000_hw_stats, ptc64)},
+	{"tx_size_65_to_127_packets", offsetof(struct e1000_hw_stats, ptc127)},
+	{"tx_size_128_to_255_packets", offsetof(struct e1000_hw_stats, ptc255)},
+	{"tx_size_256_to_511_packets", offsetof(struct e1000_hw_stats, ptc511)},
+	{"tx_size_512_to_1023_packets", offsetof(struct e1000_hw_stats,
 		ptc1023)},
-	{"tx_size_1023_to_max_packets", offsetof(struct igc_hw_stats,
+	{"tx_size_1023_to_max_packets", offsetof(struct e1000_hw_stats,
 		ptc1522)},
-	{"tx_multicast_packets", offsetof(struct igc_hw_stats, mptc)},
-	{"tx_broadcast_packets", offsetof(struct igc_hw_stats, bptc)},
-	{"tx_tso_packets", offsetof(struct igc_hw_stats, tsctc)},
-	{"rx_sent_to_host_packets", offsetof(struct igc_hw_stats, rpthc)},
-	{"tx_sent_by_host_packets", offsetof(struct igc_hw_stats, hgptc)},
-	{"interrupt_assert_count", offsetof(struct igc_hw_stats, iac)},
+	{"tx_multicast_packets", offsetof(struct e1000_hw_stats, mptc)},
+	{"tx_broadcast_packets", offsetof(struct e1000_hw_stats, bptc)},
+	{"tx_tso_packets", offsetof(struct e1000_hw_stats, tsctc)},
+	{"rx_sent_to_host_packets", offsetof(struct e1000_hw_stats, rpthc)},
+	{"tx_sent_by_host_packets", offsetof(struct e1000_hw_stats, hgptc)},
+	{"interrupt_assert_count", offsetof(struct e1000_hw_stats, iac)},
 	{"rx_descriptor_lower_threshold",
-		offsetof(struct igc_hw_stats, icrxdmtc)},
+		offsetof(struct e1000_hw_stats, icrxdmtc)},
 };
 
 #define IGC_NB_XSTATS (sizeof(rte_igc_stats_strings) / \
@@ -391,24 +391,24 @@ eth_igc_configure(struct rte_eth_dev *dev)
 static int
 eth_igc_set_link_up(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	if (hw->phy.media_type == igc_media_type_copper)
-		igc_power_up_phy(hw);
+	if (hw->phy.media_type == e1000_media_type_copper)
+		e1000_power_up_phy(hw);
 	else
-		igc_power_up_fiber_serdes_link(hw);
+		e1000_power_up_fiber_serdes_link(hw);
 	return 0;
 }
 
 static int
 eth_igc_set_link_down(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	if (hw->phy.media_type == igc_media_type_copper)
-		igc_power_down_phy(hw);
+	if (hw->phy.media_type == e1000_media_type_copper)
+		e1000_power_down_phy(hw);
 	else
-		igc_shutdown_fiber_serdes_link(hw);
+		e1000_shutdown_fiber_serdes_link(hw);
 	return 0;
 }
 
@@ -418,17 +418,17 @@ eth_igc_set_link_down(struct rte_eth_dev *dev)
 static void
 igc_intr_other_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	if (rte_intr_allow_others(intr_handle) &&
 		dev->data->dev_conf.intr_conf.lsc) {
-		IGC_WRITE_REG(hw, IGC_EIMC, 1u << IGC_MSIX_OTHER_INTR_VEC);
+		E1000_WRITE_REG(hw, E1000_EIMC, 1u << IGC_MSIX_OTHER_INTR_VEC);
 	}
 
-	IGC_WRITE_REG(hw, IGC_IMC, ~0);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_IMC, ~0);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /*
@@ -438,17 +438,17 @@ static inline void
 igc_intr_other_enable(struct rte_eth_dev *dev)
 {
 	struct igc_interrupt *intr = IGC_DEV_PRIVATE_INTR(dev);
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	if (rte_intr_allow_others(intr_handle) &&
 		dev->data->dev_conf.intr_conf.lsc) {
-		IGC_WRITE_REG(hw, IGC_EIMS, 1u << IGC_MSIX_OTHER_INTR_VEC);
+		E1000_WRITE_REG(hw, E1000_EIMS, 1u << IGC_MSIX_OTHER_INTR_VEC);
 	}
 
-	IGC_WRITE_REG(hw, IGC_IMS, intr->mask);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_IMS, intr->mask);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /*
@@ -459,14 +459,14 @@ static void
 eth_igc_interrupt_get_status(struct rte_eth_dev *dev)
 {
 	uint32_t icr;
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_interrupt *intr = IGC_DEV_PRIVATE_INTR(dev);
 
 	/* read-on-clear nic registers here */
-	icr = IGC_READ_REG(hw, IGC_ICR);
+	icr = E1000_READ_REG(hw, E1000_ICR);
 
 	intr->flags = 0;
-	if (icr & IGC_ICR_LSC)
+	if (icr & E1000_ICR_LSC)
 		intr->flags |= IGC_FLAG_NEED_LINK_UPDATE;
 }
 
@@ -474,7 +474,7 @@ eth_igc_interrupt_get_status(struct rte_eth_dev *dev)
 static int
 eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_eth_link link;
 	int link_check, count;
 
@@ -485,20 +485,20 @@ eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	for (count = 0; count < IGC_LINK_UPDATE_CHECK_TIMEOUT; count++) {
 		/* Read the real link status */
 		switch (hw->phy.media_type) {
-		case igc_media_type_copper:
+		case e1000_media_type_copper:
 			/* Do the work to read phy */
-			igc_check_for_link(hw);
+			e1000_check_for_link(hw);
 			link_check = !hw->mac.get_link_status;
 			break;
 
-		case igc_media_type_fiber:
-			igc_check_for_link(hw);
-			link_check = (IGC_READ_REG(hw, IGC_STATUS) &
-				      IGC_STATUS_LU);
+		case e1000_media_type_fiber:
+			e1000_check_for_link(hw);
+			link_check = (E1000_READ_REG(hw, E1000_STATUS) &
+				      E1000_STATUS_LU);
 			break;
 
-		case igc_media_type_internal_serdes:
-			igc_check_for_link(hw);
+		case e1000_media_type_internal_serdes:
+			e1000_check_for_link(hw);
 			link_check = hw->mac.serdes_has_link;
 			break;
 
@@ -524,11 +524,11 @@ eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 				RTE_ETH_LINK_SPEED_FIXED);
 
 		if (speed == SPEED_2500) {
-			uint32_t tipg = IGC_READ_REG(hw, IGC_TIPG);
-			if ((tipg & IGC_TIPG_IPGT_MASK) != 0x0b) {
-				tipg &= ~IGC_TIPG_IPGT_MASK;
+			uint32_t tipg = E1000_READ_REG(hw, E1000_TIPG);
+			if ((tipg & E1000_TIPG_IPGT_MASK) != 0x0b) {
+				tipg &= ~E1000_TIPG_IPGT_MASK;
 				tipg |= 0x0b;
-				IGC_WRITE_REG(hw, IGC_TIPG, tipg);
+				E1000_WRITE_REG(hw, E1000_TIPG, tipg);
 			}
 		}
 	} else {
@@ -622,24 +622,24 @@ igc_update_queue_stats_handler(void *param)
 static void
 eth_igc_rxtx_control(struct rte_eth_dev *dev, bool enable)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t tctl, rctl;
 
-	tctl = IGC_READ_REG(hw, IGC_TCTL);
-	rctl = IGC_READ_REG(hw, IGC_RCTL);
+	tctl = E1000_READ_REG(hw, E1000_TCTL);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
 
 	if (enable) {
 		/* enable Tx/Rx */
-		tctl |= IGC_TCTL_EN;
-		rctl |= IGC_RCTL_EN;
+		tctl |= E1000_TCTL_EN;
+		rctl |= E1000_RCTL_EN;
 	} else {
 		/* disable Tx/Rx */
-		tctl &= ~IGC_TCTL_EN;
-		rctl &= ~IGC_RCTL_EN;
+		tctl &= ~E1000_TCTL_EN;
+		rctl &= ~E1000_RCTL_EN;
 	}
-	IGC_WRITE_REG(hw, IGC_TCTL, tctl);
-	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_TCTL, tctl);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /*
@@ -650,7 +650,7 @@ static int
 eth_igc_stop(struct rte_eth_dev *dev)
 {
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct rte_eth_link link;
@@ -662,11 +662,11 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	eth_igc_rxtx_control(dev, false);
 
 	/* disable all MSI-X interrupts */
-	IGC_WRITE_REG(hw, IGC_EIMC, 0x1f);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_EIMC, 0x1f);
+	E1000_WRITE_FLUSH(hw);
 
 	/* clear all MSI-X interrupts */
-	IGC_WRITE_REG(hw, IGC_EICR, 0x1f);
+	E1000_WRITE_REG(hw, E1000_EICR, 0x1f);
 
 	igc_intr_other_disable(dev);
 
@@ -675,17 +675,17 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	/* disable intr eventfd mapping */
 	rte_intr_disable(intr_handle);
 
-	igc_reset_hw(hw);
+	e1000_reset_hw(hw);
 
 	/* disable all wake up */
-	IGC_WRITE_REG(hw, IGC_WUC, 0);
+	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
 	/* disable checking EEE operation in MAC loopback mode */
-	igc_read_reg_check_clear_bits(hw, IGC_EEER, IGC_EEER_EEE_FRC_AN);
+	igc_read_reg_check_clear_bits(hw, E1000_EEER, IGC_EEER_EEE_FRC_AN);
 
 	/* Set bit for Go Link disconnect */
-	igc_read_reg_check_set_bits(hw, IGC_82580_PHY_POWER_MGMT,
-			IGC_82580_PM_GO_LINKD);
+	igc_read_reg_check_set_bits(hw, E1000_82580_PHY_POWER_MGMT,
+			E1000_82580_PM_GO_LINKD);
 
 	/* Power down the phy. Needed to make the link go Down */
 	eth_igc_set_link_down(dev);
@@ -721,7 +721,7 @@ eth_igc_stop(struct rte_eth_dev *dev)
  *  msix-vector, valid 0,1,2,3,4
  */
 static void
-igc_write_ivar(struct igc_hw *hw, uint8_t queue_index,
+igc_write_ivar(struct e1000_hw *hw, uint8_t queue_index,
 		bool tx, uint8_t msix_vector)
 {
 	uint8_t offset = 0;
@@ -744,15 +744,15 @@ igc_write_ivar(struct igc_hw *hw, uint8_t queue_index,
 	if (queue_index & 1)
 		offset += 16;
 
-	val = IGC_READ_REG_ARRAY(hw, IGC_IVAR0, reg_index);
+	val = E1000_READ_REG_ARRAY(hw, E1000_IVAR0, reg_index);
 
 	/* clear bits */
 	val &= ~((uint32_t)0xFF << offset);
 
 	/* write vector and valid bit */
-	val |= (uint32_t)(msix_vector | IGC_IVAR_VALID) << offset;
+	val |= (uint32_t)(msix_vector | E1000_IVAR_VALID) << offset;
 
-	IGC_WRITE_REG_ARRAY(hw, IGC_IVAR0, reg_index, val);
+	E1000_WRITE_REG_ARRAY(hw, E1000_IVAR0, reg_index, val);
 }
 
 /* Sets up the hardware to generate MSI-X interrupts properly
@@ -762,7 +762,7 @@ igc_write_ivar(struct igc_hw *hw, uint8_t queue_index,
 static void
 igc_configure_msix_intr(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
@@ -785,9 +785,9 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 	}
 
 	/* turn on MSI-X capability first */
-	IGC_WRITE_REG(hw, IGC_GPIE, IGC_GPIE_MSIX_MODE |
-				IGC_GPIE_PBA | IGC_GPIE_EIAME |
-				IGC_GPIE_NSICR);
+	E1000_WRITE_REG(hw, E1000_GPIE, E1000_GPIE_MSIX_MODE |
+				E1000_GPIE_PBA | E1000_GPIE_EIAME |
+				E1000_GPIE_NSICR);
 
 	nb_efd = rte_intr_nb_efd_get(intr_handle);
 	if (nb_efd < 0)
@@ -799,14 +799,14 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 		intr_mask |= (1u << IGC_MSIX_OTHER_INTR_VEC);
 
 	/* enable msix auto-clear */
-	igc_read_reg_check_set_bits(hw, IGC_EIAC, intr_mask);
+	igc_read_reg_check_set_bits(hw, E1000_EIAC, intr_mask);
 
 	/* set other cause interrupt vector */
-	igc_read_reg_check_set_bits(hw, IGC_IVAR_MISC,
-		(uint32_t)(IGC_MSIX_OTHER_INTR_VEC | IGC_IVAR_VALID) << 8);
+	igc_read_reg_check_set_bits(hw, E1000_IVAR_MISC,
+		(uint32_t)(IGC_MSIX_OTHER_INTR_VEC | E1000_IVAR_VALID) << 8);
 
 	/* enable auto-mask */
-	igc_read_reg_check_set_bits(hw, IGC_EIAM, intr_mask);
+	igc_read_reg_check_set_bits(hw, E1000_EIAM, intr_mask);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		igc_write_ivar(hw, i, 0, vec);
@@ -815,7 +815,7 @@ igc_configure_msix_intr(struct rte_eth_dev *dev)
 			vec++;
 	}
 
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /**
@@ -832,9 +832,9 @@ igc_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
 	struct igc_interrupt *intr = IGC_DEV_PRIVATE_INTR(dev);
 
 	if (on)
-		intr->mask |= IGC_ICR_LSC;
+		intr->mask |= E1000_ICR_LSC;
 	else
-		intr->mask &= ~IGC_ICR_LSC;
+		intr->mask &= ~E1000_ICR_LSC;
 }
 
 /*
@@ -845,7 +845,7 @@ static void
 igc_rxq_interrupt_setup(struct rte_eth_dev *dev)
 {
 	uint32_t mask;
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int misc_shift = rte_intr_allow_others(intr_handle) ? 1 : 0;
@@ -862,16 +862,16 @@ igc_rxq_interrupt_setup(struct rte_eth_dev *dev)
 		return;
 
 	mask = RTE_LEN2MASK(nb_efd, uint32_t) << misc_shift;
-	IGC_WRITE_REG(hw, IGC_EIMS, mask);
+	E1000_WRITE_REG(hw, E1000_EIMS, mask);
 }
 
 /*
  *  Get hardware rx-buffer size.
  */
 static inline int
-igc_get_rx_buffer_size(struct igc_hw *hw)
+igc_get_rx_buffer_size(struct e1000_hw *hw)
 {
-	return (IGC_READ_REG(hw, IGC_RXPBS) & 0x3f) << 10;
+	return (E1000_READ_REG(hw, E1000_RXPBS) & 0x3f) << 10;
 }
 
 /*
@@ -880,13 +880,13 @@ igc_get_rx_buffer_size(struct igc_hw *hw)
  * that the driver is loaded.
  */
 static void
-igc_hw_control_acquire(struct igc_hw *hw)
+igc_hw_control_acquire(struct e1000_hw *hw)
 {
 	uint32_t ctrl_ext;
 
 	/* Let firmware know the driver has taken over */
-	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
-	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext | IGC_CTRL_EXT_DRV_LOAD);
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext | E1000_CTRL_EXT_DRV_LOAD);
 }
 
 /*
@@ -895,18 +895,18 @@ igc_hw_control_acquire(struct igc_hw *hw)
  * driver is no longer loaded.
  */
 static void
-igc_hw_control_release(struct igc_hw *hw)
+igc_hw_control_release(struct e1000_hw *hw)
 {
 	uint32_t ctrl_ext;
 
 	/* Let firmware taken over control of h/w */
-	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
-	IGC_WRITE_REG(hw, IGC_CTRL_EXT,
-			ctrl_ext & ~IGC_CTRL_EXT_DRV_LOAD);
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT,
+			ctrl_ext & ~E1000_CTRL_EXT_DRV_LOAD);
 }
 
 static int
-igc_hardware_init(struct igc_hw *hw)
+igc_hardware_init(struct e1000_hw *hw)
 {
 	uint32_t rx_buf_size;
 	int diag;
@@ -915,10 +915,10 @@ igc_hardware_init(struct igc_hw *hw)
 	igc_hw_control_acquire(hw);
 
 	/* Issue a global reset */
-	igc_reset_hw(hw);
+	e1000_reset_hw(hw);
 
 	/* disable all wake up */
-	IGC_WRITE_REG(hw, IGC_WUC, 0);
+	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
 	/*
 	 * Hardware flow control
@@ -937,14 +937,14 @@ igc_hardware_init(struct igc_hw *hw)
 	hw->fc.low_water = hw->fc.high_water - 1500;
 	hw->fc.pause_time = IGC_FC_PAUSE_TIME;
 	hw->fc.send_xon = 1;
-	hw->fc.requested_mode = igc_fc_full;
+	hw->fc.requested_mode = e1000_fc_full;
 
-	diag = igc_init_hw(hw);
+	diag = e1000_init_hw(hw);
 	if (diag < 0)
 		return diag;
 
-	igc_get_phy_info(hw);
-	igc_check_for_link(hw);
+	e1000_get_phy_info(hw);
+	e1000_check_for_link(hw);
 
 	return 0;
 }
@@ -952,7 +952,7 @@ igc_hardware_init(struct igc_hw *hw)
 static int
 eth_igc_start(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
@@ -967,11 +967,11 @@ eth_igc_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* disable all MSI-X interrupts */
-	IGC_WRITE_REG(hw, IGC_EIMC, 0x1f);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_EIMC, 0x1f);
+	E1000_WRITE_FLUSH(hw);
 
 	/* clear all MSI-X interrupts */
-	IGC_WRITE_REG(hw, IGC_EICR, 0x1f);
+	E1000_WRITE_REG(hw, E1000_EICR, 0x1f);
 
 	/* disable uio/vfio intr/eventfd mapping */
 	if (!adapter->stopped)
@@ -981,7 +981,7 @@ eth_igc_start(struct rte_eth_dev *dev)
 	eth_igc_set_link_up(dev);
 
 	/* Put the address into the Receive Address Array */
-	igc_rar_set(hw, hw->mac.addr, 0);
+	e1000_rar_set(hw, hw->mac.addr, 0);
 
 	/* Initialize the hardware */
 	if (igc_hardware_init(hw)) {
@@ -1025,36 +1025,36 @@ eth_igc_start(struct rte_eth_dev *dev)
 		adapter->base_time = 0;
 		adapter->cycle_time = NSEC_PER_SEC;
 
-		IGC_WRITE_REG(hw, IGC_TSSDP, 0);
-		IGC_WRITE_REG(hw, IGC_TSIM, TSINTR_TXTS);
-		IGC_WRITE_REG(hw, IGC_IMS, IGC_ICR_TS);
+		E1000_WRITE_REG(hw, E1000_TSSDP, 0);
+		E1000_WRITE_REG(hw, E1000_TSIM, TSINTR_TXTS);
+		E1000_WRITE_REG(hw, E1000_IMS, E1000_ICR_TS);
 
-		IGC_WRITE_REG(hw, IGC_TSAUXC, 0);
-		IGC_WRITE_REG(hw, IGC_I350_DTXMXPKTSZ, IGC_DTXMXPKTSZ_TSN);
-		IGC_WRITE_REG(hw, IGC_TXPBS, IGC_TXPBSIZE_TSN);
+		E1000_WRITE_REG(hw, E1000_TSAUXC, 0);
+		E1000_WRITE_REG(hw, E1000_I350_DTXMXPKTSZ, E1000_DTXMXPKTSZ_TSN);
+		E1000_WRITE_REG(hw, E1000_TXPBS, E1000_TXPBSIZE_TSN);
 
-		tqavctrl = IGC_READ_REG(hw, IGC_I210_TQAVCTRL);
-		tqavctrl |= IGC_TQAVCTRL_TRANSMIT_MODE_TSN |
-			    IGC_TQAVCTRL_ENHANCED_QAV;
-		IGC_WRITE_REG(hw, IGC_I210_TQAVCTRL, tqavctrl);
+		tqavctrl = E1000_READ_REG(hw, E1000_I210_TQAVCTRL);
+		tqavctrl |= E1000_TQAVCTRL_TRANSMIT_MODE_TSN |
+			    E1000_TQAVCTRL_ENHANCED_QAV;
+		E1000_WRITE_REG(hw, E1000_I210_TQAVCTRL, tqavctrl);
 
-		IGC_WRITE_REG(hw, IGC_QBVCYCLET_S, adapter->cycle_time);
-		IGC_WRITE_REG(hw, IGC_QBVCYCLET, adapter->cycle_time);
+		E1000_WRITE_REG(hw, E1000_QBVCYCLET_S, adapter->cycle_time);
+		E1000_WRITE_REG(hw, E1000_QBVCYCLET, adapter->cycle_time);
 
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			IGC_WRITE_REG(hw, IGC_STQT(i), 0);
-			IGC_WRITE_REG(hw, IGC_ENDQT(i), NSEC_PER_SEC);
+			E1000_WRITE_REG(hw, E1000_STQT(i), 0);
+			E1000_WRITE_REG(hw, E1000_ENDQT(i), NSEC_PER_SEC);
 
-			txqctl |= IGC_TXQCTL_QUEUE_MODE_LAUNCHT;
-			IGC_WRITE_REG(hw, IGC_TXQCTL(i), txqctl);
+			txqctl |= E1000_TXQCTL_QUEUE_MODE_LAUNCHT;
+			E1000_WRITE_REG(hw, E1000_TXQCTL(i), txqctl);
 		}
 
 		clock_gettime(CLOCK_REALTIME, &system_time);
-		IGC_WRITE_REG(hw, IGC_SYSTIML, system_time.tv_nsec);
-		IGC_WRITE_REG(hw, IGC_SYSTIMH, system_time.tv_sec);
+		E1000_WRITE_REG(hw, E1000_SYSTIML, system_time.tv_nsec);
+		E1000_WRITE_REG(hw, E1000_SYSTIMH, system_time.tv_sec);
 
-		nsec = IGC_READ_REG(hw, IGC_SYSTIML);
-		sec = IGC_READ_REG(hw, IGC_SYSTIMH);
+		nsec = E1000_READ_REG(hw, E1000_SYSTIML);
+		sec = E1000_READ_REG(hw, E1000_SYSTIMH);
 		systime = (int64_t)sec * NSEC_PER_SEC + (int64_t)nsec;
 
 		if (systime > adapter->base_time) {
@@ -1066,11 +1066,11 @@ eth_igc_start(struct rte_eth_dev *dev)
 
 		baset_h = adapter->base_time / NSEC_PER_SEC;
 		baset_l = adapter->base_time % NSEC_PER_SEC;
-		IGC_WRITE_REG(hw, IGC_BASET_H, baset_h);
-		IGC_WRITE_REG(hw, IGC_BASET_L, baset_l);
+		E1000_WRITE_REG(hw, E1000_BASET_H, baset_h);
+		E1000_WRITE_REG(hw, E1000_BASET_L, baset_l);
 	}
 
-	igc_clear_hw_cntrs_base_generic(hw);
+	e1000_clear_hw_cntrs_base_generic(hw);
 
 	/* VLAN Offload Settings */
 	eth_igc_vlan_offload_set(dev,
@@ -1080,7 +1080,7 @@ eth_igc_start(struct rte_eth_dev *dev)
 	/* Setup link speed and duplex */
 	speeds = &dev->data->dev_conf.link_speeds;
 	if (*speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
-		hw->phy.autoneg_advertised = IGC_ALL_SPEED_DUPLEX_2500;
+		hw->phy.autoneg_advertised = E1000_ALL_SPEED_DUPLEX_2500;
 		hw->mac.autoneg = 1;
 	} else {
 		int num_speeds = 0;
@@ -1129,7 +1129,7 @@ eth_igc_start(struct rte_eth_dev *dev)
 			goto error_invalid_config;
 	}
 
-	igc_setup_link(hw);
+	e1000_setup_link(hw);
 
 	if (rte_intr_allow_others(intr_handle)) {
 		/* check if lsc interrupt is enabled */
@@ -1167,13 +1167,13 @@ eth_igc_start(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.lpbk_mode == 1) {
 		uint32_t reg_val;
 
-		reg_val = IGC_READ_REG(hw, IGC_CTRL);
+		reg_val = E1000_READ_REG(hw, E1000_CTRL);
 		reg_val &= ~IGC_CTRL_SPEED_MASK;
-		reg_val |= IGC_CTRL_SLU | IGC_CTRL_FRCSPD |
-			IGC_CTRL_FRCDPX | IGC_CTRL_FD | IGC_CTRL_SPEED_2500;
-		IGC_WRITE_REG(hw, IGC_CTRL, reg_val);
+		reg_val |= E1000_CTRL_SLU | E1000_CTRL_FRCSPD |
+			E1000_CTRL_FRCDPX | E1000_CTRL_FD | IGC_CTRL_SPEED_2500;
+		E1000_WRITE_REG(hw, E1000_CTRL, reg_val);
 
-		igc_read_reg_check_set_bits(hw, IGC_EEER, IGC_EEER_EEE_FRC_AN);
+		igc_read_reg_check_set_bits(hw, E1000_EEER, IGC_EEER_EEE_FRC_AN);
 	}
 
 	return 0;
@@ -1186,7 +1186,7 @@ error_invalid_config:
 }
 
 static int
-igc_reset_swfw_lock(struct igc_hw *hw)
+igc_reset_swfw_lock(struct e1000_hw *hw)
 {
 	int ret_val;
 
@@ -1194,7 +1194,7 @@ igc_reset_swfw_lock(struct igc_hw *hw)
 	 * Do mac ops initialization manually here, since we will need
 	 * some function pointers set by this call.
 	 */
-	ret_val = igc_init_mac_params(hw);
+	ret_val = e1000_init_mac_params(hw);
 	if (ret_val)
 		return ret_val;
 
@@ -1203,10 +1203,10 @@ igc_reset_swfw_lock(struct igc_hw *hw)
 	 * it is due to an improper exit of the application.
 	 * So force the release of the faulty lock.
 	 */
-	if (igc_get_hw_semaphore_generic(hw) < 0)
+	if (e1000_get_hw_semaphore_generic(hw) < 0)
 		PMD_DRV_LOG(DEBUG, "SMBI lock released");
 
-	igc_put_hw_semaphore_generic(hw);
+	e1000_put_hw_semaphore_generic(hw);
 
 	if (hw->mac.ops.acquire_swfw_sync != NULL) {
 		uint16_t mask;
@@ -1216,7 +1216,7 @@ igc_reset_swfw_lock(struct igc_hw *hw)
 		 * If this is the case, it is due to an improper exit of the
 		 * application. So force the release of the faulty lock.
 		 */
-		mask = IGC_SWFW_PHY0_SM;
+		mask = E1000_SWFW_PHY0_SM;
 		if (hw->mac.ops.acquire_swfw_sync(hw, mask) < 0) {
 			PMD_DRV_LOG(DEBUG, "SWFW phy%d lock released",
 				    hw->bus.func);
@@ -1229,14 +1229,14 @@ igc_reset_swfw_lock(struct igc_hw *hw)
 		 * that if lock can not be taken it is due to an improper lock
 		 * of the semaphore.
 		 */
-		mask = IGC_SWFW_EEP_SM;
+		mask = E1000_SWFW_EEP_SM;
 		if (hw->mac.ops.acquire_swfw_sync(hw, mask) < 0)
 			PMD_DRV_LOG(DEBUG, "SWFW common locks released");
 
 		hw->mac.ops.release_swfw_sync(hw, mask);
 	}
 
-	return IGC_SUCCESS;
+	return E1000_SUCCESS;
 }
 
 /*
@@ -1265,7 +1265,7 @@ eth_igc_close(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *adapter = IGC_DEV_PRIVATE(dev);
 	int retry = 0;
 	int ret = 0;
@@ -1291,7 +1291,7 @@ eth_igc_close(struct rte_eth_dev *dev)
 		DELAY(200 * 1000); /* delay 200ms */
 	} while (retry++ < 5);
 
-	igc_phy_hw_reset(hw);
+	e1000_phy_hw_reset(hw);
 	igc_hw_control_release(hw);
 	igc_dev_free_queues(dev);
 
@@ -1304,7 +1304,7 @@ eth_igc_close(struct rte_eth_dev *dev)
 static void
 igc_identify_hardware(struct rte_eth_dev *dev, struct rte_pci_device *pci_dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->device_id = pci_dev->id.device_id;
@@ -1317,7 +1317,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	int i, error = 0;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1348,50 +1348,50 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
 	igc_identify_hardware(dev, pci_dev);
-	if (igc_setup_init_funcs(hw, false) != IGC_SUCCESS) {
+	if (e1000_setup_init_funcs(hw, false) != E1000_SUCCESS) {
 		error = -EIO;
 		goto err_late;
 	}
 
-	igc_get_bus_info(hw);
+	e1000_get_bus_info(hw);
 
 	/* Reset any pending lock */
-	if (igc_reset_swfw_lock(hw) != IGC_SUCCESS) {
+	if (igc_reset_swfw_lock(hw) != E1000_SUCCESS) {
 		error = -EIO;
 		goto err_late;
 	}
 
 	/* Finish initialization */
-	if (igc_setup_init_funcs(hw, true) != IGC_SUCCESS) {
+	if (e1000_setup_init_funcs(hw, true) != E1000_SUCCESS) {
 		error = -EIO;
 		goto err_late;
 	}
 
 	hw->mac.autoneg = 1;
 	hw->phy.autoneg_wait_to_complete = 0;
-	hw->phy.autoneg_advertised = IGC_ALL_SPEED_DUPLEX_2500;
+	hw->phy.autoneg_advertised = E1000_ALL_SPEED_DUPLEX_2500;
 
 	/* Copper options */
-	if (hw->phy.media_type == igc_media_type_copper) {
+	if (hw->phy.media_type == e1000_media_type_copper) {
 		hw->phy.mdix = 0; /* AUTO_ALL_MODES */
 		hw->phy.disable_polarity_correction = 0;
-		hw->phy.ms_type = igc_ms_hw_default;
+		hw->phy.ms_type = e1000_ms_hw_default;
 	}
 
 	/*
 	 * Start from a known state, this is important in reading the nvm
 	 * and mac from that.
 	 */
-	igc_reset_hw(hw);
+	e1000_reset_hw(hw);
 
 	/* Make sure we have a good EEPROM before we read from it */
-	if (igc_validate_nvm_checksum(hw) < 0) {
+	if (e1000_validate_nvm_checksum(hw) < 0) {
 		/*
 		 * Some PCI-E parts fail the first check due to
 		 * the link being in sleep state, call it again,
 		 * if it fails a second time its a real issue.
 		 */
-		if (igc_validate_nvm_checksum(hw) < 0) {
+		if (e1000_validate_nvm_checksum(hw) < 0) {
 			PMD_INIT_LOG(ERR, "EEPROM checksum invalid");
 			error = -EIO;
 			goto err_late;
@@ -1399,7 +1399,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 	}
 
 	/* Read the permanent MAC address out of the EEPROM */
-	if (igc_read_mac_addr(hw) != 0) {
+	if (e1000_read_mac_addr(hw) != 0) {
 		PMD_INIT_LOG(ERR, "EEPROM error while reading MAC address");
 		error = -EIO;
 		goto err_late;
@@ -1432,7 +1432,7 @@ eth_igc_dev_init(struct rte_eth_dev *dev)
 	igc->stopped = 0;
 
 	/* Indicate SOL/IDER usage */
-	if (igc_check_reset_block(hw) < 0)
+	if (e1000_check_reset_block(hw) < 0)
 		PMD_INIT_LOG(ERR,
 			"PHY reset is blocked due to SOL/IDER session.");
 
@@ -1489,55 +1489,55 @@ eth_igc_reset(struct rte_eth_dev *dev)
 static int
 eth_igc_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t rctl;
 
-	rctl = IGC_READ_REG(hw, IGC_RCTL);
-	rctl |= (IGC_RCTL_UPE | IGC_RCTL_MPE);
-	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	rctl |= (E1000_RCTL_UPE | E1000_RCTL_MPE);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 	return 0;
 }
 
 static int
 eth_igc_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t rctl;
 
-	rctl = IGC_READ_REG(hw, IGC_RCTL);
-	rctl &= (~IGC_RCTL_UPE);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	rctl &= (~E1000_RCTL_UPE);
 	if (dev->data->all_multicast == 1)
-		rctl |= IGC_RCTL_MPE;
+		rctl |= E1000_RCTL_MPE;
 	else
-		rctl &= (~IGC_RCTL_MPE);
-	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+		rctl &= (~E1000_RCTL_MPE);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 	return 0;
 }
 
 static int
 eth_igc_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t rctl;
 
-	rctl = IGC_READ_REG(hw, IGC_RCTL);
-	rctl |= IGC_RCTL_MPE;
-	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	rctl |= E1000_RCTL_MPE;
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 	return 0;
 }
 
 static int
 eth_igc_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t rctl;
 
 	if (dev->data->promiscuous == 1)
 		return 0;	/* must remain in all_multicast mode */
 
-	rctl = IGC_READ_REG(hw, IGC_RCTL);
-	rctl &= (~IGC_RCTL_MPE);
-	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
+	rctl &= (~E1000_RCTL_MPE);
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 	return 0;
 }
 
@@ -1545,11 +1545,11 @@ static int
 eth_igc_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 		       size_t fw_size)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	struct igc_fw_version fw;
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_fw_version fw;
 	int ret;
 
-	igc_get_fw_version(hw, &fw);
+	e1000_get_fw_version(hw, &fw);
 
 	/* if option rom is valid, display its version too */
 	if (fw.or_valid) {
@@ -1584,7 +1584,7 @@ eth_igc_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 static int
 eth_igc_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen = MAX_RX_JUMBO_FRAME_SIZE;
@@ -1637,17 +1637,17 @@ eth_igc_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static int
 eth_igc_led_on(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	return igc_led_on(hw) == IGC_SUCCESS ? 0 : -ENOTSUP;
+	return e1000_led_on(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static int
 eth_igc_led_off(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	return igc_led_off(hw) == IGC_SUCCESS ? 0 : -ENOTSUP;
+	return e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
 
 static const uint32_t *
@@ -1678,12 +1678,12 @@ eth_igc_supported_ptypes_get(__rte_unused struct rte_eth_dev *dev,
 static int
 eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t frame_size = mtu + IGC_ETH_OVERHEAD;
 	uint32_t rctl;
 
 	/* if extend vlan has been enabled */
-	if (IGC_READ_REG(hw, IGC_CTRL_EXT) & IGC_CTRL_EXT_EXT_VLAN)
+	if (E1000_READ_REG(hw, E1000_CTRL_EXT) & IGC_CTRL_EXT_EXT_VLAN)
 		frame_size += VLAN_TAG_SIZE;
 
 	/*
@@ -1696,14 +1696,14 @@ eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	rctl = IGC_READ_REG(hw, IGC_RCTL);
+	rctl = E1000_READ_REG(hw, E1000_RCTL);
 	if (mtu > RTE_ETHER_MTU)
-		rctl |= IGC_RCTL_LPE;
+		rctl |= E1000_RCTL_LPE;
 	else
-		rctl &= ~IGC_RCTL_LPE;
-	IGC_WRITE_REG(hw, IGC_RCTL, rctl);
+		rctl &= ~E1000_RCTL_LPE;
+	E1000_WRITE_REG(hw, E1000_RCTL, rctl);
 
-	IGC_WRITE_REG(hw, IGC_RLPML, frame_size);
+	E1000_WRITE_REG(hw, E1000_RLPML, frame_size);
 
 	return 0;
 }
@@ -1712,9 +1712,9 @@ static int
 eth_igc_rar_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		uint32_t index, uint32_t pool)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	igc_rar_set(hw, mac_addr->addr_bytes, index);
+	e1000_rar_set(hw, mac_addr->addr_bytes, index);
 	RTE_SET_USED(pool);
 	return 0;
 }
@@ -1723,18 +1723,18 @@ static void
 eth_igc_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 {
 	uint8_t addr[RTE_ETHER_ADDR_LEN];
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
 	memset(addr, 0, sizeof(addr));
-	igc_rar_set(hw, addr, index);
+	e1000_rar_set(hw, addr, index);
 }
 
 static int
 eth_igc_default_mac_addr_set(struct rte_eth_dev *dev,
 			struct rte_ether_addr *addr)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	igc_rar_set(hw, addr->addr_bytes, 0);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	e1000_rar_set(hw, addr->addr_bytes, 0);
 	return 0;
 }
 
@@ -1743,8 +1743,8 @@ eth_igc_set_mc_addr_list(struct rte_eth_dev *dev,
 			 struct rte_ether_addr *mc_addr_set,
 			 uint32_t nb_mc_addr)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	igc_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	e1000_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
 	return 0;
 }
 
@@ -1752,7 +1752,7 @@ eth_igc_set_mc_addr_list(struct rte_eth_dev *dev,
  * Read hardware registers
  */
 static void
-igc_read_stats_registers(struct igc_hw *hw, struct igc_hw_stats *stats)
+igc_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 {
 	int pause_frames;
 
@@ -1763,119 +1763,119 @@ igc_read_stats_registers(struct igc_hw *hw, struct igc_hw_stats *stats)
 	uint64_t old_rpthc = stats->rpthc;
 	uint64_t old_hgptc = stats->hgptc;
 
-	stats->crcerrs += IGC_READ_REG(hw, IGC_CRCERRS);
-	stats->algnerrc += IGC_READ_REG(hw, IGC_ALGNERRC);
-	stats->rxerrc += IGC_READ_REG(hw, IGC_RXERRC);
-	stats->mpc += IGC_READ_REG(hw, IGC_MPC);
-	stats->scc += IGC_READ_REG(hw, IGC_SCC);
-	stats->ecol += IGC_READ_REG(hw, IGC_ECOL);
+	stats->crcerrs += E1000_READ_REG(hw, E1000_CRCERRS);
+	stats->algnerrc += E1000_READ_REG(hw, E1000_ALGNERRC);
+	stats->rxerrc += E1000_READ_REG(hw, E1000_RXERRC);
+	stats->mpc += E1000_READ_REG(hw, E1000_MPC);
+	stats->scc += E1000_READ_REG(hw, E1000_SCC);
+	stats->ecol += E1000_READ_REG(hw, E1000_ECOL);
 
-	stats->mcc += IGC_READ_REG(hw, IGC_MCC);
-	stats->latecol += IGC_READ_REG(hw, IGC_LATECOL);
-	stats->colc += IGC_READ_REG(hw, IGC_COLC);
+	stats->mcc += E1000_READ_REG(hw, E1000_MCC);
+	stats->latecol += E1000_READ_REG(hw, E1000_LATECOL);
+	stats->colc += E1000_READ_REG(hw, E1000_COLC);
 
-	stats->dc += IGC_READ_REG(hw, IGC_DC);
-	stats->tncrs += IGC_READ_REG(hw, IGC_TNCRS);
-	stats->htdpmc += IGC_READ_REG(hw, IGC_HTDPMC);
-	stats->rlec += IGC_READ_REG(hw, IGC_RLEC);
-	stats->xonrxc += IGC_READ_REG(hw, IGC_XONRXC);
-	stats->xontxc += IGC_READ_REG(hw, IGC_XONTXC);
+	stats->dc += E1000_READ_REG(hw, E1000_DC);
+	stats->tncrs += E1000_READ_REG(hw, E1000_TNCRS);
+	stats->htdpmc += E1000_READ_REG(hw, E1000_HTDPMC);
+	stats->rlec += E1000_READ_REG(hw, E1000_RLEC);
+	stats->xonrxc += E1000_READ_REG(hw, E1000_XONRXC);
+	stats->xontxc += E1000_READ_REG(hw, E1000_XONTXC);
 
 	/*
 	 * For watchdog management we need to know if we have been
 	 * paused during the last interval, so capture that here.
 	 */
-	pause_frames = IGC_READ_REG(hw, IGC_XOFFRXC);
+	pause_frames = E1000_READ_REG(hw, E1000_XOFFRXC);
 	stats->xoffrxc += pause_frames;
-	stats->xofftxc += IGC_READ_REG(hw, IGC_XOFFTXC);
-	stats->fcruc += IGC_READ_REG(hw, IGC_FCRUC);
-	stats->prc64 += IGC_READ_REG(hw, IGC_PRC64);
-	stats->prc127 += IGC_READ_REG(hw, IGC_PRC127);
-	stats->prc255 += IGC_READ_REG(hw, IGC_PRC255);
-	stats->prc511 += IGC_READ_REG(hw, IGC_PRC511);
-	stats->prc1023 += IGC_READ_REG(hw, IGC_PRC1023);
-	stats->prc1522 += IGC_READ_REG(hw, IGC_PRC1522);
-	stats->gprc += IGC_READ_REG(hw, IGC_GPRC);
-	stats->bprc += IGC_READ_REG(hw, IGC_BPRC);
-	stats->mprc += IGC_READ_REG(hw, IGC_MPRC);
-	stats->gptc += IGC_READ_REG(hw, IGC_GPTC);
+	stats->xofftxc += E1000_READ_REG(hw, E1000_XOFFTXC);
+	stats->fcruc += E1000_READ_REG(hw, E1000_FCRUC);
+	stats->prc64 += E1000_READ_REG(hw, E1000_PRC64);
+	stats->prc127 += E1000_READ_REG(hw, E1000_PRC127);
+	stats->prc255 += E1000_READ_REG(hw, E1000_PRC255);
+	stats->prc511 += E1000_READ_REG(hw, E1000_PRC511);
+	stats->prc1023 += E1000_READ_REG(hw, E1000_PRC1023);
+	stats->prc1522 += E1000_READ_REG(hw, E1000_PRC1522);
+	stats->gprc += E1000_READ_REG(hw, E1000_GPRC);
+	stats->bprc += E1000_READ_REG(hw, E1000_BPRC);
+	stats->mprc += E1000_READ_REG(hw, E1000_MPRC);
+	stats->gptc += E1000_READ_REG(hw, E1000_GPTC);
 
 	/* For the 64-bit byte counters the low dword must be read first. */
 	/* Both registers clear on the read of the high dword */
 
 	/* Workaround CRC bytes included in size, take away 4 bytes/packet */
-	stats->gorc += IGC_READ_REG(hw, IGC_GORCL);
-	stats->gorc += ((uint64_t)IGC_READ_REG(hw, IGC_GORCH) << 32);
+	stats->gorc += E1000_READ_REG(hw, E1000_GORCL);
+	stats->gorc += ((uint64_t)E1000_READ_REG(hw, E1000_GORCH) << 32);
 	stats->gorc -= (stats->gprc - old_gprc) * RTE_ETHER_CRC_LEN;
-	stats->gotc += IGC_READ_REG(hw, IGC_GOTCL);
-	stats->gotc += ((uint64_t)IGC_READ_REG(hw, IGC_GOTCH) << 32);
+	stats->gotc += E1000_READ_REG(hw, E1000_GOTCL);
+	stats->gotc += ((uint64_t)E1000_READ_REG(hw, E1000_GOTCH) << 32);
 	stats->gotc -= (stats->gptc - old_gptc) * RTE_ETHER_CRC_LEN;
 
-	stats->rnbc += IGC_READ_REG(hw, IGC_RNBC);
-	stats->ruc += IGC_READ_REG(hw, IGC_RUC);
-	stats->rfc += IGC_READ_REG(hw, IGC_RFC);
-	stats->roc += IGC_READ_REG(hw, IGC_ROC);
-	stats->rjc += IGC_READ_REG(hw, IGC_RJC);
+	stats->rnbc += E1000_READ_REG(hw, E1000_RNBC);
+	stats->ruc += E1000_READ_REG(hw, E1000_RUC);
+	stats->rfc += E1000_READ_REG(hw, E1000_RFC);
+	stats->roc += E1000_READ_REG(hw, E1000_ROC);
+	stats->rjc += E1000_READ_REG(hw, E1000_RJC);
 
-	stats->mgprc += IGC_READ_REG(hw, IGC_MGTPRC);
-	stats->mgpdc += IGC_READ_REG(hw, IGC_MGTPDC);
-	stats->mgptc += IGC_READ_REG(hw, IGC_MGTPTC);
-	stats->b2ospc += IGC_READ_REG(hw, IGC_B2OSPC);
-	stats->b2ogprc += IGC_READ_REG(hw, IGC_B2OGPRC);
-	stats->o2bgptc += IGC_READ_REG(hw, IGC_O2BGPTC);
-	stats->o2bspc += IGC_READ_REG(hw, IGC_O2BSPC);
+	stats->mgprc += E1000_READ_REG(hw, E1000_MGTPRC);
+	stats->mgpdc += E1000_READ_REG(hw, E1000_MGTPDC);
+	stats->mgptc += E1000_READ_REG(hw, E1000_MGTPTC);
+	stats->b2ospc += E1000_READ_REG(hw, E1000_B2OSPC);
+	stats->b2ogprc += E1000_READ_REG(hw, E1000_B2OGPRC);
+	stats->o2bgptc += E1000_READ_REG(hw, E1000_O2BGPTC);
+	stats->o2bspc += E1000_READ_REG(hw, E1000_O2BSPC);
 
-	stats->tpr += IGC_READ_REG(hw, IGC_TPR);
-	stats->tpt += IGC_READ_REG(hw, IGC_TPT);
+	stats->tpr += E1000_READ_REG(hw, E1000_TPR);
+	stats->tpt += E1000_READ_REG(hw, E1000_TPT);
 
-	stats->tor += IGC_READ_REG(hw, IGC_TORL);
-	stats->tor += ((uint64_t)IGC_READ_REG(hw, IGC_TORH) << 32);
+	stats->tor += E1000_READ_REG(hw, E1000_TORL);
+	stats->tor += ((uint64_t)E1000_READ_REG(hw, E1000_TORH) << 32);
 	stats->tor -= (stats->tpr - old_tpr) * RTE_ETHER_CRC_LEN;
-	stats->tot += IGC_READ_REG(hw, IGC_TOTL);
-	stats->tot += ((uint64_t)IGC_READ_REG(hw, IGC_TOTH) << 32);
+	stats->tot += E1000_READ_REG(hw, E1000_TOTL);
+	stats->tot += ((uint64_t)E1000_READ_REG(hw, E1000_TOTH) << 32);
 	stats->tot -= (stats->tpt - old_tpt) * RTE_ETHER_CRC_LEN;
 
-	stats->ptc64 += IGC_READ_REG(hw, IGC_PTC64);
-	stats->ptc127 += IGC_READ_REG(hw, IGC_PTC127);
-	stats->ptc255 += IGC_READ_REG(hw, IGC_PTC255);
-	stats->ptc511 += IGC_READ_REG(hw, IGC_PTC511);
-	stats->ptc1023 += IGC_READ_REG(hw, IGC_PTC1023);
-	stats->ptc1522 += IGC_READ_REG(hw, IGC_PTC1522);
-	stats->mptc += IGC_READ_REG(hw, IGC_MPTC);
-	stats->bptc += IGC_READ_REG(hw, IGC_BPTC);
-	stats->tsctc += IGC_READ_REG(hw, IGC_TSCTC);
+	stats->ptc64 += E1000_READ_REG(hw, E1000_PTC64);
+	stats->ptc127 += E1000_READ_REG(hw, E1000_PTC127);
+	stats->ptc255 += E1000_READ_REG(hw, E1000_PTC255);
+	stats->ptc511 += E1000_READ_REG(hw, E1000_PTC511);
+	stats->ptc1023 += E1000_READ_REG(hw, E1000_PTC1023);
+	stats->ptc1522 += E1000_READ_REG(hw, E1000_PTC1522);
+	stats->mptc += E1000_READ_REG(hw, E1000_MPTC);
+	stats->bptc += E1000_READ_REG(hw, E1000_BPTC);
+	stats->tsctc += E1000_READ_REG(hw, E1000_TSCTC);
 
-	stats->iac += IGC_READ_REG(hw, IGC_IAC);
-	stats->rpthc += IGC_READ_REG(hw, IGC_RPTHC);
-	stats->hgptc += IGC_READ_REG(hw, IGC_HGPTC);
-	stats->icrxdmtc += IGC_READ_REG(hw, IGC_ICRXDMTC);
+	stats->iac += E1000_READ_REG(hw, E1000_IAC);
+	stats->rpthc += E1000_READ_REG(hw, E1000_RPTHC);
+	stats->hgptc += E1000_READ_REG(hw, E1000_HGPTC);
+	stats->icrxdmtc += E1000_READ_REG(hw, E1000_ICRXDMTC);
 
 	/* Host to Card Statistics */
-	stats->hgorc += IGC_READ_REG(hw, IGC_HGORCL);
-	stats->hgorc += ((uint64_t)IGC_READ_REG(hw, IGC_HGORCH) << 32);
+	stats->hgorc += E1000_READ_REG(hw, E1000_HGORCL);
+	stats->hgorc += ((uint64_t)E1000_READ_REG(hw, E1000_HGORCH) << 32);
 	stats->hgorc -= (stats->rpthc - old_rpthc) * RTE_ETHER_CRC_LEN;
-	stats->hgotc += IGC_READ_REG(hw, IGC_HGOTCL);
-	stats->hgotc += ((uint64_t)IGC_READ_REG(hw, IGC_HGOTCH) << 32);
+	stats->hgotc += E1000_READ_REG(hw, E1000_HGOTCL);
+	stats->hgotc += ((uint64_t)E1000_READ_REG(hw, E1000_HGOTCH) << 32);
 	stats->hgotc -= (stats->hgptc - old_hgptc) * RTE_ETHER_CRC_LEN;
-	stats->lenerrs += IGC_READ_REG(hw, IGC_LENERRS);
+	stats->lenerrs += E1000_READ_REG(hw, E1000_LENERRS);
 }
 
 /*
  * Write 0 to all queue status registers
  */
 static void
-igc_reset_queue_stats_register(struct igc_hw *hw)
+igc_reset_queue_stats_register(struct e1000_hw *hw)
 {
 	int i;
 
 	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
-		IGC_WRITE_REG(hw, IGC_PQGPRC(i), 0);
-		IGC_WRITE_REG(hw, IGC_PQGPTC(i), 0);
-		IGC_WRITE_REG(hw, IGC_PQGORC(i), 0);
-		IGC_WRITE_REG(hw, IGC_PQGOTC(i), 0);
-		IGC_WRITE_REG(hw, IGC_PQMPRC(i), 0);
-		IGC_WRITE_REG(hw, IGC_RQDPC(i), 0);
-		IGC_WRITE_REG(hw, IGC_TQDPC(i), 0);
+		E1000_WRITE_REG(hw, IGC_PQGPRC(i), 0);
+		E1000_WRITE_REG(hw, E1000_PQGPTC(i), 0);
+		E1000_WRITE_REG(hw, IGC_PQGORC(i), 0);
+		E1000_WRITE_REG(hw, IGC_PQGOTC(i), 0);
+		E1000_WRITE_REG(hw, IGC_PQMPRC(i), 0);
+		E1000_WRITE_REG(hw, E1000_RQDPC(i), 0);
+		E1000_WRITE_REG(hw, IGC_TQDPC(i), 0);
 	}
 }
 
@@ -1885,7 +1885,7 @@ igc_reset_queue_stats_register(struct igc_hw *hw)
 static void
 igc_read_queue_stats_register(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_hw_queue_stats *queue_stats =
 				IGC_DEV_PRIVATE_QUEUE_STATS(dev);
 	int i;
@@ -1908,49 +1908,49 @@ igc_read_queue_stats_register(struct rte_eth_dev *dev)
 		 * then we add the high 4 bytes by 1 and replace the low 4
 		 * bytes by the new value.
 		 */
-		tmp = IGC_READ_REG(hw, IGC_PQGPRC(i));
+		tmp = E1000_READ_REG(hw, IGC_PQGPRC(i));
 		value.ddword = queue_stats->pqgprc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
 		value.dword[U32_0_IN_U64] = tmp;
 		queue_stats->pqgprc[i] = value.ddword;
 
-		tmp = IGC_READ_REG(hw, IGC_PQGPTC(i));
+		tmp = E1000_READ_REG(hw, E1000_PQGPTC(i));
 		value.ddword = queue_stats->pqgptc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
 		value.dword[U32_0_IN_U64] = tmp;
 		queue_stats->pqgptc[i] = value.ddword;
 
-		tmp = IGC_READ_REG(hw, IGC_PQGORC(i));
+		tmp = E1000_READ_REG(hw, IGC_PQGORC(i));
 		value.ddword = queue_stats->pqgorc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
 		value.dword[U32_0_IN_U64] = tmp;
 		queue_stats->pqgorc[i] = value.ddword;
 
-		tmp = IGC_READ_REG(hw, IGC_PQGOTC(i));
+		tmp = E1000_READ_REG(hw, IGC_PQGOTC(i));
 		value.ddword = queue_stats->pqgotc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
 		value.dword[U32_0_IN_U64] = tmp;
 		queue_stats->pqgotc[i] = value.ddword;
 
-		tmp = IGC_READ_REG(hw, IGC_PQMPRC(i));
+		tmp = E1000_READ_REG(hw, IGC_PQMPRC(i));
 		value.ddword = queue_stats->pqmprc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
 		value.dword[U32_0_IN_U64] = tmp;
 		queue_stats->pqmprc[i] = value.ddword;
 
-		tmp = IGC_READ_REG(hw, IGC_RQDPC(i));
+		tmp = E1000_READ_REG(hw, E1000_RQDPC(i));
 		value.ddword = queue_stats->rqdpc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
 		value.dword[U32_0_IN_U64] = tmp;
 		queue_stats->rqdpc[i] = value.ddword;
 
-		tmp = IGC_READ_REG(hw, IGC_TQDPC(i));
+		tmp = E1000_READ_REG(hw, IGC_TQDPC(i));
 		value.ddword = queue_stats->tqdpc[i];
 		if (value.dword[U32_0_IN_U64] > tmp)
 			value.dword[U32_1_IN_U64]++;
@@ -1963,8 +1963,8 @@ static int
 eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 {
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	struct igc_hw_stats *stats = IGC_DEV_PRIVATE_STATS(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw_stats *stats = IGC_DEV_PRIVATE_STATS(dev);
 	struct igc_hw_queue_stats *queue_stats =
 			IGC_DEV_PRIVATE_QUEUE_STATS(dev);
 	int i;
@@ -2025,8 +2025,8 @@ static int
 eth_igc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		   unsigned int n)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	struct igc_hw_stats *hw_stats =
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw_stats *hw_stats =
 			IGC_DEV_PRIVATE_STATS(dev);
 	unsigned int i;
 
@@ -2054,8 +2054,8 @@ eth_igc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 static int
 eth_igc_xstats_reset(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	struct igc_hw_stats *hw_stats = IGC_DEV_PRIVATE_STATS(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw_stats *hw_stats = IGC_DEV_PRIVATE_STATS(dev);
 	struct igc_hw_queue_stats *queue_stats =
 			IGC_DEV_PRIVATE_QUEUE_STATS(dev);
 
@@ -2124,8 +2124,8 @@ static int
 eth_igc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		uint64_t *values, unsigned int n)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	struct igc_hw_stats *hw_stats = IGC_DEV_PRIVATE_STATS(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw_stats *hw_stats = IGC_DEV_PRIVATE_STATS(dev);
 	unsigned int i;
 
 	igc_read_stats_registers(hw, hw_stats);
@@ -2185,7 +2185,7 @@ eth_igc_queue_stats_mapping_set(struct rte_eth_dev *dev,
 static int
 eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t vec = IGC_MISC_VEC_ID;
@@ -2195,8 +2195,8 @@ eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	uint32_t mask = 1u << (queue_id + vec);
 
-	IGC_WRITE_REG(hw, IGC_EIMC, mask);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_EIMC, mask);
+	E1000_WRITE_FLUSH(hw);
 
 	return 0;
 }
@@ -2204,7 +2204,7 @@ eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 static int
 eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t vec = IGC_MISC_VEC_ID;
@@ -2214,8 +2214,8 @@ eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	uint32_t mask = 1u << (queue_id + vec);
 
-	IGC_WRITE_REG(hw, IGC_EIMS, mask);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_EIMS, mask);
+	E1000_WRITE_FLUSH(hw);
 
 	rte_intr_enable(intr_handle);
 
@@ -2225,7 +2225,7 @@ eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 static int
 eth_igc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t ctrl;
 	int tx_pause;
 	int rx_pause;
@@ -2240,13 +2240,13 @@ eth_igc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	 * Return rx_pause and tx_pause status according to actual setting of
 	 * the TFCE and RFCE bits in the CTRL register.
 	 */
-	ctrl = IGC_READ_REG(hw, IGC_CTRL);
-	if (ctrl & IGC_CTRL_TFCE)
+	ctrl = E1000_READ_REG(hw, E1000_CTRL);
+	if (ctrl & E1000_CTRL_TFCE)
 		tx_pause = 1;
 	else
 		tx_pause = 0;
 
-	if (ctrl & IGC_CTRL_RFCE)
+	if (ctrl & E1000_CTRL_RFCE)
 		rx_pause = 1;
 	else
 		rx_pause = 0;
@@ -2266,7 +2266,7 @@ eth_igc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 static int
 eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t rx_buf_size;
 	uint32_t max_high_water;
 	uint32_t rctl;
@@ -2291,16 +2291,16 @@ eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	switch (fc_conf->mode) {
 	case RTE_ETH_FC_NONE:
-		hw->fc.requested_mode = igc_fc_none;
+		hw->fc.requested_mode = e1000_fc_none;
 		break;
 	case RTE_ETH_FC_RX_PAUSE:
-		hw->fc.requested_mode = igc_fc_rx_pause;
+		hw->fc.requested_mode = e1000_fc_rx_pause;
 		break;
 	case RTE_ETH_FC_TX_PAUSE:
-		hw->fc.requested_mode = igc_fc_tx_pause;
+		hw->fc.requested_mode = e1000_fc_tx_pause;
 		break;
 	case RTE_ETH_FC_FULL:
-		hw->fc.requested_mode = igc_fc_full;
+		hw->fc.requested_mode = e1000_fc_full;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unsupported fc mode: %u", fc_conf->mode);
@@ -2312,23 +2312,23 @@ eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	hw->fc.low_water      = fc_conf->low_water;
 	hw->fc.send_xon	      = fc_conf->send_xon;
 
-	err = igc_setup_link_generic(hw);
-	if (err == IGC_SUCCESS) {
+	err = e1000_setup_link_generic(hw);
+	if (err == E1000_SUCCESS) {
 		/**
 		 * check if we want to forward MAC frames - driver doesn't have
 		 * native capability to do that, so we'll write the registers
 		 * ourselves
 		 **/
-		rctl = IGC_READ_REG(hw, IGC_RCTL);
+		rctl = E1000_READ_REG(hw, E1000_RCTL);
 
 		/* set or clear MFLCN.PMCF bit depending on configuration */
 		if (fc_conf->mac_ctrl_frame_fwd != 0)
-			rctl |= IGC_RCTL_PMCF;
+			rctl |= E1000_RCTL_PMCF;
 		else
-			rctl &= ~IGC_RCTL_PMCF;
+			rctl &= ~E1000_RCTL_PMCF;
 
-		IGC_WRITE_REG(hw, IGC_RCTL, rctl);
-		IGC_WRITE_FLUSH(hw);
+		E1000_WRITE_REG(hw, E1000_RCTL, rctl);
+		E1000_WRITE_FLUSH(hw);
 
 		return 0;
 	}
@@ -2342,7 +2342,7 @@ eth_igc_rss_reta_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t reta_size)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint16_t i;
 
 	if (reta_size != RTE_ETH_RSS_RETA_SIZE_128) {
@@ -2374,8 +2374,8 @@ eth_igc_rss_reta_update(struct rte_eth_dev *dev,
 		if (mask == IGC_RSS_RDT_REG_SIZE_MASK)
 			reg.dword = 0;
 		else
-			reg.dword = IGC_READ_REG_LE_VALUE(hw,
-					IGC_RETA(i / IGC_RSS_RDT_REG_SIZE));
+			reg.dword = E1000_READ_REG_LE_VALUE(hw,
+					E1000_RETA(i / IGC_RSS_RDT_REG_SIZE));
 
 		/* update the register */
 		RTE_BUILD_BUG_ON(sizeof(reta.bytes) != IGC_RSS_RDT_REG_SIZE);
@@ -2386,8 +2386,8 @@ eth_igc_rss_reta_update(struct rte_eth_dev *dev,
 			else
 				reta.bytes[j] = reg.bytes[j];
 		}
-		IGC_WRITE_REG_LE_VALUE(hw,
-			IGC_RETA(i / IGC_RSS_RDT_REG_SIZE), reta.dword);
+		E1000_WRITE_REG_LE_VALUE(hw,
+			E1000_RETA(i / IGC_RSS_RDT_REG_SIZE), reta.dword);
 	}
 
 	return 0;
@@ -2398,7 +2398,7 @@ eth_igc_rss_reta_query(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_reta_entry64 *reta_conf,
 		       uint16_t reta_size)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint16_t i;
 
 	if (reta_size != RTE_ETH_RSS_RETA_SIZE_128) {
@@ -2428,8 +2428,8 @@ eth_igc_rss_reta_query(struct rte_eth_dev *dev,
 
 		/* read register and get the queue index */
 		RTE_BUILD_BUG_ON(sizeof(reta.bytes) != IGC_RSS_RDT_REG_SIZE);
-		reta.dword = IGC_READ_REG_LE_VALUE(hw,
-				IGC_RETA(i / IGC_RSS_RDT_REG_SIZE));
+		reta.dword = E1000_READ_REG_LE_VALUE(hw,
+				E1000_RETA(i / IGC_RSS_RDT_REG_SIZE));
 		for (j = 0; j < IGC_RSS_RDT_REG_SIZE; j++) {
 			if (mask & (1u << j))
 				reta_conf[idx].reta[shift + j] = reta.bytes[j];
@@ -2443,7 +2443,7 @@ static int
 eth_igc_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	igc_hw_rss_hash_set(hw, rss_conf);
 	return 0;
 }
@@ -2452,7 +2452,7 @@ static int
 eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t *hash_key = (uint32_t *)rss_conf->rss_key;
 	uint32_t mrqc;
 	uint64_t rss_hf;
@@ -2470,32 +2470,32 @@ eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 		/* read RSS key from register */
 		for (i = 0; i < IGC_HKEY_MAX_INDEX; i++)
-			hash_key[i] = IGC_READ_REG_LE_VALUE(hw, IGC_RSSRK(i));
+			hash_key[i] = E1000_READ_REG_LE_VALUE(hw, E1000_RSSRK(i));
 	}
 
 	/* get RSS functions configured in MRQC register */
-	mrqc = IGC_READ_REG(hw, IGC_MRQC);
-	if ((mrqc & IGC_MRQC_ENABLE_RSS_4Q) == 0)
+	mrqc = E1000_READ_REG(hw, E1000_MRQC);
+	if ((mrqc & E1000_MRQC_ENABLE_RSS_4Q) == 0)
 		return 0;
 
 	rss_hf = 0;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV4)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV4)
 		rss_hf |= RTE_ETH_RSS_IPV4;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV4_TCP)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV4_TCP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6)
 		rss_hf |= RTE_ETH_RSS_IPV6;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_EX)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_EX)
 		rss_hf |= RTE_ETH_RSS_IPV6_EX;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_TCP)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_TCP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_TCP_EX)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_TCP_EX)
 		rss_hf |= RTE_ETH_RSS_IPV6_TCP_EX;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV4_UDP)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV4_UDP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_UDP)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_UDP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
-	if (mrqc & IGC_MRQC_RSS_FIELD_IPV6_UDP_EX)
+	if (mrqc & E1000_MRQC_RSS_FIELD_IPV6_UDP_EX)
 		rss_hf |= RTE_ETH_RSS_IPV6_UDP_EX;
 
 	rss_conf->rss_hf |= rss_hf;
@@ -2505,20 +2505,20 @@ eth_igc_rss_hash_conf_get(struct rte_eth_dev *dev,
 static int
 eth_igc_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_vfta *shadow_vfta = IGC_DEV_PRIVATE_VFTA(dev);
 	uint32_t vfta;
 	uint32_t vid_idx;
 	uint32_t vid_bit;
 
-	vid_idx = (vlan_id >> IGC_VFTA_ENTRY_SHIFT) & IGC_VFTA_ENTRY_MASK;
-	vid_bit = 1u << (vlan_id & IGC_VFTA_ENTRY_BIT_SHIFT_MASK);
+	vid_idx = (vlan_id >> E1000_VFTA_ENTRY_SHIFT) & E1000_VFTA_ENTRY_MASK;
+	vid_bit = 1u << (vlan_id & E1000_VFTA_ENTRY_BIT_SHIFT_MASK);
 	vfta = shadow_vfta->vfta[vid_idx];
 	if (on)
 		vfta |= vid_bit;
 	else
 		vfta &= ~vid_bit;
-	IGC_WRITE_REG_ARRAY(hw, IGC_VFTA, vid_idx, vfta);
+	E1000_WRITE_REG_ARRAY(hw, E1000_VFTA, vid_idx, vfta);
 
 	/* update local VFTA copy */
 	shadow_vfta->vfta[vid_idx] = vfta;
@@ -2529,54 +2529,54 @@ eth_igc_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static void
 igc_vlan_hw_filter_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
-	igc_read_reg_check_clear_bits(hw, IGC_RCTL,
-			IGC_RCTL_CFIEN | IGC_RCTL_VFE);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	igc_read_reg_check_clear_bits(hw, E1000_RCTL,
+			E1000_RCTL_CFIEN | E1000_RCTL_VFE);
 }
 
 static void
 igc_vlan_hw_filter_enable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_vfta *shadow_vfta = IGC_DEV_PRIVATE_VFTA(dev);
 	uint32_t reg_val;
 	int i;
 
 	/* Filter Table Enable, CFI not used for packet acceptance */
-	reg_val = IGC_READ_REG(hw, IGC_RCTL);
-	reg_val &= ~IGC_RCTL_CFIEN;
-	reg_val |= IGC_RCTL_VFE;
-	IGC_WRITE_REG(hw, IGC_RCTL, reg_val);
+	reg_val = E1000_READ_REG(hw, E1000_RCTL);
+	reg_val &= ~E1000_RCTL_CFIEN;
+	reg_val |= E1000_RCTL_VFE;
+	E1000_WRITE_REG(hw, E1000_RCTL, reg_val);
 
 	/* restore VFTA table */
 	for (i = 0; i < IGC_VFTA_SIZE; i++)
-		IGC_WRITE_REG_ARRAY(hw, IGC_VFTA, i, shadow_vfta->vfta[i]);
+		E1000_WRITE_REG_ARRAY(hw, E1000_VFTA, i, shadow_vfta->vfta[i]);
 }
 
 static void
 igc_vlan_hw_strip_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	igc_read_reg_check_clear_bits(hw, IGC_CTRL, IGC_CTRL_VME);
+	igc_read_reg_check_clear_bits(hw, E1000_CTRL, E1000_CTRL_VME);
 }
 
 static void
 igc_vlan_hw_strip_enable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	igc_read_reg_check_set_bits(hw, IGC_CTRL, IGC_CTRL_VME);
+	igc_read_reg_check_set_bits(hw, E1000_CTRL, E1000_CTRL_VME);
 }
 
 static int
 igc_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t frame_size = dev->data->mtu + IGC_ETH_OVERHEAD;
 	uint32_t ctrl_ext;
 
-	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 
 	/* if extend vlan hasn't been enabled */
 	if ((ctrl_ext & IGC_CTRL_EXT_EXT_VLAN) == 0)
@@ -2588,20 +2588,20 @@ igc_vlan_hw_extend_disable(struct rte_eth_dev *dev)
 			frame_size, VLAN_TAG_SIZE + RTE_ETHER_MIN_MTU);
 		return -EINVAL;
 	}
-	IGC_WRITE_REG(hw, IGC_RLPML, frame_size - VLAN_TAG_SIZE);
+	E1000_WRITE_REG(hw, E1000_RLPML, frame_size - VLAN_TAG_SIZE);
 
-	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext & ~IGC_CTRL_EXT_EXT_VLAN);
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext & ~IGC_CTRL_EXT_EXT_VLAN);
 	return 0;
 }
 
 static int
 igc_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t frame_size = dev->data->mtu + IGC_ETH_OVERHEAD;
 	uint32_t ctrl_ext;
 
-	ctrl_ext = IGC_READ_REG(hw, IGC_CTRL_EXT);
+	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 
 	/* if extend vlan has been enabled */
 	if (ctrl_ext & IGC_CTRL_EXT_EXT_VLAN)
@@ -2613,9 +2613,9 @@ igc_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 			frame_size, MAX_RX_JUMBO_FRAME_SIZE);
 		return -EINVAL;
 	}
-	IGC_WRITE_REG(hw, IGC_RLPML, frame_size);
+	E1000_WRITE_REG(hw, E1000_RLPML, frame_size);
 
-	IGC_WRITE_REG(hw, IGC_CTRL_EXT, ctrl_ext | IGC_CTRL_EXT_EXT_VLAN);
+	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext | IGC_CTRL_EXT_EXT_VLAN);
 	return 0;
 }
 
@@ -2654,15 +2654,15 @@ eth_igc_vlan_tpid_set(struct rte_eth_dev *dev,
 		      enum rte_vlan_type vlan_type,
 		      uint16_t tpid)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t reg_val;
 
 	/* only outer TPID of double VLAN can be configured*/
 	if (vlan_type == RTE_ETH_VLAN_TYPE_OUTER) {
-		reg_val = IGC_READ_REG(hw, IGC_VET);
+		reg_val = E1000_READ_REG(hw, E1000_VET);
 		reg_val = (reg_val & (~IGC_VET_EXT)) |
 			((uint32_t)tpid << IGC_VET_EXT_SHIFT);
-		IGC_WRITE_REG(hw, IGC_VET, reg_val);
+		E1000_WRITE_REG(hw, E1000_VET, reg_val);
 
 		return 0;
 	}
@@ -2675,42 +2675,42 @@ eth_igc_vlan_tpid_set(struct rte_eth_dev *dev,
 static int
 eth_igc_timesync_enable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct timespec system_time;
 	struct igc_rx_queue *rxq;
 	uint32_t val;
 	uint16_t i;
 
-	IGC_WRITE_REG(hw, IGC_TSAUXC, 0x0);
+	E1000_WRITE_REG(hw, E1000_TSAUXC, 0x0);
 
 	clock_gettime(CLOCK_REALTIME, &system_time);
-	IGC_WRITE_REG(hw, IGC_SYSTIML, system_time.tv_nsec);
-	IGC_WRITE_REG(hw, IGC_SYSTIMH, system_time.tv_sec);
+	E1000_WRITE_REG(hw, E1000_SYSTIML, system_time.tv_nsec);
+	E1000_WRITE_REG(hw, E1000_SYSTIMH, system_time.tv_sec);
 
 	/* Enable timestamping of received PTP packets. */
-	val = IGC_READ_REG(hw, IGC_RXPBS);
-	val |= IGC_RXPBS_CFG_TS_EN;
-	IGC_WRITE_REG(hw, IGC_RXPBS, val);
+	val = E1000_READ_REG(hw, E1000_RXPBS);
+	val |= E1000_RXPBS_CFG_TS_EN;
+	E1000_WRITE_REG(hw, E1000_RXPBS, val);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		val = IGC_READ_REG(hw, IGC_SRRCTL(i));
+		val = E1000_READ_REG(hw, E1000_SRRCTL(i));
 		/* For now, only support retrieving Rx timestamp from timer0. */
-		val |= IGC_SRRCTL_TIMER1SEL(0) | IGC_SRRCTL_TIMER0SEL(0) |
-		       IGC_SRRCTL_TIMESTAMP;
-		IGC_WRITE_REG(hw, IGC_SRRCTL(i), val);
+		val |= E1000_SRRCTL_TIMER1SEL(0) | E1000_SRRCTL_TIMER0SEL(0) |
+		       E1000_SRRCTL_TIMESTAMP;
+		E1000_WRITE_REG(hw, E1000_SRRCTL(i), val);
 	}
 
-	val = IGC_TSYNCRXCTL_ENABLED | IGC_TSYNCRXCTL_TYPE_ALL |
-	      IGC_TSYNCRXCTL_RXSYNSIG;
-	IGC_WRITE_REG(hw, IGC_TSYNCRXCTL, val);
+	val = E1000_TSYNCRXCTL_ENABLED | E1000_TSYNCRXCTL_TYPE_ALL |
+	      E1000_TSYNCRXCTL_RXSYNSIG;
+	E1000_WRITE_REG(hw, E1000_TSYNCRXCTL, val);
 
 	/* Enable Timestamping of transmitted PTP packets. */
-	IGC_WRITE_REG(hw, IGC_TSYNCTXCTL, IGC_TSYNCTXCTL_ENABLED |
-		      IGC_TSYNCTXCTL_TXSYNSIG);
+	E1000_WRITE_REG(hw, E1000_TSYNCTXCTL, E1000_TSYNCTXCTL_ENABLED |
+		      E1000_TSYNCTXCTL_TXSYNSIG);
 
 	/* Read TXSTMP registers to discard any timestamp previously stored. */
-	IGC_READ_REG(hw, IGC_TXSTMPL);
-	IGC_READ_REG(hw, IGC_TXSTMPH);
+	E1000_READ_REG(hw, E1000_TXSTMPL);
+	E1000_READ_REG(hw, E1000_TXSTMPH);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -2723,10 +2723,10 @@ eth_igc_timesync_enable(struct rte_eth_dev *dev)
 static int
 eth_igc_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	ts->tv_nsec = IGC_READ_REG(hw, IGC_SYSTIML);
-	ts->tv_sec = IGC_READ_REG(hw, IGC_SYSTIMH);
+	ts->tv_nsec = E1000_READ_REG(hw, E1000_SYSTIML);
+	ts->tv_sec = E1000_READ_REG(hw, E1000_SYSTIMH);
 
 	return 0;
 }
@@ -2734,10 +2734,10 @@ eth_igc_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 static int
 eth_igc_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	IGC_WRITE_REG(hw, IGC_SYSTIML, ts->tv_nsec);
-	IGC_WRITE_REG(hw, IGC_SYSTIMH, ts->tv_sec);
+	E1000_WRITE_REG(hw, E1000_SYSTIML, ts->tv_nsec);
+	E1000_WRITE_REG(hw, E1000_SYSTIMH, ts->tv_sec);
 
 	return 0;
 }
@@ -2745,20 +2745,20 @@ eth_igc_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 static int
 eth_igc_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t nsec, sec;
 	uint64_t systime, ns;
 	struct timespec ts;
 
-	nsec = (uint64_t)IGC_READ_REG(hw, IGC_SYSTIML);
-	sec = (uint64_t)IGC_READ_REG(hw, IGC_SYSTIMH);
+	nsec = (uint64_t)E1000_READ_REG(hw, E1000_SYSTIML);
+	sec = (uint64_t)E1000_READ_REG(hw, E1000_SYSTIMH);
 	systime = sec * NSEC_PER_SEC + nsec;
 
 	ns = systime + delta;
 	ts = rte_ns_to_timespec(ns);
 
-	IGC_WRITE_REG(hw, IGC_SYSTIML, ts.tv_nsec);
-	IGC_WRITE_REG(hw, IGC_SYSTIMH, ts.tv_sec);
+	E1000_WRITE_REG(hw, E1000_SYSTIML, ts.tv_nsec);
+	E1000_WRITE_REG(hw, E1000_SYSTIMH, ts.tv_sec);
 
 	return 0;
 }
@@ -2803,18 +2803,18 @@ static int
 eth_igc_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 			       struct timespec *timestamp)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_eth_link link;
 	uint32_t val, nsec, sec;
 	uint64_t tx_timestamp;
 	int adjust = 0;
 
-	val = IGC_READ_REG(hw, IGC_TSYNCTXCTL);
-	if (!(val & IGC_TSYNCTXCTL_VALID))
+	val = E1000_READ_REG(hw, E1000_TSYNCTXCTL);
+	if (!(val & E1000_TSYNCTXCTL_VALID))
 		return -EINVAL;
 
-	nsec = (uint64_t)IGC_READ_REG(hw, IGC_TXSTMPL);
-	sec = (uint64_t)IGC_READ_REG(hw, IGC_TXSTMPH);
+	nsec = (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPL);
+	sec = (uint64_t)E1000_READ_REG(hw, E1000_TXSTMPH);
 	tx_timestamp = sec * NSEC_PER_SEC + nsec;
 
 	/* Get current link speed. */
@@ -2845,22 +2845,22 @@ eth_igc_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 static int
 eth_igc_timesync_disable(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	uint32_t val;
 
 	/* Disable timestamping of transmitted PTP packets. */
-	IGC_WRITE_REG(hw, IGC_TSYNCTXCTL, 0);
+	E1000_WRITE_REG(hw, E1000_TSYNCTXCTL, 0);
 
 	/* Disable timestamping of received PTP packets. */
-	IGC_WRITE_REG(hw, IGC_TSYNCRXCTL, 0);
+	E1000_WRITE_REG(hw, E1000_TSYNCRXCTL, 0);
 
-	val = IGC_READ_REG(hw, IGC_RXPBS);
-	val &= ~IGC_RXPBS_CFG_TS_EN;
-	IGC_WRITE_REG(hw, IGC_RXPBS, val);
+	val = E1000_READ_REG(hw, E1000_RXPBS);
+	val &= ~E1000_RXPBS_CFG_TS_EN;
+	E1000_WRITE_REG(hw, E1000_RXPBS, val);
 
-	val = IGC_READ_REG(hw, IGC_SRRCTL(0));
-	val &= ~IGC_SRRCTL_TIMESTAMP;
-	IGC_WRITE_REG(hw, IGC_SRRCTL(0), val);
+	val = E1000_READ_REG(hw, E1000_SRRCTL(0));
+	val &= ~E1000_SRRCTL_TIMESTAMP;
+	E1000_WRITE_REG(hw, E1000_SRRCTL(0), val);
 
 	return 0;
 }

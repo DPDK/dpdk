@@ -789,6 +789,8 @@ F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/e1000.ini
 F: doc/guides/nics/features/igb*.ini
+F: doc/guides/nics/features/igc.ini
+F: doc/guides/nics/igc.rst
 
 Intel ixgbe
 M: Anatoly Burakov <anatoly.burakov@intel.com>
@@ -845,12 +847,6 @@ T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/cpfl/
 F: doc/guides/nics/cpfl.rst
 F: doc/guides/nics/features/cpfl.ini
-
-Intel igc
-T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/intel/igc/
-F: doc/guides/nics/igc.rst
-F: doc/guides/nics/features/igc.ini
 
 Intel ipn3ke
 M: Rosen Xu <rosen.xu@intel.com>

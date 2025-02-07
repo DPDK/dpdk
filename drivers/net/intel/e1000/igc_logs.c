@@ -4,7 +4,7 @@
 
 #include <rte_common.h>
 
-#include "igc_logs.h"
+#include "e1000_logs.h"
 
 RTE_LOG_REGISTER_SUFFIX(igc_logtype_init, init, INFO);
 RTE_LOG_REGISTER_SUFFIX(igc_logtype_driver, driver, INFO);

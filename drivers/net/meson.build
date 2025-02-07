@@ -31,7 +31,6 @@ drivers = [
         'intel/iavf',
         'intel/ice',
         'intel/idpf',
-        'intel/igc',
         'intel/ipn3ke',
         'intel/ixgbe',
         'ionic',

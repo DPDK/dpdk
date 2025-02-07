@@ -3,7 +3,7 @@
  */
 
 #include "rte_malloc.h"
-#include "igc_logs.h"
+#include "e1000_logs.h"
 #include "igc_txrx.h"
 #include "igc_filter.h"
 #include "igc_flow.h"
@@ -57,7 +57,7 @@ int
 igc_del_ethertype_filter(struct rte_eth_dev *dev,
 			const struct igc_ethertype_filter *filter)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	int ret;
 
@@ -77,8 +77,8 @@ igc_del_ethertype_filter(struct rte_eth_dev *dev,
 
 	igc->ethertype_filters[ret].ether_type = 0;
 
-	IGC_WRITE_REG(hw, IGC_ETQF(ret), 0);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_ETQF(ret), 0);
+	E1000_WRITE_FLUSH(hw);
 	return 0;
 }
 
@@ -86,7 +86,7 @@ int
 igc_add_ethertype_filter(struct rte_eth_dev *dev,
 			const struct igc_ethertype_filter *filter)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	uint32_t etqf;
 	int ret, empty;
@@ -114,13 +114,13 @@ igc_add_ethertype_filter(struct rte_eth_dev *dev,
 	ret = empty;
 
 	etqf = filter->ether_type;
-	etqf |= IGC_ETQF_FILTER_ENABLE | IGC_ETQF_QUEUE_ENABLE;
+	etqf |= E1000_ETQF_FILTER_ENABLE | E1000_ETQF_QUEUE_ENABLE;
 	etqf |= (uint32_t)filter->queue << IGC_ETQF_QUEUE_SHIFT;
 
 	memcpy(&igc->ethertype_filters[ret], filter, sizeof(*filter));
 
-	IGC_WRITE_REG(hw, IGC_ETQF(ret), etqf);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_ETQF(ret), etqf);
+	E1000_WRITE_FLUSH(hw);
 	return 0;
 }
 
@@ -128,13 +128,13 @@ igc_add_ethertype_filter(struct rte_eth_dev *dev,
 static void
 igc_clear_all_ethertype_filter(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	int i;
 
 	for (i = 0; i < IGC_MAX_ETQF_FILTERS; i++)
-		IGC_WRITE_REG(hw, IGC_ETQF(i), 0);
-	IGC_WRITE_FLUSH(hw);
+		E1000_WRITE_REG(hw, E1000_ETQF(i), 0);
+	E1000_WRITE_FLUSH(hw);
 
 	memset(&igc->ethertype_filters, 0, sizeof(igc->ethertype_filters));
 }
@@ -196,59 +196,59 @@ static void
 igc_enable_tuple_filter(struct rte_eth_dev *dev,
 			const struct igc_adapter *igc, uint8_t index)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	const struct igc_ntuple_filter *filter = &igc->ntuple_filters[index];
 	const struct igc_ntuple_info *info = &filter->tuple_info;
-	uint32_t ttqf, imir, imir_ext = IGC_IMIREXT_SIZE_BP;
+	uint32_t ttqf, imir, imir_ext = E1000_IMIREXT_SIZE_BP;
 
 	imir = info->dst_port;
-	imir |= (uint32_t)info->priority << IGC_IMIR_PRIORITY_SHIFT;
+	imir |= (uint32_t)info->priority << E1000_IMIR_PRIORITY_SHIFT;
 
 	/* 0b means not compare. */
 	if (info->dst_port_mask == 0)
-		imir |= IGC_IMIR_PORT_BP;
+		imir |= E1000_IMIR_PORT_BP;
 
-	ttqf = IGC_TTQF_DISABLE_MASK | IGC_TTQF_QUEUE_ENABLE;
-	ttqf |= (uint32_t)filter->queue << IGC_TTQF_QUEUE_SHIFT;
+	ttqf = E1000_TTQF_DISABLE_MASK | E1000_TTQF_QUEUE_ENABLE;
+	ttqf |= (uint32_t)filter->queue << E1000_TTQF_QUEUE_SHIFT;
 	ttqf |= info->proto;
 
 	if (info->proto_mask)
-		ttqf &= ~IGC_TTQF_MASK_ENABLE;
+		ttqf &= ~E1000_TTQF_MASK_ENABLE;
 
 	/* TCP flags bits setting. */
 	if (info->tcp_flags & RTE_NTUPLE_TCP_FLAGS_MASK) {
 		if (info->tcp_flags & RTE_TCP_URG_FLAG)
-			imir_ext |= IGC_IMIREXT_CTRL_URG;
+			imir_ext |= E1000_IMIREXT_CTRL_URG;
 		if (info->tcp_flags & RTE_TCP_ACK_FLAG)
-			imir_ext |= IGC_IMIREXT_CTRL_ACK;
+			imir_ext |= E1000_IMIREXT_CTRL_ACK;
 		if (info->tcp_flags & RTE_TCP_PSH_FLAG)
-			imir_ext |= IGC_IMIREXT_CTRL_PSH;
+			imir_ext |= E1000_IMIREXT_CTRL_PSH;
 		if (info->tcp_flags & RTE_TCP_RST_FLAG)
-			imir_ext |= IGC_IMIREXT_CTRL_RST;
+			imir_ext |= E1000_IMIREXT_CTRL_RST;
 		if (info->tcp_flags & RTE_TCP_SYN_FLAG)
-			imir_ext |= IGC_IMIREXT_CTRL_SYN;
+			imir_ext |= E1000_IMIREXT_CTRL_SYN;
 		if (info->tcp_flags & RTE_TCP_FIN_FLAG)
-			imir_ext |= IGC_IMIREXT_CTRL_FIN;
+			imir_ext |= E1000_IMIREXT_CTRL_FIN;
 	} else {
-		imir_ext |= IGC_IMIREXT_CTRL_BP;
+		imir_ext |= E1000_IMIREXT_CTRL_BP;
 	}
 
-	IGC_WRITE_REG(hw, IGC_IMIR(index), imir);
-	IGC_WRITE_REG(hw, IGC_TTQF(index), ttqf);
-	IGC_WRITE_REG(hw, IGC_IMIREXT(index), imir_ext);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_IMIR(index), imir);
+	E1000_WRITE_REG(hw, E1000_TTQF(index), ttqf);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(index), imir_ext);
+	E1000_WRITE_FLUSH(hw);
 }
 
 /* Reset hardware register values */
 static void
 igc_disable_tuple_filter(struct rte_eth_dev *dev, uint8_t index)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
-	IGC_WRITE_REG(hw, IGC_TTQF(index), IGC_TTQF_DISABLE_MASK);
-	IGC_WRITE_REG(hw, IGC_IMIR(index), 0);
-	IGC_WRITE_REG(hw, IGC_IMIREXT(index), 0);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_TTQF(index), E1000_TTQF_DISABLE_MASK);
+	E1000_WRITE_REG(hw, E1000_IMIR(index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(index), 0);
+	E1000_WRITE_FLUSH(hw);
 }
 
 int
@@ -310,7 +310,7 @@ int
 igc_set_syn_filter(struct rte_eth_dev *dev,
 		const struct igc_syn_filter *filter)
 {
-	struct igc_hw *hw;
+	struct e1000_hw *hw;
 	struct igc_adapter *igc;
 	uint32_t synqf, rfctl;
 
@@ -331,7 +331,7 @@ igc_set_syn_filter(struct rte_eth_dev *dev,
 	synqf = (uint32_t)filter->queue << IGC_SYN_FILTER_QUEUE_SHIFT;
 	synqf |= IGC_SYN_FILTER_ENABLE;
 
-	rfctl = IGC_READ_REG(hw, IGC_RFCTL);
+	rfctl = E1000_READ_REG(hw, E1000_RFCTL);
 	if (filter->hig_pri)
 		rfctl |= IGC_RFCTL_SYNQFP;
 	else
@@ -340,9 +340,9 @@ igc_set_syn_filter(struct rte_eth_dev *dev,
 	memcpy(&igc->syn_filter, filter, sizeof(igc->syn_filter));
 	igc->syn_filter.enable = 1;
 
-	IGC_WRITE_REG(hw, IGC_RFCTL, rfctl);
-	IGC_WRITE_REG(hw, IGC_SYNQF(0), synqf);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_RFCTL, rfctl);
+	E1000_WRITE_REG(hw, E1000_SYNQF(0), synqf);
+	E1000_WRITE_FLUSH(hw);
 	return 0;
 }
 
@@ -350,11 +350,11 @@ igc_set_syn_filter(struct rte_eth_dev *dev,
 void
 igc_clear_syn_filter(struct rte_eth_dev *dev)
 {
-	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 
-	IGC_WRITE_REG(hw, IGC_SYNQF(0), 0);
-	IGC_WRITE_FLUSH(hw);
+	E1000_WRITE_REG(hw, E1000_SYNQF(0), 0);
+	E1000_WRITE_FLUSH(hw);
 
 	memset(&igc->syn_filter, 0, sizeof(igc->syn_filter));
 }

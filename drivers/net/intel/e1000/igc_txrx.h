@@ -23,7 +23,7 @@ struct igc_rx_entry {
  */
 struct igc_rx_queue {
 	struct rte_mempool  *mb_pool;   /**< mbuf pool to populate RX ring. */
-	volatile union igc_adv_rx_desc *rx_ring;
+	volatile union e1000_adv_rx_desc *rx_ring;
 	/**< RX ring virtual address. */
 	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
 	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
@@ -107,7 +107,7 @@ struct igc_tx_entry {
  * Structure associated with each TX queue.
  */
 struct igc_tx_queue {
-	volatile union igc_adv_tx_desc *tx_ring; /**< TX ring address */
+	volatile union e1000_adv_tx_desc *tx_ring; /**< TX ring address */
 	uint64_t               tx_ring_phys_addr; /**< TX ring DMA address. */
 	struct igc_tx_entry    *sw_ring; /**< virtual address of SW ring. */
 	volatile uint32_t      *tdt_reg_addr; /**< Address of TDT register. */
@@ -156,7 +156,7 @@ int igc_rx_init(struct rte_eth_dev *dev);
 void igc_tx_init(struct rte_eth_dev *dev);
 void igc_rss_disable(struct rte_eth_dev *dev);
 void
-igc_hw_rss_hash_set(struct igc_hw *hw, struct rte_eth_rss_conf *rss_conf);
+igc_hw_rss_hash_set(struct e1000_hw *hw, struct rte_eth_rss_conf *rss_conf);
 int igc_del_rss_filter(struct rte_eth_dev *dev);
 void igc_rss_conf_set(struct igc_rss_filter *out,
 		const struct rte_flow_action_rss *rss);

@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2020 Intel Corporation
  */
 
-This directory contains source code of FreeBSD em & igb drivers of version
+This directory contains source code of FreeBSD em, igb, and igc drivers of version
 cid-gigabit.2020.06.05.tar.gz released by ND. The sub-directory of base/
 contains the original source package.
 
@@ -24,6 +24,8 @@ This driver is valid for the product(s) listed below
 * Intel® Ethernet Controller I350 Series
 * Intel® Ethernet Controller I210 Series
 * Intel® Ethernet Controller I211
+* Intel® Ethernet Controller I225
+* Intel® Ethernet Controller I226
 * Intel® Ethernet Controller I354 Series
 * Intel® Ethernet Controller DH89XXCC Series
 

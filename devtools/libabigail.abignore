@@ -25,6 +25,7 @@
 ;
 ; SKIP_LIBRARY=librte_common_mlx5_glue
 ; SKIP_LIBRARY=librte_net_mlx4_glue
+; SKIP_LIBRARY=librte_net_igc
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Experimental APIs exceptions ;

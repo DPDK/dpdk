@@ -3,7 +3,7 @@
  */
 
 #include "rte_malloc.h"
-#include "igc_logs.h"
+#include "e1000_logs.h"
 #include "igc_txrx.h"
 #include "igc_filter.h"
 #include "igc_flow.h"

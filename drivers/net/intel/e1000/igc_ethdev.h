@@ -9,10 +9,10 @@
 #include <rte_flow.h>
 #include <rte_time.h>
 
-#include "base/igc_osdep.h"
-#include "base/igc_hw.h"
-#include "base/igc_i225.h"
-#include "base/igc_api.h"
+#include "base/e1000_osdep.h"
+#include "base/e1000_hw.h"
+#include "base/e1000_i225.h"
+#include "base/e1000_api.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,13 +55,13 @@ extern "C" {
 #define IGC_RX_DESCRIPTOR_MULTIPLE	8
 
 #define IGC_RXD_ALIGN	((uint16_t)(IGC_ALIGN / \
-		sizeof(union igc_adv_rx_desc)))
+		sizeof(union e1000_adv_rx_desc)))
 #define IGC_TXD_ALIGN	((uint16_t)(IGC_ALIGN / \
-		sizeof(union igc_adv_tx_desc)))
+		sizeof(union e1000_adv_tx_desc)))
 #define IGC_MIN_TXD	IGC_TX_DESCRIPTOR_MULTIPLE
-#define IGC_MAX_TXD	((uint16_t)(0x80000 / sizeof(union igc_adv_tx_desc)))
+#define IGC_MAX_TXD	((uint16_t)(0x80000 / sizeof(union e1000_adv_tx_desc)))
 #define IGC_MIN_RXD	IGC_RX_DESCRIPTOR_MULTIPLE
-#define IGC_MAX_RXD	((uint16_t)(0x80000 / sizeof(union igc_adv_rx_desc)))
+#define IGC_MAX_RXD	((uint16_t)(0x80000 / sizeof(union e1000_adv_rx_desc)))
 
 #define IGC_TX_MAX_SEG		UINT8_MAX
 #define IGC_TX_MAX_MTU_SEG	UINT8_MAX
@@ -224,8 +224,8 @@ TAILQ_HEAD(igc_flow_list, rte_flow);
  * Structure to store private data for each driver instance (for each port).
  */
 struct igc_adapter {
-	struct igc_hw		hw;
-	struct igc_hw_stats	stats;
+	struct e1000_hw		hw;
+	struct e1000_hw_stats	stats;
 	struct igc_hw_queue_stats queue_stats;
 	int16_t txq_stats_map[IGC_QUEUE_PAIRS_NUM];
 	int16_t rxq_stats_map[IGC_QUEUE_PAIRS_NUM];
@@ -268,27 +268,27 @@ struct igc_adapter {
 	(&((struct igc_adapter *)(_dev)->data->dev_private)->flow_list)
 
 static inline void
-igc_read_reg_check_set_bits(struct igc_hw *hw, uint32_t reg, uint32_t bits)
+igc_read_reg_check_set_bits(struct e1000_hw *hw, uint32_t reg, uint32_t bits)
 {
-	uint32_t reg_val = IGC_READ_REG(hw, reg);
+	uint32_t reg_val = E1000_READ_REG(hw, reg);
 
 	bits |= reg_val;
 	if (bits == reg_val)
 		return;	/* no need to write back */
 
-	IGC_WRITE_REG(hw, reg, bits);
+	E1000_WRITE_REG(hw, reg, bits);
 }
 
 static inline void
-igc_read_reg_check_clear_bits(struct igc_hw *hw, uint32_t reg, uint32_t bits)
+igc_read_reg_check_clear_bits(struct e1000_hw *hw, uint32_t reg, uint32_t bits)
 {
-	uint32_t reg_val = IGC_READ_REG(hw, reg);
+	uint32_t reg_val = E1000_READ_REG(hw, reg);
 
 	bits = reg_val & ~bits;
 	if (bits == reg_val)
 		return;	/* no need to write back */
 
-	IGC_WRITE_REG(hw, reg, bits);
+	E1000_WRITE_REG(hw, reg, bits);
 }
 
 #ifdef __cplusplus
