@@ -1910,6 +1910,7 @@ s32 e1000_phy_force_speed_duplex_m88(struct e1000_hw *hw)
 			case M88E1512_E_PHY_ID:
 			case I210_I_PHY_ID:
 			case I225_I_PHY_ID:
+			case I226_LM_PHY_ID:
 				reset_dsp = false;
 				break;
 			default:
@@ -1951,7 +1952,7 @@ s32 e1000_phy_force_speed_duplex_m88(struct e1000_hw *hw)
 		return E1000_SUCCESS;
 	if (hw->phy.id == I210_I_PHY_ID)
 		return E1000_SUCCESS;
-	if (hw->phy.id == I225_I_PHY_ID)
+	if (hw->phy.id == I225_I_PHY_ID || hw->phy.id == I226_LM_PHY_ID)
 		return E1000_SUCCESS;
 	if ((hw->phy.id == M88E1543_E_PHY_ID) ||
 	    (hw->phy.id == M88E1512_E_PHY_ID))
@@ -2510,6 +2511,7 @@ s32 e1000_get_cable_length_m88_gen2(struct e1000_hw *hw)
 		phy->cable_length = phy_data / (is_cm ? 100 : 1);
 		break;
 	case I225_I_PHY_ID:
+	case I226_LM_PHY_ID:
 		break;
 	case M88E1543_E_PHY_ID:
 	case M88E1512_E_PHY_ID:
@@ -3091,6 +3093,7 @@ enum e1000_phy_type e1000_get_phy_type_from_id(u32 phy_id)
 		phy_type = e1000_phy_i210;
 		break;
 	case I225_I_PHY_ID:
+	case I226_LM_PHY_ID:
 		phy_type = e1000_phy_i225;
 		break;
 	default:
