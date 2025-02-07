@@ -17,6 +17,8 @@ s32 e1000_set_flsw_flash_burst_counter_i225(struct e1000_hw *hw,
 					    u32 burst_counter);
 s32 e1000_write_erase_flash_command_i225(struct e1000_hw *hw, u32 opcode,
 					 u32 address);
+s32 e1000_id_led_init_i225(struct e1000_hw *hw);
+s32 e1000_blink_led_i225(struct e1000_hw *hw);
 s32 e1000_check_for_link_i225(struct e1000_hw *hw);
 s32 e1000_acquire_swfw_sync_i225(struct e1000_hw *hw, u16 mask);
 void e1000_release_swfw_sync_i225(struct e1000_hw *hw, u16 mask);
@@ -104,5 +106,11 @@ s32 e1000_set_eee_i225(struct e1000_hw *hw, bool adv2p5G, bool adv1G,
 #define E1000_RXDADV_PKTTYPE_ETQF	0x00008000 /* PKTTYPE is ETQF index */
 #define E1000_RXDADV_PKTTYPE_ETQF_MASK	0x00000070 /* ETQF has 8 indices */
 #define E1000_RXDADV_PKTTYPE_ETQF_SHIFT	4 /* Right-shift 4 bits */
+
+/* LED Control */
+#define E1000_GLOBAL_BLINK_MODE	0x00000020 /*Blink at 200 ms on and 200 ms off.*/
+#define E1000_LED1_MODE_MASK	0x00000F00
+#define E1000_LED1_BLINK	0x00008000
+#define E1000_LED2_MODE_MASK	0x000F0000
 
 #endif

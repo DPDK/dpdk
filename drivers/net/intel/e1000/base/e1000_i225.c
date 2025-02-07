@@ -123,6 +123,11 @@ static s32 e1000_init_mac_params_i225(struct e1000_hw *hw)
 
 	mac->ops.write_vfta = e1000_write_vfta_generic;
 
+	/* LED */
+	mac->ops.cleanup_led = e1000_cleanup_led_generic;
+	mac->ops.id_led_init = e1000_id_led_init_i225;
+	mac->ops.blink_led = e1000_blink_led_i225;
+
 	/* Disable EEE by default */
 	dev_spec->eee_disable = true;
 
@@ -1217,6 +1222,45 @@ s32 e1000_set_d3_lplu_state_i225(struct e1000_hw *hw, bool active)
 	}
 
 	E1000_WRITE_REG(hw, E1000_I225_PHPM, data);
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_blink_led_i225 - Blink SW controllable LED
+ *  @hw: pointer to the HW structure
+ *
+ *  This starts the adapter LED blinking.
+ *  Request the LED to be setup first.
+ **/
+s32 e1000_blink_led_i225(struct e1000_hw *hw)
+{
+	u32 blink = 0;
+
+	DEBUGFUNC("e1000_blink_led_i225");
+
+	e1000_id_led_init_i225(hw);
+
+	blink = hw->mac.ledctl_default;
+	blink &= ~(E1000_GLOBAL_BLINK_MODE | E1000_LED1_MODE_MASK | E1000_LED2_MODE_MASK);
+	blink |= E1000_LED1_BLINK;
+
+	E1000_WRITE_REG(hw, E1000_LEDCTL, blink);
+
+	return E1000_SUCCESS;
+}
+
+/**
+ *  e1000_id_led_init_i225 - store LED configurations in SW
+ *  @hw: pointer to the HW structure
+ *
+ *  Initializes the LED config in SW.
+ **/
+s32 e1000_id_led_init_i225(struct e1000_hw *hw)
+{
+	DEBUGFUNC("e1000_id_led_init_i225");
+
+	hw->mac.ledctl_default = E1000_READ_REG(hw, E1000_LEDCTL);
+
 	return E1000_SUCCESS;
 }
 
