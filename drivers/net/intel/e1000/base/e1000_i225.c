@@ -94,7 +94,8 @@ static s32 e1000_init_mac_params_i225(struct e1000_hw *hw)
 	mac->mta_reg_count = 128;
 	/* Set rar entry count */
 	mac->rar_entry_count = E1000_RAR_ENTRIES_BASE;
-
+	/* bus type/speed/width */
+	mac->ops.get_bus_info = e1000_get_bus_info_pcie_generic;
 	/* reset */
 	mac->ops.reset_hw = e1000_reset_hw_i225;
 	/* hw initialization */
