@@ -2,9 +2,8 @@
  * Copyright(c) 2010-2020 Intel Corporation
  */
 
-This directory contains source code of FreeBSD em, igb, and igc drivers of version
-cid-gigabit.2020.06.05.tar.gz released by ND. The sub-directory of base/
-contains the original source package.
+This directory contains source code of the base driver code for em/igb/igc,
+with this snapshot generated on 2025-01-24-09.44.
 
 This driver is valid for the product(s) listed below
 * Intel® Ethernet Controller 82540

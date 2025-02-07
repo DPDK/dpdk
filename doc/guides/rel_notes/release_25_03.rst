@@ -104,6 +104,7 @@ New Features
 * **Updated Intel e1000 driver.**
 
   * Added support for the Intel i225-series NICs (previously handled by net/igc).
+  * Updated base code to the latest version.
 
 * **Updated Marvell cnxk net driver.**
 
