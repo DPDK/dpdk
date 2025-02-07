@@ -278,6 +278,8 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_SPT_I219_V4:
 	case E1000_DEV_ID_PCH_SPT_I219_LM5:
 	case E1000_DEV_ID_PCH_SPT_I219_V5:
+	case E1000_DEV_ID_PCH_CMP_I219_LM12:
+	case E1000_DEV_ID_PCH_CMP_I219_V12:
 		mac->type = e1000_pch_spt;
 		break;
 	case E1000_DEV_ID_PCH_CNP_I219_LM6:
@@ -288,8 +290,18 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_ICP_I219_V8:
 	case E1000_DEV_ID_PCH_ICP_I219_LM9:
 	case E1000_DEV_ID_PCH_ICP_I219_V9:
+	case E1000_DEV_ID_PCH_CMP_I219_LM10:
+	case E1000_DEV_ID_PCH_CMP_I219_V10:
+	case E1000_DEV_ID_PCH_CMP_I219_LM11:
+	case E1000_DEV_ID_PCH_CMP_I219_V11:
 		mac->type = e1000_pch_cnp;
 		break;
+	case E1000_DEV_ID_PCH_TGP_I219_LM13:
+	case E1000_DEV_ID_PCH_TGP_I219_V13:
+	case E1000_DEV_ID_PCH_TGP_I219_LM14:
+	case E1000_DEV_ID_PCH_TGP_I219_V14:
+	case E1000_DEV_ID_PCH_TGP_I219_LM15:
+	case E1000_DEV_ID_PCH_TGP_I219_V15:
 	case E1000_DEV_ID_PCH_ADL_I219_LM16:
 	case E1000_DEV_ID_PCH_ADL_I219_V16:
 	case E1000_DEV_ID_PCH_RPL_I219_LM23:
@@ -301,6 +313,24 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_PCH_RPL_I219_LM22:
 	case E1000_DEV_ID_PCH_RPL_I219_V22:
 		mac->type = e1000_pch_adp;
+		break;
+	case E1000_DEV_ID_PCH_MTP_I219_LM18:
+	case E1000_DEV_ID_PCH_MTP_I219_V18:
+	case E1000_DEV_ID_PCH_MTP_I219_LM19:
+	case E1000_DEV_ID_PCH_MTP_I219_V19:
+	case E1000_DEV_ID_PCH_LNL_I219_LM20:
+	case E1000_DEV_ID_PCH_LNL_I219_V20:
+	case E1000_DEV_ID_PCH_ARL_I219_LM24:
+	case E1000_DEV_ID_PCH_ARL_I219_V24:
+		mac->type = e1000_pch_mtp;
+		break;
+	case E1000_DEV_ID_PCH_PTP_I219_LM25:
+	case E1000_DEV_ID_PCH_PTP_I219_V25:
+	case E1000_DEV_ID_PCH_WCL_I219_LM27:
+	case E1000_DEV_ID_PCH_WCL_I219_V27:
+	case E1000_DEV_ID_PCH_NVL_I219_LM29:
+	case E1000_DEV_ID_PCH_NVL_I219_V29:
+		mac->type = e1000_pch_ptp;
 		break;
 	case E1000_DEV_ID_82575EB_COPPER:
 	case E1000_DEV_ID_82575EB_FIBER_SERDES:
@@ -474,6 +504,8 @@ s32 e1000_setup_init_funcs(struct e1000_hw *hw, bool init_device)
 	case e1000_pch_cnp:
 	case e1000_pch_adp:
 	case e1000_pch_tgp:
+	case e1000_pch_mtp:
+	case e1000_pch_ptp:
 		e1000_init_function_pointers_ich8lan(hw);
 		break;
 	case e1000_82575:
