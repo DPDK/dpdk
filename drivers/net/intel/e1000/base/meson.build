@@ -23,17 +23,7 @@ sources = [
         'e1000_vf.c',
 ]
 
-error_cflags = [
-        '-Wno-unused-parameter',
-]
-c_args = cflags
-foreach flag: error_cflags
-    if cc.has_argument(flag)
-        c_args += flag
-    endif
-endforeach
-
 base_lib = static_library('e1000_base', sources,
     dependencies: static_rte_eal,
-    c_args: c_args)
+    c_args: cflags)
 base_objs = base_lib.extract_all_objects(recursive: true)

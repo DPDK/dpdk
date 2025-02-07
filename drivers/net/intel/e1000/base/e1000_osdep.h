@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2001 - 2015 Intel Corporation
  */
-/*$FreeBSD$*/
 
 #ifndef _E1000_OSDEP_H_
 #define _E1000_OSDEP_H_
@@ -35,12 +34,24 @@
 #define DEBUGOUT7(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 
 #ifndef UNREFERENCED_PARAMETER
-#define UNREFERENCED_PARAMETER(_p)
+#define UNREFERENCED_PARAMETER(_p) RTE_SET_USED(_p)
 #endif
-#define UNREFERENCED_1PARAMETER(_p)
-#define UNREFERENCED_2PARAMETER(_p, _q)
-#define UNREFERENCED_3PARAMETER(_p, _q, _r)
-#define UNREFERENCED_4PARAMETER(_p, _q, _r, _s)
+#define UNREFERENCED_1PARAMETER(_p) RTE_SET_USED(_p)
+#define UNREFERENCED_2PARAMETER(_p, _q) do { \
+	RTE_SET_USED(_p); \
+	RTE_SET_USED(_q); \
+} while (0)
+#define UNREFERENCED_3PARAMETER(_p, _q, _r) do { \
+	RTE_SET_USED(_p); \
+	RTE_SET_USED(_q); \
+	RTE_SET_USED(_r); \
+} while (0)
+#define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) do { \
+	RTE_SET_USED(_p); \
+	RTE_SET_USED(_q); \
+	RTE_SET_USED(_r); \
+	RTE_SET_USED(_s); \
+} while (0)
 
 #define FALSE			0
 #define TRUE			1
