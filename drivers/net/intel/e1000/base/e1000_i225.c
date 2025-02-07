@@ -165,6 +165,7 @@ static s32 e1000_init_phy_params_i225(struct e1000_hw *hw)
 	phy->ops.check_reset_block = e1000_check_reset_block_generic;
 	phy->ops.commit		= e1000_phy_sw_reset_generic;
 	phy->ops.release	= e1000_release_phy_base;
+	phy->ops.reset		= e1000_phy_hw_reset_generic;
 
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 
