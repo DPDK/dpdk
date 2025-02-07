@@ -13,8 +13,6 @@ s32 e1000_write_nvm_srwr_i225(struct e1000_hw *hw, u16 offset,
 			      u16 words, u16 *data);
 s32 e1000_read_nvm_srrd_i225(struct e1000_hw *hw, u16 offset,
 			     u16 words, u16 *data);
-s32 e1000_read_invm_version_i225(struct e1000_hw *hw,
-				 struct e1000_fw_version *invm_ver);
 s32 e1000_set_flsw_flash_burst_counter_i225(struct e1000_hw *hw,
 					    u32 burst_counter);
 s32 e1000_write_erase_flash_command_i225(struct e1000_hw *hw, u32 opcode,
