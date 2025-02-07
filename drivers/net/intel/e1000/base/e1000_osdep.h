@@ -117,8 +117,14 @@ static inline uint16_t e1000_read_addr16(volatile void *addr)
 #define E1000_READ_REG(hw, reg) \
 	e1000_read_addr(E1000_PCI_REG_ADDR((hw), (reg)))
 
+#define E1000_READ_REG_LE_VALUE(hw, reg) \
+	rte_read32(E1000_PCI_REG_ADDR((hw), (reg)))
+
 #define E1000_WRITE_REG(hw, reg, value) \
 	E1000_PCI_REG_WRITE(E1000_PCI_REG_ADDR((hw), (reg)), (value))
+
+#define E1000_WRITE_REG_LE_VALUE(hw, reg, value) \
+	rte_write32(value, E1000_PCI_REG_ADDR((hw), (reg)))
 
 #define E1000_READ_REG_ARRAY(hw, reg, index) \
 	E1000_PCI_REG(E1000_PCI_REG_ARRAY_ADDR((hw), (reg), (index)))

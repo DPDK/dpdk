@@ -19,6 +19,7 @@ extern void e1000_init_function_pointers_vf(struct e1000_hw *hw);
 extern void e1000_power_up_fiber_serdes_link(struct e1000_hw *hw);
 extern void e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw);
 extern void e1000_init_function_pointers_i210(struct e1000_hw *hw);
+extern void e1000_init_function_pointers_i225(struct e1000_hw *hw);
 
 s32 e1000_set_obff_timer(struct e1000_hw *hw, u32 itr);
 s32 e1000_set_mac_type(struct e1000_hw *hw);

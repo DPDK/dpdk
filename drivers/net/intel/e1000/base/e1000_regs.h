@@ -30,6 +30,10 @@
 #define E1000_FCAL	0x00028  /* Flow Control Address Low - RW */
 #define E1000_FCAH	0x0002C  /* Flow Control Address High -RW */
 #define E1000_FEXT	0x0002C  /* Future Extended - RW */
+#define E1000_I225_FLSWCTL	0x12048 /* FLASH control register */
+#define E1000_I225_FLSWDATA	0x1204C /* FLASH data register */
+#define E1000_I225_FLSWCNT	0x12050 /* FLASH Access Counter */
+#define E1000_I225_FLSECU	0x12114 /* FLASH Security */
 #define E1000_FEXTNVM	0x00028  /* Future Extended NVM - RW */
 #define E1000_FEXTNVM3	0x0003C  /* Future Extended NVM 3 - RW */
 #define E1000_FEXTNVM4	0x00024  /* Future Extended NVM 4 - RW */
@@ -87,8 +91,10 @@
 #define E1000_IOSFPC	0x00F28  /* TX corrupted data  */
 #define E1000_EEMNGCTL	0x01010  /* MNG EEprom Control */
 #define E1000_EEMNGCTL_I210	0x01010  /* i210 MNG EEprom Mode Control */
+#define E1000_EEMNGCTL_I225	0x01010  /* i225 MNG EEprom Mode Control */
 #define E1000_EEARBC	0x01024  /* EEPROM Auto Read Bus Control */
 #define E1000_EEARBC_I210	0x12024 /* EEPROM Auto Read Bus Control */
+#define E1000_EEARBC_I225	0x12024 /* EEPROM Auto Read Bus Control */
 #define E1000_FLASHT	0x01028  /* FLASH Timer Register */
 #define E1000_EEWR	0x0102C  /* EEPROM Write Register - RW */
 #define E1000_FLSWCTL	0x01030  /* FLASH control register */
@@ -261,6 +267,9 @@
 				 (0x054E0 + ((_i - 16) * 8)))
 #define E1000_RAH(_i)		(((_i) <= 15) ? (0x05404 + ((_i) * 8)) : \
 				 (0x054E4 + ((_i - 16) * 8)))
+
+#define E1000_VLAPQF		0x055B0  /* VLAN Priority Queue Filter VLAPQF */
+
 #define E1000_SHRAL(_i)		(0x05438 + ((_i) * 8))
 #define E1000_SHRAH(_i)		(0x0543C + ((_i) * 8))
 #define E1000_IP4AT_REG(_i)	(0x05840 + ((_i) * 8))
@@ -482,6 +491,17 @@
 #define E1000_IP6AT	0x05880  /* IPv6 Address Table - RW Array */
 #define E1000_WUPL	0x05900  /* Wakeup Packet Length - RW */
 #define E1000_WUPM	0x05A00  /* Wakeup Packet Memory - RO A */
+#define E1000_WUPM_EXT	0x0B800  /* Wakeup Packet Memory Extended - RO Array */
+#define E1000_WUFC_EXT	0x0580C  /* Wakeup Filter Control Extended - RW */
+#define E1000_WUS_EXT	0x05814  /* Wakeup Status Extended - RW1C */
+#define E1000_FHFTSL	0x05804  /* Flex Filter Indirect Table Select - RW */
+#define E1000_PROXYFCEX	0x05590  /* Proxy Filter Control Extended - RW1C */
+#define E1000_PROXYEXS	0x05594  /* Proxy Extended Status - RO */
+#define E1000_WFUTPF	0x05500  /* Wake Flex UDP TCP Port Filter - RW Array */
+#define E1000_RFUTPF	0x05580  /* Range Flex UDP TCP Port Filter - RW */
+#define E1000_RWPFC	0x05584  /* Range Wake Port Filter Control - RW */
+#define E1000_WFUTPS	0x05588  /* Wake Filter UDP TCP Status - RW1C */
+#define E1000_WCS	0x0558C  /* Wake Control Status - RW1C */
 /* MSI-X Table Register Descriptions */
 #define E1000_PBACL	0x05B68  /* MSIx PBA Clear - Read/Write 1's to clear */
 #define E1000_FFLT	0x05F00  /* Flexible Filter Length Table - RW Array */
@@ -593,6 +613,14 @@
 #define E1000_RXMTRL	0x0B634 /* Time sync Rx EtherType and Msg Type - RW */
 #define E1000_RXUDP	0x0B638 /* Time Sync Rx UDP Port - RW */
 
+#define E1000_QBVCYCLET	0x331C
+#define E1000_QBVCYCLET_S 0x3320
+#define E1000_STQT(_n)	(0x3324 + 0x4 * (_n))
+#define E1000_ENDQT(_n)	(0x3334 + 0x4 * (_n))
+#define E1000_TXQCTL(_n)	(0x3344 + 0x4 * (_n))
+#define E1000_BASET_L	0x3314
+#define E1000_BASET_H	0x3318
+
 /* Filtering Registers */
 #define E1000_SAQF(_n)	(0x05980 + (4 * (_n))) /* Source Address Queue Fltr */
 #define E1000_DAQF(_n)	(0x059A0 + (4 * (_n))) /* Dest Address Queue Fltr */
@@ -678,6 +706,7 @@
 #define E1000_LTRC	0x01A0 /* Latency Tolerance Reporting Control */
 #define E1000_EEER	0x0E30 /* Energy Efficient Ethernet "EEE"*/
 #define E1000_EEE_SU	0x0E34 /* EEE Setup */
+#define E1000_EEE_SU_2P5	0x0E3C /* EEE 2.5G Setup */
 #define E1000_TLPIC	0x4148 /* EEE Tx LPI Count - TLPIC */
 #define E1000_RLPIC	0x414C /* EEE Rx LPI Count - RLPIC */
 
@@ -687,6 +716,36 @@
 #define E1000_O2BGPTC	0x08FE4 /* OS2BMC packets received by BMC */
 #define E1000_O2BSPC	0x0415C /* OS2BMC packets transmitted by host */
 
+#define E1000_LTRMINV	0x5BB0 /* LTR Minimum Value */
+#define E1000_LTRMAXV	0x5BB4 /* LTR Maximum Value */
 
+
+/* IEEE 1588 TIMESYNCH */
+#define E1000_TRGTTIML0	0x0B644 /* Target Time Register 0 Low  - RW */
+#define E1000_TRGTTIMH0	0x0B648 /* Target Time Register 0 High - RW */
+#define E1000_TRGTTIML1	0x0B64C /* Target Time Register 1 Low  - RW */
+#define E1000_TRGTTIMH1	0x0B650 /* Target Time Register 1 High - RW */
+#define E1000_FREQOUT0	0x0B654 /* Frequency Out 0 Control Register - RW */
+#define E1000_FREQOUT1	0x0B658 /* Frequency Out 1 Control Register - RW */
+#define E1000_TSSDP	0x0003C  /* Time Sync SDP Configuration Register - RW */
+
+#define E1000_LTRC_EEEMS_EN			(1 << 5)
+#define E1000_TW_SYSTEM_100_MASK		0xff00
+#define E1000_TW_SYSTEM_100_SHIFT	8
+#define E1000_TW_SYSTEM_1000_MASK	0xff
+#define E1000_LTRMINV_SCALE_1024		0x02
+#define E1000_LTRMINV_SCALE_32768	0x03
+#define E1000_LTRMAXV_SCALE_1024		0x02
+#define E1000_LTRMAXV_SCALE_32768	0x03
+#define E1000_LTRMINV_LTRV_MASK		0x1ff
+#define E1000_LTRMINV_LSNP_REQ		0x80
+#define E1000_LTRMINV_SCALE_SHIFT	10
+#define E1000_LTRMAXV_LTRV_MASK		0x1ff
+#define E1000_LTRMAXV_LSNP_REQ		0x80
+#define E1000_LTRMAXV_SCALE_SHIFT	10
+
+#define E1000_MRQC_ENABLE_MASK		0x00000007
+#define E1000_MRQC_RSS_FIELD_IPV6_EX	0x00080000
+#define E1000_RCTL_DTYP_MASK		0x00000C00 /* Descriptor type mask */
 
 #endif

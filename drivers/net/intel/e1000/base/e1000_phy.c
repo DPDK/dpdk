@@ -1457,6 +1457,7 @@ s32 e1000_phy_setup_autoneg(struct e1000_hw *hw)
 	s32 ret_val;
 	u16 mii_autoneg_adv_reg;
 	u16 mii_1000t_ctrl_reg = 0;
+	u16 aneg_multigbt_an_ctrl = 0;
 
 	DEBUGFUNC("e1000_phy_setup_autoneg");
 
@@ -1471,6 +1472,32 @@ s32 e1000_phy_setup_autoneg(struct e1000_hw *hw)
 		/* Read the MII 1000Base-T Control Register (Address 9). */
 		ret_val = phy->ops.read_reg(hw, PHY_1000T_CTRL,
 					    &mii_1000t_ctrl_reg);
+		if (ret_val)
+			return ret_val;
+	}
+
+	/*
+	 * IGC/IGB merge note: in base code, there was a PHY ID check for I225
+	 * at this point. However, in DPDK version of IGC this check was
+	 * removed because it interfered with some i225-based NICs, and it was
+	 * deemed unnecessary because only the i225 NIC would've called this
+	 * code anyway because it was in the IGC driver.
+	 *
+	 * In IGB, it is no longer the case that this code is only called by
+	 * i225 NICs, so it could be argued that the check should've been added
+	 * back. However, as evidenced in the original commit removing the
+	 * check, the removal was causing problems with some i225-based NICs,
+	 * adding it back would've introduced the issue again. It is assumed
+	 * that only i225 will attempt to advertise 2.5G speed anyway, so it is
+	 * hoped that not adding the check will not cause problems.
+	 */
+	if (phy->autoneg_mask & ADVERTISE_2500_FULL) {
+	/* Read the MULTI GBT AN Control Register - reg 7.32 */
+		ret_val = phy->ops.read_reg(hw, (STANDARD_AN_REG_MASK <<
+					    MMD_DEVADDR_SHIFT) |
+					    ANEG_MULTIGBT_AN_CTRL,
+					    &aneg_multigbt_an_ctrl);
+
 		if (ret_val)
 			return ret_val;
 	}
@@ -1526,6 +1553,18 @@ s32 e1000_phy_setup_autoneg(struct e1000_hw *hw)
 	if (phy->autoneg_advertised & ADVERTISE_1000_FULL) {
 		DEBUGOUT("Advertise 1000mb Full duplex\n");
 		mii_1000t_ctrl_reg |= CR_1000T_FD_CAPS;
+	}
+
+	/* We do not allow the Phy to advertise 2500 Mb Half Duplex */
+	if (phy->autoneg_advertised & ADVERTISE_2500_HALF)
+		DEBUGOUT("Advertise 2500mb Half duplex request denied!\n");
+
+	/* Do we want to advertise 2500 Mb Full Duplex? */
+	if (phy->autoneg_advertised & ADVERTISE_2500_FULL) {
+		DEBUGOUT("Advertise 2500mb Full duplex\n");
+		aneg_multigbt_an_ctrl |= CR_2500T_FD_CAPS;
+	} else {
+		aneg_multigbt_an_ctrl &= ~CR_2500T_FD_CAPS;
 	}
 
 	/* Check for a software override of the flow control settings, and
@@ -1591,6 +1630,28 @@ s32 e1000_phy_setup_autoneg(struct e1000_hw *hw)
 	if (phy->autoneg_mask & ADVERTISE_1000_FULL)
 		ret_val = phy->ops.write_reg(hw, PHY_1000T_CTRL,
 					     mii_1000t_ctrl_reg);
+
+	/*
+	 * IGC/IGB merge note: in base code, there was a PHY ID check for I225
+	 * at this point. However, in DPDK version of IGC this check was
+	 * removed because it interfered with some i225-based NICs, and it was
+	 * deemed unnecessary because only the i225 NIC would've called this
+	 * code anyway because it was in the IGC driver.
+	 *
+	 * In IGB, it is no longer the case that this code is only called by
+	 * i225 NICs, so it could be argued that the check should've been added
+	 * back. However, as evidenced in the original commit removing the
+	 * check, the removal was causing problems with some i225-based NICs,
+	 * adding it back would've introduced the issue again. It is assumed
+	 * that only i225 will attempt to advertise 2.5G speed anyway, so it is
+	 * hoped that not adding the check will not cause problems.
+	 */
+	if (phy->autoneg_mask & ADVERTISE_2500_FULL)
+		ret_val = phy->ops.write_reg(hw,
+					     (STANDARD_AN_REG_MASK <<
+					     MMD_DEVADDR_SHIFT) |
+					     ANEG_MULTIGBT_AN_CTRL,
+					     aneg_multigbt_an_ctrl);
 
 	return ret_val;
 }
@@ -1848,6 +1909,7 @@ s32 e1000_phy_force_speed_duplex_m88(struct e1000_hw *hw)
 			case M88E1543_E_PHY_ID:
 			case M88E1512_E_PHY_ID:
 			case I210_I_PHY_ID:
+			case I225_I_PHY_ID:
 				reset_dsp = false;
 				break;
 			default:
@@ -1888,6 +1950,8 @@ s32 e1000_phy_force_speed_duplex_m88(struct e1000_hw *hw)
 		hw->phy.id == M88E1112_E_PHY_ID)
 		return E1000_SUCCESS;
 	if (hw->phy.id == I210_I_PHY_ID)
+		return E1000_SUCCESS;
+	if (hw->phy.id == I225_I_PHY_ID)
 		return E1000_SUCCESS;
 	if ((hw->phy.id == M88E1543_E_PHY_ID) ||
 	    (hw->phy.id == M88E1512_E_PHY_ID))
@@ -2417,7 +2481,7 @@ s32 e1000_get_cable_length_m88(struct e1000_hw *hw)
 s32 e1000_get_cable_length_m88_gen2(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	s32 ret_val;
+	s32 ret_val  = 0;
 	u16 phy_data, phy_data2, is_cm;
 	u16 index, default_page;
 
@@ -2444,6 +2508,8 @@ s32 e1000_get_cable_length_m88_gen2(struct e1000_hw *hw)
 		phy->min_cable_length = phy_data / (is_cm ? 100 : 1);
 		phy->max_cable_length = phy_data / (is_cm ? 100 : 1);
 		phy->cable_length = phy_data / (is_cm ? 100 : 1);
+		break;
+	case I225_I_PHY_ID:
 		break;
 	case M88E1543_E_PHY_ID:
 	case M88E1512_E_PHY_ID:
@@ -3024,6 +3090,9 @@ enum e1000_phy_type e1000_get_phy_type_from_id(u32 phy_id)
 	case I210_I_PHY_ID:
 		phy_type = e1000_phy_i210;
 		break;
+	case I225_I_PHY_ID:
+		phy_type = e1000_phy_i225;
+		break;
 	default:
 		phy_type = e1000_phy_unknown;
 		break;
@@ -3483,6 +3552,7 @@ void e1000_power_up_phy_copper(struct e1000_hw *hw)
 	hw->phy.ops.read_reg(hw, PHY_CONTROL, &mii_reg);
 	mii_reg &= ~MII_CR_POWER_DOWN;
 	hw->phy.ops.write_reg(hw, PHY_CONTROL, mii_reg);
+	usec_delay(300);
 }
 
 /**
@@ -3891,7 +3961,7 @@ s32 e1000_phy_force_speed_duplex_82577(struct e1000_hw *hw)
 	struct e1000_phy_info *phy = &hw->phy;
 	s32 ret_val;
 	u16 phy_data;
-	bool link;
+	bool link = false;
 
 	DEBUGFUNC("e1000_phy_force_speed_duplex_82577");
 
@@ -4081,6 +4151,69 @@ s32 e1000_read_phy_reg_gs40g(struct e1000_hw *hw, u32 offset, u16 *data)
 
 release:
 	hw->phy.ops.release(hw);
+	return ret_val;
+}
+
+/**
+ *  e1000_write_phy_reg_gpy - Write GPY PHY register
+ *  @hw: pointer to the HW structure
+ *  @offset: register offset to write to
+ *  @data: data to write at register offset
+ *
+ *  Acquires semaphore, if necessary, then writes the data to PHY register
+ *  at the offset.  Release any acquired semaphores before exiting.
+ **/
+s32 e1000_write_phy_reg_gpy(struct e1000_hw *hw, u32 offset, u16 data)
+{
+	s32 ret_val;
+	u8 dev_addr = (offset & GPY_MMD_MASK) >> GPY_MMD_SHIFT;
+
+	DEBUGFUNC("e1000_write_phy_reg_gpy");
+
+	offset = offset & GPY_REG_MASK;
+
+	if (!dev_addr) {
+		ret_val = hw->phy.ops.acquire(hw);
+		if (ret_val)
+			return ret_val;
+		ret_val = e1000_write_phy_reg_mdic(hw, offset, data);
+		hw->phy.ops.release(hw);
+	} else {
+		ret_val = e1000_write_xmdio_reg(hw, (u16)offset, dev_addr,
+						data);
+	}
+	return ret_val;
+}
+
+/**
+ *  e1000_read_phy_reg_gpy - Read GPY PHY register
+ *  @hw: pointer to the HW structure
+ *  @offset: lower half is register offset to read to
+ *     upper half is MMD to use.
+ *  @data: data to read at register offset
+ *
+ *  Acquires semaphore, if necessary, then reads the data in the PHY register
+ *  at the offset.  Release any acquired semaphores before exiting.
+ **/
+s32 e1000_read_phy_reg_gpy(struct e1000_hw *hw, u32 offset, u16 *data)
+{
+	s32 ret_val;
+	u8 dev_addr = (offset & GPY_MMD_MASK) >> GPY_MMD_SHIFT;
+
+	DEBUGFUNC("e1000_read_phy_reg_gpy");
+
+	offset = offset & GPY_REG_MASK;
+
+	if (!dev_addr) {
+		ret_val = hw->phy.ops.acquire(hw);
+		if (ret_val)
+			return ret_val;
+		ret_val = e1000_read_phy_reg_mdic(hw, offset, data);
+		hw->phy.ops.release(hw);
+	} else {
+		ret_val = e1000_read_xmdio_reg(hw, (u16)offset, dev_addr,
+					       data);
+	}
 	return ret_val;
 }
 

@@ -12,6 +12,7 @@ sources = [
         'e1000_82575.c',
         'e1000_api.c',
         'e1000_i210.c',
+        'e1000_i225.c',
         'e1000_ich8lan.c',
         'e1000_mac.c',
         'e1000_manage.c',
