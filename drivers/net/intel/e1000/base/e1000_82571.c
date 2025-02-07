@@ -1042,9 +1042,9 @@ STATIC s32 e1000_reset_hw_82571(struct e1000_hw *hw)
 	/* Prevent the PCI-E bus from sticking if there is no TLP connection
 	 * on the last TLP read/write transaction when MAC is reset.
 	 */
-	ret_val = e1000_disable_pcie_master_generic(hw);
+	ret_val = e1000_disable_pcie_primary_generic(hw);
 	if (ret_val)
-		DEBUGOUT("PCI-E Master disable polling has failed.\n");
+		DEBUGOUT("PCI-E Primary disable polling has failed.\n");
 
 	DEBUGOUT("Masking off all interrupts\n");
 	E1000_WRITE_REG(hw, E1000_IMC, 0xffffffff);

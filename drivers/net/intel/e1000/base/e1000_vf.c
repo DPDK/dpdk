@@ -175,7 +175,7 @@ STATIC s32 e1000_get_bus_info_pcie_vf(struct e1000_hw *hw)
 
 	DEBUGFUNC("e1000_get_bus_info_pcie_vf");
 
-	/* Do not set type PCI-E because we don't want disable master to run */
+	/* Do not set type PCI-E because we don't want disable primary to run */
 	bus->type = e1000_bus_type_reserved;
 	bus->speed = e1000_bus_speed_2500;
 

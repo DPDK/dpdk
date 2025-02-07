@@ -981,17 +981,17 @@ s32 e1000_write_kmrn_reg_locked(struct e1000_hw *hw, u32 offset, u16 data)
 }
 
 /**
- *  e1000_set_master_slave_mode - Setup PHY for Master/slave mode
+ *  e1000_set_primary_secondary_mode - Setup PHY for Primary/Secondary mode
  *  @hw: pointer to the HW structure
  *
- *  Sets up Master/slave mode
+ *  Sets up Primary/Secondary mode
  **/
-STATIC s32 e1000_set_master_slave_mode(struct e1000_hw *hw)
+STATIC s32 e1000_set_primary_secondary_mode(struct e1000_hw *hw)
 {
 	s32 ret_val;
 	u16 phy_data;
 
-	/* Resolve Master/Slave mode */
+	/* Resolve Primary/Secondary mode */
 	ret_val = hw->phy.ops.read_reg(hw, PHY_1000T_CTRL, &phy_data);
 	if (ret_val)
 		return ret_val;
@@ -999,14 +999,14 @@ STATIC s32 e1000_set_master_slave_mode(struct e1000_hw *hw)
 	/* load defaults for future use */
 	hw->phy.original_ms_type = (phy_data & CR_1000T_MS_ENABLE) ?
 				   ((phy_data & CR_1000T_MS_VALUE) ?
-				    e1000_ms_force_master :
-				    e1000_ms_force_slave) : e1000_ms_auto;
+				    e1000_ms_force_primary :
+				    e1000_ms_force_secondary) : e1000_ms_auto;
 
 	switch (hw->phy.ms_type) {
-	case e1000_ms_force_master:
+	case e1000_ms_force_primary:
 		phy_data |= (CR_1000T_MS_ENABLE | CR_1000T_MS_VALUE);
 		break;
-	case e1000_ms_force_slave:
+	case e1000_ms_force_secondary:
 		phy_data |= CR_1000T_MS_ENABLE;
 		phy_data &= ~(CR_1000T_MS_VALUE);
 		break;
@@ -1080,7 +1080,7 @@ s32 e1000_copper_link_setup_82577(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	return e1000_set_master_slave_mode(hw);
+	return e1000_set_primary_secondary_mode(hw);
 }
 
 /**
@@ -1186,11 +1186,11 @@ s32 e1000_copper_link_setup_m88(struct e1000_hw *hw)
 			phy_data &= ~M88EC018_EPSCR_DOWNSHIFT_COUNTER_MASK;
 			phy_data |= M88EC018_EPSCR_DOWNSHIFT_COUNTER_5X;
 		} else {
-			/* Configure Master and Slave downshift values */
-			phy_data &= ~(M88E1000_EPSCR_MASTER_DOWNSHIFT_MASK |
-				     M88E1000_EPSCR_SLAVE_DOWNSHIFT_MASK);
-			phy_data |= (M88E1000_EPSCR_MASTER_DOWNSHIFT_1X |
-				     M88E1000_EPSCR_SLAVE_DOWNSHIFT_1X);
+			/* Configure Primary and Secondary downshift values */
+			phy_data &= ~(M88E1000_EPSCR_PRIMARY_DOWNSHIFT_MASK |
+				     M88E1000_EPSCR_SECONDARY_DOWNSHIFT_MASK);
+			phy_data |= (M88E1000_EPSCR_PRIMARY_DOWNSHIFT_1X |
+				     M88E1000_EPSCR_SECONDARY_DOWNSHIFT_1X);
 		}
 		ret_val = phy->ops.write_reg(hw, M88E1000_EXT_PHY_SPEC_CTRL,
 					     phy_data);
@@ -1325,7 +1325,7 @@ s32 e1000_copper_link_setup_m88_gen2(struct e1000_hw *hw)
 		return ret_val;
 	}
 
-	ret_val = e1000_set_master_slave_mode(hw);
+	ret_val = e1000_set_primary_secondary_mode(hw);
 	if (ret_val)
 		return ret_val;
 
@@ -1336,8 +1336,8 @@ s32 e1000_copper_link_setup_m88_gen2(struct e1000_hw *hw)
  *  e1000_copper_link_setup_igp - Setup igp PHY's for copper link
  *  @hw: pointer to the HW structure
  *
- *  Sets up LPLU, MDI/MDI-X, polarity, Smartspeed and Master/Slave config for
- *  igp PHY's.
+ *  Sets up LPLU, MDI/MDI-X, polarity, Smartspeed
+ *  and Primary/Secondary config for igp PHY's.
  **/
 s32 e1000_copper_link_setup_igp(struct e1000_hw *hw)
 {
@@ -1402,10 +1402,10 @@ s32 e1000_copper_link_setup_igp(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	/* set auto-master slave resolution settings */
+	/* set auto primary-secondary resolution settings */
 	if (hw->mac.autoneg) {
 		/* when autonegotiation advertisement is only 1000Mbps then we
-		 * should disable SmartSpeed and enable Auto MasterSlave
+		 * should disable SmartSpeed and enable Auto Primary/Secondary
 		 * resolution as hardware default.
 		 */
 		if (phy->autoneg_advertised == ADVERTISE_1000_FULL) {
@@ -1423,7 +1423,7 @@ s32 e1000_copper_link_setup_igp(struct e1000_hw *hw)
 			if (ret_val)
 				return ret_val;
 
-			/* Set auto Master/Slave resolution process */
+			/* Set auto Primary/Secondary resolution process */
 			ret_val = phy->ops.read_reg(hw, PHY_1000T_CTRL, &data);
 			if (ret_val)
 				return ret_val;
@@ -1434,7 +1434,7 @@ s32 e1000_copper_link_setup_igp(struct e1000_hw *hw)
 				return ret_val;
 		}
 
-		ret_val = e1000_set_master_slave_mode(hw);
+		ret_val = e1000_set_primary_secondary_mode(hw);
 	}
 
 	return ret_val;
@@ -3014,7 +3014,7 @@ s32 e1000_phy_init_script_igp3(struct e1000_hw *hw)
 	hw->phy.ops.write_reg(hw, 0x1F72, 0x3FB0);
 	/* AHT reset limit to 1 */
 	hw->phy.ops.write_reg(hw, 0x1F76, 0xC0FF);
-	/* Set AHT master delay to 127 msec */
+	/* Set AHT primary delay to 127 msec */
 	hw->phy.ops.write_reg(hw, 0x1F77, 0x1DEC);
 	/* Set scan bits for AHT */
 	hw->phy.ops.write_reg(hw, 0x1F78, 0xF9EF);
@@ -3030,7 +3030,7 @@ s32 e1000_phy_init_script_igp3(struct e1000_hw *hw)
 	 * to 8 for channel A
 	 */
 	hw->phy.ops.write_reg(hw, 0x1898, 0xD918);
-	/* Disable AHT in Slave mode on channel A */
+	/* Disable AHT in Secondary mode on channel A */
 	hw->phy.ops.write_reg(hw, 0x187A, 0x0800);
 	/* Enable LPLU and disable AN to 1000 in non-D0a states,
 	 * Enable SPD+B2B

@@ -797,9 +797,9 @@ STATIC s32 e1000_reset_hw_80003es2lan(struct e1000_hw *hw)
 	/* Prevent the PCI-E bus from sticking if there is no TLP connection
 	 * on the last TLP read/write transaction when MAC is reset.
 	 */
-	ret_val = e1000_disable_pcie_master_generic(hw);
+	ret_val = e1000_disable_pcie_primary_generic(hw);
 	if (ret_val)
-		DEBUGOUT("PCI-E Master disable polling has failed.\n");
+		DEBUGOUT("PCI-E Primary disable polling has failed.\n");
 
 	DEBUGOUT("Masking off all interrupts\n");
 	E1000_WRITE_REG(hw, E1000_IMC, 0xffffffff);
@@ -820,7 +820,7 @@ STATIC s32 e1000_reset_hw_80003es2lan(struct e1000_hw *hw)
 	E1000_WRITE_REG(hw, E1000_CTRL, ctrl | E1000_CTRL_RST);
 	e1000_release_phy_80003es2lan(hw);
 
-	/* Disable IBIST slave mode (far-end loopback) */
+	/* Disable IBIST secondary mode (far-end loopback) */
 	ret_val = e1000_read_kmrn_reg_80003es2lan(hw,
 				E1000_KMRNCTRLSTA_INBAND_PARAM, &kum_reg_data);
 	if (!ret_val) {
@@ -886,7 +886,7 @@ STATIC s32 e1000_init_hw_80003es2lan(struct e1000_hw *hw)
 	if (ret_val)
 		return ret_val;
 
-	/* Disable IBIST slave mode (far-end loopback) */
+	/* Disable IBIST secondary mode (far-end loopback) */
 	ret_val =
 	    e1000_read_kmrn_reg_80003es2lan(hw, E1000_KMRNCTRLSTA_INBAND_PARAM,
 					    &kum_reg_data);

@@ -858,16 +858,16 @@ void e1000_update_adaptive(struct e1000_hw *hw)
 }
 
 /**
- *  e1000_disable_pcie_master - Disable PCI-Express master access
+ *  e1000_disable_pcie_primary - Disable PCI-Express primary access
  *  @hw: pointer to the HW structure
  *
- *  Disables PCI-Express master access and verifies there are no pending
+ *  Disables PCI-Express primary access and verifies there are no pending
  *  requests. Currently no func pointer exists and all implementations are
  *  handled in the generic version of this function.
  **/
-s32 e1000_disable_pcie_master(struct e1000_hw *hw)
+s32 e1000_disable_pcie_primary(struct e1000_hw *hw)
 {
-	return e1000_disable_pcie_master_generic(hw);
+	return e1000_disable_pcie_primary_generic(hw);
 }
 
 /**

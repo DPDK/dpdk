@@ -2063,33 +2063,33 @@ void e1000_set_pcie_no_snoop_generic(struct e1000_hw *hw, u32 no_snoop)
 }
 
 /**
- *  e1000_disable_pcie_master_generic - Disables PCI-express master access
+ *  e1000_disable_pcie_primary_generic - Disables PCI-express primary access
  *  @hw: pointer to the HW structure
  *
  *  Returns E1000_SUCCESS if successful, else returns -10
- *  (-E1000_ERR_MASTER_REQUESTS_PENDING) if master disable bit has not caused
- *  the master requests to be disabled.
+ *  (-E1000_ERR_PRIMARY_REQUESTS_PENDING) if primary disable bit has not caused
+ *  the primary requests to be disabled.
  *
- *  Disables PCI-Express master access and verifies there are no pending
+ *  Disables PCI-Express primary access and verifies there are no pending
  *  requests.
  **/
-s32 e1000_disable_pcie_master_generic(struct e1000_hw *hw)
+s32 e1000_disable_pcie_primary_generic(struct e1000_hw *hw)
 {
 	u32 ctrl;
-	s32 timeout = MASTER_DISABLE_TIMEOUT;
+	s32 timeout = PRIMARY_DISABLE_TIMEOUT;
 
-	DEBUGFUNC("e1000_disable_pcie_master_generic");
+	DEBUGFUNC("e1000_disable_pcie_primary_generic");
 
 	if (hw->bus.type != e1000_bus_type_pci_express)
 		return E1000_SUCCESS;
 
 	ctrl = E1000_READ_REG(hw, E1000_CTRL);
-	ctrl |= E1000_CTRL_GIO_MASTER_DISABLE;
+	ctrl |= E1000_CTRL_GIO_PRIMARY_DISABLE;
 	E1000_WRITE_REG(hw, E1000_CTRL, ctrl);
 
 	while (timeout) {
 		if (!(E1000_READ_REG(hw, E1000_STATUS) &
-		      E1000_STATUS_GIO_MASTER_ENABLE) ||
+		      E1000_STATUS_GIO_PRIMARY_ENABLE) ||
 				E1000_REMOVED(hw->hw_addr))
 			break;
 		usec_delay(100);
@@ -2097,8 +2097,8 @@ s32 e1000_disable_pcie_master_generic(struct e1000_hw *hw)
 	}
 
 	if (!timeout) {
-		DEBUGOUT("Master requests are pending.\n");
-		return -E1000_ERR_MASTER_REQUESTS_PENDING;
+		DEBUGOUT("Primary requests are pending.\n");
+		return -E1000_ERR_PRIMARY_REQUESTS_PENDING;
 	}
 
 	return E1000_SUCCESS;

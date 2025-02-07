@@ -151,8 +151,8 @@ union ich8_hws_flash_regacc {
 	struct ich8_flracc {
 		u32 grra:8; /* 0:7 GbE region Read Access */
 		u32 grwa:8; /* 8:15 GbE region Write Access */
-		u32 gmrag:8; /* 23:16 GbE Master Read Access Grant */
-		u32 gmwag:8; /* 31:24 GbE Master Write Access Grant */
+		u32 gmrag:8; /* 23:16 GbE Primary Read Access Grant */
+		u32 gmwag:8; /* 31:24 GbE Primary Write Access Grant */
 	} hsf_flregacc;
 	u16 regval;
 };
@@ -4930,9 +4930,9 @@ STATIC s32 e1000_reset_hw_ich8lan(struct e1000_hw *hw)
 	/* Prevent the PCI-E bus from sticking if there is no TLP connection
 	 * on the last TLP read/write transaction when MAC is reset.
 	 */
-	ret_val = e1000_disable_pcie_master_generic(hw);
+	ret_val = e1000_disable_pcie_primary_generic(hw);
 	if (ret_val)
-		DEBUGOUT("PCI-E Master disable polling has failed.\n");
+		DEBUGOUT("PCI-E Primary disable polling has failed.\n");
 
 	DEBUGOUT("Masking off all interrupts\n");
 	E1000_WRITE_REG(hw, E1000_IMC, 0xffffffff);

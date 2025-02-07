@@ -283,7 +283,7 @@
 #define E1000_FFMT_REG(_i)	(0x09000 + ((_i) * 8))
 #define E1000_FFVT_REG(_i)	(0x09800 + ((_i) * 8))
 #define E1000_FFLT_REG(_i)	(0x05F00 + ((_i) * 8))
-#define E1000_PBSLAC		0x03100  /* Pkt Buffer Slave Access Control */
+#define E1000_PBSLAC	0x03100  /* Pkt Buffer Access Control */
 #define E1000_PBSLAD(_n)	(0x03110 + (0x4 * (_n)))  /* Pkt Buffer DWORD */
 #define E1000_TXPBS		0x03404  /* Tx Packet Buffer Size - RW */
 /* Same as TXPBS, renamed for newer Si - RW */
