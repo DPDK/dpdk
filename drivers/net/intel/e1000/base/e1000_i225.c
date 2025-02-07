@@ -557,8 +557,8 @@ static s32 __e1000_write_nvm_srwr(struct e1000_hw *hw, u16 offset, u16 words,
 	/* A check for invalid values:  offset too large, too many words,
 	 * too many words for the offset, and not enough words.
 	 */
-	if (offset >= nvm->word_size || words > (nvm->word_size - offset) ||
-			words == 0) {
+	if ((offset >= nvm->word_size) || (words > (nvm->word_size - offset)) ||
+	    (words == 0)) {
 		DEBUGOUT("nvm parameter(s) out of bounds\n");
 		ret_val = -E1000_ERR_NVM;
 		goto out;
@@ -695,8 +695,7 @@ s32 e1000_read_invm_version_i225(struct e1000_hw *hw,
 s32 e1000_validate_nvm_checksum_i225(struct e1000_hw *hw)
 {
 	s32 status = E1000_SUCCESS;
-	s32 (*read_op_ptr)(struct e1000_hw *hw, u16 offset,
-			u16 count, u16 *data);
+	s32 (*read_op_ptr)(struct e1000_hw *, u16, u16, u16 *);
 
 	DEBUGFUNC("e1000_validate_nvm_checksum_i225");
 
@@ -1012,22 +1011,23 @@ static s32 e1000_set_ltr_i225(struct e1000_hw *hw, bool link)
 		/* Check if using copper interface with EEE enabled or if the
 		 * link speed is 10 Mbps.
 		 */
-		if (hw->phy.media_type == e1000_media_type_copper &&
-				!hw->dev_spec._i225.eee_disable &&
-				speed != SPEED_10) {
+		if ((hw->phy.media_type == e1000_media_type_copper) &&
+		    !(hw->dev_spec._i225.eee_disable) &&
+		     (speed != SPEED_10)) {
 			/* EEE enabled, so send LTRMAX threshold. */
 			ltrc = E1000_READ_REG(hw, E1000_LTRC) |
 				E1000_LTRC_EEEMS_EN;
 			E1000_WRITE_REG(hw, E1000_LTRC, ltrc);
 
 			/* Calculate tw_system (nsec). */
-			if (speed == SPEED_100)
+			if (speed == SPEED_100) {
 				tw_system = ((E1000_READ_REG(hw, E1000_EEE_SU) &
-					E1000_TW_SYSTEM_100_MASK) >>
-					E1000_TW_SYSTEM_100_SHIFT) * 500;
-			else
+					     E1000_TW_SYSTEM_100_MASK) >>
+					     E1000_TW_SYSTEM_100_SHIFT) * 500;
+			} else {
 				tw_system = (E1000_READ_REG(hw, E1000_EEE_SU) &
-					E1000_TW_SYSTEM_1000_MASK) * 500;
+					     E1000_TW_SYSTEM_1000_MASK) * 500;
+			}
 		} else {
 			tw_system = 0;
 		}

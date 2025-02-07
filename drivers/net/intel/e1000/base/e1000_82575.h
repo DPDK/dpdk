@@ -90,11 +90,8 @@ struct e1000_adv_context_desc {
 };
 
 /* SRRCTL bit definitions */
-#define E1000_SRRCTL_BSIZEPKT_SHIFT		10 /* Shift _right_ */
 #define E1000_SRRCTL_BSIZEHDRSIZE_MASK		0x00000F00
-#define E1000_SRRCTL_BSIZEHDRSIZE_SHIFT		2  /* Shift _left_ */
 #define E1000_SRRCTL_DESCTYPE_LEGACY		0x00000000
-#define E1000_SRRCTL_DESCTYPE_ADV_ONEBUF	0x02000000
 #define E1000_SRRCTL_DESCTYPE_HDR_SPLIT		0x04000000
 #define E1000_SRRCTL_DESCTYPE_HDR_SPLIT_ALWAYS	0x0A000000
 #define E1000_SRRCTL_DESCTYPE_HDR_REPLICATION	0x06000000
@@ -210,36 +207,10 @@ struct e1000_adv_context_desc {
 #define E1000_RXDADV_IPSEC_ERROR_INVALID_LENGTH		0x10000000
 #define E1000_RXDADV_IPSEC_ERROR_AUTHENTICATION_FAILED	0x18000000
 
-/* Adv Transmit Descriptor Config Masks */
-#define E1000_ADVTXD_DTYP_CTXT	0x00200000 /* Advanced Context Descriptor */
-#define E1000_ADVTXD_DTYP_DATA	0x00300000 /* Advanced Data Descriptor */
-#define E1000_ADVTXD_DCMD_EOP	0x01000000 /* End of Packet */
-#define E1000_ADVTXD_DCMD_IFCS	0x02000000 /* Insert FCS (Ethernet CRC) */
-#define E1000_ADVTXD_DCMD_RS	0x08000000 /* Report Status */
-#define E1000_ADVTXD_DCMD_DDTYP_ISCSI	0x10000000 /* DDP hdr type or iSCSI */
-#define E1000_ADVTXD_DCMD_DEXT	0x20000000 /* Descriptor extension (1=Adv) */
-#define E1000_ADVTXD_DCMD_VLE	0x40000000 /* VLAN pkt enable */
-#define E1000_ADVTXD_DCMD_TSE	0x80000000 /* TCP Seg enable */
-#define E1000_ADVTXD_MAC_LINKSEC	0x00040000 /* Apply LinkSec on pkt */
-#define E1000_ADVTXD_MAC_TSTAMP		0x00080000 /* IEEE1588 Timestamp pkt */
-#define E1000_ADVTXD_STAT_SN_CRC	0x00000002 /* NXTSEQ/SEED prsnt in WB */
-#define E1000_ADVTXD_IDX_SHIFT		4  /* Adv desc Index shift */
-#define E1000_ADVTXD_POPTS_ISCO_1ST	0x00000000 /* 1st TSO of iSCSI PDU */
-#define E1000_ADVTXD_POPTS_ISCO_MDL	0x00000800 /* Middle TSO of iSCSI PDU */
-#define E1000_ADVTXD_POPTS_ISCO_LAST	0x00001000 /* Last TSO of iSCSI PDU */
-/* 1st & Last TSO-full iSCSI PDU*/
-#define E1000_ADVTXD_POPTS_ISCO_FULL	0x00001800
-#define E1000_ADVTXD_POPTS_IPSEC	0x00000400 /* IPSec offload request */
-#define E1000_ADVTXD_PAYLEN_SHIFT	14 /* Adv desc PAYLEN shift */
-
-/* Additional Transmit Descriptor Control definitions */
-#define E1000_TXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Tx Queue */
 #define E1000_TXDCTL_SWFLSH		0x04000000 /* Tx Desc. wbk flushing */
 /* Tx Queue Arbitration Priority 0=low, 1=high */
 #define E1000_TXDCTL_PRIORITY		0x08000000
 
-/* Additional Receive Descriptor Control definitions */
-#define E1000_RXDCTL_QUEUE_ENABLE	0x02000000 /* Ena specific Rx Queue */
 #define E1000_RXDCTL_SWFLSH		0x04000000 /* Rx Desc. wbk flushing */
 
 /* Direct Cache Access (DCA) definitions */

@@ -188,14 +188,14 @@
 #define E1000_RCTL_BSEX		0x02000000 /* Buffer size extension */
 #define E1000_RCTL_SECRC	0x04000000 /* Strip Ethernet CRC */
 
-#define E1000_DTXMXPKTSZ_TSN     0x19 /* 1600 bytes of max TX DMA packet size */
-#define E1000_TXPBSIZE_TSN       0x04145145 /* 5k bytes buffer for each queue */
+#define E1000_DTXMXPKTSZ_TSN	0x19 /* 1600 bytes of max TX DMA packet size */
+#define E1000_TXPBSIZE_TSN	0x04145145 /* 5k bytes buffer for each queue */
 
 /* Transmit Scheduling */
-#define E1000_TQAVCTRL_TRANSMIT_MODE_TSN 0x00000001
-#define E1000_TQAVCTRL_ENHANCED_QAV      0x00000008
+#define E1000_TQAVCTRL_TRANSMIT_MODE_TSN	0x00000001
+#define E1000_TQAVCTRL_ENHANCED_QAV	0x00000008
 
-#define E1000_TXQCTL_QUEUE_MODE_LAUNCHT  0x00000001
+#define E1000_TXQCTL_QUEUE_MODE_LAUNCHT	0x00000001
 
 /* Use byte values for the following shift parameters
  * Usage:
@@ -802,15 +802,15 @@
 #define TSYNC_INTERRUPTS	TSINTR_TXTS
 
 /* Split Replication Receive Control */
-#define E1000_SRRCTL_TIMESTAMP           0x40000000
-#define E1000_SRRCTL_TIMER1SEL(timer)    (((timer) & 0x3) << 14)
-#define E1000_SRRCTL_TIMER0SEL(timer)    (((timer) & 0x3) << 17)
+#define E1000_SRRCTL_TIMESTAMP		0x40000000
+#define E1000_SRRCTL_TIMER1SEL(timer)	(((timer) & 0x3) << 14)
+#define E1000_SRRCTL_TIMER0SEL(timer)	(((timer) & 0x3) << 17)
 
 /* Sample RX tstamp in PHY sop */
-#define E1000_TSYNCRXCTL_RXSYNSIG         0x00000400
+#define E1000_TSYNCRXCTL_RXSYNSIG	0x00000400
 
 /* Sample TX tstamp in PHY sop */
-#define E1000_TSYNCTXCTL_TXSYNSIG         0x00000020
+#define E1000_TSYNCTXCTL_TXSYNSIG	0x00000020
 
 /* TSAUXC Configuration Bits */
 #define TSAUXC_EN_TT0	(1 << 0)  /* Enable target time 0. */
@@ -1111,9 +1111,7 @@
 /* NVM Addressing bits based on type 0=small, 1=large */
 #define E1000_EECD_ADDR_BITS	0x00000400
 #define E1000_EECD_TYPE		0x00002000 /* NVM Type (1-SPI, 0-Microwire) */
-#ifndef E1000_NVM_GRANT_ATTEMPTS
 #define E1000_NVM_GRANT_ATTEMPTS	1000 /* NVM # attempts to gain grant */
-#endif
 #define E1000_EECD_AUTO_RD		0x00000200  /* NVM Auto Read done */
 #define E1000_EECD_SIZE_EX_MASK		0x00007800  /* NVM Size */
 #define E1000_EECD_SIZE_EX_SHIFT	11
@@ -1367,7 +1365,7 @@
 #define BCM54616_E_PHY_ID	0x03625D10
 #define M88_VENDOR		0x0141
 #define I225_I_PHY_ID		0x67C9DC00
-#define I226_LM_PHY_ID          0x67C9DC10
+#define I226_LM_PHY_ID		0x67C9DC10
 
 /* M88E1000 Specific Registers */
 #define M88E1000_PHY_SPEC_CTRL		0x10  /* PHY Specific Control Reg */
@@ -1585,6 +1583,32 @@
 #define I210_RXPBSIZE_DEFAULT		0x000000A2 /* RXPBSIZE default */
 #define I210_TXPBSIZE_DEFAULT		0x04000014 /* TXPBSIZE default */
 
+#define E1000_LTRC_EEEMS_EN		0x00000020 /* Enable EEE LTR max send */
+/* Minimum time for 1000BASE-T where no data will be transmit following move out
+ * of EEE LPI Tx state
+ */
+#define E1000_TW_SYSTEM_1000_MASK	0x000000FF
+/* Minimum time for 100BASE-T where no data will be transmit following move out
+ * of EEE LPI Tx state
+ */
+#define E1000_TW_SYSTEM_100_MASK	0x0000FF00
+#define E1000_TW_SYSTEM_100_SHIFT	8
+#define E1000_LTRMINV_LTRV_MASK		0x000003FF /* LTR minimum value */
+#define E1000_LTRMAXV_LTRV_MASK		0x000003FF /* LTR maximum value */
+#define E1000_LTRMINV_SCALE_MASK	0x00001C00 /* LTR minimum scale */
+#define E1000_LTRMINV_SCALE_SHIFT	10
+/* Reg val to set scale to 1024 nsec */
+#define E1000_LTRMINV_SCALE_1024	2
+/* Reg val to set scale to 32768 nsec */
+#define E1000_LTRMINV_SCALE_32768	3
+#define E1000_LTRMINV_LSNP_REQ		0x00008000 /* LTR Snoop Requirement */
+#define E1000_LTRMAXV_SCALE_MASK	0x00001C00 /* LTR maximum scale */
+#define E1000_LTRMAXV_SCALE_SHIFT	10
+/* Reg val to set scale to 1024 nsec */
+#define E1000_LTRMAXV_SCALE_1024	2
+/* Reg val to set scale to 32768 nsec */
+#define E1000_LTRMAXV_SCALE_32768	3
+#define E1000_LTRMAXV_LSNP_REQ		0x00008000 /* LTR Snoop Requirement */
 
 #define I225_RXPBSIZE_DEFAULT		0x000000A2 /* RXPBSIZE default */
 #define I225_TXPBSIZE_DEFAULT		0x04000014 /* TXPBSIZE default */

@@ -405,7 +405,6 @@ s32 e1000_set_mac_type(struct e1000_hw *hw)
 	case E1000_DEV_ID_I350_VF_HV:
 		mac->type = e1000_vfadapt_i350;
 		break;
-
 	case E1000_DEV_ID_I354_BACKPLANE_1GBPS:
 	case E1000_DEV_ID_I354_SGMII:
 	case E1000_DEV_ID_I354_BACKPLANE_2_5GBPS:
@@ -1421,4 +1420,3 @@ void e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw)
 	if (hw->mac.ops.shutdown_serdes)
 		hw->mac.ops.shutdown_serdes(hw);
 }
-

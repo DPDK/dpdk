@@ -111,18 +111,6 @@ static inline uint16_t e1000_read_addr16(volatile void *addr)
 	return rte_le_to_cpu_16(E1000_PCI_REG16(addr));
 }
 
-/* Necessary defines */
-#define E1000_MRQC_ENABLE_MASK                  0x00000007
-#define E1000_MRQC_RSS_FIELD_IPV6_EX		0x00080000
-#define E1000_ALL_FULL_DUPLEX   ( \
-        ADVERTISE_10_FULL | ADVERTISE_100_FULL | ADVERTISE_1000_FULL)
-
-#define M88E1543_E_PHY_ID    0x01410EA0
-#define ULP_SUPPORT
-
-#define E1000_RCTL_DTYP_MASK	0x00000C00 /* Descriptor type mask */
-#define E1000_MRQC_RSS_FIELD_IPV6_EX            0x00080000
-
 /* Register READ/WRITE macros */
 
 #define E1000_READ_REG(hw, reg) \

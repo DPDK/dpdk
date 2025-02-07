@@ -30,7 +30,7 @@ void e1000_init_nvm_ops_generic(struct e1000_hw *hw)
 }
 
 /**
- *  e1000_null_nvm_read - No-op function, return 0
+ *  e1000_null_read_nvm - No-op function, return 0
  *  @hw: pointer to the HW structure
  *  @a: dummy variable
  *  @b: dummy variable
@@ -136,8 +136,7 @@ STATIC void e1000_shift_out_eec_bits(struct e1000_hw *hw, u16 data, u16 count)
 	mask = 0x01 << (count - 1);
 	if (nvm->type == e1000_nvm_eeprom_microwire)
 		eecd &= ~E1000_EECD_DO;
-	else
-	if (nvm->type == e1000_nvm_eeprom_spi)
+	else if (nvm->type == e1000_nvm_eeprom_spi)
 		eecd |= E1000_EECD_DO;
 
 	do {
@@ -1361,5 +1360,3 @@ etrack_id:
 				     eeprom_verl;
 	}
 }
-
-

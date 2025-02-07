@@ -1647,7 +1647,7 @@ s32 e1000_get_speed_and_duplex_copper_generic(struct e1000_hw *hw, u16 *speed,
 		 * and 2.5 Gbps link modes. An additional bit is used
 		 * to differentiate between 1 Gbps and 2.5 Gbps.
 		 */
-		if (hw->mac.type == e1000_i225 &&
+		if ((hw->mac.type == e1000_i225) &&
 		    (status & E1000_STATUS_SPEED_2500)) {
 			*speed = SPEED_2500;
 			DEBUGOUT("2500 Mbs, ");
@@ -1675,7 +1675,7 @@ s32 e1000_get_speed_and_duplex_copper_generic(struct e1000_hw *hw, u16 *speed,
 }
 
 /**
- *  e1000_get_speed_and_duplex_fiber_generic - Retrieve current speed/duplex
+ *  e1000_get_speed_and_duplex_fiber_serdes_generic - return fiber defaults
  *  @hw: pointer to the HW structure
  *  @speed: stores the current speed
  *  @duplex: stores the current duplex

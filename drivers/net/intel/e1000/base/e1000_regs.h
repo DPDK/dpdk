@@ -5,11 +5,14 @@
 #ifndef _E1000_REGS_H_
 #define _E1000_REGS_H_
 
+/* General Register Descriptions */
 #define E1000_CTRL	0x00000  /* Device Control - RW */
 #define E1000_CTRL_DUP	0x00004  /* Device Control Duplicate (Shadow) - RW */
 #define E1000_STATUS	0x00008  /* Device Status - RO */
 #define E1000_EECD	0x00010  /* EEPROM/Flash Control - RW */
 #define E1000_EERD	0x00014  /* EEPROM Read - RW */
+#define E1000_EEWR	0x0102C  /* EEPROM Write Register - RW */
+/* NVM  Register Descriptions */
 #define E1000_CTRL_EXT	0x00018  /* Extended Device Control - RW */
 #define E1000_FLA	0x0001C  /* Flash Access - RW */
 #define E1000_MDIC	0x00020  /* MDI Control - RW */
@@ -96,7 +99,6 @@
 #define E1000_EEARBC_I210	0x12024 /* EEPROM Auto Read Bus Control */
 #define E1000_EEARBC_I225	0x12024 /* EEPROM Auto Read Bus Control */
 #define E1000_FLASHT	0x01028  /* FLASH Timer Register */
-#define E1000_EEWR	0x0102C  /* EEPROM Write Register - RW */
 #define E1000_FLSWCTL	0x01030  /* FLASH control register */
 #define E1000_FLSWDATA	0x01034  /* FLASH data register */
 #define E1000_FLSWCNT	0x01038  /* FLASH Access Counter */
@@ -267,7 +269,6 @@
 				 (0x054E0 + ((_i - 16) * 8)))
 #define E1000_RAH(_i)		(((_i) <= 15) ? (0x05404 + ((_i) * 8)) : \
 				 (0x054E4 + ((_i - 16) * 8)))
-
 #define E1000_VLAPQF		0x055B0  /* VLAN Priority Queue Filter VLAPQF */
 
 #define E1000_SHRAL(_i)		(0x05438 + ((_i) * 8))
@@ -719,7 +720,6 @@
 #define E1000_LTRMINV	0x5BB0 /* LTR Minimum Value */
 #define E1000_LTRMAXV	0x5BB4 /* LTR Maximum Value */
 
-
 /* IEEE 1588 TIMESYNCH */
 #define E1000_TRGTTIML0	0x0B644 /* Target Time Register 0 Low  - RW */
 #define E1000_TRGTTIMH0	0x0B648 /* Target Time Register 0 High - RW */
@@ -728,21 +728,6 @@
 #define E1000_FREQOUT0	0x0B654 /* Frequency Out 0 Control Register - RW */
 #define E1000_FREQOUT1	0x0B658 /* Frequency Out 1 Control Register - RW */
 #define E1000_TSSDP	0x0003C  /* Time Sync SDP Configuration Register - RW */
-
-#define E1000_LTRC_EEEMS_EN			(1 << 5)
-#define E1000_TW_SYSTEM_100_MASK		0xff00
-#define E1000_TW_SYSTEM_100_SHIFT	8
-#define E1000_TW_SYSTEM_1000_MASK	0xff
-#define E1000_LTRMINV_SCALE_1024		0x02
-#define E1000_LTRMINV_SCALE_32768	0x03
-#define E1000_LTRMAXV_SCALE_1024		0x02
-#define E1000_LTRMAXV_SCALE_32768	0x03
-#define E1000_LTRMINV_LTRV_MASK		0x1ff
-#define E1000_LTRMINV_LSNP_REQ		0x80
-#define E1000_LTRMINV_SCALE_SHIFT	10
-#define E1000_LTRMAXV_LTRV_MASK		0x1ff
-#define E1000_LTRMAXV_LSNP_REQ		0x80
-#define E1000_LTRMAXV_SCALE_SHIFT	10
 
 #define E1000_MRQC_ENABLE_MASK		0x00000007
 #define E1000_MRQC_RSS_FIELD_IPV6_EX	0x00080000
