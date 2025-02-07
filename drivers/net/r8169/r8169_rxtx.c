@@ -38,7 +38,7 @@
 
 /* Struct TxDesc in kernel r8169 */
 struct rtl_tx_desc {
-	u32 opts1;
+	RTE_ATOMIC(u32) opts1;
 	u32 opts2;
 	u64 addr;
 	u32 reserved0;
@@ -1264,9 +1264,9 @@ rtl_get_hw_clo_ptr(struct rtl_hw *hw)
 static u32
 rtl_get_opts1(struct rtl_tx_desc *txd)
 {
-	rte_smp_rmb();
+	u32 opts1 = rte_atomic_load_explicit(&txd->opts1, rte_memory_order_acquire);
 
-	return rte_le_to_cpu_32(txd->opts1);
+	return rte_le_to_cpu_32(opts1);
 }
 
 static void
