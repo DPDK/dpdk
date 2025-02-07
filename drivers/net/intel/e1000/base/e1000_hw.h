@@ -1056,6 +1056,7 @@ struct e1000_dev_spec_i225 {
 struct e1000_hw {
 	void *back;
 
+	u8 pf_id;               /* device profile info */
 	u8 *hw_addr;
 	u8 *flash_address;
 	unsigned long io_base;
