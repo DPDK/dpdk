@@ -538,6 +538,7 @@
 #define E1000_FACTPS	0x05B30
 #define E1000_SWSM	0x05B50 /* SW Semaphore */
 #define E1000_FWSM	0x05B54 /* FW Semaphore */
+#define E1000_EXFWSM	0x05B58 /* Extended FW Semaphore */
 /* Driver-only SW semaphore (not used by BOOT agents) */
 #define E1000_SWSM2	0x05B58
 #define E1000_DCA_ID	0x05B70 /* DCA Requester ID Information - RO */

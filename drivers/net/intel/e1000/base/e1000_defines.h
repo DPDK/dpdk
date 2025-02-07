@@ -481,7 +481,8 @@
 
 /* Low Power IDLE Control */
 #define E1000_LPIC_LPIET_SHIFT		24	/* Low Power Idle Entry Time */
-
+#define E1000_EXFWSM_DPG_EXIT_DONE	0x00000001
+#define E1000_EXFWSM_POWER_UP_FROM_ULP_IND	0x00000002
 /* PBA constants */
 #define E1000_PBA_8K		0x0008    /* 8KB */
 #define E1000_PBA_10K		0x000A    /* 10KB */
