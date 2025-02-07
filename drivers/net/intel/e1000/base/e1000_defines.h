@@ -1100,6 +1100,8 @@
 
 #define PHY_CONTROL_LB		0x4000 /* PHY Loopback bit */
 
+#define E1000_PHY_RST_COMP	0x0100 /* Internal PHY reset completion */
+
 /* NVM Control */
 #define E1000_EECD_SK		0x00000001 /* NVM Clock */
 #define E1000_EECD_CS		0x00000002 /* NVM Chip Select */
