@@ -56,4 +56,9 @@ struct { \
  */
 typedef long long ssize_t;
 
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __SIZEOF_LONG__ (sizeof(long))
+#define __SIZEOF_LONG_LONG__ (sizeof(long long))
+#endif
+
 #endif /* _RTE_OS_H_ */
