@@ -277,7 +277,7 @@
 #define E1000_PCH_RAICC(_n)	(0x05F50 + ((_n) * 4))
 
 #define E1000_PCI_VENDOR_ID_REGISTER	0x00
-
+#define E1000_FFLT_DBG_DONT_GATE_WAKE_DMA_CLK 0x1000
 #define E1000_PCI_REVISION_ID_REG	0x08
 void e1000_set_kmrn_lock_loss_workaround_ich8lan(struct e1000_hw *hw,
 						 bool state);

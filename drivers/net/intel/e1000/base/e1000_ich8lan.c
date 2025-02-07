@@ -5050,6 +5050,7 @@ STATIC s32 e1000_init_hw_ich8lan(struct e1000_hw *hw)
 {
 	struct e1000_mac_info *mac = &hw->mac;
 	u32 ctrl_ext, txdctl, snoop;
+	u32 mac_reg;
 	s32 ret_val;
 	u16 i;
 
@@ -5110,6 +5111,12 @@ STATIC s32 e1000_init_hw_ich8lan(struct e1000_hw *hw)
 		snoop = (u32) ~(PCIE_NO_SNOOP_ALL);
 	e1000_set_pcie_no_snoop_generic(hw, snoop);
 
+	/* Enable workaround for packet loss issue on TGL/ADL platforms */
+	if (mac->type == e1000_pch_tgp || mac->type == e1000_pch_adp) {
+		mac_reg = E1000_READ_REG(hw, E1000_FFLT_DBG);
+		mac_reg |= E1000_FFLT_DBG_DONT_GATE_WAKE_DMA_CLK;
+		E1000_WRITE_REG(hw, E1000_FFLT_DBG, mac_reg);
+	}
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	ctrl_ext |= E1000_CTRL_EXT_RO_DIS;
 	E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
