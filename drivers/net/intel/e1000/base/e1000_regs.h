@@ -273,7 +273,7 @@
 				 (0x054E0 + ((_i - 16) * 8)))
 #define E1000_RAH(_i)		(((_i) <= 15) ? (0x05404 + ((_i) * 8)) : \
 				 (0x054E4 + ((_i - 16) * 8)))
-#define E1000_VLAPQF		0x055B0  /* VLAN Priority Queue Filter VLAPQF */
+#define E1000_VLANPQF		0x055B0  /* VLAN Priority Queue Filter VLANPQF */
 
 #define E1000_SHRAL(_i)		(0x05438 + ((_i) * 8))
 #define E1000_SHRAH(_i)		(0x0543C + ((_i) * 8))

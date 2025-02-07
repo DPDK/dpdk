@@ -1510,9 +1510,9 @@
 #define E1000_MAX_MAC_HDR_LEN	127
 #define E1000_MAX_NETWORK_HDR_LEN	511
 
-#define E1000_VLAPQF_QUEUE_SEL(_n, q_idx) ((q_idx) << ((_n) * 4))
-#define E1000_VLAPQF_P_VALID(_n)	(0x1 << (3 + (_n) * 4))
-#define E1000_VLAPQF_QUEUE_MASK	0x03
+#define E1000_VLANPQF_QSEL(_n, q_idx)	((q_idx) << ((_n) * 4))
+#define E1000_VLANPQF_VALID(_n)		(0x1 << (3 + (_n) * 4))
+#define E1000_VLANPQF_QUEUE_MASK	0x03
 #define E1000_VFTA_BLOCK_SIZE	8
 /* SerDes Control */
 #define E1000_GEN_CTL_READY		0x80000000
