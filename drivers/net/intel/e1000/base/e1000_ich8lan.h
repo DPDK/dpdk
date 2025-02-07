@@ -48,6 +48,7 @@
 
 #define E1000_H2ME		0x05B50    /* Host to ME */
 #define E1000_H2ME_ULP		0x00000800 /* ULP Indication Bit */
+#define E1000_H2ME_HOST_WOL_ON_ULP_EXIT	0x00000008 /* Host WOL on ULP exit */
 #define E1000_H2ME_ENFORCE_SETTINGS	0x00001000 /* Enforce Settings */
 
 #define ID_LED_DEFAULT_ICH8LAN	((ID_LED_DEF1_DEF2 << 12) | \

@@ -1293,7 +1293,7 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 			E1000_WRITE_REG(hw, E1000_H2ME, mac_reg);
 		}
 
-		if (hw->mac.type == e1000_pch_cnp)
+		if (hw->mac.type >= e1000_pch_cnp)
 			ulp_exit_timeout = 100;
 
 		while (E1000_READ_REG(hw, E1000_FWSM) &

@@ -1021,6 +1021,7 @@ struct e1000_dev_spec_ich8lan {
 	u16 eee_lp_ability;
 	enum e1000_ulp_state ulp_state;
 	bool ulp_capability_disabled;
+	bool wake_on_ulp_exit;
 	bool during_suspend_flow;
 	bool during_dpg_exit;
 	u16 lat_enc;
