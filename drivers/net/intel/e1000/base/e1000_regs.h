@@ -12,6 +12,8 @@
 #define E1000_EECD	0x00010  /* EEPROM/Flash Control - RW */
 #define E1000_EERD	0x00014  /* EEPROM Read - RW */
 #define E1000_EEWR	0x0102C  /* EEPROM Write Register - RW */
+#define E1000_EERD_V2	0x12014  /* EEprom mode read - RW */
+#define E1000_EEWR_V2	0x12018  /* EEprom mode write - RW */
 /* NVM  Register Descriptions */
 #define E1000_CTRL_EXT	0x00018  /* Extended Device Control - RW */
 #define E1000_FLA	0x0001C  /* Flash Access - RW */
@@ -23,6 +25,7 @@
 #define E1000_BARCTRL			0x5BBC /* BAR ctrl reg */
 #define E1000_BARCTRL_FLSIZE		0x0700 /* BAR ctrl Flsize */
 #define E1000_BARCTRL_CSRSIZE		0x2000 /* BAR ctrl CSR size */
+#define E1000_BARCTRL_CSRSIZE_SHIFT	13
 #define E1000_MPHY_ADDR_CTRL	0x0024 /* GbE MPHY Address Control */
 #define E1000_MPHY_DATA		0x0E10 /* GBE MPHY Data */
 #define E1000_MPHY_STAT		0x0E0C /* GBE MPHY Statistics */
@@ -33,6 +36,7 @@
 #define E1000_FCAL	0x00028  /* Flow Control Address Low - RW */
 #define E1000_FCAH	0x0002C  /* Flow Control Address High -RW */
 #define E1000_FEXT	0x0002C  /* Future Extended - RW */
+#define E1000_I225_FLA		0x1201C /* FLASH access register */
 #define E1000_I225_FLSWCTL	0x12048 /* FLASH control register */
 #define E1000_I225_FLSWDATA	0x1204C /* FLASH data register */
 #define E1000_I225_FLSWCNT	0x12050 /* FLASH Access Counter */

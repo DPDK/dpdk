@@ -948,6 +948,11 @@
 #define E1000_EEE_SU_LPI_CLK_STP	0x00800000 /* EEE LPI Clock Stop */
 #define E1000_EEE_LP_ADV_DEV_I225	7          /* EEE LP Adv Device */
 #define E1000_EEE_LP_ADV_ADDR_I225	61         /* EEE LP Adv Register */
+#define E1000_EEE_LP_ADV_2_5G           0          /* EEE LP Adv 2.5G */
+#define E1000_EEE_LP_ADV_1G             2          /* EEE LP Adv 1G */
+#define E1000_EEE_LP_ADV_100M           1          /* EEE LP Adv 100M */
+#define E1000_ANEG_EEE_AN_LPAB1_I225    26         /* EEE LP Ability 1 Offset */
+#define E1000_ANEG_EEE_AN_LPAB2_I225    0x2A       /* EEE LP Ability 2 Offset */
 
 /* PCI Express Control */
 #define E1000_GCR_RXD_NO_SNOOP		0x00000001
