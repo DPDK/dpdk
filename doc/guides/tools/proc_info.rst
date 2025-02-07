@@ -17,7 +17,7 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-proc-info -- -m | [-p PORTMASK] [--stats | --xstats |
+   ./<build_dir>/app/dpdk-proc-info -- -m | [-p PORTMASK] [--stats | --xstats[=hide_zero] |
    --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
    --show-ring[=name] | --show-mempool[=name] | --iter-mempool=name |
    --show-port-private | --version | --firmware-version | --show-rss-reta |
@@ -34,9 +34,10 @@ Parameters
 The stats parameter controls the printing of generic port statistics. If no
 port mask is specified stats are printed for all DPDK ports.
 
-**--xstats**
-The xstats parameter controls the printing of extended port statistics. If no
-port mask is specified xstats are printed for all DPDK ports.
+**--xstats[=hide_zero]**
+The xstats parameter controls the printing of extended port statistics.
+If no port mask is specified, xstats are printed for all DPDK ports.
+Specifying the ``hide_zero`` value will hide empty counters.
 
 **--stats-reset**
 The stats-reset parameter controls the resetting of generic port statistics. If

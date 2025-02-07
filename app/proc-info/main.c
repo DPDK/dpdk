@@ -61,6 +61,7 @@ static unsigned long enabled_port_mask;
 static uint32_t enable_stats;
 /* Enable xstats. */
 static uint32_t enable_xstats;
+static uint32_t enable_xstats_hide_zero;
 /* Enable collectd format */
 static uint32_t enable_collectd_format;
 /* FD to send collectd format messages to STDOUT */
@@ -162,8 +163,8 @@ proc_info_usage(const char *prgname)
 		"  -m to display DPDK memory zones, segments and TAILQ information\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to retrieve stats for\n"
 		"  --stats: to display port statistics, enabled by default\n"
-		"  --xstats: to display extended port statistics, disabled by "
-			"default\n"
+		"  --xstats[=hide_zero]: to display extended port statistics, disabled by default, "
+			"support hide zero.\n"
 #ifdef RTE_LIB_METRICS
 		"  --metrics: to display derived metrics of the ports, disabled by "
 			"default\n"
@@ -425,7 +426,7 @@ proc_info_parse_args(int argc, char **argv)
 	static struct option long_option[] = {
 		{"stats", 0, NULL, 0},
 		{"stats-reset", 0, NULL, 0},
-		{"xstats", 0, NULL, 0},
+		{"xstats", optional_argument, NULL, 0},
 #ifdef RTE_LIB_METRICS
 		{"metrics", 0, NULL, 0},
 #endif
@@ -476,12 +477,17 @@ proc_info_parse_args(int argc, char **argv)
 		case 0:
 			/* Print stats */
 			if (!strncmp(long_option[option_index].name, "stats",
-					MAX_LONG_OPT_SZ))
+					MAX_LONG_OPT_SZ)) {
 				enable_stats = 1;
 			/* Print xstats */
-			else if (!strncmp(long_option[option_index].name, "xstats",
-					MAX_LONG_OPT_SZ))
+			} else if (!strncmp(long_option[option_index].name, "xstats",
+					MAX_LONG_OPT_SZ)) {
 				enable_xstats = 1;
+				if (optarg != NULL && !strncmp(optarg, "hide_zero",
+				    MAX_LONG_OPT_SZ))
+					enable_xstats_hide_zero = 1;
+
+			}
 #ifdef RTE_LIB_METRICS
 			else if (!strncmp(long_option[option_index].name,
 					"metrics",
@@ -850,6 +856,8 @@ nic_xstats_display(uint16_t port_id)
 	}
 
 	for (i = 0; i < len; i++) {
+		if (enable_xstats_hide_zero && values[i] == 0)
+			continue;
 		if (enable_collectd_format) {
 			char counter_type[MAX_STRING_LEN];
 			char buf[MAX_STRING_LEN];
