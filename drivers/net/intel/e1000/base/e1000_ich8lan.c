@@ -4366,13 +4366,23 @@ STATIC s32 e1000_validate_nvm_checksum_ich8lan(struct e1000_hw *hw)
 		return ret_val;
 
 	if (!(data & valid_csum_mask)) {
-		data |= valid_csum_mask;
-		ret_val = hw->nvm.ops.write(hw, word, 1, &data);
-		if (ret_val)
-			return ret_val;
-		ret_val = hw->nvm.ops.update(hw);
-		if (ret_val)
-			return ret_val;
+		DEBUGOUT("NVM checksum valid bit not set");
+
+		if (hw->mac.type < e1000_pch_tgp) {
+			data |= valid_csum_mask;
+			ret_val = hw->nvm.ops.write(hw, word, 1, &data);
+			if (ret_val)
+				return ret_val;
+			ret_val = hw->nvm.ops.update(hw);
+			if (ret_val)
+				return ret_val;
+		} else if (hw->mac.type == e1000_pch_tgp) {
+			/* Tiger Lake systems may have uninitialized NVM
+			 * checksum. Since the NVM cannot be updated by
+			 * software, do not validate the checksum.
+			 */
+			return E1000_SUCCESS;
+		}
 	}
 
 	return e1000_validate_nvm_checksum_generic(hw);
