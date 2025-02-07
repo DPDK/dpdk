@@ -144,6 +144,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* graph: Added ``graph`` field to the ``rte_node.dispatch`` structure.
+
 
 ABI Changes
 -----------

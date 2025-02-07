@@ -120,11 +120,14 @@ __rte_graph_mcore_dispatch_sched_node_enqueue(struct rte_node *node,
 					      struct rte_graph_rq_head *rq)
 {
 	const unsigned int lcore_id = node->dispatch.lcore_id;
-	struct rte_graph *graph;
+	struct rte_graph *graph = node->dispatch.graph;
 
-	SLIST_FOREACH(graph, rq, next)
-		if (graph->dispatch.lcore_id == lcore_id)
-			break;
+	if (unlikely((!graph) || (graph->dispatch.lcore_id != lcore_id))) {
+		SLIST_FOREACH(graph, rq, next)
+			if (graph->dispatch.lcore_id == lcore_id)
+				break;
+		node->dispatch.graph = graph;
+	}
 
 	return graph != NULL ? __graph_sched_node_enqueue(node, graph) : false;
 }
