@@ -1392,49 +1392,51 @@ s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
 	if (ret_val)
 		goto release;
 	/* CSC interrupt received due to ULP Indication */
-	if ((phy_reg & I218_ULP_CONFIG1_IND) || force) {
-		phy_reg &= ~(I218_ULP_CONFIG1_IND |
-			     I218_ULP_CONFIG1_STICKY_ULP |
-			     I218_ULP_CONFIG1_RESET_TO_SMBUS |
-			     I218_ULP_CONFIG1_WOL_HOST |
-			     I218_ULP_CONFIG1_INBAND_EXIT |
-			     I218_ULP_CONFIG1_EN_ULP_LANPHYPC |
-			     I218_ULP_CONFIG1_DIS_CLR_STICKY_ON_PERST |
-			     I218_ULP_CONFIG1_DISABLE_SMB_PERST);
-		e1000_write_phy_reg_hv_locked(hw, I218_ULP_CONFIG1, phy_reg);
+	if (!((phy_reg & I218_ULP_CONFIG1_IND) || force))
+		goto omit_ulp_irq_hanlder;
 
-		/* Commit ULP changes by starting auto ULP configuration */
-		phy_reg |= I218_ULP_CONFIG1_START;
-		e1000_write_phy_reg_hv_locked(hw, I218_ULP_CONFIG1, phy_reg);
+	phy_reg &= ~(I218_ULP_CONFIG1_IND |
+			 I218_ULP_CONFIG1_STICKY_ULP |
+			 I218_ULP_CONFIG1_RESET_TO_SMBUS |
+			 I218_ULP_CONFIG1_WOL_HOST |
+			 I218_ULP_CONFIG1_INBAND_EXIT |
+			 I218_ULP_CONFIG1_EN_ULP_LANPHYPC |
+			 I218_ULP_CONFIG1_DIS_CLR_STICKY_ON_PERST |
+			 I218_ULP_CONFIG1_DISABLE_SMB_PERST);
+	e1000_write_phy_reg_hv_locked(hw, I218_ULP_CONFIG1, phy_reg);
 
-		/* Clear Disable SMBus Release on PERST# in MAC */
-		mac_reg = E1000_READ_REG(hw, E1000_FEXTNVM7);
-		mac_reg &= ~E1000_FEXTNVM7_DISABLE_SMB_PERST;
-		E1000_WRITE_REG(hw, E1000_FEXTNVM7, mac_reg);
+	/* Commit ULP changes by starting auto ULP configuration */
+	phy_reg |= I218_ULP_CONFIG1_START;
+	e1000_write_phy_reg_hv_locked(hw, I218_ULP_CONFIG1, phy_reg);
 
-		if (!force) {
-			hw->phy.ops.release(hw);
+	/* Clear Disable SMBus Release on PERST# in MAC */
+	mac_reg = E1000_READ_REG(hw, E1000_FEXTNVM7);
+	mac_reg &= ~E1000_FEXTNVM7_DISABLE_SMB_PERST;
+	E1000_WRITE_REG(hw, E1000_FEXTNVM7, mac_reg);
 
-			if (hw->mac.autoneg)
-				e1000_phy_setup_autoneg(hw);
-			else
-				e1000_setup_copper_link_generic(hw);
+	if (!force) {
+		hw->phy.ops.release(hw);
 
-			e1000_sw_lcd_config_ich8lan(hw);
+		if (hw->mac.autoneg)
+			e1000_phy_setup_autoneg(hw);
+		else
+			e1000_setup_copper_link_generic(hw);
 
-			e1000_oem_bits_config_ich8lan(hw, true);
+		e1000_sw_lcd_config_ich8lan(hw);
 
-			/* Set ULP state to unknown and return non-zero to
-			 * indicate no link (yet) and re-enter on the next LSC
-			 * to finish disabling ULP flow.
-			 */
-			hw->dev_spec.ich8lan.ulp_state =
-			    e1000_ulp_state_unknown;
+		e1000_oem_bits_config_ich8lan(hw, true);
 
-			return 1;
-		}
+		/* Set ULP state to unknown and return non-zero to
+		 * indicate no link (yet) and re-enter on the next LSC
+		 * to finish disabling ULP flow.
+		 */
+		hw->dev_spec.ich8lan.ulp_state =
+			e1000_ulp_state_unknown;
+
+		return 1;
 	}
 
+omit_ulp_irq_hanlder:
 	/* Re-enable Tx */
 	mac_reg = E1000_READ_REG(hw, E1000_TCTL);
 	mac_reg |= E1000_TCTL_EN;
