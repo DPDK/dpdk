@@ -2427,6 +2427,18 @@ s32 e1000_configure_k1_ich8lan(struct e1000_hw *hw, bool k1_enable)
 
 	DEBUGFUNC("e1000_configure_k1_ich8lan");
 
+	/* Due to clock synchronization issue on MTL and above prior to
+	 * disabling k1 it is required to disable P0s state
+	 */
+	if ((!k1_enable) && (hw->mac.type >= e1000_pch_mtp)) {
+		u32 fextnvm12 = E1000_READ_REG(hw, E1000_FEXTNVM12);
+		fextnvm12 |= (1 << 23);
+		fextnvm12 &= ~((1 << 22));
+		E1000_WRITE_REG(hw, E1000_FEXTNVM12, fextnvm12);
+
+		usec_delay(100);
+	}
+
 	ret_val = e1000_read_kmrn_reg_locked(hw, E1000_KMRNCTRLSTA_K1_CONFIG,
 					     &kmrn_reg);
 	if (ret_val)
