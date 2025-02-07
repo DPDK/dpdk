@@ -4885,21 +4885,20 @@ STATIC s32 e1000_id_led_init_pchlan(struct e1000_hw *hw)
 STATIC s32 e1000_get_bus_info_ich8lan(struct e1000_hw *hw)
 {
 	struct e1000_bus_info *bus = &hw->bus;
-	s32 ret_val;
 
 	DEBUGFUNC("e1000_get_bus_info_ich8lan");
 
-	ret_val = e1000_get_bus_info_pcie_generic(hw);
-
 	/* ICH devices are "PCI Express"-ish.  They have
 	 * a configuration space, but do not contain
-	 * PCI Express Capability registers, so bus width
+	 * PCI Express Capability registers, so bus parameters
 	 * must be hardcoded.
 	 */
-	if (bus->width == e1000_bus_width_unknown)
-		bus->width = e1000_bus_width_pcie_x1;
+	bus->type = e1000_bus_type_pci_express;
+	bus->width = e1000_bus_width_pcie_x1;
+	bus->speed = e1000_bus_speed_unknown;
+	bus->func = 0;
 
-	return ret_val;
+	return E1000_SUCCESS;
 }
 
 /**
