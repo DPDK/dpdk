@@ -1049,6 +1049,7 @@ struct e1000_dev_spec_vf {
 struct e1000_dev_spec_i225 {
 	bool global_device_reset;
 	bool eee_disable;
+	bool wait_for_valid_phy_id_read;
 	bool clear_semaphore_once;
 	bool module_plugged;
 	u8 media_port;

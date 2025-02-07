@@ -143,8 +143,10 @@ static s32 e1000_init_mac_params_i225(struct e1000_hw *hw)
 static s32 e1000_init_phy_params_i225(struct e1000_hw *hw)
 {
 	struct e1000_phy_info *phy = &hw->phy;
+	u16 phy_id_retries = 1, phy_id_retries_interval_ms = 100;
 	s32 ret_val = E1000_SUCCESS;
 	u32 ctrl_ext;
+	u16 i = 0;
 
 	DEBUGFUNC("e1000_init_phy_params_i225");
 
@@ -184,10 +186,48 @@ static s32 e1000_init_phy_params_i225(struct e1000_hw *hw)
 	phy->ops.read_reg = e1000_read_phy_reg_gpy;
 	phy->ops.write_reg = e1000_write_phy_reg_gpy;
 
-	ret_val = e1000_get_phy_id(hw);
-	phy->type = e1000_phy_i225;
+	if (hw->dev_spec._i225.wait_for_valid_phy_id_read) {
+		phy_id_retries = 10;
+		DEBUGOUT1("Going to wait %d ms for a valid PHY ID read...\n",
+			  phy_id_retries * phy_id_retries_interval_ms);
+	}
 
+	for (i = 0; i < phy_id_retries; i++) {
+		ret_val = e1000_get_phy_id(hw);
+		phy->id &= I225_I_PHY_ID_MASK;
+		DEBUGOUT1("PHY ID value = 0x%08x\n", phy->id);
 
+		/*
+		* IGC/IGB merge note: in base code, there was a PHY ID check for
+		* I225 at this point. However, in DPDK version of IGC this check
+		* was removed because it interfered with some i225-based NICs,
+		* and it was deemed unnecessary because only the i225 NIC
+		* would've called this code anyway because it was in the IGC
+		* driver.
+		*
+		* This code was then amended apparently because there were
+		* issues wih reading PHY ID on some platforms, and PHY ID read
+		* was to be retried multiple times. However, the original fix in
+		* the base code still had the PHY ID check, and it is now
+		* necessary because there is a chance to read an invalid PHY ID.
+		* So, in backport, it was decided to replace the equality check
+		* with a non-zero condition, because the "invalid" PHY ID as
+		* reported in the original issue, was 0. So, as long as we read
+		* a non-zero PHY ID, we consider it valid.
+		*/
+		if (phy->id != 0) {
+			phy->type = e1000_phy_i225;
+			phy->ops.set_d0_lplu_state = e1000_set_d0_lplu_state_i225;
+			phy->ops.set_d3_lplu_state = e1000_set_d3_lplu_state_i225;
+
+			return ret_val;
+		}
+
+		msec_delay(phy_id_retries_interval_ms);
+	}
+
+	DEBUGOUT("Failed to read PHY ID\n");
+	ret_val = E1000_ERR_PHY;
 out:
 	return ret_val;
 }
