@@ -907,7 +907,7 @@ s32 e1000_pool_flash_update_done_i225(struct e1000_hw *hw)
  * Set the LTR thresholds based on the link speed (Mbps), EEE, and DMAC
  * settings, otherwise specify that there is no LTR requirement.
  */
-static s32 e1000_set_ltr_i225(struct e1000_hw *hw, bool link)
+s32 e1000_set_ltr_i225(struct e1000_hw *hw, bool link)
 {
 	u16 speed, duplex;
 	u32 tw_system, ltrc, ltrv, ltr_min, ltr_max, scale_min, scale_max;

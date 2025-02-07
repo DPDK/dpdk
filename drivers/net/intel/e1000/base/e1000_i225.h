@@ -20,6 +20,7 @@ s32 e1000_write_erase_flash_command_i225(struct e1000_hw *hw, u32 opcode,
 s32 e1000_id_led_init_i225(struct e1000_hw *hw);
 s32 e1000_blink_led_i225(struct e1000_hw *hw);
 s32 e1000_check_for_link_i225(struct e1000_hw *hw);
+s32 e1000_set_ltr_i225(struct e1000_hw *hw, bool link);
 s32 e1000_acquire_swfw_sync_i225(struct e1000_hw *hw, u16 mask);
 void e1000_release_swfw_sync_i225(struct e1000_hw *hw, u16 mask);
 s32 e1000_init_hw_i225(struct e1000_hw *hw);
