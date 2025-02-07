@@ -68,6 +68,8 @@ s32  e1000_read_phy_reg_bm2(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_write_phy_reg_bm2(struct e1000_hw *hw, u32 offset, u16 data);
 void e1000_power_up_phy_copper(struct e1000_hw *hw);
 void e1000_power_down_phy_copper(struct e1000_hw *hw);
+void e1000_disable_phy_retry_mechanism(struct e1000_hw *hw, u32 *phy_retries_original);
+void e1000_enable_phy_retry_mechanism(struct e1000_hw *hw, u32 phy_retries_original);
 s32  e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data);
 s32  e1000_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data);
 s32  e1000_read_phy_reg_i2c(struct e1000_hw *hw, u32 offset, u16 *data);

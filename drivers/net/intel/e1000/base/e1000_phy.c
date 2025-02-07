@@ -253,6 +253,22 @@ s32 e1000_phy_reset_dsp_generic(struct e1000_hw *hw)
 	return hw->phy.ops.write_reg(hw, M88E1000_PHY_GEN_CONTROL, 0);
 }
 
+void e1000_disable_phy_retry_mechanism(struct e1000_hw* hw, u32* phy_retries_original)
+{
+	DEBUGFUNC("e1000_disable_phy_retry_mechanism");
+
+	*phy_retries_original = hw->phy.current_retry_counter;
+
+	hw->phy.current_retry_counter = 0;
+}
+
+void e1000_enable_phy_retry_mechanism(struct e1000_hw* hw, u32 phy_retries_original)
+{
+	DEBUGFUNC("e1000_enable_phy_retry_mechanism");
+
+	hw->phy.current_retry_counter = phy_retries_original;
+}
+
 /**
  *  e1000_read_phy_reg_mdic - Read MDI control register
  *  @hw: pointer to the HW structure
@@ -265,7 +281,8 @@ s32 e1000_phy_reset_dsp_generic(struct e1000_hw *hw)
 s32 e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	u32 i, mdic = 0;
+	u32 i, mdic = 0, retry_counter;
+	bool success;
 
 	DEBUGFUNC("e1000_read_phy_reg_mdic");
 
@@ -278,45 +295,59 @@ s32 e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data)
 	 * Control register.  The MAC will take care of interfacing with the
 	 * PHY to retrieve the desired data.
 	 */
-	mdic = ((offset << E1000_MDIC_REG_SHIFT) |
-		(phy->addr << E1000_MDIC_PHY_SHIFT) |
-		(E1000_MDIC_OP_READ));
 
-	E1000_WRITE_REG(hw, E1000_MDIC, mdic);
+	for (retry_counter = 0; retry_counter <= hw->phy.current_retry_counter; retry_counter++) {
+		success = true;
 
-	/* Poll the ready bit to see if the MDI read completed
-	 * Increasing the time out as testing showed failures with
-	 * the lower time out
-	 */
-	for (i = 0; i < (E1000_GEN_POLL_TIMEOUT * 3); i++) {
-		usec_delay_irq(50);
-		mdic = E1000_READ_REG(hw, E1000_MDIC);
-		if (mdic & E1000_MDIC_READY)
-			break;
-	}
-	if (!(mdic & E1000_MDIC_READY)) {
-		DEBUGOUT("MDI Read did not complete\n");
-		return -E1000_ERR_PHY;
-	}
-	if (mdic & E1000_MDIC_ERROR) {
-		DEBUGOUT("MDI Error\n");
-		return -E1000_ERR_PHY;
-	}
-	if (((mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT) != offset) {
-		DEBUGOUT2("MDI Read offset error - requested %d, returned %d\n",
-			  offset,
-			  (mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT);
-		return -E1000_ERR_PHY;
-	}
-	*data = (u16) mdic;
+		mdic = ((offset << E1000_MDIC_REG_SHIFT) |
+			(phy->addr << E1000_MDIC_PHY_SHIFT) |
+			(E1000_MDIC_OP_READ));
 
-	/* Allow some time after each MDIC transaction to avoid
-	 * reading duplicate data in the next MDIC transaction.
-	 */
-	if (hw->mac.type == e1000_pch2lan)
-		usec_delay_irq(100);
+		E1000_WRITE_REG(hw, E1000_MDIC, mdic);
 
-	return E1000_SUCCESS;
+		/* Poll the ready bit to see if the MDI read completed
+		 * Increasing the time out as testing showed failures with
+		 * the lower time out
+		 */
+		for (i = 0; i < (E1000_GEN_POLL_TIMEOUT * 3); i++) {
+			usec_delay_irq(50);
+			mdic = E1000_READ_REG(hw, E1000_MDIC);
+			if (mdic & E1000_MDIC_READY)
+				break;
+		}
+		if (!(mdic & E1000_MDIC_READY)) {
+			DEBUGOUT("MDI Read did not complete\n");
+			success = false;
+		}
+		if (mdic & E1000_MDIC_ERROR) {
+			DEBUGOUT("MDI Error\n");
+			success = false;
+		}
+		if (((mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT) != offset) {
+			DEBUGOUT2("MDI Read offset error - requested %d, returned %d\n",
+				offset,
+				(mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT);
+			success = false;
+		}
+
+		 /* Allow some time after each MDIC transaction to avoid
+		  * reading duplicate data in the next MDIC transaction.
+		  */
+		if (hw->mac.type == e1000_pch2lan)
+			usec_delay_irq(100);
+
+		if (success) {
+			*data = (u16)mdic;
+			return E1000_SUCCESS;
+		}
+		if (retry_counter != hw->phy.current_retry_counter) {
+			DEBUGOUT("Perform retry on PHY transaction...\n");
+			msec_delay_irq(10);
+		}
+	}
+
+
+	return -E1000_ERR_PHY;
 }
 
 /**
@@ -330,7 +361,8 @@ s32 e1000_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data)
 s32 e1000_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data)
 {
 	struct e1000_phy_info *phy = &hw->phy;
-	u32 i, mdic = 0;
+	u32 i, mdic = 0, retry_counter;
+	bool success;
 
 	DEBUGFUNC("e1000_write_phy_reg_mdic");
 
@@ -343,45 +375,58 @@ s32 e1000_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data)
 	 * Control register.  The MAC will take care of interfacing with the
 	 * PHY to retrieve the desired data.
 	 */
-	mdic = (((u32)data) |
-		(offset << E1000_MDIC_REG_SHIFT) |
-		(phy->addr << E1000_MDIC_PHY_SHIFT) |
-		(E1000_MDIC_OP_WRITE));
 
-	E1000_WRITE_REG(hw, E1000_MDIC, mdic);
+	for (retry_counter = 0; retry_counter <= hw->phy.current_retry_counter; retry_counter++) {
+		success = true;
 
-	/* Poll the ready bit to see if the MDI read completed
-	 * Increasing the time out as testing showed failures with
-	 * the lower time out
-	 */
-	for (i = 0; i < (E1000_GEN_POLL_TIMEOUT * 3); i++) {
-		usec_delay_irq(50);
-		mdic = E1000_READ_REG(hw, E1000_MDIC);
-		if (mdic & E1000_MDIC_READY)
-			break;
-	}
-	if (!(mdic & E1000_MDIC_READY)) {
-		DEBUGOUT("MDI Write did not complete\n");
-		return -E1000_ERR_PHY;
-	}
-	if (mdic & E1000_MDIC_ERROR) {
-		DEBUGOUT("MDI Error\n");
-		return -E1000_ERR_PHY;
-	}
-	if (((mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT) != offset) {
-		DEBUGOUT2("MDI Write offset error - requested %d, returned %d\n",
-			  offset,
-			  (mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT);
-		return -E1000_ERR_PHY;
+		mdic = (((u32)data) |
+			(offset << E1000_MDIC_REG_SHIFT) |
+			(phy->addr << E1000_MDIC_PHY_SHIFT) |
+			(E1000_MDIC_OP_WRITE));
+
+		E1000_WRITE_REG(hw, E1000_MDIC, mdic);
+
+		/* Poll the ready bit to see if the MDI read completed
+		 * Increasing the time out as testing showed failures with
+		 * the lower time out
+		 */
+		for (i = 0; i < (E1000_GEN_POLL_TIMEOUT * 3); i++) {
+			usec_delay_irq(50);
+			mdic = E1000_READ_REG(hw, E1000_MDIC);
+			if (mdic & E1000_MDIC_READY)
+				break;
+		}
+		if (!(mdic & E1000_MDIC_READY)) {
+			DEBUGOUT("MDI Write did not complete\n");
+			success = false;
+		}
+		if (mdic & E1000_MDIC_ERROR) {
+			DEBUGOUT("MDI Error\n");
+			success = false;
+		}
+		if (((mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT) != offset) {
+			DEBUGOUT2("MDI Write offset error - requested %d, returned %d\n",
+				offset,
+				(mdic & E1000_MDIC_REG_MASK) >> E1000_MDIC_REG_SHIFT);
+			success = false;
+		}
+
+		 /* Allow some time after each MDIC transaction to avoid
+		  * reading duplicate data in the next MDIC transaction.
+		  */
+		if (hw->mac.type == e1000_pch2lan)
+			usec_delay_irq(100);
+
+		if (success)
+			return E1000_SUCCESS;
+
+		if (retry_counter != hw->phy.current_retry_counter) {
+			DEBUGOUT("Perform retry on PHY transaction...\n");
+			msec_delay_irq(10);
+		}
 	}
 
-	/* Allow some time after each MDIC transaction to avoid
-	 * reading duplicate data in the next MDIC transaction.
-	 */
-	if (hw->mac.type == e1000_pch2lan)
-		usec_delay_irq(100);
-
-	return E1000_SUCCESS;
+	return -E1000_ERR_PHY;
 }
 
 /**
