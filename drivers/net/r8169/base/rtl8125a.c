@@ -5,7 +5,7 @@
 #include "../r8169_ethdev.h"
 #include "../r8169_hw.h"
 #include "../r8169_phy.h"
-#include "rtl8125a_mcu.h"
+#include "rtl8125a.h"
 
 /* For RTL8125A, CFG_METHOD_48,49 */
 
@@ -139,7 +139,7 @@ rtl_hw_phy_config_8125a_1(struct rtl_hw *hw)
 	rtl_set_eth_phy_ocp_bit(hw, 0xA442, BIT_11);
 }
 
-static void
+void
 rtl_hw_phy_config_8125a_2(struct rtl_hw *hw)
 {
 	u16 adccal_offset_p0;

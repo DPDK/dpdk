@@ -5,7 +5,7 @@
 #include "../r8169_ethdev.h"
 #include "../r8169_hw.h"
 #include "../r8169_phy.h"
-#include "rtl8125b_mcu.h"
+#include "rtl8125b.h"
 
 /* For RTL8125B, CFG_METHOD_50,51 */
 

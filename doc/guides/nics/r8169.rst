@@ -4,7 +4,7 @@
 R8169 Poll Mode Driver
 ======================
 
-The R8169 PMD provides poll mode driver support for Realtek 2.5 and 5 Gigabit
+The R8169 PMD provides poll mode driver support for Realtek 1, 2.5 and 5 Gigabit
 Ethernet NICs.
 
 More information about Realtek 2.5G Ethernet NIC can be found at `RTL8125
@@ -15,6 +15,7 @@ More information about Realtek 5G Ethernet NIC can be found at `RTL8126
 Supported Chipsets and NICs
 ---------------------------
 
+- Realtek RTL8168 1 Gigabit Ethernet Controller
 - Realtek RTL8125 2.5 Gigabit Ethernet Controller
 - Realtek RTL8126 5 Gigabit Ethernet Controller
 

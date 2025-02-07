@@ -79,7 +79,8 @@ rtl_eri_read_with_oob_base_address(struct rtl_hw *hw, int addr, int len,
 
 static int
 rtl_eri_write_with_oob_base_address(struct rtl_hw *hw, int addr,
-				    int len, u32 value, int type, const u32 base_address)
+				    int len, u32 value, int type,
+				    const u32 base_address)
 {
 	int i, val_shift, shift = 0;
 	u32 value1 = 0;
@@ -160,7 +161,8 @@ rtl_ocp_read(struct rtl_hw *hw, u16 addr, u8 len)
 		return 0xffffffff;
 
 	if (hw->HwSuppOcpChannelVer == 2)
-		value = rtl_ocp_read_with_oob_base_address(hw, addr, len, NO_BASE_ADDRESS);
+		value = rtl_ocp_read_with_oob_base_address(hw, addr, len,
+							   NO_BASE_ADDRESS);
 
 	return value;
 }
@@ -180,7 +182,8 @@ rtl_ocp_write(struct rtl_hw *hw, u16 addr, u8 len, u32 value)
 		return;
 
 	if (hw->HwSuppOcpChannelVer == 2)
-		rtl_ocp_write_with_oob_base_address(hw, addr, len, value, NO_BASE_ADDRESS);
+		rtl_ocp_write_with_oob_base_address(hw, addr, len, value,
+						    NO_BASE_ADDRESS);
 }
 
 void
@@ -815,6 +818,11 @@ rtl_set_hw_ops(struct rtl_hw *hw)
 	case CFG_METHOD_50:
 	case CFG_METHOD_51:
 		hw->hw_ops = rtl8125b_ops;
+		return 0;
+	/* 8168KB */
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+		hw->hw_ops = rtl8168kb_ops;
 		return 0;
 	/* 8125BP */
 	case CFG_METHOD_54:
@@ -1470,7 +1478,7 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 int
 rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea)
 {
-	u8 mac_addr[MAC_ADDR_LEN];
+	u8 mac_addr[MAC_ADDR_LEN] = {0};
 
 	switch (hw->mcfg) {
 	case CFG_METHOD_48 ... CFG_METHOD_57:

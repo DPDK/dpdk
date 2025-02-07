@@ -5,7 +5,7 @@
 #include "../r8169_ethdev.h"
 #include "../r8169_hw.h"
 #include "../r8169_phy.h"
-#include "rtl8125b_mcu.h"
+#include "rtl8125b.h"
 
 /* For RTL8125B, CFG_METHOD_50,51 */
 
@@ -285,7 +285,7 @@ rtl_hw_phy_config_8125b_1(struct rtl_hw *hw)
 	rtl_set_eth_phy_ocp_bit(hw, 0xA438, BIT_12);
 }
 
-static void
+void
 rtl_hw_phy_config_8125b_2(struct rtl_hw *hw)
 {
 	rtl_set_eth_phy_ocp_bit(hw, 0xA442, BIT_11);

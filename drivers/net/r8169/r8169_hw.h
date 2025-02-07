@@ -65,6 +65,7 @@ extern const struct rtl_hw_ops rtl8125b_ops;
 extern const struct rtl_hw_ops rtl8125bp_ops;
 extern const struct rtl_hw_ops rtl8125d_ops;
 extern const struct rtl_hw_ops rtl8126a_ops;
+extern const struct rtl_hw_ops rtl8168kb_ops;
 
 #define NO_BASE_ADDRESS 0x00000000
 

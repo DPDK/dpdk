@@ -378,6 +378,8 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* fallthrough */
 	case RTL8125A:
 	case RTL8125B:
+	case RTL8125BP:
+	case RTL8125D:
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_2_5G;
 		break;
 	}
