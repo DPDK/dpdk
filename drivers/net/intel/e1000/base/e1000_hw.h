@@ -748,6 +748,7 @@ struct e1000_mac_operations {
 	void (*update_mc_addr_list)(struct e1000_hw *, u8 *, u32);
 	s32  (*reset_hw)(struct e1000_hw *);
 	s32  (*init_hw)(struct e1000_hw *);
+	s32  (*set_eee)(struct e1000_hw *, bool, bool, bool);
 	void (*shutdown_serdes)(struct e1000_hw *);
 	void (*power_up_serdes)(struct e1000_hw *);
 	s32  (*setup_link)(struct e1000_hw *);

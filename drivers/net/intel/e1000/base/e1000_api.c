@@ -1420,3 +1420,20 @@ void e1000_shutdown_fiber_serdes_link(struct e1000_hw *hw)
 	if (hw->mac.ops.shutdown_serdes)
 		hw->mac.ops.shutdown_serdes(hw);
 }
+
+/**
+ *  e1000_set_eee - Set EEE
+ *  @hw: pointer to the HW structure
+ *  @adv2p5G: boolean flag enabling 2.5G EEE advertisement
+ *  @adv1G: boolean flag enabling 1G EEE advertisement
+ *  @adv100M: boolean flag enabling 100M EEE advertisement
+ *
+ *  Enable/disable EEE based on setting in dev_spec structure.
+ **/
+s32 e1000_set_eee(struct e1000_hw *hw, bool adv2p5G, bool adv1G, bool adv100M)
+{
+	if (hw->mac.ops.set_eee)
+		return hw->mac.ops.set_eee(hw, adv2p5G, adv1G, adv100M);
+
+	return -E1000_ERR_CONFIG;
+}

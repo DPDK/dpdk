@@ -88,6 +88,7 @@ s32 e1000_mng_write_cmd_header(struct e1000_hw *hw,
 			       struct e1000_host_mng_command_header *hdr);
 s32 e1000_mng_write_dhcp_info(struct e1000_hw *hw, u8 *buffer, u16 length);
 u32  e1000_translate_register_82542(u32 reg);
+s32 e1000_set_eee(struct e1000_hw *hw, bool adv2p5G, bool adv1G, bool adv100M);
 
 
 
