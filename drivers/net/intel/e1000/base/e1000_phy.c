@@ -690,7 +690,7 @@ s32 e1000_set_page_igp(struct e1000_hw *hw, u16 page)
 {
 	DEBUGFUNC("e1000_set_page_igp");
 
-	DEBUGOUT1("Setting page 0x%x\n", page);
+	DEBUGOUT2("Setting page %d (0x%x)\n", page >> IGP_PAGE_SHIFT, page);
 
 	hw->phy.addr = 1;
 
@@ -3521,8 +3521,6 @@ s32 e1000_access_phy_wakeup_reg_bm(struct e1000_hw *hw, u32 offset,
 		}
 	}
 
-	DEBUGOUT2("Accessing PHY page %d reg 0x%x\n", page, reg);
-
 	/* Write the Wakeup register page offset value using opcode 0x11 */
 	ret_val = e1000_write_phy_reg_mdic(hw, BM_WUC_ADDRESS_OPCODE, reg);
 	if (ret_val) {
@@ -3534,10 +3532,14 @@ s32 e1000_access_phy_wakeup_reg_bm(struct e1000_hw *hw, u32 offset,
 		/* Read the Wakeup register page value using opcode 0x12 */
 		ret_val = e1000_read_phy_reg_mdic(hw, BM_WUC_DATA_OPCODE,
 						  data);
+		DEBUGOUT3("Read PHY page %d reg %d value 0x%04x\n",
+			  page, reg, *data);
 	} else {
 		/* Write the Wakeup register page value using opcode 0x12 */
 		ret_val = e1000_write_phy_reg_mdic(hw, BM_WUC_DATA_OPCODE,
 						   *data);
+		DEBUGOUT3("Wrote PHY page %d reg %d value 0x%04x\n",
+			  page, reg, *data);
 	}
 
 	if (ret_val) {
@@ -3645,11 +3647,11 @@ STATIC s32 __e1000_read_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 *data,
 		}
 	}
 
-	DEBUGOUT3("reading PHY page %d (or 0x%x shifted) reg 0x%x\n", page,
-		  page << IGP_PAGE_SHIFT, reg);
-
 	ret_val = e1000_read_phy_reg_mdic(hw, MAX_PHY_REG_ADDRESS & reg,
 					  data);
+	DEBUGOUT3("read PHY page %d reg %d value 0x%04x\n",
+		  page, reg, *data);
+
 out:
 	if (!locked)
 		hw->phy.ops.release(hw);
@@ -3771,8 +3773,8 @@ STATIC s32 __e1000_write_phy_reg_hv(struct e1000_hw *hw, u32 offset, u16 data,
 		}
 	}
 
-	DEBUGOUT3("writing PHY page %d (or 0x%x shifted) reg 0x%x\n", page,
-		  page << IGP_PAGE_SHIFT, reg);
+	DEBUGOUT3("writing PHY page %d reg %d value 0x%04x\n",
+		  page, reg, data);
 
 	ret_val = e1000_write_phy_reg_mdic(hw, MAX_PHY_REG_ADDRESS & reg,
 					   data);
