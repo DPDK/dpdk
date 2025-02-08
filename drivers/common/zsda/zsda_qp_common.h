@@ -31,4 +31,30 @@ enum zsda_service_type {
 #define ZSDA_CSR_READ8(addr)	      rte_read8((addr))
 #define ZSDA_CSR_WRITE8(addr, value)  rte_write8_relaxed((value), (addr))
 
+struct __rte_packed_begin zsda_admin_req {
+	uint16_t msg_type;
+	uint8_t data[26];
+} __rte_packed_end;
+
+struct __rte_packed_begin zsda_admin_req_qcfg {
+	uint16_t msg_type;
+	uint8_t qid;
+	uint8_t data[25];
+} __rte_packed_end;
+
+struct __rte_packed_begin qinfo {
+	uint16_t q_type;
+	uint16_t wq_tail;
+	uint16_t wq_head;
+	uint16_t cq_tail;
+	uint16_t cq_head;
+	uint16_t cycle;
+} __rte_packed_end;
+
+struct __rte_packed_begin zsda_admin_resp_qcfg {
+	uint16_t msg_type;
+	struct qinfo qcfg;
+	uint8_t data[14];
+} __rte_packed_end;
+
 #endif /* _ZSDA_QP_COMMON_H_ */
