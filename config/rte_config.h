@@ -119,6 +119,10 @@
 #define RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS 16
 #define RTE_PMD_QAT_COMP_IM_BUFFER_SIZE 65536
 
+/* ZSDA device */
+/* Max. number of ZSDA devices which can be attached */
+#define RTE_PMD_ZSDA_MAX_PCI_DEVICES 256
+
 /* virtio crypto defines */
 #define RTE_MAX_VIRTIO_CRYPTO 32
 
