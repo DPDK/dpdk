@@ -14,6 +14,7 @@
 #include <rte_mbuf.h>
 
 #include "bus_pci_driver.h"
+#include "zsda_logs.h"
 
 #define ZSDA_MAX_DEV				RTE_PMD_ZSDA_MAX_PCI_DEVICES
 
