@@ -2,6 +2,7 @@
  * Copyright(c) 2024 ZTE Corporation
  */
 
+#include "zsda_qp.h"
 #include "zsda_device.h"
 
 /* per-process array of device data */
@@ -163,6 +164,12 @@ zsda_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (zsda_pci_dev == NULL) {
 		ZSDA_LOG(ERR, "Failed! zsda_pci_dev is NULL");
 		return -ENODEV;
+	}
+
+	ret = zsda_queue_init(zsda_pci_dev);
+	if (ret) {
+		ZSDA_LOG(ERR, "Failed! queue init.");
+		return ret;
 	}
 
 	return ret;
