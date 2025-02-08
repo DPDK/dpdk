@@ -12,6 +12,7 @@ sources += files(
         'zsda_device.c',
         'zsda_logs.c',
         'zsda_qp.c',
+        'zsda_qp_common.c',
 )
 
 zsda_compress = true

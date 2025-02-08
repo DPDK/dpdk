@@ -129,6 +129,26 @@ zsda_comp_dev_info_get(struct rte_compressdev *dev,
 	}
 }
 
+static void
+zsda_comp_stats_get(struct rte_compressdev *dev,
+		    struct rte_compressdev_stats *stats)
+{
+	struct zsda_qp_stat stats_info = {0};
+
+	zsda_stats_get(dev->data->queue_pairs, dev->data->nb_queue_pairs,
+		       &stats_info);
+	stats->enqueued_count = stats_info.enqueued_count;
+	stats->dequeued_count = stats_info.dequeued_count;
+	stats->enqueue_err_count = stats_info.enqueue_err_count;
+	stats->dequeue_err_count = stats_info.dequeue_err_count;
+}
+
+static void
+zsda_comp_stats_reset(struct rte_compressdev *dev)
+{
+	zsda_stats_reset(dev->data->queue_pairs, dev->data->nb_queue_pairs);
+}
+
 static struct rte_compressdev_ops compress_zsda_ops = {
 
 	.dev_configure = zsda_comp_dev_config,
@@ -137,8 +157,8 @@ static struct rte_compressdev_ops compress_zsda_ops = {
 	.dev_close = zsda_comp_dev_close,
 	.dev_infos_get = zsda_comp_dev_info_get,
 
-	.stats_get = NULL,
-	.stats_reset = NULL,
+	.stats_get = zsda_comp_stats_get,
+	.stats_reset = zsda_comp_stats_reset,
 	.queue_pair_setup = NULL,
 	.queue_pair_release = NULL,
 
