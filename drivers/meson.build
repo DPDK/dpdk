@@ -17,6 +17,7 @@ subdirs = [
         'common/nitrox',  # depends on bus.
         'common/qat',     # depends on bus.
         'common/sfc_efx', # depends on bus.
+        'common/zsda',    # depends on bus.
         'mempool',        # depends on common and bus.
         'dma',            # depends on common and bus.
         'net',            # depends on common, bus, mempool
