@@ -80,6 +80,16 @@ struct ring_size {
 	uint16_t rx_msg_size;
 };
 
+struct zsda_num_qps {
+	uint16_t encomp;
+	uint16_t decomp;
+	uint16_t encrypt;
+	uint16_t decrypt;
+	uint16_t hash;
+};
+
+extern struct zsda_num_qps zsda_nb_qps;
+
 int zsda_queue_init(struct zsda_pci_device *zsda_pci_dev);
 
 #endif /* _ZSDA_QP_H_ */

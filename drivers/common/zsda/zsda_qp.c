@@ -11,6 +11,8 @@
 static uint8_t zsda_num_used_qps;
 
 static struct ring_size zsda_qp_hw_ring_size[ZSDA_MAX_SERVICES] = {
+	[ZSDA_SERVICE_COMPRESSION] = {32, 16},
+	[ZSDA_SERVICE_DECOMPRESSION] = {32, 16},
 };
 
 static const uint8_t crc8_table[256] = {
@@ -396,6 +398,26 @@ zsda_flr_unmask_set(const struct zsda_pci_device *zsda_pci_dev)
 	return ZSDA_SUCCESS;
 }
 
+static uint16_t
+zsda_num_qps_get(const struct zsda_pci_device *zsda_pci_dev,
+		     const enum zsda_service_type service)
+{
+	uint16_t qp_hw_num = 0;
+
+	if (service < ZSDA_SERVICE_INVALID)
+		qp_hw_num = zsda_pci_dev->zsda_qp_hw_num[service];
+	return qp_hw_num;
+}
+
+struct zsda_num_qps zsda_nb_qps;
+static void
+zsda_nb_qps_get(const struct zsda_pci_device *zsda_pci_dev)
+{
+	zsda_nb_qps.encomp =
+		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_COMPRESSION);
+	zsda_nb_qps.decomp =
+		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_DECOMPRESSION);
+}
 
 int
 zsda_queue_init(struct zsda_pci_device *zsda_pci_dev)
@@ -428,6 +450,8 @@ zsda_queue_init(struct zsda_pci_device *zsda_pci_dev)
 		ZSDA_LOG(ERR, "Failed! zsda_flr_unmask_set");
 		return ret;
 	}
+
+	zsda_nb_qps_get(zsda_pci_dev);
 
 	return ret;
 }

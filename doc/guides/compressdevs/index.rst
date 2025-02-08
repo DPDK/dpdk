@@ -17,3 +17,4 @@ Compression Device Drivers
     qat_comp
     uadk
     zlib
+    zsda

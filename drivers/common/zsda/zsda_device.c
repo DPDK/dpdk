@@ -147,9 +147,12 @@ zsda_pci_device_release(const struct rte_pci_device *pci_dev)
 }
 
 static int
-zsda_pci_dev_destroy(struct zsda_pci_device *zsda_pci_dev __rte_unused,
+zsda_pci_dev_destroy(struct zsda_pci_device *zsda_pci_dev,
 				const struct rte_pci_device *pci_dev)
 {
+
+	zsda_comp_dev_destroy(zsda_pci_dev);
+
 	return zsda_pci_device_release(pci_dev);
 }
 
@@ -171,6 +174,10 @@ zsda_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		ZSDA_LOG(ERR, "Failed! queue init.");
 		return ret;
 	}
+
+	ret = zsda_comp_dev_create(zsda_pci_dev);
+	if (ret)
+		ZSDA_LOG(ERR, "Failed! dev create.");
 
 	return ret;
 }
