@@ -888,3 +888,59 @@ zsda_enqueue_burst(struct zsda_qp *qp, void **ops, const uint16_t nb_ops)
 
 	return nb_send;
 }
+
+static void
+zsda_dequeue(struct qp_srv *srv, void **ops, const uint16_t nb_ops, uint16_t *nb)
+{
+	uint16_t head;
+	struct zsda_cqe *cqe;
+	struct zsda_queue *queue = &srv->rx_q;
+	struct zsda_op_cookie *cookie;
+	head = queue->head;
+
+	while (*nb < nb_ops) {
+		cqe = (struct zsda_cqe *)(
+			(uint8_t *)queue->base_addr + head * queue->msg_size);
+
+		if (!CQE_VALID(cqe->err1))
+			break;
+		cookie = srv->op_cookies[cqe->sid];
+
+		ops[*nb] = cookie->op;
+		if (srv->rx_cb(cookie, cqe) == ZSDA_SUCCESS)
+			srv->stats.dequeued_count++;
+		else {
+			ZSDA_LOG(ERR,
+				 "ERR! Cqe, opcode 0x%x, sid 0x%x, "
+				 "tx_real_length 0x%x, err0 0x%x, err1 0x%x",
+				 cqe->op_code, cqe->sid, cqe->tx_real_length,
+				 cqe->err0, cqe->err1);
+			srv->stats.dequeue_err_count++;
+		}
+		(*nb)++;
+		cookie->used = false;
+
+		head = zsda_modulo_16(head + 1, queue->modulo_mask);
+		queue->head = head;
+		WRITE_CSR_CQ_HEAD(queue->io_addr, queue->hw_queue_number, head);
+		memset(cqe, 0x0, sizeof(struct zsda_cqe));
+	}
+}
+
+uint16_t
+zsda_dequeue_burst(struct zsda_qp *qp, void **ops, const uint16_t nb_ops)
+{
+	uint16_t nb = 0;
+	uint32_t type = 0;
+	struct qp_srv *srv;
+
+	for (type = 0; type < ZSDA_SERVICE_INVALID; type++) {
+		if (!qp->srv[type].used)
+			continue;
+		srv = &qp->srv[type];
+		zsda_dequeue(srv, ops, nb_ops, &nb);
+		if (nb >= nb_ops)
+			return nb_ops;
+	}
+	return nb;
+}

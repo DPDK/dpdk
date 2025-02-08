@@ -10,6 +10,83 @@
 #define GZIP_TRAILER_SIZE 8
 #define CHECKSUM_SIZE 4
 
+#define POLYNOMIAL 0xEDB88320
+static uint32_t crc32_table[8][256];
+static int table_config;
+
+static void
+crc32_table_build(void)
+{
+	for (uint32_t i = 0; i < 256; i++) {
+		uint32_t crc = i;
+		for (uint32_t j = 0; j < 8; j++)
+			crc = (crc >> 1) ^ ((crc & 1) ? POLYNOMIAL : 0);
+		crc32_table[0][i] = crc;
+	}
+
+	for (int i = 1; i < 8; i++) {
+		for (uint32_t j = 0; j < 256; j++)
+			crc32_table[i][j] = (crc32_table[i-1][j] >> 8) ^
+					crc32_table[0][crc32_table[i-1][j] & 0xFF];
+	}
+	table_config = 1;
+}
+
+static uint32_t
+zsda_crc32(const uint8_t *data, size_t length)
+{
+	uint32_t crc = 0xFFFFFFFF;
+
+	if (!table_config)
+		crc32_table_build();
+
+	while (length >= 8) {
+		crc ^= *(const uint32_t *)data;
+		crc = crc32_table[7][crc & 0xFF] ^
+			  crc32_table[6][(crc >> 8) & 0xFF] ^
+			  crc32_table[5][(crc >> 16) & 0xFF] ^
+			  crc32_table[4][(crc >> 24) & 0xFF] ^
+			  crc32_table[3][data[4]] ^
+			  crc32_table[2][data[5]] ^
+			  crc32_table[1][data[6]] ^
+			  crc32_table[0][data[7]];
+
+		data += 8;
+		length -= 8;
+	}
+
+	for (size_t i = 0; i < length; i++)
+		crc = (crc >> 8) ^ crc32_table[0][(crc ^ data[i]) & 0xFF];
+
+	return crc ^ 0xFFFFFFFF;
+}
+
+#define MOD_ADLER 65521
+#define NMAX 5552
+static uint32_t
+zsda_adler32(const uint8_t *buf, uint32_t len)
+{
+	uint32_t s1 = 1;
+	uint32_t s2 = 0;
+
+	while (len > 0) {
+		uint32_t k = (len < NMAX) ? len : NMAX;
+		len -= k;
+
+		for (uint32_t i = 0; i < k; i++) {
+			s1 += buf[i];
+			s2 += s1;
+		}
+
+		s1 %= MOD_ADLER;
+		s2 %= MOD_ADLER;
+
+		buf += k;
+	}
+
+	return (s2 << 16) | s1;
+}
+
 int
 zsda_comp_match(const void *op_in)
 {
@@ -230,4 +307,82 @@ zsda_decomp_request_build(void *op_in, const struct zsda_queue *queue,
 	wqe->tx_addr = cookie->sgl_dst_phys_addr;
 
 	return ret;
+}
+
+static uint32_t
+zsda_chksum_read(uint8_t *data_addr, uint8_t op_code, uint32_t produced)
+{
+	uint8_t *chk_addr;
+	uint32_t chksum = 0;
+	int i = 0;
+
+	if (op_code == ZSDA_OPC_COMP_ZLIB) {
+		chk_addr = data_addr + produced - ZLIB_TRAILER_SIZE;
+		for (i = 0; i < CHECKSUM_SIZE; i++) {
+			chksum = chksum << 8;
+			chksum |= (*(chk_addr + i));
+		}
+	} else if (op_code == ZSDA_OPC_COMP_GZIP) {
+		chk_addr = data_addr + produced - GZIP_TRAILER_SIZE;
+		for (i = 0; i < CHECKSUM_SIZE; i++)
+			chksum |= (*(chk_addr + i) << (i * 8));
+	}
+
+	return chksum;
+}
+
+int
+zsda_comp_callback(void *cookie_in, struct zsda_cqe *cqe)
+{
+	struct zsda_op_cookie *tmp_cookie = cookie_in;
+	struct rte_comp_op *tmp_op = tmp_cookie->op;
+	uint8_t *data_addr =
+		(uint8_t *)tmp_op->m_dst->buf_addr + tmp_op->m_dst->data_off;
+	uint32_t chksum = 0;
+	uint16_t head_len;
+	uint16_t tail_len;
+
+	if (tmp_cookie->decomp_no_tail && CQE_ERR0_RIGHT(cqe->err0))
+		cqe->err0 = 0x0000;
+
+	if (!(CQE_ERR0(cqe->err0) || CQE_ERR1(cqe->err1)))
+		tmp_op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	else {
+		tmp_op->status = RTE_COMP_OP_STATUS_ERROR;
+		return ZSDA_FAILED;
+	}
+
+	/* handle chksum */
+	tmp_op->produced = cqe->tx_real_length;
+	if (cqe->op_code == ZSDA_OPC_COMP_ZLIB) {
+		head_len = ZLIB_HEADER_SIZE;
+		tail_len = ZLIB_TRAILER_SIZE;
+		chksum = zsda_chksum_read(data_addr, cqe->op_code,
+						  tmp_op->produced - head_len);
+	}
+	if (cqe->op_code == ZSDA_OPC_COMP_GZIP) {
+		head_len = GZIP_HEADER_SIZE;
+		tail_len = GZIP_TRAILER_SIZE;
+		chksum = zsda_chksum_read(data_addr, cqe->op_code,
+						  tmp_op->produced - head_len);
+	} else if (cqe->op_code == ZSDA_OPC_DECOMP_ZLIB) {
+		head_len = ZLIB_HEADER_SIZE;
+		tail_len = ZLIB_TRAILER_SIZE;
+		chksum = zsda_adler32(data_addr, tmp_op->produced);
+	} else if (cqe->op_code == ZSDA_OPC_DECOMP_GZIP) {
+		head_len = GZIP_HEADER_SIZE;
+		tail_len = GZIP_TRAILER_SIZE;
+		chksum = zsda_crc32(data_addr, tmp_op->produced);
+	}
+	tmp_op->output_chksum = chksum;
+
+	if (cqe->op_code == ZSDA_OPC_COMP_ZLIB ||
+		cqe->op_code == ZSDA_OPC_COMP_GZIP) {
+		/* remove tail data*/
+		rte_pktmbuf_trim(tmp_op->m_dst, GZIP_TRAILER_SIZE);
+		/* remove head and tail length */
+		tmp_op->produced = tmp_op->produced - (head_len + tail_len);
+	}
+
+	return ZSDA_SUCCESS;
 }
