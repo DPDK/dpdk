@@ -90,6 +90,9 @@ struct zsda_num_qps {
 
 extern struct zsda_num_qps zsda_nb_qps;
 
+int zsda_queue_start(const struct rte_pci_device *pci_dev);
+int zsda_queue_stop(const struct rte_pci_device *pci_dev);
+
 int zsda_queue_init(struct zsda_pci_device *zsda_pci_dev);
 
 #endif /* _ZSDA_QP_H_ */

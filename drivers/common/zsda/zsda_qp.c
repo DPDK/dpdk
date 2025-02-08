@@ -130,6 +130,31 @@ zsda_admin_q_clear(const struct rte_pci_device *pci_dev)
 }
 
 static int
+zsda_single_queue_start(uint8_t *mmio_base, const uint8_t id)
+{
+	uint8_t *addr_start = mmio_base + ZSDA_IO_Q_START + (4 * id);
+
+	ZSDA_CSR_WRITE32(addr_start, ZSDA_Q_START);
+	return zsda_check_write(addr_start, ZSDA_Q_START);
+}
+
+static int
+zsda_single_queue_stop(uint8_t *mmio_base, const uint8_t id)
+{
+	int ret;
+	uint8_t *addr_stop = mmio_base + ZSDA_IO_Q_STOP + (4 * id);
+	uint8_t *addr_resp = mmio_base + ZSDA_IO_Q_STOP_RESP + (4 * id);
+
+	ZSDA_CSR_WRITE32(addr_resp, ZSDA_RESP_INVALID);
+	ZSDA_CSR_WRITE32(addr_stop, ZSDA_Q_STOP);
+
+	ret = zsda_check_write(addr_resp, ZSDA_RESP_VALID);
+	ZSDA_CSR_WRITE32(addr_resp, ZSDA_RESP_INVALID);
+
+	return ret;
+}
+
+static int
 zsda_single_queue_clear(uint8_t *mmio_base, const uint8_t id)
 {
 	int ret;
@@ -140,6 +165,32 @@ zsda_single_queue_clear(uint8_t *mmio_base, const uint8_t id)
 	ZSDA_CSR_WRITE32(addr_clear, ZSDA_CLEAR_VALID);
 	ret = zsda_check_write(addr_resp, ZSDA_RESP_VALID);
 	ZSDA_CSR_WRITE32(addr_clear, ZSDA_CLEAR_INVALID);
+
+	return ret;
+}
+
+int
+zsda_queue_start(const struct rte_pci_device *pci_dev)
+{
+	uint8_t *mmio_base = pci_dev->mem_resource[0].addr;
+	uint8_t id;
+	int ret = ZSDA_SUCCESS;
+
+	for (id = 0; id < zsda_num_used_qps; id++)
+		ret |= zsda_single_queue_start(mmio_base, id);
+
+	return ret;
+}
+
+int
+zsda_queue_stop(const struct rte_pci_device *pci_dev)
+{
+	uint8_t *mmio_base = pci_dev->mem_resource[0].addr;
+	uint8_t id;
+	int ret = ZSDA_SUCCESS;
+
+	for (id = 0; id < zsda_num_used_qps; id++)
+		ret |= zsda_single_queue_stop(mmio_base, id);
 
 	return ret;
 }
