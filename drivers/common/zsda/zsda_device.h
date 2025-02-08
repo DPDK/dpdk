@@ -6,6 +6,7 @@
 #define _ZSDA_DEVICE_H_
 
 #include "zsda_qp_common.h"
+#include "zsda_comp_pmd.h"
 
 #define MAX_QPS_ON_FUNCTION			128
 #define ZSDA_DEV_NAME_MAX_LEN		64
@@ -46,6 +47,10 @@ struct zsda_pci_device {
 	/**< Id of device instance for this zsda pci device */
 
 	struct rte_pci_device *pci_dev;
+
+	/* Data relating to compression service */
+	struct zsda_comp_dev_private *comp_dev;
+	/**< link back to compressdev private data */
 
 	struct zsda_qp_hw zsda_hw_qps[ZSDA_MAX_SERVICES];
 	uint16_t zsda_qp_hw_num[ZSDA_MAX_SERVICES];

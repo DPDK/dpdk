@@ -22,9 +22,11 @@
 #define ZSDA_FAILED				(-1)
 
 enum zsda_service_type {
+	ZSDA_SERVICE_COMPRESSION = 0,
+	ZSDA_SERVICE_DECOMPRESSION = 1,
 	ZSDA_SERVICE_INVALID,
 };
-#define ZSDA_MAX_SERVICES (0)
+#define ZSDA_MAX_SERVICES (2)
 
 #define ZSDA_CSR_READ32(addr)	      rte_read32((addr))
 #define ZSDA_CSR_WRITE32(addr, value) rte_write32((value), (addr))
