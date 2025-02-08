@@ -118,3 +118,75 @@ zsda_queue_pair_release(struct zsda_qp **qp_addr)
 
 	return ZSDA_SUCCESS;
 }
+
+int
+zsda_sgl_fill(const struct rte_mbuf *buf, uint32_t offset, struct zsda_sgl *sgl,
+	      const phys_addr_t sgl_phy_addr, uint32_t remain_len,
+	      struct comp_head_info *comp_head_info)
+{
+	uint32_t nr;
+	uint16_t put_in_len;
+	bool head_set = false;
+
+	for (nr = 0; (buf && (nr < (ZSDA_SGL_MAX_NUMBER - 1)));) {
+		if (offset >= rte_pktmbuf_data_len(buf)) {
+			offset -= rte_pktmbuf_data_len(buf);
+			buf = buf->next;
+			continue;
+		}
+		memset(&(sgl->buffers[nr]), 0, sizeof(struct zsda_buf));
+		if ((nr > 0) && (((nr + 1) % ZSDA_SGL_FRAGMENT_SIZE) == 0) &&
+		    (buf->next != NULL)) {
+			sgl->buffers[nr].len = SGL_TYPE_PHYS_ADDR;
+			sgl->buffers[nr].addr =
+				sgl_phy_addr +
+				((nr + 1) * sizeof(struct zsda_buf));
+			sgl->buffers[nr].type = SGL_TYPE_NEXT_LIST;
+			++nr;
+			continue;
+		}
+		if (comp_head_info && !head_set) {
+			sgl->buffers[nr].len = comp_head_info->head_len;
+			sgl->buffers[nr].addr = comp_head_info->head_phys_addr;
+			sgl->buffers[nr].type = SGL_TYPE_PHYS_ADDR;
+			++nr;
+			head_set = true;
+			remain_len -= comp_head_info->head_len;
+			continue;
+		} else {
+			put_in_len = rte_pktmbuf_data_len(buf) - (offset & 0xffff);
+			if (remain_len <= put_in_len)
+				put_in_len = remain_len;
+			remain_len -= put_in_len;
+
+			sgl->buffers[nr].len = put_in_len;
+			sgl->buffers[nr].addr = rte_pktmbuf_iova_offset(buf, offset);
+			sgl->buffers[nr].type = SGL_TYPE_PHYS_ADDR;
+		}
+		offset = 0;
+		++nr;
+		buf = buf->next;
+
+		if (remain_len == 0)
+			break;
+	}
+
+	if (nr == 0) {
+		ZSDA_LOG(ERR, "In fill_sgl, nr == 0");
+		return ZSDA_FAILED;
+	}
+
+	sgl->buffers[nr - 1].type = SGL_TYPE_LAST_PHYS_ADDR;
+
+	if (buf) {
+		if (unlikely(buf->next)) {
+			if (nr == (ZSDA_SGL_MAX_NUMBER - 1)) {
+				ZSDA_LOG(ERR, "ERR! segs size (%u)",
+					 (ZSDA_SGL_MAX_NUMBER));
+				return -EINVAL;
+			}
+		}
+	}
+
+	return ZSDA_SUCCESS;
+}

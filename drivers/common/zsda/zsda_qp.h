@@ -48,7 +48,6 @@
 #define SET_CYCLE			0xff
 #define SET_HEAD_INTI		0x0
 
-
 #define ZSDA_TIME_SLEEP_US	100
 #define ZSDA_TIME_NUM		500
 
@@ -90,6 +89,11 @@
 		ZSDA_CSR_WR(csr_base_addr, (ring << 3) + CQ_CSR_UBASE,         \
 			    u_base);                                           \
 	} while (0)
+
+#define WRITE_CSR_WQ_TAIL(csr_base_addr, ring, value)                          \
+	ZSDA_CSR_WC_WR(csr_base_addr, WQ_TAIL + (ring << 3), value)
+#define WRITE_CSR_CQ_HEAD(csr_base_addr, ring, value)                          \
+	ZSDA_CSR_WC_WR(csr_base_addr, CQ_HEAD + (ring << 3), value)
 
 extern struct zsda_num_qps zsda_nb_qps;
 
@@ -175,4 +179,7 @@ zsda_qps_hw_per_service(struct zsda_pci_device *zsda_pci_dev,
 
 int zsda_task_queue_setup(struct zsda_pci_device *zsda_pci_dev,
 			struct zsda_qp *qp, struct task_queue_info *task_q_info);
+
+uint16_t zsda_enqueue_burst(struct zsda_qp *qp, void **ops, const uint16_t nb_ops);
+
 #endif /* _ZSDA_QP_H_ */

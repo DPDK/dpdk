@@ -237,6 +237,16 @@ zsda_modulo_32(uint32_t data, uint32_t modulo_mask)
 {
 	return (data) & (modulo_mask);
 }
+static inline uint16_t
+zsda_modulo_16(uint16_t data, uint16_t modulo_mask)
+{
+	return (data) & (modulo_mask);
+}
+static inline uint8_t
+zsda_modulo_8(uint8_t data, uint8_t modulo_mask)
+{
+	return (data) & (modulo_mask);
+}
 
 static int
 zsda_admin_msg_send(const struct rte_pci_device *pci_dev, void *req,
@@ -772,4 +782,109 @@ zsda_task_queue_setup(struct zsda_pci_device *zsda_pci_dev,
 	qp->srv[type].match = task_q_info->match;
 
 	return ret;
+}
+
+static int
+zsda_free_cookie_find(const struct zsda_queue *queue, void **op_cookie,
+		      uint16_t *idx)
+{
+	uint16_t old_tail = queue->tail;
+	uint16_t tail = queue->tail;
+	struct zsda_op_cookie *cookie;
+
+	do {
+		cookie = op_cookie[tail];
+		if (!cookie->used) {
+			*idx = tail & (queue->queue_size - 1);
+			return ZSDA_SUCCESS;
+		}
+		tail = zsda_modulo_16(tail++, queue->modulo_mask);
+	} while (old_tail != tail);
+
+	return -EINVAL;
+}
+
+static int
+zsda_enqueue(void *op, struct zsda_qp *qp)
+{
+	uint16_t new_tail;
+	enum zsda_service_type type;
+	void **op_cookie;
+	int ret = ZSDA_SUCCESS;
+	struct zsda_queue *queue;
+
+	for (type = 0; type < ZSDA_SERVICE_INVALID; type++) {
+		if (qp->srv[type].used) {
+			if (!qp->srv[type].match(op))
+				continue;
+			queue = &qp->srv[type].tx_q;
+			op_cookie = qp->srv[type].op_cookies;
+
+			if (zsda_free_cookie_find(queue, op_cookie,
+						  &new_tail)) {
+				ret = -EBUSY;
+				break;
+			}
+			ret = qp->srv[type].tx_cb(op, queue, op_cookie,
+						  new_tail);
+			if (ret) {
+				qp->srv[type].stats.enqueue_err_count++;
+				ZSDA_LOG(ERR, "Failed! config wqe");
+				break;
+			}
+			qp->srv[type].stats.enqueued_count++;
+
+			queue->tail = zsda_modulo_16(new_tail + 1,
+						     queue->queue_size - 1);
+
+			if (new_tail > queue->tail)
+				queue->valid =
+					zsda_modulo_8(queue->valid + 1,
+					(uint8_t)(queue->cycle_size - 1));
+
+			queue->pushed_wqe++;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static void
+zsda_tx_tail_write(struct zsda_queue *queue)
+{
+	if (queue->pushed_wqe)
+		WRITE_CSR_WQ_TAIL(queue->io_addr, queue->hw_queue_number,
+				  queue->tail);
+
+	queue->pushed_wqe = 0;
+}
+
+uint16_t
+zsda_enqueue_burst(struct zsda_qp *qp, void **ops, const uint16_t nb_ops)
+{
+	int ret = ZSDA_SUCCESS;
+	enum zsda_service_type type;
+	uint16_t i;
+	uint16_t nb_send = 0;
+	void *op;
+
+	if (nb_ops > ZSDA_MAX_DESC) {
+		ZSDA_LOG(ERR, "Enqueue number bigger than %d", ZSDA_MAX_DESC);
+		return 0;
+	}
+
+	for (i = 0; i < nb_ops; i++) {
+		op = ops[i];
+		ret = zsda_enqueue(op, qp);
+		if (ret < 0)
+			break;
+		nb_send++;
+	}
+
+	for (type = 0; type < ZSDA_SERVICE_INVALID; type++)
+		if (qp->srv[type].used)
+			zsda_tx_tail_write(&qp->srv[type].tx_q);
+
+	return nb_send;
 }

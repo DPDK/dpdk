@@ -8,6 +8,7 @@
 #include "zsda_qp_common.h"
 #include "zsda_qp.h"
 #include "zsda_comp_pmd.h"
+#include "zsda_comp.h"
 
 static int
 zsda_comp_xform_size(void)
@@ -245,10 +246,14 @@ zsda_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 
 	task_q_info.type = ZSDA_SERVICE_COMPRESSION;
 	task_q_info.service_str = "comp";
+	task_q_info.tx_cb = zsda_comp_request_build;
+	task_q_info.match = zsda_comp_match;
 	ret = zsda_task_queue_setup(zsda_pci_dev, qp_new, &task_q_info);
 
 	task_q_info.type = ZSDA_SERVICE_DECOMPRESSION;
 	task_q_info.service_str = "decomp";
+	task_q_info.tx_cb = zsda_decomp_request_build;
+	task_q_info.match = zsda_decomp_match;
 	ret |= zsda_task_queue_setup(zsda_pci_dev, qp_new, &task_q_info);
 
 	if (ret) {
@@ -287,6 +292,14 @@ static const char zsda_comp_drv_name[] = RTE_STR(COMPRESSDEV_NAME_ZSDA_PMD);
 static const struct rte_driver compdev_zsda_driver = {
 	.name = zsda_comp_drv_name, .alias = zsda_comp_drv_name};
 
+static uint16_t
+zsda_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
+			       uint16_t nb_ops)
+{
+	return zsda_enqueue_burst((struct zsda_qp *)qp, (void **)ops,
+				     nb_ops);
+}
+
 int
 zsda_comp_dev_create(struct zsda_pci_device *zsda_pci_dev)
 {
@@ -321,7 +334,7 @@ zsda_comp_dev_create(struct zsda_pci_device *zsda_pci_dev)
 
 	compressdev->dev_ops = &compress_zsda_ops;
 
-	compressdev->enqueue_burst = NULL;
+	compressdev->enqueue_burst = zsda_comp_pmd_enqueue_op_burst;
 	compressdev->dequeue_burst = NULL;
 
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
