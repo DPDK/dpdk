@@ -277,8 +277,7 @@ qat_sym_crypto_cap_get_gen3(struct qat_cryptodev_private *internals,
 				RTE_CRYPTO_CIPHER_DES_DOCSISBPI)))
 			continue;
 
-		memcpy(addr + curr_capa, capabilities + iter,
-			sizeof(struct rte_cryptodev_capabilities));
+		*(addr + curr_capa) = *(capabilities + iter);
 
 		if (internals->qat_dev->options.has_wireless_slice && (
 			check_auth_capa(&capabilities[iter],

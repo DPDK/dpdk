@@ -335,7 +335,7 @@ nfp_flower_repr_stats_get(struct rte_eth_dev *ethdev,
 		repr->repr_stats.obytes += repr->repr_stats.q_obytes[i];
 	}
 
-	rte_memcpy(stats, &repr->repr_stats, sizeof(struct rte_eth_stats));
+	*stats = repr->repr_stats;
 
 	return 0;
 }

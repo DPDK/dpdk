@@ -561,7 +561,7 @@ event_buffer_add(struct event_buffer *bufp, struct rte_event *eventp)
 	/* Instead of modulus, bitwise AND with mask to get head_idx. */
 	head_idx = bufp->head & EVENT_BUFFER_MASK;
 	buf_eventp = &bufp->events[head_idx];
-	rte_memcpy(buf_eventp, eventp, sizeof(struct rte_event));
+	*buf_eventp = *eventp;
 
 	/* Wrap automatically when overflow occurs. */
 	bufp->head++;

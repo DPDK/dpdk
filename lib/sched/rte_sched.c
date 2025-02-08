@@ -1784,7 +1784,7 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
 	qe = s->queue_extra + subport_qindex;
 
 	/* Copy queue stats and clear */
-	memcpy(stats, &qe->stats, sizeof(struct rte_sched_queue_stats));
+	*stats = qe->stats;
 	memset(&qe->stats, 0, sizeof(struct rte_sched_queue_stats));
 
 	/* Queue length */

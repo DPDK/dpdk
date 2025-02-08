@@ -833,7 +833,7 @@ selector_group_duplicate_to_pending(struct selector *s, uint32_t group_id)
 		if (!mp)
 			goto error;
 
-		memcpy(mp, m, sizeof(struct rte_swx_table_selector_member));
+		*mp = *m;
 
 		TAILQ_INSERT_TAIL(&gp->members, mp, node);
 	}

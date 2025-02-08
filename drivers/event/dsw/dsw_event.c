@@ -1078,8 +1078,7 @@ dsw_port_stash_any_migrating_events(struct dsw_port *port,
 			offset++;
 		} else if (offset > 0) {
 			struct rte_event *out_event = &events[i - offset];
-			rte_memcpy(out_event, in_event,
-				   sizeof(struct rte_event));
+			*out_event = *in_event;
 		}
 	}
 

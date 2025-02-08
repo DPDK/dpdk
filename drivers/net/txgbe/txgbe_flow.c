@@ -2827,9 +2827,7 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 		if (fdir_rule.b_mask) {
 			if (!fdir_info->mask_added) {
 				/* It's the first time the mask is set. */
-				rte_memcpy(&fdir_info->mask,
-					&fdir_rule.mask,
-					sizeof(struct txgbe_hw_fdir_mask));
+				fdir_info->mask = fdir_rule.mask;
 				fdir_info->flex_bytes_offset =
 					fdir_rule.flex_bytes_offset;
 

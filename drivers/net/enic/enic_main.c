@@ -1236,7 +1236,7 @@ int enic_set_rss_reta(struct enic *enic, union vnic_rss_cpu *rss_cpu)
 	if (!rss_cpu_buf_va)
 		return -ENOMEM;
 
-	rte_memcpy(rss_cpu_buf_va, rss_cpu, sizeof(union vnic_rss_cpu));
+	*rss_cpu_buf_va = *rss_cpu;
 
 	err = enic_set_rss_cpu(enic,
 		rss_cpu_buf_pa,

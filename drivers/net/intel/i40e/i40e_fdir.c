@@ -1250,8 +1250,7 @@ i40e_flow_store_flex_mask(struct i40e_pf *pf,
 			  sizeof(struct i40e_fdir_flex_mask))))
 		return 1;
 
-	memcpy(&pf->fdir.flex_mask[pctype], &flex_mask,
-	       sizeof(struct i40e_fdir_flex_mask));
+	pf->fdir.flex_mask[pctype] = flex_mask;
 	return 0;
 }
 

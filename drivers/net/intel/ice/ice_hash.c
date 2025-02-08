@@ -1309,8 +1309,7 @@ ice_hash_create(struct ice_adapter *ad,
 		goto out;
 	} else {
 		if (rss_meta->raw.raw_ena) {
-			memcpy(&filter_ptr->rss_cfg.raw, &rss_meta->raw,
-			       sizeof(struct ice_rss_raw_cfg));
+			filter_ptr->rss_cfg.raw = rss_meta->raw;
 			ret = ice_hash_add_raw_cfg(ad, &rss_meta->raw,
 						   pf->main_vsi->idx);
 			if (ret) {
@@ -1321,8 +1320,7 @@ ice_hash_create(struct ice_adapter *ad,
 				goto error;
 			}
 		} else {
-			memcpy(&filter_ptr->rss_cfg.hash, &rss_meta->cfg,
-			       sizeof(struct ice_rss_hash_cfg));
+			filter_ptr->rss_cfg.hash = rss_meta->cfg;
 			ret = ice_add_rss_cfg_wrap(pf, vsi->idx,
 						   &filter_ptr->rss_cfg.hash);
 			if (ret) {

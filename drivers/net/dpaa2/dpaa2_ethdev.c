@@ -2529,8 +2529,7 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev,
 					      ret);
 				goto cleanup;
 			}
-			memcpy(&prime_mac, &phy_mac,
-				sizeof(struct rte_ether_addr));
+			prime_mac = phy_mac;
 		}
 	} else if (rte_is_zero_ether_addr(&prime_mac)) {
 		/* In case phys and prime, both are zero, create random MAC */
@@ -2545,7 +2544,7 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev,
 	}
 
 	/* prime_mac the final MAC address */
-	memcpy(mac_entry, &prime_mac, sizeof(struct rte_ether_addr));
+	*mac_entry = prime_mac;
 	return 0;
 
 cleanup:

@@ -407,7 +407,7 @@ parse_mac_addr(const char *token, struct rte_ether_addr *addr)
 	if (tmp == NULL)
 		return -1;
 
-	memcpy(addr, tmp, sizeof(struct rte_ether_addr));
+	*addr = *tmp;
 	return 0;
 }
 

@@ -228,7 +228,7 @@ table_params_copy(struct table *t, struct rte_swx_table_selector_params *params)
 	if (selector_size < 8)
 		selector_size = 8;
 
-	memcpy(&t->params, params, sizeof(struct rte_swx_table_selector_params));
+	t->params = *params;
 	t->params.selector_size = selector_size;
 	t->params.selector_mask = NULL;
 	t->params.n_groups_max = rte_align32pow2(params->n_groups_max);

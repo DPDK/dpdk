@@ -3266,8 +3266,7 @@ int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
 
 	HWRM_CHECK_RESULT();
 	if (func_qstats)
-		memcpy(func_qstats, resp,
-		       sizeof(struct hwrm_func_qstats_output));
+		*func_qstats = *resp;
 
 	if (!stats)
 		goto exit;

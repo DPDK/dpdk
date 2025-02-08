@@ -99,7 +99,7 @@ uint32_t ntnic_id_table_get_id(void *id_table, union flm_handles flm_h, uint8_t 
 	struct ntnic_id_table_element *element = ntnic_id_table_array_find_element(handle, new_id);
 	element->caller_id = caller_id;
 	element->type = type;
-	memcpy(&element->handle, &flm_h, sizeof(union flm_handles));
+	element->handle = flm_h;
 
 	rte_spinlock_unlock(&handle->mtx);
 
@@ -140,7 +140,7 @@ void ntnic_id_table_find(void *id_table, uint32_t id, union flm_handles *flm_h, 
 
 	*caller_id = element->caller_id;
 	*type = element->type;
-	memcpy(flm_h, &element->handle, sizeof(union flm_handles));
+	*flm_h = element->handle;
 
 	rte_spinlock_unlock(&handle->mtx);
 }

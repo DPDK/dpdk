@@ -5988,8 +5988,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 			PMD_DRV_LOG(ERR, "Failed to get VSI params");
 			goto fail_msix_alloc;
 		}
-		rte_memcpy(&vsi->info, &ctxt.info,
-			sizeof(struct i40e_aqc_vsi_properties_data));
+		vsi->info = ctxt.info;
 		vsi->vsi_id = ctxt.vsi_number;
 		vsi->info.valid_sections = 0;
 
@@ -6006,8 +6005,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
 		vsi->info.port_vlan_flags = I40E_AQ_VSI_PVLAN_MODE_ALL |
 					I40E_AQ_VSI_PVLAN_EMOD_STR_BOTH;
-		rte_memcpy(&ctxt.info, &vsi->info,
-			sizeof(struct i40e_aqc_vsi_properties_data));
+		ctxt.info = vsi->info;
 		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
 						I40E_DEFAULT_TCMAP);
 		if (ret != I40E_SUCCESS) {

@@ -422,7 +422,7 @@ ethdev_process(const char *name, struct ethdev_config *params)
 	}
 
 	/* Port */
-	memcpy(&port_conf, &port_conf_default, sizeof(struct rte_eth_conf));
+	port_conf = port_conf_default;
 	if (rss) {
 		uint64_t rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP;
 

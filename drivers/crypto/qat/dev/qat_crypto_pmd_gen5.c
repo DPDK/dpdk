@@ -203,8 +203,7 @@ qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
 			continue;
 		}
 
-		memcpy(addr + curr_capa, capabilities + iter,
-			sizeof(struct rte_cryptodev_capabilities));
+		*(addr + curr_capa) = *(capabilities + iter);
 		curr_capa++;
 	}
 	internals->qat_dev_capabilities = internals->capa_mz->addr;

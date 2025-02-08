@@ -171,9 +171,7 @@ dpaa2_qdma_multi_eq(struct qdma_virt_queue *qdma_vq)
 	if (unlikely(num_tx != qdma_vq->fd_idx)) {
 		dst_idx = 0;
 		for (idx = num_tx; idx < qdma_vq->fd_idx; idx++) {
-			rte_memcpy(&qdma_vq->fd[dst_idx],
-				&qdma_vq->fd[idx],
-				sizeof(struct qbman_fd));
+			qdma_vq->fd[dst_idx] = qdma_vq->fd[idx];
 			dst_idx++;
 		}
 	}

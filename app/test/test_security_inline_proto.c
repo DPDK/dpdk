@@ -858,7 +858,7 @@ test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_
 	burst_sz = vector->burst ? ENCAP_DECAP_BURST_SZ : 1;
 	nb_tx = burst_sz;
 
-	memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+	sa_data = *vector->sa_data;
 	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	outer_ipv4 = is_outer_ipv4(&sa_data);
 
@@ -873,7 +873,7 @@ test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
@@ -901,7 +901,7 @@ test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
@@ -1078,7 +1078,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	memset(tx_pkts_burst, 0, sizeof(tx_pkts_burst[0]) * nb_tx);
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_tx);
 
-	memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+	sa_data = *vector->sa_data;
 	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	outer_ipv4 = is_outer_ipv4(&sa_data);
 
@@ -1096,8 +1096,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data,
-				sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction =
@@ -1132,8 +1131,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data,
-				sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction =
@@ -2371,13 +2369,11 @@ test_inline_ip_reassembly(const void *testdata)
 	reassembly_td.nb_frags = td->nb_frags;
 	reassembly_td.burst = td->burst;
 
-	memcpy(&full_pkt, td->full_pkt,
-			sizeof(struct ip_reassembly_test_packet));
+	full_pkt = *td->full_pkt;
 	reassembly_td.full_pkt = &full_pkt;
 
 	for (; i < reassembly_td.nb_frags; i++) {
-		memcpy(&frags[i], td->frags[i],
-			sizeof(struct ip_reassembly_test_packet));
+		frags[i] = *td->frags[i];
 		reassembly_td.frags[i] = &frags[i];
 
 		/* Add extra data for multi-seg test on all fragments except last one */
@@ -2466,8 +2462,7 @@ test_ipsec_inline_proto_rx_inj_inb(const void *test_data)
 	out_td.sa_data = td->sa_data;
 	out_td.burst = td->burst;
 
-	memcpy(&full_pkt, td->full_pkt,
-			sizeof(struct ip_reassembly_test_packet));
+	full_pkt = *td->full_pkt;
 	out_td.full_pkt = &full_pkt;
 
 	/* Add extra data for multi-seg test */

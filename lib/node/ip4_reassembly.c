@@ -159,7 +159,7 @@ ip4_reassembly_node_init(const struct rte_graph *graph, struct rte_node *node)
 	while (elem) {
 		if (elem->node_id == node->id) {
 			/* Update node specific context */
-			memcpy(ctx, &elem->ctx, sizeof(ip4_reassembly_ctx_t));
+			*ctx = elem->ctx;
 			break;
 		}
 		elem = elem->next;

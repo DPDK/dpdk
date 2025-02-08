@@ -1008,8 +1008,7 @@ dpaa2_flow_faf_add_hdr(int faf_byte,
 	if (pos != dpkg->num_extracts) {
 		/* Not the last pos, must have IP address extract.*/
 		for (i = dpkg->num_extracts - 1; i >= pos; i--) {
-			memcpy(&extracts[i + 1],
-				&extracts[i], sizeof(struct dpkg_extract));
+			extracts[i + 1] = extracts[i];
 		}
 	}
 
@@ -1063,8 +1062,7 @@ dpaa2_flow_pr_add_hdr(uint32_t pr_offset,
 	if (pos != dpkg->num_extracts) {
 		/* Not the last pos, must have IP address extract.*/
 		for (i = dpkg->num_extracts - 1; i >= pos; i--) {
-			memcpy(&extracts[i + 1],
-				&extracts[i], sizeof(struct dpkg_extract));
+			extracts[i + 1] = extracts[i];
 		}
 	}
 
@@ -1118,8 +1116,7 @@ dpaa2_flow_extract_add_hdr(enum net_prot prot,
 	if (pos != dpkg->num_extracts) {
 		/* Not the last pos, must have IP address extract.*/
 		for (i = dpkg->num_extracts - 1; i >= pos; i--) {
-			memcpy(&extracts[i + 1],
-				&extracts[i], sizeof(struct dpkg_extract));
+			extracts[i + 1] = extracts[i];
 		}
 	}
 

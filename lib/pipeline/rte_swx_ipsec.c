@@ -370,7 +370,7 @@ rte_swx_ipsec_create(struct rte_swx_ipsec **ipsec_out,
 	ipsec->ring_out = ring_out;
 	ipsec->dev_id = (uint8_t)dev_id;
 	ipsec->qp_id = params->crypto_dev_queue_pair_id;
-	memcpy(&ipsec->bsz, &params->bsz, sizeof(struct rte_swx_ipsec_burst_size));
+	ipsec->bsz = params->bsz;
 	ipsec->n_sa_max = n_sa_max;
 
 	ipsec->crypto_wr_threshold = params->bsz.crypto_wr * 3 / 4;

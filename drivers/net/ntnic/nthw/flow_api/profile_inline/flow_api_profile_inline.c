@@ -3156,7 +3156,7 @@ static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_d
 	if (fh->type != FLOW_HANDLE_TYPE_FLOW)
 		return -1;
 
-	memcpy(&fh_copy, fh, sizeof(struct flow_handle));
+	fh_copy = *fh;
 	memset(fh, 0x0, sizeof(struct flow_handle));
 	fd = fh_copy.fd;
 

@@ -2364,8 +2364,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			next_dst_off += raw_spec->length;
 			raw_id++;
 
-			memcpy(&filter->input.flow_ext.flex_pit[field_idx],
-			       &flex_pit, sizeof(struct i40e_fdir_flex_pit));
+			filter->input.flow_ext.flex_pit[field_idx] = flex_pit;
 			filter->input.flow_ext.layer_idx = layer_idx;
 			filter->input.flow_ext.raw_id = raw_id;
 			filter->input.flow_ext.is_flex_flow = true;

@@ -372,7 +372,7 @@ rte_pipeline_table_create(struct rte_pipeline *p,
 	*table_id = id;
 
 	/* Save input parameters */
-	memcpy(&table->ops, params->ops, sizeof(struct rte_table_ops));
+	table->ops = *params->ops;
 	table->f_action_hit = params->f_action_hit;
 	table->f_action_miss = params->f_action_miss;
 	table->arg_ah = params->arg_ah;
@@ -842,7 +842,7 @@ rte_pipeline_port_in_create(struct rte_pipeline *p,
 	*port_id = id;
 
 	/* Save input parameters */
-	memcpy(&port->ops, params->ops, sizeof(struct rte_port_in_ops));
+	port->ops = *params->ops;
 	port->f_action = params->f_action;
 	port->arg_ah = params->arg_ah;
 	port->burst_size = params->burst_size;
@@ -893,7 +893,7 @@ rte_pipeline_port_out_create(struct rte_pipeline *p,
 	*port_id = id;
 
 	/* Save input parameters */
-	memcpy(&port->ops, params->ops, sizeof(struct rte_port_out_ops));
+	port->ops = *params->ops;
 	port->f_action = params->f_action;
 	port->arg_ah = params->arg_ah;
 

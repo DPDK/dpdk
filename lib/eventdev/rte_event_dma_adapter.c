@@ -452,7 +452,7 @@ rte_event_dma_adapter_create(uint8_t id, uint8_t evdev_id, struct rte_event_port
 	if (pc == NULL)
 		return -ENOMEM;
 
-	rte_memcpy(pc, port_config, sizeof(struct rte_event_port_conf));
+	*pc = *port_config;
 	ret = rte_event_dma_adapter_create_ext(id, evdev_id, edma_default_config_cb, mode, pc);
 	if (ret != 0)
 		rte_free(pc);

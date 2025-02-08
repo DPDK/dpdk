@@ -1139,8 +1139,7 @@ iavf_ipsec_crypto_pkt_metadata_set(void *device,
 		struct iavf_ipsec_crypto_pkt_metadata *);
 
 	/* Set immutable metadata values from session template */
-	memcpy(md, &iavf_sess->pkt_metadata_template,
-		sizeof(struct iavf_ipsec_crypto_pkt_metadata));
+	*md = iavf_sess->pkt_metadata_template;
 
 	esp_tail = iavf_ipsec_crypto_get_esp_trailer(m, iavf_sess,
 			&esp_trailer_length);

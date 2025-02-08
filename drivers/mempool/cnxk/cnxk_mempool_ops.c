@@ -103,7 +103,7 @@ cnxk_mempool_alloc(struct rte_mempool *mp)
 		struct npa_aura_s *paura;
 
 		paura = CNXK_MEMPOOL_CONFIG(mp);
-		memcpy(&aura, paura, sizeof(struct npa_aura_s));
+		aura = *paura;
 	}
 
 	rc = roc_npa_pool_create(&aura_handle, block_size, block_count, &aura,

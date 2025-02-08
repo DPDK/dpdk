@@ -295,7 +295,7 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 				ret);
 			goto creation_error;
 		}
-		rte_memcpy(&s_kg_cfg, &kg_cfg, sizeof(struct dpkg_profile_cfg));
+		s_kg_cfg = kg_cfg;
 	} else {
 		if (memcmp(&s_kg_cfg, &kg_cfg,
 			sizeof(struct dpkg_profile_cfg))) {

@@ -224,7 +224,7 @@ static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
 
 	RTE_SET_USED(rxq);
 
-	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
+	*ev = *ev_temp;
 	rte_free(ev_temp);
 
 	qbman_swp_dqrr_consume(swp, dq);
@@ -243,7 +243,7 @@ static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
 	RTE_SET_USED(swp);
 	RTE_SET_USED(rxq);
 
-	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
+	*ev = *ev_temp;
 	rte_free(ev_temp);
 	*dpaa2_seqn(ev->mbuf) = dqrr_index + 1;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
@@ -588,8 +588,7 @@ dpaa2_eventdev_port_link(struct rte_eventdev *dev, void *port,
 
 	for (i = 0; i < nb_links; i++) {
 		evq_info = &priv->evq_info[queues[i]];
-		memcpy(&dpaa2_portal->evq_info[queues[i]], evq_info,
-			   sizeof(struct dpaa2_eventq));
+		dpaa2_portal->evq_info[queues[i]] = *evq_info;
 		dpaa2_portal->evq_info[queues[i]].event_port = port;
 		dpaa2_portal->num_linked_evq++;
 	}

@@ -40,8 +40,7 @@ ulp_app_tun_search_entry(struct bnxt_ulp_context *ulp_ctx,
 	}
 	if (free_entry >= 0) {
 		*tun_entry =  &tun_ent_list[free_entry];
-		memcpy(&tun_ent_list[free_entry].app_tunnel, app_tunnel,
-		       sizeof(struct rte_flow_tunnel));
+		tun_ent_list[free_entry].app_tunnel = *app_tunnel;
 		tun_ent_list[free_entry].ref_cnt = 1;
 		rc = 1;
 	} else {

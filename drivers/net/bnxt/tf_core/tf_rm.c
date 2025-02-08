@@ -1265,9 +1265,7 @@ tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 	if (cfg_type == TF_RM_ELEM_CFG_NULL)
 		return -ENOTSUP;
 
-	memcpy(parms->info,
-	       &rm_db->db[parms->subtype].alloc,
-	       sizeof(struct tf_rm_alloc_info));
+	*parms->info = rm_db->db[parms->subtype].alloc;
 
 	return 0;
 }
@@ -1299,9 +1297,7 @@ tf_rm_get_all_info(struct tf_rm_get_alloc_info_parms *parms, int size)
 			continue;
 		}
 
-		memcpy(info,
-		       &rm_db->db[i].alloc,
-		       sizeof(struct tf_rm_alloc_info));
+		*info = rm_db->db[i].alloc;
 		info++;
 	}
 
