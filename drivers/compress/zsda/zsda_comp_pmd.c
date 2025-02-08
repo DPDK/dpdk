@@ -243,6 +243,7 @@ zsda_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	task_q_info.nb_des = nb_des;
 	task_q_info.socket_id = socket_id;
 	task_q_info.qp_id = qp_id;
+	task_q_info.rx_cb = zsda_comp_callback;
 
 	task_q_info.type = ZSDA_SERVICE_COMPRESSION;
 	task_q_info.service_str = "comp";
@@ -300,6 +301,14 @@ zsda_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
 				     nb_ops);
 }
 
+static uint16_t
+zsda_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
+			       uint16_t nb_ops)
+{
+	return zsda_dequeue_burst((struct zsda_qp *)qp, (void **)ops,
+				     nb_ops);
+}
+
 int
 zsda_comp_dev_create(struct zsda_pci_device *zsda_pci_dev)
 {
@@ -335,7 +344,7 @@ zsda_comp_dev_create(struct zsda_pci_device *zsda_pci_dev)
 	compressdev->dev_ops = &compress_zsda_ops;
 
 	compressdev->enqueue_burst = zsda_comp_pmd_enqueue_op_burst;
-	compressdev->dequeue_burst = NULL;
+	compressdev->dequeue_burst = zsda_comp_pmd_dequeue_op_burst;
 
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 

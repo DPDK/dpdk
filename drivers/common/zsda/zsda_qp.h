@@ -181,5 +181,6 @@ int zsda_task_queue_setup(struct zsda_pci_device *zsda_pci_dev,
 			struct zsda_qp *qp, struct task_queue_info *task_q_info);
 
 uint16_t zsda_enqueue_burst(struct zsda_qp *qp, void **ops, const uint16_t nb_ops);
+uint16_t zsda_dequeue_burst(struct zsda_qp *qp, void **ops, const uint16_t nb_ops);
 
 #endif /* _ZSDA_QP_H_ */

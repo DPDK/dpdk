@@ -49,6 +49,10 @@ enum zsda_service_type {
 #define ZSDA_OPC_DECOMP_ZLIB	0x19 /* Decomp inflate-Zlib */
 #define ZSDA_OPC_INVALID		0xff
 
+#define CQE_VALID(value) (value & 0x8000)
+#define CQE_ERR0(value) (value & 0xFFFF)
+#define CQE_ERR1(value) (value & 0x7FFF)
+
 enum wqe_element_type {
 	WQE_ELM_TYPE_PHYS_ADDR = 1,
 	WQE_ELM_TYPE_LIST,
