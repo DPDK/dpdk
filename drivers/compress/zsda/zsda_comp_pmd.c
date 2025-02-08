@@ -149,6 +149,56 @@ zsda_comp_stats_reset(struct rte_compressdev *dev)
 	zsda_stats_reset(dev->data->queue_pairs, dev->data->nb_queue_pairs);
 }
 
+static int
+zsda_comp_private_xform_create(struct rte_compressdev *dev,
+			       const struct rte_comp_xform *xform,
+			       void **private_xform)
+{
+	struct zsda_comp_dev_private *zsda = dev->data->dev_private;
+
+	if (unlikely(private_xform == NULL)) {
+		ZSDA_LOG(ERR, "Failed! private_xform is NULL");
+		return -EINVAL;
+	}
+	if (unlikely(zsda->xformpool == NULL)) {
+		ZSDA_LOG(ERR, "Failed! zsda->xformpool is NULL");
+		return -ENOMEM;
+	}
+	if (rte_mempool_get(zsda->xformpool, private_xform)) {
+		ZSDA_LOG(ERR, "Failed! zsda->xformpool is NULL");
+		return -ENOMEM;
+	}
+
+	struct zsda_comp_xform *zsda_xform = *private_xform;
+	zsda_xform->type = xform->type;
+
+	if (zsda_xform->type == RTE_COMP_COMPRESS)
+		zsda_xform->checksum_type = xform->compress.chksum;
+	else
+		zsda_xform->checksum_type = xform->decompress.chksum;
+
+	if (zsda_xform->checksum_type == RTE_COMP_CHECKSUM_CRC32_ADLER32)
+		return -EINVAL;
+
+	return ZSDA_SUCCESS;
+}
+
+static int
+zsda_comp_private_xform_free(struct rte_compressdev *dev __rte_unused,
+			     void *private_xform)
+{
+	struct zsda_comp_xform *zsda_xform = private_xform;
+
+	if (zsda_xform) {
+		memset(zsda_xform, 0, zsda_comp_xform_size());
+		struct rte_mempool *mp = rte_mempool_from_obj(zsda_xform);
+
+		rte_mempool_put(mp, zsda_xform);
+		return ZSDA_SUCCESS;
+	}
+	return -EINVAL;
+}
+
 static struct rte_compressdev_ops compress_zsda_ops = {
 
 	.dev_configure = zsda_comp_dev_config,
@@ -162,8 +212,8 @@ static struct rte_compressdev_ops compress_zsda_ops = {
 	.queue_pair_setup = NULL,
 	.queue_pair_release = NULL,
 
-	.private_xform_create = NULL,
-	.private_xform_free = NULL
+	.private_xform_create = zsda_comp_private_xform_create,
+	.private_xform_free = zsda_comp_private_xform_free,
 };
 
 /* An rte_driver is needed in the registration of the device with compressdev.
