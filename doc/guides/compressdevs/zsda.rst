@@ -13,6 +13,29 @@ support for the following hardware accelerator devices:
 Features
 --------
 
+ZSDA compression PMD has support for:
+
+Compression/Decompression algorithm:
+
+   * DEFLATE - using Fixed and Dynamic Huffman encoding
+
+Checksum generation:
+
+   * CRC32, Adler32
+
+Huffman code type:
+
+   * Fixed
+   * Dynamic
+
+
+Limitations
+-----------
+
+* Compressdev level 0, no compression, is not supported.
+* No BSD support as BSD ZSDA kernel driver not available.
+* Stateful is not supported.
+
 
 Installation
 ------------

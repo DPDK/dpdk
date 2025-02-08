@@ -10,6 +10,20 @@
 #include "zsda_comp_pmd.h"
 #include "zsda_comp.h"
 
+static const struct rte_compressdev_capabilities zsda_comp_capabilities[] = {
+	{
+		.algo = RTE_COMP_ALGO_DEFLATE,
+		.comp_feature_flags = RTE_COMP_FF_HUFFMAN_DYNAMIC |
+							RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
+							RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
+							RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
+							RTE_COMP_FF_CRC32_CHECKSUM |
+							RTE_COMP_FF_ADLER32_CHECKSUM |
+							RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
+		.window_size = {.min = 15, .max = 15, .increment = 0},
+	},
+};
+
 static int
 zsda_comp_xform_size(void)
 {
@@ -321,8 +335,11 @@ zsda_comp_dev_create(struct zsda_pci_device *zsda_pci_dev)
 	};
 
 	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
+	char capa_memz_name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 	struct rte_compressdev *compressdev;
 	struct zsda_comp_dev_private *comp_dev;
+	const struct rte_compressdev_capabilities *capabilities;
+	uint16_t capa_size = sizeof(struct rte_compressdev_capabilities);
 
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 		 zsda_pci_dev->name, "comp");
@@ -351,6 +368,26 @@ zsda_comp_dev_create(struct zsda_pci_device *zsda_pci_dev)
 	comp_dev = compressdev->data->dev_private;
 	comp_dev->zsda_pci_dev = zsda_pci_dev;
 	comp_dev->compressdev = compressdev;
+
+	capabilities = zsda_comp_capabilities;
+
+	snprintf(capa_memz_name, RTE_COMPRESSDEV_NAME_MAX_LEN,
+		 "ZSDA_COMP_CAPA");
+	comp_dev->capa_mz = rte_memzone_lookup(capa_memz_name);
+	if (comp_dev->capa_mz == NULL)
+		comp_dev->capa_mz = rte_memzone_reserve(
+			capa_memz_name, capa_size, rte_socket_id(), 0);
+
+	if (comp_dev->capa_mz == NULL) {
+		ZSDA_LOG(DEBUG, "Failed! comp_dev->capa_mz is NULL");
+		memset(&dev_info->comp_rte_dev, 0,
+		       sizeof(dev_info->comp_rte_dev));
+		rte_compressdev_pmd_destroy(compressdev);
+		return -EFAULT;
+	}
+
+	memcpy(comp_dev->capa_mz->addr, capabilities, capa_size);
+	comp_dev->zsda_dev_capabilities = comp_dev->capa_mz->addr;
 
 	zsda_pci_dev->comp_dev = comp_dev;
 

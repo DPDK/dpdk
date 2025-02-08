@@ -144,6 +144,13 @@ New Features
 
   Added network driver for the Yunsilicon metaScale serials NICs.
 
+* **Added ZTE Storage Data Accelerator (ZSDA) driver.**
+
+  Added a compress driver for ZSDA devices
+  to support the deflate compression and decompression algorithm.
+
+  See the :doc:`../compressdevs/zsda` guide for more details on the new driver.
+
 
 Removed Items
 -------------
