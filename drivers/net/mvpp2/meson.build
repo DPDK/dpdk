@@ -26,4 +26,6 @@ sources = files(
         'mrvl_tm.c',
 )
 
+cflags += no_wvla_cflag
+
 deps += ['cfgfile', 'common_mvep']

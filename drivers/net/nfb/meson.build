@@ -21,3 +21,5 @@ sources = files(
         'nfb_stats.c',
         'nfb_tx.c',
 )
+
+cflags += no_wvla_cflag

@@ -20,4 +20,6 @@ ext_deps += dep
 
 sources = files('rte_mrvl_pmd.c', 'rte_mrvl_pmd_ops.c')
 
+cflags += no_wvla_cflag
+
 deps += ['bus_vdev', 'common_mvep', 'security']
