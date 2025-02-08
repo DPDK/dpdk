@@ -20,7 +20,7 @@ zsda_compress_path = 'compress/zsda'
 zsda_compress_relpath = '../../' + zsda_compress_path
 includes += include_directories(zsda_compress_relpath)
 if zsda_compress
-    foreach f: ['zsda_comp_pmd.c']
+    foreach f: ['zsda_comp_pmd.c', 'zsda_comp.c']
         sources += files(join_paths(zsda_compress_relpath, f))
     endforeach
 endif

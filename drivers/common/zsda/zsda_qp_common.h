@@ -41,6 +41,27 @@ enum zsda_service_type {
 #define ZSDA_MAX_CYCLE		256
 #define ZSDA_MAX_DEV		RTE_PMD_ZSDA_MAX_PCI_DEVICES
 #define MAX_NUM_OPS			0x1FF
+#define ZSDA_SGL_FRAGMENT_SIZE	32
+
+#define ZSDA_OPC_COMP_GZIP		0x10 /* Encomp deflate-Gzip */
+#define ZSDA_OPC_COMP_ZLIB		0x11 /* Encomp deflate-Zlib */
+#define ZSDA_OPC_DECOMP_GZIP	0x18 /* Decomp inflate-Gzip */
+#define ZSDA_OPC_DECOMP_ZLIB	0x19 /* Decomp inflate-Zlib */
+#define ZSDA_OPC_INVALID		0xff
+
+enum wqe_element_type {
+	WQE_ELM_TYPE_PHYS_ADDR = 1,
+	WQE_ELM_TYPE_LIST,
+	WQE_ELM_TYPE_LIST_ADDR,
+	WQE_ELM_TYPE_LIST_SGL32,
+};
+
+enum sgl_element_type {
+	SGL_TYPE_PHYS_ADDR = 0,
+	SGL_TYPE_LAST_PHYS_ADDR,
+	SGL_TYPE_NEXT_LIST,
+	SGL_TYPE_EC_LEVEL1_SGL32,
+};
 
 struct __rte_packed_begin zsda_admin_req {
 	uint16_t msg_type;
@@ -146,10 +167,19 @@ struct __rte_cache_aligned zsda_sgl {
 	struct zsda_buf buffers[ZSDA_SGL_MAX_NUMBER];
 };
 
+struct comp_head_info {
+	uint32_t head_len;
+	phys_addr_t head_phys_addr;
+};
+
 void zsda_queue_delete(const struct zsda_queue *queue);
 int zsda_queue_pair_release(struct zsda_qp **qp_addr);
 void zsda_stats_get(void **queue_pairs, const uint32_t nb_queue_pairs,
 			struct zsda_qp_stat *stats);
 void zsda_stats_reset(void **queue_pairs, const uint32_t nb_queue_pairs);
+
+int zsda_sgl_fill(const struct rte_mbuf *buf, uint32_t offset,
+		  struct zsda_sgl *sgl, const phys_addr_t sgl_phy_addr,
+		  uint32_t remain_len, struct comp_head_info *comp_head_info);
 
 #endif /* _ZSDA_QP_COMMON_H_ */
