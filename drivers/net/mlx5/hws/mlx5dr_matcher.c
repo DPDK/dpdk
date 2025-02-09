@@ -290,8 +290,8 @@ remove_from_list:
 
 static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 {
-	struct mlx5dr_matcher *tmp_matcher, *prev_matcher;
 	struct mlx5dr_table *tbl = matcher->tbl;
+	struct mlx5dr_matcher *tmp_matcher;
 	struct mlx5dr_devx_obj *prev_ft;
 	struct mlx5dr_matcher *next;
 	int ret;
@@ -302,13 +302,11 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 	}
 
 	prev_ft = tbl->ft;
-	prev_matcher = LIST_FIRST(&tbl->head);
 	LIST_FOREACH(tmp_matcher, &tbl->head, next) {
 		if (tmp_matcher == matcher)
 			break;
 
 		prev_ft = tmp_matcher->end_ft;
-		prev_matcher = tmp_matcher;
 	}
 
 	next = matcher->next.le_next;
@@ -322,21 +320,21 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 						   next->match_ste.rtc_0,
 						   next->match_ste.rtc_1);
 		if (ret) {
-			DR_LOG(ERR, "Failed to disconnect matcher");
-			goto matcher_reconnect;
+			DR_LOG(ERR, "Fatal: failed to disconnect matcher");
+			return ret;
 		}
 	} else {
 		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl, true);
 		if (ret) {
-			DR_LOG(ERR, "Failed to disconnect last matcher");
-			goto matcher_reconnect;
+			DR_LOG(ERR, "Fatal: failed to disconnect last matcher");
+			return ret;
 		}
 	}
 
 	ret = mlx5dr_matcher_shared_update_local_ft(tbl);
 	if (ret) {
-		DR_LOG(ERR, "Failed to update local_ft in shared table");
-		goto matcher_reconnect;
+		DR_LOG(ERR, "Fatal: failed to update local_ft in shared table");
+		return ret;
 	}
 
 	/* Removing first matcher, update connected miss tables if exists */
@@ -344,25 +342,20 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 		ret = mlx5dr_table_update_connected_miss_tables(tbl);
 		if (ret) {
 			DR_LOG(ERR, "Fatal error, failed to update connected miss table");
-			goto matcher_reconnect;
+			return ret;
 		}
 	}
 
 	ret = mlx5dr_table_ft_set_default_next_ft(tbl, prev_ft);
 	if (ret) {
 		DR_LOG(ERR, "Fatal error, failed to restore matcher ft default miss");
-		goto matcher_reconnect;
+		return ret;
 	}
 
+	/* Failure to restore/modify FW results in a critical, unrecoverable error.
+	 * Error handling is not applicable in this fatal scenario.
+	 */
 	return 0;
-
-matcher_reconnect:
-	if (LIST_EMPTY(&tbl->head) || prev_matcher == matcher)
-		LIST_INSERT_HEAD(&matcher->tbl->head, matcher, next);
-	else
-		LIST_INSERT_AFTER(prev_matcher, matcher, next);
-
-	return ret;
 }
 
 static bool mlx5dr_matcher_supp_fw_wqe(struct mlx5dr_matcher *matcher)
