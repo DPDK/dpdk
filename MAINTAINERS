@@ -837,7 +837,6 @@ M: Jingjing Wu <jingjing.wu@intel.com>
 M: Praveen Shetty <praveen.shetty@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/idpf/
-F: drivers/common/idpf/
 F: doc/guides/nics/idpf.rst
 F: doc/guides/nics/features/idpf.ini
 

@@ -24,7 +24,6 @@ drivers = [
         'gve',
         'hinic',
         'hns3',
-        'intel/cpfl',
         'intel/e1000',
         'intel/fm10k',
         'intel/i40e',
@@ -33,6 +32,7 @@ drivers = [
         'intel/idpf',
         'intel/ipn3ke',
         'intel/ixgbe',
+        'intel/cpfl',  # depends on idpf, so must come after it
         'ionic',
         'mana',
         'memif',

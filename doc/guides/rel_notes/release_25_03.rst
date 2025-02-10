@@ -197,6 +197,12 @@ API Changes
   the path has changed from ``-Denable_drivers=net/igc``
   to ``-Denable_drivers=net/intel/e1000``.
 
+* build: The driver ``common/idpf`` has been merged into the ``net/intel/idpf`` driver.
+  This change should have no impact to end applications, but,
+  when specifying the ``idpf`` or ``cpfl`` net drivers to Meson via ``-Denable_drivers`` option,
+  there is no longer any need to also specify the ``common/idpf`` driver.
+  Note, however, ``net/intel/cpfl`` driver now depends upon the ``net/intel/idpf`` driver.
+
 
 ABI Changes
 -----------

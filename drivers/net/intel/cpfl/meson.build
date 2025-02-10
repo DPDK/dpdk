@@ -11,7 +11,7 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
     subdir_done()
 endif
 
-deps += ['hash', 'common_idpf']
+deps += ['hash', 'net_idpf']
 
 sources = files(
         'cpfl_ethdev.c',
