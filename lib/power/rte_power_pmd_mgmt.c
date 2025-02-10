@@ -56,7 +56,7 @@ struct queue_list_entry {
 	const struct rte_eth_rxtx_callback *cb;
 };
 
-struct __rte_cache_aligned pmd_core_cfg {
+struct pmd_core_cfg {
 	TAILQ_HEAD(queue_list_head, queue_list_entry) head;
 	/**< List of queues associated with this lcore */
 	size_t n_queues;
