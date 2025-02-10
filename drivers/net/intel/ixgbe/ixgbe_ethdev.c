@@ -2722,7 +2722,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 					ixgbe_set_vf_rate_limit(
 						dev, vf,
 						vfinfo[vf].tx_rate[idx],
-						1 << idx);
+						RTE_BIT64(idx));
 	}
 
 	ixgbe_restore_statistics_mapping(dev);

@@ -3094,7 +3094,7 @@ i40e_stat_update_48_in_64(struct i40e_hw *hw, uint32_t hireg,
 	/* enlarge the limitation when statistics counters overflowed */
 	if (offset_loaded) {
 		if (I40E_RXTX_BYTES_L_48_BIT(*prev_stat) > *stat)
-			*stat += (uint64_t)1 << I40E_48_BIT_WIDTH;
+			*stat += RTE_BIT64(I40E_48_BIT_WIDTH);
 		*stat += I40E_RXTX_BYTES_H_16_BIT(*prev_stat);
 	}
 	*prev_stat = *stat;
@@ -4494,7 +4494,7 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 	pool_sel = dev->data->mac_pool_sel[index];
 
 	for (i = 0; i < sizeof(pool_sel) * CHAR_BIT; i++) {
-		if (pool_sel & (1ULL << i)) {
+		if (pool_sel & RTE_BIT64(i)) {
 			if (i == 0)
 				vsi = pf->main_vsi;
 			else {
@@ -4630,7 +4630,7 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_ETH_RETA_GROUP_SIZE;
 		shift = i % RTE_ETH_RETA_GROUP_SIZE;
-		if (reta_conf[idx].mask & (1ULL << shift))
+		if (reta_conf[idx].mask & RTE_BIT64(shift))
 			lut[i] = reta_conf[idx].reta[shift];
 	}
 	ret = i40e_set_rss_lut(pf->main_vsi, lut, reta_size);
@@ -4674,7 +4674,7 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_ETH_RETA_GROUP_SIZE;
 		shift = i % RTE_ETH_RETA_GROUP_SIZE;
-		if (reta_conf[idx].mask & (1ULL << shift))
+		if (reta_conf[idx].mask & RTE_BIT64(shift))
 			reta_conf[idx].reta[shift] = lut[i];
 	}
 
@@ -6712,7 +6712,7 @@ i40e_vmdq_setup(struct rte_eth_dev *dev)
 	loop = sizeof(vmdq_conf->pool_map[0].pools) * CHAR_BIT;
 	for (i = 0; i < vmdq_conf->nb_pool_maps; i++) {
 		for (j = 0; j < loop && j < pf->nb_cfg_vmdq_vsi; j++) {
-			if (vmdq_conf->pool_map[i].pools & (1UL << j)) {
+			if (vmdq_conf->pool_map[i].pools & RTE_BIT64(j)) {
 				PMD_INIT_LOG(INFO, "Add vlan %u to vmdq pool %u",
 					vmdq_conf->pool_map[i].vlan_id, j);
 
@@ -6761,7 +6761,7 @@ i40e_stat_update_32(struct i40e_hw *hw,
 		*stat = (uint64_t)(new_data - *offset);
 	else
 		*stat = (uint64_t)((new_data +
-			((uint64_t)1 << I40E_32_BIT_WIDTH)) - *offset);
+			RTE_BIT64(I40E_32_BIT_WIDTH)) - *offset);
 }
 
 static void
@@ -6789,7 +6789,7 @@ i40e_stat_update_48(struct i40e_hw *hw,
 		*stat = new_data - *offset;
 	else
 		*stat = (uint64_t)((new_data +
-			((uint64_t)1 << I40E_48_BIT_WIDTH)) - *offset);
+			RTE_BIT64(I40E_48_BIT_WIDTH)) - *offset);
 
 	*stat &= I40E_48_BIT_MASK;
 }
@@ -7730,7 +7730,7 @@ i40e_config_hena(const struct i40e_adapter *adapter, uint64_t flags)
 		return hena;
 
 	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < I40E_FLOW_TYPE_MAX; i++) {
-		if (flags & (1ULL << i))
+		if (flags & RTE_BIT64(i))
 			hena |= adapter->pctypes_tbl[i];
 	}
 
@@ -7749,7 +7749,7 @@ i40e_parse_hena(const struct i40e_adapter *adapter, uint64_t flags)
 
 	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < I40E_FLOW_TYPE_MAX; i++) {
 		if (flags & adapter->pctypes_tbl[i])
-			rss_hf |= (1ULL << i);
+			rss_hf |= RTE_BIT64(i);
 	}
 	return rss_hf;
 }
@@ -10162,7 +10162,7 @@ i40e_flowtype_to_pctype(const struct i40e_adapter *adapter, uint16_t flow_type)
 	if (flow_type < I40E_FLOW_TYPE_MAX) {
 		pctype_mask = adapter->pctypes_tbl[flow_type];
 		for (i = I40E_FILTER_PCTYPE_MAX - 1; i > 0; i--) {
-			if (pctype_mask & (1ULL << i))
+			if (pctype_mask & RTE_BIT64(i))
 				return (enum i40e_filter_pctype)i;
 		}
 	}
@@ -10174,7 +10174,7 @@ i40e_pctype_to_flowtype(const struct i40e_adapter *adapter,
 			enum i40e_filter_pctype pctype)
 {
 	uint16_t flowtype;
-	uint64_t pctype_mask = 1ULL << pctype;
+	uint64_t pctype_mask = RTE_BIT64(pctype);
 
 	for (flowtype = RTE_ETH_FLOW_UNKNOWN + 1; flowtype < I40E_FLOW_TYPE_MAX;
 	     flowtype++) {

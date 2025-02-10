@@ -2485,7 +2485,7 @@ iavf_init_proto_xtr(struct rte_eth_dev *dev)
 		if (!xtr_ol->required)
 			continue;
 
-		if (!(vf->supported_rxdid & BIT(rxdid))) {
+		if (!(vf->supported_rxdid & RTE_BIT64(rxdid))) {
 			PMD_DRV_LOG(ERR,
 				    "rxdid[%u] is not supported in hardware",
 				    rxdid);

@@ -2469,13 +2469,13 @@ ice_get_supported_rxdid(struct ice_hw *hw)
 	uint32_t regval;
 	int i;
 
-	supported_rxdid |= BIT(ICE_RXDID_LEGACY_1);
+	supported_rxdid |= RTE_BIT64(ICE_RXDID_LEGACY_1);
 
 	for (i = ICE_RXDID_FLEX_NIC; i < ICE_FLEX_DESC_RXDID_MAX_NUM; i++) {
 		regval = ICE_READ_REG(hw, GLFLXP_RXDID_FLAGS(i, 0));
 		if ((regval >> GLFLXP_RXDID_FLAGS_FLEXIFLAG_4N_S)
 			& GLFLXP_RXDID_FLAGS_FLEXIFLAG_4N_M)
-			supported_rxdid |= BIT(i);
+			supported_rxdid |= RTE_BIT64(i);
 	}
 	return supported_rxdid;
 }

@@ -3871,7 +3871,7 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d] is legacy, "
 				"set rx_pkt_burst as legacy for all queues", rxq->rxdid, i);
 			use_flex = false;
-		} else if (!(vf->supported_rxdid & BIT(rxq->rxdid))) {
+		} else if (!(vf->supported_rxdid & RTE_BIT64(rxq->rxdid))) {
 			PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d] is not supported, "
 				"set rx_pkt_burst as legacy for all queues", rxq->rxdid, i);
 			use_flex = false;

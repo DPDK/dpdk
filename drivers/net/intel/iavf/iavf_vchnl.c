@@ -1263,7 +1263,7 @@ iavf_configure_queues(struct iavf_adapter *adapter,
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		if (vf->vf_res->vf_cap_flags &
 		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC) {
-			if (vf->supported_rxdid & BIT(rxq[i]->rxdid)) {
+			if (vf->supported_rxdid & RTE_BIT64(rxq[i]->rxdid)) {
 				vc_qp->rxq.rxdid = rxq[i]->rxdid;
 				PMD_DRV_LOG(NOTICE, "request RXDID[%d] in Queue[%d]",
 					    vc_qp->rxq.rxdid, i);

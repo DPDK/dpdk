@@ -399,7 +399,7 @@ set_hsplit_finish:
 	PMD_DRV_LOG(DEBUG, "Port (%u) - Rx queue (%u) is set with RXDID : %u",
 		    rxq->port_id, rxq->queue_id, rxdid);
 
-	if (!(pf->supported_rxdid & BIT(rxdid))) {
+	if (!(pf->supported_rxdid & RTE_BIT64(rxdid))) {
 		PMD_DRV_LOG(ERR, "currently package doesn't support RXDID (%u)",
 			    rxdid);
 		return -EINVAL;

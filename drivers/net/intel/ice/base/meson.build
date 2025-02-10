@@ -31,18 +31,25 @@ sources = [
         'ice_vf_mbx.c',
 ]
 
-error_cflags = [
-        '-Wno-unused-but-set-variable',
-        '-Wno-unused-variable',
-        '-Wno-unused-parameter',
-]
+if is_ms_compiler
+    error_cflags = [
+            '/wd4101', # unreferenced local variable
+            '/wd4334', # result of 32-bit shift implicitly converted to 64 bits
+    ]
+else
+    error_cflags = [
+            '-Wno-unused-but-set-variable',
+            '-Wno-unused-variable',
+            '-Wno-unused-parameter',
+    ]
+endif
 
 # Bugzilla ID: 678
 if (toolchain == 'gcc' and cc.version().version_compare('>=11.0.0'))
     error_cflags += ['-Wno-array-bounds']
 endif
 
-if is_windows and cc.get_id() != 'clang'
+if is_windows and cc.get_id() == 'gcc'
     cflags += ['-fno-asynchronous-unwind-tables']
 endif
 
