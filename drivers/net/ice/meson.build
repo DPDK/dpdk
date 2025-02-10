@@ -51,6 +51,9 @@ if arch_subdir == 'x86'
         avx512_args = [cflags, '-mavx512f', '-mavx512bw']
         if cc.has_argument('-march=skylake-avx512')
             avx512_args += '-march=skylake-avx512'
+            if cc.has_argument('-Wno-overriding-option')
+                avx512_args += '-Wno-overriding-option'
+            endif
         endif
         ice_avx512_lib = static_library('ice_avx512_lib',
                 'ice_rxtx_vec_avx512.c',
