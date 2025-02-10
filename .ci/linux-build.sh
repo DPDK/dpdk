@@ -44,6 +44,14 @@ catch_coredump() {
     return 1
 }
 
+check_traces() {
+    which babeltrace >/dev/null || return 0
+    for file in $(sudo find $HOME -name metadata); do
+        ! sudo babeltrace $(dirname $file) >/dev/null 2>&1 || continue
+        sudo babeltrace $(dirname $file)
+    done
+}
+
 cross_file=
 
 if [ "$AARCH64" = "true" ]; then
@@ -133,6 +141,7 @@ if [ -z "$cross_file" ]; then
     configure_coredump
     devtools/test-null.sh || failed="true"
     catch_coredump
+    check_traces
     [ "$failed" != "true" ]
 fi
 
@@ -173,6 +182,7 @@ if [ "$RUN_TESTS" = "true" ]; then
     configure_coredump
     sudo meson test -C build --suite fast-tests -t 3 || failed="true"
     catch_coredump
+    check_traces
     [ "$failed" != "true" ]
 fi
 
