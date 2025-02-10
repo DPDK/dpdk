@@ -21,6 +21,9 @@ if arch_subdir == 'x86'
         avx512_args = cflags + cc_avx512_flags
         if cc.has_argument('-march=skylake-avx512')
             avx512_args += '-march=skylake-avx512'
+            if cc.has_argument('-Wno-overriding-option')
+                avx512_args += '-Wno-overriding-option'
+            endif
         endif
         idpf_common_avx512_lib = static_library('idpf_common_avx512_lib',
                 'idpf_common_rxtx_avx512.c',
