@@ -183,17 +183,17 @@ vmxnet3_read_addr(volatile void *addr)
 	VMXNET3_PCI_REG_WRITE(VMXNET3_PCI_BAR1_REG_ADDR((hw), (reg)), (value))
 
 static inline uint8_t
-vmxnet3_get_ring_idx(struct vmxnet3_hw *hw, uint32 rqID)
+vmxnet3_get_ring_idx(struct vmxnet3_hw *hw, uint32_t rq_id)
 {
-	return (rqID >= hw->num_rx_queues &&
-		rqID < 2 * hw->num_rx_queues) ? 1 : 0;
+	return (rq_id >= hw->num_rx_queues &&
+		rq_id < 2U * hw->num_rx_queues) ? 1 : 0;
 }
 
 static inline bool
-vmxnet3_rx_data_ring(struct vmxnet3_hw *hw, uint32 rqID)
+vmxnet3_rx_data_ring(struct vmxnet3_hw *hw, uint32_t rq_id)
 {
-	return (rqID >= 2 * hw->num_rx_queues &&
-		rqID < 3 * hw->num_rx_queues);
+	return (rq_id >= 2U * hw->num_rx_queues &&
+		rq_id < 3U * hw->num_rx_queues);
 }
 
 /*
