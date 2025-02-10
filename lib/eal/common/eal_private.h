@@ -703,6 +703,12 @@ rte_usage_hook_t
 eal_get_application_usage_hook(void);
 
 /**
+ * Initialise random subsystem.
+ */
+void
+eal_rand_init(void);
+
+/**
  * Instruct primary process that a secondary process wants to attach.
  */
 bool __rte_mp_enable(void);
