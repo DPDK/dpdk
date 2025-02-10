@@ -37,10 +37,9 @@ RTE_TRACE_POINT_FP(
 	enum rte_dma_vchan_status __status = 0;
 	status = &__status;
 #endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int vchan_status = *status;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
-	rte_trace_point_emit_int(vchan_status);
+	rte_trace_point_emit_int_ptr(status);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -107,13 +106,11 @@ RTE_TRACE_POINT_FP(
 	last_idx = &__last_idx;
 	has_error = &__has_error;
 #endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int has_error_val = *has_error;
-	int last_idx_val = *last_idx;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
 	rte_trace_point_emit_u16(nb_cpls);
-	rte_trace_point_emit_int(last_idx_val);
-	rte_trace_point_emit_int(has_error_val);
+	rte_trace_point_emit_u16_ptr(last_idx);
+	rte_trace_point_emit_u8_ptr(has_error);
 	rte_trace_point_emit_u16(ret);
 )
 
@@ -126,11 +123,10 @@ RTE_TRACE_POINT_FP(
 	uint16_t __last_idx = 0;
 	last_idx = &__last_idx;
 #endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int last_idx_val = *last_idx;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
 	rte_trace_point_emit_u16(nb_cpls);
-	rte_trace_point_emit_int(last_idx_val);
+	rte_trace_point_emit_u16_ptr(last_idx);
 	rte_trace_point_emit_ptr(status);
 	rte_trace_point_emit_u16(ret);
 )
