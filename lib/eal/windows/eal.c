@@ -410,6 +410,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	eal_rand_init();
+
 	if (rte_thread_set_affinity_by_id(rte_thread_self(),
 			&lcore_config[config->main_lcore].cpuset) != 0) {
 		rte_eal_init_alert("Cannot set affinity");

@@ -14,6 +14,8 @@
 #include <rte_lcore_var.h>
 #include <rte_random.h>
 
+#include "eal_private.h"
+
 struct __rte_cache_aligned rte_rand_state {
 	uint64_t z1;
 	uint64_t z2;
@@ -22,7 +24,7 @@ struct __rte_cache_aligned rte_rand_state {
 	uint64_t z5;
 };
 
-RTE_LCORE_VAR_HANDLE(struct rte_rand_state, rand_state);
+static RTE_LCORE_VAR_HANDLE(struct rte_rand_state, rand_state);
 
 /* instance to be shared by all unregistered non-EAL threads */
 static struct rte_rand_state unregistered_rand_state;
@@ -129,8 +131,11 @@ struct rte_rand_state *__rte_rand_get_state(void)
 
 	idx = rte_lcore_id();
 
-	if (unlikely(idx == LCORE_ID_ANY))
+	if (unlikely(idx == LCORE_ID_ANY)) {
+		/* Make sure rte_*rand() was called after rte_eal_init(). */
+		RTE_ASSERT(rand_state != NULL);
 		return &unregistered_rand_state;
+	}
 
 	return RTE_LCORE_VAR(rand_state);
 }
@@ -228,7 +233,8 @@ __rte_random_initial_seed(void)
 	return rte_get_tsc_cycles();
 }
 
-RTE_INIT(rte_rand_init)
+void
+eal_rand_init(void)
 {
 	uint64_t seed;
 
