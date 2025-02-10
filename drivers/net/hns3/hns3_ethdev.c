@@ -4852,7 +4852,7 @@ hns3_get_link_duplex(uint32_t link_speeds)
 }
 
 static int
-hns3_set_copper_port_link_speed(struct hns3_hw *hw,
+hns3_copper_port_link_speed_cfg(struct hns3_hw *hw,
 				struct hns3_set_link_speed_cfg *cfg)
 {
 	struct hns3_cmd_desc desc[HNS3_PHY_PARAM_CFG_BD_NUM];
@@ -4884,6 +4884,33 @@ hns3_set_copper_port_link_speed(struct hns3_hw *hw,
 	}
 
 	return hns3_cmd_send(hw, desc, HNS3_PHY_PARAM_CFG_BD_NUM);
+}
+
+static int
+hns3_set_copper_port_link_speed(struct hns3_hw *hw,
+				struct hns3_set_link_speed_cfg *cfg)
+{
+#define HNS3_PHY_PARAM_CFG_RETRY_TIMES		10
+#define HNS3_PHY_PARAM_CFG_RETRY_DELAY_MS	100
+	uint32_t retry_cnt = 0;
+	int ret;
+
+	/*
+	 * The initialization of copper port contains the following two steps.
+	 * 1. Configure firmware takeover the PHY. The firmware will start an
+	 *    asynchronous task to initialize the PHY chip.
+	 * 2. Configure work speed and duplex.
+	 * In earlier versions of the firmware, when the asynchronous task is not
+	 * finished, the firmware will return -ENOTBLK in the second step. And this
+	 * will lead to driver failed to initialize. Here add retry for this case.
+	 */
+	ret = hns3_copper_port_link_speed_cfg(hw, cfg);
+	while (ret == -ENOTBLK && retry_cnt++ < HNS3_PHY_PARAM_CFG_RETRY_TIMES) {
+		rte_delay_ms(HNS3_PHY_PARAM_CFG_RETRY_DELAY_MS);
+		ret = hns3_copper_port_link_speed_cfg(hw, cfg);
+	}
+
+	return ret;
 }
 
 static int
