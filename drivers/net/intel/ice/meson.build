@@ -18,8 +18,19 @@ sources = files(
 
 testpmd_sources = files('ice_testpmd.c')
 
-deps += ['hash', 'net', 'net_iavf']
+deps += ['hash', 'net']
 includes += include_directories('base')
+
+if dpdk_conf.has('RTE_NET_IAVF')
+    deps += 'net_iavf'
+else
+    includes += include_directories('../iavf/base')
+    sources += files(
+            '../iavf/base/iavf_adminq.c',
+            '../iavf/base/iavf_common.c',
+            '../iavf/base/iavf_impl.c',
+    )
+endif
 
 if arch_subdir == 'x86'
     sources += files('ice_rxtx_vec_sse.c')

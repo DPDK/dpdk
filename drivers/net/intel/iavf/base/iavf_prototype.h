@@ -11,6 +11,14 @@
 
 #include <rte_compat.h>
 
+/* functions only need exporting if this is being built into
+ * iavf driver itself. If included in ice driver, then no export
+ */
+#ifndef RTE_NET_IAVF
+#undef __rte_internal
+#define __rte_internal
+#endif
+
 /* Prototypes for shared code functions that are not in
  * the standard function pointer structures.  These are
  * mostly because they are needed even before the init
