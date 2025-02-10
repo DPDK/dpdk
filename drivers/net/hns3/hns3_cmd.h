@@ -10,7 +10,8 @@
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
 
-#define HNS3_CMDQ_TX_TIMEOUT		30000
+#define HNS3_CMDQ_TX_TIMEOUT_DEFAULT	30000
+#define HNS3_COMQ_CFG_RST_TIMEOUT	100000
 #define HNS3_CMDQ_CLEAR_WAIT_TIME	200
 #define HNS3_CMDQ_RX_INVLD_B		0
 #define HNS3_CMDQ_RX_OUTVLD_B		1
@@ -62,7 +63,6 @@ enum hns3_cmd_return_status {
 struct hns3_cmq {
 	struct hns3_cmq_ring csq;
 	struct hns3_cmq_ring crq;
-	uint16_t tx_timeout;
 	enum hns3_cmd_return_status last_status;
 };
 
