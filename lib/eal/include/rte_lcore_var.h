@@ -24,6 +24,7 @@
 
 #include <rte_common.h>
 #include <rte_config.h>
+#include <rte_debug.h>
 #include <rte_lcore.h>
 
 #ifdef __cplusplus
@@ -125,6 +126,7 @@ extern "C" {
 static inline void *
 rte_lcore_var_lcore(unsigned int lcore_id, void *handle)
 {
+	RTE_ASSERT(handle != NULL);
 	return RTE_PTR_ADD(handle, lcore_id * RTE_MAX_LCORE_VAR);
 }
 /* >8 end of access function */
