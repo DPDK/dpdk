@@ -23,6 +23,7 @@
 ; This is not a libabigail rule (see check-abi.sh).
 ; This is used for driver removal and other special cases like mlx glue libs.
 ;
+; SKIP_LIBRARY=librte_common_iavf
 ; SKIP_LIBRARY=librte_common_idpf
 ; SKIP_LIBRARY=librte_common_mlx5_glue
 ; SKIP_LIBRARY=librte_net_mlx4_glue

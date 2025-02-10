@@ -198,9 +198,12 @@ API Changes
   to ``-Denable_drivers=net/intel/e1000``.
 
 * build: The driver ``common/idpf`` has been merged into the ``net/intel/idpf`` driver.
-  This change should have no impact to end applications, but,
+  Similarly, the ``common/iavf`` driver has been merged into the ``net/intel/iavf`` driver.
+  These changes should have no impact to end applications, but,
   when specifying the ``idpf`` or ``cpfl`` net drivers to Meson via ``-Denable_drivers`` option,
   there is no longer any need to also specify the ``common/idpf`` driver.
+  In the same way, when specifying the ``iavf`` or ``ice`` net drivers,
+  there is no need to also specify the ``common/iavf`` driver.
   Note, however, ``net/intel/cpfl`` driver now depends upon the ``net/intel/idpf`` driver.
 
 

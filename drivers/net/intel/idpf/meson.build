@@ -7,7 +7,7 @@ if is_windows
     subdir_done()
 endif
 
-includes += include_directories('../../../common/iavf')
+includes += include_directories('../iavf/base')
 
 sources = files(
         'idpf_common_device.c',

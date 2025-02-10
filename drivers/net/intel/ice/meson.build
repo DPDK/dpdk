@@ -18,7 +18,7 @@ sources = files(
 
 testpmd_sources = files('ice_testpmd.c')
 
-deps += ['hash', 'net', 'common_iavf']
+deps += ['hash', 'net', 'net_iavf']
 includes += include_directories('base')
 
 if arch_subdir == 'x86'
@@ -30,7 +30,7 @@ if arch_subdir == 'x86'
 
     ice_avx2_lib = static_library('ice_avx2_lib',
             'ice_rxtx_vec_avx2.c',
-            dependencies: [static_rte_ethdev, static_rte_kvargs, static_rte_hash],
+            dependencies: [static_rte_ethdev, static_rte_hash],
             include_directories: includes,
             c_args: [cflags, '-mavx2'])
     objs += ice_avx2_lib.extract_objects('ice_rxtx_vec_avx2.c')
@@ -43,8 +43,7 @@ if arch_subdir == 'x86'
         endif
         ice_avx512_lib = static_library('ice_avx512_lib',
                 'ice_rxtx_vec_avx512.c',
-                dependencies: [static_rte_ethdev,
-                    static_rte_kvargs, static_rte_hash],
+                dependencies: [static_rte_ethdev, static_rte_hash],
                 include_directories: includes,
                 c_args: avx512_args)
         objs += ice_avx512_lib.extract_objects('ice_rxtx_vec_avx512.c')

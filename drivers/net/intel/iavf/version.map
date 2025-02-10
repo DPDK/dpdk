@@ -17,3 +17,17 @@ EXPERIMENTAL {
 	# added in 21.11
 	rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask;
 };
+
+INTERNAL {
+	global:
+
+	iavf_aq_send_msg_to_pf;
+	iavf_clean_arq_element;
+	iavf_init_adminq;
+	iavf_set_mac_type;
+	iavf_shutdown_adminq;
+	iavf_vf_parse_hw_config;
+	iavf_vf_reset;
+
+	local: *;
+};

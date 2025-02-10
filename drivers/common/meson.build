@@ -5,7 +5,6 @@ std_deps = ['eal']
 drivers = [
         'cpt',
         'dpaax',
-        'iavf',
         'ionic',
         'mvep',
         'octeontx',

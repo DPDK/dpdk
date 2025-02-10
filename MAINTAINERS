@@ -821,7 +821,6 @@ M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 M: Ian Stokes <ian.stokes@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/iavf/
-F: drivers/common/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
 Intel ice
