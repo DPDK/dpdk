@@ -72,6 +72,22 @@ struct __rte_cache_aligned pmd_core_cfg {
 };
 static RTE_LCORE_VAR_HANDLE(struct pmd_core_cfg, lcore_cfgs);
 
+static void
+init_lcore_cfgs(void)
+{
+	struct pmd_core_cfg *lcore_cfg;
+	unsigned int lcore_id;
+
+	if (lcore_cfgs != NULL)
+		return;
+
+	RTE_LCORE_VAR_ALLOC(lcore_cfgs);
+
+	/* initialize all tailqs */
+	RTE_LCORE_VAR_FOREACH(lcore_id, lcore_cfg, lcore_cfgs)
+		TAILQ_INIT(&lcore_cfg->head);
+}
+
 static inline bool
 queue_equal(const union queue *l, const union queue *r)
 {
@@ -517,6 +533,7 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 		goto end;
 	}
 
+	init_lcore_cfgs();
 	lcore_cfg = RTE_LCORE_VAR_LCORE(lcore_id, lcore_cfgs);
 
 	/* check if other queues are stopped as well */
@@ -618,6 +635,8 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 	}
 
 	/* no need to check queue id as wrong queue id would not be enabled */
+
+	init_lcore_cfgs();
 	lcore_cfg = RTE_LCORE_VAR_LCORE(lcore_id, lcore_cfgs);
 
 	/* check if other queues are stopped as well */
@@ -768,15 +787,7 @@ rte_power_pmd_mgmt_get_scaling_freq_max(unsigned int lcore)
 }
 
 RTE_INIT(rte_power_ethdev_pmgmt_init) {
-	unsigned int lcore_id;
-	struct pmd_core_cfg *lcore_cfg;
 	int i;
-
-	RTE_LCORE_VAR_ALLOC(lcore_cfgs);
-
-	/* initialize all tailqs */
-	RTE_LCORE_VAR_FOREACH(lcore_id, lcore_cfg, lcore_cfgs)
-		TAILQ_INIT(&lcore_cfg->head);
 
 	/* initialize config defaults */
 	emptypoll_max = 512;
