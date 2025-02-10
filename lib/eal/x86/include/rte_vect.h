@@ -17,7 +17,7 @@
 #include <rte_common.h>
 #include "generic/rte_vect.h"
 
-#if defined(__ICC) || defined(_WIN64)
+#if defined(_WIN64)
 #include <smmintrin.h> /* SSE4 */
 #include <immintrin.h>
 #else
@@ -73,19 +73,6 @@ __extension__ ({                \
 	(m.u64[0]);             \
 })
 #endif
-
-/*
- * Prior to version 12.1 icc doesn't support _mm_set_epi64x.
- */
-#if (defined(__ICC) && __ICC < 1210)
-#define _mm_set_epi64x(a, b)     \
-__extension__ ({                 \
-	rte_xmm_t m;             \
-	m.u64[0] = b;            \
-	m.u64[1] = a;            \
-	(m.x);                   \
-})
-#endif /* (defined(__ICC) && __ICC < 1210) */
 
 #ifdef __AVX512F__
 

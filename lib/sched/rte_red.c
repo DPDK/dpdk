@@ -7,10 +7,6 @@
 #include <rte_random.h>
 #include <rte_common.h>
 
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259) /* conversion may lose significant bits */
-#endif
-
 static int rte_red_init_done = 0;     /**< Flag to indicate that global initialisation is done */
 uint32_t rte_red_rand_val = 0;        /**< Random value cache */
 uint32_t rte_red_rand_seed = 0;       /**< Seed for random number generation */

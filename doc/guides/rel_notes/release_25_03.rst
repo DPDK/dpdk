@@ -139,6 +139,11 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **Dropped support for Intel\ |reg| C++ Compiler (icc) (replaced by "icx" support)**
+
+  Support for the older Intel\ |reg| C++ Compiler "icc" has been dropped.
+  The newer Intel\ |reg| oneAPI DPC++/C++ Compiler, "icx", can be used to compile DPDK instead.
+
 
 API Changes
 -----------

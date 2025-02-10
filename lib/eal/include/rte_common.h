@@ -59,8 +59,6 @@ extern "C" {
 #define RTE_CC_IS_GNU 0
 #if defined __clang__
 #define RTE_CC_CLANG
-#elif defined __INTEL_COMPILER
-#define RTE_CC_ICC
 #elif defined __GNUC__
 #define RTE_CC_GCC
 #undef RTE_CC_IS_GNU
@@ -160,7 +158,7 @@ typedef uint16_t unaligned_uint16_t;
  * Macros to cause the compiler to remember the state of the diagnostics as of
  * each push, and restore to that point at each pop.
  */
-#if !defined(__INTEL_COMPILER) && !defined(RTE_TOOLCHAIN_MSVC)
+#if !defined(RTE_TOOLCHAIN_MSVC)
 #define __rte_diagnostic_push _Pragma("GCC diagnostic push")
 #define __rte_diagnostic_pop  _Pragma("GCC diagnostic pop")
 #else
@@ -172,7 +170,7 @@ typedef uint16_t unaligned_uint16_t;
  * Macro to disable compiler warnings about removing a type
  * qualifier from the target type.
  */
-#if !defined(__INTEL_COMPILER) && !defined(RTE_TOOLCHAIN_MSVC)
+#if !defined(RTE_TOOLCHAIN_MSVC)
 #define __rte_diagnostic_ignored_wcast_qual _Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
 #else
 #define __rte_diagnostic_ignored_wcast_qual

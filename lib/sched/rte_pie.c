@@ -9,10 +9,6 @@
 #include "rte_sched_log.h"
 #include "rte_pie.h"
 
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259) /* conversion may lose significant bits */
-#endif
-
 int
 rte_pie_rt_data_init(struct rte_pie *pie)
 {

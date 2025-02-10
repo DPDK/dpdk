@@ -39,8 +39,6 @@ if arch_subdir == 'x86'
             cflags += '-DVIRTIO_GCC_UNROLL_PRAGMA'
         elif (toolchain == 'clang' and cc.version().version_compare('>=3.7.0'))
             cflags += '-DVIRTIO_CLANG_UNROLL_PRAGMA'
-        elif (toolchain == 'icc' and cc.version().version_compare('>=16.0.0'))
-            cflags += '-DVIRTIO_ICC_UNROLL_PRAGMA'
         endif
     endif
     sources += files('virtio_rxtx_simple_sse.c')

@@ -41,11 +41,6 @@ test_pie_all(void)
 
 #include <rte_pie.h>
 
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259)       /* conversion may lose significant bits */
-#pragma warning(disable:181)        /* Arg incompatible with format string */
-#endif
-
 /**< structures for testing rte_pie performance and function */
 struct test_rte_pie_config {        /**< Test structure for RTE_PIE config */
 	struct rte_pie_config *pconfig; /**< RTE_PIE configuration parameters */

@@ -45,9 +45,8 @@ do
 	fi
 done
 
-# Filter out symbols suffixed with a . for icc
 for SYM in `awk '{
-	if ($2 != "l" && $4 == ".text.experimental" && !($NF ~ /\.$/)) {
+	if ($2 != "l" && $4 == ".text.experimental") {
 		print $NF
 	}
 }' $DUMPFILE`
@@ -76,9 +75,8 @@ do
 	fi
 done
 
-# Filter out symbols suffixed with a . for icc
 for SYM in `awk '{
-	if ($2 != "l" && $4 == ".text.internal" && !($NF ~ /\.$/)) {
+	if ($2 != "l" && $4 == ".text.internal") {
 		print $NF
 	}
 }' $DUMPFILE`

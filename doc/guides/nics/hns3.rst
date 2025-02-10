@@ -451,5 +451,4 @@ sve burst function. When enabling IEEE 1588, Rx/Tx burst mode should be
 simple or common. It is recommended that enable IEEE 1588 before ethdev
 start. In this way, the correct Rx/Tx burst function can be selected.
 
-Build with ICC is not supported yet.
 X86-32, Power8, ARMv7 and BSD are not supported yet.

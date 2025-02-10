@@ -25,7 +25,7 @@
 #include "mlx5_rxtx_vec.h"
 #include "mlx5_autoconf.h"
 
-#if !defined(__INTEL_COMPILER) && !defined(RTE_TOOLCHAIN_MSVC)
+#if !defined(RTE_TOOLCHAIN_MSVC)
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif
 

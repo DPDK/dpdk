@@ -79,11 +79,6 @@
 	for (iter = val; iter < size; iter++)
 #endif
 
-#ifdef VHOST_ICC_UNROLL_PRAGMA
-#define vhost_for_each_try_unroll(iter, val, size) _Pragma("unroll (4)") \
-	for (iter = val; iter < size; iter++)
-#endif
-
 #ifndef vhost_for_each_try_unroll
 #define vhost_for_each_try_unroll(iter, val, num) \
 	for (iter = val; iter < num; iter++)

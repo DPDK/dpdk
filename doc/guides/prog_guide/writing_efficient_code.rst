@@ -247,7 +247,7 @@ However, this technique is not always efficient; it depends on many factors incl
 Branch Prediction
 ~~~~~~~~~~~~~~~~~
 
-The Intel® C/C++ Compiler (icc)/gcc built-in helper functions likely() and unlikely()
+The gcc built-in helper functions likely() and unlikely()
 allow the developer to indicate if a code branch is likely to be taken or not.
 For instance:
 

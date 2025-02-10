@@ -422,25 +422,6 @@ Differences in how different Intel NICs handle maximum packet length for jumbo f
    Poll Mode Driver (PMD).
 
 
-GCC might generate Intel® AVX instructions for processors without Intel® AVX support
-------------------------------------------------------------------------------------
-
-**Description**:
-   When compiling DPDK (and any DPDK app), gcc may generate Intel® AVX instructions, even when the
-   processor does not support Intel® AVX.
-
-**Implication**:
-   Any DPDK app might crash while starting up.
-
-**Resolution/Workaround**:
-   Either compile using icc or set ``EXTRA_CFLAGS='-O3'`` prior to compilation.
-
-**Affected Environment/Platform**:
-   Platforms which processor does not support Intel® AVX.
-
-**Driver/Module**:
-   Environment Abstraction Layer (EAL).
-
 Ethertype filter could receive other packets (non-assigned) in Niantic
 ----------------------------------------------------------------------
 

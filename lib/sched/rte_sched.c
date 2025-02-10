@@ -22,11 +22,6 @@
 
 #include "rte_approx.h"
 
-
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259) /* conversion may lose significant bits */
-#endif
-
 #ifndef RTE_SCHED_PORT_N_GRINDERS
 #define RTE_SCHED_PORT_N_GRINDERS 8
 #endif

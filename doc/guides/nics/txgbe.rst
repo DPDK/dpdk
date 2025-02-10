@@ -186,5 +186,4 @@ For a detailed usage description please refer to "Traffic Management" section in
 Limitations or Known issues
 ---------------------------
 
-Build with ICC is not supported yet.
 Power8, ARMv7 and BSD are not supported yet.

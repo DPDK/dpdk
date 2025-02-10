@@ -378,7 +378,7 @@ AVX2 SIMD instructions. It is meant for bulk, throughput oriented workloads
 where reducing cycles/packet in PMD is a priority. In order to use the
 vectorized handler, take the following steps.
 
-- Use a recent version of gcc, icc, or clang and build 64-bit DPDK. If
+- Use a recent version of gcc or clang and build 64-bit DPDK. If
   the compiler is known to support AVX2, DPDK build system
   automatically compiles the vectorized handler. Otherwise, the
   handler is not available.
