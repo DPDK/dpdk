@@ -304,8 +304,17 @@ hns3_cmd_get_hardware_reply(struct hns3_hw *hw,
 	return hns3_cmd_convert_err_code(desc_ret);
 }
 
-static int hns3_cmd_poll_reply(struct hns3_hw *hw)
+static uint32_t hns3_get_cmd_tx_timeout(uint16_t opcode)
 {
+	if (opcode == HNS3_OPC_CFG_RST_TRIGGER)
+		return HNS3_COMQ_CFG_RST_TIMEOUT;
+
+	return HNS3_CMDQ_TX_TIMEOUT_DEFAULT;
+}
+
+static int hns3_cmd_poll_reply(struct hns3_hw *hw, uint16_t opcode)
+{
+	uint32_t cmdq_tx_timeout = hns3_get_cmd_tx_timeout(opcode);
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	uint32_t timeout = 0;
 
@@ -326,7 +335,7 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 
 		rte_delay_us(1);
 		timeout++;
-	} while (timeout < hw->cmq.tx_timeout);
+	} while (timeout < cmdq_tx_timeout);
 	hns3_err(hw, "Wait for reply timeout");
 	return -ETIME;
 }
@@ -400,7 +409,7 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	 * if multi descriptors to be sent, use the first one to check.
 	 */
 	if (HNS3_CMD_SEND_SYNC(rte_le_to_cpu_16(desc->flag))) {
-		retval = hns3_cmd_poll_reply(hw);
+		retval = hns3_cmd_poll_reply(hw, desc->opcode);
 		if (!retval)
 			retval = hns3_cmd_get_hardware_reply(hw, desc, num,
 							     ntc);
@@ -610,9 +619,6 @@ hns3_cmd_init_queue(struct hns3_hw *hw)
 	/* Setup the queue entries for use cmd queue */
 	hw->cmq.csq.desc_num = HNS3_NIC_CMQ_DESC_NUM;
 	hw->cmq.crq.desc_num = HNS3_NIC_CMQ_DESC_NUM;
-
-	/* Setup Tx write back timeout */
-	hw->cmq.tx_timeout = HNS3_CMDQ_TX_TIMEOUT;
 
 	/* Setup queue rings */
 	ret = hns3_alloc_cmd_queue(hw, HNS3_TYPE_CSQ);
