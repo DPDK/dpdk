@@ -174,7 +174,7 @@ ice_dcf_node_param_check(struct ice_dcf_hw *hw, uint32_t node_id,
 	}
 
 	/* for non-leaf node */
-	if (node_id >= 8 * hw->num_vfs) {
+	if (node_id >= (uint32_t)(8 * hw->num_vfs)) {
 		if (params->nonleaf.wfq_weight_mode) {
 			error->type =
 				RTE_TM_ERROR_TYPE_NODE_PARAMS_WFQ_WEIGHT_MODE;
