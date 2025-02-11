@@ -39,6 +39,13 @@ The command line options are:
 
     Display a help message and quit.
 
+*   ``--cmdline-file=filename, --cmdline-file-noecho=filename``
+
+    Read and execute commands from a file.
+    The file should contain the same commands that can be entered interactively.
+    When using ``cmdline-file``, each command is printed as it is executed.
+    When using ``cmdline-file-noecho``, the commands are executed silently.
+
 *   ``-a, --auto-start``
 
     Start forwarding on initialization.
