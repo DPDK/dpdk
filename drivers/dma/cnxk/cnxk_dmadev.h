@@ -98,8 +98,6 @@ struct cnxk_dpi_cdesc_data_s {
 struct cnxk_dpi_conf {
 	union cnxk_dpi_instr_cmd cmd;
 	struct cnxk_dpi_cdesc_data_s c_desc;
-	uint16_t pnum_words;
-	uint16_t pending;
 	uint16_t desc_idx;
 	struct rte_dma_stats stats;
 	uint64_t completed_offset;
@@ -111,6 +109,7 @@ struct cnxk_dpi_vf_s {
 	uint64_t *chunk_base;
 	uint16_t chunk_head;
 	uint16_t chunk_size_m1;
+	uint16_t total_pnum_words;
 	struct rte_mempool *chunk_pool;
 	struct cnxk_dpi_conf conf[CNXK_DPI_MAX_VCHANS_PER_QUEUE];
 	RTE_ATOMIC(rte_mcslock_t *) mcs_lock;
