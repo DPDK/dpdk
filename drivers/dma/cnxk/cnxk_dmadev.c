@@ -288,12 +288,12 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 	int i, j, rc = 0;
 	void *chunk;
 
+	dpivf->total_pnum_words = 0;
+
 	for (i = 0; i < dpivf->num_vchans; i++) {
 		dpi_conf = &dpivf->conf[i];
 		dpi_conf->c_desc.head = 0;
 		dpi_conf->c_desc.tail = 0;
-		dpi_conf->pnum_words = 0;
-		dpi_conf->pending = 0;
 		dpi_conf->desc_idx = 0;
 		for (j = 0; j < dpi_conf->c_desc.max_cnt + 1; j++)
 			dpi_conf->c_desc.compl_ptr[j * CNXK_DPI_COMPL_OFFSET] = CNXK_DPI_REQ_CDATA;
@@ -442,8 +442,7 @@ cnxk_damdev_burst_capacity(const void *dev_private, uint16_t vchan)
 	uint16_t burst_cap;
 
 	burst_cap = dpi_conf->c_desc.max_cnt -
-		    ((dpi_conf->stats.submitted - dpi_conf->stats.completed) + dpi_conf->pending) +
-		    1;
+		    (dpi_conf->stats.submitted - dpi_conf->stats.completed) + 1;
 
 	return burst_cap;
 }
@@ -452,18 +451,16 @@ static int
 cnxk_dmadev_submit(void *dev_private, uint16_t vchan)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	uint32_t num_words = dpi_conf->pnum_words;
+	uint32_t num_words = dpivf->total_pnum_words;
+	RTE_SET_USED(vchan);
 
-	if (!dpi_conf->pnum_words)
+	if (!num_words)
 		return 0;
 
 	rte_wmb();
 	plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
 
-	dpi_conf->stats.submitted += dpi_conf->pending;
-	dpi_conf->pnum_words = 0;
-	dpi_conf->pending = 0;
+	dpivf->total_pnum_words = 0;
 
 	return 0;
 }
