@@ -181,6 +181,13 @@ API Changes
 * eal: The ``__rte_packed`` macro for packing data is replaced with
   ``__rte_packed_begin`` / ``__rte_packed_end``.
 
+* net: Changed the API for CRC calculation to be thread-safe.
+  An opaque context argument was introduced to the net CRC API
+  containing the algorithm type and length.
+  This argument is added to ``rte_net_crc_calc``, ``rte_net_crc_set_alg``
+  and freed with ``rte_net_crc_free``.
+  These functions are versioned to retain binary compatibility until the next LTS release.
+
 * build: The Intel networking drivers:
   cpfl, e1000, fm10k, i40e, iavf, ice, idpf, ipn3ke and ixgbe,
   have been moved from ``drivers/net`` to a new ``drivers/net/intel`` directory.

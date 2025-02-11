@@ -3174,6 +3174,14 @@ qat_sec_session_set_docsis_parameters(struct rte_cryptodev *dev,
 		ret = qat_sym_session_configure_crc(dev, xform, session);
 		if (ret < 0)
 			return ret;
+	} else {
+		/* Initialize CRC algorithm */
+		session->crc = rte_net_crc_set_alg(RTE_NET_CRC_AVX512,
+			RTE_NET_CRC32_ETH);
+		if (session->crc == NULL) {
+			QAT_LOG(ERR, "Cannot initialize CRC context");
+			return -1;
+		}
 	}
 	qat_sym_session_finalize(session);
 

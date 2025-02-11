@@ -5,6 +5,23 @@
 #ifndef _NET_CRC_H_
 #define _NET_CRC_H_
 
+#include "rte_net_crc.h"
+
+void
+rte_net_crc_set_alg_v25(enum rte_net_crc_alg alg);
+
+struct rte_net_crc *
+rte_net_crc_set_alg_v26(enum rte_net_crc_alg alg,
+	enum rte_net_crc_type type);
+
+uint32_t
+rte_net_crc_calc_v25(const void *data,
+	uint32_t data_len, enum rte_net_crc_type type);
+
+uint32_t
+rte_net_crc_calc_v26(const struct rte_net_crc *ctx,
+	const void *data, const uint32_t data_len);
+
 /*
  * Different implementations of CRC
  */

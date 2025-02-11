@@ -10,6 +10,8 @@
 #include <rte_net_crc.h>
 #include <rte_log.h>
 #include <rte_vect.h>
+#include <rte_function_versioning.h>
+#include <rte_malloc.h>
 
 #include "net_crc.h"
 
@@ -38,10 +40,19 @@ rte_crc32_eth_handler(const uint8_t *data, uint32_t data_len);
 typedef uint32_t
 (*rte_net_crc_handler)(const uint8_t *data, uint32_t data_len);
 
+struct rte_net_crc {
+	enum rte_net_crc_alg alg;
+	enum rte_net_crc_type type;
+};
+
 static rte_net_crc_handler handlers_default[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_default_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_default_handler,
 };
+
+static struct {
+	rte_net_crc_handler f[RTE_NET_CRC_REQS];
+} handlers_dpdk26[RTE_NET_CRC_AVX512 + 1];
 
 static const rte_net_crc_handler *handlers = handlers_default;
 
@@ -286,10 +297,56 @@ rte_crc32_eth_default_handler(const uint8_t *data, uint32_t data_len)
 	return handlers[RTE_NET_CRC32_ETH](data, data_len);
 }
 
+static void
+handlers_init(enum rte_net_crc_alg alg)
+{
+	handlers_dpdk26[alg].f[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_handler;
+	handlers_dpdk26[alg].f[RTE_NET_CRC32_ETH] = rte_crc32_eth_handler;
+
+	switch (alg) {
+	case RTE_NET_CRC_AVX512:
+#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+		if (AVX512_VPCLMULQDQ_CPU_SUPPORTED) {
+			handlers_dpdk26[alg].f[RTE_NET_CRC16_CCITT] =
+				rte_crc16_ccitt_avx512_handler;
+			handlers_dpdk26[alg].f[RTE_NET_CRC32_ETH] =
+				rte_crc32_eth_avx512_handler;
+			break;
+		}
+#endif
+		/* fall-through */
+	case RTE_NET_CRC_SSE42:
+#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+		if (SSE42_PCLMULQDQ_CPU_SUPPORTED) {
+			handlers_dpdk26[alg].f[RTE_NET_CRC16_CCITT] =
+				rte_crc16_ccitt_sse42_handler;
+			handlers_dpdk26[alg].f[RTE_NET_CRC32_ETH] =
+				rte_crc32_eth_sse42_handler;
+		}
+#endif
+		break;
+	case RTE_NET_CRC_NEON:
+#ifdef CC_ARM64_NEON_PMULL_SUPPORT
+		if (NEON_PMULL_CPU_SUPPORTED) {
+			handlers_dpdk26[alg].f[RTE_NET_CRC16_CCITT] =
+				rte_crc16_ccitt_neon_handler;
+			handlers_dpdk26[alg].f[RTE_NET_CRC32_ETH] =
+				rte_crc32_eth_neon_handler;
+			break;
+		}
+#endif
+		/* fall-through */
+	case RTE_NET_CRC_SCALAR:
+		/* fall-through */
+	default:
+		break;
+	}
+}
+
 /* Public API */
 
 void
-rte_net_crc_set_alg(enum rte_net_crc_alg alg)
+rte_net_crc_set_alg_v25(enum rte_net_crc_alg alg)
 {
 	handlers = NULL;
 	if (max_simd_bitwidth == 0)
@@ -316,9 +373,59 @@ rte_net_crc_set_alg(enum rte_net_crc_alg alg)
 	if (handlers == NULL)
 		handlers = handlers_scalar;
 }
+VERSION_SYMBOL(rte_net_crc_set_alg, _v25, 25);
+
+struct rte_net_crc *rte_net_crc_set_alg_v26(enum rte_net_crc_alg alg,
+	enum rte_net_crc_type type)
+{
+	uint16_t max_simd_bitwidth;
+	struct rte_net_crc *crc;
+
+	crc = rte_zmalloc(NULL, sizeof(struct rte_net_crc), 0);
+	if (crc == NULL)
+		return NULL;
+	max_simd_bitwidth = rte_vect_get_max_simd_bitwidth();
+	crc->type = type;
+	crc->alg = RTE_NET_CRC_SCALAR;
+
+	switch (alg) {
+	case RTE_NET_CRC_AVX512:
+		if (max_simd_bitwidth >= RTE_VECT_SIMD_512) {
+			crc->alg = RTE_NET_CRC_AVX512;
+			return crc;
+		}
+		/* fall-through */
+	case RTE_NET_CRC_SSE42:
+		if (max_simd_bitwidth >= RTE_VECT_SIMD_128) {
+			crc->alg = RTE_NET_CRC_SSE42;
+			return crc;
+		}
+		break;
+	case RTE_NET_CRC_NEON:
+		if (max_simd_bitwidth >= RTE_VECT_SIMD_128) {
+			crc->alg = RTE_NET_CRC_NEON;
+			return crc;
+		}
+		break;
+	case RTE_NET_CRC_SCALAR:
+		/* fall-through */
+	default:
+		break;
+	}
+	return crc;
+}
+BIND_DEFAULT_SYMBOL(rte_net_crc_set_alg, _v26, 26);
+MAP_STATIC_SYMBOL(struct rte_net_crc *rte_net_crc_set_alg(
+	enum rte_net_crc_alg alg, enum rte_net_crc_type type),
+	rte_net_crc_set_alg_v26);
+
+void rte_net_crc_free(struct rte_net_crc *crc)
+{
+	rte_free(crc);
+}
 
 uint32_t
-rte_net_crc_calc(const void *data,
+rte_net_crc_calc_v25(const void *data,
 	uint32_t data_len,
 	enum rte_net_crc_type type)
 {
@@ -330,6 +437,18 @@ rte_net_crc_calc(const void *data,
 
 	return ret;
 }
+VERSION_SYMBOL(rte_net_crc_calc, _v25, 25);
+
+uint32_t
+rte_net_crc_calc_v26(const struct rte_net_crc *ctx,
+	const void *data, const uint32_t data_len)
+{
+	return handlers_dpdk26[ctx->alg].f[ctx->type](data, data_len);
+}
+BIND_DEFAULT_SYMBOL(rte_net_crc_calc, _v26, 26);
+MAP_STATIC_SYMBOL(uint32_t rte_net_crc_calc(const struct rte_net_crc *ctx,
+	const void *data, const uint32_t data_len),
+	rte_net_crc_calc_v26);
 
 /* Call initialisation helpers for all crc algorithm handlers */
 RTE_INIT(rte_net_crc_init)
@@ -338,4 +457,8 @@ RTE_INIT(rte_net_crc_init)
 	sse42_pclmulqdq_init();
 	avx512_vpclmulqdq_init();
 	neon_pmull_init();
+	handlers_init(RTE_NET_CRC_SCALAR);
+	handlers_init(RTE_NET_CRC_NEON);
+	handlers_init(RTE_NET_CRC_SSE42);
+	handlers_init(RTE_NET_CRC_AVX512);
 }

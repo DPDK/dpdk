@@ -39,6 +39,8 @@ sources = files(
 )
 deps += ['mbuf']
 
+use_function_versioning = true
+
 if dpdk_conf.has('RTE_ARCH_X86_64')
     net_crc_sse42_cpu_support = (cc.get_define('__PCLMUL__', args: machine_args) != '')
     net_crc_avx512_cpu_support = (
