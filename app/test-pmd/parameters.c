@@ -51,6 +51,8 @@ enum {
 	TESTPMD_OPT_LONG_MIN_NUM = 256,
 #define TESTPMD_OPT_CMDLINE_FILE "cmdline-file"
 	TESTPMD_OPT_CMDLINE_FILE_NUM,
+#define TESTPMD_OPT_CMDLINE_FILE_NOECHO "cmdline-file-noecho"
+	TESTPMD_OPT_CMDLINE_FILE_NOECHO_NUM,
 #define TESTPMD_OPT_ETH_PEERS_CONFIGFILE "eth-peers-configfile"
 	TESTPMD_OPT_ETH_PEERS_CONFIGFILE_NUM,
 #define TESTPMD_OPT_ETH_PEER "eth-peer"
@@ -269,6 +271,7 @@ static const struct option long_options[] = {
 	NO_ARG(TESTPMD_OPT_HELP),
 	NO_ARG(TESTPMD_OPT_INTERACTIVE),
 	REQUIRED_ARG(TESTPMD_OPT_CMDLINE_FILE),
+	REQUIRED_ARG(TESTPMD_OPT_CMDLINE_FILE_NOECHO),
 	REQUIRED_ARG(TESTPMD_OPT_ETH_PEERS_CONFIGFILE),
 	REQUIRED_ARG(TESTPMD_OPT_ETH_PEER),
 	NO_ARG(TESTPMD_OPT_TX_FIRST),
@@ -387,7 +390,8 @@ usage(char* progname)
 	printf("\nUsage: %s [EAL options] -- [testpmd options]\n\n",
 	       progname);
 	printf("  --interactive: run in interactive mode.\n");
-	printf("  --cmdline-file: execute cli commands before startup.\n");
+	printf("  --cmdline-file: execute cli commands before startup, echoing each command as it is run.\n");
+	printf("  --cmdline-file-noecho: execute cli commands before startup, without echoing each command.\n");
 	printf("  --auto-start: start forwarding on init "
 	       "[always when non-interactive].\n");
 	printf("  --help: display this message and quit.\n");
@@ -956,6 +960,9 @@ launch_args_parse(int argc, char** argv)
 			exit(EXIT_SUCCESS);
 			break;
 		case TESTPMD_OPT_CMDLINE_FILE_NUM:
+			echo_cmdline_file = true;
+			/* fall-through */
+		case TESTPMD_OPT_CMDLINE_FILE_NOECHO_NUM:
 			printf("CLI commands to be read from %s\n",
 				optarg);
 			strlcpy(cmdline_filename, optarg,
