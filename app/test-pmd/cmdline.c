@@ -13980,24 +13980,29 @@ void
 cmdline_read_from_file(const char *filename)
 {
 	struct cmdline *cl;
+	int fd = -1;
 
-	/* cmdline_file_new does not produce any output which is not ideal here.
-	 * Much better to show output of the commands, so we open filename directly
+	/* cmdline_file_new does not produce any output
+	 * so when echoing is requested we open filename directly
 	 * and then pass that to cmdline_new with stdout as the output path.
 	 */
-	int fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "Failed to open file %s: %s\n",
-			filename, strerror(errno));
-		return;
-	}
+	if (!echo_cmdline_file) {
+		cl = cmdline_file_new(main_ctx, "testpmd> ", filename);
+	} else {
+		fd = open(filename, O_RDONLY);
+		if (fd < 0) {
+			fprintf(stderr, "Failed to open file %s: %s\n",
+				filename, strerror(errno));
+			return;
+		}
 
-	cl = cmdline_new(main_ctx, "testpmd> ", fd, STDOUT_FILENO);
+		cl = cmdline_new(main_ctx, "testpmd> ", fd, STDOUT_FILENO);
+	}
 	if (cl == NULL) {
 		fprintf(stderr,
 			"Failed to create file based cmdline context: %s\n",
 			filename);
-		return;
+		goto end;
 	}
 
 	cmdline_interact(cl);
@@ -14006,6 +14011,10 @@ cmdline_read_from_file(const char *filename)
 	cmdline_free(cl);
 
 	printf("Read CLI commands from %s\n", filename);
+
+end:
+	if (fd >= 0)
+		close(fd);
 }
 
 void

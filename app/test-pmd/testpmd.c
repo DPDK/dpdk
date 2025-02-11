@@ -106,6 +106,7 @@ uint8_t interactive = 0;
 uint8_t auto_start = 0;
 uint8_t tx_first;
 char cmdline_filename[PATH_MAX] = {0};
+bool echo_cmdline_file;
 
 /*
  * NUMA support configuration.
