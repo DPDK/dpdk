@@ -118,24 +118,46 @@ class Configuration(FrozenModel):
         return self
 
     @model_validator(mode="after")
-    def validate_ports(self) -> Self:
-        """Validate that the ports are all linked to valid ones."""
-        port_links: dict[tuple[str, str], Literal[False] | tuple[int, int]] = {
-            (node.name, port.pci): False for node in self.nodes for port in node.ports
+    def validate_port_links(self) -> Self:
+        """Validate that all the test runs' port links are valid."""
+        existing_port_links: dict[tuple[str, str], Literal[False] | tuple[str, str]] = {
+            (node.name, port.name): False for node in self.nodes for port in node.ports
         }
 
-        for node_no, node in enumerate(self.nodes):
-            for port_no, port in enumerate(node.ports):
-                peer_port_identifier = (port.peer_node, port.peer_pci)
-                peer_port = port_links.get(peer_port_identifier, None)
-                assert (
-                    peer_port is not None
-                ), f"invalid peer port specified for nodes.{node_no}.ports.{port_no}"
-                assert peer_port is False, (
-                    f"the peer port specified for nodes.{node_no}.ports.{port_no} "
-                    f"is already linked to nodes.{peer_port[0]}.ports.{peer_port[1]}"
-                )
-                port_links[peer_port_identifier] = (node_no, port_no)
+        defined_port_links = [
+            (test_run_idx, test_run, link_idx, link)
+            for test_run_idx, test_run in enumerate(self.test_runs)
+            for link_idx, link in enumerate(test_run.port_topology)
+        ]
+        for test_run_idx, test_run, link_idx, link in defined_port_links:
+            sut_node_port_peer = existing_port_links.get(
+                (test_run.system_under_test_node, link.sut_port), None
+            )
+            assert sut_node_port_peer is not None, (
+                "Invalid SUT node port specified for link "
+                f"test_runs.{test_run_idx}.port_topology.{link_idx}."
+            )
+
+            assert sut_node_port_peer is False or sut_node_port_peer == link.right, (
+                f"The SUT node port for link test_runs.{test_run_idx}.port_topology.{link_idx} is "
+                f"already linked to port {sut_node_port_peer[0]}.{sut_node_port_peer[1]}."
+            )
+
+            tg_node_port_peer = existing_port_links.get(
+                (test_run.traffic_generator_node, link.tg_port), None
+            )
+            assert tg_node_port_peer is not None, (
+                "Invalid TG node port specified for link "
+                f"test_runs.{test_run_idx}.port_topology.{link_idx}."
+            )
+
+            assert tg_node_port_peer is False or sut_node_port_peer == link.left, (
+                f"The TG node port for link test_runs.{test_run_idx}.port_topology.{link_idx} is "
+                f"already linked to port {tg_node_port_peer[0]}.{tg_node_port_peer[1]}."
+            )
+
+            existing_port_links[link.left] = link.right
+            existing_port_links[link.right] = link.left
 
         return self
 

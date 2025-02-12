@@ -14,6 +14,7 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
 
 from abc import ABC
+from functools import cached_property
 
 from framework.config.node import (
     OS,
@@ -85,6 +86,11 @@ class Node(ABC):
     def _init_ports(self) -> None:
         self.ports = [Port(self.name, port_config) for port_config in self.config.ports]
         self.main_session.update_ports(self.ports)
+
+    @cached_property
+    def ports_by_name(self) -> dict[str, Port]:
+        """Ports mapped by the name assigned at configuration."""
+        return {port.name: port for port in self.ports}
 
     def set_up_test_run(
         self,

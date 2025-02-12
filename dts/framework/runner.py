@@ -54,7 +54,7 @@ from .test_result import (
     TestSuiteWithCases,
 )
 from .test_suite import TestCase, TestSuite
-from .testbed_model.topology import Topology
+from .testbed_model.topology import PortLink, Topology
 
 
 class DTSRunner:
@@ -331,7 +331,13 @@ class DTSRunner:
             test_run_result.update_setup(Result.FAIL, e)
 
         else:
-            self._run_test_suites(sut_node, tg_node, test_run_result, test_suites_with_cases)
+            topology = Topology(
+                PortLink(sut_node.ports_by_name[link.sut_port], tg_node.ports_by_name[link.tg_port])
+                for link in test_run_config.port_topology
+            )
+            self._run_test_suites(
+                sut_node, tg_node, topology, test_run_result, test_suites_with_cases
+            )
 
         finally:
             try:
@@ -361,6 +367,7 @@ class DTSRunner:
         self,
         sut_node: SutNode,
         tg_node: TGNode,
+        topology: Topology,
         test_run_result: TestRunResult,
         test_suites_with_cases: Iterable[TestSuiteWithCases],
     ) -> None:
@@ -380,11 +387,11 @@ class DTSRunner:
         Args:
             sut_node: The test run's SUT node.
             tg_node: The test run's TG node.
+            topology: The test run's port topology.
             test_run_result: The test run's result.
             test_suites_with_cases: The test suites with test cases to run.
         """
         end_dpdk_build = False
-        topology = Topology(sut_node.ports, tg_node.ports)
         supported_capabilities = self._get_supported_capabilities(
             sut_node, topology, test_suites_with_cases
         )
