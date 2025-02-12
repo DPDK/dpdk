@@ -27,9 +27,8 @@ Nearly all of them are frozen:
       and makes it thread safe should we ever want to move in that direction.
 """
 
-from functools import cached_property
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple, TypeVar, cast
+from typing import Annotated, Any, Literal, TypeVar, cast
 
 import yaml
 from pydantic import Field, TypeAdapter, ValidationError, model_validator
@@ -45,18 +44,6 @@ from .node import (
 )
 from .test_run import TestRunConfiguration
 
-
-class TestRunWithNodesConfiguration(NamedTuple):
-    """Tuple containing the configuration of the test run and its associated nodes."""
-
-    #:
-    test_run_config: TestRunConfiguration
-    #:
-    sut_node_config: SutNodeConfiguration
-    #:
-    tg_node_config: TGNodeConfiguration
-
-
 TestRunsConfig = Annotated[list[TestRunConfiguration], Field(min_length=1)]
 
 NodesConfig = Annotated[list[NodeConfigurationTypes], Field(min_length=1)]
@@ -69,40 +56,6 @@ class Configuration(FrozenModel):
     test_runs: TestRunsConfig
     #: Node configurations.
     nodes: NodesConfig
-
-    @cached_property
-    def test_runs_with_nodes(self) -> list[TestRunWithNodesConfiguration]:
-        """List of test runs with the associated nodes."""
-        test_runs_with_nodes = []
-
-        for test_run_no, test_run in enumerate(self.test_runs):
-            sut_node_name = test_run.system_under_test_node
-            sut_node = next(filter(lambda n: n.name == sut_node_name, self.nodes), None)
-
-            assert sut_node is not None, (
-                f"test_runs.{test_run_no}.sut_node_config.node_name "
-                f"({test_run.system_under_test_node}) is not a valid node name"
-            )
-            assert isinstance(sut_node, SutNodeConfiguration), (
-                f"test_runs.{test_run_no}.sut_node_config.node_name is a valid node name, "
-                "but it is not a valid SUT node"
-            )
-
-            tg_node_name = test_run.traffic_generator_node
-            tg_node = next(filter(lambda n: n.name == tg_node_name, self.nodes), None)
-
-            assert tg_node is not None, (
-                f"test_runs.{test_run_no}.tg_node_name "
-                f"({test_run.traffic_generator_node}) is not a valid node name"
-            )
-            assert isinstance(tg_node, TGNodeConfiguration), (
-                f"test_runs.{test_run_no}.tg_node_name is a valid node name, "
-                "but it is not a valid TG node"
-            )
-
-            test_runs_with_nodes.append(TestRunWithNodesConfiguration(test_run, sut_node, tg_node))
-
-        return test_runs_with_nodes
 
     @model_validator(mode="after")
     def validate_node_names(self) -> Self:
@@ -162,14 +115,33 @@ class Configuration(FrozenModel):
         return self
 
     @model_validator(mode="after")
-    def validate_test_runs_with_nodes(self) -> Self:
-        """Validate the test runs to nodes associations.
+    def validate_test_runs_against_nodes(self) -> Self:
+        """Validate the test runs to nodes associations."""
+        for test_run_no, test_run in enumerate(self.test_runs):
+            sut_node_name = test_run.system_under_test_node
+            sut_node = next((n for n in self.nodes if n.name == sut_node_name), None)
 
-        This validator relies on the cached property `test_runs_with_nodes` to run for the first
-        time in this call, therefore triggering the assertions if needed.
-        """
-        if self.test_runs_with_nodes:
-            pass
+            assert sut_node is not None, (
+                f"Test run {test_run_no}.system_under_test_node "
+                f"({sut_node_name}) is not a valid node name."
+            )
+            assert isinstance(sut_node, SutNodeConfiguration), (
+                f"Test run {test_run_no}.system_under_test_node is a valid node name, "
+                "but it is not a valid SUT node."
+            )
+
+            tg_node_name = test_run.traffic_generator_node
+            tg_node = next((n for n in self.nodes if n.name == tg_node_name), None)
+
+            assert tg_node is not None, (
+                f"Test run {test_run_no}.traffic_generator_name "
+                f"({tg_node_name}) is not a valid node name."
+            )
+            assert isinstance(tg_node, TGNodeConfiguration), (
+                f"Test run {test_run_no}.traffic_generator_name is a valid node name, "
+                "but it is not a valid TG node."
+            )
+
         return self
 
 
