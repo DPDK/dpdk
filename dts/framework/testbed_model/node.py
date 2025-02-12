@@ -14,16 +14,14 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
 
 from abc import ABC
+from collections.abc import Iterable
 from functools import cached_property
 
 from framework.config.node import (
     OS,
     NodeConfiguration,
 )
-from framework.config.test_run import (
-    DPDKBuildConfiguration,
-    TestRunConfiguration,
-)
+from framework.config.test_run import TestRunConfiguration
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
 
@@ -81,22 +79,14 @@ class Node(ABC):
         self._logger.info(f"Connected to node: {self.name}")
         self._get_remote_cpus()
         self._other_sessions = []
-        self._init_ports()
-
-    def _init_ports(self) -> None:
-        self.ports = [Port(self.name, port_config) for port_config in self.config.ports]
-        self.main_session.update_ports(self.ports)
+        self.ports = [Port(self, port_config) for port_config in self.config.ports]
 
     @cached_property
     def ports_by_name(self) -> dict[str, Port]:
         """Ports mapped by the name assigned at configuration."""
         return {port.name: port for port in self.ports}
 
-    def set_up_test_run(
-        self,
-        test_run_config: TestRunConfiguration,
-        dpdk_build_config: DPDKBuildConfiguration,
-    ) -> None:
+    def set_up_test_run(self, test_run_config: TestRunConfiguration, ports: Iterable[Port]) -> None:
         """Test run setup steps.
 
         Configure hugepages on all DTS node types. Additional steps can be added by
@@ -105,15 +95,18 @@ class Node(ABC):
         Args:
             test_run_config: A test run configuration according to which
                 the setup steps will be taken.
-            dpdk_build_config: The build configuration of DPDK.
+            ports: The ports to set up for the test run.
         """
         self._setup_hugepages()
 
-    def tear_down_test_run(self) -> None:
+    def tear_down_test_run(self, ports: Iterable[Port]) -> None:
         """Test run teardown steps.
 
         There are currently no common execution teardown steps common to all DTS node types.
         Additional steps can be added by extending the method in subclasses with the use of super().
+
+        Args:
+            ports: The ports to tear down for the test run.
         """
 
     def create_session(self, name: str) -> OSSession:

@@ -13,6 +13,7 @@ An SUT node is where this SUT runs.
 
 import os
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 
@@ -33,6 +34,7 @@ from framework.config.test_run import (
 from framework.exception import ConfigurationError, RemoteFileNotFoundError
 from framework.params.eal import EalParams
 from framework.remote_session.remote_session import CommandResult
+from framework.testbed_model.port import Port
 from framework.utils import MesonArgs, TarCompressionFormat
 
 from .cpu import LogicalCore, LogicalCoreList
@@ -86,7 +88,6 @@ class SutNode(Node):
     _node_info: OSSessionInfo | None
     _compiler_version: str | None
     _path_to_devbind_script: PurePath | None
-    _ports_bound_to_dpdk: bool
 
     def __init__(self, node_config: SutNodeConfiguration):
         """Extend the constructor with SUT node specifics.
@@ -196,11 +197,7 @@ class SutNode(Node):
         """
         return DPDKBuildInfo(dpdk_version=self.dpdk_version, compiler_version=self.compiler_version)
 
-    def set_up_test_run(
-        self,
-        test_run_config: TestRunConfiguration,
-        dpdk_build_config: DPDKBuildConfiguration,
-    ) -> None:
+    def set_up_test_run(self, test_run_config: TestRunConfiguration, ports: Iterable[Port]) -> None:
         """Extend the test run setup with vdev config and DPDK build set up.
 
         This method extends the setup process by configuring virtual devices and preparing the DPDK
@@ -209,22 +206,25 @@ class SutNode(Node):
         Args:
             test_run_config: A test run configuration according to which
                 the setup steps will be taken.
-            dpdk_build_config: The build configuration of DPDK.
+            ports: The ports to set up for the test run.
         """
-        super().set_up_test_run(test_run_config, dpdk_build_config)
+        super().set_up_test_run(test_run_config, ports)
         for vdev in test_run_config.vdevs:
             self.virtual_devices.append(VirtualDevice(vdev))
-        self._set_up_dpdk(dpdk_build_config)
+        self._set_up_dpdk(test_run_config.dpdk_config, ports)
 
-    def tear_down_test_run(self) -> None:
-        """Extend the test run teardown with virtual device teardown and DPDK teardown."""
-        super().tear_down_test_run()
+    def tear_down_test_run(self, ports: Iterable[Port]) -> None:
+        """Extend the test run teardown with virtual device teardown and DPDK teardown.
+
+        Args:
+            ports: The ports to tear down for the test run.
+        """
+        super().tear_down_test_run(ports)
         self.virtual_devices = []
-        self._tear_down_dpdk()
+        self._tear_down_dpdk(ports)
 
     def _set_up_dpdk(
-        self,
-        dpdk_build_config: DPDKBuildConfiguration,
+        self, dpdk_build_config: DPDKBuildConfiguration, ports: Iterable[Port]
     ) -> None:
         """Set up DPDK the SUT node and bind ports.
 
@@ -234,6 +234,7 @@ class SutNode(Node):
 
         Args:
             dpdk_build_config: A DPDK build configuration to test.
+            ports: The ports to use for DPDK.
         """
         match dpdk_build_config.dpdk_location:
             case RemoteDPDKTreeLocation(dpdk_tree=dpdk_tree):
@@ -254,16 +255,16 @@ class SutNode(Node):
                 self._configure_dpdk_build(build_options)
                 self._build_dpdk()
 
-        self.bind_ports_to_driver()
+        self.bind_ports_to_driver(ports)
 
-    def _tear_down_dpdk(self) -> None:
+    def _tear_down_dpdk(self, ports: Iterable[Port]) -> None:
         """Reset DPDK variables and bind port driver to the OS driver."""
         self._env_vars = {}
         self.__remote_dpdk_tree_path = None
         self._remote_dpdk_build_dir = None
         self._dpdk_version = None
         self.compiler_version = None
-        self.bind_ports_to_driver(for_dpdk=False)
+        self.bind_ports_to_driver(ports, for_dpdk=False)
 
     def _set_remote_dpdk_tree_path(self, dpdk_tree: PurePath):
         """Set the path to the remote DPDK source tree based on the provided DPDK location.
@@ -504,21 +505,22 @@ class SutNode(Node):
             f"{app_path} {eal_params}", timeout, privileged=True, verify=True
         )
 
-    def bind_ports_to_driver(self, for_dpdk: bool = True) -> None:
+    def bind_ports_to_driver(self, ports: Iterable[Port], for_dpdk: bool = True) -> None:
         """Bind all ports on the SUT to a driver.
 
         Args:
+            ports: The ports to act on.
             for_dpdk: If :data:`True`, binds ports to os_driver_for_dpdk.
                 If :data:`False`, binds to os_driver.
         """
-        if self._ports_bound_to_dpdk == for_dpdk:
-            return
+        for port in ports:
+            if port.bound_for_dpdk == for_dpdk:
+                continue
 
-        for port in self.ports:
             driver = port.config.os_driver_for_dpdk if for_dpdk else port.config.os_driver
             self.main_session.send_command(
                 f"{self.path_to_devbind_script} -b {driver} --force {port.pci}",
                 privileged=True,
                 verify=True,
             )
-        self._ports_bound_to_dpdk = for_dpdk
+            port.bound_for_dpdk = for_dpdk

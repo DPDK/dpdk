@@ -10,6 +10,8 @@ This intermediate module implements the common parts of mostly POSIX compliant d
 """
 
 import json
+from collections.abc import Iterable
+from functools import cached_property
 from typing import TypedDict
 
 from typing_extensions import NotRequired
@@ -149,31 +151,40 @@ class LinuxSession(PosixSession):
 
         self.send_command(f"echo {number_of} | tee {hugepage_config_path}", privileged=True)
 
-    def update_ports(self, ports: list[Port]) -> None:
-        """Overrides :meth:`~.os_session.OSSession.update_ports`."""
-        self._logger.debug("Gathering port info.")
-        for port in ports:
-            assert port.node == self.name, "Attempted to gather port info on the wrong node"
+    def get_port_info(self, pci_address: str) -> tuple[str, str]:
+        """Overrides :meth:`~.os_session.OSSession.get_port_info`.
 
-        port_info_list = self._get_lshw_info()
-        for port in ports:
-            for port_info in port_info_list:
-                if f"pci@{port.pci}" == port_info.get("businfo"):
-                    self._update_port_attr(port, port_info.get("logicalname"), "logical_name")
-                    self._update_port_attr(port, port_info.get("serial"), "mac_address")
-                    port_info_list.remove(port_info)
-                    break
-            else:
-                self._logger.warning(f"No port at pci address {port.pci} found.")
+        Raises:
+            ConfigurationError: If the port could not be found.
+        """
+        self._logger.debug(f"Gathering info for port {pci_address}.")
 
-    def bring_up_link(self, ports: list[Port]) -> None:
+        bus_info = f"pci@{pci_address}"
+        port = next(port for port in self._lshw_net_info if port.get("businfo") == bus_info)
+        if port is None:
+            raise ConfigurationError(f"Port {pci_address} could not be found on the node.")
+
+        logical_name = port.get("logicalname") or ""
+        if not logical_name:
+            self._logger.warning(f"Port {pci_address} does not have a valid logical name.")
+            # raise ConfigurationError(f"Port {pci_address} does not have a valid logical name.")
+
+        mac_address = port.get("serial") or ""
+        if not mac_address:
+            self._logger.warning(f"Port {pci_address} does not have a valid mac address.")
+            # raise ConfigurationError(f"Port {pci_address} does not have a valid mac address.")
+
+        return logical_name, mac_address
+
+    def bring_up_link(self, ports: Iterable[Port]) -> None:
         """Overrides :meth:`~.os_session.OSSession.bring_up_link`."""
         for port in ports:
             self.send_command(
                 f"ip link set dev {port.logical_name} up", privileged=True, verify=True
             )
 
-    def _get_lshw_info(self) -> list[LshwOutput]:
+    @cached_property
+    def _lshw_net_info(self) -> list[LshwOutput]:
         output = self.send_command("lshw -quiet -json -C network", verify=True)
         return json.loads(output.stdout)
 
