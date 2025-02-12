@@ -15,16 +15,10 @@ import sys
 from framework.config.common import ValidationContext
 from framework.test_run import TestRun
 from framework.testbed_model.node import Node
-from framework.testbed_model.sut_node import SutNode
-from framework.testbed_model.tg_node import TGNode
 
 from .config import (
     Configuration,
     load_config,
-)
-from .config.node import (
-    SutNodeConfiguration,
-    TGNodeConfiguration,
 )
 from .logger import DTSLogger, get_dts_logger
 from .settings import SETTINGS
@@ -63,15 +57,7 @@ class DTSRunner:
             self._result.update_setup(Result.PASS)
 
             for node_config in self._configuration.nodes:
-                node: Node
-
-                match node_config:
-                    case SutNodeConfiguration():
-                        node = SutNode(node_config)
-                    case TGNodeConfiguration():
-                        node = TGNode(node_config)
-
-                nodes.append(node)
+                nodes.append(Node(node_config))
 
             # for all test run sections
             for test_run_config in self._configuration.test_runs:

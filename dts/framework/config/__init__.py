@@ -37,16 +37,12 @@ from typing_extensions import Self
 from framework.exception import ConfigurationError
 
 from .common import FrozenModel, ValidationContext
-from .node import (
-    NodeConfigurationTypes,
-    SutNodeConfiguration,
-    TGNodeConfiguration,
-)
+from .node import NodeConfiguration
 from .test_run import TestRunConfiguration
 
 TestRunsConfig = Annotated[list[TestRunConfiguration], Field(min_length=1)]
 
-NodesConfig = Annotated[list[NodeConfigurationTypes], Field(min_length=1)]
+NodesConfig = Annotated[list[NodeConfiguration], Field(min_length=1)]
 
 
 class Configuration(FrozenModel):
@@ -125,10 +121,6 @@ class Configuration(FrozenModel):
                 f"Test run {test_run_no}.system_under_test_node "
                 f"({sut_node_name}) is not a valid node name."
             )
-            assert isinstance(sut_node, SutNodeConfiguration), (
-                f"Test run {test_run_no}.system_under_test_node is a valid node name, "
-                "but it is not a valid SUT node."
-            )
 
             tg_node_name = test_run.traffic_generator_node
             tg_node = next((n for n in self.nodes if n.name == tg_node_name), None)
@@ -136,10 +128,6 @@ class Configuration(FrozenModel):
             assert tg_node is not None, (
                 f"Test run {test_run_no}.traffic_generator_name "
                 f"({tg_node_name}) is not a valid node name."
-            )
-            assert isinstance(tg_node, TGNodeConfiguration), (
-                f"Test run {test_run_no}.traffic_generator_name is a valid node name, "
-                "but it is not a valid TG node."
             )
 
         return self

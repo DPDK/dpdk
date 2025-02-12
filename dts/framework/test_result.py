@@ -32,9 +32,9 @@ from typing import Any, Callable, TypedDict
 from .config.test_run import TestRunConfiguration
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLogger
+from .remote_session.dpdk import DPDKBuildInfo
 from .testbed_model.os_session import OSSessionInfo
 from .testbed_model.port import Port
-from .testbed_model.sut_node import DPDKBuildInfo
 
 
 class Result(Enum):

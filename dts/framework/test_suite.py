@@ -34,6 +34,7 @@ from typing_extensions import Self
 from framework.testbed_model.capability import TestProtocol
 from framework.testbed_model.topology import Topology
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
+    CapturingTrafficGenerator,
     PacketFilteringConfig,
 )
 
@@ -246,8 +247,12 @@ class TestSuite(TestProtocol):
         Returns:
             A list of received packets.
         """
+        assert isinstance(
+            self._ctx.tg, CapturingTrafficGenerator
+        ), "Cannot capture with a non-capturing traffic generator"
+        # TODO: implement @requires for types of traffic generator
         packets = self._adjust_addresses(packets)
-        return self._ctx.tg_node.send_packets_and_capture(
+        return self._ctx.tg.send_packets_and_capture(
             packets,
             self._ctx.topology.tg_port_egress,
             self._ctx.topology.tg_port_ingress,
@@ -265,7 +270,7 @@ class TestSuite(TestProtocol):
             packets: Packets to send.
         """
         packets = self._adjust_addresses(packets)
-        self._ctx.tg_node.send_packets(packets, self._ctx.topology.tg_port_egress)
+        self._ctx.tg.send_packets(packets, self._ctx.topology.tg_port_egress)
 
     def get_expected_packets(
         self,

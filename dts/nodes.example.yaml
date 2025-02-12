@@ -20,9 +20,6 @@
   hugepages_2mb: # optional; if removed, will use system hugepage configuration
       number_of: 256
       force_first_numa: false
-  dpdk_config:
-      lcores: "" # use all available logical cores (Skips first core)
-      memory_channels: 4 # tells DPDK to use 4 memory channels
 # Define a Scapy traffic generator node, having two network ports
 # physically connected to the corresponding ports in SUT 1 (the peer node).
 - name: "TG 1"
@@ -41,5 +38,3 @@
   hugepages_2mb: # optional; if removed, will use system hugepage configuration
       number_of: 256
       force_first_numa: false
-  traffic_generator:
-      type: SCAPY

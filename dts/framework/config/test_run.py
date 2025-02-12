@@ -13,10 +13,10 @@ import re
 import tarfile
 from collections import deque
 from collections.abc import Iterable
-from enum import auto, unique
+from enum import Enum, auto, unique
 from functools import cached_property
 from pathlib import Path, PurePath
-from typing import Any, Literal, NamedTuple
+from typing import Annotated, Any, Literal, NamedTuple
 
 from pydantic import Field, field_validator, model_validator
 from typing_extensions import TYPE_CHECKING, Self
@@ -361,6 +361,68 @@ class PortLinkConfig(FrozenModel):
         return self
 
 
+@unique
+class TrafficGeneratorType(str, Enum):
+    """The supported traffic generators."""
+
+    #:
+    SCAPY = "SCAPY"
+
+
+class TrafficGeneratorConfig(FrozenModel):
+    """A protocol required to define traffic generator types."""
+
+    #: The traffic generator type the child class is required to define to be distinguished among
+    #: others.
+    type: TrafficGeneratorType
+
+
+class ScapyTrafficGeneratorConfig(TrafficGeneratorConfig):
+    """Scapy traffic generator specific configuration."""
+
+    type: Literal[TrafficGeneratorType.SCAPY]
+
+
+#: A union type discriminating traffic generators by the `type` field.
+TrafficGeneratorConfigTypes = Annotated[ScapyTrafficGeneratorConfig, Field(discriminator="type")]
+
+#: Comma-separated list of logical cores to use. An empty string or ```any``` means use all lcores.
+LogicalCores = Annotated[
+    str,
+    Field(
+        examples=["1,2,3,4,5,18-22", "10-15", "any"],
+        pattern=r"^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$|any",
+    ),
+]
+
+
+class DPDKRuntimeConfiguration(FrozenModel):
+    """Configuration of the DPDK EAL parameters."""
+
+    #: A comma delimited list of logical cores to use when running DPDK. ```any```, an empty
+    #: string or omitting this field means use any core except for the first one. The first core
+    #: will only be used if explicitly set.
+    lcores: LogicalCores = ""
+
+    #: The number of memory channels to use when running DPDK.
+    memory_channels: int = 1
+
+    #: The names of virtual devices to test.
+    vdevs: list[str] = Field(default_factory=list)
+
+    @property
+    def use_first_core(self) -> bool:
+        """Returns :data:`True` if `lcores` explicitly selects the first core."""
+        return "0" in self.lcores
+
+
+class DPDKConfiguration(DPDKRuntimeConfiguration):
+    """The DPDK configuration needed to test."""
+
+    #: The DPDKD build configuration used to test.
+    build: DPDKBuildConfiguration
+
+
 class TestRunConfiguration(FrozenModel):
     """The configuration of a test run.
 
@@ -369,7 +431,9 @@ class TestRunConfiguration(FrozenModel):
     """
 
     #: The DPDK configuration used to test.
-    dpdk_config: DPDKBuildConfiguration = Field(alias="dpdk_build")
+    dpdk: DPDKConfiguration
+    #: The traffic generator configuration used to test.
+    traffic_generator: TrafficGeneratorConfigTypes
     #: Whether to run performance tests.
     perf: bool
     #: Whether to run functional tests.
@@ -382,8 +446,6 @@ class TestRunConfiguration(FrozenModel):
     system_under_test_node: str
     #: The TG node name to use in this test run.
     traffic_generator_node: str
-    #: The names of virtual devices to test.
-    vdevs: list[str] = Field(default_factory=list)
     #: The seed to use for pseudo-random generation.
     random_seed: int | None = None
     #: The port links between the specified nodes to use.

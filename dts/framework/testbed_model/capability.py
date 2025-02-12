@@ -63,8 +63,8 @@ from framework.remote_session.testpmd_shell import (
     TestPmdShellDecorator,
     TestPmdShellMethod,
 )
+from framework.testbed_model.node import Node
 
-from .sut_node import SutNode
 from .topology import Topology, TopologyType
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class Capability(ABC):
     #: A set storing the capabilities whose support should be checked.
     capabilities_to_check: ClassVar[set[Self]] = set()
 
-    def register_to_check(self) -> Callable[[SutNode, "Topology"], set[Self]]:
+    def register_to_check(self) -> Callable[[Node, "Topology"], set[Self]]:
         """Register the capability to be checked for support.
 
         Returns:
@@ -118,27 +118,27 @@ class Capability(ABC):
         """An optional method that modifies the required capabilities."""
 
     @classmethod
-    def _get_and_reset(cls, sut_node: SutNode, topology: "Topology") -> set[Self]:
+    def _get_and_reset(cls, node: Node, topology: "Topology") -> set[Self]:
         """The callback method to be called after all capabilities have been registered.
 
         Not only does this method check the support of capabilities,
         but it also reset the internal set of registered capabilities
         so that the "register, then get support" workflow works in subsequent test runs.
         """
-        supported_capabilities = cls.get_supported_capabilities(sut_node, topology)
+        supported_capabilities = cls.get_supported_capabilities(node, topology)
         cls.capabilities_to_check = set()
         return supported_capabilities
 
     @classmethod
     @abstractmethod
-    def get_supported_capabilities(cls, sut_node: SutNode, topology: "Topology") -> set[Self]:
+    def get_supported_capabilities(cls, node: Node, topology: "Topology") -> set[Self]:
         """Get the support status of each registered capability.
 
         Each subclass must implement this method and return the subset of supported capabilities
         of :attr:`capabilities_to_check`.
 
         Args:
-            sut_node: The SUT node of the current test run.
+            node: The node to check capabilities against.
             topology: The topology of the current test run.
 
         Returns:
@@ -197,7 +197,7 @@ class DecoratedNicCapability(Capability):
 
     @classmethod
     def get_supported_capabilities(
-        cls, sut_node: SutNode, topology: "Topology"
+        cls, node: Node, topology: "Topology"
     ) -> set["DecoratedNicCapability"]:
         """Overrides :meth:`~Capability.get_supported_capabilities`.
 
@@ -207,7 +207,7 @@ class DecoratedNicCapability(Capability):
         before executing its `capability_fn` so that each capability is retrieved only once.
         """
         supported_conditional_capabilities: set["DecoratedNicCapability"] = set()
-        logger = get_dts_logger(f"{sut_node.name}.{cls.__name__}")
+        logger = get_dts_logger(f"{node.name}.{cls.__name__}")
         if topology.type is topology.type.no_link:
             logger.debug(
                 "No links available in the current topology, not getting NIC capabilities."
@@ -332,7 +332,7 @@ class TopologyCapability(Capability):
 
     @classmethod
     def get_supported_capabilities(
-        cls, sut_node: SutNode, topology: "Topology"
+        cls, node: Node, topology: "Topology"
     ) -> set["TopologyCapability"]:
         """Overrides :meth:`~Capability.get_supported_capabilities`."""
         supported_capabilities = set()
@@ -483,14 +483,14 @@ def requires(
 
 
 def get_supported_capabilities(
-    sut_node: SutNode,
+    node: Node,
     topology_config: Topology,
     capabilities_to_check: set[Capability],
 ) -> set[Capability]:
     """Probe the environment for `capabilities_to_check` and return the supported ones.
 
     Args:
-        sut_node: The SUT node to check for capabilities.
+        node: The node to check capabilities against.
         topology_config: The topology config to check for capabilities.
         capabilities_to_check: The capabilities to check.
 
@@ -502,7 +502,7 @@ def get_supported_capabilities(
         callbacks.add(capability_to_check.register_to_check())
     supported_capabilities = set()
     for callback in callbacks:
-        supported_capabilities.update(callback(sut_node, topology_config))
+        supported_capabilities.update(callback(node, topology_config))
 
     return supported_capabilities
 
