@@ -51,8 +51,8 @@ class TestMtu(TestSuite):
             Set traffic generator MTU lengths to a size greater than scope of all
             test cases.
         """
-        self.tg_node.main_session.configure_port_mtu(JUMBO_MTU + 200, self._tg_port_egress)
-        self.tg_node.main_session.configure_port_mtu(JUMBO_MTU + 200, self._tg_port_ingress)
+        self.topology.tg_port_egress.configure_mtu(JUMBO_MTU + 200)
+        self.topology.tg_port_ingress.configure_mtu(JUMBO_MTU + 200)
 
     def send_packet_and_verify(self, pkt_size: int, should_receive: bool) -> None:
         """Generate, send a packet, and assess its behavior based on a given packet size.
@@ -156,11 +156,7 @@ class TestMtu(TestSuite):
             Verify that standard MTU packets forward, in addition to packets within the limits of
             an MTU size set during runtime.
         """
-        with TestPmdShell(
-            self.sut_node,
-            tx_offloads=0x8000,
-            mbuf_size=[JUMBO_MTU + 200],
-        ) as testpmd:
+        with TestPmdShell(tx_offloads=0x8000, mbuf_size=[JUMBO_MTU + 200]) as testpmd:
             testpmd.set_port_mtu_all(1500, verify=True)
             testpmd.start()
             self.assess_mtu_boundary(testpmd, 1500)
@@ -201,7 +197,6 @@ class TestMtu(TestSuite):
             MTU modification.
         """
         with TestPmdShell(
-            self.sut_node,
             tx_offloads=0x8000,
             mbuf_size=[JUMBO_MTU + 200],
             mbcache=200,
@@ -230,7 +225,6 @@ class TestMtu(TestSuite):
             Verify that all packets are forwarded after pre-runtime MTU modification.
         """
         with TestPmdShell(
-            self.sut_node,
             tx_offloads=0x8000,
             mbuf_size=[JUMBO_MTU + 200],
             mbcache=200,
@@ -259,7 +253,6 @@ class TestMtu(TestSuite):
             MTU modification.
         """
         with TestPmdShell(
-            self.sut_node,
             tx_offloads=0x8000,
             mbuf_size=[JUMBO_MTU + 200],
             mbcache=200,
@@ -277,5 +270,5 @@ class TestMtu(TestSuite):
         Teardown:
             Set the MTU size of the traffic generator back to the standard 1518 byte size.
         """
-        self.tg_node.main_session.configure_port_mtu(STANDARD_MTU, self._tg_port_egress)
-        self.tg_node.main_session.configure_port_mtu(STANDARD_MTU, self._tg_port_ingress)
+        self.topology.tg_port_egress.configure_mtu(STANDARD_MTU)
+        self.topology.tg_port_ingress.configure_mtu(STANDARD_MTU)

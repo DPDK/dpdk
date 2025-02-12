@@ -124,7 +124,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a VLAN packet.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
             self.send_vlan_packet_and_verify(True, strip=False, vlan_id=1)
@@ -137,7 +137,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a VLAN packet.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.set_vlan_strip(port=0, enable=True)
             testpmd.start()
@@ -150,7 +150,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a VLAN packet.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
             self.send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
@@ -162,7 +162,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a non-VLAN packet.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
             testpmd.set_promisc(port=0, enable=False)
             testpmd.stop_all_ports()

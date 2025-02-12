@@ -46,6 +46,7 @@ class TestSmokeTests(TestSuite):
         Setup:
             Set the build directory path and a list of NICs in the SUT node.
         """
+        self.sut_node = self._ctx.sut_node  # FIXME: accessing the context should be forbidden
         self.dpdk_build_dir_path = self.sut_node.remote_dpdk_build_dir
         self.nics_in_node = self.sut_node.config.ports
 
@@ -104,7 +105,7 @@ class TestSmokeTests(TestSuite):
         Test:
             List all devices found in testpmd and verify the configured devices are among them.
         """
-        with TestPmdShell(self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             dev_list = [str(x) for x in testpmd.get_devices()]
         for nic in self.nics_in_node:
             self.verify(

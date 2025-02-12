@@ -29,6 +29,7 @@ Modules
    framework.test_suite
    framework.test_result
    framework.settings
+   framework.context
    framework.logger
    framework.parser
    framework.utils

@@ -128,7 +128,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / IPv6(src="::1") / UDP() / Raw(payload),
             Ether(dst=mac_id) / IPv6(src="::1") / TCP() / Raw(payload),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -160,7 +160,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / IPv6(src="::1") / UDP() / Raw(payload),
             Ether(dst=mac_id) / IPv6(src="::1") / TCP() / Raw(payload),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             testpmd.start()
@@ -190,7 +190,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / IP() / UDP(chksum=0xF),
             Ether(dst=mac_id) / IP() / TCP(chksum=0xF),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -223,7 +223,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / IP(chksum=0xF) / UDP(),
             Ether(dst=mac_id) / IP(chksum=0xF) / TCP(),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -260,7 +260,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / IPv6(src="::1") / UDP(chksum=0xF),
             Ether(dst=mac_id) / IPv6(src="::1") / TCP(chksum=0xF),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -299,7 +299,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / Dot1Q(vlan=1) / IPv6(src="::1") / UDP(chksum=0xF) / Raw(payload),
             Ether(dst=mac_id) / Dot1Q(vlan=1) / IPv6(src="::1") / TCP(chksum=0xF) / Raw(payload),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -333,7 +333,7 @@ class TestChecksumOffload(TestSuite):
             Ether(dst=mac_id) / IP() / SCTP(),
             Ether(dst=mac_id) / IP() / SCTP(chksum=0xF),
         ]
-        with TestPmdShell(node=self.sut_node, enable_rx_cksum=True) as testpmd:
+        with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             testpmd.csum_set_hw(layers=ChecksumOffloadOptions.sctp)

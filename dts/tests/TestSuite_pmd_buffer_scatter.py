@@ -58,8 +58,8 @@ class TestPmdBufferScatter(TestSuite):
             Increase the MTU of both ports on the traffic generator to 9000
             to support larger packet sizes.
         """
-        self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_egress)
-        self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_ingress)
+        self.topology.tg_port_egress.configure_mtu(9000)
+        self.topology.tg_port_ingress.configure_mtu(9000)
 
     def scatter_pktgen_send_packet(self, pkt_size: int) -> list[Packet]:
         """Generate and send a packet to the SUT then capture what is forwarded back.
@@ -110,7 +110,6 @@ class TestPmdBufferScatter(TestSuite):
             Start testpmd and run functional test with preset `mb_size`.
         """
         with TestPmdShell(
-            self.sut_node,
             forward_mode=SimpleForwardingModes.mac,
             mbcache=200,
             mbuf_size=[mb_size],
@@ -147,5 +146,5 @@ class TestPmdBufferScatter(TestSuite):
         Teardown:
             Set the MTU of the tg_node back to a more standard size of 1500.
         """
-        self.tg_node.main_session.configure_port_mtu(1500, self._tg_port_egress)
-        self.tg_node.main_session.configure_port_mtu(1500, self._tg_port_ingress)
+        self.topology.tg_port_egress.configure_mtu(1500)
+        self.topology.tg_port_ingress.configure_mtu(1500)

@@ -38,10 +38,8 @@ class TestPromiscSupport(TestSuite):
         """
         packet = [Ether(dst=self.ALTERNATIVE_MAC_ADDRESS) / IP() / Raw(load=b"\x00" * 64)]
 
-        with TestPmdShell(
-            self.sut_node,
-        ) as testpmd:
-            for port_id in range(len(self.sut_node.ports)):
+        with TestPmdShell() as testpmd:
+            for port_id, _ in enumerate(self.topology.sut_ports):
                 testpmd.set_promisc(port=port_id, enable=True, verify=True)
             testpmd.start()
 
@@ -51,7 +49,7 @@ class TestPromiscSupport(TestSuite):
 
             testpmd.stop()
 
-            for port_id in range(len(self.sut_node.ports)):
+            for port_id, _ in enumerate(self.topology.sut_ports):
                 testpmd.set_promisc(port=port_id, enable=False, verify=True)
             testpmd.start()
 

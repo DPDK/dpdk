@@ -23,6 +23,6 @@ class TestHelloWorld(TestSuite):
         Verify:
             The testpmd session throws no errors.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd.start()
         self.log("Hello World!")

@@ -84,7 +84,6 @@ def setup_and_teardown_test(
             queues_to_config.add(random.randint(1, self.number_of_queues - 1))
         unchanged_queues = set(range(self.number_of_queues)) - queues_to_config
         with TestPmdShell(
-            self.sut_node,
             port_topology=PortTopology.chained,
             rx_queues=self.number_of_queues,
             tx_queues=self.number_of_queues,

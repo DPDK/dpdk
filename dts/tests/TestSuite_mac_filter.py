@@ -101,10 +101,10 @@ class TestMacFilter(TestSuite):
             Remove the fake mac address from the PMD's address pool.
             Send a packet with the fake mac address to the PMD. (Should not receive)
         """
-        with TestPmdShell(self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd.set_promisc(0, enable=False)
             testpmd.start()
-            mac_address = self._sut_port_ingress.mac_address
+            mac_address = self.topology.sut_port_ingress.mac_address
 
             # Send a packet with NIC default mac address
             self.send_packet_and_verify(mac_address=mac_address, should_receive=True)
@@ -137,9 +137,9 @@ class TestMacFilter(TestSuite):
             Determine the device's mac address pool size, and fill the pool with fake addresses.
             Attempt to add another fake mac address, overloading the address pool. (Should fail)
         """
-        with TestPmdShell(self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd.start()
-            mac_address = self._sut_port_ingress.mac_address
+            mac_address = self.topology.sut_port_ingress.mac_address
             try:
                 testpmd.set_mac_addr(0, "00:00:00:00:00:00", add=True)
                 self.verify(False, "Invalid mac address added.")
@@ -191,7 +191,7 @@ class TestMacFilter(TestSuite):
             Remove the fake multicast address from the PMDs multicast address filter.
             Send a packet with the fake multicast address to the PMD. (Should not receive)
         """
-        with TestPmdShell(self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd.start()
             testpmd.set_promisc(0, enable=False)
             multicast_address = "01:00:5E:00:00:00"

@@ -24,7 +24,7 @@ from importlib import import_module
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
 from pkgutil import iter_modules
 from types import ModuleType
-from typing import ClassVar, Protocol, TypeVar, Union, cast
+from typing import TYPE_CHECKING, ClassVar, Protocol, TypeVar, Union, cast
 
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
@@ -32,9 +32,6 @@ from scapy.packet import Packet, Padding, raw
 from typing_extensions import Self
 
 from framework.testbed_model.capability import TestProtocol
-from framework.testbed_model.port import Port
-from framework.testbed_model.sut_node import SutNode
-from framework.testbed_model.tg_node import TGNode
 from framework.testbed_model.topology import Topology
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
@@ -43,6 +40,9 @@ from framework.testbed_model.traffic_generator.capturing_traffic_generator impor
 from .exception import ConfigurationError, InternalError, TestCaseVerifyError
 from .logger import DTSLogger, get_dts_logger
 from .utils import get_packet_summaries, to_pascal_case
+
+if TYPE_CHECKING:
+    from framework.context import Context
 
 
 class TestSuite(TestProtocol):
@@ -69,33 +69,19 @@ class TestSuite(TestProtocol):
 
     The test suite is aware of the testbed (the SUT and TG) it's running on. From this, it can
     properly choose the IP addresses and other configuration that must be tailored to the testbed.
-
-    Attributes:
-        sut_node: The SUT node where the test suite is running.
-        tg_node: The TG node where the test suite is running.
     """
 
-    sut_node: SutNode
-    tg_node: TGNode
     #: Whether the test suite is blocking. A failure of a blocking test suite
     #: will block the execution of all subsequent test suites in the current test run.
     is_blocking: ClassVar[bool] = False
+    _ctx: "Context"
     _logger: DTSLogger
-    _sut_port_ingress: Port
-    _sut_port_egress: Port
     _sut_ip_address_ingress: Union[IPv4Interface, IPv6Interface]
     _sut_ip_address_egress: Union[IPv4Interface, IPv6Interface]
-    _tg_port_ingress: Port
-    _tg_port_egress: Port
     _tg_ip_address_ingress: Union[IPv4Interface, IPv6Interface]
     _tg_ip_address_egress: Union[IPv4Interface, IPv6Interface]
 
-    def __init__(
-        self,
-        sut_node: SutNode,
-        tg_node: TGNode,
-        topology: Topology,
-    ):
+    def __init__(self):
         """Initialize the test suite testbed information and basic configuration.
 
         Find links between ports and set up default IP addresses to be used when
@@ -106,17 +92,24 @@ class TestSuite(TestProtocol):
             tg_node: The TG node where the test suite will run.
             topology: The topology where the test suite will run.
         """
-        self.sut_node = sut_node
-        self.tg_node = tg_node
+        from framework.context import get_ctx
+
+        self._ctx = get_ctx()
         self._logger = get_dts_logger(self.__class__.__name__)
-        self._tg_port_egress = topology.tg_port_egress
-        self._sut_port_ingress = topology.sut_port_ingress
-        self._sut_port_egress = topology.sut_port_egress
-        self._tg_port_ingress = topology.tg_port_ingress
         self._sut_ip_address_ingress = ip_interface("192.168.100.2/24")
         self._sut_ip_address_egress = ip_interface("192.168.101.2/24")
         self._tg_ip_address_egress = ip_interface("192.168.100.3/24")
         self._tg_ip_address_ingress = ip_interface("192.168.101.3/24")
+
+    @property
+    def name(self) -> str:
+        """The name of the test suite class."""
+        return type(self).__name__
+
+    @property
+    def topology(self) -> Topology:
+        """The current topology in use."""
+        return self._ctx.topology
 
     @classmethod
     def get_test_cases(cls) -> list[type["TestCase"]]:
@@ -254,10 +247,10 @@ class TestSuite(TestProtocol):
             A list of received packets.
         """
         packets = self._adjust_addresses(packets)
-        return self.tg_node.send_packets_and_capture(
+        return self._ctx.tg_node.send_packets_and_capture(
             packets,
-            self._tg_port_egress,
-            self._tg_port_ingress,
+            self._ctx.topology.tg_port_egress,
+            self._ctx.topology.tg_port_ingress,
             filter_config,
             duration,
         )
@@ -272,7 +265,7 @@ class TestSuite(TestProtocol):
             packets: Packets to send.
         """
         packets = self._adjust_addresses(packets)
-        self.tg_node.send_packets(packets, self._tg_port_egress)
+        self._ctx.tg_node.send_packets(packets, self._ctx.topology.tg_port_egress)
 
     def get_expected_packets(
         self,
@@ -352,15 +345,15 @@ class TestSuite(TestProtocol):
             # only be the Ether src/dst.
             if "src" not in packet.fields:
                 packet.src = (
-                    self._sut_port_egress.mac_address
+                    self.topology.sut_port_egress.mac_address
                     if expected
-                    else self._tg_port_egress.mac_address
+                    else self.topology.tg_port_egress.mac_address
                 )
             if "dst" not in packet.fields:
                 packet.dst = (
-                    self._tg_port_ingress.mac_address
+                    self.topology.tg_port_ingress.mac_address
                     if expected
-                    else self._sut_port_ingress.mac_address
+                    else self.topology.sut_port_ingress.mac_address
                 )
 
             # update l3 addresses
@@ -400,10 +393,10 @@ class TestSuite(TestProtocol):
 
     def _fail_test_case_verify(self, failure_description: str) -> None:
         self._logger.debug("A test case failed, showing the last 10 commands executed on SUT:")
-        for command_res in self.sut_node.main_session.remote_session.history[-10:]:
+        for command_res in self._ctx.sut_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
         self._logger.debug("A test case failed, showing the last 10 commands executed on TG:")
-        for command_res in self.tg_node.main_session.remote_session.history[-10:]:
+        for command_res in self._ctx.tg_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
         raise TestCaseVerifyError(failure_description)
 
@@ -517,14 +510,14 @@ class TestSuite(TestProtocol):
         self._logger.debug("Looking at the Ether layer.")
         self._logger.debug(
             f"Comparing received dst mac '{received_packet.dst}' "
-            f"with expected '{self._tg_port_ingress.mac_address}'."
+            f"with expected '{self.topology.tg_port_ingress.mac_address}'."
         )
-        if received_packet.dst != self._tg_port_ingress.mac_address:
+        if received_packet.dst != self.topology.tg_port_ingress.mac_address:
             return False
 
-        expected_src_mac = self._tg_port_egress.mac_address
+        expected_src_mac = self.topology.tg_port_egress.mac_address
         if l3:
-            expected_src_mac = self._sut_port_egress.mac_address
+            expected_src_mac = self.topology.sut_port_egress.mac_address
         self._logger.debug(
             f"Comparing received src mac '{received_packet.src}' "
             f"with expected '{expected_src_mac}'."
