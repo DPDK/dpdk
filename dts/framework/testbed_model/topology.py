@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2024 PANTHEON.tech s.r.o.
+# Copyright(c) 2025 Arm Limited
 
 """Testbed topology representation.
 
@@ -7,14 +8,9 @@ A topology of a testbed captures what links are available between the testbed's 
 The link information then implies what type of topology is available.
 """
 
-from dataclasses import dataclass
-from os import environ
-from typing import TYPE_CHECKING, Iterable
-
-if TYPE_CHECKING or environ.get("DTS_DOC_BUILD"):
-    from enum import Enum as NoAliasEnum
-else:
-    from aenum import NoAliasEnum
+from collections.abc import Iterator
+from enum import Enum
+from typing import NamedTuple
 
 from framework.config.node import PortConfig
 from framework.exception import ConfigurationError
@@ -22,7 +18,7 @@ from framework.exception import ConfigurationError
 from .port import Port
 
 
-class TopologyType(int, NoAliasEnum):
+class TopologyType(int, Enum):
     """Supported topology types."""
 
     #: A topology with no Traffic Generator.
@@ -31,34 +27,20 @@ class TopologyType(int, NoAliasEnum):
     one_link = 1
     #: A topology with two physical links between the Sut node and the TG node.
     two_links = 2
-    #: The default topology required by test cases if not specified otherwise.
-    default = 2
 
     @classmethod
-    def get_from_value(cls, value: int) -> "TopologyType":
-        r"""Get the corresponding instance from value.
+    def default(cls) -> "TopologyType":
+        """The default topology required by test cases if not specified otherwise."""
+        return cls.two_links
 
-        :class:`~enum.Enum`\s that don't allow aliases don't know which instance should be returned
-        as there could be multiple valid instances. Except for the :attr:`default` value,
-        :class:`TopologyType` is a regular :class:`~enum.Enum`.
-        When getting an instance from value, we're not interested in the default,
-        since we already know the value, allowing us to remove the ambiguity.
 
-        Args:
-            value: The value of the requested enum.
+class PortLink(NamedTuple):
+    """The physical, cabled connection between the ports."""
 
-        Raises:
-            ConfigurationError: If an unsupported link topology is supplied.
-        """
-        match value:
-            case 0:
-                return TopologyType.no_link
-            case 1:
-                return TopologyType.one_link
-            case 2:
-                return TopologyType.two_links
-            case _:
-                raise ConfigurationError("More than two links in a topology are not supported.")
+    #: The port on the SUT node connected to `tg_port`.
+    sut_port: Port
+    #: The port on the TG node connected to `sut_port`.
+    tg_port: Port
 
 
 class Topology:
@@ -89,55 +71,43 @@ class Topology:
     sut_port_egress: Port
     tg_port_ingress: Port
 
-    def __init__(self, sut_ports: Iterable[Port], tg_ports: Iterable[Port]):
-        """Create the topology from `sut_ports` and `tg_ports`.
+    def __init__(self, port_links: Iterator[PortLink]):
+        """Create the topology from `port_links`.
 
         Args:
-            sut_ports: The SUT node's ports.
-            tg_ports: The TG node's ports.
-        """
-        port_links = []
-        for sut_port in sut_ports:
-            for tg_port in tg_ports:
-                if (sut_port.identifier, sut_port.peer) == (
-                    tg_port.peer,
-                    tg_port.identifier,
-                ):
-                    port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
+            port_links: The test run's required port links.
 
-        self.type = TopologyType.get_from_value(len(port_links))
+        Raises:
+            ConfigurationError: If an unsupported link topology is supplied.
+        """
         dummy_port = Port(
             "",
             PortConfig(
+                name="dummy",
                 pci="0000:00:00.0",
                 os_driver_for_dpdk="",
                 os_driver="",
-                peer_node="",
-                peer_pci="0000:00:00.0",
             ),
         )
+
+        self.type = TopologyType.no_link
         self.tg_port_egress = dummy_port
         self.sut_port_ingress = dummy_port
         self.sut_port_egress = dummy_port
         self.tg_port_ingress = dummy_port
-        if self.type > TopologyType.no_link:
-            self.tg_port_egress = port_links[0].tg_port
-            self.sut_port_ingress = port_links[0].sut_port
+
+        if port_link := next(port_links, None):
+            self.type = TopologyType.one_link
+            self.tg_port_egress = port_link.tg_port
+            self.sut_port_ingress = port_link.sut_port
             self.sut_port_egress = self.sut_port_ingress
             self.tg_port_ingress = self.tg_port_egress
-        if self.type > TopologyType.one_link:
-            self.sut_port_egress = port_links[1].sut_port
-            self.tg_port_ingress = port_links[1].tg_port
 
+            if port_link := next(port_links, None):
+                self.type = TopologyType.two_links
+                self.sut_port_egress = port_link.sut_port
+                self.tg_port_ingress = port_link.tg_port
 
-@dataclass(slots=True, frozen=True)
-class PortLink:
-    """The physical, cabled connection between the ports.
-
-    Attributes:
-        sut_port: The port on the SUT node connected to `tg_port`.
-        tg_port: The port on the TG node connected to `sut_port`.
-    """
-
-    sut_port: Port
-    tg_port: Port
+                if next(port_links, None) is not None:
+                    msg = "More than two links in a topology are not supported."
+                    raise ConfigurationError(msg)

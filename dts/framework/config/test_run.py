@@ -9,16 +9,18 @@
 The root model of a test run configuration is :class:`TestRunConfiguration`.
 """
 
+import re
 import tarfile
 from enum import auto, unique
 from functools import cached_property
 from pathlib import Path, PurePath
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from pydantic import Field, field_validator, model_validator
 from typing_extensions import TYPE_CHECKING, Self
 
-from framework.utils import StrEnum
+from framework.exception import InternalError
+from framework.utils import REGEX_FOR_PORT_LINK, StrEnum
 
 from .common import FrozenModel, load_fields_from_settings
 
@@ -271,6 +273,83 @@ def fetch_all_test_suites() -> list[TestSuiteConfig]:
     ]
 
 
+class LinkPortIdentifier(NamedTuple):
+    """A tuple linking test run node type to port name."""
+
+    node_type: Literal["sut", "tg"]
+    port_name: str
+
+
+class PortLinkConfig(FrozenModel):
+    """A link between the ports of the nodes.
+
+    Can be represented as a string with the following notation:
+
+    .. code::
+
+        sut.{port name} <-> tg.{port name}  # explicit node nomination
+        {port name} <-> {port name}         # implicit node nomination. Left is SUT, right is TG.
+    """
+
+    #: The port at the left side of the link.
+    left: LinkPortIdentifier
+    #: The port at the right side of the link.
+    right: LinkPortIdentifier
+
+    @cached_property
+    def sut_port(self) -> str:
+        """Port name of the SUT node.
+
+        Raises:
+            InternalError: If a misconfiguration has been allowed to happen.
+        """
+        if self.left.node_type == "sut":
+            return self.left.port_name
+        if self.right.node_type == "sut":
+            return self.right.port_name
+
+        raise InternalError("Unreachable state reached.")
+
+    @cached_property
+    def tg_port(self) -> str:
+        """Port name of the TG node.
+
+        Raises:
+            InternalError: If a misconfiguration has been allowed to happen.
+        """
+        if self.left.node_type == "tg":
+            return self.left.port_name
+        if self.right.node_type == "tg":
+            return self.right.port_name
+
+        raise InternalError("Unreachable state reached.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_from_string(cls, data: Any) -> Any:
+        """Convert the string representation of the model into a valid mapping."""
+        if isinstance(data, str):
+            m = re.match(REGEX_FOR_PORT_LINK, data, re.I)
+            assert m is not None, (
+                "The provided link is malformed. Please use the following "
+                "notation: sut.{port name} <-> tg.{port name}"
+            )
+
+            left = (m.group(1) or "sut").lower(), m.group(2)
+            right = (m.group(3) or "tg").lower(), m.group(4)
+
+            return {"left": left, "right": right}
+        return data
+
+    @model_validator(mode="after")
+    def verify_distinct_nodes(self) -> Self:
+        """Verify that each side of the link has distinct nodes."""
+        assert (
+            self.left.node_type != self.right.node_type
+        ), "Linking ports of the same node is unsupported."
+        return self
+
+
 class TestRunConfiguration(FrozenModel):
     """The configuration of a test run.
 
@@ -296,6 +375,8 @@ class TestRunConfiguration(FrozenModel):
     vdevs: list[str] = Field(default_factory=list)
     #: The seed to use for pseudo-random generation.
     random_seed: int | None = None
+    #: The port links between the specified nodes to use.
+    port_topology: list[PortLinkConfig] = Field(max_length=2)
 
     fields_from_settings = model_validator(mode="before")(
         load_fields_from_settings("test_suites", "random_seed")

@@ -28,8 +28,9 @@ from collections.abc import MutableSequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, TypedDict, cast
 
+from framework.config.node import PortConfig
 from framework.testbed_model.capability import Capability
 
 from .config.test_run import TestRunConfiguration, TestSuiteConfig
@@ -601,10 +602,14 @@ class TestRunResult(BaseResult):
             compiler_version = self.dpdk_build_info.compiler_version
             dpdk_version = self.dpdk_build_info.dpdk_version
 
+        ports = [asdict(port) for port in self.ports]
+        for port in ports:
+            port["config"] = cast(PortConfig, port["config"]).model_dump()
+
         return {
             "compiler_version": compiler_version,
             "dpdk_version": dpdk_version,
-            "ports": [asdict(port) for port in self.ports],
+            "ports": ports,
             "test_suites": [child.to_dict() for child in self.child_results],
             "summary": results | self.generate_pass_rate_dict(results),
         }

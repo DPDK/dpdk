@@ -32,3 +32,7 @@
   system_under_test_node: "SUT 1"
   # Traffic generator node to use for this execution environment
   traffic_generator_node: "TG 1"
+  port_topology:
+    - sut.port-0 <-> tg.port-0  # explicit link. `sut` and `tg` are special identifiers that refer
+                                # to the respective test run's configured nodes.
+    - port-1 <-> port-1         # implicit link, left side is always SUT, right side is always TG.

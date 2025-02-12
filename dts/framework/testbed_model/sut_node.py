@@ -515,7 +515,7 @@ class SutNode(Node):
             return
 
         for port in self.ports:
-            driver = port.os_driver_for_dpdk if for_dpdk else port.os_driver
+            driver = port.config.os_driver_for_dpdk if for_dpdk else port.config.os_driver
             self.main_session.send_command(
                 f"{self.path_to_devbind_script} -b {driver} --force {port.pci}",
                 privileged=True,

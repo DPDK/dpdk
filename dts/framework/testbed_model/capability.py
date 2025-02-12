@@ -281,8 +281,8 @@ class TopologyCapability(Capability):
     """A wrapper around :class:`~.topology.TopologyType`.
 
     Each test case must be assigned a topology. It could be done explicitly;
-    the implicit default is :attr:`~.topology.TopologyType.default`, which this class defines
-    as equal to :attr:`~.topology.TopologyType.two_links`.
+    the implicit default is given by :meth:`~.topology.TopologyType.default`, which this class
+    returns :attr:`~.topology.TopologyType.two_links`.
 
     Test case topology may be set by setting the topology for the whole suite.
     The priority in which topology is set is as follows:
@@ -358,10 +358,10 @@ class TopologyCapability(Capability):
                 the test suite's.
         """
         if inspect.isclass(test_case_or_suite):
-            if self.topology_type is not TopologyType.default:
+            if self.topology_type is not TopologyType.default():
                 self.add_to_required(test_case_or_suite)
                 for test_case in test_case_or_suite.get_test_cases():
-                    if test_case.topology_type.topology_type is TopologyType.default:
+                    if test_case.topology_type.topology_type is TopologyType.default():
                         # test case topology has not been set, use the one set by the test suite
                         self.add_to_required(test_case)
                     elif test_case.topology_type > test_case_or_suite.topology_type:
@@ -424,14 +424,8 @@ class TopologyCapability(Capability):
         return self.topology_type.__hash__()
 
     def __str__(self):
-        """Easy to read string of class and name of :attr:`topology_type`.
-
-        Converts :attr:`TopologyType.default` to the actual value.
-        """
-        name = self.topology_type.name
-        if self.topology_type is TopologyType.default:
-            name = TopologyType.get_from_value(self.topology_type.value).name
-        return f"{type(self.topology_type).__name__}.{name}"
+        """Easy to read string of class and name of :attr:`topology_type`."""
+        return f"{type(self.topology_type).__name__}.{self.topology_type.name}"
 
     def __repr__(self):
         """Easy to read string of class and name of :attr:`topology_type`."""
@@ -446,7 +440,7 @@ class TestProtocol(Protocol):
     #: The reason for skipping the test case or suite.
     skip_reason: ClassVar[str] = ""
     #: The topology type of the test case or suite.
-    topology_type: ClassVar[TopologyCapability] = TopologyCapability(TopologyType.default)
+    topology_type: ClassVar[TopologyCapability] = TopologyCapability(TopologyType.default())
     #: The capabilities the test case or suite requires in order to be executed.
     required_capabilities: ClassVar[set[Capability]] = set()
 
@@ -462,7 +456,7 @@ class TestProtocol(Protocol):
 
 def requires(
     *nic_capabilities: NicCapability,
-    topology_type: TopologyType = TopologyType.default,
+    topology_type: TopologyType = TopologyType.default(),
 ) -> Callable[[type[TestProtocol]], type[TestProtocol]]:
     """A decorator that adds the required capabilities to a test case or test suite.
 
