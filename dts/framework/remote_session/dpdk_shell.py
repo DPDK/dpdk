@@ -15,7 +15,6 @@ from framework.remote_session.single_active_interactive_shell import (
     SingleActiveInteractiveShell,
 )
 from framework.testbed_model.cpu import LogicalCoreList
-from framework.testbed_model.sut_node import SutNode
 
 
 def compute_eal_params(
@@ -35,15 +34,15 @@ def compute_eal_params(
 
     if params.lcore_list is None:
         params.lcore_list = LogicalCoreList(
-            ctx.sut_node.filter_lcores(ctx.local.lcore_filter_specifier, ctx.local.ascending_cores)
+            ctx.dpdk.filter_lcores(ctx.local.lcore_filter_specifier, ctx.local.ascending_cores)
         )
 
     prefix = params.prefix
     if ctx.local.append_prefix_timestamp:
-        prefix = f"{prefix}_{ctx.sut_node.dpdk_timestamp}"
+        prefix = f"{prefix}_{ctx.dpdk.timestamp}"
     prefix = ctx.sut_node.main_session.get_dpdk_file_prefix(prefix)
     if prefix:
-        ctx.sut_node.dpdk_prefix_list.append(prefix)
+        ctx.dpdk.prefix_list.append(prefix)
     params.prefix = prefix
 
     if params.allowed_ports is None:
@@ -60,7 +59,6 @@ class DPDKShell(SingleActiveInteractiveShell, ABC):
     supplied app parameters.
     """
 
-    _node: SutNode
     _app_params: EalParams
 
     def __init__(
@@ -80,4 +78,6 @@ class DPDKShell(SingleActiveInteractiveShell, ABC):
 
         Adds the remote DPDK build directory to the path.
         """
-        super()._update_real_path(PurePath(self._node.remote_dpdk_build_dir).joinpath(path))
+        super()._update_real_path(
+            PurePath(get_ctx().dpdk.build.remote_dpdk_build_dir).joinpath(path)
+        )
