@@ -11,6 +11,8 @@ The root model of a test run configuration is :class:`TestRunConfiguration`.
 
 import re
 import tarfile
+from collections import deque
+from collections.abc import Iterable
 from enum import auto, unique
 from functools import cached_property
 from pathlib import Path, PurePath
@@ -25,7 +27,7 @@ from framework.utils import REGEX_FOR_PORT_LINK, StrEnum
 from .common import FrozenModel, load_fields_from_settings
 
 if TYPE_CHECKING:
-    from framework.test_suite import TestSuiteSpec
+    from framework.test_suite import TestCase, TestSuite, TestSuiteSpec
 
 
 @unique
@@ -231,6 +233,21 @@ class TestSuiteConfig(FrozenModel):
         ), f"{self.test_suite_name} is not a valid test suite module name."
         return test_suite_spec
 
+    @cached_property
+    def test_cases(self) -> list[type["TestCase"]]:
+        """The objects of the selected test cases."""
+        available_test_cases = {t.name: t for t in self.test_suite_spec.class_obj.get_test_cases()}
+        selected_test_cases = []
+
+        for requested_test_case in self.test_cases_names:
+            assert requested_test_case in available_test_cases, (
+                f"{requested_test_case} is not a valid test case "
+                f"of test suite {self.test_suite_name}."
+            )
+            selected_test_cases.append(available_test_cases[requested_test_case])
+
+        return selected_test_cases or list(available_test_cases.values())
+
     @model_validator(mode="before")
     @classmethod
     def convert_from_string(cls, data: Any) -> Any:
@@ -244,17 +261,11 @@ class TestSuiteConfig(FrozenModel):
     def validate_names(self) -> Self:
         """Validate the supplied test suite and test cases names.
 
-        This validator relies on the cached property `test_suite_spec` to run for the first
-        time in this call, therefore triggering the assertions if needed.
+        This validator relies on the cached properties `test_suite_spec` and `test_cases` to run for
+        the first time in this call, therefore triggering the assertions if needed.
         """
-        available_test_cases = map(
-            lambda t: t.name, self.test_suite_spec.class_obj.get_test_cases()
-        )
-        for requested_test_case in self.test_cases_names:
-            assert requested_test_case in available_test_cases, (
-                f"{requested_test_case} is not a valid test case "
-                f"of test suite {self.test_suite_name}."
-            )
+        if self.test_cases:
+            pass
 
         return self
 
@@ -381,3 +392,29 @@ class TestRunConfiguration(FrozenModel):
     fields_from_settings = model_validator(mode="before")(
         load_fields_from_settings("test_suites", "random_seed")
     )
+
+    def filter_tests(
+        self,
+    ) -> Iterable[tuple[type["TestSuite"], deque[type["TestCase"]]]]:
+        """Filter test suites and cases selected for execution."""
+        from framework.test_suite import TestCaseType
+
+        test_suites = [TestSuiteConfig(test_suite="smoke_tests")]
+
+        if self.skip_smoke_tests:
+            test_suites = self.test_suites
+        else:
+            test_suites += self.test_suites
+
+        return (
+            (
+                t.test_suite_spec.class_obj,
+                deque(
+                    tt
+                    for tt in t.test_cases
+                    if (tt.test_type is TestCaseType.FUNCTIONAL and self.func)
+                    or (tt.test_type is TestCaseType.PERFORMANCE and self.perf)
+                ),
+            )
+            for t in test_suites
+        )
