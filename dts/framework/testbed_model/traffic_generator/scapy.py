@@ -14,13 +14,15 @@ implement the methods for handling packets by sending commands into the interact
 
 import re
 import time
+from collections.abc import Iterable
 from typing import ClassVar
 
 from scapy.compat import base64_bytes
 from scapy.layers.l2 import Ether
 from scapy.packet import Packet
 
-from framework.config.node import OS, ScapyTrafficGeneratorConfig
+from framework.config.node import OS
+from framework.config.test_run import ScapyTrafficGeneratorConfig
 from framework.remote_session.python_shell import PythonShell
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port
@@ -82,6 +84,14 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
 
         super().__init__(node=tg_node, config=config, tg_node=tg_node, **kwargs)
         self.start_application()
+
+    def setup(self, ports: Iterable[Port]):
+        """Extends :meth:`.traffic_generator.TrafficGenerator.setup`.
+
+        Brings up the port links.
+        """
+        super().setup(ports)
+        self._tg_node.main_session.bring_up_link(ports)
 
     def start_application(self) -> None:
         """Extends :meth:`framework.remote_session.interactive_shell.start_application`.

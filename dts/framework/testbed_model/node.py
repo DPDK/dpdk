@@ -13,25 +13,22 @@ to be extended by subclasses with features specific to each node type.
 The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
 
-from abc import ABC
-from collections.abc import Iterable
 from functools import cached_property
 
 from framework.config.node import (
     OS,
     NodeConfiguration,
 )
-from framework.config.test_run import TestRunConfiguration
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
 
-from .cpu import Architecture, LogicalCore, LogicalCoreCount, LogicalCoreList, lcore_filter
+from .cpu import Architecture, LogicalCore
 from .linux_session import LinuxSession
-from .os_session import OSSession
+from .os_session import OSSession, OSSessionInfo
 from .port import Port
 
 
-class Node(ABC):
+class Node:
     """The base class for node management.
 
     It shouldn't be instantiated, but rather subclassed.
@@ -57,7 +54,8 @@ class Node(ABC):
     ports: list[Port]
     _logger: DTSLogger
     _other_sessions: list[OSSession]
-    _test_run_config: TestRunConfiguration
+    _node_info: OSSessionInfo | None
+    _compiler_version: str | None
 
     def __init__(self, node_config: NodeConfiguration):
         """Connect to the node and gather info during initialization.
@@ -80,34 +78,12 @@ class Node(ABC):
         self._get_remote_cpus()
         self._other_sessions = []
         self.ports = [Port(self, port_config) for port_config in self.config.ports]
+        self._logger.info(f"Created node: {self.name}")
 
     @cached_property
     def ports_by_name(self) -> dict[str, Port]:
         """Ports mapped by the name assigned at configuration."""
         return {port.name: port for port in self.ports}
-
-    def set_up_test_run(self, test_run_config: TestRunConfiguration, ports: Iterable[Port]) -> None:
-        """Test run setup steps.
-
-        Configure hugepages on all DTS node types. Additional steps can be added by
-        extending the method in subclasses with the use of super().
-
-        Args:
-            test_run_config: A test run configuration according to which
-                the setup steps will be taken.
-            ports: The ports to set up for the test run.
-        """
-        self._setup_hugepages()
-
-    def tear_down_test_run(self, ports: Iterable[Port]) -> None:
-        """Test run teardown steps.
-
-        There are currently no common execution teardown steps common to all DTS node types.
-        Additional steps can be added by extending the method in subclasses with the use of super().
-
-        Args:
-            ports: The ports to tear down for the test run.
-        """
 
     def create_session(self, name: str) -> OSSession:
         """Create and return a new OS-aware remote session.
@@ -134,39 +110,32 @@ class Node(ABC):
         self._other_sessions.append(connection)
         return connection
 
-    def filter_lcores(
-        self,
-        filter_specifier: LogicalCoreCount | LogicalCoreList,
-        ascending: bool = True,
-    ) -> list[LogicalCore]:
-        """Filter the node's logical cores that DTS can use.
-
-        Logical cores that DTS can use are the ones that are present on the node, but filtered
-        according to the test run configuration. The `filter_specifier` will filter cores from
-        those logical cores.
-
-        Args:
-            filter_specifier: Two different filters can be used, one that specifies the number
-                of logical cores per core, cores per socket and the number of sockets,
-                and another one that specifies a logical core list.
-            ascending: If :data:`True`, use cores with the lowest numerical id first and continue
-                in ascending order. If :data:`False`, start with the highest id and continue
-                in descending order. This ordering affects which sockets to consider first as well.
-
-        Returns:
-            The filtered logical cores.
-        """
-        self._logger.debug(f"Filtering {filter_specifier} from {self.lcores}.")
-        return lcore_filter(
-            self.lcores,
-            filter_specifier,
-            ascending,
-        ).filter()
-
     def _get_remote_cpus(self) -> None:
         """Scan CPUs in the remote OS and store a list of LogicalCores."""
         self._logger.info("Getting CPU information.")
         self.lcores = self.main_session.get_remote_cpus()
+
+    @cached_property
+    def node_info(self) -> OSSessionInfo:
+        """Additional node information."""
+        return self.main_session.get_node_info()
+
+    @property
+    def compiler_version(self) -> str | None:
+        """The node's compiler version."""
+        if self._compiler_version is None:
+            self._logger.warning("The `compiler_version` is None because a pre-built DPDK is used.")
+
+        return self._compiler_version
+
+    @compiler_version.setter
+    def compiler_version(self, value: str) -> None:
+        """Set the `compiler_version` used on the SUT node.
+
+        Args:
+            value: The node's compiler version.
+        """
+        self._compiler_version = value
 
     def _setup_hugepages(self) -> None:
         """Setup hugepages on the node.

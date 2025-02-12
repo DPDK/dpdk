@@ -105,7 +105,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 from types import MethodType
-from typing import ClassVar, Protocol, Union, cast
+from typing import ClassVar, Protocol, Union
 
 from framework.config.test_run import TestRunConfiguration
 from framework.context import Context, init_ctx
@@ -115,6 +115,7 @@ from framework.exception import (
     TestCaseVerifyError,
 )
 from framework.logger import DTSLogger, get_dts_logger
+from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvironment
 from framework.settings import SETTINGS
 from framework.test_result import BaseResult, Result, TestCaseResult, TestRunResult, TestSuiteResult
 from framework.test_suite import TestCase, TestSuite
@@ -124,9 +125,8 @@ from framework.testbed_model.capability import (
     test_if_supported,
 )
 from framework.testbed_model.node import Node
-from framework.testbed_model.sut_node import SutNode
-from framework.testbed_model.tg_node import TGNode
 from framework.testbed_model.topology import PortLink, Topology
+from framework.testbed_model.traffic_generator import create_traffic_generator
 
 TestScenario = tuple[type[TestSuite], deque[type[TestCase]]]
 
@@ -188,17 +188,18 @@ class TestRun:
         self.logger = get_dts_logger()
 
         sut_node = next(n for n in nodes if n.name == config.system_under_test_node)
-        sut_node = cast(SutNode, sut_node)  # Config validation must render this valid.
-
         tg_node = next(n for n in nodes if n.name == config.traffic_generator_node)
-        tg_node = cast(TGNode, tg_node)  # Config validation must render this valid.
 
         topology = Topology.from_port_links(
             PortLink(sut_node.ports_by_name[link.sut_port], tg_node.ports_by_name[link.tg_port])
             for link in self.config.port_topology
         )
 
-        self.ctx = Context(sut_node, tg_node, topology)
+        dpdk_build_env = DPDKBuildEnvironment(config.dpdk.build, sut_node)
+        dpdk_runtime_env = DPDKRuntimeEnvironment(config.dpdk, sut_node, dpdk_build_env)
+        traffic_generator = create_traffic_generator(config.traffic_generator, tg_node)
+
+        self.ctx = Context(sut_node, tg_node, topology, dpdk_runtime_env, traffic_generator)
         self.result = result
         self.selected_tests = list(self.config.filter_tests())
         self.blocked = False
@@ -332,11 +333,11 @@ class TestRunSetup(State):
         test_run.init_random_seed()
         test_run.remaining_tests = deque(test_run.selected_tests)
 
-        test_run.ctx.sut_node.set_up_test_run(test_run.config, test_run.ctx.topology.sut_ports)
+        test_run.ctx.dpdk.setup(test_run.ctx.topology.sut_ports)
 
         self.result.ports = test_run.ctx.topology.sut_ports + test_run.ctx.topology.tg_ports
         self.result.sut_info = test_run.ctx.sut_node.node_info
-        self.result.dpdk_build_info = test_run.ctx.sut_node.get_dpdk_build_info()
+        self.result.dpdk_build_info = test_run.ctx.dpdk.build.get_dpdk_build_info()
 
         self.logger.debug(f"Found capabilities to check: {test_run.required_capabilities}")
         test_run.supported_capabilities = get_supported_capabilities(
@@ -415,7 +416,7 @@ class TestRunTeardown(State):
 
     def next(self) -> State | None:
         """Next state."""
-        self.test_run.ctx.sut_node.tear_down_test_run(self.test_run.ctx.topology.sut_ports)
+        self.test_run.ctx.dpdk.teardown(self.test_run.ctx.topology.sut_ports)
         self.result.update_teardown(Result.PASS)
         return None
 
@@ -525,7 +526,7 @@ class TestSuiteTeardown(TestSuiteState):
     def next(self) -> State | None:
         """Next state."""
         self.test_suite.tear_down_suite()
-        self.test_run.ctx.sut_node.kill_cleanup_dpdk_apps()
+        self.test_run.ctx.dpdk.kill_cleanup_dpdk_apps()
         self.result.update_teardown(Result.PASS)
         return TestRunExecution(self.test_run, self.test_run.result)
 

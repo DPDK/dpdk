@@ -10,11 +10,12 @@ from typing import TYPE_CHECKING, ParamSpec
 from framework.exception import InternalError
 from framework.settings import SETTINGS
 from framework.testbed_model.cpu import LogicalCoreCount, LogicalCoreList
+from framework.testbed_model.node import Node
 from framework.testbed_model.topology import Topology
 
 if TYPE_CHECKING:
-    from framework.testbed_model.sut_node import SutNode
-    from framework.testbed_model.tg_node import TGNode
+    from framework.remote_session.dpdk import DPDKRuntimeEnvironment
+    from framework.testbed_model.traffic_generator.traffic_generator import TrafficGenerator
 
 P = ParamSpec("P")
 
@@ -62,9 +63,11 @@ class LocalContext:
 class Context:
     """Runtime context."""
 
-    sut_node: "SutNode"
-    tg_node: "TGNode"
+    sut_node: Node
+    tg_node: Node
     topology: Topology
+    dpdk: "DPDKRuntimeEnvironment"
+    tg: "TrafficGenerator"
     local: LocalContext = field(default_factory=LocalContext)
 
 
