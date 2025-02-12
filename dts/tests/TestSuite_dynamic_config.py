@@ -88,7 +88,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one unknown.
         Verifies that both are received.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             is_promisc = testpmd.show_port_info(0).is_promiscuous_mode_enabled
             self.verify(is_promisc, "Promiscuous mode was not enabled by default.")
             testpmd.start()
@@ -106,7 +106,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one unknown.
         Verifies that only the matching address packet is received.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
             mac = testpmd.show_port_info(0).mac_address
             self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
@@ -120,7 +120,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one broadcast.
         Verifies that both packets are received.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
             mac = testpmd.show_port_info(0).mac_address
             self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
@@ -134,7 +134,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one multicast.
         Verifies that the multicast packet is only received once allmulticast mode is enabled.
         """
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
             testpmd.set_multicast_all(on=False)
             # 01:00:5E:00:00:01 is the first of the multicast MAC range of addresses

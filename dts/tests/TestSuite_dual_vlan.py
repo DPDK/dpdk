@@ -193,7 +193,7 @@ class TestDualVlan(TestSuite):
             Packets are received.
             Packet contains two VLAN tags.
         """
-        with TestPmdShell(self.sut_node, forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.tx_vlan_set(port=self.tx_port, enable=True, vlan=self.vlan_insert_tag)
             testpmd.start()
             recv = self.send_packet_and_capture(
@@ -229,7 +229,7 @@ class TestDualVlan(TestSuite):
             / Dot1Q(vlan=self.inner_vlan_tag)
             / Raw(b"X" * 20)
         )
-        with TestPmdShell(self.sut_node, forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start()
             recv = self.send_packet_and_capture(send_pkt)
             self.verify(len(recv) > 0, "Unmodified packet was not received.")
@@ -269,7 +269,7 @@ class TestDualVlan(TestSuite):
             / Dot1Q(vlan=self.inner_vlan_tag, prio=2)
             / Raw(b"X" * 20)
         )
-        with TestPmdShell(self.sut_node, forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start()
             recv = self.send_packet_and_capture(pkt)
             self.verify(len(recv) > 0, "Did not receive any packets when testing VLAN priority.")

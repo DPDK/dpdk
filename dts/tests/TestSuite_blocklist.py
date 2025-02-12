@@ -18,7 +18,7 @@ class TestBlocklist(TestSuite):
 
     def verify_blocklisted_ports(self, ports_to_block: list[Port]):
         """Runs testpmd with the given ports blocklisted and verifies the ports."""
-        with TestPmdShell(self.sut_node, allowed_ports=[], blocked_ports=ports_to_block) as testpmd:
+        with TestPmdShell(allowed_ports=[], blocked_ports=ports_to_block) as testpmd:
             allowlisted_ports = {port.device_name for port in testpmd.show_port_info_all()}
             blocklisted_ports = {port.pci for port in ports_to_block}
 
@@ -49,7 +49,7 @@ class TestBlocklist(TestSuite):
         Verify:
             That the port was successfully blocklisted.
         """
-        self.verify_blocklisted_ports(self.sut_node.ports[:1])
+        self.verify_blocklisted_ports(self.topology.sut_ports[:1])
 
     @func_test
     def all_but_one_port_blocklisted(self):
@@ -60,4 +60,4 @@ class TestBlocklist(TestSuite):
         Verify:
             That all specified ports were successfully blocklisted.
         """
-        self.verify_blocklisted_ports(self.sut_node.ports[:-1])
+        self.verify_blocklisted_ports(self.topology.sut_ports[:-1])

@@ -7,6 +7,7 @@ This testing suites runs basic L2 forwarding on testpmd across multiple differen
 The forwarding test is performed with several packets being sent at once.
 """
 
+from framework.context import filter_cores
 from framework.params.testpmd import EthPeer, SimpleForwardingModes
 from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.test_suite import TestSuite, func_test
@@ -33,6 +34,7 @@ class TestL2fwd(TestSuite):
         """
         self.packets = generate_random_packets(self.NUMBER_OF_PACKETS_TO_SEND, self.PAYLOAD_SIZE)
 
+    @filter_cores(LogicalCoreCount(cores_per_socket=4))
     @func_test
     def l2fwd_integrity(self) -> None:
         """Test the L2 forwarding integrity.
@@ -44,11 +46,12 @@ class TestL2fwd(TestSuite):
         """
         queues = [1, 2, 4, 8]
 
+        self.topology.sut_ports[0]
+        self.topology.tg_ports[0]
+
         with TestPmdShell(
-            self.sut_node,
-            lcore_filter_specifier=LogicalCoreCount(cores_per_socket=4),
             forward_mode=SimpleForwardingModes.mac,
-            eth_peer=[EthPeer(1, self.tg_node.ports[1].mac_address)],
+            eth_peer=[EthPeer(1, self.topology.tg_port_ingress.mac_address)],
             disable_device_start=True,
         ) as shell:
             for queues_num in queues:

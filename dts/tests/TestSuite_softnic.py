@@ -32,6 +32,7 @@ class TestSoftnic(TestSuite):
         Setup:
             Generate the random packets that will be sent and create the softnic config files.
         """
+        self.sut_node = self._ctx.sut_node  # FIXME: accessing the context should be forbidden
         self.packets = generate_random_packets(self.NUMBER_OF_PACKETS_TO_SEND, self.PAYLOAD_SIZE)
         self.cli_file = self.prepare_softnic_files()
 
@@ -105,9 +106,8 @@ class TestSoftnic(TestSuite):
 
         """
         with TestPmdShell(
-            self.sut_node,
             vdevs=[VirtualDevice(f"net_softnic0,firmware={self.cli_file},cpu_id=1,conn_port=8086")],
-            eth_peer=[EthPeer(1, self.tg_node.ports[1].mac_address)],
+            eth_peer=[EthPeer(1, self.topology.tg_port_ingress.mac_address)],
             port_topology=None,
         ) as shell:
             shell.start()

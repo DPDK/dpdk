@@ -85,7 +85,7 @@ class TestUniPkt(TestSuite):
         mac_id = "00:00:00:00:00:01"
         packet_list = [Ether(dst=mac_id, type=0x88F7) / Raw(), Ether(dst=mac_id) / ARP() / Raw()]
         flag_list = [RtePTypes.L2_ETHER_TIMESYNC, RtePTypes.L2_ETHER_ARP]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
@@ -118,7 +118,7 @@ class TestUniPkt(TestSuite):
             RtePTypes.L4_ICMP,
             RtePTypes.L4_FRAG | RtePTypes.L3_IPV4_EXT_UNKNOWN | RtePTypes.L2_ETHER,
         ]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
@@ -147,7 +147,7 @@ class TestUniPkt(TestSuite):
             RtePTypes.L4_TCP,
             RtePTypes.L3_IPV6_EXT_UNKNOWN,
         ]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
@@ -182,7 +182,7 @@ class TestUniPkt(TestSuite):
             RtePTypes.TUNNEL_IP | RtePTypes.INNER_L4_ICMP,
             RtePTypes.TUNNEL_IP | RtePTypes.INNER_L3_IPV6_EXT_UNKNOWN | RtePTypes.INNER_L4_FRAG,
         ]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
@@ -215,7 +215,7 @@ class TestUniPkt(TestSuite):
             RtePTypes.TUNNEL_GRENAT | RtePTypes.INNER_L4_SCTP,
             RtePTypes.TUNNEL_GRENAT | RtePTypes.INNER_L4_ICMP,
         ]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
@@ -250,7 +250,7 @@ class TestUniPkt(TestSuite):
             RtePTypes.L2_ETHER_NSH | RtePTypes.L3_IPV4_EXT_UNKNOWN | RtePTypes.L4_SCTP,
             RtePTypes.L2_ETHER_NSH | RtePTypes.L3_IPV6_EXT_UNKNOWN | RtePTypes.L4_NONFRAG,
         ]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
@@ -295,6 +295,6 @@ class TestUniPkt(TestSuite):
             RtePTypes.TUNNEL_GRENAT | RtePTypes.INNER_L4_ICMP,
             RtePTypes.TUNNEL_GRENAT | RtePTypes.INNER_L3_IPV6_EXT_UNKNOWN | RtePTypes.INNER_L4_FRAG,
         ]
-        with TestPmdShell(node=self.sut_node) as testpmd:
+        with TestPmdShell() as testpmd:
             testpmd.rx_vxlan(4789, 0, True)
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)

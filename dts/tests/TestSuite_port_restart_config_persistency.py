@@ -61,8 +61,8 @@ class TestPortRestartConfigPersistency(TestSuite):
         Verify:
             The configuration persists after the port is restarted.
         """
-        with TestPmdShell(self.sut_node, disable_device_start=True) as testpmd:
-            for port_id in range(len(self.sut_node.ports)):
+        with TestPmdShell(disable_device_start=True) as testpmd:
+            for port_id, _ in enumerate(self.topology.sut_ports):
                 testpmd.set_port_mtu(port_id=port_id, mtu=STANDARD_MTU, verify=True)
                 self.restart_port_and_verify(port_id, testpmd, "MTU")
 
@@ -90,8 +90,8 @@ class TestPortRestartConfigPersistency(TestSuite):
         Verify:
             The configuration persists after the port is restarted.
         """
-        with TestPmdShell(self.sut_node, disable_device_start=True) as testpmd:
-            for port_id in range(len(self.sut_node.ports)):
+        with TestPmdShell(disable_device_start=True) as testpmd:
+            for port_id, _ in enumerate(self.topology.sut_ports):
                 flow_ctrl = TestPmdPortFlowCtrl(rx=True)
                 testpmd.set_flow_control(port=port_id, flow_ctrl=flow_ctrl)
                 self.restart_port_and_verify(port_id, testpmd, "flow_ctrl")
