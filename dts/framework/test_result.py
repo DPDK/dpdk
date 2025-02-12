@@ -25,96 +25,16 @@ variable modify the directory where the files with results will be stored.
 
 import json
 from collections.abc import MutableSequence
-from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable, TypedDict, cast
+from typing import Any, Callable, TypedDict
 
-from framework.config.node import PortConfig
-from framework.testbed_model.capability import Capability
-
-from .config.test_run import TestRunConfiguration, TestSuiteConfig
+from .config.test_run import TestRunConfiguration
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLogger
-from .test_suite import TestCase, TestSuite
 from .testbed_model.os_session import OSSessionInfo
 from .testbed_model.port import Port
 from .testbed_model.sut_node import DPDKBuildInfo
-
-
-@dataclass(slots=True, frozen=True)
-class TestSuiteWithCases:
-    """A test suite class with test case methods.
-
-    An auxiliary class holding a test case class with test case methods. The intended use of this
-    class is to hold a subset of test cases (which could be all test cases) because we don't have
-    all the data to instantiate the class at the point of inspection. The knowledge of this subset
-    is needed in case an error occurs before the class is instantiated and we need to record
-    which test cases were blocked by the error.
-
-    Attributes:
-        test_suite_class: The test suite class.
-        test_cases: The test case methods.
-        required_capabilities: The combined required capabilities of both the test suite
-            and the subset of test cases.
-    """
-
-    test_suite_class: type[TestSuite]
-    test_cases: list[type[TestCase]]
-    required_capabilities: set[Capability] = field(default_factory=set, init=False)
-
-    def __post_init__(self):
-        """Gather the required capabilities of the test suite and all test cases."""
-        for test_object in [self.test_suite_class] + self.test_cases:
-            self.required_capabilities.update(test_object.required_capabilities)
-
-    def create_config(self) -> TestSuiteConfig:
-        """Generate a :class:`TestSuiteConfig` from the stored test suite with test cases.
-
-        Returns:
-            The :class:`TestSuiteConfig` representation.
-        """
-        return TestSuiteConfig(
-            test_suite=self.test_suite_class.__name__,
-            test_cases=[test_case.__name__ for test_case in self.test_cases],
-        )
-
-    def mark_skip_unsupported(self, supported_capabilities: set[Capability]) -> None:
-        """Mark the test suite and test cases to be skipped.
-
-        The mark is applied if object to be skipped requires any capabilities and at least one of
-        them is not among `supported_capabilities`.
-
-        Args:
-            supported_capabilities: The supported capabilities.
-        """
-        for test_object in [self.test_suite_class, *self.test_cases]:
-            capabilities_not_supported = test_object.required_capabilities - supported_capabilities
-            if capabilities_not_supported:
-                test_object.skip = True
-                capability_str = (
-                    "capability" if len(capabilities_not_supported) == 1 else "capabilities"
-                )
-                test_object.skip_reason = (
-                    f"Required {capability_str} '{capabilities_not_supported}' not found."
-                )
-        if not self.test_suite_class.skip:
-            if all(test_case.skip for test_case in self.test_cases):
-                self.test_suite_class.skip = True
-
-                self.test_suite_class.skip_reason = (
-                    "All test cases are marked to be skipped with reasons: "
-                    f"{' '.join(test_case.skip_reason for test_case in self.test_cases)}"
-                )
-
-    @property
-    def skip(self) -> bool:
-        """Skip the test suite if all test cases or the suite itself are to be skipped.
-
-        Returns:
-            :data:`True` if the test suite should be skipped, :data:`False` otherwise.
-        """
-        return all(test_case.skip for test_case in self.test_cases) or self.test_suite_class.skip
 
 
 class Result(Enum):
@@ -463,7 +383,6 @@ class TestRunResult(BaseResult):
     """
 
     _config: TestRunConfiguration
-    _test_suites_with_cases: list[TestSuiteWithCases]
     _ports: list[Port]
     _sut_info: OSSessionInfo | None
     _dpdk_build_info: DPDKBuildInfo | None
@@ -476,48 +395,22 @@ class TestRunResult(BaseResult):
         """
         super().__init__()
         self._config = test_run_config
-        self._test_suites_with_cases = []
         self._ports = []
         self._sut_info = None
         self._dpdk_build_info = None
 
-    def add_test_suite(
-        self,
-        test_suite_with_cases: TestSuiteWithCases,
-    ) -> "TestSuiteResult":
+    def add_test_suite(self, test_suite_name: str) -> "TestSuiteResult":
         """Add and return the child result (test suite).
 
         Args:
-            test_suite_with_cases: The test suite with test cases.
+            test_suite_name: The test suite name.
 
         Returns:
             The test suite's result.
         """
-        result = TestSuiteResult(test_suite_with_cases)
+        result = TestSuiteResult(test_suite_name)
         self.child_results.append(result)
         return result
-
-    @property
-    def test_suites_with_cases(self) -> list[TestSuiteWithCases]:
-        """The test suites with test cases to be executed in this test run.
-
-        The test suites can only be assigned once.
-
-        Returns:
-            The list of test suites with test cases. If an error occurs between
-            the initialization of :class:`TestRunResult` and assigning test cases to the instance,
-            return an empty list, representing that we don't know what to execute.
-        """
-        return self._test_suites_with_cases
-
-    @test_suites_with_cases.setter
-    def test_suites_with_cases(self, test_suites_with_cases: list[TestSuiteWithCases]) -> None:
-        if self._test_suites_with_cases:
-            raise ValueError(
-                "Attempted to assign test suites to a test run result "
-                "which already has test suites."
-            )
-        self._test_suites_with_cases = test_suites_with_cases
 
     @property
     def ports(self) -> list[Port]:
@@ -602,23 +495,13 @@ class TestRunResult(BaseResult):
             compiler_version = self.dpdk_build_info.compiler_version
             dpdk_version = self.dpdk_build_info.dpdk_version
 
-        ports = [asdict(port) for port in self.ports]
-        for port in ports:
-            port["config"] = cast(PortConfig, port["config"]).model_dump()
-
         return {
             "compiler_version": compiler_version,
             "dpdk_version": dpdk_version,
-            "ports": ports,
+            "ports": [port.to_dict() for port in self.ports],
             "test_suites": [child.to_dict() for child in self.child_results],
             "summary": results | self.generate_pass_rate_dict(results),
         }
-
-    def _mark_results(self, result) -> None:
-        """Mark the test suite results as `result`."""
-        for test_suite_with_cases in self._test_suites_with_cases:
-            child_result = self.add_test_suite(test_suite_with_cases)
-            child_result.update_setup(result)
 
 
 class TestSuiteResult(BaseResult):
@@ -631,18 +514,16 @@ class TestSuiteResult(BaseResult):
     """
 
     test_suite_name: str
-    _test_suite_with_cases: TestSuiteWithCases
     _child_configs: list[str]
 
-    def __init__(self, test_suite_with_cases: TestSuiteWithCases):
+    def __init__(self, test_suite_name: str):
         """Extend the constructor with test suite's config.
 
         Args:
-            test_suite_with_cases: The test suite with test cases.
+            test_suite_name: The test suite name.
         """
         super().__init__()
-        self.test_suite_name = test_suite_with_cases.test_suite_class.__name__
-        self._test_suite_with_cases = test_suite_with_cases
+        self.test_suite_name = test_suite_name
 
     def add_test_case(self, test_case_name: str) -> "TestCaseResult":
         """Add and return the child result (test case).
@@ -666,12 +547,6 @@ class TestSuiteResult(BaseResult):
             "test_suite_name": self.test_suite_name,
             "test_cases": [child.to_dict() for child in self.child_results],
         }
-
-    def _mark_results(self, result) -> None:
-        """Mark the test case results as `result`."""
-        for test_case_method in self._test_suite_with_cases.test_cases:
-            child_result = self.add_test_case(test_case_method.__name__)
-            child_result.update_setup(result)
 
 
 class TestCaseResult(BaseResult, FixtureResult):

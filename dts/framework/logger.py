@@ -13,35 +13,13 @@ The module provides several additional features:
 """
 
 import logging
-from enum import auto
 from logging import FileHandler, StreamHandler
 from pathlib import Path
 from typing import ClassVar
 
-from .utils import StrEnum
-
 date_fmt = "%Y/%m/%d %H:%M:%S"
 stream_fmt = "%(asctime)s - %(stage)s - %(name)s - %(levelname)s - %(message)s"
 dts_root_logger_name = "dts"
-
-
-class DtsStage(StrEnum):
-    """The DTS execution stage."""
-
-    #:
-    pre_run = auto()
-    #:
-    test_run_setup = auto()
-    #:
-    test_suite_setup = auto()
-    #:
-    test_suite = auto()
-    #:
-    test_suite_teardown = auto()
-    #:
-    test_run_teardown = auto()
-    #:
-    post_run = auto()
 
 
 class DTSLogger(logging.Logger):
@@ -55,7 +33,7 @@ class DTSLogger(logging.Logger):
     a new stage switch occurs. This is useful mainly for logging per test suite.
     """
 
-    _stage: ClassVar[DtsStage] = DtsStage.pre_run
+    _stage: ClassVar[str] = "pre_run"
     _extra_file_handlers: list[FileHandler] = []
 
     def __init__(self, *args, **kwargs):
@@ -110,7 +88,7 @@ class DTSLogger(logging.Logger):
 
         self._add_file_handlers(Path(output_dir, self.name))
 
-    def set_stage(self, stage: DtsStage, log_file_path: Path | None = None) -> None:
+    def set_stage(self, stage: str, log_file_path: Path | None = None) -> None:
         """Set the DTS execution stage and optionally log to files.
 
         Set the DTS execution stage of the DTSLog class and optionally add
