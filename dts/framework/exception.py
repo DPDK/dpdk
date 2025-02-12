@@ -205,28 +205,27 @@ class TestCaseVerifyError(DTSError):
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.TESTCASE_VERIFY_ERR
 
 
-class BlockingTestSuiteError(DTSError):
-    """A failure in a blocking test suite."""
-
-    #:
-    severity: ClassVar[ErrorSeverity] = ErrorSeverity.BLOCKING_TESTSUITE_ERR
-    _suite_name: str
-
-    def __init__(self, suite_name: str) -> None:
-        """Define the meaning of the first argument.
-
-        Args:
-            suite_name: The blocking test suite.
-        """
-        self._suite_name = suite_name
-
-    def __str__(self) -> str:
-        """Add some context to the string representation."""
-        return f"Blocking suite {self._suite_name} failed."
-
-
 class InternalError(DTSError):
     """An internal error or bug has occurred in DTS."""
 
     #:
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.INTERNAL_ERR
+
+
+class SkippedTestException(DTSError):
+    """An exception raised when a test suite or case has been skipped."""
+
+    #:
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.NO_ERR
+
+    def __init__(self, reason: str) -> None:
+        """Constructor.
+
+        Args:
+            reason: The reason for the test being skipped.
+        """
+        self._reason = reason
+
+    def __str__(self) -> str:
+        """Stringify the exception."""
+        return self._reason
