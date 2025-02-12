@@ -516,20 +516,18 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def update_ports(self, ports: list[Port]) -> None:
-        """Get additional information about ports from the operating system and update them.
+    def get_port_info(self, pci_address: str) -> tuple[str, str]:
+        """Get port information.
 
-        The additional information is:
+        Returns:
+            A tuple containing the logical name and MAC address respectively.
 
-            * Logical name (e.g. ``enp7s0``) if applicable,
-            * Mac address.
-
-        Args:
-            ports: The ports to update.
+        Raises:
+            ConfigurationError: If the port could not be found.
         """
 
     @abstractmethod
-    def bring_up_link(self, ports: list[Port]) -> None:
+    def bring_up_link(self, ports: Iterable[Port]) -> None:
         """Send operating system specific command for bringing up link on node interfaces.
 
         Args:

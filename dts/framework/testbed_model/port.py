@@ -9,45 +9,42 @@ Basic port information, such as location (the port are identified by their PCI a
 drivers and address.
 """
 
-from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Final
 
 from framework.config.node import PortConfig
 
+if TYPE_CHECKING:
+    from .node import Node
 
-@dataclass(slots=True)
+
 class Port:
     """Physical port on a node.
 
-    The ports are identified by the node they're on and their PCI addresses. The port on the other
-    side of the connection is also captured here.
-    Each port is serviced by a driver, which may be different for the operating system (`os_driver`)
-    and for DPDK (`os_driver_for_dpdk`). For some devices, they are the same, e.g.: ``mlx5_core``.
-
     Attributes:
+        node: The port's node.
         config: The port's configuration.
         mac_address: The MAC address of the port.
-        logical_name: The logical name of the port. Must be discovered.
+        logical_name: The logical name of the port.
+        bound_for_dpdk: :data:`True` if the port is bound to the driver for DPDK.
     """
 
-    _node: str
-    config: PortConfig
-    mac_address: str = ""
-    logical_name: str = ""
+    node: Final["Node"]
+    config: Final[PortConfig]
+    mac_address: Final[str]
+    logical_name: Final[str]
+    bound_for_dpdk: bool
 
-    def __init__(self, node_name: str, config: PortConfig):
-        """Initialize the port from `node_name` and `config`.
+    def __init__(self, node: "Node", config: PortConfig):
+        """Initialize the port from `node` and `config`.
 
         Args:
-            node_name: The name of the port's node.
+            node: The port's node.
             config: The test run configuration of the port.
         """
-        self._node = node_name
+        self.node = node
         self.config = config
-
-    @property
-    def node(self) -> str:
-        """The node where the port resides."""
-        return self._node
+        self.logical_name, self.mac_address = node.main_session.get_port_info(config.pci)
+        self.bound_for_dpdk = False
 
     @property
     def name(self) -> str:
@@ -58,3 +55,21 @@ class Port:
     def pci(self) -> str:
         """The PCI address of the port."""
         return self.config.pci
+
+    def configure_mtu(self, mtu: int):
+        """Configure the port's MTU value.
+
+        Args:
+            mtu: Desired MTU value.
+        """
+        return self.node.main_session.configure_port_mtu(mtu, self)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to a dictionary."""
+        return {
+            "node_name": self.node.name,
+            "name": self.name,
+            "pci": self.pci,
+            "mac_address": self.mac_address,
+            "logical_name": self.logical_name,
+        }

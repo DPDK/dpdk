@@ -9,9 +9,12 @@ A traffic generator (TG) generates traffic that's sent towards the SUT node.
 A TG node is where the TG runs.
 """
 
+from collections.abc import Iterable
+
 from scapy.packet import Packet
 
 from framework.config.node import TGNodeConfiguration
+from framework.config.test_run import TestRunConfiguration
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
@@ -51,9 +54,24 @@ class TGNode(Node):
         self.traffic_generator = create_traffic_generator(self, node_config.traffic_generator)
         self._logger.info(f"Created node: {self.name}")
 
-    def _init_ports(self) -> None:
-        super()._init_ports()
-        self.main_session.bring_up_link(self.ports)
+    def set_up_test_run(self, test_run_config: TestRunConfiguration, ports: Iterable[Port]) -> None:
+        """Extend the test run setup with the setup of the traffic generator.
+
+        Args:
+            test_run_config: A test run configuration according to which
+                the setup steps will be taken.
+            ports: The ports to set up for the test run.
+        """
+        super().set_up_test_run(test_run_config, ports)
+        self.main_session.bring_up_link(ports)
+
+    def tear_down_test_run(self, ports: Iterable[Port]) -> None:
+        """Extend the test run teardown with the teardown of the traffic generator.
+
+        Args:
+            ports: The ports to tear down for the test run.
+        """
+        super().tear_down_test_run(ports)
 
     def send_packets_and_capture(
         self,
