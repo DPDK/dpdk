@@ -13,6 +13,7 @@ from os.path import join as path_join
 from sys import argv, stderr, path
 
 import configparser
+import shutil
 
 try:
     import sphinx_rtd_theme
@@ -59,7 +60,10 @@ man_pages = [("testpmd_app_ug/run_app", "testpmd",
 
 # DTS API docs additional configuration
 if environ.get('DTS_DOC_BUILD'):
-    extensions = ['sphinx.ext.napoleon', 'sphinx.ext.autodoc']
+    extensions = ['sphinx.ext.napoleon', 'sphinx.ext.autodoc', 'sphinx.ext.graphviz']
+    if shutil.which('dot') is not None:
+        graphviz_output_format = "svg"
+        tags.add("graphviz")
 
     # Pydantic models require autodoc_pydantic for the right formatting. Add if installed.
     try:

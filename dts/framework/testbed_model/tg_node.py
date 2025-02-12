@@ -37,9 +37,11 @@ class TGNode(Node):
     must be a way to send traffic without that.
 
     Attributes:
+        config: The traffic generator node configuration.
         traffic_generator: The traffic generator running on the node.
     """
 
+    config: TGNodeConfiguration
     traffic_generator: CapturingTrafficGenerator
 
     def __init__(self, node_config: TGNodeConfiguration):
@@ -51,7 +53,6 @@ class TGNode(Node):
             node_config: The TG node's test run configuration.
         """
         super().__init__(node_config)
-        self.traffic_generator = create_traffic_generator(self, node_config.traffic_generator)
         self._logger.info(f"Created node: {self.name}")
 
     def set_up_test_run(self, test_run_config: TestRunConfiguration, ports: Iterable[Port]) -> None:
@@ -64,6 +65,7 @@ class TGNode(Node):
         """
         super().set_up_test_run(test_run_config, ports)
         self.main_session.bring_up_link(ports)
+        self.traffic_generator = create_traffic_generator(self, self.config.traffic_generator)
 
     def tear_down_test_run(self, ports: Iterable[Port]) -> None:
         """Extend the test run teardown with the teardown of the traffic generator.
@@ -72,6 +74,7 @@ class TGNode(Node):
             ports: The ports to tear down for the test run.
         """
         super().tear_down_test_run(ports)
+        self.traffic_generator.close()
 
     def send_packets_and_capture(
         self,
@@ -119,5 +122,4 @@ class TGNode(Node):
 
         This extends the superclass method with TG cleanup.
         """
-        self.traffic_generator.close()
         super().close()

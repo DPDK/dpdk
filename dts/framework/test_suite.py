@@ -60,7 +60,7 @@ class TestSuite(TestProtocol):
 
     By default, all test cases will be executed. A list of testcase names may be specified
     in the YAML test run configuration file and in the :option:`--test-suite` command line argument
-    or in the :envvar:`DTS_TESTCASES` environment variable to filter which test cases to run.
+    or in the :envvar:`DTS_TEST_SUITES` environment variable to filter which test cases to run.
     The union of both lists will be used. Any unknown test cases from the latter lists
     will be silently ignored.
 
