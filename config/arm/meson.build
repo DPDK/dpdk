@@ -309,7 +309,14 @@ implementer_phytium = {
                 ['RTE_MAX_LCORE', 256],
                 ['RTE_MAX_NUMA_NODES', 32]
             ]
-        }
+        },
+        '0x862': {
+            'mcpu': 'mcpu_tys5000c',
+            'flags': [
+                ['RTE_MAX_LCORE', 256],
+                ['RTE_MAX_NUMA_NODES', 32]
+            ]
+        },
     }
 }
 
@@ -619,6 +626,13 @@ soc_tys2500 = {
     'numa': true
 }
 
+soc_tys5000c = {
+    'description': 'Phytium TengYun S5000c',
+    'implementer': '0x70',
+    'part_number': '0x862',
+    'numa': true
+}
+
 soc_v2 = {
     'description': 'Arm Neoverse V2',
     'implementer': '0x41',
@@ -652,6 +666,10 @@ mcpu_defs = {
         'march_extensions': ['crc', 'crypto']
     },
     'mcpu_tys2500': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc']
+    },
+    'mcpu_tys5000c': {
         'march': 'armv8-a',
         'march_extensions': ['crc']
     },
@@ -699,6 +717,7 @@ thunderx2:       Marvell ThunderX2 T99
 thunderxt83:     Marvell ThunderX T83
 thunderxt88:     Marvell ThunderX T88
 tys2500:         Phytium TengYun S2500
+tys5000c:        Phytium TengYun S5000c
 v2:              Arm Neoverse V2
 End of SoCs list
 '''
@@ -738,6 +757,7 @@ socs = {
     'thunderxt83': soc_thunderxt83,
     'thunderxt88': soc_thunderxt88,
     'tys2500': soc_tys2500,
+    'tys5000c': soc_tys5000c,
     'v2': soc_v2,
 }
 
