@@ -239,6 +239,10 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 						 dest->ext_reformat->id);
 				}
 				break;
+			case MLX5_FLOW_DESTINATION_TYPE_NOP:
+				MLX5_SET(dest_format, in_dests, destination_type,
+					 dest->destination_type);
+				break;
 			default:
 				rte_errno = EOPNOTSUPP;
 				goto free_devx;
