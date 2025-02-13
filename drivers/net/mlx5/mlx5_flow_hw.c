@@ -14194,6 +14194,7 @@ mlx5_mirror_terminal_action(const struct rte_flow_action *action)
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 	case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+	case RTE_FLOW_ACTION_TYPE_DROP:
 		return true;
 	default:
 		break;
@@ -14237,6 +14238,8 @@ mlx5_mirror_validate_sample_action(struct rte_eth_dev *dev,
 			return false;
 		break;
 	case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+	case RTE_FLOW_ACTION_TYPE_JUMP:
+	case RTE_FLOW_ACTION_TYPE_DROP:
 		break;
 	default:
 		return false;
@@ -14431,6 +14434,8 @@ hw_mirror_format_clone(struct rte_eth_dev *dev,
 							  RTE_FLOW_ERROR_TYPE_ACTION,
 							  &actions[i],
 							  "failed to create reformat action");
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
 			break;
 		default:
 			return rte_flow_error_set(error, EINVAL,

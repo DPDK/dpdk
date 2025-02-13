@@ -5224,6 +5224,7 @@ enum mlx5_flow_destination_type {
 	MLX5_FLOW_DESTINATION_TYPE_VPORT = 0x0,
 	MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE = 0x1,
 	MLX5_FLOW_DESTINATION_TYPE_TIR = 0x2,
+	MLX5_FLOW_DESTINATION_TYPE_NOP = 0xb,
 };
 
 enum mlx5_flow_context_action {
