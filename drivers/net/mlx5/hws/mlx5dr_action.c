@@ -2557,6 +2557,10 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
 				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 				break;
+			case MLX5DR_ACTION_TYP_DROP:
+				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_NOP;
+				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+				break;
 			case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
 			case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
 				packet_reformat = mlx5dr_action_dest_array_process_reformat
