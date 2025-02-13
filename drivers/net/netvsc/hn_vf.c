@@ -316,8 +316,9 @@ static void hn_vf_remove(struct hn_data *hv)
 	} else {
 		/* Stop incoming packets from arriving on VF */
 		ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_SYNTHETIC);
-		if (ret == 0)
-			hv->vf_ctx.vf_vsc_switched = false;
+		if (ret)
+			PMD_DRV_LOG(ERR, "Failed to switch to synthetic");
+		hv->vf_ctx.vf_vsc_switched = false;
 	}
 	rte_rwlock_write_unlock(&hv->vf_lock);
 }
