@@ -83,10 +83,6 @@ class DPDKBuildEnvironment:
         DPDK setup includes setting all internals needed for the build, the copying of DPDK
         sources and then building DPDK or using the exist ones from the `dpdk_location`. The drivers
         are bound to those that DPDK needs.
-
-        Args:
-            dpdk_build_config: A DPDK build configuration to test.
-            ports: The ports to use for DPDK.
         """
         match self.config.dpdk_location:
             case RemoteDPDKTreeLocation(dpdk_tree=dpdk_tree):
@@ -106,6 +102,21 @@ class DPDKBuildEnvironment:
             case DPDKUncompiledBuildConfiguration(build_options=build_options):
                 self._configure_dpdk_build(build_options)
                 self._build_dpdk()
+
+    def teardown(self) -> None:
+        """Teardown the DPDK build on the target node.
+
+        Removes the DPDK tree and/or build directory/tarball depending on the configuration.
+        """
+        match self.config.dpdk_location:
+            case LocalDPDKTreeLocation():
+                self._node.main_session.remove_remote_dir(self.remote_dpdk_tree_path)
+            case LocalDPDKTarballLocation(tarball=tarball):
+                self._node.main_session.remove_remote_dir(self.remote_dpdk_tree_path)
+                tarball_path = self._node.main_session.join_remote_path(
+                    self._remote_tmp_dir, tarball.name
+                )
+                self._node.main_session.remove_remote_file(tarball_path)
 
     def _set_remote_dpdk_tree_path(self, dpdk_tree: PurePath):
         """Set the path to the remote DPDK source tree based on the provided DPDK location.
@@ -412,6 +423,7 @@ class DPDKRuntimeEnvironment:
     def teardown(self, ports: Iterable[Port]) -> None:
         """Reset DPDK variables and bind port driver to the OS driver."""
         self.bind_ports_to_driver(ports, for_dpdk=False)
+        self.build.teardown()
 
     def run_dpdk_app(
         self, app_path: PurePath, eal_params: EalParams, timeout: float = 30
