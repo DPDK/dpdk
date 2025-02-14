@@ -4031,6 +4031,20 @@ mlx5_flow_validate_item_nsh(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static uintptr_t
+flow_null_list_create(struct rte_eth_dev *dev __rte_unused,
+		      enum mlx5_flow_type type __rte_unused,
+		      const struct rte_flow_attr *attr __rte_unused,
+		      const struct rte_flow_item items[] __rte_unused,
+		      const struct rte_flow_action actions[] __rte_unused,
+		      bool external __rte_unused,
+		      struct rte_flow_error *error)
+{
+	rte_flow_error_set(error, ENOTSUP,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL, NULL);
+	return 0;
+}
+
 static int
 flow_null_validate(struct rte_eth_dev *dev __rte_unused,
 		   const struct rte_flow_attr *attr __rte_unused,
@@ -4150,6 +4164,7 @@ flow_null_counter_query(struct rte_eth_dev *dev,
 
 /* Void driver to protect from null pointer reference. */
 const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
+	.list_create = flow_null_list_create,
 	.validate = flow_null_validate,
 	.prepare = flow_null_prepare,
 	.translate = flow_null_translate,
