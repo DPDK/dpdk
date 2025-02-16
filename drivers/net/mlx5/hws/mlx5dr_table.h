@@ -32,20 +32,48 @@ static inline
 uint32_t mlx5dr_table_get_res_fw_ft_type(enum mlx5dr_table_type tbl_type,
 					 bool is_mirror)
 {
-	if (tbl_type == MLX5DR_TABLE_TYPE_NIC_RX)
+	switch (tbl_type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX:
 		return FS_FT_NIC_RX;
-	else if (tbl_type == MLX5DR_TABLE_TYPE_NIC_TX)
+	case MLX5DR_TABLE_TYPE_NIC_TX:
 		return FS_FT_NIC_TX;
-	else if (tbl_type == MLX5DR_TABLE_TYPE_FDB)
+	case MLX5DR_TABLE_TYPE_FDB:
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+	case MLX5DR_TABLE_TYPE_FDB_TX:
 		return is_mirror ? FS_FT_FDB_TX : FS_FT_FDB_RX;
-
-	assert(0);
-	return 0;
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
+		return FS_FT_FDB_UNIFIED;
+	default:
+		assert(0);
+		return 0;
+	}
 }
 
 static inline bool mlx5dr_table_is_root(struct mlx5dr_table *tbl)
 {
 	return (tbl->level == MLX5DR_ROOT_LEVEL);
+}
+
+static inline
+void mlx5dr_table_get_fw_ft_type(enum mlx5dr_table_type type,
+				 uint8_t *ret_type)
+{
+	switch (type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX:
+		*ret_type = FS_FT_NIC_RX;
+		break;
+	case MLX5DR_TABLE_TYPE_NIC_TX:
+		*ret_type = FS_FT_NIC_TX;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB:
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
+		*ret_type = FS_FT_FDB;
+		break;
+	default:
+		assert(0);
+	}
 }
 
 struct mlx5dr_devx_obj *mlx5dr_table_create_default_ft(struct ibv_context *ibv,

@@ -5122,6 +5122,7 @@ enum {
 	FS_FT_FDB = 0x4,
 	FS_FT_FDB_RX = 0xa,
 	FS_FT_FDB_TX = 0xb,
+	FS_FT_FDB_UNIFIED = 0xc,
 };
 
 struct mlx5_ifc_flow_table_context_bits {
