@@ -160,7 +160,7 @@ struct mlx5dr_action_template {
 
 struct mlx5dr_action {
 	uint8_t type;
-	uint8_t flags;
+	uint16_t flags;
 	struct mlx5dr_context *ctx;
 	union {
 		struct {
