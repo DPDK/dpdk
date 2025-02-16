@@ -28,6 +28,26 @@ struct mlx5dr_table {
 	struct mlx5dr_default_miss default_miss;
 };
 
+static inline bool mlx5dr_table_is_fw_fdb_any(uint32_t fw_tbl_type)
+{
+	if (fw_tbl_type == FS_FT_FDB_TX || fw_tbl_type == FS_FT_FDB_RX ||
+	    fw_tbl_type == FS_FT_FDB_UNIFIED)
+		return true;
+
+	return false;
+}
+
+static inline bool mlx5dr_table_is_fdb_any(enum mlx5dr_table_type tbl_type)
+{
+	if (tbl_type == MLX5DR_TABLE_TYPE_FDB ||
+	    tbl_type == MLX5DR_TABLE_TYPE_FDB_TX ||
+	    tbl_type == MLX5DR_TABLE_TYPE_FDB_RX ||
+	    tbl_type == MLX5DR_TABLE_TYPE_FDB_UNIFIED)
+		return true;
+
+	return false;
+}
+
 static inline
 uint32_t mlx5dr_table_get_res_fw_ft_type(enum mlx5dr_table_type tbl_type,
 					 bool is_mirror)

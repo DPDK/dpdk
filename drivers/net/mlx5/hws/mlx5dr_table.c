@@ -8,7 +8,7 @@ static void mlx5dr_table_init_next_ft_attr(struct mlx5dr_table *tbl,
 					   struct mlx5dr_cmd_ft_create_attr *ft_attr)
 {
 	ft_attr->type = tbl->fw_ft_type;
-	if (tbl->type == MLX5DR_TABLE_TYPE_FDB)
+	if (mlx5dr_table_is_fdb_any(tbl->type))
 		ft_attr->level = tbl->ctx->caps->fdb_ft.max_level - 1;
 	else
 		ft_attr->level = tbl->ctx->caps->nic_ft.max_level - 1;
@@ -26,7 +26,7 @@ mlx5dr_table_up_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	struct mlx5dr_context *ctx = tbl->ctx;
 	uint8_t tbl_type = tbl->type;
 
-	if (tbl->type != MLX5DR_TABLE_TYPE_FDB)
+	if (!mlx5dr_table_is_fdb_any(tbl_type))
 		return 0;
 
 	if (ctx->common_res[tbl_type].default_miss) {
@@ -63,7 +63,7 @@ static void mlx5dr_table_down_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	struct mlx5dr_context *ctx = tbl->ctx;
 	uint8_t tbl_type = tbl->type;
 
-	if (tbl->type != MLX5DR_TABLE_TYPE_FDB)
+	if (!mlx5dr_table_is_fdb_any(tbl->type))
 		return;
 
 	default_miss = ctx->common_res[tbl_type].default_miss;
@@ -81,7 +81,7 @@ mlx5dr_table_connect_to_default_miss_tbl(struct mlx5dr_table *tbl,
 	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
 	int ret;
 
-	assert(tbl->type == MLX5DR_TABLE_TYPE_FDB);
+	assert(mlx5dr_table_is_fdb_any(tbl->type));
 
 	mlx5dr_cmd_set_attr_connect_miss_tbl(tbl->ctx,
 					     tbl->fw_ft_type,
@@ -109,16 +109,18 @@ mlx5dr_table_create_default_ft(struct ibv_context *ibv,
 	mlx5dr_table_init_next_ft_attr(tbl, &ft_attr);
 
 	ft_obj = mlx5dr_cmd_flow_table_create(ibv, &ft_attr);
-	if (ft_obj && tbl->type == MLX5DR_TABLE_TYPE_FDB) {
+	if (ft_obj && mlx5dr_table_is_fdb_any(tbl->type)) {
 		/* Take/create ref over the default miss */
 		ret = mlx5dr_table_up_default_fdb_miss_tbl(tbl);
 		if (ret) {
-			DR_LOG(ERR, "Failed to get default fdb miss");
+			DR_LOG(ERR, "Failed to get default fdb miss for type: %d\n",
+			       tbl->type);
 			goto free_ft_obj;
 		}
 		ret = mlx5dr_table_connect_to_default_miss_tbl(tbl, ft_obj);
 		if (ret) {
-			DR_LOG(ERR, "Failed connecting to default miss tbl");
+			DR_LOG(ERR, "Failed connecting to default miss tbl (type: %d)",
+			       tbl->type);
 			goto down_miss_tbl;
 		}
 	}
@@ -142,7 +144,7 @@ mlx5dr_table_init_check_hws_support(struct mlx5dr_context *ctx,
 		return rte_errno;
 	}
 
-	if (mlx5dr_context_shared_gvmi_used(ctx) && tbl->type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_context_shared_gvmi_used(ctx) && mlx5dr_table_is_fdb_any(tbl->type)) {
 		DR_LOG(ERR, "FDB with shared port resources is not supported");
 		rte_errno = EOPNOTSUPP;
 		return rte_errno;
@@ -380,8 +382,21 @@ struct mlx5dr_table *mlx5dr_table_create(struct mlx5dr_context *ctx,
 	struct mlx5dr_table *tbl;
 	int ret;
 
-	if (attr->type > MLX5DR_TABLE_TYPE_FDB) {
+	if (attr->type >= MLX5DR_TABLE_TYPE_MAX) {
 		DR_LOG(ERR, "Invalid table type %d", attr->type);
+		return NULL;
+	}
+
+	if (attr->type == MLX5DR_TABLE_TYPE_FDB_UNIFIED && !ctx->caps->fdb_unified_en) {
+		DR_LOG(ERR, "Table type %d not supported by current FW", attr->type);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if ((mlx5dr_table_is_fdb_any(attr->type) && attr->type != MLX5DR_TABLE_TYPE_FDB) &&
+	    !attr->level) {
+		DR_LOG(ERR, "Table type %d not supported by root table", attr->type);
+		rte_errno = ENOTSUP;
 		return NULL;
 	}
 
@@ -464,7 +479,7 @@ int mlx5dr_table_ft_set_default_next_ft(struct mlx5dr_table *tbl,
 	if (!tbl->ctx->caps->nic_ft.ignore_flow_level_rtc_valid)
 		return 0;
 
-	if (tbl->type == MLX5DR_TABLE_TYPE_FDB)
+	if (mlx5dr_table_is_fdb_any(tbl->type))
 		return mlx5dr_table_connect_to_default_miss_tbl(tbl, ft_obj);
 
 	ft_attr.type = tbl->fw_ft_type;
