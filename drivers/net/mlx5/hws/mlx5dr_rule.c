@@ -11,17 +11,27 @@ static void mlx5dr_rule_skip(struct mlx5dr_matcher *matcher,
 {
 	const struct flow_hw_port_info *vport;
 	const struct rte_flow_item_ethdev *v;
+	enum mlx5dr_table_type type;
 
-	/* Flow_src is the 1st priority */
+	/* By default FDB rules are added to both RX and TX */
+	*skip_rx = false;
+	*skip_tx = false;
+
+	type = matcher->tbl->type;
+	if (type == MLX5DR_TABLE_TYPE_FDB_RX || type == MLX5DR_TABLE_TYPE_FDB_UNIFIED) {
+		*skip_tx = true;
+		return;
+	} else if (type == MLX5DR_TABLE_TYPE_FDB_TX) {
+		*skip_rx = true;
+		return;
+	}
+
+	/* Flow_src is the 1st priority after table type */
 	if (matcher->attr.optimize_flow_src) {
 		*skip_tx = matcher->attr.optimize_flow_src == MLX5DR_MATCHER_FLOW_SRC_WIRE;
 		*skip_rx = matcher->attr.optimize_flow_src == MLX5DR_MATCHER_FLOW_SRC_VPORT;
 		return;
 	}
-
-	/* By default FDB rules are added to both RX and TX */
-	*skip_rx = false;
-	*skip_tx = false;
 
 	if (unlikely(mlx5dr_matcher_is_insert_by_idx(matcher)))
 		return;
@@ -88,6 +98,9 @@ static void mlx5dr_rule_init_dep_wqe(struct mlx5dr_send_ring_dep_wqe *dep_wqe,
 		break;
 
 	case MLX5DR_TABLE_TYPE_FDB:
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
 		mlx5dr_rule_skip(matcher, mt, items, &skip_rx, &skip_tx);
 
 		if (!skip_rx) {
