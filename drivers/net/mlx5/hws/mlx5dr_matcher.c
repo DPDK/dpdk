@@ -50,7 +50,7 @@ int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
 {
 	int ret;
 
-	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
+	if (!mlx5dr_table_is_fdb_any(type) && !mlx5dr_context_shared_gvmi_used(ctx))
 		return 0;
 
 	ret = mlx5dr_table_ft_set_next_rtc(devx_obj, fw_ft_type, NULL, NULL);
@@ -407,6 +407,25 @@ static bool mlx5dr_matcher_supp_fw_wqe(struct mlx5dr_matcher *matcher)
 	return true;
 }
 
+static void mlx5dr_matcher_fixup_rtc_sizes_by_tbl(enum mlx5dr_table_type tbl_type,
+						  bool is_mirror,
+						  struct mlx5dr_cmd_rtc_create_attr *rtc_attr)
+{
+	if (!is_mirror) {
+		if (tbl_type == MLX5DR_TABLE_TYPE_FDB_TX) {
+			/* rtc_0 for TX flow is minimal */
+			rtc_attr->log_size = 0;
+			rtc_attr->log_depth = 0;
+		}
+	} else {
+		if (tbl_type == MLX5DR_TABLE_TYPE_FDB_RX) {
+			/* rtc_1 for RX flow is minimal */
+			rtc_attr->log_size = 0;
+			rtc_attr->log_depth = 0;
+		}
+	}
+}
+
 static void mlx5dr_matcher_set_rtc_attr_sz(struct mlx5dr_matcher *matcher,
 					   struct mlx5dr_cmd_rtc_create_attr *rtc_attr,
 					   enum mlx5dr_matcher_rtc_type rtc_type,
@@ -426,6 +445,11 @@ static void mlx5dr_matcher_set_rtc_attr_sz(struct mlx5dr_matcher *matcher,
 		rtc_attr->log_size = is_match_rtc ? matcher->attr.table.sz_row_log : ste->order;
 		rtc_attr->log_depth = is_match_rtc ? matcher->attr.table.sz_col_log : 0;
 	}
+
+	/* set values according to tbl->type */
+	mlx5dr_matcher_fixup_rtc_sizes_by_tbl(matcher->tbl->type,
+					      is_mirror,
+					      rtc_attr);
 }
 
 int mlx5dr_matcher_create_aliased_obj(struct mlx5dr_context *ctx,
@@ -604,7 +628,7 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		goto free_ste;
 	}
 
-	if (tbl->type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_table_fdb_no_unified(tbl->type)) {
 		devx_obj = mlx5dr_pool_chunk_get_base_devx_obj_mirror(ste_pool, ste);
 		rtc_attr.ste_base = devx_obj->id;
 		rtc_attr.table_type = mlx5dr_table_get_res_fw_ft_type(tbl->type, true);
@@ -619,6 +643,9 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 			       mlx5dr_matcher_rtc_type_to_str(rtc_type));
 			goto destroy_rtc_0;
 		}
+	} else if (tbl->type == MLX5DR_TABLE_TYPE_FDB_UNIFIED) {
+		/* Unified domain has 2 identical RTC's, allow connecting from other domains */
+		*rtc_1 = *rtc_0;
 	}
 
 	return 0;
@@ -656,7 +683,7 @@ static void mlx5dr_matcher_destroy_rtc(struct mlx5dr_matcher *matcher,
 		return;
 	}
 
-	if (tbl->type == MLX5DR_TABLE_TYPE_FDB)
+	if (mlx5dr_table_fdb_no_unified(tbl->type))
 		mlx5dr_cmd_destroy_obj(rtc_1);
 
 	mlx5dr_cmd_destroy_obj(rtc_0);
@@ -703,6 +730,10 @@ static void mlx5dr_matcher_set_pool_attr(struct mlx5dr_pool_attr *attr,
 	default:
 		break;
 	}
+
+	/* Now set attr according to the table type */
+	if (attr->opt_type == MLX5DR_POOL_OPTIMIZE_NONE)
+		mlx5dr_context_set_pool_tbl_attr(attr, matcher->tbl->type);
 }
 
 static int mlx5dr_matcher_check_and_process_at(struct mlx5dr_matcher *matcher,
@@ -1073,7 +1104,7 @@ mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
 		return 0;
 	}
 
-	if (matcher->tbl->type != MLX5DR_TABLE_TYPE_FDB  && attr->optimize_flow_src) {
+	if (!mlx5dr_table_is_fdb_any(matcher->tbl->type) && attr->optimize_flow_src) {
 		DR_LOG(ERR, "NIC domain doesn't support flow_src");
 		goto not_supported;
 	}

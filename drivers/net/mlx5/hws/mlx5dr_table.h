@@ -48,6 +48,15 @@ static inline bool mlx5dr_table_is_fdb_any(enum mlx5dr_table_type tbl_type)
 	return false;
 }
 
+static inline bool mlx5dr_table_fdb_no_unified(enum mlx5dr_table_type tbl_type)
+{
+	if (mlx5dr_table_is_fdb_any(tbl_type) &&
+	    tbl_type != MLX5DR_TABLE_TYPE_FDB_UNIFIED)
+		return true;
+
+	return false;
+}
+
 static inline
 uint32_t mlx5dr_table_get_res_fw_ft_type(enum mlx5dr_table_type tbl_type,
 					 bool is_mirror)
