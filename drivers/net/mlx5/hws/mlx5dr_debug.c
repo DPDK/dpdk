@@ -232,7 +232,7 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 	ste_pool = matcher->match_ste.pool;
 	if (ste_pool) {
 		ste_0 = mlx5dr_pool_chunk_get_base_devx_obj(ste_pool, ste);
-		if (tbl_type == MLX5DR_TABLE_TYPE_FDB)
+		if (tbl_type == MLX5DR_TABLE_TYPE_FDB || tbl_type == MLX5DR_TABLE_TYPE_FDB_TX)
 			ste_1 = mlx5dr_pool_chunk_get_base_devx_obj_mirror(ste_pool, ste);
 	} else {
 		ste_0 = NULL;
@@ -251,7 +251,7 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 	ste_pool = matcher->action_ste.pool;
 	if (ste_pool) {
 		ste_0 = mlx5dr_pool_chunk_get_base_devx_obj(ste_pool, ste);
-		if (tbl_type == MLX5DR_TABLE_TYPE_FDB)
+		if (tbl_type == MLX5DR_TABLE_TYPE_FDB || tbl_type == MLX5DR_TABLE_TYPE_FDB_TX)
 			ste_1 = mlx5dr_pool_chunk_get_base_devx_obj_mirror(ste_pool, ste);
 	} else {
 		ste_0 = NULL;
