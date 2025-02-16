@@ -328,14 +328,14 @@ void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 {
 	struct mlx5dr_devx_obj *default_miss_tbl;
 
-	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
+	if (!mlx5dr_table_is_fdb_any(type) && !mlx5dr_context_shared_gvmi_used(ctx))
 		return;
 
 	ft_attr->modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION;
 	ft_attr->type = fw_ft_type;
 	ft_attr->table_miss_action = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION_GOTO_TBL;
 
-	if (type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_table_is_fdb_any(type)) {
 		default_miss_tbl = ctx->common_res[type].default_miss->ft;
 		if (!default_miss_tbl) {
 			assert(false);

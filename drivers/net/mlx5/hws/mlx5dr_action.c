@@ -801,7 +801,7 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 		break;
 
 	case MLX5_IFC_STC_ACTION_TYPE_ALLOW:
-		if (fw_tbl_type == FS_FT_FDB_TX || fw_tbl_type == FS_FT_FDB_RX) {
+		if (mlx5dr_table_is_fw_fdb_any(fw_tbl_type)) {
 			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT;
 			fixup_stc_attr->action_offset = stc_attr->action_offset;
 			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
@@ -817,8 +817,8 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 		if (stc_attr->vport.vport_num != WIRE_PORT)
 			break;
 
-		if (fw_tbl_type == FS_FT_FDB_TX || fw_tbl_type == FS_FT_FDB_RX) {
-			/*The FW doesn't allow to go to wire in the TX/RX by JUMP_TO_VPORT*/
+		if (mlx5dr_table_is_fw_fdb_any(fw_tbl_type)) {
+			/* The FW doesn't allow to go to wire in the TX/RX by JUMP_TO_VPORT */
 			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_UPLINK;
 			fixup_stc_attr->action_offset = stc_attr->action_offset;
 			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
