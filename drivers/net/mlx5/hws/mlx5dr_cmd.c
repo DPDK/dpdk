@@ -1276,6 +1276,10 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		caps->fdb_tir_stc = MLX5_GET(query_hca_cap_out, out,
 					     capability.wqe_based_flow_table_cap.
 					     fdb_jump_to_tir_stc);
+
+		caps->fdb_unified_en = MLX5_GET(query_hca_cap_out, out,
+						capability.wqe_based_flow_table_cap.
+						fdb_unified_en);
 	}
 
 	if (caps->eswitch_manager) {
