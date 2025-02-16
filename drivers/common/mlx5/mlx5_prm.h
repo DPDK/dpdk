@@ -2478,7 +2478,9 @@ struct mlx5_ifc_wqe_based_flow_table_cap_bits {
 	u8 ste_format_gen_wqe[0x10];
 	u8 linear_match_definer_reg_c3[0x20];
 	u8 fdb_jump_to_tir_stc[0x1];
-	u8 reserved_at_1c1[0x1f];
+	u8 reserved_at_1c1[0x1];
+	u8 fdb_unified_en[0x1];
+	u8 reserved_at_1c3[0x1d];
 };
 
 union mlx5_ifc_hca_cap_union_bits {
