@@ -72,4 +72,7 @@ bool mlx5dr_context_cap_dynamic_reparse(struct mlx5dr_context *ctx);
 
 uint8_t mlx5dr_context_get_reparse_mode(struct mlx5dr_context *ctx);
 
+void mlx5dr_context_set_pool_tbl_attr(struct mlx5dr_pool_attr *attr,
+				      enum mlx5dr_table_type table_type);
+
 #endif /* MLX5DR_CONTEXT_H_ */

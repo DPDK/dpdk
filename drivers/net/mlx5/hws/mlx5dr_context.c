@@ -19,6 +19,24 @@ uint8_t mlx5dr_context_get_reparse_mode(struct mlx5dr_context *ctx)
 	return MLX5_IFC_RTC_REPARSE_ALWAYS;
 }
 
+void mlx5dr_context_set_pool_tbl_attr(struct mlx5dr_pool_attr *attr,
+				      enum mlx5dr_table_type table_type)
+{
+	attr->table_type = table_type;
+
+	switch (table_type) {
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+		attr->opt_type = MLX5DR_POOL_OPTIMIZE_ORIG;
+		break;
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+		attr->opt_type = MLX5DR_POOL_OPTIMIZE_MIRROR;
+		break;
+	default:
+		attr->opt_type = MLX5DR_POOL_OPTIMIZE_NONE;
+		break;
+	}
+}
+
 static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx,
 				     struct mlx5dr_context_attr *attr)
 {
@@ -41,7 +59,8 @@ static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx,
 	pool_attr.alloc_log_sz = RTE_MAX(max_log_sz, ctx->caps->stc_alloc_log_gran);
 
 	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		pool_attr.table_type = i;
+		mlx5dr_context_set_pool_tbl_attr(&pool_attr,
+						 (enum mlx5dr_table_type)i);
 		ctx->stc_pool[i] = mlx5dr_pool_create(ctx, &pool_attr);
 		if (!ctx->stc_pool[i]) {
 			DR_LOG(ERR, "Failed to allocate STC pool [%d]", i);
