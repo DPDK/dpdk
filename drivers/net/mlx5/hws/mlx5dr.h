@@ -66,10 +66,13 @@ enum mlx5dr_action_flags {
 	MLX5DR_ACTION_FLAG_HWS_RX = 1 << 3,
 	MLX5DR_ACTION_FLAG_HWS_TX = 1 << 4,
 	MLX5DR_ACTION_FLAG_HWS_FDB = 1 << 5,
+	MLX5DR_ACTION_FLAG_HWS_FDB_RX = 1 << 6,
+	MLX5DR_ACTION_FLAG_HWS_FDB_TX = 1 << 7,
+	MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED = 1 << 8,
 	/* Shared action can be used over a few threads, since data is written
 	 * only once at the creation of the action.
 	 */
-	MLX5DR_ACTION_FLAG_SHARED = 1 << 6,
+	MLX5DR_ACTION_FLAG_SHARED = 1 << 9,
 };
 
 enum mlx5dr_action_aso_meter_color {

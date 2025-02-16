@@ -10,6 +10,12 @@
 /* Header removal size limited to 128B (64 words) */
 #define MLX5DR_ACTION_REMOVE_HEADER_MAX_SIZE 128
 
+static struct mlx5dr_devx_obj *
+mlx5dr_action_get_stc_obj_by_tbl_type(enum mlx5dr_table_type table_type,
+				      struct mlx5dr_pool *stc_pool,
+				      struct mlx5dr_pool_chunk *stc,
+				      bool is_mirror);
+
 /* This is the maximum allowed action order for each table type:
  *	 TX: POP_VLAN, CTR, ASO_METER, AS_CT, PUSH_VLAN, MODIFY, ENCAP, Term
  *	 RX: TAG, DECAP, POP_VLAN, CTR, ASO_METER, ASO_CT, PUSH_VLAN, MODIFY,
@@ -220,8 +226,47 @@ static int mlx5dr_action_get_shared_stc(struct mlx5dr_action *action,
 		}
 	}
 
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX) {
+		ret = mlx5dr_action_get_shared_stc_nic(ctx, stc_type,
+						       MLX5DR_TABLE_TYPE_FDB_RX);
+		if (ret) {
+			DR_LOG(ERR, "Failed to allocate FDB_RX shared STCs (type: %d)",
+			       stc_type);
+			goto clean_nic_fdb_stc;
+		}
+	}
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX) {
+		ret = mlx5dr_action_get_shared_stc_nic(ctx, stc_type,
+						       MLX5DR_TABLE_TYPE_FDB_TX);
+		if (ret) {
+			DR_LOG(ERR, "Failed to allocate FDB_TX shared STCs (type: %d)",
+			       stc_type);
+			goto clean_nic_fdb_rx_stc;
+		}
+	}
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) {
+		ret = mlx5dr_action_get_shared_stc_nic(ctx, stc_type,
+						       MLX5DR_TABLE_TYPE_FDB_UNIFIED);
+		if (ret) {
+			DR_LOG(ERR, "Failed to allocate FDB_UNIFIED shared STCs (type: %d)",
+			       stc_type);
+			goto clean_nic_fdb_tx_stc;
+		}
+	}
+
 	return 0;
 
+clean_nic_fdb_tx_stc:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_TX);
+clean_nic_fdb_rx_stc:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_RX);
+clean_nic_fdb_stc:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB);
 clean_nic_tx_stc:
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_TX)
 		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_NIC_TX);
@@ -250,6 +295,15 @@ static void mlx5dr_action_put_shared_stc(struct mlx5dr_action *action,
 
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB)
 		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_RX);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_TX);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)
+		mlx5dr_action_put_shared_stc_nic(ctx, stc_type, MLX5DR_TABLE_TYPE_FDB_UNIFIED);
 }
 
 static void
@@ -689,13 +743,36 @@ static void mlx5dr_action_print_combo(enum mlx5dr_action_type *user_actions)
 	}
 }
 
+static const uint32_t *
+mlx5dr_action_get_order_entry(enum mlx5dr_table_type table_type)
+{
+	switch (table_type) {
+	case MLX5DR_TABLE_TYPE_NIC_RX:
+		return action_order_arr[MLX5DR_TABLE_TYPE_NIC_RX];
+	case MLX5DR_TABLE_TYPE_NIC_TX:
+		return action_order_arr[MLX5DR_TABLE_TYPE_NIC_TX];
+	case MLX5DR_TABLE_TYPE_FDB:
+	case MLX5DR_TABLE_TYPE_FDB_RX:
+	case MLX5DR_TABLE_TYPE_FDB_TX:
+	case MLX5DR_TABLE_TYPE_FDB_UNIFIED:
+		return action_order_arr[MLX5DR_TABLE_TYPE_FDB];
+	default:
+		assert(0);
+		DR_LOG(ERR, "no such type: %d", table_type);
+		return NULL;
+	}
+}
+
 bool mlx5dr_action_check_combo(enum mlx5dr_action_type *user_actions,
 			       enum mlx5dr_table_type table_type)
 {
-	const uint32_t *order_arr = action_order_arr[table_type];
+	const uint32_t *order_arr = mlx5dr_action_get_order_entry(table_type);
 	uint8_t order_idx = 0;
 	uint8_t user_idx = 0;
 	bool valid_combo;
+
+	if (!order_arr)
+		return false;
 
 	while (order_arr[order_idx] != BIT(MLX5DR_ACTION_TYP_LAST)) {
 		/* User action order validated move to next user action */
@@ -787,13 +864,10 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 
 	switch (stc_attr->action_type) {
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE:
-		if (!is_mirror)
-			devx_obj = mlx5dr_pool_chunk_get_base_devx_obj(stc_attr->ste_table.ste_pool,
-								       &stc_attr->ste_table.ste);
-		else
-			devx_obj =
-			mlx5dr_pool_chunk_get_base_devx_obj_mirror(stc_attr->ste_table.ste_pool,
-								   &stc_attr->ste_table.ste);
+		devx_obj = mlx5dr_action_get_stc_obj_by_tbl_type(table_type,
+								 stc_attr->ste_table.ste_pool,
+								 &stc_attr->ste_table.ste,
+								 is_mirror);
 
 		*fixup_stc_attr = *stc_attr;
 		fixup_stc_attr->ste_table.ste_obj_id = devx_obj->id;
@@ -845,6 +919,19 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 	return use_fixup;
 }
 
+static struct mlx5dr_devx_obj *
+mlx5dr_action_get_stc_obj_by_tbl_type(enum mlx5dr_table_type table_type,
+				      struct mlx5dr_pool *stc_pool,
+				      struct mlx5dr_pool_chunk *stc,
+				      bool is_mirror)
+{
+	if (table_type == MLX5DR_TABLE_TYPE_FDB_TX ||
+	    (is_mirror && table_type == MLX5DR_TABLE_TYPE_FDB)) /* Optimized ORIG in FDB_TX */
+		return mlx5dr_pool_chunk_get_base_devx_obj_mirror(stc_pool, stc);
+	else
+		return mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
+}
+
 int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 				   struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 				   uint32_t table_type,
@@ -854,6 +941,7 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 	struct mlx5dr_pool *stc_pool = ctx->stc_pool[table_type];
 	struct mlx5dr_cmd_stc_modify_attr fixup_stc_attr = {0};
 	struct mlx5dr_devx_obj *devx_obj_0;
+	enum mlx5dr_table_type type;
 	bool use_fixup;
 	int ret;
 
@@ -869,10 +957,13 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 	if (!mlx5dr_context_cap_dynamic_reparse(ctx))
 		stc_attr->reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
 
-	devx_obj_0 = mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
+	type = (enum mlx5dr_table_type)table_type;
+	devx_obj_0 = mlx5dr_action_get_stc_obj_by_tbl_type(type, stc_pool, stc, false);
 
 	/* According to table/action limitation change the stc_attr */
-	use_fixup = mlx5dr_action_fixup_stc_attr(ctx, stc_attr, &fixup_stc_attr, table_type, false);
+	use_fixup = mlx5dr_action_fixup_stc_attr(ctx, stc_attr, &fixup_stc_attr,
+						 (enum mlx5dr_table_type)table_type,
+						 (table_type == MLX5DR_TABLE_TYPE_FDB_TX));
 	ret = mlx5dr_cmd_stc_modify(devx_obj_0, use_fixup ? &fixup_stc_attr : stc_attr);
 	if (ret) {
 		DR_LOG(ERR, "Failed to modify STC action_type %d tbl_type %d",
@@ -916,12 +1007,15 @@ void mlx5dr_action_free_single_stc(struct mlx5dr_context *ctx,
 	struct mlx5dr_pool *stc_pool = ctx->stc_pool[table_type];
 	struct mlx5dr_cmd_stc_modify_attr stc_attr = {0};
 	struct mlx5dr_devx_obj *devx_obj;
+	enum mlx5dr_table_type type;
 
 	/* Modify the STC not to point to an object */
 	stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_DROP;
 	stc_attr.action_offset = MLX5DR_ACTION_OFFSET_HIT;
 	stc_attr.stc_offset = stc->offset;
-	devx_obj = mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
+	type = (enum mlx5dr_table_type)table_type;
+	devx_obj = mlx5dr_action_get_stc_obj_by_tbl_type(type, stc_pool, stc, false);
+
 	mlx5dr_cmd_stc_modify(devx_obj, &stc_attr);
 
 	if (table_type == MLX5DR_TABLE_TYPE_FDB) {
@@ -1131,7 +1225,7 @@ mlx5dr_action_create_stcs(struct mlx5dr_action *action,
 						     MLX5DR_TABLE_TYPE_NIC_TX,
 						     &action->stc[MLX5DR_TABLE_TYPE_NIC_TX]);
 		if (ret)
-			goto free_nic_rx_stc;
+			goto free_stcs_rx;
 	}
 
 	/* Allocate STC for FDB */
@@ -1140,22 +1234,59 @@ mlx5dr_action_create_stcs(struct mlx5dr_action *action,
 						     MLX5DR_TABLE_TYPE_FDB,
 						     &action->stc[MLX5DR_TABLE_TYPE_FDB]);
 		if (ret)
-			goto free_nic_tx_stc;
+			goto free_stcs_tx;
+	}
+
+	/* Allocate STC for FDB-RX */
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX) {
+		ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr,
+						     MLX5DR_TABLE_TYPE_FDB_RX,
+						     &action->stc[MLX5DR_TABLE_TYPE_FDB_RX]);
+		if (ret)
+			goto free_stcs_fdb;
+	}
+
+	/* Allocate STC for FDB-TX */
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX) {
+		ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr,
+						     MLX5DR_TABLE_TYPE_FDB_TX,
+						     &action->stc[MLX5DR_TABLE_TYPE_FDB_TX]);
+		if (ret)
+			goto free_stcs_fdb_rx;
+	}
+
+	/* Allocate STC for FDB Unified */
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) {
+		ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr,
+						     MLX5DR_TABLE_TYPE_FDB_UNIFIED,
+						     &action->stc[MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
+		if (ret)
+			goto free_stcs_fdb_tx;
 	}
 
 	pthread_spin_unlock(&ctx->ctrl_lock);
 
 	return 0;
 
-free_nic_tx_stc:
+free_stcs_fdb_tx:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_TX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_TX]);
+free_stcs_fdb_rx:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_RX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_RX]);
+free_stcs_fdb:
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB]);
+free_stcs_tx:
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_TX)
-		mlx5dr_action_free_single_stc(ctx,
-					      MLX5DR_TABLE_TYPE_NIC_TX,
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_NIC_TX,
 					      &action->stc[MLX5DR_TABLE_TYPE_NIC_TX]);
-free_nic_rx_stc:
+free_stcs_rx:
 	if (action->flags & MLX5DR_ACTION_FLAG_HWS_RX)
-		mlx5dr_action_free_single_stc(ctx,
-					      MLX5DR_TABLE_TYPE_NIC_RX,
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_NIC_RX,
 					      &action->stc[MLX5DR_TABLE_TYPE_NIC_RX]);
 out_err:
 	pthread_spin_unlock(&ctx->ctrl_lock);
@@ -1182,6 +1313,18 @@ mlx5dr_action_destroy_stcs(struct mlx5dr_action *action)
 		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB,
 					      &action->stc[MLX5DR_TABLE_TYPE_FDB]);
 
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_RX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_RX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_RX]);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_TX)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_TX,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_TX]);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)
+		mlx5dr_action_free_single_stc(ctx, MLX5DR_TABLE_TYPE_FDB_UNIFIED,
+					      &action->stc[MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
+
 	pthread_spin_unlock(&ctx->ctrl_lock);
 }
 
@@ -1198,7 +1341,10 @@ mlx5dr_action_is_hws_flags(uint32_t flags)
 {
 	return flags & (MLX5DR_ACTION_FLAG_HWS_RX |
 			MLX5DR_ACTION_FLAG_HWS_TX |
-			MLX5DR_ACTION_FLAG_HWS_FDB);
+			MLX5DR_ACTION_FLAG_HWS_FDB |
+			MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED);
 }
 
 static struct mlx5dr_action *
@@ -1336,9 +1482,13 @@ mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	if ((flags & MLX5DR_ACTION_FLAG_ROOT_FDB) ||
-	    (flags & MLX5DR_ACTION_FLAG_HWS_FDB && !ctx->caps->fdb_tir_stc)) {
-		DR_LOG(ERR, "TIR action not support on FDB");
+	if ((flags & (MLX5DR_ACTION_FLAG_ROOT_FDB |
+		      MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+		      MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)) ||
+	    ((flags & (MLX5DR_ACTION_FLAG_HWS_FDB |
+		       MLX5DR_ACTION_FLAG_HWS_FDB_RX)) &&
+	    !ctx->caps->fdb_tir_stc)) {
+		DR_LOG(ERR, "TIR action not support on FDB or FDB_TX or UNIFIED");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
@@ -1435,6 +1585,12 @@ mlx5dr_action_create_tag(struct mlx5dr_context *ctx,
 {
 	struct mlx5dr_action *action;
 	int ret;
+
+	if (flags & (MLX5DR_ACTION_FLAG_HWS_FDB_TX | MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)) {
+		DR_LOG(ERR, "TAG action not supported for UNIFIED or FDB_TX");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
 
 	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_TAG);
 	if (!action)
@@ -1588,7 +1744,9 @@ mlx5dr_action_create_dest_vport(struct mlx5dr_context *ctx,
 	struct mlx5dr_action *action;
 	int ret;
 
-	if (!(flags & MLX5DR_ACTION_FLAG_HWS_FDB)) {
+	if (!(flags & (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+		       MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+		       MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED))) {
 		DR_LOG(ERR, "Vport action is supported for FDB only");
 		rte_errno = EINVAL;
 		return NULL;
@@ -2317,11 +2475,21 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 		return NULL;
 	}
 
-	if (flags == (MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_SHARED)) {
+	if (!(flags & MLX5DR_ACTION_FLAG_SHARED)) {
+		DR_LOG(ERR, "Action flags not supported, should include SHARED");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	flags = flags & ~MLX5DR_ACTION_FLAG_SHARED;
+
+	if (flags == MLX5DR_ACTION_FLAG_HWS_RX) {
 		ft_attr.type = FS_FT_NIC_RX;
 		ft_attr.level = MLX5_IFC_MULTI_PATH_FT_MAX_LEVEL - 1;
 		table_type = MLX5DR_TABLE_TYPE_NIC_RX;
-	} else if (flags == (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_SHARED)) {
+	} else if (flags & (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			    MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			    MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED)) {
 		ft_attr.type = FS_FT_FDB;
 		ft_attr.level = ctx->caps->fdb_ft.max_level - 1;
 		table_type = MLX5DR_TABLE_TYPE_FDB;
@@ -2363,7 +2531,7 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 				fte_attr.ignore_flow_level = 1;
 				break;
 			case MLX5DR_ACTION_TYP_MISS:
-				if (table_type != MLX5DR_TABLE_TYPE_FDB) {
+				if (!mlx5dr_table_is_fdb_any(table_type)) {
 					DR_LOG(ERR, "Miss action supported for FDB only");
 					rte_errno = ENOTSUP;
 					goto free_dest_list;
