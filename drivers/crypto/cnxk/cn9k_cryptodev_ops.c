@@ -529,6 +529,8 @@ cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 						cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 						return;
 					}
+				} else {
+					cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 				}
 			} else
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
