@@ -333,20 +333,7 @@ static int mlx5dr_table_init(struct mlx5dr_table *tbl)
 	if (ret)
 		return ret;
 
-	switch (tbl->type) {
-	case MLX5DR_TABLE_TYPE_NIC_RX:
-		tbl->fw_ft_type = FS_FT_NIC_RX;
-		break;
-	case MLX5DR_TABLE_TYPE_NIC_TX:
-		tbl->fw_ft_type = FS_FT_NIC_TX;
-		break;
-	case MLX5DR_TABLE_TYPE_FDB:
-		tbl->fw_ft_type = FS_FT_FDB;
-		break;
-	default:
-		assert(0);
-		break;
-	}
+	mlx5dr_table_get_fw_ft_type(tbl->type, (uint8_t *)&tbl->fw_ft_type);
 
 	pthread_spin_lock(&ctx->ctrl_lock);
 	tbl->ft = mlx5dr_table_create_default_ft(tbl->ctx->ibv_ctx, tbl);
