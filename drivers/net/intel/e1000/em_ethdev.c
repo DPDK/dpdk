@@ -573,6 +573,14 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	ret = eth_em_stop(dev);
 	if (ret != 0)
 		return ret;
@@ -756,6 +764,14 @@ eth_em_stop(struct rte_eth_dev *dev)
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	dev->data->dev_started = 0;
 
@@ -1048,6 +1064,10 @@ eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, __rte_unused uint16_t queue
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	em_rxq_intr_enable(hw);
 	rte_intr_ack(intr_handle);
 
@@ -1058,6 +1078,10 @@ static int
 eth_em_rx_queue_intr_disable(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	em_rxq_intr_disable(hw);
 
@@ -1688,6 +1712,14 @@ eth_em_led_on(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	return e1000_led_on(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
 }
@@ -1696,6 +1728,14 @@ static int
 eth_em_led_off(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	return e1000_led_off(hw) == E1000_SUCCESS ? 0 : -ENOTSUP;
@@ -1758,6 +1798,14 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	uint32_t max_high_water;
 	uint32_t rctl;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if (fc_conf->autoneg != hw->mac.autoneg)
 		return -ENOTSUP;
@@ -1809,6 +1857,14 @@ eth_em_rar_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	return e1000_rar_set(hw, mac_addr->addr_bytes, index);
 }
 
@@ -1817,6 +1873,14 @@ eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 {
 	uint8_t addr[RTE_ETHER_ADDR_LEN];
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
 
 	memset(addr, 0, sizeof(addr));
 
@@ -1827,6 +1891,14 @@ static int
 eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
 			    struct rte_ether_addr *addr)
 {
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	eth_em_rar_clear(dev, 0);
 
 	return eth_em_rar_set(dev, (void *)addr, 0, 0);
@@ -1870,6 +1942,14 @@ eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
 			uint32_t nb_mc_addr)
 {
 	struct e1000_hw *hw;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	e1000_update_mc_addr_list(hw, (u8 *)mc_addr_set, nb_mc_addr);
