@@ -23,6 +23,18 @@ Features of the IGB PMD are:
 * TCP segmentation offload
 * Jumbo frames supported
 
+Secondary Process Support
+-------------------------
+
+IGB Physical Function Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Control plane operations are currently not supported in secondary processes.
+
+IGB Virtual Function Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Control plane operations are currently not supported in secondary processes.
 
 Limitations or Known issues
 ---------------------------
