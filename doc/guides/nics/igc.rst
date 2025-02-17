@@ -104,3 +104,8 @@ Add a rule to enable ipv4-udp RSS:
 .. code-block:: console
 
    testpmd> flow create 0 ingress pattern end actions rss types ipv4-udp end / end
+
+Secondary Process Support
+-------------------------
+
+Control plane operations are currently not supported in secondary processes.
