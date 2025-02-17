@@ -459,3 +459,17 @@ show bypass config
 Show the bypass configuration for a bypass enabled NIC using the lowest port on the NIC::
 
    testpmd> show bypass config (port_id)
+
+
+Secondary Process Support
+-------------------------
+
+IXGBE Physical Function Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Control plane operations are currently not supported in secondary processes.
+
+IXGBE Virtual Function Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Control plane operations are currently not supported in secondary processes.
