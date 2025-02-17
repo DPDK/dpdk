@@ -2630,6 +2630,14 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	struct ixgbe_macsec_setting *macsec_setting =
 		IXGBE_DEV_PRIVATE_TO_MACSEC_SETTING(dev->data->dev_private);
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	PMD_INIT_FUNC_TRACE();
 
 	/* Stop the link setup handler before resetting the HW. */
@@ -2918,6 +2926,14 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	ixgbe_dev_wait_setup_link_complete(dev, 0);
 
 	/* disable interrupts */
@@ -2980,6 +2996,15 @@ ixgbe_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
@@ -3011,6 +3036,15 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (hw->mac.type == ixgbe_mac_82599EB) {
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
 		if (hw->device_id == IXGBE_DEV_ID_82599_BYPASS) {
@@ -3878,6 +3912,14 @@ ixgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_nvm_version nvm_ver;
 	int ret;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	ixgbe_get_oem_prod_version(hw, &nvm_ver);
 	if (nvm_ver.oem_valid) {
@@ -4789,6 +4831,14 @@ ixgbe_dev_led_on(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	return ixgbe_led_on(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP;
 }
@@ -4797,6 +4847,14 @@ static int
 ixgbe_dev_led_off(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	return ixgbe_led_off(hw, 0) == IXGBE_SUCCESS ? 0 : -ENOTSUP;
@@ -4870,6 +4928,14 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		ixgbe_fc_tx_pause,
 		ixgbe_fc_full
 	};
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -5076,6 +5142,14 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 		ixgbe_fc_full
 	};
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	PMD_INIT_FUNC_TRACE();
 
 	ixgbe_dcb_unpack_map_cee(dcb_config, IXGBE_DCB_RX_CONFIG, map);
@@ -5224,6 +5298,14 @@ ixgbe_add_rar(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t enable_addr = 1;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	return ixgbe_set_rar(hw, index, mac_addr->addr_bytes,
 			     pool, enable_addr);
 }
@@ -5233,6 +5315,14 @@ ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
 	ixgbe_clear_rar(hw, index);
 }
 
@@ -5240,6 +5330,14 @@ static int
 ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	ixgbe_remove_rar(dev, 0);
 	ixgbe_add_rar(dev, addr, 0, pci_dev->max_vfs);
@@ -5400,6 +5498,14 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 
 	int err, mask = 0;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	PMD_INIT_FUNC_TRACE();
 
 	/* Stop the link setup handler before resetting the HW. */
@@ -5502,6 +5608,14 @@ ixgbevf_dev_stop(struct rte_eth_dev *dev)
 	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (hw->adapter_stopped)
 		return 0;
@@ -5617,6 +5731,14 @@ ixgbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	uint32_t vid_idx = 0;
 	uint32_t vid_bit = 0;
 	int ret = 0;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -5846,6 +5968,10 @@ ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t vec = IXGBE_MISC_VEC_ID;
 
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (rte_intr_allow_others(intr_handle))
 		vec = IXGBE_RX_VEC_START;
 	intr->mask |= (1 << vec);
@@ -5868,6 +5994,10 @@ ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t vec = IXGBE_MISC_VEC_ID;
 
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (rte_intr_allow_others(intr_handle))
 		vec = IXGBE_RX_VEC_START;
 	intr->mask &= ~(1 << vec);
@@ -5887,6 +6017,10 @@ ixgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (queue_id < 16) {
 		ixgbe_disable_intr(hw);
@@ -5914,6 +6048,10 @@ ixgbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (queue_id < 16) {
 		ixgbe_disable_intr(hw);
@@ -6195,6 +6333,14 @@ ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	int diag;
 
 	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
+	/*
 	 * On a 82599 VF, adding again the same MAC addr is not an idempotent
 	 * operation. Trap this case to avoid exhausting the [very limited]
 	 * set of PF resources used to store VF MAC addresses.
@@ -6219,6 +6365,14 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	struct rte_ether_addr *mac_addr;
 	uint32_t i;
 	int diag;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
 
 	/*
 	 * The IXGBE_VF_SET_MACVLAN command of the ixgbe-pf driver does
@@ -6259,6 +6413,14 @@ ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 			struct rte_ether_addr *addr)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	hw->mac.ops.set_rar(hw, 0, (void *)addr, 0, 0);
 
@@ -6445,6 +6607,14 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct ixgbe_hw *hw;
 	uint32_t max_frame = mtu + IXGBE_ETH_OVERHEAD;
 	struct rte_eth_dev_data *dev_data = dev->data;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -6736,6 +6906,14 @@ ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 {
 	struct ixgbe_hw *hw;
 	u8 *mc_addr_list;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	mc_addr_list = (u8 *)mc_addr_set;
@@ -7157,6 +7335,14 @@ ixgbe_get_eeprom(struct rte_eth_dev *dev,
 	uint16_t *data = in_eeprom->data;
 	int first, length;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	first = in_eeprom->offset >> 1;
 	length = in_eeprom->length >> 1;
 	if ((first > hw->eeprom.word_size) ||
@@ -7177,6 +7363,14 @@ ixgbe_set_eeprom(struct rte_eth_dev *dev,
 	uint16_t *data = in_eeprom->data;
 	int first, length;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	first = in_eeprom->offset >> 1;
 	length = in_eeprom->length >> 1;
 	if ((first > hw->eeprom.word_size) ||
@@ -7196,6 +7390,14 @@ ixgbe_get_module_info(struct rte_eth_dev *dev,
 	uint32_t status;
 	uint8_t sff8472_rev, addr_mode;
 	bool page_swap = false;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	/* Check whether we support SFF-8472 or not */
 	status = hw->phy.ops.read_i2c_eeprom(hw,
@@ -7241,6 +7443,14 @@ ixgbe_get_module_eeprom(struct rte_eth_dev *dev,
 	uint8_t databyte = 0xFF;
 	uint8_t *data = info->data;
 	uint32_t i = 0;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	for (i = info->offset; i < info->offset + info->length; i++) {
 		if (i < RTE_ETH_MODULE_SFF_8079_LEN)
@@ -7837,6 +8047,14 @@ ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	switch (hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_PROMISC)) {
 	case IXGBE_SUCCESS:
 		ret = 0;
@@ -7858,6 +8076,14 @@ ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int mode = IXGBEVF_XCAST_MODE_NONE;
 	int ret;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (dev->data->all_multicast)
 		mode = IXGBEVF_XCAST_MODE_ALLMULTI;
@@ -7884,6 +8110,14 @@ ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	int ret;
 	int mode = IXGBEVF_XCAST_MODE_ALLMULTI;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (dev->data->promiscuous)
 		return 0;
 
@@ -7907,6 +8141,14 @@ ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (dev->data->promiscuous)
 		return 0;
