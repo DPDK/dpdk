@@ -123,7 +123,7 @@ mlx5_nta_rss_expand_l3_l4(struct mlx5_nta_rss_ctx *rss_ctx,
 			  uint64_t rss_types, uint64_t rss_l3_types)
 {
 	int ret;
-	int ptype_l3, ptype_l4_udp, ptype_l4_tcp, ptype_l4_esp = 0;
+	int ptype_l3, ptype_l4_esp, ptype_l4_udp, ptype_l4_tcp;
 	uint64_t rss = rss_types &
 		 ~(rss_l3_types == MLX5_IPV4_LAYER_TYPES ?
 		  MLX5_IPV6_LAYER_TYPES : MLX5_IPV4_LAYER_TYPES);
@@ -132,12 +132,13 @@ mlx5_nta_rss_expand_l3_l4(struct mlx5_nta_rss_ctx *rss_ctx,
 	if (rss_ctx->rss_conf->level < 2) {
 		ptype_l3 = rss_l3_types == MLX5_IPV4_LAYER_TYPES ?
 			   RTE_PTYPE_L3_IPV4 : RTE_PTYPE_L3_IPV6;
-		ptype_l4_esp = RTE_PTYPE_TUNNEL_ESP;
+		ptype_l4_esp = RTE_PTYPE_L4_ESP;
 		ptype_l4_udp = RTE_PTYPE_L4_UDP;
 		ptype_l4_tcp = RTE_PTYPE_L4_TCP;
 	} else {
 		ptype_l3 = rss_l3_types == MLX5_IPV4_LAYER_TYPES ?
 			   RTE_PTYPE_INNER_L3_IPV4 : RTE_PTYPE_INNER_L3_IPV6;
+		ptype_l4_esp = RTE_PTYPE_INNER_L4_ESP;
 		ptype_l4_udp = RTE_PTYPE_INNER_L4_UDP;
 		ptype_l4_tcp = RTE_PTYPE_INNER_L4_TCP;
 	}
@@ -469,7 +470,7 @@ end:
  */
 #define MLX5_PTYPE_RSS_OUTER_MASK (RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L3_IPV6 | \
 				  RTE_PTYPE_L4_UDP | RTE_PTYPE_L4_TCP | \
-				  RTE_PTYPE_TUNNEL_ESP)
+				  RTE_PTYPE_L4_ESP)
 #define MLX5_PTYPE_RSS_INNER_MASK (RTE_PTYPE_INNER_L3_IPV4 | RTE_PTYPE_INNER_L3_IPV6 | \
 				  RTE_PTYPE_INNER_L4_TCP | RTE_PTYPE_INNER_L4_UDP)
 
@@ -630,4 +631,3 @@ error:
 }
 
 #endif
-
