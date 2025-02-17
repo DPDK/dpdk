@@ -153,3 +153,8 @@ The following are known limitations:
 #.  Qemu e1000 only supports one interrupt source, so link and Rx interrupt should be exclusive.
 
 #.  Qemu e1000 does not support interrupt auto-clear, application should disable interrupt immediately when woken up.
+
+Secondary Process Support
+-------------------------
+
+Control plane operations are currently not supported in secondary processes.
