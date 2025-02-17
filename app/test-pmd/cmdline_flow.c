@@ -62,6 +62,7 @@ enum index {
 	COMMON_ACTIONS_TEMPLATE_ID,
 	COMMON_TABLE_ID,
 	COMMON_QUEUE_ID,
+	COMMON_METER_COLOR_NAME,
 
 	/* TOP-level command. */
 	ADD,
@@ -556,7 +557,6 @@ enum index {
 	ITEM_PPP_PROTO_ID,
 	ITEM_METER,
 	ITEM_METER_COLOR,
-	ITEM_METER_COLOR_NAME,
 	ITEM_QUOTA,
 	ITEM_QUOTA_STATE,
 	ITEM_QUOTA_STATE_NAME,
@@ -642,6 +642,8 @@ enum index {
 	ACTION_METER_COLOR_RED,
 	ACTION_METER_ID,
 	ACTION_METER_MARK,
+	ACTION_METER_MARK_CONF,
+	ACTION_METER_MARK_CONF_COLOR,
 	ACTION_METER_PROFILE,
 	ACTION_METER_PROFILE_ID2PTR,
 	ACTION_METER_POLICY,
@@ -2270,6 +2272,7 @@ static const enum index next_action[] = {
 	ACTION_METER,
 	ACTION_METER_COLOR,
 	ACTION_METER_MARK,
+	ACTION_METER_MARK_CONF,
 	ACTION_OF_DEC_NW_TTL,
 	ACTION_OF_POP_VLAN,
 	ACTION_OF_PUSH_VLAN,
@@ -3234,6 +3237,12 @@ static const struct token token_list[] = {
 		.help = "queue id",
 		.call = parse_int,
 		.comp = comp_queue_id,
+	},
+	[COMMON_METER_COLOR_NAME] = {
+		.name = "color_name",
+		.help = "meter color name",
+		.call = parse_meter_color,
+		.comp = comp_meter_color,
 	},
 	/* Top-level command. */
 	[FLOW] = {
@@ -6280,16 +6289,10 @@ static const struct token token_list[] = {
 		.name = "color",
 		.help = "meter color",
 		.next = NEXT(item_meter,
-			     NEXT_ENTRY(ITEM_METER_COLOR_NAME),
+			     NEXT_ENTRY(COMMON_METER_COLOR_NAME),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_meter_color,
 					color)),
-	},
-	[ITEM_METER_COLOR_NAME] = {
-		.name = "color_name",
-		.help = "meter color name",
-		.call = parse_meter_color,
-		.comp = comp_meter_color,
 	},
 	[ITEM_QUOTA] = {
 		.name = "quota",
@@ -6855,6 +6858,23 @@ static const struct token token_list[] = {
 				    sizeof(struct rte_flow_action_meter_mark)),
 		.next = NEXT(action_meter_mark),
 		.call = parse_vc,
+	},
+	[ACTION_METER_MARK_CONF] = {
+		.name = "meter_mark_conf",
+		.help = "meter mark configuration",
+		.priv = PRIV_ACTION(METER_MARK,
+				    sizeof(struct rte_flow_action_meter_mark)),
+		.next = NEXT(NEXT_ENTRY(ACTION_METER_MARK_CONF_COLOR)),
+		.call = parse_vc,
+	},
+	[ACTION_METER_MARK_CONF_COLOR] = {
+		.name = "mtr_update_init_color",
+		.help = "meter update init color",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT),
+			     NEXT_ENTRY(COMMON_METER_COLOR_NAME)),
+		.args = ARGS(ARGS_ENTRY
+			     (struct rte_flow_indirect_update_flow_meter_mark,
+			      init_color)),
 	},
 	[ACTION_METER_PROFILE] = {
 		.name = "mtr_profile",
@@ -12375,8 +12395,8 @@ parse_meter_color(struct context *ctx, const struct token *token,
 		  const char *str, unsigned int len, void *buf,
 		  unsigned int size)
 {
-	struct rte_flow_item_meter_color *meter_color;
 	unsigned int i;
+	struct buffer *out = buf;
 
 	(void)token;
 	(void)buf;
@@ -12388,8 +12408,18 @@ parse_meter_color(struct context *ctx, const struct token *token,
 		return -1;
 	if (!ctx->object)
 		return len;
-	meter_color = ctx->object;
-	meter_color->color = (enum rte_color)i;
+	if (ctx->prev == ACTION_METER_MARK_CONF_COLOR) {
+		struct rte_flow_action *action =
+			out->args.vc.actions + out->args.vc.actions_n - 1;
+		const struct arg *arg = pop_args(ctx);
+
+		if (!arg)
+			return -1;
+		*(int *)RTE_PTR_ADD(action->conf, arg->offset) = i;
+	} else {
+		((struct rte_flow_item_meter_color *)
+			ctx->object)->color = (enum rte_color)i;
+	}
 	return len;
 }
 
