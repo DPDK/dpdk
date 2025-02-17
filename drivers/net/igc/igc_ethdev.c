@@ -12,6 +12,7 @@
 #include <ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_alarm.h>
+#include <rte_errno.h>
 
 #include "igc_logs.h"
 #include "igc_txrx.h"
@@ -392,6 +393,14 @@ eth_igc_set_link_up(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (hw->phy.media_type == igc_media_type_copper)
 		igc_power_up_phy(hw);
 	else
@@ -403,6 +412,13 @@ static int
 eth_igc_set_link_down(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (hw->phy.media_type == igc_media_type_copper)
 		igc_power_down_phy(hw);
@@ -476,6 +492,14 @@ eth_igc_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 	struct rte_eth_link link;
 	int link_check, count;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	link_check = 0;
 	hw->mac.get_link_status = 1;
@@ -653,6 +677,14 @@ eth_igc_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct rte_eth_link link;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	dev->data->dev_started = 0;
 	adapter->stopped = 1;
@@ -964,6 +996,14 @@ eth_igc_start(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	/* disable all MSI-X interrupts */
 	IGC_WRITE_REG(hw, IGC_EIMC, 0x1f);
@@ -1548,7 +1588,15 @@ eth_igc_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 	struct igc_fw_version fw;
 	int ret;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
 	igc_get_fw_version(hw, &fw);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 
 	/* if option rom is valid, display its version too */
 	if (fw.or_valid) {
@@ -1638,6 +1686,14 @@ eth_igc_led_on(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	return igc_led_on(hw) == IGC_SUCCESS ? 0 : -ENOTSUP;
 }
 
@@ -1645,6 +1701,14 @@ static int
 eth_igc_led_off(struct rte_eth_dev *dev)
 {
 	struct igc_hw *hw = IGC_DEV_PRIVATE_HW(dev);
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	return igc_led_off(hw) == IGC_SUCCESS ? 0 : -ENOTSUP;
 }
@@ -2188,6 +2252,10 @@ eth_igc_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t vec = IGC_MISC_VEC_ID;
 
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (rte_intr_allow_others(intr_handle))
 		vec = IGC_RX_VEC_START;
 
@@ -2206,6 +2274,10 @@ eth_igc_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint32_t vec = IGC_MISC_VEC_ID;
+
+	/* device interrupts are only subscribed to in primary processes */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (rte_intr_allow_others(intr_handle))
 		vec = IGC_RX_VEC_START;
@@ -2269,6 +2341,14 @@ eth_igc_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	uint32_t max_high_water;
 	uint32_t rctl;
 	int err;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	if (fc_conf->autoneg != hw->mac.autoneg)
 		return -ENOTSUP;
@@ -2771,6 +2851,14 @@ eth_igc_timesync_read_rx_timestamp(__rte_unused struct rte_eth_dev *dev,
 	struct igc_rx_queue *rxq;
 	uint64_t rx_timestamp;
 
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	/* Get current link speed. */
 	eth_igc_link_update(dev, 1);
 	rte_eth_linkstatus_get(dev, &link);
@@ -2806,6 +2894,14 @@ eth_igc_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	uint32_t val, nsec, sec;
 	uint64_t tx_timestamp;
 	int adjust = 0;
+
+	/*
+	 * This function calls into the base driver, which in turn will use
+	 * function pointers, which are not guaranteed to be valid in secondary
+	 * processes, so avoid using this function in secondary processes.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
 
 	val = IGC_READ_REG(hw, IGC_TSYNCTXCTL);
 	if (!(val & IGC_TSYNCTXCTL_VALID))
