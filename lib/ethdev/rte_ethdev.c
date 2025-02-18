@@ -6519,6 +6519,8 @@ rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info)
 	}
 
 	reg_info.length = info->length;
+	reg_info.width = info->width;
+	reg_info.offset = info->offset;
 	reg_info.data = info->data;
 
 	ret = rte_eth_dev_get_reg_info_ext(port_id, &reg_info);
