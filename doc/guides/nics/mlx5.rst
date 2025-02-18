@@ -339,6 +339,10 @@ Limitations
   - For ConnectX-5, the UDP destination port must be the standard one (4789).
   - Default UDP destination is 4789 if not explicitly specified.
   - Group zero's behavior may differ which depends on FW.
+  - User should set different flags when matching on VXLAN-GPE/GBP:
+
+    - for VXLAN-GPE - P flag
+    - for VXLAN-GBP - G flag
 
 - Matching on VXLAN-GPE header fields:
 
