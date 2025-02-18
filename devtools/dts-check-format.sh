@@ -84,6 +84,7 @@ if $lint; then
 	heading "Linting in $directory/"
 	if command -v ruff > /dev/null; then
 		ruff check --fix
+		errors=$((errors + $?))
 
 		git update-index --refresh
 		retval=$?
