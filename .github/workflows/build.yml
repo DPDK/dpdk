@@ -45,6 +45,7 @@ jobs:
       BUILD_DOCS: ${{ contains(matrix.config.checks, 'doc') }}
       BUILD_EXAMPLES: ${{ contains(matrix.config.checks, 'examples') }}
       CC: ccache ${{ matrix.config.compiler }}
+      CCACHE_DIR: $HOME/.ccache
       DEF_LIB: ${{ matrix.config.library }}
       LIBABIGAIL_VERSION: libabigail-2.4
       MINGW: ${{ matrix.config.cross == 'mingw' }}
@@ -307,6 +308,7 @@ jobs:
         mkdir -p ~/.ccache
         > ~/env
         echo CC=ccache ${{ matrix.config.compiler }} >> ~/env
+        echo CCACHE_DIR=/root/.ccache >> ~/env
         echo DEF_LIB=${{ matrix.config.library }} >> ~/env
         echo STDATOMIC=false >> ~/env
     - name: Load the cached image
