@@ -705,7 +705,7 @@ eth_dev_set_mtu_mp(uint16_t port_id, uint16_t mtu)
 }
 
 /* Forward function declarations */
-static void setup_attached_port(portid_t pi);
+static void setup_attached_port(void *arg);
 static void check_all_ports_link_status(uint32_t port_mask);
 static int eth_event_callback(portid_t port_id,
 			      enum rte_eth_event_type type,
@@ -2906,8 +2906,6 @@ start_port(portid_t pid)
 		at_least_one_port_exist = true;
 
 		port = &ports[pi];
-		if (port->need_setup)
-			setup_attached_port(pi);
 
 		if (port->port_status == RTE_PORT_STOPPED) {
 			port->port_status = RTE_PORT_HANDLING;
@@ -3441,7 +3439,7 @@ attach_port(char *identifier)
 		/* setup ports matching the devargs used for probing */
 		if (port_is_forwarding(pi))
 			continue; /* port was already attached before */
-		setup_attached_port(pi);
+		setup_attached_port((void *)(intptr_t)pi);
 	}
 out:
 	printf("Port %s is attached.\n", identifier);
@@ -3449,8 +3447,9 @@ out:
 }
 
 static void
-setup_attached_port(portid_t pi)
+setup_attached_port(void *arg)
 {
+	portid_t pi = (intptr_t)arg;
 	unsigned int socket_id;
 	int ret;
 
@@ -3786,6 +3785,10 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 			ports[port_id].need_setup = 1;
 			ports[port_id].port_status = RTE_PORT_HANDLING;
 		}
+		/* Can't initialize port directly in new event. */
+		if (rte_eal_alarm_set(100000, setup_attached_port,
+				      (void *)(intptr_t)port_id))
+			fprintf(stderr, "Could not set up deferred task to setup this attached port.\n");
 		break;
 	case RTE_ETH_EVENT_INTR_RMV:
 		if (port_id_is_invalid(port_id, DISABLED_WARN))
