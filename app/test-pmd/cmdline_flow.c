@@ -13598,7 +13598,8 @@ update_fields(uint8_t *buf, struct rte_flow_item *item, uint16_t next_proto)
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 		vxlan = (struct rte_vxlan_hdr *)buf;
-		vxlan->vx_flags = 0x08;
+		if (!vxlan->flags)
+			vxlan->flags = 0x08;
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 		gpe = (struct rte_vxlan_gpe_hdr *)buf;
