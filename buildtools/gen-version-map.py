@@ -13,10 +13,9 @@ export_exp_sym_regexp = re.compile(
 )
 export_int_sym_regexp = re.compile(r"^RTE_EXPORT_INTERNAL_SYMBOL\(([^)]+)\)")
 export_sym_regexp = re.compile(r"^RTE_EXPORT_SYMBOL\(([^)]+)\)")
-# From rte_function_versioning.h
-ver_sym_regexp = re.compile(r"^VERSION_SYMBOL\(([^,]+), [^,]+, ([^,]+)\)")
-ver_exp_sym_regexp = re.compile(r"^VERSION_SYMBOL_EXPERIMENTAL\([^,]+, ([^,]+)\)")
-default_sym_regexp = re.compile(r"^BIND_DEFAULT_SYMBOL\(([^,]+), [^,]+, ([^,]+)\)")
+ver_sym_regexp = re.compile(r"^RTE_VERSION_SYMBOL\(([^,]+), [^,]+, ([^,]+),")
+ver_exp_sym_regexp = re.compile(r"^RTE_VERSION_EXPERIMENTAL_SYMBOL\([^,]+, ([^,]+),")
+default_sym_regexp = re.compile(r"^RTE_DEFAULT_SYMBOL\(([^,]+), [^,]+, ([^,]+),")
 
 parser = argparse.ArgumentParser(
     description=__doc__,
@@ -68,16 +67,16 @@ for file in args.source:
             node = ABI
             symbol = export_sym_regexp.match(ln).group(1)
         elif ver_sym_regexp.match(ln):
-            abi = ver_sym_regexp.match(ln).group(2)
+            abi = ver_sym_regexp.match(ln).group(1)
             node = f"DPDK_{abi}"
-            symbol = ver_sym_regexp.match(ln).group(1)
+            symbol = ver_sym_regexp.match(ln).group(2)
         elif ver_exp_sym_regexp.match(ln):
             node = "EXPERIMENTAL"
             symbol = ver_exp_sym_regexp.match(ln).group(1)
         elif default_sym_regexp.match(ln):
-            abi = default_sym_regexp.match(ln).group(2)
+            abi = default_sym_regexp.match(ln).group(1)
             node = f"DPDK_{abi}"
-            symbol = default_sym_regexp.match(ln).group(1)
+            symbol = default_sym_regexp.match(ln).group(2)
 
         if not symbol:
             continue

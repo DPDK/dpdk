@@ -68,6 +68,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: Removed the ``rte_function_versioning.h`` header from the exported headers.
+
 
 API Changes
 -----------
