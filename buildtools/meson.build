@@ -16,6 +16,7 @@ else
     py3 = ['meson', 'runpython']
 endif
 echo = py3 + ['-c', 'import sys; print(*sys.argv[1:])']
+gen_version_map = py3 + files('gen-version-map.py')
 list_dir_globs = py3 + files('list-dir-globs.py')
 map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')

@@ -62,10 +62,14 @@ for file in $@; do
 		if (current_section == "") {
 			next;
 		}
+		symbol_version = current_version
+		if (/^[^}].*[^:*]; # added in /) {
+			symbol_version = $5
+		}
 		if ("'$version'" != "") {
-			if ("'$version'" == "unset" && current_version != "") {
+			if ("'$version'" == "unset" && symbol_version != "") {
 				next;
-			} else if ("'$version'" != "unset" && "'$version'" != current_version) {
+			} else if ("'$version'" != "unset" && "'$version'" != symbol_version) {
 				next;
 			}
 		}
@@ -73,7 +77,7 @@ for file in $@; do
 		if ("'$symbol'" == "all" || $1 == "'$symbol'") {
 			ret = 0;
 			if ("'$quiet'" == "") {
-				print "'$file' "current_section" "$1" "current_version;
+				print "'$file' "current_section" "$1" "symbol_version;
 			}
 			if ("'$symbol'" != "all") {
 				exit 0;
