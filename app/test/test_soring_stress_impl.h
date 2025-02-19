@@ -405,6 +405,8 @@ test_worker(void *arg, const char *fname, int32_t prcs)
 	cl = rte_rdtsc_precise();
 
 	do {
+		rc = 0;
+
 		if ((la->stats.role_mask & ~ROLE_DEQENQ) != 0) {
 			rc = test_worker_stages(la, lc, fname, obj,
 				&def_elm, &loc_elm, stg_elm, prcs);
