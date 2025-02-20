@@ -11511,7 +11511,7 @@ cmd_rx_offload_get_configuration_parsed(
 	struct cmd_rx_offload_get_configuration_result *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
 	portid_t port_id = res->port_id;
-	struct rte_port *port = &ports[port_id];
+	struct rte_port *port;
 	struct rte_eth_conf dev_conf;
 	uint64_t port_offloads;
 	uint64_t queue_offloads;
@@ -11519,11 +11519,12 @@ cmd_rx_offload_get_configuration_parsed(
 	int q;
 	int ret;
 
-	printf("Rx Offloading Configuration of port %d :\n", port_id);
-
 	ret = eth_dev_conf_get_print_err(port_id, &dev_conf);
 	if (ret != 0)
 		return;
+
+	port = &ports[port_id];
+	printf("Rx Offloading Configuration of port %d :\n", port_id);
 
 	port_offloads = dev_conf.rxmode.offloads;
 	printf("  Port :");
@@ -11625,22 +11626,23 @@ static void
 config_port_rx_offload(portid_t port_id, char *name, bool on)
 {
 	struct rte_eth_dev_info dev_info;
-	struct rte_port *port = &ports[port_id];
+	struct rte_port *port;
 	uint16_t nb_rx_queues;
 	uint64_t offload;
 	int q;
 	int ret;
 
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
+	port = &ports[port_id];
 	if (port->port_status != RTE_PORT_STOPPED) {
 		fprintf(stderr,
 			"Error: Can't config offload when Port %d is not stopped\n",
 			port_id);
 		return;
 	}
-
-	ret = eth_dev_info_get_print_err(port_id, &dev_info);
-	if (ret != 0)
-		return;
 
 	if (!strcmp(name, "all")) {
 		offload = dev_info.rx_offload_capa;
@@ -11827,20 +11829,21 @@ cmd_config_per_queue_rx_offload_parsed(void *parsed_result,
 	struct rte_eth_dev_info dev_info;
 	portid_t port_id = res->port_id;
 	uint16_t queue_id = res->queue_id;
-	struct rte_port *port = &ports[port_id];
+	struct rte_port *port;
 	uint64_t offload;
 	int ret;
 
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
+	port = &ports[port_id];
 	if (port->port_status != RTE_PORT_STOPPED) {
 		fprintf(stderr,
 			"Error: Can't config offload when Port %d is not stopped\n",
 			port_id);
 		return;
 	}
-
-	ret = eth_dev_info_get_print_err(port_id, &dev_info);
-	if (ret != 0)
-		return;
 
 	if (queue_id >= dev_info.nb_rx_queues) {
 		fprintf(stderr,
@@ -12029,7 +12032,7 @@ cmd_tx_offload_get_configuration_parsed(
 	struct cmd_tx_offload_get_configuration_result *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
 	portid_t port_id = res->port_id;
-	struct rte_port *port = &ports[port_id];
+	struct rte_port *port;
 	struct rte_eth_conf dev_conf;
 	uint64_t port_offloads;
 	uint64_t queue_offloads;
@@ -12037,12 +12040,12 @@ cmd_tx_offload_get_configuration_parsed(
 	int q;
 	int ret;
 
-	printf("Tx Offloading Configuration of port %d :\n", port_id);
-
 	ret = eth_dev_conf_get_print_err(port_id, &dev_conf);
 	if (ret != 0)
 		return;
 
+	printf("Tx Offloading Configuration of port %d :\n", port_id);
+	port = &ports[port_id];
 	port_offloads = dev_conf.txmode.offloads;
 	printf("  Port :");
 	print_tx_offloads(port_offloads);
@@ -12147,22 +12150,23 @@ static void
 config_port_tx_offload(portid_t port_id, char *name, bool on)
 {
 	struct rte_eth_dev_info dev_info;
-	struct rte_port *port = &ports[port_id];
+	struct rte_port *port;
 	uint16_t nb_tx_queues;
 	uint64_t offload;
 	int q;
 	int ret;
 
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
+	port = &ports[port_id];
 	if (port->port_status != RTE_PORT_STOPPED) {
 		fprintf(stderr,
 			"Error: Can't config offload when Port %d is not stopped\n",
 			port_id);
 		return;
 	}
-
-	ret = eth_dev_info_get_print_err(port_id, &dev_info);
-	if (ret != 0)
-		return;
 
 	if (!strcmp(name, "all")) {
 		offload = dev_info.tx_offload_capa;
@@ -12353,20 +12357,21 @@ cmd_config_per_queue_tx_offload_parsed(void *parsed_result,
 	struct rte_eth_dev_info dev_info;
 	portid_t port_id = res->port_id;
 	uint16_t queue_id = res->queue_id;
-	struct rte_port *port = &ports[port_id];
+	struct rte_port *port;
 	uint64_t offload;
 	int ret;
 
+	ret = eth_dev_info_get_print_err(port_id, &dev_info);
+	if (ret != 0)
+		return;
+
+	port = &ports[port_id];
 	if (port->port_status != RTE_PORT_STOPPED) {
 		fprintf(stderr,
 			"Error: Can't config offload when Port %d is not stopped\n",
 			port_id);
 		return;
 	}
-
-	ret = eth_dev_info_get_print_err(port_id, &dev_info);
-	if (ret != 0)
-		return;
 
 	if (queue_id >= dev_info.nb_tx_queues) {
 		fprintf(stderr,
