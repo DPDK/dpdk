@@ -27,8 +27,14 @@ Supported NICs
 
     - FPGA ID 9563 (Inline Flow Management)
 
-All information about NT200A02 can be found by link below:
-https://www.napatech.com/products/nt200a02-smartnic-inline/
+- NT400D13 2x100G SmartNIC
+
+    - FPGA ID 9574 (Inline Flow Management)
+
+All information about NT200A02 and NT400D13 can be found by links below:
+
+- https://www.napatech.com/products/nt200a02-smartnic-inline/
+- https://www.napatech.com/support/resources/data-sheets/link-inline-software-for-napatech/
 
 
 Features

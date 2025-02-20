@@ -117,6 +117,10 @@ New Features
 
   * Added flow rules support for CN20K SoC.
 
+* **Updated Napatech ntnic driver.**
+
+  * Added support for the NT400D13 adapter.
+
 * **Updated NVIDIA mlx5 driver.**
 
   * Optimized port probing in large scale.

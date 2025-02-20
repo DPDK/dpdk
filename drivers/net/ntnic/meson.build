@@ -43,6 +43,7 @@ sources = files(
         'nthw/supported/nthw_fpga_mod_str_map.c',
         'nthw/core/nt200a0x/clock_profiles/nthw_fpga_clk9563.c',
         'nthw/core/nt200a0x/nthw_fpga_nt200a0x.c',
+        'nthw/core/nt400dxx/nthw_fpga_nt400dxx.c',
         'nthw/core/nt200a0x/reset/nthw_fpga_rst9563.c',
         'nthw/core/nt200a0x/reset/nthw_fpga_rst_nt200a0x.c',
         'nthw/core/nthw_fpga.c',
