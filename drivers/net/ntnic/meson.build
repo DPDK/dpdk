@@ -39,6 +39,7 @@ sources = files(
         'ntnic_xstats/ntnic_xstats.c',
         'nthw/dbs/nthw_dbs.c',
         'nthw/supported/nthw_fpga_9563_055_049_0000.c',
+        'nthw/supported/nthw_fpga_9574_055_049_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
         'nthw/supported/nthw_fpga_mod_str_map.c',
         'nthw/core/nt200a0x/clock_profiles/nthw_fpga_clk9563.c',
