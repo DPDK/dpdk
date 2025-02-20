@@ -71,14 +71,41 @@ static int nthw_fpga_rst9574_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt4
 	return 0;
 };
 
+static void nthw_fpga_rst9574_set_default_rst_values(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	nthw_field_update_register(p->p_fld_rst_sys);
+	nthw_field_set_all(p->p_fld_rst_sys);
+	nthw_field_set_val32(p->p_fld_rst_ddr4, 1);
+	nthw_field_set_val_flush32(p->p_fld_rst_phy_ftile, 1);
+}
 
+static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
+	struct nthw_fpga_rst_nt400dxx *p_rst)
+{
+	assert(p_fpga_info);
+	assert(p_rst);
+
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+
+	/* (0) Reset all domains / modules except peripherals: */
+	NT_LOG(DBG, NTHW, "%s: %s: RST defaults", p_adapter_id_str, __func__);
+	nthw_fpga_rst9574_set_default_rst_values(p_rst);
+
+	/*
+	 * Wait a while before waiting for deasserting ddr4 reset
+	 */
+	nt_os_wait_usec(2000);
+
+
+	return 0;
+}
 
 static int nthw_fpga_rst9574_init(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
 	assert(p_fpga_info);
 	assert(p_rst);
-	int res = -1;
+	int res = nthw_fpga_rst9574_product_reset(p_fpga_info, p_rst);
 
 	return res;
 }
