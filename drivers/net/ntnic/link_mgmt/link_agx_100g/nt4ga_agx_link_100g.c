@@ -501,6 +501,14 @@ set_loopback(struct adapter_info_s *p_adapter_info, int port, uint32_t mode, uin
 	nt_os_wait_usec(10000);	/* 10ms - arbitrary choice */
 }
 
+static void port_disable(adapter_info_t *drv, int port)
+{
+	nim_i2c_ctx_t *nim_ctx = &drv->nt4ga_link.u.nim_ctx[port];
+	phy_reset_rx(drv, port);
+	phy_reset_tx(drv, port);
+	set_nim_low_power(nim_ctx, port, true);
+}
+
 /*
  * Initialize NIM, Code based on nt400d1x.cpp: MyPort::createNim()
  */
@@ -821,6 +829,17 @@ static void *_common_ptp_nim_state_machine(void *data)
 			 * Has the administrative port state changed?
 			 */
 			assert(!(disable_port && enable_port));
+
+			if (disable_port) {
+				memset(&link_state[i], 0, sizeof(link_state[i]));
+				link_state[i].link_disabled = true;
+				link_state[i].lh_nim_absent = true;
+				reported_link[i] = false;
+				port_disable(drv, i);
+				NT_LOG(INF, NTNIC, "%s: Port %i is disabled",
+					drv->mp_port_id_str[i], i);
+				continue;
+			}
 
 			if (enable_port) {
 				link_state[i].link_disabled = false;
