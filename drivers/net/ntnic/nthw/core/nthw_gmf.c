@@ -131,3 +131,44 @@ void nthw_gmf_set_enable(nthw_gmf_t *p, bool enable)
 	if (!p->m_administrative_block)
 		nthw_field_set_val_flush32(p->mp_ctrl_enable, enable ? 1 : 0);
 }
+
+void nthw_gmf_set_enable_tsi(nthw_gmf_t *p, bool enable, int tsi_dynamic_offset,
+	int tsi_static_offset, bool tsi_always)
+{
+	if (!p->m_administrative_block) {
+		nthw_field_update_register(p->mp_ctrl_enable);
+
+		if (p->mp_ctrl_ts_inject_always) {
+			/*
+			 * Do not force timestamp Inject- let the TBH control this now
+			 * Later we could consider an ini-setting for controlling this
+			 */
+			nthw_field_set_val_flush32(p->mp_ctrl_ts_inject_always,
+				tsi_always ? 1 : 0);
+		}
+
+		if (p->mp_ctrl_fcs_always) {
+			/*
+			 * Do not force FSC calculation - let the TBH control this
+			 * Later we could consider an ini-setting for controlling this
+			 */
+			nthw_field_set_val_flush32(p->mp_ctrl_fcs_always, 0);
+		}
+
+		if (p->mp_ts_inject) {
+			nthw_register_update(p->mp_ts_inject);
+
+			if (p->mp_ts_inject_pos) {
+				nthw_field_set_val_flush32(p->mp_ts_inject_pos,
+					(uint32_t)tsi_dynamic_offset);
+			}
+
+			if (p->mp_ts_inject_offset) {
+				nthw_field_set_val_flush32(p->mp_ts_inject_offset,
+					(uint32_t)tsi_static_offset);
+			}
+		}
+
+		nthw_field_set_val_flush32(p->mp_ctrl_enable, enable ? 1 : 0);
+	}
+}
