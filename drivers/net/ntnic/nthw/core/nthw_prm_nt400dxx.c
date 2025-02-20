@@ -41,3 +41,15 @@ int nthw_prm_nt400dxx_init(nthw_prm_nt400dxx_t *p, nthw_fpga_t *p_fpga, int n_in
 	p->mp_fld_rst_platform = nthw_register_get_field(p->mp_reg_rst, PRM_NT400DXX_RST_PLATFORM);
 	return 0;
 }
+
+void nthw_prm_nt400dxx_periph_rst(nthw_prm_nt400dxx_t *p, uint32_t val)
+{
+	nthw_field_update_register(p->mp_fld_rst_periph);
+	nthw_field_set_val_flush32(p->mp_fld_rst_periph, val);
+}
+
+void nthw_prm_nt400dxx_platform_rst(nthw_prm_nt400dxx_t *p, uint32_t val)
+{
+	nthw_field_update_register(p->mp_fld_rst_platform);
+	nthw_field_set_val_flush32(p->mp_fld_rst_platform, val);
+}
