@@ -156,7 +156,7 @@ API Changes
 
 * memory: Added secure functions to force zeroing some memory,
   bypassing compiler optimizations:
-  ``rte_memzero_explicit``.
+  ``rte_memzero_explicit()`` and ``rte_free_sensitive()``.
 
 * graph: Added ``graph`` field to the ``rte_node.dispatch`` structure.
 

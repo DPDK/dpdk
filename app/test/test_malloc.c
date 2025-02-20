@@ -1091,6 +1091,57 @@ test_alloc_socket(void)
 	return 0;
 }
 
+static int
+run_rte_free_sensitive(void *arg)
+{
+	rte_free_sensitive(arg);
+	return 0;
+}
+
+/* Check that memory freed is zero now.
+ * Need to disable address sanitizer since use after free is intentional here.
+ */
+__rte_no_asan
+static int
+check_free_memory_is_zero(const char *data, size_t sz)
+{
+	for (unsigned int i = 0; i < sz; i++)
+		if (data[i] != 0)
+			return 0;
+	return 1;
+}
+
+static int
+test_free_sensitive(void)
+{
+#define SENSITIVE_KEY_SIZE	128
+
+	if (rte_lcore_count() < 2) {
+		printf("Need multiple cores to run memzero explicit test.\n");
+		return TEST_SKIPPED;
+	}
+
+	unsigned int worker_lcore_id = rte_get_next_lcore(-1, 1, 0);
+	TEST_ASSERT(worker_lcore_id < RTE_MAX_LCORE, "get_next_lcore failed");
+
+	/* Allocate a buffer and fill with sensitive data */
+	char *key = rte_zmalloc("dummy", SENSITIVE_KEY_SIZE, 0);
+	TEST_ASSERT(key != NULL, "rte_zmalloc failed");
+	rte_strscpy(key, "Super secret key", SENSITIVE_KEY_SIZE);
+
+	/* Pass that data to worker thread to free */
+	int rc = rte_eal_remote_launch(run_rte_free_sensitive, key, worker_lcore_id);
+	TEST_ASSERT(rc == 0, "Worker thread launch failed");
+
+	/* Wait for worker */
+	rte_eal_mp_wait_lcore();
+
+	TEST_ASSERT(check_free_memory_is_zero(key, SENSITIVE_KEY_SIZE),
+		    "rte_free_sensitive data not zero");
+
+	return 0;
+}
+
 static struct unit_test_suite test_suite = {
 	.suite_name = "Malloc test suite",
 	.unit_test_cases = {
@@ -1104,6 +1155,7 @@ static struct unit_test_suite test_suite = {
 		TEST_CASE(test_rte_malloc_validate),
 		TEST_CASE(test_alloc_socket),
 		TEST_CASE(test_multi_alloc_statistics),
+		TEST_CASE(test_free_sensitive),
 		TEST_CASES_END()
 	}
 };
