@@ -24,6 +24,26 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	if (res == 0)
 		NT_LOG(DBG, NTHW, "%s: Hif module found", p_fpga_info->mp_adapter_id_str);
 
+	/* (A) Test HIF clock is running by performing simple write/read test of HIF registers */
+	const uint32_t test_pattern[2] = { 0x11223344, 0x55667788 };
+
+	for (uint8_t i = 0; i < 2; ++i) {
+		uint32_t test_data = 0;
+		nthw_hif_write_test_reg(p_nthw_hif, i, test_pattern[i]);
+		nthw_hif_read_test_reg(p_nthw_hif, i, &test_data);
+
+		if (test_data != test_pattern[i]) {
+			NT_LOG(ERR,
+				NTHW,
+				"%s: %s: Test sys 250 clock failed",
+				p_fpga_info->mp_adapter_id_str,
+				__func__);
+			return -1;
+		}
+	}
+
+	nthw_hif_delete(p_nthw_hif);
+
 	/* Create PCM */
 	p_fpga_info->mp_nthw_agx.p_pcm = nthw_pcm_nt400dxx_new();
 	res = nthw_pcm_nt400dxx_init(p_fpga_info->mp_nthw_agx.p_pcm, p_fpga, 0);

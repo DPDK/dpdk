@@ -148,4 +148,7 @@ int nthw_hif_get_stat_rate(nthw_hif_t *p, uint64_t *p_pci_rx_rate, uint64_t *p_p
 
 int nthw_hif_end_point_counters_sample(nthw_hif_t *p, struct nthw_hif_end_point_counters *epc);
 
+int nthw_hif_read_test_reg(nthw_hif_t *p, uint8_t test_reg, uint32_t *p_value);
+int nthw_hif_write_test_reg(nthw_hif_t *p, uint8_t test_reg, uint32_t value);
+
 #endif	/* __NTHW_HIF_H__ */

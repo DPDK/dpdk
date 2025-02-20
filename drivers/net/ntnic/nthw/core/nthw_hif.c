@@ -298,3 +298,85 @@ int nthw_hif_end_point_counters_sample(nthw_hif_t *p, struct nthw_hif_end_point_
 
 	return 0;
 }
+
+int nthw_hif_read_test_reg(nthw_hif_t *p, uint8_t test_reg, uint32_t *p_value)
+{
+	uint32_t data;
+
+	switch (test_reg) {
+	case 0:
+		data = nthw_field_get_updated(p->mp_fld_pci_test0);
+		break;
+
+	case 1:
+		data = nthw_field_get_updated(p->mp_fld_pci_test1);
+		break;
+
+	case 2:
+		if (p->mp_fld_pci_test2)
+			data = nthw_field_get_updated(p->mp_fld_pci_test2);
+
+		else
+			return -1;
+
+		break;
+
+	case 3:
+		if (p->mp_fld_pci_test3)
+			data = nthw_field_get_updated(p->mp_fld_pci_test3);
+
+		else
+			return -1;
+
+		break;
+
+	default:
+		assert(false);
+		return -1;
+	}
+
+	if (p_value)
+		*p_value = data;
+
+	else
+		return -1;
+
+	return 0;
+}
+
+int nthw_hif_write_test_reg(nthw_hif_t *p, uint8_t test_reg, uint32_t value)
+{
+	switch (test_reg) {
+	case 0:
+		nthw_field_set_val_flush32(p->mp_fld_pci_test0, value);
+		break;
+
+	case 1:
+		nthw_field_set_val_flush32(p->mp_fld_pci_test1, value);
+		break;
+
+	case 2:
+		if (p->mp_fld_pci_test2)
+			nthw_field_set_val_flush32(p->mp_fld_pci_test2, value);
+
+		else
+			return -1;
+
+		break;
+
+	case 3:
+		if (p->mp_fld_pci_test3)
+			nthw_field_set_val_flush32(p->mp_fld_pci_test3, value);
+
+		else
+			return -1;
+
+		break;
+
+	default:
+		assert(false);
+		return -1;
+	}
+
+	return 0;
+}
