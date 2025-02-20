@@ -20,6 +20,29 @@ static const uint8_t config_port[2] = { 0x06, 0x07 };
  * PCAL6416A I/O expander class
  */
 
+nthw_pcal6416a_t *nthw_pcal6416a_new(void)
+{
+	nthw_pcal6416a_t *p = malloc(sizeof(nthw_pcal6416a_t));
+
+	if (p) {
+		memset(p, 0, sizeof(nthw_pcal6416a_t));
+		p->m_config_data[0] = 0xFF;
+		p->m_config_data[1] = 0xFF;
+	}
+
+	return p;
+}
+
+int nthw_pcal6416a_init(nthw_pcal6416a_t *p, nthw_i2cm_t *p_nt_i2cm, uint8_t dev_address,
+	nthw_pca9849_t *pca9849, uint8_t mux_channel)
+{
+	p->mp_nt_i2cm = p_nt_i2cm;
+	p->m_dev_address = dev_address;
+	p->mp_ca9849 = pca9849;
+	p->m_mux_channel = mux_channel;
+	return 0;
+}
+
 void nthw_pcal6416a_write(nthw_pcal6416a_t *p, uint8_t pin, uint8_t value)
 {
 	uint8_t port;
