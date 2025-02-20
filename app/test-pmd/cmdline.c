@@ -3462,6 +3462,9 @@ cmd_config_dcb_parsed(void *parsed_result,
 	uint8_t pfc_en;
 	int ret;
 
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
 	port = &ports[port_id];
 	/** Check if the port is not started **/
 	if (port->port_status != RTE_PORT_STOPPED) {
@@ -6663,6 +6666,9 @@ cmd_priority_flow_ctrl_set_parsed(void *parsed_result,
 	struct rte_eth_pfc_conf pfc_conf;
 	int rx_fc_enable, tx_fc_enable;
 	int ret;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
 
 	/*
 	 * Rx on/off, flow control is enabled/disabled on RX side. This can indicate
