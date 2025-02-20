@@ -291,7 +291,7 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 	if (on > 1)
 		return -EINVAL;
 
-	if (*dev->dev_ops->vlan_strip_queue_set == NULL)
+	if (dev->dev_ops->vlan_strip_queue_set == NULL)
 		return -ENOTSUP;
 
 	/* The PF has 128 queue pairs and in SRIOV configuration
@@ -310,8 +310,7 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 				  RTE_ETH_64_POOLS;
 
 	for (q = 0; q < queues_per_pool; q++)
-		(*dev->dev_ops->vlan_strip_queue_set)(dev,
-				q + vf * queues_per_pool, on);
+		dev->dev_ops->vlan_strip_queue_set(dev, q + vf * queues_per_pool, on);
 	return 0;
 }
 
