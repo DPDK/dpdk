@@ -44,6 +44,17 @@ static const uint32_t eth_soft_csr1 = 0x200;
 static const uint32_t eth_soft_csr2 = 0x204;
 static const uint32_t eth_soft_csr3 = 0x208;
 
+uint8_t nthw_phy_tile_get_no_intfs(nthw_phy_tile_t *p)
+{
+	switch (p->mac_pcs_mode) {
+	case MAC_PCS_MODE_2X100:
+		return 2;
+
+	default:
+		return 0;
+	}
+}
+
 static void nthw_phy_tile_set_reset(nthw_phy_tile_t *p, uint8_t intf_no, bool reset)
 {
 	/* Reset is active low */
@@ -542,4 +553,31 @@ bool nthw_phy_tile_configure_fec(nthw_phy_tile_t *p, uint8_t intf_no, bool enabl
 		nthw_field_get_val32(p->mp_fld_dr_cfg_status_error));
 
 	return true;
+}
+
+uint32_t nthw_phy_tile_get_port_status_reset_ack(nthw_phy_tile_t *p, uint8_t intf_no)
+{
+	if (p->mp_fld_port_status_reset_ackn[intf_no]) {
+		return nthw_field_get_updated(p->mp_fld_port_status_reset_ackn[intf_no]) == 0
+			? 1
+			: 0;    /* Inverted */
+	}
+
+	return 1;
+}
+
+uint32_t nthw_phy_tile_get_port_status_tx_lanes_stable(nthw_phy_tile_t *p, uint8_t intf_no)
+{
+	if (p->mp_fld_port_status_tx_lanes_stable[intf_no])
+		return nthw_field_get_updated(p->mp_fld_port_status_tx_lanes_stable[intf_no]);
+
+	return 1;
+}
+
+void nthw_phy_tile_set_port_config_rst(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t value)
+{
+	if (p->mp_fld_port_config_reset[intf_no]) {
+		nthw_field_get_updated(p->mp_fld_port_config_reset[intf_no]);
+		nthw_field_set_val_flush32(p->mp_fld_port_config_reset[intf_no], value);
+	}
 }
