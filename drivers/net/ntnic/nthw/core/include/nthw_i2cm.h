@@ -44,6 +44,8 @@ struct nt_i2cm {
 
 typedef struct nt_i2cm nthw_i2cm_t;
 
+nthw_i2cm_t *nthw_i2cm_new(void);
+int nthw_i2cm_init(nthw_i2cm_t *p, nthw_fpga_t *p_fpga, int n_i2c_instance);
 int nthw_i2cm_read(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint8_t *value);
 int nthw_i2cm_write(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint8_t value);
 int nthw_i2cm_write16(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint16_t value);

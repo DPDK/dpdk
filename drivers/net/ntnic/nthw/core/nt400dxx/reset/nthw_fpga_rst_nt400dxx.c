@@ -70,6 +70,13 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	if (res != 0)
 		return res;
 
+	/* Create I2C */
+	p_fpga_info->mp_nthw_agx.p_i2cm = nthw_i2cm_new();
+	res = nthw_i2cm_init(p_fpga_info->mp_nthw_agx.p_i2cm, p_fpga, 0);
+
+	if (res != 0)
+		return res;
+
 	/* Create PCM */
 	p_fpga_info->mp_nthw_agx.p_pcm = nthw_pcm_nt400dxx_new();
 	res = nthw_pcm_nt400dxx_init(p_fpga_info->mp_nthw_agx.p_pcm, p_fpga, 0);
