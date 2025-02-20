@@ -24,6 +24,9 @@ struct nthw_pcal6416a {
 
 typedef struct nthw_pcal6416a nthw_pcal6416a_t;
 
+nthw_pcal6416a_t *nthw_pcal6416a_new(void);
+int nthw_pcal6416a_init(nthw_pcal6416a_t *p, nthw_i2cm_t *p_nt_i2cm, uint8_t dev_address,
+	nthw_pca9849_t *pca9849, uint8_t mux_channel);
 void nthw_pcal6416a_write(nthw_pcal6416a_t *p, uint8_t pin, uint8_t value);
 void nthw_pcal6416a_read(nthw_pcal6416a_t *p, uint8_t pin, uint8_t *value);
 

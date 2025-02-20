@@ -23,6 +23,7 @@
 typedef struct nthw_agx_s {
 	nthw_i2cm_t *p_i2cm;
 	nthw_pca9849_t *p_pca9849;
+	nthw_pcal6416a_t *p_io_ts;	/* PCAL6416A I/O expander for controlling TS */
 	nthw_pcal6416a_t *p_io_nim;	/* PCAL6416A I/O expander for controlling TS */
 	nthw_pca9532_t *p_pca9532_led;
 	nthw_si5332_t *p_si5332;
