@@ -70,6 +70,8 @@ static const struct rte_eth_link pmd_link = {
 
 static int memif_region_init_zc(const struct rte_memseg_list *msl,
 				const struct rte_memseg *ms, void *arg);
+static void memif_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
+static void memif_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 const char *
 memif_version(void)
@@ -1418,9 +1420,9 @@ memif_dev_close(struct rte_eth_dev *dev)
 		memif_msg_enq_disconnect(pmd->cc, "Device closed", 0);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
-			(*dev->dev_ops->rx_queue_release)(dev, i);
+			memif_rx_queue_release(dev, i);
 		for (i = 0; i < dev->data->nb_tx_queues; i++)
-			(*dev->dev_ops->tx_queue_release)(dev, i);
+			memif_tx_queue_release(dev, i);
 
 		memif_socket_remove_device(dev);
 	}
