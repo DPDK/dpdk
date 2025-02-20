@@ -17,7 +17,9 @@
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-#ifndef RTE_EXEC_ENV_WINDOWS
+#ifdef RTE_EXEC_ENV_WINDOWS
+#include <rte_windows.h>
+#else
 #include <rte_telemetry.h>
 #endif
 
@@ -1697,4 +1699,16 @@ RTE_INIT(memory_telemetry)
 			handle_eal_element_info_request,
 			"Returns element info. Parameters: int heap_id, int memseg_list_id, int memseg_id, int start_elem_id, int end_elem_id");
 }
+
+#endif /* telemetry !RTE_EXEC_ENV_WINDOWS */
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_memzero_explicit, 25.07)
+void
+rte_memzero_explicit(void *dst, size_t sz)
+{
+#ifdef RTE_EXEC_ENV_WINDOWS
+	SecureZeroMemory(dst, sz);
+#else
+	explicit_bzero(dst, sz);
 #endif
+}

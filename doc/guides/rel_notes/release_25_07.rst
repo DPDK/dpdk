@@ -154,6 +154,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* memory: Added secure functions to force zeroing some memory,
+  bypassing compiler optimizations:
+  ``rte_memzero_explicit``.
+
 * graph: Added ``graph`` field to the ``rte_node.dispatch`` structure.
 
 
