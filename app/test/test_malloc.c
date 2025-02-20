@@ -142,6 +142,24 @@ test_align_overlap_per_lcore(__rte_unused void *arg)
 }
 
 static int
+test_align_overlap(void)
+{
+	unsigned int lcore_id;
+	int ret = 0;
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		rte_eal_remote_launch(test_align_overlap_per_lcore, NULL, lcore_id);
+	}
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		if (rte_eal_wait_lcore(lcore_id) < 0)
+			ret = -1;
+	}
+
+	return ret;
+}
+
+static int
 test_reordered_free_per_lcore(__rte_unused void *arg)
 {
 	const unsigned align1 = 8,
@@ -233,6 +251,23 @@ test_reordered_free_per_lcore(__rte_unused void *arg)
 	}
 	rte_malloc_dump_stats(stdout, "dummy");
 
+	return ret;
+}
+
+static int
+test_reordered_free(void)
+{
+	unsigned int lcore_id;
+	int ret = 0;
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		rte_eal_remote_launch(test_reordered_free_per_lcore, NULL, lcore_id);
+	}
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		if (rte_eal_wait_lcore(lcore_id) < 0)
+			ret = -1;
+	}
 	return ret;
 }
 
@@ -780,6 +815,23 @@ test_random_alloc_free(void *_ __rte_unused)
 	return 0;
 }
 
+static int
+test_random(void)
+{
+	unsigned int lcore_id;
+	int ret = 0;
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		rte_eal_remote_launch(test_random_alloc_free, NULL, lcore_id);
+	}
+
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
+		if (rte_eal_wait_lcore(lcore_id) < 0)
+			ret = -1;
+	}
+	return ret;
+}
+
 #define err_return() do { \
 	printf("%s: %d - Error\n", __func__, __LINE__); \
 	goto err_return; \
@@ -1039,105 +1091,27 @@ test_alloc_socket(void)
 	return 0;
 }
 
+static struct unit_test_suite test_suite = {
+	.suite_name = "Malloc test suite",
+	.unit_test_cases = {
+		TEST_CASE(test_str_to_size),
+		TEST_CASE(test_zero_aligned_alloc),
+		TEST_CASE(test_malloc_bad_params),
+		TEST_CASE(test_realloc),
+		TEST_CASE(test_align_overlap),
+		TEST_CASE(test_reordered_free),
+		TEST_CASE(test_random),
+		TEST_CASE(test_rte_malloc_validate),
+		TEST_CASE(test_alloc_socket),
+		TEST_CASE(test_multi_alloc_statistics),
+		TEST_CASES_END()
+	}
+};
+
 static int
 test_malloc(void)
 {
-	unsigned lcore_id;
-	int ret = 0;
-
-	if (test_str_to_size() < 0){
-		printf("test_str_to_size() failed\n");
-		return -1;
-	}
-	else printf("test_str_to_size() passed\n");
-
-	if (test_zero_aligned_alloc() < 0){
-		printf("test_zero_aligned_alloc() failed\n");
-		return -1;
-	}
-	else printf("test_zero_aligned_alloc() passed\n");
-
-	if (test_malloc_bad_params() < 0){
-		printf("test_malloc_bad_params() failed\n");
-		return -1;
-	}
-	else printf("test_malloc_bad_params() passed\n");
-
-	if (test_realloc() < 0){
-		printf("test_realloc() failed\n");
-		return -1;
-	}
-	else printf("test_realloc() passed\n");
-
-	/*----------------------------*/
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		rte_eal_remote_launch(test_align_overlap_per_lcore, NULL, lcore_id);
-	}
-
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (rte_eal_wait_lcore(lcore_id) < 0)
-			ret = -1;
-	}
-	if (ret < 0){
-		printf("test_align_overlap_per_lcore() failed\n");
-		return ret;
-	}
-	else printf("test_align_overlap_per_lcore() passed\n");
-
-	/*----------------------------*/
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		rte_eal_remote_launch(test_reordered_free_per_lcore, NULL, lcore_id);
-	}
-
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (rte_eal_wait_lcore(lcore_id) < 0)
-			ret = -1;
-	}
-	if (ret < 0){
-		printf("test_reordered_free_per_lcore() failed\n");
-		return ret;
-	}
-	else printf("test_reordered_free_per_lcore() passed\n");
-
-	/*----------------------------*/
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		rte_eal_remote_launch(test_random_alloc_free, NULL, lcore_id);
-	}
-
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (rte_eal_wait_lcore(lcore_id) < 0)
-			ret = -1;
-	}
-	if (ret < 0){
-		printf("test_random_alloc_free() failed\n");
-		return ret;
-	}
-	else printf("test_random_alloc_free() passed\n");
-
-	/*----------------------------*/
-	ret = test_rte_malloc_validate();
-	if (ret < 0){
-		printf("test_rte_malloc_validate() failed\n");
-		return ret;
-	}
-	else printf("test_rte_malloc_validate() passed\n");
-
-	ret = test_alloc_socket();
-	if (ret < 0){
-		printf("test_alloc_socket() failed\n");
-		return ret;
-	}
-	else printf("test_alloc_socket() passed\n");
-
-	ret = test_multi_alloc_statistics();
-	if (ret < 0) {
-		printf("test_multi_alloc_statistics() failed\n");
-		return ret;
-	}
-	else
-		printf("test_multi_alloc_statistics() passed\n");
-
-	return 0;
+	return unit_test_suite_runner(&test_suite);
 }
 
 REGISTER_FAST_TEST(malloc_autotest, false, true, test_malloc);
