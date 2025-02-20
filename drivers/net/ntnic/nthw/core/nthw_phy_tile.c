@@ -64,6 +64,34 @@ void nthw_phy_tile_set_rx_reset(nthw_phy_tile_t *p, uint8_t intf_no, bool reset)
 	}
 }
 
+void nthw_phy_tile_set_tx_reset(nthw_phy_tile_t *p, uint8_t intf_no, bool reset)
+{
+	/* Reset is active low */
+	nthw_field_get_updated(p->mp_fld_port_config_tx_reset[intf_no]);
+
+	if (reset) {
+		nthw_field_clr_flush(p->mp_fld_port_config_tx_reset[intf_no]);
+
+		/* Wait for ack */
+		if (p->mp_fld_port_status_tx_reset_ackn[intf_no]) {
+			int32_t count = 1000;
+
+			do {
+				nt_os_wait_usec(1000);	/* 1ms */
+			} while (nthw_field_get_updated(p->mp_fld_port_status_tx_reset_ackn
+				[intf_no]) && (--count > 0));
+
+			if (count <= 0) {
+				NT_LOG(ERR, NTHW, "intf_no %u: Time-out waiting for TxResetAck",
+					intf_no);
+			}
+		}
+
+	} else {
+		nthw_field_set_flush(p->mp_fld_port_config_tx_reset[intf_no]);
+	}
+}
+
 uint32_t nthw_phy_tile_read_xcvr(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t lane,
 	uint32_t address)
 {

@@ -14,6 +14,11 @@
 #include "nthw_gfg.h"
 #include "nthw_phy_tile.h"
 
+typedef enum {
+	LOOPBACK_HOST_NONE,
+	LOOPBACK_HOST
+} loopback_host_t;
+
 static int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info,
 	nthw_fpga_t *fpga);
 
@@ -27,6 +32,65 @@ static struct link_ops_s link_agx_100g_ops = {
 void link_agx_100g_init(void)
 {
 	register_agx_100g_link_ops(&link_agx_100g_ops);
+}
+
+/*
+ * Phy handling
+ */
+
+static void phy_rx_path_rst(adapter_info_t *drv, int port, bool reset)
+{
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+	NT_LOG(DBG, NTNIC, "Port %d: %s", port, reset ? "assert" : "deassert");
+	nthw_phy_tile_set_rx_reset(p, port, reset);
+}
+
+static void phy_tx_path_rst(adapter_info_t *drv, int port, bool reset)
+{
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+	NT_LOG(DBG, NTNIC, "Port %d: %s", port, reset ? "assert" : "deassert");
+	nthw_phy_tile_set_tx_reset(p, port, reset);
+}
+
+static void phy_reset_rx(adapter_info_t *drv, int port)
+{
+	phy_rx_path_rst(drv, port, true);
+	nt_os_wait_usec(10000);	/* 10ms */
+	phy_rx_path_rst(drv, port, false);
+	nt_os_wait_usec(10000);	/* 10ms */
+}
+
+static void phy_reset_tx(adapter_info_t *drv, int port)
+{
+	phy_tx_path_rst(drv, port, true);
+	nt_os_wait_usec(10000);	/* 10ms */
+	phy_tx_path_rst(drv, port, false);
+	nt_os_wait_usec(10000);	/* 10ms */
+}
+
+static int phy_set_host_loopback(adapter_info_t *drv, int port, loopback_host_t loopback)
+{
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+
+	switch (loopback) {
+	case LOOPBACK_HOST_NONE:
+		for (uint8_t lane = 0; lane < 4; lane++)
+			nthw_phy_tile_set_host_loopback(p, port, lane, false);
+
+		break;
+
+	case LOOPBACK_HOST:
+		for (uint8_t lane = 0; lane < 4; lane++)
+			nthw_phy_tile_set_host_loopback(p, port, lane, true);
+
+		break;
+
+	default:
+		NT_LOG(ERR, NTNIC, "Port %d: Unhandled loopback value (%d)", port, loopback);
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
@@ -79,6 +143,40 @@ static int swap_tx_rx_polarity(adapter_info_t *drv, int port, bool swap)
 	}
 
 	return -1;
+}
+
+static void
+set_loopback(struct adapter_info_s *p_adapter_info, int port, uint32_t mode, uint32_t last_mode)
+{
+	switch (mode) {
+	case 1:
+		NT_LOG(INF, NTNIC, "%s: Applying host loopback",
+			p_adapter_info->mp_port_id_str[port]);
+		phy_set_host_loopback(p_adapter_info, port, LOOPBACK_HOST);
+		swap_tx_rx_polarity(p_adapter_info, port, false);
+		break;
+
+	default:
+		switch (last_mode) {
+		case 1:
+			NT_LOG(INF, NTNIC, "%s: Removing host loopback",
+				p_adapter_info->mp_port_id_str[port]);
+			phy_set_host_loopback(p_adapter_info, port, LOOPBACK_HOST_NONE);
+			swap_tx_rx_polarity(p_adapter_info, port, true);
+			break;
+
+		default:
+			/* do nothing */
+			break;
+		}
+
+		break;
+	}
+
+	/* After changing the loopback the system must be properly reset */
+	phy_reset_rx(p_adapter_info, port);
+	phy_reset_tx(p_adapter_info, port);
+	nt_os_wait_usec(10000);	/* 10ms - arbitrary choice */
 }
 
 /*
@@ -145,6 +243,19 @@ static void *_common_ptp_nim_state_machine(void *data)
 
 			if (is_port_disabled)
 				continue;
+
+			if (link_info->port_action[i].port_lpbk_mode != last_lpbk_mode[i]) {
+				set_loopback(drv,
+					i,
+					link_info->port_action[i].port_lpbk_mode,
+					last_lpbk_mode[i]);
+
+				if (link_info->port_action[i].port_lpbk_mode == 1)
+					link_state[i].link_up = true;
+
+				last_lpbk_mode[i] = link_info->port_action[i].port_lpbk_mode;
+				continue;
+			}
 
 			link_state[i].link_disabled = is_port_disabled;
 
