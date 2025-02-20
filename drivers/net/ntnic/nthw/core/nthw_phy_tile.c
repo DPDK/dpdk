@@ -263,7 +263,34 @@ void nthw_phy_tile_set_tx_equalization(nthw_phy_tile_t *p, uint8_t intf_no, uint
 	nthw_phy_tile_write_xcvr(p, intf_no, lane, tx_eq_addr + 0x8000U * lane, data);
 }
 
-static bool nthw_phy_tile_read_fec_enabled_by_scratch(nthw_phy_tile_t *p, uint8_t intf_no)
+void nthw_phy_tile_get_link_summary(nthw_phy_tile_t *p, uint32_t *p_nt_phy_link_state,
+	uint32_t *p_ll_nt_phy_link_state, uint32_t *p_lh_local_fault,
+	uint32_t *p_lh_remote_fault, uint8_t index)
+{
+	nthw_register_update(p->mp_reg_link_summary[index]);
+
+	if (p_nt_phy_link_state) {
+		*p_nt_phy_link_state =
+			nthw_field_get_val32(p->mp_fld_link_summary_nt_phy_link_state[index]);
+	}
+
+	if (p_ll_nt_phy_link_state) {
+		*p_ll_nt_phy_link_state =
+			nthw_field_get_val32(p->mp_fld_link_summary_ll_nt_phy_link_state[index]);
+	}
+
+	if (p_lh_local_fault) {
+		*p_lh_local_fault =
+			nthw_field_get_val32(p->mp_fld_link_summary_lh_received_local_fault[index]);
+	}
+
+	if (p_lh_remote_fault) {
+		*p_lh_remote_fault =
+			nthw_field_get_val32(p->mp_fld_link_summary_lh_remote_fault[index]);
+	}
+}
+
+bool nthw_phy_tile_read_fec_enabled_by_scratch(nthw_phy_tile_t *p, uint8_t intf_no)
 {
 	bool fec_enabled = false;
 
@@ -290,6 +317,28 @@ static void nthw_phy_tile_write_fec_enabled_by_scratch(nthw_phy_tile_t *p, uint8
 		fec_enabled ? status_other_port : (uint8_t)(status_other_port | disablebit);
 	/*  NT_LOG(INF, NTHW, "intf_no: %u write ScratchFEC value %u", intf_no, val); */
 	nthw_field_set_val_flush32(p->mp_fld_scratch_data, val);
+}
+
+bool nthw_phy_tile_get_rx_hi_ber(nthw_phy_tile_t *p, uint8_t intf_no)
+{
+	return nthw_field_get_updated(p->mp_fld_port_status_rx_hi_ber[intf_no]);
+}
+
+bool nthw_phy_tile_get_rx_am_lock(nthw_phy_tile_t *p, uint8_t intf_no)
+{
+	return nthw_field_get_updated(p->mp_fld_port_status_rx_am_lock[intf_no]);
+}
+
+void nthw_phy_tile_set_timestamp_comp_rx(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t value)
+{
+	nthw_field_get_updated(p->mp_fld_port_comp_rx_compensation[intf_no]);
+	nthw_field_set_val_flush32(p->mp_fld_port_comp_rx_compensation[intf_no], value);
+}
+
+uint32_t nthw_phy_tile_get_timestamp_comp_rx(nthw_phy_tile_t *p, uint8_t intf_no)
+{
+	nthw_field_get_updated(p->mp_fld_port_comp_rx_compensation[intf_no]);
+	return nthw_field_get_val32(p->mp_fld_port_comp_rx_compensation[intf_no]);
 }
 
 uint32_t nthw_phy_tile_read_eth(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t address)
