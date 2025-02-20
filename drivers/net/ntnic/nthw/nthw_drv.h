@@ -9,6 +9,15 @@
 #include "nthw_core.h"
 #include "ntnic_dbs.h"
 
+#include "nthw_rpf.h"
+
+/*
+ * Structs for controlling Agilex based NT400DXX adapter
+ */
+typedef struct nthw_agx_s {
+	nthw_rpf_t *p_rpf;
+} nthw_agx_t;
+
 typedef enum nt_meta_port_type_e {
 	PORT_TYPE_PHYSICAL,
 	PORT_TYPE_VIRTUAL,
@@ -88,6 +97,7 @@ typedef struct fpga_info_s {
 
 	nthw_adapter_id_t n_nthw_adapter_id;
 
+	nthw_agx_t mp_nthw_agx;	/* For the Agilex based NT400DXX */
 } fpga_info_t;
 
 

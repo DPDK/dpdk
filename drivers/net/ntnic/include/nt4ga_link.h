@@ -8,6 +8,7 @@
 
 #include "ntos_drv.h"
 #include "ntnic_nim.h"
+#include "nthw_gfg.h"
 
 enum nt_link_state_e {
 	NT_LINK_STATE_UNKNOWN = 0,	/* The link state has not been read yet */
@@ -84,6 +85,7 @@ typedef struct adapter_100g_s {
 
 typedef struct adapter_agx_100g_s {
 	nim_i2c_ctx_t nim_ctx[NUM_ADAPTER_PORTS_MAX];	/* should be the first field */
+	nthw_gfg_t gfg[NUM_ADAPTER_PORTS_MAX];
 } adapter_agx_100g_t;
 
 typedef union adapter_var_s {
