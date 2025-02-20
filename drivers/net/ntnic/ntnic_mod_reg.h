@@ -19,6 +19,7 @@
 #include "nthw_drv.h"
 #include "nt4ga_adapter.h"
 #include "ntnic_nthw_fpga_rst_nt200a0x.h"
+#include "ntnic_nthw_fpga_rst_nt400dxx.h"
 #include "ntnic_virt_queue.h"
 #include "create_elements.h"
 
@@ -254,6 +255,26 @@ struct rst9563_ops {
 void register_rst9563_ops(struct rst9563_ops *ops);
 struct rst9563_ops *get_rst9563_ops(void);
 void rst9563_ops_init(void);
+
+struct rst9574_ops {
+	int (*nthw_fpga_rst9574_init)(struct fpga_info_s *p_fpga_info,
+		struct nthw_fpga_rst_nt400dxx *const p);
+	int (*nthw_fpga_rst9574_setup)(nthw_fpga_t *p_fpga,
+		struct nthw_fpga_rst_nt400dxx *const p);
+};
+
+void register_rst9574_ops(struct rst9574_ops *ops);
+struct rst9574_ops *get_rst9574_ops(void);
+void rst9574_ops_init(void);
+
+struct rst_nt400dxx_ops {
+	int (*nthw_fpga_rst_nt400dxx_init)(struct fpga_info_s *p_fpga_info);
+	int (*nthw_fpga_rst_nt400dxx_reset)(struct fpga_info_s *p_fpga_info);
+};
+
+void register_rst_nt400dxx_ops(struct rst_nt400dxx_ops *ops);
+struct rst_nt400dxx_ops *get_rst_nt400dxx_ops(void);
+void rst_nt400dxx_ops_init(void);
 
 struct flow_backend_ops {
 	const struct flow_api_backend_ops *(*bin_flow_backend_init)(nthw_fpga_t *p_fpga,
