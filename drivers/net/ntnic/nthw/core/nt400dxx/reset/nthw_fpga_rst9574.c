@@ -79,6 +79,72 @@ static void nthw_fpga_rst9574_set_default_rst_values(struct nthw_fpga_rst_nt400d
 	nthw_field_set_val_flush32(p->p_fld_rst_phy_ftile, 1);
 }
 
+static void nthw_fpga_rst9574_ddr4_rst(struct nthw_fpga_rst_nt400dxx *const p, uint32_t val)
+{
+	nthw_field_update_register(p->p_fld_rst_ddr4);
+	nthw_field_set_val_flush32(p->p_fld_rst_ddr4, val);
+}
+
+static bool nthw_fpga_rst9574_get_ddr4_calib_complete_stat(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_stat_ddr4_calib_complete) != 0;
+}
+
+static bool nthw_fpga_rst9574_get_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_latch_ddr4_calib_complete) != 0;
+}
+
+static void nthw_fpga_rst9574_set_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p,
+	uint32_t val)
+{
+	nthw_field_update_register(p->p_fld_latch_ddr4_calib_complete);
+	nthw_field_set_val_flush32(p->p_fld_latch_ddr4_calib_complete, val);
+}
+
+static int nthw_fpga_rst9574_wait_ddr4_calibration_complete(struct fpga_info_s *p_fpga_info,
+	struct nthw_fpga_rst_nt400dxx *p_rst)
+{
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	uint32_t complete;
+	uint32_t retrycount;
+	uint32_t timeout;
+
+	/* 3: wait until DDR4 CALIB COMPLETE */
+	NT_LOG(DBG, NTHW, "%s: %s: DDR4 CALIB COMPLETE wait complete", p_adapter_id_str, __func__);
+	/*
+	 * The following retry count gives a total timeout of 1 * 5 + 5 * 8 = 45sec
+	 * It has been observed that at least 21sec can be necessary
+	 */
+	retrycount = 1;
+	timeout = 50000;/* initial timeout must be set to 5 sec. */
+
+	do {
+		complete = nthw_fpga_rst9574_get_ddr4_calib_complete_stat(p_rst);
+
+		if (!complete)
+			nt_os_wait_usec(100);
+
+		timeout--;
+
+		if (timeout == 0) {
+			if (retrycount == 0) {
+				NT_LOG(ERR, NTHW,
+					"%s: %s: Timeout waiting for DDR4 CALIB COMPLETE to be complete",
+					p_adapter_id_str, __func__);
+				return -1;
+			}
+
+			nthw_fpga_rst9574_ddr4_rst(p_rst, 1);	/* Reset DDR4 */
+			nthw_fpga_rst9574_ddr4_rst(p_rst, 0);
+			retrycount--;
+			timeout = 90000;/* Increase timeout for second attempt to 8 sec. */
+		}
+	} while (!complete);
+
+	return 0;
+}
+
 static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
@@ -86,6 +152,7 @@ static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 	assert(p_rst);
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	int res = -1;
 
 	/* (0) Reset all domains / modules except peripherals: */
 	NT_LOG(DBG, NTHW, "%s: %s: RST defaults", p_adapter_id_str, __func__);
@@ -95,6 +162,34 @@ static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 	 * Wait a while before waiting for deasserting ddr4 reset
 	 */
 	nt_os_wait_usec(2000);
+
+	/* (1) De-assert DDR4 reset: */
+	NT_LOG(DBG, NTHW, "%s: %s: De-asserting DDR4 reset", p_adapter_id_str, __func__);
+	nthw_fpga_rst9574_ddr4_rst(p_rst, 0);
+
+	/*
+	 * Wait a while before waiting for calibration complete, since calibration complete
+	 * is true while ddr4 is in reset
+	 */
+	nt_os_wait_usec(2000);
+
+	/* (2) Wait until DDR4 calibration complete */
+	res = nthw_fpga_rst9574_wait_ddr4_calibration_complete(p_fpga_info, p_rst);
+
+	if (res)
+		return res;
+
+	/* (3) Set DDR4 calib complete latched bits: */
+	nthw_fpga_rst9574_set_ddr4_calib_complete_latch(p_rst, 1);
+
+	/* Wait for phy to settle.*/
+	nt_os_wait_usec(20000);
+
+	/* (4) Ensure all latched status bits are still set: */
+	if (!nthw_fpga_rst9574_get_ddr4_calib_complete_latch(p_rst)) {
+		NT_LOG(ERR, NTHW, "%s: %s: DDR4 calibration complete has toggled",
+			p_adapter_id_str, __func__);
+	}
 
 
 	return 0;
