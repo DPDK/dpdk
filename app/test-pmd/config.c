@@ -7273,8 +7273,8 @@ port_dcb_info_display(portid_t port_id)
 	printf("\n  TC :        ");
 	for (i = 0; i < dcb_info.nb_tcs; i++)
 		printf("\t%4d", i);
-	printf("\n  Priority :  ");
-	for (i = 0; i < dcb_info.nb_tcs; i++)
+	printf("\n  Prio2TC :  ");
+	for (i = 0; i < RTE_ETH_DCB_NUM_USER_PRIORITIES; i++)
 		printf("\t%4d", dcb_info.prio_tc[i]);
 	printf("\n  BW percent :");
 	for (i = 0; i < dcb_info.nb_tcs; i++)
