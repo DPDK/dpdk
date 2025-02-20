@@ -65,6 +65,8 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	nthw_prm_nt400dxx_periph_rst(p_fpga_info->mp_nthw_agx.p_prm, 0);
 	nt_os_wait_usec(10000);
 
+	res = nthw_fpga_avr_probe(p_fpga, 0);
+
 	if (res != 0)
 		return res;
 
