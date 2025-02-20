@@ -82,9 +82,14 @@ typedef struct adapter_100g_s {
 	nthw_gpio_phy_t gpio_phy[NUM_ADAPTER_PORTS_MAX];
 } adapter_100g_t;
 
+typedef struct adapter_agx_100g_s {
+	nim_i2c_ctx_t nim_ctx[NUM_ADAPTER_PORTS_MAX];	/* should be the first field */
+} adapter_agx_100g_t;
+
 typedef union adapter_var_s {
 	nim_i2c_ctx_t nim_ctx[NUM_ADAPTER_PORTS_MAX];	/* First field in all the adapters type */
 	adapter_100g_t var100g;
+	adapter_agx_100g_t var_a100g;
 } adapter_var_u;
 
 typedef struct nt4ga_link_s {
