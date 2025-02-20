@@ -455,6 +455,7 @@ free:
 		rte_intr_instance_free(dev->vfio_req_intr_handle);
 		dev->vfio_req_intr_handle = NULL;
 
+		TAILQ_REMOVE(&rte_pci_bus.device_list, dev, next);
 		pci_free(dev);
 	}
 
