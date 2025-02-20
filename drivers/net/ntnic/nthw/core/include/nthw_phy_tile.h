@@ -142,7 +142,15 @@ void nthw_phy_tile_write_xcvr(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t lane,
 	uint32_t data);
 uint32_t nthw_phy_tile_get_port_status_reset_ack(nthw_phy_tile_t *p, uint8_t intf_no);
 uint32_t nthw_phy_tile_get_port_status_tx_lanes_stable(nthw_phy_tile_t *p, uint8_t intf_no);
+void nthw_phy_tile_set_sys_pll_set_rdy(nthw_phy_tile_t *p, uint32_t value);
+uint32_t nthw_phy_tile_get_sys_pll_get_rdy(nthw_phy_tile_t *p);
+uint32_t nthw_phy_tile_get_sys_pll_system_pll_lock(nthw_phy_tile_t *p);
+void nthw_phy_tile_set_sys_pll_en_ref_clk_fgt(nthw_phy_tile_t *p, uint32_t value);
+uint32_t nthw_phy_tile_get_sys_pll_ref_clk_fgt_enabled(nthw_phy_tile_t *p);
+void nthw_phy_tile_set_sys_pll_forward_rst(nthw_phy_tile_t *p, uint32_t value);
+void nthw_phy_tile_set_sys_pll_force_rst(nthw_phy_tile_t *p, uint32_t value);
 uint8_t nthw_phy_tile_get_no_intfs(nthw_phy_tile_t *p);
 void nthw_phy_tile_set_port_config_rst(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t value);
+bool nthw_phy_tile_use_phy_tile_pll_check(nthw_phy_tile_t *p);
 
 #endif	/* __NTHW_PHY_TILE_H__ */

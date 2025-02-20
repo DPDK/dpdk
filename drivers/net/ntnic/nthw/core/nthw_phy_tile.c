@@ -642,6 +642,11 @@ int nthw_phy_tile_init(nthw_phy_tile_t *p, nthw_fpga_t *p_fpga, int mn_phy_tile_
 	return 0;
 }
 
+bool nthw_phy_tile_use_phy_tile_pll_check(nthw_phy_tile_t *p)
+{
+	return nthw_module_is_version_newer(p->m_mod_phy_tile, 0, 8);
+}
+
 uint8_t nthw_phy_tile_get_no_intfs(nthw_phy_tile_t *p)
 {
 	switch (p->mac_pcs_mode) {
@@ -1170,6 +1175,62 @@ uint32_t nthw_phy_tile_get_port_status_tx_lanes_stable(nthw_phy_tile_t *p, uint8
 		return nthw_field_get_updated(p->mp_fld_port_status_tx_lanes_stable[intf_no]);
 
 	return 1;
+}
+
+void nthw_phy_tile_set_sys_pll_set_rdy(nthw_phy_tile_t *p, uint32_t value)
+{
+	if (p->mp_fld_sys_pll_set_rdy) {
+		nthw_field_get_updated(p->mp_fld_sys_pll_set_rdy);
+		nthw_field_set_val_flush32(p->mp_fld_sys_pll_set_rdy, value);
+	}
+}
+
+uint32_t nthw_phy_tile_get_sys_pll_get_rdy(nthw_phy_tile_t *p)
+{
+	if (p->mp_fld_sys_pll_get_rdy)
+		return nthw_field_get_updated(p->mp_fld_sys_pll_get_rdy);
+
+	return 0;
+}
+
+uint32_t nthw_phy_tile_get_sys_pll_system_pll_lock(nthw_phy_tile_t *p)
+{
+	if (p->mp_fld_sys_pll_system_pll_lock)
+		return nthw_field_get_updated(p->mp_fld_sys_pll_system_pll_lock);
+
+	return 0;
+}
+
+void nthw_phy_tile_set_sys_pll_en_ref_clk_fgt(nthw_phy_tile_t *p, uint32_t value)
+{
+	if (p->mp_fld_sys_pll_en_ref_clk_fgt) {
+		nthw_field_get_updated(p->mp_fld_sys_pll_en_ref_clk_fgt);
+		nthw_field_set_val_flush32(p->mp_fld_sys_pll_en_ref_clk_fgt, value);
+	}
+}
+
+uint32_t nthw_phy_tile_get_sys_pll_ref_clk_fgt_enabled(nthw_phy_tile_t *p)
+{
+	if (p->mp_fld_sys_pll_ref_clk_fgt_enabled)
+		return nthw_field_get_updated(p->mp_fld_sys_pll_ref_clk_fgt_enabled);
+
+	return 0;
+}
+
+void nthw_phy_tile_set_sys_pll_forward_rst(nthw_phy_tile_t *p, uint32_t value)
+{
+	if (p->mp_fld_sys_pll_forward_rst) {
+		nthw_field_get_updated(p->mp_fld_sys_pll_forward_rst);
+		nthw_field_set_val_flush32(p->mp_fld_sys_pll_forward_rst, value);
+	}
+}
+
+void nthw_phy_tile_set_sys_pll_force_rst(nthw_phy_tile_t *p, uint32_t value)
+{
+	if (p->mp_fld_sys_pll_force_rst) {
+		nthw_field_get_updated(p->mp_fld_sys_pll_force_rst);
+		nthw_field_set_val_flush32(p->mp_fld_sys_pll_force_rst, value);
+	}
 }
 
 void nthw_phy_tile_set_port_config_rst(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t value)

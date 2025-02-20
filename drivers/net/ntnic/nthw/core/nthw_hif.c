@@ -202,6 +202,16 @@ int nthw_hif_init(nthw_hif_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
+int nthw_hif_force_soft_reset(nthw_hif_t *p)
+{
+	if (p->mp_fld_ctrl_fsr) {
+		nthw_field_update_register(p->mp_fld_ctrl_fsr);
+		nthw_field_set_flush(p->mp_fld_ctrl_fsr);
+	}
+
+	return 0;
+}
+
 int nthw_hif_trigger_sample_time(nthw_hif_t *p)
 {
 	nthw_field_set_val_flush32(p->mp_fld_sample_time, 0xfee1dead);

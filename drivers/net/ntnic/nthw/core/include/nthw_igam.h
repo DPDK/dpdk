@@ -33,5 +33,8 @@ typedef struct nt_igam nthw_igam;
 
 nthw_igam_t *nthw_igam_new(void);
 int nthw_igam_init(nthw_igam_t *p, nthw_fpga_t *p_fpga, int mn_igam_instance);
+uint32_t nthw_igam_read(nthw_igam_t *p, uint32_t address);
+void nthw_igam_write(nthw_igam_t *p, uint32_t address, uint32_t data);
+void nthw_igam_set_ctrl_forward_rst(nthw_igam_t *p, uint32_t value);
 
 #endif	/*  __NTHW_IGAM_H__ */

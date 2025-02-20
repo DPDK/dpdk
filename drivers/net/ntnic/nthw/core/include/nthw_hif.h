@@ -135,6 +135,7 @@ void nthw_hif_delete(nthw_hif_t *p);
 int nthw_hif_init(nthw_hif_t *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int nthw_hif_trigger_sample_time(nthw_hif_t *p);
+int nthw_hif_force_soft_reset(nthw_hif_t *p);
 
 int nthw_hif_stat_req_enable(nthw_hif_t *p);
 int nthw_hif_stat_req_disable(nthw_hif_t *p);
