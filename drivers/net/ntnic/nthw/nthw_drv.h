@@ -11,6 +11,7 @@
 
 #include "nthw_si5332_si5156.h"
 #include "nthw_pcal6416a.h"
+#include "nthw_pca9532.h"
 #include "nthw_phy_tile.h"
 #include "nthw_rpf.h"
 
@@ -21,6 +22,7 @@ typedef struct nthw_agx_s {
 	nthw_i2cm_t *p_i2cm;
 	nthw_pca9849_t *p_pca9849;
 	nthw_pcal6416a_t *p_io_nim;	/* PCAL6416A I/O expander for controlling TS */
+	nthw_pca9532_t *p_pca9532_led;
 	nthw_phy_tile_t *p_phy_tile;
 	nthw_rpf_t *p_rpf;
 } nthw_agx_t;

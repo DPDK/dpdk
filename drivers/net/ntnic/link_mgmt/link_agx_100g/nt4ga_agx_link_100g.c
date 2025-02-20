@@ -43,6 +43,38 @@ void link_agx_100g_init(void)
  * Phy handling
  */
 
+static void phy_get_link_state(adapter_info_t *drv,
+	int port,
+	nt_link_state_p p_curr_link_state,
+	nt_link_state_p p_latched_links_state,
+	uint32_t *p_local_fault,
+	uint32_t *p_remote_fault)
+{
+	uint32_t status = 0;
+	uint32_t status_latch = 0;
+
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+
+	nthw_phy_tile_get_link_summary(p,
+		&status,
+		&status_latch,
+		p_local_fault,
+		p_remote_fault,
+		port);
+
+	if (status == 0x0)
+		*p_curr_link_state = NT_LINK_STATE_DOWN;
+
+	else
+		*p_curr_link_state = NT_LINK_STATE_UP;
+
+	if (status_latch == 0x0)
+		*p_latched_links_state = NT_LINK_STATE_DOWN;
+
+	else
+		*p_latched_links_state = NT_LINK_STATE_UP;
+}
+
 static void phy_rx_path_rst(adapter_info_t *drv, int port, bool reset)
 {
 	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
@@ -240,6 +272,135 @@ static void set_nim_low_power(nim_i2c_ctx_p ctx, uint8_t nim_idx, bool low_power
 		/* De-asserting LP mode pin 5 */
 		nthw_pcal6416a_write(p, 5, low_power ? 1 : 0);
 	}
+}
+
+/*
+ * Link handling
+ */
+
+static void adjust_maturing_delay(adapter_info_t *drv, int port)
+{
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+	nthw_rpf_t *p_rpf = drv->fpga_info.mp_nthw_agx.p_rpf;
+	/*
+	 * Find the maximum of the absolute values of the RX componensation for all
+	 * ports (the RX componensation may not be set for some of the other ports).
+	 */
+	const int16_t unset_rx_compensation = -1;	/* 0xffff */
+	int16_t max_comp = 0;
+
+	for (int i = 0; i < drv->fpga_info.n_phy_ports; i++) {
+		int16_t comp = (int16_t)nthw_phy_tile_get_timestamp_comp_rx(p, i);
+
+		if (comp != unset_rx_compensation && abs(comp) > abs(max_comp))
+			max_comp = comp;
+	}
+
+	int delay = nthw_rpf_get_maturing_delay(p_rpf) - max_comp;
+
+	/*
+	 * For SOF time-stamping account for jumbo frame.
+	 * Frame size = 80000 b. divided by Gb link speed = processing time in ns.
+	 */
+	if (!nthw_rpf_get_ts_at_eof(p_rpf)) {
+		uint32_t jumbo_frame_processing_time_ns = 80000U / 100U;
+		delay -= (int)jumbo_frame_processing_time_ns;
+	}
+
+	const unsigned int delay_bit_width = 19;/* 19 bits maturing delay */
+	const int min_delay = -(1 << (delay_bit_width - 1));
+	const int max_delay = 0;
+
+	if (delay >= min_delay && delay <= max_delay) {
+		nthw_rpf_set_maturing_delay(p_rpf, delay);
+
+	} else {
+		NT_LOG(WRN, NTNIC,
+			"Port %u: Cannot set the RPF adjusted maturing delay to %i because "
+			"that value is outside the legal range [%i:%i]",
+			port, delay, min_delay, max_delay);
+	}
+}
+
+static void set_link_state(adapter_info_t *drv, nim_i2c_ctx_p ctx, link_state_t *state, int port)
+{
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+	/*
+	 * 100G: 4 LEDs per port
+	 */
+
+	bool led_on = state->nim_present && state->link_state == NT_LINK_STATE_UP;
+	uint8_t led_pos = (uint8_t)(port * ctx->lane_count);
+
+	for (uint8_t i = 0; i < ctx->lane_count; i++) {
+		nthw_pca9532_set_led_on(drv->fpga_info.mp_nthw_agx.p_pca9532_led, led_pos + 1,
+			led_on);
+	}
+
+	nthw_phy_tile_set_timestamp_comp_rx(p, port, 0);
+
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena) {
+		/* Updated after mail from JKH 2023-02-07 */
+		nthw_phy_tile_set_timestamp_comp_rx(p, port, 0x9E);
+		/* TODO Hermosa Awaiting comp values to use */
+
+	} else {
+		/* TODO Hermosa Awaiting comp values to use */
+		nthw_phy_tile_set_timestamp_comp_rx(p, port, 0);
+	}
+
+	adjust_maturing_delay(drv, port);	/* MUST be called after timestampCompRx */
+}
+
+static void get_link_state(adapter_info_t *drv, nim_i2c_ctx_p ctx, link_state_t *state, int port)
+{
+	uint32_t local_fault;
+	uint32_t remote_fault;
+	nt_link_state_t curr_link_state;
+
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+
+	/* Save the current state before reading the new */
+	curr_link_state = state->link_state;
+
+	phy_get_link_state(drv, port, &state->link_state, &state->link_state_latched, &local_fault,
+		&remote_fault);
+
+	if (curr_link_state != state->link_state)
+		NT_LOG(DBG, NTNIC, "Port %d: Faults(Local = %d, Remote = %d)", port, local_fault,
+			remote_fault);
+
+	state->nim_present = nim_is_present(ctx, port);
+
+	if (!state->nim_present)
+		return;	/* No nim so no need to do anything */
+
+	state->link_up = state->link_state == NT_LINK_STATE_UP ? true : false;
+
+	if (state->link_state == NT_LINK_STATE_UP)
+		return;	/* The link is up so no need to do anything else */
+
+	if (remote_fault == 0) {
+		phy_reset_rx(drv, port);
+		NT_LOG(DBG, NTNIC, "Port %u: resetRx due to local fault.", port);
+		return;
+	}
+
+	/* In case of too many errors perform a reset */
+	if (nthw_phy_tile_get_rx_hi_ber(p, port)) {
+		NT_LOG(INF, NTNIC, "Port %u: HiBer", port);
+		phy_reset_rx(drv, port);
+		return;
+	}
+
+	/* If FEC is not enabled then no reason to look at FEC state */
+	if (!ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena ||
+		nthw_phy_tile_read_fec_enabled_by_scratch(p, port)) {
+		return;
+	}
+
+	if (!nthw_phy_tile_get_rx_am_lock(p, port))
+		phy_reset_rx(drv, port);
 }
 
 /*
@@ -645,6 +806,7 @@ static void *_common_ptp_nim_state_machine(void *data)
 
 	while (monitor_task_is_running[adapter_no]) {
 		int i;
+		static bool reported_link[NUM_ADAPTER_PORTS_MAX] = { false };
 
 		for (i = 0; i < nb_ports; i++) {
 			const bool is_port_disabled = link_info->port_action[i].port_disable;
@@ -691,12 +853,14 @@ static void *_common_ptp_nim_state_machine(void *data)
 				continue;
 			}
 
+			get_link_state(drv, nim_ctx, &link_state[i], i);
 			link_state[i].link_disabled = is_port_disabled;
 
 			if (!link_state[i].nim_present) {
 				if (!link_state[i].lh_nim_absent) {
 					NT_LOG(INF, NTNIC, "%s: NIM module removed",
 						drv->mp_port_id_str[i]);
+					reported_link[i] = false;
 					link_state[i].link_up = false;
 					link_state[i].lh_nim_absent = true;
 
@@ -706,6 +870,13 @@ static void *_common_ptp_nim_state_machine(void *data)
 				}
 
 				continue;
+			}
+
+			if (reported_link[i] != link_state[i].link_up) {
+				NT_LOG(INF, NTNIC, "%s: link is %s", drv->mp_port_id_str[i],
+					(link_state[i].link_up ? "up" : "down"));
+				reported_link[i] = link_state[i].link_up;
+				set_link_state(drv, nim_ctx, &link_state[i], i);
 			}
 		}
 
