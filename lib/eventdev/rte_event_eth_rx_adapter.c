@@ -2362,10 +2362,8 @@ rxa_ctrl(uint8_t id, int start)
 		dev_info->dev_rx_started = start;
 		if (dev_info->internal_event_port == 0)
 			continue;
-		start ? (*dev->dev_ops->eth_rx_adapter_start)(dev,
-						&rte_eth_devices[i]) :
-			(*dev->dev_ops->eth_rx_adapter_stop)(dev,
-						&rte_eth_devices[i]);
+		start ? dev->dev_ops->eth_rx_adapter_start(dev, &rte_eth_devices[i]) :
+			dev->dev_ops->eth_rx_adapter_stop(dev, &rte_eth_devices[i]);
 	}
 
 	if (use_service) {
@@ -2749,7 +2747,7 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_queue_add == NULL)
+		if (dev->dev_ops->eth_rx_adapter_queue_add == NULL)
 			return -ENOTSUP;
 		if (dev_info->rx_queue == NULL) {
 			dev_info->rx_queue =
@@ -2761,9 +2759,8 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 				return -ENOMEM;
 		}
 
-		ret = (*dev->dev_ops->eth_rx_adapter_queue_add)(dev,
-				&rte_eth_devices[eth_dev_id],
-				rx_queue_id, queue_conf);
+		ret = dev->dev_ops->eth_rx_adapter_queue_add(dev, &rte_eth_devices[eth_dev_id],
+							     rx_queue_id, queue_conf);
 		if (ret == 0) {
 			dev_info->internal_event_port = 1;
 			rxa_update_queue(rx_adapter,
@@ -2904,7 +2901,7 @@ rte_event_eth_rx_adapter_queues_add(uint8_t id, uint16_t eth_dev_id, int32_t rx_
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_queues_add == NULL)
+		if (dev->dev_ops->eth_rx_adapter_queues_add == NULL)
 			return -ENOTSUP;
 
 		if (dev_info->rx_queue == NULL) {
@@ -2917,7 +2914,7 @@ rte_event_eth_rx_adapter_queues_add(uint8_t id, uint16_t eth_dev_id, int32_t rx_
 				return -ENOMEM;
 		}
 
-		ret = (*dev->dev_ops->eth_rx_adapter_queues_add)(
+		ret = dev->dev_ops->eth_rx_adapter_queues_add(
 			dev, &rte_eth_devices[eth_dev_id], rx_queue_id, queue_conf, nb_rx_queues);
 		if (ret == 0) {
 			dev_info->internal_event_port = 1;
@@ -3007,11 +3004,10 @@ rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
 	dev_info = &rx_adapter->eth_devices[eth_dev_id];
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_queue_del == NULL)
+		if (dev->dev_ops->eth_rx_adapter_queue_del == NULL)
 			return -ENOTSUP;
-		ret = (*dev->dev_ops->eth_rx_adapter_queue_del)(dev,
-						&rte_eth_devices[eth_dev_id],
-						rx_queue_id);
+		ret = dev->dev_ops->eth_rx_adapter_queue_del(dev, &rte_eth_devices[eth_dev_id],
+							     rx_queue_id);
 		if (ret == 0) {
 			rxa_update_queue(rx_adapter,
 					&rx_adapter->eth_devices[eth_dev_id],
@@ -3119,10 +3115,11 @@ rte_event_eth_rx_adapter_vector_limits_get(
 	}
 
 	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
-		if (*dev->dev_ops->eth_rx_adapter_vector_limits_get == NULL)
+		if (dev->dev_ops->eth_rx_adapter_vector_limits_get == NULL)
 			return -ENOTSUP;
-		ret = dev->dev_ops->eth_rx_adapter_vector_limits_get(
-			dev, &rte_eth_devices[eth_port_id], limits);
+		ret = dev->dev_ops->eth_rx_adapter_vector_limits_get(dev,
+								     &rte_eth_devices[eth_port_id],
+								     limits);
 	} else {
 		ret = rxa_sw_vector_limits(limits);
 	}
@@ -3211,11 +3208,10 @@ rte_event_eth_rx_adapter_stats_get(uint8_t id,
 		}
 
 		if (dev_info->internal_event_port == 0 ||
-			dev->dev_ops->eth_rx_adapter_stats_get == NULL)
+		    dev->dev_ops->eth_rx_adapter_stats_get == NULL)
 			continue;
-		ret = (*dev->dev_ops->eth_rx_adapter_stats_get)(dev,
-						&rte_eth_devices[i],
-						&dev_stats);
+		ret = dev->dev_ops->eth_rx_adapter_stats_get(dev, &rte_eth_devices[i],
+							     &dev_stats);
 		if (ret)
 			continue;
 		dev_stats_sum.rx_packets += dev_stats.rx_packets;
@@ -3287,7 +3283,7 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_stats_get != NULL) {
-		return (*dev->dev_ops->eth_rx_adapter_queue_stats_get)(dev,
+		return dev->dev_ops->eth_rx_adapter_queue_stats_get(dev,
 						&rte_eth_devices[eth_dev_id],
 						rx_queue_id, stats);
 	}
@@ -3332,10 +3328,9 @@ rte_event_eth_rx_adapter_stats_reset(uint8_t id)
 		}
 
 		if (dev_info->internal_event_port == 0 ||
-			dev->dev_ops->eth_rx_adapter_stats_reset == NULL)
+		    dev->dev_ops->eth_rx_adapter_stats_reset == NULL)
 			continue;
-		(*dev->dev_ops->eth_rx_adapter_stats_reset)(dev,
-							&rte_eth_devices[i]);
+		dev->dev_ops->eth_rx_adapter_stats_reset(dev, &rte_eth_devices[i]);
 	}
 
 	memset(&rx_adapter->stats, 0, sizeof(rx_adapter->stats));
@@ -3389,7 +3384,7 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_stats_reset != NULL) {
-		return (*dev->dev_ops->eth_rx_adapter_queue_stats_reset)(dev,
+		return dev->dev_ops->eth_rx_adapter_queue_stats_reset(dev,
 						&rte_eth_devices[eth_dev_id],
 						rx_queue_id);
 	}
@@ -3556,10 +3551,9 @@ rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 
 	dev = &rte_eventdevs[rx_adapter->eventdev_id];
 	if (dev->dev_ops->eth_rx_adapter_queue_conf_get != NULL) {
-		ret = (*dev->dev_ops->eth_rx_adapter_queue_conf_get)(dev,
-						&rte_eth_devices[eth_dev_id],
-						rx_queue_id,
-						queue_conf);
+		ret = dev->dev_ops->eth_rx_adapter_queue_conf_get(dev,
+								  &rte_eth_devices[eth_dev_id],
+								  rx_queue_id, queue_conf);
 		return ret;
 	}
 

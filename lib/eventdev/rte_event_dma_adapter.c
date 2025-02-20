@@ -1030,7 +1030,7 @@ rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
 	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW) ||
 	    (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
 	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW)) {
-		if (*dev->dev_ops->dma_adapter_vchan_add == NULL)
+		if (dev->dev_ops->dma_adapter_vchan_add == NULL)
 			return -ENOTSUP;
 		if (dev_info->vchanq == NULL) {
 			dev_info->vchanq = rte_zmalloc_socket(adapter->mem_name,
@@ -1054,7 +1054,7 @@ rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
 			}
 		}
 
-		ret = (*dev->dev_ops->dma_adapter_vchan_add)(dev, dma_dev_id, vchan, event);
+		ret = dev->dev_ops->dma_adapter_vchan_add(dev, dma_dev_id, vchan, event);
 		if (ret)
 			return ret;
 
@@ -1132,9 +1132,9 @@ rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dma_dev_id, uint16_t vchan)
 	if ((cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) ||
 	    (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
 	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW)) {
-		if (*dev->dev_ops->dma_adapter_vchan_del == NULL)
+		if (dev->dev_ops->dma_adapter_vchan_del == NULL)
 			return -ENOTSUP;
-		ret = (*dev->dev_ops->dma_adapter_vchan_del)(dev, dma_dev_id, vchan);
+		ret = dev->dev_ops->dma_adapter_vchan_del(dev, dma_dev_id, vchan);
 		if (ret == 0) {
 			edma_update_vchanq_info(adapter, dev_info, vchan, 0);
 			if (dev_info->num_vchanq == 0) {
@@ -1212,8 +1212,8 @@ edma_adapter_ctrl(uint8_t id, int start)
 		dev_info->dev_started = start;
 		if (dev_info->internal_event_port == 0)
 			continue;
-		start ? (*dev->dev_ops->dma_adapter_start)(dev, i) :
-			(*dev->dev_ops->dma_adapter_stop)(dev, i);
+		start ? dev->dev_ops->dma_adapter_start(dev, i) :
+			dev->dev_ops->dma_adapter_stop(dev, i);
 	}
 
 	if (use_service)
@@ -1363,7 +1363,7 @@ rte_event_dma_adapter_stats_get(uint8_t id, struct rte_event_dma_adapter_stats *
 		    dev->dev_ops->dma_adapter_stats_get == NULL)
 			continue;
 
-		ret = (*dev->dev_ops->dma_adapter_stats_get)(dev, i, &dev_stats);
+		ret = dev->dev_ops->dma_adapter_stats_get(dev, i, &dev_stats);
 		if (ret)
 			continue;
 
@@ -1404,7 +1404,7 @@ rte_event_dma_adapter_stats_reset(uint8_t id)
 		    dev->dev_ops->dma_adapter_stats_reset == NULL)
 			continue;
 
-		(*dev->dev_ops->dma_adapter_stats_reset)(dev, i);
+		dev->dev_ops->dma_adapter_stats_reset(dev, i);
 	}
 
 	memset(&adapter->dma_stats, 0, sizeof(adapter->dma_stats));
