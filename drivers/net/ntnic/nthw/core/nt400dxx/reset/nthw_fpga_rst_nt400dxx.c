@@ -9,6 +9,7 @@
 #include "nthw_fpga.h"
 #include "nthw_hif.h"
 #include "ntnic_mod_reg.h"
+#include "nthw_igam.h"
 
 static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 {
@@ -197,6 +198,9 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 		NT_LOG(ERR, NTHW, "%s: Failed to create Phy Tile Module", p_adapter_id_str);
 		return -1;
 	}
+
+	nthw_igam_t *p_igam = nthw_igam_new();
+	nthw_igam_init(p_igam, p_fpga, 0);
 
 	return 0;
 }
