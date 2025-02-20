@@ -1689,7 +1689,7 @@ rte_cryptodev_raw_enqueue(struct rte_crypto_raw_dp_ctx *ctx,
 	struct rte_crypto_va_iova_ptr *aad_or_auth_iv,
 	void *user_data)
 {
-	return (*ctx->enqueue)(ctx->qp_data, ctx->drv_ctx_data, data_vec,
+	return ctx->enqueue(ctx->qp_data, ctx->drv_ctx_data, data_vec,
 		n_data_vecs, ofs, iv, digest, aad_or_auth_iv, user_data);
 }
 
@@ -1784,8 +1784,7 @@ static __rte_always_inline void *
 rte_cryptodev_raw_dequeue(struct rte_crypto_raw_dp_ctx *ctx,
 		int *dequeue_status, enum rte_crypto_op_status *op_status)
 {
-	return (*ctx->dequeue)(ctx->qp_data, ctx->drv_ctx_data, dequeue_status,
-			op_status);
+	return ctx->dequeue(ctx->qp_data, ctx->drv_ctx_data, dequeue_status, op_status);
 }
 
 /**

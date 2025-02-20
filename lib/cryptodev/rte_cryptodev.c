@@ -1194,9 +1194,9 @@ rte_cryptodev_queue_pairs_config(struct rte_cryptodev *dev, uint16_t nb_qpairs,
 
 	memset(&dev_info, 0, sizeof(struct rte_cryptodev_info));
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->dev_infos_get)(dev, &dev_info);
+	dev->dev_ops->dev_infos_get(dev, &dev_info);
 
 	if (nb_qpairs > (dev_info.max_nb_queue_pairs)) {
 		CDEV_LOG_ERR("Invalid num queue_pairs (%u) for dev %u",
@@ -1224,11 +1224,11 @@ rte_cryptodev_queue_pairs_config(struct rte_cryptodev *dev, uint16_t nb_qpairs,
 
 		qp = dev->data->queue_pairs;
 
-		if (*dev->dev_ops->queue_pair_release == NULL)
+		if (dev->dev_ops->queue_pair_release == NULL)
 			return -ENOTSUP;
 
 		for (i = nb_qpairs; i < old_nb_queues; i++) {
-			ret = (*dev->dev_ops->queue_pair_release)(dev, i);
+			ret = dev->dev_ops->queue_pair_release(dev, i);
 			if (ret < 0)
 				return ret;
 			qp[i] = NULL;
@@ -1256,11 +1256,11 @@ rte_cryptodev_queue_pair_reset(uint8_t dev_id, uint16_t queue_pair_id,
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->queue_pair_reset == NULL)
+	if (dev->dev_ops->queue_pair_reset == NULL)
 		return -ENOTSUP;
 
 	rte_cryptodev_trace_queue_pair_reset(dev_id, queue_pair_id, qp_conf, socket_id);
-	return (*dev->dev_ops->queue_pair_reset)(dev, queue_pair_id, qp_conf, socket_id);
+	return dev->dev_ops->queue_pair_reset(dev, queue_pair_id, qp_conf, socket_id);
 }
 
 int
@@ -1282,7 +1282,7 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 		return -EBUSY;
 	}
 
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 
 	rte_spinlock_lock(&rte_cryptodev_callback_lock);
@@ -1307,7 +1307,7 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 	}
 
 	rte_cryptodev_trace_configure(dev_id, config);
-	return (*dev->dev_ops->dev_configure)(dev, config);
+	return dev->dev_ops->dev_configure(dev, config);
 }
 
 int
@@ -1325,7 +1325,7 @@ rte_cryptodev_start(uint8_t dev_id)
 
 	dev = &rte_crypto_devices[dev_id];
 
-	if (*dev->dev_ops->dev_start == NULL)
+	if (dev->dev_ops->dev_start == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started != 0) {
@@ -1334,7 +1334,7 @@ rte_cryptodev_start(uint8_t dev_id)
 		return 0;
 	}
 
-	diag = (*dev->dev_ops->dev_start)(dev);
+	diag = dev->dev_ops->dev_start(dev);
 	/* expose selection of PMD fast-path functions */
 	cryptodev_fp_ops_set(rte_crypto_fp_ops + dev_id, dev);
 
@@ -1359,7 +1359,7 @@ rte_cryptodev_stop(uint8_t dev_id)
 
 	dev = &rte_crypto_devices[dev_id];
 
-	if (*dev->dev_ops->dev_stop == NULL)
+	if (dev->dev_ops->dev_stop == NULL)
 		return;
 
 	if (dev->data->dev_started == 0) {
@@ -1371,7 +1371,7 @@ rte_cryptodev_stop(uint8_t dev_id)
 	/* point fast-path functions to dummy ones */
 	cryptodev_fp_ops_reset(rte_crypto_fp_ops + dev_id);
 
-	(*dev->dev_ops->dev_stop)(dev);
+	dev->dev_ops->dev_stop(dev);
 	rte_cryptodev_trace_stop(dev_id);
 	dev->data->dev_started = 0;
 }
@@ -1407,9 +1407,9 @@ rte_cryptodev_close(uint8_t dev_id)
 		}
 	}
 
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
-	retval = (*dev->dev_ops->dev_close)(dev);
+	retval = dev->dev_ops->dev_close(dev);
 	rte_cryptodev_trace_close(dev_id, retval);
 
 	if (retval < 0)
@@ -1518,12 +1518,11 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		return -EBUSY;
 	}
 
-	if (*dev->dev_ops->queue_pair_setup == NULL)
+	if (dev->dev_ops->queue_pair_setup == NULL)
 		return -ENOTSUP;
 
 	rte_cryptodev_trace_queue_pair_setup(dev_id, queue_pair_id, qp_conf);
-	return (*dev->dev_ops->queue_pair_setup)(dev, queue_pair_id, qp_conf,
-			socket_id);
+	return dev->dev_ops->queue_pair_setup(dev, queue_pair_id, qp_conf, socket_id);
 }
 
 struct rte_cryptodev_cb *
@@ -1837,9 +1836,9 @@ rte_cryptodev_stats_get(uint8_t dev_id, struct rte_cryptodev_stats *stats)
 	dev = &rte_crypto_devices[dev_id];
 	memset(stats, 0, sizeof(*stats));
 
-	if (*dev->dev_ops->stats_get == NULL)
+	if (dev->dev_ops->stats_get == NULL)
 		return -ENOTSUP;
-	(*dev->dev_ops->stats_get)(dev, stats);
+	dev->dev_ops->stats_get(dev, stats);
 
 	rte_cryptodev_trace_stats_get(dev_id, stats);
 	return 0;
@@ -1859,9 +1858,9 @@ rte_cryptodev_stats_reset(uint8_t dev_id)
 
 	dev = &rte_crypto_devices[dev_id];
 
-	if (*dev->dev_ops->stats_reset == NULL)
+	if (dev->dev_ops->stats_reset == NULL)
 		return;
-	(*dev->dev_ops->stats_reset)(dev);
+	dev->dev_ops->stats_reset(dev);
 }
 
 void
@@ -1878,9 +1877,9 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info)
 
 	memset(dev_info, 0, sizeof(struct rte_cryptodev_info));
 
-	if (*dev->dev_ops->dev_infos_get == NULL)
+	if (dev->dev_ops->dev_infos_get == NULL)
 		return;
-	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
+	dev->dev_ops->dev_infos_get(dev, dev_info);
 
 	dev_info->driver_name = dev->device->driver->name;
 	dev_info->device = dev->device;
@@ -2017,7 +2016,7 @@ rte_cryptodev_queue_pair_event_error_query(uint8_t dev_id, uint16_t qp_id)
 
 	if (qp_id >= dev->data->nb_queue_pairs)
 		return -EINVAL;
-	if (*dev->dev_ops->queue_pair_event_error_query == NULL)
+	if (dev->dev_ops->queue_pair_event_error_query == NULL)
 		return -ENOTSUP;
 
 	return dev->dev_ops->queue_pair_event_error_query(dev, qp_id);
@@ -2237,7 +2236,7 @@ rte_cryptodev_asym_session_create(uint8_t dev_id,
 	/* Clear device session pointer.*/
 	memset(sess->sess_private_data, 0, session_priv_data_sz + sess->user_data_sz);
 
-	if (*dev->dev_ops->asym_session_configure == NULL)
+	if (dev->dev_ops->asym_session_configure == NULL)
 		return -ENOTSUP;
 
 	if (sess->sess_private_data[0] == 0) {
@@ -2286,7 +2285,7 @@ rte_cryptodev_sym_session_free(uint8_t dev_id, void *_sess)
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->sym_session_clear == NULL)
+	if (dev->dev_ops->sym_session_clear == NULL)
 		return -ENOTSUP;
 
 	dev->dev_ops->sym_session_clear(dev, sess);
@@ -2316,7 +2315,7 @@ rte_cryptodev_asym_session_free(uint8_t dev_id, void *sess)
 	if (dev == NULL || sess == NULL)
 		return -EINVAL;
 
-	if (*dev->dev_ops->asym_session_clear == NULL)
+	if (dev->dev_ops->asym_session_clear == NULL)
 		return -ENOTSUP;
 
 	dev->dev_ops->asym_session_clear(dev, sess);
@@ -2348,10 +2347,10 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id)
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
-	if (*dev->dev_ops->sym_session_get_size == NULL)
+	if (dev->dev_ops->sym_session_get_size == NULL)
 		return 0;
 
-	priv_sess_size = (*dev->dev_ops->sym_session_get_size)(dev);
+	priv_sess_size = dev->dev_ops->sym_session_get_size(dev);
 
 	rte_cryptodev_trace_sym_get_private_session_size(dev_id,
 		priv_sess_size);
@@ -2370,10 +2369,10 @@ rte_cryptodev_asym_get_private_session_size(uint8_t dev_id)
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
-	if (*dev->dev_ops->asym_session_get_size == NULL)
+	if (dev->dev_ops->asym_session_get_size == NULL)
 		return 0;
 
-	priv_sess_size = (*dev->dev_ops->asym_session_get_size)(dev);
+	priv_sess_size = dev->dev_ops->asym_session_get_size(dev);
 
 	rte_cryptodev_trace_asym_get_private_session_size(dev_id,
 		priv_sess_size);
@@ -2474,7 +2473,7 @@ rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
-	if (*dev->dev_ops->sym_cpu_process == NULL ||
+	if (dev->dev_ops->sym_cpu_process == NULL ||
 		!(dev->feature_flags & RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO)) {
 		sym_crypto_fill_status(vec, ENOTSUP);
 		return 0;
@@ -2497,12 +2496,12 @@ rte_cryptodev_get_raw_dp_ctx_size(uint8_t dev_id)
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
-	if (*dev->dev_ops->sym_get_raw_dp_ctx_size == NULL ||
+	if (dev->dev_ops->sym_get_raw_dp_ctx_size == NULL ||
 		!(dev->feature_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP)) {
 		return -ENOTSUP;
 	}
 
-	priv_size = (*dev->dev_ops->sym_get_raw_dp_ctx_size)(dev);
+	priv_size = dev->dev_ops->sym_get_raw_dp_ctx_size(dev);
 	if (priv_size < 0)
 		return -ENOTSUP;
 
@@ -2530,7 +2529,7 @@ rte_cryptodev_configure_raw_dp_ctx(uint8_t dev_id, uint16_t qp_id,
 
 	rte_cryptodev_trace_configure_raw_dp_ctx(dev_id, qp_id, sess_type);
 
-	return (*dev->dev_ops->sym_configure_raw_dp_ctx)(dev, qp_id, ctx,
+	return dev->dev_ops->sym_configure_raw_dp_ctx(dev, qp_id, ctx,
 			sess_type, session_ctx, is_update);
 }
 
@@ -2556,8 +2555,7 @@ rte_cryptodev_session_event_mdata_set(uint8_t dev_id, void *sess,
 	rte_cryptodev_trace_session_event_mdata_set(dev_id, sess, op_type,
 		sess_type, ev_mdata, size);
 
-	return (*dev->dev_ops->session_ev_mdata_set)(dev, sess, op_type,
-			sess_type, ev_mdata);
+	return dev->dev_ops->session_ev_mdata_set(dev, sess, op_type, sess_type, ev_mdata);
 
 skip_pmd_op:
 	if (op_type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
@@ -2583,7 +2581,7 @@ rte_cryptodev_raw_enqueue_burst(struct rte_crypto_raw_dp_ctx *ctx,
 	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
 	void **user_data, int *enqueue_status)
 {
-	return (*ctx->enqueue_burst)(ctx->qp_data, ctx->drv_ctx_data, vec,
+	return ctx->enqueue_burst(ctx->qp_data, ctx->drv_ctx_data, vec,
 			ofs, user_data, enqueue_status);
 }
 
@@ -2591,7 +2589,7 @@ int
 rte_cryptodev_raw_enqueue_done(struct rte_crypto_raw_dp_ctx *ctx,
 		uint32_t n)
 {
-	return (*ctx->enqueue_done)(ctx->qp_data, ctx->drv_ctx_data, n);
+	return ctx->enqueue_done(ctx->qp_data, ctx->drv_ctx_data, n);
 }
 
 uint32_t
@@ -2602,7 +2600,7 @@ rte_cryptodev_raw_dequeue_burst(struct rte_crypto_raw_dp_ctx *ctx,
 	void **out_user_data, uint8_t is_user_data_array,
 	uint32_t *n_success_jobs, int *status)
 {
-	return (*ctx->dequeue_burst)(ctx->qp_data, ctx->drv_ctx_data,
+	return ctx->dequeue_burst(ctx->qp_data, ctx->drv_ctx_data,
 		get_dequeue_count, max_nb_to_dequeue, post_dequeue,
 		out_user_data, is_user_data_array, n_success_jobs, status);
 }
@@ -2611,7 +2609,7 @@ int
 rte_cryptodev_raw_dequeue_done(struct rte_crypto_raw_dp_ctx *ctx,
 		uint32_t n)
 {
-	return (*ctx->dequeue_done)(ctx->qp_data, ctx->drv_ctx_data, n);
+	return ctx->dequeue_done(ctx->qp_data, ctx->drv_ctx_data, n);
 }
 
 /** Initialise rte_crypto_op mempool element */
