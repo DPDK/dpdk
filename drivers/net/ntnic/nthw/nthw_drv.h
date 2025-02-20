@@ -14,6 +14,7 @@
 #include "nthw_pca9532.h"
 #include "nthw_phy_tile.h"
 #include "nthw_rpf.h"
+#include "nthw_prm_nt400dxx.h"
 #include "nthw_pcm_nt400dxx.h"
 
 /*
@@ -26,6 +27,7 @@ typedef struct nthw_agx_s {
 	nthw_pca9532_t *p_pca9532_led;
 	nthw_si5332_t *p_si5332;
 	nthw_si5156_t *p_si5156;
+	nthw_prm_nt400dxx_t *p_prm;
 	nthw_pcm_nt400dxx_t *p_pcm;
 	nthw_phy_tile_t *p_phy_tile;
 	nthw_rpf_t *p_rpf;
