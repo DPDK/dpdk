@@ -15,6 +15,26 @@
 
 static const uint8_t led_sel_reg[4] = { 6, 7, 8, 9 };
 
+nthw_pca9532_t *nthw_pca9532_new(void)
+{
+	nthw_pca9532_t *p = malloc(sizeof(nthw_pca9532_t));
+
+	if (p)
+		memset(p, 0, sizeof(nthw_pca9532_t));
+
+	return p;
+}
+
+int nthw_pca9532_init(nthw_pca9532_t *p, nthw_i2cm_t *p_nt_i2cm, uint8_t dev_address,
+	nthw_pca9849_t *pca9849, uint8_t mux_channel)
+{
+	p->mp_nt_i2cm = p_nt_i2cm;
+	p->m_dev_address = dev_address;
+	p->mp_ca9849 = pca9849;
+	p->m_mux_channel = mux_channel;
+	return 0;
+}
+
 void nthw_pca9532_set_led_on(nthw_pca9532_t *p, uint8_t led_pos, bool state_on)
 {
 	if (led_pos >= 16) {

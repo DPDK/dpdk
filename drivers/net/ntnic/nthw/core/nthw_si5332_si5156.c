@@ -13,6 +13,24 @@
 
 #include "nthw_si5332_si5156.h"
 
+nthw_pca9849_t *nthw_pca9849_new(void)
+{
+	nthw_pca9849_t *p = malloc(sizeof(nthw_pca9849_t));
+
+	if (p)
+		memset(p, 0, sizeof(nthw_pca9849_t));
+
+	return p;
+}
+
+int nthw_pca9849_init(nthw_pca9849_t *p, nthw_i2cm_t *p_nt_i2cm, uint8_t dev_address)
+{
+	p->mp_nt_i2cm = p_nt_i2cm;
+	p->m_dev_address = dev_address;
+	p->m_current_channel = 0;
+	return 0;
+}
+
 int nthw_pca9849_set_channel(nthw_pca9849_t *p, uint8_t channel)
 {
 	int res;

@@ -77,6 +77,29 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	if (res != 0)
 		return res;
 
+	/* Create pca9849 i2c mux */
+	p_fpga_info->mp_nthw_agx.p_pca9849 = nthw_pca9849_new();
+	res = nthw_pca9849_init(p_fpga_info->mp_nthw_agx.p_pca9849,
+			p_fpga_info->mp_nthw_agx.p_i2cm,
+			0x71);
+
+	if (res != 0)
+		return res;
+
+	/* Create LED driver */
+	p_fpga_info->mp_nthw_agx.p_pca9532_led = nthw_pca9532_new();
+	res = nthw_pca9532_init(p_fpga_info->mp_nthw_agx.p_pca9532_led,
+			p_fpga_info->mp_nthw_agx.p_i2cm,
+			0x60,
+			p_fpga_info->mp_nthw_agx.p_pca9849,
+			3);
+
+	if (res != 0)
+		return res;
+
+	for (uint8_t i = 0; i < 16; i++)
+		nthw_pca9532_set_led_on(p_fpga_info->mp_nthw_agx.p_pca9532_led, i, false);
+
 	/* Create PCM */
 	p_fpga_info->mp_nthw_agx.p_pcm = nthw_pcm_nt400dxx_new();
 	res = nthw_pcm_nt400dxx_init(p_fpga_info->mp_nthw_agx.p_pcm, p_fpga, 0);

@@ -19,6 +19,9 @@ struct nthw_pca9849 {
 
 typedef struct nthw_pca9849 nthw_pca9849_t;
 
+nthw_pca9849_t *nthw_pca9849_new(void);
+int nthw_pca9849_init(nthw_pca9849_t *p, nthw_i2cm_t *p_nt_i2cm, uint8_t dev_address);
+
 int nthw_pca9849_set_channel(nthw_pca9849_t *p, uint8_t channel);
 
 /*
