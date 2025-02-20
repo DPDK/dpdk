@@ -184,8 +184,12 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 {
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	nthw_fpga_t *p_fpga = NULL;
+	int res = -1;
 
 	p_fpga = p_fpga_info->mp_fpga;
+
+	nthw_pcm_nt400dxx_t *p_pcm = p_fpga_info->mp_nthw_agx.p_pcm;
+	nthw_prm_nt400dxx_t *p_prm = p_fpga_info->mp_nthw_agx.p_prm;
 
 	assert(p_fpga_info);
 
@@ -199,8 +203,215 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 		return -1;
 	}
 
+	nthw_phy_tile_t *p_phy_tile = p_fpga_info->mp_nthw_agx.p_phy_tile;
+
 	nthw_igam_t *p_igam = nthw_igam_new();
 	nthw_igam_init(p_igam, p_fpga, 0);
+
+	if (p_igam) {
+		if (!nthw_phy_tile_use_phy_tile_pll_check(p_fpga_info->mp_nthw_agx.p_phy_tile)) {
+			NT_LOG(DBG, NTHW, "%s: IGAM module present.", p_adapter_id_str);
+			uint32_t data;
+
+			p_fpga_info->mp_nthw_agx.p_igam = p_igam;
+
+			/*
+			 * (E) When the reference clock for the F-tile system PLL is started (and
+			 * stable) it must be enabled using the Intel Global Avalon Memory-Mapped
+			 * Mailbox (IGAM) module.
+			 */
+
+			nthw_igam_write(p_igam, 0xffff8, 0x90000000);
+
+			/* (F) Check that the system PLL is ready. */
+			for (int i = 1000; i >= 0; i--) {
+				nt_os_wait_usec(1000);
+				data = nthw_igam_read(p_igam, 0xffff4);
+
+				if (data == 0x80000000 || data == 0xA0000000) {
+					NT_LOG(INF,
+						NTHW,
+						"%s: All enabled system PLLs are locked. Response: %#08x",
+						p_adapter_id_str,
+						data);
+					break;
+				}
+
+				if (i == 0) {
+					NT_LOG(ERR,
+						NTHW,
+						"%s: Timeout waiting for all system PLLs to lock. Response: %#08x",
+						p_adapter_id_str,
+						data);
+					return -1;
+				}
+			}
+
+		} else {
+			nthw_igam_set_ctrl_forward_rst(p_igam,
+				0);	/* Ensure that the Avalon bus is not */
+			/* reset at every driver re-load. */
+			nt_os_wait_usec(1000000);
+			NT_LOG(DBG, NTHW, "%s: IGAM module not used.", p_adapter_id_str);
+		}
+
+	} else {
+		NT_LOG(DBG, NTHW, "%s: No IGAM module present.", p_adapter_id_str);
+	}
+
+	/*
+	 * (G) Reset TS PLL and select Time-of-Day clock (tod_fpga_clk). Source is either
+	 * from ZL clock device or SiTime tunable XO. NOTE that the PLL must be held in
+	 * RESET during clock switchover.
+	 */
+
+	if (p_fpga_info->mp_nthw_agx.tcxo_present && p_fpga_info->mp_nthw_agx.tcxo_capable) {
+		nthw_pcm_nt400dxx_set_ts_pll_recal(p_pcm, 1);
+		nt_os_wait_usec(1000);
+		nthw_pcm_nt400dxx_set_ts_pll_recal(p_pcm, 0);
+		nt_os_wait_usec(1000);
+	}
+
+	/* (I) Wait for TS PLL locked. */
+	for (int i = 1000; i >= 0; i--) {
+		nt_os_wait_usec(1000);
+
+		if (nthw_pcm_nt400dxx_get_ts_pll_locked_stat(p_pcm))
+			break;
+
+		if (i == 0) {
+			NT_LOG(ERR,
+				NTHW,
+				"%s: %s: Time out waiting for TS PLL locked",
+				p_adapter_id_str,
+				__func__);
+			return -1;
+		}
+	}
+
+	/* NT_RAB0_REG.PCM_NT400D1X.STAT.TS_PLL_LOCKED==1 */
+
+	/* (J) Set latched TS PLL locked. */
+	nthw_pcm_nt400dxx_set_ts_pll_locked_latch(p_pcm, 1);
+	/* NT_RAB0_REG.PCM_NT400D1X.LATCH.TS_PLL_LOCKED=1 */
+
+	/* (K) Ensure TS latched status bit is still set. */
+	if (!nthw_pcm_nt400dxx_get_ts_pll_locked_stat(p_pcm)) {
+		NT_LOG(ERR,
+			NTHW,
+			"%s: %s: TS latched status bit toggled",
+			p_adapter_id_str,
+			__func__);
+		return -1;
+	}
+
+	/* NT_RAB0_REG.PCM_NT400D1X.LATCH.TS_PLL_LOCKED==1 */
+
+	/*
+	 * At this point all system clocks and TS clocks are running.
+	 * Last thing to do before proceeding to product reset is to
+	 * de-assert the platform reset and enable the RAB buses.
+	 */
+
+	/* (K1) Force HIF soft reset. */
+	nthw_hif_t *p_nthw_hif = nthw_hif_new();
+	res = nthw_hif_init(p_nthw_hif, p_fpga, 0);
+
+	if (res == 0)
+		NT_LOG(DBG, NTHW, "%s: Hif module found", p_fpga_info->mp_adapter_id_str);
+
+	nt_os_wait_usec(1000);
+	nthw_hif_force_soft_reset(p_nthw_hif);
+	nt_os_wait_usec(1000);
+	nthw_hif_delete(p_nthw_hif);
+
+	/* (L) De-assert platform reset. */
+	nthw_prm_nt400dxx_platform_rst(p_prm, 0);
+
+	/*
+	 * (M) Enable RAB1 and RAB2.
+	 * NT_BAR_REG.RAC.RAB_INIT.RAB=0
+	 */
+	NT_LOG_DBGX(DBG, NTHW, "%s: RAB Init", p_adapter_id_str);
+	nthw_rac_rab_init(p_fpga_info->mp_nthw_rac, 0);
+	nthw_rac_rab_setup(p_fpga_info->mp_nthw_rac);
+
+	NT_LOG_DBGX(DBG, NTHW, "%s: RAB Flush", p_adapter_id_str);
+	nthw_rac_rab_flush(p_fpga_info->mp_nthw_rac);
+
+	/*
+	 * FPGAs with newer PHY_TILE versions must use PhyTile to check that system PLL is ready.
+	 * It has been added here after consultations with ORA since the test must be performed
+	 * after de-assertion of platform reset.
+	 */
+
+	if (nthw_phy_tile_use_phy_tile_pll_check(p_phy_tile)) {
+		/* Ensure that the Avalon bus is not reset at every driver re-load. */
+		nthw_phy_tile_set_sys_pll_forward_rst(p_phy_tile, 0);
+
+		nthw_phy_tile_set_sys_pll_set_rdy(p_phy_tile, 0x07);
+		NT_LOG_DBGX(DBG, NTHW, "%s: setSysPllSetRdy.", p_adapter_id_str);
+
+		/* (F) Check that the system PLL is ready. */
+		for (int i = 1000; i >= 0; i--) {
+			nt_os_wait_usec(1000);
+
+			if (nthw_phy_tile_get_sys_pll_get_rdy(p_phy_tile) &&
+				nthw_phy_tile_get_sys_pll_system_pll_lock(p_phy_tile)) {
+				break;
+			}
+
+			if (i == 500) {
+				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 1);
+				nt_os_wait_usec(1000);
+				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 0);
+				NT_LOG_DBGX(DBG,
+					NTHW,
+					"%s: setSysPllForceRst due to system PLL not ready.",
+					p_adapter_id_str);
+			}
+
+			if (i == 0) {
+				NT_LOG_DBGX(DBG,
+					NTHW,
+					"%s: Timeout waiting for all system PLLs to lock",
+					p_adapter_id_str);
+				return -1;
+			}
+		}
+
+		nt_os_wait_usec(100000);/* 100 ms */
+
+		uint32_t fgt_enable = 0x0d;	/* FGT 0, 2 & 3 */
+		nthw_phy_tile_set_sys_pll_en_ref_clk_fgt(p_phy_tile, fgt_enable);
+
+		for (int i = 1000; i >= 0; i--) {
+			nt_os_wait_usec(1000);
+
+			if (nthw_phy_tile_get_sys_pll_ref_clk_fgt_enabled(p_phy_tile) ==
+				fgt_enable) {
+				break;
+			}
+
+			if (i == 500) {
+				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 1);
+				nt_os_wait_usec(1000);
+				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 0);
+				NT_LOG_DBGX(DBG,
+					NTHW,
+					"%s: setSysPllForceRst due to FGTs not ready.",
+					p_adapter_id_str);
+			}
+
+			if (i == 0) {
+				NT_LOG_DBGX(DBG,
+					NTHW,
+					"%s: Timeout waiting for FGTs to lock",
+					p_adapter_id_str);
+				return -1;
+			}
+		}
+	}
 
 	return 0;
 }

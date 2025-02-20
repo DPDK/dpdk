@@ -60,3 +60,34 @@ int nthw_igam_init(nthw_igam_t *p, nthw_fpga_t *p_fpga, int mn_igam_instance)
 
 	return 0;
 }
+
+uint32_t nthw_igam_read(nthw_igam_t *p, uint32_t address)
+{
+	nthw_register_update(p->mp_reg_base);
+	nthw_field_set_val32(p->mp_fld_base_cmd, 0);
+	nthw_field_set_val_flush32(p->mp_fld_base_ptr, address);
+
+	while (nthw_field_get_updated(p->mp_fld_base_busy) == 1)
+		nt_os_wait_usec(100);
+
+	return nthw_field_get_updated(p->mp_fld_data_data);
+}
+
+void nthw_igam_write(nthw_igam_t *p, uint32_t address, uint32_t data)
+{
+	nthw_field_set_val_flush32(p->mp_fld_data_data, data);
+	nthw_register_update(p->mp_reg_base);
+	nthw_field_set_val32(p->mp_fld_base_ptr, address);
+	nthw_field_set_val_flush32(p->mp_fld_base_cmd, 1);
+
+	while (nthw_field_get_updated(p->mp_fld_base_busy) == 1)
+		nt_os_wait_usec(100);
+}
+
+void nthw_igam_set_ctrl_forward_rst(nthw_igam_t *p, uint32_t value)
+{
+	if (p->mp_fld_ctrl_forward_rst) {
+		nthw_field_get_updated(p->mp_fld_ctrl_forward_rst);
+		nthw_field_set_val_flush32(p->mp_fld_ctrl_forward_rst, value);
+	}
+}

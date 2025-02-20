@@ -54,3 +54,27 @@ int nthw_pcm_nt400dxx_init(nthw_pcm_nt400dxx_t *p, nthw_fpga_t *p_fpga, int n_in
 
 	return 0;
 }
+
+void nthw_pcm_nt400dxx_set_ts_pll_recal(nthw_pcm_nt400dxx_t *p, uint32_t val)
+{
+	if (p->mp_fld_ctrl_ts_pll_recal) {
+		nthw_field_update_register(p->mp_fld_ctrl_ts_pll_recal);
+		nthw_field_set_val_flush32(p->mp_fld_ctrl_ts_pll_recal, val);
+	}
+}
+
+bool nthw_pcm_nt400dxx_get_ts_pll_locked_stat(nthw_pcm_nt400dxx_t *p)
+{
+	return nthw_field_get_updated(p->mp_fld_stat_ts_pll_locked) != 0;
+}
+
+bool nthw_pcm_nt400dxx_get_ts_pll_locked_latch(nthw_pcm_nt400dxx_t *p)
+{
+	return nthw_field_get_updated(p->mp_fld_latch_ts_pll_locked) != 0;
+}
+
+void nthw_pcm_nt400dxx_set_ts_pll_locked_latch(nthw_pcm_nt400dxx_t *p, uint32_t val)
+{
+	nthw_field_update_register(p->mp_fld_latch_ts_pll_locked);
+	nthw_field_set_val_flush32(p->mp_fld_latch_ts_pll_locked, val);
+}

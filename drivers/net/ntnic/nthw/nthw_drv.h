@@ -16,6 +16,7 @@
 #include "nthw_rpf.h"
 #include "nthw_prm_nt400dxx.h"
 #include "nthw_pcm_nt400dxx.h"
+#include "nthw_igam.h"
 
 /*
  * Structs for controlling Agilex based NT400DXX adapter
@@ -30,6 +31,7 @@ typedef struct nthw_agx_s {
 	nthw_si5156_t *p_si5156;
 	nthw_prm_nt400dxx_t *p_prm;
 	nthw_pcm_nt400dxx_t *p_pcm;
+	nthw_igam_t *p_igam;
 	nthw_phy_tile_t *p_phy_tile;
 	nthw_rpf_t *p_rpf;
 	bool tcxo_present;
