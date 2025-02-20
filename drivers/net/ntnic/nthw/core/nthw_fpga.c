@@ -266,11 +266,17 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	p_fpga_info->mp_nthw_rac = p_nthw_rac;
 
 	struct nt200a0x_ops *nt200a0x_ops = get_nt200a0x_ops();
+	struct nt400dxx_ops *nt400dxx_ops = get_nt400dxx_ops();
 
 	switch (p_fpga_info->n_nthw_adapter_id) {
 	case NT_HW_ADAPTER_ID_NT200A02:
 		if (nt200a0x_ops != NULL)
 			res = nt200a0x_ops->nthw_fpga_nt200a0x_init(p_fpga_info);
+		break;
+
+	case NT_HW_ADAPTER_ID_NT400D13:
+		if (nt400dxx_ops != NULL)
+			res = nt400dxx_ops->nthw_fpga_nt400dxx_init(p_fpga_info);
 		break;
 
 	default:
@@ -397,4 +403,18 @@ struct nt200a0x_ops *get_nt200a0x_ops(void)
 	if (nt200a0x_ops == NULL)
 		nt200a0x_ops_init();
 	return nt200a0x_ops;
+}
+
+static struct nt400dxx_ops *nt400dxx_ops;
+
+void register_nt400dxx_ops(struct nt400dxx_ops *ops)
+{
+	nt400dxx_ops = ops;
+}
+
+struct nt400dxx_ops *get_nt400dxx_ops(void)
+{
+	if (nt400dxx_ops == NULL)
+		nt400dxx_ops_init();
+	return nt400dxx_ops;
 }

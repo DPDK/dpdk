@@ -36,4 +36,12 @@ void register_nt200a0x_ops(struct nt200a0x_ops *ops);
 struct nt200a0x_ops *get_nt200a0x_ops(void);
 void nt200a0x_ops_init(void);
 
+struct nt400dxx_ops {
+	int (*nthw_fpga_nt400dxx_init)(struct fpga_info_s *p_fpga_info);
+};
+
+void register_nt400dxx_ops(struct nt400dxx_ops *ops);
+struct nt400dxx_ops *get_nt400dxx_ops(void);
+void nt400dxx_ops_init(void);
+
 #endif	/* __NTHW_FPGA_H__ */

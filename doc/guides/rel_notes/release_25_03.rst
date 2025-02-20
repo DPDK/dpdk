@@ -123,6 +123,10 @@ New Features
     This feature enhances the efficiency of probing VF/SFs on a large scale
     by significantly reducing the probing time.
 
+* **Updated Napatech ntnic driver.**
+
+  * Added support for the NT400D13 adapter.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for virtual function (VF).
