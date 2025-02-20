@@ -258,10 +258,9 @@ __rte_security_set_pkt_metadata(void *ctx, void *sess, struct rte_mbuf *m, void 
 	RTE_PTR_OR_ERR_RET(instance, -EINVAL);
 	RTE_PTR_OR_ERR_RET(instance->ops, -EINVAL);
 #endif
-	if (*instance->ops->set_pkt_metadata == NULL)
+	if (instance->ops->set_pkt_metadata == NULL)
 		return -ENOTSUP;
-	return instance->ops->set_pkt_metadata(instance->device,
-					       sess, m, params);
+	return instance->ops->set_pkt_metadata(instance->device, sess, m, params);
 }
 
 const struct rte_security_capability *
