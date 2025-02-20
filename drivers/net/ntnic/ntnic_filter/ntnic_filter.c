@@ -53,7 +53,7 @@ int interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_fl
 		goto interpret_end;
 
 	/* VLAN */
-	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ||
+	while (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ||
 		ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ) ||
 		ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ1)) {
 		if (size - pkti == 0)
