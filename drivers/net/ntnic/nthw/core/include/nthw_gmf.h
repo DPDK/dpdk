@@ -58,6 +58,8 @@ struct nthw_gmf {
 typedef struct nthw_gmf nthw_gmf_t;
 
 int nthw_gmf_init(nthw_gmf_t *p, nthw_fpga_t *p_fpga, int n_instance);
+void nthw_gmf_set_enable_tsi(nthw_gmf_t *p, bool enable, int tsi_dynamic_offset,
+	int tsi_static_offset, bool tsi_always);
 
 void nthw_gmf_set_enable(nthw_gmf_t *p, bool enable);
 

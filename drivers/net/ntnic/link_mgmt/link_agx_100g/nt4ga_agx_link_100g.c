@@ -198,6 +198,26 @@ static int phy_set_line_loopback(adapter_info_t *drv, int port, loopback_line_t 
 }
 
 /*
+ * Nim handling
+ */
+
+static bool nim_is_present(nim_i2c_ctx_p ctx, uint8_t nim_idx)
+{
+	assert(nim_idx < NUM_ADAPTER_PORTS_MAX);
+
+	nthw_pcal6416a_t *p = ctx->hwagx.p_io_nim;
+	uint8_t data = 0;
+
+	if (nim_idx == 0)
+		nthw_pcal6416a_read(p, 3, &data);
+
+	else if (nim_idx == 1)
+		nthw_pcal6416a_read(p, 7, &data);
+
+	return data == 0;
+}
+
+/*
  * Utility functions
  */
 
@@ -296,6 +316,119 @@ set_loopback(struct adapter_info_s *p_adapter_info, int port, uint32_t mode, uin
 }
 
 /*
+ * Initialize NIM, Code based on nt400d1x.cpp: MyPort::createNim()
+ */
+
+static int create_nim(adapter_info_t *drv, int port, bool enable)
+{
+	int res = 0;
+	const uint8_t valid_nim_id = NT_NIM_QSFP28;
+	sfp_nim_state_t nim;
+	nt4ga_link_t *link_info = &drv->nt4ga_link;
+	nim_i2c_ctx_t *nim_ctx = &link_info->u.nim_ctx[port];
+
+	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	assert(link_info->variables_initialized);
+
+	if (!enable) {
+		phy_reset_rx(drv, port);
+		phy_reset_tx(drv, port);
+	}
+
+	/*
+	 * Wait a little after a module has been inserted before trying to access I2C
+	 * data, otherwise the module will not respond correctly.
+	 */
+	nt_os_wait_usec(1000000);	/* pause 1.0s */
+
+	res = construct_and_preinit_nim(nim_ctx, NULL);
+
+	if (res)
+		return res;
+
+	res = nim_state_build(nim_ctx, &nim);
+
+	if (res)
+		return res;
+
+	/* Set FEC to be enabled by default */
+	nim_ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = true;
+
+	NT_LOG(DBG, NTHW, "%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
+		drv->mp_port_id_str[port], nim_ctx->nim_id, nim_id_to_text(nim_ctx->nim_id), nim.br,
+		nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+
+	/*
+	 * Does the driver support the NIM module type?
+	 */
+	if (nim_ctx->nim_id != valid_nim_id) {
+		NT_LOG(ERR, NTHW, "%s: The driver does not support the NIM module type %s",
+			drv->mp_port_id_str[port], nim_id_to_text(nim_ctx->nim_id));
+		NT_LOG(DBG, NTHW, "%s: The driver supports the NIM module type %s",
+			drv->mp_port_id_str[port], nim_id_to_text(valid_nim_id));
+		return -1;
+	}
+
+	return res;
+}
+
+/*
+ * Initialize one 100 Gbps port.
+ */
+static int _port_init(adapter_info_t *p_info, nthw_fpga_t *fpga, int port)
+{
+	uint8_t adapter_no = p_info->adapter_no;
+	int res;
+
+	nt4ga_link_t *link_info = &p_info->nt4ga_link;
+	nthw_gfg_t *p_gfg = &link_info->u.var_a100g.gfg[adapter_no];
+	nthw_phy_tile_t *p_phy_tile = p_info->fpga_info.mp_nthw_agx.p_phy_tile;
+	nthw_rpf_t *p_rpf = p_info->fpga_info.mp_nthw_agx.p_rpf;
+
+	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	assert(link_info->variables_initialized);
+
+	link_info->link_info[port].link_speed = NT_LINK_SPEED_100G;
+	link_info->link_info[port].link_duplex = NT_LINK_DUPLEX_FULL;
+	link_info->link_info[port].link_auto_neg = NT_LINK_AUTONEG_OFF;
+	link_info->speed_capa |= NT_LINK_SPEED_100G;
+
+	nthw_gfg_stop(p_gfg, port);
+
+	for (uint8_t lane = 0; lane < 4; lane++)
+		nthw_phy_tile_set_host_loopback(p_phy_tile, port, lane, false);
+
+	swap_tx_rx_polarity(p_info, port, true);
+	nthw_rpf_set_ts_at_eof(p_rpf, true);
+
+	NT_LOG(DBG, NTNIC, "%s: Setting up port %d", p_info->mp_port_id_str[port], port);
+
+	phy_reset_rx(p_info, port);
+
+	if (nthw_gmf_init(NULL, fpga, port) == 0) {
+		nthw_gmf_t gmf;
+
+		if (nthw_gmf_init(&gmf, fpga, port) == 0)
+			nthw_gmf_set_enable_tsi(&gmf, true, 0, 0, false);
+	}
+
+	nthw_rpf_unblock(p_rpf);
+
+	res = create_nim(p_info, port, true);
+
+	if (res) {
+		NT_LOG(WRN, NTNIC, "%s: NIM initialization failed",
+			p_info->mp_port_id_str[port]);
+		return res;
+	}
+
+	NT_LOG(DBG, NTNIC, "%s: NIM initialized", p_info->mp_port_id_str[port]);
+
+	phy_reset_rx(p_info, port);
+	return res;
+}
+
+/*
  * Link state machine
  */
 static void *_common_ptp_nim_state_machine(void *data)
@@ -310,6 +443,7 @@ static void *_common_ptp_nim_state_machine(void *data)
 	/* link_state_t new_link_state; */
 
 	link_state_t *link_state = link_info->link_state;
+	nim_i2c_ctx_t *nim_ctx = link_info->u.var_a100g.nim_ctx;
 
 	if (!fpga) {
 		NT_LOG(ERR, NTNIC, "%s: fpga is NULL", drv->mp_adapter_id_str);
@@ -361,6 +495,15 @@ static void *_common_ptp_nim_state_machine(void *data)
 				continue;
 
 			if (link_info->port_action[i].port_lpbk_mode != last_lpbk_mode[i]) {
+				/* Loopback mode has changed. Do something */
+				if (!nim_is_present(&nim_ctx[i], i)) {
+					/*
+					 * If there is no Nim present, we need to initialize the
+					 * port  anyway
+					 */
+					_port_init(drv, fpga, i);
+				}
+
 				set_loopback(drv,
 					i,
 					link_info->port_action[i].port_lpbk_mode,
