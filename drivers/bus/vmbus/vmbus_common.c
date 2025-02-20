@@ -240,6 +240,7 @@ rte_vmbus_cleanup(void)
 
 		dev->driver = NULL;
 		dev->device.driver = NULL;
+		TAILQ_REMOVE(&rte_vmbus_bus.device_list, dev, next);
 		free(dev);
 	}
 

@@ -455,6 +455,7 @@ uacce_cleanup(void)
 		dev->device.driver = NULL;
 
 free:
+		TAILQ_REMOVE(&uacce_bus.device_list, dev, next);
 		memset(dev, 0, sizeof(*dev));
 		free(dev);
 	}

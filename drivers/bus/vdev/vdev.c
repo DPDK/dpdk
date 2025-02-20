@@ -603,6 +603,7 @@ vdev_cleanup(void)
 
 		dev->device.driver = NULL;
 free:
+		TAILQ_REMOVE(&vdev_device_list, dev, next);
 		free(dev);
 	}
 
