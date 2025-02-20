@@ -24,6 +24,7 @@ struct nthw_pcal6416a {
 
 typedef struct nthw_pcal6416a nthw_pcal6416a_t;
 
+void nthw_pcal6416a_write(nthw_pcal6416a_t *p, uint8_t pin, uint8_t value);
 void nthw_pcal6416a_read(nthw_pcal6416a_t *p, uint8_t pin, uint8_t *value);
 
 #endif	/* __NTHW_PCAL6416A_H__ */
