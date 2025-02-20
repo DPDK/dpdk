@@ -741,10 +741,10 @@ rte_cryptodev_scheduler_option_set(uint8_t scheduler_id,
 
 	sched_ctx = dev->data->dev_private;
 
-	if (*sched_ctx->ops.option_set == NULL)
+	if (sched_ctx->ops.option_set == NULL)
 		return -ENOTSUP;
 
-	return (*sched_ctx->ops.option_set)(dev, option_type, option);
+	return sched_ctx->ops.option_set(dev, option_type, option);
 }
 
 int
@@ -772,10 +772,10 @@ rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
 
 	sched_ctx = dev->data->dev_private;
 
-	if (*sched_ctx->ops.option_get == NULL)
+	if (sched_ctx->ops.option_get == NULL)
 		return -ENOTSUP;
 
-	return (*sched_ctx->ops.option_get)(dev, option_type, option);
+	return sched_ctx->ops.option_get(dev, option_type, option);
 }
 
 
