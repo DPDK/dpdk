@@ -22,15 +22,7 @@ from dataclasses import dataclass, field
 from enum import Flag, auto
 from os import environ
 from pathlib import PurePath
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Concatenate,
-    Literal,
-    ParamSpec,
-    TypeAlias,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, Literal, ParamSpec, Tuple, TypeAlias
 
 from framework.context import get_ctx
 from framework.testbed_model.topology import TopologyType
@@ -1836,11 +1828,13 @@ class TestPmdShell(DPDKShell):
                     f"Failed to {mcast_cmd} {multi_addr} on port {port_id} \n{output}"
                 )
 
-    def show_port_stats_all(self) -> list[TestPmdPortStats]:
+    def show_port_stats_all(self) -> Tuple[list[TestPmdPortStats], str]:
         """Returns the statistics of all the ports.
 
         Returns:
-            list[TestPmdPortStats]: A list containing all the ports stats as `TestPmdPortStats`.
+            Tuple[str, list[TestPmdPortStats]]: A tuple where the first element is the stats of all
+            ports as `TestPmdPortStats` and second is the raw testpmd output that was collected
+            from the sent command.
         """
         output = self.send_command("show port stats all")
 
@@ -1855,7 +1849,7 @@ class TestPmdShell(DPDKShell):
         #   #################################################
         #
         iter = re.finditer(r"(^  #*.+#*$[^#]+)^  #*\r$", output, re.MULTILINE)
-        return [TestPmdPortStats.parse(block.group(1)) for block in iter]
+        return ([TestPmdPortStats.parse(block.group(1)) for block in iter], output)
 
     def show_port_stats(self, port_id: int) -> TestPmdPortStats:
         """Returns the given port statistics.
@@ -2311,6 +2305,45 @@ class TestPmdShell(DPDKShell):
             if "udp tunneling add error" in vxlan_output:
                 self._logger.debug(f"Failed to set VXLAN:\n{vxlan_output}")
                 raise InteractiveCommandExecutionError(f"Failed to set VXLAN:\n{vxlan_output}")
+
+    def clear_port_stats(self, port_id: int, verify: bool = True) -> None:
+        """Clear statistics of a given port.
+
+        Args:
+            port_id: ID of the port to clear the statistics on.
+            verify: If :data:`True` the output of the command will be scanned to verify that it was
+                successful, otherwise failures will be ignored. Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and testpmd fails to
+                clear the statistics of the given port.
+        """
+        clear_output = self.send_command(f"clear port stats {port_id}")
+        if verify and f"NIC statistics for port {port_id} cleared" not in clear_output:
+            raise InteractiveCommandExecutionError(
+                f"Test pmd failed to set clear forwarding stats on port {port_id}"
+            )
+
+    def clear_port_stats_all(self, verify: bool = True) -> None:
+        """Clear the statistics of all ports that testpmd is aware of.
+
+        Args:
+            verify: If :data:`True` the output of the command will be scanned to verify that all
+                ports had their statistics cleared, otherwise failures will be ignored. Defaults to
+                :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and testpmd fails to
+                clear the statistics of any of its ports.
+        """
+        clear_output = self.send_command("clear port stats all")
+        if verify:
+            if type(self._app_params.port_numa_config) is list:
+                for port_id in range(len(self._app_params.port_numa_config)):
+                    if f"NIC statistics for port {port_id} cleared" not in clear_output:
+                        raise InteractiveCommandExecutionError(
+                            f"Test pmd failed to set clear forwarding stats on port {port_id}"
+                        )
 
     def _close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
