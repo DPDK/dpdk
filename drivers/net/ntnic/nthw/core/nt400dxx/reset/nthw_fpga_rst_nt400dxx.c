@@ -55,6 +55,19 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	if (res != 0)
 		return res;
 
+	/* (b1) Reset platform. It is released later */
+	nthw_prm_nt400dxx_platform_rst(p_fpga_info->mp_nthw_agx.p_prm, 1);
+	nt_os_wait_usec(10000);
+
+	/* (C) Reset peripherals and release the reset */
+	nthw_prm_nt400dxx_periph_rst(p_fpga_info->mp_nthw_agx.p_prm, 1);
+	nt_os_wait_usec(10000);
+	nthw_prm_nt400dxx_periph_rst(p_fpga_info->mp_nthw_agx.p_prm, 0);
+	nt_os_wait_usec(10000);
+
+	if (res != 0)
+		return res;
+
 	/* Create PCM */
 	p_fpga_info->mp_nthw_agx.p_pcm = nthw_pcm_nt400dxx_new();
 	res = nthw_pcm_nt400dxx_init(p_fpga_info->mp_nthw_agx.p_pcm, p_fpga, 0);

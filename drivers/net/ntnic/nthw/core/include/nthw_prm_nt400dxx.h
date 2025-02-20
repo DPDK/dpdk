@@ -26,5 +26,7 @@ typedef struct nt_prm_nt400dxx nt_prm_nt400dxx;
 
 nthw_prm_nt400dxx_t *nthw_prm_nt400dxx_new(void);
 int nthw_prm_nt400dxx_init(nthw_prm_nt400dxx_t *p, nthw_fpga_t *p_fpga, int n_instance);
+void nthw_prm_nt400dxx_periph_rst(nthw_prm_nt400dxx_t *p, uint32_t val);
+void nthw_prm_nt400dxx_platform_rst(nthw_prm_nt400dxx_t *p, uint32_t val);
 
 #endif	/* NTHW_PRM_NT400DXX_H_ */
