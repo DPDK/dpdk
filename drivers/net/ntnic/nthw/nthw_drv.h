@@ -12,8 +12,8 @@
 #include "nthw_si5332_si5156.h"
 #include "nthw_pcal6416a.h"
 #include "nthw_pca9532.h"
-#include "nthw_phy_tile.h"
 #include "nthw_rpf.h"
+#include "nthw_pcm_nt400dxx.h"
 #include "nthw_phy_tile.h"
 
 /*
@@ -24,8 +24,13 @@ typedef struct nthw_agx_s {
 	nthw_pca9849_t *p_pca9849;
 	nthw_pcal6416a_t *p_io_nim;	/* PCAL6416A I/O expander for controlling TS */
 	nthw_pca9532_t *p_pca9532_led;
+	nthw_si5332_t *p_si5332;
+	nthw_si5156_t *p_si5156;
+	nthw_pcm_nt400dxx_t *p_pcm;
 	nthw_phy_tile_t *p_phy_tile;
 	nthw_rpf_t *p_rpf;
+	bool tcxo_present;
+	bool tcxo_capable;
 } nthw_agx_t;
 
 typedef enum nt_meta_port_type_e {
