@@ -11,6 +11,7 @@
 #include <string.h>
 #include "ntnic_mod_reg.h"
 #include "nim_defines.h"
+#include "nthw_gfg.h"
 
 static int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info,
 	nthw_fpga_t *fpga);
@@ -134,10 +135,33 @@ static uint32_t nt4ga_agx_link_100g_mon(void *data)
 int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nthw_fpga_t *fpga)
 {
 	(void)fpga;
+	nt4ga_link_t *nt4ga_link = &p_adapter_info->nt4ga_link;
 	const int adapter_no = p_adapter_info->adapter_no;
 	int res = 0;
 
 	NT_LOG(DBG, NTNIC, "%s: Initializing ports", p_adapter_info->mp_adapter_id_str);
+
+	if (!nt4ga_link->variables_initialized) {
+		nthw_gfg_t *gfg_mod = p_adapter_info->nt4ga_link.u.var_a100g.gfg;
+		nthw_agx_t *p_nthw_agx = &p_adapter_info->fpga_info.mp_nthw_agx;
+
+		p_nthw_agx->p_rpf = nthw_rpf_new();
+		res = nthw_rpf_init(p_nthw_agx->p_rpf, fpga, adapter_no);
+
+		if (res != 0) {
+			NT_LOG(ERR, NTNIC, "%s: Failed to initialize RPF module (%u)",
+				p_adapter_info->mp_adapter_id_str, res);
+			return res;
+		}
+
+		res = nthw_gfg_init(&gfg_mod[adapter_no], fpga, 0 /* Only one instance */);
+
+		if (res != 0) {
+			NT_LOG(ERR, NTNIC, "%s: Failed to initialize GFG module (%u)",
+				p_adapter_info->mp_adapter_id_str, res);
+			return res;
+		}
+	}
 
 	/*
 	 * Create state-machine thread
