@@ -749,11 +749,10 @@ rte_eth_hairpin_queue_peer_bind(uint16_t cur_port, uint16_t cur_queue,
 
 	/* No need to check the validity again. */
 	dev = &rte_eth_devices[cur_port];
-	if (*dev->dev_ops->hairpin_queue_peer_bind == NULL)
+	if (dev->dev_ops->hairpin_queue_peer_bind == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->hairpin_queue_peer_bind)(dev, cur_queue,
-							peer_info, direction);
+	return dev->dev_ops->hairpin_queue_peer_bind(dev, cur_queue, peer_info, direction);
 }
 
 int
@@ -764,11 +763,10 @@ rte_eth_hairpin_queue_peer_unbind(uint16_t cur_port, uint16_t cur_queue,
 
 	/* No need to check the validity again. */
 	dev = &rte_eth_devices[cur_port];
-	if (*dev->dev_ops->hairpin_queue_peer_unbind == NULL)
+	if (dev->dev_ops->hairpin_queue_peer_unbind == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->hairpin_queue_peer_unbind)(dev, cur_queue,
-							  direction);
+	return dev->dev_ops->hairpin_queue_peer_unbind(dev, cur_queue, direction);
 }
 
 int
@@ -785,11 +783,11 @@ rte_eth_hairpin_queue_peer_update(uint16_t peer_port, uint16_t peer_queue,
 
 	/* No need to check the validity again. */
 	dev = &rte_eth_devices[peer_port];
-	if (*dev->dev_ops->hairpin_queue_peer_update == NULL)
+	if (dev->dev_ops->hairpin_queue_peer_update == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->hairpin_queue_peer_update)(dev, peer_queue,
-					cur_info, peer_info, direction);
+	return dev->dev_ops->hairpin_queue_peer_update(dev, peer_queue,
+						       cur_info, peer_info, direction);
 }
 
 int

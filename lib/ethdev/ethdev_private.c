@@ -398,7 +398,7 @@ eth_dev_rxq_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (dev->dev_ops->rx_queue_release != NULL)
-		(*dev->dev_ops->rx_queue_release)(dev, qid);
+		dev->dev_ops->rx_queue_release(dev, qid);
 	rxq[qid] = NULL;
 }
 
@@ -411,7 +411,7 @@ eth_dev_txq_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (dev->dev_ops->tx_queue_release != NULL)
-		(*dev->dev_ops->tx_queue_release)(dev, qid);
+		dev->dev_ops->tx_queue_release(dev, qid);
 	txq[qid] = NULL;
 }
 

@@ -31,7 +31,7 @@ rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 	}
 
 	memset(info, 0, sizeof(struct rte_eth_cman_info));
-	ret = eth_err(port_id, (*dev->dev_ops->cman_info_get)(dev, info));
+	ret = eth_err(port_id, dev->dev_ops->cman_info_get(dev, info));
 
 	rte_eth_trace_cman_info_get(port_id, info, ret);
 
@@ -59,7 +59,7 @@ rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 	}
 
 	memset(config, 0, sizeof(struct rte_eth_cman_config));
-	ret = eth_err(port_id, (*dev->dev_ops->cman_config_init)(dev, config));
+	ret = eth_err(port_id, dev->dev_ops->cman_config_init(dev, config));
 
 	rte_eth_trace_cman_config_init(port_id, config, ret);
 
@@ -86,7 +86,7 @@ rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *conf
 		return -ENOTSUP;
 	}
 
-	ret = eth_err(port_id, (*dev->dev_ops->cman_config_set)(dev, config));
+	ret = eth_err(port_id, dev->dev_ops->cman_config_set(dev, config));
 
 	rte_eth_trace_cman_config_set(port_id, config, ret);
 
@@ -114,7 +114,7 @@ rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config)
 	}
 
 	memset(config, 0, sizeof(struct rte_eth_cman_config));
-	ret = eth_err(port_id, (*dev->dev_ops->cman_config_get)(dev, config));
+	ret = eth_err(port_id, dev->dev_ops->cman_config_get(dev, config));
 
 	rte_eth_trace_cman_config_get(port_id, config, ret);
 

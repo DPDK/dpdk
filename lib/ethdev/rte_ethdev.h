@@ -6399,9 +6399,9 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 		return -EINVAL;
 #endif
 
-	if (*p->rx_queue_count == NULL)
+	if (p->rx_queue_count == NULL)
 		return -ENOTSUP;
-	return (int)(*p->rx_queue_count)(qd);
+	return (int)p->rx_queue_count(qd);
 }
 
 /**@{@name Rx hardware descriptor states
@@ -6471,9 +6471,9 @@ rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
 	if (qd == NULL)
 		return -ENODEV;
 #endif
-	if (*p->rx_descriptor_status == NULL)
+	if (p->rx_descriptor_status == NULL)
 		return -ENOTSUP;
-	return (*p->rx_descriptor_status)(qd, offset);
+	return p->rx_descriptor_status(qd, offset);
 }
 
 /**@{@name Tx hardware descriptor states
@@ -6542,9 +6542,9 @@ static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
 	if (qd == NULL)
 		return -ENODEV;
 #endif
-	if (*p->tx_descriptor_status == NULL)
+	if (p->tx_descriptor_status == NULL)
 		return -ENOTSUP;
-	return (*p->tx_descriptor_status)(qd, offset);
+	return p->tx_descriptor_status(qd, offset);
 }
 
 /**
