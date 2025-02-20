@@ -73,6 +73,47 @@ static int nthw_i2cm_write_internal(nthw_i2cm_t *p, uint8_t value)
 	return 0;
 }
 
+static int nthw_i2cm_write16_internal(nthw_i2cm_t *p, uint16_t value)
+{
+	const uint8_t count = 1;
+
+	for (int8_t i = count; i >= 0; i--) {
+		uint8_t byte_value = (uint8_t)(value >> ((uint8_t)i * 8)) & 0xffU;
+
+		/* Write data to data register */
+		nthw_field_set_val_flush32(p->mp_fld_data_data, byte_value);
+
+		if (i == 0) {
+			nthw_field_set_val_flush32(p->mp_fld_cmd_status_cmd_status,
+				NT_I2C_CMD_WR | NT_I2C_CMD_IRQ_ACK);
+
+		} else {
+			nthw_field_set_val_flush32(p->mp_fld_cmd_status_cmd_status, NT_I2C_CMD_WR);
+		}
+
+		if (!nthw_i2cm_ready(p, true)) {
+			nthw_field_set_val_flush32(p->mp_fld_cmd_status_cmd_status,
+				NT_I2C_CMD_STOP | NT_I2C_CMD_IRQ_ACK);
+			NT_LOG(ERR, NTHW, "%s: Time-out writing data %u", __PRETTY_FUNCTION__,
+				value);
+			return 1;
+		}
+	}
+
+	/* Generate stop condition and clear interrupt */
+	nthw_field_set_val_flush32(p->mp_fld_cmd_status_cmd_status,
+		NT_I2C_CMD_STOP | NT_I2C_CMD_IRQ_ACK);
+
+	if (!nthw_i2cm_ready(p, true)) {
+		nthw_field_set_val_flush32(p->mp_fld_cmd_status_cmd_status,
+			NT_I2C_CMD_STOP | NT_I2C_CMD_IRQ_ACK);
+		NT_LOG(ERR, NTHW, "%s: Time-out sending stop condition", __PRETTY_FUNCTION__);
+		return 1;
+	}
+
+	return 0;
+}
+
 static int nthw_i2cm_write_reg_addr_internal(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr,
 	bool send_stop)
 {
@@ -184,6 +225,22 @@ int nthw_i2cm_write(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint8_t 
 		return status;
 
 	status = nthw_i2cm_write_internal(p, value);
+
+	if (status != 0)
+		return status;
+
+	return 0;
+}
+
+int nthw_i2cm_write16(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint16_t value)
+{
+	int status;
+	status = nthw_i2cm_write_reg_addr_internal(p, dev_addr, reg_addr, false);
+
+	if (status != 0)
+		return status;
+
+	status = nthw_i2cm_write16_internal(p, value);
 
 	if (status != 0)
 		return status;

@@ -2,10 +2,113 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2023 Napatech A/S
  */
-
+#include "ntlog.h"
 #include "nthw_fpga.h"
 #include "ntnic_mod_reg.h"
-#include "ntlog.h"
+#include "NT400D13_U62_Si5332-GM2-RevD-1_V5-Registers.h"
+
+static int nthw_fpga_nt400dxx_init_clock_synthesizers(struct fpga_info_s *p_fpga_info)
+{
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	int res = -1;
+
+	/* Clock synthesizer on address 0x6a on channel 2 */
+	p_fpga_info->mp_nthw_agx.p_si5332 = nthw_si5332_new();
+	res = nthw_si5332_init(p_fpga_info->mp_nthw_agx.p_si5332,
+			p_fpga_info->mp_nthw_agx.p_i2cm,
+			0x6A,
+			p_fpga_info->mp_nthw_agx.p_pca9849,
+			2);
+
+	if (res) {
+		NT_LOG(ERR, NTHW, "%s: %s: Failed to initialize Si5332 clock - res=%d",
+			p_adapter_id_str, __func__, res);
+		return res;
+	}
+
+	p_fpga_info->mp_nthw_agx.p_si5156 = nthw_si5156_new();
+	res = nthw_si5156_init(p_fpga_info->mp_nthw_agx.p_si5156,
+			p_fpga_info->mp_nthw_agx.p_i2cm,
+			0x60,
+			p_fpga_info->mp_nthw_agx.p_pca9849,
+			2);
+
+	if (res) {
+		NT_LOG(ERR, NTHW, "%s: %s: Failed to initialize Si5156 clock - res=%d",
+			p_adapter_id_str, __func__, res);
+		return res;
+	}
+
+	if (nthw_si5332_clock_active(p_fpga_info->mp_nthw_agx.p_si5332)) {
+		NT_LOG(INF,
+			NTHW,
+			"%s: Fpga clock already active, skipping clock initialisation.",
+			p_adapter_id_str);
+
+	} else {
+		NT_LOG(INF, NTHW,
+			"%s: Fpga clock not active, performing full clock initialisation.",
+			p_adapter_id_str);
+
+		for (int i = 0; i < SI5332_GM2_REVD_REG_CONFIG_NUM_REGS; i++) {
+			nthw_si5332_write(p_fpga_info->mp_nthw_agx.p_si5332,
+				(uint8_t)si5332_gm2_revd_registers[i].address,
+				(uint8_t)si5332_gm2_revd_registers[i].value);
+		}
+	}
+
+	/*
+	 * TCXO capable PCM version if minor version >= 3
+	 * Unfortunately, the module version is not readily
+	 * available in the FPGA_400D1x class.
+	 */
+	bool tcxo_capable = p_fpga_info->mp_nthw_agx.p_pcm->mn_module_minor_version >= 3;
+
+	/*
+	 * This method of determining the presence of a TCXO
+	 *  will only work until non SI5156 equipped boards
+	 *  use the vacant I2C address for something else...
+	 *
+	 * There's no other way, there's no other way
+	 * All that you can do is watch them play
+	 * Clean-up when GA HW is readily available
+	 */
+	if (nthw_si5156_write16(p_fpga_info->mp_nthw_agx.p_si5156, 0x1, 0x0400) != 0) {
+		p_fpga_info->mp_nthw_agx.tcxo_capable = false;
+		p_fpga_info->mp_nthw_agx.tcxo_present = false;
+
+	} else {
+		p_fpga_info->mp_nthw_agx.tcxo_capable = tcxo_capable;
+		p_fpga_info->mp_nthw_agx.tcxo_present = true;
+	}
+
+	return 0;
+}
+
+static int nthw_fpga_nt400dxx_init_sub_systems(struct fpga_info_s *p_fpga_info)
+{
+	int res;
+	NT_LOG(INF, NTHW, "%s: Initializing NT4GA subsystems...", p_fpga_info->mp_adapter_id_str);
+
+	/* RAB subsystem */
+	NT_LOG(DBG, NTHW, "%s: Initializing RAB subsystem: flush", p_fpga_info->mp_adapter_id_str);
+	res = nthw_rac_rab_flush(p_fpga_info->mp_nthw_rac);
+
+	if (res)
+		return res;
+
+	/* clock synthesizer subsystem */
+	NT_LOG(DBG,
+		NTHW,
+		"%s: Initializing clock synthesizer subsystem",
+		p_fpga_info->mp_adapter_id_str);
+	res = nthw_fpga_nt400dxx_init_clock_synthesizers(p_fpga_info);
+
+	if (res)
+		return res;
+
+	return 0;
+}
 
 static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 {
@@ -58,6 +161,14 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	if (res) {
 		NT_LOG(ERR, NTHW, "%s: %s: FPGA=%04d - Failed to init common modules res=%d",
 			p_adapter_id_str, __func__, p_fpga_info->n_fpga_prod_id, res);
+		return res;
+	}
+
+	res = nthw_fpga_nt400dxx_init_sub_systems(p_fpga_info);
+
+	if (res) {
+		NT_LOG(ERR, NTHW, "%s: %s: FPGA=%04d Failed to init subsystems res=%d",
+		p_adapter_id_str, __func__, p_fpga_info->n_fpga_prod_id, res);
 		return res;
 	}
 

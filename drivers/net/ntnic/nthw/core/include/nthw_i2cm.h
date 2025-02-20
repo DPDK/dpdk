@@ -46,5 +46,6 @@ typedef struct nt_i2cm nthw_i2cm_t;
 
 int nthw_i2cm_read(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint8_t *value);
 int nthw_i2cm_write(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint8_t value);
+int nthw_i2cm_write16(nthw_i2cm_t *p, uint8_t dev_addr, uint8_t reg_addr, uint16_t value);
 
 #endif	/* __NTHW_II2CM_H__ */
