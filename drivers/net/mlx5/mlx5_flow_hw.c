@@ -1368,6 +1368,11 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	uint8_t *encap_data = NULL, *encap_data_m = NULL;
 	size_t data_size = 0;
 	struct mlx5_hw_modify_header_action mhdr = { 0 };
+	struct rte_flow_error sub_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.cause = NULL,
+		.message = NULL,
+	};
 	bool actions_end = false;
 	uint32_t type;
 	bool reformat_used = false;
@@ -1459,7 +1464,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 					((const struct rte_flow_action_jump *)
 					actions->conf)->group;
 				acts->jump = flow_hw_jump_action_register
-						(dev, cfg, jump_group, error);
+						(dev, cfg, jump_group, &sub_error);
 				if (!acts->jump)
 					goto err;
 				acts->rule_acts[action_pos].action = (!!attr->group) ?
@@ -1568,7 +1573,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			err = flow_hw_modify_field_compile(dev, attr, action_start,
 							   actions, masks, acts, &mhdr,
-							   error);
+							   &sub_error);
 			if (err)
 				goto err;
 			/*
@@ -1586,7 +1591,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			action_pos = at->actions_off[actions - at->actions];
 			if (flow_hw_represented_port_compile
 					(dev, attr, action_start, actions,
-					 masks, acts, action_pos, error))
+					 masks, acts, action_pos, &sub_error))
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER:
@@ -1601,7 +1606,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			    ((const struct rte_flow_action_meter *)
 			     masks->conf)->mtr_id) {
 				err = flow_hw_meter_compile(dev, cfg,
-						action_pos, jump_pos, actions, acts, error);
+						action_pos, jump_pos, actions, acts, &sub_error);
 				if (err)
 					goto err;
 			} else if (__flow_hw_act_data_general_append(priv, acts,
@@ -1612,13 +1617,14 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			flow_hw_translate_group(dev, cfg, attr->group,
-						&target_grp, error);
+						&target_grp, &sub_error);
 			if (target_grp == 0) {
 				__flow_hw_action_template_destroy(dev, acts);
-				return rte_flow_error_set(error, ENOTSUP,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"Age action on root table is not supported in HW steering mode");
+				rte_flow_error_set(&sub_error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"Age action on root table is not supported in HW steering mode");
+				goto err;
 			}
 			action_pos = at->actions_off[actions - at->actions];
 			if (__flow_hw_act_data_general_append(priv, acts,
@@ -1629,13 +1635,14 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			flow_hw_translate_group(dev, cfg, attr->group,
-						&target_grp, error);
+						&target_grp, &sub_error);
 			if (target_grp == 0) {
 				__flow_hw_action_template_destroy(dev, acts);
-				return rte_flow_error_set(error, ENOTSUP,
-						RTE_FLOW_ERROR_TYPE_ACTION,
-						NULL,
-						"Counter action on root table is not supported in HW steering mode");
+				rte_flow_error_set(&sub_error, ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL,
+					"Counter action on root table is not supported in HW steering mode");
+				goto err;
 			}
 			if ((at->action_flags & MLX5_FLOW_ACTION_AGE) ||
 			    (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_AGE))
@@ -1739,7 +1746,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		MLX5_ASSERT(at->reformat_off != UINT16_MAX);
 		if (enc_item) {
 			MLX5_ASSERT(!encap_data);
-			if (flow_dv_convert_encap_data(enc_item, buf, &data_size, error))
+			if (flow_dv_convert_encap_data(enc_item, buf, &data_size, &sub_error))
 				goto err;
 			encap_data = buf;
 			if (!enc_item_m)
@@ -1782,6 +1789,10 @@ err:
 		rte_errno = EINVAL;
 	err = rte_errno;
 	__flow_hw_action_template_destroy(dev, acts);
+	if (error != NULL && sub_error.type != RTE_FLOW_ERROR_TYPE_NONE) {
+		rte_memcpy(error, &sub_error, sizeof(sub_error));
+		return -EINVAL;
+	}
 	return rte_flow_error_set(error, err,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "fail to create rte table");
