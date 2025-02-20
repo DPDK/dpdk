@@ -27,6 +27,88 @@
 #define NUM_RETRIES 50U
 #define SLEEP_USECS 100U/* 0.1 ms */
 
+nthw_i2cm_t *nthw_i2cm_new(void)
+{
+	nthw_i2cm_t *p = malloc(sizeof(nthw_i2cm_t));
+
+	if (p)
+		memset(p, 0, sizeof(nthw_i2cm_t));
+
+	return p;
+}
+
+int nthw_i2cm_init(nthw_i2cm_t *p, nthw_fpga_t *p_fpga, int n_i2c_instance)
+{
+	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
+	nthw_module_t *mod = nthw_fpga_query_module(p_fpga, MOD_I2CM, n_i2c_instance);
+
+	if (p == NULL)
+		return mod == NULL ? -1 : 0;
+
+	if (mod == NULL) {
+		NT_LOG(ERR, NTHW, "%s: I2C %d: no such instance", p_adapter_id_str,
+			n_i2c_instance);
+		return -1;
+	}
+
+	p->mp_fpga = p_fpga;
+	p->mn_i2c_instance = n_i2c_instance;
+	p->m_mod_i2cm = mod;
+
+	p->mp_reg_prer_low = nthw_module_get_register(p->m_mod_i2cm, I2CM_PRER_LOW);
+	p->mp_fld_prer_low_prer_low =
+		nthw_register_get_field(p->mp_reg_prer_low, I2CM_PRER_LOW_PRER_LOW);
+
+	p->mp_reg_prer_high = nthw_module_get_register(p->m_mod_i2cm, I2CM_PRER_HIGH);
+	p->mp_fld_prer_high_prer_high =
+		nthw_register_get_field(p->mp_reg_prer_high, I2CM_PRER_HIGH_PRER_HIGH);
+
+	p->mp_reg_ctrl = nthw_module_get_register(p->m_mod_i2cm, I2CM_CTRL);
+	p->mp_fld_ctrl_ien = nthw_register_get_field(p->mp_reg_ctrl, I2CM_CTRL_IEN);
+	p->mp_fld_ctrl_en = nthw_register_get_field(p->mp_reg_ctrl, I2CM_CTRL_EN);
+
+	p->mp_reg_data = nthw_module_get_register(p->m_mod_i2cm, I2CM_DATA);
+	p->mp_fld_data_data = nthw_register_get_field(p->mp_reg_data, I2CM_DATA_DATA);
+
+	p->mp_reg_cmd_status = nthw_module_get_register(p->m_mod_i2cm, I2CM_CMD_STATUS);
+	p->mp_fld_cmd_status_cmd_status =
+		nthw_register_get_field(p->mp_reg_cmd_status, I2CM_CMD_STATUS_CMD_STATUS);
+
+	p->mp_reg_select = nthw_module_get_register(p->m_mod_i2cm, I2CM_SELECT);
+	p->mp_fld_select_select = nthw_register_get_field(p->mp_reg_select, I2CM_SELECT_SELECT);
+
+	p->mp_reg_io_exp = nthw_module_get_register(p->m_mod_i2cm, I2CM_IO_EXP);
+	p->mp_fld_io_exp_rst = nthw_register_get_field(p->mp_reg_io_exp, I2CM_IO_EXP_RST);
+	p->mp_fld_io_exp_int_b = nthw_register_get_field(p->mp_reg_io_exp, I2CM_IO_EXP_INT_B);
+
+	nthw_field_get_updated(p->mp_fld_io_exp_rst);
+	nthw_field_set_val_flush32(p->mp_fld_io_exp_rst, 1);
+	nthw_field_set_val_flush32(p->mp_fld_io_exp_rst, 0);
+
+	/* disable interrupt and core */
+	nthw_field_get_updated(p->mp_fld_ctrl_ien);
+	nthw_field_set_val_flush32(p->mp_fld_ctrl_ien, 0);
+	nthw_field_get_updated(p->mp_fld_ctrl_en);
+	nthw_field_set_val_flush32(p->mp_fld_ctrl_en, 0);
+
+	nthw_field_set_val_flush32(p->mp_fld_prer_high_prer_high, 0);
+	nthw_field_set_val_flush32(p->mp_fld_prer_low_prer_low, 225);
+
+	/* Enable interrupt and core */
+	nthw_field_set_val_flush32(p->mp_fld_ctrl_ien, 1);
+	nthw_field_set_val_flush32(p->mp_fld_ctrl_en, 1);
+
+	nthw_field_set_val_flush32(p->mp_fld_cmd_status_cmd_status,
+		NT_I2C_CMD_STOP | NT_I2C_CMD_NACK);
+
+	NT_LOG(INF, NTHW, "%s: %s  init done", p_adapter_id_str, __PRETTY_FUNCTION__);
+	nt_os_wait_usec(10000);
+
+	/* Initialize mutex */
+	rte_spinlock_init(&p->i2cmmutex);
+
+	return 0;
+}
 
 static bool nthw_i2cm_ready(nthw_i2cm_t *p, bool wait_for_ack)
 {
