@@ -795,3 +795,11 @@ int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 
 	return res;
 }
+
+void nim_agx_setup(struct nim_i2c_ctx *ctx, nthw_pcal6416a_t *p_io_nim, nthw_i2cm_t *p_nt_i2cm,
+	nthw_pca9849_t *p_ca9849)
+{
+	ctx->hwagx.p_nt_i2cm = p_nt_i2cm;
+	ctx->hwagx.p_ca9849 = p_ca9849;
+	ctx->hwagx.p_io_nim = p_io_nim;
+}

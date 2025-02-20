@@ -12,6 +12,7 @@
 #include "ntnic_mod_reg.h"
 #include "nim_defines.h"
 #include "nthw_gfg.h"
+#include "nthw_phy_tile.h"
 
 static int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info,
 	nthw_fpga_t *fpga);
@@ -26,6 +27,58 @@ static struct link_ops_s link_agx_100g_ops = {
 void link_agx_100g_init(void)
 {
 	register_agx_100g_link_ops(&link_agx_100g_ops);
+}
+
+/*
+ * Utility functions
+ */
+
+static int swap_tx_rx_polarity(adapter_info_t *drv, int port, bool swap)
+{
+	/*
+	 * Mapping according to schematics
+	 * I: Inversion, N: Non-inversion
+	 *
+	 *  Port 0: PMA0/FGT0
+	 *  FPGA QSFP Tx Rx
+	 *  ---------------
+	 *  Q3C0 Ch4  I  I
+	 *  Q3C1 Ch2  I  I
+	 *  Q3C2 Ch1  I  N
+	 *  Q3C3 Ch3  I  I
+	 *
+	 *  Port 1: PMA1/FGT1
+	 *  FPGA QSFP Tx Rx
+	 *  ---------------
+	 *  Q2C0 Ch4  I  I
+	 *  Q2C1 Ch2  I  I
+	 *  Q2C2 Ch1  N  I
+	 *  Q2C3 Ch3  N  N
+	 */
+
+	bool rx_polarity_swap[2][4] = { { false, true, true, true }, { true, false, true, true } };
+	bool tx_polarity_swap[2][4] = { { false, false, true, true }, { true, true, true, true } };
+
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+
+	if (p) {
+		for (uint8_t lane = 0; lane < 4; lane++) {
+			if (swap) {
+				nthw_phy_tile_set_tx_pol_inv(p, port, lane,
+					tx_polarity_swap[port][lane]);
+				nthw_phy_tile_set_rx_pol_inv(p, port, lane,
+					rx_polarity_swap[port][lane]);
+
+			} else {
+				nthw_phy_tile_set_tx_pol_inv(p, port, lane, false);
+				nthw_phy_tile_set_rx_pol_inv(p, port, lane, false);
+			}
+		}
+
+		return 0;
+	}
+
+	return -1;
 }
 
 /*
@@ -134,15 +187,18 @@ static uint32_t nt4ga_agx_link_100g_mon(void *data)
  */
 int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nthw_fpga_t *fpga)
 {
-	(void)fpga;
+	fpga_info_t *fpga_info = &p_adapter_info->fpga_info;
 	nt4ga_link_t *nt4ga_link = &p_adapter_info->nt4ga_link;
 	const int adapter_no = p_adapter_info->adapter_no;
+	const int nb_ports = fpga_info->n_phy_ports;
 	int res = 0;
+	int i;
 
 	NT_LOG(DBG, NTNIC, "%s: Initializing ports", p_adapter_info->mp_adapter_id_str);
 
 	if (!nt4ga_link->variables_initialized) {
 		nthw_gfg_t *gfg_mod = p_adapter_info->nt4ga_link.u.var_a100g.gfg;
+		nim_i2c_ctx_t *nim_ctx = p_adapter_info->nt4ga_link.u.var_a100g.nim_ctx;
 		nthw_agx_t *p_nthw_agx = &p_adapter_info->fpga_info.mp_nthw_agx;
 
 		p_nthw_agx->p_rpf = nthw_rpf_new();
@@ -160,6 +216,34 @@ int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nthw_f
 			NT_LOG(ERR, NTNIC, "%s: Failed to initialize GFG module (%u)",
 				p_adapter_info->mp_adapter_id_str, res);
 			return res;
+		}
+
+		for (i = 0; i < nb_ports; i++) {
+			/* 2 + adapter port number */
+			const uint8_t instance = (uint8_t)(2U + i);
+			nim_agx_setup(&nim_ctx[i], p_nthw_agx->p_io_nim, p_nthw_agx->p_i2cm,
+				p_nthw_agx->p_pca9849);
+			nim_ctx[i].hwagx.mux_channel = i;
+			nim_ctx[i].instance = instance;	/* not used */
+			nim_ctx[i].devaddr = 0;	/* not used */
+			nim_ctx[i].regaddr = 0;	/* not used */
+			nim_ctx[i].type = I2C_HWAGX;
+
+			nthw_gfg_stop(&gfg_mod[adapter_no], i);
+
+			for (uint8_t lane = 0; lane < 4; lane++) {
+				nthw_phy_tile_set_host_loopback(p_nthw_agx->p_phy_tile, i, lane,
+					false);
+			}
+
+			swap_tx_rx_polarity(p_adapter_info, i, true);
+		}
+
+		nthw_rpf_set_ts_at_eof(p_nthw_agx->p_rpf, true);
+
+		if (res == 0) {
+			p_adapter_info->nt4ga_link.speed_capa = NT_LINK_SPEED_100G;
+			p_adapter_info->nt4ga_link.variables_initialized = true;
 		}
 	}
 
