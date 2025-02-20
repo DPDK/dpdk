@@ -8,6 +8,10 @@
 
 #include "nthw_fpga_model.h"
 
+enum mac_pcs_mode_e {
+	MAC_PCS_MODE_2X100
+};
+
 struct nt_phy_tile {
 	nthw_fpga_t *mp_fpga;
 
@@ -15,6 +19,8 @@ struct nt_phy_tile {
 
 	int mn_fpga_version;
 	int mn_fpga_revision;
+
+	enum mac_pcs_mode_e mac_pcs_mode;
 
 	nthw_register_t *mp_reg_port_xcvr_base[2][4];
 	nthw_field_t *mp_fld_port_xcvr_base_ptr[2][4];
@@ -39,6 +45,8 @@ struct nt_phy_tile {
 
 	nthw_field_t *mp_fld_port_status_rx_hi_ber[2];
 	nthw_field_t *mp_fld_port_status_rx_am_lock[2];
+	nthw_field_t *mp_fld_port_status_reset_ackn[2];
+	nthw_field_t *mp_fld_port_status_tx_lanes_stable[2];
 	nthw_field_t *mp_fld_port_status_tx_reset_ackn[2];
 	nthw_field_t *mp_fld_port_status_rx_reset_ackn[2];
 
@@ -93,5 +101,9 @@ uint32_t nthw_phy_tile_read_xcvr(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t la
 	uint32_t address);
 void nthw_phy_tile_write_xcvr(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t lane, uint32_t address,
 	uint32_t data);
+uint32_t nthw_phy_tile_get_port_status_reset_ack(nthw_phy_tile_t *p, uint8_t intf_no);
+uint32_t nthw_phy_tile_get_port_status_tx_lanes_stable(nthw_phy_tile_t *p, uint8_t intf_no);
+uint8_t nthw_phy_tile_get_no_intfs(nthw_phy_tile_t *p);
+void nthw_phy_tile_set_port_config_rst(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t value);
 
 #endif	/* __NTHW_PHY_TILE_H__ */
