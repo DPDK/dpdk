@@ -372,6 +372,121 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 	return res;
 }
 
+static int nim_ready_100_gb(adapter_info_t *p_info, int port)
+{
+	nt4ga_link_t *link_info = &p_info->nt4ga_link;
+	nim_i2c_ctx_t *nim_ctx = &link_info->u.nim_ctx[port];
+	nthw_phy_tile_t *p_phy_tile = p_info->fpga_info.mp_nthw_agx.p_phy_tile;
+
+	bool disable_fec_by_port_type = (nim_ctx->port_type == NT_PORT_TYPE_QSFP28_LR4);
+	bool enable_fec = nim_ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena &&
+		!disable_fec_by_port_type;
+
+	NT_LOG(DBG, NTNIC, "Port %s: DisableFec = %d", p_info->mp_port_id_str[port], !enable_fec);
+	/*
+	 * FecAutonegotiation at 100G is not supported for Napatech adapters and therefore
+	 * not relevant at this speed
+	 */
+
+	/* Adjust NIM power level */
+	if (nim_ctx->pwr_level_req > 4) {
+		qsfp28_set_high_power(nim_ctx);
+		nim_ctx->pwr_level_cur = nim_ctx->pwr_level_req;
+	}
+
+	/* enable_fec is what the end result should be, now find out if it's possible */
+	if (enable_fec) {
+		if (qsfp28_set_fec_enable(nim_ctx, true, false)) {
+			/* Prefer NIM media FEC since the NIM is assumed to know the right FEC */
+			NT_LOG(DBG, NTNIC, "Port %s: NIM media FEC enabled",
+				p_info->mp_port_id_str[port]);
+
+			/* The NIM has been set to FEC on the media side so turn FPGA FEC off */
+			if (nthw_phy_tile_configure_fec(p_phy_tile, port, true)) {
+				NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC disabled",
+					p_info->mp_port_id_str[port]);
+
+			} else {
+				NT_LOG(DBG, NTNIC,
+					"Port %s: FPGA does not support disabling of FEC",
+					p_info->mp_port_id_str[port]);
+				return 1;
+			}
+
+		} else if (qsfp28_set_fec_enable(nim_ctx, false, false)) {
+			/* The NIM does not support FEC at all so turn FPGA FEC on instead */
+			/* This is relevant to SR4 modules */
+			NT_LOG(DBG, NTNIC, "Port %s: No NIM FEC", p_info->mp_port_id_str[port]);
+			nthw_phy_tile_configure_fec(p_phy_tile, port, false);
+			NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC enabled",
+				p_info->mp_port_id_str[port]);
+
+		} else if (qsfp28_set_fec_enable(nim_ctx, true, true)) {
+			/* This probably not a likely scenario */
+			nthw_phy_tile_configure_fec(p_phy_tile, port, false);
+			NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC enabled",
+				p_info->mp_port_id_str[port]);
+			NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC terminated, NIM media FEC enabled",
+				p_info->mp_port_id_str[port]);
+
+		} else {
+			NT_LOG(ERR, NTNIC, "Port %s: Could not enable FEC",
+				p_info->mp_port_id_str[port]);
+			return 1;
+		}
+
+	} else if (qsfp28_set_fec_enable(nim_ctx, false, false)) {
+		/* The NIM does not support FEC at all - this is relevant to LR4 modules */
+		NT_LOG(DBG, NTNIC, "Port %s: No NIM FEC", p_info->mp_port_id_str[port]);
+
+		if (nthw_phy_tile_configure_fec(p_phy_tile, port, true)) {
+			NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC disabled",
+				p_info->mp_port_id_str[port]);
+
+		} else {
+			NT_LOG(ERR, NTNIC, "Port %s: FPGA does not support disabling of FEC",
+				p_info->mp_port_id_str[port]);
+			return 1;
+		}
+
+	} else if (qsfp28_set_fec_enable(nim_ctx, false, true)) {
+		nthw_phy_tile_configure_fec(p_phy_tile, port, false);
+		/* This probably not a likely scenario */
+		NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC enabled", p_info->mp_port_id_str[port]);
+		NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC terminated, NIM media FEC disabled",
+			p_info->mp_port_id_str[port]);
+
+	} else {
+		NT_LOG(ERR, NTNIC, "Port %s: Could not disable FEC",
+			p_info->mp_port_id_str[port]);
+		return 1;
+	}
+
+	if (port == 0) {
+		/* setTxEqualization(uint8_t intf_no, uint8_t lane, uint32_t pre_tap2,
+		 * uint32_t main_tap, uint32_t pre_tap1, uint32_t post_tap1)
+		 */
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 0, 0, 44, 2, 9);
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 1, 0, 44, 2, 9);
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 2, 0, 44, 2, 9);
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 3, 0, 44, 2, 9);
+
+	} else {
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 0, 0, 44, 2, 9);
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 1, 0, 44, 2, 9);
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 2, 0, 44, 2, 9);
+		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 3, 0, 44, 2, 9);
+	}
+
+	/*
+	 * Perform a full reset. If the RX is in reset from the start this sequence will
+	 * take it out of reset and this is necessary in order to read block/lane lock
+	 * in getLinkState()
+	 */
+	phy_reset_rx(p_info, port);
+	return 0;
+}
+
 /*
  * Initialize one 100 Gbps port.
  */
@@ -423,6 +538,13 @@ static int _port_init(adapter_info_t *p_info, nthw_fpga_t *fpga, int port)
 	}
 
 	NT_LOG(DBG, NTNIC, "%s: NIM initialized", p_info->mp_port_id_str[port]);
+
+	res = nim_ready_100_gb(p_info, port);
+
+	if (res) {
+		NT_LOG(WRN, NTNIC, "%s: NIM failed to get ready", p_info->mp_port_id_str[port]);
+		return res;
+	}
 
 	phy_reset_rx(p_info, port);
 	return res;
