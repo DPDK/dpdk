@@ -872,6 +872,39 @@ static void *_common_ptp_nim_state_machine(void *data)
 				continue;
 			}
 
+			/*
+			 * NIM module is present
+			 */
+			if (link_state[i].lh_nim_absent && link_state[i].nim_present) {
+				sfp_nim_state_t new_state;
+				NT_LOG(INF, NTNIC, "%s: NIM module inserted",
+					drv->mp_port_id_str[i]);
+
+				if (_port_init(drv, fpga, i)) {
+					NT_LOG(ERR, NTNIC,
+						"%s: Failed to initialize NIM module",
+						drv->mp_port_id_str[i]);
+					continue;
+				}
+
+				if (nim_state_build(&nim_ctx[i], &new_state)) {
+					NT_LOG(ERR, NTNIC, "%s: Cannot read basic NIM data",
+						drv->mp_port_id_str[i]);
+					continue;
+				}
+
+				assert(new_state.br);	/* Cannot be zero if NIM is present */
+				NT_LOG(DBG, NTNIC,
+					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
+					drv->mp_port_id_str[i], nim_ctx->nim_id,
+					nim_id_to_text(nim_ctx->nim_id), (unsigned int)new_state.br,
+					nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+				link_state[i].lh_nim_absent = false;
+				NT_LOG(DBG, NTNIC, "%s: NIM module initialized",
+					drv->mp_port_id_str[i]);
+				continue;
+			}
+
 			if (reported_link[i] != link_state[i].link_up) {
 				NT_LOG(INF, NTNIC, "%s: link is %s", drv->mp_port_id_str[i],
 					(link_state[i].link_up ? "up" : "down"));
