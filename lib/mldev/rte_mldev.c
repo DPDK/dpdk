@@ -237,7 +237,7 @@ rte_ml_dev_info_get(int16_t dev_id, struct rte_ml_dev_info *dev_info)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_info_get == NULL)
+	if (dev->dev_ops->dev_info_get == NULL)
 		return -ENOTSUP;
 
 	if (dev_info == NULL) {
@@ -246,7 +246,7 @@ rte_ml_dev_info_get(int16_t dev_id, struct rte_ml_dev_info *dev_info)
 	}
 	memset(dev_info, 0, sizeof(struct rte_ml_dev_info));
 
-	return (*dev->dev_ops->dev_info_get)(dev, dev_info);
+	return dev->dev_ops->dev_info_get(dev, dev_info);
 }
 
 int
@@ -262,7 +262,7 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started) {
@@ -285,7 +285,7 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_configure)(dev, config);
+	return dev->dev_ops->dev_configure(dev, config);
 }
 
 int
@@ -299,7 +299,7 @@ rte_ml_dev_close(int16_t dev_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
 
 	/* Device must be stopped before it can be closed */
@@ -308,7 +308,7 @@ rte_ml_dev_close(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	return (*dev->dev_ops->dev_close)(dev);
+	return dev->dev_ops->dev_close(dev);
 }
 
 int
@@ -323,7 +323,7 @@ rte_ml_dev_start(int16_t dev_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_start == NULL)
+	if (dev->dev_ops->dev_start == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started != 0) {
@@ -331,7 +331,7 @@ rte_ml_dev_start(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	ret = (*dev->dev_ops->dev_start)(dev);
+	ret = dev->dev_ops->dev_start(dev);
 	if (ret == 0)
 		dev->data->dev_started = 1;
 
@@ -350,7 +350,7 @@ rte_ml_dev_stop(int16_t dev_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_stop == NULL)
+	if (dev->dev_ops->dev_stop == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started == 0) {
@@ -358,7 +358,7 @@ rte_ml_dev_stop(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	ret = (*dev->dev_ops->dev_stop)(dev);
+	ret = dev->dev_ops->dev_stop(dev);
 	if (ret == 0)
 		dev->data->dev_started = 0;
 
@@ -392,7 +392,7 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_queue_pair_setup == NULL)
+	if (dev->dev_ops->dev_queue_pair_setup == NULL)
 		return -ENOTSUP;
 
 	if (queue_pair_id >= dev->data->nb_queue_pairs) {
@@ -410,7 +410,7 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 		return -EBUSY;
 	}
 
-	return (*dev->dev_ops->dev_queue_pair_setup)(dev, queue_pair_id, qp_conf, socket_id);
+	return dev->dev_ops->dev_queue_pair_setup(dev, queue_pair_id, qp_conf, socket_id);
 }
 
 int
@@ -424,7 +424,7 @@ rte_ml_dev_stats_get(int16_t dev_id, struct rte_ml_dev_stats *stats)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_stats_get == NULL)
+	if (dev->dev_ops->dev_stats_get == NULL)
 		return -ENOTSUP;
 
 	if (stats == NULL) {
@@ -433,7 +433,7 @@ rte_ml_dev_stats_get(int16_t dev_id, struct rte_ml_dev_stats *stats)
 	}
 	memset(stats, 0, sizeof(struct rte_ml_dev_stats));
 
-	return (*dev->dev_ops->dev_stats_get)(dev, stats);
+	return dev->dev_ops->dev_stats_get(dev, stats);
 }
 
 void
@@ -447,10 +447,10 @@ rte_ml_dev_stats_reset(int16_t dev_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_stats_reset == NULL)
+	if (dev->dev_ops->dev_stats_reset == NULL)
 		return;
 
-	(*dev->dev_ops->dev_stats_reset)(dev);
+	dev->dev_ops->dev_stats_reset(dev);
 }
 
 int
@@ -465,10 +465,10 @@ rte_ml_dev_xstats_names_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, in
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_names_get == NULL)
+	if (dev->dev_ops->dev_xstats_names_get == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->dev_xstats_names_get)(dev, mode, model_id, xstats_map, size);
+	return dev->dev_ops->dev_xstats_names_get(dev, mode, model_id, xstats_map, size);
 }
 
 int
@@ -482,7 +482,7 @@ rte_ml_dev_xstats_by_name_get(int16_t dev_id, const char *name, uint16_t *stat_i
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_by_name_get == NULL)
+	if (dev->dev_ops->dev_xstats_by_name_get == NULL)
 		return -ENOTSUP;
 
 	if (name == NULL) {
@@ -495,7 +495,7 @@ rte_ml_dev_xstats_by_name_get(int16_t dev_id, const char *name, uint16_t *stat_i
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_xstats_by_name_get)(dev, name, stat_id, value);
+	return dev->dev_ops->dev_xstats_by_name_get(dev, name, stat_id, value);
 }
 
 int
@@ -510,7 +510,7 @@ rte_ml_dev_xstats_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t 
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_get == NULL)
+	if (dev->dev_ops->dev_xstats_get == NULL)
 		return -ENOTSUP;
 
 	if (stat_ids == NULL) {
@@ -523,7 +523,7 @@ rte_ml_dev_xstats_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t 
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_xstats_get)(dev, mode, model_id, stat_ids, values, nb_ids);
+	return dev->dev_ops->dev_xstats_get(dev, mode, model_id, stat_ids, values, nb_ids);
 }
 
 int
@@ -538,10 +538,10 @@ rte_ml_dev_xstats_reset(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_reset == NULL)
+	if (dev->dev_ops->dev_xstats_reset == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->dev_xstats_reset)(dev, mode, model_id, stat_ids, nb_ids);
+	return dev->dev_ops->dev_xstats_reset(dev, mode, model_id, stat_ids, nb_ids);
 }
 
 int
@@ -555,7 +555,7 @@ rte_ml_dev_dump(int16_t dev_id, FILE *fd)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_dump == NULL)
+	if (dev->dev_ops->dev_dump == NULL)
 		return -ENOTSUP;
 
 	if (fd == NULL) {
@@ -563,7 +563,7 @@ rte_ml_dev_dump(int16_t dev_id, FILE *fd)
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_dump)(dev, fd);
+	return dev->dev_ops->dev_dump(dev, fd);
 }
 
 int
@@ -577,10 +577,10 @@ rte_ml_dev_selftest(int16_t dev_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_selftest == NULL)
+	if (dev->dev_ops->dev_selftest == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->dev_selftest)(dev);
+	return dev->dev_ops->dev_selftest(dev);
 }
 
 int
@@ -594,7 +594,7 @@ rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_load == NULL)
+	if (dev->dev_ops->model_load == NULL)
 		return -ENOTSUP;
 
 	if (params == NULL) {
@@ -607,7 +607,7 @@ rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->model_load)(dev, params, model_id);
+	return dev->dev_ops->model_load(dev, params, model_id);
 }
 
 int
@@ -621,10 +621,10 @@ rte_ml_model_unload(int16_t dev_id, uint16_t model_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_unload == NULL)
+	if (dev->dev_ops->model_unload == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->model_unload)(dev, model_id);
+	return dev->dev_ops->model_unload(dev, model_id);
 }
 
 int
@@ -638,10 +638,10 @@ rte_ml_model_start(int16_t dev_id, uint16_t model_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_start == NULL)
+	if (dev->dev_ops->model_start == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->model_start)(dev, model_id);
+	return dev->dev_ops->model_start(dev, model_id);
 }
 
 int
@@ -655,10 +655,10 @@ rte_ml_model_stop(int16_t dev_id, uint16_t model_id)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_stop == NULL)
+	if (dev->dev_ops->model_stop == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->model_stop)(dev, model_id);
+	return dev->dev_ops->model_stop(dev, model_id);
 }
 
 int
@@ -672,7 +672,7 @@ rte_ml_model_info_get(int16_t dev_id, uint16_t model_id, struct rte_ml_model_inf
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_info_get == NULL)
+	if (dev->dev_ops->model_info_get == NULL)
 		return -ENOTSUP;
 
 	if (model_info == NULL) {
@@ -681,7 +681,7 @@ rte_ml_model_info_get(int16_t dev_id, uint16_t model_id, struct rte_ml_model_inf
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->model_info_get)(dev, model_id, model_info);
+	return dev->dev_ops->model_info_get(dev, model_id, model_info);
 }
 
 int
@@ -695,7 +695,7 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_params_update == NULL)
+	if (dev->dev_ops->model_params_update == NULL)
 		return -ENOTSUP;
 
 	if (buffer == NULL) {
@@ -703,7 +703,7 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->model_params_update)(dev, model_id, buffer);
+	return dev->dev_ops->model_params_update(dev, model_id, buffer);
 }
 
 int
@@ -718,7 +718,7 @@ rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **d
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_quantize == NULL)
+	if (dev->dev_ops->io_quantize == NULL)
 		return -ENOTSUP;
 
 	if (dbuffer == NULL) {
@@ -731,7 +731,7 @@ rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **d
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->io_quantize)(dev, model_id, dbuffer, qbuffer);
+	return dev->dev_ops->io_quantize(dev, model_id, dbuffer, qbuffer);
 }
 
 int
@@ -746,7 +746,7 @@ rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg *
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_dequantize == NULL)
+	if (dev->dev_ops->io_dequantize == NULL)
 		return -ENOTSUP;
 
 	if (qbuffer == NULL) {
@@ -759,7 +759,7 @@ rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg *
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->io_dequantize)(dev, model_id, qbuffer, dbuffer);
+	return dev->dev_ops->io_dequantize(dev, model_id, qbuffer, dbuffer);
 }
 
 /** Initialise rte_ml_op mempool element */
@@ -832,7 +832,7 @@ rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->enqueue_burst == NULL) {
+	if (dev->enqueue_burst == NULL) {
 		rte_errno = -ENOTSUP;
 		return 0;
 	}
@@ -852,7 +852,7 @@ rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
 #endif
 
-	return (*dev->enqueue_burst)(dev, qp_id, ops, nb_ops);
+	return dev->enqueue_burst(dev, qp_id, ops, nb_ops);
 }
 
 uint16_t
@@ -868,7 +868,7 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dequeue_burst == NULL) {
+	if (dev->dequeue_burst == NULL) {
 		rte_errno = -ENOTSUP;
 		return 0;
 	}
@@ -888,7 +888,7 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
 #endif
 
-	return (*dev->dequeue_burst)(dev, qp_id, ops, nb_ops);
+	return dev->dequeue_burst(dev, qp_id, ops, nb_ops);
 }
 
 int
@@ -903,7 +903,7 @@ rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->op_error_get == NULL)
+	if (dev->op_error_get == NULL)
 		return -ENOTSUP;
 
 	if (op == NULL) {
@@ -919,7 +919,7 @@ rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
 #endif
 
-	return (*dev->op_error_get)(dev, op, error);
+	return dev->op_error_get(dev, op, error);
 }
 
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);
