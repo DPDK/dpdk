@@ -7,9 +7,12 @@
 #define _NTNIC_NIM_H_
 
 #include <stdint.h>
+#include "nthw_pcal6416a.h"
+#include "nthw_i2cm.h"
 
 typedef enum i2c_type {
 	I2C_HWIIC,
+	I2C_HWAGX
 } i2c_type_e;
 
 enum nt_port_type_e {
@@ -38,7 +41,9 @@ typedef struct nim_i2c_ctx {
 	union {
 		nthw_iic_t hwiic;	/* depends on *Fpga_t, instance number, and cycle time */
 		struct {
+			nthw_pcal6416a_t *p_io_nim;
 			nthw_i2cm_t *p_nt_i2cm;
+			nthw_pca9849_t *p_ca9849;
 			int mux_channel;
 		} hwagx;
 	};
