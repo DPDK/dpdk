@@ -19,6 +19,11 @@ typedef enum {
 	LOOPBACK_HOST
 } loopback_host_t;
 
+typedef enum {
+	LOOPBACK_LINE_NONE,
+	LOOPBACK_LINE
+} loopback_line_t;
+
 static int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info,
 	nthw_fpga_t *fpga);
 
@@ -93,6 +98,105 @@ static int phy_set_host_loopback(adapter_info_t *drv, int port, loopback_host_t 
 	return 0;
 }
 
+static int phy_set_line_loopback(adapter_info_t *drv, int port, loopback_line_t loopback)
+{
+	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
+	uint32_t addr;
+
+	switch (loopback) {
+	case LOOPBACK_LINE_NONE:
+		for (uint8_t lane = 0; lane < 4; lane++) {
+			uint8_t quad_lane;
+
+			for (uint8_t fgt = 0; fgt < 4; fgt++) {
+				uint8_t quad_and_lane_no =
+					(uint8_t)nthw_phy_tile_read_xcvr(p, port, lane, 0xFFFFC);
+				quad_lane = quad_and_lane_no & 0x3;	/* bits[1:0] */
+
+				if (quad_lane == lane)
+					break;
+			}
+
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41830u + (0x8000u * quad_lane),
+				0x03);
+
+			addr = nthw_phy_tile_read_xcvr(p, 0, 0, 0x41768u + (0x8000u * quad_lane)) |
+				(1u << 24u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41768u + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, 0, 0, 0x41414u + (0x8000u * quad_lane)) &
+				~(1u << 29u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41414u + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, 0, 0, 0x4141Cu + (0x8000u * quad_lane)) &
+				~(1u << 30u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x4141Cu + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, 0, 0, 0x41418u + (0x8000u * quad_lane)) &
+				~(1u << 31u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41418u + (0x8000u * quad_lane),
+				addr);
+		}
+
+		break;
+
+	case LOOPBACK_LINE:
+		for (uint8_t lane = 0; lane < 4; lane++) {
+			uint8_t quad_lane;
+
+			for (uint8_t fgt = 0; fgt < 4; fgt++) {
+				uint8_t quad_and_lane_no =
+					(uint8_t)nthw_phy_tile_read_xcvr(p, port, lane, 0xFFFFC);
+				quad_lane = quad_and_lane_no & 0x3;	/* bits[1:0] */
+
+				if (quad_lane == lane)
+					break;
+			}
+
+			addr = nthw_phy_tile_read_xcvr(p, port, 0,
+					0x41830u + (0x8000u * quad_lane)) &
+				0u;
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41830u + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, port, 0,
+					0x41768u + (0x8000u * quad_lane)) &
+				~(1u << 24u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41768u + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, port, 0,
+					0x41414u + (0x8000u * quad_lane)) |
+				(1u << 29u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41414u + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, port, 0,
+					0x4141Cu + (0x8000u * quad_lane)) |
+				(1u << 30u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x4141Cu + (0x8000u * quad_lane),
+				addr);
+
+			addr = nthw_phy_tile_read_xcvr(p, port, 0,
+					0x41418u + (0x8000u * quad_lane)) |
+				(1u << 31u);
+			nthw_phy_tile_write_xcvr(p, port, 0, 0x41418u + (0x8000u * quad_lane),
+				addr);
+		}
+
+		break;
+
+	default:
+		NT_LOG(ERR, NTNIC, "Port %d: Unhandled loopback value (%d)", port, loopback);
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  * Utility functions
  */
@@ -156,6 +260,12 @@ set_loopback(struct adapter_info_s *p_adapter_info, int port, uint32_t mode, uin
 		swap_tx_rx_polarity(p_adapter_info, port, false);
 		break;
 
+	case 2:
+		NT_LOG(INF, NTNIC, "%s: Applying line loopback",
+			p_adapter_info->mp_port_id_str[port]);
+		phy_set_line_loopback(p_adapter_info, port, LOOPBACK_LINE);
+		break;
+
 	default:
 		switch (last_mode) {
 		case 1:
@@ -163,6 +273,12 @@ set_loopback(struct adapter_info_s *p_adapter_info, int port, uint32_t mode, uin
 				p_adapter_info->mp_port_id_str[port]);
 			phy_set_host_loopback(p_adapter_info, port, LOOPBACK_HOST_NONE);
 			swap_tx_rx_polarity(p_adapter_info, port, true);
+			break;
+
+		case 2:
+			NT_LOG(INF, NTNIC, "%s: Removing line loopback",
+				p_adapter_info->mp_port_id_str[port]);
+			phy_set_line_loopback(p_adapter_info, port, LOOPBACK_LINE_NONE);
 			break;
 
 		default:

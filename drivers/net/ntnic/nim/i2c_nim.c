@@ -13,6 +13,12 @@
 #include "qsfp_registers.h"
 #include "nim_defines.h"
 
+int nim_agx_read_id(struct nim_i2c_ctx *ctx);
+static void nim_agx_read(struct nim_i2c_ctx *ctx, uint8_t dev_addr, uint8_t reg_addr,
+	uint8_t data_len, void *p_data);
+static void nim_agx_write(struct nim_i2c_ctx *ctx, uint8_t dev_addr, uint8_t reg_addr,
+	uint8_t data_len, void *p_data);
+
 #define NIM_READ false
 #define NIM_WRITE true
 #define NIM_PAGE_SEL_REGISTER 127
@@ -50,17 +56,17 @@ static int nim_read_write_i2c_data(nim_i2c_ctx_p ctx, bool do_write, uint16_t li
 		if (ctx->type == I2C_HWIIC) {
 			return nthw_iic_write_data(&ctx->hwiic, i2c_devaddr, a_reg_addr, seq_cnt,
 					p_data);
-
-		} else {
-			return 0;
 		}
 
-	} else if (ctx->type == I2C_HWIIC) {
-		return nthw_iic_read_data(&ctx->hwiic, i2c_devaddr, a_reg_addr, seq_cnt, p_data);
-
-	} else {
+		nim_agx_write(ctx, i2c_addr, a_reg_addr, seq_cnt, p_data);
 		return 0;
 	}
+
+	if (ctx->type == I2C_HWIIC)
+		return nthw_iic_read_data(&ctx->hwiic, i2c_devaddr, a_reg_addr, seq_cnt, p_data);
+
+	nim_agx_read(ctx, i2c_addr, a_reg_addr, seq_cnt, p_data);
+	return 0;
 }
 
 /*
@@ -216,7 +222,7 @@ static int i2c_nim_common_construct(nim_i2c_ctx_p ctx)
 		res = nim_read_id(ctx);
 
 	else
-		res = -1;
+		res = nim_agx_read_id(ctx);
 
 	if (res) {
 		NT_LOG(ERR, NTNIC, "Can't read NIM id.");
@@ -802,4 +808,52 @@ void nim_agx_setup(struct nim_i2c_ctx *ctx, nthw_pcal6416a_t *p_io_nim, nthw_i2c
 	ctx->hwagx.p_nt_i2cm = p_nt_i2cm;
 	ctx->hwagx.p_ca9849 = p_ca9849;
 	ctx->hwagx.p_io_nim = p_io_nim;
+}
+
+static void nim_agx_read(struct nim_i2c_ctx *ctx,
+	uint8_t dev_addr,
+	uint8_t reg_addr,
+	uint8_t data_len,
+	void *p_data)
+{
+	nthw_i2cm_t *p_nt_i2cm = ctx->hwagx.p_nt_i2cm;
+	nthw_pca9849_t *p_ca9849 = ctx->hwagx.p_ca9849;
+	uint8_t *data = (uint8_t *)p_data;
+
+	rte_spinlock_lock(&p_nt_i2cm->i2cmmutex);
+	nthw_pca9849_set_channel(p_ca9849, ctx->hwagx.mux_channel);
+
+	for (uint8_t i = 0; i < data_len; i++) {
+		nthw_i2cm_read(p_nt_i2cm, (uint8_t)(dev_addr >> 1), (uint8_t)(reg_addr + i), data);
+		data++;
+	}
+
+	rte_spinlock_unlock(&p_nt_i2cm->i2cmmutex);
+}
+
+static void nim_agx_write(struct nim_i2c_ctx *ctx,
+	uint8_t dev_addr,
+	uint8_t reg_addr,
+	uint8_t data_len,
+	void *p_data)
+{
+	nthw_i2cm_t *p_nt_i2cm = ctx->hwagx.p_nt_i2cm;
+	nthw_pca9849_t *p_ca9849 = ctx->hwagx.p_ca9849;
+	uint8_t *data = (uint8_t *)p_data;
+
+	rte_spinlock_lock(&p_nt_i2cm->i2cmmutex);
+	nthw_pca9849_set_channel(p_ca9849, ctx->hwagx.mux_channel);
+
+	for (uint8_t i = 0; i < data_len; i++) {
+		nthw_i2cm_write(p_nt_i2cm, (uint8_t)(dev_addr >> 1), (uint8_t)(reg_addr + i),
+			*data++);
+	}
+
+	rte_spinlock_unlock(&p_nt_i2cm->i2cmmutex);
+}
+
+int nim_agx_read_id(struct nim_i2c_ctx *ctx)
+{
+	nim_agx_read(ctx, 0xA0, 0, sizeof(ctx->nim_id), &ctx->nim_id);
+	return 0;
 }
