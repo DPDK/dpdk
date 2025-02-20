@@ -201,6 +201,17 @@ static int phy_set_line_loopback(adapter_info_t *drv, int port, loopback_line_t 
  * Nim handling
  */
 
+static void nim_set_reset(struct nim_i2c_ctx *ctx, uint8_t nim_idx, bool reset)
+{
+	nthw_pcal6416a_t *p = ctx->hwagx.p_io_nim;
+
+	if (nim_idx == 0)
+		nthw_pcal6416a_write(p, 0, reset ? 0 : 1);
+
+	else if (nim_idx == 1)
+		nthw_pcal6416a_write(p, 4, reset ? 0 : 1);
+}
+
 static bool nim_is_present(nim_i2c_ctx_p ctx, uint8_t nim_idx)
 {
 	assert(nim_idx < NUM_ADAPTER_PORTS_MAX);
@@ -215,6 +226,20 @@ static bool nim_is_present(nim_i2c_ctx_p ctx, uint8_t nim_idx)
 		nthw_pcal6416a_read(p, 7, &data);
 
 	return data == 0;
+}
+
+static void set_nim_low_power(nim_i2c_ctx_p ctx, uint8_t nim_idx, bool low_power)
+{
+	nthw_pcal6416a_t *p = ctx->hwagx.p_io_nim;
+
+	if (nim_idx == 0) {
+		/* De-asserting LP mode pin 1 */
+		nthw_pcal6416a_write(p, 1, low_power ? 1 : 0);
+
+	} else if (nim_idx == 1) {
+		/* De-asserting LP mode pin 5 */
+		nthw_pcal6416a_write(p, 5, low_power ? 1 : 0);
+	}
 }
 
 /*
@@ -336,6 +361,25 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 	}
 
 	/*
+	 * Check NIM is present before doing reset.
+	 */
+
+	if (!nim_is_present(nim_ctx, port)) {
+		NT_LOG(DBG, NTNIC, "%s: NIM module is no longer absent!",
+			drv->mp_port_id_str[port]);
+		return -1;
+	}
+
+	/*
+	 * Reset NIM
+	 */
+
+	NT_LOG(DBG, NTNIC, "%s: Performing NIM reset", drv->mp_port_id_str[port]);
+	nim_set_reset(nim_ctx, (uint8_t)port, true);
+	nt_os_wait_usec(100000);/*  pause 0.1s */
+	nim_set_reset(nim_ctx, (uint8_t)port, false);
+
+	/*
 	 * Wait a little after a module has been inserted before trying to access I2C
 	 * data, otherwise the module will not respond correctly.
 	 */
@@ -367,6 +411,15 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 		NT_LOG(DBG, NTHW, "%s: The driver supports the NIM module type %s",
 			drv->mp_port_id_str[port], nim_id_to_text(valid_nim_id));
 		return -1;
+	}
+
+	if (enable) {
+		NT_LOG(DBG, NTNIC, "%s: De-asserting low power", drv->mp_port_id_str[port]);
+		set_nim_low_power(nim_ctx, port, false);
+
+	} else {
+		NT_LOG(DBG, NTNIC, "%s: Asserting low power", drv->mp_port_id_str[port]);
+		set_nim_low_power(nim_ctx, port, true);
 	}
 
 	return res;
