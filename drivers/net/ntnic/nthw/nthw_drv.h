@@ -15,6 +15,7 @@
 #include "nthw_rpf.h"
 #include "nthw_pcm_nt400dxx.h"
 #include "nthw_phy_tile.h"
+#include "nthw_pcm_nt400dxx.h"
 
 /*
  * Structs for controlling Agilex based NT400DXX adapter
