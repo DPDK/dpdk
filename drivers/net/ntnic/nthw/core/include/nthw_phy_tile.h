@@ -9,11 +9,15 @@
 #include "nthw_fpga_model.h"
 
 enum mac_pcs_mode_e {
+	MAC_PCS_MODE_8x10_25,
+	MAC_PCS_MODE_2X40,
 	MAC_PCS_MODE_2X100
 };
 
 struct nt_phy_tile {
 	nthw_fpga_t *mp_fpga;
+
+	nthw_module_t *m_mod_phy_tile;
 
 	int mn_phy_tile_instance;
 
@@ -27,6 +31,7 @@ struct nt_phy_tile {
 	nthw_field_t *mp_fld_port_xcvr_base_busy[2][4];
 	nthw_field_t *mp_fld_port_xcvr_base_cmd[2][4];
 
+	nthw_register_t *mp_reg_port_xcvr_data[2][4];
 	nthw_field_t *mp_fld_port_xcvr_data_data[2][4];
 
 	nthw_register_t *mp_reg_port_eth_base[2];
@@ -34,27 +39,44 @@ struct nt_phy_tile {
 	nthw_field_t *mp_fld_port_eth_base_busy[2];
 	nthw_field_t *mp_fld_port_eth_base_cmd[2];
 
+	nthw_register_t *mp_reg_port_eth_data[2];
 	nthw_field_t *mp_fld_port_eth_data_data[2];
 
 	nthw_register_t *mp_reg_link_summary[2];
 	nthw_field_t *mp_fld_link_summary_nt_phy_link_state[2];
 	nthw_field_t *mp_fld_link_summary_ll_nt_phy_link_state[2];
 	nthw_field_t *mp_fld_link_summary_link_down_cnt[2];
+	nthw_field_t *mp_fld_link_summary_ll_rx_block_lock[2];
+	nthw_field_t *mp_fld_link_summary_ll_rx_am_lock[2];
+	nthw_field_t *mp_fld_link_summary_lh_rx_high_bit_error_rate[2];
 	nthw_field_t *mp_fld_link_summary_lh_received_local_fault[2];
 	nthw_field_t *mp_fld_link_summary_lh_remote_fault[2];
 
+	nthw_register_t *mp_reg_port_status[2];
+	nthw_field_t *mp_fld_port_status_rx_pcs_fully_aligned[2];
 	nthw_field_t *mp_fld_port_status_rx_hi_ber[2];
+	nthw_field_t *mp_fld_port_status_rx_remote_fault[2];
+	nthw_field_t *mp_fld_port_status_rx_local_fault[2];
 	nthw_field_t *mp_fld_port_status_rx_am_lock[2];
 	nthw_field_t *mp_fld_port_status_reset_ackn[2];
 	nthw_field_t *mp_fld_port_status_tx_lanes_stable[2];
+	nthw_field_t *mp_fld_port_status_tx_pll_locked[2];
+	nthw_field_t *mp_fld_port_status_sys_pll_locked[2];
 	nthw_field_t *mp_fld_port_status_tx_reset_ackn[2];
 	nthw_field_t *mp_fld_port_status_rx_reset_ackn[2];
 
+	nthw_register_t *mp_reg_port_config[2];
+	nthw_field_t *mp_fld_port_config_dyn_reset;
 	nthw_field_t *mp_fld_port_config_reset[2];
 	nthw_field_t *mp_fld_port_config_rx_reset[2];
 	nthw_field_t *mp_fld_port_config_tx_reset[2];
+	nthw_field_t *mp_fld_port_config_nt_linkup_latency[2];
+	nthw_field_t *mp_fld_port_config_nt_force_linkdown[2];
+	nthw_field_t *mp_fld_port_config_nt_auto_force_linkdown[2];
 
+	nthw_register_t *mp_reg_port_comp[2];
 	nthw_field_t *mp_fld_port_comp_rx_compensation[2];
+	nthw_field_t *mp_fld_port_comp_tx_compensation[2];
 
 	nthw_register_t *mp_reg_dyn_reconfig_base;
 	nthw_field_t *mp_fld_dyn_reconfig_base_ptr;
@@ -64,17 +86,34 @@ struct nt_phy_tile {
 	nthw_register_t *mp_reg_dyn_reconfig_data;
 	nthw_field_t *mp_fld_dyn_reconfig_data_data;
 
+	nthw_register_t *mp_reg_scratch;
 	nthw_field_t *mp_fld_scratch_data;
+
+	nthw_register_t *mp_reg_dr_cfg;
+	nthw_field_t *mp_fld_reg_dr_cfg_features;
+	nthw_field_t *mp_fld_reg_dr_cfg_tx_flush_level;
 
 	nthw_register_t *mp_reg_dr_cfg_status;
 	nthw_field_t *mp_fld_dr_cfg_status_curr_profile_id;
 	nthw_field_t *mp_fld_dr_cfg_status_in_progress;
 	nthw_field_t *mp_fld_dr_cfg_status_error;
+
+	nthw_register_t *mp_reg_sys_pll;
+	nthw_field_t *mp_fld_sys_pll_set_rdy;
+	nthw_field_t *mp_fld_sys_pll_get_rdy;
+	nthw_field_t *mp_fld_sys_pll_system_pll_lock;
+	nthw_field_t *mp_fld_sys_pll_en_ref_clk_fgt;
+	nthw_field_t *mp_fld_sys_pll_disable_ref_clk_monitor;
+	nthw_field_t *mp_fld_sys_pll_ref_clk_fgt_enabled;
+	nthw_field_t *mp_fld_sys_pll_forward_rst;
+	nthw_field_t *mp_fld_sys_pll_force_rst;
 };
 
 typedef struct nt_phy_tile nthw_phy_tile_t;
 typedef struct nt_phy_tile nt_phy_tile;
 
+nthw_phy_tile_t *nthw_phy_tile_new(void);
+int nthw_phy_tile_init(nthw_phy_tile_t *p, nthw_fpga_t *p_fpga, int mn_phy_tile_instance);
 void nthw_phy_tile_set_tx_pol_inv(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t lane, bool invert);
 void nthw_phy_tile_set_rx_pol_inv(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t lane, bool invert);
 void nthw_phy_tile_set_host_loopback(nthw_phy_tile_t *p, uint8_t intf_no, uint8_t lane,

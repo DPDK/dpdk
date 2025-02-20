@@ -181,7 +181,23 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 
 static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 {
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	nthw_fpga_t *p_fpga = NULL;
+
+	p_fpga = p_fpga_info->mp_fpga;
+
 	assert(p_fpga_info);
+
+	NT_LOG(DBG, NTHW, "%s: %s: BEGIN", p_adapter_id_str, __PRETTY_FUNCTION__);
+
+	/* Create Phy Tile module */
+	p_fpga_info->mp_nthw_agx.p_phy_tile = nthw_phy_tile_new();
+
+	if (nthw_phy_tile_init(p_fpga_info->mp_nthw_agx.p_phy_tile, p_fpga, 0)) {
+		NT_LOG(ERR, NTHW, "%s: Failed to create Phy Tile Module", p_adapter_id_str);
+		return -1;
+	}
+
 	return 0;
 }
 
