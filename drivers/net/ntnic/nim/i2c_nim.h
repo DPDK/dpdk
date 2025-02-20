@@ -33,6 +33,9 @@ int nim_qsfp_plus_nim_set_tx_laser_disable(nim_i2c_ctx_t *ctx, bool disable, int
  */
 int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra);
 
+void qsfp28_set_high_power(nim_i2c_ctx_p ctx);
+bool qsfp28_set_fec_enable(nim_i2c_ctx_p ctx, bool media_side_fec, bool host_side_fec);
+
 void nim_agx_setup(struct nim_i2c_ctx *ctx, nthw_pcal6416a_t *p_io_nim, nthw_i2cm_t *p_nt_i2cm,
 	nthw_pca9849_t *p_ca9849);
 

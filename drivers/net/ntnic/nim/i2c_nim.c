@@ -192,6 +192,13 @@ static int read_data_lin(nim_i2c_ctx_p ctx, uint16_t lin_addr, uint16_t length, 
 			NIM_READ);
 }
 
+static int write_data_lin(nim_i2c_ctx_p ctx, uint16_t lin_addr, uint16_t length, void *data)
+{
+	/* Wrapper for using Mutex for QSFP TODO */
+	return nim_read_write_data_lin(ctx, page_addressing(ctx->nim_id), lin_addr, length, data,
+		NIM_WRITE);
+}
+
 /* Read and return a single byte */
 static uint8_t read_byte(nim_i2c_ctx_p ctx, uint16_t addr)
 {
@@ -800,6 +807,79 @@ int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 	}
 
 	return res;
+}
+
+/*
+ * Enables high power according to SFF-8636 Rev 2.7, Table 6-9, Page 35:
+ * When set (= 1b) enables Power Classes 5 to 7 in Byte 129 to exceed 3.5W.
+ * When cleared (= 0b), modules with power classes 5 to 7 must dissipate less
+ * than 3.5W (but are not required to be fully functional). Default 0.
+ */
+void qsfp28_set_high_power(nim_i2c_ctx_p ctx)
+{
+	const uint16_t addr = 93;
+	uint8_t data;
+
+	/* Enable high power class; Set Page 00h, Byte 93 bit 2 to 1 */
+	read_data_lin(ctx, addr, sizeof(data), &data);
+	data |= (1 << 2);
+	write_data_lin(ctx, addr, sizeof(data), &data);
+}
+
+/*
+ * Enable FEC on media and/or host side. If the operation could be carried out
+ * return true. For some modules media side FEC is enabled but cannot be changed
+ *  while others allow changing the FEC state.
+ * For LR4 modules write operations (which are also not necessary) to the control
+ *  register must be avoided as this introduces I2C errors on NT200A01.
+ */
+
+bool qsfp28_set_fec_enable(nim_i2c_ctx_p ctx, bool media_side_fec, bool host_side_fec)
+{
+	/*
+	 * If the current FEC state does not match the wanted and the FEC cannot be
+	 * controlled then the operation cannot be carried out
+	 */
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena != media_side_fec &&
+		!ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ctrl)
+		return false;
+
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.host_side_fec_ena != host_side_fec &&
+		!ctx->specific_u.qsfp.specific_u.qsfp28.host_side_fec_ctrl)
+		return false;
+
+	/*
+	 * If the current media and host side FEC state matches the wanted states then
+	 * no need to do more
+	 */
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena == media_side_fec &&
+		ctx->specific_u.qsfp.specific_u.qsfp28.host_side_fec_ena == host_side_fec)
+		return true;
+
+	/*
+	 * SFF-8636, Rev 2.10a TABLE 6-29 Optional Channel Control)
+	 * (Page 03h, Bytes 230-241)
+	 */
+	const uint16_t addr = 230 + 3 * 128;
+	uint8_t data = 0;
+	read_data_lin(ctx, addr, sizeof(data), &data);
+
+	if (media_side_fec)
+		data &= (uint8_t)(~(1 << 6));
+
+	else
+		data |= (uint8_t)(1 << 6);
+
+	if (host_side_fec)
+		data |= (uint8_t)(1 << 7);
+
+	else
+		data &= (uint8_t)(~(1 << 7));
+
+	write_data_lin(ctx, addr, sizeof(data), &data);
+	ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = media_side_fec;
+	ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = host_side_fec;
+	return true;
 }
 
 void nim_agx_setup(struct nim_i2c_ctx *ctx, nthw_pcal6416a_t *p_io_nim, nthw_i2cm_t *p_nt_i2cm,
