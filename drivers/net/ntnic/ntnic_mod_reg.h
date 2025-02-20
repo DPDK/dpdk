@@ -144,6 +144,10 @@ void register_100g_link_ops(struct link_ops_s *ops);
 const struct link_ops_s *get_100g_link_ops(void);
 void link_100g_init(void);
 
+void register_agx_100g_link_ops(struct link_ops_s *ops);
+const struct link_ops_s *get_agx_100g_link_ops(void);
+void link_agx_100g_init(void);
+
 struct port_ops {
 	bool (*get_nim_present)(struct adapter_info_s *p, int port);
 
