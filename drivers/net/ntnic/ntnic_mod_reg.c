@@ -69,6 +69,23 @@ const struct link_ops_s *get_100g_link_ops(void)
 	return link_100g_ops;
 }
 
+/*
+ *
+ */
+static struct link_ops_s *link_agx_100g_ops;
+
+void register_agx_100g_link_ops(struct link_ops_s *ops)
+{
+	link_agx_100g_ops = ops;
+}
+
+const struct link_ops_s *get_agx_100g_link_ops(void)
+{
+	if (link_agx_100g_ops == NULL)
+		link_agx_100g_init();
+	return link_agx_100g_ops;
+}
+
 static const struct port_ops *port_ops;
 
 void register_port_ops(const struct port_ops *ops)

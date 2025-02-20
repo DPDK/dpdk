@@ -32,6 +32,7 @@ sources = files(
         'adapter/nt4ga_stat/nt4ga_stat.c',
         'dbsconfig/ntnic_dbsconfig.c',
         'link_mgmt/link_100g/nt4ga_link_100g.c',
+        'link_mgmt/link_agx_100g/nt4ga_agx_link_100g.c',
         'link_mgmt/nt4ga_link.c',
         'nim/i2c_nim.c',
         'ntnic_filter/ntnic_filter.c',

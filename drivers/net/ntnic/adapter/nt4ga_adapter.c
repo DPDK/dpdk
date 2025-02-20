@@ -196,6 +196,15 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 
 			res = link_ops->link_init(p_adapter_info, p_fpga);
 			break;
+		case 9574: /* NT400D13 (Intel Agilex FPGA) */
+			link_ops = get_agx_100g_link_ops();
+			if (link_ops == NULL) {
+				NT_LOG(ERR, NTNIC, "NT400D11 100G link module uninitialized");
+				res = -1;
+				break;
+			}
+			res = link_ops->link_init(p_adapter_info, p_fpga);
+			break;
 
 		default:
 			NT_LOG(ERR, NTNIC, "Unsupported FPGA product: %04d",
