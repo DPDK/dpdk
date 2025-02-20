@@ -44,6 +44,17 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 
 	nthw_hif_delete(p_nthw_hif);
 
+	/* (b) Init RAB0 */
+	nthw_rac_rab_init(p_fpga_info->mp_nthw_rac, 0x7);
+	nthw_rac_rab_init(p_fpga_info->mp_nthw_rac, 0x6);
+
+	/* Create PRM */
+	p_fpga_info->mp_nthw_agx.p_prm = nthw_prm_nt400dxx_new();
+	res = nthw_prm_nt400dxx_init(p_fpga_info->mp_nthw_agx.p_prm, p_fpga, 0);
+
+	if (res != 0)
+		return res;
+
 	/* Create PCM */
 	p_fpga_info->mp_nthw_agx.p_pcm = nthw_pcm_nt400dxx_new();
 	res = nthw_pcm_nt400dxx_init(p_fpga_info->mp_nthw_agx.p_pcm, p_fpga, 0);

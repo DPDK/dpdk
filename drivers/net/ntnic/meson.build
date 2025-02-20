@@ -63,6 +63,7 @@ sources = files(
         'nthw/core/nthw_pcal6416a.c',
         'nthw/core/nthw_pcm_nt400dxx.c',
         'nthw/core/nthw_phy_tile.c',
+        'nthw/core/nthw_prm_nt400dxx.c',
         'nthw/core/nthw_si5332_si5156.c',
         'nthw/core/nthw_rpf.c',
         'nthw/core/nthw_rmc.c',
