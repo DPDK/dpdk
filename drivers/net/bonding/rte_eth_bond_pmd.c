@@ -2493,8 +2493,8 @@ bond_ethdev_member_link_status_change_monitor(void *cb_arg)
 			polling_member_found = 1;
 
 			/* Update member link status */
-			(*member_ethdev->dev_ops->link_update)(member_ethdev,
-					internals->members[i].link_status_wait_to_complete);
+			member_ethdev->dev_ops->link_update(member_ethdev,
+					      internals->members[i].link_status_wait_to_complete);
 
 			/* if link status has changed since last checked then call lsc
 			 * event callback */
@@ -3275,7 +3275,7 @@ bond_ethdev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	for (i = 0; i < internals->member_count; i++) {
 		member_eth_dev = &rte_eth_devices[internals->members[i].port_id];
-		if (*member_eth_dev->dev_ops->mtu_set == NULL) {
+		if (member_eth_dev->dev_ops->mtu_set == NULL) {
 			rte_spinlock_unlock(&internals->lock);
 			return -ENOTSUP;
 		}
@@ -3325,8 +3325,8 @@ bond_ethdev_mac_addr_add(struct rte_eth_dev *dev,
 
 	for (i = 0; i < internals->member_count; i++) {
 		member_eth_dev = &rte_eth_devices[internals->members[i].port_id];
-		if (*member_eth_dev->dev_ops->mac_addr_add == NULL ||
-			 *member_eth_dev->dev_ops->mac_addr_remove == NULL) {
+		if (member_eth_dev->dev_ops->mac_addr_add == NULL ||
+		    member_eth_dev->dev_ops->mac_addr_remove == NULL) {
 			ret = -ENOTSUP;
 			goto end;
 		}
@@ -3361,7 +3361,7 @@ bond_ethdev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 
 	for (i = 0; i < internals->member_count; i++) {
 		member_eth_dev = &rte_eth_devices[internals->members[i].port_id];
-		if (*member_eth_dev->dev_ops->mac_addr_remove == NULL)
+		if (member_eth_dev->dev_ops->mac_addr_remove == NULL)
 			goto end;
 	}
 
