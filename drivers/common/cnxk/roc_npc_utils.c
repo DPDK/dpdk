@@ -446,11 +446,9 @@ npc_process_ipv6_field_hash_legacy(const struct roc_npc_flow_item_ipv6 *ipv6_spe
 	struct npc_lid_lt_xtract_info *lid_lt_xinfo;
 	uint8_t hash_field[ROC_IPV6_ADDR_LEN];
 	struct npc_xtract_info *xinfo;
-	struct roc_ipv6_hdr ipv6_buf;
 	uint32_t hash = 0, mask;
 	int intf, i, rc = 0;
 
-	memset(&ipv6_buf, 0, sizeof(ipv6_buf));
 	memset(hash_field, 0, sizeof(hash_field));
 
 	intf = pst->nix_intf;
@@ -487,11 +485,9 @@ npc_process_ipv6_field_hash_o20k(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 	union npc_kex_ldata_flags_cfg *lid_cfg;
 	uint8_t hash_field[ROC_IPV6_ADDR_LEN];
 	struct npc_xtract_info *xinfo;
-	struct roc_ipv6_hdr ipv6_buf;
 	uint32_t hash = 0, mask;
 	int intf, i, rc = 0;
 
-	memset(&ipv6_buf, 0, sizeof(ipv6_buf));
 	memset(hash_field, 0, sizeof(hash_field));
 
 	intf = pst->nix_intf;
