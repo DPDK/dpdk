@@ -17,6 +17,9 @@ struct nthw_pca9532 {
 
 typedef struct nthw_pca9532 nthw_pca9532_t;
 
+nthw_pca9532_t *nthw_pca9532_new(void);
+int nthw_pca9532_init(nthw_pca9532_t *p, nthw_i2cm_t *p_nt_i2cm, uint8_t dev_address,
+	nthw_pca9849_t *pca9849, uint8_t mux_channel);
 void nthw_pca9532_set_led_on(nthw_pca9532_t *p, uint8_t led_pos, bool state_on);
 
 #endif	/* __NTHW_PCA9532_H__ */
