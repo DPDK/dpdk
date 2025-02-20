@@ -443,11 +443,10 @@ rte_dma_info_get(int16_t dev_id, struct rte_dma_info *dev_info)
 		return -EINVAL;
 	dev = &rte_dma_devices[dev_id];
 
-	if (*dev->dev_ops->dev_info_get == NULL)
+	if (dev->dev_ops->dev_info_get == NULL)
 		return -ENOTSUP;
 	memset(dev_info, 0, sizeof(struct rte_dma_info));
-	ret = (*dev->dev_ops->dev_info_get)(dev, dev_info,
-					    sizeof(struct rte_dma_info));
+	ret = dev->dev_ops->dev_info_get(dev, dev_info, sizeof(struct rte_dma_info));
 	if (ret != 0)
 		return ret;
 
@@ -510,10 +509,9 @@ rte_dma_configure(int16_t dev_id, const struct rte_dma_conf *dev_conf)
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->dev_configure)(dev, dev_conf,
-					     sizeof(struct rte_dma_conf));
+	ret = dev->dev_ops->dev_configure(dev, dev_conf, sizeof(struct rte_dma_conf));
 	if (ret == 0)
 		memcpy(&dev->data->dev_conf, dev_conf,
 		       sizeof(struct rte_dma_conf));
@@ -546,7 +544,7 @@ rte_dma_start(int16_t dev_id)
 	if (dev->dev_ops->dev_start == NULL)
 		goto mark_started;
 
-	ret = (*dev->dev_ops->dev_start)(dev);
+	ret = dev->dev_ops->dev_start(dev);
 	rte_dma_trace_start(dev_id, ret);
 	if (ret != 0)
 		return ret;
@@ -574,7 +572,7 @@ rte_dma_stop(int16_t dev_id)
 	if (dev->dev_ops->dev_stop == NULL)
 		goto mark_stopped;
 
-	ret = (*dev->dev_ops->dev_stop)(dev);
+	ret = dev->dev_ops->dev_stop(dev);
 	rte_dma_trace_stop(dev_id, ret);
 	if (ret != 0)
 		return ret;
@@ -601,9 +599,9 @@ rte_dma_close(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->dev_close)(dev);
+	ret = dev->dev_ops->dev_close(dev);
 	if (ret == 0)
 		dma_release(dev);
 
@@ -698,10 +696,9 @@ rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->vchan_setup == NULL)
+	if (dev->dev_ops->vchan_setup == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->vchan_setup)(dev, vchan, conf,
-					sizeof(struct rte_dma_vchan_conf));
+	ret = dev->dev_ops->vchan_setup(dev, vchan, conf, sizeof(struct rte_dma_vchan_conf));
 	rte_dma_trace_vchan_setup(dev_id, vchan, conf, ret);
 
 	return ret;
@@ -723,11 +720,10 @@ rte_dma_stats_get(int16_t dev_id, uint16_t vchan, struct rte_dma_stats *stats)
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->stats_get == NULL)
+	if (dev->dev_ops->stats_get == NULL)
 		return -ENOTSUP;
 	memset(stats, 0, sizeof(struct rte_dma_stats));
-	return (*dev->dev_ops->stats_get)(dev, vchan, stats,
-					  sizeof(struct rte_dma_stats));
+	return dev->dev_ops->stats_get(dev, vchan, stats, sizeof(struct rte_dma_stats));
 }
 
 int
@@ -747,9 +743,9 @@ rte_dma_stats_reset(int16_t dev_id, uint16_t vchan)
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->stats_reset == NULL)
+	if (dev->dev_ops->stats_reset == NULL)
 		return -ENOTSUP;
-	ret = (*dev->dev_ops->stats_reset)(dev, vchan);
+	ret = dev->dev_ops->stats_reset(dev, vchan);
 	rte_dma_trace_stats_reset(dev_id, vchan, ret);
 
 	return ret;
@@ -769,9 +765,9 @@ rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *
 		return -EINVAL;
 	}
 
-	if (*dev->dev_ops->vchan_status == NULL)
+	if (dev->dev_ops->vchan_status == NULL)
 		return -ENOTSUP;
-	return (*dev->dev_ops->vchan_status)(dev, vchan, status);
+	return dev->dev_ops->vchan_status(dev, vchan, status);
 }
 
 static const char *
@@ -850,7 +846,7 @@ rte_dma_dump(int16_t dev_id, FILE *f)
 		dev->data->dev_conf.enable_silent ? "on" : "off");
 
 	if (dev->dev_ops->dev_dump != NULL)
-		ret = (*dev->dev_ops->dev_dump)(dev, f);
+		ret = dev->dev_ops->dev_dump(dev, f);
 	rte_dma_trace_dump(dev_id, f, ret);
 
 	return ret;
