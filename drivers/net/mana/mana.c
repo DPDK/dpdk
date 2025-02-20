@@ -23,9 +23,14 @@
 #include "mana.h"
 
 /* Shared memory between primary/secondary processes, per driver */
-/* Data to track primary/secondary usage */
 struct mana_shared_data *mana_shared_data;
-static struct mana_shared_data mana_local_data;
+
+/* Local data to track device instance usage for primary/secondary processes */
+static struct mana_local_data {
+	int init_done;
+	unsigned int primary_cnt;
+	unsigned int secondary_cnt;
+} mana_local_data;
 
 /* The memory region for the above data */
 static const struct rte_memzone *mana_shared_mz;
@@ -1167,8 +1172,12 @@ mana_init_shared_data(void)
 	rte_spinlock_lock(&mana_shared_data_lock);
 
 	/* Skip if shared data is already initialized */
-	if (mana_shared_data)
+	if (mana_shared_data) {
+		DRV_LOG(INFO, "shared data is already initialized");
 		goto exit;
+	}
+
+	memset(&mana_local_data, 0, sizeof(mana_local_data));
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		mana_shared_mz = rte_memzone_reserve(MZ_MANA_SHARED_DATA,
@@ -1181,8 +1190,8 @@ mana_init_shared_data(void)
 		}
 
 		mana_shared_data = mana_shared_mz->addr;
-		memset(mana_shared_data, 0, sizeof(*mana_shared_data));
-		rte_spinlock_init(&mana_shared_data->lock);
+		rte_atomic_store_explicit(&mana_shared_data->secondary_cnt, 0,
+					  rte_memory_order_relaxed);
 	} else {
 		secondary_mz = rte_memzone_lookup(MZ_MANA_SHARED_DATA);
 		if (!secondary_mz) {
@@ -1192,7 +1201,6 @@ mana_init_shared_data(void)
 		}
 
 		mana_shared_data = secondary_mz->addr;
-		memset(&mana_local_data, 0, sizeof(mana_local_data));
 	}
 
 exit:
@@ -1213,11 +1221,11 @@ mana_init_once(void)
 	if (ret)
 		return ret;
 
-	rte_spinlock_lock(&mana_shared_data->lock);
+	rte_spinlock_lock(&mana_shared_data_lock);
 
 	switch (rte_eal_process_type()) {
 	case RTE_PROC_PRIMARY:
-		if (mana_shared_data->init_done)
+		if (mana_local_data.init_done)
 			break;
 
 		ret = mana_mp_init_primary();
@@ -1225,7 +1233,7 @@ mana_init_once(void)
 			break;
 		DRV_LOG(ERR, "MP INIT PRIMARY");
 
-		mana_shared_data->init_done = 1;
+		mana_local_data.init_done = 1;
 		break;
 
 	case RTE_PROC_SECONDARY:
@@ -1248,7 +1256,7 @@ mana_init_once(void)
 		break;
 	}
 
-	rte_spinlock_unlock(&mana_shared_data->lock);
+	rte_spinlock_unlock(&mana_shared_data_lock);
 
 	return ret;
 }
@@ -1318,11 +1326,6 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 
 		eth_dev->tx_pkt_burst = mana_tx_burst;
 		eth_dev->rx_pkt_burst = mana_rx_burst;
-
-		rte_spinlock_lock(&mana_shared_data->lock);
-		mana_shared_data->secondary_cnt++;
-		mana_local_data.secondary_cnt++;
-		rte_spinlock_unlock(&mana_shared_data->lock);
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		rte_eth_dev_probing_finish(eth_dev);
@@ -1405,10 +1408,6 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 		DRV_LOG(ERR, "Failed to install intr handler");
 		goto failed;
 	}
-
-	rte_spinlock_lock(&mana_shared_data->lock);
-	mana_shared_data->primary_cnt++;
-	rte_spinlock_unlock(&mana_shared_data->lock);
 
 	eth_dev->device = &pci_dev->device;
 
@@ -1552,13 +1551,38 @@ mana_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		count = mana_pci_probe_mac(pci_dev, NULL);
 	}
 
+	/* If no device is found, clean up resources if this is the last one */
 	if (!count) {
-		rte_memzone_free(mana_shared_mz);
-		mana_shared_mz = NULL;
-		ret = -ENODEV;
+		rte_spinlock_lock(&mana_shared_data_lock);
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			if (!mana_local_data.primary_cnt) {
+				mana_mp_uninit_primary();
+				rte_memzone_free(mana_shared_mz);
+				mana_shared_mz = NULL;
+				mana_shared_data = NULL;
+			}
+		} else {
+			if (!mana_local_data.secondary_cnt) {
+				mana_mp_uninit_secondary();
+				mana_shared_data = NULL;
+			}
+		}
+		rte_spinlock_unlock(&mana_shared_data_lock);
+		return -ENODEV;
 	}
 
-	return ret;
+	/* At least one eth_dev is probed, increase counter for shared data */
+	rte_spinlock_lock(&mana_shared_data_lock);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		mana_local_data.primary_cnt++;
+	} else {
+		rte_atomic_fetch_add_explicit(&mana_shared_data->secondary_cnt, 1,
+					      rte_memory_order_relaxed);
+		mana_local_data.secondary_cnt++;
+	}
+	rte_spinlock_unlock(&mana_shared_data_lock);
+
+	return 0;
 }
 
 static int
@@ -1573,45 +1597,36 @@ mana_dev_uninit(struct rte_eth_dev *dev)
 static int
 mana_pci_remove(struct rte_pci_device *pci_dev)
 {
+	rte_spinlock_lock(&mana_shared_data_lock);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		rte_spinlock_lock(&mana_shared_data_lock);
+		RTE_VERIFY(mana_local_data.primary_cnt > 0);
+		mana_local_data.primary_cnt--;
 
-		rte_spinlock_lock(&mana_shared_data->lock);
-
-		RTE_VERIFY(mana_shared_data->primary_cnt > 0);
-		mana_shared_data->primary_cnt--;
-		if (!mana_shared_data->primary_cnt) {
+		if (!mana_local_data.primary_cnt) {
 			DRV_LOG(DEBUG, "mp uninit primary");
 			mana_mp_uninit_primary();
-		}
 
-		rte_spinlock_unlock(&mana_shared_data->lock);
-
-		/* Also free the shared memory if this is the last */
-		if (!mana_shared_data->primary_cnt) {
+			/* Also free the shared memory if this is the last */
 			DRV_LOG(DEBUG, "free shared memezone data");
 			rte_memzone_free(mana_shared_mz);
 			mana_shared_mz = NULL;
+			mana_shared_data = NULL;
 		}
-
-		rte_spinlock_unlock(&mana_shared_data_lock);
 	} else {
-		rte_spinlock_lock(&mana_shared_data_lock);
-
-		rte_spinlock_lock(&mana_shared_data->lock);
-		RTE_VERIFY(mana_shared_data->secondary_cnt > 0);
-		mana_shared_data->secondary_cnt--;
-		rte_spinlock_unlock(&mana_shared_data->lock);
+		RTE_VERIFY(rte_atomic_load_explicit(&mana_shared_data->secondary_cnt,
+						    rte_memory_order_relaxed) > 0);
+		rte_atomic_fetch_sub_explicit(&mana_shared_data->secondary_cnt, 1,
+					      rte_memory_order_relaxed);
 
 		RTE_VERIFY(mana_local_data.secondary_cnt > 0);
 		mana_local_data.secondary_cnt--;
 		if (!mana_local_data.secondary_cnt) {
 			DRV_LOG(DEBUG, "mp uninit secondary");
 			mana_mp_uninit_secondary();
+			mana_shared_data = NULL;
 		}
-
-		rte_spinlock_unlock(&mana_shared_data_lock);
 	}
+	rte_spinlock_unlock(&mana_shared_data_lock);
 
 	return rte_eth_dev_pci_generic_remove(pci_dev, mana_dev_uninit);
 }
