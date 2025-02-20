@@ -229,34 +229,17 @@ ipn3ke_mtu_set(struct ipn3ke_hw *hw, uint32_t mac_num,
 	uint32_t rx;
 	uint32_t tmp;
 
-	if (!(*hw->f_mac_read) || !(*hw->f_mac_write))
+	if (!hw->f_mac_read || !hw->f_mac_write)
 		return;
 
-	(*hw->f_mac_read)(hw,
-			&tx,
-			txaddr,
-			mac_num,
-			eth_group_sel);
+	hw->f_mac_read(hw, &tx, txaddr, mac_num, eth_group_sel);
 
-	(*hw->f_mac_read)(hw,
-			&rx,
-			rxaddr,
-			mac_num,
-			eth_group_sel);
+	hw->f_mac_read(hw, &rx, rxaddr, mac_num, eth_group_sel);
 
 	tmp = ipn3ke_mtu_cal(tx, rx);
 
-	(*hw->f_mac_write)(hw,
-			tmp,
-			txaddr,
-			mac_num,
-			eth_group_sel);
-
-	(*hw->f_mac_write)(hw,
-			tmp,
-			rxaddr,
-			mac_num,
-			eth_group_sel);
+	hw->f_mac_write(hw, tmp, txaddr, mac_num, eth_group_sel);
+	hw->f_mac_write(hw, tmp, rxaddr, mac_num, eth_group_sel);
 }
 
 static void
