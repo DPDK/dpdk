@@ -104,7 +104,7 @@ static int first_msk_test_setup(void)
 	return init_aligned();
 }
 
-static int cross_msk_test_setup(void)
+static int contig_test_setup(void)
 {
 	/* put all within second and third mask */
 	param.start = 70;
@@ -112,7 +112,7 @@ static int cross_msk_test_setup(void)
 	return init_aligned();
 }
 
-static int multi_msk_test_setup(void)
+static int large_contig_test_setup(void)
 {
 	/* put all within first and last mask */
 	param.start = 3;
@@ -128,15 +128,39 @@ static int last_msk_test_setup(void)
 	return init_aligned();
 }
 
-static int full_msk_test_setup(void)
+static int full_index_test_setup(void)
 {
-	/* fill entire mask */
+	/* fill entire index */
 	param.start = 0;
 	param.end = FBARRAY_TEST_LEN - 1;
 	return init_aligned();
 }
 
-static int lookahead_test_setup(void)
+static int full_msk_test_setup(void)
+{
+	/* fill one mask */
+	param.start = 0;
+	param.end = 63;
+	return init_aligned();
+}
+
+static int full_msk_contig_fwd_test_setup(void)
+{
+	/* fill one mask plus one item */
+	param.start = 64;
+	param.end = 128;
+	return init_aligned();
+}
+
+static int full_msk_contig_rev_test_setup(void)
+{
+	/* fill one mask plus one item */
+	param.start = 63;
+	param.end = 127;
+	return init_aligned();
+}
+
+static int cross_msk_test_setup(void)
 {
 	/* set index 64 as used */
 	param.start = 64;
@@ -144,7 +168,7 @@ static int lookahead_test_setup(void)
 	return init_aligned();
 }
 
-static int lookbehind_test_setup(void)
+static int cross_msk_rev_test_setup(void)
 {
 	/* set index 63 as used */
 	param.start = 63;
@@ -157,6 +181,13 @@ static int unaligned_test_setup(void)
 	unaligned.start = 0;
 	/* leave one free bit at the end */
 	unaligned.end = FBARRAY_UNALIGNED_TEST_LEN - 2;
+	return init_unaligned();
+}
+
+static int full_unaligned_test_setup(void)
+{
+	unaligned.start = 0;
+	unaligned.end = FBARRAY_UNALIGNED_TEST_LEN - 1;
 	return init_unaligned();
 }
 
@@ -786,7 +817,7 @@ static int test_empty(void)
 	return TEST_SUCCESS;
 }
 
-static int test_lookahead(void)
+static int test_cross_msk(void)
 {
 	int ret;
 
@@ -801,7 +832,7 @@ static int test_lookahead(void)
 	return TEST_SUCCESS;
 }
 
-static int test_lookbehind(void)
+static int test_cross_rev_msk(void)
 {
 	int ret, free_len = 2;
 
@@ -816,19 +847,19 @@ static int test_lookbehind(void)
 	return TEST_SUCCESS;
 }
 
-static int test_lookahead_mask(void)
+static int test_broken_run(void)
 {
 	/*
-	 * There is a certain type of lookahead behavior we want to test here,
-	 * namely masking of bits that were scanned with lookahead but that we
-	 * know do not match our criteria. This is achieved in following steps:
+	 * There is a certain type of search behavior we want to test here,
+	 * namely starting cross-mask runs and failing to find them. This is
+	 * achieved when these conditions happen:
 	 *
 	 *   0. Look for a big enough chunk of free space (say, 62 elements)
-	 *   1. Trigger lookahead by breaking a run somewhere inside mask 0
-	 *      (indices 0-63)
-	 *   2. Fail lookahead by breaking the run somewhere inside mask 1
-	 *      (indices 64-127)
-	 *   3. Ensure that we can still find free space in mask 1 afterwards
+	 *   1. Break a run somewhere inside mask 0 (indices 0-63) but leave
+	 *      some free elements at the end of mask 0 to start a run
+	 *   2. Break the run somewhere inside mask 1 (indices 64-127)
+	 *   3. Ensure that we can still find a free space run right after the
+	 *      second broken run
 	 */
 
 	/* break run on first mask */
@@ -842,19 +873,19 @@ static int test_lookahead_mask(void)
 	return TEST_SUCCESS;
 }
 
-static int test_lookbehind_mask(void)
+static int test_rev_broken_run(void)
 {
 	/*
-	 * There is a certain type of lookbehind behavior we want to test here,
-	 * namely masking of bits that were scanned with lookbehind but that we
-	 * know do not match our criteria. This is achieved in two steps:
+	 * There is a certain type of search behavior we want to test here,
+	 * namely starting cross-mask runs and failing to find them. This is
+	 * achieved when these conditions happen:
 	 *
 	 *   0. Look for a big enough chunk of free space (say, 62 elements)
-	 *   1. Trigger lookbehind by breaking a run somewhere inside mask 2
-	 *      (indices 128-191)
-	 *   2. Fail lookbehind by breaking the run somewhere inside mask 1
-	 *      (indices 64-127)
-	 *   3. Ensure that we can still find free space in mask 1 afterwards
+	 *   1. Break a run somewhere inside mask 2 (indices 128-191) but leave
+	 *      some free elements at the beginning of mask 2 to start a run
+	 *   2. Break the run somewhere inside mask 1 (indices 64-127)
+	 *   3. Ensure that we can still find free space N elements down from
+	 *      our last broken run (inside mask 0 in this case)
 	 */
 
 	/* break run on mask 2 */
@@ -876,18 +907,22 @@ static struct unit_test_suite fbarray_test_suite = {
 		TEST_CASE(test_invalid),
 		TEST_CASE(test_basic),
 		TEST_CASE_ST(first_msk_test_setup, reset_aligned, test_find),
-		TEST_CASE_ST(cross_msk_test_setup, reset_aligned, test_find),
-		TEST_CASE_ST(multi_msk_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(contig_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(large_contig_test_setup, reset_aligned, test_find),
 		TEST_CASE_ST(last_msk_test_setup, reset_aligned, test_find),
 		TEST_CASE_ST(full_msk_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_msk_contig_fwd_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_msk_contig_rev_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_index_test_setup, reset_aligned, test_find),
 		/* empty test does not need setup */
 		TEST_CASE_ST(NULL, reset_aligned, test_empty),
-		TEST_CASE_ST(lookahead_test_setup, reset_aligned, test_lookahead),
-		TEST_CASE_ST(lookbehind_test_setup, reset_aligned, test_lookbehind),
+		TEST_CASE_ST(cross_msk_test_setup, reset_aligned, test_cross_msk),
+		TEST_CASE_ST(cross_msk_rev_test_setup, reset_aligned, test_cross_rev_msk),
 		/* setup for these tests is more complex so do it in test func */
-		TEST_CASE_ST(NULL, reset_aligned, test_lookahead_mask),
-		TEST_CASE_ST(NULL, reset_aligned, test_lookbehind_mask),
+		TEST_CASE_ST(NULL, reset_aligned, test_broken_run),
+		TEST_CASE_ST(NULL, reset_aligned, test_rev_broken_run),
 		TEST_CASE_ST(unaligned_test_setup, reset_unaligned, test_find_unaligned),
+		TEST_CASE_ST(full_unaligned_test_setup, reset_unaligned, test_find_unaligned),
 		TEST_CASES_END()
 	}
 };
