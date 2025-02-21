@@ -3961,6 +3961,9 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_declare_bitmap(pmask, ICE_PROMISC_MAX);
 	ice_zero_bitmap(pmask, ICE_PROMISC_MAX);
 
+	ice_set_rx_function(dev);
+	ice_set_tx_function(dev);
+
 	/* program Tx queues' context in hardware */
 	for (nb_txq = 0; nb_txq < data->nb_tx_queues; nb_txq++) {
 		ret = ice_tx_queue_start(dev, nb_txq);
@@ -3988,9 +3991,6 @@ ice_dev_start(struct rte_eth_dev *dev)
 			goto rx_err;
 		}
 	}
-
-	ice_set_rx_function(dev);
-	ice_set_tx_function(dev);
 
 	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
 			RTE_ETH_VLAN_EXTEND_MASK;
