@@ -278,26 +278,28 @@ ice_acl_prof_init(struct ice_pf *pf)
 	if (ret)
 		goto err_add_prof_ipv4_sctp;
 
-	for (i = 0; i < pf->main_vsi->idx; i++) {
-		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4, i);
-		if (ret)
-			goto err_assoc_prof;
+	if (hw->dcf_enabled) {
+		for (i = 0; i < pf->main_vsi->idx; i++) {
+			ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4, i);
+			if (ret)
+				goto err_assoc_prof;
 
-		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_frag, i);
-		if (ret)
-			goto err_assoc_prof;
+			ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_frag, i);
+			if (ret)
+				goto err_assoc_prof;
 
-		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_udp, i);
-		if (ret)
-			goto err_assoc_prof;
+			ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_udp, i);
+			if (ret)
+				goto err_assoc_prof;
 
-		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_tcp, i);
-		if (ret)
-			goto err_assoc_prof;
+			ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_tcp, i);
+			if (ret)
+				goto err_assoc_prof;
 
-		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_sctp, i);
-		if (ret)
-			goto err_assoc_prof;
+			ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_sctp, i);
+			if (ret)
+				goto err_assoc_prof;
+		}
 	}
 	return 0;
 
@@ -1082,10 +1084,8 @@ ice_acl_uninit(struct ice_adapter *ad)
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
-	if (ad->hw.dcf_enabled) {
-		ice_deinit_acl(pf);
-		ice_acl_prof_free(hw);
-	}
+	ice_deinit_acl(pf);
+	ice_acl_prof_free(hw);
 }
 
 static struct
