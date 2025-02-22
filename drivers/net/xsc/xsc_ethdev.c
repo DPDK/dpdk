@@ -663,7 +663,7 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 	for (i = 0; i != XSC_MAX_MAC_ADDRESSES; ++i) {
 		if (i == (int)index)
 			continue;
-		if (memcmp(&dev->data->mac_addrs[i], mac, sizeof(*mac)))
+		if (memcmp(&dev->data->mac_addrs[i], mac, sizeof(*mac)) != 0)
 			continue;
 		/* Address already configured elsewhere, return with error */
 		rte_errno = EADDRINUSE;
