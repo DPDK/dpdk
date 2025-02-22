@@ -280,6 +280,9 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	char name[RTE_ETH_NAME_MAX_LEN] = { 0 };
 
 	rxq_data = xsc_rxq_get(priv, 0);
+	if (rxq_data == NULL)
+		return -EINVAL;
+
 	log_ele = rte_log2_u32(sizeof(struct xsc_wqe_data_seg));
 	wqe_n = rxq_data->wqe_s;
 	log_rq_sz = rte_log2_u32(wqe_n * hwinfo->recv_seg_num);
@@ -385,6 +388,8 @@ xsc_rxq_rss_obj_new(struct xsc_ethdev_priv *priv, uint16_t port_id)
 	/* Create CQ */
 	for (i = 0; i < priv->num_rq; ++i) {
 		rxq_data = xsc_rxq_get(priv, i);
+		if (rxq_data == NULL)
+			return -EINVAL;
 
 		memset(&cq_params, 0, sizeof(cq_params));
 		memset(&cq_info, 0, sizeof(cq_info));

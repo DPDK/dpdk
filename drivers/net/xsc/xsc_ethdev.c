@@ -137,8 +137,8 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 	int pcie_logic_port = 0;
 	int qp_set_id;
 	int repr_id;
-	struct xsc_rxq_data *rxq = xsc_rxq_get(priv, 0);
-	uint16_t rx_qpn = (uint16_t)rxq->qpn;
+	struct xsc_rxq_data *rxq;
+	uint16_t rx_qpn;
 	int i, vld;
 	struct xsc_txq_data *txq;
 	struct xsc_repr_port *repr;
@@ -147,6 +147,11 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 	if (priv->funcid_type != XSC_PHYPORT_MAC_FUNCID)
 		return -ENODEV;
 
+	rxq = xsc_rxq_get(priv, 0);
+	if (rxq == NULL)
+		return -EINVAL;
+
+	rx_qpn = (uint16_t)rxq->qpn;
 	hwinfo = &priv->xdev->hwinfo;
 	repr_id = priv->representor_id;
 	repr = &priv->xdev->repr_ports[repr_id];
@@ -162,6 +167,8 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 
 	for (i = 0; i < priv->num_sq; i++) {
 		txq = xsc_txq_get(priv, i);
+		if (txq == NULL)
+			return -EINVAL;
 		xsc_dev_modify_qp_status(priv->xdev, txq->qpn, 1, XSC_CMD_OP_RTR2RTS_QP);
 		xsc_dev_modify_qp_qostree(priv->xdev, txq->qpn);
 		xsc_dev_set_qpsetid(priv->xdev, txq->qpn, qp_set_id);
@@ -229,6 +236,8 @@ xsc_txq_start(struct xsc_ethdev_priv *priv)
 
 	for (i = 0; i != priv->num_sq; ++i) {
 		txq_data = xsc_txq_get(priv, i);
+		if (txq_data == NULL)
+			goto error;
 		xsc_txq_elts_alloc(txq_data);
 		ret = xsc_txq_obj_new(priv->xdev, txq_data, offloads, i);
 		if (ret < 0)
@@ -270,6 +279,8 @@ xsc_rxq_start(struct xsc_ethdev_priv *priv)
 
 	for (i = 0; i != priv->num_rq; ++i) {
 		rxq_data = xsc_rxq_get(priv, i);
+		if (rxq_data == NULL)
+			goto error;
 		if (dev->data->rx_queue_state[i] != RTE_ETH_QUEUE_STATE_STARTED) {
 			ret = xsc_rxq_elts_alloc(rxq_data);
 			if (ret != 0)
