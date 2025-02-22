@@ -172,13 +172,13 @@ xsc_dev_np_exec(struct xsc_dev *xdev, void *cmd, int len, int table, int opmod)
 	out_len = sizeof(struct xsc_np_mbox_out) + data_len;
 	cmd_len = RTE_MAX(in_len, out_len);
 	in = malloc(cmd_len);
-	memset(in, 0, cmd_len);
 	if (in == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc np cmd memory");
 		return -rte_errno;
 	}
 
+	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_EXEC_NP);
 	in->len = rte_cpu_to_be_16(data_len);
 
