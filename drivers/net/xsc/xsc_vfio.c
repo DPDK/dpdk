@@ -70,22 +70,24 @@ xsc_vfio_hwinfo_init(struct xsc_dev *xdev)
 	struct xsc_cmd_query_hca_cap_mbox_in *in;
 	struct xsc_cmd_query_hca_cap_mbox_out *out;
 	struct xsc_cmd_hca_cap *hca_cap;
+	void *cmd_buf;
 
 	in_len = sizeof(struct xsc_cmd_query_hca_cap_mbox_in);
 	out_len = sizeof(struct xsc_cmd_query_hca_cap_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
 
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to alloc dev hwinfo cmd memory");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_QUERY_HCA_CAP);
 	in->hdr.ver = rte_cpu_to_be_16(XSC_CMD_QUERY_HCA_CAP_V1);
-	out = (struct xsc_cmd_query_hca_cap_mbox_out *)in;
+	out = cmd_buf;
 
 	ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
@@ -126,7 +128,7 @@ xsc_vfio_hwinfo_init(struct xsc_dev *xdev)
 	xsc_vfio_pcie_no_init(&xdev->hwinfo);
 
 exit:
-	free(in);
+	free(cmd_buf);
 	return ret;
 }
 
@@ -189,22 +191,24 @@ xsc_vfio_destroy_qp(void *qp)
 	struct xsc_cmd_destroy_qp_mbox_in *in;
 	struct xsc_cmd_destroy_qp_mbox_out *out;
 	struct xsc_vfio_qp *data = (struct xsc_vfio_qp *)qp;
+	void *cmd_buf;
 
 	in_len = sizeof(struct xsc_cmd_destroy_qp_mbox_in);
 	out_len = sizeof(struct xsc_cmd_destroy_qp_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
 
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc qp destroy cmd memory");
 		return -rte_errno;
 	}
-	memset(in, 0, cmd_len);
 
+	in = cmd_buf;
+	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_DESTROY_QP);
 	in->qpn = rte_cpu_to_be_32(data->qpn);
-	out = (struct xsc_cmd_destroy_qp_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_vfio_mbox_exec(data->xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
 		PMD_DRV_LOG(ERR, "Failed to destroy qp, type=%d, err=%d, out.status=%u",
@@ -218,7 +222,7 @@ xsc_vfio_destroy_qp(void *qp)
 	rte_free(qp);
 
 exit:
-	free(in);
+	free(cmd_buf);
 	return ret;
 }
 
@@ -230,22 +234,25 @@ xsc_vfio_destroy_cq(void *cq)
 	struct xsc_cmd_destroy_cq_mbox_in *in;
 	struct xsc_cmd_destroy_cq_mbox_out *out;
 	struct xsc_vfio_cq *data = (struct xsc_vfio_cq *)cq;
+	void *cmd_buf;
 
 	in_len = sizeof(struct xsc_cmd_destroy_cq_mbox_in);
 	out_len = sizeof(struct xsc_cmd_destroy_cq_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
 
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc cq destroy cmd memory");
 		return -rte_errno;
 	}
+
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_DESTROY_CQ);
 	in->cqn = rte_cpu_to_be_32(data->cqn);
-	out = (struct xsc_cmd_destroy_cq_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_vfio_mbox_exec(data->xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
 		PMD_DRV_LOG(ERR, "Failed to destroy cq, type=%d, err=%d, out.status=%u",
@@ -259,7 +266,7 @@ xsc_vfio_destroy_cq(void *cq)
 	rte_free(cq);
 
 exit:
-	free(in);
+	free(cmd_buf);
 	return ret;
 }
 
@@ -314,20 +321,22 @@ xsc_vfio_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcod
 	int in_len, out_len, cmd_len;
 	struct xsc_cmd_modify_qp_mbox_in *in;
 	struct xsc_cmd_modify_qp_mbox_out *out;
+	void *cmd_buf;
 
 	in_len = sizeof(struct xsc_cmd_modify_qp_mbox_in);
 	out_len = sizeof(struct xsc_cmd_modify_qp_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
 
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to alloc cmdq qp modify status");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
-	out = (struct xsc_cmd_modify_qp_mbox_out *)in;
+	out = cmd_buf;
 
 	for (i = 0; i < num; i++) {
 		in->hdr.opcode = rte_cpu_to_be_16(opcode);
@@ -346,7 +355,7 @@ xsc_vfio_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcod
 	}
 
 exit:
-	free(in);
+	free(cmd_buf);
 	return ret;
 }
 
@@ -357,18 +366,20 @@ xsc_vfio_modify_qp_qostree(struct xsc_dev *xdev, uint16_t qpn)
 	int in_len, out_len, cmd_len;
 	struct xsc_cmd_modify_raw_qp_mbox_in *in;
 	struct xsc_cmd_modify_raw_qp_mbox_out *out;
+	void *cmd_buf;
 
 	in_len = sizeof(struct xsc_cmd_modify_raw_qp_mbox_in);
 	out_len = sizeof(struct xsc_cmd_modify_raw_qp_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
 
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to alloc cmdq qp modify qostree");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_MODIFY_RAW_QP);
 	in->req.prio = 0;
@@ -377,7 +388,7 @@ xsc_vfio_modify_qp_qostree(struct xsc_dev *xdev, uint16_t qpn)
 	in->req.func_id = rte_cpu_to_be_16(xdev->hwinfo.func_id);
 	in->req.dma_direct = 0;
 	in->req.qpn = rte_cpu_to_be_16(qpn);
-	out = (struct xsc_cmd_modify_raw_qp_mbox_out *)in;
+	out = cmd_buf;
 
 	ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
@@ -389,7 +400,7 @@ xsc_vfio_modify_qp_qostree(struct xsc_dev *xdev, uint16_t qpn)
 	}
 
 exit:
-	free(in);
+	free(cmd_buf);
 	return ret;
 }
 
@@ -413,6 +424,7 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	struct xsc_cqe *cqes;
 	struct xsc_cmd_create_cq_mbox_in *in = NULL;
 	struct xsc_cmd_create_cq_mbox_out *out = NULL;
+	void *cmd_buf;
 
 	cqe_n = cq_params->wqe_s;
 	log_cq_sz = rte_log2_u32(cqe_n);
@@ -430,13 +442,14 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 		return -rte_errno;
 	}
 
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc rx cq exec cmd memory");
 		goto error;
 	}
 
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_CREATE_CQ);
 	in->ctx.eqn = 0;
@@ -460,7 +473,7 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	for (i = 0; i < pa_num; i++)
 		in->pas[i] = rte_cpu_to_be_64(cq_pas->iova + i * XSC_PAGE_SIZE);
 
-	out = (struct xsc_cmd_create_cq_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
 		PMD_DRV_LOG(ERR,
@@ -486,11 +499,11 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	PMD_DRV_LOG(INFO, "Port id=%d, Rx cqe_n:%d, cqn:%u",
 		    port_id, cq_info->cqe_n, cq_info->cqn);
 
-	free(in);
+	free(cmd_buf);
 	return 0;
 
 error:
-	free(in);
+	free(cmd_buf);
 	rte_memzone_free(cq_pas);
 	rte_free(cq);
 	return -rte_errno;
@@ -513,6 +526,7 @@ xsc_vfio_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
 	int cqe_s = 1 << cq_params->elts_n;
 	uint64_t iova;
 	int i;
+	void *cmd_buf = NULL;
 
 	cq = rte_zmalloc(NULL, sizeof(struct xsc_vfio_cq), 0);
 	if (cq == NULL) {
@@ -539,12 +553,14 @@ xsc_vfio_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
 	in_len = (sizeof(struct xsc_cmd_create_cq_mbox_in) + (pa_num * sizeof(uint64_t)));
 	out_len = sizeof(struct xsc_cmd_create_cq_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
-	in = (struct xsc_cmd_create_cq_mbox_in *)malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc tx cq exec cmd memory");
 		goto error;
 	}
+
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_CREATE_CQ);
@@ -557,7 +573,7 @@ xsc_vfio_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
 	for (i = 0; i < pa_num; i++)
 		in->pas[i] = rte_cpu_to_be_64(iova + i * XSC_PAGE_SIZE);
 
-	out = (struct xsc_cmd_create_cq_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
 		PMD_DRV_LOG(ERR, "Failed to create tx cq, port id=%u, err=%d, out.status=%u",
@@ -583,11 +599,11 @@ xsc_vfio_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
 		((volatile struct xsc_cqe *)(cqes + i))->owner = 1;
 	cq_info->cqes = cqes;
 
-	free(in);
+	free(cmd_buf);
 	return 0;
 
 error:
-	free(in);
+	free(cmd_buf);
 	rte_memzone_free(cq_pas);
 	rte_free(cq);
 	return -rte_errno;
@@ -613,6 +629,7 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	int i;
 	uint64_t iova;
 	char name[RTE_ETH_NAME_MAX_LEN] = {0};
+	void *cmd_buf = NULL;
 
 	qp = rte_zmalloc(NULL, sizeof(struct xsc_vfio_qp), 0);
 	if (qp == NULL) {
@@ -640,12 +657,14 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	in_len = (sizeof(struct xsc_cmd_create_qp_mbox_in) + (pa_num * sizeof(uint64_t)));
 	out_len = sizeof(struct xsc_cmd_create_qp_mbox_out);
 	cmd_len = RTE_MAX(in_len, out_len);
-	in = (struct xsc_cmd_create_qp_mbox_in *)malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc tx qp exec cmd memory");
 		goto error;
 	}
+
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_CREATE_QP);
@@ -663,7 +682,7 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	for (i = 0; i < pa_num; i++)
 		in->req.pas[i] = rte_cpu_to_be_64(iova + i * XSC_PAGE_SIZE);
 
-	out = (struct xsc_cmd_create_qp_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
 		PMD_DRV_LOG(ERR, "Failed to create tx qp, port id=%u, err=%d, out.status=%u",
@@ -685,11 +704,11 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	else
 		qp_info->qp_db = (uint32_t *)((uint8_t *)xdev->bar_addr + XSC_PF_TX_DB_ADDR);
 
-	free(in);
+	free(cmd_buf);
 	return 0;
 
 error:
-	free(in);
+	free(cmd_buf);
 	rte_memzone_free(qp_pas);
 	rte_free(qp);
 	return -rte_errno;

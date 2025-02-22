@@ -162,18 +162,20 @@ xsc_dev_np_exec(struct xsc_dev *xdev, void *cmd, int len, int table, int opmod)
 	int data_len;
 	int cmd_len;
 	int ret;
+	void *cmd_buf;
 
 	data_len = sizeof(struct xsc_np_data_tl) + len;
 	in_len = sizeof(struct xsc_np_mbox_in) + data_len;
 	out_len = sizeof(struct xsc_np_mbox_out) + data_len;
 	cmd_len = RTE_MAX(in_len, out_len);
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc np cmd memory");
 		return -rte_errno;
 	}
 
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_EXEC_NP);
 	in->len = rte_cpu_to_be_16(data_len);
@@ -185,10 +187,10 @@ xsc_dev_np_exec(struct xsc_dev *xdev, void *cmd, int len, int table, int opmod)
 	if (cmd && len)
 		memcpy(tl + 1, cmd, len);
 
-	out = (struct xsc_np_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_dev_mailbox_exec(xdev, in, in_len, out, out_len);
 
-	free(in);
+	free(cmd_buf);
 	return ret;
 }
 
