@@ -215,7 +215,6 @@ xsc_tx_wqe_ctrl_seg_init(struct xsc_txq_data *__rte_restrict txq,
 		cs->csum_en = 0;
 
 	if (txq->tso_en == 1 && (mbuf->ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
-		cs->has_pph = 0;
 		cs->so_type = 1;
 		cs->so_hdr_len = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
 		cs->so_data_size = rte_cpu_to_le_16(mbuf->tso_segsz);

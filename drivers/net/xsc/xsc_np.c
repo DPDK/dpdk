@@ -137,10 +137,6 @@ xsc_rss_hash_template_get(struct rte_eth_rss_conf *rss_conf)
 		rss_hf &= ~XSC_RSS_HASH_BIT_IPV6_SPORT;
 	}
 
-	if ((rss_conf->rss_hf & RTE_ETH_RSS_LEVEL_PMD_DEFAULT) ||
-	    (rss_conf->rss_hf & RTE_ETH_RSS_LEVEL_OUTERMOST))
-		outer = 1;
-
 	if (rss_conf->rss_hf & RTE_ETH_RSS_LEVEL_INNERMOST)
 		outer = 0;
 
