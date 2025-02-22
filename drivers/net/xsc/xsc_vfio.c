@@ -431,13 +431,13 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	}
 
 	in = malloc(cmd_len);
-	memset(in, 0, cmd_len);
 	if (in == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc rx cq exec cmd memory");
 		goto error;
 	}
 
+	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_CREATE_CQ);
 	in->ctx.eqn = 0;
 	in->ctx.pa_num = rte_cpu_to_be_16(pa_num);

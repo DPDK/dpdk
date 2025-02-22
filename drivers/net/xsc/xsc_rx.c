@@ -296,13 +296,13 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	out_len = sizeof(struct xsc_cmd_create_multiqp_mbox_out) + entry_total_len;
 	cmd_len = RTE_MAX(in_len, out_len);
 	in = malloc(cmd_len);
-	memset(in, 0, cmd_len);
 	if (in == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Alloc rss qp create cmd memory failed");
 		goto error;
 	}
 
+	memset(in, 0, cmd_len);
 	in->qp_num = rte_cpu_to_be_16((uint16_t)priv->num_rq);
 	in->qp_type = XSC_QUEUE_TYPE_RAW;
 	in->req_len = rte_cpu_to_be_32(cmd_len);
