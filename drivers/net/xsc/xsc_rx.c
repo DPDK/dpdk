@@ -445,10 +445,8 @@ xsc_rxq_elts_alloc(struct xsc_rxq_data *rxq_data)
 
 		mbuf->port = rxq_data->port_id;
 		mbuf->nb_segs = 1;
-		rte_pktmbuf_data_len(mbuf) = rte_pktmbuf_data_room_size(rxq_data->mp)
-						- mbuf->data_off;
-		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_room_size(rxq_data->mp)
-						- mbuf->data_off;
+		rte_pktmbuf_data_len(mbuf) = mbuf->buf_len - mbuf->data_off;
+		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_len(mbuf);
 		(*rxq_data->elts)[i] = mbuf;
 	}
 
