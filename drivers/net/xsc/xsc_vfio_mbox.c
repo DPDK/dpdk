@@ -515,7 +515,7 @@ xsc_cmdq_req_status_restore(struct xsc_dev *xdev, struct xsc_cmd_queue *cmdq)
 	if (req_pid >= (uint32_t)(1 << cmdq->depth_n) ||
 	    req_cid >= (uint32_t)(1 << cmdq->depth_n)) {
 		PMD_DRV_LOG(ERR, "Request pid %u and cid %u must be less than %u",
-			    req_pid, req_cid, 1 << cmdq->depth_n);
+			    req_pid, req_cid, (uint32_t)(1 << cmdq->depth_n));
 		return -1;
 	}
 

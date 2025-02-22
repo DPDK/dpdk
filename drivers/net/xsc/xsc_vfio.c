@@ -337,7 +337,7 @@ xsc_vfio_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcod
 
 		ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
 		if (ret != 0 || out->hdr.status != 0) {
-			PMD_DRV_LOG(ERR, "Modify qp status failed, qpn=%d, err=%d, out.status=%u",
+			PMD_DRV_LOG(ERR, "Modify qp status failed, qpn=%u, err=%d, out.status=%u",
 				    qpn + i, ret, out->hdr.status);
 			rte_errno = ENOEXEC;
 			ret = -rte_errno;
@@ -483,7 +483,7 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	cq_info->cqn = rte_be_to_cpu_32(out->cqn);
 	cq->cqn = cq_info->cqn;
 	cq->xdev = xdev;
-	PMD_DRV_LOG(INFO, "Port id=%d, Rx cqe_n:%d, cqn:%d",
+	PMD_DRV_LOG(INFO, "Port id=%d, Rx cqe_n:%d, cqn:%u",
 		    port_id, cq_info->cqe_n, cq_info->cqn);
 
 	free(in);
