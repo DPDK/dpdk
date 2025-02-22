@@ -358,7 +358,7 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 		xsc_rxq_initialize(xdev, rxq_data);
 		rxq_data->cq_ci = 0;
 		priv->dev_data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
-		PMD_DRV_LOG(INFO, "Port %u create rx qp, wqe_s:%d, wqe_n:%d, qp_db=%p, qpn:%d",
+		PMD_DRV_LOG(INFO, "Port %d create rx qp, wqe_s:%d, wqe_n:%d, qp_db=%p, qpn:%u",
 			    port_id,
 			    rxq_data->wqe_s, rxq_data->wqe_n,
 			    rxq_data->rq_db, rxq_data->qpn);
@@ -407,7 +407,7 @@ xsc_rxq_rss_obj_new(struct xsc_ethdev_priv *priv, uint16_t port_id)
 		rxq_data->cq_db = cq_info.cq_db;
 		rxq_data->cqn = cq_info.cqn;
 
-		PMD_DRV_LOG(INFO, "Port %u create rx cq, cqe_s:%d, cqe_n:%d, cq_db=%p, cqn:%d",
+		PMD_DRV_LOG(INFO, "Port %u create rx cq, cqe_s:%d, cqe_n:%d, cq_db=%p, cqn:%u",
 			    port_id,
 			    rxq_data->cqe_s, rxq_data->cqe_n,
 			    rxq_data->cq_db, rxq_data->cqn);

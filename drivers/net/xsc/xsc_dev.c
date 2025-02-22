@@ -289,7 +289,7 @@ xsc_dev_repr_ports_probe(struct xsc_dev *xdev, int nb_repr_ports, int max_eth_po
 
 	xdev->num_repr_ports = nb_repr_ports + XSC_PHY_PORT_NUM;
 	if (xdev->num_repr_ports > max_eth_ports) {
-		PMD_DRV_LOG(ERR, "Repr ports num %u, should be less than max %u",
+		PMD_DRV_LOG(ERR, "Repr ports num %d, should be less than max %d",
 			    xdev->num_repr_ports, max_eth_ports);
 		return -EINVAL;
 	}
