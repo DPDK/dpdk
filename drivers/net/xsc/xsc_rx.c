@@ -276,6 +276,7 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	struct xsc_dev *xdev = priv->xdev;
 	struct xsc_hwinfo *hwinfo = &xdev->hwinfo;
 	char name[RTE_ETH_NAME_MAX_LEN] = { 0 };
+	void *cmd_buf;
 
 	rxq_data = xsc_rxq_get(priv, 0);
 	if (rxq_data == NULL)
@@ -293,13 +294,14 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	in_len = sizeof(struct xsc_cmd_create_multiqp_mbox_in) + entry_total_len;
 	out_len = sizeof(struct xsc_cmd_create_multiqp_mbox_out) + entry_total_len;
 	cmd_len = RTE_MAX(in_len, out_len);
-	in = malloc(cmd_len);
-	if (in == NULL) {
+	cmd_buf = malloc(cmd_len);
+	if (cmd_buf == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Alloc rss qp create cmd memory failed");
 		goto error;
 	}
 
+	in = cmd_buf;
 	memset(in, 0, cmd_len);
 	in->qp_num = rte_cpu_to_be_16((uint16_t)priv->num_rq);
 	in->qp_type = XSC_QUEUE_TYPE_RAW;
@@ -333,7 +335,7 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	}
 
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_CREATE_MULTI_QP);
-	out = (struct xsc_cmd_create_multiqp_mbox_out *)in;
+	out = cmd_buf;
 	ret = xsc_dev_mailbox_exec(xdev, in, in_len, out, out_len);
 	if (ret != 0 || out->hdr.status != 0) {
 		PMD_DRV_LOG(ERR,
@@ -365,11 +367,11 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 			    rxq_data->rq_db, rxq_data->qpn);
 	}
 
-	free(in);
+	free(cmd_buf);
 	return 0;
 
 error:
-	free(in);
+	free(cmd_buf);
 	return -rte_errno;
 }
 
