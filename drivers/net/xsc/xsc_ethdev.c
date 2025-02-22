@@ -314,6 +314,11 @@ xsc_ethdev_start(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = xsc_tx_burst;
 
 	ret = xsc_ethdev_enable(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to enable port: %u",
+			    dev->data->port_id);
+		goto error;
+	}
 
 	return 0;
 
