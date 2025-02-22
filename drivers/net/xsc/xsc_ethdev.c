@@ -721,16 +721,13 @@ xsc_ethdev_init_one_representor(struct rte_eth_dev *eth_dev, void *init_params)
 		config->tso = 0;
 	} else {
 		config->tso = 1;
-		if (config->tso)
-			config->tso_max_payload_sz = 1500;
+		config->tso_max_payload_sz = 1500;
 	}
 
-	priv->is_representor = (priv->eth_type == RTE_ETH_REPRESENTOR_NONE) ? 0 : 1;
-	if (priv->is_representor) {
-		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
-		eth_dev->data->representor_id = priv->representor_id;
-		eth_dev->data->backer_port_id = eth_dev->data->port_id;
-	}
+	priv->is_representor = 1;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	eth_dev->data->representor_id = priv->representor_id;
+	eth_dev->data->backer_port_id = eth_dev->data->port_id;
 
 	eth_dev->dev_ops = &xsc_eth_dev_ops;
 	eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
