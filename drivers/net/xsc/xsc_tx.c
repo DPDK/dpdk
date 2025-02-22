@@ -50,7 +50,7 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
 	txq_data->cq_db = cq_info.cq_db;
 	txq_data->cqn = cq_info.cqn;
 	txq_data->cqes = cq_info.cqes;
-	txq_data->cqe_m = txq_data->cqe_s - 1;
+	txq_data->cqe_m = (uint16_t)(1 << cq_info.cqe_n) - 1;
 
 	PMD_DRV_LOG(INFO, "Create tx cq, cqe_s:%d, cqe_n:%d, cq_db=%p, cqn:%d",
 		    txq_data->cqe_s, txq_data->cqe_n,
