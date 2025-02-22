@@ -384,7 +384,6 @@ xsc_dev_create_vfos_baselp(struct xsc_dev *xdev)
 void
 xsc_dev_pct_uninit(void)
 {
-	rte_bitmap_free(xsc_pct_mgr.bmp_pct);
 	rte_free(xsc_pct_mgr.bmp_mem);
 }
 
