@@ -42,8 +42,6 @@ xsc_rx_poll_len(struct xsc_rxq_data *rxq, volatile struct xsc_cqe *cqe)
 		if (unlikely(ret != XSC_CQE_OWNER_SW)) {
 			if (unlikely(ret == XSC_CQE_OWNER_ERR)) {
 				++rxq->stats.rx_errors;
-				if (ret == XSC_CQE_OWNER_HW || ret == -1)
-					return 0;
 			} else {
 				return 0;
 			}
