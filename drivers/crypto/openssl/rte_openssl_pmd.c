@@ -2803,9 +2803,15 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 			goto err_rsa;
 		}
 
-		if (EVP_PKEY_verify_recover(rsa_ctx, tmp, &outlen,
+		ret = EVP_PKEY_verify_recover(rsa_ctx, tmp, &outlen,
 				op->rsa.sign.data,
-				op->rsa.sign.length) <= 0) {
+				op->rsa.sign.length);
+		if (ret <= 0) {
+			/* OpenSSL RSA verification returns one on
+			 * successful verification, otherwise 0. Hence,
+			 * this enqueue operation should succeed even if
+			 * invalid signature has been requested in verify.
+			 */
 			OPENSSL_free(tmp);
 			goto err_rsa;
 		}
