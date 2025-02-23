@@ -340,6 +340,8 @@ class TestRunSetup(State):
         test_run.init_random_seed()
         test_run.remaining_tests = deque(test_run.selected_tests)
 
+        test_run.ctx.sut_node.setup()
+        test_run.ctx.tg_node.setup()
         test_run.ctx.dpdk.setup(test_run.ctx.topology.sut_ports)
         test_run.ctx.tg.setup(test_run.ctx.topology.tg_ports)
 
@@ -428,6 +430,8 @@ class TestRunTeardown(State):
         """Next state."""
         self.test_run.ctx.tg.teardown(self.test_run.ctx.topology.tg_ports)
         self.test_run.ctx.dpdk.teardown(self.test_run.ctx.topology.sut_ports)
+        self.test_run.ctx.tg_node.teardown()
+        self.test_run.ctx.sut_node.teardown()
         self.result.update_teardown(Result.PASS)
         return None
 
