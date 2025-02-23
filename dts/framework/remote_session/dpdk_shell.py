@@ -79,5 +79,5 @@ class DPDKShell(SingleActiveInteractiveShell, ABC):
         Adds the remote DPDK build directory to the path.
         """
         super()._update_real_path(
-            PurePath(get_ctx().dpdk.build.remote_dpdk_build_dir).joinpath(path)
+            PurePath(get_ctx().dpdk_build.remote_dpdk_build_dir).joinpath(path)
         )
