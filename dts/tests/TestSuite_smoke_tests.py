@@ -46,7 +46,7 @@ class TestSmokeTests(TestSuite):
         """
         self.sut_node = self._ctx.sut_node  # FIXME: accessing the context should be forbidden
         self.dpdk_build_dir_path = self._ctx.dpdk.build.remote_dpdk_build_dir
-        self.nics_in_node = self.sut_node.config.ports
+        self.nics_in_node = [p.config for p in self.topology.sut_ports]
 
     @func_test
     def test_unit_tests(self) -> None:
