@@ -3,8 +3,11 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022 PANTHEON.tech s.r.o.
 # Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2025 Arm Limited
 
 """The DTS executable."""
+
+import os
 
 from framework import settings
 
@@ -23,6 +26,9 @@ def main() -> None:
     from framework.runner import DTSRunner
 
     dts = DTSRunner()
+
+    # After loading up, make the dts folder the current working directory.
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     dts.run()
 
 
