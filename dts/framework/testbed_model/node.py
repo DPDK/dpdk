@@ -14,12 +14,13 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
 
 from functools import cached_property
+from pathlib import PurePath
 
 from framework.config.node import (
     OS,
     NodeConfiguration,
 )
-from framework.exception import ConfigurationError
+from framework.exception import ConfigurationError, InternalError
 from framework.logger import DTSLogger, get_dts_logger
 
 from .cpu import Architecture, LogicalCore
@@ -56,6 +57,7 @@ class Node:
     _other_sessions: list[OSSession]
     _node_info: OSSessionInfo | None
     _compiler_version: str | None
+    _setup: bool
 
     def __init__(self, node_config: NodeConfiguration):
         """Connect to the node and gather info during initialization.
@@ -77,8 +79,35 @@ class Node:
         self._logger.info(f"Connected to node: {self.name}")
         self._get_remote_cpus()
         self._other_sessions = []
+        self._setup = False
         self.ports = [Port(self, port_config) for port_config in self.config.ports]
         self._logger.info(f"Created node: {self.name}")
+
+    def setup(self) -> None:
+        """Node setup."""
+        if self._setup:
+            return
+
+        self.tmp_dir = self.main_session.create_tmp_dir()
+        self._setup = True
+
+    def teardown(self) -> None:
+        """Node teardown."""
+        if not self._setup:
+            return
+
+        self.main_session.remove_remote_dir(self.tmp_dir)
+        del self.tmp_dir
+        self._setup = False
+
+    @cached_property
+    def tmp_dir(self) -> PurePath:
+        """Path to the temporary directory.
+
+        Raises:
+            InternalError: If called before the node has been setup.
+        """
+        raise InternalError("Temporary directory requested before setup.")
 
     @cached_property
     def ports_by_name(self) -> dict[str, Port]:

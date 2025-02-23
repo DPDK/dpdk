@@ -96,6 +96,11 @@ class PosixSession(OSSession):
         result = self.send_command(f"test -e {remote_path}")
         return not result.return_code
 
+    def create_tmp_dir(self, template: str = "dts.XXXXX") -> PurePath:
+        """Overrides :meth:`~.os_session.OSSession.create_tmp_dir`."""
+        result = self.send_command(f'mktemp -dp "" {template}')
+        return PurePath(result.stdout)
+
     def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
         """Overrides :meth:`~.os_session.OSSession.copy_from`."""
         self.remote_session.copy_from(source_file, destination_dir)

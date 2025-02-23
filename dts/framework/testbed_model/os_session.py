@@ -196,6 +196,18 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def create_tmp_dir(self, template: str = "dts.XXXXX") -> PurePath:
+        """Create a temporary directory on the remote node.
+
+        Args:
+            template: The template to use for the name of the directory. "X"s are treated
+                as placeholder.
+
+        Returns:
+            The path to the created directory.
+        """
+
+    @abstractmethod
     def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
         """Copy a file from the remote node to the local filesystem.
 
