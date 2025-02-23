@@ -419,6 +419,7 @@ class DPDKRuntimeEnvironment:
         """Set up the DPDK runtime on the target node."""
         if self.build:
             self.build.setup()
+        self._prepare_devbind_script()
         self.bind_ports_to_driver(ports)
 
     def teardown(self, ports: Iterable[Port]) -> None:
@@ -467,21 +468,38 @@ class DPDKRuntimeEnvironment:
             )
             port.bound_for_dpdk = for_dpdk
 
+    def _prepare_devbind_script(self) -> None:
+        """Prepare the devbind script.
+
+        If the environment has a build associated with it, then use the script within that build's
+        tree. Otherwise, copy the script from the local repository.
+
+        Raises:
+            InternalError: If dpdk-devbind.py could not be found.
+        """
+        if self.build:
+            self.devbind_script_path = self._node.main_session.join_remote_path(
+                self.build.remote_dpdk_tree_path, "usertools", "dpdk-devbind.py"
+            )
+        else:
+            local_script_path = Path("..", "usertools", "dpdk-devbind.py").resolve()
+            if not local_script_path.exists():
+                raise InternalError("Could not find dpdk-devbind.py locally.")
+
+            self.devbind_script_path = self._node.main_session.join_remote_path(
+                self._node.tmp_dir, local_script_path.name
+            )
+
+            self._node.main_session.copy_to(local_script_path, self.devbind_script_path)
+
     @cached_property
     def devbind_script_path(self) -> PurePath:
         """The path to the dpdk-devbind.py script on the node.
 
         Raises:
-            InternalError: If attempting to retrieve the devbind script in a build-less runtime.
+            InternalError: If accessed before environment setup.
         """
-        if self.build:
-            return self._node.main_session.join_remote_path(
-                self.build.remote_dpdk_tree_path, "usertools", "dpdk-devbind.py"
-            )
-
-        raise InternalError(
-            "DPDK runtime is not associated with any DPDK build. Can't retrieve dpdk-devbind.py."
-        )
+        raise InternalError("Accessed devbind script path before setup.")
 
     def filter_lcores(
         self,
