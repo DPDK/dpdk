@@ -24,7 +24,7 @@ from framework.config.test_run import (
     RemoteDPDKTarballLocation,
     RemoteDPDKTreeLocation,
 )
-from framework.exception import ConfigurationError, RemoteFileNotFoundError
+from framework.exception import ConfigurationError, InternalError, RemoteFileNotFoundError
 from framework.logger import DTSLogger, get_dts_logger
 from framework.params.eal import EalParams
 from framework.remote_session.remote_session import CommandResult
@@ -367,7 +367,7 @@ class DPDKRuntimeEnvironment:
     """Class handling a DPDK runtime environment."""
 
     config: Final[DPDKRuntimeConfiguration]
-    build: Final[DPDKBuildEnvironment]
+    build: Final[DPDKBuildEnvironment | None]
     _node: Final[Node]
     _logger: Final[DTSLogger]
 
@@ -383,14 +383,14 @@ class DPDKRuntimeEnvironment:
         self,
         config: DPDKRuntimeConfiguration,
         node: Node,
-        build_env: DPDKBuildEnvironment,
+        build_env: DPDKBuildEnvironment | None = None,
     ):
         """DPDK environment constructor.
 
         Args:
             config: The configuration of DPDK.
             node: The target node to manage a DPDK environment.
-            build_env: The DPDK build environment.
+            build_env: The DPDK build environment, if any.
         """
         self.config = config
         self.build = build_env
@@ -417,13 +417,15 @@ class DPDKRuntimeEnvironment:
 
     def setup(self, ports: Iterable[Port]):
         """Set up the DPDK runtime on the target node."""
-        self.build.setup()
+        if self.build:
+            self.build.setup()
         self.bind_ports_to_driver(ports)
 
     def teardown(self, ports: Iterable[Port]) -> None:
         """Reset DPDK variables and bind port driver to the OS driver."""
         self.bind_ports_to_driver(ports, for_dpdk=False)
-        self.build.teardown()
+        if self.build:
+            self.build.teardown()
 
     def run_dpdk_app(
         self, app_path: PurePath, eal_params: EalParams, timeout: float = 30
@@ -467,9 +469,18 @@ class DPDKRuntimeEnvironment:
 
     @cached_property
     def devbind_script_path(self) -> PurePath:
-        """The path to the dpdk-devbind.py script on the node."""
-        return self._node.main_session.join_remote_path(
-            self.build.remote_dpdk_tree_path, "usertools", "dpdk-devbind.py"
+        """The path to the dpdk-devbind.py script on the node.
+
+        Raises:
+            InternalError: If attempting to retrieve the devbind script in a build-less runtime.
+        """
+        if self.build:
+            return self._node.main_session.join_remote_path(
+                self.build.remote_dpdk_tree_path, "usertools", "dpdk-devbind.py"
+            )
+
+        raise InternalError(
+            "DPDK runtime is not associated with any DPDK build. Can't retrieve dpdk-devbind.py."
         )
 
     def filter_lcores(

@@ -14,7 +14,7 @@ from framework.testbed_model.node import Node
 from framework.testbed_model.topology import Topology
 
 if TYPE_CHECKING:
-    from framework.remote_session.dpdk import DPDKRuntimeEnvironment
+    from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvironment
     from framework.testbed_model.traffic_generator.traffic_generator import TrafficGenerator
 
 P = ParamSpec("P")
@@ -66,6 +66,7 @@ class Context:
     sut_node: Node
     tg_node: Node
     topology: Topology
+    dpdk_build: "DPDKBuildEnvironment"
     dpdk: "DPDKRuntimeEnvironment"
     tg: "TrafficGenerator"
     local: LocalContext = field(default_factory=LocalContext)

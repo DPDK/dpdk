@@ -206,7 +206,9 @@ class TestRun:
         dpdk_runtime_env = DPDKRuntimeEnvironment(config.dpdk, sut_node, dpdk_build_env)
         traffic_generator = create_traffic_generator(config.traffic_generator, tg_node)
 
-        self.ctx = Context(sut_node, tg_node, topology, dpdk_runtime_env, traffic_generator)
+        self.ctx = Context(
+            sut_node, tg_node, topology, dpdk_build_env, dpdk_runtime_env, traffic_generator
+        )
         self.result = result
         self.selected_tests = list(self.config.filter_tests(tests_config))
         self.blocked = False
@@ -347,7 +349,7 @@ class TestRunSetup(State):
 
         self.result.ports = test_run.ctx.topology.sut_ports + test_run.ctx.topology.tg_ports
         self.result.sut_info = test_run.ctx.sut_node.node_info
-        self.result.dpdk_build_info = test_run.ctx.dpdk.build.get_dpdk_build_info()
+        self.result.dpdk_build_info = test_run.ctx.dpdk_build.get_dpdk_build_info()
 
         self.logger.debug(f"Found capabilities to check: {test_run.required_capabilities}")
         test_run.supported_capabilities = get_supported_capabilities(
