@@ -17,7 +17,7 @@ NVIDIA MLX5 Common Driver
 The mlx5 common driver library (**librte_common_mlx5**) provides support for
 **NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx**, **NVIDIA ConnectX-5**,
 **NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,
-**NVIDIA ConnectX-7**, **NVIDIA BlueField**, **NVIDIA BlueField-2** and
+**NVIDIA ConnectX-7**, **NVIDIA ConnectX-8**, **NVIDIA BlueField**, **NVIDIA BlueField-2** and
 **NVIDIA BlueField-3** families of 10/25/40/50/100/200 Gb/s adapters.
 
 Information and documentation for these adapters can be found on the
@@ -145,6 +145,7 @@ The following dependencies are not part of DPDK and must be installed separately
   - ConnectX-6 Dx: **22.27.0090** and above.
   - ConnectX-6 Lx: **26.27.0090** and above.
   - ConnectX-7: **28.33.2028** and above.
+  - ConnectX-8: **40.44.1036** and above.
   - BlueField: **18.25.1010** and above.
   - BlueField-2: **24.28.1002** and above.
   - BlueField-3: **32.36.3126** and above.

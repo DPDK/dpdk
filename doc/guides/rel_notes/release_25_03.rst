@@ -122,6 +122,7 @@ New Features
   * Optimized port probing in large scale.
     This feature enhances the efficiency of probing VF/SFs on a large scale
     by significantly reducing the probing time.
+  * Added support for NVIDIA ConnectX-8 adapters
 
 * **Updated Wangxun ngbe driver.**
 
