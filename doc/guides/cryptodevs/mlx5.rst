@@ -15,8 +15,8 @@ NVIDIA MLX5 Crypto Driver
 
 The MLX5 crypto driver library
 (**librte_crypto_mlx5**) provides support for **NVIDIA ConnectX-6**,
-**NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-7**, **NVIDIA BlueField-2**,
-and **NVIDIA BlueField-3** family adapters.
+**NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-7**, **NVIDIA ConnectX-8**,
+**NVIDIA BlueField-2**, and **NVIDIA BlueField-3** family adapters.
 
 Overview
 --------
@@ -214,6 +214,7 @@ Supported NICs
 * NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
 * NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
 * NVIDIA\ |reg| ConnectX\ |reg|-7
+* NVIDIA\ |reg| ConnectX\ |reg|-8
 * NVIDIA\ |reg| BlueField\ |reg|-2 SmartNIC
 * NVIDIA\ |reg| BlueField\ |reg|-3 SmartNIC
 
@@ -240,6 +241,7 @@ FW Prerequisites
 - xx.31.0328 for ConnectX-6.
 - xx.32.0108 for ConnectX-6 Dx and BlueField-2.
 - xx.36.xxxx for ConnectX-7 and BlueField-3.
+- 40.44.1036 for ConnectX-8.
 - xx.37.3010 for BlueField-3 and newer for AES-GCM.
 
 Linux Prerequisites
