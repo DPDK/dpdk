@@ -1117,17 +1117,14 @@ cnxk_nix_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int
-cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
-				struct rte_ether_addr *mc_addr_set,
-				uint32_t nb_mc_addr)
+static inline int
+nix_mc_addr_list_flush(struct rte_eth_dev *eth_dev)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev_data *data = eth_dev->data;
 	struct rte_ether_addr null_mac_addr;
 	struct roc_nix *nix = &dev->nix;
-	int rc, index;
-	uint32_t i;
+	int i, rc = 0;
 
 	memset(&null_mac_addr, 0, sizeof(null_mac_addr));
 
@@ -1148,15 +1145,34 @@ cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
 		}
 	}
 
+	return rc;
+}
+
+int
+cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev, struct rte_ether_addr *mc_addr_set,
+				uint32_t nb_mc_addr)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct roc_nix *nix = &dev->nix;
+	int index, mc_addr_cnt = 0;
+	uint32_t i;
+
 	if (!mc_addr_set || !nb_mc_addr)
-		return 0;
+		return nix_mc_addr_list_flush(eth_dev);
+
+	/* Count multicast MAC addresses in list */
+	for (i = 0; i < dev->max_mac_entries; i++)
+		if (rte_is_multicast_ether_addr(&data->mac_addrs[i]))
+			mc_addr_cnt++;
 
 	/* Check for available space */
 	if (nb_mc_addr >
-	    ((uint32_t)(dev->max_mac_entries - dev->dmac_filter_count))) {
+	    ((uint32_t)(dev->max_mac_entries - (dev->dmac_filter_count - mc_addr_cnt)))) {
 		plt_err("No space is available to add multicast filters");
 		return -ENOSPC;
 	}
+	nix_mc_addr_list_flush(eth_dev);
 
 	/* Multicast addresses are to be installed */
 	for (i = 0; i < nb_mc_addr; i++) {
