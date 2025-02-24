@@ -24,7 +24,7 @@ cn20k_wqe_to_mbuf(uint64_t wqe, const uint64_t __mbuf, uint8_t port_id, const ui
 	struct rte_mbuf *mbuf = (struct rte_mbuf *)__mbuf;
 
 	cn20k_nix_cqe_to_mbuf((struct nix_cqe_hdr_s *)wqe, tag, (struct rte_mbuf *)mbuf, lookup_mem,
-			      mbuf_init | ((uint64_t)port_id) << 48, cpth, sa_base, flags);
+			      mbuf_init | ((uint64_t)port_id) << 48, cpth, sa_base, 0, flags);
 }
 
 static void
@@ -83,7 +83,7 @@ cn20k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
 
-		cn20k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem, mbuf_init, cpth, sa_base,
+		cn20k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem, mbuf_init, cpth, sa_base, 0,
 				      flags);
 
 		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
