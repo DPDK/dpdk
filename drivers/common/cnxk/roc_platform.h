@@ -351,6 +351,13 @@ extern int cnxk_logtype_esw;
 }
 #endif
 
+int plt_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, void *data,
+		     unsigned int vec);
+void plt_irq_unregister(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, void *data,
+			unsigned int vec);
+int plt_irq_reconfigure(struct plt_intr_handle *intr_handle, uint16_t max_intr);
+int plt_irq_disable(struct plt_intr_handle *intr_handle);
+
 /* Device memory does not support unaligned access, instruct compiler to
  * not optimize the memory access when working with mailbox memory.
  */
