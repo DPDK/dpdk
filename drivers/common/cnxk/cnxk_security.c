@@ -360,7 +360,7 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 	/* Initialize the SA */
 	roc_ot_ipsec_inb_sa_init(sa, is_inline);
 
-	w2.u64 = 0;
+	w2.u64 = sa->w2.u64;
 	rc = ot_ipsec_sa_common_param_fill(&w2, sa->cipher_key, sa->w8.s.salt,
 					   sa->hmac_opad_ipad, ipsec_xfrm,
 					   crypto_xfrm);
