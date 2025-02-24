@@ -6,6 +6,8 @@
 #include <rte_eventdev.h>
 #include <rte_pmd_cnxk.h>
 
+cnxk_ethdev_rx_offload_cb_t cnxk_ethdev_rx_offload_cb;
+
 #define CNXK_NIX_CQ_INL_CLAMP_MAX (64UL * 1024UL)
 
 #define NIX_TM_DFLT_RR_WT 71
@@ -83,6 +85,12 @@ nix_inl_cq_sz_clamp_up(struct roc_nix *nix, struct rte_mempool *mp,
 		nb_desc = CNXK_NIX_CQ_INL_CLAMP_MAX;
 	}
 	return nb_desc;
+}
+
+void
+cnxk_ethdev_rx_offload_cb_register(cnxk_ethdev_rx_offload_cb_t cb)
+{
+	cnxk_ethdev_rx_offload_cb = cb;
 }
 
 int
@@ -1912,8 +1920,11 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nix->port_id = eth_dev->data->port_id;
 	/* For better performance set default VF root schedule weight */
 	nix->root_sched_weight = NIX_TM_DFLT_RR_WT;
-	if (roc_feature_nix_has_own_meta_aura())
+
+	/* Skip meta aura for cn20k */
+	if (roc_feature_nix_has_own_meta_aura() && !roc_feature_nix_has_second_pass_drop())
 		nix->local_meta_aura_ena = true;
+
 	rc = roc_nix_dev_init(nix);
 	if (rc) {
 		plt_err("Failed to initialize roc nix rc=%d", rc);

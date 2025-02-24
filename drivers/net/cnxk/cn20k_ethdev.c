@@ -403,6 +403,12 @@ cn20k_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||
+	    dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
+		/* Register callback to handle security error work */
+		roc_nix_inl_cb_register(cn20k_eth_sec_sso_work_cb, NULL);
+	}
+
 	/* Update offload flags */
 	dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
 	dev->tx_offload_flags = nix_tx_offload_flags(eth_dev);
@@ -896,6 +902,8 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	nix_tm_ops_override();
 	npc_flow_ops_override();
 
+	cn20k_eth_sec_ops_override();
+
 	/* Common probe */
 	rc = cnxk_nix_probe(pci_drv, pci_dev);
 	if (rc)
@@ -921,6 +929,9 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	/* Register up msg callbacks for PTP information */
 	roc_nix_ptp_info_cb_register(&dev->nix, cn20k_nix_ptp_info_update_cb);
+
+	/* Use WRITE SA for inline IPsec */
+	dev->nix.use_write_sa = true;
 
 	return 0;
 }
