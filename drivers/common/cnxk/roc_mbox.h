@@ -2468,6 +2468,8 @@ struct cpt_rxc_time_cfg_req {
 	uint16_t __io zombie_limit;
 	uint16_t __io active_thres;
 	uint16_t __io active_limit;
+	uint16_t __io queue_id;
+	uint64_t __io cpt_af_rxc_que_cfg;
 };
 
 /* Mailbox message format to request for CPT faulted engines */
