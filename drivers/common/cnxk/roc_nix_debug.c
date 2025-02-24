@@ -1510,8 +1510,8 @@ roc_nix_dump(struct roc_nix *roc_nix, FILE *file)
 	nix_dump(file, "  \ttx_pause = %d", nix->tx_pause);
 	nix_dump(file, "  \tinl_inb_ena = %d", nix->inl_inb_ena);
 	nix_dump(file, "  \tinl_outb_ena = %d", nix->inl_outb_ena);
-	nix_dump(file, "  \tinb_sa_base = 0x%p", nix->inb_sa_base);
-	nix_dump(file, "  \tinb_sa_sz = %" PRIu64, nix->inb_sa_sz);
+	nix_dump(file, "  \tinb_sa_base = 0x%p", nix->inb_sa_base[nix->ipsec_prof_id]);
+	nix_dump(file, "  \tinb_sa_sz = %" PRIu64, nix->inb_sa_sz[nix->ipsec_prof_id]);
 	nix_dump(file, "  \toutb_sa_base = 0x%p", nix->outb_sa_base);
 	nix_dump(file, "  \toutb_sa_sz = %" PRIu64, nix->outb_sa_sz);
 	nix_dump(file, "  \toutb_err_sso_pffunc = 0x%x", nix->outb_err_sso_pffunc);
@@ -1554,8 +1554,8 @@ roc_nix_inl_dev_dump(struct roc_nix_inl_dev *roc_inl_dev, FILE *file)
 	nix_dump(file, "  \tssow_msixoff = %d", inl_dev->ssow_msixoff);
 	nix_dump(file, "  \tnix_cints = %d", inl_dev->cints);
 	nix_dump(file, "  \tnix_qints = %d", inl_dev->qints);
-	nix_dump(file, "  \tinb_sa_base = 0x%p", inl_dev->inb_sa_base);
-	nix_dump(file, "  \tinb_sa_sz = %d", inl_dev->inb_sa_sz);
+	nix_dump(file, "  \tinb_sa_base = 0x%p", inl_dev->inb_sa_base[inl_dev->ipsec_prof_id]);
+	nix_dump(file, "  \tinb_sa_sz = %d", inl_dev->inb_sa_sz[inl_dev->ipsec_prof_id]);
 	nix_dump(file, "  \txaq_buf_size = %u", inl_dev->xaq_buf_size);
 	nix_dump(file, "  \txae_waes = %u", inl_dev->xae_waes);
 	nix_dump(file, "  \tiue = %u", inl_dev->iue);
