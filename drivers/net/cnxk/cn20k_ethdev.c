@@ -677,7 +677,7 @@ cn20k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid, uint16
 	const uint64_t data_off = rxq->data_off;
 	const uint32_t qmask = rxq->qmask;
 	const uintptr_t desc = rxq->desc;
-	struct cpt_parse_hdr_s *cpth;
+	union cpt_parse_hdr_u *cpth;
 	uint32_t head = rxq->head;
 	struct nix_cqe_hdr_s *cq;
 	uint16_t count = 0;
@@ -697,7 +697,7 @@ cn20k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid, uint16
 		if (cq_w1 & BIT(11)) {
 			rte_iova_t buff = *((rte_iova_t *)((uint64_t *)cq + 9));
 			struct rte_mbuf *mbuf = (struct rte_mbuf *)(buff - data_off);
-			cpth = (struct cpt_parse_hdr_s *)((uintptr_t)mbuf + (uint16_t)data_off);
+			cpth = (union cpt_parse_hdr_u *)((uintptr_t)mbuf + (uint16_t)data_off);
 			roc_cpt_parse_hdr_dump(file, cpth);
 		} else {
 			roc_nix_cqe_dump(file, cq);
