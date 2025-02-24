@@ -724,6 +724,8 @@ RTE_EXPORT_SYMBOL(rte_pcapng_close)
 void
 rte_pcapng_close(rte_pcapng_t *self)
 {
-	close(self->outfd);
-	free(self);
+	if (self) {
+		close(self->outfd);
+		free(self);
+	}
 }
