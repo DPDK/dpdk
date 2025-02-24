@@ -53,7 +53,7 @@ class TrafficGenerator(MultiInheritanceBaseClass, ABC):
     def setup(self, ports: Iterable[Port]):
         """Setup the traffic generator."""
 
-    def teardown(self):
+    def teardown(self, ports: Iterable[Port]):
         """Teardown the traffic generator."""
 
     def send_packet(self, packet: Packet, port: Port) -> None:
