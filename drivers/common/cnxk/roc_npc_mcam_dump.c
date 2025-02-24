@@ -639,6 +639,11 @@ npc_flow_dump_rx_action(FILE *file, uint64_t npc_action)
 			(uint64_t)NIX_RX_ACTIONOP_UCAST_IPSEC);
 		plt_strlcpy(index_name, "RQ Index:", NPC_MAX_FIELD_NAME_SIZE);
 		break;
+	case NIX_RX_ACTIONOP_UCAST_CPT:
+		fprintf(file, "NIX_RX_ACTIONOP_UCAST_CPT (%" PRIu64 ")\n",
+			(uint64_t)NIX_RX_ACTIONOP_UCAST_CPT);
+		plt_strlcpy(index_name, "RQ Index:", NPC_MAX_FIELD_NAME_SIZE);
+		break;
 	case NIX_RX_ACTIONOP_MCAST:
 		fprintf(file, "NIX_RX_ACTIONOP_MCAST (%" PRIu64 ")\n",
 			(uint64_t)NIX_RX_ACTIONOP_MCAST);
