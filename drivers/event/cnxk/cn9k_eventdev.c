@@ -871,6 +871,7 @@ cn9k_sso_rx_adapter_queue_add(
 {
 	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct cn9k_eth_rxq *rxq;
+	uint16_t nb_rx_queues;
 	void *lookup_mem;
 	int rc;
 
@@ -878,8 +879,40 @@ cn9k_sso_rx_adapter_queue_add(
 	if (rc)
 		return -EINVAL;
 
-	rc = cnxk_sso_rx_adapter_queue_add(event_dev, eth_dev, rx_queue_id,
-					   queue_conf);
+	nb_rx_queues = rx_queue_id == -1 ? 0 : 1;
+	rc = cnxk_sso_rx_adapter_queues_add(event_dev, eth_dev, &rx_queue_id, queue_conf,
+					    nb_rx_queues);
+	if (rc)
+		return -EINVAL;
+
+	cnxk_eth_dev->cnxk_sso_ptp_tstamp_cb = cn9k_sso_tstamp_hdl_update;
+	cnxk_eth_dev->evdev_priv = (struct rte_eventdev *)(uintptr_t)event_dev;
+
+	rxq = eth_dev->data->rx_queues[0];
+	lookup_mem = rxq->lookup_mem;
+	cn9k_sso_set_priv_mem(event_dev, lookup_mem);
+	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+
+	return 0;
+}
+
+static int
+cn9k_sso_rx_adapter_queues_add(const struct rte_eventdev *event_dev,
+			       const struct rte_eth_dev *eth_dev, int32_t rx_queue_id[],
+			       const struct rte_event_eth_rx_adapter_queue_conf queue_conf[],
+			       uint16_t nb_rx_queues)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cn9k_eth_rxq *rxq;
+	void *lookup_mem;
+	int rc;
+
+	rc = strncmp(eth_dev->device->driver->name, "net_cn9k", 8);
+	if (rc)
+		return -EINVAL;
+
+	rc = cnxk_sso_rx_adapter_queues_add(event_dev, eth_dev, rx_queue_id, queue_conf,
+					    nb_rx_queues);
 	if (rc)
 		return -EINVAL;
 
@@ -1131,6 +1164,7 @@ static struct eventdev_ops cn9k_sso_dev_ops = {
 
 	.eth_rx_adapter_caps_get = cn9k_sso_rx_adapter_caps_get,
 	.eth_rx_adapter_queue_add = cn9k_sso_rx_adapter_queue_add,
+	.eth_rx_adapter_queues_add = cn9k_sso_rx_adapter_queues_add,
 	.eth_rx_adapter_queue_del = cn9k_sso_rx_adapter_queue_del,
 	.eth_rx_adapter_start = cnxk_sso_rx_adapter_start,
 	.eth_rx_adapter_stop = cnxk_sso_rx_adapter_stop,
