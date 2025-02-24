@@ -29,8 +29,6 @@
 #define ENA_RX_BUF_MIN_SIZE	1400
 #define ENA_DEFAULT_RING_SIZE	1024
 
-#define ENA_RX_RSS_TABLE_LOG_SIZE	7
-#define ENA_RX_RSS_TABLE_SIZE		(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
 
 #define ENA_MIN_MTU		128
 
@@ -65,8 +63,6 @@
 #define ENA_IDX_NEXT_MASKED(idx, mask) (((idx) + 1) & (mask))
 #define ENA_IDX_ADD_MASKED(idx, n, mask) (((idx) + (n)) & (mask))
 
-#define ENA_RX_RSS_TABLE_LOG_SIZE	7
-#define ENA_RX_RSS_TABLE_SIZE		(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
 
 #define ENA_HASH_KEY_SIZE		40
 
@@ -333,7 +329,8 @@ struct ena_adapter {
 	struct ena_stats_dev dev_stats;
 	struct ena_admin_basic_stats basic_stats;
 
-	u32 indirect_table[ENA_RX_RSS_TABLE_SIZE];
+	u32 *indirect_table;
+	size_t indirect_table_size;
 
 	uint32_t all_aenq_groups;
 	uint32_t active_aenq_groups;
@@ -360,6 +357,7 @@ struct ena_adapter {
 	alignas(RTE_CACHE_LINE_SIZE) struct ena_stats_srd srd_stats;
 };
 
+size_t ena_rss_get_indirection_table_size(struct ena_adapter *adapter);
 int ena_mp_indirect_table_set(struct ena_adapter *adapter);
 int ena_mp_indirect_table_get(struct ena_adapter *adapter,
 			      uint32_t *indirect_table);

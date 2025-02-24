@@ -45,6 +45,17 @@ static void ena_reorder_rss_hash_key(uint8_t *reordered_key,
 				     size_t key_size);
 static int ena_get_rss_hash_key(struct ena_com_dev *ena_dev, uint8_t *rss_key);
 
+size_t ena_rss_get_indirection_table_size(struct ena_adapter *adapter)
+{
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+	if (!ena_com_indirection_table_config_supported(ena_dev)) {
+		PMD_DRV_LOG_LINE(WARNING,
+			"Indirection table is not supported by the device.");
+		return 0;
+	}
+	adapter->indirect_table_size = (1UL << ena_dev->rss.tbl_log_size);
+	return adapter->indirect_table_size;
+}
 void ena_rss_key_fill(void *key, size_t size)
 {
 	static bool key_generated;
@@ -71,6 +82,7 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 	u16 entry_value;
 	int conf_idx;
 	int idx;
+	size_t tbl_size;
 
 	if (reta_size == 0 || reta_conf == NULL)
 		return -EINVAL;
@@ -81,10 +93,11 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
-	if (reta_size > ENA_RX_RSS_TABLE_SIZE) {
-		PMD_DRV_LOG_LINE(WARNING,
-			"Requested indirection table size (%d) is bigger than supported: %d",
-			reta_size, ENA_RX_RSS_TABLE_SIZE);
+	tbl_size = ena_rss_get_indirection_table_size(adapter);
+	if (reta_size != tbl_size) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Requested indirection table size (%" PRIu16 ") isn't supported (expected: %zu)",
+			reta_size, tbl_size);
 		return -EINVAL;
 	}
 
@@ -129,12 +142,12 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_reta_entry64 *reta_conf,
 		       uint16_t reta_size)
 {
-	uint32_t indirect_table[ENA_RX_RSS_TABLE_SIZE];
 	struct ena_adapter *adapter = dev->data->dev_private;
 	int rc;
 	int i;
 	int reta_conf_idx;
 	int reta_idx;
+	size_t tbl_size;
 
 	if (reta_size == 0 || reta_conf == NULL)
 		return -EINVAL;
@@ -145,10 +158,22 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
+	tbl_size = ena_rss_get_indirection_table_size(adapter);
+	if (reta_size != tbl_size) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot get indirection table: size (%" PRIu16 ") mismatch (expected: %zu)",
+			reta_size, tbl_size);
+		return -EINVAL;
+	}
+	if (!adapter->indirect_table) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot get indirection table: local table not allocated");
+		return -EINVAL;
+	}
 	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_mp_indirect_table_get(adapter, indirect_table);
-	rte_spinlock_unlock(&adapter->admin_lock);
+	rc = ena_mp_indirect_table_get(adapter, adapter->indirect_table);
 	if (unlikely(rc != 0)) {
+		rte_spinlock_unlock(&adapter->admin_lock);
 		PMD_DRV_LOG_LINE(ERR, "Cannot get indirection table");
 		return rc;
 	}
@@ -158,8 +183,9 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 		reta_idx = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (TEST_BIT(reta_conf[reta_conf_idx].mask, reta_idx))
 			reta_conf[reta_conf_idx].reta[reta_idx] =
-				ENA_IO_RXQ_IDX_REV(indirect_table[i]);
+				ENA_IO_RXQ_IDX_REV(adapter->indirect_table[i]);
 	}
+	rte_spinlock_unlock(&adapter->admin_lock);
 
 	return 0;
 }
@@ -475,6 +501,7 @@ int ena_rss_configure(struct ena_adapter *adapter)
 	struct rte_eth_rss_conf *rss_conf;
 	struct ena_com_dev *ena_dev;
 	int rc;
+	size_t tbl_size;
 
 	ena_dev = &adapter->ena_dev;
 	rss_conf = &adapter->edev_data->dev_conf.rx_adv_conf.rss_conf;
@@ -482,11 +509,14 @@ int ena_rss_configure(struct ena_adapter *adapter)
 	if (adapter->edev_data->nb_rx_queues == 0)
 		return 0;
 
+	tbl_size = ena_rss_get_indirection_table_size(adapter);
+	if (!tbl_size)
+		return 0;
 	/* Restart the indirection table. The number of queues could change
 	 * between start/stop calls, so it must be reinitialized with default
 	 * values.
 	 */
-	rc = ena_fill_indirect_table_default(ena_dev, ENA_RX_RSS_TABLE_SIZE,
+	rc = ena_fill_indirect_table_default(ena_dev, tbl_size,
 		adapter->edev_data->nb_rx_queues);
 	if (unlikely(rc != 0)) {
 		PMD_DRV_LOG_LINE(ERR,

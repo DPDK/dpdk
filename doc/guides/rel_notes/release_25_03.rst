@@ -97,6 +97,10 @@ New Features
   * Added ability to option to configure receive packet fanout mode.
   * Added statistics for failed buffer allocation and missed packets.
 
+* **Updated Amazon ENA (Elastic Network Adapter) net driver.**
+
+  * Added support for mutable RSS table size based on device capabilities.
+
 * **Updated AMD axgbe driver.**
 
   * Added support for the TCP Segmentation Offload (TSO).
