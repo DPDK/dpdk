@@ -80,12 +80,8 @@ static s32 txgbe_read_phy_if(struct txgbe_hw *hw)
 	if (hw->phy.nw_mng_if_sel & TXGBE_ETHPHYIF_MDIO_ACT)
 		hw->phy.addr = TXGBE_ETHPHYIF_MDIO_BASE(hw->phy.nw_mng_if_sel);
 
-	if (!hw->phy.phy_semaphore_mask) {
-		if (hw->bus.lan_id)
-			hw->phy.phy_semaphore_mask = TXGBE_MNGSEM_SWPHY;
-		else
-			hw->phy.phy_semaphore_mask = TXGBE_MNGSEM_SWPHY;
-	}
+	if (!hw->phy.phy_semaphore_mask)
+		hw->phy.phy_semaphore_mask = TXGBE_MNGSEM_SWPHY;
 
 	return 0;
 }
