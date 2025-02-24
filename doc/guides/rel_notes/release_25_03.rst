@@ -120,6 +120,7 @@ New Features
 * **Updated Marvell cnxk net driver.**
 
   * Added flow rules support for CN20K SoC.
+  * Added inline IPsec support for CN20K SoC.
 
 * **Updated Napatech ntnic driver.**
 
