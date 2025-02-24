@@ -851,8 +851,7 @@ cn10k_eth_sec_session_create(void *device,
 		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
 		/* Fill inbound sa params */
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto,
-					       true);
+		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
 		if (rc) {
 			snprintf(tbuf, sizeof(tbuf),
 				 "Failed to init inbound sa, rc=%d", rc);
@@ -1063,7 +1062,7 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	if (eth_sec->inb) {
 		/* Disable SA */
 		sa_dptr = dev->inb.sa_dptr;
-		roc_ot_ipsec_inb_sa_init(sa_dptr, true);
+		roc_ot_ipsec_inb_sa_init(sa_dptr);
 
 		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa,
 				      eth_sec->inb,
@@ -1146,8 +1145,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		inb_sa_dptr = (struct roc_ot_ipsec_inb_sa *)dev->inb.sa_dptr;
 		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto,
-					       true);
+		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
 		if (rc)
 			return -EINVAL;
 		/* Use cookie for original data */

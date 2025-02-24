@@ -423,7 +423,7 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	if (roc_model_is_cn10k()) {
 		for (i = 0; i < max_sa; i++) {
 			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
-			roc_ot_ipsec_inb_sa_init(sa, true);
+			roc_ot_ipsec_inb_sa_init(sa);
 		}
 	}
 

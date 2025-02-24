@@ -304,8 +304,7 @@ ot_ipsec_inb_tunnel_hdr_fill(struct roc_ot_ipsec_inb_sa *sa,
 int
 cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 			  struct rte_security_ipsec_xform *ipsec_xfrm,
-			  struct rte_crypto_sym_xform *crypto_xfrm,
-			  bool is_inline)
+			  struct rte_crypto_sym_xform *crypto_xfrm)
 {
 	uint16_t sport = 4500, dport = 4500;
 	union roc_ot_ipsec_sa_word2 w2;
@@ -314,7 +313,7 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 	int rc;
 
 	/* Initialize the SA */
-	roc_ot_ipsec_inb_sa_init(sa, is_inline);
+	roc_ot_ipsec_inb_sa_init(sa);
 
 	w2.u64 = 0;
 	rc = ot_ipsec_sa_common_param_fill(&w2, sa->cipher_key, sa->w8.s.salt,
