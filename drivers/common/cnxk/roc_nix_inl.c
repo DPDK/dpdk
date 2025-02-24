@@ -1744,6 +1744,7 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 	union cpt_lf_ctx_reload reload;
 	union cpt_lf_ctx_flush flush;
 	union cpt_lf_ctx_err err;
+	union cpt_lf_ctx_inval inval;
 	bool get_inl_lf = true;
 	uintptr_t rbase;
 	struct nix *nix;
@@ -1778,8 +1779,15 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 
 		flush.u = 0;
 		reload.u = 0;
+		inval.u = 0;
 		switch (op) {
 		case ROC_NIX_INL_SA_OP_FLUSH_INVAL:
+			if (!roc_model_is_cn10k()) {
+				inval.s.cptr = ((uintptr_t)sa) >> 7;
+				plt_write64(inval.u, rbase + CPT_LF_CTX_INVAL);
+				break;
+			}
+
 			flush.s.inval = 1;
 			/* fall through */
 		case ROC_NIX_INL_SA_OP_FLUSH:
@@ -1815,10 +1823,12 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	struct nix_inl_dev *inl_dev = NULL;
 	struct roc_cpt_lf *outb_lf = NULL;
 	union cpt_lf_ctx_flush flush;
+	union cpt_lf_ctx_inval inval;
 	union cpt_lf_ctx_err err;
 	bool get_inl_lf = true;
 	uintptr_t rbase;
 	struct nix *nix;
+	uint64_t *sa;
 	int rc;
 
 	/* Nothing much to do on cn9k */
@@ -1850,7 +1860,10 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 			outb_lf = &inl_dev->cpt_lf[0];
 	}
 
-	if (outb_lf) {
+	if (outb_lf == NULL)
+		goto exit;
+
+	if (roc_model_is_cn10k() || roc_nix->use_write_sa) {
 		rbase = outb_lf->rbase;
 		flush.u = 0;
 
@@ -1869,7 +1882,29 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 		if (err.s.flush_st_flt)
 			plt_warn("CTX flush could not complete");
 		return 0;
+	} else {
+		sa = sa_dptr;
+
+		/* Clear bit 58 aop_valid */
+		sa[0] &= ~(1ULL << 58);
+		memcpy(sa_cptr, sa_dptr, sa_len);
+		plt_io_wmb();
+
+		/* Trigger CTX invalidate */
+		rbase = outb_lf->rbase;
+		inval.u = 0;
+		inval.s.cptr = ((uintptr_t)sa_cptr) >> 7;
+		plt_write64(inval.u, rbase + CPT_LF_CTX_INVAL);
+
+		/* Set bit 58 aop_valid */
+		sa = sa_cptr;
+		sa[0] |= (1ULL << 58);
+		plt_io_wmb();
+
+		return 0;
 	}
+
+exit:
 	plt_nix_dbg("Could not get CPT LF for CTX write");
 	return -ENOTSUP;
 }

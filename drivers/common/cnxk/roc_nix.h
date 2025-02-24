@@ -474,6 +474,7 @@ struct roc_nix {
 	bool custom_meta_aura_ena;
 	bool rx_inj_ena;
 	bool custom_inb_sa;
+	bool use_write_sa;
 	uint32_t root_sched_weight;
 	uint16_t inb_cfg_param1;
 	uint16_t inb_cfg_param2;
