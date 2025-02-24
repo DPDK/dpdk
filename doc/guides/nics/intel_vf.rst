@@ -88,36 +88,26 @@ For more detail on SR-IOV, please refer to the following documents:
 
 *   `Intel® IAVF HAS <https://www.intel.com/content/dam/www/public/us/en/documents/product-specifications/ethernet-adaptive-virtual-function-hardware-spec.pdf>`_
 
-.. note::
+IAVF PMD parameters
+^^^^^^^^^^^^^^^^^^^
 
-    To use DPDK IAVF PMD on Intel® 700 Series Ethernet Controller, the device id (0x1889) need to specified during device
-    assignment in hypervisor. Take qemu for example, the device assignment should carry the IAVF device id (0x1889) like
-    ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
-
-    When IAVF is backed by an Intel® E810 device, the "Protocol Extraction" feature which is supported by ice PMD is also
-    available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD, for detail please reference
-    the section ``Protocol extraction for per queue`` of ice.rst.
-
-    Quanta size configuration is also supported when IAVF is backed by an Intel® E810 device by setting ``devargs``
-    parameter ``quanta_size`` like ``-a 18:00.0,quanta_size=2048``. The default value is 1024, and quanta size should be
-    set as the product of 64 in legacy host interface mode.
-
-    When IAVF is backed by an Intel® E810 device or an Intel® 700 Series Ethernet device, the reset watchdog is enabled
-    when link state changes to down. The default period is 2000us, defined by ``IAVF_DEV_WATCHDOG_PERIOD``.
-    Set ``devargs`` parameter ``watchdog_period`` to adjust the watchdog period in microseconds, or set it to 0 to disable the watchdog,
+``watchdog_period``
+    The reset watchdog is enabled when link state changes to down.
+    The default period is 2000us, defined by ``IAVF_DEV_WATCHDOG_PERIOD``.
+    Set ``devargs`` parameter ``watchdog_period`` to adjust the watchdog period in microseconds,
+    or set it to 0 to disable the watchdog,
     for example, ``-a 18:01.0,watchdog_period=5000`` or ``-a 18:01.0,watchdog_period=0``.
 
-    Enable VF auto-reset by setting the devargs parameter like ``-a 18:01.0,auto_reset=1``
-    when IAVF is backed by an Intel\ |reg| E810 device
-    or an Intel\ |reg| 700 Series Ethernet device.
+``auto_reset``
+    Enable VF auto-reset by setting the devargs parameter,
+    for example ``-a 18:01.0,auto_reset=1``,
 
+``no-poll-on-link-down``
     Stop polling Rx/Tx hardware queue when link is down
-    by setting the ``devargs`` parameter like ``-a 18:01.0,no-poll-on-link-down=1``
-    when IAVF is backed by an Intel\ |reg| E810 device or an Intel\ |reg| 700 Series Ethernet device.
+    by setting the ``devargs`` parameter like ``-a 18:01.0,no-poll-on-link-down=1``.
 
-    Similarly, when IAVF is backed by an Intel\ |reg| E810 device
-    or an Intel\ |reg| 700 Series Ethernet device,
-    set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.
+``mbuf_check``
+    Set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.
     For example, ``-a 18:01.0,mbuf_check=<case>`` or ``-a 18:01.0,mbuf_check=[<case1>,<case2>...]``.
     Thereafter, ``rte_eth_xstats_get()`` can be used to get the error counts,
     which are collected in ``tx_mbuf_error_packets`` xstats.
@@ -128,6 +118,26 @@ For more detail on SR-IOV, please refer to the following documents:
     * ``size``: Check min/max packet length according to HW spec.
     * ``segment``: Check number of mbuf segments does not exceed HW limits.
     * ``offload``: Check for use of an unsupported offload flag.
+
+
+HW-Specific Notes For IAVF
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Intel\ |reg| 700 Series Ethernet devices:
+
+* To use DPDK IAVF PMD the device id (0x1889) need to specified during device assignment in hypervisor.
+  For example, on qemu, the device assignment should carry the IAVF device id (0x1889) like
+  ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
+
+Intel\ |reg| E800 Series Ethernet devices:
+
+* the "Protocol Extraction" feature which is supported by ice PMD is also available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD.
+  for Detail please reference the section ``Protocol extraction for per queue`` of ice.rst.
+
+* Quanta size configuration is supported by setting ``devargs`` parameter ``quanta_size``,
+  for example: ``-a 18:00.0,quanta_size=2048``.
+  The default value is 1024, and quanta size should be set as the product of 64 in legacy host interface mode.
+
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
