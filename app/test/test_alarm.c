@@ -51,12 +51,12 @@ test_alarm(void)
 			 "Expected rte_eal_alarm_cancel to fail with null callback parameter");
 
 	/* check if can set a alarm for one second */
-	TEST_ASSERT_SUCCESS(rte_eal_alarm_set(US_PER_SEC, test_alarm_callback, &triggered),
-			    "Setting one second alarm failed");
+	TEST_ASSERT_SUCCESS(rte_eal_alarm_set(US_PER_SEC, test_alarm_callback,
+			    RTE_PTR_UNQUAL(&triggered)), "Setting one second alarm failed");
 
 	/* set a longer alarm that will be canceled. */
-	TEST_ASSERT_SUCCESS(rte_eal_alarm_set(10 * US_PER_SEC, test_alarm_callback, &later),
-			    "Setting ten second alarm failed");
+	TEST_ASSERT_SUCCESS(rte_eal_alarm_set(10 * US_PER_SEC, test_alarm_callback,
+			    RTE_PTR_UNQUAL(&later)), "Setting ten second alarm failed");
 
 	/* wait for alarm to happen */
 	while (rte_atomic_load_explicit(&triggered, rte_memory_order_acquire) == false)
@@ -65,11 +65,11 @@ test_alarm(void)
 	TEST_ASSERT(!rte_atomic_load_explicit(&later, rte_memory_order_acquire),
 		    "Only one alarm should have fired.");
 
-	ret = rte_eal_alarm_cancel(test_alarm_callback, &triggered);
+	ret = rte_eal_alarm_cancel(test_alarm_callback, RTE_PTR_UNQUAL(&triggered));
 	TEST_ASSERT(ret == 0 && rte_errno == ENOENT,
 		    "Canceling alarm after run ret %d: %s", ret, rte_strerror(rte_errno));
 
-	ret = rte_eal_alarm_cancel(test_alarm_callback, &later);
+	ret = rte_eal_alarm_cancel(test_alarm_callback, RTE_PTR_UNQUAL(&later));
 	TEST_ASSERT(ret == 1, "Canceling ten second alarm failed %d: %s",
 		    ret, rte_strerror(rte_errno));
 
