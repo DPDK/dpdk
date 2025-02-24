@@ -116,6 +116,7 @@ New Features
 * **Updated Marvell cnxk net driver.**
 
   * Added flow rules support for CN20K SoC.
+  * Added Inline IPsec support for CN20K SoC.
 
 * **Updated NVIDIA mlx5 driver.**
 
