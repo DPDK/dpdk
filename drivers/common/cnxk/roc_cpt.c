@@ -624,9 +624,13 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf, bool rxc_ena, uint16_t
 	for (i = 0; i < nb_lf; i++)
 		cpt->lf_blkaddr[i] = blkaddr[blknum];
 
-	eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
-		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]) |
-		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_IE]);
+	if (roc_cpt_has_ie_engines())
+		eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
+			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]) |
+			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_IE]);
+	else
+		eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
+			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]);
 
 	if (roc_errata_cpt_has_ctx_fetch_issue()) {
 		ctx_ilen_valid = true;
@@ -1180,18 +1184,38 @@ int
 roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 		  uint16_t sa_len)
 {
-	uintptr_t lmt_base = lf->lmt_base;
 	union cpt_res_s res, *hw_res;
 	uint64_t lmt_arg, io_addr;
 	struct cpt_inst_s *inst;
+	uintptr_t lmt_base;
 	uint16_t lmt_id;
 	uint64_t *dptr;
+	uint8_t egrp;
 	int i;
 
 	if (!plt_is_aligned(sa_cptr, 128)) {
 		plt_err("Context pointer should be 128B aligned");
 		return -EINVAL;
 	}
+
+	if (lf == NULL) {
+		plt_err("Invalid CPT LF");
+		return -EINVAL;
+	}
+
+	if (lf->roc_cpt == NULL) {
+		if (roc_cpt_has_ie_engines())
+			egrp = ROC_CPT_DFLT_ENG_GRP_SE_IE;
+		else
+			egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+	} else {
+		if (roc_cpt_has_ie_engines())
+			egrp = lf->roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
+		else
+			egrp = lf->roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
+	}
+
+	lmt_base = lf->lmt_base;
 
 	/* Use this lcore's LMT line as no one else is using it */
 	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
@@ -1225,7 +1249,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	inst->w4.s.opcode_minor = ROC_IE_OT_MINOR_OP_WRITE_SA;
 	inst->w7.s.cptr = (uint64_t)sa_cptr;
 	inst->w7.s.ctx_val = 1;
-	inst->w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE_IE;
+	inst->w7.s.egrp = egrp;
 
 	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
 	io_addr = lf->io_addr | ROC_CN10K_CPT_INST_DW_M1 << 4;
@@ -1275,4 +1299,13 @@ roc_cpt_int_misc_cb_unregister(roc_cpt_int_misc_cb_t cb, void *args)
 	int_cb.cb = NULL;
 	int_cb.cb_args = NULL;
 	return 0;
+}
+
+bool
+roc_cpt_has_ie_engines(void)
+{
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		return true;
+
+	return false;
 }
