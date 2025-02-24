@@ -24,5 +24,7 @@ struct nfp_flower_representor {
 };
 
 int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower);
+int nfp_flower_repr_link_update(struct rte_eth_dev *dev,
+		__rte_unused int wait_to_complete);
 
 #endif /* __NFP_FLOWER_REPRESENTOR_H__ */

@@ -18,7 +18,7 @@ enum nfp_repr_type {
 	NFP_REPR_TYPE_MAX,          /*<< Number of representor types */
 };
 
-static int
+int
 nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
