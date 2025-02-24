@@ -307,7 +307,7 @@ static inline bool
 rte_ipv6_addr_is_v4compat(const struct rte_ipv6_addr *ip)
 {
 	const struct rte_ipv6_addr unspec = RTE_IPV6_ADDR_UNSPEC;
-	return rte_ipv6_addr_eq_prefix(ip, &unspec, 32) && !rte_ipv6_addr_is_loopback(ip);
+	return rte_ipv6_addr_eq_prefix(ip, &unspec, 96) && !rte_ipv6_addr_is_loopback(ip);
 }
 
 #define RTE_IPV6_ADDR_PREFIX_V4MAPPED RTE_IPV6(0, 0, 0, 0, 0, 0xffff, 0, 0)
@@ -325,7 +325,7 @@ static inline bool
 rte_ipv6_addr_is_v4mapped(const struct rte_ipv6_addr *ip)
 {
 	const struct rte_ipv6_addr prefix = RTE_IPV6_ADDR_PREFIX_V4MAPPED;
-	return rte_ipv6_addr_eq_prefix(ip, &prefix, 32);
+	return rte_ipv6_addr_eq_prefix(ip, &prefix, 96);
 }
 
 /**

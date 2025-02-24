@@ -99,6 +99,8 @@ test_ipv6_addr_kind(void)
 	TEST_ASSERT(!rte_ipv6_addr_is_linklocal(&zero_addr), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_loopback(&zero_addr), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_mcast(&zero_addr), "");
+	TEST_ASSERT(rte_ipv6_addr_is_v4compat(&zero_addr), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4mapped(&zero_addr), "");
 
 	const struct rte_ipv6_addr ucast =
 		RTE_IPV6(0x2a01, 0xcb00, 0x0254, 0x3300, 0x6239, 0xe1f4, 0x7a0b, 0x2371);
@@ -106,18 +108,24 @@ test_ipv6_addr_kind(void)
 	TEST_ASSERT(!rte_ipv6_addr_is_linklocal(&ucast), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_loopback(&ucast), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_mcast(&ucast), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4compat(&ucast), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4mapped(&ucast), "");
 
 	const struct rte_ipv6_addr mcast = RTE_IPV6(0xff01, 0, 0, 0, 0, 0, 0, 1);
 	TEST_ASSERT(!rte_ipv6_addr_is_unspec(&mcast), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_linklocal(&mcast), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_loopback(&mcast), "");
 	TEST_ASSERT(rte_ipv6_addr_is_mcast(&mcast), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4compat(&mcast), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4mapped(&mcast), "");
 
 	const struct rte_ipv6_addr lo = RTE_IPV6_ADDR_LOOPBACK;
 	TEST_ASSERT(!rte_ipv6_addr_is_unspec(&lo), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_linklocal(&lo), "");
 	TEST_ASSERT(rte_ipv6_addr_is_loopback(&lo), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_mcast(&lo), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4compat(&lo), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4mapped(&lo), "");
 
 	const struct rte_ipv6_addr local =
 		RTE_IPV6(0xfe80, 0, 0, 0, 0x5a84, 0xc52c, 0x6aef, 0x4639);
@@ -125,6 +133,24 @@ test_ipv6_addr_kind(void)
 	TEST_ASSERT(rte_ipv6_addr_is_linklocal(&local), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_loopback(&local), "");
 	TEST_ASSERT(!rte_ipv6_addr_is_mcast(&local), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4compat(&local), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4mapped(&local), "");
+
+	const struct rte_ipv6_addr v4compat = RTE_IPV6(0, 0, 0, 0, 0, 0, 0xc0a8, 0x0001);
+	TEST_ASSERT(!rte_ipv6_addr_is_unspec(&v4compat), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_linklocal(&v4compat), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_loopback(&v4compat), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_mcast(&v4compat), "");
+	TEST_ASSERT(rte_ipv6_addr_is_v4compat(&v4compat), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4mapped(&v4compat), "");
+
+	const struct rte_ipv6_addr v4mapped = RTE_IPV6(0, 0, 0, 0, 0, 0xffff, 0xc0a8, 0x0001);
+	TEST_ASSERT(!rte_ipv6_addr_is_unspec(&v4mapped), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_linklocal(&v4mapped), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_loopback(&v4mapped), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_mcast(&v4mapped), "");
+	TEST_ASSERT(!rte_ipv6_addr_is_v4compat(&v4mapped), "");
+	TEST_ASSERT(rte_ipv6_addr_is_v4mapped(&v4mapped), "");
 
 	return TEST_SUCCESS;
 }
