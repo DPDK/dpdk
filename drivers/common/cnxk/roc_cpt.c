@@ -930,10 +930,10 @@ roc_cpt_iq_reset(struct roc_cpt_lf *lf)
 		lf_ctl.s.ena = 1;
 		plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
 
-		if (roc_model_is_cn10k())
-			cpt_10k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
-		else
+		if (roc_model_is_cn9k())
 			cpt_9k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
+		else
+			cpt_10k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
 
 		plt_read64(lf->rbase + CPT_LF_INPROG);
 		plt_delay_us(2);
