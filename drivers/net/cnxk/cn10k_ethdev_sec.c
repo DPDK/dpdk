@@ -1243,7 +1243,6 @@ cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
 			    ROC_NIX_INL_SA_OP_FLUSH);
 	if (rc)
 		return -EINVAL;
-	rte_delay_ms(1);
 
 	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
 
