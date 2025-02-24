@@ -965,14 +965,15 @@ static inline void set_ena_eth_io_intr_reg_intr_unmask(struct ena_eth_io_intr_re
 	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT) & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
 }
 
-static inline uint32_t get_ena_eth_io_intr_reg_no_mod_update(const struct ena_eth_io_intr_reg *p)
+static inline
+uint32_t get_ena_eth_io_intr_reg_no_moderation_update(const struct ena_eth_io_intr_reg *p)
 {
 	return (p->intr_control & ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK) >>
 			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT;
 }
 
-static inline void set_ena_eth_io_intr_reg_no_mod_update(struct ena_eth_io_intr_reg *p,
-									     uint32_t val)
+static inline
+void set_ena_eth_io_intr_reg_no_moderation_update(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
 	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT) &
 			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK;

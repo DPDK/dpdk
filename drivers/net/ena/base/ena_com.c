@@ -1799,7 +1799,9 @@ int ena_com_phc_config(struct ena_com_dev *ena_dev)
 				  ENA_ADMIN_PHC_CONFIG,
 				  ENA_ADMIN_PHC_FEATURE_VERSION_0);
 	if (unlikely(ret)) {
-		ena_trc_err(ena_dev, "Failed to get PHC feature configuration, error: %d\n", ret);
+		ena_trc_err(ena_dev,
+			    "Failed to get PHC feature configuration, error: %d\n",
+			    ret);
 		return ret;
 	}
 
@@ -1833,7 +1835,9 @@ int ena_com_phc_config(struct ena_com_dev *ena_dev)
 	set_feat_cmd.aq_common_descriptor.opcode = ENA_ADMIN_SET_FEATURE;
 	set_feat_cmd.feat_common.feature_id = ENA_ADMIN_PHC_CONFIG;
 	set_feat_cmd.u.phc.output_length = sizeof(*phc->virt_addr);
-	ret = ena_com_mem_addr_set(ena_dev, &set_feat_cmd.u.phc.output_address, phc->phys_addr);
+	ret = ena_com_mem_addr_set(ena_dev,
+				   &set_feat_cmd.u.phc.output_address,
+				   phc->phys_addr);
 	if (unlikely(ret)) {
 		ena_trc_err(ena_dev, "Failed setting PHC output address, error: %d\n", ret);
 		return ret;
@@ -2091,6 +2095,7 @@ int ena_com_admin_init(struct ena_com_dev *ena_dev,
 	admin_queue->q_depth = ENA_ADMIN_QUEUE_DEPTH;
 
 	admin_queue->bus = ena_dev->bus;
+	admin_queue->ena_dev = ena_dev;
 	admin_queue->q_dmadev = ena_dev->dmadev;
 	admin_queue->polling = false;
 	admin_queue->curr_cmd_id = 0;
@@ -2148,7 +2153,6 @@ int ena_com_admin_init(struct ena_com_dev *ena_dev,
 	if (unlikely(ret))
 		goto error;
 
-	admin_queue->ena_dev = ena_dev;
 	admin_queue->running_state = true;
 	admin_queue->is_missing_admin_interrupt = false;
 
@@ -2728,23 +2732,9 @@ int ena_com_set_dev_mtu(struct ena_com_dev *ena_dev, u32 mtu)
 	return ret;
 }
 
-int ena_com_get_offload_settings(struct ena_com_dev *ena_dev,
-				 struct ena_admin_feature_offload_desc *offload)
-{
-	int ret;
-	struct ena_admin_get_feat_resp resp;
 
-	ret = ena_com_get_feature(ena_dev, &resp,
-				  ENA_ADMIN_STATELESS_OFFLOAD_CONFIG, 0);
-	if (unlikely(ret)) {
-		ena_trc_err(ena_dev, "Failed to get offload capabilities %d\n", ret);
-		return ret;
-	}
 
-	memcpy(offload, &resp.u.offload, sizeof(resp.u.offload));
 
-	return 0;
-}
 
 int ena_com_set_hash_function(struct ena_com_dev *ena_dev)
 {
