@@ -161,6 +161,10 @@ New Features
 
   Updated vhost library to support RSA crypto operations.
 
+* **Updated IPsec_MB crypto driver.**
+
+  * Added support for the SM4 GCM algorithm.
+
 * **Added ZTE Storage Data Accelerator (ZSDA) driver.**
 
   Added a compress driver for ZSDA devices
