@@ -68,8 +68,12 @@ and the Physical Function operates on the global resources on behalf of the Virt
 For this out-of-band communication, an SR-IOV enabled NIC provides a memory buffer for each Virtual Function,
 which is called a "Mailbox".
 
+Intel SR-IOV drivers
+--------------------
+
+
 Intel® Ethernet Adaptive Virtual Function
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Adaptive Virtual Function (IAVF) is a SR-IOV Virtual Function with the same device id (8086:1889) on different Intel Ethernet Controller.
 IAVF Driver is VF driver which supports for all future Intel devices without requiring a VM update. And since this happens to be an adaptive VF driver,
 every new drop of the VF driver would add more and more advanced features that can be turned on in the VM if the underlying HW device supports those
@@ -126,7 +130,7 @@ For more detail on SR-IOV, please refer to the following documents:
     * ``offload``: Check for use of an unsupported offload flag.
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a virtualized environment, the programmer can enable a maximum of *64 Virtual Functions (VF)*
 globally per PCIE host-interface of the Intel Ethernet Switch FM10000 Series device.
@@ -157,7 +161,7 @@ However:
     The above is an important consideration to take into account when targeting specific packets to a selected port.
 
 Intel® X710/XL710 Gigabit Ethernet Controller VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a virtualized environment, the programmer can enable a maximum of *128 Virtual Functions (VF)*
 globally per Intel® X710/XL710 Gigabit Ethernet Controller NIC device.
@@ -196,7 +200,7 @@ However:
     one transmit queue. The default number of queue pairs per VF is 4, and can be 16 in maximum.
 
 Intel® 82599 10 Gigabit Ethernet Controller VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The programmer can enable a maximum of *63 Virtual Functions* and there must be *one Physical Function* per Intel® 82599
 10 Gigabit Ethernet Controller NIC port.
@@ -271,7 +275,7 @@ However:
     The above is an important consideration to take into account when targeting specific packets to a selected port.
 
 Intel® 82576 Gigabit Ethernet Controller and Intel® Ethernet Controller I350 Family VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a virtualized environment, an Intel® 82576 Gigabit Ethernet Controller serves up to eight virtual machines (VMs).
 The controller has 16 TX and 16 RX queues.
@@ -316,6 +320,10 @@ However:
 
     The above is an important consideration to take into account when targeting specific packets to a selected port.
 
+
+Hypervisor Use of VFs
+---------------------
+
 Validated Hypervisors
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -341,7 +349,7 @@ For supported kernel versions, refer to the *DPDK Release Notes*.
 .. _intel_vf_kvm:
 
 Setting Up a KVM Virtual Machine Monitor
-----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following describes a target environment:
 
