@@ -402,7 +402,7 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	mbox_put(mbox);
 
 	/* Get VWQE info if supported */
-	if (roc_model_is_cn10k()) {
+	if (!roc_model_is_cn9k()) {
 		mbox_alloc_msg_nix_get_hw_info(mbox_get(mbox));
 		rc = mbox_process_msg(mbox, (void *)&hw_info);
 		if (rc) {
@@ -422,12 +422,14 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	}
 
 	/* CN9K SA is different */
-	if (roc_model_is_cn9k())
-		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
-	else if (inl_dev->custom_inb_sa)
+	if (inl_dev->custom_inb_sa)
 		inb_sa_sz = ROC_NIX_INL_INB_CUSTOM_SA_SZ;
-	else
+	else if (roc_model_is_cn9k())
+		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
+	else if (roc_model_is_cn10k())
 		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
+	else
+		inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
 
 	/* Alloc contiguous memory for Inbound SA's */
 	inl_dev->inb_sa_sz = inb_sa_sz;
@@ -440,11 +442,13 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 		goto unregister_irqs;
 	}
 
-	if (roc_model_is_cn10k()) {
+	if (!roc_model_is_cn9k()) {
 		for (i = 0; i < max_sa; i++) {
-			sa = ((uint8_t *)inl_dev->inb_sa_base) +
-			     (i * inb_sa_sz);
-			roc_ot_ipsec_inb_sa_init(sa);
+			sa = ((uint8_t *)inl_dev->inb_sa_base) + (i * inb_sa_sz);
+			if (roc_model_is_cn10k())
+				roc_ot_ipsec_inb_sa_init(sa);
+			else
+				roc_ow_ipsec_inb_sa_init(sa);
 		}
 	}
 	/* Setup device specific inb SA table */

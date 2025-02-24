@@ -404,12 +404,14 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
 
 	/* CN9K SA size is different */
-	if (roc_model_is_cn9k())
-		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
-	else if (roc_nix->custom_inb_sa)
+	if (roc_nix->custom_inb_sa)
 		inb_sa_sz = ROC_NIX_INL_INB_CUSTOM_SA_SZ;
-	else
+	else if (roc_model_is_cn9k())
+		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
+	else if (roc_model_is_cn10k())
 		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
+	else
+		inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
 
 	/* Alloc contiguous memory for Inbound SA's */
 	nix->inb_sa_sz = inb_sa_sz;
@@ -420,10 +422,14 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 		plt_err("Failed to allocate memory for Inbound SA");
 		return -ENOMEM;
 	}
-	if (roc_model_is_cn10k()) {
+
+	if (!roc_model_is_cn9k()) {
 		for (i = 0; i < max_sa; i++) {
 			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
-			roc_ot_ipsec_inb_sa_init(sa);
+			if (roc_model_is_cn10k())
+				roc_ot_ipsec_inb_sa_init(sa);
+			else
+				roc_ow_ipsec_inb_sa_init(sa);
 		}
 	}
 
@@ -841,7 +847,7 @@ nix_inl_eng_caps_get(struct nix *nix)
 			plt_err("LOAD FVC operation timed out");
 			return;
 		}
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		uint64_t lmt_arg, io_addr;
 		uint16_t lmt_id;
 
@@ -867,6 +873,35 @@ nix_inl_eng_caps_get(struct nix *nix)
 		} while (res.cn10k.compcode == CPT_COMP_NOT_DONE);
 
 		if (res.cn10k.compcode != CPT_COMP_GOOD || res.cn10k.uc_compcode) {
+			plt_err("LOAD FVC operation timed out");
+			goto exit;
+		}
+	} else {
+		uint64_t lmt_arg, io_addr;
+		uint16_t lmt_id;
+
+		hw_res->cn20k.compcode = CPT_COMP_NOT_DONE;
+
+		/* Use this reserved LMT line as no one else is using it */
+		lmt_id = roc_plt_control_lmt_id_get();
+		lmt_base += ((uint64_t)lmt_id << ROC_LMT_LINE_SIZE_LOG2);
+
+		memcpy((void *)lmt_base, &inst, sizeof(inst));
+
+		lmt_arg = ROC_CN20K_CPT_LMT_ARG | (uint64_t)lmt_id;
+		io_addr = lf->io_addr | ROC_CN20K_CPT_INST_DW_M1 << 4;
+
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+		plt_io_wmb();
+
+		/* Wait until CPT instruction completes */
+		do {
+			res.u64[0] = __atomic_load_n(&hw_res->u64[0], __ATOMIC_RELAXED);
+			if (unlikely(plt_tsc_cycles() > timeout))
+				break;
+		} while (res.cn20k.compcode == CPT_COMP_NOT_DONE);
+
+		if (res.cn20k.compcode != CPT_COMP_GOOD || res.cn20k.uc_compcode) {
 			plt_err("LOAD FVC operation timed out");
 			goto exit;
 		}
@@ -1127,8 +1162,11 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	/* CN9K SA size is different */
 	if (roc_model_is_cn9k())
 		sa_sz = ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ;
-	else
+	else if (roc_model_is_cn10k())
 		sa_sz = ROC_NIX_INL_OT_IPSEC_OUTB_SA_SZ;
+	else
+		sa_sz = ROC_NIX_INL_OW_IPSEC_OUTB_SA_SZ;
+
 	/* Alloc contiguous memory of outbound SA */
 	sa_base = plt_zmalloc(sa_sz * roc_nix->ipsec_out_max_sa,
 			      ROC_NIX_INL_SA_BASE_ALIGN);
@@ -1136,10 +1174,14 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 		plt_err("Outbound SA base alloc failed");
 		goto lf_fini;
 	}
-	if (roc_model_is_cn10k()) {
+
+	if (!roc_model_is_cn9k()) {
 		for (i = 0; i < roc_nix->ipsec_out_max_sa; i++) {
 			sa = ((uint8_t *)sa_base) + (i * sa_sz);
-			roc_ot_ipsec_outb_sa_init(sa);
+			if (roc_model_is_cn10k())
+				roc_ot_ipsec_outb_sa_init(sa);
+			else
+				roc_ow_ipsec_outb_sa_init(sa);
 		}
 	}
 	nix->outb_sa_base = sa_base;

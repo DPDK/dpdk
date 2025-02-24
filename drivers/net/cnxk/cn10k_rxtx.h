@@ -38,6 +38,8 @@
 
 #include "roc_ie_ot.h"
 
+#include "roc_ie_ow.h"
+
 /* NIX Inline dev */
 #include "roc_nix_inl_dp.h"
 
