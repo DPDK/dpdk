@@ -499,6 +499,8 @@ INTERNAL {
 	roc_npc_validate_portid_action;
 	roc_ot_ipsec_inb_sa_init;
 	roc_ot_ipsec_outb_sa_init;
+	roc_ow_ipsec_inb_sa_init;
+	roc_ow_ipsec_outb_sa_init;
 	roc_plt_control_lmt_id_get;
 	roc_plt_init;
 	roc_plt_init_cb_register;
