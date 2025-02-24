@@ -7,6 +7,7 @@
 #include <rte_crypto.h>
 #include <rte_security.h>
 
+#include "roc_cpt.h"
 #include "roc_ie_on.h"
 #include "roc_ie_ot.h"
 
