@@ -336,6 +336,13 @@ struct mbox_msghdr {
 	  nix_mcast_grp_update_rsp)                                                                \
 	M(NIX_GET_LF_STATS,    0x802e, nix_get_lf_stats, nix_get_lf_stats_req, nix_lf_stats_rsp)   \
 	M(NIX_CN20K_AQ_ENQ, 0x802f, nix_cn20k_aq_enq, nix_cn20k_aq_enq_req, nix_cn20k_aq_enq_rsp)  \
+	M(NIX_LSO_ALT_FLAGS_CFG, 0x8030, nix_lso_alt_flags_cfg, nix_lso_alt_flags_cfg_req, \
+				nix_lso_alt_flags_cfg_rsp)			\
+	M(NIX_RX_INLINE_PROFILE_CFG, 0x8031, nix_rx_inl_profile_cfg,			\
+				nix_rx_inl_profile_cfg_req,			\
+				nix_rx_inl_profile_cfg_rsp)			\
+	M(NIX_RX_INLINE_LF_CFG, 0x8032, nix_rx_inl_lf_cfg, nix_rx_inl_lf_cfg_req,	\
+				msg_rsp)					\
 	/* MCS mbox IDs (range 0xa000 - 0xbFFF) */                                                 \
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
@@ -2008,6 +2015,32 @@ struct nix_inline_ipsec_cfg {
 	uint32_t __io credit_th;
 };
 
+#define NIX_RX_INL_PROFILE_PROTO_CNT 9
+struct nix_rx_inl_profile_cfg_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io def_cfg;
+	uint64_t __io extract_cfg;
+	uint64_t __io gen_cfg;
+	uint64_t __io prot_field_cfg[NIX_RX_INL_PROFILE_PROTO_CNT];
+	uint64_t __io rsvd[32];		/* reserved fields for future expansion */
+};
+
+struct nix_rx_inl_profile_cfg_rsp {
+	struct mbox_msghdr hdr;
+	uint8_t __io profile_id;
+	uint8_t __io rsvd[32];		/* reserved fields for future expansion */
+};
+
+struct nix_rx_inl_lf_cfg_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io rx_inline_cfg0;
+	uint64_t __io rx_inline_cfg1;
+	uint64_t __io rx_inline_sa_base;
+	uint8_t __io enable;
+	uint8_t __io profile_id;
+	uint8_t __io rsvd[32];		/* reserved fields for future expansion */
+};
+
 /* Per NIX LF inline IPSec configuration */
 struct nix_inline_ipsec_lf_cfg {
 	struct mbox_msghdr hdr;
@@ -2062,6 +2095,17 @@ struct nix_bandprof_get_hwinfo_rsp {
 	struct mbox_msghdr hdr;
 	uint16_t __io prof_count[NIX_RX_BAND_PROF_LAYER_MAX];
 	uint32_t __io policer_timeunit;
+};
+
+struct nix_lso_alt_flags_cfg_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io cfg;
+	uint64_t __io cfg1;
+};
+
+struct nix_lso_alt_flags_cfg_rsp {
+	struct mbox_msghdr hdr;
+	uint8_t __io lso_alt_flags_idx;
 };
 
 /* SSO mailbox error codes
@@ -3090,6 +3134,7 @@ struct nix_spi_to_sa_add_req {
 	uint32_t __io spi_index;
 	uint16_t __io match_id;
 	bool __io valid;
+	uint8_t __io inline_profile_id;
 };
 
 struct nix_spi_to_sa_add_rsp {

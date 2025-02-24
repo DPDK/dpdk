@@ -395,7 +395,8 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	uint32_t ipsec_in_min_spi = roc_nix->ipsec_in_min_spi;
 	uint32_t ipsec_in_max_spi = roc_nix->ipsec_in_max_spi;
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct roc_nix_ipsec_cfg cfg;
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	struct nix_inline_ipsec_lf_cfg *lf_cfg;
 	uint64_t max_sa, i;
 	size_t inb_sa_sz;
 	void *sa;
@@ -419,8 +420,9 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	nix->inb_sa_base = plt_zmalloc(inb_sa_sz * max_sa,
 				       ROC_NIX_INL_SA_BASE_ALIGN);
 	if (!nix->inb_sa_base) {
+		rc = -ENOMEM;
 		plt_err("Failed to allocate memory for Inbound SA");
-		return -ENOMEM;
+		goto exit;
 	}
 
 	if (!roc_model_is_cn9k()) {
@@ -433,23 +435,36 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 		}
 	}
 
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.sa_size = inb_sa_sz;
-	cfg.iova = (uintptr_t)nix->inb_sa_base;
-	cfg.max_sa = max_sa;
-	cfg.tt = SSO_TT_ORDERED;
-
 	/* Setup device specific inb SA table */
-	rc = roc_nix_lf_inl_ipsec_cfg(roc_nix, &cfg, true);
+	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		plt_err("Failed to alloc nix inline ipsec lf cfg mbox msg");
+		goto free_mem;
+	}
+
+	lf_cfg->enable = 1;
+	lf_cfg->sa_base_addr = (uintptr_t)nix->inb_sa_base;
+	lf_cfg->ipsec_cfg1.sa_idx_w = plt_log2_u32(max_sa);
+	lf_cfg->ipsec_cfg0.lenm1_max = roc_nix_max_pkt_len(roc_nix) - 1;
+	lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
+	lf_cfg->ipsec_cfg0.sa_pow2_size = plt_log2_u32(inb_sa_sz);
+	lf_cfg->ipsec_cfg0.tag_const = 0;
+	lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+
+	rc = mbox_process(mbox);
 	if (rc) {
 		plt_err("Failed to setup NIX Inbound SA conf, rc=%d", rc);
 		goto free_mem;
 	}
 
+	mbox_put(mbox);
 	return 0;
 free_mem:
 	plt_free(nix->inb_sa_base);
 	nix->inb_sa_base = NULL;
+exit:
+	mbox_put(mbox);
 	return rc;
 }
 
@@ -457,17 +472,29 @@ static int
 nix_inl_sa_tbl_release(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	struct nix_inline_ipsec_lf_cfg *lf_cfg;
 	int rc;
 
-	rc = roc_nix_lf_inl_ipsec_cfg(roc_nix, NULL, false);
+	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	lf_cfg->enable = 0;
+
+	rc = mbox_process(mbox);
 	if (rc) {
-		plt_err("Failed to disable Inbound inline ipsec, rc=%d", rc);
-		return rc;
+		plt_err("Failed to cleanup NIX Inbound SA conf, rc=%d", rc);
+		goto exit;
 	}
 
 	plt_free(nix->inb_sa_base);
 	nix->inb_sa_base = NULL;
-	return 0;
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 struct roc_cpt_lf *
