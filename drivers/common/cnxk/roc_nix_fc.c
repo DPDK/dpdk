@@ -702,10 +702,9 @@ roc_nix_chan_count_get(struct roc_nix *roc_nix)
  *	-ve value on error
  */
 int
-roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
+nix_bpids_alloc(struct dev *dev, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_alloc_bpid_req *req;
 	struct nix_bpids *rsp;
 	int rc = -EINVAL;
@@ -733,10 +732,9 @@ exit:
 }
 
 int
-roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
+nix_bpids_free(struct dev *dev, uint8_t bp_cnt, uint16_t *bpids)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = mbox_get(nix->dev.mbox);
+	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_bpids *req;
 	int rc = -EINVAL;
 
@@ -756,6 +754,20 @@ roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
 exit:
 	mbox_put(mbox);
 	return rc;
+}
+
+int
+roc_nix_bpids_alloc(struct roc_nix *roc_nix, uint8_t type, uint8_t bp_cnt, uint16_t *bpids)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	return nix_bpids_alloc(&nix->dev, type, bp_cnt, bpids);
+}
+
+int
+roc_nix_bpids_free(struct roc_nix *roc_nix, uint8_t bp_cnt, uint16_t *bpids)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	return nix_bpids_free(&nix->dev, bp_cnt, bpids);
 }
 
 int

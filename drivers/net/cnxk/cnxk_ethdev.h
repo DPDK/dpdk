@@ -503,7 +503,7 @@ cnxk_nix_tx_queue_sec_count(uint64_t *mem, uint16_t sqes_per_sqb_log2, uint64_t 
 }
 
 static inline int
-cnxk_nix_inl_fc_check(uint64_t *fc, int32_t *fc_sw, uint32_t nb_desc, uint16_t nb_inst)
+cnxk_nix_inl_fc_check(uint64_t __rte_atomic *fc, int32_t *fc_sw, uint32_t nb_desc, uint16_t nb_inst)
 {
 	uint8_t retry_count = 32;
 	int32_t val, newval;

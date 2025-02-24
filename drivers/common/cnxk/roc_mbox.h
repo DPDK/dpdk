@@ -183,11 +183,19 @@ struct mbox_msghdr {
 	  msg_rsp)                                                             \
 	M(CPT_CTX_CACHE_SYNC, 0xA07, cpt_ctx_cache_sync, msg_req, msg_rsp)     \
 	M(CPT_LF_RESET, 0xA08, cpt_lf_reset, cpt_lf_rst_req, msg_rsp)          \
+	M(CPT_FLT_ENG_INFO, 0xA09, cpt_flt_eng_info, cpt_flt_eng_info_req,	\
+				   cpt_flt_eng_info_rsp)			\
+	M(CPT_RX_INLINE_QALLOC, 0xA0A, cpt_rx_inline_qalloc, msg_req,		\
+				       cpt_rx_inline_qalloc_rsp)		\
+	M(CPT_RX_INL_QUEUE_CFG, 0xA0B, cpt_rx_inl_queue_cfg,			\
+				       cpt_rx_inline_qcfg_req, msg_rsp)        \
 	M(CPT_RX_INLINE_LF_CFG, 0xBFE, cpt_rx_inline_lf_cfg,                   \
 	  cpt_rx_inline_lf_cfg_msg, msg_rsp)                                   \
 	M(CPT_GET_CAPS, 0xBFD, cpt_caps_get, msg_req, cpt_caps_rsp_msg)        \
 	M(CPT_GET_ENG_GRP, 0xBFF, cpt_eng_grp_get, cpt_eng_grp_req,            \
 	  cpt_eng_grp_rsp)                                                     \
+	M(CPT_SET_QUEUE_PRI, 0xBFB, cpt_set_que_pri, cpt_queue_pri_req_msg,	\
+			       msg_rsp)					\
 	/* REE mbox IDs (range 0xE00 - 0xFFF) */                               \
 	M(REE_CONFIG_LF, 0xE01, ree_config_lf, ree_lf_req_msg, msg_rsp)        \
 	M(REE_RD_WR_REGISTER, 0xE02, ree_rd_wr_register, ree_rd_wr_reg_msg,    \
@@ -343,6 +351,8 @@ struct mbox_msghdr {
 				nix_rx_inl_profile_cfg_rsp)			\
 	M(NIX_RX_INLINE_LF_CFG, 0x8032, nix_rx_inl_lf_cfg, nix_rx_inl_lf_cfg_req,	\
 				msg_rsp)					\
+	M(NIX_RX_INL_QUEUE_CFG,	0x8033, nix_rx_inl_queue_cfg,				\
+			      nix_rx_inline_qcfg_req, msg_rsp)		\
 	/* MCS mbox IDs (range 0xa000 - 0xbFFF) */                                                 \
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
@@ -1966,6 +1976,34 @@ struct nix_mcast_grp_update_rsp {
 	uint32_t __io mce_start_index;
 };
 
+#define IPSEC_GEN_CFG_EGRP   GENMASK_ULL(50, 48)
+#define IPSEC_GEN_CFG_OPCODE GENMASK_ULL(47, 32)
+#define IPSEC_GEN_CFG_PARAM1 GENMASK_ULL(31, 16)
+#define IPSEC_GEN_CFG_PARAM2 GENMASK_ULL(15, 0)
+
+#define CPT_INST_QSEL_BLOCK   GENMASK_ULL(28, 24)
+#define CPT_INST_QSEL_PF_FUNC GENMASK_ULL(23, 8)
+#define CPT_INST_QSEL_SLOT    GENMASK_ULL(7, 0)
+
+#define CPT_INST_CREDIT_HYST GENMASK_ULL(61, 56)
+#define CPT_INST_CREDIT_TH   GENMASK_ULL(53, 32)
+#define CPT_INST_CREDIT_BPID GENMASK_ULL(30, 22)
+#define CPT_INST_CREDIT_CNT  GENMASK_ULL(21, 0)
+
+/* Per queue NIX inline IPSec configuration */
+struct nix_rx_inline_qcfg_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io cpt_credit;
+	uint32_t __io credit_th;
+	uint16_t __io cpt_pf_func;
+	uint16_t __io bpid;
+	uint8_t __io cpt_slot;
+	uint8_t __io rx_queue_id;
+	uint8_t __io enable;
+	uint8_t __io hysteresis;
+	uint8_t __io rsvd[32];
+};
+
 struct nix_get_lf_stats_req {
 	struct mbox_msghdr hdr;
 	uint16_t __io pcifunc;
@@ -2335,6 +2373,34 @@ struct cpt_lf_alloc_req_msg {
 	uint8_t __io rxc_ena_lf_id : 7;
 };
 
+struct cpt_rx_inline_qalloc_rsp {
+	struct mbox_msghdr hdr;
+	uint8_t __io rx_queue_id;
+	uint64_t __io rsvd[8]; /* For future extensions */
+};
+
+struct cpt_queue_pri_req_msg {
+	struct mbox_msghdr hdr;
+	uint32_t __io slot;
+	uint8_t __io queue_pri;
+};
+
+struct cpt_rx_inline_qcfg_req {
+	struct mbox_msghdr hdr;
+	uint16_t __io sso_pf_func; /* inbound path SSO_PF_FUNC */
+	uint16_t __io nix_pf_func; /* outbound path NIX_PF_FUNC */
+	uint16_t __io ctx_pf_func;
+	uint8_t __io eng_grpmsk;
+	uint8_t __io enable;
+	uint8_t __io slot;
+	uint8_t __io rx_queue_id;
+	uint8_t __io ctx_ilen;
+	uint8_t __io pf_func_ctx;
+	uint8_t __io inflight_limit;
+	uint8_t __io queue_pri;
+	uint8_t __io rsvd[32]; /* For future extensions */
+};
+
 #define CPT_INLINE_INBOUND  0
 #define CPT_INLINE_OUTBOUND 1
 
@@ -2402,6 +2468,22 @@ struct cpt_rxc_time_cfg_req {
 	uint16_t __io zombie_limit;
 	uint16_t __io active_thres;
 	uint16_t __io active_limit;
+};
+
+/* Mailbox message format to request for CPT faulted engines */
+struct cpt_flt_eng_info_req {
+	struct mbox_msghdr hdr;
+	int __io blkaddr;
+	bool __io reset;
+	uint32_t __io rsvd;
+};
+
+struct cpt_flt_eng_info_rsp {
+	struct mbox_msghdr hdr;
+#define CPT_AF_MAX_FLT_INT_VECS 3
+	uint64_t __io flt_eng_map[CPT_AF_MAX_FLT_INT_VECS];
+	uint64_t __io rcvrd_eng_map[CPT_AF_MAX_FLT_INT_VECS];
+	uint64_t __io rsvd;
 };
 
 struct cpt_rx_inline_lf_cfg_msg {

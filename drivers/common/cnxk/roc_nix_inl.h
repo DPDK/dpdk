@@ -89,7 +89,6 @@ struct roc_nix_inl_dev {
 	bool is_multi_channel;
 	uint16_t channel;
 	uint16_t chan_mask;
-	bool attach_cptlf;
 	uint16_t wqe_skip;
 	uint8_t spb_drop_pc;
 	uint8_t lpb_drop_pc;
@@ -99,9 +98,10 @@ struct roc_nix_inl_dev {
 	uint32_t max_ipsec_rules;
 	uint8_t rx_inj_ena; /* Rx Inject Enable */
 	uint8_t custom_inb_sa;
+	uint8_t nb_inb_cptlfs;
 	/* End of input parameters */
 
-#define ROC_NIX_INL_MEM_SZ (2048)
+#define ROC_NIX_INL_MEM_SZ (6144)
 	uint8_t reserved[ROC_NIX_INL_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
@@ -109,7 +109,7 @@ struct roc_nix_inl_dev_q {
 	uint32_t nb_desc;
 	uintptr_t rbase;
 	uintptr_t lmt_base;
-	uint64_t *fc_addr;
+	uint64_t __plt_atomic *fc_addr;
 	uint64_t io_addr;
 	int32_t fc_addr_sw;
 } __plt_cache_aligned;
