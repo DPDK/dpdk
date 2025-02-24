@@ -289,6 +289,16 @@ struct cpt_inst_s {
 };
 
 union cpt_res_s {
+	struct cpt_cn20k_res_s {
+		uint64_t compcode : 7;
+		uint64_t doneint : 1;
+		uint64_t uc_compcode : 8;
+		uint64_t rlen : 16;
+		uint64_t spi : 32;
+
+		uint64_t esn;
+	} cn20k;
+
 	struct cpt_cn10k_res_s {
 		uint64_t compcode : 7;
 		uint64_t doneint : 1;
