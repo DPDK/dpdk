@@ -20,7 +20,11 @@ is_aead_algo(IMB_HASH_ALG hash_alg, IMB_CIPHER_MODE cipher_mode)
 {
 	return (hash_alg == IMB_AUTH_CHACHA20_POLY1305 ||
 		hash_alg == IMB_AUTH_AES_CCM ||
-		cipher_mode == IMB_CIPHER_GCM);
+		cipher_mode == IMB_CIPHER_GCM
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+		|| cipher_mode == IMB_CIPHER_SM4_GCM
+#endif
+		);
 }
 
 /** Set session authentication parameters */
@@ -602,7 +606,7 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 }
 
 static int
-aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
+aesni_mb_set_session_aead_parameters(IMB_MGR *mb_mgr,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
@@ -720,6 +724,22 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 			return -EINVAL;
 		}
 		break;
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	case RTE_CRYPTO_AEAD_SM4_GCM:
+		sess->template_job.cipher_mode = IMB_CIPHER_SM4_GCM;
+		sess->template_job.hash_alg = IMB_AUTH_SM4_GCM;
+		sess->template_job.u.GCM.aad_len_in_bytes = xform->aead.aad_length;
+
+		if (xform->aead.key.length != 16) {
+			IPSEC_MB_LOG(ERR, "Invalid key length");
+			return -EINVAL;
+		}
+		sess->template_job.key_len_in_bytes = 16;
+		imb_sm4_gcm_pre(mb_mgr, xform->aead.key.data, &sess->cipher.gcm_key);
+		sess->template_job.enc_keys = &sess->cipher.gcm_key;
+		sess->template_job.dec_keys = &sess->cipher.gcm_key;
+		break;
+#endif
 	default:
 		IPSEC_MB_LOG(ERR, "Unsupported aead mode parameter");
 		return -ENOTSUP;
@@ -1037,6 +1057,13 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 	case IMB_AUTH_CHACHA20_POLY1305:
 		job->u.CHACHA20_POLY1305.aad = aad->va;
 		break;
+
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	case IMB_AUTH_SM4_GCM:
+		job->u.GCM.aad = aad->va;
+		break;
+#endif
+
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad =
 				session->auth.pads.inner;
@@ -1559,6 +1586,11 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			imb_set_session(mb_mgr, job);
 		}
 		break;
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	case IMB_AUTH_SM4_GCM:
+		job->u.GCM.aad = op->sym->aead.aad.data;
+		break;
+#endif
 	default:
 		break;
 	}
@@ -1687,6 +1719,20 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->iv.offset);
 		break;
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	case IMB_AUTH_SM4_GCM:
+		job->hash_start_src_offset_in_bytes = 0;
+		/*
+		 * Adding offset as a bug exists in the IPsec MB library which is
+		 * fixed after v2.0 release.
+		 */
+		job->src += op->sym->aead.data.offset;
+		job->msg_len_to_hash_in_bytes =
+					op->sym->aead.data.length;
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+				session->iv.offset);
+		break;
+#endif
 
 	default:
 		job->hash_start_src_offset_in_bytes = auth_start_offset(op,
@@ -1732,6 +1778,11 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->msg_len_to_cipher_in_bytes = 0;
 		job->cipher_start_src_offset_in_bytes = 0;
 		break;
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	case IMB_CIPHER_SM4_GCM:
+		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
+		break;
+#endif
 	default:
 		job->cipher_start_src_offset_in_bytes =
 					op->sym->cipher.data.offset;

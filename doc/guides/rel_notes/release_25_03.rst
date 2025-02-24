@@ -166,6 +166,10 @@ New Features
 
   See the :doc:`../compressdevs/zsda` guide for more details on the new driver.
 
+* **Updated IPsec_MB crypto driver.**
+
+   * Added support for the SM4 GCM algorithm.
+
 
 Removed Items
 -------------
