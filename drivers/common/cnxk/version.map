@@ -23,6 +23,8 @@ INTERNAL {
 	cnxk_ot_ipsec_outb_sa_fill;
 	cnxk_ot_ipsec_inb_sa_valid;
 	cnxk_ot_ipsec_outb_sa_valid;
+	cnxk_ow_ipsec_inb_sa_fill;
+	cnxk_ow_ipsec_outb_sa_fill;
 	cnxk_on_ipsec_inb_sa_create;
 	cnxk_on_ipsec_outb_sa_create;
 	roc_ae_ec_grp_get;
