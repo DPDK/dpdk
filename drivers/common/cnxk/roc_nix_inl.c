@@ -811,7 +811,10 @@ nix_inl_eng_caps_get(struct nix *nix)
 	inst.rptr = (uint64_t)rptr;
 	inst.w4.s.opcode_major = ROC_LOADFVC_MAJOR_OP;
 	inst.w4.s.opcode_minor = ROC_LOADFVC_MINOR_OP;
-	inst.w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		inst.w7.s.egrp = ROC_LEGACY_CPT_DFLT_ENG_GRP_SE;
+	else
+		inst.w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE;
 
 	/* Use 1 min timeout for the poll */
 	const uint64_t timeout = plt_tsc_cycles() + 60 * plt_tsc_hz();
@@ -1053,10 +1056,14 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 		ctx_ilen_valid = true;
 	}
 
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		eng_grpmask = (1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE |
+			       1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE |
+			       1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_AE);
+	else
+		eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE | 1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
+
 	/* Alloc CPT LF */
-	eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE |
-		       1ULL << ROC_CPT_DFLT_ENG_GRP_SE_IE |
-		       1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
 	rc = cpt_lfs_alloc(dev, eng_grpmask, blkaddr,
 			   !roc_nix->ipsec_out_sso_pffunc, ctx_ilen_valid, ctx_ilen,
 			   rx_inj, nb_lf - 1);
