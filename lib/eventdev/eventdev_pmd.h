@@ -25,6 +25,7 @@
 #include <rte_mbuf_dyn.h>
 
 #include "event_timer_adapter_pmd.h"
+#include "rte_event_eth_rx_adapter.h"
 #include "rte_eventdev.h"
 
 #ifdef __cplusplus
@@ -707,6 +708,37 @@ typedef int (*eventdev_eth_rx_adapter_queue_add_t)(
 		const struct rte_eth_dev *eth_dev,
 		int32_t rx_queue_id,
 		const struct rte_event_eth_rx_adapter_queue_conf *queue_conf);
+
+/**
+ * Add ethernet Rx queues to event device in burst. This callback is invoked if
+ * the caps returned from rte_eventdev_eth_rx_adapter_caps_get(, eth_port_id)
+ * has RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT set.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param rx_queue_id
+ *   Ethernet device receive queue index array
+ *
+ * @param queue_conf
+ *   Additional configuration structure array
+ *
+ * @param nb_rx_queues
+ *   Number of ethernet device receive queues
+ *
+ * @return
+ *   - 0: Success, ethernet receive queues added successfully.
+ *   - <0: Error code returned by the driver function.
+ */
+typedef int (*eventdev_eth_rx_adapter_queues_add_t)(
+		const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev,
+		int32_t rx_queue_id[],
+		const struct rte_event_eth_rx_adapter_queue_conf queue_conf[],
+		uint16_t nb_rx_queues);
 
 /**
  * Delete ethernet Rx queues from event device. This callback is invoked if
@@ -1578,6 +1610,8 @@ struct eventdev_ops {
 	/**< Get ethernet Rx adapter capabilities */
 	eventdev_eth_rx_adapter_queue_add_t eth_rx_adapter_queue_add;
 	/**< Add Rx queues to ethernet Rx adapter */
+	eventdev_eth_rx_adapter_queues_add_t eth_rx_adapter_queues_add;
+	/**< Add Rx queues to ethernet Rx adapter in burst */
 	eventdev_eth_rx_adapter_queue_del_t eth_rx_adapter_queue_del;
 	/**< Delete Rx queues from ethernet Rx adapter */
 	eventdev_eth_rx_adapter_queue_conf_get_t eth_rx_adapter_queue_conf_get;
