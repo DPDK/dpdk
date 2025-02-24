@@ -930,16 +930,18 @@ roc_nix_inl_inb_sa_get(struct roc_nix *roc_nix, bool inb_inl_dev, uint32_t spi)
 }
 
 int
-roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags)
+roc_nix_reassembly_configure(struct roc_cpt_rxc_time_cfg *req_cfg, uint32_t max_wait_time)
 {
 	struct idev_cfg *idev = idev_get_cfg();
-	struct roc_cpt *roc_cpt;
+	struct nix_inl_dev *inl_dev = NULL;
+	struct cpt_rxc_time_cfg_req *req;
 	struct roc_cpt_rxc_time_cfg cfg;
+	struct roc_cpt *roc_cpt;
+	struct mbox *mbox;
+	int rc;
 
 	if (!idev)
 		return -EFAULT;
-
-	PLT_SET_USED(max_frags);
 
 	roc_cpt = idev->cpt;
 	if (!roc_cpt) {
@@ -947,13 +949,46 @@ roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags)
 		return -ENOTSUP;
 	}
 
-	cfg.step = (max_wait_time * 1000 / ROC_NIX_INL_REAS_ACTIVE_LIMIT);
-	cfg.zombie_limit = ROC_NIX_INL_REAS_ZOMBIE_LIMIT;
-	cfg.zombie_thres = ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD;
-	cfg.active_limit = ROC_NIX_INL_REAS_ACTIVE_LIMIT;
-	cfg.active_thres = ROC_NIX_INL_REAS_ACTIVE_THRESHOLD;
+	cfg.step = req_cfg->step ? req_cfg->step :
+				   (max_wait_time * 1000 / ROC_NIX_INL_REAS_ACTIVE_LIMIT);
+	cfg.zombie_limit =
+		req_cfg->zombie_limit ? req_cfg->zombie_limit : ROC_NIX_INL_REAS_ZOMBIE_LIMIT;
+	cfg.zombie_thres =
+		req_cfg->zombie_thres ? req_cfg->zombie_thres : ROC_NIX_INL_REAS_ZOMBIE_THRESHOLD;
+	cfg.active_limit =
+		req_cfg->active_limit ? req_cfg->active_limit : ROC_NIX_INL_REAS_ACTIVE_LIMIT;
+	cfg.active_thres =
+		req_cfg->active_thres ? req_cfg->active_thres : ROC_NIX_INL_REAS_ACTIVE_THRESHOLD;
 
-	return roc_cpt_rxc_time_cfg(roc_cpt, &cfg);
+	if (roc_model_is_cn10k())
+		return roc_cpt_rxc_time_cfg(roc_cpt, &cfg);
+
+	inl_dev = idev->nix_inl_dev;
+	if (!inl_dev) {
+		plt_err("Cannot support RXC config, inlinedev is not probed");
+		return -ENOTSUP;
+	}
+
+	mbox = mbox_get((&inl_dev->dev)->mbox);
+
+	req = mbox_alloc_msg_cpt_rxc_time_cfg(mbox);
+	if (req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	req->blkaddr = 0;
+	req->queue_id = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
+	req->step = cfg.step;
+	req->zombie_limit = cfg.zombie_limit;
+	req->zombie_thres = cfg.zombie_thres;
+	req->active_limit = cfg.active_limit;
+	req->active_thres = cfg.active_thres;
+
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
 }
 
 static void

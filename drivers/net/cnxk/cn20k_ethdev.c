@@ -631,6 +631,7 @@ cn20k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 			      const struct rte_eth_ip_reassembly_params *conf)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_cpt_rxc_time_cfg rxc_time_cfg = {0};
 	int rc = 0;
 
 	if (!roc_feature_nix_has_reass())
@@ -644,7 +645,7 @@ cn20k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 		return 0;
 	}
 
-	rc = roc_nix_reassembly_configure(conf->timeout_ms, conf->max_frags);
+	rc = roc_nix_reassembly_configure(&rxc_time_cfg, conf->timeout_ms);
 	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		dev->rx_offload_flags |= NIX_RX_REAS_F;
 		dev->inb.reass_en = true;
