@@ -130,6 +130,7 @@ void __roc_api roc_nix_inl_dev_lock(void);
 void __roc_api roc_nix_inl_dev_unlock(void);
 int __roc_api roc_nix_inl_dev_xaq_realloc(uint64_t aura_handle);
 int __roc_api roc_nix_inl_dev_stats_get(struct roc_nix_stats *stats);
+int __roc_api roc_nix_inl_dev_stats_reset(void);
 int __roc_api roc_nix_inl_dev_cpt_setup(bool use_inl_dev_sso);
 int __roc_api roc_nix_inl_dev_cpt_release(void);
 bool __roc_api roc_nix_inl_dev_is_multi_channel(void);

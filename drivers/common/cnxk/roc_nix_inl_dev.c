@@ -1296,6 +1296,33 @@ roc_nix_inl_dev_stats_get(struct roc_nix_stats *stats)
 }
 
 int
+roc_nix_inl_dev_stats_reset(void)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	struct mbox *mbox;
+	int rc;
+
+	if (idev && idev->nix_inl_dev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev)
+		return -EINVAL;
+
+	mbox = mbox_get((&inl_dev->dev)->mbox);
+
+	if (mbox_alloc_msg_nix_stats_rst(mbox) == NULL) {
+		rc = -ENOMEM;
+		goto exit;
+	}
+
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
 roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 {
 	struct plt_pci_device *pci_dev;

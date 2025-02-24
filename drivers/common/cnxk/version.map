@@ -252,6 +252,7 @@ INTERNAL {
 	roc_nix_inl_dev_is_multi_channel;
 	roc_nix_inl_dev_is_probed;
 	roc_nix_inl_dev_stats_get;
+	roc_nix_inl_dev_stats_reset;
 	roc_nix_inl_dev_lock;
 	roc_nix_inl_dev_rq;
 	roc_nix_inl_dev_rq_get;
