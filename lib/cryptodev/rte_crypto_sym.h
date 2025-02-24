@@ -482,8 +482,10 @@ enum rte_crypto_aead_algorithm {
 	/**< AES algorithm in CCM mode. */
 	RTE_CRYPTO_AEAD_AES_GCM,
 	/**< AES algorithm in GCM mode. */
-	RTE_CRYPTO_AEAD_CHACHA20_POLY1305
+	RTE_CRYPTO_AEAD_CHACHA20_POLY1305,
 	/**< Chacha20 cipher with poly1305 authenticator */
+	RTE_CRYPTO_AEAD_SM4_GCM,
+	/**< SM4 cipher in GCM mode */
 };
 
 /** Symmetric AEAD Operations */
