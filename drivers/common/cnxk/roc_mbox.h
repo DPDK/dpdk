@@ -2694,6 +2694,7 @@ struct cn20k_mcam_entry {
 	uint64_t __io kw_mask[NPC_CN20K_MAX_KWS_IN_KEY];
 	uint64_t __io action;
 	uint64_t __io vtag_action;
+	uint64_t __io action2;
 };
 
 struct npc_cn20k_mcam_write_entry_req {

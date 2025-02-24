@@ -328,6 +328,7 @@ struct roc_npc_flow {
 	uint64_t mcam_data[ROC_NPC_MAX_MCAM_WIDTH_DWORDS];
 	uint64_t mcam_mask[ROC_NPC_MAX_MCAM_WIDTH_DWORDS];
 	uint64_t npc_action;
+	uint64_t npc_action2;
 	uint64_t vtag_action;
 	bool vtag_insert_enabled;
 	int8_t vtag_insert_count;
