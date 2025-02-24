@@ -1922,6 +1922,8 @@ void ngbe_read_efuse(struct ngbe_hw *hw)
 void ngbe_map_device_id(struct ngbe_hw *hw)
 {
 	u16 oem = hw->sub_system_id & NGBE_OEM_MASK;
+	u16 ncsi = hw->sub_system_id & NGBE_NCSI_SUP_MASK;
+	u16 wol = hw->sub_system_id & NGBE_WOL_SUP_MASK;
 
 	hw->is_pf = true;
 
@@ -1982,9 +1984,9 @@ void ngbe_map_device_id(struct ngbe_hw *hw)
 			oem == NGBE_LY_YT8521S_SFP)
 		hw->gpio_ctl = true;
 
-	hw->wol_enabled = (hw->sub_system_id & NGBE_WOL_SUP_MASK) ? true : false;
-	hw->ncsi_enabled = (hw->sub_system_id & NGBE_NCSI_SUP_MASK ||
-			    hw->sub_system_id & NGBE_OCP_CARD) ? true : false;
+	hw->wol_enabled = (wol == NGBE_WOL_SUP_MASK) ? true : false;
+	hw->ncsi_enabled = (ncsi == NGBE_NCSI_SUP_MASK ||
+			   oem == NGBE_OCP_CARD) ? true : false;
 }
 
 /**
