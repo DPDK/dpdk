@@ -82,6 +82,7 @@ struct cn20k_eth_rxq {
 	uint64_t meta_aura;
 	uintptr_t meta_pool;
 	uint16_t rq;
+	uint64_t mp_buf_sz;
 	struct cnxk_timesync_info *tstamp;
 } __plt_cache_aligned;
 

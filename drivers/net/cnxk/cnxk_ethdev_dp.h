@@ -35,8 +35,11 @@
 #define ERRCODE_ERRLEN_WIDTH 12
 #define ERR_ARRAY_SZ	     ((BIT(ERRCODE_ERRLEN_WIDTH)) * sizeof(uint32_t))
 
-#define SA_BASE_TBL_SZ	(RTE_MAX_ETHPORTS * sizeof(uintptr_t))
-#define MEMPOOL_TBL_SZ	(RTE_MAX_ETHPORTS * sizeof(uintptr_t))
+#define SA_BASE_OFFSET 8 /* offset in bytes */
+#define MEMPOOL_OFFSET 8 /* offset in bytes */
+#define BUFLEN_OFFSET  8 /* offset in bytes */
+#define LOOKUP_MEM_PORTDATA_SZ (SA_BASE_OFFSET + MEMPOOL_OFFSET + BUFLEN_OFFSET)
+#define LOOKUP_MEM_PORTDATA_TOTAL_SZ (RTE_MAX_ETHPORTS * LOOKUP_MEM_PORTDATA_SZ)
 
 #define CNXK_NIX_UDP_TUN_BITMASK                                               \
 	((1ull << (RTE_MBUF_F_TX_TUNNEL_VXLAN >> 45)) |                               \
@@ -174,20 +177,36 @@ static __rte_always_inline uintptr_t
 cnxk_nix_sa_base_get(uint16_t port, const void *lookup_mem)
 {
 	uintptr_t sa_base_tbl;
+	uint32_t offset;
 
 	sa_base_tbl = (uintptr_t)lookup_mem;
 	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
-	return *((const uintptr_t *)sa_base_tbl + port);
+	offset = port * LOOKUP_MEM_PORTDATA_SZ;
+	return *((const uintptr_t *)sa_base_tbl + offset / 8);
 }
 
 static __rte_always_inline uintptr_t
 cnxk_nix_inl_metapool_get(uint16_t port, const void *lookup_mem)
 {
 	uintptr_t metapool_tbl;
+	uint32_t offset;
 
 	metapool_tbl = (uintptr_t)lookup_mem;
-	metapool_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ;
-	return *((const uintptr_t *)metapool_tbl + port);
+	metapool_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	offset = (port * LOOKUP_MEM_PORTDATA_SZ) + SA_BASE_OFFSET;
+	return *((const uintptr_t *)metapool_tbl + offset / 8);
+}
+
+static __rte_always_inline uintptr_t
+cnxk_nix_inl_bufsize_get(uint16_t port, const void *lookup_mem)
+{
+	uintptr_t bufsz_tbl;
+	uint32_t offset;
+
+	bufsz_tbl = (uintptr_t)lookup_mem;
+	bufsz_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	offset = (port * LOOKUP_MEM_PORTDATA_SZ) + SA_BASE_OFFSET + MEMPOOL_OFFSET;
+	return *((const uintptr_t *)bufsz_tbl + offset / 8);
 }
 
 #endif /* __CNXK_ETHDEV_DP_H__ */

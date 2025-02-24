@@ -7,7 +7,8 @@
 
 #include "cnxk_ethdev.h"
 
-#define LOOKUP_ARRAY_SZ (PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ + MEMPOOL_TBL_SZ)
+#define LOOKUP_ARRAY_SZ (PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + LOOKUP_MEM_PORTDATA_TOTAL_SZ)
+
 const uint32_t *
 cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev,
 			      size_t *no_of_elements)
@@ -336,6 +337,7 @@ cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev)
 	uint16_t port = dev->eth_dev->data->port_id;
 	uintptr_t sa_base_tbl;
 	uintptr_t sa_base;
+	uint32_t offset;
 	uint8_t sa_w;
 
 	if (!lookup_mem)
@@ -351,7 +353,8 @@ cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev)
 	/* Set SA Base in lookup mem */
 	sa_base_tbl = (uintptr_t)lookup_mem;
 	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
-	*((uintptr_t *)sa_base_tbl + port) = sa_base | sa_w;
+	offset = port * LOOKUP_MEM_PORTDATA_SZ;
+	*((uintptr_t *)sa_base_tbl + offset / 8) = sa_base | sa_w;
 	return 0;
 }
 
@@ -361,6 +364,7 @@ cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev)
 	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
 	uint16_t port = dev->eth_dev->data->port_id;
 	uintptr_t sa_base_tbl;
+	uint32_t offset;
 
 	if (!lookup_mem)
 		return -EIO;
@@ -368,7 +372,8 @@ cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev)
 	/* Set SA Base in lookup mem */
 	sa_base_tbl = (uintptr_t)lookup_mem;
 	sa_base_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
-	*((uintptr_t *)sa_base_tbl + port) = 0;
+	offset = port * LOOKUP_MEM_PORTDATA_SZ;
+	*((uintptr_t *)sa_base_tbl + offset / 8) = 0;
 	return 0;
 }
 
@@ -378,14 +383,16 @@ cnxk_nix_lookup_mem_metapool_set(struct cnxk_eth_dev *dev)
 	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
 	uint16_t port = dev->eth_dev->data->port_id;
 	uintptr_t mp_tbl;
+	uint32_t offset;
 
 	if (!lookup_mem)
 		return -EIO;
 
 	/* Set Mempool in lookup mem */
 	mp_tbl = (uintptr_t)lookup_mem;
-	mp_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ;
-	*((uintptr_t *)mp_tbl + port) = dev->nix.meta_mempool;
+	mp_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	offset = (port * LOOKUP_MEM_PORTDATA_SZ) + SA_BASE_OFFSET;
+	*((uintptr_t *)mp_tbl + offset / 8) = dev->nix.meta_mempool;
 	return 0;
 }
 
@@ -395,13 +402,53 @@ cnxk_nix_lookup_mem_metapool_clear(struct cnxk_eth_dev *dev)
 	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
 	uint16_t port = dev->eth_dev->data->port_id;
 	uintptr_t mp_tbl;
+	uint32_t offset;
 
 	if (!lookup_mem)
 		return -EIO;
 
 	/* Clear Mempool in lookup mem */
 	mp_tbl = (uintptr_t)lookup_mem;
-	mp_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ;
-	*((uintptr_t *)mp_tbl + port) = dev->nix.meta_mempool;
+	mp_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	offset = (port * LOOKUP_MEM_PORTDATA_SZ) + SA_BASE_OFFSET;
+	*((uintptr_t *)mp_tbl + offset / 8) = dev->nix.meta_mempool;
+	return 0;
+}
+
+int
+cnxk_nix_lookup_mem_bufsize_set(struct cnxk_eth_dev *dev, uint64_t size)
+{
+	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
+	uint16_t port = dev->eth_dev->data->port_id;
+	uintptr_t mp_tbl;
+	uint32_t offset;
+
+	if (!lookup_mem)
+		return -EIO;
+
+	/* Set bufsize in lookup mem */
+	mp_tbl = (uintptr_t)lookup_mem;
+	mp_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	offset = (port * LOOKUP_MEM_PORTDATA_SZ) + SA_BASE_OFFSET + MEMPOOL_OFFSET;
+	*((uintptr_t *)mp_tbl + offset / 8) = size;
+	return 0;
+}
+
+int
+cnxk_nix_lookup_mem_bufsize_clear(struct cnxk_eth_dev *dev)
+{
+	void *lookup_mem = cnxk_nix_fastpath_lookup_mem_get();
+	uint16_t port = dev->eth_dev->data->port_id;
+	uintptr_t mp_tbl;
+	uint32_t offset;
+
+	if (!lookup_mem)
+		return -EIO;
+
+	/* Clear bufsize in lookup mem */
+	mp_tbl = (uintptr_t)lookup_mem;
+	mp_tbl += PTYPE_ARRAY_SZ + ERR_ARRAY_SZ;
+	offset = (port * LOOKUP_MEM_PORTDATA_SZ) + SA_BASE_OFFSET + MEMPOOL_OFFSET;
+	*((uintptr_t *)mp_tbl + offset / 8) = 0;
 	return 0;
 }
