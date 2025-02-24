@@ -96,16 +96,26 @@ when the adapter is created using the above-mentioned APIs.
 Adding Rx Queues to the Adapter Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Ethdev Rx queues are added to the instance using the
-``rte_event_eth_rx_adapter_queue_add()`` function. Configuration for the Rx
-queue is passed in using a ``struct rte_event_eth_rx_adapter_queue_conf``
-parameter. Event information for packets from this Rx queue is encoded in the
-``ev`` field of ``struct rte_event_eth_rx_adapter_queue_conf``. The
-servicing_weight member of the struct  rte_event_eth_rx_adapter_queue_conf
-is the relative polling frequency of the Rx queue and is applicable when the
-adapter uses a service core function. The applications can configure queue
-event buffer size in ``struct rte_event_eth_rx_adapter_queue_conf::event_buf_size``
-parameter.
+Ethdev Rx queues can be added to the instance using
+either the ``rte_event_eth_rx_adapter_queue_add()`` function
+or ``rte_event_eth_rx_adapter_queues_add()``.
+The former is used to add a single Rx queue at a time,
+while the latter allows adding multiple Rx queues in a single call.
+
+Single Queue Addition
+^^^^^^^^^^^^^^^^^^^^^
+
+The ``rte_event_eth_rx_adapter_queue_add()`` API
+allows adding a single Rx queue to the adapter instance.
+Configuration for the Rx queue
+is passed using a ``struct rte_event_eth_rx_adapter_queue_conf`` parameter.
+Event information for packets from this Rx queue
+is encoded in the ``ev`` field of this struct.
+The ``servicing_weight`` member of the struct
+determines the relative polling frequency of the Rx queue
+and is applicable when the adapter uses a service core function.
+Applications can also configure the queue event buffer size
+using the ``event_buf_size`` parameter in ``struct rte_event_eth_rx_adapter_queue_conf``.
 
 .. code-block:: c
 
@@ -121,6 +131,39 @@ parameter.
         err = rte_event_eth_rx_adapter_queue_add(id,
                                                 eth_dev_id,
                                                 0, &queue_config);
+
+Bulk Queue Addition
+^^^^^^^^^^^^^^^^^^^
+
+The ``rte_event_eth_rx_adapter_queues_add()`` API
+allows the addition of multiple Rx queues in a single call.
+While ``rte_event_eth_rx_adapter_queue_add()``
+supports adding multiple queues by specifying ``rx_queue_id = -1``,
+it does not allow applying specific configurations to each queue individually.
+The ``rte_event_eth_rx_adapter_queues_add()`` API
+accepts an array of receive queue IDs along with their corresponding configurations,
+enabling control over each Rx queue's settings.
+
+.. code-block:: c
+
+        struct rte_event_eth_rx_adapter_queue_conf queue_config[nb_rx_queues];
+        int rx_queue_id[nb_rx_queues];
+
+        for (int i = 0; i < nb_rx_queues; i++) {
+            rx_queue_id[i] = i;
+            queue_config[i].rx_queue_flags = 0;
+            queue_config[i].ev.queue_id = i;
+            queue_config[i].ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+            queue_config[i].ev.priority = 0;
+            queue_config[i].servicing_weight = 1;
+            queue_config[i].event_buf_size = 1024;
+        }
+
+        err = rte_event_eth_rx_adapter_queues_add(id,
+                                                 eth_dev_id,
+                                                 rx_queue_id,
+                                                 queue_config,
+                                                 nb_rx_queues);
 
 Querying Adapter Capabilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -153,6 +153,9 @@ EXPERIMENTAL {
 	__rte_eventdev_trace_port_preschedule_modify;
 	rte_event_port_preschedule;
 	__rte_eventdev_trace_port_preschedule;
+
+	# added in 25.03
+	rte_event_eth_rx_adapter_queues_add;
 };
 
 INTERNAL {

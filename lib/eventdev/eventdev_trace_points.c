@@ -65,6 +65,9 @@ RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_eth_rx_adapter_free,
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_eth_rx_adapter_queue_add,
 	lib.eventdev.rx.adapter.queue.add)
 
+RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_eth_rx_adapter_queues_add,
+	lib.eventdev.rx.adapter.queues.add)
+
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_eth_rx_adapter_queue_del,
 	lib.eventdev.rx.adapter.queue.del)
 

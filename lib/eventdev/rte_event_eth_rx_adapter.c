@@ -2793,6 +2793,166 @@ rte_event_eth_rx_adapter_queue_add(uint8_t id,
 	return 0;
 }
 
+int
+rte_event_eth_rx_adapter_queues_add(uint8_t id, uint16_t eth_dev_id, int32_t rx_queue_id[],
+				    const struct rte_event_eth_rx_adapter_queue_conf queue_conf[],
+				    uint16_t nb_rx_queues)
+{
+	struct rte_event_eth_rx_adapter_vector_limits limits;
+	struct event_eth_rx_adapter *rx_adapter;
+	struct eth_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint32_t cap, i;
+	int ret;
+
+	if (rxa_memzone_lookup())
+		return -ENOMEM;
+
+	RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_dev_id, -EINVAL);
+
+	rx_adapter = rxa_id_to_adapter(id);
+	if ((rx_adapter == NULL) || (queue_conf == NULL))
+		return -EINVAL;
+
+	if (nb_rx_queues && rx_queue_id == NULL)
+		return -EINVAL;
+
+	if (nb_rx_queues > rte_eth_devices[eth_dev_id].data->nb_rx_queues) {
+		RTE_EDEV_LOG_ERR("Invalid number of rx queues %" PRIu16, nb_rx_queues);
+		return -EINVAL;
+	}
+
+	ret = rte_event_eth_rx_adapter_caps_get(rx_adapter->eventdev_id, eth_dev_id, &cap);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps edev %" PRIu8 "eth port %" PRIu16, id,
+				 eth_dev_id);
+		return ret;
+	}
+
+	if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) == 0) {
+		for (i = 1; i < nb_rx_queues; i++) {
+			if (queue_conf[i].ev.queue_id != queue_conf[0].ev.queue_id) {
+				RTE_EDEV_LOG_ERR("Rx queues can only be connected to single "
+						 "event queue, eth port: %" PRIu16
+						 " adapter id: %" PRIu8,
+						 eth_dev_id, id);
+				return -EINVAL;
+			}
+		}
+	}
+
+	for (i = 0; i < (nb_rx_queues ? nb_rx_queues : 1); i++) {
+		const struct rte_event_eth_rx_adapter_queue_conf *conf;
+
+		conf = &queue_conf[i];
+		if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID) == 0 &&
+		    (conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID)) {
+			RTE_EDEV_LOG_ERR("Flow ID override is not supported in queue_conf[%" PRIu32
+					 "], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					 i, eth_dev_id, id);
+			return -EINVAL;
+		}
+
+		if (conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+			if ((cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR) == 0) {
+				RTE_EDEV_LOG_ERR(
+					"Event vectorization is unsupported in queue_conf[%" PRIu32
+					"], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					i, eth_dev_id, id);
+				return -EINVAL;
+			}
+
+			ret = rte_event_eth_rx_adapter_vector_limits_get(rx_adapter->eventdev_id,
+									 eth_dev_id, &limits);
+			if (ret < 0) {
+				RTE_EDEV_LOG_ERR("Failed to get event device vector limits,"
+						 " eth port: %" PRIu16 " adapter id: %" PRIu8,
+						 eth_dev_id, id);
+				return -EINVAL;
+			}
+
+			if (conf->vector_sz < limits.min_sz || conf->vector_sz > limits.max_sz ||
+			    conf->vector_timeout_ns < limits.min_timeout_ns ||
+			    conf->vector_timeout_ns > limits.max_timeout_ns ||
+			    conf->vector_mp == NULL) {
+				RTE_EDEV_LOG_ERR(
+					"Invalid event vector configuration in queue_conf[%" PRIu32
+					"], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					i, eth_dev_id, id);
+				return -EINVAL;
+			}
+
+			if (conf->vector_mp->elt_size < (sizeof(struct rte_event_vector) +
+							 (sizeof(uintptr_t) * conf->vector_sz))) {
+				RTE_EDEV_LOG_ERR(
+					"Invalid event vector configuration in queue_conf[%" PRIu32
+					"], eth port: %" PRIu16 " adapter id: %" PRIu8,
+					i, eth_dev_id, id);
+				return -EINVAL;
+			}
+		}
+
+		if ((rx_adapter->use_queue_event_buf && conf->event_buf_size == 0) ||
+		    (!rx_adapter->use_queue_event_buf && conf->event_buf_size != 0)) {
+			RTE_EDEV_LOG_ERR("Invalid Event buffer size in queue_conf[%" PRIu32 "]", i);
+			return -EINVAL;
+		}
+	}
+
+	dev = &rte_eventdevs[rx_adapter->eventdev_id];
+	dev_info = &rx_adapter->eth_devices[eth_dev_id];
+
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT) {
+		if (*dev->dev_ops->eth_rx_adapter_queues_add == NULL)
+			return -ENOTSUP;
+
+		if (dev_info->rx_queue == NULL) {
+			dev_info->rx_queue =
+				rte_zmalloc_socket(rx_adapter->mem_name,
+						   dev_info->dev->data->nb_rx_queues *
+							   sizeof(struct eth_rx_queue_info),
+						   0, rx_adapter->socket_id);
+			if (dev_info->rx_queue == NULL)
+				return -ENOMEM;
+		}
+
+		ret = (*dev->dev_ops->eth_rx_adapter_queues_add)(
+			dev, &rte_eth_devices[eth_dev_id], rx_queue_id, queue_conf, nb_rx_queues);
+		if (ret == 0) {
+			dev_info->internal_event_port = 1;
+
+			if (nb_rx_queues == 0)
+				rxa_update_queue(rx_adapter, dev_info, -1, 1);
+
+			for (i = 0; i < nb_rx_queues; i++)
+				rxa_update_queue(rx_adapter, dev_info, rx_queue_id[i], 1);
+		}
+	} else {
+		rte_spinlock_lock(&rx_adapter->rx_lock);
+		dev_info->internal_event_port = 0;
+		ret = rxa_init_service(rx_adapter, id);
+		if (ret == 0) {
+			uint32_t service_id = rx_adapter->service_id;
+
+			if (nb_rx_queues == 0)
+				ret = rxa_sw_add(rx_adapter, eth_dev_id, -1, &queue_conf[0]);
+
+			for (i = 0; i < nb_rx_queues; i++)
+				ret = rxa_sw_add(rx_adapter, eth_dev_id, rx_queue_id[i],
+						 &queue_conf[i]);
+
+			rte_service_component_runstate_set(service_id,
+							   rxa_sw_adapter_queue_count(rx_adapter));
+		}
+		rte_spinlock_unlock(&rx_adapter->rx_lock);
+	}
+
+	rte_eventdev_trace_eth_rx_adapter_queues_add(id, eth_dev_id, nb_rx_queues, rx_queue_id,
+						     queue_conf, ret);
+	return ret;
+}
+
 static int
 rxa_sw_vector_limits(struct rte_event_eth_rx_adapter_vector_limits *limits)
 {
