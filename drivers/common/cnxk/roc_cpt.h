@@ -15,10 +15,14 @@
 #define ROC_LOADFVC_MAJOR_OP 0x01UL
 #define ROC_LOADFVC_MINOR_OP 0x08UL
 
+/* Default engine groups for CN9K, CN10K */
+#define ROC_LEGACY_CPT_DFLT_ENG_GRP_SE	  0UL
+#define ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE 1UL
+#define ROC_LEGACY_CPT_DFLT_ENG_GRP_AE	  2UL
+
 /* Default engine groups */
-#define ROC_CPT_DFLT_ENG_GRP_SE	   0UL
-#define ROC_CPT_DFLT_ENG_GRP_SE_IE 1UL
-#define ROC_CPT_DFLT_ENG_GRP_AE	   2UL
+#define ROC_CPT_DFLT_ENG_GRP_SE 0UL
+#define ROC_CPT_DFLT_ENG_GRP_AE 1UL
 
 #define ROC_CPT_MAX_LFS 64
 #define ROC_CPT_MAX_BLKS 2

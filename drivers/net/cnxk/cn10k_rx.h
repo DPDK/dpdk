@@ -1363,7 +1363,7 @@ again:
 				((uint64_t)sess_priv.dec_ttl) << 34 | m->pkt_len);
 
 		ucode_cmd[2] = 0;
-		ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
+		ucode_cmd[3] = (ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
 
 		/* Move to our line */
 		laddr = LMT_OFF(c_lbase, lnum, loff ? 64 : 0);

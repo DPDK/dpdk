@@ -179,15 +179,19 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 	if (!inl_dev->attach_cptlf)
 		return 0;
 
-	/* Alloc CPT LF */
-	eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE |
-		       1ULL << ROC_CPT_DFLT_ENG_GRP_SE_IE |
-		       1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		eng_grpmask = (1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE |
+			       1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE |
+			       1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_AE);
+	else
+		eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE | 1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
+
 	if (roc_errata_cpt_has_ctx_fetch_issue()) {
 		ctx_ilen = (ROC_NIX_INL_OT_IPSEC_INB_HW_SZ / 128) - 1;
 		ctx_ilen_valid = true;
 	}
 
+	/* Alloc CPT LF */
 	rc = cpt_lfs_alloc(dev, eng_grpmask, RVU_BLOCK_ADDR_CPT0, inl_dev_sso, ctx_ilen_valid,
 			   ctx_ilen, inl_dev->rx_inj_ena, inl_dev->nb_cptlf - 1);
 	if (rc) {

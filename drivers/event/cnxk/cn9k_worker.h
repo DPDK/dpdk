@@ -652,7 +652,7 @@ cn9k_sso_hws_xmit_sec_one(const struct cn9k_eth_txq *txq, uint64_t base,
 	sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
 
 	sa = (uintptr_t)roc_nix_inl_on_ipsec_outb_sa(sa_base, mdata.sa_idx);
-	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | sa);
+	ucode_cmd[3] = (ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE << 61 | sa);
 	ucode_cmd[0] = (((ROC_IE_ON_OUTB_MAX_CTX_LEN << 8) |
 			 ROC_IE_ON_MAJOR_OP_PROCESS_OUTBOUND_IPSEC)
 				<< 48 |

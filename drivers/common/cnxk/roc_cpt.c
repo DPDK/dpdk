@@ -931,9 +931,9 @@ roc_cpt_iq_reset(struct roc_cpt_lf *lf)
 		plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
 
 		if (roc_model_is_cn9k())
-			cpt_9k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
+			cpt_9k_lf_rst_lmtst(lf, ROC_LEGACY_CPT_DFLT_ENG_GRP_SE);
 		else
-			cpt_10k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
+			cpt_10k_lf_rst_lmtst(lf, ROC_LEGACY_CPT_DFLT_ENG_GRP_SE);
 
 		plt_read64(lf->rbase + CPT_LF_INPROG);
 		plt_delay_us(2);
@@ -1205,7 +1205,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 
 	if (lf->roc_cpt == NULL) {
 		if (roc_cpt_has_ie_engines())
-			egrp = ROC_CPT_DFLT_ENG_GRP_SE_IE;
+			egrp = ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE;
 		else
 			egrp = ROC_CPT_DFLT_ENG_GRP_SE;
 	} else {
