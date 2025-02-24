@@ -490,9 +490,10 @@ struct roc_nix {
 	uintptr_t meta_mempool;
 	uint16_t rep_cnt;
 	uint16_t rep_pfvf_map[MAX_PFVF_REP];
+	bool reass_ena;
 	TAILQ_ENTRY(roc_nix) next;
 
-#define ROC_NIX_MEM_SZ (6 * 1070)
+#define ROC_NIX_MEM_SZ (6 * 1112)
 	uint8_t reserved[ROC_NIX_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 

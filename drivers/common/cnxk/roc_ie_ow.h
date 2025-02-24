@@ -12,6 +12,7 @@
 /* CN20K IPsec opcodes */
 #define ROC_IE_OW_MAJOR_OP_PROCESS_OUTBOUND_IPSEC 0x28UL
 #define ROC_IE_OW_MAJOR_OP_PROCESS_INBOUND_IPSEC  0x29UL
+#define ROC_IE_OW_MAJOR_OP_PROCESS_INBOUND_REASS  0x2BUL
 
 #define ROC_IE_OW_MAJOR_OP_WRITE_SA 0x01UL
 #define ROC_IE_OW_MINOR_OP_WRITE_SA 0x09UL
@@ -532,6 +533,7 @@ PLT_STATIC_ASSERT(offsetof(struct roc_ow_ipsec_outb_sa, ctx) == 31 * sizeof(uint
 	(PLT_MAX(sizeof(struct roc_ow_ipsec_inb_sa), sizeof(struct roc_ow_ipsec_outb_sa)))
 
 void __roc_api roc_ow_ipsec_inb_sa_init(struct roc_ow_ipsec_inb_sa *sa);
+void __roc_api roc_ow_reass_inb_sa_init(struct roc_ow_ipsec_inb_sa *sa);
 void __roc_api roc_ow_ipsec_outb_sa_init(struct roc_ow_ipsec_outb_sa *sa);
 
 #endif /* __ROC_IE_OW_H__ */

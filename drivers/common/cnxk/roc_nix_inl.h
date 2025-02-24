@@ -154,12 +154,10 @@ int __roc_api roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool ena);
 int __roc_api roc_nix_inl_dev_rq_put(struct roc_nix_rq *rq);
 bool __roc_api roc_nix_inb_is_with_inl_dev(struct roc_nix *roc_nix);
 struct roc_nix_rq *__roc_api roc_nix_inl_dev_rq(struct roc_nix *roc_nix);
-int __roc_api roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix,
-					 uint32_t tag_const, uint8_t tt);
-int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time,
-					   uint16_t max_frags);
-int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena,
-				       bool inb_inl_dev);
+int __roc_api roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix, uint32_t tag_const, uint8_t tt);
+int __roc_api roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags);
+int __roc_api roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev,
+				       uint8_t profile_id);
 int __roc_api roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool ena);
 int __roc_api roc_nix_inl_meta_aura_check(struct roc_nix *roc_nix, struct roc_nix_rq *rq);
 

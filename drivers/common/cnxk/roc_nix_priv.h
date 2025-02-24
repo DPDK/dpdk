@@ -55,6 +55,8 @@ struct nix_qint {
 #define NIX_TM_MARK_IPV4_ECN_SHIFT  32
 #define NIX_TM_MARK_IPV6_ECN_SHIFT  40
 
+#define ROC_NIX_INL_PROFILE_CNT 8
+
 struct nix_tm_tb {
 	/** Token bucket rate (bytes per second) */
 	uint64_t rate;
@@ -200,9 +202,12 @@ struct nix {
 	uint16_t cpt_msixoff[MAX_RVU_BLKLF_CNT];
 	bool inl_inb_ena;
 	bool inl_outb_ena;
-	void *inb_sa_base;
-	size_t inb_sa_sz;
+	void *inb_sa_base[ROC_NIX_INL_PROFILE_CNT];
+	size_t inb_sa_sz[ROC_NIX_INL_PROFILE_CNT];
+	uint32_t inb_sa_max[ROC_NIX_INL_PROFILE_CNT];
+	uint32_t ipsec_in_max_spi;
 	uint16_t ipsec_prof_id;
+	uint8_t reass_prof_id;
 	uint64_t rx_inline_cfg0;
 	uint64_t rx_inline_cfg1;
 	uint32_t inb_spi_mask;

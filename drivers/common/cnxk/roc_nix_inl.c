@@ -399,6 +399,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 	struct nix_inl_dev *inl_dev = NULL;
 	uint64_t max_sa, i, sa_pow2_sz;
 	uint64_t sa_idx_w, lenm1_max;
+	uint8_t profile_id = 0;
 	struct mbox *mbox;
 	size_t inb_sa_sz;
 	void *sa;
@@ -409,7 +410,9 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 		rc = nix_inl_setup_dflt_ipsec_profile(&nix->dev, &nix->ipsec_prof_id);
 		if (rc)
 			return rc;
+		profile_id = nix->ipsec_prof_id;
 	}
+
 	mbox = mbox_get(nix->dev.mbox);
 
 	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
@@ -425,11 +428,11 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 		inb_sa_sz = ROC_NIX_INL_OW_IPSEC_INB_SA_SZ;
 
 	/* Alloc contiguous memory for Inbound SA's */
-	nix->inb_sa_sz = inb_sa_sz;
+	nix->inb_sa_sz[profile_id] = inb_sa_sz;
+	nix->inb_sa_max[profile_id] = max_sa;
 	nix->inb_spi_mask = max_sa - 1;
-	nix->inb_sa_base = plt_zmalloc(inb_sa_sz * max_sa,
-				       ROC_NIX_INL_SA_BASE_ALIGN);
-	if (!nix->inb_sa_base) {
+	nix->inb_sa_base[profile_id] = plt_zmalloc(inb_sa_sz * max_sa, ROC_NIX_INL_SA_BASE_ALIGN);
+	if (!nix->inb_sa_base[profile_id]) {
 		rc = -ENOMEM;
 		plt_err("Failed to allocate memory for Inbound SA");
 		goto exit;
@@ -441,7 +444,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 
 	if (!roc_model_is_cn9k()) {
 		for (i = 0; i < max_sa; i++) {
-			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
+			sa = ((uint8_t *)nix->inb_sa_base[profile_id]) + (i * inb_sa_sz);
 			if (roc_model_is_cn10k())
 				roc_ot_ipsec_inb_sa_init(sa);
 			else
@@ -461,7 +464,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 		}
 
 		lf_cfg->enable = 1;
-		lf_cfg->sa_base_addr = (uintptr_t)nix->inb_sa_base;
+		lf_cfg->sa_base_addr = (uintptr_t)nix->inb_sa_base[profile_id];
 		lf_cfg->ipsec_cfg1.sa_idx_w = sa_idx_w;
 		lf_cfg->ipsec_cfg0.lenm1_max = lenm1_max;
 		lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
@@ -490,8 +493,8 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 		}
 
 		lf_cfg->enable = 1;
-		lf_cfg->profile_id = nix->ipsec_prof_id; /* IPsec profile is 0th one */
-		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base;
+		lf_cfg->profile_id = profile_id; /* IPsec profile is 0th one */
+		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id];
 		lf_cfg->rx_inline_cfg0 = ((def_cptq << 57) | ((uint64_t)SSO_TT_ORDERED << 44) |
 					  (sa_pow2_sz << 16) | lenm1_max);
 		lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_idx_w << 32);
@@ -506,8 +509,8 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 	mbox_put(mbox);
 	return 0;
 free_mem:
-	plt_free(nix->inb_sa_base);
-	nix->inb_sa_base = NULL;
+	plt_free(nix->inb_sa_base[profile_id]);
+	nix->inb_sa_base[profile_id] = NULL;
 exit:
 	mbox_put(mbox);
 	return rc;
@@ -518,6 +521,7 @@ nix_inl_ipsec_sa_tbl_release(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	uint8_t profile_id = 0;
 	int rc;
 
 	if (roc_model_is_cn9k() || roc_model_is_cn10k()) {
@@ -533,6 +537,7 @@ nix_inl_ipsec_sa_tbl_release(struct roc_nix *roc_nix)
 	} else {
 		struct nix_rx_inl_lf_cfg_req *lf_cfg;
 
+		profile_id = nix->ipsec_prof_id;
 		lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
 		if (!lf_cfg) {
 			rc = -ENOSPC;
@@ -540,6 +545,7 @@ nix_inl_ipsec_sa_tbl_release(struct roc_nix *roc_nix)
 		}
 
 		lf_cfg->enable = 0;
+		lf_cfg->profile_id = profile_id; /* IPsec profile is 0th one */
 	}
 
 	rc = mbox_process(mbox);
@@ -548,8 +554,112 @@ nix_inl_ipsec_sa_tbl_release(struct roc_nix *roc_nix)
 		goto exit;
 	}
 
-	plt_free(nix->inb_sa_base);
-	nix->inb_sa_base = NULL;
+	plt_free(nix->inb_sa_base[profile_id]);
+	nix->inb_sa_base[profile_id] = NULL;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	uint64_t max_sa = 1, sa_pow2_sz;
+	uint64_t sa_idx_w, lenm1_max;
+	size_t inb_sa_sz = 1;
+	uint8_t profile_id;
+	struct mbox *mbox;
+	void *sa;
+	int rc;
+
+	if (!roc_nix->reass_ena)
+		return 0;
+
+	rc = nix_inl_setup_reass_profile(&nix->dev, &nix->reass_prof_id);
+	if (rc)
+		return rc;
+
+	profile_id = nix->reass_prof_id;
+	nix->inb_sa_sz[profile_id] = inb_sa_sz;
+	nix->inb_sa_max[profile_id] = max_sa;
+	nix->inb_spi_mask = 1;
+	nix->inb_sa_base[profile_id] = plt_zmalloc(inb_sa_sz * max_sa, ROC_NIX_INL_SA_BASE_ALIGN);
+	if (!nix->inb_sa_base[profile_id]) {
+		plt_err("Failed to allocate memory for reassembly Inbound SA");
+		return -ENOMEM;
+	}
+
+	sa = ((uint8_t *)nix->inb_sa_base[profile_id]);
+	roc_ow_reass_inb_sa_init(sa);
+
+	mbox = mbox_get(nix->dev.mbox);
+	/* Setup device specific inb SA table */
+	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		plt_err("Failed to alloc nix inline reassembly lf cfg mbox msg");
+		goto free_mem;
+	}
+
+	sa_pow2_sz = plt_log2_u32(inb_sa_sz);
+	sa_idx_w = plt_log2_u32(max_sa);
+	lenm1_max = roc_nix_max_pkt_len(roc_nix) - 1;
+
+	lf_cfg->enable = 1;
+	lf_cfg->profile_id = profile_id;
+	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id];
+	lf_cfg->rx_inline_cfg0 =
+		(((uint64_t)SSO_TT_ORDERED << 44) | (sa_pow2_sz << 16) | lenm1_max);
+	lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_idx_w << 32);
+
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to setup NIX Inbound reassembly SA conf, rc=%d", rc);
+		goto free_mem;
+	}
+
+	mbox_put(mbox);
+	return 0;
+
+free_mem:
+	plt_free(nix->inb_sa_base[profile_id]);
+	nix->inb_sa_base[profile_id] = NULL;
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+nix_inl_reass_sa_tbl_release(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	uint8_t profile_id;
+	int rc;
+
+	if (!roc_nix->reass_ena)
+		return 0;
+
+	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+	if (!lf_cfg) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	profile_id = nix->reass_prof_id;
+
+	lf_cfg->enable = 0;
+	lf_cfg->profile_id = profile_id;
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to cleanup NIX Inbound Reassembly SA conf, rc=%d", rc);
+		goto exit;
+	}
+
+	plt_free(nix->inb_sa_base[profile_id]);
+	nix->inb_sa_base[profile_id] = NULL;
 exit:
 	mbox_put(mbox);
 	return rc;
@@ -626,11 +736,11 @@ roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 		inl_dev = idev->nix_inl_dev;
 		/* Return inline dev sa base */
 		if (inl_dev)
-			return (uintptr_t)inl_dev->inb_sa_base;
+			return (uintptr_t)inl_dev->inb_sa_base[inl_dev->ipsec_prof_id];
 		return 0;
 	}
 
-	return (uintptr_t)nix->inb_sa_base;
+	return (uintptr_t)nix->inb_sa_base[nix->ipsec_prof_id];
 }
 
 bool
@@ -716,13 +826,13 @@ roc_nix_inl_inb_sa_sz(struct roc_nix *roc_nix, bool inl_dev_sa)
 	if (roc_nix) {
 		nix = roc_nix_to_nix_priv(roc_nix);
 		if (!inl_dev_sa)
-			return nix->inb_sa_sz;
+			return nix->inb_sa_sz[nix->ipsec_prof_id];
 	}
 
 	if (inl_dev_sa) {
 		inl_dev = idev->nix_inl_dev;
 		if (inl_dev)
-			return inl_dev->inb_sa_sz;
+			return inl_dev->inb_sa_sz[inl_dev->ipsec_prof_id];
 	}
 
 	return 0;
@@ -1100,6 +1210,7 @@ nix_inl_legacy_inb_init(struct roc_nix *roc_nix)
 		return -ENOTSUP;
 	}
 
+	nix->ipsec_prof_id = 0;
 	memset(&cfg, 0, sizeof(cfg));
 	if (roc_model_is_cn9k()) {
 		cfg.param1 = (ROC_ONF_IPSEC_INB_MAX_L2_SZ >> 3) & 0xf;
@@ -1181,6 +1292,12 @@ nix_inl_inb_init(struct roc_nix *roc_nix)
 	if (rc)
 		return rc;
 
+	if (roc_nix->reass_ena) {
+		rc = nix_inl_reass_inb_sa_tbl_setup(roc_nix);
+		if (rc)
+			return rc;
+	}
+
 	if (roc_nix->local_meta_aura_ena || roc_nix->custom_meta_aura_ena) {
 		nix->need_meta_aura = true;
 
@@ -1237,6 +1354,9 @@ roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 
 	/* Flush Inbound CTX cache entries */
 	roc_nix_cpt_ctx_cache_sync(roc_nix);
+
+	if (roc_nix->reass_ena)
+		nix_inl_reass_sa_tbl_release(roc_nix);
 
 	/* Disable Inbound SA */
 	return nix_inl_ipsec_sa_tbl_release(roc_nix);
@@ -1935,8 +2055,8 @@ roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix, uint32_t tag_const,
 		return 0;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.sa_size = nix->inb_sa_sz;
-	cfg.iova = (uintptr_t)nix->inb_sa_base;
+	cfg.sa_size = nix->inb_sa_sz[nix->ipsec_prof_id];
+	cfg.iova = (uintptr_t)nix->inb_sa_base[nix->ipsec_prof_id];
 	cfg.max_sa = nix->inb_spi_mask + 1;
 	cfg.tt = tt;
 	cfg.tag_const = tag_const;
@@ -2186,15 +2306,15 @@ roc_nix_inl_cpt_lf_stats_get(struct roc_nix *roc_nix, enum roc_nix_cpt_lf_stats_
 	}
 }
 
-int
-roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
+static int
+nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev, uint8_t profile_id)
 {
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev = NULL;
 	void *sa, *sa_base = NULL;
 	struct nix *nix = NULL;
-	uint16_t max_spi = 0;
 	uint32_t rq_refs = 0;
+	uint16_t max_sa = 0;
 	uint8_t pkind = 0;
 	size_t inb_sa_sz;
 	int i;
@@ -2202,7 +2322,7 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 	if (roc_model_is_cn9k())
 		return 0;
 
-	if (!inb_inl_dev && (roc_nix == NULL))
+	if (!inb_inl_dev && (roc_nix == NULL) && profile_id >= ROC_NIX_INL_PROFILE_CNT)
 		return -EINVAL;
 
 	if (inb_inl_dev) {
@@ -2213,9 +2333,12 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 		nix = roc_nix_to_nix_priv(roc_nix);
 		if (!nix->inl_inb_ena)
 			return 0;
-		sa_base = nix->inb_sa_base;
-		inb_sa_sz = nix->inb_sa_sz;
-		max_spi = roc_nix->ipsec_in_max_spi;
+
+		sa_base = nix->inb_sa_base[profile_id];
+		if (sa_base == NULL)
+			return 0;
+		inb_sa_sz = nix->inb_sa_sz[profile_id];
+		max_sa = nix->inb_sa_max[profile_id];
 	}
 
 	if (inl_dev) {
@@ -2223,10 +2346,12 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 			rq_refs += inl_dev->rqs[i].inl_dev_refs;
 
 		if (rq_refs == 0) {
+			sa_base = inl_dev->inb_sa_base[profile_id];
+			if (sa_base == NULL)
+				return 0;
 			inl_dev->ts_ena = ts_ena;
-			max_spi = inl_dev->ipsec_in_max_spi;
-			sa_base = inl_dev->inb_sa_base;
-			inb_sa_sz = inl_dev->inb_sa_sz;
+			max_sa = inl_dev->inb_sa_max[profile_id];
+			inb_sa_sz = inl_dev->inb_sa_sz[profile_id];
 		} else if (inl_dev->ts_ena != ts_ena) {
 			if (inl_dev->ts_ena)
 				plt_err("Inline device is already configured with TS enable");
@@ -2244,11 +2369,30 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 	if (pkind == ((struct roc_ot_ipsec_inb_sa *)sa)->w0.s.pkind)
 		return 0;
 
-	for (i = 0; i < max_spi; i++) {
+	for (i = 0; i < max_sa; i++) {
 		sa = ((uint8_t *)sa_base) + (i * inb_sa_sz);
 		((struct roc_ot_ipsec_inb_sa *)sa)->w0.s.pkind = pkind;
 	}
 	return 0;
+}
+
+int
+roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev, uint8_t profile_id)
+{
+	int cnt = 0;
+
+	if (profile_id < ROC_NIX_INL_PROFILE_CNT) {
+		return nix_inl_ts_pkind_set(roc_nix, ts_ena, inb_inl_dev, profile_id);
+	} else if (profile_id == 0xFF) {
+		/* Configure for all valid profiles */
+		for (cnt = 0; cnt < ROC_NIX_INL_PROFILE_CNT; cnt++)
+			if (nix_inl_ts_pkind_set(roc_nix, ts_ena, inb_inl_dev, cnt))
+				return -EINVAL;
+		return 0;
+	}
+
+	plt_err("Invalid NIX inline profile_id: %u", profile_id);
+	return -EINVAL;
 }
 
 void
