@@ -511,6 +511,7 @@ npc_mcam_write_entry(struct mbox *mbox, struct roc_npc_flow *mcam)
 		cn20k_req->intf = mcam->nix_intf;
 		cn20k_req->enable_entry = mcam->enable;
 		cn20k_req->entry_data.action = mcam->npc_action;
+		cn20k_req->entry_data.action2 = mcam->npc_action2;
 		cn20k_req->entry_data.vtag_action = mcam->vtag_action;
 		cn20k_req->hw_prio = mcam->priority;
 		if (mcam->use_ctr)

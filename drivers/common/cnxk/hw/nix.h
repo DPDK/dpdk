@@ -1678,6 +1678,15 @@ struct nix_rx_action_s {
 	uint64_t rsvd_63_61 : 3;
 };
 
+/* NIX receive action structure */
+struct nix_rx_action2_s {
+	uint64_t ipsec_qsel                  :  3;
+	uint64_t ipsec_qidx                  :  4;
+	uint64_t reserved_7_7                :  1;
+	uint64_t inline_profile_id           :  4;
+	uint64_t reserved_12_63              : 52;
+
+};
 /* NIX receive immediate sub descriptor structure */
 struct nix_rx_imm_s {
 	uint64_t size : 16;
@@ -2666,9 +2675,9 @@ struct nix_lso_format {
 #define NIX_SENDSTAT_IOFFSET_MASK 0xFFF
 #define NIX_SENDSTAT_OOFFSET_MASK 0xFFF
 
-/* The mask is to extract lower 10-bits of channel number
+/* The mask is to extract lower 11-bits of channel number
  * which CPT will pass to X2P.
  */
-#define NIX_CHAN_CPT_X2P_MASK (0x3ffull)
+#define NIX_CHAN_CPT_X2P_MASK (0x7ffull)
 
 #endif /* __NIX_HW_H__ */
