@@ -13983,11 +13983,15 @@ cmd_set_raw_parsed(const struct buffer *in)
 	int gtp_psc = -1; /* GTP PSC option index. */
 	const void *src_spec;
 
-	if (in->command == SET_SAMPLE_ACTIONS)
-		return cmd_set_raw_parsed_sample(in);
+	if (in->command == SET_SAMPLE_ACTIONS) {
+		cmd_set_raw_parsed_sample(in);
+		return;
+	}
 	else if (in->command == SET_IPV6_EXT_PUSH ||
-		 in->command == SET_IPV6_EXT_REMOVE)
-		return cmd_set_ipv6_ext_parsed(in);
+			 in->command == SET_IPV6_EXT_REMOVE) {
+		cmd_set_ipv6_ext_parsed(in);
+		return;
+	}
 	RTE_ASSERT(in->command == SET_RAW_ENCAP ||
 		   in->command == SET_RAW_DECAP);
 	if (in->command == SET_RAW_ENCAP) {
