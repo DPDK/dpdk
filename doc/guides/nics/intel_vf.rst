@@ -138,6 +138,11 @@ Intel\ |reg| E800 Series Ethernet devices:
   for example: ``-a 18:00.0,quanta_size=2048``.
   The default value is 1024, and quanta size should be set as the product of 64 in legacy host interface mode.
 
+* When using the Intel out-of-tree "ice" PF/kernel driver v1.13.7 or later,
+  to create VFs with >16 queues (aka. "large VFs"),
+  it is necessary to change the rss_lut_vf_addr setting in sysfs from the default of 64 to 512.
+  This can be done using the following command for the first VF on an interface:
+  ``echo 512 > /sys/class/net/<PF interface>/device/virtfn0/rss_lut_vf_attr``
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
