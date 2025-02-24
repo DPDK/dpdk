@@ -1,24 +1,22 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2021 Marvell.
+ * Copyright(C) 2024 Marvell.
  */
 
 #include <rte_cryptodev.h>
 #include <rte_eventdev.h>
+#include <rte_pmd_cnxk.h>
 #include <rte_security.h>
 #include <rte_security_driver.h>
-#include <rte_pmd_cnxk.h>
 
-#include <cn10k_ethdev.h>
-#include <cn10k_rx.h>
-#include <cnxk_ethdev_mcs.h>
+#include <cn20k_ethdev.h>
 #include <cnxk_security.h>
 #include <roc_priv.h>
 
 PLT_STATIC_ASSERT(offsetof(struct rte_pmd_cnxk_ipsec_inb_sa, ctx.ar_winbits) ==
-		  offsetof(struct roc_ot_ipsec_inb_sa, ctx.ar_winbits));
+		  offsetof(struct roc_ow_ipsec_inb_sa, ctx.ar_winbits));
 
 PLT_STATIC_ASSERT(offsetof(struct rte_pmd_cnxk_ipsec_outb_sa, ctx.mib_pkts) ==
-		  offsetof(struct roc_ot_ipsec_outb_sa, ctx.mib_pkts));
+		  offsetof(struct roc_ow_ipsec_outb_sa, ctx.mib_pkts));
 
 PLT_STATIC_ASSERT(RTE_PMD_CNXK_CTX_MAX_CKEY_LEN == ROC_CTX_MAX_CKEY_LEN);
 PLT_STATIC_ASSERT(RTE_PMD_CNXK_CTX_MAX_OPAD_IPAD_LEN == RTE_PMD_CNXK_CTX_MAX_OPAD_IPAD_LEN);
@@ -28,7 +26,7 @@ PLT_STATIC_ASSERT(RTE_PMD_CNXK_AR_WIN_SIZE_MAX == ROC_AR_WIN_SIZE_MAX);
 PLT_STATIC_ASSERT(RTE_PMD_CNXK_LOG_MIN_AR_WIN_SIZE_M1 == ROC_LOG_MIN_AR_WIN_SIZE_M1);
 PLT_STATIC_ASSERT(RTE_PMD_CNXK_AR_WINBITS_SZ == ROC_AR_WINBITS_SZ);
 
-static struct rte_cryptodev_capabilities cn10k_eth_sec_crypto_caps[] = {
+static struct rte_cryptodev_capabilities cn20k_eth_sec_crypto_caps[] = {
 	{	/* AES GCM */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -318,7 +316,7 @@ static struct rte_cryptodev_capabilities cn10k_eth_sec_crypto_caps[] = {
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
-static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] = {
+static const struct rte_security_capability cn20k_eth_sec_ipsec_capabilities[] = {
 	{	/* IPsec Inline Protocol ESP Tunnel Ingress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
 		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
@@ -342,7 +340,7 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.ingress_oop = 1,
 			},
 		},
-		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
+		.crypto_capabilities = cn20k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{	/* IPsec Inline Protocol ESP Tunnel Egress */
@@ -367,7 +365,7 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.esn = 1,
 			},
 		},
-		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
+		.crypto_capabilities = cn20k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{	/* IPsec Inline Protocol ESP Transport Egress */
@@ -392,7 +390,7 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.ingress_oop = 1,
 			},
 		},
-		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
+		.crypto_capabilities = cn20k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{	/* IPsec Inline Protocol ESP Transport Ingress */
@@ -416,102 +414,14 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.ingress_oop = 1,
 			},
 		},
-		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
+		.crypto_capabilities = cn20k_eth_sec_crypto_caps,
 		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 };
 
-static const struct rte_security_capability cn10k_eth_sec_macsec_capabilities[] = {
-	{	/* MACsec Inline Protocol, AES-GCM-128 algo */
-		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
-		.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
-		.macsec = {
-			.mtu = ROC_MCS_MAX_MTU,
-			.alg = RTE_SECURITY_MACSEC_ALG_GCM_128,
-			.max_nb_sc = 128,
-			.max_nb_sa = 256,
-			.max_nb_sess = 256,
-			.replay_win_sz = ROC_MCS_MAX_AR_WINSZ,
-			.relative_sectag_insert = 1,
-			.fixed_sectag_insert = 1,
-			.icv_include_da_sa = 1,
-			.ctrl_port_enable = 1,
-			.preserve_sectag = 1,
-			.preserve_icv = 1,
-			.validate_frames = 1,
-			.re_key = 1,
-			.anti_replay = 1,
-		},
-	},
-	{	/* MACsec Inline Protocol, AES-GCM-256 algo */
-		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
-		.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
-		.macsec = {
-			.mtu = ROC_MCS_MAX_MTU,
-			.alg = RTE_SECURITY_MACSEC_ALG_GCM_256,
-			.max_nb_sc = 128,
-			.max_nb_sa = 256,
-			.max_nb_sess = 256,
-			.replay_win_sz = ROC_MCS_MAX_AR_WINSZ,
-			.relative_sectag_insert = 1,
-			.fixed_sectag_insert = 1,
-			.icv_include_da_sa = 1,
-			.ctrl_port_enable = 1,
-			.preserve_sectag = 1,
-			.preserve_icv = 1,
-			.validate_frames = 1,
-			.re_key = 1,
-			.anti_replay = 1,
-		},
-	},
-	{	/* MACsec Inline Protocol, AES-GCM-XPN-128 algo */
-		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
-		.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
-		.macsec = {
-			.mtu = ROC_MCS_MAX_MTU,
-			.alg = RTE_SECURITY_MACSEC_ALG_GCM_XPN_128,
-			.max_nb_sc = 128,
-			.max_nb_sa = 256,
-			.max_nb_sess = 256,
-			.replay_win_sz = ROC_MCS_MAX_AR_WINSZ,
-			.relative_sectag_insert = 1,
-			.fixed_sectag_insert = 1,
-			.icv_include_da_sa = 1,
-			.ctrl_port_enable = 1,
-			.preserve_sectag = 1,
-			.preserve_icv = 1,
-			.validate_frames = 1,
-			.re_key = 1,
-			.anti_replay = 1,
-		},
-	},
-	{	/* MACsec Inline Protocol, AES-GCM-XPN-256 algo */
-		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
-		.protocol = RTE_SECURITY_PROTOCOL_MACSEC,
-		.macsec = {
-			.mtu = ROC_MCS_MAX_MTU,
-			.alg = RTE_SECURITY_MACSEC_ALG_GCM_XPN_256,
-			.max_nb_sc = 128,
-			.max_nb_sa = 256,
-			.max_nb_sess = 256,
-			.replay_win_sz = ROC_MCS_MAX_AR_WINSZ,
-			.relative_sectag_insert = 1,
-			.fixed_sectag_insert = 1,
-			.icv_include_da_sa = 1,
-			.ctrl_port_enable = 1,
-			.preserve_sectag = 1,
-			.preserve_icv = 1,
-			.validate_frames = 1,
-			.re_key = 1,
-			.anti_replay = 1,
-		},
-	},
-};
+#define SEC_CAPS_LEN (RTE_DIM(cn20k_eth_sec_ipsec_capabilities) + 1)
 
-#define SEC_CAPS_LEN (RTE_DIM(cn10k_eth_sec_ipsec_capabilities) + \
-		RTE_DIM(cn10k_eth_sec_macsec_capabilities) + 1)
-
-static struct rte_security_capability cn10k_eth_sec_capabilities[SEC_CAPS_LEN];
+static struct rte_security_capability cn20k_eth_sec_capabilities[SEC_CAPS_LEN];
 
 static inline void
 cnxk_pktmbuf_free_no_cache(struct rte_mbuf *mbuf)
@@ -528,13 +438,13 @@ cnxk_pktmbuf_free_no_cache(struct rte_mbuf *mbuf)
 }
 
 void
-cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
+cn20k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 {
 	struct rte_eth_event_ipsec_desc desc;
-	struct cn10k_sec_sess_priv sess_priv;
-	struct cn10k_outb_priv_data *priv;
-	struct roc_ot_ipsec_outb_sa *sa;
-	struct cpt_cn10k_res_s *res;
+	struct cn20k_sec_sess_priv sess_priv;
+	struct cn20k_outb_priv_data *priv;
+	struct roc_ow_ipsec_outb_sa *sa;
+	struct cpt_cn20k_res_s *res;
 	struct rte_eth_dev *eth_dev;
 	struct cnxk_eth_dev *dev;
 	static uint64_t warn_cnt;
@@ -563,21 +473,17 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 		/* Fall through */
 	default:
 		if (soft_exp_event & 0x1) {
-			sa = (struct roc_ot_ipsec_outb_sa *)args;
-			priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(sa);
+			sa = (struct roc_ow_ipsec_outb_sa *)args;
+			priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
 			desc.metadata = (uint64_t)priv->userdata;
 			if (sa->w2.s.life_unit == ROC_IE_OT_SA_LIFE_UNIT_PKTS)
-				desc.subtype =
-					RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
+				desc.subtype = RTE_ETH_EVENT_IPSEC_SA_PKT_EXPIRY;
 			else
-				desc.subtype =
-					RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
+				desc.subtype = RTE_ETH_EVENT_IPSEC_SA_BYTE_EXPIRY;
 			eth_dev = &rte_eth_devices[soft_exp_event >> 8];
-			rte_eth_dev_callback_process(eth_dev,
-				RTE_ETH_EVENT_IPSEC, &desc);
+			rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_IPSEC, &desc);
 		} else {
-			plt_err("Unknown event gw[0] = 0x%016lx, gw[1] = 0x%016lx",
-				gw[0], gw[1]);
+			plt_err("Unknown event gw[0] = 0x%016lx, gw[1] = 0x%016lx", gw[0], gw[1]);
 		}
 		return;
 	}
@@ -590,8 +496,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 	sess_priv.u64 = *rte_security_dynfield(mbuf);
 	/* Calculate dlen adj */
 	dlen_adj = mbuf->pkt_len - mbuf->l2_len;
-	rlen = (dlen_adj + sess_priv.roundup_len) +
-	       (sess_priv.roundup_byte - 1);
+	rlen = (dlen_adj + sess_priv.roundup_len) + (sess_priv.roundup_byte - 1);
 	rlen &= ~(uint64_t)(sess_priv.roundup_byte - 1);
 	rlen += sess_priv.partial_len;
 	dlen_adj = rlen - dlen_adj;
@@ -600,16 +505,16 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 	nixtx = rte_pktmbuf_mtod(mbuf, uintptr_t) + mbuf->pkt_len + dlen_adj;
 	nixtx += BIT_ULL(7);
 	nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
-	res = (struct cpt_cn10k_res_s *)nixtx;
+	res = (struct cpt_cn20k_res_s *)nixtx;
 
-	plt_nix_dbg("Outbound error, mbuf %p, sa_index %u, compcode %x uc %x",
-		    mbuf, sess_priv.sa_idx, res->compcode, res->uc_compcode);
+	plt_nix_dbg("Outbound error, mbuf %p, sa_index %u, compcode %x uc %x", mbuf,
+		    sess_priv.sa_idx, res->compcode, res->uc_compcode);
 
 	sess_priv.u64 = *rte_security_dynfield(mbuf);
 
 	sa_base = dev->outb.sa_base;
-	sa = roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
-	priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(sa);
+	sa = roc_nix_inl_ow_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
+	priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(sa);
 
 	memset(&desc, 0, sizeof(desc));
 
@@ -637,8 +542,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 			plt_warn("Outbound error, mbuf %p, sa_index %u,"
 				 " compcode %x uc %x,"
 				 " (total warnings %" PRIu64 ")",
-				 mbuf, sess_priv.sa_idx, res->compcode,
-				 res->uc_compcode, warn_cnt);
+				 mbuf, sess_priv.sa_idx, res->compcode, res->uc_compcode, warn_cnt);
 		desc.subtype = -res->uc_compcode;
 		break;
 	}
@@ -649,7 +553,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 }
 
 static void
-outb_dbg_iv_update(struct roc_ot_ipsec_outb_sa *outb_sa, const char *__iv_str)
+outb_dbg_iv_update(struct roc_ow_ipsec_outb_sa *outb_sa, const char *__iv_str)
 {
 	uint8_t *iv_dbg = outb_sa->iv.iv_dbg;
 	char *iv_str = strdup(__iv_str);
@@ -696,8 +600,7 @@ outb_dbg_iv_update(struct roc_ot_ipsec_outb_sa *outb_sa, const char *__iv_str)
 			iv_dbg[i] = strtoul(iv_b, NULL, 0);
 		}
 		*(uint64_t *)iv_dbg = rte_be_to_cpu_64(*(uint64_t *)iv_dbg);
-		*(uint64_t *)&iv_dbg[8] =
-			rte_be_to_cpu_64(*(uint64_t *)&iv_dbg[8]);
+		*(uint64_t *)&iv_dbg[8] = rte_be_to_cpu_64(*(uint64_t *)&iv_dbg[8]);
 	}
 
 	/* Update source of IV */
@@ -706,21 +609,18 @@ outb_dbg_iv_update(struct roc_ot_ipsec_outb_sa *outb_sa, const char *__iv_str)
 }
 
 static int
-cn10k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix,
-				struct roc_ot_ipsec_outb_sa *sa, void *sa_cptr,
-				struct rte_security_ipsec_xform *ipsec_xfrm,
+cn20k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix, struct roc_ow_ipsec_outb_sa *sa,
+				void *sa_cptr, struct rte_security_ipsec_xform *ipsec_xfrm,
 				uint32_t sa_idx)
 {
 	uint64_t *ring_base, ring_addr;
 
-	if (ipsec_xfrm->life.bytes_soft_limit |
-	    ipsec_xfrm->life.packets_soft_limit) {
+	if (ipsec_xfrm->life.bytes_soft_limit | ipsec_xfrm->life.packets_soft_limit) {
 		ring_base = roc_nix_inl_outb_ring_base_get(roc_nix);
 		if (ring_base == NULL)
 			return -ENOTSUP;
 
-		ring_addr = ring_base[sa_idx >>
-				      ROC_NIX_SOFT_EXP_ERR_RING_MAX_ENTRY_LOG2];
+		ring_addr = ring_base[sa_idx >> ROC_NIX_SOFT_EXP_ERR_RING_MAX_ENTRY_LOG2];
 		sa->ctx.err_ctl.s.mode = ROC_IE_OT_ERR_CTL_MODE_RING;
 		sa->ctx.err_ctl.s.address = ring_addr >> 3;
 		sa->w0.s.ctx_id = ((uintptr_t)sa_cptr >> 51) & 0x1ff;
@@ -730,14 +630,13 @@ cn10k_eth_sec_outb_sa_misc_fill(struct roc_nix *roc_nix,
 }
 
 static int
-cn10k_eth_sec_session_create(void *device,
-			     struct rte_security_session_conf *conf,
+cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *conf,
 			     struct rte_security_session *sess)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_security_ipsec_xform *ipsec;
-	struct cn10k_sec_sess_priv sess_priv;
+	struct cn20k_sec_sess_priv sess_priv;
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec = SECURITY_GET_SESS_PRIV(sess);
 	struct roc_nix *nix = &dev->nix;
@@ -749,9 +648,7 @@ cn10k_eth_sec_session_create(void *device,
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
 		return -ENOTSUP;
 
-	if (conf->protocol == RTE_SECURITY_PROTOCOL_MACSEC)
-		return cnxk_eth_macsec_session_create(dev, conf, sess);
-	else if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
+	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
 		return -ENOTSUP;
 
 	if (nix->custom_inb_sa)
@@ -760,23 +657,20 @@ cn10k_eth_sec_session_create(void *device,
 	if (rte_security_dynfield_register() < 0)
 		return -ENOTSUP;
 
-	if (conf->ipsec.options.ip_reassembly_en &&
-			dev->reass_dynfield_off < 0) {
+	if (conf->ipsec.options.ip_reassembly_en && dev->reass_dynfield_off < 0) {
 		if (rte_eth_ip_reassembly_dynfield_register(&dev->reass_dynfield_off,
-					&dev->reass_dynflag_bit) < 0)
+							    &dev->reass_dynflag_bit) < 0)
 			return -rte_errno;
 	}
 
-	if (conf->ipsec.options.ingress_oop &&
-	    rte_security_oop_dynfield_offset < 0) {
+	if (conf->ipsec.options.ingress_oop && rte_security_oop_dynfield_offset < 0) {
 		/* Register for security OOP dynfield if required */
 		if (rte_security_oop_dynfield_register() < 0)
 			return -rte_errno;
 	}
 
 	/* We cannot support inbound reassembly and OOP together */
-	if (conf->ipsec.options.ip_reassembly_en &&
-	    conf->ipsec.options.ingress_oop) {
+	if (conf->ipsec.options.ip_reassembly_en && conf->ipsec.options.ingress_oop) {
 		plt_err("Cannot support Inbound reassembly and OOP together");
 		return -ENOTSUP;
 	}
@@ -797,12 +691,12 @@ cn10k_eth_sec_session_create(void *device,
 		roc_nix_inl_dev_lock();
 
 	if (inbound) {
-		struct roc_ot_ipsec_inb_sa *inb_sa, *inb_sa_dptr;
-		struct cn10k_inb_priv_data *inb_priv;
+		struct roc_ow_ipsec_inb_sa *inb_sa, *inb_sa_dptr;
+		struct cn20k_inb_priv_data *inb_priv;
 		uint32_t spi_mask;
 		uintptr_t sa;
 
-		PLT_STATIC_ASSERT(sizeof(struct cn10k_inb_priv_data) <
+		PLT_STATIC_ASSERT(sizeof(struct cn20k_inb_priv_data) <
 				  ROC_NIX_INL_OT_IPSEC_INB_SW_RSVD);
 
 		spi_mask = roc_nix_inl_inb_spi_range(nix, inl_dev, NULL, NULL);
@@ -823,43 +717,39 @@ cn10k_eth_sec_session_create(void *device,
 			rc = -ENOTSUP;
 			goto err;
 		} else if (!sa) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to create ingress sa");
+			snprintf(tbuf, sizeof(tbuf), "Failed to create ingress sa");
 			rc = -EFAULT;
 			goto err;
 		}
 
-		inb_sa = (struct roc_ot_ipsec_inb_sa *)sa;
+		inb_sa = (struct roc_ow_ipsec_inb_sa *)sa;
 
 		/* Check if SA is already in use */
 		if (inb_sa->w2.s.valid) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Inbound SA with SPI %u already in use",
+			snprintf(tbuf, sizeof(tbuf), "Inbound SA with SPI %u already in use",
 				 ipsec->spi);
 			rc = -EBUSY;
 			goto err;
 		}
 
-		inb_sa_dptr = (struct roc_ot_ipsec_inb_sa *)dev->inb.sa_dptr;
-		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+		inb_sa_dptr = (struct roc_ow_ipsec_inb_sa *)dev->inb.sa_dptr;
+		memset(inb_sa_dptr, 0, sizeof(struct roc_ow_ipsec_inb_sa));
 
 		/* Fill inbound sa params */
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ow_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
 		if (rc) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to init inbound sa, rc=%d", rc);
+			snprintf(tbuf, sizeof(tbuf), "Failed to init inbound sa, rc=%d", rc);
 			goto err;
 		}
 
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+		inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd(inb_sa);
 		/* Back pointer to get eth_sec */
 		inb_priv->eth_sec = eth_sec;
 		/* Save userdata in inb private area */
 		inb_priv->userdata = conf->userdata;
 
 		/* Save SA index/SPI in cookie for now */
-		inb_sa_dptr->w1.s.cookie =
-			rte_cpu_to_be_32(ipsec->spi & spi_mask);
+		inb_sa_dptr->w1.s.cookie = ipsec->spi & spi_mask;
 
 		if (ipsec->options.stats == 1) {
 			/* Enable mib counters */
@@ -869,8 +759,7 @@ cn10k_eth_sec_session_create(void *device,
 
 		/* Enable out-of-place processing */
 		if (ipsec->options.ingress_oop)
-			inb_sa_dptr->w0.s.pkt_format =
-				ROC_IE_OT_SA_PKT_FMT_FULL;
+			inb_sa_dptr->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_FULL;
 
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
@@ -888,9 +777,8 @@ cn10k_eth_sec_session_create(void *device,
 		TAILQ_INSERT_TAIL(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess++;
 		/* Sync session in context cache */
-		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa,
-					   eth_sec->inb,
-					   sizeof(struct roc_ot_ipsec_inb_sa));
+		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa, eth_sec->inb,
+					   sizeof(struct roc_ow_ipsec_inb_sa));
 		if (rc)
 			goto err;
 
@@ -902,24 +790,15 @@ cn10k_eth_sec_session_create(void *device,
 		if (ipsec->options.ingress_oop)
 			dev->inb.nb_oop++;
 
-		/* Update function pointer to handle OOP sessions */
-		if (dev->inb.nb_oop &&
-		    !(dev->rx_offload_flags & NIX_RX_REAS_F)) {
-			dev->rx_offload_flags |= NIX_RX_REAS_F;
-			cn10k_eth_set_rx_function(eth_dev);
-			if (cnxk_ethdev_rx_offload_cb)
-				cnxk_ethdev_rx_offload_cb(eth_dev->data->port_id,
-							  NIX_RX_REAS_F);
-		}
 	} else {
-		struct roc_ot_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
-		struct cn10k_outb_priv_data *outb_priv;
+		struct roc_ow_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
+		struct cn20k_outb_priv_data *outb_priv;
 		struct cnxk_ipsec_outb_rlens *rlens;
 		uint64_t sa_base = dev->outb.sa_base;
 		const char *iv_str;
 		uint32_t sa_idx;
 
-		PLT_STATIC_ASSERT(sizeof(struct cn10k_outb_priv_data) <
+		PLT_STATIC_ASSERT(sizeof(struct cn20k_outb_priv_data) <
 				  ROC_NIX_INL_OT_IPSEC_OUTB_SW_RSVD);
 
 		/* Alloc an sa index */
@@ -927,18 +806,17 @@ cn10k_eth_sec_session_create(void *device,
 		if (rc)
 			goto err;
 
-		outb_sa = roc_nix_inl_ot_ipsec_outb_sa(sa_base, sa_idx);
-		outb_priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(outb_sa);
+		outb_sa = roc_nix_inl_ow_ipsec_outb_sa(sa_base, sa_idx);
+		outb_priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(outb_sa);
 		rlens = &outb_priv->rlens;
 
-		outb_sa_dptr = (struct roc_ot_ipsec_outb_sa *)dev->outb.sa_dptr;
-		memset(outb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
+		outb_sa_dptr = (struct roc_ow_ipsec_outb_sa *)dev->outb.sa_dptr;
+		memset(outb_sa_dptr, 0, sizeof(struct roc_ow_ipsec_outb_sa));
 
 		/* Fill outbound sa params */
-		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ow_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
 		if (rc) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to init outbound sa, rc=%d", rc);
+			snprintf(tbuf, sizeof(tbuf), "Failed to init outbound sa, rc=%d", rc);
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
 			goto err;
 		}
@@ -949,11 +827,10 @@ cn10k_eth_sec_session_create(void *device,
 				outb_dbg_iv_update(outb_sa_dptr, iv_str);
 		}
 		/* Fill outbound sa misc params */
-		rc = cn10k_eth_sec_outb_sa_misc_fill(&dev->nix, outb_sa_dptr,
-						     outb_sa, ipsec, sa_idx);
+		rc = cn20k_eth_sec_outb_sa_misc_fill(&dev->nix, outb_sa_dptr, outb_sa, ipsec,
+						     sa_idx);
 		if (rc) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to init outb sa misc params, rc=%d",
+			snprintf(tbuf, sizeof(tbuf), "Failed to init outb sa misc params, rc=%d",
 				 rc);
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
 			goto err;
@@ -981,11 +858,10 @@ cn10k_eth_sec_session_create(void *device,
 		sess_priv.mode = outb_sa_dptr->w2.s.ipsec_mode;
 		sess_priv.outer_ip_ver = outb_sa_dptr->w2.s.outer_ip_ver;
 		/* Propagate inner checksum enable from SA to fast path */
-		sess_priv.chksum = (!ipsec->options.ip_csum_enable << 1 |
-				    !ipsec->options.l4_csum_enable);
+		sess_priv.chksum =
+			(!ipsec->options.ip_csum_enable << 1 | !ipsec->options.l4_csum_enable);
 		sess_priv.dec_ttl = ipsec->options.dec_ttl;
-		if (roc_feature_nix_has_inl_ipsec_mseg() &&
-		    dev->outb.cpt_eng_caps & BIT_ULL(35))
+		if (roc_feature_nix_has_inl_ipsec_mseg() && dev->outb.cpt_eng_caps & BIT_ULL(35))
 			sess_priv.nixtx_off = 1;
 
 		/* Pointer from eth_sec -> outb_sa */
@@ -997,9 +873,8 @@ cn10k_eth_sec_session_create(void *device,
 		TAILQ_INSERT_TAIL(&dev->outb.list, eth_sec, entry);
 		dev->outb.nb_sess++;
 		/* Sync session in context cache */
-		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa,
-					   eth_sec->inb,
-					   sizeof(struct roc_ot_ipsec_outb_sa));
+		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa, eth_sec->inb,
+					   sizeof(struct roc_ow_ipsec_outb_sa));
 		if (rc)
 			goto err;
 	}
@@ -1008,8 +883,8 @@ cn10k_eth_sec_session_create(void *device,
 	rte_spinlock_unlock(lock);
 
 	plt_nix_dbg("Created %s session with spi=%u, sa_idx=%u inl_dev=%u",
-		    inbound ? "inbound" : "outbound", eth_sec->spi,
-		    eth_sec->sa_idx, eth_sec->inl_dev);
+		    inbound ? "inbound" : "outbound", eth_sec->spi, eth_sec->sa_idx,
+		    eth_sec->inl_dev);
 	/*
 	 * Update fast path info in priv area.
 	 */
@@ -1027,22 +902,17 @@ err:
 }
 
 static int
-cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
+cn20k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	struct cnxk_macsec_sess *macsec_sess;
 	struct cnxk_eth_sec_sess *eth_sec;
 	rte_spinlock_t *lock;
 	void *sa_dptr;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
-	if (!eth_sec) {
-		macsec_sess = cnxk_eth_macsec_sess_get_by_sess(dev, sess);
-		if (macsec_sess)
-			return cnxk_eth_macsec_session_destroy(dev, sess);
+	if (!eth_sec)
 		return -ENOENT;
-	}
 	if (dev->nix.custom_inb_sa)
 		return -ENOTSUP;
 
@@ -1055,30 +925,22 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	if (eth_sec->inb) {
 		/* Disable SA */
 		sa_dptr = dev->inb.sa_dptr;
-		roc_ot_ipsec_inb_sa_init(sa_dptr);
+		roc_ow_ipsec_inb_sa_init(sa_dptr);
 
-		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa,
-				      eth_sec->inb,
-				      sizeof(struct roc_ot_ipsec_inb_sa));
+		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa, eth_sec->inb,
+				      sizeof(struct roc_ow_ipsec_inb_sa));
 		TAILQ_REMOVE(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess--;
 		if (eth_sec->inb_oop)
 			dev->inb.nb_oop--;
 
-		/* Clear offload flags if was used by OOP */
-		if (!dev->inb.nb_oop && !dev->inb.reass_en &&
-		    dev->rx_offload_flags & NIX_RX_REAS_F) {
-			dev->rx_offload_flags &= ~NIX_RX_REAS_F;
-			cn10k_eth_set_rx_function(eth_dev);
-		}
 	} else {
 		/* Disable SA */
 		sa_dptr = dev->outb.sa_dptr;
-		roc_ot_ipsec_outb_sa_init(sa_dptr);
+		roc_ow_ipsec_outb_sa_init(sa_dptr);
 
-		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa,
-				      eth_sec->inb,
-				      sizeof(struct roc_ot_ipsec_outb_sa));
+		roc_nix_inl_ctx_write(&dev->nix, sa_dptr, eth_sec->sa, eth_sec->inb,
+				      sizeof(struct roc_ow_ipsec_outb_sa));
 		/* Release Outbound SA index */
 		cnxk_eth_outb_sa_idx_put(dev, eth_sec->sa_idx);
 		TAILQ_REMOVE(&dev->outb.list, eth_sec, entry);
@@ -1090,26 +952,26 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	rte_spinlock_unlock(lock);
 
 	plt_nix_dbg("Destroyed %s session with spi=%u, sa_idx=%u, inl_dev=%u",
-		    eth_sec->inb ? "inbound" : "outbound", eth_sec->spi,
-		    eth_sec->sa_idx, eth_sec->inl_dev);
+		    eth_sec->inb ? "inbound" : "outbound", eth_sec->spi, eth_sec->sa_idx,
+		    eth_sec->inl_dev);
 
 	return 0;
 }
 
 static const struct rte_security_capability *
-cn10k_eth_sec_capabilities_get(void *device __rte_unused)
+cn20k_eth_sec_capabilities_get(void *device __rte_unused)
 {
-	return cn10k_eth_sec_capabilities;
+	return cn20k_eth_sec_capabilities;
 }
 
 static int
-cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
+cn20k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 			     struct rte_security_session_conf *conf)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_security_ipsec_xform *ipsec;
-	struct cn10k_sec_sess_priv sess_priv;
+	struct cn20k_sec_sess_priv sess_priv;
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec;
 	bool inbound;
@@ -1130,15 +992,15 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 	eth_sec->spi = conf->ipsec.spi;
 
 	if (inbound) {
-		struct roc_ot_ipsec_inb_sa *inb_sa_dptr, *inb_sa;
-		struct cn10k_inb_priv_data *inb_priv;
+		struct roc_ow_ipsec_inb_sa *inb_sa_dptr, *inb_sa;
+		struct cn20k_inb_priv_data *inb_priv;
 
 		inb_sa = eth_sec->sa;
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
-		inb_sa_dptr = (struct roc_ot_ipsec_inb_sa *)dev->inb.sa_dptr;
-		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
+		inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd(inb_sa);
+		inb_sa_dptr = (struct roc_ow_ipsec_inb_sa *)dev->inb.sa_dptr;
+		memset(inb_sa_dptr, 0, sizeof(struct roc_ow_ipsec_inb_sa));
 
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ow_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
 		if (rc)
 			return -EINVAL;
 		/* Use cookie for original data */
@@ -1154,26 +1016,25 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		if (ipsec->options.ingress_oop)
 			inb_sa_dptr->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_FULL;
 
-		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa,
-					   eth_sec->inb,
-					   sizeof(struct roc_ot_ipsec_inb_sa));
+		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa, eth_sec->inb,
+					   sizeof(struct roc_ow_ipsec_inb_sa));
 		if (rc)
 			return -EINVAL;
 
 		/* Save userdata in inb private area */
 		inb_priv->userdata = conf->userdata;
 	} else {
-		struct roc_ot_ipsec_outb_sa *outb_sa_dptr, *outb_sa;
-		struct cn10k_outb_priv_data *outb_priv;
+		struct roc_ow_ipsec_outb_sa *outb_sa_dptr, *outb_sa;
+		struct cn20k_outb_priv_data *outb_priv;
 		struct cnxk_ipsec_outb_rlens *rlens;
 
 		outb_sa = eth_sec->sa;
-		outb_priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(outb_sa);
+		outb_priv = roc_nix_inl_ow_ipsec_outb_sa_sw_rsvd(outb_sa);
 		rlens = &outb_priv->rlens;
-		outb_sa_dptr = (struct roc_ot_ipsec_outb_sa *)dev->outb.sa_dptr;
-		memset(outb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
+		outb_sa_dptr = (struct roc_ow_ipsec_outb_sa *)dev->outb.sa_dptr;
+		memset(outb_sa_dptr, 0, sizeof(struct roc_ow_ipsec_outb_sa));
 
-		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ow_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
 		if (rc)
 			return -EINVAL;
 
@@ -1200,9 +1061,8 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		if (roc_feature_nix_has_inl_ipsec_mseg() && dev->outb.cpt_eng_caps & BIT_ULL(35))
 			sess_priv.nixtx_off = 1;
 
-		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa,
-					   eth_sec->inb,
-					   sizeof(struct roc_ot_ipsec_outb_sa));
+		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa, eth_sec->inb,
+					   sizeof(struct roc_ow_ipsec_outb_sa));
 		if (rc)
 			return -EINVAL;
 
@@ -1215,40 +1075,31 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 }
 
 static int
-cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
-			    struct rte_security_stats *stats)
+cn20k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
+				struct rte_security_stats *stats)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	struct cnxk_macsec_sess *macsec_sess;
 	struct cnxk_eth_sec_sess *eth_sec;
 	int rc;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
-	if (eth_sec == NULL) {
-		macsec_sess = cnxk_eth_macsec_sess_get_by_sess(dev, sess);
-		if (macsec_sess)
-			return cnxk_eth_macsec_session_stats_get(dev, macsec_sess, stats);
+	if (eth_sec == NULL)
 		return -EINVAL;
-	}
 
-	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb,
-			    ROC_NIX_INL_SA_OP_FLUSH);
+	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb, ROC_NIX_INL_SA_OP_FLUSH);
 	if (rc)
 		return -EINVAL;
+	rte_delay_ms(1);
 
 	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
 
 	if (eth_sec->inb) {
-		stats->ipsec.ipackets =
-			((struct roc_ot_ipsec_inb_sa *)eth_sec->sa)->ctx.mib_pkts;
-		stats->ipsec.ibytes =
-			((struct roc_ot_ipsec_inb_sa *)eth_sec->sa)->ctx.mib_octs;
+		stats->ipsec.ipackets = ((struct roc_ow_ipsec_inb_sa *)eth_sec->sa)->ctx.mib_pkts;
+		stats->ipsec.ibytes = ((struct roc_ow_ipsec_inb_sa *)eth_sec->sa)->ctx.mib_octs;
 	} else {
-		stats->ipsec.opackets =
-			((struct roc_ot_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_pkts;
-		stats->ipsec.obytes =
-			((struct roc_ot_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_octs;
+		stats->ipsec.opackets = ((struct roc_ow_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_pkts;
+		stats->ipsec.obytes = ((struct roc_ow_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_octs;
 	}
 
 	return 0;
@@ -1264,55 +1115,9 @@ eth_sec_caps_add(struct rte_security_capability eth_sec_caps[], uint32_t *idx,
 	*idx += nb_caps;
 }
 
-static uint16_t __rte_hot
-cn10k_eth_sec_inb_rx_inject(void *device, struct rte_mbuf **pkts,
-			    struct rte_security_session **sess, uint16_t nb_pkts)
-{
-	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
-	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-
-	return cn10k_nix_inj_pkts(sess, &dev->inj_cfg, pkts, nb_pkts);
-}
-
-static int
-cn10k_eth_sec_rx_inject_config(void *device, uint16_t port_id, bool enable)
-{
-	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
-	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	uint64_t channel, pf_func, inj_match_id = 0xFFFFUL;
-	struct cnxk_ethdev_inj_cfg *inj_cfg;
-	struct roc_nix *nix = &dev->nix;
-	struct roc_cpt_lf *inl_lf;
-	uint64_t sa_base;
-
-	if (!rte_eth_dev_is_valid_port(port_id))
-		return -EINVAL;
-
-	if (eth_dev->data->dev_started || !eth_dev->data->dev_configured)
-		return -EBUSY;
-
-	if (!roc_nix_inl_inb_rx_inject_enable(nix, dev->inb.inl_dev))
-		return -ENOTSUP;
-
-	roc_idev_nix_rx_inject_set(port_id, enable);
-
-	inl_lf = roc_nix_inl_inb_inj_lf_get(nix);
-	sa_base = roc_nix_inl_inb_sa_base_get(nix, dev->inb.inl_dev);
-
-	inj_cfg = &dev->inj_cfg;
-	inj_cfg->sa_base = sa_base | eth_dev->data->port_id;
-	inj_cfg->io_addr = inl_lf->io_addr;
-	inj_cfg->lmt_base = nix->lmt_base;
-	channel = roc_nix_get_base_chan(nix);
-	pf_func = roc_idev_nix_inl_dev_pffunc_get();
-	inj_cfg->cmd_w0 = pf_func << 48 | inj_match_id << 32 | channel << 4;
-
-	return 0;
-}
-
 #define CPT_LMTST_BURST 32
 static uint16_t
-cn10k_inl_dev_submit(struct roc_nix_inl_dev_q *q, void *inst, uint16_t nb_inst)
+cn20k_inl_dev_submit(struct roc_nix_inl_dev_q *q, void *inst, uint16_t nb_inst)
 {
 	uintptr_t lbase = q->lmt_base;
 	uint8_t lnum, shft, loff;
@@ -1340,7 +1145,7 @@ again:
 	shft = shft + (lnum * 3);
 
 	left -= burst;
-	cn10k_nix_sec_steorl(io_addr, lmt_id, lnum, loff, shft);
+	cn20k_nix_sec_steorl(io_addr, lmt_id, lnum, loff, shft);
 	rte_io_wmb();
 	if (left) {
 		inst = RTE_PTR_ADD(inst, burst * sizeof(struct cpt_inst_s));
@@ -1350,7 +1155,7 @@ again:
 }
 
 void
-cn10k_eth_sec_ops_override(void)
+cn20k_eth_sec_ops_override(void)
 {
 	static int init_once;
 	uint32_t idx = 0;
@@ -1360,32 +1165,18 @@ cn10k_eth_sec_ops_override(void)
 	init_once = 1;
 
 	if (roc_feature_nix_has_inl_ipsec())
-		eth_sec_caps_add(cn10k_eth_sec_capabilities, &idx,
-				 cn10k_eth_sec_ipsec_capabilities,
-				 RTE_DIM(cn10k_eth_sec_ipsec_capabilities));
+		eth_sec_caps_add(cn20k_eth_sec_capabilities, &idx, cn20k_eth_sec_ipsec_capabilities,
+				 RTE_DIM(cn20k_eth_sec_ipsec_capabilities));
 
-	if (roc_feature_nix_has_macsec())
-		eth_sec_caps_add(cn10k_eth_sec_capabilities, &idx,
-				 cn10k_eth_sec_macsec_capabilities,
-				 RTE_DIM(cn10k_eth_sec_macsec_capabilities));
-
-	cn10k_eth_sec_capabilities[idx].action = RTE_SECURITY_ACTION_TYPE_NONE;
+	cn20k_eth_sec_capabilities[idx].action = RTE_SECURITY_ACTION_TYPE_NONE;
 
 	/* Update platform specific ops */
-	cnxk_eth_sec_ops.macsec_sa_create = cnxk_eth_macsec_sa_create;
-	cnxk_eth_sec_ops.macsec_sc_create = cnxk_eth_macsec_sc_create;
-	cnxk_eth_sec_ops.macsec_sa_destroy = cnxk_eth_macsec_sa_destroy;
-	cnxk_eth_sec_ops.macsec_sc_destroy = cnxk_eth_macsec_sc_destroy;
-	cnxk_eth_sec_ops.session_create = cn10k_eth_sec_session_create;
-	cnxk_eth_sec_ops.session_destroy = cn10k_eth_sec_session_destroy;
-	cnxk_eth_sec_ops.capabilities_get = cn10k_eth_sec_capabilities_get;
-	cnxk_eth_sec_ops.session_update = cn10k_eth_sec_session_update;
-	cnxk_eth_sec_ops.session_stats_get = cn10k_eth_sec_session_stats_get;
-	cnxk_eth_sec_ops.macsec_sc_stats_get = cnxk_eth_macsec_sc_stats_get;
-	cnxk_eth_sec_ops.macsec_sa_stats_get = cnxk_eth_macsec_sa_stats_get;
-	cnxk_eth_sec_ops.rx_inject_configure = cn10k_eth_sec_rx_inject_config;
-	cnxk_eth_sec_ops.inb_pkt_rx_inject = cn10k_eth_sec_inb_rx_inject;
+	cnxk_eth_sec_ops.session_create = cn20k_eth_sec_session_create;
+	cnxk_eth_sec_ops.session_destroy = cn20k_eth_sec_session_destroy;
+	cnxk_eth_sec_ops.capabilities_get = cn20k_eth_sec_capabilities_get;
+	cnxk_eth_sec_ops.session_update = cn20k_eth_sec_session_update;
+	cnxk_eth_sec_ops.session_stats_get = cn20k_eth_sec_session_stats_get;
 
 	/* Update platform specific rte_pmd_cnxk ops */
-	cnxk_pmd_ops.inl_dev_submit = cn10k_inl_dev_submit;
+	cnxk_pmd_ops.inl_dev_submit = cn20k_inl_dev_submit;
 }

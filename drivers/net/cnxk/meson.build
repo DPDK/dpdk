@@ -237,6 +237,7 @@ if soc_type == 'cn20k' or soc_type == 'all'
 # CN20K
 sources += files(
         'cn20k_ethdev.c',
+        'cn20k_ethdev_sec.c',
         'cn20k_flow.c',
         'cn20k_rx_select.c',
         'cn20k_tx_select.c',
