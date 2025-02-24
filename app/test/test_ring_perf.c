@@ -34,7 +34,7 @@ struct lcore_pair {
 	unsigned c1, c2;
 };
 
-static volatile unsigned lcore_count = 0;
+static RTE_ATOMIC(unsigned int) lcore_count;
 
 static void
 test_ring_print_test_string(unsigned int api_type, int esize,
@@ -193,13 +193,10 @@ enqueue_dequeue_bulk_helper(const unsigned int flag, struct thread_params *p)
 	unsigned int n_remaining;
 	const unsigned int bulk_n = bulk_sizes[p->ring_params->bulk_sizes_i];
 
-#ifdef RTE_USE_C11_MEM_MODEL
-	if (rte_atomic_fetch_add_explicit(&lcore_count, 1, rte_memory_order_relaxed) + 1 != 2)
-#else
-	if (__sync_add_and_fetch(&lcore_count, 1) != 2)
-#endif
-		while(lcore_count != 2)
+	if (rte_atomic_fetch_add_explicit(&lcore_count, 1, rte_memory_order_relaxed) + 1 != 2) {
+		while (rte_atomic_load_explicit(&lcore_count, rte_memory_order_relaxed) != 2)
 			rte_pause();
+	}
 
 	burst = test_ring_calloc(MAX_BURST, p->ring_params->elem_size);
 	if (burst == NULL)
@@ -272,7 +269,7 @@ run_on_core_pair(struct lcore_pair *cores,
 	struct ring_params *ring_params = param1->ring_params;
 
 	for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
-		lcore_count = 0;
+		rte_atomic_store_explicit(&lcore_count, 0, rte_memory_order_relaxed);
 		ring_params->bulk_sizes_i = i;
 		if (cores->c1 == rte_get_main_lcore()) {
 			rte_eal_remote_launch(dequeue_bulk, param2, cores->c2);
