@@ -46,8 +46,40 @@ extern "C" {
 #endif
 #endif
 
+/*
+ * Macro __rte_constant checks if an expression's value can be determined at
+ * compile time. It takes a single argument, the expression to test, and
+ * returns 1 if the expression is a compile-time constant, and 0 otherwise.
+ * For most compilers it uses built-in function __builtin_constant_p, but for
+ * MSVC it uses a different method because MSVC does not have an equivalent
+ * to __builtin_constant_p.
+ *
+ * The trick used with MSVC relies on the way null pointer constants interact
+ * with the type of a ?: expression:
+ * An integer constant expression with the value 0, or such an expression cast
+ * to type void *, is called a null pointer constant.
+ * If both the second and third operands (of the ?: expression) are pointers or
+ * one is a null pointer constant and the other is a pointer, the result type
+ * is a pointer to a type qualified with all the type qualifiers of the types
+ * referenced by both operands. Furthermore, if both operands are pointers to
+ * compatible types or to differently qualified versions of compatible types,
+ * the result type is a pointer to an appropriately qualified version of the
+ * composite type; if one operand is a null pointer constant, the result has
+ * the type of the other operand; otherwise, one operand is a pointer to void
+ * or a qualified version of void, in which case the result type is a pointer
+ * to an appropriately qualified version of void.
+ *
+ * The _Generic keyword then checks the type of the expression
+ * (void *) ((e) * 0ll). It matches this type against the types listed in the
+ * _Generic construct:
+ *     - If the type is int *, the result is 1.
+ *     - If the type is void *, the result is 0.
+ *
+ * This explanation with some more details can be found at:
+ * https://stackoverflow.com/questions/49480442/detecting-integer-constant-expressions-in-macros
+ */
 #ifdef RTE_TOOLCHAIN_MSVC
-#define __rte_constant(e) 0
+#define __rte_constant(e) _Generic((1 ? (void *) ((e) * 0ll) : (int *) 0), int * : 1, void * : 0)
 #else
 #define __rte_constant(e) __extension__(__builtin_constant_p(e))
 #endif

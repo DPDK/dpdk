@@ -130,7 +130,7 @@ rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
  *  rte_memory_order_acquire and rte_memory_order_relaxed.
  */
 #define RTE_WAIT_UNTIL_MASKED(addr, mask, cond, expected, memorder) do { \
-	RTE_BUILD_BUG_ON(!__builtin_constant_p(memorder));               \
+	RTE_BUILD_BUG_ON(!__rte_constant(memorder));                     \
 	RTE_BUILD_BUG_ON((memorder) != rte_memory_order_acquire &&       \
 		(memorder) != rte_memory_order_relaxed);                 \
 	typeof(*(addr)) expected_value = (expected);                     \
