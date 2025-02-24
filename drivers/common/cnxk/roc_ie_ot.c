@@ -6,7 +6,7 @@
 #include "roc_priv.h"
 
 void
-roc_ot_ipsec_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa, bool is_inline)
+roc_ot_ipsec_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa)
 {
 	size_t offset;
 
@@ -17,8 +17,6 @@ roc_ot_ipsec_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa, bool is_inline)
 	sa->w0.s.pkind = ROC_IE_OT_CPT_PKIND;
 	sa->w0.s.et_ovrwr = 1;
 	sa->w2.s.l3hdr_on_err = 1;
-
-	PLT_SET_USED(is_inline);
 
 	offset = offsetof(struct roc_ot_ipsec_inb_sa, ctx);
 	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;

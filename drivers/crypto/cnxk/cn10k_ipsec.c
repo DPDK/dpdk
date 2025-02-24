@@ -174,8 +174,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Translate security parameters to SA */
-	ret = cnxk_ot_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm,
-					false);
+	ret = cnxk_ot_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm);
 	if (ret) {
 		plt_err("Could not fill inbound session parameters");
 		goto sa_dptr_free;
@@ -308,7 +307,7 @@ cn10k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn10k_sec_session
 	} else {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_inb_sa), 8);
 		if (sa_dptr != NULL) {
-			roc_ot_ipsec_inb_sa_init(sa_dptr, false);
+			roc_ot_ipsec_inb_sa_init(sa_dptr);
 
 			ret = roc_cpt_ctx_write(
 				lf, sa_dptr, &sa->in_sa,
