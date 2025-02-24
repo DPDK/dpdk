@@ -226,4 +226,7 @@ int __roc_api roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_c
 
 void __roc_api roc_cpt_int_misc_cb_register(roc_cpt_int_misc_cb_t cb, void *args);
 int __roc_api roc_cpt_int_misc_cb_unregister(roc_cpt_int_misc_cb_t cb, void *args);
+
+bool roc_cpt_has_ie_engines(void);
+
 #endif /* _ROC_CPT_H_ */
