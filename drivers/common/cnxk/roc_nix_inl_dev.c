@@ -7,6 +7,8 @@
 
 #include <unistd.h>
 
+#define NIX_INL_DEV_CPT_LF_QSZ 8192
+
 #define NIX_AURA_DROP_PC_DFLT 40
 
 /* Default Rx Config for Inline NIX LF */
@@ -102,6 +104,185 @@ exit:
 	return rc;
 }
 
+int
+nix_inl_setup_dflt_ipsec_profile(struct dev *dev, uint16_t *prof_id)
+{
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct nix_rx_inl_profile_cfg_req *req;
+	struct nix_rx_inl_profile_cfg_rsp *rsp;
+	int rc;
+
+	req = mbox_alloc_msg_nix_rx_inl_profile_cfg(mbox);
+	if (req == NULL) {
+		mbox_put(mbox);
+		return -ENOSPC;
+	}
+
+	/* Prepare NIXX_AF_RX_DEF_INLINE to match ESP, IPv4/IPv6 and extract l2_len */
+	req->def_cfg = NIX_INL_DFLT_IPSEC_DEF_CFG;
+
+	/* Extract 32 bit from bit pos 0 */
+	req->extract_cfg = NIX_INL_DFLT_IPSEC_EXTRACT_CFG;
+
+	/* Gen config */
+	req->gen_cfg = NIX_INL_DFLT_IPSEC_GEN_CFG;
+
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc)
+		goto exit;
+
+	*prof_id = rsp->profile_id;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+nix_inl_inb_queue_setup(struct nix_inl_dev *inl_dev, uint8_t slot_id)
+{
+	struct roc_cpt_lf *lf = &inl_dev->cpt_lf[slot_id];
+	struct nix_rx_inline_qcfg_req *nix_req;
+	struct cpt_rx_inline_qcfg_req *cpt_req;
+	struct cpt_rx_inline_qalloc_rsp *rsp;
+	struct msg_req *req;
+	struct mbox *mbox;
+	uint16_t bpid, qid;
+	int rc;
+
+	/* Allocate BPID if not allocated */
+	if (inl_dev->nix_inb_q_bpid < 0) {
+		rc = nix_bpids_alloc(&inl_dev->dev, ROC_NIX_INTF_TYPE_CPT_NIX, 1, &bpid);
+		if (rc <= 0)
+			plt_warn("Failed to allocate BPID for inbound queue, rc=%d", rc);
+		else
+			inl_dev->nix_inb_q_bpid = bpid;
+	}
+
+	mbox = mbox_get((&inl_dev->dev)->mbox);
+	/* Allocate inline queue */
+	rc = -ENOSPC;
+	req = mbox_alloc_msg_cpt_rx_inline_qalloc(mbox);
+	if (!req)
+		goto exit;
+
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc) {
+		plt_err("Failed to alloc inline q, rc=%d", rc);
+		goto exit;
+	}
+
+	qid = rsp->rx_queue_id;
+
+	/* Configure CPT LF dedicated for inline processing */
+	cpt_req = mbox_alloc_msg_cpt_rx_inl_queue_cfg(mbox);
+	if (!cpt_req)
+		goto cpt_cfg_fail;
+
+	cpt_req->enable = 1;
+	cpt_req->slot = slot_id;
+	cpt_req->rx_queue_id = qid;
+	cpt_req->eng_grpmsk = inl_dev->eng_grpmask;
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to configure CPT LF for inline processing, rc=%d", rc);
+		goto cpt_cfg_fail;
+	}
+
+	/* Setup NIX AF to CPT LF mapping for inline queue */
+	rc = -ENOSPC;
+	nix_req = mbox_alloc_msg_nix_rx_inl_queue_cfg(mbox);
+	if (!nix_req)
+		goto nix_cfg_fail;
+	nix_req->cpt_pf_func = inl_dev->dev.pf_func;
+	nix_req->cpt_slot = slot_id;
+	nix_req->cpt_credit = lf->nb_desc;
+	nix_req->rx_queue_id = qid;
+	nix_req->enable = 1;
+	if (inl_dev->nix_inb_q_bpid >= 0) {
+		nix_req->bpid = inl_dev->nix_inb_q_bpid;
+		nix_req->credit_th = nix_req->cpt_credit - 1;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to enable inbound queue on slot %u, rc=%d", slot_id, rc);
+		goto nix_cfg_fail;
+	}
+
+	inl_dev->nix_inb_qids[slot_id] = qid;
+	mbox_put(mbox);
+	return 0;
+nix_cfg_fail:
+	cpt_req = mbox_alloc_msg_cpt_rx_inl_queue_cfg(mbox);
+	if (!cpt_req) {
+		rc |= -ENOSPC;
+	} else {
+		nix_req->enable = false;
+		rc |= mbox_process(mbox);
+	}
+cpt_cfg_fail:
+	/* TODO: Free QID */
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+nix_inl_inb_queue_release(struct nix_inl_dev *inl_dev, uint8_t slot_id)
+{
+	struct nix_rx_inline_qcfg_req *nix_req;
+	struct cpt_rx_inline_qcfg_req *cpt_req;
+	struct mbox *mbox;
+	int rc, ret = 0;
+	int qid;
+
+	qid = inl_dev->nix_inb_qids[slot_id];
+	if (qid < 0)
+		return 0;
+
+	mbox = mbox_get((&inl_dev->dev)->mbox);
+
+	/* Cleanup NIX AF to CPT LF mapping for inline queue */
+	rc = -ENOSPC;
+	nix_req = mbox_alloc_msg_nix_rx_inl_queue_cfg(mbox);
+	if (!nix_req) {
+		ret |= rc;
+		goto exit;
+	}
+	nix_req->rx_queue_id = qid;
+	nix_req->enable = 0;
+
+	rc = mbox_process(mbox);
+	if (rc)
+		plt_err("Failed to cleanup inbound queue %u, rc=%d", qid, rc);
+	ret |= rc;
+
+	/* Configure CPT LF dedicated for inline processing */
+	cpt_req = mbox_alloc_msg_cpt_rx_inl_queue_cfg(mbox);
+	if (!cpt_req) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	cpt_req->enable = 0;
+	cpt_req->rx_queue_id = qid;
+	cpt_req->slot = slot_id;
+
+	rc = mbox_process(mbox);
+	if (rc)
+		plt_err("Failed to disable CPT LF for inline processing, rc=%d", rc);
+	ret |= rc;
+
+	/* TODO: Free inline queue */
+
+	inl_dev->nix_inb_qids[slot_id] = -1;
+	mbox_put(mbox);
+	return 0;
+exit:
+	mbox_put(mbox);
+	return ret;
+}
+
 static int
 nix_inl_cpt_ctx_cache_sync(struct nix_inl_dev *inl_dev)
 {
@@ -124,39 +305,69 @@ exit:
 static int
 nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 {
-	struct nix_inline_ipsec_lf_cfg *lf_cfg;
 	struct mbox *mbox = mbox_get((&inl_dev->dev)->mbox);
-	uint64_t max_sa;
-	uint32_t sa_w;
+	uint64_t max_sa, sa_w, sa_pow2_sz, lenm1_max;
 	int rc;
 
-	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
-	if (lf_cfg == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
+	max_sa = inl_dev->inb_spi_mask + 1;
+	sa_w = plt_log2_u32(max_sa);
+	sa_pow2_sz = plt_log2_u32(inl_dev->inb_sa_sz);
+	/* CN9K SA size is different */
+	if (roc_model_is_cn9k())
+		lenm1_max = NIX_CN9K_MAX_HW_FRS - 1;
+	else
+		lenm1_max = NIX_RPM_MAX_HW_FRS - 1;
 
-	if (ena) {
+	if (!roc_model_is_cn20k()) {
+		struct nix_inline_ipsec_lf_cfg *lf_cfg;
 
-		max_sa = inl_dev->inb_spi_mask + 1;
-		sa_w = plt_log2_u32(max_sa);
+		lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
+		if (lf_cfg == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
-		lf_cfg->enable = 1;
-		lf_cfg->sa_base_addr = (uintptr_t)inl_dev->inb_sa_base;
-		lf_cfg->ipsec_cfg1.sa_idx_w = sa_w;
-		/* CN9K SA size is different */
-		if (roc_model_is_cn9k())
-			lf_cfg->ipsec_cfg0.lenm1_max = NIX_CN9K_MAX_HW_FRS - 1;
-		else
-			lf_cfg->ipsec_cfg0.lenm1_max = NIX_RPM_MAX_HW_FRS - 1;
-		lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
-		lf_cfg->ipsec_cfg0.sa_pow2_size =
-			plt_log2_u32(inl_dev->inb_sa_sz);
+		if (ena) {
+			lf_cfg->enable = 1;
+			lf_cfg->sa_base_addr = (uintptr_t)inl_dev->inb_sa_base;
+			lf_cfg->ipsec_cfg1.sa_idx_w = sa_w;
+			lf_cfg->ipsec_cfg0.lenm1_max = lenm1_max;
+			lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
+			lf_cfg->ipsec_cfg0.sa_pow2_size = sa_pow2_sz;
 
-		lf_cfg->ipsec_cfg0.tag_const = 0;
-		lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+			lf_cfg->ipsec_cfg0.tag_const = 0;
+			lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+		} else {
+			lf_cfg->enable = 0;
+		}
 	} else {
-		lf_cfg->enable = 0;
+		struct nix_rx_inl_lf_cfg_req *lf_cfg;
+		uint64_t def_cptq;
+
+		lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+		if (lf_cfg == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		/*TODO default cptq */
+		if (!inl_dev->nb_inb_cptlfs)
+			def_cptq = 0;
+		else
+			def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
+
+		if (ena) {
+			lf_cfg->enable = 1;
+			lf_cfg->profile_id = inl_dev->ipsec_prof_id;
+			lf_cfg->rx_inline_sa_base = (uintptr_t)inl_dev->inb_sa_base;
+			lf_cfg->rx_inline_cfg0 = ((def_cptq << 57) |
+						  ((uint64_t)SSO_TT_ORDERED << 44) |
+						  (sa_pow2_sz << 16) | lenm1_max);
+			lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_w << 32);
+		} else {
+			lf_cfg->enable = 0;
+			lf_cfg->profile_id = inl_dev->ipsec_prof_id;
+		}
 	}
 
 	rc = mbox_process(mbox);
@@ -174,17 +385,12 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 	struct roc_cpt_lf *lf;
 	uint8_t eng_grpmask;
 	uint8_t ctx_ilen = 0;
-	int rc;
+	int rc, i;
 
 	if (!inl_dev->attach_cptlf)
 		return 0;
 
-	if (roc_model_is_cn9k() || roc_model_is_cn10k())
-		eng_grpmask = (1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE |
-			       1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE |
-			       1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_AE);
-	else
-		eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE | 1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
+	eng_grpmask = inl_dev->eng_grpmask;
 
 	if (roc_errata_cpt_has_ctx_fetch_issue()) {
 		ctx_ilen = (ROC_NIX_INL_OT_IPSEC_INB_HW_SZ / 128) - 1;
@@ -193,17 +399,17 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 
 	/* Alloc CPT LF */
 	rc = cpt_lfs_alloc(dev, eng_grpmask, RVU_BLOCK_ADDR_CPT0, inl_dev_sso, ctx_ilen_valid,
-			   ctx_ilen, inl_dev->rx_inj_ena, inl_dev->nb_cptlf - 1);
+			   ctx_ilen, inl_dev->rx_inj_ena, 1);
 	if (rc) {
 		plt_err("Failed to alloc CPT LF resources, rc=%d", rc);
 		return rc;
 	}
 
-	for (int i = 0; i < inl_dev->nb_cptlf; i++) {
+	for (i = 0; i < inl_dev->nb_cptlf; i++) {
 		/* Setup CPT LF for submitting control opcode */
 		lf = &inl_dev->cpt_lf[i];
 		lf->lf_id = i;
-		lf->nb_desc = 0; /* Set to default */
+		lf->nb_desc = NIX_INL_DEV_CPT_LF_QSZ; /* Set to default */
 		lf->dev = &inl_dev->dev;
 		lf->msixoff = inl_dev->cpt_msixoff[i];
 		lf->pci_dev = inl_dev->pci_dev;
@@ -216,14 +422,25 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 
 		q_info = &inl_dev->q_info[i];
 		q_info->nb_desc = lf->nb_desc;
-		q_info->fc_addr = lf->fc_addr;
+		q_info->fc_addr = (uint64_t __plt_atomic *)lf->fc_addr;
 		q_info->io_addr = lf->io_addr;
 		q_info->lmt_base = lf->lmt_base;
 		q_info->rbase = lf->rbase;
 
 		roc_cpt_iq_enable(lf);
 	}
+
+	/* Configure NIX inline inbound queue resource */
+	for (i = 0; i < inl_dev->nb_inb_cptlfs; i++) {
+		rc = nix_inl_inb_queue_setup(inl_dev, inl_dev->inb_cpt_lf_id + i);
+		if (rc)
+			goto lf_fini;
+	}
+
 	return 0;
+lf_fini:
+	for (i = 0; i < inl_dev->nb_cptlf; i++)
+		cpt_lf_fini(&inl_dev->cpt_lf[i]);
 lf_free:
 	rc |= cpt_lfs_free(dev);
 	return rc;
@@ -233,10 +450,17 @@ static int
 nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 {
 	struct dev *dev = &inl_dev->dev;
-	int rc, i;
+	int rc = 0, i, ret;
 
 	if (!inl_dev->attach_cptlf)
 		return 0;
+
+	/* Release NIX inline inbound queue resource */
+	for (i = 0; i < inl_dev->nb_inb_cptlfs; i++)
+		rc |= nix_inl_inb_queue_release(inl_dev, inl_dev->inb_cpt_lf_id + i);
+	ret = rc;
+
+	/* TODO: Wait for CPT/RXC queue to drain */
 
 	/* Cleanup CPT LF queue */
 	for (i = 0; i < inl_dev->nb_cptlf; i++)
@@ -249,7 +473,8 @@ nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 			inl_dev->cpt_lf[i].dev = NULL;
 	} else
 		plt_err("Failed to free CPT LF resources, rc=%d", rc);
-	return rc;
+	ret |= rc;
+	return ret;
 }
 
 static int
@@ -363,6 +588,13 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	int rc = -ENOSPC;
 	void *sa;
 
+	/* Setup default IPsec profile */
+	if (roc_feature_nix_has_inl_profile()) {
+		rc = nix_inl_setup_dflt_ipsec_profile(&inl_dev->dev, &inl_dev->ipsec_prof_id);
+		if (rc)
+			return rc;
+	}
+
 	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
 
 	/* Alloc NIX LF needed for single RQ */
@@ -450,12 +682,6 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 			else
 				roc_ow_ipsec_inb_sa_init(sa);
 		}
-	}
-	/* Setup device specific inb SA table */
-	rc = nix_inl_nix_ipsec_cfg(inl_dev, true);
-	if (rc) {
-		plt_err("Failed to setup NIX Inbound SA conf, rc=%d", rc);
-		goto free_mem;
 	}
 
 	/* Allocate memory for RQ's */
@@ -943,7 +1169,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->is_multi_channel = roc_inl_dev->is_multi_channel;
 	inl_dev->channel = roc_inl_dev->channel;
 	inl_dev->chan_mask = roc_inl_dev->chan_mask;
-	inl_dev->attach_cptlf = roc_inl_dev->attach_cptlf;
+	inl_dev->attach_cptlf = true;
 	inl_dev->wqe_skip = roc_inl_dev->wqe_skip;
 	inl_dev->spb_drop_pc = NIX_AURA_DROP_PC_DFLT;
 	inl_dev->lpb_drop_pc = NIX_AURA_DROP_PC_DFLT;
@@ -953,12 +1179,30 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->meta_buf_sz = roc_inl_dev->meta_buf_sz;
 	inl_dev->soft_exp_poll_freq = roc_inl_dev->soft_exp_poll_freq;
 	inl_dev->custom_inb_sa = roc_inl_dev->custom_inb_sa;
+	inl_dev->nix_inb_q_bpid = -1;
+	inl_dev->nb_cptlf = 1;
 
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		inl_dev->eng_grpmask = (1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE |
+					1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE |
+					1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_AE);
+	else
+		inl_dev->eng_grpmask =
+			(1ULL << ROC_CPT_DFLT_ENG_GRP_SE | 1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
+
+	/* RXC inject uses extra CPT LF */
 	if (roc_inl_dev->rx_inj_ena) {
 		inl_dev->rx_inj_ena = 1;
-		inl_dev->nb_cptlf = NIX_INL_CPT_LF;
-	} else
-		inl_dev->nb_cptlf = 1;
+		inl_dev->nb_cptlf++;
+	}
+
+	/* Attach inline inbound CPT LF to NIX has multi queue support */
+	if (roc_feature_nix_has_inl_multi_queue() && roc_inl_dev->nb_inb_cptlfs) {
+		inl_dev->nb_inb_cptlfs = roc_inl_dev->nb_inb_cptlfs;
+
+		inl_dev->inb_cpt_lf_id = inl_dev->nb_cptlf;
+		inl_dev->nb_cptlf += inl_dev->nb_inb_cptlfs;
+	}
 
 	if (roc_inl_dev->spb_drop_pc)
 		inl_dev->spb_drop_pc = roc_inl_dev->spb_drop_pc;
@@ -993,6 +1237,13 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	rc = nix_inl_cpt_setup(inl_dev, false);
 	if (rc)
 		goto sso_release;
+
+	/* Setup device specific inb SA table */
+	rc = nix_inl_nix_ipsec_cfg(inl_dev, true);
+	if (rc) {
+		plt_err("Failed to setup NIX Inbound SA conf, rc=%d", rc);
+		goto cpt_release;
+	}
 
 	if (inl_dev->set_soft_exp_poll) {
 		rc = nix_inl_outb_poll_thread_setup(inl_dev);

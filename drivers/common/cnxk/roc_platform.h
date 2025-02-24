@@ -260,6 +260,7 @@ plt_thread_is_valid(plt_thread_t thr)
 #define plt_tel_data_add_dict_string rte_tel_data_add_dict_string
 #define plt_tel_data_add_dict_u64    rte_tel_data_add_dict_uint
 #define plt_telemetry_register_cmd   rte_telemetry_register_cmd
+#define __plt_atomic __rte_atomic
 
 /* Log */
 extern int cnxk_logtype_base;

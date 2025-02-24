@@ -390,17 +390,27 @@ roc_nix_inl_meta_aura_check(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
 }
 
 static int
-nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
+nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 {
 	uint32_t ipsec_in_min_spi = roc_nix->ipsec_in_min_spi;
 	uint32_t ipsec_in_max_spi = roc_nix->ipsec_in_max_spi;
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
-	struct nix_inline_ipsec_lf_cfg *lf_cfg;
-	uint64_t max_sa, i;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	uint64_t max_sa, i, sa_pow2_sz;
+	uint64_t sa_idx_w, lenm1_max;
+	struct mbox *mbox;
 	size_t inb_sa_sz;
 	void *sa;
 	int rc;
+
+	/* Setup default IPsec profile */
+	if (roc_feature_nix_has_inl_profile()) {
+		rc = nix_inl_setup_dflt_ipsec_profile(&nix->dev, &nix->ipsec_prof_id);
+		if (rc)
+			return rc;
+	}
+	mbox = mbox_get(nix->dev.mbox);
 
 	max_sa = plt_align32pow2(ipsec_in_max_spi - ipsec_in_min_spi + 1);
 
@@ -425,6 +435,10 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 		goto exit;
 	}
 
+	sa_pow2_sz = plt_log2_u32(inb_sa_sz);
+	sa_idx_w = plt_log2_u32(max_sa);
+	lenm1_max = roc_nix_max_pkt_len(roc_nix) - 1;
+
 	if (!roc_model_is_cn9k()) {
 		for (i = 0; i < max_sa; i++) {
 			sa = ((uint8_t *)nix->inb_sa_base) + (i * inb_sa_sz);
@@ -435,22 +449,53 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 		}
 	}
 
-	/* Setup device specific inb SA table */
-	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
-	if (lf_cfg == NULL) {
-		rc = -ENOSPC;
-		plt_err("Failed to alloc nix inline ipsec lf cfg mbox msg");
-		goto free_mem;
-	}
+	if (roc_model_is_cn9k() || roc_model_is_cn10k()) {
+		struct nix_inline_ipsec_lf_cfg *lf_cfg;
 
-	lf_cfg->enable = 1;
-	lf_cfg->sa_base_addr = (uintptr_t)nix->inb_sa_base;
-	lf_cfg->ipsec_cfg1.sa_idx_w = plt_log2_u32(max_sa);
-	lf_cfg->ipsec_cfg0.lenm1_max = roc_nix_max_pkt_len(roc_nix) - 1;
-	lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
-	lf_cfg->ipsec_cfg0.sa_pow2_size = plt_log2_u32(inb_sa_sz);
-	lf_cfg->ipsec_cfg0.tag_const = 0;
-	lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+		/* Setup device specific inb SA table */
+		lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
+		if (lf_cfg == NULL) {
+			rc = -ENOSPC;
+			plt_err("Failed to alloc nix inline ipsec lf cfg mbox msg");
+			goto free_mem;
+		}
+
+		lf_cfg->enable = 1;
+		lf_cfg->sa_base_addr = (uintptr_t)nix->inb_sa_base;
+		lf_cfg->ipsec_cfg1.sa_idx_w = sa_idx_w;
+		lf_cfg->ipsec_cfg0.lenm1_max = lenm1_max;
+		lf_cfg->ipsec_cfg1.sa_idx_max = max_sa - 1;
+		lf_cfg->ipsec_cfg0.sa_pow2_size = sa_pow2_sz;
+		lf_cfg->ipsec_cfg0.tag_const = 0;
+		lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+	} else {
+		struct nix_rx_inl_lf_cfg_req *lf_cfg;
+		uint64_t def_cptq = 0;
+
+		/* Setup device specific inb SA table */
+		lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+		if (lf_cfg == NULL) {
+			rc = -ENOSPC;
+			plt_err("Failed to alloc nix inline ipsec lf cfg mbox msg");
+			goto free_mem;
+		}
+
+		/*TODO default cptq */
+		if (idev && idev->nix_inl_dev) {
+			inl_dev = idev->nix_inl_dev;
+			if (!inl_dev->nb_inb_cptlfs)
+				def_cptq = 0;
+			else
+				def_cptq = inl_dev->nix_inb_qids[0];
+		}
+
+		lf_cfg->enable = 1;
+		lf_cfg->profile_id = nix->ipsec_prof_id; /* IPsec profile is 0th one */
+		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base;
+		lf_cfg->rx_inline_cfg0 = ((def_cptq << 57) | ((uint64_t)SSO_TT_ORDERED << 44) |
+					  (sa_pow2_sz << 16) | lenm1_max);
+		lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_idx_w << 32);
+	}
 
 	rc = mbox_process(mbox);
 	if (rc) {
@@ -469,20 +514,33 @@ exit:
 }
 
 static int
-nix_inl_sa_tbl_release(struct roc_nix *roc_nix)
+nix_inl_ipsec_sa_tbl_release(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
-	struct nix_inline_ipsec_lf_cfg *lf_cfg;
 	int rc;
 
-	lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
-	if (lf_cfg == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
+	if (roc_model_is_cn9k() || roc_model_is_cn10k()) {
+		struct nix_inline_ipsec_lf_cfg *lf_cfg;
 
-	lf_cfg->enable = 0;
+		lf_cfg = mbox_alloc_msg_nix_inline_ipsec_lf_cfg(mbox);
+		if (lf_cfg == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		lf_cfg->enable = 0;
+	} else {
+		struct nix_rx_inl_lf_cfg_req *lf_cfg;
+
+		lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+		if (!lf_cfg) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		lf_cfg->enable = 0;
+	}
 
 	rc = mbox_process(mbox);
 	if (rc) {
@@ -728,26 +786,10 @@ roc_nix_reassembly_configure(uint32_t max_wait_time, uint16_t max_frags)
 	return roc_cpt_rxc_time_cfg(roc_cpt, &cfg);
 }
 
-static int
-nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
+static void
+nix_inl_rq_mask_init(struct nix_rq_cpt_field_mask_cfg_req *msk_req)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct nix_rq_cpt_field_mask_cfg_req *msk_req;
-	struct idev_cfg *idev = idev_get_cfg();
-	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
-	struct idev_nix_inl_cfg *inl_cfg;
-	uint64_t aura_handle;
-	int rc = -ENOSPC;
-	uint32_t buf_sz;
 	int i;
-
-	if (!idev)
-		goto exit;
-
-	inl_cfg = &idev->inl_cfg;
-	msk_req = mbox_alloc_msg_nix_lf_inline_rq_cfg(mbox);
-	if (msk_req == NULL)
-		goto exit;
 
 	for (i = 0; i < RQ_CTX_MASK_MAX; i++)
 		msk_req->rq_ctx_word_mask[i] = 0xFFFFFFFFFFFFFFFF;
@@ -792,7 +834,29 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	msk_req->rq_mask.spb_drop_ena = 0;
 	msk_req->rq_mask.xqe_drop_ena = 0;
 	msk_req->rq_mask.spb_ena = 0;
+}
 
+static int
+nix_inl_legacy_rq_mask_setup(struct roc_nix *roc_nix, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_rq_cpt_field_mask_cfg_req *msk_req;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	struct idev_nix_inl_cfg *inl_cfg;
+	uint64_t aura_handle;
+	int rc = -ENOSPC;
+	uint32_t buf_sz;
+
+	if (!idev)
+		goto exit;
+
+	inl_cfg = &idev->inl_cfg;
+	msk_req = mbox_alloc_msg_nix_lf_inline_rq_cfg(mbox);
+	if (msk_req == NULL)
+		goto exit;
+
+	nix_inl_rq_mask_init(msk_req);
 	if (roc_nix->local_meta_aura_ena) {
 		aura_handle = roc_nix->meta_aura_handle;
 		buf_sz = roc_nix->buf_sz;
@@ -810,6 +874,79 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	msk_req->ipsec_cfg1.spb_cpt_sizem1 = (buf_sz >> 7) - 1;
 	msk_req->ipsec_cfg1.spb_cpt_enable = enable;
 
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_rq_cpt_field_mask_cfg_req *msk_req;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	struct idev_nix_inl_cfg *inl_cfg;
+	uint64_t aura_handle;
+	struct mbox *mbox;
+	int rc = -ENOSPC;
+	uint64_t buf_sz;
+
+	if (roc_model_is_cn9k() | roc_model_is_cn10k())
+		return nix_inl_legacy_rq_mask_setup(roc_nix, enable);
+
+	mbox = mbox_get((&nix->dev)->mbox);
+	/* RQ mask alloc and setup */
+	msk_req = mbox_alloc_msg_nix_lf_inline_rq_cfg(mbox);
+	if (msk_req == NULL)
+		goto exit;
+
+	nix_inl_rq_mask_init(msk_req);
+	rc = mbox_process(mbox);
+	if (rc) {
+		plt_err("Failed to setup NIX Inline RQ mask, rc=%d", rc);
+		goto exit;
+	}
+
+	/* SPB setup */
+	if (!roc_nix->local_meta_aura_ena && !roc_nix->custom_meta_aura_ena)
+		goto exit;
+
+	if (!idev)
+		return -ENOENT;
+
+	inl_cfg = &idev->inl_cfg;
+
+	if (roc_nix->local_meta_aura_ena) {
+		aura_handle = roc_nix->meta_aura_handle;
+		buf_sz = roc_nix->buf_sz;
+		if (!aura_handle && enable) {
+			plt_err("NULL meta aura handle");
+			rc = -EINVAL;
+			goto exit;
+		}
+	} else {
+		aura_handle = roc_npa_zero_aura_handle();
+		buf_sz = inl_cfg->buf_sz;
+	}
+
+	/* SPB setup */
+	lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
+	if (lf_cfg == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base;
+	lf_cfg->rx_inline_cfg0 = nix->rx_inline_cfg0;
+	lf_cfg->profile_id = nix->ipsec_prof_id;
+	if (enable)
+		lf_cfg->rx_inline_cfg1 =
+			(nix->rx_inline_cfg1 | BIT_ULL(37) | ((buf_sz >> 7) - 1) << 38 |
+			 roc_npa_aura_handle_to_aura(aura_handle) << 44);
+	else
+		lf_cfg->rx_inline_cfg1 = nix->rx_inline_cfg1;
 	rc = mbox_process(mbox);
 exit:
 	mbox_put(mbox);
@@ -940,8 +1077,8 @@ exit:
 	plt_free(hw_res);
 }
 
-int
-roc_nix_inl_inb_init(struct roc_nix *roc_nix)
+static int
+nix_inl_legacy_inb_init(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct roc_cpt_inline_ipsec_inb_cfg cfg;
@@ -963,6 +1100,7 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 		return -ENOTSUP;
 	}
 
+	memset(&cfg, 0, sizeof(cfg));
 	if (roc_model_is_cn9k()) {
 		cfg.param1 = (ROC_ONF_IPSEC_INB_MAX_L2_SZ >> 3) & 0xf;
 		cfg.param2 = ROC_IE_ON_INB_IKEV2_SINGLE_SA_SUPPORT;
@@ -1003,7 +1141,7 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 	nix->cpt_eng_caps = roc_cpt->hw_caps[CPT_ENG_TYPE_SE].u;
 
 	/* Setup Inbound SA table */
-	rc = nix_inl_inb_sa_tbl_setup(roc_nix);
+	rc = nix_inl_inb_ipsec_sa_tbl_setup(roc_nix);
 	if (rc)
 		return rc;
 
@@ -1017,6 +1155,51 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 	return 0;
 }
 
+static int
+nix_inl_inb_init(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+	int rc;
+
+	if (idev == NULL)
+		return -ENOTSUP;
+
+	inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev || !inl_dev->nb_inb_cptlfs) {
+		plt_err("Cannot support inline inbound without inline dev");
+		return -ENOTSUP;
+	}
+
+	/* FIXME get engine caps from inline device */
+	nix->cpt_eng_caps = 0;
+
+	/* Setup Inbound SA table */
+	rc = nix_inl_inb_ipsec_sa_tbl_setup(roc_nix);
+	if (rc)
+		return rc;
+
+	if (roc_nix->local_meta_aura_ena || roc_nix->custom_meta_aura_ena) {
+		nix->need_meta_aura = true;
+
+		if (roc_nix->custom_meta_aura_ena)
+			idev->inl_cfg.refs++;
+	}
+
+	nix->inl_inb_ena = true;
+	return 0;
+}
+
+int
+roc_nix_inl_inb_init(struct roc_nix *roc_nix)
+{
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		return nix_inl_legacy_inb_init(roc_nix);
+
+	return nix_inl_inb_init(roc_nix);
+}
 int
 roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 {
@@ -1056,7 +1239,7 @@ roc_nix_inl_inb_fini(struct roc_nix *roc_nix)
 	roc_nix_cpt_ctx_cache_sync(roc_nix);
 
 	/* Disable Inbound SA */
-	return nix_inl_sa_tbl_release(roc_nix);
+	return nix_inl_ipsec_sa_tbl_release(roc_nix);
 }
 
 int

@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 #define NIX_INL_META_SIZE 384u
-#define NIX_INL_CPT_LF	2
+#define MAX_NIX_INL_DEV_CPT_LF 18
 
 struct nix_inl_dev;
 struct nix_inl_qint {
@@ -32,7 +32,7 @@ struct nix_inl_dev {
 	uint16_t nix_msixoff;
 	uint16_t ssow_msixoff;
 	uint16_t sso_msixoff;
-	uint16_t cpt_msixoff[NIX_INL_CPT_LF];
+	uint16_t cpt_msixoff[MAX_NIX_INL_DEV_CPT_LF];
 
 	/* SSO data */
 	uint32_t xaq_buf_size;
@@ -66,7 +66,8 @@ struct nix_inl_dev {
 	uint8_t nb_cptlf;
 
 	/* CPT data */
-	struct roc_cpt_lf cpt_lf[NIX_INL_CPT_LF];
+	struct roc_cpt_lf cpt_lf[MAX_NIX_INL_DEV_CPT_LF];
+	uint16_t eng_grpmask;
 
 	/* OUTB soft expiry poll thread */
 	plt_thread_t soft_exp_poll_thread;
@@ -102,8 +103,25 @@ struct nix_inl_dev {
 	uint32_t max_ipsec_rules;
 	uint32_t alloc_ipsec_rules;
 
-	struct roc_nix_inl_dev_q q_info[NIX_INL_CPT_LF];
+	struct roc_nix_inl_dev_q q_info[MAX_NIX_INL_DEV_CPT_LF];
+
+	/* Inbound CPT LF info */
+	uint16_t inb_cpt_lf_id;
+	uint16_t nix_inb_qids[MAX_NIX_INL_DEV_CPT_LF];
+	uint16_t nb_inb_cptlfs;
+	int nix_inb_q_bpid;
+	uint16_t ipsec_prof_id;
 };
+
+#define NIX_INL_DFLT_IPSEC_DEF_CFG                                                                 \
+	(BIT_ULL(30) | BIT_ULL(29) | BIT_ULL(28) | NPC_LID_LE << 8 | NPC_LT_LE_ESP << 4 | 0xFul)
+
+#define NIX_INL_DFLT_IPSEC_EXTRACT_CFG (32UL << 8 | 32UL)
+
+#define NIX_INL_DFLT_IPSEC_GEN_CFG                                                                 \
+	(BIT_ULL(51) | ROC_CPT_DFLT_ENG_GRP_SE << 48 |                                             \
+	 ROC_IE_OW_MAJOR_OP_PROCESS_INBOUND_IPSEC << 32 | ROC_IE_OW_INPLACE_BIT << 32 |            \
+	 BIT_ULL(18))
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);
 void nix_inl_sso_unregister_irqs(struct nix_inl_dev *inl_dev);
@@ -112,5 +130,7 @@ int nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev);
 void nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev);
 
 uint16_t nix_inl_dev_pffunc_get(void);
+
+int nix_inl_setup_dflt_ipsec_profile(struct dev *dev, uint16_t *prof_id);
 
 #endif /* _ROC_NIX_INL_PRIV_H_ */
