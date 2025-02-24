@@ -101,7 +101,7 @@ roc_nix_npc_mcast_config(struct roc_nix *roc_nix, bool mcast_enable,
 	struct nix_rx_mode *req;
 	int rc = -ENOSPC;
 
-	if (roc_nix_is_vf_or_sdp(roc_nix)) {
+	if (roc_nix_is_sdp(roc_nix) || roc_nix_is_lbk(roc_nix)) {
 		rc = 0;
 		goto exit;
 	}
@@ -110,9 +110,13 @@ roc_nix_npc_mcast_config(struct roc_nix *roc_nix, bool mcast_enable,
 	if (req == NULL)
 		goto exit;
 
-	if (mcast_enable)
+	if (mcast_enable) {
 		req->mode = NIX_RX_MODE_ALLMULTI;
-	if (prom_enable)
+		if (dev_is_vf(&nix->dev))
+			req->mode |= NIX_RX_MODE_USE_MCE;
+	}
+
+	if (prom_enable && !dev_is_vf(&nix->dev))
 		req->mode = NIX_RX_MODE_PROMISC;
 
 	rc = mbox_process(mbox);
