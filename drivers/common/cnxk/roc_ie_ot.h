@@ -155,22 +155,6 @@ roc_ie_ot_ucc_is_success(uint8_t ucc)
 	return (ucc >= uc_base);
 }
 
-/* Context units in bytes */
-#define ROC_CTX_UNIT_8B		  8
-#define ROC_CTX_UNIT_128B	  128
-#define ROC_CTX_MAX_CKEY_LEN	  32
-#define ROC_CTX_MAX_OPAD_IPAD_LEN 128
-
-/* Anti reply window size supported */
-#define ROC_AR_WIN_SIZE_MIN	   64
-#define ROC_AR_WIN_SIZE_MAX	   4096
-#define ROC_LOG_MIN_AR_WIN_SIZE_M1 5
-
-/* u64 array size to fit anti replay window bits */
-#define ROC_AR_WINBITS_SZ                                                      \
-	(PLT_ALIGN_CEIL(ROC_AR_WIN_SIZE_MAX, BITS_PER_LONG_LONG) /             \
-	 BITS_PER_LONG_LONG)
-
 #define ROC_IPSEC_ERR_RING_MAX_ENTRY 65536
 
 union roc_ot_ipsec_err_ring_head {

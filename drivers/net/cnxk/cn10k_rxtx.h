@@ -27,8 +27,6 @@
 #include "hw/npc.h"
 #include "hw/ssow.h"
 
-#include "roc_ie_ot.h"
-
 /* NPA */
 #include "roc_npa_dp.h"
 
@@ -37,6 +35,8 @@
 
 /* CPT */
 #include "roc_cpt.h"
+
+#include "roc_ie_ot.h"
 
 /* NIX Inline dev */
 #include "roc_nix_inl_dp.h"
