@@ -4156,7 +4156,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf, enum dcb_mode_enable dcb_mode,
 		for (i = 0; i < vmdq_rx_conf->nb_pool_maps; i++) {
 			vmdq_rx_conf->pool_map[i].vlan_id = vlan_tags[i];
 			vmdq_rx_conf->pool_map[i].pools =
-				1 << (i % vmdq_rx_conf->nb_queue_pools);
+				RTE_BIT64(i % vmdq_rx_conf->nb_queue_pools);
 		}
 		for (i = 0; i < RTE_ETH_DCB_NUM_USER_PRIORITIES; i++) {
 			vmdq_rx_conf->dcb_tc[i] = i % num_tcs;

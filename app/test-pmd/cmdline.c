@@ -12643,11 +12643,11 @@ cmd_config_dynf_specific_parsed(void *parsed_result,
 	}
 	old_port_flags = ports[res->port_id].mbuf_dynf;
 	if (!strcmp(res->value, "set")) {
-		ports[res->port_id].mbuf_dynf |= 1UL << flag;
+		ports[res->port_id].mbuf_dynf |= RTE_BIT64(flag);
 		if (old_port_flags == 0)
 			add_tx_dynf_callback(res->port_id);
 	} else {
-		ports[res->port_id].mbuf_dynf &= ~(1UL << flag);
+		ports[res->port_id].mbuf_dynf &= ~RTE_BIT64(flag);
 		if (ports[res->port_id].mbuf_dynf == 0)
 			remove_tx_dynf_callback(res->port_id);
 	}

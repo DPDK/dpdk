@@ -201,7 +201,7 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 				MKDUMPSTR(print_buf, buf_size, cur_len,
 					  " - dynf %s: %d",
 					  dynf_names[dynf_index],
-					  !!(ol_flags & (1UL << dynf_index)));
+					  !!(ol_flags & RTE_BIT64(dynf_index)));
 		}
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
