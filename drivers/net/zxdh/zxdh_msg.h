@@ -56,8 +56,9 @@
 #define ZXDH_MAC_UNFILTER          0xff
 #define ZXDH_PROMISC_MODE          1
 #define ZXDH_ALLMULTI_MODE         2
-#define ZXDH_VLAN_STRIP_MSG_TYPE   0
-#define ZXDH_QINQ_STRIP_MSG_TYPE   1
+#define ZXDH_VLAN_STRIP_TYPE       0
+#define ZXDH_QINQ_STRIP_TYPE       1
+#define ZXDH_VLAN_FILTER_TYPE      2
 
 #define ZXDH_EEXIST_MAC_FLAG       0xFD
 

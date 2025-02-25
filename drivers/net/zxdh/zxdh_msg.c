@@ -1467,6 +1467,83 @@ proc_end:
 	return ret;
 }
 
+static int
+zxdh_vf_vlan_filter_table_process(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *res_info, uint16_t *res_len, uint8_t enable)
+{
+	struct zxdh_vlan_filter *vlan_filter = cfg_data;
+	uint16_t vlan_id =  vlan_filter->vlan_id;
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "vlan filter table";
+	int ret = 0;
+
+	ret = zxdh_vlan_filter_table_set(hw, vport, vlan_id, enable);
+	if (ret)
+		sprintf(str, "vlan filter op-code[%d] vlan id:%d failed, code:%d\n",
+			enable, vlan_id, ret);
+
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	memcpy(&res_info->reply_data, str, strlen(str) + 1);
+	res_info->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	return ret;
+}
+
+static int
+zxdh_vf_vlan_filter_table_add(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
+{
+	return zxdh_vf_vlan_filter_table_process(hw, vport, cfg_data, res_info, res_len, 1);
+}
+
+static int
+zxdh_vf_vlan_filter_table_del(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
+{
+	return zxdh_vf_vlan_filter_table_process(hw, vport, cfg_data, res_info, res_len, 0);
+}
+
+static int
+zxdh_vf_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	struct zxdh_vlan_filter_set *vlan_filter = cfg_data;
+	union zxdh_virport_num port = (union zxdh_virport_num)vport;
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "vlan filter";
+	int ret = 0;
+	uint16_t vfid = port.vfid;
+
+	ret = zxdh_set_vlan_filter(hw, vport, vlan_filter->enable);
+	if (ret)
+		sprintf(str, "[vfid:%d] vlan filter. set failed, ret:%d\n", vfid, ret);
+
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
+static int
+zxdh_vf_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	struct zxdh_vlan_offload *vlan_offload = cfg_data;
+	union zxdh_virport_num port = (union zxdh_virport_num)vport;
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "vlan offload";
+	int ret = 0;
+	uint16_t vfid = port.vfid;
+
+	PMD_DRV_LOG(DEBUG, "vfid:%d, type:%s, enable:%d",
+		vfid, vlan_offload->type == ZXDH_VLAN_STRIP_TYPE ? "vlan-strip" : "qinq-strip",
+			vlan_offload->enable);
+	ret = zxdh_set_vlan_offload(hw, vport, vlan_offload->type, vlan_offload->enable);
+	if (ret)
+		sprintf(str, "[vfid:%d] vlan offload set failed, ret:%d\n", vfid, ret);
+
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -1474,6 +1551,10 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_MAC_ADD] = zxdh_add_vf_mac_table,
 	[ZXDH_MAC_DEL] = zxdh_del_vf_mac_table,
 	[ZXDH_PORT_PROMISC_SET] = zxdh_vf_promisc_set,
+	[ZXDH_VLAN_FILTER_SET] = zxdh_vf_set_vlan_filter,
+	[ZXDH_VLAN_FILTER_ADD] = zxdh_vf_vlan_filter_table_add,
+	[ZXDH_VLAN_FILTER_DEL] = zxdh_vf_vlan_filter_table_del,
+	[ZXDH_VLAN_OFFLOAD] = zxdh_vf_set_vlan_offload,
 };
 
 static inline int
