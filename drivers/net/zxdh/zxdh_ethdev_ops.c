@@ -293,7 +293,8 @@ int zxdh_dev_set_link_down(struct rte_eth_dev *dev)
 	return ret;
 }
 
-int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
+int
+zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
 	struct rte_ether_addr *old_addr = &dev->data->mac_addrs[0];
@@ -304,23 +305,44 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 		PMD_DRV_LOG(ERR, "mac address is invalid!");
 		return -EINVAL;
 	}
+	if (rte_is_same_ether_addr(old_addr, addr))
+		return 0;
 
 	if (hw->is_pf) {
-		ret = zxdh_del_mac_table(hw, hw->vport.vport, old_addr, hw->hash_search_index);
+		ret = zxdh_add_mac_table(hw, hw->vport.vport, addr, hw->hash_search_index, 0, 0);
+		if (ret) {
+			if (ret == ZXDH_EEXIST_MAC_FLAG) {
+				PMD_DRV_LOG(ERR, "pf mac add failed! mac is in used, code:%d", ret);
+				return -EADDRINUSE;
+			}
+			PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
+			return ret;
+		}
+		hw->uc_num++;
+
+		ret = zxdh_del_mac_table(hw, hw->vport.vport, old_addr,
+			hw->hash_search_index, 0, 0);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
 			return ret;
 		}
 		hw->uc_num--;
-
-		ret = zxdh_set_mac_table(hw, hw->vport.vport, addr, hw->hash_search_index);
+	} else {
+		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
+		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
+		memcpy(&mac_filter->mac, addr, sizeof(struct rte_ether_addr));
+		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
+			if (ret == ZXDH_EEXIST_MAC_FLAG) {
+				PMD_DRV_LOG(ERR, "pf mac add failed! mac is in used, code:%d", ret);
+				return -EADDRINUSE;
+			}
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+				hw->vport.vport, ZXDH_MAC_ADD);
 			return ret;
 		}
 		hw->uc_num++;
-	} else {
-		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
 
 		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
 		mac_filter->mac_flag = true;
@@ -333,25 +355,13 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 			return ret;
 		}
 		hw->uc_num--;
-		PMD_DRV_LOG(INFO, "Success to send msg: port 0x%x msg type %d",
-			hw->vport.vport, ZXDH_MAC_DEL);
-
-		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
-		memcpy(&mac_filter->mac, addr, sizeof(struct rte_ether_addr));
-		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
-		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
-				hw->vport.vport, ZXDH_MAC_ADD);
-			return ret;
-		}
-		hw->uc_num++;
 	}
 	rte_ether_addr_copy(addr, (struct rte_ether_addr *)hw->mac_addr);
 	return ret;
 }
 
-int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
+int
+zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 	uint32_t index, uint32_t vmdq __rte_unused)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
@@ -374,12 +384,13 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 	if (hw->is_pf) {
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num < ZXDH_MAX_UC_MAC_ADDRS) {
-				ret = zxdh_set_mac_table(hw, hw->vport.vport,
-						mac_addr, hw->hash_search_index);
+				ret = zxdh_add_mac_table(hw, hw->vport.vport,
+							mac_addr, hw->hash_search_index, 0, 0);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
 					return ret;
 				}
+				memcpy(&hw->mac_addr, mac_addr, 6);
 				hw->uc_num++;
 			} else {
 				PMD_DRV_LOG(ERR, "MC_MAC is out of range, MAX_MC_MAC:%d",
@@ -388,8 +399,8 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 			}
 		} else {
 			if (hw->mc_num < ZXDH_MAX_MC_MAC_ADDRS) {
-				ret = zxdh_set_mac_table(hw, hw->vport.vport,
-						mac_addr, hw->hash_search_index);
+				ret = zxdh_add_mac_table(hw, hw->vport.vport,
+							mac_addr, hw->hash_search_index, 0, 0);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_add  failed, code:%d", ret);
 					return ret;
@@ -457,7 +468,7 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num <= ZXDH_MAX_UC_MAC_ADDRS) {
 				ret = zxdh_del_mac_table(hw, hw->vport.vport,
-						mac_addr, hw->hash_search_index);
+						mac_addr, hw->hash_search_index, 0, 0);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_del  failed, code:%d", ret);
 					return;
@@ -471,7 +482,7 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		} else {
 			if (hw->mc_num <= ZXDH_MAX_MC_MAC_ADDRS) {
 				ret = zxdh_del_mac_table(hw, hw->vport.vport,
-							mac_addr, hw->hash_search_index);
+							mac_addr, hw->hash_search_index, 0, 0);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_del  failed, code:%d", ret);
 					return;

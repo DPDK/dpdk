@@ -1152,8 +1152,8 @@ zxdh_mac_config(struct rte_eth_dev *eth_dev)
 	int ret = 0;
 
 	if (hw->is_pf) {
-		ret = zxdh_set_mac_table(hw, hw->vport.vport,
-				&eth_dev->data->mac_addrs[0], hw->hash_search_index);
+		ret = zxdh_add_mac_table(hw, hw->vport.vport,
+				&eth_dev->data->mac_addrs[0], hw->hash_search_index, 0, 0);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to add mac: port 0x%x", hw->vport.vport);
 			return ret;
@@ -1553,7 +1553,6 @@ zxdh_init_once(struct rte_eth_dev *eth_dev)
 	if (!sd->init_done)
 		sd->init_done = true;
 	sd->dev_refcnt++;
-
 out:
 	rte_spinlock_unlock(&sd->lock);
 	return ret;
@@ -1641,6 +1640,39 @@ zxdh_queue_res_get(struct rte_eth_dev *eth_dev)
 }
 
 static int
+zxdh_priv_res_init(struct zxdh_hw *hw)
+{
+	if (hw->is_pf) {
+		hw->vfinfo = rte_zmalloc("vfinfo", ZXDH_MAX_VF * sizeof(struct vfinfo), 4);
+		if (hw->vfinfo == NULL) {
+			PMD_DRV_LOG(ERR, "vfinfo malloc failed");
+			return -ENOMEM;
+		}
+	} else {
+		hw->vfinfo = NULL;
+	}
+
+	hw->channel_context = rte_zmalloc("zxdh_chnlctx",
+			sizeof(struct zxdh_chnl_context) * ZXDH_QUEUES_NUM_MAX, 0);
+	if (hw->channel_context == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate channel_context");
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static void
+zxdh_priv_res_free(struct zxdh_hw *priv)
+{
+	rte_free(priv->vfinfo);
+	priv->vfinfo = NULL;
+	if (priv->channel_context != NULL) {
+		rte_free(priv->channel_context);
+		priv->channel_context = NULL;
+	}
+}
+
+static int
 zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -1715,6 +1747,8 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	zxdh_queue_res_get(eth_dev);
 	zxdh_msg_cb_reg(hw);
+	if (zxdh_priv_res_init(hw) != 0)
+		goto err_zxdh_init;
 	ret = zxdh_configure_intr(eth_dev);
 	if (ret != 0)
 		goto err_zxdh_init;
@@ -1729,6 +1763,7 @@ err_zxdh_init:
 	zxdh_intr_release(eth_dev);
 	zxdh_np_uninit(eth_dev);
 	zxdh_bar_msg_chan_exit();
+	zxdh_priv_res_free(hw);
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 	return ret;

@@ -59,6 +59,8 @@
 #define ZXDH_VLAN_STRIP_MSG_TYPE   0
 #define ZXDH_QINQ_STRIP_MSG_TYPE   1
 
+#define ZXDH_EEXIST_MAC_FLAG       0xFD
+
 enum ZXDH_DRIVER_TYPE {
 	ZXDH_MSG_CHAN_END_MPF = 0,
 	ZXDH_MSG_CHAN_END_PF,
@@ -330,6 +332,10 @@ struct zxdh_rss_hf {
 	uint32_t rss_hf;
 };
 
+struct zxdh_mac_reply_msg {
+	uint8_t mac_flag;
+};
+
 struct zxdh_msg_reply_body {
 	enum zxdh_reps_flag flag;
 	union {
@@ -339,6 +345,7 @@ struct zxdh_msg_reply_body {
 		struct zxdh_rss_reta rss_reta;
 		struct zxdh_rss_hf rss_hf;
 		struct zxdh_hw_vqm_stats vqm_stats;
+		struct zxdh_mac_reply_msg mac_reply_msg;
 	};
 };
 

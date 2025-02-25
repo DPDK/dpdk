@@ -1261,12 +1261,35 @@ proc_end:
 }
 
 static int
+zxdh_mac_clear(struct zxdh_hw *hw, union zxdh_virport_num vport)
+{
+	uint16_t vf_id = vport.vfid;
+	int i;
+	int ret = 0;
+
+	for (i = 0; (i != ZXDH_MAX_MAC_ADDRS); ++i) {
+		if (!rte_is_zero_ether_addr(&hw->vfinfo[vf_id].vf_mac[i])) {
+			ret = zxdh_del_mac_table(hw, vport.vport,
+					&hw->vfinfo[vf_id].vf_mac[i],
+					hw->hash_search_index, 0, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "vf_del_mac_failed. code:%d", ret);
+				return ret;
+			}
+			memset(&hw->vfinfo[vf_id].vf_mac[i], 0, sizeof(struct rte_ether_addr));
+		}
+	}
+	return ret;
+}
+
+static int
 zxdh_vf_port_uninit(struct zxdh_hw *pf_hw,
 		uint16_t vport, void *cfg_data __rte_unused,
 		struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "uninit";
 	struct zxdh_port_attr_table port_attr = {0};
+	union zxdh_virport_num vport_num = {.vport = vport};
 	int ret = 0;
 
 	*res_len =  ZXDH_MSG_REPLYBODY_HEAD;
@@ -1275,6 +1298,12 @@ zxdh_vf_port_uninit(struct zxdh_hw *pf_hw,
 	ret = zxdh_delete_port_attr(pf_hw, vport, &port_attr);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "write port_attr_eram failed, code:%d", ret);
+		goto proc_end;
+	}
+
+	ret = zxdh_mac_clear(pf_hw, vport_num);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "zxdh_mac_clear failed, code:%d", ret);
 		goto proc_end;
 	}
 
@@ -1290,10 +1319,99 @@ proc_end:
 	return ret;
 }
 
+static int
+zxdh_add_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *reply_body, uint16_t *reply_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "add mac";
+	union zxdh_virport_num port = {0};
+	struct zxdh_mac_filter *mac_filter = (struct zxdh_mac_filter *)cfg_data;
+	struct rte_ether_addr *addr = &mac_filter->mac;
+	int i = 0, ret = 0;
+	uint16_t vf_id = port.vfid;
+	port.vport = vport;
+
+	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++)
+		if (rte_is_same_ether_addr(&hw->vfinfo[vf_id].vf_mac[i], addr))
+			goto success;
+
+	ret = zxdh_add_mac_table(hw, vport, addr, hw->hash_search_index, 0, 0);
+	if (ret == -EADDRINUSE) {
+		reply_body->mac_reply_msg.mac_flag = ZXDH_EEXIST_MAC_FLAG;
+		PMD_DRV_LOG(ERR, "vf vport 0x%x set mac ret 0x%x failed. mac is in used.",
+				port.vport, ret);
+		goto failure;
+	}
+	if (ret) {
+		sprintf(str, "[PF GET MSG FROM VF]--VF add mac failed. code:%d\n", ret);
+		PMD_DRV_LOG(ERR, " %s", str);
+		goto failure;
+	}
+	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++) {
+		if (rte_is_zero_ether_addr(&hw->vfinfo[vf_id].vf_mac[i])) {
+			memcpy(&hw->vfinfo[vf_id].vf_mac[i], addr, 6);
+			break;
+		}
+	}
+
+success:
+	sprintf(str, " vport 0x%x set mac ret 0x%x\n", port.vport, ret);
+	*reply_len =  strlen(str) + ZXDH_MSG_REPLYBODY_HEAD;
+	rte_memcpy(&reply_body->reply_data, str, strlen(str) + 1);
+	reply_body->flag = ZXDH_REPS_SUCC;
+	PMD_DRV_LOG(DEBUG, " reply len %d", *reply_len);
+	return ret;
+
+failure:
+	*reply_len = strlen(str) + ZXDH_MSG_REPLYBODY_HEAD;
+	reply_body->flag = ZXDH_REPS_FAIL;
+	return ret;
+}
+
+static int
+zxdh_del_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+	struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
+{
+	int ret, i = 0;
+	struct zxdh_mac_filter *mac_filter = (struct zxdh_mac_filter *)cfg_data;
+	union zxdh_virport_num  port = (union zxdh_virport_num)vport;
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "del mac";
+	uint16_t  vf_id = port.vfid;
+
+	PMD_DRV_LOG(DEBUG, "[PF GET MSG FROM VF]--vf mac to del.");
+	ret = zxdh_del_mac_table(hw, vport, &mac_filter->mac, hw->hash_search_index, 0, 0);
+	if (ret == -EADDRINUSE)
+		ret = 0;
+
+	if (ret) {
+		sprintf(str, "[PF GET MSG FROM VF]--VF del mac failed. code:%d\n", ret);
+		PMD_DRV_LOG(ERR, "%s", str);
+		goto proc_end;
+	}
+
+	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++) {
+		if (rte_is_same_ether_addr(&hw->vfinfo[vf_id].vf_mac[i], &mac_filter->mac))
+			memset(&hw->vfinfo[vf_id].vf_mac[i], 0, sizeof(struct rte_ether_addr));
+	}
+
+	sprintf(str, "vport 0x%x del mac ret 0x%x\n", port.vport, ret);
+	*res_len =  strlen(str) + ZXDH_MSG_REPLYBODY_HEAD;
+	rte_memcpy(&res_info->reply_data, str, strlen(str) + 1);
+	res_info->flag = ZXDH_REPS_SUCC;
+	return ret;
+
+proc_end:
+	*res_len = strlen(str) + ZXDH_MSG_REPLYBODY_HEAD;
+	res_info->flag = ZXDH_REPS_FAIL;
+	return ret;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
 	[ZXDH_VF_PORT_UNINIT] = zxdh_vf_port_uninit,
+	[ZXDH_MAC_ADD] = zxdh_add_vf_mac_table,
+	[ZXDH_MAC_DEL] = zxdh_del_vf_mac_table,
 };
 
 static inline int

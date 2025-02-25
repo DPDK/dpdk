@@ -164,8 +164,9 @@ struct zxdh_panel_table {
 }; /* 16B */
 
 struct zxdh_mac_unicast_key {
-	uint16_t rsv;
 	uint8_t  dmac_addr[6];
+	uint16_t sriov_vlan_tpid;
+	uint16_t sriov_vlan_id;
 };
 
 struct zxdh_mac_unicast_entry {
@@ -232,10 +233,10 @@ int zxdh_get_port_attr(struct zxdh_hw *hw, uint16_t vport,
 		struct zxdh_port_attr_table *port_attr);
 int zxdh_delete_port_attr(struct zxdh_hw *hw, uint16_t vport,
 		struct zxdh_port_attr_table *port_attr);
-int zxdh_set_mac_table(struct zxdh_hw *hw, uint16_t vport,
-		struct rte_ether_addr *addr,  uint8_t hash_search_idx);
-int zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport,
-		struct rte_ether_addr *addr,  uint8_t hash_search_idx);
+int zxdh_add_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *addr,
+				uint8_t hash_search_idx, uint16_t srv_tpid, uint16_t srv_vlanid);
+int zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *addr,
+			 uint8_t hash_search_idx, uint16_t srv_tpid, uint16_t srv_vlanid);
 int zxdh_promisc_table_init(struct rte_eth_dev *dev);
 int zxdh_promisc_table_uninit(struct rte_eth_dev *dev);
 int zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
