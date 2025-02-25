@@ -16,6 +16,7 @@
 #include "zxdh_msg.h"
 #include "zxdh_pci.h"
 #include "zxdh_tables.h"
+#include "zxdh_np.h"
 
 #define ZXDH_REPS_INFO_FLAG_USABLE  0x00
 #define ZXDH_BAR_SEQID_NUM_MAX      256
@@ -1709,6 +1710,146 @@ zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	return ret;
 }
 
+static int
+zxdh_vf_np_stats_update(struct zxdh_hw *pf_hw, uint16_t vport,
+		void *cfg_data, struct zxdh_msg_reply_body *res_info,
+		uint16_t *res_len)
+{
+	struct zxdh_np_stats_updata_msg *np_stats_query =
+			 (struct zxdh_np_stats_updata_msg  *)cfg_data;
+	union zxdh_virport_num vport_num = {.vport = vport};
+	struct zxdh_hw_stats_data stats_data;
+	uint32_t is_clr = np_stats_query->clear_mode;
+	uint32_t idx = 0;
+	int ret = 0;
+
+	if (!res_len || !res_info) {
+		PMD_DRV_LOG(ERR, "get stat invalid inparams");
+		return -1;
+	}
+	if (is_clr == 1) {
+		ret = zxdh_hw_np_stats_pf_reset(pf_hw->eth_dev, zxdh_vport_to_vfid(vport_num));
+		return ret;
+	}
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_UNICAST_STATS_EGRESS_BASE;
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			0, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_unicast_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_unicast_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_UNICAST_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			0, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_unicast_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_unicast_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_MULTICAST_STATS_EGRESS_BASE;
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			0, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_multicast_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_multicast_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_MULTICAST_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			0, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_multicast_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_multicast_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_BROAD_STATS_EGRESS_BASE;
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			0, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_broadcast_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_broadcast_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_BROAD_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			0, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_broadcast_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_broadcast_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_MTU_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			1, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	res_info->np_stats.tx_mtu_drop_pkts = stats_data.n_pkts_dropped;
+	res_info->np_stats.tx_mtu_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_mtu_drop_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_mtu_drop_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_MTU_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			1, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	res_info->np_stats.rx_mtu_drop_pkts = stats_data.n_pkts_dropped;
+	res_info->np_stats.rx_mtu_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_mtu_drop_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_mtu_drop_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_MTR_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			1, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	res_info->np_stats.tx_mtr_drop_pkts = stats_data.n_pkts_dropped;
+	res_info->np_stats.tx_mtr_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_mtr_drop_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.tx_mtr_drop_bytes);
+
+	idx = zxdh_vport_to_vfid(vport_num) + ZXDH_MTR_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+			1, idx, (uint32_t *)&stats_data);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get stats failed. code:%d", ret);
+		return ret;
+	}
+	res_info->np_stats.rx_mtr_drop_pkts = stats_data.n_pkts_dropped;
+	res_info->np_stats.rx_mtr_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_mtr_drop_pkts);
+	zxdh_data_hi_to_lo(&res_info->np_stats.rx_mtr_drop_bytes);
+	*res_len = sizeof(struct zxdh_hw_np_stats);
+
+	return 0;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -1726,6 +1867,7 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_RSS_HF_SET] = zxdh_vf_rss_hf_set,
 	[ZXDH_RSS_HF_GET] = zxdh_vf_rss_hf_get,
 	[ZXDH_PORT_ATTRS_SET] = zxdh_vf_port_attr_set,
+	[ZXDH_GET_NP_STATS] = zxdh_vf_np_stats_update,
 };
 
 static inline int

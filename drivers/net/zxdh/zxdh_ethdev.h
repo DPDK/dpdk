@@ -127,6 +127,7 @@ struct zxdh_hw {
 	uint8_t rss_enable;
 	uint8_t rss_init;
 	uint16_t slot_id;
+	uint32_t dev_id;
 
 	uint8_t queue_set_flag;
 	uint16_t queue_pool_count;

@@ -316,6 +316,10 @@ enum zxdh_reps_flag {
 	ZXDH_REPS_INVALID = 0xee,
 };
 
+struct zxdh_np_stats_updata_msg {
+	uint32_t clear_mode;
+};
+
 struct zxdh_link_info_msg {
 	uint8_t autoneg;
 	uint8_t link_state;
@@ -432,6 +436,7 @@ struct zxdh_msg_info {
 		struct zxdh_rss_reta rss_reta;
 		struct zxdh_rss_enable rss_enable;
 		struct zxdh_rss_hf rss_hf;
+		struct zxdh_np_stats_updata_msg np_stats_query;
 	} data;
 };
 
