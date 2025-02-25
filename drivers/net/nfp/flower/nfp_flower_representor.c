@@ -315,9 +315,25 @@ static int
 nfp_flower_repr_stats_get(struct rte_eth_dev *ethdev,
 		struct rte_eth_stats *stats)
 {
+	uint16_t i;
 	struct nfp_flower_representor *repr;
 
 	repr = ethdev->data->dev_private;
+
+	repr->repr_stats.ipackets = 0;
+	repr->repr_stats.ibytes = 0;
+	for (i = 0; i < ethdev->data->nb_rx_queues; i++) {
+		repr->repr_stats.ipackets += repr->repr_stats.q_ipackets[i];
+		repr->repr_stats.ibytes += repr->repr_stats.q_ibytes[i];
+	}
+
+	repr->repr_stats.opackets = 0;
+	repr->repr_stats.obytes = 0;
+	for (i = 0; i < ethdev->data->nb_tx_queues; i++) {
+		repr->repr_stats.opackets += repr->repr_stats.q_opackets[i];
+		repr->repr_stats.obytes += repr->repr_stats.q_obytes[i];
+	}
+
 	rte_memcpy(stats, &repr->repr_stats, sizeof(struct rte_eth_stats));
 
 	return 0;
@@ -385,7 +401,6 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 		for (i = 0; i < total_dequeue; i++)
 			data_len += rx_pkts[i]->data_len;
 
-		repr->repr_stats.ipackets += total_dequeue;
 		repr->repr_stats.q_ipackets[rxq->qidx] += total_dequeue;
 		repr->repr_stats.q_ibytes[rxq->qidx] += data_len;
 	}
@@ -434,7 +449,6 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 		for (i = 0; i < sent; i++)
 			data_len += tx_pkts[i]->data_len;
 
-		repr->repr_stats.opackets += sent;
 		repr->repr_stats.q_opackets[txq->qidx] += sent;
 		repr->repr_stats.q_obytes[txq->qidx] += data_len;
 	}
