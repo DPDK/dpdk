@@ -21,8 +21,9 @@
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 struct zxdh_dev_shared_data g_dev_sd[ZXDH_SLOT_MAX];
 static rte_spinlock_t zxdh_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
-static struct zxdh_shared_data *zxdh_shared_data;
+struct zxdh_shared_data *zxdh_shared_data;
 struct zxdh_net_hdr_dl g_net_hdr_dl[RTE_MAX_ETHPORTS];
+struct zxdh_mtr_res g_mtr_res;
 
 #define ZXDH_INVALID_DTBQUE      0xFFFF
 #define ZXDH_INVALID_SLOT_IDX    0xFFFF
@@ -1404,6 +1405,7 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.get_module_info		 = zxdh_dev_get_module_info,
 	.get_module_eeprom		 = zxdh_dev_get_module_eeprom,
 	.dev_supported_ptypes_get = zxdh_dev_supported_ptypes_get,
+	.mtr_ops_get			 = zxdh_meter_ops_get,
 };
 
 static int32_t
@@ -1686,6 +1688,72 @@ error:
 	return ret;
 }
 
+static void
+zxdh_free_sh_res(void)
+{
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		rte_spinlock_lock(&zxdh_shared_data_lock);
+		if (zxdh_shared_data != NULL && zxdh_shared_data->init_done &&
+			(--zxdh_shared_data->dev_refcnt == 0)) {
+			rte_mempool_free(zxdh_shared_data->mtr_mp);
+			rte_mempool_free(zxdh_shared_data->mtr_profile_mp);
+			rte_mempool_free(zxdh_shared_data->mtr_policy_mp);
+		}
+		rte_spinlock_unlock(&zxdh_shared_data_lock);
+	}
+}
+
+static int
+zxdh_init_sh_res(struct zxdh_shared_data *sd)
+{
+	const char *MZ_ZXDH_MTR_MP         = "zxdh_mtr_mempool";
+	const char *MZ_ZXDH_MTR_PROFILE_MP = "zxdh_mtr_profile_mempool";
+	const char *MZ_ZXDH_MTR_POLICY_MP = "zxdh_mtr_policy_mempool";
+	struct rte_mempool *flow_mp = NULL;
+	struct rte_mempool *mtr_mp = NULL;
+	struct rte_mempool *mtr_profile_mp = NULL;
+	struct rte_mempool *mtr_policy_mp = NULL;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		mtr_mp = rte_mempool_create(MZ_ZXDH_MTR_MP, ZXDH_MAX_MTR_NUM,
+			sizeof(struct zxdh_mtr_object), 64, 0,
+			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+		if (mtr_mp == NULL) {
+			PMD_DRV_LOG(ERR, "Cannot allocate zxdh mtr mempool");
+			goto error;
+		}
+		mtr_profile_mp = rte_mempool_create(MZ_ZXDH_MTR_PROFILE_MP,
+			MAX_MTR_PROFILE_NUM, sizeof(struct zxdh_meter_profile),
+			64, 0, NULL, NULL, NULL,
+			NULL, SOCKET_ID_ANY, 0);
+		if (mtr_profile_mp == NULL) {
+			PMD_DRV_LOG(ERR, "Cannot allocate zxdh mtr profile mempool");
+			goto error;
+		}
+		mtr_policy_mp = rte_mempool_create(MZ_ZXDH_MTR_POLICY_MP,
+			ZXDH_MAX_POLICY_NUM, sizeof(struct zxdh_meter_policy),
+			64, 0, NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+		if (mtr_policy_mp == NULL) {
+			PMD_DRV_LOG(ERR, "Cannot allocate zxdh mtr profile mempool");
+			goto error;
+		}
+		sd->mtr_mp = mtr_mp;
+		sd->mtr_profile_mp = mtr_profile_mp;
+		sd->mtr_policy_mp = mtr_policy_mp;
+		TAILQ_INIT(&zxdh_shared_data->meter_profile_list);
+		TAILQ_INIT(&zxdh_shared_data->mtr_list);
+		TAILQ_INIT(&zxdh_shared_data->mtr_policy_list);
+	}
+	return 0;
+
+error:
+	rte_mempool_free(mtr_policy_mp);
+	rte_mempool_free(mtr_profile_mp);
+	rte_mempool_free(mtr_mp);
+	rte_mempool_free(flow_mp);
+	return -rte_errno;
+}
+
 static int
 zxdh_init_once(struct rte_eth_dev *eth_dev)
 {
@@ -1713,8 +1781,15 @@ zxdh_init_once(struct rte_eth_dev *eth_dev)
 		goto out;
 	}
 	/* RTE_PROC_PRIMARY */
-	if (!sd->init_done)
+	if (!sd->init_done) {
+		/*shared struct and res init */
+		ret = zxdh_init_sh_res(sd);
+		if (ret != 0)
+			goto out;
+		rte_spinlock_init(&g_mtr_res.hw_plcr_res_lock);
+		memset(&g_mtr_res, 0, sizeof(g_mtr_res));
 		sd->init_done = true;
+	}
 	sd->dev_refcnt++;
 out:
 	rte_spinlock_unlock(&sd->lock);
@@ -1927,6 +2002,9 @@ err_zxdh_init:
 	zxdh_np_uninit(eth_dev);
 	zxdh_bar_msg_chan_exit();
 	zxdh_priv_res_free(hw);
+	zxdh_free_sh_res();
+	rte_free(hw->dev_sd);
+	hw->dev_sd = NULL;
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 	return ret;

@@ -14,6 +14,7 @@
 #include "zxdh_rxtx.h"
 #include "zxdh_np.h"
 #include "zxdh_queue.h"
+#include "zxdh_mtr.h"
 
 #define ZXDH_VLAN_FILTER_GROUPS       64
 #define ZXDH_INVALID_LOGIC_QID        0xFFFFU
@@ -1623,6 +1624,9 @@ zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->imissed = vqm_stats.rx_drop + mac_stats.rx_drop;
 	stats->ierrors = vqm_stats.rx_error + mac_stats.rx_error + np_stats.rx_mtu_drop_pkts;
 	stats->oerrors = vqm_stats.tx_error + mac_stats.tx_error + np_stats.tx_mtu_drop_pkts;
+
+	if (hw->i_mtr_en || hw->e_mtr_en)
+		stats->imissed  += np_stats.rx_mtr_drop_pkts;
 
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 	for (i = 0; (i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {

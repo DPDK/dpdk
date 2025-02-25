@@ -149,6 +149,7 @@ New Features
   * Jumbo frames.
   * Checksum offload.
   * LRO and TSO.
+  * Ingress metering.
 
 * **Added Yunsilicon xsc net driver [EXPERIMENTAL].**
 

@@ -10,6 +10,7 @@
 #include <ethdev_driver.h>
 
 #include "zxdh_ethdev_ops.h"
+#include "zxdh_mtr.h"
 
 #define ZXDH_BAR0_INDEX                 0
 #define ZXDH_CTRLCH_OFFSET              (0x2000)
@@ -230,6 +231,11 @@ enum zxdh_msg_type {
 	ZXDH_PORT_PROMISC_SET = 26,
 
 	ZXDH_GET_NP_STATS = 31,
+	ZXDH_PLCR_CAR_PROFILE_ID_ADD = 36,
+	ZXDH_PLCR_CAR_PROFILE_ID_DELETE = 37,
+	ZXDH_PLCR_CAR_PROFILE_CFG_SET,
+	ZXDH_PLCR_CAR_QUEUE_CFG_SET = 40,
+	ZXDH_PORT_METER_STAT_GET = 42,
 
 	ZXDH_MSG_TYPE_END,
 };
@@ -373,6 +379,9 @@ struct zxdh_flash_msg {
 	uint8_t firmware_version[ZXDH_FWVERS_LEN];
 };
 
+struct zxdh_mtr_profile_info {
+	uint64_t profile_id;
+};
 
 struct zxdh_msg_reply_body {
 	enum zxdh_reps_flag flag;
@@ -386,6 +395,8 @@ struct zxdh_msg_reply_body {
 		struct zxdh_mac_reply_msg mac_reply_msg;
 		struct zxdh_flash_msg flash_msg;
 		struct zxdh_mac_module_eeprom_msg module_eeprom_msg;
+		struct zxdh_mtr_profile_info mtr_profile_info;
+		struct zxdh_mtr_stats hw_mtr_stats;
 	};
 };
 
@@ -452,6 +463,37 @@ struct zxdh_agent_msg_head {
 	uint16_t pcie_id;
 };
 
+struct zxdh_plcr_profile_add {
+	uint8_t car_type;/* 0 :carA ; 1:carB ;2 carC*/
+};
+
+struct zxdh_mtr_stats_query {
+	uint8_t direction;
+	uint8_t is_clr;
+};
+
+struct zxdh_plcr_profile_cfg {
+	uint8_t car_type; /* 0 :carA ; 1:carB ;2 carC*/
+	uint8_t packet_mode;  /*0 bps  1 pps */
+	uint16_t hw_profile_id;
+	union zxdh_offload_profile_cfg plcr_param;
+};
+
+struct zxdh_plcr_flow_cfg {
+	uint8_t car_type;  /* 0:carA; 1:carB; 2:carC */
+	uint8_t drop_flag; /* default */
+	uint8_t plcr_en;   /* 1:bind, 0:unbind */
+	uint8_t rsv;
+	uint16_t flow_id;
+	uint16_t profile_id;
+};
+
+struct zxdh_plcr_profile_free {
+	uint8_t car_type;
+	uint8_t rsv;
+	uint16_t profile_id;
+};
+
 struct zxdh_msg_info {
 	union {
 		uint8_t head_len[ZXDH_MSG_HEAD_LEN];
@@ -473,6 +515,11 @@ struct zxdh_msg_info {
 		struct zxdh_rss_hf rss_hf;
 		struct zxdh_np_stats_updata_msg np_stats_query;
 		struct zxdh_mac_module_eeprom_msg module_eeprom_msg;
+		struct zxdh_plcr_profile_add zxdh_plcr_profile_add;
+		struct zxdh_plcr_profile_free zxdh_plcr_profile_free;
+		struct zxdh_plcr_profile_cfg zxdh_plcr_profile_cfg;
+		struct zxdh_plcr_flow_cfg  zxdh_plcr_flow_cfg;
+		struct zxdh_mtr_stats_query  zxdh_mtr_stats_query;
 	} data;
 };
 
