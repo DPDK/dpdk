@@ -147,6 +147,8 @@ New Features
   * Receive Side Scaling (RSS).
   * Hardware statistics.
   * Jumbo frames.
+  * Checksum offload.
+  * LRO and TSO.
 
 * **Added Yunsilicon xsc net driver [EXPERIMENTAL].**
 

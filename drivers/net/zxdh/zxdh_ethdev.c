@@ -838,6 +838,93 @@ zxdh_vlan_offload_configure(struct rte_eth_dev *dev)
 }
 
 static int
+zxdh_rx_csum_lro_offload_configure(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	uint32_t need_accelerator = rxmode->offloads & (RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |
+		RTE_ETH_RX_OFFLOAD_TCP_LRO);
+	int ret;
+
+	if (hw->is_pf) {
+		struct zxdh_port_attr_table port_attr = {0};
+		zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
+		port_attr.outer_ip_checksum_offload =
+			(rxmode->offloads & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) ? true : false;
+		port_attr.ip_checksum_offload =
+			(rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) ? true : false;
+		port_attr.tcp_udp_checksum_offload  =
+		(rxmode->offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
+					? true : false;
+		port_attr.lro_offload =
+				(rxmode->offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ? true : false;
+		port_attr.accelerator_offload_flag  = need_accelerator ? true : false;
+		ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "%s set port attr failed", __func__);
+			return -1;
+		}
+	} else {
+		struct zxdh_msg_info msg_info = {0};
+		struct zxdh_port_attr_set_msg *attr_msg = &msg_info.data.port_attr_msg;
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_IP_CHKSUM_FLAG;
+		attr_msg->value =
+			(rxmode->offloads & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) ? true : false;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "%s outer ip cksum config failed", __func__);
+			return -1;
+		}
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_OUTER_IP_CHECKSUM_OFFLOAD_FLAG;
+		attr_msg->value = (rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) ? true : false;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "%s ip_checksum config failed to send msg", __func__);
+			return -1;
+		}
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_TCP_UDP_CHKSUM_FLAG;
+		attr_msg->value = (rxmode->offloads &
+			(RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM)) ?
+				true : false;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "%s tcp_udp_checksum config failed to send msg", __func__);
+			return -1;
+		}
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_LRO_OFFLOAD_FLAG;
+		attr_msg->value = (rxmode->offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) ? true : false;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "%s lro offload config failed to send msg", __func__);
+			return -1;
+		}
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_ACCELERATOR_OFFLOAD_FLAG_FLAG;
+		attr_msg->value = need_accelerator ? true : false;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				"%s accelerator offload config failed to send msg", __func__);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
 zxdh_dev_conf_offload(struct rte_eth_dev *dev)
 {
 	int ret = 0;
@@ -851,6 +938,12 @@ zxdh_dev_conf_offload(struct rte_eth_dev *dev)
 	ret = zxdh_rss_configure(dev);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "rss configure failed");
+		return ret;
+	}
+
+	ret = zxdh_rx_csum_lro_offload_configure(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "rx csum lro configure failed");
 		return ret;
 	}
 
