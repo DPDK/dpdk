@@ -36,44 +36,75 @@ zxdh_queue_detach_unused(struct zxdh_virtqueue *vq)
 	return NULL;
 }
 
+static void
+zxdh_clear_channel(struct rte_eth_dev *dev, uint16_t lch)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint16_t pch;
+	uint32_t var, addr, widx, bidx;
+
+	if (hw->channel_context[lch].valid == 0)
+		return;
+	/* get coi table offset and index */
+	pch  = hw->channel_context[lch].ph_chno;
+	widx = pch / 32;
+	bidx = pch % 32;
+	addr = ZXDH_QUERES_SHARE_BASE + (widx * sizeof(uint32_t));
+	var  = zxdh_read_bar_reg(dev, ZXDH_BAR0_INDEX, addr);
+	var &= ~(1 << bidx);
+	zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
+	hw->channel_context[lch].valid = 0;
+	hw->channel_context[lch].ph_chno = 0;
+	PMD_DRV_LOG(DEBUG, " phyque %d release end ", pch);
+}
+
 static int32_t
 zxdh_release_channel(struct rte_eth_dev *dev)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
-	uint16_t nr_vq = hw->queue_num;
-	uint32_t var  = 0;
-	uint32_t addr = 0;
-	uint32_t widx = 0;
-	uint32_t bidx = 0;
-	uint16_t pch  = 0;
-	uint16_t lch  = 0;
+	u_int16_t rxq_num = hw->rx_qnum;
+	u_int16_t txq_num = hw->tx_qnum;
+	uint16_t lch, i;
 	int32_t ret = 0;
 
+	if (hw->queue_set_flag == 1) {
+		for (i = 0; i < rxq_num; i++) {
+			lch = i * 2;
+			PMD_DRV_LOG(DEBUG, "free success!");
+			if (hw->channel_context[lch].valid == 0)
+				continue;
+			PMD_DRV_LOG(DEBUG, "phyque %d  no need to release backend do it",
+						hw->channel_context[lch].ph_chno);
+			hw->channel_context[lch].valid = 0;
+			hw->channel_context[lch].ph_chno = 0;
+		}
+		for (i = 0; i < txq_num; i++) {
+			lch = i * 2 + 1;
+			PMD_DRV_LOG(DEBUG, "free success!");
+			if (hw->channel_context[lch].valid == 0)
+				continue;
+			PMD_DRV_LOG(DEBUG, "phyque %d  no need to release backend do it",
+						hw->channel_context[lch].ph_chno);
+			hw->channel_context[lch].valid = 0;
+			hw->channel_context[lch].ph_chno = 0;
+		}
+		hw->queue_set_flag = 0;
+		return 0;
+	}
 	ret = zxdh_timedlock(hw, 1000);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Acquiring hw lock got failed, timeout");
 		return -1;
 	}
 
-	for (lch = 0; lch < nr_vq; lch++) {
-		if (hw->channel_context[lch].valid == 0) {
-			PMD_DRV_LOG(DEBUG, "Logic channel %d does not need to release", lch);
-			continue;
-		}
-
-		pch  = hw->channel_context[lch].ph_chno;
-		widx = pch / 32;
-		bidx = pch % 32;
-
-		addr = ZXDH_QUERES_SHARE_BASE + (widx * sizeof(uint32_t));
-		var  = zxdh_read_bar_reg(dev, ZXDH_BAR0_INDEX, addr);
-		var &= ~(1 << bidx);
-		zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
-
-		hw->channel_context[lch].valid = 0;
-		hw->channel_context[lch].ph_chno = 0;
+	for (i = 0 ; i < rxq_num ; i++) {
+		lch = i * 2;
+		zxdh_clear_channel(dev, lch);
 	}
-
+	for (i = 0; i < txq_num ; i++) {
+		lch = i * 2 + 1;
+		zxdh_clear_channel(dev, lch);
+	}
 	zxdh_release_lock(hw);
 
 	return 0;
@@ -92,37 +123,41 @@ int32_t
 zxdh_free_queues(struct rte_eth_dev *dev)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
-	uint16_t nr_vq = hw->queue_num;
 	struct zxdh_virtqueue *vq = NULL;
-	int32_t queue_type = 0;
+	u_int16_t rxq_num = hw->rx_qnum;
+	u_int16_t txq_num = hw->tx_qnum;
 	uint16_t i = 0;
 
 	if (hw->vqs == NULL)
 		return 0;
 
-	if (zxdh_release_channel(dev) < 0) {
-		PMD_DRV_LOG(ERR, "Failed to clear coi table");
-		return -1;
-	}
-
-	for (i = 0; i < nr_vq; i++) {
-		vq = hw->vqs[i];
+	for (i = 0; i < rxq_num; i++) {
+		vq = hw->vqs[i * 2];
 		if (vq == NULL)
 			continue;
 
 		ZXDH_VTPCI_OPS(hw)->del_queue(hw, vq);
-		queue_type = zxdh_get_queue_type(i);
-		if (queue_type == ZXDH_VTNET_RQ) {
-			rte_free(vq->sw_ring);
-			rte_memzone_free(vq->rxq.mz);
-		} else if (queue_type == ZXDH_VTNET_TQ) {
-			rte_memzone_free(vq->txq.mz);
-			rte_memzone_free(vq->txq.zxdh_net_hdr_mz);
-		}
-
+		rte_memzone_free(vq->rxq.mz);
 		rte_free(vq);
-		hw->vqs[i] = NULL;
-		PMD_DRV_LOG(DEBUG, "Release to queue %d success!", i);
+		hw->vqs[i * 2] = NULL;
+		PMD_MSG_LOG(DEBUG, "Release to queue %d success!", i * 2);
+	}
+	for (i = 0; i < txq_num; i++) {
+		vq = hw->vqs[i * 2 + 1];
+		if (vq == NULL)
+			continue;
+
+		ZXDH_VTPCI_OPS(hw)->del_queue(hw, vq);
+		rte_memzone_free(vq->txq.mz);
+		rte_memzone_free(vq->txq.zxdh_net_hdr_mz);
+		rte_free(vq);
+		hw->vqs[i * 2 + 1] = NULL;
+		PMD_DRV_LOG(DEBUG, "Release to queue %d success!", i * 2 + 1);
+	}
+
+	if (zxdh_release_channel(dev) < 0) {
+		PMD_DRV_LOG(ERR, "Failed to clear coi table");
+		return -1;
 	}
 
 	rte_free(hw->vqs);

@@ -23,8 +23,8 @@
 #define ZXDH_MAX_MAC_ADDRS        (ZXDH_MAX_UC_MAC_ADDRS + ZXDH_MAX_MC_MAC_ADDRS)
 
 #define ZXDH_NUM_BARS             2
-#define ZXDH_RX_QUEUES_MAX        128U
-#define ZXDH_TX_QUEUES_MAX        128U
+#define ZXDH_RX_QUEUES_MAX        127U
+#define ZXDH_TX_QUEUES_MAX        127U
 #define ZXDH_MIN_RX_BUFSIZE       64
 #define ZXDH_MAX_RX_PKTLEN        14000U
 #define ZXDH_QUEUE_DEPTH          1024
@@ -71,16 +71,17 @@ struct zxdh_hw {
 	uint64_t bar_addr[ZXDH_NUM_BARS];
 	uint64_t host_features;
 	uint64_t guest_features;
-	uint32_t max_queue_pairs;
 	uint32_t speed;
 	uint32_t speed_mode;
 	uint32_t notify_off_multiplier;
 	union zxdh_virport_num vport;
+	uint16_t max_queue_pairs;
 	uint16_t pcie_id;
 	uint16_t device_id;
 	uint16_t port_id;
 	uint16_t vfid;
-	uint16_t queue_num;
+	uint16_t rx_qnum;
+	uint16_t tx_qnum;
 	uint16_t mc_num;
 	uint16_t uc_num;
 
@@ -107,6 +108,11 @@ struct zxdh_hw {
 	uint8_t rss_enable;
 	uint8_t rss_init;
 	uint16_t slot_id;
+
+	uint8_t queue_set_flag;
+	uint16_t queue_pool_count;
+	uint16_t queue_pool_start;
+	uint8_t rsv[3];
 };
 
 struct zxdh_dtb_shared_data {
