@@ -1339,6 +1339,32 @@ zxdh_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id, struct rte_eth_
 	qinfo->queue_state = dev->data->tx_queue_state[tx_queue_id];
 }
 
+static const uint32_t *
+zxdh_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *ptype_sz)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (!dev->rx_pkt_burst)
+		return NULL;
+	*ptype_sz = sizeof(ptypes);
+	return ptypes;
+}
+
 /* dev_ops for zxdh, bare necessities for basic operation */
 static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.dev_configure			 = zxdh_dev_configure,
@@ -1374,6 +1400,10 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.xstats_get_names		 = zxdh_dev_xstats_get_names,
 	.xstats_reset			 = zxdh_dev_stats_reset,
 	.mtu_set				 = zxdh_dev_mtu_set,
+	.fw_version_get			 = zxdh_dev_fw_version_get,
+	.get_module_info		 = zxdh_dev_get_module_info,
+	.get_module_eeprom		 = zxdh_dev_get_module_eeprom,
+	.dev_supported_ptypes_get = zxdh_dev_supported_ptypes_get,
 };
 
 static int32_t
