@@ -396,7 +396,6 @@ zxdh_get_pci_dev_config(struct zxdh_hw *hw)
 {
 	uint64_t guest_features = 0;
 	uint64_t nego_features = 0;
-	uint32_t max_queue_pairs = 0;
 
 	hw->host_features = zxdh_pci_get_features(hw);
 
@@ -411,15 +410,6 @@ zxdh_get_pci_dev_config(struct zxdh_hw *hw)
 	} else {
 		rte_eth_random_addr(&hw->mac_addr[0]);
 	}
-
-	zxdh_pci_read_dev_config(hw, offsetof(struct zxdh_net_config, max_virtqueue_pairs),
-			&max_queue_pairs, sizeof(max_queue_pairs));
-
-	if (max_queue_pairs == 0)
-		hw->max_queue_pairs = ZXDH_RX_QUEUES_MAX;
-	else
-		hw->max_queue_pairs = RTE_MIN(ZXDH_RX_QUEUES_MAX, max_queue_pairs);
-	PMD_DRV_LOG(DEBUG, "set max queue pairs %d", hw->max_queue_pairs);
 }
 
 enum zxdh_msix_status zxdh_pci_msix_detect(struct rte_pci_device *dev)

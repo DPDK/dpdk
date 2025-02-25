@@ -936,14 +936,15 @@ zxdh_dev_rss_reta_update(struct rte_eth_dev *dev,
 static uint16_t
 zxdh_hw_qid_to_logic_qid(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
-	uint16_t rx_queues = dev->data->nb_rx_queues;
+	struct zxdh_hw *priv = (struct zxdh_hw *)dev->data->dev_private;
 	uint16_t i;
 
-	for (i = 0; i < rx_queues; i++) {
-		if (qid == hw->channel_context[i * 2].ph_chno)
-			return i;
+	for (i = 0; i < priv->max_queue_pairs * 2 ; i++) {
+		if (priv->channel_context[i].valid)
+			if (qid == priv->channel_context[i].ph_chno)
+				return i;
 	}
+
 	return ZXDH_INVALID_LOGIC_QID;
 }
 
@@ -1001,7 +1002,7 @@ zxdh_dev_rss_reta_query(struct rte_eth_dev *dev,
 				reta_table->reta[i], qid_logic);
 			return -EINVAL;
 		}
-		reta_conf[idx].reta[i % RTE_ETH_RETA_GROUP_SIZE] = qid_logic;
+		reta_conf[idx].reta[i % RTE_ETH_RETA_GROUP_SIZE] = qid_logic >> 1;
 	}
 	return 0;
 }
