@@ -1437,7 +1437,7 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 		goto free_res;
 	}
 
-	PMD_DRV_LOG(DEBUG, "dev %s dpp host np init ok.dtb queue %d",
+	PMD_DRV_LOG(DEBUG, "dev %s dpp host np init ok.dtb queue %u",
 		dev->device->name, dpp_ctrl->queue_id);
 	dtb_data->queueid = dpp_ctrl->queue_id;
 	rte_free(dpp_ctrl);
@@ -1458,7 +1458,7 @@ zxdh_get_dev_shared_data_idx(uint32_t dev_serial_id)
 			return idx;
 	}
 
-	PMD_DRV_LOG(ERR, "dev serial_id[%d] can not found in global dev_share_data arrays",
+	PMD_DRV_LOG(ERR, "dev serial_id[%u] can not found in global dev_share_data arrays",
 		dev_serial_id);
 	return ZXDH_INVALID_SLOT_IDX;
 }
@@ -1714,6 +1714,7 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_zxdh_init;
 
 	zxdh_queue_res_get(eth_dev);
+	zxdh_msg_cb_reg(hw);
 	ret = zxdh_configure_intr(eth_dev);
 	if (ret != 0)
 		goto err_zxdh_init;

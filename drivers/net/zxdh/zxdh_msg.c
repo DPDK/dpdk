@@ -15,6 +15,7 @@
 #include "zxdh_logs.h"
 #include "zxdh_msg.h"
 #include "zxdh_pci.h"
+#include "zxdh_tables.h"
 
 #define ZXDH_REPS_INFO_FLAG_USABLE  0x00
 #define ZXDH_BAR_SEQID_NUM_MAX      256
@@ -136,7 +137,7 @@ static struct zxdh_seqid_ring g_seqid_ring;
 static uint8_t tmp_msg_header[ZXDH_BAR_MSG_ADDR_CHAN_INTERVAL];
 static rte_spinlock_t chan_lock;
 
-zxdh_bar_chan_msg_recv_callback msg_recv_func_tbl[ZXDH_BAR_MSG_MODULE_NUM];
+zxdh_bar_chan_msg_recv_callback zxdh_msg_recv_func_tbl[ZXDH_BAR_MSG_MODULE_NUM];
 
 static inline const char
 *zxdh_module_id_name(int val)
@@ -914,7 +915,7 @@ zxdh_bar_msg_sync_msg_proc(uint64_t reply_addr,
 	if (reps_buffer == NULL)
 		return;
 
-	zxdh_bar_chan_msg_recv_callback recv_func = msg_recv_func_tbl[msg_header->module_id];
+	zxdh_bar_chan_msg_recv_callback recv_func = zxdh_msg_recv_func_tbl[msg_header->module_id];
 
 	recv_func(receiver_buff, msg_header->len, reps_buffer, &reps_len, dev);
 	msg_header->ack = ZXDH_BAR_CHAN_MSG_ACK;
@@ -973,7 +974,7 @@ zxdh_bar_chan_msg_header_check(struct zxdh_bar_msg_header *msg_header)
 		PMD_MSG_LOG(ERR, "recv header ERR: invalid mesg len: %u", len);
 		return ZXDH_BAR_MSG_ERR_LEN;
 	}
-	if (msg_recv_func_tbl[msg_header->module_id] == NULL) {
+	if (zxdh_msg_recv_func_tbl[msg_header->module_id] == NULL) {
 		PMD_MSG_LOG(ERR, "recv header ERR: module:%s(%u) doesn't register",
 				zxdh_module_id_name(module_id), module_id);
 		return ZXDH_BAR_MSG_ERR_MODULE_NOEXIST;
@@ -1029,7 +1030,8 @@ exit:
 	return ZXDH_BAR_MSG_OK;
 }
 
-int zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras,
+int
+zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras,
 		struct zxdh_bar_offset_res *res)
 {
 	uint16_t check_token;
@@ -1073,7 +1075,8 @@ int zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras,
 	return ZXDH_BAR_MSG_OK;
 }
 
-int zxdh_vf_send_msg_to_pf(struct rte_eth_dev *dev,  void *msg_req,
+int
+zxdh_vf_send_msg_to_pf(struct rte_eth_dev *dev,  void *msg_req,
 			uint16_t msg_req_len, void *reply, uint16_t reply_len)
 {
 	struct zxdh_hw *hw  = dev->data->dev_private;
@@ -1125,7 +1128,8 @@ int zxdh_vf_send_msg_to_pf(struct rte_eth_dev *dev,  void *msg_req,
 	return 0;
 }
 
-int32_t zxdh_send_msg_to_riscv(struct rte_eth_dev *dev, void *msg_req,
+int32_t
+zxdh_send_msg_to_riscv(struct rte_eth_dev *dev, void *msg_req,
 			uint16_t msg_req_len, void *reply, uint16_t reply_len,
 			enum ZXDH_BAR_MODULE_ID module_id)
 {
@@ -1173,7 +1177,8 @@ int32_t zxdh_send_msg_to_riscv(struct rte_eth_dev *dev, void *msg_req,
 	return 0;
 }
 
-void zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
+void
+zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
 		struct zxdh_msg_info *msg_info)
 {
 	struct zxdh_msg_head *msghead = &msg_info->msg_head;
@@ -1184,7 +1189,8 @@ void zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
 	msghead->pcieid   = hw->pcie_id;
 }
 
-void zxdh_agent_msg_build(struct zxdh_hw *hw, enum zxdh_agent_msg_type type,
+void
+zxdh_agent_msg_build(struct zxdh_hw *hw, enum zxdh_agent_msg_type type,
 		struct zxdh_msg_info *msg_info)
 {
 	struct zxdh_agent_msg_head *agent_head = &msg_info->agent_msg_head;
@@ -1194,4 +1200,166 @@ void zxdh_agent_msg_build(struct zxdh_hw *hw, enum zxdh_agent_msg_type type,
 	agent_head->phyport = hw->phyport;
 	agent_head->vf_id = hw->vfid;
 	agent_head->pcie_id = hw->pcie_id;
+}
+
+static int
+zxdh_bar_chan_msg_recv_register(uint8_t module_id, zxdh_bar_chan_msg_recv_callback callback)
+{
+	if (module_id >= (uint16_t)ZXDH_BAR_MSG_MODULE_NUM) {
+		PMD_MSG_LOG(ERR, "register ERR: invalid module_id: %u.", module_id);
+		return ZXDH_BAR_MSG_ERR_MODULE;
+	}
+	if (callback == NULL) {
+		PMD_MSG_LOG(ERR, "register %s(%u) error: null callback.",
+					zxdh_module_id_name(module_id), module_id);
+		return ZXDH_BAR_MEG_ERR_NULL_FUNC;
+	}
+	if (zxdh_msg_recv_func_tbl[module_id] != NULL) {
+		PMD_MSG_LOG(DEBUG, "register warning, event:%s(%u) already be registered.",
+					zxdh_module_id_name(module_id), module_id);
+		return ZXDH_BAR_MSG_ERR_REPEAT_REGISTER;
+	}
+	zxdh_msg_recv_func_tbl[module_id] = callback;
+	return ZXDH_BAR_MSG_OK;
+}
+
+static int
+zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
+{
+	struct zxdh_port_attr_table port_attr = {0};
+	union zxdh_virport_num port = {.vport = vport};
+	struct zxdh_vf_init_msg *vf_init_msg = (struct zxdh_vf_init_msg *)cfg_data;
+	int ret = 0;
+
+	RTE_ASSERT(!cfg_data || !pf_hw || !res_info || !res_len);
+	*res_len = ZXDH_MSG_REPLYBODY_HEAD;
+	port_attr.hit_flag = 1;
+	port_attr.is_vf = 1;
+	port_attr.phy_port = pf_hw->phyport;
+	port_attr.is_up = 1;
+	port_attr.rss_enable = 0;
+	port_attr.pf_vfid = pf_hw->vfid;
+	port_attr.hash_search_index = pf_hw->hash_search_index;
+	port_attr.port_base_qid = vf_init_msg->base_qid;
+	uint16_t vfid = zxdh_vport_to_vfid(port);
+
+	ret = zxdh_set_port_attr(pf_hw, vfid, &port_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "set vport attr failed, code:%d", ret);
+		goto proc_end;
+	}
+
+	res_info->flag = ZXDH_REPS_SUCC;
+	*res_len = sizeof(res_info->flag);
+
+	return ret;
+proc_end:
+	*res_len = sizeof(res_info->flag);
+	res_info->flag = ZXDH_REPS_FAIL;
+	return ret;
+}
+
+static int
+zxdh_vf_port_uninit(struct zxdh_hw *pf_hw,
+		uint16_t vport, void *cfg_data __rte_unused,
+		struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "uninit";
+	struct zxdh_port_attr_table port_attr = {0};
+	int ret = 0;
+
+	*res_len =  ZXDH_MSG_REPLYBODY_HEAD;
+	RTE_ASSERT(!cfg_data || !pf_hw || !res_info || !res_len);
+
+	ret = zxdh_delete_port_attr(pf_hw, vport, &port_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "write port_attr_eram failed, code:%d", ret);
+		goto proc_end;
+	}
+
+	*res_len += strlen(str);
+	rte_memcpy(&res_info->reply_data, str, strlen(str) + 1);
+	res_info->flag = ZXDH_REPS_SUCC;
+	return ret;
+
+proc_end:
+	*res_len += strlen(str);
+	rte_memcpy(&res_info->reply_data, str, strlen(str) + 1);
+	res_info->flag = ZXDH_REPS_FAIL;
+	return ret;
+}
+
+static const zxdh_msg_process_callback zxdh_proc_cb[] = {
+	[ZXDH_NULL] = NULL,
+	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
+	[ZXDH_VF_PORT_UNINIT] = zxdh_vf_port_uninit,
+};
+
+static inline int
+zxdh_config_process_callback(struct zxdh_hw *hw, struct zxdh_msg_info *msg_info,
+	struct zxdh_msg_reply_body *res, uint16_t *res_len)
+{
+	struct zxdh_msg_head *msghead = &msg_info->msg_head;
+	int ret = -1;
+
+	if (!res || !res_len) {
+		PMD_DRV_LOG(ERR, " invalid param");
+		return -1;
+	}
+	if (zxdh_proc_cb[msghead->msg_type]) {
+		ret = zxdh_proc_cb[msghead->msg_type](hw, msghead->vport,
+					(void *)&msg_info->data, res, res_len);
+		if (!ret)
+			res->flag = ZXDH_REPS_SUCC;
+		else
+			res->flag = ZXDH_REPS_FAIL;
+	} else {
+		res->flag = ZXDH_REPS_INVALID;
+	}
+	*res_len += sizeof(res->flag);
+	return ret;
+}
+
+static int
+pf_recv_bar_msg(void *pay_load, uint16_t len, void *reps_buffer,
+	uint16_t *reps_len, void *eth_dev)
+{
+	struct zxdh_msg_info *msg_info = (struct zxdh_msg_info *)pay_load;
+	struct zxdh_msg_reply_body *reply_body = reps_buffer;
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)eth_dev;
+	int32_t ret = 0;
+	struct zxdh_hw *hw;
+	uint16_t reply_len = 0;
+
+	if (eth_dev == NULL) {
+		PMD_DRV_LOG(ERR, "param invalid, dev is null.");
+		ret = -2;
+		goto msg_proc_end;
+	}
+	hw = dev->data->dev_private;
+
+	if (msg_info->msg_head.msg_type >= ZXDH_MSG_TYPE_END) {
+		PMD_DRV_LOG(ERR, "len %u msg_type %d unsupported",
+			len, msg_info->msg_head.msg_type);
+		ret = -2;
+		goto msg_proc_end;
+	}
+
+	ret = zxdh_config_process_callback(hw, msg_info, reply_body, &reply_len);
+	*reps_len = reply_len + sizeof(struct zxdh_msg_reply_head);
+	return ret;
+
+msg_proc_end:
+	memcpy(reply_body->reply_data, &ret, sizeof(ret));
+	reply_len = sizeof(ret);
+	*reps_len = sizeof(struct zxdh_msg_reply_head) + reply_len;
+	return ret;
+}
+
+void
+zxdh_msg_cb_reg(struct zxdh_hw *hw)
+{
+	if (hw->is_pf)
+		zxdh_bar_chan_msg_recv_register(ZXDH_MODULE_BAR_MSG_TO_PF, pf_recv_bar_msg);
 }

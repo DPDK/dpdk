@@ -310,6 +310,7 @@ struct zxdh_msg_reply_head {
 enum zxdh_reps_flag {
 	ZXDH_REPS_FAIL,
 	ZXDH_REPS_SUCC = 0xaa,
+	ZXDH_REPS_INVALID = 0xee,
 };
 
 struct zxdh_link_info_msg {
@@ -428,6 +429,12 @@ struct zxdh_msg_info {
 
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 		void *reps_buffer, uint16_t *reps_len, void *dev);
+typedef int (*zxdh_msg_process_callback)(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+	struct zxdh_msg_reply_body *res_info, uint16_t *res_len);
+
+typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
+			void *reps_buffer, uint16_t *reps_len, void *dev);
+extern zxdh_bar_chan_msg_recv_callback zxdh_msg_recv_func_tbl[ZXDH_BAR_MSG_MODULE_NUM];
 
 int zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras, struct zxdh_bar_offset_res *res);
 int zxdh_msg_chan_init(void);
@@ -448,5 +455,6 @@ void zxdh_agent_msg_build(struct zxdh_hw *hw, enum zxdh_agent_msg_type type,
 int32_t zxdh_send_msg_to_riscv(struct rte_eth_dev *dev, void *msg_req,
 			uint16_t msg_req_len, void *reply, uint16_t reply_len,
 			enum ZXDH_BAR_MODULE_ID module_id);
+void zxdh_msg_cb_reg(struct zxdh_hw *hw);
 
 #endif /* ZXDH_MSG_H */
