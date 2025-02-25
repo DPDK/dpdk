@@ -215,6 +215,23 @@ zxdh_get_port_attr(struct zxdh_hw *hw, uint16_t vport, struct zxdh_port_attr_tab
 }
 
 int
+zxdh_delete_port_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_attr_table *port_attr)
+{
+	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	ZXDH_DTB_ERAM_ENTRY_INFO_T entry = {vport_num.vfid, (uint32_t *)port_attr};
+	ZXDH_DTB_USER_ENTRY_T user_entry = {
+		.sdt_no = ZXDH_SDT_VPORT_ATT_TABLE,
+		.p_entry_data = (void *)&entry
+	};
+	int ret = zxdh_np_dtb_table_entry_delete(hw->slot_id, dtb_data->queueid, 1, &user_entry);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "delete port attr failed, vfid:%u", vport_num.vfid);
+	return ret;
+}
+
+int
 zxdh_set_mac_table(struct zxdh_hw *hw, uint16_t vport,
 		struct rte_ether_addr *addr, uint8_t hash_search_idx)
 {

@@ -230,6 +230,8 @@ int zxdh_set_port_attr(struct zxdh_hw *hw, uint16_t vport,
 int zxdh_port_attr_uninit(struct rte_eth_dev *dev);
 int zxdh_get_port_attr(struct zxdh_hw *hw, uint16_t vport,
 		struct zxdh_port_attr_table *port_attr);
+int zxdh_delete_port_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_attr_table *port_attr);
 int zxdh_set_mac_table(struct zxdh_hw *hw, uint16_t vport,
 		struct rte_ether_addr *addr,  uint8_t hash_search_idx);
 int zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport,
