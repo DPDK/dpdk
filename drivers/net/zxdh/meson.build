@@ -23,6 +23,7 @@ sources = files(
         'zxdh_tables.c',
         'zxdh_rxtx.c',
         'zxdh_ethdev_ops.c',
+        'zxdh_mtr.c',
 )
 
 cflags += no_wvla_cflag

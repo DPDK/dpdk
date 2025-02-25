@@ -10,6 +10,7 @@
 #include <rte_cycles.h>
 #include <inttypes.h>
 #include <rte_malloc.h>
+#include "rte_mtr_driver.h"
 
 #include "zxdh_ethdev.h"
 #include "zxdh_logs.h"
@@ -1713,6 +1714,12 @@ zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	case ZXDH_PORT_LRO_OFFLOAD_FLAG:
 		port_attr.lro_offload = attr_msg->value;
 		break;
+	case ZXDH_PORT_EGRESS_METER_EN_OFF_FLAG:
+		port_attr.egress_meter_enable = attr_msg->value;
+		break;
+	case ZXDH_PORT_INGRESS_METER_EN_OFF_FLAG:
+		port_attr.ingress_meter_mode = attr_msg->value;
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "unsupported attr 0x%x set", attr_msg->mode);
 		return -1;
@@ -1865,6 +1872,190 @@ zxdh_vf_np_stats_update(struct zxdh_hw *pf_hw, uint16_t vport,
 	return 0;
 }
 
+static int
+zxdh_vf_mtr_hw_stats_get(struct zxdh_hw *pf_hw,
+	uint16_t vport, void *cfg_data,
+	struct zxdh_msg_reply_body *res_info,
+	uint16_t *res_len)
+{
+	struct zxdh_mtr_stats_query  *zxdh_mtr_stats_query =
+			(struct zxdh_mtr_stats_query  *)cfg_data;
+	union zxdh_virport_num v_port = {.vport = vport};
+	int ret = 0;
+
+	uint32_t stat_baseaddr = zxdh_mtr_stats_query->direction ==
+				ZXDH_EGRESS ?
+				ZXDH_MTR_STATS_EGRESS_BASE : ZXDH_MTR_STATS_INGRESS_BASE;
+	uint32_t idx = zxdh_vport_to_vfid(v_port) + stat_baseaddr;
+
+	if (!res_len || !res_info) {
+		PMD_DRV_LOG(ERR, "get stat invalid in params");
+		return -1;
+	}
+	res_info->flag = ZXDH_REPS_FAIL;
+	ret = zxdh_np_dtb_stats_get(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+				1, idx, (uint32_t *)&res_info->hw_mtr_stats);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get dir %d stats  failed", zxdh_mtr_stats_query->direction);
+		return ret;
+	}
+	res_info->flag = ZXDH_REPS_SUCC;
+	*res_len = sizeof(struct zxdh_hw_mtr_stats);
+	return 0;
+}
+
+static int
+zxdh_vf_mtr_hw_profile_add(struct zxdh_hw *pf_hw,
+	uint16_t vport,
+	void *cfg_data,
+	struct zxdh_msg_reply_body *res_info,
+	uint16_t *res_len)
+{
+	if (!cfg_data || !res_len || !res_info) {
+		PMD_DRV_LOG(ERR, " get profileid invalid inparams");
+		return -1;
+	}
+	struct rte_mtr_error error = {0};
+	int ret = 0;
+	uint64_t profile_id = HW_PROFILE_MAX;
+
+	struct zxdh_plcr_profile_add  *zxdh_plcr_profile_add =
+		(struct zxdh_plcr_profile_add *)cfg_data;
+
+	res_info->flag = ZXDH_REPS_FAIL;
+	*res_len = sizeof(struct zxdh_mtr_profile_info);
+	ret = zxdh_hw_profile_alloc_direct(pf_hw->eth_dev,
+		zxdh_plcr_profile_add->car_type,
+		&profile_id, &error);
+
+	if (ret) {
+		PMD_DRV_LOG(ERR, "pf 0x%x for vf 0x%x alloc hw profile failed",
+			pf_hw->vport.vport,
+			vport
+		);
+		return -1;
+	}
+	zxdh_hw_profile_ref(profile_id);
+	res_info->mtr_profile_info.profile_id = profile_id;
+	res_info->flag = ZXDH_REPS_SUCC;
+
+	return 0;
+}
+
+static int
+zxdh_vf_mtr_hw_profile_del(struct zxdh_hw *pf_hw,
+	uint16_t vport,
+	void *cfg_data,
+	struct zxdh_msg_reply_body *res_info,
+	uint16_t *res_len)
+{
+	if (!cfg_data || !res_len || !res_info) {
+		PMD_DRV_LOG(ERR, " del profileid  invalid inparams");
+		return -1;
+	}
+
+	res_info->flag = ZXDH_REPS_FAIL;
+	*res_len = 0;
+	struct zxdh_plcr_profile_free *mtr_profile_free = (struct zxdh_plcr_profile_free *)cfg_data;
+	uint64_t profile_id = mtr_profile_free->profile_id;
+	struct rte_mtr_error error = {0};
+	int ret;
+
+	if (profile_id >= HW_PROFILE_MAX) {
+		PMD_DRV_LOG(ERR, " del profileid  invalid inparams");
+		return -rte_mtr_error_set(&error, ENOTSUP,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID, NULL,
+				"Meter offload del profile failed  profilie id invalid ");
+	}
+
+	ret = zxdh_hw_profile_unref(pf_hw->eth_dev, mtr_profile_free->car_type, profile_id, &error);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			" del  hw vport %d profile %d failed. code:%d",
+			vport,
+			mtr_profile_free->profile_id,
+			ret
+		);
+		return -rte_mtr_error_set(&error, ENOTSUP,
+				RTE_MTR_ERROR_TYPE_METER_PROFILE_ID, NULL,
+				"Meter offload del profile failed ");
+	}
+	res_info->flag = ZXDH_REPS_SUCC;
+	return 0;
+}
+
+static int
+zxdh_vf_mtr_hw_plcrflow_cfg(struct zxdh_hw *pf_hw,
+	uint16_t vport,
+	void *cfg_data,
+	struct zxdh_msg_reply_body *res_info,
+	uint16_t *res_len)
+{
+	int ret = 0;
+
+	if (!cfg_data || !res_info || !res_len) {
+		PMD_DRV_LOG(ERR, " (vport %d) flow bind failed invalid inparams", vport);
+		return -1;
+	}
+	struct rte_mtr_error error = {0};
+	struct zxdh_plcr_flow_cfg *zxdh_plcr_flow_cfg = (struct zxdh_plcr_flow_cfg *)cfg_data;
+
+	res_info->flag = ZXDH_REPS_FAIL;
+	*res_len = 0;
+	ret = zxdh_np_stat_car_queue_cfg_set(pf_hw->dev_id,
+		zxdh_plcr_flow_cfg->car_type,
+		zxdh_plcr_flow_cfg->flow_id,
+		zxdh_plcr_flow_cfg->drop_flag,
+		zxdh_plcr_flow_cfg->plcr_en,
+		(uint64_t)zxdh_plcr_flow_cfg->profile_id);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			" dpp_stat_car_queue_cfg_set failed flowid %d	profile id %d. code:%d",
+			zxdh_plcr_flow_cfg->flow_id,
+			zxdh_plcr_flow_cfg->profile_id,
+			ret
+		);
+		return -rte_mtr_error_set(&error, ENOTSUP,
+				RTE_MTR_ERROR_TYPE_MTR_PARAMS,
+				NULL, "Failed to bind plcr flow.");
+	}
+	res_info->flag = ZXDH_REPS_SUCC;
+	return 0;
+}
+
+static int
+zxdh_vf_mtr_hw_profile_cfg(struct zxdh_hw *pf_hw __rte_unused,
+	uint16_t vport,
+	void *cfg_data,
+	struct zxdh_msg_reply_body *res_info,
+	uint16_t *res_len)
+{
+	int ret = 0;
+
+	if (!cfg_data || !res_info || !res_len) {
+		PMD_DRV_LOG(ERR, " cfg profile invalid inparams");
+		return -1;
+	}
+	res_info->flag = ZXDH_REPS_FAIL;
+	*res_len = 0;
+	struct rte_mtr_error error = {0};
+	struct zxdh_plcr_profile_cfg *zxdh_plcr_profile_cfg =
+		(struct zxdh_plcr_profile_cfg *)cfg_data;
+	union zxdh_offload_profile_cfg *plcr_param = &zxdh_plcr_profile_cfg->plcr_param;
+
+	ret = zxdh_np_car_profile_cfg_set(vport,
+		zxdh_plcr_profile_cfg->car_type,
+		zxdh_plcr_profile_cfg->packet_mode,
+		zxdh_plcr_profile_cfg->hw_profile_id,
+		plcr_param);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "(vport %d)config hw profilefailed", vport);
+		return -rte_mtr_error_set(&error, ENOTSUP, RTE_MTR_ERROR_TYPE_METER_PROFILE, NULL, "Meter offload cfg profile failed");
+	}
+	res_info->flag = ZXDH_REPS_SUCC;
+	return 0;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -1883,6 +2074,11 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_RSS_HF_GET] = zxdh_vf_rss_hf_get,
 	[ZXDH_PORT_ATTRS_SET] = zxdh_vf_port_attr_set,
 	[ZXDH_GET_NP_STATS] = zxdh_vf_np_stats_update,
+	[ZXDH_PORT_METER_STAT_GET] = zxdh_vf_mtr_hw_stats_get,
+	[ZXDH_PLCR_CAR_PROFILE_ID_ADD] = zxdh_vf_mtr_hw_profile_add,
+	[ZXDH_PLCR_CAR_PROFILE_ID_DELETE] =  zxdh_vf_mtr_hw_profile_del,
+	[ZXDH_PLCR_CAR_QUEUE_CFG_SET] = zxdh_vf_mtr_hw_plcrflow_cfg,
+	[ZXDH_PLCR_CAR_PROFILE_CFG_SET] = zxdh_vf_mtr_hw_profile_cfg,
 };
 
 static inline int

@@ -147,6 +147,44 @@
 #define ZXDH_RC_DTB_SEARCH_VPORT_QUEUE_ZERO     (ZXDH_RC_DTB_BASE | 0x17)
 #define ZXDH_RC_DTB_QUEUE_NOT_ENABLE            (ZXDH_RC_DTB_BASE | 0x18)
 
+#define ZXDH_SCHE_RSP_LEN                       (2)
+#define ZXDH_G_PROFILE_ID_LEN                   (8)
+
+#define ZXDH_CAR_A_FLOW_ID_MAX                  (0x7fff)
+#define ZXDH_CAR_B_FLOW_ID_MAX                  (0xfff)
+#define ZXDH_CAR_C_FLOW_ID_MAX                  (0x3ff)
+#define ZXDH_CAR_A_PROFILE_ID_MAX               (0x1ff)
+#define ZXDH_CAR_B_PROFILE_ID_MAX               (0x7f)
+#define ZXDH_CAR_C_PROFILE_ID_MAX               (0x1f)
+
+#define ZXDH_SYS_NP_BASE_ADDR0          (0x00000000)
+#define ZXDH_SYS_NP_BASE_ADDR1          (0x02000000)
+
+#define ZXDH_FIELD_FLAG_RO              (1 << 0)
+#define ZXDH_FIELD_FLAG_RW              (1 << 1)
+
+#define ZXDH_VF_ACTIVE(VPORT)                   (((VPORT) & 0x0800) >> 11)
+#define ZXDH_EPID_BY(VPORT)                     (((VPORT) & 0x7000) >> 12)
+#define ZXDH_FUNC_NUM(VPORT)                    (((VPORT) & 0x0700) >> 8)
+#define ZXDH_VFUNC_NUM(VPORT)                   (((VPORT) & 0x00FF))
+#define ZXDH_IS_PF(VPORT)                       (!ZXDH_VF_ACTIVE(VPORT))
+
+#define ZXDH_CHANNEL_REPS_LEN                   (4)
+
+typedef enum zxdh_module_base_addr_e {
+	ZXDH_MODULE_SE_SMMU0_BASE_ADDR = 0x00000000,
+	ZXDH_MODULE_DTB_ENQ_BASE_ADDR  = 0x00000000,
+	ZXDH_MODULE_NPPU_PKTRX_CFG_BASE_ADDR = 0x00000800,
+} ZXDH_MODULE_BASE_ADDR_E;
+
+typedef enum zxdh_sys_base_addr_e {
+	ZXDH_SYS_NPPU_BASE_ADDR     = (ZXDH_SYS_NP_BASE_ADDR0 + 0x00000000),
+	ZXDH_SYS_SE_SMMU0_BASE_ADDR = (ZXDH_SYS_NP_BASE_ADDR0 + 0x00300000),
+	ZXDH_SYS_DTB_BASE_ADDR      = (ZXDH_SYS_NP_BASE_ADDR1 + 0x00000000),
+	ZXDH_SYS_MAX_BASE_ADDR      = 0x20000000,
+} ZXDH_SYS_BASE_ADDR_E;
+
+
 typedef enum zxdh_module_init_e {
 	ZXDH_MODULE_INIT_NPPU = 0,
 	ZXDH_MODULE_INIT_PPU,
@@ -173,6 +211,10 @@ typedef enum zxdh_reg_info_e {
 	ZXDH_DTB_CFG_QUEUE_DTB_LEN    = 2,
 	ZXDH_DTB_INFO_QUEUE_BUF_SPACE = 3,
 	ZXDH_DTB_CFG_EPID_V_FUNC_NUM  = 4,
+	ZXDH_STAT_CAR0_CARA_QUEUE_RAM0       = 9,
+	ZXDH_STAT_CAR0_CARB_QUEUE_RAM0       = 10,
+	ZXDH_STAT_CAR0_CARC_QUEUE_RAM0       = 11,
+	ZXDH_NPPU_PKTRX_CFG_GLBAL_CFG_0R     = 12,
 	ZXDH_REG_ENUM_MAX_VALUE
 } ZXDH_REG_INFO_E;
 
@@ -597,6 +639,171 @@ typedef enum zxdh_se_opr_mode_e {
 	ZXDH_SE_OPR_WR      = 1,
 } ZXDH_SE_OPR_MODE_E;
 
+typedef enum zxdh_stat_car_type_e {
+	ZXDH_STAT_CAR_A_TYPE  = 0,
+	ZXDH_STAT_CAR_B_TYPE,
+	ZXDH_STAT_CAR_C_TYPE,
+	ZXDH_STAT_CAR_MAX_TYPE
+} ZXDH_STAT_CAR_TYPE_E;
+
+typedef enum zxdh_car_priority_e {
+	ZXDH_CAR_PRI0 = 0,
+	ZXDH_CAR_PRI1 = 1,
+	ZXDH_CAR_PRI2 = 2,
+	ZXDH_CAR_PRI3 = 3,
+	ZXDH_CAR_PRI4 = 4,
+	ZXDH_CAR_PRI5 = 5,
+	ZXDH_CAR_PRI6 = 6,
+	ZXDH_CAR_PRI7 = 7,
+	ZXDH_CAR_PRI_MAX
+} ZXDH_CAR_PRIORITY_E;
+
+typedef struct zxdh_stat_car_pkt_profile_cfg_t {
+	uint32_t profile_id;
+	uint32_t pkt_sign;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t pri[ZXDH_CAR_PRI_MAX];
+} ZXDH_STAT_CAR_PKT_PROFILE_CFG_T;
+
+typedef struct zxdh_stat_car_profile_cfg_t {
+	uint32_t profile_id;
+	uint32_t pkt_sign;
+	uint32_t cd;
+	uint32_t cf;
+	uint32_t cm;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t eir;
+	uint32_t ebs;
+	uint32_t random_disc_e;
+	uint32_t random_disc_c;
+	uint32_t c_pri[ZXDH_CAR_PRI_MAX];
+	uint32_t e_green_pri[ZXDH_CAR_PRI_MAX];
+	uint32_t e_yellow_pri[ZXDH_CAR_PRI_MAX];
+} ZXDH_STAT_CAR_PROFILE_CFG_T;
+
+typedef struct zxdh_stat_car0_cara_queue_ram0_159_0_t {
+	uint32_t cara_drop;
+	uint32_t cara_plcr_en;
+	uint32_t cara_profile_id;
+	uint32_t cara_tq_h;
+	uint32_t cara_tq_l;
+	uint32_t cara_ted;
+	uint32_t cara_tcd;
+	uint32_t cara_tei;
+	uint32_t cara_tci;
+} ZXDH_STAT_CAR0_CARA_QUEUE_RAM0_159_0_T;
+
+typedef struct dpp_agent_car_profile_msg {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t rsv;
+	uint8_t rsv1;
+	uint32_t car_level;
+	uint32_t profile_id;
+	uint32_t pkt_sign;
+	uint32_t cd;
+	uint32_t cf;
+	uint32_t cm;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t eir;
+	uint32_t ebs;
+	uint32_t random_disc_e;
+	uint32_t random_disc_c;
+	uint32_t c_pri[ZXDH_CAR_PRI_MAX];
+	uint32_t e_green_pri[ZXDH_CAR_PRI_MAX];
+	uint32_t e_yellow_pri[ZXDH_CAR_PRI_MAX];
+} ZXDH_AGENT_CAR_PROFILE_MSG_T;
+
+typedef struct dpp_agent_car_pkt_profile_msg {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t rsv;
+	uint8_t rsv1;
+	uint32_t car_level;
+	uint32_t profile_id;
+	uint32_t pkt_sign;
+	uint32_t cir;
+	uint32_t cbs;
+	uint32_t pri[ZXDH_CAR_PRI_MAX];
+} ZXDH_AGENT_CAR_PKT_PROFILE_MSG_T;
+
+typedef struct zxdh_agent_channel_msg_t {
+	uint32_t msg_len;
+	void *msg;
+} ZXDH_AGENT_CHANNEL_MSG_T;
+
+typedef struct zxdh_agent_channel_plcr_msg {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t oper;
+	uint8_t rsv;
+	uint32_t vport;
+	uint32_t car_type;
+	uint32_t profile_id;
+} ZXDH_AGENT_CHANNEL_PLCR_MSG_T;
+
+typedef struct dpp_stat_car0_carc_queue_ram0_159_0_t {
+	uint32_t carc_drop;
+	uint32_t carc_plcr_en;
+	uint32_t carc_profile_id;
+	uint32_t carc_tq_h;
+	uint32_t carc_tq_l;
+	uint32_t carc_ted;
+	uint32_t carc_tcd;
+	uint32_t carc_tei;
+	uint32_t carc_tci;
+} ZXDH_STAT_CAR0_CARC_QUEUE_RAM0_159_0_T;
+
+typedef struct zxdh_stat_car0_carb_queue_ram0_159_0_t {
+	uint32_t carb_drop;
+	uint32_t carb_plcr_en;
+	uint32_t carb_profile_id;
+	uint32_t carb_tq_h;
+	uint32_t carb_tq_l;
+	uint32_t carb_ted;
+	uint32_t carb_tcd;
+	uint32_t carb_tei;
+	uint32_t carb_tci;
+} ZXDH_STAT_CAR0_CARB_QUEUE_RAM0_159_0_T;
+
+typedef enum zxdh_np_agent_msg_type_e {
+	ZXDH_REG_MSG = 0,
+	ZXDH_DTB_MSG,
+	ZXDH_TM_MSG,
+	ZXDH_PLCR_MSG,
+	ZXDH_PKTRX_IND_REG_RW_MSG,
+	ZXDH_PCIE_BAR_MSG,
+	ZXDH_RESET_MSG,
+	ZXDH_PXE_MSG,
+	ZXDH_TM_FLOW_SHAPE,
+	ZXDH_TM_TD,
+	ZXDH_TM_SE_SHAPE,
+	ZXDH_TM_PP_SHAPE,
+	ZXDH_PLCR_CAR_RATE,
+	ZXDH_PLCR_CAR_PKT_RATE,
+	ZXDH_PPU_THASH_RSK,
+	ZXDH_ACL_MSG,
+	ZXDH_STAT_MSG,
+	ZXDH_RES_MSG,
+	ZXDH_MSG_MAX
+} MSG_TYPE_E;
+
+typedef enum zxdh_msg_plcr_oper {
+	ZXDH_PROFILEID_REQUEST = 0,
+	ZXDH_PROFILEID_RELEASE = 1,
+} ZXDH_MSG_PLCR_OPER_E;
+
+typedef enum zxdh_profile_type {
+	CAR_A = 0,
+	CAR_B = 1,
+	CAR_C = 2,
+	CAR_MAX
+} ZXDH_PROFILE_TYPE;
+
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 int zxdh_np_dtb_table_entry_write(uint32_t dev_id, uint32_t queue_id,
@@ -615,5 +822,22 @@ uint32_t zxdh_np_stat_ppu_cnt_get_ex(uint32_t dev_id,
 			uint32_t index,
 			uint32_t clr_mode,
 			uint32_t *p_data);
+uint32_t
+zxdh_np_car_profile_id_add(uint32_t vport_id,
+			uint32_t flags,
+			uint64_t *p_profile_id);
+uint32_t zxdh_np_car_profile_cfg_set(uint32_t vport_id,
+			uint32_t car_type,
+			uint32_t pkt_sign,
+			uint32_t profile_id,
+			void *p_car_profile_cfg);
+uint32_t zxdh_np_car_profile_id_delete(uint32_t vport_id,
+			uint32_t flags, uint64_t profile_id);
+uint32_t zxdh_np_stat_car_queue_cfg_set(uint32_t dev_id,
+			uint32_t car_type,
+			uint32_t flow_id,
+			uint32_t drop_flag,
+			uint32_t plcr_en,
+			uint32_t profile_id);
 
 #endif /* ZXDH_NP_H */
