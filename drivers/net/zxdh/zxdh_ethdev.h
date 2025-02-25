@@ -41,6 +41,7 @@
 
 #define ZXDH_MAX_NAME_LEN               32
 #define ZXDH_SLOT_MAX             256
+#define ZXDH_MAX_VF               256
 
 union zxdh_virport_num {
 	uint16_t vport;
@@ -66,6 +67,15 @@ struct zxdh_vlan_offload_cfg {
 	uint8_t resv:4;
 };
 
+struct vfinfo {
+	uint16_t vf_idx;
+	uint16_t pcieid;
+	uint16_t vport;
+	uint8_t flag;
+	uint8_t state;
+	struct rte_ether_addr vf_mac[ZXDH_MAX_MAC_ADDRS];
+};
+
 struct zxdh_hw {
 	struct rte_eth_dev *eth_dev;
 	struct zxdh_pci_common_cfg *common_cfg;
@@ -73,8 +83,9 @@ struct zxdh_hw {
 	struct rte_intr_handle *risc_intr;
 	struct rte_intr_handle *dtb_intr;
 	struct zxdh_virtqueue **vqs;
-	struct zxdh_chnl_context channel_context[ZXDH_QUEUES_NUM_MAX];
+	struct zxdh_chnl_context *channel_context;
 	struct zxdh_dev_shared_data *dev_sd;
+	struct vfinfo *vfinfo;
 
 	uint64_t bar_addr[ZXDH_NUM_BARS];
 	uint64_t host_features;
