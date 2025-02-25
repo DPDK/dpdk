@@ -572,7 +572,7 @@ xsc_vfio_mbox_init(struct xsc_dev *xdev)
 	cmdq->req_lay = cmdq->req_mz->addr;
 
 	snprintf(name, RTE_MEMZONE_NAMESIZE, "%s_cmd_cq", xdev->pci_dev->device.name);
-	size = (1 << XSC_CMDQ_DEPTH_LOG) * sizeof(struct xsc_cmdq_rsp_layout);
+	size = (1 << XSC_CMDQ_DEPTH_LOG) * sizeof(struct xsc_cmdq_rsp_layout); /* -V1048 */
 	cmdq->rsp_mz = rte_memzone_reserve_aligned(name,
 						   size, SOCKET_ID_ANY,
 						   RTE_MEMZONE_IOVA_CONTIG,
