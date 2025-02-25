@@ -83,11 +83,6 @@ struct zxdh_hw_mac_bytes {
 	uint64_t tx_good_bytes;
 };
 
-struct zxdh_np_stats_data {
-	uint64_t n_pkts_dropped;
-	uint64_t n_bytes_dropped;
-};
-
 struct zxdh_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
@@ -1305,9 +1300,10 @@ zxdh_hw_vqm_stats_get(struct rte_eth_dev *dev, enum zxdh_agent_msg_type opcode,
 	return 0;
 }
 
-static int zxdh_hw_mac_stats_get(struct rte_eth_dev *dev,
-				struct zxdh_hw_mac_stats *mac_stats,
-				struct zxdh_hw_mac_bytes *mac_bytes)
+static int
+zxdh_hw_mac_stats_get(struct rte_eth_dev *dev,
+		struct zxdh_hw_mac_stats *mac_stats,
+		struct zxdh_hw_mac_bytes *mac_bytes)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	uint64_t virt_addr = (uint64_t)(hw->bar_addr[ZXDH_BAR0_INDEX] + ZXDH_MAC_OFFSET);
@@ -1327,7 +1323,8 @@ static int zxdh_hw_mac_stats_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void zxdh_data_hi_to_lo(uint64_t *data)
+void
+zxdh_data_hi_to_lo(uint64_t *data)
 {
 	uint32_t n_data_hi;
 	uint32_t n_data_lo;
@@ -1338,7 +1335,8 @@ static void zxdh_data_hi_to_lo(uint64_t *data)
 				rte_le_to_cpu_32(n_data_lo);
 }
 
-static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *np_stats)
+static int
+zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *np_stats)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
@@ -1348,19 +1346,70 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 	int ret = 0;
 
 	idx = stats_id + ZXDH_BROAD_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
 	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
-				0, idx, (uint32_t *)&np_stats->np_tx_broadcast);
+				0, idx, (uint32_t *)&stats_data);
 	if (ret)
 		return ret;
-	zxdh_data_hi_to_lo(&np_stats->np_tx_broadcast);
+	np_stats->tx_broadcast_pkts = stats_data.n_pkts_dropped;
+	np_stats->tx_broadcast_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->tx_broadcast_pkts);
+	zxdh_data_hi_to_lo(&np_stats->tx_broadcast_bytes);
 
 	idx = stats_id + ZXDH_BROAD_STATS_INGRESS_BASE;
 	memset(&stats_data, 0, sizeof(stats_data));
 	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
-				0, idx, (uint32_t *)&np_stats->np_rx_broadcast);
+				0, idx, (uint32_t *)&stats_data);
 	if (ret)
 		return ret;
-	zxdh_data_hi_to_lo(&np_stats->np_rx_broadcast);
+	np_stats->rx_broadcast_pkts = stats_data.n_pkts_dropped;
+	np_stats->rx_broadcast_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->rx_broadcast_pkts);
+	zxdh_data_hi_to_lo(&np_stats->rx_broadcast_bytes);
+
+	idx = stats_id + ZXDH_MULTICAST_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
+				0, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->tx_multicast_pkts = stats_data.n_pkts_dropped;
+	np_stats->tx_multicast_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->tx_multicast_pkts);
+	zxdh_data_hi_to_lo(&np_stats->tx_multicast_bytes);
+
+	idx = stats_id + ZXDH_MULTICAST_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
+				0, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->rx_multicast_pkts = stats_data.n_pkts_dropped;
+	np_stats->rx_multicast_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->rx_multicast_pkts);
+	zxdh_data_hi_to_lo(&np_stats->rx_multicast_bytes);
+
+	idx = stats_id + ZXDH_UNICAST_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
+				0, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->tx_unicast_pkts = stats_data.n_pkts_dropped;
+	np_stats->tx_unicast_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->tx_unicast_pkts);
+	zxdh_data_hi_to_lo(&np_stats->tx_unicast_bytes);
+
+	idx = stats_id + ZXDH_UNICAST_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
+				0, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->rx_unicast_pkts = stats_data.n_pkts_dropped;
+	np_stats->rx_unicast_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->rx_unicast_pkts);
+	zxdh_data_hi_to_lo(&np_stats->rx_unicast_bytes);
 
 	idx = stats_id + ZXDH_MTU_STATS_EGRESS_BASE;
 	memset(&stats_data, 0, sizeof(stats_data));
@@ -1368,11 +1417,10 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 				1, idx, (uint32_t *)&stats_data);
 	if (ret)
 		return ret;
-
-	np_stats->np_tx_mtu_drop_pkts = stats_data.n_pkts_dropped;
-	np_stats->np_tx_mtu_drop_bytes = stats_data.n_bytes_dropped;
-	zxdh_data_hi_to_lo(&np_stats->np_tx_mtu_drop_pkts);
-	zxdh_data_hi_to_lo(&np_stats->np_tx_mtu_drop_bytes);
+	np_stats->tx_mtu_drop_pkts = stats_data.n_pkts_dropped;
+	np_stats->tx_mtu_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->tx_mtu_drop_pkts);
+	zxdh_data_hi_to_lo(&np_stats->tx_mtu_drop_bytes);
 
 	idx = stats_id + ZXDH_MTU_STATS_INGRESS_BASE;
 	memset(&stats_data, 0, sizeof(stats_data));
@@ -1380,10 +1428,32 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 				1, idx, (uint32_t *)&stats_data);
 	if (ret)
 		return ret;
-	np_stats->np_rx_mtu_drop_pkts = stats_data.n_pkts_dropped;
-	np_stats->np_rx_mtu_drop_bytes = stats_data.n_bytes_dropped;
-	zxdh_data_hi_to_lo(&np_stats->np_rx_mtu_drop_pkts);
-	zxdh_data_hi_to_lo(&np_stats->np_rx_mtu_drop_bytes);
+	np_stats->rx_mtu_drop_pkts = stats_data.n_pkts_dropped;
+	np_stats->rx_mtu_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->rx_mtu_drop_pkts);
+	zxdh_data_hi_to_lo(&np_stats->rx_mtu_drop_bytes);
+
+	idx = stats_id + ZXDH_MTR_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
+				1, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->tx_mtr_drop_pkts = stats_data.n_pkts_dropped;
+	np_stats->tx_mtr_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->tx_mtr_drop_pkts);
+	zxdh_data_hi_to_lo(&np_stats->tx_mtr_drop_bytes);
+
+	idx = stats_id + ZXDH_MTR_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
+				1, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->rx_mtr_drop_pkts = stats_data.n_pkts_dropped;
+	np_stats->rx_mtr_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->rx_mtr_drop_pkts);
+	zxdh_data_hi_to_lo(&np_stats->rx_mtr_drop_bytes);
 
 	return 0;
 }
@@ -1408,8 +1478,7 @@ zxdh_hw_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *np_stats)
 					&reply_info, sizeof(struct zxdh_msg_reply_info));
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				"%s Failed to send msg: port 0x%x msg type",
-				__func__, hw->vport.vport);
+				"Failed to send msg: port 0x%x msg type", hw->vport.vport);
 			return -1;
 		}
 		memcpy(np_stats, &reply_info.reply_body.np_stats, sizeof(struct zxdh_hw_np_stats));
@@ -1438,8 +1507,8 @@ zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ibytes = vqm_stats.rx_bytes;
 	stats->obytes = vqm_stats.tx_bytes;
 	stats->imissed = vqm_stats.rx_drop + mac_stats.rx_drop;
-	stats->ierrors = vqm_stats.rx_error + mac_stats.rx_error + np_stats.np_rx_mtu_drop_pkts;
-	stats->oerrors = vqm_stats.tx_error + mac_stats.tx_error + np_stats.np_tx_mtu_drop_pkts;
+	stats->ierrors = vqm_stats.rx_error + mac_stats.rx_error + np_stats.rx_mtu_drop_pkts;
+	stats->oerrors = vqm_stats.tx_error + mac_stats.tx_error + np_stats.tx_mtu_drop_pkts;
 
 	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 	for (i = 0; (i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
@@ -1474,7 +1543,8 @@ zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	return 0;
 }
 
-static int zxdh_hw_stats_reset(struct rte_eth_dev *dev, enum zxdh_agent_msg_type opcode)
+static int
+zxdh_hw_stats_reset(struct rte_eth_dev *dev, enum zxdh_agent_msg_type opcode)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_msg_info msg_info = {0};
@@ -1505,13 +1575,128 @@ static int zxdh_hw_stats_reset(struct rte_eth_dev *dev, enum zxdh_agent_msg_type
 	return 0;
 }
 
+int
+zxdh_hw_np_stats_pf_reset(struct rte_eth_dev *dev, uint32_t stats_id)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_hw_stats_data stats_data;
+	uint32_t idx = 0;
+	int ret = 0;
+
+	idx = stats_id + ZXDH_UNICAST_STATS_EGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_UNICAST_STATS_INGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_MULTICAST_STATS_EGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_MULTICAST_STATS_INGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_BROAD_STATS_EGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_BROAD_STATS_INGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_MTU_STATS_EGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_MTU_STATS_INGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_MTR_STATS_EGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	idx = stats_id + ZXDH_MTR_STATS_INGRESS_BASE;
+	ret = zxdh_np_stat_ppu_cnt_get_ex(hw->dev_id, 1, idx,
+			1, (uint32_t *)&stats_data);
+
+	return ret;
+}
+
+static int
+zxdh_hw_np_stats_vf_reset(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	int ret = 0;
+
+	msg_info.data.np_stats_query.clear_mode = 1;
+	zxdh_msg_head_build(hw, ZXDH_GET_NP_STATS, &msg_info);
+	ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(struct zxdh_msg_info),
+			&reply_info, sizeof(reply_info));
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to send ZXDH_PORT_METER_STAT_GET msg. code:%d", ret);
+
+	return ret;
+}
+
+static int
+zxdh_np_stats_reset(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint32_t stats_id = zxdh_vport_to_vfid(hw->vport);
+	int ret;
+
+	if (hw->is_pf)
+		ret = zxdh_hw_np_stats_pf_reset(dev, stats_id);
+	else
+		ret = zxdh_hw_np_stats_vf_reset(dev);
+	return ret;
+}
+
 int zxdh_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
+	int i = 0;
 
 	zxdh_hw_stats_reset(dev, ZXDH_VQM_DEV_STATS_RESET);
 	if (hw->is_pf)
 		zxdh_hw_stats_reset(dev, ZXDH_MAC_STATS_RESET);
+	zxdh_np_stats_reset(dev);
+	for (i = 0; ((i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS)); i++) {
+		struct zxdh_virtnet_rx *rxvq = dev->data->rx_queues[i];
+		if (rxvq == NULL)
+			continue;
+		memset(&rxvq->stats, 0, sizeof(struct zxdh_virtnet_stats));
+	}
+	for (i = 0; ((i < dev->data->nb_tx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS)); i++) {
+		struct zxdh_virtnet_tx *txvq = dev->data->tx_queues[i];
+		if (txvq == NULL)
+			continue;
+		memset(&txvq->stats, 0, sizeof(struct zxdh_virtnet_stats));
+	}
 
 	return 0;
 }

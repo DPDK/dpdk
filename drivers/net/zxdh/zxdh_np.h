@@ -12,6 +12,9 @@
 #define ZXDH_PORT_NAME_MAX                    (32)
 #define ZXDH_DEV_CHANNEL_MAX                  (2)
 #define ZXDH_DEV_SDT_ID_MAX                   (256U)
+
+#define ZXDH_RD_CNT_MAX                       (128)
+
 /*DTB*/
 #define ZXDH_DTB_QUEUE_ITEM_NUM_MAX           (32)
 #define ZXDH_DTB_QUEUE_NUM_MAX                (128)
@@ -562,6 +565,38 @@ typedef enum zxdh_stat_cnt_mode_e {
 	ZXDH_STAT_MAX_MODE,
 } ZXDH_STAT_CNT_MODE_E;
 
+typedef struct zxdh_smmu0_smmu0_cpu_ind_cmd_t {
+	uint32_t cpu_ind_rw;
+	uint32_t cpu_ind_rd_mode;
+	uint32_t cpu_req_mode;
+	uint32_t cpu_ind_addr;
+} ZXDH_SMMU0_SMMU0_CPU_IND_CMD_T;
+
+typedef enum zxdh_smmu0_smmu0_type_e {
+	ZXDH_DEV_MUTEX_T_SMMU0             = 0,
+	ZXDH_SMMU0_SMMU0_CPU_IND_CMDR      = 1,
+	ZXDH_SMMU0_SMMU0_CPU_IND_RDAT0R    = 2,
+	ZXDH_SMMU0_SMMU0_RD_CPU_IND_DONER  = 3,
+	ZXDH_SMMU0_SMMU0_WR_ARB_CPU_RDYR   = 4,
+	ZXDH_SMMU0_SMMU0_ED_ARB_CPU_RDYR   = 5,
+} ZXDH_SEMMU0_SEMMU0_TYPE_E;
+
+typedef enum zxdh_stat_rd_clr_mode_e {
+	ZXDH_STAT_RD_CLR_MODE_UNCLR = 0,
+	ZXDH_STAT_RD_CLR_MODE_CLR   = 1,
+	ZXDH_STAT_RD_CLR_MODE_MAX,
+} STAT_RD_CLR_MODE_E;
+
+typedef enum zxdh_eram128_rd_clr_mode_e {
+	ZXDH_RD_MODE_HOLD   = 0,
+	ZXDH_RD_MODE_CLEAR  = 1,
+} ZXDH_ERAM128_RD_CLR_MODE_E;
+
+typedef enum zxdh_se_opr_mode_e {
+	ZXDH_SE_OPR_RD      = 0,
+	ZXDH_SE_OPR_WR      = 1,
+} ZXDH_SE_OPR_MODE_E;
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 int zxdh_np_dtb_table_entry_write(uint32_t dev_id, uint32_t queue_id,
@@ -574,6 +609,11 @@ int zxdh_np_dtb_stats_get(uint32_t dev_id,
 			uint32_t queue_id,
 			ZXDH_STAT_CNT_MODE_E rd_mode,
 			uint32_t index,
+			uint32_t *p_data);
+uint32_t zxdh_np_stat_ppu_cnt_get_ex(uint32_t dev_id,
+			ZXDH_STAT_CNT_MODE_E rd_mode,
+			uint32_t index,
+			uint32_t clr_mode,
 			uint32_t *p_data);
 
 #endif /* ZXDH_NP_H */

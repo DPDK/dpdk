@@ -1481,6 +1481,7 @@ static int zxdh_init_dev_share_data(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 
 	hw->slot_id = slot_id;
+	hw->dev_id = (hw->pcie_id << 16) | (hw->slot_id & 0xffff);
 	g_dev_sd[slot_id].serial_id = serial_id;
 	hw->dev_sd = &g_dev_sd[slot_id];
 

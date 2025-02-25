@@ -1993,3 +1993,266 @@ zxdh_np_dtb_stats_get(uint32_t dev_id,
 
 	return rc;
 }
+
+static uint32_t
+zxdh_np_se_done_status_check(uint32_t dev_id, uint32_t reg_no, uint32_t pos)
+{
+	uint32_t rc = 0;
+
+	uint32_t data = 0;
+	uint32_t rd_cnt = 0;
+	uint32_t done_flag = 0;
+
+	while (!done_flag) {
+		rc = zxdh_np_reg_read(dev_id, reg_no, 0, 0, &data);
+		if (rc != 0) {
+			PMD_DRV_LOG(ERR, " [ErrorCode:0x%x] !-- zxdh_np_reg_read Fail!", rc);
+			return rc;
+		}
+
+		done_flag = (data >> pos) & 0x1;
+
+		if (done_flag)
+			break;
+
+		if (rd_cnt > ZXDH_RD_CNT_MAX * ZXDH_RD_CNT_MAX)
+			return -1;
+
+		rd_cnt++;
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_se_smmu0_ind_read(uint32_t dev_id,
+						uint32_t base_addr,
+						uint32_t index,
+						uint32_t rd_mode,
+						uint32_t rd_clr_mode,
+						uint32_t *p_data)
+{
+	uint32_t rc = 0;
+	uint32_t i = 0;
+	uint32_t row_index = 0;
+	uint32_t col_index = 0;
+	uint32_t temp_data[4] = {0};
+	uint32_t *p_temp_data = NULL;
+	ZXDH_SMMU0_SMMU0_CPU_IND_CMD_T cpu_ind_cmd = {0};
+
+	rc = zxdh_np_se_done_status_check(dev_id, ZXDH_SMMU0_SMMU0_WR_ARB_CPU_RDYR, 0);
+
+	if (rd_clr_mode == ZXDH_RD_MODE_HOLD) {
+		cpu_ind_cmd.cpu_ind_rw = ZXDH_SE_OPR_RD;
+		cpu_ind_cmd.cpu_ind_rd_mode = ZXDH_RD_MODE_HOLD;
+		cpu_ind_cmd.cpu_req_mode = ZXDH_ERAM128_OPR_128b;
+
+		switch (rd_mode) {
+		case ZXDH_ERAM128_OPR_128b:
+		{
+			if ((0xFFFFFFFF - (base_addr)) < (index))
+				return ZXDH_PAR_CHK_INVALID_INDEX;
+
+			if (base_addr + index > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+
+			row_index = (index << 7) & ZXDH_ERAM128_BADDR_MASK;
+			break;
+		}
+
+		case ZXDH_ERAM128_OPR_64b:
+		{
+			if ((base_addr + (index >> 1)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+
+			row_index = (index << 6) & ZXDH_ERAM128_BADDR_MASK;
+			col_index = index & 0x1;
+			break;
+		}
+
+		case ZXDH_ERAM128_OPR_32b:
+		{
+			if ((base_addr + (index >> 2)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+
+			row_index = (index << 5) & ZXDH_ERAM128_BADDR_MASK;
+			col_index = index & 0x3;
+			break;
+		}
+
+		case ZXDH_ERAM128_OPR_1b:
+		{
+			if ((base_addr + (index >> 7)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+			row_index = index & ZXDH_ERAM128_BADDR_MASK;
+			col_index = index & 0x7F;
+			break;
+		}
+		}
+
+		cpu_ind_cmd.cpu_ind_addr = ((base_addr << 7) & ZXDH_ERAM128_BADDR_MASK) + row_index;
+	} else {
+		cpu_ind_cmd.cpu_ind_rw = ZXDH_SE_OPR_RD;
+		cpu_ind_cmd.cpu_ind_rd_mode = ZXDH_RD_MODE_CLEAR;
+
+		switch (rd_mode) {
+		case ZXDH_ERAM128_OPR_128b:
+		{
+			if ((0xFFFFFFFF - (base_addr)) < (index)) {
+				PMD_DRV_LOG(ERR, "%s : index 0x%x is invalid!", __func__, index);
+				return ZXDH_PAR_CHK_INVALID_INDEX;
+			}
+			if (base_addr + index > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+			row_index = (index << 7);
+			cpu_ind_cmd.cpu_req_mode = ZXDH_ERAM128_OPR_128b;
+			break;
+		}
+		case ZXDH_ERAM128_OPR_64b:
+		{
+			if ((base_addr + (index >> 1)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+
+			row_index = (index << 6);
+			cpu_ind_cmd.cpu_req_mode = 2;
+			break;
+		}
+		case ZXDH_ERAM128_OPR_32b:
+		{
+			if ((base_addr + (index >> 2)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+				PMD_DRV_LOG(ERR, "%s : index out of range !", __func__);
+				return -1;
+			}
+			row_index = (index << 5);
+			cpu_ind_cmd.cpu_req_mode = 1;
+			break;
+		}
+		case ZXDH_ERAM128_OPR_1b:
+		{
+			PMD_DRV_LOG(ERR, "rd_clr_mode[%d] or rd_mode[%d] error! ",
+				rd_clr_mode, rd_mode);
+			return -1;
+		}
+		}
+		cpu_ind_cmd.cpu_ind_addr = ((base_addr << 7) & ZXDH_ERAM128_BADDR_MASK) + row_index;
+	}
+
+	rc = zxdh_np_reg_write(dev_id,
+						ZXDH_SMMU0_SMMU0_CPU_IND_CMDR,
+						0,
+						0,
+						&cpu_ind_cmd);
+
+	rc = zxdh_np_se_done_status_check(dev_id, ZXDH_SMMU0_SMMU0_RD_CPU_IND_DONER, 0);
+
+	p_temp_data = temp_data;
+	for (i = 0; i < 4; i++) {
+		rc = zxdh_np_reg_read(dev_id,
+							ZXDH_SMMU0_SMMU0_CPU_IND_RDAT0R + i,
+							0,
+							0,
+							p_temp_data + 3 - i);
+	}
+
+	if (rd_clr_mode == ZXDH_RD_MODE_HOLD) {
+		switch (rd_mode) {
+		case ZXDH_ERAM128_OPR_128b:
+		{
+			rte_memcpy(p_data, p_temp_data, (128 / 8));
+			break;
+		}
+		case ZXDH_ERAM128_OPR_64b:
+		{
+			rte_memcpy(p_data, p_temp_data + ((1 - col_index) << 1), (64 / 8));
+			break;
+		}
+		case ZXDH_ERAM128_OPR_32b:
+		{
+			rte_memcpy(p_data, p_temp_data + ((3 - col_index)), (32 / 8));
+			break;
+		}
+		case ZXDH_ERAM128_OPR_1b:
+		{
+			ZXDH_COMM_UINT32_GET_BITS(p_data[0],
+				*(p_temp_data + (3 - col_index / 32)), (col_index % 32), 1);
+			break;
+		}
+		}
+	} else {
+		switch (rd_mode) {
+		case ZXDH_ERAM128_OPR_128b:
+		{
+			rte_memcpy(p_data, p_temp_data, (128 / 8));
+			break;
+		}
+		case ZXDH_ERAM128_OPR_64b:
+		{
+			rte_memcpy(p_data, p_temp_data, (64 / 8));
+			break;
+		}
+		case ZXDH_ERAM128_OPR_32b:
+		{
+			rte_memcpy(p_data, p_temp_data, (64 / 8));
+			break;
+		}
+		}
+	}
+
+	return rc;
+}
+
+uint32_t
+zxdh_np_stat_ppu_cnt_get_ex(uint32_t dev_id,
+				ZXDH_STAT_CNT_MODE_E rd_mode,
+				uint32_t index,
+				uint32_t clr_mode,
+				uint32_t *p_data)
+{
+	uint32_t rc = 0;
+	uint32_t ppu_eram_baddr = 0;
+	uint32_t ppu_eram_depth = 0;
+	uint32_t eram_rd_mode   = 0;
+	uint32_t eram_clr_mode  = 0;
+	ZXDH_PPU_STAT_CFG_T stat_cfg = {0};
+
+	zxdh_np_stat_cfg_soft_get(dev_id, &stat_cfg);
+
+	ppu_eram_depth = stat_cfg.eram_depth;
+	ppu_eram_baddr = stat_cfg.eram_baddr;
+
+	if ((index >> (ZXDH_STAT_128_MODE - rd_mode)) < ppu_eram_depth) {
+		if (rd_mode == ZXDH_STAT_128_MODE)
+			eram_rd_mode = ZXDH_ERAM128_OPR_128b;
+		else
+			eram_rd_mode = ZXDH_ERAM128_OPR_64b;
+
+		if (clr_mode == ZXDH_STAT_RD_CLR_MODE_UNCLR)
+			eram_clr_mode = ZXDH_RD_MODE_HOLD;
+		else
+			eram_clr_mode = ZXDH_RD_MODE_CLEAR;
+
+		rc = zxdh_np_se_smmu0_ind_read(dev_id,
+									ppu_eram_baddr,
+									index,
+									eram_rd_mode,
+									eram_clr_mode,
+									p_data);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_se_smmu0_ind_read");
+	} else {
+		PMD_DRV_LOG(ERR, "DPDK DON'T HAVE DDR STAT.");
+	}
+
+	return rc;
+}
