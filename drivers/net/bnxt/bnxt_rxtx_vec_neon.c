@@ -317,18 +317,19 @@ recv_burst_vec_neon(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 uint16_t
 bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
 	uint16_t cnt = 0;
 
-	while (nb_pkts > RTE_BNXT_MAX_RX_BURST) {
+	while (nb_pkts > brst) {
 		uint16_t burst;
 
-		burst = recv_burst_vec_neon(rx_queue, rx_pkts + cnt,
-					    RTE_BNXT_MAX_RX_BURST);
+		burst = recv_burst_vec_neon(rx_queue, rx_pkts + cnt, brst);
 
 		cnt += burst;
 		nb_pkts -= burst;
 
-		if (burst < RTE_BNXT_MAX_RX_BURST)
+		if (burst < brst)
 			return cnt;
 	}
 
