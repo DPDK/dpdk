@@ -145,8 +145,11 @@ New Features
   * Multicast and promiscuous mode.
   * VLAN filtering and offload.
   * Receive Side Scaling (RSS).
-  * Hardware statistics.
-  * Jumbo frames.
+  * Added Hardware and extended statistics.
+  * Added support for Jumbo frames.
+  * Added checksum offload support.
+  * Added LRO and TSO support.
+  * Added support for rte_flow action drop.
 
 * **Added Yunsilicon xsc net driver [EXPERIMENTAL].**
 
