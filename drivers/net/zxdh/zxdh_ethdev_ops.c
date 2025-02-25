@@ -83,18 +83,24 @@ struct zxdh_hw_mac_bytes {
 	uint64_t tx_good_bytes;
 };
 
-struct zxdh_xstats_name_off {
+struct rte_zxdh_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
 };
 
-static const struct zxdh_xstats_name_off zxdh_rxq_stat_strings[] = {
+static const struct rte_zxdh_xstats_name_off zxdh_rxq_stat_strings[] = {
 	{"good_packets",           offsetof(struct zxdh_virtnet_rx, stats.packets)},
 	{"good_bytes",             offsetof(struct zxdh_virtnet_rx, stats.bytes)},
 	{"errors",                 offsetof(struct zxdh_virtnet_rx, stats.errors)},
+	{"idle",                   offsetof(struct zxdh_virtnet_rx, stats.idle)},
+	{"full",                   offsetof(struct zxdh_virtnet_rx, stats.full)},
+	{"norefill",               offsetof(struct zxdh_virtnet_rx, stats.norefill)},
 	{"multicast_packets",      offsetof(struct zxdh_virtnet_rx, stats.multicast)},
 	{"broadcast_packets",      offsetof(struct zxdh_virtnet_rx, stats.broadcast)},
 	{"truncated_err",          offsetof(struct zxdh_virtnet_rx, stats.truncated_err)},
+	{"offload_cfg_err",        offsetof(struct zxdh_virtnet_rx, stats.offload_cfg_err)},
+	{"invalid_hdr_len_err",    offsetof(struct zxdh_virtnet_rx, stats.invalid_hdr_len_err)},
+	{"no_segs_err",            offsetof(struct zxdh_virtnet_rx, stats.no_segs_err)},
 	{"undersize_packets",      offsetof(struct zxdh_virtnet_rx, stats.size_bins[0])},
 	{"size_64_packets",        offsetof(struct zxdh_virtnet_rx, stats.size_bins[1])},
 	{"size_65_127_packets",    offsetof(struct zxdh_virtnet_rx, stats.size_bins[2])},
@@ -105,13 +111,18 @@ static const struct zxdh_xstats_name_off zxdh_rxq_stat_strings[] = {
 	{"size_1519_max_packets",  offsetof(struct zxdh_virtnet_rx, stats.size_bins[7])},
 };
 
-static const struct zxdh_xstats_name_off zxdh_txq_stat_strings[] = {
+static const struct rte_zxdh_xstats_name_off zxdh_txq_stat_strings[] = {
 	{"good_packets",           offsetof(struct zxdh_virtnet_tx, stats.packets)},
 	{"good_bytes",             offsetof(struct zxdh_virtnet_tx, stats.bytes)},
 	{"errors",                 offsetof(struct zxdh_virtnet_tx, stats.errors)},
+	{"idle",                   offsetof(struct zxdh_virtnet_tx, stats.idle)},
+	{"norefill",               offsetof(struct zxdh_virtnet_tx, stats.norefill)},
 	{"multicast_packets",      offsetof(struct zxdh_virtnet_tx, stats.multicast)},
 	{"broadcast_packets",      offsetof(struct zxdh_virtnet_tx, stats.broadcast)},
 	{"truncated_err",          offsetof(struct zxdh_virtnet_tx, stats.truncated_err)},
+	{"offload_cfg_err",        offsetof(struct zxdh_virtnet_tx, stats.offload_cfg_err)},
+	{"invalid_hdr_len_err",    offsetof(struct zxdh_virtnet_tx, stats.invalid_hdr_len_err)},
+	{"no_segs_err",            offsetof(struct zxdh_virtnet_tx, stats.no_segs_err)},
 	{"undersize_packets",      offsetof(struct zxdh_virtnet_tx, stats.size_bins[0])},
 	{"size_64_packets",        offsetof(struct zxdh_virtnet_tx, stats.size_bins[1])},
 	{"size_65_127_packets",    offsetof(struct zxdh_virtnet_tx, stats.size_bins[2])},
@@ -121,6 +132,109 @@ static const struct zxdh_xstats_name_off zxdh_txq_stat_strings[] = {
 	{"size_1024_1518_packets", offsetof(struct zxdh_virtnet_tx, stats.size_bins[6])},
 	{"size_1519_max_packets",  offsetof(struct zxdh_virtnet_tx, stats.size_bins[7])},
 };
+
+static const struct rte_zxdh_xstats_name_off zxdh_np_stat_strings[] = {
+	{"np_rx_unicast_pkts",     offsetof(struct zxdh_hw_np_stats, rx_unicast_pkts)},
+	{"np_tx_unicast_pkts",     offsetof(struct zxdh_hw_np_stats, tx_unicast_pkts)},
+	{"np_rx_unicast_bytes",    offsetof(struct zxdh_hw_np_stats, rx_unicast_bytes)},
+	{"np_tx_unicast_bytes",    offsetof(struct zxdh_hw_np_stats, tx_unicast_bytes)},
+	{"np_rx_multicast_pkts",   offsetof(struct zxdh_hw_np_stats, rx_multicast_pkts)},
+	{"np_tx_multicast_pkts",   offsetof(struct zxdh_hw_np_stats, tx_multicast_pkts)},
+	{"np_rx_multicast_bytes",  offsetof(struct zxdh_hw_np_stats, rx_multicast_bytes)},
+	{"np_tx_multicast_bytes",  offsetof(struct zxdh_hw_np_stats, tx_multicast_bytes)},
+	{"np_rx_broadcast_pkts",   offsetof(struct zxdh_hw_np_stats, rx_broadcast_pkts)},
+	{"np_tx_broadcast_pkts",   offsetof(struct zxdh_hw_np_stats, tx_broadcast_pkts)},
+	{"np_rx_broadcast_bytes",  offsetof(struct zxdh_hw_np_stats, rx_broadcast_bytes)},
+	{"np_tx_broadcast_bytes",  offsetof(struct zxdh_hw_np_stats, tx_broadcast_bytes)},
+	{"np_rx_mtu_drop_pkts",    offsetof(struct zxdh_hw_np_stats, rx_mtu_drop_pkts)},
+	{"np_tx_mtu_drop_pkts",    offsetof(struct zxdh_hw_np_stats, tx_mtu_drop_pkts)},
+	{"np_tx_mtu_drop_bytes",   offsetof(struct zxdh_hw_np_stats, tx_mtu_drop_bytes)},
+	{"np_rx_mtu_drop_bytes",   offsetof(struct zxdh_hw_np_stats, rx_mtu_drop_bytes)},
+	{"np_rx_plcr_drop_pkts",   offsetof(struct zxdh_hw_np_stats, rx_mtr_drop_pkts)},
+	{"np_rx_plcr_drop_bytes",  offsetof(struct zxdh_hw_np_stats, rx_mtr_drop_bytes)},
+	{"np_tx_plcr_drop_pkts",   offsetof(struct zxdh_hw_np_stats, tx_mtr_drop_pkts)},
+	{"np_tx_plcr_drop_bytes",  offsetof(struct zxdh_hw_np_stats, tx_mtr_drop_bytes)},
+};
+
+static const struct rte_zxdh_xstats_name_off zxdh_mac_stat_strings[] = {
+	{"mac_rx_total",           offsetof(struct zxdh_hw_mac_stats, rx_total)},
+	{"mac_rx_pause",           offsetof(struct zxdh_hw_mac_stats, rx_pause)},
+	{"mac_rx_unicast",         offsetof(struct zxdh_hw_mac_stats, rx_unicast)},
+	{"mac_rx_multicast",       offsetof(struct zxdh_hw_mac_stats, rx_multicast)},
+	{"mac_rx_broadcast",       offsetof(struct zxdh_hw_mac_stats, rx_broadcast)},
+	{"mac_rx_vlan",            offsetof(struct zxdh_hw_mac_stats, rx_vlan)},
+	{"mac_rx_size_64",         offsetof(struct zxdh_hw_mac_stats, rx_size_64)},
+	{"mac_rx_size_65_127",     offsetof(struct zxdh_hw_mac_stats, rx_size_65_127)},
+	{"mac_rx_size_128_255",    offsetof(struct zxdh_hw_mac_stats, rx_size_128_255)},
+	{"mac_rx_size_256_511",    offsetof(struct zxdh_hw_mac_stats, rx_size_256_511)},
+	{"mac_rx_size_512_1023",   offsetof(struct zxdh_hw_mac_stats, rx_size_512_1023)},
+	{"mac_rx_size_1024_1518",  offsetof(struct zxdh_hw_mac_stats, rx_size_1024_1518)},
+	{"mac_rx_size_1519_mru",   offsetof(struct zxdh_hw_mac_stats, rx_size_1519_mru)},
+	{"mac_rx_undersize",       offsetof(struct zxdh_hw_mac_stats, rx_undersize)},
+	{"mac_rx_oversize",        offsetof(struct zxdh_hw_mac_stats, rx_oversize)},
+	{"mac_rx_fragment",        offsetof(struct zxdh_hw_mac_stats, rx_fragment)},
+	{"mac_rx_jabber",          offsetof(struct zxdh_hw_mac_stats, rx_jabber)},
+	{"mac_rx_control",         offsetof(struct zxdh_hw_mac_stats, rx_control)},
+	{"mac_rx_eee",             offsetof(struct zxdh_hw_mac_stats, rx_eee)},
+	{"mac_rx_error",           offsetof(struct zxdh_hw_mac_stats, rx_error)},
+	{"mac_rx_fcs_error",       offsetof(struct zxdh_hw_mac_stats, rx_fcs_error)},
+	{"mac_rx_drop",            offsetof(struct zxdh_hw_mac_stats, rx_drop)},
+
+	{"mac_tx_total",           offsetof(struct zxdh_hw_mac_stats, tx_total)},
+	{"mac_tx_pause",           offsetof(struct zxdh_hw_mac_stats, tx_pause)},
+	{"mac_tx_unicast",         offsetof(struct zxdh_hw_mac_stats, tx_unicast)},
+	{"mac_tx_multicast",       offsetof(struct zxdh_hw_mac_stats, tx_multicast)},
+	{"mac_tx_broadcast",       offsetof(struct zxdh_hw_mac_stats, tx_broadcast)},
+	{"mac_tx_vlan",            offsetof(struct zxdh_hw_mac_stats, tx_vlan)},
+	{"mac_tx_size_64",         offsetof(struct zxdh_hw_mac_stats, tx_size_64)},
+	{"mac_tx_size_65_127",     offsetof(struct zxdh_hw_mac_stats, tx_size_65_127)},
+	{"mac_tx_size_128_255",    offsetof(struct zxdh_hw_mac_stats, tx_size_128_255)},
+	{"mac_tx_size_256_511",    offsetof(struct zxdh_hw_mac_stats, tx_size_256_511)},
+	{"mac_tx_size_512_1023",   offsetof(struct zxdh_hw_mac_stats, tx_size_512_1023)},
+	{"mac_tx_size_1024_1518",  offsetof(struct zxdh_hw_mac_stats, tx_size_1024_1518)},
+	{"mac_tx_size_1519_mtu",   offsetof(struct zxdh_hw_mac_stats, tx_size_1519_mtu)},
+	{"mac_tx_undersize",       offsetof(struct zxdh_hw_mac_stats, tx_undersize)},
+	{"mac_tx_oversize",        offsetof(struct zxdh_hw_mac_stats, tx_oversize)},
+	{"mac_tx_fragment",        offsetof(struct zxdh_hw_mac_stats, tx_fragment)},
+	{"mac_tx_jabber",          offsetof(struct zxdh_hw_mac_stats, tx_jabber)},
+	{"mac_tx_control",         offsetof(struct zxdh_hw_mac_stats, tx_control)},
+	{"mac_tx_eee",             offsetof(struct zxdh_hw_mac_stats, tx_eee)},
+	{"mac_tx_error",           offsetof(struct zxdh_hw_mac_stats, tx_error)},
+	{"mac_tx_fcs_error",       offsetof(struct zxdh_hw_mac_stats, tx_fcs_error)},
+	{"mac_tx_drop",            offsetof(struct zxdh_hw_mac_stats, tx_drop)},
+};
+
+static const struct rte_zxdh_xstats_name_off zxdh_mac_bytes_strings[] = {
+	{"mac_rx_total_bytes",      offsetof(struct zxdh_hw_mac_bytes, rx_total_bytes)},
+	{"mac_rx_good_bytes",       offsetof(struct zxdh_hw_mac_bytes, rx_good_bytes)},
+	{"mac_tx_total_bytes",      offsetof(struct zxdh_hw_mac_bytes, tx_total_bytes)},
+	{"mac_tx_good_bytes",       offsetof(struct zxdh_hw_mac_bytes, tx_good_bytes)},
+};
+
+static const struct rte_zxdh_xstats_name_off zxdh_vqm_stat_strings[] = {
+	{"vqm_rx_vport_packets",    offsetof(struct zxdh_hw_vqm_stats, rx_total)},
+	{"vqm_tx_vport_packets",    offsetof(struct zxdh_hw_vqm_stats, tx_total)},
+	{"vqm_rx_vport_bytes",      offsetof(struct zxdh_hw_vqm_stats, rx_bytes)},
+	{"vqm_tx_vport_bytes",      offsetof(struct zxdh_hw_vqm_stats, tx_bytes)},
+	{"vqm_rx_vport_dropped",    offsetof(struct zxdh_hw_vqm_stats, rx_drop)},
+};
+
+#define ZXDH_NB_RXQ_XSTATS (sizeof(zxdh_rxq_stat_strings) / \
+			sizeof(zxdh_rxq_stat_strings[0]))
+#define ZXDH_NB_TXQ_XSTATS (sizeof(zxdh_txq_stat_strings) / \
+			sizeof(zxdh_txq_stat_strings[0]))
+
+#define ZXDH_NP_XSTATS (sizeof(zxdh_np_stat_strings) / \
+			sizeof(zxdh_np_stat_strings[0]))
+
+#define ZXDH_MAC_XSTATS (sizeof(zxdh_mac_stat_strings) / \
+			sizeof(zxdh_mac_stat_strings[0]))
+
+#define ZXDH_MAC_BYTES (sizeof(zxdh_mac_bytes_strings) / \
+			sizeof(zxdh_mac_bytes_strings[0]))
+
+#define ZXDH_VQM_XSTATS (sizeof(zxdh_vqm_stat_strings) / \
+			sizeof(zxdh_vqm_stat_strings[0]))
 
 static int32_t zxdh_config_port_status(struct rte_eth_dev *dev, uint16_t link_status)
 {
@@ -1763,4 +1877,149 @@ int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu)
 	}
 	dev->data->mtu = new_mtu;
 	return 0;
+}
+
+int32_t
+zxdh_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats, uint32_t n)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_hw_np_stats np_stats = {0};
+	struct zxdh_hw_mac_stats mac_stats = {0};
+	struct zxdh_hw_mac_bytes mac_bytes = {0};
+	struct zxdh_hw_vqm_stats  vqm_stats = {0};
+	uint32_t nstats = dev->data->nb_tx_queues * ZXDH_NB_TXQ_XSTATS +
+			dev->data->nb_rx_queues * ZXDH_NB_RXQ_XSTATS +
+			ZXDH_NP_XSTATS + ZXDH_VQM_XSTATS;
+	uint32_t i = 0;
+	uint32_t count = 0;
+	uint32_t t = 0;
+
+	if (hw->is_pf) {
+		nstats += ZXDH_MAC_XSTATS + ZXDH_MAC_BYTES;
+		zxdh_hw_mac_stats_get(dev, &mac_stats, &mac_bytes);
+	}
+	if (n < nstats)
+		return nstats;
+	zxdh_hw_vqm_stats_get(dev, ZXDH_VQM_DEV_STATS_GET,  &vqm_stats);
+	zxdh_hw_np_stats_get(dev, &np_stats);
+	for (i = 0; i < ZXDH_NP_XSTATS; i++) {
+		xstats[count].value = *(uint64_t *)(((char *)&np_stats)
+						 + zxdh_np_stat_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+	if (hw->is_pf) {
+		for (i = 0; i < ZXDH_MAC_XSTATS; i++) {
+			xstats[count].value = *(uint64_t *)(((char *)&mac_stats)
+						 + zxdh_mac_stat_strings[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
+		for (i = 0; i < ZXDH_MAC_BYTES; i++) {
+			xstats[count].value = *(uint64_t *)(((char *)&mac_bytes)
+						 + zxdh_mac_bytes_strings[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+	for (i = 0; i < ZXDH_VQM_XSTATS; i++) {
+		xstats[count].value = *(uint64_t *)(((char *)&vqm_stats)
+						 + zxdh_vqm_stat_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct zxdh_virtnet_rx *rxvq = dev->data->rx_queues[i];
+
+		if (rxvq == NULL)
+			continue;
+		for (t = 0; t < ZXDH_NB_RXQ_XSTATS; t++) {
+			xstats[count].value = *(uint64_t *)(((char *)rxvq)
+						 + zxdh_rxq_stat_strings[t].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct zxdh_virtnet_tx *txvq = dev->data->tx_queues[i];
+
+		if (txvq == NULL)
+			continue;
+
+		for (t = 0; t < ZXDH_NB_TXQ_XSTATS; t++) {
+			xstats[count].value = *(uint64_t *)(((char *)txvq)
+						 + zxdh_txq_stat_strings[t].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+	return count;
+}
+
+
+int32_t
+zxdh_dev_xstats_get_names(struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				__rte_unused unsigned int limit)
+{
+	uint32_t i	   = 0;
+	uint32_t count = 0;
+	uint32_t t	   = 0;
+	struct zxdh_hw *hw = dev->data->dev_private;
+	unsigned int nstats = dev->data->nb_tx_queues * ZXDH_NB_TXQ_XSTATS +
+					dev->data->nb_rx_queues * ZXDH_NB_RXQ_XSTATS +
+					ZXDH_NP_XSTATS + ZXDH_VQM_XSTATS;
+
+	if (hw->is_pf)
+		nstats += ZXDH_MAC_XSTATS + ZXDH_MAC_BYTES;
+
+	if (xstats_names != NULL) {
+		for (i = 0; i < ZXDH_NP_XSTATS; i++) {
+			snprintf(xstats_names[count].name, sizeof(xstats_names[count].name),
+			"%s", zxdh_np_stat_strings[i].name);
+			count++;
+		}
+		if (hw->is_pf) {
+			for (i = 0; i < ZXDH_MAC_XSTATS; i++) {
+				snprintf(xstats_names[count].name, sizeof(xstats_names[count].name),
+				"%s", zxdh_mac_stat_strings[i].name);
+				count++;
+			}
+			for (i = 0; i < ZXDH_MAC_BYTES; i++) {
+				snprintf(xstats_names[count].name, sizeof(xstats_names[count].name),
+				"%s", zxdh_mac_bytes_strings[i].name);
+				count++;
+			}
+		}
+		for (i = 0; i < ZXDH_VQM_XSTATS; i++) {
+			snprintf(xstats_names[count].name, sizeof(xstats_names[count].name),
+			"%s", zxdh_vqm_stat_strings[i].name);
+			count++;
+		}
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			struct virtnet_rx *rxvq = dev->data->rx_queues[i];
+
+			if (rxvq == NULL)
+				continue;
+			for (t = 0; t < ZXDH_NB_RXQ_XSTATS; t++) {
+				snprintf(xstats_names[count].name, sizeof(xstats_names[count].name),
+				"rx_q%u_%s", i, zxdh_rxq_stat_strings[t].name);
+				count++;
+			}
+		}
+
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			struct virtnet_tx *txvq = dev->data->tx_queues[i];
+
+			if (txvq == NULL)
+				continue;
+			for (t = 0; t < ZXDH_NB_TXQ_XSTATS; t++) {
+				snprintf(xstats_names[count].name, sizeof(xstats_names[count].name),
+				"tx_q%u_%s", i, zxdh_txq_stat_strings[t].name);
+				count++;
+			}
+		}
+		return count;
+	}
+	return nstats;
 }

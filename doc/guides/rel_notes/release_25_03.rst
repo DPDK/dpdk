@@ -145,7 +145,7 @@ New Features
   * Multicast and promiscuous mode.
   * VLAN filtering and offload.
   * Receive Side Scaling (RSS).
-  * Hardware statistics.
+  * Hardware and extended statistics.
   * Jumbo frames.
   * Checksum offload.
   * LRO and TSO.
