@@ -1668,6 +1668,47 @@ zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_u
 	return ret;
 }
 
+static int
+zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
+	struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
+{
+	RTE_ASSERT(!cfg_data || !pf_hw);
+	if (res_info)
+		*res_len = 0;
+	struct zxdh_port_attr_set_msg *attr_msg = (struct zxdh_port_attr_set_msg *)cfg_data;
+	union zxdh_virport_num port = {.vport = vport};
+	struct zxdh_port_attr_table port_attr = {0};
+
+	int ret = zxdh_get_port_attr(pf_hw, vport, &port_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get vport 0x%x(%d) attr failed", vport, port.vfid);
+		return ret;
+	}
+	switch (attr_msg->mode) {
+	case ZXDH_PORT_BASE_QID_FLAG:
+		port_attr.port_base_qid = attr_msg->value;
+		break;
+	case ZXDH_PORT_MTU_OFFLOAD_EN_OFF_FLAG:
+		port_attr.mtu_enable = attr_msg->value;
+		break;
+	case ZXDH_PORT_MTU_FLAG:
+		port_attr.mtu = attr_msg->value;
+		break;
+	case ZXDH_PORT_VPORT_IS_UP_FLAG:
+		port_attr.is_up = attr_msg->value;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "unsupported attr 0x%x set", attr_msg->mode);
+		return -1;
+	}
+	ret = zxdh_set_port_attr(pf_hw, vport, &port_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "set port attr failed. code:%d", ret);
+		return ret;
+	}
+	return ret;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -1684,6 +1725,7 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_RSS_RETA_SET] = zxdh_vf_rss_table_set,
 	[ZXDH_RSS_HF_SET] = zxdh_vf_rss_hf_set,
 	[ZXDH_RSS_HF_GET] = zxdh_vf_rss_hf_get,
+	[ZXDH_PORT_ATTRS_SET] = zxdh_vf_port_attr_set,
 };
 
 static inline int

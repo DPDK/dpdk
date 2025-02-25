@@ -151,12 +151,12 @@ static int32_t zxdh_config_port_status(struct rte_eth_dev *dev, uint16_t link_st
 		struct zxdh_port_attr_set_msg *port_attr_msg = &msg_info.data.port_attr_msg;
 
 		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
-		port_attr_msg->mode = ZXDH_PORT_ATTR_IS_UP_FLAG;
+		port_attr_msg->mode = ZXDH_PORT_VPORT_IS_UP_FLAG;
 		port_attr_msg->value = link_status;
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
-				hw->vport.vport, ZXDH_PORT_ATTR_IS_UP_FLAG);
+				hw->vport.vport, ZXDH_PORT_VPORT_IS_UP_FLAG);
 			return ret;
 		}
 	}
@@ -1559,12 +1559,12 @@ int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu)
 		struct zxdh_port_attr_set_msg *attr_msg = &msg_info.data.port_attr_msg;
 
 		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
-		attr_msg->mode = ZXDH_PORT_MTU_EN_FLAG;
+		attr_msg->mode = ZXDH_PORT_MTU_OFFLOAD_EN_OFF_FLAG;
 		attr_msg->value = 1;
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
-				hw->vport.vport, ZXDH_PORT_MTU_EN_FLAG);
+				hw->vport.vport, ZXDH_PORT_MTU_OFFLOAD_EN_OFF_FLAG);
 			return ret;
 		}
 		attr_msg->mode = ZXDH_PORT_MTU_FLAG;

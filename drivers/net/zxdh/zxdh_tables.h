@@ -7,11 +7,6 @@
 
 #include <stdint.h>
 
-#define ZXDH_PORT_MTU_FLAG                9
-#define ZXDH_PORT_BASE_QID_FLAG           10
-#define ZXDH_PORT_ATTR_IS_UP_FLAG         35
-#define ZXDH_PORT_MTU_EN_FLAG             42
-
 /* eram */
 #define ZXDH_SDT_VPORT_ATT_TABLE          1
 
@@ -25,6 +20,50 @@
 #define ZXDH_SDT_MC_TABLE1                77
 #define ZXDH_SDT_MC_TABLE2                78
 #define ZXDH_SDT_MC_TABLE3                79
+
+#define ZXDH_PORT_VHCA_FLAG                       1
+#define ZXDH_PORT_RSS_HASH_FACTOR_FLAG            3
+#define ZXDH_PORT_HASH_ALG_FLAG                   4
+#define ZXDH_PORT_PHY_PORT_FLAG                   5
+#define ZXDH_PORT_LAG_ID_FLAG                     6
+
+#define ZXDH_PORT_PF_VQM_VFID_FLAG                8
+
+#define ZXDH_PORT_MTU_FLAG                        10
+#define ZXDH_PORT_BASE_QID_FLAG                   11
+#define ZXDH_PORT_HASH_SEARCH_INDEX_FLAG          12
+
+#define ZXDH_PORT_EGRESS_METER_EN_OFF_FLAG        14
+#define ZXDH_PORT_EGRESS_MODE_FLAG                16
+#define ZXDH_PORT_INGRESS_METER_EN_OFF_FLAG       15
+#define ZXDH_PORT_INGRESS_MODE_FLAG               17
+#define ZXDH_PORT_EGRESS_TM_ENABLE_FLAG           18
+#define ZXDH_PORT_INGRESS_TM_ENABLE_FLAG          19
+#define ZXDH_PORT_SPOOFCHK_EN_OFF_FLAG            21
+#define ZXDH_PORT_INLINE_SEC_OFFLOAD_FLAG         22
+#define ZXDH_PORT_FD_EN_OFF_FLAG                  23
+#define ZXDH_PORT_LAG_EN_OFF_FLAG                 24
+#define ZXDH_PORT_VEPA_EN_OFF_FLAG                25
+#define ZXDH_PORT_IS_VF_FLAG                      26
+#define ZXDH_PORT_VIRTION_VERSION_FLAG            27
+#define ZXDH_PORT_VIRTION_EN_OFF_FLAG             28
+
+#define ZXDH_PORT_ACCELERATOR_OFFLOAD_FLAG_FLAG   29
+#define ZXDH_PORT_LRO_OFFLOAD_FLAG                30
+#define ZXDH_PORT_IP_FRAGMENT_OFFLOAD_FLAG        31
+#define ZXDH_PORT_TCP_UDP_CHKSUM_FLAG             32
+#define ZXDH_PORT_IP_CHKSUM_FLAG                  33
+#define ZXDH_PORT_OUTER_IP_CHECKSUM_OFFLOAD_FLAG  34
+#define ZXDH_PORT_VPORT_IS_UP_FLAG                35
+#define ZXDH_PORT_BUSINESS_EN_OFF_FLAG            36
+
+#define ZXDH_PORT_HW_BOND_EN_OFF_FLAG             37
+#define ZXDH_PORT_RDMA_OFFLOAD_EN_OFF_FLAG        38
+#define ZXDH_PORT_PROMISC_EN_FLAG                 39
+#define ZXDH_PORT_VLAN_OFFLOAD_EN_FLAG            40
+#define ZXDH_PORT_BUSINESS_VLAN_OFFLOAD_EN_FLAG   41
+#define ZXDH_PORT_RSS_EN_OFF_FLAG                 42
+#define ZXDH_PORT_MTU_OFFLOAD_EN_OFF_FLAG         43
 
 #define ZXDH_MTU_STATS_EGRESS_BASE        0x8481
 #define ZXDH_MTU_STATS_INGRESS_BASE       0x8981
