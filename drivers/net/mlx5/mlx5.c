@@ -3471,6 +3471,7 @@ mlx5_enable_port_level_hairpin_counter(struct rte_eth_dev *dev, uint64_t id __rt
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_priv *rxq;
+	int syndrome = 0;
 	unsigned int i;
 
 	int ret = mlx5_hairpin_queue_counter_supported(priv);
@@ -3487,15 +3488,15 @@ mlx5_enable_port_level_hairpin_counter(struct rte_eth_dev *dev, uint64_t id __rt
 	}
 
 	/* Alloc global hairpin queue counter. */
-	priv->q_counter_hairpin = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx, NULL);
+	priv->q_counter_hairpin = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx, &syndrome);
 	if (!priv->q_counter_hairpin) {
-		if (ret == MLX5_Q_COUNTERS_LIMIT_REACHED) {
-			DRV_LOG(WARNING, "Maximum number of queue counters reached. "
-					"Unable to create counter object for Port %d using DevX.",
-					priv->dev_data->port_id);
+		if (syndrome == MLX5_Q_COUNTERS_LIMIT_REACHED) {
+			DRV_LOG(ERR, "Maximum number of queue counters reached. "
+				"Unable to create counter object for Port %d using DevX.",
+				priv->dev_data->port_id);
 			return -ENOSPC;
 		}
-		DRV_LOG(WARNING, "Port %d global hairpin queue counter object cannot be created "
+		DRV_LOG(ERR, "Port %d global hairpin queue counter object cannot be created "
 			"by DevX.", priv->dev_data->port_id);
 		return -ENOMEM;
 	}
@@ -3536,6 +3537,7 @@ mlx5_enable_per_queue_hairpin_counter(struct rte_eth_dev *dev, uint64_t id)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_priv *rxq;
 	struct mlx5_rxq_data *rxq_data;
+	int syndrome = 0;
 
 	int ret = mlx5_hairpin_queue_counter_supported(priv);
 	if (ret) {
@@ -3558,16 +3560,16 @@ mlx5_enable_per_queue_hairpin_counter(struct rte_eth_dev *dev, uint64_t id)
 		return 0;
 
 	/* Alloc hairpin queue counter. */
-	rxq->q_counter = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx, NULL);
+	rxq->q_counter = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx, &syndrome);
 	if (rxq->q_counter == NULL) {
-		if (ret == MLX5_Q_COUNTERS_LIMIT_REACHED) {
-			DRV_LOG(WARNING, "Maximum number of queue counters reached. "
-					"Unable to create counter object for Port %d, Queue %d "
-					"using DevX. The counter from this queue will not increment.",
-					priv->dev_data->port_id, rxq->idx);
+		if (syndrome == MLX5_Q_COUNTERS_LIMIT_REACHED) {
+			DRV_LOG(ERR, "Maximum number of queue counters reached. "
+				"Unable to create counter object for Port %d, Queue %d "
+				"using DevX. The counter from this queue will not increment.",
+				priv->dev_data->port_id, rxq->idx);
 			return -ENOSPC;
 		}
-		DRV_LOG(WARNING, "Port %d queue %d counter object cannot be created "
+		DRV_LOG(ERR, "Port %d queue %d counter object cannot be created "
 			"by DevX. Counter from this queue will not increment.",
 			priv->dev_data->port_id, rxq->idx);
 		return -ENOMEM;
