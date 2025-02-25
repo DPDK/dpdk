@@ -1224,6 +1224,24 @@ zxdh_bar_chan_msg_recv_register(uint8_t module_id, zxdh_bar_chan_msg_recv_callba
 }
 
 static int
+zxdh_vf_promisc_init(struct zxdh_hw *hw, union zxdh_virport_num vport)
+{
+	int16_t ret;
+
+	ret = zxdh_dev_broadcast_set(hw, vport.vport, true);
+	return ret;
+}
+
+static int
+zxdh_vf_promisc_uninit(struct zxdh_hw *hw, union zxdh_virport_num vport)
+{
+	int16_t ret;
+
+	ret = zxdh_dev_broadcast_set(hw, vport.vport, false);
+	return ret;
+}
+
+static int
 zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 		struct zxdh_msg_reply_body *res_info, uint16_t *res_len)
 {
@@ -1247,6 +1265,12 @@ zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	ret = zxdh_set_port_attr(pf_hw, vfid, &port_attr);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "set vport attr failed, code:%d", ret);
+		goto proc_end;
+	}
+
+	ret = zxdh_vf_promisc_init(pf_hw, port);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vf_promisc_table_init failed, code:%d", ret);
 		goto proc_end;
 	}
 
@@ -1304,6 +1328,12 @@ zxdh_vf_port_uninit(struct zxdh_hw *pf_hw,
 	ret = zxdh_mac_clear(pf_hw, vport_num);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "zxdh_mac_clear failed, code:%d", ret);
+		goto proc_end;
+	}
+
+	ret = zxdh_vf_promisc_uninit(pf_hw, vport_num);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vf_promisc_table_uninit failed, code:%d", ret);
 		goto proc_end;
 	}
 
@@ -1406,12 +1436,44 @@ proc_end:
 	return ret;
 }
 
+static int
+zxdh_vf_promisc_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	struct zxdh_port_promisc_msg *promisc_msg = (struct zxdh_port_promisc_msg *)cfg_data;
+	int ret = 0;
+
+	RTE_ASSERT(!cfg_data || !hw || !reply || !res_len);
+
+	if (promisc_msg->mode == ZXDH_PROMISC_MODE) {
+		zxdh_dev_unicast_table_set(hw, vport, promisc_msg->value);
+		if (promisc_msg->mc_follow == 1)
+			ret = zxdh_dev_multicast_table_set(hw, vport, promisc_msg->value);
+	} else if (promisc_msg->mode == ZXDH_ALLMULTI_MODE) {
+		ret = zxdh_dev_multicast_table_set(hw, vport, promisc_msg->value);
+	} else {
+		PMD_DRV_LOG(ERR, "promisc_set_msg mode[%u] error", promisc_msg->mode);
+		goto proc_end;
+	}
+
+	*res_len = sizeof(struct zxdh_port_attr_set_msg) + sizeof(enum zxdh_reps_flag);
+	reply->flag = ZXDH_REPS_SUCC;
+
+	return ret;
+
+proc_end:
+	*res_len = sizeof(struct zxdh_port_attr_set_msg) + sizeof(enum zxdh_reps_flag);
+	reply->flag = ZXDH_REPS_FAIL;
+	return ret;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
 	[ZXDH_VF_PORT_UNINIT] = zxdh_vf_port_uninit,
 	[ZXDH_MAC_ADD] = zxdh_add_vf_mac_table,
 	[ZXDH_MAC_DEL] = zxdh_del_vf_mac_table,
+	[ZXDH_PORT_PROMISC_SET] = zxdh_vf_promisc_set,
 };
 
 static inline int
