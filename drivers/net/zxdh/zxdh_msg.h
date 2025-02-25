@@ -48,9 +48,16 @@
 #define ZXDH_MSG_REPLY_BODY_MAX_LEN  \
 		(ZXDH_MSG_PAYLOAD_MAX_LEN - sizeof(struct zxdh_msg_reply_head))
 
-#define ZXDH_MSG_HEAD_LEN 8
+#define ZXDH_MSG_HEAD_LEN            8
 #define ZXDH_MSG_REQ_BODY_MAX_LEN  \
 		(ZXDH_MSG_PAYLOAD_MAX_LEN - ZXDH_MSG_HEAD_LEN)
+
+#define ZXDH_FWVERS_LEN              32
+
+#define ZXDH_SFF_I2C_ADDRESS_LOW     (0x50)
+#define ZXDH_SFF_I2C_ADDRESS_HIGH    (0x51)
+
+#define ZXDH_MODULE_EEPROM_DATA_LEN   128
 
 #define ZXDH_MAC_FILTER            0xaa
 #define ZXDH_MAC_UNFILTER          0xff
@@ -180,13 +187,25 @@ enum pciebar_layout_type {
 	ZXDH_URI_MAX,
 };
 
+enum zxdh_module_id {
+	ZXDH_MODULE_ID_SFP       = 0x3,
+	ZXDH_MODULE_ID_QSFP      = 0xC,
+	ZXDH_MODULE_ID_QSFP_PLUS = 0xD,
+	ZXDH_MODULE_ID_QSFP28    = 0x11,
+	ZXDH_MODULE_ID_QSFP_DD   = 0x18,
+	ZXDH_MODULE_ID_OSFP      = 0x19,
+	ZXDH_MODULE_ID_DSFP      = 0x1B,
+};
+
 /* riscv msg opcodes */
 enum zxdh_agent_msg_type {
 	ZXDH_MAC_STATS_GET = 10,
 	ZXDH_MAC_STATS_RESET,
 	ZXDH_MAC_LINK_GET = 14,
+	ZXDH_MAC_MODULE_EEPROM_READ = 20,
 	ZXDH_VQM_DEV_STATS_GET = 21,
 	ZXDH_VQM_DEV_STATS_RESET,
+	ZXDH_FLASH_FIR_VERSION_GET = 23,
 	ZXDH_VQM_QUEUE_STATS_GET = 24,
 	ZXDH_VQM_QUEUE_STATS_RESET,
 };
@@ -341,6 +360,20 @@ struct zxdh_mac_reply_msg {
 	uint8_t mac_flag;
 };
 
+struct zxdh_mac_module_eeprom_msg {
+	uint8_t i2c_addr;
+	uint8_t bank;
+	uint8_t page;
+	uint8_t offset;
+	uint8_t length;
+	uint8_t data[ZXDH_MODULE_EEPROM_DATA_LEN];
+};
+
+struct zxdh_flash_msg {
+	uint8_t firmware_version[ZXDH_FWVERS_LEN];
+};
+
+
 struct zxdh_msg_reply_body {
 	enum zxdh_reps_flag flag;
 	union {
@@ -351,6 +384,8 @@ struct zxdh_msg_reply_body {
 		struct zxdh_rss_hf rss_hf;
 		struct zxdh_hw_vqm_stats vqm_stats;
 		struct zxdh_mac_reply_msg mac_reply_msg;
+		struct zxdh_flash_msg flash_msg;
+		struct zxdh_mac_module_eeprom_msg module_eeprom_msg;
 	};
 };
 
@@ -437,6 +472,7 @@ struct zxdh_msg_info {
 		struct zxdh_rss_enable rss_enable;
 		struct zxdh_rss_hf rss_hf;
 		struct zxdh_np_stats_updata_msg np_stats_query;
+		struct zxdh_mac_module_eeprom_msg module_eeprom_msg;
 	} data;
 };
 

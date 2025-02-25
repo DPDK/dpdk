@@ -102,5 +102,8 @@ void zxdh_data_hi_to_lo(uint64_t *data);
 int32_t zxdh_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats, uint32_t n);
 int32_t zxdh_dev_xstats_get_names(struct rte_eth_dev *dev,
 			struct rte_eth_xstat_name *xstats_names, unsigned int limit);
+int zxdh_dev_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
+int zxdh_dev_get_module_info(struct rte_eth_dev *dev, struct rte_eth_dev_module_info *modinfo);
+int zxdh_dev_get_module_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *info);
 
 #endif /* ZXDH_ETHDEV_OPS_H */

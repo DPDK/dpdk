@@ -2023,3 +2023,203 @@ zxdh_dev_xstats_get_names(struct rte_eth_dev *dev,
 	}
 	return nstats;
 }
+
+int
+zxdh_dev_fw_version_get(struct rte_eth_dev *dev,
+		 char *fw_version, size_t fw_size __rte_unused)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	char fw_ver[ZXDH_FWVERS_LEN] = {0};
+	uint32_t ret = 0;
+
+	zxdh_agent_msg_build(hw, ZXDH_FLASH_FIR_VERSION_GET, &msg_info);
+
+	struct zxdh_msg_recviver_mem rsp_data = {
+			.recv_buffer = (void *)&reply_info,
+			.buffer_len = sizeof(struct zxdh_msg_reply_info),
+	};
+
+	ret = zxdh_send_msg_to_riscv(dev, &msg_info, sizeof(struct zxdh_msg_info),
+				&reply_info, sizeof(struct zxdh_msg_reply_info),
+				ZXDH_MODULE_FLASH);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+				hw->vport.vport, ZXDH_FLASH_FIR_VERSION_GET);
+		return -1;
+	}
+	struct zxdh_msg_reply_body *ack_msg =
+			 &(((struct zxdh_msg_reply_info *)rsp_data.recv_buffer)->reply_body);
+
+	memcpy(fw_ver, ack_msg->flash_msg.firmware_version, ZXDH_FWVERS_LEN);
+	snprintf(fw_version, ZXDH_FWVERS_LEN - 1, "%s", fw_ver);
+
+	return 0;
+}
+
+static uint8_t
+zxdh_en_module_eeprom_read(struct rte_eth_dev *dev,
+		 struct zxdh_mac_module_eeprom_msg *query, uint8_t *data)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	uint8_t ret = 0;
+
+	zxdh_agent_msg_build(hw, ZXDH_MAC_MODULE_EEPROM_READ, &msg_info);
+
+	msg_info.data.module_eeprom_msg.i2c_addr = query->i2c_addr;
+	msg_info.data.module_eeprom_msg.bank = query->bank;
+	msg_info.data.module_eeprom_msg.page = query->page;
+	msg_info.data.module_eeprom_msg.offset = query->offset;
+	msg_info.data.module_eeprom_msg.length = query->length;
+
+	struct zxdh_msg_recviver_mem rsp_data = {
+			.recv_buffer = (void *)&reply_info,
+			.buffer_len = sizeof(struct zxdh_msg_reply_info),
+	};
+
+	ret = zxdh_send_msg_to_riscv(dev, &msg_info, sizeof(struct zxdh_msg_info),
+				&reply_info, sizeof(struct zxdh_msg_reply_info),
+				ZXDH_BAR_MODULE_MAC);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+				hw->vport.vport, ZXDH_MAC_MODULE_EEPROM_READ);
+		return -1;
+	}
+	struct zxdh_msg_reply_body *ack_msg =
+			 &(((struct zxdh_msg_reply_info *)rsp_data.recv_buffer)->reply_body);
+
+	if (data)
+		memcpy(data, ack_msg->module_eeprom_msg.data, ack_msg->module_eeprom_msg.length);
+
+	return ack_msg->module_eeprom_msg.length;
+}
+
+int
+zxdh_dev_get_module_info(struct rte_eth_dev *dev,
+			 struct rte_eth_dev_module_info *modinfo)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_mac_module_eeprom_msg query = {0};
+	uint8_t read_bytes;
+	uint8_t data[2] = {0};
+
+	if (!hw->is_pf)
+		return -EOPNOTSUPP;
+
+	query.i2c_addr = ZXDH_SFF_I2C_ADDRESS_LOW;
+	query.page = 0;
+	query.offset = 0;
+	query.length = 2;
+
+	read_bytes = zxdh_en_module_eeprom_read(dev, &query, data);
+	if (read_bytes != query.length) {
+		PMD_DRV_LOG(ERR, "zxdh_en_module_eeprom_read failed");
+		return -EIO;
+	}
+
+	switch (data[0]) {
+	case ZXDH_MODULE_ID_SFP:
+		modinfo->type       = RTE_ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+		break;
+	case ZXDH_MODULE_ID_QSFP:
+		modinfo->type       = RTE_ETH_MODULE_SFF_8436;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_MAX_LEN;
+		break;
+	case ZXDH_MODULE_ID_QSFP_PLUS:
+	case ZXDH_MODULE_ID_QSFP28:
+		if (data[1] < 3) {
+			modinfo->type       = RTE_ETH_MODULE_SFF_8436;
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_MAX_LEN;
+		} else {
+			modinfo->type       = RTE_ETH_MODULE_SFF_8636;
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_MAX_LEN;
+		}
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "can not recognize module identifier 0x%x!", data[0]);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
+int
+zxdh_dev_get_module_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *info)
+{
+	struct zxdh_mac_module_eeprom_msg query = {0};
+	uint32_t offset = info->offset;
+	uint32_t length = info->length;
+	uint32_t offset_boundary = 0;
+	uint32_t total_read_bytes = 0;
+	uint8_t read_bytes = 0;
+	uint8_t identifier;
+	uint8_t *data = NULL;
+
+	if (!info->length)
+		return -EINVAL;
+
+	data = info->data;
+	memset(data, 0, info->length);
+
+	query.i2c_addr = ZXDH_SFF_I2C_ADDRESS_LOW;
+	query.bank = 0;
+	query.page = 0;
+	query.offset = 0;
+	query.length = 1;
+	read_bytes = zxdh_en_module_eeprom_read(dev, &query, &identifier);
+	if (read_bytes != query.length) {
+		PMD_DRV_LOG(ERR, "read eeprom failed(read_bytes %d != query.length %d)!",
+			 read_bytes, query.length);
+		return -EIO;
+	}
+
+	while (total_read_bytes < info->length) {
+		if (identifier == ZXDH_MODULE_ID_SFP) {
+			if (offset < 256) {
+				query.i2c_addr = ZXDH_SFF_I2C_ADDRESS_LOW;
+				query.page = 0;
+				query.offset = offset;
+			} else {
+				query.i2c_addr = ZXDH_SFF_I2C_ADDRESS_HIGH;
+				query.page = 0;
+				query.offset = offset - 256;
+			}
+			offset_boundary = (query.offset < 128) ? 128 : 256;
+			query.length = ((query.offset + length) > offset_boundary) ?
+						 (offset_boundary - query.offset) : length;
+		} else if (identifier == ZXDH_MODULE_ID_QSFP ||
+				identifier == ZXDH_MODULE_ID_QSFP_PLUS ||
+				identifier == ZXDH_MODULE_ID_QSFP28) {
+			query.i2c_addr = ZXDH_SFF_I2C_ADDRESS_LOW;
+			if (offset < 256) {
+				query.page = 0;
+				query.offset = offset;
+			} else {
+				query.page = (offset - 256) / 128 + 1;
+				query.offset = offset - 128 * query.page;
+			}
+			offset_boundary = (query.offset < 128) ? 128 : 256;
+			query.length = ((query.offset + length) > offset_boundary) ?
+						 (offset_boundary - query.offset) : length;
+		} else {
+			PMD_DRV_LOG(ERR, "can not recognize module identifier 0x%x!", identifier);
+			return -EINVAL;
+		}
+
+		read_bytes = zxdh_en_module_eeprom_read(dev, &query, data + total_read_bytes);
+		if (read_bytes != query.length) {
+			PMD_DRV_LOG(ERR, "read eeprom failed(read_bytes %d != query.length %d)",
+				 read_bytes, query.length);
+			return -EIO;
+		}
+		total_read_bytes = (total_read_bytes + read_bytes) % UINT32_MAX;
+		offset += read_bytes;
+		length -= read_bytes;
+	}
+	return 0;
+}
