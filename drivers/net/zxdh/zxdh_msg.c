@@ -1698,6 +1698,21 @@ zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	case ZXDH_PORT_VPORT_IS_UP_FLAG:
 		port_attr.is_up = attr_msg->value;
 		break;
+	case ZXDH_PORT_OUTER_IP_CHECKSUM_OFFLOAD_FLAG:
+		port_attr.outer_ip_checksum_offload = attr_msg->value;
+		break;
+	case ZXDH_PORT_IP_CHKSUM_FLAG:
+		port_attr.ip_checksum_offload = attr_msg->value;
+		break;
+	case ZXDH_PORT_TCP_UDP_CHKSUM_FLAG:
+		port_attr.tcp_udp_checksum_offload = attr_msg->value;
+		break;
+	case ZXDH_PORT_ACCELERATOR_OFFLOAD_FLAG_FLAG:
+		port_attr.accelerator_offload_flag = attr_msg->value;
+		break;
+	case ZXDH_PORT_LRO_OFFLOAD_FLAG:
+		port_attr.lro_offload = attr_msg->value;
+		break;
 	default:
 		PMD_DRV_LOG(ERR, "unsupported attr 0x%x set", attr_msg->mode);
 		return -1;
