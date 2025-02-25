@@ -193,6 +193,7 @@ zxdh_link_info_get(struct rte_eth_dev *dev, struct rte_eth_link *link)
 			return -1;
 		}
 		link->link_speed = reply_info.reply_body.link_msg.speed;
+		link->link_autoneg = reply_info.reply_body.link_msg.autoneg;
 		hw->speed_mode = reply_info.reply_body.link_msg.speed_modes;
 		if ((reply_info.reply_body.link_msg.duplex & RTE_ETH_LINK_FULL_DUPLEX) ==
 				RTE_ETH_LINK_FULL_DUPLEX)
@@ -263,13 +264,22 @@ int32_t zxdh_dev_link_update(struct rte_eth_dev *dev, int32_t wait_to_complete _
 		return ret;
 	}
 	link.link_status &= hw->admin_status;
-	if (link.link_status == RTE_ETH_LINK_DOWN)
-		link.link_speed  = RTE_ETH_SPEED_NUM_UNKNOWN;
+	if (link.link_status == RTE_ETH_LINK_DOWN) {
+		PMD_DRV_LOG(DEBUG, "dev link status is down.");
+		goto link_down;
+	}
+	goto out;
 
-	ret = zxdh_config_port_status(dev, link.link_status);
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "set port attr %d failed", link.link_status);
-		return ret;
+link_down:
+	link.link_status = RTE_ETH_LINK_DOWN;
+	link.link_speed  = RTE_ETH_SPEED_NUM_UNKNOWN;
+out:
+	if (link.link_status != dev->data->dev_link.link_status) {
+		ret = zxdh_config_port_status(dev, link.link_status);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "set port attr %d failed", link.link_status);
+			return ret;
+		}
 	}
 	return rte_eth_linkstatus_set(dev, &link);
 }
