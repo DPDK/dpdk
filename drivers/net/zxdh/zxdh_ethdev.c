@@ -49,8 +49,8 @@ zxdh_dev_infos_get(struct rte_eth_dev *dev,
 	struct zxdh_hw *hw = dev->data->dev_private;
 
 	dev_info->speed_capa       = rte_eth_speed_bitflag(hw->speed, RTE_ETH_LINK_FULL_DUPLEX);
-	dev_info->max_rx_queues    = RTE_MIN(hw->max_queue_pairs, ZXDH_RX_QUEUES_MAX);
-	dev_info->max_tx_queues    = RTE_MIN(hw->max_queue_pairs, ZXDH_TX_QUEUES_MAX);
+	dev_info->max_rx_queues    = hw->max_queue_pairs;
+	dev_info->max_tx_queues    = hw->max_queue_pairs;
 	dev_info->min_rx_bufsize   = ZXDH_MIN_RX_BUFSIZE;
 	dev_info->max_rx_pktlen    = ZXDH_MAX_RX_PKTLEN;
 	dev_info->max_mac_addrs    = ZXDH_MAX_MAC_ADDRS;
@@ -1305,6 +1305,40 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+zxdh_rxq_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id, struct rte_eth_rxq_info *qinfo)
+{
+	struct zxdh_virtnet_rx *rxq = NULL;
+
+	if (rx_queue_id < dev->data->nb_rx_queues)
+		rxq = dev->data->rx_queues[rx_queue_id];
+	if (!rxq) {
+		PMD_RX_LOG(ERR, "rxq is null");
+		return;
+	}
+	qinfo->nb_desc = rxq->vq->vq_nentries;
+	qinfo->conf.rx_free_thresh = rxq->vq->vq_free_thresh;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
+	qinfo->queue_state = dev->data->rx_queue_state[rx_queue_id];
+}
+
+static void
+zxdh_txq_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id, struct rte_eth_txq_info *qinfo)
+{
+	struct zxdh_virtnet_tx *txq = NULL;
+
+	if (tx_queue_id < dev->data->nb_tx_queues)
+		txq = dev->data->tx_queues[tx_queue_id];
+	if (!txq) {
+		PMD_TX_LOG(ERR, "txq is null");
+		return;
+	}
+	qinfo->nb_desc = txq->vq->vq_nentries;
+	qinfo->conf.tx_free_thresh = txq->vq->vq_free_thresh;
+	qinfo->conf.offloads = dev->data->dev_conf.txmode.offloads;
+	qinfo->queue_state = dev->data->tx_queue_state[tx_queue_id];
+}
+
 /* dev_ops for zxdh, bare necessities for basic operation */
 static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.dev_configure			 = zxdh_dev_configure,
@@ -1316,6 +1350,8 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.tx_queue_setup			 = zxdh_dev_tx_queue_setup,
 	.rx_queue_intr_enable	 = zxdh_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable	 = zxdh_dev_rx_queue_intr_disable,
+	.rxq_info_get			 = zxdh_rxq_info_get,
+	.txq_info_get			 = zxdh_txq_info_get,
 	.link_update			 = zxdh_dev_link_update,
 	.dev_set_link_up		 = zxdh_dev_set_link_up,
 	.dev_set_link_down		 = zxdh_dev_set_link_down,
