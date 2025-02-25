@@ -22,6 +22,7 @@ struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 struct zxdh_dev_shared_data g_dev_sd[ZXDH_SLOT_MAX];
 static rte_spinlock_t zxdh_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 static struct zxdh_shared_data *zxdh_shared_data;
+struct zxdh_net_hdr_dl g_net_hdr_dl[RTE_MAX_ETHPORTS];
 
 #define ZXDH_INVALID_DTBQUE      0xFFFF
 #define ZXDH_INVALID_SLOT_IDX    0xFFFF
@@ -403,6 +404,28 @@ free_intr_vec:
 	return ret;
 }
 
+static void
+zxdh_update_net_hdr_dl(struct zxdh_hw *hw)
+{
+	struct zxdh_net_hdr_dl *net_hdr_dl = &g_net_hdr_dl[hw->port_id];
+	memset(net_hdr_dl, 0, ZXDH_DL_NET_HDR_SIZE);
+
+	if (zxdh_tx_offload_enabled(hw)) {
+		net_hdr_dl->type_hdr.port = ZXDH_PORT_DTP;
+		net_hdr_dl->type_hdr.pd_len = ZXDH_DL_NET_HDR_SIZE >> 1;
+
+		net_hdr_dl->pipd_hdr_dl.pi_hdr.pi_len = (ZXDH_PI_HDR_SIZE >> 4) - 1;
+		net_hdr_dl->pipd_hdr_dl.pi_hdr.pkt_flag_hi8 = ZXDH_PI_FLAG | ZXDH_PI_TYPE_PI;
+		net_hdr_dl->pipd_hdr_dl.pi_hdr.pkt_type = ZXDH_PKT_FORM_CPU;
+		hw->dl_net_hdr_len = ZXDH_DL_NET_HDR_SIZE;
+
+	} else {
+		net_hdr_dl->type_hdr.port = ZXDH_PORT_NP;
+		net_hdr_dl->type_hdr.pd_len = ZXDH_DL_NET_HDR_NOPI_SIZE >> 1;
+		hw->dl_net_hdr_len = ZXDH_DL_NET_HDR_NOPI_SIZE;
+	}
+}
+
 static int32_t
 zxdh_features_update(struct zxdh_hw *hw,
 		const struct rte_eth_rxmode *rxmode,
@@ -447,23 +470,6 @@ zxdh_features_update(struct zxdh_hw *hw,
 		return -ENOTSUP;
 	}
 	return 0;
-}
-
-static bool
-zxdh_rx_offload_enabled(struct zxdh_hw *hw)
-{
-	return zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM) ||
-		   zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
-		   zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6);
-}
-
-static bool
-zxdh_tx_offload_enabled(struct zxdh_hw *hw)
-{
-	return zxdh_pci_with_feature(hw, ZXDH_NET_F_CSUM) ||
-		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_TSO4) ||
-		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_TSO6) ||
-		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_UFO);
 }
 
 static void
@@ -890,6 +896,7 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	const struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
 	struct zxdh_hw *hw = dev->data->dev_private;
+	uint64_t rx_offloads = rxmode->offloads;
 	int32_t  ret = 0;
 
 	if (dev->data->nb_rx_queues > hw->max_queue_pairs ||
@@ -929,6 +936,9 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 			return -ENOTSUP;
 		}
 	}
+
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+		hw->vlan_offload_cfg.vlan_strip = 1;
 
 	hw->has_tx_offload = zxdh_tx_offload_enabled(hw);
 	hw->has_rx_offload = zxdh_rx_offload_enabled(hw);
@@ -980,6 +990,7 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 
 end:
 	zxdh_dev_conf_offload(dev);
+	zxdh_update_net_hdr_dl(hw);
 	return ret;
 }
 

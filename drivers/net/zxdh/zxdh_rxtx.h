@@ -10,13 +10,40 @@
 #include <rte_common.h>
 #include <rte_mbuf_core.h>
 
+#define ZXDH_PORT_NP     0
+#define ZXDH_PORT_DRS    1
+#define ZXDH_PORT_DTP    2
+
+/*PI PKT FLAG */
+#define ZXDH_PKT_FORM_CPU                           0x20
+#define ZXDH_NO_IP_FRAGMENT                         0x2000
+#define ZXDH_NO_IPID_UPDATE                         0x4000
+#define ZXDH_TX_IP_CKSUM_CAL                        0x8000
+#define ZXDH_RX_IP_CKSUM_VERIFY                     0x01
+#define ZXDH_RX_PSEUDO_CKSUM_VALID                  0x02
+#define ZXDH_TX_TCPUDP_CKSUM_CAL                    0x04
+#define ZXDH_RX_TCPUDP_CKSUM_VERIFY                 0x08
+#define ZXDH_NO_TCP_FRAGMENT                        0x10
+#define ZXDH_PI_FLAG                                0x20
+#define ZXDH_PI_TYPE                                0x40
+#define ZXDH_VERSION1                               0x80
+#define ZXDH_PI_TYPE_PI                             0x00
+#define ZXDH_PI_TYPE_VIRTIO95                       0x40
+#define ZXDH_PI_TYPE_VIRTIO11                       0xC0
+
 struct zxdh_virtnet_stats {
 	uint64_t packets;
 	uint64_t bytes;
 	uint64_t errors;
+	uint64_t idle;
+	uint64_t full;
+	uint64_t norefill;
 	uint64_t multicast;
 	uint64_t broadcast;
 	uint64_t truncated_err;
+	uint64_t offload_cfg_err;
+	uint64_t invalid_hdr_len_err;
+	uint64_t no_segs_err;
 	uint64_t size_bins[8];
 };
 

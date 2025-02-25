@@ -49,12 +49,22 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 
 #define ZXDH_RQ_QUEUE_IDX                 0
 #define ZXDH_TQ_QUEUE_IDX                 1
+#define ZXDH_UL_1588_HDR_SIZE             8
 #define ZXDH_TYPE_HDR_SIZE        sizeof(struct zxdh_type_hdr)
 #define ZXDH_PI_HDR_SIZE          sizeof(struct zxdh_pi_hdr)
 #define ZXDH_DL_NET_HDR_SIZE      sizeof(struct zxdh_net_hdr_dl)
 #define ZXDH_UL_NET_HDR_SIZE      sizeof(struct zxdh_net_hdr_ul)
+#define ZXDH_DL_PD_HDR_SIZE       sizeof(struct zxdh_pd_hdr_dl)
+#define ZXDH_UL_PD_HDR_SIZE       sizeof(struct zxdh_pd_hdr_ul)
+#define ZXDH_DL_NET_HDR_NOPI_SIZE   (ZXDH_TYPE_HDR_SIZE + \
+									ZXDH_DL_PD_HDR_SIZE)
+#define ZXDH_UL_NOPI_HDR_SIZE_MAX   (ZXDH_TYPE_HDR_SIZE + \
+									ZXDH_UL_PD_HDR_SIZE + \
+									ZXDH_UL_1588_HDR_SIZE)
 #define ZXDH_PD_HDR_SIZE_MAX              256
 #define ZXDH_PD_HDR_SIZE_MIN              ZXDH_TYPE_HDR_SIZE
+
+#define rte_packet_prefetch(p)      do {} while (0)
 
 /*
  * ring descriptors: 16 bytes.
@@ -192,18 +202,29 @@ struct __rte_packed_begin zxdh_pi_hdr {
 } __rte_packed_end; /* 32B */
 
 struct __rte_packed_begin zxdh_pd_hdr_dl {
-	uint32_t ol_flag;
+	uint16_t ol_flag;
+	uint8_t rsv;
+	uint8_t panel_id;
+
+	uint16_t svlan_insert;
+	uint16_t cvlan_insert;
+
 	uint8_t tag_idx;
 	uint8_t tag_data;
 	uint16_t dst_vfid;
-	uint32_t svlan_insert;
-	uint32_t cvlan_insert;
 } __rte_packed_end; /* 16B */
 
-struct __rte_packed_begin zxdh_net_hdr_dl {
-	struct zxdh_type_hdr  type_hdr; /* 4B */
+struct __rte_packed_begin zxdh_pipd_hdr_dl {
 	struct zxdh_pi_hdr    pi_hdr; /* 32B */
-	struct zxdh_pd_hdr_dl pd_hdr; /* 16B */
+	struct zxdh_pd_hdr_dl pd_hdr; /* 12B */
+} __rte_packed_end; /* 44B */
+
+struct __rte_packed_begin zxdh_net_hdr_dl {
+	struct zxdh_type_hdr type_hdr; /* 4B */
+	union {
+		struct zxdh_pd_hdr_dl pd_hdr; /* 12B */
+		struct zxdh_pipd_hdr_dl pipd_hdr_dl; /* 44B */
+	};
 } __rte_packed_end;
 
 struct __rte_packed_begin zxdh_pd_hdr_ul {
@@ -211,17 +232,27 @@ struct __rte_packed_begin zxdh_pd_hdr_ul {
 	uint32_t rss_hash;
 	uint32_t fd;
 	uint32_t striped_vlan_tci;
+
+	uint16_t pkt_type_out;
+	uint16_t pkt_type_in;
+	uint16_t pkt_len;
+
 	uint8_t tag_idx;
 	uint8_t tag_data;
 	uint16_t src_vfid;
-	uint16_t pkt_type_out;
-	uint16_t pkt_type_in;
 } __rte_packed_end; /* 24B */
 
-struct __rte_packed_begin zxdh_net_hdr_ul {
-	struct zxdh_type_hdr  type_hdr; /* 4B */
+struct __rte_packed_begin zxdh_pipd_hdr_ul {
 	struct zxdh_pi_hdr    pi_hdr; /* 32B */
-	struct zxdh_pd_hdr_ul pd_hdr; /* 24B */
+	struct zxdh_pd_hdr_ul pd_hdr; /* 26B */
+} __rte_packed_end;
+
+struct __rte_packed_begin zxdh_net_hdr_ul {
+	struct zxdh_type_hdr type_hdr; /* 4B */
+	union {
+		struct zxdh_pd_hdr_ul   pd_hdr; /* 26 */
+		struct zxdh_pipd_hdr_ul pipd_hdr_ul; /* 58B */
+	};
 } __rte_packed_end; /* 60B */
 
 
@@ -316,6 +347,19 @@ zxdh_mb(uint8_t weak_barriers)
 		rte_mb();
 }
 
+static inline
+int32_t desc_is_used(struct zxdh_vring_packed_desc *desc, struct zxdh_virtqueue *vq)
+{
+	uint16_t flags;
+	uint16_t used, avail;
+
+	flags = desc->flags;
+	rte_io_rmb();
+	used = !!(flags & ZXDH_VRING_PACKED_DESC_F_USED);
+	avail = !!(flags & ZXDH_VRING_PACKED_DESC_F_AVAIL);
+	return avail == used && used == vq->vq_packed.used_wrap_counter;
+}
+
 static inline int32_t
 zxdh_queue_full(const struct zxdh_virtqueue *vq)
 {
@@ -323,48 +367,22 @@ zxdh_queue_full(const struct zxdh_virtqueue *vq)
 }
 
 static inline void
-zxdh_queue_store_flags_packed(struct zxdh_vring_packed_desc *dp,
-		uint16_t flags, uint8_t weak_barriers)
-	{
-	if (weak_barriers) {
-	#ifdef RTE_ARCH_X86_64
-		rte_io_wmb();
-		dp->flags = flags;
-	#else
-		rte_atomic_store_explicit(&dp->flags, flags, rte_memory_order_release);
-	#endif
-	} else {
-		rte_io_wmb();
-		dp->flags = flags;
-	}
-}
-
-static inline uint16_t
-zxdh_queue_fetch_flags_packed(struct zxdh_vring_packed_desc *dp,
-		uint8_t weak_barriers)
-	{
-	uint16_t flags;
-	if (weak_barriers) {
-	#ifdef RTE_ARCH_X86_64
-		flags = dp->flags;
-		rte_io_rmb();
-	#else
-		flags = rte_atomic_load_explicit(&dp->flags, rte_memory_order_acquire);
-	#endif
-	} else {
-		flags = dp->flags;
-		rte_io_rmb();
-	}
-
-	return flags;
+zxdh_queue_store_flags_packed(struct zxdh_vring_packed_desc *dp, uint16_t flags)
+{
+	rte_io_wmb();
+	dp->flags = flags;
 }
 
 static inline int32_t
 zxdh_desc_used(struct zxdh_vring_packed_desc *desc, struct zxdh_virtqueue *vq)
 {
-	uint16_t flags = zxdh_queue_fetch_flags_packed(desc, vq->hw->weak_barriers);
-	uint16_t used = !!(flags & ZXDH_VRING_PACKED_DESC_F_USED);
-	uint16_t avail = !!(flags & ZXDH_VRING_PACKED_DESC_F_AVAIL);
+	uint16_t flags;
+	uint16_t used, avail;
+
+	flags = desc->flags;
+	rte_io_rmb();
+	used = !!(flags & ZXDH_VRING_PACKED_DESC_F_USED);
+	avail = !!(flags & ZXDH_VRING_PACKED_DESC_F_AVAIL);
 	return avail == used && used == vq->vq_packed.used_wrap_counter;
 }
 
@@ -378,11 +396,13 @@ zxdh_queue_kick_prepare_packed(struct zxdh_virtqueue *vq)
 {
 	uint16_t flags = 0;
 
-	zxdh_mb(vq->hw->weak_barriers);
+	zxdh_mb(1);
 	flags = vq->vq_packed.ring.device->desc_event_flags;
 
 	return (flags != ZXDH_RING_EVENT_FLAGS_DISABLE);
 }
+
+extern struct zxdh_net_hdr_dl g_net_hdr_dl[RTE_MAX_ETHPORTS];
 
 struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);
 int32_t zxdh_free_queues(struct rte_eth_dev *dev);

@@ -31,4 +31,7 @@ uint32_t zxdh_read_comm_reg(uint64_t pci_comm_cfg_baseaddr, uint32_t reg);
 void zxdh_write_comm_reg(uint64_t pci_comm_cfg_baseaddr, uint32_t reg, uint32_t val);
 int32_t zxdh_datach_set(struct rte_eth_dev *dev);
 
+bool zxdh_rx_offload_enabled(struct zxdh_hw *hw);
+bool zxdh_tx_offload_enabled(struct zxdh_hw *hw);
+
 #endif /* ZXDH_COMMON_H */
