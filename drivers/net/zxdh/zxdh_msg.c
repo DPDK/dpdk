@@ -1544,6 +1544,130 @@ zxdh_vf_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 	return ret;
 }
 
+static int
+zxdh_vf_rss_hf_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_unused,
+			struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_hf";
+	struct zxdh_port_attr_table vport_att = {0};
+	int ret = 0;
+
+	ret = zxdh_get_port_attr(hw, vport, &vport_att);
+	if (ret) {
+		sprintf(str, "get rss hash factor failed, ret:%d\n", ret);
+		PMD_DRV_LOG(ERR, "get rss hash factor failed.");
+		goto proc_end;
+	}
+
+	reply->rss_hf.rss_hf = vport_att.rss_hash_factor;
+
+proc_end:
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
+static int
+zxdh_vf_rss_hf_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+			struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_hf";
+	struct zxdh_rss_hf *rss_hf = cfg_data;
+	struct zxdh_port_attr_table vport_att = {0};
+	int ret = 0;
+
+	ret = zxdh_get_port_attr(hw, vport, &vport_att);
+	if (ret) {
+		sprintf(str, "set rss hash factor (set vport tbl failed, hf is %d). ret:%d\n",
+				rss_hf->rss_hf, ret);
+		PMD_DRV_LOG(ERR, "rss enable hash factor set failed");
+		goto proc_end;
+	}
+
+	vport_att.rss_hash_factor = rss_hf->rss_hf;
+	ret = zxdh_set_port_attr(hw, vport, &vport_att);
+	if (ret) {
+		sprintf(str, "set rss hash factor (set vport tbl failed, hf is %d). ret:%d\n",
+				rss_hf->rss_hf, ret);
+		PMD_DRV_LOG(ERR, "rss config hf failed");
+	}
+
+proc_end:
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
+static int
+zxdh_vf_rss_enable(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+			struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_enable";
+	struct zxdh_rss_enable *rss_enable = cfg_data;
+	struct zxdh_port_attr_table vport_att = {0};
+	int ret = 0;
+
+	ret = zxdh_get_port_attr(hw, vport, &vport_att);
+	if (ret) {
+		sprintf(str, "set rss enable (get vport tbl failed, rss_enable is %d). ret:%d\n",
+				rss_enable->enable, ret);
+		PMD_DRV_LOG(ERR, "rss enable set failed");
+		goto proc_end;
+	}
+
+	vport_att.rss_enable = rss_enable->enable;
+	ret = zxdh_set_port_attr(hw, vport, &vport_att);
+	if (ret) {
+		sprintf(str, "set rss enable (set vport tbl failed, rss_enable is %d). ret:%d\n",
+				rss_enable->enable, ret);
+		PMD_DRV_LOG(ERR, "rss enable set failed");
+	}
+
+proc_end:
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
+static int
+zxdh_vf_rss_table_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+		struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_table";
+	struct zxdh_rss_reta *rss_reta = cfg_data;
+	int32_t ret = 0;
+
+	ret = zxdh_rss_table_set(hw, vport, rss_reta);
+	if (ret)
+		sprintf(str, "set rss reta tbl failed, code:%d", ret);
+
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
+static int
+zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_unused,
+		struct zxdh_msg_reply_body *reply, uint16_t *res_len)
+{
+	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_table";
+	struct zxdh_rss_reta *rss_reta = &reply->rss_reta;
+	int ret = 0;
+
+	ret = zxdh_rss_table_get(hw, vport, rss_reta);
+	if (ret)
+		sprintf(str, "set rss reta tbl failed, code:%d", ret);
+
+	*res_len = strlen(str) + sizeof(enum zxdh_reps_flag);
+	reply->flag = (ret == 0) ? ZXDH_REPS_SUCC : ZXDH_REPS_FAIL;
+	memcpy(&reply->reply_data, str, strlen(str) + 1);
+	return ret;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -1555,6 +1679,11 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_VLAN_FILTER_ADD] = zxdh_vf_vlan_filter_table_add,
 	[ZXDH_VLAN_FILTER_DEL] = zxdh_vf_vlan_filter_table_del,
 	[ZXDH_VLAN_OFFLOAD] = zxdh_vf_set_vlan_offload,
+	[ZXDH_RSS_ENABLE] = zxdh_vf_rss_enable,
+	[ZXDH_RSS_RETA_GET] = zxdh_vf_rss_table_get,
+	[ZXDH_RSS_RETA_SET] = zxdh_vf_rss_table_set,
+	[ZXDH_RSS_HF_SET] = zxdh_vf_rss_hf_set,
+	[ZXDH_RSS_HF_GET] = zxdh_vf_rss_hf_get,
 };
 
 static inline int

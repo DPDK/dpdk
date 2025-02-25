@@ -1144,7 +1144,6 @@ zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_con
 		}
 		reply_msg.reply_body.rss_hf.rss_hf = port_attr.rss_hash_factor;
 	} else {
-		zxdh_msg_head_build(hw, ZXDH_RSS_HF_SET, &msg);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info),
 				&reply_msg, sizeof(struct zxdh_msg_reply_info));
 		if (ret) {
