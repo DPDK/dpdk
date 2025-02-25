@@ -1793,10 +1793,27 @@ int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	return bnxt_dev_stop(eth_dev);
 }
 
+static void bnxt_update_max_rx_burst(struct bnxt *bp, struct rte_eth_link *link)
+{
+	if (link->link_speed == RTE_ETH_SPEED_NUM_400G) {
+		uint32_t i;
+
+		/* Faster port speed. Update threshold.  Else use default. */
+		for (i = 0; i < bp->rx_nr_rings; i++) {
+			struct bnxt_rx_queue *rxq = bp->rx_queues[i];
+
+			rxq->rx_free_thresh =
+				RTE_MIN(rte_align32pow2(rxq->nb_rx_desc) / 4,
+					RTE_BNXT_MAX_RX_BURST_TH2);
+		}
+	}
+}
+
 int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
+	struct rte_eth_link *link = &eth_dev->data->dev_link;
 	int vlan_mask = 0;
 	int rc, retry_cnt = BNXT_IF_CHANGE_RETRY_COUNT;
 
@@ -1876,6 +1893,8 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
+
+	bnxt_update_max_rx_burst(bp, link);
 
 	bnxt_schedule_fw_health_check(bp);
 
@@ -2114,6 +2133,7 @@ out:
 		rte_eth_linkstatus_set(eth_dev, &new);
 		bnxt_print_link_info(eth_dev);
 	}
+	bnxt_update_max_rx_burst(bp, &new);
 
 	return rc;
 }
