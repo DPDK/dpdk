@@ -15,6 +15,7 @@
 #define ZXDH_SDT_BROCAST_ATT_TABLE        6
 #define ZXDH_SDT_UNICAST_ATT_TABLE        10
 #define ZXDH_SDT_MULTICAST_ATT_TABLE      11
+#define ZXDH_SDT_PORT_VLAN_ATT_TABLE      16
 
 #define ZXDH_MAC_HASH_INDEX_BASE          64
 #define ZXDH_MAC_HASH_INDEX(index)        (ZXDH_MAC_HASH_INDEX_BASE + (index))
@@ -25,6 +26,14 @@
 #define ZXDH_VLAN_GROUP_BITS              31
 #define ZXDH_VLAN_GROUP_NUM               35
 #define ZXDH_VLAN_FILTER_VLANID_STEP      120
+
+static inline int32_t
+no_business_offload(struct zxdh_port_vlan_table *port_vlan)
+{
+	return (port_vlan->business_qinq_strip == 0 &&
+			port_vlan->business_vlan_filter == 0 &&
+			port_vlan->business_vlan_strip == 0);
+}
 
 int
 zxdh_set_port_attr(struct zxdh_hw *hw, uint16_t vport, struct zxdh_port_attr_table *port_attr)
@@ -900,4 +909,134 @@ zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 		}
 	}
 	return 0;
+}
+
+static int
+zxdh_vlan_relate_vport(struct rte_eth_dev *dev, uint16_t vport,
+		struct zxdh_port_attr_table *vport_attr,
+		struct zxdh_port_vlan_table *port_vlan, uint8_t on)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	union zxdh_virport_num port = (union zxdh_virport_num)vport;
+	int ret = 0;
+
+	if (on) {
+		if (!vport_attr->business_vlan_enable) {
+			vport_attr->business_vlan_enable = 1;
+			ret = zxdh_set_port_attr(hw, vport, vport_attr);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "[vfid:%d] vlan offload set failedd, set vport tbl ret:%d",
+						port.vfid, ret);
+				return ret;
+			}
+		}
+	} else {
+		if (no_business_offload(port_vlan))
+			if (vport_attr->business_vlan_enable) {
+				PMD_DRV_LOG(INFO, "port vlan no business offload, vport business_vlan_enable set 0");
+				vport_attr->business_vlan_enable = 0;
+				ret = zxdh_set_port_attr(hw, vport, vport_attr);
+				if (ret) {
+					PMD_DRV_LOG(ERR, "[vfid:%d] vlan offload set failedd, set vport tbl ret:%d",
+							port.vfid, ret);
+					return ret;
+				}
+			}
+	}
+
+	return 0;
+}
+
+static int
+zxdh_set_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_vlan_table *port_vlan)
+{
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	int ret = 0;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T port_entry = {
+		.index = vport_num.vfid,
+		.p_data = (uint32_t *)port_vlan
+	};
+	ZXDH_DTB_USER_ENTRY_T entry = {
+		.sdt_no = ZXDH_SDT_PORT_VLAN_ATT_TABLE,
+		.p_entry_data = (void *)&port_entry
+	};
+
+	ret = zxdh_np_dtb_table_entry_write(hw->slot_id, hw->dev_sd->dtb_sd.queueid, 1, &entry);
+	if (ret)
+		PMD_DRV_LOG(ERR, "write port_vlan tbl failed, ret:%d ", ret);
+	return ret;
+}
+
+static int
+zxdh_get_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_vlan_table *port_vlan)
+{
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	int ret = 0;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T port_entry = {
+		.index = vport_num.vfid,
+		.p_data = (uint32_t *)port_vlan
+	};
+	ZXDH_DTB_USER_ENTRY_T entry = {
+		.sdt_no = ZXDH_SDT_PORT_VLAN_ATT_TABLE,
+		.p_entry_data = (void *)&port_entry
+	};
+
+	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+			&entry, 1);
+	if (ret)
+		PMD_DRV_LOG(ERR, "get port vlan tbl failed, ret:%d ", ret);
+
+	return ret;
+}
+
+static int
+set_vlan_config(struct zxdh_hw *hw, uint16_t vport, uint8_t type, uint8_t enable)
+{
+	struct zxdh_port_attr_table vport_attr = {0};
+	struct zxdh_port_vlan_table port_vlan_attr = {0};
+	union zxdh_virport_num port = (union zxdh_virport_num)vport;
+	uint16_t vfid = port.vfid;
+	int ret = 0;
+
+	ret = zxdh_get_port_vlan_attr(hw, vport, &port_vlan_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "[vfid:%d] get port vlan ret:%d", vfid, ret);
+		return ret;
+	}
+	ret = zxdh_get_port_attr(hw, vport, &vport_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "[vfid:%d] get port ret:%d", vfid, ret);
+		return ret;
+	}
+
+	if (type == ZXDH_VLAN_STRIP_TYPE)
+		port_vlan_attr.business_vlan_strip = !!enable;
+	else if (type == ZXDH_QINQ_STRIP_TYPE)
+		port_vlan_attr.business_qinq_strip = !!enable;
+	else if (type == ZXDH_VLAN_FILTER_TYPE)
+		port_vlan_attr.business_vlan_filter = !!enable;
+
+	port_vlan_attr.hit_flag = 1;
+
+	ret = zxdh_set_port_vlan_attr(hw, vport, &port_vlan_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "[vfid:%d] set port vlan ret:%d", vfid, ret);
+		return ret;
+	}
+
+	return zxdh_vlan_relate_vport(hw->eth_dev, vport, &vport_attr, &port_vlan_attr, enable);
+}
+
+int zxdh_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, uint8_t enable)
+{
+	return set_vlan_config(hw, vport, ZXDH_VLAN_FILTER_TYPE, enable);
+}
+
+int zxdh_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, uint8_t type, uint8_t enable)
+{
+	return set_vlan_config(hw, vport, type, enable);
 }

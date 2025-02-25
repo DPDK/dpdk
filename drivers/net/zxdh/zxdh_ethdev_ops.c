@@ -678,11 +678,6 @@ zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_started == 0) {
-		PMD_DRV_LOG(ERR, "vlan_filter dev not start");
-		return -1;
-	}
-
 	idx = vlan_id / ZXDH_VLAN_FILTER_GROUPS;
 	bit_idx = vlan_id % ZXDH_VLAN_FILTER_GROUPS;
 
@@ -732,16 +727,13 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	struct zxdh_hw *hw = dev->data->dev_private;
 	struct rte_eth_rxmode *rxmode;
 	struct zxdh_msg_info msg = {0};
-	struct zxdh_port_attr_table port_attr = {0};
 	int ret = 0;
 
 	rxmode = &dev->data->dev_conf.rxmode;
 	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-				port_attr.vlan_filter_enable = true;
-				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+				ret = zxdh_set_vlan_filter(hw, hw->vport.vport, true);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan filter set failed",
 						hw->vport.vfid);
@@ -760,9 +752,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			}
 		} else {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-				port_attr.vlan_filter_enable = false;
-				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+				ret = zxdh_set_vlan_filter(hw, hw->vport.vport, false);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan filter set failed",
 						hw->vport.vfid);
@@ -785,9 +775,8 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-				port_attr.vlan_strip_offload = true;
-				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+				ret = zxdh_set_vlan_offload(hw, hw->vport.vport,
+						ZXDH_VLAN_STRIP_TYPE, true);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan strip set failed",
 						hw->vport.vfid);
@@ -795,7 +784,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 				}
 			} else {
 				msg.data.vlan_offload_msg.enable = true;
-				msg.data.vlan_offload_msg.type = ZXDH_VLAN_STRIP_MSG_TYPE;
+				msg.data.vlan_offload_msg.type = ZXDH_VLAN_STRIP_TYPE;
 				zxdh_msg_head_build(hw, ZXDH_VLAN_OFFLOAD, &msg);
 				ret = zxdh_vf_send_msg_to_pf(hw->eth_dev, &msg,
 						sizeof(struct zxdh_msg_info), NULL, 0);
@@ -807,9 +796,8 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			}
 		} else {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-				port_attr.vlan_strip_offload = false;
-				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+				ret = zxdh_set_vlan_offload(hw, hw->vport.vport,
+						ZXDH_VLAN_STRIP_TYPE, false);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan strip set failed",
 						hw->vport.vfid);
@@ -817,7 +805,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 				}
 			} else {
 				msg.data.vlan_offload_msg.enable = false;
-				msg.data.vlan_offload_msg.type = ZXDH_VLAN_STRIP_MSG_TYPE;
+				msg.data.vlan_offload_msg.type = ZXDH_VLAN_STRIP_TYPE;
 				zxdh_msg_head_build(hw, ZXDH_VLAN_OFFLOAD, &msg);
 				ret = zxdh_vf_send_msg_to_pf(hw->eth_dev, &msg,
 						sizeof(struct zxdh_msg_info), NULL, 0);
@@ -834,9 +822,8 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		memset(&msg, 0, sizeof(struct zxdh_msg_info));
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-				port_attr.qinq_strip_offload = true;
-				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+				ret = zxdh_set_vlan_offload(hw, hw->vport.vport,
+					ZXDH_QINQ_STRIP_TYPE, true);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d qinq offload set failed",
 						hw->vport.vfid);
@@ -844,7 +831,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 				}
 			} else {
 				msg.data.vlan_offload_msg.enable = true;
-				msg.data.vlan_offload_msg.type = ZXDH_QINQ_STRIP_MSG_TYPE;
+				msg.data.vlan_offload_msg.type = ZXDH_QINQ_STRIP_TYPE;
 				zxdh_msg_head_build(hw, ZXDH_VLAN_OFFLOAD, &msg);
 				ret = zxdh_vf_send_msg_to_pf(hw->eth_dev, &msg,
 						sizeof(struct zxdh_msg_info), NULL, 0);
@@ -856,9 +843,8 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			}
 		} else {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-				port_attr.qinq_strip_offload = true;
-				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
+				ret = zxdh_set_vlan_offload(hw, hw->vport.vport,
+						ZXDH_QINQ_STRIP_TYPE, false);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d qinq offload set failed",
 						hw->vport.vfid);
@@ -866,7 +852,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 				}
 			} else {
 				msg.data.vlan_offload_msg.enable = false;
-				msg.data.vlan_offload_msg.type = ZXDH_QINQ_STRIP_MSG_TYPE;
+				msg.data.vlan_offload_msg.type = ZXDH_QINQ_STRIP_TYPE;
 				zxdh_msg_head_build(hw, ZXDH_VLAN_OFFLOAD, &msg);
 				ret = zxdh_vf_send_msg_to_pf(hw->eth_dev, &msg,
 						sizeof(struct zxdh_msg_info), NULL, 0);

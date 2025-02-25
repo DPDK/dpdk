@@ -33,22 +33,57 @@
 
 extern struct zxdh_dtb_shared_data g_dtb_data;
 
+struct zxdh_port_vlan_table {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	uint16_t business_vlan_tpid:16;
+	/* byte[3,4] */
+	uint8_t rsv2:8;
+	/* byte[2] */
+	uint8_t rsv1: 4;
+	uint8_t business_vlan_strip: 1;
+	uint8_t business_qinq_strip: 1;
+	uint8_t business_vlan_filter: 1;
+	uint8_t hit_flag: 1;
+	/* byte[1] */
+	uint16_t sriov_vlan_tci:16;
+	/* byte[7:8] */
+	uint16_t sriov_vlan_tpid:16;
+	/* byte[5:6] */
+#else
+	uint8_t rsv1: 4;
+	uint8_t business_vlan_strip: 1;
+	uint8_t business_qinq_strip: 1;
+	uint8_t business_vlan_filter: 1;
+	uint8_t hit_flag: 1;
+	/* byte[1] */
+	uint8_t rsv2:8;
+	/* byte[2] */
+	uint16_t business_vlan_tpid:16;
+	/* byte[3:4] */
+	uint16_t sriov_vlan_tpid:16;
+	/* byte[5:6] */
+	uint16_t sriov_vlan_tci:16;
+	/* byte[7:8] */
+#endif
+};
+
 struct zxdh_port_attr_table {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-	uint8_t byte4_rsv1: 1;
-	uint8_t ingress_meter_enable: 1;
-	uint8_t egress_meter_enable: 1;
-	uint8_t byte4_rsv2: 2;
-	uint8_t fd_enable: 1;
-	uint8_t vepa_enable: 1;
+	uint8_t egress_meter_enable: 1; /* np view */
+	uint8_t ingress_meter_enable: 1; /* np view */
+	uint8_t egress_meter_mode: 1; /* np view */
+	uint8_t ingress_meter_mode: 1; /* np view */
+	uint8_t egress_tm_enable: 1; /* np view */
+	uint8_t ingress_tm_enable: 1; /* np view */
+	uint8_t rsv1: 1;
 	uint8_t spoof_check_enable: 1;
 
 	uint8_t inline_sec_offload: 1;
-	uint8_t ovs_enable: 1;
+	uint8_t fd_enable: 1;
 	uint8_t lag_enable: 1;
-	uint8_t is_passthrough: 1;
+	uint8_t vepa_enable: 1;
 	uint8_t is_vf: 1;
-	uint8_t virtion_version: 2;
+	uint8_t virtio_ver: 2;
 	uint8_t virtio_enable: 1;
 
 	uint8_t accelerator_offload_flag: 1;
@@ -58,13 +93,13 @@ struct zxdh_port_attr_table {
 	uint8_t ip_checksum_offload: 1;
 	uint8_t outer_ip_checksum_offload: 1;
 	uint8_t is_up: 1;
-	uint8_t rsv1: 1;
+	uint8_t business_enable: 1;
 
-	uint8_t promisc_enable : 1;
+	uint8_t hw_bond_enable : 1;
 	uint8_t rdma_offload_enable: 1;
-	uint8_t vlan_filter_enable: 1;
-	uint8_t vlan_strip_offload: 1;
-	uint8_t qinq_strip_offload: 1;
+	uint8_t promisc_enable: 1;
+	uint8_t sriov_vlan_enable: 1;
+	uint8_t business_vlan_enable: 1;
 	uint8_t rss_enable: 1;
 	uint8_t mtu_enable: 1;
 	uint8_t hit_flag: 1;
@@ -73,7 +108,7 @@ struct zxdh_port_attr_table {
 
 	uint16_t port_base_qid : 12;
 	uint16_t hash_search_index : 3;
-	uint16_t rsv: 1;
+	uint16_t hpm: 1;
 
 	uint8_t rss_hash_factor;
 
@@ -81,20 +116,20 @@ struct zxdh_port_attr_table {
 	uint8_t phy_port: 4;
 
 	uint16_t lag_id : 3;
+	uint16_t rsv81 : 1;
 	uint16_t pf_vfid : 11;
-	uint16_t ingress_tm_enable : 1;
-	uint16_t egress_tm_enable : 1;
+	uint16_t rsv82 : 1;
 
 	uint16_t tpid;
 
 	uint16_t vhca : 10;
-	uint16_t uplink_port : 6;
+	uint16_t rsv16_1 : 6;
 #else
-	uint8_t rsv3 : 1;
+	uint8_t hw_bond_enable : 1;
 	uint8_t rdma_offload_enable: 1;
-	uint8_t vlan_filter_enable: 1;
-	uint8_t vlan_strip_offload: 1;
-	uint8_t qinq_strip_offload: 1;
+	uint8_t promisc_enable: 1;
+	uint8_t sriov_vlan_enable: 1;
+	uint8_t business_vlan_enable: 1;
 	uint8_t rss_enable: 1;
 	uint8_t mtu_enable: 1;
 	uint8_t hit_flag: 1;
@@ -106,34 +141,35 @@ struct zxdh_port_attr_table {
 	uint8_t ip_checksum_offload: 1;
 	uint8_t outer_ip_checksum_offload: 1;
 	uint8_t is_up: 1;
-	uint8_t rsv1: 1;
+	uint8_t business_enable: 1;
 
 	uint8_t inline_sec_offload: 1;
-	uint8_t ovs_enable: 1;
+	uint8_t fd_enable: 1;
 	uint8_t lag_enable: 1;
-	uint8_t is_passthrough: 1;
+	uint8_t vepa_enable: 1;
 	uint8_t is_vf: 1;
-	uint8_t virtion_version: 2;
+	uint8_t virtio_ver: 2;
 	uint8_t virtio_enable: 1;
 
-	uint8_t byte4_rsv1: 1;
-	uint8_t ingress_meter_enable: 1;
-	uint8_t egress_meter_enable: 1;
-	uint8_t byte4_rsv2: 2;
-	uint8_t fd_enable: 1;
-	uint8_t vepa_enable: 1;
+	uint8_t egress_meter_enable: 1; /* np view */
+	uint8_t ingress_meter_enable: 1; /* np view */
+	uint8_t egress_meter_mode: 1; /* np view */
+	uint8_t ingress_meter_mode: 1; /* np view */
+	uint8_t egress_tm_enable: 1; /* np view */
+	uint8_t ingress_tm_enable: 1; /* np view */
+	uint8_t rsv1: 1;
 	uint8_t spoof_check_enable: 1;
 
-	uint16_t port_base_qid : 12;
+	uint16_t port_base_qid : 12; /* need rte_bwap16 */
 	uint16_t hash_search_index : 3;
 	uint16_t rsv: 1;
 
 	uint16_t mtu;
 
-	uint16_t lag_id : 3;
+	uint16_t lag_id : 3; /* need rte_bwap16 */
+	uint16_t rsv81 : 1;
 	uint16_t pf_vfid : 11;
-	uint16_t ingress_tm_enable : 1;
-	uint16_t egress_tm_enable : 1;
+	uint16_t rsv82 : 1;
 
 	uint8_t hash_alg: 4;
 	uint8_t phy_port: 4;
@@ -143,7 +179,7 @@ struct zxdh_port_attr_table {
 	uint16_t tpid;
 
 	uint16_t vhca : 10;
-	uint16_t uplink_port : 6;
+	uint16_t rsv16_1 : 6;
 #endif
 };
 
@@ -249,5 +285,7 @@ int zxdh_rss_table_get(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta 
 int zxdh_get_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
 int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
 int zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
+int zxdh_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, uint8_t enable);
+int zxdh_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, uint8_t type, uint8_t enable);
 
 #endif /* ZXDH_TABLES_H */
