@@ -68,13 +68,11 @@ Ensure that the following pre-conditions are satisfied:
 
 *   (rxq->nb_rx_desc % rxq->rx_free_thresh) == 0
 
-*   rxq->nb_rx_desc  < (IXGBE_MAX_RING_DESC - RTE_PMD_IXGBE_RX_MAX_BURST)
+*   rxq->nb_rx_desc >= IXGBE_MIN_RING_DESC
+
+*   rxq->nb_rx_desc <= IXGBE_MAX_RING_DESC
 
 These conditions are checked in the code.
-
-Scattered packets are not supported in this mode.
-If an incoming packet is greater than the maximum acceptable length of one "mbuf" data size (by default, the size is 2 KB),
-vPMD for RX would be disabled.
 
 By default, IXGBE_MAX_RING_DESC is set to 4096 and RTE_PMD_IXGBE_RX_MAX_BURST is set to 32.
 
