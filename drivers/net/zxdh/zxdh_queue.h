@@ -390,12 +390,12 @@ int32_t zxdh_get_queue_type(uint16_t vtpci_queue_idx);
 int32_t zxdh_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
-			uint32_t socket_id __rte_unused,
+			uint32_t socket_id,
 			const struct rte_eth_txconf *tx_conf);
 int32_t zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
-			uint32_t socket_id __rte_unused,
+			uint32_t socket_id,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp);
 int32_t zxdh_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);

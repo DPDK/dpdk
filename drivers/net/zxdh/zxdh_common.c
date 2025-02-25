@@ -70,9 +70,8 @@ zxdh_fill_common_msg(struct zxdh_hw *hw, struct zxdh_pci_bar_msg *desc,
 		PMD_DRV_LOG(ERR, "Failed to allocate msg_data");
 		return -ENOMEM;
 	}
-	memset(desc->payload_addr, 0, msg_len);
 	desc->payload_len = msg_len;
-	struct zxdh_common_msg *msg_data = (struct zxdh_common_msg *)desc->payload_addr;
+	struct zxdh_common_msg *msg_data = desc->payload_addr;
 
 	msg_data->type = type;
 	msg_data->field = field;

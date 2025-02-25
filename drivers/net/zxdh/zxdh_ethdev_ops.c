@@ -135,14 +135,14 @@ static int32_t zxdh_config_port_status(struct rte_eth_dev *dev, uint16_t link_st
 	int32_t ret = 0;
 
 	if (hw->is_pf) {
-		ret = zxdh_get_port_attr(hw->vfid, &port_attr);
+		ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "get port_attr failed");
 			return -1;
 		}
 		port_attr.is_up = link_status;
 
-		ret = zxdh_set_port_attr(hw->vfid, &port_attr);
+		ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write port_attr failed");
 			return -1;
@@ -296,14 +296,14 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 	}
 
 	if (hw->is_pf) {
-		ret = zxdh_del_mac_table(hw->vport.vport, old_addr, hw->hash_search_index);
+		ret = zxdh_del_mac_table(hw, hw->vport.vport, old_addr, hw->hash_search_index);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
 			return ret;
 		}
 		hw->uc_num--;
 
-		ret = zxdh_set_mac_table(hw->vport.vport, addr, hw->hash_search_index);
+		ret = zxdh_set_mac_table(hw, hw->vport.vport, addr, hw->hash_search_index);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
 			return ret;
@@ -314,7 +314,7 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 
 		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
 		mac_filter->mac_flag = true;
-		rte_memcpy(&mac_filter->mac, old_addr, sizeof(struct rte_ether_addr));
+		memcpy(&mac_filter->mac, old_addr, sizeof(struct rte_ether_addr));
 		zxdh_msg_head_build(hw, ZXDH_MAC_DEL, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
@@ -327,7 +327,7 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 			hw->vport.vport, ZXDH_MAC_DEL);
 
 		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
-		rte_memcpy(&mac_filter->mac, addr, sizeof(struct rte_ether_addr));
+		memcpy(&mac_filter->mac, addr, sizeof(struct rte_ether_addr));
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
@@ -364,8 +364,8 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 	if (hw->is_pf) {
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num < ZXDH_MAX_UC_MAC_ADDRS) {
-				ret = zxdh_set_mac_table(hw->vport.vport,
-							mac_addr, hw->hash_search_index);
+				ret = zxdh_set_mac_table(hw, hw->vport.vport,
+						mac_addr, hw->hash_search_index);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
 					return ret;
@@ -378,8 +378,8 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 			}
 		} else {
 			if (hw->mc_num < ZXDH_MAX_MC_MAC_ADDRS) {
-				ret = zxdh_set_mac_table(hw->vport.vport,
-							mac_addr, hw->hash_search_index);
+				ret = zxdh_set_mac_table(hw, hw->vport.vport,
+						mac_addr, hw->hash_search_index);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_add  failed, code:%d", ret);
 					return ret;
@@ -395,7 +395,7 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
 
 		mac_filter->filter_flag = ZXDH_MAC_FILTER;
-		rte_memcpy(&mac_filter->mac, mac_addr, sizeof(struct rte_ether_addr));
+		memcpy(&mac_filter->mac, mac_addr, sizeof(struct rte_ether_addr));
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num < ZXDH_MAX_UC_MAC_ADDRS) {
@@ -433,7 +433,7 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 	return 0;
 }
 
-void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev __rte_unused, uint32_t index __rte_unused)
+void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct zxdh_hw *hw	= dev->data->dev_private;
 	struct zxdh_msg_info msg_info = {0};
@@ -446,7 +446,7 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev __rte_unused, uint32_t ind
 	if (hw->is_pf) {
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num <= ZXDH_MAX_UC_MAC_ADDRS) {
-				ret = zxdh_del_mac_table(hw->vport.vport,
+				ret = zxdh_del_mac_table(hw, hw->vport.vport,
 						mac_addr, hw->hash_search_index);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_del  failed, code:%d", ret);
@@ -460,7 +460,7 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev __rte_unused, uint32_t ind
 			}
 		} else {
 			if (hw->mc_num <= ZXDH_MAX_MC_MAC_ADDRS) {
-				ret = zxdh_del_mac_table(hw->vport.vport,
+				ret = zxdh_del_mac_table(hw, hw->vport.vport,
 							mac_addr, hw->hash_search_index);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "mac_addr_del  failed, code:%d", ret);
@@ -477,7 +477,7 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev __rte_unused, uint32_t ind
 		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
 
 		mac_filter->filter_flag = ZXDH_MAC_FILTER;
-		rte_memcpy(&mac_filter->mac, mac_addr, sizeof(struct rte_ether_addr));
+		memcpy(&mac_filter->mac, mac_addr, sizeof(struct rte_ether_addr));
 		zxdh_msg_head_build(hw, ZXDH_MAC_DEL, &msg_info);
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num <= ZXDH_MAX_UC_MAC_ADDRS) {
@@ -680,7 +680,7 @@ zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	}
 
 	if (hw->is_pf) {
-		ret = zxdh_vlan_filter_table_set(hw->vport.vport, vlan_id, on);
+		ret = zxdh_vlan_filter_table_set(hw, hw->vport.vport, vlan_id, on);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "vlan_id:%d table set failed", vlan_id);
 			return -1;
@@ -718,9 +718,9 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 				port_attr.vlan_filter_enable = true;
-				ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan filter set failed",
 						hw->vport.vfid);
@@ -739,9 +739,9 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			}
 		} else {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 				port_attr.vlan_filter_enable = false;
-				ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan filter set failed",
 						hw->vport.vfid);
@@ -764,9 +764,9 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 				port_attr.vlan_strip_offload = true;
-				ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan strip set failed",
 						hw->vport.vfid);
@@ -786,9 +786,9 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			}
 		} else {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 				port_attr.vlan_strip_offload = false;
-				ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d vlan strip set failed",
 						hw->vport.vfid);
@@ -813,9 +813,9 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		memset(&msg, 0, sizeof(struct zxdh_msg_info));
 		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 				port_attr.qinq_strip_offload = true;
-				ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d qinq offload set failed",
 						hw->vport.vfid);
@@ -835,9 +835,9 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			}
 		} else {
 			if (hw->is_pf) {
-				ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 				port_attr.qinq_strip_offload = true;
-				ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+				ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 				if (ret) {
 					PMD_DRV_LOG(ERR, "port %d qinq offload set failed",
 						hw->vport.vfid);
@@ -918,7 +918,7 @@ zxdh_dev_rss_reta_update(struct rte_eth_dev *dev,
 			(hw->channel_context[hw->rss_reta[i] * 2].ph_chno);
 
 	if (hw->is_pf) {
-		ret = zxdh_rss_table_set(hw->vport.vport, &msg.data.rss_reta);
+		ret = zxdh_rss_table_set(hw, hw->vport.vport, &msg.data.rss_reta);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "rss reta table set failed");
 			return -EINVAL;
@@ -976,7 +976,7 @@ zxdh_dev_rss_reta_query(struct rte_eth_dev *dev,
 	zxdh_msg_head_build(hw, ZXDH_RSS_RETA_GET, &msg);
 
 	if (hw->is_pf) {
-		ret = zxdh_rss_table_get(hw->vport.vport, &reply_msg.reply_body.rss_reta);
+		ret = zxdh_rss_table_get(hw, hw->vport.vport, &reply_msg.reply_body.rss_reta);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "rss reta table set failed");
 			return -EINVAL;
@@ -1067,9 +1067,9 @@ zxdh_rss_hash_update(struct rte_eth_dev *dev,
 
 	if (need_update_hf) {
 		if (hw->is_pf) {
-			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 			port_attr.rss_enable = !!rss_conf->rss_hf;
-			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 			if (ret) {
 				PMD_DRV_LOG(ERR, "rss enable set failed");
 				return -EINVAL;
@@ -1085,9 +1085,9 @@ zxdh_rss_hash_update(struct rte_eth_dev *dev,
 			}
 		}
 		if (hw->is_pf) {
-			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 			port_attr.rss_hash_factor = hw_hf_new;
-			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 			if (ret) {
 				PMD_DRV_LOG(ERR, "rss hash factor set failed");
 				return -EINVAL;
@@ -1129,7 +1129,7 @@ zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_con
 
 	zxdh_msg_head_build(hw, ZXDH_RSS_HF_GET, &msg);
 	if (hw->is_pf) {
-		ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+		ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "rss hash factor set failed");
 			return -EINVAL;
@@ -1181,9 +1181,9 @@ zxdh_rss_configure(struct rte_eth_dev *dev)
 
 	if (hw->rss_enable != curr_rss_enable) {
 		if (hw->is_pf) {
-			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 			port_attr.rss_enable = curr_rss_enable;
-			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 			if (ret) {
 				PMD_DRV_LOG(ERR, "rss enable set failed");
 				return -EINVAL;
@@ -1207,9 +1207,9 @@ zxdh_rss_configure(struct rte_eth_dev *dev)
 		hw_hf = zxdh_rss_hf_to_hw(dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
 		memset(&msg, 0, sizeof(msg));
 		if (hw->is_pf) {
-			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 			port_attr.rss_hash_factor = hw_hf;
-			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
 			if (ret) {
 				PMD_DRV_LOG(ERR, "rss hash factor set failed");
 				return -EINVAL;
@@ -1244,7 +1244,7 @@ zxdh_rss_configure(struct rte_eth_dev *dev)
 			hw->channel_context[hw->rss_reta[i] * 2].ph_chno;
 
 	if (hw->is_pf) {
-		ret = zxdh_rss_table_set(hw->vport.vport, &msg.data.rss_reta);
+		ret = zxdh_rss_table_set(hw, hw->vport.vport, &msg.data.rss_reta);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "rss reta table set failed");
 			return -EINVAL;
@@ -1294,7 +1294,7 @@ zxdh_hw_vqm_stats_get(struct rte_eth_dev *dev, enum zxdh_agent_msg_type opcode,
 	}
 	struct zxdh_msg_reply_body *reply_body = &reply_info.reply_body;
 
-	rte_memcpy(hw_stats, &reply_body->vqm_stats, sizeof(struct zxdh_hw_vqm_stats));
+	memcpy(hw_stats, &reply_body->vqm_stats, sizeof(struct zxdh_hw_vqm_stats));
 	return 0;
 }
 
@@ -1315,8 +1315,8 @@ static int zxdh_hw_mac_stats_get(struct rte_eth_dev *dev,
 		bytes_addr = virt_addr + ZXDH_MAC_BYTES_OFFSET + 32 * 4;
 	}
 
-	rte_memcpy(mac_stats, (void *)stats_addr, sizeof(struct zxdh_hw_mac_stats));
-	rte_memcpy(mac_bytes, (void *)bytes_addr, sizeof(struct zxdh_hw_mac_bytes));
+	memcpy(mac_stats, (void *)stats_addr, sizeof(struct zxdh_hw_mac_stats));
+	memcpy(mac_bytes, (void *)bytes_addr, sizeof(struct zxdh_hw_mac_bytes));
 	return 0;
 }
 
@@ -1334,13 +1334,14 @@ static void zxdh_data_hi_to_lo(uint64_t *data)
 static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *np_stats)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
 	struct zxdh_np_stats_data stats_data;
 	uint32_t stats_id = zxdh_vport_to_vfid(hw->vport);
 	uint32_t idx = 0;
 	int ret = 0;
 
 	idx = stats_id + ZXDH_BROAD_STATS_EGRESS_BASE;
-	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
 				0, idx, (uint32_t *)&np_stats->np_tx_broadcast);
 	if (ret)
 		return ret;
@@ -1348,7 +1349,7 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 
 	idx = stats_id + ZXDH_BROAD_STATS_INGRESS_BASE;
 	memset(&stats_data, 0, sizeof(stats_data));
-	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
 				0, idx, (uint32_t *)&np_stats->np_rx_broadcast);
 	if (ret)
 		return ret;
@@ -1356,7 +1357,7 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 
 	idx = stats_id + ZXDH_MTU_STATS_EGRESS_BASE;
 	memset(&stats_data, 0, sizeof(stats_data));
-	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
 				1, idx, (uint32_t *)&stats_data);
 	if (ret)
 		return ret;
@@ -1368,7 +1369,7 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 
 	idx = stats_id + ZXDH_MTU_STATS_INGRESS_BASE;
 	memset(&stats_data, 0, sizeof(stats_data));
-	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+	ret = zxdh_np_dtb_stats_get(hw->slot_id, dtb_data->queueid,
 				1, idx, (uint32_t *)&stats_data);
 	if (ret)
 		return ret;
@@ -1381,7 +1382,7 @@ static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *n
 }
 
 static int
-zxdh_hw_np_stats_get(struct rte_eth_dev *dev,  struct zxdh_hw_np_stats *np_stats)
+zxdh_hw_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *np_stats)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_msg_info msg_info = {0};
@@ -1523,7 +1524,7 @@ int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu)
 			return ret;
 		}
 
-		ret = zxdh_get_port_attr(vfid, &vport_att);
+		ret = zxdh_get_port_attr(hw, hw->vport.vport, &vport_att);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR,
 				"[vfid:%d] zxdh_dev_mtu, get vport failed ret:%d", vfid, ret);
@@ -1540,7 +1541,7 @@ int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu)
 
 		vport_att.mtu_enable = 1;
 		vport_att.mtu = new_mtu;
-		ret = zxdh_set_port_attr(vfid, &vport_att);
+		ret = zxdh_set_port_attr(hw, hw->vport.vport, &vport_att);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR,
 				"[vfid:%d] zxdh_dev_mtu, set vport failed ret:%d", vfid, ret);

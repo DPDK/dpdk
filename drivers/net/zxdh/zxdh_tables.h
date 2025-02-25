@@ -7,11 +7,24 @@
 
 #include <stdint.h>
 
-#define ZXDH_DEVICE_NO                    0
 #define ZXDH_PORT_MTU_FLAG                9
 #define ZXDH_PORT_BASE_QID_FLAG           10
 #define ZXDH_PORT_ATTR_IS_UP_FLAG         35
 #define ZXDH_PORT_MTU_EN_FLAG             42
+
+/* eram */
+#define ZXDH_SDT_VPORT_ATT_TABLE          1
+
+/* hash */
+#define ZXDH_SDT_L2_ENTRY_TABLE0          64
+#define ZXDH_SDT_L2_ENTRY_TABLE1          65
+#define ZXDH_SDT_L2_ENTRY_TABLE2          66
+#define ZXDH_SDT_L2_ENTRY_TABLE3          67
+
+#define ZXDH_SDT_MC_TABLE0                76
+#define ZXDH_SDT_MC_TABLE1                77
+#define ZXDH_SDT_MC_TABLE2                78
+#define ZXDH_SDT_MC_TABLE3                79
 
 #define ZXDH_MTU_STATS_EGRESS_BASE        0x8481
 #define ZXDH_MTU_STATS_INGRESS_BASE       0x8981
@@ -212,19 +225,24 @@ struct zxdh_rss_to_vqid_table {
 
 int zxdh_port_attr_init(struct rte_eth_dev *dev);
 int zxdh_panel_table_init(struct rte_eth_dev *dev);
-int zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
+int zxdh_set_port_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_attr_table *port_attr);
 int zxdh_port_attr_uninit(struct rte_eth_dev *dev);
-int zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
-int zxdh_set_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_search_idx);
-int zxdh_del_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_search_idx);
+int zxdh_get_port_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_attr_table *port_attr);
+int zxdh_set_mac_table(struct zxdh_hw *hw, uint16_t vport,
+		struct rte_ether_addr *addr,  uint8_t hash_search_idx);
+int zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport,
+		struct rte_ether_addr *addr,  uint8_t hash_search_idx);
 int zxdh_promisc_table_init(struct rte_eth_dev *dev);
 int zxdh_promisc_table_uninit(struct rte_eth_dev *dev);
 int zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
 int zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
 int zxdh_vlan_filter_table_init(struct rte_eth_dev *dev);
-int zxdh_vlan_filter_table_set(uint16_t vport, uint16_t vlan_id, uint8_t enable);
-int zxdh_rss_table_set(uint16_t vport, struct zxdh_rss_reta *rss_reta);
-int zxdh_rss_table_get(uint16_t vport, struct zxdh_rss_reta *rss_reta);
+int zxdh_vlan_filter_table_set(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t vlan_id, uint8_t enable);
+int zxdh_rss_table_set(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss_reta);
+int zxdh_rss_table_get(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss_reta);
 int zxdh_get_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
 int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
 
