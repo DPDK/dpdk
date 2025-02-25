@@ -595,6 +595,7 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 {
 	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
 	struct zxdh_unitcast_table uc_table = {0};
+	struct zxdh_port_attr_table port_attr = {0};
 	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
 	int16_t ret = 0;
 
@@ -629,6 +630,20 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d", hw->vfid);
 		return -ret;
 	}
+
+	ret = zxdh_get_port_attr(hw, vport, &port_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "port_attr_table_get_failed:%d", hw->vfid);
+		return -ret;
+	}
+
+	port_attr.promisc_enable = enable;
+	ret = zxdh_set_port_attr(hw, vport, &port_attr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "port_attr_table_set_failed:%d", hw->vfid);
+		return -ret;
+	}
+
 	return 0;
 }
 
@@ -848,6 +863,40 @@ zxdh_rss_table_get(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss
 #else
 			rss_reta->reta[i * 8 + j] = rss_vqid.vqm_qid[j];
 #endif
+		}
+	}
+	return 0;
+}
+
+int
+zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
+{
+	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	struct zxdh_brocast_table brocast_table = {0};
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	int16_t vf_group_id = vport_num.vfid / 64;
+	int16_t ret = 0;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T eram_entry = {
+			((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			(uint32_t *)&brocast_table};
+	ZXDH_DTB_USER_ENTRY_T entry_get = {
+			.sdt_no = ZXDH_SDT_BROCAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_entry};
+
+	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &entry_get, 1);
+	if (ret == 0) {
+		if (enable)
+			brocast_table.bitmap[(vport_num.vfid % 64) / 32] |=
+					((UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32)));
+		else
+			brocast_table.bitmap[(vport_num.vfid % 64) / 32] &=
+					~((UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32)));
+
+		ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry_get);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "brocast_table_write_failed. code:%d", ret);
+			return -ret;
 		}
 	}
 	return 0;

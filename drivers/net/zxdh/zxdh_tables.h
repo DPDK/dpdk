@@ -60,7 +60,7 @@ struct zxdh_port_attr_table {
 	uint8_t is_up: 1;
 	uint8_t rsv1: 1;
 
-	uint8_t rsv3 : 1;
+	uint8_t promisc_enable : 1;
 	uint8_t rdma_offload_enable: 1;
 	uint8_t vlan_filter_enable: 1;
 	uint8_t vlan_strip_offload: 1;
@@ -248,5 +248,6 @@ int zxdh_rss_table_set(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta 
 int zxdh_rss_table_get(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss_reta);
 int zxdh_get_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
 int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
+int zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
 
 #endif /* ZXDH_TABLES_H */
