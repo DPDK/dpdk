@@ -456,6 +456,27 @@ Example command to enable QE Weight feature:
 
        --allow ea:00.0,enable_cq_weight=<y/Y>
 
+Credit Handling Scenario Improvements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible for ports to hold on to unused credits and not release them
+due to insufficient accumulation (i.e. less than 2 * credit quanta).
+This can result in credit deadlocks situation.
+DLB2 PMD makes worker ports to release all accumulated credits
+when back-to-back zero poll count reaches a preset threshold
+and makes producer ports release all the accumulated credits
+if enqueue fails for a consecutive number of retries.
+
+New Meson options are provided through c_args for enabling and disabling
+credits handling option flags.
+Credit checks are enabled by default.
+
+Example command to use as meson option for credit handling:
+
+    .. code-block:: console
+
+       meson configure -Dc_args='-DDLB_SW_CREDITS_CHECKS=0 -DDLB_HW_CREDITS_CHECKS=1'
+
 Running Eventdev Applications with DLB Device
 ---------------------------------------------
 
