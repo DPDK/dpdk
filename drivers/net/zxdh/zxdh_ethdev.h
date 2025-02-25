@@ -58,6 +58,14 @@ struct zxdh_chnl_context {
 	uint16_t ph_chno;
 };
 
+struct zxdh_vlan_offload_cfg {
+	uint8_t vlan_strip:1;
+	uint8_t vlan_filter:1;
+	uint8_t vlan_extend:1;
+	uint8_t qinq_strip:1;
+	uint8_t resv:4;
+};
+
 struct zxdh_hw {
 	struct rte_eth_dev *eth_dev;
 	struct zxdh_pci_common_cfg *common_cfg;
@@ -112,7 +120,9 @@ struct zxdh_hw {
 	uint8_t queue_set_flag;
 	uint16_t queue_pool_count;
 	uint16_t queue_pool_start;
-	uint8_t rsv[3];
+	struct zxdh_vlan_offload_cfg vlan_offload_cfg;
+	uint8_t dl_net_hdr_len;
+	uint8_t rsv[2];
 };
 
 struct zxdh_dtb_shared_data {

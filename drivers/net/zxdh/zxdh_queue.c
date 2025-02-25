@@ -291,12 +291,10 @@ zxdh_dev_tx_queue_setup(struct rte_eth_dev *dev,
 int32_t
 zxdh_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_virtnet_rx *rxvq = dev->data->rx_queues[queue_id];
 	struct zxdh_virtqueue *vq = rxvq->vq;
 
 	zxdh_queue_enable_intr(vq);
-	zxdh_mb(hw->weak_barriers);
 	return 0;
 }
 
@@ -314,7 +312,6 @@ int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 			struct rte_mbuf **cookie, uint16_t num)
 {
 	struct zxdh_vring_packed_desc *start_dp = vq->vq_packed.ring.desc;
-	struct zxdh_hw *hw = vq->hw;
 	struct zxdh_vq_desc_extra *dxp;
 	uint16_t flags = vq->vq_packed.cached_flags;
 	int32_t i;
@@ -328,10 +325,8 @@ int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
 		/* rx pkt fill in data_off */
 		start_dp[idx].addr = rte_mbuf_iova_get(cookie[i]) + RTE_PKTMBUF_HEADROOM;
 		start_dp[idx].len = cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM;
-		vq->vq_desc_head_idx = dxp->next;
-		if (vq->vq_desc_head_idx == ZXDH_VQ_RING_DESC_CHAIN_END)
-			vq->vq_desc_tail_idx = vq->vq_desc_head_idx;
-		zxdh_queue_store_flags_packed(&start_dp[idx], flags, hw->weak_barriers);
+
+		zxdh_queue_store_flags_packed(&start_dp[idx], flags);
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
 			vq->vq_packed.cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;

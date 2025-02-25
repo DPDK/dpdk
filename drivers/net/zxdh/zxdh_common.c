@@ -13,6 +13,7 @@
 #include "zxdh_logs.h"
 #include "zxdh_msg.h"
 #include "zxdh_common.h"
+#include "zxdh_pci.h"
 
 #define ZXDH_MSG_RSP_SIZE_MAX         512
 
@@ -423,4 +424,22 @@ zxdh_datach_set(struct rte_eth_dev *dev)
 	rte_free(buff);
 
 	return ret;
+}
+
+bool
+zxdh_rx_offload_enabled(struct zxdh_hw *hw)
+{
+	return zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6) ||
+		   (hw->vlan_offload_cfg.vlan_strip == 1);
+}
+
+bool
+zxdh_tx_offload_enabled(struct zxdh_hw *hw)
+{
+	return zxdh_pci_with_feature(hw, ZXDH_NET_F_CSUM) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_TSO4) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_TSO6) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_UFO);
 }
