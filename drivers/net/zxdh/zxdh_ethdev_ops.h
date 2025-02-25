@@ -99,5 +99,8 @@ int zxdh_dev_stats_reset(struct rte_eth_dev *dev);
 int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu);
 int zxdh_hw_np_stats_pf_reset(struct rte_eth_dev *dev, uint32_t stats_id);
 void zxdh_data_hi_to_lo(uint64_t *data);
+int32_t zxdh_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats, uint32_t n);
+int32_t zxdh_dev_xstats_get_names(struct rte_eth_dev *dev,
+			struct rte_eth_xstat_name *xstats_names, unsigned int limit);
 
 #endif /* ZXDH_ETHDEV_OPS_H */

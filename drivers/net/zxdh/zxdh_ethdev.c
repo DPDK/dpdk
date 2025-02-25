@@ -1370,6 +1370,9 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.rss_hash_conf_get		 = zxdh_rss_hash_conf_get,
 	.stats_get				 = zxdh_dev_stats_get,
 	.stats_reset			 = zxdh_dev_stats_reset,
+	.xstats_get				 = zxdh_dev_xstats_get,
+	.xstats_get_names		 = zxdh_dev_xstats_get_names,
+	.xstats_reset			 = zxdh_dev_stats_reset,
 	.mtu_set				 = zxdh_dev_mtu_set,
 };
 
