@@ -26,7 +26,7 @@
  * descriptors should meet the following condition:
  *      (num_ring_desc * sizeof(rx/tx descriptor)) % 128 == 0
  */
-#define	IXGBE_MIN_RING_DESC	32
+#define	IXGBE_MIN_RING_DESC	64
 #define	IXGBE_MAX_RING_DESC	8192
 
 #define RTE_PMD_IXGBE_TX_MAX_BURST 32
