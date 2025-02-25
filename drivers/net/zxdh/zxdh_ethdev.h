@@ -40,6 +40,7 @@
 #define ZXDH_DTB_TABLE_CONF_SIZE        (32 * (16 + 16 * 1024))
 
 #define ZXDH_MAX_NAME_LEN               32
+#define ZXDH_SLOT_MAX             256
 
 union zxdh_virport_num {
 	uint16_t vport;
@@ -65,6 +66,7 @@ struct zxdh_hw {
 	struct rte_intr_handle *dtb_intr;
 	struct zxdh_virtqueue **vqs;
 	struct zxdh_chnl_context channel_context[ZXDH_QUEUES_NUM_MAX];
+	struct zxdh_dev_shared_data *dev_sd;
 
 	uint64_t bar_addr[ZXDH_NUM_BARS];
 	uint64_t host_features;
@@ -104,7 +106,7 @@ struct zxdh_hw {
 	uint8_t allmulti_status;
 	uint8_t rss_enable;
 	uint8_t rss_init;
-	uint8_t rsv[2];
+	uint16_t slot_id;
 };
 
 struct zxdh_dtb_shared_data {
@@ -129,6 +131,18 @@ struct zxdh_shared_data {
 	int32_t np_init_done;
 	uint32_t dev_refcnt;
 	struct zxdh_dtb_shared_data *dtb_data;
+};
+
+struct zxdh_dev_shared_data {
+	uint32_t serial_id;
+	struct zxdh_dtb_shared_data dtb_sd;
+};
+
+struct zxdh_dtb_bulk_dump_info {
+	const char *mz_name;
+	uint32_t mz_size;
+	uint32_t sdt_no;
+	const struct rte_memzone *mz;
 };
 
 uint16_t zxdh_vport_to_vfid(union zxdh_virport_num v);

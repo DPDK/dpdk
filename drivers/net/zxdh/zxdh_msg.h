@@ -301,82 +301,82 @@ struct zxdh_offset_get_msg {
 	uint16_t type;
 };
 
-struct __rte_packed_begin zxdh_msg_reply_head {
+struct zxdh_msg_reply_head {
 	uint8_t flag;
 	uint16_t reps_len;
 	uint8_t resvd;
-} __rte_packed_end;
+};
 
 enum zxdh_reps_flag {
 	ZXDH_REPS_FAIL,
 	ZXDH_REPS_SUCC = 0xaa,
 };
 
-struct __rte_packed_begin zxdh_link_info_msg {
+struct zxdh_link_info_msg {
 	uint8_t autoneg;
 	uint8_t link_state;
 	uint8_t blink_enable;
 	uint8_t duplex;
 	uint32_t speed_modes;
 	uint32_t speed;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_rss_reta {
+struct zxdh_rss_reta {
 	uint32_t reta[RTE_ETH_RSS_RETA_SIZE_256];
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_rss_hf {
+struct zxdh_rss_hf {
 	uint32_t rss_hf;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_msg_reply_body {
+struct zxdh_msg_reply_body {
 	enum zxdh_reps_flag flag;
-	union __rte_packed_begin {
+	union {
 		uint8_t reply_data[ZXDH_MSG_REPLY_BODY_MAX_LEN - sizeof(enum zxdh_reps_flag)];
 		struct zxdh_hw_np_stats np_stats;
 		struct zxdh_link_info_msg link_msg;
 		struct zxdh_rss_reta rss_reta;
 		struct zxdh_rss_hf rss_hf;
 		struct zxdh_hw_vqm_stats vqm_stats;
-	} __rte_packed_end;
-} __rte_packed_end;
+	};
+};
 
-struct __rte_packed_begin zxdh_msg_reply_info {
+struct zxdh_msg_reply_info {
 	struct zxdh_msg_reply_head reply_head;
 	struct zxdh_msg_reply_body reply_body;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_vf_init_msg {
+struct zxdh_vf_init_msg {
 	uint8_t link_up;
 	uint8_t rsv;
 	uint16_t base_qid;
 	uint8_t rss_enable;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_msg_head {
+struct zxdh_msg_head {
 	enum zxdh_msg_type msg_type;
 	uint16_t  vport;
 	uint16_t  vf_id;
 	uint16_t pcieid;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_port_attr_set_msg {
+struct zxdh_port_attr_set_msg {
 	uint32_t mode;
 	uint32_t value;
 	uint8_t allmulti_follow;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_mac_filter {
+struct zxdh_mac_filter {
 	uint8_t mac_flag;
 	uint8_t filter_flag;
 	struct rte_ether_addr mac;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_port_promisc_msg {
+struct zxdh_port_promisc_msg {
 	uint8_t mode;
 	uint8_t value;
 	uint8_t mc_follow;
-} __rte_packed_end;
+};
 
 struct zxdh_vlan_filter {
 	uint16_t vlan_id;
@@ -386,31 +386,31 @@ struct zxdh_vlan_filter_set {
 	uint8_t enable;
 };
 
-struct __rte_packed_begin zxdh_vlan_offload {
+struct zxdh_vlan_offload {
 	uint8_t enable;
 	uint8_t type;
-} __rte_packed_end;
+};
 
 struct zxdh_rss_enable {
 	uint8_t enable;
 };
 
-struct __rte_packed_begin zxdh_agent_msg_head {
+struct zxdh_agent_msg_head {
 	enum zxdh_agent_msg_type msg_type;
 	uint8_t panel_id;
 	uint8_t phyport;
 	uint8_t rsv;
 	uint16_t vf_id;
 	uint16_t pcie_id;
-} __rte_packed_end;
+};
 
-struct __rte_packed_begin zxdh_msg_info {
+struct zxdh_msg_info {
 	union {
 		uint8_t head_len[ZXDH_MSG_HEAD_LEN];
 		struct zxdh_msg_head msg_head;
 		struct zxdh_agent_msg_head agent_msg_head;
 	};
-	union __rte_packed_begin {
+	union {
 		uint8_t datainfo[ZXDH_MSG_REQ_BODY_MAX_LEN];
 		struct zxdh_vf_init_msg vf_init_msg;
 		struct zxdh_port_attr_set_msg port_attr_msg;
@@ -423,8 +423,8 @@ struct __rte_packed_begin zxdh_msg_info {
 		struct zxdh_rss_reta rss_reta;
 		struct zxdh_rss_enable rss_enable;
 		struct zxdh_rss_hf rss_hf;
-	} __rte_packed_end data;
-} __rte_packed_end;
+	} data;
+};
 
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 		void *reps_buffer, uint16_t *reps_len, void *dev);

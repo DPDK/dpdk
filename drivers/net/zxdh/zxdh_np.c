@@ -19,14 +19,14 @@ static ZXDH_DEV_MGR_T g_dev_mgr;
 static ZXDH_SDT_MGR_T g_sdt_mgr;
 static uint32_t g_dpp_dtb_int_enable;
 static uint32_t g_table_type[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
-ZXDH_PPU_CLS_BITMAP_T g_ppu_cls_bit_map[ZXDH_DEV_CHANNEL_MAX];
-ZXDH_DTB_MGR_T *p_dpp_dtb_mgr[ZXDH_DEV_CHANNEL_MAX];
-ZXDH_RISCV_DTB_MGR *p_riscv_dtb_queue_mgr[ZXDH_DEV_CHANNEL_MAX];
-ZXDH_TLB_MGR_T *g_p_dpp_tlb_mgr[ZXDH_DEV_CHANNEL_MAX];
-ZXDH_REG_T g_dpp_reg_info[4];
-ZXDH_DTB_TABLE_T g_dpp_dtb_table_info[4];
-ZXDH_SDT_TBL_DATA_T g_sdt_info[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
-ZXDH_PPU_STAT_CFG_T g_ppu_stat_cfg;
+static ZXDH_PPU_CLS_BITMAP_T g_ppu_cls_bit_map[ZXDH_DEV_CHANNEL_MAX];
+static ZXDH_DTB_MGR_T *p_dpp_dtb_mgr[ZXDH_DEV_CHANNEL_MAX];
+static ZXDH_RISCV_DTB_MGR *p_riscv_dtb_queue_mgr[ZXDH_DEV_CHANNEL_MAX];
+static ZXDH_TLB_MGR_T *g_p_dpp_tlb_mgr[ZXDH_DEV_CHANNEL_MAX];
+static ZXDH_REG_T g_dpp_reg_info[4];
+static ZXDH_DTB_TABLE_T g_dpp_dtb_table_info[4];
+static ZXDH_SDT_TBL_DATA_T g_sdt_info[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
+static ZXDH_PPU_STAT_CFG_T g_ppu_stat_cfg;
 
 #define ZXDH_SDT_MGR_PTR_GET()    (&g_sdt_mgr)
 #define ZXDH_SDT_SOFT_TBL_GET(id) (g_sdt_mgr.sdt_tbl_array[id])
@@ -873,8 +873,7 @@ zxdh_np_sdt_mgr_destroy(uint32_t dev_id)
 	p_sdt_tbl_temp = ZXDH_SDT_SOFT_TBL_GET(dev_id);
 	p_sdt_mgr = ZXDH_SDT_MGR_PTR_GET();
 
-	if (p_sdt_tbl_temp != NULL)
-		free(p_sdt_tbl_temp);
+	free(p_sdt_tbl_temp);
 
 	ZXDH_SDT_SOFT_TBL_GET(dev_id) = NULL;
 
@@ -940,7 +939,7 @@ zxdh_np_dtb_write_table_cmd(uint32_t dev_id,
 	ZXDH_DTB_TABLE_T     *p_table_info = NULL;
 	ZXDH_DTB_FIELD_T     *p_field_info = NULL;
 	uint32_t         temp_data;
-	uint32_t         rc;
+	uint32_t         rc = 0;
 
 	ZXDH_COMM_CHECK_POINT(p_cmd_data);
 	ZXDH_COMM_CHECK_POINT(p_cmd_buff);
@@ -1024,11 +1023,10 @@ zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 {
 	uint32_t temp_idx;
 	uint32_t dtb_ind_addr;
-	uint32_t rc;
+	uint32_t rc = 0;
 
 	switch (wrt_mode) {
 	case ZXDH_ERAM128_OPR_128b:
-	{
 		if ((0xFFFFFFFF - (base_addr)) < (index)) {
 			PMD_DRV_LOG(ERR, "ICM %s:%d[Error:VALUE[val0=0x%x]"
 				"INVALID] [val1=0x%x] FUNCTION :%s", __FILE__, __LINE__,
@@ -1042,27 +1040,20 @@ zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 		}
 		temp_idx = index << 7;
 		break;
-	}
-
 	case ZXDH_ERAM128_OPR_64b:
-	{
 		if ((base_addr + (index >> 1)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
 			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range");
 			return 1;
 		}
 		temp_idx = index << 6;
 		break;
-	}
-
 	case ZXDH_ERAM128_OPR_1b:
-	{
 		if ((base_addr + (index >> 7)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
 			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range");
 			return 1;
 		}
 
 		temp_idx = index;
-	}
 	}
 
 	dtb_ind_addr = ((base_addr << 7) & ZXDH_ERAM128_BADDR_MASK) + temp_idx;
@@ -1086,16 +1077,12 @@ zxdh_np_eram_dtb_len_get(uint32_t mode)
 
 	switch (mode) {
 	case ZXDH_ERAM128_OPR_128b:
-	{
 		dtb_len += 2;
 		break;
-	}
 	case ZXDH_ERAM128_OPR_64b:
 	case ZXDH_ERAM128_OPR_1b:
-	{
 		dtb_len += 1;
 		break;
-	}
 	default:
 		break;
 	}
@@ -1130,21 +1117,14 @@ zxdh_np_dtb_eram_one_entry(uint32_t dev_id,
 
 	switch (opr_mode) {
 	case ZXDH_ERAM128_TBL_128b:
-	{
 		opr_mode = ZXDH_ERAM128_OPR_128b;
 		break;
-	}
 	case ZXDH_ERAM128_TBL_64b:
-	{
 		opr_mode = ZXDH_ERAM128_OPR_64b;
 		break;
-	}
-
 	case ZXDH_ERAM128_TBL_1b:
-	{
 		opr_mode = ZXDH_ERAM128_OPR_1b;
 		break;
-	}
 	}
 
 	if (del_en) {
@@ -1409,7 +1389,7 @@ zxdh_np_dtb_table_entry_write(uint32_t dev_id,
 	uint32_t tbl_type;
 	uint32_t addr_offset;
 	uint32_t max_size;
-	uint32_t rc;
+	uint32_t rc = 0;
 
 	p_data_buff = rte_zmalloc(NULL, ZXDH_DTB_TABLE_DATA_BUFF_SIZE, 0);
 	ZXDH_COMM_CHECK_POINT(p_data_buff);
@@ -1428,18 +1408,14 @@ zxdh_np_dtb_table_entry_write(uint32_t dev_id,
 		tbl_type = zxdh_np_sdt_tbl_type_get(dev_id, sdt_no);
 		switch (tbl_type) {
 		case ZXDH_SDT_TBLT_ERAM:
-		{
 			rc = zxdh_np_dtb_eram_one_entry(dev_id, sdt_no, ZXDH_DTB_ITEM_ADD_OR_UPDATE,
 				pentry->p_entry_data, &one_dtb_len, &dtb_one_entry);
 			break;
-		}
 		default:
-		{
 			PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
 			rte_free(p_data_buff);
 			rte_free(p_data_buff_ex);
 			return 1;
-		}
 		}
 
 		addr_offset = dtb_len * ZXDH_DTB_LEN_POS_SETP;
@@ -1523,18 +1499,14 @@ zxdh_np_dtb_table_entry_delete(uint32_t dev_id,
 		zxdh_np_sdt_tbl_data_get(dev_id, sdt_no, &sdt_tbl);
 		switch (tbl_type) {
 		case ZXDH_SDT_TBLT_ERAM:
-		{
 			rc = zxdh_np_dtb_eram_one_entry(dev_id, sdt_no, ZXDH_DTB_ITEM_DELETE,
 				pentry->p_entry_data, &one_dtb_len, &dtb_one_entry);
 			break;
-		}
 		default:
-		{
 			PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
 			rte_free(p_data_buff);
 			rte_free(p_data_buff_ex);
 			return 1;
-		}
 		}
 
 		addr_offset = dtb_len * ZXDH_DTB_LEN_POS_SETP;
@@ -1586,25 +1558,18 @@ zxdh_np_sdt_tbl_data_parser(uint32_t sdt_hig32, uint32_t sdt_low32, void *p_sdt_
 
 	switch (tbl_type) {
 	case ZXDH_SDT_TBLT_ERAM:
-	{
 		p_sdt_eram = (ZXDH_SDTTBL_ERAM_T *)p_sdt_info;
 		p_sdt_eram->table_type = tbl_type;
 		p_sdt_eram->eram_clutch_en = clutch_en;
 		break;
-	}
-
 	case ZXDH_SDT_TBLT_PORTTBL:
-	{
 		p_sdt_porttbl = (ZXDH_SDTTBL_PORTTBL_T *)p_sdt_info;
 		p_sdt_porttbl->table_type = tbl_type;
 		p_sdt_porttbl->porttbl_clutch_en = clutch_en;
 		break;
-	}
 	default:
-	{
 		PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
 		return 1;
-	}
 	}
 
 	return 0;
@@ -1634,22 +1599,16 @@ zxdh_np_eram_index_cal(uint32_t eram_mode, uint32_t index,
 
 	switch (eram_mode) {
 	case ZXDH_ERAM128_TBL_128b:
-	{
 		row_index = index;
 		break;
-	}
 	case ZXDH_ERAM128_TBL_64b:
-	{
 		row_index = (index >> 1);
 		col_index = index & 0x1;
 		break;
-	}
 	case ZXDH_ERAM128_TBL_1b:
-	{
 		row_index = (index >> 7);
 		col_index = index & 0x7F;
 		break;
-	}
 	}
 	*p_row_index = row_index;
 	*p_col_index = col_index;
@@ -1676,21 +1635,15 @@ zxdh_np_dtb_eram_data_get(uint32_t dev_id, uint32_t queue_id, uint32_t sdt_no,
 
 	switch (rd_mode) {
 	case ZXDH_ERAM128_TBL_128b:
-	{
 		memcpy(p_data, temp_data, (128 / 8));
 		break;
-	}
 	case ZXDH_ERAM128_TBL_64b:
-	{
 		memcpy(p_data, temp_data + ((1 - col_index) << 1), (64 / 8));
 		break;
-	}
 	case ZXDH_ERAM128_TBL_1b:
-	{
 		ZXDH_COMM_UINT32_GET_BITS(p_data[0], *(temp_data +
 			(3 - col_index / 32)), (col_index % 32), 1);
 		break;
-	}
 	}
 	return rc;
 }
@@ -1703,7 +1656,7 @@ zxdh_np_dtb_table_entry_get(uint32_t dev_id,
 {
 	ZXDH_SDT_TBL_DATA_T sdt_tbl = {0};
 	uint32_t tbl_type = 0;
-	uint32_t rc;
+	uint32_t rc = 0;
 	uint32_t sdt_no;
 
 	sdt_no = get_entry->sdt_no;
@@ -1713,19 +1666,15 @@ zxdh_np_dtb_table_entry_get(uint32_t dev_id,
 			ZXDH_SDT_H_TBL_TYPE_BT_POS, ZXDH_SDT_H_TBL_TYPE_BT_LEN);
 	switch (tbl_type) {
 	case ZXDH_SDT_TBLT_ERAM:
-	{
 		rc = zxdh_np_dtb_eram_data_get(dev_id,
 				queue_id,
 				sdt_no,
 				(ZXDH_DTB_ERAM_ENTRY_INFO_T *)get_entry->p_entry_data);
 		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_eram_data_get");
 		break;
-	}
 	default:
-	{
 		PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
 		return 1;
-	}
 	}
 
 	return 0;
@@ -1945,22 +1894,16 @@ zxdh_np_dtb_se_smmu0_ind_read(uint32_t dev_id,
 
 	switch (rd_mode) {
 	case ZXDH_ERAM128_OPR_128b:
-	{
 		row_index = index;
 		break;
-	}
 	case ZXDH_ERAM128_OPR_64b:
-	{
 		row_index = (index >> 1);
 		col_index = index & 0x1;
 		break;
-	}
 	case ZXDH_ERAM128_OPR_1b:
-	{
 		row_index = (index >> 7);
 		col_index = index & 0x7F;
 		break;
-	}
 	}
 
 	eram_dump_base_addr = base_addr + row_index;
@@ -1974,23 +1917,15 @@ zxdh_np_dtb_se_smmu0_ind_read(uint32_t dev_id,
 
 	switch (rd_mode) {
 	case ZXDH_ERAM128_OPR_128b:
-	{
 		memcpy(p_data, temp_data, (128 / 8));
 		break;
-	}
-
 	case ZXDH_ERAM128_OPR_64b:
-	{
 		memcpy(p_data, temp_data + ((1 - col_index) << 1), (64 / 8));
 		break;
-	}
-
 	case ZXDH_ERAM128_OPR_1b:
-	{
 		ZXDH_COMM_UINT32_GET_BITS(p_data[0], *(temp_data +
 			(3 - col_index / 32)), (col_index % 32), 1);
 		break;
-	}
 	}
 
 	return rc;

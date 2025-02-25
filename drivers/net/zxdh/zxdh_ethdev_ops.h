@@ -53,7 +53,7 @@ struct zxdh_hw_vqm_stats {
 
 int zxdh_dev_set_link_up(struct rte_eth_dev *dev);
 int zxdh_dev_set_link_down(struct rte_eth_dev *dev);
-int32_t zxdh_dev_link_update(struct rte_eth_dev *dev, int32_t wait_to_complete __rte_unused);
+int32_t zxdh_dev_link_update(struct rte_eth_dev *dev, int32_t wait_to_complete);
 int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		uint32_t index, uint32_t vmdq);
 int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
