@@ -425,6 +425,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		goto err;
 	}
 	rxq->rx_mbuf_alloc_fail = 0;
+	rxq->epoch = 0;
 
 	/* rxq 0 must not be stopped when used as async CPR */
 	if (!BNXT_NUM_ASYNC_CPR(bp) && queue_idx == 0)

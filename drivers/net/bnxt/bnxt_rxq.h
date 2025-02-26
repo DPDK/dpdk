@@ -30,6 +30,7 @@ struct bnxt_rx_queue {
 	uint16_t		rxrearm_nb; /* number of descs to reinit. */
 	uint16_t		rxrearm_start; /* next desc index to reinit. */
 #endif
+	uint32_t		epoch;
 	uint16_t		port_id; /* Device port identifier */
 	uint8_t			crc_len; /* 0 if CRC stripped, 4 otherwise */
 	uint8_t			rx_deferred_start; /* not in global dev start */
