@@ -3,7 +3,9 @@
  */
 
 #ifdef __RDSEED__
+#ifndef RTE_TOOLCHAIN_MSVC
 #include <x86intrin.h>
+#endif
 #endif
 #include <unistd.h>
 
