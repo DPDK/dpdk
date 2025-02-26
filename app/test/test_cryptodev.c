@@ -12473,6 +12473,8 @@ test_authenticated_encryption_sessionless(
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
+	uint32_t i;
+	uint8_t *buffer_oop;
 	int retval;
 	uint8_t *ciphertext, *auth_tag;
 	uint16_t plaintext_pad_len;
@@ -12542,6 +12544,18 @@ test_authenticated_encryption_sessionless(
 			ut_params->op->sym->cipher.data.offset);
 	auth_tag = ciphertext + plaintext_pad_len;
 
+	/* Check if the data within the offset range is not overwritten in the OOP */
+	buffer_oop = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
+	for (i = 0; i < ut_params->op->sym->cipher.data.offset; i++) {
+		if (buffer_oop[i]) {
+			RTE_LOG(ERR, USER1,
+				"Incorrect value of the output buffer header\n");
+			debug_hexdump(stdout, "Incorrect value:", buffer_oop,
+				ut_params->op->sym->cipher.data.offset);
+			return TEST_FAILED;
+		}
+	}
+
 	debug_hexdump(stdout, "ciphertext:", ciphertext, tdata->ciphertext.len);
 	debug_hexdump(stdout, "auth tag:", auth_tag, tdata->auth_tag.len);
 
@@ -12576,6 +12590,8 @@ test_authenticated_decryption_sessionless(
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
+	uint32_t i;
+	uint8_t *buffer_oop;
 	int retval;
 	uint8_t *plaintext;
 	uint8_t key[tdata->key.len + 1];
@@ -12656,6 +12672,17 @@ test_authenticated_decryption_sessionless(
 
 	debug_hexdump(stdout, "plaintext:", plaintext, tdata->ciphertext.len);
 
+	/* Check if the data within the offset range is not overwritten in the OOP */
+	buffer_oop = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
+	for (i = 0; i < ut_params->op->sym->cipher.data.offset; i++) {
+		if (buffer_oop[i]) {
+			RTE_LOG(ERR, USER1,
+				"Incorrect value of the output buffer header\n");
+			debug_hexdump(stdout, "Incorrect value:", buffer_oop,
+				ut_params->op->sym->cipher.data.offset);
+			return TEST_FAILED;
+		}
+	}
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
 			plaintext,
