@@ -23,7 +23,7 @@ if arch_subdir == 'x86' and dpdk_conf.get('RTE_IOVA_IN_MBUF') == 1
         'idpf_common_rxtx_avx2.c',
         dependencies: [static_rte_ethdev, static_rte_hash],
         include_directories: includes,
-        c_args: [cflags, '-mavx2'])
+        c_args: [cflags, cc_avx2_flags])
     objs += idpf_avx2_lib.extract_objects('idpf_common_rxtx_avx2.c')
 
     if cc_has_avx512

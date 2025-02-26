@@ -18,13 +18,13 @@ if arch_subdir == 'x86'
     if cc.get_define('__AVX2__', args: machine_args) != ''
         cflags += ['-DCC_AVX2_SUPPORT']
         sources += files('cnxk_ep_rx_avx.c')
-    elif cc.has_argument('-mavx2')
+    elif cc.has_multi_arguments(cc_avx2_flags)
         cflags += ['-DCC_AVX2_SUPPORT']
         otx_ep_avx2_lib = static_library('otx_ep_avx2_lib',
                         'cnxk_ep_rx_avx.c',
                         dependencies: [static_rte_ethdev, static_rte_pci, static_rte_bus_pci],
                         include_directories: includes,
-                        c_args: [cflags, '-mavx2'])
+                        c_args: [cflags, cc_avx2_flags])
         objs += otx_ep_avx2_lib.extract_objects('cnxk_ep_rx_avx.c')
     endif
 endif

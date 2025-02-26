@@ -19,7 +19,7 @@ if dpdk_conf.has('RTE_ARCH_X86')
     avx2_tmplib = static_library('avx2_tmp',
             'acl_run_avx2.c',
             dependencies: static_rte_eal,
-            c_args: cflags + ['-mavx2'])
+            c_args: [cflags, cc_avx2_flags])
     objs += avx2_tmplib.extract_objects('acl_run_avx2.c')
 
     # compile AVX512 version if:

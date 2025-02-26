@@ -38,7 +38,7 @@ if dpdk_conf.has('RTE_ARCH_X86_64')
             'enic_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_bus_pci],
             include_directories: includes,
-            c_args: [cflags, '-mavx2'])
+            c_args: [cflags, cc_avx2_flags])
     objs += enic_avx2_lib.extract_objects('enic_rxtx_vec_avx2.c')
 endif
 

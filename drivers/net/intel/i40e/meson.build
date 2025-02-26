@@ -49,7 +49,7 @@ if arch_subdir == 'x86'
             'i40e_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_kvargs, static_rte_hash],
             include_directories: includes,
-            c_args: [cflags, '-mavx2'])
+            c_args: [cflags, cc_avx2_flags])
     objs += i40e_avx2_lib.extract_objects('i40e_rxtx_vec_avx2.c')
 
     if cc_has_avx512

@@ -43,7 +43,7 @@ if arch_subdir == 'x86'
             'ice_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_hash],
             include_directories: includes,
-            c_args: [cflags, '-mavx2'])
+            c_args: [cflags, cc_avx2_flags])
     objs += ice_avx2_lib.extract_objects('ice_rxtx_vec_avx2.c')
 
     if cc_has_avx512
