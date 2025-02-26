@@ -7036,6 +7036,7 @@ mlx5_hw_validate_action_queue(struct rte_eth_dev *dev,
 			      uint64_t action_flags,
 			      struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_queue *queue_mask = template_mask->conf;
 	const struct rte_flow_attr attr = {
 		.ingress = template_attr->ingress,
@@ -7044,7 +7045,7 @@ mlx5_hw_validate_action_queue(struct rte_eth_dev *dev,
 	};
 	bool masked = queue_mask != NULL && queue_mask->index;
 
-	if (template_attr->egress || template_attr->transfer)
+	if (template_attr->egress || (template_attr->transfer && !priv->jump_fdb_rx_en))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "QUEUE action supported for ingress only");
@@ -7063,9 +7064,10 @@ mlx5_hw_validate_action_rss(struct rte_eth_dev *dev,
 			      __rte_unused uint64_t action_flags,
 			      struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_rss *mask = template_mask->conf;
 
-	if (template_attr->egress || template_attr->transfer)
+	if (template_attr->egress || (template_attr->transfer && !priv->jump_fdb_rx_en))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "RSS action supported for ingress only");
@@ -8116,6 +8118,7 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	}
 	if (priv->sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
 	    priv->sh->config.dv_esw_en &&
+	    !attr->transfer &&
 	    (action_flags & (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS))) {
 		/* Insert META copy */
 		mf_actions[expand_mf_num] = rx_meta_copy_action;
@@ -12145,23 +12148,30 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	/* Add global actions. */
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		uint32_t act_flags = 0;
+		uint32_t tag_flags = mlx5_hw_act_flag[i][0];
 
 		act_flags = mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_NIC_RX] |
 			    mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_NIC_TX];
 		if (is_proxy) {
-			if (unified_fdb)
+			/* Tag action is valid only in FDB_Rx domain. */
+			if (unified_fdb) {
 				act_flags |=
 					(mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX] |
 					 mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_TX] |
 					 mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
-			else
+				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT)
+					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX];
+			} else {
 				act_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
+				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT)
+					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
+			}
 		}
 		priv->hw_drop[i] = mlx5dr_action_create_dest_drop(priv->dr_ctx, act_flags);
 		if (!priv->hw_drop[i])
 			goto err;
 		priv->hw_tag[i] = mlx5dr_action_create_tag
-			(priv->dr_ctx, mlx5_hw_act_flag[i][0]);
+			(priv->dr_ctx, tag_flags);
 		if (!priv->hw_tag[i])
 			goto err;
 	}

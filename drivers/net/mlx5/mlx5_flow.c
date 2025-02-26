@@ -1977,9 +1977,9 @@ mlx5_flow_validate_action_mark(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "mark action not supported for "
 					  "egress");
-	if (attr->transfer && mlx5_hws_active(dev))
+	if (attr->transfer && !mlx5_hws_active(dev))
 		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, NULL,
 					  "non-template mark action not supported for transfer");
 	return 0;
 }

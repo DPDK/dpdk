@@ -232,6 +232,12 @@ Limitations
   - When configuring host shaper with ``RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED`` flag,
     only rates 0 and 100Mbps are supported.
 
+- Unified FDB:
+
+  - Jump FDB Rx is valid only when unified FDB is enabled,
+    as it is required to have FDB Rx/Tx.
+  - In unified FDB mode, the tag and RSS actions are only allowed in FDB Rx domain.
+
 - HW steering:
 
   - WQE based high scaling and safer flow insertion/destruction.
