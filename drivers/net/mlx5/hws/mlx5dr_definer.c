@@ -1673,14 +1673,9 @@ mlx5dr_definer_conv_item_mpls(struct mlx5dr_definer_conv_data *cd,
 {
 	const struct rte_flow_item_mpls *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
-	bool inner = cd->tunnel;
+	bool is_udp;
 
-	if (inner) {
-		DR_LOG(ERR, "Inner MPLS item not supported");
-		rte_errno = ENOTSUP;
-		return rte_errno;
-	}
-
+	/* If no protocol is set - assume MPLSoUDP */
 	if (!cd->relaxed) {
 		/* In order to match on MPLS we must match on ip_protocol and l4_dport. */
 		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
@@ -1690,14 +1685,17 @@ mlx5dr_definer_conv_item_mpls(struct mlx5dr_definer_conv_data *cd,
 			fc->tag_set = &mlx5dr_definer_udp_protocol_set;
 			DR_CALC_SET(fc, eth_l2, l4_type_bwc, false);
 		}
+		is_udp = (fc->tag_set == &mlx5dr_definer_udp_protocol_set);
 
-		/* Currently support only MPLSoUDP */
-		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
-		if (!fc->tag_set) {
-			fc->item_idx = item_idx;
-			fc->tag_mask_set = &mlx5dr_definer_ones_set;
-			fc->tag_set = &mlx5dr_definer_mpls_udp_port_set;
-			DR_CALC_SET(fc, eth_l4, destination_port, false);
+		if (is_udp) {
+			/* Set UDP dest port to MPLS. */
+			fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
+			if (!fc->tag_set) {
+				fc->item_idx = item_idx;
+				fc->tag_mask_set = &mlx5dr_definer_ones_set;
+				fc->tag_set = &mlx5dr_definer_mpls_udp_port_set;
+				DR_CALC_SET(fc, eth_l4, destination_port, false);
+			}
 		}
 	}
 
