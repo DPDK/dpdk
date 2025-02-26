@@ -76,9 +76,18 @@ __extension__ ({                \
 
 #ifdef __AVX512F__
 
-#define RTE_X86_ZMM_SIZE	(sizeof(__m512i))
+#define RTE_X86_ZMM_SIZE        64
 #define RTE_X86_ZMM_MASK	(RTE_X86_ZMM_SIZE - 1)
 
+/*
+ * MSVC does not allow __rte_aligned(sizeof(__m512i)). It only accepts
+ * numbers that are power of 2. So, even though sizeof(__m512i) represents a
+ * number that is a power of two it cannot be used directly.
+ * Ref: https://learn.microsoft.com/en-us/cpp/cpp/align-cpp?view=msvc-170
+ * The static assert below ensures that the hardcoded value defined as
+ * RTE_X86_ZMM_SIZE is equal to sizeof(__m512i).
+ */
+static_assert(RTE_X86_ZMM_SIZE == (sizeof(__m512i)), "Unexpected size of __m512i");
 typedef union __rte_aligned(RTE_X86_ZMM_SIZE) __rte_x86_zmm {
 	__m512i	 z;
 	ymm_t    y[RTE_X86_ZMM_SIZE / sizeof(ymm_t)];
