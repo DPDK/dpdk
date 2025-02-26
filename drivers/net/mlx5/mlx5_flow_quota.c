@@ -741,8 +741,13 @@ mlx5_flow_quota_init(struct rte_eth_dev *dev, uint32_t nb_quotas)
 		ret = mlx5_quota_init_guest(priv);
 	if (ret)
 		goto err;
-	if (priv->sh->config.dv_esw_en && priv->master)
-		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
+	if (priv->sh->config.dv_esw_en && priv->master) {
+		flags |= (is_unified_fdb(priv) ?
+				(MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+				 MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+				 MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) :
+				MLX5DR_ACTION_FLAG_HWS_FDB);
+	}
 	qctx->dr_action = mlx5dr_action_create_aso_meter
 		(priv->dr_ctx, (struct mlx5dr_devx_obj *)qctx->devx_obj,
 		 reg_id - REG_C_0, flags);

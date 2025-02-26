@@ -105,7 +105,11 @@ mlx5_flow_meter_init_guest(struct rte_eth_dev *dev)
 	priv->hws_mpool->devx_obj = host_priv->hws_mpool->devx_obj;
 	flags = MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
 	if (priv->sh->config.dv_esw_en && priv->master)
-		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
+		flags |= (is_unified_fdb(priv) ?
+			 (MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			  MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			  MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) :
+			 MLX5DR_ACTION_FLAG_HWS_FDB);
 	priv->hws_mpool->action = mlx5dr_action_create_aso_meter
 			(priv->dr_ctx, (struct mlx5dr_devx_obj *)priv->hws_mpool->devx_obj,
 			 reg_id - REG_C_0, flags);
@@ -188,8 +192,14 @@ mlx5_flow_meter_init(struct rte_eth_dev *dev,
 		goto err;
 	}
 	flags = MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
-	if (priv->sh->config.dv_esw_en && priv->master)
-		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
+	if (priv->sh->config.dv_esw_en && priv->master) {
+		flags |= ((is_unified_fdb(priv)) ?
+			(MLX5DR_ACTION_FLAG_HWS_FDB_RX |
+			 MLX5DR_ACTION_FLAG_HWS_FDB_TX |
+			 MLX5DR_ACTION_FLAG_HWS_FDB_UNIFIED) :
+			 MLX5DR_ACTION_FLAG_HWS_FDB);
+	}
+
 	priv->mtr_bulk.action = mlx5dr_action_create_aso_meter
 			(priv->dr_ctx, (struct mlx5dr_devx_obj *)dcs,
 				reg_id - REG_C_0, flags);
