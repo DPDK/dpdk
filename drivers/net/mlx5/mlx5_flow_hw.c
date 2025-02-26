@@ -9352,6 +9352,7 @@ flow_hw_grp_create_cb(void *tool_ctx, void *cb_ctx)
 	struct mlx5_flow_group *grp_data;
 	struct mlx5dr_table *tbl = NULL;
 	struct mlx5dr_action *jump;
+	uint32_t hws_flags;
 	uint32_t idx = 0;
 	MKSTR(matcher_name, "%s_%s_%u_%u_matcher_list",
 	      attr->transfer ? "FDB" : "NIC", attr->egress ? "egress" : "ingress",
@@ -9372,10 +9373,15 @@ flow_hw_grp_create_cb(void *tool_ctx, void *cb_ctx)
 		goto error;
 	grp_data->tbl = tbl;
 	if (attr->group) {
+		hws_flags = mlx5_hw_act_dest_table_flag[dr_tbl_attr.type];
+		/* For case of jump from FDB Tx to FDB Rx as it is supported now. */
+		if (priv->jump_fdb_rx_en &&
+		    dr_tbl_attr.type == MLX5DR_TABLE_TYPE_FDB_RX)
+			hws_flags |= MLX5DR_ACTION_FLAG_HWS_FDB_TX;
 		/* Jump action be used by non-root table. */
 		jump = mlx5dr_action_create_dest_table
 			(priv->dr_ctx, tbl,
-			 mlx5_hw_act_dest_table_flag[dr_tbl_attr.type]);
+			 hws_flags);
 		if (!jump)
 			goto error;
 		grp_data->jump.hws_action = jump;
