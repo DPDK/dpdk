@@ -250,6 +250,8 @@ struct mlx5dr_cmd_query_caps {
 	bool roce;
 	uint16_t roce_max_src_udp_port;
 	uint16_t roce_min_src_udp_port;
+	uint64_t stc_action_type_63_0;
+	uint64_t stc_action_type_127_64;
 	bool fdb_unified_en;
 };
 
