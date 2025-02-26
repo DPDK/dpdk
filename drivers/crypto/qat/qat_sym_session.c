@@ -2473,7 +2473,8 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 			qat_hash_get_block_size(cdesc->qat_hash_alg) >> 3;
 		auth_param->u2.inner_prefix_sz =
 			qat_hash_get_block_size(cdesc->qat_hash_alg);
-		auth_param->hash_state_sz = digestsize;
+		auth_param->hash_state_sz = (hash_cd_ctrl->outer_prefix_sz +
+			auth_param->u2.inner_prefix_sz) >> 3;
 		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
 				qat_dev_gen == QAT_VQAT) {
 			ICP_QAT_FW_HASH_FLAG_MODE2_SET(
