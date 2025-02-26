@@ -1986,6 +1986,7 @@ struct mlx5_priv {
 	uint32_t mark_enabled:1; /* If mark action is enabled on rxqs. */
 	uint32_t num_lag_ports:4; /* Number of ports can be bonded. */
 	uint32_t tunnel_enabled:1; /* If tunnel offloading is enabled on rxqs. */
+	uint32_t unified_fdb_en:1; /* Unified FDB flag per port. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	uint32_t vport_meta_tag; /* Used for vport index match ove VF LAG. */
@@ -2224,6 +2225,13 @@ static inline bool
 mlx5_is_port_on_mpesw_device(struct mlx5_priv *priv)
 {
 	return priv->mpesw_port >= 0;
+}
+
+static inline bool
+is_unified_fdb(const struct mlx5_priv *priv)
+{
+	/* Only needed on proxy port in E-Switch mode. */
+	return priv->unified_fdb_en;
 }
 
 /* mlx5.c */
