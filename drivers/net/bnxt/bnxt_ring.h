@@ -108,6 +108,25 @@ static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 	}
 }
 
+static inline void bnxt_db_epoch_write(struct bnxt_db_info *db, uint32_t idx, uint32_t epoch)
+{
+	uint32_t db_idx = DB_RING_IDX(db, idx);
+	void *doorbell = db->doorbell;
+
+	if (db->db_64) {
+		uint64_t key_idx = db->db_key64 | db_idx;
+
+		key_idx |= epoch << DBR_EPOCH_SFT;
+
+		rte_compiler_barrier();
+		rte_write64_relaxed(key_idx, doorbell);
+	} else {
+		uint32_t key_idx = db->db_key32 | db_idx;
+
+		rte_write32(key_idx, doorbell);
+	}
+}
+
 static inline void bnxt_db_mpc_write(struct bnxt_db_info *db, uint32_t idx, uint32_t epoch)
 {
 	uint32_t db_idx = DB_RING_IDX(db, idx);
