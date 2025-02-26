@@ -334,6 +334,10 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		ol_flags |= RTE_MBUF_F_TX_QINQ;
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= RTE_MBUF_F_TX_MACSEC;
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
+		ol_flags |= RTE_MBUF_F_TX_IP_CKSUM;
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
+		ol_flags |= RTE_MBUF_F_TX_UDP_CKSUM;
 
 	/*
 	 * Initialize Ethernet header.
