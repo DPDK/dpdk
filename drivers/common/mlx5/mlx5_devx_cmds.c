@@ -924,6 +924,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
 	bool hca_cap_2_sup;
 	uint64_t general_obj_types_supported = 0;
+	uint64_t stc_action_type_127_64;
 	void *hcattr;
 	int rc, i;
 
@@ -1352,6 +1353,13 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->fdb_unified_en = MLX5_GET(wqe_based_flow_table_cap,
 						hcattr,
 						fdb_unified_en);
+		stc_action_type_127_64 = MLX5_GET64(wqe_based_flow_table_cap,
+						    hcattr,
+						    stc_action_type_127_64);
+		if (stc_action_type_127_64 &
+		   (1 << (MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX -
+			  MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX)))
+			attr->jump_fdb_rx_en = 1;
 	}
 	/* Query HCA attribute for ROCE. */
 	if (attr->roce) {
