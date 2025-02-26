@@ -470,6 +470,7 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 		MLX5_SET(stc_ste_param_tir, stc_param, tirn, stc_attr->dest_tir_num);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT:
+	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FLOW_TABLE_FDB_RX:
 		MLX5_SET(stc_ste_param_table, stc_param, table_id, stc_attr->dest_table_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_ACC_MODIFY_LIST:
@@ -1284,6 +1285,14 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		caps->fdb_unified_en = MLX5_GET(query_hca_cap_out, out,
 						capability.wqe_based_flow_table_cap.
 						fdb_unified_en);
+
+		caps->stc_action_type_63_0 = MLX5_GET64(query_hca_cap_out,
+							out,
+					capability.wqe_based_flow_table_cap.stc_action_type_63_0);
+
+		caps->stc_action_type_127_64 = MLX5_GET64(query_hca_cap_out,
+							  out,
+					capability.wqe_based_flow_table_cap.stc_action_type_127_64);
 	}
 
 	if (caps->eswitch_manager) {

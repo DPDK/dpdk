@@ -2466,7 +2466,8 @@ struct mlx5_ifc_wqe_based_flow_table_cap_bits {
 	u8 reserved_at_60[0x8];
 	u8 max_header_modify_pattern_length[0x8];
 	u8 ste_format[0x10];
-	u8 stc_action_type[0x80];
+	u8 stc_action_type_63_0[0x40];
+	u8 stc_action_type_127_64[0x40];
 	u8 header_insert_type[0x10];
 	u8 header_remove_type[0x10];
 	u8 trivial_match_definer[0x20];
@@ -3543,6 +3544,11 @@ enum mlx5_ifc_rtc_reparse_mode {
 	MLX5_IFC_RTC_REPARSE_BY_STC = 0x2,
 };
 
+enum mlx5_ifc_stc_action_type_bit_index {
+	MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX = 64,
+	MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX = 71,
+};
+
 #define MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX 16
 
 struct mlx5_ifc_rtc_bits {
@@ -3621,6 +3627,7 @@ enum mlx5_ifc_stc_action_type {
 	MLX5_IFC_STC_ACTION_TYPE_ALLOW = 0x84,
 	MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT = 0x85,
 	MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_UPLINK = 0x86,
+	MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FLOW_TABLE_FDB_RX = 0x87,
 };
 
 enum mlx5_ifc_stc_reparse_mode {
