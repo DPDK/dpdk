@@ -626,6 +626,19 @@ int mlx5dr_table_connect_to_miss_table(struct mlx5dr_table *src_tbl,
 	return 0;
 }
 
+static bool mlx5dr_table_set_default_miss_valid_types(enum mlx5dr_table_type from,
+						      enum mlx5dr_table_type to)
+{
+	if (from == to ||
+	    ((from == MLX5DR_TABLE_TYPE_FDB_UNIFIED &&
+	     (to == MLX5DR_TABLE_TYPE_FDB_RX || to == MLX5DR_TABLE_TYPE_FDB_TX)) ||
+	     (to == MLX5DR_TABLE_TYPE_FDB_UNIFIED &&
+	     (from == MLX5DR_TABLE_TYPE_FDB_RX || from == MLX5DR_TABLE_TYPE_FDB_TX))))
+		return true;
+
+	return false;
+}
+
 static int mlx5dr_table_set_default_miss_not_valid(struct mlx5dr_table *tbl,
 						   struct mlx5dr_table *miss_tbl)
 {
@@ -637,8 +650,9 @@ static int mlx5dr_table_set_default_miss_not_valid(struct mlx5dr_table *tbl,
 	}
 
 	if (mlx5dr_table_is_root(tbl) ||
-	    (miss_tbl && mlx5dr_table_is_root(miss_tbl)) ||
-	    (miss_tbl && miss_tbl->type != tbl->type)) {
+	    (miss_tbl &&
+	     ((mlx5dr_table_is_root(miss_tbl)) ||
+	     !mlx5dr_table_set_default_miss_valid_types(tbl->type, miss_tbl->type)))) {
 		DR_LOG(ERR, "Invalid arguments");
 		rte_errno = EINVAL;
 		return -rte_errno;
