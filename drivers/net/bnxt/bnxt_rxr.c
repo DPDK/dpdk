@@ -1366,6 +1366,10 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 			rxq->rxrearm_start++;
 			rxq->rxrearm_nb--;
+			if (rxq->rxrearm_start >= rxq->nb_rx_desc) {
+				rxq->rxrearm_start = 0;
+				rxq->epoch = rxq->epoch == 0 ? 1 : 0;
+			}
 		} else {
 			/* Retry allocation on next call. */
 			break;
