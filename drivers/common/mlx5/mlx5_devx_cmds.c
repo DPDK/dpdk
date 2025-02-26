@@ -1349,6 +1349,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->max_header_modify_pattern_length = MLX5_GET(wqe_based_flow_table_cap,
 								  hcattr,
 								  max_header_modify_pattern_length);
+		attr->fdb_unified_en = MLX5_GET(wqe_based_flow_table_cap,
+						hcattr,
+						fdb_unified_en);
 	}
 	/* Query HCA attribute for ROCE. */
 	if (attr->roce) {
