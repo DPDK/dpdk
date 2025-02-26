@@ -2549,7 +2549,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	ret = nfp_net_vf_config_init(pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init VF config.");
-		goto vf_cfg_tbl_cleanup;
+		goto mac_stats_cleanup;
 	}
 
 	hw_priv->is_pf = true;
@@ -2557,7 +2557,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (!nfp_net_recv_pkt_meta_check_register(hw_priv)) {
 		PMD_INIT_LOG(ERR, "PF register meta check function failed.");
 		ret = -EIO;
-		goto hw_priv_free;
+		goto vf_cfg_tbl_cleanup;
 	}
 
 	/*
