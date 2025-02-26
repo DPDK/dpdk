@@ -5096,6 +5096,16 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 					   NULL, "pattern template domain does not match table");
 			return NULL;
 		}
+		if (item_templates[i]->item_flags & MLX5_FLOW_LAYER_ECPRI &&
+		    !mlx5_flex_parser_ecpri_exist(dev))
+			if (mlx5_flex_parser_ecpri_alloc(dev)) {
+				rte_flow_error_set(error, EIO,
+						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						   NULL,
+						   "failed to create Flex parser "
+						   "profile for ECPRI");
+				goto error;
+			}
 	}
 	for (i = 0; i < nb_action_templates; i++) {
 		const struct rte_flow_actions_template *at = action_templates[i];
@@ -8389,6 +8399,16 @@ const struct rte_flow_item_ipv6 hws_nic_ipv6_mask = {
 	.has_frag_ext = 1,
 };
 
+const struct rte_flow_item_ecpri hws_nic_ecpri_mask = {
+	.hdr = {
+		.common = {
+			.u32 = RTE_BE32(0xffffffff),
+		},
+		.dummy[0] = 0xffffffff,
+	},
+};
+
+
 static int
 flow_hw_validate_item_ptype(const struct rte_flow_item *item,
 			    struct rte_flow_error *error)
@@ -8830,6 +8850,14 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 * Current HWS model allows item mask in pattern
 			 * template and item spec in flow rule.
 			 */
+			break;
+		case RTE_FLOW_ITEM_TYPE_ECPRI:
+			ret = mlx5_flow_validate_item_ecpri(dev, item, *item_flags, last_item,
+							    RTE_ETHER_TYPE_ECPRI,
+							    &hws_nic_ecpri_mask, error);
+			if (ret < 0)
+				return ret;
+			*item_flags |= MLX5_FLOW_LAYER_ECPRI;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IB_BTH:
 		case RTE_FLOW_ITEM_TYPE_VOID:
@@ -13859,6 +13887,15 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	if (ret)
 		goto error;
 
+	if (item_flags & MLX5_FLOW_LAYER_ECPRI && !mlx5_flex_parser_ecpri_exist(dev))
+		if (mlx5_flex_parser_ecpri_alloc(dev)) {
+			rte_flow_error_set(error, EIO,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "failed to create Flex parser "
+					   "profile for ECPRI");
+			goto error;
+		}
 	ret = flow_hw_register_matcher(dev, attr, items, external, *flow, &matcher, error);
 	if (ret)
 		goto error;
@@ -16341,6 +16378,7 @@ mlx5_flow_hw_ctrl_flow_dmac(struct rte_eth_dev *dev,
 					     addr, 0);
 }
 
+
 int
 mlx5_flow_hw_ctrl_flow_dmac_destroy(struct rte_eth_dev *dev,
 				    const struct rte_ether_addr *addr)
@@ -16421,6 +16459,27 @@ mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(struct rte_eth_dev *dev,
 	}
 	return 0;
 }
+
+struct mlx5_ecpri_parser_profile *
+flow_hw_get_ecpri_parser_profile(void *dr_ctx)
+{
+	uint16_t port_id;
+	bool found = false;
+	struct mlx5_priv *priv;
+
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		priv = rte_eth_devices[port_id].data->dev_private;
+		if (priv->dr_ctx == dr_ctx) {
+			found = true;
+			break;
+		}
+	}
+	if (found)
+		return &priv->sh->ecpri_parser;
+	rte_errno = ENODEV;
+	return NULL;
+}
+
 
 static __rte_always_inline uint32_t
 mlx5_reformat_domain_to_tbl_type(const struct rte_flow_indir_action_conf *domain)
