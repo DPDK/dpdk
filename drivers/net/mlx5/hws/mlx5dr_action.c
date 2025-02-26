@@ -803,6 +803,9 @@ int mlx5dr_action_root_build_attr(struct mlx5dr_rule_action rule_actions[],
 
 		switch (action->type) {
 		case MLX5DR_ACTION_TYP_TBL:
+			attr[i].type = MLX5DV_FLOW_ACTION_DEST_DEVX;
+			attr[i].obj = action->dest_tbl.devx_obj->obj;
+			break;
 		case MLX5DR_ACTION_TYP_TIR:
 			attr[i].type = MLX5DV_FLOW_ACTION_DEST_DEVX;
 			attr[i].obj = action->devx_obj;
@@ -1097,6 +1100,17 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		}
 		break;
 	case MLX5DR_ACTION_TYP_TBL:
+		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
+		attr->dest_table_id = obj->id;
+		/* Only for unified FDB Rx case */
+		if (mlx5dr_context_cap_stc(action->ctx,
+		    MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX) &&
+		    action->dest_tbl.type == MLX5DR_TABLE_TYPE_FDB_RX)
+			attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FLOW_TABLE_FDB_RX;
+		else
+			attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
+
+		break;
 	case MLX5DR_ACTION_TYP_DEST_ARRAY:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
@@ -1419,17 +1433,19 @@ mlx5dr_action_create_dest_table(struct mlx5dr_context *ctx,
 	if (!action)
 		return NULL;
 
+	action->dest_tbl.type = tbl->type;
+
 	if (mlx5dr_action_is_root_flags(flags)) {
 		if (mlx5dr_context_shared_gvmi_used(ctx))
-			action->devx_obj = tbl->local_ft->obj;
+			action->dest_tbl.devx_obj = tbl->local_ft;
 		else
-			action->devx_obj = tbl->ft->obj;
+			action->dest_tbl.devx_obj = tbl->ft;
 	} else {
+		action->dest_tbl.devx_obj = tbl->ft;
+
 		ret = mlx5dr_action_create_stcs(action, tbl->ft);
 		if (ret)
 			goto free_action;
-
-		action->devx_dest.devx_obj = tbl->ft;
 	}
 
 	return action;
@@ -2526,7 +2542,7 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 			case MLX5DR_ACTION_TYP_TBL:
 				dest_list[i].destination_type =
 					MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE;
-				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
+				dest_list[i].destination_id = dests[i].dest->dest_tbl.devx_obj->id;
 				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 				fte_attr.ignore_flow_level = 1;
 				break;

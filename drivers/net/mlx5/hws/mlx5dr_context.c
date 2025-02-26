@@ -140,6 +140,23 @@ static int mlx5dr_context_uninit_pd(struct mlx5dr_context *ctx)
 	return 0;
 }
 
+bool mlx5dr_context_cap_stc(struct mlx5dr_context *ctx, uint32_t bit)
+{
+	uint32_t test_bit = bit;
+
+	if (bit >= MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX)
+		test_bit -= MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX;
+
+	switch (bit) {
+	case MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX:
+		return ctx->caps->stc_action_type_127_64 & (0x1ull << test_bit);
+	default:
+		break;
+	}
+
+	return false;
+}
+
 static void mlx5dr_context_check_hws_supp(struct mlx5dr_context *ctx)
 {
 	struct mlx5dr_cmd_query_caps *caps = ctx->caps;
