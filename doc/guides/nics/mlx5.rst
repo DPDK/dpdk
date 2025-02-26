@@ -970,6 +970,10 @@ Limitations
   The flow engine of a process cannot move from active to standby mode
   if preceding active application rules are still present and vice versa.
 
+- Since only when unified FDB is enabled, there will be FDB Rx/Tx, jump FDB Rx
+  is valid only when unfied is enabled. And in unified FDB mode, the tag and RSS
+  actions are only allowed in FDB Rx domain.
+
 
 Statistics
 ----------
