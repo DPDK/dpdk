@@ -279,6 +279,11 @@ Limitations
        which results in L3 encap.
     d. Only in transfer (switchdev) mode.
 
+  - MPLS:
+
+    - RTE_FLOW_ITEM_TYPE_MPLS matching is only supported with ``FLEX_PARSER_PROFILE_ENABLE = 1``.
+    - RTE_FLOW_ITEM_TYPE_MPLS matching is not supported on group 0.
+
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
 
@@ -351,8 +356,6 @@ Limitations
      - ``protocol`` should be explicitly specified in HWS (``dv_flow_en`` = 2).
 
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
-
-- MPLSoGRE is not supported in HW steering (``dv_flow_en`` = 2).
 
 - MPLSoUDP with multiple MPLS headers is only supported in HW steering (``dv_flow_en`` = 2).
 
