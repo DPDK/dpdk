@@ -15101,6 +15101,9 @@ flow_hw_calc_encap_hash(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
 			data.next_protocol = IPPROTO_ICMPV6;
 			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			data.next_protocol = IPPROTO_GRE;
+			break;
 		default:
 			break;
 		}
