@@ -1812,6 +1812,7 @@ flow_hw_get_reg_id_from_ctx(void *dr_ctx, enum rte_flow_item_type type,
 
 #endif
 
+
 /*
  * Define list of valid combinations of RX Hash fields
  * (see enum ibv_rx_hash_fields).
@@ -3703,6 +3704,8 @@ mlx5_flow_nta_update_copy_table(struct rte_eth_dev *dev,
 				const struct rte_flow_action *mark,
 				uint64_t action_flags,
 				struct rte_flow_error *error);
+
+struct mlx5_ecpri_parser_profile *flow_hw_get_ecpri_parser_profile(void *dr_ctx);
 
 #endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
