@@ -110,6 +110,7 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_GTP_TEID,
 	MLX5DR_DEFINER_FNAME_GTP_MSG_TYPE,
 	MLX5DR_DEFINER_FNAME_GTP_EXT_FLAG,
+	MLX5DR_DEFINER_FNAME_GTP_FLAGS,
 	MLX5DR_DEFINER_FNAME_GTP_NEXT_EXT_HDR,
 	MLX5DR_DEFINER_FNAME_GTP_EXT_HDR_PDU,
 	MLX5DR_DEFINER_FNAME_GTP_EXT_HDR_QFI,
@@ -606,12 +607,17 @@ enum mlx5dr_definer_gtp {
 };
 
 struct mlx5_ifc_header_gtp_bits {
-	u8 version[0x3];
-	u8 proto_type[0x1];
-	u8 reserved1[0x1];
-	u8 ext_hdr_flag[0x1];
-	u8 seq_num_flag[0x1];
-	u8 pdu_flag[0x1];
+	union {
+		 u8 v_pt_rsv_flags[0x8];
+		struct {
+			u8 version[0x3];
+			u8 proto_type[0x1];
+			u8 reserved1[0x1];
+			u8 ext_hdr_flag[0x1];
+			u8 seq_num_flag[0x1];
+			u8 pdu_flag[0x1];
+		};
+	};
 	u8 msg_type[0x8];
 	u8 msg_len[0x8];
 	u8 teid[0x20];
