@@ -714,6 +714,9 @@ flow_hw_action_flags_get(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
+			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
@@ -7813,22 +7816,23 @@ err_actions_num:
 	return -EINVAL;
 }
 
-static void
+static int
 flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 		     struct rte_flow_action *ra,
 		     struct rte_flow_action *rm,
 		     struct rte_flow_action_modify_field *spec,
 		     struct rte_flow_action_modify_field *mask,
-		     int set_vlan_vid_ix)
+		     int set_vlan_vid_ix,
+		     struct rte_flow_error *error)
 {
-	struct rte_flow_error error;
 	const bool masked = rm[set_vlan_vid_ix].conf &&
 		(((const struct rte_flow_action_of_set_vlan_vid *)
 			rm[set_vlan_vid_ix].conf)->vlan_vid != 0);
 	const struct rte_flow_action_of_set_vlan_vid *conf =
 		ra[set_vlan_vid_ix].conf;
 	int width = mlx5_flow_item_field_width(dev, RTE_FLOW_FIELD_VLAN_ID, 0,
-					       NULL, &error);
+					       NULL, error);
+	MLX5_ASSERT(width);
 	*spec = (typeof(*spec)) {
 		.operation = RTE_FLOW_MODIFY_SET,
 		.dst = {
@@ -7861,6 +7865,7 @@ flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 	ra[set_vlan_vid_ix].conf = spec;
 	rm[set_vlan_vid_ix].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD;
 	rm[set_vlan_vid_ix].conf = mask;
+	return 0;
 }
 
 static __rte_always_inline int
@@ -8106,9 +8111,11 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 								   tmp_mask,
 								   &ra, &rm,
 								   act_num);
-		flow_hw_set_vlan_vid(dev, ra, rm,
-				     &set_vlan_vid_spec, &set_vlan_vid_mask,
-				     set_vlan_vid_ix);
+		ret = flow_hw_set_vlan_vid(dev, ra, rm,
+					   &set_vlan_vid_spec, &set_vlan_vid_mask,
+					   set_vlan_vid_ix, error);
+		if (ret)
+			goto error;
 		action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
 	}
 	if (action_flags & MLX5_FLOW_ACTION_QUOTA) {
@@ -13747,6 +13754,10 @@ flow_nta_build_template_mask(const struct rte_flow_action actions[],
 			conf->nvgre_encap.definition =
 				((const struct rte_flow_action_nvgre_encap *)
 					action->conf)->definition;
+			mask->conf = conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			memset(conf, 0xff, sizeof(struct rte_flow_action_of_set_vlan_vid));
 			mask->conf = conf;
 			break;
 		default:
