@@ -39,7 +39,7 @@ usage(char *progname)
 		" --devtype TYPE: set crypto device type to use\n"
 		" --low-prio-qp-mask mask: set low priority for queues set in mask(hex)\n"
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
-		"        aead / pdcp / docsis / ipsec / modex / secp256r1 / eddsa / sm2 / tls-record : set operation type\n"
+		"        aead / pdcp / docsis / ipsec / modex / rsa / secp256r1 / eddsa / sm2 / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --shared-session: share 1 session across all queue pairs on crypto device\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
@@ -334,6 +334,35 @@ parse_modex_len(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_rsa_priv_keytype(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map rsa_keytype_namemap[] = {
+		{
+			cperf_rsa_priv_keytype_strs[RTE_RSA_KEY_TYPE_EXP],
+			RTE_RSA_KEY_TYPE_EXP
+		},
+		{
+			cperf_rsa_priv_keytype_strs[RTE_RSA_KEY_TYPE_QT],
+			RTE_RSA_KEY_TYPE_QT
+		},
+	};
+
+	int id = get_str_key_id_mapping(rsa_keytype_namemap,
+			RTE_DIM(rsa_keytype_namemap), arg);
+
+	if (id == RTE_RSA_KEY_TYPE_EXP)
+		opts->rsa_data = &rsa_exp_perf_data;
+	else if (id == RTE_RSA_KEY_TYPE_QT)
+		opts->rsa_data = &rsa_qt_perf_data;
+	else {
+		RTE_LOG(ERR, USER1, "invalid RSA key type specified\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 parse_burst_sz(struct cperf_options *opts, const char *arg)
 {
 	int ret;
@@ -485,6 +514,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_ASYM_MODEX],
 			CPERF_ASYM_MODEX
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_RSA],
+			CPERF_ASYM_RSA
 		},
 		{
 			cperf_op_type_strs[CPERF_ASYM_SECP256R1],
@@ -975,6 +1008,7 @@ static struct option lgopts[] = {
 
 	{ CPERF_PTEST_TYPE, required_argument, 0, 0 },
 	{ CPERF_MODEX_LEN, required_argument, 0, 0 },
+	{ CPERF_RSA_PRIV_KEYTYPE, required_argument, 0, 0 },
 
 	{ CPERF_POOL_SIZE, required_argument, 0, 0 },
 	{ CPERF_TOTAL_OPS, required_argument, 0, 0 },
@@ -1101,6 +1135,7 @@ cperf_options_default(struct cperf_options *opts)
 	opts->docsis_hdr_sz = 17;
 #endif
 	opts->modex_data = (struct cperf_modex_test_data *)&modex_perf_data[0];
+	opts->rsa_data = &rsa_pub_perf_data;
 
 	opts->secp256r1_data = &secp256r1_perf_data;
 	opts->eddsa_data = &ed25519_perf_data;
@@ -1114,6 +1149,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 	struct long_opt_parser parsermap[] = {
 		{ CPERF_PTEST_TYPE,	parse_cperf_test_type },
 		{ CPERF_MODEX_LEN,	parse_modex_len },
+		{ CPERF_RSA_PRIV_KEYTYPE,	parse_rsa_priv_keytype },
 		{ CPERF_SILENT,		parse_silent },
 		{ CPERF_POOL_SIZE,	parse_pool_sz },
 		{ CPERF_TOTAL_OPS,	parse_total_ops },
