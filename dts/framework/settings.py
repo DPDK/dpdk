@@ -14,10 +14,10 @@ followed by the default value defined in this module.
 
 The command line arguments along with the supported environment variables are:
 
-.. option:: --test-runs-config-file
-.. envvar:: DTS_TEST_RUNS_CFG_FILE
+.. option:: --test-run-config-file
+.. envvar:: DTS_TEST_RUN_CFG_FILE
 
-    The path to the YAML configuration file of the test runs.
+    The path to the YAML configuration file of the test run.
 
 .. option:: --nodes-config-file
 .. envvar:: DTS_NODES_CFG_FILE
@@ -125,7 +125,7 @@ class Settings:
     """
 
     #:
-    test_runs_config_path: Path = Path(__file__).parent.parent.joinpath("test_runs.yaml")
+    test_run_config_path: Path = Path(__file__).parent.parent.joinpath("test_run.yaml")
     #:
     nodes_config_path: Path = Path(__file__).parent.parent.joinpath("nodes.yaml")
     #:
@@ -323,14 +323,14 @@ def _get_parser() -> _DTSArgumentParser:
     )
 
     action = parser.add_argument(
-        "--test-runs-config-file",
-        default=SETTINGS.test_runs_config_path,
+        "--test-run-config-file",
+        default=SETTINGS.test_run_config_path,
         type=Path,
         help="The configuration file that describes the test cases and DPDK build options.",
         metavar="FILE_PATH",
-        dest="test_runs_config_path",
+        dest="test_run_config_path",
     )
-    _add_env_var_to_action(action, "TEST_RUNS_CFG_FILE")
+    _add_env_var_to_action(action, "TEST_RUN_CFG_FILE")
 
     action = parser.add_argument(
         "--nodes-config-file",
