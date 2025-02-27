@@ -151,6 +151,7 @@ struct mlx5_rxq_data {
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
+	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	LIST_HEAD(priv, mlx5_rxq_priv) owners; /* Owner rxq list. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
