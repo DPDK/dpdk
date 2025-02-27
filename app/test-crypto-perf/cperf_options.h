@@ -13,6 +13,7 @@
 
 #define CPERF_PTEST_TYPE	("ptest")
 #define CPERF_MODEX_LEN		("modex-len")
+#define CPERF_RSA_PRIV_KEYTYPE	("rsa-priv-keytype")
 #define CPERF_SILENT		("silent")
 #define CPERF_ENABLE_SDAP	("enable-sdap")
 
@@ -79,6 +80,7 @@ enum cperf_perf_test_type {
 
 
 extern const char *cperf_test_type_strs[];
+extern const char *cperf_rsa_priv_keytype_strs[];
 
 enum cperf_op_type {
 	CPERF_CIPHER_ONLY = 1,
@@ -90,6 +92,7 @@ enum cperf_op_type {
 	CPERF_DOCSIS,
 	CPERF_IPSEC,
 	CPERF_ASYM_MODEX,
+	CPERF_ASYM_RSA,
 	CPERF_ASYM_SECP256R1,
 	CPERF_ASYM_ED25519,
 	CPERF_ASYM_SM2,
@@ -177,6 +180,7 @@ struct cperf_options {
 	struct cperf_sm2_test_data *sm2_data;
 	enum rte_crypto_asym_op_type asym_op_type;
 	enum rte_crypto_auth_algorithm asym_hash_alg;
+	struct cperf_rsa_test_data *rsa_data;
 };
 
 void
