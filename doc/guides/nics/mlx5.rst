@@ -298,6 +298,13 @@ Limitations
 
     - Geneve options is supported when ``FLEX_PARSER_PROFILE_ENABLE`` = 0 (default).
 
+  - Template table with flags ``RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG``
+    or ``RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG``
+    cannot be created on group 0 (group 1 in practice),
+    since group 0 is created on startup in unified FDB domain.
+
+  - ``RTE_FLOW_ACTION_TYPE_MARK`` is not supported in FDB Tx domain.
+
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
 
