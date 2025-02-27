@@ -515,7 +515,9 @@ test_dma_completed(void)
 	setup_memory();
 
 	/* Check enqueue without submit */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, 0);
 	RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -537,7 +539,9 @@ test_dma_completed(void)
 	setup_memory();
 
 	/* Check for enqueue with submit */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, RTE_DMA_OP_FLAG_SUBMIT);
 	RTE_TEST_ASSERT_EQUAL(ret, 1, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -572,7 +576,9 @@ test_dma_completed_status(void)
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
 
 	/* Check for enqueue with submit */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, RTE_DMA_OP_FLAG_SUBMIT);
 	RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -591,7 +597,9 @@ test_dma_completed_status(void)
 	RTE_TEST_ASSERT_EQUAL(cpl_ret, 0, "Failed to completed status");
 
 	/* Check for enqueue with submit again */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, RTE_DMA_OP_FLAG_SUBMIT);
 	RTE_TEST_ASSERT_EQUAL(ret, 1, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
