@@ -3615,7 +3615,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 
 		mp_segment = mlx5_multi_pattern_segment_find(table, flow->res_idx);
 		if (!mp_segment || !mp_segment->mhdr_action)
-			return -1;
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "No modify header action found");
 		rule_acts[pos].action = mp_segment->mhdr_action;
 		/* offset is relative to DR action */
 		rule_acts[pos].modify_header.offset =
@@ -3946,8 +3947,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 
 error:
 	flow_hw_release_actions(dev, queue, flow);
-	rte_errno = EINVAL;
-	return -rte_errno;
+	return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "Action construction failed");
 }
 
 static const struct rte_flow_item *
