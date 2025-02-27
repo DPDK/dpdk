@@ -206,12 +206,12 @@ and then run the tests with the newly built binaries.
 Configuring DTS
 ~~~~~~~~~~~~~~~
 
-DTS configuration is split into nodes and test runs,
+DTS configuration is split into nodes and a test run,
 and must respect the model definitions
 as documented in the DTS API docs under the ``config`` page.
 The root of the configuration is represented by the ``Configuration`` model.
-By default, DTS will try to use the ``dts/test_runs.example.yaml``
-:ref:`config file <test_runs_configuration_example>`,
+By default, DTS will try to use the ``dts/test_run.example.yaml``
+:ref:`config file <test_run_configuration_example>`,
 and ``dts/nodes.example.yaml``
 :ref:`config file <nodes_configuration_example>`
 which are templates that illustrate what can be configured in DTS.
@@ -228,7 +228,7 @@ DTS is run with ``main.py`` located in the ``dts`` directory after entering Poet
 .. code-block:: console
 
    (dts-py3.10) $ ./main.py --help
-   usage: main.py [-h] [--test-runs-config-file FILE_PATH] [--nodes-config-file FILE_PATH] [--output-dir DIR_PATH] [-t SECONDS] [-v]
+   usage: main.py [-h] [--test-run-config-file FILE_PATH] [--nodes-config-file FILE_PATH] [--output-dir DIR_PATH] [-t SECONDS] [-v]
                   [--dpdk-tree DIR_PATH | --tarball FILE_PATH] [--remote-source] [--precompiled-build-dir DIR_NAME]
                   [--compile-timeout SECONDS] [--test-suite TEST_SUITE [TEST_CASES ...]] [--re-run N_TIMES] [--random-seed NUMBER]
 
@@ -237,8 +237,8 @@ DTS is run with ``main.py`` located in the ``dts`` directory after entering Poet
 
    options:
      -h, --help            show this help message and exit
-     --test-runs-config-file FILE_PATH
-                           [DTS_TEST_RUNS_CFG_FILE] The configuration file that describes the test cases and DPDK build options. (default: test-runs.conf.yaml)
+     --test-run-config-file FILE_PATH
+                           [DTS_TEST_RUN_CFG_FILE] The configuration file that describes the test cases and DPDK build options. (default: test-run.conf.yaml)
      --nodes-config-file FILE_PATH
                            [DTS_NODES_CFG_FILE] The configuration file that describes the SUT and TG nodes. (default: nodes.conf.yaml)
      --output-dir DIR_PATH, --output DIR_PATH
@@ -486,12 +486,12 @@ And they both have two network ports which are physically connected to each othe
    This example assumes that you have setup SSH keys in both the system under test
    and traffic generator nodes.
 
-.. _test_runs_configuration_example:
+.. _test_run_configuration_example:
 
-``dts/test_runs.example.yaml``
+``dts/test_run.example.yaml``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../../dts/test_runs.example.yaml
+.. literalinclude:: ../../../dts/test_run.example.yaml
    :language: yaml
    :start-at: # Define
 

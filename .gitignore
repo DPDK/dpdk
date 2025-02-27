@@ -44,7 +44,7 @@ TAGS
 # DTS results
 dts/output
 dts/nodes.yaml
-dts/test_rund.yaml
+dts/test_run.yaml
 
 # ignore default build directory, and directories from test-meson-builds.sh
 build

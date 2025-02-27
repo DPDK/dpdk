@@ -206,14 +206,13 @@ class TestSuiteConfig(FrozenModel):
 
     .. code:: yaml
 
-        test_runs:
-        - test_suites:
-            # As string representation:
-            - hello_world # test all of `hello_world`, or
-            - hello_world hello_world_single_core # test only `hello_world_single_core`
-            # or as model fields:
-            - test_suite: hello_world
-              test_cases: [hello_world_single_core] # without this field all test cases are run
+        test_suites:
+        # As string representation:
+        - hello_world # test all of `hello_world`, or
+        - hello_world hello_world_single_core # test only `hello_world_single_core`
+        # or as model fields:
+        - test_suite: hello_world
+            test_cases: [hello_world_single_core] # without this field all test cases are run
     """
 
     #: The name of the test suite module without the starting ``TestSuite_``.

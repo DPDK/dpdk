@@ -6,7 +6,7 @@
 
 """Test suite runner module.
 
-The module is responsible for preparing DTS and running the test runs.
+The module is responsible for preparing DTS and running the test run.
 """
 
 import os
@@ -47,8 +47,8 @@ class DTSRunner:
     def run(self) -> None:
         """Run DTS.
 
-        Prepare all the nodes ahead of the test runs execution,
-        which are subsequently run as configured.
+        Prepare all the nodes ahead of the test run execution, which is subsequently run as
+        configured.
         """
         nodes: list[Node] = []
         try:
@@ -59,11 +59,9 @@ class DTSRunner:
             for node_config in self._configuration.nodes:
                 nodes.append(Node(node_config))
 
-            # for all test run sections
-            for test_run_config in self._configuration.test_runs:
-                test_run_result = self._result.add_test_run(test_run_config)
-                test_run = TestRun(test_run_config, nodes, test_run_result)
-                test_run.spin()
+            test_run_result = self._result.add_test_run(self._configuration.test_run)
+            test_run = TestRun(self._configuration.test_run, nodes, test_run_result)
+            test_run.spin()
 
         except Exception as e:
             self._logger.exception("An unexpected error has occurred.")
