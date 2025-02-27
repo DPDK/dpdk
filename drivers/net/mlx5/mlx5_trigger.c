@@ -1533,11 +1533,11 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	} else {
 		DRV_LOG(INFO, "port %u FDB default rule is disabled", dev->data->port_id);
 	}
-	if (priv->isolated)
-		return 0;
 	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master)
 		if (mlx5_flow_hw_lacp_rx_flow(dev))
 			goto error;
+	if (priv->isolated)
+		return 0;
 	if (dev->data->promiscuous)
 		flags |= MLX5_CTRL_PROMISCUOUS;
 	if (dev->data->all_multicast)
