@@ -772,10 +772,11 @@ mlx5dr_definer_vport_set(struct mlx5dr_definer_fc *fc,
 			 uint8_t *tag)
 {
 	const struct rte_flow_item_ethdev *v = item_spec;
-	const struct flow_hw_port_info *port_info;
+	const struct flow_hw_port_info *port_info = NULL;
 	uint32_t regc_value;
 
-	port_info = flow_hw_conv_port_id(fc->dr_ctx, v->port_id);
+	if (v)
+		port_info = flow_hw_conv_port_id(fc->dr_ctx, v->port_id);
 	if (unlikely(!port_info))
 		regc_value = BAD_PORT;
 	else
@@ -1585,10 +1586,11 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 			      int item_idx)
 {
 	struct mlx5dr_cmd_query_caps *caps = cd->ctx->caps;
-	const struct rte_flow_item_ethdev *m = item->mask;
+	uint16_t port_id = item->mask ?
+			   ((const struct rte_flow_item_ethdev *)(item->mask))->port_id : 0;
 	struct mlx5dr_definer_fc *fc;
 
-	if (m->port_id) {
+	if (port_id) {
 		if (!caps->wire_regc_mask) {
 			DR_LOG(ERR, "Port ID item not supported, missing wire REGC mask");
 			rte_errno = ENOTSUP;
@@ -1603,10 +1605,6 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 		fc->bit_off = rte_ctz32(caps->wire_regc_mask);
 		fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
 		fc->dr_ctx = cd->ctx;
-	} else {
-		DR_LOG(ERR, "Pord ID item mask must specify ID mask");
-		rte_errno = EINVAL;
-		return rte_errno;
 	}
 
 	return 0;
