@@ -43,8 +43,8 @@ RTE_LOG_REGISTER_SUFFIX(vhost_crypto_logtype, crypto, INFO);
 		(1ULL << VIRTIO_F_VERSION_1) |				\
 		(1ULL << VHOST_USER_F_PROTOCOL_FEATURES))
 
-#define IOVA_TO_VVA(t, r, a, l, p)					\
-	((t)(uintptr_t)vhost_iova_to_vva(r->dev, r->vq, a, l, p))
+#define IOVA_TO_VVA(t, dev, vq, a, l, p)				\
+	((t)(uintptr_t)vhost_iova_to_vva(dev, vq, a, l, p))
 
 /*
  * vhost_crypto_desc is used to copy original vring_desc to the local buffer
@@ -488,10 +488,10 @@ find_write_desc(struct vhost_crypto_desc *head, struct vhost_crypto_desc *desc,
 }
 
 static __rte_always_inline struct virtio_crypto_inhdr *
-reach_inhdr(struct vhost_crypto_data_req *vc_req,
+reach_inhdr(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct vhost_crypto_desc *head,
 		uint32_t max_n_descs)
-	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(vq->iotlb_lock)
 {
 	struct virtio_crypto_inhdr *inhdr;
 	struct vhost_crypto_desc *last = head + (max_n_descs - 1);
@@ -500,8 +500,8 @@ reach_inhdr(struct vhost_crypto_data_req *vc_req,
 	if (unlikely(dlen != sizeof(*inhdr)))
 		return NULL;
 
-	inhdr = IOVA_TO_VVA(struct virtio_crypto_inhdr *, vc_req, last->addr,
-			&dlen, VHOST_ACCESS_WO);
+	inhdr = IOVA_TO_VVA(struct virtio_crypto_inhdr *, dev, vq,
+			last->addr, &dlen, VHOST_ACCESS_WO);
 	if (unlikely(!inhdr || dlen != last->len))
 		return NULL;
 
@@ -543,7 +543,8 @@ get_data_ptr(struct vhost_crypto_data_req *vc_req,
 	void *data;
 	uint64_t dlen = cur_desc->len;
 
-	data = IOVA_TO_VVA(void *, vc_req, cur_desc->addr, &dlen, perm);
+	data = IOVA_TO_VVA(void *, vc_req->dev, vc_req->vq,
+			cur_desc->addr, &dlen, perm);
 	if (unlikely(!data || dlen != cur_desc->len)) {
 		VC_LOG_ERR("Failed to map object");
 		return NULL;
@@ -553,9 +554,9 @@ get_data_ptr(struct vhost_crypto_data_req *vc_req,
 }
 
 static __rte_always_inline uint32_t
-copy_data_from_desc(void *dst, struct vhost_crypto_data_req *vc_req,
-	struct vhost_crypto_desc *desc, uint32_t size)
-	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
+copy_data_from_desc(void *dst, struct virtio_net *dev,
+	struct vhost_virtqueue *vq, struct vhost_crypto_desc *desc, uint32_t size)
+	__rte_requires_shared_capability(vq->iotlb_lock)
 {
 	uint64_t remain;
 	uint64_t addr;
@@ -567,7 +568,8 @@ copy_data_from_desc(void *dst, struct vhost_crypto_data_req *vc_req,
 		void *src;
 
 		len = remain;
-		src = IOVA_TO_VVA(void *, vc_req, addr, &len, VHOST_ACCESS_RO);
+		src = IOVA_TO_VVA(void *, dev, vq,
+				addr, &len, VHOST_ACCESS_RO);
 		if (unlikely(src == NULL || len == 0))
 			return 0;
 
@@ -583,10 +585,10 @@ copy_data_from_desc(void *dst, struct vhost_crypto_data_req *vc_req,
 
 
 static __rte_always_inline int
-copy_data(void *data, struct vhost_crypto_data_req *vc_req,
+copy_data(void *data, struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct vhost_crypto_desc *head, struct vhost_crypto_desc **cur_desc,
 	uint32_t size, uint32_t max_n_descs)
-	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(vq->iotlb_lock)
 {
 	struct vhost_crypto_desc *desc = *cur_desc;
 	uint32_t left = size;
@@ -594,7 +596,7 @@ copy_data(void *data, struct vhost_crypto_data_req *vc_req,
 	do {
 		uint32_t copied;
 
-		copied = copy_data_from_desc(data, vc_req, desc, left);
+		copied = copy_data_from_desc(data, dev, vq, desc, left);
 		if (copied == 0)
 			return -1;
 		left -= copied;
@@ -689,8 +691,8 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 	if (likely(desc->len > offset)) {
 		wb_data->src = src + offset;
 		dlen = desc->len;
-		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr,
-			&dlen, VHOST_ACCESS_RW);
+		dst = IOVA_TO_VVA(uint8_t *, vc_req->dev, vc_req->vq,
+			desc->addr, &dlen, VHOST_ACCESS_RW);
 		if (unlikely(!dst || dlen != desc->len)) {
 			VC_LOG_ERR("Failed to map descriptor");
 			goto error_exit;
@@ -731,8 +733,8 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 		}
 
 		dlen = desc->len;
-		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
-				VHOST_ACCESS_RW) + offset;
+		dst = IOVA_TO_VVA(uint8_t *, vc_req->dev, vc_req->vq,
+				desc->addr, &dlen, VHOST_ACCESS_RW) + offset;
 		if (unlikely(dst == NULL || dlen != desc->len)) {
 			VC_LOG_ERR("Failed to map descriptor");
 			goto error_exit;
@@ -804,7 +806,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 	/* prepare */
 	/* iv */
-	if (unlikely(copy_data(iv_data, vc_req, head, &desc,
+	if (unlikely(copy_data(iv_data, vcrypto->dev, vc_req->vq, head, &desc,
 			cipher->para.iv_len, max_n_descs))) {
 		VC_LOG_ERR("Incorrect virtio descriptor");
 		ret = VIRTIO_CRYPTO_BADMSG;
@@ -835,8 +837,8 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		vc_req->wb_pool = vcrypto->wb_pool;
 		m_src->data_len = cipher->para.src_data_len;
 		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *),
-				vc_req, head, &desc, cipher->para.src_data_len,
-				max_n_descs) < 0)) {
+				vcrypto->dev, vc_req->vq, head, &desc,
+				cipher->para.src_data_len, max_n_descs) < 0)) {
 			VC_LOG_ERR("Incorrect virtio descriptor");
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
@@ -960,7 +962,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 	/* prepare */
 	/* iv */
-	if (unlikely(copy_data(iv_data, vc_req, head, &desc,
+	if (unlikely(copy_data(iv_data, vcrypto->dev, vc_req->vq, head, &desc,
 			chain->para.iv_len, max_n_descs) < 0)) {
 		VC_LOG_ERR("Incorrect virtio descriptor");
 		ret = VIRTIO_CRYPTO_BADMSG;
@@ -992,8 +994,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		vc_req->wb_pool = vcrypto->wb_pool;
 		m_src->data_len = chain->para.src_data_len;
 		if (unlikely(copy_data(rte_pktmbuf_mtod(m_src, uint8_t *),
-				vc_req, head, &desc, chain->para.src_data_len,
-				max_n_descs) < 0)) {
+				vcrypto->dev, vc_req->vq, head, &desc,
+				chain->para.src_data_len, max_n_descs) < 0)) {
 			VC_LOG_ERR("Incorrect virtio descriptor");
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
@@ -1076,8 +1078,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 			goto error_exit;
 		}
 
-		if (unlikely(copy_data(digest_addr, vc_req, head, &digest_desc,
-				chain->para.hash_result_len,
+		if (unlikely(copy_data(digest_addr, vcrypto->dev, vc_req->vq, head,
+				&digest_desc, chain->para.hash_result_len,
 				max_n_descs) < 0)) {
 			VC_LOG_ERR("Incorrect virtio descriptor");
 			ret = VIRTIO_CRYPTO_BADMSG;
@@ -1131,7 +1133,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		struct vhost_virtqueue *vq, struct rte_crypto_op *op,
 		struct vring_desc *head, struct vhost_crypto_desc *descs,
 		uint16_t desc_idx)
-	__rte_no_thread_safety_analysis /* FIXME: requires iotlb_lock? */
+	__rte_requires_shared_capability(vq->iotlb_lock)
 {
 	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(op->sym->m_src);
 	struct rte_cryptodev_sym_session *session;
@@ -1154,8 +1156,8 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	}
 
 	dlen = head->len;
-	src_desc = IOVA_TO_VVA(struct vring_desc *, vc_req, head->addr,
-			&dlen, VHOST_ACCESS_RO);
+	src_desc = IOVA_TO_VVA(struct vring_desc *, vc_req->dev, vq,
+			head->addr, &dlen, VHOST_ACCESS_RO);
 	if (unlikely(!src_desc || dlen != head->len)) {
 		VC_LOG_ERR("Invalid descriptor");
 		return -1;
@@ -1175,8 +1177,8 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 			}
 			if (inhdr_desc->len != sizeof(*inhdr))
 				return -1;
-			inhdr = IOVA_TO_VVA(struct virtio_crypto_inhdr *,
-					vc_req, inhdr_desc->addr, &dlen,
+			inhdr = IOVA_TO_VVA(struct virtio_crypto_inhdr *, vc_req->dev,
+					vq, inhdr_desc->addr, &dlen,
 					VHOST_ACCESS_WO);
 			if (unlikely(!inhdr || dlen != inhdr_desc->len))
 				return -1;
@@ -1213,7 +1215,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		goto error_exit;
 	}
 
-	if (unlikely(copy_data(&req, vc_req, descs, &desc, sizeof(req),
+	if (unlikely(copy_data(&req, vcrypto->dev, vq, descs, &desc, sizeof(req),
 			max_n_descs) < 0)) {
 		err = VIRTIO_CRYPTO_BADMSG;
 		VC_LOG_ERR("Invalid descriptor");
@@ -1257,14 +1259,18 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 			err = VIRTIO_CRYPTO_NOTSUPP;
 			break;
 		case VIRTIO_CRYPTO_SYM_OP_CIPHER:
-			err = prepare_sym_cipher_op(vcrypto, op, vc_req,
+			vhost_user_iotlb_rd_lock(vc_req_out->vq);
+			err = prepare_sym_cipher_op(vcrypto, op, vc_req_out,
 					&req.u.sym_req.u.cipher, desc,
 					max_n_descs);
+			vhost_user_iotlb_rd_unlock(vc_req_out->vq);
 			break;
 		case VIRTIO_CRYPTO_SYM_OP_ALGORITHM_CHAINING:
-			err = prepare_sym_chain_op(vcrypto, op, vc_req,
+			vhost_user_iotlb_rd_lock(vc_req_out->vq);
+			err = prepare_sym_chain_op(vcrypto, op, vc_req_out,
 					&req.u.sym_req.u.chain, desc,
 					max_n_descs);
+			vhost_user_iotlb_rd_unlock(vc_req_out->vq);
 			break;
 		}
 		if (unlikely(err != 0)) {
@@ -1283,7 +1289,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 
 error_exit:
 
-	inhdr = reach_inhdr(vc_req, descs, max_n_descs);
+	inhdr = reach_inhdr(vc_req->dev, vq, descs, max_n_descs);
 	if (likely(inhdr != NULL))
 		inhdr->status = (uint8_t)err;
 
