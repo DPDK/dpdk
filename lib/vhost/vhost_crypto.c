@@ -55,6 +55,14 @@ RTE_LOG_REGISTER_SUFFIX(vhost_crypto_logtype, crypto, INFO);
  */
 #define vhost_crypto_desc vring_desc
 
+struct vhost_crypto_session {
+	union {
+		struct rte_cryptodev_asym_session *asym;
+		struct rte_cryptodev_sym_session *sym;
+	};
+	enum rte_crypto_op_type type;
+};
+
 static int
 cipher_algo_transform(uint32_t virtio_cipher_algo,
 		enum rte_crypto_cipher_algorithm *algo)
@@ -207,8 +215,10 @@ struct __rte_cache_aligned vhost_crypto {
 
 	uint64_t last_session_id;
 
-	uint64_t cache_session_id;
-	struct rte_cryptodev_sym_session *cache_session;
+	uint64_t cache_sym_session_id;
+	struct rte_cryptodev_sym_session *cache_sym_session;
+	uint64_t cache_asym_session_id;
+	struct rte_cryptodev_asym_session *cache_asym_session;
 	/** socket id for the device */
 	int socket_id;
 
@@ -335,10 +345,11 @@ transform_chain_param(struct rte_crypto_sym_xform *xforms,
 }
 
 static void
-vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
+vhost_crypto_create_sym_sess(struct vhost_crypto *vcrypto,
 		VhostUserCryptoSessionParam *sess_param)
 {
 	struct rte_crypto_sym_xform xform1 = {0}, xform2 = {0};
+	struct vhost_crypto_session *vhost_session;
 	struct rte_cryptodev_sym_session *session;
 	int ret;
 
@@ -385,15 +396,20 @@ vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
 		return;
 	}
 
-	/* insert hash to map */
-	if (rte_hash_add_key_data(vcrypto->session_map,
-			&vcrypto->last_session_id, session) < 0) {
-		VC_LOG_ERR("Failed to insert session to hash table");
+	vhost_session = rte_zmalloc(NULL, sizeof(*vhost_session), 0);
+	if (vhost_session == NULL) {
+		VC_LOG_ERR("Failed to alloc session memory");
+		goto error_exit;
+	}
 
-		if (rte_cryptodev_sym_session_free(vcrypto->cid, session) < 0)
-			VC_LOG_ERR("Failed to free session");
-		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
-		return;
+	vhost_session->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	vhost_session->sym = session;
+
+	/* insert session to map */
+	if ((rte_hash_add_key_data(vcrypto->session_map,
+		&vcrypto->last_session_id, vhost_session) < 0)) {
+		VC_LOG_ERR("Failed to insert session to hash table");
+		goto error_exit;
 	}
 
 	VC_LOG_INFO("Session %"PRIu64" created for vdev %i.",
@@ -401,26 +417,256 @@ vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
 
 	sess_param->session_id = vcrypto->last_session_id;
 	vcrypto->last_session_id++;
+	return;
+
+error_exit:
+	if (rte_cryptodev_sym_session_free(vcrypto->cid, session) < 0)
+		VC_LOG_ERR("Failed to free session");
+
+	sess_param->session_id = -VIRTIO_CRYPTO_ERR;
+	rte_free(vhost_session);
+}
+
+static int
+tlv_decode(uint8_t *tlv, uint8_t type, uint8_t **data, size_t *data_len)
+{
+	size_t tlen = -EINVAL, len;
+
+	if (tlv[0] != type)
+		return -EINVAL;
+
+	if (tlv[1] == 0x82) {
+		len = (tlv[2] << 8) | tlv[3];
+		*data = &tlv[4];
+		tlen = len + 4;
+	} else if (tlv[1] == 0x81) {
+		len = tlv[2];
+		*data = &tlv[3];
+		tlen = len + 3;
+	} else {
+		len = tlv[1];
+		*data = &tlv[2];
+		tlen = len + 2;
+	}
+
+	*data_len = len;
+	return tlen;
+}
+
+static int
+virtio_crypto_asym_rsa_der_to_xform(uint8_t *der, size_t der_len,
+		struct rte_crypto_asym_xform *xform)
+{
+	uint8_t *n = NULL, *e = NULL, *d = NULL, *p = NULL, *q = NULL, *dp = NULL,
+		*dq = NULL, *qinv = NULL, *v = NULL, *tlv;
+	size_t nlen, elen, dlen, plen, qlen, dplen, dqlen, qinvlen, vlen;
+	int len;
+
+	RTE_SET_USED(der_len);
+
+	if (der[0] != 0x30)
+		return -EINVAL;
+
+	if (der[1] == 0x82)
+		tlv = &der[4];
+	else if (der[1] == 0x81)
+		tlv = &der[3];
+	else
+		return -EINVAL;
+
+	len = tlv_decode(tlv, 0x02, &v, &vlen);
+	if (len < 0 || v[0] != 0x0 || vlen != 1)
+		return -EINVAL;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &n, &nlen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &e, &elen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &d, &dlen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &p, &plen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &q, &qlen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &dp, &dplen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &dq, &dqlen);
+	if (len < 0)
+		return len;
+
+	tlv = tlv + len;
+	len = tlv_decode(tlv, 0x02, &qinv, &qinvlen);
+	if (len < 0)
+		return len;
+
+	xform->rsa.n.data = n;
+	xform->rsa.n.length = nlen;
+	xform->rsa.e.data = e;
+	xform->rsa.e.length = elen;
+	xform->rsa.d.data = d;
+	xform->rsa.d.length = dlen;
+	xform->rsa.qt.p.data = p;
+	xform->rsa.qt.p.length = plen;
+	xform->rsa.qt.q.data = q;
+	xform->rsa.qt.q.length = qlen;
+	xform->rsa.qt.dP.data = dp;
+	xform->rsa.qt.dP.length = dplen;
+	xform->rsa.qt.dQ.data = dq;
+	xform->rsa.qt.dQ.length = dqlen;
+	xform->rsa.qt.qInv.data = qinv;
+	xform->rsa.qt.qInv.length = qinvlen;
+
+	RTE_ASSERT((tlv + len - &der[0]) == der_len);
+	return 0;
+}
+
+static int
+rsa_param_transform(struct rte_crypto_asym_xform *xform,
+		VhostUserCryptoAsymSessionParam *param)
+{
+	int ret;
+
+	ret = virtio_crypto_asym_rsa_der_to_xform(param->key_buf, param->key_len, xform);
+	if (ret < 0)
+		return ret;
+
+	switch (param->u.rsa.padding_algo) {
+	case VIRTIO_CRYPTO_RSA_RAW_PADDING:
+		xform->rsa.padding.type = RTE_CRYPTO_RSA_PADDING_NONE;
+		break;
+	case VIRTIO_CRYPTO_RSA_PKCS1_PADDING:
+		xform->rsa.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
+		break;
+	default:
+		VC_LOG_ERR("Unknown padding type");
+		return -EINVAL;
+	}
+
+	xform->rsa.key_type = RTE_RSA_KEY_TYPE_QT;
+	xform->xform_type = RTE_CRYPTO_ASYM_XFORM_RSA;
+	return 0;
+}
+
+static void
+vhost_crypto_create_asym_sess(struct vhost_crypto *vcrypto,
+		VhostUserCryptoSessionParam *sess_param)
+{
+	struct rte_cryptodev_asym_session *session = NULL;
+	struct vhost_crypto_session *vhost_session;
+	struct rte_crypto_asym_xform xform = {0};
+	int ret;
+
+	switch (sess_param->u.asym_sess.algo) {
+	case VIRTIO_CRYPTO_AKCIPHER_RSA:
+		ret = rsa_param_transform(&xform, &sess_param->u.asym_sess);
+		if (unlikely(ret < 0)) {
+			VC_LOG_ERR("Error transform session msg (%i)", ret);
+			sess_param->session_id = ret;
+			return;
+		}
+		break;
+	default:
+		VC_LOG_ERR("Invalid op algo");
+		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
+		return;
+	}
+
+	ret = rte_cryptodev_asym_session_create(vcrypto->cid, &xform,
+		vcrypto->sess_pool, (void *)&session);
+	if (session == NULL) {
+		VC_LOG_ERR("Failed to create session");
+		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
+		return;
+	}
+
+	vhost_session = rte_zmalloc(NULL, sizeof(*vhost_session), 0);
+	if (vhost_session == NULL) {
+		VC_LOG_ERR("Failed to alloc session memory");
+		goto error_exit;
+	}
+
+	vhost_session->type = RTE_CRYPTO_OP_TYPE_ASYMMETRIC;
+	vhost_session->asym = session;
+
+	/* insert session to map */
+	if ((rte_hash_add_key_data(vcrypto->session_map,
+			&vcrypto->last_session_id, vhost_session) < 0)) {
+		VC_LOG_ERR("Failed to insert session to hash table");
+		goto error_exit;
+	}
+
+	VC_LOG_INFO("Session %"PRIu64" created for vdev %i.",
+			vcrypto->last_session_id, vcrypto->dev->vid);
+
+	sess_param->session_id = vcrypto->last_session_id;
+	vcrypto->last_session_id++;
+	return;
+
+error_exit:
+	if (rte_cryptodev_asym_session_free(vcrypto->cid, session) < 0)
+		VC_LOG_ERR("Failed to free session");
+	sess_param->session_id = -VIRTIO_CRYPTO_ERR;
+	rte_free(vhost_session);
+}
+
+static void
+vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
+		VhostUserCryptoSessionParam *sess_param)
+{
+	if (sess_param->op_code == VIRTIO_CRYPTO_AKCIPHER_CREATE_SESSION)
+		vhost_crypto_create_asym_sess(vcrypto, sess_param);
+	else
+		vhost_crypto_create_sym_sess(vcrypto, sess_param);
 }
 
 static int
 vhost_crypto_close_sess(struct vhost_crypto *vcrypto, uint64_t session_id)
 {
-	struct rte_cryptodev_sym_session *session;
+	struct vhost_crypto_session *vhost_session = NULL;
 	uint64_t sess_id = session_id;
 	int ret;
 
 	ret = rte_hash_lookup_data(vcrypto->session_map, &sess_id,
-			(void **)&session);
-
+				(void **)&vhost_session);
 	if (unlikely(ret < 0)) {
-		VC_LOG_ERR("Failed to delete session %"PRIu64".", session_id);
+		VC_LOG_ERR("Failed to find session for id %"PRIu64".", session_id);
 		return -VIRTIO_CRYPTO_INVSESS;
 	}
 
-	if (rte_cryptodev_sym_session_free(vcrypto->cid, session) < 0) {
-		VC_LOG_DBG("Failed to free session");
-		return -VIRTIO_CRYPTO_ERR;
+	if (vhost_session->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		if (rte_cryptodev_sym_session_free(vcrypto->cid,
+			vhost_session->sym) < 0) {
+			VC_LOG_DBG("Failed to free session");
+			return -VIRTIO_CRYPTO_ERR;
+		}
+	} else if (vhost_session->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+		if (rte_cryptodev_asym_session_free(vcrypto->cid,
+			vhost_session->asym) < 0) {
+			VC_LOG_DBG("Failed to free session");
+			return -VIRTIO_CRYPTO_ERR;
+			}
+	} else {
+		VC_LOG_ERR("Invalid session for id %"PRIu64".", session_id);
+		return -VIRTIO_CRYPTO_INVSESS;
 	}
 
 	if (rte_hash_del_key(vcrypto->session_map, &sess_id) < 0) {
@@ -431,6 +677,7 @@ vhost_crypto_close_sess(struct vhost_crypto *vcrypto, uint64_t session_id)
 	VC_LOG_INFO("Session %"PRIu64" deleted for vdev %i.", sess_id,
 			vcrypto->dev->vid);
 
+	rte_free(vhost_session);
 	return 0;
 }
 
@@ -1126,6 +1373,109 @@ error_exit:
 	return ret;
 }
 
+static __rte_always_inline uint8_t
+prepare_asym_rsa_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
+		struct vhost_crypto_data_req *vc_req,
+		struct virtio_crypto_op_data_req *req,
+		struct vhost_crypto_desc *head,
+		uint32_t max_n_descs)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
+{
+	struct rte_crypto_rsa_op_param *rsa = &op->asym->rsa;
+	struct vhost_crypto_desc *desc = head;
+	uint8_t ret = VIRTIO_CRYPTO_ERR;
+	uint16_t wlen = 0;
+
+	/* prepare */
+	switch (vcrypto->option) {
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		vc_req->wb_pool = vcrypto->wb_pool;
+		if (req->header.opcode == VIRTIO_CRYPTO_AKCIPHER_SIGN) {
+			rsa->op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+			rsa->message.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
+			rsa->message.length = req->u.akcipher_req.para.src_data_len;
+			rsa->sign.length = req->u.akcipher_req.para.dst_data_len;
+			wlen = rsa->sign.length;
+			desc = find_write_desc(head, desc, max_n_descs);
+			if (unlikely(!desc)) {
+				VC_LOG_ERR("Cannot find write location");
+				ret = VIRTIO_CRYPTO_BADMSG;
+				goto error_exit;
+			}
+
+			rsa->sign.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RW);
+			if (unlikely(rsa->sign.data == NULL)) {
+				ret = VIRTIO_CRYPTO_ERR;
+				goto error_exit;
+			}
+
+			desc += 1;
+		} else if (req->header.opcode == VIRTIO_CRYPTO_AKCIPHER_VERIFY) {
+			rsa->op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+			rsa->sign.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
+			rsa->sign.length = req->u.akcipher_req.para.src_data_len;
+			desc += 1;
+			rsa->message.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
+			rsa->message.length = req->u.akcipher_req.para.dst_data_len;
+			desc += 1;
+		} else if (req->header.opcode == VIRTIO_CRYPTO_AKCIPHER_ENCRYPT) {
+			rsa->op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
+			rsa->message.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
+			rsa->message.length = req->u.akcipher_req.para.src_data_len;
+			rsa->cipher.length = req->u.akcipher_req.para.dst_data_len;
+			wlen = rsa->cipher.length;
+			desc = find_write_desc(head, desc, max_n_descs);
+			if (unlikely(!desc)) {
+				VC_LOG_ERR("Cannot find write location");
+				ret = VIRTIO_CRYPTO_BADMSG;
+				goto error_exit;
+			}
+
+			rsa->cipher.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RW);
+			if (unlikely(rsa->cipher.data == NULL)) {
+				ret = VIRTIO_CRYPTO_ERR;
+				goto error_exit;
+			}
+
+			desc += 1;
+		} else if (req->header.opcode == VIRTIO_CRYPTO_AKCIPHER_DECRYPT) {
+			rsa->op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
+			rsa->cipher.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
+			rsa->cipher.length = req->u.akcipher_req.para.src_data_len;
+			desc += 1;
+			rsa->message.data = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
+			rsa->message.length = req->u.akcipher_req.para.dst_data_len;
+			desc += 1;
+		} else {
+			goto error_exit;
+		}
+		break;
+	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+	default:
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	op->type = RTE_CRYPTO_OP_TYPE_ASYMMETRIC;
+	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+
+	vc_req->inhdr = get_data_ptr(vc_req, desc, VHOST_ACCESS_WO);
+	if (unlikely(vc_req->inhdr == NULL)) {
+		ret = VIRTIO_CRYPTO_BADMSG;
+		goto error_exit;
+	}
+
+	vc_req->inhdr->status = VIRTIO_CRYPTO_OK;
+	vc_req->len = wlen + INHDR_LEN;
+	return 0;
+error_exit:
+	if (vc_req->wb)
+		free_wb_data(vc_req->wb, vc_req->wb_pool);
+
+	vc_req->len = INHDR_LEN;
+	return ret;
+}
+
 /**
  * Process on descriptor
  */
@@ -1136,17 +1486,21 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		uint16_t desc_idx)
 	__rte_requires_shared_capability(vq->iotlb_lock)
 {
-	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(op->sym->m_src);
-	struct rte_cryptodev_sym_session *session;
+	struct vhost_crypto_data_req *vc_req, *vc_req_out;
+	struct rte_cryptodev_asym_session *asym_session;
+	struct rte_cryptodev_sym_session *sym_session;
+	struct vhost_crypto_session *vhost_session;
+	struct vhost_crypto_desc *desc = descs;
+	uint32_t nb_descs = 0, max_n_descs, i;
+	struct vhost_crypto_data_req data_req;
 	struct virtio_crypto_op_data_req req;
 	struct virtio_crypto_inhdr *inhdr;
-	struct vhost_crypto_desc *desc = descs;
 	struct vring_desc *src_desc;
 	uint64_t session_id;
 	uint64_t dlen;
-	uint32_t nb_descs = 0, max_n_descs, i;
 	int err;
 
+	vc_req = &data_req;
 	vc_req->desc_idx = desc_idx;
 	vc_req->dev = vcrypto->dev;
 	vc_req->vq = vq;
@@ -1229,12 +1583,14 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	switch (req.header.opcode) {
 	case VIRTIO_CRYPTO_CIPHER_ENCRYPT:
 	case VIRTIO_CRYPTO_CIPHER_DECRYPT:
+		vc_req_out = rte_mbuf_to_priv(op->sym->m_src);
+		memcpy(vc_req_out, vc_req, sizeof(struct vhost_crypto_data_req));
 		session_id = req.header.session_id;
 
 		/* one branch to avoid unnecessary table lookup */
-		if (vcrypto->cache_session_id != session_id) {
+		if (vcrypto->cache_sym_session_id != session_id) {
 			err = rte_hash_lookup_data(vcrypto->session_map,
-					&session_id, (void **)&session);
+					&session_id, (void **)&vhost_session);
 			if (unlikely(err < 0)) {
 				err = VIRTIO_CRYPTO_ERR;
 				VC_LOG_ERR("Failed to find session %"PRIu64,
@@ -1242,13 +1598,14 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 				goto error_exit;
 			}
 
-			vcrypto->cache_session = session;
-			vcrypto->cache_session_id = session_id;
+			vcrypto->cache_sym_session = vhost_session->sym;
+			vcrypto->cache_sym_session_id = session_id;
 		}
 
-		session = vcrypto->cache_session;
+		sym_session = vcrypto->cache_sym_session;
+		op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 
-		err = rte_crypto_op_attach_sym_session(op, session);
+		err = rte_crypto_op_attach_sym_session(op, sym_session);
 		if (unlikely(err < 0)) {
 			err = VIRTIO_CRYPTO_ERR;
 			VC_LOG_ERR("Failed to attach session to op");
@@ -1279,6 +1636,55 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 			goto error_exit;
 		}
 		break;
+	case VIRTIO_CRYPTO_AKCIPHER_SIGN:
+	case VIRTIO_CRYPTO_AKCIPHER_VERIFY:
+	case VIRTIO_CRYPTO_AKCIPHER_ENCRYPT:
+	case VIRTIO_CRYPTO_AKCIPHER_DECRYPT:
+		session_id = req.header.session_id;
+
+		/* one branch to avoid unnecessary table lookup */
+		if (vcrypto->cache_asym_session_id != session_id) {
+			err = rte_hash_lookup_data(vcrypto->session_map,
+					&session_id, (void **)&vhost_session);
+			if (unlikely(err < 0)) {
+				err = VIRTIO_CRYPTO_ERR;
+				VC_LOG_ERR("Failed to find asym session %"PRIu64,
+						   session_id);
+				goto error_exit;
+			}
+
+			vcrypto->cache_asym_session = vhost_session->asym;
+			vcrypto->cache_asym_session_id = session_id;
+		}
+
+		asym_session = vcrypto->cache_asym_session;
+		op->type = RTE_CRYPTO_OP_TYPE_ASYMMETRIC;
+
+		err = rte_crypto_op_attach_asym_session(op, asym_session);
+		if (unlikely(err < 0)) {
+			err = VIRTIO_CRYPTO_ERR;
+			VC_LOG_ERR("Failed to attach asym session to op");
+			goto error_exit;
+		}
+
+		vc_req_out = rte_cryptodev_asym_session_get_user_data(asym_session);
+		rte_memcpy(vc_req_out, vc_req, sizeof(struct vhost_crypto_data_req));
+		vc_req_out->wb = NULL;
+
+		switch (req.header.algo) {
+		case VIRTIO_CRYPTO_AKCIPHER_RSA:
+			vhost_user_iotlb_rd_lock(vc_req_out->vq);
+			err = prepare_asym_rsa_op(vcrypto, op, vc_req_out,
+					&req, desc, max_n_descs);
+			vhost_user_iotlb_rd_unlock(vc_req_out->vq);
+			break;
+		}
+		if (unlikely(err != 0)) {
+			VC_LOG_ERR("Failed to process asym request");
+			goto error_exit;
+		}
+
+		break;
 	default:
 		err = VIRTIO_CRYPTO_ERR;
 		VC_LOG_ERR("Unsupported symmetric crypto request type %u",
@@ -1301,11 +1707,21 @@ static __rte_always_inline struct vhost_virtqueue *
 vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 		struct vhost_virtqueue *old_vq)
 {
-	struct rte_mbuf *m_src = op->sym->m_src;
-	struct rte_mbuf *m_dst = op->sym->m_dst;
-	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(m_src);
+	struct rte_mbuf *m_src = NULL, *m_dst = NULL;
+	struct vhost_crypto_data_req *vc_req;
 	struct vhost_virtqueue *vq;
 	uint16_t used_idx, desc_idx;
+
+	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		m_src = op->sym->m_src;
+		m_dst = op->sym->m_dst;
+		vc_req = rte_mbuf_to_priv(m_src);
+	} else if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+		vc_req = rte_cryptodev_asym_session_get_user_data(op->asym->session);
+	} else {
+		VC_LOG_ERR("Invalid crypto op type");
+		return NULL;
+	}
 
 	if (unlikely(!vc_req)) {
 		VC_LOG_ERR("Failed to retrieve vc_req");
@@ -1328,10 +1744,11 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 	vq->used->ring[desc_idx].id = vq->avail->ring[desc_idx];
 	vq->used->ring[desc_idx].len = vc_req->len;
 
-	rte_mempool_put(m_src->pool, (void *)m_src);
-
-	if (m_dst)
-		rte_mempool_put(m_dst->pool, (void *)m_dst);
+	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		rte_mempool_put(m_src->pool, (void *)m_src);
+		if (m_dst)
+			rte_mempool_put(m_dst->pool, (void *)m_dst);
+	}
 
 	return vc_req->vq;
 }
@@ -1414,7 +1831,8 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 
 	vcrypto->sess_pool = sess_pool;
 	vcrypto->cid = cryptodev_id;
-	vcrypto->cache_session_id = UINT64_MAX;
+	vcrypto->cache_sym_session_id = UINT64_MAX;
+	vcrypto->cache_asym_session_id = UINT64_MAX;
 	vcrypto->last_session_id = 1;
 	vcrypto->dev = dev;
 	vcrypto->option = RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE;

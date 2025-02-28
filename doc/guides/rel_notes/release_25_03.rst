@@ -155,6 +155,10 @@ New Features
 
   Added network driver for the Yunsilicon metaScale serials NICs.
 
+* **Updated vhost library.**
+
+  Updated vhost library to support RSA crypto operations.
+
 * **Added ZTE Storage Data Accelerator (ZSDA) driver.**
 
   Added a compress driver for ZSDA devices
