@@ -33,6 +33,7 @@ Start the vhost_crypto example
     		--socket-file lcore,PATH
     		[--zero-copy]
     		[--guest-polling]
+    		[--asymmetric-crypto]
 
 where,
 
@@ -53,6 +54,11 @@ where,
 * guest-polling: the presence of this item means the application assumes the
   guest works in polling mode, thus will NOT notify the guest completion of
   processing.
+
+* asymmetric-crypto: the presence of this item means
+  the application can handle the asymmetric crypto requests.
+  When this option is used,
+  symmetric crypto requests can not be handled by the application.
 
 The application requires that crypto devices capable of performing
 the specified crypto operation are available on application initialization.
