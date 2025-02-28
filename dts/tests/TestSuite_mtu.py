@@ -48,8 +48,7 @@ class TestMtu(TestSuite):
         """Set up the test suite.
 
         Setup:
-            Set traffic generator MTU lengths to a size greater than scope of all
-            test cases.
+            Set traffic generator MTU lengths to a size greater than scope of all test cases.
         """
         self.topology.tg_port_egress.configure_mtu(JUMBO_MTU + 200)
         self.topology.tg_port_ingress.configure_mtu(JUMBO_MTU + 200)
@@ -89,12 +88,13 @@ class TestMtu(TestSuite):
         will not.
 
         First, start testpmd and update the MTU. Then ensure the new value appears
-        on port info for all ports.
-        Next, start packet capturing and send 3 different lengths of packet and verify
-        they are handled correctly.
-            # 1. VENDOR_AGNOSTIC_PADDING units smaller than the MTU specified.
-            # 2. Equal to the MTU specified.
-            # 3. VENDOR_AGNOSTIC_PADDING units larger than the MTU specified (should be fragmented).
+        on port info for all ports. Next, start packet capturing and send 3 different lengths of
+        packet and verify they are handled correctly:
+
+        1. VENDOR_AGNOSTIC_PADDING units smaller than the MTU specified.
+        2. Equal to the MTU specified.
+        3. VENDOR_AGNOSTIC_PADDING units larger than the MTU specified (should be fragmented).
+
         Finally, stop packet capturing.
 
         Args:
@@ -126,35 +126,35 @@ class TestMtu(TestSuite):
         """Verify runtime MTU adjustments and assess packet forwarding behavior.
 
         Test:
-            Start TestPMD in a paired topology.
-            Set port MTU to 1500.
-            Send packets of 1491, 1500 and 1509 bytes.
-                Verify the first two packets are forwarded and the last is dropped.
+            * Start TestPMD in a paired topology.
+            * Set port MTU to 1500.
+            * Send packets of 1491, 1500 and 1509 bytes.
+                * Verify the first two packets are forwarded and the last is dropped.
 
-            Set port MTU to 2400.
-            Send packets of 1491, 1500 and 1509 bytes.
-                Verify all three packets are forwarded.
-            Send packets of 2391, 2400 and 2409 bytes.
-                Verify the first two packets are forwarded and the last is dropped.
+            * Set port MTU to 2400.
+            * Send packets of 1491, 1500 and 1509 bytes.
+                * Verify all three packets are forwarded.
+            * Send packets of 2391, 2400 and 2409 bytes.
+                * Verify the first two packets are forwarded and the last is dropped.
 
-            Set port MTU to 4800.
-            Send packets of 1491, 1500 and 1509 bytes.
-                Verify all three packets are forwarded.
-            Send packets of 4791, 4800 and 4809 bytes.
-                Verify the first two packets are forwarded and the last is dropped.
+            * Set port MTU to 4800.
+            * Send packets of 1491, 1500 and 1509 bytes.
+                * Verify all three packets are forwarded.
+            * Send packets of 4791, 4800 and 4809 bytes.
+                * Verify the first two packets are forwarded and the last is dropped.
 
-            Set port MTU to 9000.
-            Send packets of 1491, 1500 and 1509 bytes.
-                Verify all three packets are forwarded.
-            Send packets of 8991, 9000 and 9009 bytes.
-                Verify the first two packets are forwarded and the last is dropped.
+            * Set port MTU to 9000.
+            * Send packets of 1491, 1500 and 1509 bytes.
+                * Verify all three packets are forwarded.
+            * Send packets of 8991, 9000 and 9009 bytes.
+                * Verify the first two packets are forwarded and the last is dropped.
         Verify:
-            Verifies the successful forwarding of packets via a search for an inserted payload.
-            If the payload is found, the packet was transmitted successfully. Otherwise, the packet
-            is considered dropped.
+            * Verifies the successful forwarding of packets via a search for an inserted payload.
+              If the payload is found, the packet was transmitted successfully. Otherwise, the
+              packet is considered dropped.
 
-            Verify that standard MTU packets forward, in addition to packets within the limits of
-            an MTU size set during runtime.
+            * Verify that standard MTU packets forward, in addition to packets within the limits of
+              an MTU size set during runtime.
         """
         with TestPmdShell(tx_offloads=0x8000, mbuf_size=[JUMBO_MTU + 200]) as testpmd:
             testpmd.set_port_mtu_all(1500, verify=True)
@@ -185,16 +185,16 @@ class TestMtu(TestSuite):
         """Assesses packet forwarding of standard MTU packets after pre-runtime MTU adjustments.
 
         Test:
-            Start TestPMD with MTU size of 1518 bytes, set pre-runtime.
-            Send packets of size 1491, 1500 and 1509 bytes.
-            Verify the first two packets are forwarded and the last is dropped.
+            * Start TestPMD with MTU size of 1518 bytes, set pre-runtime.
+            * Send packets of size 1491, 1500 and 1509 bytes.
+            * Verify the first two packets are forwarded and the last is dropped.
         Verify:
-            Verifies the successful forwarding of packets via a search for an inserted payload.
-            If the payload is found, the packet was transmitted successfully. Otherwise, the packet
-            is considered dropped.
+            * Verifies the successful forwarding of packets via a search for an inserted payload.
+              If the payload is found, the packet was transmitted successfully. Otherwise, the
+              packet is considered dropped.
 
-            Verify the first two packets are forwarded and the last is dropped after pre-runtime
-            MTU modification.
+            * Verify the first two packets are forwarded and the last is dropped after pre-runtime
+              MTU modification.
         """
         with TestPmdShell(
             tx_offloads=0x8000,
@@ -215,14 +215,14 @@ class TestMtu(TestSuite):
         """Assess packet forwarding of packets within the bounds of a pre-runtime MTU adjustment.
 
         Test:
-            Start TestPMD with MTU size of 9018 bytes, set pre-runtime.
-            Send packets of size 8991, 9000 and 1509 bytes.
+            * Start TestPMD with MTU size of 9018 bytes, set pre-runtime.
+            * Send packets of size 8991, 9000 and 1509 bytes.
         Verify:
-            Verifies the successful forwarding of packets via a search for an inserted payload.
-            If the payload is found, the packet was transmitted successfully. Otherwise, the packet
-            is considered dropped.
+            * Verifies the successful forwarding of packets via a search for an inserted payload.
+              If the payload is found, the packet was transmitted successfully. Otherwise, the
+              packet is considered dropped.
 
-            Verify that all packets are forwarded after pre-runtime MTU modification.
+            * Verify that all packets are forwarded after pre-runtime MTU modification.
         """
         with TestPmdShell(
             tx_offloads=0x8000,
@@ -241,16 +241,16 @@ class TestMtu(TestSuite):
         """Assess boundary of jumbo MTU value set pre-runtime.
 
         Test:
-            Start TestPMD with MTU size of 9018 bytes, set pre-runtime.
-            Send a packets of size 8991, 9000 and 9009 bytes.
-            Verify the first two packets are forwarded and the last is dropped.
+            * Start TestPMD with MTU size of 9018 bytes, set pre-runtime.
+            * Send a packets of size 8991, 9000 and 9009 bytes.
+            * Verify the first two packets are forwarded and the last is dropped.
         Verify:
-            Verifies the successful forwarding of packets via a search for an inserted payload.
-            If the payload is found, the packet was transmitted successfully. Otherwise, the packet
-            is considered dropped.
+            * Verifies the successful forwarding of packets via a search for an inserted payload.
+              If the payload is found, the packet was transmitted successfully. Otherwise, the
+              packet is considered dropped.
 
-            Verify the first two packets are forwarded and the last is dropped after pre-runtime
-            MTU modification.
+            * Verify the first two packets are forwarded and the last is dropped after pre-runtime
+              MTU modification.
         """
         with TestPmdShell(
             tx_offloads=0x8000,
