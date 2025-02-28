@@ -36,13 +36,13 @@ class TestDynamicConfig(TestSuite):
 
     1. Default mode: verify packets are received and forwarded.
     2. Disable promiscuous mode: verify that packets are received
-    only for the packet with destination address matching the port address.
+       only for the packet with destination address matching the port address.
     3. Disable promiscuous mode broadcast: verify that packets with destination
-    MAC address not matching the port are received and not forwarded, and verify
-    that broadcast packets are received and forwarded.
+       MAC address not matching the port are received and not forwarded, and verify
+       that broadcast packets are received and forwarded.
     4. Disable promiscuous mode multicast: verify that packets with destination
-    MAC address not matching the port are received and not forwarded, and verify
-    that multicast packets are received and forwarded.
+       MAC address not matching the port are received and not forwarded, and verify
+       that multicast packets are received and forwarded.
     """
 
     def send_packet_and_verify(self, should_receive: bool, mac_address: str) -> None:

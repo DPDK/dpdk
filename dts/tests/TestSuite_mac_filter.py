@@ -93,13 +93,13 @@ class TestMacFilter(TestSuite):
         the properties applied to the PMD at any given time.
 
         Test:
-            Start TestPMD without promiscuous mode.
-            Send a packet with the port's default mac address. (Should receive)
-            Send a packet with fake mac address. (Should not receive)
-            Add fake mac address to the PMD's address pool.
-            Send a packet with the fake mac address to the PMD. (Should receive)
-            Remove the fake mac address from the PMD's address pool.
-            Send a packet with the fake mac address to the PMD. (Should not receive)
+            * Start TestPMD without promiscuous mode.
+            * Send a packet with the port's default mac address. (Should receive)
+            * Send a packet with fake mac address. (Should not receive)
+            * Add fake mac address to the PMD's address pool.
+            * Send a packet with the fake mac address to the PMD. (Should receive)
+            * Remove the fake mac address from the PMD's address pool.
+            * Send a packet with the fake mac address to the PMD. (Should not receive)
         """
         with TestPmdShell() as testpmd:
             testpmd.set_promisc(0, enable=False)
@@ -127,15 +127,15 @@ class TestMacFilter(TestSuite):
         built-in hardware address, or exceed their address pools.
 
         Test:
-            Start TestPMD.
-            Attempt to add an invalid mac address. (Should fail)
-            Attempt to remove the device's hardware address with no additional addresses in the
-                address pool. (Should fail)
-            Add a fake mac address to the pool twice in succession. (Should not create any errors)
-            Attempt to remove the device's hardware address with other addresses in the address
-                pool. (Should fail)
-            Determine the device's mac address pool size, and fill the pool with fake addresses.
-            Attempt to add another fake mac address, overloading the address pool. (Should fail)
+            * Start TestPMD.
+            * Attempt to add an invalid mac address. (Should fail)
+            * Attempt to remove the device's hardware address with no additional addresses in the
+              address pool. (Should fail)
+            * Add a fake mac address to the pool twice in succession. (Should not create any errors)
+            * Attempt to remove the device's hardware address with other addresses in the address
+              pool. (Should fail)
+            * Determine the device's mac address pool size, and fill the pool with fake addresses.
+            * Attempt to add another fake mac address, overloading the address pool. (Should fail)
         """
         with TestPmdShell() as testpmd:
             testpmd.start()
@@ -185,11 +185,11 @@ class TestMacFilter(TestSuite):
         to the PMD.
 
         Test:
-            Start TestPMD without promiscuous mode.
-            Add a fake multicast address to the PMD's multicast address pool.
-            Send a packet with the fake multicast address to the PMD. (Should receive)
-            Remove the fake multicast address from the PMDs multicast address filter.
-            Send a packet with the fake multicast address to the PMD. (Should not receive)
+            * Start TestPMD without promiscuous mode.
+            * Add a fake multicast address to the PMD's multicast address pool.
+            * Send a packet with the fake multicast address to the PMD. (Should receive)
+            * Remove the fake multicast address from the PMDs multicast address filter.
+            * Send a packet with the fake multicast address to the PMD. (Should not receive)
         """
         with TestPmdShell() as testpmd:
             testpmd.start()
