@@ -141,7 +141,7 @@ def _load_and_parse_model(file_path: Path, model_type: type[T], ctx: ValidationC
             data = yaml.safe_load(f)
             return TypeAdapter(model_type).validate_python(data, context=cast(dict[str, Any], ctx))
         except ValidationError as e:
-            msg = f"failed to load the configuration file {file_path}"
+            msg = f"Failed to load the configuration file {file_path}."
             raise ConfigurationError(msg) from e
 
 
@@ -190,4 +190,4 @@ def load_config(ctx: ValidationContext) -> Configuration:
             {"test_run": test_run, "nodes": nodes, "tests_config": dict(tests_config)}, context=ctx
         )
     except ValidationError as e:
-        raise ConfigurationError("the configurations supplied are invalid") from e
+        raise ConfigurationError("The configurations supplied are invalid.") from e

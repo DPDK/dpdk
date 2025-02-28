@@ -11,8 +11,10 @@ The module is responsible for preparing DTS and running the test run.
 
 import os
 import sys
+import textwrap
 
 from framework.config.common import ValidationContext
+from framework.exception import ConfigurationError
 from framework.test_run import TestRun
 from framework.testbed_model.node import Node
 
@@ -37,7 +39,17 @@ class DTSRunner:
 
     def __init__(self):
         """Initialize the instance with configuration, logger, result and string constants."""
-        self._configuration = load_config(ValidationContext(settings=SETTINGS))
+        try:
+            self._configuration = load_config(ValidationContext(settings=SETTINGS))
+        except ConfigurationError as e:
+            if e.__cause__:
+                print(f"{e} Reason:", file=sys.stderr)
+                print(file=sys.stderr)
+                print(textwrap.indent(str(e.__cause__), prefix=" " * 2), file=sys.stderr)
+            else:
+                print(e, file=sys.stderr)
+            sys.exit(e.severity)
+
         self._logger = get_dts_logger()
         if not os.path.exists(SETTINGS.output_dir):
             os.makedirs(SETTINGS.output_dir)

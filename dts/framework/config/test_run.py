@@ -445,7 +445,7 @@ class DPDKRuntimeConfiguration(FrozenModel):
 class DPDKConfiguration(DPDKRuntimeConfiguration):
     """The DPDK configuration needed to test."""
 
-    #: The DPDKD build configuration used to test.
+    #: The DPDK build configuration used to test.
     build: DPDKBuildConfiguration
 
 
