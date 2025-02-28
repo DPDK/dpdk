@@ -17,6 +17,7 @@ The configuration files are split in:
       defining what tests are going to be run and how DPDK will be built. It also references
       the testbed where these tests and DPDK are going to be run,
     * A list of the nodes of the testbed which ar represented by :class:`~.node.NodeConfiguration`.
+    * A dictionary mapping test suite names to their corresponding configurations.
 
 The real-time information about testbed is supposed to be gathered at runtime.
 
@@ -27,8 +28,9 @@ Nearly all of them are frozen:
       and makes it thread safe should we ever want to move in that direction.
 """
 
+import os
 from pathlib import Path
-from typing import Annotated, Any, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar, cast
 
 import yaml
 from pydantic import Field, TypeAdapter, ValidationError, model_validator
@@ -38,7 +40,11 @@ from framework.exception import ConfigurationError
 
 from .common import FrozenModel, ValidationContext
 from .node import NodeConfiguration
-from .test_run import TestRunConfiguration
+from .test_run import TestRunConfiguration, create_test_suites_config_model
+
+# Import only if type checking or building docs, to prevent circular imports.
+if TYPE_CHECKING or os.environ.get("DTS_DOC_BUILD"):
+    from framework.test_suite import BaseConfig
 
 NodesConfig = Annotated[list[NodeConfiguration], Field(min_length=1)]
 
@@ -50,6 +56,8 @@ class Configuration(FrozenModel):
     test_run: TestRunConfiguration
     #: Node configurations.
     nodes: NodesConfig
+    #: Test suites custom configurations.
+    tests_config: dict[str, "BaseConfig"]
 
     @model_validator(mode="after")
     def validate_node_names(self) -> Self:
@@ -127,7 +135,7 @@ class Configuration(FrozenModel):
 T = TypeVar("T")
 
 
-def _load_and_parse_model(file_path: Path, model_type: T, ctx: ValidationContext) -> T:
+def _load_and_parse_model(file_path: Path, model_type: type[T], ctx: ValidationContext) -> T:
     with open(file_path) as f:
         try:
             data = yaml.safe_load(f)
@@ -154,9 +162,32 @@ def load_config(ctx: ValidationContext) -> Configuration:
     test_run = _load_and_parse_model(
         ctx["settings"].test_run_config_path, TestRunConfiguration, ctx
     )
+
+    TestSuitesConfiguration = create_test_suites_config_model(test_run.test_suites)
+    if ctx["settings"].tests_config_path:
+        tests_config = _load_and_parse_model(
+            ctx["settings"].tests_config_path,
+            TestSuitesConfiguration,
+            ctx,
+        )
+    else:
+        try:
+            tests_config = TestSuitesConfiguration()
+        except ValidationError as e:
+            raise ConfigurationError(
+                "A test suites' configuration file is required for the given test run. "
+                "The following selected test suites require manual configuration: "
+                + ", ".join(str(error["loc"][0]) for error in e.errors())
+            )
+
     nodes = _load_and_parse_model(ctx["settings"].nodes_config_path, NodesConfig, ctx)
 
     try:
-        return Configuration.model_validate({"test_run": test_run, "nodes": nodes}, context=ctx)
+        from framework.test_suite import BaseConfig as BaseConfig
+
+        Configuration.model_rebuild()
+        return Configuration.model_validate(
+            {"test_run": test_run, "nodes": nodes, "tests_config": dict(tests_config)}, context=ctx
+        )
     except ValidationError as e:
         raise ConfigurationError("the configurations supplied are invalid") from e
