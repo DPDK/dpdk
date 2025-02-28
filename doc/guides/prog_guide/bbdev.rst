@@ -13,7 +13,8 @@ optimized libraries to appear as virtual bbdev devices.
 The functional scope of the BBDEV library are those functions in relation to
 the 3GPP Layer 1 signal processing (channel coding, modulation, ...).
 
-The framework currently only supports FEC function.
+The framework currently supports FEC functions (5G/4G encoder/decoder),
+as well as FFT and MLD-TS.
 
 
 Design Principles
