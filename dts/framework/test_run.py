@@ -118,7 +118,7 @@ from framework.logger import DTSLogger, get_dts_logger
 from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvironment
 from framework.settings import SETTINGS
 from framework.test_result import BaseResult, Result, TestCaseResult, TestRunResult, TestSuiteResult
-from framework.test_suite import TestCase, TestSuite
+from framework.test_suite import BaseConfig, TestCase, TestSuite
 from framework.testbed_model.capability import (
     Capability,
     get_supported_capabilities,
@@ -128,7 +128,7 @@ from framework.testbed_model.node import Node
 from framework.testbed_model.topology import PortLink, Topology
 from framework.testbed_model.traffic_generator import create_traffic_generator
 
-TestScenario = tuple[type[TestSuite], deque[type[TestCase]]]
+TestScenario = tuple[type[TestSuite], BaseConfig, deque[type[TestCase]]]
 
 
 class TestRun:
@@ -176,11 +176,18 @@ class TestRun:
     remaining_test_cases: deque[type[TestCase]]
     supported_capabilities: set[Capability]
 
-    def __init__(self, config: TestRunConfiguration, nodes: Iterable[Node], result: TestRunResult):
+    def __init__(
+        self,
+        config: TestRunConfiguration,
+        tests_config: dict[str, BaseConfig],
+        nodes: Iterable[Node],
+        result: TestRunResult,
+    ):
         """Test run constructor.
 
         Args:
             config: The test run's own configuration.
+            tests_config: The test run's test suites configurations.
             nodes: A reference to all the available nodes.
             result: A reference to the test run result object.
         """
@@ -201,7 +208,7 @@ class TestRun:
 
         self.ctx = Context(sut_node, tg_node, topology, dpdk_runtime_env, traffic_generator)
         self.result = result
-        self.selected_tests = list(self.config.filter_tests())
+        self.selected_tests = list(self.config.filter_tests(tests_config))
         self.blocked = False
         self.remaining_tests = deque()
         self.remaining_test_cases = deque()
@@ -214,7 +221,7 @@ class TestRun:
         """The capabilities required to run this test run in its totality."""
         caps = set()
 
-        for test_suite, test_cases in self.selected_tests:
+        for test_suite, _, test_cases in self.selected_tests:
             caps.update(test_suite.required_capabilities)
             for test_case in test_cases:
                 caps.update(test_case.required_capabilities)
@@ -371,8 +378,10 @@ class TestRunExecution(State):
         """Next state."""
         test_run = self.test_run
         try:
-            test_suite_class, test_run.remaining_test_cases = test_run.remaining_tests.popleft()
-            test_suite = test_suite_class()
+            test_suite_class, test_config, test_run.remaining_test_cases = (
+                test_run.remaining_tests.popleft()
+            )
+            test_suite = test_suite_class(test_config)
             test_suite_result = test_run.result.add_test_suite(test_suite.name)
 
             if test_run.blocked:

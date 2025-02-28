@@ -24,6 +24,11 @@ The command line arguments along with the supported environment variables are:
 
     The path to the YAML configuration file of the nodes.
 
+.. option:: --tests-config-file
+.. envvar:: DTS_TESTS_CFG_FILE
+
+    The path to the YAML configuration file of the test suites.
+
 .. option:: --output-dir, --output
 .. envvar:: DTS_OUTPUT_DIR
 
@@ -128,6 +133,8 @@ class Settings:
     test_run_config_path: Path = Path(__file__).parent.parent.joinpath("test_run.yaml")
     #:
     nodes_config_path: Path = Path(__file__).parent.parent.joinpath("nodes.yaml")
+    #:
+    tests_config_path: Path | None = None
     #:
     output_dir: str = "output"
     #:
@@ -341,6 +348,16 @@ def _get_parser() -> _DTSArgumentParser:
         dest="nodes_config_path",
     )
     _add_env_var_to_action(action, "NODES_CFG_FILE")
+
+    action = parser.add_argument(
+        "--tests-config-file",
+        default=SETTINGS.tests_config_path,
+        type=Path,
+        help="Configuration file used to override variable values inside specific test suites.",
+        metavar="FILE_PATH",
+        dest="tests_config_path",
+    )
+    _add_env_var_to_action(action, "TESTS_CFG_FILE")
 
     action = parser.add_argument(
         "--output-dir",

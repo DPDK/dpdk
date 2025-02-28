@@ -18,7 +18,13 @@ from functools import cached_property
 from pathlib import Path, PurePath
 from typing import Annotated, Any, Literal, NamedTuple
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    create_model,
+    field_validator,
+    model_validator,
+)
 from typing_extensions import TYPE_CHECKING, Self
 
 from framework.exception import InternalError
@@ -27,7 +33,7 @@ from framework.utils import REGEX_FOR_PORT_LINK, StrEnum
 from .common import FrozenModel, load_fields_from_settings
 
 if TYPE_CHECKING:
-    from framework.test_suite import TestCase, TestSuite, TestSuiteSpec
+    from framework.test_suite import BaseConfig, TestCase, TestSuite, TestSuiteSpec
 
 
 @unique
@@ -283,6 +289,27 @@ def fetch_all_test_suites() -> list[TestSuiteConfig]:
     ]
 
 
+def make_test_suite_config_field(config_obj: type["BaseConfig"]):
+    """Make a field for a test suite's configuration.
+
+    If the test suite's configuration has required fields, then make the field required. Otherwise
+    make it optional.
+    """
+    if any(f.is_required() for f in config_obj.model_fields.values()):
+        return config_obj, Field()
+    else:
+        return config_obj, Field(default_factory=config_obj)
+
+
+def create_test_suites_config_model(test_suites: Iterable[TestSuiteConfig]) -> type[BaseModel]:
+    """Create model for the test suites configuration."""
+    test_suites_kwargs = {
+        t.test_suite_name: make_test_suite_config_field(t.test_suite_spec.config_obj)
+        for t in test_suites
+    }
+    return create_model("TestSuitesConfiguration", **test_suites_kwargs)
+
+
 class LinkPortIdentifier(NamedTuple):
     """A tuple linking test run node type to port name."""
 
@@ -455,8 +482,8 @@ class TestRunConfiguration(FrozenModel):
     )
 
     def filter_tests(
-        self,
-    ) -> Iterable[tuple[type["TestSuite"], deque[type["TestCase"]]]]:
+        self, tests_config: dict[str, "BaseConfig"]
+    ) -> Iterable[tuple[type["TestSuite"], "BaseConfig", deque[type["TestCase"]]]]:
         """Filter test suites and cases selected for execution."""
         from framework.test_suite import TestCaseType
 
@@ -470,6 +497,7 @@ class TestRunConfiguration(FrozenModel):
         return (
             (
                 t.test_suite_spec.class_obj,
+                tests_config[t.test_suite_name],
                 deque(
                     tt
                     for tt in t.test_cases

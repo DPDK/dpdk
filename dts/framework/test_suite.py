@@ -31,6 +31,7 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Packet, Padding, raw
 from typing_extensions import Self
 
+from framework.config.common import FrozenModel
 from framework.testbed_model.capability import TestProtocol
 from framework.testbed_model.topology import Topology
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
@@ -44,6 +45,10 @@ from .utils import get_packet_summaries, to_pascal_case
 
 if TYPE_CHECKING:
     from framework.context import Context
+
+
+class BaseConfig(FrozenModel):
+    """Base for a custom test suite configuration."""
 
 
 class TestSuite(TestProtocol):
@@ -70,7 +75,12 @@ class TestSuite(TestProtocol):
 
     The test suite is aware of the testbed (the SUT and TG) it's running on. From this, it can
     properly choose the IP addresses and other configuration that must be tailored to the testbed.
+
+    Attributes:
+        config: The test suite configuration.
     """
+
+    config: BaseConfig
 
     #: Whether the test suite is blocking. A failure of a blocking test suite
     #: will block the execution of all subsequent test suites in the current test run.
@@ -82,19 +92,15 @@ class TestSuite(TestProtocol):
     _tg_ip_address_ingress: Union[IPv4Interface, IPv6Interface]
     _tg_ip_address_egress: Union[IPv4Interface, IPv6Interface]
 
-    def __init__(self):
+    def __init__(self, config: BaseConfig):
         """Initialize the test suite testbed information and basic configuration.
 
-        Find links between ports and set up default IP addresses to be used when
-        configuring them.
-
         Args:
-            sut_node: The SUT node where the test suite will run.
-            tg_node: The TG node where the test suite will run.
-            topology: The topology where the test suite will run.
+            config: The test suite configuration.
         """
         from framework.context import get_ctx
 
+        self.config = config
         self._ctx = get_ctx()
         self._logger = get_dts_logger(self.__class__.__name__)
         self._sut_ip_address_ingress = ip_interface("192.168.100.2/24")
@@ -677,6 +683,11 @@ class TestSuiteSpec:
         raise InternalError(
             f"Expected class {self.class_name} not found in module {self.module_name}."
         )
+
+    @cached_property
+    def config_obj(self) -> type[BaseConfig]:
+        """A reference to the test suite's configuration class."""
+        return self.class_obj.__annotations__.get("config", BaseConfig)
 
     @classmethod
     def discover_all(

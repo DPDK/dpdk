@@ -228,9 +228,10 @@ DTS is run with ``main.py`` located in the ``dts`` directory after entering Poet
 .. code-block:: console
 
    (dts-py3.10) $ ./main.py --help
-   usage: main.py [-h] [--test-run-config-file FILE_PATH] [--nodes-config-file FILE_PATH] [--output-dir DIR_PATH] [-t SECONDS] [-v]
-                  [--dpdk-tree DIR_PATH | --tarball FILE_PATH] [--remote-source] [--precompiled-build-dir DIR_NAME]
-                  [--compile-timeout SECONDS] [--test-suite TEST_SUITE [TEST_CASES ...]] [--re-run N_TIMES] [--random-seed NUMBER]
+   usage: main.py [-h] [--test-run-config-file FILE_PATH] [--nodes-config-file FILE_PATH] [--tests-config-file FILE_PATH]
+                  [--output-dir DIR_PATH] [-t SECONDS] [-v] [--dpdk-tree DIR_PATH | --tarball FILE_PATH] [--remote-source]
+                  [--precompiled-build-dir DIR_NAME] [--compile-timeout SECONDS] [--test-suite TEST_SUITE [TEST_CASES ...]]
+                  [--re-run N_TIMES] [--random-seed NUMBER]
 
    Run DPDK test suites. All options may be specified with the environment variables provided in brackets. Command line arguments have higher
    priority.
@@ -241,6 +242,8 @@ DTS is run with ``main.py`` located in the ``dts`` directory after entering Poet
                            [DTS_TEST_RUN_CFG_FILE] The configuration file that describes the test cases and DPDK build options. (default: test-run.conf.yaml)
      --nodes-config-file FILE_PATH
                            [DTS_NODES_CFG_FILE] The configuration file that describes the SUT and TG nodes. (default: nodes.conf.yaml)
+     --tests-config-file FILE_PATH
+                           [DTS_TESTS_CFG_FILE] Configuration file used to override variable values inside specific test suites. (default: None)
      --output-dir DIR_PATH, --output DIR_PATH
                            [DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved. (default: output)
      -t SECONDS, --timeout SECONDS

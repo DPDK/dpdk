@@ -60,7 +60,12 @@ class DTSRunner:
                 nodes.append(Node(node_config))
 
             test_run_result = self._result.add_test_run(self._configuration.test_run)
-            test_run = TestRun(self._configuration.test_run, nodes, test_run_result)
+            test_run = TestRun(
+                self._configuration.test_run,
+                self._configuration.tests_config,
+                nodes,
+                test_run_result,
+            )
             test_run.spin()
 
         except Exception as e:
