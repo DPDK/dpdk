@@ -1,6 +1,51 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2020 Intel Corporation
 
+cc_has_avx512 = false
+target_has_avx512 = false
+
+dpdk_conf.set('RTE_ARCH_X86', 1)
+if dpdk_conf.get('RTE_ARCH_64')
+    dpdk_conf.set('RTE_ARCH_X86_64', 1)
+    dpdk_conf.set('RTE_ARCH', 'x86_64')
+else
+    dpdk_conf.set('RTE_ARCH_I686', 1)
+    dpdk_conf.set('RTE_ARCH', 'i686')
+endif
+
+dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
+dpdk_conf.set('RTE_MAX_LCORE', 128)
+
+epyc_zen_cores = {
+    '__znver5__':768,
+    '__znver4__':512,
+    '__znver3__':256,
+    '__znver2__':256,
+    '__znver1__':128
+    }
+
+if cpu_instruction_set == 'native'
+    foreach m:epyc_zen_cores.keys()
+        if cc.get_define(m, args: machine_args) != ''
+            dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
+            break
+        endif
+    endforeach
+else
+    foreach m:epyc_zen_cores.keys()
+        if m.contains(cpu_instruction_set)
+            dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
+            break
+        endif
+    endforeach
+endif
+
+dpdk_conf.set('RTE_MAX_NUMA_NODES', 32)
+
+if is_ms_compiler
+    subdir_done()
+endif
+
 # get binutils version for the workaround of Bug 97
 binutils_ok = true
 if is_linux or cc.get_id() == 'gcc'
@@ -15,8 +60,6 @@ if is_linux or cc.get_id() == 'gcc'
 endif
 
 cc_avx512_flags = ['-mavx512f', '-mavx512vl', '-mavx512dq', '-mavx512bw']
-cc_has_avx512 = false
-target_has_avx512 = false
 if (binutils_ok and cc.has_multi_arguments(cc_avx512_flags)
         and '-mno-avx512f' not in get_option('c_args'))
     # check if compiler is working with _mm512_extracti64x4_epi64
@@ -82,43 +125,3 @@ foreach f:optional_flags
         compile_time_cpuflags += ['RTE_CPUFLAG_' + f]
     endif
 endforeach
-
-
-dpdk_conf.set('RTE_ARCH_X86', 1)
-if dpdk_conf.get('RTE_ARCH_64')
-    dpdk_conf.set('RTE_ARCH_X86_64', 1)
-    dpdk_conf.set('RTE_ARCH', 'x86_64')
-else
-    dpdk_conf.set('RTE_ARCH_I686', 1)
-    dpdk_conf.set('RTE_ARCH', 'i686')
-endif
-
-dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
-dpdk_conf.set('RTE_MAX_LCORE', 128)
-
-epyc_zen_cores = {
-    '__znver5__':768,
-    '__znver4__':512,
-    '__znver3__':256,
-    '__znver2__':256,
-    '__znver1__':128
-    }
-
-cpu_instruction_set = get_option('cpu_instruction_set')
-if cpu_instruction_set == 'native'
-    foreach m:epyc_zen_cores.keys()
-        if cc.get_define(m, args: machine_args) != ''
-            dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
-            break
-        endif
-    endforeach
-else
-    foreach m:epyc_zen_cores.keys()
-        if m.contains(cpu_instruction_set)
-            dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
-            break
-        endif
-    endforeach
-endif
-
-dpdk_conf.set('RTE_MAX_NUMA_NODES', 32)
