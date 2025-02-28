@@ -151,6 +151,9 @@ New Features
 
   See the :doc:`../compressdevs/zsda` guide for more details on the new driver.
 
+* **Updated vhost library.**
+
+  Updated vhost library to support RSA crypto operations.
 
 Removed Items
 -------------
