@@ -33,6 +33,11 @@ if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok
     # compiler flags, and then have the .o file from static lib
     # linked into main lib.
 
+    member_avx512_args = cc_avx512_flags
+    if not is_ms_compiler
+            member_avx512_args += '-mavx512ifma'
+    endif
+
     # check if all required flags already enabled
     sketch_avx512_flags = ['__AVX512F__', '__AVX512DQ__', '__AVX512IFMA__']
 
@@ -46,13 +51,12 @@ if dpdk_conf.has('RTE_ARCH_X86_64') and binutils_ok
     if sketch_avx512_on == true
         cflags += ['-DCC_AVX512_SUPPORT']
         sources += files('rte_member_sketch_avx512.c')
-    elif cc.has_multi_arguments('-mavx512f', '-mavx512dq', '-mavx512ifma')
+    elif cc.has_multi_arguments(member_avx512_args)
         sketch_avx512_tmp = static_library('sketch_avx512_tmp',
             'rte_member_sketch_avx512.c',
             include_directories: includes,
             dependencies: [static_rte_eal, static_rte_hash],
-            c_args: cflags +
-                ['-mavx512f', '-mavx512dq', '-mavx512ifma'])
+            c_args: cflags + member_avx512_args)
         objs += sketch_avx512_tmp.extract_objects('rte_member_sketch_avx512.c')
         cflags += ['-DCC_AVX512_SUPPORT']
     endif
