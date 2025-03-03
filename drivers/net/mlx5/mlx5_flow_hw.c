@@ -589,87 +589,6 @@ flow_hw_hashfields_set(struct mlx5_flow_rss_desc *rss_desc,
 	*hash_fields |= fields;
 }
 
-/**
- * Generate the matching pattern item flags.
- *
- * @param[in] items
- *   Pointer to the list of items.
- *
- * @return
- *   Matching item flags. RSS hash field function
- *   silently ignores the flags which are unsupported.
- */
-static uint64_t
-flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
-{
-	uint64_t item_flags = 0;
-	uint64_t last_item = 0;
-
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		enum rte_flow_item_flex_tunnel_mode tunnel_mode = FLEX_TUNNEL_MODE_SINGLE;
-		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
-		int item_type = items->type;
-
-		switch (item_type) {
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
-					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
-			break;
-		case RTE_FLOW_ITEM_TYPE_TCP:
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
-					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
-					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
-			last_item = tunnel ? MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT :
-					     MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE:
-			last_item = MLX5_FLOW_LAYER_GRE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			last_item = MLX5_FLOW_LAYER_GRE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			last_item = MLX5_FLOW_LAYER_VXLAN;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GENEVE:
-			last_item = MLX5_FLOW_LAYER_GENEVE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_MPLS:
-			last_item = MLX5_FLOW_LAYER_MPLS;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GTP:
-			last_item = MLX5_FLOW_LAYER_GTP;
-			break;
-		case RTE_FLOW_ITEM_TYPE_COMPARE:
-			last_item = MLX5_FLOW_ITEM_COMPARE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_FLEX:
-			mlx5_flex_get_tunnel_mode(items, &tunnel_mode);
-			last_item = tunnel_mode == FLEX_TUNNEL_MODE_TUNNEL ?
-					MLX5_FLOW_ITEM_FLEX_TUNNEL :
-					tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
-						MLX5_FLOW_ITEM_OUTER_FLEX;
-			break;
-		default:
-			break;
-		}
-		item_flags |= last_item;
-	}
-	return item_flags;
-}
-
 static uint64_t
 flow_hw_action_flags_get(const struct rte_flow_action actions[],
 			 const struct rte_flow_action **qrss,
@@ -14295,7 +14214,7 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	struct rte_flow_hw *prfx_flow = NULL;
 	const struct rte_flow_action *qrss = NULL;
 	const struct rte_flow_action *mark = NULL;
-	uint64_t item_flags = flow_hw_matching_item_flags_get(items);
+	uint64_t item_flags = 0;
 	uint64_t action_flags = flow_hw_action_flags_get(actions, &qrss, &mark,
 							 &encap_idx, &actions_n, error);
 	struct mlx5_flow_hw_split_resource resource = {
@@ -14306,11 +14225,18 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 		},
 	};
 	struct rte_flow_error shadow_error = {0, };
+	const struct rte_flow_pattern_template_attr pattern_template_attr = {
+		.relaxed_matching = 0,
+		.ingress = attr->ingress,
+		.egress = attr->egress,
+		.transfer = attr->transfer,
+	};
 
-	/*
-	 * TODO: add a call to flow_hw_validate function once it exist.
-	 * and update mlx5_flow_hw_drv_ops accordingly.
-	 */
+	/* Validate application items only */
+	ret = flow_hw_pattern_validate(dev, &pattern_template_attr, items,
+						&item_flags, error);
+	if (ret < 0)
+		return 0;
 
 	RTE_SET_USED(encap_idx);
 	if (!error)
