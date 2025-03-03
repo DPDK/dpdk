@@ -210,6 +210,13 @@ flow_hw_allocate_actions(struct rte_eth_dev *dev,
 			 uint64_t action_flags,
 			 struct rte_flow_error *error);
 
+static int
+flow_hw_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[],
+		 bool external __rte_unused, int hairpin __rte_unused,
+		 struct rte_flow_error *error);
+
 bool
 mlx5_hw_ctx_validate(const struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
@@ -15397,10 +15404,57 @@ flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
 	return 0;
 }
 
+/**
+ * Internal validation function. For validating both actions and items.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[in] hairpin
+ *   Number of hairpin TX actions, 0 means classic flow.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[] __rte_unused,
+		 bool external, int hairpin __rte_unused,
+		 struct rte_flow_error *error)
+{
+	const struct rte_flow_pattern_template_attr pattern_template_attr = {
+		.relaxed_matching = 0,
+		.ingress = attr->ingress,
+		.egress = attr->egress,
+		.transfer = attr->transfer,
+	};
+	uint64_t item_flags = 0;
+	int ret = 0;
+
+	if (external) {
+		/* Validate application items only */
+		ret = flow_hw_pattern_validate(dev, &pattern_template_attr, items,
+						    &item_flags, error);
+		if (ret < 0)
+			return -rte_errno;
+	}
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.list_create = flow_hw_list_create,
 	.list_destroy = flow_hw_list_destroy,
-	.validate = flow_dv_validate,
+	.validate = flow_hw_validate,
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
 	.pattern_validate = flow_hw_pattern_validate,
