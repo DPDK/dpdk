@@ -13763,6 +13763,7 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	table->cfg.external = external;
 	table->nb_action_templates = 1;
 	memcpy(&table->cfg.attr.flow_attr, attr, sizeof(*attr));
+	table->cfg.attr.flow_attr.group = src_group;
 	table->ats[0].action_template = at;
 	ret = __flow_hw_translate_actions_template(dev, &table->cfg, hw_acts, at,
 						   &table->mpctx, true, error);
