@@ -14448,6 +14448,64 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+flow_dv_translate_items_geneve_opt_nta(struct rte_eth_dev *dev,
+				   const struct rte_flow_item *items,
+				   struct mlx5_flow_attr *attr,
+				   struct rte_flow_error *error)
+{
+	rte_be32_t geneve_mask = 0xffffffff;
+	struct rte_pmd_mlx5_geneve_tlv geneve_tlv = {
+		/* Take from item spec, if changed, destroy and add new parser. */
+		.option_class			= 0,
+		/* Take from item spec, if changed, destroy and add new parser. */
+		.option_type			= 0,
+		/* 1DW is supported. */
+		.option_len			= 1,
+		.match_on_class_mode		= 1,
+		.offset				= 0,
+		.sample_len			= 1,
+		.match_data_mask		= &geneve_mask
+	};
+	const struct rte_flow_item_geneve_opt *geneve_opt_v = items->spec;
+	const struct rte_flow_item_geneve_opt *geneve_opt_m = items->mask;
+	void *geneve_parser;
+	struct mlx5_priv *priv = dev->data->dev_private;
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+	struct mlx5_geneve_tlv_option *option;
+#endif
+
+	/* option length is not as supported. */
+	if ((geneve_opt_v->option_len & geneve_opt_m->option_len) > geneve_tlv.option_len)
+		return rte_flow_error_set(error, ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM, items,
+			" GENEVE OPT length is not supported ");
+	geneve_tlv.option_class = geneve_opt_v->option_class & geneve_opt_m->option_class;
+	geneve_tlv.option_type = geneve_opt_v->option_type & geneve_opt_m->option_type;
+	/* if parser doesn't exist */
+	if (!priv->tlv_options) {
+		/* Create a GENEVE option parser. */
+		geneve_parser = mlx5_geneve_tlv_parser_create(attr->port_id,
+						&geneve_tlv, 1);
+		if (!geneve_parser)
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, items,
+				" GENEVE OPT parser creation failed ");
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+	} else {
+		/* Check if option exist in current parser. */
+		option = mlx5_geneve_tlv_option_get(priv,
+						geneve_tlv.option_type,
+						geneve_tlv.option_class);
+		if (!option)
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, items,
+				" GENEVE OPT configured does not match this rule class/type");
+#endif
+	}
+	return 0;
+}
+
 /**
  * Fill the flow matcher with DV spec for items supported in non template mode.
  *
@@ -14472,6 +14530,7 @@ flow_dv_translate_items_nta(struct rte_eth_dev *dev,
 			const struct rte_flow_item *items,
 			struct mlx5_dv_matcher_workspace *wks,
 			void *key, uint32_t key_type,
+			struct mlx5_flow_attr *attr,
 			struct rte_flow_error *error)
 {
 	int item_type;
@@ -14491,6 +14550,12 @@ flow_dv_translate_items_nta(struct rte_eth_dev *dev,
 	case RTE_FLOW_ITEM_TYPE_FLEX:
 		mlx5_flex_flow_translate_item(dev, key, flex_item_key.buf, items, tunnel != 0);
 		wks->last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX : MLX5_FLOW_ITEM_OUTER_FLEX;
+		break;
+	case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
+		ret = flow_dv_translate_items_geneve_opt_nta(dev, items, attr, error);
+		if (ret)
+			return ret;
+		wks->last_item = MLX5_FLOW_LAYER_GENEVE_OPT;
 		break;
 	default:
 		ret = flow_dv_translate_items(dev, items, wks, key, key_type,  error);
@@ -14562,12 +14627,12 @@ __flow_dv_translate_items_hws(const struct rte_flow_item *items,
 		/* Non template flow. */
 		if (nt_flow) {
 			ret = flow_dv_translate_items_nta(&rte_eth_devices[attr->port_id],
-							  items, &wks, key, key_type,  NULL);
+							  items, &wks, key, key_type, attr, error);
 			if (ret)
 				goto exit;
 		} else {
 			ret = flow_dv_translate_items(&rte_eth_devices[attr->port_id],
-						      items, &wks, key, key_type,  NULL);
+						      items, &wks, key, key_type, error);
 			if (ret)
 				goto exit;
 		}

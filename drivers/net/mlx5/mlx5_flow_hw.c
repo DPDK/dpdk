@@ -14035,9 +14035,9 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	/* TODO TBD flow_hw_handle_tunnel_offload(). */
 	(*flow)->nt_rule = true;
 	(*flow)->nt2hws->matcher = &matcher;
-	ret = flow_dv_translate_items_hws(items, &flow_attr, &matcher.mask.buf,
-					MLX5_SET_MATCHER_HS_M, NULL,
-					NULL, error);
+	ret = __flow_dv_translate_items_hws(items, &flow_attr, &matcher.mask.buf,
+					    MLX5_SET_MATCHER_HS_M, NULL,
+					    NULL, true, error);
 
 	if (ret)
 		goto error;

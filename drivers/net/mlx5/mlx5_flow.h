@@ -2159,6 +2159,23 @@ flow_hw_get_port_id_from_ctx(void *dr_ctx, uint32_t *port_val)
 }
 
 /**
+ * Get GENEVE TLV option matching to given type and class.
+ *
+ * @param priv
+ *   Pointer to port's private data.
+ * @param type
+ *   GENEVE option type.
+ * @param class
+ *   GENEVE option class.
+ *
+ * @return
+ *   Pointer to option structure if exist, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_geneve_tlv_option *
+mlx5_geneve_tlv_option_get(const struct mlx5_priv *priv, uint8_t type,
+			    uint16_t class);
+
+/**
  * Get GENEVE TLV option FW information according type and class.
  *
  * @param[in] dr_ctx
