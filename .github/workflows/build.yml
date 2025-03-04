@@ -11,7 +11,7 @@ defaults:
 
 env:
   REF_GIT_BRANCH: main
-  REF_GIT_REPO: https://dpdk.org/git/dpdk
+  REF_GIT_REPO: https://github.com/DPDK/dpdk
   REF_GIT_TAG: none
 
 jobs:
