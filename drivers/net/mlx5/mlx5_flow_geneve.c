@@ -97,7 +97,7 @@ option_match_type_and_class(uint8_t type, uint16_t class,
  * @return
  *   Pointer to option structure if exist, NULL otherwise and rte_errno is set.
  */
-static struct mlx5_geneve_tlv_option *
+struct mlx5_geneve_tlv_option *
 mlx5_geneve_tlv_option_get(const struct mlx5_priv *priv, uint8_t type,
 			   uint16_t class)
 {

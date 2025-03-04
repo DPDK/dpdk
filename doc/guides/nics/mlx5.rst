@@ -279,6 +279,11 @@ Limitations
        which results in L3 encap.
     d. Only in transfer (switchdev) mode.
 
+  - When using synchronous flow API,
+    the following limitations and considerations apply:
+
+    - Geneve options is supported when ``FLEX_PARSER_PROFILE_ENABLE`` = 0 (default).
+
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
 
