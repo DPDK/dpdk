@@ -30,14 +30,6 @@
 extern "C" {
 #endif
 
-#ifdef RTE_ARCH_X86
-/* Byte swap mask used for converting IPv6 address
- * 4-byte chunks to CPU byte order
- */
-static const __m128i rte_thash_ipv6_bswap_mask = {
-		0x0405060700010203ULL, 0x0C0D0E0F08090A0BULL};
-#endif
-
 /**
  * length in dwords of input tuple to
  * calculate hash of ipv4 header only
@@ -159,6 +151,11 @@ rte_thash_load_v6_addrs(const struct rte_ipv6_hdr *orig,
 			union rte_thash_tuple *targ)
 {
 #ifdef RTE_ARCH_X86
+	/* Byte swap mask used for converting IPv6 address
+	 * 4-byte chunks to CPU byte order
+	 */
+	const __m128i rte_thash_ipv6_bswap_mask = _mm_set_epi64x(
+		0x0C0D0E0F08090A0BULL, 0x0405060700010203ULL);
 	__m128i ipv6 = _mm_loadu_si128((const __m128i *)&orig->src_addr);
 	*(__m128i *)&targ->v6.src_addr =
 			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
