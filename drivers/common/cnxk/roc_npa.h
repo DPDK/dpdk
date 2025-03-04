@@ -767,7 +767,8 @@ int __roc_api roc_npa_dev_init(struct roc_npa *roc_npa);
 int __roc_api roc_npa_dev_fini(struct roc_npa *roc_npa);
 
 /* Flags to pool create */
-#define ROC_NPA_ZERO_AURA_F BIT(0)
+#define ROC_NPA_ZERO_AURA_F	    BIT(0)
+#define ROC_NPA_FORCE_OPAQUE_MODE_F BIT(1)
 
 /* Enumerations */
 enum roc_npa_buf_type {
