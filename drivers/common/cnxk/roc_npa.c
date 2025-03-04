@@ -669,6 +669,9 @@ roc_npa_pool_create(uint64_t *aura_handle, uint32_t block_size,
 		pool = &defpool;
 	}
 
+	if (flags & ROC_NPA_FORCE_OPAQUE_MODE_F)
+		pool->nat_align = 0;
+
 	rc = npa_aura_pool_pair_alloc(lf, block_size, block_count, aura, pool,
 				      aura_handle, flags);
 	if (rc) {
