@@ -535,7 +535,7 @@ virtio_crypto_asym_rsa_der_to_xform(uint8_t *der, size_t der_len,
 	xform->rsa.qt.qInv.data = qinv;
 	xform->rsa.qt.qInv.length = qinvlen;
 
-	RTE_ASSERT((tlv + len - &der[0]) == der_len);
+	RTE_ASSERT(tlv + len == der + der_len);
 	return 0;
 }
 
