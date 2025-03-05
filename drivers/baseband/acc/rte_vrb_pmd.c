@@ -1156,6 +1156,8 @@ free_lb_in:
 free_q:
 	rte_free(q);
 	q = NULL;
+	if (d->device_variant == VRB2_VARIANT)
+		d->queue_index[conf->op_type]--;
 
 	return ret;
 }
