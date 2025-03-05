@@ -170,6 +170,10 @@ New Features
 
    * Added support for the SM4 GCM algorithm.
 
+* **Updated virtio crypto driver.**
+
+  Updated virtio crypto driver to support RSA crypto operations.
+
 
 Removed Items
 -------------
