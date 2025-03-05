@@ -59,6 +59,7 @@ struct vring_used {
 
 struct vring {
 	unsigned int num;
+	rte_iova_t desc_iova;
 	struct vring_desc  *desc;
 	struct vring_avail *avail;
 	struct vring_used  *used;
@@ -111,15 +112,22 @@ vring_size(unsigned int num, unsigned long align)
 }
 
 static inline void
-vring_init(struct vring *vr, unsigned int num, uint8_t *p,
-	unsigned long align)
+vring_init_split(struct vring *vr, uint8_t *p, rte_iova_t iova,
+		 unsigned long align, unsigned int num)
 {
 	vr->num = num;
 	vr->desc = (struct vring_desc *) p;
+	vr->desc_iova = iova;
 	vr->avail = (struct vring_avail *) (p +
 		num * sizeof(struct vring_desc));
 	vr->used = (void *)
 		RTE_ALIGN_CEIL((uintptr_t)(&vr->avail->ring[num]), align);
+}
+
+static inline void
+vring_init(struct vring *vr, unsigned int num, uint8_t *p, unsigned long align)
+{
+	vring_init_split(vr, p, 0, align, num);
 }
 
 /*

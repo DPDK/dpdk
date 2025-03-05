@@ -11,6 +11,7 @@ includes += include_directories('../../../lib/vhost')
 deps += 'bus_pci'
 sources = files(
         'virtio_cryptodev.c',
+        'virtio_cvq.c',
         'virtio_pci.c',
         'virtio_rxtx.c',
         'virtqueue.c',
