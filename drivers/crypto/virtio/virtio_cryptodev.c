@@ -870,6 +870,125 @@ virtio_crypto_clear_session(
 }
 
 static void
+virtio_crypto_clear_session_packed(
+		struct rte_cryptodev *dev,
+		struct virtio_crypto_op_ctrl_req *ctrl)
+{
+	struct virtio_crypto_hw *hw;
+	struct virtqueue *vq;
+	struct vring_packed_desc *desc;
+	uint8_t *status;
+	uint8_t needed = 1;
+	uint32_t head;
+	uint64_t malloc_phys_addr;
+	uint8_t len_inhdr = sizeof(struct virtio_crypto_inhdr);
+	uint32_t len_op_ctrl_req = sizeof(struct virtio_crypto_op_ctrl_req);
+	uint64_t session_id = ctrl->u.destroy_session.session_id;
+	uint16_t flags;
+	uint8_t nb_descs = 0;
+
+	hw = dev->data->dev_private;
+	vq = virtcrypto_cq_to_vq(hw->cvq);
+	head = vq->vq_avail_idx;
+	flags = vq->vq_packed.cached_flags;
+
+	VIRTIO_CRYPTO_SESSION_LOG_INFO("vq->vq_desc_head_idx = %d, "
+			"vq = %p", vq->vq_desc_head_idx, vq);
+
+	if (vq->vq_free_cnt < needed) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR(
+				"vq->vq_free_cnt = %d is less than %d, "
+				"not enough", vq->vq_free_cnt, needed);
+		return;
+	}
+
+	malloc_phys_addr = rte_malloc_virt2iova(ctrl);
+
+	/* status part */
+	status = &(((struct virtio_crypto_inhdr *)
+		((uint8_t *)ctrl + len_op_ctrl_req))->status);
+	*status = VIRTIO_CRYPTO_ERR;
+
+	/* indirect desc vring part */
+	desc = vq->vq_packed.ring.desc;
+
+	/* ctrl request part */
+	desc[head].addr = malloc_phys_addr;
+	desc[head].len = len_op_ctrl_req;
+	desc[head].flags = VRING_DESC_F_NEXT | vq->vq_packed.cached_flags;
+	vq->vq_free_cnt--;
+	nb_descs++;
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	/* status part */
+	desc[vq->vq_avail_idx].addr = malloc_phys_addr + len_op_ctrl_req;
+	desc[vq->vq_avail_idx].len = len_inhdr;
+	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE;
+	vq->vq_free_cnt--;
+	nb_descs++;
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	virtqueue_store_flags_packed(&desc[head], VRING_DESC_F_NEXT | flags,
+			vq->hw->weak_barriers);
+
+	virtio_wmb(vq->hw->weak_barriers);
+	virtqueue_notify(vq);
+
+	/* wait for used desc in virtqueue
+	 * desc_is_used has a load-acquire or rte_io_rmb inside
+	 */
+	rte_rmb();
+	while (!desc_is_used(&desc[head], vq)) {
+		rte_rmb();
+		usleep(100);
+	}
+
+	/* now get used descriptors */
+	vq->vq_free_cnt += nb_descs;
+	vq->vq_used_cons_idx += nb_descs;
+	if (vq->vq_used_cons_idx >= vq->vq_nentries) {
+		vq->vq_used_cons_idx -= vq->vq_nentries;
+		vq->vq_packed.used_wrap_counter ^= 1;
+	}
+
+	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d "
+			"vq->vq_queue_idx=%d "
+			"vq->vq_avail_idx=%d "
+			"vq->vq_used_cons_idx=%d "
+			"vq->vq_packed.cached_flags=0x%x "
+			"vq->vq_packed.used_wrap_counter=%d",
+			vq->vq_free_cnt,
+			vq->vq_queue_index,
+			vq->vq_avail_idx,
+			vq->vq_used_cons_idx,
+			vq->vq_packed.cached_flags,
+			vq->vq_packed.used_wrap_counter);
+
+	if (*status != VIRTIO_CRYPTO_OK) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("Close session failed "
+				"status=%"PRIu32", session_id=%"PRIu64"",
+				*status, session_id);
+		rte_free(ctrl);
+		return;
+	}
+
+	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_free_cnt=%d "
+			"vq->vq_desc_head_idx=%d",
+			vq->vq_free_cnt, vq->vq_desc_head_idx);
+
+	VIRTIO_CRYPTO_SESSION_LOG_INFO("Close session %"PRIu64" successfully ",
+			session_id);
+
+	rte_free(ctrl);
+}
+
+static void
 virtio_crypto_sym_clear_session(
 		struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
@@ -905,6 +1024,9 @@ virtio_crypto_sym_clear_session(
 	/* default data virtqueue is 0 */
 	ctrl->header.queue_id = 0;
 	ctrl->u.destroy_session.session_id = session->session_id;
+
+	if (vtpci_with_packed_queue(dev->data->dev_private))
+		return virtio_crypto_clear_session_packed(dev, ctrl);
 
 	return virtio_crypto_clear_session(dev, ctrl);
 }
@@ -942,6 +1064,9 @@ virtio_crypto_asym_clear_session(
 	/* default data virtqueue is 0 */
 	ctrl->header.queue_id = 0;
 	ctrl->u.destroy_session.session_id = session->session_id;
+
+	if (vtpci_with_packed_queue(dev->data->dev_private))
+		return virtio_crypto_clear_session_packed(dev, ctrl);
 
 	return virtio_crypto_clear_session(dev, ctrl);
 }

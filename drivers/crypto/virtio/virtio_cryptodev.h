@@ -10,13 +10,21 @@
 #include "virtio_ring.h"
 
 /* Features desired/implemented by this driver. */
-#define VIRTIO_CRYPTO_PMD_GUEST_FEATURES (1ULL << VIRTIO_F_VERSION_1)
+#define VIRTIO_CRYPTO_PMD_GUEST_FEATURES (1ULL << VIRTIO_F_VERSION_1 | \
+	1ULL << VIRTIO_F_IN_ORDER                | \
+	1ULL << VIRTIO_F_RING_PACKED             | \
+	1ULL << VIRTIO_F_NOTIFICATION_DATA       | \
+	1ULL << VIRTIO_RING_F_INDIRECT_DESC      | \
+	1ULL << VIRTIO_F_ORDER_PLATFORM)
 
 #define CRYPTODEV_NAME_VIRTIO_PMD crypto_virtio
 
 #define NUM_ENTRY_VIRTIO_CRYPTO_OP 7
 
 #define VIRTIO_CRYPTO_MAX_IV_SIZE 16
+#define VIRTIO_CRYPTO_MAX_MSG_SIZE 512
+#define VIRTIO_CRYPTO_MAX_SIGN_SIZE 512
+#define VIRTIO_CRYPTO_MAX_CIPHER_SIZE 1024
 
 #define VIRTIO_CRYPTO_MAX_KEY_SIZE 256
 
@@ -36,6 +44,9 @@ struct virtio_crypto_op_cookie {
 	struct virtio_crypto_inhdr inhdr;
 	struct vring_desc desc[NUM_ENTRY_VIRTIO_CRYPTO_OP];
 	uint8_t iv[VIRTIO_CRYPTO_MAX_IV_SIZE];
+	uint8_t message[VIRTIO_CRYPTO_MAX_MSG_SIZE];
+	uint8_t sign[VIRTIO_CRYPTO_MAX_SIGN_SIZE];
+	uint8_t cipher[VIRTIO_CRYPTO_MAX_CIPHER_SIZE];
 };
 
 /*
