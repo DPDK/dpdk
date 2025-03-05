@@ -144,7 +144,11 @@ rte_eal_cpu_init(void)
 	unsigned lcore_id;
 	unsigned count = 0;
 	unsigned int socket_id, prev_socket_id;
-	int lcore_to_socket_id[RTE_MAX_LCORE];
+#if CPU_SETSIZE > RTE_MAX_LCORE
+	int lcore_to_socket_id[CPU_SETSIZE] = {0};
+#else
+	int lcore_to_socket_id[RTE_MAX_LCORE] = {0};
+#endif
 
 	/*
 	 * Parse the maximum set of logical cores, detect the subset of running
@@ -183,9 +187,11 @@ rte_eal_cpu_init(void)
 	for (; lcore_id < CPU_SETSIZE; lcore_id++) {
 		if (eal_cpu_detected(lcore_id) == 0)
 			continue;
+		socket_id = eal_cpu_socket_id(lcore_id);
+		lcore_to_socket_id[lcore_id] = socket_id;
 		EAL_LOG(DEBUG, "Skipped lcore %u as core %u on socket %u",
 			lcore_id, eal_cpu_core_id(lcore_id),
-			eal_cpu_socket_id(lcore_id));
+			socket_id);
 	}
 
 	/* Set the count of enabled logical cores of the EAL configuration */
@@ -201,12 +207,13 @@ rte_eal_cpu_init(void)
 
 	prev_socket_id = -1;
 	config->numa_node_count = 0;
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+	for (lcore_id = 0; lcore_id < RTE_DIM(lcore_to_socket_id); lcore_id++) {
 		socket_id = lcore_to_socket_id[lcore_id];
 		if (socket_id != prev_socket_id)
-			config->numa_nodes[config->numa_node_count++] =
-					socket_id;
+			config->numa_nodes[config->numa_node_count++] =	socket_id;
 		prev_socket_id = socket_id;
+		if (config->numa_node_count >= RTE_MAX_NUMA_NODES)
+			break;
 	}
 	EAL_LOG(INFO, "Detected NUMA nodes: %u", config->numa_node_count);
 
