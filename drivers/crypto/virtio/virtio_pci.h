@@ -20,6 +20,9 @@ struct virtqueue;
 #define VIRTIO_CRYPTO_PCI_VENDORID 0x1AF4
 #define VIRTIO_CRYPTO_PCI_DEVICEID 0x1054
 
+/* VirtIO device IDs. */
+#define VIRTIO_ID_CRYPTO  20
+
 /* VirtIO ABI version, this must match exactly. */
 #define VIRTIO_PCI_ABI_VERSION 0
 
@@ -56,7 +59,11 @@ struct virtqueue;
 #define VIRTIO_CONFIG_STATUS_DRIVER    0x02
 #define VIRTIO_CONFIG_STATUS_DRIVER_OK 0x04
 #define VIRTIO_CONFIG_STATUS_FEATURES_OK 0x08
+#define VIRTIO_CONFIG_STATUS_DEV_NEED_RESET	0x40
 #define VIRTIO_CONFIG_STATUS_FAILED    0x80
+
+/* The alignment to use between consumer and producer parts of vring. */
+#define VIRTIO_VRING_ALIGN 4096
 
 /*
  * Each virtqueue indirect descriptor list must be physically contiguous.

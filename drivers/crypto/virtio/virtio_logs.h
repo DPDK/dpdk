@@ -15,8 +15,10 @@ extern int virtio_crypto_logtype_init;
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
-extern int virtio_crypto_logtype_init;
-#define RTE_LOGTYPE_VIRTIO_CRYPTO_INIT virtio_crypto_logtype_init
+extern int virtio_crypto_logtype_driver;
+#define RTE_LOGTYPE_VIRTIO_CRYPTO_DRIVER virtio_crypto_logtype_driver
+#define PMD_DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, VIRTIO_CRYPTO_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
 #define VIRTIO_CRYPTO_INIT_LOG_IMPL(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, VIRTIO_CRYPTO_INIT, "%s(): ", __func__, __VA_ARGS__)

@@ -544,23 +544,11 @@ virtio_crypto_init_device(struct rte_cryptodev *cryptodev,
 	return 0;
 }
 
-/*
- * This function is based on probe() function
- * It returns 0 on success.
- */
-static int
-crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
-		struct rte_cryptodev_pmd_init_params *init_params)
+int
+crypto_virtio_dev_init(struct rte_cryptodev *cryptodev, uint64_t features,
+		struct rte_pci_device *pci_dev)
 {
-	struct rte_cryptodev *cryptodev;
 	struct virtio_crypto_hw *hw;
-
-	PMD_INIT_FUNC_TRACE();
-
-	cryptodev = rte_cryptodev_pmd_create(name, &pci_dev->device,
-					init_params);
-	if (cryptodev == NULL)
-		return -ENODEV;
 
 	cryptodev->driver_id = cryptodev_virtio_driver_id;
 	cryptodev->dev_ops = &virtio_crypto_dev_ops;
@@ -578,16 +566,41 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 	hw->dev_id = cryptodev->data->dev_id;
 	hw->virtio_dev_capabilities = virtio_capabilities;
 
-	VIRTIO_CRYPTO_INIT_LOG_DBG("dev %d vendorID=0x%x deviceID=0x%x",
-		cryptodev->data->dev_id, pci_dev->id.vendor_id,
-		pci_dev->id.device_id);
+	if (pci_dev) {
+		/* pci device init */
+		VIRTIO_CRYPTO_INIT_LOG_DBG("dev %d vendorID=0x%x deviceID=0x%x",
+			cryptodev->data->dev_id, pci_dev->id.vendor_id,
+			pci_dev->id.device_id);
 
-	/* pci device init */
-	if (vtpci_cryptodev_init(pci_dev, hw))
+		if (vtpci_cryptodev_init(pci_dev, hw))
+			return -1;
+	}
+
+	if (virtio_crypto_init_device(cryptodev, features) < 0)
 		return -1;
 
-	if (virtio_crypto_init_device(cryptodev,
-			VIRTIO_CRYPTO_PMD_GUEST_FEATURES) < 0)
+	return 0;
+}
+
+/*
+ * This function is based on probe() function
+ * It returns 0 on success.
+ */
+static int
+crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
+		struct rte_cryptodev_pmd_init_params *init_params)
+{
+	struct rte_cryptodev *cryptodev;
+
+	PMD_INIT_FUNC_TRACE();
+
+	cryptodev = rte_cryptodev_pmd_create(name, &pci_dev->device,
+					init_params);
+	if (cryptodev == NULL)
+		return -ENODEV;
+
+	if (crypto_virtio_dev_init(cryptodev, VIRTIO_CRYPTO_PMD_GUEST_FEATURES,
+			pci_dev) < 0)
 		return -1;
 
 	rte_cryptodev_pmd_probing_finish(cryptodev);
