@@ -16,3 +16,10 @@ sources = files(
         'virtio_rxtx.c',
         'virtqueue.c',
 )
+
+if is_linux
+    sources += files('virtio_user_cryptodev.c',
+        'virtio_user/vhost_vdpa.c',
+        'virtio_user/virtio_user_dev.c')
+    deps += ['bus_vdev']
+endif

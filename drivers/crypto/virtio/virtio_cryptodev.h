@@ -76,4 +76,7 @@ uint16_t virtio_crypto_pkt_rx_burst(void *tx_queue,
 		struct rte_crypto_op **tx_pkts,
 		uint16_t nb_pkts);
 
+int crypto_virtio_dev_init(struct rte_cryptodev *cryptodev, uint64_t features,
+		struct rte_pci_device *pci_dev);
+
 #endif /* _VIRTIO_CRYPTODEV_H_ */

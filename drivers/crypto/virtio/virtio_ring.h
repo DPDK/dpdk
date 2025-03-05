@@ -181,12 +181,6 @@ vring_init_packed(struct vring_packed *vr, uint8_t *p, rte_iova_t iova,
 				sizeof(struct vring_packed_desc_event)), align);
 }
 
-static inline void
-vring_init(struct vring *vr, unsigned int num, uint8_t *p, unsigned long align)
-{
-	vring_init_split(vr, p, 0, align, num);
-}
-
 /*
  * The following is used with VIRTIO_RING_F_EVENT_IDX.
  * Assuming a given event_idx value from the other size, if we have
