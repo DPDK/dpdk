@@ -19921,6 +19921,12 @@ test_cryptodev_virtio(void)
 }
 
 static int
+test_cryptodev_virtio_user(void)
+{
+	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_VIRTIO_USER_PMD));
+}
+
+static int
 test_cryptodev_aesni_mb(void)
 {
 	return run_cryptodev_testsuite(RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
@@ -20257,6 +20263,7 @@ REGISTER_DRIVER_TEST(cryptodev_dpaa_sec_autotest, test_cryptodev_dpaa_sec);
 REGISTER_DRIVER_TEST(cryptodev_ccp_autotest, test_cryptodev_ccp);
 REGISTER_DRIVER_TEST(cryptodev_uadk_autotest, test_cryptodev_uadk);
 REGISTER_DRIVER_TEST(cryptodev_virtio_autotest, test_cryptodev_virtio);
+REGISTER_DRIVER_TEST(cryptodev_virtio_user_autotest, test_cryptodev_virtio_user);
 REGISTER_DRIVER_TEST(cryptodev_octeontx_autotest, test_cryptodev_octeontx);
 REGISTER_DRIVER_TEST(cryptodev_caam_jr_autotest, test_cryptodev_caam_jr);
 REGISTER_DRIVER_TEST(cryptodev_nitrox_autotest, test_cryptodev_nitrox);
