@@ -65,13 +65,14 @@ class DPDKShell(SingleActiveInteractiveShell, ABC):
         self,
         name: str | None = None,
         privileged: bool = True,
+        path: PurePath | None = None,
         app_params: EalParams = EalParams(),
     ) -> None:
         """Extends :meth:`~.interactive_shell.InteractiveShell.__init__`."""
         app_params = compute_eal_params(app_params)
         node = get_ctx().sut_node
 
-        super().__init__(node, name, privileged, app_params)
+        super().__init__(node, name, privileged, path, app_params)
 
     def _update_real_path(self, path: PurePath) -> None:
         """Extends :meth:`~.interactive_shell.InteractiveShell._update_real_path`.

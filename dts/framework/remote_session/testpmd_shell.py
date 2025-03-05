@@ -1532,7 +1532,7 @@ class TestPmdShell(DPDKShell):
         """Overrides :meth:`~.dpdk_shell.DPDKShell.__init__`. Changes app_params to kwargs."""
         if "port_topology" not in app_params and get_ctx().topology.type is TopologyType.one_link:
             app_params["port_topology"] = PortTopology.loop
-        super().__init__(name, privileged, TestPmdParams(**app_params))
+        super().__init__(name, privileged, app_params=TestPmdParams(**app_params))
         self.ports_started = not self._app_params.disable_device_start
         self._ports = None
 

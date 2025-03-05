@@ -92,6 +92,7 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
         node: Node,
         name: str | None = None,
         privileged: bool = False,
+        path: PurePath | None = None,
         app_params: Params = Params(),
         **kwargs,
     ) -> None:
@@ -105,6 +106,7 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
             name: Name for the interactive shell to use for logging. This name will be appended to
                 the name of the underlying node which it is running on.
             privileged: Enables the shell to run as superuser.
+            path: Path to the executable. If :data:`None`, then the class' path attribute is used.
             app_params: The command line parameters to be passed to the application on startup.
             **kwargs: Any additional arguments if any.
         """
@@ -116,7 +118,7 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
         self._privileged = privileged
         self._timeout = SETTINGS.timeout
         # Ensure path is properly formatted for the host
-        self._update_real_path(self.path)
+        self._update_real_path(path or self.path)
         super().__init__(**kwargs)
 
     def _setup_ssh_channel(self):
@@ -133,13 +135,17 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
             start_command = self._node.main_session._get_privileged_command(start_command)
         return start_command
 
-    def _start_application(self) -> None:
+    def _start_application(self, prompt: str | None = None) -> None:
         """Starts a new interactive application based on the path to the app.
 
         This method is often overridden by subclasses as their process for starting may look
         different. Initialization of the shell on the host can be retried up to
         `self._init_attempts` - 1 times. This is done because some DPDK applications need slightly
         more time after exiting their script to clean up EAL before others can start.
+
+        Args:
+            prompt: When starting up the application, expect this string at the end of stdout when
+                the application is ready. If :data:`None`, the class' default prompt will be used.
 
         Raises:
             InteractiveCommandExecutionError: If the application fails to start within the allotted
@@ -151,7 +157,7 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
         self.is_alive = True
         for attempt in range(self._init_attempts):
             try:
-                self.send_command(start_command)
+                self.send_command(start_command, prompt)
                 break
             except InteractiveSSHTimeoutError:
                 self._logger.info(
