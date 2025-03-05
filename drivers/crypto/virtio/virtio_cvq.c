@@ -12,7 +12,102 @@
 #include "virtqueue.h"
 
 static struct virtio_pmd_ctrl *
-virtio_send_command(struct virtcrypto_ctl *cvq,
+virtio_send_command_packed(struct virtcrypto_ctl *cvq,
+			   struct virtio_pmd_ctrl *ctrl,
+			   int *dlen, int dnum)
+{
+	struct virtqueue *vq = virtcrypto_cq_to_vq(cvq);
+	int head;
+	struct vring_packed_desc *desc = vq->vq_packed.ring.desc;
+	struct virtio_pmd_ctrl *result;
+	uint16_t flags;
+	int sum = 0;
+	int nb_descs = 0;
+	int k;
+
+	/*
+	 * Format is enforced in qemu code:
+	 * One TX packet for header;
+	 * At least one TX packet per argument;
+	 * One RX packet for ACK.
+	 */
+	head = vq->vq_avail_idx;
+	flags = vq->vq_packed.cached_flags;
+	desc[head].addr = cvq->hdr_mem;
+	desc[head].len = sizeof(struct virtio_crypto_op_ctrl_req);
+	vq->vq_free_cnt--;
+	nb_descs++;
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	for (k = 0; k < dnum; k++) {
+		desc[vq->vq_avail_idx].addr = cvq->hdr_mem
+			+ sizeof(struct virtio_crypto_op_ctrl_req)
+			+ sizeof(ctrl->input) + sizeof(uint8_t) * sum;
+		desc[vq->vq_avail_idx].len = dlen[k];
+		desc[vq->vq_avail_idx].flags = VRING_DESC_F_NEXT |
+			vq->vq_packed.cached_flags;
+		sum += dlen[k];
+		vq->vq_free_cnt--;
+		nb_descs++;
+		if (++vq->vq_avail_idx >= vq->vq_nentries) {
+			vq->vq_avail_idx -= vq->vq_nentries;
+			vq->vq_packed.cached_flags ^=
+				VRING_PACKED_DESC_F_AVAIL_USED;
+		}
+	}
+
+	desc[vq->vq_avail_idx].addr = cvq->hdr_mem
+		+ sizeof(struct virtio_crypto_op_ctrl_req);
+	desc[vq->vq_avail_idx].len = sizeof(ctrl->input);
+	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE |
+		vq->vq_packed.cached_flags;
+	vq->vq_free_cnt--;
+	nb_descs++;
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	virtqueue_store_flags_packed(&desc[head], VRING_DESC_F_NEXT | flags,
+			vq->hw->weak_barriers);
+
+	virtio_wmb(vq->hw->weak_barriers);
+	cvq->notify_queue(vq, cvq->notify_cookie);
+
+	/* wait for used desc in virtqueue
+	 * desc_is_used has a load-acquire or rte_io_rmb inside
+	 */
+	while (!desc_is_used(&desc[head], vq))
+		usleep(100);
+
+	/* now get used descriptors */
+	vq->vq_free_cnt += nb_descs;
+	vq->vq_used_cons_idx += nb_descs;
+	if (vq->vq_used_cons_idx >= vq->vq_nentries) {
+		vq->vq_used_cons_idx -= vq->vq_nentries;
+		vq->vq_packed.used_wrap_counter ^= 1;
+	}
+
+	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d "
+			"vq->vq_avail_idx=%d "
+			"vq->vq_used_cons_idx=%d "
+			"vq->vq_packed.cached_flags=0x%x "
+			"vq->vq_packed.used_wrap_counter=%d",
+			vq->vq_free_cnt,
+			vq->vq_avail_idx,
+			vq->vq_used_cons_idx,
+			vq->vq_packed.cached_flags,
+			vq->vq_packed.used_wrap_counter);
+
+	result = cvq->hdr_mz->addr;
+	return result;
+}
+
+static struct virtio_pmd_ctrl *
+virtio_send_command_split(struct virtcrypto_ctl *cvq,
 			  struct virtio_pmd_ctrl *ctrl,
 			  int *dlen, int dnum)
 {
@@ -122,7 +217,11 @@ virtio_crypto_send_command(struct virtcrypto_ctl *cvq, struct virtio_pmd_ctrl *c
 	}
 
 	memcpy(cvq->hdr_mz->addr, ctrl, sizeof(struct virtio_pmd_ctrl));
-	result = virtio_send_command(cvq, ctrl, dlen, dnum);
+
+	if (vtpci_with_packed_queue(vq->hw))
+		result = virtio_send_command_packed(cvq, ctrl, dlen, dnum);
+	else
+		result = virtio_send_command_split(cvq, ctrl, dlen, dnum);
 
 	rte_spinlock_unlock(&cvq->lock);
 	return result->input.status;

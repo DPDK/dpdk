@@ -12,8 +12,23 @@
 #include "virtio_cryptodev.h"
 #include "virtqueue.h"
 
-void
-virtqueue_disable_intr(struct virtqueue *vq)
+static inline void
+virtqueue_disable_intr_packed(struct virtqueue *vq)
+{
+	/*
+	 * Set RING_EVENT_FLAGS_DISABLE to hint host
+	 * not to interrupt when it consumes packets
+	 * Note: this is only considered a hint to the host
+	 */
+	if (vq->vq_packed.event_flags_shadow != RING_EVENT_FLAGS_DISABLE) {
+		vq->vq_packed.event_flags_shadow = RING_EVENT_FLAGS_DISABLE;
+		vq->vq_packed.ring.driver->desc_event_flags =
+			vq->vq_packed.event_flags_shadow;
+	}
+}
+
+static inline void
+virtqueue_disable_intr_split(struct virtqueue *vq)
 {
 	/*
 	 * Set VRING_AVAIL_F_NO_INTERRUPT to hint host
@@ -21,6 +36,15 @@ virtqueue_disable_intr(struct virtqueue *vq)
 	 * Note: this is only considered a hint to the host
 	 */
 	vq->vq_split.ring.avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+}
+
+void
+virtqueue_disable_intr(struct virtqueue *vq)
+{
+	if (vtpci_with_packed_queue(vq->hw))
+		virtqueue_disable_intr_packed(vq);
+	else
+		virtqueue_disable_intr_split(vq);
 }
 
 void
@@ -49,7 +73,6 @@ static void
 virtio_init_vring(struct virtqueue *vq)
 {
 	uint8_t *ring_mem = vq->vq_ring_virt_mem;
-	struct vring *vr = &vq->vq_split.ring;
 	int size = vq->vq_nentries;
 
 	PMD_INIT_FUNC_TRACE();
@@ -62,10 +85,16 @@ virtio_init_vring(struct virtqueue *vq)
 	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
+	if (vtpci_with_packed_queue(vq->hw)) {
+		vring_init_packed(&vq->vq_packed.ring, ring_mem, vq->vq_ring_mem,
+				  VIRTIO_PCI_VRING_ALIGN, size);
+		vring_desc_init_packed(vq, size);
+	} else {
+		struct vring *vr = &vq->vq_split.ring;
 
-	vring_init_split(vr, ring_mem, vq->vq_ring_mem, VIRTIO_PCI_VRING_ALIGN, size);
-	vring_desc_init_split(vr->desc, size);
-
+		vring_init_split(vr, ring_mem, vq->vq_ring_mem, VIRTIO_PCI_VRING_ALIGN, size);
+		vring_desc_init_split(vr->desc, size);
+	}
 	/*
 	 * Disable device(host) interrupting guest
 	 */
@@ -171,11 +200,16 @@ virtcrypto_queue_alloc(struct virtio_crypto_hw *hw, uint16_t index, uint16_t num
 	vq->hw = hw;
 	vq->vq_queue_index = index;
 	vq->vq_nentries = num;
+	if (vtpci_with_packed_queue(hw)) {
+		vq->vq_packed.used_wrap_counter = 1;
+		vq->vq_packed.cached_flags = VRING_PACKED_DESC_F_AVAIL;
+		vq->vq_packed.event_flags_shadow = 0;
+	}
 
 	/*
 	 * Reserve a memzone for vring elements
 	 */
-	size = vring_size(num, VIRTIO_PCI_VRING_ALIGN);
+	size = vring_size(hw, num, VIRTIO_PCI_VRING_ALIGN);
 	vq->vq_ring_size = RTE_ALIGN_CEIL(size, VIRTIO_PCI_VRING_ALIGN);
 	PMD_INIT_LOG(DEBUG, "vring_size: %d, rounded_vring_size: %d", size, vq->vq_ring_size);
 

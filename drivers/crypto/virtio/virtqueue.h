@@ -28,9 +28,78 @@ struct rte_mbuf;
  *     sufficient.
  *
  */
-#define virtio_mb()	rte_smp_mb()
-#define virtio_rmb()	rte_smp_rmb()
-#define virtio_wmb()	rte_smp_wmb()
+static inline void
+virtio_mb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_atomic_thread_fence(rte_memory_order_seq_cst);
+	else
+		rte_mb();
+}
+
+static inline void
+virtio_rmb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_atomic_thread_fence(rte_memory_order_acquire);
+	else
+		rte_io_rmb();
+}
+
+static inline void
+virtio_wmb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_atomic_thread_fence(rte_memory_order_release);
+	else
+		rte_io_wmb();
+}
+
+static inline uint16_t
+virtqueue_fetch_flags_packed(struct vring_packed_desc *dp,
+			      uint8_t weak_barriers)
+{
+	uint16_t flags;
+
+	if (weak_barriers) {
+/* x86 prefers to using rte_io_rmb over rte_atomic_load_explicit as it reports
+ * a better perf(~1.5%), which comes from the saved branch by the compiler.
+ * The if and else branch are identical  on the platforms except Arm.
+ */
+#ifdef RTE_ARCH_ARM
+		flags = rte_atomic_load_explicit(&dp->flags, rte_memory_order_acquire);
+#else
+		flags = dp->flags;
+		rte_io_rmb();
+#endif
+	} else {
+		flags = dp->flags;
+		rte_io_rmb();
+	}
+
+	return flags;
+}
+
+static inline void
+virtqueue_store_flags_packed(struct vring_packed_desc *dp,
+			      uint16_t flags, uint8_t weak_barriers)
+{
+	if (weak_barriers) {
+/* x86 prefers to using rte_io_wmb over rte_atomic_store_explicit as it reports
+ * a better perf(~1.5%), which comes from the saved branch by the compiler.
+ * The if and else branch are identical on the platforms except Arm.
+ */
+#ifdef RTE_ARCH_ARM
+		rte_atomic_store_explicit(&dp->flags, flags, rte_memory_order_release);
+#else
+		rte_io_wmb();
+		dp->flags = flags;
+#endif
+	} else {
+		rte_io_wmb();
+		dp->flags = flags;
+	}
+}
 
 #define VIRTQUEUE_MAX_NAME_SZ 32
 
@@ -62,7 +131,16 @@ struct virtqueue {
 			/**< vring keeping desc, used and avail */
 			struct vring ring;
 		} vq_split;
+
+		struct {
+			/**< vring keeping descs and events */
+			struct vring_packed ring;
+			bool used_wrap_counter;
+			uint16_t cached_flags; /**< cached flags for descs */
+			uint16_t event_flags_shadow;
+		} vq_packed;
 	};
+
 	union {
 		struct virtcrypto_data dq;
 		struct virtcrypto_ctl cq;
@@ -134,7 +212,7 @@ virtqueue_full(const struct virtqueue *vq)
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
-	virtio_wmb();
+	virtio_wmb(0);
 	vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
 }
 
@@ -170,6 +248,30 @@ virtqueue_notify(struct virtqueue *vq)
 	 * which is a serialization instruction itself.
 	 */
 	VTPCI_OPS(vq->hw)->notify_queue(vq->hw, vq);
+}
+
+static inline int
+desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
+{
+	uint16_t used, avail, flags;
+
+	flags = virtqueue_fetch_flags_packed(desc, vq->hw->weak_barriers);
+	used = !!(flags & VRING_PACKED_DESC_F_USED);
+	avail = !!(flags & VRING_PACKED_DESC_F_AVAIL);
+
+	return avail == used && used == vq->vq_packed.used_wrap_counter;
+}
+
+static inline void
+vring_desc_init_packed(struct virtqueue *vq, int n)
+{
+	int i;
+	for (i = 0; i < n - 1; i++) {
+		vq->vq_packed.ring.desc[i].id = i;
+		vq->vq_descx[i].next = i + 1;
+	}
+	vq->vq_packed.ring.desc[i].id = i;
+	vq->vq_descx[i].next = VQ_RING_DESC_CHAIN_END;
 }
 
 /* Chain all the descriptors in the ring with an END */
@@ -208,7 +310,7 @@ virtqueue_nused(const struct virtqueue *vq)
 	 */
 #ifdef RTE_ARCH_X86_64
 		idx = vq->vq_split.ring.used->idx;
-		virtio_rmb();
+		virtio_rmb(0);
 #else
 		idx = rte_atomic_load_explicit(&(vq)->vq_split.ring.used->idx,
 				rte_memory_order_acquire);
@@ -223,7 +325,7 @@ virtqueue_nused(const struct virtqueue *vq)
 /**
  * Dump virtqueue internal structures, for debug purpose only.
  */
-#define VIRTQUEUE_DUMP(vq) do { \
+#define VIRTQUEUE_SPLIT_DUMP(vq) do { \
 	uint16_t used_idx, nused; \
 	used_idx = (vq)->vq_split.ring.used->idx; \
 	nused = (uint16_t)(used_idx - (vq)->vq_used_cons_idx); \
@@ -235,6 +337,26 @@ virtqueue_nused(const struct virtqueue *vq)
 	  (vq)->vq_desc_head_idx, (vq)->vq_split.ring.avail->idx, \
 	  (vq)->vq_used_cons_idx, (vq)->vq_split.ring.used->idx, \
 	  (vq)->vq_split.ring.avail->flags, (vq)->vq_split.ring.used->flags); \
+} while (0)
+
+#define VIRTQUEUE_PACKED_DUMP(vq) do { \
+	uint16_t nused; \
+	nused = (vq)->vq_nentries - (vq)->vq_free_cnt; \
+	VIRTIO_CRYPTO_INIT_LOG_DBG(\
+	  "VQ: - size=%d; free=%d; used=%d; desc_head_idx=%d;" \
+	  " avail_idx=%d; used_cons_idx=%d;" \
+	  " avail.flags=0x%x; wrap_counter=%d", \
+	  (vq)->vq_nentries, (vq)->vq_free_cnt, nused, \
+	  (vq)->vq_desc_head_idx, (vq)->vq_avail_idx, \
+	  (vq)->vq_used_cons_idx, (vq)->vq_packed.cached_flags, \
+	  (vq)->vq_packed.used_wrap_counter); \
+} while (0)
+
+#define VIRTQUEUE_DUMP(vq) do { \
+	if (vtpci_with_packed_queue((vq)->hw)) \
+		VIRTQUEUE_PACKED_DUMP(vq); \
+	else \
+		VIRTQUEUE_SPLIT_DUMP(vq); \
 } while (0)
 
 #endif /* _VIRTQUEUE_H_ */
