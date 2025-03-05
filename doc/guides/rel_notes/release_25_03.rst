@@ -161,6 +161,10 @@ New Features
 
   Updated vhost library to support RSA crypto operations.
 
+* **Updated virtio crypto driver.**
+
+  * Added support for RSA crypto operations.
+
 * **Updated IPsec_MB crypto driver.**
 
   * Added support for the SM4 GCM algorithm.

@@ -715,6 +715,12 @@ struct rte_cryptodev_asym_session {
 	uint8_t sess_private_data[];
 };
 
+/**
+ * Helper macro to get session private data
+ */
+#define CRYPTODEV_GET_ASYM_SESS_PRIV(s) \
+	((void *)(((struct rte_cryptodev_asym_session *)s)->sess_private_data))
+
 #ifdef __cplusplus
 }
 #endif
