@@ -176,8 +176,7 @@ struct virtio_pci_ops {
 };
 
 struct virtio_crypto_hw {
-	/* control queue */
-	struct virtqueue *cvq;
+	struct virtqueue **vqs;
 	uint16_t    dev_id;
 	uint16_t    max_dataqueues;
 	uint64_t    req_guest_features;
@@ -190,6 +189,9 @@ struct virtio_crypto_hw {
 	struct virtio_pci_common_cfg *common_cfg;
 	struct virtio_crypto_config *dev_cfg;
 	const struct rte_cryptodev_capabilities *virtio_dev_capabilities;
+	uint8_t weak_barriers;
+	struct virtcrypto_ctl *cvq;
+	bool use_va;
 };
 
 /*

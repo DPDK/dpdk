@@ -14,13 +14,13 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 	struct vq_desc_extra *dxp;
 	uint16_t desc_idx_last = desc_idx;
 
-	dp = &vq->vq_ring.desc[desc_idx];
+	dp = &vq->vq_split.ring.desc[desc_idx];
 	dxp = &vq->vq_descx[desc_idx];
 	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt + dxp->ndescs);
 	if ((dp->flags & VRING_DESC_F_INDIRECT) == 0) {
 		while (dp->flags & VRING_DESC_F_NEXT) {
 			desc_idx_last = dp->next;
-			dp = &vq->vq_ring.desc[dp->next];
+			dp = &vq->vq_split.ring.desc[dp->next];
 		}
 	}
 	dxp->ndescs = 0;
@@ -33,7 +33,7 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 	if (vq->vq_desc_tail_idx == VQ_RING_DESC_CHAIN_END) {
 		vq->vq_desc_head_idx = desc_idx;
 	} else {
-		dp_tail = &vq->vq_ring.desc[vq->vq_desc_tail_idx];
+		dp_tail = &vq->vq_split.ring.desc[vq->vq_desc_tail_idx];
 		dp_tail->next = desc_idx;
 	}
 
@@ -56,7 +56,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq,
 	for (i = 0; i < num ; i++) {
 		used_idx = (uint16_t)(vq->vq_used_cons_idx
 				& (vq->vq_nentries - 1));
-		uep = &vq->vq_ring.used->ring[used_idx];
+		uep = &vq->vq_split.ring.used->ring[used_idx];
 		desc_idx = (uint16_t)uep->id;
 		cop = (struct rte_crypto_op *)
 				vq->vq_descx[desc_idx].crypto_op;
@@ -115,7 +115,7 @@ virtqueue_crypto_sym_pkt_header_arrange(
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct virtio_crypto_op_data_req *req_data = data;
-	struct virtio_crypto_op_ctrl_req *ctrl = &session->ctrl;
+	struct virtio_crypto_op_ctrl_req *ctrl = &session->ctrl.hdr;
 	struct virtio_crypto_sym_create_session_req *sym_sess_req =
 		&ctrl->u.sym_create_session;
 	struct virtio_crypto_alg_chain_session_para *chain_para =
@@ -304,7 +304,7 @@ virtqueue_crypto_sym_enqueue_xmit(
 	desc[idx++].flags = VRING_DESC_F_WRITE | VRING_DESC_F_NEXT;
 
 	/* indirect vring: digest result */
-	para = &(session->ctrl.u.sym_create_session.u.chain.para);
+	para = &(session->ctrl.hdr.u.sym_create_session.u.chain.para);
 	if (para->hash_mode == VIRTIO_CRYPTO_SYM_HASH_MODE_PLAIN)
 		hash_result_len = para->u.hash_param.hash_result_len;
 	if (para->hash_mode == VIRTIO_CRYPTO_SYM_HASH_MODE_AUTH)
@@ -327,7 +327,7 @@ virtqueue_crypto_sym_enqueue_xmit(
 	dxp->ndescs = needed;
 
 	/* use a single buffer */
-	start_dp = txvq->vq_ring.desc;
+	start_dp = txvq->vq_split.ring.desc;
 	start_dp[head_idx].addr = indirect_op_data_req_phys_addr +
 		indirect_vring_addr_offset;
 	start_dp[head_idx].len = num_entry * sizeof(struct vring_desc);
@@ -349,7 +349,7 @@ virtqueue_crypto_asym_pkt_header_arrange(
 		struct virtio_crypto_op_data_req *data,
 		struct virtio_crypto_session *session)
 {
-	struct virtio_crypto_op_ctrl_req *ctrl = &session->ctrl;
+	struct virtio_crypto_op_ctrl_req *ctrl = &session->ctrl.hdr;
 	struct virtio_crypto_op_data_req *req_data = data;
 	struct rte_crypto_asym_op *asym_op = cop->asym;
 
@@ -514,7 +514,7 @@ virtqueue_crypto_asym_enqueue_xmit(
 	dxp->ndescs = needed;
 
 	/* use a single buffer */
-	start_dp = txvq->vq_ring.desc;
+	start_dp = txvq->vq_split.ring.desc;
 	start_dp[head_idx].addr = indirect_op_data_req_phys_addr +
 		indirect_vring_addr_offset;
 	start_dp[head_idx].len = num_entry * sizeof(struct vring_desc);
@@ -526,7 +526,7 @@ virtqueue_crypto_asym_enqueue_xmit(
 		txvq->vq_desc_tail_idx = idx;
 	txvq->vq_free_cnt = (uint16_t)(txvq->vq_free_cnt - needed);
 
-	uep = &txvq->vq_ring.used->ring[head_idx];
+	uep = &txvq->vq_split.ring.used->ring[head_idx];
 	uep->id = head_idx;
 	vq_update_avail_ring(txvq, head_idx);
 
@@ -537,25 +537,14 @@ static int
 virtio_crypto_vring_start(struct virtqueue *vq)
 {
 	struct virtio_crypto_hw *hw = vq->hw;
-	int i, size = vq->vq_nentries;
-	struct vring *vr = &vq->vq_ring;
 	uint8_t *ring_mem = vq->vq_ring_virt_mem;
 
 	PMD_INIT_FUNC_TRACE();
 
-	vring_init(vr, size, ring_mem, VIRTIO_PCI_VRING_ALIGN);
-	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
-	vq->vq_free_cnt = vq->vq_nentries;
-
-	/* Chain all the descriptors in the ring with an END */
-	for (i = 0; i < size - 1; i++)
-		vr->desc[i].next = (uint16_t)(i + 1);
-	vr->desc[i].next = VQ_RING_DESC_CHAIN_END;
-
-	/*
-	 * Disable device(host) interrupting guest
-	 */
-	virtqueue_disable_intr(vq);
+	if (ring_mem == NULL) {
+		VIRTIO_CRYPTO_INIT_LOG_ERR("virtqueue ring memory is NULL");
+		return -EINVAL;
+	}
 
 	/*
 	 * Set guest physical address of the virtqueue
@@ -576,8 +565,9 @@ virtio_crypto_ctrlq_start(struct rte_cryptodev *dev)
 	struct virtio_crypto_hw *hw = dev->data->dev_private;
 
 	if (hw->cvq) {
-		virtio_crypto_vring_start(hw->cvq);
-		VIRTQUEUE_DUMP((struct virtqueue *)hw->cvq);
+		rte_spinlock_init(&hw->cvq->lock);
+		virtio_crypto_vring_start(virtcrypto_cq_to_vq(hw->cvq));
+		VIRTQUEUE_DUMP(virtcrypto_cq_to_vq(hw->cvq));
 	}
 }
 

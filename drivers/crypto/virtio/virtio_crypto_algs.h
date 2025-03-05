@@ -22,7 +22,7 @@ struct virtio_crypto_session {
 		phys_addr_t phys_addr;
 	} aad;
 
-	struct virtio_crypto_op_ctrl_req ctrl;
+	struct virtio_pmd_ctrl ctrl;
 };
 
 #endif /* _VIRTIO_CRYPTO_ALGS_H_ */
