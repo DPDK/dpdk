@@ -16,6 +16,7 @@ sources = files(
         'test_order_common.c',
         'test_order_queue.c',
         'test_atomic_common.c',
+        'test_atomic_queue.c',
         'test_perf_atq.c',
         'test_perf_common.c',
         'test_perf_queue.c',
