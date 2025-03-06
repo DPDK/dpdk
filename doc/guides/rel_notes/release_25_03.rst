@@ -176,6 +176,11 @@ New Features
 
   See the :doc:`../compressdevs/zsda` guide for more details on the new driver.
 
+* **Added atomic tests to the dpdk-test-eventdev test application.**
+
+  Added two atomic tests: ``atomic_queue`` and ``atomic_atq``. They work in the same way as
+  the corresponding ordered tests but exclusively use atomic queues.
+  Atomicity is verified using spinlocks.
 
 Removed Items
 -------------
