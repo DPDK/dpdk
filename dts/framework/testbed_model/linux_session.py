@@ -67,6 +67,7 @@ class LinuxSession(PosixSession):
 
     @staticmethod
     def _get_privileged_command(command: str) -> str:
+        command = command.replace(r"'", r"\'")
         return f"sudo -- sh -c '{command}'"
 
     def get_remote_cpus(self) -> list[LogicalCore]:
