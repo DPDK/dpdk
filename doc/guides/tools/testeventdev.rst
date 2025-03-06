@@ -55,6 +55,7 @@ The following are the application command-line options:
 
          order_queue
          order_atq
+         atomic_queue
          perf_queue
          perf_atq
          pipeline_atq
@@ -325,6 +326,100 @@ Example command to run order queue test:
 
    sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -s 0x10 --vdev=event_sw0 -- \
                 --test=order_queue --plcores 1 --wlcores 2,3
+
+
+ORDER_ATOMIC Test
+~~~~~~~~~~~~~~~~~
+
+This is a functional test similar to the ORDER_QUEUE test,
+but differs in two critical ways:
+
+#. Both queues (q0 and q1) are atomic.
+   This makes it compatible with the distributed software event device (dsw).
+#. Atomicity is verified using spinlocks
+   for each combination of flow id and queue id.
+
+.. _table_eventdev_atomic_queue_test:
+
+.. table:: Atomic queue test eventdev configuration.
+
+   +---+--------------+----------------+---------------------------+
+   | # | Items        | Value          | Comments                  |
+   |   |              |                |                           |
+   +===+==============+================+===========================+
+   | 1 | nb_queues    | 2              | q0 (atomic), q1 (atomic)  |
+   |   |              |                |                           |
+   +---+--------------+----------------+---------------------------+
+   | 2 | nb_producers | 1              |                           |
+   |   |              |                |                           |
+   +---+--------------+----------------+---------------------------+
+   | 3 | nb_workers   | >= 1           |                           |
+   |   |              |                |                           |
+   +---+--------------+----------------+---------------------------+
+   | 4 | nb_ports     | nb_workers + 1 | Workers use port 0 to     |
+   |   |              |                | port n-1. Producer uses   |
+   |   |              |                | port n.                   |
+   +---+--------------+----------------+---------------------------+
+
+.. _figure_eventdev_atomic_queue_test:
+
+.. figure:: img/eventdev_atomic_queue_test.*
+
+   atomic queue test operation.
+
+When an event is dequeued for processing,
+a spinlock is acquired for the flow from which the event was dequeued.
+Once processing is complete, the lock is released.
+The test will fail if an attempt is made to take a lock that is already held.
+This indicates that multiple workers attempted to process the same flow
+at the same time, thereby violating atomicity.
+
+.. table:: Atomic queue test queue processing tasks.
+
+   +-----------+---------------------------------------------------+
+   | Queue ID  | Processing Task                                   |
+   |           |                                                   |
+   +===========+===================================================+
+   | 0         | Update queue ID for event and re-enqueue.         |
+   |           |                                                   |
+   +-----------+---------------------------------------------------+
+   | 1         | Verify sequence number.                           |
+   |           |                                                   |
+   +-----------+---------------------------------------------------+
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+   --verbose
+   --dev
+   --test
+   --socket_id
+   --pool_sz
+   --plcores
+   --wlcores
+   --nb_flows
+   --nb_pkts
+   --worker_deq_depth
+   --deq_tmo_nsec
+
+Example
+^^^^^^^
+
+Example command to run with the software event device:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -s 0x10 --vdev=event_sw0 -- \
+                --test=atomic_queue --plcores 1 --wlcores 2,3
+
+Example command to run with the distributed software event device:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f --vdev=event_dsw0 -- \
+                --test=atomic_queue --plcores 1 --wlcores 2,3,4
 
 
 ORDER_ATQ Test

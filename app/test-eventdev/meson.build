@@ -13,6 +13,7 @@ sources = files(
         'evt_test.c',
         'parser.c',
         'test_atomic_common.c',
+        'test_atomic_queue.c',
         'test_order_atq.c',
         'test_order_common.c',
         'test_order_queue.c',
