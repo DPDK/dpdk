@@ -63,7 +63,7 @@ check_forbidden_additions() { # <patch>
 
 	# refrain from new calls to RTE_LOG in drivers (but leave some leeway for base drivers)
 	awk -v FOLDERS="drivers" \
-		-v SKIP_FILES='osdep.h$' \
+		-v SKIP_FILES='.*osdep.h$' \
 		-v EXPRESSIONS="RTE_LOG\\\( RTE_LOG_DP\\\( rte_log\\\(" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Prefer RTE_LOG_LINE/RTE_LOG_DP_LINE' \
@@ -236,7 +236,7 @@ check_forbidden_additions() { # <patch>
 
 	# forbid rte_ symbols in cnxk base driver
 	awk -v FOLDERS='drivers/common/cnxk/roc_*' \
-		-v SKIP_FILES='roc_platform*' \
+		-v SKIP_FILES='.*roc_platform.*' \
 		-v EXPRESSIONS="rte_ RTE_" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Use plt_ symbols instead of rte_ API in cnxk base driver' \
