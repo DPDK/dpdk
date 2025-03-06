@@ -176,6 +176,10 @@ New Features
 
   See the :doc:`../compressdevs/zsda` guide for more details on the new driver.
 
+* **Added atomic tests to the eventdev test application.**
+
+  Atomicity is verified using spinlocks.
+
 
 Removed Items
 -------------
