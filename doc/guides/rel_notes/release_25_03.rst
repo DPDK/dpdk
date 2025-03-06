@@ -178,7 +178,9 @@ New Features
 
 * **Added atomic tests to the eventdev test application.**
 
-  Added atomic test: ``atomic_queue``.
+  Added two atomic tests: ``atomic_queue`` and ``atomic_atq``.
+  They work in the same way as the corresponding ordered tests
+  but exclusively use atomic queues.
   Atomicity is verified using spinlocks.
 
 

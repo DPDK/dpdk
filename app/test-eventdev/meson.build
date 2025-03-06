@@ -12,6 +12,7 @@ sources = files(
         'evt_options.c',
         'evt_test.c',
         'parser.c',
+        'test_atomic_atq.c',
         'test_atomic_common.c',
         'test_atomic_queue.c',
         'test_order_atq.c',

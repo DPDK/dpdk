@@ -56,6 +56,7 @@ The following are the application command-line options:
          order_queue
          order_atq
          atomic_queue
+         atomic_atq
          perf_queue
          perf_atq
          pipeline_atq
@@ -483,6 +484,70 @@ Example command to run order ``all types queue`` test:
 
    sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -- \
                         --test=order_atq --plcores 1 --wlcores 2,3
+
+
+ATOMIC_ATQ Test
+~~~~~~~~~~~~~~~
+
+This test verifies the same aspects of ``atomic_queue`` test,
+the difference is the number of queues used,
+this test operates on a single ``all types queue(atq)``
+instead of two different atomic queues.
+
+.. _table_eventdev_atomic_atq_test:
+
+.. table:: Order all types queue test eventdev configuration.
+
+   +---+--------------+----------------+-------------------------+
+   | # | Items        | Value          | Comments                |
+   |   |              |                |                         |
+   +===+==============+================+=========================+
+   | 1 | nb_queues    | 1              | q0 (all types queue)    |
+   |   |              |                |                         |
+   +---+--------------+----------------+-------------------------+
+   | 2 | nb_producers | 1              |                         |
+   |   |              |                |                         |
+   +---+--------------+----------------+-------------------------+
+   | 3 | nb_workers   | >= 1           |                         |
+   |   |              |                |                         |
+   +---+--------------+----------------+-------------------------+
+   | 4 | nb_ports     | nb_workers + 1 | Workers use port 0 to   |
+   |   |              |                | port n-1. Producer uses |
+   |   |              |                | port n.                 |
+   +---+--------------+----------------+-------------------------+
+
+.. _figure_eventdev_atomic_atq_test:
+
+.. figure:: img/eventdev_atomic_atq_test.*
+
+   atomic all types queue test operation.
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+   --verbose
+   --dev
+   --test
+   --socket_id
+   --pool_sz
+   --plcores
+   --wlcores
+   --nb_flows
+   --nb_pkts
+   --worker_deq_depth
+   --deq_tmo_nsec
+
+Example
+^^^^^^^
+
+Example command to run order ``all types queue`` test:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -- \
+                        --test=atomic_atq --plcores 1 --wlcores 2,3
 
 
 PERF_QUEUE Test
