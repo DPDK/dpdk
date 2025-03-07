@@ -554,12 +554,12 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 	 */
 	nt_os_wait_usec(1000000);	/* pause 1.0s */
 
-	res = construct_and_preinit_nim(nim_ctx, NULL);
+	res = nthw_construct_and_preinit_nim(nim_ctx, NULL);
 
 	if (res)
 		return res;
 
-	res = nim_state_build(nim_ctx, &nim);
+	res = nthw_nim_state_build(nim_ctx, &nim);
 
 	if (res)
 		return res;
@@ -568,17 +568,17 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 	nim_ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = true;
 
 	NT_LOG(DBG, NTHW, "%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
-		drv->mp_port_id_str[port], nim_ctx->nim_id, nim_id_to_text(nim_ctx->nim_id), nim.br,
-		nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+		drv->mp_port_id_str[port], nim_ctx->nim_id, nthw_nim_id_to_text(nim_ctx->nim_id),
+		nim.br, nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
 
 	/*
 	 * Does the driver support the NIM module type?
 	 */
 	if (nim_ctx->nim_id != valid_nim_id) {
 		NT_LOG(ERR, NTHW, "%s: The driver does not support the NIM module type %s",
-			drv->mp_port_id_str[port], nim_id_to_text(nim_ctx->nim_id));
+			drv->mp_port_id_str[port], nthw_nim_id_to_text(nim_ctx->nim_id));
 		NT_LOG(DBG, NTHW, "%s: The driver supports the NIM module type %s",
-			drv->mp_port_id_str[port], nim_id_to_text(valid_nim_id));
+			drv->mp_port_id_str[port], nthw_nim_id_to_text(valid_nim_id));
 		return -1;
 	}
 
@@ -612,13 +612,13 @@ static int nim_ready_100_gb(adapter_info_t *p_info, int port)
 
 	/* Adjust NIM power level */
 	if (nim_ctx->pwr_level_req > 4) {
-		qsfp28_set_high_power(nim_ctx);
+		nthw_qsfp28_set_high_power(nim_ctx);
 		nim_ctx->pwr_level_cur = nim_ctx->pwr_level_req;
 	}
 
 	/* enable_fec is what the end result should be, now find out if it's possible */
 	if (enable_fec) {
-		if (qsfp28_set_fec_enable(nim_ctx, true, false)) {
+		if (nthw_qsfp28_set_fec_enable(nim_ctx, true, false)) {
 			/* Prefer NIM media FEC since the NIM is assumed to know the right FEC */
 			NT_LOG(DBG, NTNIC, "Port %s: NIM media FEC enabled",
 				p_info->mp_port_id_str[port]);
@@ -635,7 +635,7 @@ static int nim_ready_100_gb(adapter_info_t *p_info, int port)
 				return 1;
 			}
 
-		} else if (qsfp28_set_fec_enable(nim_ctx, false, false)) {
+		} else if (nthw_qsfp28_set_fec_enable(nim_ctx, false, false)) {
 			/* The NIM does not support FEC at all so turn FPGA FEC on instead */
 			/* This is relevant to SR4 modules */
 			NT_LOG(DBG, NTNIC, "Port %s: No NIM FEC", p_info->mp_port_id_str[port]);
@@ -643,7 +643,7 @@ static int nim_ready_100_gb(adapter_info_t *p_info, int port)
 			NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC enabled",
 				p_info->mp_port_id_str[port]);
 
-		} else if (qsfp28_set_fec_enable(nim_ctx, true, true)) {
+		} else if (nthw_qsfp28_set_fec_enable(nim_ctx, true, true)) {
 			/* This probably not a likely scenario */
 			nthw_phy_tile_configure_fec(p_phy_tile, port, false);
 			NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC enabled",
@@ -657,7 +657,7 @@ static int nim_ready_100_gb(adapter_info_t *p_info, int port)
 			return 1;
 		}
 
-	} else if (qsfp28_set_fec_enable(nim_ctx, false, false)) {
+	} else if (nthw_qsfp28_set_fec_enable(nim_ctx, false, false)) {
 		/* The NIM does not support FEC at all - this is relevant to LR4 modules */
 		NT_LOG(DBG, NTNIC, "Port %s: No NIM FEC", p_info->mp_port_id_str[port]);
 
@@ -671,7 +671,7 @@ static int nim_ready_100_gb(adapter_info_t *p_info, int port)
 			return 1;
 		}
 
-	} else if (qsfp28_set_fec_enable(nim_ctx, false, true)) {
+	} else if (nthw_qsfp28_set_fec_enable(nim_ctx, false, true)) {
 		nthw_phy_tile_configure_fec(p_phy_tile, port, false);
 		/* This probably not a likely scenario */
 		NT_LOG(DBG, NTNIC, "Port %s: FPGA FEC enabled", p_info->mp_port_id_str[port]);
@@ -906,7 +906,7 @@ static void *_common_ptp_nim_state_machine(void *data)
 					continue;
 				}
 
-				if (nim_state_build(&nim_ctx[i], &new_state)) {
+				if (nthw_nim_state_build(&nim_ctx[i], &new_state)) {
 					NT_LOG(ERR, NTNIC, "%s: Cannot read basic NIM data",
 						drv->mp_port_id_str[i]);
 					continue;
@@ -916,8 +916,9 @@ static void *_common_ptp_nim_state_machine(void *data)
 				NT_LOG(DBG, NTNIC,
 					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
 					drv->mp_port_id_str[i], nim_ctx->nim_id,
-					nim_id_to_text(nim_ctx->nim_id), (unsigned int)new_state.br,
-					nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+					nthw_nim_id_to_text(nim_ctx->nim_id),
+					(unsigned int)new_state.br, nim_ctx->vendor_name,
+					nim_ctx->prod_no, nim_ctx->serial_no);
 				link_state[i].lh_nim_absent = false;
 				NT_LOG(DBG, NTNIC, "%s: NIM module initialized",
 					drv->mp_port_id_str[i]);

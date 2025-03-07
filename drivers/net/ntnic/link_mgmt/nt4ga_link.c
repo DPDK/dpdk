@@ -153,7 +153,7 @@ static int nt4ga_port_tx_power(struct adapter_info_s *p, int port, bool disable)
 		nim_i2c_ctx_t *nim_ctx = &link_info->u.var100g.nim_ctx[port];
 
 		if (!nim_ctx->specific_u.qsfp.rx_only) {
-			if (nim_qsfp_plus_nim_set_tx_laser_disable(nim_ctx, disable, -1) != 0)
+			if (nthw_nim_qsfp_plus_nim_set_tx_laser_disable(nim_ctx, disable, -1) != 0)
 				return 1;
 		}
 	}
@@ -208,7 +208,7 @@ static const struct port_ops ops = {
 	.tx_power = nt4ga_port_tx_power,
 };
 
-void port_init(void)
+void nthw_port_init(void)
 {
 	register_port_ops(&ops);
 }

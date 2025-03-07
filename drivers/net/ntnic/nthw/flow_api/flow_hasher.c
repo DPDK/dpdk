@@ -126,7 +126,7 @@ static uint32_t calc16(const uint32_t key[16])
 	return x;
 }
 
-uint32_t gethash(struct hasher_s *hsh, const uint32_t key[16], int *result)
+uint32_t nthw_gethash(struct hasher_s *hsh, const uint32_t key[16], int *result)
 {
 	uint64_t val;
 	uint32_t res;
@@ -145,7 +145,7 @@ uint32_t gethash(struct hasher_s *hsh, const uint32_t key[16], int *result)
 	return res;
 }
 
-int init_hasher(struct hasher_s *hsh, int banks, int nb_records)
+int nthw_init_hasher(struct hasher_s *hsh, int banks, int nb_records)
 {
 	hsh->banks = banks;
 	hsh->cam_records_bw = (int)(log2(nb_records - 1) + 1);

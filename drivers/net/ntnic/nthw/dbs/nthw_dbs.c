@@ -403,7 +403,7 @@ void dbs_reset(nthw_dbs_t *p)
 	}
 }
 
-int set_rx_control(nthw_dbs_t *p,
+int nthw_set_rx_control(nthw_dbs_t *p,
 	uint32_t last_queue,
 	uint32_t avail_monitor_enable,
 	uint32_t avail_monitor_speed,
@@ -421,7 +421,7 @@ int set_rx_control(nthw_dbs_t *p,
 	return 0;
 }
 
-int set_tx_control(nthw_dbs_t *p,
+int nthw_set_tx_control(nthw_dbs_t *p,
 	uint32_t last_queue,
 	uint32_t avail_monitor_enable,
 	uint32_t avail_monitor_speed,
@@ -439,7 +439,7 @@ int set_tx_control(nthw_dbs_t *p,
 	return 0;
 }
 
-int set_rx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
+int nthw_set_rx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
 	uint32_t queue)
 {
 	if (p->mp_reg_rx_init_val) {
@@ -454,7 +454,7 @@ int set_rx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t 
 	return 0;
 }
 
-int get_rx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy)
+int nthw_get_rx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy)
 {
 	*init = nthw_field_get_val32(p->mp_fld_rx_init_init);
 	*queue = nthw_field_get_val32(p->mp_fld_rx_init_queue);
@@ -477,7 +477,7 @@ int set_tx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t 
 	return 0;
 }
 
-int get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy)
+int nthw_get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy)
 {
 	*init = nthw_field_get_val32(p->mp_fld_tx_init_init);
 	*queue = nthw_field_get_val32(p->mp_fld_tx_init_queue);
@@ -485,7 +485,7 @@ int get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy)
 	return 0;
 }
 
-int set_rx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue)
+int nthw_set_rx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue)
 {
 	if (!p->mp_reg_rx_idle)
 		return -ENOTSUP;
@@ -496,7 +496,7 @@ int set_rx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue)
 	return 0;
 }
 
-int get_rx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy)
+int nthw_get_rx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy)
 {
 	if (!p->mp_reg_rx_idle)
 		return -ENOTSUP;
@@ -507,7 +507,7 @@ int get_rx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy)
 	return 0;
 }
 
-int set_tx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue)
+int nthw_set_tx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue)
 {
 	if (!p->mp_reg_tx_idle)
 		return -ENOTSUP;
@@ -518,7 +518,7 @@ int set_tx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue)
 	return 0;
 }
 
-int get_tx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy)
+int nthw_get_tx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy)
 {
 	if (!p->mp_reg_tx_idle)
 		return -ENOTSUP;

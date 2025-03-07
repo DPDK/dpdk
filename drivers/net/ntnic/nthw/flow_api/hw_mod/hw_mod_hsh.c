@@ -45,7 +45,7 @@ int hw_mod_hsh_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 5:
-		if (!callocate_mod((struct common_func_s *)&be->hsh, 1, &be->hsh.v5.rcp,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->hsh, 1, &be->hsh.v5.rcp,
 				be->hsh.nb_rcp, sizeof(struct hsh_v5_rcp_s)))
 			return -1;
 
@@ -71,7 +71,7 @@ void hw_mod_hsh_free(struct flow_api_backend_s *be)
 int hw_mod_hsh_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->hsh));
+	nthw_zero_module_cache((struct common_func_s *)(&be->hsh));
 
 	NT_LOG(DBG, FILTER, "INIT HSH RCP");
 	return hw_mod_hsh_rcp_flush(be, 0, be->hsh.nb_rcp);

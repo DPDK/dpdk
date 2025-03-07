@@ -84,7 +84,7 @@ int hw_mod_km_alloc(struct flow_api_backend_s *be)
 		be->km.nb_km_rcp_mask_a_word_size = 12;
 		be->km.nb_km_rcp_mask_b_word_size = 6;
 
-		if (!callocate_mod((struct common_func_s *)&be->km, 5, &be->km.v7.rcp,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->km, 5, &be->km.v7.rcp,
 				be->km.nb_categories, sizeof(struct km_v7_rcp_s),
 				&be->km.v7.cam, be->km.nb_cam_banks * be->km.nb_cam_records,
 				sizeof(struct km_v7_cam_s), &be->km.v7.tcam,
@@ -119,7 +119,7 @@ int hw_mod_km_reset(struct flow_api_backend_s *be)
 	uint32_t tcam_v_set[3] = { 0x00000000, 0x00000000, 0x00000000 };
 
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->km));
+	nthw_zero_module_cache((struct common_func_s *)(&be->km));
 
 	NT_LOG(DBG, FILTER, "INIT KM RCP");
 	hw_mod_km_rcp_flush(be, 0, ALL_ENTRIES);

@@ -1439,9 +1439,9 @@ drv_deinit(struct drv_s *p_drv)
 		profile_inline_ops->flm_free_queues();
 		THREAD_JOIN(p_nt_drv->port_event_thread);
 		/* Free all local flm event queues */
-		flm_inf_sta_queue_free_all(FLM_INFO_LOCAL);
+		nthw_flm_inf_sta_queue_free_all(FLM_INFO_LOCAL);
 		/* Free all remote flm event queues */
-		flm_inf_sta_queue_free_all(FLM_INFO_REMOTE);
+		nthw_flm_inf_sta_queue_free_all(FLM_INFO_REMOTE);
 		/* Free all aged flow event queues */
 		flm_age_queue_free_all();
 	}
@@ -1824,7 +1824,7 @@ THREAD_FUNC port_event_thread_fn(void *context)
 				/* Local FLM statistic events */
 				struct flm_info_event_s data;
 
-				if (flm_inf_queue_get(port_no, FLM_INFO_LOCAL, &data) == 0) {
+				if (nthw_flm_inf_queue_get(port_no, FLM_INFO_LOCAL, &data) == 0) {
 					if (eth_dev && eth_dev->data &&
 						eth_dev->data->dev_private) {
 						struct ntnic_flm_statistic_s event_data;
@@ -2072,7 +2072,8 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 		if (kvargs_count != 0) {
 			RTE_ASSERT(kvargs_count == 1);
-			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_RXQUEUES_ARG, &string_to_u32,
+			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_RXQUEUES_ARG,
+					&nthw_string_to_u32,
 					&nb_rx_queues);
 
 			if (res < 0) {
@@ -2096,7 +2097,8 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 		if (kvargs_count != 0) {
 			RTE_ASSERT(kvargs_count == 1);
-			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_TXQUEUES_ARG, &string_to_u32,
+			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_TXQUEUES_ARG,
+					&nthw_string_to_u32,
 					&nb_tx_queues);
 
 			if (res < 0) {

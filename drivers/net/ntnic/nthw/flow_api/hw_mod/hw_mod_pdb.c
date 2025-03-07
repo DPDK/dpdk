@@ -34,7 +34,7 @@ int hw_mod_pdb_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 9:
-		if (!callocate_mod((struct common_func_s *)&be->pdb, 2, &be->pdb.v9.rcp,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->pdb, 2, &be->pdb.v9.rcp,
 				be->pdb.nb_pdb_rcp_categories, sizeof(struct pdb_v9_rcp_s),
 				&be->pdb.v9.config, 1, sizeof(struct pdb_v9_config_s)))
 			return -1;
@@ -62,7 +62,7 @@ int hw_mod_pdb_reset(struct flow_api_backend_s *be)
 {
 	int err = 0;
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->hsh));
+	nthw_zero_module_cache((struct common_func_s *)(&be->hsh));
 
 	NT_LOG(DBG, FILTER, "INIT PDB RCP");
 	err |= hw_mod_pdb_rcp_flush(be, 0, ALL_ENTRIES);

@@ -70,7 +70,7 @@ static void flm_inf_sta_queue_free(uint8_t port, uint8_t caller)
 	rte_ring_free(q);
 }
 
-void flm_inf_sta_queue_free_all(uint8_t caller)
+void nthw_flm_inf_sta_queue_free_all(uint8_t caller)
 {
 	int count = 0;
 
@@ -212,7 +212,7 @@ static struct rte_ring *flm_evt_queue_create(uint8_t port, uint8_t caller)
 	return q;
 }
 
-int flm_sta_queue_put(uint8_t port, bool remote, struct flm_status_event_s *obj)
+int nthw_flm_sta_queue_put(uint8_t port, bool remote, struct flm_status_event_s *obj)
 {
 	struct rte_ring **stat_q = remote ? stat_q_remote : stat_q_local;
 
@@ -232,7 +232,7 @@ int flm_sta_queue_put(uint8_t port, bool remote, struct flm_status_event_s *obj)
 	return 0;
 }
 
-void flm_inf_queue_put(uint8_t port, bool remote, struct flm_info_event_s *obj)
+void nthw_flm_inf_queue_put(uint8_t port, bool remote, struct flm_info_event_s *obj)
 {
 	int ret;
 
@@ -253,7 +253,7 @@ void flm_inf_queue_put(uint8_t port, bool remote, struct flm_info_event_s *obj)
 	}
 }
 
-int flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *obj)
+int nthw_flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *obj)
 {
 	int ret;
 
@@ -269,7 +269,7 @@ int flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *obj)
 
 			if (flm_evt_queue_create(port, FLM_INFO_LOCAL) != NULL) {
 				/* Recursive call to get data */
-				return flm_inf_queue_get(port, remote, obj);
+				return nthw_flm_inf_queue_get(port, remote, obj);
 			}
 		}
 
@@ -283,7 +283,7 @@ int flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *obj)
 
 		if (flm_evt_queue_create(port, FLM_INFO_REMOTE) != NULL) {
 			/* Recursive call to get data */
-			return flm_inf_queue_get(port, remote, obj);
+			return nthw_flm_inf_queue_get(port, remote, obj);
 		}
 	}
 

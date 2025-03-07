@@ -25,7 +25,7 @@ struct group_handle_s {
 	struct group_lookup_entry_s *lookup_entries;
 };
 
-int flow_group_handle_create(void **handle, uint32_t group_count)
+int nthw_flow_group_handle_create(void **handle, uint32_t group_count)
 {
 	struct group_handle_s *group_handle;
 
@@ -40,7 +40,7 @@ int flow_group_handle_create(void **handle, uint32_t group_count)
 	return *handle != NULL ? 0 : -1;
 }
 
-int flow_group_handle_destroy(void **handle)
+int nthw_flow_group_handle_destroy(void **handle)
 {
 	if (*handle) {
 		struct group_handle_s *group_handle = (struct group_handle_s *)*handle;
@@ -55,8 +55,8 @@ int flow_group_handle_destroy(void **handle)
 	return 0;
 }
 
-int flow_group_translate_get(void *handle, uint8_t owner_id, uint8_t port_id, uint32_t group_in,
-	uint32_t *group_out)
+int nthw_flow_group_translate_get(void *handle, uint8_t owner_id, uint8_t port_id,
+	uint32_t group_in, uint32_t *group_out)
 {
 	struct group_handle_s *group_handle = (struct group_handle_s *)handle;
 	uint32_t *table_ptr;
@@ -100,7 +100,7 @@ int flow_group_translate_get(void *handle, uint8_t owner_id, uint8_t port_id, ui
 	return 0;
 }
 
-int flow_group_translate_get_orig_group(void *handle, uint32_t translated_group,
+int nthw_flow_group_translate_get_orig_group(void *handle, uint32_t translated_group,
 	uint32_t *group_orig)
 {
 	struct group_handle_s *group_handle = (struct group_handle_s *)handle;

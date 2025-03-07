@@ -236,30 +236,30 @@ nthw_dbs_t *nthw_dbs_new(void);
 int dbs_init(nthw_dbs_t *p, nthw_fpga_t *p_fpga, int n_instance);
 void dbs_reset(nthw_dbs_t *p);
 
-int set_rx_control(nthw_dbs_t *p,
+int nthw_set_rx_control(nthw_dbs_t *p,
 	uint32_t last_queue,
 	uint32_t avail_monitor_enable,
 	uint32_t avail_monitor_speed,
 	uint32_t used_write_enable,
 	uint32_t used_write_speed,
 	uint32_t rx_queue_enable);
-int set_tx_control(nthw_dbs_t *p,
+int nthw_set_tx_control(nthw_dbs_t *p,
 	uint32_t last_queue,
 	uint32_t avail_monitor_enable,
 	uint32_t avail_monitor_speed,
 	uint32_t used_write_enable,
 	uint32_t used_write_speed,
 	uint32_t tx_queue_enable);
-int set_rx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
+int nthw_set_rx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
 	uint32_t queue);
-int get_rx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
+int nthw_get_rx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
 int set_tx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
 	uint32_t queue);
-int get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
-int set_rx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue);
-int get_rx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy);
-int set_tx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue);
-int get_tx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy);
+int nthw_get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
+int nthw_set_rx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue);
+int nthw_get_rx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy);
+int nthw_set_tx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue);
+int nthw_get_tx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy);
 int set_rx_am_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,

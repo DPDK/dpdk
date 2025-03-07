@@ -27,7 +27,7 @@ struct hw_mod_resource_s {
 /*
  * Device Management API
  */
-int flow_delete_eth_dev(struct flow_eth_dev *eth_dev);
+int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev);
 
 /**
  * A structure used to configure the Receive Side Scaling (RSS) feature
@@ -167,7 +167,7 @@ enum flow_nic_err_msg_e {
 	ERR_MSG_END
 };
 
-void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error);
+void nthw_flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error);
 
 /*
  * Resources
@@ -219,17 +219,17 @@ extern const char *dbg_res_descr[];
 #define flow_nic_is_resource_used(_ndev, res_type, index)                                         \
 	(!!flow_nic_is_bit_set((_ndev)->res[res_type].alloc_bm, index))
 
-int flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
+int nthw_flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	uint32_t alignment);
 
-int flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e res_type,
+int nthw_flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	unsigned int num, uint32_t alignment);
-void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx);
+void nthw_flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx);
 
-int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
-int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
+int nthw_flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
+int nthw_flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
 
-int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
-int flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count);
+int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
+int nthw_flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count);
 
 #endif

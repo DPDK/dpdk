@@ -69,7 +69,7 @@ int hw_mod_tpe_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 3:
-		if (!callocate_mod((struct common_func_s *)&be->tpe, 11, &be->tpe.v3.rpp_rcp,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->tpe, 11, &be->tpe.v3.rpp_rcp,
 				be->tpe.nb_rcp_categories, sizeof(struct tpe_v1_rpp_v0_rcp_s),
 				&be->tpe.v3.rpp_ifr_rcp, be->tpe.nb_ifr_categories,
 				sizeof(struct tpe_v2_rpp_v1_ifr_rcp_s), &be->tpe.v3.ifr_rcp,
@@ -120,7 +120,7 @@ int hw_mod_tpe_reset(struct flow_api_backend_s *be)
 	int err = 0;
 
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->tpe));
+	nthw_zero_module_cache((struct common_func_s *)(&be->tpe));
 
 	NT_LOG(DBG, FILTER, "INIT TPE");
 	err |= hw_mod_tpe_rpp_rcp_flush(be, 0, ALL_ENTRIES);

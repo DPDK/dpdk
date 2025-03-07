@@ -23,7 +23,7 @@ int hw_mod_slc_lr_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 2:
-		if (!callocate_mod((struct common_func_s *)&be->slc_lr, 1, &be->slc_lr.v2.rcp,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->slc_lr, 1, &be->slc_lr.v2.rcp,
 				be->max_categories, sizeof(struct slc_lr_v2_rcp_s)))
 			return -1;
 
@@ -48,7 +48,7 @@ void hw_mod_slc_lr_free(struct flow_api_backend_s *be)
 int hw_mod_slc_lr_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->slc_lr));
+	nthw_zero_module_cache((struct common_func_s *)(&be->slc_lr));
 
 	NT_LOG(DBG, FILTER, "INIT SLC LR RCP");
 	return hw_mod_slc_lr_rcp_flush(be, 0, be->max_categories);

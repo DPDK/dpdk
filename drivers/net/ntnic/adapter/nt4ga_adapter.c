@@ -168,7 +168,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	nt4ga_filter_t *p_filter = &p_adapter_info->nt4ga_filter;
 
 	if (flow_filter_ops != NULL) {
-		res = flow_filter_ops->flow_filter_init(p_fpga, &p_filter->mp_flow_device,
+		res = flow_filter_ops->nthw_flow_filter_init(p_fpga, &p_filter->mp_flow_device,
 				p_adapter_info->adapter_no);
 
 		if (res != 0) {
@@ -266,7 +266,7 @@ static int nt4ga_adapter_deinit(struct adapter_info_s *p_adapter_info)
 	nt4ga_filter_t *p_filter = &p_adapter_info->nt4ga_filter;
 
 	if (flow_filter_ops != NULL) {
-		res = flow_filter_ops->flow_filter_done(p_filter->mp_flow_device);
+		res = flow_filter_ops->nthw_flow_filter_done(p_filter->mp_flow_device);
 
 		if (res != 0) {
 			NT_LOG(ERR, NTNIC, "Cannot deinitialize filter");
@@ -309,7 +309,7 @@ static const struct adapter_ops ops = {
 	.show_info = nt4ga_adapter_show_info,
 };
 
-void adapter_init(void)
+void nthw_adapter_init(void)
 {
 	register_adapter_ops(&ops);
 }

@@ -65,7 +65,7 @@ static struct backend_dev_s {
 			mod##_nthw_set_debug_mode((inst), 0);                                     \
 	} while (0)
 
-const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **be_dev);
+const struct flow_api_backend_ops *nthw_bin_flow_backend_init(nthw_fpga_t *p_fpga, void **be_dev);
 static void bin_flow_backend_done(void *be_dev);
 
 static int set_debug_mode(void *be_dev, enum debug_mode_e mode)
@@ -2097,7 +2097,7 @@ const struct flow_api_backend_ops flow_be_iface = {
 	tpe_csu_rcp_flush,
 };
 
-const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
+const struct flow_api_backend_ops *nthw_bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
 {
 	uint8_t physical_adapter_no = (uint8_t)p_fpga->p_fpga_info->adapter_no;
 
@@ -2271,11 +2271,11 @@ static void bin_flow_backend_done(void *dev)
 }
 
 static const struct flow_backend_ops ops = {
-	.bin_flow_backend_init = bin_flow_backend_init,
+	.nthw_bin_flow_backend_init = nthw_bin_flow_backend_init,
 	.bin_flow_backend_done = bin_flow_backend_done,
 };
 
-void flow_backend_init(void)
+void nthw_flow_backend_init(void)
 {
 	register_flow_backend_ops(&ops);
 }

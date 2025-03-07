@@ -12,9 +12,9 @@
 /*
  * Flow capable NIC backend - creating flow api instance for adapter nr (backend)
  */
-struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_backend_ops *be_if,
-	void *be_dev);
-int flow_api_done(struct flow_nic_dev *dev);
-void *flow_api_get_be_dev(struct flow_nic_dev *dev);
+struct flow_nic_dev *nthw_flow_api_create(uint8_t adapter_no,
+	const struct flow_api_backend_ops *be_if, void *be_dev);
+int nthw_flow_api_done(struct flow_nic_dev *dev);
+void *nthw_flow_api_get_be_dev(struct flow_nic_dev *dev);
 
 #endif  /* __FLOW_API_NIC_SETUP_H__ */

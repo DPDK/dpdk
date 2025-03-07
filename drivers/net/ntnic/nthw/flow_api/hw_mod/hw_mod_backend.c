@@ -32,7 +32,7 @@ static const struct {
 };
 #define MOD_COUNT (ARRAY_SIZE(module))
 
-void *callocate_mod(struct common_func_s *mod, int sets, ...)
+void *nthw_callocate_mod(struct common_func_s *mod, int sets, ...)
 {
 #define MAX_SETS 38
 	void *base = NULL;
@@ -84,12 +84,12 @@ void *callocate_mod(struct common_func_s *mod, int sets, ...)
 	return base;
 }
 
-void zero_module_cache(struct common_func_s *mod)
+void nthw_zero_module_cache(struct common_func_s *mod)
 {
 	memset(mod->base, 0, mod->alloced_size);
 }
 
-int flow_api_backend_init(struct flow_api_backend_s *dev,
+int nthw_flow_api_backend_init(struct flow_api_backend_s *dev,
 	const struct flow_api_backend_ops *iface,
 	void *be_dev)
 {
@@ -121,7 +121,7 @@ int flow_api_backend_init(struct flow_api_backend_s *dev,
 			FILTER,
 			"ERROR: Initialization of NIC module failed : [ %s ]",
 			module[mod].name);
-		flow_api_backend_done(dev);
+		nthw_flow_api_backend_done(dev);
 		NT_LOG(ERR,
 			FILTER,
 			"*************** Failed to create Binary Flow API *******************");
@@ -137,7 +137,7 @@ int flow_api_backend_init(struct flow_api_backend_s *dev,
 	return 0;
 }
 
-int flow_api_backend_done(struct flow_api_backend_s *dev)
+int nthw_flow_api_backend_done(struct flow_api_backend_s *dev)
 {
 	for (unsigned int mod = 0; mod < MOD_COUNT; mod++)
 		module[mod].free(dev);

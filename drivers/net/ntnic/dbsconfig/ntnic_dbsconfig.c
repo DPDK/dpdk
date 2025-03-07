@@ -177,13 +177,13 @@ static void dbs_init_rx_queue(nthw_dbs_t *p_nthw_dbs, uint32_t queue, uint32_t s
 	uint32_t dummy;
 
 	do {
-		get_rx_init(p_nthw_dbs, &init, &dummy, &busy);
+		nthw_get_rx_init(p_nthw_dbs, &init, &dummy, &busy);
 	} while (busy != 0);
 
-	set_rx_init(p_nthw_dbs, start_idx, start_ptr, INIT_QUEUE, queue);
+	nthw_set_rx_init(p_nthw_dbs, start_idx, start_ptr, INIT_QUEUE, queue);
 
 	do {
-		get_rx_init(p_nthw_dbs, &init, &dummy, &busy);
+		nthw_get_rx_init(p_nthw_dbs, &init, &dummy, &busy);
 	} while (busy != 0);
 }
 
@@ -195,13 +195,13 @@ static void dbs_init_tx_queue(nthw_dbs_t *p_nthw_dbs, uint32_t queue, uint32_t s
 	uint32_t dummy;
 
 	do {
-		get_tx_init(p_nthw_dbs, &init, &dummy, &busy);
+		nthw_get_tx_init(p_nthw_dbs, &init, &dummy, &busy);
 	} while (busy != 0);
 
 	set_tx_init(p_nthw_dbs, start_idx, start_ptr, INIT_QUEUE, queue);
 
 	do {
-		get_tx_init(p_nthw_dbs, &init, &dummy, &busy);
+		nthw_get_tx_init(p_nthw_dbs, &init, &dummy, &busy);
 	} while (busy != 0);
 }
 
@@ -250,18 +250,18 @@ static int nthw_virt_queue_init(struct fpga_info_s *p_fpga_info)
 	for (i = 0; i < NT_DBS_TX_QUEUES_MAX; ++i)
 		dbs_init_tx_queue(p_nthw_dbs, i, 0, 0);
 
-	set_rx_control(p_nthw_dbs, LAST_QUEUE, RX_AM_DISABLE, RX_AM_POLL_SPEED, RX_UW_DISABLE,
+	nthw_set_rx_control(p_nthw_dbs, LAST_QUEUE, RX_AM_DISABLE, RX_AM_POLL_SPEED, RX_UW_DISABLE,
 		RX_UW_POLL_SPEED, RX_Q_DISABLE);
-	set_rx_control(p_nthw_dbs, LAST_QUEUE, RX_AM_ENABLE, RX_AM_POLL_SPEED, RX_UW_ENABLE,
+	nthw_set_rx_control(p_nthw_dbs, LAST_QUEUE, RX_AM_ENABLE, RX_AM_POLL_SPEED, RX_UW_ENABLE,
 		RX_UW_POLL_SPEED, RX_Q_DISABLE);
-	set_rx_control(p_nthw_dbs, LAST_QUEUE, RX_AM_ENABLE, RX_AM_POLL_SPEED, RX_UW_ENABLE,
+	nthw_set_rx_control(p_nthw_dbs, LAST_QUEUE, RX_AM_ENABLE, RX_AM_POLL_SPEED, RX_UW_ENABLE,
 		RX_UW_POLL_SPEED, RX_Q_ENABLE);
 
-	set_tx_control(p_nthw_dbs, LAST_QUEUE, TX_AM_DISABLE, TX_AM_POLL_SPEED, TX_UW_DISABLE,
+	nthw_set_tx_control(p_nthw_dbs, LAST_QUEUE, TX_AM_DISABLE, TX_AM_POLL_SPEED, TX_UW_DISABLE,
 		TX_UW_POLL_SPEED, TX_Q_DISABLE);
-	set_tx_control(p_nthw_dbs, LAST_QUEUE, TX_AM_ENABLE, TX_AM_POLL_SPEED, TX_UW_ENABLE,
+	nthw_set_tx_control(p_nthw_dbs, LAST_QUEUE, TX_AM_ENABLE, TX_AM_POLL_SPEED, TX_UW_ENABLE,
 		TX_UW_POLL_SPEED, TX_Q_DISABLE);
-	set_tx_control(p_nthw_dbs, LAST_QUEUE, TX_AM_ENABLE, TX_AM_POLL_SPEED, TX_UW_ENABLE,
+	nthw_set_tx_control(p_nthw_dbs, LAST_QUEUE, TX_AM_ENABLE, TX_AM_POLL_SPEED, TX_UW_ENABLE,
 		TX_UW_POLL_SPEED, TX_Q_ENABLE);
 
 	return 0;
@@ -464,10 +464,10 @@ static int dbs_wait_on_busy(struct nthw_virt_queue *vq, uint32_t *idle, int rx)
 
 	do {
 		if (rx)
-			err = get_rx_idle(p_nthw_dbs, idle, &queue, &busy);
+			err = nthw_get_rx_idle(p_nthw_dbs, idle, &queue, &busy);
 
 		else
-			err = get_tx_idle(p_nthw_dbs, idle, &queue, &busy);
+			err = nthw_get_tx_idle(p_nthw_dbs, idle, &queue, &busy);
 	} while (!err && busy);
 
 	return err;
@@ -492,10 +492,10 @@ static int dbs_wait_hw_queue_shutdown(struct nthw_virt_queue *vq, int rx)
 
 	do {
 		if (rx)
-			err = set_rx_idle(p_nthw_dbs, 1, vq->index);
+			err = nthw_set_rx_idle(p_nthw_dbs, 1, vq->index);
 
 		else
-			err = set_tx_idle(p_nthw_dbs, 1, vq->index);
+			err = nthw_set_tx_idle(p_nthw_dbs, 1, vq->index);
 
 		if (err)
 			return -1;
@@ -1424,7 +1424,7 @@ static struct sg_ops_s sg_ops = {
 	.nthw_virt_queue_init = nthw_virt_queue_init
 };
 
-void sg_init(void)
+void nthw_sg_init(void)
 {
 	NT_LOG(INF, NTNIC, "SG ops initialized");
 	register_sg_ops(&sg_ops);

@@ -431,7 +431,7 @@ void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct 
 
 			if (data->jump) {
 				uint32_t group_orig = 0;
-				if (flow_group_translate_get_orig_group(ndev->group_handle,
+				if (nthw_flow_group_translate_get_orig_group(ndev->group_handle,
 					data->jump, &group_orig) < 0)
 					fprintf(file, "    Jumps to %d (encoded)\n", data->jump);
 				else
@@ -447,7 +447,7 @@ void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct 
 
 			if (data->contains_jump) {
 				uint32_t group_orig = 0;
-				if (flow_group_translate_get_orig_group(ndev->group_handle,
+				if (nthw_flow_group_translate_get_orig_group(ndev->group_handle,
 					data->jump, &group_orig) < 0)
 					fprintf(file, "    Jumps to %d (encoded)\n", data->jump);
 
@@ -1795,7 +1795,7 @@ struct hw_db_qsl_idx hw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_ha
 		}
 	}
 
-	res = flow_nic_alloc_resource(ndev, RES_QSL_RCP, 1);
+	res = nthw_flow_nic_alloc_resource(ndev, RES_QSL_RCP, 1);
 
 	if (res < 0) {
 		qsl_idx.error = 1;
@@ -1805,10 +1805,10 @@ struct hw_db_qsl_idx hw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_ha
 	qsl_idx.ids = res & 0xff;
 
 	if (data->table_size > 0) {
-		res = flow_nic_alloc_resource_config(ndev, RES_QSL_QST, data->table_size, 1);
+		res = nthw_flow_nic_alloc_resource_config(ndev, RES_QSL_QST, data->table_size, 1);
 
 		if (res < 0) {
-			flow_nic_deref_resource(ndev, RES_QSL_RCP, qsl_idx.ids);
+			nthw_flow_nic_deref_resource(ndev, RES_QSL_RCP, qsl_idx.ids);
 			qsl_idx.error = 1;
 			return qsl_idx;
 		}
@@ -1870,7 +1870,7 @@ void hw_db_inline_qsl_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_
 	(void)db_handle;
 
 	if (!idx.error && idx.ids != 0)
-		flow_nic_ref_resource(ndev, RES_QSL_RCP, idx.ids);
+		nthw_flow_nic_ref_resource(ndev, RES_QSL_RCP, idx.ids);
 }
 
 void hw_db_inline_qsl_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_qsl_idx idx)
@@ -1880,7 +1880,7 @@ void hw_db_inline_qsl_deref(struct flow_nic_dev *ndev, void *db_handle, struct h
 	if (idx.error || idx.ids == 0)
 		return;
 
-	if (flow_nic_deref_resource(ndev, RES_QSL_RCP, idx.ids) == 0) {
+	if (nthw_flow_nic_deref_resource(ndev, RES_QSL_RCP, idx.ids) == 0) {
 		const int table_size = (int)db->qsl[idx.ids].data.table_size;
 
 		hw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_PRESET_ALL, idx.ids, 0x0);
@@ -1892,7 +1892,7 @@ void hw_db_inline_qsl_deref(struct flow_nic_dev *ndev, void *db_handle, struct h
 			for (int i = 0; i < (int)table_size; ++i) {
 				hw_mod_qsl_qst_set(&ndev->be, HW_QSL_QST_PRESET_ALL,
 					table_start + i, 0x0);
-				flow_nic_free_resource(ndev, RES_QSL_QST, table_start + i);
+				nthw_flow_nic_free_resource(ndev, RES_QSL_QST, table_start + i);
 			}
 
 			hw_mod_qsl_qst_flush(&ndev->be, table_start, table_size);
@@ -2245,7 +2245,7 @@ struct hw_db_tpe_ext_idx hw_db_inline_tpe_ext_add(struct flow_nic_dev *ndev, voi
 		return idx;
 	}
 
-	rpl_rpl_index = flow_nic_alloc_resource_config(ndev, RES_TPE_RPL, rpl_rpl_length, 1);
+	rpl_rpl_index = nthw_flow_nic_alloc_resource_config(ndev, RES_TPE_RPL, rpl_rpl_length, 1);
 
 	if (rpl_rpl_index < 0) {
 		idx.error = 1;
@@ -2303,7 +2303,7 @@ void hw_db_inline_tpe_ext_deref(struct flow_nic_dev *ndev, void *db_handle,
 			uint32_t rpl_zero[] = { 0, 0, 0, 0 };
 			hw_mod_tpe_rpl_rpl_set(&ndev->be, HW_TPE_RPL_RPL_VALUE, rpl_rpl_index + i,
 				rpl_zero);
-			flow_nic_free_resource(ndev, RES_TPE_RPL, rpl_rpl_index + i);
+			nthw_flow_nic_free_resource(ndev, RES_TPE_RPL, rpl_rpl_index + i);
 		}
 
 		hw_mod_tpe_rpl_rpl_flush(&ndev->be, rpl_rpl_index, rpl_rpl_length);
@@ -2900,7 +2900,7 @@ void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle, struct h
 			hw_mod_hsh_rcp_flush(&ndev->be, idx.ids, 1);
 
 			memset(&db->hsh[idx.ids].data, 0x0, sizeof(struct hw_db_inline_hsh_data));
-			flow_nic_free_resource(ndev, RES_HSH_RCP, idx.ids);
+			nthw_flow_nic_free_resource(ndev, RES_HSH_RCP, idx.ids);
 		}
 
 		db->hsh[idx.ids].ref = 0;
@@ -3003,7 +3003,7 @@ void hw_db_inline_scrub_deref(struct flow_nic_dev *ndev, void *db_handle,
 
 			memset(&db->scrub[idx.ids].data, 0x0,
 				sizeof(struct hw_db_inline_scrub_data));
-			flow_nic_free_resource(ndev, RES_SCRUB_RCP, idx.ids);
+			nthw_flow_nic_free_resource(ndev, RES_SCRUB_RCP, idx.ids);
 		}
 
 		db->scrub[idx.ids].ref = 0;

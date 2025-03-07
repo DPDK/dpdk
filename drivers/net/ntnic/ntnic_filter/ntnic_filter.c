@@ -28,7 +28,7 @@ static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 rte_spinlock_t flow_lock = RTE_SPINLOCK_INITIALIZER;
 static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 
-int interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_flow_item *out)
+int nthw_interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_flow_item *out)
 {
 	int hdri = 0;
 	int pkti = 0;
@@ -246,7 +246,7 @@ interpret_end:
 	return hdri + 1;
 }
 
-int create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr)
+int nthw_create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr)
 {
 	memset(&attribute->attr, 0x0, sizeof(struct rte_flow_attr));
 
@@ -258,7 +258,7 @@ int create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr)
 	return 0;
 }
 
-int create_match_elements(struct cnv_match_s *match, const struct rte_flow_item items[],
+int nthw_create_match_elements(struct cnv_match_s *match, const struct rte_flow_item items[],
 	int max_elem)
 {
 	int eidx = 0;
@@ -308,7 +308,7 @@ int create_match_elements(struct cnv_match_s *match, const struct rte_flow_item 
 	return (type >= 0) ? 0 : -1;
 }
 
-int create_action_elements_inline(struct cnv_action_s *action,
+int nthw_create_action_elements_inline(struct cnv_action_s *action,
 	const struct rte_flow_action actions[],
 	int max_elem,
 	uint32_t queue_offset)
@@ -402,8 +402,8 @@ int create_action_elements_inline(struct cnv_action_s *action,
 				const struct rte_flow_action_raw_decap *decap =
 					(const struct rte_flow_action_raw_decap *)actions[aidx]
 					.conf;
-				int item_count = interpret_raw_data(decap->data, NULL, decap->size,
-					action->decap.items);
+				int item_count = nthw_interpret_raw_data(decap->data, NULL,
+					decap->size, action->decap.items);
 
 				if (item_count < 0)
 					return item_count;
@@ -418,8 +418,8 @@ int create_action_elements_inline(struct cnv_action_s *action,
 				const struct rte_flow_action_raw_encap *encap =
 					(const struct rte_flow_action_raw_encap *)actions[aidx]
 					.conf;
-				int item_count = interpret_raw_data(encap->data, encap->preserve,
-					encap->size, action->encap.items);
+				int item_count = nthw_interpret_raw_data(encap->data,
+					encap->preserve, encap->size, action->encap.items);
 
 				if (item_count < 0)
 					return item_count;
@@ -499,19 +499,19 @@ static int convert_flow(struct rte_eth_dev *eth_dev,
 		queue_offset = internals->vpq[0].id;
 	}
 
-	if (create_attr(attribute, attr) != 0) {
+	if (nthw_create_attr(attribute, attr) != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR, NULL, "Error in attr");
 		return -1;
 	}
 
-	if (create_match_elements(match, items, MAX_ELEMENTS) != 0) {
+	if (nthw_create_match_elements(match, items, MAX_ELEMENTS) != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 			"Error in items");
 		return -1;
 	}
 
 	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
-		if (create_action_elements_inline(action, actions,
+		if (nthw_create_action_elements_inline(action, actions,
 			MAX_ACTIONS, queue_offset) != 0) {
 			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"Error in actions");
@@ -716,7 +716,7 @@ static int eth_flow_actions_update(struct rte_eth_dev *eth_dev,
 				queue_offset = dev_private->vpq[0].id;
 			}
 
-			if (create_action_elements_inline(&action, actions, MAX_ACTIONS,
+			if (nthw_create_action_elements_inline(&action, actions, MAX_ACTIONS,
 					queue_offset) != 0) {
 				rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"Error in actions");
@@ -873,7 +873,7 @@ static struct rte_flow_pattern_template *eth_flow_pattern_template_create(struct
 
 	uint16_t caller_id = get_caller_id(dev->data->port_id);
 
-	if (create_match_elements(&match, pattern, MAX_ELEMENTS) != 0) {
+	if (nthw_create_match_elements(&match, pattern, MAX_ELEMENTS) != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 			"Error in pattern");
 		return NULL;
@@ -943,14 +943,16 @@ static struct rte_flow_actions_template *eth_flow_actions_template_create(struct
 		if (internals->type == PORT_TYPE_OVERRIDE && internals->vpq_nb_vq > 0)
 			queue_offset = internals->vpq[0].id;
 
-		if (create_action_elements_inline(&action, actions, MAX_ACTIONS, queue_offset) !=
-			0) {
+		if (nthw_create_action_elements_inline(&action, actions,
+				MAX_ACTIONS,
+				queue_offset) != 0) {
 			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"Error in actions");
 			return NULL;
 		}
 
-		if (create_action_elements_inline(&mask, masks, MAX_ACTIONS, queue_offset) != 0) {
+		if (nthw_create_action_elements_inline(&mask, masks,
+				MAX_ACTIONS, queue_offset) != 0) {
 			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"Error in masks");
 			return NULL;
@@ -1081,7 +1083,7 @@ static struct rte_flow *eth_flow_async_create(struct rte_eth_dev *dev, uint32_t 
 	struct cnv_action_s action = { 0 };
 	struct cnv_match_s match = { 0 };
 
-	if (create_match_elements(&match, pattern, MAX_ELEMENTS) != 0) {
+	if (nthw_create_match_elements(&match, pattern, MAX_ELEMENTS) != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 			"Error in pattern");
 		return NULL;
@@ -1093,8 +1095,8 @@ static struct rte_flow *eth_flow_async_create(struct rte_eth_dev *dev, uint32_t 
 		if (internals->type == PORT_TYPE_OVERRIDE && internals->vpq_nb_vq > 0)
 			queue_offset = internals->vpq[0].id;
 
-		if (create_action_elements_inline(&action, actions, MAX_ACTIONS, queue_offset) !=
-			0) {
+		if (nthw_create_action_elements_inline(&action, actions,
+				MAX_ACTIONS, queue_offset) != 0) {
 			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 				"Error in actions");
 			return NULL;
@@ -1285,7 +1287,7 @@ static const struct rte_flow_ops dev_flow_ops = {
 	.template_table_destroy = eth_flow_template_table_destroy,
 };
 
-void dev_flow_init(void)
+void nthw_dev_flow_init(void)
 {
 	register_dev_flow_ops(&dev_flow_ops);
 }
@@ -1295,7 +1297,7 @@ static struct rte_flow_fp_ops async_dev_flow_ops = {
 	.async_destroy = eth_flow_async_destroy,
 };
 
-void dev_fp_flow_init(void)
+void nthw_dev_fp_flow_init(void)
 {
 	register_dev_fp_flow_ops(&async_dev_flow_ops);
 }

@@ -304,28 +304,28 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
 		return -1;
 	}
 
-	res = construct_and_preinit_nim(nim_ctx, NULL);
+	res = nthw_construct_and_preinit_nim(nim_ctx, NULL);
 
 	if (res)
 		return res;
 
-	res = nim_state_build(nim_ctx, &nim);
+	res = nthw_nim_state_build(nim_ctx, &nim);
 
 	if (res)
 		return res;
 
 	NT_LOG(DBG, NTHW, "%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
-		drv->mp_port_id_str[port], nim_ctx->nim_id, nim_id_to_text(nim_ctx->nim_id), nim.br,
-		nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+		drv->mp_port_id_str[port], nim_ctx->nim_id, nthw_nim_id_to_text(nim_ctx->nim_id),
+		nim.br, nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
 
 	/*
 	 * Does the driver support the NIM module type?
 	 */
 	if (nim_ctx->nim_id != valid_nim_id) {
 		NT_LOG(ERR, NTHW, "%s: The driver does not support the NIM module type %s",
-			drv->mp_port_id_str[port], nim_id_to_text(nim_ctx->nim_id));
+			drv->mp_port_id_str[port], nthw_nim_id_to_text(nim_ctx->nim_id));
 		NT_LOG(DBG, NTHW, "%s: The driver supports the NIM module type %s",
-			drv->mp_port_id_str[port], nim_id_to_text(valid_nim_id));
+			drv->mp_port_id_str[port], nthw_nim_id_to_text(valid_nim_id));
 		return -1;
 	}
 
@@ -371,7 +371,7 @@ static int _port_init(adapter_info_t *drv, nthw_fpga_t *fpga, int port)
 
 	/*
 	 * Phase 1. Pre-state machine (`port init` functions)
-	 * 1.1) nt4ga_adapter::port_init()
+	 * 1.1) nt4ga_adapter::nthw_port_init()
 	 */
 
 	/* No adapter set-up here, only state variables */
@@ -597,7 +597,7 @@ static int _common_ptp_nim_state_machine(void *data)
 					continue;
 				}
 
-				if (nim_state_build(&nim_ctx[i], &new_state)) {
+				if (nthw_nim_state_build(&nim_ctx[i], &new_state)) {
 					NT_LOG(ERR, NTNIC, "%s: Cannot read basic NIM data",
 						drv->mp_port_id_str[i]);
 					continue;
@@ -607,8 +607,9 @@ static int _common_ptp_nim_state_machine(void *data)
 				NT_LOG(DBG, NTNIC,
 					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
 					drv->mp_port_id_str[i], nim_ctx->nim_id,
-					nim_id_to_text(nim_ctx->nim_id), (unsigned int)new_state.br,
-					nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+					nthw_nim_id_to_text(nim_ctx->nim_id),
+					(unsigned int)new_state.br, nim_ctx->vendor_name,
+					nim_ctx->prod_no, nim_ctx->serial_no);
 
 				(void)_link_state_build(drv, &mac_pcs[i], &gpio_phy[i], i,
 					&link_state[i], is_port_disabled);
@@ -725,7 +726,7 @@ static struct link_ops_s link_100g_ops = {
 	.link_init = nt4ga_link_100g_ports_init,
 };
 
-void link_100g_init(void)
+void nthw_link_100g_init(void)
 {
 	register_100g_link_ops(&link_100g_ops);
 }

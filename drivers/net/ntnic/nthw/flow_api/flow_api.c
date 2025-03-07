@@ -147,7 +147,7 @@ static const struct {
 static_assert(RTE_DIM(err_msg) == ERR_MSG_END,
 	"The list of error messages is not fully completed.");
 
-void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error)
+void nthw_flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error)
 {
 	RTE_ASSERT(msg < ERR_MSG_NO_MSG);
 
@@ -162,7 +162,7 @@ void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *erro
  * Resources
  */
 
-int flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
+int nthw_flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	uint32_t alignment)
 {
 	for (unsigned int i = 0; i < ndev->res[res_type].resource_count; i += alignment) {
@@ -176,7 +176,7 @@ int flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	return -1;
 }
 
-int flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e res_type,
+int nthw_flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	unsigned int num, uint32_t alignment)
 {
 	unsigned int idx_offs;
@@ -204,12 +204,12 @@ int flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e re
 	return -1;
 }
 
-void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx)
+void nthw_flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx)
 {
 	flow_nic_mark_resource_unused(ndev, res_type, idx);
 }
 
-int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
+int nthw_flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
 {
 	NT_LOG(DBG, FILTER, "Reference resource %s idx %i (before ref cnt %i)",
 		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
@@ -222,7 +222,7 @@ int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, i
 	return 0;
 }
 
-int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
+int nthw_flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
 {
 	NT_LOG(DBG, FILTER, "De-reference resource %s idx %i (before ref cnt %i)",
 		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
@@ -232,7 +232,7 @@ int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	ndev->res[res_type].ref[index]--;
 
 	if (!ndev->res[res_type].ref[index])
-		flow_nic_free_resource(ndev, res_type, index);
+		nthw_flow_nic_free_resource(ndev, res_type, index);
 
 	return !!ndev->res[res_type].ref[index];/* if 0 resource has been freed */
 }
@@ -386,7 +386,7 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 	/* Delete all eth-port devices created on this NIC device */
 	while (ndev->eth_base) {
-		flow_delete_eth_dev(ndev->eth_base);
+		nthw_flow_delete_eth_dev(ndev->eth_base);
 		ndev->eth_base = NULL;
 	}
 
@@ -437,7 +437,7 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 }
 
-int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
+int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 {
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
@@ -633,7 +633,7 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 	if (eth_dev) {
 		NT_LOG(DBG, FILTER, "Re-opening existing NIC port device: NIC DEV: %i Port %i",
 			adapter_no, port_no);
-		flow_delete_eth_dev(eth_dev);
+		nthw_flow_delete_eth_dev(eth_dev);
 		eth_dev = NULL;
 	}
 
@@ -728,8 +728,8 @@ err_exit0:
 	return NULL;	/* Error exit */
 }
 
-struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_backend_ops *be_if,
-	void *be_dev)
+struct flow_nic_dev *nthw_flow_api_create(uint8_t adapter_no,
+	const struct flow_api_backend_ops *be_if, void *be_dev)
 {
 	(void)adapter_no;
 
@@ -752,7 +752,7 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	 */
 	be_if->set_debug_mode(be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
 
-	if (flow_api_backend_init(&ndev->be, be_if, be_dev) != 0)
+	if (nthw_flow_api_backend_init(&ndev->be, be_if, be_dev) != 0)
 		goto err_exit;
 
 	ndev->adapter_no = adapter_no;
@@ -831,13 +831,13 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 err_exit:
 
 	if (ndev)
-		flow_api_done(ndev);
+		nthw_flow_api_done(ndev);
 
 	NT_LOG(DBG, FILTER, "ERR: %s", __func__);
 	return NULL;
 }
 
-int flow_api_done(struct flow_nic_dev *ndev)
+int nthw_flow_api_done(struct flow_nic_dev *ndev)
 {
 	NT_LOG(DBG, FILTER, "FLOW API DONE");
 
@@ -848,7 +848,7 @@ int flow_api_done(struct flow_nic_dev *ndev)
 		for (int i = 0; i < RES_COUNT; i++)
 			done_resource_elements(ndev, i);
 
-		flow_api_backend_done(&ndev->be);
+		nthw_flow_api_backend_done(&ndev->be);
 		list_remove_flow_nic(ndev);
 		free(ndev);
 	}
@@ -856,7 +856,7 @@ int flow_api_done(struct flow_nic_dev *ndev)
 	return 0;
 }
 
-void *flow_api_get_be_dev(struct flow_nic_dev *ndev)
+void *nthw_flow_api_get_be_dev(struct flow_nic_dev *ndev)
 {
 	if (!ndev) {
 		NT_LOG(DBG, FILTER, "ERR: %s", __func__);
@@ -1213,7 +1213,7 @@ static int flow_async_destroy(struct flow_eth_dev *dev, uint32_t queue_id,
 	return profile_inline_ops->flow_async_destroy_profile_inline(dev, queue_id, op_attr, flow,
 			user_data, error);
 }
-int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
+int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
@@ -1226,7 +1226,7 @@ int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 	return -1;
 }
 
-int flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count)
+int nthw_flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count)
 {
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
@@ -1242,8 +1242,8 @@ int flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_c
 }
 
 static const struct flow_filter_ops ops = {
-	.flow_filter_init = flow_filter_init,
-	.flow_filter_done = flow_filter_done,
+	.nthw_flow_filter_init = nthw_flow_filter_init,
+	.nthw_flow_filter_done = nthw_flow_filter_done,
 	/*
 	 * Device Management API
 	 */
@@ -1256,8 +1256,8 @@ static const struct flow_filter_ops ops = {
 	.flow_flush = flow_flush,
 	.flow_actions_update = flow_actions_update,
 	.flow_dev_dump = flow_dev_dump,
-	.flow_get_flm_stats = flow_get_flm_stats,
-	.flow_get_ifr_stats = flow_get_ifr_stats,
+	.nthw_flow_get_flm_stats = nthw_flow_get_flm_stats,
+	.nthw_flow_get_ifr_stats = nthw_flow_get_ifr_stats,
 	.flow_get_aged_flows = flow_get_aged_flows,
 
 	/*
@@ -1280,7 +1280,7 @@ static const struct flow_filter_ops ops = {
 	 .hw_mod_hsh_rcp_flush = hw_mod_hsh_rcp_flush,
 };
 
-void init_flow_filter(void)
+void nthw_init_flow_filter(void)
 {
 	register_flow_filter_ops(&ops);
 }

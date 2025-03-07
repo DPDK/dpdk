@@ -110,7 +110,7 @@ int hw_mod_cat_alloc(struct flow_api_backend_s *be)
 	case 18:
 		be->cat.cts_num = 11;
 
-		if (!callocate_mod((struct common_func_s *)&be->cat, 12, &be->cat.v18.cfn,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->cat, 12, &be->cat.v18.cfn,
 				be->cat.nb_cat_funcs, sizeof(struct cat_v18_cfn_s),
 				&be->cat.v18.kce, (be->cat.nb_cat_funcs / 8),
 				sizeof(struct cat_v18_kce_s), &be->cat.v18.kcs,
@@ -140,7 +140,7 @@ int hw_mod_cat_alloc(struct flow_api_backend_s *be)
 	case 21:
 		be->cat.cts_num = 11;
 
-		if (!callocate_mod((struct common_func_s *)&be->cat, 12, &be->cat.v21.cfn,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->cat, 12, &be->cat.v21.cfn,
 				be->cat.nb_cat_funcs, sizeof(struct cat_v21_cfn_s),
 				&be->cat.v21.kce, (be->cat.nb_cat_funcs / 8),
 				sizeof(struct cat_v21_kce_s), &be->cat.v21.kcs,
@@ -233,7 +233,7 @@ static int cfn_reset(struct flow_api_backend_s *be, int i)
 int hw_mod_cat_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->cat));
+	nthw_zero_module_cache((struct common_func_s *)(&be->cat));
 
 	NT_LOG(DBG, FILTER, "INIT CAT CFN");
 

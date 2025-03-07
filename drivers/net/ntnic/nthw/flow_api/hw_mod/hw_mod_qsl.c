@@ -45,7 +45,7 @@ int hw_mod_qsl_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 7:
-		if (!callocate_mod((struct common_func_s *)&be->qsl, 4, &be->qsl.v7.rcp,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->qsl, 4, &be->qsl.v7.rcp,
 				be->qsl.nb_rcp_categories, sizeof(struct qsl_v7_rcp_s),
 				&be->qsl.v7.qst, be->qsl.nb_qst_entries,
 				sizeof(struct qsl_v7_qst_s), &be->qsl.v7.qen, QSL_QEN_ENTRIES,
@@ -75,7 +75,7 @@ void hw_mod_qsl_free(struct flow_api_backend_s *be)
 int hw_mod_qsl_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->qsl));
+	nthw_zero_module_cache((struct common_func_s *)(&be->qsl));
 
 	NT_LOG(DBG, FILTER, "INIT QSL RCP");
 	hw_mod_qsl_rcp_flush(be, 0, ALL_ENTRIES);

@@ -420,12 +420,12 @@ void kcc_free_ndev_resource_management(void **handle);
 /*
  * Group management
  */
-int flow_group_handle_create(void **handle, uint32_t group_count);
-int flow_group_handle_destroy(void **handle);
+int nthw_flow_group_handle_create(void **handle, uint32_t group_count);
+int nthw_flow_group_handle_destroy(void **handle);
 
-int flow_group_translate_get(void *handle, uint8_t owner_id, uint8_t port_id, uint32_t group_in,
-	uint32_t *group_out);
-int flow_group_translate_get_orig_group(void *handle, uint32_t translated_group,
+int nthw_flow_group_translate_get(void *handle, uint8_t owner_id, uint8_t port_id,
+	uint32_t group_in, uint32_t *group_out);
+int nthw_flow_group_translate_get_orig_group(void *handle, uint32_t translated_group,
 	uint32_t *group_orig);
 
 #endif  /* _FLOW_API_ENGINE_H_ */

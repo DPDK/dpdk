@@ -29,8 +29,8 @@
 struct flow_api_backend_s;
 struct common_func_s;
 
-void *callocate_mod(struct common_func_s *mod, int sets, ...);
-void zero_module_cache(struct common_func_s *mod);
+void *nthw_callocate_mod(struct common_func_s *mod, int sets, ...);
+void nthw_zero_module_cache(struct common_func_s *mod);
 
 #define ALL_ENTRIES -1000
 #define ALL_BANK_ENTRIES -1001
@@ -1164,8 +1164,8 @@ struct flow_api_backend_s {
 	unsigned int max_queues;
 };
 
-int flow_api_backend_init(struct flow_api_backend_s *dev, const struct flow_api_backend_ops *iface,
-	void *be_dev);
-int flow_api_backend_done(struct flow_api_backend_s *dev);
+int nthw_flow_api_backend_init(struct flow_api_backend_s *dev,
+	const struct flow_api_backend_ops *iface, void *be_dev);
+int nthw_flow_api_backend_done(struct flow_api_backend_s *dev);
 
 #endif  /* _HW_MOD_BACKEND_H_ */

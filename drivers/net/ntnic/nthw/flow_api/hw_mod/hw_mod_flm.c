@@ -106,7 +106,8 @@ int hw_mod_flm_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 25:
-		if (!callocate_mod((struct common_func_s *)&be->flm, 38, &be->flm.v25.control, 1,
+		if (!nthw_callocate_mod((struct common_func_s *)&be->flm, 38,
+				&be->flm.v25.control, 1,
 				sizeof(struct flm_v25_control_s), &be->flm.v25.status, 1,
 				sizeof(struct flm_v25_status_s), &be->flm.v25.load_bin, 1,
 				sizeof(struct flm_v25_load_bin_s), &be->flm.v25.load_pps, 1,
@@ -175,7 +176,7 @@ void hw_mod_flm_free(struct flow_api_backend_s *be)
 int hw_mod_flm_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
-	zero_module_cache((struct common_func_s *)(&be->flm));
+	nthw_zero_module_cache((struct common_func_s *)(&be->flm));
 
 	NT_LOG(DBG, FILTER, "INIT FLM");
 	hw_mod_flm_control_set(be, HW_FLM_CONTROL_SPLIT_SDRAM_USAGE, 0x10);

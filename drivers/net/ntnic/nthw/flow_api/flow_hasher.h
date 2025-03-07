@@ -15,7 +15,7 @@ struct hasher_s {
 	int cam_bw;
 };
 
-int init_hasher(struct hasher_s *hsh, int _banks, int nb_records);
-uint32_t gethash(struct hasher_s *hsh, const uint32_t key[16], int *result);
+int nthw_init_hasher(struct hasher_s *hsh, int _banks, int nb_records);
+uint32_t nthw_gethash(struct hasher_s *hsh, const uint32_t key[16], int *result);
 
 #endif	/* _FLOW_HASHER_H_ */

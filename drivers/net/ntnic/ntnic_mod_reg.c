@@ -15,7 +15,7 @@ void register_sg_ops(struct sg_ops_s *ops)
 const struct sg_ops_s *get_sg_ops(void)
 {
 	if (sg_ops == NULL)
-		sg_init();
+		nthw_sg_init();
 	return sg_ops;
 }
 
@@ -32,7 +32,7 @@ void register_meter_ops(struct meter_ops_s *ops)
 const struct meter_ops_s *get_meter_ops(void)
 {
 	if (meter_ops == NULL)
-		meter_init();
+		nthw_meter_init();
 
 	return meter_ops;
 }
@@ -65,7 +65,7 @@ void register_100g_link_ops(struct link_ops_s *ops)
 const struct link_ops_s *get_100g_link_ops(void)
 {
 	if (link_100g_ops == NULL)
-		link_100g_init();
+		nthw_link_100g_init();
 	return link_100g_ops;
 }
 
@@ -96,7 +96,7 @@ void register_port_ops(const struct port_ops *ops)
 const struct port_ops *get_port_ops(void)
 {
 	if (port_ops == NULL)
-		port_init();
+		nthw_port_init();
 	return port_ops;
 }
 
@@ -125,7 +125,7 @@ void register_adapter_ops(const struct adapter_ops *ops)
 const struct adapter_ops *get_adapter_ops(void)
 {
 	if (adapter_ops == NULL)
-		adapter_init();
+		nthw_adapter_init();
 	return adapter_ops;
 }
 
@@ -211,7 +211,7 @@ struct rst_nt400dxx_ops *get_rst_nt400dxx_ops(void)
 const struct flow_backend_ops *get_flow_backend_ops(void)
 {
 	if (flow_backend_ops == NULL)
-		flow_backend_init();
+		nthw_flow_backend_init();
 
 	return flow_backend_ops;
 }
@@ -241,7 +241,7 @@ void register_flow_filter_ops(const struct flow_filter_ops *ops)
 const struct flow_filter_ops *get_flow_filter_ops(void)
 {
 	if (flow_filter_ops == NULL)
-		init_flow_filter();
+		nthw_init_flow_filter();
 
 	return flow_filter_ops;
 }
@@ -256,7 +256,7 @@ void register_dev_fp_flow_ops(const struct rte_flow_fp_ops *ops)
 const struct rte_flow_fp_ops *get_dev_fp_flow_ops(void)
 {
 	if (dev_fp_flow_ops == NULL)
-		dev_fp_flow_init();
+		nthw_dev_fp_flow_init();
 
 	return dev_fp_flow_ops;
 }
@@ -271,7 +271,7 @@ void register_dev_flow_ops(const struct rte_flow_ops *ops)
 const struct rte_flow_ops *get_dev_flow_ops(void)
 {
 	if (dev_flow_ops == NULL)
-		dev_flow_init();
+		nthw_dev_flow_init();
 
 	return dev_flow_ops;
 }

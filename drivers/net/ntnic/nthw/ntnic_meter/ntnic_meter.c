@@ -476,7 +476,7 @@ static struct meter_ops_s meter_ops = {
 	.eth_mtr_ops_get = eth_mtr_ops_get,
 };
 
-void meter_init(void)
+void nthw_meter_init(void)
 {
 	NT_LOG(DBG, NTNIC, "Meter ops initialized");
 	register_meter_ops(&meter_ops);

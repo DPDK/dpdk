@@ -558,11 +558,13 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 	}
 
 	/* Update and get FLM stats */
-	flow_filter_ops->flow_get_flm_stats(ndev, (uint64_t *)p_nt4ga_stat->mp_stat_structs_flm,
+	flow_filter_ops->nthw_flow_get_flm_stats(ndev,
+		(uint64_t *)p_nt4ga_stat->mp_stat_structs_flm,
 		sizeof(struct flm_counters_v1) / sizeof(uint64_t));
 
 	/* Update and get IFR stats */
-	flow_filter_ops->flow_get_ifr_stats(ndev, (uint64_t *)p_nt4ga_stat->mp_stat_structs_ifr,
+	flow_filter_ops->nthw_flow_get_ifr_stats(ndev,
+		(uint64_t *)p_nt4ga_stat->mp_stat_structs_ifr,
 		p_nt4ga_stat->mn_ifr_counters - 1);
 
 	/*

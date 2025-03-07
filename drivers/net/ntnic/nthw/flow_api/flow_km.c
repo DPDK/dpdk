@@ -93,7 +93,7 @@ void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle)
 		(struct tcam_distrib_s *)((char *)km->cam_dist + CAM_ENTRIES + sizeof(uint32_t));
 
 	km->hsh = (struct hasher_s *)((char *)km->tcam_dist + TCAM_ENTRIES);
-	init_hasher(km->hsh, km->be->km.nb_cam_banks, km->be->km.nb_cam_records);
+	nthw_init_hasher(km->hsh, km->be->km.nb_cam_banks, km->be->km.nb_cam_records);
 }
 
 void km_free_ndev_resource_management(void **handle)
@@ -859,7 +859,7 @@ static int km_write_data_to_cam(struct km_flow_def_s *km)
 	RTE_ASSERT(km->cam_dist);
 
 	/* word list without info set */
-	gethash(km->hsh, km->entry_word, val);
+	nthw_gethash(km->hsh, km->entry_word, val);
 
 	for (uint32_t i = 0; i < km->be->km.nb_cam_banks; i++) {
 		/* if paired we start always on an even address - reset bit 0 */

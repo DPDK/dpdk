@@ -466,7 +466,7 @@ static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, u
 					stat_data.id = mtr_id;
 					stat_data.timestamp = inf_data->ts;
 					stat_data.cause = inf_data->cause;
-					flm_inf_queue_put(port, remote_caller, &stat_data);
+					nthw_flm_inf_queue_put(port, remote_caller, &stat_data);
 				}
 			}
 
@@ -527,7 +527,7 @@ static void flm_mtr_read_sta_records(struct flow_eth_dev *dev, uint32_t *data, u
 				.learn_failed = sta_data->lfs,
 			};
 
-			flm_sta_queue_put(port, remote_caller, &data);
+			nthw_flm_sta_queue_put(port, remote_caller, &data);
 		}
 	}
 }
@@ -1075,7 +1075,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 	*num_queues = 0;
 
 	if (action == NULL) {
-		flow_nic_set_error(ERR_FAILED, error);
+		nthw_flow_nic_set_error(ERR_FAILED, error);
 		NT_LOG(ERR, FILTER, "Flow actions missing");
 		return -1;
 	}
@@ -1100,7 +1100,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				if (*num_dest_port > 0) {
 					NT_LOG(ERR, FILTER,
 						"Multiple port_id actions for one flow is not supported");
-					flow_nic_set_error(ERR_ACTION_MULTIPLE_PORT_ID_UNSUPPORTED,
+					nthw_flow_nic_set_error(
+						ERR_ACTION_MULTIPLE_PORT_ID_UNSUPPORTED,
 						error);
 					return -1;
 				}
@@ -1109,13 +1110,13 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 
 				if (fd->dst_num_avail == MAX_OUTPUT_DEST) {
 					NT_LOG(ERR, FILTER, "Too many output destinations");
-					flow_nic_set_error(ERR_OUTPUT_TOO_MANY, error);
+					nthw_flow_nic_set_error(ERR_OUTPUT_TOO_MANY, error);
 					return -1;
 				}
 
 				if (port >= dev->ndev->be.num_phy_ports) {
 					NT_LOG(ERR, FILTER, "Phy port out of range");
-					flow_nic_set_error(ERR_OUTPUT_INVALID, error);
+					nthw_flow_nic_set_error(ERR_OUTPUT_INVALID, error);
 					return -1;
 				}
 
@@ -1181,7 +1182,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					NT_LOG(ERR, FILTER,
 						"ERROR: RSS hash key length %u exceeds maximum value %u",
 						rss->key_len, MAX_RSS_KEY_LEN);
-					flow_nic_set_error(ERR_RSS_TOO_LONG_KEY, error);
+					nthw_flow_nic_set_error(ERR_RSS_TOO_LONG_KEY, error);
 					return -1;
 				}
 
@@ -1269,7 +1270,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					NT_LOG(ERR, FILTER,
 						"ERROR: - Number of METER actions exceeds %d.",
 						MAX_FLM_MTRS_SUPPORTED);
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
@@ -1293,7 +1294,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				if (encap_decap_order != 1) {
 					NT_LOG(ERR, FILTER,
 						"ERROR: - RAW_ENCAP must follow RAW_DECAP.");
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
@@ -1301,7 +1302,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					encap->item_count < 2) {
 					NT_LOG(ERR, FILTER,
 						"ERROR: - RAW_ENCAP data/size invalid.");
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
@@ -1396,7 +1397,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					NT_LOG(ERR, FILTER,
 						"ERROR: - Encapsulation with %d vlans not supported.",
 						(int)fd->tun_hdr.nb_vlans);
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
@@ -1425,14 +1426,14 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				if (encap_decap_order != 0) {
 					NT_LOG(ERR, FILTER,
 						"ERROR: - RAW_ENCAP must follow RAW_DECAP.");
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
 				if (decap->item_count < 2) {
 					NT_LOG(ERR, FILTER,
 						"ERROR: - RAW_DECAP must decap something.");
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
@@ -1489,14 +1490,14 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				if (modify_field->src.field != RTE_FLOW_FIELD_VALUE) {
 					NT_LOG(ERR, FILTER,
 						"MODIFY_FIELD only src type VALUE is supported.");
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
 				if (modify_field->dst.level > 2) {
 					NT_LOG(ERR, FILTER,
 						"MODIFY_FIELD only dst level 0, 1, and 2 is supported.");
-					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 					return -1;
 				}
 
@@ -1505,14 +1506,16 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					if (modify_field->operation != RTE_FLOW_MODIFY_SUB) {
 						NT_LOG(ERR, FILTER,
 							"MODIFY_FIELD only operation SUB is supported for TTL/HOPLIMIT.");
-						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED,
+							error);
 						return -1;
 					}
 
 					if (fd->ttl_sub_enable) {
 						NT_LOG(ERR, FILTER,
 							"MODIFY_FIELD TTL/HOPLIMIT resource already in use.");
-						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED,
+							error);
 						return -1;
 					}
 
@@ -1527,7 +1530,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					if (modify_field->operation != RTE_FLOW_MODIFY_SET) {
 						NT_LOG(ERR, FILTER,
 							"MODIFY_FIELD only operation SET is supported in general.");
-						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED,
+							error);
 						return -1;
 					}
 
@@ -1536,7 +1540,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 						NT_LOG(ERR, FILTER,
 							"MODIFY_FIELD exceeded maximum of %u MODIFY_FIELD actions.",
 							dev->ndev->be.tpe.nb_cpy_writers);
-						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED,
+							error);
 						return -1;
 					}
 
@@ -1626,7 +1631,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					default:
 						NT_LOG(ERR, FILTER,
 							"MODIFY_FIELD dst type is not supported.");
-						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED,
+							error);
 						return -1;
 					}
 
@@ -1636,7 +1642,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					if (modify_field_use_flag & modify_field_use_flags) {
 						NT_LOG(ERR, FILTER,
 							"MODIFY_FIELD dst type hardware resource already used.");
-						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED,
+							error);
 						return -1;
 					}
 
@@ -1675,7 +1682,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 		default:
 			NT_LOG(ERR, FILTER, "Invalid or unsupported flow action received - %i",
 				action[aidx].type);
-			flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+			nthw_flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
 			return -1;
 		}
 	}
@@ -1710,7 +1717,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 	memset(key_def, 0x0, sizeof(struct flm_flow_key_def_s));
 
 	if (elem == NULL) {
-		flow_nic_set_error(ERR_FAILED, error);
+		nthw_flow_nic_set_error(ERR_FAILED, error);
 		NT_LOG(ERR, FILTER, "Flow items missing");
 		return -1;
 	}
@@ -1774,7 +1781,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 	if (qw_free < 0) {
 		NT_LOG(ERR, FILTER, "Key size too big. Out of QW resources.");
-		flow_nic_set_error(ERR_FAILED, error);
+		nthw_flow_nic_set_error(ERR_FAILED, error);
 		return -1;
 	}
 
@@ -1798,7 +1805,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				if (any_count > 0) {
 					NT_LOG(ERR, FILTER,
 						"Tunneled L2 ethernet not supported");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -1815,7 +1822,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (qw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -1884,7 +1891,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (sw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -1925,7 +1932,8 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				if (implicit_vlan_vid > 0) {
 					NT_LOG(ERR, FILTER,
 						"Multiple VLANs not supported for implicit VLAN patterns.");
-					flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM,
+					nthw_flow_nic_set_error(
+						ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM,
 						error);
 					return -1;
 				}
@@ -1977,7 +1985,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				} else {
 					NT_LOG(ERR, FILTER,
 						"Key size too big. Out of SW-QW resources.");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2014,7 +2022,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					ipv4_mask->hdr.hdr_checksum != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested IPv4 field not support by running SW version.");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2041,7 +2049,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (qw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of QW resources.");
-						flow_nic_set_error(ERR_FAILED,
+						nthw_flow_nic_set_error(ERR_FAILED,
 							error);
 						return -1;
 					}
@@ -2080,7 +2088,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (sw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -2101,7 +2109,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (sw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -2122,7 +2130,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (sw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -2171,7 +2179,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					ipv6_mask->hdr.hop_limits != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested IPv6 field not support by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2179,7 +2187,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (qw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -2215,7 +2223,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					if (qw_counter >= 2) {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 
@@ -2292,7 +2300,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2330,7 +2338,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					udp_mask->hdr.dgram_cksum != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested UDP field not support by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2384,7 +2392,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2424,7 +2432,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				if (sctp_mask->hdr.tag != 0 || sctp_mask->hdr.cksum != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested SCTP field not support by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2478,7 +2486,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2522,7 +2530,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					icmp_mask->hdr.icmp_seq_nb != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested ICMP field not supported by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2577,7 +2585,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2621,7 +2629,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				if (icmp_mask->checksum != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested ICMP6 field not supported by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2676,7 +2684,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2724,7 +2732,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					tcp_mask->hdr.tcp_urp != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested TCP field not support by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2778,7 +2786,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2813,7 +2821,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					gtp_mask->msg_type != 0 || gtp_mask->plen != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested GTP field not support by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2869,7 +2877,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2897,7 +2905,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					gtp_psc_mask->ext_hdr_len != 0) {
 					NT_LOG(ERR, FILTER,
 						"Requested GTP PSC field is not supported by running SW version");
-					flow_nic_set_error(ERR_FAILED, error);
+					nthw_flow_nic_set_error(ERR_FAILED, error);
 					return -1;
 				}
 
@@ -2953,7 +2961,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					} else {
 						NT_LOG(ERR, FILTER,
 							"Key size too big. Out of SW-QW resources.");
-						flow_nic_set_error(ERR_FAILED, error);
+						nthw_flow_nic_set_error(ERR_FAILED, error);
 						return -1;
 					}
 				}
@@ -2982,7 +2990,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 		default:
 			NT_LOG(ERR, FILTER, "Invalid or unsupported flow request: %d",
 				(int)elem[eidx].type);
-			flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
+			nthw_flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
 			return -1;
 		}
 	}
@@ -3266,7 +3274,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (cot_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference COT resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3277,7 +3285,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (qsl_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference QSL resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3288,7 +3296,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (hsh_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference HSH resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3307,7 +3315,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 		if (slc_lr_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference SLC LR resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			return -1;
 		}
 	}
@@ -3330,7 +3338,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 		if (tpe_ext_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference TPE EXT resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			return -1;
 		}
 
@@ -3394,7 +3402,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (tpe_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference TPE resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3406,7 +3414,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (scrub_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference FLM SCRUB resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3429,7 +3437,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (action_set_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference Action Set resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3446,7 +3454,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	if (flm_ft_idx.error) {
 		NT_LOG(ERR, FILTER, "Could not reference FLM FT resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		return -1;
 	}
 
@@ -3517,7 +3525,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (flm_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference FLM RPC resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -3535,7 +3543,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		/* Program flow */
 		if (convert_fh_to_fh_flm(fh, packet_data, flm_idx.id1 + 2, flm_ft, flm_rpl_ext_ptr,
 				flm_scrub, attr->priority & 0x3) != 0) {
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 		flm_flow_programming(fh, NT_FLM_OP_LEARN);
@@ -3553,7 +3561,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		/* SCRUB/AGE action is not supported for group 0 */
 		if (fd->age.timeout != 0 || fd->age.context != NULL) {
 			NT_LOG(ERR, FILTER, "Action AGE is not supported for flow in group 0");
-			flow_nic_set_error(ERR_ACTION_AGE_UNSUPPORTED_GROUP_0, error);
+			nthw_flow_nic_set_error(ERR_ACTION_AGE_UNSUPPORTED_GROUP_0, error);
 			goto error_out;
 		}
 
@@ -3575,7 +3583,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			/* Group 0 supports only modify action for TTL/Hop limit. */
 			if (fd->modify_field_count > 0) {
 				NT_LOG(ERR, FILTER, "Unsupported MODIFY ACTION for group 0");
-				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 				goto error_out;
 			}
 
@@ -3592,7 +3600,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			if (cot_idx.error) {
 				NT_LOG(ERR, FILTER, "Could not reference COT resource");
-				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 				goto error_out;
 			}
 
@@ -3605,7 +3613,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			if (qsl_idx.error) {
 				NT_LOG(ERR, FILTER, "Could not reference QSL resource");
-				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 				goto error_out;
 			}
 
@@ -3618,7 +3626,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			if (hsh_idx.error) {
 				NT_LOG(ERR, FILTER, "Could not reference HSH resource");
-				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 				goto error_out;
 			}
 
@@ -3641,7 +3649,8 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 				if (tpe_idx.error) {
 					NT_LOG(ERR, FILTER, "Could not reference TPE resource");
-					flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+					nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION,
+						error);
 					goto error_out;
 				}
 			}
@@ -3655,7 +3664,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (action_set_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference Action Set resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -3686,7 +3695,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (cat_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference CAT resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -3698,7 +3707,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			if (km_key_create(&fd->km, fh->port_id)) {
 				NT_LOG(ERR, FILTER, "KM creation failed");
-				flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
+				nthw_flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
 				goto error_out;
 			}
 
@@ -3738,23 +3747,26 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 					found_flow->flm_db_idx_counter);
 
 				if (other_km_rcp_data == NULL ||
-					flow_nic_ref_resource(dev->ndev, RES_KM_CATEGORY,
+					nthw_flow_nic_ref_resource(dev->ndev, RES_KM_CATEGORY,
 					other_km_rcp_data->rcp)) {
 					NT_LOG(ERR, FILTER,
 						"Could not reference existing KM RCP resource");
-					flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+					nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION,
+						error);
 					goto error_out;
 				}
 
 				km_rcp_data.rcp = other_km_rcp_data->rcp;
 			} else {
 				/* Alloc new KM RCP */
-				int rcp = flow_nic_alloc_resource(dev->ndev, RES_KM_CATEGORY, 1);
+				int rcp = nthw_flow_nic_alloc_resource(dev->ndev,
+					RES_KM_CATEGORY, 1);
 
 				if (rcp < 0) {
 					NT_LOG(ERR, FILTER,
 						"Could not reference KM RCP resource (flow_nic_alloc)");
-					flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+					nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION,
+						error);
 					goto error_out;
 				}
 
@@ -3770,7 +3782,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (km_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference KM RCP resource (db_inline)");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -3786,7 +3798,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (km_ft_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference KM FT resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -3795,7 +3807,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			if (identical_km_entry_ft >= 0 && identical_km_entry_ft != km_ft_idx.id1) {
 				NT_LOG(ERR, FILTER,
 					"Identical KM matches cannot have different KM FTs");
-				flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
+				nthw_flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
 				goto error_out;
 			}
 
@@ -3831,7 +3843,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (match_set_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference Match Set resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -3848,7 +3860,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		if (flm_ft_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference FLM FT resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -4054,7 +4066,7 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		flm_shared_stats->size = FLM_MTR_STAT_SIZE;
 		flm_shared_stats->shared = UINT8_MAX;
 
-		if (flow_group_handle_create(&ndev->group_handle, ndev->be.flm.nb_categories))
+		if (nthw_flow_group_handle_create(&ndev->group_handle, ndev->be.flm.nb_categories))
 			goto err_exit0;
 
 		if (hw_db_inline_create(ndev, &ndev->hw_db_handle))
@@ -4079,14 +4091,14 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 	if (ndev->flow_mgnt_prepared) {
 		flm_sdram_reset(ndev, 0);
 
-		flow_nic_free_resource(ndev, RES_KM_FLOW_TYPE, 0);
-		flow_nic_free_resource(ndev, RES_KM_CATEGORY, 0);
+		nthw_flow_nic_free_resource(ndev, RES_KM_FLOW_TYPE, 0);
+		nthw_flow_nic_free_resource(ndev, RES_KM_CATEGORY, 0);
 
 		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, 0, 0);
 		hw_mod_flm_rcp_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 0);
-		flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 1);
-		flow_nic_free_resource(ndev, RES_FLM_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 0);
+		nthw_flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 1);
+		nthw_flow_nic_free_resource(ndev, RES_FLM_RCP, 0);
 
 		for (uint32_t i = 0; i < UINT8_MAX; ++i) {
 			struct flm_flow_mtr_handle_s *handle = ndev->flm_mtr_handle;
@@ -4100,39 +4112,39 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		free(ndev->flm_mtr_handle);
 
-		flow_group_handle_destroy(&ndev->group_handle);
+		nthw_flow_group_handle_destroy(&ndev->group_handle);
 		ntnic_id_table_destroy(ndev->id_table_handle);
 
 		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PRESET_ALL, 0, 0, 0);
 		hw_mod_cat_cfn_flush(&ndev->be, 0, 1);
 		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
 		hw_mod_cat_cot_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
+		nthw_flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
 
 		hw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_PRESET_ALL, 0, 0);
 		hw_mod_qsl_rcp_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_QSL_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_QSL_RCP, 0);
 
 		hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_PRESET_ALL, 0, 0);
 		hw_mod_slc_lr_rcp_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_SLC_LR_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_SLC_LR_RCP, 0);
 
 		hw_mod_tpe_reset(&ndev->be);
-		flow_nic_free_resource(ndev, RES_TPE_RCP, 0);
-		flow_nic_free_resource(ndev, RES_TPE_EXT, 0);
-		flow_nic_free_resource(ndev, RES_TPE_RPL, 0);
+		nthw_flow_nic_free_resource(ndev, RES_TPE_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_TPE_EXT, 0);
+		nthw_flow_nic_free_resource(ndev, RES_TPE_RPL, 0);
 
 		hw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_PRESET_ALL, 0, 0);
 		hw_mod_pdb_rcp_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_PDB_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_PDB_RCP, 0);
 
 		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, 0, 0, 0);
 		hw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_HSH_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_HSH_RCP, 0);
 
 		hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0);
 		hw_mod_flm_scrub_flush(&ndev->be, 0, 1);
-		flow_nic_free_resource(ndev, RES_SCRUB_RCP, 0);
+		nthw_flow_nic_free_resource(ndev, RES_SCRUB_RCP, 0);
 
 		hw_db_inline_destroy(ndev->hw_db_handle);
 
@@ -4173,7 +4185,7 @@ struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_un
 	if (attr_local.group > 0)
 		forced_vlan_vid_local = 0;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	struct nic_flow_def *fd = allocate_nic_flow_def();
 
@@ -4195,18 +4207,18 @@ struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_un
 
 	/* Translate group IDs */
 	if (fd->jump_to_group != UINT32_MAX &&
-		flow_group_translate_get(dev->ndev->group_handle, caller_id_local, dev->port,
+		nthw_flow_group_translate_get(dev->ndev->group_handle, caller_id_local, dev->port,
 		fd->jump_to_group, &fd->jump_to_group)) {
 		NT_LOG(ERR, FILTER, "ERROR: Could not get group resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		goto err_exit;
 	}
 
 	if (attr_local.group > 0 &&
-		flow_group_translate_get(dev->ndev->group_handle, caller_id_local, dev->port,
+		nthw_flow_group_translate_get(dev->ndev->group_handle, caller_id_local, dev->port,
 		attr_local.group, &attr_local.group)) {
 		NT_LOG(ERR, FILTER, "ERROR: Could not get group resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		goto err_exit;
 	}
 
@@ -4255,7 +4267,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 
 	int err = 0;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	/* take flow out of ndev list - may not have been put there yet */
 	if (fh->type == FLOW_HANDLE_TYPE_FLM)
@@ -4289,7 +4301,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 				fh->flm_db_idx_counter);
 
 			if (other_km_rcp_data != NULL &&
-				flow_nic_deref_resource(dev->ndev, RES_KM_CATEGORY,
+				nthw_flow_nic_deref_resource(dev->ndev, RES_KM_CATEGORY,
 				(int)other_km_rcp_data->rcp) == 0) {
 				hw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_PRESET_ALL,
 					(int)other_km_rcp_data->rcp, 0, 0);
@@ -4306,7 +4318,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 
 	if (err) {
 		NT_LOG(ERR, FILTER, "FAILED removing flow: %p", fh);
-		flow_nic_set_error(ERR_REMOVE_FLOW_FAILED, error);
+		nthw_flow_nic_set_error(ERR_REMOVE_FLOW_FAILED, error);
 	}
 
 	free(fh);
@@ -4327,7 +4339,7 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *fl
 	if (flow && flow->type == FLOW_HANDLE_TYPE_FLM && flow->flm_async)
 		return flow_async_destroy_profile_inline(dev, 0, NULL, flow, NULL, error);
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (flow) {
 		/* Delete this flow */
@@ -4345,7 +4357,7 @@ int flow_flush_profile_inline(struct flow_eth_dev *dev,
 {
 	int err = 0;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	/*
 	 * Delete all created FLM flows from this eth device.
@@ -4394,12 +4406,12 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 
 	int group = (int)flow->flm_kid - 2;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (flow->type != FLOW_HANDLE_TYPE_FLM) {
 		NT_LOG(ERR, FILTER,
 			"Flow actions update not supported for group 0 or default flows");
-		flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
+		nthw_flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
 		return -1;
 	}
 
@@ -4447,7 +4459,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 
 		if (flm_data == NULL) {
 			NT_LOG(ERR, FILTER, "Could not retrieve FLM RPC resource");
-			flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
+			nthw_flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
 			goto error_out;
 		}
 
@@ -4458,7 +4470,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 
 		if (flm_idx.error) {
 			NT_LOG(ERR, FILTER, "Could not reference FLM RPC resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
 		}
 
@@ -4559,7 +4571,7 @@ int flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 	struct rte_flow_error *error)
 {
 	(void)dev;
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	unsigned int queue_size = flm_age_queue_get_size(caller_id);
 
@@ -4607,7 +4619,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	FILE *file,
 	struct rte_flow_error *error)
 {
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	rte_spinlock_lock(&dev->ndev->mtx);
 
@@ -4802,7 +4814,7 @@ int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	(void)caller_id;
 	int res = 0;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 	memset(port_info, 0, sizeof(struct rte_flow_port_info));
 
 	port_info->max_nb_aging_objects = dev->nb_aging_objects;
@@ -4824,7 +4836,7 @@ int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	(void)queue_attr;
 	int res = 0;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (port_attr->nb_aging_objects > 0) {
 		if (dev->nb_aging_objects > 0) {
@@ -4903,7 +4915,7 @@ struct flow_pattern_template *flow_pattern_template_create_profile_inline(struct
 
 	struct nic_flow_def *fd = allocate_nic_flow_def();
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (fd == NULL) {
 		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
@@ -4932,7 +4944,7 @@ int flow_pattern_template_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct rte_flow_error *error)
 {
 	(void)dev;
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	free(pattern_template->fd);
 	free(pattern_template);
@@ -4955,7 +4967,7 @@ flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
 
 	struct nic_flow_def *fd = allocate_nic_flow_def();
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (fd == NULL) {
 		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
@@ -4973,13 +4985,13 @@ flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
 	/* Translate group IDs */
 	if (fd->jump_to_group != UINT32_MAX) {
 		rte_spinlock_lock(&dev->ndev->mtx);
-		res = flow_group_translate_get(dev->ndev->group_handle, caller_id,
+		res = nthw_flow_group_translate_get(dev->ndev->group_handle, caller_id,
 				dev->port, fd->jump_to_group, &fd->jump_to_group);
 		rte_spinlock_unlock(&dev->ndev->mtx);
 
 		if (res) {
 			NT_LOG(ERR, FILTER, "ERROR: Could not get group resource");
-			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			free(fd);
 			return NULL;
 		}
@@ -4999,7 +5011,7 @@ int flow_actions_template_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct rte_flow_error *error)
 {
 	(void)dev;
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	free(actions_template->fd);
 	free(actions_template);
@@ -5014,7 +5026,7 @@ struct flow_template_table *flow_template_table_create_profile_inline(struct flo
 	struct flow_actions_template *actions_templates[], uint8_t nb_actions_templates,
 	struct rte_flow_error *error)
 {
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	struct flow_template_table *template_table = calloc(1, sizeof(struct flow_template_table));
 
@@ -5055,14 +5067,14 @@ struct flow_template_table *flow_template_table_create_profile_inline(struct flo
 
 	rte_spinlock_lock(&dev->ndev->mtx);
 	int res =
-		flow_group_translate_get(dev->ndev->group_handle, caller_id, dev->port,
+		nthw_flow_group_translate_get(dev->ndev->group_handle, caller_id, dev->port,
 			template_table->attr.group, &template_table->attr.group);
 	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	/* Translate group IDs */
 	if (res) {
 		NT_LOG(ERR, FILTER, "ERROR: Could not get group resource");
-		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		nthw_flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 		goto error_out;
 	}
 
@@ -5084,7 +5096,7 @@ int flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct flow_template_table *template_table,
 	struct rte_flow_error *error)
 {
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	const uint32_t nb_cells =
 		template_table->nb_pattern_templates * template_table->nb_actions_templates;
@@ -5139,7 +5151,7 @@ struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
 	uint32_t packet_mask[10];
 	struct flm_flow_key_def_s key_def;
 
-	flow_nic_set_error(ERR_SUCCESS, error);
+	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	struct nic_flow_def *fd = malloc(sizeof(struct nic_flow_def));
 
@@ -5324,7 +5336,7 @@ int flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t queue_i
 
 	if (flm_flow_programming(flow, NT_FLM_OP_UNLEARN)) {
 		NT_LOG(ERR, FILTER, "FAILED to destroy flow: %p", flow);
-		flow_nic_set_error(ERR_REMOVE_FLOW_FAILED, error);
+		nthw_flow_nic_set_error(ERR_REMOVE_FLOW_FAILED, error);
 		return -1;
 	}
 

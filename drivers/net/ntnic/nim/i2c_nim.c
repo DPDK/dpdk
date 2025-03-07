@@ -328,12 +328,12 @@ static int qsfp_nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
 	return res;
 }
 
-int nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
+int nthw_nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
 {
 	return qsfp_nim_state_build(ctx, state);
 }
 
-const char *nim_id_to_text(uint8_t nim_id)
+const char *nthw_nim_id_to_text(uint8_t nim_id)
 {
 	switch (nim_id) {
 	case 0x0:
@@ -356,7 +356,7 @@ const char *nim_id_to_text(uint8_t nim_id)
 /*
  * Disable laser for specific lane or all lanes
  */
-int nim_qsfp_plus_nim_set_tx_laser_disable(nim_i2c_ctx_p ctx, bool disable, int lane_idx)
+int nthw_nim_qsfp_plus_nim_set_tx_laser_disable(nim_i2c_ctx_p ctx, bool disable, int lane_idx)
 {
 	uint8_t value;
 	uint8_t mask;
@@ -419,7 +419,7 @@ static int qsfpplus_read_basic_data(nim_i2c_ctx_t *ctx)
 	const char *yes_no[2] = { "No", "Yes" };
 	(void)yes_no;
 	NT_LOG(DBG, NTNIC, "Instance %d: NIM id: %s (%d)", ctx->instance,
-		nim_id_to_text(ctx->nim_id), ctx->nim_id);
+		nthw_nim_id_to_text(ctx->nim_id), ctx->nim_id);
 
 	/* Read DMI options */
 	if (nim_read_write_data_lin(ctx, pg_addr, QSFP_DMI_OPTION_LIN_ADDR, sizeof(options),
@@ -788,7 +788,7 @@ static int qsfp28_preinit(nim_i2c_ctx_p ctx, int8_t lane_idx)
 	return res;
 }
 
-int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
+int nthw_construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 {
 	int res = i2c_nim_common_construct(ctx);
 
@@ -803,7 +803,7 @@ int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 
 	default:
 		res = 1;
-		NT_LOG(ERR, NTHW, "NIM type %s is not supported.", nim_id_to_text(ctx->nim_id));
+		NT_LOG(ERR, NTHW, "NIM type %s is not supported", nthw_nim_id_to_text(ctx->nim_id));
 	}
 
 	return res;
@@ -815,7 +815,7 @@ int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
  * When cleared (= 0b), modules with power classes 5 to 7 must dissipate less
  * than 3.5W (but are not required to be fully functional). Default 0.
  */
-void qsfp28_set_high_power(nim_i2c_ctx_p ctx)
+void nthw_qsfp28_set_high_power(nim_i2c_ctx_p ctx)
 {
 	const uint16_t addr = 93;
 	uint8_t data;
@@ -834,7 +834,7 @@ void qsfp28_set_high_power(nim_i2c_ctx_p ctx)
  *  register must be avoided as this introduces I2C errors on NT200A01.
  */
 
-bool qsfp28_set_fec_enable(nim_i2c_ctx_p ctx, bool media_side_fec, bool host_side_fec)
+bool nthw_qsfp28_set_fec_enable(nim_i2c_ctx_p ctx, bool media_side_fec, bool host_side_fec)
 {
 	/*
 	 * If the current FEC state does not match the wanted and the FEC cannot be
