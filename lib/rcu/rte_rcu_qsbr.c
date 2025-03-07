@@ -332,7 +332,7 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 		return 1;
 	}
 
-	char data[dq->esize];
+	char *data = alloca(dq->esize);
 	dq_elem = (__rte_rcu_qsbr_dq_elem_t *)data;
 	/* Start the grace period */
 	dq_elem->token = rte_rcu_qsbr_start(dq->v);
@@ -396,10 +396,10 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 
 	cnt = 0;
 
-	char data[dq->esize];
+	char *data = alloca(dq->esize);
 	/* Check reader threads quiescent state and reclaim resources */
 	while (cnt < n &&
-		rte_ring_dequeue_bulk_elem_start(dq->r, &data,
+		rte_ring_dequeue_bulk_elem_start(dq->r, data,
 					dq->esize, 1, available) != 0) {
 		dq_elem = (__rte_rcu_qsbr_dq_elem_t *)data;
 
