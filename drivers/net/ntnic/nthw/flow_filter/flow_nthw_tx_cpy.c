@@ -41,7 +41,7 @@ int tx_cpy_nthw_init(struct tx_cpy_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_TX_CPY, n_instance);
 
-	assert(n_instance >= 0 && n_instance < 256);
+	RTE_ASSERT(n_instance >= 0 && n_instance < 256);
 
 	if (p == NULL)
 		return p_mod == NULL ? -1 : 0;
@@ -345,44 +345,44 @@ int tx_cpy_nthw_init(struct tx_cpy_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 
 void tx_cpy_nthw_writer_select(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_field_set_val32(p->m_writers[index].mp_writer_ctrl_addr, val);
 }
 
 void tx_cpy_nthw_writer_cnt(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_field_set_val32(p->m_writers[index].mp_writer_ctrl_cnt, val);
 }
 
 void tx_cpy_nthw_writer_reader_select(const struct tx_cpy_nthw *p, unsigned int index,
 	uint32_t val)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_field_set_val32(p->m_writers[index].mp_writer_data_reader_select, val);
 }
 
 void tx_cpy_nthw_writer_dyn(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_field_set_val32(p->m_writers[index].mp_writer_data_dyn, val);
 }
 
 void tx_cpy_nthw_writer_ofs(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_field_set_val32(p->m_writers[index].mp_writer_data_ofs, val);
 }
 
 void tx_cpy_nthw_writer_len(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_field_set_val32(p->m_writers[index].mp_writer_data_len, val);
 }
 
 void tx_cpy_nthw_writer_flush(const struct tx_cpy_nthw *p, unsigned int index)
 {
-	assert(index < p->m_writers_cnt);
+	RTE_ASSERT(index < p->m_writers_cnt);
 	nthw_register_flush(p->m_writers[index].mp_writer_ctrl, 1);
 	nthw_register_flush(p->m_writers[index].mp_writer_data, 1);
 }

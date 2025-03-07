@@ -104,7 +104,7 @@ int nthw_gpio_phy_init(nthw_gpio_phy_t *p, nthw_fpga_t *p_fpga, int n_instance)
 bool nthw_gpio_phy_is_module_present(nthw_gpio_phy_t *p, uint8_t if_no)
 {
 	if (if_no >= ARRAY_SIZE(p->mpa_fields)) {
-		assert(false);
+		RTE_ASSERT(false);
 		return false;
 	}
 
@@ -115,7 +115,7 @@ bool nthw_gpio_phy_is_module_present(nthw_gpio_phy_t *p, uint8_t if_no)
 void nthw_gpio_phy_set_low_power(nthw_gpio_phy_t *p, uint8_t if_no, bool enable)
 {
 	if (if_no >= ARRAY_SIZE(p->mpa_fields)) {
-		assert(false);
+		RTE_ASSERT(false);
 		return;
 	}
 
@@ -131,7 +131,7 @@ void nthw_gpio_phy_set_low_power(nthw_gpio_phy_t *p, uint8_t if_no, bool enable)
 void nthw_gpio_phy_set_reset(nthw_gpio_phy_t *p, uint8_t if_no, bool enable)
 {
 	if (if_no >= ARRAY_SIZE(p->mpa_fields)) {
-		assert(false);
+		RTE_ASSERT(false);
 		return;
 	}
 

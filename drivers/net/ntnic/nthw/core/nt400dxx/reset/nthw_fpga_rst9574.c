@@ -11,8 +11,8 @@
 
 static int nthw_fpga_rst9574_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt400dxx *const p)
 {
-	assert(p_fpga);
-	assert(p);
+	RTE_ASSERT(p_fpga);
+	RTE_ASSERT(p);
 
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	const int n_fpga_product_id = p_fpga->mn_product_id;
@@ -238,8 +238,8 @@ static int nthw_fpga_rst9574_wait_phy_ftile_rst_done(struct fpga_info_s *p_fpga_
 static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
-	assert(p_fpga_info);
-	assert(p_rst);
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_rst);
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	int res = -1;
@@ -253,7 +253,7 @@ static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 	 */
 	nt_os_wait_usec(2000);
 
-	/* (1) De-assert DDR4 reset: */
+	/* (1) De-RTE_ASSERT DDR4 reset: */
 	NT_LOG(DBG, NTHW, "%s: %s: De-asserting DDR4 reset", p_adapter_id_str, __func__);
 	nthw_fpga_rst9574_ddr4_rst(p_rst, 0);
 
@@ -296,7 +296,7 @@ static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 				return res;
 		}
 
-		/* (6) De-assert PHY_FTILE reset: */
+		/* (6) De-RTE_ASSERT PHY_FTILE reset: */
 		NT_LOG(DBG, NTHW, "%s: %s: De-asserting PHY_FTILE reset", p_adapter_id_str,
 			__func__);
 		nthw_fpga_rst9574_phy_ftile_rst(p_rst, 0);
@@ -349,7 +349,7 @@ static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 
 	} while (!success);
 
-	/* (8) De-assert SYS reset: */
+	/* (8) De-RTE_ASSERT SYS reset: */
 	NT_LOG(DBG, NTHW, "%s: %s: De-asserting SYS reset", p_adapter_id_str, __func__);
 	nthw_fpga_rst9574_sys_rst(p_rst, 0);
 
@@ -359,8 +359,8 @@ static int nthw_fpga_rst9574_product_reset(struct fpga_info_s *p_fpga_info,
 static int nthw_fpga_rst9574_init(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
-	assert(p_fpga_info);
-	assert(p_rst);
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_rst);
 	int res = nthw_fpga_rst9574_product_reset(p_fpga_info, p_rst);
 
 	return res;

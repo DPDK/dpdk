@@ -1632,7 +1632,7 @@ static uint32_t tpe_get_version(void *be_dev)
 		return 3;
 	}
 
-	assert(false);
+	RTE_ASSERT(false);
 	return 0;
 }
 

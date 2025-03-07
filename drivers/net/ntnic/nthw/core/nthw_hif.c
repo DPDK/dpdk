@@ -300,7 +300,7 @@ int nthw_hif_stat_req_disable(nthw_hif_t *p)
 
 int nthw_hif_end_point_counters_sample(nthw_hif_t *p, struct nthw_hif_end_point_counters *epc)
 {
-	assert(epc);
+	RTE_ASSERT(epc);
 
 	/* Get stat rate and maintain rx/tx min/max */
 	nthw_hif_get_stat_rate(p, &epc->cur_tx, &epc->cur_rx, &epc->n_ref_clk_cnt,
@@ -341,7 +341,7 @@ int nthw_hif_read_test_reg(nthw_hif_t *p, uint8_t test_reg, uint32_t *p_value)
 		break;
 
 	default:
-		assert(false);
+		RTE_ASSERT(false);
 		return -1;
 	}
 
@@ -384,7 +384,7 @@ int nthw_hif_write_test_reg(nthw_hif_t *p, uint8_t test_reg, uint32_t value)
 		break;
 
 	default:
-		assert(false);
+		RTE_ASSERT(false);
 		return -1;
 	}
 

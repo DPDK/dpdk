@@ -38,7 +38,7 @@ void info_nthw_delete(struct info_nthw *p)
 
 int info_nthw_init(struct info_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
-	assert(n_instance >= 0 && n_instance < 256);
+	RTE_ASSERT(n_instance >= 0 && n_instance < 256);
 
 	p->mp_fpga = p_fpga;
 	p->m_physical_adapter_no = (uint8_t)n_instance;

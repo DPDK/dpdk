@@ -10,7 +10,7 @@
 
 static int nthw_fpga_nt200a0x_init(struct fpga_info_s *p_fpga_info)
 {
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	struct nthw_fpga_rst_nt200a0x rst;

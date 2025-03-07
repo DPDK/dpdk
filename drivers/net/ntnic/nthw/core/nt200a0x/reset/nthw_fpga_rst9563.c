@@ -21,7 +21,7 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 	nthw_module_t *p_mod_rst;
 	nthw_register_t *p_curr_reg;
 
-	assert(p);
+	RTE_ASSERT(p);
 	p->mn_fpga_product_id = n_fpga_product_id;
 	p->mn_fpga_version = n_fpga_version;
 	p->mn_fpga_revision = n_fpga_revision;
@@ -195,8 +195,8 @@ static int nthw_fpga_rst9563_clock_synth_init(nthw_fpga_t *p_fpga,
 static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt200a0x *p_rst)
 {
-	assert(p_fpga_info);
-	assert(p_rst);
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_rst);
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	(void)p_adapter_id_str;

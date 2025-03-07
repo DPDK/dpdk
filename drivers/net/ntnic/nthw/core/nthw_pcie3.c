@@ -251,7 +251,7 @@ int nthw_pcie3_end_point_counters_sample_post(nthw_pcie3_t *p,
 	struct nthw_hif_end_point_counters *epc)
 {
 	NT_LOG_DBGX(DBG, NTHW);
-	assert(epc);
+	RTE_ASSERT(epc);
 	nthw_pcie3_get_stat_rate(p, &epc->cur_tx, &epc->cur_rx, &epc->n_ref_clk_cnt,
 		&epc->n_tags_in_use, &epc->cur_pci_nt_util,
 		&epc->cur_pci_xil_util);

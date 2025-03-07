@@ -75,7 +75,7 @@ int nthw_fpga_iic_scan(nthw_fpga_t *p_fpga, const int n_instance_no_begin,
 {
 	int i;
 
-	assert(n_instance_no_begin <= n_instance_no_end);
+	RTE_ASSERT(n_instance_no_begin <= n_instance_no_end);
 
 	for (i = n_instance_no_begin; i <= n_instance_no_end; i++) {
 		nthw_iic_t *p_nthw_iic = nthw_iic_new();
@@ -606,8 +606,8 @@ int nthw_fpga_si5340_clock_synth_init_fmt2(nthw_fpga_t *p_fpga, const uint8_t n_
 	nthw_iic_t *p_nthw_iic = nthw_iic_new();
 	nthw_si5340_t *p_nthw_si5340 = nthw_si5340_new();
 
-	assert(p_nthw_iic);
-	assert(p_nthw_si5340);
+	RTE_ASSERT(p_nthw_iic);
+	RTE_ASSERT(p_nthw_si5340);
 	nthw_iic_init(p_nthw_iic, p_fpga, 0, 8);/* I2C cycle time 125Mhz ~ 8ns */
 
 	nthw_si5340_init(p_nthw_si5340, p_nthw_iic, n_iic_addr);/* si5340_u23_i2c_addr_7bit */
@@ -636,7 +636,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 
 	int res = 0;
 
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 
 	{
 		const uint64_t n_fpga_ident = nthw_fpga_read_ident(p_fpga_info);

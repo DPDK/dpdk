@@ -44,7 +44,7 @@ int nthw_mac_pcs_init(nthw_mac_pcs_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	p->mn_instance = n_instance;
 	p->mp_mod_mac_pcs = mod;
 
-	assert(n_instance >= 0 && n_instance <= 255);
+	RTE_ASSERT(n_instance >= 0 && n_instance <= 255);
 	nthw_mac_pcs_set_port_no(p, (uint8_t)n_instance);
 
 	{
@@ -131,7 +131,7 @@ int nthw_mac_pcs_init(nthw_mac_pcs_t *p, nthw_fpga_t *p_fpga, int n_instance)
 
 		} else {
 			/* Remember to add new product_ids */
-			assert(0);
+			RTE_ASSERT(0);
 		}
 
 		p_reg_pcs_config =

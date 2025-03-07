@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <assert.h>
 
 #include <rte_ethdev.h>
 #include <rte_malloc.h>

@@ -3,7 +3,6 @@
  * Copyright(c) 2024 Napatech A/S
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 

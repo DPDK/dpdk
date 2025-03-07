@@ -144,7 +144,7 @@ static int _link_state_build(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs,
 		&lh_remote_fault, &lh_internal_local_fault,
 		&lh_received_local_fault);
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
 	state->nim_present = nthw_gpio_phy_is_module_present(gpio_phy, (uint8_t)port);
 	state->lh_nim_absent = !state->nim_present;
 	state->link_up = phy_link_state ? true : false;
@@ -177,7 +177,7 @@ static int _link_state_build(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs,
  */
 static bool _nim_is_present(nthw_gpio_phy_t *gpio_phy, uint8_t if_no)
 {
-	assert(if_no < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(if_no < NUM_ADAPTER_PORTS_MAX);
 
 	return nthw_gpio_phy_is_module_present(gpio_phy, if_no);
 }
@@ -258,8 +258,8 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
 	nthw_mac_pcs_t *mac_pcs = &link_info->u.var100g.mac_pcs100g[port];
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
-	assert(link_info->variables_initialized);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(link_info->variables_initialized);
 
 	gpio_phy = &link_info->u.var100g.gpio_phy[port];
 	nim_ctx = &link_info->u.var100g.nim_ctx[port];
@@ -355,8 +355,8 @@ static int _port_init(adapter_info_t *drv, nthw_fpga_t *fpga, int port)
 
 	nthw_mac_pcs_t *mac_pcs;
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
-	assert(link_info->variables_initialized);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(link_info->variables_initialized);
 
 	if (fpga && fpga->p_fpga_info) {
 		adapter_id = fpga->p_fpga_info->n_nthw_adapter_id;
@@ -444,7 +444,7 @@ static int _port_init(adapter_info_t *drv, nthw_fpga_t *fpga, int port)
 
 	} else {
 		NT_LOG(ERR, NTNIC, "Unhandled AdapterId/HwId: %02x_hwid%d", adapter_id, hw_id);
-		assert(0);
+		RTE_ASSERT(0);
 	}
 
 	_reset_rx(drv, mac_pcs);
@@ -494,7 +494,7 @@ static int _common_ptp_nim_state_machine(void *data)
 		goto NT4GA_LINK_100G_MON_EXIT;
 	}
 
-	assert(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
+	RTE_ASSERT(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
 	nim_ctx = link_info->u.var100g.nim_ctx;
 	link_state = link_info->link_state;
 	mac_pcs = link_info->u.var100g.mac_pcs100g;
@@ -521,7 +521,7 @@ static int _common_ptp_nim_state_machine(void *data)
 				break;
 
 			/* Has the administrative port state changed? */
-			assert(!(disable_port && enable_port));
+			RTE_ASSERT(!(disable_port && enable_port));
 
 			if (disable_port) {
 				memset(&link_state[i], 0, sizeof(link_state[i]));
@@ -603,7 +603,7 @@ static int _common_ptp_nim_state_machine(void *data)
 					continue;
 				}
 
-				assert(new_state.br);	/* Cannot be zero if NIM is present */
+				RTE_ASSERT(new_state.br); /* Cannot be zero if NIM is present */
 				NT_LOG(DBG, NTNIC,
 					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
 					drv->mp_port_id_str[i], nim_ctx->nim_id,
@@ -669,7 +669,7 @@ static int nt4ga_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nth
 	/*
 	 * Initialize global variables
 	 */
-	assert(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
+	RTE_ASSERT(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
 
 	if (res == 0 && !p_adapter_info->nt4ga_link.variables_initialized) {
 		nthw_mac_pcs_t *mac_pcs = p_adapter_info->nt4ga_link.u.var100g.mac_pcs100g;

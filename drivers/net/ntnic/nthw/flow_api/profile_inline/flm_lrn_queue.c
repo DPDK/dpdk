@@ -3,7 +3,6 @@
  * Copyright(c) 2024 Napatech A/S
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,7 +24,7 @@ void *flm_lrn_queue_create(void)
 		QUEUE_SIZE,
 		SOCKET_ID_ANY,
 		RING_F_MP_HTS_ENQ | RING_F_SC_DEQ);
-	assert(q != NULL);
+	RTE_ASSERT(q != NULL);
 	return q;
 }
 

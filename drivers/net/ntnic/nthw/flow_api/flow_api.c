@@ -149,7 +149,7 @@ static_assert(RTE_DIM(err_msg) == ERR_MSG_END,
 
 void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error)
 {
-	assert(msg < ERR_MSG_NO_MSG);
+	RTE_ASSERT(msg < ERR_MSG_NO_MSG);
 
 	if (error) {
 		error->message = err_msg[msg].message;
@@ -213,7 +213,7 @@ int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, i
 {
 	NT_LOG(DBG, FILTER, "Reference resource %s idx %i (before ref cnt %i)",
 		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
-	assert(flow_nic_is_resource_used(ndev, res_type, index));
+	RTE_ASSERT(flow_nic_is_resource_used(ndev, res_type, index));
 
 	if (ndev->res[res_type].ref[index] == (uint32_t)-1)
 		return -1;
@@ -226,8 +226,8 @@ int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 {
 	NT_LOG(DBG, FILTER, "De-reference resource %s idx %i (before ref cnt %i)",
 		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
-	assert(flow_nic_is_resource_used(ndev, res_type, index));
-	assert(ndev->res[res_type].ref[index]);
+	RTE_ASSERT(flow_nic_is_resource_used(ndev, res_type, index));
+	RTE_ASSERT(ndev->res[res_type].ref[index]);
 	/* deref */
 	ndev->res[res_type].ref[index]--;
 
@@ -520,7 +520,7 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 static int init_resource_elements(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	uint32_t count)
 {
-	assert(ndev->res[res_type].alloc_bm == NULL);
+	RTE_ASSERT(ndev->res[res_type].alloc_bm == NULL);
 	/* allocate bitmap and ref counter */
 	ndev->res[res_type].alloc_bm =
 		calloc(1, BIT_CONTAINER_8_ALIGN(count) + count * sizeof(uint32_t));
@@ -537,7 +537,7 @@ static int init_resource_elements(struct flow_nic_dev *ndev, enum res_type_e res
 
 static void done_resource_elements(struct flow_nic_dev *ndev, enum res_type_e res_type)
 {
-	assert(ndev);
+	RTE_ASSERT(ndev);
 
 	free(ndev->res[res_type].alloc_bm);
 }
@@ -598,7 +598,7 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 		adapter_no, port_no, port_id, alloc_rx_queues, flow_profile);
 
 	if (MAX_OUTPUT_DEST < FLOW_MAX_QUEUES) {
-		assert(0);
+		RTE_ASSERT(0);
 		NT_LOG(ERR, FILTER,
 			"ERROR: Internal array for multiple queues too small for API");
 	}
@@ -821,7 +821,7 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 
 	/* check all defined has been initialized */
 	for (int i = 0; i < RES_COUNT; i++)
-		assert(ndev->res[i].alloc_bm);
+		RTE_ASSERT(ndev->res[i].alloc_bm);
 
 	rte_spinlock_init(&ndev->mtx);
 	list_insert_flow_nic(ndev);

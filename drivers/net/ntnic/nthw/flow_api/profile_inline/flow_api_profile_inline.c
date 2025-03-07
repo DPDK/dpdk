@@ -386,7 +386,7 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 static void flm_setup_queues(void)
 {
 	flm_lrn_queue_arr = flm_lrn_queue_create();
-	assert(flm_lrn_queue_arr != NULL);
+	RTE_ASSERT(flm_lrn_queue_arr != NULL);
 }
 
 static void flm_free_queues(void)
@@ -774,7 +774,7 @@ struct flm_flow_key_def_s {
 static inline void set_key_def_qw(struct flm_flow_key_def_s *key_def, unsigned int qw,
 	unsigned int dyn, unsigned int ofs)
 {
-	assert(qw < 2);
+	RTE_ASSERT(qw < 2);
 
 	if (qw == 0) {
 		key_def->qw0_dyn = dyn & 0x7f;
@@ -789,7 +789,7 @@ static inline void set_key_def_qw(struct flm_flow_key_def_s *key_def, unsigned i
 static inline void set_key_def_sw(struct flm_flow_key_def_s *key_def, unsigned int sw,
 	unsigned int dyn, unsigned int ofs)
 {
-	assert(sw < 2);
+	RTE_ASSERT(sw < 2);
 
 	if (sw == 0) {
 		key_def->sw8_dyn = dyn & 0x7f;
@@ -3188,7 +3188,7 @@ static void setup_db_qsl_data(struct nic_flow_def *fd, struct hw_db_inline_qsl_d
 		qsl_data->drop = 1;
 
 	} else {
-		assert(fd->dst_num_avail < HW_DB_INLINE_MAX_QST_PER_QSL);
+		RTE_ASSERT(fd->dst_num_avail < HW_DB_INLINE_MAX_QST_PER_QSL);
 
 		uint32_t ports[fd->dst_num_avail];
 		uint32_t queues[fd->dst_num_avail];
@@ -3314,7 +3314,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	/* Setup TPE EXT */
 	if (fd->tun_hdr.len > 0) {
-		assert(fd->tun_hdr.len <= HW_DB_INLINE_MAX_ENCAP_SIZE);
+		RTE_ASSERT(fd->tun_hdr.len <= HW_DB_INLINE_MAX_ENCAP_SIZE);
 
 		struct hw_db_inline_tpe_ext_data tpe_ext_data = {
 			.size = fd->tun_hdr.len,
@@ -3339,7 +3339,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	}
 
 	/* Setup TPE */
-	assert(fd->modify_field_count <= 6);
+	RTE_ASSERT(fd->modify_field_count <= 6);
 
 	struct hw_db_inline_tpe_data tpe_data = {
 		.insert_len = fd->tun_hdr.len,
@@ -3882,7 +3882,7 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 {
 	if (!ndev->flow_mgnt_prepared) {
 		/* Check static arrays are big enough */
-		assert(ndev->be.tpe.nb_cpy_writers <= MAX_CPY_WRITERS_SUPPORTED);
+		RTE_ASSERT(ndev->be.tpe.nb_cpy_writers <= MAX_CPY_WRITERS_SUPPORTED);
 		/* KM Flow Type 0 is reserved */
 		flow_nic_mark_resource_used(ndev, RES_KM_FLOW_TYPE, 0);
 		flow_nic_mark_resource_used(ndev, RES_KM_CATEGORY, 0);
@@ -4250,8 +4250,8 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *fh,
 	struct rte_flow_error *error)
 {
-	assert(dev);
-	assert(fh);
+	RTE_ASSERT(dev);
+	RTE_ASSERT(fh);
 
 	int err = 0;
 
@@ -4386,8 +4386,8 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 	const struct rte_flow_action action[],
 	struct rte_flow_error *error)
 {
-	assert(dev);
-	assert(flow);
+	RTE_ASSERT(dev);
+	RTE_ASSERT(flow);
 
 	uint32_t num_dest_port = 0;
 	uint32_t num_queues = 0;

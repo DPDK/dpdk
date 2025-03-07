@@ -62,9 +62,9 @@ static int nthw_read_data(struct fpga_info_s *p_fpga_info, bool trc, int n_bus_t
 {
 	int rc = -1;
 
-	assert(p_fpga_info);
-	assert(p_data);
-	assert(len >= 1);
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_data);
+	RTE_ASSERT(len >= 1);
 
 	switch (n_bus_type_id) {
 	case NTHW_FPGA_BUS_TYPE_BAR:
@@ -74,22 +74,22 @@ static int nthw_read_data(struct fpga_info_s *p_fpga_info, bool trc, int n_bus_t
 		break;
 
 	case NTHW_FPGA_BUS_TYPE_RAB0:
-		assert(p_fpga_info->mp_nthw_rac);
+		RTE_ASSERT(p_fpga_info->mp_nthw_rac);
 		rc = nthw_rac_rab_read32(p_fpga_info->mp_nthw_rac, trc, 0, addr, len, p_data);
 		break;
 
 	case NTHW_FPGA_BUS_TYPE_RAB1:
-		assert(p_fpga_info->mp_nthw_rac);
+		RTE_ASSERT(p_fpga_info->mp_nthw_rac);
 		rc = nthw_rac_rab_read32(p_fpga_info->mp_nthw_rac, trc, 1, addr, len, p_data);
 		break;
 
 	case NTHW_FPGA_BUS_TYPE_RAB2:
-		assert(p_fpga_info->mp_nthw_rac);
+		RTE_ASSERT(p_fpga_info->mp_nthw_rac);
 		rc = nthw_rac_rab_read32(p_fpga_info->mp_nthw_rac, trc, 2, addr, len, p_data);
 		break;
 
 	default:
-		assert(false);
+		RTE_ASSERT(false);
 		return -1;
 	}
 
@@ -101,9 +101,9 @@ static int nthw_write_data(struct fpga_info_s *p_fpga_info, bool trc, int n_bus_
 {
 	int rc = -1;
 
-	assert(p_fpga_info);
-	assert(p_data);
-	assert(len >= 1);
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_data);
+	RTE_ASSERT(len >= 1);
 
 	switch (n_bus_type_id) {
 	case NTHW_FPGA_BUS_TYPE_BAR:
@@ -113,22 +113,22 @@ static int nthw_write_data(struct fpga_info_s *p_fpga_info, bool trc, int n_bus_
 		break;
 
 	case NTHW_FPGA_BUS_TYPE_RAB0:
-		assert(p_fpga_info->mp_nthw_rac);
+		RTE_ASSERT(p_fpga_info->mp_nthw_rac);
 		rc = nthw_rac_rab_write32(p_fpga_info->mp_nthw_rac, trc, 0, addr, len, p_data);
 		break;
 
 	case NTHW_FPGA_BUS_TYPE_RAB1:
-		assert(p_fpga_info->mp_nthw_rac);
+		RTE_ASSERT(p_fpga_info->mp_nthw_rac);
 		rc = nthw_rac_rab_write32(p_fpga_info->mp_nthw_rac, trc, 1, addr, len, p_data);
 		break;
 
 	case NTHW_FPGA_BUS_TYPE_RAB2:
-		assert(p_fpga_info->mp_nthw_rac);
+		RTE_ASSERT(p_fpga_info->mp_nthw_rac);
 		rc = nthw_rac_rab_write32(p_fpga_info->mp_nthw_rac, trc, 2, addr, len, p_data);
 		break;
 
 	default:
-		assert(false);
+		RTE_ASSERT(false);
 		return -1;
 	}
 
@@ -691,8 +691,8 @@ static int nthw_register_read_data(const nthw_register_t *p)
 			if (p->mp_owner->mp_owner)
 				p_fpga_info = p->mp_owner->mp_owner->p_fpga_info;
 
-			assert(p_fpga_info);
-			assert(p_data);
+			RTE_ASSERT(p_fpga_info);
+			RTE_ASSERT(p_data);
 
 			rc = nthw_read_data(p_fpga_info, trc, n_bus_type_id, addr, len, p_data);
 		}
@@ -716,8 +716,8 @@ static int nthw_register_write_data(const nthw_register_t *p, uint32_t cnt)
 			if (p->mp_owner->mp_owner)
 				p_fpga_info = p->mp_owner->mp_owner->p_fpga_info;
 
-			assert(p_fpga_info);
-			assert(p_data);
+			RTE_ASSERT(p_fpga_info);
+			RTE_ASSERT(p_data);
 
 			rc = nthw_write_data(p_fpga_info, trc, n_bus_type_id, addr, (len * cnt),
 				p_data);
@@ -733,8 +733,8 @@ void nthw_register_get_val(const nthw_register_t *p, uint32_t *p_data, uint32_t 
 	if (len == (uint32_t)-1 || len > p->mn_len)
 		len = p->mn_len;
 
-	assert(len <= p->mn_len);
-	assert(p_data);
+	RTE_ASSERT(len <= p->mn_len);
+	RTE_ASSERT(p_data);
 
 	for (i = 0; i < len; i++)
 		p_data[i] = p->mp_shadow[i];
@@ -801,8 +801,8 @@ void nthw_register_make_dirty(nthw_register_t *p)
 
 void nthw_register_set_val(nthw_register_t *p, const uint32_t *p_data, uint32_t len)
 {
-	assert(len <= p->mn_len);
-	assert(p_data);
+	RTE_ASSERT(len <= p->mn_len);
+	RTE_ASSERT(p_data);
 
 	if (len == (uint32_t)-1 || len > p->mn_len)
 		len = p->mn_len;
@@ -824,7 +824,7 @@ void nthw_register_flush(const nthw_register_t *p, uint32_t cnt)
 		uint32_t *const p_data = p->mp_shadow;
 		uint32_t i;
 
-		assert(len * cnt <= 256);
+		RTE_ASSERT(len * cnt <= 256);
 
 		if (p->mn_debug_mode & NTHW_REG_DEBUG_ON_WRITE) {
 			uint32_t i = len * cnt;
@@ -960,7 +960,7 @@ void nthw_field_get_val(const nthw_field_t *p, uint32_t *p_data, uint32_t len)
 	} buf;
 
 	(void)len;
-	assert(len <= p->mn_words);
+	RTE_ASSERT(len <= p->mn_words);
 
 	/* handle front */
 	buf.w32[0] = p->mp_owner->mp_shadow[shadow_index++] & p->mn_front_mask;
@@ -969,7 +969,7 @@ void nthw_field_get_val(const nthw_field_t *p, uint32_t *p_data, uint32_t len)
 	for (i = 0; i < p->mn_body_length; i++) {
 		buf.w32[1] = p->mp_owner->mp_shadow[shadow_index++];
 		buf.w64 = buf.w64 >> (p->mn_first_bit);
-		assert(data_index < len);
+		RTE_ASSERT(data_index < len);
 		p_data[data_index++] = buf.w32[0];
 		buf.w64 = buf.w64 >> (32 - p->mn_first_bit);
 	}
@@ -1000,7 +1000,7 @@ void nthw_field_set_val(const nthw_field_t *p, const uint32_t *p_data, uint32_t 
 	} buf;
 
 	(void)len;
-	assert(len == p->mn_words);
+	RTE_ASSERT(len == p->mn_words);
 
 	/* handle front */
 	buf.w32[0] = 0;
@@ -1014,7 +1014,7 @@ void nthw_field_set_val(const nthw_field_t *p, const uint32_t *p_data, uint32_t 
 	/* handle body */
 	for (i = 0; i < p->mn_body_length; i++) {
 		buf.w64 = buf.w64 >> (p->mn_first_bit);
-		assert(data_index < len);
+		RTE_ASSERT(data_index < len);
 		buf.w32[1] = p_data[data_index++];
 		buf.w64 = buf.w64 >> (32 - p->mn_first_bit);
 		p->mp_owner->mp_shadow[shadow_index++] = buf.w32[0];
@@ -1095,7 +1095,7 @@ void nthw_field_set_val_flush32(const nthw_field_t *p, uint32_t val)
 
 void nthw_field_clr_all(const nthw_field_t *p)
 {
-	assert(p->mn_body_length == 0);
+	RTE_ASSERT(p->mn_body_length == 0);
 	nthw_field_set_val32(p, 0);
 }
 
@@ -1107,7 +1107,7 @@ void nthw_field_clr_flush(const nthw_field_t *p)
 
 void nthw_field_set_all(const nthw_field_t *p)
 {
-	assert(p->mn_body_length == 0);
+	RTE_ASSERT(p->mn_body_length == 0);
 	nthw_field_set_val32(p, ~0);
 }
 

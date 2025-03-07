@@ -207,7 +207,7 @@ static void dbs_init_tx_queue(nthw_dbs_t *p_nthw_dbs, uint32_t queue, uint32_t s
 
 static int nthw_virt_queue_init(struct fpga_info_s *p_fpga_info)
 {
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 
 	nthw_fpga_t *const p_fpga = p_fpga_info->mp_fpga;
 	nthw_dbs_t *p_nthw_dbs;
@@ -906,8 +906,8 @@ static int nthw_setup_managed_virt_queue_packed(struct nthw_virt_queue *vq,
 	int rx)
 {
 	/* page aligned */
-	assert(((uintptr_t)p_virt_struct_area->phys_addr & 0xfff) == 0);
-	assert(p_packet_buffers);
+	RTE_ASSERT(((uintptr_t)p_virt_struct_area->phys_addr & 0xfff) == 0);
+	RTE_ASSERT(p_packet_buffers);
 
 	/* clean canvas */
 	memset(p_virt_struct_area->virt_addr, 0,

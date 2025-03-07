@@ -1159,7 +1159,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	if (!p_nt4ga_stat || if_index < 0 || if_index >= NUM_ADAPTER_PORTS_MAX)
 		return -1;
 
-	assert(rte_tsc_freq > 0);
+	RTE_ASSERT(rte_tsc_freq > 0);
 
 	rte_spinlock_lock(&hwlock);
 

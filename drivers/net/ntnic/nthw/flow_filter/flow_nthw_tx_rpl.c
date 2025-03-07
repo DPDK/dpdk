@@ -40,7 +40,7 @@ int tx_rpl_nthw_init(struct tx_rpl_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_TX_RPL, n_instance);
 
-	assert(n_instance >= 0 && n_instance < 256);
+	RTE_ASSERT(n_instance >= 0 && n_instance < 256);
 
 	if (p == NULL)
 		return p_mod == NULL ? -1 : 0;
@@ -119,7 +119,7 @@ void tx_rpl_nthw_rcp_ext_prio(const struct tx_rpl_nthw *p, uint32_t val)
 
 void tx_rpl_nthw_rcp_eth_type_wr(const struct tx_rpl_nthw *p, uint32_t val)
 {
-	assert(p->mp_rcp_data_eth_type_wr);
+	RTE_ASSERT(p->mp_rcp_data_eth_type_wr);
 	nthw_field_set_val32(p->mp_rcp_data_eth_type_wr, val);
 }
 

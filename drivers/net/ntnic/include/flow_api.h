@@ -202,7 +202,7 @@ extern const char *dbg_res_descr[];
 		size_t _temp_index = (index);                                                     \
 		NT_LOG(DBG, FILTER, "mark resource used: %s idx %zu",                             \
 		       dbg_res_descr[_temp_res_type], _temp_index);                               \
-		assert(flow_nic_is_bit_set(_temp_ndev->res[_temp_res_type].alloc_bm,              \
+		RTE_ASSERT(flow_nic_is_bit_set(_temp_ndev->res[_temp_res_type].alloc_bm,          \
 					   _temp_index) == 0);                                    \
 		flow_nic_set_bit(_temp_ndev->res[_temp_res_type].alloc_bm, _temp_index);          \
 	} while (0)

@@ -302,8 +302,8 @@ static int qsfp_nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
 {
 	int res = 0;	/* unused due to no readings from HW */
 
-	assert(ctx && state);
-	assert(ctx->nim_id != NT_NIM_UNKNOWN && "Nim is not initialized");
+	RTE_ASSERT(ctx && state);
+	RTE_ASSERT(ctx->nim_id != NT_NIM_UNKNOWN && "Nim is not initialized");
 
 	(void)memset(state, 0, sizeof(*state));
 
@@ -628,7 +628,7 @@ static void qsfpplus_set_speed_mask(nim_i2c_ctx_p ctx)
 
 static void qsfpplus_construct(nim_i2c_ctx_p ctx, int8_t lane_idx)
 {
-	assert(lane_idx < 4);
+	RTE_ASSERT(lane_idx < 4);
 	ctx->specific_u.qsfp.qsfp28 = false;
 	ctx->lane_idx = lane_idx;
 	ctx->lane_count = 4;

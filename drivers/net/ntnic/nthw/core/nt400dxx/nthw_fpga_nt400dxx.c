@@ -112,7 +112,7 @@ static int nthw_fpga_nt400dxx_init_sub_systems(struct fpga_info_s *p_fpga_info)
 
 static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 {
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 	struct rst9574_ops *rst9574_ops = NULL;
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
@@ -120,7 +120,7 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	int res = -1;
 
 	nthw_fpga_t *p_fpga = p_fpga_info->mp_fpga;
-	assert(p_fpga);
+	RTE_ASSERT(p_fpga);
 
 	switch (p_fpga_info->n_fpga_prod_id) {
 	case 9574:

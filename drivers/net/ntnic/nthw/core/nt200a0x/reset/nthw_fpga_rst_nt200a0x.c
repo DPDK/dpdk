@@ -224,7 +224,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 	NT_LOG_DBGX(DBG, NTHW, "%s: FPGA reset sequence: FPGA %04d-%02d-%02d @ HWId%d",
 		p_adapter_id_str, n_fpga_product_id, n_fpga_version, n_fpga_revision,
 		n_hw_id);
-	assert(n_fpga_product_id == p_fpga->mn_product_id);
+	RTE_ASSERT(n_fpga_product_id == p_fpga->mn_product_id);
 
 	/*
 	 * Reset all domains / modules except peripherals
@@ -296,7 +296,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 	nthw_field_update_register(p->mp_fld_ctrl_ts_clk_sel);
 	nthw_field_set_flush(p->mp_fld_ctrl_ts_clk_sel);
 
-	/* 4: De-assert sys reset, CORE and SYS MMCM resets */
+	/* 4: De-RTE_ASSERT sys reset, CORE and SYS MMCM resets */
 	NT_LOG(DBG, NTHW, "%s: De-asserting SYS, CORE and SYS MMCM resets", p_adapter_id_str);
 	nthw_field_update_register(p->mp_fld_rst_sys);
 	nthw_field_clr_flush(p->mp_fld_rst_sys);
@@ -353,7 +353,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 	nthw_field_clr_flush(p->mp_fld_rst_phy);
 
 	/*
-	 * 8: De-assert reset for remaining domains/modules resets except
+	 * 8: De-RTE_ASSERT reset for remaining domains/modules resets except
 	 * TS, PTP, PTP_MMCM and TS_MMCM
 	 */
 	NT_LOG(DBG, NTHW, "%s: De-asserting TMC RST", p_adapter_id_str);
@@ -408,7 +408,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 
 	/*
 	 * Timesync/PTP reset sequence
-	 * De-assert TS_MMCM reset
+	 * De-RTE_ASSERT TS_MMCM reset
 	 */
 	NT_LOG(DBG, NTHW, "%s: De-asserting TS MMCM RST", p_adapter_id_str);
 	nthw_field_clr_flush(p->mp_fld_rst_ts_mmcm);
@@ -437,7 +437,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 	if (p->mp_fld_sticky_pci_sys_mmcm_unlocked)
 		nthw_field_set_flush(p->mp_fld_sticky_pci_sys_mmcm_unlocked);
 
-	/* De-assert TS reset bit */
+	/* De-RTE_ASSERT TS reset bit */
 	NT_LOG(DBG, NTHW, "%s: De-asserting TS RST", p_adapter_id_str);
 	nthw_field_clr_flush(p->mp_fld_rst_ts);
 
@@ -513,7 +513,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 static int nthw_fpga_rst_nt200a0x_init(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt200a0x *p_rst)
 {
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	int res = -1;

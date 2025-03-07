@@ -13,7 +13,7 @@
 
 static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 {
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 	int res = -1;
 	nthw_fpga_t *p_fpga = NULL;
 
@@ -191,7 +191,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 	nthw_pcm_nt400dxx_t *p_pcm = p_fpga_info->mp_nthw_agx.p_pcm;
 	nthw_prm_nt400dxx_t *p_prm = p_fpga_info->mp_nthw_agx.p_prm;
 
-	assert(p_fpga_info);
+	RTE_ASSERT(p_fpga_info);
 
 	NT_LOG(DBG, NTHW, "%s: %s: BEGIN", p_adapter_id_str, __PRETTY_FUNCTION__);
 
@@ -310,7 +310,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 	/*
 	 * At this point all system clocks and TS clocks are running.
 	 * Last thing to do before proceeding to product reset is to
-	 * de-assert the platform reset and enable the RAB buses.
+	 * de-RTE_ASSERT the platform reset and enable the RAB buses.
 	 */
 
 	/* (K1) Force HIF soft reset. */
@@ -325,7 +325,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 	nt_os_wait_usec(1000);
 	nthw_hif_delete(p_nthw_hif);
 
-	/* (L) De-assert platform reset. */
+	/* (L) De-RTE_ASSERT platform reset. */
 	nthw_prm_nt400dxx_platform_rst(p_prm, 0);
 
 	/*

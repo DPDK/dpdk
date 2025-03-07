@@ -4,6 +4,7 @@
  */
 
 #include "hw_mod_backend.h"
+#include "rte_debug.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -41,8 +42,8 @@ void *callocate_mod(struct common_func_s *mod, int sets, ...)
 	unsigned int total_bytes = 0;
 	int cnt, elem_size;
 
-	assert(sets <= MAX_SETS);
-	assert(sets > 0);
+	RTE_ASSERT(sets <= MAX_SETS);
+	RTE_ASSERT(sets > 0);
 
 	va_list args;
 	va_start(args, sets);
@@ -92,7 +93,7 @@ int flow_api_backend_init(struct flow_api_backend_s *dev,
 	const struct flow_api_backend_ops *iface,
 	void *be_dev)
 {
-	assert(dev);
+	RTE_ASSERT(dev);
 	dev->iface = iface;
 	dev->be_dev = be_dev;
 	dev->num_phy_ports = iface->get_nb_phy_port(be_dev);

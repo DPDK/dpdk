@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "rte_debug.h"
 #include "ntlog.h"
 
 #include "nthw_drv.h"
@@ -42,7 +43,7 @@ int flm_nthw_init(struct flm_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_FLM, n_instance);
 
-	assert(n_instance >= 0 && n_instance < 256);
+	RTE_ASSERT(n_instance >= 0 && n_instance < 256);
 
 	if (p == NULL)
 		return p_mod == NULL ? -1 : 0;
@@ -316,13 +317,13 @@ void flm_nthw_control_ris(const struct flm_nthw *p, uint32_t val)
 
 void flm_nthw_control_pds(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_control_pds);
+	RTE_ASSERT(p->mp_control_pds);
 	nthw_field_set_val32(p->mp_control_pds, val);
 }
 
 void flm_nthw_control_pis(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_control_pis);
+	RTE_ASSERT(p->mp_control_pis);
 	nthw_field_set_val32(p->mp_control_pis, val);
 }
 
@@ -683,7 +684,8 @@ int flm_nthw_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint3
 
 	if (ret == 0) {
 		nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
-		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : (assert(0), -1);
+		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : -1;
+		RTE_ASSERT(ret == -1);
 		rte_spinlock_unlock(&rac->m_mutex);
 
 		if (ret != 0)
@@ -732,7 +734,8 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 			uint32_t dma_free = nthw_rac_rab_get_free(rac);
 
 			if (dma_free != RAB_DMA_BUF_CNT) {
-				assert(0);	/* alert developer that something is wrong */
+				RTE_ASSERT(0);	/* alert developer that something is wrong */
+				rte_spinlock_unlock(&rac->m_mutex);
 				return -1;
 			}
 
@@ -781,9 +784,8 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 			/* Read buf ctrl */
 			nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
 
-			int ret = rac->m_dma_active ?
-				nthw_rac_rab_dma_commit(rac) :
-				(assert(0), -1);
+			int ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : -1;
+			RTE_ASSERT(ret == -1);
 			rte_spinlock_unlock(&rac->m_mutex);
 			if (ret != 0)
 				return -1;
@@ -844,7 +846,8 @@ int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 		}
 
 		nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
-		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : (assert(0), -1);
+		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : -1;
+		RTE_ASSERT(ret == -1);
 		rte_spinlock_unlock(&rac->m_mutex);
 
 		if (ret != 0)
@@ -940,7 +943,7 @@ void flm_nthw_stat_unl_ignore_update(const struct flm_nthw *p)
 
 void flm_nthw_stat_prb_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_prb_done_cnt);
+	RTE_ASSERT(p->mp_stat_prb_done_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_prb_done_cnt);
@@ -948,13 +951,13 @@ void flm_nthw_stat_prb_done_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_prb_done_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_prb_done);
+	RTE_ASSERT(p->mp_stat_prb_done);
 	nthw_register_update(p->mp_stat_prb_done);
 }
 
 void flm_nthw_stat_prb_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_prb_ignore_cnt);
+	RTE_ASSERT(p->mp_stat_prb_ignore_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_prb_ignore_cnt);
@@ -962,7 +965,7 @@ void flm_nthw_stat_prb_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int g
 
 void flm_nthw_stat_prb_ignore_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_prb_ignore);
+	RTE_ASSERT(p->mp_stat_prb_ignore);
 	nthw_register_update(p->mp_stat_prb_ignore);
 }
 
@@ -1045,7 +1048,7 @@ void flm_nthw_stat_flows_update(const struct flm_nthw *p)
 
 void flm_nthw_stat_sta_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_sta_done_cnt);
+	RTE_ASSERT(p->mp_stat_sta_done_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_sta_done_cnt);
@@ -1053,13 +1056,13 @@ void flm_nthw_stat_sta_done_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_sta_done_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_sta_done);
+	RTE_ASSERT(p->mp_stat_sta_done);
 	nthw_register_update(p->mp_stat_sta_done);
 }
 
 void flm_nthw_stat_inf_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_inf_done_cnt);
+	RTE_ASSERT(p->mp_stat_inf_done_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_inf_done_cnt);
@@ -1067,13 +1070,13 @@ void flm_nthw_stat_inf_done_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_inf_done_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_inf_done);
+	RTE_ASSERT(p->mp_stat_inf_done);
 	nthw_register_update(p->mp_stat_inf_done);
 }
 
 void flm_nthw_stat_inf_skip_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_inf_skip_cnt);
+	RTE_ASSERT(p->mp_stat_inf_skip_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_inf_skip_cnt);
@@ -1081,13 +1084,13 @@ void flm_nthw_stat_inf_skip_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_inf_skip_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_inf_skip);
+	RTE_ASSERT(p->mp_stat_inf_skip);
 	nthw_register_update(p->mp_stat_inf_skip);
 }
 
 void flm_nthw_stat_pck_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_pck_hit_cnt);
+	RTE_ASSERT(p->mp_stat_pck_hit_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_hit_cnt);
@@ -1095,13 +1098,13 @@ void flm_nthw_stat_pck_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 
 void flm_nthw_stat_pck_hit_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_pck_hit);
+	RTE_ASSERT(p->mp_stat_pck_hit);
 	nthw_register_update(p->mp_stat_pck_hit);
 }
 
 void flm_nthw_stat_pck_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_pck_miss_cnt);
+	RTE_ASSERT(p->mp_stat_pck_miss_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_miss_cnt);
@@ -1109,13 +1112,13 @@ void flm_nthw_stat_pck_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_pck_miss_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_pck_miss);
+	RTE_ASSERT(p->mp_stat_pck_miss);
 	nthw_register_update(p->mp_stat_pck_miss);
 }
 
 void flm_nthw_stat_pck_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_pck_unh_cnt);
+	RTE_ASSERT(p->mp_stat_pck_unh_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_unh_cnt);
@@ -1123,13 +1126,13 @@ void flm_nthw_stat_pck_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 
 void flm_nthw_stat_pck_unh_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_pck_unh);
+	RTE_ASSERT(p->mp_stat_pck_unh);
 	nthw_register_update(p->mp_stat_pck_unh);
 }
 
 void flm_nthw_stat_pck_dis_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_pck_dis_cnt);
+	RTE_ASSERT(p->mp_stat_pck_dis_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_dis_cnt);
@@ -1137,13 +1140,13 @@ void flm_nthw_stat_pck_dis_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 
 void flm_nthw_stat_pck_dis_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_pck_dis);
+	RTE_ASSERT(p->mp_stat_pck_dis);
 	nthw_register_update(p->mp_stat_pck_dis);
 }
 
 void flm_nthw_stat_csh_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_csh_hit_cnt);
+	RTE_ASSERT(p->mp_stat_csh_hit_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_csh_hit_cnt);
@@ -1151,13 +1154,13 @@ void flm_nthw_stat_csh_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 
 void flm_nthw_stat_csh_hit_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_csh_hit);
+	RTE_ASSERT(p->mp_stat_csh_hit);
 	nthw_register_update(p->mp_stat_csh_hit);
 }
 
 void flm_nthw_stat_csh_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_csh_miss_cnt);
+	RTE_ASSERT(p->mp_stat_csh_miss_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_csh_miss_cnt);
@@ -1165,13 +1168,13 @@ void flm_nthw_stat_csh_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_csh_miss_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_csh_miss);
+	RTE_ASSERT(p->mp_stat_csh_miss);
 	nthw_register_update(p->mp_stat_csh_miss);
 }
 
 void flm_nthw_stat_csh_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_csh_unh_cnt);
+	RTE_ASSERT(p->mp_stat_csh_unh_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_csh_unh_cnt);
@@ -1179,13 +1182,13 @@ void flm_nthw_stat_csh_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 
 void flm_nthw_stat_csh_unh_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_csh_unh);
+	RTE_ASSERT(p->mp_stat_csh_unh);
 	nthw_register_update(p->mp_stat_csh_unh);
 }
 
 void flm_nthw_stat_cuc_start_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_cuc_start_cnt);
+	RTE_ASSERT(p->mp_stat_cuc_start_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_cuc_start_cnt);
@@ -1193,13 +1196,13 @@ void flm_nthw_stat_cuc_start_cnt(const struct flm_nthw *p, uint32_t *val, int ge
 
 void flm_nthw_stat_cuc_start_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_cuc_start);
+	RTE_ASSERT(p->mp_stat_cuc_start);
 	nthw_register_update(p->mp_stat_cuc_start);
 }
 
 void flm_nthw_stat_cuc_move_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
-	assert(p->mp_stat_cuc_move_cnt);
+	RTE_ASSERT(p->mp_stat_cuc_move_cnt);
 
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_cuc_move_cnt);
@@ -1207,50 +1210,50 @@ void flm_nthw_stat_cuc_move_cnt(const struct flm_nthw *p, uint32_t *val, int get
 
 void flm_nthw_stat_cuc_move_update(const struct flm_nthw *p)
 {
-	assert(p->mp_stat_cuc_move);
+	RTE_ASSERT(p->mp_stat_cuc_move);
 	nthw_register_update(p->mp_stat_cuc_move);
 }
 
 void flm_nthw_scrub_select(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_scrub_ctrl_adr);
+	RTE_ASSERT(p->mp_scrub_ctrl_adr);
 	nthw_field_set_val32(p->mp_scrub_ctrl_adr, val);
 }
 
 void flm_nthw_scrub_cnt(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_scrub_ctrl_cnt);
+	RTE_ASSERT(p->mp_scrub_ctrl_cnt);
 	nthw_field_set_val32(p->mp_scrub_ctrl_cnt, val);
 }
 
 void flm_nthw_scrub_t(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_scrub_data_t);
+	RTE_ASSERT(p->mp_scrub_data_t);
 	nthw_field_set_val32(p->mp_scrub_data_t, val);
 }
 
 void flm_nthw_scrub_r(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_scrub_data_r);
+	RTE_ASSERT(p->mp_scrub_data_r);
 	nthw_field_set_val32(p->mp_scrub_data_r, val);
 }
 
 void flm_nthw_scrub_del(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_scrub_data_del);
+	RTE_ASSERT(p->mp_scrub_data_del);
 	nthw_field_set_val32(p->mp_scrub_data_del, val);
 }
 
 void flm_nthw_scrub_inf(const struct flm_nthw *p, uint32_t val)
 {
-	assert(p->mp_scrub_data_inf);
+	RTE_ASSERT(p->mp_scrub_data_inf);
 	nthw_field_set_val32(p->mp_scrub_data_inf, val);
 }
 
 void flm_nthw_scrub_flush(const struct flm_nthw *p)
 {
-	assert(p->mp_scrub_ctrl);
-	assert(p->mp_scrub_data);
+	RTE_ASSERT(p->mp_scrub_ctrl);
+	RTE_ASSERT(p->mp_scrub_data);
 	nthw_register_flush(p->mp_scrub_ctrl, 1);
 	nthw_register_flush(p->mp_scrub_data, 1);
 }

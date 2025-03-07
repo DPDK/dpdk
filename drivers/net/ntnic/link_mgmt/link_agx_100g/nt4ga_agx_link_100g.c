@@ -78,14 +78,14 @@ static void phy_get_link_state(adapter_info_t *drv,
 static void phy_rx_path_rst(adapter_info_t *drv, int port, bool reset)
 {
 	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
-	NT_LOG(DBG, NTNIC, "Port %d: %s", port, reset ? "assert" : "deassert");
+	NT_LOG(DBG, NTNIC, "Port %d: %s", port, reset ? "RTE_ASSERT" : "deassert");
 	nthw_phy_tile_set_rx_reset(p, port, reset);
 }
 
 static void phy_tx_path_rst(adapter_info_t *drv, int port, bool reset)
 {
 	nthw_phy_tile_t *p = drv->fpga_info.mp_nthw_agx.p_phy_tile;
-	NT_LOG(DBG, NTNIC, "Port %d: %s", port, reset ? "assert" : "deassert");
+	NT_LOG(DBG, NTNIC, "Port %d: %s", port, reset ? "RTE_ASSERT" : "deassert");
 	nthw_phy_tile_set_tx_reset(p, port, reset);
 }
 
@@ -246,7 +246,7 @@ static void nim_set_reset(struct nim_i2c_ctx *ctx, uint8_t nim_idx, bool reset)
 
 static bool nim_is_present(nim_i2c_ctx_p ctx, uint8_t nim_idx)
 {
-	assert(nim_idx < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(nim_idx < NUM_ADAPTER_PORTS_MAX);
 
 	nthw_pcal6416a_t *p = ctx->hwagx.p_io_nim;
 	uint8_t data = 0;
@@ -521,8 +521,8 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
 	nim_i2c_ctx_t *nim_ctx = &link_info->u.nim_ctx[port];
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
-	assert(link_info->variables_initialized);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(link_info->variables_initialized);
 
 	if (!enable) {
 		phy_reset_rx(drv, port);
@@ -722,8 +722,8 @@ static int _port_init(adapter_info_t *p_info, nthw_fpga_t *fpga, int port)
 	nthw_phy_tile_t *p_phy_tile = p_info->fpga_info.mp_nthw_agx.p_phy_tile;
 	nthw_rpf_t *p_rpf = p_info->fpga_info.mp_nthw_agx.p_rpf;
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
-	assert(link_info->variables_initialized);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(link_info->variables_initialized);
 
 	link_info->link_info[port].link_speed = NT_LINK_SPEED_100G;
 	link_info->link_info[port].link_duplex = NT_LINK_DUPLEX_FULL;
@@ -794,7 +794,7 @@ static void *_common_ptp_nim_state_machine(void *data)
 		goto NT4GA_LINK_100G_MON_EXIT;
 	}
 
-	assert(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
+	RTE_ASSERT(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
 
 	monitor_task_is_running[adapter_no] = 1;
 	memset(last_lpbk_mode, 0, sizeof(last_lpbk_mode));
@@ -828,7 +828,7 @@ static void *_common_ptp_nim_state_machine(void *data)
 			/*
 			 * Has the administrative port state changed?
 			 */
-			assert(!(disable_port && enable_port));
+			RTE_ASSERT(!(disable_port && enable_port));
 
 			if (disable_port) {
 				memset(&link_state[i], 0, sizeof(link_state[i]));
@@ -912,7 +912,7 @@ static void *_common_ptp_nim_state_machine(void *data)
 					continue;
 				}
 
-				assert(new_state.br);	/* Cannot be zero if NIM is present */
+				RTE_ASSERT(new_state.br); /* Cannot be zero if NIM is present */
 				NT_LOG(DBG, NTNIC,
 					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
 					drv->mp_port_id_str[i], nim_ctx->nim_id,

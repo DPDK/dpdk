@@ -1197,7 +1197,7 @@ eth_mac_addr_add(struct rte_eth_dev *eth_dev,
 {
 	struct rte_ether_addr *const eth_addrs = eth_dev->data->mac_addrs;
 
-	assert(index < NUM_MAC_ADDRS_PER_PORT);
+	RTE_ASSERT(index < NUM_MAC_ADDRS_PER_PORT);
 
 	if (index >= NUM_MAC_ADDRS_PER_PORT) {
 		const struct pmd_internals *const internals =
@@ -1366,8 +1366,8 @@ eth_dev_set_link_up(struct rte_eth_dev *eth_dev)
 	if (internals->type == PORT_TYPE_VIRTUAL || internals->type == PORT_TYPE_OVERRIDE)
 		return 0;
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
-	assert(port == internals->n_intf_no);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(port == internals->n_intf_no);
 
 	port_ops->set_adm_state(p_adapter_info, port, true);
 
@@ -1392,8 +1392,8 @@ eth_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	if (internals->type == PORT_TYPE_VIRTUAL || internals->type == PORT_TYPE_OVERRIDE)
 		return 0;
 
-	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
-	assert(port == internals->n_intf_no);
+	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	RTE_ASSERT(port == internals->n_intf_no);
 
 	port_ops->set_link_status(p_adapter_info, port, false);
 
@@ -1930,7 +1930,7 @@ THREAD_FUNC adapter_stat_thread_fn(void *context)
 
 	NT_LOG_DBGX(DBG, NTNIC, "%s: begin", p_adapter_id_str);
 
-	assert(p_nthw_stat);
+	RTE_ASSERT(p_nthw_stat);
 
 	while (!p_drv->ntdrv.b_shutdown) {
 		nt_os_wait_usec(10 * 1000);
@@ -2071,7 +2071,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		kvargs_count = rte_kvargs_count(kvlist, ETH_DEV_NTHW_RXQUEUES_ARG);
 
 		if (kvargs_count != 0) {
-			assert(kvargs_count == 1);
+			RTE_ASSERT(kvargs_count == 1);
 			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_RXQUEUES_ARG, &string_to_u32,
 					&nb_rx_queues);
 
@@ -2095,7 +2095,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		kvargs_count = rte_kvargs_count(kvlist, ETH_DEV_NTHW_TXQUEUES_ARG);
 
 		if (kvargs_count != 0) {
-			assert(kvargs_count == 1);
+			RTE_ASSERT(kvargs_count == 1);
 			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_TXQUEUES_ARG, &string_to_u32,
 					&nb_tx_queues);
 
@@ -2401,7 +2401,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		if (get_flow_filter_ops() != NULL) {
 			if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE &&
 				internals->flw_dev->ndev->be.tpe.ver >= 2) {
-				assert(nthw_eth_dev_ops.mtu_set == dev_set_mtu_inline ||
+				RTE_ASSERT(nthw_eth_dev_ops.mtu_set == dev_set_mtu_inline ||
 					nthw_eth_dev_ops.mtu_set == NULL);
 				nthw_eth_dev_ops.mtu_set = dev_set_mtu_inline;
 				dev_set_mtu_inline(eth_dev, MTUINITVAL);

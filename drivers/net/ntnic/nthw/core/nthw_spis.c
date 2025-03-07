@@ -104,7 +104,7 @@ uint32_t nthw_spis_enable(nthw_spis_t *p, bool b_enable)
 
 uint32_t nthw_spis_get_rx_fifo_empty(nthw_spis_t *p, bool *pb_empty)
 {
-	assert(pb_empty);
+	RTE_ASSERT(pb_empty);
 
 	*pb_empty = nthw_field_get_updated(p->mp_fld_sr_rxempty) ? true : false;
 
@@ -113,7 +113,7 @@ uint32_t nthw_spis_get_rx_fifo_empty(nthw_spis_t *p, bool *pb_empty)
 
 uint32_t nthw_spis_read_rx_fifo(nthw_spis_t *p, uint32_t *p_data)
 {
-	assert(p_data);
+	RTE_ASSERT(p_data);
 
 	*p_data = nthw_field_get_updated(p->mp_fld_drr_drr);
 

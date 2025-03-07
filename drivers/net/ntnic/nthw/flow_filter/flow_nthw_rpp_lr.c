@@ -40,7 +40,7 @@ int rpp_lr_nthw_init(struct rpp_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_RPP_LR, n_instance);
 
-	assert(n_instance >= 0 && n_instance < 256);
+	RTE_ASSERT(n_instance >= 0 && n_instance < 256);
 
 	if (p == NULL)
 		return p_mod == NULL ? -1 : 0;
@@ -84,39 +84,39 @@ int rpp_lr_nthw_init(struct rpp_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 
 void rpp_lr_nthw_rcp_select(const struct rpp_lr_nthw *p, uint32_t val)
 {
-	assert(p->mp_rcp_addr);
+	RTE_ASSERT(p->mp_rcp_addr);
 	nthw_field_set_val32(p->mp_rcp_addr, val);
 }
 
 void rpp_lr_nthw_rcp_cnt(const struct rpp_lr_nthw *p, uint32_t val)
 {
-	assert(p->mp_rcp_cnt);
+	RTE_ASSERT(p->mp_rcp_cnt);
 	nthw_field_set_val32(p->mp_rcp_cnt, val);
 }
 
 void rpp_lr_nthw_rcp_exp(const struct rpp_lr_nthw *p, uint32_t val)
 {
-	assert(p->mp_rcp_data_exp);
+	RTE_ASSERT(p->mp_rcp_data_exp);
 	nthw_field_set_val32(p->mp_rcp_data_exp, val);
 }
 
 void rpp_lr_nthw_rcp_flush(const struct rpp_lr_nthw *p)
 {
-	assert(p->mp_rcp_ctrl);
-	assert(p->mp_rcp_data);
+	RTE_ASSERT(p->mp_rcp_ctrl);
+	RTE_ASSERT(p->mp_rcp_data);
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);
 }
 
 void rpp_lr_nthw_ifr_rcp_select(const struct rpp_lr_nthw *p, uint32_t val)
 {
-	assert(p->mp_ifr_rcp_addr);
+	RTE_ASSERT(p->mp_ifr_rcp_addr);
 	nthw_field_set_val32(p->mp_ifr_rcp_addr, val);
 }
 
 void rpp_lr_nthw_ifr_rcp_cnt(const struct rpp_lr_nthw *p, uint32_t val)
 {
-	assert(p->mp_ifr_rcp_cnt);
+	RTE_ASSERT(p->mp_ifr_rcp_cnt);
 	nthw_field_set_val32(p->mp_ifr_rcp_cnt, val);
 }
 
@@ -146,14 +146,14 @@ void rpp_lr_nthw_ifr_rcp_ipv6_drop(const struct rpp_lr_nthw *p, uint32_t val)
 
 void rpp_lr_nthw_ifr_rcp_mtu(const struct rpp_lr_nthw *p, uint32_t val)
 {
-	assert(p->mp_ifr_rcp_data_mtu);
+	RTE_ASSERT(p->mp_ifr_rcp_data_mtu);
 	nthw_field_set_val32(p->mp_ifr_rcp_data_mtu, val);
 }
 
 void rpp_lr_nthw_ifr_rcp_flush(const struct rpp_lr_nthw *p)
 {
-	assert(p->mp_ifr_rcp_ctrl);
-	assert(p->mp_ifr_rcp_data);
+	RTE_ASSERT(p->mp_ifr_rcp_ctrl);
+	RTE_ASSERT(p->mp_ifr_rcp_data);
 	nthw_register_flush(p->mp_ifr_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_ifr_rcp_data, 1);
 }
