@@ -164,7 +164,6 @@ INTERNAL {
 	roc_mcs_custom_tag_cfg_get;
 	roc_mcs_dev_init;
 	roc_mcs_dev_fini;
-	roc_mcs_dev_get;
 	roc_mcs_event_cb_register;
 	roc_mcs_event_cb_unregister;
 	roc_mcs_flowid_entry_enable;
@@ -546,7 +545,6 @@ INTERNAL {
 	roc_tim_lf_enable;
 	roc_tim_lf_free;
 	roc_tim_lf_interval;
-	roc_se_ctx_swap;
 	roc_ree_af_reg_read;
 	roc_ree_af_reg_write;
 	roc_ree_config_lf;

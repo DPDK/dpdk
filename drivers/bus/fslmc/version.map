@@ -22,7 +22,6 @@ INTERNAL {
 	dpaa2_get_mcp_ptr;
 	dpaa2_io_portal;
 	dpaa2_seqn_dynfield_offset;
-	dpaa2_seqn;
 	dpaa2_svr_family;
 	dpbp_disable;
 	dpbp_enable;
@@ -108,7 +107,6 @@ INTERNAL {
 	qbman_swp_push_set;
 	qbman_swp_release;
 	rte_dpaa2_alloc_dpci_dev;
-	rte_dpaa2_dev_type;
 	rte_dpaa2_free_dpci_dev;
 	rte_dpaa2_intr_disable;
 	rte_dpaa2_intr_enable;
