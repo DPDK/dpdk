@@ -61,7 +61,6 @@ DPDK_25 {
 	rte_vhost_set_last_inflight_io_packed;
 	rte_vhost_set_last_inflight_io_split;
 	rte_vhost_set_vring_base;
-	rte_vhost_va_from_guest_pa;
 	rte_vhost_vring_call;
 	rte_vhost_vring_call_nonblock;
 	rte_vhost_vring_stats_get;

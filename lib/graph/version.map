@@ -27,9 +27,7 @@ DPDK_25 {
 	rte_graph_node_get;
 	rte_graph_node_get_by_name;
 	rte_graph_obj_dump;
-	rte_graph_walk;
 	rte_graph_worker_model_get;
-	rte_graph_worker_model_no_check_get;
 	rte_graph_worker_model_set;
 	rte_node_clone;
 	rte_node_dump;
@@ -37,25 +35,10 @@ DPDK_25 {
 	rte_node_edge_get;
 	rte_node_edge_shrink;
 	rte_node_edge_update;
-	rte_node_enqueue;
-	rte_node_enqueue_next;
-	rte_node_enqueue_x1;
-	rte_node_enqueue_x2;
-	rte_node_enqueue_x4;
 	rte_node_from_name;
 	rte_node_id_to_name;
 	rte_node_list_dump;
 	rte_node_max_count;
-	rte_node_next_stream_get;
-	rte_node_next_stream_move;
-	rte_node_next_stream_put;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	# added in 24.11
-	rte_node_xstat_increment;
 };

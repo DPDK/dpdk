@@ -29,9 +29,6 @@ int eal_log_save_pattern(const char *pattern, uint32_t level);
 __rte_internal
 int eal_log_syslog(const char *name);
 
-__rte_internal
-int eal_log_journal(const char *opt);
-
 /*
  * Convert log level to string.
  */
