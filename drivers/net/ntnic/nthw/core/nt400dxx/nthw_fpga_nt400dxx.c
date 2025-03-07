@@ -5,7 +5,7 @@
 #include "ntlog.h"
 #include "nthw_fpga.h"
 #include "ntnic_mod_reg.h"
-#include "NT400D13_U62_Si5332-GM2-RevD-1_V5-Registers.h"
+#include "nt400d13_u62_si5332_gm2_revd_1_v5_registers.h"
 
 static int nthw_fpga_nt400dxx_init_clock_synthesizers(struct fpga_info_s *p_fpga_info)
 {

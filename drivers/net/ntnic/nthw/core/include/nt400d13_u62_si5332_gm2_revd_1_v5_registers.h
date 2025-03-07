@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2024 Napatech A/S
+ */
+
+/*
  * Si5332-GM2 Rev D Configuration Register Export Header File
  *
  * This file represents a series of Skyworks Si5332-GM2 Rev D
