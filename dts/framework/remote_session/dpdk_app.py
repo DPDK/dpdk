@@ -62,7 +62,7 @@ class BlockingDPDKApp(DPDKShell):
         Args:
             end_token: The string at the end of a line that indicates the app is ready.
         """
-        self._start_application(end_token)
+        self.start_application(end_token)
 
     def close(self) -> None:
         """Close the application.
@@ -70,4 +70,4 @@ class BlockingDPDKApp(DPDKShell):
         Sends a SIGINT to close the application.
         """
         self.send_command("\x03")
-        self._close()
+        super().close()

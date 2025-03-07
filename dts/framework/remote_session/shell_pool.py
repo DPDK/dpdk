@@ -90,7 +90,7 @@ class ShellPool:
         for shell in self._pools.pop():
             self._logger.debug(f"Closing shell {shell} in shell pool level {current_pool_level}.")
             try:
-                shell._close()
+                shell.close()
             except Exception as e:
                 self._logger.error(f"An exception has occurred while closing shell {shell}:")
                 self._logger.exception(e)

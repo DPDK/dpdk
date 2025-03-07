@@ -2345,11 +2345,11 @@ class TestPmdShell(DPDKShell):
                             f"Test pmd failed to set clear forwarding stats on port {port_id}"
                         )
 
-    def _close(self) -> None:
+    def close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
         self.stop()
         self.send_command("quit", "Bye...")
-        return super()._close()
+        return super().close()
 
     """
     ====== Capability retrieval methods ======

@@ -29,3 +29,7 @@ class PythonShell(InteractiveShell):
 
     #: The Python executable.
     path: ClassVar[PurePath] = PurePath("python3")
+
+    def close(self):
+        """Close Python shell."""
+        return super().close()
