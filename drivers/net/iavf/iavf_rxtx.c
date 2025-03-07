@@ -411,6 +411,9 @@ struct iavf_rxq_ops iavf_rxq_release_mbufs_ops[] = {
 #ifdef RTE_ARCH_X86
 	[IAVF_REL_MBUFS_SSE_VEC].release_mbufs = iavf_rx_queue_release_mbufs_sse,
 #endif
+#ifdef RTE_ARCH_ARM64
+	[IAVF_REL_MBUFS_NEON_VEC].release_mbufs = iavf_rx_queue_release_mbufs_neon,
+#endif
 };
 
 static const

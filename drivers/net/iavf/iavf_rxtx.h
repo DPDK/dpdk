@@ -437,6 +437,7 @@ enum iavf_rxtx_rel_mbufs_type {
 	IAVF_REL_MBUFS_DEFAULT		= 0,
 	IAVF_REL_MBUFS_SSE_VEC		= 1,
 	IAVF_REL_MBUFS_AVX512_VEC	= 2,
+	IAVF_REL_MBUFS_NEON_VEC		= 3,
 };
 
 /* Receive Flex Descriptor profile IDs: There are a total
@@ -760,6 +761,7 @@ void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
 void iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq);
 void iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq);
 void iavf_tx_queue_release_mbufs_sse(struct iavf_tx_queue *txq);
+void iavf_rx_queue_release_mbufs_neon(struct iavf_rx_queue *rxq);
 
 static inline
 void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,
