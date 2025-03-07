@@ -24,6 +24,7 @@
 #define   NSP_COMMAND_OPTION    GENMASK_ULL(63, 32)
 #define   NSP_COMMAND_VER_MAJOR GENMASK_ULL(31, 28)
 #define   NSP_COMMAND_CODE      GENMASK_ULL(27, 16)
+#define   NSP_COMMAND_PF_ID     GENMASK_ULL(3, 2)
 #define   NSP_COMMAND_DMA_BUF   RTE_BIT64(1)
 #define   NSP_COMMAND_START     RTE_BIT64(0)
 
@@ -364,6 +365,7 @@ nfp_nsp_command_real(struct nfp_nsp *state,
 {
 	int err;
 	uint64_t reg;
+	uint64_t address;
 	uint32_t nsp_cpp;
 	uint64_t ret_val;
 	uint64_t nsp_base;
@@ -390,12 +392,18 @@ nfp_nsp_command_real(struct nfp_nsp *state,
 		return err;
 	}
 
-	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_command,
-			FIELD_PREP(NSP_COMMAND_OPTION, arg->option) |
+	address = FIELD_PREP(NSP_COMMAND_OPTION, arg->option) |
 			FIELD_PREP(NSP_COMMAND_VER_MAJOR, state->ver.major) |
 			FIELD_PREP(NSP_COMMAND_CODE, arg->code) |
 			FIELD_PREP(NSP_COMMAND_DMA_BUF, arg->dma) |
-			FIELD_PREP(NSP_COMMAND_START, 1));
+			FIELD_PREP(NSP_COMMAND_START, 1);
+
+	if (arg->code == SPCODE_FW_LOAD) {
+		address |= FIELD_PREP(NSP_COMMAND_PF_ID,
+				nfp_get_pf_id_from_cpp(cpp));
+	}
+
+	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_command, address);
 	if (err < 0) {
 		PMD_DRV_LOG(ERR, "CPP write command failed. err %d", err);
 		return err;

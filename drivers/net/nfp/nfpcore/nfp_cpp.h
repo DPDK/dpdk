@@ -384,4 +384,6 @@ int nfp_cpp_writeq(struct nfp_cpp *cpp, uint32_t cpp_id,
 
 uint32_t nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp);
 
+uint8_t nfp_get_pf_id_from_cpp(struct nfp_cpp *cpp);
+
 #endif /* __NFP_CPP_H__ */

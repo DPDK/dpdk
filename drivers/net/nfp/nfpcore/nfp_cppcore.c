@@ -1170,3 +1170,9 @@ err_release_free:
 err_eio:
 	return NULL;
 }
+
+uint8_t
+nfp_get_pf_id_from_cpp(struct nfp_cpp *cpp)
+{
+	return nfp_get_pf_id_from_device(nfp_cpp_priv(cpp));
+}

@@ -1033,3 +1033,11 @@ nfp_cpp_from_nfp6000_pcie(struct rte_pci_device *pci_dev,
 
 	return cpp;
 }
+
+uint8_t
+nfp_get_pf_id_from_device(void *priv)
+{
+	struct nfp_pcie_user *nfp = priv;
+
+	return nfp->pci_dev->addr.function;
+}
