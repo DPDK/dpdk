@@ -1,8 +1,0 @@
-INTERNAL {
-	global:
-
-	rte_dpaa_bpid_info;
-	rte_dpaa_memsegs;
-
-	local: *;
-};

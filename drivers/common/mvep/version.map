@@ -1,8 +1,0 @@
-INTERNAL {
-	global:
-
-	rte_mvep_deinit;
-	rte_mvep_init;
-
-	local: *;
-};

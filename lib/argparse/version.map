@@ -1,9 +1,0 @@
-EXPERIMENTAL {
-	global:
-
-	# added in 24.03
-	rte_argparse_parse;
-	rte_argparse_parse_type;
-
-	local: *;
-};
