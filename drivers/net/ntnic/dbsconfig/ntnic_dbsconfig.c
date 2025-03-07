@@ -822,8 +822,9 @@ nthw_setup_mngd_rx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 
 	if (p_packet_buffers) {
 		rxvq[index].p_virtual_addr = malloc(queue_size * sizeof(*p_packet_buffers));
-		memcpy(rxvq[index].p_virtual_addr, p_packet_buffers,
-			queue_size * sizeof(*p_packet_buffers));
+		if (rxvq[index].p_virtual_addr)
+			memcpy(rxvq[index].p_virtual_addr, p_packet_buffers,
+				queue_size * sizeof(*p_packet_buffers));
 	}
 
 	nthw_setup_rx_virt_queue(p_nthw_dbs, index, 0, 0, (void *)p_virt_struct_area->phys_addr,
@@ -878,8 +879,9 @@ nthw_setup_mngd_tx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 
 	if (p_packet_buffers) {
 		txvq[index].p_virtual_addr = malloc(queue_size * sizeof(*p_packet_buffers));
-		memcpy(txvq[index].p_virtual_addr, p_packet_buffers,
-			queue_size * sizeof(*p_packet_buffers));
+		if (txvq[index].p_virtual_addr)
+			memcpy(txvq[index].p_virtual_addr, p_packet_buffers,
+				queue_size * sizeof(*p_packet_buffers));
 	}
 
 	nthw_setup_tx_virt_queue(p_nthw_dbs, index, 0, 0, (void *)p_virt_struct_area->phys_addr,
