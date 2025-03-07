@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <stdlib.h>
 
@@ -13,6 +14,7 @@
 #include "cmdline_parse_bool.h"
 
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(cmdline_token_bool_ops, 25.03)
 struct cmdline_token_ops cmdline_token_bool_ops = {
 	.parse = cmdline_parse_bool,
 	.complete_get_nb = NULL,

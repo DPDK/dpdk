@@ -19,6 +19,7 @@ sources = files(
         'base/qbman/qman.c',
         'base/qbman/qman_driver.c',
         'dpaa_bus.c',
+        'dpaa_bus_base_symbols.c',
 )
 
 if cc.has_argument('-Wno-cast-qual')

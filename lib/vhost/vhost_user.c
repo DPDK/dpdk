@@ -41,6 +41,7 @@
 #define MEMFD_SUPPORTED
 #endif
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -3359,6 +3360,7 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_backend_config_change)
 int
 rte_vhost_backend_config_change(int vid, bool need_reply)
 {
@@ -3421,6 +3423,7 @@ static int vhost_user_backend_set_vring_host_notifier(struct virtio_net *dev,
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vhost_host_notifier_ctrl)
 int rte_vhost_host_notifier_ctrl(int vid, uint16_t qid, bool enable)
 {
 	struct virtio_net *dev;

@@ -7,6 +7,8 @@
 #include <fsl_dpdmai.h>
 #include <fsl_dpdmai_cmd.h>
 
+#include <eal_export.h>
+
 /**
  * dpdmai_open() - Open a control session for the specified object
  * @mc_io:	Pointer to MC portal's I/O object
@@ -24,6 +26,7 @@
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_open)
 int dpdmai_open(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		int dpdmai_id,
@@ -62,6 +65,7 @@ int dpdmai_open(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_close)
 int dpdmai_close(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token)
@@ -171,6 +175,7 @@ int dpdmai_destroy(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_enable)
 int dpdmai_enable(struct fsl_mc_io *mc_io,
 		  uint32_t cmd_flags,
 		  uint16_t token)
@@ -194,6 +199,7 @@ int dpdmai_enable(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_disable)
 int dpdmai_disable(struct fsl_mc_io *mc_io,
 		   uint32_t cmd_flags,
 		   uint16_t token)
@@ -276,6 +282,7 @@ int dpdmai_reset(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_get_attributes)
 int dpdmai_get_attributes(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t token,
@@ -320,6 +327,7 @@ int dpdmai_get_attributes(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_set_rx_queue)
 int dpdmai_set_rx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -362,6 +370,7 @@ int dpdmai_set_rx_queue(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_get_rx_queue)
 int dpdmai_get_rx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -412,6 +421,7 @@ int dpdmai_get_rx_queue(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpdmai_get_tx_queue)
 int dpdmai_get_tx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

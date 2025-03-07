@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 
+#include <eal_export.h>
 #include <rte_ethdev.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
@@ -54,6 +55,7 @@ static struct dpaa2_dpdmux_dev *get_dpdmux_from_id(uint32_t dpdmux_id)
 	return dpdmux_dev;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_dpaa2_mux_flow_create)
 int
 rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	struct rte_flow_item pattern[],
@@ -364,6 +366,7 @@ rte_pmd_dpaa2_mux_flow_l2(uint32_t dpdmux_id,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_mux_rx_frame_len, 21.05)
 int
 rte_pmd_dpaa2_mux_rx_frame_len(uint32_t dpdmux_id, uint16_t max_rx_frame_len)
 {
@@ -391,6 +394,7 @@ rte_pmd_dpaa2_mux_rx_frame_len(uint32_t dpdmux_id, uint16_t max_rx_frame_len)
 }
 
 /* dump the status of the dpaa2_mux counters on the console */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_mux_dump_counter, 24.11)
 void
 rte_pmd_dpaa2_mux_dump_counter(FILE *f, uint32_t dpdmux_id, int num_if)
 {

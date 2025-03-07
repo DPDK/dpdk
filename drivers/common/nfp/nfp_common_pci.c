@@ -7,6 +7,7 @@
 
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_class.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
@@ -257,6 +258,7 @@ nfp_common_init(void)
 	nfp_common_initialized = true;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(nfp_class_driver_register)
 void
 nfp_class_driver_register(struct nfp_class_driver *driver)
 {

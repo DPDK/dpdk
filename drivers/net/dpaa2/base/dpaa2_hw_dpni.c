@@ -8,6 +8,7 @@
 #include <time.h>
 #include <net/if.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -28,6 +29,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg);
 
+RTE_EXPORT_SYMBOL(rte_pmd_dpaa2_set_custom_hash)
 int
 rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 	uint16_t offset, uint8_t size)

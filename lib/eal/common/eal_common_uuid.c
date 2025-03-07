@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include <eal_export.h>
 #include <rte_uuid.h>
 
 /* UUID packed form */
@@ -77,6 +78,7 @@ static void uuid_unpack(const rte_uuid_t in, struct uuid *uu)
 	memcpy(uu->node, ptr, 6);
 }
 
+RTE_EXPORT_SYMBOL(rte_uuid_is_null)
 bool rte_uuid_is_null(const rte_uuid_t uu)
 {
 	const uint8_t *cp = uu;
@@ -91,6 +93,7 @@ bool rte_uuid_is_null(const rte_uuid_t uu)
 /*
  * rte_uuid_compare() - compare two UUIDs.
  */
+RTE_EXPORT_SYMBOL(rte_uuid_compare)
 int rte_uuid_compare(const rte_uuid_t uu1, const rte_uuid_t uu2)
 {
 	struct uuid	uuid1, uuid2;
@@ -110,6 +113,7 @@ int rte_uuid_compare(const rte_uuid_t uu1, const rte_uuid_t uu2)
 	return memcmp(uuid1.node, uuid2.node, 6);
 }
 
+RTE_EXPORT_SYMBOL(rte_uuid_parse)
 int rte_uuid_parse(const char *in, rte_uuid_t uu)
 {
 	struct uuid	uuid;
@@ -152,6 +156,7 @@ int rte_uuid_parse(const char *in, rte_uuid_t uu)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_uuid_unparse)
 void rte_uuid_unparse(const rte_uuid_t uu, char *out, size_t len)
 {
 	struct uuid uuid;

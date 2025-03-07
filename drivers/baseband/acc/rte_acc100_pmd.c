@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <dev_driver.h>
@@ -4635,6 +4636,7 @@ acc100_configure(const char *dev_name, struct rte_acc_conf *conf)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_acc_configure, 22.11)
 int
 rte_acc_configure(const char *dev_name, struct rte_acc_conf *conf)
 {

@@ -2,6 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_eventdev.h>
 #include <eventdev_pmd.h>
 
@@ -9,6 +10,7 @@
 #include "dlb2_priv.h"
 #include "dlb2_inline_fns.h"
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dlb2_set_token_pop_mode, 20.11)
 int
 rte_pmd_dlb2_set_token_pop_mode(uint8_t dev_id,
 				uint8_t port_id,

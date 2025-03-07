@@ -14,6 +14,7 @@
 #include <sys/queue.h>
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_per_lcore.h>
@@ -78,6 +79,7 @@ struct log_cur_msg {
 static RTE_DEFINE_PER_LCORE(struct log_cur_msg, log_cur_msg);
 
 /* Change the stream that will be used by logging system */
+RTE_EXPORT_SYMBOL(rte_openlog_stream)
 int
 rte_openlog_stream(FILE *f)
 {
@@ -89,6 +91,7 @@ rte_openlog_stream(FILE *f)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_log_get_stream)
 FILE *
 rte_log_get_stream(void)
 {
@@ -98,6 +101,7 @@ rte_log_get_stream(void)
 }
 
 /* Set global log level */
+RTE_EXPORT_SYMBOL(rte_log_set_global_level)
 void
 rte_log_set_global_level(uint32_t level)
 {
@@ -105,12 +109,14 @@ rte_log_set_global_level(uint32_t level)
 }
 
 /* Get global log level */
+RTE_EXPORT_SYMBOL(rte_log_get_global_level)
 uint32_t
 rte_log_get_global_level(void)
 {
 	return rte_logs.level;
 }
 
+RTE_EXPORT_SYMBOL(rte_log_get_level)
 int
 rte_log_get_level(uint32_t type)
 {
@@ -120,6 +126,7 @@ rte_log_get_level(uint32_t type)
 	return rte_logs.dynamic_types[type].loglevel;
 }
 
+RTE_EXPORT_SYMBOL(rte_log_can_log)
 bool
 rte_log_can_log(uint32_t logtype, uint32_t level)
 {
@@ -153,6 +160,7 @@ logtype_set_level(uint32_t type, uint32_t level)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_log_set_level)
 int
 rte_log_set_level(uint32_t type, uint32_t level)
 {
@@ -167,6 +175,7 @@ rte_log_set_level(uint32_t type, uint32_t level)
 }
 
 /* set log level by regular expression */
+RTE_EXPORT_SYMBOL(rte_log_set_level_regexp)
 int
 rte_log_set_level_regexp(const char *regex, uint32_t level)
 {
@@ -225,6 +234,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(eal_log_save_regexp)
 int
 eal_log_save_regexp(const char *regex, uint32_t level)
 {
@@ -232,6 +242,7 @@ eal_log_save_regexp(const char *regex, uint32_t level)
 }
 
 /* set log level based on globbing pattern */
+RTE_EXPORT_SYMBOL(rte_log_set_level_pattern)
 int
 rte_log_set_level_pattern(const char *pattern, uint32_t level)
 {
@@ -251,6 +262,7 @@ rte_log_set_level_pattern(const char *pattern, uint32_t level)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(eal_log_save_pattern)
 int
 eal_log_save_pattern(const char *pattern, uint32_t level)
 {
@@ -258,12 +270,14 @@ eal_log_save_pattern(const char *pattern, uint32_t level)
 }
 
 /* get the current loglevel for the message being processed */
+RTE_EXPORT_SYMBOL(rte_log_cur_msg_loglevel)
 int rte_log_cur_msg_loglevel(void)
 {
 	return RTE_PER_LCORE(log_cur_msg).loglevel;
 }
 
 /* get the current logtype for the message being processed */
+RTE_EXPORT_SYMBOL(rte_log_cur_msg_logtype)
 int rte_log_cur_msg_logtype(void)
 {
 	return RTE_PER_LCORE(log_cur_msg).logtype;
@@ -315,6 +329,7 @@ log_register(const char *name, uint32_t level)
 }
 
 /* register an extended log type */
+RTE_EXPORT_SYMBOL(rte_log_register)
 int
 rte_log_register(const char *name)
 {
@@ -322,6 +337,7 @@ rte_log_register(const char *name)
 }
 
 /* Register an extended log type and try to pick its level from EAL options */
+RTE_EXPORT_SYMBOL(rte_log_register_type_and_pick_level)
 int
 rte_log_register_type_and_pick_level(const char *name, uint32_t level_def)
 {
@@ -384,6 +400,7 @@ RTE_INIT_PRIO(log_init, LOG)
 	rte_logs.dynamic_types_len = RTE_LOGTYPE_FIRST_EXT_ID;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(eal_log_level2str)
 const char *
 eal_log_level2str(uint32_t level)
 {
@@ -417,6 +434,7 @@ log_type_compare(const void *a, const void *b)
 }
 
 /* Dump name of each logtype, one per line. */
+RTE_EXPORT_SYMBOL(rte_log_list_types)
 void
 rte_log_list_types(FILE *out, const char *prefix)
 {
@@ -446,6 +464,7 @@ rte_log_list_types(FILE *out, const char *prefix)
 }
 
 /* dump global level and registered log types */
+RTE_EXPORT_SYMBOL(rte_log_dump)
 void
 rte_log_dump(FILE *f)
 {
@@ -467,6 +486,7 @@ rte_log_dump(FILE *f)
  * Generates a log message The message will be sent in the stream
  * defined by the previous call to rte_openlog_stream().
  */
+RTE_EXPORT_SYMBOL(rte_vlog)
 int
 rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
 {
@@ -492,6 +512,7 @@ rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
  * defined by the previous call to rte_openlog_stream().
  * No need to check level here, done by rte_vlog().
  */
+RTE_EXPORT_SYMBOL(rte_log)
 int
 rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
 {
@@ -507,6 +528,7 @@ rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
 /*
  * Called by rte_eal_init
  */
+RTE_EXPORT_INTERNAL_SYMBOL(eal_log_init)
 void
 eal_log_init(const char *id)
 {
@@ -552,6 +574,7 @@ eal_log_init(const char *id)
 /*
  * Called by eal_cleanup
  */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_log_cleanup)
 void
 rte_eal_log_cleanup(void)
 {

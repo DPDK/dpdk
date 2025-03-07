@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <eal_export.h>
 #include <rte_log.h>
 
 #include "roc_api.h"
@@ -242,6 +243,7 @@ plt_irq_unregister(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb,
 static int plt_init_cb_num;
 static roc_plt_init_cb_t plt_init_cbs[PLT_INIT_CB_MAX];
 
+RTE_EXPORT_INTERNAL_SYMBOL(roc_plt_init_cb_register)
 int
 roc_plt_init_cb_register(roc_plt_init_cb_t cb)
 {
@@ -252,6 +254,7 @@ roc_plt_init_cb_register(roc_plt_init_cb_t cb)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(roc_plt_control_lmt_id_get)
 uint16_t
 roc_plt_control_lmt_id_get(void)
 {
@@ -263,6 +266,7 @@ roc_plt_control_lmt_id_get(void)
 		return ROC_NUM_LMT_LINES - 1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(roc_plt_lmt_validate)
 uint16_t
 roc_plt_lmt_validate(void)
 {
@@ -277,6 +281,7 @@ roc_plt_lmt_validate(void)
 	return 1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(roc_plt_init)
 int
 roc_plt_init(void)
 {
@@ -316,17 +321,31 @@ roc_plt_init(void)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_base)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_base, base, INFO);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_mbox)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_mbox, mbox, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_cpt)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_cpt, crypto, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_ml)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_ml, ml, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_npa)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_npa, mempool, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_nix)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_nix, nix, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_npc)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_npc, flow, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_sso)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_sso, event, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_tim)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_tim, timer, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_tm)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_tm, tm, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_dpi)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_dpi, dpi, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_rep)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_rep, rep, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_esw)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_esw, esw, NOTICE);
+RTE_EXPORT_INTERNAL_SYMBOL(cnxk_logtype_ree)
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_ree, ree, NOTICE);

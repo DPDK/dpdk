@@ -12,6 +12,7 @@
 #include <poll.h>
 
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_power_guest_channel.h>
 
@@ -151,6 +152,7 @@ guest_channel_send_msg(struct rte_power_channel_packet *pkt,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_guest_channel_send_msg)
 int rte_power_guest_channel_send_msg(struct rte_power_channel_packet *pkt,
 			unsigned int lcore_id)
 {
@@ -212,6 +214,7 @@ int power_guest_channel_read_msg(void *pkt,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_guest_channel_receive_msg)
 int rte_power_guest_channel_receive_msg(void *pkt,
 		size_t pkt_len,
 		unsigned int lcore_id)

@@ -4,6 +4,7 @@
 
 #include <inttypes.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 
 #include "soring.h"
@@ -91,6 +92,7 @@ soring_dump_stage_headtail(FILE *f, const char *prefix,
 	fprintf(f, "%shead=%"PRIu32"\n", prefix, st->sht.head);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_soring_dump, 25.03)
 void
 rte_soring_dump(FILE *f, const struct rte_soring *r)
 {
@@ -118,6 +120,7 @@ rte_soring_dump(FILE *f, const struct rte_soring *r)
 	}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_soring_get_memsize, 25.03)
 ssize_t
 rte_soring_get_memsize(const struct rte_soring_param *prm)
 {
@@ -151,6 +154,7 @@ soring_compilation_checks(void)
 		offsetof(struct soring_stage_headtail, unused));
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_soring_init, 25.03)
 int
 rte_soring_init(struct rte_soring *r, const struct rte_soring_param *prm)
 {

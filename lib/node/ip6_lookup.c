@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include <eal_export.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_graph.h>
@@ -257,6 +258,7 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 	return nb_objs;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_node_ip6_route_add, 23.07)
 int
 rte_node_ip6_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16_t next_hop,
 		       enum rte_node_ip6_lookup_next next_node)

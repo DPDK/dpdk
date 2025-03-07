@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_prefetch.h>
@@ -76,6 +77,7 @@ struct __rte_hash_rcu_dq_entry {
 	uint32_t ext_bkt_idx;
 };
 
+RTE_EXPORT_SYMBOL(rte_hash_find_existing)
 struct rte_hash *
 rte_hash_find_existing(const char *name)
 {
@@ -108,6 +110,7 @@ rte_hash_get_last_bkt(struct rte_hash_bucket *lst_bkt)
 	return lst_bkt;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_set_cmp_func)
 void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func)
 {
 	h->cmp_jump_table_idx = KEY_CUSTOM;
@@ -153,6 +156,7 @@ get_alt_bucket_index(const struct rte_hash *h,
 	return (cur_bkt_idx ^ sig) & h->bucket_bitmask;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_create)
 struct rte_hash *
 rte_hash_create(const struct rte_hash_parameters *params)
 {
@@ -524,6 +528,7 @@ err:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_free)
 void
 rte_hash_free(struct rte_hash *h)
 {
@@ -571,6 +576,7 @@ rte_hash_free(struct rte_hash *h)
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_hash)
 hash_sig_t
 rte_hash_hash(const struct rte_hash *h, const void *key)
 {
@@ -578,6 +584,7 @@ rte_hash_hash(const struct rte_hash *h, const void *key)
 	return h->hash_func(key, h->key_len, h->hash_func_init_val);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_max_key_id)
 int32_t
 rte_hash_max_key_id(const struct rte_hash *h)
 {
@@ -593,6 +600,7 @@ rte_hash_max_key_id(const struct rte_hash *h)
 		return h->entries;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_count)
 int32_t
 rte_hash_count(const struct rte_hash *h)
 {
@@ -662,6 +670,7 @@ __hash_rw_reader_unlock(const struct rte_hash *h)
 		rte_rwlock_read_unlock(h->readwrite_lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_reset)
 void
 rte_hash_reset(struct rte_hash *h)
 {
@@ -1245,6 +1254,7 @@ failure:
 
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_with_hash)
 int32_t
 rte_hash_add_key_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1253,6 +1263,7 @@ rte_hash_add_key_with_hash(const struct rte_hash *h,
 	return __rte_hash_add_key_with_hash(h, key, sig, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key)
 int32_t
 rte_hash_add_key(const struct rte_hash *h, const void *key)
 {
@@ -1260,6 +1271,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_add_key_with_hash(h, key, rte_hash_hash(h, key), 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_with_hash_data)
 int
 rte_hash_add_key_with_hash_data(const struct rte_hash *h,
 			const void *key, hash_sig_t sig, void *data)
@@ -1274,6 +1286,7 @@ rte_hash_add_key_with_hash_data(const struct rte_hash *h,
 		return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_data)
 int
 rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data)
 {
@@ -1467,6 +1480,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 		return __rte_hash_lookup_with_hash_l(h, key, sig, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash)
 int32_t
 rte_hash_lookup_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1475,6 +1489,7 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
 	return __rte_hash_lookup_with_hash(h, key, sig, NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup)
 int32_t
 rte_hash_lookup(const struct rte_hash *h, const void *key)
 {
@@ -1482,6 +1497,7 @@ rte_hash_lookup(const struct rte_hash *h, const void *key)
 	return __rte_hash_lookup_with_hash(h, key, rte_hash_hash(h, key), NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_data)
 int
 rte_hash_lookup_with_hash_data(const struct rte_hash *h,
 			const void *key, hash_sig_t sig, void **data)
@@ -1490,6 +1506,7 @@ rte_hash_lookup_with_hash_data(const struct rte_hash *h,
 	return __rte_hash_lookup_with_hash(h, key, sig, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_data)
 int
 rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data)
 {
@@ -1557,6 +1574,7 @@ __hash_rcu_qsbr_free_resource(void *p, void *e, unsigned int n)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_rcu_qsbr_add)
 int
 rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 {
@@ -1627,6 +1645,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_hash_rcu_qsbr_dq_reclaim, 24.07)
 int rte_hash_rcu_qsbr_dq_reclaim(struct rte_hash *h, unsigned int *freed, unsigned int *pending,
 				 unsigned int *available)
 {
@@ -1851,6 +1870,7 @@ return_key:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_del_key_with_hash)
 int32_t
 rte_hash_del_key_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1859,6 +1879,7 @@ rte_hash_del_key_with_hash(const struct rte_hash *h,
 	return __rte_hash_del_key_with_hash(h, key, sig);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_del_key)
 int32_t
 rte_hash_del_key(const struct rte_hash *h, const void *key)
 {
@@ -1866,6 +1887,7 @@ rte_hash_del_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_del_key_with_hash(h, key, rte_hash_hash(h, key));
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_get_key_with_position)
 int
 rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 			       void **key)
@@ -1886,6 +1908,7 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_free_key_with_position)
 int
 rte_hash_free_key_with_position(const struct rte_hash *h,
 				const int32_t position)
@@ -2398,6 +2421,7 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 					 hit_mask, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_bulk)
 int
 rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions)
@@ -2410,6 +2434,7 @@ rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_bulk_data)
 int
 rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, uint64_t *hit_mask, void *data[])
@@ -2510,6 +2535,7 @@ __rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 				num_keys, positions, hit_mask, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_bulk)
 int
 rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 		hash_sig_t *sig, uint32_t num_keys, int32_t *positions)
@@ -2524,6 +2550,7 @@ rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_bulk_data)
 int
 rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 		const void **keys, hash_sig_t *sig,
@@ -2543,6 +2570,7 @@ rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 	return rte_popcount64(*hit_mask);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_iterate)
 int32_t
 rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32_t *next)
 {

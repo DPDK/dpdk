@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_pci.h>
@@ -3341,6 +3342,7 @@ mlx5_set_metadata_mask(struct rte_eth_dev *dev)
 	DRV_LOG(DEBUG, "metadata reg_c0 mask %08X", sh->dv_regc0_mask);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_get_dyn_flag_names, 20.02)
 int
 rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n)
 {

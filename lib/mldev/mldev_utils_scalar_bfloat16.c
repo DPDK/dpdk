@@ -8,6 +8,8 @@
 
 #include "mldev_utils_scalar.h"
 
+#include <eal_export.h>
+
 /* Description:
  * This file implements scalar versions of Machine Learning utility functions used to convert data
  * types from bfloat16 to float32 and vice-versa.
@@ -91,6 +93,7 @@ bf16_pack:
 	return u16;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_bfloat16, 22.11)
 int
 rte_ml_io_float32_to_bfloat16(const void *input, void *output, uint64_t nb_elements)
 {
@@ -173,6 +176,7 @@ fp32_pack:
 	return f32.f;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_bfloat16_to_float32, 22.11)
 int
 rte_ml_io_bfloat16_to_float32(const void *input, void *output, uint64_t nb_elements)
 {

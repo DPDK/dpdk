@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <assert.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_eal_memconfig.h>
@@ -84,6 +85,7 @@ timer_data_valid(uint32_t id)
 	timer_data = &rte_timer_data_arr[id];				\
 } while (0)
 
+RTE_EXPORT_SYMBOL(rte_timer_data_alloc)
 int
 rte_timer_data_alloc(uint32_t *id_ptr)
 {
@@ -108,6 +110,7 @@ rte_timer_data_alloc(uint32_t *id_ptr)
 	return -ENOSPC;
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_data_dealloc)
 int
 rte_timer_data_dealloc(uint32_t id)
 {
@@ -125,6 +128,7 @@ rte_timer_data_dealloc(uint32_t id)
  * secondary processes should be empty, the zeroth entry can be shared by
  * multiple processes.
  */
+RTE_EXPORT_SYMBOL(rte_timer_subsystem_init)
 int
 rte_timer_subsystem_init(void)
 {
@@ -184,6 +188,7 @@ rte_timer_subsystem_init(void)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_subsystem_finalize)
 void
 rte_timer_subsystem_finalize(void)
 {
@@ -203,6 +208,7 @@ rte_timer_subsystem_finalize(void)
 }
 
 /* Initialize the timer handle tim for use */
+RTE_EXPORT_SYMBOL(rte_timer_init)
 void
 rte_timer_init(struct rte_timer *tim)
 {
@@ -539,6 +545,7 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 }
 
 /* Reset and start the timer associated with the timer handle tim */
+RTE_EXPORT_SYMBOL(rte_timer_reset)
 int
 rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 		      enum rte_timer_type type, unsigned int tim_lcore,
@@ -548,6 +555,7 @@ rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 				   tim_lcore, fct, arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_alt_reset)
 int
 rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
 		    uint64_t ticks, enum rte_timer_type type,
@@ -569,6 +577,7 @@ rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
 }
 
 /* loop until rte_timer_reset() succeed */
+RTE_EXPORT_SYMBOL(rte_timer_reset_sync)
 void
 rte_timer_reset_sync(struct rte_timer *tim, uint64_t ticks,
 		     enum rte_timer_type type, unsigned tim_lcore,
@@ -618,12 +627,14 @@ __rte_timer_stop(struct rte_timer *tim,
 }
 
 /* Stop the timer associated with the timer handle tim */
+RTE_EXPORT_SYMBOL(rte_timer_stop)
 int
 rte_timer_stop(struct rte_timer *tim)
 {
 	return rte_timer_alt_stop(default_data_id, tim);
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_alt_stop)
 int
 rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim)
 {
@@ -635,6 +646,7 @@ rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim)
 }
 
 /* loop until rte_timer_stop() succeed */
+RTE_EXPORT_SYMBOL(rte_timer_stop_sync)
 void
 rte_timer_stop_sync(struct rte_timer *tim)
 {
@@ -643,6 +655,7 @@ rte_timer_stop_sync(struct rte_timer *tim)
 }
 
 /* Test the PENDING status of the timer handle tim */
+RTE_EXPORT_SYMBOL(rte_timer_pending)
 int
 rte_timer_pending(struct rte_timer *tim)
 {
@@ -777,6 +790,7 @@ __rte_timer_manage(struct rte_timer_data *timer_data)
 	priv_timer[lcore_id].running_tim = NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_manage)
 int
 rte_timer_manage(void)
 {
@@ -789,6 +803,7 @@ rte_timer_manage(void)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_alt_manage)
 int
 rte_timer_alt_manage(uint32_t timer_data_id,
 		     unsigned int *poll_lcores,
@@ -970,6 +985,7 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 }
 
 /* Walk pending lists, stopping timers and calling user-specified function */
+RTE_EXPORT_SYMBOL(rte_timer_stop_all)
 int
 rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 		   int nb_walk_lcores,
@@ -1002,6 +1018,7 @@ rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_next_ticks)
 int64_t
 rte_timer_next_ticks(void)
 {
@@ -1055,12 +1072,14 @@ __rte_timer_dump_stats(struct rte_timer_data *timer_data __rte_unused, FILE *f)
 #endif
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_dump_stats)
 int
 rte_timer_dump_stats(FILE *f)
 {
 	return rte_timer_alt_dump_stats(default_data_id, f);
 }
 
+RTE_EXPORT_SYMBOL(rte_timer_alt_dump_stats)
 int
 rte_timer_alt_dump_stats(uint32_t timer_data_id __rte_unused, FILE *f)
 {

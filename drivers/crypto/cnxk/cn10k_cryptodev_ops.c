@@ -3,6 +3,7 @@
  */
 
 #include <cryptodev_pmd.h>
+#include <eal_export.h>
 #include <rte_cryptodev.h>
 #include <rte_event_crypto_adapter.h>
 #include <rte_hexdump.h>
@@ -892,12 +893,14 @@ vec_submit:
 	return count;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cpt_sg_ver1_crypto_adapter_enqueue)
 uint16_t __rte_hot
 cn10k_cpt_sg_ver1_crypto_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 {
 	return cn10k_cpt_crypto_adapter_enqueue(ws, ev, nb_events, false);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cpt_sg_ver2_crypto_adapter_enqueue)
 uint16_t __rte_hot
 cn10k_cpt_sg_ver2_crypto_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 {
@@ -1225,6 +1228,7 @@ temp_sess_free:
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cpt_crypto_adapter_dequeue)
 uintptr_t
 cn10k_cpt_crypto_adapter_dequeue(uintptr_t get_work1)
 {
@@ -1248,6 +1252,7 @@ cn10k_cpt_crypto_adapter_dequeue(uintptr_t get_work1)
 	return (uintptr_t)cop;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cpt_crypto_adapter_vector_dequeue)
 uintptr_t
 cn10k_cpt_crypto_adapter_vector_dequeue(uintptr_t get_work1)
 {
@@ -1349,6 +1354,7 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 }
 
 #if defined(RTE_ARCH_ARM64)
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cryptodev_sec_inb_rx_inject)
 uint16_t __rte_hot
 cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 				  struct rte_security_session **sess, uint16_t nb_pkts)
@@ -1492,6 +1498,7 @@ exit:
 	return count + i;
 }
 #else
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cryptodev_sec_inb_rx_inject)
 uint16_t __rte_hot
 cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 				  struct rte_security_session **sess, uint16_t nb_pkts)
@@ -1968,6 +1975,7 @@ cn10k_sym_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cn10k_cryptodev_sec_rx_inject_configure)
 int
 cn10k_cryptodev_sec_rx_inject_configure(void *device, uint16_t port_id, bool enable)
 {

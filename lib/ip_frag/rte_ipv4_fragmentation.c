@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_ether.h>
 
 #include "ip_frag_common.h"
@@ -104,6 +105,7 @@ static inline uint16_t __create_ipopt_frag_hdr(uint8_t *iph,
  *   in the pkts_out array.
  *   Otherwise - (-1) * <errno>.
  */
+RTE_EXPORT_SYMBOL(rte_ipv4_fragment_packet)
 int32_t
 rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 	struct rte_mbuf **pkts_out,
@@ -286,6 +288,7 @@ rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
  *   in the pkts_out array.
  *   Otherwise - (-1) * errno.
  */
+RTE_EXPORT_SYMBOL(rte_ipv4_fragment_copy_nonseg_packet)
 int32_t
 rte_ipv4_fragment_copy_nonseg_packet(struct rte_mbuf *pkt_in,
 	struct rte_mbuf **pkts_out,

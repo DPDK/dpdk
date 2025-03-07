@@ -4,10 +4,12 @@
 
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_ptype.h>
 
 /* get the name of the l2 packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_l2_name)
 const char *rte_get_ptype_l2_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_L2_MASK) {
@@ -26,6 +28,7 @@ const char *rte_get_ptype_l2_name(uint32_t ptype)
 }
 
 /* get the name of the l3 packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_l3_name)
 const char *rte_get_ptype_l3_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_L3_MASK) {
@@ -40,6 +43,7 @@ const char *rte_get_ptype_l3_name(uint32_t ptype)
 }
 
 /* get the name of the l4 packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_l4_name)
 const char *rte_get_ptype_l4_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_L4_MASK) {
@@ -56,6 +60,7 @@ const char *rte_get_ptype_l4_name(uint32_t ptype)
 }
 
 /* get the name of the tunnel packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_tunnel_name)
 const char *rte_get_ptype_tunnel_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_TUNNEL_MASK) {
@@ -77,6 +82,7 @@ const char *rte_get_ptype_tunnel_name(uint32_t ptype)
 }
 
 /* get the name of the inner_l2 packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_inner_l2_name)
 const char *rte_get_ptype_inner_l2_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_INNER_L2_MASK) {
@@ -88,6 +94,7 @@ const char *rte_get_ptype_inner_l2_name(uint32_t ptype)
 }
 
 /* get the name of the inner_l3 packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_inner_l3_name)
 const char *rte_get_ptype_inner_l3_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_INNER_L3_MASK) {
@@ -104,6 +111,7 @@ const char *rte_get_ptype_inner_l3_name(uint32_t ptype)
 }
 
 /* get the name of the inner_l4 packet type */
+RTE_EXPORT_SYMBOL(rte_get_ptype_inner_l4_name)
 const char *rte_get_ptype_inner_l4_name(uint32_t ptype)
 {
 	switch (ptype & RTE_PTYPE_INNER_L4_MASK) {
@@ -119,6 +127,7 @@ const char *rte_get_ptype_inner_l4_name(uint32_t ptype)
 }
 
 /* write the packet type name into the buffer */
+RTE_EXPORT_SYMBOL(rte_get_ptype_name)
 int rte_get_ptype_name(uint32_t ptype, char *buf, size_t buflen)
 {
 	int ret;

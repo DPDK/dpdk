@@ -2,6 +2,7 @@
  * Copyright 2019 Mellanox Technologies, Ltd
  */
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <rte_hash_crc.h>
 #include <rte_errno.h>
@@ -26,6 +27,7 @@ mlx5_list_init(struct mlx5_list_inconst *l_inconst,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_create)
 struct mlx5_list *
 mlx5_list_create(const char *name, void *ctx, bool lcores_share,
 		 mlx5_list_create_cb cb_create,
@@ -120,6 +122,7 @@ _mlx5_list_lookup(struct mlx5_list_inconst *l_inconst,
 	return entry;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_lookup)
 struct mlx5_list_entry *
 mlx5_list_lookup(struct mlx5_list *list, void *ctx)
 {
@@ -260,6 +263,7 @@ _mlx5_list_register(struct mlx5_list_inconst *l_inconst,
 	return local_entry;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_register)
 struct mlx5_list_entry *
 mlx5_list_register(struct mlx5_list *list, void *ctx)
 {
@@ -319,6 +323,7 @@ _mlx5_list_unregister(struct mlx5_list_inconst *l_inconst,
 	return 1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_unregister)
 int
 mlx5_list_unregister(struct mlx5_list *list,
 		      struct mlx5_list_entry *entry)
@@ -366,6 +371,7 @@ mlx5_list_uninit(struct mlx5_list_inconst *l_inconst,
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_destroy)
 void
 mlx5_list_destroy(struct mlx5_list *list)
 {
@@ -373,6 +379,7 @@ mlx5_list_destroy(struct mlx5_list *list)
 	mlx5_free(list);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_list_get_entry_num)
 uint32_t
 mlx5_list_get_entry_num(struct mlx5_list *list)
 {
@@ -382,6 +389,7 @@ mlx5_list_get_entry_num(struct mlx5_list *list)
 
 /********************* Hash List **********************/
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_create)
 struct mlx5_hlist *
 mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 		  bool lcores_share, void *ctx, mlx5_list_create_cb cb_create,
@@ -447,6 +455,7 @@ mlx5_hlist_create(const char *name, uint32_t size, bool direct_key,
 }
 
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_lookup)
 struct mlx5_list_entry *
 mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
@@ -459,6 +468,7 @@ mlx5_hlist_lookup(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	return _mlx5_list_lookup(&h->buckets[idx].l, &h->l_const, ctx);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_register)
 struct mlx5_list_entry*
 mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 {
@@ -487,6 +497,7 @@ mlx5_hlist_register(struct mlx5_hlist *h, uint64_t key, void *ctx)
 	return entry;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_unregister)
 int
 mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_list_entry *entry)
 {
@@ -505,6 +516,7 @@ mlx5_hlist_unregister(struct mlx5_hlist *h, struct mlx5_list_entry *entry)
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_hlist_destroy)
 void
 mlx5_hlist_destroy(struct mlx5_hlist *h)
 {

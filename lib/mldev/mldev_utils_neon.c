@@ -10,6 +10,8 @@
 
 #include <arm_neon.h>
 
+#include <eal_export.h>
+
 /* Description:
  * This file implements vector versions of Machine Learning utility functions used to convert data
  * types from higher precision to lower precision and vice-versa, except bfloat16. Implementation
@@ -75,6 +77,7 @@ __float32_to_int8_neon_s8x1(const float *input, int8_t *output, float scale, int
 	*output = vqmovnh_s16(s16);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int8, 22.11)
 int
 rte_ml_io_float32_to_int8(const void *input, void *output, uint64_t nb_elements, float scale,
 			  int8_t zero_point)
@@ -149,6 +152,7 @@ __int8_to_float32_neon_f32x1(const int8_t *input, float *output, float scale, in
 	*output = scale * (vcvts_f32_s32((int32_t)*input) - (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int8_to_float32, 22.11)
 int
 rte_ml_io_int8_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			  int8_t zero_point)
@@ -242,6 +246,7 @@ __float32_to_uint8_neon_u8x1(const float *input, uint8_t *output, float scale, u
 	*output = vqmovnh_u16(u16);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint8, 22.11)
 int
 rte_ml_io_float32_to_uint8(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint8_t zero_point)
@@ -316,6 +321,7 @@ __uint8_to_float32_neon_f32x1(const uint8_t *input, float *output, float scale, 
 	*output = scale * (vcvts_f32_u32((uint32_t)*input) - (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint8_to_float32, 22.11)
 int
 rte_ml_io_uint8_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint8_t zero_point)
@@ -395,6 +401,7 @@ __float32_to_int16_neon_s16x1(const float *input, int16_t *output, float scale, 
 	*output = vqmovns_s32(vget_lane_s32(s32x2, 0));
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int16, 22.11)
 int
 rte_ml_io_float32_to_int16(const void *input, void *output, uint64_t nb_elements, float scale,
 			   int16_t zero_point)
@@ -463,6 +470,7 @@ __int16_to_float32_neon_f32x1(const int16_t *input, float *output, float scale, 
 	*output = scale * (vcvts_f32_s32((int32_t)*input) - (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int16_to_float32, 22.11)
 int
 rte_ml_io_int16_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   int16_t zero_point)
@@ -539,6 +547,7 @@ __float32_to_uint16_neon_u16x1(const float *input, uint16_t *output, float scale
 	*output = vqmovns_u32(u32) + zero_point;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint16, 22.11)
 int
 rte_ml_io_float32_to_uint16(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint16_t zero_point)
@@ -609,6 +618,7 @@ __uint16_to_float32_neon_f32x1(const uint16_t *input, float *output, float scale
 	*output = scale * (vcvts_f32_u32((uint32_t)*input) - (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint16_to_float32, 22.11)
 int
 rte_ml_io_uint16_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint16_t zero_point)
@@ -687,6 +697,7 @@ __float32_to_int32_neon_s32x1(const float *input, int32_t *output, float scale, 
 	vst1_lane_s32(output, s32x2, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int32, 22.11)
 int
 rte_ml_io_float32_to_int32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   int32_t zero_point)
@@ -751,6 +762,7 @@ __int32_to_float32_neon_f32x1(const int32_t *input, float *output, float scale, 
 	*output = scale * (vcvts_f32_s32(*input) - (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int32_to_float32, 22.11)
 int
 rte_ml_io_int32_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   int32_t zero_point)
@@ -818,6 +830,7 @@ __float32_to_uint32_neon_u32x1(const float *input, uint32_t *output, float scale
 	*output = vcvtas_u32_f32((*input) / scale + (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint32, 22.11)
 int
 rte_ml_io_float32_to_uint32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint32_t zero_point)
@@ -884,6 +897,7 @@ __uint32_to_float32_neon_f32x1(const uint32_t *input, float *output, float scale
 	*output = scale * (vcvts_f32_u32(*input) - (float)zero_point);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint32_to_float32, 22.11)
 int
 rte_ml_io_uint32_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint32_t zero_point)
@@ -978,6 +992,7 @@ __float32_to_int64_neon_s64x1(const float *input, int64_t *output, float scale, 
 	*output = s64;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int64, 22.11)
 int
 rte_ml_io_float32_to_int64(const void *input, void *output, uint64_t nb_elements, float scale,
 			   int64_t zero_point)
@@ -1066,6 +1081,7 @@ __int64_to_float32_neon_f32x1(const int64_t *input, float *output, float scale, 
 	vst1_lane_f32(output, f32x2, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int64_to_float32, 22.11)
 int
 rte_ml_io_int64_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   int64_t zero_point)
@@ -1156,6 +1172,7 @@ __float32_to_uint64_neon_u64x1(const float *input, uint64_t *output, float scale
 	vst1q_lane_u64(output, u64x2, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint64, 22.11)
 int
 rte_ml_io_float32_to_uint64(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint64_t zero_point)
@@ -1246,6 +1263,7 @@ __uint64_to_float32_neon_f32x1(const uint64_t *input, float *output, float scale
 	vst1_lane_f32(output, f32x2, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint64_to_float32, 22.11)
 int
 rte_ml_io_uint64_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
 			   uint64_t zero_point)
@@ -1314,6 +1332,7 @@ __float32_to_float16_neon_f16x1(const float32_t *input, float16_t *output)
 	vst1_lane_f16(output, f16x4, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_float16, 22.11)
 int
 rte_ml_io_float32_to_float16(const void *input, void *output, uint64_t nb_elements)
 {
@@ -1381,6 +1400,7 @@ __float16_to_float32_neon_f32x1(const float16_t *input, float32_t *output)
 	vst1q_lane_f32(output, f32x4, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float16_to_float32, 22.11)
 int
 rte_ml_io_float16_to_float32(const void *input, void *output, uint64_t nb_elements)
 {

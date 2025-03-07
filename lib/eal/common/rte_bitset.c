@@ -7,8 +7,10 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include <eal_export.h>
 #include "rte_bitset.h"
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bitset_to_str, 24.11)
 ssize_t
 rte_bitset_to_str(const uint64_t *bitset, size_t num_bits, char *buf, size_t capacity)
 {

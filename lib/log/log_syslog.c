@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <syslog.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 
@@ -45,6 +46,7 @@ static const struct {
 	{ "local7", LOG_LOCAL7 },
 };
 
+RTE_EXPORT_INTERNAL_SYMBOL(eal_log_syslog)
 int
 eal_log_syslog(const char *name)
 {

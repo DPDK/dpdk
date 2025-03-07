@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -781,6 +782,7 @@ rte_table_acl_stats_read(void *table, struct rte_table_stats *stats, int clear)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_acl_ops)
 struct rte_table_ops rte_table_acl_ops = {
 	.f_create = rte_table_acl_create,
 	.f_free = rte_table_acl_free,

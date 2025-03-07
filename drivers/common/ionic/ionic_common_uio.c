@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
@@ -103,6 +104,7 @@ uio_get_idx_for_devname(struct uio_name *name_cache, char *devname)
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_scan_mnet_devices)
 void
 ionic_uio_scan_mnet_devices(void)
 {
@@ -146,6 +148,7 @@ ionic_uio_scan_mnet_devices(void)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_scan_mcrypt_devices)
 void
 ionic_uio_scan_mcrypt_devices(void)
 {
@@ -301,6 +304,7 @@ uio_get_map_res_addr(int uio_idx, int size, int res_idx)
 	return addr;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_get_rsrc)
 void
 ionic_uio_get_rsrc(const char *name, int idx, struct ionic_dev_bar *bar)
 {
@@ -319,6 +323,7 @@ ionic_uio_get_rsrc(const char *name, int idx, struct ionic_dev_bar *bar)
 	bar->vaddr = ((char *)bar->vaddr) + offs;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(ionic_uio_rel_rsrc)
 void
 ionic_uio_rel_rsrc(const char *name, int idx, struct ionic_dev_bar *bar)
 {

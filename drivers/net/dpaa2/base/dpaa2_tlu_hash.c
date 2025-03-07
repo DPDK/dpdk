@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <unistd.h>
+
+#include <eal_export.h>
 #include <rte_pmd_dpaa2.h>
 
 static unsigned int sbox(unsigned int x)
@@ -142,6 +144,7 @@ static void hash_init(void)
 		}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_get_tlu_hash, 21.11)
 uint32_t rte_pmd_dpaa2_get_tlu_hash(uint8_t *data, int size)
 {
 	static int init;

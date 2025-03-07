@@ -2,6 +2,7 @@
  * Copyright(c) 2023 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_vect.h>
 
 #include "idpf_common_rxtx.h"
@@ -473,6 +474,7 @@ _idpf_singleq_recv_raw_pkts_vec_avx2(struct idpf_rx_queue *rxq, struct rte_mbuf 
  * Notice:
  * - nb_pkts < IDPF_DESCS_PER_LOOP, just return no packet
  */
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_dp_singleq_recv_pkts_avx2)
 uint16_t
 idpf_dp_singleq_recv_pkts_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -682,6 +684,7 @@ idpf_singleq_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts
 	return nb_pkts;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_dp_singleq_xmit_pkts_avx2)
 uint16_t
 idpf_dp_singleq_xmit_pkts_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts)

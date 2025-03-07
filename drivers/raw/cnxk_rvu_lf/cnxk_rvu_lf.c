@@ -3,6 +3,7 @@
  */
 
 #include <bus_pci_driver.h>
+#include <eal_export.h>
 #include <rte_common.h>
 #include <dev_driver.h>
 #include <rte_eal.h>
@@ -16,6 +17,7 @@
 #include "cnxk_rvu_lf.h"
 #include "cnxk_rvu_lf_driver.h"
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_msg_id_range_set)
 int
 rte_pmd_rvu_lf_msg_id_range_set(uint8_t dev_id, uint16_t from, uint16_t to)
 {
@@ -30,6 +32,7 @@ rte_pmd_rvu_lf_msg_id_range_set(uint8_t dev_id, uint16_t from, uint16_t to)
 	return roc_rvu_lf_msg_id_range_set(roc_rvu_lf, from, to);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_msg_process)
 int
 rte_pmd_rvu_lf_msg_process(uint8_t dev_id, uint16_t vf, uint16_t msg_id,
 			void *req, uint16_t req_len, void *rsp, uint16_t rsp_len)
@@ -45,6 +48,7 @@ rte_pmd_rvu_lf_msg_process(uint8_t dev_id, uint16_t vf, uint16_t msg_id,
 	return roc_rvu_lf_msg_process(roc_rvu_lf, vf, msg_id, req, req_len, rsp, rsp_len);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_msg_handler_register)
 int
 rte_pmd_rvu_lf_msg_handler_register(uint8_t dev_id, rte_pmd_rvu_lf_msg_handler_cb_fn cb)
 {
@@ -59,6 +63,7 @@ rte_pmd_rvu_lf_msg_handler_register(uint8_t dev_id, rte_pmd_rvu_lf_msg_handler_c
 	return roc_rvu_lf_msg_handler_register(roc_rvu_lf, (roc_rvu_lf_msg_handler_cb_fn)cb);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_msg_handler_unregister)
 int
 rte_pmd_rvu_lf_msg_handler_unregister(uint8_t dev_id)
 {
@@ -73,6 +78,7 @@ rte_pmd_rvu_lf_msg_handler_unregister(uint8_t dev_id)
 	return roc_rvu_lf_msg_handler_unregister(roc_rvu_lf);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_irq_register)
 int
 rte_pmd_rvu_lf_irq_register(uint8_t dev_id, unsigned int irq,
 			    rte_pmd_rvu_lf_intr_callback_fn cb, void *data)
@@ -88,6 +94,7 @@ rte_pmd_rvu_lf_irq_register(uint8_t dev_id, unsigned int irq,
 	return roc_rvu_lf_irq_register(roc_rvu_lf, irq, (roc_rvu_lf_intr_cb_fn)cb, data);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_irq_unregister)
 int
 rte_pmd_rvu_lf_irq_unregister(uint8_t dev_id, unsigned int irq,
 			      rte_pmd_rvu_lf_intr_callback_fn cb, void *data)
@@ -103,6 +110,7 @@ rte_pmd_rvu_lf_irq_unregister(uint8_t dev_id, unsigned int irq,
 	return roc_rvu_lf_irq_unregister(roc_rvu_lf, irq, (roc_rvu_lf_intr_cb_fn)cb, data);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_bar_get)
 int
 rte_pmd_rvu_lf_bar_get(uint8_t dev_id, uint8_t bar_num, size_t *va, size_t *mask)
 {
@@ -127,18 +135,21 @@ rte_pmd_rvu_lf_bar_get(uint8_t dev_id, uint8_t bar_num, size_t *va, size_t *mask
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_npa_pf_func_get)
 uint16_t
 rte_pmd_rvu_lf_npa_pf_func_get(void)
 {
 	return roc_npa_pf_func_get();
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_sso_pf_func_get)
 uint16_t
 rte_pmd_rvu_lf_sso_pf_func_get(void)
 {
 	return roc_sso_pf_func_get();
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pmd_rvu_lf_pf_func_get)
 uint16_t
 rte_pmd_rvu_lf_pf_func_get(uint8_t dev_id)
 {

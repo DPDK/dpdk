@@ -43,6 +43,7 @@
 #include <rte_vfio.h>
 
 #include <telemetry_internal.h>
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_thread.h"
 #include "eal_lcore_var.h"
@@ -77,6 +78,7 @@ static struct flock wr_lock = {
 struct lcore_config lcore_config[RTE_MAX_LCORE];
 
 /* used by rte_rdtsc() */
+RTE_EXPORT_SYMBOL(rte_cycles_vmware_tsc_map)
 int rte_cycles_vmware_tsc_map;
 
 
@@ -819,6 +821,7 @@ sync_func(__rte_unused void *arg)
  * iopl() call is mostly for the i386 architecture. For other architectures,
  * return -1 to indicate IO privilege can't be changed in this way.
  */
+RTE_EXPORT_SYMBOL(rte_eal_iopl_init)
 int
 rte_eal_iopl_init(void)
 {
@@ -914,6 +917,7 @@ out:
 }
 
 /* Launch threads, called at application init(). */
+RTE_EXPORT_SYMBOL(rte_eal_init)
 int
 rte_eal_init(int argc, char **argv)
 {
@@ -1294,6 +1298,7 @@ mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_cleanup)
 int
 rte_eal_cleanup(void)
 {
@@ -1336,6 +1341,7 @@ rte_eal_cleanup(void)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_create_uio_dev)
 int rte_eal_create_uio_dev(void)
 {
 	const struct internal_config *internal_conf =
@@ -1344,6 +1350,7 @@ int rte_eal_create_uio_dev(void)
 	return internal_conf->create_uio_dev;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_vfio_intr_mode)
 enum rte_intr_mode
 rte_eal_vfio_intr_mode(void)
 {
@@ -1353,6 +1360,7 @@ rte_eal_vfio_intr_mode(void)
 	return internal_conf->vfio_intr_mode;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_vfio_get_vf_token)
 void
 rte_eal_vfio_get_vf_token(rte_uuid_t vf_token)
 {

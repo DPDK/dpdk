@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/eventfd.h>
 
+#include <eal_export.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
@@ -59,15 +60,19 @@ struct netcfg_info *dpaa_netcfg;
 /* define a variable to hold the portal_key, once created.*/
 static pthread_key_t dpaa_portal_key;
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa_svr_family)
 unsigned int dpaa_svr_family;
 
 #define FSL_DPAA_BUS_NAME	dpaa_bus
 
+RTE_EXPORT_INTERNAL_SYMBOL(per_lcore_dpaa_io)
 RTE_DEFINE_PER_LCORE(struct dpaa_portal *, dpaa_io);
 
 #define DPAA_SEQN_DYNFIELD_NAME "dpaa_seqn_dynfield"
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa_seqn_dynfield_offset)
 int dpaa_seqn_dynfield_offset = -1;
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa_get_eth_port_cfg)
 struct fm_eth_port_cfg *
 dpaa_get_eth_port_cfg(int dev_id)
 {
@@ -315,6 +320,7 @@ dpaa_clean_device_list(void)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_portal_init)
 int rte_dpaa_portal_init(void *arg)
 {
 	static const struct rte_mbuf_dynfield dpaa_seqn_dynfield_desc = {
@@ -393,6 +399,7 @@ int rte_dpaa_portal_init(void *arg)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_portal_fq_init)
 int
 rte_dpaa_portal_fq_init(void *arg, struct qman_fq *fq)
 {
@@ -421,6 +428,7 @@ rte_dpaa_portal_fq_init(void *arg, struct qman_fq *fq)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_portal_fq_close)
 int rte_dpaa_portal_fq_close(struct qman_fq *fq)
 {
 	return fsl_qman_fq_portal_destroy(fq->qp);
@@ -548,6 +556,7 @@ rte_dpaa_bus_scan(void)
 }
 
 /* register a dpaa bus based dpaa driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_driver_register)
 void
 rte_dpaa_driver_register(struct rte_dpaa_driver *driver)
 {
@@ -559,6 +568,7 @@ rte_dpaa_driver_register(struct rte_dpaa_driver *driver)
 }
 
 /* un-register a dpaa bus based dpaa driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_driver_unregister)
 void
 rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver)
 {

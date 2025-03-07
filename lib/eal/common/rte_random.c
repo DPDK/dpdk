@@ -16,6 +16,7 @@
 #include <rte_lcore_var.h>
 #include <rte_random.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 struct __rte_cache_aligned rte_rand_state {
@@ -82,6 +83,7 @@ __rte_srand_lfsr258(uint64_t seed, struct rte_rand_state *state)
 	state->z5 = __rte_rand_lfsr258_gen_seed(&lcg_seed, 8388608UL);
 }
 
+RTE_EXPORT_SYMBOL(rte_srand)
 void
 rte_srand(uint64_t seed)
 {
@@ -142,6 +144,7 @@ struct rte_rand_state *__rte_rand_get_state(void)
 	return RTE_LCORE_VAR(rand_state);
 }
 
+RTE_EXPORT_SYMBOL(rte_rand)
 uint64_t
 rte_rand(void)
 {
@@ -152,6 +155,7 @@ rte_rand(void)
 	return __rte_rand_lfsr258(state);
 }
 
+RTE_EXPORT_SYMBOL(rte_rand_max)
 uint64_t
 rte_rand_max(uint64_t upper_bound)
 {
@@ -191,6 +195,7 @@ rte_rand_max(uint64_t upper_bound)
 	return res;
 }
 
+RTE_EXPORT_SYMBOL(rte_drand)
 double
 rte_drand(void)
 {

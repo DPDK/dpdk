@@ -2,6 +2,7 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <eal_export.h>
 #include <rte_trace_point_register.h>
 
 #include <ethdev_trace.h>
@@ -25,24 +26,30 @@ RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_stop,
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_close,
 	lib.ethdev.close)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_ethdev_trace_rx_burst_empty, 24.11)
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst_empty,
 	lib.ethdev.rx.burst.empty)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_ethdev_trace_rx_burst_nonempty, 24.11)
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst_nonempty,
 	lib.ethdev.rx.burst.nonempty)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_ethdev_trace_tx_burst, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_tx_burst,
 	lib.ethdev.tx.burst)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_eth_trace_call_rx_callbacks_empty, 24.11)
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks_empty,
 	lib.ethdev.call_rx_callbacks.empty)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_eth_trace_call_rx_callbacks_nonempty, 24.11)
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks_nonempty,
 	lib.ethdev.call_rx_callbacks.nonempty)
 
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_tx_callbacks,
 	lib.ethdev.call_tx_callbacks)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_eth_trace_tx_queue_count, 24.03)
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_tx_queue_count,
 	lib.ethdev.tx_queue_count)
 

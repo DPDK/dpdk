@@ -2,6 +2,7 @@
  * Copyright(C) 2023 Marvell.
  */
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_pmd_cnxk_eventdev.h>
 #include <rte_eventdev.h>
@@ -12,6 +13,7 @@ struct pwords {
 	uint64_t u[5];
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_eventdev_wait_head, 23.11)
 void
 rte_pmd_cnxk_eventdev_wait_head(uint8_t dev, uint8_t port)
 {
@@ -28,6 +30,7 @@ rte_pmd_cnxk_eventdev_wait_head(uint8_t dev, uint8_t port)
 }
 
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_eventdev_is_head, 23.11)
 uint8_t
 rte_pmd_cnxk_eventdev_is_head(uint8_t dev, uint8_t port)
 {

@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -23,6 +24,7 @@
 	RTE_LOG_LINE_PREFIX(level, RCU, "%s(): ", __func__, __VA_ARGS__)
 
 /* Get the memory size of QSBR variable */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_get_memsize)
 size_t
 rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 {
@@ -47,6 +49,7 @@ rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 }
 
 /* Initialize a quiescent state variable */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_init)
 int
 rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 {
@@ -78,6 +81,7 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 /* Register a reader thread to report its quiescent state
  * on a QS variable.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_thread_register)
 int
 rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
@@ -113,6 +117,7 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 /* Remove a reader thread, from the list of threads reporting their
  * quiescent state on a QS variable.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_thread_unregister)
 int
 rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
@@ -149,6 +154,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 }
 
 /* Wait till the reader threads have entered quiescent state. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_synchronize)
 void
 rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
@@ -169,6 +175,7 @@ rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 }
 
 /* Dump the details of a single quiescent state variable to a file. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dump)
 int
 rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 {
@@ -235,6 +242,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 /* Create a queue used to store the data structure elements that can
  * be freed later. This queue is referred to as 'defer queue'.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_create)
 struct rte_rcu_qsbr_dq *
 rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 {
@@ -311,6 +319,7 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 /* Enqueue one resource to the defer queue to free after the grace
  * period is over.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_enqueue)
 int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 {
 	__rte_rcu_qsbr_dq_elem_t *dq_elem;
@@ -369,6 +378,7 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 }
 
 /* Reclaim resources from the defer queue. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_reclaim)
 int
 rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 			unsigned int *freed, unsigned int *pending,
@@ -418,6 +428,7 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 }
 
 /* Delete a defer queue. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_delete)
 int
 rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 {
@@ -443,4 +454,5 @@ rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rcu_log_type)
 RTE_LOG_REGISTER_DEFAULT(rte_rcu_log_type, ERR);

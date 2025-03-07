@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 
 #include "mlx5_glue.h"
@@ -409,8 +410,7 @@ mlx5_glue_devx_set_mtu(void *ctx, uint32_t mtu)
 
 }
 
-
-
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_glue)
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,

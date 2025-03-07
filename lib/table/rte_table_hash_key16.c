@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -1166,6 +1167,7 @@ rte_table_hash_key16_stats_read(void *table, struct rte_table_stats *stats, int 
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_hash_key16_lru_ops)
 struct rte_table_ops rte_table_hash_key16_lru_ops = {
 	.f_create = rte_table_hash_create_key16_lru,
 	.f_free = rte_table_hash_free_key16_lru,
@@ -1177,6 +1179,7 @@ struct rte_table_ops rte_table_hash_key16_lru_ops = {
 	.f_stats = rte_table_hash_key16_stats_read,
 };
 
+RTE_EXPORT_SYMBOL(rte_table_hash_key16_ext_ops)
 struct rte_table_ops rte_table_hash_key16_ext_ops = {
 	.f_create = rte_table_hash_create_key16_ext,
 	.f_free = rte_table_hash_free_key16_ext,

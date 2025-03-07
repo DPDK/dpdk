@@ -5,6 +5,8 @@
 
 #include "graph_private.h"
 
+#include <eal_export.h>
+
 void
 graph_dump(FILE *f, struct graph *g)
 {
@@ -50,6 +52,7 @@ node_dump(FILE *f, struct node *n)
 		fprintf(f, "     edge[%d] <%s>\n", i, n->next_nodes[i]);
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_obj_dump)
 void
 rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 {

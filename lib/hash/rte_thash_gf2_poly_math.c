@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2024 Intel Corporation
  */
+#include <eal_export.h>
 #include <rte_random.h>
 #include <rte_common.h>
 #include <rte_bitops.h>
@@ -241,6 +242,7 @@ thash_test_poly_order(uint32_t poly, int degree)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(thash_get_rand_poly)
 uint32_t
 thash_get_rand_poly(uint32_t poly_degree)
 {

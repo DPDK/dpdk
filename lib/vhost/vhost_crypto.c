@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2017-2018 Intel Corporation
  */
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>
@@ -1782,6 +1783,7 @@ vhost_crypto_complete_one_vm_requests(struct rte_crypto_op **ops,
 	return processed;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_crypto_driver_start)
 int
 rte_vhost_crypto_driver_start(const char *path)
 {
@@ -1803,6 +1805,7 @@ rte_vhost_crypto_driver_start(const char *path)
 	return rte_vhost_driver_start(path);
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_crypto_create)
 int
 rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 		struct rte_mempool *sess_pool,
@@ -1886,6 +1889,7 @@ error_exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_crypto_free)
 int
 rte_vhost_crypto_free(int vid)
 {
@@ -1915,6 +1919,7 @@ rte_vhost_crypto_free(int vid)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_crypto_set_zero_copy)
 int
 rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option)
 {
@@ -1970,6 +1975,7 @@ rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_crypto_fetch_requests)
 uint16_t
 rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
@@ -2099,6 +2105,7 @@ out_unlock:
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_vhost_crypto_finalize_requests)
 uint16_t
 rte_vhost_crypto_finalize_requests(struct rte_crypto_op **ops,
 		uint16_t nb_ops, int *callfds, uint16_t *nb_callfds)

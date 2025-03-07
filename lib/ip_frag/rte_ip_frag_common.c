@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 
 RTE_LOG_REGISTER_DEFAULT(ipfrag_logtype, INFO);
@@ -14,6 +15,7 @@ RTE_LOG_REGISTER_DEFAULT(ipfrag_logtype, INFO);
 #define	IP_FRAG_HASH_FNUM	2
 
 /* free mbufs from death row */
+RTE_EXPORT_SYMBOL(rte_ip_frag_free_death_row)
 void
 rte_ip_frag_free_death_row(struct rte_ip_frag_death_row *dr,
 		uint32_t prefetch)
@@ -38,6 +40,7 @@ rte_ip_frag_free_death_row(struct rte_ip_frag_death_row *dr,
 }
 
 /* create fragmentation table */
+RTE_EXPORT_SYMBOL(rte_ip_frag_table_create)
 struct rte_ip_frag_tbl *
 rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 	uint32_t max_entries, uint64_t max_cycles, int socket_id)
@@ -82,6 +85,7 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 }
 
 /* delete fragmentation table */
+RTE_EXPORT_SYMBOL(rte_ip_frag_table_destroy)
 void
 rte_ip_frag_table_destroy(struct rte_ip_frag_tbl *tbl)
 {
@@ -95,6 +99,7 @@ rte_ip_frag_table_destroy(struct rte_ip_frag_tbl *tbl)
 }
 
 /* dump frag table statistics to file */
+RTE_EXPORT_SYMBOL(rte_ip_frag_table_statistics_dump)
 void
 rte_ip_frag_table_statistics_dump(FILE *f, const struct rte_ip_frag_tbl *tbl)
 {
@@ -124,6 +129,7 @@ rte_ip_frag_table_statistics_dump(FILE *f, const struct rte_ip_frag_tbl *tbl)
 }
 
 /* Delete expired fragments */
+RTE_EXPORT_SYMBOL(rte_ip_frag_table_del_expired_entries)
 void
 rte_ip_frag_table_del_expired_entries(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, uint64_t tms)

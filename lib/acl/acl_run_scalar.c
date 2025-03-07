@@ -4,6 +4,8 @@
 
 #include "acl_run.h"
 
+#include <eal_export.h>
+
 /*
  * Resolve priority for multiple results (scalar version).
  * This consists comparing the priority of the current traversal with the
@@ -106,6 +108,7 @@ scalar_transition(const uint64_t *trans_table, uint64_t transition,
 	return transition;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_classify_scalar)
 int
 rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)

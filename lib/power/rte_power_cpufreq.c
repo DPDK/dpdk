@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_spinlock.h>
 #include <rte_debug.h>
 
@@ -25,6 +26,7 @@ const char *power_env_str[] = {
 };
 
 /* register the ops struct in rte_power_cpufreq_ops, return 0 on success. */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_power_register_cpufreq_ops)
 int
 rte_power_register_cpufreq_ops(struct rte_power_cpufreq_ops *driver_ops)
 {
@@ -44,6 +46,7 @@ rte_power_register_cpufreq_ops(struct rte_power_cpufreq_ops *driver_ops)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_check_env_supported)
 int
 rte_power_check_env_supported(enum power_management_env env)
 {
@@ -60,6 +63,7 @@ rte_power_check_env_supported(enum power_management_env env)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_set_env)
 int
 rte_power_set_env(enum power_management_env env)
 {
@@ -89,6 +93,7 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_unset_env)
 void
 rte_power_unset_env(void)
 {
@@ -98,11 +103,13 @@ rte_power_unset_env(void)
 	rte_spinlock_unlock(&global_env_cfg_lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_get_env)
 enum power_management_env
 rte_power_get_env(void) {
 	return global_default_env;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_init)
 int
 rte_power_init(unsigned int lcore_id)
 {
@@ -136,6 +143,7 @@ rte_power_init(unsigned int lcore_id)
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_exit)
 int
 rte_power_exit(unsigned int lcore_id)
 {
@@ -148,6 +156,7 @@ rte_power_exit(unsigned int lcore_id)
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freqs)
 uint32_t
 rte_power_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t n)
 {
@@ -155,6 +164,7 @@ rte_power_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t n)
 	return global_cpufreq_ops->get_avail_freqs(lcore_id, freqs, n);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_get_freq)
 uint32_t
 rte_power_get_freq(unsigned int lcore_id)
 {
@@ -162,6 +172,7 @@ rte_power_get_freq(unsigned int lcore_id)
 	return global_cpufreq_ops->get_freq(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_set_freq)
 uint32_t
 rte_power_set_freq(unsigned int lcore_id, uint32_t index)
 {
@@ -169,6 +180,7 @@ rte_power_set_freq(unsigned int lcore_id, uint32_t index)
 	return global_cpufreq_ops->set_freq(lcore_id, index);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freq_up)
 int
 rte_power_freq_up(unsigned int lcore_id)
 {
@@ -176,6 +188,7 @@ rte_power_freq_up(unsigned int lcore_id)
 	return global_cpufreq_ops->freq_up(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freq_down)
 int
 rte_power_freq_down(unsigned int lcore_id)
 {
@@ -183,6 +196,7 @@ rte_power_freq_down(unsigned int lcore_id)
 	return global_cpufreq_ops->freq_down(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freq_max)
 int
 rte_power_freq_max(unsigned int lcore_id)
 {
@@ -190,6 +204,7 @@ rte_power_freq_max(unsigned int lcore_id)
 	return global_cpufreq_ops->freq_max(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freq_min)
 int
 rte_power_freq_min(unsigned int lcore_id)
 {
@@ -197,6 +212,7 @@ rte_power_freq_min(unsigned int lcore_id)
 	return global_cpufreq_ops->freq_min(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_turbo_status)
 int
 rte_power_turbo_status(unsigned int lcore_id)
 {
@@ -204,6 +220,7 @@ rte_power_turbo_status(unsigned int lcore_id)
 	return global_cpufreq_ops->turbo_status(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freq_enable_turbo)
 int
 rte_power_freq_enable_turbo(unsigned int lcore_id)
 {
@@ -211,6 +228,7 @@ rte_power_freq_enable_turbo(unsigned int lcore_id)
 	return global_cpufreq_ops->enable_turbo(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_freq_disable_turbo)
 int
 rte_power_freq_disable_turbo(unsigned int lcore_id)
 {
@@ -218,6 +236,7 @@ rte_power_freq_disable_turbo(unsigned int lcore_id)
 	return global_cpufreq_ops->disable_turbo(lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_power_get_capabilities)
 int
 rte_power_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps)

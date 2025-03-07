@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_cpuflags.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
@@ -41,6 +42,7 @@ EAL_REGISTER_TAILQ(rte_fbk_hash_tailq)
  * @return
  *   pointer to hash table structure or NULL on error.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_find_existing)
 struct rte_fbk_hash_table *
 rte_fbk_hash_find_existing(const char *name)
 {
@@ -75,6 +77,7 @@ rte_fbk_hash_find_existing(const char *name)
  *   Pointer to hash table structure that is used in future hash table
  *   operations, or NULL on error.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_create)
 struct rte_fbk_hash_table *
 rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 {
@@ -177,6 +180,7 @@ exit:
  * @param ht
  *   Hash table to deallocate.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_free)
 void
 rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 {

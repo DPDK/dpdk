@@ -2,12 +2,14 @@
  * Copyright 2018-2023 NXP
  */
 
+#include <eal_export.h>
 #include <rte_memory.h>
 
 #include "dpaax_iova_table.h"
 #include "dpaax_logs.h"
 
 /* Global table reference */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaax_iova_table_p)
 struct dpaax_iova_table *dpaax_iova_table_p;
 
 static int dpaax_handle_memevents(void);
@@ -153,6 +155,7 @@ out:
 	return nodes;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaax_iova_table_populate)
 int
 dpaax_iova_table_populate(void)
 {
@@ -254,6 +257,7 @@ dpaax_iova_table_populate(void)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaax_iova_table_depopulate)
 void
 dpaax_iova_table_depopulate(void)
 {
@@ -263,6 +267,7 @@ dpaax_iova_table_depopulate(void)
 	DPAAX_DEBUG("IOVA Table cleaned");
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaax_iova_table_update)
 int
 dpaax_iova_table_update(phys_addr_t paddr, void *vaddr, size_t length)
 {
@@ -349,6 +354,7 @@ dpaax_iova_table_update(phys_addr_t paddr, void *vaddr, size_t length)
  * Dump the table, with its entries, on screen. Only works in Debug Mode
  * Not for weak hearted - the tables can get quite large
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaax_iova_table_dump)
 void
 dpaax_iova_table_dump(void)
 {
@@ -461,4 +467,5 @@ dpaax_handle_memevents(void)
 					       dpaax_memevent_cb, NULL);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaax_logger)
 RTE_LOG_REGISTER_DEFAULT(dpaax_logger, ERR);

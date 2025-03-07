@@ -4,6 +4,7 @@
 
 #include <inttypes.h>
 
+#include <eal_export.h>
 #include <rte_windows.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -14,6 +15,7 @@
 #define US_PER_SEC 1E6
 #define CYC_PER_100KHZ 1E5
 
+RTE_EXPORT_SYMBOL(rte_delay_us_sleep)
 void
 rte_delay_us_sleep(unsigned int us)
 {

@@ -8,6 +8,7 @@
 #include <time.h>
 #include <net/if.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -2239,6 +2240,7 @@ dpaa2_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_eth_eventq_attach)
 int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id,
 		struct dpaa2_dpcon_dev *dpcon,
@@ -2325,6 +2327,7 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_eth_eventq_detach)
 int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,
 		int eth_rx_queue_id)
 {
@@ -2410,6 +2413,7 @@ dpaa2_tm_ops_get(struct rte_eth_dev *dev __rte_unused, void *ops)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_thread_init, 21.08)
 void
 rte_pmd_dpaa2_thread_init(void)
 {
@@ -2850,6 +2854,7 @@ init_err:
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_dev_is_dpaa2, 24.11)
 int
 rte_pmd_dpaa2_dev_is_dpaa2(uint32_t eth_id)
 {
@@ -2865,6 +2870,7 @@ rte_pmd_dpaa2_dev_is_dpaa2(uint32_t eth_id)
 	return dev->device->driver == &rte_dpaa2_pmd.driver;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_ep_name, 24.11)
 const char *
 rte_pmd_dpaa2_ep_name(uint32_t eth_id)
 {
@@ -2890,6 +2896,7 @@ rte_pmd_dpaa2_ep_name(uint32_t eth_id)
 }
 
 #if defined(RTE_LIBRTE_IEEE1588)
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_get_one_step_ts, 24.11)
 int
 rte_pmd_dpaa2_get_one_step_ts(uint16_t port_id, bool mc_query)
 {
@@ -2918,6 +2925,7 @@ rte_pmd_dpaa2_get_one_step_ts(uint16_t port_id, bool mc_query)
 	return priv->ptp_correction_offset;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_dpaa2_set_one_step_ts, 24.11)
 int
 rte_pmd_dpaa2_set_one_step_ts(uint16_t port_id, uint16_t offset, uint8_t ch_update)
 {

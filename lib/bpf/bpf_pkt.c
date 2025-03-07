@@ -9,6 +9,7 @@
 
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -465,6 +466,7 @@ bpf_eth_unload(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_rx_unload)
 void
 rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue)
 {
@@ -476,6 +478,7 @@ rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue)
 	rte_spinlock_unlock(&cbh->lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_tx_unload)
 void
 rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue)
 {
@@ -557,6 +560,7 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_rx_elf_load)
 int
 rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
@@ -573,6 +577,7 @@ rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_tx_elf_load)
 int
 rte_bpf_eth_tx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,

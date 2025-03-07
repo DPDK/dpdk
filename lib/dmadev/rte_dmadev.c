@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
@@ -21,6 +22,7 @@
 
 static int16_t dma_devices_max;
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dma_fp_objs)
 struct rte_dma_fp_object *rte_dma_fp_objs;
 static struct rte_dma_dev *rte_dma_devices;
 static struct {
@@ -37,6 +39,7 @@ RTE_LOG_REGISTER_DEFAULT(rte_dma_logtype, INFO);
 #define RTE_DMA_LOG(level, ...) \
 	RTE_LOG_LINE(level, DMADEV, "" __VA_ARGS__)
 
+RTE_EXPORT_SYMBOL(rte_dma_dev_max)
 int
 rte_dma_dev_max(size_t dev_max)
 {
@@ -54,6 +57,7 @@ rte_dma_dev_max(size_t dev_max)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_next_dev)
 int16_t
 rte_dma_next_dev(int16_t start_dev_id)
 {
@@ -348,6 +352,7 @@ dma_release(struct rte_dma_dev *dev)
 	memset(dev, 0, sizeof(struct rte_dma_dev));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dma_pmd_allocate)
 struct rte_dma_dev *
 rte_dma_pmd_allocate(const char *name, int numa_node, size_t private_data_size)
 {
@@ -365,6 +370,7 @@ rte_dma_pmd_allocate(const char *name, int numa_node, size_t private_data_size)
 	return dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dma_pmd_release)
 int
 rte_dma_pmd_release(const char *name)
 {
@@ -384,6 +390,7 @@ rte_dma_pmd_release(const char *name)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_get_dev_id_by_name)
 int
 rte_dma_get_dev_id_by_name(const char *name)
 {
@@ -399,6 +406,7 @@ rte_dma_get_dev_id_by_name(const char *name)
 	return dev->data->dev_id;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_is_valid)
 bool
 rte_dma_is_valid(int16_t dev_id)
 {
@@ -407,6 +415,7 @@ rte_dma_is_valid(int16_t dev_id)
 		rte_dma_devices[dev_id].state != RTE_DMA_DEV_UNUSED;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dma_pmd_get_dev_by_id)
 struct rte_dma_dev *
 rte_dma_pmd_get_dev_by_id(int16_t dev_id)
 {
@@ -416,6 +425,7 @@ rte_dma_pmd_get_dev_by_id(int16_t dev_id)
 	return &rte_dma_devices[dev_id];
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_count_avail)
 uint16_t
 rte_dma_count_avail(void)
 {
@@ -433,6 +443,7 @@ rte_dma_count_avail(void)
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_info_get)
 int
 rte_dma_info_get(int16_t dev_id, struct rte_dma_info *dev_info)
 {
@@ -464,6 +475,7 @@ rte_dma_info_get(int16_t dev_id, struct rte_dma_info *dev_info)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_configure)
 int
 rte_dma_configure(int16_t dev_id, const struct rte_dma_conf *dev_conf)
 {
@@ -521,6 +533,7 @@ rte_dma_configure(int16_t dev_id, const struct rte_dma_conf *dev_conf)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_start)
 int
 rte_dma_start(int16_t dev_id)
 {
@@ -554,6 +567,7 @@ mark_started:
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_stop)
 int
 rte_dma_stop(int16_t dev_id)
 {
@@ -582,6 +596,7 @@ mark_stopped:
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_close)
 int
 rte_dma_close(int16_t dev_id)
 {
@@ -610,6 +625,7 @@ rte_dma_close(int16_t dev_id)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_vchan_setup)
 int
 rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 		    const struct rte_dma_vchan_conf *conf)
@@ -704,6 +720,7 @@ rte_dma_vchan_setup(int16_t dev_id, uint16_t vchan,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_stats_get)
 int
 rte_dma_stats_get(int16_t dev_id, uint16_t vchan, struct rte_dma_stats *stats)
 {
@@ -726,6 +743,7 @@ rte_dma_stats_get(int16_t dev_id, uint16_t vchan, struct rte_dma_stats *stats)
 	return dev->dev_ops->stats_get(dev, vchan, stats, sizeof(struct rte_dma_stats));
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_stats_reset)
 int
 rte_dma_stats_reset(int16_t dev_id, uint16_t vchan)
 {
@@ -751,6 +769,7 @@ rte_dma_stats_reset(int16_t dev_id, uint16_t vchan)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_vchan_status)
 int
 rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *status)
 {
@@ -818,6 +837,7 @@ dma_dump_capability(FILE *f, uint64_t dev_capa)
 	(void)fprintf(f, "\n");
 }
 
+RTE_EXPORT_SYMBOL(rte_dma_dump)
 int
 rte_dma_dump(int16_t dev_id, FILE *f)
 {

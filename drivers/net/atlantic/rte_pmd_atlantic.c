@@ -4,10 +4,12 @@
 
 #include <ethdev_driver.h>
 
+#include <eal_export.h>
 #include "rte_pmd_atlantic.h"
 #include "atl_ethdev.h"
 
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_atl_macsec_enable, 19.05)
 int
 rte_pmd_atl_macsec_enable(uint16_t port,
 			  uint8_t encr, uint8_t repl_prot)
@@ -24,6 +26,7 @@ rte_pmd_atl_macsec_enable(uint16_t port,
 	return atl_macsec_enable(dev, encr, repl_prot);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_atl_macsec_disable, 19.05)
 int
 rte_pmd_atl_macsec_disable(uint16_t port)
 {
@@ -39,6 +42,7 @@ rte_pmd_atl_macsec_disable(uint16_t port)
 	return atl_macsec_disable(dev);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_atl_macsec_config_txsc, 19.05)
 int
 rte_pmd_atl_macsec_config_txsc(uint16_t port, uint8_t *mac)
 {
@@ -54,6 +58,7 @@ rte_pmd_atl_macsec_config_txsc(uint16_t port, uint8_t *mac)
 	return atl_macsec_config_txsc(dev, mac);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_atl_macsec_config_rxsc, 19.05)
 int
 rte_pmd_atl_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 {
@@ -69,6 +74,7 @@ rte_pmd_atl_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 	return atl_macsec_config_rxsc(dev, mac, pi);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_atl_macsec_select_txsa, 19.05)
 int
 rte_pmd_atl_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
@@ -85,6 +91,7 @@ rte_pmd_atl_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 	return atl_macsec_select_txsa(dev, idx, an, pn, key);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_atl_macsec_select_rxsa, 19.05)
 int
 rte_pmd_atl_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)

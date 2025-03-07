@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -375,6 +376,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_cluster_stats_create)
 struct rte_graph_cluster_stats *
 rte_graph_cluster_stats_create(const struct rte_graph_cluster_stats_param *prm)
 {
@@ -438,6 +440,7 @@ fail:
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_cluster_stats_destroy)
 void
 rte_graph_cluster_stats_destroy(struct rte_graph_cluster_stats *stat)
 {
@@ -512,6 +515,7 @@ cluster_node_store_prev_stats(struct cluster_node *cluster)
 	stat->prev_cycles = stat->cycles;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_cluster_stats_get)
 void
 rte_graph_cluster_stats_get(struct rte_graph_cluster_stats *stat, bool skip_cb)
 {
@@ -533,6 +537,7 @@ rte_graph_cluster_stats_get(struct rte_graph_cluster_stats *stat, bool skip_cb)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_cluster_stats_reset)
 void
 rte_graph_cluster_stats_reset(struct rte_graph_cluster_stats *stat)
 {

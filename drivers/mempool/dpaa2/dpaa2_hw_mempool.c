@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -33,6 +34,7 @@
 
 #include <dpaax_iova_table.h>
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_bpid_info)
 struct dpaa2_bp_info *rte_dpaa2_bpid_info;
 static struct dpaa2_bp_list *h_bp_list;
 
@@ -278,6 +280,7 @@ aligned:
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_bpid_info_init)
 int rte_dpaa2_bpid_info_init(struct rte_mempool *mp)
 {
 	struct dpaa2_bp_info *bp_info = mempool_to_bpinfo(mp);
@@ -301,6 +304,7 @@ int rte_dpaa2_bpid_info_init(struct rte_mempool *mp)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dpaa2_mbuf_pool_bpid)
 uint16_t
 rte_dpaa2_mbuf_pool_bpid(struct rte_mempool *mp)
 {
@@ -315,6 +319,7 @@ rte_dpaa2_mbuf_pool_bpid(struct rte_mempool *mp)
 	return bp_info->bpid;
 }
 
+RTE_EXPORT_SYMBOL(rte_dpaa2_mbuf_from_buf_addr)
 struct rte_mbuf *
 rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
 {
@@ -330,6 +335,7 @@ rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
 			bp_info->meta_data_size);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_mbuf_alloc_bulk)
 int
 rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 			  void **obj_table, unsigned int count)

@@ -7,10 +7,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 
 /* split string into tokens */
+RTE_EXPORT_SYMBOL(rte_strsplit)
 int
 rte_strsplit(char *string, int stringlen,
 	     char **tokens, int maxtokens, char delim)
@@ -45,6 +47,7 @@ einval_error:
  * Return negative value and NUL-terminate if dst is too short,
  * Otherwise return number of bytes copied.
  */
+RTE_EXPORT_SYMBOL(rte_strscpy)
 ssize_t
 rte_strscpy(char *dst, const char *src, size_t dsize)
 {
@@ -67,6 +70,7 @@ rte_strscpy(char *dst, const char *src, size_t dsize)
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_str_to_size)
 uint64_t
 rte_str_to_size(const char *str)
 {

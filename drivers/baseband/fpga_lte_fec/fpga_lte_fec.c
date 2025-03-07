@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <dev_driver.h>
@@ -2452,6 +2453,7 @@ set_default_fpga_conf(struct rte_fpga_lte_fec_conf *def_conf)
 }
 
 /* Initial configuration of FPGA LTE FEC device */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_fpga_lte_fec_configure, 20.11)
 int
 rte_fpga_lte_fec_configure(const char *dev_name,
 		const struct rte_fpga_lte_fec_conf *conf)

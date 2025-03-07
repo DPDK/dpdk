@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 
+#include <eal_export.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -32,9 +33,11 @@
  * is to optimize the PA_to_VA searches until a better mechanism (algo) is
  * available.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_memsegs)
 struct dpaa_memseg_list rte_dpaa_memsegs
 	= TAILQ_HEAD_INITIALIZER(rte_dpaa_memsegs);
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_bpid_info)
 struct dpaa_bp_info *rte_dpaa_bpid_info;
 
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_mempool, NOTICE);

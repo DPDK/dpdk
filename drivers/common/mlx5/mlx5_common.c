@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_class.h>
@@ -20,6 +21,7 @@
 #include "mlx5_common_defs.h"
 #include "mlx5_common_private.h"
 
+RTE_EXPORT_INTERNAL_SYMBOL(haswell_broadwell_cpu)
 uint8_t haswell_broadwell_cpu;
 
 /* Driver type key for new device global syntax. */
@@ -127,6 +129,7 @@ driver_get(uint32_t class)
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_kvargs_process)
 int
 mlx5_kvargs_process(struct mlx5_kvargs_ctrl *mkvlist, const char *const keys[],
 		    arg_handler_t handler, void *opaque_arg)
@@ -463,6 +466,7 @@ to_mlx5_device(const struct rte_device *rte_dev)
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_to_pci_str)
 int
 mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 {
@@ -512,6 +516,7 @@ mlx5_dev_mempool_register(struct mlx5_common_device *cdev,
  * @param mp
  *   Mempool being unregistered.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_mempool_unregister)
 void
 mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
 			    struct rte_mempool *mp)
@@ -591,6 +596,7 @@ mlx5_dev_mempool_event_cb(enum rte_mempool_event event, struct rte_mempool *mp,
  * Callbacks addresses are local in each process.
  * Therefore, each process can register private callbacks.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_mempool_subscribe)
 int
 mlx5_dev_mempool_subscribe(struct mlx5_common_device *cdev)
 {
@@ -1220,6 +1226,7 @@ mlx5_common_dev_dma_unmap(struct rte_device *rte_dev, void *addr,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_class_driver_register)
 void
 mlx5_class_driver_register(struct mlx5_class_driver *driver)
 {
@@ -1242,6 +1249,7 @@ static bool mlx5_common_initialized;
  * for multiple PMDs. Each mlx5 PMD that depends on mlx5_common module,
  * must invoke in its constructor.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_common_init)
 void
 mlx5_common_init(void)
 {
@@ -1400,6 +1408,7 @@ exit:
 	return uar;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_uar_release)
 void
 mlx5_devx_uar_release(struct mlx5_uar *uar)
 {
@@ -1408,6 +1417,7 @@ mlx5_devx_uar_release(struct mlx5_uar *uar)
 	memset(uar, 0, sizeof(*uar));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_uar_prepare)
 int
 mlx5_devx_uar_prepare(struct mlx5_common_device *cdev, struct mlx5_uar *uar)
 {

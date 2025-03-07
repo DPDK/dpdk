@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <eal_export.h>
 #include <rte_pmd_cnxk.h>
 
 #include <cnxk_ethdev.h>
@@ -305,18 +306,21 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_inl_dev_submit, 23.11)
 uint16_t
 rte_pmd_cnxk_inl_dev_submit(struct rte_pmd_cnxk_inl_dev_q *qptr, void *inst, uint16_t nb_inst)
 {
 	return cnxk_pmd_ops.inl_dev_submit((struct roc_nix_inl_dev_q *)qptr, inst, nb_inst);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_inl_dev_qptr_get, 23.11)
 struct rte_pmd_cnxk_inl_dev_q *
 rte_pmd_cnxk_inl_dev_qptr_get(void)
 {
 	return roc_nix_inl_dev_qptr_get(0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_cpt_q_stats_get, 23.11)
 int
 rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_type type,
 			     struct rte_pmd_cnxk_cpt_q_stats *stats, uint16_t idx)
@@ -328,6 +332,7 @@ rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_type
 					    (struct roc_nix_cpt_lf_stats *)stats, idx);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_hw_session_base_get, 23.11)
 union rte_pmd_cnxk_ipsec_hw_sa *
 rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb)
 {
@@ -343,6 +348,7 @@ rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb)
 	return (union rte_pmd_cnxk_ipsec_hw_sa *)sa_base;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_sa_flush, 23.11)
 int
 rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, bool inb)
 {
@@ -352,6 +358,7 @@ rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, boo
 	return roc_nix_inl_sa_sync(&dev->nix, sess, inb, ROC_NIX_INL_SA_OP_FLUSH);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_hw_sa_read, 22.07)
 int
 rte_pmd_cnxk_hw_sa_read(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
 			uint32_t len, bool inb)
@@ -377,6 +384,7 @@ rte_pmd_cnxk_hw_sa_read(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_hw_sa_write, 22.07)
 int
 rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
 			 uint32_t len, bool inb)
@@ -400,6 +408,7 @@ rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_h
 	return roc_nix_inl_ctx_write(&dev->nix, data, sa, inb, len);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_inl_ipsec_res, 23.11)
 union rte_pmd_cnxk_cpt_res_s *
 rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
 {
@@ -418,6 +427,7 @@ rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
 	return (void *)(wqe + 64 + desc_size);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_hw_inline_inb_cfg_set, 23.11)
 void
 rte_pmd_cnxk_hw_inline_inb_cfg_set(uint16_t portid, struct rte_pmd_cnxk_ipsec_inb_cfg *cfg)
 {

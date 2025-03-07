@@ -12,6 +12,7 @@
 #include <rte_trace.h>
 #include <rte_version.h>
 
+#include <eal_export.h>
 #include "eal_trace.h"
 
 __rte_format_printf(2, 0)
@@ -351,6 +352,7 @@ meta_fixup(struct trace *trace, char *meta)
 	meta_fix_freq_offset(trace, meta);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_trace_metadata_dump, 20.05)
 int
 rte_trace_metadata_dump(FILE *f)
 {

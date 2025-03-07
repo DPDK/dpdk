@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_cpuflags.h>
 #include <rte_common.h>
 #include <rte_net_crc.h>
@@ -419,6 +420,7 @@ MAP_STATIC_SYMBOL(struct rte_net_crc *rte_net_crc_set_alg(
 	enum rte_net_crc_alg alg, enum rte_net_crc_type type),
 	rte_net_crc_set_alg_v26);
 
+RTE_EXPORT_SYMBOL(rte_net_crc_free)
 void rte_net_crc_free(struct rte_net_crc *crc)
 {
 	rte_free(crc);

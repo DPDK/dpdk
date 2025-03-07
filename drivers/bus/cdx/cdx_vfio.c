@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <eal_export.h>
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>
 #include <rte_vfio.h>
@@ -550,6 +551,7 @@ cdx_vfio_map_resource(struct rte_cdx_device *dev)
 		return cdx_vfio_map_resource_secondary(dev);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_vfio_intr_enable)
 int
 rte_cdx_vfio_intr_enable(const struct rte_intr_handle *intr_handle)
 {
@@ -584,6 +586,7 @@ rte_cdx_vfio_intr_enable(const struct rte_intr_handle *intr_handle)
 }
 
 /* disable MSI interrupts */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_vfio_intr_disable)
 int
 rte_cdx_vfio_intr_disable(const struct rte_intr_handle *intr_handle)
 {
@@ -611,6 +614,7 @@ rte_cdx_vfio_intr_disable(const struct rte_intr_handle *intr_handle)
 }
 
 /* Enable Bus Mastering */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_vfio_bm_enable)
 int
 rte_cdx_vfio_bm_enable(struct rte_cdx_device *dev)
 {
@@ -656,6 +660,7 @@ rte_cdx_vfio_bm_enable(struct rte_cdx_device *dev)
 }
 
 /* Disable Bus Mastering */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_vfio_bm_disable)
 int
 rte_cdx_vfio_bm_disable(struct rte_cdx_device *dev)
 {

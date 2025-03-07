@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_alarm.h>
 #include <rte_spinlock.h>
 
@@ -83,6 +84,7 @@ alarm_task_exec(void *arg)
 	task->ret = alarm_set(task->entry, task->deadline);
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_set)
 int
 rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
@@ -184,6 +186,7 @@ alarm_matches(const struct alarm_entry *ap,
 	return (ap->cb_fn == cb_fn) && (any_arg || ap->cb_arg == cb_arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_cancel)
 int
 rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 {

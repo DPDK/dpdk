@@ -15,6 +15,7 @@
 
 #include <rte_lcore_var.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_lcore_var.h"
 
@@ -75,6 +76,7 @@ lcore_var_alloc(size_t size, size_t align)
 	return handle;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_lcore_var_alloc, 24.11)
 void *
 rte_lcore_var_alloc(size_t size, size_t align)
 {

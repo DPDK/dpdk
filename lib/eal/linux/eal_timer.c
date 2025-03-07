@@ -16,8 +16,10 @@
 #include <rte_cycles.h>
 #include <rte_thread.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
+RTE_EXPORT_SYMBOL(eal_timer_source)
 enum timer_source eal_timer_source = EAL_TIMER_HPET;
 
 #ifdef RTE_LIBEAL_USE_HPET
@@ -93,6 +95,7 @@ hpet_msb_inc(__rte_unused void *arg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_get_hpet_hz)
 uint64_t
 rte_get_hpet_hz(void)
 {
@@ -105,6 +108,7 @@ rte_get_hpet_hz(void)
 	return eal_hpet_resolution_hz;
 }
 
+RTE_EXPORT_SYMBOL(rte_get_hpet_cycles)
 uint64_t
 rte_get_hpet_cycles(void)
 {
@@ -131,6 +135,7 @@ rte_get_hpet_cycles(void)
  * Open and mmap /dev/hpet (high precision event timer) that will
  * provide our time reference.
  */
+RTE_EXPORT_SYMBOL(rte_eal_hpet_init)
 int
 rte_eal_hpet_init(int make_default)
 {

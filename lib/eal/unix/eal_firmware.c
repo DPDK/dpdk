@@ -13,6 +13,7 @@
 #include <rte_common.h>
 #include <rte_log.h>
 
+#include <eal_export.h>
 #include "eal_firmware.h"
 #include "eal_private.h"
 
@@ -146,6 +147,7 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_firmware_read)
 int
 rte_firmware_read(const char *name, void **buf, size_t *bufsz)
 {

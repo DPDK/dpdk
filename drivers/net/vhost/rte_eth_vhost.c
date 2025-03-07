@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <sys/epoll.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <ethdev_vdev.h>
@@ -1045,6 +1046,7 @@ free_list:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_vhost_get_queue_event)
 int
 rte_eth_vhost_get_queue_event(uint16_t port_id,
 		struct rte_eth_vhost_queue_event *event)
@@ -1082,6 +1084,7 @@ rte_eth_vhost_get_queue_event(uint16_t port_id,
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_vhost_get_vid_from_port_id)
 int
 rte_eth_vhost_get_vid_from_port_id(uint16_t port_id)
 {

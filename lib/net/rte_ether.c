@@ -4,9 +4,11 @@
 
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <rte_ether.h>
 #include <rte_errno.h>
 
+RTE_EXPORT_SYMBOL(rte_eth_random_addr)
 void
 rte_eth_random_addr(uint8_t *addr)
 {
@@ -18,6 +20,7 @@ rte_eth_random_addr(uint8_t *addr)
 	addr[0] |= RTE_ETHER_LOCAL_ADMIN_ADDR;	/* set local assignment bit */
 }
 
+RTE_EXPORT_SYMBOL(rte_ether_format_addr)
 void
 rte_ether_format_addr(char *buf, uint16_t size,
 		      const struct rte_ether_addr *eth_addr)
@@ -130,6 +133,7 @@ static unsigned int get_ether_sep(const char *s, char *sep)
  *  - Windows format six groups separated by hyphen
  *  - two groups hexadecimal digits
  */
+RTE_EXPORT_SYMBOL(rte_ether_unformat_addr)
 int
 rte_ether_unformat_addr(const char *s, struct rte_ether_addr *ea)
 {

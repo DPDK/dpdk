@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_debug.h>
 
 #ifdef RTE_BACKTRACE
@@ -46,6 +47,7 @@ static char *safe_itoa(long val, char *buf, size_t len, unsigned int radix)
  * Most of libc is therefore not safe, include RTE_LOG (calls syslog);
  * backtrace_symbols (calls malloc), etc.
  */
+RTE_EXPORT_SYMBOL(rte_dump_stack)
 void rte_dump_stack(void)
 {
 	void *func[BACKTRACE_SIZE];
@@ -122,6 +124,7 @@ void rte_dump_stack(void)
 #else /* !RTE_BACKTRACE */
 
 /* stub if not enabled */
+RTE_EXPORT_SYMBOL(rte_dump_stack)
 void rte_dump_stack(void) { }
 
 #endif /* RTE_BACKTRACE */

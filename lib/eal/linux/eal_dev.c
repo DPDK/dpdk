@@ -18,6 +18,7 @@
 #include <rte_spinlock.h>
 #include <rte_errno.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 static struct rte_intr_handle *intr_handle;
@@ -303,6 +304,7 @@ failure_handle_err:
 	free(uevent.devname);
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_start)
 int
 rte_dev_event_monitor_start(void)
 {
@@ -353,6 +355,7 @@ exit:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_stop)
 int
 rte_dev_event_monitor_stop(void)
 {
@@ -421,6 +424,7 @@ dev_sigbus_handler_unregister(void)
 	return rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_enable)
 int
 rte_dev_hotplug_handle_enable(void)
 {
@@ -436,6 +440,7 @@ rte_dev_hotplug_handle_enable(void)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_disable)
 int
 rte_dev_hotplug_handle_disable(void)
 {

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -120,6 +121,7 @@ init_dataplane(struct rte_fib *fib, __rte_unused int socket_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_add)
 int
 rte_fib_add(struct rte_fib *fib, uint32_t ip, uint8_t depth, uint64_t next_hop)
 {
@@ -129,6 +131,7 @@ rte_fib_add(struct rte_fib *fib, uint32_t ip, uint8_t depth, uint64_t next_hop)
 	return fib->modify(fib, ip, depth, next_hop, RTE_FIB_ADD);
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_delete)
 int
 rte_fib_delete(struct rte_fib *fib, uint32_t ip, uint8_t depth)
 {
@@ -138,6 +141,7 @@ rte_fib_delete(struct rte_fib *fib, uint32_t ip, uint8_t depth)
 	return fib->modify(fib, ip, depth, 0, RTE_FIB_DEL);
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_lookup_bulk)
 int
 rte_fib_lookup_bulk(struct rte_fib *fib, uint32_t *ips,
 	uint64_t *next_hops, int n)
@@ -149,6 +153,7 @@ rte_fib_lookup_bulk(struct rte_fib *fib, uint32_t *ips,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_create)
 struct rte_fib *
 rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 {
@@ -245,6 +250,7 @@ exit:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_find_existing)
 struct rte_fib *
 rte_fib_find_existing(const char *name)
 {
@@ -283,6 +289,7 @@ free_dataplane(struct rte_fib *fib)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_free)
 void
 rte_fib_free(struct rte_fib *fib)
 {
@@ -312,18 +319,21 @@ rte_fib_free(struct rte_fib *fib)
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_get_dp)
 void *
 rte_fib_get_dp(struct rte_fib *fib)
 {
 	return (fib == NULL) ? NULL : fib->dp;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_get_rib)
 struct rte_rib *
 rte_fib_get_rib(struct rte_fib *fib)
 {
 	return (fib == NULL) ? NULL : fib->rib;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_select_lookup)
 int
 rte_fib_select_lookup(struct rte_fib *fib,
 	enum rte_fib_lookup_type type)
@@ -343,6 +353,7 @@ rte_fib_select_lookup(struct rte_fib *fib,
 	}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_fib_rcu_qsbr_add, 24.11)
 int
 rte_fib_rcu_qsbr_add(struct rte_fib *fib, struct rte_fib_rcu_config *cfg)
 {

@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_lcore.h>
 #include <rte_lcore_var.h>
 #include <rte_cycles.h>
@@ -496,6 +497,7 @@ get_monitor_callback(void)
 		clb_multiwait : clb_umwait;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_ethdev_pmgmt_queue_enable)
 int
 rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 		uint16_t queue_id, enum rte_power_pmd_mgmt_type mode)
@@ -613,6 +615,7 @@ end:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_ethdev_pmgmt_queue_disable)
 int
 rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 		uint16_t port_id, uint16_t queue_id)
@@ -688,18 +691,21 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_set_emptypoll_max)
 void
 rte_power_pmd_mgmt_set_emptypoll_max(unsigned int max)
 {
 	emptypoll_max = max;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_get_emptypoll_max)
 unsigned int
 rte_power_pmd_mgmt_get_emptypoll_max(void)
 {
 	return emptypoll_max;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_set_pause_duration)
 int
 rte_power_pmd_mgmt_set_pause_duration(unsigned int duration)
 {
@@ -712,12 +718,14 @@ rte_power_pmd_mgmt_set_pause_duration(unsigned int duration)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_get_pause_duration)
 unsigned int
 rte_power_pmd_mgmt_get_pause_duration(void)
 {
 	return pause_duration;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_set_scaling_freq_min)
 int
 rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min)
 {
@@ -735,6 +743,7 @@ rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_set_scaling_freq_max)
 int
 rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max)
 {
@@ -756,6 +765,7 @@ rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_get_scaling_freq_min)
 int
 rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore)
 {
@@ -770,6 +780,7 @@ rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore)
 	return scale_freq_min[lcore];
 }
 
+RTE_EXPORT_SYMBOL(rte_power_pmd_mgmt_get_scaling_freq_max)
 int
 rte_power_pmd_mgmt_get_scaling_freq_max(unsigned int lcore)
 {

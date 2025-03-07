@@ -5,8 +5,10 @@
 #include <rte_log.h>
 #include <rte_dev.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_start)
 int
 rte_dev_event_monitor_start(void)
 {
@@ -14,6 +16,7 @@ rte_dev_event_monitor_start(void)
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_stop)
 int
 rte_dev_event_monitor_stop(void)
 {
@@ -21,6 +24,7 @@ rte_dev_event_monitor_stop(void)
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_enable)
 int
 rte_dev_hotplug_handle_enable(void)
 {
@@ -28,6 +32,7 @@ rte_dev_hotplug_handle_enable(void)
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_disable)
 int
 rte_dev_hotplug_handle_disable(void)
 {

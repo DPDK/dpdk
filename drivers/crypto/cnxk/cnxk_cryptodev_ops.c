@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <eal_export.h>
 #include <rte_atomic.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
@@ -969,6 +970,7 @@ cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_qptr_get, 24.03)
 struct rte_pmd_cnxk_crypto_qptr *
 rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id)
 {
@@ -1031,6 +1033,7 @@ cnxk_crypto_cn9k_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint1
 	}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_submit, 24.03)
 void
 rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
 {
@@ -1042,6 +1045,7 @@ rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, ui
 	plt_err("Invalid cnxk model");
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_flush, 24.07)
 int
 rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
 			       struct rte_pmd_cnxk_crypto_cptr *cptr, bool invalidate)
@@ -1066,6 +1070,7 @@ rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
 	return roc_cpt_lf_ctx_flush(&qp->lf, cptr, invalidate);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_get, 24.07)
 struct rte_pmd_cnxk_crypto_cptr *
 rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 {
@@ -1113,6 +1118,7 @@ rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_read, 24.07)
 int
 rte_pmd_cnxk_crypto_cptr_read(struct rte_pmd_cnxk_crypto_qptr *qptr,
 			      struct rte_pmd_cnxk_crypto_cptr *cptr, void *data, uint32_t len)
@@ -1146,6 +1152,7 @@ rte_pmd_cnxk_crypto_cptr_read(struct rte_pmd_cnxk_crypto_qptr *qptr,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_write, 24.07)
 int
 rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
 			       struct rte_pmd_cnxk_crypto_cptr *cptr, void *data, uint32_t len)
@@ -1183,6 +1190,7 @@ rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_qp_stats_get, 24.07)
 int
 rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
 				 struct rte_pmd_cnxk_crypto_qp_stats *stats)

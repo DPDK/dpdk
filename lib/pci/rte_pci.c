@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <eal_export.h>
 #include <rte_debug.h>
 
 #include "rte_pci.h"
@@ -92,6 +93,7 @@ pci_dbdf_parse(const char *input, struct rte_pci_addr *dev_addr)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_device_name)
 void
 rte_pci_device_name(const struct rte_pci_addr *addr,
 		char *output, size_t size)
@@ -102,6 +104,7 @@ rte_pci_device_name(const struct rte_pci_addr *addr,
 			    addr->devid, addr->function) >= 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_addr_cmp)
 int
 rte_pci_addr_cmp(const struct rte_pci_addr *addr,
 	     const struct rte_pci_addr *addr2)
@@ -124,6 +127,7 @@ rte_pci_addr_cmp(const struct rte_pci_addr *addr,
 		return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_addr_parse)
 int
 rte_pci_addr_parse(const char *str, struct rte_pci_addr *addr)
 {

@@ -4,6 +4,7 @@
 
 #include <errno.h>
 
+#include <eal_export.h>
 #include "rte_cpuflags.h"
 #include "rte_power_intrinsics.h"
 
@@ -26,6 +27,7 @@ RTE_INIT(rte_power_intrinsics_init)
  * This function uses WFE/WFET instruction to make lcore suspend
  * execution on ARM.
  */
+RTE_EXPORT_SYMBOL(rte_power_monitor)
 int
 rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		const uint64_t tsc_timestamp)
@@ -78,6 +80,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 /**
  * This function is not supported on ARM.
  */
+RTE_EXPORT_SYMBOL(rte_power_pause)
 int
 rte_power_pause(const uint64_t tsc_timestamp)
 {
@@ -91,6 +94,7 @@ rte_power_pause(const uint64_t tsc_timestamp)
  * on ARM.
  * Note that lcore_id is not used here.
  */
+RTE_EXPORT_SYMBOL(rte_power_monitor_wakeup)
 int
 rte_power_monitor_wakeup(const unsigned int lcore_id)
 {
@@ -104,6 +108,7 @@ rte_power_monitor_wakeup(const unsigned int lcore_id)
 #endif /* RTE_ARCH_64 */
 }
 
+RTE_EXPORT_SYMBOL(rte_power_monitor_multi)
 int
 rte_power_monitor_multi(const struct rte_power_monitor_cond pmc[],
 		const uint32_t num, const uint64_t tsc_timestamp)

@@ -15,6 +15,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
@@ -482,6 +483,7 @@ uio_intr_enable(const struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_register)
 int
 rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb, void *cb_arg)
@@ -566,6 +568,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_pending)
 int
 rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 				rte_intr_callback_fn cb_fn, void *cb_arg,
@@ -617,6 +620,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister)
 int
 rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb_fn, void *cb_arg)
@@ -683,6 +687,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_sync)
 int
 rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb_fn, void *cb_arg)
@@ -695,6 +700,7 @@ rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_enable)
 int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
@@ -775,6 +781,7 @@ out:
  * auto-masked. In fact, for interrupt handle types VFIO_MSIX and VFIO_MSI,
  * this function is no-op.
  */
+RTE_EXPORT_SYMBOL(rte_intr_ack)
 int
 rte_intr_ack(const struct rte_intr_handle *intr_handle)
 {
@@ -827,6 +834,7 @@ rte_intr_ack(const struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_disable)
 int
 rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
@@ -1305,6 +1313,7 @@ eal_init_tls_epfd(void)
 	return pfd;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_tls_epfd)
 int
 rte_intr_tls_epfd(void)
 {
@@ -1377,6 +1386,7 @@ eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait)
 int
 rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	       int maxevents, int timeout)
@@ -1384,6 +1394,7 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	return eal_epoll_wait(epfd, events, maxevents, timeout, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait_interruptible)
 int
 rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
 			     int maxevents, int timeout)
@@ -1408,6 +1419,7 @@ eal_epoll_data_safe_free(struct rte_epoll_event *ev)
 	ev->epfd = -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_ctl)
 int
 rte_epoll_ctl(int epfd, int op, int fd,
 	      struct rte_epoll_event *event)
@@ -1449,6 +1461,7 @@ rte_epoll_ctl(int epfd, int op, int fd,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_rx_ctl)
 int
 rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 		int op, unsigned int vec, void *data)
@@ -1514,6 +1527,7 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	return rc;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_free_epoll_fd)
 void
 rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 {
@@ -1532,6 +1546,7 @@ rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_enable)
 int
 rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 {
@@ -1579,6 +1594,7 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_disable)
 void
 rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 {
@@ -1593,12 +1609,14 @@ rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 	rte_intr_max_intr_set(intr_handle, 0);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dp_is_en)
 int
 rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 {
 	return !(!rte_intr_nb_efd_get(intr_handle));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_allow_others)
 int
 rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 {
@@ -1609,6 +1627,7 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 				rte_intr_nb_efd_get(intr_handle));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_cap_multiple)
 int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 {
@@ -1621,6 +1640,7 @@ rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_is_intr)
 int rte_thread_is_intr(void)
 {
 	return rte_thread_equal(intr_thread, rte_thread_self());

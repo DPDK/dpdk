@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -25,6 +26,7 @@
 /* Default count used until rte_memzone_max_set() is called */
 #define DEFAULT_MAX_MEMZONE_COUNT 2560
 
+RTE_EXPORT_SYMBOL(rte_memzone_max_set)
 int
 rte_memzone_max_set(size_t max)
 {
@@ -46,6 +48,7 @@ rte_memzone_max_set(size_t max)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_memzone_max_get)
 size_t
 rte_memzone_max_get(void)
 {
@@ -263,6 +266,7 @@ rte_memzone_reserve_thread_safe(const char *name, size_t len, int socket_id,
  * specified alignment and boundary). If the allocation cannot be done,
  * return NULL.
  */
+RTE_EXPORT_SYMBOL(rte_memzone_reserve_bounded)
 const struct rte_memzone *
 rte_memzone_reserve_bounded(const char *name, size_t len, int socket_id,
 			    unsigned flags, unsigned align, unsigned bound)
@@ -275,6 +279,7 @@ rte_memzone_reserve_bounded(const char *name, size_t len, int socket_id,
  * Return a pointer to a correctly filled memzone descriptor (with a
  * specified alignment). If the allocation cannot be done, return NULL.
  */
+RTE_EXPORT_SYMBOL(rte_memzone_reserve_aligned)
 const struct rte_memzone *
 rte_memzone_reserve_aligned(const char *name, size_t len, int socket_id,
 			    unsigned flags, unsigned align)
@@ -287,6 +292,7 @@ rte_memzone_reserve_aligned(const char *name, size_t len, int socket_id,
  * Return a pointer to a correctly filled memzone descriptor. If the
  * allocation cannot be done, return NULL.
  */
+RTE_EXPORT_SYMBOL(rte_memzone_reserve)
 const struct rte_memzone *
 rte_memzone_reserve(const char *name, size_t len, int socket_id,
 		    unsigned flags)
@@ -295,6 +301,7 @@ rte_memzone_reserve(const char *name, size_t len, int socket_id,
 					       flags, RTE_CACHE_LINE_SIZE, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_memzone_free)
 int
 rte_memzone_free(const struct rte_memzone *mz)
 {
@@ -341,6 +348,7 @@ rte_memzone_free(const struct rte_memzone *mz)
 /*
  * Lookup for the memzone identified by the given name
  */
+RTE_EXPORT_SYMBOL(rte_memzone_lookup)
 const struct rte_memzone *
 rte_memzone_lookup(const char *name)
 {
@@ -417,6 +425,7 @@ dump_memzone(const struct rte_memzone *mz, void *arg)
 }
 
 /* Dump all reserved memory zones on console */
+RTE_EXPORT_SYMBOL(rte_memzone_dump)
 void
 rte_memzone_dump(FILE *f)
 {
@@ -458,6 +467,7 @@ rte_eal_memzone_init(void)
 }
 
 /* Walk all reserved memory zones */
+RTE_EXPORT_SYMBOL(rte_memzone_walk)
 void rte_memzone_walk(void (*func)(const struct rte_memzone *, void *),
 		      void *arg)
 {

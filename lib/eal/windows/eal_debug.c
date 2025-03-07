@@ -3,6 +3,7 @@
  */
 
 #include <stdarg.h>
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_windows.h>
@@ -14,6 +15,7 @@
 #define BACKTRACE_SIZE 256
 
 /* dump the stack of the calling core */
+RTE_EXPORT_SYMBOL(rte_dump_stack)
 void
 rte_dump_stack(void)
 {

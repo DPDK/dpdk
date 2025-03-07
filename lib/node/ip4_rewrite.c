@@ -2,6 +2,7 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <eal_export.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_graph.h>
@@ -292,6 +293,7 @@ ip4_rewrite_set_next(uint16_t port_id, uint16_t next_index)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_ip4_rewrite_add)
 int
 rte_node_ip4_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
 			 uint8_t rewrite_len, uint16_t dst_port)

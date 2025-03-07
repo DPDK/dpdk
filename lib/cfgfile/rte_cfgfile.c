@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -158,6 +159,7 @@ rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_load)
 struct rte_cfgfile *
 rte_cfgfile_load(const char *filename, int flags)
 {
@@ -165,6 +167,7 @@ rte_cfgfile_load(const char *filename, int flags)
 					    &default_cfgfile_params);
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_load_with_params)
 struct rte_cfgfile *
 rte_cfgfile_load_with_params(const char *filename, int flags,
 			     const struct rte_cfgfile_parameters *params)
@@ -269,6 +272,7 @@ error1:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_create)
 struct rte_cfgfile *
 rte_cfgfile_create(int flags)
 {
@@ -325,6 +329,7 @@ error1:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_add_section)
 int
 rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
@@ -366,6 +371,7 @@ rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_add_entry)
 int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
 		const char *sectionname, const char *entryname,
 		const char *entryvalue)
@@ -390,6 +396,7 @@ int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_set_entry)
 int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname, const char *entryvalue)
 {
@@ -418,6 +425,7 @@ int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 	return -EINVAL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_save)
 int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
 {
 	int i, j;
@@ -442,6 +450,7 @@ int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
 	return fclose(f);
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_close)
 int rte_cfgfile_close(struct rte_cfgfile *cfg)
 {
 	int i;
@@ -465,6 +474,7 @@ int rte_cfgfile_close(struct rte_cfgfile *cfg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_num_sections)
 int
 rte_cfgfile_num_sections(struct rte_cfgfile *cfg, const char *sectionname,
 size_t length)
@@ -478,6 +488,7 @@ size_t length)
 	return num_sections;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_sections)
 int
 rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	int max_sections)
@@ -490,12 +501,14 @@ rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_has_section)
 int
 rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
 	return _get_section(cfg, sectionname) != NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_num_entries)
 int
 rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname)
@@ -506,6 +519,7 @@ rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	return s->num_entries;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_num_entries_by_index)
 int
 rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	char *sectionname, int index)
@@ -518,6 +532,7 @@ rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	strlcpy(sectionname, sect->name, CFG_NAME_LEN);
 	return sect->num_entries;
 }
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_entries)
 int
 rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 		struct rte_cfgfile_entry *entries, int max_entries)
@@ -531,6 +546,7 @@ rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_entries_by_index)
 int
 rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 		char *sectionname,
@@ -548,6 +564,7 @@ rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_get_entry)
 const char *
 rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
@@ -563,6 +580,7 @@ rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_has_entry)
 int
 rte_cfgfile_has_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)

@@ -21,6 +21,7 @@
 #include <sys/eventfd.h>
 #include <ctype.h>
 
+#include <eal_export.h>
 #include <eal_filesystem.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
@@ -83,6 +84,7 @@ enum {
 	FSLMC_VFIO_SOCKET_REQ_MEM
 };
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_get_mcp_ptr)
 void *
 dpaa2_get_mcp_ptr(int portal_idx)
 {
@@ -154,6 +156,7 @@ fslmc_io_virt2phy(const void *virtaddr)
 }
 
 /*register a fslmc bus based dpaa2 driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_object_register)
 void
 rte_fslmc_object_register(struct rte_dpaa2_object *object)
 {
@@ -984,6 +987,7 @@ fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr, size_t len)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_cold_mem_vaddr_to_iova)
 uint64_t
 rte_fslmc_cold_mem_vaddr_to_iova(void *vaddr,
 	uint64_t size)
@@ -1002,6 +1006,7 @@ rte_fslmc_cold_mem_vaddr_to_iova(void *vaddr,
 	return RTE_BAD_IOVA;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_cold_mem_iova_to_vaddr)
 void *
 rte_fslmc_cold_mem_iova_to_vaddr(uint64_t iova,
 	uint64_t size)
@@ -1018,6 +1023,7 @@ rte_fslmc_cold_mem_iova_to_vaddr(uint64_t iova,
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_mem_vaddr_to_iova)
 __rte_hot uint64_t
 rte_fslmc_mem_vaddr_to_iova(void *vaddr)
 {
@@ -1027,6 +1033,7 @@ rte_fslmc_mem_vaddr_to_iova(void *vaddr)
 	return rte_fslmc_cold_mem_vaddr_to_iova(vaddr, 0);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_mem_iova_to_vaddr)
 __rte_hot void *
 rte_fslmc_mem_iova_to_vaddr(uint64_t iova)
 {
@@ -1036,6 +1043,7 @@ rte_fslmc_mem_iova_to_vaddr(uint64_t iova)
 	return rte_fslmc_cold_mem_iova_to_vaddr(iova, 0);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_io_vaddr_to_iova)
 uint64_t
 rte_fslmc_io_vaddr_to_iova(void *vaddr)
 {
@@ -1051,6 +1059,7 @@ rte_fslmc_io_vaddr_to_iova(void *vaddr)
 	return RTE_BAD_IOVA;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_io_iova_to_vaddr)
 void *
 rte_fslmc_io_iova_to_vaddr(uint64_t iova)
 {
@@ -1141,12 +1150,14 @@ fslmc_dmamap_seg(const struct rte_memseg_list *msl __rte_unused,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_fslmc_vfio_mem_dmamap)
 int
 rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size)
 {
 	return fslmc_map_dma(vaddr, iova, size);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_fslmc_vfio_mem_dmaunmap)
 int
 rte_fslmc_vfio_mem_dmaunmap(uint64_t iova, uint64_t size)
 {
@@ -1264,6 +1275,7 @@ MC_FAILURE:
 
 #define IRQ_SET_BUF_LEN  (sizeof(struct vfio_irq_set) + sizeof(int))
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_intr_enable)
 int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle, int index)
 {
 	int len, ret;
@@ -1295,6 +1307,7 @@ int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle, int index)
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_intr_disable)
 int rte_dpaa2_intr_disable(struct rte_intr_handle *intr_handle, int index)
 {
 	struct vfio_irq_set *irq_set;

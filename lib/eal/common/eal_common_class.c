@@ -9,11 +9,13 @@
 #include <rte_class.h>
 #include <rte_debug.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 static struct rte_class_list rte_class_list =
 	TAILQ_HEAD_INITIALIZER(rte_class_list);
 
+RTE_EXPORT_SYMBOL(rte_class_register)
 void
 rte_class_register(struct rte_class *class)
 {
@@ -24,6 +26,7 @@ rte_class_register(struct rte_class *class)
 	EAL_LOG(DEBUG, "Registered [%s] device class.", class->name);
 }
 
+RTE_EXPORT_SYMBOL(rte_class_unregister)
 void
 rte_class_unregister(struct rte_class *class)
 {
@@ -31,6 +34,7 @@ rte_class_unregister(struct rte_class *class)
 	EAL_LOG(DEBUG, "Unregistered [%s] device class.", class->name);
 }
 
+RTE_EXPORT_SYMBOL(rte_class_find)
 struct rte_class *
 rte_class_find(const struct rte_class *start, rte_class_cmp_t cmp,
 	       const void *data)
@@ -57,6 +61,7 @@ cmp_class_name(const struct rte_class *class, const void *_name)
 	return strcmp(class->name, name);
 }
 
+RTE_EXPORT_SYMBOL(rte_class_find_by_name)
 struct rte_class *
 rte_class_find_by_name(const char *name)
 {

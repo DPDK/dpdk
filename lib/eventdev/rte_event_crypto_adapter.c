@@ -5,6 +5,7 @@
 
 #include <string.h>
 #include <stdbool.h>
+#include <eal_export.h>
 #include <rte_common.h>
 #include <dev_driver.h>
 #include <rte_errno.h>
@@ -362,6 +363,7 @@ eca_default_config_cb(uint8_t id, uint8_t dev_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_create_ext)
 int
 rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 				rte_event_crypto_adapter_conf_cb conf_cb,
@@ -437,6 +439,7 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 }
 
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_create)
 int
 rte_event_crypto_adapter_create(uint8_t id, uint8_t dev_id,
 				struct rte_event_port_conf *port_config,
@@ -465,6 +468,7 @@ rte_event_crypto_adapter_create(uint8_t id, uint8_t dev_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_free)
 int
 rte_event_crypto_adapter_free(uint8_t id)
 {
@@ -1036,6 +1040,7 @@ eca_add_queue_pair(struct event_crypto_adapter *adapter, uint8_t cdev_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_queue_pair_add)
 int
 rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 			uint8_t cdev_id,
@@ -1190,6 +1195,7 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_queue_pair_del)
 int
 rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 					int32_t queue_pair_id)
@@ -1315,6 +1321,7 @@ eca_adapter_ctrl(uint8_t id, int start)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_start)
 int
 rte_event_crypto_adapter_start(uint8_t id)
 {
@@ -1329,6 +1336,7 @@ rte_event_crypto_adapter_start(uint8_t id)
 	return eca_adapter_ctrl(id, 1);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_stop)
 int
 rte_event_crypto_adapter_stop(uint8_t id)
 {
@@ -1336,6 +1344,7 @@ rte_event_crypto_adapter_stop(uint8_t id)
 	return eca_adapter_ctrl(id, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_stats_get)
 int
 rte_event_crypto_adapter_stats_get(uint8_t id,
 				struct rte_event_crypto_adapter_stats *stats)
@@ -1388,6 +1397,7 @@ rte_event_crypto_adapter_stats_get(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_stats_reset)
 int
 rte_event_crypto_adapter_stats_reset(uint8_t id)
 {
@@ -1420,6 +1430,7 @@ rte_event_crypto_adapter_stats_reset(uint8_t id)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_crypto_adapter_runtime_params_init, 23.03)
 int
 rte_event_crypto_adapter_runtime_params_init(
 		struct rte_event_crypto_adapter_runtime_params *params)
@@ -1458,6 +1469,7 @@ crypto_adapter_cap_check(struct event_crypto_adapter *adapter)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_crypto_adapter_runtime_params_set, 23.03)
 int
 rte_event_crypto_adapter_runtime_params_set(uint8_t id,
 		struct rte_event_crypto_adapter_runtime_params *params)
@@ -1490,6 +1502,7 @@ rte_event_crypto_adapter_runtime_params_set(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_event_crypto_adapter_runtime_params_get, 23.03)
 int
 rte_event_crypto_adapter_runtime_params_get(uint8_t id,
 		struct rte_event_crypto_adapter_runtime_params *params)
@@ -1521,6 +1534,7 @@ rte_event_crypto_adapter_runtime_params_get(uint8_t id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_service_id_get)
 int
 rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 {
@@ -1540,6 +1554,7 @@ rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 	return adapter->service_inited ? 0 : -ESRCH;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_event_port_get)
 int
 rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 {
@@ -1558,6 +1573,7 @@ rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_event_crypto_adapter_vector_limits_get)
 int
 rte_event_crypto_adapter_vector_limits_get(
 	uint8_t dev_id, uint16_t cdev_id,

@@ -2,6 +2,7 @@
  * Copyright(c) 2023 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include "idpf_common_device.h"
 #include "idpf_common_virtchnl.h"
@@ -381,6 +382,7 @@ free_req_ptype_info:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_adapter_init)
 int
 idpf_adapter_init(struct idpf_adapter *adapter)
 {
@@ -441,6 +443,7 @@ err_check_reset:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_adapter_deinit)
 int
 idpf_adapter_deinit(struct idpf_adapter *adapter)
 {
@@ -453,6 +456,7 @@ idpf_adapter_deinit(struct idpf_adapter *adapter)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_init)
 int
 idpf_vport_init(struct idpf_vport *vport,
 		struct virtchnl2_create_vport *create_vport_info,
@@ -566,6 +570,7 @@ err_rss_key:
 err_create_vport:
 	return ret;
 }
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_deinit)
 int
 idpf_vport_deinit(struct idpf_vport *vport)
 {
@@ -583,6 +588,7 @@ idpf_vport_deinit(struct idpf_vport *vport)
 
 	return 0;
 }
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_rss_config)
 int
 idpf_vport_rss_config(struct idpf_vport *vport)
 {
@@ -609,6 +615,7 @@ idpf_vport_rss_config(struct idpf_vport *vport)
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_irq_map_config)
 int
 idpf_vport_irq_map_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 {
@@ -684,6 +691,7 @@ qv_map_alloc_err:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_irq_map_config_by_qids)
 int
 idpf_vport_irq_map_config_by_qids(struct idpf_vport *vport, uint32_t *qids, uint16_t nb_rx_queues)
 {
@@ -759,6 +767,7 @@ qv_map_alloc_err:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_irq_unmap_config)
 int
 idpf_vport_irq_unmap_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 {
@@ -770,6 +779,7 @@ idpf_vport_irq_unmap_config(struct idpf_vport *vport, uint16_t nb_rx_queues)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_info_init)
 int
 idpf_vport_info_init(struct idpf_vport *vport,
 			    struct virtchnl2_create_vport *vport_info)
@@ -806,6 +816,7 @@ idpf_vport_info_init(struct idpf_vport *vport,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vport_stats_update)
 void
 idpf_vport_stats_update(struct virtchnl2_vport_stats *oes, struct virtchnl2_vport_stats *nes)
 {

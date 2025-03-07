@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_tailq.h>
@@ -13,6 +14,7 @@
 #include "i40e_rxtx.h"
 #include "rte_pmd_i40e.h"
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_ping_vfs)
 int
 rte_pmd_i40e_ping_vfs(uint16_t port, uint16_t vf)
 {
@@ -38,6 +40,7 @@ rte_pmd_i40e_ping_vfs(uint16_t port, uint16_t vf)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_mac_anti_spoof)
 int
 rte_pmd_i40e_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf_id, uint8_t on)
 {
@@ -142,6 +145,7 @@ i40e_add_rm_all_vlan_filter(struct i40e_vsi *vsi, uint8_t add)
 	return I40E_SUCCESS;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_vlan_anti_spoof)
 int
 rte_pmd_i40e_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf_id, uint8_t on)
 {
@@ -402,6 +406,7 @@ i40e_vsi_set_tx_loopback(struct i40e_vsi *vsi, uint8_t on)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_tx_loopback)
 int
 rte_pmd_i40e_set_tx_loopback(uint16_t port, uint8_t on)
 {
@@ -445,6 +450,7 @@ rte_pmd_i40e_set_tx_loopback(uint16_t port, uint8_t on)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_unicast_promisc)
 int
 rte_pmd_i40e_set_vf_unicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 {
@@ -486,6 +492,7 @@ rte_pmd_i40e_set_vf_unicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_multicast_promisc)
 int
 rte_pmd_i40e_set_vf_multicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 {
@@ -527,6 +534,7 @@ rte_pmd_i40e_set_vf_multicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_mac_addr)
 int
 rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 			     struct rte_ether_addr *mac_addr)
@@ -617,6 +625,7 @@ rte_pmd_i40e_remove_vf_mac_addr(uint16_t port, uint16_t vf_id,
 }
 
 /* Set vlan strip on/off for specific VF from host */
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_vlan_stripq)
 int
 rte_pmd_i40e_set_vf_vlan_stripq(uint16_t port, uint16_t vf_id, uint8_t on)
 {
@@ -653,6 +662,7 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint16_t port, uint16_t vf_id, uint8_t on)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_vlan_insert)
 int rte_pmd_i40e_set_vf_vlan_insert(uint16_t port, uint16_t vf_id,
 				    uint16_t vlan_id)
 {
@@ -718,6 +728,7 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint16_t port, uint16_t vf_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_broadcast)
 int rte_pmd_i40e_set_vf_broadcast(uint16_t port, uint16_t vf_id,
 				  uint8_t on)
 {
@@ -784,6 +795,7 @@ int rte_pmd_i40e_set_vf_broadcast(uint16_t port, uint16_t vf_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_vlan_tag)
 int rte_pmd_i40e_set_vf_vlan_tag(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
@@ -878,6 +890,7 @@ i40e_vlan_filter_count(struct i40e_vsi *vsi)
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_vlan_filter)
 int rte_pmd_i40e_set_vf_vlan_filter(uint16_t port, uint16_t vlan_id,
 				    uint64_t vf_mask, uint8_t on)
 {
@@ -960,6 +973,7 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint16_t port, uint16_t vlan_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_get_vf_stats)
 int
 rte_pmd_i40e_get_vf_stats(uint16_t port,
 			  uint16_t vf_id,
@@ -1005,6 +1019,7 @@ rte_pmd_i40e_get_vf_stats(uint16_t port,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_reset_vf_stats)
 int
 rte_pmd_i40e_reset_vf_stats(uint16_t port,
 			    uint16_t vf_id)
@@ -1039,6 +1054,7 @@ rte_pmd_i40e_reset_vf_stats(uint16_t port,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_max_bw)
 int
 rte_pmd_i40e_set_vf_max_bw(uint16_t port, uint16_t vf_id, uint32_t bw)
 {
@@ -1128,6 +1144,7 @@ rte_pmd_i40e_set_vf_max_bw(uint16_t port, uint16_t vf_id, uint32_t bw)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_tc_bw_alloc)
 int
 rte_pmd_i40e_set_vf_tc_bw_alloc(uint16_t port, uint16_t vf_id,
 				uint8_t tc_num, uint8_t *bw_weight)
@@ -1242,6 +1259,7 @@ rte_pmd_i40e_set_vf_tc_bw_alloc(uint16_t port, uint16_t vf_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_vf_tc_max_bw)
 int
 rte_pmd_i40e_set_vf_tc_max_bw(uint16_t port, uint16_t vf_id,
 			      uint8_t tc_no, uint32_t bw)
@@ -1360,6 +1378,7 @@ rte_pmd_i40e_set_vf_tc_max_bw(uint16_t port, uint16_t vf_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_set_tc_strict_prio)
 int
 rte_pmd_i40e_set_tc_strict_prio(uint16_t port, uint8_t tc_map)
 {
@@ -1605,6 +1624,7 @@ i40e_check_profile_info(uint16_t port, uint8_t *profile_info_sec)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_process_ddp_package)
 int
 rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 				 uint32_t size,
@@ -1789,6 +1809,7 @@ i40e_get_tlv_section_size(struct i40e_profile_section_header *sec)
 	return nb_tlv;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_get_ddp_info)
 int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 	uint8_t *info_buff, uint32_t info_size,
 	enum rte_pmd_i40e_package_info type)
@@ -2097,6 +2118,7 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 	return -EINVAL;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_get_ddp_list)
 int
 rte_pmd_i40e_get_ddp_list(uint16_t port, uint8_t *buff, uint32_t size)
 {
@@ -2228,6 +2250,7 @@ static int check_invalid_ptype_mapping(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_ptype_mapping_update)
 int
 rte_pmd_i40e_ptype_mapping_update(
 			uint16_t port,
@@ -2266,6 +2289,7 @@ rte_pmd_i40e_ptype_mapping_update(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_ptype_mapping_reset)
 int rte_pmd_i40e_ptype_mapping_reset(uint16_t port)
 {
 	struct rte_eth_dev *dev;
@@ -2282,6 +2306,7 @@ int rte_pmd_i40e_ptype_mapping_reset(uint16_t port)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_ptype_mapping_get)
 int rte_pmd_i40e_ptype_mapping_get(
 			uint16_t port,
 			struct rte_pmd_i40e_ptype_mapping *mapping_items,
@@ -2317,6 +2342,7 @@ int rte_pmd_i40e_ptype_mapping_get(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_ptype_mapping_replace)
 int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
 				       uint32_t target,
 				       uint8_t mask,
@@ -2355,6 +2381,7 @@ int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_add_vf_mac_addr)
 int
 rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
 			     struct rte_ether_addr *mac_addr)
@@ -2402,6 +2429,7 @@ rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_flow_type_mapping_reset)
 int rte_pmd_i40e_flow_type_mapping_reset(uint16_t port)
 {
 	struct rte_eth_dev *dev;
@@ -2418,6 +2446,7 @@ int rte_pmd_i40e_flow_type_mapping_reset(uint16_t port)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_flow_type_mapping_get)
 int rte_pmd_i40e_flow_type_mapping_get(
 			uint16_t port,
 			struct rte_pmd_i40e_flow_type_mapping *mapping_items)
@@ -2443,6 +2472,7 @@ int rte_pmd_i40e_flow_type_mapping_get(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_flow_type_mapping_update)
 int
 rte_pmd_i40e_flow_type_mapping_update(
 			uint16_t port,
@@ -2496,6 +2526,7 @@ rte_pmd_i40e_flow_type_mapping_update(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_query_vfid_by_mac)
 int
 rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
 			const struct rte_ether_addr *vf_mac)
@@ -2967,6 +2998,7 @@ i40e_queue_region_get_all_info(struct i40e_pf *pf,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_rss_queue_region_conf)
 int rte_pmd_i40e_rss_queue_region_conf(uint16_t port_id,
 		enum rte_pmd_i40e_queue_region_op op_type, void *arg)
 {
@@ -3032,6 +3064,7 @@ int rte_pmd_i40e_rss_queue_region_conf(uint16_t port_id,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_flow_add_del_packet_template)
 int rte_pmd_i40e_flow_add_del_packet_template(
 			uint16_t port,
 			const struct rte_pmd_i40e_pkt_template_conf *conf,
@@ -3065,6 +3098,7 @@ int rte_pmd_i40e_flow_add_del_packet_template(
 	return i40e_flow_add_del_fdir_filter(dev, &filter_conf, add);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_inset_get)
 int
 rte_pmd_i40e_inset_get(uint16_t port, uint8_t pctype,
 		       struct rte_pmd_i40e_inset *inset,
@@ -3137,6 +3171,7 @@ rte_pmd_i40e_inset_get(uint16_t port, uint8_t pctype,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_i40e_inset_set)
 int
 rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 		       struct rte_pmd_i40e_inset *inset,
@@ -3211,6 +3246,7 @@ rte_pmd_i40e_inset_set(uint16_t port, uint8_t pctype,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_i40e_get_fdir_info, 20.08)
 int
 rte_pmd_i40e_get_fdir_info(uint16_t port, struct rte_eth_fdir_info *fdir_info)
 {
@@ -3227,6 +3263,7 @@ rte_pmd_i40e_get_fdir_info(uint16_t port, struct rte_eth_fdir_info *fdir_info)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_i40e_get_fdir_stats, 20.08)
 int
 rte_pmd_i40e_get_fdir_stats(uint16_t port, struct rte_eth_fdir_stats *fdir_stat)
 {
@@ -3243,6 +3280,7 @@ rte_pmd_i40e_get_fdir_stats(uint16_t port, struct rte_eth_fdir_stats *fdir_stat)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_i40e_set_gre_key_len, 20.08)
 int
 rte_pmd_i40e_set_gre_key_len(uint16_t port, uint8_t len)
 {
@@ -3262,6 +3300,7 @@ rte_pmd_i40e_set_gre_key_len(uint16_t port, uint8_t len)
 	return i40e_dev_set_gre_key_len(hw, len);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_i40e_set_switch_dev, 19.11)
 int
 rte_pmd_i40e_set_switch_dev(uint16_t port_id, struct rte_eth_dev *switch_dev)
 {
@@ -3283,6 +3322,7 @@ rte_pmd_i40e_set_switch_dev(uint16_t port_id, struct rte_eth_dev *switch_dev)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_i40e_set_pf_src_prune, 23.07)
 int
 rte_pmd_i40e_set_pf_src_prune(uint16_t port, uint8_t on)
 {

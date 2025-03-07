@@ -11,6 +11,7 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
@@ -22,6 +23,7 @@ static struct rte_tailq_elem_head rte_tailq_elem_head =
 /* number of tailqs registered, -1 before call to rte_eal_tailqs_init */
 static int rte_tailqs_count = -1;
 
+RTE_EXPORT_SYMBOL(rte_eal_tailq_lookup)
 struct rte_tailq_head *
 rte_eal_tailq_lookup(const char *name)
 {
@@ -40,6 +42,7 @@ rte_eal_tailq_lookup(const char *name)
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_dump_tailq)
 void
 rte_dump_tailq(FILE *f)
 {
@@ -105,6 +108,7 @@ rte_eal_tailq_update(struct rte_tailq_elem *t)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_tailq_register)
 int
 rte_eal_tailq_register(struct rte_tailq_elem *t)
 {

@@ -12,6 +12,7 @@
 #include <time.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
@@ -200,6 +201,7 @@ eal_alarm_callback(void *arg __rte_unused)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_set)
 int
 rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
@@ -252,6 +254,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_cancel)
 int
 rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 {

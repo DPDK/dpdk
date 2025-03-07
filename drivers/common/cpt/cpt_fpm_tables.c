@@ -2,6 +2,7 @@
  * Copyright (C) 2019 Marvell International Ltd.
  */
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 
@@ -1081,6 +1082,7 @@ static rte_spinlock_t lock = RTE_SPINLOCK_INITIALIZER;
 static uint8_t *fpm_table;
 static int nb_devs;
 
+RTE_EXPORT_INTERNAL_SYMBOL(cpt_fpm_init)
 int cpt_fpm_init(uint64_t *fpm_table_iova)
 {
 	int i, len = 0;
@@ -1125,6 +1127,7 @@ update_nb_devs:
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cpt_fpm_clear)
 void cpt_fpm_clear(void)
 {
 	rte_spinlock_lock(&lock);

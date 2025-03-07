@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_cpuflags.h>
 #include <rte_string_fns.h>
 #include <rte_log.h>
@@ -496,6 +497,7 @@ efd_search_hash(struct rte_efd_table * const table,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_create)
 struct rte_efd_table *
 rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 		uint64_t online_cpu_socket_bitmask, uint8_t offline_cpu_socket)
@@ -720,6 +722,7 @@ error_unlock_exit:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_find_existing)
 struct rte_efd_table *
 rte_efd_find_existing(const char *name)
 {
@@ -746,6 +749,7 @@ rte_efd_find_existing(const char *name)
 	return table;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_free)
 void
 rte_efd_free(struct rte_efd_table *table)
 {
@@ -1162,6 +1166,7 @@ next_choice:
 	return RTE_EFD_UPDATE_FAILED;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_update)
 int
 rte_efd_update(struct rte_efd_table * const table, const unsigned int socket_id,
 		const void *key, const efd_value_t value)
@@ -1185,6 +1190,7 @@ rte_efd_update(struct rte_efd_table * const table, const unsigned int socket_id,
 	return status;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_delete)
 int
 rte_efd_delete(struct rte_efd_table * const table, const unsigned int socket_id,
 		const void *key, efd_value_t * const prev_value)
@@ -1301,6 +1307,7 @@ efd_lookup_internal(const struct efd_online_group_entry * const group,
 	return value;
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_lookup)
 efd_value_t
 rte_efd_lookup(const struct rte_efd_table * const table,
 		const unsigned int socket_id, const void *key)
@@ -1322,6 +1329,7 @@ rte_efd_lookup(const struct rte_efd_table * const table,
 			table->lookup_fn);
 }
 
+RTE_EXPORT_SYMBOL(rte_efd_lookup_bulk)
 void rte_efd_lookup_bulk(const struct rte_efd_table * const table,
 		const unsigned int socket_id, const int num_keys,
 		const void **key_list, efd_value_t * const value_list)

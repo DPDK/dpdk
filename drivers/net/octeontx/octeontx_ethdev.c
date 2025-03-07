@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <eventdev_pmd.h>
+#include <eal_export.h>
 #include <rte_alarm.h>
 #include <rte_branch_prediction.h>
 #include <bus_vdev_driver.h>
@@ -44,6 +45,7 @@ struct octeontx_vdev_init_params {
 	uint8_t	nr_port;
 };
 
+RTE_EXPORT_SYMBOL(rte_octeontx_pchan_map)
 uint16_t
 rte_octeontx_pchan_map[OCTEONTX_MAX_BGX_PORTS][OCTEONTX_MAX_LMAC_PER_BGX];
 

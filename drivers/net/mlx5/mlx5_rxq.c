@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
@@ -3285,6 +3286,7 @@ mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
 	return &priv->ext_rxqs[dpdk_idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_external_rx_queue_id_map, 22.03)
 int
 rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
 				      uint32_t hw_idx)
@@ -3318,6 +3320,7 @@ rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_external_rx_queue_id_unmap, 22.03)
 int
 rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id, uint16_t dpdk_idx)
 {

@@ -11,17 +11,20 @@
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 static struct rte_bus_list rte_bus_list =
 	TAILQ_HEAD_INITIALIZER(rte_bus_list);
 
+RTE_EXPORT_SYMBOL(rte_bus_name)
 const char *
 rte_bus_name(const struct rte_bus *bus)
 {
 	return bus->name;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_register)
 void
 rte_bus_register(struct rte_bus *bus)
 {
@@ -38,6 +41,7 @@ rte_bus_register(struct rte_bus *bus)
 	EAL_LOG(DEBUG, "Registered [%s] bus.", rte_bus_name(bus));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_unregister)
 void
 rte_bus_unregister(struct rte_bus *bus)
 {
@@ -46,6 +50,7 @@ rte_bus_unregister(struct rte_bus *bus)
 }
 
 /* Scan all the buses for registered devices */
+RTE_EXPORT_SYMBOL(rte_bus_scan)
 int
 rte_bus_scan(void)
 {
@@ -63,6 +68,7 @@ rte_bus_scan(void)
 }
 
 /* Probe all devices of all buses */
+RTE_EXPORT_SYMBOL(rte_bus_probe)
 int
 rte_bus_probe(void)
 {
@@ -124,6 +130,7 @@ bus_dump_one(FILE *f, struct rte_bus *bus)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_dump)
 void
 rte_bus_dump(FILE *f)
 {
@@ -140,6 +147,7 @@ rte_bus_dump(FILE *f)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_find)
 struct rte_bus *
 rte_bus_find(const struct rte_bus *start, rte_bus_cmp_t cmp,
 	     const void *data)
@@ -175,6 +183,7 @@ bus_find_device(const struct rte_bus *bus, const void *_dev)
 	return dev == NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_find_by_device)
 struct rte_bus *
 rte_bus_find_by_device(const struct rte_device *dev)
 {
@@ -189,6 +198,7 @@ cmp_bus_name(const struct rte_bus *bus, const void *_name)
 	return strcmp(rte_bus_name(bus), name);
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_find_by_name)
 struct rte_bus *
 rte_bus_find_by_name(const char *busname)
 {
@@ -220,6 +230,7 @@ rte_bus_find_by_device_name(const char *str)
 /*
  * Get iommu class of devices on the bus.
  */
+RTE_EXPORT_SYMBOL(rte_bus_get_iommu_class)
 enum rte_iova_mode
 rte_bus_get_iommu_class(void)
 {

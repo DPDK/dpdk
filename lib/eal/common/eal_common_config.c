@@ -4,6 +4,7 @@
 
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
@@ -28,6 +29,7 @@ static char runtime_dir[PATH_MAX];
 /* internal configuration */
 static struct internal_config internal_config;
 
+RTE_EXPORT_SYMBOL(rte_eal_get_runtime_dir)
 const char *
 rte_eal_get_runtime_dir(void)
 {
@@ -59,6 +61,7 @@ eal_get_internal_configuration(void)
 	return &internal_config;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_iova_mode)
 enum rte_iova_mode
 rte_eal_iova_mode(void)
 {
@@ -66,6 +69,7 @@ rte_eal_iova_mode(void)
 }
 
 /* Get the EAL base address */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_get_baseaddr)
 uint64_t
 rte_eal_get_baseaddr(void)
 {
@@ -74,6 +78,7 @@ rte_eal_get_baseaddr(void)
 		       eal_get_baseaddr();
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_process_type)
 enum rte_proc_type_t
 rte_eal_process_type(void)
 {
@@ -81,6 +86,7 @@ rte_eal_process_type(void)
 }
 
 /* Return user provided mbuf pool ops name */
+RTE_EXPORT_SYMBOL(rte_eal_mbuf_user_pool_ops)
 const char *
 rte_eal_mbuf_user_pool_ops(void)
 {
@@ -88,12 +94,14 @@ rte_eal_mbuf_user_pool_ops(void)
 }
 
 /* return non-zero if hugepages are enabled. */
+RTE_EXPORT_SYMBOL(rte_eal_has_hugepages)
 int
 rte_eal_has_hugepages(void)
 {
 	return !internal_config.no_hugetlbfs;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_has_pci)
 int
 rte_eal_has_pci(void)
 {

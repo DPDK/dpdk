@@ -33,6 +33,7 @@
 #endif
 #include <rte_vect.h>
 
+#include <eal_export.h>
 #include "eal_internal_cfg.h"
 #include "eal_options.h"
 #include "eal_filesystem.h"
@@ -164,6 +165,7 @@ eal_get_application_usage_hook(void)
 }
 
 /* Set a per-application usage message */
+RTE_EXPORT_SYMBOL(rte_set_application_usage_hook)
 rte_usage_hook_t
 rte_set_application_usage_hook(rte_usage_hook_t usage_func)
 {
@@ -760,6 +762,7 @@ check_core_list(int *lcores, unsigned int count)
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_parse_coremask)
 int
 rte_eal_parse_coremask(const char *coremask, int *cores)
 {
@@ -2171,6 +2174,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vect_get_max_simd_bitwidth)
 uint16_t
 rte_vect_get_max_simd_bitwidth(void)
 {
@@ -2179,6 +2183,7 @@ rte_vect_get_max_simd_bitwidth(void)
 	return internal_conf->max_simd_bitwidth.bitwidth;
 }
 
+RTE_EXPORT_SYMBOL(rte_vect_set_max_simd_bitwidth)
 int
 rte_vect_set_max_simd_bitwidth(uint16_t bitwidth)
 {

@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <eal_export.h>
 #include <rte_ipsec.h>
 #include <rte_telemetry.h>
 #include <rte_malloc.h>
@@ -204,6 +205,7 @@ handle_telemetry_cmd_ipsec_sa_details(const char *cmd __rte_unused,
 }
 
 
+RTE_EXPORT_SYMBOL(rte_ipsec_telemetry_sa_add)
 int
 rte_ipsec_telemetry_sa_add(const struct rte_ipsec_sa *sa)
 {
@@ -216,6 +218,7 @@ rte_ipsec_telemetry_sa_add(const struct rte_ipsec_sa *sa)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_ipsec_telemetry_sa_del)
 void
 rte_ipsec_telemetry_sa_del(const struct rte_ipsec_sa *sa)
 {

@@ -9,6 +9,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_stdatomic.h>
 #include <rte_time.h>
@@ -40,6 +41,7 @@ static struct {
 } log_time;
 
 /* Set the log timestamp format */
+RTE_EXPORT_INTERNAL_SYMBOL(eal_log_timestamp)
 int
 eal_log_timestamp(const char *str)
 {

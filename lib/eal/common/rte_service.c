@@ -9,6 +9,7 @@
 #include <rte_service.h>
 #include <rte_service_component.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_lcore.h>
 #include <rte_lcore_var.h>
@@ -120,6 +121,7 @@ fail_mem:
 	return -ENOMEM;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_finalize)
 void
 rte_service_finalize(void)
 {
@@ -174,6 +176,7 @@ service_mt_safe(struct rte_service_spec_impl *s)
 	return !!(s->spec.capabilities & RTE_SERVICE_CAP_MT_SAFE);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_set_stats_enable)
 int32_t
 rte_service_set_stats_enable(uint32_t id, int32_t enabled)
 {
@@ -188,6 +191,7 @@ rte_service_set_stats_enable(uint32_t id, int32_t enabled)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_set_runstate_mapped_check)
 int32_t
 rte_service_set_runstate_mapped_check(uint32_t id, int32_t enabled)
 {
@@ -202,12 +206,14 @@ rte_service_set_runstate_mapped_check(uint32_t id, int32_t enabled)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_get_count)
 uint32_t
 rte_service_get_count(void)
 {
 	return rte_service_count;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_get_by_name)
 int32_t
 rte_service_get_by_name(const char *name, uint32_t *service_id)
 {
@@ -226,6 +232,7 @@ rte_service_get_by_name(const char *name, uint32_t *service_id)
 	return -ENODEV;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_get_name)
 const char *
 rte_service_get_name(uint32_t id)
 {
@@ -234,6 +241,7 @@ rte_service_get_name(uint32_t id)
 	return s->spec.name;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_probe_capability)
 int32_t
 rte_service_probe_capability(uint32_t id, uint32_t capability)
 {
@@ -242,6 +250,7 @@ rte_service_probe_capability(uint32_t id, uint32_t capability)
 	return !!(s->spec.capabilities & capability);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_component_register)
 int32_t
 rte_service_component_register(const struct rte_service_spec *spec,
 			       uint32_t *id_ptr)
@@ -276,6 +285,7 @@ rte_service_component_register(const struct rte_service_spec *spec,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_component_unregister)
 int32_t
 rte_service_component_unregister(uint32_t id)
 {
@@ -297,6 +307,7 @@ rte_service_component_unregister(uint32_t id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_component_runstate_set)
 int32_t
 rte_service_component_runstate_set(uint32_t id, uint32_t runstate)
 {
@@ -317,6 +328,7 @@ rte_service_component_runstate_set(uint32_t id, uint32_t runstate)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_runstate_set)
 int32_t
 rte_service_runstate_set(uint32_t id, uint32_t runstate)
 {
@@ -338,6 +350,7 @@ rte_service_runstate_set(uint32_t id, uint32_t runstate)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_runstate_get)
 int32_t
 rte_service_runstate_get(uint32_t id)
 {
@@ -448,6 +461,7 @@ service_run(uint32_t i, struct core_state *cs, const uint64_t *mapped_services,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_may_be_active)
 int32_t
 rte_service_may_be_active(uint32_t id)
 {
@@ -469,6 +483,7 @@ rte_service_may_be_active(uint32_t id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_run_iter_on_app_lcore)
 int32_t
 rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 {
@@ -528,6 +543,7 @@ service_runner_func(void *arg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_may_be_active)
 int32_t
 rte_service_lcore_may_be_active(uint32_t lcore)
 {
@@ -543,6 +559,7 @@ rte_service_lcore_may_be_active(uint32_t lcore)
 			       rte_memory_order_acquire);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_count)
 int32_t
 rte_service_lcore_count(void)
 {
@@ -556,6 +573,7 @@ rte_service_lcore_count(void)
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_list)
 int32_t
 rte_service_lcore_list(uint32_t array[], uint32_t n)
 {
@@ -580,6 +598,7 @@ rte_service_lcore_list(uint32_t array[], uint32_t n)
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_count_services)
 int32_t
 rte_service_lcore_count_services(uint32_t lcore)
 {
@@ -593,6 +612,7 @@ rte_service_lcore_count_services(uint32_t lcore)
 	return rte_bitset_count_set(cs->mapped_services, RTE_SERVICE_NUM_MAX);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_start_with_defaults)
 int32_t
 rte_service_start_with_defaults(void)
 {
@@ -666,6 +686,7 @@ service_update(uint32_t sid, uint32_t lcore, uint32_t *set, uint32_t *enabled)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_map_lcore_set)
 int32_t
 rte_service_map_lcore_set(uint32_t id, uint32_t lcore, uint32_t enabled)
 {
@@ -674,6 +695,7 @@ rte_service_map_lcore_set(uint32_t id, uint32_t lcore, uint32_t enabled)
 	return service_update(id, lcore, &on, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_map_lcore_get)
 int32_t
 rte_service_map_lcore_get(uint32_t id, uint32_t lcore)
 {
@@ -701,6 +723,7 @@ set_lcore_state(uint32_t lcore, int32_t state)
 	rte_eal_trace_service_lcore_state_change(lcore, state);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_reset_all)
 int32_t
 rte_service_lcore_reset_all(void)
 {
@@ -727,6 +750,7 @@ rte_service_lcore_reset_all(void)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_add)
 int32_t
 rte_service_lcore_add(uint32_t lcore)
 {
@@ -750,6 +774,7 @@ rte_service_lcore_add(uint32_t lcore)
 	return rte_eal_wait_lcore(lcore);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_del)
 int32_t
 rte_service_lcore_del(uint32_t lcore)
 {
@@ -774,6 +799,7 @@ rte_service_lcore_del(uint32_t lcore)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_start)
 int32_t
 rte_service_lcore_start(uint32_t lcore)
 {
@@ -807,6 +833,7 @@ rte_service_lcore_start(uint32_t lcore)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_stop)
 int32_t
 rte_service_lcore_stop(uint32_t lcore)
 {
@@ -947,6 +974,7 @@ attr_get_service_cycles(uint32_t service_id)
 	return attr_get(service_id, lcore_attr_get_service_cycles);
 }
 
+RTE_EXPORT_SYMBOL(rte_service_attr_get)
 int32_t
 rte_service_attr_get(uint32_t id, uint32_t attr_id, uint64_t *attr_value)
 {
@@ -974,6 +1002,7 @@ rte_service_attr_get(uint32_t id, uint32_t attr_id, uint64_t *attr_value)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_attr_get)
 int32_t
 rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 			   uint64_t *attr_value)
@@ -998,6 +1027,7 @@ rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_service_attr_reset_all)
 int32_t
 rte_service_attr_reset_all(uint32_t id)
 {
@@ -1016,6 +1046,7 @@ rte_service_attr_reset_all(uint32_t id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_service_lcore_attr_reset_all)
 int32_t
 rte_service_lcore_attr_reset_all(uint32_t lcore)
 {
@@ -1069,6 +1100,7 @@ service_dump_calls_per_lcore(FILE *f, uint32_t lcore)
 	fprintf(f, "\n");
 }
 
+RTE_EXPORT_SYMBOL(rte_service_dump)
 int32_t
 rte_service_dump(FILE *f, uint32_t id)
 {

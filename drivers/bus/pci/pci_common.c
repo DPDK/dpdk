@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_log.h>
@@ -32,6 +33,7 @@
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_get_sysfs_path)
 const char *rte_pci_get_sysfs_path(void)
 {
 	const char *path = NULL;
@@ -476,6 +478,7 @@ pci_dump_one_device(FILE *f, struct rte_pci_device *dev)
 }
 
 /* dump devices on the bus */
+RTE_EXPORT_SYMBOL(rte_pci_dump)
 void
 rte_pci_dump(FILE *f)
 {
@@ -500,6 +503,7 @@ pci_parse(const char *name, void *addr)
 }
 
 /* register a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_register)
 void
 rte_pci_register(struct rte_pci_driver *driver)
 {
@@ -507,6 +511,7 @@ rte_pci_register(struct rte_pci_driver *driver)
 }
 
 /* unregister a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_unregister)
 void
 rte_pci_unregister(struct rte_pci_driver *driver)
 {
@@ -794,6 +799,7 @@ rte_pci_get_iommu_class(void)
 	return iova_mode;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_has_capability_list, 23.11)
 bool
 rte_pci_has_capability_list(const struct rte_pci_device *dev)
 {
@@ -805,12 +811,14 @@ rte_pci_has_capability_list(const struct rte_pci_device *dev)
 	return (status & RTE_PCI_STATUS_CAP_LIST) != 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_find_capability, 23.11)
 off_t
 rte_pci_find_capability(const struct rte_pci_device *dev, uint8_t cap)
 {
 	return rte_pci_find_next_capability(dev, cap, 0);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_find_next_capability, 23.11)
 off_t
 rte_pci_find_next_capability(const struct rte_pci_device *dev, uint8_t cap,
 	off_t offset)
@@ -848,6 +856,7 @@ rte_pci_find_next_capability(const struct rte_pci_device *dev, uint8_t cap,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_find_ext_capability, 20.11)
 off_t
 rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap)
 {
@@ -890,6 +899,7 @@ rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_set_bus_master, 21.08)
 int
 rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable)
 {
@@ -918,6 +928,7 @@ rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_pci_pasid_set_state)
 int
 rte_pci_pasid_set_state(const struct rte_pci_device *dev,
 		off_t offset, bool enable)

@@ -5,8 +5,10 @@
 #include <errno.h>
 #include <time.h>
 
+#include <eal_export.h>
 #include <rte_cycles.h>
 
+RTE_EXPORT_SYMBOL(rte_delay_us_sleep)
 void
 rte_delay_us_sleep(unsigned int us)
 {

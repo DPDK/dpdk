@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <dev_driver.h>
@@ -3366,6 +3367,7 @@ static int agx100_configure(const char *dev_name, const struct rte_fpga_5gnr_fec
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_fpga_5gnr_fec_configure, 20.11)
 int rte_fpga_5gnr_fec_configure(const char *dev_name, const struct rte_fpga_5gnr_fec_conf *conf)
 {
 	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);

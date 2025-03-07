@@ -2,6 +2,7 @@
  * Copyright(C) 2023 Marvell.
  */
 
+#include <eal_export.h>
 #include <rte_mempool.h>
 #include <rte_pmd_cnxk_mempool.h>
 
@@ -200,6 +201,7 @@ cn10k_hwpool_populate(struct rte_mempool *hp, unsigned int max_objs,
 	return hp->size;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_mempool_mbuf_exchange, 23.07)
 int
 rte_pmd_cnxk_mempool_mbuf_exchange(struct rte_mbuf *m1, struct rte_mbuf *m2)
 {
@@ -227,12 +229,14 @@ rte_pmd_cnxk_mempool_mbuf_exchange(struct rte_mbuf *m1, struct rte_mbuf *m2)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_mempool_is_hwpool, 23.07)
 int
 rte_pmd_cnxk_mempool_is_hwpool(struct rte_mempool *mp)
 {
 	return !!(CNXK_MEMPOOL_FLAGS(mp) & CNXK_MEMPOOL_F_IS_HWPOOL);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_mempool_range_check_disable, 23.07)
 int
 rte_pmd_cnxk_mempool_range_check_disable(struct rte_mempool *mp)
 {

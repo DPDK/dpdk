@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_errno.h>
@@ -317,6 +318,7 @@ graph_src_node_avail(struct graph *graph)
 	return false;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_model_mcore_dispatch_core_bind)
 int
 rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
 {
@@ -348,6 +350,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_model_mcore_dispatch_core_unbind)
 void
 rte_graph_model_mcore_dispatch_core_unbind(rte_graph_t id)
 {
@@ -366,6 +369,7 @@ fail:
 	return;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_lookup)
 struct rte_graph *
 rte_graph_lookup(const char *name)
 {
@@ -379,6 +383,7 @@ rte_graph_lookup(const char *name)
 	return graph_mem_fixup_secondary(rc);
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_create)
 rte_graph_t
 rte_graph_create(const char *name, struct rte_graph_param *prm)
 {
@@ -483,6 +488,7 @@ fail:
 	return RTE_GRAPH_ID_INVALID;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_destroy)
 int
 rte_graph_destroy(rte_graph_t id)
 {
@@ -598,6 +604,7 @@ fail:
 	return RTE_GRAPH_ID_INVALID;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_clone)
 rte_graph_t
 rte_graph_clone(rte_graph_t id, const char *name, struct rte_graph_param *prm)
 {
@@ -613,6 +620,7 @@ fail:
 	return RTE_GRAPH_ID_INVALID;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_from_name)
 rte_graph_t
 rte_graph_from_name(const char *name)
 {
@@ -625,6 +633,7 @@ rte_graph_from_name(const char *name)
 	return RTE_GRAPH_ID_INVALID;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_id_to_name)
 char *
 rte_graph_id_to_name(rte_graph_t id)
 {
@@ -640,6 +649,7 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_node_get)
 struct rte_node *
 rte_graph_node_get(rte_graph_t gid, uint32_t nid)
 {
@@ -663,6 +673,7 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_node_get_by_name)
 struct rte_node *
 rte_graph_node_get_by_name(const char *graph_name, const char *node_name)
 {
@@ -685,6 +696,7 @@ rte_graph_node_get_by_name(const char *graph_name, const char *node_name)
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(__rte_node_stream_alloc)
 void __rte_noinline
 __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node)
 {
@@ -700,6 +712,7 @@ __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node)
 	node->realloc_count++;
 }
 
+RTE_EXPORT_SYMBOL(__rte_node_stream_alloc_size)
 void __rte_noinline
 __rte_node_stream_alloc_size(struct rte_graph *graph, struct rte_node *node,
 			     uint16_t req_size)
@@ -773,6 +786,7 @@ end:
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_export)
 int
 rte_graph_export(const char *name, FILE *f)
 {
@@ -810,18 +824,21 @@ fail:
 	return;
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_dump)
 void
 rte_graph_dump(FILE *f, rte_graph_t id)
 {
 	graph_scan_dump(f, id, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_list_dump)
 void
 rte_graph_list_dump(FILE *f)
 {
 	graph_scan_dump(f, 0, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_max_count)
 rte_graph_t
 rte_graph_max_count(void)
 {

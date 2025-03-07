@@ -15,6 +15,7 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
 #include "eal_filesystem.h"
@@ -36,6 +37,7 @@ uint64_t eal_get_baseaddr(void)
 /*
  * Get physical address of any mapped virtual address in the current process.
  */
+RTE_EXPORT_SYMBOL(rte_mem_virt2phy)
 phys_addr_t
 rte_mem_virt2phy(const void *virtaddr)
 {
@@ -44,6 +46,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	(void)virtaddr;
 	return RTE_BAD_IOVA;
 }
+RTE_EXPORT_SYMBOL(rte_mem_virt2iova)
 rte_iova_t
 rte_mem_virt2iova(const void *virtaddr)
 {
@@ -295,6 +298,7 @@ error:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_using_phys_addrs)
 int
 rte_eal_using_phys_addrs(void)
 {

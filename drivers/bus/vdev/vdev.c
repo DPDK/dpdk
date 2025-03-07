@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_eal.h>
 #include <dev_driver.h>
 #include <bus_driver.h>
@@ -51,6 +52,7 @@ static struct vdev_custom_scans vdev_custom_scans =
 static rte_spinlock_t vdev_custom_scan_lock = RTE_SPINLOCK_INITIALIZER;
 
 /* register a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdev_register)
 void
 rte_vdev_register(struct rte_vdev_driver *driver)
 {
@@ -58,12 +60,14 @@ rte_vdev_register(struct rte_vdev_driver *driver)
 }
 
 /* unregister a driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vdev_unregister)
 void
 rte_vdev_unregister(struct rte_vdev_driver *driver)
 {
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_add_custom_scan)
 int
 rte_vdev_add_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
 {
@@ -92,6 +96,7 @@ rte_vdev_add_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
 	return (custom_scan == NULL) ? -1 : 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_remove_custom_scan)
 int
 rte_vdev_remove_custom_scan(rte_vdev_scan_callback callback, void *user_arg)
 {
@@ -316,6 +321,7 @@ fail:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_init)
 int
 rte_vdev_init(const char *name, const char *args)
 {
@@ -355,6 +361,7 @@ vdev_remove_driver(struct rte_vdev_device *dev)
 	return driver->remove(dev);
 }
 
+RTE_EXPORT_SYMBOL(rte_vdev_uninit)
 int
 rte_vdev_uninit(const char *name)
 {

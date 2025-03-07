@@ -8,6 +8,7 @@
  */
 
 #include <string.h>
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_kvargs.h>
 #include <rte_devargs.h>
@@ -35,6 +36,7 @@ sfc_efx_kvarg_dev_class_handler(__rte_unused const char *key,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(sfc_efx_dev_class_get)
 enum sfc_efx_dev_class
 sfc_efx_dev_class_get(struct rte_devargs *devargs)
 {
@@ -93,6 +95,7 @@ sfc_efx_pci_config_readd(efsys_pci_config_t *configp, uint32_t offset,
 	return (rc < 0 || rc != sizeof(*edp)) ? EIO : 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(sfc_efx_family)
 int
 sfc_efx_family(struct rte_pci_device *pci_dev,
 	       efx_bar_region_t *mem_ebrp, efx_family_t *family)

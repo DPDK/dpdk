@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_ring.h>
 #include <rte_hexdump.h>
@@ -406,6 +407,7 @@ writer_stats_read(void *port, struct rte_swx_port_out_stats *stats)
 /*
  * Summary of port operations
  */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_port_ring_reader_ops, 21.05)
 struct rte_swx_port_in_ops rte_swx_port_ring_reader_ops = {
 	.create = reader_create,
 	.free = reader_free,
@@ -413,6 +415,7 @@ struct rte_swx_port_in_ops rte_swx_port_ring_reader_ops = {
 	.stats_read = reader_stats_read,
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_port_ring_writer_ops, 21.05)
 struct rte_swx_port_out_ops rte_swx_port_ring_writer_ops = {
 	.create = writer_create,
 	.free = writer_free,

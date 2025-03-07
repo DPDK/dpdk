@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
@@ -596,6 +597,7 @@ rte_port_sink_stats_read(void *port, struct rte_port_out_stats *stats,
 /*
  * Summary of port operations
  */
+RTE_EXPORT_SYMBOL(rte_port_source_ops)
 struct rte_port_in_ops rte_port_source_ops = {
 	.f_create = rte_port_source_create,
 	.f_free = rte_port_source_free,
@@ -603,6 +605,7 @@ struct rte_port_in_ops rte_port_source_ops = {
 	.f_stats = rte_port_source_stats_read,
 };
 
+RTE_EXPORT_SYMBOL(rte_port_sink_ops)
 struct rte_port_out_ops rte_port_sink_ops = {
 	.f_create = rte_port_sink_create,
 	.f_free = rte_port_sink_free,

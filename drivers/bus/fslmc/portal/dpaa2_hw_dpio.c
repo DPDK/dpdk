@@ -23,6 +23,7 @@
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -40,9 +41,12 @@
 
 #define NUM_HOST_CPUS RTE_MAX_LCORE
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_io_portal)
 struct dpaa2_io_portal_t dpaa2_io_portal[RTE_MAX_LCORE];
+RTE_EXPORT_INTERNAL_SYMBOL(per_lcore__dpaa2_io)
 RTE_DEFINE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_global_active_dqs_list)
 struct swp_active_dqs rte_global_active_dqs_list[NUM_MAX_SWP];
 
 TAILQ_HEAD(dpio_dev_list, dpaa2_dpio_dev);
@@ -51,11 +55,14 @@ static struct dpio_dev_list dpio_dev_list
 static uint32_t io_space_count;
 
 /* Variable to store DPAA2 platform type */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_svr_family)
 uint32_t dpaa2_svr_family;
 
 /* Variable to store DPAA2 DQRR size */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_dqrr_size)
 uint8_t dpaa2_dqrr_size;
 /* Variable to store DPAA2 EQCR size */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_eqcr_size)
 uint8_t dpaa2_eqcr_size;
 
 /* Variable to hold the portal_key, once created.*/
@@ -325,6 +332,7 @@ static struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(void)
 	return dpio_dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_affine_qbman_swp)
 int
 dpaa2_affine_qbman_swp(void)
 {
@@ -346,6 +354,7 @@ dpaa2_affine_qbman_swp(void)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_affine_qbman_ethrx_swp)
 int
 dpaa2_affine_qbman_ethrx_swp(void)
 {
@@ -606,6 +615,7 @@ err:
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_free_dq_storage)
 void
 dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage)
 {
@@ -617,6 +627,7 @@ dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_alloc_dq_storage)
 int
 dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage)
 {
@@ -639,6 +650,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_free_eq_descriptors)
 uint32_t
 dpaa2_free_eq_descriptors(void)
 {

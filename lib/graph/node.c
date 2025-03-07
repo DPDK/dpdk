@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_errno.h>
@@ -54,6 +55,7 @@ node_has_duplicate_entry(const char *name)
 }
 
 /* Public functions */
+RTE_EXPORT_SYMBOL(__rte_node_register)
 rte_node_t
 __rte_node_register(const struct rte_node_register *reg)
 {
@@ -189,6 +191,7 @@ fail:
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_clone)
 rte_node_t
 rte_node_clone(rte_node_t id, const char *name)
 {
@@ -203,6 +206,7 @@ fail:
 	return RTE_NODE_ID_INVALID;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_from_name)
 rte_node_t
 rte_node_from_name(const char *name)
 {
@@ -215,6 +219,7 @@ rte_node_from_name(const char *name)
 	return RTE_NODE_ID_INVALID;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_id_to_name)
 char *
 rte_node_id_to_name(rte_node_t id)
 {
@@ -229,6 +234,7 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_edge_count)
 rte_edge_t
 rte_node_edge_count(rte_node_t id)
 {
@@ -297,6 +303,7 @@ fail:
 	return count;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_edge_shrink)
 rte_edge_t
 rte_node_edge_shrink(rte_node_t id, rte_edge_t size)
 {
@@ -323,6 +330,7 @@ fail:
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_edge_update)
 rte_edge_t
 rte_node_edge_update(rte_node_t id, rte_edge_t from, const char **next_nodes,
 		     uint16_t nb_edges)
@@ -358,6 +366,7 @@ node_copy_edges(struct node *node, char *next_nodes[])
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_edge_get)
 rte_node_t
 rte_node_edge_get(rte_node_t id, char *next_nodes[])
 {
@@ -402,18 +411,21 @@ fail:
 	return;
 }
 
+RTE_EXPORT_SYMBOL(rte_node_dump)
 void
 rte_node_dump(FILE *f, rte_node_t id)
 {
 	node_scan_dump(f, id, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_node_list_dump)
 void
 rte_node_list_dump(FILE *f)
 {
 	node_scan_dump(f, 0, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_node_max_count)
 rte_node_t
 rte_node_max_count(void)
 {

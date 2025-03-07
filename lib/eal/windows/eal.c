@@ -9,6 +9,7 @@
 #include <share.h>
 #include <sys/stat.h>
 
+#include <eal_export.h>
 #include <rte_debug.h>
 #include <rte_bus.h>
 #include <rte_eal.h>
@@ -74,6 +75,7 @@ eal_proc_type_detect(void)
 	return ptype;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_disable)
 bool
 rte_mp_disable(void)
 {
@@ -189,9 +191,12 @@ rte_eal_init_alert(const char *msg)
  * until eal_common_trace.c can be compiled.
  */
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(per_lcore_trace_point_sz, 20.05)
 RTE_DEFINE_PER_LCORE(volatile int, trace_point_sz);
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(per_lcore_trace_mem, 20.05)
 RTE_DEFINE_PER_LCORE(void *, trace_mem);
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_mem_per_thread_alloc, 20.05)
 void
 __rte_trace_mem_per_thread_alloc(void)
 {
@@ -202,6 +207,7 @@ trace_mem_per_thread_free(void)
 {
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_point_emit_field, 20.05)
 void
 __rte_trace_point_emit_field(size_t sz, const char *field,
 	const char *type)
@@ -211,6 +217,7 @@ __rte_trace_point_emit_field(size_t sz, const char *field,
 	RTE_SET_USED(type);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_point_register, 20.05)
 int
 __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 	void (*register_fn)(void))
@@ -221,6 +228,7 @@ __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_cleanup)
 int
 rte_eal_cleanup(void)
 {
@@ -238,6 +246,7 @@ rte_eal_cleanup(void)
 }
 
 /* Launch threads, called at application init(). */
+RTE_EXPORT_SYMBOL(rte_eal_init)
 int
 rte_eal_init(int argc, char **argv)
 {
@@ -511,6 +520,7 @@ eal_asprintf(char **buffer, const char *format, ...)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vfio_container_dma_map)
 int
 rte_vfio_container_dma_map(__rte_unused int container_fd,
 			__rte_unused uint64_t vaddr,
@@ -521,6 +531,7 @@ rte_vfio_container_dma_map(__rte_unused int container_fd,
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vfio_container_dma_unmap)
 int
 rte_vfio_container_dma_unmap(__rte_unused int container_fd,
 			__rte_unused uint64_t vaddr,
@@ -531,6 +542,7 @@ rte_vfio_container_dma_unmap(__rte_unused int container_fd,
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_firmware_read)
 int
 rte_firmware_read(__rte_unused const char *name,
 			__rte_unused void **buf,

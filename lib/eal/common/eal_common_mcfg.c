@@ -5,6 +5,7 @@
 #include <rte_eal_memconfig.h>
 #include <rte_version.h>
 
+#include <eal_export.h>
 #include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
 #include "eal_private.h"
@@ -69,120 +70,140 @@ eal_mcfg_update_from_internal(void)
 	mcfg->version = RTE_VERSION;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mcfg_mem_get_lock)
 rte_rwlock_t *
 rte_mcfg_mem_get_lock(void)
 {
 	return &rte_eal_get_configuration()->mem_config->memory_hotplug_lock;
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mem_read_lock)
 void
 rte_mcfg_mem_read_lock(void)
 {
 	rte_rwlock_read_lock(rte_mcfg_mem_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mem_read_unlock)
 void
 rte_mcfg_mem_read_unlock(void)
 {
 	rte_rwlock_read_unlock(rte_mcfg_mem_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mem_write_lock)
 void
 rte_mcfg_mem_write_lock(void)
 {
 	rte_rwlock_write_lock(rte_mcfg_mem_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mem_write_unlock)
 void
 rte_mcfg_mem_write_unlock(void)
 {
 	rte_rwlock_write_unlock(rte_mcfg_mem_get_lock());
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mcfg_tailq_get_lock)
 rte_rwlock_t *
 rte_mcfg_tailq_get_lock(void)
 {
 	return &rte_eal_get_configuration()->mem_config->qlock;
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_tailq_read_lock)
 void
 rte_mcfg_tailq_read_lock(void)
 {
 	rte_rwlock_read_lock(rte_mcfg_tailq_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_tailq_read_unlock)
 void
 rte_mcfg_tailq_read_unlock(void)
 {
 	rte_rwlock_read_unlock(rte_mcfg_tailq_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_tailq_write_lock)
 void
 rte_mcfg_tailq_write_lock(void)
 {
 	rte_rwlock_write_lock(rte_mcfg_tailq_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_tailq_write_unlock)
 void
 rte_mcfg_tailq_write_unlock(void)
 {
 	rte_rwlock_write_unlock(rte_mcfg_tailq_get_lock());
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mcfg_mempool_get_lock)
 rte_rwlock_t *
 rte_mcfg_mempool_get_lock(void)
 {
 	return &rte_eal_get_configuration()->mem_config->mplock;
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mempool_read_lock)
 void
 rte_mcfg_mempool_read_lock(void)
 {
 	rte_rwlock_read_lock(rte_mcfg_mempool_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mempool_read_unlock)
 void
 rte_mcfg_mempool_read_unlock(void)
 {
 	rte_rwlock_read_unlock(rte_mcfg_mempool_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mempool_write_lock)
 void
 rte_mcfg_mempool_write_lock(void)
 {
 	rte_rwlock_write_lock(rte_mcfg_mempool_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_mempool_write_unlock)
 void
 rte_mcfg_mempool_write_unlock(void)
 {
 	rte_rwlock_write_unlock(rte_mcfg_mempool_get_lock());
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mcfg_timer_get_lock)
 rte_spinlock_t *
 rte_mcfg_timer_get_lock(void)
 {
 	return &rte_eal_get_configuration()->mem_config->tlock;
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_timer_lock)
 void
 rte_mcfg_timer_lock(void)
 {
 	rte_spinlock_lock(rte_mcfg_timer_get_lock());
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_timer_unlock)
 void
 rte_mcfg_timer_unlock(void)
 {
 	rte_spinlock_unlock(rte_mcfg_timer_get_lock());
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mcfg_ethdev_get_lock)
 rte_spinlock_t *
 rte_mcfg_ethdev_get_lock(void)
 {
 	return &rte_eal_get_configuration()->mem_config->ethdev_lock;
 }
 
+RTE_EXPORT_SYMBOL(rte_mcfg_get_single_file_segments)
 bool
 rte_mcfg_get_single_file_segments(void)
 {

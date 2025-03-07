@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include "rte_ethdev.h"
 #include "ethdev_driver.h"
@@ -11,6 +12,7 @@
 #include "ethdev_trace.h"
 
 /* Get congestion management information for a port */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_info_get, 22.11)
 int
 rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 {
@@ -39,6 +41,7 @@ rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 }
 
 /* Initialize congestion management structure with default values */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_config_init, 22.11)
 int
 rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 {
@@ -67,6 +70,7 @@ rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 }
 
 /* Configure congestion management on a port */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_config_set, 22.11)
 int
 rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *config)
 {
@@ -94,6 +98,7 @@ rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *conf
 }
 
 /* Retrieve congestion management configuration of a port */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_config_get, 22.11)
 int
 rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config)
 {

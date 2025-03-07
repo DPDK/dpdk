@@ -7,8 +7,10 @@
 #include "base/ixgbe_api.h"
 #include "base/ixgbe_x550.h"
 #include "ixgbe_ethdev.h"
+#include <eal_export.h>
 #include "rte_pmd_ixgbe.h"
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_mac_addr)
 int
 rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 			      struct rte_ether_addr *mac_addr)
@@ -45,6 +47,7 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 	return -EINVAL;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_ping_vf)
 int
 rte_pmd_ixgbe_ping_vf(uint16_t port, uint16_t vf)
 {
@@ -77,6 +80,7 @@ rte_pmd_ixgbe_ping_vf(uint16_t port, uint16_t vf)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_vlan_anti_spoof)
 int
 rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 {
@@ -107,6 +111,7 @@ rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_mac_anti_spoof)
 int
 rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 {
@@ -136,6 +141,7 @@ rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_vlan_insert)
 int
 rte_pmd_ixgbe_set_vf_vlan_insert(uint16_t port, uint16_t vf, uint16_t vlan_id)
 {
@@ -172,6 +178,7 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint16_t port, uint16_t vf, uint16_t vlan_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_tx_loopback)
 int
 rte_pmd_ixgbe_set_tx_loopback(uint16_t port, uint8_t on)
 {
@@ -202,6 +209,7 @@ rte_pmd_ixgbe_set_tx_loopback(uint16_t port, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_all_queues_drop_en)
 int
 rte_pmd_ixgbe_set_all_queues_drop_en(uint16_t port, uint8_t on)
 {
@@ -232,6 +240,7 @@ rte_pmd_ixgbe_set_all_queues_drop_en(uint16_t port, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_split_drop_en)
 int
 rte_pmd_ixgbe_set_vf_split_drop_en(uint16_t port, uint16_t vf, uint8_t on)
 {
@@ -267,6 +276,7 @@ rte_pmd_ixgbe_set_vf_split_drop_en(uint16_t port, uint16_t vf, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_vlan_stripq)
 int
 rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 {
@@ -314,6 +324,7 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_rxmode)
 int
 rte_pmd_ixgbe_set_vf_rxmode(uint16_t port, uint16_t vf,
 			    uint16_t rx_mask, uint8_t on)
@@ -361,6 +372,7 @@ rte_pmd_ixgbe_set_vf_rxmode(uint16_t port, uint16_t vf,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_rx)
 int
 rte_pmd_ixgbe_set_vf_rx(uint16_t port, uint16_t vf, uint8_t on)
 {
@@ -411,6 +423,7 @@ rte_pmd_ixgbe_set_vf_rx(uint16_t port, uint16_t vf, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_tx)
 int
 rte_pmd_ixgbe_set_vf_tx(uint16_t port, uint16_t vf, uint8_t on)
 {
@@ -461,6 +474,7 @@ rte_pmd_ixgbe_set_vf_tx(uint16_t port, uint16_t vf, uint8_t on)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_vlan_filter)
 int
 rte_pmd_ixgbe_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 				 uint64_t vf_mask, uint8_t vlan_on)
@@ -496,6 +510,7 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_vf_rate_limit)
 int
 rte_pmd_ixgbe_set_vf_rate_limit(uint16_t port, uint16_t vf,
 				uint32_t tx_rate, uint64_t q_msk)
@@ -512,6 +527,7 @@ rte_pmd_ixgbe_set_vf_rate_limit(uint16_t port, uint16_t vf,
 	return ixgbe_set_vf_rate_limit(dev, vf, tx_rate, q_msk);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_macsec_enable)
 int
 rte_pmd_ixgbe_macsec_enable(uint16_t port, uint8_t en, uint8_t rp)
 {
@@ -536,6 +552,7 @@ rte_pmd_ixgbe_macsec_enable(uint16_t port, uint8_t en, uint8_t rp)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_macsec_disable)
 int
 rte_pmd_ixgbe_macsec_disable(uint16_t port)
 {
@@ -555,6 +572,7 @@ rte_pmd_ixgbe_macsec_disable(uint16_t port)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_macsec_config_txsc)
 int
 rte_pmd_ixgbe_macsec_config_txsc(uint16_t port, uint8_t *mac)
 {
@@ -580,6 +598,7 @@ rte_pmd_ixgbe_macsec_config_txsc(uint16_t port, uint8_t *mac)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_macsec_config_rxsc)
 int
 rte_pmd_ixgbe_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 {
@@ -606,6 +625,7 @@ rte_pmd_ixgbe_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_macsec_select_txsa)
 int
 rte_pmd_ixgbe_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
@@ -662,6 +682,7 @@ rte_pmd_ixgbe_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_macsec_select_rxsa)
 int
 rte_pmd_ixgbe_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
@@ -705,6 +726,7 @@ rte_pmd_ixgbe_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_set_tc_bw_alloc)
 int
 rte_pmd_ixgbe_set_tc_bw_alloc(uint16_t port,
 			      uint8_t tc_num,
@@ -778,6 +800,7 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint16_t port,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_upd_fctrl_sbp)
 int
 rte_pmd_ixgbe_upd_fctrl_sbp(uint16_t port, int enable)
 {
@@ -807,6 +830,7 @@ rte_pmd_ixgbe_upd_fctrl_sbp(uint16_t port, int enable)
 }
 
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_init)
 int
 rte_pmd_ixgbe_bypass_init(uint16_t port_id)
 {
@@ -822,6 +846,7 @@ rte_pmd_ixgbe_bypass_init(uint16_t port_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_state_show)
 int
 rte_pmd_ixgbe_bypass_state_show(uint16_t port_id, uint32_t *state)
 {
@@ -836,6 +861,7 @@ rte_pmd_ixgbe_bypass_state_show(uint16_t port_id, uint32_t *state)
 	return ixgbe_bypass_state_show(dev, state);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_state_set)
 int
 rte_pmd_ixgbe_bypass_state_set(uint16_t port_id, uint32_t *new_state)
 {
@@ -850,6 +876,7 @@ rte_pmd_ixgbe_bypass_state_set(uint16_t port_id, uint32_t *new_state)
 	return ixgbe_bypass_state_store(dev, new_state);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_event_show)
 int
 rte_pmd_ixgbe_bypass_event_show(uint16_t port_id,
 				uint32_t event,
@@ -866,6 +893,7 @@ rte_pmd_ixgbe_bypass_event_show(uint16_t port_id,
 	return ixgbe_bypass_event_show(dev, event, state);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_event_store)
 int
 rte_pmd_ixgbe_bypass_event_store(uint16_t port_id,
 				 uint32_t event,
@@ -882,6 +910,7 @@ rte_pmd_ixgbe_bypass_event_store(uint16_t port_id,
 	return ixgbe_bypass_event_store(dev, event, state);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_wd_timeout_store)
 int
 rte_pmd_ixgbe_bypass_wd_timeout_store(uint16_t port_id, uint32_t timeout)
 {
@@ -896,6 +925,7 @@ rte_pmd_ixgbe_bypass_wd_timeout_store(uint16_t port_id, uint32_t timeout)
 	return ixgbe_bypass_wd_timeout_store(dev, timeout);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_ver_show)
 int
 rte_pmd_ixgbe_bypass_ver_show(uint16_t port_id, uint32_t *ver)
 {
@@ -910,6 +940,7 @@ rte_pmd_ixgbe_bypass_ver_show(uint16_t port_id, uint32_t *ver)
 	return ixgbe_bypass_ver_show(dev, ver);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_wd_timeout_show)
 int
 rte_pmd_ixgbe_bypass_wd_timeout_show(uint16_t port_id, uint32_t *wd_timeout)
 {
@@ -924,6 +955,7 @@ rte_pmd_ixgbe_bypass_wd_timeout_show(uint16_t port_id, uint32_t *wd_timeout)
 	return ixgbe_bypass_wd_timeout_show(dev, wd_timeout);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_bypass_wd_reset)
 int
 rte_pmd_ixgbe_bypass_wd_reset(uint16_t port_id)
 {
@@ -992,6 +1024,7 @@ STATIC void rte_pmd_ixgbe_release_swfw(struct ixgbe_hw *hw, u32 mask)
 	ixgbe_release_swfw_semaphore(hw, mask);
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_mdio_lock)
 int
 rte_pmd_ixgbe_mdio_lock(uint16_t port)
 {
@@ -1019,6 +1052,7 @@ rte_pmd_ixgbe_mdio_lock(uint16_t port)
 	return IXGBE_SUCCESS;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_mdio_unlock)
 int
 rte_pmd_ixgbe_mdio_unlock(uint16_t port)
 {
@@ -1046,6 +1080,7 @@ rte_pmd_ixgbe_mdio_unlock(uint16_t port)
 	return IXGBE_SUCCESS;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_mdio_unlocked_read)
 int
 rte_pmd_ixgbe_mdio_unlocked_read(uint16_t port, uint32_t reg_addr,
 				 uint32_t dev_type, uint16_t *phy_data)
@@ -1093,6 +1128,7 @@ rte_pmd_ixgbe_mdio_unlocked_read(uint16_t port, uint32_t reg_addr,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_pmd_ixgbe_mdio_unlocked_write)
 int
 rte_pmd_ixgbe_mdio_unlocked_write(uint16_t port, uint32_t reg_addr,
 				  uint32_t dev_type, uint16_t phy_data)
@@ -1140,6 +1176,7 @@ rte_pmd_ixgbe_mdio_unlocked_write(uint16_t port, uint32_t reg_addr,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ixgbe_get_fdir_info, 20.08)
 int
 rte_pmd_ixgbe_get_fdir_info(uint16_t port, struct rte_eth_fdir_info *fdir_info)
 {
@@ -1156,6 +1193,7 @@ rte_pmd_ixgbe_get_fdir_info(uint16_t port, struct rte_eth_fdir_info *fdir_info)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ixgbe_get_fdir_stats, 20.08)
 int
 rte_pmd_ixgbe_get_fdir_stats(uint16_t port,
 			     struct rte_eth_fdir_stats *fdir_stats)

@@ -14,6 +14,7 @@ sources = files(
         'base/iavf_common.c',
         'base/iavf_impl.c',
 
+        'iavf_base_symbols.c',
         'iavf_ethdev.c',
         'iavf_rxtx.c',
         'iavf_vchnl.c',

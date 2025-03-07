@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
 #include <rte_mbuf.h>
@@ -74,15 +75,23 @@ struct offload_info {
 };
 
 /* Offset of mbuf dynamic field for protocol extraction's metadata */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynfield_proto_xtr_metadata_offs, 20.11)
 int rte_pmd_ifd_dynfield_proto_xtr_metadata_offs = -1;
 
 /* Mask of mbuf dynamic flags for protocol extraction's type */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_vlan_mask, 20.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_vlan_mask;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_ipv4_mask, 20.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv4_mask;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask, 20.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv6_mask;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask, 20.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipv6_flow_mask;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_tcp_mask, 20.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_tcp_mask;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask, 20.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ip_offset_mask;
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask, 21.11)
 uint64_t rte_pmd_ifd_dynflag_proto_xtr_ipsec_crypto_said_mask;
 
 uint8_t

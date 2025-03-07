@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -207,6 +208,7 @@ rebuild_lpm(struct rte_lpm6 *lpm)
 /*
  * Allocates memory for LPM object
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_create)
 struct rte_lpm6 *
 rte_lpm6_create(const char *name, int socket_id,
 		const struct rte_lpm6_config *config)
@@ -347,6 +349,7 @@ fail_wo_unlock:
 /*
  * Find an existing lpm table and return a pointer to it.
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_find_existing)
 struct rte_lpm6 *
 rte_lpm6_find_existing(const char *name)
 {
@@ -375,6 +378,7 @@ rte_lpm6_find_existing(const char *name)
 /*
  * Deallocates memory for given LPM table.
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_free)
 void
 rte_lpm6_free(struct rte_lpm6 *lpm)
 {
@@ -819,6 +823,7 @@ simulate_add(struct rte_lpm6 *lpm, const struct rte_ipv6_addr *masked_ip, uint8_
 /*
  * Add a route
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_add)
 int
 rte_lpm6_add(struct rte_lpm6 *lpm, const struct rte_ipv6_addr *ip, uint8_t depth,
 	     uint32_t next_hop)
@@ -908,6 +913,7 @@ lookup_step(const struct rte_lpm6 *lpm, const struct rte_lpm6_tbl_entry *tbl,
 /*
  * Looks up an IP
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_lookup)
 int
 rte_lpm6_lookup(const struct rte_lpm6 *lpm, const struct rte_ipv6_addr *ip,
 		uint32_t *next_hop)
@@ -940,6 +946,7 @@ rte_lpm6_lookup(const struct rte_lpm6 *lpm, const struct rte_ipv6_addr *ip,
 /*
  * Looks up a group of IP addresses
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_lookup_bulk_func)
 int
 rte_lpm6_lookup_bulk_func(const struct rte_lpm6 *lpm,
 		struct rte_ipv6_addr *ips,
@@ -985,6 +992,7 @@ rte_lpm6_lookup_bulk_func(const struct rte_lpm6 *lpm,
 /*
  * Look for a rule in the high-level rules table
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_is_rule_present)
 int
 rte_lpm6_is_rule_present(struct rte_lpm6 *lpm, const struct rte_ipv6_addr *ip, uint8_t depth,
 			 uint32_t *next_hop)
@@ -1034,6 +1042,7 @@ rule_delete(struct rte_lpm6 *lpm, struct rte_ipv6_addr *ip, uint8_t depth)
  * rather than doing incremental updates like
  * the regular delete function
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_delete_bulk_func)
 int
 rte_lpm6_delete_bulk_func(struct rte_lpm6 *lpm,
 		struct rte_ipv6_addr *ips, uint8_t *depths,
@@ -1073,6 +1082,7 @@ rte_lpm6_delete_bulk_func(struct rte_lpm6 *lpm,
 /*
  * Delete all rules from the LPM table.
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_delete_all)
 void
 rte_lpm6_delete_all(struct rte_lpm6 *lpm)
 {
@@ -1257,6 +1267,7 @@ remove_tbl(struct rte_lpm6 *lpm, struct rte_lpm_tbl8_hdr *tbl_hdr,
 /*
  * Deletes a rule
  */
+RTE_EXPORT_SYMBOL(rte_lpm6_delete)
 int
 rte_lpm6_delete(struct rte_lpm6 *lpm, const struct rte_ipv6_addr *ip, uint8_t depth)
 {
