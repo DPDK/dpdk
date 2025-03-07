@@ -36,8 +36,6 @@ uint8_t expected_first_frag_ipv4_opts_nocopied[] = {
 	0x00, 0x00, 0x00, 0x00,
 };
 
-uint8_t expected_sub_frag_ipv4_opts_nocopied[0];
-
 struct test_opt_data {
 	bool is_first_frag;		 /**< offset is 0 */
 	bool opt_copied;		 /**< ip option copied flag */
@@ -153,11 +151,8 @@ test_get_ipv4_opt(bool is_first_frag, bool opt_copied,
 				expected_sub_frag_ipv4_opts_copied,
 				sizeof(expected_sub_frag_ipv4_opts_copied));
 		} else {
-			expected_opt->len =
-				sizeof(expected_sub_frag_ipv4_opts_nocopied);
-			memcpy(expected_opt->data,
-				expected_sub_frag_ipv4_opts_nocopied,
-				sizeof(expected_sub_frag_ipv4_opts_nocopied));
+			expected_opt->len = 0;
+			/* No data to be copied */
 		}
 	}
 }
