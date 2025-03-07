@@ -8,6 +8,7 @@ from dataclasses import MISSING, dataclass, field, fields
 from typing import TYPE_CHECKING, ParamSpec
 
 from framework.exception import InternalError
+from framework.remote_session.shell_pool import ShellPool
 from framework.settings import SETTINGS
 from framework.testbed_model.cpu import LogicalCoreCount, LogicalCoreList
 from framework.testbed_model.node import Node
@@ -70,6 +71,7 @@ class Context:
     dpdk: "DPDKRuntimeEnvironment"
     tg: "TrafficGenerator"
     local: LocalContext = field(default_factory=LocalContext)
+    shell_pool: ShellPool = field(default_factory=ShellPool)
 
 
 __current_ctx: Context | None = None

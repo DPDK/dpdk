@@ -15,6 +15,7 @@ remote\_session - Node Connections Package
    framework.remote_session.ssh_session
    framework.remote_session.interactive_remote_session
    framework.remote_session.interactive_shell
+   framework.remote_session.shell_pool
    framework.remote_session.dpdk
    framework.remote_session.dpdk_shell
    framework.remote_session.testpmd_shell
