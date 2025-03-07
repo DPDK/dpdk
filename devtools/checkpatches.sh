@@ -9,7 +9,7 @@
 # - DPDK_CHECKPATCH_OPTIONS
 . $(dirname $(readlink -f $0))/load-devel-config
 
-VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.sh
+VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.py
 
 # Enable codespell by default. This can be overwritten from a config file.
 # Codespell can also be enabled by setting DPDK_CHECKPATCH_CODESPELL to a valid path
@@ -472,7 +472,7 @@ check () { # <patch-file> <commit>
 	fi
 
 	! $verbose || printf '\nChecking API additions/removals:\n'
-	report=$($VALIDATE_NEW_API "$tmpinput")
+	report=$($VALIDATE_NEW_API --patch "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"

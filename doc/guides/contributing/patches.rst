@@ -160,9 +160,9 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
 
   * For other PMDs and more info, refer to the ``MAINTAINERS`` file.
 
-* New external functions should be added to the local ``version.map`` file. See
-  the :doc:`ABI policy <abi_policy>` and :ref:`ABI versioning <abi_versioning>`
-  guides. New external functions should also be added in alphabetical order.
+* New external functions should be exported.
+  See the :doc:`ABI policy <abi_policy>` and :ref:`ABI versioning <abi_versioning>`
+  guides.
 
 * Any new API function should be used in ``/app`` test directory.
 

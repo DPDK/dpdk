@@ -1018,13 +1018,6 @@ name
 	sources are stored in a directory ``lib/xyz``, this value should
 	never be needed for new libraries.
 
-.. note::
-
-	The name value also provides the name used to find the function version
-	map file, as part of the build process, so if the directory name and
-	library names differ, the ``version.map`` file should be named
-	consistently with the library, not the directory
-
 objs
 	**Default Value = []**.
 	This variable can be used to pass to the library build some pre-built

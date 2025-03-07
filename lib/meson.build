@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-fs = import('fs')
 
 # process all libraries equally, as far as possible
 # "core" libs first, then others alphabetically as far as possible
@@ -289,61 +288,27 @@ foreach l:libraries
             include_directories: includes,
             dependencies: static_deps)
 
-    if not fs.is_file('@0@/@1@/version.map'.format(meson.current_source_dir(), l))
-        if is_ms_linker
-            link_mode = 'mslinker'
-        elif is_windows
-            link_mode = 'mingw'
-        else
-            link_mode = 'gnu'
-        endif
-        version_map = custom_target(libname + '_map',
-                command: [gen_version_map, '--linker', link_mode,
-                          '--abi-version', abi_version_file, '--output', '@OUTPUT@',
-                          '--source', '@INPUT@'],
-                input: sources,
-                output: '_'.join([name, 'exports.map']))
-        version_map_path = version_map.full_path()
-        version_map_dep = [version_map]
-        lk_deps = [version_map]
-
-        if is_ms_linker and is_ms_compiler
-            lk_args = ['/def:' + version_map.full_path()]
-        elif is_ms_linker
-            lk_args = ['-Wl,/def:' + version_map.full_path()]
-        else
-            lk_args = ['-Wl,--version-script=' + version_map.full_path()]
-        endif
+    if is_ms_linker
+        link_mode = 'mslinker'
+    elif is_windows
+        link_mode = 'mingw'
     else
-        version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), l)
-        version_map_path = version_map
-        version_map_dep = []
-        lk_deps = [version_map]
-        if is_ms_linker
-            def_file = custom_target(libname + '_def',
-                    command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                    input: version_map,
-                    output: '@0@_exports.def'.format(libname))
-            lk_deps += [def_file]
+        link_mode = 'gnu'
+    endif
+    version_map = custom_target(libname + '_map',
+            command: [gen_version_map, '--linker', link_mode,
+                      '--abi-version', abi_version_file, '--output', '@OUTPUT@',
+                      '--source', '@INPUT@'],
+            input: sources,
+            output: '_'.join([name, 'exports.map']))
+    lk_deps = [version_map]
 
-            if is_ms_compiler
-                lk_args = ['/def:' + def_file.full_path()]
-            else
-                lk_args = ['-Wl,/def:' + def_file.full_path()]
-            endif
-        else
-            if is_windows
-                mingw_map = custom_target(libname + '_mingw',
-                        command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                        input: version_map,
-                        output: '@0@_mingw.map'.format(libname))
-                lk_deps += [mingw_map]
-
-                lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
-            else
-                lk_args = ['-Wl,--version-script=' + version_map]
-            endif
-        endif
+    if is_ms_linker and is_ms_compiler
+        lk_args = ['/def:' + version_map.full_path()]
+    elif is_ms_linker
+        lk_args = ['-Wl,/def:' + version_map.full_path()]
+    else
+        lk_args = ['-Wl,--version-script=' + version_map.full_path()]
     endif
 
     if developer_mode and not is_windows
@@ -351,11 +316,11 @@ foreach l:libraries
         # check-symbols.sh script, using it as a
         # dependency of the .so build
         lk_deps += custom_target(name + '.sym_chk',
-                command: [check_symbols, version_map_path, '@INPUT@'],
+                command: [check_symbols, version_map.full_path(), '@INPUT@'],
                 capture: true,
                 input: static_lib,
                 output: name + '.sym_chk',
-                depends: version_map_dep)
+                depends: [version_map])
     endif
 
     if not use_function_versioning or is_windows

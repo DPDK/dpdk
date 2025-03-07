@@ -5,8 +5,6 @@ if is_ms_compiler
     subdir_done()
 endif
 
-fs = import('fs')
-
 # Defines the order of dependencies evaluation
 subdirs = [
         'common',
@@ -290,59 +288,27 @@ foreach subpath:subdirs
                 install: true)
 
         # now build the shared driver
-        version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), drv_path)
-
-        if not fs.is_file(version_map)
-            if is_ms_linker
-                link_mode = 'mslinker'
-            elif is_windows
-                link_mode = 'mingw'
-            else
-                link_mode = 'gnu'
-            endif
-            version_map = custom_target(lib_name + '_map',
-                    command: [gen_version_map, '--linker', link_mode,
-                              '--abi-version', abi_version_file, '--output', '@OUTPUT@',
-                              '--source', '@INPUT@'],
-                    input: sources + sources_avx2 + sources_avx512,
-                    output: '_'.join([class, name, 'exports.map']))
-            version_map_path = version_map.full_path()
-            version_map_dep = [version_map]
-            lk_deps = [version_map]
-
-            if is_ms_linker and is_ms_compiler
-                lk_args = ['/def:' + version_map.full_path()]
-            elif is_ms_linker
-                lk_args = ['-Wl,/def:' + version_map.full_path()]
-            else
-                lk_args = ['-Wl,--version-script=' + version_map.full_path()]
-            endif
+        if is_ms_linker
+            link_mode = 'mslinker'
+        elif is_windows
+            link_mode = 'mingw'
         else
-            version_map_path = version_map
-            version_map_dep = []
-            lk_deps = [version_map]
+            link_mode = 'gnu'
+        endif
+        version_map = custom_target(lib_name + '_map',
+                command: [gen_version_map, '--linker', link_mode,
+                          '--abi-version', abi_version_file, '--output', '@OUTPUT@',
+                          '--source', '@INPUT@'],
+                input: sources + sources_avx2 + sources_avx512,
+                output: '_'.join([class, name, 'exports.map']))
+        lk_deps = [version_map]
 
-            if is_windows
-                if is_ms_linker
-                    def_file = custom_target(lib_name + '_def',
-                            command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                            input: version_map,
-                            output: '@0@_exports.def'.format(lib_name))
-                    lk_deps += [def_file]
-
-                    lk_args = ['-Wl,/def:' + def_file.full_path()]
-                else
-                    mingw_map = custom_target(lib_name + '_mingw',
-                            command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                            input: version_map,
-                            output: '@0@_mingw.map'.format(lib_name))
-                    lk_deps += [mingw_map]
-
-                    lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
-                endif
-            else
-                lk_args = ['-Wl,--version-script=' + version_map]
-            endif
+        if is_ms_linker and is_ms_compiler
+            lk_args = ['/def:' + version_map.full_path()]
+        elif is_ms_linker
+            lk_args = ['-Wl,/def:' + version_map.full_path()]
+        else
+            lk_args = ['-Wl,--version-script=' + version_map.full_path()]
         endif
 
         if not is_windows and developer_mode
@@ -350,11 +316,11 @@ foreach subpath:subdirs
             # check-symbols.sh script, using it as a
             # dependency of the .so build
             lk_deps += custom_target(lib_name + '.sym_chk',
-                    command: [check_symbols, version_map_path, '@INPUT@'],
+                    command: [check_symbols, version_map.full_path(), '@INPUT@'],
                     capture: true,
                     input: static_lib,
                     output: lib_name + '.sym_chk',
-                    depends: version_map_dep)
+                    depends: [version_map])
         endif
 
         shared_lib = shared_library(lib_name, sources_pmd_info,

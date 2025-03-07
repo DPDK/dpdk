@@ -96,17 +96,13 @@ F: devtools/check-forbidden-tokens.awk
 F: devtools/check-git-log.sh
 F: devtools/check-spdx-tag.sh
 F: devtools/check-symbol-change.py
-F: devtools/check-symbol-change.sh
-F: devtools/check-symbol-maps.sh
 F: devtools/checkpatches.sh
 F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
 F: devtools/parse-flow-support.sh
 F: devtools/process-iwyu.py
-F: devtools/update-abi.sh
 F: devtools/update-patches.py
-F: devtools/update_version_map_abi.py
 F: devtools/libabigail.abignore
 F: devtools/words-case.txt
 F: license/
@@ -166,7 +162,6 @@ M: Tyler Retzlaff <roretzla@linux.microsoft.com>
 F: lib/eal/common/
 F: lib/eal/unix/
 F: lib/eal/include/
-F: lib/eal/version.map
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
 F: app/test/test_atomic.c
@@ -396,7 +391,6 @@ Windows support
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
 M: Tyler Retzlaff <roretzla@linux.microsoft.com>
 F: lib/eal/windows/
-F: buildtools/map_to_win.py
 F: doc/guides/windows_gsg/
 
 Windows memory allocation

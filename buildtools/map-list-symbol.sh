@@ -42,7 +42,6 @@ for file in $@; do
 	cat "$file" |awk '
 	BEGIN {
 		current_section = "";
-		current_version = "";
 		if ("'$section'" == "all" && "'$symbol'" == "all" && "'$version'" == "") {
 			ret = 0;
 		} else {
@@ -54,15 +53,11 @@ for file in $@; do
 			current_section = $1;
 		}
 	}
-	/.*}/ { current_section = ""; current_version = ""; }
-	/^\t# added in / {
-		current_version=$4;
-	}
+	/.*}/ { current_section = ""; }
 	/^[^}].*[^:*];/ {
 		if (current_section == "") {
 			next;
 		}
-		symbol_version = current_version
 		if (/^[^}].*[^:*]; # added in /) {
 			symbol_version = $5
 		}

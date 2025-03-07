@@ -330,31 +330,14 @@ become part of a tracked ABI version.
 
 Note that marking an API as experimental is a multi step process.
 To mark an API as experimental, the symbols which are desired to be exported
-must be placed in an EXPERIMENTAL version block in the corresponding libraries'
-version map script.
+must be annotated with a RTE_EXPORT_EXPERIMENTAL_SYMBOL call in the corresponding libraries'
+sources.
 Experimental symbols must be commented so that it is clear in which DPDK
 version they were introduced.
-
-.. code-block:: none
-
-   EXPERIMENTAL {
-           global:
-
-           # added in 20.11
-           rte_foo_init;
-           rte_foo_configure;
-
-           # added in 21.02
-           rte_foo_cleanup;
-   ...
 
 Secondly, the corresponding prototypes of those exported functions (in the
 development header files), must be marked with the ``__rte_experimental`` tag
 (see ``rte_compat.h``).
-The DPDK build makefiles perform a check to ensure that the map file and the
-C code reflect the same list of symbols.
-This check can be circumvented by defining ``ALLOW_EXPERIMENTAL_API``
-during compilation in the corresponding library Makefile.
 
 In addition to tagging the code with ``__rte_experimental``,
 the doxygen markup must also contain the EXPERIMENTAL string,
