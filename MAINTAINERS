@@ -621,7 +621,7 @@ M: Xueming Li <xuemingl@nvidia.com>
 F: drivers/bus/auxiliary/
 
 Intel FPGA bus
-M: Rosen Xu <rosen.xu@intel.com>
+M: Rosen Xu <rosen.xu@altera.com>
 F: drivers/bus/ifpga/
 
 NXP buses
@@ -847,7 +847,7 @@ F: doc/guides/nics/cpfl.rst
 F: doc/guides/nics/features/cpfl.ini
 
 Intel ipn3ke
-M: Rosen Xu <rosen.xu@intel.com>
+M: Rosen Xu <rosen.xu@altera.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/ipn3ke/
 F: doc/guides/nics/ipn3ke.rst
@@ -1540,7 +1540,7 @@ Rawdev Drivers
 --------------
 
 Intel FPGA
-M: Rosen Xu <rosen.xu@intel.com>
+M: Rosen Xu <rosen.xu@altera.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/raw/ifpga/
 F: doc/guides/rawdevs/ifpga.rst
