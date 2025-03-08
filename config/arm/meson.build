@@ -841,6 +841,7 @@ if update_flags
         implementer_config = implementers[implementer_id]
         part_number = soc_config['part_number']
         soc_flags = soc_config.get('flags', [])
+        extra_features = soc_config.get('extra_march_features', [])
         if not soc_config.get('numa', true)
             has_libnuma = false
         endif
@@ -909,11 +910,15 @@ if update_flags
         machine_args += march
     else
         candidate_mcpu = '-mcpu=' + mcpu
-        if (cc.has_argument(candidate_mcpu))
-            machine_args += candidate_mcpu
-        else
+        if not cc.has_argument(candidate_mcpu)
             error('Compiler does not support -mcpu=@0@.'.format(mcpu))
         endif
+        foreach flag: extra_features
+            if cc.has_argument('+'.join([candidate_mcpu, flag]))
+                candidate_mcpu = '+'.join([candidate_mcpu, flag])
+            endif
+        endforeach
+        machine_args += candidate_mcpu
     endif
 
     # apply supported compiler options
