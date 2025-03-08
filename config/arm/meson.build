@@ -446,6 +446,7 @@ soc_cn9k = {
     'description': 'Marvell OCTEON 9',
     'implementer': '0x43',
     'part_number': '0xb2',
+    'extra_march_features': ['crypto'],
     'numa': false,
 }
 
