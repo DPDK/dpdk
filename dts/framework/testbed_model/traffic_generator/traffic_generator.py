@@ -17,10 +17,10 @@ from framework.config.test_run import TrafficGeneratorConfig
 from framework.logger import DTSLogger, get_dts_logger
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port
-from framework.utils import MultiInheritanceBaseClass, get_packet_summaries
+from framework.utils import get_packet_summaries
 
 
-class TrafficGenerator(MultiInheritanceBaseClass, ABC):
+class TrafficGenerator(ABC):
     """The base traffic generator.
 
     Exposes the common public methods of all traffic generators and defines private methods
@@ -48,13 +48,13 @@ class TrafficGenerator(MultiInheritanceBaseClass, ABC):
         self._config = config
         self._tg_node = tg_node
         self._logger = get_dts_logger(f"{self._tg_node.name} {self._config.type}")
-        super().__init__(**kwargs)
 
     def setup(self, ports: Iterable[Port], rx_port: Port):
         """Setup the traffic generator."""
 
     def teardown(self, ports: Iterable[Port]):
         """Teardown the traffic generator."""
+        self.close()
 
     def send_packet(self, packet: Packet, port: Port) -> None:
         """Send `packet` and block until it is fully sent.

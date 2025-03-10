@@ -169,12 +169,12 @@ class ScapyAsyncSniffer(PythonShell):
         finally:
             self.stop_capturing()
 
-    def start_application(self) -> None:
+    def start_application(self, prompt: str | None = None) -> None:
         """Overrides :meth:`framework.remote_session.interactive_shell.start_application`.
 
         Prepares the Python shell for scapy and starts the sniffing in a new thread.
         """
-        super().start_application()
+        super().start_application(prompt)
         self.send_command("from scapy.all import *")
         self._sniffer.start()
         self._is_sniffing.wait()
@@ -261,7 +261,7 @@ class ScapyAsyncSniffer(PythonShell):
         self._packet_filter = _filter
 
 
-class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
+class ScapyTrafficGenerator(CapturingTrafficGenerator):
     """Provides access to scapy functions on a traffic generator node.
 
     This class extends the base with remote execution of scapy functions. All methods for
@@ -285,6 +285,7 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
     """
 
     _config: ScapyTrafficGeneratorConfig
+    _shell: PythonShell
     _sniffer: ScapyAsyncSniffer
 
     #: Name of sniffer to ensure the same is used in all places
@@ -311,8 +312,7 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
             tg_node.config.os == OS.linux
         ), "Linux is the only supported OS for scapy traffic generation"
 
-        super().__init__(node=tg_node, config=config, tg_node=tg_node, **kwargs)
-        self.start_application()
+        super().__init__(tg_node=tg_node, config=config, **kwargs)
 
     def setup(self, ports: Iterable[Port], rx_port: Port):
         """Extends :meth:`.traffic_generator.TrafficGenerator.setup`.
@@ -325,22 +325,17 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
         self._sniffer = ScapyAsyncSniffer(self._tg_node, rx_port, self._sniffer_name)
         self._sniffer.start_application()
 
-    def teardown(self, ports):
-        """Extends :meth:`.traffic_generator.TrafficGenerator.teardown`.
+        self._shell = PythonShell(self._tg_node, "scapy", privileged=True)
+        self._shell.start_application()
+        self._shell.send_command("from scapy.all import *")
 
-        Stops the async sniffer.
+    def close(self):
+        """Overrides :meth:`.traffic_generator.TrafficGenerator.close`.
+
+        Stops the traffic generator and sniffer shells.
         """
+        self._shell.close()
         self._sniffer.close()
-        super().teardown(ports)
-
-    def start_application(self) -> None:
-        """Extends :meth:`framework.remote_session.interactive_shell.start_application`.
-
-        Adds a command that imports everything from the scapy library immediately after starting
-        the shell for usage in later calls to the methods of this class.
-        """
-        super().start_application()
-        self.send_command("from scapy.all import *")
 
     def _send_packets(self, packets: list[Packet], port: Port) -> None:
         """Implementation for sending packets without capturing any received traffic.
@@ -356,7 +351,7 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
             "verbose=True",
             ")",
         ]
-        self.send_command(f"\n{self._python_indentation}".join(send_command))
+        self._shell.send_command(f"\n{self._python_indentation}".join(send_command))
 
     def _send_packets_and_capture(
         self,
@@ -390,6 +385,6 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
             packets: The list of packets to recreate in the shell.
         """
         self._logger.info("Building a list of packets to send.")
-        self.send_command(
+        self._shell.send_command(
             f"{self._send_packet_list_name} = [{', '.join(map(Packet.command, packets))}]"
         )

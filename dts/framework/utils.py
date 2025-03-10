@@ -298,20 +298,6 @@ def generate_random_packets(
     return [_make_packet() for _ in range(number_of)]
 
 
-class MultiInheritanceBaseClass:
-    """A base class for classes utilizing multiple inheritance.
-
-    This class enables it's subclasses to support both single and multiple inheritance by acting as
-    a stopping point in the tree of calls to the constructors of superclasses. This class is able
-    to exist at the end of the Method Resolution Order (MRO) so that subclasses can call
-    :meth:`super.__init__` without repercussion.
-    """
-
-    def __init__(self) -> None:
-        """Call the init method of :class:`object`."""
-        super().__init__()
-
-
 def to_pascal_case(text: str) -> str:
     """Convert `text` from snake_case to PascalCase."""
     return "".join([seg.capitalize() for seg in text.split("_")])
