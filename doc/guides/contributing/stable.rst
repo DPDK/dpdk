@@ -73,7 +73,7 @@ that a tagged release has been tested.
 For a list of the currently maintained stable/LTS branches please see
 the latest `stable roadmap <https://core.dpdk.org/roadmap/#stable>`_.
 
-At the end of the 2 years, a final X.11.N release will be made and at that
+At the end of the 3 years, a final X.11.N release will be made and at that
 point the LTS branch will no longer be maintained with no further releases.
 
 
