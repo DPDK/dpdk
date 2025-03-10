@@ -2656,18 +2656,16 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 			&eth_dev->data->mac_addrs[0]);
 
 
-	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
-		/* register callback func to eal lib */
-		rte_intr_callback_register(pci_dev->intr_handle,
-					   iavf_dev_interrupt_handler,
-					   (void *)eth_dev);
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR &&
+			/* register callback func to eal lib */
+			rte_intr_callback_register(pci_dev->intr_handle,
+				   iavf_dev_interrupt_handler, (void *)eth_dev) == 0)
 
 		/* enable uio intr after callback register */
 		rte_intr_enable(pci_dev->intr_handle);
-	} else {
+	else
 		rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
 				  iavf_dev_alarm_handler, eth_dev);
-	}
 
 	/* configure and enable device interrupt */
 	iavf_enable_irq0(hw);
