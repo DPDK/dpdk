@@ -1512,9 +1512,6 @@ class TestPmdShell(DPDKShell):
     _app_params: TestPmdParams
     _ports: list[TestPmdPort] | None
 
-    #: The path to the testpmd executable.
-    path: ClassVar[PurePath] = PurePath("app", "dpdk-testpmd")
-
     #: The testpmd's prompt.
     _default_prompt: ClassVar[str] = "testpmd>"
 
@@ -1535,6 +1532,11 @@ class TestPmdShell(DPDKShell):
         super().__init__(name, privileged, app_params=TestPmdParams(**app_params))
         self.ports_started = not self._app_params.disable_device_start
         self._ports = None
+
+    @property
+    def path(self) -> PurePath:
+        """The path to the testpmd executable."""
+        return PurePath("app/dpdk-testpmd")
 
     @property
     def ports(self) -> list[TestPmdPort]:

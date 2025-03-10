@@ -21,7 +21,7 @@ The :option:`--timeout` command line argument and the :envvar:`DTS_TIMEOUT`
 environment variable configure the timeout of getting the output from command execution.
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from pathlib import PurePath
 from typing import ClassVar
 
@@ -66,7 +66,6 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
     _timeout: float
     _app_params: Params
     _privileged: bool
-    _real_path: PurePath
 
     #: The number of times to try starting the application before considering it a failure.
     _init_attempts: ClassVar[int] = 5
@@ -83,9 +82,6 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
     #: the expected prompt.
     _command_extra_chars: ClassVar[str] = ""
 
-    #: Path to the executable to start the interactive application.
-    path: ClassVar[PurePath]
-
     is_alive: bool = False
 
     def __init__(
@@ -93,7 +89,6 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
         node: Node,
         name: str | None = None,
         privileged: bool = False,
-        path: PurePath | None = None,
         app_params: Params = Params(),
         **kwargs,
     ) -> None:
@@ -107,7 +102,6 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
             name: Name for the interactive shell to use for logging. This name will be appended to
                 the name of the underlying node which it is running on.
             privileged: Enables the shell to run as superuser.
-            path: Path to the executable. If :data:`None`, then the class' path attribute is used.
             app_params: The command line parameters to be passed to the application on startup.
             **kwargs: Any additional arguments if any.
         """
@@ -118,8 +112,6 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
         self._app_params = app_params
         self._privileged = privileged
         self._timeout = SETTINGS.timeout
-        # Ensure path is properly formatted for the host
-        self._update_real_path(path or self.path)
         super().__init__(**kwargs)
 
     def _setup_ssh_channel(self):
@@ -131,7 +123,7 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
 
     def _make_start_command(self) -> str:
         """Makes the command that starts the interactive shell."""
-        start_command = f"{self._real_path} {self._app_params or ''}"
+        start_command = f"{self._make_real_path()} {self._app_params or ''}"
         if self._privileged:
             start_command = self._node.main_session._get_privileged_command(start_command)
         return start_command
@@ -250,9 +242,13 @@ class InteractiveShell(MultiInheritanceBaseClass, ABC):
             raise InteractiveSSHTimeoutError("Application 'exit' command") from e
         self._ssh_channel.close()
 
-    def _update_real_path(self, path: PurePath) -> None:
-        """Updates the interactive shell's real path used at command line."""
-        self._real_path = self._node.main_session.join_remote_path(path)
+    @property
+    @abstractmethod
+    def path(self) -> PurePath:
+        """Path to the shell executable."""
+
+    def _make_real_path(self) -> PurePath:
+        return self._node.main_session.join_remote_path(self.path)
 
     def __enter__(self) -> Self:
         """Enter the context block.

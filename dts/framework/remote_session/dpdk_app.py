@@ -54,7 +54,14 @@ class BlockingDPDKApp(DPDKShell):
             eal_params.append_str(app_params)
             app_params = eal_params
 
-        super().__init__(name, privileged, path, app_params)
+        self._path = path
+
+        super().__init__(name, privileged, app_params)
+
+    @property
+    def path(self) -> PurePath:
+        """The path of the DPDK app relative to the DPDK build folder."""
+        return self._path
 
     def wait_until_ready(self, end_token: str) -> None:
         """Start app and wait until ready.

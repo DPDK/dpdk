@@ -27,8 +27,10 @@ class PythonShell(InteractiveShell):
     #: This forces the prompt to appear after sending a command.
     _command_extra_chars: ClassVar[str] = "\n"
 
-    #: The Python executable.
-    path: ClassVar[PurePath] = PurePath("python3")
+    @property
+    def path(self) -> PurePath:
+        """Path to the Python3 executable."""
+        return PurePath("python3")
 
     def close(self):
         """Close Python shell."""

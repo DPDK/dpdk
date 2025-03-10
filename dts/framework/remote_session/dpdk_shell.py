@@ -6,7 +6,7 @@
 Provides a base class to create interactive shells based on DPDK.
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from pathlib import PurePath
 
 from framework.context import get_ctx
@@ -65,20 +65,22 @@ class DPDKShell(InteractiveShell, ABC):
         self,
         name: str | None = None,
         privileged: bool = True,
-        path: PurePath | None = None,
         app_params: EalParams = EalParams(),
     ) -> None:
         """Extends :meth:`~.interactive_shell.InteractiveShell.__init__`."""
         app_params = compute_eal_params(app_params)
         node = get_ctx().sut_node
 
-        super().__init__(node, name, privileged, path, app_params)
+        super().__init__(node, name, privileged, app_params)
 
-    def _update_real_path(self, path: PurePath) -> None:
-        """Extends :meth:`~.interactive_shell.InteractiveShell._update_real_path`.
+    @property
+    @abstractmethod
+    def path(self) -> PurePath:
+        """Relative path to the shell executable from the build folder."""
+
+    def _make_real_path(self):
+        """Overrides :meth:`~.interactive_shell.InteractiveShell._make_real_path`.
 
         Adds the remote DPDK build directory to the path.
         """
-        super()._update_real_path(
-            PurePath(get_ctx().dpdk_build.remote_dpdk_build_dir).joinpath(path)
-        )
+        return get_ctx().dpdk_build.remote_dpdk_build_dir.joinpath(self.path)
