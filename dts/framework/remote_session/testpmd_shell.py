@@ -25,6 +25,7 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, Literal, ParamSpec, Tuple, TypeAlias
 
 from framework.context import get_ctx
+from framework.remote_session.interactive_shell import only_active
 from framework.testbed_model.topology import TopologyType
 
 if TYPE_CHECKING or environ.get("DTS_DOC_BUILD"):
@@ -2347,6 +2348,7 @@ class TestPmdShell(DPDKShell):
                             f"Test pmd failed to set clear forwarding stats on port {port_id}"
                         )
 
+    @only_active
     def close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
         self.stop()

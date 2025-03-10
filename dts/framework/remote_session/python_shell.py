@@ -15,7 +15,7 @@ Typical usage example in a TestSuite::
 from pathlib import PurePath
 from typing import ClassVar
 
-from .interactive_shell import InteractiveShell
+from .interactive_shell import InteractiveShell, only_active
 
 
 class PythonShell(InteractiveShell):
@@ -32,6 +32,7 @@ class PythonShell(InteractiveShell):
         """Path to the Python3 executable."""
         return PurePath("python3")
 
+    @only_active
     def close(self):
         """Close Python shell."""
         return super().close()

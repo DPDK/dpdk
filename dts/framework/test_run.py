@@ -430,6 +430,7 @@ class TestRunTeardown(State):
 
     def next(self) -> State | None:
         """Next state."""
+        self.test_run.ctx.shell_pool.terminate_current_pool()
         self.test_run.ctx.tg.teardown(self.test_run.ctx.topology.tg_ports)
         self.test_run.ctx.dpdk.teardown(self.test_run.ctx.topology.sut_ports)
         self.test_run.ctx.tg_node.teardown()
@@ -473,6 +474,7 @@ class TestSuiteSetup(TestSuiteState):
 
     def next(self) -> State | None:
         """Next state."""
+        self.test_run.ctx.shell_pool.start_new_pool()
         self.test_suite.set_up_suite()
         self.result.update_setup(Result.PASS)
         return TestSuiteExecution(self.test_run, self.test_suite, self.result)
@@ -544,6 +546,7 @@ class TestSuiteTeardown(TestSuiteState):
         """Next state."""
         self.test_suite.tear_down_suite()
         self.test_run.ctx.dpdk.kill_cleanup_dpdk_apps()
+        self.test_run.ctx.shell_pool.terminate_current_pool()
         self.result.update_teardown(Result.PASS)
         return TestRunExecution(self.test_run, self.test_run.result)
 
@@ -594,6 +597,7 @@ class TestCaseSetup(TestCaseState):
 
     def next(self) -> State | None:
         """Next state."""
+        self.test_run.ctx.shell_pool.start_new_pool()
         self.test_suite.set_up_test_case()
         self.result.update_setup(Result.PASS)
         return TestCaseExecution(
@@ -670,6 +674,7 @@ class TestCaseTeardown(TestCaseState):
     def next(self) -> State | None:
         """Next state."""
         self.test_suite.tear_down_test_case()
+        self.test_run.ctx.shell_pool.terminate_current_pool()
         self.result.update_teardown(Result.PASS)
         return TestSuiteExecution(self.test_run, self.test_suite, self.test_suite_result)
 

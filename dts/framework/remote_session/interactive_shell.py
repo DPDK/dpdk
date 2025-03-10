@@ -22,12 +22,14 @@ environment variable configure the timeout of getting the output from command ex
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import PurePath
-from typing import ClassVar
+from typing import ClassVar, Concatenate, ParamSpec, TypeAlias, TypeVar
 
 from paramiko import Channel, channel
 from typing_extensions import Self
 
+from framework.context import get_ctx
 from framework.exception import (
     InteractiveCommandExecutionError,
     InteractiveSSHSessionDeadError,
@@ -37,6 +39,23 @@ from framework.logger import DTSLogger, get_dts_logger
 from framework.params import Params
 from framework.settings import SETTINGS
 from framework.testbed_model.node import Node
+
+P = ParamSpec("P")
+T = TypeVar("T", bound="InteractiveShell")
+R = TypeVar("R")
+InteractiveShellMethod = Callable[Concatenate[T, P], R]
+InteractiveShellDecorator: TypeAlias = Callable[[InteractiveShellMethod], InteractiveShellMethod]
+
+
+def only_active(func: InteractiveShellMethod) -> InteractiveShellMethod:
+    """This decorator will skip running the method if the SSH channel is not active."""
+
+    def _wrapper(self: "InteractiveShell", *args: P.args, **kwargs: P.kwargs) -> R | None:
+        if self._ssh_channel.active:
+            return func(self, *args, **kwargs)
+        return None
+
+    return _wrapper
 
 
 class InteractiveShell(ABC):
@@ -155,6 +174,7 @@ class InteractiveShell(ABC):
             self.is_alive = False  # update state on failure to start
             raise InteractiveCommandExecutionError("Failed to start application.")
         self._ssh_channel.settimeout(self._timeout)
+        get_ctx().shell_pool.register_shell(self)
 
     def send_command(
         self, command: str, prompt: str | None = None, skip_first_line: bool = False
@@ -219,6 +239,7 @@ class InteractiveShell(ABC):
             self._logger.debug(f"Got output: {out}")
         return out
 
+    @only_active
     def close(self) -> None:
         """Close the shell.
 
@@ -234,6 +255,7 @@ class InteractiveShell(ABC):
             self._logger.debug("Application failed to exit before set timeout.")
             raise InteractiveSSHTimeoutError("Application 'exit' command") from e
         self._ssh_channel.close()
+        get_ctx().shell_pool.unregister_shell(self)
 
     @property
     @abstractmethod
