@@ -143,7 +143,7 @@ ci_tx_free_bufs_vec(struct ci_tx_queue *txq, ci_desc_done_fn desc_done, bool ctx
 		void **cache_objs;
 		struct rte_mempool_cache *cache = rte_mempool_default_cache(mp, rte_lcore_id());
 
-		if (!cache || cache->len == 0)
+		if (cache == NULL)
 			goto normal;
 
 		cache_objs = &cache->objs[cache->len];
