@@ -2698,6 +2698,9 @@ void
 iavf_dev_alarm_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	if (dev == NULL || dev->data == NULL || dev->data->dev_private == NULL)
+		return;
+
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t icr0;
 
