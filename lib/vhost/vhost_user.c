@@ -3187,7 +3187,7 @@ vhost_user_msg_handler(int vid, int fd)
 	handled = false;
 	if (dev->extern_ops.pre_msg_handle) {
 		RTE_BUILD_BUG_ON(offsetof(struct vhu_msg_context, msg) != 0);
-		msg_result = (*dev->extern_ops.pre_msg_handle)(dev->vid, &ctx);
+		msg_result = dev->extern_ops.pre_msg_handle(dev->vid, &ctx);
 		switch (msg_result) {
 		case RTE_VHOST_MSG_RESULT_REPLY:
 			send_vhost_reply(dev, fd, &ctx);
@@ -3239,7 +3239,7 @@ skip_to_post_handle:
 	if (msg_result != RTE_VHOST_MSG_RESULT_ERR &&
 			dev->extern_ops.post_msg_handle) {
 		RTE_BUILD_BUG_ON(offsetof(struct vhu_msg_context, msg) != 0);
-		msg_result = (*dev->extern_ops.post_msg_handle)(dev->vid, &ctx);
+		msg_result = dev->extern_ops.post_msg_handle(dev->vid, &ctx);
 		switch (msg_result) {
 		case RTE_VHOST_MSG_RESULT_REPLY:
 			send_vhost_reply(dev, fd, &ctx);
