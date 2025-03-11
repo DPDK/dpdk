@@ -4111,7 +4111,7 @@ test_cryptodev_virtio_asym(void)
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD));
 	if (gbl_driver_id == -1) {
 		RTE_LOG(ERR, USER1, "virtio PMD must be loaded.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	/* Use test suite registered for crypto_virtio PMD */
@@ -4125,7 +4125,7 @@ test_cryptodev_virtio_user_asym(void)
 			RTE_STR(CRYPTODEV_NAME_VIRTIO_USER_PMD));
 	if (gbl_driver_id == -1) {
 		RTE_LOG(ERR, USER1, "virtio user PMD must be loaded.\n");
-		return TEST_FAILED;
+		return TEST_SKIPPED;
 	}
 
 	/* Use test suite registered for crypto_virtio_user PMD */
