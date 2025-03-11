@@ -1322,7 +1322,7 @@ struct mlx5_ecpri_parser_profile {
 };
 
 /* Max member ports per bonding device. */
-#define MLX5_BOND_MAX_PORTS 2
+#define MLX5_BOND_MAX_PORTS 4
 
 /* Bonding device information. */
 struct mlx5_bond_info {
