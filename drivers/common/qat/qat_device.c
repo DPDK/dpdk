@@ -229,6 +229,7 @@ qat_dev_parse_command_line(struct qat_pci_device *qat_dev,
 	len = strlen(devargs->drv_str);
 	if (len == 0)
 		return 0;
+	++len;
 	/* Allocate per-device command line */
 	qat_dev->command_line = rte_malloc(NULL, len, 0);
 	if (qat_dev->command_line == NULL) {
