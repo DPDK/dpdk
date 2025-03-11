@@ -644,9 +644,9 @@ mlx5_dev_nl_ifindex_verify(uint32_t if_index, struct mlx5_priv *priv)
 
 	if (if_index == bond->ifindex)
 		return true;
-	for (i = 0; i < bond->n_port; i++) {
-		if (i >= MLX5_BOND_MAX_PORTS)
-			return false;
+	for (i = 0; i < MLX5_BOND_MAX_PORTS; i++) {
+		if (!strlen(priv->sh->bond.ports[i].ifname))
+			continue;
 		if (if_index == bond->ports[i].ifindex)
 			return true;
 	}
@@ -1399,7 +1399,9 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, bool bond_master, uint64_t *s
 	/* Read ifreq counters. */
 	if (bond_master) {
 		/* Sum xstats from bonding device member ports. */
-		for (i = 0; i < priv->sh->bond.n_port; i++) {
+		for (i = 0; i < MLX5_BOND_MAX_PORTS; i++) {
+			if (!strlen(priv->sh->bond.ports[i].ifname))
+				continue;
 			ret = _mlx5_os_read_dev_counters(dev, i, stats);
 			if (ret)
 				return ret;
@@ -1449,28 +1451,26 @@ mlx5_os_get_stats_n(struct rte_eth_dev *dev, bool bond_master,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ethtool_drvinfo drvinfo;
 	struct ifreq ifr;
-	int ret;
+	int ret, i, j;
+	uint16_t *target;
 
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
 	/* Bonding PFs. */
 	if (bond_master) {
-		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
-					   SIOCETHTOOL, &ifr);
-		if (ret) {
-			DRV_LOG(WARNING, "bonding port %u unable to query number of"
-				" statistics for the 1st slave, %d", PORT_ID(priv), ret);
-			return ret;
+		for (i = 0, j = 0; i < MLX5_BOND_MAX_PORTS; i++) {
+			if (!strlen(priv->sh->bond.ports[i].ifname))
+				continue;
+			ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[i].ifname,
+						   SIOCETHTOOL, &ifr);
+			if (ret) {
+				DRV_LOG(WARNING, "bonding port %u unable to query number of statistics for the %d lag member, %d",
+						PORT_ID(priv), j, ret);
+				return ret;
+			}
+			target = !j++ ? n_stats : n_stats_sec;
+			*target = drvinfo.n_stats;
 		}
-		*n_stats = drvinfo.n_stats;
-		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[1].ifname,
-					   SIOCETHTOOL, &ifr);
-		if (ret) {
-			DRV_LOG(WARNING, "bonding port %u unable to query number of"
-				" statistics for the 2nd slave, %d", PORT_ID(priv), ret);
-			return ret;
-		}
-		*n_stats_sec = drvinfo.n_stats;
 	} else {
 		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 		if (ret) {
@@ -1726,7 +1726,7 @@ mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	struct ifreq ifr;
 	int ret;
-	uint32_t i, j, idx;
+	uint32_t dev_idx, i, j, idx;
 
 	/* Ensure no out of bounds access before. */
 	MLX5_ASSERT(xstats_n <= MLX5_MAX_XSTATS);
@@ -1734,8 +1734,15 @@ mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
 	strings->string_set = ETH_SS_STATS;
 	strings->len = stats_n;
 	ifr.ifr_data = (caddr_t)strings;
+	for (dev_idx = 0; dev_idx < MLX5_BOND_MAX_PORTS; dev_idx++)
+		if (strlen(priv->sh->bond.ports[dev_idx].ifname))
+			break;
+	if (bond_master && dev_idx >= MLX5_BOND_MAX_PORTS) {
+		DRV_LOG(WARNING, "port %u unable to get the primary lag member", PORT_ID(priv));
+		return -ENODEV;
+	}
 	if (bond_master)
-		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
+		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[dev_idx].ifname,
 					   SIOCETHTOOL, &ifr);
 	else
 		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
@@ -1772,8 +1779,15 @@ mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
 		return 0;
 	}
 
+	for (++dev_idx; dev_idx < MLX5_BOND_MAX_PORTS; dev_idx++)
+		if (strlen(priv->sh->bond.ports[dev_idx].ifname))
+			break;
+	if (dev_idx >= MLX5_BOND_MAX_PORTS) {
+		DRV_LOG(WARNING, "port %u unable to get the secondary lag member", PORT_ID(priv));
+		return -ENODEV;
+	}
 	strings->len = stats_n_2nd;
-	ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[1].ifname,
+	ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[dev_idx].ifname,
 				   SIOCETHTOOL, &ifr);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to get statistic names for 2nd slave with %d",
