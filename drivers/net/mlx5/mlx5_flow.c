@@ -1944,7 +1944,7 @@ mlx5_flow_validate_action_flag(uint64_t action_flags,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_action_mark(struct rte_eth_dev *dev,
+mlx5_flow_validate_action_mark(__rte_unused struct rte_eth_dev *dev,
 			       const struct rte_flow_action *action,
 			       uint64_t action_flags,
 			       const struct rte_flow_attr *attr,
@@ -1977,10 +1977,6 @@ mlx5_flow_validate_action_mark(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "mark action not supported for "
 					  "egress");
-	if (attr->transfer && !mlx5_hws_active(dev))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, NULL,
-					  "non-template mark action not supported for transfer");
 	return 0;
 }
 
