@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/queue.h>
 
 #include <rte_common.h>
 #include <rte_errno.h>
