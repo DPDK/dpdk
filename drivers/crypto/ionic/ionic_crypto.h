@@ -269,7 +269,7 @@ iocpt_setup_bars(struct iocpt_dev *dev)
 	if (dev->intf->setup_bars == NULL)
 		return -EINVAL;
 
-	return (*dev->intf->setup_bars)(dev);
+	return dev->intf->setup_bars(dev);
 }
 
 /** iocpt_admin_ctx - Admin command context.
