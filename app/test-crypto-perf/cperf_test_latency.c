@@ -140,6 +140,56 @@ store_timestamp(struct rte_crypto_op *op, uint64_t timestamp)
 	priv_data->result->tsc_end = timestamp;
 }
 
+static int
+cperf_check_single_op(struct cperf_latency_ctx *ctx, uint16_t iv_offset)
+{
+	struct rte_crypto_op *ops[1];
+	uint32_t imix_idx = 0;
+	uint64_t tsc_start = 0;
+	uint64_t ops_enqd = 0, ops_deqd = 0;
+
+	/* Allocate object containing crypto operations and mbufs */
+	if (rte_mempool_get(ctx->pool, (void **)&ops[0]) != 0) {
+		RTE_LOG(ERR, USER1,
+			"Failed to allocate crypto operation "
+			"from the crypto operation pool.\n"
+			"Consider increasing the pool size "
+			"with --pool-sz\n");
+		return -1;
+	}
+
+	/* Setup crypto op, attach mbuf etc */
+	(ctx->populate_ops)(ops, ctx->src_buf_offset,
+		ctx->dst_buf_offset,
+		1, ctx->sess, ctx->options,
+		ctx->test_vector, iv_offset,
+		&imix_idx, &tsc_start);
+
+	ops_enqd = rte_cryptodev_enqueue_burst(ctx->dev_id, ctx->qp_id, ops, 1);
+	if (ops_enqd != 1) {
+		RTE_LOG(ERR, USER1, "PMD cannot process the packet.\n");
+		return -1;
+	}
+
+	/* Dequeue processed burst of ops from crypto device */
+	tsc_start = rte_rdtsc_precise();
+	while (1) {
+		ops_deqd = rte_cryptodev_dequeue_burst(ctx->dev_id, ctx->qp_id,
+				ops, 1);
+
+		if (ops_deqd == 1) {
+			rte_mempool_put(ctx->pool, ops[0]);
+			return 1;
+		}
+
+		/* Check if 1 second timeout has been reached */
+		if ((rte_rdtsc_precise() - tsc_start) > rte_get_tsc_hz()) {
+			RTE_LOG(ERR, USER1, "Dequeue operation timed out.\n");
+			return -1;
+		}
+	}
+}
+
 int
 cperf_latency_test_runner(void *arg)
 {
@@ -189,6 +239,10 @@ cperf_latency_test_runner(void *arg)
 	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
 		sizeof(struct rte_crypto_sym_op) +
 		sizeof(struct cperf_op_result *);
+
+	/* Enqueue just one operation to check whether PMD returns error */
+	if (cperf_check_single_op(ctx, iv_offset) < 1)
+		return -1;
 
 	while (test_burst_size <= ctx->options->max_burst_size) {
 		uint64_t ops_enqd = 0, ops_deqd = 0;
