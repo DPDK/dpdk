@@ -1624,7 +1624,8 @@ mlx5_init_hws_flow_tags_registers(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_dev_registers *reg = &sh->registers;
 	uint32_t meta_mode = sh->config.dv_xmeta_en;
-	uint16_t masks = (uint16_t)sh->cdev->config.hca_attr.set_reg_c;
+	uint16_t reg_c_caps = (uint16_t)sh->cdev->config.hca_attr.set_reg_c;
+	uint16_t masks = reg_c_caps;
 	uint16_t unset = 0;
 	uint32_t i, j;
 
@@ -1648,11 +1649,16 @@ mlx5_init_hws_flow_tags_registers(struct mlx5_dev_ctx_shared *sh)
 	 * Set the registers for NAT64 usage internally. REG_C_6 is always used.
 	 * The other 2 registers will be fetched from right to left, at least 2
 	 * tag registers should be available.
+	 * If not enough registers are available or REG_C_6 is not supported by current FW,
+	 * NAT64 action will not be supported.
 	 */
-	MLX5_ASSERT(j >= (MLX5_FLOW_NAT64_REGS_MAX - 1));
-	reg->nat64_regs[0] = REG_C_6;
-	reg->nat64_regs[1] = reg->hw_avl_tags[j - 2];
-	reg->nat64_regs[2] = reg->hw_avl_tags[j - 1];
+	if ((reg_c_caps & RTE_BIT32(mlx5_regc_index(REG_C_6))) &&
+	    j >= MLX5_FLOW_NAT64_REGS_MAX - 1) {
+		MLX5_ASSERT(j >= (MLX5_FLOW_NAT64_REGS_MAX - 1));
+		reg->nat64_regs[0] = REG_C_6;
+		reg->nat64_regs[1] = reg->hw_avl_tags[j - 2];
+		reg->nat64_regs[2] = reg->hw_avl_tags[j - 1];
+	}
 }
 
 static void
