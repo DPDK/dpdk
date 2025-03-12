@@ -178,6 +178,9 @@ The paths are chosen based on 2 conditions:
   On the x86 platform, the driver checks if the CPU supports AVX512.
   If the CPU supports AVX512 and EAL argument ``--force-max-simd-bitwidth``
   is set to 512, AVX512 paths will be chosen.
+  Otherwise, if ``--force-max-simd-bitwidth`` is set to 256, and the CPU supports AVX2,
+  then AVX2 paths will be chosen.
+  (Note that 256 is the default bitwidth if no specific value is provided.)
 
 - ``Offload features``
 
