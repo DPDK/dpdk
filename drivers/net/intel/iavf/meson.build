@@ -29,10 +29,6 @@ includes += include_directories('base')
 if arch_subdir == 'x86'
     sources += files('iavf_rxtx_vec_sse.c')
 
-    if is_windows and cc.get_id() != 'clang'
-        cflags += ['-fno-asynchronous-unwind-tables']
-    endif
-
     iavf_avx2_lib = static_library('iavf_avx2_lib',
             'iavf_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev],
