@@ -9656,6 +9656,19 @@ flow_hw_destroy_send_to_kernel_action(struct mlx5_priv *priv)
 	}
 }
 
+static bool
+flow_hw_should_create_nat64_actions(struct mlx5_priv *priv)
+{
+	int i;
+
+	/* Check if all registers are available. */
+	for (i = 0; i < MLX5_FLOW_NAT64_REGS_MAX; ++i)
+		if (priv->sh->registers.nat64_regs[i] == REG_NON)
+			return false;
+
+	return true;
+}
+
 static void
 flow_hw_destroy_nat64_actions(struct mlx5_priv *priv)
 {
@@ -12197,9 +12210,14 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 				   NULL, "Failed to VLAN actions.");
 		goto err;
 	}
-	if (flow_hw_create_nat64_actions(priv, error))
+	if (flow_hw_should_create_nat64_actions(priv)) {
+		if (flow_hw_create_nat64_actions(priv, error))
+			goto err;
+	} else {
 		DRV_LOG(WARNING, "Cannot create NAT64 action on port %u, "
-			"please check the FW version", dev->data->port_id);
+			"please check the FW version. NAT64 will not be supported.",
+			dev->data->port_id);
+	}
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
 	if (port_attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE)
