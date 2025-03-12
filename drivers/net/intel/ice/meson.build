@@ -35,10 +35,6 @@ endif
 if arch_subdir == 'x86'
     sources += files('ice_rxtx_vec_sse.c')
 
-    if is_windows and cc.get_id() != 'clang'
-        cflags += ['-fno-asynchronous-unwind-tables']
-    endif
-
     ice_avx2_lib = static_library('ice_avx2_lib',
             'ice_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_hash],

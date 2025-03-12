@@ -49,10 +49,6 @@ if (toolchain == 'gcc' and cc.version().version_compare('>=11.0.0'))
     error_cflags += ['-Wno-array-bounds']
 endif
 
-if is_windows and cc.get_id() == 'gcc'
-    cflags += ['-fno-asynchronous-unwind-tables']
-endif
-
 c_args = cflags
 
 foreach flag: error_cflags
