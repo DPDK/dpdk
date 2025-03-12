@@ -9856,7 +9856,7 @@ flow_dv_translate_item_gre(void *key, const struct rte_flow_item *item,
 	/* HWS mask logic only */
 	if (key_type & MLX5_SET_MATCHER_HS_M) {
 		if (!gre_m)
-			gre_m = &rte_flow_item_gre_mask;
+			gre_m = &empty_gre;
 		gre_v = gre_m;
 	} else if (!gre_v) {
 		gre_v = &empty_gre;
