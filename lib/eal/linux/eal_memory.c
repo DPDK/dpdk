@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/resource.h>
+#include <sys/personality.h>
 #include <unistd.h>
 #include <limits.h>
 #include <signal.h>
@@ -203,6 +204,17 @@ static int
 aslr_enabled(void)
 {
 	char c;
+
+	/*
+	 * Check whether the current process is executed with the command line
+	 * "setarch ... --addr-no-randomize ..." or "setarch ... -R ..."
+	 * This complements the sysfs check to ensure comprehensive ASLR status detection.
+	 * This check is necessary to support the functionality of the "setarch" command,
+	 * which can disable ASLR by setting the ADDR_NO_RANDOMIZE personality flag.
+	 */
+	if ((personality(0xffffffff) & ADDR_NO_RANDOMIZE) == ADDR_NO_RANDOMIZE)
+		return 0;
+
 	int retval, fd = open(RANDOMIZE_VA_SPACE_FILE, O_RDONLY);
 	if (fd < 0)
 		return -errno;
