@@ -267,6 +267,37 @@ error:
 }
 
 /**
+ * API function to obtain a new MLX5 context for a given common device.
+ *
+ * This function provides a port-agnostic context for a physical device, enabling the
+ * device to create and manage resources that can be initialized when a port starts and
+ * released when another port stops.
+ *
+ * For Windows, it creates a new context for the device regardless to existing context.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device structure.
+ *
+ * @return
+ *   Pointer to an `ibv_context` on success, or NULL on failure, with `rte_errno` set.
+ */
+void *
+mlx5_os_get_physical_device_ctx(struct mlx5_common_device *cdev)
+{
+	struct mlx5_common_device temp = {
+		.dev = cdev->dev,
+	};
+
+	if (mlx5_os_open_device(&temp, MLX5_CLASS_ETH) < 0) {
+		DRV_LOG(ERR, "Failed to duplicate DevX device \"%s\": %s",
+			mlx5_os_get_ctx_device_name(cdev->ctx),
+			rte_strerror(rte_errno));
+		return NULL;
+	}
+	return (void *)temp.ctx;
+}
+
+/**
  * Register umem.
  *
  * @param[in] ctx
