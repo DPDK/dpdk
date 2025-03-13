@@ -651,6 +651,10 @@ mlx5_devx_uar_release(struct mlx5_uar *uar);
 
 /* mlx5_common_os.c */
 
+__rte_internal
+void *
+mlx5_os_get_physical_device_ctx(struct mlx5_common_device *cdev);
+
 int mlx5_os_open_device(struct mlx5_common_device *cdev, uint32_t classes);
 int mlx5_os_pd_prepare(struct mlx5_common_device *cdev);
 int mlx5_os_pd_release(struct mlx5_common_device *cdev);

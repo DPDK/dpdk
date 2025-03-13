@@ -150,6 +150,7 @@ INTERNAL {
 	mlx5_nl_rdma_monitor_info_get; # WINDOWS_NO_EXPORT
 	mlx5_nl_rdma_monitor_cap_get; # WINDOWS_NO_EXPORT
 
+	mlx5_os_get_physical_device_ctx;
 	mlx5_os_umem_dereg;
 	mlx5_os_umem_reg;
 
