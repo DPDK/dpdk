@@ -1527,7 +1527,7 @@ struct mlx5_common_nic_config {
  */
 struct mlx5_physical_device {
 	LIST_ENTRY(mlx5_physical_device) next;
-	struct mlx5_dev_ctx_shared *sh; /* Created on sherd context. */
+	void *ctx; /* CTX for creation of options. */
 	uint64_t guid; /* System image guid, the uniq ID of physical device. */
 	struct mlx5_geneve_tlv_options *tlv_options;
 	struct mlx5_common_nic_config config;

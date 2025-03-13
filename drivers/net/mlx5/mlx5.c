@@ -1730,6 +1730,16 @@ mlx5_get_physical_device(struct mlx5_common_device *cdev)
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+	/*
+	 * The same CTX create the physical device objects should destroy them.
+	 * Since we can't be sure it will be done by same CTX, we prepare for
+	 * the physical device a special CTX used by objects creation.
+	 */
+	phdev->ctx = mlx5_os_get_physical_device_ctx(cdev);
+	if (!phdev->ctx) {
+		mlx5_free(phdev);
+		return NULL;
+	}
 	phdev->guid = attr->system_image_guid;
 	phdev->refcnt = 1;
 	LIST_INSERT_HEAD(&phdev_list, phdev, next);
@@ -1773,6 +1783,8 @@ mlx5_physical_device_destroy(struct mlx5_physical_device *phdev)
 		return;
 	/* Remove physical device from the global device list. */
 	LIST_REMOVE(phdev, next);
+	MLX5_ASSERT(phdev->ctx);
+	claim_zero(mlx5_glue->close_device(phdev->ctx));
 	mlx5_free(phdev);
 }
 
@@ -2329,15 +2341,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		rte_errno = EBUSY;
 		return -EBUSY;
 	}
-#ifdef HAVE_MLX5_HWS_SUPPORT
-	/* Check if shared GENEVE options created on context being closed. */
-	ret = mlx5_geneve_tlv_options_check_busy(priv);
-	if (ret) {
-		DRV_LOG(ERR, "port %u maintains shared GENEVE TLV options",
-			dev->data->port_id);
-		return ret;
-	}
-#endif
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id, sh->ibdev_name);
 	/*
