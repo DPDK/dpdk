@@ -685,7 +685,7 @@ int flm_nthw_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint3
 	if (ret == 0) {
 		nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
 		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : -1;
-		RTE_ASSERT(ret == -1);
+		RTE_ASSERT(ret != -1);
 		rte_spinlock_unlock(&rac->m_mutex);
 
 		if (ret != 0)
@@ -785,7 +785,7 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 			nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
 
 			int ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : -1;
-			RTE_ASSERT(ret == -1);
+			RTE_ASSERT(ret != -1);
 			rte_spinlock_unlock(&rac->m_mutex);
 			if (ret != 0)
 				return -1;
@@ -847,7 +847,7 @@ int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 
 		nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
 		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : -1;
-		RTE_ASSERT(ret == -1);
+		RTE_ASSERT(ret != -1);
 		rte_spinlock_unlock(&rac->m_mutex);
 
 		if (ret != 0)
