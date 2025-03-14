@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: BSD-3-C
+# SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
 # Copyright(c) 2025 Arm Limited
