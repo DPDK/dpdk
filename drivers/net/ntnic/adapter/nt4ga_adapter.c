@@ -85,14 +85,12 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	fpga_info_t *fpga_info = &p_adapter_info->fpga_info;
 	hw_info_t *p_hw_info = &p_adapter_info->hw_info;
 
+	RTE_ASSERT(fpga_info);
+
 	/*
 	 * IMPORTANT: Most variables cannot be determined before nthw fpga model is instantiated
 	 * (nthw_fpga_init())
 	 */
-#ifdef RTE_ENABLE_ASSERT
-	int n_phy_ports = -1;
-	int n_nim_ports = -1;
-#endif
 	int res = -1;
 	nthw_fpga_t *p_fpga = NULL;
 
@@ -154,15 +152,11 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		return res;
 	}
 
-#ifdef RTE_ENABLE_ASSERT
-	RTE_ASSERT(fpga_info);
+	RTE_ASSERT(fpga_info->n_phy_ports >= 1);
+	RTE_ASSERT(fpga_info->n_nims >= 1);
+
 	p_fpga = fpga_info->mp_fpga;
 	RTE_ASSERT(p_fpga);
-	n_phy_ports = fpga_info->n_phy_ports;
-	RTE_ASSERT(n_phy_ports >= 1);
-	n_nim_ports = fpga_info->n_nims;
-	RTE_ASSERT(n_nim_ports >= 1);
-#endif
 
 	/* Nt4ga Init Filter */
 	nt4ga_filter_t *p_filter = &p_adapter_info->nt4ga_filter;
