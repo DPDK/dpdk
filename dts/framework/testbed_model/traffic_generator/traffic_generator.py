@@ -50,7 +50,7 @@ class TrafficGenerator(MultiInheritanceBaseClass, ABC):
         self._logger = get_dts_logger(f"{self._tg_node.name} {self._config.type}")
         super().__init__(**kwargs)
 
-    def setup(self, ports: Iterable[Port]):
+    def setup(self, ports: Iterable[Port], rx_port: Port):
         """Setup the traffic generator."""
 
     def teardown(self, ports: Iterable[Port]):
