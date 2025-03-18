@@ -530,11 +530,11 @@ fail_tx_start:
 fail_rx_start:
 	sfc_port_stop(sa);
 
-fail_tbls_start:
-	sfc_ev_stop(sa);
-
 fail_port_start:
 	sfc_tbls_stop(sa);
+
+fail_tbls_start:
+	sfc_ev_stop(sa);
 
 fail_ev_start:
 	sfc_intr_stop(sa);
