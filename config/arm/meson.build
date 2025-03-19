@@ -767,6 +767,7 @@ dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
 update_flags = false
 soc_flags = []
+extra_features = []
 if dpdk_conf.get('RTE_ARCH_32')
     # 32-bit build
     dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
