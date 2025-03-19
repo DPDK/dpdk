@@ -330,6 +330,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         self._shell = PythonShell(self._tg_node, "scapy", privileged=True)
         self._shell.start_application()
         self._shell.send_command("from scapy.all import *")
+        self._shell.send_command("from scapy.contrib.lldp import *")
 
     def close(self):
         """Overrides :meth:`.traffic_generator.TrafficGenerator.close`.
