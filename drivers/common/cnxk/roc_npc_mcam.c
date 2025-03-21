@@ -425,6 +425,21 @@ exit:
 	return rc;
 }
 
+uint8_t
+npc_kex_key_type_config_get(struct npc *npc)
+{
+	/* KEX is configured just for X2 */
+	if (npc->keyw[ROC_NPC_INTF_RX] == 1)
+		return NPC_CN20K_MCAM_KEY_X2;
+
+	/* KEX is configured just for X4 */
+	if (npc->keyw[ROC_NPC_INTF_RX] == 2)
+		return NPC_CN20K_MCAM_KEY_X4;
+
+	/* KEX is configured for both X2 and X4 */
+	return NPC_CN20K_MCAM_KEY_DYN;
+}
+
 int
 npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam, struct roc_npc_flow *ref_mcam,
 		     uint8_t prio, int *resp_count)
@@ -437,15 +452,20 @@ npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam, struct roc_npc_
 	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox);
 	if (req == NULL)
 		goto exit;
-	req->contig = 1;
+
 	req->count = 1;
 	req->ref_priority = prio;
 	req->ref_entry = ref_mcam ? ref_mcam->mcam_id : 0;
 	req->kw_type = mcam->key_type;
+
+	if (npc_kex_key_type_config_get(npc) == NPC_CN20K_MCAM_KEY_DYN)
+		req->virt = 1;
+
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
 		goto exit;
-	mcam->mcam_id = rsp->entry;
+
+	mcam->mcam_id = rsp->entry_list[0];
 	mcam->nix_intf = ref_mcam ? ref_mcam->nix_intf : 0;
 	*resp_count = rsp->count;
 

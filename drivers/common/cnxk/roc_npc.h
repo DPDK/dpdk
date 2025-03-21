@@ -462,6 +462,9 @@ int __roc_api roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry,
 int __roc_api roc_npc_mcam_ena_dis_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
 					 bool enable);
 int __roc_api roc_npc_mcam_write_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam);
+void __roc_api roc_npc_defrag_mcam_banks(struct roc_npc *roc_npc);
+uint8_t __roc_api roc_npc_get_key_type(struct roc_npc *roc_npc, struct roc_npc_flow *flow);
+uint8_t __roc_api roc_npc_kex_key_type_config_get(struct roc_npc *roc_npc);
 int __roc_api roc_npc_flow_parse(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 				 const struct roc_npc_item_info pattern[],
 				 const struct roc_npc_action actions[], struct roc_npc_flow *flow);

@@ -332,10 +332,17 @@ enum npc_kpu_parser_flag {
 	NPC_F_LAST /* has to be the last item */
 };
 
-#define NPC_ACTION_TERM                                                        \
-	(ROC_NPC_ACTION_TYPE_DROP | ROC_NPC_ACTION_TYPE_QUEUE |                \
-	 ROC_NPC_ACTION_TYPE_RSS | ROC_NPC_ACTION_TYPE_DUP |                   \
-	 ROC_NPC_ACTION_TYPE_SEC)
+enum npc_mcam_cn20k_key_width {
+	NPC_CN20K_MCAM_KEY_X1 = 0,
+	NPC_CN20K_MCAM_KEY_DYN = NPC_CN20K_MCAM_KEY_X1,
+	NPC_CN20K_MCAM_KEY_X2,
+	NPC_CN20K_MCAM_KEY_X4,
+	NPC_CN20K_MCAM_KEY_MAX,
+};
+
+#define NPC_ACTION_TERM                                                                            \
+	(ROC_NPC_ACTION_TYPE_DROP | ROC_NPC_ACTION_TYPE_QUEUE | ROC_NPC_ACTION_TYPE_RSS |          \
+	 ROC_NPC_ACTION_TYPE_DUP | ROC_NPC_ACTION_TYPE_SEC)
 
 struct npc_xtract_info {
 	/* Length in bytes of pkt data extracted. len = 0
@@ -498,6 +505,7 @@ int npc_update_parse_state(struct npc_parse_state *pst, struct npc_parse_item_in
 void npc_get_hw_supp_mask(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
 			  int lt);
 uint8_t npc_get_key_type(struct npc *npc, struct roc_npc_flow *flow);
+uint8_t npc_kex_key_type_config_get(struct npc *npc);
 int npc_mask_is_supported(const char *mask, const char *hw_mask, int len);
 int npc_parse_item_basic(const struct roc_npc_item_info *item, struct npc_parse_item_info *info);
 int npc_parse_meta_items(struct npc_parse_state *pst);

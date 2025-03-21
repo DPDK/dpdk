@@ -830,7 +830,11 @@ npc_flow_hw_mcam_entry_dump(FILE *file, struct npc *npc, struct roc_npc_flow *fl
 	else
 		mbox = npc->mbox;
 
-	mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(mbox_get(mbox));
+	if (roc_model_is_cn20k())
+		mcam_read_req = mbox_alloc_msg_npc_cn20k_mcam_read_entry(mbox_get(mbox));
+	else
+		mcam_read_req = mbox_alloc_msg_npc_mcam_read_entry(mbox_get(mbox));
+
 	if (mcam_read_req == NULL) {
 		plt_err("Failed to alloc msg");
 		mbox_put(mbox);
