@@ -4,14 +4,6 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-enum npc_mcam_cn20k_key_width {
-	NPC_CN20K_MCAM_KEY_X1 = 0,
-	NPC_CN20K_MCAM_KEY_DYN = NPC_CN20K_MCAM_KEY_X1,
-	NPC_CN20K_MCAM_KEY_X2,
-	NPC_CN20K_MCAM_KEY_X4,
-	NPC_CN20K_MCAM_KEY_MAX,
-};
-
 uint8_t
 npc_get_key_type(struct npc *npc, struct roc_npc_flow *flow)
 {

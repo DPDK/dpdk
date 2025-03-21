@@ -465,6 +465,8 @@ INTERNAL {
 	roc_npa_pool_range_update_check;
 	roc_npa_zero_aura_handle;
 	roc_npc_aged_flow_ctx_get;
+	roc_npc_defrag_mcam_banks;
+	roc_npc_get_key_type;
 	roc_npc_fini;
 	roc_npc_flow_create;
 	roc_npc_flow_destroy;
@@ -475,6 +477,7 @@ INTERNAL {
 	roc_npc_get_low_priority_mcam;
 	roc_npc_init;
 	roc_npc_kex_capa_get;
+	roc_npc_kex_key_type_config_get;
 	roc_npc_mark_actions_get;
 	roc_npc_mark_actions_sub_return;
 	roc_npc_vtag_actions_get;

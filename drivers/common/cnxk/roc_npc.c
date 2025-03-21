@@ -5,6 +5,22 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+uint8_t
+roc_npc_get_key_type(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_get_key_type(npc, flow);
+}
+
+uint8_t
+roc_npc_kex_key_type_config_get(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_kex_key_type_config_get(npc);
+}
+
 int
 roc_npc_mark_actions_get(struct roc_npc *roc_npc)
 {
@@ -197,10 +213,30 @@ roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc, bool enable)
 	return npc_flow_enable_all_entries(npc, enable);
 }
 
+void
+roc_npc_defrag_mcam_banks(struct roc_npc *roc_npc)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+	struct mbox *mbox = mbox_get(npc->mbox);
+	struct npc_mcam_defrag_req *req;
+	struct npc_mcam_defrag_rsp *rsp;
+	int rc = 0;
+
+	req = (struct npc_mcam_defrag_req *)mbox_alloc_msg_npc_defrag(mbox);
+	if (req == NULL)
+		goto exit;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		plt_err("Error when defragmenting MCAM banks.");
+
+exit:
+	mbox_put(mbox);
+}
+
 int
 roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
-			 struct roc_npc_flow *ref_mcam, int prio,
-			 int *resp_count)
+			 struct roc_npc_flow *ref_mcam, int prio, int *resp_count)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 
