@@ -1119,6 +1119,30 @@ zxdh_np_dtb_data_res_free(struct zxdh_hw *hw)
 		zxdh_shared_data->np_init_done = 0;
 }
 
+static int
+zxdh_tbl_entry_online_destroy(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	uint32_t sdt_no;
+	int ret = 0;
+	if (!dtb_data->init_done)
+		return ret;
+	if (hw->is_pf) {
+		sdt_no = ZXDH_SDT_L2_ENTRY_TABLE0 + hw->hash_search_index;
+		ret = zxdh_np_dtb_hash_online_delete(hw->dev_id, dtb_data->queueid, sdt_no);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s sdt_no %d failed. code:%d ",
+				dev->data->name, sdt_no, ret);
+		sdt_no = ZXDH_SDT_MC_TABLE0 + hw->hash_search_index;
+		ret = zxdh_np_dtb_hash_online_delete(hw->dev_id, dtb_data->queueid, sdt_no);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s sdt_no %d failed. code:%d",
+				dev->data->name, sdt_no, ret);
+	}
+	return ret;
+}
+
 static void
 zxdh_np_uninit(struct rte_eth_dev *dev)
 {
@@ -1129,6 +1153,8 @@ zxdh_np_uninit(struct rte_eth_dev *dev)
 		return;
 	if (!dtb_data->init_done && !dtb_data->dev_refcnt)
 		return;
+
+	zxdh_tbl_entry_online_destroy(dev);
 
 	if (--dtb_data->dev_refcnt == 0)
 		zxdh_np_dtb_data_res_free(hw);
@@ -1797,10 +1823,40 @@ out:
 }
 
 static int
+zxdh_tbl_entry_offline_destroy(struct zxdh_hw *hw)
+{
+	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	int ret = 0;
+	if (!dtb_data->init_done)
+		return ret;
+	if (hw->is_pf) {
+		uint32_t sdt_no;
+		sdt_no = ZXDH_SDT_L2_ENTRY_TABLE0 + hw->hash_search_index;
+		ret = zxdh_np_dtb_hash_offline_delete(hw->dev_id, dtb_data->queueid, sdt_no, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "sdt_no %d delete failed. code:%d ", sdt_no, ret);
+		sdt_no = ZXDH_SDT_MC_TABLE0 + hw->hash_search_index;
+		ret = zxdh_np_dtb_hash_offline_delete(hw->dev_id, dtb_data->queueid, sdt_no, 0);
+		if (ret)
+			PMD_DRV_LOG(ERR, "sdt_no %d delete failed. code:%d ", sdt_no, ret);
+	}
+	return ret;
+}
+
+static int
 zxdh_np_init(struct rte_eth_dev *eth_dev)
 {
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
+	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
 	int ret = 0;
+
+	if (hw->is_pf && dtb_data->init_done) {
+		dtb_data->dev_refcnt++;
+		zxdh_tbl_entry_offline_destroy(hw);
+		PMD_DRV_LOG(INFO, "no need to init dtb  dtb chanenl %d devref %d",
+			dtb_data->queueid, dtb_data->dev_refcnt);
+		return 0;
+	}
 
 	if (hw->is_pf) {
 		ret = zxdh_np_dtb_res_init(eth_dev);
@@ -1820,6 +1876,7 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 			PMD_DRV_LOG(ERR, "invalid hash idx %d", hw->hash_search_index);
 			return -1;
 		}
+		zxdh_tbl_entry_offline_destroy(hw);
 	}
 
 	if (zxdh_shared_data != NULL)
