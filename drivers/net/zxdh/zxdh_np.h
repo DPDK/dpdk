@@ -227,6 +227,13 @@
 #define ZXDH_DTB_TABLE_MODE_ETCAM               (3)
 #define ZXDH_DTB_TABLE_MODE_MC_HASH             (4)
 #define ZXDH_DTB_TABLE_VALID                    (1)
+#define ZXDH_DTB_DUMP_MODE_ERAM                 (0)
+#define ZXDH_DTB_DUMP_MODE_ZCAM                 (2)
+#define ZXDH_DTB_DUMP_MODE_ETCAM                (3)
+
+#define ZXDH_DTB_DELAY_TIME                     (50)
+#define ZXDH_DTB_DOWN_OVER_TIME                 (2000)
+#define ZXDH_DTB_DUMP_OVER_TIME                 (200000)
 
 /* DTB module error code */
 #define ZXDH_RC_DTB_BASE                        (0xd00)
@@ -727,6 +734,14 @@ typedef enum zxdh_dtb_table_info_e {
 	ZXDH_DTB_TABLE_MC_HASH       = 6,
 	ZXDH_DTB_TABLE_ENUM_MAX
 } ZXDH_DTB_TABLE_INFO_E;
+
+typedef enum zxdh_dtb_dump_info_e {
+	ZXDH_DTB_DUMP_ERAM    = 0,
+	ZXDH_DTB_DUMP_DDR     = 1,
+	ZXDH_DTB_DUMP_ZCAM    = 2,
+	ZXDH_DTB_DUMP_ETCAM   = 3,
+	ZXDH_DTB_DUMP_ENUM_MAX
+} ZXDH_DTB_DUMP_INFO_E;
 
 typedef enum zxdh_sdt_table_type_e {
 	ZXDH_SDT_TBLT_INVALID = 0,
