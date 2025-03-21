@@ -11,6 +11,7 @@
 
 #include "zxdh_ethdev_ops.h"
 #include "zxdh_mtr.h"
+#include "zxdh_common.h"
 
 #define ZXDH_BAR0_INDEX                 0
 #define ZXDH_CTRLCH_OFFSET              (0x2000)
@@ -46,8 +47,10 @@
 
 #define ZXDH_MSG_REPLYBODY_HEAD    sizeof(enum zxdh_reps_flag)
 #define ZXDH_MSG_HEADER_SIZE       4
-#define ZXDH_MSG_REPLY_BODY_MAX_LEN  \
-		(ZXDH_MSG_PAYLOAD_MAX_LEN - sizeof(struct zxdh_msg_reply_head))
+#define ZXDH_MSG_REPLY_BODY_MAX_LEN \
+		(ZXDH_MSG_PAYLOAD_MAX_LEN - ZXDH_MSG_HEADER_SIZE)
+#define ZXDH_MSG_REPLY_DATA \
+		(ZXDH_MSG_REPLY_BODY_MAX_LEN - ZXDH_MSG_REPLYBODY_HEAD)
 
 #define ZXDH_MSG_HEAD_LEN            8
 #define ZXDH_MSG_REQ_BODY_MAX_LEN  \
@@ -329,12 +332,6 @@ struct zxdh_offset_get_msg {
 	uint16_t type;
 };
 
-struct zxdh_msg_reply_head {
-	uint8_t flag;
-	uint16_t reps_len;
-	uint8_t resvd;
-};
-
 enum zxdh_reps_flag {
 	ZXDH_REPS_FAIL,
 	ZXDH_REPS_SUCC = 0xaa,
@@ -354,16 +351,37 @@ struct zxdh_link_info_msg {
 	uint32_t speed;
 };
 
+struct zxdh_ifc_link_info_msg_bits {
+	uint8_t autoneg[0x8];
+	uint8_t link_state[0x8];
+	uint8_t blink_enable[0x8];
+	uint8_t duplex[0x8];
+	uint8_t speed_modes[0x20];
+	uint8_t speed[0x20];
+};
+
 struct zxdh_rss_reta {
 	uint32_t reta[RTE_ETH_RSS_RETA_SIZE_256];
+};
+
+struct zxdh_ifc_rss_reta_bits {
+	uint32_t reta[RTE_ETH_RSS_RETA_SIZE_256 * 8];
 };
 
 struct zxdh_rss_hf {
 	uint32_t rss_hf;
 };
 
+struct zxdh_ifc_rss_hf_bits {
+	uint8_t rss_hf[0x20];
+};
+
 struct zxdh_mac_reply_msg {
 	uint8_t mac_flag;
+};
+
+struct zxdh_ifc_mac_reply_msg_bits {
+	uint8_t mac_flag[0x8];
 };
 
 struct zxdh_mac_module_eeprom_msg {
@@ -375,34 +393,57 @@ struct zxdh_mac_module_eeprom_msg {
 	uint8_t data[ZXDH_MODULE_EEPROM_DATA_LEN];
 };
 
+struct zxdh_ifc_agent_mac_module_eeprom_msg_bits {
+	uint8_t i2c_addr[0x8];
+	uint8_t bank[0x8];
+	uint8_t page[0x8];
+	uint8_t offset[0x8];
+	uint8_t length[0x8];
+	uint8_t data[ZXDH_MODULE_EEPROM_DATA_LEN * 8];
+};
+
 struct zxdh_flash_msg {
 	uint8_t firmware_version[ZXDH_FWVERS_LEN];
+};
+
+struct zxdh_ifc_agent_flash_msg_bits {
+	uint8_t firmware_version[0x100];
 };
 
 struct zxdh_mtr_profile_info {
 	uint64_t profile_id;
 };
 
-struct zxdh_msg_reply_body {
-	enum zxdh_reps_flag flag;
+struct zxdh_ifc_mtr_profile_info_bits {
+	uint8_t profile_id[0x40];
+};
+
+struct zxdh_ifc_msg_reply_body_bits {
+	uint8_t flag[0x8];
 	union {
-		uint8_t reply_data[ZXDH_MSG_REPLY_BODY_MAX_LEN - sizeof(enum zxdh_reps_flag)];
-		struct zxdh_hw_np_stats np_stats;
-		struct zxdh_link_info_msg link_msg;
-		struct zxdh_rss_reta rss_reta;
-		struct zxdh_rss_hf rss_hf;
-		struct zxdh_hw_vqm_stats vqm_stats;
-		struct zxdh_mac_reply_msg mac_reply_msg;
-		struct zxdh_flash_msg flash_msg;
-		struct zxdh_mac_module_eeprom_msg module_eeprom_msg;
-		struct zxdh_mtr_profile_info mtr_profile_info;
-		struct zxdh_mtr_stats hw_mtr_stats;
+		uint8_t reply_data[ZXDH_MSG_REPLY_DATA * 8];
+		struct zxdh_ifc_hw_np_stats_bits hw_stats;
+		struct zxdh_ifc_link_info_msg_bits link_msg;
+		struct zxdh_ifc_rss_reta_bits rss_reta_msg;
+		struct zxdh_ifc_rss_hf_bits rss_hf_msg;
+		struct zxdh_ifc_hw_vqm_stats_bits vqm_stats;
+		struct zxdh_ifc_mac_reply_msg_bits mac_reply_msg;
+		struct zxdh_ifc_agent_flash_msg_bits flash_msg;
+		struct zxdh_ifc_agent_mac_module_eeprom_msg_bits module_eeprom_msg;
+		struct zxdh_ifc_mtr_profile_info_bits  mtr_profile_info;
+		struct zxdh_ifc_mtr_stats_bits hw_mtr_stats;
 	};
 };
 
-struct zxdh_msg_reply_info {
-	struct zxdh_msg_reply_head reply_head;
-	struct zxdh_msg_reply_body reply_body;
+struct zxdh_ifc_msg_reply_head_bits {
+	uint8_t flag[0x8];
+	uint8_t reps_len[0x10];
+	uint8_t resvd[0x8];
+};
+
+struct zxdh_ifc_msg_reply_info_bits {
+	struct zxdh_ifc_msg_reply_head_bits reply_head;
+	struct zxdh_ifc_msg_reply_body_bits reply_body;
 };
 
 struct zxdh_vf_init_msg {
@@ -412,12 +453,12 @@ struct zxdh_vf_init_msg {
 	uint8_t rss_enable;
 };
 
-struct zxdh_msg_head {
-	enum zxdh_msg_type msg_type;
+struct __rte_packed_begin zxdh_msg_head {
+	uint8_t msg_type;
 	uint16_t  vport;
 	uint16_t  vf_id;
 	uint16_t pcieid;
-};
+} __rte_packed_end;
 
 struct zxdh_port_attr_set_msg {
 	uint32_t mode;
@@ -455,7 +496,7 @@ struct zxdh_rss_enable {
 };
 
 struct zxdh_agent_msg_head {
-	enum zxdh_agent_msg_type msg_type;
+	uint8_t msg_type;
 	uint8_t panel_id;
 	uint8_t phyport;
 	uint8_t rsv;
@@ -526,7 +567,7 @@ struct zxdh_msg_info {
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 		void *reps_buffer, uint16_t *reps_len, void *dev);
 typedef int (*zxdh_msg_process_callback)(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
-	struct zxdh_msg_reply_body *res_info, uint16_t *res_len);
+	void *res_info, uint16_t *res_len);
 
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 			void *reps_buffer, uint16_t *reps_len, void *dev);
