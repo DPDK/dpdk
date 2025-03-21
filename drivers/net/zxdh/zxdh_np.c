@@ -26,6 +26,7 @@ static uint64_t g_np_fw_compat_addr[ZXDH_DEV_CHANNEL_MAX];
 static const ZXDH_VERSION_COMPATIBLE_REG_T g_np_sdk_version = {
 	ZXDH_NPSDK_COMPAT_ITEM_ID, 1, 0, 0, 0, {0} };
 static const uint32_t hardware_ep_id[5] = {5, 6, 7, 8, 9};
+static ZXDH_RB_CFG *g_dtb_dump_addr_rb[ZXDH_DEV_CHANNEL_MAX][ZXDH_DTB_QUEUE_NUM_MAX];
 
 static const ZXDH_FIELD_T g_smmu0_smmu0_cpu_ind_cmd_reg[] = {
 	{"cpu_ind_rw", ZXDH_FIELD_FLAG_RW, 31, 1, 0x0, 0x0},
@@ -324,6 +325,51 @@ zxdh_np_dtb_tab_up_phy_addr_get(uint32_t DEV_ID, uint32_t QUEUE_ID,
 #define ZXDH_DTB_TAB_UP_PHY_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)	 \
 	zxdh_np_dtb_tab_up_phy_addr_get(DEV_ID, QUEUE_ID, INDEX)
 
+static inline void
+zxdh_np_init_d_node(ZXDH_D_NODE *ptr, void *pdata)
+{
+	ptr->data = pdata;
+	ptr->prev = NULL;
+	ptr->next = NULL;
+}
+
+static inline void
+zxdh_np_init_rbt_tn(ZXDH_RB_TN *p_tn, void *p_newkey)
+{
+	p_tn->p_key = p_newkey;
+	p_tn->color_lsv = 0;
+	p_tn->p_left = NULL;
+	p_tn->p_right = NULL;
+	p_tn->p_parent = NULL;
+	zxdh_np_init_d_node(&p_tn->tn_ln, p_tn);
+}
+
+static inline uint32_t
+zxdh_np_get_tn_lsv(ZXDH_RB_TN *p_tn)
+{
+	return p_tn->color_lsv >> 2;
+}
+
+static inline void
+zxdh_np_set_tn_lsv(ZXDH_RB_TN *p_tn, uint32_t list_val)
+{
+	p_tn->color_lsv &= 0x3;
+	p_tn->color_lsv |= (list_val << 2);
+}
+
+static inline void
+zxdh_np_set_tn_color(ZXDH_RB_TN *p_tn, uint32_t color)
+{
+	p_tn->color_lsv &= 0xfffffffc;
+	p_tn->color_lsv |= (color & 0x3);
+}
+
+static inline uint32_t
+zxdh_np_get_tn_color(ZXDH_RB_TN *p_tn)
+{
+	return ((p_tn == NULL) ? ZXDH_RBT_BLACK : (p_tn)->color_lsv & 0x3);
+}
+
 static ZXDH_FIELD_T g_stat_car0_cara_queue_ram0_159_0_reg[] = {
 	{"cara_drop", ZXDH_FIELD_FLAG_RW, 147, 1, 0x0, 0x0},
 	{"cara_plcr_en", ZXDH_FIELD_FLAG_RW, 146, 1, 0x0, 0x0},
@@ -463,6 +509,945 @@ zxdh_np_comm_swap(uint8_t *p_uc_data, uint32_t dw_byte_len)
 		p_w_tmp = (uint16_t *)(p_dw_tmp);
 		(*p_w_tmp) = ZXDH_COMM_CONVERT16(*p_w_tmp);
 	}
+}
+
+static uint32_t
+zxdh_comm_double_link_init(uint32_t elmemtnum, ZXDH_D_HEAD *p_head)
+{
+	uint32_t err_code = 0;
+
+	if (elmemtnum == 0) {
+		err_code = ZXDH_DOUBLE_LINK_INIT_ELEMENT_NUM_ERR;
+		PMD_DRV_LOG(ERR, "Error:[0x%x] doule_link_init Element Num Err !",
+			err_code);
+		return err_code;
+	}
+
+	p_head->maxnum   = elmemtnum;
+	p_head->used	 = 0;
+	p_head->p_next   = NULL;
+	p_head->p_prev   = NULL;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_comm_liststack_create(uint32_t element_num, ZXDH_LISTSTACK_MANAGER **p_list)
+{
+	ZXDH_LISTSTACK_MANAGER *p_local_list = NULL;
+	uint32_t dw_list_size = 0;
+	uint32_t dw_manage_size = 0;
+	uint32_t dw_actual_element_num = 0;
+	uint32_t i = 0;
+
+	if (p_list == NULL) {
+		PMD_DRV_LOG(ERR, " p_list is NULL!");
+		return ZXDH_LIST_STACK_POINT_NULL;
+	}
+	if (element_num <= 0) {
+		*p_list = NULL;
+		PMD_DRV_LOG(ERR, " FtmComm_ListStackCreat_dwElementNum <=0");
+		return ZXDH_LIST_STACK_ELEMENT_NUM_ERR;
+	}
+
+	if (element_num > ZXDH_LISTSTACK_MAX_ELEMENT - 1)
+		dw_actual_element_num = ZXDH_LISTSTACK_MAX_ELEMENT;
+	else
+		dw_actual_element_num = element_num + 1;
+
+	dw_list_size = (dw_actual_element_num * sizeof(ZXDH_COMM_FREELINK)) & 0xffffffff;
+	dw_manage_size = ((sizeof(ZXDH_LISTSTACK_MANAGER) & 0xFFFFFFFFU) + dw_list_size) &
+		0xffffffff;
+
+	p_local_list = rte_zmalloc(NULL, dw_manage_size, 0);
+	if (p_local_list == NULL) {
+		*p_list = NULL;
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		return ZXDH_LIST_STACK_ALLOC_MEMORY_FAIL;
+	}
+
+	p_local_list->p_array = (ZXDH_COMM_FREELINK *)((uint8_t *)p_local_list +
+		sizeof(ZXDH_LISTSTACK_MANAGER));
+
+	p_local_list->capacity = dw_actual_element_num;
+	p_local_list->free_num = dw_actual_element_num - 1;
+	p_local_list->used_num = 0;
+
+	for (i = 1; i < (dw_actual_element_num - 1); i++) {
+		p_local_list->p_array[i].index = i;
+		p_local_list->p_array[i].next = i + 1;
+	}
+
+	p_local_list->p_array[0].index = 0;
+	p_local_list->p_array[0].next =  0;
+
+	p_local_list->p_array[dw_actual_element_num - 1].index = dw_actual_element_num - 1;
+	p_local_list->p_array[dw_actual_element_num - 1].next = 0xffffffff;
+
+	p_local_list->p_head = p_local_list->p_array[1].index;
+
+	*p_list = p_local_list;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_comm_liststack_alloc(ZXDH_LISTSTACK_MANAGER *p_list, uint32_t *p_index)
+{
+	uint32_t dw_alloc_index = 0;
+	uint32_t dw_next_free = 0;
+
+	if (p_list == NULL) {
+		*p_index = ZXDH_LISTSTACK_INVALID_INDEX;
+		return ZXDH_LIST_STACK_POINT_NULL;
+	}
+
+	if (p_list->p_head == ZXDH_LISTSTACK_INVALID_INDEX) {
+		*p_index = ZXDH_LISTSTACK_INVALID_INDEX;
+		return ZXDH_LIST_STACK_ISEMPTY_ERR;
+	}
+
+	dw_alloc_index = p_list->p_head;
+
+	dw_next_free = p_list->p_array[dw_alloc_index].next;
+	p_list->p_array[dw_alloc_index].next = ZXDH_LISTSTACK_INVALID_INDEX;
+
+	if (dw_next_free != 0xffffffff)
+		p_list->p_head = p_list->p_array[dw_next_free].index;
+	else
+		p_list->p_head = ZXDH_LISTSTACK_INVALID_INDEX;
+
+	*p_index = dw_alloc_index - 1;
+
+	p_list->free_num--;
+	p_list->used_num++;
+
+	if (p_list->free_num == 0 || (p_list->used_num == (p_list->capacity - 1)))
+		p_list->p_head = ZXDH_LISTSTACK_INVALID_INDEX;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_liststack_free(ZXDH_LISTSTACK_MANAGER *p_list, uint32_t index)
+{
+	uint32_t	 dw_free_index = 0;
+	uint32_t	 dw_prev_free  = 0;
+	uint32_t	 dw_index	  = 0;
+
+	dw_index	  = index + 1;
+
+	if (p_list == NULL) {
+		PMD_DRV_LOG(ERR, " p_list is null");
+		return ZXDH_LIST_STACK_POINT_NULL;
+	}
+
+	if (dw_index >= p_list->capacity) {
+		PMD_DRV_LOG(ERR, "dw_index is invalid");
+		return ZXDH_LIST_STACK_FREE_INDEX_INVALID;
+	}
+
+	if (p_list->p_array[dw_index].next != ZXDH_LISTSTACK_INVALID_INDEX)
+		return ZXDH_OK;
+
+	dw_free_index = dw_index;
+	dw_prev_free = p_list->p_head;
+
+	if (dw_prev_free != 0)
+		p_list->p_array[dw_free_index].next =  p_list->p_array[dw_prev_free].index;
+	else
+		p_list->p_array[dw_free_index].next = 0xffffffff;
+
+	p_list->p_head = p_list->p_array[dw_free_index].index;
+
+	p_list->free_num++;
+	p_list->used_num--;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_double_link_insert_1st(ZXDH_D_NODE *p_newnode, ZXDH_D_HEAD *p_head)
+{
+	RTE_ASSERT(!(!p_head->p_next && p_head->p_prev));
+	RTE_ASSERT(!(p_head->p_next && !p_head->p_prev));
+
+	p_newnode->next = p_head->p_next;
+	p_newnode->prev = NULL;
+
+	if (p_head->p_next)
+		p_head->p_next->prev = p_newnode;
+	else
+		p_head->p_prev = p_newnode;
+
+	p_head->p_next = p_newnode;
+	p_head->used++;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_double_link_insert_aft(ZXDH_D_NODE *p_newnode,
+								ZXDH_D_NODE *p_oldnode,
+								ZXDH_D_HEAD *p_head)
+{
+	RTE_ASSERT(!(!p_head->p_next && p_head->p_prev));
+	RTE_ASSERT(!(p_head->p_next && !p_head->p_prev));
+
+	p_newnode->next = p_oldnode->next;
+	p_newnode->prev = p_oldnode;
+
+	if (p_oldnode->next)
+		p_oldnode->next->prev = p_newnode;
+	else
+		p_head->p_prev = p_newnode;
+
+	p_oldnode->next = p_newnode;
+	p_head->used++;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_double_link_insert_pre(ZXDH_D_NODE *p_newnode,
+	ZXDH_D_NODE *p_oldnode, ZXDH_D_HEAD *p_head)
+{
+	RTE_ASSERT(!(!p_head->p_next && p_head->p_prev));
+	RTE_ASSERT(!(p_head->p_next && !p_head->p_prev));
+
+	p_newnode->next = p_oldnode;
+	p_newnode->prev = p_oldnode->prev;
+
+	if (p_oldnode->prev)
+		p_oldnode->prev->next = p_newnode;
+	else
+		p_head->p_next = p_newnode;
+
+	p_oldnode->prev = p_newnode;
+	p_head->used++;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_double_link_del(ZXDH_D_NODE *delnode, ZXDH_D_HEAD *p_head)
+{
+	ZXDH_D_NODE *next = NULL;
+	ZXDH_D_NODE *pre  = NULL;
+
+	next = delnode->next;
+	pre  = delnode->prev;
+
+	if (next)
+		next->prev = delnode->prev;
+	else
+		p_head->p_prev = delnode->prev;
+
+	if (pre)
+		pre->next = delnode->next;
+	else
+		p_head->p_next = delnode->next;
+
+	p_head->used--;
+	delnode->next = NULL;
+	delnode->prev = NULL;
+	return ZXDH_OK;
+}
+
+static int32_t
+zxdh_comm_rb_def_cmp(void *p_new, void *p_old, uint32_t key_size)
+{
+	return memcmp(p_new, p_old, key_size);
+}
+
+static void
+zxdh_comm_rb_switch_color(ZXDH_RB_TN  *p_tn1, ZXDH_RB_TN *p_tn2)
+{
+	uint32_t color1, color2;
+
+	color1 = zxdh_np_get_tn_color(p_tn1);
+	color2 = zxdh_np_get_tn_color(p_tn2);
+
+	zxdh_np_set_tn_color(p_tn1, color2);
+	zxdh_np_set_tn_color(p_tn2, color1);
+}
+
+static ZXDH_RB_TN *
+zxdh_comm_rb_get_brotn(ZXDH_RB_TN *p_cur_tn)
+{
+	return (p_cur_tn->p_parent->p_left == p_cur_tn) ? p_cur_tn->p_parent->p_right :
+		p_cur_tn->p_parent->p_left;
+}
+
+static uint32_t
+zxdh_comm_rb_handle_ins(__rte_unused ZXDH_RB_CFG *p_rb_cfg,
+						ZXDH_RB_TN  ***stack_tn,
+						uint32_t	  stack_top)
+{
+	ZXDH_RB_TN  **pp_cur_tn		= NULL;
+	ZXDH_RB_TN  *p_cur_tn		  = NULL;
+	ZXDH_RB_TN  **pp_tmp_tn		= NULL;
+	ZXDH_RB_TN  *p_tmp_tn		  = NULL;
+
+	while (stack_top > 0) {
+		pp_cur_tn = stack_tn[stack_top];
+		p_cur_tn  = *pp_cur_tn;
+
+		if (!p_cur_tn->p_parent) {
+			zxdh_np_set_tn_color(p_cur_tn, ZXDH_RBT_BLACK);
+			break;
+		} else if (zxdh_np_get_tn_color(p_cur_tn->p_parent) == ZXDH_RBT_RED) {
+			ZXDH_RB_TN *p_unc_tn = zxdh_comm_rb_get_brotn(p_cur_tn->p_parent);
+
+			RTE_ASSERT(p_cur_tn->p_parent == *stack_tn[stack_top - 1]);
+
+			if (zxdh_np_get_tn_color(p_unc_tn) == ZXDH_RBT_RED) {
+				RTE_ASSERT(p_unc_tn);
+				zxdh_np_set_tn_color(p_cur_tn->p_parent, ZXDH_RBT_BLACK);
+				zxdh_np_set_tn_color(p_unc_tn, ZXDH_RBT_BLACK);
+
+				RTE_ASSERT(p_cur_tn->p_parent->p_parent ==
+					*stack_tn[stack_top - 2]);
+
+				zxdh_np_set_tn_color(p_cur_tn->p_parent->p_parent, ZXDH_RBT_RED);
+				stack_top -= 2;
+			} else {
+				ZXDH_RB_TN *p_bro_tn = NULL;
+
+				pp_tmp_tn = stack_tn[stack_top - 2];
+				p_tmp_tn  = *pp_tmp_tn;
+
+				if (p_cur_tn->p_parent == p_tmp_tn->p_left && p_cur_tn ==
+				p_cur_tn->p_parent->p_left) {
+					*pp_tmp_tn = p_cur_tn->p_parent;
+
+					p_bro_tn  = zxdh_comm_rb_get_brotn(p_cur_tn);
+					p_cur_tn->p_parent->p_parent = p_tmp_tn->p_parent;
+
+					p_tmp_tn->p_left   = p_bro_tn;
+					p_tmp_tn->p_parent = p_cur_tn->p_parent;
+					p_cur_tn->p_parent->p_right = p_tmp_tn;
+
+					if (p_bro_tn)
+						p_bro_tn->p_parent  = p_tmp_tn;
+
+					zxdh_comm_rb_switch_color(*pp_tmp_tn, p_tmp_tn);
+				} else if (p_cur_tn->p_parent == p_tmp_tn->p_left && p_cur_tn ==
+				p_cur_tn->p_parent->p_right) {
+					*pp_tmp_tn = p_cur_tn;
+
+					p_cur_tn->p_parent->p_right = p_cur_tn->p_left;
+
+					if (p_cur_tn->p_left)
+						p_cur_tn->p_left->p_parent = p_cur_tn->p_parent;
+
+					p_cur_tn->p_parent->p_parent = p_cur_tn;
+					p_tmp_tn->p_left = p_cur_tn->p_right;
+
+					if (p_cur_tn->p_right)
+						p_cur_tn->p_right->p_parent = p_tmp_tn;
+
+					p_cur_tn->p_left = p_cur_tn->p_parent;
+					p_cur_tn->p_right = p_tmp_tn;
+
+					p_cur_tn->p_parent = p_tmp_tn->p_parent;
+					p_tmp_tn->p_parent = p_cur_tn;
+
+					zxdh_comm_rb_switch_color(*pp_tmp_tn, p_tmp_tn);
+				} else if (p_cur_tn->p_parent == p_tmp_tn->p_right && p_cur_tn ==
+				p_cur_tn->p_parent->p_right) {
+					*pp_tmp_tn = p_cur_tn->p_parent;
+					p_bro_tn  = zxdh_comm_rb_get_brotn(p_cur_tn);
+
+					p_cur_tn->p_parent->p_parent = p_tmp_tn->p_parent;
+
+					p_tmp_tn->p_right = p_cur_tn->p_parent->p_left;
+					p_tmp_tn->p_parent = p_cur_tn->p_parent;
+					p_cur_tn->p_parent->p_left = p_tmp_tn;
+
+					if (p_bro_tn)
+						p_bro_tn->p_parent  = p_tmp_tn;
+
+					zxdh_comm_rb_switch_color(*pp_tmp_tn, p_tmp_tn);
+				} else {
+					*pp_tmp_tn = p_cur_tn;
+					p_cur_tn->p_parent->p_left = p_cur_tn->p_right;
+
+					if (p_cur_tn->p_right)
+						p_cur_tn->p_right->p_parent = p_cur_tn->p_parent;
+
+					p_cur_tn->p_parent->p_parent = p_cur_tn;
+					p_tmp_tn->p_right = p_cur_tn->p_left;
+
+					if (p_cur_tn->p_left)
+						p_cur_tn->p_left->p_parent = p_tmp_tn;
+
+					p_cur_tn->p_right = p_cur_tn->p_parent;
+					p_cur_tn->p_left = p_tmp_tn;
+
+					p_cur_tn->p_parent = p_tmp_tn->p_parent;
+					p_tmp_tn->p_parent = p_cur_tn;
+
+					zxdh_comm_rb_switch_color(*pp_tmp_tn, p_tmp_tn);
+				}
+				break;
+			}
+		} else {
+			break;
+		}
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_rb_init(ZXDH_RB_CFG *p_rb_cfg,
+				uint32_t	  total_num,
+				uint32_t	  key_size,
+				ZXDH_RB_CMPFUN cmpfun)
+{
+	uint32_t	  rtn  = ZXDH_OK;
+	uint32_t	  malloc_size = 0;
+
+	if (p_rb_cfg->is_init) {
+		PMD_DRV_LOG(ERR, " p_rb_cfg already init!");
+		return ZXDH_OK;
+	}
+
+	p_rb_cfg->key_size =  key_size;
+	p_rb_cfg->p_root   =  NULL;
+
+	if (cmpfun)
+		p_rb_cfg->p_cmpfun =  cmpfun;
+	else
+		p_rb_cfg->p_cmpfun = zxdh_comm_rb_def_cmp;
+
+	if (total_num) {
+		p_rb_cfg->is_dynamic = 0;
+
+		rtn = zxdh_comm_double_link_init(total_num, &p_rb_cfg->tn_list);
+		ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_double_link_init");
+
+		rtn = zxdh_np_comm_liststack_create(total_num, &p_rb_cfg->p_lsm);
+		ZXDH_COMM_CHECK_RC(rtn, "zxdh_np_comm_liststack_create");
+
+		p_rb_cfg->p_keybase = rte_zmalloc(NULL,
+			total_num * p_rb_cfg->key_size, 0);
+		if (p_rb_cfg->p_keybase == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+
+		malloc_size = ((sizeof(ZXDH_RB_TN) & 0xFFFFFFFFU) * total_num) & UINT32_MAX;
+
+		p_rb_cfg->p_tnbase  = rte_zmalloc(NULL, malloc_size, 0);
+		if (p_rb_cfg->p_tnbase == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+	} else {
+		p_rb_cfg->is_dynamic = 1;
+
+		rtn = zxdh_comm_double_link_init(0xFFFFFFFF, &p_rb_cfg->tn_list);
+		ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_double_link_init");
+	}
+	p_rb_cfg->is_init = 1;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_rb_insert(ZXDH_RB_CFG *p_rb_cfg,
+						 void	   *p_key,
+						 void	   *out_val)
+{
+	uint32_t	 rtn			= 0;
+	uint32_t	 stack_top	  = 1;
+	int32_t		 cmprtn		 = 0;
+	uint32_t	 lsm_out		= 0;
+
+	ZXDH_RB_TN  **stack_tn[ZXDH_RBT_MAX_DEPTH] = {0};
+	ZXDH_RB_TN  *p_cur_tn	  = NULL;
+	ZXDH_RB_TN  *p_pre_tn	  = NULL;
+	ZXDH_RB_TN **pp_cur_tn	 = NULL;
+	void	   *p_cur_key	 = NULL;
+	ZXDH_RB_TN  *p_ins_tn	  = p_key;
+
+	p_cur_key = p_rb_cfg->is_dynamic ? ((ZXDH_RB_TN *)p_key)->p_key : p_key;
+
+	pp_cur_tn = &p_rb_cfg->p_root;
+
+	for (;;) {
+		p_cur_tn = *pp_cur_tn;
+
+		if (!p_cur_tn) {
+			if (p_rb_cfg->is_dynamic == 0) {
+				rtn = zxdh_np_comm_liststack_alloc(p_rb_cfg->p_lsm, &lsm_out);
+
+				if (rtn == ZXDH_LIST_STACK_ISEMPTY_ERR)
+					return ZXDH_RBT_RC_FULL;
+
+				ZXDH_COMM_CHECK_RC(rtn, "zxdh_np_comm_liststack_alloc");
+
+				p_ins_tn = p_rb_cfg->p_tnbase + lsm_out;
+
+				zxdh_np_init_rbt_tn(p_ins_tn, p_rb_cfg->key_size * lsm_out +
+					p_rb_cfg->p_keybase);
+
+				memcpy(p_ins_tn->p_key, p_key, p_rb_cfg->key_size);
+
+				zxdh_np_set_tn_lsv(p_ins_tn, lsm_out);
+
+				if (out_val)
+					*((uint32_t *)out_val) = lsm_out;
+			} else {
+				zxdh_np_init_d_node(&p_ins_tn->tn_ln, p_ins_tn);
+			}
+
+			zxdh_np_set_tn_color(p_ins_tn, ZXDH_RBT_RED);
+
+			if (cmprtn < 0) {
+				rtn = zxdh_comm_double_link_insert_pre(&p_ins_tn->tn_ln,
+					&p_pre_tn->tn_ln, &p_rb_cfg->tn_list);
+				ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_double_link_insert_pre");
+			} else if (cmprtn > 0) {
+				rtn = zxdh_comm_double_link_insert_aft(&p_ins_tn->tn_ln,
+					&p_pre_tn->tn_ln, &p_rb_cfg->tn_list);
+				ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_double_link_insert_aft");
+			} else {
+				RTE_ASSERT(!p_pre_tn);
+
+				rtn = zxdh_comm_double_link_insert_1st(&p_ins_tn->tn_ln,
+					&p_rb_cfg->tn_list);
+				ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_double_link_insert_1st");
+			}
+
+			break;
+		}
+
+		stack_tn[stack_top++] =  pp_cur_tn;
+		p_pre_tn = p_cur_tn;
+		cmprtn = p_rb_cfg->p_cmpfun(p_cur_key, p_cur_tn->p_key, p_rb_cfg->key_size);
+
+		if (cmprtn > 0) {
+			pp_cur_tn = &p_cur_tn->p_right;
+		} else if (cmprtn < 0) {
+			pp_cur_tn = &p_cur_tn->p_left;
+		} else {
+			PMD_DRV_LOG(ERR, "rb_key is same");
+
+			if (p_rb_cfg->is_dynamic) {
+				if (out_val)
+					*((ZXDH_RB_TN **)out_val) = p_cur_tn;
+			} else {
+				if (out_val)
+					*((uint32_t *)out_val) = zxdh_np_get_tn_lsv(p_cur_tn);
+			}
+
+			return ZXDH_RBT_RC_UPDATE;
+		}
+	}
+
+	p_ins_tn->p_parent = (stack_top > 1) ? *stack_tn[stack_top - 1] : NULL;
+	stack_tn[stack_top] = pp_cur_tn;
+
+	*pp_cur_tn = p_ins_tn;
+
+	rtn = zxdh_comm_rb_handle_ins(p_rb_cfg, stack_tn, stack_top);
+	ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_rb_handle_ins");
+
+	if (p_rb_cfg->is_dynamic) {
+		if (out_val)
+			*((ZXDH_RB_TN **)out_val) = p_ins_tn;
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_rb_handle_del(__rte_unused ZXDH_RB_CFG *p_rb_cfg,
+							ZXDH_RB_TN ***stack_tn,
+							uint32_t   stack_top)
+{
+	ZXDH_RB_TN  **pp_cur_tn		= NULL;
+	ZXDH_RB_TN  *p_cur_tn		  = NULL;
+	ZXDH_RB_TN  *p_tmp_tn		  = NULL;
+	ZXDH_RB_TN  *p_unc_tn		  = NULL;
+	ZXDH_RB_TN  *p_par_tn		  = NULL;
+
+	while (stack_top > 1) {
+		pp_cur_tn =  stack_tn[stack_top];
+		p_cur_tn  = *pp_cur_tn;
+
+		p_par_tn  = *stack_tn[stack_top - 1];
+
+		if (p_cur_tn && p_cur_tn->p_parent) {
+			p_unc_tn  = zxdh_comm_rb_get_brotn(p_cur_tn);
+		} else if (p_cur_tn && !p_cur_tn->p_parent) {
+			RTE_ASSERT(p_par_tn == p_cur_tn->p_parent);
+
+			zxdh_np_set_tn_color(p_cur_tn, ZXDH_RBT_BLACK);
+
+			break;
+		}
+		if (!p_cur_tn) {
+			RTE_ASSERT(!p_cur_tn);
+
+			if (p_par_tn)
+				p_unc_tn = p_par_tn->p_left ? p_par_tn->p_left : p_par_tn->p_right;
+			else
+				break;
+		}
+
+		if (p_unc_tn)
+			RTE_ASSERT(p_unc_tn->p_parent == p_par_tn);
+
+		if (!p_unc_tn) {
+			RTE_ASSERT(0);
+			RTE_ASSERT(zxdh_np_get_tn_color(p_par_tn) ==  ZXDH_RBT_RED);
+
+			zxdh_np_set_tn_color(p_par_tn, ZXDH_RBT_BLACK);
+
+			break;
+		}
+		if (zxdh_np_get_tn_color(p_unc_tn) == ZXDH_RBT_RED) {
+			if (p_unc_tn == p_par_tn->p_left) {
+				*stack_tn[stack_top - 1] = p_unc_tn;
+				p_unc_tn->p_parent = p_par_tn->p_parent;
+				p_par_tn->p_left = p_unc_tn->p_right;
+
+				if (p_unc_tn->p_right)
+					p_unc_tn->p_right->p_parent = p_par_tn;
+
+				p_par_tn->p_parent = p_unc_tn;
+				p_unc_tn->p_right = p_par_tn;
+
+				stack_tn[stack_top++] = &p_unc_tn->p_right;
+				stack_tn[stack_top]   = &p_par_tn->p_right;
+			} else {
+				RTE_ASSERT(p_unc_tn == p_par_tn->p_right);
+				*stack_tn[stack_top - 1] = p_unc_tn;
+				p_unc_tn->p_parent = p_par_tn->p_parent;
+				p_par_tn->p_right = p_unc_tn->p_left;
+
+				if (p_unc_tn->p_left)
+					p_unc_tn->p_left->p_parent = p_par_tn;
+
+				p_par_tn->p_parent = p_unc_tn;
+				p_unc_tn->p_left  = p_par_tn;
+
+				stack_tn[stack_top++] = &p_unc_tn->p_left;
+				stack_tn[stack_top]   = &p_par_tn->p_left;
+			}
+
+			zxdh_comm_rb_switch_color(p_unc_tn, p_par_tn);
+		} else {
+			if (zxdh_np_get_tn_color(p_unc_tn->p_left) == ZXDH_RBT_BLACK &&
+			zxdh_np_get_tn_color(p_unc_tn->p_right) == ZXDH_RBT_BLACK) {
+				if (zxdh_np_get_tn_color(p_unc_tn->p_parent) == ZXDH_RBT_BLACK) {
+					zxdh_np_set_tn_color(p_unc_tn, ZXDH_RBT_RED);
+					stack_top--;
+				} else {
+					RTE_ASSERT(zxdh_np_get_tn_color(p_unc_tn->p_parent)
+						== ZXDH_RBT_RED);
+
+					zxdh_comm_rb_switch_color(p_unc_tn->p_parent, p_unc_tn);
+
+					break;
+				}
+			} else if (p_unc_tn == p_par_tn->p_right) {
+				if (zxdh_np_get_tn_color(p_unc_tn->p_right) == ZXDH_RBT_RED) {
+					*stack_tn[stack_top - 1] = p_unc_tn;
+					p_unc_tn->p_parent = p_par_tn->p_parent;
+					p_par_tn->p_right = p_unc_tn->p_left;
+
+					if (p_unc_tn->p_left)
+						p_unc_tn->p_left->p_parent = p_par_tn;
+
+					p_par_tn->p_parent = p_unc_tn;
+					p_unc_tn->p_left  = p_par_tn;
+
+					zxdh_comm_rb_switch_color(p_unc_tn, p_par_tn);
+
+					zxdh_np_set_tn_color(p_unc_tn->p_right, ZXDH_RBT_BLACK);
+
+					break;
+				}
+				RTE_ASSERT(zxdh_np_get_tn_color(p_unc_tn->p_left)
+					== ZXDH_RBT_RED);
+
+				p_tmp_tn = p_unc_tn->p_left;
+
+				p_par_tn->p_right  = p_tmp_tn;
+				p_tmp_tn->p_parent = p_par_tn;
+				p_unc_tn->p_left  = p_tmp_tn->p_right;
+
+				if (p_tmp_tn->p_right)
+					p_tmp_tn->p_right->p_parent = p_unc_tn;
+
+				p_tmp_tn->p_right = p_unc_tn;
+				p_unc_tn->p_parent = p_tmp_tn;
+
+				zxdh_comm_rb_switch_color(p_tmp_tn, p_unc_tn);
+			} else {
+				RTE_ASSERT(p_unc_tn == p_par_tn->p_left);
+
+				if (zxdh_np_get_tn_color(p_unc_tn->p_left) == ZXDH_RBT_RED) {
+					*stack_tn[stack_top - 1] = p_unc_tn;
+					p_unc_tn->p_parent = p_par_tn->p_parent;
+					p_par_tn->p_left  = p_unc_tn->p_right;
+
+					if (p_unc_tn->p_right)
+						p_unc_tn->p_right->p_parent = p_par_tn;
+
+					p_par_tn->p_parent = p_unc_tn;
+					p_unc_tn->p_right = p_par_tn;
+
+					zxdh_comm_rb_switch_color(p_unc_tn, p_par_tn);
+
+					zxdh_np_set_tn_color(p_unc_tn->p_left, ZXDH_RBT_BLACK);
+					break;
+				}
+				RTE_ASSERT(zxdh_np_get_tn_color(p_unc_tn->p_right)
+					== ZXDH_RBT_RED);
+
+				p_tmp_tn = p_unc_tn->p_right;
+
+				p_par_tn->p_left  = p_tmp_tn;
+				p_tmp_tn->p_parent = p_par_tn;
+				p_unc_tn->p_right  = p_tmp_tn->p_left;
+
+				if (p_tmp_tn->p_left)
+					p_tmp_tn->p_left->p_parent = p_unc_tn;
+
+				p_tmp_tn->p_left = p_unc_tn;
+				p_unc_tn->p_parent = p_tmp_tn;
+
+				zxdh_comm_rb_switch_color(p_tmp_tn, p_unc_tn);
+			}
+		}
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_rb_delete(ZXDH_RB_CFG *p_rb_cfg,
+						 void	   *p_key,
+						 void	   *out_val)
+{
+	uint32_t	 rtn			= 0;
+	uint32_t	 stack_top	  = 1;
+	int32_t	cmprtn		 = 0;
+	uint32_t	 rsv_stack	  = 0;
+	uint32_t	 del_is_red	 = 0;
+	ZXDH_RB_TN  **stack_tn[ZXDH_RBT_MAX_DEPTH] = {0};
+	ZXDH_RB_TN  *p_cur_tn	  = NULL;
+	ZXDH_RB_TN **pp_cur_tn	 = NULL;
+	void	   *p_cur_key	 = NULL;
+	ZXDH_RB_TN  *p_rsv_tn	  = NULL;
+	ZXDH_RB_TN  *p_del_tn	  = NULL;
+
+	p_cur_key = p_key;
+
+	pp_cur_tn = &p_rb_cfg->p_root;
+
+	for (;;) {
+		p_cur_tn = *pp_cur_tn;
+
+		if (!p_cur_tn)
+			return ZXDH_RBT_RC_SRHFAIL;
+
+		stack_tn[stack_top++] = pp_cur_tn;
+
+		cmprtn = p_rb_cfg->p_cmpfun(p_cur_key, p_cur_tn->p_key, p_rb_cfg->key_size);
+
+		if (cmprtn > 0) {
+			pp_cur_tn = &p_cur_tn->p_right;
+		} else if (cmprtn < 0) {
+			pp_cur_tn = &p_cur_tn->p_left;
+		} else {
+			PMD_DRV_LOG(DEBUG, " find the key!");
+
+			break;
+		}
+	}
+
+	rsv_stack =  stack_top - 1;
+	p_rsv_tn  =  p_cur_tn;
+
+	pp_cur_tn = &p_cur_tn->p_right;
+	p_cur_tn  = *pp_cur_tn;
+
+	if (p_cur_tn) {
+		stack_tn[stack_top++] = pp_cur_tn;
+
+		pp_cur_tn = &p_cur_tn->p_left;
+		p_cur_tn  = *pp_cur_tn;
+
+		while (p_cur_tn) {
+			stack_tn[stack_top++] = pp_cur_tn;
+			pp_cur_tn = &p_cur_tn->p_left;
+			p_cur_tn  = *pp_cur_tn;
+		}
+
+		p_del_tn = *stack_tn[stack_top - 1];
+
+		*stack_tn[stack_top - 1] = p_del_tn->p_right;
+
+		if (p_del_tn->p_right)
+			p_del_tn->p_right->p_parent =  p_del_tn->p_parent;
+
+		if (zxdh_np_get_tn_color(p_del_tn) == ZXDH_RBT_RED)
+			del_is_red = 1;
+
+		*stack_tn[rsv_stack]   = p_del_tn;
+
+		stack_tn[rsv_stack + 1]  = &p_del_tn->p_right;
+
+		zxdh_np_set_tn_color(p_del_tn, zxdh_np_get_tn_color(p_rsv_tn));
+		p_del_tn->p_parent = p_rsv_tn->p_parent;
+
+		p_del_tn->p_left   = p_rsv_tn->p_left;
+
+		if (p_rsv_tn->p_left)
+			p_rsv_tn->p_left->p_parent = p_del_tn;
+
+		p_del_tn->p_right  = p_rsv_tn->p_right;
+
+		if (p_rsv_tn->p_right)
+			p_rsv_tn->p_right->p_parent = p_del_tn;
+	} else {
+		if (zxdh_np_get_tn_color(p_rsv_tn) == ZXDH_RBT_RED)
+			del_is_red = 1;
+
+		*stack_tn[stack_top - 1] = p_rsv_tn->p_left;
+
+		if (p_rsv_tn->p_left)
+			p_rsv_tn->p_left->p_parent = p_rsv_tn->p_parent;
+	}
+
+	stack_top--;
+	if (zxdh_np_get_tn_color(*stack_tn[stack_top]) == ZXDH_RBT_RED) {
+		zxdh_np_set_tn_color(*stack_tn[stack_top], ZXDH_RBT_BLACK);
+	} else if (!del_is_red) {
+		rtn = zxdh_comm_rb_handle_del(p_rb_cfg, stack_tn, stack_top);
+		ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_rb_handle_del");
+	}
+
+	rtn = zxdh_comm_double_link_del(&p_rsv_tn->tn_ln, &p_rb_cfg->tn_list);
+	ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_double_link_del");
+
+	if (p_rb_cfg->is_dynamic) {
+		*(ZXDH_RB_TN **)out_val = p_rsv_tn;
+	} else {
+		rtn = zxdh_comm_liststack_free(p_rb_cfg->p_lsm, zxdh_np_get_tn_lsv(p_rsv_tn));
+		ZXDH_COMM_CHECK_RC(rtn, "zxdh_comm_liststack_free");
+
+		*(uint32_t *)out_val = zxdh_np_get_tn_lsv(p_rsv_tn);
+
+		memset(p_rsv_tn->p_key, 0, p_rb_cfg->key_size);
+		memset(p_rsv_tn, 0, sizeof(ZXDH_RB_TN));
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_liststack_destroy(ZXDH_LISTSTACK_MANAGER *p_list)
+{
+	if (p_list == NULL) {
+		PMD_DRV_LOG(ERR, "p_list point null");
+		return ZXDH_LIST_STACK_POINT_NULL;
+	}
+	rte_free(p_list);
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_comm_rb_destroy(ZXDH_RB_CFG *p_rb_cfg)
+{
+	uint32_t rtn = 0;
+
+	if (p_rb_cfg->is_dynamic == 0)
+		zxdh_comm_liststack_destroy(p_rb_cfg->p_lsm);
+
+	if (p_rb_cfg->p_keybase != NULL) {
+		rte_free(p_rb_cfg->p_keybase);
+		p_rb_cfg->p_keybase = NULL;
+	}
+
+	if (p_rb_cfg->p_tnbase != NULL) {
+		rte_free(p_rb_cfg->p_tnbase);
+		p_rb_cfg->p_tnbase = NULL;
+	}
+
+	memset(p_rb_cfg, 0, sizeof(ZXDH_RB_CFG));
+
+	return rtn;
+}
+
+static int
+zxdh_np_se_apt_key_default_cmp(void *p_new_key,
+	void *p_old_key, __rte_unused uint32_t key_len)
+{
+	return memcmp((uint32_t *)p_new_key, (uint32_t *)p_old_key, sizeof(uint32_t));
+}
+
+static uint32_t
+zxdh_np_se_apt_rb_insert(ZXDH_RB_CFG *rb_cfg, void *p_data, uint32_t len)
+{
+	uint8_t *p_rb_key		 = NULL;
+	ZXDH_RB_TN *p_rb_new	 = NULL;
+	ZXDH_RB_TN *p_rb_rtn	 = NULL;
+	uint32_t rc				 = ZXDH_OK;
+
+	p_rb_key = rte_zmalloc(NULL, len, 0);
+	if (p_rb_key == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+	memcpy(p_rb_key, p_data, len);
+
+	p_rb_new = rte_zmalloc(NULL, sizeof(ZXDH_RB_TN), 0);
+	if (NULL == (p_rb_new)) {
+		rte_free(p_rb_key);
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+	zxdh_np_init_rbt_tn(p_rb_new, p_rb_key);
+
+	rc = zxdh_comm_rb_insert(rb_cfg, p_rb_new, &p_rb_rtn);
+	if (rc == ZXDH_RBT_RC_UPDATE) {
+		if (p_rb_rtn == NULL) {
+			PMD_DRV_LOG(ERR, "p_rb_rtn point null!");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+
+		memcpy(p_rb_rtn->p_key, p_data, len);
+		rte_free(p_rb_new);
+		rte_free(p_rb_key);
+		PMD_DRV_LOG(DEBUG, "update exist entry!");
+		return ZXDH_OK;
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_se_apt_rb_delete(ZXDH_RB_CFG *rb_cfg, void *p_data, __rte_unused uint32_t len)
+{
+	uint32_t rc = ZXDH_OK;
+	ZXDH_RB_TN *p_rb_rtn	 = NULL;
+
+	rc = zxdh_comm_rb_delete(rb_cfg, p_data, &p_rb_rtn);
+	if (rc != ZXDH_OK)
+		return rc;
+	rte_free(p_rb_rtn->p_key);
+	rte_free(p_rb_rtn);
+
+	return rc;
 }
 
 static uint32_t
@@ -1976,9 +2961,111 @@ zxdh_np_dtb_queue_id_free(uint32_t dev_id,
 
 	rc = zxdh_np_dtb_queue_unused_item_num_get(dev_id, queue_id, &item_num);
 
+	if (item_num != ZXDH_DTB_QUEUE_ITEM_NUM_MAX)
+		return ZXDH_RC_DTB_QUEUE_IS_WORKING;
+
 	p_dtb_mgr->queue_info[queue_id].init_flag = 0;
 	p_dtb_mgr->queue_info[queue_id].vport = 0;
 	p_dtb_mgr->queue_info[queue_id].vector = 0;
+
+	memset(&p_dtb_mgr->queue_info[queue_id].tab_up, 0, sizeof(ZXDH_DTB_TAB_UP_INFO_T));
+	memset(&p_dtb_mgr->queue_info[queue_id].tab_down, 0, sizeof(ZXDH_DTB_TAB_DOWN_INFO_T));
+
+	return rc;
+}
+
+static ZXDH_RB_CFG *
+zxdh_np_dtb_dump_addr_rb_get(uint32_t dev_id, uint32_t queue_id)
+{
+	return g_dtb_dump_addr_rb[dev_id][queue_id];
+}
+
+static uint32_t
+zxdh_np_dtb_dump_addr_rb_set(uint32_t dev_id, uint32_t queue_id, ZXDH_RB_CFG *p_dump_addr_rb)
+{
+	g_dtb_dump_addr_rb[dev_id][queue_id] = p_dump_addr_rb;
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_dtb_dump_sdt_addr_clear(uint32_t dev_id,
+								uint32_t queue_id,
+								uint32_t sdt_no)
+{
+	uint32_t rc = ZXDH_OK;
+
+	ZXDH_DTB_ADDR_INFO_T dtb_dump_addr_info = {0};
+	ZXDH_RB_CFG *p_dtb_dump_addr_rb = NULL;
+
+	dtb_dump_addr_info.sdt_no = sdt_no;
+
+	p_dtb_dump_addr_rb = zxdh_np_dtb_dump_addr_rb_get(dev_id, queue_id);
+	rc = zxdh_np_se_apt_rb_delete(p_dtb_dump_addr_rb, &dtb_dump_addr_info,
+		sizeof(ZXDH_DTB_ADDR_INFO_T));
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_se_apt_rb_delete");
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_dump_addr_rb_destroy(uint32_t dev_id, uint32_t queue_id)
+{
+	uint32_t rc = ZXDH_OK;
+	ZXDH_D_NODE *p_node = NULL;
+	ZXDH_RB_TN *p_rb_tn = NULL;
+	ZXDH_DTB_ADDR_INFO_T *p_rbkey = NULL;
+	ZXDH_D_HEAD *p_head_dtb_rb = NULL;
+	ZXDH_RB_CFG *p_dtb_dump_addr_rb = NULL;
+	uint32_t sdt_no = 0;
+
+	p_dtb_dump_addr_rb = zxdh_np_dtb_dump_addr_rb_get(dev_id, queue_id);
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_dtb_dump_addr_rb);
+
+	p_head_dtb_rb = &p_dtb_dump_addr_rb->tn_list;
+
+	while (p_head_dtb_rb->used) {
+		p_node = p_head_dtb_rb->p_next;
+		p_rb_tn = (ZXDH_RB_TN *)p_node->data;
+		p_rbkey = (ZXDH_DTB_ADDR_INFO_T *)p_rb_tn->p_key;
+
+		sdt_no = p_rbkey->sdt_no;
+		rc = zxdh_np_dtb_dump_sdt_addr_clear(dev_id, queue_id, sdt_no);
+
+		if (rc == ZXDH_HASH_RC_DEL_SRHFAIL)
+			PMD_DRV_LOG(ERR, "dtb dump delete key is not exist,"
+				"std:%u", sdt_no);
+		else
+			ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_dump_sdt_addr_clear");
+	}
+
+	rc  =  zxdh_comm_rb_destroy(p_dtb_dump_addr_rb);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_rb_init");
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_dump_addr_rb_init(uint32_t dev_id, uint32_t queue_id)
+{
+	uint32_t rc = ZXDH_OK;
+
+	ZXDH_RB_CFG *p_dtb_dump_addr_rb = NULL;
+	p_dtb_dump_addr_rb = zxdh_np_dtb_dump_addr_rb_get(dev_id, queue_id);
+
+	if (p_dtb_dump_addr_rb == NULL) {
+		p_dtb_dump_addr_rb = rte_zmalloc(NULL, sizeof(ZXDH_RB_CFG), 0);
+		if (p_dtb_dump_addr_rb == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+
+		rc = zxdh_np_dtb_dump_addr_rb_set(dev_id, queue_id, p_dtb_dump_addr_rb);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_dump_addr_rb_set");
+	}
+
+	rc = zxdh_comm_rb_init(p_dtb_dump_addr_rb, 0,
+		sizeof(ZXDH_DTB_ADDR_INFO_T), zxdh_np_se_apt_key_default_cmp);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_rb_init");
 
 	return rc;
 }
@@ -2008,6 +3095,9 @@ zxdh_np_dtb_queue_request(uint32_t dev_id, char p_name[32],
 	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
 
 	PMD_DRV_LOG(DEBUG, "dtb request queue is %u.", queue_id);
+
+	rc = zxdh_np_dtb_dump_addr_rb_init(dev_id, queue_id);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_dump_addr_rb_init");
 
 	*p_queue_id = queue_id;
 
@@ -2046,6 +3136,9 @@ zxdh_np_dtb_queue_release(uint32_t devid,
 	}
 
 	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+
+	rc = zxdh_np_dtb_dump_addr_rb_destroy(devid, queueid);
+	ZXDH_COMM_CHECK_DEV_RC(devid, rc, "zxdh_np_dtb_dump_addr_rb_destroy");
 
 	rc = zxdh_np_dtb_queue_id_free(devid, queueid);
 	ZXDH_COMM_CHECK_DEV_RC(devid, rc, "zxdh_np_dtb_queue_id_free");
@@ -3495,11 +4588,42 @@ zxdh_np_dtb_user_info_set(uint32_t dev_id, uint32_t queue_id, uint16_t vport, ui
 }
 
 static uint32_t
+zxdh_np_dtb_dump_sdt_addr_set(uint32_t dev_id,
+							uint32_t queue_id,
+							uint32_t sdt_no,
+							uint64_t phy_addr,
+							uint64_t vir_addr,
+							uint32_t size)
+{
+	uint32_t rc = ZXDH_OK;
+
+	ZXDH_DTB_ADDR_INFO_T dtb_dump_addr_info = {
+		.sdt_no = sdt_no,
+		.phy_addr = phy_addr,
+		.vir_addr = vir_addr,
+		.size = size,
+	};
+	ZXDH_RB_CFG *p_dtb_dump_addr_rb = NULL;
+
+	p_dtb_dump_addr_rb = zxdh_np_dtb_dump_addr_rb_get(dev_id, queue_id);
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_dtb_dump_addr_rb);
+
+	rc = zxdh_np_se_apt_rb_insert(p_dtb_dump_addr_rb,
+		&dtb_dump_addr_info, sizeof(ZXDH_DTB_ADDR_INFO_T));
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_se_apt_rb_insert");
+
+	return rc;
+}
+
+static uint32_t
 zxdh_np_apt_dtb_res_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl)
 {
 	uint32_t rc = ZXDH_OK;
 
 	uint32_t queue_id = 0;
+	uint32_t index = 0;
+	uint32_t dump_sdt_num = 0;
+	ZXDH_DTB_ADDR_INFO_T *p_dump_info = NULL;
 
 	rc = zxdh_np_dtb_queue_request(dev_id, p_dev_init_ctrl->port_name,
 		p_dev_init_ctrl->vport, &queue_id);
@@ -3516,6 +4640,19 @@ zxdh_np_apt_dtb_res_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl)
 
 	zxdh_np_dtb_dump_channel_addr_set(dev_id, queue_id,
 		p_dev_init_ctrl->dump_phy_addr, p_dev_init_ctrl->dump_vir_addr, 0);
+
+	dump_sdt_num = p_dev_init_ctrl->dump_sdt_num;
+	for (index = 0; index < dump_sdt_num; index++) {
+		p_dump_info = p_dev_init_ctrl->dump_addr_info + index;
+		ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_dump_info);
+		rc = zxdh_np_dtb_dump_sdt_addr_set(dev_id,
+							queue_id,
+							p_dump_info->sdt_no,
+							p_dump_info->phy_addr,
+							p_dump_info->vir_addr,
+							p_dump_info->size);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_dump_sdt_addr_set");
+	}
 
 	return ZXDH_OK;
 }
