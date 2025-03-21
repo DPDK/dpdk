@@ -497,6 +497,7 @@ typedef struct dpp_dev_cfg_t {
 	ZXDH_DEV_READ_FUNC  p_pcie_read_fun;
 	ZXDH_SPINLOCK_T dtb_spinlock;
 	ZXDH_SPINLOCK_T smmu0_spinlock;
+	ZXDH_SPINLOCK_T dtb_queue_spinlock[ZXDH_DTB_QUEUE_NUM_MAX];
 } ZXDH_DEV_CFG_T;
 
 typedef struct zxdh_dev_mngr_t {
@@ -685,6 +686,78 @@ typedef struct zxdh_dtb_eram_table_form_t {
 	uint32_t data_l;
 } ZXDH_DTB_ERAM_TABLE_FORM_T;
 
+typedef struct zxdh_dtb_zcam_table_form_t {
+	uint32_t valid;
+	uint32_t type_mode;
+	uint32_t ram_reg_flag;
+	uint32_t zgroup_id;
+	uint32_t zblock_id;
+	uint32_t zcell_id;
+	uint32_t mask;
+	uint32_t sram_addr;
+} ZXDH_DTB_ZCAM_TABLE_FORM_T;
+
+typedef struct zxdh_dtb_etcam_table_form_t {
+	uint32_t valid;
+	uint32_t type_mode;
+	uint32_t block_sel;
+	uint32_t init_en;
+	uint32_t row_or_col_msk;
+	uint32_t vben;
+	uint32_t reg_tcam_flag;
+	uint32_t uload;
+	uint32_t rd_wr;
+	uint32_t wr_mode;
+	uint32_t data_or_mask;
+	uint32_t addr;
+	uint32_t vbit;
+} ZXDH_DTB_ETCAM_TABLE_FORM_T;
+
+typedef struct zxdh_dtb_eram_dump_form_t {
+	uint32_t valid;
+	uint32_t up_type;
+	uint32_t base_addr;
+	uint32_t tb_depth;
+	uint32_t tb_dst_addr_h;
+	uint32_t tb_dst_addr_l;
+} ZXDH_DTB_ERAM_DUMP_FORM_T;
+
+typedef struct zxdh_dtb_zcam_dump_form_t {
+	uint32_t valid;
+	uint32_t up_type;
+	uint32_t zgroup_id;
+	uint32_t zblock_id;
+	uint32_t ram_reg_flag;
+	uint32_t z_reg_cell_id;
+	uint32_t sram_addr;
+	uint32_t tb_depth;
+	uint32_t tb_width;
+	uint32_t tb_dst_addr_h;
+	uint32_t tb_dst_addr_l;
+} ZXDH_DTB_ZCAM_DUMP_FORM_T;
+
+typedef struct zxdh_dtb_etcam_dump_form_t {
+	uint32_t valid;
+	uint32_t up_type;
+	uint32_t block_sel;
+	uint32_t addr;
+	uint32_t rd_mode;
+	uint32_t data_or_mask;
+	uint32_t tb_depth;
+	uint32_t tb_width;
+	uint32_t tb_dst_addr_h;
+	uint32_t tb_dst_addr_l;
+} ZXDH_DTB_ETCAM_DUMP_FORM_T;
+
+typedef struct zxdh_etcam_dump_info_t {
+	uint32_t block_sel;
+	uint32_t addr;
+	uint32_t rd_mode;
+	uint32_t data_or_mask;
+	uint32_t tb_depth;
+	uint32_t tb_width;
+} ZXDH_ETCAM_DUMP_INFO_T;
+
 typedef union zxdh_endian_u {
 	unsigned int     a;
 	unsigned char    b;
@@ -702,6 +775,15 @@ typedef struct zxdh_dtb_table_t {
 	uint32_t  field_num;
 	const ZXDH_DTB_FIELD_T *p_fields;
 } ZXDH_DTB_TABLE_T;
+
+typedef struct zxdh_dtb_queue_cfg_t {
+	uint64_t up_start_phy_addr;
+	uint64_t up_start_vir_addr;
+	uint64_t down_start_phy_addr;
+	uint64_t down_start_vir_addr;
+	uint32_t up_item_size;
+	uint32_t down_item_size;
+} ZXDH_DTB_QUEUE_CFG_T;
 
 typedef struct zxdh_dtb_queue_item_info_t {
 	uint32_t cmd_vld;
@@ -760,6 +842,11 @@ typedef enum zxdh_agent_msg_oper_e {
 	ZXDH_RD,
 	ZXDH_WR_RD_MAX
 } ZXDH_MSG_OPER_E;
+
+typedef enum zxdh_msg_dtb_oper_e {
+	ZXDH_QUEUE_REQUEST = 0,
+	ZXDH_QUEUE_RELEASE = 1,
+} ZXDH_MSG_DTB_OPER_E;
 
 typedef struct zxdh_smmu0_smmu0_cpu_ind_cmd_t {
 	uint32_t cpu_ind_rw;
@@ -974,6 +1061,16 @@ typedef struct __rte_aligned(2) zxdh_agent_channel_msg_t {
 	uint32_t msg_len;
 	void *msg;
 } ZXDH_AGENT_CHANNEL_MSG_T;
+
+typedef struct __rte_aligned(2) zxdh_agent_channel_dtb_msg_t {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t oper;
+	uint8_t rsv;
+	char name[32];
+	uint32_t vport;
+	uint32_t queue_id;
+} ZXDH_AGENT_CHANNEL_DTB_MSG_T;
 
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
