@@ -24,6 +24,9 @@ static ZXDH_DTB_MGR_T *p_dpp_dtb_mgr[ZXDH_DEV_CHANNEL_MAX];
 static ZXDH_RISCV_DTB_MGR *p_riscv_dtb_queue_mgr[ZXDH_DEV_CHANNEL_MAX];
 static ZXDH_SDT_TBL_DATA_T g_sdt_info[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
 static ZXDH_PPU_STAT_CFG_T g_ppu_stat_cfg[ZXDH_DEV_CHANNEL_MAX];
+static uint64_t g_np_fw_compat_addr[ZXDH_DEV_CHANNEL_MAX];
+static const ZXDH_VERSION_COMPATIBLE_REG_T g_np_sdk_version = {
+	ZXDH_NPSDK_COMPAT_ITEM_ID, 1, 0, 0, 0, {0} };
 
 static const ZXDH_FIELD_T g_smmu0_smmu0_cpu_ind_cmd_reg[] = {
 	{"cpu_ind_rw", ZXDH_FIELD_FLAG_RW, 31, 1, 0x0, 0x0},
@@ -1173,6 +1176,91 @@ zxdh_np_addr_calc(uint64_t pcie_vir_baddr, uint32_t bar_offset)
 	np_addr = ((pcie_vir_baddr + bar_offset) > ZXDH_PCIE_NP_MEM_SIZE)
 				? (pcie_vir_baddr + bar_offset - ZXDH_PCIE_NP_MEM_SIZE) : 0;
 	return np_addr;
+}
+
+static uint64_t
+zxdh_np_fw_compatible_addr_calc(uint64_t pcie_vir_baddr, uint64_t compatible_offset)
+{
+	return (pcie_vir_baddr + compatible_offset);
+}
+
+static void
+zxdh_np_pf_fw_compatible_addr_set(uint32_t dev_id, uint64_t pcie_vir_baddr)
+{
+	uint64_t compatible_offset = ZXDH_DPU_NO_DEBUG_PF_COMPAT_REG_OFFSET;
+	uint64_t compatible_addr = 0;
+
+	compatible_addr = zxdh_np_fw_compatible_addr_calc(pcie_vir_baddr, compatible_offset);
+
+	g_np_fw_compat_addr[dev_id] = compatible_addr;
+}
+
+static void
+zxdh_np_fw_compatible_addr_get(uint32_t dev_id, uint64_t *p_compatible_addr)
+{
+	*p_compatible_addr = g_np_fw_compat_addr[dev_id];
+}
+
+static void
+zxdh_np_fw_version_data_read(uint64_t compatible_base_addr,
+			ZXDH_VERSION_COMPATIBLE_REG_T *p_fw_version_data, uint32_t module_id)
+{
+	void *fw_addr = NULL;
+	uint64_t module_compatible_addr = 0;
+
+	module_compatible_addr = compatible_base_addr +
+		sizeof(ZXDH_VERSION_COMPATIBLE_REG_T) * (module_id - 1);
+
+	fw_addr = (void *)module_compatible_addr;
+
+	memcpy(p_fw_version_data, fw_addr, sizeof(ZXDH_VERSION_COMPATIBLE_REG_T));
+}
+
+static void
+zxdh_np_fw_version_compatible_data_get(uint32_t dev_id,
+			ZXDH_VERSION_COMPATIBLE_REG_T *p_version_compatible_value,
+			uint32_t module_id)
+{
+	uint64_t compatible_addr = 0;
+
+	zxdh_np_fw_compatible_addr_get(dev_id, &compatible_addr);
+
+	zxdh_np_fw_version_data_read(compatible_addr, p_version_compatible_value, module_id);
+}
+
+static uint32_t
+zxdh_np_np_sdk_version_compatible_check(uint32_t dev_id)
+{
+	ZXDH_VERSION_COMPATIBLE_REG_T fw_version = {0};
+
+	zxdh_np_fw_version_compatible_data_get(dev_id, &fw_version, ZXDH_NPSDK_COMPAT_ITEM_ID);
+
+	if (fw_version.version_compatible_item != ZXDH_NPSDK_COMPAT_ITEM_ID) {
+		PMD_DRV_LOG(ERR, "version_compatible_item is not DH_NPSDK.");
+		return ZXDH_ERR;
+	}
+
+	if (g_np_sdk_version.major != fw_version.major) {
+		PMD_DRV_LOG(ERR, "dh_npsdk major:%hhu: is not match fw:%hhu!",
+			g_np_sdk_version.major, fw_version.major);
+		return ZXDH_ERR;
+	}
+
+	if (g_np_sdk_version.fw_minor > fw_version.fw_minor) {
+		PMD_DRV_LOG(ERR, "dh_npsdk fw_minor:%hhu is higher than fw:%hhu!",
+			g_np_sdk_version.fw_minor, fw_version.fw_minor);
+		return ZXDH_ERR;
+	}
+
+	if (g_np_sdk_version.drv_minor < fw_version.drv_minor) {
+		PMD_DRV_LOG(ERR, "dh_npsdk drv_minor:%hhu is lower than fw:%hhu!",
+			g_np_sdk_version.drv_minor, fw_version.drv_minor);
+		return ZXDH_ERR;
+	}
+
+	PMD_DRV_LOG(INFO, "dh_npsdk compatible check success!");
+
+	return ZXDH_OK;
 }
 
 static ZXDH_RISCV_DTB_MGR *
@@ -2872,6 +2960,11 @@ zxdh_np_host_init(uint32_t dev_id,
 
 	agent_addr = ZXDH_PCIE_AGENT_ADDR_OFFSET + p_dev_init_ctrl->pcie_vir_addr;
 	zxdh_np_dev_agent_addr_set(dev_id, agent_addr);
+
+	zxdh_np_pf_fw_compatible_addr_set(dev_id, p_dev_init_ctrl->pcie_vir_addr);
+
+	rc = zxdh_np_np_sdk_version_compatible_check(dev_id);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_np_sdk_version_compatible_check");
 
 	return 0;
 }
