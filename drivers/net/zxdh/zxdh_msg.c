@@ -2043,7 +2043,8 @@ zxdh_vf_mtr_hw_profile_cfg(struct zxdh_hw *pf_hw __rte_unused,
 		(struct zxdh_plcr_profile_cfg *)cfg_data;
 	union zxdh_offload_profile_cfg *plcr_param = &zxdh_plcr_profile_cfg->plcr_param;
 
-	ret = zxdh_np_car_profile_cfg_set(vport,
+	ret = zxdh_np_car_profile_cfg_set(pf_hw->dev_id,
+		vport,
 		zxdh_plcr_profile_cfg->car_type,
 		zxdh_plcr_profile_cfg->packet_mode,
 		zxdh_plcr_profile_cfg->hw_profile_id,

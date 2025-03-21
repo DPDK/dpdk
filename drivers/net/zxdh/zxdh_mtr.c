@@ -281,7 +281,7 @@ zxdh_hw_profile_free_direct(struct rte_eth_dev *dev, ZXDH_PROFILE_TYPE car_type,
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	uint16_t vport = hw->vport.vport;
-	int ret = zxdh_np_car_profile_id_delete(vport, car_type,
+	int ret = zxdh_np_car_profile_id_delete(hw->dev_id, vport, car_type,
 			(uint64_t)hw_profile_id);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "port %u free hw profile %u failed", vport, hw_profile_id);
@@ -299,7 +299,7 @@ zxdh_hw_profile_alloc_direct(struct rte_eth_dev *dev, ZXDH_PROFILE_TYPE car_type
 	uint64_t profile_id = HW_PROFILE_MAX;
 	struct zxdh_hw *hw = dev->data->dev_private;
 	uint16_t vport = hw->vport.vport;
-	int ret = zxdh_np_car_profile_id_add(vport, car_type, &profile_id);
+	int ret = zxdh_np_car_profile_id_add(hw->dev_id, vport, car_type, &profile_id);
 
 	if (ret) {
 		PMD_DRV_LOG(ERR, "port %u alloc hw profile failed", vport);
@@ -551,7 +551,9 @@ zxdh_hw_profile_config_direct(struct rte_eth_dev *dev __rte_unused,
 	struct zxdh_meter_profile *mp,
 	struct rte_mtr_error *error)
 {
-	int ret = zxdh_np_car_profile_cfg_set(mp->hw_profile_owner_vport,
+	struct zxdh_hw *hw = dev->data->dev_private;
+	int ret = zxdh_np_car_profile_cfg_set(hw->dev_id,
+		mp->hw_profile_owner_vport,
 		car_type, mp->profile.packet_mode,
 		(uint32_t)hw_profile_id, &mp->plcr_param);
 	if (ret) {
