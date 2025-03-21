@@ -22,6 +22,9 @@ static ZXDH_PPU_CLS_BITMAP_T g_ppu_cls_bit_map[ZXDH_DEV_CHANNEL_MAX];
 static ZXDH_DTB_MGR_T *p_dpp_dtb_mgr[ZXDH_DEV_CHANNEL_MAX];
 static ZXDH_SDT_TBL_DATA_T g_sdt_info[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
 static ZXDH_PPU_STAT_CFG_T g_ppu_stat_cfg[ZXDH_DEV_CHANNEL_MAX];
+static SE_APT_CALLBACK_T g_apt_se_callback[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
+static ZXDH_ACL_CFG_EX_T g_apt_acl_cfg[ZXDH_DEV_CHANNEL_MAX] = {0};
+static ZXDH_ACL_CFG_EX_T *g_p_acl_ex_cfg[ZXDH_DEV_CHANNEL_MAX] = {NULL};
 static uint64_t g_np_fw_compat_addr[ZXDH_DEV_CHANNEL_MAX];
 static const ZXDH_VERSION_COMPATIBLE_REG_T g_np_sdk_version = {
 	ZXDH_NPSDK_COMPAT_ITEM_ID, 1, 0, 0, 0, {0} };
@@ -48,6 +51,10 @@ static const uint32_t g_ddr_hash_arg[ZXDH_HASH_DDR_CRC_NUM] = {
 	0x20044009,
 	0x00210801
 };
+
+static ZXDH_HASH_TBL_ID_INFO g_tbl_id_info[ZXDH_DEV_CHANNEL_MAX]
+							 [ZXDH_HASH_FUNC_ID_NUM]
+							 [ZXDH_HASH_TBL_ID_NUM];
 
 static const ZXDH_FIELD_T g_smmu0_smmu0_cpu_ind_cmd_reg[] = {
 	{"cpu_ind_rw", ZXDH_FIELD_FLAG_RW, 31, 1, 0x0, 0x0},
@@ -490,6 +497,48 @@ zxdh_np_get_tn_color(ZXDH_RB_TN *p_tn)
 	(&(((ZXDH_SE_CFG *)(p_se))->fun_info[fun_id]))
 
 #define GET_DDR_HASH_ARG(ddr_crc_sel) (g_ddr_hash_arg[ddr_crc_sel])
+
+#define ZXDH_SDT_GET_LOW_DATA(source_value, low_width) \
+	((source_value) & ((1 << (low_width)) - 1))
+
+#define ZXDH_ACL_AS_RSLT_SIZE_GET_EX(mode) (2U << (mode))
+
+#define ZXDH_GET_ACTU_KEY_BY_SIZE(actu_key_size) \
+	((actu_key_size) * ZXDH_HASH_ACTU_KEY_STEP)
+
+#define ZXDH_GET_KEY_SIZE(actu_key_size) \
+	(ZXDH_GET_ACTU_KEY_BY_SIZE(actu_key_size) + ZXDH_HASH_KEY_CTR_SIZE)
+
+#define ZXDH_ACL_ENTRY_MAX_GET(key_mode, block_num) \
+	((block_num) * ZXDH_ETCAM_RAM_DEPTH * (1U << (key_mode)))
+
+#define ZXDH_ETCAM_ENTRY_SIZE_GET(entry_mode) \
+	((ZXDH_ETCAM_RAM_WIDTH << (3 - (entry_mode))) / 8)
+
+#define ZXDH_ACL_KEYSIZE_GET(key_mode) (2 * ZXDH_ETCAM_ENTRY_SIZE_GET(key_mode))
+
+#define GET_HASH_TBL_ID_INFO(dev_id, fun_id, tbl_id) (&g_tbl_id_info[dev_id][fun_id][tbl_id])
+
+static inline uint32_t
+zxdh_np_get_hash_entry_size(uint32_t key_type)
+{
+	return ((key_type == ZXDH_HASH_KEY_128b) ? 16U : ((key_type == ZXDH_HASH_KEY_256b) ? 32U :
+		 ((key_type == ZXDH_HASH_KEY_512b) ? 64U : 0)));
+}
+
+#define ZXDH_GET_HASH_ENTRY_SIZE(key_type) \
+	zxdh_np_get_hash_entry_size(key_type)
+
+static inline void
+zxdh_np_comm_uint32_write_bits(uint32_t *dst, uint32_t src,
+	uint32_t start_pos, uint32_t len)
+{
+	uint32_t mask = zxdh_np_comm_get_bit_mask(len);
+	*dst = (*dst & ~(mask << start_pos)) | ((src & mask) << start_pos);
+}
+
+#define ZXDH_COMM_UINT32_WRITE_BITS(dst, src, start_pos, len)\
+	zxdh_np_comm_uint32_write_bits(&(dst), src, start_pos, len)
 
 static ZXDH_FIELD_T g_stat_car0_cara_queue_ram0_159_0_reg[] = {
 	{"cara_drop", ZXDH_FIELD_FLAG_RW, 147, 1, 0x0, 0x0},
@@ -2238,6 +2287,232 @@ zxdh_np_sdt_init(uint32_t dev_num, uint32_t *dev_id_array)
 	}
 
 	return rc;
+}
+
+static uint32_t
+zxdh_np_sdt_mgr_sdt_item_add(uint32_t dev_id, uint32_t sdt_no,
+		uint32_t sdt_hig32, uint32_t sdt_low32)
+{
+	ZXDH_SDT_SOFT_TABLE_T *p_sdt_soft_tbl = NULL;
+	ZXDH_SDT_ITEM_T *p_sdt_item = NULL;
+
+	p_sdt_soft_tbl = ZXDH_SDT_SOFT_TBL_GET(dev_id);
+
+	if (p_sdt_soft_tbl == NULL) {
+		PMD_DRV_LOG(ERR, "soft sdt table not init!");
+		RTE_ASSERT(0);
+		return ZXDH_RC_TABLE_SDT_MGR_INVALID;
+	}
+
+	if (dev_id != p_sdt_soft_tbl->device_id) {
+		PMD_DRV_LOG(ERR, "soft sdt table item invalid!");
+		RTE_ASSERT(0);
+		return ZXDH_RC_TABLE_PARA_INVALID;
+	}
+
+	p_sdt_item = &p_sdt_soft_tbl->sdt_array[sdt_no];
+	p_sdt_item->valid = ZXDH_SDT_VALID;
+	p_sdt_item->table_cfg[0] = sdt_hig32;
+	p_sdt_item->table_cfg[1] = sdt_low32;
+
+	PMD_DRV_LOG(DEBUG, "0x%08x 0x%08x", p_sdt_item->table_cfg[0], p_sdt_item->table_cfg[1]);
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_sdt_mgr_sdt_item_del(uint32_t dev_id, uint32_t sdt_no)
+{
+	ZXDH_SDT_SOFT_TABLE_T *p_sdt_soft_tbl = NULL;
+	ZXDH_SDT_ITEM_T *p_sdt_item = NULL;
+
+	p_sdt_soft_tbl = ZXDH_SDT_SOFT_TBL_GET(dev_id);
+
+	if (p_sdt_soft_tbl != NULL) {
+		if (dev_id != p_sdt_soft_tbl->device_id) {
+			PMD_DRV_LOG(ERR, "soft table item invalid !");
+			RTE_ASSERT(0);
+			return ZXDH_RC_TABLE_PARA_INVALID;
+		}
+
+		p_sdt_item = &p_sdt_soft_tbl->sdt_array[sdt_no];
+		p_sdt_item->valid = ZXDH_SDT_INVALID;
+		p_sdt_item->table_cfg[0] = 0;
+		p_sdt_item->table_cfg[1] = 0;
+	}
+	PMD_DRV_LOG(DEBUG, "sdt_no: 0x%08x", sdt_no);
+	return ZXDH_OK;
+}
+
+static void
+zxdh_np_soft_sdt_tbl_set(uint32_t dev_id,
+						uint32_t sdt_no,
+						uint32_t table_type,
+						ZXDH_SDT_TBL_DATA_T *p_sdt_info)
+{
+	g_table_type[dev_id][sdt_no] = table_type;
+	g_sdt_info[dev_id][sdt_no].data_high32 = p_sdt_info->data_high32;
+	g_sdt_info[dev_id][sdt_no].data_low32  = p_sdt_info->data_low32;
+}
+
+static uint32_t
+zxdh_np_sdt_tbl_write(uint32_t dev_id,
+					uint32_t sdt_no,
+					uint32_t table_type,
+					void *p_sdt_info,
+					uint32_t opr_type)
+{
+	uint32_t rtn = 0;
+
+	ZXDH_SDT_TBL_DATA_T sdt_tbl = {0};
+	ZXDH_SDT_TBL_ERAM_T *p_sdt_eram = NULL;
+	ZXDH_SDT_TBL_HASH_T *p_sdt_hash = NULL;
+	ZXDH_SDT_TBL_ETCAM_T *p_sdt_etcam = NULL;
+	ZXDH_SDT_TBL_PORTTBL_T *p_sdt_porttbl = NULL;
+
+	PMD_DRV_LOG(DEBUG, "sdt: %u", sdt_no);
+
+	if (opr_type) {
+		zxdh_np_soft_sdt_tbl_set(dev_id, sdt_no, 0, &sdt_tbl);
+
+		rtn = zxdh_np_sdt_mgr_sdt_item_del(dev_id, sdt_no);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rtn, "zxdh_np_sdt_mgr_sdt_item_del");
+	} else {
+		switch (table_type) {
+		case ZXDH_SDT_TBLT_ERAM:
+			p_sdt_eram = (ZXDH_SDT_TBL_ERAM_T *)p_sdt_info;
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_eram->eram_mode,
+				ZXDH_SDT_H_ERAM_MODE_BT_POS,
+				ZXDH_SDT_H_ERAM_MODE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_eram->eram_base_addr,
+				ZXDH_SDT_H_ERAM_BASE_ADDR_BT_POS,
+				ZXDH_SDT_H_ERAM_BASE_ADDR_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_eram->eram_table_depth,
+				ZXDH_SDT_L_ERAM_TABLE_DEPTH_BT_POS,
+				ZXDH_SDT_L_ERAM_TABLE_DEPTH_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_eram->eram_clutch_en,
+				ZXDH_SDT_L_CLUTCH_EN_BT_POS,
+				ZXDH_SDT_L_CLUTCH_EN_BT_LEN);
+			break;
+
+		case ZXDH_SDT_TBLT_HASH:
+			p_sdt_hash = (ZXDH_SDT_TBL_HASH_T *)p_sdt_info;
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_hash->hash_id,
+				ZXDH_SDT_H_HASH_ID_BT_POS,
+				ZXDH_SDT_H_HASH_ID_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_hash->hash_table_width,
+				ZXDH_SDT_H_HASH_TABLE_WIDTH_BT_POS,
+				ZXDH_SDT_H_HASH_TABLE_WIDTH_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_hash->key_size,
+				ZXDH_SDT_H_HASH_KEY_SIZE_BT_POS,
+				ZXDH_SDT_H_HASH_KEY_SIZE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_hash->hash_table_id,
+				ZXDH_SDT_H_HASH_TABLE_ID_BT_POS,
+				ZXDH_SDT_H_HASH_TABLE_ID_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_hash->learn_en,
+				ZXDH_SDT_H_LEARN_EN_BT_POS,
+				ZXDH_SDT_H_LEARN_EN_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_hash->keep_alive,
+				ZXDH_SDT_H_KEEP_ALIVE_BT_POS,
+				ZXDH_SDT_H_KEEP_ALIVE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				((p_sdt_hash->keep_alive_baddr) >>
+				ZXDH_SDT_L_KEEP_ALIVE_BADDR_BT_LEN),
+				ZXDH_SDT_H_KEEP_ALIVE_BADDR_BT_POS,
+				ZXDH_SDT_H_KEEP_ALIVE_BADDR_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				ZXDH_SDT_GET_LOW_DATA((p_sdt_hash->keep_alive_baddr),
+				ZXDH_SDT_L_KEEP_ALIVE_BADDR_BT_LEN),
+				ZXDH_SDT_L_KEEP_ALIVE_BADDR_BT_POS,
+				ZXDH_SDT_L_KEEP_ALIVE_BADDR_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_hash->rsp_mode,
+				ZXDH_SDT_L_RSP_MODE_BT_POS,
+				ZXDH_SDT_L_RSP_MODE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_hash->hash_clutch_en,
+				ZXDH_SDT_L_CLUTCH_EN_BT_POS,
+				ZXDH_SDT_L_CLUTCH_EN_BT_LEN);
+			break;
+
+		case ZXDH_SDT_TBLT_ETCAM:
+			p_sdt_etcam = (ZXDH_SDT_TBL_ETCAM_T *)p_sdt_info;
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_etcam->etcam_id,
+				ZXDH_SDT_H_ETCAM_ID_BT_POS,
+				ZXDH_SDT_H_ETCAM_ID_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_etcam->etcam_key_mode,
+				ZXDH_SDT_H_ETCAM_KEY_MODE_BT_POS,
+				ZXDH_SDT_H_ETCAM_KEY_MODE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_etcam->etcam_table_id,
+				ZXDH_SDT_H_ETCAM_TABLE_ID_BT_POS,
+				ZXDH_SDT_H_ETCAM_TABLE_ID_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_etcam->no_as_rsp_mode,
+				ZXDH_SDT_H_ETCAM_NOAS_RSP_MODE_BT_POS,
+				ZXDH_SDT_H_ETCAM_NOAS_RSP_MODE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				p_sdt_etcam->as_en,
+				ZXDH_SDT_H_ETCAM_AS_EN_BT_POS,
+				ZXDH_SDT_H_ETCAM_AS_EN_BT_LEN);
+
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32,
+				((p_sdt_etcam->as_eram_baddr) >>
+				ZXDH_SDT_L_ETCAM_AS_ERAM_BADDR_BT_LEN),
+				ZXDH_SDT_H_ETCAM_AS_ERAM_BADDR_BT_POS,
+				ZXDH_SDT_H_ETCAM_AS_ERAM_BADDR_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				ZXDH_SDT_GET_LOW_DATA((p_sdt_etcam->as_eram_baddr),
+				ZXDH_SDT_L_ETCAM_AS_ERAM_BADDR_BT_LEN),
+				ZXDH_SDT_L_ETCAM_AS_ERAM_BADDR_BT_POS,
+				ZXDH_SDT_L_ETCAM_AS_ERAM_BADDR_BT_LEN);
+
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32, p_sdt_etcam->as_rsp_mode,
+				ZXDH_SDT_L_ETCAM_AS_RSP_MODE_BT_POS,
+				ZXDH_SDT_L_ETCAM_AS_RSP_MODE_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_etcam->etcam_table_depth, ZXDH_SDT_L_ETCAM_TABLE_DEPTH_BT_POS,
+				ZXDH_SDT_L_ETCAM_TABLE_DEPTH_BT_LEN);
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_etcam->etcam_clutch_en, ZXDH_SDT_L_CLUTCH_EN_BT_POS,
+				ZXDH_SDT_L_CLUTCH_EN_BT_LEN);
+			break;
+
+		case ZXDH_SDT_TBLT_PORTTBL:
+			p_sdt_porttbl = (ZXDH_SDT_TBL_PORTTBL_T *)p_sdt_info;
+			ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_low32,
+				p_sdt_porttbl->porttbl_clutch_en, ZXDH_SDT_L_CLUTCH_EN_BT_POS,
+				ZXDH_SDT_L_CLUTCH_EN_BT_LEN);
+			break;
+
+		default:
+			PMD_DRV_LOG(ERR, "SDT table_type[ %u ] is invalid!",
+				table_type);
+			return ZXDH_ERR;
+		}
+
+		ZXDH_COMM_UINT32_WRITE_BITS(sdt_tbl.data_high32, table_type,
+			ZXDH_SDT_H_TBL_TYPE_BT_POS, ZXDH_SDT_H_TBL_TYPE_BT_LEN);
+		zxdh_np_soft_sdt_tbl_set(dev_id, sdt_no, table_type, &sdt_tbl);
+
+		rtn = zxdh_np_sdt_mgr_sdt_item_add(dev_id, sdt_no, sdt_tbl.data_high32,
+			sdt_tbl.data_low32);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rtn, "zxdh_np_sdt_mgr_sdt_item_add");
+	}
+
+	return ZXDH_OK;
 }
 
 static void
@@ -6454,11 +6729,380 @@ zxdh_np_apt_hash_bulk_res_init(uint32_t dev_id, uint32_t bulk_num,
 }
 
 static uint32_t
+zxdh_np_apt_set_callback(uint32_t dev_id, uint32_t sdt_no, uint32_t table_type, void *p_data)
+{
+	SE_APT_CALLBACK_T *apt_func = NULL;
+
+	apt_func = &g_apt_se_callback[dev_id][sdt_no];
+
+	apt_func->sdt_no = sdt_no;
+	apt_func->table_type = table_type;
+	switch (table_type) {
+	case ZXDH_SDT_TBLT_ERAM:
+		apt_func->se_func_info.eram_func.opr_mode =
+			((ZXDH_APT_ERAM_TABLE_T *)p_data)->opr_mode;
+		apt_func->se_func_info.eram_func.rd_mode =
+			((ZXDH_APT_ERAM_TABLE_T *)p_data)->rd_mode;
+		apt_func->se_func_info.eram_func.eram_set_func =
+			((ZXDH_APT_ERAM_TABLE_T *)p_data)->eram_set_func;
+		apt_func->se_func_info.eram_func.eram_get_func =
+			((ZXDH_APT_ERAM_TABLE_T *)p_data)->eram_get_func;
+		break;
+	case ZXDH_SDT_TBLT_HASH:
+		apt_func->se_func_info.hash_func.sdt_partner   =
+			((ZXDH_APT_HASH_TABLE_T *)p_data)->sdt_partner;
+		apt_func->se_func_info.hash_func.hash_set_func =
+			((ZXDH_APT_HASH_TABLE_T *)p_data)->hash_set_func;
+		apt_func->se_func_info.hash_func.hash_get_func =
+		((ZXDH_APT_HASH_TABLE_T *)p_data)->hash_get_func;
+		break;
+	case ZXDH_SDT_TBLT_ETCAM:
+		apt_func->se_func_info.acl_func.sdt_partner =
+			((ZXDH_APT_ACL_TABLE_T *)p_data)->sdt_partner;
+		apt_func->se_func_info.acl_func.acl_set_func =
+			((ZXDH_APT_ACL_TABLE_T *)p_data)->acl_set_func;
+		apt_func->se_func_info.acl_func.acl_get_func =
+			((ZXDH_APT_ACL_TABLE_T *)p_data)->acl_get_func;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "table_type[ %u ] is invalid!", table_type);
+		return ZXDH_ERR;
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_hash_tbl_id_info_init(ZXDH_SE_CFG *p_se_cfg,
+								uint32_t fun_id,
+								uint32_t tbl_id,
+								uint32_t tbl_flag,
+								uint32_t key_type,
+								uint32_t actu_key_size)
+{
+	uint32_t key_by_size = ZXDH_GET_KEY_SIZE(actu_key_size);
+	uint32_t entry_size = ZXDH_GET_HASH_ENTRY_SIZE(key_type);
+	uint32_t dev_id = p_se_cfg->dev_id;
+	ZXDH_HASH_TBL_ID_INFO *p_tbl_id_info = NULL;
+
+	if (key_by_size > entry_size) {
+		PMD_DRV_LOG(ERR, "ErrorCode[%x]: actu_key_size[%u] not match to key_type[%u].",
+								 ZXDH_HASH_RC_INVALID_PARA,
+								 key_by_size,
+								 entry_size);
+		RTE_ASSERT(0);
+		return ZXDH_HASH_RC_INVALID_PARA;
+	}
+
+	p_tbl_id_info = GET_HASH_TBL_ID_INFO(dev_id, fun_id, tbl_id);
+
+	if (p_tbl_id_info->is_init) {
+		PMD_DRV_LOG(ERR, "fun_id[%u], table_id[%u] is already init", fun_id, tbl_id);
+		return ZXDH_OK;
+	}
+
+	p_tbl_id_info->fun_id = fun_id;
+	p_tbl_id_info->actu_key_size = actu_key_size;
+	p_tbl_id_info->key_type = key_type;
+	p_tbl_id_info->is_init = 1;
+
+	if (tbl_flag & ZXDH_HASH_TBL_FLAG_AGE)
+		p_tbl_id_info->is_age = 1;
+
+	if (tbl_flag & ZXDH_HASH_TBL_FLAG_LEARN)
+		p_tbl_id_info->is_lrn = 1;
+
+	if (tbl_flag & ZXDH_HASH_TBL_FLAG_MC_WRT)
+		p_tbl_id_info->is_mc_wrt = 1;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_apt_hash_tbl_res_init(uint32_t dev_id, uint32_t tbl_num,
+						  ZXDH_APT_HASH_TABLE_T *p_hash_tbl)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t index = 0;
+	ZXDH_APT_HASH_TABLE_T *p_hash_tbl_temp = NULL;
+	ZXDH_SE_CFG *p_se_cfg = NULL;
+
+	p_se_cfg = g_apt_se_cfg[dev_id];
+
+	for (index = 0; index < tbl_num; index++) {
+		p_hash_tbl_temp = p_hash_tbl + index;
+		ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_hash_tbl_temp);
+		rc = zxdh_np_sdt_tbl_write(dev_id,
+					p_hash_tbl_temp->sdt_no,
+					p_hash_tbl_temp->hash_sdt.table_type,
+					&p_hash_tbl_temp->hash_sdt,
+					ZXDH_SDT_OPER_ADD);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_sdt_tbl_write");
+
+		rc = zxdh_np_hash_tbl_id_info_init(p_se_cfg,
+						p_hash_tbl_temp->hash_sdt.hash_id,
+						p_hash_tbl_temp->hash_sdt.hash_table_id,
+						p_hash_tbl_temp->tbl_flag,
+						p_hash_tbl_temp->hash_sdt.hash_table_width,
+						p_hash_tbl_temp->hash_sdt.key_size);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_hash_tbl_id_info_init_ex");
+
+		rc = zxdh_np_apt_set_callback(dev_id,
+						p_hash_tbl_temp->sdt_no,
+						p_hash_tbl_temp->hash_sdt.table_type,
+						(void *)p_hash_tbl_temp);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_apt_set_callback");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_apt_eram_res_init(uint32_t dev_id, uint32_t tbl_num, ZXDH_APT_ERAM_TABLE_T *p_eram_tbl)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t index = 0;
+	ZXDH_APT_ERAM_TABLE_T *p_temp_eram_tbl = NULL;
+
+	for (index = 0; index < tbl_num; index++) {
+		p_temp_eram_tbl = p_eram_tbl + index;
+		rc = zxdh_np_sdt_tbl_write(dev_id,
+						p_temp_eram_tbl->sdt_no,
+						p_temp_eram_tbl->eram_sdt.table_type,
+						&p_temp_eram_tbl->eram_sdt,
+						ZXDH_SDT_OPER_ADD);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_sdt_tbl_write");
+
+		rc = zxdh_np_apt_set_callback(dev_id,
+						p_temp_eram_tbl->sdt_no,
+						p_temp_eram_tbl->eram_sdt.table_type,
+						(void *)p_temp_eram_tbl);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_apt_set_callback");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_acl_entrynum_to_blocknum(uint32_t entry_num, uint32_t key_mode)
+{
+	uint32_t value = 0;
+
+	value = entry_num % (ZXDH_ETCAM_RAM_DEPTH * ((uint32_t)1 << key_mode));
+
+	if (value == 0)
+		return (entry_num / (ZXDH_ETCAM_RAM_DEPTH * ((uint32_t)1 << key_mode)));
+	else
+		return (entry_num / (ZXDH_ETCAM_RAM_DEPTH * ((uint32_t)1 << key_mode)) + 1);
+}
+
+static int32_t
+zxdh_np_acl_key_cmp(void *p_new_key, void *p_old_key, uint32_t key_len)
+{
+	return memcmp(&(((ZXDH_ACL_KEY_INFO_T *)p_new_key)->pri),
+		&(((ZXDH_ACL_KEY_INFO_T *)p_old_key)->pri), key_len - sizeof(uint32_t));
+}
+
+static uint32_t
+zxdh_np_acl_cfg_init_ex(ZXDH_ACL_CFG_EX_T *p_acl_cfg,
+						void *p_client,
+						uint32_t flags,
+						ZXDH_ACL_AS_RSLT_WRT_FUNCTION p_as_wrt_fun)
+{
+	uint32_t rc = 0;
+
+	memset(p_acl_cfg, 0, sizeof(ZXDH_ACL_CFG_EX_T));
+
+	p_acl_cfg->p_client = p_client;
+	p_acl_cfg->dev_id = (uint32_t)(ZXDH_COMM_PTR_TO_VAL(p_acl_cfg->p_client) & 0xFFFFFFFF);
+	p_acl_cfg->flags = flags;
+
+	g_p_acl_ex_cfg[p_acl_cfg->dev_id] = p_acl_cfg;
+
+	if (flags & ZXDH_ACL_FLAG_ETCAM0_EN) {
+		p_acl_cfg->acl_etcamids.is_valid = 1;
+
+		p_acl_cfg->acl_etcamids.as_eram_base = 0;
+
+		rc = zxdh_comm_double_link_init(ZXDH_ACL_TBL_ID_NUM,
+			&p_acl_cfg->acl_etcamids.tbl_list);
+		ZXDH_COMM_CHECK_RC(rc, "zxdh_comm_double_link_init");
+	}
+
+	if (p_as_wrt_fun == NULL) {
+		p_acl_cfg->p_as_rslt_write_fun = NULL;
+		p_acl_cfg->p_as_rslt_read_fun = NULL;
+
+	} else {
+		p_acl_cfg->p_as_rslt_write_fun = p_as_wrt_fun;
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_acl_tbl_init_ex(ZXDH_ACL_CFG_EX_T *p_acl_cfg,
+						uint32_t table_id,
+						uint32_t as_enable,
+						uint32_t entry_num,
+						ZXDH_ACL_PRI_MODE_E pri_mode,
+						uint32_t key_mode,
+						ZXDH_ACL_AS_MODE_E as_mode,
+						uint32_t as_baddr,
+						uint32_t block_num,
+						uint32_t *p_block_idx)
+{
+	uint32_t rc = 0;
+	uint32_t i = 0;
+
+	g_p_acl_ex_cfg[p_acl_cfg->dev_id] = p_acl_cfg;
+
+	if (p_acl_cfg->acl_tbls[table_id].is_used) {
+		PMD_DRV_LOG(ERR, "table_id[ %u ] is already used!", table_id);
+		RTE_ASSERT(0);
+		return ZXDH_ACL_RC_INVALID_TBLID;
+	}
+
+	if (!p_acl_cfg->acl_etcamids.is_valid) {
+		PMD_DRV_LOG(ERR, "etcam is not init!");
+		RTE_ASSERT(0);
+		return ZXDH_ACL_RC_ETCAMID_NOT_INIT;
+	}
+
+	if (zxdh_np_acl_entrynum_to_blocknum(entry_num, key_mode) > block_num) {
+		PMD_DRV_LOG(ERR, "key_mode %u, etcam block_num %u is not enough for entry_num 0x%x",
+							 key_mode, block_num, entry_num);
+		RTE_ASSERT(0);
+		return ZXDH_ACL_RC_INVALID_BLOCKNUM;
+	} else if (zxdh_np_acl_entrynum_to_blocknum(entry_num, key_mode) < block_num) {
+		PMD_DRV_LOG(DEBUG, "key_mode %u, etcam block_num %u is more than entry_num 0x%x",
+							 key_mode, block_num, entry_num);
+	} else {
+		PMD_DRV_LOG(DEBUG, "key_mode %u, etcam block_num %u is match with entry_num 0x%x",
+							 key_mode, block_num, entry_num);
+	}
+
+	p_acl_cfg->acl_tbls[table_id].as_enable = as_enable;
+
+	if (as_enable) {
+		p_acl_cfg->acl_tbls[table_id].as_idx_base = as_baddr;
+		p_acl_cfg->acl_tbls[table_id].as_rslt_buff =
+			rte_zmalloc(NULL, entry_num * ZXDH_ACL_AS_RSLT_SIZE_GET_EX(as_mode), 0);
+		if (p_acl_cfg->acl_tbls[table_id].as_rslt_buff == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+	}
+
+	rc = (uint32_t)zxdh_comm_rb_init(&p_acl_cfg->acl_tbls[table_id].acl_rb, 0,
+		(sizeof(ZXDH_ACL_KEY_INFO_T) & 0xFFFFFFFFU) + ZXDH_ACL_KEYSIZE_GET(key_mode),
+		zxdh_np_acl_key_cmp);
+	ZXDH_COMM_CHECK_RC(rc, "zxdh_comm_rb_init");
+
+	p_acl_cfg->acl_tbls[table_id].table_id = table_id;
+	p_acl_cfg->acl_tbls[table_id].pri_mode = pri_mode;
+	p_acl_cfg->acl_tbls[table_id].key_mode = key_mode;
+	p_acl_cfg->acl_tbls[table_id].entry_num = entry_num;
+	p_acl_cfg->acl_tbls[table_id].as_mode = as_mode;
+	p_acl_cfg->acl_tbls[table_id].is_used = 1;
+
+	zxdh_np_init_d_node(&p_acl_cfg->acl_tbls[table_id].entry_dn,
+		&p_acl_cfg->acl_tbls[table_id]);
+	rc = zxdh_comm_double_link_insert_last(&p_acl_cfg->acl_tbls[table_id].entry_dn,
+		&p_acl_cfg->acl_etcamids.tbl_list);
+	ZXDH_COMM_CHECK_RC(rc, "zxdh_comm_double_link_insert_last");
+
+	p_acl_cfg->acl_tbls[table_id].block_num = block_num;
+	p_acl_cfg->acl_tbls[table_id].block_array =
+		rte_zmalloc(NULL, block_num * sizeof(uint32_t), 0);
+	if (p_acl_cfg->acl_tbls[table_id].block_array == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	for (i = 0; i < block_num; i++) {
+		if (p_acl_cfg->acl_blocks[p_block_idx[i]].is_used) {
+			PMD_DRV_LOG(ERR, "the block[ %u ] is already used by table[ %u ]!",
+				p_block_idx[i], p_acl_cfg->acl_blocks[p_block_idx[i]].tbl_id);
+			RTE_ASSERT(0);
+			return ZXDH_ACL_RC_INVALID_BLOCKID;
+		}
+
+		p_acl_cfg->acl_tbls[table_id].block_array[i] = p_block_idx[i];
+		p_acl_cfg->acl_blocks[p_block_idx[i]].is_used = 1;
+		p_acl_cfg->acl_blocks[p_block_idx[i]].tbl_id = table_id;
+		p_acl_cfg->acl_blocks[p_block_idx[i]].idx_base =
+			((ZXDH_ACL_ENTRY_MAX_GET(key_mode, i)) >> ZXDH_BLOCK_IDXBASE_BIT_OFF) &
+				ZXDH_BLOCK_IDXBASE_BIT_MASK;
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_apt_acl_res_init(uint32_t dev_id, uint32_t tbl_num, ZXDH_APT_ACL_TABLE_T *p_acl_tbl_res)
+{
+	uint32_t rc = ZXDH_OK;
+	uint8_t index = 0;
+	ZXDH_APT_ACL_TABLE_T *p_temp_acl_tbl = NULL;
+
+	rc = zxdh_np_acl_cfg_init_ex(&g_apt_acl_cfg[dev_id],
+						(void *)ZXDH_COMM_VAL_TO_PTR(dev_id),
+						ZXDH_ACL_FLAG_ETCAM0_EN,
+						NULL);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_acl_cfg_init_ex");
+
+	for (index = 0; index < tbl_num; index++) {
+		p_temp_acl_tbl = p_acl_tbl_res + index;
+		rc = zxdh_np_sdt_tbl_write(dev_id,
+						p_temp_acl_tbl->sdt_no,
+						p_temp_acl_tbl->acl_sdt.table_type,
+						&p_temp_acl_tbl->acl_sdt,
+						ZXDH_SDT_OPER_ADD);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_sdt_tbl_write");
+
+		 rc = zxdh_np_acl_tbl_init_ex(&g_apt_acl_cfg[dev_id],
+					p_temp_acl_tbl->acl_sdt.etcam_table_id,
+					p_temp_acl_tbl->acl_sdt.as_en,
+					p_temp_acl_tbl->acl_res.entry_num,
+					p_temp_acl_tbl->acl_res.pri_mode,
+					p_temp_acl_tbl->acl_sdt.etcam_key_mode,
+					p_temp_acl_tbl->acl_sdt.as_rsp_mode,
+					p_temp_acl_tbl->acl_sdt.as_eram_baddr,
+					p_temp_acl_tbl->acl_res.block_num,
+					p_temp_acl_tbl->acl_res.block_index);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_acl_tbl_init_ex");
+
+		rc = zxdh_np_apt_set_callback(dev_id,
+						p_temp_acl_tbl->sdt_no,
+						p_temp_acl_tbl->acl_sdt.table_type,
+						(void *)p_temp_acl_tbl);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_apt_set_callback");
+	}
+
+	return rc;
+}
+
+static void
+zxdh_np_apt_stat_res_init(uint32_t dev_id, uint32_t type, ZXDH_APT_STAT_RES_INIT_T *stat_res_init)
+{
+	g_ppu_stat_cfg[dev_id].eram_baddr = stat_res_init->eram_baddr;
+	g_ppu_stat_cfg[dev_id].eram_depth = stat_res_init->eram_depth;
+
+	if (type == ZXDH_SE_NON_STD_NIC_RES_TYPE) {
+		g_ppu_stat_cfg[dev_id].ddr_base_addr = stat_res_init->ddr_baddr;
+		g_ppu_stat_cfg[dev_id].ppu_addr_offset = stat_res_init->ppu_ddr_offset;
+	}
+}
+
+static uint32_t
 zxdh_np_se_res_init(uint32_t dev_id, uint32_t type)
 {
 	uint32_t rc = ZXDH_OK;
 	ZXDH_APT_SE_RES_T *p_se_res = NULL;
 	ZXDH_APT_HASH_RES_INIT_T hash_res_init = {0};
+	ZXDH_APT_ERAM_RES_INIT_T eram_res_init = {0};
+	ZXDH_APT_ACL_RES_INIT_T acl_res_init = {0};
 
 	p_se_res = (ZXDH_APT_SE_RES_T *)zxdh_np_dev_get_se_res_ptr(dev_id, type);
 	if (!p_se_res->valid) {
@@ -6468,8 +7112,14 @@ zxdh_np_se_res_init(uint32_t dev_id, uint32_t type)
 
 	hash_res_init.func_num = p_se_res->hash_func_num;
 	hash_res_init.bulk_num = p_se_res->hash_bulk_num;
+	hash_res_init.tbl_num = p_se_res->hash_tbl_num;
 	hash_res_init.func_res = p_se_res->hash_func;
 	hash_res_init.bulk_res = p_se_res->hash_bulk;
+	hash_res_init.tbl_res = p_se_res->hash_tbl;
+	eram_res_init.tbl_num = p_se_res->eram_num;
+	eram_res_init.eram_res = p_se_res->eram_tbl;
+	acl_res_init.tbl_num = p_se_res->acl_num;
+	acl_res_init.acl_res = p_se_res->acl_tbl;
 
 	rc = zxdh_np_apt_hash_global_res_init(dev_id);
 	ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_hash_global_res_init");
@@ -6485,6 +7135,26 @@ zxdh_np_se_res_init(uint32_t dev_id, uint32_t type)
 			hash_res_init.bulk_res);
 		ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_hash_bulk_res_init");
 	}
+
+	if (hash_res_init.tbl_num) {
+		rc = zxdh_np_apt_hash_tbl_res_init(dev_id, hash_res_init.tbl_num,
+			hash_res_init.tbl_res);
+		ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_hash_tbl_res_init");
+	}
+
+	if (eram_res_init.tbl_num) {
+		rc = zxdh_np_apt_eram_res_init(dev_id, eram_res_init.tbl_num,
+			eram_res_init.eram_res);
+		ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_eram_res_init");
+	}
+
+	if (acl_res_init.tbl_num) {
+		rc = zxdh_np_apt_acl_res_init(dev_id, acl_res_init.tbl_num,
+			acl_res_init.acl_res);
+		ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_acl_res_init");
+	}
+
+	zxdh_np_apt_stat_res_init(dev_id, type, &p_se_res->stat_cfg);
 
 	return rc;
 }
