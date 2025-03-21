@@ -31,6 +31,23 @@ static const char * const g_dpp_dtb_name[] = {
 	"DOWN TAB",
 	"UP TAB",
 };
+static ZXDH_SE_CFG *g_apt_se_cfg[ZXDH_DEV_CHANNEL_MAX];
+static ZXDH_SE_CFG *dpp_se_cfg[ZXDH_DEV_CHANNEL_MAX];
+static const uint16_t g_lpm_crc[ZXDH_SE_ZBLK_NUM] = {
+	0x1021, 0x8005, 0x3D65, 0xab47, 0x3453, 0x0357, 0x0589, 0xa02b,
+	0x1021, 0x8005, 0x3D65, 0xab47, 0x3453, 0x0357, 0x0589, 0xa02b,
+	0x1021, 0x8005, 0x3D65, 0xab47, 0x3453, 0x0357, 0x0589, 0xa02b,
+	0x1021, 0x8005, 0x3D65, 0xab47, 0x3453, 0x0357, 0x0589, 0xa02b
+};
+static uint32_t g_hash_zblk_idx[ZXDH_DEV_CHANNEL_MAX]
+				[ZXDH_HASH_FUNC_ID_NUM]
+				[ZXDH_HASH_TBL_ID_NUM] = {0};
+static const uint32_t g_ddr_hash_arg[ZXDH_HASH_DDR_CRC_NUM] = {
+	0x04C11DB7,
+	0xF4ACFB13,
+	0x20044009,
+	0x00210801
+};
 
 static const ZXDH_FIELD_T g_smmu0_smmu0_cpu_ind_cmd_reg[] = {
 	{"cpu_ind_rw", ZXDH_FIELD_FLAG_RW, 31, 1, 0x0, 0x0},
@@ -460,6 +477,20 @@ zxdh_np_get_tn_color(ZXDH_RB_TN *p_tn)
 	return ((p_tn == NULL) ? ZXDH_RBT_BLACK : (p_tn)->color_lsv & 0x3);
 }
 
+#define ZXDH_SE_GET_ZBLK_CFG(p_se, zblk_idx) \
+	(&(((ZXDH_SE_CFG *)(p_se))->zblk_info[zblk_idx]))
+
+#define GET_ZBLK_IDX(zcell_idx) \
+	(((zcell_idx) & 0x7F) >> 2)
+
+#define GET_ZCELL_IDX(zcell_idx) \
+	((zcell_idx) & 0x3)
+
+#define ZXDH_GET_FUN_INFO(p_se, fun_id) \
+	(&(((ZXDH_SE_CFG *)(p_se))->fun_info[fun_id]))
+
+#define GET_DDR_HASH_ARG(ddr_crc_sel) (g_ddr_hash_arg[ddr_crc_sel])
+
 static ZXDH_FIELD_T g_stat_car0_cara_queue_ram0_159_0_reg[] = {
 	{"cara_drop", ZXDH_FIELD_FLAG_RW, 147, 1, 0x0, 0x0},
 	{"cara_plcr_en", ZXDH_FIELD_FLAG_RW, 146, 1, 0x0, 0x0},
@@ -820,6 +851,33 @@ zxdh_comm_double_link_insert_pre(ZXDH_D_NODE *p_newnode,
 }
 
 static uint32_t
+zxdh_comm_double_link_insert_last(ZXDH_D_NODE *p_newnode, ZXDH_D_HEAD *p_head)
+{
+	ZXDH_D_NODE *p_dnode = NULL;
+
+	RTE_ASSERT(!(!p_head->p_next && p_head->p_prev));
+	RTE_ASSERT(!(p_head->p_next && !p_head->p_prev));
+
+	p_dnode = p_head->p_prev;
+
+	if (!p_dnode) {
+		p_head->p_next  = p_newnode;
+		p_head->p_prev  = p_newnode;
+		p_newnode->next = NULL;
+		p_newnode->prev = NULL;
+	} else {
+		p_newnode->prev = p_dnode;
+		p_newnode->next = NULL;
+		p_head->p_prev  = p_newnode;
+		p_dnode->next   = p_newnode;
+	}
+
+	p_head->used++;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
 zxdh_comm_double_link_del(ZXDH_D_NODE *delnode, ZXDH_D_HEAD *p_head)
 {
 	ZXDH_D_NODE *next = NULL;
@@ -842,6 +900,46 @@ zxdh_comm_double_link_del(ZXDH_D_NODE *delnode, ZXDH_D_HEAD *p_head)
 	delnode->next = NULL;
 	delnode->prev = NULL;
 	return ZXDH_OK;
+}
+
+static int32_t
+zxdh_comm_double_link_default_cmp_fuc(ZXDH_D_NODE *p_data1,
+	ZXDH_D_NODE *p_data2, __rte_unused void *p_data)
+{
+	uint32_t data1 = *(uint32_t *)p_data1->data;
+	uint32_t data2 = *(uint32_t *)p_data2->data;
+
+	if (data1 > data2)
+		return 1;
+	else if (data1 == data2)
+		return 0;
+	else
+		return -1;
+}
+
+static uint32_t
+zxdh_comm_double_link_insert_sort(ZXDH_D_NODE *p_newnode,
+			ZXDH_D_HEAD *p_head, ZXDH_CMP_FUNC cmp_fuc, void *cmp_data)
+{
+	ZXDH_D_NODE *pre_node = NULL;
+
+	if (cmp_fuc == NULL)
+		cmp_fuc = zxdh_comm_double_link_default_cmp_fuc;
+
+	if (p_head->used == 0)
+		return zxdh_comm_double_link_insert_1st(p_newnode, p_head);
+
+	pre_node = p_head->p_next;
+
+	while (pre_node != NULL) {
+		if (cmp_fuc(p_newnode, pre_node, cmp_data) <= 0)
+			return zxdh_comm_double_link_insert_pre(p_newnode,
+				pre_node, p_head);
+		else
+			pre_node = pre_node->next;
+	}
+
+	return zxdh_comm_double_link_insert_last(p_newnode, p_head);
 }
 
 static int32_t
@@ -5719,6 +5817,678 @@ zxdh_np_agent_se_res_get(uint32_t dev_id, uint32_t type)
 	return rc;
 }
 
+static uint32_t
+zxdh_np_se_init_ex(uint32_t dev_id, ZXDH_SE_CFG *p_se_cfg)
+{
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	ZXDH_SE_ZBLK_CFG *p_zblk_cfg = NULL;
+	ZXDH_SE_ZCELL_CFG *p_zcell_cfg = NULL;
+
+	if (dpp_se_cfg[dev_id] != NULL) {
+		PMD_DRV_LOG(DEBUG, "SE global config is already initialized.");
+		return ZXDH_OK;
+	}
+
+	memset(p_se_cfg, 0, sizeof(ZXDH_SE_CFG));
+
+	p_se_cfg->dev_id = dev_id;
+	dpp_se_cfg[p_se_cfg->dev_id] = p_se_cfg;
+
+	p_se_cfg->p_as_rslt_wrt_fun = NULL;
+	p_se_cfg->p_client = ZXDH_COMM_VAL_TO_PTR(dev_id);
+
+	for (i = 0; i < ZXDH_SE_ZBLK_NUM; i++) {
+		p_zblk_cfg = ZXDH_SE_GET_ZBLK_CFG(p_se_cfg, i);
+
+		p_zblk_cfg->zblk_idx = i;
+		p_zblk_cfg->is_used  = 0;
+		p_zblk_cfg->hash_arg = g_lpm_crc[i];
+		p_zblk_cfg->zcell_bm = 0;
+		zxdh_np_init_d_node(&p_zblk_cfg->zblk_dn, p_zblk_cfg);
+
+		for (j = 0; j < ZXDH_SE_ZCELL_NUM; j++) {
+			p_zcell_cfg = &p_zblk_cfg->zcell_info[j];
+
+			p_zcell_cfg->zcell_idx = (i << 2) + j;
+			p_zcell_cfg->item_used = 0;
+			p_zcell_cfg->mask_len  = 0;
+
+			zxdh_np_init_d_node(&p_zcell_cfg->zcell_dn, p_zcell_cfg);
+
+			p_zcell_cfg->zcell_avl.p_key = p_zcell_cfg;
+		}
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_apt_hash_global_res_init(uint32_t dev_id)
+{
+	if (g_apt_se_cfg[dev_id] == NULL) {
+		g_apt_se_cfg[dev_id] = rte_zmalloc(NULL, sizeof(ZXDH_SE_CFG), 0);
+		if (g_apt_se_cfg[dev_id] == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+
+		zxdh_np_se_init_ex(dev_id, g_apt_se_cfg[dev_id]);
+
+		g_apt_se_cfg[dev_id]->p_client = ZXDH_COMM_VAL_TO_PTR(dev_id);
+	}
+
+	return ZXDH_OK;
+}
+
+static void
+se_apt_get_zblock_index(uint32_t zblock_bitmap, uint32_t *zblk_idx)
+{
+	uint32_t index0 = 0;
+	uint32_t index1 = 0;
+
+	for (index0 = 0; index0 < 32; index0++) {
+		if ((zblock_bitmap >> index0) & 0x1) {
+			*(zblk_idx + index1) = index0;
+			index1++;
+		}
+	}
+}
+
+static uint32_t
+zxdh_np_crc32_calc(uint8_t *p_input_key, uint32_t dw_byte_num, uint32_t dw_crc_poly)
+{
+	uint32_t dw_result = 0;
+	uint32_t dw_data_type = 0;
+
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	while (i < dw_byte_num) {
+		dw_data_type = (uint32_t)((dw_result & 0xff000000) ^ (p_input_key[i] << 24));
+		for (j = 0; j < 8; j++) {
+			if (dw_data_type & 0x80000000) {
+				dw_data_type <<= 1;
+				dw_data_type ^= dw_crc_poly;
+			} else {
+				dw_data_type <<= 1;
+			}
+		}
+		dw_result <<= 8;
+		dw_result ^= dw_data_type;
+
+		i++;
+	}
+
+	return dw_result;
+}
+
+static uint16_t
+zxdh_np_crc16_calc(uint8_t *p_input_key, uint32_t dw_byte_num, uint16_t dw_crc_poly)
+{
+	uint16_t dw_result = 0;
+	uint16_t dw_data_type = 0;
+
+	uint32_t i = 0;
+	uint32_t j = 0;
+
+	while (i < dw_byte_num) {
+		dw_data_type = (uint16_t)(((dw_result & 0xff00) ^ (p_input_key[i] << 8)) & 0xFFFF);
+		for (j = 0; j < 8; j++) {
+			if (dw_data_type & 0x8000) {
+				dw_data_type <<= 1;
+				dw_data_type ^= dw_crc_poly;
+			} else {
+				dw_data_type <<= 1;
+			}
+		}
+		dw_result <<= 8;
+		dw_result ^= dw_data_type;
+
+		i++;
+	}
+
+	return dw_result;
+}
+
+static uint32_t
+zxdh_np_se_fun_init(ZXDH_SE_CFG *p_se_cfg,
+						   uint8_t	   id,
+						   uint32_t	 fun_type)
+{
+	ZXDH_FUNC_ID_INFO  *p_fun_info = NULL;
+
+	p_fun_info = ZXDH_GET_FUN_INFO(p_se_cfg, id);
+
+	if (p_fun_info->is_used) {
+		PMD_DRV_LOG(ERR, "Error[0x%x], fun_id [%u] is already used!",
+			ZXDH_SE_RC_FUN_INVALID, id);
+		return ZXDH_SE_RC_FUN_INVALID;
+	}
+
+	p_fun_info->fun_id = id;
+	p_fun_info->is_used = 1;
+
+	switch (fun_type) {
+	case (ZXDH_FUN_HASH):
+		p_fun_info->fun_type = ZXDH_FUN_HASH;
+		p_fun_info->fun_ptr = rte_zmalloc(NULL, sizeof(ZXDH_HASH_CFG), 0);
+		if (p_fun_info->fun_ptr == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+		((ZXDH_HASH_CFG *)(p_fun_info->fun_ptr))->p_se_info = p_se_cfg;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Error, unrecgnized fun_type[ %u]", fun_type);
+		RTE_ASSERT(0);
+		return ZXDH_SE_RC_BASE;
+	}
+
+	return ZXDH_OK;
+}
+
+static int32_t
+zxdh_np_hash_list_cmp(ZXDH_D_NODE *data1, ZXDH_D_NODE *data2, void *data)
+{
+	uint32_t flag = 0;
+	uint32_t data_new = 0;
+	uint32_t data_pre = 0;
+
+	flag = *(uint32_t *)data;
+
+	if (flag == ZXDH_HASH_CMP_ZCELL) {
+		data_new = ((ZXDH_SE_ZCELL_CFG *)data1->data)->zcell_idx;
+		data_pre = ((ZXDH_SE_ZCELL_CFG *)data2->data)->zcell_idx;
+	} else if (flag == ZXDH_HASH_CMP_ZBLK) {
+		data_new = ((ZXDH_SE_ZBLK_CFG *)data1->data)->zblk_idx;
+		data_pre = ((ZXDH_SE_ZBLK_CFG *)data2->data)->zblk_idx;
+	}
+
+	if (data_new > data_pre)
+		return 1;
+	else if (data_new == data_pre)
+		return 0;
+	else
+		return -1;
+}
+
+static int32_t
+zxdh_np_hash_rb_key_cmp(void *p_new, void *p_old, __rte_unused uint32_t key_size)
+{
+	ZXDH_HASH_RBKEY_INFO *p_rbkey_new = NULL;
+	ZXDH_HASH_RBKEY_INFO *p_rbkey_old = NULL;
+
+	p_rbkey_new = (ZXDH_HASH_RBKEY_INFO *)(p_new);
+	p_rbkey_old = (ZXDH_HASH_RBKEY_INFO *)(p_old);
+
+	return memcmp(p_rbkey_new->key, p_rbkey_old->key, ZXDH_HASH_KEY_MAX);
+}
+
+static int32_t
+zxdh_np_hash_ddr_cfg_rb_key_cmp(void *p_new, void *p_old, __rte_unused uint32_t key_size)
+{
+	HASH_DDR_CFG *p_rbkey_new = NULL;
+	HASH_DDR_CFG *p_rbkey_old = NULL;
+
+	p_rbkey_new = (HASH_DDR_CFG *)(p_new);
+	p_rbkey_old = (HASH_DDR_CFG *)(p_old);
+
+	return memcmp(&p_rbkey_new->ddr_baddr, &p_rbkey_old->ddr_baddr, sizeof(uint32_t));
+}
+
+static uint32_t
+zxdh_np_hash_zcam_resource_init(ZXDH_HASH_CFG *p_hash_cfg,
+		uint32_t zblk_num, uint32_t *zblk_idx_array)
+{
+	uint32_t rc = ZXDH_OK;
+
+	uint32_t i = 0;
+	uint32_t j = 0;
+	uint32_t cmp_type = 0;
+	uint32_t zblk_idx = 0;
+	uint32_t zcell_idx = 0;
+	uint32_t dev_id = 0;
+
+	ZXDH_D_HEAD *p_zblk_list = NULL;
+	ZXDH_D_HEAD *p_zcell_free = NULL;
+	ZXDH_SE_ZBLK_CFG *p_zblk_cfg = NULL;
+	ZXDH_SE_ZCELL_CFG *p_zcell_cfg = NULL;
+
+	dev_id = p_hash_cfg->p_se_info->dev_id;
+
+	p_zblk_list = &p_hash_cfg->hash_shareram.zblk_list;
+	rc = zxdh_comm_double_link_init(ZXDH_SE_ZBLK_NUM, p_zblk_list);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_double_link_init");
+
+	p_zcell_free = &p_hash_cfg->hash_shareram.zcell_free_list;
+	rc = zxdh_comm_double_link_init(ZXDH_SE_ZBLK_NUM * ZXDH_SE_ZCELL_NUM, p_zcell_free);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_double_link_init");
+
+	for (i = 0; i < zblk_num; i++) {
+		zblk_idx = zblk_idx_array[i];
+
+		p_zblk_cfg = ZXDH_SE_GET_ZBLK_CFG(p_hash_cfg->p_se_info, zblk_idx);
+
+		if (p_zblk_cfg->is_used) {
+			PMD_DRV_LOG(ERR, "ZBlock[%u] is already used", zblk_idx);
+			RTE_ASSERT(0);
+			return ZXDH_HASH_RC_INVALID_ZBLCK;
+		}
+
+		for (j = 0; j < ZXDH_SE_ZCELL_NUM; j++) {
+			zcell_idx = p_zblk_cfg->zcell_info[j].zcell_idx;
+			p_zcell_cfg = &(((ZXDH_SE_CFG *)(p_hash_cfg->p_se_info))->
+			zblk_info[GET_ZBLK_IDX(zcell_idx)].zcell_info[GET_ZCELL_IDX(zcell_idx)]);
+
+			if (p_zcell_cfg->is_used) {
+				PMD_DRV_LOG(ERR, "ZBlk[%u], ZCell[%u] is already used",
+					zblk_idx, zcell_idx);
+				RTE_ASSERT(0);
+				return ZXDH_HASH_RC_INVALID_ZCELL;
+			}
+
+			p_zcell_cfg->is_used = 1;
+
+			cmp_type = ZXDH_HASH_CMP_ZCELL;
+			rc = zxdh_comm_double_link_insert_sort(&p_zcell_cfg->zcell_dn,
+				p_zcell_free, zxdh_np_hash_list_cmp, &cmp_type);
+			ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_double_link_insert_sort");
+		}
+
+		p_zblk_cfg->is_used = 1;
+		cmp_type = ZXDH_HASH_CMP_ZBLK;
+		rc = zxdh_comm_double_link_insert_sort(&p_zblk_cfg->zblk_dn,
+			p_zblk_list, zxdh_np_hash_list_cmp, &cmp_type);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_double_link_insert_last");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_hash_init(ZXDH_SE_CFG *p_se_cfg,
+				uint32_t fun_id,
+				uint32_t zblk_num,
+				uint32_t *zblk_idx,
+				uint32_t ddr_dis)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t i = 0;
+	uint32_t dev_id = p_se_cfg->dev_id;
+	ZXDH_FUNC_ID_INFO *p_func_info = NULL;
+	ZXDH_HASH_CFG *p_hash_cfg = NULL;
+
+	rc = zxdh_np_se_fun_init(p_se_cfg, (fun_id & 0xff), ZXDH_FUN_HASH);
+	if (rc == ZXDH_SE_RC_FUN_INVALID)
+		return ZXDH_OK;
+
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_se_fun_init");
+
+	p_func_info = ZXDH_GET_FUN_INFO(p_se_cfg, fun_id);
+	p_hash_cfg = (ZXDH_HASH_CFG *)p_func_info->fun_ptr;
+	p_hash_cfg->fun_id = fun_id;
+	p_hash_cfg->p_hash32_fun = zxdh_np_crc32_calc;
+	p_hash_cfg->p_hash16_fun = zxdh_np_crc16_calc;
+	p_hash_cfg->p_se_info = p_se_cfg;
+
+	if (ddr_dis == 1)
+		p_hash_cfg->ddr_valid = 0;
+	else
+		p_hash_cfg->ddr_valid = 1;
+
+	p_hash_cfg->hash_stat.zblock_num = zblk_num;
+	rc = zxdh_np_hash_zcam_resource_init(p_hash_cfg, zblk_num, zblk_idx);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_hash_zcam_resource_init");
+
+	for (i = 0; i < zblk_num; i++)
+		p_hash_cfg->hash_stat.zblock_array[i] = zblk_idx[i];
+
+	rc = (uint32_t)zxdh_comm_rb_init(&p_hash_cfg->hash_rb,
+								 0,
+								 sizeof(ZXDH_HASH_RBKEY_INFO),
+								 zxdh_np_hash_rb_key_cmp);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_rb_init");
+
+	rc = (uint32_t)zxdh_comm_rb_init(&p_hash_cfg->ddr_cfg_rb,
+								 0,
+								 sizeof(HASH_DDR_CFG),
+								 zxdh_np_hash_ddr_cfg_rb_key_cmp);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_rb_init");
+
+	for (i = 0; i < zblk_num; i++)
+		g_hash_zblk_idx[dev_id][fun_id][i] = zblk_idx[i];
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_apt_hash_func_res_init(uint32_t dev_id, uint32_t func_num,
+		ZXDH_APT_HASH_FUNC_RES_T *p_hash_func_res)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t index = 0;
+	uint32_t zblk_idx[32] = {0};
+	ZXDH_APT_HASH_FUNC_RES_T *p_hash_func_res_temp = NULL;
+	ZXDH_SE_CFG *p_se_cfg = NULL;
+
+	p_se_cfg = g_apt_se_cfg[dev_id];
+
+	for (index = 0; index < func_num; index++) {
+		memset(zblk_idx, 0, sizeof(zblk_idx));
+		p_hash_func_res_temp = p_hash_func_res + index;
+		ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_hash_func_res_temp);
+
+		se_apt_get_zblock_index(p_hash_func_res_temp->zblk_bitmap, zblk_idx);
+
+		rc = zxdh_np_hash_init(p_se_cfg,
+							p_hash_func_res_temp->func_id,
+							p_hash_func_res_temp->zblk_num,
+							zblk_idx,
+							p_hash_func_res_temp->ddr_dis);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_hash_init");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_hash_bulk_init(ZXDH_SE_CFG *p_se_cfg,
+						uint32_t fun_id,
+						uint32_t bulk_id,
+						ZXDH_HASH_DDR_RESC_CFG_T *p_ddr_resc_cfg,
+						uint32_t zcell_num,
+						uint32_t zreg_num)
+{
+	uint32_t rc = ZXDH_OK;
+
+	uint32_t i = 0;
+	uint32_t j = 0;
+	uint32_t zblk_idx = 0;
+	uint32_t dev_id = p_se_cfg->dev_id;
+	uint32_t ddr_item_num = 0;
+
+	ZXDH_D_NODE *p_zblk_dn = NULL;
+	ZXDH_D_NODE *p_zcell_dn = NULL;
+	ZXDH_RB_TN *p_rb_tn_new = NULL;
+	ZXDH_RB_TN *p_rb_tn_rtn = NULL;
+	ZXDH_SE_ZBLK_CFG *p_zblk_cfg = NULL;
+	ZXDH_SE_ZREG_CFG *p_zreg_cfg = NULL;
+	HASH_DDR_CFG *p_ddr_cfg = NULL;
+	HASH_DDR_CFG *p_rbkey_new = NULL;
+	HASH_DDR_CFG *p_rbkey_rtn = NULL;
+	ZXDH_SE_ZCELL_CFG *p_zcell_cfg = NULL;
+	ZXDH_HASH_CFG *p_hash_cfg = NULL;
+	ZXDH_FUNC_ID_INFO *p_func_info = NULL;
+	ZXDH_SE_ITEM_CFG **p_item_array = NULL;
+	ZXDH_HASH_BULK_ZCAM_STAT *p_bulk_zcam_mono = NULL;
+
+	p_func_info = ZXDH_GET_FUN_INFO(p_se_cfg, fun_id);
+	p_hash_cfg = (ZXDH_HASH_CFG *)p_func_info->fun_ptr;
+	if (p_hash_cfg == NULL) {
+		PMD_DRV_LOG(ERR, "p_hash_cfg point null!");
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	if (p_hash_cfg->hash_stat.p_bulk_zcam_mono[bulk_id] != NULL) {
+		PMD_DRV_LOG(ERR, "fun_id[%u] bulk_id[%u] is already init", fun_id, bulk_id);
+		return ZXDH_OK;
+	}
+
+	PMD_DRV_LOG(DEBUG, "p_hash_cfg->ddr_valid = %u!", p_hash_cfg->ddr_valid);
+	if (p_hash_cfg->ddr_valid == 1) {
+		ddr_item_num = p_ddr_resc_cfg->ddr_item_num;
+		if (ZXDH_DDR_WIDTH_512b == p_ddr_resc_cfg->ddr_width_mode)
+			ddr_item_num = p_ddr_resc_cfg->ddr_item_num >> 1;
+
+		p_rbkey_new = rte_zmalloc(NULL, sizeof(HASH_DDR_CFG), 0);
+		if (p_rbkey_new == NULL) {
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+
+		p_rbkey_new->ddr_baddr = p_ddr_resc_cfg->ddr_baddr;
+
+		p_rb_tn_new = rte_zmalloc(NULL, sizeof(ZXDH_RB_TN), 0);
+		if (p_rb_tn_new == NULL) {
+			rte_free(p_rbkey_new);
+			PMD_DRV_LOG(ERR, "malloc memory failed");
+			return ZXDH_PAR_CHK_POINT_NULL;
+		}
+		zxdh_np_init_rbt_tn(p_rb_tn_new, p_rbkey_new);
+
+		rc = zxdh_comm_rb_insert(&p_hash_cfg->ddr_cfg_rb,
+			(void *)p_rb_tn_new, (void *)(&p_rb_tn_rtn));
+		if (rc == ZXDH_RBT_RC_FULL) {
+			PMD_DRV_LOG(ERR, "The red black tree is full!");
+			rte_free(p_rbkey_new);
+			rte_free(p_rb_tn_new);
+			RTE_ASSERT(0);
+			return ZXDH_HASH_RC_RB_TREE_FULL;
+		} else if (rc == ZXDH_RBT_RC_UPDATE) {
+			PMD_DRV_LOG(DEBUG, "some bulk_id share one bulk!");
+
+			ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_rb_tn_rtn);
+			p_rbkey_rtn = (HASH_DDR_CFG *)(p_rb_tn_rtn->p_key);
+
+			p_ddr_cfg = p_hash_cfg->p_bulk_ddr_info[p_rbkey_rtn->bulk_id];
+
+			if (p_ddr_cfg->hash_ddr_arg !=
+			GET_DDR_HASH_ARG(p_ddr_resc_cfg->ddr_crc_sel) ||
+				p_ddr_cfg->width_mode   != p_ddr_resc_cfg->ddr_width_mode ||
+				p_ddr_cfg->ddr_ecc_en   != p_ddr_resc_cfg->ddr_ecc_en	 ||
+				p_ddr_cfg->item_num	 != ddr_item_num) {
+				PMD_DRV_LOG(ERR, "The base address is same");
+				rte_free(p_rbkey_new);
+				rte_free(p_rb_tn_new);
+				RTE_ASSERT(0);
+				return ZXDH_HASH_RC_INVALID_PARA;
+			}
+
+			p_hash_cfg->p_bulk_ddr_info[bulk_id] =
+				p_hash_cfg->p_bulk_ddr_info[p_rbkey_rtn->bulk_id];
+
+			rte_free(p_rbkey_new);
+			rte_free(p_rb_tn_new);
+		} else {
+			p_item_array = rte_zmalloc(NULL, ddr_item_num *
+				sizeof(ZXDH_SE_ITEM_CFG *), 0);
+			if (NULL == (p_item_array)) {
+				rte_free(p_rbkey_new);
+				rte_free(p_rb_tn_new);
+				PMD_DRV_LOG(ERR, "malloc memory failed");
+				return ZXDH_PAR_CHK_POINT_NULL;
+			}
+
+			p_rbkey_new->p_item_array = p_item_array;
+			p_rbkey_new->bulk_id = bulk_id;
+			p_rbkey_new->hw_baddr = 0;
+			p_rbkey_new->width_mode = p_ddr_resc_cfg->ddr_width_mode;
+			p_rbkey_new->item_num = ddr_item_num;
+			p_rbkey_new->ddr_ecc_en = p_ddr_resc_cfg->ddr_ecc_en;
+			p_rbkey_new->hash_ddr_arg = GET_DDR_HASH_ARG(p_ddr_resc_cfg->ddr_crc_sel);
+			p_rbkey_new->bulk_use = 1;
+			p_rbkey_new->zcell_num = zcell_num;
+			p_rbkey_new->zreg_num = zreg_num;
+			p_hash_cfg->p_bulk_ddr_info[bulk_id] = p_rbkey_new;
+
+			PMD_DRV_LOG(DEBUG, "one new ddr_bulk init!");
+		}
+	}
+
+	p_bulk_zcam_mono = rte_zmalloc(NULL, sizeof(ZXDH_HASH_BULK_ZCAM_STAT), 0);
+	if (NULL == (p_bulk_zcam_mono)) {
+		rte_free(p_rbkey_new);
+		rte_free(p_rb_tn_new);
+		rte_free(p_item_array);
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+	(&p_hash_cfg->hash_stat)->p_bulk_zcam_mono[bulk_id] = p_bulk_zcam_mono;
+
+	for (i = 0; i < ZXDH_SE_ZBLK_NUM * ZXDH_SE_ZCELL_NUM; i++)
+		p_bulk_zcam_mono->zcell_mono_idx[i] = 0xffffffff;
+
+	for (i = 0; i < ZXDH_SE_ZBLK_NUM; i++) {
+		for (j = 0; j < ZXDH_SE_ZREG_NUM; j++) {
+			p_bulk_zcam_mono->zreg_mono_id[i][j].zblk_id = 0xffffffff;
+			p_bulk_zcam_mono->zreg_mono_id[i][j].zreg_id = 0xffffffff;
+		}
+	}
+
+	if (zcell_num > 0) {
+		p_hash_cfg->bulk_ram_mono[bulk_id] = 1;
+
+		p_zcell_dn = p_hash_cfg->hash_shareram.zcell_free_list.p_next;
+
+		i = 0;
+
+		while (p_zcell_dn) {
+			p_zcell_cfg = (ZXDH_SE_ZCELL_CFG *)p_zcell_dn->data;
+
+			if (p_zcell_cfg->is_used) {
+				if (!(p_zcell_cfg->flag & ZXDH_ZCELL_FLAG_IS_MONO)) {
+					p_zcell_cfg->flag	 |= ZXDH_ZCELL_FLAG_IS_MONO;
+					p_zcell_cfg->bulk_id = bulk_id;
+
+					p_bulk_zcam_mono->zcell_mono_idx[p_zcell_cfg->zcell_idx] =
+						p_zcell_cfg->zcell_idx;
+
+					if (++i >= zcell_num)
+						break;
+				}
+			} else {
+				PMD_DRV_LOG(ERR, "zcell[ %u ] is not init", p_zcell_cfg->zcell_idx);
+				RTE_ASSERT(0);
+				return ZXDH_HASH_RC_INVALID_PARA;
+			}
+
+			p_zcell_dn = p_zcell_dn->next;
+		}
+
+		if (i < zcell_num)
+			PMD_DRV_LOG(ERR, "Input zcell_num is %u, bulk %u monopolize zcells is %u",
+				zcell_num, bulk_id, i);
+	}
+
+	if (zreg_num > 0) {
+		p_hash_cfg->bulk_ram_mono[bulk_id] = 1;
+
+		p_zblk_dn = p_hash_cfg->hash_shareram.zblk_list.p_next;
+		j = 0;
+
+		while (p_zblk_dn) {
+			p_zblk_cfg = (ZXDH_SE_ZBLK_CFG *)p_zblk_dn->data;
+			zblk_idx = p_zblk_cfg->zblk_idx;
+
+			if (p_zblk_cfg->is_used) {
+				for (i = 0; i < ZXDH_SE_ZREG_NUM; i++) {
+					p_zreg_cfg = &p_zblk_cfg->zreg_info[i];
+
+					if (!(p_zreg_cfg->flag & ZXDH_ZREG_FLAG_IS_MONO)) {
+						p_zreg_cfg->flag = ZXDH_ZREG_FLAG_IS_MONO;
+						p_zreg_cfg->bulk_id = bulk_id;
+
+					p_bulk_zcam_mono->zreg_mono_id[zblk_idx][i].zblk_id =
+						zblk_idx;
+					p_bulk_zcam_mono->zreg_mono_id[zblk_idx][i].zreg_id = i;
+
+					if (++j >= zreg_num)
+						break;
+					}
+				}
+
+				if (j >= zreg_num)
+					break;
+			} else {
+				PMD_DRV_LOG(ERR, "zblk [ %u ] is not init", p_zblk_cfg->zblk_idx);
+				RTE_ASSERT(0);
+				return ZXDH_HASH_RC_INVALID_PARA;
+			}
+
+			p_zblk_dn = p_zblk_dn->next;
+		}
+
+		if (j < zreg_num)
+			PMD_DRV_LOG(ERR, "Input zreg_num' is %u, actually bulk %u monopolize zregs is %u",
+				zreg_num, bulk_id, j);
+	}
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_apt_hash_bulk_res_init(uint32_t dev_id, uint32_t bulk_num,
+						   ZXDH_APT_HASH_BULK_RES_T *p_bulk_res)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t index = 0;
+	ZXDH_APT_HASH_BULK_RES_T *p_hash_bulk_res_temp = NULL;
+	ZXDH_HASH_DDR_RESC_CFG_T ddr_resc_cfg = {0};
+	ZXDH_SE_CFG *p_se_cfg = NULL;
+
+	p_se_cfg = g_apt_se_cfg[dev_id];
+
+	for (index = 0; index < bulk_num; index++) {
+		memset(&ddr_resc_cfg, 0, sizeof(ZXDH_HASH_DDR_RESC_CFG_T));
+		p_hash_bulk_res_temp = p_bulk_res + index;
+		ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_hash_bulk_res_temp);
+
+		ddr_resc_cfg.ddr_baddr = p_hash_bulk_res_temp->ddr_baddr;
+		ddr_resc_cfg.ddr_item_num = p_hash_bulk_res_temp->ddr_item_num;
+		ddr_resc_cfg.ddr_width_mode = p_hash_bulk_res_temp->ddr_width_mode;
+		ddr_resc_cfg.ddr_crc_sel = p_hash_bulk_res_temp->ddr_crc_sel;
+		ddr_resc_cfg.ddr_ecc_en = p_hash_bulk_res_temp->ddr_ecc_en;
+
+		rc = zxdh_np_hash_bulk_init(p_se_cfg,
+							p_hash_bulk_res_temp->func_id,
+							p_hash_bulk_res_temp->bulk_id,
+							&ddr_resc_cfg,
+							p_hash_bulk_res_temp->zcell_num,
+							p_hash_bulk_res_temp->zreg_num);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_hash_bulk_init");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_se_res_init(uint32_t dev_id, uint32_t type)
+{
+	uint32_t rc = ZXDH_OK;
+	ZXDH_APT_SE_RES_T *p_se_res = NULL;
+	ZXDH_APT_HASH_RES_INIT_T hash_res_init = {0};
+
+	p_se_res = (ZXDH_APT_SE_RES_T *)zxdh_np_dev_get_se_res_ptr(dev_id, type);
+	if (!p_se_res->valid) {
+		PMD_DRV_LOG(ERR, "dev_id[0x%x],se_type[0x%x] invalid!", dev_id, type);
+		return ZXDH_ERR;
+	}
+
+	hash_res_init.func_num = p_se_res->hash_func_num;
+	hash_res_init.bulk_num = p_se_res->hash_bulk_num;
+	hash_res_init.func_res = p_se_res->hash_func;
+	hash_res_init.bulk_res = p_se_res->hash_bulk;
+
+	rc = zxdh_np_apt_hash_global_res_init(dev_id);
+	ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_hash_global_res_init");
+
+	if (hash_res_init.func_num) {
+		rc = zxdh_np_apt_hash_func_res_init(dev_id, hash_res_init.func_num,
+			hash_res_init.func_res);
+		ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_hash_func_res_init");
+	}
+
+	if (hash_res_init.bulk_num) {
+		rc = zxdh_np_apt_hash_bulk_res_init(dev_id, hash_res_init.bulk_num,
+			hash_res_init.bulk_res);
+		ZXDH_COMM_CHECK_RC(rc, "zxdh_np_apt_hash_bulk_res_init");
+	}
+
+	return rc;
+}
+
 uint32_t
 zxdh_np_se_res_get_and_init(uint32_t dev_id, uint32_t type)
 {
@@ -5727,6 +6497,10 @@ zxdh_np_se_res_get_and_init(uint32_t dev_id, uint32_t type)
 	rc = zxdh_np_agent_se_res_get(dev_id, type);
 	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_se_res_get");
 	PMD_DRV_LOG(DEBUG, "se res get success.");
+
+	rc = zxdh_np_se_res_init(dev_id, type);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_se_res_init");
+	PMD_DRV_LOG(DEBUG, "se res init success.");
 
 	return rc;
 }
