@@ -1320,6 +1320,13 @@ typedef enum zxdh_dtb_tab_up_user_addr_type_e {
 	ZXDH_DTB_TAB_UP_USER_ADDR_TYPE_MAX,
 } ZXDH_DTB_TAB_UP_USER_ADDR_TYPE_E;
 
+typedef enum zxdh_dtb_dump_zcam_width_e {
+	ZXDH_DTB_DUMP_ZCAM_128b = 0,
+	ZXDH_DTB_DUMP_ZCAM_256b = 1,
+	ZXDH_DTB_DUMP_ZCAM_512b = 2,
+	ZXDH_DTB_DUMP_ZCAM_RSV  = 3,
+} ZXDH_DTB_DUMP_ZCAM_WIDTH_E;
+
 typedef struct zxdh_dtb_lpm_entry_t {
 	uint32_t dtb_len0;
 	uint8_t *p_data_buff0;
