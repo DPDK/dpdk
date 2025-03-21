@@ -112,8 +112,16 @@
 #define ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL  \
 		(ZXDH_SE_SMMU0_ERAM_BLOCK_NUM * ZXDH_SE_SMMU0_ERAM_ADDR_NUM_PER_BLOCK)
 
+#define ZXDH_CHANNEL_REPS_LEN                   (4)
+
 #define ZXDH_NPSDK_COMPAT_ITEM_ID               (10)
 #define ZXDH_DPU_NO_DEBUG_PF_COMPAT_REG_OFFSET  (0x5400)
+
+#define ZXDH_VF_ACTIVE(VPORT)                   (((VPORT) & 0x0800) >> 11)
+#define ZXDH_EPID_BY(VPORT)                     (((VPORT) & 0x7000) >> 12)
+#define ZXDH_FUNC_NUM(VPORT)                    (((VPORT) & 0x0700) >> 8)
+#define ZXDH_VFUNC_NUM(VPORT)                   (((VPORT) & 0x00FF))
+#define ZXDH_IS_PF(VPORT)                       (!ZXDH_VF_ACTIVE(VPORT))
 
 #define ZXDH_SDT_CFG_LEN                        (2)
 #define ZXDH_SDT_VALID                          (1)
@@ -178,6 +186,12 @@
 #define ZXDH_PAR_CHK_INVALID_DEV_ID             (ZXDH_PARAMETER_CHK_BASE | 0x007)
 #define ZXDH_PAR_CHK_INVALID_PARA               (ZXDH_PARAMETER_CHK_BASE | 0x008)
 
+#define ZXDH_SPIN_LOCK_BASE                     (ZXDH_RC_BASE            | 0x300)
+#define ZXDH_SPIN_LOCK_INIT_FAIL                (ZXDH_SPIN_LOCK_BASE     | 0x001)
+#define ZXDH_SPIN_LOCK_LOCK_FAIL                (ZXDH_SPIN_LOCK_BASE     | 0x002)
+#define ZXDH_SPIN_LOCK_ULOCK_FAIL               (ZXDH_SPIN_LOCK_BASE     | 0X003)
+#define ZXDH_SPIN_LOCK_DESTROY_FAIL             (ZXDH_SPIN_LOCK_BASE     | 0X004)
+
 #define ZXDH_ERAM128_BADDR_MASK                 (0x3FFFF80)
 
 #define ZXDH_DTB_TABLE_MODE_ERAM                (0)
@@ -214,6 +228,13 @@
 #define ZXDH_RC_DTB_DUMP_SIZE_SMALL             (ZXDH_RC_DTB_BASE | 0x16)
 #define ZXDH_RC_DTB_SEARCH_VPORT_QUEUE_ZERO     (ZXDH_RC_DTB_BASE | 0x17)
 #define ZXDH_RC_DTB_QUEUE_NOT_ENABLE            (ZXDH_RC_DTB_BASE | 0x18)
+
+#define ZXDH_RC_CTRLCH_BASE                     (0xf00)
+#define ZXDH_RC_CTRLCH_MSG_LEN_ZERO             (ZXDH_RC_CTRLCH_BASE | 0x0)
+#define ZXDH_RC_CTRLCH_MSG_PRO_ERR              (ZXDH_RC_CTRLCH_BASE | 0x1)
+#define ZXDH_RC_CTRLCH_MSG_TYPE_NOT_SUPPORT     (ZXDH_RC_CTRLCH_BASE | 0x2)
+#define ZXDH_RC_CTRLCH_MSG_OPER_NOT_SUPPORT     (ZXDH_RC_CTRLCH_BASE | 0x3)
+#define ZXDH_RC_CTRLCH_MSG_DROP                 (ZXDH_RC_CTRLCH_BASE | 0x4)
 
 #define ZXDH_SCHE_RSP_LEN                       (2)
 #define ZXDH_G_PROFILE_ID_LEN                   (8)
@@ -465,6 +486,7 @@ typedef struct dpp_dev_cfg_t {
 	uint32_t access_type;
 	uint32_t agent_flag;
 	uint32_t vport;
+	uint32_t fw_bar_msg_num;
 	uint64_t pcie_addr;
 	uint64_t riscv_addr;
 	uint64_t dma_vir_addr;
@@ -473,6 +495,8 @@ typedef struct dpp_dev_cfg_t {
 	uint32_t init_flags[ZXDH_MODULE_INIT_MAX];
 	ZXDH_DEV_WRITE_FUNC p_pcie_write_fun;
 	ZXDH_DEV_READ_FUNC  p_pcie_read_fun;
+	ZXDH_SPINLOCK_T dtb_spinlock;
+	ZXDH_SPINLOCK_T smmu0_spinlock;
 } ZXDH_DEV_CFG_T;
 
 typedef struct zxdh_dev_mngr_t {
@@ -726,6 +750,17 @@ typedef enum zxdh_stat_cnt_mode_e {
 	ZXDH_STAT_MAX_MODE,
 } ZXDH_STAT_CNT_MODE_E;
 
+typedef enum  zxdh_agent_pcie_bar_e {
+	ZXDH_BAR_MSG_NUM_REQ = 0,
+	ZXDH_PCIE_BAR_MAX
+} ZXDH_MSG_PCIE_BAR_E;
+
+typedef enum zxdh_agent_msg_oper_e {
+	ZXDH_WR = 0,
+	ZXDH_RD,
+	ZXDH_WR_RD_MAX
+} ZXDH_MSG_OPER_E;
+
 typedef struct zxdh_smmu0_smmu0_cpu_ind_cmd_t {
 	uint32_t cpu_ind_rw;
 	uint32_t cpu_ind_rd_mode;
@@ -916,6 +951,24 @@ typedef struct __rte_aligned(2) zxdh_version_compatible_reg_t {
 	uint16_t patch;
 	uint8_t rsv[2];
 } ZXDH_VERSION_COMPATIBLE_REG_T;
+
+typedef struct __rte_aligned(2) zxdh_agent_channel_pcie_bar_msg_t {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t oper;
+	uint8_t rsv;
+} ZXDH_AGENT_PCIE_BAR_MSG_T;
+
+typedef struct __rte_aligned(2) zxdh_agent_channel_reg_msg {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t subtype;
+	uint8_t oper;
+	uint32_t reg_no;
+	uint32_t addr;
+	uint32_t val_len;
+	uint32_t val[32];
+} ZXDH_AGENT_CHANNEL_REG_MSG_T;
 
 typedef struct __rte_aligned(2) zxdh_agent_channel_msg_t {
 	uint32_t msg_len;
