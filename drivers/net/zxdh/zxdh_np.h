@@ -123,6 +123,13 @@
 #define ZXDH_VFUNC_NUM(VPORT)                   (((VPORT) & 0x00FF))
 #define ZXDH_IS_PF(VPORT)                       (!ZXDH_VF_ACTIVE(VPORT))
 
+#define ZXDH_RBT_RED                            (0x1)
+#define ZXDH_RBT_BLACK                          (0x2)
+#define ZXDH_RBT_MAX_DEPTH                      (128)
+
+#define ZXDH_LISTSTACK_INVALID_INDEX	        (0)
+#define ZXDH_LISTSTACK_MAX_ELEMENT		        (0x0ffffffe)
+
 #define ZXDH_SDT_CFG_LEN                        (2)
 #define ZXDH_SDT_VALID                          (1)
 #define ZXDH_SDT_INVALID                        (0)
@@ -192,6 +199,26 @@
 #define ZXDH_SPIN_LOCK_ULOCK_FAIL               (ZXDH_SPIN_LOCK_BASE     | 0X003)
 #define ZXDH_SPIN_LOCK_DESTROY_FAIL             (ZXDH_SPIN_LOCK_BASE     | 0X004)
 
+#define ZXDH_DOUBLE_LINK_BASE                   (ZXDH_RC_BASE            | 0x500)
+#define ZXDH_DOUBLE_LINK_ELEMENT_NUM_ERR        (ZXDH_DOUBLE_LINK_BASE   | 0x001)
+#define ZXDH_DOUBLE_LINK_MALLOC_FAIL            (ZXDH_DOUBLE_LINK_BASE   | 0x002)
+#define ZXDH_DOUBLE_LINK_POINT_NULL             (ZXDH_DOUBLE_LINK_BASE   | 0x003)
+#define ZXDH_DOUBLE_LINK_CHK_SUM_ERR            (ZXDH_DOUBLE_LINK_BASE   | 0x004)
+#define ZXDH_DOUBLE_LINK_NO_EXIST_FREENODE      (ZXDH_DOUBLE_LINK_BASE   | 0x005)
+#define ZXDH_DOUBLE_LINK_FREE_INDX_INVALID      (ZXDH_DOUBLE_LINK_BASE   | 0x006)
+#define ZXDH_DOUBLE_LINK_NO_EXIST_PRENODE       (ZXDH_DOUBLE_LINK_BASE   | 0x007)
+#define ZXDH_DOUBLE_LINK_INPUT_INDX_INVALID     (ZXDH_DOUBLE_LINK_BASE   | 0x008)
+#define ZXDH_DOUBLE_LINK_INIT_ELEMENT_NUM_ERR   (ZXDH_DOUBLE_LINK_BASE   | 0x009)
+
+#define ZXDH_LIST_STACK_BASE                    (ZXDH_RC_BASE            | 0x800)
+#define ZXDH_LIST_STACK_ELEMENT_NUM_ERR         (ZXDH_LIST_STACK_BASE    | 0x001)
+#define ZXDH_LIST_STACK_POINT_NULL              (ZXDH_LIST_STACK_BASE    | 0x002)
+#define ZXDH_LIST_STACK_ALLOC_MEMORY_FAIL       (ZXDH_LIST_STACK_BASE    | 0x003)
+#define ZXDH_LIST_STACK_ISEMPTY_ERR             (ZXDH_LIST_STACK_BASE    | 0x004)
+#define ZXDH_LIST_STACK_FREE_INDEX_INVALID      (ZXDH_LIST_STACK_BASE    | 0x005)
+#define ZXDH_LIST_STACK_ALLOC_INDEX_INVALID     (ZXDH_LIST_STACK_BASE    | 0x006)
+#define ZXDH_LIST_STACK_ALLOC_INDEX_USED        (ZXDH_LIST_STACK_BASE    | 0x007)
+
 #define ZXDH_ERAM128_BADDR_MASK                 (0x3FFFF80)
 
 #define ZXDH_DTB_TABLE_MODE_ERAM                (0)
@@ -235,6 +262,34 @@
 #define ZXDH_RC_CTRLCH_MSG_TYPE_NOT_SUPPORT     (ZXDH_RC_CTRLCH_BASE | 0x2)
 #define ZXDH_RC_CTRLCH_MSG_OPER_NOT_SUPPORT     (ZXDH_RC_CTRLCH_BASE | 0x3)
 #define ZXDH_RC_CTRLCH_MSG_DROP                 (ZXDH_RC_CTRLCH_BASE | 0x4)
+
+#define ZXDH_RBT_RC_BASE                        (0x1000)
+#define ZXDH_RBT_RC_UPDATE                      (ZXDH_RBT_RC_BASE | 0x1)
+#define ZXDH_RBT_RC_SRHFAIL                     (ZXDH_RBT_RC_BASE | 0x2)
+#define ZXDH_RBT_RC_FULL                        (ZXDH_RBT_RC_BASE | 0x3)
+#define ZXDH_RBT_ISEMPTY_ERR                    (ZXDH_RBT_RC_BASE | 0x4)
+#define ZXDH_RBT_PARA_INVALID                   (ZXDH_RBT_RC_BASE | 0x5)
+
+#define ZXDH_SE_RC_BASE                         (0x50000)
+#define ZXDH_SE_RC_HASH_BASE                    (ZXDH_SE_RC_BASE | 0x4000)
+#define ZXDH_HASH_RC_INVALID_FUNCINFO           (ZXDH_SE_RC_HASH_BASE | 0x1)
+#define ZXDH_HASH_RC_INVALID_ZBLCK              (ZXDH_SE_RC_HASH_BASE | 0x2)
+#define ZXDH_HASH_RC_INVALID_ZCELL              (ZXDH_SE_RC_HASH_BASE | 0x3)
+#define ZXDH_HASH_RC_INVALID_KEY                (ZXDH_SE_RC_HASH_BASE | 0x4)
+#define ZXDH_HASH_RC_INVALID_TBL_ID_INFO        (ZXDH_SE_RC_HASH_BASE | 0x5)
+#define ZXDH_HASH_RC_RB_TREE_FULL               (ZXDH_SE_RC_HASH_BASE | 0x6)
+#define ZXDH_HASH_RC_INVALID_KEY_TYPE           (ZXDH_SE_RC_HASH_BASE | 0x7)
+#define ZXDH_HASH_RC_ADD_UPDATE                 (ZXDH_SE_RC_HASH_BASE | 0x8)
+#define ZXDH_HASH_RC_DEL_SRHFAIL                (ZXDH_SE_RC_HASH_BASE | 0x9)
+#define ZXDH_HASH_RC_ITEM_FULL                  (ZXDH_SE_RC_HASH_BASE | 0xa)
+#define ZXDH_HASH_RC_INVALID_DDR_WIDTH_MODE     (ZXDH_SE_RC_HASH_BASE | 0xb)
+#define ZXDH_HASH_RC_INVALID_PARA               (ZXDH_SE_RC_HASH_BASE | 0xc)
+#define ZXDH_HASH_RC_TBL_FULL                   (ZXDH_SE_RC_HASH_BASE | 0xd)
+#define ZXDH_HASH_RC_SRH_FAIL                   (ZXDH_SE_RC_HASH_BASE | 0xe)
+#define ZXDH_HASH_RC_MATCH_ITEM_FAIL            (ZXDH_SE_RC_HASH_BASE | 0xf)
+#define ZXDH_HASH_RC_DDR_WIDTH_MODE_ERR         (ZXDH_SE_RC_HASH_BASE | 0x10)
+#define ZXDH_HASH_RC_INVALID_ITEM_TYPE          (ZXDH_SE_RC_HASH_BASE | 0x11)
+#define ZXDH_HASH_RC_REPEAT_INIT                (ZXDH_SE_RC_HASH_BASE | 0x12)
 
 #define ZXDH_SCHE_RSP_LEN                       (2)
 #define ZXDH_G_PROFILE_ID_LEN                   (8)
@@ -371,6 +426,42 @@ typedef struct zxdh_d_head {
 	ZXDH_D_NODE *p_next;
 	ZXDH_D_NODE *p_prev;
 } ZXDH_D_HEAD;
+
+typedef struct zxdh_s_freelink {
+	uint32_t index;
+	uint32_t next;
+} ZXDH_COMM_FREELINK;
+
+typedef struct zxdh_s_list_stack_manager {
+	ZXDH_COMM_FREELINK  *p_array;
+	uint32_t capacity;
+	uint32_t p_head;
+	uint32_t free_num;
+	uint32_t used_num;
+} ZXDH_LISTSTACK_MANAGER;
+
+typedef struct zxdh_rb_tn {
+	void        *p_key;
+	uint32_t    color_lsv;
+	struct    zxdh_rb_tn   *p_left;
+	struct    zxdh_rb_tn   *p_right;
+	struct    zxdh_rb_tn   *p_parent;
+	ZXDH_D_NODE    tn_ln;
+} ZXDH_RB_TN;
+
+typedef int32_t  (*ZXDH_RB_CMPFUN)(void *p_new, void *p_old, uint32_t keysize);
+
+typedef struct _rb_cfg {
+	uint32_t				key_size;
+	uint32_t				is_dynamic;
+	ZXDH_RB_TN				*p_root;
+	ZXDH_D_HEAD				tn_list;
+	ZXDH_RB_CMPFUN			p_cmpfun;
+	ZXDH_LISTSTACK_MANAGER	*p_lsm;
+	uint8_t					*p_keybase;
+	ZXDH_RB_TN				*p_tnbase;
+	uint32_t				is_init;
+} ZXDH_RB_CFG;
 
 typedef struct zxdh_dtb_tab_up_user_addr_t {
 	uint32_t user_flag;
