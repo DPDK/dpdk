@@ -1250,10 +1250,6 @@ zxdh_set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 {
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
 
-	if (!zxdh_pci_packed_queue(hw)) {
-		PMD_DRV_LOG(ERR, "port %u not support packed queue", eth_dev->data->port_id);
-		return -1;
-	}
 	if (!zxdh_pci_with_feature(hw, ZXDH_NET_F_MRG_RXBUF)) {
 		PMD_DRV_LOG(ERR, "port %u not support rx mergeable", eth_dev->data->port_id);
 		return -1;
@@ -1498,6 +1494,8 @@ zxdh_dtb_dump_res_init(struct zxdh_hw *hw, ZXDH_DEV_INIT_CTRL_T *dpp_ctrl)
 
 	struct zxdh_dtb_bulk_dump_info dtb_dump_baseres[] = {
 		{"sdt_vport_att_table", 4 * 1024 * 1024, ZXDH_SDT_VPORT_ATT_TABLE, NULL},
+		{"sdt_vlan_att_table", 4 * 1024 * 1024, ZXDH_SDT_VLAN_ATT_TABLE, NULL},
+		{"sdt_rss_table", 4 * 1024 * 1024, ZXDH_SDT_RSS_ATT_TABLE, NULL},
 		{"sdt_l2_entry_table0", 5 * 1024 * 1024, ZXDH_SDT_L2_ENTRY_TABLE0, NULL},
 		{"sdt_l2_entry_table1", 5 * 1024 * 1024, ZXDH_SDT_L2_ENTRY_TABLE1, NULL},
 		{"sdt_l2_entry_table2", 5 * 1024 * 1024, ZXDH_SDT_L2_ENTRY_TABLE2, NULL},
@@ -1514,7 +1512,7 @@ zxdh_dtb_dump_res_init(struct zxdh_hw *hw, ZXDH_DEV_INIT_CTRL_T *dpp_ctrl)
 	for (i = 0; i < (int)RTE_DIM(dtb_dump_baseres); i++) {
 		struct zxdh_dtb_bulk_dump_info *p = dtb_dump_baseres + i;
 		char buf[ZXDH_MAX_NAME_LEN] = {0};
-
+		snprintf(buf, sizeof(buf), "%s_%x", p->mz_name, hw->dev_id);
 		p->mz_name = buf;
 
 		const struct rte_memzone *generic_dump_mz =
@@ -1544,6 +1542,7 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_bar_offset_params param = {0};
 	struct zxdh_bar_offset_res res = {0};
+	char buf[ZXDH_MAX_NAME_LEN] = {0};
 	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
 	int ret = 0;
 
@@ -1569,7 +1568,7 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	dpp_ctrl->vport = hw->vport.vport;
 	dpp_ctrl->vector = ZXDH_MSIX_INTR_DTB_VEC;
 	strlcpy(dpp_ctrl->port_name, dev->device->name, sizeof(dpp_ctrl->port_name));
-	dpp_ctrl->pcie_vir_addr = (uint32_t)hw->bar_addr[0];
+	dpp_ctrl->pcie_vir_addr = hw->bar_addr[0];
 
 	param.pcie_id = hw->pcie_id;
 	param.virt_addr = hw->bar_addr[0] + ZXDH_CTRLCH_OFFSET;
@@ -1584,7 +1583,8 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	dpp_ctrl->np_bar_offset = res.bar_offset;
 
 	if (!dtb_data->dtb_table_conf_mz) {
-		const struct rte_memzone *conf_mz = rte_memzone_reserve_aligned("zxdh_dtb_table_conf_mz",
+		snprintf(buf, sizeof(buf), "%s_%x", "zxdh_dtb_table_conf_mz", hw->dev_id);
+		const struct rte_memzone *conf_mz = rte_memzone_reserve_aligned(buf,
 				ZXDH_DTB_TABLE_CONF_SIZE, SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
 
 		if (conf_mz == NULL) {
@@ -1600,7 +1600,9 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	}
 
 	if (!dtb_data->dtb_table_dump_mz) {
-		const struct rte_memzone *dump_mz = rte_memzone_reserve_aligned("zxdh_dtb_table_dump_mz",
+		memset(buf, '\0', sizeof(buf));
+		snprintf(buf, sizeof(buf), "%s_%x", "zxdh_dtb_table_dump_mz", hw->dev_id);
+		const struct rte_memzone *dump_mz = rte_memzone_reserve_aligned(buf,
 				ZXDH_DTB_TABLE_DUMP_SIZE, SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
 
 		if (dump_mz == NULL) {
