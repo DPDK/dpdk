@@ -2508,6 +2508,40 @@ zxdh_np_agent_channel_dtb_queue_release(uint32_t dev_id,
 	return msg_result;
 }
 
+static uint32_t
+zxdh_np_agent_channel_se_res_get(uint32_t dev_id,
+								uint32_t sub_type,
+								uint32_t opr,
+								uint32_t *p_rsp_buff,
+								uint32_t buff_size)
+{
+	uint32_t rc = ZXDH_OK;
+
+	uint32_t msg_result = 0;
+	ZXDH_AGENT_SE_RES_MSG_T msgcfg = {
+		.dev_id   = 0,
+		.type     = ZXDH_RES_MSG,
+		.sub_type = sub_type,
+		.oper     = opr,
+	};
+	ZXDH_AGENT_CHANNEL_MSG_T agent_msg = {
+		.msg = (void *)&msgcfg,
+		.msg_len = sizeof(ZXDH_AGENT_SE_RES_MSG_T),
+	};
+
+	rc = zxdh_np_agent_channel_sync_send(dev_id, &agent_msg, p_rsp_buff, buff_size);
+	if (rc != ZXDH_OK) {
+		PMD_DRV_LOG(ERR, "agent send msg failed");
+		return ZXDH_ERR;
+	}
+
+	msg_result = p_rsp_buff[0];
+	PMD_DRV_LOG(DEBUG, "msg_result: 0x%x", msg_result);
+	zxdh_np_agent_msg_prt(msgcfg.type, msg_result);
+
+	return msg_result;
+}
+
 static ZXDH_DTB_MGR_T *
 zxdh_np_dtb_mgr_get(uint32_t dev_id)
 {
@@ -5237,6 +5271,464 @@ zxdh_np_host_init(uint32_t dev_id,
 	PMD_DRV_LOG(INFO, "host init done, queue_id = %u", p_dev_init_ctrl->queue_id);
 
 	return 0;
+}
+
+static uint32_t
+zxdh_np_get_se_buff_size(uint32_t opr)
+{
+	uint32_t buff_size = 0;
+
+	switch (opr) {
+	case ZXDH_HASH_FUNC_BULK_REQ:
+		buff_size = sizeof(ZXDH_NP_SE_HASH_FUNC_BULK_T);
+		break;
+	case ZXDH_HASH_TBL_REQ:
+		buff_size = sizeof(ZXDH_NP_SE_HASH_TBL_T);
+		break;
+	case ZXDH_ERAM_TBL_REQ:
+		buff_size = sizeof(ZXDH_NP_SE_ERAM_TBL_T);
+		break;
+	case ZXDH_ACL_TBL_REQ:
+		buff_size = sizeof(ZXDH_NP_SE_ACL_TBL_T);
+		break;
+	case ZXDH_STAT_CFG_REQ:
+		buff_size = sizeof(ZXDH_NP_SE_STAT_CFG_T);
+		break;
+	default:
+		break;
+	}
+
+	return buff_size;
+}
+
+static void
+zxdh_np_hash_func_bulk_set(ZXDH_APT_HASH_RES_INIT_T *p_hash_res_init,
+						ZXDH_NP_SE_HASH_FUNC_BULK_T *p_func_bulk)
+{
+	uint32_t index  = 0;
+	ZXDH_APT_HASH_FUNC_RES_T *p_func_res = NULL;
+	ZXDH_APT_HASH_BULK_RES_T *p_bulk_res = NULL;
+
+	p_hash_res_init->func_num = p_func_bulk->func_num;
+	p_hash_res_init->bulk_num = p_func_bulk->bulk_num;
+	for (index = 0; index < (p_hash_res_init->func_num); index++) {
+		p_func_res = p_hash_res_init->func_res + index;
+
+		p_func_res->func_id	 = p_func_bulk->fun[index].func_id;
+		p_func_res->ddr_dis	 = p_func_bulk->fun[index].ddr_dis;
+		p_func_res->zblk_num	= p_func_bulk->fun[index].zblk_num;
+		p_func_res->zblk_bitmap = p_func_bulk->fun[index].zblk_bitmap;
+	}
+
+	for (index = 0; index < (p_hash_res_init->bulk_num); index++) {
+		p_bulk_res = p_hash_res_init->bulk_res + index;
+
+		p_bulk_res->func_id		= p_func_bulk->bulk[index].func_id;
+		p_bulk_res->bulk_id		= p_func_bulk->bulk[index].bulk_id;
+		p_bulk_res->zcell_num	  = p_func_bulk->bulk[index].zcell_num;
+		p_bulk_res->zreg_num	   = p_func_bulk->bulk[index].zreg_num;
+		p_bulk_res->ddr_baddr	  = p_func_bulk->bulk[index].ddr_baddr;
+		p_bulk_res->ddr_item_num   = p_func_bulk->bulk[index].ddr_item_num;
+		p_bulk_res->ddr_width_mode = p_func_bulk->bulk[index].ddr_width_mode;
+		p_bulk_res->ddr_crc_sel	= p_func_bulk->bulk[index].ddr_crc_sel;
+		p_bulk_res->ddr_ecc_en	 = p_func_bulk->bulk[index].ddr_ecc_en;
+	}
+}
+
+static void
+zxdh_np_hash_tbl_set(ZXDH_APT_HASH_RES_INIT_T *p_hash_res_init, ZXDH_NP_SE_HASH_TBL_T *p_hash_tbl)
+{
+	uint32_t index  = 0;
+	ZXDH_APT_HASH_TABLE_T  *p_tbl_res = NULL;
+
+	p_hash_res_init->tbl_num = p_hash_tbl->tbl_num;
+	for (index = 0; index < (p_hash_res_init->tbl_num); index++) {
+		p_tbl_res = p_hash_res_init->tbl_res + index;
+
+		p_tbl_res->sdt_no = p_hash_tbl->table[index].sdt_no;
+		p_tbl_res->sdt_partner = p_hash_tbl->table[index].sdt_partner;
+		p_tbl_res->tbl_flag	= p_hash_tbl->table[index].tbl_flag;
+		p_tbl_res->hash_sdt.table_type =
+			p_hash_tbl->table[index].hash_sdt.table_type;
+		p_tbl_res->hash_sdt.hash_id	= p_hash_tbl->table[index].hash_sdt.hash_id;
+		p_tbl_res->hash_sdt.hash_table_width =
+			p_hash_tbl->table[index].hash_sdt.hash_table_width;
+		p_tbl_res->hash_sdt.key_size = p_hash_tbl->table[index].hash_sdt.key_size;
+		p_tbl_res->hash_sdt.hash_table_id =
+			p_hash_tbl->table[index].hash_sdt.hash_table_id;
+		p_tbl_res->hash_sdt.learn_en = p_hash_tbl->table[index].hash_sdt.learn_en;
+		p_tbl_res->hash_sdt.keep_alive =
+			p_hash_tbl->table[index].hash_sdt.keep_alive;
+		p_tbl_res->hash_sdt.keep_alive_baddr =
+			p_hash_tbl->table[index].hash_sdt.keep_alive_baddr;
+		p_tbl_res->hash_sdt.rsp_mode =
+			p_hash_tbl->table[index].hash_sdt.rsp_mode;
+		p_tbl_res->hash_sdt.hash_clutch_en =
+			p_hash_tbl->table[index].hash_sdt.hash_clutch_en;
+	}
+}
+
+static void
+zxdh_np_eram_tbl_set(ZXDH_APT_ERAM_RES_INIT_T *p_eam_res_init, ZXDH_NP_SE_ERAM_TBL_T *p_eram_tbl)
+{
+	uint32_t index  = 0;
+	ZXDH_APT_ERAM_TABLE_T *p_eram_res = NULL;
+
+	p_eam_res_init->tbl_num = p_eram_tbl->tbl_num;
+	for (index = 0; index < (p_eam_res_init->tbl_num); index++) {
+		p_eram_res = p_eam_res_init->eram_res + index;
+
+		p_eram_res->sdt_no	= p_eram_tbl->eram[index].sdt_no;
+		p_eram_res->opr_mode = p_eram_tbl->eram[index].opr_mode;
+		p_eram_res->rd_mode	= p_eram_tbl->eram[index].rd_mode;
+		p_eram_res->eram_sdt.table_type	= p_eram_tbl->eram[index].eram_sdt.table_type;
+		p_eram_res->eram_sdt.eram_mode = p_eram_tbl->eram[index].eram_sdt.eram_mode;
+		p_eram_res->eram_sdt.eram_base_addr =
+			p_eram_tbl->eram[index].eram_sdt.eram_base_addr;
+		p_eram_res->eram_sdt.eram_table_depth =
+			p_eram_tbl->eram[index].eram_sdt.eram_table_depth;
+		p_eram_res->eram_sdt.eram_clutch_en =
+			p_eram_tbl->eram[index].eram_sdt.eram_clutch_en;
+	}
+}
+
+static void
+zxdh_np_acl_tbl_set(ZXDH_APT_ACL_RES_INIT_T *p_acl_res_init, ZXDH_NP_SE_ACL_TBL_T *p_acl_tbl)
+{
+	uint32_t index  = 0;
+	ZXDH_APT_ACL_TABLE_T *p_acl_res = NULL;
+
+	p_acl_res_init->tbl_num = p_acl_tbl->tbl_num;
+	for (index = 0; index < (p_acl_tbl->tbl_num); index++) {
+		p_acl_res = p_acl_res_init->acl_res + index;
+
+		p_acl_res->sdt_no = p_acl_tbl->acl[index].sdt_no;
+		p_acl_res->sdt_partner = p_acl_tbl->acl[index].sdt_partner;
+		p_acl_res->acl_res.block_num = p_acl_tbl->acl[index].acl_res.block_num;
+		 p_acl_res->acl_res.entry_num = p_acl_tbl->acl[index].acl_res.entry_num;
+		p_acl_res->acl_res.pri_mode	= p_acl_tbl->acl[index].acl_res.pri_mode;
+		memcpy(p_acl_res->acl_res.block_index,
+			p_acl_tbl->acl[index].acl_res.block_index,
+			sizeof(uint32_t) * ZXDH_ETCAM_BLOCK_NUM);
+		p_acl_res->acl_sdt.table_type = p_acl_tbl->acl[index].acl_sdt.table_type;
+		p_acl_res->acl_sdt.etcam_id	= p_acl_tbl->acl[index].acl_sdt.etcam_id;
+		p_acl_res->acl_sdt.etcam_key_mode = p_acl_tbl->acl[index].acl_sdt.etcam_key_mode;
+		p_acl_res->acl_sdt.etcam_table_id = p_acl_tbl->acl[index].acl_sdt.etcam_table_id;
+		p_acl_res->acl_sdt.no_as_rsp_mode = p_acl_tbl->acl[index].acl_sdt.no_as_rsp_mode;
+		p_acl_res->acl_sdt.as_en = p_acl_tbl->acl[index].acl_sdt.as_en;
+		p_acl_res->acl_sdt.as_eram_baddr = p_acl_tbl->acl[index].acl_sdt.as_eram_baddr;
+		p_acl_res->acl_sdt.as_rsp_mode = p_acl_tbl->acl[index].acl_sdt.as_rsp_mode;
+		p_acl_res->acl_sdt.etcam_table_depth =
+			p_acl_tbl->acl[index].acl_sdt.etcam_table_depth;
+		p_acl_res->acl_sdt.etcam_clutch_en = p_acl_tbl->acl[index].acl_sdt.etcam_clutch_en;
+	}
+}
+
+static void
+zxdh_np_stat_cfg_set(ZXDH_APT_STAT_RES_INIT_T *p_stat_res_init, ZXDH_NP_SE_STAT_CFG_T *p_stat_cfg)
+{
+	p_stat_res_init->eram_baddr	 = p_stat_cfg->eram_baddr;
+	p_stat_res_init->eram_depth	 = p_stat_cfg->eram_depth;
+	p_stat_res_init->ddr_baddr	  = p_stat_cfg->ddr_baddr;
+	p_stat_res_init->ppu_ddr_offset = p_stat_cfg->ppu_ddr_offset;
+}
+
+static uint32_t
+zxdh_np_agent_hash_func_bulk_get(uint32_t dev_id, uint32_t type,
+						ZXDH_APT_HASH_RES_INIT_T *p_hash_res_init)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t opr = ZXDH_HASH_FUNC_BULK_REQ;
+	uint32_t sub_type = ZXDH_RES_STD_NIC_MSG;
+	uint32_t buff_size = 0;
+	ZXDH_SPINLOCK_T *p_dtb_spinlock = NULL;
+	uint32_t *p_rsp_buff = NULL;
+	ZXDH_NP_SE_HASH_FUNC_BULK_T *p_func_bulk = NULL;
+	ZXDH_DEV_SPINLOCK_TYPE_E spinlock = ZXDH_DEV_SPINLOCK_T_DTB;
+
+	rc = zxdh_np_dev_opr_spinlock_get(dev_id, (uint32_t)spinlock, &p_dtb_spinlock);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dev_opr_spinlock_get");
+
+	rte_spinlock_lock(&p_dtb_spinlock->spinlock);
+
+	buff_size = zxdh_np_get_se_buff_size(opr) + sizeof(uint32_t);
+	p_rsp_buff = rte_zmalloc(NULL, buff_size, 0);
+	if (p_rsp_buff == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	sub_type = (type == ZXDH_SE_STD_NIC_RES_TYPE) ? ZXDH_RES_STD_NIC_MSG : ZXDH_RES_OFFLOAD_MSG;
+
+	rc = zxdh_np_agent_channel_se_res_get(dev_id, sub_type, opr, p_rsp_buff, buff_size);
+	if (rc != ZXDH_OK) {
+		rte_free(p_rsp_buff);
+		PMD_DRV_LOG(ERR, "hash func&bulk res get fail rc=0x%x.", rc);
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_ERR;
+	}
+
+	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+
+	p_func_bulk = (ZXDH_NP_SE_HASH_FUNC_BULK_T *)(p_rsp_buff + 1);
+	zxdh_np_hash_func_bulk_set(p_hash_res_init, p_func_bulk);
+	rte_free(p_rsp_buff);
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_agent_hash_tbl_get(uint32_t dev_id,
+			uint32_t type,
+			ZXDH_APT_HASH_RES_INIT_T *p_hash_res_init)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t opr = ZXDH_HASH_TBL_REQ;
+	uint32_t sub_type = ZXDH_RES_STD_NIC_MSG;
+	uint32_t buff_size = 0;
+	ZXDH_SPINLOCK_T *p_dtb_spinlock = NULL;
+	uint32_t *p_rsp_buff = NULL;
+	ZXDH_NP_SE_HASH_TBL_T *p_hash_tbl = NULL;
+	ZXDH_DEV_SPINLOCK_TYPE_E spinlock = ZXDH_DEV_SPINLOCK_T_DTB;
+
+	rc = zxdh_np_dev_opr_spinlock_get(dev_id, (uint32_t)spinlock, &p_dtb_spinlock);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dev_opr_spinlock_get");
+
+	rte_spinlock_lock(&p_dtb_spinlock->spinlock);
+
+	buff_size = zxdh_np_get_se_buff_size(opr) + sizeof(uint32_t);
+	p_rsp_buff = rte_zmalloc(NULL, buff_size, 0);
+	if (p_rsp_buff == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	sub_type = (type == ZXDH_SE_STD_NIC_RES_TYPE) ?
+		ZXDH_RES_STD_NIC_MSG : ZXDH_RES_OFFLOAD_MSG;
+
+	rc = zxdh_np_agent_channel_se_res_get(dev_id, sub_type, opr, p_rsp_buff, buff_size);
+	if (rc != ZXDH_OK) {
+		rte_free(p_rsp_buff);
+		PMD_DRV_LOG(ERR, "hash table res get fail rc=0x%x.", rc);
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_ERR;
+	}
+
+	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+
+	p_hash_tbl = (ZXDH_NP_SE_HASH_TBL_T *)(p_rsp_buff + 1);
+	zxdh_np_hash_tbl_set(p_hash_res_init, p_hash_tbl);
+	rte_free(p_rsp_buff);
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_agent_eram_tbl_get(uint32_t dev_id, uint32_t type, ZXDH_APT_ERAM_RES_INIT_T *p_eam_res_init)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t opr = ZXDH_ERAM_TBL_REQ;
+	uint32_t sub_type = ZXDH_RES_STD_NIC_MSG;
+	uint32_t buff_size = 0;
+	ZXDH_SPINLOCK_T *p_dtb_spinlock = NULL;
+	uint32_t *p_rsp_buff = NULL;
+	ZXDH_NP_SE_ERAM_TBL_T *p_eram_tbl = NULL;
+	ZXDH_DEV_SPINLOCK_TYPE_E spinlock = ZXDH_DEV_SPINLOCK_T_DTB;
+
+	rc = zxdh_np_dev_opr_spinlock_get(dev_id, (uint32_t)spinlock, &p_dtb_spinlock);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dev_opr_spinlock_get");
+
+	rte_spinlock_lock(&p_dtb_spinlock->spinlock);
+
+	buff_size = zxdh_np_get_se_buff_size(opr) + sizeof(uint32_t);
+	p_rsp_buff = rte_zmalloc(NULL, buff_size, 0);
+	if (p_rsp_buff == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	sub_type = (type == ZXDH_SE_STD_NIC_RES_TYPE) ?
+		ZXDH_RES_STD_NIC_MSG : ZXDH_RES_OFFLOAD_MSG;
+
+	rc = zxdh_np_agent_channel_se_res_get(dev_id, sub_type, opr, p_rsp_buff, buff_size);
+	if (rc != ZXDH_OK) {
+		rte_free(p_rsp_buff);
+		PMD_DRV_LOG(ERR, "eram table res get fail rc=0x%x.", rc);
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_ERR;
+	}
+
+	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+
+	p_eram_tbl = (ZXDH_NP_SE_ERAM_TBL_T *)(p_rsp_buff + 1);
+	zxdh_np_eram_tbl_set(p_eam_res_init, p_eram_tbl);
+	rte_free(p_rsp_buff);
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_agent_acl_tbl_get(uint32_t dev_id, uint32_t type, ZXDH_APT_ACL_RES_INIT_T *p_acl_res_init)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t opr = ZXDH_ACL_TBL_REQ;
+	uint32_t sub_type = ZXDH_RES_STD_NIC_MSG;
+	uint32_t buff_size = 0;
+	ZXDH_SPINLOCK_T *p_dtb_spinlock = NULL;
+	uint32_t *p_rsp_buff = NULL;
+	ZXDH_NP_SE_ACL_TBL_T *p_acl_tbl = NULL;
+	ZXDH_DEV_SPINLOCK_TYPE_E spinlock = ZXDH_DEV_SPINLOCK_T_DTB;
+
+	rc = zxdh_np_dev_opr_spinlock_get(dev_id, (uint32_t)spinlock, &p_dtb_spinlock);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dev_opr_spinlock_get");
+
+	rte_spinlock_lock(&p_dtb_spinlock->spinlock);
+
+	buff_size = zxdh_np_get_se_buff_size(opr) + sizeof(uint32_t);
+	p_rsp_buff = rte_zmalloc(NULL, buff_size, 0);
+	if (p_rsp_buff == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	sub_type = (type == ZXDH_SE_STD_NIC_RES_TYPE) ?
+		ZXDH_RES_STD_NIC_MSG : ZXDH_RES_OFFLOAD_MSG;
+
+	rc = zxdh_np_agent_channel_se_res_get(dev_id, sub_type, opr, p_rsp_buff, buff_size);
+	if (rc != ZXDH_OK) {
+		rte_free(p_rsp_buff);
+		PMD_DRV_LOG(ERR, "acl table res get fail rc=0x%x.", rc);
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_ERR;
+	}
+
+	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+
+	p_acl_tbl = (ZXDH_NP_SE_ACL_TBL_T *)(p_rsp_buff + 1);
+	zxdh_np_acl_tbl_set(p_acl_res_init, p_acl_tbl);
+	rte_free(p_rsp_buff);
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_agent_stat_cfg_get(uint32_t dev_id,
+					uint32_t type,
+					ZXDH_APT_STAT_RES_INIT_T *p_stat_cfg_init)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t opr = ZXDH_STAT_CFG_REQ;
+	uint32_t sub_type = ZXDH_RES_STD_NIC_MSG;
+	uint32_t buff_size = 0;
+	ZXDH_SPINLOCK_T *p_dtb_spinlock = NULL;
+	uint32_t *p_rsp_buff = NULL;
+	ZXDH_NP_SE_STAT_CFG_T *p_stat_cfg = NULL;
+	ZXDH_DEV_SPINLOCK_TYPE_E spinlock = ZXDH_DEV_SPINLOCK_T_DTB;
+
+	rc = zxdh_np_dev_opr_spinlock_get(dev_id, (uint32_t)spinlock, &p_dtb_spinlock);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dev_opr_spinlock_get");
+
+	rte_spinlock_lock(&p_dtb_spinlock->spinlock);
+
+	buff_size = zxdh_np_get_se_buff_size(opr) + sizeof(uint32_t);
+	p_rsp_buff = rte_zmalloc(NULL, buff_size, 0);
+	if (p_rsp_buff == NULL) {
+		PMD_DRV_LOG(ERR, "malloc memory failed");
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_PAR_CHK_POINT_NULL;
+	}
+
+	sub_type = (type == ZXDH_SE_STD_NIC_RES_TYPE) ? ZXDH_RES_STD_NIC_MSG : ZXDH_RES_OFFLOAD_MSG;
+
+	rc = zxdh_np_agent_channel_se_res_get(dev_id, sub_type, opr, p_rsp_buff, buff_size);
+	if (rc != ZXDH_OK) {
+		rte_free(p_rsp_buff);
+		PMD_DRV_LOG(ERR, "ddr table res get fail rc = 0x%x.", rc);
+		rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+		return ZXDH_ERR;
+	}
+
+	rte_spinlock_unlock(&p_dtb_spinlock->spinlock);
+
+	p_stat_cfg = (ZXDH_NP_SE_STAT_CFG_T *)(p_rsp_buff + 1);
+	zxdh_np_stat_cfg_set(p_stat_cfg_init, p_stat_cfg);
+	rte_free(p_rsp_buff);
+
+	return rc;
+}
+
+static void *
+zxdh_np_dev_get_se_res_ptr(uint32_t dev_id, uint32_t type)
+{
+	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+
+	if (type == ZXDH_SE_STD_NIC_RES_TYPE)
+		return (void *)&p_dev_info->dev_apt_se_tbl_res.std_nic_res;
+	else
+		return (void *)&p_dev_info->dev_apt_se_tbl_res.offload_res;
+}
+
+static uint32_t
+zxdh_np_agent_se_res_get(uint32_t dev_id, uint32_t type)
+{
+	uint32_t rc = ZXDH_OK;
+	ZXDH_APT_SE_RES_T *p_se_res = NULL;
+	ZXDH_APT_HASH_RES_INIT_T hash_res = {0};
+	ZXDH_APT_ERAM_RES_INIT_T eram_res = {0};
+	ZXDH_APT_ACL_RES_INIT_T acl_res = {0};
+
+	p_se_res = (ZXDH_APT_SE_RES_T *)zxdh_np_dev_get_se_res_ptr(dev_id, type);
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_se_res);
+
+	if (p_se_res->valid) {
+		PMD_DRV_LOG(INFO, "dev_id [0x%x] res_type [%u] status ready", dev_id, type);
+		return ZXDH_OK;
+	}
+
+	hash_res.func_res = p_se_res->hash_func;
+	hash_res.bulk_res = p_se_res->hash_bulk;
+	hash_res.tbl_res = p_se_res->hash_tbl;
+	rc = zxdh_np_agent_hash_func_bulk_get(dev_id, type, &hash_res);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_hash_func_bulk_get");
+
+	rc = zxdh_np_agent_hash_tbl_get(dev_id, type, &hash_res);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_hash_tbl_get");
+	p_se_res->hash_func_num = hash_res.func_num;
+	p_se_res->hash_bulk_num = hash_res.bulk_num;
+	p_se_res->hash_tbl_num = hash_res.tbl_num;
+
+	eram_res.eram_res = p_se_res->eram_tbl;
+	rc = zxdh_np_agent_eram_tbl_get(dev_id, type, &eram_res);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_eram_tbl_get");
+	p_se_res->eram_num = eram_res.tbl_num;
+
+	acl_res.acl_res = p_se_res->acl_tbl;
+	rc = zxdh_np_agent_acl_tbl_get(dev_id, type, &acl_res);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_acl_tbl_get");
+	p_se_res->acl_num = acl_res.tbl_num;
+
+	rc = zxdh_np_agent_stat_cfg_get(dev_id, type, &p_se_res->stat_cfg);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_stat_cfg_get");
+
+	p_se_res->valid = 1;
+	return rc;
+}
+
+uint32_t
+zxdh_np_se_res_get_and_init(uint32_t dev_id, uint32_t type)
+{
+	uint32_t rc = ZXDH_OK;
+
+	rc = zxdh_np_agent_se_res_get(dev_id, type);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_agent_se_res_get");
+	PMD_DRV_LOG(DEBUG, "se res get success.");
+
+	return rc;
 }
 
 static uint32_t
