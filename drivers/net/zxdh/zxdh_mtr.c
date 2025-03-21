@@ -326,7 +326,7 @@ zxdh_hw_profile_free(struct rte_eth_dev *dev, uint8_t car_type,
 		ret = zxdh_hw_profile_free_direct(dev, car_type, (uint64_t)hw_profile_id, error);
 	} else {
 		struct zxdh_msg_info msg_info = {0};
-		struct zxdh_msg_reply_info reply_info = {0};
+		uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
 		struct zxdh_plcr_profile_free *zxdh_plcr_profile_free =
 			&msg_info.data.zxdh_plcr_profile_free;
 
@@ -335,7 +335,7 @@ zxdh_hw_profile_free(struct rte_eth_dev *dev, uint8_t car_type,
 		zxdh_msg_head_build(hw, ZXDH_PLCR_CAR_PROFILE_ID_DELETE, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info,
 			ZXDH_MSG_HEAD_LEN + sizeof(struct zxdh_plcr_profile_free),
-			&reply_info, sizeof(struct zxdh_msg_reply_info));
+			zxdh_msg_reply_info, ZXDH_ST_SZ_BYTES(msg_reply_info));
 
 		if (ret)
 			return -rte_mtr_error_set(error, ENOTSUP,
@@ -357,15 +357,19 @@ zxdh_hw_profile_alloc(struct rte_eth_dev *dev, uint64_t *hw_profile_id,
 		ret = zxdh_hw_profile_alloc_direct(dev, CAR_A, hw_profile_id, error);
 	} else {
 		struct zxdh_msg_info msg_info = {0};
-		struct zxdh_msg_reply_info reply_info = {0};
+		uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
 		struct zxdh_plcr_profile_add  *zxdh_plcr_profile_add =
 			&msg_info.data.zxdh_plcr_profile_add;
+		void *reply_body_addr =
+			ZXDH_ADDR_OF(msg_reply_info, zxdh_msg_reply_info, reply_body);
+		void *mtr_profile_info_addr =
+			ZXDH_ADDR_OF(msg_reply_body, reply_body_addr, mtr_profile_info);
 
 		zxdh_plcr_profile_add->car_type = CAR_A;
 		zxdh_msg_head_build(hw, ZXDH_PLCR_CAR_PROFILE_ID_ADD, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info,
 			ZXDH_MSG_HEAD_LEN + sizeof(struct zxdh_plcr_profile_add),
-			&reply_info, sizeof(struct zxdh_msg_reply_info));
+			zxdh_msg_reply_info, ZXDH_ST_SZ_BYTES(msg_reply_info));
 
 		if (ret) {
 			PMD_DRV_LOG(ERR,
@@ -376,7 +380,7 @@ zxdh_hw_profile_alloc(struct rte_eth_dev *dev, uint64_t *hw_profile_id,
 					RTE_MTR_ERROR_TYPE_METER_PROFILE_ID, NULL,
 					"Meter offload alloc profile  id msg failed ");
 		}
-		*hw_profile_id = reply_info.reply_body.mtr_profile_info.profile_id;
+		*hw_profile_id = ZXDH_GET(mtr_profile_info, mtr_profile_info_addr, profile_id);
 		if (*hw_profile_id == ZXDH_HW_PROFILE_MAX) {
 			return -rte_mtr_error_set(error, ENOTSUP,
 					RTE_MTR_ERROR_TYPE_METER_PROFILE_ID, NULL,
@@ -432,7 +436,7 @@ zxdh_mtr_hw_counter_query(struct rte_eth_dev *dev,
 		}
 	} else { /* send msg to pf */
 		struct zxdh_msg_info msg_info = {0};
-		struct zxdh_msg_reply_info reply_info = {0};
+		uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
 		struct zxdh_mtr_stats_query *zxdh_mtr_stats_query =
 				&msg_info.data.zxdh_mtr_stats_query;
 
@@ -442,8 +446,8 @@ zxdh_mtr_hw_counter_query(struct rte_eth_dev *dev,
 		ret = zxdh_vf_send_msg_to_pf(dev,
 			&msg_info,
 			sizeof(msg_info),
-			&reply_info,
-			sizeof(struct zxdh_msg_reply_info));
+			zxdh_msg_reply_info,
+			ZXDH_ST_SZ_BYTES(msg_reply_info));
 
 		if (ret) {
 			PMD_DRV_LOG(ERR,
@@ -451,7 +455,11 @@ zxdh_mtr_hw_counter_query(struct rte_eth_dev *dev,
 				hw->vport.vport);
 			return -rte_mtr_error_set(error, ENOTSUP, RTE_MTR_ERROR_TYPE_STATS, NULL, "Meter offload alloc profile failed");
 		}
-		struct zxdh_mtr_stats *hw_mtr_stats = &reply_info.reply_body.hw_mtr_stats;
+		void *reply_body_addr =
+			ZXDH_ADDR_OF(msg_reply_info, zxdh_msg_reply_info, reply_body);
+		void *hw_mtr_stats_addr =
+			ZXDH_ADDR_OF(msg_reply_body, reply_body_addr, hw_mtr_stats);
+		struct zxdh_mtr_stats *hw_mtr_stats = (struct zxdh_mtr_stats *)hw_mtr_stats_addr;
 
 		mtr_stats->n_bytes_dropped = hw_mtr_stats->n_bytes_dropped;
 		mtr_stats->n_pkts_dropped = hw_mtr_stats->n_pkts_dropped;
@@ -575,7 +583,7 @@ static int zxdh_hw_profile_config(struct rte_eth_dev *dev, uint16_t hw_profile_i
 		ret = zxdh_hw_profile_config_direct(dev, CAR_A, hw_profile_id, mp, error);
 	} else {
 		struct zxdh_msg_info msg_info = {0};
-		struct zxdh_msg_reply_info reply_info = {0};
+		uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
 		struct zxdh_plcr_profile_cfg *zxdh_plcr_profile_cfg =
 			&msg_info.data.zxdh_plcr_profile_cfg;
 
@@ -590,9 +598,9 @@ static int zxdh_hw_profile_config(struct rte_eth_dev *dev, uint16_t hw_profile_i
 		ret = zxdh_vf_send_msg_to_pf(dev,
 			&msg_info,
 			ZXDH_MSG_HEAD_LEN + sizeof(struct zxdh_plcr_profile_cfg),
-			&reply_info,
-			sizeof(struct zxdh_msg_reply_info));
-
+			zxdh_msg_reply_info,
+			ZXDH_ST_SZ_BYTES(msg_reply_info)
+		);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
 				"Failed msg: port 0x%x msg type ZXDH_PLCR_CAR_PROFILE_CFG_SET ",
@@ -876,7 +884,7 @@ zxdh_set_mtr_enable(struct rte_eth_dev *dev, uint8_t dir, bool enable, struct rt
 
 	if (priv->is_pf) {
 		ret = zxdh_get_port_attr(priv, priv->vport.vport, &port_attr);
-		port_attr.ingress_meter_enable = enable;
+		port_attr.egress_meter_enable = enable;
 		ret = zxdh_set_port_attr(priv, priv->vport.vport, &port_attr);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "%s set port attr failed", __func__);
@@ -938,7 +946,7 @@ zxdh_hw_plcrflow_config(struct rte_eth_dev *dev, uint16_t hw_flow_id,
 		}
 	} else {
 		struct zxdh_msg_info msg_info = {0};
-		struct zxdh_msg_reply_info reply_info = {0};
+		uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
 		struct zxdh_plcr_flow_cfg *zxdh_plcr_flow_cfg = &msg_info.data.zxdh_plcr_flow_cfg;
 
 		zxdh_plcr_flow_cfg->car_type = CAR_A;
@@ -949,8 +957,8 @@ zxdh_hw_plcrflow_config(struct rte_eth_dev *dev, uint16_t hw_flow_id,
 		zxdh_msg_head_build(hw, ZXDH_PLCR_CAR_QUEUE_CFG_SET, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info,
 			ZXDH_MSG_HEAD_LEN + sizeof(struct zxdh_plcr_flow_cfg),
-			&reply_info,
-			sizeof(struct zxdh_msg_reply_info));
+			zxdh_msg_reply_info,
+			ZXDH_ST_SZ_BYTES(msg_reply_info));
 		if (ret) {
 			PMD_DRV_LOG(ERR,
 				"Failed msg: port 0x%x msg type ZXDH_PLCR_CAR_QUEUE_CFG_SET ",

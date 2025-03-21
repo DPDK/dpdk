@@ -93,6 +93,11 @@ struct zxdh_mtr_stats {
 	uint64_t n_bytes_dropped;
 };
 
+struct zxdh_ifc_mtr_stats_bits {
+	uint8_t n_pkts_dropped[0x40];
+	uint8_t n_bytes_dropped[0x40];
+};
+
 struct zxdh_hw_mtr_stats {
 	uint32_t n_pkts_dropped_hi;
 	uint32_t n_pkts_dropped_lo;

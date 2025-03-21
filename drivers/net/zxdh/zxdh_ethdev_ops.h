@@ -62,6 +62,30 @@ struct zxdh_hw_np_stats {
 	uint64_t tx_ssvpc_pkts;
 };
 
+struct zxdh_ifc_hw_np_stats_bits {
+	uint8_t rx_unicast_pkts[0x40];
+	uint8_t tx_unicast_pkts[0x40];
+	uint8_t rx_unicast_bytes[0x40];
+	uint8_t tx_unicast_bytes[0x40];
+	uint8_t rx_multicast_pkts[0x40];
+	uint8_t tx_multicast_pkts[0x40];
+	uint8_t rx_multicast_bytes[0x40];
+	uint8_t tx_multicast_bytes[0x40];
+	uint8_t rx_broadcast_pkts[0x40];
+	uint8_t tx_broadcast_pkts[0x40];
+	uint8_t rx_broadcast_bytes[0x40];
+	uint8_t tx_broadcast_bytes[0x40];
+	uint8_t rx_mtu_drop_pkts[0x40];
+	uint8_t tx_mtu_drop_pkts[0x40];
+	uint8_t rx_mtu_drop_bytes[0x40];
+	uint8_t tx_mtu_drop_bytes[0x40];
+	uint8_t rx_mtr_drop_pkts[0x40];
+	uint8_t tx_mtr_drop_pkts[0x40];
+	uint8_t rx_mtr_drop_bytes[0x40];
+	uint8_t tx_mtr_drop_bytes[0x40];
+	uint8_t tx_ssvpc_pkts[0x40];
+};
+
 struct zxdh_hw_vqm_stats {
 	uint64_t rx_total;
 	uint64_t tx_total;
@@ -71,6 +95,17 @@ struct zxdh_hw_vqm_stats {
 	uint64_t tx_error;
 	uint64_t rx_drop;
 };
+
+struct zxdh_ifc_hw_vqm_stats_bits {
+	uint8_t rx_total[0x40];
+	uint8_t tx_total[0x40];
+	uint8_t rx_bytes[0x40];
+	uint8_t tx_bytes[0x40];
+	uint8_t rx_error[0x40];
+	uint8_t tx_error[0x40];
+	uint8_t rx_drop[0x40];
+};
+
 
 int zxdh_dev_set_link_up(struct rte_eth_dev *dev);
 int zxdh_dev_set_link_down(struct rte_eth_dev *dev);

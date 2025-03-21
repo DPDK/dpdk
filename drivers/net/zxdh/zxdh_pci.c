@@ -27,6 +27,23 @@
 		1ULL << ZXDH_F_NOTIFICATION_DATA | \
 		1ULL << ZXDH_NET_F_MAC)
 
+#define ZXDH_PMD_DEFAULT_HOST_FEATURES   \
+	(1ULL << ZXDH_NET_F_MRG_RXBUF | \
+	 1ULL << ZXDH_NET_F_STATUS    | \
+	 1ULL << ZXDH_NET_F_MQ        | \
+	 1ULL << ZXDH_F_ANY_LAYOUT    | \
+	 1ULL << ZXDH_F_VERSION_1   | \
+	 1ULL << ZXDH_F_RING_PACKED | \
+	 1ULL << ZXDH_F_IN_ORDER    | \
+	 1ULL << ZXDH_F_NOTIFICATION_DATA |\
+	 1ULL << ZXDH_NET_F_MAC | \
+	 1ULL << ZXDH_NET_F_CSUM |\
+	 1ULL << ZXDH_NET_F_GUEST_CSUM |\
+	 1ULL << ZXDH_NET_F_GUEST_TSO4 |\
+	 1ULL << ZXDH_NET_F_GUEST_TSO6 |\
+	 1ULL << ZXDH_NET_F_HOST_TSO4 |\
+	 1ULL << ZXDH_NET_F_HOST_TSO6)
+
 static void
 zxdh_read_dev_config(struct zxdh_hw *hw, size_t offset,
 		void *dst, int32_t length)
@@ -391,13 +408,18 @@ zxdh_pci_read_dev_config(struct zxdh_hw *hw, size_t offset, void *dst, int32_t l
 	ZXDH_VTPCI_OPS(hw)->read_dev_cfg(hw, offset, dst, length);
 }
 
+void zxdh_pci_write_dev_config(struct zxdh_hw *hw, size_t offset, const void *src, int32_t length)
+{
+	ZXDH_VTPCI_OPS(hw)->write_dev_cfg(hw, offset, src, length);
+}
+
 void
 zxdh_get_pci_dev_config(struct zxdh_hw *hw)
 {
 	uint64_t guest_features = 0;
 	uint64_t nego_features = 0;
 
-	hw->host_features = zxdh_pci_get_features(hw);
+	hw->host_features = ZXDH_PMD_DEFAULT_HOST_FEATURES;
 
 	guest_features = (uint64_t)ZXDH_PMD_DEFAULT_GUEST_FEATURES;
 	nego_features = guest_features & hw->host_features;
