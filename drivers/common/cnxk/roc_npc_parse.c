@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2021 Marvell.
  */
+
 #include "roc_api.h"
+#include "roc_model.h"
 #include "roc_priv.h"
 
 const struct roc_npc_item_info *
@@ -708,7 +710,10 @@ npc_handle_ipv6ext_attr(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 		flags_count++;
 	}
 	if (ipv6_spec->has_frag_ext) {
-		*flags = NPC_F_LC_U_IP6_FRAG;
+		if (roc_model_is_cn20k())
+			*flags = NPC_CN20K_F_LC_L_IP6_FRAG;
+		else
+			*flags = NPC_F_LC_U_IP6_FRAG;
 		flags_count++;
 	}
 	if (ipv6_spec->has_dest_ext) {
@@ -822,7 +827,10 @@ npc_process_ipv6_item(struct npc_parse_state *pst)
 		} else if (pattern->type == ROC_NPC_ITEM_TYPE_IPV6_FRAG_EXT) {
 			item_count++;
 			ltype = NPC_LT_LC_IP6_EXT;
-			flags = NPC_F_LC_U_IP6_FRAG;
+			if (roc_model_is_cn20k())
+				flags = NPC_CN20K_F_LC_L_IP6_FRAG;
+			else
+				flags = NPC_F_LC_U_IP6_FRAG;
 			parse_info.len =
 				sizeof(struct roc_ipv6_hdr) + sizeof(struct roc_ipv6_fragment_ext);
 			if (pattern->spec)
