@@ -136,6 +136,43 @@
 #define ZXDH_ERAM_MAX_NUM                       (60)
 #define ZXDH_ETCAM_MAX_NUM                      (8)
 
+#define ZXDH_SE_RAM_DEPTH                       (512)
+#define ZXDH_SE_ZCELL_NUM                       (4)
+#define ZXDH_SE_ZREG_NUM                        (4)
+#define ZXDH_SE_ALG_BANK_NUM                    (29)
+#define ZXDH_SE_ZBLK_NUM                        (32)
+#define ZXDH_MAX_FUN_NUM                        (8)
+#define ZXDH_HASH_KEY_MAX                       (49)
+#define ZXDH_HASH_RST_MAX                       (32)
+#define ZXDH_HASH_TBL_ID_NUM                    (32)
+#define ZXDH_HASH_BULK_NUM                      (8)
+#define ZXDH_HASH_CMP_ZCELL                     (1)
+#define ZXDH_HASH_CMP_ZBLK                      (2)
+#define ZXDH_HASH_FUNC_ID_NUM                   (4)
+#define ZXDH_ZCELL_FLAG_IS_MONO                 (1)
+#define ZXDH_ZREG_FLAG_IS_MONO                  (1)
+#define ZXDH_HASH_DDR_CRC_NUM                   (4)
+#define ZXDH_HASH_TBL_FLAG_AGE                  (1 << 0)
+#define ZXDH_HASH_TBL_FLAG_LEARN                (1 << 1)
+#define ZXDH_HASH_TBL_FLAG_MC_WRT               (1 << 2)
+#define ZXDH_HASH_ACTU_KEY_STEP                 (1)
+#define ZXDH_HASH_KEY_CTR_SIZE                  (1)
+#define ZXDH_ZCELL_IDX_BT_WIDTH                 (2)
+#define ZXDH_ZBLK_IDX_BT_WIDTH                  (3)
+#define ZXDH_ZGRP_IDX_BT_WIDTH                  (2)
+#define ZXDH_HASH_ENTRY_POS_STEP                (16)
+#define ZXDH_HASH_TBL_ID_NUM                    (32)
+#define ZXDH_SE_ITEM_WIDTH_MAX                  (64)
+#define ZXDH_SE_ENTRY_WIDTH_MAX                 (64)
+#define ZXDH_REG_SRAM_FLAG_BT_START             (16)
+#define ZXDH_ZBLK_NUM_PER_ZGRP                  (8)
+#define ZXDH_ZBLK_IDX_BT_START                  (11)
+#define ZXDH_ZBLK_WRT_MASK_BT_START             (17)
+#define ZXDH_ZCELL_ADDR_BT_WIDTH                (9)
+
+#define ZXDH_COMM_PTR_TO_VAL(p)                 ((uint64_t)(p))
+#define ZXDH_COMM_VAL_TO_PTR(v)                 ((void *)((uint64_t)(v)))
+
 #define ZXDH_SDT_CFG_LEN                        (2)
 #define ZXDH_SDT_VALID                          (1)
 #define ZXDH_SDT_INVALID                        (0)
@@ -304,6 +341,11 @@
 #define ZXDH_HASH_RC_INVALID_ITEM_TYPE          (ZXDH_SE_RC_HASH_BASE | 0x11)
 #define ZXDH_HASH_RC_REPEAT_INIT                (ZXDH_SE_RC_HASH_BASE | 0x12)
 
+#define ZXDH_SE_RC_CFG_BASE                     (ZXDH_SE_RC_BASE | 0x1000)
+#define ZXDH_SE_RC_ZBLK_FULL                    (ZXDH_SE_RC_CFG_BASE | 0x1)
+#define ZXDH_SE_RC_FUN_INVALID                  (ZXDH_SE_RC_CFG_BASE | 0x2)
+#define ZXDH_SE_RC_PARA_INVALID                 (ZXDH_SE_RC_CFG_BASE | 0x3)
+
 #define ZXDH_SCHE_RSP_LEN                       (2)
 #define ZXDH_G_PROFILE_ID_LEN                   (8)
 
@@ -463,6 +505,13 @@ typedef struct zxdh_rb_tn {
 } ZXDH_RB_TN;
 
 typedef int32_t  (*ZXDH_RB_CMPFUN)(void *p_new, void *p_old, uint32_t keysize);
+typedef int32_t (*ZXDH_CMP_FUNC)(ZXDH_D_NODE *data1, ZXDH_D_NODE *data2, void*);
+typedef uint32_t (*ZXDH_WRITE32_FUN)(uint32_t dev_id, uint32_t addr, uint32_t write_data);
+typedef uint32_t (*ZXDH_READ32_FUN) (uint32_t dev_id, uint32_t addr, uint32_t *read_data);
+typedef uint32_t (*ZXDH_LPM_AS_RSLT_WRT_FUNCTION)(uint32_t dev_id,
+		uint32_t as_type, uint32_t tbl_id, uint32_t index, uint8_t *p_data);
+typedef uint16_t (*ZXDH_HASH_FUNCTION)(uint8_t *pkey, uint32_t width, uint16_t arg);
+typedef uint32_t (*ZXDH_HASH_FUNCTION32)(uint8_t *pkey, uint32_t width, uint32_t arg);
 
 typedef struct _rb_cfg {
 	uint32_t				key_size;
@@ -475,6 +524,217 @@ typedef struct _rb_cfg {
 	ZXDH_RB_TN				*p_tnbase;
 	uint32_t				is_init;
 } ZXDH_RB_CFG;
+
+typedef enum zxdh_se_fun_type_e {
+	ZXDH_FUN_HASH = 1,
+	ZXDH_FUN_LPM,
+	ZXDH_FUN_ACL,
+	ZXDH_FUN_MAX
+} ZXDH_SE_FUN_TYPE;
+
+typedef struct zxdh_avl_node_t {
+	void                    *p_key;
+	uint32_t                result;
+	int32_t                 avl_height;
+	struct zxdh_avl_node_t  *p_avl_left;
+	struct zxdh_avl_node_t  *p_avl_right;
+	ZXDH_D_NODE             avl_node_list;
+} ZXDH_AVL_NODE;
+
+typedef struct zxdh_se_item_cfg_t {
+	ZXDH_D_HEAD  item_list;
+	uint32_t  item_index;
+	uint32_t  hw_addr;
+	uint32_t  bulk_id;
+	uint32_t  item_type;
+	uint8_t    wrt_mask;
+	uint8_t    valid;
+	uint8_t    pad[2];
+} ZXDH_SE_ITEM_CFG;
+
+typedef struct zxdh_se_zcell_cfg_t {
+	uint8_t            flag;
+	uint32_t           bulk_id;
+	uint32_t           zcell_idx;
+	uint16_t           mask_len;
+	uint8_t            is_used;
+	uint8_t            is_share;
+	uint32_t           item_used;
+	ZXDH_SE_ITEM_CFG   item_info[ZXDH_SE_RAM_DEPTH];
+	ZXDH_D_NODE        zcell_dn;
+	ZXDH_AVL_NODE      zcell_avl;
+} ZXDH_SE_ZCELL_CFG;
+
+typedef struct zxdh_se_zreg_cfg_t {
+	uint8_t            flag;
+	uint8_t            pad[3];
+	uint32_t           bulk_id;
+	ZXDH_SE_ITEM_CFG   item_info;
+} ZXDH_SE_ZREG_CFG;
+
+typedef struct zxdh_se_zblk_cfg_t {
+	uint32_t          zblk_idx;
+	uint16_t          is_used;
+	uint16_t          zcell_bm;
+	uint16_t          hash_arg;
+	uint16_t          pad;
+	ZXDH_SE_ZCELL_CFG    zcell_info[ZXDH_SE_ZCELL_NUM];
+	ZXDH_SE_ZREG_CFG     zreg_info[ZXDH_SE_ZREG_NUM];
+	ZXDH_D_NODE          zblk_dn;
+} ZXDH_SE_ZBLK_CFG;
+
+typedef struct zxdh_func_id_info_t {
+	void *fun_ptr;
+	uint8_t  fun_type;
+	uint8_t  fun_id;
+	uint8_t  is_used;
+	uint8_t  pad;
+} ZXDH_FUNC_ID_INFO;
+
+typedef struct zxdh_ddr_mem_t {
+	uint32_t     total_num;
+	uint32_t     base_addr;
+	uint32_t     base_addr_offset;
+	uint32_t     ecc_en;
+	uint32_t     bank_num;
+	uint32_t     bank_info[ZXDH_SE_ALG_BANK_NUM];
+	uint32_t     share_type;
+	uint32_t     item_used;
+	ZXDH_LISTSTACK_MANAGER *p_ddr_mng;
+} ZXDH_DDR_MEM;
+
+typedef struct zxdh_share_ram_t {
+	uint32_t       zblk_array[ZXDH_SE_ZBLK_NUM];
+	ZXDH_D_HEAD    zblk_list;
+	ZXDH_D_HEAD    zcell_free_list;
+	uint32_t       def_route_num;
+	ZXDH_RB_CFG    def_rb;
+	struct def_route_info  *p_dr_info;
+	ZXDH_DDR_MEM   ddr4_info;
+	ZXDH_DDR_MEM   ddr6_info;
+} ZXDH_SHARE_RAM;
+
+typedef struct zxdh_se_cfg_t {
+	ZXDH_SE_ZBLK_CFG   zblk_info[ZXDH_SE_ZBLK_NUM];
+	ZXDH_FUNC_ID_INFO  fun_info[ZXDH_MAX_FUN_NUM];
+	ZXDH_SHARE_RAM     route_shareram;
+	uint32_t           reg_base;
+	ZXDH_WRITE32_FUN   p_write32_fun;
+	ZXDH_READ32_FUN    p_read32_fun;
+	uint32_t           lpm_flags;
+	void               *p_client;
+	uint32_t           dev_id;
+	ZXDH_LPM_AS_RSLT_WRT_FUNCTION p_as_rslt_wrt_fun;
+} ZXDH_SE_CFG;
+
+typedef struct hash_ddr_cfg_t {
+	uint32_t bulk_use;
+	uint32_t ddr_baddr;
+	uint32_t ddr_ecc_en;
+	uint32_t item_num;
+	uint32_t bulk_id;
+	uint32_t hash_ddr_arg;
+	uint32_t width_mode;
+	uint32_t hw_baddr;
+	uint32_t zcell_num;
+	uint32_t zreg_num;
+	ZXDH_SE_ITEM_CFG  **p_item_array;
+} HASH_DDR_CFG;
+
+typedef struct zxdh_hash_tbl_info_t {
+	uint32_t fun_id;
+	uint32_t actu_key_size;
+	uint32_t key_type;
+	uint8_t is_init;
+	uint8_t mono_zcell;
+	uint8_t zcell_num;
+	uint8_t mono_zreg;
+	uint8_t zreg_num;
+	uint8_t is_age;
+	uint8_t is_lrn;
+	uint8_t is_mc_wrt;
+} ZXDH_HASH_TBL_ID_INFO;
+
+typedef struct zxdh_hash_rbkey_info_t {
+	uint8_t          key[ZXDH_HASH_KEY_MAX];
+	uint8_t          rst[ZXDH_HASH_RST_MAX];
+	ZXDH_D_NODE      entry_dn;
+	ZXDH_SE_ITEM_CFG *p_item_info;
+	uint32_t         entry_size;
+	uint32_t         entry_pos;
+} ZXDH_HASH_RBKEY_INFO;
+
+typedef struct zxdh_hash_table_stat_t {
+	float ddr;
+	float zcell;
+	float zreg;
+	float sum;
+} ZXDH_HASH_TABLE_STAT;
+
+typedef struct zxdh_hash_zreg_mono_stat_t {
+	uint32_t zblk_id;
+	uint32_t zreg_id;
+} ZXDH_HASH_ZREG_MONO_STAT;
+
+typedef struct zxdh_hash_bulk_zcam_stat_t {
+	uint32_t zcell_mono_idx[ZXDH_SE_ZBLK_NUM * ZXDH_SE_ZCELL_NUM];
+	ZXDH_HASH_ZREG_MONO_STAT zreg_mono_id[ZXDH_SE_ZBLK_NUM][ZXDH_SE_ZREG_NUM];
+} ZXDH_HASH_BULK_ZCAM_STAT;
+
+typedef struct zxdh_hash_stat_t {
+	uint32_t insert_ok;
+	uint32_t insert_fail;
+	uint32_t insert_same;
+	uint32_t insert_ddr;
+	uint32_t insert_zcell;
+	uint32_t insert_zreg;
+	uint32_t delete_ok;
+	uint32_t delete_fail;
+	uint32_t search_ok;
+	uint32_t search_fail;
+	uint32_t zblock_num;
+	uint32_t zblock_array[ZXDH_SE_ZBLK_NUM];
+	ZXDH_HASH_TABLE_STAT insert_table[ZXDH_HASH_TBL_ID_NUM];
+	ZXDH_HASH_BULK_ZCAM_STAT *p_bulk_zcam_mono[ZXDH_HASH_BULK_NUM];
+} ZXDH_HASH_STAT;
+
+typedef struct zxdh_hash_cfg_t {
+	uint32_t              fun_id;
+	uint8_t               ddr_valid;
+	uint8_t               pad[3];
+	ZXDH_HASH_FUNCTION32  p_hash32_fun;
+	ZXDH_HASH_FUNCTION    p_hash16_fun;
+	HASH_DDR_CFG          *p_bulk_ddr_info[ZXDH_HASH_BULK_NUM];
+	uint8_t               bulk_ram_mono[ZXDH_HASH_BULK_NUM];
+	ZXDH_SHARE_RAM        hash_shareram;
+	ZXDH_SE_CFG           *p_se_info;
+	ZXDH_RB_CFG           hash_rb;
+	ZXDH_RB_CFG           ddr_cfg_rb;
+	ZXDH_HASH_STAT        hash_stat;
+} ZXDH_HASH_CFG;
+
+typedef struct hash_entry_cfg_t {
+	uint32_t fun_id;
+	uint8_t bulk_id;
+	uint8_t table_id;
+	uint8_t key_type;
+	uint8_t rsp_mode;
+	uint32_t actu_key_size;
+	uint32_t key_by_size;
+	uint32_t rst_by_size;
+	ZXDH_SE_CFG *p_se_cfg;
+	ZXDH_HASH_CFG *p_hash_cfg;
+	ZXDH_HASH_RBKEY_INFO *p_rbkey_new;
+	ZXDH_RB_TN *p_rb_tn_new;
+} HASH_ENTRY_CFG;
+
+typedef struct zxdh_hash_ddr_resc_cfg_t {
+	uint32_t ddr_width_mode;
+	uint32_t ddr_crc_sel;
+	uint32_t ddr_item_num;
+	uint32_t ddr_baddr;
+	uint32_t ddr_ecc_en;
+} ZXDH_HASH_DDR_RESC_CFG_T;
 
 typedef struct zxdh_dtb_tab_up_user_addr_t {
 	uint32_t user_flag;
