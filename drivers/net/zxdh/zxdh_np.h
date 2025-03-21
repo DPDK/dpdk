@@ -112,6 +112,9 @@
 #define ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL  \
 		(ZXDH_SE_SMMU0_ERAM_BLOCK_NUM * ZXDH_SE_SMMU0_ERAM_ADDR_NUM_PER_BLOCK)
 
+#define ZXDH_NPSDK_COMPAT_ITEM_ID               (10)
+#define ZXDH_DPU_NO_DEBUG_PF_COMPAT_REG_OFFSET  (0x5400)
+
 #define ZXDH_SDT_CFG_LEN                        (2)
 #define ZXDH_SDT_VALID                          (1)
 #define ZXDH_SDT_INVALID                        (0)
@@ -904,6 +907,15 @@ typedef enum zxdh_profile_type {
 	CAR_C = 2,
 	CAR_MAX
 } ZXDH_PROFILE_TYPE;
+
+typedef struct __rte_aligned(2) zxdh_version_compatible_reg_t {
+	uint8_t version_compatible_item;
+	uint8_t major;
+	uint8_t fw_minor;
+	uint8_t drv_minor;
+	uint16_t patch;
+	uint8_t rsv[2];
+} ZXDH_VERSION_COMPATIBLE_REG_T;
 
 typedef struct __rte_aligned(2) zxdh_agent_channel_msg_t {
 	uint32_t msg_len;
