@@ -1809,6 +1809,19 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 			return ret;
 		}
 	}
+
+	if (hw->is_pf) {
+		ret = zxdh_np_se_res_get_and_init(hw->dev_id, ZXDH_SE_STD_NIC_RES_TYPE);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "dpp apt init failed, code:%d ", ret);
+			return -ret;
+		}
+		if (hw->hash_search_index >= ZXDH_HASHIDX_MAX) {
+			PMD_DRV_LOG(ERR, "invalid hash idx %d", hw->hash_search_index);
+			return -1;
+		}
+	}
+
 	if (zxdh_shared_data != NULL)
 		zxdh_shared_data->np_init_done = 1;
 
