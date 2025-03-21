@@ -1372,6 +1372,40 @@ zxdh_comm_rb_insert(ZXDH_RB_CFG *p_rb_cfg,
 }
 
 static uint32_t
+zxdh_comm_rb_search(ZXDH_RB_CFG *p_rb_cfg,
+						 void	   *p_key,
+						 void	   *out_val)
+{
+	int32_t	cmprtn   = 0;
+	ZXDH_RB_TN *p_cur_tn = NULL;
+
+	p_cur_tn = p_rb_cfg->p_root;
+
+	while (p_cur_tn) {
+		cmprtn = p_rb_cfg->p_cmpfun(p_key, p_cur_tn->p_key, p_rb_cfg->key_size);
+
+		if (cmprtn > 0)
+			p_cur_tn = p_cur_tn->p_right;
+		else if (cmprtn < 0)
+			p_cur_tn = p_cur_tn->p_left;
+		else
+			break;
+	}
+
+	if (!p_cur_tn) {
+		PMD_DRV_LOG(DEBUG, "rb srh fail");
+		return ZXDH_RBT_RC_SRHFAIL;
+	}
+
+	if (p_rb_cfg->is_dynamic)
+		*(ZXDH_RB_TN **)out_val = p_cur_tn;
+	else
+		*(uint32_t *)out_val = zxdh_np_get_tn_lsv(p_cur_tn);
+
+	return ZXDH_OK;
+}
+
+static uint32_t
 zxdh_comm_rb_handle_del(__rte_unused ZXDH_RB_CFG *p_rb_cfg,
 							ZXDH_RB_TN ***stack_tn,
 							uint32_t   stack_top)
@@ -4016,6 +4050,38 @@ zxdh_np_dtb_smmu0_dump_info_write(uint32_t dev_id,
 }
 
 static uint32_t
+zxdh_np_dtb_zcam_dump_info_write(uint32_t dev_id,
+							uint32_t addr,
+							uint32_t tb_width,
+							uint32_t depth,
+							uint32_t addr_high32,
+							uint32_t addr_low32,
+							uint32_t *p_dump_info)
+{
+	uint32_t rc = ZXDH_OK;
+
+	ZXDH_DTB_ZCAM_DUMP_FORM_T dtb_zcam_dump_form_info = {
+		.valid = 1,
+		.up_type = ZXDH_DTB_DUMP_MODE_ZCAM,
+		.tb_width = tb_width,
+		.sram_addr = addr & 0x1FF,
+		.ram_reg_flag = (addr >> 16) & 0x1,
+		.z_reg_cell_id = (addr >> 9) & 0x3,
+		.zblock_id = (addr >> 11) & 0x7,
+		.zgroup_id = (addr >> 14) & 0x3,
+		.tb_depth = depth,
+		.tb_dst_addr_h = addr_high32,
+		.tb_dst_addr_l = addr_low32,
+	};
+
+	rc = zxdh_np_dtb_write_dump_cmd(dev_id, ZXDH_DTB_DUMP_ZCAM,
+		&dtb_zcam_dump_form_info, p_dump_info);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_write_dump_cmd");
+
+	return rc;
+}
+
+static uint32_t
 zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 		uint32_t base_addr,
 		uint32_t index,
@@ -6160,6 +6226,399 @@ zxdh_np_dtb_eram_data_get(uint32_t dev_id, uint32_t queue_id, uint32_t sdt_no,
 	return rc;
 }
 
+static uint32_t
+zxdh_np_dtb_se_zcam_dma_dump(uint32_t dev_id,
+							uint32_t queue_id,
+							uint32_t addr,
+							uint32_t tb_width,
+							uint32_t depth,
+							uint32_t *p_data,
+							uint32_t *element_id)
+{
+	uint32_t rc = ZXDH_OK;
+	uint32_t dump_dst_phy_haddr = 0;
+	uint32_t dump_dst_phy_laddr = 0;
+	uint32_t queue_item_index = 0;
+	uint32_t data_len = 0;
+	uint32_t desc_len = 0;
+	uint32_t tb_width_len = 0;
+	uint8_t form_buff[ZXDH_DTB_TABLE_CMD_SIZE_BIT / 8] = {0};
+
+	rc = zxdh_np_dtb_tab_up_free_item_get(dev_id, queue_id, &queue_item_index);
+	if (rc != ZXDH_OK) {
+		PMD_DRV_LOG(ERR, "zxdh_np_dtb_tab_up_free_item_get failed!");
+		return ZXDH_RC_DTB_QUEUE_ITEM_SW_EMPTY;
+	}
+
+	PMD_DRV_LOG(DEBUG, "table up item queue_element_id is: %u.",
+		queue_item_index);
+
+	*element_id = queue_item_index;
+
+	rc = zxdh_np_dtb_tab_up_item_addr_get(dev_id, queue_id, queue_item_index,
+		&dump_dst_phy_haddr, &dump_dst_phy_laddr);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_tab_up_item_addr_get");
+
+	rc = zxdh_np_dtb_zcam_dump_info_write(dev_id,
+									  addr,
+									  tb_width,
+									  depth,
+									  dump_dst_phy_haddr,
+									  dump_dst_phy_laddr,
+									  (uint32_t *)form_buff);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_zcam_dump_info_write");
+
+	tb_width_len = ZXDH_DTB_LEN_POS_SETP << tb_width;
+	data_len = depth * tb_width_len / 4;
+	desc_len = ZXDH_DTB_LEN_POS_SETP / 4;
+
+	rc = zxdh_np_dtb_write_dump_desc_info(dev_id, queue_id, queue_item_index,
+		(uint32_t *)form_buff, data_len, desc_len, p_data);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_write_dump_desc_info");
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_hash_data_parse(uint32_t item_type,
+						uint32_t key_by_size,
+						ZXDH_HASH_ENTRY *p_entry,
+						uint8_t  *p_item_data,
+						uint32_t  *p_data_offset)
+{
+	uint32_t data_offset = 0;
+	uint8_t temp_key_valid = 0;
+	uint8_t temp_key_type = 0;
+	uint32_t temp_entry_size = 0;
+	uint8_t srh_key_type = 0;
+	uint32_t srh_entry_size = 0;
+	uint32_t rst_by_size = 0;
+	uint8_t srh_succ = 0;
+	uint32_t item_width = ZXDH_SE_ITEM_WIDTH_MAX;
+	uint8_t *p_srh_key = NULL;
+	uint8_t *p_temp_key = NULL;
+
+	if (item_type == ZXDH_ITEM_DDR_256)
+		item_width = item_width / 2;
+
+	p_temp_key = p_item_data;
+	p_srh_key = p_entry->p_key;
+	srh_key_type = ZXDH_GET_HASH_KEY_TYPE(p_srh_key);
+	srh_entry_size = ZXDH_GET_HASH_ENTRY_SIZE(srh_key_type);
+
+	while (data_offset < item_width) {
+		temp_key_valid = ZXDH_GET_HASH_KEY_VALID(p_temp_key);
+		temp_key_type = ZXDH_GET_HASH_KEY_TYPE(p_temp_key);
+
+		if (temp_key_valid && srh_key_type == temp_key_type) {
+			if (memcmp(p_srh_key, p_temp_key, key_by_size) == 0) {
+				PMD_DRV_LOG(DEBUG, "Hash search hardware successfully.");
+				srh_succ = 1;
+				break;
+			}
+
+			data_offset += srh_entry_size;
+		} else if (temp_key_valid && (srh_key_type != temp_key_type)) {
+			temp_entry_size = ZXDH_GET_HASH_ENTRY_SIZE(temp_key_type);
+			data_offset += temp_entry_size;
+		} else {
+			data_offset += ZXDH_HASH_ENTRY_POS_STEP;
+		}
+
+		p_temp_key = p_item_data;
+		p_temp_key += data_offset;
+	}
+
+	if (!srh_succ) {
+		PMD_DRV_LOG(DEBUG, "Hash search hardware fail.");
+		return ZXDH_HASH_RC_MATCH_ITEM_FAIL;
+	}
+
+	rst_by_size = srh_entry_size - key_by_size;
+	memcpy(p_entry->p_rst, p_temp_key + key_by_size,
+		(rst_by_size > ZXDH_HASH_RST_MAX) ? ZXDH_HASH_RST_MAX : rst_by_size);
+	*p_data_offset = data_offset;
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_dtb_hash_zcam_get_hardware(uint32_t dev_id,
+						uint32_t queue_id,
+						HASH_ENTRY_CFG  *p_hash_entry_cfg,
+						ZXDH_HASH_ENTRY  *p_hash_entry,
+						uint8_t *p_srh_succ)
+{
+	uint32_t rc = ZXDH_OK;
+	ZXDH_HASH_CFG *p_hash_cfg = NULL;
+	ZXDH_SE_ZCELL_CFG *p_zcell = NULL;
+	ZXDH_SE_ZBLK_CFG *p_zblk = NULL;
+	uint32_t zblk_idx = 0;
+	uint32_t pre_zblk_idx = 0xFFFFFFFF;
+	uint16_t crc16_value = 0;
+	uint32_t zcell_id = 0;
+	uint32_t item_idx = 0;
+	uint32_t element_id = 0;
+	uint32_t byte_offset = 0;
+	uint32_t addr = 0;
+	uint32_t i	= 0;
+	uint8_t srh_succ	 = 0;
+	uint8_t temp_key[ZXDH_HASH_KEY_MAX] = {0};
+	uint8_t  rd_buff[ZXDH_SE_ITEM_WIDTH_MAX]   = {0};
+	ZXDH_D_NODE *p_zblk_dn = NULL;
+	ZXDH_D_NODE *p_zcell_dn = NULL;
+	ZXDH_SE_CFG *p_se_cfg = NULL;
+
+	p_hash_cfg = p_hash_entry_cfg->p_hash_cfg;
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_hash_cfg);
+
+	p_se_cfg = p_hash_entry_cfg->p_se_cfg;
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_se_cfg);
+
+	zxdh_np_hash_set_crc_key(p_hash_entry_cfg, p_hash_entry, temp_key);
+
+	p_zcell_dn = p_hash_cfg->hash_shareram.zcell_free_list.p_next;
+	while (p_zcell_dn) {
+		p_zcell = (ZXDH_SE_ZCELL_CFG *)p_zcell_dn->data;
+		zblk_idx = GET_ZBLK_IDX(p_zcell->zcell_idx);
+		p_zblk = &p_se_cfg->zblk_info[zblk_idx];
+
+		if (zblk_idx != pre_zblk_idx) {
+			pre_zblk_idx = zblk_idx;
+			crc16_value = p_hash_cfg->p_hash16_fun(temp_key,
+				p_hash_entry_cfg->key_by_size, p_zblk->hash_arg);
+		}
+
+		zcell_id = GET_ZCELL_IDX(p_zcell->zcell_idx);
+		item_idx = GET_ZCELL_CRC_VAL(zcell_id, crc16_value);
+		addr = ZXDH_ZBLK_ITEM_ADDR_CALC(p_zcell->zcell_idx, item_idx);
+		rc =  zxdh_np_dtb_se_zcam_dma_dump(dev_id,
+									   queue_id,
+									   addr,
+									   ZXDH_DTB_DUMP_ZCAM_512b,
+									   1,
+									   (uint32_t *)rd_buff,
+									   &element_id);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_se_zcam_dma_dump");
+		zxdh_np_comm_swap(rd_buff, sizeof(rd_buff));
+
+		rc = zxdh_np_dtb_hash_data_parse(ZXDH_ITEM_RAM, p_hash_entry_cfg->key_by_size,
+			p_hash_entry, rd_buff, &byte_offset);
+		if (rc == ZXDH_OK) {
+			PMD_DRV_LOG(DEBUG, "Hash search hardware succ in zcell.");
+			srh_succ = 1;
+			p_hash_cfg->hash_stat.search_ok++;
+			break;
+		}
+
+		p_zcell_dn = p_zcell_dn->next;
+	}
+
+	if (srh_succ == 0) {
+		p_zblk_dn = p_hash_cfg->hash_shareram.zblk_list.p_next;
+		while (p_zblk_dn) {
+			p_zblk = (ZXDH_SE_ZBLK_CFG *)p_zblk_dn->data;
+			zblk_idx = p_zblk->zblk_idx;
+
+			for (i = 0; i < ZXDH_SE_ZREG_NUM; i++) {
+				item_idx = i;
+				addr = ZXDH_ZBLK_HASH_LIST_REG_ADDR_CALC(zblk_idx, item_idx);
+				rc =  zxdh_np_dtb_se_zcam_dma_dump(dev_id,
+									   queue_id,
+									   addr,
+									   ZXDH_DTB_DUMP_ZCAM_512b,
+									   1,
+									   (uint32_t *)rd_buff,
+									   &element_id);
+				ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_se_zcam_dma_dump");
+				zxdh_np_comm_swap(rd_buff, sizeof(rd_buff));
+
+				rc = zxdh_np_dtb_hash_data_parse(ZXDH_ITEM_RAM,
+					p_hash_entry_cfg->key_by_size, p_hash_entry,
+					rd_buff, &byte_offset);
+				if (rc == ZXDH_OK) {
+					PMD_DRV_LOG(DEBUG, "Hash search hardware succ in zreg.");
+					srh_succ = 1;
+					p_hash_cfg->hash_stat.search_ok++;
+					break;
+				}
+			}
+			p_zblk_dn = p_zblk_dn->next;
+		}
+	}
+
+	*p_srh_succ = srh_succ;
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_hash_software_item_check(ZXDH_HASH_ENTRY *p_entry,
+						uint32_t key_by_size,
+						uint32_t rst_by_size,
+						ZXDH_SE_ITEM_CFG *p_item_info)
+{
+	uint8_t srh_succ = 0;
+	uint8_t temp_key_type = 0;
+	uint8_t srh_key_type = 0;
+	uint32_t dev_id = 0;
+	ZXDH_D_NODE *p_entry_dn = NULL;
+	ZXDH_HASH_RBKEY_INFO *p_rbkey = NULL;
+
+	srh_key_type = ZXDH_GET_HASH_KEY_TYPE(p_entry->p_key);
+	p_entry_dn = p_item_info->item_list.p_next;
+	while (p_entry_dn) {
+		p_rbkey = (ZXDH_HASH_RBKEY_INFO *)p_entry_dn->data;
+		ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_rbkey);
+
+		RTE_ASSERT(p_rbkey->p_item_info == p_item_info);
+
+		temp_key_type = ZXDH_GET_HASH_KEY_TYPE(p_rbkey->key);
+
+		if (ZXDH_GET_HASH_KEY_VALID(p_rbkey->key) && srh_key_type == temp_key_type) {
+			if (memcmp(p_entry->p_key, p_rbkey->key, key_by_size) == 0) {
+				srh_succ = 1;
+				break;
+			}
+		}
+
+		p_entry_dn = p_entry_dn->next;
+	}
+
+	if (p_rbkey == NULL)
+		return ZXDH_PAR_CHK_POINT_NULL;
+
+	if (!srh_succ) {
+		PMD_DRV_LOG(DEBUG, "hash search failed!");
+		return ZXDH_HASH_RC_MATCH_ITEM_FAIL;
+	}
+
+	memcpy(p_entry->p_rst, p_rbkey->rst,
+		(rst_by_size > ZXDH_HASH_RST_MAX) ? ZXDH_HASH_RST_MAX : rst_by_size);
+
+	return ZXDH_OK;
+}
+
+static uint32_t
+zxdh_np_dtb_hash_get_software(uint32_t dev_id,
+							HASH_ENTRY_CFG  *p_hash_entry_cfg,
+							ZXDH_HASH_ENTRY  *p_hash_entry,
+							uint8_t *p_srh_succ)
+{
+	uint32_t rc = ZXDH_OK;
+	ZXDH_HASH_RBKEY_INFO srh_rbkey = {0};
+	ZXDH_HASH_RBKEY_INFO *p_rbkey = NULL;
+	ZXDH_RB_TN *p_rb_tn_rtn = NULL;
+	ZXDH_SE_ITEM_CFG *p_item = NULL;
+	ZXDH_HASH_CFG *p_hash_cfg = NULL;
+	ZXDH_SPINLOCK_T *p_hash_spinlock = NULL;
+
+	memcpy(srh_rbkey.key, p_hash_entry->p_key, p_hash_entry_cfg->key_by_size);
+
+	p_hash_cfg = p_hash_entry_cfg->p_hash_cfg;
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_hash_cfg);
+
+	zxdh_np_dev_hash_opr_spinlock_get(dev_id, p_hash_cfg->fun_id, &p_hash_spinlock);
+	rte_spinlock_lock(&p_hash_spinlock->spinlock);
+
+	rc = zxdh_comm_rb_search(&p_hash_cfg->hash_rb, (void *)&srh_rbkey, (void *)(&p_rb_tn_rtn));
+	if (rc == ZXDH_RBT_RC_SRHFAIL) {
+		PMD_DRV_LOG(DEBUG, "zxdh_comm_rb_search fail.");
+		rte_spinlock_unlock(&p_hash_spinlock->spinlock);
+		return ZXDH_OK;
+	}
+
+	p_rbkey = p_rb_tn_rtn->p_key;
+	p_item = p_rbkey->p_item_info;
+
+	rc = zxdh_np_dtb_hash_software_item_check(p_hash_entry,
+			p_hash_entry_cfg->key_by_size,
+			p_hash_entry_cfg->rst_by_size,
+			p_item);
+	if (rc == ZXDH_OK) {
+		PMD_DRV_LOG(DEBUG, "Hash search software succ.");
+		*p_srh_succ = 1;
+		p_hash_cfg->hash_stat.search_ok++;
+	}
+
+	rte_spinlock_unlock(&p_hash_spinlock->spinlock);
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_hash_zcam_get(uint32_t dev_id,
+						uint32_t queue_id,
+						HASH_ENTRY_CFG  *p_hash_entry_cfg,
+						ZXDH_HASH_ENTRY  *p_hash_entry,
+						uint32_t srh_mode,
+						uint8_t *p_srh_succ)
+{
+	uint32_t  rc = ZXDH_OK;
+
+	if (srh_mode == ZXDH_HASH_SRH_MODE_HDW) {
+		rc = zxdh_np_dtb_hash_zcam_get_hardware(dev_id, queue_id,
+			p_hash_entry_cfg, p_hash_entry, p_srh_succ);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_hash_zcam_get_hardware");
+	} else {
+		rc = zxdh_np_dtb_hash_get_software(dev_id, p_hash_entry_cfg,
+			p_hash_entry, p_srh_succ);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_hash_get_software");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_hash_data_get(uint32_t dev_id,
+						uint32_t queue_id,
+						uint32_t sdt_no,
+						ZXDH_DTB_HASH_ENTRY_INFO_T *p_dtb_hash_entry,
+						uint32_t srh_mode)
+{
+	uint32_t rc = ZXDH_OK;
+	uint8_t srh_succ = 0;
+	uint8_t key_valid = 1;
+	ZXDH_HASH_CFG *p_hash_cfg = NULL;
+	HASH_ENTRY_CFG  hash_entry_cfg = {0};
+	ZXDH_HASH_ENTRY hash_entry = {0};
+	uint8_t temp_key[ZXDH_HASH_KEY_MAX] = {0};
+	uint8_t temp_rst[ZXDH_HASH_RST_MAX] = {0};
+
+	PMD_DRV_LOG(DEBUG, "hash get sdt_no:%u", sdt_no);
+
+	rc = zxdh_np_hash_get_hash_info_from_sdt(dev_id, sdt_no, &hash_entry_cfg);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_hash_get_hash_info_from_sdt");
+
+	p_hash_cfg = hash_entry_cfg.p_hash_cfg;
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_hash_cfg);
+
+	hash_entry.p_key = temp_key;
+	hash_entry.p_rst = temp_rst;
+	hash_entry.p_key[0] = ZXDH_GET_HASH_KEY_CTRL(key_valid,
+							hash_entry_cfg.key_type,
+							hash_entry_cfg.table_id);
+
+	memcpy(&hash_entry.p_key[1], p_dtb_hash_entry->p_actu_key,
+		hash_entry_cfg.actu_key_size);
+
+	if (!srh_succ) {
+		rc  = zxdh_np_dtb_hash_zcam_get(dev_id, queue_id, &hash_entry_cfg,
+			&hash_entry, srh_mode, &srh_succ);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_hash_zcam_get");
+	}
+
+	if (!srh_succ) {
+		p_hash_cfg->hash_stat.search_fail++;
+		PMD_DRV_LOG(DEBUG, "Hash search key fail!");
+		return ZXDH_HASH_RC_SRH_FAIL;
+	}
+
+	memcpy(p_dtb_hash_entry->p_rst, hash_entry.p_rst,
+		1 << (hash_entry_cfg.rsp_mode + 2));
+
+	return rc;
+}
+
 int
 zxdh_np_dtb_table_entry_get(uint32_t dev_id,
 		 uint32_t queue_id,
@@ -6170,10 +6629,12 @@ zxdh_np_dtb_table_entry_get(uint32_t dev_id,
 	uint32_t tbl_type = 0;
 	uint32_t rc;
 	uint32_t sdt_no;
+	uint32_t sdt_partner = 0;
+	uint32_t valid = 0;
+	uint8_t key = 0;
 
 	sdt_no = get_entry->sdt_no;
 	PMD_DRV_LOG(DEBUG, "sdt_no:%u", sdt_no);
-	PMD_DRV_LOG(DEBUG, "srh_mode:%u", srh_mode);
 
 	zxdh_np_sdt_tbl_data_get(dev_id, sdt_no, &sdt_tbl);
 
@@ -6186,6 +6647,25 @@ zxdh_np_dtb_table_entry_get(uint32_t dev_id,
 				sdt_no,
 				(ZXDH_DTB_ERAM_ENTRY_INFO_T *)get_entry->p_entry_data);
 		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_eram_data_get");
+		break;
+	case ZXDH_SDT_TBLT_HASH:
+		do {
+			rc = zxdh_np_dtb_hash_data_get(dev_id,
+					queue_id,
+					sdt_no,
+					(ZXDH_DTB_HASH_ENTRY_INFO_T *)get_entry->p_entry_data,
+					srh_mode);
+			sdt_partner = zxdh_np_apt_get_sdt_partner(dev_id, sdt_no);
+			valid = zxdh_np_hash_sdt_partner_valid(sdt_no, sdt_partner, &key);
+			sdt_no = sdt_partner;
+		} while ((rc == ZXDH_HASH_RC_SRH_FAIL) && (valid == ZXDH_TRUE));
+
+		if (rc == ZXDH_HASH_RC_SRH_FAIL) {
+			PMD_DRV_LOG(DEBUG, "hash search failed");
+			return rc;
+		}
+
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_hash_data_get");
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "SDT table_type[ %u ] is invalid!", tbl_type);
