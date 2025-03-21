@@ -162,7 +162,7 @@ void zxdh_pci_read_dev_config(struct zxdh_hw *hw, size_t offset,
 
 int32_t zxdh_read_pci_caps(struct rte_pci_device *dev, struct zxdh_hw *hw);
 void zxdh_get_pci_dev_config(struct zxdh_hw *hw);
-
+void zxdh_pci_write_dev_config(struct zxdh_hw *hw, size_t offset, const void *src, int32_t length);
 uint16_t zxdh_pci_get_features(struct zxdh_hw *hw);
 enum zxdh_msix_status zxdh_pci_msix_detect(struct rte_pci_device *dev);
 uint8_t zxdh_pci_isr(struct zxdh_hw *hw);
