@@ -2767,6 +2767,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 * Modification to set VFTDT for virtual function if vf is detected
 	 */
 	if (hw->mac.type == ixgbe_mac_82599_vf ||
+	    hw->mac.type == ixgbe_mac_E610_vf ||
 	    hw->mac.type == ixgbe_mac_X540_vf ||
 	    hw->mac.type == ixgbe_mac_X550_vf ||
 	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
@@ -2987,6 +2988,7 @@ ixgbe_is_vf(struct rte_eth_dev *dev)
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
 	case ixgbe_mac_X550EM_a_vf:
+	case ixgbe_mac_E610_vf:
 		return 1;
 	default:
 		return 0;
@@ -3153,6 +3155,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * Modified to setup VFRDT for Virtual Function
 	 */
 	if (hw->mac.type == ixgbe_mac_82599_vf ||
+	    hw->mac.type == ixgbe_mac_E610_vf ||
 	    hw->mac.type == ixgbe_mac_X540_vf ||
 	    hw->mac.type == ixgbe_mac_X550_vf ||
 	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
@@ -5835,6 +5838,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
 	case ixgbe_mac_X550EM_a_vf:
+	case ixgbe_mac_E610_vf:
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
 		case RTE_ETH_MQ_RX_RSS:
 		case RTE_ETH_MQ_RX_DCB_RSS:
