@@ -190,6 +190,15 @@ typedef int32_t (*mlx5_l3t_alloc_callback_fn)(void *ctx,
 #define POOL_DEBUG 1
 #endif
 
+extern int mlx5_logtype_ipool;
+#define MLX5_NET_LOG_PREFIX_IPOOL "mlx5_ipool"
+
+/* Generic printf()-like logging macro with automatic line feed. */
+#define DRV_LOG_IPOOL(level, ...) \
+	PMD_DRV_LOG_(level, mlx5_logtype_ipool, MLX5_NET_LOG_PREFIX_IPOOL, \
+		__VA_ARGS__ PMD_DRV_LOG_STRIP PMD_DRV_LOG_OPAREN, \
+		PMD_DRV_LOG_CPAREN)
+
 struct mlx5_indexed_pool_config {
 	uint32_t size; /* Pool entry size. */
 	uint32_t trunk_size:22;
