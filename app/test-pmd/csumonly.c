@@ -59,6 +59,8 @@
 #define GRE_SUPPORTED_FIELDS	(GRE_CHECKSUM_PRESENT | GRE_KEY_PRESENT |\
 				 GRE_SEQUENCE_PRESENT)
 
+#define MAX_VLAN_HEADERS 8
+
 /* We cannot use rte_cpu_to_be_16() on a constant in a switch/case */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #define _htons(x) ((uint16_t)((((x) & 0x00ffU) << 8) | (((x) & 0xff00U) >> 8)))
@@ -466,7 +468,7 @@ pkts_ip_csum_recalc(struct rte_mbuf **pkts_burst, const uint16_t nb_pkts, uint64
 static uint32_t
 get_ethertype_by_ptype(struct rte_ether_hdr *eth_hdr, uint32_t ptype)
 {
-	struct rte_vlan_hdr *vlan_hdr;
+	struct rte_vlan_hdr *vlan_hdr, *max_vlans;
 	uint16_t ethertype;
 
 	switch (ptype) {
@@ -486,10 +488,12 @@ get_ethertype_by_ptype(struct rte_ether_hdr *eth_hdr, uint32_t ptype)
 		return _htons(RTE_ETHER_TYPE_IPV6);
 	default:
 		ethertype = eth_hdr->ether_type;
-		while (eth_hdr->ether_type == _htons(RTE_ETHER_TYPE_VLAN) ||
-			eth_hdr->ether_type == _htons(RTE_ETHER_TYPE_QINQ)) {
-			vlan_hdr = (struct rte_vlan_hdr *)
-				((char *)eth_hdr + sizeof(*eth_hdr));
+		vlan_hdr = RTE_PTR_ADD(eth_hdr, offsetof(struct rte_ether_hdr, ether_type));
+		max_vlans = vlan_hdr + MAX_VLAN_HEADERS;
+		while ((ethertype == _htons(RTE_ETHER_TYPE_VLAN) ||
+				ethertype == _htons(RTE_ETHER_TYPE_QINQ)) &&
+				vlan_hdr < max_vlans) {
+			vlan_hdr++;
 			ethertype = vlan_hdr->eth_proto;
 		}
 		return ethertype;
