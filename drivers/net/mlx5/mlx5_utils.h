@@ -259,6 +259,15 @@ struct mlx5_ipool_per_lcore {
 	uint32_t idx[]; /**< Cache objects. */
 };
 
+#ifdef POOL_DEBUG
+struct mlx5_ipool_cache_validation {
+	rte_spinlock_t lock;
+	uint32_t bmp_size;
+	struct rte_bitmap *bmp;
+	void *bmp_mem;
+};
+#endif
+
 struct mlx5_indexed_pool {
 	struct mlx5_indexed_pool_config cfg; /* Indexed pool configuration. */
 	rte_spinlock_t rsz_lock; /* Pool lock for multiple thread usage. */
@@ -279,6 +288,9 @@ struct mlx5_indexed_pool {
 			struct rte_bitmap *ibmp;
 			void *bmp_mem;
 			/* Allocate objects bitmap. Use during flush. */
+#ifdef POOL_DEBUG
+			struct mlx5_ipool_cache_validation cache_validator;
+#endif
 		};
 	};
 #ifdef POOL_DEBUG
