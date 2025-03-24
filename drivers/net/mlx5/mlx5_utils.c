@@ -121,6 +121,9 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 		pool->free_list = TRUNK_INVALID;
 	rte_spinlock_init(&pool->lcore_lock);
 
+#ifdef POOL_DEBUG
+	rte_spinlock_init(&pool->cache_validator.lock);
+#endif
 	DRV_LOG_IPOOL(INFO, "lcore id %d: pool %s: per core cache mode %s",
 		      rte_lcore_id(), pool->cfg.type, pool->cfg.per_core_cache != 0 ? "on" : "off");
 	return pool;
@@ -228,6 +231,55 @@ mlx5_ipool_update_global_cache(struct mlx5_indexed_pool *pool, int cidx)
 	}
 	return lc;
 }
+
+#ifdef POOL_DEBUG
+static void
+mlx5_ipool_grow_bmp(struct mlx5_indexed_pool *pool, uint32_t new_size)
+{
+	struct rte_bitmap *old_bmp = NULL;
+	void *old_bmp_mem = NULL;
+	uint32_t old_size = 0;
+	uint32_t i, bmp_mem_size;
+
+	if (pool->cache_validator.bmp_mem && pool->cache_validator.bmp) {
+		old_bmp = pool->cache_validator.bmp;
+		old_size = pool->cache_validator.bmp_size;
+		old_bmp_mem = pool->cache_validator.bmp_mem;
+	}
+
+	if (unlikely(new_size <= old_size))
+		return;
+
+	pool->cache_validator.bmp_size = new_size;
+	bmp_mem_size = rte_bitmap_get_memory_footprint(new_size);
+
+	pool->cache_validator.bmp_mem = pool->cfg.malloc(MLX5_MEM_ZERO, bmp_mem_size,
+										RTE_CACHE_LINE_SIZE,
+										rte_socket_id());
+	if (unlikely(!pool->cache_validator.bmp_mem)) {
+		DRV_LOG_IPOOL(ERR, "Unable to allocate memory for a new bitmap");
+		return;
+	}
+
+	pool->cache_validator.bmp = rte_bitmap_init_with_all_set(pool->cache_validator.bmp_size,
+								pool->cache_validator.bmp_mem,
+								bmp_mem_size);
+	if (unlikely(!pool->cache_validator.bmp)) {
+		DRV_LOG(ERR, "Unable to allocate memory for a new bitmap");
+		pool->cfg.free(pool->cache_validator.bmp_mem);
+		return;
+	}
+
+	if (old_bmp && old_bmp_mem) {
+		for (i = 0; i < old_size; i++) {
+			if (rte_bitmap_get(old_bmp, i) == 0)
+				rte_bitmap_clear(pool->cache_validator.bmp, i);
+		}
+		rte_bitmap_free(old_bmp);
+		pool->cfg.free(old_bmp_mem);
+	}
+}
+#endif
 
 static uint32_t
 mlx5_ipool_allocate_from_global(struct mlx5_indexed_pool *pool, int cidx)
@@ -413,6 +465,50 @@ mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 	return entry;
 }
 
+#ifdef POOL_DEBUG
+static void
+mlx5_ipool_validate_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	rte_spinlock_lock(&pool->cache_validator.lock);
+	uint32_t entry_idx = idx - 1;
+	uint32_t allocated_size = pool->gc->n_trunk_valid *
+						mlx5_trunk_size_get(pool, pool->n_trunk_valid);
+
+	if (!pool->cache_validator.bmp)
+		mlx5_ipool_grow_bmp(pool, allocated_size);
+
+	if (pool->cache_validator.bmp_size < allocated_size)
+		mlx5_ipool_grow_bmp(pool, allocated_size);
+
+	if (rte_bitmap_get(pool->cache_validator.bmp, entry_idx) == 0) {
+		DRV_LOG_IPOOL(ERR, "lcore id %d: pool %s: detected double malloc idx: %d",
+			      rte_lcore_id(), pool->cfg.type, idx);
+		MLX5_ASSERT(0);
+	}
+	rte_bitmap_clear(pool->cache_validator.bmp, entry_idx);
+	rte_spinlock_unlock(&pool->cache_validator.lock);
+}
+
+static void
+mlx5_ipool_validate_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	rte_spinlock_lock(&pool->cache_validator.lock);
+	uint32_t entry_idx = idx - 1;
+
+	if (!pool->gc || !pool->cache_validator.bmp) {
+		rte_spinlock_unlock(&pool->cache_validator.lock);
+		return;
+	}
+
+	if (rte_bitmap_get(pool->cache_validator.bmp, entry_idx) != 0) {
+		DRV_LOG_IPOOL(ERR, "lcore id %d: pool %s: detected double free of index %d",
+			      rte_lcore_id(), pool->cfg.type, idx);
+		MLX5_ASSERT(0);
+	}
+	rte_bitmap_set(pool->cache_validator.bmp, entry_idx);
+	rte_spinlock_unlock(&pool->cache_validator.lock);
+}
+#endif
 
 static void *
 _mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, int cidx,
@@ -455,11 +551,11 @@ mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t *idx)
 		rte_spinlock_unlock(&pool->lcore_lock);
 #ifdef POOL_DEBUG
 	++pool->n_entry;
+	mlx5_ipool_validate_malloc_cache(pool, *idx);
 	DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: allocated entry %d lcore %d, "
 		      "current cache size %d, total allocated entries %d.", rte_lcore_id(),
 		      pool->cfg.type, *idx, cidx, pool->cache[cidx]->len, pool->n_entry);
 #endif
-
 	return entry;
 }
 
@@ -471,6 +567,11 @@ _mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 	uint32_t reclaim_num = 0;
 
 	MLX5_ASSERT(idx);
+
+#ifdef POOL_DEBUG
+	mlx5_ipool_validate_free_cache(pool, idx);
+#endif
+
 	/*
 	 * When index was allocated on core A but freed on core B. In this
 	 * case check if local cache on core B was allocated before.
