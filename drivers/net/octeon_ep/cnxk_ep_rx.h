@@ -72,11 +72,10 @@ cnxk_ep_rx_refill(struct otx_ep_droq *droq)
 		desc_refilled = count;
 		count = droq->read_idx;
 		rc = cnxk_ep_rx_refill_mbuf(droq, count);
-		if (unlikely(rc)) {
+		if (unlikely(rc))
 			droq->stats.rx_alloc_failure++;
-			return;
-		}
-		desc_refilled += count;
+		else
+			desc_refilled += count;
 	}
 
 	/* Flush the droq descriptor data to memory to be sure
