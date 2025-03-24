@@ -104,14 +104,15 @@ static inline uint8_t
 npa_q_irq_get_and_clear(struct npa_lf *lf, uint32_t q, uint32_t off,
 			uint64_t mask)
 {
-	uint64_t reg, wdata;
+	uint64_t reg, wdata, shift;
 	uint8_t qint;
 
-	wdata = (uint64_t)q << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = (uint64_t)q << shift;
 	reg = roc_atomic64_add_nosync(wdata, (int64_t *)(lf->base + off));
 
 	if (reg & BIT_ULL(42) /* OP_ERR */) {
-		plt_err("Failed execute irq get off=0x%x", off);
+		plt_err("Failed execute irq get off=0x%x reg=0x%" PRIu64, off, reg);
 		return 0;
 	}
 
