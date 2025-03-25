@@ -44,14 +44,10 @@ use_function_versioning = true
 if dpdk_conf.has('RTE_ARCH_X86_64')
     sources += files('net_crc_sse.c')
     cflags += ['-mpclmul', '-maes']
-    if cc.has_argument('-mvpclmulqdq') and cc_has_avx512
-        cflags += ['-DCC_X86_64_AVX512_VPCLMULQDQ_SUPPORT']
-        net_crc_avx512_lib = static_library(
-                'net_crc_avx512_lib',
-                'net_crc_avx512.c',
-                dependencies: static_rte_eal,
-                c_args: [cflags, cc_avx512_flags, '-mvpclmulqdq'])
-        objs += net_crc_avx512_lib.extract_objects('net_crc_avx512.c')
+    # only build AVX-512 support if we also have PCLMULQDQ support
+    if cc.has_argument('-mvpclmulqdq')
+        sources_avx512 += files('net_crc_avx512.c')
+        cflags_avx512 += ['-mvpclmulqdq']
     endif
 
 elif (dpdk_conf.has('RTE_ARCH_ARM64') and

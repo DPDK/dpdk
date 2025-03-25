@@ -60,7 +60,7 @@ static const rte_net_crc_handler handlers_scalar[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_handler,
 };
-#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+#ifdef CC_AVX512_SUPPORT
 static const rte_net_crc_handler handlers_avx512[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_avx512_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_avx512_handler,
@@ -185,7 +185,7 @@ rte_crc32_eth_handler(const uint8_t *data, uint32_t data_len)
 static const rte_net_crc_handler *
 avx512_vpclmulqdq_get_handlers(void)
 {
-#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+#ifdef CC_AVX512_SUPPORT
 	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED &&
 			max_simd_bitwidth >= RTE_VECT_SIMD_512)
 		return handlers_avx512;
@@ -197,7 +197,7 @@ avx512_vpclmulqdq_get_handlers(void)
 static void
 avx512_vpclmulqdq_init(void)
 {
-#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+#ifdef CC_AVX512_SUPPORT
 	if (AVX512_VPCLMULQDQ_CPU_SUPPORTED)
 		rte_net_crc_avx512_init();
 #endif
@@ -305,7 +305,7 @@ handlers_init(enum rte_net_crc_alg alg)
 
 	switch (alg) {
 	case RTE_NET_CRC_AVX512:
-#ifdef CC_X86_64_AVX512_VPCLMULQDQ_SUPPORT
+#ifdef CC_AVX512_SUPPORT
 		if (AVX512_VPCLMULQDQ_CPU_SUPPORTED) {
 			handlers_dpdk26[alg].f[RTE_NET_CRC16_CCITT] =
 				rte_crc16_ccitt_avx512_handler;
