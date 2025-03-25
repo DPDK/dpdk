@@ -15,7 +15,6 @@ sources = files(
 
 if arch_subdir == 'x86'
     sources += files('cnxk_ep_rx_sse.c')
-    cflags += ['-DCC_AVX2_SUPPORT']
     sources_avx2 += files('cnxk_ep_rx_avx.c')
 endif
 
