@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef CC_AVX512_SUPPORT
+
 #include "dlb2_priv.h"
 #include "dlb2_iface.h"
 #include "dlb2_inline_fns.h"
@@ -226,3 +228,5 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 		break;
 	}
 }
+
+#endif /* !CC_AVX512_SUPPORT */
