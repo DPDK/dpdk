@@ -27,15 +27,8 @@ cflags += no_wvla_cflag
 
 if arch_subdir == 'x86'
     if cc_has_avx512
-        cflags += ['-DCC_AVX512_SUPPORT']
         cflags += ['-DVIRTIO_RXTX_PACKED_VEC']
-        virtio_avx512_lib = static_library('virtio_avx512_lib',
-                'virtio_rxtx_packed.c',
-                dependencies: [static_rte_ethdev,
-                    static_rte_kvargs, static_rte_bus_pci],
-                include_directories: includes,
-                c_args: cflags + cc_avx512_flags)
-        objs += virtio_avx512_lib.extract_objects('virtio_rxtx_packed.c')
+        sources_avx512 += files('virtio_rxtx_packed.c')
         if (toolchain == 'gcc' and cc.version().version_compare('>=8.3.0'))
             cflags += '-DVIRTIO_GCC_UNROLL_PRAGMA'
         elif (toolchain == 'clang' and cc.version().version_compare('>=3.7.0'))

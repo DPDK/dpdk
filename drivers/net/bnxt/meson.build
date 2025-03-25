@@ -58,15 +58,7 @@ subdir('hcapi/cfa_v3')
 
 if arch_subdir == 'x86'
     sources += files('bnxt_rxtx_vec_sse.c')
-    # build AVX2 code with instruction set explicitly enabled for runtime selection
-    bnxt_avx2_lib = static_library('bnxt_avx2_lib',
-            'bnxt_rxtx_vec_avx2.c',
-            dependencies: [static_rte_ethdev,
-                static_rte_bus_pci,
-                static_rte_kvargs, static_rte_hash],
-            include_directories: includes,
-            c_args: [cflags, cc_avx2_flags])
-     objs += bnxt_avx2_lib.extract_objects('bnxt_rxtx_vec_avx2.c')
+    sources_avx2 += files('bnxt_rxtx_vec_avx2.c')
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('bnxt_rxtx_vec_neon.c')
 endif
