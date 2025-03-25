@@ -122,6 +122,9 @@ foreach l:libraries
     use_function_versioning = false
     annotate_locks = true
     sources = []
+    sources_avx2 = []
+    sources_avx512 = []
+    cflags_avx512 = [] # extra cflags for the avx512 code, e.g. extra avx512 feature flags
     headers = []
     indirect_headers = [] # public headers not directly included by apps
     driver_sdk_headers = [] # public headers included by drivers
@@ -242,7 +245,35 @@ foreach l:libraries
         cflags += '-Wthread-safety'
     endif
 
-    # first build static lib
+    # handle avx2 and avx512 source files
+    if arch_subdir == 'x86'
+        if sources_avx2.length() > 0
+            avx2_lib = static_library(libname + '_avx2_lib',
+                    sources_avx2,
+                    dependencies: static_deps,
+                    include_directories: includes,
+                    c_args: [cflags, cc_avx2_flags])
+            objs += avx2_lib.extract_objects(sources_avx2)
+        endif
+        if sources_avx512.length() > 0 and cc_has_avx512
+            cflags += '-DCC_AVX512_SUPPORT'
+            avx512_args = [cflags, cflags_avx512, cc_avx512_flags]
+            if not target_has_avx512 and cc.has_argument('-march=skylake-avx512')
+                avx512_args += '-march=skylake-avx512'
+                if cc.has_argument('-Wno-overriding-option')
+                    avx512_args += '-Wno-overriding-option'
+                endif
+            endif
+            avx512_lib = static_library(libname + '_avx512_lib',
+                    sources_avx512,
+                    dependencies: static_deps,
+                    include_directories: includes,
+                    c_args: avx512_args)
+            objs += avx512_lib.extract_objects(sources_avx512)
+        endif
+    endif
+
+    # build static lib
     static_lib = static_library(libname,
             sources,
             objects: objs,
