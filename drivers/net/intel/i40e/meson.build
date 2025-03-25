@@ -40,31 +40,8 @@ includes += include_directories('base')
 
 if arch_subdir == 'x86'
     sources += files('i40e_rxtx_vec_sse.c')
-
-    i40e_avx2_lib = static_library('i40e_avx2_lib',
-            'i40e_rxtx_vec_avx2.c',
-            dependencies: [static_rte_ethdev, static_rte_kvargs, static_rte_hash],
-            include_directories: includes,
-            c_args: [cflags, cc_avx2_flags])
-    objs += i40e_avx2_lib.extract_objects('i40e_rxtx_vec_avx2.c')
-
-    if cc_has_avx512
-        cflags += ['-DCC_AVX512_SUPPORT']
-        avx512_args = cflags + cc_avx512_flags
-        if cc.has_argument('-march=skylake-avx512')
-            avx512_args += '-march=skylake-avx512'
-            if cc.has_argument('-Wno-overriding-option')
-                avx512_args += '-Wno-overriding-option'
-            endif
-        endif
-        i40e_avx512_lib = static_library('i40e_avx512_lib',
-                'i40e_rxtx_vec_avx512.c',
-                dependencies: [static_rte_ethdev,
-                    static_rte_kvargs, static_rte_hash],
-                include_directories: includes,
-                c_args: avx512_args)
-        objs += i40e_avx512_lib.extract_objects('i40e_rxtx_vec_avx512.c')
-    endif
+    sources_avx2 += files('i40e_rxtx_vec_avx2.c')
+    sources_avx512 += files('i40e_rxtx_vec_avx512.c')
 elif arch_subdir == 'ppc'
        sources += files('i40e_rxtx_vec_altivec.c')
 elif arch_subdir == 'arm'
