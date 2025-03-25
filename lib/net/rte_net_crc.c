@@ -66,7 +66,7 @@ static const rte_net_crc_handler handlers_avx512[] = {
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_avx512_handler,
 };
 #endif
-#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+#ifdef RTE_ARCH_X86_64
 static const rte_net_crc_handler handlers_sse42[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_sse42_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_sse42_handler,
@@ -211,7 +211,7 @@ avx512_vpclmulqdq_init(void)
 static const rte_net_crc_handler *
 sse42_pclmulqdq_get_handlers(void)
 {
-#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+#ifdef RTE_ARCH_X86_64
 	if (SSE42_PCLMULQDQ_CPU_SUPPORTED &&
 			max_simd_bitwidth >= RTE_VECT_SIMD_128)
 		return handlers_sse42;
@@ -223,7 +223,7 @@ sse42_pclmulqdq_get_handlers(void)
 static void
 sse42_pclmulqdq_init(void)
 {
-#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+#ifdef RTE_ARCH_X86_64
 	if (SSE42_PCLMULQDQ_CPU_SUPPORTED)
 		rte_net_crc_sse42_init();
 #endif
@@ -316,7 +316,7 @@ handlers_init(enum rte_net_crc_alg alg)
 #endif
 		/* fall-through */
 	case RTE_NET_CRC_SSE42:
-#ifdef CC_X86_64_SSE42_PCLMULQDQ_SUPPORT
+#ifdef RTE_ARCH_X86_64
 		if (SSE42_PCLMULQDQ_CPU_SUPPORTED) {
 			handlers_dpdk26[alg].f[RTE_NET_CRC16_CCITT] =
 				rte_crc16_ccitt_sse42_handler;

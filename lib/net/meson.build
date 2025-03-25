@@ -42,57 +42,15 @@ deps += ['mbuf']
 use_function_versioning = true
 
 if dpdk_conf.has('RTE_ARCH_X86_64')
-    net_crc_sse42_cpu_support = (cc.get_define('__PCLMUL__', args: machine_args) != '')
-    net_crc_avx512_cpu_support = (
-            target_has_avx512 and
-            cc.get_define('__VPCLMULQDQ__', args: machine_args) != ''
-    )
-
-    net_crc_sse42_cc_support = (cc.has_argument('-mpclmul') and cc.has_argument('-maes'))
-    net_crc_avx512_cc_support = (cc.has_argument('-mvpclmulqdq') and cc_has_avx512)
-
-    build_static_net_crc_sse42_lib = 0
-    build_static_net_crc_avx512_lib = 0
-
-    if net_crc_sse42_cpu_support == true
-        sources += files('net_crc_sse.c')
-        cflags += ['-DCC_X86_64_SSE42_PCLMULQDQ_SUPPORT']
-        if net_crc_avx512_cpu_support == true
-            sources += files('net_crc_avx512.c')
-            cflags += ['-DCC_X86_64_AVX512_VPCLMULQDQ_SUPPORT']
-        elif net_crc_avx512_cc_support == true
-            build_static_net_crc_avx512_lib = 1
-            net_crc_avx512_lib_cflags = cc_avx512_flags + ['-mvpclmulqdq']
-            cflags += ['-DCC_X86_64_AVX512_VPCLMULQDQ_SUPPORT']
-        endif
-    elif net_crc_sse42_cc_support == true
-        build_static_net_crc_sse42_lib = 1
-        net_crc_sse42_lib_cflags = ['-mpclmul', '-maes']
-        cflags += ['-DCC_X86_64_SSE42_PCLMULQDQ_SUPPORT']
-        if net_crc_avx512_cc_support == true
-            build_static_net_crc_avx512_lib = 1
-            net_crc_avx512_lib_cflags = cc_avx512_flags + ['-mvpclmulqdq', '-mpclmul']
-            cflags += ['-DCC_X86_64_AVX512_VPCLMULQDQ_SUPPORT']
-        endif
-    endif
-
-    if build_static_net_crc_sse42_lib == 1
-        net_crc_sse42_lib = static_library(
-                'net_crc_sse42_lib',
-                'net_crc_sse.c',
-                dependencies: static_rte_eal,
-                c_args: [cflags,
-                    net_crc_sse42_lib_cflags])
-        objs += net_crc_sse42_lib.extract_objects('net_crc_sse.c')
-    endif
-
-    if build_static_net_crc_avx512_lib == 1
+    sources += files('net_crc_sse.c')
+    cflags += ['-mpclmul', '-maes']
+    if cc.has_argument('-mvpclmulqdq') and cc_has_avx512
+        cflags += ['-DCC_X86_64_AVX512_VPCLMULQDQ_SUPPORT']
         net_crc_avx512_lib = static_library(
                 'net_crc_avx512_lib',
                 'net_crc_avx512.c',
                 dependencies: static_rte_eal,
-                c_args: [cflags,
-                    net_crc_avx512_lib_cflags])
+                c_args: [cflags, cc_avx512_flags, '-mvpclmulqdq'])
         objs += net_crc_avx512_lib.extract_objects('net_crc_avx512.c')
     endif
 
