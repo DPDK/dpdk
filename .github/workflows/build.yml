@@ -12,7 +12,7 @@ defaults:
 env:
   REF_GIT_BRANCH: main
   REF_GIT_REPO: https://github.com/DPDK/dpdk
-  REF_GIT_TAG: v24.11
+  REF_GIT_TAG: v25.03
 
 jobs:
   checkpatch:
