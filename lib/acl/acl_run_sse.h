@@ -205,10 +205,8 @@ search_sse_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < MAX_SEARCHES_SSE8; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < MAX_SEARCHES_SSE8; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	/*
 	 * indices1 contains index_array[0,1]
@@ -293,10 +291,8 @@ search_sse_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < MAX_SEARCHES_SSE4; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < MAX_SEARCHES_SSE4; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	indices1 = _mm_loadu_si128((xmm_t *) &index_array[0]);
 	indices2 = _mm_loadu_si128((xmm_t *) &index_array[2]);

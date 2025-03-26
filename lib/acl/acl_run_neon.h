@@ -172,10 +172,8 @@ search_neon_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		     total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < 8; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < 8; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	 /* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows, &index_array[0]);
@@ -234,10 +232,8 @@ search_neon_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		     total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < 4; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < 4; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	/* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows, index_array);
