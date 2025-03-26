@@ -189,6 +189,8 @@ atomic_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	}
 
 	atomic_locks = atomic_init_locks(NB_STAGES, opt->nb_flows);
+	if (atomic_locks == NULL)
+		return -1;
 
 	return 0;
 }

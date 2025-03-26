@@ -66,8 +66,10 @@ atomic_init_locks(uint32_t nb_stages, uint32_t nb_flows)
 
 	rte_spinlock_t *atomic_locks = rte_calloc(NULL, num_locks, sizeof(rte_spinlock_t), 0);
 
-	if (atomic_locks == NULL)
+	if (atomic_locks == NULL) {
 		evt_err("Unable to allocate memory for spinlocks.");
+		return NULL;
+	}
 
 	for (uint32_t i = 0; i < num_locks; i++)
 		rte_spinlock_init(&atomic_locks[i]);
