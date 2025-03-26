@@ -171,10 +171,8 @@ search_avx2x16(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < RTE_DIM(cmplt); n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < RTE_DIM(cmplt); n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	t0 = _mm256_set_epi64x(index_array[5], index_array[4],
 		index_array[1], index_array[0]);

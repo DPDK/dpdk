@@ -121,10 +121,8 @@ rte_acl_classify_scalar(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results, num,
 		categories, ctx->trans_table);
 
-	for (n = 0; n < MAX_SEARCHES_SCALAR; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < MAX_SEARCHES_SCALAR; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	transition0 = index_array[0];
 	transition1 = index_array[1];
