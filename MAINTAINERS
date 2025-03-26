@@ -806,7 +806,6 @@ F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/ixgbe*.ini
 
 Intel i40e
-M: Ian Stokes <ian.stokes@intel.com>
 M: Bruce Richardson <bruce.richardson@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/i40e/
@@ -822,7 +821,6 @@ F: doc/guides/nics/features/fm10k*.ini
 
 Intel iavf
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
-M: Ian Stokes <ian.stokes@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/iavf/
 F: doc/guides/nics/features/iavf*.ini
