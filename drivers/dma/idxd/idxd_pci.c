@@ -11,6 +11,8 @@
 
 #define IDXD_VENDOR_ID		0x8086
 #define IDXD_DEVICE_ID_SPR	0x0B25
+#define IDXD_DEVICE_ID_GNRD	0x11FB
+#define IDXD_DEVICE_ID_DMR	0x1212
 
 #define DEVICE_VERSION_1	0x100
 #define DEVICE_VERSION_2	0x200
@@ -24,6 +26,8 @@
 
 const struct rte_pci_id pci_id_idxd_map[] = {
 	{ RTE_PCI_DEVICE(IDXD_VENDOR_ID, IDXD_DEVICE_ID_SPR) },
+	{ RTE_PCI_DEVICE(IDXD_VENDOR_ID, IDXD_DEVICE_ID_GNRD) },
+	{ RTE_PCI_DEVICE(IDXD_VENDOR_ID, IDXD_DEVICE_ID_DMR) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
