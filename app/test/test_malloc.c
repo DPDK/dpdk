@@ -25,6 +25,7 @@
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 #include <rte_random.h>
+#include <rte_eal_paging.h>
 #include <rte_string_fns.h>
 
 #define N 10000
@@ -267,11 +268,48 @@ test_str_to_size(void)
 static int
 test_multi_alloc_statistics(void)
 {
+	int ret = -1;  /* default return is error, cleared at end on success */
 	int socket = 0;
 	struct rte_malloc_socket_stats pre_stats, post_stats ,first_stats, second_stats;
 	size_t size = 2048;
 	int align = 1024;
 	int overhead = 0;
+	const size_t pgsz = rte_mem_page_size();
+	const size_t heap_size = (1 << 22);
+
+	if (pgsz > heap_size) {
+		printf("Page size (%zu) is bigger than heap size, skipping alloc stats test\n",
+				pgsz);
+		return TEST_SKIPPED;
+	}
+	if (heap_size % pgsz != 0) {
+		printf("Heap size (%zu) is not a multiple of page size (%zu), skipping alloc stats test\n",
+				heap_size, pgsz);
+		return TEST_SKIPPED;
+	}
+
+	if (rte_malloc_heap_create(__func__) != 0) {
+		printf("Failed to create test malloc heap\n");
+		goto end;
+	}
+
+	/* Allocate some memory using malloc and add it to our test heap. */
+	void *unaligned_memory = malloc(heap_size + pgsz);
+	if (unaligned_memory == NULL) {
+		printf("Failed to allocate memory\n");
+		goto cleanup_empty_heap;
+	}
+	void *memory = RTE_PTR_ALIGN(unaligned_memory, pgsz);
+	if (rte_malloc_heap_memory_add(__func__, memory, heap_size, NULL,
+			heap_size / pgsz, pgsz) != 0) {
+		printf("Failed to add memory to heap\n");
+		goto cleanup_allocated_memory;
+	}
+	socket = rte_malloc_heap_get_socket(__func__);
+	if (socket < 0) {
+		printf("Failed to get socket for test malloc heap.\n");
+		goto cleanup_all;
+	}
 
 	/* Dynamically calculate the overhead by allocating one cacheline and
 	 * then comparing what was allocated from the heap.
@@ -280,7 +318,7 @@ test_multi_alloc_statistics(void)
 
 	void *dummy = rte_malloc_socket(NULL, RTE_CACHE_LINE_SIZE, 0, socket);
 	if (dummy == NULL)
-		return -1;
+		goto cleanup_all;
 
 	rte_malloc_get_socket_stats(socket, &post_stats);
 
@@ -295,7 +333,8 @@ test_multi_alloc_statistics(void)
 
 	void *p1 = rte_malloc_socket("stats", size , align, socket);
 	if (!p1)
-		return -1;
+		goto cleanup_all;
+
 	rte_free(p1);
 	rte_malloc_dump_stats(stdout, "stats");
 
@@ -308,7 +347,7 @@ test_multi_alloc_statistics(void)
 			(post_stats.alloc_count != pre_stats.alloc_count) ||
 			(post_stats.free_count != pre_stats.free_count)) {
 		printf("Malloc statistics are incorrect - freed alloc\n");
-		return -1;
+		goto cleanup_all;
 	}
 	/* Check two consecutive allocations */
 	size = 1024;
@@ -316,12 +355,12 @@ test_multi_alloc_statistics(void)
 	rte_malloc_get_socket_stats(socket,&pre_stats);
 	void *p2 = rte_malloc_socket("add", size ,align, socket);
 	if (!p2)
-		return -1;
+		goto cleanup_all;
 	rte_malloc_get_socket_stats(socket,&first_stats);
 
 	void *p3 = rte_malloc_socket("add2", size,align, socket);
 	if (!p3)
-		return -1;
+		goto cleanup_all;
 
 	rte_malloc_get_socket_stats(socket,&second_stats);
 
@@ -333,34 +372,34 @@ test_multi_alloc_statistics(void)
 
 	if(second_stats.heap_totalsz_bytes != first_stats.heap_totalsz_bytes) {
 		printf("Incorrect heap statistics: Total size \n");
-		return -1;
+		goto cleanup_all;
 	}
 	/* Check allocated size is equal to two additions plus overhead */
 	if(second_stats.heap_allocsz_bytes !=
 			size + overhead + first_stats.heap_allocsz_bytes) {
 		printf("Incorrect heap statistics: Allocated size \n");
-		return -1;
+		goto cleanup_all;
 	}
 	/* Check that allocation count increments correctly i.e. +1 */
 	if (second_stats.alloc_count != first_stats.alloc_count + 1) {
 		printf("Incorrect heap statistics: Allocated count \n");
-		return -1;
+		goto cleanup_all;
 	}
 
 	if (second_stats.free_count != first_stats.free_count){
 		printf("Incorrect heap statistics: Free count \n");
-		return -1;
+		goto cleanup_all;
 	}
 
 	/* Make sure that we didn't touch our greatest chunk: 2 * 11M)  */
 	if (post_stats.greatest_free_size != pre_stats.greatest_free_size) {
 		printf("Incorrect heap statistics: Greatest free size \n");
-		return -1;
+		goto cleanup_all;
 	}
 	/* Free size must equal the original free size minus the new allocation*/
 	if (first_stats.heap_freesz_bytes <= second_stats.heap_freesz_bytes) {
 		printf("Incorrect heap statistics: Free size \n");
-		return -1;
+		goto cleanup_all;
 	}
 
 	if ((post_stats.heap_totalsz_bytes != pre_stats.heap_totalsz_bytes) ||
@@ -369,9 +408,21 @@ test_multi_alloc_statistics(void)
 			(post_stats.alloc_count != pre_stats.alloc_count) ||
 			(post_stats.free_count != pre_stats.free_count)) {
 		printf("Malloc statistics are incorrect - freed alloc\n");
-		return -1;
+		goto cleanup_all;
 	}
-	return 0;
+
+	/* set return value as success before cleanup */
+	ret = 0;
+
+	/* cleanup */
+cleanup_all:
+	rte_malloc_heap_memory_remove(__func__, memory, heap_size);
+cleanup_allocated_memory:
+	free(unaligned_memory);
+cleanup_empty_heap:
+	rte_malloc_heap_destroy(__func__);
+end:
+	return ret;
 }
 
 #ifdef RTE_EXEC_ENV_WINDOWS
