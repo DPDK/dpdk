@@ -7510,6 +7510,7 @@ ixgbe_mrqc_reg_get(enum ixgbe_mac_type mac_type) {
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
 	case ixgbe_mac_X550EM_a_vf:
+	case ixgbe_mac_E610_vf:
 		return IXGBE_VFMRQC;
 	default:
 		return IXGBE_MRQC;
@@ -7522,6 +7523,7 @@ ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i) {
 	case ixgbe_mac_X550_vf:
 	case ixgbe_mac_X550EM_x_vf:
 	case ixgbe_mac_X550EM_a_vf:
+	case ixgbe_mac_E610_vf:
 		return IXGBE_VFRSSRK(i);
 	default:
 		return IXGBE_RSSRK(i);
