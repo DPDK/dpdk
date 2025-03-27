@@ -89,6 +89,7 @@
 
 /* forward-declare some functions */
 static int ixgbe_is_vf(struct rte_eth_dev *dev);
+static int ixgbe_write_default_ctx_desc(struct ci_tx_queue *txq, struct rte_mempool *mp, bool vec);
 
 /*********************************************************************
  *
@@ -151,7 +152,8 @@ ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 
 /* Populate 4 descriptors with data from 4 mbufs */
 static inline void
-tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
+tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts,
+		const uint32_t olinfo_flags)
 {
 	uint64_t buf_dma_addr;
 	uint32_t pkt_len;
@@ -168,7 +170,8 @@ tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 			rte_cpu_to_le_32((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
 
 		txdp->read.olinfo_status =
-			rte_cpu_to_le_32(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+			rte_cpu_to_le_32(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT) |
+				olinfo_flags;
 
 		rte_prefetch0(&(*pkts)->pool);
 	}
@@ -176,7 +179,8 @@ tx4(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 
 /* Populate 1 descriptor with data from 1 mbuf */
 static inline void
-tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
+tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts,
+		const uint32_t olinfo_flags)
 {
 	uint64_t buf_dma_addr;
 	uint32_t pkt_len;
@@ -189,7 +193,8 @@ tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
 	txdp->read.cmd_type_len =
 			rte_cpu_to_le_32((uint32_t)DCMD_DTYP_FLAGS | pkt_len);
 	txdp->read.olinfo_status =
-			rte_cpu_to_le_32(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
+			rte_cpu_to_le_32(pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT) |
+				olinfo_flags;
 	rte_prefetch0(&(*pkts)->pool);
 }
 
@@ -205,6 +210,8 @@ ixgbe_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP-1;
+	/* for VF queues, need to set CC bit. context idx is always 0. */
+	const uint32_t olinfo_flags = txq->is_vf ? rte_cpu_to_le_32(IXGBE_ADVTXD_CC) : 0;
 	int mainpart, leftover;
 	int i, j;
 
@@ -219,13 +226,13 @@ ixgbe_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 		for (j = 0; j < N_PER_LOOP; ++j) {
 			(txep + i + j)->mbuf = *(pkts + i + j);
 		}
-		tx4(txdp + i, pkts + i);
+		tx4(txdp + i, pkts + i, olinfo_flags);
 	}
 
 	if (unlikely(leftover > 0)) {
 		for (i = 0; i < leftover; ++i) {
 			(txep + mainpart + i)->mbuf = *(pkts + mainpart + i);
-			tx1(txdp + mainpart + i, pkts + mainpart + i);
+			tx1(txdp + mainpart + i, pkts + mainpart + i, olinfo_flags);
 		}
 	}
 }
@@ -320,7 +327,17 @@ uint16_t
 ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts)
 {
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	uint16_t nb_tx;
+
+	/* we might check first packet's mempool */
+	if (unlikely(nb_pkts == 0))
+		return nb_pkts;
+
+	/* check if we need to initialize default context descriptor */
+	if (unlikely(!txq->vf_ctx_initialized) &&
+			ixgbe_write_default_ctx_desc(txq, tx_pkts[0]->pool, false))
+		return 0;
 
 	/* Try to transmit at least chunks of TX_MAX_BURST pkts */
 	if (likely(nb_pkts <= RTE_PMD_IXGBE_TX_MAX_BURST))
@@ -348,6 +365,15 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	uint16_t nb_tx = 0;
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+
+	/* we might check first packet's mempool */
+	if (unlikely(nb_pkts == 0))
+		return nb_pkts;
+
+	/* check if we need to initialize default context descriptor */
+	if (unlikely(!txq->vf_ctx_initialized) &&
+			ixgbe_write_default_ctx_desc(txq, tx_pkts[0]->pool, true))
+		return 0;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -707,6 +733,14 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* Only allocate context descriptor if required*/
 			new_ctx = (ctx == IXGBE_CTX_NUM);
 			ctx = txq->ctx_curr;
+		} else if (txq->is_vf) {
+			/* create default context descriptor for VF */
+			tx_offload.l2_len = RTE_ETHER_HDR_LEN;
+			/* If new context need be built or reuse the exist ctx. */
+			ctx = what_advctx_update(txq, 0, tx_offload);
+			/* Only allocate context descriptor if required */
+			new_ctx = (ctx == IXGBE_CTX_NUM);
+			ctx = txq->ctx_curr;
 		}
 
 		/*
@@ -831,7 +865,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 #endif
 
 		olinfo_status = 0;
-		if (tx_ol_req) {
+		if (tx_ol_req || new_ctx) {
 
 			if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 				/* when TSO is on, paylen in descriptor is the
@@ -877,7 +911,11 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			olinfo_status |= tx_desc_cksum_flags_to_olinfo(ol_flags);
 			olinfo_status |= ctx << IXGBE_ADVTXD_IDX_SHIFT;
 		}
-
+		/* for VF, always set CC bit and set valid ctx */
+		if (txq->is_vf) {
+			olinfo_status |= IXGBE_ADVTXD_CC;
+			olinfo_status |= ctx << IXGBE_ADVTXD_IDX_SHIFT;
+		}
 		olinfo_status |= (pkt_len << IXGBE_ADVTXD_PAYLEN_SHIFT);
 #ifdef RTE_LIB_SECURITY
 		if (use_ipsec)
@@ -2337,6 +2375,49 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  *
  **********************************************************************/
 
+static inline int
+ixgbe_write_default_ctx_desc(struct ci_tx_queue *txq, struct rte_mempool *mp, bool vec)
+{
+	volatile struct ixgbe_adv_tx_context_desc *ctx_txd;
+	struct rte_mbuf *dummy;
+	uint32_t vlan_macip_lens, type_tucmd_mlhl;
+
+	/* allocate a dummy mbuf from tx pool to make sure it can be freed later */
+	dummy = rte_pktmbuf_alloc(mp);
+	if (dummy == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate dummy mbuf for VF context descriptor");
+		return -1;
+	}
+
+	/* take first buffer in the ring and make it a context descriptor */
+	ctx_txd = (volatile struct ixgbe_adv_tx_context_desc *)&txq->ixgbe_tx_ring[txq->tx_tail];
+
+	/* populate default context descriptor for VF */
+	vlan_macip_lens = RTE_ETHER_HDR_LEN << IXGBE_ADVTXD_MACLEN_SHIFT;
+	type_tucmd_mlhl = IXGBE_ADVTXD_TUCMD_L4T_RSV |
+			IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
+	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
+	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
+
+	/* update SW ring */
+	if (vec) {
+		struct ci_tx_entry_vec *txve;
+		txve = &txq->sw_ring_vec[txq->tx_tail];
+		txve->mbuf = dummy;
+	} else {
+		struct ci_tx_entry *txe;
+		txe = &txq->sw_ring[txq->tx_tail];
+		txe->mbuf = dummy;
+	}
+	txq->nb_tx_free--;
+	txq->tx_tail++;
+
+	/* never come back until queue reset */
+	txq->vf_ctx_initialized = 1;
+
+	return 0;
+}
+
 static int
 ixgbe_tx_done_cleanup_full(struct ci_tx_queue *txq, uint32_t free_cnt)
 {
@@ -2510,7 +2591,34 @@ ixgbe_reset_tx_queue(struct ci_tx_queue *txq)
 	txq->last_desc_cleaned = (uint16_t)(txq->nb_tx_desc - 1);
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_desc - 1);
 	txq->ctx_curr = 0;
-	memset(txq->ctx_cache, 0, IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
+	/*
+	 * When doing Tx on a VF queue, we need to set CC bit and specify a
+	 * valid context descriptor regardless of whether we are using any
+	 * offloads.
+	 *
+	 * For simple/vector Tx paths, a default context descriptor will always
+	 * be created on Tx start, so we do not need any special handling here.
+	 * However, for full offload path, we will be dynamically switching
+	 * between two context descriptors (and create new ones when necessary)
+	 * based on what kind of offloads are enabled for each packet, so we
+	 * need to prepare the offload cache accordingly.
+	 *
+	 * In case of VF, because we might be transmitting packets with and
+	 * without offloads (both of which require context descriptors), we need
+	 * to distinguish between "packet with no offloads" and "packet with no
+	 * offloads but we've already created a context for it" cases. This
+	 * works fine on switchover from having filled offload context cache
+	 * previously as no-offload case won't match previously created context,
+	 * but to make this work in cases where no previous packets had offloads
+	 * (such as on Tx start), we poison the offload cache, so that
+	 * no-offload packet also triggers creation of new context descriptor
+	 * due to offload cache mismatch.
+	 */
+	memset(txq->ctx_cache, 0xFF, IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
+
+	/* for PF, we do not need to initialize the context descriptor */
+	if (!txq->is_vf)
+		txq->vf_ctx_initialized = 1;
 }
 
 static const struct ixgbe_txq_ops def_txq_ops = {
@@ -2769,10 +2877,13 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
 	 */
-	if (ixgbe_is_vf(dev))
+	if (ixgbe_is_vf(dev)) {
+		/* mark this queue as VF, because VF needs special Tx behavior */
+		txq->is_vf = 1;
 		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
-	else
+	} else {
 		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
+	}
 
 	txq->tx_ring_dma = tz->iova;
 	txq->ixgbe_tx_ring = (union ixgbe_adv_tx_desc *)tz->addr;
