@@ -97,6 +97,8 @@ struct ci_tx_queue {
 			uint8_t hthresh;   /**< Host threshold register. */
 			uint8_t wthresh;   /**< Write-back threshold reg. */
 			uint8_t using_ipsec;  /**< indicates that IPsec TX feature is in use */
+			uint8_t is_vf;   /**< indicates that this is a VF queue */
+			uint8_t vf_ctx_initialized; /**< VF context descriptors initialized */
 		};
 	};
 };
