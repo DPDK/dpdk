@@ -351,10 +351,8 @@ int32_t zxdh_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t logic_q
 		vq->sw_ring[vq->vq_nentries + desc_idx] = &rxvq->fake_mbuf;
 
 	while (!zxdh_queue_full(vq)) {
-		uint16_t free_cnt = vq->vq_free_cnt;
-
-		free_cnt = RTE_MIN(ZXDH_MBUF_BURST_SZ, free_cnt);
-		struct rte_mbuf *new_pkts[free_cnt];
+		struct rte_mbuf *new_pkts[ZXDH_MBUF_BURST_SZ];
+		uint16_t free_cnt = RTE_MIN(ZXDH_MBUF_BURST_SZ, vq->vq_free_cnt);
 
 		if (likely(rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts, free_cnt) == 0)) {
 			error = zxdh_enqueue_recv_refill_packed(vq, new_pkts, free_cnt);
