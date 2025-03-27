@@ -87,6 +87,9 @@
 #define rte_ixgbe_prefetch(p)   do {} while (0)
 #endif
 
+/* forward-declare some functions */
+static int ixgbe_is_vf(struct rte_eth_dev *dev);
+
 /*********************************************************************
  *
  *  TX functions
@@ -2766,12 +2769,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Modification to set VFTDT for virtual function if vf is detected
 	 */
-	if (hw->mac.type == ixgbe_mac_82599_vf ||
-	    hw->mac.type == ixgbe_mac_E610_vf ||
-	    hw->mac.type == ixgbe_mac_X540_vf ||
-	    hw->mac.type == ixgbe_mac_X550_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_a_vf)
+	if (ixgbe_is_vf(dev))
 		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
 	else
 		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
@@ -3154,12 +3152,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Modified to setup VFRDT for Virtual Function
 	 */
-	if (hw->mac.type == ixgbe_mac_82599_vf ||
-	    hw->mac.type == ixgbe_mac_E610_vf ||
-	    hw->mac.type == ixgbe_mac_X540_vf ||
-	    hw->mac.type == ixgbe_mac_X550_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
-	    hw->mac.type == ixgbe_mac_X550EM_a_vf) {
+	if (ixgbe_is_vf(dev)) {
 		rxq->rdt_reg_addr =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_VFRDT(queue_idx));
 		rxq->rdh_reg_addr =
