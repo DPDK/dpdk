@@ -902,9 +902,9 @@ zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 refill:
 	/* Allocate new mbuf for the used descriptor */
 	if (likely(!zxdh_queue_full(vq))) {
+		struct rte_mbuf *new_pkts[ZXDH_MBUF_BURST_SZ];
 		/* free_cnt may include mrg descs */
-		uint16_t free_cnt = vq->vq_free_cnt;
-		struct rte_mbuf *new_pkts[free_cnt];
+		uint16_t free_cnt = RTE_MIN(vq->vq_free_cnt, ZXDH_MBUF_BURST_SZ);
 
 		if (!rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts, free_cnt)) {
 			error = zxdh_enqueue_recv_refill_packed(vq, new_pkts, free_cnt);
