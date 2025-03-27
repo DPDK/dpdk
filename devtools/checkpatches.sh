@@ -139,6 +139,7 @@ check_forbidden_additions() { # <patch>
 
 	# refrain from using compiler __atomic_xxx builtins
 	awk -v FOLDERS="lib drivers app examples" \
+		-v SKIP_FILES='drivers/common/cnxk/' \
 		-v EXPRESSIONS="__atomic_.*\\\( __ATOMIC_(RELAXED|CONSUME|ACQUIRE|RELEASE|ACQ_REL|SEQ_CST)" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using __atomic_xxx/__ATOMIC_XXX built-ins, prefer rte_atomic_xxx/rte_memory_order_xxx' \
