@@ -636,3 +636,133 @@ int rnp_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
 
 	return 0;
 }
+
+#define RNP_CACHE_FETCH_RX (4)
+static __rte_always_inline int
+rnp_refill_rx_ring(struct rnp_rx_queue *rxq)
+{
+	volatile struct rnp_rx_desc *rxbd;
+	struct rnp_rxsw_entry *rx_swbd;
+	struct rte_eth_dev_data *data;
+	struct rte_mbuf *mb;
+	uint16_t j, i;
+	uint16_t rx_id;
+	int ret;
+
+	rxbd = rxq->rx_bdr + rxq->rxrearm_start;
+	rx_swbd = &rxq->sw_ring[rxq->rxrearm_start];
+	ret = rte_mempool_get_bulk(rxq->mb_pool, (void *)rx_swbd,
+			rxq->rx_free_thresh);
+	data = rte_eth_devices[rxq->attr.port_id].data;
+	if (unlikely(ret != 0)) {
+		if (rxq->rxrearm_nb + rxq->rx_free_thresh >= rxq->attr.nb_desc) {
+			for (i = 0; i < RNP_CACHE_FETCH_RX; i++) {
+				rx_swbd[i].mbuf = &rxq->fake_mbuf;
+				rxbd[i].d.pkt_addr = 0;
+				rxbd[i].d.cmd = 0;
+			}
+		}
+		data->rx_mbuf_alloc_failed += rxq->rx_free_thresh;
+		return 0;
+	}
+	for (j = 0; j < rxq->rx_free_thresh; ++j) {
+		mb = rx_swbd[j].mbuf;
+		rte_mbuf_refcnt_set(mb, 1);
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
+		mb->port = rxq->attr.port_id;
+
+		rxbd[j].d.pkt_addr = rnp_get_dma_addr(&rxq->attr, mb);
+		rxbd[j].d.cmd = 0;
+	}
+	rxq->rxrearm_start += rxq->rx_free_thresh;
+	if (rxq->rxrearm_start >= rxq->attr.nb_desc - 1)
+		rxq->rxrearm_start = 0;
+	rxq->rxrearm_nb -= rxq->rx_free_thresh;
+
+	rx_id = (uint16_t)((rxq->rxrearm_start == 0) ?
+			(rxq->attr.nb_desc - 1) : (rxq->rxrearm_start - 1));
+	rte_wmb();
+	RNP_REG_WR(rxq->rx_tailreg, 0, rx_id);
+
+	return j;
+}
+
+static __rte_always_inline uint16_t
+rnp_recv_pkts(void *_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct rnp_rx_queue *rxq = (struct rnp_rx_queue *)_rxq;
+	struct rnp_rxsw_entry *rx_swbd;
+	uint32_t state_cmd[RNP_CACHE_FETCH_RX];
+	uint32_t pkt_len[RNP_CACHE_FETCH_RX] = {0};
+	volatile struct rnp_rx_desc *rxbd;
+	struct rte_mbuf *nmb;
+	int nb_dd, nb_rx = 0;
+	int i, j;
+
+	if (unlikely(!rxq->rxq_started || !rxq->rx_link))
+		return 0;
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RNP_CACHE_FETCH_RX);
+	rxbd = &rxq->rx_bdr[rxq->rx_tail];
+	rte_prefetch0(rxbd);
+	if (rxq->rxrearm_nb > rxq->rx_free_thresh)
+		rnp_refill_rx_ring(rxq);
+
+	if (!(rxbd->wb.qword1.cmd & RNP_CMD_DD))
+		return 0;
+
+	rx_swbd = &rxq->sw_ring[rxq->rx_tail];
+	for (i = 0; i < nb_pkts;
+			i += RNP_CACHE_FETCH_RX, rxbd += RNP_CACHE_FETCH_RX,
+			rx_swbd += RNP_CACHE_FETCH_RX) {
+		for (j = 0; j < RNP_CACHE_FETCH_RX; j++)
+			state_cmd[j] = rxbd[j].wb.qword1.cmd;
+		rte_atomic_thread_fence(rte_memory_order_acquire);
+
+		for (nb_dd = 0; nb_dd < RNP_CACHE_FETCH_RX &&
+				(state_cmd[nb_dd] & rte_cpu_to_le_16(RNP_CMD_DD));
+				nb_dd++)
+			;
+		for (j = 0; j < nb_dd; j++)
+			pkt_len[j] = rxbd[j].wb.qword1.lens;
+
+		for (j = 0; j < nb_dd; ++j) {
+			nmb = rx_swbd[j].mbuf;
+
+			nmb->data_off = RTE_PKTMBUF_HEADROOM;
+			nmb->port = rxq->attr.port_id;
+			nmb->data_len = pkt_len[j];
+			nmb->pkt_len = pkt_len[j];
+			nmb->packet_type = 0;
+			nmb->ol_flags = 0;
+			nmb->nb_segs = 1;
+		}
+		for (j = 0; j < nb_dd; ++j) {
+			rx_pkts[i + j] = rx_swbd[j].mbuf;
+			rx_swbd[j].mbuf = NULL;
+		}
+
+		nb_rx += nb_dd;
+		rxq->nb_rx_free -= nb_dd;
+		if (nb_dd != RNP_CACHE_FETCH_RX)
+			break;
+	}
+	rxq->rx_tail = (rxq->rx_tail + nb_rx) & rxq->attr.nb_desc_mask;
+	rxq->rxrearm_nb = rxq->rxrearm_nb + nb_rx;
+
+	return nb_rx;
+}
+
+int rnp_rx_func_select(struct rte_eth_dev *dev)
+{
+	dev->rx_pkt_burst = rnp_recv_pkts;
+
+	return 0;
+}
+
+int rnp_tx_func_select(struct rte_eth_dev *dev)
+{
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_prepare = rte_eth_pkt_burst_dummy;
+
+	return 0;
+}
