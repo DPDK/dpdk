@@ -12,5 +12,6 @@
 	 ((macaddr[4] << 8)) | (macaddr[5]))
 int rnp_init_hw(struct rnp_hw *hw);
 int rnp_setup_common_ops(struct rnp_hw *hw);
+int rnp_clock_valid_check(struct rnp_hw *hw, u16 nr_lane);
 
 #endif /* _RNP_COMMON_H_ */

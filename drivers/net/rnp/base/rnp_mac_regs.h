@@ -7,6 +7,41 @@
 
 #define RNP_MAC_BASE_OFFSET(n)  (_MAC_(0) + ((0x10000) * (n)))
 
+#define RNP_MAC_TX_CFG		(0x0)
+/* Transmitter Enable */
+#define RNP_MAC_TE		RTE_BIT32(0)
+/* Jabber Disable */
+#define RNP_MAC_JD		RTE_BIT32(16)
+#define RNP_SPEED_SEL_MASK	RTE_GENMASK32(30, 28)
+#define RNP_SPEED_SEL_S		(28)
+#define RNP_SPEED_SEL_1G	(b111 << RNP_SPEED_SEL_S)
+#define RNP_SPEED_SEL_10G	(b010 << RNP_SPEED_SEL_S)
+#define RNP_SPEED_SEL_40G	(b000 << RNP_SPEED_SEL_S)
+
+#define RNP_MAC_RX_CFG		(0x4)
+/* Receiver Enable */
+#define RNP_MAC_RE		RTE_BIT32(0)
+/* Automatic Pad or CRC Stripping */
+#define RNP_MAC_ACS		RTE_BIT32(1)
+/* CRC stripping for Type packets */
+#define RNP_MAC_CST		RTE_BIT32(2)
+/* Disable CRC Check */
+#define RNP_MAC_DCRCC		RTE_BIT32(3)
+/* Enable Max Frame Size Limit */
+#define RNP_MAC_GPSLCE		RTE_BIT32(6)
+/* Watchdog Disable */
+#define RNP_MAC_WD		RTE_BIT32(7)
+/* Jumbo Packet Support En */
+#define RNP_MAC_JE		RTE_BIT32(8)
+/* Enable IPC */
+#define RNP_MAC_IPC		RTE_BIT32(9)
+/* Loopback Mode */
+#define RNP_MAC_LM		RTE_BIT32(10)
+/* Giant Packet Size Limit */
+#define RNP_MAC_GPSL_MASK	RTE_GENMASK32(29, 16)
+#define RNP_MAC_MAX_GPSL	(1518)
+#define RNP_MAC_CPSL_SHIFT	(16)
+
 #define RNP_MAC_PKT_FLT_CTRL	(0x8)
 /* Receive All */
 #define RNP_MAC_RA		RTE_BIT32(31)
@@ -35,5 +70,12 @@
 #define RNP_MAC_HPF		RTE_BIT32(10)
 #define RNP_MAC_VTFE		RTE_BIT32(16)
 
+#define RNP_MAC_VFE		RTE_BIT32(16)
+/* mac link ctrl */
+#define RNP_MAC_LPI_CTRL	(0xd0)
+/* PHY Link Status Disable */
+#define RNP_MAC_PLSDIS		RTE_BIT32(18)
+/* PHY Link Status */
+#define RNP_MAC_PLS		RTE_BIT32(17)
 
 #endif /* _RNP_MAC_REGS_H_ */

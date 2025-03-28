@@ -6,9 +6,19 @@
 #define _RNP_DMA_REGS_H_
 
 #define RNP_DMA_VERSION		(0)
+#define RNP_DMA_CTRL		(0x4)
+/* 1bit <-> 16 bytes dma addr size */
+#define RNP_DMA_SCATTER_MEM_MASK	RTE_GENMASK32(31, 16)
+#define RNP_DMA_SCATTER_MEN_S		(16)
+#define RNP_DMA_RX_MEM_PAD_EN		RTE_BIT32(8)
+#define RTE_DMA_VEB_BYPASS		RTE_BIT32(4)
+#define RNP_DMA_TXRX_LOOP		RTE_BIT32(1)
+#define RNP_DMA_TXMRX_LOOP		RTE_BIT32(0)
+
 #define RNP_DMA_HW_EN		(0x10)
 #define RNP_DMA_EN_ALL		(0b1111)
 #define RNP_DMA_HW_STATE	(0x14)
+
 /* --- queue register --- */
 /* queue enable */
 #define RNP_RXQ_START(qid)	_RING_(0x0010 + 0x100 * (qid))

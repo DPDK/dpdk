@@ -77,6 +77,8 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_rx_queue_stop``
 * ``rte_eth_dev_tx_queue_start``
 * ``rte_eth_dev_tx_queue_stop``
+* ``rte_eth_dev_start``
+* ``rte_eth_dev_stop``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``
