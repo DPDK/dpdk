@@ -34,7 +34,7 @@ static enum i40e_status_code i40e_diag_reg_pattern_test(struct i40e_hw *hw,
 {
 	const u32 patterns[] = {0x5A5A5A5A, 0xA5A5A5A5, 0x00000000, 0xFFFFFFFF};
 	u32 pat, val, orig_val;
-	int i;
+	unsigned int i;
 
 	orig_val = rd32(hw, reg);
 	for (i = 0; i < ARRAY_SIZE(patterns); i++) {
