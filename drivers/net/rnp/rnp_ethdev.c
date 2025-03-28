@@ -1186,6 +1186,36 @@ rnp_dev_mac_addr_remove(struct rte_eth_dev *dev,
 	rnp_clear_macaddr(port, index);
 }
 
+static uint32_t *rnp_support_ptypes_get(void)
+{
+	static uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_TIMESYNC,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_TUNNEL_VXLAN,
+		RTE_PTYPE_TUNNEL_GRE,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_UNKNOWN,
+	};
+
+	return ptypes;
+}
+
+static const uint32_t *
+rnp_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			     size_t *no_of_elements __rte_unused)
+{
+	return rnp_support_ptypes_get();
+}
+
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.dev_configure                = rnp_dev_configure,
@@ -1228,6 +1258,7 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.mac_addr_set                 = rnp_dev_mac_addr_set,
 	.mac_addr_add                 = rnp_dev_mac_addr_add,
 	.mac_addr_remove              = rnp_dev_mac_addr_remove,
+	.dev_supported_ptypes_get     = rnp_dev_supported_ptypes_get,
 };
 
 static void
