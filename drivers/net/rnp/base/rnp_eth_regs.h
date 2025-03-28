@@ -62,6 +62,7 @@
 /* vlan filter ctrl */
 #define RNP_VLAN_FILTER_CTRL	_ETH_(0x9118)
 #define RNP_VLAN_FILTER_EN	RTE_BIT32(30)
+#define RNP_VFTA_HASH_TABLE(id) _ETH_(0xB000 + 0x4 * (id))
 /* rss function ctrl */
 #define RNP_RSS_INNER_CTRL	_ETH_(0x805c)
 #define RNP_INNER_RSS_EN	(1)

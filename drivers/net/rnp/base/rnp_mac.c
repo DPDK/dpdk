@@ -8,6 +8,8 @@
 #include "rnp_mac.h"
 #include "rnp_eth_regs.h"
 #include "rnp_mac_regs.h"
+#include "rnp_bitrev.h"
+#include "rnp_crc32.h"
 #include "../rnp.h"
 
 static int
@@ -194,15 +196,89 @@ rnp_en_vlan_filter_indep(struct rnp_eth_port *port, bool en)
 	vlan_reg = RNP_MAC_REG_RD(hw, lane, RNP_MAC_VLAN_TAG);
 	if (en) {
 		flt_reg |= RNP_MAC_VTFE;
-		vlan_reg |= (RNP_MAC_VLAN_VTHM | RNP_MAC_VLAN_ETV | \;
+		vlan_reg |= (RNP_MAC_VLAN_VTHM | RNP_MAC_VLAN_ETV |
 			     RNP_MAC_VLAN_HASH_EN);
 	} else {
 		flt_reg &= ~RNP_MAC_VTFE;
-		vlan_reg &= ~(RNP_MAC_VLAN_VTHM | RNP_MAC_VLAN_ETV | \;
+		vlan_reg &= ~(RNP_MAC_VLAN_VTHM | RNP_MAC_VLAN_ETV |
 			      RNP_MAC_VLAN_HASH_EN);
 	}
 	RNP_MAC_REG_WR(hw, lane, RNP_MAC_PKT_FLT_CTRL, flt_reg);
 	RNP_MAC_REG_WR(hw, lane, RNP_MAC_VLAN_TAG, vlan_reg);
+
+	return 0;
+}
+
+static int
+rnp_update_vlan_filter_pf(struct rnp_eth_port *port,
+			  u16 vlan, bool add)
+{
+	struct rnp_vlan_filter *vfta_tb = &port->vfta;
+	struct rnp_hw *hw = port->hw;
+	u32 vid_idx;
+	u32 vid_bit;
+	u32 vfta;
+
+	vid_idx = (u32)((vlan >> 5) & 0x7F);
+	vid_bit = (u32)(1 << (vlan & 0x1F));
+	vfta = RNP_E_REG_RD(hw, RNP_VFTA_HASH_TABLE(vid_idx));
+	if (add)
+		vfta |= vid_bit;
+	else
+		vfta &= ~vid_bit;
+	RNP_E_REG_WR(hw, RNP_VFTA_HASH_TABLE(vid_idx), vfta);
+	/* update local VFTA copy */
+	vfta_tb->vfta_entries[vid_idx] = vfta;
+
+	return 0;
+}
+
+static void
+rnp_update_vlan_hash_indep(struct rnp_eth_port *port)
+{
+	struct rnp_hw *hw = port->hw;
+	u16 lane = port->attr.nr_lane;
+	u64 vid_idx, vid_bit;
+	u16 shift_bit = 0;
+	u16 hash = 0;
+	u16 vid_le;
+	u32 crc;
+	u16 vid;
+
+	/* Generate VLAN Hash Table */
+	for (vid = 0; vid < VLAN_N_VID; vid++) {
+		vid_idx = RNP_VLAN_BITMAP_IDX(vid);
+		vid_bit = port->vfta.vlans_bitmap[vid_idx];
+		shift_bit = vid - (BITS_TO_LONGS(VLAN_N_VID) * vid_idx);
+		shift_bit &= 0x3f;
+		vid_bit = (u64)(vid_bit >> shift_bit);
+		/* If Vid isn't Set, Calc Next Vid Hash Value */
+		if (!(vid_bit & 1))
+			continue;
+		vid_le = cpu_to_le16(vid);
+		crc = bitrev32(~rnp_vid_crc32_calc(~0, vid_le));
+		crc >>= RNP_MAC_VLAN_HASH_SHIFT;
+		hash |= (1 << crc);
+	}
+	/* Update vlan hash table */
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_VLAN_HASH, hash);
+}
+
+static int
+rnp_update_vlan_filter_indep(struct rnp_eth_port *port,
+			     u16 vid,
+			     bool add)
+{
+	u64 vid_bit, vid_idx;
+
+	vid_bit = RNP_VLAN_BITMAP_BIT(vid);
+	vid_idx = RNP_VLAN_BITMAP_IDX(vid);
+	if (add)
+		port->vfta.vlans_bitmap[vid_idx] |= vid_bit;
+	else
+		port->vfta.vlans_bitmap[vid_idx] &= ~vid_bit;
+
+	rnp_update_vlan_hash_indep(port);
 
 	return 0;
 }
@@ -213,6 +289,7 @@ const struct rnp_mac_ops rnp_mac_ops_pf = {
 	.set_rafb = rnp_set_mac_addr_pf,
 	.clear_rafb = rnp_clear_mac_pf,
 	.vlan_f_en = rnp_en_vlan_filter_pf,
+	.update_vlan = rnp_update_vlan_filter_pf,
 };
 
 const struct rnp_mac_ops rnp_mac_ops_indep = {
@@ -221,6 +298,7 @@ const struct rnp_mac_ops rnp_mac_ops_indep = {
 	.set_rafb = rnp_set_mac_addr_indep,
 	.clear_rafb = rnp_clear_mac_indep,
 	.vlan_f_en = rnp_en_vlan_filter_indep,
+	.update_vlan = rnp_update_vlan_filter_indep,
 };
 
 int rnp_get_mac_addr(struct rnp_eth_port *port, u8 *mac)
@@ -262,6 +340,14 @@ int rnp_rx_vlan_filter_en(struct rnp_eth_port *port, bool en)
 		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
 
 	return rnp_call_hwif_impl(port, mac_ops->vlan_f_en, en);
+}
+
+int rnp_update_vlan_filter(struct rnp_eth_port *port, u16 vid, bool en)
+{
+	const struct rnp_mac_ops *mac_ops =
+		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
+
+	return rnp_call_hwif_impl(port, mac_ops->update_vlan, vid, en);
 }
 
 void rnp_mac_ops_init(struct rnp_hw *hw)

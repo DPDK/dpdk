@@ -85,6 +85,12 @@
 #define RNP_MAC_VLAN_ETV	RTE_BIT32(16)
 /* enable vid valid  */
 #define RNP_MAC_VLAN_HASH_EN	RTE_GENMASK32(15, 0)
+/* mac vlan hash filter */
+#define RNP_MAC_VLAN_HASH	(0x58)
+#define RNP_MAC_VLAN_HASH_MASK	RTE_GENMASK32(15, 0)
+#define RNP_MAC_VLAN_HASH_SHIFT	(28)
+#define RNP_VLAN_BITMAP_BIT(vlan_id)	(1UL << ((vlan_id) & 0x3F))
+#define RNP_VLAN_BITMAP_IDX(vlan_id)	((vlan_id) >> 6)
 /* MAC VLAN CTRL INSERT REG */
 #define RNP_MAC_VLAN_INCL	(0x60)
 #define RNP_MAC_INNER_VLAN_INCL	(0x64)
