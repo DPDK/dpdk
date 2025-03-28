@@ -4547,6 +4547,7 @@ out:
 enum i40e_status_code
 i40e_allocate_dma_mem_d(__rte_unused struct i40e_hw *hw,
 			struct i40e_dma_mem *mem,
+			__rte_unused enum i40e_memory_type mtype,
 			u64 size,
 			u32 alignment)
 {
