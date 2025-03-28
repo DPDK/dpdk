@@ -249,8 +249,12 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 
 	.rx_queue_setup               = rnp_rx_queue_setup,
 	.rx_queue_release             = rnp_dev_rx_queue_release,
+	.rx_queue_stop                = rnp_rx_queue_stop,
+	.rx_queue_start               = rnp_rx_queue_start,
 	.tx_queue_setup               = rnp_tx_queue_setup,
 	.tx_queue_release             = rnp_dev_tx_queue_release,
+	.tx_queue_stop                = rnp_tx_queue_stop,
+	.tx_queue_start               = rnp_tx_queue_start,
 };
 
 static void
