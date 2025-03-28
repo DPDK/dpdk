@@ -79,3 +79,25 @@ rnp_setup_common_ops(struct rnp_hw *hw)
 
 	return 0;
 }
+
+int rnp_clock_valid_check(struct rnp_hw *hw, u16 nr_lane)
+{
+	uint16_t timeout = 0;
+
+	do {
+		RNP_E_REG_WR(hw, RNP_RSS_REDIR_TB(nr_lane, 0), 0x7f);
+		udelay(10);
+		timeout++;
+		if (timeout >= 1000)
+			break;
+	} while (RNP_E_REG_RD(hw, RNP_RSS_REDIR_TB(nr_lane, 0)) != 0x7f);
+
+	if (timeout >= 1000) {
+		RNP_PMD_ERR("ethernet[%d] eth reg can't be write", nr_lane);
+		return -EPERM;
+	}
+	/* clear the dirty value */
+	RNP_E_REG_WR(hw, RNP_RSS_REDIR_TB(nr_lane, 0), 0);
+
+	return 0;
+}

@@ -7,6 +7,20 @@
 
 #include "rnp_osdep.h"
 #include "rnp_hw.h"
+#include "rnp_eth_regs.h"
+
+#define RNP_RX_ETH_DISABLE(hw, nr_lane) do { \
+	wmb(); \
+	RNP_E_REG_WR(hw, RNP_RX_ETH_F_CTRL(nr_lane), \
+			RNP_RX_ETH_F_OFF); \
+} while (0)
+
+#define RNP_RX_ETH_ENABLE(hw, nr_lane) do { \
+	wmb(); \
+	RNP_E_REG_WR(hw, RNP_RX_ETH_F_CTRL(nr_lane), \
+			RNP_RX_ETH_F_ON); \
+} while (0)
+
 
 void rnp_mac_ops_init(struct rnp_hw *hw);
 int rnp_get_mac_addr(struct rnp_eth_port *port, u8 *mac);
