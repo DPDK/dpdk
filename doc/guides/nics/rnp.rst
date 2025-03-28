@@ -39,6 +39,12 @@ which is different of normal PCIe network card (one PF for each port).
    rnp Mucse NIC port.
 
 
+Features
+--------
+
+- Promiscuous mode
+
+
 Prerequisites and Pre-conditions
 --------------------------------
 
@@ -66,3 +72,9 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_close``
 * ``rte_eth_dev_stop``
 * ``rte_eth_dev_infos_get``
+* ``rte_eth_promiscuous_disable``
+* ``rte_eth_promiscuous_enable``
+* ``rte_eth_allmulticast_enable``
+* ``rte_eth_allmulticast_disable``
+* ``rte_eth_promiscuous_get``
+* ``rte_eth_allmulticast_get``
