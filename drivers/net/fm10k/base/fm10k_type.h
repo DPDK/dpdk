@@ -83,9 +83,9 @@ struct fm10k_hw;
 #define FM10K_NOT_IMPLEMENTED			0x7FFFFFFF
 
 #define UNREFERENCED_XPARAMETER
-#define UNREFERENCED_1PARAMETER(_p) (_p)
-#define UNREFERENCED_2PARAMETER(_p, _q)	    do { (_p); (_q); } while (0)
-#define UNREFERENCED_3PARAMETER(_p, _q, _r) do { (_p); (_q); (_r); } while (0)
+#define UNREFERENCED_1PARAMETER(_p) (void)(_p)
+#define UNREFERENCED_2PARAMETER(_p, _q)	    do { (void)(_p); (void)(_q); } while (0)
+#define UNREFERENCED_3PARAMETER(_p, _q, _r) do { (void)(_p); (void)(_q); (void)(_r); } while (0)
 
 /* Start of PF registers */
 #define FM10K_CTRL		0x0000
