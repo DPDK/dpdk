@@ -89,6 +89,7 @@ struct rnp_tx_queue {
 	const struct rte_memzone *rz;
 	uint64_t ring_phys_addr; /* tx dma ring physical addr */
 	volatile struct rnp_tx_desc *tx_bdr; /* tx dma ring virtual addr */
+	volatile struct rnp_tx_desc zero_desc;
 	struct rnp_txsw_entry *sw_ring; /* tx software ring addr */
 	volatile void *tx_tailreg; /* hw desc tail register */
 	volatile void *tx_headreg; /* hw desc head register*/

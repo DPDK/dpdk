@@ -752,6 +752,89 @@ rnp_recv_pkts(void *_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	return nb_rx;
 }
 
+static  __rte_always_inline int
+rnp_clean_tx_ring(struct rnp_tx_queue *txq)
+{
+	volatile struct rnp_tx_desc *txbd;
+	struct rnp_txsw_entry *tx_swbd;
+	struct rte_mbuf *m;
+	uint16_t next_dd;
+	uint16_t i;
+
+	txbd = &txq->tx_bdr[txq->tx_next_dd];
+	if (!(txbd->d.cmd & RNP_CMD_DD))
+		return 0;
+	*txbd = txq->zero_desc;
+	next_dd = txq->tx_next_dd - (txq->tx_free_thresh - 1);
+	tx_swbd = &txq->sw_ring[next_dd];
+
+	for (i = 0; i < txq->tx_rs_thresh; ++i, ++tx_swbd) {
+		if (tx_swbd->mbuf) {
+			m = tx_swbd->mbuf;
+			rte_pktmbuf_free_seg(m);
+			tx_swbd->mbuf = NULL;
+		}
+	}
+	txq->nb_tx_free = (txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (txq->tx_next_dd + txq->tx_rs_thresh) &
+		txq->attr.nb_desc_mask;
+
+	return 0;
+}
+
+static __rte_always_inline uint16_t
+rnp_xmit_simple(void *_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rnp_tx_queue *txq = (struct rnp_tx_queue *)_txq;
+	volatile struct rnp_tx_desc *txbd;
+	struct rnp_txsw_entry *tx_swbd;
+	uint64_t phy;
+	uint16_t start;
+	uint16_t i;
+
+	if (unlikely(!txq->txq_started || !txq->tx_link))
+		return 0;
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		rnp_clean_tx_ring(txq);
+
+	nb_pkts = RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (!nb_pkts)
+		return 0;
+	start = nb_pkts;
+	i = txq->tx_tail;
+
+	while (nb_pkts--) {
+		txbd = &txq->tx_bdr[i];
+		tx_swbd = &txq->sw_ring[i];
+		tx_swbd->mbuf = *tx_pkts++;
+		phy = rnp_get_dma_addr(&txq->attr, tx_swbd->mbuf);
+		txbd->d.addr = phy;
+		if (unlikely(tx_swbd->mbuf->data_len > RNP_MAC_MAXFRM_SIZE))
+			tx_swbd->mbuf->data_len = 0;
+		txbd->d.blen = tx_swbd->mbuf->data_len;
+		txbd->d.cmd = RNP_CMD_EOP;
+
+		i = (i + 1) & txq->attr.nb_desc_mask;
+	}
+	txq->nb_tx_free -= start;
+	if (txq->tx_tail + start > txq->tx_next_rs) {
+		txbd = &txq->tx_bdr[txq->tx_next_rs];
+		txbd->d.cmd |= RNP_CMD_RS;
+		txq->tx_next_rs = (txq->tx_next_rs + txq->tx_rs_thresh);
+
+		if (txq->tx_next_rs > txq->attr.nb_desc)
+			txq->tx_next_rs = txq->tx_rs_thresh - 1;
+	}
+
+	txq->tx_tail = i;
+
+	rte_wmb();
+	RNP_REG_WR(txq->tx_tailreg, 0, i);
+
+	return start;
+}
+
 int rnp_rx_func_select(struct rte_eth_dev *dev)
 {
 	dev->rx_pkt_burst = rnp_recv_pkts;
@@ -761,7 +844,7 @@ int rnp_rx_func_select(struct rte_eth_dev *dev)
 
 int rnp_tx_func_select(struct rte_eth_dev *dev)
 {
-	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rnp_xmit_simple;
 	dev->tx_pkt_prepare = rte_eth_pkt_burst_dummy;
 
 	return 0;
