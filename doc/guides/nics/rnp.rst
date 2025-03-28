@@ -49,6 +49,7 @@ Features
 - Promiscuous mode
 - Link state information
 - MTU update
+- MAC filtering
 - Jumbo frames
 - Scatter-Gather IO support
 - Port hardware statistics
@@ -95,6 +96,9 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_set_link_up``
 * ``rte_eth_dev_get_mtu``
 * ``rte_eth_dev_set_mtu``
+* ``rte_eth_dev_default_mac_addr_set``
+* ``rte_eth_dev_mac_addr_add``
+* ``rte_eth_dev_mac_addr_remove``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``
@@ -110,3 +114,5 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_xstats_get``
 * ``rte_eth_xstats_reset``
 * ``rte_eth_xstats_get_names``
+* ``rte_eth_macaddr_get``
+* ``rte_eth_macaddrs_get``

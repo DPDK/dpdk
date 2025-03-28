@@ -71,6 +71,9 @@ struct rnp_mac_ops {
 	int (*get_macaddr)(struct rnp_eth_port *port, u8 *mac);
 	/* update mac packet filter mode */
 	int (*update_mpfm)(struct rnp_eth_port *port, u32 mode, bool en);
+	/* Receive Address Filter table */
+	int (*set_rafb)(struct rnp_eth_port *port, const u8 *mac, u32 index);
+	int (*clear_rafb)(struct rnp_eth_port *port, u32 index);
 };
 
 struct rnp_eth_adapter;
