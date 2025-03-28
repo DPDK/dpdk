@@ -411,6 +411,67 @@ static int rnp_disable_all_tx_queue(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static void rnp_set_rx_cksum_offload(struct rte_eth_dev *dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	struct rnp_hw *hw = port->hw;
+	uint32_t cksum_ctrl;
+	uint64_t offloads;
+
+	offloads = dev->data->dev_conf.rxmode.offloads;
+	cksum_ctrl = RNP_HW_CHECK_ERR_MASK;
+	/* enable rx checksum feature */
+	if (!rnp_pf_is_multiple_ports(hw->device_id)) {
+		if (offloads & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) {
+			/* Tunnel Option Cksum L4_Option */
+			cksum_ctrl &= ~RNP_HW_L4_CKSUM_ERR;
+			if (offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+						RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
+				cksum_ctrl &= ~RNP_HW_INNER_L4_CKSUM_ERR;
+			else
+				cksum_ctrl |= RNP_HW_INNER_L4_CKSUM_ERR;
+		} else {
+			/* no tunnel option cksum l4_option */
+			cksum_ctrl |= RNP_HW_INNER_L4_CKSUM_ERR;
+			if (offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+						RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
+				cksum_ctrl &= ~RNP_HW_L4_CKSUM_ERR;
+			else
+				cksum_ctrl |= RNP_HW_L4_CKSUM_ERR;
+		}
+		if (offloads & RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM) {
+			/* tunnel option cksum l3_option */
+			cksum_ctrl &= ~RNP_HW_L3_CKSUM_ERR;
+			if (offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM)
+				cksum_ctrl &= ~RNP_HW_INNER_L3_CKSUM_ERR;
+			else
+				cksum_ctrl |= RNP_HW_INNER_L3_CKSUM_ERR;
+		} else {
+			/* no tunnel option cksum l3_option */
+			cksum_ctrl |= RNP_HW_INNER_L3_CKSUM_ERR;
+			if (offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM)
+				cksum_ctrl &= ~RNP_HW_L3_CKSUM_ERR;
+			else
+				cksum_ctrl |= RNP_HW_L3_CKSUM_ERR;
+		}
+		/* sctp option */
+		if (offloads & RTE_ETH_RX_OFFLOAD_SCTP_CKSUM) {
+			cksum_ctrl &= ~RNP_HW_SCTP_CKSUM_ERR;
+			RNP_E_REG_WR(hw, RNP_HW_SCTP_CKSUM_CTRL, true);
+		} else {
+			RNP_E_REG_WR(hw, RNP_HW_SCTP_CKSUM_CTRL, false);
+		}
+		RNP_E_REG_WR(hw, RNP_HW_CHECK_ERR_CTRL, cksum_ctrl);
+	} else {
+		/* Enabled all support checksum features
+		 * use software mode support per port rx checksum
+		 * feature enabled/disabled for multiple port mode
+		 */
+		RNP_E_REG_WR(hw, RNP_HW_CHECK_ERR_CTRL, RNP_HW_ERR_RX_ALL_MASK);
+		RNP_E_REG_WR(hw, RNP_HW_SCTP_CKSUM_CTRL, true);
+	}
+}
+
 static int rnp_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
@@ -420,6 +481,7 @@ static int rnp_dev_configure(struct rte_eth_dev *eth_dev)
 	else
 		port->rxq_num_changed = false;
 	port->last_rx_num = eth_dev->data->nb_rx_queues;
+	rnp_set_rx_cksum_offload(eth_dev);
 
 	return 0;
 }
@@ -606,7 +668,8 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	/* speed cap info */
 	dev_info->speed_capa = rnp_get_speed_caps(eth_dev);
 	/* rx support offload cap */
-	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
+	dev_info->rx_offload_capa = RNP_RX_CHECKSUM_SUPPORT |
+				    RTE_ETH_RX_OFFLOAD_SCATTER;
 	/* tx support offload cap */
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 	/* default ring configure */
