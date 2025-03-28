@@ -120,6 +120,10 @@ struct rnp_hw {
 	bool lane_is_sgmii[RNP_MAX_PORT_OF_PF];
 	struct rnp_mbx_info mbx;
 	struct rnp_fw_info fw_info;
+
+	spinlock_t rxq_reset_lock; /* reset op isn't thread safe */
+	spinlock_t txq_reset_lock; /* reset op isn't thread safe */
+
 };
 
 #endif /* _RNP_HW_H_ */
