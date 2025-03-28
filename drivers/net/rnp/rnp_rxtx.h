@@ -63,6 +63,9 @@ struct rnp_rx_queue {
 	uint16_t rx_free_thresh; /* rx free desc desource thresh */
 	uint16_t rx_tail;
 
+	uint16_t rxrearm_start;
+	uint16_t rxrearm_nb;
+
 	uint32_t nodesc_tm_thresh; /* rx queue no desc timeout thresh */
 	uint8_t rx_deferred_start; /* do not start queue with dev_start(). */
 	uint8_t rxq_started; /* rx queue is started */
@@ -128,5 +131,7 @@ int rnp_tx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_txconf *tx_conf);
 int rnp_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx);
 int rnp_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);
+int rnp_rx_func_select(struct rte_eth_dev *dev);
+int rnp_tx_func_select(struct rte_eth_dev *dev);
 
 #endif /* _RNP_RXTX_H_ */

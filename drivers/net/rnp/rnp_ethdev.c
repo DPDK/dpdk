@@ -335,6 +335,8 @@ static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 		goto rxq_start_failed;
 	/* enable eth rx flow */
 	RNP_RX_ETH_ENABLE(hw, lane);
+	rnp_rx_func_select(eth_dev);
+	rnp_tx_func_select(eth_dev);
 	port->port_stopped = 0;
 
 	return 0;
@@ -595,6 +597,11 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	/* default port configure */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_drop_en = 0,
+		.rx_thresh = {
+			.pthresh = RNP_RX_DESC_FETCH_TH,
+			.hthresh = RNP_RX_DESC_FETCH_BURST,
+		},
+		.rx_free_thresh = RNP_DEFAULT_RX_FREE_THRESH,
 		.offloads = 0,
 	};
 
