@@ -12,7 +12,6 @@ sources = [
         'ixgbe_e610.c',
         'ixgbe_hv_vf.c',
         'ixgbe_mbx.c',
-        'ixgbe_osdep.c',
         'ixgbe_phy.c',
         'ixgbe_vf.c',
         'ixgbe_x540.c',
