@@ -35,6 +35,7 @@ typedef uint64_t u64;
 
 #define mb()	rte_mb()
 #define wmb()	rte_wmb()
+#define rmb()	rte_rmb()
 #ifndef ffs
 #define ffs(x) (rte_fls_u32((x) & (-x)))
 #endif
@@ -42,11 +43,22 @@ typedef uint64_t u64;
 #define udelay(x) rte_delay_us(x)
 #define mdelay(x) rte_delay_ms(x)
 
+#ifndef upper_32_bits
+#define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
+#define lower_32_bits(n) ((u32)((n) & 0xffffffff))
+#endif
+
+#ifndef cpu_to_le32
+#define cpu_to_le16(v)	rte_cpu_to_le_16((u16)(v))
+#define cpu_to_le32(v)	rte_cpu_to_le_32((u32)(v))
+#endif
+
 #define spinlock_t			rte_spinlock_t
 #define spin_lock_init(spinlock_v)	rte_spinlock_init(spinlock_v)
 #define spin_lock(spinlock_v)		rte_spinlock_lock(spinlock_v)
 #define spin_unlock(spinlock_v)		rte_spinlock_unlock(spinlock_v)
 
+#define _RING_(off)	((off) + (0x08000))
 #define _ETH_(off)	((off) + (0x10000))
 #define _NIC_(off)	((off) + (0x30000))
 #define _MAC_(off)	((off) + (0x60000))

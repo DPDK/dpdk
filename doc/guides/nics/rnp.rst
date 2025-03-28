@@ -37,6 +37,7 @@ N10 has two functions, each function support muiple ports(1 to 8),which not same
 Features
 --------
 
+- Multiple queues for TX and RX
 - Promiscuous mode
 
 Prerequisites and Pre-conditions
@@ -69,3 +70,5 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_allmulticast_disable``
 * ``rte_eth_promiscuous_get``
 * ``rte_eth_allmulticast_get``
+* ``rte_eth_rx_queue_setup``
+* ``rte_eth_tx_queue_setup``
