@@ -184,8 +184,8 @@ struct __rte_packed_begin i40e_dma_mem {
 	const void *zone;
 } __rte_packed_end;
 
-#define i40e_allocate_dma_mem(h, m, unused, s, a) \
-			i40e_allocate_dma_mem_d(h, m, s, a)
+#define i40e_allocate_dma_mem(h, m, mt, s, a) \
+			i40e_allocate_dma_mem_d(h, m, mt, s, a)
 #define i40e_free_dma_mem(h, m) i40e_free_dma_mem_d(h, m)
 
 struct __rte_packed_begin i40e_virt_mem {
