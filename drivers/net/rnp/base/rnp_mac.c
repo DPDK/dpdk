@@ -166,11 +166,53 @@ rnp_clear_mac_indep(struct rnp_eth_port *port, u32 index)
 	return 0;
 }
 
+static int
+rnp_en_vlan_filter_pf(struct rnp_eth_port *port, bool en)
+{
+	struct rnp_hw *hw = port->hw;
+	u32 ctrl;
+
+	/* enable/disable all vlan filter configuration */
+	ctrl = RNP_E_REG_RD(hw, RNP_VLAN_FILTER_CTRL);
+	if (en)
+		ctrl |= RNP_VLAN_FILTER_EN;
+	else
+		ctrl &= ~RNP_VLAN_FILTER_EN;
+	RNP_E_REG_WR(hw, RNP_VLAN_FILTER_CTRL, ctrl);
+
+	return 0;
+}
+
+static int
+rnp_en_vlan_filter_indep(struct rnp_eth_port *port, bool en)
+{
+	u16 lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	u32 flt_reg, vlan_reg;
+
+	flt_reg = RNP_MAC_REG_RD(hw, lane, RNP_MAC_PKT_FLT_CTRL);
+	vlan_reg = RNP_MAC_REG_RD(hw, lane, RNP_MAC_VLAN_TAG);
+	if (en) {
+		flt_reg |= RNP_MAC_VTFE;
+		vlan_reg |= (RNP_MAC_VLAN_VTHM | RNP_MAC_VLAN_ETV | \;
+			     RNP_MAC_VLAN_HASH_EN);
+	} else {
+		flt_reg &= ~RNP_MAC_VTFE;
+		vlan_reg &= ~(RNP_MAC_VLAN_VTHM | RNP_MAC_VLAN_ETV | \;
+			      RNP_MAC_VLAN_HASH_EN);
+	}
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_PKT_FLT_CTRL, flt_reg);
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_VLAN_TAG, vlan_reg);
+
+	return 0;
+}
+
 const struct rnp_mac_ops rnp_mac_ops_pf = {
 	.get_macaddr = rnp_mbx_fw_get_macaddr,
 	.update_mpfm = rnp_update_mpfm_pf,
 	.set_rafb = rnp_set_mac_addr_pf,
-	.clear_rafb = rnp_clear_mac_pf
+	.clear_rafb = rnp_clear_mac_pf,
+	.vlan_f_en = rnp_en_vlan_filter_pf,
 };
 
 const struct rnp_mac_ops rnp_mac_ops_indep = {
@@ -178,6 +220,7 @@ const struct rnp_mac_ops rnp_mac_ops_indep = {
 	.update_mpfm = rnp_update_mpfm_indep,
 	.set_rafb = rnp_set_mac_addr_indep,
 	.clear_rafb = rnp_clear_mac_indep,
+	.vlan_f_en = rnp_en_vlan_filter_indep,
 };
 
 int rnp_get_mac_addr(struct rnp_eth_port *port, u8 *mac)
@@ -211,6 +254,14 @@ int rnp_clear_macaddr(struct rnp_eth_port *port, u32 index)
 		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
 
 	return rnp_call_hwif_impl(port, mac_ops->clear_rafb, index);
+}
+
+int rnp_rx_vlan_filter_en(struct rnp_eth_port *port, bool en)
+{
+	const struct rnp_mac_ops *mac_ops =
+		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
+
+	return rnp_call_hwif_impl(port, mac_ops->vlan_f_en, en);
 }
 
 void rnp_mac_ops_init(struct rnp_hw *hw)

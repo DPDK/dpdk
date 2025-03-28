@@ -57,6 +57,11 @@
 #define RNP_MAC_HASH_MASK		RTE_GENMASK32(11, 0)
 #define RNP_MAC_MULTICASE_TBL_EN	RTE_BIT32(2)
 #define RNP_MAC_UNICASE_TBL_EN		RTE_BIT32(3)
+/* vlan strip ctrl */
+#define RNP_VLAN_Q_STRIP_CTRL(n)	_ETH_(0x8040 + 0x4 * ((n) / 32))
+/* vlan filter ctrl */
+#define RNP_VLAN_FILTER_CTRL	_ETH_(0x9118)
+#define RNP_VLAN_FILTER_EN	RTE_BIT32(30)
 /* rss function ctrl */
 #define RNP_RSS_INNER_CTRL	_ETH_(0x805c)
 #define RNP_INNER_RSS_EN	(1)

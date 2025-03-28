@@ -167,6 +167,11 @@ struct rnp_hw_mac_stats {
 	uint64_t tx_underflow_err;
 };
 
+enum rnp_vlan_type {
+	RNP_CVLAN_TYPE = 0,
+	RNP_SVLAN_TYPE = 1,
+};
+
 struct rnp_eth_port {
 	struct rnp_proc_priv *proc_priv;
 	struct rte_ether_addr mac_addr;
@@ -189,6 +194,8 @@ struct rnp_eth_port {
 	uint16_t cur_mtu;
 	bool jumbo_en;
 
+	enum rnp_vlan_type outvlan_type;
+	enum rnp_vlan_type invlan_type;
 	rte_spinlock_t rx_mac_lock;
 	bool port_stopped;
 };
