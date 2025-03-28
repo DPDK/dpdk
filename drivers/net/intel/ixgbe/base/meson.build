@@ -19,17 +19,6 @@ sources = [
         'ixgbe_x550.c',
 ]
 
-error_cflags = [
-        '-Wno-unused-but-set-variable',
-        '-Wno-unused-parameter',
-        ]
-c_args = cflags
-foreach flag: error_cflags
-    if cc.has_argument(flag)
-        c_args += flag
-    endif
-endforeach
-
 base_lib = static_library('ixgbe_base', sources,
     dependencies: [static_rte_eal, static_rte_net],
     c_args: c_args)
