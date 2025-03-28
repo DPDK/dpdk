@@ -32,7 +32,23 @@
 #define RNP_MAC_MULTICASE_TBL_EN	RTE_BIT32(2)
 #define RNP_MAC_UNICASE_TBL_EN		RTE_BIT32(3)
 /* rss function ctrl */
+#define RNP_RSS_INNER_CTRL	_ETH_(0x805c)
+#define RNP_INNER_RSS_EN	(1)
+#define RNP_INNER_RSS_DIS	(0)
 #define RNP_RSS_REDIR_TB(n, id) _ETH_(0xe000 + ((n) * 0x200) + ((id) * 0x4))
+#define RNP_RSS_MRQC_ADDR	_ETH_(0x92a0)
+/* RSS policy */
+#define RNP_RSS_HASH_CFG_MASK	(0x3F30000)
+#define RNP_RSS_HASH_IPV4_TCP	RTE_BIT32(16)
+#define RNP_RSS_HASH_IPV4	RTE_BIT32(17)
+#define RNP_RSS_HASH_IPV6	RTE_BIT32(20)
+#define RNP_RSS_HASH_IPV6_TCP	RTE_BIT32(21)
+#define RNP_RSS_HASH_IPV4_UDP	RTE_BIT32(22)
+#define RNP_RSS_HASH_IPV6_UDP   RTE_BIT32(23)
+#define RNP_RSS_HASH_IPV4_SCTP  RTE_BIT32(24)
+#define RNP_RSS_HASH_IPV6_SCTP  RTE_BIT32(25)
+/* rss hash key */
+#define RNP_RSS_KEY_TABLE(idx)	_ETH_(0x92d0 + ((idx) * 0x4))
 
 #define RNP_TC_PORT_OFFSET(lane)	_ETH_(0xe840 + 0x04 * (lane))
 

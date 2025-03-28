@@ -18,6 +18,7 @@
 #include "base/rnp_dma_regs.h"
 #include "base/rnp_mac_regs.h"
 #include "rnp_rxtx.h"
+#include "rnp_rss.h"
 
 static struct rte_eth_dev *
 rnp_alloc_eth_port(struct rte_pci_device *pci, char *name)
@@ -235,6 +236,9 @@ static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 	}
 	/* disable eth rx flow */
 	RNP_RX_ETH_DISABLE(hw, lane);
+	ret = rnp_dev_rss_configure(eth_dev);
+	if (ret)
+		return ret;
 	ret = rnp_rx_scattered_setup(eth_dev);
 	if (ret)
 		return ret;
@@ -300,6 +304,19 @@ static int rnp_disable_all_tx_queue(struct rte_eth_dev *dev)
 	}
 
 	return ret;
+}
+
+static int rnp_dev_configure(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+
+	if (port->last_rx_num != eth_dev->data->nb_rx_queues)
+		port->rxq_num_changed = true;
+	else
+		port->rxq_num_changed = false;
+	port->last_rx_num = eth_dev->data->nb_rx_queues;
+
+	return 0;
 }
 
 static int rnp_dev_stop(struct rte_eth_dev *eth_dev)
@@ -515,6 +532,7 @@ static int rnp_allmulticast_disable(struct rte_eth_dev *eth_dev)
 
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
+	.dev_configure                = rnp_dev_configure,
 	.dev_close                    = rnp_dev_close,
 	.dev_start                    = rnp_dev_start,
 	.dev_stop                     = rnp_dev_stop,
@@ -534,6 +552,11 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.tx_queue_release             = rnp_dev_tx_queue_release,
 	.tx_queue_stop                = rnp_tx_queue_stop,
 	.tx_queue_start               = rnp_tx_queue_start,
+	/* rss impl */
+	.reta_update                  = rnp_dev_rss_reta_update,
+	.reta_query                   = rnp_dev_rss_reta_query,
+	.rss_hash_update              = rnp_dev_rss_hash_update,
+	.rss_hash_conf_get            = rnp_dev_rss_hash_conf_get,
 };
 
 static void
