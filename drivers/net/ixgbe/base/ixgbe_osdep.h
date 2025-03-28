@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <malloc.h>
+
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
@@ -50,7 +52,7 @@
 #define false               0
 #define true                1
 #ifndef RTE_EXEC_ENV_WINDOWS
-#define min(a,b)	RTE_MIN(a,b) 
+#define min(a,b)	RTE_MIN(a,b)
 #endif
 
 #define EWARN(hw, S, args...)     DEBUGOUT1(S, ##args)
@@ -163,13 +165,13 @@ struct ixgbe_lock {
 	pthread_mutex_t mutex;
 };
 
-void *ixgbe_calloc(struct ixgbe_hw *hw, size_t count, size_t size);
-void *ixgbe_malloc(struct ixgbe_hw *hw, size_t size);
-void ixgbe_free(struct ixgbe_hw *hw, void *addr);
+#define ixgbe_calloc(hw, c, s) ((void)hw, calloc(c, s))
+#define ixgbe_malloc(hw, s) ((void)hw, malloc(s))
+#define ixgbe_free(hw, a) ((void)hw, free(a))
 
-void ixgbe_init_lock(struct ixgbe_lock *lock);
-void ixgbe_destroy_lock(struct ixgbe_lock *lock);
-void ixgbe_acquire_lock(struct ixgbe_lock *lock);
-void ixgbe_release_lock(struct ixgbe_lock *lock);
+#define ixgbe_init_lock(lock) pthread_mutex_init(&(lock)->mutex, NULL)
+#define ixgbe_destroy_lock(lock) pthread_mutex_destroy(&(lock)->mutex)
+#define ixgbe_acquire_lock(lock) pthread_mutex_lock(&(lock)->mutex)
+#define ixgbe_release_lock(lock)	pthread_mutex_unlock(&(lock)->mutex)
 
 #endif /* _IXGBE_OS_H_ */
