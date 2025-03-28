@@ -999,6 +999,12 @@ F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 F: doc/guides/nics/features/qede*.ini
 
+Mucse rnp
+M: Wenbo Cao <caowenbo@mucse.com>
+F: drivers/net/rnp/
+F: doc/guides/nics/rnp.rst
+F: doc/guides/nics/features/rnp.ini
+
 Realtek r8169
 M: Howard Wang <howard_wang@realsil.com.cn>
 M: Chunhao Lin <hau@realtek.com>
