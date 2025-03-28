@@ -53,6 +53,19 @@ typedef uint64_t u64;
 #define cpu_to_le32(v)	rte_cpu_to_le_32((u32)(v))
 #endif
 
+#ifndef DIV_ROUND_UP
+#define DIV_ROUND_UP(n, d)      (((n) + (d) - 1) / (d))
+#define BITS_PER_BYTE           (8)
+#define BITS_TO_LONGS(nr)       DIV_ROUND_UP(nr, BITS_PER_BYTE * sizeof(long))
+#endif
+
+#define fls(n)	rte_fls_u32(n)
+
+#ifndef VLAN_N_VID
+#define VLAN_N_VID		(4096)
+#define VLAN_VID_MASK		(0x0fff)
+#endif
+
 #define spinlock_t			rte_spinlock_t
 #define spin_lock_init(spinlock_v)	rte_spinlock_init(spinlock_v)
 #define spin_lock(spinlock_v)		rte_spinlock_lock(spinlock_v)
