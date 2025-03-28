@@ -65,6 +65,9 @@ int rnp_init_hw(struct rnp_hw *hw)
 	/* setup mac resiger ctrl base */
 	for (idx = 0; idx < hw->max_port_num; idx++)
 		hw->mac_base[idx] = (u8 *)hw->e_ctrl + RNP_MAC_BASE_OFFSET(idx);
+	/* tx all hw queue must be started */
+	for (idx = 0; idx < RNP_MAX_RX_QUEUE_NUM; idx++)
+		RNP_E_REG_WR(hw, RNP_TXQ_START(idx), true);
 
 	return 0;
 }

@@ -65,11 +65,14 @@ struct rnp_rx_queue {
 
 	uint32_t nodesc_tm_thresh; /* rx queue no desc timeout thresh */
 	uint8_t rx_deferred_start; /* do not start queue with dev_start(). */
+	uint8_t rxq_started; /* rx queue is started */
+	uint8_t rx_link; /* device link state */
 	uint8_t pthresh; /* rx desc prefetch threshold */
 	uint8_t pburst; /* rx desc prefetch burst */
 
 	uint64_t rx_offloads; /* user set hw offload features */
 	struct rte_mbuf **free_mbufs; /* rx bulk alloc reserve of free mbufs */
+	struct rte_mbuf fake_mbuf; /* dummy mbuf */
 };
 
 struct rnp_txsw_entry {
@@ -98,6 +101,8 @@ struct rnp_tx_queue {
 	uint16_t tx_free_thresh; /* thresh to free tx desc resource */
 
 	uint8_t tx_deferred_start; /*< Do not start queue with dev_start(). */
+	uint8_t txq_started; /* tx queue is started */
+	uint8_t tx_link; /* device link state */
 	uint8_t pthresh; /* rx desc prefetch threshold */
 	uint8_t pburst; /* rx desc burst*/
 
@@ -115,9 +120,13 @@ int rnp_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		       unsigned int socket_id,
 		       const struct rte_eth_rxconf *rx_conf,
 		       struct rte_mempool *mb_pool);
+int rnp_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx);
+int rnp_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);
 int rnp_tx_queue_setup(struct rte_eth_dev *dev,
 		       uint16_t qidx, uint16_t nb_desc,
 		       unsigned int socket_id,
 		       const struct rte_eth_txconf *tx_conf);
+int rnp_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx);
+int rnp_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx);
 
 #endif /* _RNP_RXTX_H_ */
