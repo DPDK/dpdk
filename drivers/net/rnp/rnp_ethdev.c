@@ -608,6 +608,8 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	dev_info->speed_capa = rnp_get_speed_caps(eth_dev);
 	/* rx support offload cap */
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
+	/* tx support offload cap */
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 	/* default ring configure */
 	dev_info->default_rxportconf.burst_size = 32;
 	dev_info->default_txportconf.burst_size = 32;
