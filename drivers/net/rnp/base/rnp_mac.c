@@ -95,14 +95,89 @@ rnp_update_mpfm_pf(struct rnp_eth_port *port, u32 mode, bool en)
 	return 0;
 }
 
+static int
+rnp_set_mac_addr_pf(struct rnp_eth_port *port,
+		    const u8 *addr, u32 index)
+{
+	struct rnp_hw *hw = port->hw;
+	u32 addr_hi = 0, addr_lo = 0;
+	u8 *mac = NULL;
+
+	mac = (u8 *)&addr_hi;
+	mac[0] = addr[1];
+	mac[1] = addr[0];
+	mac = (u8 *)&addr_lo;
+	mac[0] = addr[5];
+	mac[1] = addr[4];
+	mac[2] = addr[3];
+	mac[3] = addr[2];
+	addr_hi |= RNP_MAC_FILTER_EN;
+	RNP_E_REG_WR(hw, RNP_RAH_BASE_ADDR(index), addr_hi);
+	RNP_E_REG_WR(hw, RNP_RAL_BASE_ADDR(index), addr_lo);
+
+	return 0;
+}
+
+static int
+rnp_set_mac_addr_indep(struct rnp_eth_port *port,
+		       const u8 *addr, u32 index)
+{
+	u16 lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	u32 addr_hi = 0, addr_lo = 0;
+	u8 *mac = NULL;
+
+	mac = (u8 *)&addr_lo;
+	mac[0] = addr[0];
+	mac[1] = addr[1];
+	mac[2] = addr[2];
+	mac[3] = addr[3];
+	mac = (u8 *)&addr_hi;
+	mac[0] = addr[4];
+	mac[1] = addr[5];
+
+	addr_hi |= RNP_MAC_AE;
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_ADDR_HI(index), addr_hi);
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_ADDR_LO(index), addr_lo);
+
+	return 0;
+}
+
+static int
+rnp_clear_mac_pf(struct rnp_eth_port *port, u32 index)
+{
+	struct rnp_hw *hw = port->hw;
+
+	RNP_E_REG_WR(hw, RNP_RAL_BASE_ADDR(index), 0);
+	RNP_E_REG_WR(hw, RNP_RAH_BASE_ADDR(index), 0);
+
+	return 0;
+}
+
+static int
+rnp_clear_mac_indep(struct rnp_eth_port *port, u32 index)
+{
+	u16 lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_ADDR_HI(index), 0);
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_ADDR_LO(index), 0);
+
+	return 0;
+}
+
 const struct rnp_mac_ops rnp_mac_ops_pf = {
 	.get_macaddr = rnp_mbx_fw_get_macaddr,
 	.update_mpfm = rnp_update_mpfm_pf,
+	.set_rafb = rnp_set_mac_addr_pf,
+	.clear_rafb = rnp_clear_mac_pf
 };
 
 const struct rnp_mac_ops rnp_mac_ops_indep = {
 	.get_macaddr = rnp_mbx_fw_get_macaddr,
 	.update_mpfm = rnp_update_mpfm_indep,
+	.set_rafb = rnp_set_mac_addr_indep,
+	.clear_rafb = rnp_clear_mac_indep,
 };
 
 int rnp_get_mac_addr(struct rnp_eth_port *port, u8 *mac)
@@ -120,6 +195,22 @@ int rnp_update_mpfm(struct rnp_eth_port *port,
 		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
 
 	return rnp_call_hwif_impl(port, mac_ops->update_mpfm, mode, en);
+}
+
+int rnp_set_macaddr(struct rnp_eth_port *port, u8 *mac, u32 index)
+{
+	const struct rnp_mac_ops *mac_ops =
+		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
+
+	return rnp_call_hwif_impl(port, mac_ops->set_rafb, mac, index);
+}
+
+int rnp_clear_macaddr(struct rnp_eth_port *port, u32 index)
+{
+	const struct rnp_mac_ops *mac_ops =
+		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
+
+	return rnp_call_hwif_impl(port, mac_ops->clear_rafb, index);
 }
 
 void rnp_mac_ops_init(struct rnp_hw *hw)

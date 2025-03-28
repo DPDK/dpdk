@@ -64,5 +64,9 @@
 #define RNP_RSS_KEY_TABLE(idx)	_ETH_(0x92d0 + ((idx) * 0x4))
 
 #define RNP_TC_PORT_OFFSET(lane)	_ETH_(0xe840 + 0x04 * (lane))
+/* host mac address filter */
+#define RNP_RAL_BASE_ADDR(n)	_ETH_(0xA000 + (0x04 * (n)))
+#define RNP_RAH_BASE_ADDR(n)	_ETH_(0xA400 + (0x04 * (n)))
+#define RNP_MAC_FILTER_EN	RTE_BIT32(31)
 
 #endif /* _RNP_ETH_REGS_H */
