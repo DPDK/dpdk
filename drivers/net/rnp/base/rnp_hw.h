@@ -74,6 +74,8 @@ struct rnp_mac_ops {
 	/* Receive Address Filter table */
 	int (*set_rafb)(struct rnp_eth_port *port, const u8 *mac, u32 index);
 	int (*clear_rafb)(struct rnp_eth_port *port, u32 index);
+	/* receive vlan filter */
+	int (*vlan_f_en)(struct rnp_eth_port *port, bool en);
 };
 
 struct rnp_eth_adapter;

@@ -716,6 +716,7 @@ rnp_dev_rx_offload(struct rnp_rx_queue *rxq,
 		   volatile struct rnp_rx_desc rxbd)
 {
 	uint32_t rss = rte_le_to_cpu_32(rxbd.wb.qword0.rss_hash);
+	uint16_t vlan_tci = rxbd.wb.qword1.vlan_tci;
 	uint16_t cmd = rxbd.wb.qword1.cmd;
 
 	if (rxq->rx_offloads & RNP_RX_CHECKSUM_SUPPORT) {
@@ -730,6 +731,13 @@ rnp_dev_rx_offload(struct rnp_rx_queue *rxq,
 	if (rxq->rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH && rss) {
 		m->hash.rss = rss;
 		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+	}
+	if (rxq->rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
+		if (vlan_tci && cmd & RNP_RX_STRIP_VLAN) {
+			m->ol_flags |= RTE_MBUF_F_RX_VLAN |
+				RTE_MBUF_F_RX_VLAN_STRIPPED;
+			m->vlan_tci = vlan_tci;
+		}
 	}
 }
 
@@ -1144,7 +1152,8 @@ rnp_need_ctrl_desc(uint64_t flags)
 	static uint64_t mask = RTE_MBUF_F_TX_OUTER_IP_CKSUM |
 			       RTE_MBUF_F_TX_TCP_SEG |
 			       RTE_MBUF_F_TX_TUNNEL_VXLAN |
-			       RTE_MBUF_F_TX_TUNNEL_GRE;
+			       RTE_MBUF_F_TX_TUNNEL_GRE |
+			       RTE_MBUF_F_TX_QINQ;
 	return (flags & mask) ? 1 : 0;
 }
 
@@ -1170,6 +1179,10 @@ rnp_build_tx_control_desc(struct rnp_tx_queue *txq,
 	if (flags & RTE_MBUF_F_TX_TCP_SEG) {
 		txbd->c.qword0.mss = rnp_cal_tso_seg(mbuf);
 		txbd->c.qword0.l4_len = mbuf->l4_len;
+	}
+	if (flags & RTE_MBUF_F_TX_QINQ) {
+		txbd->c.qword0.vlan_tci = mbuf->vlan_tci;
+		txbd->c.qword1.cmd |= RNP_TX_QINQ_INSERT;
 	}
 #define GRE_TUNNEL_KEY (4)
 #define GRE_TUNNEL_SEQ (4)
@@ -1317,6 +1330,13 @@ rnp_setup_tx_offload(struct rnp_tx_queue *txq,
 	    flags & RTE_MBUF_F_TX_TCP_SEG ||
 	    flags & RTE_MBUF_F_TX_IP_CKSUM)
 		rnp_setup_csum_offload(tx_pkt, txbd);
+	if (flags & (RTE_MBUF_F_TX_VLAN |
+		     RTE_MBUF_F_TX_QINQ)) {
+		txbd->d.cmd |= RNP_TX_VLAN_VALID;
+		txbd->d.vlan_tci = (flags & RTE_MBUF_F_TX_QINQ) ?
+			tx_pkt->vlan_tci_outer : tx_pkt->vlan_tci;
+		txbd->d.cmd |= RNP_TX_VLAN_INSERT;
+	}
 }
 
 static __rte_always_inline uint16_t

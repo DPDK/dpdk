@@ -87,7 +87,7 @@ struct rnp_tx_desc {
 #define RNP_RX_TUNNEL_MASK	RTE_GENMASK32(14, 13)
 #define RNP_RX_PTYPE_VXLAN	(0x01UL << RNP_RX_TUNNEL_TYPE_S)
 #define RNP_RX_PTYPE_NVGRE	(0x02UL << RNP_RX_TUNNEL_TYPE_S)
-#define RNP_RX_PTYPE_VLAN	RTE_BIT32(15)
+#define RNP_RX_STRIP_VLAN	RTE_BIT32(15)
 /* mark_data */
 #define RNP_RX_L3TYPE_VALID	RTE_BIT32(31)
 /* tx data cmd */
