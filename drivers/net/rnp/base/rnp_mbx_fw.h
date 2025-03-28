@@ -19,5 +19,6 @@ int rnp_fw_init(struct rnp_hw *hw);
 int rnp_rcv_msg_from_fw(struct rnp_eth_adapter *adapter, u32 *msgbuf);
 int rnp_fw_mbx_ifup_down(struct rnp_eth_port *port, int up);
 int rnp_mbx_fw_lane_link_event_en(struct rnp_eth_port *port, bool en);
+int rnp_mbx_fw_ifup_down(struct rnp_eth_port *port, bool up);
 
 #endif /* _RNP_MBX_FW_H_ */

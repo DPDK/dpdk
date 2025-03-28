@@ -337,3 +337,100 @@ rnp_cancel_link_poll_task(struct rnp_eth_port *port)
 {
 	rte_eal_alarm_cancel(rnp_dev_link_task, port->eth_dev);
 }
+
+int rnp_dev_set_link_up(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+	uint16_t nr_lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	struct rnp_rx_queue *rxq;
+	uint16_t timeout;
+	uint16_t index;
+	uint32_t state;
+	uint16_t idx;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (port->attr.link_ready)
+		return 0;
+	/* Cur link-state Is Down Verity The Rx Dma Queue State Is Empty */
+	for (idx = 0; idx < eth_dev->data->nb_rx_queues; idx++) {
+		rxq = eth_dev->data->rx_queues[idx];
+		if (!rxq)
+			continue;
+		index = rxq->attr.index;
+		timeout = 0;
+		do {
+			if (!RNP_E_REG_RD(hw, RNP_RXQ_READY(index)))
+				break;
+			rte_delay_us(10);
+			timeout++;
+		} while (timeout < 1000);
+	}
+	ret = rnp_mbx_fw_ifup_down(port, TRUE);
+	if (ret) {
+		RNP_PMD_WARN("port[%d] is set linkup failed",
+				eth_dev->data->port_id);
+		return ret;
+	}
+	timeout = 0;
+	do {
+		rte_io_rmb();
+		state = RNP_E_REG_RD(hw, RNP_FW_LINK_SYNC);
+		if (state & RTE_BIT32(nr_lane))
+			break;
+		timeout++;
+		rte_delay_us(10);
+	} while (timeout < 100);
+
+	return ret;
+}
+
+int rnp_dev_set_link_down(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+	uint16_t nr_lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	struct rnp_tx_queue *txq;
+	uint32_t timeout = 0;
+	uint32_t check_v;
+	uint32_t state;
+	uint16_t idx;
+
+	PMD_INIT_FUNC_TRACE();
+	RNP_RX_ETH_DISABLE(hw, nr_lane);
+	for (idx = 0; idx < eth_dev->data->nb_tx_queues; idx++) {
+		txq = eth_dev->data->tx_queues[idx];
+		if (!txq)
+			continue;
+		txq->tx_link = false;
+	}
+	/* 2 Check eth tx fifo empty state */
+	do {
+		state = RNP_E_REG_RD(hw, RNP_ETH_TX_FIFO_STATE);
+		check_v = RNP_ETH_TX_FIFO_EMPT(nr_lane);
+		state &= check_v;
+		if (state == check_v)
+			break;
+		rte_delay_us(10);
+		timeout++;
+		if (timeout >= 1000) {
+			RNP_PMD_WARN("lane[%d] isn't empty of link-down action",
+					nr_lane);
+			break;
+		}
+	} while (1);
+	/* 3 Tell Firmware Do Link-down Event Work */
+	rnp_mbx_fw_ifup_down(port, FALSE);
+	/* 4 Wait For Link-Down that Firmware Do done */
+	timeout = 0;
+	do {
+		if (!port->attr.link_ready)
+			break;
+		rte_delay_us(10);
+		timeout++;
+	} while (timeout < 2000);
+
+	return 0;
+}

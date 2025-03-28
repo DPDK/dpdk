@@ -460,3 +460,36 @@ rnp_rcv_msg_from_fw(struct rnp_eth_adapter *adapter, u32 *msgbuf)
 
 	return 0;
 }
+
+static void rnp_link_stat_reset(struct rnp_hw *hw, u16 lane)
+{
+	u32 state;
+
+	spin_lock(&hw->link_sync);
+	state = RNP_E_REG_RD(hw, RNP_FW_LINK_SYNC);
+	state &= ~RNP_LINK_MAGIC_MASK;
+	state |= RNP_LINK_MAGIC_CODE;
+	state &= ~RTE_BIT32(lane);
+
+	RNP_E_REG_WR(hw, RNP_FW_LINK_SYNC, state);
+	rte_spinlock_unlock(&hw->link_sync);
+}
+
+int rnp_mbx_fw_ifup_down(struct rnp_eth_port *port, bool up)
+{
+	u16 nr_lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	struct rnp_fw_req_arg arg;
+	int err;
+
+	memset(&arg, 0, sizeof(arg));
+	arg.opcode = RNP_IFUP_DOWN;
+	arg.param0 = nr_lane;
+	arg.param1 = up;
+
+	err = rnp_fw_send_norep_cmd(port, &arg);
+	/* force firmware send irq event to dpdk */
+	if (!err && up)
+		rnp_link_stat_reset(hw, nr_lane);
+	return err;
+}
