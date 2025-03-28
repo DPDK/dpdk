@@ -671,7 +671,16 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	dev_info->rx_offload_capa = RNP_RX_CHECKSUM_SUPPORT |
 				    RTE_ETH_RX_OFFLOAD_SCATTER;
 	/* tx support offload cap */
-	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->tx_offload_capa = 0 |
+				    RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+				    RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+				    RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
+				    RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |
+				    RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				    RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				    RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
+				    RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
+				    RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 	/* default ring configure */
 	dev_info->default_rxportconf.burst_size = 32;
 	dev_info->default_txportconf.burst_size = 32;
@@ -1083,6 +1092,7 @@ rnp_dev_stats_get(struct rte_eth_dev *dev,
 			continue;
 		stats->opackets += txq->stats.opackets;
 		stats->obytes += txq->stats.obytes;
+		stats->oerrors += txq->stats.errors;
 		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			stats->q_opackets[i] = txq->stats.opackets;
 			stats->q_obytes[i] = txq->stats.obytes;
@@ -1091,7 +1101,7 @@ rnp_dev_stats_get(struct rte_eth_dev *dev,
 	stats->imissed = eth_stats->rx_trans_drop + eth_stats->rx_trunc_drop;
 	stats->ierrors = mac_stats->rx_crc_err + mac_stats->rx_len_err;
 	stats->ierrors += mac_stats->rx_watchdog_err;
-	stats->oerrors = mac_stats->tx_underflow_err;
+	stats->oerrors += mac_stats->tx_underflow_err;
 
 	return 0;
 }

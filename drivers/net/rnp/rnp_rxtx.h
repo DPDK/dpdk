@@ -53,6 +53,7 @@ struct rnp_queue_stats {
 
 	uint64_t ibytes;
 	uint64_t ipackets;
+	uint64_t errors;
 };
 
 struct rnp_rx_queue {
