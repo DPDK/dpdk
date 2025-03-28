@@ -1046,6 +1046,7 @@ static void ixgbe_parse_vsi_func_caps(struct ixgbe_hw *hw,
 				      struct ixgbe_hw_func_caps *func_p,
 				      struct ixgbe_aci_cmd_list_caps_elem *cap)
 {
+	UNREFERENCED_PARAMETER(cap);
 	func_p->guar_num_vsi = ixgbe_get_num_per_func(hw, IXGBE_MAX_VSI);
 }
 
@@ -1762,6 +1763,7 @@ s32 ixgbe_aci_set_event_mask(struct ixgbe_hw *hw, u8 port_num, u16 mask)
 	struct ixgbe_aci_cmd_set_event_mask *cmd;
 	struct ixgbe_aci_desc desc;
 
+	UNREFERENCED_PARAMETER(port_num);
 	cmd = &desc.params.set_event_mask;
 
 	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_set_event_mask);
