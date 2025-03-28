@@ -2,9 +2,9 @@
 # Copyright(c) 2017 Intel Corporation
 
 subdir('base')
-objs = [base_objs]
 
-sources = files(
+sources += base_sources
+sources += files(
         'e1000_logs.c',
         'em_ethdev.c',
         'em_rxtx.c',

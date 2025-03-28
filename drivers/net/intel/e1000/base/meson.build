@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-sources = [
+base_sources = files(
         'e1000_base.c',
         'e1000_80003es2lan.c',
         'e1000_82540.c',
@@ -21,9 +21,4 @@ sources = [
         'e1000_osdep.c',
         'e1000_phy.c',
         'e1000_vf.c',
-]
-
-base_lib = static_library('e1000_base', sources,
-    dependencies: static_rte_eal,
-    c_args: cflags)
-base_objs = base_lib.extract_all_objects(recursive: true)
+)

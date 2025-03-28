@@ -8,9 +8,9 @@ if is_windows
 endif
 
 subdir('base')
-objs = [base_objs]
 
-sources = files(
+sources += base_sources
+sources += files(
         'fm10k_ethdev.c',
         'fm10k_rxtx.c',
 )
