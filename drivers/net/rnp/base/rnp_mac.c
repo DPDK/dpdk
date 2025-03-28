@@ -46,7 +46,7 @@ rnp_update_mpfm_indep(struct rnp_eth_port *port, u32 mode, bool en)
 		reg |= disable;
 	}
 	/* disable common filter when indep mode */
-	reg |= RNP_MAC_HPF;
+	reg |= RNP_MAC_HPF | RNP_MAC_HMC;
 	RNP_MAC_REG_WR(hw, nr_lane, RNP_MAC_PKT_FLT_CTRL, reg);
 	RNP_MAC_REG_WR(hw, nr_lane, RNP_MAC_FCTRL, RNP_MAC_FCTRL_BYPASS);
 
@@ -283,11 +283,112 @@ rnp_update_vlan_filter_indep(struct rnp_eth_port *port,
 	return 0;
 }
 
+static u32
+rnp_sample_mac_vector(struct rnp_eth_port *port, u8 *mc_addr)
+{
+	u32 vector = 0;
+
+	switch (port->hash_filter_type) {
+	case 0:   /* Use bits [11:0] of the address */
+		vector = ((mc_addr[4] << 8) | (((u16)mc_addr[5])));
+		break;
+	case 1:   /* Use bits [12:1] of the address */
+		vector = ((mc_addr[4] << 7) | (((u16)mc_addr[5]) >> 1));
+		break;
+	case 2:   /* Use bits [13:2] of the address */
+		vector = ((mc_addr[4] << 6) | (((u16)mc_addr[5]) >> 2));
+		break;
+	case 3:   /* Use bits [14:3] of the address */
+		vector = ((mc_addr[4] << 4) | (((u16)mc_addr[5]) >> 4));
+		break;
+	default:  /* Invalid mc_filter_type */
+		RNP_PMD_ERR("Mac Hash filter type param set incorrect");
+		break;
+	}
+	vector &= RNP_MAC_HASH_MASK;
+
+	return vector;
+}
+
+static int
+rnp_update_mta_pf(struct rnp_eth_port *port, u8 *mc_addr)
+{
+	struct rnp_hw *hw = port->hw;
+	u32 vector, hash_bit;
+	u32 mta_row, mta_col;
+	u32 value, reg;
+
+	vector = rnp_sample_mac_vector(port, mc_addr);
+	mta_row = (vector >> RNP_HTA_BIT_SHIFT) & 0x7f;
+	mta_col = vector & (RNP_HTA_BIT_MASK);
+	hash_bit = 1 << mta_col;
+	value = port->mc_hash_table[mta_row];
+	if (!(value & hash_bit)) {
+		port->mc_hash_table[mta_row] |= hash_bit;
+		reg = port->mc_hash_table[mta_row];
+		RNP_E_REG_WR(hw, RNP_MC_HASH_TABLE(mta_row), reg);
+	}
+
+	return 0;
+}
+
+static int
+rnp_clear_mta_pf(struct rnp_eth_port *port, bool en __rte_unused)
+{
+	struct rnp_hw *hw = port->hw;
+	u16 idx = 0;
+
+	for (idx = 0; idx < port->attr.mc_hash_tb_size; idx++)
+		RNP_E_REG_WR(hw, RNP_MC_HASH_TABLE(idx), 0);
+	memset(&port->mc_hash_table, 0, sizeof(port->mc_hash_table));
+
+	return 0;
+}
+
+static int
+rnp_update_mta_indep(struct rnp_eth_port *port, u8 *mc_addr)
+{
+	u32 hash_bit, mta_row, mta_col;
+	u16 lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	u32 crc, value, reg;
+
+	crc = bitrev32(~rnp_calc_crc32(~0, mc_addr, RTE_ETHER_ADDR_LEN));
+	crc >>= port->attr.hash_table_shift;
+	mta_row = (crc >> RNP_HTA_BIT_SHIFT) & 0x07;
+	mta_col = crc & RNP_HTA_BIT_MASK;
+	value = port->mc_hash_table[mta_row];
+	hash_bit = 1 << mta_col;
+	if (!(value & hash_bit)) {
+		port->mc_hash_table[mta_row] |= hash_bit;
+		reg = port->mc_hash_table[mta_row];
+		RNP_MAC_REG_WR(hw, lane, RNP_MAC_ADDR_HASH_TB(mta_row), reg);
+	}
+
+	return 0;
+}
+
+static int
+rnp_clear_mta_indep(struct rnp_eth_port *port, bool en __rte_unused)
+{
+	u16 lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	u16 idx = 0;
+
+	for (idx = 0; idx < port->attr.mc_hash_tb_size; idx++)
+		RNP_MAC_REG_WR(hw, lane, RNP_MAC_ADDR_HASH_TB(idx), 0);
+	memset(&port->mc_hash_table, 0, sizeof(port->mc_hash_table));
+
+	return 0;
+}
+
 const struct rnp_mac_ops rnp_mac_ops_pf = {
 	.get_macaddr = rnp_mbx_fw_get_macaddr,
 	.update_mpfm = rnp_update_mpfm_pf,
 	.set_rafb = rnp_set_mac_addr_pf,
 	.clear_rafb = rnp_clear_mac_pf,
+	.update_mta = rnp_update_mta_pf,
+	.clear_mta = rnp_clear_mta_pf,
 	.vlan_f_en = rnp_en_vlan_filter_pf,
 	.update_vlan = rnp_update_vlan_filter_pf,
 };
@@ -297,6 +398,8 @@ const struct rnp_mac_ops rnp_mac_ops_indep = {
 	.update_mpfm = rnp_update_mpfm_indep,
 	.set_rafb = rnp_set_mac_addr_indep,
 	.clear_rafb = rnp_clear_mac_indep,
+	.update_mta = rnp_update_mta_indep,
+	.clear_mta = rnp_clear_mta_indep,
 	.vlan_f_en = rnp_en_vlan_filter_indep,
 	.update_vlan = rnp_update_vlan_filter_indep,
 };
@@ -332,6 +435,22 @@ int rnp_clear_macaddr(struct rnp_eth_port *port, u32 index)
 		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
 
 	return rnp_call_hwif_impl(port, mac_ops->clear_rafb, index);
+}
+
+int rnp_update_mc_hash(struct rnp_eth_port *port, u8 *mc_addr)
+{
+	const struct rnp_mac_ops *mac_ops =
+		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
+
+	return rnp_call_hwif_impl(port, mac_ops->update_mta, mc_addr);
+}
+
+int rnp_clear_mc_hash(struct rnp_eth_port *port)
+{
+	const struct rnp_mac_ops *mac_ops =
+		RNP_DEV_PP_TO_MAC_OPS(port->eth_dev);
+
+	return rnp_call_hwif_impl(port, mac_ops->clear_mta, TRUE);
 }
 
 int rnp_rx_vlan_filter_en(struct rnp_eth_port *port, bool en)

@@ -5,6 +5,7 @@
 #include "rnp_osdep.h"
 #include "rnp_crc32.h"
 
+#define RNP_CRC32_POLY_LE 0xedb88320
 static inline int get_bitmask_order(u32 count)
 {
 	int order;
@@ -30,7 +31,22 @@ u32 rnp_vid_crc32_calc(u32 crc_init, u16 vid_le)
 		crc >>= 1;
 		data_byte >>= 1;
 		if (temp)
-			crc ^= 0xedb88320;
+			crc ^= RNP_CRC32_POLY_LE;
+	}
+
+	return crc;
+}
+
+u32 rnp_calc_crc32(u32 seed, u8 *mac, u32 len)
+{
+	u32 crc = seed;
+	u32 i;
+
+	while (len--) {
+		crc ^= *mac++;
+		for (i = 0; i < 8; i++)
+			crc = (crc >> 1) ^ ((crc & 1) ?
+					RNP_CRC32_POLY_LE : 0);
 	}
 
 	return crc;

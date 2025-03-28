@@ -103,6 +103,7 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_default_mac_addr_set``
 * ``rte_eth_dev_mac_addr_add``
 * ``rte_eth_dev_mac_addr_remove``
+* ``rte_eth_dev_set_mc_addr_list``
 * ``rte_eth_dev_get_supported_ptypes``
 * ``rte_eth_dev_get_vlan_offload``
 * ``rte_eth_dev_set_vlan_offload``
