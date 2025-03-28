@@ -10,5 +10,7 @@
 
 void rnp_mac_ops_init(struct rnp_hw *hw);
 int rnp_get_mac_addr(struct rnp_eth_port *port, u8 *mac);
+int rnp_update_mpfm(struct rnp_eth_port *port,
+		    u32 mode, bool en);
 
 #endif /* _RNP_MAC_H_ */
