@@ -50,6 +50,7 @@ Features
 - Port hardware statistic
 - Packet type parsing
 - Checksum offload
+- TSO offload
 
 Prerequisites and Pre-conditions
 --------------------------------

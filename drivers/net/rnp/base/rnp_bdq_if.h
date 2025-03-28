@@ -111,6 +111,7 @@ struct rnp_tx_desc {
 #define RNP_TX_VLAN_VALID	RTE_BIT32(15)
 /* tx data mac_ip len */
 #define RNP_TX_MAC_LEN_S	(9)
+#define RNP_TX_MAC_LEN_MASK	RTE_GENMASK32(15, 9)
 /* tx ctrl cmd */
 #define RNP_TX_LEN_PAD_S	(8)
 #define RNP_TX_OFF_MAC_PAD	(0x01UL << RNP_TX_LEN_PAD_S)
