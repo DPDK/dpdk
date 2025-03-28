@@ -18,9 +18,9 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
 endif
 
 subdir('base')
-objs = [base_objs]
 
-sources = files(
+sources += base_sources
+sources += files(
         'i40e_ethdev.c',
         'i40e_rxtx.c',
         'i40e_pf.c',

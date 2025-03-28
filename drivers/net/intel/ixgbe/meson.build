@@ -4,9 +4,9 @@
 cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
 subdir('base')
-objs = [base_objs]
 
-sources = files(
+sources += base_sources
+sources += files(
         'ixgbe_82599_bypass.c',
         'ixgbe_bypass.c',
         'ixgbe_ethdev.c',
