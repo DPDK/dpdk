@@ -11,11 +11,10 @@ sources = [
         'i40e_nvm.c',
 ]
 
-error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',
+error_cflags = ['-Wno-sign-compare',
         '-Wno-format', '-Wno-format-security',
         '-Wno-format-nonliteral',
-        '-Wno-strict-aliasing', '-Wno-unused-but-set-variable',
-        '-Wno-unused-parameter',
+        '-Wno-strict-aliasing',
 ]
 c_args = cflags
 foreach flag: error_cflags
