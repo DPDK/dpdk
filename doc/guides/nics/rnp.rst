@@ -47,6 +47,7 @@ Features
   Receiver Side Steering (RSS) on IPv4, IPv6, IPv4-TCP/UDP/SCTP, IPv6-TCP/UDP/SCTP
   Inner RSS is only supported for VXLAN/NVGRE
 - Promiscuous mode
+- Link state information
 
 
 Prerequisites and Pre-conditions
@@ -94,3 +95,5 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_allmulticast_get``
 * ``rte_eth_rx_queue_setup``
 * ``rte_eth_tx_queue_setup``
+* ``rte_eth_link_get``
+* ``rte_eth_link_get_nowait``
