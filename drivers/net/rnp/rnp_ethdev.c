@@ -606,6 +606,12 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = RNP_TX_DESC_FETCH_TH,
+			.hthresh = RNP_TX_DESC_FETCH_BURST,
+		},
+		.tx_free_thresh = RNP_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = RNP_DEFAULT_TX_RS_THRESH,
 		.offloads = 0,
 	};
 
