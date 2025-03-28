@@ -639,8 +639,102 @@ int rnp_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
 	return 0;
 }
 
+struct rnp_rx_cksum_parse {
+	uint64_t offloads;
+	uint64_t packet_type;
+	uint16_t hw_offload;
+	uint64_t good;
+	uint64_t bad;
+};
+
+#define RNP_RX_OFFLOAD_L4_CKSUM (RTE_ETH_RX_OFFLOAD_TCP_CKSUM | \
+				 RTE_ETH_RX_OFFLOAD_UDP_CKSUM | \
+				 RTE_ETH_RX_OFFLOAD_SCTP_CKSUM)
+static const struct rnp_rx_cksum_parse rnp_rx_cksum_tunnel[] = {
+	{ RTE_ETH_RX_OFFLOAD_IPV4_CKSUM | RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM,
+	  RTE_PTYPE_L3_IPV4 | RTE_PTYPE_TUNNEL_MASK, RNP_RX_L3_ERR,
+	  RTE_MBUF_F_RX_IP_CKSUM_GOOD, RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD
+	},
+	{ RTE_ETH_RX_OFFLOAD_IPV4_CKSUM,
+	  RTE_PTYPE_L3_IPV4, RNP_RX_IN_L3_ERR,
+	  RTE_MBUF_F_RX_IP_CKSUM_GOOD, RTE_MBUF_F_RX_IP_CKSUM_BAD
+	},
+	{ RNP_RX_OFFLOAD_L4_CKSUM, RTE_PTYPE_L4_MASK,
+	  RNP_RX_IN_L4_ERR | RNP_RX_SCTP_ERR,
+	  RTE_MBUF_F_RX_L4_CKSUM_GOOD, RTE_MBUF_F_RX_L4_CKSUM_BAD
+	}
+};
+
+static const struct rnp_rx_cksum_parse rnp_rx_cksum[] = {
+	{ RTE_ETH_RX_OFFLOAD_IPV4_CKSUM,
+	  RTE_PTYPE_L3_IPV4, RNP_RX_L3_ERR,
+	  RTE_MBUF_F_RX_IP_CKSUM_GOOD, RTE_MBUF_F_RX_IP_CKSUM_BAD
+	},
+	{ RNP_RX_OFFLOAD_L4_CKSUM,
+	  RTE_PTYPE_L4_MASK, RNP_RX_L4_ERR | RNP_RX_SCTP_ERR,
+	  RTE_MBUF_F_RX_L4_CKSUM_GOOD, RTE_MBUF_F_RX_L4_CKSUM_BAD
+	}
+};
+
+static void
+rnp_rx_parse_tunnel_cksum(struct rnp_rx_queue *rxq,
+			  struct rte_mbuf *m, uint16_t cksum_cmd)
+{
+	uint16_t idx = 0;
+
+	for (idx = 0; idx < RTE_DIM(rnp_rx_cksum_tunnel); idx++) {
+		if (rxq->rx_offloads & rnp_rx_cksum_tunnel[idx].offloads &&
+		    m->packet_type & rnp_rx_cksum_tunnel[idx].packet_type) {
+			if (cksum_cmd & rnp_rx_cksum_tunnel[idx].hw_offload)
+				m->ol_flags |= rnp_rx_cksum_tunnel[idx].bad;
+			else
+				m->ol_flags |= rnp_rx_cksum_tunnel[idx].good;
+		}
+	}
+}
+
+static void
+rnp_rx_parse_cksum(struct rnp_rx_queue *rxq,
+		   struct rte_mbuf *m, uint16_t cksum_cmd)
+{
+	uint16_t idx = 0;
+
+	for (idx = 0; idx < RTE_DIM(rnp_rx_cksum); idx++) {
+		if (rxq->rx_offloads & rnp_rx_cksum[idx].offloads &&
+		    m->packet_type & rnp_rx_cksum[idx].packet_type) {
+			if (cksum_cmd & rnp_rx_cksum[idx].hw_offload)
+				m->ol_flags |= rnp_rx_cksum[idx].bad;
+			else
+				m->ol_flags |= rnp_rx_cksum[idx].good;
+		}
+	}
+}
+
 static __rte_always_inline void
-rnp_dev_rx_parse(struct rnp_rx_queue *rxq __rte_unused,
+rnp_dev_rx_offload(struct rnp_rx_queue *rxq,
+		   struct rte_mbuf *m,
+		   volatile struct rnp_rx_desc rxbd)
+{
+	uint32_t rss = rte_le_to_cpu_32(rxbd.wb.qword0.rss_hash);
+	uint16_t cmd = rxbd.wb.qword1.cmd;
+
+	if (rxq->rx_offloads & RNP_RX_CHECKSUM_SUPPORT) {
+		if (m->packet_type & RTE_PTYPE_TUNNEL_MASK) {
+			rnp_rx_parse_tunnel_cksum(rxq, m, cmd);
+		} else {
+			if (m->packet_type & RTE_PTYPE_L3_MASK ||
+			    m->packet_type & RTE_PTYPE_L4_MASK)
+				rnp_rx_parse_cksum(rxq, m, cmd);
+		}
+	}
+	if (rxq->rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH && rss) {
+		m->hash.rss = rss;
+		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+	}
+}
+
+static __rte_always_inline void
+rnp_dev_rx_parse(struct rnp_rx_queue *rxq,
 		 struct rte_mbuf *m,
 		 volatile struct rnp_rx_desc rxbd)
 {
@@ -680,6 +774,7 @@ rnp_dev_rx_parse(struct rnp_rx_queue *rxq __rte_unused,
 	}
 	if (!(m->packet_type & RTE_PTYPE_L2_MASK))
 		m->packet_type |= RTE_PTYPE_L2_ETHER;
+	rnp_dev_rx_offload(rxq, m, rxbd);
 }
 
 #define RNP_CACHE_FETCH_RX (4)
