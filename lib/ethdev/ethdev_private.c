@@ -280,6 +280,8 @@ eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 	fpo->tx_descriptor_status = dev->tx_descriptor_status;
 	fpo->recycle_tx_mbufs_reuse = dev->recycle_tx_mbufs_reuse;
 	fpo->recycle_rx_descriptors_refill = dev->recycle_rx_descriptors_refill;
+	fpo->rx_mirror = (struct rte_eth_mirror * __rte_atomic *)(uintptr_t)&dev->rx_mirror;
+	fpo->tx_mirror = (struct rte_eth_mirror * __rte_atomic *)(uintptr_t)&dev->tx_mirror;
 
 	fpo->rxq.data = dev->data->rx_queues;
 	fpo->rxq.clbk = (void * __rte_atomic *)(uintptr_t)dev->post_rx_burst_cbs;
@@ -481,17 +483,53 @@ eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 }
 
 static int
-ethdev_handle_request(const struct ethdev_mp_request *req)
+ethdev_handle_request(const struct ethdev_mp_request *req, size_t len)
 {
+	len -= sizeof(*req);
+
 	switch (req->operation) {
 	case ETH_REQ_START:
+		if (len != 0)
+			return -EINVAL;
+
 		return rte_eth_dev_start(req->port_id);
 
 	case ETH_REQ_STOP:
+		if (len != 0)
+			return -EINVAL;
 		return rte_eth_dev_stop(req->port_id);
 
+	case ETH_REQ_RESET:
+		if (len != 0)
+			return -EINVAL;
+		return rte_eth_dev_reset(req->port_id);
+
+	case ETH_REQ_ADD_MIRROR:
+		if (len != sizeof(struct rte_eth_mirror_conf)) {
+			RTE_ETHDEV_LOG_LINE(ERR,
+				    "add mirror conf wrong size %zu", len);
+			return -EINVAL;
+		}
+
+		const struct rte_eth_mirror_conf *conf
+			= (const struct rte_eth_mirror_conf *) req->config;
+
+		return rte_eth_add_mirror(req->port_id, conf);
+
+	case ETH_REQ_REMOVE_MIRROR:
+		if (len != sizeof(uint16_t)) {
+			RTE_ETHDEV_LOG_LINE(ERR,
+				    "mirror remove wrong size %zu", len);
+			return -EINVAL;
+		}
+
+		uint16_t target = *(const uint16_t *) req->config;
+		return rte_eth_remove_mirror(req->port_id, target);
+
 	default:
-		return -EINVAL;
+		RTE_ETHDEV_LOG_LINE(ERR,
+			    "Unknown mp request operation %u", req->operation);
+		return -ENOTSUP;
 	}
 }
 
@@ -504,30 +542,32 @@ static_assert(sizeof(struct ethdev_mp_response) <= RTE_MP_MAX_PARAM_LEN,
 int
 ethdev_server(const struct rte_mp_msg *mp_msg, const void *peer)
 {
-	const struct ethdev_mp_request *req
-		= (const struct ethdev_mp_request *)mp_msg->param;
-
 	struct rte_mp_msg mp_resp = {
 		.name = ETHDEV_MP,
 	};
 	struct ethdev_mp_response *resp;
+	const struct ethdev_mp_request *req;
 
 	resp = (struct ethdev_mp_response *)mp_resp.param;
 	mp_resp.len_param = sizeof(*resp);
-	resp->res_op = req->operation;
 
 	/* recv client requests */
-	if (mp_msg->len_param != sizeof(*req))
+	if (mp_msg->len_param < (int)sizeof(*req)) {
+		RTE_ETHDEV_LOG_LINE(ERR, "invalid request from secondary");
 		resp->err_value = -EINVAL;
-	else
-		resp->err_value = ethdev_handle_request(req);
+	} else {
+		req = (const struct ethdev_mp_request *)mp_msg->param;
+		resp->res_op = req->operation;
+		resp->err_value = ethdev_handle_request(req, mp_msg->len_param);
+
+	}
 
 	return rte_mp_reply(&mp_resp, peer);
 }
 
 int
 ethdev_request(enum ethdev_mp_operation operation, uint16_t port_id,
-	       uint16_t queue_id __rte_unused)
+	       const void *conf, size_t conf_len)
 {
 	struct rte_mp_msg mp_req = { };
 	struct rte_mp_reply mp_reply;
@@ -535,12 +575,22 @@ ethdev_request(enum ethdev_mp_operation operation, uint16_t port_id,
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	int ret;
 
-	req = (struct ethdev_mp_request *)mp_req.param;
-	strlcpy(mp_req.name, ETHDEV_MP, RTE_MP_MAX_NAME_LEN);
-	mp_req.len_param = sizeof(*req);
+	if (sizeof(*req) + conf_len > RTE_MP_MAX_PARAM_LEN) {
+		RTE_ETHDEV_LOG_LINE(ERR,
+				    "request %u port %u invalid conf len %zu",
+				    operation, port_id, conf_len);
+		return -EINVAL;
+	}
 
+	strlcpy(mp_req.name, ETHDEV_MP, RTE_MP_MAX_NAME_LEN);
+	mp_req.len_param = sizeof(*req) + conf_len;
+
+	req = (struct ethdev_mp_request *)mp_req.param;
 	req->operation = operation;
 	req->port_id = port_id;
+
+	if (conf_len > 0)
+		memcpy(req->config, conf, conf_len);
 
 	ret = rte_mp_request_sync(&mp_req, &mp_reply, &ts);
 	if (ret == 0) {

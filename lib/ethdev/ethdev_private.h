@@ -85,12 +85,17 @@ int eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues);
 enum ethdev_mp_operation {
 	ETH_REQ_START,
 	ETH_REQ_STOP,
+	ETH_REQ_RESET,
+	ETH_REQ_ADD_MIRROR,
+	ETH_REQ_REMOVE_MIRROR,
 };
 
 struct ethdev_mp_request {
 	uint16_t operation;
 	uint16_t port_id;
 	uint32_t reserved;
+
+	uint8_t config[]; /* operation specific */
 };
 
 struct ethdev_mp_response {
@@ -100,6 +105,7 @@ struct ethdev_mp_response {
 };
 
 int ethdev_server(const struct rte_mp_msg *mp_msg, const void *peer);
-int ethdev_request(enum ethdev_mp_operation op, uint16_t port, uint16_t queue);
+int ethdev_request(enum ethdev_mp_operation op, uint16_t port,
+		   const void *buf, size_t len);
 
 #endif /* _ETH_PRIVATE_H_ */

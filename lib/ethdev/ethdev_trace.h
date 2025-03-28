@@ -1036,6 +1036,23 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_eth_trace_add_mirror,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id,
+			     const struct rte_eth_mirror_conf *conf, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(conf->target);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_eth_trace_remove_mirror,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t target_id, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(target_id);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
 	rte_eth_trace_rx_queue_info_get,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id,
 		const struct rte_eth_rxq_info *qinfo),

@@ -11,6 +11,7 @@ sources = files(
         'rte_ethdev_cman.c',
         'rte_ethdev_telemetry.c',
         'rte_flow.c',
+        'rte_mirror.c',
         'rte_mtr.c',
         'rte_tm.c',
         'sff_telemetry.c',
