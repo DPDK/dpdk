@@ -111,6 +111,13 @@ struct rnp_eth_port {
 	struct rnp_tx_queue *tx_queues[RNP_MAX_RX_QUEUE_NUM];
 	struct rnp_hw *hw;
 
+	struct rte_eth_rss_conf rss_conf;
+	uint16_t last_rx_num;
+	bool rxq_num_changed;
+	bool reta_has_cfg;
+	bool hw_rss_en;
+	uint32_t indirtbl[RNP_RSS_INDIR_SIZE];
+
 	rte_spinlock_t rx_mac_lock;
 	bool port_stopped;
 };
