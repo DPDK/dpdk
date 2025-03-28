@@ -48,6 +48,7 @@ Features
 - Jumbo frames
 - Scatter-Gather IO support
 - Port hardware statistic
+- Packet type parsing
 
 Prerequisites and Pre-conditions
 --------------------------------
@@ -90,6 +91,7 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_default_mac_addr_set``
 * ``rte_eth_dev_mac_addr_add``
 * ``rte_eth_dev_mac_addr_remove``
+* ``rte_eth_dev_get_supported_ptypes``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``

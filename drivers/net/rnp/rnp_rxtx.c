@@ -639,6 +639,49 @@ int rnp_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
 	return 0;
 }
 
+static __rte_always_inline void
+rnp_dev_rx_parse(struct rnp_rx_queue *rxq __rte_unused,
+		 struct rte_mbuf *m,
+		 volatile struct rnp_rx_desc rxbd)
+{
+	uint32_t mark_data = rxbd.wb.qword0.mark_data;
+	uint16_t vlan_tci = rxbd.wb.qword1.vlan_tci;
+	uint32_t cmd = rxbd.wb.qword1.cmd;
+
+	/* clear mbuf packet_type and ol_flags */
+	m->packet_type = 0;
+	m->ol_flags = 0;
+	if (mark_data & RNP_RX_L3TYPE_VALID) {
+		if (cmd & RNP_RX_L3TYPE_IPV6)
+			m->packet_type |= RTE_PTYPE_L3_IPV6;
+		else
+			m->packet_type |= RTE_PTYPE_L3_IPV4;
+	}
+	if (vlan_tci)
+		m->packet_type |= RTE_PTYPE_L2_ETHER_VLAN;
+	switch (cmd & RNP_RX_L4TYPE_MASK) {
+	case RNP_RX_L4TYPE_UDP:
+		m->packet_type |= RTE_PTYPE_L4_UDP;
+		break;
+	case RNP_RX_L4TYPE_TCP:
+		m->packet_type |= RTE_PTYPE_L4_TCP;
+		break;
+	case RNP_RX_L4TYPE_SCTP:
+		m->packet_type |= RTE_PTYPE_L4_SCTP;
+		break;
+	}
+	switch (cmd & RNP_RX_TUNNEL_MASK) {
+	case RNP_RX_PTYPE_VXLAN:
+		m->packet_type |= RTE_PTYPE_TUNNEL_VXLAN;
+		break;
+	case RNP_RX_PTYPE_NVGRE:
+		m->packet_type |= RTE_PTYPE_TUNNEL_NVGRE;
+		break;
+	}
+	if (!(m->packet_type & RTE_PTYPE_L2_MASK))
+		m->packet_type |= RTE_PTYPE_L2_ETHER;
+}
+
 #define RNP_CACHE_FETCH_RX (4)
 static __rte_always_inline int
 rnp_refill_rx_ring(struct rnp_rx_queue *rxq)
@@ -738,6 +781,7 @@ rnp_recv_pkts(void *_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			nmb->ol_flags = 0;
 			nmb->nb_segs = 1;
 
+			rnp_dev_rx_parse(rxq, nmb, rxbd[j]);
 			rxq->stats.ibytes += nmb->data_len;
 		}
 		for (j = 0; j < nb_dd; ++j) {
@@ -938,6 +982,7 @@ rnp_scattered_rx(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 		rxm->next = NULL;
 		first_seg->port = rxq->attr.port_id;
+		rnp_dev_rx_parse(rxq, first_seg, rxd);
 		rxq->stats.ibytes += first_seg->pkt_len;
 		/* this the end of packet the large pkt has been recv finish */
 		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
