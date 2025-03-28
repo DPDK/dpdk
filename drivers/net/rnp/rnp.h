@@ -123,6 +123,9 @@ struct rnp_eth_port {
 	bool hw_rss_en;
 	uint32_t indirtbl[RNP_RSS_INDIR_SIZE];
 
+	uint16_t cur_mtu;
+	bool jumbo_en;
+
 	rte_spinlock_t rx_mac_lock;
 	bool port_stopped;
 };
