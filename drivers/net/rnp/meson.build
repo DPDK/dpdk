@@ -23,4 +23,5 @@ sources = files(
         'rnp_ethdev.c',
         'rnp_rxtx.c',
         'rnp_rss.c',
+        'rnp_link.c',
 )

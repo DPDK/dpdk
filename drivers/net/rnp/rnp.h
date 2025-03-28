@@ -92,6 +92,11 @@ struct rnp_port_attr {
 
 	struct rnp_phy_meta phy_meta;
 
+	bool link_ready;
+	bool pre_link;
+	bool duplex;
+	uint32_t speed;
+
 	uint16_t port_id;	/* platform manage port sequence id */
 	uint8_t port_offset;	/* port queue offset */
 	uint8_t sw_id;		/* software port init sequence id */
@@ -122,6 +127,12 @@ struct rnp_eth_port {
 	bool port_stopped;
 };
 
+enum rnp_pf_op {
+	RNP_PF_OP_DONE,
+	RNP_PF_OP_CLOSING = 1,
+	RNP_PF_OP_PROCESS,
+};
+
 struct rnp_eth_adapter {
 	struct rnp_hw hw;
 	struct rte_pci_device *pdev;
@@ -129,6 +140,7 @@ struct rnp_eth_adapter {
 
 	struct rte_mempool *reset_pool;
 	struct rnp_eth_port *ports[RNP_MAX_PORT_OF_PF];
+	RTE_ATOMIC(uint16_t) pf_op;
 	uint16_t closed_ports;
 	uint16_t inited_ports;
 	bool intr_registered;
