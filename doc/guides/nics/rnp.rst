@@ -49,6 +49,8 @@ Features
 - Promiscuous mode
 - Link state information
 - MTU update
+- Jumbo frames
+- Scatter-Gather IO support
 
 
 Prerequisites and Pre-conditions

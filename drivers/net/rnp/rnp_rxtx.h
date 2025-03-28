@@ -76,6 +76,8 @@ struct rnp_rx_queue {
 	uint64_t rx_offloads; /* user set hw offload features */
 	struct rte_mbuf **free_mbufs; /* rx bulk alloc reserve of free mbufs */
 	struct rte_mbuf fake_mbuf; /* dummy mbuf */
+	struct rte_mbuf	*pkt_first_seg; /**< First segment of current packet. */
+	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
 };
 
 struct rnp_txsw_entry {
