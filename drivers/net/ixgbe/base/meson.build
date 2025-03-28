@@ -17,7 +17,7 @@ sources = [
         'ixgbe_x550.c',
 ]
 
-error_cflags = ['-Wno-unused-value',
+error_cflags = [
         '-Wno-unused-but-set-variable',
         '-Wno-unused-parameter',
         ]
