@@ -21,6 +21,7 @@
 #include "rnp_rss.h"
 #include "rnp_link.h"
 
+static int rnp_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static struct rte_eth_dev *
 rnp_alloc_eth_port(struct rte_pci_device *pci, char *name)
 {
@@ -142,6 +143,13 @@ static void rnp_mac_rx_enable(struct rte_eth_dev *dev)
 	mac_cfg = RNP_MAC_REG_RD(hw, lane, RNP_MAC_RX_CFG);
 	mac_cfg |= RNP_MAC_RE;
 
+	if (port->jumbo_en) {
+		mac_cfg |= RNP_MAC_JE;
+		mac_cfg |= RNP_MAC_GPSLCE | RNP_MAC_WD;
+	} else {
+		mac_cfg &= ~RNP_MAC_JE;
+		mac_cfg &= ~RNP_MAC_WD;
+	}
 	mac_cfg &= ~RNP_MAC_GPSL_MASK;
 	mac_cfg |= (RNP_MAC_MAX_GPSL << RNP_MAC_CPSL_SHIFT);
 	RNP_MAC_REG_WR(hw, lane, RNP_MAC_RX_CFG, mac_cfg);
@@ -211,6 +219,7 @@ rnp_rx_scattered_setup(struct rte_eth_dev *dev)
 {
 	uint16_t max_pkt_size =
 		dev->data->dev_conf.rxmode.mtu + RNP_ETH_OVERHEAD;
+	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
 	struct rnp_hw *hw = port->hw;
 	struct rnp_rx_queue *rxq;
@@ -236,6 +245,12 @@ rnp_rx_scattered_setup(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 	dma_buf_size = hw->min_dma_size;
+	if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER ||
+			max_pkt_size > dma_buf_size ||
+			dev->data->mtu + RNP_ETH_OVERHEAD > dma_buf_size)
+		dev->data->scattered_rx = 1;
+	else
+		dev->data->scattered_rx = 0;
 	/* Setup max dma scatter engine split size */
 	if (max_pkt_size == dma_buf_size)
 		dma_buf_size += (dma_buf_size % 16);
@@ -296,6 +311,7 @@ static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
 	struct rte_eth_dev_data *data = eth_dev->data;
+	uint16_t max_rx_pkt_len = eth_dev->data->mtu;
 	bool lsc = data->dev_conf.intr_conf.lsc;
 	struct rnp_hw *hw = port->hw;
 	uint16_t lane = 0;
@@ -316,6 +332,9 @@ static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 	if (ret)
 		return ret;
 	ret = rnp_rx_scattered_setup(eth_dev);
+	if (ret)
+		return ret;
+	ret = rnp_mtu_set(eth_dev, max_rx_pkt_len);
 	if (ret)
 		return ret;
 	ret = rnp_enable_all_tx_queue(eth_dev);
@@ -655,6 +674,131 @@ static int rnp_allmulticast_disable(struct rte_eth_dev *eth_dev)
 	return rnp_update_mpfm(port, RNP_MPF_MODE_ALLMULTI, 0);
 }
 
+static bool
+rnp_verify_pf_scatter(struct rnp_eth_adapter *adapter)
+{
+	struct rnp_hw *hw = &adapter->hw;
+	struct rte_eth_dev *eth_dev;
+	uint8_t i = 0;
+
+	for (i = 0; i < hw->max_port_num; i++) {
+		if (adapter->ports[i] == NULL)
+			continue;
+		eth_dev = adapter->ports[i]->eth_dev;
+		if (eth_dev->data == NULL)
+			continue;
+		/* sub port of pf eth_dev state is not
+		 * started so the scatter_rx attr isn't
+		 * setup don't check this sub port.
+		 */
+		if (!eth_dev->data->dev_started)
+			continue;
+		if (!eth_dev->data->scattered_rx)
+			return false;
+	}
+
+	return true;
+}
+
+static int
+rnp_update_valid_mtu(struct rnp_eth_port *port, uint16_t *set_mtu)
+{
+	struct rnp_eth_adapter *adapter = port->hw->back;
+	struct rnp_eth_port *sub_port = NULL;
+	struct rnp_hw *hw = port->hw;
+	uint16_t origin_mtu = 0;
+	uint16_t mtu = 0;
+	uint8_t i = 0;
+
+	if (hw->max_port_num == 1) {
+		port->cur_mtu = *set_mtu;
+
+		return 0;
+	}
+	origin_mtu = port->cur_mtu;
+	port->cur_mtu = *set_mtu;
+	mtu = *set_mtu;
+	for (i = 0; i < hw->max_port_num; i++) {
+		sub_port = adapter->ports[i];
+		if (sub_port == NULL)
+			continue;
+		mtu = RTE_MAX(mtu, sub_port->cur_mtu);
+	}
+	if (hw->max_port_num > 1 &&
+			mtu + RNP_ETH_OVERHEAD > hw->min_dma_size) {
+		if (!rnp_verify_pf_scatter(adapter)) {
+			RNP_PMD_ERR("single pf multiple port max_frame_sz "
+					"is bigger than min_dma_size please "
+					"stop all pf port before set mtu.");
+			port->cur_mtu = origin_mtu;
+			return -EINVAL;
+		}
+	}
+	*set_mtu = mtu;
+
+	return 0;
+}
+
+static int
+rnp_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	uint32_t frame_size = mtu + RNP_ETH_OVERHEAD;
+	uint16_t lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	bool jumbo_en = false;
+	uint32_t reg;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	/* check that mtu is within the allowed range */
+	if (frame_size < RTE_ETHER_MIN_LEN ||
+			frame_size > RNP_MAC_MAXFRM_SIZE) {
+		RNP_PMD_ERR("valid packet length must be "
+				"range from %u to  %u, "
+				"when Jumbo Frame Feature disabled",
+				(uint32_t)RTE_ETHER_MIN_LEN,
+				(uint32_t)RTE_ETHER_MAX_LEN);
+		return -EINVAL;
+	}
+	/*
+	 * Refuse mtu that requires the support of scattered packets
+	 * when this feature has not been enabled before.
+	 */
+	if (dev->data->dev_started && !dev->data->scattered_rx &&
+			frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
+		RNP_PMD_ERR("port %d mtu update must be stopped "
+				"before configuration when scatter rx off.",
+				dev->data->port_id);
+
+		return -EBUSY;
+	}
+	/* For one pf multiple port the mtu we must set
+	 * the biggest mtu the ports selong to pf
+	 * because of the control button is only one
+	 */
+	ret = rnp_update_valid_mtu(port, &mtu);
+	if (ret < 0)
+		return ret;
+	frame_size = mtu + RNP_ETH_OVERHEAD;
+	if (frame_size > RTE_ETHER_MAX_LEN)
+		jumbo_en = true;
+	/* setting the MTU */
+	RNP_E_REG_WR(hw, RNP_MAX_FRAME_CTRL, frame_size);
+	RNP_E_REG_WR(hw, RNP_MIN_FRAME_CTRL, 60);
+	if (jumbo_en) {
+		/* To protect conflict hw resource */
+		rte_spinlock_lock(&port->rx_mac_lock);
+		reg = RNP_MAC_REG_RD(hw, lane, RNP_MAC_RX_CFG);
+		reg |= RNP_MAC_JE;
+		RNP_MAC_REG_WR(hw, lane, RNP_MAC_RX_CFG, reg);
+		rte_spinlock_unlock(&port->rx_mac_lock);
+	}
+	port->jumbo_en = jumbo_en;
+
+	return 0;
+}
+
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.dev_configure                = rnp_dev_configure,
@@ -669,6 +813,7 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.allmulticast_enable          = rnp_allmulticast_enable,
 	.allmulticast_disable         = rnp_allmulticast_disable,
 
+	.mtu_set                      = rnp_mtu_set,
 	.rx_queue_setup               = rnp_rx_queue_setup,
 	.rx_queue_release             = rnp_dev_rx_queue_release,
 	.rx_queue_stop                = rnp_rx_queue_stop,
