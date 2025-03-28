@@ -369,9 +369,11 @@ rnp_tx_queue_sw_reset(struct rnp_tx_queue *txq)
 		sw_ring[prev].next_id = idx;
 		prev = idx;
 	}
+	txq->last_desc_cleaned = txq->attr.nb_desc - 1;
 	txq->nb_tx_free = txq->attr.nb_desc - 1;
 	txq->tx_next_dd = txq->tx_rs_thresh - 1;
 	txq->tx_next_rs = txq->tx_rs_thresh - 1;
+	txq->nb_tx_used = 0;
 	txq->tx_tail = 0;
 
 	size = (txq->attr.nb_desc + RNP_TX_MAX_BURST_SIZE);
@@ -857,6 +859,7 @@ rnp_rxq_bulk_alloc(struct rnp_rx_queue *rxq,
 		rxe->mbuf = nmb;
 		rxbd->d.pkt_addr = rnp_get_dma_addr(&rxq->attr, nmb);
 	}
+	rxq->rxrearm_nb++;
 	if (rxq->rxrearm_nb > rxq->rx_free_thresh) {
 		rxq->rxrearm_nb -= rxq->rx_free_thresh;
 		rxq->rxrearm_start += rxq->rx_free_thresh;
@@ -924,7 +927,6 @@ rnp_scattered_rx(void *rx_queue, struct rte_mbuf **rx_pkts,
 			first_seg->nb_segs++;
 			last_seg->next = rxm;
 		}
-		rxq->rxrearm_nb++;
 		if (!(rx_status & rte_cpu_to_le_16(RNP_CMD_EOP))) {
 			last_seg = rxm;
 			continue;
@@ -943,6 +945,106 @@ rnp_scattered_rx(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxq->pkt_last_seg = last_seg;
 
 	return nb_rx;
+}
+
+static __rte_always_inline uint16_t
+rnp_multiseg_clean_txq(struct rnp_tx_queue *txq)
+{
+	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
+	struct rnp_txsw_entry *sw_ring = txq->sw_ring;
+	volatile struct rnp_tx_desc *txbd;
+	uint16_t desc_to_clean_to;
+	uint16_t nb_tx_to_clean;
+
+	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
+	desc_to_clean_to = desc_to_clean_to & (txq->attr.nb_desc - 1);
+
+	desc_to_clean_to = sw_ring[desc_to_clean_to].last_id;
+	txbd = &txq->tx_bdr[desc_to_clean_to];
+	if (!(txbd->d.cmd & RNP_CMD_DD))
+		return txq->nb_tx_free;
+
+	if (last_desc_cleaned > desc_to_clean_to)
+		nb_tx_to_clean = (uint16_t)((txq->attr.nb_desc -
+					last_desc_cleaned) + desc_to_clean_to);
+	else
+		nb_tx_to_clean = (uint16_t)(desc_to_clean_to -
+				last_desc_cleaned);
+
+	txbd->d.cmd = 0;
+
+	txq->last_desc_cleaned = desc_to_clean_to;
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
+
+	return txq->nb_tx_free;
+}
+
+static __rte_always_inline uint16_t
+rnp_multiseg_xmit_pkts(void *_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rnp_tx_queue *txq = (struct rnp_tx_queue *)_txq;
+	volatile struct rnp_tx_desc *txbd;
+	struct rnp_txsw_entry *txe, *txn;
+	struct rte_mbuf *tx_pkt, *m_seg;
+	uint16_t send_pkts = 0;
+	uint16_t nb_used_bd;
+	uint16_t tx_last;
+	uint16_t nb_tx;
+	uint16_t tx_id;
+
+	if (unlikely(!txq->txq_started || !txq->tx_link))
+		return 0;
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		rnp_multiseg_clean_txq(txq);
+	if (unlikely(txq->nb_tx_free == 0))
+		return 0;
+	tx_id = txq->tx_tail;
+	txbd = &txq->tx_bdr[tx_id];
+	txe = &txq->sw_ring[tx_id];
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		tx_pkt = tx_pkts[nb_tx];
+		nb_used_bd = tx_pkt->nb_segs;
+		tx_last = (uint16_t)(tx_id + nb_used_bd - 1);
+		if (tx_last >= txq->attr.nb_desc)
+			tx_last = (uint16_t)(tx_last - txq->attr.nb_desc);
+		if (nb_used_bd > txq->nb_tx_free)
+			if (nb_used_bd > rnp_multiseg_clean_txq(txq))
+				break;
+		m_seg = tx_pkt;
+		do {
+			txbd = &txq->tx_bdr[tx_id];
+			txbd->d.cmd = 0;
+			txn = &txq->sw_ring[txe->next_id];
+			if (txe->mbuf) {
+				rte_pktmbuf_free_seg(txe->mbuf);
+				txe->mbuf = NULL;
+			}
+			txe->mbuf = m_seg;
+			txe->last_id = tx_last;
+			txbd->d.addr = rnp_get_dma_addr(&txq->attr, m_seg);
+			txbd->d.blen = rte_cpu_to_le_32(m_seg->data_len);
+			txbd->d.cmd &= ~RNP_CMD_EOP;
+			m_seg = m_seg->next;
+			tx_id = txe->next_id;
+			txe = txn;
+		} while (m_seg != NULL);
+		txbd->d.cmd |= RNP_CMD_EOP;
+		txq->nb_tx_used = (uint16_t)txq->nb_tx_used + nb_used_bd;
+		txq->nb_tx_free = (uint16_t)txq->nb_tx_free - nb_used_bd;
+		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
+			txq->nb_tx_used = 0;
+			txbd->d.cmd |= RNP_CMD_RS;
+		}
+		send_pkts++;
+	}
+	if (!send_pkts)
+		return 0;
+	txq->tx_tail = tx_id;
+
+	rte_wmb();
+	RNP_REG_WR(txq->tx_tailreg, 0, tx_id);
+
+	return send_pkts;
 }
 
 static int
@@ -968,9 +1070,29 @@ int rnp_rx_func_select(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+rnp_check_tx_simple_valid(struct rte_eth_dev *dev, struct rnp_tx_queue *txq)
+{
+	RTE_SET_USED(txq);
+	if (dev->data->scattered_rx)
+		return -ENOTSUP;
+	return 0;
+}
+
 int rnp_tx_func_select(struct rte_eth_dev *dev)
 {
-	dev->tx_pkt_burst = rnp_xmit_simple;
+	bool simple_allowed = false;
+	struct rnp_tx_queue *txq;
+	int idx = 0;
+
+	for (idx = 0; idx < dev->data->nb_tx_queues; idx++) {
+		txq = dev->data->tx_queues[idx];
+		simple_allowed = rnp_check_tx_simple_valid(dev, txq) == 0;
+	}
+	if (simple_allowed)
+		dev->tx_pkt_burst = rnp_xmit_simple;
+	else
+		dev->tx_pkt_burst = rnp_multiseg_xmit_pkts;
 	dev->tx_pkt_prepare = rte_eth_pkt_burst_dummy;
 
 	return 0;

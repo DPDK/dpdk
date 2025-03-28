@@ -98,7 +98,8 @@ struct rnp_tx_queue {
 	struct rnp_queue_attr attr;
 
 	uint16_t nb_tx_free; /* avail desc to set pkts */
-	uint16_t nb_tx_used;
+	uint16_t nb_tx_used; /* multiseg mbuf used num */
+	uint16_t last_desc_cleaned;
 	uint16_t tx_tail;
 
 	uint16_t tx_next_dd; /* next to scan writeback dd bit */
