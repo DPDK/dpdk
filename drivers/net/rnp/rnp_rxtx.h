@@ -47,6 +47,14 @@ struct rnp_rxsw_entry {
 	struct rte_mbuf *mbuf;
 };
 
+struct rnp_queue_stats {
+	uint64_t obytes;
+	uint64_t opackets;
+
+	uint64_t ibytes;
+	uint64_t ipackets;
+};
+
 struct rnp_rx_queue {
 	struct rte_mempool *mb_pool; /* mbuf pool to populate rx ring. */
 	const struct rte_memzone *rz; /* rx hw ring base alloc memzone */
@@ -73,6 +81,7 @@ struct rnp_rx_queue {
 	uint8_t pthresh; /* rx desc prefetch threshold */
 	uint8_t pburst; /* rx desc prefetch burst */
 
+	struct rnp_queue_stats stats;
 	uint64_t rx_offloads; /* user set hw offload features */
 	struct rte_mbuf **free_mbufs; /* rx bulk alloc reserve of free mbufs */
 	struct rte_mbuf fake_mbuf; /* dummy mbuf */
@@ -113,6 +122,7 @@ struct rnp_tx_queue {
 	uint8_t pthresh; /* rx desc prefetch threshold */
 	uint8_t pburst; /* rx desc burst*/
 
+	struct rnp_queue_stats stats;
 	uint64_t tx_offloads; /* tx offload features */
 	struct rte_mbuf **free_mbufs; /* tx bulk free reserve of free mbufs */
 };
