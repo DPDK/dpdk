@@ -7,6 +7,8 @@
 
 #include "rnp_osdep.h"
 
+#define RNP_MAX_PORT_OF_PF	(4)
+
 struct rnp_hw;
 /* Mailbox Operate Info */
 enum RNP_MBX_ID {
@@ -56,7 +58,34 @@ struct rnp_mbx_info {
 	struct rnp_mbx_sync syncs[RNP_MBX_FW + 1];
 };
 
+struct rnp_eth_port;
+/* mac operations */
+struct rnp_mac_ops {
+	/* update mac packet filter mode */
+	int (*get_macaddr)(struct rnp_eth_port *port, u8 *mac);
+};
+
 struct rnp_eth_adapter;
+struct rnp_fw_info {
+	char cookie_name[RTE_MEMZONE_NAMESIZE];
+	struct rnp_dma_mem mem;
+	void *cookie_pool;
+	bool fw_irq_en;
+	bool msg_alloced;
+
+	u64 fw_features;
+	spinlock_t fw_lock; /* mc-sp Protect firmware logic */
+};
+
+#define rnp_call_hwif_impl(port, f, arg...) \
+	(((f) != NULL) ? ((f) (port, arg)) : (-ENODEV))
+
+enum rnp_nic_mode {
+	RNP_SINGLE_40G = 0,
+	RNP_SINGLE_10G = 1,
+	RNP_DUAL_10G = 2,
+	RNP_QUAD_10G = 3,
+};
 
 /* hw device description */
 struct rnp_hw {
@@ -70,8 +99,18 @@ struct rnp_hw {
 	u16 vendor_id;
 	u16 max_vfs;			/* device max support vf */
 
+	char device_name[RTE_DEV_NAME_MAX_LEN];
+
+	u8 max_port_num;	/* max sub port of this nic */
+	u8 lane_mask;		/* lane enabled bit */
+	u8 nic_mode;
 	u16 pf_vf_num;
+	/* hardware port sequence info */
+	u8 phy_port_ids[RNP_MAX_PORT_OF_PF];	/* port id: for lane0~3: value:0 ~ 7*/
+	u8 lane_of_port[RNP_MAX_PORT_OF_PF];	/* lane_id: hw lane map port 1:0 0:1 or 0:0 1:1 */
+	bool lane_is_sgmii[RNP_MAX_PORT_OF_PF];
 	struct rnp_mbx_info mbx;
+	struct rnp_fw_info fw_info;
 };
 
 #endif /* _RNP_HW_H_ */
