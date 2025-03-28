@@ -14,6 +14,16 @@ Supported Chipsets and NICs
 
 - MUCSE Ethernet Controller N10 Series for 10GbE or 40GbE (Dual-port)
 
+Support of Ethernet Network Controllers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PCIE NICS
+^^^^^^^^^
+
+* ``N10G-X2-DC .... Dual-port 10 Gigabit SFP Ethernet Adapter``
+* ``N10G-X4-QC .... Quad-port 10 Gigabit SFP Ethernet Adapter``
+* ``N10G-X8-OC .... Octa-port 10 Gigabit SFP Ethernet Adapter``
+
 Chip Basic Overview
 -------------------
 N10 has two functions, each function support muiple ports(1 to 8),which not same as normal pcie network card(one pf for each port).
