@@ -1431,6 +1431,29 @@ rnp_dev_mac_addr_remove(struct rte_eth_dev *dev,
 	rnp_clear_macaddr(port, index);
 }
 
+static int
+rnp_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+			 struct rte_ether_addr *mc_addr_list,
+			 uint32_t nb_mc_addr)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	uint32_t idx = 0;
+
+	if (nb_mc_addr > port->attr.max_mc_mac_hash)
+		return -EINVAL;
+	rnp_clear_mc_hash(port);
+	for (idx = 0; idx < nb_mc_addr; idx++) {
+		if (!rte_is_multicast_ether_addr(&mc_addr_list[idx])) {
+			RNP_PMD_ERR("mc_list[%d] isn't a valid multicast", idx);
+			return -EINVAL;
+		}
+	}
+	for (idx = 0; idx < nb_mc_addr; idx++)
+		rnp_update_mc_hash(port, (uint8_t *)&mc_addr_list[idx]);
+
+	return 0;
+}
+
 static uint32_t *rnp_support_ptypes_get(void)
 {
 	static uint32_t ptypes[] = {
@@ -1507,6 +1530,7 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.mac_addr_set                 = rnp_dev_mac_addr_set,
 	.mac_addr_add                 = rnp_dev_mac_addr_add,
 	.mac_addr_remove              = rnp_dev_mac_addr_remove,
+	.set_mc_addr_list             = rnp_dev_set_mc_addr_list,
 	/* vlan offload */
 	.vlan_offload_set             = rnp_vlan_offload_set,
 	.vlan_strip_queue_set         = rnp_vlan_strip_queue_set,
@@ -1540,12 +1564,14 @@ rnp_setup_port_attr(struct rnp_eth_port *port,
 		attr->max_mc_mac_hash = RNP_PORT_MAX_MC_MAC_SIZE;
 		attr->uc_hash_tb_size = 0;
 		attr->mc_hash_tb_size = RNP_PORT_MAX_MC_HASH_TB;
+		attr->hash_table_shift = RNP_PORT_HASH_SHIFT;
 	} else {
 		attr->max_mac_addrs = RNP_MAX_MAC_ADDRS;
 		attr->max_uc_mac_hash = RNP_MAX_HASH_UC_MAC_SIZE;
 		attr->max_mc_mac_hash = RNP_MAX_HASH_MC_MAC_SIZE;
 		attr->uc_hash_tb_size = RNP_MAX_UC_HASH_TABLE;
 		attr->mc_hash_tb_size = RNP_MAC_MC_HASH_TABLE;
+		attr->hash_table_shift = 0;
 	}
 	port->outvlan_type = RNP_SVLAN_TYPE;
 	port->invlan_type = RNP_CVLAN_TYPE;

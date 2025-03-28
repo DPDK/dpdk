@@ -74,6 +74,10 @@ struct rnp_mac_ops {
 	/* Receive Address Filter table */
 	int (*set_rafb)(struct rnp_eth_port *port, const u8 *mac, u32 index);
 	int (*clear_rafb)(struct rnp_eth_port *port, u32 index);
+	/* update multicast address table */
+	int (*update_mta)(struct rnp_eth_port *port, u8 *mc_addr);
+	/* clear all multicast hash table */
+	int (*clear_mta)(struct rnp_eth_port *port, bool en);
 	/* receive vlan filter */
 	int (*vlan_f_en)(struct rnp_eth_port *port, bool en);
 	int (*update_vlan)(struct rnp_eth_port *port, u16 vid, bool en);
