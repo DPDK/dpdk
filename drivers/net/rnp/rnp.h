@@ -71,6 +71,7 @@
 #define RNP_PORT_MAX_MACADDR         (32)
 #define RNP_PORT_MAX_MC_HASH_TB      (8)
 #define RNP_PORT_MAX_MC_MAC_SIZE     (RNP_PORT_MAX_MC_HASH_TB * 32)
+#define RNP_PORT_HASH_SHIFT          (26 - (RNP_PORT_MAX_MC_MAC_SIZE >> 7))
 /* hardware media type */
 enum rnp_media_type {
 	RNP_MEDIA_TYPE_UNKNOWN,
@@ -99,6 +100,7 @@ struct rnp_port_attr {
 	uint16_t max_mc_mac_hash; /* max hash multicast mac size */
 	uint16_t uc_hash_tb_size; /* max unicast hash table block num */
 	uint16_t mc_hash_tb_size; /* max multicast hash table block num */
+	uint16_t hash_table_shift;/* hash mac table shift num */
 	uint16_t max_rx_queues;   /* belong to this port rxq resource */
 	uint16_t max_tx_queues;   /* belong to this port txq resource */
 
@@ -200,6 +202,8 @@ struct rnp_eth_port {
 	bool reta_has_cfg;
 	bool hw_rss_en;
 	uint32_t indirtbl[RNP_RSS_INDIR_SIZE];
+	uint32_t mc_hash_table[RNP_MAC_MC_HASH_TABLE];
+	uint8_t hash_filter_type;
 
 	uint16_t cur_mtu;
 	bool jumbo_en;

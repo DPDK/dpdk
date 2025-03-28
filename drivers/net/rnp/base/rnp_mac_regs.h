@@ -114,6 +114,8 @@
 #define RNP_MAC_VLAN_VLC_REPLACE	(0x3 << RNP_MAC_VLAN_VLC_SHIFT)
 /* VLAN Tag for Transmit Packets For Insert/Remove */
 #define RNP_MAC_VLAN_VLT		RTE_GENMASK32(15, 0)
+/* Mac Hash Table */
+#define RNP_MAC_ADDR_HASH_TB(n)	(0x10 + ((n) * 0x4))
 /* mac link ctrl */
 #define RNP_MAC_LPI_CTRL	(0xd0)
 /* PHY Link Status Disable */
