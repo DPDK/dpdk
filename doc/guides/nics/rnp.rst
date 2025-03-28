@@ -43,6 +43,7 @@ Features
   Inner RSS is only support for vxlan/nvgre
 - Promiscuous mode
 - Link state information
+- MTU update
 
 Prerequisites and Pre-conditions
 --------------------------------
@@ -80,6 +81,8 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_rss_reta_update``
 * ``rte_eth_dev_set_link_down``
 * ``rte_eth_dev_set_link_up``
+* ``rte_eth_dev_get_mtu``
+* ``rte_eth_dev_set_mtu``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``
