@@ -69,8 +69,45 @@
 /* Hash or Perfect Filter */
 #define RNP_MAC_HPF		RTE_BIT32(10)
 #define RNP_MAC_VTFE		RTE_BIT32(16)
-
-#define RNP_MAC_VFE		RTE_BIT32(16)
+/* mac vlan ctrl reg */
+#define RNP_MAC_VLAN_TAG	(0x50)
+/* En Double Vlan Processing */
+#define RNP_MAC_VLAN_EDVLP	RTE_BIT32(26)
+/* VLAN Tag Hash Table Match Enable */
+#define RNP_MAC_VLAN_VTHM	RTE_BIT32(25)
+/*  Enable VLAN Tag in Rx status */
+#define RNP_MAC_VLAN_EVLRXS	RTE_BIT32(24)
+/* Disable VLAN Type Check */
+#define RNP_MAC_VLAN_DOVLTC	RTE_BIT32(20)
+/* Enable S-VLAN */
+#define RNP_MAC_VLAN_ESVL	RTE_BIT32(18)
+/* Enable 12-Bit VLAN Tag Comparison Filter */
+#define RNP_MAC_VLAN_ETV	RTE_BIT32(16)
+/* enable vid valid  */
+#define RNP_MAC_VLAN_HASH_EN	RTE_GENMASK32(15, 0)
+/* MAC VLAN CTRL INSERT REG */
+#define RNP_MAC_VLAN_INCL	(0x60)
+#define RNP_MAC_INNER_VLAN_INCL	(0x64)
+/* VLAN_Tag Insert From Description */
+#define RNP_MAC_VLAN_VLTI	RTE_BIT32(20)
+/* C-VLAN or S-VLAN */
+#define RNP_MAC_VLAN_CSVL		RTE_BIT32(19)
+#define RNP_MAC_VLAN_INSERT_CVLAN	(0 << 19)
+#define RNP_MAC_VLAN_INSERT_SVLAN	(1 << 19)
+/* VLAN Tag Control in Transmit Packets */
+#define RNP_MAC_VLAN_VLC		RTE_GENMASK32(17, 16)
+/* VLAN Tag Control Offset Bit */
+#define RNP_MAC_VLAN_VLC_SHIFT		(16)
+/* Don't Anything ON TX VLAN*/
+#define RNP_MAC_VLAN_VLC_NONE		(0x0 << RNP_MAC_VLAN_VLC_SHIFT)
+/* MAC Delete VLAN */
+#define RNP_MAC_VLAN_VLC_DEL		(0x1 << RNP_MAC_VLAN_VLC_SHIFT)
+/* MAC Add VLAN */
+#define RNP_MAC_VLAN_VLC_ADD		(0x2 << RNP_MAC_VLAN_VLC_SHIFT)
+/* MAC Replace VLAN */
+#define RNP_MAC_VLAN_VLC_REPLACE	(0x3 << RNP_MAC_VLAN_VLC_SHIFT)
+/* VLAN Tag for Transmit Packets For Insert/Remove */
+#define RNP_MAC_VLAN_VLT		RTE_GENMASK32(15, 0)
 /* mac link ctrl */
 #define RNP_MAC_LPI_CTRL	(0xd0)
 /* PHY Link Status Disable */

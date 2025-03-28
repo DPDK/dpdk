@@ -307,6 +307,94 @@ static int rnp_enable_all_tx_queue(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static void
+rnp_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue,
+			 int on)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	struct rnp_rx_queue *rxq = NULL;
+	struct rnp_hw *hw = port->hw;
+	uint16_t index;
+	uint32_t reg;
+
+	rxq = dev->data->rx_queues[queue];
+	if (rxq) {
+		index = rxq->attr.index;
+		reg = RNP_E_REG_RD(hw, RNP_VLAN_Q_STRIP_CTRL(index));
+		if (on) {
+			reg |= 1 << (index % 32);
+			rxq->rx_offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+		} else {
+			reg &= ~(1 << (index % 32));
+			rxq->rx_offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+		}
+		RNP_E_REG_WR(hw, RNP_VLAN_Q_STRIP_CTRL(index), reg);
+	}
+}
+
+static void
+rnp_vlan_strip_enable(struct rnp_eth_port *port, bool en)
+{
+	int i = 0;
+
+	for (i = 0; i < port->eth_dev->data->nb_rx_queues; i++) {
+		if (port->eth_dev->data->rx_queues[i] == NULL) {
+			RNP_PMD_ERR("Strip queue[%d] is NULL.", i);
+			continue;
+		}
+		rnp_vlan_strip_queue_set(port->eth_dev, i, en);
+	}
+}
+
+static void
+rnp_double_vlan_enable(struct rnp_eth_port *port, bool on)
+{
+	uint16_t lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	uint32_t ctrl;
+
+	/* En Double Vlan Engine */
+	ctrl = RNP_MAC_REG_RD(hw, lane, RNP_MAC_VLAN_TAG);
+	if (on)
+		ctrl |= RNP_MAC_VLAN_EDVLP | RNP_MAC_VLAN_ESVL;
+	else
+		ctrl &= ~(RNP_MAC_VLAN_EDVLP | RNP_MAC_VLAN_ESVL);
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_VLAN_TAG, ctrl);
+}
+
+static int
+rnp_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+
+	if (mask & RTE_ETH_QINQ_STRIP_MASK) {
+		RNP_PMD_ERR("QinQ Strip isn't supported.");
+		return -ENOTSUP;
+	}
+	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER)
+			rnp_rx_vlan_filter_en(port, true);
+		else
+
+			rnp_rx_vlan_filter_en(port, false);
+	}
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+			rnp_vlan_strip_enable(port, true);
+		else
+			rnp_vlan_strip_enable(port, false);
+	}
+	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
+			rnp_double_vlan_enable(port, true);
+		else
+			rnp_double_vlan_enable(port, false);
+	}
+
+	return 0;
+}
+
 static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
@@ -472,10 +560,79 @@ static void rnp_set_rx_cksum_offload(struct rte_eth_dev *dev)
 	}
 }
 
+static void
+rnp_qinq_insert_offload_en(struct rnp_eth_port *port, bool on)
+{
+	uint16_t lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	uint32_t cvlan_ctrl, svlan_ctrl;
+
+	/* en double vlan engine */
+	rnp_double_vlan_enable(port, on);
+	/* setup inner vlan mode*/
+	cvlan_ctrl = RNP_MAC_REG_RD(hw, lane, RNP_MAC_INNER_VLAN_INCL);
+	if (on) {
+		cvlan_ctrl |= RNP_MAC_VLAN_VLTI;
+		cvlan_ctrl &= ~RNP_MAC_VLAN_CSVL;
+		if (port->invlan_type == RNP_SVLAN_TYPE)
+			cvlan_ctrl |= RNP_MAC_VLAN_INSERT_SVLAN;
+		cvlan_ctrl &= ~RNP_MAC_VLAN_VLC;
+		cvlan_ctrl |= RNP_MAC_VLAN_VLC_ADD;
+	} else {
+		cvlan_ctrl = 0;
+	}
+	/* setup outer vlan mode */
+	svlan_ctrl = RNP_MAC_REG_RD(hw, lane, RNP_MAC_VLAN_INCL);
+	if (on) {
+		svlan_ctrl |= RNP_MAC_VLAN_VLTI;
+		svlan_ctrl &= ~RNP_MAC_VLAN_CSVL;
+		if (port->outvlan_type == RNP_SVLAN_TYPE)
+			svlan_ctrl |= RNP_MAC_VLAN_INSERT_SVLAN;
+		svlan_ctrl &= ~RNP_MAC_VLAN_VLC;
+		svlan_ctrl |= RNP_MAC_VLAN_VLC_ADD;
+	} else {
+		svlan_ctrl = 0;
+	}
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_INNER_VLAN_INCL, cvlan_ctrl);
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_VLAN_INCL, svlan_ctrl);
+}
+
+static void
+rnp_vlan_insert_offload_en(struct rnp_eth_port *port, bool on)
+{
+	uint16_t lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	uint32_t ctrl;
+
+	ctrl = RNP_MAC_REG_RD(hw, lane, RNP_MAC_VLAN_INCL);
+	if (on) {
+		ctrl |= RNP_MAC_VLAN_VLTI;
+		ctrl &= ~RNP_MAC_VLAN_CSVL;
+		if (port->invlan_type == RNP_SVLAN_TYPE)
+			ctrl |= RNP_MAC_VLAN_INSERT_SVLAN;
+		ctrl &= ~RNP_MAC_VLAN_VLC;
+		ctrl |= RNP_MAC_VLAN_VLC_ADD;
+	} else {
+		ctrl = 0;
+	}
+	RNP_MAC_REG_WR(hw, lane, RNP_MAC_VLAN_INCL, ctrl);
+}
+
 static int rnp_dev_configure(struct rte_eth_dev *eth_dev)
 {
+	struct rte_eth_txmode *txmode = &eth_dev->data->dev_conf.txmode;
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
 
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT &&
+	    txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT)
+		rnp_qinq_insert_offload_en(port, true);
+	else
+		rnp_qinq_insert_offload_en(port, false);
+	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT &&
+	    !(txmode->offloads & RTE_ETH_TX_OFFLOAD_QINQ_INSERT))
+		rnp_vlan_insert_offload_en(port, true);
+	if (!(txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT))
+		rnp_vlan_insert_offload_en(port, false);
 	if (port->last_rx_num != eth_dev->data->nb_rx_queues)
 		port->rxq_num_changed = true;
 	else
@@ -667,9 +824,12 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	dev_info->reta_size = RNP_RSS_INDIR_SIZE;
 	/* speed cap info */
 	dev_info->speed_capa = rnp_get_speed_caps(eth_dev);
+	/* per queue offload */
+	dev_info->rx_queue_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 	/* rx support offload cap */
 	dev_info->rx_offload_capa = RNP_RX_CHECKSUM_SUPPORT |
 				    RTE_ETH_RX_OFFLOAD_SCATTER;
+	dev_info->rx_offload_capa |= dev_info->rx_queue_offload_capa;
 	/* tx support offload cap */
 	dev_info->tx_offload_capa = 0 |
 				    RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
@@ -680,7 +840,9 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 				    RTE_ETH_TX_OFFLOAD_TCP_TSO |
 				    RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
 				    RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
-				    RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+				    RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
+				    RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				    RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 	/* default ring configure */
 	dev_info->default_rxportconf.burst_size = 32;
 	dev_info->default_txportconf.burst_size = 32;
@@ -1331,6 +1493,9 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.mac_addr_set                 = rnp_dev_mac_addr_set,
 	.mac_addr_add                 = rnp_dev_mac_addr_add,
 	.mac_addr_remove              = rnp_dev_mac_addr_remove,
+	/* vlan offload */
+	.vlan_offload_set             = rnp_vlan_offload_set,
+	.vlan_strip_queue_set         = rnp_vlan_strip_queue_set,
 	.dev_supported_ptypes_get     = rnp_dev_supported_ptypes_get,
 };
 
@@ -1367,6 +1532,9 @@ rnp_setup_port_attr(struct rnp_eth_port *port,
 		attr->uc_hash_tb_size = RNP_MAX_UC_HASH_TABLE;
 		attr->mc_hash_tb_size = RNP_MAC_MC_HASH_TABLE;
 	}
+	port->outvlan_type = RNP_SVLAN_TYPE;
+	port->invlan_type = RNP_CVLAN_TYPE;
+
 	rnp_mbx_fw_get_lane_stat(port);
 
 	RNP_PMD_INFO("PF[%d] SW-ETH-PORT[%d]<->PHY_LANE[%d]",
