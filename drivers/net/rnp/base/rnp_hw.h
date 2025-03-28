@@ -122,9 +122,10 @@ struct rnp_hw {
 	struct rnp_fw_info fw_info;
 	u16 min_dma_size;
 
+	uint8_t msgbuf[64];
 	spinlock_t rxq_reset_lock; /* reset op isn't thread safe */
 	spinlock_t txq_reset_lock; /* reset op isn't thread safe */
-
+	spinlock_t link_sync; /* link info update must be one user */
 };
 
 #endif /* _RNP_HW_H_ */

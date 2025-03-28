@@ -19,6 +19,7 @@
 #include "base/rnp_mac_regs.h"
 #include "rnp_rxtx.h"
 #include "rnp_rss.h"
+#include "rnp_link.h"
 
 static struct rte_eth_dev *
 rnp_alloc_eth_port(struct rte_pci_device *pci, char *name)
@@ -51,9 +52,83 @@ fail_calloc:
 	return NULL;
 }
 
+static int
+rnp_mbx_fw_reply_handler(struct rnp_eth_adapter *adapter,
+			 void *cmd)
+{
+	struct rnp_mbx_fw_cmd_reply *reply = cmd;
+	struct rnp_mbx_req_cookie *cookie;
+
+	RTE_SET_USED(adapter);
+	/* dbg_here; */
+	cookie = reply->cookie;
+	if (!cookie || cookie->magic != RNP_COOKIE_MAGIC) {
+		RNP_PMD_ERR("invalid cookie:%p opcode:0x%x v0:0x%x",
+				cookie, reply->opcode, *((int *)reply));
+		return -EIO;
+	}
+	if (cookie->priv_len > 0)
+		memcpy(cookie->priv, reply->data, RNP_FW_REP_DATA_NUM);
+
+	cookie->done = 1;
+	if (reply->flags & RNP_FLAGS_ERR)
+		cookie->errcode = reply->error_code;
+	else
+		cookie->errcode = 0;
+
+	return 0;
+}
+
+static int rnp_mbx_fw_req_handler(struct rnp_eth_adapter *adapter,
+				  void *cmd)
+{
+	struct rnp_mbx_fw_cmd_req *req = cmd;
+
+	switch (req->opcode) {
+	case RNP_LINK_STATUS_EVENT:
+		rnp_link_event(adapter, req);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int rnp_process_fw_msg(struct rnp_eth_adapter *adapter)
+{
+	const struct rnp_mbx_ops *ops = RNP_DEV_PP_TO_MBX_OPS(adapter->eth_dev);
+	struct rnp_hw *hw = &adapter->hw;
+	void *msg_cmd = NULL;
+	uint16_t msg_flag;
+
+	msg_cmd = (void *)hw->msgbuf;
+	memset(msg_cmd, 0, sizeof(hw->msgbuf));
+	/* check fw req */
+	if (!ops->check_for_msg(hw, RNP_MBX_FW)) {
+		rnp_rcv_msg_from_fw(adapter, msg_cmd);
+		msg_flag = hw->msgbuf[2] | hw->msgbuf[3];
+		if (msg_flag & RNP_FLAGS_DD)
+			rnp_mbx_fw_reply_handler(adapter, msg_cmd);
+		else
+			rnp_mbx_fw_req_handler(adapter, msg_cmd);
+	}
+
+	return 0;
+}
+
 static void rnp_dev_interrupt_handler(void *param)
 {
-	RTE_SET_USED(param);
+	struct rnp_eth_adapter *adapter = param;
+	uint16_t exp = RNP_PF_OP_DONE;
+
+	if (!rte_atomic_compare_exchange_strong_explicit(&adapter->pf_op, &exp,
+			RNP_PF_OP_PROCESS, rte_memory_order_acquire,
+			rte_memory_order_acquire))
+		return;
+	rnp_process_fw_msg(adapter);
+	rte_atomic_store_explicit(&adapter->pf_op, RNP_PF_OP_DONE,
+			rte_memory_order_release);
 }
 
 static void rnp_mac_rx_enable(struct rte_eth_dev *dev)
@@ -221,6 +296,7 @@ static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
 	struct rte_eth_dev_data *data = eth_dev->data;
+	bool lsc = data->dev_conf.intr_conf.lsc;
 	struct rnp_hw *hw = port->hw;
 	uint16_t lane = 0;
 	uint16_t idx = 0;
@@ -249,6 +325,9 @@ static int rnp_dev_start(struct rte_eth_dev *eth_dev)
 	if (ret)
 		goto rxq_start_failed;
 	rnp_mac_init(eth_dev);
+	rnp_mbx_fw_lane_link_event_en(port, lsc);
+	if (!lsc)
+		rnp_run_link_poll_task(port);
 	/* enable eth rx flow */
 	RNP_RX_ETH_ENABLE(hw, lane);
 	port->port_stopped = 0;
@@ -323,6 +402,7 @@ static int rnp_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
 	const struct rte_eth_dev_data *data = eth_dev->data;
+	bool lsc = eth_dev->data->dev_conf.intr_conf.lsc;
 	struct rte_eth_link link;
 	int ret;
 
@@ -335,7 +415,6 @@ static int rnp_dev_stop(struct rte_eth_dev *eth_dev)
 	/* clear the recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(eth_dev, &link);
-
 	ret = rnp_disable_all_tx_queue(eth_dev);
 	if (ret < 0) {
 		RNP_PMD_ERR("port[%u] disable tx queue failed", data->port_id);
@@ -348,6 +427,10 @@ static int rnp_dev_stop(struct rte_eth_dev *eth_dev)
 	}
 	rnp_mac_tx_disable(eth_dev);
 	rnp_mac_rx_disable(eth_dev);
+	if (!lsc)
+		rnp_cancel_link_poll_task(port);
+	port->attr.link_ready = false;
+	port->attr.speed = 0;
 
 	eth_dev->data->dev_started = 0;
 	port->port_stopped = 1;
@@ -355,9 +438,22 @@ static int rnp_dev_stop(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static void rnp_change_manage_port(struct rnp_eth_adapter *adapter)
+{
+	uint16_t idx = 0;
+
+	adapter->eth_dev = NULL;
+	for (idx = 0; idx < adapter->inited_ports; idx++) {
+		if (adapter->ports[idx])
+			adapter->eth_dev = adapter->ports[idx]->eth_dev;
+	}
+}
+
 static int rnp_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct rnp_eth_adapter *adapter = RNP_DEV_TO_ADAPTER(eth_dev);
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+	uint16_t exp = RNP_PF_OP_DONE;
 	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
@@ -367,6 +463,15 @@ static int rnp_dev_close(struct rte_eth_dev *eth_dev)
 	ret = rnp_dev_stop(eth_dev);
 	if (ret < 0)
 		return ret;
+	do {
+		ret = rte_atomic_compare_exchange_strong_explicit(&adapter->pf_op,
+				&exp, RNP_PF_OP_CLOSING, rte_memory_order_acquire,
+				rte_memory_order_acquire);
+	} while (!ret);
+	adapter->closed_ports++;
+	adapter->ports[port->attr.sw_id] = NULL;
+	if (adapter->intr_registered && adapter->eth_dev == eth_dev)
+		rnp_change_manage_port(adapter);
 	if (adapter->closed_ports == adapter->inited_ports) {
 		struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI((void *)eth_dev->device);
 		if (adapter->intr_registered) {
@@ -380,7 +485,8 @@ static int rnp_dev_close(struct rte_eth_dev *eth_dev)
 		rnp_dma_mem_free(&adapter->hw, &adapter->hw.fw_info.mem);
 		rte_free(adapter);
 	}
-	adapter->closed_ports++;
+	rte_atomic_store_explicit(&adapter->pf_op, RNP_PF_OP_DONE,
+			rte_memory_order_release);
 
 	return 0;
 }
@@ -557,6 +663,8 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.reta_query                   = rnp_dev_rss_reta_query,
 	.rss_hash_update              = rnp_dev_rss_hash_update,
 	.rss_hash_conf_get            = rnp_dev_rss_hash_conf_get,
+	/* link impl */
+	.link_update                  = rnp_dev_link_update,
 };
 
 static void
@@ -733,6 +841,7 @@ rnp_eth_dev_init(struct rte_eth_dev *eth_dev)
 		RNP_PMD_ERR("hardware common ops setup failed");
 		goto free_ad;
 	}
+	rnp_mbx_fw_pf_link_event_en(port, false);
 	for (p_id = 0; p_id < hw->max_port_num; p_id++) {
 		/* port 0 resource has been allocated when probe */
 		if (!p_id) {
@@ -775,8 +884,7 @@ rnp_eth_dev_init(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_register(intr_handle,
 			rnp_dev_interrupt_handler, adapter);
 	rte_intr_enable(intr_handle);
-	adapter->intr_registered = true;
-	hw->fw_info.fw_irq_en = true;
+	rnp_mbx_fw_pf_link_event_en(port, true);
 
 	return 0;
 

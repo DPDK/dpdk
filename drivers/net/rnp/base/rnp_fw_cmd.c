@@ -68,6 +68,45 @@ rnp_build_get_lane_status_req(struct rnp_mbx_fw_cmd_req *req,
 	arg->nr_lane = req_arg->param0;
 }
 
+static void
+rnp_build_set_event_mask(struct rnp_mbx_fw_cmd_req *req,
+			 struct rnp_fw_req_arg *req_arg,
+			 void *cookie)
+{
+	struct rnp_set_pf_event_mask *arg =
+		(struct rnp_set_pf_event_mask *)req->data;
+
+	req->flags = 0;
+	req->opcode = RNP_SET_EVENT_MASK;
+	req->datalen = sizeof(*arg);
+	req->cookie = cookie;
+	req->reply_lo = 0;
+	req->reply_hi = 0;
+
+	arg->event_mask = req_arg->param0;
+	arg->event_en = req_arg->param1;
+}
+
+static void
+rnp_build_lane_evet_mask(struct rnp_mbx_fw_cmd_req *req,
+			 struct rnp_fw_req_arg *req_arg,
+			 void *cookie)
+{
+	struct rnp_set_lane_event_mask *arg =
+		(struct rnp_set_lane_event_mask *)req->data;
+
+	req->flags = 0;
+	req->opcode = RNP_SET_LANE_EVENT_EN;
+	req->datalen = sizeof(*arg);
+	req->cookie = cookie;
+	req->reply_lo = 0;
+	req->reply_hi = 0;
+
+	arg->nr_lane = req_arg->param0;
+	arg->event_mask = req_arg->param1;
+	arg->event_en = req_arg->param2;
+}
+
 int rnp_build_fwcmd_req(struct rnp_mbx_fw_cmd_req *req,
 			struct rnp_fw_req_arg *arg,
 			void *cookie)
@@ -86,6 +125,12 @@ int rnp_build_fwcmd_req(struct rnp_mbx_fw_cmd_req *req,
 		break;
 	case RNP_GET_LANE_STATUS:
 		rnp_build_get_lane_status_req(req, arg, cookie);
+		break;
+	case RNP_SET_EVENT_MASK:
+		rnp_build_set_event_mask(req, arg, cookie);
+		break;
+	case RNP_SET_LANE_EVENT_EN:
+		rnp_build_lane_evet_mask(req, arg, cookie);
 		break;
 	default:
 		err = -EOPNOTSUPP;

@@ -6,6 +6,7 @@
 #define _RNP_FW_CMD_H_
 
 #include "rnp_osdep.h"
+#include "rnp_hw.h"
 
 #define RNP_FW_LINK_SYNC	(0x000c)
 #define RNP_LINK_MAGIC_CODE	(0xa5a40000)
@@ -71,6 +72,22 @@ enum RNP_GENERIC_CMD {
 
 	RNP_ATU_OBOUND_SET		= 0xFF10,
 	RNP_SET_DDR_CSL			= 0xFF11,
+};
+
+struct rnp_port_stat {
+	u8 phy_addr;	     /* Phy MDIO address */
+
+	u8 duplex	: 1; /* FIBRE is always 1,Twisted Pair 1 or 0 */
+	u8 autoneg	: 1; /* autoned state */
+	u8 fec		: 1;
+	u8 an_rev	: 1;
+	u8 link_traing	: 1;
+	u8 is_sgmii	: 1; /* avild fw >= 0.5.0.17 */
+	u8 rsvd0	: 2;
+	u16 speed;	     /* cur port linked speed */
+
+	u16 pause	: 4;
+	u16 rsvd1	: 12;
 };
 
 /* firmware -> driver reply */
@@ -203,6 +220,18 @@ struct rnp_lane_stat_rep {
 	u32 rsvd;
 };
 
+#define RNP_MBX_SYNC_MASK RTE_GENMASK32(15, 0)
+/* == flags == */
+#define RNP_FLAGS_DD  RTE_BIT32(0) /* driver clear 0, FW must set 1 */
+#define RNP_FLAGS_CMP RTE_BIT32(1) /* driver clear 0, FW mucst set */
+#define RNP_FLAGS_ERR RTE_BIT32(2) /* driver clear 0, FW must set only if it reporting an error */
+#define RNP_FLAGS_LB  RTE_BIT32(9)
+#define RNP_FLAGS_RD  RTE_BIT32(10) /* set if additional buffer has command parameters */
+#define RNP_FLAGS_BUF RTE_BIT32(12) /* set 1 on indirect command */
+#define RNP_FLAGS_SI  RTE_BIT32(13) /* not irq when command complete */
+#define RNP_FLAGS_EI  RTE_BIT32(14) /* interrupt on error */
+#define RNP_FLAGS_FE  RTE_BIT32(15) /* flush error */
+
 #define RNP_FW_REP_DATA_NUM	(40)
 struct rnp_mbx_fw_cmd_reply {
 	u16 flags;
@@ -252,6 +281,32 @@ struct rnp_get_lane_st_req {
 	u32 nr_lane;
 
 	u32 rsv[7];
+};
+
+#define RNP_FW_EVENT_LINK_UP	RTE_BIT32(0)
+#define RNP_FW_EVENT_PLUG_IN	RTE_BIT32(1)
+#define RNP_FW_EVENT_PLUG_OUT	RTE_BIT32(2)
+struct rnp_set_pf_event_mask {
+	u16 event_mask;
+	u16 event_en;
+
+	u32 rsv[7];
+};
+
+struct rnp_set_lane_event_mask {
+	u32 nr_lane;
+	u8 event_mask;
+	u8 event_en;
+	u8 rsvd[26];
+};
+
+/* FW op -> driver */
+struct rnp_link_stat_req {
+	u16 changed_lanes;
+	u16 lane_status;
+#define RNP_SPEED_VALID_MAGIC	(0xa4a6a8a9)
+	u32 port_st_magic;
+	struct rnp_port_stat states[RNP_MAX_PORT_OF_PF];
 };
 
 struct rnp_mbx_fw_cmd_req {
