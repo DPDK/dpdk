@@ -57,3 +57,4 @@ rte_eth APIs
 Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_close``
 * ``rte_eth_dev_stop``
+* ``rte_eth_dev_infos_get``
