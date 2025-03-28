@@ -1748,6 +1748,7 @@ STATIC enum i40e_status_code i40e_nvmupd_get_aq_event(struct i40e_hw *hw,
 	u32 aq_total_len;
 	u32 aq_desc_len;
 
+	UNREFERENCED_1PARAMETER(perrno);
 	i40e_debug(hw, I40E_DEBUG_NVM, "NVMUPD: %s\n", __func__);
 
 	aq_desc_len = sizeof(struct i40e_aq_desc);
