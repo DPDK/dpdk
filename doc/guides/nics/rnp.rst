@@ -42,6 +42,7 @@ which is different of normal PCIe network card (one PF for each port).
 Features
 --------
 
+- Multiple queues for Tx and Rx
 - Promiscuous mode
 
 
@@ -78,3 +79,5 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_allmulticast_disable``
 * ``rte_eth_promiscuous_get``
 * ``rte_eth_allmulticast_get``
+* ``rte_eth_rx_queue_setup``
+* ``rte_eth_tx_queue_setup``
