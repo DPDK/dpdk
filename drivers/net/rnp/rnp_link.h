@@ -46,5 +46,7 @@ int rnp_dev_link_update(struct rte_eth_dev *eth_dev,
 			int wait_to_complete);
 void rnp_run_link_poll_task(struct rnp_eth_port *port);
 void rnp_cancel_link_poll_task(struct rnp_eth_port *port);
+int rnp_dev_set_link_up(struct rte_eth_dev *eth_dev);
+int rnp_dev_set_link_down(struct rte_eth_dev *eth_dev);
 
 #endif /* _RNP_LINK_H_ */
