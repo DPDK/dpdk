@@ -12,6 +12,7 @@ struct rnp_eth_port;
 
 int rnp_mbx_fw_get_macaddr(struct rnp_eth_port *port, u8 *mac_addr);
 int rnp_mbx_fw_get_capability(struct rnp_eth_port *port);
+int rnp_mbx_fw_get_lane_stat(struct rnp_eth_port *port);
 int rnp_mbx_fw_reset_phy(struct rnp_hw *hw);
 int rnp_fw_init(struct rnp_hw *hw);
 
