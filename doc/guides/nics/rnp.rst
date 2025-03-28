@@ -54,6 +54,7 @@ Features
 - Scatter-Gather IO support
 - Port hardware statistics
 - Packet type parsing
+- Checksum offload
 
 
 Prerequisites and Pre-conditions
