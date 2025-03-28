@@ -335,3 +335,58 @@ rnp_mbx_fw_get_macaddr(struct rnp_eth_port *port,
 
 	return -ENOMSG;
 }
+
+int
+rnp_mbx_fw_get_lane_stat(struct rnp_eth_port *port)
+{
+	struct rnp_phy_meta *phy_meta = &port->attr.phy_meta;
+	u8 data[RNP_FW_REP_DATA_NUM] = {0};
+	struct rnp_lane_stat_rep *lane_stat;
+	u32 nr_lane = port->attr.nr_lane;
+	struct rnp_fw_req_arg arg;
+	u32 user_set_speed = 0;
+	int err;
+
+	RTE_BUILD_BUG_ON(sizeof(*lane_stat) != RNP_FW_REP_DATA_NUM);
+	memset(&arg, 0, sizeof(arg));
+	lane_stat = (struct rnp_lane_stat_rep *)&data;
+	arg.opcode = RNP_GET_LANE_STATUS;
+	arg.param0 = nr_lane;
+
+	err = rnp_fw_send_cmd(port, &arg, &data);
+	if (err) {
+		RNP_PMD_LOG(ERR, "%s: failed. err:%d", __func__, err);
+		return err;
+	}
+	phy_meta->supported_link = lane_stat->supported_link;
+	phy_meta->is_backplane = lane_stat->is_backplane;
+	phy_meta->phy_identifier = lane_stat->phy_addr;
+	phy_meta->link_autoneg = lane_stat->autoneg;
+	phy_meta->link_duplex = lane_stat->duplex;
+	phy_meta->phy_type = lane_stat->phy_type;
+	phy_meta->is_sgmii = lane_stat->is_sgmii;
+	phy_meta->fec = lane_stat->fec;
+
+	if (phy_meta->is_sgmii) {
+		phy_meta->media_type = RNP_MEDIA_TYPE_COPPER;
+		phy_meta->supported_link |=
+			RNP_SPEED_CAP_100M_HALF | RNP_SPEED_CAP_10M_HALF;
+	} else if (phy_meta->is_backplane) {
+		phy_meta->media_type = RNP_MEDIA_TYPE_BACKPLANE;
+	} else {
+		phy_meta->media_type = RNP_MEDIA_TYPE_FIBER;
+	}
+	if (phy_meta->phy_type == RNP_PHY_TYPE_10G_TP) {
+		phy_meta->supported_link |= RNP_SPEED_CAP_1GB_FULL;
+		phy_meta->supported_link |= RNP_SPEED_CAP_10GB_FULL;
+	}
+	if (!phy_meta->link_autoneg &&
+	    phy_meta->media_type == RNP_MEDIA_TYPE_COPPER) {
+		/* firmware don't support upload info just use user info */
+		user_set_speed = port->eth_dev->data->dev_conf.link_speeds;
+		if (!(user_set_speed & RTE_ETH_LINK_SPEED_FIXED))
+			phy_meta->link_autoneg = 1;
+	}
+
+	return 0;
+}

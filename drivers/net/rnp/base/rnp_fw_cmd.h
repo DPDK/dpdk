@@ -129,6 +129,80 @@ struct rnp_mac_addr_rep {
 	u32 pcode;
 };
 
+#define RNP_SPEED_CAP_UNKNOWN    (0)
+#define RNP_SPEED_CAP_10M_FULL   RTE_BIT32(2)
+#define RNP_SPEED_CAP_100M_FULL  RTE_BIT32(3)
+#define RNP_SPEED_CAP_1GB_FULL   RTE_BIT32(4)
+#define RNP_SPEED_CAP_10GB_FULL  RTE_BIT32(5)
+#define RNP_SPEED_CAP_40GB_FULL  RTE_BIT32(6)
+#define RNP_SPEED_CAP_25GB_FULL  RTE_BIT32(7)
+#define RNP_SPEED_CAP_50GB_FULL  RTE_BIT32(8)
+#define RNP_SPEED_CAP_100GB_FULL RTE_BIT32(9)
+#define RNP_SPEED_CAP_10M_HALF   RTE_BIT32(10)
+#define RNP_SPEED_CAP_100M_HALF  RTE_BIT32(11)
+#define RNP_SPEED_CAP_1GB_HALF   RTE_BIT32(12)
+
+enum rnp_pma_phy_type {
+	RNP_PHY_TYPE_NONE = 0,
+	RNP_PHY_TYPE_1G_BASE_KX,
+	RNP_PHY_TYPE_SGMII,
+	RNP_PHY_TYPE_10G_BASE_KR,
+	RNP_PHY_TYPE_25G_BASE_KR,
+	RNP_PHY_TYPE_40G_BASE_KR4,
+	RNP_PHY_TYPE_10G_BASE_SR,
+	RNP_PHY_TYPE_40G_BASE_SR4,
+	RNP_PHY_TYPE_40G_BASE_CR4,
+	RNP_PHY_TYPE_40G_BASE_LR4,
+	RNP_PHY_TYPE_10G_BASE_LR,
+	RNP_PHY_TYPE_10G_BASE_ER,
+	RNP_PHY_TYPE_10G_TP,
+};
+
+struct rnp_lane_stat_rep {
+	u8 nr_lane;		/* 0-3 cur port correspond with hw lane */
+	u8 pci_gen		: 4; /* nic cur pci speed genX: 1,2,3 */
+	u8 pci_lanes		: 4; /* nic cur pci x1 x2 x4 x8 x16 */
+	u8 pma_type;
+	u8 phy_type;		/* interface media type */
+
+	u16 linkup		: 1; /* cur port link state */
+	u16 duplex		: 1; /* duplex state only RJ45 valid */
+	u16 autoneg		: 1; /* autoneg state */
+	u16 fec			: 1; /* fec state */
+	u16 rev_an		: 1;
+	u16 link_traing		: 1; /* link-traing state */
+	u16 media_available	: 1;
+	u16 is_sgmii		: 1; /* 1: Twisted Pair 0: FIBRE */
+	u16 link_fault		: 4;
+#define RNP_LINK_LINK_FAULT	RTE_BIT32(0)
+#define RNP_LINK_TX_FAULT	RTE_BIT32(1)
+#define RNP_LINK_RX_FAULT	RTE_BIT32(2)
+#define RNP_LINK_REMOTE_FAULT	RTE_BIT32(3)
+	u16 is_backplane	: 1;   /* Backplane Mode */
+	u16 is_speed_10G_1G_auto_switch_enabled : 1;
+	u16 rsvd0		: 2;
+	union {
+		u8 phy_addr;	/* Phy MDIO address */
+		struct {
+			u8 mod_abs : 1;
+			u8 fault   : 1;
+			u8 tx_dis  : 1;
+			u8 los     : 1;
+			u8 rsvd1   : 4;
+		} sfp;
+	};
+	u8 sfp_connector;
+	u32 speed;		/* Current Speed Value */
+
+	u32 si_main;
+	u32 si_pre;
+	u32 si_post;
+	u32 si_tx_boost;
+	u32 supported_link;	/* Cur nic Support Link cap */
+	u32 phy_id;
+	u32 rsvd;
+};
+
 #define RNP_FW_REP_DATA_NUM	(40)
 struct rnp_mbx_fw_cmd_reply {
 	u16 flags;
@@ -171,6 +245,12 @@ struct rnp_get_phy_ablity {
 #define RNP_REQUEST_BY_DPDK (0xa1)
 #define RNP_REQUEST_BY_DRV  (0xa2)
 #define RNP_REQUEST_BY_PXE  (0xa3)
+	u32 rsv[7];
+};
+
+struct rnp_get_lane_st_req {
+	u32 nr_lane;
+
 	u32 rsv[7];
 };
 

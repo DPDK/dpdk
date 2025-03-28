@@ -10,6 +10,8 @@
 #include "rnp.h"
 #include "rnp_logs.h"
 #include "base/rnp_mbx.h"
+#include "base/rnp_fw_cmd.h"
+#include "base/rnp_mbx_fw.h"
 #include "base/rnp_mac.h"
 #include "base/rnp_eth_regs.h"
 #include "base/rnp_common.h"
@@ -87,10 +89,112 @@ static int rnp_dev_close(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static uint32_t
+rnp_get_speed_caps(struct rte_eth_dev *dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	uint32_t speed_cap = 0;
+	uint32_t i = 0, speed;
+	uint32_t support_link;
+	uint32_t link_types;
+
+	support_link = port->attr.phy_meta.supported_link;
+	link_types = rte_popcount64(support_link);
+	if (!link_types)
+		return 0;
+	for (i = 0; i < link_types; i++) {
+		speed = ffs(support_link) - 1;
+		switch (RTE_BIT32(speed)) {
+		case RNP_SPEED_CAP_10M_FULL:
+			speed_cap |= RTE_ETH_LINK_SPEED_10M;
+			break;
+		case RNP_SPEED_CAP_100M_FULL:
+			speed_cap |= RTE_ETH_LINK_SPEED_100M;
+			break;
+		case RNP_SPEED_CAP_1GB_FULL:
+			speed_cap |= RTE_ETH_LINK_SPEED_1G;
+			break;
+		case RNP_SPEED_CAP_10GB_FULL:
+			speed_cap |= RTE_ETH_LINK_SPEED_10G;
+			break;
+		case RNP_SPEED_CAP_40GB_FULL:
+			speed_cap |= RTE_ETH_LINK_SPEED_40G;
+			break;
+		case RNP_SPEED_CAP_25GB_FULL:
+			speed_cap |= RTE_ETH_LINK_SPEED_25G;
+			break;
+		case RNP_SPEED_CAP_10M_HALF:
+			speed_cap |= RTE_ETH_LINK_SPEED_10M_HD;
+			break;
+		case RNP_SPEED_CAP_100M_HALF:
+			speed_cap |= RTE_ETH_LINK_SPEED_100M_HD;
+			break;
+		default:
+			speed_cap |= 0;
+		}
+		support_link &= ~RTE_BIT32(speed);
+	}
+	if (!port->attr.phy_meta.link_autoneg)
+		speed_cap |= RTE_ETH_LINK_SPEED_FIXED;
+
+	return speed_cap;
+}
+
+static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
+			     struct rte_eth_dev_info *dev_info)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim){
+		.nb_max = RNP_MAX_BD_COUNT,
+		.nb_min = RNP_MIN_BD_COUNT,
+		.nb_align = RNP_BD_ALIGN,
+		.nb_seg_max = RNP_RX_MAX_SEG,
+		.nb_mtu_seg_max = RNP_RX_MAX_MTU_SEG,
+	};
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim){
+		.nb_max = RNP_MAX_BD_COUNT,
+		.nb_min = RNP_MIN_BD_COUNT,
+		.nb_align = RNP_BD_ALIGN,
+		.nb_seg_max = RNP_TX_MAX_SEG,
+		.nb_mtu_seg_max = RNP_TX_MAX_MTU_SEG,
+	};
+
+	dev_info->max_rx_pktlen = RNP_MAC_MAXFRM_SIZE;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - RNP_ETH_OVERHEAD;
+	dev_info->min_rx_bufsize = RNP_MIN_DMA_BUF_SIZE;
+	dev_info->max_rx_queues = port->attr.max_rx_queues;
+	dev_info->max_tx_queues = port->attr.max_tx_queues;
+	/* mac filter info */
+	dev_info->max_mac_addrs = port->attr.max_mac_addrs;
+	dev_info->max_hash_mac_addrs = port->attr.max_uc_mac_hash;
+	/* for RSS offload just support four tuple */
+	dev_info->flow_type_rss_offloads = RNP_SUPPORT_RSS_OFFLOAD_ALL;
+	dev_info->hash_key_size = RNP_MAX_HASH_KEY_SIZE * sizeof(uint32_t);
+	dev_info->reta_size = RNP_RSS_INDIR_SIZE;
+	/* speed cap info */
+	dev_info->speed_capa = rnp_get_speed_caps(eth_dev);
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.offloads = 0,
+	};
+
+	return 0;
+}
+
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.dev_close                    = rnp_dev_close,
 	.dev_stop                     = rnp_dev_stop,
+	.dev_infos_get                = rnp_dev_infos_get,
 };
 
 static void
@@ -109,7 +213,16 @@ rnp_setup_port_attr(struct rnp_eth_port *port,
 	attr->port_offset = RNP_E_REG_RD(hw, RNP_TC_PORT_OFFSET(lane));
 	attr->nr_lane = lane;
 	attr->sw_id = sw_id;
-	attr->max_mac_addrs = 1;
+
+	attr->max_rx_queues = RNP_MAX_RX_QUEUE_NUM / hw->max_port_num;
+	attr->max_tx_queues = RNP_MAX_TX_QUEUE_NUM / hw->max_port_num;
+
+	attr->max_mac_addrs = RNP_MAX_MAC_ADDRS;
+	attr->max_uc_mac_hash = RNP_MAX_HASH_UC_MAC_SIZE;
+	attr->max_mc_mac_hash = RNP_MAX_HASH_MC_MAC_SIZE;
+	attr->uc_hash_tb_size = RNP_MAX_UC_HASH_TABLE;
+	attr->mc_hash_tb_size = RNP_MAC_MC_HASH_TABLE;
+	rnp_mbx_fw_get_lane_stat(port);
 
 	RNP_PMD_INFO("PF[%d] SW-ETH-PORT[%d]<->PHY_LANE[%d]",
 			hw->mbx.pf_num, sw_id, lane);
