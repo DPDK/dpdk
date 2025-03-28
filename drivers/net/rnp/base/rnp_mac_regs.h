@@ -78,4 +78,84 @@
 /* PHY Link Status */
 #define RNP_MAC_PLS		RTE_BIT32(17)
 
+/* Mac Manage Counts */
+#define RNP_MMC_CTRL		(0x0800)
+#define RNP_MMC_RSTONRD	RTE_BIT32(2)
+/* Tx Good And Bad Bytes Base */
+#define RNP_MMC_TX_GBOCTGB	(0x0814)
+/* Tx Good And Bad Frame Num Base */
+#define RNP_MMC_TX_GBFRMB	(0x081c)
+/* Tx Good Broadcast Frame Num Base */
+#define RNP_MMC_TX_BCASTB	(0x0824)
+/* Tx Good Multicast Frame Num Base */
+#define RNP_MMC_TX_MCASTB	(0x082c)
+/* Tx 64Bytes Frame Num */
+#define RNP_MMC_TX_64_BYTESB	(0x0834)
+#define RNP_MMC_TX_65TO127_BYTESB	(0x083c)
+#define RNP_MMC_TX_128TO255_BYTEB	(0x0844)
+#define RNP_MMC_TX_256TO511_BYTEB	(0x084c)
+#define RNP_MMC_TX_512TO1023_BYTEB	(0x0854)
+#define RNP_MMC_TX_1024TOMAX_BYTEB	(0x085c)
+/* Tx Good And Bad Unicast Frame Num Base */
+#define RNP_MMC_TX_GBUCASTB		(0x0864)
+/* Tx Good And Bad Multicast Frame Num Base */
+#define RNP_MMC_TX_GBMCASTB		(0x086c)
+/* Tx Good And Bad Broadcast Frame NUM Base */
+#define RNP_MMC_TX_GBBCASTB		(0x0874)
+/* Tx Frame Underflow Error */
+#define RNP_MMC_TX_UNDRFLWB		(0x087c)
+/* Tx Good Frame Bytes Base */
+#define RNP_MMC_TX_GBYTESB		(0x0884)
+/* Tx Good Frame Num Base*/
+#define RNP_MMC_TX_GBRMB		(0x088c)
+/* Tx Good Pause Frame Num Base */
+#define RNP_MMC_TX_PAUSEB		(0x0894)
+/* Tx Good Vlan Frame Num Base */
+#define RNP_MMC_TX_VLANB		(0x089c)
+
+/* Rx Good And Bad Frames Num Base */
+#define RNP_MMC_RX_GBFRMB		(0x0900)
+/* Rx Good And Bad Frames Bytes Base */
+#define RNP_MMC_RX_GBOCTGB		(0x0908)
+/* Rx Good Framse Bytes Base */
+#define RNP_MMC_RX_GOCTGB		(0x0910)
+/* Rx Good Broadcast Frames Num Base */
+#define RNP_MMC_RX_BCASTGB		(0x0918)
+/* Rx Good Multicast Frames Num Base */
+#define RNP_MMC_RX_MCASTGB		(0x0920)
+/* Rx Crc Error Frames Num Base */
+#define RNP_MMC_RX_CRCERB		(0x0928)
+/* Rx Less Than 64Byes with Crc Err Base*/
+#define RNP_MMC_RX_RUNTERB		(0x0930)
+/* Receive Jumbo Frame Error */
+#define RNP_MMC_RX_JABBER_ERR		(0x0934)
+/* Shorter Than 64Bytes without Any Errora Base */
+#define RNP_MMC_RX_USIZEGB		(0x0938)
+/* Len Oversize 9k */
+#define RNP_MMC_RX_OSIZEGB		(0x093c)
+/* Rx 64Byes Frame Num Base */
+#define RNP_MMC_RX_64_BYTESB		(0x0940)
+/* Rx 65Bytes To 127Bytes Frame Num Base */
+#define RNP_MMC_RX_65TO127_BYTESB	(0x0948)
+/* Rx 128Bytes To 255Bytes Frame Num Base */
+#define RNP_MMC_RX_128TO255_BYTESB	(0x0950)
+/* Rx 256Bytes To 511Bytes Frame Num Base */
+#define RNP_MMC_RX_256TO511_BYTESB	(0x0958)
+/* Rx 512Bytes To 1023Bytes Frame Num Base */
+#define RNP_MMC_RX_512TO1203_BYTESB	(0x0960)
+/* Rx Len Bigger Than 1024Bytes Base */
+#define RNP_MMC_RX_1024TOMAX_BYTESB	(0x0968)
+/* Rx Unicast Frame Good Num Base */
+#define RNP_MMC_RX_UCASTGB		(0x0970)
+/* Rx Length Error Of Frame Part */
+#define RNP_MMC_RX_LENERRB		(0x0978)
+/* Rx received with a Length field not equal to the valid frame size */
+#define RNP_MMC_RX_OUTOF_RANGE		(0x0980)
+/* Rx Pause Frame Good Num Base */
+#define RNP_MMC_RX_PAUSEB		(0x0988)
+/* Rx Vlan Frame Good Num Base */
+#define RNP_MMC_RX_VLANGB		(0x0998)
+/* Rx With A Watchdog Timeout Err Frame Base */
+#define RNP_MMC_RX_WDOGERRB		(0x09a0)
+
 #endif /* _RNP_MAC_REGS_H_ */
