@@ -309,6 +309,12 @@ struct rnp_link_stat_req {
 	struct rnp_port_stat states[RNP_MAX_PORT_OF_PF];
 };
 
+struct rnp_ifup_down_req {
+	u32 nr_lane;
+	u32 up;
+	u8 rsvd[24];
+};
+
 struct rnp_mbx_fw_cmd_req {
 	u16 flags;
 	u16 opcode;
