@@ -8,6 +8,7 @@ sources = [
         'rnp_common.c',
         'rnp_mac.c',
         'rnp_bdq_if.c',
+        'rnp_crc32.c',
 ]
 
 c_args = cflags

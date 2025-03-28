@@ -29,5 +29,6 @@ int rnp_clear_macaddr(struct rnp_eth_port *port, u32 index);
 int rnp_update_mpfm(struct rnp_eth_port *port,
 		    u32 mode, bool en);
 int rnp_rx_vlan_filter_en(struct rnp_eth_port *port, bool en);
+int rnp_update_vlan_filter(struct rnp_eth_port *port, u16 vid, bool en);
 
 #endif /* _RNP_MAC_H_ */

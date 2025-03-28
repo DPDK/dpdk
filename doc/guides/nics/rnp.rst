@@ -44,7 +44,7 @@ Features
 - Promiscuous mode
 - Link state information
 - MTU update
-- MAC filtering
+- MAC/VLAN filtering
 - Jumbo frames
 - Scatter-Gather IO support
 - Port hardware statistic
@@ -98,6 +98,7 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_get_vlan_offload``
 * ``rte_eth_dev_set_vlan_offload``
 * ``rte_eth_dev_set_vlan_strip_on_queue``
+* ``rte_eth_dev_vlan_filter``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``
