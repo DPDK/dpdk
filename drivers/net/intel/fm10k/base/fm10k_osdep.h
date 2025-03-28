@@ -67,7 +67,7 @@ typedef uint64_t   u64;
 #define FM10K_PCI_REG_WRITE(reg, value) rte_write32((value), (reg))
 
 /* not implemented */
-#define FM10K_READ_PCI_WORD(hw, reg)     0
+#define FM10K_READ_PCI_WORD(hw, reg)     ((void)hw, (void)reg, 0)
 
 #define FM10K_WRITE_MBX(hw, reg, value) FM10K_WRITE_REG(hw, reg, value)
 #define FM10K_READ_MBX(hw, reg) FM10K_READ_REG(hw, reg)
