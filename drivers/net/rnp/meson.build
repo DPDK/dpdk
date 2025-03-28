@@ -13,6 +13,11 @@ if arch_subdir == 'riscv'
     subdir_done()
 endif
 
+subdir('base')
+objs = [base_objs]
+
+includes += include_directories('base')
+
 sources = files(
         'rnp_ethdev.c',
 )
