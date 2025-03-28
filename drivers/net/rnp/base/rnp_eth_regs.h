@@ -23,6 +23,9 @@
 #define RNP_RX_FC_ENABLE	_ETH_(0x8520)
 #define RNP_RING_FC_EN(n)	_ETH_(0x8524 + ((0x4) * ((n) / 32)))
 #define RNP_RING_FC_THRESH(n)	_ETH_(0x8a00 + ((0x4) * (n)))
+/* ETH Statistic */
+#define RNP_ETH_RXTRANS_DROP	_ETH_(0x8904)
+#define RNP_ETH_RXTRUNC_DROP	_ETH_(0x8928)
 /* Mac Host Filter  */
 #define RNP_MAC_FCTRL		_ETH_(0x9110)
 #define RNP_MAC_FCTRL_MPE	RTE_BIT32(8)  /* Multicast Promiscuous En */
