@@ -110,6 +110,9 @@ struct rnp_eth_port {
 	struct rnp_port_attr attr;
 	struct rnp_tx_queue *tx_queues[RNP_MAX_RX_QUEUE_NUM];
 	struct rnp_hw *hw;
+
+	rte_spinlock_t rx_mac_lock;
+	bool port_stopped;
 };
 
 struct rnp_eth_adapter {
