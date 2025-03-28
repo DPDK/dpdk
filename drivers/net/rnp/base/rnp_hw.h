@@ -76,6 +76,7 @@ struct rnp_mac_ops {
 	int (*clear_rafb)(struct rnp_eth_port *port, u32 index);
 	/* receive vlan filter */
 	int (*vlan_f_en)(struct rnp_eth_port *port, bool en);
+	int (*update_vlan)(struct rnp_eth_port *port, u16 vid, bool en);
 };
 
 struct rnp_eth_adapter;

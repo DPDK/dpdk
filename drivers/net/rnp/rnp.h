@@ -66,6 +66,7 @@
 #define RNP_MAX_HASH_MC_MAC_SIZE	(4096)	/* max multicast hash mac num */
 #define RNP_MAX_UC_HASH_TABLE		(128)	/* max unicast hash mac filter table */
 #define RNP_MAC_MC_HASH_TABLE		(128)	/* max multicast hash mac filter table*/
+#define RNP_MAX_VFTA_SIZE		(128)   /* max pf vlan hash table size */
 /* Peer port own independent resource */
 #define RNP_PORT_MAX_MACADDR         (32)
 #define RNP_PORT_MAX_MC_HASH_TB      (8)
@@ -172,6 +173,15 @@ enum rnp_vlan_type {
 	RNP_SVLAN_TYPE = 1,
 };
 
+struct rnp_vlan_filter {
+	union {
+		/* indep vlan hash filter table used */
+		uint64_t vlans_bitmap[BITS_TO_LONGS(VLAN_N_VID)];
+		/* PF vlan filter table used */
+		uint32_t vfta_entries[RNP_MAX_VFTA_SIZE];
+	};
+};
+
 struct rnp_eth_port {
 	struct rnp_proc_priv *proc_priv;
 	struct rte_ether_addr mac_addr;
@@ -196,6 +206,7 @@ struct rnp_eth_port {
 
 	enum rnp_vlan_type outvlan_type;
 	enum rnp_vlan_type invlan_type;
+	struct rnp_vlan_filter vfta;
 	rte_spinlock_t rx_mac_lock;
 	bool port_stopped;
 };
