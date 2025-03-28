@@ -25,6 +25,10 @@
 #define RNP_RING_FC_THRESH(n)	_ETH_(0x8a00 + ((0x4) * (n)))
 /* ETH Statistic */
 #define RNP_ETH_RXTRANS_DROP	_ETH_(0x8904)
+#define RNP_ETH_RXSLAN_DROP	_ETH_(0x8914)
+#define RNP_ETH_RXGLAN_DROP	_ETH_(0x8918)
+#define RNP_ETH_RXIPH_E_DROP	_ETH_(0x891c)
+#define RNP_ETH_RXCKSUM_E_DROP	_ETH_(0x8920)
 #define RNP_ETH_RXTRUNC_DROP	_ETH_(0x8928)
 /* Mac Host Filter  */
 #define RNP_MAC_FCTRL		_ETH_(0x9110)
