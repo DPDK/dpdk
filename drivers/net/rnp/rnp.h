@@ -20,7 +20,7 @@
 #define RNP_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_VLAN_HLEN * 2)
 #define RNP_MAC_MAXFRM_SIZE	(9590)
-
+#define RNP_MAX_TSO_PKT		(16 * 1024)
 #define RNP_RX_MAX_MTU_SEG	(64)
 #define RNP_TX_MAX_MTU_SEG	(32)
 #define RNP_RX_MAX_SEG		(150)
