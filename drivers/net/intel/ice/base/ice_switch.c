@@ -8190,7 +8190,6 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	struct ice_sw_recipe *rm;
 	u8 i;
 	int status = ICE_SUCCESS;
-	u16 cnt;
 
 	if (!ice_is_prof_rule(rinfo->tun_type) && !lkups_cnt)
 		return ICE_ERR_PARAM;
@@ -9795,7 +9794,6 @@ ice_rem_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	bool remove_rule = false;
 	struct ice_lock *rule_lock; /* Lock to protect filter rule list */
 	u16 i, rid, vsi_handle;
-	bool is_add = false;
 	int status = ICE_SUCCESS;
 
 	ice_memset(&lkup_exts, 0, sizeof(lkup_exts), ICE_NONDMA_MEM);
