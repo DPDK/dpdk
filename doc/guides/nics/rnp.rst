@@ -38,6 +38,9 @@ Features
 --------
 
 - Multiple queues for TX and RX
+- Receiver Side Steering (RSS)
+  Receiver Side Steering (RSS) on IPv4, IPv6, IPv4-TCP/UDP/SCTP, IPv6-TCP/UDP/SCTP
+  Inner RSS is only support for vxlan/nvgre
 - Promiscuous mode
 
 Prerequisites and Pre-conditions
@@ -70,6 +73,10 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_tx_queue_stop``
 * ``rte_eth_dev_start``
 * ``rte_eth_dev_stop``
+* ``rte_eth_dev_rss_hash_conf_get``
+* ``rte_eth_dev_rss_hash_update``
+* ``rte_eth_dev_rss_reta_query``
+* ``rte_eth_dev_rss_reta_update``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``
