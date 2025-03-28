@@ -57,6 +57,8 @@
 #define RNP_MAC_HASH_MASK		RTE_GENMASK32(11, 0)
 #define RNP_MAC_MULTICASE_TBL_EN	RTE_BIT32(2)
 #define RNP_MAC_UNICASE_TBL_EN		RTE_BIT32(3)
+#define RNP_HTA_BIT_SHIFT		(5)
+#define RNP_HTA_BIT_MASK		((1 << RNP_HTA_BIT_SHIFT) - 1)
 /* vlan strip ctrl */
 #define RNP_VLAN_Q_STRIP_CTRL(n)	_ETH_(0x8040 + 0x4 * ((n) / 32))
 /* vlan filter ctrl */
@@ -87,5 +89,6 @@
 #define RNP_RAL_BASE_ADDR(n)	_ETH_(0xA000 + (0x04 * (n)))
 #define RNP_RAH_BASE_ADDR(n)	_ETH_(0xA400 + (0x04 * (n)))
 #define RNP_MAC_FILTER_EN	RTE_BIT32(31)
+#define RNP_MC_HASH_TABLE(n)	_ETH_(0xAC00 + ((0x04) * ((n))))
 
 #endif /* _RNP_ETH_REGS_H */

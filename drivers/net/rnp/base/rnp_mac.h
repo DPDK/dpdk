@@ -26,6 +26,8 @@ void rnp_mac_ops_init(struct rnp_hw *hw);
 int rnp_get_mac_addr(struct rnp_eth_port *port, u8 *mac);
 int rnp_set_macaddr(struct rnp_eth_port *port, u8 *mac, u32 index);
 int rnp_clear_macaddr(struct rnp_eth_port *port, u32 index);
+int rnp_update_mc_hash(struct rnp_eth_port *port, u8 *mc_addr);
+int rnp_clear_mc_hash(struct rnp_eth_port *port);
 int rnp_update_mpfm(struct rnp_eth_port *port,
 		    u32 mode, bool en);
 int rnp_rx_vlan_filter_en(struct rnp_eth_port *port, bool en);
