@@ -64,6 +64,8 @@ static struct rte_pci_driver rte_rnp_pmd = {
 	.remove = rnp_pci_remove,
 };
 
+RTE_LOG_REGISTER_SUFFIX(rnp_init_logtype, init, NOTICE);
+
 RTE_PMD_REGISTER_PCI(net_rnp, rte_rnp_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_rnp, pci_id_rnp_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_rnp, "igb_uio | uio_pci_generic | vfio-pci");
