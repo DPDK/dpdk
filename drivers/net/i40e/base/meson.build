@@ -13,10 +13,7 @@ sources = [
 
 error_cflags = [
         '-Wno-sign-compare',
-        '-Wno-unused-value',
         '-Wno-strict-aliasing',
-        '-Wno-unused-but-set-variable',
-        '-Wno-unused-parameter',
 ]
 c_args = cflags
 foreach flag: error_cflags
