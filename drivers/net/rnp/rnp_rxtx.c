@@ -86,6 +86,7 @@ rnp_rx_queue_reset(struct rnp_eth_port *port,
 	struct rte_eth_txconf def_conf;
 	struct rnp_hw *hw = port->hw;
 	struct rte_mbuf *m_mbuf[2];
+	bool tx_origin_e = false;
 	bool tx_new = false;
 	uint16_t index;
 	int err = 0;
@@ -121,6 +122,9 @@ rnp_rx_queue_reset(struct rnp_eth_port *port,
 		return -ENOMEM;
 	}
 	rnp_rxq_flow_disable(hw, index);
+	tx_origin_e = txq->txq_started;
+	rte_io_wmb();
+	txq->txq_started = false;
 	rte_mbuf_refcnt_set(m_mbuf[0], 1);
 	rte_mbuf_refcnt_set(m_mbuf[1], 1);
 	m_mbuf[0]->data_off = RTE_PKTMBUF_HEADROOM;
@@ -139,6 +143,7 @@ rnp_rx_queue_reset(struct rnp_eth_port *port,
 			rnp_tx_queue_reset(port, txq);
 			rnp_tx_queue_sw_reset(txq);
 		}
+		txq->txq_started = tx_origin_e;
 	}
 	rte_mempool_put_bulk(adapter->reset_pool, (void **)m_mbuf, 2);
 	rnp_rxq_flow_enable(hw, index);
@@ -367,6 +372,7 @@ rnp_tx_queue_sw_reset(struct rnp_tx_queue *txq)
 	txq->nb_tx_free = txq->attr.nb_desc - 1;
 	txq->tx_next_dd = txq->tx_rs_thresh - 1;
 	txq->tx_next_rs = txq->tx_rs_thresh - 1;
+	txq->tx_tail = 0;
 
 	size = (txq->attr.nb_desc + RNP_TX_MAX_BURST_SIZE);
 	for (idx = 0; idx < size * sizeof(struct rnp_tx_desc); idx++)
@@ -468,4 +474,165 @@ txbd_setup_failed:
 	rte_free(txq);
 
 	return err;
+}
+
+int rnp_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rnp_tx_queue *txq;
+
+	PMD_INIT_FUNC_TRACE();
+	txq = eth_dev->data->tx_queues[qidx];
+	if (!txq) {
+		RNP_PMD_ERR("TX queue %u is null or not setup", qidx);
+		return -EINVAL;
+	}
+	if (data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		txq->txq_started = 0;
+		/* wait for tx burst process stop traffic */
+		rte_delay_us(10);
+		rnp_tx_queue_release_mbuf(txq);
+		rnp_tx_queue_reset(port, txq);
+		rnp_tx_queue_sw_reset(txq);
+		data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+}
+
+int rnp_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rnp_tx_queue *txq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = data->tx_queues[qidx];
+	if (!txq) {
+		RNP_PMD_ERR("Can't start tx queue %d it's not setup by "
+				"tx_queue_setup API", qidx);
+		return -EINVAL;
+	}
+	if (data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+		txq->txq_started = 1;
+	}
+
+	return 0;
+}
+
+int rnp_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	bool ori_q_state[RNP_MAX_RX_QUEUE_NUM];
+	struct rnp_hw *hw = port->hw;
+	struct rnp_rx_queue *rxq;
+	uint16_t hwrid;
+	uint16_t i = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	memset(ori_q_state, 0, sizeof(ori_q_state));
+	if (qidx >= data->nb_rx_queues)
+		return -EINVAL;
+	rxq = data->rx_queues[qidx];
+	if (!rxq) {
+		RNP_PMD_ERR("rx queue %u is null or not setup", qidx);
+		return -EINVAL;
+	}
+	if (data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		hwrid = rxq->attr.index;
+		for (i = 0; i < RNP_MAX_RX_QUEUE_NUM; i++) {
+			RNP_E_REG_WR(hw, RNP_RXQ_DROP_TIMEOUT_TH(i), 16);
+			ori_q_state[i] = RNP_E_REG_RD(hw, RNP_RXQ_START(i));
+			RNP_E_REG_WR(hw, RNP_RXQ_START(i), 0);
+		}
+		rxq->rxq_started = false;
+		rnp_rx_queue_release_mbuf(rxq);
+		RNP_E_REG_WR(hw, RNP_RXQ_START(hwrid), 0);
+		rnp_rx_queue_reset(port, rxq);
+		rnp_rx_queue_sw_reset(rxq);
+		for (i = 0; i < RNP_MAX_RX_QUEUE_NUM; i++) {
+			RNP_E_REG_WR(hw, RNP_RXQ_DROP_TIMEOUT_TH(i),
+					rxq->nodesc_tm_thresh);
+			RNP_E_REG_WR(hw, RNP_RXQ_START(i), ori_q_state[i]);
+		}
+		RNP_E_REG_WR(hw, RNP_RXQ_START(hwrid), 0);
+		data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+}
+
+static int rnp_alloc_rxq_mbuf(struct rnp_rx_queue *rxq)
+{
+	struct rnp_rxsw_entry *rx_swbd = rxq->sw_ring;
+	volatile struct rnp_rx_desc *rxd;
+	struct rte_mbuf *mbuf = NULL;
+	uint64_t dma_addr;
+	uint16_t i;
+
+	for (i = 0; i < rxq->attr.nb_desc; i++) {
+		mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
+		if (!mbuf)
+			goto rx_mb_alloc_failed;
+		rx_swbd[i].mbuf = mbuf;
+
+		rte_mbuf_refcnt_set(mbuf, 1);
+		mbuf->next = NULL;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->port = rxq->attr.port_id;
+		dma_addr = rnp_get_dma_addr(&rxq->attr, mbuf);
+
+		rxd = &rxq->rx_bdr[i];
+		*rxd = rxq->zero_desc;
+		rxd->d.pkt_addr = dma_addr;
+		rxd->d.cmd = 0;
+	}
+	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
+	for (i = 0; i < RNP_RX_MAX_BURST_SIZE; ++i)
+		rxq->sw_ring[rxq->attr.nb_desc + i].mbuf = &rxq->fake_mbuf;
+
+	return 0;
+rx_mb_alloc_failed:
+	RNP_PMD_ERR("rx queue %u alloc mbuf failed", rxq->attr.queue_id);
+	rnp_rx_queue_release_mbuf(rxq);
+
+	return -ENOMEM;
+}
+
+int rnp_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rnp_hw *hw = port->hw;
+	struct rnp_rx_queue *rxq;
+	uint16_t hwrid;
+
+	PMD_INIT_FUNC_TRACE();
+	rxq = data->rx_queues[qidx];
+	if (!rxq) {
+		RNP_PMD_ERR("RX queue %u is Null or Not setup", qidx);
+		return -EINVAL;
+	}
+	if (data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		hwrid = rxq->attr.index;
+		/* disable ring */
+		rte_io_wmb();
+		RNP_E_REG_WR(hw, RNP_RXQ_START(hwrid), 0);
+		if (rnp_alloc_rxq_mbuf(rxq) != 0) {
+			RNP_PMD_ERR("Could not alloc mbuf for queue:%d", qidx);
+			return -ENOMEM;
+		}
+		rte_io_wmb();
+		RNP_REG_WR(rxq->rx_tailreg, 0, rxq->attr.nb_desc - 1);
+		RNP_E_REG_WR(hw, RNP_RXQ_START(hwrid), 1);
+		rxq->nb_rx_free = rxq->attr.nb_desc - 1;
+		rxq->rxq_started = true;
+
+		data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return 0;
 }
