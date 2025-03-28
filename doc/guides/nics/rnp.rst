@@ -46,6 +46,7 @@ Features
 - MTU update
 - Jumbo frames
 - Scatter-Gather IO support
+- Port hardware statistic
 
 Prerequisites and Pre-conditions
 --------------------------------
@@ -95,3 +96,5 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_tx_queue_setup``
 * ``rte_eth_link_get``
 * ``rte_eth_link_get_nowait``
+* ``rte_eth_stats_get``
+* ``rte_eth_stats_reset``

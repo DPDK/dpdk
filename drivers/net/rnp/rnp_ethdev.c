@@ -803,6 +803,139 @@ rnp_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+struct rte_rnp_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint32_t offset;
+	uint32_t reg_base;
+	bool hi_addr_en;
+};
+
+static const struct rte_rnp_xstats_name_off rte_rnp_rx_eth_stats_str[] = {
+	{"eth rx full drop", offsetof(struct rnp_hw_eth_stats,
+			rx_trans_drop), RNP_ETH_RXTRANS_DROP, false},
+	{"eth_rx_fifo_drop", offsetof(struct rnp_hw_eth_stats,
+			rx_trunc_drop), RNP_ETH_RXTRUNC_DROP, false},
+};
+#define RNP_NB_RX_HW_ETH_STATS (RTE_DIM(rte_rnp_rx_eth_stats_str))
+#define RNP_GET_E_HW_COUNT(stats, offset)            \
+	((uint64_t *)(((char *)stats) + (offset)))
+#define RNP_ADD_INCL_COUNT(stats, offset, val)       \
+	((*(RNP_GET_E_HW_COUNT(stats, (offset)))) += val)
+
+static inline void
+rnp_update_eth_stats_32bit(struct rnp_hw_eth_stats *new,
+			   struct rnp_hw_eth_stats *old,
+			   uint32_t offset, uint32_t val)
+{
+	uint64_t *last_count = NULL;
+
+	last_count = RNP_GET_E_HW_COUNT(old, offset);
+	if (val >= *last_count)
+		RNP_ADD_INCL_COUNT(new, offset, val - (*last_count));
+	else
+		RNP_ADD_INCL_COUNT(new, offset, val + UINT32_MAX);
+	*last_count = val;
+}
+
+static void rnp_get_eth_count(struct rnp_hw *hw,
+			      uint16_t lane,
+			      struct rnp_hw_eth_stats *new,
+			      struct rnp_hw_eth_stats *old,
+			      const struct rte_rnp_xstats_name_off *ptr)
+{
+	uint64_t val = 0;
+
+	if (ptr->reg_base) {
+		val = RNP_E_REG_RD(hw, ptr->reg_base + 0x40 * lane);
+		rnp_update_eth_stats_32bit(new, old, ptr->offset, val);
+	}
+}
+
+static void rnp_get_hw_stats(struct rte_eth_dev *dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	struct rnp_hw_eth_stats *old = &port->eth_stats_old;
+	struct rnp_hw_eth_stats *new = &port->eth_stats;
+	const struct rte_rnp_xstats_name_off *ptr;
+	uint16_t lane = port->attr.nr_lane;
+	struct rnp_hw *hw = port->hw;
+	uint16_t i;
+
+	for (i = 0; i < RNP_NB_RX_HW_ETH_STATS; i++) {
+		ptr = &rte_rnp_rx_eth_stats_str[i];
+		rnp_get_eth_count(hw, lane, new, old, ptr);
+	}
+}
+
+static int
+rnp_dev_stats_get(struct rte_eth_dev *dev,
+		  struct rte_eth_stats *stats)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	struct rnp_hw_eth_stats *eth_stats = &port->eth_stats;
+	struct rte_eth_dev_data *data = dev->data;
+	uint16_t i = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	rnp_get_hw_stats(dev);
+
+	for (i = 0; i < data->nb_rx_queues; i++) {
+		const struct rnp_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (!rxq)
+			continue;
+		stats->ipackets += rxq->stats.ipackets;
+		stats->ibytes += rxq->stats.ibytes;
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = rxq->stats.ipackets;
+			stats->q_ibytes[i] = rxq->stats.ibytes;
+		}
+	}
+
+	for (i = 0; i < data->nb_tx_queues; i++) {
+		const struct rnp_tx_queue *txq = dev->data->tx_queues[i];
+
+		if (!txq)
+			continue;
+		stats->opackets += txq->stats.opackets;
+		stats->obytes += txq->stats.obytes;
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = txq->stats.opackets;
+			stats->q_obytes[i] = txq->stats.obytes;
+		}
+	}
+	stats->imissed = eth_stats->rx_trans_drop + eth_stats->rx_trunc_drop;
+
+	return 0;
+}
+
+static int
+rnp_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+	struct rnp_hw_eth_stats *eth_stats = &port->eth_stats;
+	uint16_t idx;
+
+	PMD_INIT_FUNC_TRACE();
+	memset(eth_stats, 0, sizeof(*eth_stats));
+	for (idx = 0; idx < dev->data->nb_rx_queues; idx++) {
+		struct rnp_rx_queue *rxq = dev->data->rx_queues[idx];
+
+		if (!rxq)
+			continue;
+		memset(&rxq->stats, 0, sizeof(struct rnp_queue_stats));
+	}
+	for (idx = 0; idx < dev->data->nb_tx_queues; idx++) {
+		struct rnp_tx_queue *txq = dev->data->tx_queues[idx];
+
+		if (!txq)
+			continue;
+		memset(&txq->stats, 0, sizeof(struct rnp_queue_stats));
+	}
+
+	return 0;
+}
+
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.dev_configure                = rnp_dev_configure,
@@ -831,6 +964,9 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.reta_query                   = rnp_dev_rss_reta_query,
 	.rss_hash_update              = rnp_dev_rss_hash_update,
 	.rss_hash_conf_get            = rnp_dev_rss_hash_conf_get,
+	/* stats */
+	.stats_get                    = rnp_dev_stats_get,
+	.stats_reset                  = rnp_dev_stats_reset,
 	/* link impl */
 	.link_update                  = rnp_dev_link_update,
 	.dev_set_link_up              = rnp_dev_set_link_up,
