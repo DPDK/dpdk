@@ -1090,7 +1090,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 		return -EINVAL;
 
 	seg_tun = (struct ice_flow_seg_info *)
-		ice_malloc(hw, sizeof(*seg_tun) * ICE_FD_HW_SEG_MAX);
+		ice_malloc(pf->adapter->hw, sizeof(*seg_tun) * ICE_FD_HW_SEG_MAX);
 	if (!seg_tun) {
 		PMD_DRV_LOG(ERR, "No memory can be allocated");
 		return -ENOMEM;

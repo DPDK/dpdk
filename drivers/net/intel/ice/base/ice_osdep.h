@@ -196,9 +196,9 @@ struct __rte_packed_begin ice_virt_mem {
 	u32 size;
 } __rte_packed_end;
 
-#define ice_malloc(h, s)    rte_zmalloc(NULL, s, 0)
-#define ice_calloc(h, c, s) rte_calloc(NULL, c, s, 0)
-#define ice_free(h, m)         rte_free(m)
+#define ice_malloc(h, s)    ((void)h, rte_zmalloc(NULL, s, 0))
+#define ice_calloc(h, c, s) ((void)h, rte_calloc(NULL, c, s, 0))
+#define ice_free(h, m)      ((void)h, rte_free(m))
 
 #define ice_memset(a, b, c, d) memset((a), (b), (c))
 #define ice_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))

@@ -39,7 +39,6 @@ if is_ms_compiler
 else
     error_cflags = [
             '-Wno-unused-but-set-variable',
-            '-Wno-unused-variable',
             '-Wno-unused-parameter',
     ]
 endif
