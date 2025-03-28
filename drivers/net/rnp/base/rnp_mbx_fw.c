@@ -294,7 +294,7 @@ int rnp_mbx_fw_reset_phy(struct rnp_hw *hw)
 
 	memset(&arg, 0, sizeof(arg));
 	arg.opcode = RNP_RESET_PHY;
-	err = rnp_fw_send_norep_cmd(port, &arg);
+	err = rnp_fw_send_cmd(port, &arg, NULL);
 	if (err) {
 		RNP_PMD_LOG(ERR, "%s: failed. err:%d", __func__, err);
 		return err;
@@ -386,6 +386,76 @@ rnp_mbx_fw_get_lane_stat(struct rnp_eth_port *port)
 		user_set_speed = port->eth_dev->data->dev_conf.link_speeds;
 		if (!(user_set_speed & RTE_ETH_LINK_SPEED_FIXED))
 			phy_meta->link_autoneg = 1;
+	}
+
+	return 0;
+}
+
+static void
+rnp_link_sync_init(struct rnp_hw *hw, bool en)
+{
+	RNP_E_REG_WR(hw, RNP_FW_LINK_SYNC, en ? RNP_LINK_MAGIC_CODE : 0);
+}
+
+int
+rnp_mbx_fw_pf_link_event_en(struct rnp_eth_port *port, bool en)
+{
+	struct rnp_eth_adapter *adapter = NULL;
+	struct rnp_hw *hw = port->hw;
+	struct rnp_fw_req_arg arg;
+	int err;
+
+	adapter = hw->back;
+	memset(&arg, 0, sizeof(arg));
+	arg.opcode = RNP_SET_EVENT_MASK;
+	arg.param0 = RNP_FW_EVENT_LINK_UP;
+	arg.param1 = !!en;
+
+	err = rnp_fw_send_norep_cmd(port, &arg);
+	if (err) {
+		RNP_PMD_LOG(ERR, "%s: failed. err:%d", __func__, err);
+		return err;
+	}
+	rnp_link_sync_init(hw, en);
+	adapter->intr_registered = en;
+	hw->fw_info.fw_irq_en = en;
+
+	return 0;
+}
+
+int
+rnp_mbx_fw_lane_link_event_en(struct rnp_eth_port *port, bool en)
+{
+	u16 nr_lane = port->attr.nr_lane;
+	struct rnp_fw_req_arg arg;
+	int err;
+
+	memset(&arg, 0, sizeof(arg));
+	arg.opcode = RNP_SET_LANE_EVENT_EN;
+	arg.param0 = nr_lane;
+	arg.param1 = RNP_FW_EVENT_LINK_UP;
+	arg.param2 = !!en;
+
+	err = rnp_fw_send_norep_cmd(port, &arg);
+	if (err) {
+		RNP_PMD_LOG(ERR, "%s: failed. err:%d", __func__, err);
+		return err;
+	}
+
+	return 0;
+}
+
+int
+rnp_rcv_msg_from_fw(struct rnp_eth_adapter *adapter, u32 *msgbuf)
+{
+	const struct rnp_mbx_ops *ops = RNP_DEV_PP_TO_MBX_OPS(adapter->eth_dev);
+	struct rnp_hw *hw = &adapter->hw;
+	int retval;
+
+	retval = ops->read(hw, msgbuf, RNP_MBX_MSG_BLOCK_SIZE, RNP_MBX_FW);
+	if (retval) {
+		RNP_PMD_ERR("Error receiving message from FW");
+		return retval;
 	}
 
 	return 0;
