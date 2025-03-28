@@ -15,6 +15,7 @@
 #include "base/rnp_mac.h"
 #include "base/rnp_eth_regs.h"
 #include "base/rnp_common.h"
+#include "rnp_rxtx.h"
 
 static struct rte_eth_dev *
 rnp_alloc_eth_port(struct rte_pci_device *pci, char *name)
@@ -177,7 +178,14 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	dev_info->reta_size = RNP_RSS_INDIR_SIZE;
 	/* speed cap info */
 	dev_info->speed_capa = rnp_get_speed_caps(eth_dev);
-
+	/* default ring configure */
+	dev_info->default_rxportconf.burst_size = 32;
+	dev_info->default_txportconf.burst_size = 32;
+	dev_info->default_rxportconf.nb_queues = 1;
+	dev_info->default_txportconf.nb_queues = 1;
+	dev_info->default_rxportconf.ring_size = 256;
+	dev_info->default_txportconf.ring_size = 256;
+	/* default port configure */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_drop_en = 0,
 		.offloads = 0,
@@ -238,6 +246,11 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.promiscuous_disable          = rnp_promiscuous_disable,
 	.allmulticast_enable          = rnp_allmulticast_enable,
 	.allmulticast_disable         = rnp_allmulticast_disable,
+
+	.rx_queue_setup               = rnp_rx_queue_setup,
+	.rx_queue_release             = rnp_dev_rx_queue_release,
+	.tx_queue_setup               = rnp_tx_queue_setup,
+	.tx_queue_release             = rnp_dev_tx_queue_release,
 };
 
 static void
@@ -326,6 +339,26 @@ rnp_proc_priv_init(struct rte_eth_dev *dev)
 	if (!priv)
 		return -ENOMEM;
 	dev->process_private = priv;
+
+	return 0;
+}
+
+static int
+rnp_rx_reset_pool_setup(struct rnp_eth_adapter *adapter)
+{
+	struct rte_eth_dev *eth_dev = adapter->eth_dev;
+	char name[RTE_MEMPOOL_NAMESIZE];
+
+	snprintf(name, sizeof(name), "rx_reset_pool_%d:%d",
+			eth_dev->data->port_id, eth_dev->device->numa_node);
+
+	adapter->reset_pool = rte_pktmbuf_pool_create(name, 2,
+			0, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+			eth_dev->device->numa_node);
+	if (adapter->reset_pool == NULL) {
+		RNP_PMD_ERR("mempool %s create failed", name);
+		return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -426,6 +459,9 @@ rnp_eth_dev_init(struct rte_eth_dev *eth_dev)
 			rte_eth_dev_probing_finish(sub_eth_dev);
 		}
 	}
+	ret = rnp_rx_reset_pool_setup(adapter);
+	if (ret)
+		goto eth_alloc_error;
 	/* enable link update event interrupt */
 	rte_intr_callback_register(intr_handle,
 			rnp_dev_interrupt_handler, adapter);

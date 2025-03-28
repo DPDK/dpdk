@@ -10,6 +10,10 @@
 #define RNP_E_FILTER_EN		_ETH_(0x801c)
 #define RNP_E_REDIR_EN		_ETH_(0x8030)
 
+/* rx queue flow ctrl */
+#define RNP_RX_FC_ENABLE	_ETH_(0x8520)
+#define RNP_RING_FC_EN(n)	_ETH_(0x8524 + ((0x4) * ((n) / 32)))
+#define RNP_RING_FC_THRESH(n)	_ETH_(0x8a00 + ((0x4) * (n)))
 /* Mac Host Filter  */
 #define RNP_MAC_FCTRL		_ETH_(0x9110)
 #define RNP_MAC_FCTRL_MPE	RTE_BIT32(8)  /* Multicast Promiscuous En */

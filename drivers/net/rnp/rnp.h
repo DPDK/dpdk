@@ -108,6 +108,7 @@ struct rnp_eth_port {
 	struct rte_ether_addr mac_addr;
 	struct rte_eth_dev *eth_dev;
 	struct rnp_port_attr attr;
+	struct rnp_tx_queue *tx_queues[RNP_MAX_RX_QUEUE_NUM];
 	struct rnp_hw *hw;
 };
 
@@ -116,6 +117,7 @@ struct rnp_eth_adapter {
 	struct rte_pci_device *pdev;
 	struct rte_eth_dev *eth_dev; /* alloc eth_dev by platform */
 
+	struct rte_mempool *reset_pool;
 	struct rnp_eth_port *ports[RNP_MAX_PORT_OF_PF];
 	uint16_t closed_ports;
 	uint16_t inited_ports;
