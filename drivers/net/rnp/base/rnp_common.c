@@ -4,6 +4,7 @@
 
 #include "rnp_osdep.h"
 #include "rnp_hw.h"
+#include "rnp_mac_regs.h"
 #include "rnp_eth_regs.h"
 #include "rnp_dma_regs.h"
 #include "rnp_common.h"
@@ -28,6 +29,7 @@ int rnp_init_hw(struct rnp_hw *hw)
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(hw->back->eth_dev);
 	u32 version = 0;
 	int ret = -1;
+	u32 idx = 0;
 	u32 state;
 
 	PMD_INIT_FUNC_TRACE();
@@ -60,6 +62,9 @@ int rnp_init_hw(struct rnp_hw *hw)
 	if (hw->nic_mode == RNP_DUAL_10G && hw->max_port_num == 2)
 		RNP_E_REG_WR(hw, RNP_TC_PORT_OFFSET(RNP_TARGET_TC_PORT),
 				RNP_PORT_OFF_QUEUE_NUM);
+	/* setup mac resiger ctrl base */
+	for (idx = 0; idx < hw->max_port_num; idx++)
+		hw->mac_base[idx] = (u8 *)hw->e_ctrl + RNP_MAC_BASE_OFFSET(idx);
 
 	return 0;
 }

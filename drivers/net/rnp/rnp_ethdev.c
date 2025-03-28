@@ -190,11 +190,54 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int rnp_promiscuous_enable(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	return rnp_update_mpfm(port, RNP_MPF_MODE_PROMISC, 1);
+}
+
+static int rnp_promiscuous_disable(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	return rnp_update_mpfm(port, RNP_MPF_MODE_PROMISC, 0);
+}
+
+static int rnp_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	return rnp_update_mpfm(port, RNP_MPF_MODE_ALLMULTI, 1);
+}
+
+static int rnp_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(eth_dev);
+
+	PMD_INIT_FUNC_TRACE();
+	if (eth_dev->data->promiscuous == 1)
+		return 0;
+	return rnp_update_mpfm(port, RNP_MPF_MODE_ALLMULTI, 0);
+}
+
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.dev_close                    = rnp_dev_close,
 	.dev_stop                     = rnp_dev_stop,
 	.dev_infos_get                = rnp_dev_infos_get,
+
+	/* PROMISC */
+	.promiscuous_enable           = rnp_promiscuous_enable,
+	.promiscuous_disable          = rnp_promiscuous_disable,
+	.allmulticast_enable          = rnp_allmulticast_enable,
+	.allmulticast_disable         = rnp_allmulticast_disable,
 };
 
 static void

@@ -60,9 +60,17 @@ struct rnp_mbx_info {
 
 struct rnp_eth_port;
 /* mac operations */
+enum rnp_mpf_modes {
+	RNP_MPF_MODE_NONE = 0,
+	RNP_MPF_MODE_ALLMULTI, /* Multitle Promisc */
+	RNP_MPF_MODE_PROMISC,  /* Unicast Promisc */
+};
+
 struct rnp_mac_ops {
-	/* update mac packet filter mode */
+	/* get default mac address */
 	int (*get_macaddr)(struct rnp_eth_port *port, u8 *mac);
+	/* update mac packet filter mode */
+	int (*update_mpfm)(struct rnp_eth_port *port, u32 mode, bool en);
 };
 
 struct rnp_eth_adapter;
@@ -92,6 +100,7 @@ struct rnp_hw {
 	struct rnp_eth_adapter *back;	/* backup to the adapter handle */
 	void __iomem *e_ctrl;           /* ethernet control bar */
 	void __iomem *c_ctrl;           /* crypto control bar */
+	void __iomem *mac_base[RNP_MAX_PORT_OF_PF]; /* mac ctrl register base */
 	u32 c_blen;                     /* crypto bar size */
 
 	/* pci device info */

@@ -49,6 +49,7 @@ typedef uint64_t u64;
 
 #define _ETH_(off)	((off) + (0x10000))
 #define _NIC_(off)	((off) + (0x30000))
+#define _MAC_(off)	((off) + (0x60000))
 #define _MSI_(off)	((off) + (0xA0000))
 
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -142,5 +143,9 @@ rnp_dma_mem_free(__rte_unused struct rnp_hw *hw,
 	rnp_reg_write32((hw)->c_ctrl, ((off) & ((hw)->c_blen - 1)), (value))
 #define RNP_C_REG_RD(hw, off)		\
 	rnp_reg_read32((hw)->c_ctrl, ((off) & ((hw)->c_blen - 1)))
+#define RNP_MAC_REG_WR(hw, lane, off, value) \
+	rnp_reg_write32((hw)->mac_base[lane], (off), (value))
+#define RNP_MAC_REG_RD(hw, lane, off) \
+	rnp_reg_read32((hw)->mac_base[lane], (off))
 
 #endif /* _RNP_OSDEP_H_ */
