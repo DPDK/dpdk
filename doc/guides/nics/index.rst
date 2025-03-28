@@ -61,6 +61,7 @@ Network Interface Controller Drivers
     pfe
     qede
     r8169
+    rnp
     sfc_efx
     softnic
     tap

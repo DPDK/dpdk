@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added Mucse rnp net driver.**
+
+  Added a new network PMD which supports Mucse 10 Gigabit Ethernet NICs.
+  See the :doc:`../nics/rnp` for more details.
+
 
 Removed Items
 -------------
