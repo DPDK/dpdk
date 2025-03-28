@@ -78,6 +78,10 @@
 /* PHY Link Status */
 #define RNP_MAC_PLS		RTE_BIT32(17)
 
+/* Rx macaddr filter ctrl */
+#define RNP_MAC_ADDR_HI(n)	(0x0300 + ((n) * 0x8))
+#define RNP_MAC_AE		RTE_BIT32(31)
+#define RNP_MAC_ADDR_LO(n)	(0x0304 + ((n) * 0x8))
 /* Mac Manage Counts */
 #define RNP_MMC_CTRL		(0x0800)
 #define RNP_MMC_RSTONRD	RTE_BIT32(2)

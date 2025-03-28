@@ -599,7 +599,6 @@ static int rnp_dev_infos_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_tx_queues = port->attr.max_tx_queues;
 	/* mac filter info */
 	dev_info->max_mac_addrs = port->attr.max_mac_addrs;
-	dev_info->max_hash_mac_addrs = port->attr.max_uc_mac_hash;
 	/* for RSS offload just support four tuple */
 	dev_info->flow_type_rss_offloads = RNP_SUPPORT_RSS_OFFLOAD_ALL;
 	dev_info->hash_key_size = RNP_MAX_HASH_KEY_SIZE * sizeof(uint32_t);
@@ -1149,6 +1148,44 @@ rnp_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	return count;
 }
 
+static int
+rnp_dev_mac_addr_set(struct rte_eth_dev *dev,
+		     struct rte_ether_addr *mac_addr)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+
+	return rnp_set_macaddr(port, (u8 *)mac_addr, 0);
+}
+
+static int
+rnp_dev_mac_addr_add(struct rte_eth_dev *dev,
+		     struct rte_ether_addr *mac_addr,
+		     uint32_t index,
+		     uint32_t vmdq __rte_unused)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+
+	if (index >= port->attr.max_mac_addrs) {
+		RNP_PMD_ERR("mac add index %u is of range", index);
+		return -EINVAL;
+	}
+
+	return rnp_set_macaddr(port, (u8 *)mac_addr, index);
+}
+
+static void
+rnp_dev_mac_addr_remove(struct rte_eth_dev *dev,
+			uint32_t index)
+{
+	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
+
+	if (index >= port->attr.max_mac_addrs) {
+		RNP_PMD_ERR("mac add index %u is of range", index);
+		return;
+	}
+	rnp_clear_macaddr(port, index);
+}
+
 /* Features supported by this driver */
 static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.dev_configure                = rnp_dev_configure,
@@ -1187,6 +1224,10 @@ static const struct eth_dev_ops rnp_eth_dev_ops = {
 	.link_update                  = rnp_dev_link_update,
 	.dev_set_link_up              = rnp_dev_set_link_up,
 	.dev_set_link_down            = rnp_dev_set_link_down,
+	/* mac address filter */
+	.mac_addr_set                 = rnp_dev_mac_addr_set,
+	.mac_addr_add                 = rnp_dev_mac_addr_add,
+	.mac_addr_remove              = rnp_dev_mac_addr_remove,
 };
 
 static void
@@ -1209,11 +1250,19 @@ rnp_setup_port_attr(struct rnp_eth_port *port,
 	attr->max_rx_queues = RNP_MAX_RX_QUEUE_NUM / hw->max_port_num;
 	attr->max_tx_queues = RNP_MAX_TX_QUEUE_NUM / hw->max_port_num;
 
-	attr->max_mac_addrs = RNP_MAX_MAC_ADDRS;
-	attr->max_uc_mac_hash = RNP_MAX_HASH_UC_MAC_SIZE;
-	attr->max_mc_mac_hash = RNP_MAX_HASH_MC_MAC_SIZE;
-	attr->uc_hash_tb_size = RNP_MAX_UC_HASH_TABLE;
-	attr->mc_hash_tb_size = RNP_MAC_MC_HASH_TABLE;
+	if (hw->nic_mode > RNP_SINGLE_10G) {
+		attr->max_mac_addrs = RNP_PORT_MAX_MACADDR;
+		attr->max_uc_mac_hash = 0;
+		attr->max_mc_mac_hash = RNP_PORT_MAX_MC_MAC_SIZE;
+		attr->uc_hash_tb_size = 0;
+		attr->mc_hash_tb_size = RNP_PORT_MAX_MC_HASH_TB;
+	} else {
+		attr->max_mac_addrs = RNP_MAX_MAC_ADDRS;
+		attr->max_uc_mac_hash = RNP_MAX_HASH_UC_MAC_SIZE;
+		attr->max_mc_mac_hash = RNP_MAX_HASH_MC_MAC_SIZE;
+		attr->uc_hash_tb_size = RNP_MAX_UC_HASH_TABLE;
+		attr->mc_hash_tb_size = RNP_MAC_MC_HASH_TABLE;
+	}
 	rnp_mbx_fw_get_lane_stat(port);
 
 	RNP_PMD_INFO("PF[%d] SW-ETH-PORT[%d]<->PHY_LANE[%d]",
@@ -1256,6 +1305,7 @@ rnp_init_port_resource(struct rnp_eth_adapter *adapter,
 		rte_eth_random_addr(port->mac_addr.addr_bytes);
 	}
 	rte_ether_addr_copy(&port->mac_addr, &eth_dev->data->mac_addrs[0]);
+	rnp_set_macaddr(port, (u8 *)&port->mac_addr, 0);
 
 	rte_spinlock_init(&port->rx_mac_lock);
 	adapter->ports[p_id] = port;
