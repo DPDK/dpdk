@@ -78,6 +78,8 @@ Listed below are the rte_eth functions supported:
 * ``rte_eth_dev_rss_hash_update``
 * ``rte_eth_dev_rss_reta_query``
 * ``rte_eth_dev_rss_reta_update``
+* ``rte_eth_dev_set_link_down``
+* ``rte_eth_dev_set_link_up``
 * ``rte_eth_promiscuous_disable``
 * ``rte_eth_promiscuous_enable``
 * ``rte_eth_allmulticast_enable``

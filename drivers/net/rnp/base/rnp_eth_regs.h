@@ -5,6 +5,9 @@
 #ifndef _RNP_ETH_REGS_H
 #define _RNP_ETH_REGS_H
 
+#define RNP_ETH_TX_FIFO_STATE		_ETH_(0x0330)
+#define RNP_ETH_TX_FIFO_EMPT(lane)	((1 << (lane)) | (1 << ((lane) + 4)))
+
 #define RNP_E_ENG_BYPASS	_ETH_(0x8000)
 #define RNP_E_VXLAN_PARSE_EN	_ETH_(0x8004)
 #define RNP_E_FILTER_EN		_ETH_(0x801c)
