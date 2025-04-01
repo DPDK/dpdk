@@ -2062,9 +2062,11 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_key_len = nn_cfg_readl(hw, NFP_NET_CFG_RSS_KEY_SZ);
 
 	/* Reading the key byte a byte */
-	for (i = 0; i < rss_conf->rss_key_len; i++) {
-		key = nn_cfg_readb(hw, NFP_NET_CFG_RSS_KEY + i);
-		memcpy(&rss_conf->rss_key[i], &key, 1);
+	if (rss_conf->rss_key != NULL) {
+		for (i = 0; i < rss_conf->rss_key_len; i++) {
+			key = nn_cfg_readb(hw, NFP_NET_CFG_RSS_KEY + i);
+			memcpy(&rss_conf->rss_key[i], &key, 1);
+		}
 	}
 
 	return 0;
