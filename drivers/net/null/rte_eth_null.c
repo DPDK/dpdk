@@ -39,6 +39,7 @@ struct null_queue {
 
 	RTE_ATOMIC(uint64_t) rx_pkts;
 	RTE_ATOMIC(uint64_t) tx_pkts;
+	RTE_ATOMIC(uint64_t) tx_bytes;
 };
 
 struct pmd_options {
@@ -145,19 +146,18 @@ eth_null_no_rx(void *q __rte_unused, struct rte_mbuf **bufs __rte_unused,
 static uint16_t
 eth_null_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
-	int i;
 	struct null_queue *h = q;
-
-	if ((q == NULL) || (bufs == NULL))
-		return 0;
+	unsigned int i;
+	uint64_t bytes = 0;
 
 	for (i = 0; i < nb_bufs; i++)
-		rte_pktmbuf_free(bufs[i]);
+		bytes += rte_pktmbuf_pkt_len(bufs[i]);
 
-	/* NOTE: review for potential ordering optimization */
-	rte_atomic_fetch_add_explicit(&h->tx_pkts, i, rte_memory_order_seq_cst);
+	rte_pktmbuf_free_bulk(bufs, nb_bufs);
+	rte_atomic_fetch_add_explicit(&h->tx_pkts, nb_bufs, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&h->tx_bytes, bytes, rte_memory_order_relaxed);
 
-	return i;
+	return nb_bufs;
 }
 
 static uint16_t
@@ -165,22 +165,19 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	struct null_queue *h = q;
 	unsigned int i;
-
-	if ((q == NULL) || (bufs == NULL))
-		return 0;
+	uint64_t bytes = 0;
 
 	for (i = 0; i < nb_bufs; i++) {
 		struct rte_mbuf *m = bufs[i];
 		size_t len = RTE_MIN(h->internals->packet_size, m->data_len);
 
 		rte_memcpy(h->dummy_packet, rte_pktmbuf_mtod(m, void *), len);
-		rte_pktmbuf_free(bufs[i]);
+		bytes += m->pkt_len;
 	}
 
-	/* NOTE: review for potential ordering optimization */
-	rte_atomic_fetch_add_explicit(&h->tx_pkts, i, rte_memory_order_seq_cst);
-
-	return i;
+	rte_atomic_fetch_add_explicit(&h->tx_pkts, nb_bufs, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&h->tx_bytes, bytes, rte_memory_order_relaxed);
+	return nb_bufs;
 }
 
 static int
@@ -314,6 +311,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = RTE_DIM(internals->rx_null_queues);
 	dev_info->max_tx_queues = RTE_DIM(internals->tx_null_queues);
 	dev_info->min_rx_bufsize = 0;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS | RTE_ETH_TX_OFFLOAD_MT_LOCKFREE;
+
 	dev_info->reta_size = internals->reta_size;
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
 	dev_info->hash_key_size = sizeof(internals->rss_key);
@@ -346,10 +345,11 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 			RTE_MIN(dev->data->nb_tx_queues,
 				RTE_DIM(internal->tx_null_queues)));
 	for (i = 0; i < num_stats; i++) {
-		/* NOTE: review for atomic access */
-		igb_stats->q_opackets[i] =
-			internal->tx_null_queues[i].tx_pkts;
-		tx_total += igb_stats->q_opackets[i];
+		uint64_t pkts = rte_atomic_load_explicit(&internal->tx_null_queues[i].tx_pkts,
+						   rte_memory_order_relaxed);
+
+		igb_stats->q_opackets[i] = pkts;
+		tx_total += pkts;
 	}
 
 	igb_stats->ipackets = rx_total;
@@ -371,9 +371,13 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++)
 		/* NOTE: review for atomic access */
 		internal->rx_null_queues[i].rx_pkts = 0;
-	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++)
-		/* NOTE: review for atomic access */
-		internal->tx_null_queues[i].tx_pkts = 0;
+
+	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++) {
+		struct null_queue *q = &internal->tx_null_queues[i];
+
+		rte_atomic_store_explicit(&q->tx_pkts, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&q->tx_bytes, 0, rte_memory_order_relaxed);
+	}
 
 	return 0;
 }
