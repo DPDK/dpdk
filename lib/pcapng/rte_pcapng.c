@@ -1,3 +1,4 @@
+
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2019 Microsoft Corporation
  */
@@ -432,8 +433,24 @@ pcapng_vlan_insert(struct rte_mbuf *m, uint16_t ether_type, uint16_t tci)
 	return 0;
 }
 
+/* pad the packet to 32 bit boundary */
+static inline int
+pcapng_mbuf_pad32(struct rte_mbuf *m)
+{
+	uint32_t pkt_len = rte_pktmbuf_pkt_len(m);
+	uint32_t padding = RTE_ALIGN(pkt_len, sizeof(uint32_t)) - pkt_len;
+
+	if (padding > 0) {
+		void *tail = rte_pktmbuf_append(m, padding);
+		if (tail == NULL)
+			return -1;
+		memset(tail, 0, padding);
+	}
+	return 0;
+}
+
 /*
- *   The mbufs created use the Pcapng standard enhanced packet  block.
+ *  The mbufs created use the Pcapng standard enhanced packet block.
  *
  *                         1                   2                   3
  *     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -468,6 +485,91 @@ pcapng_vlan_insert(struct rte_mbuf *m, uint16_t ether_type, uint16_t tci)
  *    |                      Block Total Length                       |
  *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pcapng_insert, 25.07)
+int
+rte_pcapng_insert(struct rte_mbuf *m, uint32_t queue,
+		  enum rte_pcapng_direction direction, uint32_t orig_len,
+		  uint64_t timestamp, const char *comment)
+{
+	struct pcapng_enhance_packet_block *epb;
+	uint32_t pkt_len = rte_pktmbuf_pkt_len(m);
+	uint32_t flags;
+
+	if (unlikely(pcapng_mbuf_pad32(m) < 0))
+		return -1;
+
+	uint16_t optlen = pcapng_optlen(sizeof(flags));
+
+	/* make queue optional? */
+	optlen += pcapng_optlen(sizeof(queue));
+
+	/* does packet have valid RSS hash to include */
+	bool rss_hash = (direction == RTE_PCAPNG_DIRECTION_IN &&
+			 (m->ol_flags & RTE_MBUF_F_RX_RSS_HASH));
+
+	if (rss_hash)
+		optlen += pcapng_optlen(sizeof(uint8_t) + sizeof(uint32_t));
+
+	if (comment)
+		optlen += pcapng_optlen(strlen(comment));
+
+	/* reserve trailing options and block length */
+	struct pcapng_option *opt = (struct pcapng_option *)
+		rte_pktmbuf_append(m, optlen + sizeof(uint32_t));
+	if (unlikely(opt == NULL))
+		return -1;
+
+	switch (direction) {
+	case RTE_PCAPNG_DIRECTION_IN:
+		flags = PCAPNG_IFB_INBOUND;
+		break;
+	case RTE_PCAPNG_DIRECTION_OUT:
+		flags = PCAPNG_IFB_OUTBOUND;
+		break;
+	default:
+		flags = 0;
+	}
+
+	opt = pcapng_add_option(opt, PCAPNG_EPB_FLAGS, &flags, sizeof(flags));
+	opt = pcapng_add_option(opt, PCAPNG_EPB_QUEUE, &queue, sizeof(queue));
+
+	if (rss_hash) {
+		uint8_t hash_opt[5];
+
+		/* The algorithm could be something else but the current API does not
+		 * have a way for to record this on a per-packet basis
+		 * and the PCAPNG hash types don't match the DPDK types.
+		 */
+		hash_opt[0] = PCAPNG_HASH_TOEPLITZ;
+
+		memcpy(&hash_opt[1], &m->hash.rss, sizeof(uint32_t));
+		opt = pcapng_add_option(opt, PCAPNG_EPB_HASH, &hash_opt, sizeof(hash_opt));
+	}
+
+	if (comment)
+		opt = pcapng_add_option(opt, PCAPNG_OPT_COMMENT, comment,
+					strlen(comment));
+
+	/* Note: END_OPT necessary here. Wireshark doesn't do it. */
+
+	/* Add PCAPNG packet header */
+	epb = (struct pcapng_enhance_packet_block *) rte_pktmbuf_prepend(m, sizeof(*epb));
+	if (unlikely(epb == NULL))
+		return -1;
+
+	epb->block_type = PCAPNG_ENHANCED_PACKET_BLOCK;
+	epb->block_length = rte_pktmbuf_pkt_len(m);
+
+	/* Put timestamp in cycles here - adjusted in packet write */
+	epb->timestamp_hi = timestamp >> 32;
+	epb->timestamp_lo = (uint32_t)timestamp;
+	epb->capture_length = pkt_len;
+	epb->original_length = orig_len;
+
+	/* set trailer of block length */
+	*(uint32_t *)opt = epb->block_length;
+	return 0;
+}
 
 /* Make a copy of original mbuf with pcapng header and options */
 RTE_EXPORT_SYMBOL(rte_pcapng_copy)
@@ -479,18 +581,12 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		enum rte_pcapng_direction direction,
 		const char *comment)
 {
-	struct pcapng_enhance_packet_block *epb;
-	uint32_t orig_len, pkt_len, padding, flags;
-	struct pcapng_option *opt;
-	uint64_t timestamp;
-	uint16_t optlen;
+	uint32_t orig_len = rte_pktmbuf_pkt_len(md);
 	struct rte_mbuf *mc;
-	bool rss_hash;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, NULL);
 #endif
-	orig_len = rte_pktmbuf_pkt_len(md);
 
 	/* Take snapshot of the data */
 	mc = rte_pktmbuf_copy(md, mp, 0, length);
@@ -516,96 +612,12 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 			goto fail;
 	}
 
-	/* record HASH on incoming packets */
-	rss_hash = (direction == RTE_PCAPNG_DIRECTION_IN &&
-		    (md->ol_flags & RTE_MBUF_F_RX_RSS_HASH));
-
-	/* pad the packet to 32 bit boundary */
-	pkt_len = rte_pktmbuf_pkt_len(mc);
-	padding = RTE_ALIGN(pkt_len, sizeof(uint32_t)) - pkt_len;
-	if (padding > 0) {
-		void *tail = rte_pktmbuf_append(mc, padding);
-
-		if (tail == NULL)
-			goto fail;
-		memset(tail, 0, padding);
-	}
-
-	optlen = pcapng_optlen(sizeof(flags));
-	optlen += pcapng_optlen(sizeof(queue));
-	if (rss_hash)
-		optlen += pcapng_optlen(sizeof(uint8_t) + sizeof(uint32_t));
-
-	if (comment)
-		optlen += pcapng_optlen(strlen(comment));
-
-	/* reserve trailing options and block length */
-	opt = (struct pcapng_option *)
-		rte_pktmbuf_append(mc, optlen + sizeof(uint32_t));
-	if (unlikely(opt == NULL))
-		goto fail;
-
-	switch (direction) {
-	case RTE_PCAPNG_DIRECTION_IN:
-		flags = PCAPNG_IFB_INBOUND;
-		break;
-	case RTE_PCAPNG_DIRECTION_OUT:
-		flags = PCAPNG_IFB_OUTBOUND;
-		break;
-	default:
-		flags = 0;
-	}
-
-	opt = pcapng_add_option(opt, PCAPNG_EPB_FLAGS,
-				&flags, sizeof(flags));
-
-	opt = pcapng_add_option(opt, PCAPNG_EPB_QUEUE,
-				&queue, sizeof(queue));
-
-	if (rss_hash) {
-		uint8_t hash_opt[5];
-
-		/* The algorithm could be something else if
-		 * using rte_flow_action_rss; but the current API does not
-		 * have a way for ethdev to report  this on a per-packet basis.
-		 */
-		hash_opt[0] = PCAPNG_HASH_TOEPLITZ;
-
-		memcpy(&hash_opt[1], &md->hash.rss, sizeof(uint32_t));
-		opt = pcapng_add_option(opt, PCAPNG_EPB_HASH,
-					&hash_opt, sizeof(hash_opt));
-	}
-
-	if (comment)
-		opt = pcapng_add_option(opt, PCAPNG_OPT_COMMENT, comment,
-					strlen(comment));
-
-	/* Note: END_OPT necessary here. Wireshark doesn't do it. */
-
-	/* Add PCAPNG packet header */
-	epb = (struct pcapng_enhance_packet_block *)
-		rte_pktmbuf_prepend(mc, sizeof(*epb));
-	if (unlikely(epb == NULL))
-		goto fail;
-
-	epb->block_type = PCAPNG_ENHANCED_PACKET_BLOCK;
-	epb->block_length = rte_pktmbuf_pkt_len(mc);
-
 	/* Interface index is filled in later during write */
 	mc->port = port_id;
 
-	/* Put timestamp in cycles here - adjust in packet write */
-	timestamp = rte_get_tsc_cycles();
-	epb->timestamp_hi = timestamp >> 32;
-	epb->timestamp_lo = (uint32_t)timestamp;
-	epb->capture_length = pkt_len;
-	epb->original_length = orig_len;
-
-	/* set trailer of block length */
-	*(uint32_t *)opt = epb->block_length;
-
-	return mc;
-
+	if (likely(rte_pcapng_insert(mc, queue, direction, orig_len,
+				     rte_get_tsc_cycles(), comment) == 0))
+		return mc;
 fail:
 	rte_pktmbuf_free(mc);
 	return NULL;
