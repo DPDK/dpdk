@@ -354,7 +354,10 @@ do_all_mempool_perf_tests(unsigned int cores)
 {
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
-	struct rte_mempool *default_pool = NULL;
+	struct rte_mempool *default_pool_cache = NULL;
+	struct rte_mempool *default_pool_nocache = NULL;
+	const char *mp_cache_ops;
+	const char *mp_nocache_ops;
 	const char *default_pool_ops;
 	int ret = -1;
 
@@ -368,6 +371,7 @@ do_all_mempool_perf_tests(unsigned int cores)
 		printf("cannot allocate mempool (without cache)\n");
 		goto err;
 	}
+	mp_nocache_ops = rte_mempool_get_ops(mp_nocache->ops_index)->name;
 
 	/* create a mempool (with cache) */
 	mp_cache = rte_mempool_create("perf_test_cache", MEMPOOL_SIZE,
@@ -380,47 +384,76 @@ do_all_mempool_perf_tests(unsigned int cores)
 		printf("cannot allocate mempool (with cache)\n");
 		goto err;
 	}
+	mp_cache_ops = rte_mempool_get_ops(mp_cache->ops_index)->name;
 
 	default_pool_ops = rte_mbuf_best_mempool_ops();
-	/* Create a mempool based on Default handler */
-	default_pool = rte_mempool_create_empty("default_pool",
-						MEMPOOL_SIZE,
-						MEMPOOL_ELT_SIZE,
-						0, 0,
-						SOCKET_ID_ANY, 0);
 
-	if (default_pool == NULL) {
-		printf("cannot allocate %s mempool\n", default_pool_ops);
+	/* Create a mempool (without cache) based on Default handler */
+	default_pool_nocache = rte_mempool_create_empty("default_pool_nocache",
+			MEMPOOL_SIZE,
+			MEMPOOL_ELT_SIZE,
+			0, 0,
+			SOCKET_ID_ANY, 0);
+	if (default_pool_nocache == NULL) {
+		printf("cannot allocate %s mempool (without cache)\n", default_pool_ops);
 		goto err;
 	}
-
-	if (rte_mempool_set_ops_byname(default_pool, default_pool_ops, NULL)
-				       < 0) {
+	if (rte_mempool_set_ops_byname(default_pool_nocache, default_pool_ops, NULL) < 0) {
 		printf("cannot set %s handler\n", default_pool_ops);
 		goto err;
 	}
-
-	if (rte_mempool_populate_default(default_pool) < 0) {
+	if (rte_mempool_populate_default(default_pool_nocache) < 0) {
 		printf("cannot populate %s mempool\n", default_pool_ops);
 		goto err;
 	}
+	rte_mempool_obj_iter(default_pool_nocache, my_obj_init, NULL);
 
-	rte_mempool_obj_iter(default_pool, my_obj_init, NULL);
+	/* Create a mempool (with cache) based on Default handler */
+	default_pool_cache = rte_mempool_create_empty("default_pool_cache",
+			MEMPOOL_SIZE,
+			MEMPOOL_ELT_SIZE,
+			RTE_MEMPOOL_CACHE_MAX_SIZE, 0,
+			SOCKET_ID_ANY, 0);
+	if (default_pool_cache == NULL) {
+		printf("cannot allocate %s mempool (with cache)\n", default_pool_ops);
+		goto err;
+	}
+	if (rte_mempool_set_ops_byname(default_pool_cache, default_pool_ops, NULL) < 0) {
+		printf("cannot set %s handler\n", default_pool_ops);
+		goto err;
+	}
+	if (rte_mempool_populate_default(default_pool_cache) < 0) {
+		printf("cannot populate %s mempool\n", default_pool_ops);
+		goto err;
+	}
+	rte_mempool_obj_iter(default_pool_cache, my_obj_init, NULL);
 
-	printf("start performance test (without cache)\n");
+	printf("start performance test (using %s, without cache)\n",
+	       mp_nocache_ops);
 	if (do_one_mempool_test(mp_nocache, cores, 0) < 0)
 		goto err;
 
-	printf("start performance test for %s (without cache)\n",
-	       default_pool_ops);
-	if (do_one_mempool_test(default_pool, cores, 0) < 0)
-		goto err;
+	if (strcmp(default_pool_ops, mp_nocache_ops) != 0) {
+		printf("start performance test for %s (without cache)\n",
+		       default_pool_ops);
+		if (do_one_mempool_test(default_pool_nocache, cores, 0) < 0)
+			goto err;
+	}
 
-	printf("start performance test (with cache)\n");
+	printf("start performance test (using %s, with cache)\n",
+	       mp_cache_ops);
 	if (do_one_mempool_test(mp_cache, cores, 0) < 0)
 		goto err;
 
-	printf("start performance test (with user-owned cache)\n");
+	if (strcmp(default_pool_ops, mp_cache_ops) != 0) {
+		printf("start performance test for %s (with cache)\n",
+		       default_pool_ops);
+		if (do_one_mempool_test(default_pool_cache, cores, 0) < 0)
+			goto err;
+	}
+
+	printf("start performance test (using %s, with user-owned cache)\n",
+	       mp_nocache_ops);
 	if (do_one_mempool_test(mp_nocache, cores, 1) < 0)
 		goto err;
 
@@ -431,7 +464,8 @@ do_all_mempool_perf_tests(unsigned int cores)
 err:
 	rte_mempool_free(mp_cache);
 	rte_mempool_free(mp_nocache);
-	rte_mempool_free(default_pool);
+	rte_mempool_free(default_pool_cache);
+	rte_mempool_free(default_pool_nocache);
 	return ret;
 }
 
