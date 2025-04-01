@@ -257,11 +257,13 @@ launch_cores(struct rte_mempool *mp, unsigned int cores)
 	/* reset stats */
 	memset(stats, 0, sizeof(stats));
 
-	printf("mempool_autotest cache=%u cores=%u n_get_bulk=%u "
-	       "n_put_bulk=%u n_keep=%u constant_n=%u ",
-	       use_external_cache ?
-		   external_cache_size : (unsigned int) mp->cache_size,
-	       cores, n_get_bulk, n_put_bulk, n_keep, use_constant_values);
+	printf("mempool_autotest cache=%u cores=%u n_keep=%5u ",
+	       use_external_cache ? external_cache_size : (unsigned int) mp->cache_size,
+	       cores,
+	       n_keep);
+	printf("n_get_bulk=%3u n_put_bulk=%3u constant_n=%u ",
+	       n_get_bulk, n_put_bulk,
+	       use_constant_values);
 
 	if (rte_mempool_avail_count(mp) != MEMPOOL_SIZE) {
 		printf("mempool is not full\n");
@@ -301,7 +303,7 @@ launch_cores(struct rte_mempool *mp, unsigned int cores)
 			rate += (double)stats[lcore_id].enq_count * hz /
 					(double)stats[lcore_id].duration_cycles;
 
-	printf("rate_persec=%" PRIu64 "\n", rate);
+	printf("rate_persec=%10" PRIu64 "\n", rate);
 
 	return 0;
 }
@@ -320,9 +322,9 @@ do_one_mempool_test(struct rte_mempool *mp, unsigned int cores, int external_cac
 	unsigned int *keep_ptr;
 	int ret;
 
-	for (get_bulk_ptr = bulk_tab_get; *get_bulk_ptr; get_bulk_ptr++) {
-		for (put_bulk_ptr = bulk_tab_put; *put_bulk_ptr; put_bulk_ptr++) {
-			for (keep_ptr = keep_tab; *keep_ptr; keep_ptr++) {
+	for (keep_ptr = keep_tab; *keep_ptr; keep_ptr++) {
+		for (get_bulk_ptr = bulk_tab_get; *get_bulk_ptr; get_bulk_ptr++) {
+			for (put_bulk_ptr = bulk_tab_put; *put_bulk_ptr; put_bulk_ptr++) {
 
 				if (*keep_ptr < *get_bulk_ptr || *keep_ptr < *put_bulk_ptr)
 					continue;
