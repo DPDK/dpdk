@@ -89,16 +89,16 @@
 	} while (0)
 
 static int use_external_cache;
-static unsigned external_cache_size = RTE_MEMPOOL_CACHE_MAX_SIZE;
+static unsigned int external_cache_size = RTE_MEMPOOL_CACHE_MAX_SIZE;
 
 static RTE_ATOMIC(uint32_t) synchro;
 
 /* number of objects in one bulk operation (get or put) */
-static unsigned n_get_bulk;
-static unsigned n_put_bulk;
+static unsigned int n_get_bulk;
+static unsigned int n_put_bulk;
 
 /* number of objects retrieved from mempool before putting them back */
-static unsigned n_keep;
+static unsigned int n_keep;
 
 /* true if we want to test with constant n_get_bulk and n_put_bulk */
 static int use_constant_values;
@@ -118,7 +118,7 @@ static struct mempool_test_stats stats[RTE_MAX_LCORE];
  */
 static void
 my_obj_init(struct rte_mempool *mp, __rte_unused void *arg,
-	    void *obj, unsigned i)
+	    void *obj, unsigned int i)
 {
 	uint32_t *objnum = obj;
 	memset(obj, 0, mp->elt_size);
@@ -163,7 +163,7 @@ static int
 per_lcore_mempool_test(void *arg)
 {
 	struct rte_mempool *mp = arg;
-	unsigned lcore_id = rte_lcore_id();
+	unsigned int lcore_id = rte_lcore_id();
 	int ret = 0;
 	uint64_t start_cycles, end_cycles;
 	uint64_t time_diff = 0, hz = rte_get_timer_hz();
@@ -246,10 +246,10 @@ out:
 static int
 launch_cores(struct rte_mempool *mp, unsigned int cores)
 {
-	unsigned lcore_id;
+	unsigned int lcore_id;
 	uint64_t rate;
 	int ret;
-	unsigned cores_save = cores;
+	unsigned int cores_save = cores;
 	double hz = rte_get_timer_hz();
 
 	rte_atomic_store_explicit(&synchro, 0, rte_memory_order_relaxed);
@@ -260,7 +260,7 @@ launch_cores(struct rte_mempool *mp, unsigned int cores)
 	printf("mempool_autotest cache=%u cores=%u n_get_bulk=%u "
 	       "n_put_bulk=%u n_keep=%u constant_n=%u ",
 	       use_external_cache ?
-		   external_cache_size : (unsigned) mp->cache_size,
+		   external_cache_size : (unsigned int) mp->cache_size,
 	       cores, n_get_bulk, n_put_bulk, n_keep, use_constant_values);
 
 	if (rte_mempool_avail_count(mp) != MEMPOOL_SIZE) {
@@ -315,9 +315,9 @@ do_one_mempool_test(struct rte_mempool *mp, unsigned int cores, int external_cac
 	unsigned int bulk_tab_put[] = { 1, 4, CACHE_LINE_BURST, 32, 64, 128, 256,
 			RTE_MEMPOOL_CACHE_MAX_SIZE, 0 };
 	unsigned int keep_tab[] = { 32, 128, 512, 2048, 8192, 32768, 0 };
-	unsigned *get_bulk_ptr;
-	unsigned *put_bulk_ptr;
-	unsigned *keep_ptr;
+	unsigned int *get_bulk_ptr;
+	unsigned int *put_bulk_ptr;
+	unsigned int *keep_ptr;
 	int ret;
 
 	for (get_bulk_ptr = bulk_tab_get; *get_bulk_ptr; get_bulk_ptr++) {
