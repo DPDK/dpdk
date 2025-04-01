@@ -1724,9 +1724,6 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	/* Configuring where to apply the RSS hash */
 	nn_cfg_writel(hw, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
 
-	/* Writing the key size */
-	nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY_SZ, rss_conf->rss_key_len);
-
 	return 0;
 }
 
@@ -1817,7 +1814,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_hf = rss_hf;
 
 	/* Reading the key size */
-	rss_conf->rss_key_len = nn_cfg_readl(hw, NFP_NET_CFG_RSS_KEY_SZ);
+	rss_conf->rss_key_len = NFP_NET_CFG_RSS_KEY_SZ;
 
 	/* Reading the key byte a byte */
 	if (rss_conf->rss_key != NULL) {
