@@ -1314,11 +1314,11 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 			mbox = mbox_get(pst->flow->rep_mbox);
 		else
 			mbox = mbox_get(npc->mbox);
-		(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
 		if (roc_model_is_cn20k()) {
 			struct npc_cn20k_mcam_read_base_rule_rsp *base_rule_rsp;
 			struct cn20k_mcam_entry *base_entry;
 
+			(void)mbox_alloc_msg_npc_cn20k_read_base_steer_rule(mbox);
 			rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
 			if (rc) {
 				mbox_put(mbox);
@@ -1336,6 +1336,7 @@ npc_program_mcam(struct npc *npc, struct npc_parse_state *pst, bool mcam_alloc)
 			struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 			struct mcam_entry *base_entry;
 
+			(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
 			rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
 			if (rc) {
 				mbox_put(mbox);

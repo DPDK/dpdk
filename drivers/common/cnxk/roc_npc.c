@@ -1921,11 +1921,11 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_fl
 		goto exit;
 	}
 
-	(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
 	if (roc_model_is_cn20k()) {
 		struct npc_cn20k_mcam_read_base_rule_rsp *base_rule_rsp;
 		struct cn20k_mcam_entry *base_entry;
 
+		(void)mbox_alloc_msg_npc_cn20k_read_base_steer_rule(mbox);
 		rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
 		if (rc) {
 			plt_err("Failed to fetch VF's base MCAM entry");
@@ -1941,6 +1941,7 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_fl
 		struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 		struct mcam_entry *base_entry;
 
+		(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
 		rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
 		if (rc) {
 			plt_err("Failed to fetch VF's base MCAM entry");
