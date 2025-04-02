@@ -137,6 +137,71 @@ nix_get_mbuf_from_cqe(void *cq, const uint64_t data_off)
 	return (struct rte_mbuf *)(buff - data_off);
 }
 
+static __rte_always_inline void
+nix_sec_reass_first_frag_update(struct rte_mbuf *head, const rte_iova_t *iova_list, uintptr_t cpth,
+				uint64_t cq_w1, uint64_t cq_w5, uint16_t rlen)
+{
+	uint8_t *m_ipptr, *ipptr;
+	uint16_t tot_len;
+	uint32_t cksum;
+	uint8_t lc_ptr;
+	uint8_t lc_off;
+
+	lc_ptr = (cq_w5 >> 16) & 0xFF;
+	lc_off = lc_ptr - (cq_w5 & 0xFF);
+	ipptr = (uint8_t *)*iova_list + lc_off;
+	m_ipptr = (uint8_t *)cpth + lc_ptr;
+
+	/* Find the L3 header length and update inner pkt based on meta lc type */
+	if (((cq_w1 >> 40) & 0xF) == NPC_LT_LC_IP) {
+		const struct rte_ipv4_hdr *m_hdr = (const struct rte_ipv4_hdr *)m_ipptr;
+		struct rte_ipv4_hdr *ip_hdr = (struct rte_ipv4_hdr *)ipptr;
+
+		ip_hdr->fragment_offset = 0;
+		tot_len = rte_cpu_to_be_16(rlen);
+		ip_hdr->total_length = tot_len;
+		/* Perform incremental checksum based on meta pkt ip hdr */
+		cksum = m_hdr->hdr_checksum;
+		cksum += m_hdr->fragment_offset;
+		cksum += 0xFFFF;
+		cksum += m_hdr->total_length;
+		cksum += (uint16_t)(~tot_len);
+		cksum = (cksum & 0xFFFF) + ((cksum & 0xFFFF0000) >> 16);
+		ip_hdr->hdr_checksum = cksum;
+		return;
+	}
+
+	/* Assuming IPv6 packet update */
+	struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)ipptr;
+	size_t ext_len = sizeof(struct rte_ipv6_hdr);
+	uint8_t *nxt_hdr = (uint8_t *)ipv6_hdr;
+	uint8_t *nxt_proto = &ipv6_hdr->proto;
+	int nh = ipv6_hdr->proto;
+
+	tot_len = 0;
+	while (nh != -EINVAL) {
+		nxt_hdr += ext_len;
+		tot_len += ext_len;
+		if (nh == IPPROTO_FRAGMENT) {
+			*nxt_proto = *nxt_hdr;
+			break;
+		}
+		nh = rte_ipv6_get_next_ext(nxt_hdr, nh, &ext_len);
+		nxt_proto = nxt_hdr;
+	}
+
+	/* Remove the frag header by moving header 8 bytes forward */
+	ipv6_hdr->payload_len = rte_cpu_to_be_16(rlen - 8 - sizeof(struct rte_ipv6_hdr));
+
+	/* tot_len is sum of all IP header's length before fragment header */
+	rte_memcpy(rte_pktmbuf_mtod_offset(head, void *, 8), rte_pktmbuf_mtod(head, void *),
+		   lc_off + tot_len);
+
+	head->data_len -= 8;
+	head->data_off += 8;
+	head->pkt_len -= 8;
+}
+
 static __rte_always_inline uint64_t
 nix_sec_meta_to_mbuf_sc(uint64_t cq_w5, uint64_t cpth, const uint64_t sa_base,
 			struct rte_mbuf *mbuf, uint16_t *len, uint64_t *mbuf_init,
@@ -241,19 +306,22 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 {
 	const struct cpt_parse_hdr_s *hdr = (const struct cpt_parse_hdr_s *)cpth;
 	struct cn20k_inb_priv_data *inb_priv = NULL;
+	const struct cpt_frag_info_s *finfo = NULL;
+	uint64_t fsz_w1 = 0, cq_w1, cq_w5, sg;
 	uint32_t offset = hdr->w2.ptr_offset;
-	const struct cpt_frag_info_s *finfo;
 	uint8_t num_frags = 0, nxt_frag = 0;
 	struct rte_mbuf *head, *last_mbuf;
-	uint64_t fsz_w1 = 0, cq_w1, sg;
+	uint16_t rlen = hdr->w3.rlen;
 	const rte_iova_t *iova_list;
 	uint8_t sg_cnt = 1, nb_segs;
 	uint16_t later_skip = 0;
 	bool reas_fail = false;
 	const rte_iova_t *eol;
+	uint16_t data_off = 0;
 	uint8_t ts_rx_off;
 	int dyn_off = 0;
-	uint32_t len;
+	uint16_t sg_len;
+	int64_t len;
 	uintptr_t p;
 
 	cq_w1 = *(const uint64_t *)rx;
@@ -266,10 +334,12 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 		if (!hdr->w4.gthr_size && ((flags & NIX_RX_REAS_F) || !hdr->w4.sctr_size))
 			return;
 
+		cq_w5 = *((const uint64_t *)rx + 4);
+		len = rlen + ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
 		num_frags = hdr->w0.num_frags;
 		sg_base = cpth + (offset ? (offset << 3) : 256);
 		finfo = (const struct cpt_frag_info_s *)sg_base;
-		sg_base += num_frags ? (num_frags >> 2 ? 32 : 16) : 0;
+		sg_base += num_frags ? (num_frags > 4 ? 32 : 16) : 0;
 		sg = *(uint64_t *)sg_base;
 		nb_segs = (sg >> 48) & 0x3;
 		iova_list = (rte_iova_t *)(sg_base);
@@ -279,9 +349,8 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 		if ((flags & NIX_RX_REAS_F) && num_frags) {
 			void *inb_sa;
 
-			num_frags = hdr->w0.num_frags;
-			inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, hdr->w0.cookie);
-			inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
+			inb_sa = roc_nix_inl_ow_ipsec_inb_sa(sa_base, hdr->w0.cookie);
+			inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd(inb_sa);
 			dyn_off = inb_priv->reass_dynfield_off;
 			num_frags -= 1;
 
@@ -300,16 +369,24 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 		if (nb_segs == 1)
 			return;
 
+		len = rx->pkt_lenm1 + 1;
+
 		/* Skip SG_S and first IOVA */
 		eol = ((const rte_iova_t *)(rx + 1) + ((rx->desc_sizem1 + 1) << 1));
 		iova_list = ((const rte_iova_t *)(rx + 1)) + 2;
 	}
 
 	/* Update data len as per the segment size */
-	mbuf->data_len = sg & 0xFFFF;
+	sg_len = sg & 0xFFFF;
+	mbuf->data_len = sg_len;
 	mbuf->nb_segs = nb_segs;
 	head = mbuf;
 
+	/* Update IP header */
+	if ((flags & NIX_RX_REAS_F) && num_frags && !reas_fail)
+		nix_sec_reass_first_frag_update(mbuf, iova_list - 1, cpth, cq_w1, cq_w5, rlen);
+
+	len -= sg_len;
 	sg = sg >> 16;
 	nb_segs--;
 
@@ -317,7 +394,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 
 	while (nb_segs) {
 		last_mbuf = mbuf;
-		if (flags & NIX_RX_REAS_F) {
+		if ((flags & NIX_RX_REAS_F) && num_frags) {
 			offset = (*iova_list) % (buf_sz & 0xFFFFFFFF);
 			mbuf->next = (struct rte_mbuf *)((*iova_list) - offset + (buf_sz >> 32));
 		} else {
@@ -344,6 +421,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 			len = fsz_w1 & 0xFFFF;
 			head->pkt_len = len - ts_rx_off;
 			head->nb_segs = sg_cnt;
+			data_off = rearm & 0xFFFF;
 			sg_cnt = 0;
 			nxt_frag = nxt_frag >> 1;
 			fsz_w1 = fsz_w1 >> 16;
@@ -351,14 +429,28 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 				fsz_w1 = finfo->w1.u64;
 		}
 
-		mbuf->data_len = (sg & 0xFFFF) - ts_rx_off;
+		if ((flags & NIX_RX_REAS_F) && num_frags && !reas_fail)
+			data_off = *iova_list - (uint64_t)mbuf->buf_addr;
+
+		sg_len = sg & 0xFFFF;
+		if ((flags & NIX_RX_OFFLOAD_SECURITY_F) && !(flags & NIX_RX_REAS_F)) {
+			/* Adjust last mbuf data length with negative offset for
+			 * security pkts if needed.
+			 */
+			len -= sg_len;
+			sg_len = (len > 0) ? sg_len : (sg_len + len);
+			len = (len > 0) ? len : 0;
+		}
+
+		mbuf->data_len = sg_len;
 		sg = sg >> 16;
 		p = (uintptr_t)&mbuf->rearm_data;
-		*(uint64_t *)p = rearm & ~0xFFFF;
+		*(uint64_t *)p = (rearm & ~0xFFFF) | data_off;
 
 		sg_cnt++;
 		nb_segs--;
 		iova_list++;
+		data_off = 0;
 
 		if (!nb_segs && (iova_list + 1 < eol)) {
 			sg = *(const uint64_t *)(iova_list);
