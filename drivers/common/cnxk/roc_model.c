@@ -18,7 +18,8 @@ struct roc_model *roc_model;
 #define SOC_PART_CN10K 0xD49
 #define SOC_PART_CN20K 0xD8E
 
-#define PART_206xx  0xA0
+#define PART_206xx  0xC2
+#define PART_205xxN 0xC3
 #define PART_106xx  0xB9
 #define PART_105xx  0xBA
 #define PART_105xxN 0xBC
@@ -62,6 +63,7 @@ static const struct model_db {
 	char name[ROC_MODEL_STR_LEN_MAX];
 } model_db[] = {
 	{VENDOR_ARM, PART_206xx, 0, 0, ROC_MODEL_CN206xx_A0, "cn20ka_a0"},
+	{VENDOR_ARM, PART_205xxN, 0, 0, ROC_MODEL_CNF205xxN_A0, "cnf20ka_a0"},
 	{VENDOR_ARM, PART_106xx, 0, 0, ROC_MODEL_CN106xx_A0, "cn10ka_a0"},
 	{VENDOR_ARM, PART_106xx, 0, 1, ROC_MODEL_CN106xx_A1, "cn10ka_a1"},
 	{VENDOR_ARM, PART_106xx, 1, 0, ROC_MODEL_CN106xx_B0, "cn10ka_b0"},
