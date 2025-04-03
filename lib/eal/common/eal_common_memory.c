@@ -101,8 +101,12 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 
 		mapped_addr = eal_mem_reserve(
 			requested_addr, (size_t)map_sz, reserve_flags);
-		if ((mapped_addr == NULL) && allow_shrink)
-			*size -= page_sz;
+		if (mapped_addr == NULL) {
+			if (allow_shrink)
+				*size -= page_sz;
+			else
+				break;
+		}
 
 		if ((mapped_addr != NULL) && addr_is_hint &&
 				(mapped_addr != requested_addr)) {
