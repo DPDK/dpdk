@@ -157,8 +157,10 @@ virtqueue_crypto_sym_pkt_header_arrange(
 		req_data->u.sym_req.u.chain.para.aad_len = session->aad.length;
 
 		req_data->u.sym_req.u.chain.para.src_data_len =
-			(sym_op->cipher.data.length +
-				sym_op->cipher.data.offset);
+			RTE_MAX((sym_op->cipher.data.length +
+				 sym_op->cipher.data.offset),
+				(sym_op->auth.data.length +
+				 sym_op->auth.data.offset));
 		req_data->u.sym_req.u.chain.para.dst_data_len =
 			req_data->u.sym_req.u.chain.para.src_data_len;
 		req_data->u.sym_req.u.chain.para.cipher_start_src_offset =
@@ -212,6 +214,7 @@ virtqueue_crypto_sym_enqueue_xmit(
 	uint32_t hash_result_len = 0;
 	struct virtio_crypto_op_cookie *crypto_op_cookie;
 	struct virtio_crypto_alg_chain_session_para *para;
+	uint32_t src_len;
 
 	if (unlikely(sym_op->m_src->nb_segs != 1))
 		return -EMSGSIZE;
@@ -285,21 +288,22 @@ virtqueue_crypto_sym_enqueue_xmit(
 		desc[idx++].flags = VRING_DESC_F_NEXT;
 	}
 
+	src_len = RTE_MAX((sym_op->cipher.data.offset +
+			   sym_op->cipher.data.length),
+			  (sym_op->auth.data.length +
+			   sym_op->auth.data.offset));
 	/* indirect vring: src data */
 	desc[idx].addr = rte_pktmbuf_iova_offset(sym_op->m_src, 0);
-	desc[idx].len = (sym_op->cipher.data.offset
-		+ sym_op->cipher.data.length);
+	desc[idx].len = src_len;
 	desc[idx++].flags = VRING_DESC_F_NEXT;
 
 	/* indirect vring: dst data */
 	if (sym_op->m_dst) {
 		desc[idx].addr = rte_pktmbuf_iova_offset(sym_op->m_dst, 0);
-		desc[idx].len = (sym_op->cipher.data.offset
-			+ sym_op->cipher.data.length);
+		desc[idx].len = src_len;
 	} else {
 		desc[idx].addr = rte_pktmbuf_iova_offset(sym_op->m_src, 0);
-		desc[idx].len = (sym_op->cipher.data.offset
-			+ sym_op->cipher.data.length);
+		desc[idx].len = src_len;
 	}
 	desc[idx++].flags = VRING_DESC_F_WRITE | VRING_DESC_F_NEXT;
 
