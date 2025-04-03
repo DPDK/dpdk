@@ -260,6 +260,22 @@ struct ice_vsi_list {
 struct ice_rx_queue;
 struct ci_tx_queue;
 
+
+/**
+ * Used to store previous values of fields reported by ice_stats_get that can overflow
+ * for the purpose of enlarging all their limitations to 64 bits rather than 32 or 40
+ */
+struct ice_vsi_get_stats_fields {
+	uint64_t rx_bytes;
+	uint64_t rx_unicast;
+	uint64_t rx_multicast;
+	uint64_t rx_broadcast;
+	uint64_t rx_discards;
+	uint64_t tx_errors;
+	uint64_t tx_bytes;
+};
+
+
 /**
  * Structure that defines a VSI, associated with a adapter.
  */
@@ -307,8 +323,8 @@ struct ice_vsi {
 	struct ice_eth_stats eth_stats_offset;
 	struct ice_eth_stats eth_stats;
 	bool offset_loaded;
-	uint64_t old_rx_bytes;
-	uint64_t old_tx_bytes;
+	/* holds previous values so limitations can be enlarged to 64 bits */
+	struct ice_vsi_get_stats_fields old_get_stats_fields;
 };
 
 enum proto_xtr_type {
@@ -495,6 +511,26 @@ struct ice_mbuf_stats {
 	uint64_t tx_pkt_errors;
 };
 
+
+/**
+ * Used to store previous values of fields reported by ice_stats_get that can overflow
+ * for the purpose of enlarging all their limitations to 64 bits rather than 32 or 40
+ */
+struct ice_pf_get_stats_fields {
+	uint64_t rx_bytes;
+	uint64_t rx_discards;
+	uint64_t rx_undersize;
+	uint64_t rx_fragments;
+	uint64_t rx_oversize;
+	uint64_t rx_jabber;
+	uint64_t tx_unicast;
+	uint64_t tx_multicast;
+	uint64_t tx_broadcast;
+	uint64_t tx_bytes;
+	uint64_t crc_errors;
+};
+
+
 struct ice_pf {
 	struct ice_adapter *adapter; /* The adapter this PF associate to */
 	struct ice_vsi *main_vsi; /* pointer to main VSI structure */
@@ -533,8 +569,8 @@ struct ice_pf {
 	struct ice_flow_list flow_list;
 	rte_spinlock_t flow_ops_lock;
 	bool init_link_up;
-	uint64_t old_rx_bytes;
-	uint64_t old_tx_bytes;
+	/* holds previous values so limitations can be enlarged to 64 bits */
+	struct ice_pf_get_stats_fields old_get_stats_fields;
 	uint64_t supported_rxdid; /* bitmap for supported RXDID */
 	uint64_t rss_hf;
 	struct ice_tm_conf tm_conf;

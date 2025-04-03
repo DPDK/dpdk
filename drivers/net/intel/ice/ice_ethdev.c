@@ -6064,6 +6064,37 @@ ice_stat_update_40(struct ice_hw *hw,
 	*stat &= ICE_40_BIT_MASK;
 }
 
+/**
+ * There are various counters that are bubbled up in uint64 values but do not make use of all
+ * 64 bits, most commonly using only 32 or 40 bits. This function handles the "overflow" when
+ * these counters hit their 32 or 40 bit limit to enlarge that limitation to 64 bits.
+
+ * @offset_loaded: refers to whether this function has been called before and old_value is known to
+ * have a value, i.e. its possible that value has overflowed past its original limitation
+ * @value_bit_limitation: refers to the number of bits the given value uses before overflowing
+ * @value: is the current value with its original limitation (i.e. 32 or 40 bits)
+ * @old_value: is expected to be the previous value of the given value with the overflow accounted
+ * for (i.e. the full 64 bit previous value)
+ *
+ * This function will appropriately update both value and old_value, accounting for overflow
+ */
+static void
+ice_handle_overflow(bool offset_loaded,
+			uint8_t value_bit_limitation,
+			uint64_t *value,
+			uint64_t *old_value)
+{
+	uint64_t low_bit_mask = RTE_LEN2MASK(value_bit_limitation, uint64_t);
+	uint64_t high_bit_mask = ~low_bit_mask;
+
+	if (offset_loaded) {
+		if ((*old_value & low_bit_mask) > *value)
+			*value += (uint64_t)1 << value_bit_limitation;
+		*value += *old_value & high_bit_mask;
+	}
+	*old_value = *value;
+}
+
 /* Get all the statistics of a VSI */
 static void
 ice_update_vsi_stats(struct ice_vsi *vsi)
@@ -6085,13 +6116,16 @@ ice_update_vsi_stats(struct ice_vsi *vsi)
 	ice_stat_update_40(hw, GLV_BPRCH(idx), GLV_BPRCL(idx),
 			   vsi->offset_loaded, &oes->rx_broadcast,
 			   &nes->rx_broadcast);
-	/* enlarge the limitation when rx_bytes overflowed */
-	if (vsi->offset_loaded) {
-		if (ICE_RXTX_BYTES_LOW(vsi->old_rx_bytes) > nes->rx_bytes)
-			nes->rx_bytes += (uint64_t)1 << ICE_40_BIT_WIDTH;
-		nes->rx_bytes += ICE_RXTX_BYTES_HIGH(vsi->old_rx_bytes);
-	}
-	vsi->old_rx_bytes = nes->rx_bytes;
+
+	ice_handle_overflow(vsi->offset_loaded, ICE_40_BIT_WIDTH,
+			   &nes->rx_unicast, &vsi->old_get_stats_fields.rx_unicast);
+	ice_handle_overflow(vsi->offset_loaded, ICE_40_BIT_WIDTH,
+			   &nes->rx_multicast, &vsi->old_get_stats_fields.rx_multicast);
+	ice_handle_overflow(vsi->offset_loaded, ICE_40_BIT_WIDTH,
+			   &nes->rx_broadcast, &vsi->old_get_stats_fields.rx_broadcast);
+	ice_handle_overflow(vsi->offset_loaded, ICE_40_BIT_WIDTH,
+			   &nes->rx_bytes, &vsi->old_get_stats_fields.rx_bytes);
+
 	/* exclude CRC bytes */
 	nes->rx_bytes -= (nes->rx_unicast + nes->rx_multicast +
 			  nes->rx_broadcast) * RTE_ETHER_CRC_LEN;
@@ -6118,13 +6152,14 @@ ice_update_vsi_stats(struct ice_vsi *vsi)
 	/* GLV_TDPC not supported */
 	ice_stat_update_32(hw, GLV_TEPC(idx), vsi->offset_loaded,
 			   &oes->tx_errors, &nes->tx_errors);
-	/* enlarge the limitation when tx_bytes overflowed */
-	if (vsi->offset_loaded) {
-		if (ICE_RXTX_BYTES_LOW(vsi->old_tx_bytes) > nes->tx_bytes)
-			nes->tx_bytes += (uint64_t)1 << ICE_40_BIT_WIDTH;
-		nes->tx_bytes += ICE_RXTX_BYTES_HIGH(vsi->old_tx_bytes);
-	}
-	vsi->old_tx_bytes = nes->tx_bytes;
+
+	ice_handle_overflow(vsi->offset_loaded, ICE_32_BIT_WIDTH,
+			   &nes->rx_discards, &vsi->old_get_stats_fields.rx_discards);
+	ice_handle_overflow(vsi->offset_loaded, ICE_32_BIT_WIDTH,
+			   &nes->tx_errors, &vsi->old_get_stats_fields.tx_errors);
+	ice_handle_overflow(vsi->offset_loaded, ICE_40_BIT_WIDTH,
+			   &nes->tx_bytes, &vsi->old_get_stats_fields.tx_bytes);
+
 	vsi->offset_loaded = true;
 
 	PMD_DRV_LOG(DEBUG, "************** VSI[%u] stats start **************",
@@ -6172,13 +6207,11 @@ ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
 	ice_stat_update_32(hw, PRTRPB_RDPC,
 			   pf->offset_loaded, &os->eth.rx_discards,
 			   &ns->eth.rx_discards);
-	/* enlarge the limitation when rx_bytes overflowed */
-	if (pf->offset_loaded) {
-		if (ICE_RXTX_BYTES_LOW(pf->old_rx_bytes) > ns->eth.rx_bytes)
-			ns->eth.rx_bytes += (uint64_t)1 << ICE_40_BIT_WIDTH;
-		ns->eth.rx_bytes += ICE_RXTX_BYTES_HIGH(pf->old_rx_bytes);
-	}
-	pf->old_rx_bytes = ns->eth.rx_bytes;
+
+	ice_handle_overflow(pf->offset_loaded, ICE_40_BIT_WIDTH,
+			   &ns->eth.rx_bytes, &pf->old_get_stats_fields.rx_bytes);
+	ice_handle_overflow(pf->offset_loaded, ICE_32_BIT_WIDTH,
+			   &ns->eth.rx_discards, &pf->old_get_stats_fields.rx_discards);
 
 	/* Workaround: CRC size should not be included in byte statistics,
 	 * so subtract RTE_ETHER_CRC_LEN from the byte counter for each rx
@@ -6209,13 +6242,16 @@ ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
 			   GLPRT_BPTCL(hw->port_info->lport),
 			   pf->offset_loaded, &os->eth.tx_broadcast,
 			   &ns->eth.tx_broadcast);
-	/* enlarge the limitation when tx_bytes overflowed */
-	if (pf->offset_loaded) {
-		if (ICE_RXTX_BYTES_LOW(pf->old_tx_bytes) > ns->eth.tx_bytes)
-			ns->eth.tx_bytes += (uint64_t)1 << ICE_40_BIT_WIDTH;
-		ns->eth.tx_bytes += ICE_RXTX_BYTES_HIGH(pf->old_tx_bytes);
-	}
-	pf->old_tx_bytes = ns->eth.tx_bytes;
+
+	ice_handle_overflow(pf->offset_loaded, ICE_40_BIT_WIDTH,
+			   &ns->eth.tx_bytes, &pf->old_get_stats_fields.tx_bytes);
+	ice_handle_overflow(pf->offset_loaded, ICE_40_BIT_WIDTH,
+			   &ns->eth.tx_unicast, &pf->old_get_stats_fields.tx_unicast);
+	ice_handle_overflow(pf->offset_loaded, ICE_40_BIT_WIDTH,
+			   &ns->eth.tx_multicast, &pf->old_get_stats_fields.tx_multicast);
+	ice_handle_overflow(pf->offset_loaded, ICE_40_BIT_WIDTH,
+			   &ns->eth.tx_broadcast, &pf->old_get_stats_fields.tx_broadcast);
+
 	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
 			     ns->eth.tx_broadcast) * RTE_ETHER_CRC_LEN;
 
@@ -6323,6 +6359,17 @@ ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
 			   GLPRT_PTC9522L(hw->port_info->lport),
 			   pf->offset_loaded, &os->tx_size_big,
 			   &ns->tx_size_big);
+
+	ice_handle_overflow(pf->offset_loaded, ICE_32_BIT_WIDTH,
+			   &ns->crc_errors, &pf->old_get_stats_fields.crc_errors);
+	ice_handle_overflow(pf->offset_loaded, ICE_32_BIT_WIDTH,
+			   &ns->rx_undersize, &pf->old_get_stats_fields.rx_undersize);
+	ice_handle_overflow(pf->offset_loaded, ICE_32_BIT_WIDTH,
+			   &ns->rx_fragments, &pf->old_get_stats_fields.rx_fragments);
+	ice_handle_overflow(pf->offset_loaded, ICE_32_BIT_WIDTH,
+			   &ns->rx_oversize, &pf->old_get_stats_fields.rx_oversize);
+	ice_handle_overflow(pf->offset_loaded, ICE_32_BIT_WIDTH,
+			   &ns->rx_jabber, &pf->old_get_stats_fields.rx_jabber);
 
 	/* GLPRT_MSPDC not supported */
 	/* GLPRT_XEC not supported */
