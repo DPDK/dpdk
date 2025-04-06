@@ -20,12 +20,18 @@
 #define ETH_RING_ACTION_CREATE		"CREATE"
 #define ETH_RING_ACTION_ATTACH		"ATTACH"
 #define ETH_RING_ACTION_MAX_LEN		8 /* CREATE | ACTION */
+
 #define ETH_RING_INTERNAL_ARG		"internal"
 #define ETH_RING_INTERNAL_ARG_MAX_LEN	19 /* "0x..16chars..\0" */
+
+#define ETH_RING_RING_ARG		"ring"
+#define ETH_RING_TIMESTAMP_ARG		"timestamp"
 
 static const char *valid_arguments[] = {
 	ETH_RING_NUMA_NODE_ACTION_ARG,
 	ETH_RING_INTERNAL_ARG,
+	ETH_RING_RING_ARG,
+	ETH_RING_TIMESTAMP_ARG,
 	NULL
 };
 
@@ -38,6 +44,9 @@ struct ring_internal_args {
 	void *addr; /* self addr for sanity check */
 };
 
+static uint64_t timestamp_dynflag;
+static int timestamp_dynfield_offset = -1;
+
 enum dev_action {
 	DEV_CREATE,
 	DEV_ATTACH
@@ -46,6 +55,8 @@ enum dev_action {
 struct ring_queue {
 	struct rte_ring *rng;
 	uint16_t in_port;
+	uint8_t timestamp;
+
 	RTE_ATOMIC(uint64_t) rx_pkts;
 	RTE_ATOMIC(uint64_t) tx_pkts;
 };
@@ -53,6 +64,7 @@ struct ring_queue {
 struct pmd_internals {
 	unsigned int max_rx_queues;
 	unsigned int max_tx_queues;
+	uint8_t timestamp;
 
 	struct ring_queue rx_ring_queues[RTE_PMD_RING_MAX_RX_RINGS];
 	struct ring_queue tx_ring_queues[RTE_PMD_RING_MAX_TX_RINGS];
@@ -60,6 +72,7 @@ struct pmd_internals {
 	struct rte_ether_addr address;
 	enum dev_action action;
 };
+
 
 static struct rte_eth_link pmd_link = {
 	.link_speed = RTE_ETH_SPEED_NUM_10G,
@@ -96,8 +109,23 @@ eth_ring_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	void **ptrs = (void *)&bufs[0];
 	struct ring_queue *r = q;
-	const uint16_t nb_tx = (uint16_t)rte_ring_enqueue_burst(r->rng,
-			ptrs, nb_bufs, NULL);
+	uint16_t nb_tx;
+
+	if (r->timestamp) {
+		unsigned int i;
+		uint64_t cycles = rte_get_tsc_cycles();
+
+		for (i = 0; i < nb_bufs; i++) {
+			struct rte_mbuf *m = bufs[i];
+			*RTE_MBUF_DYNFIELD(m, timestamp_dynfield_offset,
+					   rte_mbuf_timestamp_t *) = cycles;
+			m->ol_flags |= timestamp_dynflag;
+		}
+	}
+
+
+	nb_tx = (uint16_t)rte_ring_enqueue_burst(r->rng, ptrs, nb_bufs, NULL);
+
 	if (r->rng->flags & RING_F_SP_ENQ)
 		r->tx_pkts += nb_tx;
 	else
@@ -173,6 +201,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 
+	internals->tx_ring_queues[tx_queue_id].timestamp = internals->timestamp;
 	dev->data->tx_queues[tx_queue_id] = &internals->tx_ring_queues[tx_queue_id];
 	return 0;
 }
@@ -694,6 +723,20 @@ parse_internal_args(const char *key __rte_unused, const char *value,
 }
 
 static int
+parse_ring_arg(const char *key __rte_unused, const char *value, void *data)
+{
+	struct rte_ring **rp = data;
+
+	*rp = rte_ring_lookup(value);
+	if (*rp == NULL) {
+		PMD_LOG(ERR, "ring '%s' not found", value);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 rte_pmd_ring_probe(struct rte_vdev_device *dev)
 {
 	const char *name, *params;
@@ -770,6 +813,18 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 				&eth_dev);
 			if (ret >= 0)
 				ret = 0;
+		} else if (rte_kvargs_count(kvlist, ETH_RING_RING_ARG) == 1) {
+			struct rte_ring *rxtx[1] = { };
+
+			ret = rte_kvargs_process(kvlist, ETH_RING_RING_ARG, parse_ring_arg, rxtx);
+			if (ret < 0)
+				goto out_free;
+
+			/* Note: rte_eth_from_ring() does not do what is expected here! */
+			ret = do_eth_dev_ring_create(name, dev, rxtx, 1, rxtx, 1,
+						     rte_socket_id(), DEV_ATTACH, &eth_dev);
+			if (ret < 0)
+				goto out_free;
 		} else {
 			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
 			info = rte_zmalloc("struct node_action_list",
@@ -806,6 +861,20 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 				}
 			}
 		}
+
+		if (rte_kvargs_count(kvlist, ETH_RING_TIMESTAMP_ARG) == 1) {
+			struct pmd_internals *internals = eth_dev->data->dev_private;
+
+			if (timestamp_dynfield_offset == -1) {
+				ret = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
+									 &timestamp_dynflag);
+				if (ret < 0)
+					return ret;
+			}
+
+			internals->timestamp = 1;
+		}
+
 	}
 
 out_free:
@@ -843,4 +912,5 @@ static struct rte_vdev_driver pmd_ring_drv = {
 RTE_PMD_REGISTER_VDEV(net_ring, pmd_ring_drv);
 RTE_PMD_REGISTER_ALIAS(net_ring, eth_ring);
 RTE_PMD_REGISTER_PARAM_STRING(net_ring,
+	ETH_RING_RING_ARG "=<string> "
 	ETH_RING_NUMA_NODE_ACTION_ARG "=name:node:action(ATTACH|CREATE)");
