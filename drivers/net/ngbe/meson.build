@@ -8,7 +8,6 @@ if is_windows
 endif
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'ngbe_ethdev.c',
@@ -25,5 +24,3 @@ if arch_subdir == 'x86'
 elif arch_subdir == 'arm'
     sources += files('ngbe_rxtx_vec_neon.c')
 endif
-
-includes += include_directories('base')
