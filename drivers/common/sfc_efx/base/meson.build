@@ -5,7 +5,7 @@
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
 
-sources = [
+base_sources = files(
         'efx_bootcfg.c',
         'efx_crc32.c',
         'efx_ev.c',
@@ -64,7 +64,7 @@ sources = [
         'rhead_tunnel.c',
         'rhead_tx.c',
         'rhead_virtio.c',
-]
+)
 
 if is_ms_compiler
     extra_flags = [
@@ -80,20 +80,8 @@ else
     ]
 endif
 
-c_args = cflags
 foreach flag: extra_flags
     if cc.has_argument(flag)
-        c_args += flag
+        base_cflags += flag
     endif
 endforeach
-
-if build
-    base_lib = static_library('sfc_base', sources,
-        include_directories: includes,
-        dependencies: static_rte_eal,
-        c_args: c_args)
-
-    base_objs = base_lib.extract_all_objects(recursive: true)
-else
-    base_objs = []
-endif
