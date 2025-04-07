@@ -2,7 +2,6 @@
 # Copyright(c) 2018 Intel Corporation
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'ice_acl_filter.c',
@@ -19,7 +18,6 @@ sources = files(
 testpmd_sources = files('ice_testpmd.c')
 
 deps += ['hash', 'net']
-includes += include_directories('base')
 
 if dpdk_conf.has('RTE_NET_IAVF')
     deps += 'net_iavf'

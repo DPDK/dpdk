@@ -11,7 +11,6 @@ subdir('base')
 
 includes += include_directories('../iavf/base')
 
-sources += base_sources
 sources += files(
         'idpf_common_device.c',
         'idpf_common_rxtx.c',

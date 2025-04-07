@@ -5,7 +5,6 @@ cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
 subdir('base')
 
-sources += base_sources
 sources += files(
         'ixgbe_82599_bypass.c',
         'ixgbe_bypass.c',
@@ -31,7 +30,5 @@ elif arch_subdir == 'arm'
     sources += files('ixgbe_rxtx_vec_neon.c')
     sources += files('ixgbe_recycle_mbufs_vec_common.c')
 endif
-
-includes += include_directories('base')
 
 headers = files('rte_pmd_ixgbe.h')

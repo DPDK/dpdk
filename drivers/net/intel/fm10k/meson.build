@@ -9,7 +9,6 @@ endif
 
 subdir('base')
 
-sources += base_sources
 sources += files(
         'fm10k_ethdev.c',
         'fm10k_rxtx.c',
@@ -17,5 +16,3 @@ sources += files(
 if arch_subdir == 'x86'
     sources += files('fm10k_rxtx_vec.c')
 endif
-
-includes += include_directories('base')

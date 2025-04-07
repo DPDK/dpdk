@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018-2021 Intel Corporation
 
-sources = [
+base_sources = files(
         'ice_controlq.c',
         'ice_common.c',
         'ice_sched.c',
@@ -29,7 +29,7 @@ sources = [
         'ice_ddp.c',
         'ice_fwlog.c',
         'ice_vf_mbx.c',
-]
+)
 
 if is_ms_compiler
     error_cflags = [
@@ -48,15 +48,8 @@ if (toolchain == 'gcc' and cc.version().version_compare('>=11.0.0'))
     error_cflags += ['-Wno-array-bounds']
 endif
 
-c_args = cflags
-
 foreach flag: error_cflags
     if cc.has_argument(flag)
-        c_args += flag
+        base_cflags += flag
     endif
 endforeach
-
-base_lib = static_library('ice_base', sources,
-        dependencies: static_rte_eal,
-        c_args: c_args)
-base_objs = base_lib.extract_all_objects(recursive: true)

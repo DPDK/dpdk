@@ -19,7 +19,6 @@ endif
 
 subdir('base')
 
-sources += base_sources
 sources += files(
         'i40e_ethdev.c',
         'i40e_rxtx.c',
@@ -36,7 +35,6 @@ sources += files(
 testpmd_sources = files('i40e_testpmd.c')
 
 deps += ['hash']
-includes += include_directories('base')
 
 if arch_subdir == 'x86'
     sources += files('i40e_rxtx_vec_sse.c')

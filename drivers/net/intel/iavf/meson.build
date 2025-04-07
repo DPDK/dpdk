@@ -25,7 +25,6 @@ sources = files(
         'iavf_ipsec_crypto.c',
         'iavf_fsub.c',
 )
-includes += include_directories('base')
 
 if arch_subdir == 'x86'
     sources += files('iavf_rxtx_vec_sse.c')
