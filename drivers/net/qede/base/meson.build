@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
-sources = [
+base_sources = files(
         'bcm_osal.c',
         'ecore_cxt.c',
         'ecore_dcbx.c',
@@ -16,8 +16,7 @@ sources = [
         'ecore_spq.c',
         'ecore_sriov.c',
         'ecore_vf.c',
-]
-
+)
 
 if is_ms_compiler
         error_cflags = [
@@ -51,14 +50,8 @@ else
         ]
 endif
 
-c_args = cflags
 foreach flag: error_cflags
-        if cc.has_argument(flag)
-                c_args += flag
-        endif
+    if cc.has_argument(flag)
+        base_cflags += flag
+    endif
 endforeach
-
-base_lib = static_library('qede_base', sources,
-    dependencies: [static_rte_net, static_rte_bus_pci],
-    c_args: c_args)
-base_objs = base_lib.extract_all_objects(recursive: true)
