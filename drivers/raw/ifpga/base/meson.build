@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-sources = [
+base_sources = files(
         'ifpga_api.c',
         'ifpga_enumerate.c',
         'ifpga_feature_dev.c',
@@ -23,21 +23,4 @@ sources = [
         'opae_i2c.c',
         'opae_at24_eeprom.c',
         'opae_eth_group.c',
-]
-
-rtdep = dependency('librt', required: false)
-if not rtdep.found()
-    rtdep = cc.find_library('rt', required: false)
-endif
-if not rtdep.found()
-    build = false
-    reason = 'missing dependency, "librt"'
-    subdir_done()
-endif
-
-ext_deps += rtdep
-
-base_lib = static_library('ifpga_rawdev_base', sources,
-    dependencies: static_rte_eal,
-    c_args: cflags)
-base_objs = base_lib.extract_all_objects(recursive: true)
+)
