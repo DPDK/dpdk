@@ -143,7 +143,13 @@ foreach subpath:subdirs
         pkgconfig_extra_libs = []
         testpmd_sources = []
         require_iova_in_mbuf = true
+        # for handling base code files which may need extra cflags
+        base_sources = []
+        base_cflags = []
 
+        if fs.is_dir(drv_path / 'base')
+            includes += include_directories(drv_path / 'base')
+        endif
         if name.contains('/')
             name = name.split('/')[1]
         endif
@@ -212,6 +218,20 @@ foreach subpath:subdirs
                 set_variable('drv_' + drv_path.underscorify() + '_disable_reason', reason)
             endif
             continue
+        endif
+
+        # not all drivers base code is lock annotation safe, so do base code builds before
+        # adding on the lock annotation flags. NOTE: If no custom cflags, the lock annotation
+        # checks will be done though.
+        if base_cflags != []
+            base_lib = static_library(lib_name + '_base_lib',
+                    base_sources,
+                    dependencies: static_deps,
+                    include_directories: includes,
+                    c_args: cflags + base_cflags)
+            objs += base_lib.extract_objects(base_sources)
+        else
+            sources += base_sources
         endif
 
         enabled_drivers += name
