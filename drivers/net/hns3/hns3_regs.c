@@ -1270,7 +1270,7 @@ hns3_get_dfx_regs(struct hns3_hw *hw, struct rte_dev_reg_info *regs, uint32_t mo
 	for (i = 0; i < opcode_num; i++)
 		max_bd_num = RTE_MAX(bd_num_list[i], max_bd_num);
 
-	cmd_descs = rte_zmalloc(NULL, sizeof(*cmd_descs) * max_bd_num, 0);
+	cmd_descs = calloc(max_bd_num, sizeof(*cmd_descs));
 	if (cmd_descs == NULL)
 		return -ENOMEM;
 
@@ -1290,13 +1290,14 @@ hns3_get_dfx_regs(struct hns3_hw *hw, struct rte_dev_reg_info *regs, uint32_t mo
 		if (regs_num !=  hns3_reg_lists[i].entry_num) {
 			hns3_err(hw, "Query register number differ from the list for module %s!",
 				 hns3_get_name_by_module(i));
+			free(cmd_descs);
 			return -EINVAL;
 		}
 		hns3_fill_dfx_regs_name(hw, regs, hns3_reg_lists[i].reg_list, regs_num);
 		regs->length += regs_num;
 		data += regs_num;
 	}
-	rte_free(cmd_descs);
+	free(cmd_descs);
 
 	return ret;
 }
