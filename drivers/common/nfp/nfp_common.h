@@ -39,6 +39,7 @@ struct nfp_hw {
 	uint32_t ctrl_ext;
 	rte_spinlock_t reconfig_lock;
 	struct rte_ether_addr mac_addr;
+	uint32_t cap_rss;
 };
 
 static inline uint8_t
