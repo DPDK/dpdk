@@ -2544,6 +2544,10 @@ hns3_query_pf_resource(struct hns3_hw *hw)
 	req = (struct hns3_pf_res_cmd *)desc.data;
 	hw->total_tqps_num = rte_le_to_cpu_16(req->tqp_num) +
 			     rte_le_to_cpu_16(req->ext_tqp_num);
+	if (hw->total_tqps_num == 0) {
+		PMD_INIT_LOG(ERR, "the total tqp number of the port is 0.");
+		return -EINVAL;
+	}
 	ret = hns3_get_pf_max_tqp_num(hw);
 	if (ret)
 		return ret;
@@ -2795,6 +2799,7 @@ hns3_check_media_type(struct hns3_hw *hw, uint8_t media_type)
 static int
 hns3_get_board_configuration(struct hns3_hw *hw)
 {
+#define HNS3_RSS_SIZE_MAX_DEFAULT	64
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_pf *pf = &hns->pf;
 	struct hns3_cfg cfg;
@@ -2813,6 +2818,11 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 
 	hw->mac.media_type = cfg.media_type;
 	hw->rss_size_max = cfg.rss_size_max;
+	if (hw->rss_size_max == 0) {
+		PMD_INIT_LOG(WARNING, "rss_size_max is 0, already adjust to %u.",
+			     HNS3_RSS_SIZE_MAX_DEFAULT);
+		hw->rss_size_max = HNS3_RSS_SIZE_MAX_DEFAULT;
+	}
 	memcpy(hw->mac.mac_addr, cfg.mac_addr, RTE_ETHER_ADDR_LEN);
 	hw->mac.phy_addr = cfg.phy_addr;
 	hw->dcb_info.num_pg = 1;
