@@ -237,7 +237,7 @@ if dlopen_ibverbs
     dlopen_sources = files('mlx5_glue.c')
     dlopen_install_dir = [ eal_pmd_path + '-glue' ]
     dlopen_includes = [global_inc]
-    dlopen_includes += include_directories('../../../../lib/eal/include/generic')
+    dlopen_includes += include_directories('../../../../lib/eal/common')
     dlopen_includes += include_directories('..')
     shared_lib = shared_library(
             dlopen_lib_name,
