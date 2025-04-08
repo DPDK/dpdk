@@ -396,6 +396,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw,
 {
 	uint32_t cap = hw->super.cap;
 	uint32_t cap_ext = hw->super.cap_ext;
+	uint32_t cap_rss = hw->super.cap_rss;
 
 	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d.",
 			pf_dev->ver.major, pf_dev->ver.minor, hw->max_mtu);
@@ -441,6 +442,12 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw,
 			cap_ext & NFP_NET_CFG_CTRL_MULTI_PF        ? "MULTI_PF "        : "",
 			cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER      ? "FLOW_STEER "      : "",
 			cap_ext & NFP_NET_CFG_CTRL_IN_ORDER        ? "VIRTIO_IN_ORDER " : "");
+
+	PMD_INIT_LOG(INFO, "CAP_RSS: %#x.", cap_rss);
+	PMD_INIT_LOG(INFO, "%s%s%s",
+			cap_rss & NFP_NET_CFG_RSS_TOEPLITZ        ? "RSS_TOEPLITZ "   : "",
+			cap_rss & NFP_NET_CFG_RSS_XOR             ? "RSS_XOR "        : "",
+			cap_rss & NFP_NET_CFG_RSS_CRC32           ? "RSS_CRC32 "      : "");
 
 	PMD_INIT_LOG(INFO, "The max_rx_queues: %u, max_tx_queues: %u.",
 			hw->max_rx_queues, hw->max_tx_queues);
@@ -1406,6 +1413,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->flow_type_rss_offloads = NFP_NET_RSS_CAP;
 		dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
 		dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
+		nfp_net_rss_algo_capa_get(hw, dev_info);
 	}
 
 	/* Only PF supports getting speed capability. */
@@ -1430,6 +1438,7 @@ nfp_net_common_init(struct nfp_pf_dev *pf_dev,
 
 	hw->max_rx_queues = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_TXRINGS);
+	hw->super.cap_rss = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_CAP);
 	if (hw->max_rx_queues == 0 || hw->max_tx_queues == 0) {
 		PMD_INIT_LOG(ERR, "Device %s can not be used, there are no valid queue "
 				"pairs for use.", pci_dev->name);
@@ -3220,4 +3229,21 @@ int
 nfp_net_led_off(struct rte_eth_dev *dev)
 {
 	return nfp_net_led_control(dev, false);
+}
+
+void
+nfp_net_rss_algo_capa_get(struct nfp_net_hw *hw,
+		struct rte_eth_dev_info *dev_info)
+{
+	uint32_t cap_rss;
+
+	cap_rss = hw->super.cap_rss;
+	if ((cap_rss & NFP_NET_CFG_RSS_TOEPLITZ) != 0)
+		dev_info->rss_algo_capa |= RTE_ETH_HASH_ALGO_CAPA_MASK(TOEPLITZ);
+
+	if ((cap_rss & NFP_NET_CFG_RSS_XOR) != 0)
+		dev_info->rss_algo_capa |= RTE_ETH_HASH_ALGO_CAPA_MASK(SIMPLE_XOR);
+
+	if ((cap_rss & NFP_NET_CFG_RSS_CRC32) != 0)
+		dev_info->rss_algo_capa |= RTE_ETH_HASH_ALGO_CAPA_MASK(DEFAULT);
 }
