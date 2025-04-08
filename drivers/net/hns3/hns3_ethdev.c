@@ -5122,7 +5122,7 @@ hns3_dev_start(struct rte_eth_dev *dev)
 	 */
 	ret = hns3_start_all_txqs(dev);
 	if (ret)
-		goto map_rx_inter_err;
+		goto start_all_txqs_fail;
 
 	ret = hns3_start_all_rxqs(dev);
 	if (ret)
@@ -5155,6 +5155,8 @@ hns3_dev_start(struct rte_eth_dev *dev)
 
 start_all_rxqs_fail:
 	hns3_stop_all_txqs(dev);
+start_all_txqs_fail:
+	hns3_unmap_rx_interrupt(dev);
 map_rx_inter_err:
 	(void)hns3_do_stop(hns);
 do_start_fail:
