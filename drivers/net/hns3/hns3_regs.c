@@ -444,7 +444,7 @@ hns3_get_dfx_regs(struct hns3_hw *hw, void **data)
 	for (i = 0; i < opcode_num; i++)
 		max_bd_num = RTE_MAX(bd_num_list[i], max_bd_num);
 
-	cmd_descs = rte_zmalloc(NULL, sizeof(*cmd_descs) * max_bd_num, 0);
+	cmd_descs = calloc(max_bd_num, sizeof(*cmd_descs));
 	if (cmd_descs == NULL)
 		return -ENOMEM;
 
@@ -457,8 +457,9 @@ hns3_get_dfx_regs(struct hns3_hw *hw, void **data)
 		if (ret)
 			break;
 		reg_val += hns3_dfx_reg_fetch_data(cmd_descs, bd_num, reg_val);
+			free(cmd_descs);
 	}
-	rte_free(cmd_descs);
+	free(cmd_descs);
 	*data = (void *)reg_val;
 
 	return ret;
