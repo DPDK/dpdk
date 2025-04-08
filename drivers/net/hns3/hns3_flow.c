@@ -470,19 +470,20 @@ hns3_handle_action_indirect(struct rte_eth_dev *dev,
 			    struct hns3_fdir_rule *rule,
 			    struct rte_flow_error *error)
 {
-	const struct rte_flow_action_handle *indir = action->conf;
+	struct rte_flow_action_handle indir;
 
-	if (indir->indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT)
+	indir.val64 = (uint64_t)action->conf;
+	if (indir.indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				action, "Invalid indirect type");
 
-	if (hns3_counter_lookup(dev, indir->counter_id) == NULL)
+	if (hns3_counter_lookup(dev, indir.counter_id) == NULL)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				action, "Counter id not exist");
 
-	rule->act_cnt.id = indir->counter_id;
+	rule->act_cnt.id = indir.counter_id;
 	rule->flags |= (HNS3_RULE_FLAG_COUNTER | HNS3_RULE_FLAG_COUNTER_INDIR);
 
 	return 0;
@@ -2548,19 +2549,11 @@ hns3_flow_action_create(struct rte_eth_dev *dev,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_action_count *act_count;
-	struct rte_flow_action_handle *handle = NULL;
+	struct rte_flow_action_handle handle;
 	struct hns3_flow_counter *counter;
 
 	if (hns3_check_indir_action(conf, action, error))
 		return NULL;
-
-	handle = rte_zmalloc("hns3 action handle",
-			     sizeof(struct rte_flow_action_handle), 0);
-	if (handle == NULL) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "Failed to allocate action memory");
-		return NULL;
-	}
 
 	pthread_mutex_lock(&hw->flows_lock);
 
@@ -2584,15 +2577,14 @@ hns3_flow_action_create(struct rte_eth_dev *dev,
 	}
 
 	counter->indirect = true;
-	handle->indirect_type = HNS3_INDIRECT_ACTION_TYPE_COUNT;
-	handle->counter_id = counter->id;
+	handle.indirect_type = HNS3_INDIRECT_ACTION_TYPE_COUNT;
+	handle.counter_id = counter->id;
 
 	pthread_mutex_unlock(&hw->flows_lock);
-	return handle;
+	return (struct rte_flow_action_handle *)handle.val64;
 
 err_exit:
 	pthread_mutex_unlock(&hw->flows_lock);
-	rte_free(handle);
 	return NULL;
 }
 
@@ -2602,18 +2594,20 @@ hns3_flow_action_destroy(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_flow_action_handle indir;
 	struct hns3_flow_counter *counter;
 
 	pthread_mutex_lock(&hw->flows_lock);
 
-	if (handle->indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
+	indir.val64 = (uint64_t)handle;
+	if (indir.indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
 		pthread_mutex_unlock(&hw->flows_lock);
 		return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					handle, "Invalid indirect type");
 	}
 
-	counter = hns3_counter_lookup(dev, handle->counter_id);
+	counter = hns3_counter_lookup(dev, indir.counter_id);
 	if (counter == NULL) {
 		pthread_mutex_unlock(&hw->flows_lock);
 		return rte_flow_error_set(error, EINVAL,
@@ -2628,8 +2622,7 @@ hns3_flow_action_destroy(struct rte_eth_dev *dev,
 				handle, "Counter id in use");
 	}
 
-	(void)hns3_counter_release(dev, handle->counter_id);
-	rte_free(handle);
+	(void)hns3_counter_release(dev, indir.counter_id);
 
 	pthread_mutex_unlock(&hw->flows_lock);
 	return 0;
@@ -2642,12 +2635,14 @@ hns3_flow_action_query(struct rte_eth_dev *dev,
 		 struct rte_flow_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_flow_action_handle indir;
 	struct rte_flow flow;
 	int ret;
 
 	pthread_mutex_lock(&hw->flows_lock);
 
-	if (handle->indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
+	indir.val64 = (uint64_t)handle;
+	if (indir.indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
 		pthread_mutex_unlock(&hw->flows_lock);
 		return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -2655,7 +2650,7 @@ hns3_flow_action_query(struct rte_eth_dev *dev,
 	}
 
 	memset(&flow, 0, sizeof(flow));
-	flow.counter_id = handle->counter_id;
+	flow.counter_id = indir.counter_id;
 	ret = hns3_counter_query(dev, &flow,
 				 (struct rte_flow_query_count *)data, error);
 	pthread_mutex_unlock(&hw->flows_lock);
