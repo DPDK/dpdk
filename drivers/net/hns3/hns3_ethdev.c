@@ -5309,18 +5309,18 @@ hns3_get_current_fc_mode(struct rte_eth_dev *dev)
 	struct hns3_mac *mac = &hw->mac;
 
 	/*
-	 * When the flow control mode is obtained, the device may not complete
-	 * auto-negotiation. It is necessary to wait for link establishment.
-	 */
-	(void)hns3_dev_link_update(dev, 1);
-
-	/*
 	 * If the link auto-negotiation of the nic is disabled, or the flow
 	 * control auto-negotiation is not supported, the forced flow control
 	 * mode is used.
 	 */
 	if (mac->link_autoneg == 0 || !pf->support_fc_autoneg)
 		return hw->requested_fc_mode;
+
+	/*
+	 * When the flow control mode is obtained, the device may not complete
+	 * auto-negotiation. It is necessary to wait for link establishment.
+	 */
+	(void)hns3_dev_link_update(dev, 1);
 
 	return hns3_get_autoneg_fc_mode(hw);
 }
