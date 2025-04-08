@@ -43,7 +43,12 @@ use_function_versioning = true
 
 if dpdk_conf.has('RTE_ARCH_X86_64')
     sources += files('net_crc_sse.c')
-    cflags += ['-mpclmul', '-maes']
+    cflags_options = ['-mpclmul', '-maes']
+    foreach option:cflags_options
+        if cc.has_argument(option)
+            cflags += option
+        endif
+    endforeach
     # only build AVX-512 support if we also have PCLMULQDQ support
     if cc.has_argument('-mvpclmulqdq')
         sources_avx512 += files('net_crc_avx512.c')
