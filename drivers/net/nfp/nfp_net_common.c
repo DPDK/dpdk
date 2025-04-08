@@ -1919,6 +1919,55 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+nfp_net_rss_hf_get(uint32_t cfg_rss_ctrl,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	uint64_t rss_hf = 0;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4) != 0)
+		rss_hf |= RTE_ETH_RSS_IPV4;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP) != 0)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_TCP) != 0)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_UDP) != 0)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_UDP) != 0)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6) != 0)
+		rss_hf |= RTE_ETH_RSS_IPV6;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP) != 0)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_SCTP) != 0)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
+
+	rss_conf->rss_hf = rss_hf;
+}
+
+static int
+nfp_net_rss_algo_conf_get(uint32_t cfg_rss_ctrl,
+		struct rte_eth_rss_conf *rss_conf)
+{
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_TOEPLITZ) != 0)
+		rss_conf->algorithm = RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+	else if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_XOR) != 0)
+		rss_conf->algorithm = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR;
+	else if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_CRC32) != 0)
+		rss_conf->algorithm = RTE_ETH_HASH_FUNCTION_DEFAULT;
+	else
+		return -EIO;
+
+	return 0;
+}
+
 static int
 nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 		struct rte_eth_rss_conf *rss_conf)
@@ -2021,9 +2070,9 @@ int
 nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 		struct rte_eth_rss_conf *rss_conf)
 {
+	int ret;
 	uint8_t i;
 	uint8_t key;
-	uint64_t rss_hf;
 	struct nfp_hw *hw;
 	uint32_t cfg_rss_ctrl;
 	struct nfp_net_hw *net_hw;
@@ -2034,35 +2083,10 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
-	rss_hf = rss_conf->rss_hf;
 	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
 
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4) != 0)
-		rss_hf |= RTE_ETH_RSS_IPV4;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP) != 0)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_TCP) != 0)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_UDP) != 0)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_UDP) != 0)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6) != 0)
-		rss_hf |= RTE_ETH_RSS_IPV6;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP) != 0)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
-
-	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_SCTP) != 0)
-		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
-
 	/* Propagate current RSS hash functions to caller */
-	rss_conf->rss_hf = rss_hf;
+	nfp_net_rss_hf_get(cfg_rss_ctrl, rss_conf);
 
 	/* Reading the key size */
 	rss_conf->rss_key_len = NFP_NET_CFG_RSS_KEY_SZ;
@@ -2073,6 +2097,12 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 			key = nn_cfg_readb(hw, NFP_NET_CFG_RSS_KEY + i);
 			memcpy(&rss_conf->rss_key[i], &key, 1);
 		}
+	}
+
+	ret = nfp_net_rss_algo_conf_get(cfg_rss_ctrl, rss_conf);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Fail to get rss algorithm configuration.");
+		return ret;
 	}
 
 	return 0;
