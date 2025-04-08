@@ -3965,7 +3965,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_declare_bitmap(pmask, ICE_PROMISC_MAX);
 	ice_zero_bitmap(pmask, ICE_PROMISC_MAX);
 
-	ice_set_rx_function(dev);
+	/* choose vector Tx function before starting queues */
 	ice_set_tx_function(dev);
 
 	/* program Tx queues' context in hardware */
@@ -3995,6 +3995,9 @@ ice_dev_start(struct rte_eth_dev *dev)
 			goto rx_err;
 		}
 	}
+
+	/* we need to choose Rx fn after queue start, when we know if we need scattered Rx */
+	ice_set_rx_function(dev);
 
 	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
 			RTE_ETH_VLAN_EXTEND_MASK;
