@@ -5231,20 +5231,23 @@ hns3_dev_stop(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = &hns->hw;
 
 	PMD_INIT_FUNC_TRACE();
+	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) != 0) {
+		hns3_warn(hw, "device is resetting, stop operation is not allowed.");
+		return -EBUSY;
+	}
+
 	dev->data->dev_started = 0;
 
 	hw->adapter_state = HNS3_NIC_STOPPING;
 	hns3_stop_rxtx_datapath(dev);
 
 	rte_spinlock_lock(&hw->lock);
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
-		hns3_tm_dev_stop_proc(hw);
-		hns3_config_mac_tnl_int(hw, false);
-		hns3_stop_tqps(hw);
-		hns3_do_stop(hns);
-		hns3_unmap_rx_interrupt(dev);
-		hw->adapter_state = HNS3_NIC_CONFIGURED;
-	}
+	hns3_tm_dev_stop_proc(hw);
+	hns3_config_mac_tnl_int(hw, false);
+	hns3_stop_tqps(hw);
+	hns3_do_stop(hns);
+	hns3_unmap_rx_interrupt(dev);
+	hw->adapter_state = HNS3_NIC_CONFIGURED;
 	hns3_rx_scattered_reset(dev);
 	rte_eal_alarm_cancel(hns3_service_handler, dev);
 	hns3_stop_report_lse(dev);
