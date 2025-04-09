@@ -87,20 +87,15 @@ zxdh_set_value(uint32_t fld_sz, uint8_t *addr, size_t value) {
 #define ZXDH_BYTE_OFF(typ, fld) (__zxdh_bit_off(typ, fld) / 8)
 #define ZXDH_ADDR_OF(typ, p, fld) ((uint8_t *)(p) + ZXDH_BYTE_OFF(typ, fld))
 
-#define BUILD_BUG_ON(condition) do { \
-	if (condition) \
-		__builtin_unreachable(); \
-	} while (0)
-
 #define ZXDH_SET(typ, p, fld, v) do { \
-	BUILD_BUG_ON(__zxdh_bit_sz(typ, fld) % 8); \
+	RTE_BUILD_BUG_ON(__zxdh_bit_sz(typ, fld) % 8); \
 	uint32_t fld_sz = __zxdh_bit_sz(typ, fld) / 8; \
 	uint8_t *addr = ZXDH_ADDR_OF(typ, p, fld); \
 	zxdh_set_value(fld_sz, addr, v); \
 } while (0)
 
 #define ZXDH_GET(typ, p, fld) ({ \
-	BUILD_BUG_ON(__zxdh_bit_sz(typ, fld) % 8); \
+	RTE_BUILD_BUG_ON(__zxdh_bit_sz(typ, fld) % 8); \
 	uint32_t fld_sz = __zxdh_bit_sz(typ, fld) / 8; \
 	uint8_t *addr = ZXDH_ADDR_OF(typ, p, fld); \
 	zxdh_get_value(fld_sz, addr); \
