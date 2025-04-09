@@ -265,8 +265,6 @@ enum virtchnl2_cap_other {
 	 * if a reserved bit is set in a standard completion's tag.
 	 */
 	VIRTCHNL2_CAP_MISS_COMPL_TAG		= BIT_ULL(20),
-	/* This must be the last capability */
-	VIRTCHNL2_CAP_OEM			= BIT_ULL(63),
 };
 
 /**
