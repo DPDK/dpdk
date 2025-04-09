@@ -4,6 +4,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -91,6 +92,12 @@ rte_str_to_size(const char *str)
 		endptr++; /* allow 1 space gap */
 
 	switch (*endptr) {
+	case 'E': case 'e':
+		size *= 1024; /* fall-through */
+	case 'P': case 'p':
+		size *= 1024; /* fall-through */
+	case 'T': case 't':
+		size *= 1024; /* fall-through */
 	case 'G': case 'g':
 		size *= 1024; /* fall-through */
 	case 'M': case 'm':
@@ -101,4 +108,51 @@ rte_str_to_size(const char *str)
 		break;
 	}
 	return size;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_size_to_str, 25.07)
+char *
+rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const char *unit)
+{
+	/* https://en.wikipedia.org/wiki/International_System_of_Units */
+	const char *prefix = "kMGTPE";
+	const unsigned int base = use_iec ? 1024 : 1000;
+	uint64_t powi = 1;
+	uint16_t powj = 1;
+	uint8_t precision = 2;
+	int result;
+
+	if (count < base) {
+		if (unit != NULL && *unit != '\0')
+			result = snprintf(buf, buf_size, "%"PRIu64" %s", count, unit);
+		else
+			result = snprintf(buf, buf_size, "%"PRIu64, count);
+
+		return result < buf_size ? buf : NULL;
+	}
+
+	/* increase value by a factor of 1000/1024 and store
+	 * if result is something a human can read
+	 */
+	for (;;) {
+		powi *= base;
+		if (count / powi < base)
+			break;
+
+		if (prefix[1] == '\0')
+			break;
+		++prefix;
+	}
+
+	/* try to guess a good number of digits for precision */
+	for (; precision > 0; precision--) {
+		powj *= 10;
+		if (count / powi < powj)
+			break;
+	}
+
+	result = snprintf(buf, buf_size, "%.*f %c%s%s", precision,
+			  (double)count / powi, *prefix, use_iec ? "i" : "",
+			  (unit != NULL) ? unit : "");
+	return result < buf_size ? buf : NULL;
 }

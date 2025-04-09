@@ -14,9 +14,11 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdalign.h>
 
+#include <rte_compat.h>
 #include <rte_config.h>
 
 /* OS specific include */
@@ -886,6 +888,41 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  */
 uint64_t
 rte_str_to_size(const char *str);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Converts the uint64_t value provided to a human-readable string.
+ * It null-terminates the string, truncating the data if needed.
+ * An optional unit (like "B") can be provided as a string. It will be
+ * appended to the number, and a space will be inserted before the unit if needed.
+ *
+ * Sample outputs: (1) "use_iec" disabled, (2) "use_iec" enabled,
+ *                 (3) "use_iec" enabled and "B" as unit.
+ * 0 : "0", "0", "0 B"
+ * 700 : "700", "700", "700 B"
+ * 1000 : "1.00 k", "1000", "1000 B"
+ * 1024 : "1.02 k", "1.00 ki", "1.00 kiB"
+ * 21474836480 : "21.5 G", "20.0 Gi", "20.0 GiB"
+ * 109951162777600 : "110 T", "100 Ti", "100 TiB"
+ *
+ * @param buf
+ *     Buffer to write the string to.
+ * @param buf_size
+ *     Size of the buffer.
+ * @param count
+ *     Number to convert.
+ * @param use_iec
+ *     If true, use IEC units (1024-based), otherwise use SI units (1000-based).
+ * @param unit
+ *     Unit to append to the string (Like "B" for bytes). Can be NULL.
+ * @return
+ *     buf on success, NULL if the buffer is too small.
+ */
+__rte_experimental
+char *
+rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const char *unit);
 
 /**
  * Function to terminate the application immediately, printing an error
