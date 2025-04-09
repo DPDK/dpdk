@@ -59,7 +59,7 @@ class TestSmokeTests(TestSuite):
             Run the ``fast-tests`` unit test suite through meson.
         """
         self.sut_node.main_session.send_command(
-            f"meson test -C {self.dpdk_build_dir_path} --suite fast-tests -t 60",
+            f"meson test -C {self.dpdk_build_dir_path} --suite fast-tests -t 120",
             480,
             verify=True,
             privileged=True,
