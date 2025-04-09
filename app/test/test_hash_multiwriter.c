@@ -32,6 +32,8 @@
 
 #define RTE_APP_TEST_HASH_MULTIWRITER_FAILED 0
 
+#define OFFSET_STR_LEN 16
+
 struct {
 	uint32_t *keys;
 	uint32_t *found;
@@ -51,11 +53,15 @@ static int use_htm;
 static int
 test_hash_multiwriter_worker(void *arg)
 {
+	char offset_start[OFFSET_STR_LEN];
+	char offset_end[OFFSET_STR_LEN];
 	uint64_t i, offset;
 	uint16_t pos_core;
 	uint32_t lcore_id = rte_lcore_id();
 	uint64_t begin, cycles;
 	uint16_t *enabled_core_ids = (uint16_t *)arg;
+	const bool use_iec = true;
+	const char *unit = NULL;
 
 	for (pos_core = 0; pos_core < rte_lcore_count(); pos_core++) {
 		if (enabled_core_ids[pos_core] == lcore_id)
@@ -68,10 +74,12 @@ test_hash_multiwriter_worker(void *arg)
 	 */
 	offset = pos_core * tbl_multiwriter_test_params.nb_tsx_insertion;
 
-	printf("Core #%d inserting %d: %'"PRId64" - %'"PRId64"\n",
+	rte_size_to_str(offset_start, RTE_DIM(offset_start), offset, use_iec, unit);
+	rte_size_to_str(offset_end, RTE_DIM(offset_end),
+			offset + tbl_multiwriter_test_params.nb_tsx_insertion - 1, use_iec, unit);
+	printf("Core #%u inserting %u: %s - %s\n",
 	       lcore_id, tbl_multiwriter_test_params.nb_tsx_insertion,
-	       offset,
-	       offset + tbl_multiwriter_test_params.nb_tsx_insertion - 1);
+	       offset_start, offset_end);
 
 	begin = rte_rdtsc_precise();
 
