@@ -9018,6 +9018,12 @@ static void cmd_dump_parsed(void *parsed_result,
 
 static cmdline_parse_token_string_t cmd_dump_dump =
 	TOKEN_STRING_INITIALIZER(struct cmd_dump_result, dump,
+		"" /* defined at init */);
+
+static void
+cmd_dump_init(void)
+{
+	cmd_dump_dump.string_data.str =
 		"dump_physmem#"
 		"dump_memzone#"
 		"dump_socket_mem#"
@@ -9029,7 +9035,8 @@ static cmdline_parse_token_string_t cmd_dump_dump =
 #ifndef RTE_EXEC_ENV_WINDOWS
 		"dump_trace#"
 #endif
-		"dump_log_types");
+		"dump_log_types";
+}
 
 static cmdline_parse_inst_t cmd_dump = {
 	.f = cmd_dump_parsed,  /* function to call */
@@ -13961,6 +13968,7 @@ init_cmdline(void)
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 	cmd_set_fwd_retry_mode_init();
+	cmd_dump_init();
 
 	count = 0;
 	for (i = 0; builtin_ctx[i] != NULL; i++)
