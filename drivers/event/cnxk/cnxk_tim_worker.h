@@ -102,7 +102,7 @@ cnxk_tim_bkt_get_nent(uint64_t w1)
 static inline void
 cnxk_tim_bkt_inc_nent(struct cnxk_tim_bkt *bktp)
 {
-	rte_atomic_fetch_add_explicit(&bktp->nb_entry, 1, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&bktp->nb_entry, 1, rte_memory_order_release);
 }
 
 static inline void
@@ -130,6 +130,33 @@ static inline uint64_t
 cnxk_tim_bkt_fast_mod(uint64_t n, uint64_t d, struct rte_reciprocal_u64 R)
 {
 	return (n - (d * rte_reciprocal_divide_u64(n, &R)));
+}
+
+static inline uint64_t
+cnxk_tim_bkt_wait_hbt(struct cnxk_tim_bkt *bkt)
+{
+	uint64_t hbt_state;
+
+#ifdef RTE_ARCH_ARM64
+	asm volatile(PLT_CPU_FEATURE_PREAMBLE
+		     "		ldxr %[hbt], [%[w1]]	\n"
+		     "		tbz %[hbt], 33, .Ldne%=	\n"
+		     "		sevl			\n"
+		     ".Lrty%=:	wfe			\n"
+		     "		ldxr %[hbt], [%[w1]]	\n"
+		     "		tbnz %[hbt], 33, .Lrty%=\n"
+		     ".Ldne%=:				\n"
+		     : [hbt] "=&r"(hbt_state)
+		     : [w1] "r"((&bkt->w1))
+		     : "memory");
+#else
+	do {
+		hbt_state = rte_atomic_load_explicit(&bkt->w1,
+						     rte_memory_order_relaxed);
+	} while (hbt_state & BIT_ULL(33));
+#endif
+
+	return hbt_state;
 }
 
 static inline void
@@ -265,31 +292,24 @@ __retry:
 	/* Bucket related checks. */
 	if (unlikely(cnxk_tim_bkt_get_hbt(lock_sema))) {
 		if (cnxk_tim_bkt_get_nent(lock_sema) != 0) {
-			uint64_t hbt_state;
-#ifdef RTE_ARCH_ARM64
-			asm volatile(PLT_CPU_FEATURE_PREAMBLE
-				     "		ldxr %[hbt], [%[w1]]	\n"
-				     "		tbz %[hbt], 33, .Ldne%=	\n"
-				     "		sevl			\n"
-				     ".Lrty%=:	wfe			\n"
-				     "		ldxr %[hbt], [%[w1]]	\n"
-				     "		tbnz %[hbt], 33, .Lrty%=\n"
-				     ".Ldne%=:				\n"
-				     : [hbt] "=&r"(hbt_state)
-				     : [w1] "r"((&bkt->w1))
-				     : "memory");
-#else
-			do {
-				hbt_state = rte_atomic_load_explicit(&bkt->w1,
-								     rte_memory_order_relaxed);
-			} while (hbt_state & BIT_ULL(33));
-#endif
+			uint64_t hbt_state = cnxk_tim_bkt_wait_hbt(bkt);
+
+			if (cnxk_tim_bkt_get_nent(lock_sema) != 0 &&
+			    cnxk_tim_bkt_get_nent(hbt_state) == 0) {
+				cnxk_tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+
+			if (cnxk_tim_bkt_get_nent(hbt_state) != 0)
+				hbt_state |= BIT_ULL(34);
 
 			if (!(hbt_state & BIT_ULL(34)) ||
 			    !(hbt_state & GENMASK(31, 0))) {
 				cnxk_tim_bkt_dec_lock(bkt);
 				goto __retry;
 			}
+		} else {
+			cnxk_tim_bkt_wait_hbt(bkt);
 		}
 	}
 	/* Insert the work. */
@@ -321,9 +341,9 @@ __retry:
 
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
-	rte_atomic_store_explicit(&tim->state, RTE_EVENT_TIMER_ARMED, rte_memory_order_release);
+	tim->state = RTE_EVENT_TIMER_ARMED;
 	cnxk_tim_bkt_inc_nent(bkt);
-	cnxk_tim_bkt_dec_lock_relaxed(bkt);
+	cnxk_tim_bkt_dec_lock(bkt);
 
 	return 0;
 }
@@ -348,31 +368,24 @@ __retry:
 	/* Bucket related checks. */
 	if (unlikely(cnxk_tim_bkt_get_hbt(lock_sema))) {
 		if (cnxk_tim_bkt_get_nent(lock_sema) != 0) {
-			uint64_t hbt_state;
-#ifdef RTE_ARCH_ARM64
-			asm volatile(PLT_CPU_FEATURE_PREAMBLE
-				     "		ldxr %[hbt], [%[w1]]	\n"
-				     "		tbz %[hbt], 33, .Ldne%=	\n"
-				     "		sevl			\n"
-				     ".Lrty%=:	wfe			\n"
-				     "		ldxr %[hbt], [%[w1]]	\n"
-				     "		tbnz %[hbt], 33, .Lrty%=\n"
-				     ".Ldne%=:				\n"
-				     : [hbt] "=&r"(hbt_state)
-				     : [w1] "r"((&bkt->w1))
-				     : "memory");
-#else
-			do {
-				hbt_state = rte_atomic_load_explicit(&bkt->w1,
-								     rte_memory_order_relaxed);
-			} while (hbt_state & BIT_ULL(33));
-#endif
+			uint64_t hbt_state = cnxk_tim_bkt_wait_hbt(bkt);
+
+			if (cnxk_tim_bkt_get_nent(lock_sema) != 0 &&
+			    cnxk_tim_bkt_get_nent(hbt_state) == 0) {
+				cnxk_tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+
+			if (cnxk_tim_bkt_get_nent(hbt_state) != 0)
+				hbt_state |= BIT_ULL(34);
 
 			if (!(hbt_state & BIT_ULL(34)) ||
 			    !(hbt_state & GENMASK(31, 0))) {
 				cnxk_tim_bkt_dec_lock(bkt);
 				goto __retry;
 			}
+		} else {
+			cnxk_tim_bkt_wait_hbt(bkt);
 		}
 	}
 
@@ -412,13 +425,13 @@ __retry:
 			cnxk_tim_bkt_dec_lock(bkt);
 			return -ENOMEM;
 		}
-		*chunk = *pent;
 		if (cnxk_tim_bkt_fetch_lock(lock_sema)) {
 			do {
 				lock_sema = rte_atomic_load_explicit(&bkt->w1,
 								     rte_memory_order_relaxed);
 			} while (cnxk_tim_bkt_fetch_lock(lock_sema) - 1);
 		}
+		cnxk_tim_bkt_inc_nent(bkt);
 		rte_atomic_thread_fence(rte_memory_order_acquire);
 		mirr_bkt->current_chunk = (uintptr_t)chunk;
 		rte_atomic_store_explicit(&bkt->chunk_remainder, tim_ring->nb_chunk_slots - 1,
@@ -426,14 +439,14 @@ __retry:
 	} else {
 		chunk = (struct cnxk_tim_ent *)mirr_bkt->current_chunk;
 		chunk += tim_ring->nb_chunk_slots - rem;
-		*chunk = *pent;
+		cnxk_tim_bkt_inc_nent(bkt);
 	}
 
+	*chunk = *pent;
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
-	rte_atomic_store_explicit(&tim->state, RTE_EVENT_TIMER_ARMED, rte_memory_order_release);
-	cnxk_tim_bkt_inc_nent(bkt);
-	cnxk_tim_bkt_dec_lock_relaxed(bkt);
+	tim->state = RTE_EVENT_TIMER_ARMED;
+	cnxk_tim_bkt_dec_lock(bkt);
 
 	return 0;
 }
@@ -480,31 +493,24 @@ __retry:
 	/* Bucket related checks. */
 	if (unlikely(cnxk_tim_bkt_get_hbt(lock_sema))) {
 		if (cnxk_tim_bkt_get_nent(lock_sema) != 0) {
-			uint64_t hbt_state;
-#ifdef RTE_ARCH_ARM64
-			asm volatile(PLT_CPU_FEATURE_PREAMBLE
-				     "		ldxr %[hbt], [%[w1]]	\n"
-				     "		tbz %[hbt], 33, .Ldne%=	\n"
-				     "		sevl			\n"
-				     ".Lrty%=:	wfe			\n"
-				     "		ldxr %[hbt], [%[w1]]	\n"
-				     "		tbnz %[hbt], 33, .Lrty%=\n"
-				     ".Ldne%=:				\n"
-				     : [hbt] "=&r"(hbt_state)
-				     : [w1] "r"((&bkt->w1))
-				     : "memory");
-#else
-			do {
-				hbt_state = rte_atomic_load_explicit(&bkt->w1,
-								     rte_memory_order_relaxed);
-			} while (hbt_state & BIT_ULL(33));
-#endif
+			uint64_t hbt_state = cnxk_tim_bkt_wait_hbt(bkt);
+
+			if (cnxk_tim_bkt_get_nent(lock_sema) != 0 &&
+			    cnxk_tim_bkt_get_nent(hbt_state) == 0) {
+				cnxk_tim_bkt_dec_lock(bkt);
+				goto __retry;
+			}
+
+			if (cnxk_tim_bkt_get_nent(hbt_state) != 0)
+				hbt_state |= BIT_ULL(34);
 
 			if (!(hbt_state & BIT_ULL(34)) ||
 			    !(hbt_state & GENMASK(31, 0))) {
 				cnxk_tim_bkt_dec_lock(bkt);
 				goto __retry;
 			}
+		} else {
+			cnxk_tim_bkt_wait_hbt(bkt);
 		}
 	}
 
@@ -553,7 +559,7 @@ __retry:
 			chunk = cnxk_tim_insert_chunk(bkt, mirr_bkt, tim_ring);
 
 		if (unlikely(chunk == NULL)) {
-			cnxk_tim_bkt_dec_lock_relaxed(bkt);
+			cnxk_tim_bkt_dec_lock(bkt);
 			rte_errno = ENOMEM;
 			tim[index]->state = RTE_EVENT_TIMER_ERROR;
 			return index;
@@ -575,7 +581,7 @@ __retry:
 		cnxk_tim_bkt_add_nent(bkt, nb_timers);
 	}
 
-	cnxk_tim_bkt_dec_lock_relaxed(bkt);
+	cnxk_tim_bkt_dec_lock(bkt);
 
 	return nb_timers;
 }
