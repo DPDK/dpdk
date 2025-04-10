@@ -177,7 +177,7 @@ static const struct rte_igc_xstats_name_off rte_igc_stats_strings[] = {
 	{"tx_size_256_to_511_packets", offsetof(struct igc_hw_stats, ptc511)},
 	{"tx_size_512_to_1023_packets", offsetof(struct igc_hw_stats,
 		ptc1023)},
-	{"tx_size_1023_to_max_packets", offsetof(struct igc_hw_stats,
+	{"tx_size_1024_to_max_packets", offsetof(struct igc_hw_stats,
 		ptc1522)},
 	{"tx_multicast_packets", offsetof(struct igc_hw_stats, mptc)},
 	{"tx_broadcast_packets", offsetof(struct igc_hw_stats, bptc)},
