@@ -46,5 +46,4 @@ Release Notes
     release_2_1
     release_2_0
     release_1_8
-    known_issues
     deprecation
