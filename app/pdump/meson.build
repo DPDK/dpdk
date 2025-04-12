@@ -11,3 +11,4 @@ sources = files('main.c')
 deps += ['ethdev', 'kvargs', 'pdump']
 
 cflags += no_wvla_cflag
+cflags += '-Wno-deprecated-declarations'

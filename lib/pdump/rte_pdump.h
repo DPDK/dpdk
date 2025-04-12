@@ -39,6 +39,7 @@ enum {
  * @return
  *    0 on success, -1 on error
  */
+__rte_deprecated
 int
 rte_pdump_init(void);
 
@@ -50,6 +51,7 @@ rte_pdump_init(void);
  * @return
  *    0 on success, -1 on error
  */
+__rte_deprecated
 int
 rte_pdump_uninit(void);
 
@@ -75,7 +77,7 @@ rte_pdump_uninit(void);
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
-
+__rte_deprecated
 int
 rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
 		struct rte_ring *ring,
@@ -106,6 +108,7 @@ rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
+__rte_deprecated
 int
 rte_pdump_enable_bpf(uint16_t port_id, uint16_t queue,
 		     uint32_t flags, uint32_t snaplen,
@@ -129,7 +132,7 @@ rte_pdump_enable_bpf(uint16_t port_id, uint16_t queue,
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
-
+__rte_deprecated
 int
 rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags);
 
@@ -156,7 +159,7 @@ rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags);
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
-
+__rte_deprecated
 int
 rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 				uint32_t flags,
@@ -189,6 +192,7 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
+__rte_deprecated
 int
 rte_pdump_enable_bpf_by_deviceid(const char *device_id, uint16_t queue,
 				 uint32_t flags, uint32_t snaplen,
@@ -215,6 +219,7 @@ rte_pdump_enable_bpf_by_deviceid(const char *device_id, uint16_t queue,
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
+__rte_deprecated
 int
 rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 				uint32_t flags);
@@ -243,6 +248,7 @@ struct rte_pdump_stats {
  * @return
  *   Zero if successful. -1 on error and rte_errno is set.
  */
+__rte_deprecated
 int
 rte_pdump_stats(uint16_t port_id, struct rte_pdump_stats *stats);
 

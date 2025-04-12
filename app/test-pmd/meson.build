@@ -60,6 +60,7 @@ if dpdk_conf.has('RTE_LIB_METRICS')
 endif
 if dpdk_conf.has('RTE_LIB_PDUMP')
     deps += 'pdump'
+    cflags += '-Wno-deprecated-declarations'
 endif
 if dpdk_conf.has('RTE_NET_BNXT')
     deps += 'net_bnxt'

@@ -986,6 +986,9 @@ main(int argc, char **argv)
 	char mp_flag[] = "--proc-type=secondary";
 	char *argp[argc + 2];
 
+
+	fprintf(stderr, "%s: is deprecated use dpdk-dumpcap instead\n", argv[0]);
+
 	/* catch ctrl-c so we can cleanup on exit */
 	sigemptyset(&action.sa_mask);
 	sigaction(SIGTERM, &action, NULL);

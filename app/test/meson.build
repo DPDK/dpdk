@@ -138,7 +138,6 @@ source_file_deps = {
     'test_net_ip6.c': ['net'],
     'test_pcapng.c': ['ethdev', 'net', 'pcapng', 'bus_vdev'],
     'test_pdcp.c': ['eventdev', 'pdcp', 'net', 'timer', 'security'],
-    'test_pdump.c': ['pdump'] + sample_packet_forward_deps,
     'test_per_lcore.c': [],
     'test_pflock.c': [],
     'test_pie.c': ['sched'],
@@ -216,6 +215,11 @@ source_file_ext_deps = {
     'test_compressdev.c': ['zlib'],
     'test_pcapng.c': ['pcap'],
 }
+
+if dpdk_conf.has('RTE_LIB_PDUMP')
+    source_file_deps += { 'test_pdump.c': ['pdump'] + sample_packet_forward_deps, }
+    cflags += '-Wno-deprecated-declarations'
+endif
 
 def_lib = get_option('default_library')
 foreach f, f_deps : source_file_deps
