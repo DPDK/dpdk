@@ -5,7 +5,7 @@ Network Interface Controller Drivers
 ====================================
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 1
     :numbered:
 
     overview

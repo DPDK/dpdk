@@ -5,7 +5,7 @@ HowTo Guides
 ============
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     af_xdp_dp

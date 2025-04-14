@@ -8,7 +8,7 @@ The following are a list of mempool PMDs, which can be used from an
 application through the mempool API.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     cnxk

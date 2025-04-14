@@ -6,7 +6,7 @@ Compression Device Drivers
 
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     overview
