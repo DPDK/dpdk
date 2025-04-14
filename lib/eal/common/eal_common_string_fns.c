@@ -115,7 +115,8 @@ char *
 rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const char *unit)
 {
 	/* https://en.wikipedia.org/wiki/International_System_of_Units */
-	const char *prefix = "kMGTPE";
+	static const char prefix[] = "kMGTPE";
+	size_t prefix_index = 0;
 	const unsigned int base = use_iec ? 1024 : 1000;
 	uint64_t powi = 1;
 	uint16_t powj = 1;
@@ -134,14 +135,10 @@ rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const cha
 	/* increase value by a factor of 1000/1024 and store
 	 * if result is something a human can read
 	 */
-	for (;;) {
+	for (; prefix_index < sizeof(prefix) - 1; ++prefix_index) {
 		powi *= base;
 		if (count / powi < base)
 			break;
-
-		if (prefix[1] == '\0')
-			break;
-		++prefix;
 	}
 
 	/* try to guess a good number of digits for precision */
@@ -152,7 +149,7 @@ rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const cha
 	}
 
 	result = snprintf(buf, buf_size, "%.*f %c%s%s", precision,
-			  (double)count / powi, *prefix, use_iec ? "i" : "",
+			  (double)count / powi, prefix[prefix_index], use_iec ? "i" : "",
 			  (unit != NULL) ? unit : "");
 	return result < buf_size ? buf : NULL;
 }
