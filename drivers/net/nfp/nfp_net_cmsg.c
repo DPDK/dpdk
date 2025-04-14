@@ -36,8 +36,9 @@ nfp_net_cmsg_xmit(struct nfp_net_hw *hw,
 {
 	int ret;
 	uint32_t i;
+	uint32_t data_num = msg_size / sizeof(uint32_t);
 
-	for (i = 0; i < msg_size; i++)
+	for (i = 0; i < data_num; i++)
 		nn_cfg_writel(&hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i, *((uint32_t *)cmsg + i));
 
 	ret = nfp_net_mbox_reconfig(hw, NFP_NET_CFG_MBOX_CMD_FLOW_STEER);
