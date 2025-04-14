@@ -128,7 +128,7 @@ nfp_net_flow_position_free(struct nfp_net_priv *priv,
 {
 	uint32_t index;
 
-	index = NFP_NET_FLOW_LIMIT - 1 - nfp_flow->position;
+	index = priv->flow_limit - 1 - nfp_flow->position;
 
 	priv->flow_position[index] = false;
 }
