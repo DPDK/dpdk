@@ -17,13 +17,13 @@
 struct nfp_net_nfd3_tx_desc {
 	union {
 		struct {
-			uint8_t dma_addr_hi; /**< High bits of host buf address */
-			uint16_t dma_len;    /**< Length to DMA for this desc */
+			uint8_t dma_addr_hi;   /**< High bits of host buf address */
+			rte_le16_t dma_len;    /**< Length to DMA for this desc */
 			/** Offset in buf where pkt starts + highest bit is eop flag */
 			uint8_t offset_eop;
-			uint32_t dma_addr_lo; /**< Low 32bit of host buf addr */
+			rte_le32_t dma_addr_lo; /**< Low 32bit of host buf addr */
 
-			uint16_t mss;         /**< MSS to be used for LSO */
+			rte_le16_t mss;         /**< MSS to be used for LSO */
 			uint8_t lso_hdrlen;   /**< LSO, where the data starts */
 			uint8_t flags;        /**< TX Flags, see @NFD3_DESC_TX_* */
 
@@ -32,11 +32,11 @@ struct nfp_net_nfd3_tx_desc {
 					uint8_t l3_offset; /**< L3 header offset */
 					uint8_t l4_offset; /**< L4 header offset */
 				};
-				uint16_t vlan; /**< VLAN tag to add if indicated */
+				rte_le16_t vlan; /**< VLAN tag to add if indicated */
 			};
-			uint16_t data_len;     /**< Length of frame + meta data */
+			rte_le16_t data_len;     /**< Length of frame + meta data */
 		} __rte_packed;
-		uint32_t vals[4];
+		rte_le32_t vals[4];
 	};
 };
 
