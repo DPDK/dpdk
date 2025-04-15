@@ -1982,6 +1982,17 @@ zxdh_priv_res_free(struct zxdh_hw *priv)
 	}
 }
 
+static uint8_t
+is_pf(uint16_t device_id)
+{
+	return (device_id == ZXDH_E310_PF_DEVICEID ||
+			device_id == ZXDH_E312_PF_DEVICEID ||
+			device_id == ZXDH_E312S_PF_DEVICEID ||
+			device_id == ZXDH_E316_PF_DEVICEID ||
+			device_id == ZXDH_E310_RDMA_PF_DEVICEID ||
+			device_id == ZXDH_E312_RDMA_PF_DEVICEID);
+}
+
 static int
 zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -2015,10 +2026,8 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	hw->slot_id = ZXDH_INVALID_SLOT_IDX;
 	hw->is_pf = 0;
 
-	if (pci_dev->id.device_id == ZXDH_E310_PF_DEVICEID ||
-		pci_dev->id.device_id == ZXDH_E312_PF_DEVICEID) {
+	if (is_pf(pci_dev->id.device_id))
 		hw->is_pf = 1;
-	}
 
 	ret = zxdh_init_once(eth_dev);
 	if (ret != 0)
@@ -2114,6 +2123,14 @@ static const struct rte_pci_id pci_id_zxdh_map[] = {
 	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E310_VF_DEVICEID)},
 	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312_PF_DEVICEID)},
 	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312_VF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312S_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312S_VF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E316_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E316_VF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E310_RDMA_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E310_RDMA_VF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312_RDMA_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312_RDMA_VF_DEVICEID)},
 	{.vendor_id = 0, /* sentinel */ },
 };
 static struct rte_pci_driver zxdh_pmd = {
