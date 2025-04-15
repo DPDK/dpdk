@@ -195,6 +195,10 @@ class PosixSession(OSSession):
 
         return target_tarball_path
 
+    def create_directory(self, path: PurePath) -> None:
+        """Overrides :meth:`~.os_session.OSSession.create_directory`."""
+        self.send_command(f"mkdir -p {path}")
+
     def extract_remote_tarball(
         self,
         remote_tarball_path: str | PurePath,

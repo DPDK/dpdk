@@ -361,6 +361,10 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def create_directory(self, path: PurePath) -> None:
+        """Create a directory at a specified `path`."""
+
+    @abstractmethod
     def extract_remote_tarball(
         self,
         remote_tarball_path: str | PurePath,
