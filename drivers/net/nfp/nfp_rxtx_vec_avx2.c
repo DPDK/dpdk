@@ -92,12 +92,14 @@ nfp_vec_avx2_recv_set_rxpkt1(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf *rx_pkt)
 {
+	uint16_t data_len;
 	struct nfp_net_hw *hw = rxq->hw;
 	struct nfp_net_meta_parsed meta;
 
-	rx_pkt->data_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+	data_len = rte_le_to_cpu_16(rxds->rxd.data_len);
+	rx_pkt->data_len = data_len - NFP_DESC_META_LEN(rxds);
 	/* Size of the whole packet. We just support 1 segment */
-	rx_pkt->pkt_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+	rx_pkt->pkt_len = data_len - NFP_DESC_META_LEN(rxds);
 
 	/* Filling the received mbuf with packet info */
 	if (hw->rx_offset)

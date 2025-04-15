@@ -122,24 +122,27 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxd,
 		struct rte_mbuf *mb)
 {
+	uint16_t flags;
 	struct nfp_net_hw *hw = rxq->hw;
 
 	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RXCSUM) == 0)
 		return;
 
+	flags = rte_le_to_cpu_16(rxd->rxd.flags);
+
 	/* If IPv4 and IP checksum error, fail */
-	if (unlikely((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) != 0 &&
-			(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK) == 0))
+	if (unlikely((flags & PCIE_DESC_RX_IP4_CSUM) != 0 &&
+			(flags & PCIE_DESC_RX_IP4_CSUM_OK) == 0))
 		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
 		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	/* If neither UDP nor TCP return */
-	if ((rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) == 0 &&
-			(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM) == 0)
+	if ((flags & PCIE_DESC_RX_TCP_CSUM) == 0 &&
+			(flags & PCIE_DESC_RX_UDP_CSUM) == 0)
 		return;
 
-	if (likely(rxd->rxd.flags & PCIE_DESC_RX_L4_CSUM_OK) != 0)
+	if (likely(flags & PCIE_DESC_RX_L4_CSUM_OK) != 0)
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	else
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -165,12 +168,12 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 			return -ENOMEM;
 		}
 
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
+		dma_addr = rte_mbuf_data_iova_default(mbuf);
 
 		rxd = &rxq->rxds[i];
 		rxd->fld.dd = 0;
-		rxd->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
-		rxd->fld.dma_addr_lo = dma_addr & 0xffffffff;
+		rxd->fld.dma_addr_hi = rte_cpu_to_le_16((dma_addr >> 32) & 0xffff);
+		rxd->fld.dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 
 		rxe[i].mbuf = mbuf;
 	}
@@ -356,13 +359,14 @@ nfp_net_parse_ptype(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf *mb)
 {
+	uint16_t rxd_ptype;
 	struct nfp_net_hw *hw = rxq->hw;
 	struct nfp_ptype_parsed nfp_ptype;
-	uint16_t rxd_ptype = rxds->rxd.offload_info;
 
 	if ((hw->super.ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return;
 
+	rxd_ptype = rte_le_to_cpu_16(rxds->rxd.offload_info);
 	if (rxd_ptype == 0 || (rxds->rxd.flags & PCIE_DESC_RX_VLAN) != 0)
 		return;
 
@@ -410,6 +414,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
+	uint16_t data_len;
 	uint64_t dma_addr;
 	uint16_t avail = 0;
 	struct rte_mbuf *mb;
@@ -470,14 +475,15 @@ nfp_net_recv_pkts(void *rx_queue,
 		 */
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
+		data_len = rte_le_to_cpu_16(rxds->rxd.data_len);
 
 		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u.",
-				rxds->rxd.data_len, rxq->mbuf_size);
+				data_len, rxq->mbuf_size);
 
 		/* Size of this segment */
-		mb->data_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+		mb->data_len = data_len - NFP_DESC_META_LEN(rxds);
 		/* Size of the whole packet. We just support 1 segment */
-		mb->pkt_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
+		mb->pkt_len = data_len - NFP_DESC_META_LEN(rxds);
 
 		if (unlikely((mb->data_len + hw->rx_offset) > rxq->mbuf_size)) {
 			/*
@@ -512,10 +518,10 @@ nfp_net_recv_pkts(void *rx_queue,
 		/* Now resetting and updating the descriptor */
 		rxds->vals[0] = 0;
 		rxds->vals[1] = 0;
-		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
+		dma_addr = rte_mbuf_data_iova_default(new_mb);
 		rxds->fld.dd = 0;
-		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
-		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;
+		rxds->fld.dma_addr_hi = rte_cpu_to_le_16((dma_addr >> 32) & 0xffff);
+		rxds->fld.dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 		nb_hold++;
 
 		rxq->rd_p++;
