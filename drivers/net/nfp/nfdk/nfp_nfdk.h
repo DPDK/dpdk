@@ -109,19 +109,19 @@ struct nfp_net_nfdk_tx_desc {
 	union {
 		/** Address descriptor */
 		struct {
-			uint16_t dma_addr_hi;  /**< High bits of host buf address */
-			uint16_t dma_len_type; /**< Length to DMA for this desc */
-			uint32_t dma_addr_lo;  /**< Low 32bit of host buf addr */
+			rte_le16_t dma_addr_hi;  /**< High bits of host buf address */
+			rte_le16_t dma_len_type; /**< Length to DMA for this desc */
+			rte_le32_t dma_addr_lo;  /**< Low 32bit of host buf addr */
 		};
 
 		/** TSO descriptor */
 		struct {
-			uint16_t mss;          /**< MSS to be used for LSO */
+			rte_le16_t mss;        /**< MSS to be used for LSO */
 			uint8_t lso_hdrlen;    /**< LSO, TCP payload offset */
 			uint8_t lso_totsegs;   /**< LSO, total segments */
 			uint8_t l3_offset;     /**< L3 header offset */
 			uint8_t l4_offset;     /**< L4 header offset */
-			uint16_t lso_meta_res; /**< Rsvd bits in TSO metadata */
+			rte_le16_t lso_meta_res; /**< Rsvd bits in TSO metadata */
 		};
 
 		/** Metadata descriptor */
@@ -130,8 +130,8 @@ struct nfp_net_nfdk_tx_desc {
 			uint8_t reserved[7];   /**< Meta byte place holder */
 		};
 
-		uint32_t vals[2];
-		uint64_t raw;
+		rte_le32_t vals[2];
+		rte_le64_t raw;
 	};
 };
 
