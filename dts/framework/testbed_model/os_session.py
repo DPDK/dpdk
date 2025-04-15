@@ -368,14 +368,16 @@ class OSSession(ABC):
     def extract_remote_tarball(
         self,
         remote_tarball_path: str | PurePath,
-        expected_dir: str | PurePath | None = None,
+        destination_path: str | PurePath,
+        strip_root_dir: bool = False,
     ) -> None:
-        """Extract remote tarball in its remote directory.
+        """Extract remote tarball in the given path.
 
         Args:
             remote_tarball_path: The tarball path on the remote node.
-            expected_dir: If non-empty, check whether `expected_dir` exists after extracting
-                the archive.
+            destination_path: The location the tarball will be extracted to.
+            strip_root_dir: If :data:`True` and the root of the tarball is a folder, strip it and
+                extract its contents only.
         """
 
     @abstractmethod
