@@ -139,7 +139,7 @@ nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 
 	if ((mb->ol_flags & RTE_MBUF_F_TX_VLAN) != 0) {
 		txd->flags |= NFD3_DESC_TX_VLAN;
-		txd->vlan = mb->vlan_tci;
+		txd->vlan = rte_cpu_to_le_16(mb->vlan_tci);
 	}
 }
 
@@ -300,7 +300,7 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 		 * Checksum and VLAN flags just in the first descriptor for a
 		 * multisegment packet, but TSO info needs to be in all of them.
 		 */
-		txd.data_len = pkt->pkt_len;
+		txd.data_len = rte_cpu_to_le_16((uint16_t)pkt->pkt_len);
 		nfp_net_nfd3_tx_tso(txq, &txd, pkt);
 		nfp_net_nfd3_tx_cksum(txq, &txd, pkt);
 		nfp_net_nfd3_tx_vlan(txq, &txd, pkt);
@@ -330,10 +330,10 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 			dma_addr = rte_mbuf_data_iova(pkt);
 
 			/* Filling descriptors fields */
-			txds->dma_len = dma_size;
+			txds->dma_len = rte_cpu_to_le_16(dma_size);
 			txds->data_len = txd.data_len;
 			txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
-			txds->dma_addr_lo = (dma_addr & 0xffffffff);
+			txds->dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 			free_descs--;
 
 			txq->wr_p++;
