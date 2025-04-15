@@ -34,10 +34,12 @@ class PacketFilteringConfig:
     Attributes:
         no_lldp: If :data:`True`, LLDP packets will be filtered out when capturing.
         no_arp: If :data:`True`, ARP packets will be filtered out when capturing.
+        no_icmp: If :data:`True`, ICMP packets will be filtered out when capturing.
     """
 
     no_lldp: bool = True
     no_arp: bool = True
+    no_icmp: bool = True
 
 
 class CapturingTrafficGenerator(TrafficGenerator):

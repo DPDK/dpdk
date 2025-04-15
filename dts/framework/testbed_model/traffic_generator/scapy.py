@@ -19,6 +19,9 @@ from threading import Event, Thread
 from typing import ClassVar
 
 from scapy.compat import base64_bytes
+from scapy.data import ETHER_TYPES, IP_PROTOS
+from scapy.layers.inet import IP
+from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether
 from scapy.packet import Packet
 
@@ -234,10 +237,23 @@ class ScapyAsyncSniffer(PythonShell):
 
         def _filter(packet: Packet) -> bool:
             if ether := packet.getlayer(Ether):
-                if filter_config.no_arp and ether.type == 0x0806:
+                if filter_config.no_arp and ether.type == ETHER_TYPES.ARP:
                     return False
 
-                if filter_config.no_lldp and ether.type == 0x88CC:
+                if filter_config.no_lldp and ether.type == ETHER_TYPES.LLDP:
+                    return False
+
+            if ipv4 := packet.getlayer(IP):
+                if filter_config.no_icmp and ipv4.proto == IP_PROTOS.icmp:
+                    return False
+
+            if ipv6 := packet.getlayer(IPv6):
+                next_header = ipv6.nh
+
+                if next_header == IP_PROTOS.hopopt:
+                    next_header = ipv6.payload.nh
+
+                if filter_config.no_icmp and next_header == IP_PROTOS.ipv6_icmp:
                     return False
 
             return True
