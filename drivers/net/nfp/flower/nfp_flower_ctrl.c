@@ -194,10 +194,10 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	*lmbuf = mbuf;
 	dma_addr = rte_mbuf_data_iova(mbuf);
 
-	txds->data_len = mbuf->pkt_len;
+	txds->data_len = rte_cpu_to_le_16(mbuf->pkt_len);
 	txds->dma_len = txds->data_len;
 	txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
-	txds->dma_addr_lo = (dma_addr & 0xffffffff);
+	txds->dma_addr_lo = rte_cpu_to_le_32(dma_addr & 0xffffffff);
 	txds->offset_eop = FLOWER_PKT_DATA_OFFSET | NFD3_DESC_TX_EOP;
 
 	txq->wr_p++;
