@@ -1,0 +1,80 @@
+/*
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2010-2014 Intel Corporation
+ */
+
+/**
+ * @file
+ * DPDK Build Configuration
+ */
+
+#ifndef _RTE_BUILD_CONFIG_H_
+#define _RTE_BUILD_CONFIG_H_
+
+/* This file was auto-generated from meson build system */
+
+/* Platform */
+#define RTE_ARCH "x86_64"
+#define RTE_MACHINE "native"
+#define RTE_CACHE_LINE_SIZE 64
+
+/* Compilation */
+#define RTE_TOOLCHAIN "gcc"
+#define RTE_TOOLCHAIN_GCC 1
+#define RTE_CCFLAGS "-Wall -O3 -fPIC"
+
+/* Enable libraries */
+#define RTE_HAS_LIBEAL 1
+#define RTE_HAS_LIBRTE_MBUF 1
+#define RTE_HAS_LIBRTE_MEMPOOL 1
+#define RTE_HAS_LIBRTE_RING 1
+#define RTE_HAS_LIBRTE_ETHER 1
+#define RTE_HAS_LIBRTE_NET 1
+#define RTE_HAS_LIBRTE_TIMER 1
+#define RTE_HAS_LIBRTE_HASH 1
+#define RTE_HAS_LIBRTE_EFD 1
+#define RTE_HAS_LIBRTE_CMDLINE 1
+#define RTE_HAS_LIBRTE_KVARGS 1
+
+/* Environment abstraction layer */
+#define RTE_MAX_LCORE 128
+#define RTE_MAX_NUMA_NODES 8
+#define RTE_MAX_MEMSEG 512
+#define RTE_MAX_MEMZONE 2560
+#define RTE_MAX_TAILQ 32
+#define RTE_LOG_LEVEL 8
+#define RTE_ENABLE_ASSERT 1
+#define RTE_BACKTRACE 1
+#define RTE_EAL_PMD_PATH ""
+
+/* Execution units */
+#define RTE_MAX_VFIO_GROUPS 64
+
+/* Ethernet */
+#define RTE_MAX_ETHPORTS 32
+#define RTE_MAX_QUEUES_PER_PORT 1024
+#define RTE_ETHDEV_QUEUE_STAT_CNTRS 16
+#define RTE_ETHDEV_RXTX_CALLBACKS 1
+
+/* Mempool */
+#define RTE_MEMPOOL_CACHE_MAX_SIZE 512
+#define RTE_MEMPOOL_ALIGN 128
+
+/* Mbuf */
+#define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"
+#define RTE_MBUF_REFCNT_ATOMIC 1
+#define RTE_PKTMBUF_HEADROOM 128
+
+/* Driver enablement */
+#define RTE_NET_VIRTIO 1
+#define RTE_NET_VMXNET3 1
+#define RTE_NET_E1000 1
+#define RTE_NET_IXGBE 1
+#define RTE_NET_I40E 1
+#define RTE_CRYPTO 1
+#define RTE_CRYPTO_AESNI_MB 1
+
+/* Common configuration flags */
+#define RTE_CFLAGS "-march=native -DRTE_MACHINE_CPUFLAG_SSE -DRTE_MACHINE_CPUFLAG_SSE2 -DRTE_MACHINE_CPUFLAG_SSE3 -DRTE_MACHINE_CPUFLAG_SSSE3 -DRTE_MACHINE_CPUFLAG_SSE4_1 -DRTE_MACHINE_CPUFLAG_SSE4_2 -DRTE_MACHINE_CPUFLAG_AES -DRTE_MACHINE_CPUFLAG_PCLMULQDQ -DRTE_MACHINE_CPUFLAG_AVX -DRTE_COMPILE_TIME_CPUFLAGS=RTE_CPUFLAG_SSE,RTE_CPUFLAG_SSE2,RTE_CPUFLAG_SSE3,RTE_CPUFLAG_SSSE3,RTE_CPUFLAG_SSE4_1,RTE_CPUFLAG_SSE4_2,RTE_CPUFLAG_AES,RTE_CPUFLAG_PCLMULQDQ,RTE_CPUFLAG_AVX"
+
+#endif /* _RTE_BUILD_CONFIG_H_ */
