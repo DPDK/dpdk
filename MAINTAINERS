@@ -762,7 +762,6 @@ F: doc/guides/nics/features/enic.ini
 
 Google Virtual Ethernet
 M: Jeroen de Borst <jeroendb@google.com>
-M: Rushil Gupta <rushilg@google.com>
 M: Joshua Washington <joshwash@google.com>
 F: drivers/net/gve/
 F: doc/guides/nics/gve.rst
