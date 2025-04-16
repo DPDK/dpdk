@@ -9,9 +9,6 @@
 #define NTB_PCI_DEV_REVISION_ICX_MIN	0x02
 #define NTB_PCI_DEV_REVISION_ICX_MAX	0x0F
 
-#define NTB_PCI_DEV_REVISION_ID_REG	0x08
-#define NTB_PCI_DEV_REVISION_ID_LEN	1
-
 /* Ntb control and link status */
 #define NTB_CTL_CFG_LOCK		1
 #define NTB_CTL_DISABLE			2

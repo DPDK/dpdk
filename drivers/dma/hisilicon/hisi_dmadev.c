@@ -883,8 +883,7 @@ hisi_dma_check_revision(struct rte_pci_device *pci_dev, const char *name,
 	uint8_t revision;
 	int ret;
 
-	ret = rte_pci_read_config(pci_dev, &revision, 1,
-				  HISI_DMA_PCI_REVISION_ID_REG);
+	ret = rte_pci_read_config(pci_dev, &revision, 1, RTE_PCI_REVISION_ID);
 	if (ret != 1) {
 		HISI_DMA_LOG(ERR, "%s read PCI revision failed!", name);
 		return -EINVAL;
