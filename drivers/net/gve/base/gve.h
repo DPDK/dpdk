@@ -24,6 +24,8 @@
 /* PTYPEs are always 10 bits. */
 #define GVE_NUM_PTYPES		1024
 
+#define GVE_ADMINQ_BUFFER_SIZE	4096
+
 struct gve_irq_db {
 	rte_be32_t id;
 } ____cacheline_aligned;

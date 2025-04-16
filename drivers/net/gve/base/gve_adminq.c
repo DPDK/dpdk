@@ -198,6 +198,8 @@ gve_process_device_options(struct gve_priv *priv,
 
 int gve_adminq_alloc(struct gve_priv *priv)
 {
+	uint8_t pci_rev_id;
+
 	priv->adminq = gve_alloc_dma_mem(&priv->adminq_dma_mem, PAGE_SIZE);
 	if (unlikely(!priv->adminq))
 		return -ENOMEM;
@@ -221,8 +223,21 @@ int gve_adminq_alloc(struct gve_priv *priv)
 	priv->adminq_get_ptype_map_cnt = 0;
 
 	/* Setup Admin queue with the device */
-	iowrite32be(priv->adminq_dma_mem.pa / PAGE_SIZE,
-		    &priv->reg_bar0->adminq_pfn);
+	rte_pci_read_config(priv->pci_dev, &pci_rev_id, sizeof(pci_rev_id),
+			    RTE_PCI_REVISION_ID);
+	if (pci_rev_id < 0x1) { /* Use AQ PFN. */
+		iowrite32be(priv->adminq_dma_mem.pa / PAGE_SIZE,
+			    &priv->reg_bar0->adminq_pfn);
+	} else { /* Use full AQ address. */
+		iowrite16be(GVE_ADMINQ_BUFFER_SIZE,
+			    &priv->reg_bar0->adminq_length);
+		iowrite32be(priv->adminq_dma_mem.pa >> 32,
+			    &priv->reg_bar0->adminq_base_address_hi);
+		iowrite32be(priv->adminq_dma_mem.pa,
+			    &priv->reg_bar0->adminq_base_address_lo);
+		iowrite32be(GVE_DRIVER_STATUS_RUN_MASK,
+			    &priv->reg_bar0->driver_status);
+	}
 
 	gve_set_admin_queue_ok(priv);
 	return 0;
@@ -230,19 +245,36 @@ int gve_adminq_alloc(struct gve_priv *priv)
 
 void gve_adminq_release(struct gve_priv *priv)
 {
+	uint8_t pci_rev_id;
 	int i = 0;
 
 	/* Tell the device the adminq is leaving */
-	iowrite32be(0x0, &priv->reg_bar0->adminq_pfn);
-	while (ioread32be(&priv->reg_bar0->adminq_pfn)) {
-		/* If this is reached the device is unrecoverable and still
-		 * holding memory. Continue looping to avoid memory corruption,
-		 * but WARN so it is visible what is going on.
-		 */
-		if (i == GVE_MAX_ADMINQ_RELEASE_CHECK)
-			PMD_DRV_LOG(WARNING, "Unrecoverable platform error!");
-		i++;
-		msleep(GVE_ADMINQ_SLEEP_LEN);
+	rte_pci_read_config(priv->pci_dev, &pci_rev_id, sizeof(pci_rev_id),
+			    RTE_PCI_REVISION_ID);
+	if (pci_rev_id < 0x1) {
+		iowrite32be(0x0, &priv->reg_bar0->adminq_pfn);
+		while (ioread32be(&priv->reg_bar0->adminq_pfn)) {
+			/* If this is reached the device is unrecoverable and still
+			 * holding memory. Continue looping to avoid memory corruption,
+			 * but WARN so it is visible what is going on.
+			 */
+			if (i == GVE_MAX_ADMINQ_RELEASE_CHECK)
+				PMD_DRV_LOG(WARNING,
+					    "Unrecoverable platform error!");
+			i++;
+			msleep(GVE_ADMINQ_SLEEP_LEN);
+		}
+	} else {
+		iowrite32be(GVE_DRIVER_STATUS_RESET_MASK,
+			    &priv->reg_bar0->driver_status);
+		while (!(ioread32be(&priv->reg_bar0->device_status)
+			 & GVE_DEVICE_STATUS_DEVICE_IS_RESET)) {
+			if (i == GVE_MAX_ADMINQ_RELEASE_CHECK)
+				PMD_DRV_LOG(WARNING,
+					    "Unrecoverable platform error!");
+			i++;
+			msleep(GVE_ADMINQ_SLEEP_LEN);
+		}
 	}
 	gve_clear_device_rings_ok(priv);
 	gve_clear_device_resources_ok(priv);
