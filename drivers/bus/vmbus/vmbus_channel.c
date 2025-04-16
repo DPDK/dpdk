@@ -54,6 +54,9 @@ rte_vmbus_set_latency(const struct rte_vmbus_device *dev,
 		      const struct vmbus_channel *chan,
 		      uint32_t latency)
 {
+	if (chan->monitor_id == UINT8_MAX)
+		return;
+
 	uint32_t trig_idx = chan->monitor_id / VMBUS_MONTRIG_LEN;
 	uint32_t trig_offs = chan->monitor_id % VMBUS_MONTRIG_LEN;
 
