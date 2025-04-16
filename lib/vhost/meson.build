@@ -33,16 +33,13 @@ sources = files(
         'iotlb.c',
         'socket.c',
         'vdpa.c',
+        'vduse.c',
         'vhost.c',
         'vhost_crypto.c',
         'vhost_user.c',
         'virtio_net.c',
         'virtio_net_ctrl.c',
 )
-if cc.has_header('linux/vduse.h')
-    sources += files('vduse.c')
-    cflags += '-DVHOST_HAS_VDUSE'
-endif
 headers = files(
         'rte_vdpa.h',
         'rte_vhost.h',
