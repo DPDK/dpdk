@@ -145,9 +145,8 @@ intel_ntb4_check_ppd(struct ntb_hw *hw)
 	int ret;
 
 	ret = rte_pci_read_config(hw->pci_dev, &revision_id,
-				  NTB_PCI_DEV_REVISION_ID_LEN,
-				  NTB_PCI_DEV_REVISION_ID_REG);
-	if (ret != NTB_PCI_DEV_REVISION_ID_LEN) {
+				  1, RTE_PCI_REVISION_ID);
+	if (ret != 1) {
 		NTB_LOG(ERR, "Cannot get NTB PCI Device Revision ID.");
 		return -EIO;
 	}

@@ -59,11 +59,6 @@
 #define E1000_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ E1000_TX_OFFLOAD_MASK)
 
-/* PCI offset for querying configuration status register */
-#define PCI_CFG_STATUS_REG                 0x06
-#define FLUSH_DESC_REQUIRED               0x100
-
-
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
@@ -2107,26 +2102,26 @@ em_flush_desc_rings(struct rte_eth_dev *dev)
 			fextnvm11 | E1000_FEXTNVM11_DISABLE_MULR_FIX);
 	tdlen = E1000_READ_REG(hw, E1000_TDLEN(0));
 	ret = rte_pci_read_config(pci_dev, &pci_cfg_status,
-		   sizeof(pci_cfg_status), PCI_CFG_STATUS_REG);
+		   sizeof(pci_cfg_status), RTE_PCI_STATUS);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
-			    PCI_CFG_STATUS_REG);
+			    RTE_PCI_STATUS);
 		return;
 	}
 
 	/* do nothing if we're not in faulty state, or if the queue is empty */
-	if ((pci_cfg_status & FLUSH_DESC_REQUIRED) && tdlen) {
+	if ((pci_cfg_status & RTE_PCI_STATUS_PARITY) && tdlen) {
 		/* flush desc ring */
 		e1000_flush_tx_ring(dev);
 		ret = rte_pci_read_config(pci_dev, &pci_cfg_status,
-				sizeof(pci_cfg_status), PCI_CFG_STATUS_REG);
+				sizeof(pci_cfg_status), RTE_PCI_STATUS);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
-					PCI_CFG_STATUS_REG);
+					RTE_PCI_STATUS);
 			return;
 		}
 
-		if (pci_cfg_status & FLUSH_DESC_REQUIRED)
+		if (pci_cfg_status & RTE_PCI_STATUS_PARITY)
 			e1000_flush_rx_ring(dev);
 	}
 }

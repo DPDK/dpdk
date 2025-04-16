@@ -32,10 +32,7 @@
 #define HNS3_DEV_ID_100G_VF			0xA22E
 #define HNS3_DEV_ID_100G_RDMA_PFC_VF		0xA22F
 
-/* PCI Config offsets */
-#define HNS3_PCI_REVISION_ID			0x08
-#define HNS3_PCI_REVISION_ID_LEN		1
-
+/* Revision IDs */
 #define PCI_REVISION_ID_HIP08_B			0x21
 #define PCI_REVISION_ID_HIP09_A			0x30
 
