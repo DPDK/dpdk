@@ -176,7 +176,8 @@ bool rte_vmbus_chan_rx_empty(const struct vmbus_channel *channel);
  *
  * Sends data in buffer directly to hyper-v via the vmbus
  */
-int rte_vmbus_chan_send(struct vmbus_channel *channel, uint16_t type,
+int rte_vmbus_chan_send(struct rte_vmbus_device *dev,
+			struct vmbus_channel *channel, uint16_t type,
 			void *data, uint32_t dlen,
 			uint64_t xact, uint32_t flags, bool *need_sig);
 
@@ -189,7 +190,8 @@ int rte_vmbus_chan_send(struct vmbus_channel *channel, uint16_t type,
  * Used when batching multiple sends and only signaling host
  * after the last send.
  */
-void rte_vmbus_chan_signal_tx(const struct vmbus_channel *channel);
+void rte_vmbus_chan_signal_tx(struct rte_vmbus_device *dev,
+			      const struct vmbus_channel *channel);
 
 /* Structure for scatter/gather I/O */
 struct iova_list {
@@ -223,7 +225,8 @@ struct iova_list {
  *
  * Sends data in buffer directly to hyper-v via the vmbus
  */
-int rte_vmbus_chan_send_sglist(struct vmbus_channel *channel,
+int rte_vmbus_chan_send_sglist(struct rte_vmbus_device *dev,
+			       struct vmbus_channel *channel,
 			       struct vmbus_gpa gpa[], uint32_t gpacnt,
 			       void *data, uint32_t dlen,
 			       uint64_t xact, bool *need_sig);
@@ -243,7 +246,8 @@ int rte_vmbus_chan_send_sglist(struct vmbus_channel *channel,
  *   On success, returns 0
  *   On failure, returns negative errno.
  */
-int rte_vmbus_chan_recv(struct vmbus_channel *chan,
+int rte_vmbus_chan_recv(struct rte_vmbus_device *dev,
+			struct vmbus_channel *chan,
 			void *data, uint32_t *len,
 			uint64_t *request_id);
 
@@ -273,7 +277,9 @@ int rte_vmbus_chan_recv_raw(struct vmbus_channel *chan,
  * @param bytes_read
  *	Number of bytes read since last signal
  */
-void rte_vmbus_chan_signal_read(struct vmbus_channel *chan, uint32_t bytes_read);
+void rte_vmbus_chan_signal_read(struct rte_vmbus_device *dev,
+				struct vmbus_channel *chan,
+				uint32_t bytes_read);
 
 /**
  * Determine sub channel index of the given channel
