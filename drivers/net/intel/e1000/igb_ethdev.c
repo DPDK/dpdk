@@ -237,6 +237,10 @@ static void eth_igb_configure_msix_intr(struct rte_eth_dev *dev);
 static void eth_igbvf_interrupt_handler(void *param);
 static void igbvf_mbx_process(struct rte_eth_dev *dev);
 static int igb_filter_restore(struct rte_eth_dev *dev);
+static int igb_tx_burst_mode_get(struct rte_eth_dev *dev,
+	__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode);
+static int igb_rx_burst_mode_get(struct rte_eth_dev *dev,
+	__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -367,6 +371,8 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.tx_done_cleanup      = eth_igb_tx_done_cleanup,
+	.rx_burst_mode_get    = igb_rx_burst_mode_get,
+	.tx_burst_mode_get    = igb_tx_burst_mode_get,
 	.dev_led_on           = eth_igb_led_on,
 	.dev_led_off          = eth_igb_led_off,
 	.flow_ctrl_get        = eth_igb_flow_ctrl_get,
@@ -425,6 +431,8 @@ static const struct eth_dev_ops igbvf_eth_dev_ops = {
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
 	.tx_done_cleanup      = eth_igb_tx_done_cleanup,
+	.rx_burst_mode_get    = igb_rx_burst_mode_get,
+	.tx_burst_mode_get    = igb_tx_burst_mode_get,
 	.set_mc_addr_list     = eth_igb_set_mc_addr_list,
 	.rxq_info_get         = igb_rxq_info_get,
 	.txq_info_get         = igb_txq_info_get,
@@ -713,6 +721,62 @@ static int igb_flex_filter_uninit(struct rte_eth_dev *eth_dev)
 	filter_info->flex_mask = 0;
 
 	return 0;
+}
+
+static const struct {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+} igb_tx_burst_info[] = {
+	{	eth_igb_xmit_pkts, "Scalar igb"},
+	{	eth_em_xmit_pkts, "Scalar em"},
+};
+
+int
+igb_tx_burst_mode_get(struct rte_eth_dev *dev,
+				__rte_unused uint16_t queue_id,
+				struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(igb_tx_burst_info); i++) {
+		if (pkt_burst == igb_tx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 igb_tx_burst_info[i].info);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} igb_rx_burst_info[] = {
+	{	eth_igb_recv_pkts, "Scalar igb"},
+	{	eth_igb_recv_scattered_pkts, "Scalar igb scattered"},
+	{	eth_em_recv_pkts, "Scalar em"},
+	{	eth_em_recv_scattered_pkts, "Scalar em scattered"},
+};
+
+int
+igb_rx_burst_mode_get(struct rte_eth_dev *dev,
+				__rte_unused uint16_t queue_id,
+				struct rte_eth_burst_mode *mode)
+{
+	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(igb_rx_burst_info); i++) {
+		if (pkt_burst == igb_rx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 igb_rx_burst_info[i].info);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
 }
 
 static int
