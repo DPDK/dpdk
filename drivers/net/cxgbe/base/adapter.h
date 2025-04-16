@@ -512,14 +512,15 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 }
 
 #define PCI_CAP_ID_EXP          RTE_PCI_CAP_ID_EXP
-#define PCI_EXP_DEVCTL          0x0008  /* Device control */
-#define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
-#define PCI_EXP_DEVCTL_EXT_TAG  0x0100  /* Extended Tag Field Enable */
-#define PCI_EXP_DEVCTL_PAYLOAD  0x00E0  /* Max payload */
-#define PCI_CAP_ID_VPD          0x03    /* Vital Product Data */
-#define PCI_VPD_ADDR            2       /* Address to access (15 bits!) */
-#define PCI_VPD_ADDR_F          0x8000  /* Write 0, 1 indicates completion */
-#define PCI_VPD_DATA            4       /* 32-bits of data returned here */
+#define PCI_EXP_DEVCTL          RTE_PCI_EXP_DEVCTL
+#define PCI_EXP_DEVCTL_EXT_TAG  RTE_PCI_EXP_DEVCTL_EXT_TAG
+#define PCI_EXP_DEVCTL_PAYLOAD  RTE_PCI_EXP_DEVCTL_PAYLOAD
+#define PCI_EXP_DEVCTL2         RTE_PCI_EXP_DEVCTL2
+
+#define PCI_CAP_ID_VPD          RTE_PCI_CAP_ID_VPD
+#define PCI_VPD_ADDR            RTE_PCI_VPD_ADDR
+#define PCI_VPD_ADDR_F          RTE_PCI_VPD_ADDR_F
+#define PCI_VPD_DATA            RTE_PCI_VPD_DATA
 
 /**
  * t4_os_pci_write_cfg4 - 32-bit write to PCI config space
