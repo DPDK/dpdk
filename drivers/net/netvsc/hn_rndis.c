@@ -246,8 +246,9 @@ void hn_rndis_dump(const void *buf)
 }
 #endif
 
-static int hn_nvs_send_rndis_ctrl(struct vmbus_channel *chan,
-				  const void *req, uint32_t reqlen)
+static int hn_nvs_send_rndis_ctrl(struct hn_data *hv,
+				  struct vmbus_channel *chan, const void *req,
+				  uint32_t reqlen)
 
 {
 	struct hn_nvs_rndis nvs_rndis = {
@@ -282,8 +283,8 @@ static int hn_nvs_send_rndis_ctrl(struct vmbus_channel *chan,
 
 	hn_rndis_dump(req);
 
-	return hn_nvs_send_sglist(chan, &sg, 1,
-				  &nvs_rndis, sizeof(nvs_rndis), 0U, NULL);
+	return hn_nvs_send_sglist(hv, chan, &sg, 1, &nvs_rndis,
+				  sizeof(nvs_rndis), 0U, NULL);
 }
 
 /*
@@ -394,7 +395,7 @@ static int hn_rndis_exec1(struct hn_data *hv,
 		return -EBUSY;
 	}
 
-	error = hn_nvs_send_rndis_ctrl(chan, req, reqlen);
+	error = hn_nvs_send_rndis_ctrl(hv, chan, req, reqlen);
 	if (error) {
 		PMD_DRV_LOG(ERR, "RNDIS ctrl send failed: %d", error);
 		return error;
