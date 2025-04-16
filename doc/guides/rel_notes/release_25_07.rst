@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added Burst Mode Query Function to Intel drivers.**
+
+  Added support for rx_burst_mode_get and tx_burst_mode_get to the following drivers:
+
+    * e1000 (igb)
 
 Removed Items
 -------------
