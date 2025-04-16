@@ -31,6 +31,7 @@ jobs:
         failed=
         devtools/check-doc-vs-code.sh upstream/${{ env.REF_GIT_BRANCH }} || failed=true
         devtools/check-meson.py || failed=true
+        devtools/check-spdx-tag.sh || failed=true
         [ -z "$failed" ]
   ubuntu-vm-builds:
     name: ${{ join(matrix.config.*, '-') }}
