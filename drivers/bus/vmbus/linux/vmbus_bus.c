@@ -283,9 +283,12 @@ vmbus_scan_one(const char *name)
 
 	/* get monitor id */
 	snprintf(filename, sizeof(filename), "%s/monitor_id", dirname);
-	if (eal_parse_sysfs_value(filename, &tmp) < 0)
-		goto error;
-	dev->monitor_id = tmp;
+	if (eal_parse_sysfs_value(filename, &tmp) >= 0) {
+		dev->monitor_id = tmp;
+	} else {
+		VMBUS_LOG(NOTICE, "monitor disabled on %s", name);
+		dev->monitor_id = UINT8_MAX;
+	}
 
 	/* get numa node (if present) */
 	snprintf(filename, sizeof(filename), "%s/numa_node",
