@@ -98,6 +98,11 @@ static int virtio_dev_queue_stats_mapping_set(
 static void virtio_notify_peers(struct rte_eth_dev *dev);
 static void virtio_ack_link_announce(struct rte_eth_dev *dev);
 
+static int virtio_rx_burst_mode_get(struct rte_eth_dev *dev,
+	__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode);
+static int virtio_tx_burst_mode_get(struct rte_eth_dev *dev,
+	__rte_unused uint16_t queue_id, struct rte_eth_burst_mode *mode);
+
 struct rte_virtio_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned offset;
@@ -636,6 +641,8 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
+	.rx_burst_mode_get       = virtio_rx_burst_mode_get,
+	.tx_burst_mode_get       = virtio_tx_burst_mode_get,
 	.rss_hash_update         = virtio_dev_rss_hash_update,
 	.rss_hash_conf_get       = virtio_dev_rss_hash_conf_get,
 	.reta_update             = virtio_dev_rss_reta_update,
@@ -1240,6 +1247,75 @@ virtio_interrupt_handler(void *param)
 			}
 		}
 	}
+}
+
+static const struct {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+} virtio_tx_burst_info[] = {
+	{	virtio_xmit_pkts, "Scalar"},
+	{	virtio_xmit_pkts_packed, "Scalar packed ring"},
+	{	virtio_xmit_pkts_inorder, "Scalar in order"},
+	{	virtio_xmit_pkts_packed_vec, "Vector packed ring"},
+};
+
+static int
+virtio_tx_burst_mode_get(struct rte_eth_dev *dev,
+				__rte_unused uint16_t queue_id,
+				struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(virtio_tx_burst_info); i++) {
+		if (pkt_burst == virtio_tx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 virtio_tx_burst_info[i].info);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} virtio_rx_burst_info[] = {
+	{	virtio_recv_pkts, "Scalar"},
+	{	virtio_recv_pkts_packed, "Scalar standard packed ring"},
+	{	virtio_recv_pkts_inorder, "Scalar"},
+	{	virtio_recv_mergeable_pkts, "Scalar mergeable"},
+	{	virtio_recv_mergeable_pkts_packed, "Scalar mergeable packed ring"},
+#ifdef RTE_ARCH_x86
+	{	virtio_recv_pkts_vec, "Vector SSE"},
+	{	virtio_recv_pkts_packed_vec, "Vector AVX512 packed ring"},
+#elif defined(RTE_ARCH_ARM)
+	{	virtio_recv_pkts_vec, "Vector NEON"},
+	{	virtio_recv_pkts_packed_vec, "Vector NEON packed ring"},
+#elif defined(RTE_ARCH_PPC_64)
+	{	virtio_recv_pkts_vec, "Vector Altivec"},
+	{	virtio_recv_pkts_packed_vec, "Vector Altivec packed ring"},
+#endif
+};
+
+static int
+virtio_rx_burst_mode_get(struct rte_eth_dev *dev,
+				__rte_unused uint16_t queue_id,
+				struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->rx_pkt_burst;
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(virtio_rx_burst_info); i++) {
+		if (pkt_burst == virtio_rx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 virtio_rx_burst_info[i].info);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
 }
 
 /* set rx and tx handlers according to what is supported */

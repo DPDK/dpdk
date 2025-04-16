@@ -63,6 +63,10 @@ New Features
     * ixgbe
     * iavf
 
+* **Updated virtio driver.**
+
+  * Added support for Rx and Tx burst mode query.
+
 
 Removed Items
 -------------
