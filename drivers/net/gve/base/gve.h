@@ -14,6 +14,8 @@
 #endif
 
 #define GVE_DEV_ID		0x0042
+#define GVE_PCI_REV_OFFSET	0x8
+#define GVE_PCI_REV_SIZE	1
 
 #define GVE_REG_BAR		0
 #define GVE_DB_BAR		2
@@ -23,6 +25,8 @@
 
 /* PTYPEs are always 10 bits. */
 #define GVE_NUM_PTYPES		1024
+
+#define GVE_ADMINQ_BUFFER_SIZE	4096
 
 struct gve_irq_db {
 	rte_be32_t id;
