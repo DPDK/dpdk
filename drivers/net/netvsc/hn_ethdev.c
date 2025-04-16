@@ -1427,7 +1427,8 @@ static int eth_hn_probe(struct rte_vmbus_driver *drv __rte_unused,
 			struct rte_vmbus_device *dev)
 {
 	struct rte_eth_dev *eth_dev;
-	int ret;
+	struct hn_nvs_process_priv *process_priv;
+	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1438,16 +1439,37 @@ static int eth_hn_probe(struct rte_vmbus_driver *drv __rte_unused,
 	}
 
 	eth_dev = eth_dev_vmbus_allocate(dev, sizeof(struct hn_data));
-	if (!eth_dev)
-		return -ENOMEM;
+	if (!eth_dev) {
+		ret = -ENOMEM;
+		goto vmbus_alloc_failed;
+	}
+
+	process_priv = rte_zmalloc_socket("netvsc_proc_priv",
+					  sizeof(struct hn_nvs_process_priv),
+					  RTE_CACHE_LINE_SIZE,
+					  dev->device.numa_node);
+	if (!process_priv) {
+		ret = -ENOMEM;
+		goto priv_alloc_failed;
+	}
+	process_priv->vmbus_dev = dev;
+	eth_dev->process_private = process_priv;
 
 	ret = eth_hn_dev_init(eth_dev);
-	if (ret) {
-		eth_dev_vmbus_release(eth_dev);
-		rte_dev_event_monitor_stop();
-	} else {
-		rte_eth_dev_probing_finish(eth_dev);
-	}
+	if (ret)
+		goto dev_init_failed;
+
+	rte_eth_dev_probing_finish(eth_dev);
+	return ret;
+
+dev_init_failed:
+	rte_free(process_priv);
+
+priv_alloc_failed:
+	eth_dev_vmbus_release(eth_dev);
+
+vmbus_alloc_failed:
+	rte_dev_event_monitor_stop();
 
 	return ret;
 }
@@ -1455,6 +1477,7 @@ static int eth_hn_probe(struct rte_vmbus_driver *drv __rte_unused,
 static int eth_hn_remove(struct rte_vmbus_device *dev)
 {
 	struct rte_eth_dev *eth_dev;
+	struct hn_nvs_process_priv *process_priv;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1466,6 +1489,9 @@ static int eth_hn_remove(struct rte_vmbus_device *dev)
 	ret = eth_hn_dev_uninit(eth_dev);
 	if (ret)
 		return ret;
+
+	process_priv = eth_dev->process_private;
+	rte_free(process_priv);
 
 	eth_dev_vmbus_release(eth_dev);
 	rte_dev_event_monitor_stop();

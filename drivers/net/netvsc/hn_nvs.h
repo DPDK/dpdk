@@ -65,6 +65,10 @@
 #define NVS_TYPE_SUBCH_RESP	133	/* same as SUBCH_REQ */
 #define NVS_TYPE_TXTBL_NOTE	134	/* notification */
 
+/* Private data for primary/secondary processes */
+struct hn_nvs_process_priv {
+	struct rte_vmbus_device *vmbus_dev;
+};
 
 /* NVS message common header */
 struct __rte_packed_begin hn_nvs_hdr {
