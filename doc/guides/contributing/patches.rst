@@ -644,6 +644,46 @@ environment) by the person named.
 person.
 
 
+Frequency and volume of patches
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please allow at least 24 hours to pass between posting patch revisions.
+This ensures reviewers from different geographical regions have time to provide feedback.
+Additionally, please do not wait too long (read: weeks) between revisions
+as this makes it harder for reviewers and maintainers
+to recall the context of the previous posting.
+If you have not received any feedback within a week,
+it is appropriate to send a ping to the mailing list.
+
+Please do not post new revisions without addressing all feedback.
+Make sure that all outstanding items have been addressed
+before posting a new revision for review
+(this should involve replying to all the feedback).
+Do not post a new version of a patch while there is ongoing discussion
+unless a reviewer has specifically requested it.
+
+Do not post your patches to the list in lieu of running tests.
+**YOU MUST ENSURE** that your patches are ready by testing them locally
+before posting to the mailing list.
+Testing locally should involve, at a minimum,
+running compilation with debug and release flags, and invoking the unit tests.
+Your changes are expected to pass on an x86/x86-64 Linux system.
+The infrastructure running the tests is a shared resource among all developers on the project,
+and many frequent reposts will result in delays for all developers.
+We do our best to include CI and self-test infrastructure
+that can be used on an individual developer basis.
+
+For details on running the unit tests, see :doc:`unit_test`.
+It is also recommended to run the :doc:`DTS <../tools/dts>` comprehensive tests.
+Finally, you can also push to a branch on the GitHub service
+to trigger a comprehensive set of compile and unit test runs.
+
+Please keep all patch sets to a reasonable length.
+Too many or too large patches and series can quickly become very difficult
+for a reasonable review.
+It is recommended to appropriately split patches and series
+to groups of digestible logical changes.
+
 
 Steps to getting your patch merged
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
