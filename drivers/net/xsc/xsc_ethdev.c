@@ -860,13 +860,21 @@ uninit_xsc_dev:
 static int
 xsc_ethdev_uninit(struct rte_eth_dev *eth_dev)
 {
+	int ret = 0;
+	uint16_t port_id;
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(eth_dev);
 
 	PMD_INIT_FUNC_TRACE();
+	RTE_ETH_FOREACH_DEV_OF(port_id, eth_dev->device) {
+		if (port_id != eth_dev->data->port_id)
+			ret |= rte_eth_dev_close(port_id);
+	}
 
-	xsc_dev_uninit(priv->xdev);
+	ret |= xsc_ethdev_close(eth_dev);
+	xsc_dev_pct_uninit();
+	rte_free(priv->xdev);
 
-	return 0;
+	return ret == 0 ? 0 : -EIO;
 }
 
 static int
