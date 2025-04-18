@@ -178,6 +178,7 @@ xsc_vfio_dev_close(struct xsc_dev *xdev)
 	struct xsc_vfio_priv *vfio_priv = (struct xsc_vfio_priv *)xdev->dev_priv;
 
 	xsc_vfio_mbox_destroy(vfio_priv->cmdq);
+	rte_pci_unmap_device(xdev->pci_dev);
 	rte_free(vfio_priv);
 
 	return 0;

@@ -150,7 +150,10 @@ int
 xsc_dev_close(struct xsc_dev *xdev, int repr_id)
 {
 	xsc_dev_clear_pct(xdev, repr_id);
-	return xdev->dev_ops->dev_close(xdev);
+
+	if (repr_id == xdev->num_repr_ports - 1)
+		return xdev->dev_ops->dev_close(xdev);
+	return 0;
 }
 
 int
