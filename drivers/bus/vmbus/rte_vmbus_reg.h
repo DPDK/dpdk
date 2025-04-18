@@ -100,14 +100,11 @@ struct vmbus_bufring {
 		uint32_t value;
 	} feature_bits;
 
-	/* Pad it to rte_mem_page_size() so that data starts on page boundary */
-	uint8_t	reserved2[4028];
-
 	/*
-	 * Ring data starts here + RingDataStartOffset
-	 * !!! DO NOT place any fields below this !!!
+	 * This is the end of ring buffer head. The ring buffer data is system
+	 * page aligned and starts at rte_mem_page_size() from the beginning
+	 * of this structure
 	 */
-	uint8_t data[];
 } __rte_packed;
 
 /*
