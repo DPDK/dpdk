@@ -31,10 +31,6 @@
 
 #define HN_RX_EXTMBUF_ENABLE	0
 
-#ifndef PAGE_MASK
-#define PAGE_MASK (rte_mem_page_size() - 1)
-#endif
-
 struct hn_data;
 struct hn_txdesc;
 
