@@ -1432,10 +1432,10 @@ static unsigned int hn_get_slots(const struct rte_mbuf *m)
 
 	while (m) {
 		unsigned int size = rte_pktmbuf_data_len(m);
-		unsigned int offs = rte_mbuf_data_iova(m) & PAGE_MASK;
+		unsigned int offs = rte_mbuf_data_iova(m) & HYPERV_PAGE_MASK;
 
-		slots += (offs + size + rte_mem_page_size() - 1) /
-				rte_mem_page_size();
+		slots += (offs + size + HYPERV_PAGE_SIZE - 1) /
+				HYPERV_PAGE_SIZE;
 		m = m->next;
 	}
 
@@ -1450,13 +1450,13 @@ static unsigned int hn_fill_sg(struct vmbus_gpa *sg,
 
 	while (m) {
 		rte_iova_t addr = rte_mbuf_data_iova(m);
-		unsigned int page = addr / rte_mem_page_size();
-		unsigned int offset = addr & PAGE_MASK;
+		unsigned int page = addr / HYPERV_PAGE_SIZE;
+		unsigned int offset = addr & HYPERV_PAGE_MASK;
 		unsigned int len = rte_pktmbuf_data_len(m);
 
 		while (len > 0) {
 			unsigned int bytes = RTE_MIN(len,
-					rte_mem_page_size() - offset);
+					HYPERV_PAGE_SIZE - offset);
 
 			sg[segs].page = page;
 			sg[segs].ofs = offset;
@@ -1499,8 +1499,8 @@ static int hn_xmit_sg(struct hn_tx_queue *txq,
 	addr = txq->tx_rndis_iova +
 		((char *)txd->rndis_pkt - (char *)txq->tx_rndis);
 
-	sg[0].page = addr / rte_mem_page_size();
-	sg[0].ofs = addr & PAGE_MASK;
+	sg[0].page = addr / HYPERV_PAGE_SIZE;
+	sg[0].ofs = addr & HYPERV_PAGE_MASK;
 	sg[0].len = RNDIS_PACKET_MSG_OFFSET_ABS(hn_rndis_pktlen(txd->rndis_pkt));
 	segs = 1;
 
