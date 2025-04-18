@@ -14,6 +14,10 @@ extern "C" {
 #include <rte_compat.h>
 #include <dev_driver.h>
 
+#define HYPERV_PAGE_SHIFT 12
+#define HYPERV_PAGE_SIZE (1 << HYPERV_PAGE_SHIFT)
+#define HYPERV_PAGE_MASK (HYPERV_PAGE_SIZE - 1)
+
 struct vmbus_channel;
 struct vmbus_mon_page;
 

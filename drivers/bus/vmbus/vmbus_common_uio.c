@@ -201,7 +201,7 @@ vmbus_uio_map_resource(struct rte_vmbus_device *dev)
 	}
 
 	dev->int_page = (uint32_t *)((char *)uio_res->maps[HV_INT_PAGE_MAP].addr
-				     + (rte_mem_page_size() >> 1));
+				     + (HYPERV_PAGE_SIZE >> 1));
 	dev->monitor_page = uio_res->maps[HV_MON_PAGE_MAP].addr;
 	return 0;
 }
