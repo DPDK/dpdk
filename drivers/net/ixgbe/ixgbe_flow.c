@@ -1645,6 +1645,8 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 	memset(&rule->mask, 0xFF, sizeof(struct ixgbe_hw_fdir_mask));
 	rule->mask.vlan_tci_mask = 0;
 	rule->mask.flex_bytes_mask = 0;
+	rule->mask.dst_port_mask = 0;
+	rule->mask.src_port_mask = 0;
 
 	/**
 	 * The first not void item should be
