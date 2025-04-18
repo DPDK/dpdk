@@ -383,6 +383,7 @@ void
 xsc_dev_pct_uninit(void)
 {
 	rte_free(xsc_pct_mgr.bmp_mem);
+	xsc_pct_mgr.bmp_mem = NULL;
 }
 
 int
