@@ -309,8 +309,11 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 
 	for (i = 0; i < priv->num_rq; i++) {
 		rxq_data = xsc_rxq_get(priv, i);
-		if (rxq_data == NULL)
-			return -EINVAL;
+		if (rxq_data == NULL) {
+			rte_errno = EINVAL;
+			goto error;
+		}
+
 		req = (struct xsc_cmd_create_qp_request *)(&in->data[0] + entry_len * i);
 		req->input_qpn = rte_cpu_to_be_16(0); /* useless for eth */
 		req->pa_num = rte_cpu_to_be_16(pa_num);
@@ -350,8 +353,11 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 
 	for (i = 0; i < priv->num_rq; i++) {
 		rxq_data = xsc_rxq_get(priv, i);
-		if (rxq_data == NULL)
-			return -EINVAL;
+		if (rxq_data == NULL) {
+			rte_errno = EINVAL;
+			goto error;
+		}
+
 		rxq_data->wqes = rxq_data->rq_pas->addr;
 		if (!xsc_dev_is_vf(xdev))
 			rxq_data->rq_db = (uint32_t *)((uint8_t *)xdev->bar_addr +
