@@ -267,9 +267,8 @@ Installing NVIDIA MLNX_OFED
 
         connectx_port_config
 
-#. Continue with :ref:`section 2 of the Quick Start Guide <QSG_2>`.
+#. Continue with :ref:`section 2 of the Quick Start Guide <mlx4_QSG_2>`.
 
-.. _qsg:
 
 Quick Start Guide
 -----------------
@@ -286,7 +285,7 @@ Quick Start Guide
         to Ethernet using connectx_port_config tool provided by it.
         :ref:`OFED_as_a_fallback`:
 
-.. _QSG_2:
+.. _mlx4_QSG_2:
 
 #. In case of bare metal or hypervisor, configure optimized steering mode
    by adding the following line to ``/etc/modprobe.d/mlx4_core.conf``::

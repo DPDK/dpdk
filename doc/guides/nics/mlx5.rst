@@ -7,70 +7,45 @@
 NVIDIA MLX5 Ethernet Driver
 ===========================
 
+The mlx5 Ethernet poll mode driver (``librte_net_mlx5``)
+provides support for NVIDIA NIC and DPU device families.
+The embedded switch, Physical Functions (PF),
+SR-IOV Virtual Functions (VF), Linux auxiliary Sub-Functions (SF),
+and their port representors are supported
+with many :ref:`features <mlx5_net_features>`.
 
-The mlx5 Ethernet poll mode driver library (**librte_net_mlx5**) provides support
-for **NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx** , **NVIDIA ConnectX-5**,
-**NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,
-**NVIDIA ConnectX-7**, **NVIDIA ConnectX-8**, **NVIDIA BlueField**,
-**NVIDIA BlueField-2** and **NVIDIA BlueField-3** families of
-10/25/40/50/100/200/400 Gb/s adapters as well as their virtual
-functions (VF) in SR-IOV context.
+For additional support, you may contact NVIDIA_.
 
-Supported NICs
---------------
+.. _NVIDIA: mailto:enterprisesupport@nvidia.com?subject=DPDK%20mlx5%20support&body=Company:%20%0D%0A%0D%0AEnvironment:%20%0D%0A%0D%0ADPDK%20version:%20%0D%0A%0D%0AQuestion:
 
-The following NVIDIA device families are supported by the same mlx5 driver:
 
-  - ConnectX-4
-  - ConnectX-4 Lx
-  - ConnectX-5
-  - ConnectX-5 Ex
-  - ConnectX-6
-  - ConnectX-6 Dx
-  - ConnectX-6 Lx
-  - ConnectX-7
-  - ConnectX-8
-  - BlueField
-  - BlueField-2
-  - BlueField-3
+Supported Devices
+-----------------
 
-Below are detailed device names:
+The following families of NVIDIA ConnectX NICs and BlueField DPUs are supported
+with the same driver:
 
-* NVIDIA\ |reg| ConnectX\ |reg|-4 10G MCX4111A-XCAT (1x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 10G MCX412A-XCAT (2x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 25G MCX4111A-ACAT (1x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 25G MCX412A-ACAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX413A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX4131A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 40G MCX415A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX413A-GCAT (1x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX4131A-GCAT (1x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX414A-BCAT (2x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX415A-GCAT (1x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX416A-BCAT (2x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX416A-GCAT (2x50G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 50G MCX415A-CCAT (1x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 100G MCX416A-CCAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4111A-XCAT (1x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 10G MCX4121A-XCAT (2x10G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4111A-ACAT (1x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 25G MCX4121A-ACAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-4 Lx 40G MCX4131A-BCAT (1x40G)
-* NVIDIA\ |reg| ConnectX\ |reg|-5 100G MCX556A-ECAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-5 Ex EN 100G MCX516A-CDAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 100G MCX623106AN-CDAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-8 400G C900-9X81Q-00CN-STQ_Ax (2x400G)
-* NVIDIA\ |reg| BlueField\ |reg|-2 25G MBF2H332A-AEEOT_A1 (2x25Gg
-* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00CV-AA0 (2x200)
-* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00SV-AA0 (2x200)
-* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B6-00CN-AB0 (2x400)
-* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00CC-EA0 (2x100)
-* NVIDIA\ |reg| BlueField\ |reg|-3 100GbE 900-9D3B4-00SC-EA0 (2x100)
-* NVIDIA\ |reg| BlueField\ |reg|-3 400GbE 900-9D3B4-00EN-EA0 (1x100)
+================== =============== ========= =========== ============
+NIC / DPU          total bandwidth max ports PCIe        embedded CPU
+================== =============== ========= =========== ============
+**ConnectX-4 Lx**   50 Gb/s        2         Gen3        --
+**ConnectX-4**     100 Gb/s        2         Gen3        --
+**ConnectX-5**     100 Gb/s        2         Gen3        --
+**ConnectX-5 Ex**  100 Gb/s        2         Gen4        --
+**ConnectX-6 Lx**   50 Gb/s        2         Gen3 / Gen4 --
+**ConnectX-6**     200 Gb/s        2         Gen3 / Gen4 --
+**ConnectX-6 Dx**  200 Gb/s        2         Gen4        --
+**BlueField-2**    200 Gb/s        2         Gen4        A72 x8
+**ConnectX-7**     400 Gb/s        4         Gen5        --
+**ConnectX-8**     400 Gb/s        4         Gen6        --
+**BlueField-3**    400 Gb/s        2         Gen5        A78 x16
+================== =============== ========= =========== ============
+
+The details of models and specifications can be found on the website
+for `ConnectX NICs <https://www.nvidia.com/en-in/networking/ethernet-adapters/>`_
+and `BlueField DPUs <https://www.nvidia.com/en-in/networking/products/data-processing-unit/>`_.
+
+A DPU can act as a NIC in NIC mode.
 
 
 Design

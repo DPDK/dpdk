@@ -7,11 +7,10 @@
 NVIDIA MLX5 Common Driver
 =========================
 
-The mlx5 common driver library (**librte_common_mlx5**) provides support for
-**NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx**, **NVIDIA ConnectX-5**,
-**NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,
-**NVIDIA ConnectX-7**, **NVIDIA ConnectX-8**, **NVIDIA BlueField**, **NVIDIA BlueField-2** and
-**NVIDIA BlueField-3** families of 10/25/40/50/100/200 Gb/s adapters.
+The mlx5 common driver library (``librte_common_mlx5``) provides support
+for NVIDIA NIC and DPU device families.
+The SR-IOV Virtual Functions (VF), Linux auxiliary Sub-Functions (SF),
+and their port representors are supported as well.
 
 Information and documentation for these adapters can be found on the
 `NVIDIA website <https://www.nvidia.com/en-us/networking/>`_.

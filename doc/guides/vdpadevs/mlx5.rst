@@ -24,15 +24,13 @@ and which PMDs can be combined with vDPA PMD.
 Supported NICs
 --------------
 
-* NVIDIA\ |reg| ConnectX\ |reg|-6 200G MCX654106A-HCAT (2x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 25G MCX621102AN-ADAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 100G MCX623106AN-CDAT (2x100G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx EN 200G MCX623105AN-VDAT (1x200G)
-* NVIDIA\ |reg| ConnectX\ |reg|-6 Lx EN 25G MCX631102AN-ADAT (2x25G)
-* NVIDIA\ |reg| ConnectX\ |reg|-7 200G CX713106AE-HEA_QP1_Ax (2x200G)
-* NVIDIA\ |reg| BlueField SmartNIC 25G MBF1M332A-ASCAT (2x25G)
-* NVIDIA\ |reg| BlueField |reg|-2 SmartNIC MT41686 - MBF2H332A-AEEOT_A1 (2x25G)
-* NVIDIA\ |reg| BlueField\ |reg|-3 200GbE 900-9D3B6-00CV-AAB_Ax
+* NVIDIA\ |reg| ConnectX\ |reg|-6
+* NVIDIA\ |reg| ConnectX\ |reg|-6 Lx
+* NVIDIA\ |reg| ConnectX\ |reg|-6 Dx
+* NVIDIA\ |reg| ConnectX\ |reg|-7
+* NVIDIA\ |reg| BlueField
+* NVIDIA\ |reg| BlueField |reg|-2
+* NVIDIA\ |reg| BlueField\ |reg|-3
 
 Prerequisites
 -------------
