@@ -3258,6 +3258,8 @@ destination offset as ``48``, and provide immediate value ``0xXXXX85XX``.
    |                 | field type                                               |
    +-----------------+----------------------------------------------------------+
 
+.. _flow_conntrack_action:
+
 Action: ``CONNTRACK``
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -3858,7 +3860,7 @@ For example, to configure a RTE_FLOW_TYPE_JUMP action as a miss action for ingre
       struct rte_flow_error err;
       rte_flow_group_set_miss_actions(port, 1, &attr, act, &err);
 
-.. _flow_templates:
+.. _flow_template_api:
 
 Flow templates
 ~~~~~~~~~~~~~~
@@ -4096,6 +4098,9 @@ Testpmd commands (wrapped for clarity)::
 
     # 6. Complete the table resize.
     testpmd> flow template_table 0 resize_complete table 101
+
+
+.. _flow_async_api:
 
 Asynchronous operations
 -----------------------

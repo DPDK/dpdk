@@ -20,6 +20,8 @@ In addition, there is a `web section dedicated to DPDK
 <https://developer.nvidia.com/networking/dpdk>`_.
 
 
+.. _mlx5_common_design:
+
 Design
 ------
 
@@ -138,7 +140,6 @@ The following dependencies are not part of DPDK and must be installed separately
   - ConnectX-6 Lx: **26.27.0090** and above.
   - ConnectX-7: **28.33.2028** and above.
   - ConnectX-8: **40.44.1036** and above.
-  - BlueField: **18.25.1010** and above.
   - BlueField-2: **24.28.1002** and above.
   - BlueField-3: **32.36.3126** and above.
 
@@ -393,6 +394,8 @@ An SF shares PCI-level resources with other SFs and/or with its parent PCI funct
       auxiliary:mlx5_core.sf.<num>,class=eth:regex
 
 
+.. _mlx5_switchdev:
+
 Enable Switchdev Mode
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -507,6 +510,15 @@ Below are some firmware configurations listed.
 
     CQE_COMPRESSION=1
 
+- enable real-time timestamp format::
+
+   REAL_TIME_CLOCK_ENABLE=1
+
+- allow locking hairpin RQ data buffer in device memory::
+
+   HAIRPIN_DATA_BUFFER_LOCK=1
+   MEMIC_SIZE_LIMIT=0
+
 - L3 VXLAN and VXLAN-GPE destination UDP port::
 
     IP_OVER_VXLAN_EN=1
@@ -556,14 +568,24 @@ Below are some firmware configurations listed.
    FLEX_PARSER_PROFILE_ENABLE=4
    PROG_PARSE_GRAPH=1
 
-- enable realtime timestamp format::
+Below is a table showing the protocols that requires the flex parser,
+matching with their possible flex parser profiles.
 
-   REAL_TIME_CLOCK_ENABLE=1
+.. rst-class:: punchcard
 
-- allow locking hairpin RQ data buffer in device memory::
-
-   HAIRPIN_DATA_BUFFER_LOCK=1
-   MEMIC_SIZE_LIMIT=0
+========== = = = = = =
+profile    0 1 2 3 4 8
+========== = = = = = =
+IP-in-IP   0
+VXLAN-GPE  0   2
+GENEVE     0 1
+GENEVE TLV 0         8
+MPLS         1
+ICMP           2
+GTP              3
+eCPRI              4
+dyn flex           4
+========== = = = = = =
 
 
 .. _mlx5_common_driver_options:
@@ -627,7 +649,7 @@ and below are the arguments supported by the common mlx5 layer.
 
 - ``sq_db_nc`` parameter [int]
 
-  The rdma core library can map doorbell register in two ways,
+  The rdma-core library can map doorbell register in two ways,
   depending on the environment variable "MLX5_SHUT_UP_BF":
 
   - As regular cached memory (usually with write combining attribute),

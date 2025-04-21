@@ -36,7 +36,7 @@ where,
 ``--[non-]template``
   Specify whether to use the template API (default is template API).
 
-For more details on template API please refer to :ref:`flow_templates`.
+For more details on template API please refer to :ref:`flow_template_api`.
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.
