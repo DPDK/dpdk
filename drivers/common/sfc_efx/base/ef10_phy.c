@@ -473,7 +473,7 @@ fail1:
 	return (rc);
 }
 
-static	__checkReturn	efx_rc_t
+	__checkReturn	efx_rc_t
 efx_mcdi_phy_set_led(
 	__in		efx_nic_t *enp,
 	__in		efx_phy_led_mode_t phy_led_mode)

@@ -34,6 +34,11 @@ medford4_phy_link_state_get(
 	__in			efx_nic_t *enp,
 	__out			efx_phy_link_state_t *eplsp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+medford4_phy_reconfigure(
+	__in			efx_nic_t *enp);
+
 #ifdef	__cplusplus
 }
 #endif
