@@ -341,6 +341,12 @@ typedef struct efx_virtio_ops_s {
 
 typedef uint32_t efx_np_handle_t;
 
+typedef struct efx_np_stat_s {
+	uint32_t	ens_hw_id;
+	uint16_t	ens_dma_fld;
+	boolean_t	ens_valid;
+} efx_np_stat_t;
+
 typedef struct efx_port_s {
 	efx_mac_type_t		ep_mac_type;
 	uint32_t		ep_phy_type;
@@ -388,6 +394,8 @@ typedef struct efx_port_s {
 	efx_np_handle_t		ep_np_handle;
 	efx_qword_t		ep_np_loopback_cap_mask;
 	uint8_t			ep_np_cap_data_raw[MC_CMD_ETH_AN_FIELDS_LEN];
+	/* Lookup table providing DMA buffer field IDs by EFX statistic IDs. */
+	efx_np_stat_t		ep_np_mac_stat_lut[EFX_MAC_NSTATS];
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
