@@ -1880,6 +1880,21 @@ struct efx_virtio_vq_s {
 
 #endif /* EFSYS_OPT_VIRTIO */
 
+LIBEFX_INTERNAL
+extern			boolean_t
+efx_np_supported(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_attach(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern		void
+efx_np_detach(
+	__in	efx_nic_t *enp);
+
 #ifdef	__cplusplus
 }
 #endif

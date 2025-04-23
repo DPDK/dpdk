@@ -20,6 +20,7 @@ base_sources = files(
         'efx_mcdi.c',
         'efx_mon.c',
         'efx_nic.c',
+        'efx_np.c',
         'efx_nvram.c',
         'efx_pci.c',
         'efx_phy.c',

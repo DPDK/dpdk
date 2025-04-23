@@ -2220,6 +2220,9 @@ efx_mcdi_nic_board_cfg(
 
 	encp->enc_board_type = board_type;
 
+	if (efx_np_supported(enp) != B_FALSE)
+		goto skip_phy_props;
+
 	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
 	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
 		goto fail8;
@@ -2245,6 +2248,7 @@ efx_mcdi_nic_board_cfg(
 	epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
 	epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
 
+skip_phy_props:
 	/* Check capabilities of running datapath firmware */
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
 		goto fail10;
@@ -2498,6 +2502,10 @@ ef10_nic_probe(
 	if ((rc = ef10_nic_board_cfg(enp)) != 0)
 		goto fail4;
 
+	rc = efx_np_attach(enp);
+	if (rc != 0)
+		goto fail5;
+
 	/*
 	 * Set default driver config limits (based on board config).
 	 *
@@ -2515,36 +2523,41 @@ ef10_nic_probe(
 #if EFSYS_OPT_MAC_STATS
 	/* Wipe the MAC statistics */
 	if ((rc = efx_mcdi_mac_stats_clear(enp)) != 0)
-		goto fail5;
+		goto fail6;
 #endif
 
 #if EFSYS_OPT_LOOPBACK
-	if ((rc = efx_mcdi_get_loopback_modes(enp)) != 0)
-		goto fail6;
+	if (efx_np_supported(enp) == B_FALSE) {
+		rc = efx_mcdi_get_loopback_modes(enp);
+		if (rc != 0)
+			goto fail7;
+	}
 #endif
 
 #if EFSYS_OPT_MON_STATS
 	if ((rc = mcdi_mon_cfg_build(enp)) != 0) {
 		/* Unprivileged functions do not have access to sensors */
 		if (rc != EACCES)
-			goto fail7;
+			goto fail8;
 	}
 #endif
 
 	return (0);
 
 #if EFSYS_OPT_MON_STATS
+fail8:
+	EFSYS_PROBE(fail8);
+#endif
+#if EFSYS_OPT_LOOPBACK
 fail7:
 	EFSYS_PROBE(fail7);
 #endif
-#if EFSYS_OPT_LOOPBACK
+#if EFSYS_OPT_MAC_STATS
 fail6:
 	EFSYS_PROBE(fail6);
 #endif
-#if EFSYS_OPT_MAC_STATS
 fail5:
 	EFSYS_PROBE(fail5);
-#endif
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -3004,6 +3017,9 @@ ef10_nic_unprobe(
 #if EFSYS_OPT_MON_STATS
 	mcdi_mon_cfg_free(enp);
 #endif /* EFSYS_OPT_MON_STATS */
+
+	efx_np_detach(enp);
+
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 
