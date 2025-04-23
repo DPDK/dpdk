@@ -494,6 +494,11 @@ efx_nic_probe(
 	encp->enc_mac_pdu_max = efx_mac_pdu_from_sdu(enp, EFX_MAC_SDU_MAX);
 	encp->enc_mac_pdu_min = EFX_MAC_PDU_MIN;
 
+	if (efx_np_supported(enp) == B_FALSE)
+		encp->enc_link_ev_need_poll = B_FALSE;
+	else
+		encp->enc_link_ev_need_poll = B_TRUE;
+
 	if ((rc = efx_phy_probe(enp)) != 0)
 		goto fail2;
 

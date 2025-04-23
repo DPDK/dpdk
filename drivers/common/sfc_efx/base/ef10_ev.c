@@ -866,6 +866,7 @@ ef10_ev_mcdi(
 	__in_opt	void *arg)
 {
 	efx_nic_t *enp = eep->ee_enp;
+	efx_port_t *epp = &(enp->en_port);
 	unsigned int code;
 	boolean_t should_abort = B_FALSE;
 	boolean_t ev_is_v2 = B_FALSE;
@@ -905,6 +906,34 @@ ef10_ev_mcdi(
 			MCDI_EV_FIELD(eqp, PROXY_REQUEST_BUFF_INDEX));
 		break;
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
+
+	case MCDI_EVENT_CODE_PORT_LINKCHANGE:
+		/*
+		 * These events are generated on netport MCDI capable
+		 * boards. They supersede legacy LINKCHANGE_V2 events.
+		 */
+		if (MCDI_EV_FIELD(eqp, PORT_LINKCHANGE_PORT_HANDLE) ==
+		    epp->ep_np_handle) {
+			efx_link_mode_t mode;
+
+			if (MCDI_EV_FIELD(eqp, PORT_LINKCHANGE_LINK_UP) == 1)
+				mode = EFX_LINK_UNKNOWN;
+			else
+				mode = EFX_LINK_DOWN;
+
+			/*
+			 * The event does not contain full link state details.
+			 *
+			 * Either notify the client driver with a dummy link
+			 * mode value (UNKNOWN), just to say the link is up,
+			 * or, in case the link is not up, pass DOWN value.
+			 *
+			 * The client driver will need to poll for link state
+			 * in order to get full details like speed and duplex.
+			 */
+			should_abort = eecp->eec_link_change(arg, mode);
+		}
+		break;
 
 	case MCDI_EVENT_CODE_LINKCHANGE_V2:
 		if (efx_np_supported(enp) != B_FALSE) {
