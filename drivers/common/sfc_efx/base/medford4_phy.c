@@ -43,6 +43,7 @@ medford4_phy_get_link(
 
 	elsp->epls.epls_adv_cap_mask = ls.enls_adv_cap_mask;
 	elsp->epls.epls_lp_cap_mask = ls.enls_lp_cap_mask;
+	elsp->epls.epls_lane_count = ls.enls_lane_count;
 	elsp->els_loopback = ls.enls_loopback;
 
 	rc = efx_np_mac_state(enp, nph, &ms);
@@ -115,8 +116,8 @@ medford4_phy_reconfigure(
 #endif /* EFSYS_OPT_LOOPBACK */
 
 	rc = efx_np_link_ctrl(enp, epp->ep_np_handle, epp->ep_np_cap_data_raw,
-		    loopback_link_mode, loopback, epp->ep_adv_cap_mask,
-		    epp->ep_fcntl_autoneg);
+		    loopback_link_mode, loopback, epp->ep_np_lane_count_req,
+		    epp->ep_adv_cap_mask, epp->ep_fcntl_autoneg);
 	if (rc != 0)
 		goto fail2;
 

@@ -338,6 +338,8 @@ ef10_phy_get_link(
 			    fec, &elsp->epls.epls_link_mode,
 			    &elsp->epls.epls_fcntl, &elsp->epls.epls_fec);
 
+	elsp->epls.epls_lane_count = EFX_PHY_LANE_COUNT_DEFAULT;
+
 	if (req.emr_out_length_used < MC_CMD_GET_LINK_OUT_V2_LEN) {
 		elsp->epls.epls_ld_cap_mask = 0;
 	} else {
