@@ -335,6 +335,8 @@ typedef struct efx_virtio_ops_s {
 } efx_virtio_ops_t;
 #endif /* EFSYS_OPT_VIRTIO */
 
+typedef uint32_t efx_np_handle_t;
+
 typedef struct efx_port_s {
 	efx_mac_type_t		ep_mac_type;
 	uint32_t		ep_phy_type;
@@ -378,6 +380,8 @@ typedef struct efx_port_s {
 #endif
 	const efx_mac_ops_t	*ep_emop;
 	const efx_phy_ops_t	*ep_epop;
+
+	efx_np_handle_t		ep_np_handle;
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
