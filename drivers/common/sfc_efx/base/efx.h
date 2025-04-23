@@ -1266,6 +1266,28 @@ efx_phy_lp_cap_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *maskp);
 
+typedef enum efx_phy_lane_count_e {
+	EFX_PHY_LANE_COUNT_DEFAULT = 0,
+	EFX_PHY_LANE_COUNT_1 = 1,
+	EFX_PHY_LANE_COUNT_2 = 2,
+	EFX_PHY_LANE_COUNT_4 = 4,
+	EFX_PHY_LANE_COUNT_10 = 10,
+	EFX_PHY_LANE_COUNT_NTYPES,
+} efx_phy_lane_count_t;
+
+/*
+ * Instruct the port to use the specified lane count. For this to work, the
+ * active subset of advertised link modes must include at least one mode that
+ * supports this value. This API works only on netport MCDI capable adaptors.
+ *
+ * To query the current lane count, use efx_phy_link_state_get().
+ */
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_phy_lane_count_set(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_lane_count_t lane_count);
+
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
 efx_phy_oui_get(
@@ -1760,6 +1782,12 @@ typedef struct efx_nic_cfg_s {
 	 * to have exact speed/duplex, efx_port_poll() needs to be invoked.
 	 */
 	boolean_t		enc_link_ev_need_poll;
+	/*
+	 * An array of masks to tell which link mode supports which lane counts.
+	 * For bit definitions, see 'efx_phy_lane_count_t'. It is only filled in
+	 * on netport MCDI capable adaptors.
+	 */
+	efx_dword_t		enc_phy_lane_counts[EFX_LINK_NMODES];
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff
@@ -4072,6 +4100,7 @@ typedef struct efx_phy_link_state_s {
 	unsigned int		epls_fcntl;
 	efx_phy_fec_type_t	epls_fec;
 	efx_link_mode_t		epls_link_mode;
+	efx_phy_lane_count_t	epls_lane_count;
 } efx_phy_link_state_t;
 
 LIBEFX_API

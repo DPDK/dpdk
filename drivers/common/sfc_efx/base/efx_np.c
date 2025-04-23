@@ -86,6 +86,7 @@ struct efx_np_cap_map {
 	uint16_t	encm_sw;
 };
 
+/* NOTE: keep this in sync with 'efx_np_tech_to_lane_count'. */
 static const struct efx_np_cap_map efx_np_cap_map_tech[] = {
 	/* 1G */
 	{ MC_CMD_ETH_TECH_1000BASEKX, EFX_PHY_CAP_1000FDX },
@@ -292,6 +293,71 @@ fail1:
 	return (rc);
 }
 
+static efx_phy_lane_count_t efx_np_tech_to_lane_count[] = {
+	/* 1G */
+	[MC_CMD_ETH_TECH_1000BASEKX] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_1000BASEX] = EFX_PHY_LANE_COUNT_1,
+
+	/* 10G */
+	[MC_CMD_ETH_TECH_10GBASE_KR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_10GBASE_CR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_10GBASE_SR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_10GBASE_LR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_10GBASE_LRM] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_10GBASE_ER] = EFX_PHY_LANE_COUNT_1,
+
+	/* 25GBASE */
+	[MC_CMD_ETH_TECH_25GBASE_CR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_25GBASE_KR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_25GBASE_SR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_25GBASE_LR_ER] = EFX_PHY_LANE_COUNT_1,
+
+	/* 40G */
+	[MC_CMD_ETH_TECH_40GBASE_KR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_40GBASE_CR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_40GBASE_SR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_40GBASE_LR4] = EFX_PHY_LANE_COUNT_4,
+
+	/* 50G */
+	[MC_CMD_ETH_TECH_50GBASE_CR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_50GBASE_KR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_50GBASE_SR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_50GBASE_KR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_50GBASE_SR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_50GBASE_CR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_50GBASE_LR_ER_FR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_50GBASE_DR] = EFX_PHY_LANE_COUNT_1,
+
+	/* 100G */
+	[MC_CMD_ETH_TECH_100GBASE_KR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_100GBASE_SR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_100GBASE_CR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_100GBASE_LR4_ER4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_100GBASE_KR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_100GBASE_SR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_100GBASE_CR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_100GBASE_LR2_ER2_FR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_100GBASE_DR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_100GBASE_KR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_100GBASE_SR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_100GBASE_LR_ER_FR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_100GBASE_CR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_100GBASE_DR] = EFX_PHY_LANE_COUNT_1,
+	[MC_CMD_ETH_TECH_100GBASE_CR10] = EFX_PHY_LANE_COUNT_10,
+
+	/* 200G */
+	[MC_CMD_ETH_TECH_200GBASE_KR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_200GBASE_SR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_200GBASE_LR4_ER4_FR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_200GBASE_DR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_200GBASE_CR4] = EFX_PHY_LANE_COUNT_4,
+	[MC_CMD_ETH_TECH_200GBASE_KR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_200GBASE_SR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_200GBASE_LR2_ER2_FR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_200GBASE_DR2] = EFX_PHY_LANE_COUNT_2,
+	[MC_CMD_ETH_TECH_200GBASE_CR2] = EFX_PHY_LANE_COUNT_2,
+};
+
 	__checkReturn	efx_rc_t
 efx_np_link_state(
 	__in		efx_nic_t *enp,
@@ -304,6 +370,7 @@ efx_np_link_state(
 	uint32_t status_flags;
 	efx_mcdi_req_t req;
 	uint32_t v3_flags;
+	uint16_t tech;
 	efx_rc_t rc;
 
 	req.emr_out_length = MC_CMD_LINK_STATE_OUT_V3_LEN;
@@ -377,6 +444,13 @@ efx_np_link_state(
 	    MCDI_OUT2(req, const uint8_t,
 		    LINK_STATE_OUT_LINK_PARTNER_ABILITIES),
 	    &lsp->enls_lp_cap_mask);
+
+	tech = MCDI_OUT_WORD(req, LINK_STATE_OUT_LINK_TECHNOLOGY);
+
+	if (tech < EFX_ARRAY_SIZE(efx_np_tech_to_lane_count))
+		lsp->enls_lane_count = efx_np_tech_to_lane_count[tech];
+	else
+		lsp->enls_lane_count = EFX_PHY_LANE_COUNT_DEFAULT;
 
 	return (0);
 
@@ -525,6 +599,53 @@ efx_np_assign_loopback_props(
 	}
 }
 #endif /* EFSYS_OPT_LOOPBACK */
+
+static				void
+efx_np_assign_lane_counts(
+	__in			efx_nic_t *enp)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_port_t *epp = &(enp->en_port);
+	unsigned int i;
+
+	for (i = 0; i < EFX_ARRAY_SIZE(encp->enc_phy_lane_counts); ++i) {
+		const struct efx_np_cap_map *map = efx_np_cap_map_tech;
+		uint16_t cap_enum_sw;
+		efx_dword_t dword;
+		efx_rc_t rc;
+
+		EFX_ZERO_DWORD(dword);
+
+		rc = efx_np_sw_link_mode_to_cap(i, &cap_enum_sw);
+		if (rc != 0) {
+			/* No support for this link mode => no lane counts. */
+			encp->enc_phy_lane_counts[i] = dword;
+			continue;
+		}
+
+		FOREACH_SUP_CAP(map,
+		    EFX_ARRAY_SIZE(efx_np_cap_map_tech),
+		    MCDI_STRUCT_MEMBER(epp->ep_np_cap_data_raw, const uint8_t,
+			    MC_CMD_ETH_AN_FIELDS_TECH_MASK),
+		    MC_CMD_ETH_AN_FIELDS_TECH_MASK_LEN) {
+			efx_phy_lane_count_t lane_count;
+
+			if (map->encm_sw != cap_enum_sw)
+				continue;
+
+			if (map->encm_hw >=
+			    EFX_ARRAY_SIZE(efx_np_tech_to_lane_count))
+				continue;
+
+			lane_count = efx_np_tech_to_lane_count[map->encm_hw];
+
+			if (lane_count != EFX_PHY_LANE_COUNT_DEFAULT)
+				EFX_SET_DWORD_BIT(dword, lane_count);
+		}
+
+		encp->enc_phy_lane_counts[i] = dword;
+	}
+}
 
 #if EFSYS_OPT_MAC_STATS
 /* HW statistic IDs, as per MC_CMD_MAC_STATISTICS_DESCRIPTOR format. */
@@ -889,6 +1010,8 @@ efx_np_attach(
 	efx_np_assign_loopback_props(enp);
 #endif /* EFSYS_OPT_LOOPBACK */
 
+	efx_np_assign_lane_counts(enp);
+
 #if EFSYS_OPT_MAC_STATS
 	rc = efx_np_stats_assign(enp);
 	if (rc != 0)
@@ -993,6 +1116,13 @@ fail1:
 	return (rc);
 }
 
+/* Filter callback for capability lookups. Return 'B_FALSE' to skip the enum. */
+typedef			boolean_t
+(efx_np_cap_filter_cb)(
+	__in		uint16_t enum_hw,
+	__in		void *arg);
+
+
 static					void
 efx_np_cap_mask_sw_to_hw(
 	__in_ecount(hw_sw_map_nentries)	const struct efx_np_cap_map *hw_sw_map,
@@ -1000,6 +1130,8 @@ efx_np_cap_mask_sw_to_hw(
 	__in_bcount(hw_cap_data_nbytes)	const uint8_t *hw_cap_data,
 	__in				size_t hw_cap_data_nbytes,
 	__in				uint32_t mask_sw,
+	__in_opt			efx_np_cap_filter_cb *filter_cb,
+	__in_opt			void *filter_arg,
 	__out				uint8_t *mask_hwp)
 {
 	FOREACH_SUP_CAP(hw_sw_map, hw_sw_map_nentries,
@@ -1007,6 +1139,10 @@ efx_np_cap_mask_sw_to_hw(
 		uint32_t flag_sw = 1U << hw_sw_map->encm_sw;
 
 		if ((mask_sw & flag_sw) != flag_sw)
+			continue;
+
+		if (filter_cb != NULL &&
+		    filter_cb(hw_sw_map->encm_hw, filter_arg) == B_FALSE)
 			continue;
 
 		mask_hwp[CAP_BYTE(hw_sw_map)] |= CAP_FLAG(hw_sw_map);
@@ -1024,16 +1160,18 @@ efx_np_cap_mask_sw_to_hw(
  *
  * Do not check the input mask for leftover bits (unknown to EFX), as
  * inputs should have been validated by efx_phy_adv_cap_set() already.
+ *
+ * It is possible to use a callback to filter out certain mappings.
  */
 #define	EFX_NP_CAP_MASK_SW_TO_HW(					\
 	    _hw_sw_cap_map, _hw_cap_section, _hw_cap_data,		\
-	    _mask_sw, _mask_hwp)					\
+	    _mask_sw, _filter_cb, _filter_arg, _mask_hwp)		\
 	efx_np_cap_mask_sw_to_hw((_hw_sw_cap_map),			\
 	    EFX_ARRAY_SIZE(_hw_sw_cap_map),				\
 	    MCDI_STRUCT_MEMBER((_hw_cap_data), const uint8_t,		\
 		    MC_CMD_##_hw_cap_section),				\
-	    MC_CMD_##_hw_cap_section##_LEN,				\
-	    (_mask_sw), (_mask_hwp))
+	    MC_CMD_##_hw_cap_section##_LEN, (_mask_sw),			\
+	    (_filter_cb), (_filter_arg), (_mask_hwp))
 
 static					void
 efx_np_cap_sw_mask_to_hw_enum(
@@ -1042,6 +1180,8 @@ efx_np_cap_sw_mask_to_hw_enum(
 	__in_bcount(hw_cap_data_nbytes)	const uint8_t *hw_cap_data,
 	__in				size_t hw_cap_data_nbytes,
 	__in				uint32_t mask_sw,
+	__in_opt			efx_np_cap_filter_cb *filter_cb,
+	__in_opt			void *filter_arg,
 	__out				boolean_t *supportedp,
 	__out_opt			uint16_t *enum_hwp)
 {
@@ -1067,10 +1207,14 @@ efx_np_cap_sw_mask_to_hw_enum(
 			sw_check_mask |= flag_sw;
 
 			if ((hw_cap_data[byte_idx] & flag_hw) == flag_hw) {
-				mask_sw &= ~(flag_sw);
+				if (filter_cb == NULL ||
+				    filter_cb(hw_sw_map->encm_hw, filter_arg) !=
+				    B_FALSE) {
+					mask_sw &= ~(flag_sw);
 
-				if (enum_hwp != NULL)
-					*enum_hwp = hw_sw_map->encm_hw;
+					if (enum_hwp != NULL)
+						*enum_hwp = hw_sw_map->encm_hw;
+				}
 			}
 		}
 
@@ -1090,16 +1234,38 @@ efx_np_cap_sw_mask_to_hw_enum(
  * Convert (conceivably) the only EFX capability bit of the given mask to
  * the HW enum value, provided that the capability is supported by the HW,
  * where the latter follows from the given fraction of HW capability data.
+ *
+ * It is possible to use a callback to filter out certain mappings.
  */
 #define	EFX_NP_CAP_SW_MASK_TO_HW_ENUM(					\
 	    _hw_sw_cap_map, _hw_cap_section, _hw_cap_data,		\
-	    _mask_sw, _supportedp, _enum_hwp)				\
+	    _mask_sw, _filter_cb, _filter_arg, _supportedp, _enum_hwp)	\
 	efx_np_cap_sw_mask_to_hw_enum((_hw_sw_cap_map),			\
 	    EFX_ARRAY_SIZE(_hw_sw_cap_map),				\
 	    MCDI_STRUCT_MEMBER((_hw_cap_data), const uint8_t,		\
 		    MC_CMD_##_hw_cap_section),				\
 	    MC_CMD_##_hw_cap_section##_LEN, (_mask_sw),			\
+	    (_filter_cb), (_filter_arg),				\
 	    (_supportedp), (_enum_hwp))
+
+static					boolean_t
+efx_np_filter_tech_by_lane_count_cb(
+	__in				uint16_t enum_hw,
+	__in				void *arg)
+{
+	efx_phy_lane_count_t lane_count = *((efx_phy_lane_count_t *)arg);
+
+	if (lane_count == EFX_PHY_LANE_COUNT_DEFAULT)
+		return B_TRUE;
+
+	if (enum_hw >= EFX_ARRAY_SIZE(efx_np_tech_to_lane_count))
+		return B_FALSE;
+
+	if (efx_np_tech_to_lane_count[enum_hw] != lane_count)
+		return B_FALSE;
+
+	return B_TRUE;
+}
 
 	__checkReturn	efx_rc_t
 efx_np_link_ctrl(
@@ -1108,6 +1274,7 @@ efx_np_link_ctrl(
 	__in		const uint8_t *cap_data_raw,
 	__in		efx_link_mode_t loopback_link_mode,
 	__in		efx_loopback_type_t loopback_mode,
+	__in		efx_phy_lane_count_t lane_count,
 	__in		uint32_t cap_mask_sw,
 	__in		boolean_t fcntl_an)
 {
@@ -1176,12 +1343,13 @@ efx_np_link_ctrl(
 	} else if (cap_mask_sw & (1U << EFX_PHY_CAP_AN)) {
 		EFX_NP_CAP_MASK_SW_TO_HW(efx_np_cap_map_tech,
 		    ETH_AN_FIELDS_TECH_MASK, cap_data_raw, cap_mask_sw,
+		    efx_np_filter_tech_by_lane_count_cb, &lane_count,
 		    cap_mask_hw_techp);
 
 		if (fcntl_an != B_FALSE) {
 			EFX_NP_CAP_MASK_SW_TO_HW(efx_np_cap_map_pause,
 			    ETH_AN_FIELDS_PAUSE_MASK, cap_data_raw, cap_mask_sw,
-			    cap_mask_hw_pausep);
+			    NULL, NULL, cap_mask_hw_pausep);
 		}
 
 		flags |= 1U << MC_CMD_LINK_FLAGS_AUTONEG_EN;
@@ -1189,6 +1357,7 @@ efx_np_link_ctrl(
 	} else {
 		EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_tech,
 		    ETH_AN_FIELDS_TECH_MASK, cap_data_raw, cap_mask_sw,
+		    efx_np_filter_tech_by_lane_count_cb, &lane_count,
 		    &supported, &link_tech);
 
 		if (supported == B_FALSE) {
@@ -1209,7 +1378,7 @@ efx_np_link_ctrl(
 	 */
 	EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_fec_req,
 	    ETH_AN_FIELDS_FEC_REQ, cap_data_raw, cap_mask_sw,
-	    &supported, &cap_enum_hw);
+	    NULL, NULL, &supported, &cap_enum_hw);
 
 	if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) != 0 && supported == B_FALSE) {
 		rc = ENOTSUP;

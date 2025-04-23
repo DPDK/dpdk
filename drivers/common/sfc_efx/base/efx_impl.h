@@ -396,6 +396,8 @@ typedef struct efx_port_s {
 	uint8_t			ep_np_cap_data_raw[MC_CMD_ETH_AN_FIELDS_LEN];
 	/* Lookup table providing DMA buffer field IDs by EFX statistic IDs. */
 	efx_np_stat_t		ep_np_mac_stat_lut[EFX_MAC_NSTATS];
+	/* Client-requested lane count for the physical link. */
+	efx_phy_lane_count_t	ep_np_lane_count_req;
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
@@ -1916,6 +1918,7 @@ efx_np_detach(
 typedef struct efx_np_link_state_s {
 	uint32_t		enls_adv_cap_mask;
 	uint32_t		enls_lp_cap_mask;
+	efx_phy_lane_count_t	enls_lane_count;
 	efx_loopback_type_t	enls_loopback;
 	uint32_t		enls_speed;
 	uint8_t			enls_fec;
@@ -1953,6 +1956,7 @@ efx_np_link_ctrl(
 	__in		const uint8_t *cap_mask_sup_raw,
 	__in		efx_link_mode_t loopback_link_mode,
 	__in		efx_loopback_type_t loopback_mode,
+	__in		efx_phy_lane_count_t lane_count,
 	__in		uint32_t cap_mask_sw,
 	__in		boolean_t fcntl_an);
 

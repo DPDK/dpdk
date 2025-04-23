@@ -262,6 +262,12 @@ efx_phy_adv_cap_set(
 		goto fail1;
 	}
 
+	if (efx_np_supported(enp) == B_FALSE &&
+	    epp->ep_np_lane_count_req != EFX_PHY_LANE_COUNT_DEFAULT) {
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
 	if (epp->ep_adv_cap_mask == mask)
 		goto done;
 
@@ -269,13 +275,13 @@ efx_phy_adv_cap_set(
 	epp->ep_adv_cap_mask = mask;
 
 	if ((rc = epop->epo_reconfigure(enp)) != 0)
-		goto fail2;
+		goto fail3;
 
 done:
 	return (0);
 
-fail2:
-	EFSYS_PROBE(fail2);
+fail3:
+	EFSYS_PROBE(fail3);
 
 	epp->ep_adv_cap_mask = old_mask;
 	/* Reconfigure for robustness */
@@ -286,6 +292,9 @@ fail2:
 		 */
 		EFSYS_ASSERT(0);
 	}
+
+fail2:
+	EFSYS_PROBE(fail2);
 
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
@@ -304,6 +313,53 @@ efx_phy_lp_cap_get(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
 
 	*maskp = epp->ep_lp_cap_mask;
+}
+
+	__checkReturn	efx_rc_t
+efx_phy_lane_count_set(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_lane_count_t lane_count)
+{
+	efx_port_t *epp = &(enp->en_port);
+	const efx_phy_ops_t *epop = epp->ep_epop;
+	efx_phy_lane_count_t lane_count_prev = epp->ep_np_lane_count_req;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
+
+	if (lane_count == lane_count_prev)
+		return 0;
+
+	if (efx_np_supported(enp) == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (lane_count >= EFX_PHY_LANE_COUNT_NTYPES) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	epp->ep_np_lane_count_req = lane_count;
+
+	rc = epop->epo_reconfigure(enp);
+	if (rc != 0) {
+		epp->ep_np_lane_count_req = lane_count_prev;
+		goto fail3;
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
 }
 
 	__checkReturn	efx_rc_t
