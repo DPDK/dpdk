@@ -114,6 +114,12 @@ efx_phy_probe(
 		break;
 #endif	/* EFSYS_OPT_MEDFORD2 */
 
+#if EFSYS_OPT_MEDFORD4
+	case EFX_FAMILY_MEDFORD4:
+		epop = &__efx_phy_ef10_ops;
+	break;
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 	default:
 		rc = ENOTSUP;
 		goto fail1;

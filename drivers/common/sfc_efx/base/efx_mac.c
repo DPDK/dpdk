@@ -953,6 +953,13 @@ efx_mac_select(
 		break;
 #endif /* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+	case EFX_FAMILY_MEDFORD4:
+		emop = &__efx_mac_ef10_ops;
+		type = EFX_MAC_MEDFORD4;
+		break;
+#endif /* EFSYS_OPT_MEDFORD4 */
+
 	default:
 		rc = EINVAL;
 		goto fail1;

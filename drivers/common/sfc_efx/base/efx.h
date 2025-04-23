@@ -64,6 +64,7 @@ typedef enum efx_family_e {
 	EFX_FAMILY_MEDFORD,
 	EFX_FAMILY_MEDFORD2,
 	EFX_FAMILY_RIVERHEAD,
+	EFX_FAMILY_MEDFORD4,
 	EFX_FAMILY_NTYPES
 } efx_family_t;
 
@@ -172,6 +173,16 @@ efx_family_probe_bar(
 #define	EFX_PCI_DEVID_RIVERHEAD			0x0100
 #define	EFX_PCI_DEVID_RIVERHEAD_VF		0x1100
 
+/*
+ * Medford4 has low latency (LL) and full feature (FF) datapath engines.
+ * Some Medford4 functions have FF and LL datapath, others only have FF.
+ */
+#define	EFX_PCI_DEVID_MEDFORD4_PF_UNINIT	0x0C13
+#define	EFX_PCI_DEVID_MEDFORD4			0x0C03	/* X4 PF, FF+LL */
+#define	EFX_PCI_DEVID_MEDFORD4_VF		0x1C03	/* X4 VF, FF+LL */
+#define	EFX_PCI_DEVID_MEDFORD4_NO_LL		0x2C03	/* X4 PF, FF only */
+#define	EFX_PCI_DEVID_MEDFORD4_NO_LL_VF		0x3C03	/* X4 VF, FF only */
+
 #define	EFX_MEM_BAR_SIENA			2
 
 #define	EFX_MEM_BAR_HUNTINGTON_PF		2
@@ -185,6 +196,7 @@ efx_family_probe_bar(
 /* FIXME Fix it when memory bar is fixed in FPGA image. It must be 0. */
 #define	EFX_MEM_BAR_RIVERHEAD			2
 
+#define	EFX_MEM_BAR_MEDFORD4			2
 
 /* Error codes */
 

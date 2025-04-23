@@ -79,6 +79,7 @@ typedef enum efx_mac_type_e {
 	EFX_MAC_MEDFORD,
 	EFX_MAC_MEDFORD2,
 	EFX_MAC_RIVERHEAD,
+	EFX_MAC_MEDFORD4,
 	EFX_MAC_NTYPES
 } efx_mac_type_t;
 
@@ -972,7 +973,8 @@ struct efx_nic_s {
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \
-	((_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
+	((_enp)->en_family == EFX_FAMILY_MEDFORD4 || \
+	 (_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
 	 (_enp)->en_family == EFX_FAMILY_MEDFORD || \
 	 (_enp)->en_family == EFX_FAMILY_HUNTINGTON)
 
@@ -1126,6 +1128,10 @@ struct efx_txq_s {
 									\
 		case EFX_FAMILY_RIVERHEAD:				\
 			rev = 'G';					\
+			break;						\
+									\
+		case EFX_FAMILY_MEDFORD4:				\
+			rev = 'H';					\
 			break;						\
 									\
 		default:						\
