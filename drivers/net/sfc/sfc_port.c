@@ -187,6 +187,7 @@ sfc_port_fill_mac_stats_info(struct sfc_adapter *sa)
 int
 sfc_port_start(struct sfc_adapter *sa)
 {
+	efx_phy_link_state_t link_state = {0};
 	struct sfc_port *port = &sa->port;
 	int rc;
 	uint32_t phy_adv_cap;
@@ -242,6 +243,20 @@ sfc_port_start(struct sfc_adapter *sa)
 	rc = efx_phy_adv_cap_set(sa->nic, phy_adv_cap);
 	if (rc != 0)
 		goto fail_phy_adv_cap_set;
+
+	sfc_log_init(sa, "set phy lane count -- %s",
+		     (port->phy_lane_count_req == EFX_PHY_LANE_COUNT_DEFAULT) ?
+		     "let EFX pick default value" : "use custom value");
+	rc = efx_phy_lane_count_set(sa->nic, port->phy_lane_count_req);
+	if (rc != 0)
+		goto fail_phy_lane_count_set;
+
+	sfc_log_init(sa, "get phy lane count");
+	rc = efx_phy_link_state_get(sa->nic, &link_state);
+	if (rc != 0)
+		goto fail_phy_lane_count_get;
+
+	port->phy_lane_count_active = link_state.epls_lane_count;
 
 	sfc_log_init(sa, "set MAC PDU %u", (unsigned int)port->pdu);
 	rc = efx_mac_pdu_set(sa->nic, port->pdu);
@@ -350,6 +365,8 @@ fail_mcast_address_list_set:
 fail_mac_filter_set:
 fail_mac_addr_set:
 fail_mac_pdu_set:
+fail_phy_lane_count_get:
+fail_phy_lane_count_set:
 fail_phy_adv_cap_set:
 fail_mac_fcntl_set:
 fail_mac_vlan_strip_set:
@@ -426,6 +443,8 @@ sfc_port_attach(struct sfc_adapter *sa)
 	int rc;
 
 	sfc_log_init(sa, "entry");
+
+	port->phy_lane_count_req = EFX_PHY_LANE_COUNT_DEFAULT;
 
 	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_PERM, &port->phy_adv_cap_mask);
 

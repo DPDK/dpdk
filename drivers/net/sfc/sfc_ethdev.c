@@ -292,6 +292,150 @@ sfc_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 }
 
 static int
+sfc_dev_speed_lanes_get(struct rte_eth_dev *dev, uint32_t *lane_countp)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct sfc_port *port;
+	int rc = 0;
+
+	if (lane_countp == NULL)
+		return -EINVAL;
+
+	sfc_adapter_lock(sa);
+	port = &sa->port;
+
+	if (sa->state != SFC_ETHDEV_STARTED) {
+		/* The API wants 'active' lanes, so it is safe to indicate 0. */
+		*lane_countp = 0;
+		goto unlock;
+	}
+
+	if (port->phy_lane_count_active == EFX_PHY_LANE_COUNT_DEFAULT) {
+		rc = ENOTSUP;
+		goto unlock;
+	}
+
+	*lane_countp = port->phy_lane_count_active;
+
+unlock:
+	sfc_adapter_unlock(sa);
+	return -rc;
+}
+
+static int
+sfc_dev_speed_lanes_set(struct rte_eth_dev *dev, uint32_t lane_count)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	int rc = 0;
+
+	sfc_adapter_lock(sa);
+
+	if (sa->state == SFC_ETHDEV_STARTED) {
+		rc = EBUSY;
+		goto unlock;
+	}
+
+	if (lane_count == 0) {
+		rc = EINVAL;
+		goto unlock;
+	}
+
+	sa->port.phy_lane_count_req = lane_count;
+
+unlock:
+	sfc_adapter_unlock(sa);
+	return -rc;
+}
+
+static int
+sfc_dev_speed_lane_cap_handle(const efx_nic_cfg_t *encp,
+			      efx_link_mode_t link_mode,
+			      unsigned int *nb_caps_to_fillp,
+			      struct rte_eth_speed_lanes_capa **capp)
+{
+	uint32_t lane_counts = encp->enc_phy_lane_counts[link_mode].ed_u32[0];
+	struct rte_eth_speed_lanes_capa *cap = *capp;
+	uint32_t speed;
+
+	if (lane_counts == 0) {
+		/*
+		 * The mask of supported lane counts for this link mode is
+		 * empty. Do not waste output entries for such link modes.
+		 */
+		return 0;
+	}
+
+	switch (link_mode) {
+	case EFX_LINK_1000FDX:
+		speed = RTE_ETH_SPEED_NUM_1G;
+		break;
+	case EFX_LINK_10000FDX:
+		speed = RTE_ETH_SPEED_NUM_10G;
+		break;
+	case EFX_LINK_25000FDX:
+		speed = RTE_ETH_SPEED_NUM_25G;
+		break;
+	case EFX_LINK_40000FDX:
+		speed = RTE_ETH_SPEED_NUM_40G;
+		break;
+	case EFX_LINK_50000FDX:
+		speed = RTE_ETH_SPEED_NUM_50G;
+		break;
+	case EFX_LINK_100000FDX:
+		speed = RTE_ETH_SPEED_NUM_100G;
+		break;
+	case EFX_LINK_200000FDX:
+		speed = RTE_ETH_SPEED_NUM_200G;
+		break;
+	default:
+		/* No lane counts for this link mode. */
+		return 0;
+	}
+
+	if (*nb_caps_to_fillp == 0) {
+		if (cap == NULL) {
+			/* Dry run. Indicate that an entry is available. */
+			return 1;
+		}
+
+		/* We have run out of space in the user output buffer. */
+		return 0;
+	}
+
+	cap->capa = lane_counts;
+	cap->speed = speed;
+
+	--(*nb_caps_to_fillp);
+	++(*capp);
+	return 1;
+}
+
+static int
+sfc_dev_speed_lanes_get_capa(struct rte_eth_dev *dev,
+			     struct rte_eth_speed_lanes_capa *caps,
+			     unsigned int nb_caps)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	efx_link_mode_t i;
+	int ret = 0;
+
+	sfc_adapter_lock(sa);
+
+	if (sa->state < SFC_ETHDEV_INITIALIZED) {
+		ret = -ENODEV;
+		goto unlock;
+	}
+
+	for (i = 0; i < EFX_LINK_NMODES; ++i)
+		ret += sfc_dev_speed_lane_cap_handle(encp, i, &nb_caps, &caps);
+
+unlock:
+	sfc_adapter_unlock(sa);
+	return ret;
+}
+
+static int
 sfc_dev_stop(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
@@ -2759,6 +2903,9 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.allmulticast_enable		= sfc_dev_allmulti_enable,
 	.allmulticast_disable		= sfc_dev_allmulti_disable,
 	.link_update			= sfc_dev_link_update,
+	.speed_lanes_get		= sfc_dev_speed_lanes_get,
+	.speed_lanes_set		= sfc_dev_speed_lanes_set,
+	.speed_lanes_get_capa		= sfc_dev_speed_lanes_get_capa,
 	.stats_get			= sfc_stats_get,
 	.stats_reset			= sfc_stats_reset,
 	.xstats_get			= sfc_xstats_get,
