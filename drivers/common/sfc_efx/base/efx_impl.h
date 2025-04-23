@@ -1899,6 +1899,18 @@ extern		void
 efx_np_detach(
 	__in	efx_nic_t *enp);
 
+typedef struct efx_np_link_state_s {
+	uint32_t		enls_adv_cap_mask;
+	boolean_t		enls_an_supported;
+} efx_np_link_state_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_link_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_link_state_t *lsp);
+
 #ifdef	__cplusplus
 }
 #endif

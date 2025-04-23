@@ -279,11 +279,67 @@ fail1:
 }
 
 	__checkReturn	efx_rc_t
+efx_np_link_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_link_state_t *lsp)
+{
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_LINK_STATE_IN_LEN,
+	    MC_CMD_LINK_STATE_OUT_V3_LEN);
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	req.emr_out_length = MC_CMD_LINK_STATE_OUT_V3_LEN;
+	req.emr_in_length = MC_CMD_LINK_STATE_IN_LEN;
+	req.emr_cmd = MC_CMD_LINK_STATE;
+	req.emr_out_buf = payload;
+	req.emr_in_buf = payload;
+
+	MCDI_IN_SET_DWORD(req, LINK_STATE_IN_PORT_HANDLE, nph);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_LINK_STATE_OUT_V3_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	memset(lsp, 0, sizeof (*lsp));
+
+	if (MCDI_OUT_DWORD(req, LINK_STATE_OUT_V2_LOCAL_AN_SUPPORT) !=
+	    MC_CMD_AN_NONE)
+		lsp->enls_an_supported = B_TRUE;
+
+	if (lsp->enls_an_supported != B_FALSE)
+		lsp->enls_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
+
+	efx_np_cap_hw_data_to_sw_mask(
+	    MCDI_OUT2(req, const uint8_t, LINK_STATE_OUT_ADVERTISED_ABILITIES),
+	    &lsp->enls_adv_cap_mask);
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
 efx_np_attach(
 	__in		efx_nic_t *enp)
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_port_t *epp = &(enp->en_port);
+	efx_np_link_state_t ls;
 	efx_rc_t rc;
 
 	if (efx_np_supported(enp) == B_FALSE)
@@ -315,7 +371,18 @@ efx_np_attach(
 	if (rc != 0)
 		goto fail2;
 
+	rc = efx_np_link_state(enp, epp->ep_np_handle, &ls);
+	if (rc != 0)
+		goto fail3;
+
+	if (ls.enls_an_supported != B_FALSE)
+		epp->ep_phy_cap_mask |= 1U << EFX_PHY_CAP_AN;
+
+	epp->ep_adv_cap_mask = ls.enls_adv_cap_mask;
 	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
 
 fail2:
 	EFSYS_PROBE(fail2);
