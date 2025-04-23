@@ -96,7 +96,7 @@ static const efx_mac_ops_t	__efx_mac_medford4_ops = {
 	ef10_mac_addr_set,			/* emo_addr_set */
 	ef10_mac_pdu_set,			/* emo_pdu_set */
 	ef10_mac_pdu_get,			/* emo_pdu_get */
-	ef10_mac_reconfigure,			/* emo_reconfigure */
+	medford4_mac_reconfigure,		/* emo_reconfigure */
 	ef10_mac_multicast_list_set,		/* emo_multicast_list_set */
 	ef10_mac_filter_default_rxq_set,	/* emo_filter_default_rxq_set */
 	ef10_mac_filter_default_rxq_clear,

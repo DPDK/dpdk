@@ -51,6 +51,11 @@ medford4_mac_up(
 	__in		efx_nic_t *enp,
 	__out		boolean_t *mac_upp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+medford4_mac_reconfigure(
+	__in			efx_nic_t *enp);
+
 #ifdef	__cplusplus
 }
 #endif

@@ -907,3 +907,76 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+	__checkReturn	efx_rc_t
+efx_np_mac_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const efx_np_mac_ctrl_t *mc)
+{
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAC_CTRL_IN_LEN,
+	    MC_CMD_MAC_CTRL_OUT_LEN);
+	efx_mcdi_req_t req;
+	uint32_t flags = 0;
+	uint32_t cfg = 0;
+	uint32_t fcntl;
+	efx_rc_t rc;
+
+	req.emr_out_length = MC_CMD_MAC_CTRL_OUT_LEN;
+	req.emr_in_length = MC_CMD_MAC_CTRL_IN_LEN;
+	req.emr_cmd = MC_CMD_MAC_CTRL;
+	req.emr_out_buf = payload;
+	req.emr_in_buf = payload;
+
+	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_PORT_HANDLE, nph);
+
+	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_INCLUDE_FCS;
+	if (mc->enmc_include_fcs != B_FALSE)
+		flags |= 1U << MC_CMD_MAC_FLAGS_FLAG_INCLUDE_FCS;
+
+	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_FLAGS, flags);
+
+	if (mc->enmc_fcntl_autoneg != B_FALSE) {
+		fcntl = MC_CMD_FCNTL_AUTO;
+	} else {
+		switch (mc->enmc_fcntl) {
+		case 0:
+			fcntl = MC_CMD_FCNTL_OFF;
+			break;
+		case EFX_FCNTL_RESPOND:
+			fcntl = MC_CMD_FCNTL_RESPOND;
+			break;
+		case EFX_FCNTL_GENERATE:
+			fcntl = MC_CMD_FCNTL_GENERATE;
+			break;
+		case EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE:
+			fcntl = MC_CMD_FCNTL_BIDIR;
+			break;
+		default:
+			rc = EINVAL;
+			goto fail1;
+		}
+	}
+
+	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_FCNTL;
+	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_FCNTL, fcntl);
+
+	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_V2_CONTROL_FLAGS, cfg);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
