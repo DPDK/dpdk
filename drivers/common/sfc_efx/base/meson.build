@@ -57,6 +57,7 @@ base_sources = files(
         'hunt_nic.c',
         'medford_nic.c',
         'medford2_nic.c',
+        'medford4_phy.c',
         'rhead_ev.c',
         'rhead_intr.c',
         'rhead_nic.c',

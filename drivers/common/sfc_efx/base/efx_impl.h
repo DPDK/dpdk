@@ -45,6 +45,10 @@
 #include "rhead_impl.h"
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+#include "medford4_impl.h"
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
