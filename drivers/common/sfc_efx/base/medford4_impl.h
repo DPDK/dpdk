@@ -63,6 +63,28 @@ medford4_mac_stats_get_mask(
 	__in			efx_nic_t *enp,
 	__inout_bcount(sz)	uint32_t *maskp,
 	__in			size_t sz);
+
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+medford4_mac_stats_upload(
+	__in			efx_nic_t *enp,
+	__in			efsys_mem_t *esmp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+medford4_mac_stats_periodic(
+	__in			efx_nic_t *enp,
+	__in			efsys_mem_t *esmp,
+	__in			uint16_t period_ms,
+	__in			boolean_t events);
+
+LIBEFX_INTERNAL
+extern	__checkReturn			efx_rc_t
+medford4_mac_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_MAC_NSTATS)	efsys_stat_t *stats,
+	__inout_opt			uint32_t *generationp);
 #endif /* EFSYS_OPT_MAC_STATS */
 
 #ifdef	__cplusplus

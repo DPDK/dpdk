@@ -1259,3 +1259,91 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+#if EFSYS_OPT_MAC_STATS
+	__checkReturn	efx_rc_t
+efx_np_mac_stats(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		efx_stats_action_t action,
+	__in_opt	const efsys_mem_t *esmp,
+	__in		uint16_t period_ms)
+{
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_GET_NETPORT_STATISTICS_IN_LEN,
+	    MC_CMD_GET_NETPORT_STATISTICS_OUT_LENMIN);
+	boolean_t enable = (action == EFX_STATS_ENABLE_NOEVENTS);
+	boolean_t events = (action == EFX_STATS_ENABLE_EVENTS);
+	boolean_t disable = (action == EFX_STATS_DISABLE);
+	boolean_t upload = (action == EFX_STATS_UPLOAD);
+	boolean_t clear = (action == EFX_STATS_CLEAR);
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	req.emr_out_length = MC_CMD_GET_NETPORT_STATISTICS_OUT_LENMIN;
+	req.emr_in_length = MC_CMD_GET_NETPORT_STATISTICS_IN_LEN;
+	req.emr_cmd = MC_CMD_GET_NETPORT_STATISTICS;
+	req.emr_out_buf = payload;
+	req.emr_in_buf = payload;
+
+	MCDI_IN_SET_DWORD(req, GET_NETPORT_STATISTICS_IN_PORT_HANDLE, nph);
+
+	MCDI_IN_POPULATE_DWORD_6(req, GET_NETPORT_STATISTICS_IN_CMD,
+	    GET_NETPORT_STATISTICS_IN_DMA, upload,
+	    GET_NETPORT_STATISTICS_IN_CLEAR, clear,
+	    GET_NETPORT_STATISTICS_IN_PERIODIC_CHANGE,
+		    enable | events | disable,
+	    GET_NETPORT_STATISTICS_IN_PERIODIC_ENABLE, enable | events,
+	    GET_NETPORT_STATISTICS_IN_PERIODIC_NOEVENT, !events,
+	    GET_NETPORT_STATISTICS_IN_PERIOD_MS,
+		    (enable | events) ? period_ms : 0);
+
+	if (enable || events || upload) {
+		const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+		uint32_t sz;
+
+		/* Periodic stats or stats upload require a DMA buffer */
+		if (esmp == NULL) {
+			rc = EINVAL;
+			goto fail1;
+		}
+
+		sz = encp->enc_mac_stats_nstats * sizeof (efx_qword_t);
+
+		if (EFSYS_MEM_SIZE(esmp) < sz) {
+			/* DMA buffer too small */
+			rc = ENOSPC;
+			goto fail2;
+		}
+
+		MCDI_IN_SET_DWORD(req, GET_NETPORT_STATISTICS_IN_DMA_ADDR_LO,
+		    EFSYS_MEM_ADDR(esmp) & 0xffffffff);
+		MCDI_IN_SET_DWORD(req, GET_NETPORT_STATISTICS_IN_DMA_ADDR_HI,
+		    EFSYS_MEM_ADDR(esmp) >> 32);
+		MCDI_IN_SET_DWORD(req, GET_NETPORT_STATISTICS_IN_DMA_LEN, sz);
+	}
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		/* EF10: Expect ENOENT if no DMA queues are initialised */
+		if ((req.emr_rc != ENOENT) ||
+		    (enp->en_rx_qcount + enp->en_tx_qcount != 0)) {
+			rc = req.emr_rc;
+			goto fail3;
+		}
+	}
+
+	return (0);
+
+fail3:
+	EFSYS_PROBE(fail3);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+#endif /* EFSYS_OPT_MAC_STATS */
