@@ -125,8 +125,8 @@ prefetch_read_once(const volatile void *addr)
 #define EFSYS_OPT_MEDFORD2 1
 /* Enable Riverhead support */
 #define EFSYS_OPT_RIVERHEAD 1
-/* Disable Medford4 support (not supported yet) */
-#define EFSYS_OPT_MEDFORD4 0
+/* Enable Medford4 support */
+#define EFSYS_OPT_MEDFORD4 1
 
 #ifdef RTE_DEBUG_COMMON_SFC_EFX
 #define EFSYS_OPT_CHECK_REG 1
