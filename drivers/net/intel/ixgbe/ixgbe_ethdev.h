@@ -145,7 +145,7 @@
 #define MAC_TYPE_FILTER_SUP(type)    do {\
 	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
 		(type) != ixgbe_mac_X550 && (type) != ixgbe_mac_X550EM_x &&\
-		(type) != ixgbe_mac_X550EM_a)\
+		(type) != ixgbe_mac_X550EM_a && (type) != ixgbe_mac_E610)\
 		return -ENOTSUP;\
 } while (0)
 
