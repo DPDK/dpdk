@@ -60,6 +60,10 @@ New Features
   Added a new network PMD which supports Mucse 10 Gigabit Ethernet NICs.
   See the :doc:`../nics/rnp` for more details.
 
+* **Updated Solarflare network PMD.**
+
+  Added support for AMD Solarflare X45xx adapters.
+
 
 Removed Items
 -------------

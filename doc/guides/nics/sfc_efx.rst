@@ -10,7 +10,8 @@ Solarflare libefx-based Poll Mode Driver
 
 The SFC EFX PMD (**librte_net_sfc_efx**) provides poll mode driver support
 for **Solarflare SFN7xxx and SFN8xxx** family of 10/40 Gbps adapters,
-**Solarflare XtremeScale X2xxx** family of 10/25/40/50/100 Gbps adapters and
+**Solarflare XtremeScale X2xxx** family of 10/25/40/50/100 Gbps adapters,
+**Solarflare X45xx** family of 10/25/40/50/100 Gbps adapters and
 **Alveo SN1000 SmartNICs** family of 10/25/40/50/100 Gbps adapters.
 SFC EFX PMD has support for the latest Linux and FreeBSD operating systems.
 
@@ -20,6 +21,12 @@ More information can be found at `Solarflare Communications website
 
 Supported NICs
 --------------
+
+- AMD Solarflare Adapters:
+
+   - AMD Solarflare X4522 Dual Port SFP56 Adapter
+
+   - AMD Solarflare X4542 Dual Port QSFP56 Adapter
 
 - Xilinx Adapters:
 
