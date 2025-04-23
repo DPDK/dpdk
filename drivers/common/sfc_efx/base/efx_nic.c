@@ -491,6 +491,9 @@ efx_nic_probe(
 
 	encp->enc_features = enp->en_features;
 
+	encp->enc_mac_pdu_max = efx_mac_pdu_from_sdu(enp, EFX_MAC_SDU_MAX);
+	encp->enc_mac_pdu_min = EFX_MAC_PDU_MIN;
+
 	if ((rc = efx_phy_probe(enp)) != 0)
 		goto fail2;
 
