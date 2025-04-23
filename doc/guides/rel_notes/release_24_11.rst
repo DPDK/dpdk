@@ -757,3 +757,300 @@ Tested Platforms
 ~~~~~~~~~~~~~~~~~~~~
 
 * DPDK 24.11.1 contains DPDK 24.11 plus the fix for CVE-2024-11614 only
+
+24.11.2 Release Notes
+---------------------
+
+
+24.11.2 Fixes
+~~~~~~~~~~~~~
+
+* app/testpmd: avoid crash in DCB config
+* app/testpmd: fix out-of-bound reference in offload config
+* app/testpmd: show all DCB priority TC map
+* app/testpmd: use VXLAN flow flags from user if set
+* baseband/acc: fix queue setup failure clean up
+* build: force GCC 15 to initialize padding bits
+* buildtools: fix some Python regex syntax warnings
+* bus/pci: fix registered device name
+* ci: build with MSVC in GHA
+* ci: fix ccache for Ubuntu 22.04
+* ci: point at GitHub mirror
+* common/cnxk: fix atomic load in batch ops
+* common/cnxk: fix DPI mailbox structure
+* common/cnxk: fix inbound IPsec SA setup
+* common/cnxk: fix null check
+* common/idpf: fix void function returning a value
+* common/mlx5: add device duplication function
+* common/qat: fix devargs parsing
+* crypto/cnxk: fix asymmetric operation status code
+* crypto/cnxk: fix build with GCC 15
+* cryptodev: fix C++ include
+* crypto/dpaa2_sec: fix bitmask truncation
+* crypto/dpaa_sec: fix bitmask truncation
+* crypto/openssl: fix CMAC auth context update
+* crypto/openssl: validate incorrect RSA signature
+* crypto/qat: fix SM3 state size
+* crypto/virtio: fix data queues iteration
+* crypto/virtio: fix redundant queue free
+* dma/idxd: add device ids for new HW versions
+* doc: add no-IOMMU mode in devbind tool guide
+* doc: add tested platforms with NVIDIA NICs in 24.11
+* doc: add two more tested Intel NICs in 24.11
+* doc: add VXLAN matching requirement in mlx5 guide
+* doc: fix feature flags for queue start/stop
+* doc: fix year of final LTS release
+* doc: update ionic driver guide
+* dts: fix MTU set command
+* dts: fix pass rate edge case in results
+* dts: fix smoke tests docstring
+* eal: fix devargs layers parsing out of bounds
+* eal: fix undetected NUMA nodes
+* eal/linux: fix memseg length in legacy mem init
+* eal/linux: remove useless assignments
+* eal/x86: defer power intrinsics variable allocation
+* eal/x86: fix some intrinsics header include for Windows
+* ethdev: fix functions available in new device event
+* ethdev: fix registers info request
+* eventdev: fix format string data type in log messages
+* event/dlb2: fix event weight handling in SSE code path
+* event/dpaa: fix bitmask truncation
+* examples/flow_filtering: fix build with GCC 15
+* examples/flow_filtering: fix IPv4 matching snippet
+* examples/flow_filtering: remove duplicate assignment
+* examples/ipsec-secgw: fix cryptodev and eventdev IDs
+* examples/ipsec-secgw: fix IV length in CTR 192/256
+* examples/l3fwd: fix socket ID check
+* examples/ptpclient: fix message parsing
+* examples/vhost_crypto: fix user callbacks
+* gro: fix unprocessed IPv4 packets
+* log: fix double free on cleanup
+* log: fix systemd journal socket open
+* mempool: fix errno in empty create
+* net/af_packet: fix socket close on device stop
+* net/bnxt: address uninitialized variables
+* net/bnxt: fix crash when representor is re-attached
+* net/bnxt: fix dead code
+* net/bnxt: fix epoch bit calculation
+* net/bnxt: fix indication of allocation
+* net/bnxt: fix overflow
+* net/bnxt: fix overflow
+* net/bnxt: fix Rx handler
+* net/bonding: fix dedicated queue setup
+* net/cnxk: fix NIX send header L3 type
+* net/cpfl: fix representor parsing log
+* net/dpaa2: fix bitmask truncation
+* net/dpaa: fix bitmask truncation
+* net/e1000/base: correct mPHY access logic
+* net/e1000/base: fix bitwise operation type
+* net/e1000/base: fix data type in MAC hash
+* net/e1000/base: fix iterator type
+* net/e1000/base: fix MAC address hash bit shift
+* net/e1000/base: fix NVM data type in bit shift
+* net/e1000/base: fix reset for 82580
+* net/e1000/base: fix semaphore timeout value
+* net/e1000/base: fix unchecked return
+* net/e1000/base: fix uninitialized variable
+* net/e1000/base: skip management check for 82575
+* net/e1000: fix crashes in secondary processes
+* net/ena: fix missing default LLQ policy
+* net/enetfec: remove useless assignment
+* net/gve: allocate Rx QPL pages using malloc
+* net/hinic: fix flow type bitmask overflow
+* net/hns3: fix copper port initialization
+* net/hns3: fix mbuf freeing in simple Tx path
+* net/hns3: fix reset timeout
+* net/hns3: remove PVID info dump for VF
+* net/hns3: rename RAS module
+* net/iavf: check interrupt registration failure
+* net/iavf: fix crash on app exit on FreeBSD
+* net/iavf: fix mbuf release in Arm multi-process
+* net/iavf: remove reset of Tx prepare function pointer
+* net/ice: fix dropped packets when using VRRP
+* net/ice: fix flow engines order
+* net/ice: fix flows handling
+* net/ice: fix memory leak in scalar Rx
+* net/igc/base: fix bitwise operation type
+* net/igc/base: fix data type in MAC hash
+* net/igc/base: fix deadlock when writing i225 register
+* net/igc/base: fix infinite loop
+* net/igc/base: fix iterator type
+* net/igc/base: fix LTR for i225
+* net/igc/base: fix MAC address hash bit shift
+* net/igc/base: fix NVM data type in bit shift
+* net/igc/base: fix semaphore timeout value
+* net/igc/base: fix typo in LTR calculation
+* net/igc/base: fix unused value
+* net/igc/base: increase PHY power up delay
+* net/igc/base: reset loop variable
+* net/intel: fix build with icx
+* net/intel: fix void functions returning a value
+* net/ixgbe: add checks for E610 VF
+* net/ixgbe/base: add missing buffer copy for ACI
+* net/ixgbe/base: fix driver hang in VM
+* net/ixgbe/base: fix TSAM checking return value
+* net/ixgbe/base: remove 2.5/5G from auto-negotiation for E610
+* net/ixgbe: fix crashes in secondary processes
+* net/ixgbe: fix E610 support in flow engine
+* net/ixgbe: fix minimum Rx/Tx descriptors
+* net/ixgbe: fix VF registers for E610
+* net/mana: do not ring short doorbell for every mbuf alloc
+* net/mana: fix multi-process tracking
+* net/mlx5: adjust actions per rule limitation
+* net/mlx5: fix actions translation error overwrite
+* net/mlx5: fix crash in non-template metadata split
+* net/mlx5: fix crash with null flow list creation
+* net/mlx5: fix error info in actions construct
+* net/mlx5: fix flow group ID for action translation
+* net/mlx5: fix flow matching GENEVE options
+* net/mlx5: fix flush of non-template flow rules
+* net/mlx5: fix GENEVE parser cleanup
+* net/mlx5: fix GRE flow match with SWS
+* net/mlx5: fix GRE matching on root table
+* net/mlx5: fix hairpin queue release
+* net/mlx5: fix hardware packet type translation
+* net/mlx5: fix IPIP tunnel verification
+* net/mlx5: fix LACP packet handling in isolated mode
+* net/mlx5: fix leak in HWS flow counter action
+* net/mlx5: fix leak of flow action data list
+* net/mlx5: fix mark action validation in FDB mode
+* net/mlx5: fix NAT64 register selection
+* net/mlx5: fix Netlink socket leak
+* net/mlx5: fix non-template flow validation
+* net/mlx5: fix non-template flow validation on create
+* net/mlx5: fix non-template set VLAN VID
+* net/mlx5: fix polling CQEs
+* net/mlx5: fix unneeded stub flow table allocation
+* net/mlx5/hws: fix crash using represented port without ID
+* net/mlx5/hws: fix DV FT type convert
+* net/mlx5/hws: fix fragmented packet type matching
+* net/mlx5/hws: fix GTP flags matching
+* net/netvsc: remove device if its net devices removed
+* net/netvsc: scan all net devices under the PCI device
+* net/nfp: fix firmware load from flash
+* net/nfp: fix init failure handling
+* net/nfp: fix misuse of function return values
+* net/nfp: fix multi-PF control flag
+* net/nfp: fix multiple PFs check from NSP
+* net/nfp: fix representor port statistics
+* net/nfp: fix VF link speed
+* net/ngbe: fix WOL and NCSI capabilities
+* net/octeon_ep: remove useless assignment
+* net/qede: fix debug messages array
+* net/qede: fix nested loops
+* net/sfc: remove unnecessary assignment
+* net/thunderx/base: fix build with GCC 15
+* net/txgbe: remove useless condition for SW-FW sync
+* pdump: clear statistics when enabled
+* power: defer lcore variable allocation
+* ptr_compress: fix build with Arm SVE
+* random: defer seeding to EAL init
+* raw/cnxk_gpio: fix file descriptor leak
+* service: fix getting service lcore attributes
+* stack: fix pop in C11 implementation
+* test/bbdev: update FFT test vectors
+* test/bonding: fix active backup receive test
+* test/crypto: fix AES-ECB test lengths
+* test/crypto: fix check for OOP header data
+* test/crypto: remove unused variable
+* test/dma: fix pointers in IOVA as PA mode
+* test/event: fix number of queues in eventdev conf
+* test/ring: fix init with custom number of lcores
+* use Python raw string notation
+* version: 24.11.2-rc1
+* vhost: add null callback checks
+* vhost: check descriptor chains length
+* vhost: check GSO size validity
+* vhost: clear ring addresses when getting vring base
+* vhost/crypto: skip fetch before vring init
+* vhost: fix FD entries cleanup
+* vhost: fix log when setting max queue num
+* vhost: reset packets count when not ready
+
+24.11.2 Validation
+~~~~~~~~~~~~~~~~~~
+
+* `Red Hat(R) Testing <https://mails.dpdk.org/archives/stable/2025-April/052331.html>`__
+
+   * Platform
+
+      * RHEL 9
+      * Kernel 5.14
+      * Qemu 7.2
+      * X540-AT2 NIC(ixgbe, 10G)
+
+   * Functionality
+
+      * Guest with device assignment(PF) throughput testing(1G hugepage size)
+      * Guest with device assignment(PF) throughput testing(2M hugepage size)
+      * Guest with device assignment(VF) throughput testing
+      * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+      * PVP vhost-user 2Q throughput testing
+      * PVP vhost-user 1Q cross numa node  throughput testing
+      * Guest with vhost-user 2 queues throughput testing
+      * vhost-user reconnect with dpdk-client, qemu-server: qemu reconnect
+      * vhost-user reconnect with dpdk-client, qemu-server: ovs reconnect
+      * PVP 1Q live migration testing
+      * PVP 1Q cross numa node live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+      * Guest with ovs+dpdk+vhost-user 2Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 4Q live migration testing
+      * Host PF + DPDK testing
+      * Host VF + DPDK testing
+
+
+* `Nvidia(R) Testing <https://mails.dpdk.org/archives/stable/2025-April/052414.html>`__
+
+   * Basic functionality with testpmd
+
+      * Tx/Rx
+      * xstats
+      * Timestamps
+      * Link status
+      * RTE flow
+      * RSS
+      * VLAN filtering, stripping and insertion
+      * Checksum/TSO
+      * ptype
+      * link_status_interrupt example application
+      * l3fwd-power example application
+      * Multi-process example applications
+      * Hardware LRO tests
+      * Regex application
+      * Buffer Split
+      * Tx scheduling
+
+   * Build tests
+   * ConnectX-6 Dx
+   * ConnectX-7
+   * BlueField-2
+
+
+* `Intel(R) Testing <https://mails.dpdk.org/archives/stable/2025-April/052440.html>`__
+
+   * Compile testing
+
+   * Functional testing
+
+      * PF (i40e, ixgbe)
+      * VF (i40e, ixgbe)
+      * PF/VF (ice)
+      * IPsec
+      * Virtio
+      * Cryptodev
+      * DLB
+
+   * Performance testing
+
+      * Throughput performance
+      * Cryptodev latency
+      * PF/VF NIC single core/NIC performance
+      * XXV710/E810 NIC Performance
+
+24.11.2 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* DPDK 24.11.2 contains fixes from DPDK 25.03 and 8364a0f276eb ("net/ixgbe: fix VF registers for E610")
+* Issues identified/fixed in DPDK main branch after DPDK 25.03 may be present in DPDK 24.11.2
+* There is a report that https://bugs.dpdk.org/show_bug.cgi?id=1606 is still present despite the fix being backported. This needs further investigation for DPDK 24.11.3.
