@@ -39,6 +39,18 @@ extern	__checkReturn		efx_rc_t
 medford4_phy_reconfigure(
 	__in			efx_nic_t *enp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+medford4_mac_poll(
+	__in		efx_nic_t *enp,
+	__out		efx_link_mode_t *link_modep);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+medford4_mac_up(
+	__in		efx_nic_t *enp,
+	__out		boolean_t *mac_upp);
+
 #ifdef	__cplusplus
 }
 #endif
