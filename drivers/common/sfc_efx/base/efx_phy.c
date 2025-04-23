@@ -75,7 +75,7 @@ static const efx_phy_ops_t	__efx_phy_medford4_ops = {
 	ef10_phy_reconfigure,		/* epo_reconfigure */
 	medford4_phy_verify,		/* epo_verify */
 	ef10_phy_oui_get,		/* epo_oui_get */
-	ef10_phy_link_state_get,	/* epo_link_state_get */
+	medford4_phy_link_state_get,	/* epo_link_state_get */
 #if EFSYS_OPT_PHY_STATS
 	ef10_phy_stats_update,		/* epo_stats_update */
 #endif	/* EFSYS_OPT_PHY_STATS */

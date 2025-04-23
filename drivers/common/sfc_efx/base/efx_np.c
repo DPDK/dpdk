@@ -301,7 +301,9 @@ efx_np_link_state(
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_LINK_STATE_IN_LEN,
 	    MC_CMD_LINK_STATE_OUT_V3_LEN);
+	uint32_t status_flags;
 	efx_mcdi_req_t req;
+	uint32_t v3_flags;
 	efx_rc_t rc;
 
 	req.emr_out_length = MC_CMD_LINK_STATE_OUT_V3_LEN;
@@ -324,11 +326,42 @@ efx_np_link_state(
 		goto fail2;
 	}
 
+	status_flags = MCDI_OUT_DWORD(req, LINK_STATE_OUT_STATUS_FLAGS_LO);
+	v3_flags = MCDI_OUT_DWORD(req, LINK_STATE_OUT_V3_FLAGS);
 	memset(lsp, 0, sizeof (*lsp));
 
-	if (MCDI_OUT_DWORD(req, LINK_STATE_OUT_V2_LOCAL_AN_SUPPORT) !=
+	if (status_flags & (1U << MC_CMD_LINK_STATUS_FLAGS_AN_ABLE) &&
+	    MCDI_OUT_DWORD(req, LINK_STATE_OUT_V2_LOCAL_AN_SUPPORT) !=
 	    MC_CMD_AN_NONE)
 		lsp->enls_an_supported = B_TRUE;
+
+	if (v3_flags & (1U << MC_CMD_LINK_STATE_OUT_V3_FULL_DUPLEX_LBN))
+		lsp->enls_fd = B_TRUE;
+
+	if (status_flags & (1U << MC_CMD_LINK_STATUS_FLAGS_LINK_UP))
+		lsp->enls_up = B_TRUE;
+
+	lsp->enls_speed = MCDI_OUT_DWORD(req, LINK_STATE_OUT_V3_LINK_SPEED);
+	lsp->enls_fec = MCDI_OUT_BYTE(req, LINK_STATE_OUT_FEC_MODE);
+
+#if EFSYS_OPT_LOOPBACK
+	switch (MCDI_OUT_BYTE(req, LINK_STATE_OUT_LOOPBACK)) {
+	case MC_CMD_LOOPBACK_V2_NONE:
+		lsp->enls_loopback = EFX_LOOPBACK_OFF;
+		break;
+	case MC_CMD_LOOPBACK_V2_AUTO:
+		lsp->enls_loopback = EFX_LOOPBACK_DATA;
+		break;
+	case MC_CMD_LOOPBACK_V2_POST_PCS:
+		lsp->enls_loopback = EFX_LOOPBACK_PCS;
+		break;
+	default:
+		rc = EINVAL;
+		goto fail3;
+	}
+#else /* ! EFSYS_OPT_LOOPBACK */
+	_NOTE(ARGUNUSED(lbp))
+#endif /* EFSYS_OPT_LOOPBACK */
 
 	if (lsp->enls_an_supported != B_FALSE)
 		lsp->enls_adv_cap_mask |= 1U << EFX_PHY_CAP_AN;
@@ -337,7 +370,20 @@ efx_np_link_state(
 	    MCDI_OUT2(req, const uint8_t, LINK_STATE_OUT_ADVERTISED_ABILITIES),
 	    &lsp->enls_adv_cap_mask);
 
+	if (lsp->enls_an_supported != B_FALSE)
+		lsp->enls_lp_cap_mask |= 1U << EFX_PHY_CAP_AN;
+
+	efx_np_cap_hw_data_to_sw_mask(
+	    MCDI_OUT2(req, const uint8_t,
+		    LINK_STATE_OUT_LINK_PARTNER_ABILITIES),
+	    &lsp->enls_lp_cap_mask);
+
 	return (0);
+
+#if EFSYS_OPT_LOOPBACK
+fail3:
+	EFSYS_PROBE(fail3);
+#endif /* EFSYS_OPT_LOOPBACK */
 
 fail2:
 	EFSYS_PROBE(fail2);
@@ -551,4 +597,53 @@ efx_np_detach(
 {
 	if (efx_np_supported(enp) == B_FALSE)
 		return;
+}
+
+	__checkReturn	efx_rc_t
+efx_np_mac_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_mac_state_t *msp)
+{
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAC_STATE_IN_LEN,
+	    MC_CMD_MAC_STATE_OUT_LEN);
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	req.emr_out_length = MC_CMD_MAC_STATE_OUT_LEN;
+	req.emr_in_length = MC_CMD_MAC_STATE_IN_LEN;
+	req.emr_cmd = MC_CMD_MAC_STATE;
+	req.emr_out_buf = payload;
+	req.emr_in_buf = payload;
+
+	MCDI_IN_SET_DWORD(req, MAC_STATE_IN_PORT_HANDLE, nph);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAC_STATE_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail2;
+	}
+
+	memset(msp, 0, sizeof (*msp));
+
+	if (MCDI_OUT_DWORD(req, MAC_STATE_OUT_MAC_FAULT_FLAGS) == 0)
+		msp->enms_up = B_TRUE;
+
+	msp->enms_fcntl = MCDI_OUT_DWORD(req, MAC_STATE_OUT_FCNTL);
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
 }

@@ -22,6 +22,18 @@ extern	__checkReturn	efx_rc_t
 medford4_phy_verify(
 	__in		efx_nic_t *enp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+medford4_phy_get_link(
+	__in		efx_nic_t *enp,
+	__out		ef10_link_state_t *elsp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+medford4_phy_link_state_get(
+	__in			efx_nic_t *enp,
+	__out			efx_phy_link_state_t *eplsp);
+
 #ifdef	__cplusplus
 }
 #endif
