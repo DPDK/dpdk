@@ -84,6 +84,9 @@ struct sfc_dp_tx_qcreate_info {
 
 	/** NIC's DMA mapping information */
 	const struct sfc_nic_dma_info	*nic_dma_info;
+
+	/** Maximum MAC PDU (frame size) */
+	unsigned int		max_pdu;
 };
 
 /**

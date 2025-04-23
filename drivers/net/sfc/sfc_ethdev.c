@@ -90,6 +90,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_rss *rss = &sas->rss;
 	struct sfc_mae *mae = &sa->mae;
 
@@ -98,7 +99,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = EFX_MAC_SDU_MAX;
 
-	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
+	dev_info->max_rx_pktlen = encp->enc_mac_pdu_max;
 
 	dev_info->max_vfs = sa->sriov.num_vfs;
 
@@ -1112,23 +1113,24 @@ static int
 sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
-	size_t pdu = EFX_MAC_PDU(mtu);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	size_t pdu = efx_mac_pdu_from_sdu(sa->nic, mtu);
 	size_t old_pdu;
 	int rc;
 
 	sfc_log_init(sa, "mtu=%u", mtu);
 
 	rc = EINVAL;
-	if (pdu < EFX_MAC_PDU_MIN) {
+	if (pdu < encp->enc_mac_pdu_min) {
 		sfc_err(sa, "too small MTU %u (PDU size %u less than min %u)",
 			(unsigned int)mtu, (unsigned int)pdu,
-			EFX_MAC_PDU_MIN);
+			encp->enc_mac_pdu_min);
 		goto fail_inval;
 	}
-	if (pdu > EFX_MAC_PDU_MAX) {
+	if (pdu > encp->enc_mac_pdu_max) {
 		sfc_err(sa, "too big MTU %u (PDU size %u greater than max %u)",
 			(unsigned int)mtu, (unsigned int)pdu,
-			(unsigned int)EFX_MAC_PDU_MAX);
+			encp->enc_mac_pdu_max);
 		goto fail_inval;
 	}
 
@@ -3378,6 +3380,7 @@ sfc_eth_dev_create_repr(struct sfc_adapter *sa,
 			uint16_t repr_port,
 			enum rte_eth_representor_type type)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_repr_entity_info entity;
 	efx_mport_sel_t mport_sel;
 	int rc;
@@ -3414,7 +3417,7 @@ sfc_eth_dev_create_repr(struct sfc_adapter *sa,
 	entity.vf = repr_port;
 
 	rc = sfc_repr_create(sa->eth_dev, &entity, sa->mae.switch_domain_id,
-			     &mport_sel);
+			     encp->enc_mac_pdu_max, &mport_sel);
 	if (rc != 0) {
 		sfc_err(sa,
 			"failed to create representor for controller %u port %u repr_port %u: %s",

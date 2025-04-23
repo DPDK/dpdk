@@ -32,6 +32,7 @@ struct sfc_repr_shared {
 	uint16_t		repr_id;
 	uint16_t		switch_domain_id;
 	uint16_t		switch_port_id;
+	unsigned int		max_pdu;
 };
 
 struct sfc_repr_queue_stats {
@@ -514,7 +515,7 @@ sfc_repr_dev_infos_get(struct rte_eth_dev *dev,
 
 	dev_info->device = dev->device;
 
-	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
+	dev_info->max_rx_pktlen = srs->max_pdu;
 	dev_info->max_rx_queues = SFC_REPR_RXQ_MAX;
 	dev_info->max_tx_queues = SFC_REPR_TXQ_MAX;
 	dev_info->default_rxconf.rx_drop_en = 1;
@@ -920,6 +921,7 @@ struct sfc_repr_init_data {
 	efx_pcie_interface_t	intf;
 	uint16_t		pf;
 	uint16_t		vf;
+	unsigned int		max_pdu;
 };
 
 static int
@@ -1012,6 +1014,7 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	srs->pf_port_id = repr_data->pf_port_id;
 	srs->repr_id = srs->switch_port_id;
 	srs->switch_domain_id = repr_data->switch_domain_id;
+	srs->max_pdu = repr_data->max_pdu;
 
 	dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 	dev->data->representor_id = srs->repr_id;
@@ -1062,6 +1065,7 @@ int
 sfc_repr_create(struct rte_eth_dev *parent,
 		struct sfc_repr_entity_info *entity,
 		uint16_t switch_domain_id,
+		unsigned int max_pdu,
 		const efx_mport_sel_t *mport_sel)
 {
 	struct sfc_repr_init_data repr_data;
@@ -1108,6 +1112,7 @@ sfc_repr_create(struct rte_eth_dev *parent,
 		repr_data.intf = entity->intf;
 		repr_data.pf = entity->pf;
 		repr_data.vf = entity->vf;
+		repr_data.max_pdu = max_pdu;
 
 		ret = rte_eth_dev_create(parent->device, name,
 					 sizeof(struct sfc_repr_shared),
