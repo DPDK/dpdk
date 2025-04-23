@@ -117,6 +117,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_50G;
 	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_100000FDX))
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;
+	if (sa->port.phy_adv_cap_mask & (1u << EFX_PHY_CAP_200000FDX))
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_200G;
 
 	dev_info->max_rx_queues = sa->rxq_max;
 	dev_info->max_tx_queues = sa->txq_max;
@@ -2432,6 +2434,19 @@ sfc_fec_get_capa_speed_to_fec(uint32_t supported_caps,
 	if (supported_caps & (1u << EFX_PHY_CAP_100000FDX)) {
 		if (speed_fec_capa != NULL) {
 			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_100G;
+			speed_fec_capa[num].capa =
+				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+			if (rs) {
+				speed_fec_capa[num].capa |=
+					RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+			}
+		}
+		num++;
+	}
+	if (supported_caps & (1u << EFX_PHY_CAP_200000FDX)) {
+		if (speed_fec_capa != NULL) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_200G;
 			speed_fec_capa[num].capa =
 				RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
 				RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);

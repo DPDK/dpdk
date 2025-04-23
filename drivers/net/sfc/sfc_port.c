@@ -144,6 +144,8 @@ sfc_port_init_dev_link(struct sfc_adapter *sa)
 static efx_link_mode_t
 sfc_port_phy_caps_to_max_link_speed(uint32_t phy_caps)
 {
+	if (phy_caps & (1u << EFX_PHY_CAP_200000FDX))
+		return EFX_LINK_200000FDX;
 	if (phy_caps & (1u << EFX_PHY_CAP_100000FDX))
 		return EFX_LINK_100000FDX;
 	if (phy_caps & (1u << EFX_PHY_CAP_50000FDX))
@@ -647,6 +649,10 @@ sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 		break;
 	case EFX_LINK_100000FDX:
 		link_info->link_speed  = RTE_ETH_SPEED_NUM_100G;
+		link_info->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+		break;
+	case EFX_LINK_200000FDX:
+		link_info->link_speed  = RTE_ETH_SPEED_NUM_200G;
 		link_info->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 		break;
 	default:
