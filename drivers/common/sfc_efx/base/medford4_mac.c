@@ -89,4 +89,35 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+#if EFSYS_OPT_MAC_STATS
+	__checkReturn		efx_rc_t
+medford4_mac_stats_get_mask(
+	__in			efx_nic_t *enp,
+	__inout_bcount(sz)	uint32_t *maskp,
+	__in			size_t sz)
+{
+	efx_port_t *epp = &(enp->en_port);
+	unsigned int i;
+	efx_rc_t rc;
+
+	for (i = 0; i < EFX_ARRAY_SIZE(epp->ep_np_mac_stat_lut); ++i) {
+		const struct efx_mac_stats_range rng[] = { { i, i } };
+
+		if (epp->ep_np_mac_stat_lut[i].ens_valid == B_FALSE)
+			continue;
+
+		rc = efx_mac_stats_mask_add_ranges(maskp, sz, rng, 1);
+		if (rc != 0)
+			goto fail1;
+	}
+
+	/* TODO: care about VADAPTOR statistics when VF support arrives */
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+#endif /* EFSYS_OPT_MAC_STATS */
 #endif /* EFSYS_OPT_MEDFORD4 */

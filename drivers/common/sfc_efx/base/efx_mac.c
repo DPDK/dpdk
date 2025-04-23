@@ -105,7 +105,7 @@ static const efx_mac_ops_t	__efx_mac_medford4_ops = {
 	ef10_mac_loopback_set,			/* emo_loopback_set */
 #endif	/* EFSYS_OPT_LOOPBACK */
 #if EFSYS_OPT_MAC_STATS
-	ef10_mac_stats_get_mask,		/* emo_stats_get_mask */
+	medford4_mac_stats_get_mask,		/* emo_stats_get_mask */
 	efx_mcdi_mac_stats_clear,		/* emo_stats_clear */
 	efx_mcdi_mac_stats_upload,		/* emo_stats_upload */
 	efx_mcdi_mac_stats_periodic,		/* emo_stats_periodic */
