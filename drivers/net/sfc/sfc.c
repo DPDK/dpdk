@@ -126,7 +126,8 @@ sfc_phy_cap_from_link_speeds(uint32_t speeds)
 				(1 << EFX_PHY_CAP_25000FDX) |
 				(1 << EFX_PHY_CAP_40000FDX) |
 				(1 << EFX_PHY_CAP_50000FDX) |
-				(1 << EFX_PHY_CAP_100000FDX);
+				(1 << EFX_PHY_CAP_100000FDX) |
+				(1 << EFX_PHY_CAP_200000FDX);
 	}
 	if (speeds & RTE_ETH_LINK_SPEED_1G)
 		phy_caps |= (1 << EFX_PHY_CAP_1000FDX);
@@ -140,6 +141,8 @@ sfc_phy_cap_from_link_speeds(uint32_t speeds)
 		phy_caps |= (1 << EFX_PHY_CAP_50000FDX);
 	if (speeds & RTE_ETH_LINK_SPEED_100G)
 		phy_caps |= (1 << EFX_PHY_CAP_100000FDX);
+	if (speeds & RTE_ETH_LINK_SPEED_200G)
+		phy_caps |= (1 << EFX_PHY_CAP_200000FDX);
 
 	return phy_caps;
 }
