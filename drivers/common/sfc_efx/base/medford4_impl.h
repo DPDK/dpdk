@@ -56,6 +56,15 @@ extern	__checkReturn		efx_rc_t
 medford4_mac_reconfigure(
 	__in			efx_nic_t *enp);
 
+#if EFSYS_OPT_MAC_STATS
+LIBEFX_INTERNAL
+extern	__checkReturn		efx_rc_t
+medford4_mac_stats_get_mask(
+	__in			efx_nic_t *enp,
+	__inout_bcount(sz)	uint32_t *maskp,
+	__in			size_t sz);
+#endif /* EFSYS_OPT_MAC_STATS */
+
 #ifdef	__cplusplus
 }
 #endif
