@@ -107,9 +107,9 @@ static const efx_mac_ops_t	__efx_mac_medford4_ops = {
 #if EFSYS_OPT_MAC_STATS
 	medford4_mac_stats_get_mask,		/* emo_stats_get_mask */
 	efx_mcdi_mac_stats_clear,		/* emo_stats_clear */
-	efx_mcdi_mac_stats_upload,		/* emo_stats_upload */
-	efx_mcdi_mac_stats_periodic,		/* emo_stats_periodic */
-	ef10_mac_stats_update			/* emo_stats_update */
+	medford4_mac_stats_upload,		/* emo_stats_upload */
+	medford4_mac_stats_periodic,		/* emo_stats_periodic */
+	medford4_mac_stats_update		/* emo_stats_update */
 #endif	/* EFSYS_OPT_MAC_STATS */
 };
 #endif /* EFSYS_OPT_MEDFORD4 */

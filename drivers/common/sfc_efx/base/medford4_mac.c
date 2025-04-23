@@ -119,5 +119,124 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+	__checkReturn		efx_rc_t
+medford4_mac_stats_upload(
+	__in			efx_nic_t *enp,
+	__in			efsys_mem_t *esmp)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_rc_t rc;
+
+	rc = efx_np_mac_stats(enp,
+		    epp->ep_np_handle, EFX_STATS_UPLOAD, esmp, 0);
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+medford4_mac_stats_periodic(
+	__in			efx_nic_t *enp,
+	__in			efsys_mem_t *esmp,
+	__in			uint16_t period_ms,
+	__in			boolean_t events)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_rc_t rc;
+
+	if (period_ms == 0) {
+		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
+			    EFX_STATS_DISABLE, NULL, 0);
+	} else if (events != B_FALSE) {
+		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
+			    EFX_STATS_ENABLE_EVENTS, esmp, period_ms);
+	} else {
+		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
+			    EFX_STATS_ENABLE_NOEVENTS, esmp, period_ms);
+	}
+
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+#define	MEDFORD4_MAC_STAT_READ(_esmp, _field, _eqp)			\
+	EFSYS_MEM_READQ((_esmp), (_field) * sizeof (efx_qword_t), _eqp)
+
+	__checkReturn			efx_rc_t
+medford4_mac_stats_update(
+	__in				efx_nic_t *enp,
+	__in				efsys_mem_t *esmp,
+	__inout_ecount(EFX_MAC_NSTATS)	efsys_stat_t *stats,
+	__inout_opt			uint32_t *generationp)
+{
+	const efx_nic_cfg_t *encp = &enp->en_nic_cfg;
+	efx_port_t *epp = &(enp->en_port);
+	efx_qword_t generation_start;
+	efx_qword_t generation_end;
+	unsigned int i;
+	efx_rc_t rc;
+
+	if (EFSYS_MEM_SIZE(esmp) <
+	    (encp->enc_mac_stats_nstats * sizeof (efx_qword_t))) {
+		/* DMA buffer too small */
+		rc = ENOSPC;
+		goto fail1;
+	}
+
+	/* Read END first so we don't race with the MC */
+	EFSYS_DMA_SYNC_FOR_KERNEL(esmp, 0, EFSYS_MEM_SIZE(esmp));
+	MEDFORD4_MAC_STAT_READ(esmp, (encp->enc_mac_stats_nstats - 1),
+	    &generation_end);
+	EFSYS_MEM_READ_BARRIER();
+
+	for (i = 0; i < EFX_ARRAY_SIZE(epp->ep_np_mac_stat_lut); ++i) {
+		efx_qword_t value;
+
+		if (epp->ep_np_mac_stat_lut[i].ens_valid == B_FALSE)
+			continue;
+
+		MEDFORD4_MAC_STAT_READ(esmp,
+		    epp->ep_np_mac_stat_lut[i].ens_dma_fld, &value);
+
+		EFSYS_STAT_SET_QWORD(&(stats[i]), &value);
+	}
+
+	/* TODO: care about VADAPTOR statistics when VF support arrives */
+
+	/* Read START generation counter */
+	EFSYS_DMA_SYNC_FOR_KERNEL(esmp, 0, EFSYS_MEM_SIZE(esmp));
+	EFSYS_MEM_READ_BARRIER();
+
+	/* We never parse marker descriptors; assume start is 0 offset */
+	MEDFORD4_MAC_STAT_READ(esmp, 0, &generation_start);
+
+	/* Check that we didn't read the stats in the middle of a DMA */
+	if (memcmp(&generation_start, &generation_end,
+		    sizeof (generation_start)) != 0)
+		return (EAGAIN);
+
+	if (generationp != NULL)
+		*generationp = EFX_QWORD_FIELD(generation_start, EFX_DWORD_0);
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+#undef MEDFORD4_MAC_STAT_READ
 #endif /* EFSYS_OPT_MAC_STATS */
 #endif /* EFSYS_OPT_MEDFORD4 */

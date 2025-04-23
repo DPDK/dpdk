@@ -2244,10 +2244,18 @@ fail1:
 efx_mcdi_mac_stats_clear(
 	__in		efx_nic_t *enp)
 {
+	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
-			EFX_STATS_CLEAR, 0)) != 0)
+	if (efx_np_supported(enp) != B_FALSE) {
+		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
+			    EFX_STATS_CLEAR, NULL, 0);
+	} else {
+		rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
+				EFX_STATS_CLEAR, 0);
+	}
+
+	if (rc != 0)
 		goto fail1;
 
 	return (0);
