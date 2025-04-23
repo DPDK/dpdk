@@ -72,7 +72,7 @@ static const efx_phy_ops_t	__efx_phy_rhead_ops = {
 static const efx_phy_ops_t	__efx_phy_medford4_ops = {
 	medford4_phy_power,		/* epo_power */
 	NULL,				/* epo_reset */
-	ef10_phy_reconfigure,		/* epo_reconfigure */
+	medford4_phy_reconfigure,	/* epo_reconfigure */
 	medford4_phy_verify,		/* epo_verify */
 	ef10_phy_oui_get,		/* epo_oui_get */
 	medford4_phy_link_state_get,	/* epo_link_state_get */

@@ -1936,6 +1936,17 @@ efx_np_mac_state(
 	__in		efx_np_handle_t nph,
 	__out		efx_np_mac_state_t *msp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_link_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const uint8_t *cap_mask_sup_raw,
+	__in		efx_link_mode_t loopback_link_mode,
+	__in		efx_loopback_type_t loopback_mode,
+	__in		uint32_t cap_mask_sw,
+	__in		boolean_t fcntl_an);
+
 #ifdef	__cplusplus
 }
 #endif

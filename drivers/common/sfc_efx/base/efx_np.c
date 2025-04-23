@@ -647,3 +647,263 @@ fail1:
 
 	return (rc);
 }
+
+static					void
+efx_np_cap_mask_sw_to_hw(
+	__in_ecount(hw_sw_map_nentries)	const struct efx_np_cap_map *hw_sw_map,
+	__in				unsigned int hw_sw_map_nentries,
+	__in_bcount(hw_cap_data_nbytes)	const uint8_t *hw_cap_data,
+	__in				size_t hw_cap_data_nbytes,
+	__in				uint32_t mask_sw,
+	__out				uint8_t *mask_hwp)
+{
+	FOREACH_SUP_CAP(hw_sw_map, hw_sw_map_nentries,
+	    hw_cap_data, hw_cap_data_nbytes) {
+		uint32_t flag_sw = 1U << hw_sw_map->encm_sw;
+
+		if ((mask_sw & flag_sw) != flag_sw)
+			continue;
+
+		mask_hwp[CAP_BYTE(hw_sw_map)] |= CAP_FLAG(hw_sw_map);
+		mask_sw &= ~(flag_sw);
+	}
+}
+
+/*
+ * Convert the given EFX PHY capability mask to the HW representation.
+ *
+ * The mapping of a capability from EFX to HW can be one to many. Use
+ * the given fraction of raw HW netport capability data to choose the
+ * first supported HW capability bit encountered for a particular EFX
+ * one and proceed with handling the next EFX bit, if any, afterwards.
+ *
+ * Do not check the input mask for leftover bits (unknown to EFX), as
+ * inputs should have been validated by efx_phy_adv_cap_set() already.
+ */
+#define	EFX_NP_CAP_MASK_SW_TO_HW(					\
+	    _hw_sw_cap_map, _hw_cap_section, _hw_cap_data,		\
+	    _mask_sw, _mask_hwp)					\
+	efx_np_cap_mask_sw_to_hw((_hw_sw_cap_map),			\
+	    EFX_ARRAY_SIZE(_hw_sw_cap_map),				\
+	    MCDI_STRUCT_MEMBER((_hw_cap_data), const uint8_t,		\
+		    MC_CMD_##_hw_cap_section),				\
+	    MC_CMD_##_hw_cap_section##_LEN,				\
+	    (_mask_sw), (_mask_hwp))
+
+static					void
+efx_np_cap_sw_mask_to_hw_enum(
+	__in_ecount(hw_sw_map_nentries)	const struct efx_np_cap_map *hw_sw_map,
+	__in				unsigned int hw_sw_map_nentries,
+	__in_bcount(hw_cap_data_nbytes)	const uint8_t *hw_cap_data,
+	__in				size_t hw_cap_data_nbytes,
+	__in				uint32_t mask_sw,
+	__out				boolean_t *supportedp,
+	__out_opt			uint16_t *enum_hwp)
+{
+	unsigned int sw_nflags_req = 0;
+	unsigned int sw_nflags_sup = 0;
+	uint32_t sw_check_mask = 0;
+	unsigned int i;
+
+	for (i = 0; i < hw_sw_map_nentries; ++i) {
+		uint32_t flag_sw = 1U << hw_sw_map->encm_sw;
+		unsigned int byte_idx = CAP_BYTE(hw_sw_map);
+		uint8_t flag_hw = CAP_FLAG(hw_sw_map);
+
+		if (byte_idx >= hw_cap_data_nbytes) {
+			++(hw_sw_map);
+			continue;
+		}
+
+		if ((mask_sw & flag_sw) == flag_sw) {
+			if ((sw_check_mask & flag_sw) == 0)
+				++(sw_nflags_req);
+
+			sw_check_mask |= flag_sw;
+
+			if ((hw_cap_data[byte_idx] & flag_hw) == flag_hw) {
+				mask_sw &= ~(flag_sw);
+
+				if (enum_hwp != NULL)
+					*enum_hwp = hw_sw_map->encm_hw;
+			}
+		}
+
+		++(hw_sw_map);
+	}
+
+	if (sw_check_mask != 0 && (mask_sw & sw_check_mask) == sw_check_mask) {
+		/* Failed to select the enum by at least one capability bit. */
+		*supportedp = B_FALSE;
+		return;
+	}
+
+	*supportedp = B_TRUE;
+}
+
+/*
+ * Convert (conceivably) the only EFX capability bit of the given mask to
+ * the HW enum value, provided that the capability is supported by the HW,
+ * where the latter follows from the given fraction of HW capability data.
+ */
+#define	EFX_NP_CAP_SW_MASK_TO_HW_ENUM(					\
+	    _hw_sw_cap_map, _hw_cap_section, _hw_cap_data,		\
+	    _mask_sw, _supportedp, _enum_hwp)				\
+	efx_np_cap_sw_mask_to_hw_enum((_hw_sw_cap_map),			\
+	    EFX_ARRAY_SIZE(_hw_sw_cap_map),				\
+	    MCDI_STRUCT_MEMBER((_hw_cap_data), const uint8_t,		\
+		    MC_CMD_##_hw_cap_section),				\
+	    MC_CMD_##_hw_cap_section##_LEN, (_mask_sw),			\
+	    (_supportedp), (_enum_hwp))
+
+	__checkReturn	efx_rc_t
+efx_np_link_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const uint8_t *cap_data_raw,
+	__in		efx_link_mode_t loopback_link_mode,
+	__in		efx_loopback_type_t loopback_mode,
+	__in		uint32_t cap_mask_sw,
+	__in		boolean_t fcntl_an)
+{
+	uint32_t flags = 1U << MC_CMD_LINK_FLAGS_IGNORE_MODULE_SEQ;
+	uint8_t loopback = MC_CMD_LOOPBACK_V2_NONE;
+	uint16_t link_tech = MC_CMD_ETH_TECH_NONE;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_LINK_CTRL_IN_LEN,
+	    MC_CMD_LINK_CTRL_OUT_LEN);
+	uint8_t *cap_mask_hw_pausep;
+	uint8_t *cap_mask_hw_techp;
+	uint16_t cap_enum_hw;
+	boolean_t supported;
+	efx_mcdi_req_t req;
+	boolean_t phy_an;
+	efx_rc_t rc;
+	uint8_t fec;
+
+	req.emr_out_length = MC_CMD_LINK_CTRL_OUT_LEN;
+	req.emr_in_length = MC_CMD_LINK_CTRL_IN_LEN;
+	req.emr_cmd = MC_CMD_LINK_CTRL;
+	req.emr_out_buf = payload;
+	req.emr_in_buf = payload;
+
+	MCDI_IN_SET_DWORD(req, LINK_CTRL_IN_PORT_HANDLE, nph);
+
+	cap_mask_hw_pausep = MCDI_IN2(req, uint8_t,
+	    LINK_CTRL_IN_ADVERTISED_PAUSE_ABILITIES_MASK);
+
+	cap_mask_hw_techp = MCDI_IN2(req, uint8_t,
+	    LINK_CTRL_IN_ADVERTISED_TECH_ABILITIES_MASK);
+
+	if (loopback_mode != EFX_LOOPBACK_OFF) {
+#if EFSYS_OPT_LOOPBACK
+		uint16_t cap_enum_sw;
+
+		switch (loopback_mode) {
+		case EFX_LOOPBACK_DATA:
+			loopback = MC_CMD_LOOPBACK_V2_AUTO;
+			break;
+		case EFX_LOOPBACK_PCS:
+			loopback = MC_CMD_LOOPBACK_V2_POST_PCS;
+			break;
+		default:
+			rc = ENOTSUP;
+			goto fail1;
+		}
+
+		rc = efx_np_sw_link_mode_to_cap(loopback_link_mode,
+					    &cap_enum_sw);
+		if (rc != 0)
+			goto fail2;
+
+		EFX_NP_CAP_ENUM_SW_TO_HW(efx_np_cap_map_tech,
+		    ETH_AN_FIELDS_TECH_MASK, cap_data_raw, cap_enum_sw,
+		    &supported, &link_tech);
+
+		if (supported == B_FALSE) {
+			rc = ENOTSUP;
+			goto fail3;
+		}
+#else /* ! EFSYS_OPT_LOOPBACK */
+		rc = ENOTSUP;
+		goto fail1;
+#endif /* EFSYS_OPT_LOOPBACK */
+	} else if (cap_mask_sw & (1U << EFX_PHY_CAP_AN)) {
+		EFX_NP_CAP_MASK_SW_TO_HW(efx_np_cap_map_tech,
+		    ETH_AN_FIELDS_TECH_MASK, cap_data_raw, cap_mask_sw,
+		    cap_mask_hw_techp);
+
+		if (fcntl_an != B_FALSE) {
+			EFX_NP_CAP_MASK_SW_TO_HW(efx_np_cap_map_pause,
+			    ETH_AN_FIELDS_PAUSE_MASK, cap_data_raw, cap_mask_sw,
+			    cap_mask_hw_pausep);
+		}
+
+		flags |= 1U << MC_CMD_LINK_FLAGS_AUTONEG_EN;
+		link_tech = MC_CMD_ETH_TECH_AUTO;
+	} else {
+		EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_tech,
+		    ETH_AN_FIELDS_TECH_MASK, cap_data_raw, cap_mask_sw,
+		    &supported, &link_tech);
+
+		if (supported == B_FALSE) {
+			rc = ENOTSUP;
+			goto fail4;
+		}
+	}
+
+	/* The software mask may have no requested FEC bits. Default is NONE. */
+	cap_enum_hw = MC_CMD_FEC_NONE;
+
+	/*
+	 * Compared to older EF10 interface, in netport MCDI, FEC mode is a
+	 * single enum choice. For compatibility, do not enforce only single
+	 * requested FEC bit in the original mask.
+	 *
+	 * No requested FEC bits in the original mask gives supported=TRUE.
+	 */
+	EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_fec_req,
+	    ETH_AN_FIELDS_FEC_REQ, cap_data_raw, cap_mask_sw,
+	    &supported, &cap_enum_hw);
+
+	if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) != 0 && supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail5;
+	}
+
+	EFSYS_ASSERT(cap_enum_hw <= UINT8_MAX);
+	fec = cap_enum_hw;
+
+	MCDI_IN_SET_WORD(req, LINK_CTRL_IN_LINK_TECHNOLOGY, link_tech);
+	MCDI_IN_SET_DWORD(req, LINK_CTRL_IN_CONTROL_FLAGS, flags);
+	MCDI_IN_SET_BYTE(req, LINK_CTRL_IN_LOOPBACK, loopback);
+	MCDI_IN_SET_BYTE(req, LINK_CTRL_IN_FEC_MODE, fec);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail6;
+	}
+
+	return (0);
+
+fail6:
+	EFSYS_PROBE(fail6);
+
+fail5:
+	EFSYS_PROBE(fail5);
+
+fail4:
+	EFSYS_PROBE(fail4);
+
+fail3:
+	EFSYS_PROBE(fail3);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}

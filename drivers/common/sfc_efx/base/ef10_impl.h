@@ -814,6 +814,12 @@ mcdi_phy_decode_link_mode(
 	__out			unsigned int *fcntlp,
 	__out			efx_phy_fec_type_t *fecp);
 
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_phy_set_led(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_led_mode_t phy_led_mode);
+
 #if EFSYS_OPT_BIST
 
 LIBEFX_INTERNAL
