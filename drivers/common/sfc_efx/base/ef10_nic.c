@@ -1979,6 +1979,7 @@ static struct ef10_external_port_map_s {
 	 */
 	{
 		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_1x1_1x1) |			/* mode 2 */
 		(1U << TLV_PORT_MODE_1x4_1x4),			/* mode 3 */
 		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
