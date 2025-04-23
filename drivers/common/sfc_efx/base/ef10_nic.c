@@ -176,6 +176,9 @@ ef10_nic_get_port_mode_bandwidth(
 	case TLV_PORT_MODE_2x1_2x1:			/* mode 5 */
 		bandwidth = (2 * single_lane) + (2 * single_lane);
 		break;
+	case TLV_PORT_MODE_4x1_4x1:			/* mode 26 */
+		bandwidth = (4 * single_lane) + (4 * single_lane);
+		break;
 	case TLV_PORT_MODE_1x2_1x2:			/* mode 12 */
 		bandwidth = dual_lane + dual_lane;
 		break;
@@ -1951,6 +1954,23 @@ static struct ef10_external_port_map_s {
 		EFX_FAMILY_MEDFORD4,
 		(1U << TLV_PORT_MODE_4x1_NA),			/* mode 4 */
 		{ 0, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate up to 4 adjacent port numbers
+	 * to cage 1 and 4 port numbers to cage 2.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 1
+	 *	port 3 -> cage 1
+	 *	port 4 -> cage 2
+	 *	port 5 -> cage 2
+	 *	port 6 -> cage 2
+	 *	port 7 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_4x1_4x1),			/* mode 26 */
+		{ 0, 4, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
 };
 

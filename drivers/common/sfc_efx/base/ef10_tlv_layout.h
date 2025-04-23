@@ -7,7 +7,7 @@
 /*
  * This is NOT the original source file. Do NOT edit it.
  * To update the tlv layout, please edit the copy in
- * the sfregistry repo and then, in that repo,
+ * the smartnic_registry repo and then, in that repo,
  * "make tlv_headers" or "make export" to
  * regenerate and export all types of headers.
  */
@@ -635,7 +635,10 @@ struct tlv_global_port_mode {
 #define TLV_PORT_MODE_1x1_NA_LL                  (23) /* Single 10G/25G on mdi0, low-latency PCS */
 #define TLV_PORT_MODE_1x1_1x1_LL                 (24) /* Single 10G/25G on mdi0, single 10G/25G on mdi1, low-latency PCS */
 #define TLV_PORT_MODE_BUG63720_DO_NOT_USE        (9) /* bug63720: Do not use */
-#define TLV_PORT_MODE_MAX TLV_PORT_MODE_1x1_1x1_LL
+
+/* X4 */
+
+#define TLV_PORT_MODE_4x1_4x1                    (25) /* Quad 10G/25G on mdi0, quad 10G/25G on mdi1 */
 
 /* Deprecated Medford aliases - DO NOT USE IN NEW CODE */
 #define TLV_PORT_MODE_10G_10G_10G_10G_Q          (5)
@@ -643,7 +646,7 @@ struct tlv_global_port_mode {
 #define TLV_PORT_MODE_10G_10G_10G_10G_Q2         (8)
 #define TLV_PORT_MODE_10G_10G_10G_10G_Q1_Q2      (9)
 
-#define TLV_PORT_MODE_MAX TLV_PORT_MODE_1x1_1x1_LL
+#define TLV_PORT_MODE_MAX TLV_PORT_MODE_4x1_4x1
 };
 
 /* Type of the v-switch created implicitly by the firmware */
