@@ -972,7 +972,8 @@ struct efx_nic_s {
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \
-	((_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
+	((_enp)->en_family == EFX_FAMILY_MEDFORD4 || \
+	 (_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
 	 (_enp)->en_family == EFX_FAMILY_MEDFORD || \
 	 (_enp)->en_family == EFX_FAMILY_HUNTINGTON)
 
@@ -1126,6 +1127,10 @@ struct efx_txq_s {
 									\
 		case EFX_FAMILY_RIVERHEAD:				\
 			rev = 'G';					\
+			break;						\
+									\
+		case EFX_FAMILY_MEDFORD4:				\
+			rev = 'H';					\
 			break;						\
 									\
 		default:						\

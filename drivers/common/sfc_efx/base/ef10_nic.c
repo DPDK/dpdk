@@ -1422,7 +1422,7 @@ ef10_get_datapath_caps(
 
 	/*
 	 * Check if firmware reports the VI window mode.
-	 * Medford2 has a variable VI window size (8K, 16K or 64K).
+	 * Medford2 and Medford4 have a variable VI window size (8K, 16K or 64K).
 	 * Medford and Huntington have a fixed 8K VI window size.
 	 */
 	if (req.emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V3_OUT_LEN) {
@@ -1479,6 +1479,7 @@ ef10_get_datapath_caps(
 
 		switch (enp->en_family) {
 		case EFX_FAMILY_MEDFORD2:
+		case EFX_FAMILY_MEDFORD4:
 			encp->enc_rx_scale_hash_alg_mask =
 			    (1U << EFX_RX_HASHALG_TOEPLITZ);
 			break;
@@ -1921,6 +1922,35 @@ static struct ef10_external_port_map_s {
 		(1U << TLV_PORT_MODE_1x4_NA) |			/* mode 1 */
 		(1U << TLV_PORT_MODE_1x1_1x1),			/* mode 2 */
 		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate 2 adjacent port numbers to cage 1
+	 * and the rest to cage 2.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 2
+	 *	port 3 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_2x1_2x1) |			/* mode 5 */
+		(1U << TLV_PORT_MODE_2x1_1x4) |			/* mode 7 */
+		(1U << TLV_PORT_MODE_2x2_NA) |			/* mode 13 */
+		(1U << TLV_PORT_MODE_2x1_1x2),			/* mode 18 */
+		{ 0, 2, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate up to 4 adjacent port numbers
+	 * to cage 1.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 1
+	 *	port 3 -> cage 1
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_4x1_NA),			/* mode 4 */
+		{ 0, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
 };
 

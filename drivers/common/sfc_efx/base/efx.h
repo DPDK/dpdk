@@ -196,6 +196,7 @@ efx_family_probe_bar(
 /* FIXME Fix it when memory bar is fixed in FPGA image. It must be 0. */
 #define	EFX_MEM_BAR_RIVERHEAD			2
 
+#define	EFX_MEM_BAR_MEDFORD4			2
 
 /* Error codes */
 
