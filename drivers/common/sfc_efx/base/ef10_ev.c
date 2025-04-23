@@ -907,6 +907,16 @@ ef10_ev_mcdi(
 #endif /* EFSYS_OPT_MCDI_PROXY_AUTH_SERVER */
 
 	case MCDI_EVENT_CODE_LINKCHANGE_V2:
+		if (efx_np_supported(enp) != B_FALSE) {
+			/*
+			 * Netport MCDI capable NICs support new link change
+			 * events, but legacy LINKCHANGE_V2 events may still
+			 * show up should the firmware support them. For the
+			 * sake of consistency, ignore LINKCHANGE_V2 events.
+			 */
+			break;
+		}
+
 		ev_is_v2 = B_TRUE;
 		/* Fallthrough */
 	case MCDI_EVENT_CODE_LINKCHANGE: {
