@@ -794,6 +794,48 @@ fail1:
 }
 #endif /* EFSYS_OPT_MAC_STATS */
 
+static	__checkReturn	efx_rc_t
+efx_np_set_event_mask(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		boolean_t want_linkchange_events)
+{
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_SET_NETPORT_EVENTS_MASK_IN_LEN,
+	    MC_CMD_SET_NETPORT_EVENTS_MASK_OUT_LEN);
+	efx_mcdi_req_t req;
+	efx_dword_t dword;
+	efx_rc_t rc;
+
+	req.emr_out_length = MC_CMD_SET_NETPORT_EVENTS_MASK_OUT_LEN;
+	req.emr_in_length = MC_CMD_SET_NETPORT_EVENTS_MASK_IN_LEN;
+	req.emr_cmd = MC_CMD_SET_NETPORT_EVENTS_MASK;
+	req.emr_out_buf = payload;
+	req.emr_in_buf = payload;
+
+	EFX_ZERO_DWORD(dword);
+
+	if (want_linkchange_events != B_FALSE)
+		EFX_SET_DWORD_BIT(dword, EVENT_MASK_PORT_LINKCHANGE);
+
+	MCDI_IN_SET_DWORD(req, SET_NETPORT_EVENTS_MASK_IN_PORT_HANDLE, nph);
+	MCDI_IN_SET_DWORD(req, SET_NETPORT_EVENTS_MASK_IN_EVENT_MASK,
+	    dword.ed_u32[0]);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail1;
+	}
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn	efx_rc_t
 efx_np_attach(
 	__in		efx_nic_t *enp)
@@ -858,7 +900,16 @@ efx_np_attach(
 		goto fail5;
 
 	epp->ep_mac_pdu = ms.enms_pdu;
+
+	/* Subscribe to link change events. */
+	rc = efx_np_set_event_mask(enp, epp->ep_np_handle, B_TRUE);
+	if (rc != 0)
+		goto fail6;
+
 	return (0);
+
+fail6:
+	EFSYS_PROBE(fail6);
 
 fail5:
 	EFSYS_PROBE(fail5);
@@ -883,8 +934,13 @@ fail1:
 efx_np_detach(
 	__in	efx_nic_t *enp)
 {
+	efx_port_t *epp = &(enp->en_port);
+
 	if (efx_np_supported(enp) == B_FALSE)
 		return;
+
+	/* Unsubscribe from link change events. */
+	(void) efx_np_set_event_mask(enp, epp->ep_np_handle, B_FALSE);
 }
 
 	__checkReturn	efx_rc_t
