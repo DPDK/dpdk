@@ -309,6 +309,8 @@ struct sfc_adapter {
 	uint32_t			rxd_wait_timeout_ns;
 
 	bool				switchdev;
+
+	bool				link_ev_need_poll;
 };
 
 static inline struct sfc_adapter_shared *

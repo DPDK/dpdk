@@ -3252,6 +3252,8 @@ sfc_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	if (rc != 0)
 		goto fail_nic_dma_attach;
 
+	sa->link_ev_need_poll = encp->enc_link_ev_need_poll;
+
 	sfc_adapter_unlock(sa);
 
 	sfc_log_init(sa, "done");
