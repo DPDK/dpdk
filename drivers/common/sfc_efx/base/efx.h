@@ -1754,6 +1754,12 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_mac_pdu_min;
 	/* Maximum MAC PDU value to use with efx_mac_pdu_set() */
 	uint32_t		enc_mac_pdu_max;
+	/*
+	 * When true, the link mode value passed from eec_link_change() is
+	 * either UNKNOWN (merely saying the link is up) or DOWN. In order
+	 * to have exact speed/duplex, efx_port_poll() needs to be invoked.
+	 */
+	boolean_t		enc_link_ev_need_poll;
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff
