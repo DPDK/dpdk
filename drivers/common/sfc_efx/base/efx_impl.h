@@ -382,6 +382,8 @@ typedef struct efx_port_s {
 	const efx_phy_ops_t	*ep_epop;
 
 	efx_np_handle_t		ep_np_handle;
+	efx_qword_t		ep_np_loopback_cap_mask;
+	uint8_t			ep_np_cap_data_raw[MC_CMD_ETH_AN_FIELDS_LEN];
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {

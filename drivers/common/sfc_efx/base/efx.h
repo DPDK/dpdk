@@ -655,6 +655,7 @@ typedef enum efx_link_mode_e {
 	EFX_LINK_25000FDX,
 	EFX_LINK_50000FDX,
 	EFX_LINK_100000FDX,
+	EFX_LINK_200000FDX,
 	EFX_LINK_NMODES
 } efx_link_mode_t;
 
