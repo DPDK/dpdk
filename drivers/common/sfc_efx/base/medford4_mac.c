@@ -51,4 +51,42 @@ fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
 }
+
+	__checkReturn		efx_rc_t
+medford4_mac_reconfigure(
+	__in			efx_nic_t *enp)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_np_mac_ctrl_t mc = {0};
+	efx_rc_t rc;
+
+	mc.enmc_fcntl_autoneg = epp->ep_fcntl_autoneg;
+	mc.enmc_include_fcs = epp->ep_include_fcs;
+	mc.enmc_fcntl = epp->ep_fcntl;
+
+	rc = efx_np_mac_ctrl(enp, epp->ep_np_handle, &mc);
+	if (rc != 0)
+		goto fail1;
+
+	/*
+	 * Apply the filters for the MAC configuration. If the NIC isn't ready
+	 * to accept filters, this may return success without setting anything.
+	 */
+	rc = efx_filter_reconfigure(enp, epp->ep_mac_addr,
+				    epp->ep_all_unicst, epp->ep_mulcst,
+				    epp->ep_all_mulcst, epp->ep_brdcst,
+				    epp->ep_mulcst_addr_list,
+				    epp->ep_mulcst_addr_count);
+	if (rc != 0)
+		goto fail2;
+
+	return (0);
+
+fail2:
+	EFSYS_PROBE(fail2);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
 #endif /* EFSYS_OPT_MEDFORD4 */

@@ -1947,6 +1947,19 @@ efx_np_link_ctrl(
 	__in		uint32_t cap_mask_sw,
 	__in		boolean_t fcntl_an);
 
+typedef struct efx_np_mac_ctrl_s {
+	boolean_t	enmc_fcntl_autoneg;
+	boolean_t	enmc_include_fcs;
+	uint32_t	enmc_fcntl;
+} efx_np_mac_ctrl_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const efx_np_mac_ctrl_t *mc);
+
 #ifdef	__cplusplus
 }
 #endif
