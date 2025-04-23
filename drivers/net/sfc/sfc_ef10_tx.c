@@ -65,6 +65,7 @@ struct sfc_ef10_txq {
 	unsigned int			max_fill_level;
 	unsigned int			free_thresh;
 	unsigned int			evq_read_ptr;
+	unsigned int			max_pdu;
 	struct sfc_ef10_tx_sw_desc	*sw_ring;
 	efx_qword_t			*txq_hw_ring;
 	volatile void			*doorbell;
@@ -252,7 +253,7 @@ sfc_ef10_tx_qpush(struct sfc_ef10_txq *txq, unsigned int added,
 }
 
 static unsigned int
-sfc_ef10_tx_pkt_descs_max(const struct rte_mbuf *m)
+sfc_ef10_tx_pkt_descs_max(const struct rte_mbuf *m, unsigned int max_pdu)
 {
 	unsigned int extra_descs_per_seg;
 	unsigned int extra_descs_per_pkt;
@@ -290,8 +291,7 @@ sfc_ef10_tx_pkt_descs_max(const struct rte_mbuf *m)
 	 * maximum PDU size.
 	 */
 	extra_descs_per_pkt =
-		(RTE_MIN((unsigned int)EFX_MAC_PDU_MAX,
-			 SFC_MBUF_PKT_LEN_MAX) - 1) /
+		(RTE_MIN(max_pdu, SFC_MBUF_PKT_LEN_MAX) - 1) /
 		SFC_EF10_TX_DMA_DESC_LEN_MAX;
 
 	return m->nb_segs + RTE_MIN(m->nb_segs * extra_descs_per_seg,
@@ -672,7 +672,8 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			goto dma_desc_space_update;
 		}
 
-		if (sfc_ef10_tx_pkt_descs_max(m_seg) > dma_desc_space) {
+		if (sfc_ef10_tx_pkt_descs_max(m_seg, txq->max_pdu) >
+		    dma_desc_space) {
 			if (reap_done)
 				break;
 
@@ -686,7 +687,8 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			reap_done = true;
 			dma_desc_space = txq->max_fill_level -
 				(added - txq->completed);
-			if (sfc_ef10_tx_pkt_descs_max(m_seg) > dma_desc_space)
+			if (sfc_ef10_tx_pkt_descs_max(m_seg, txq->max_pdu) >
+			    dma_desc_space)
 				break;
 		}
 
@@ -986,6 +988,7 @@ sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 			(info->hw_index << info->vi_window_shift);
 	txq->evq_hw_ring = info->evq_hw_ring;
 	txq->tso_tcp_header_offset_limit = info->tso_tcp_header_offset_limit;
+	txq->max_pdu = info->max_pdu;
 
 	sfc_ef10_tx_info(&txq->dp.dpq, "TxQ doorbell is %p", txq->doorbell);
 

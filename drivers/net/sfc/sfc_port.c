@@ -391,7 +391,7 @@ sfc_port_configure(struct sfc_adapter *sa)
 
 	sfc_log_init(sa, "entry");
 
-	port->pdu = EFX_MAC_PDU(dev_data->mtu);
+	port->pdu = efx_mac_pdu_from_sdu(sa->nic, dev_data->mtu);
 
 	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 		port->include_fcs = true;
