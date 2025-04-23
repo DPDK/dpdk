@@ -72,6 +72,10 @@ New Features
 
   * Support matching on IPv6 frag extension header with async flow template API.
 
+* **Updated Solarflare network driver.**
+
+  * Added support for AMD Solarflare X45xx adapters.
+
 * **Updated virtio driver.**
 
   * Added support for Rx and Tx burst mode query.
