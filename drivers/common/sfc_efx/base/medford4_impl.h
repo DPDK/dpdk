@@ -52,6 +52,17 @@ medford4_mac_up(
 	__out		boolean_t *mac_upp);
 
 LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+medford4_mac_pdu_set(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+medford4_mac_pdu_get(
+	__in		efx_nic_t *enp,
+	__out		size_t *pdup);
+
+LIBEFX_INTERNAL
 extern	__checkReturn		efx_rc_t
 medford4_mac_reconfigure(
 	__in			efx_nic_t *enp);

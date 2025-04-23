@@ -801,6 +801,7 @@ efx_np_attach(
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	efx_port_t *epp = &(enp->en_port);
 	efx_np_link_state_t ls;
+	efx_np_mac_state_t ms;
 	efx_rc_t rc;
 
 	if (efx_np_supported(enp) == B_FALSE)
@@ -852,7 +853,15 @@ efx_np_attach(
 		goto fail4;
 #endif /* EFSYS_OPT_MAC_STATS */
 
+	rc = efx_np_mac_state(enp, epp->ep_np_handle, &ms);
+	if (rc != 0)
+		goto fail5;
+
+	epp->ep_mac_pdu = ms.enms_pdu;
 	return (0);
+
+fail5:
+	EFSYS_PROBE(fail5);
 
 #if EFSYS_OPT_MAC_STATS
 fail4:
@@ -915,6 +924,7 @@ efx_np_mac_state(
 	if (MCDI_OUT_DWORD(req, MAC_STATE_OUT_MAC_FAULT_FLAGS) == 0)
 		msp->enms_up = B_TRUE;
 
+	msp->enms_pdu = MCDI_OUT_DWORD(req, MAC_STATE_OUT_MAX_FRAME_LEN);
 	msp->enms_fcntl = MCDI_OUT_DWORD(req, MAC_STATE_OUT_FCNTL);
 	return (0);
 
@@ -1210,6 +1220,12 @@ efx_np_mac_ctrl(
 
 	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_PORT_HANDLE, nph);
 
+	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_MAX_FRAME_LEN, mc->enmc_pdu);
+	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_MAX_FRAME_LEN;
+
+	if (mc->enmc_set_pdu_only != B_FALSE)
+		goto skip_full_reconfigure;
+
 	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_INCLUDE_FCS;
 	if (mc->enmc_include_fcs != B_FALSE)
 		flags |= 1U << MC_CMD_MAC_FLAGS_FLAG_INCLUDE_FCS;
@@ -1241,6 +1257,7 @@ efx_np_mac_ctrl(
 	cfg |= 1U << MC_CMD_MAC_CONFIG_OPTIONS_CFG_FCNTL;
 	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_FCNTL, fcntl);
 
+skip_full_reconfigure:
 	MCDI_IN_SET_DWORD(req, MAC_CTRL_IN_V2_CONTROL_FLAGS, cfg);
 
 	efx_mcdi_execute(enp, &req);

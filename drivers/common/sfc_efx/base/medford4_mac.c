@@ -52,6 +52,49 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	efx_rc_t
+medford4_mac_pdu_set(
+	__in		efx_nic_t *enp)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_np_mac_ctrl_t mc = {0};
+	efx_rc_t rc;
+
+	mc.enmc_set_pdu_only = B_TRUE;
+	mc.enmc_pdu = epp->ep_mac_pdu;
+
+	rc = efx_np_mac_ctrl(enp, epp->ep_np_handle, &mc);
+	if (rc != 0)
+		goto fail1;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+medford4_mac_pdu_get(
+	__in		efx_nic_t *enp,
+	__out		size_t *pdup)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_np_mac_state_t ms;
+	efx_rc_t rc;
+
+	rc = efx_np_mac_state(enp, epp->ep_np_handle, &ms);
+	if (rc != 0)
+		goto fail1;
+
+	*pdup = ms.enms_pdu;
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 	__checkReturn		efx_rc_t
 medford4_mac_reconfigure(
 	__in			efx_nic_t *enp)
@@ -63,6 +106,7 @@ medford4_mac_reconfigure(
 	mc.enmc_fcntl_autoneg = epp->ep_fcntl_autoneg;
 	mc.enmc_include_fcs = epp->ep_include_fcs;
 	mc.enmc_fcntl = epp->ep_fcntl;
+	mc.enmc_pdu = epp->ep_mac_pdu;
 
 	rc = efx_np_mac_ctrl(enp, epp->ep_np_handle, &mc);
 	if (rc != 0)
