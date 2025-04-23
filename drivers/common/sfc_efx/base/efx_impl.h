@@ -1907,7 +1907,14 @@ efx_np_detach(
 
 typedef struct efx_np_link_state_s {
 	uint32_t		enls_adv_cap_mask;
+	uint32_t		enls_lp_cap_mask;
+	efx_loopback_type_t	enls_loopback;
+	uint32_t		enls_speed;
+	uint8_t			enls_fec;
+
 	boolean_t		enls_an_supported;
+	boolean_t		enls_fd;
+	boolean_t		enls_up;
 } efx_np_link_state_t;
 
 LIBEFX_INTERNAL
@@ -1916,6 +1923,18 @@ efx_np_link_state(
 	__in		efx_nic_t *enp,
 	__in		efx_np_handle_t nph,
 	__out		efx_np_link_state_t *lsp);
+
+typedef struct efx_np_mac_state_s {
+	uint32_t	enms_fcntl;
+	boolean_t	enms_up;
+} efx_np_mac_state_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_mac_state_t *msp);
 
 #ifdef	__cplusplus
 }

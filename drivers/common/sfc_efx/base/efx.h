@@ -4010,7 +4010,9 @@ efx_nic_set_fw_subvariant(
 typedef enum efx_phy_fec_type_e {
 	EFX_PHY_FEC_NONE = 0,
 	EFX_PHY_FEC_BASER,
-	EFX_PHY_FEC_RS
+	EFX_PHY_FEC_RS,
+	EFX_PHY_FEC_IEEE_RS_INT,
+	EFX_PHY_FEC_ETCS_RS_LL,
 } efx_phy_fec_type_t;
 
 #define EFX_PHY_CAP_FEC_BIT(_fec_bit) (1U << EFX_PHY_CAP_##_fec_bit)

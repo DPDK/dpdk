@@ -118,6 +118,8 @@ mcdi_phy_decode_link_mode(
 
 	if (!up)
 		*link_modep = EFX_LINK_DOWN;
+	else if (speed == 200000 && fd)
+		*link_modep = EFX_LINK_200000FDX;
 	else if (speed == 100000 && fd)
 		*link_modep = EFX_LINK_100000FDX;
 	else if (speed == 50000 && fd)
@@ -159,6 +161,12 @@ mcdi_phy_decode_link_mode(
 		break;
 	case MC_CMD_FEC_RS:
 		*fecp = EFX_PHY_FEC_RS;
+		break;
+	case MC_CMD_FEC_IEEE_RS_INT:
+		*fecp = EFX_PHY_FEC_IEEE_RS_INT;
+		break;
+	case MC_CMD_FEC_ETCS_RS_LL:
+		*fecp = EFX_PHY_FEC_ETCS_RS_LL;
 		break;
 	default:
 		EFSYS_PROBE1(mc_pcol_error, int, fec);
