@@ -1972,6 +1972,16 @@ static struct ef10_external_port_map_s {
 		(1U << TLV_PORT_MODE_4x1_4x1),			/* mode 26 */
 		{ 0, 4, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
+	/*
+	 * Modes that on Medford4 allocate each port number to a separate cage.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_1x4_1x4),			/* mode 3 */
+		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
 };
 
 static	__checkReturn	efx_rc_t
