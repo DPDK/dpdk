@@ -668,23 +668,44 @@ typedef enum efx_link_mode_e {
 
 #define	EFX_MAC_SDU_MAX	9202
 
+/*
+ * NOTE: the PDU macros implement an obsolete workaround that is needed for
+ * MC_CMD_SET_MAC; do not use the PDU macros for the netport MCDI commands,
+ * which do not use the workaround.
+ */
+
 #define	EFX_MAC_PDU_ADJUSTMENT					\
 	(/* EtherII */ 14					\
 	    + /* VLAN */ 4					\
 	    + /* CRC */ 4					\
 	    + /* bug16011 */ 16)				\
 
+/* NOTE: this macro is deprecated; use efx_mac_pdu_from_sdu(). */
 #define	EFX_MAC_PDU(_sdu)					\
 	EFX_P2ROUNDUP(size_t, (_sdu) + EFX_MAC_PDU_ADJUSTMENT, 8)
 
 /*
  * Due to the EFX_P2ROUNDUP in EFX_MAC_PDU(), EFX_MAC_SDU_FROM_PDU() may give
  * the SDU rounded up slightly.
+ *
+ * NOTE: do not use this macro in new code as it is
+ * incorrect for the netport MCDI commands.
  */
 #define	EFX_MAC_SDU_FROM_PDU(_pdu)	((_pdu) - EFX_MAC_PDU_ADJUSTMENT)
 
 #define	EFX_MAC_PDU_MIN	60
+
+/* NOTE: this macro is deprecated; use encp->enc_mac_pdu_max. */
 #define	EFX_MAC_PDU_MAX	EFX_MAC_PDU(EFX_MAC_SDU_MAX)
+
+/*
+ * For use with efx_mac_pdu_set(), convert the given SDU value to its PDU form.
+ */
+LIBEFX_API
+extern			size_t
+efx_mac_pdu_from_sdu(
+	__in		efx_nic_t *enp,
+	__in		size_t sdu);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -1729,6 +1750,10 @@ typedef struct efx_nic_cfg_s {
 	efx_nic_dma_mapping_t	enc_dma_mapping;
 	/* Physical ports shared by PFs */
 	efx_port_usage_t	enc_port_usage;
+	/* Minimum MAC PDU value to use with efx_mac_pdu_set() */
+	uint32_t		enc_mac_pdu_min;
+	/* Maximum MAC PDU value to use with efx_mac_pdu_set() */
+	uint32_t		enc_mac_pdu_max;
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff

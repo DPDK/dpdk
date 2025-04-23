@@ -114,6 +114,20 @@ static const efx_mac_ops_t	__efx_mac_medford4_ops = {
 };
 #endif /* EFSYS_OPT_MEDFORD4 */
 
+			size_t
+efx_mac_pdu_from_sdu(
+	__in		efx_nic_t *enp,
+	__in		size_t sdu)
+{
+	if (efx_np_supported(enp) != B_FALSE) {
+		/* PDU size for netport MCDI capable adaptors. */
+		return sdu + 14 /* ETH */ + 4 /* VLAN */ + 4 /* FCS */;
+	} else {
+		/* PDU size for legacy MC_CMD_SET_MAC command. */
+		return EFX_MAC_PDU(sdu);
+	}
+}
+
 	__checkReturn			efx_rc_t
 efx_mac_pdu_set(
 	__in				efx_nic_t *enp,
@@ -121,6 +135,7 @@ efx_mac_pdu_set(
 {
 	efx_port_t *epp = &(enp->en_port);
 	const efx_mac_ops_t *emop = epp->ep_emop;
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	uint32_t old_pdu;
 	efx_rc_t rc;
 
@@ -128,12 +143,12 @@ efx_mac_pdu_set(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
 	EFSYS_ASSERT(emop != NULL);
 
-	if (pdu < EFX_MAC_PDU_MIN) {
+	if (pdu < encp->enc_mac_pdu_min) {
 		rc = EINVAL;
 		goto fail1;
 	}
 
-	if (pdu > EFX_MAC_PDU_MAX) {
+	if (pdu > encp->enc_mac_pdu_max) {
 		rc = EINVAL;
 		goto fail2;
 	}
