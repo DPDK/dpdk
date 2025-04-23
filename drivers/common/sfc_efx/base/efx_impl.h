@@ -1934,6 +1934,7 @@ efx_np_link_state(
 
 typedef struct efx_np_mac_state_s {
 	uint32_t	enms_fcntl;
+	uint32_t	enms_pdu;
 	boolean_t	enms_up;
 } efx_np_mac_state_t;
 
@@ -1956,9 +1957,12 @@ efx_np_link_ctrl(
 	__in		boolean_t fcntl_an);
 
 typedef struct efx_np_mac_ctrl_s {
+	boolean_t	enmc_set_pdu_only;
+
 	boolean_t	enmc_fcntl_autoneg;
 	boolean_t	enmc_include_fcs;
 	uint32_t	enmc_fcntl;
+	uint32_t	enmc_pdu;
 } efx_np_mac_ctrl_t;
 
 LIBEFX_INTERNAL
