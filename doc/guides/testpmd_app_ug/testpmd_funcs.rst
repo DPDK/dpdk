@@ -2142,7 +2142,7 @@ Set the DCB mode for an individual port::
 
    testpmd> port config (port_id) dcb vt (on|off) (traffic_class) pfc (on|off)
 
-The traffic class should be 4 or 8.
+The traffic class could be 2~8.
 
 port config - Burst
 ~~~~~~~~~~~~~~~~~~~
