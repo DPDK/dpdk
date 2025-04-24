@@ -4167,7 +4167,8 @@ init_port_dcb_config(portid_t pid,
 		     enum rte_eth_nb_tcs num_tcs,
 		     uint8_t pfc_en,
 		     uint8_t prio_tc[RTE_ETH_DCB_NUM_USER_PRIORITIES],
-		     uint8_t prio_tc_en)
+		     uint8_t prio_tc_en,
+		     uint8_t keep_qnum)
 {
 	struct rte_eth_conf port_conf;
 	struct rte_port *rte_port;
@@ -4215,26 +4216,27 @@ init_port_dcb_config(portid_t pid,
 		return -1;
 	}
 
-	/* Assume the ports in testpmd have the same dcb capability
-	 * and has the same number of rxq and txq in dcb mode
-	 */
-	if (dcb_mode == DCB_VT_ENABLED) {
-		if (rte_port->dev_info.max_vfs > 0) {
-			nb_rxq = rte_port->dev_info.nb_rx_queues;
-			nb_txq = rte_port->dev_info.nb_tx_queues;
+	if (keep_qnum == 0) {
+		/* Assume the ports in testpmd have the same dcb capability
+		 * and has the same number of rxq and txq in dcb mode
+		 */
+		if (dcb_mode == DCB_VT_ENABLED) {
+			if (rte_port->dev_info.max_vfs > 0) {
+				nb_rxq = rte_port->dev_info.nb_rx_queues;
+				nb_txq = rte_port->dev_info.nb_tx_queues;
+			} else {
+				nb_rxq = rte_port->dev_info.max_rx_queues;
+				nb_txq = rte_port->dev_info.max_tx_queues;
+			}
 		} else {
-			nb_rxq = rte_port->dev_info.max_rx_queues;
-			nb_txq = rte_port->dev_info.max_tx_queues;
-		}
-	} else {
-		/*if vt is disabled, use all pf queues */
-		if (rte_port->dev_info.vmdq_pool_base == 0) {
-			nb_rxq = rte_port->dev_info.max_rx_queues;
-			nb_txq = rte_port->dev_info.max_tx_queues;
-		} else {
-			nb_rxq = (queueid_t)num_tcs;
-			nb_txq = (queueid_t)num_tcs;
-
+			/*if vt is disabled, use all pf queues */
+			if (rte_port->dev_info.vmdq_pool_base == 0) {
+				nb_rxq = rte_port->dev_info.max_rx_queues;
+				nb_txq = rte_port->dev_info.max_tx_queues;
+			} else {
+				nb_rxq = (queueid_t)num_tcs;
+				nb_txq = (queueid_t)num_tcs;
+			}
 		}
 	}
 	rx_free_thresh = 64;
