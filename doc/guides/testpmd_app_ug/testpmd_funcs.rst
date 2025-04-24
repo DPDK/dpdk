@@ -2165,9 +2165,10 @@ port config - DCB
 
 Set the DCB mode for an individual port::
 
-   testpmd> port config (port_id) dcb vt (on|off) (traffic_class) pfc (on|off)
+   testpmd> port config (port_id) dcb vt (on|off) (traffic_class) pfc (on|off) prio-tc (prio-tc)
 
 The traffic class could be 2~8.
+The prio-tc field here is optional, if not specified then the prio-tc use default configuration.
 
 port config - Burst
 ~~~~~~~~~~~~~~~~~~~
