@@ -1718,6 +1718,24 @@ class TestPmdShell(DPDKShell):
         self.send_command(f"port config all rxq {number_of}")
         self.send_command(f"port config all txq {number_of}")
 
+    @requires_stopped_ports
+    def close_all_ports(self, verify: bool = True) -> None:
+        """Close all ports.
+
+        Args:
+            verify: If :data:`True` the output of the close command will be scanned in an attempt
+                to verify that all ports were stopped successfully. Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and at lease one port
+                failed to close.
+        """
+        port_close_output = self.send_command("port close all")
+        if verify:
+            num_ports = len(self.ports)
+            if not all(f"Port {p_id} is closed" in port_close_output for p_id in range(num_ports)):
+                raise InteractiveCommandExecutionError("Ports were not closed successfully.")
+
     def show_port_info_all(self) -> list[TestPmdPort]:
         """Returns the information of all the ports.
 
