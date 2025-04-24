@@ -2167,7 +2167,7 @@ Set the DCB mode for an individual port::
 
    testpmd> port config (port_id) dcb vt (on|off) (traffic_class) pfc (on|off) prio-tc (prio-tc) keep-qnum
 
-The traffic class could be 2~8.
+The traffic class could be 1~8, if the value is 1, DCB is disabled.
 The prio-tc field here is optional, if not specified then the prio-tc use default configuration.
 The keep-qnum field here is also optional, if specified then don't adjust Rx/Tx queue number.
 
