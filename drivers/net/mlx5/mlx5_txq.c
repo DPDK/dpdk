@@ -732,7 +732,7 @@ txq_calc_inline_max(struct mlx5_txq_ctrl *txq_ctrl)
 	if (!wqe_size)
 		return 0;
 	/*
-	 * This calculation is derived from tthe source of
+	 * This calculation is derived from the source of
 	 * mlx5_calc_send_wqe() in rdma_core library.
 	 */
 	wqe_size = wqe_size * MLX5_WQE_SIZE -
@@ -740,7 +740,7 @@ txq_calc_inline_max(struct mlx5_txq_ctrl *txq_ctrl)
 		   MLX5_WQE_ESEG_SIZE -
 		   MLX5_WSEG_SIZE -
 		   MLX5_WSEG_SIZE +
-		   MLX5_DSEG_MIN_INLINE_SIZE;
+		   MLX5_ESEG_MIN_INLINE_SIZE;
 	return wqe_size;
 }
 
@@ -965,11 +965,8 @@ txq_set_params(struct mlx5_txq_ctrl *txq_ctrl)
  *
  * @param txq_ctrl
  *   Pointer to Tx queue control structure.
- *
- * @return
- *   Zero on success, otherwise the parameters can not be adjusted.
  */
-static int
+static void
 txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	struct mlx5_priv *priv = txq_ctrl->priv;
@@ -982,82 +979,56 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 		 * Inline data feature is not engaged at all.
 		 * There is nothing to adjust.
 		 */
-		return 0;
+		return;
 	}
 	if (txq_ctrl->max_inline_data <= max_inline) {
 		/*
 		 * The requested inline data length does not
 		 * exceed queue capabilities.
 		 */
-		return 0;
+		return;
 	}
 	if (txq_ctrl->txq.inlen_mode > max_inline) {
-		DRV_LOG(ERR,
-			"minimal data inline requirements (%u) are not"
-			" satisfied (%u) on port %u, try the smaller"
-			" Tx queue size (%d)",
-			txq_ctrl->txq.inlen_mode, max_inline,
-			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
-		goto error;
+		DRV_LOG(WARNING,
+			"minimal data inline requirements (%u) are not satisfied (%u) on port %u",
+			txq_ctrl->txq.inlen_mode, max_inline, priv->dev_data->port_id);
 	}
 	if (txq_ctrl->txq.inlen_send > max_inline &&
 	    config->txq_inline_max != MLX5_ARG_UNSET &&
 	    config->txq_inline_max > (int)max_inline) {
-		DRV_LOG(ERR,
-			"txq_inline_max requirements (%u) are not"
-			" satisfied (%u) on port %u, try the smaller"
-			" Tx queue size (%d)",
-			txq_ctrl->txq.inlen_send, max_inline,
-			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
-		goto error;
+		DRV_LOG(WARNING,
+			"txq_inline_max requirements (%u) are not satisfied (%u) on port %u",
+			txq_ctrl->txq.inlen_send, max_inline, priv->dev_data->port_id);
 	}
 	if (txq_ctrl->txq.inlen_empw > max_inline &&
 	    config->txq_inline_mpw != MLX5_ARG_UNSET &&
 	    config->txq_inline_mpw > (int)max_inline) {
-		DRV_LOG(ERR,
-			"txq_inline_mpw requirements (%u) are not"
-			" satisfied (%u) on port %u, try the smaller"
-			" Tx queue size (%d)",
-			txq_ctrl->txq.inlen_empw, max_inline,
-			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
-		goto error;
+		DRV_LOG(WARNING,
+			"txq_inline_mpw requirements (%u) are not satisfied (%u) on port %u",
+			txq_ctrl->txq.inlen_empw, max_inline, priv->dev_data->port_id);
 	}
 	if (txq_ctrl->txq.tso_en && max_inline < MLX5_MAX_TSO_HEADER) {
-		DRV_LOG(ERR,
-			"tso header inline requirements (%u) are not"
-			" satisfied (%u) on port %u, try the smaller"
-			" Tx queue size (%d)",
-			MLX5_MAX_TSO_HEADER, max_inline,
-			priv->dev_data->port_id, priv->sh->dev_cap.max_qp_wr);
-		goto error;
+		DRV_LOG(WARNING,
+			"tso header inline requirements (%u) are not satisfied (%u) on port %u",
+			MLX5_MAX_TSO_HEADER, max_inline, priv->dev_data->port_id);
 	}
 	if (txq_ctrl->txq.inlen_send > max_inline) {
 		DRV_LOG(WARNING,
-			"adjust txq_inline_max (%u->%u)"
-			" due to large Tx queue on port %u",
-			txq_ctrl->txq.inlen_send, max_inline,
-			priv->dev_data->port_id);
+			"adjust txq_inline_max (%u->%u) due to large Tx queue on port %u",
+			txq_ctrl->txq.inlen_send, max_inline, priv->dev_data->port_id);
 		txq_ctrl->txq.inlen_send = max_inline;
 	}
 	if (txq_ctrl->txq.inlen_empw > max_inline) {
 		DRV_LOG(WARNING,
-			"adjust txq_inline_mpw (%u->%u)"
-			"due to large Tx queue on port %u",
-			txq_ctrl->txq.inlen_empw, max_inline,
-			priv->dev_data->port_id);
+			"adjust txq_inline_mpw (%u->%u) due to large Tx queue on port %u",
+			txq_ctrl->txq.inlen_empw, max_inline, priv->dev_data->port_id);
 		txq_ctrl->txq.inlen_empw = max_inline;
 	}
 	txq_ctrl->max_inline_data = RTE_MAX(txq_ctrl->txq.inlen_send,
 					    txq_ctrl->txq.inlen_empw);
-	MLX5_ASSERT(txq_ctrl->max_inline_data <= max_inline);
-	MLX5_ASSERT(txq_ctrl->txq.inlen_mode <= max_inline);
 	MLX5_ASSERT(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_send);
 	MLX5_ASSERT(txq_ctrl->txq.inlen_mode <= txq_ctrl->txq.inlen_empw ||
 		    !txq_ctrl->txq.inlen_empw);
-	return 0;
-error:
-	rte_errno = ENOMEM;
-	return -ENOMEM;
 }
 
 /**
@@ -1106,8 +1077,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.port_id = dev->data->port_id;
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
-	if (txq_adjust_params(tmpl))
-		goto error;
+	txq_adjust_params(tmpl);
 	if (txq_calc_wqebb_cnt(tmpl) >
 	    priv->sh->dev_cap.max_qp_wr) {
 		DRV_LOG(ERR,
