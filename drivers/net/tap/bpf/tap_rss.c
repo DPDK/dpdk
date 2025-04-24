@@ -34,14 +34,12 @@ struct {
  * This is same as rte_softrss_be in lib/hash
  * but loop needs to be setup to match BPF restrictions.
  */
-static __always_inline __u32
+static __u32
 softrss_be(const __u32 *input_tuple, __u32 input_len, const __u32 *key)
 {
 	__u32 i, j, hash = 0;
 
-#pragma unroll
 	for (j = 0; j < input_len; j++) {
-#pragma unroll
 		for (i = 0; i < 32; i++) {
 			if (input_tuple[j] & (1U << (31 - i)))
 				hash ^= key[j] << i | key[j + 1] >> (32 - i);
@@ -54,7 +52,7 @@ softrss_be(const __u32 *input_tuple, __u32 input_len, const __u32 *key)
  * Compute RSS hash for IPv4 packet.
  * return in 0 if RSS not specified
  */
-static __always_inline __u32
+static __u32
 parse_ipv4(const struct __sk_buff *skb, __u32 hash_type, const __u32 *key)
 {
 	struct iphdr iph;
@@ -103,7 +101,7 @@ parse_ipv4(const struct __sk_buff *skb, __u32 hash_type, const __u32 *key)
  * Parse Ipv6 extended headers, update offset and return next proto.
  * returns next proto on success, -1 on malformed header
  */
-static __always_inline int
+static int
 skip_ip6_ext(__u16 proto, const struct __sk_buff *skb, __u32 *off, int *frag)
 {
 	struct ext_hdr {
@@ -150,7 +148,7 @@ skip_ip6_ext(__u16 proto, const struct __sk_buff *skb, __u32 *off, int *frag)
  * Compute RSS hash for IPv6 packet.
  * return in 0 if RSS not specified
  */
-static __always_inline __u32
+static __u32
 parse_ipv6(const struct __sk_buff *skb, __u32 hash_type, const __u32 *key)
 {
 	struct {
@@ -207,7 +205,7 @@ parse_ipv6(const struct __sk_buff *skb, __u32 hash_type, const __u32 *key)
  * Scale value to be into range [0, n)
  * Assumes val is large (ie hash covers whole u32 range)
  */
-static __always_inline __u32
+static __u32
 reciprocal_scale(__u32 val, __u32 n)
 {
 	return (__u32)(((__u64)val * n) >> 32);
