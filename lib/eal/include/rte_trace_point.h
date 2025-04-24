@@ -310,7 +310,7 @@ __rte_trace_mem_get(uint64_t in)
 			return NULL;
 	}
 	/* Check the wrap around case */
-	uint32_t offset = trace->offset;
+	uint32_t offset = RTE_ALIGN_CEIL(trace->offset, __RTE_TRACE_EVENT_HEADER_SZ);
 	if (unlikely((offset + sz) >= trace->len)) {
 		/* Disable the trace event if it in DISCARD mode */
 		if (unlikely(in & __RTE_TRACE_FIELD_ENABLE_DISCARD))
@@ -318,8 +318,6 @@ __rte_trace_mem_get(uint64_t in)
 
 		offset = 0;
 	}
-	/* Align to event header size */
-	offset = RTE_ALIGN_CEIL(offset, __RTE_TRACE_EVENT_HEADER_SZ);
 	void *mem = RTE_PTR_ADD(&trace->mem[0], offset);
 	offset += sz;
 	trace->offset = offset;
