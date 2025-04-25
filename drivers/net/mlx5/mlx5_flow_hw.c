@@ -1376,7 +1376,8 @@ flow_hw_action_modify_field_is_shared(const struct rte_flow_action *action,
 
 static __rte_always_inline bool
 flow_hw_should_insert_nop(const struct mlx5_hw_modify_header_action *mhdr,
-			  const struct mlx5_modification_cmd *cmd)
+			  const struct mlx5_modification_cmd *cmd,
+			  const struct rte_flow_attr *attr)
 {
 	struct mlx5_modification_cmd last_cmd = { { 0 } };
 	struct mlx5_modification_cmd new_cmd = { { 0 } };
@@ -1384,6 +1385,15 @@ flow_hw_should_insert_nop(const struct mlx5_hw_modify_header_action *mhdr,
 	unsigned int last_type;
 	bool should_insert = false;
 
+	/*
+	 * Modify header action list does not require NOPs in root table,
+	 * because different type of underlying object is used:
+	 * - in root table - MODIFY_HEADER_CONTEXT (does not require NOPs),
+	 * - in non-root - either inline modify action or based on Modify Header Pattern
+	 *   (which requires NOPs).
+	 */
+	if (attr->group == 0)
+		return false;
 	if (cmds_num == 0)
 		return false;
 	last_cmd = *(&mhdr->mhdr_cmds[cmds_num - 1]);
@@ -1462,7 +1472,8 @@ flow_hw_mhdr_cmd_append(struct mlx5_hw_modify_header_action *mhdr,
 
 static __rte_always_inline int
 flow_hw_converted_mhdr_cmds_append(struct mlx5_hw_modify_header_action *mhdr,
-				   struct mlx5_flow_dv_modify_hdr_resource *resource)
+				   struct mlx5_flow_dv_modify_hdr_resource *resource,
+				   const struct rte_flow_attr *attr)
 {
 	uint32_t idx;
 	int ret;
@@ -1470,7 +1481,7 @@ flow_hw_converted_mhdr_cmds_append(struct mlx5_hw_modify_header_action *mhdr,
 	for (idx = 0; idx < resource->actions_num; ++idx) {
 		struct mlx5_modification_cmd *src = &resource->actions[idx];
 
-		if (flow_hw_should_insert_nop(mhdr, src)) {
+		if (flow_hw_should_insert_nop(mhdr, src, attr)) {
 			ret = flow_hw_mhdr_cmd_nop_append(mhdr);
 			if (ret)
 				return ret;
@@ -1593,14 +1604,14 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 	 * This NOP command will not be a part of action's command range used to update commands
 	 * on rule creation.
 	 */
-	if (flow_hw_should_insert_nop(mhdr, &resource->actions[0])) {
+	if (flow_hw_should_insert_nop(mhdr, &resource->actions[0], attr)) {
 		ret = flow_hw_mhdr_cmd_nop_append(mhdr);
 		if (ret)
 			return rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 						  NULL, "too many modify field operations specified");
 	}
 	cmds_start = mhdr->mhdr_cmds_num;
-	ret = flow_hw_converted_mhdr_cmds_append(mhdr, resource);
+	ret = flow_hw_converted_mhdr_cmds_append(mhdr, resource, attr);
 	if (ret)
 		return rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "too many modify field operations specified");
