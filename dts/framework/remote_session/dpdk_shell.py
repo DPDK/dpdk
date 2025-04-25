@@ -46,7 +46,7 @@ def compute_eal_params(
     params.prefix = prefix
 
     if params.allowed_ports is None:
-        params.allowed_ports = ctx.topology.sut_ports
+        params.allowed_ports = ctx.topology.sut_dpdk_ports
 
     return params
 

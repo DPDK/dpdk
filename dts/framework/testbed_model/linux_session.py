@@ -12,11 +12,13 @@ This intermediate module implements the common parts of mostly POSIX compliant d
 import json
 from collections.abc import Iterable
 from functools import cached_property
+from pathlib import PurePath
 from typing import TypedDict
 
 from typing_extensions import NotRequired
 
-from framework.exception import ConfigurationError, RemoteCommandExecutionError
+from framework.exception import ConfigurationError, InternalError, RemoteCommandExecutionError
+from framework.testbed_model.os_session import PortInfo
 from framework.utils import expand_range
 
 from .cpu import LogicalCore
@@ -27,6 +29,8 @@ from .posix_session import PosixSession
 class LshwConfigurationOutput(TypedDict):
     """The relevant parts of ``lshw``'s ``configuration`` section."""
 
+    #:
+    driver: str
     #:
     link: str
 
@@ -152,30 +156,40 @@ class LinuxSession(PosixSession):
 
         self.send_command(f"echo {number_of} | tee {hugepage_config_path}", privileged=True)
 
-    def get_port_info(self, pci_address: str) -> tuple[str, str]:
+    def get_port_info(self, pci_address: str) -> PortInfo:
         """Overrides :meth:`~.os_session.OSSession.get_port_info`.
 
         Raises:
             ConfigurationError: If the port could not be found.
         """
-        self._logger.debug(f"Gathering info for port {pci_address}.")
-
         bus_info = f"pci@{pci_address}"
         port = next(port for port in self._lshw_net_info if port.get("businfo") == bus_info)
         if port is None:
             raise ConfigurationError(f"Port {pci_address} could not be found on the node.")
 
-        logical_name = port.get("logicalname") or ""
-        if not logical_name:
-            self._logger.warning(f"Port {pci_address} does not have a valid logical name.")
-            # raise ConfigurationError(f"Port {pci_address} does not have a valid logical name.")
+        logical_name = port.get("logicalname", "")
+        mac_address = port.get("serial", "")
 
-        mac_address = port.get("serial") or ""
-        if not mac_address:
-            self._logger.warning(f"Port {pci_address} does not have a valid mac address.")
-            # raise ConfigurationError(f"Port {pci_address} does not have a valid mac address.")
+        configuration = port.get("configuration", {})
+        driver = configuration.get("driver", "")
+        is_link_up = configuration.get("link", "down") == "up"
 
-        return logical_name, mac_address
+        return PortInfo(mac_address, logical_name, driver, is_link_up)
+
+    def bind_ports_to_driver(self, ports: list[Port], driver_name: str) -> None:
+        """Overrides :meth:`~.os_session.OSSession.bind_ports_to_driver`.
+
+        The :attr:`~.devbind_script_path` property must be setup in order to call this method.
+        """
+        ports_pci_addrs = " ".join(port.pci for port in ports)
+
+        self.send_command(
+            f"{self.devbind_script_path} -b {driver_name} --force {ports_pci_addrs}",
+            privileged=True,
+            verify=True,
+        )
+
+        del self._lshw_net_info
 
     def bring_up_link(self, ports: Iterable[Port]) -> None:
         """Overrides :meth:`~.os_session.OSSession.bring_up_link`."""
@@ -183,6 +197,19 @@ class LinuxSession(PosixSession):
             self.send_command(
                 f"ip link set dev {port.logical_name} up", privileged=True, verify=True
             )
+
+        del self._lshw_net_info
+
+    @cached_property
+    def devbind_script_path(self) -> PurePath:
+        """The path to the dpdk-devbind.py script on the node.
+
+        Needs to be manually assigned first in order to be used.
+
+        Raises:
+            InternalError: If accessed before environment setup.
+        """
+        raise InternalError("Accessed devbind script path before setup.")
 
     @cached_property
     def _lshw_net_info(self) -> list[LshwOutput]:

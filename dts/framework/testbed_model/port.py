@@ -9,12 +9,32 @@ Basic port information, such as location (the port are identified by their PCI a
 drivers and address.
 """
 
-from typing import TYPE_CHECKING, Any, Final
+from functools import cached_property
+from typing import TYPE_CHECKING, Any, Final, Literal, NamedTuple
 
 from framework.config.node import PortConfig
+from framework.exception import InternalError
 
 if TYPE_CHECKING:
     from .node import Node
+
+DriverKind = Literal["kernel", "dpdk"]
+"""The driver kind."""
+
+
+class PortInfo(NamedTuple):
+    """Port information.
+
+    Attributes:
+        mac_address: The MAC address of the port.
+        logical_name: The logical name of the port.
+        driver: The name of the port's driver.
+    """
+
+    mac_address: str
+    logical_name: str
+    driver: str
+    is_link_up: bool
 
 
 class Port:
@@ -23,16 +43,11 @@ class Port:
     Attributes:
         node: The port's node.
         config: The port's configuration.
-        mac_address: The MAC address of the port.
-        logical_name: The logical name of the port.
-        bound_for_dpdk: :data:`True` if the port is bound to the driver for DPDK.
     """
 
     node: Final["Node"]
     config: Final[PortConfig]
-    mac_address: Final[str]
-    logical_name: Final[str]
-    bound_for_dpdk: bool
+    _original_driver: str | None
 
     def __init__(self, node: "Node", config: PortConfig):
         """Initialize the port from `node` and `config`.
@@ -43,8 +58,22 @@ class Port:
         """
         self.node = node
         self.config = config
-        self.logical_name, self.mac_address = node.main_session.get_port_info(config.pci)
-        self.bound_for_dpdk = False
+        self._original_driver = None
+
+    def driver_by_kind(self, kind: DriverKind) -> str:
+        """Retrieve the driver name by kind.
+
+        Raises:
+            InternalError: If the given `kind` is invalid.
+        """
+        match kind:
+            case "dpdk":
+                return self.config.os_driver_for_dpdk
+            case "kernel":
+                return self.config.os_driver
+            case _:
+                msg = f"Invalid driver kind `{kind}` given."
+                raise InternalError(msg)
 
     @property
     def name(self) -> str:
@@ -55,6 +84,49 @@ class Port:
     def pci(self) -> str:
         """The PCI address of the port."""
         return self.config.pci
+
+    @property
+    def info(self) -> PortInfo:
+        """The port's current system information.
+
+        When this is accessed for the first time, the port's original driver is stored.
+        """
+        info = self.node.main_session.get_port_info(self.pci)
+
+        if self._original_driver is None:
+            self._original_driver = info.driver
+
+        return info
+
+    @cached_property
+    def mac_address(self) -> str:
+        """The MAC address of the port."""
+        return self.info.mac_address
+
+    @cached_property
+    def logical_name(self) -> str:
+        """The logical name of the port."""
+        return self.info.logical_name
+
+    @property
+    def is_link_up(self) -> bool:
+        """Is the port link up?"""
+        return self.info.is_link_up
+
+    @property
+    def current_driver(self) -> str:
+        """The current driver of the port."""
+        return self.info.driver
+
+    @property
+    def original_driver(self) -> str | None:
+        """The original driver of the port prior to DTS startup."""
+        return self._original_driver
+
+    @property
+    def bound_for_dpdk(self) -> bool:
+        """Is the port bound to the driver for DPDK?"""
+        return self.current_driver == self.config.os_driver_for_dpdk
 
     def configure_mtu(self, mtu: int):
         """Configure the port's MTU value.

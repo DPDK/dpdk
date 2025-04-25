@@ -19,6 +19,7 @@ from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import TopologyType, requires
+from framework.testbed_model.linux_session import LinuxSession
 from framework.utils import REGEX_FOR_PCI_ADDRESS
 
 
@@ -117,13 +118,16 @@ class TestSmokeTests(TestSuite):
         """Device driver in OS.
 
         Test that the devices configured in the test run configuration are bound to
-        the proper driver.
+        the proper driver. This test case runs on Linux only.
 
         Test:
             List all devices with the ``dpdk-devbind.py`` script and verify that
             the configured devices are bound to the proper driver.
         """
-        path_to_devbind = self._ctx.dpdk.devbind_script_path
+        if not isinstance(self._ctx.sut_node.main_session, LinuxSession):
+            return
+
+        path_to_devbind = self._ctx.sut_node.main_session.devbind_script_path
 
         all_nics_in_dpdk_devbind = self.sut_node.main_session.send_command(
             f"{path_to_devbind} --status | awk '/{REGEX_FOR_PCI_ADDRESS}/'",

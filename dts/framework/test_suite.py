@@ -598,6 +598,7 @@ class TestCase(TestProtocol, Protocol[TestSuiteMethodType]):
             test_case.topology_type = cls.topology_type
             test_case.topology_type.add_to_required(test_case)
             test_case.test_type = test_case_type
+            test_case.sut_ports_drivers = cls.sut_ports_drivers
             return test_case
 
         return _decorator

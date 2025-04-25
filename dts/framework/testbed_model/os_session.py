@@ -41,7 +41,7 @@ from framework.settings import SETTINGS
 from framework.utils import MesonArgs, TarCompressionFormat
 
 from .cpu import Architecture, LogicalCore
-from .port import Port
+from .port import Port, PortInfo
 
 
 @dataclass(slots=True, frozen=True)
@@ -528,14 +528,23 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def get_port_info(self, pci_address: str) -> tuple[str, str]:
+    def get_port_info(self, pci_address: str) -> PortInfo:
         """Get port information.
 
         Returns:
-            A tuple containing the logical name and MAC address respectively.
+            An instance of :class:`PortInfo`.
 
         Raises:
             ConfigurationError: If the port could not be found.
+        """
+
+    @abstractmethod
+    def bind_ports_to_driver(self, ports: list[Port], driver_name: str) -> None:
+        """Bind `ports` to the given `driver_name`.
+
+        Args:
+            ports: The list of the ports to bind to the driver.
+            driver_name: The name of the driver to bind the ports to.
         """
 
     @abstractmethod

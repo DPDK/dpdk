@@ -29,9 +29,9 @@ from framework.logger import DTSLogger, get_dts_logger
 from framework.params.eal import EalParams
 from framework.remote_session.remote_session import CommandResult
 from framework.testbed_model.cpu import LogicalCore, LogicalCoreCount, LogicalCoreList, lcore_filter
+from framework.testbed_model.linux_session import LinuxSession
 from framework.testbed_model.node import Node
 from framework.testbed_model.os_session import OSSession
-from framework.testbed_model.port import Port
 from framework.testbed_model.virtual_device import VirtualDevice
 from framework.utils import MesonArgs, TarCompressionFormat
 
@@ -415,16 +415,14 @@ class DPDKRuntimeEnvironment:
         self._ports_bound_to_dpdk = False
         self._kill_session = None
 
-    def setup(self, ports: Iterable[Port]):
+    def setup(self):
         """Set up the DPDK runtime on the target node."""
         if self.build:
             self.build.setup()
         self._prepare_devbind_script()
-        self.bind_ports_to_driver(ports)
 
-    def teardown(self, ports: Iterable[Port]) -> None:
+    def teardown(self) -> None:
         """Reset DPDK variables and bind port driver to the OS driver."""
-        self.bind_ports_to_driver(ports, for_dpdk=False)
         if self.build:
             self.build.teardown()
 
@@ -448,37 +446,23 @@ class DPDKRuntimeEnvironment:
             f"{app_path} {eal_params}", timeout, privileged=True, verify=True
         )
 
-    def bind_ports_to_driver(self, ports: Iterable[Port], for_dpdk: bool = True) -> None:
-        """Bind all ports on the SUT to a driver.
-
-        Args:
-            ports: The ports to act on.
-            for_dpdk: If :data:`True`, binds ports to os_driver_for_dpdk.
-                If :data:`False`, binds to os_driver.
-        """
-        for port in ports:
-            if port.bound_for_dpdk == for_dpdk:
-                continue
-
-            driver = port.config.os_driver_for_dpdk if for_dpdk else port.config.os_driver
-            self._node.main_session.send_command(
-                f"{self.devbind_script_path} -b {driver} --force {port.pci}",
-                privileged=True,
-                verify=True,
-            )
-            port.bound_for_dpdk = for_dpdk
-
     def _prepare_devbind_script(self) -> None:
         """Prepare the devbind script.
 
         If the environment has a build associated with it, then use the script within that build's
         tree. Otherwise, copy the script from the local repository.
 
+        This script is only available for Linux, if the detected session is not Linux then do
+        nothing.
+
         Raises:
             InternalError: If dpdk-devbind.py could not be found.
         """
+        if not isinstance(self._node.main_session, LinuxSession):
+            return
+
         if self.build:
-            self.devbind_script_path = self._node.main_session.join_remote_path(
+            devbind_script_path = self._node.main_session.join_remote_path(
                 self.build.remote_dpdk_tree_path, "usertools", "dpdk-devbind.py"
             )
         else:
@@ -486,20 +470,13 @@ class DPDKRuntimeEnvironment:
             if not local_script_path.exists():
                 raise InternalError("Could not find dpdk-devbind.py locally.")
 
-            self.devbind_script_path = self._node.main_session.join_remote_path(
+            devbind_script_path = self._node.main_session.join_remote_path(
                 self._node.tmp_dir, local_script_path.name
             )
 
-            self._node.main_session.copy_to(local_script_path, self.devbind_script_path)
+            self._node.main_session.copy_to(local_script_path, devbind_script_path)
 
-    @cached_property
-    def devbind_script_path(self) -> PurePath:
-        """The path to the dpdk-devbind.py script on the node.
-
-        Raises:
-            InternalError: If accessed before environment setup.
-        """
-        raise InternalError("Accessed devbind script path before setup.")
+        self._node.main_session.devbind_script_path = devbind_script_path
 
     def filter_lcores(
         self,
