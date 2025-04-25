@@ -22,12 +22,17 @@
 #define HWS_CNT_CACHE_THRESHOLD_DEFAULT 254
 #define HWS_CNT_ALLOC_FACTOR_DEFAULT 20
 
-static void
+static int
 __hws_cnt_id_load(struct mlx5_hws_cnt_pool *cpool)
 {
 	uint32_t cnt_num = mlx5_hws_cnt_pool_get_size(cpool);
 	uint32_t iidx;
+	cnt_id_t *cnt_arr = NULL;
 
+	cnt_arr = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO,
+			      cnt_num * sizeof(cnt_id_t), 0, SOCKET_ID_ANY);
+	if (cnt_arr == NULL)
+		return -ENOMEM;
 	/*
 	 * Counter ID order is important for tracking the max number of in used
 	 * counter for querying, which means counter internal index order must
@@ -38,10 +43,12 @@ __hws_cnt_id_load(struct mlx5_hws_cnt_pool *cpool)
 	 */
 	for (iidx = 0; iidx < cnt_num; iidx++) {
 		cnt_id_t cnt_id  = mlx5_hws_cnt_id_gen(cpool, iidx);
-
-		rte_ring_enqueue_elem(cpool->free_list, &cnt_id,
-				sizeof(cnt_id));
+		cnt_arr[iidx] = cnt_id;
 	}
+	rte_ring_enqueue_bulk_elem(cpool->free_list, cnt_arr,
+				   sizeof(cnt_id_t), cnt_num, NULL);
+	mlx5_free(cnt_arr);
+	return 0;
 }
 
 static void
@@ -748,7 +755,9 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 		ret = -rte_errno;
 		goto error;
 	}
-	__hws_cnt_id_load(cpool);
+	ret = __hws_cnt_id_load(cpool);
+	if (ret != 0)
+		goto error;
 	/*
 	 * Bump query gen right after pool create so the
 	 * pre-loaded counters can be used directly
