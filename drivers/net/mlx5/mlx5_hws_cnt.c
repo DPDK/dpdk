@@ -729,12 +729,6 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 		}
 		goto success;
 	}
-	/* init cnt service if not. */
-	if (priv->sh->cnt_svc == NULL) {
-		ret = mlx5_hws_cnt_svc_init(priv->sh, error);
-		if (ret)
-			goto error;
-	}
 	cparam.fetch_sz = HWS_CNT_CACHE_FETCH_DEFAULT;
 	cparam.preload_sz = HWS_CNT_CACHE_PRELOAD_DEFAULT;
 	cparam.q_num = nb_queue;
@@ -768,6 +762,12 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "failed to allocate counter actions");
 		goto error;
+	}
+	/* init cnt service if not. */
+	if (priv->sh->cnt_svc == NULL) {
+		ret = mlx5_hws_cnt_svc_init(priv->sh, error);
+		if (ret)
+			goto error;
 	}
 	priv->sh->cnt_svc->refcnt++;
 	cpool->priv = priv;
