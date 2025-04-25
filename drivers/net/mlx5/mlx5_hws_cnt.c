@@ -704,8 +704,11 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	size_t sz;
 
 	mp_name = mlx5_malloc(MLX5_MEM_ZERO, RTE_MEMZONE_NAMESIZE, 0, SOCKET_ID_ANY);
-	if (mp_name == NULL)
+	if (mp_name == NULL) {
+		ret = rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "failed to allocate counter pool name prefix");
 		goto error;
+	}
 	snprintf(mp_name, RTE_MEMZONE_NAMESIZE, "MLX5_HWS_CNT_P_%x", dev->data->port_id);
 	pcfg.name = mp_name;
 	pcfg.request_num = nb_counters;
@@ -713,8 +716,10 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	if (chost) {
 		pcfg.host_cpool = chost;
 		cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam, error);
-		if (cpool == NULL)
+		if (cpool == NULL) {
+			ret = -rte_errno;
 			goto error;
+		}
 		ret = mlx5_hws_cnt_pool_action_create(priv, cpool);
 		if (ret != 0) {
 			rte_flow_error_set(error, -ret,
@@ -736,15 +741,19 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	cparam.threshold = HWS_CNT_CACHE_THRESHOLD_DEFAULT;
 	cparam.size = HWS_CNT_CACHE_SZ_DEFAULT;
 	cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam, error);
-	if (cpool == NULL)
+	if (cpool == NULL) {
+		ret = -rte_errno;
 		goto error;
+	}
 	ret = mlx5_hws_cnt_pool_dcs_alloc(priv->sh, cpool, error);
 	if (ret != 0)
 		goto error;
 	sz = RTE_ALIGN_CEIL(mlx5_hws_cnt_pool_get_size(cpool), 4);
 	cpool->raw_mng = mlx5_hws_cnt_raw_data_alloc(priv->sh, sz, error);
-	if (cpool->raw_mng == NULL)
+	if (cpool->raw_mng == NULL) {
+		ret = -rte_errno;
 		goto error;
+	}
 	__hws_cnt_id_load(cpool);
 	/*
 	 * Bump query gen right after pool create so the
