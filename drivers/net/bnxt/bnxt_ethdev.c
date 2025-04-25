@@ -5404,11 +5404,11 @@ int bnxt_alloc_ctx_pg_tbls(struct bnxt *bp)
 			if (ctxm->type == HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_CQ)
 				entries = ctxm->cq_l2_entries;
 			else if (ctxm->type == HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_QP)
-				entries = ctxm->qp_l2_entries;
+				entries = ctxm->qp_l2_entries + ctxm->qp_qp1_entries;
 			else if (ctxm->type == HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_MRAV)
 				entries = ctxm->mrav_av_entries;
 			else if (ctxm->type == HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_TYPE_TIM)
-				entries = ctx2->qp_l2_entries;
+				entries = ctx2->qp_l2_entries + ctx2->qp_qp1_entries;
 			entries = clamp_t(uint32_t, entries, ctxm->min_entries,
 					  ctxm->max_entries);
 			ctx_pg[i].entries = entries;
