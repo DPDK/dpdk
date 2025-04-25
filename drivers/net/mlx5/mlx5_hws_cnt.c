@@ -662,12 +662,6 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	int ret = 0;
 	size_t sz;
 
-	/* init cnt service if not. */
-	if (priv->sh->cnt_svc == NULL) {
-		ret = mlx5_hws_cnt_svc_init(priv->sh);
-		if (ret != 0)
-			goto error;
-	}
 	cparam.fetch_sz = HWS_CNT_CACHE_FETCH_DEFAULT;
 	cparam.preload_sz = HWS_CNT_CACHE_PRELOAD_DEFAULT;
 	cparam.q_num = nb_queue;
@@ -703,6 +697,12 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	ret = mlx5_hws_cnt_pool_action_create(priv, cpool);
 	if (ret != 0)
 		goto error;
+	/* init cnt service if not. */
+	if (priv->sh->cnt_svc == NULL) {
+		ret = mlx5_hws_cnt_svc_init(priv->sh);
+		if (ret != 0)
+			goto error;
+	}
 	priv->sh->cnt_svc->refcnt++;
 	cpool->priv = priv;
 	rte_spinlock_lock(&priv->sh->cpool_lock);
