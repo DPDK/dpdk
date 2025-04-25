@@ -108,7 +108,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 			dev->data->port_id, queue);
 		return;
 	}
-	DRV_LOG(DEBUG, "port %u set VLAN stripping offloads %d for port %uqueue %d",
+	DRV_LOG(DEBUG, "port %u set VLAN stripping offloads %d for port %u queue %d",
 		dev->data->port_id, on, rxq_data->port_id, queue);
 	if (rxq->ctrl->obj == NULL) {
 		/* Update related bits in RX queue. */
