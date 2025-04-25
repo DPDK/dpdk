@@ -88,6 +88,8 @@ mlx5_rxq_obj_modify_rq_vlan_strip(struct mlx5_rxq_priv *rxq, int on)
 	rq_attr.state = MLX5_RQC_STATE_RDY;
 	rq_attr.vsd = (on ? 0 : 1);
 	rq_attr.modify_bitmask = MLX5_MODIFY_RQ_IN_MODIFY_BITMASK_VSD;
+	if (rxq->ctrl->is_hairpin)
+		return mlx5_devx_cmd_modify_rq(rxq->ctrl->obj->rq, &rq_attr);
 	return mlx5_devx_cmd_modify_rq(rxq->devx_rq.rq, &rq_attr);
 }
 
