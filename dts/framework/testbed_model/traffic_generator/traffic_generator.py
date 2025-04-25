@@ -9,7 +9,6 @@ only count the number of received packets.
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterable
 
 from scapy.packet import Packet
 
@@ -17,6 +16,7 @@ from framework.config.test_run import TrafficGeneratorConfig
 from framework.logger import DTSLogger, get_dts_logger
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port
+from framework.testbed_model.topology import Topology
 from framework.utils import get_packet_summaries
 
 
@@ -49,10 +49,10 @@ class TrafficGenerator(ABC):
         self._tg_node = tg_node
         self._logger = get_dts_logger(f"{self._tg_node.name} {self._config.type}")
 
-    def setup(self, ports: Iterable[Port], rx_port: Port):
+    def setup(self, topology: Topology):
         """Setup the traffic generator."""
 
-    def teardown(self, ports: Iterable[Port]):
+    def teardown(self):
         """Teardown the traffic generator."""
         self.close()
 

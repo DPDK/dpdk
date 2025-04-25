@@ -13,7 +13,7 @@ The traffic generator extends :class:`framework.remote_session.python_shell.Pyth
 implement the methods for handling packets by sending commands into the interactive shell.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from queue import Empty, SimpleQueue
 from threading import Event, Thread
 from typing import ClassVar
@@ -31,6 +31,7 @@ from framework.exception import InteractiveSSHSessionDeadError, InternalError
 from framework.remote_session.python_shell import PythonShell
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port
+from framework.testbed_model.topology import Topology
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
@@ -314,15 +315,16 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
 
         super().__init__(tg_node=tg_node, config=config, **kwargs)
 
-    def setup(self, ports: Iterable[Port], rx_port: Port):
+    def setup(self, topology: Topology):
         """Extends :meth:`.traffic_generator.TrafficGenerator.setup`.
 
-        Brings up the port links and starts up the async sniffer.
+        Binds the TG node ports to the kernel drivers and starts up the async sniffer.
         """
-        super().setup(ports, rx_port)
-        self._tg_node.main_session.bring_up_link(ports)
+        topology.configure_ports("tg", "kernel")
 
-        self._sniffer = ScapyAsyncSniffer(self._tg_node, rx_port, self._sniffer_name)
+        self._sniffer = ScapyAsyncSniffer(
+            self._tg_node, topology.tg_port_ingress, self._sniffer_name
+        )
         self._sniffer.start_application()
 
         self._shell = PythonShell(self._tg_node, "scapy", privileged=True)

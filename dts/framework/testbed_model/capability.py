@@ -54,7 +54,7 @@ from typing import TYPE_CHECKING, Callable, ClassVar, Protocol
 
 from typing_extensions import Self
 
-from framework.exception import ConfigurationError, SkippedTestException
+from framework.exception import ConfigurationError, InternalError, SkippedTestException
 from framework.logger import get_dts_logger
 from framework.remote_session.testpmd_shell import (
     NicCapability,
@@ -64,6 +64,7 @@ from framework.remote_session.testpmd_shell import (
     TestPmdShellMethod,
 )
 from framework.testbed_model.node import Node
+from framework.testbed_model.port import DriverKind
 
 from .topology import Topology, TopologyType
 
@@ -442,6 +443,8 @@ class TestProtocol(Protocol):
     topology_type: ClassVar[TopologyCapability] = TopologyCapability(TopologyType.default())
     #: The capabilities the test case or suite requires in order to be executed.
     required_capabilities: ClassVar[set[Capability]] = set()
+    #: The SUT ports topology configuration of the test case or suite.
+    sut_ports_drivers: ClassVar[DriverKind | tuple[DriverKind, ...] | None] = None
 
     @classmethod
     def get_test_cases(cls) -> list[type["TestCase"]]:
@@ -451,6 +454,29 @@ class TestProtocol(Protocol):
             NotImplementedError: The subclass does not implement the method.
         """
         raise NotImplementedError()
+
+
+def configure_ports(
+    *drivers: DriverKind, all_for: DriverKind | None = None
+) -> Callable[[type[TestProtocol]], type[TestProtocol]]:
+    """Decorator for test suite and test cases to configure ports drivers.
+
+    Configure all the SUT ports for the specified driver kind with `all_for`. Otherwise, specify
+    the port's respective driver kind in the positional argument. The amount of ports specified must
+    adhere to the requested topology.
+
+    Raises:
+        InternalError: If both positional arguments and `all_for` are set.
+    """
+    if len(drivers) and all_for is not None:
+        msg = "Cannot set both positional arguments and `all_for` to configure ports drivers."
+        raise InternalError(msg)
+
+    def _decorator(func: type[TestProtocol]) -> type[TestProtocol]:
+        func.sut_ports_drivers = all_for or drivers
+        return func
+
+    return _decorator
 
 
 def requires(
