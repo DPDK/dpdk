@@ -63,6 +63,10 @@ New Features
     * ixgbe
     * iavf
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Support matching on IPv6 frag extension header with async flow template API.
+
 * **Updated virtio driver.**
 
   * Added support for Rx and Tx burst mode query.
