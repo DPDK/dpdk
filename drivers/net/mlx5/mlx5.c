@@ -1489,14 +1489,23 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		NULL,
 	};
 	int ret = 0;
+	struct mlx5_hca_attr *attr = &sh->cdev->config.hca_attr;
+	bool sws_is_supported = (attr->sw_owner ||
+		(attr->sw_owner_v2 &&
+		 attr->steering_format_version <= MLX5_STEERING_LOGIC_FORMAT_CONNECTX_8));
 
 	/* Default configuration. */
 	memset(config, 0, sizeof(*config));
 	config->vf_nl_en = 1;
 	config->dv_esw_en = 1;
-	config->dv_flow_en = 1;
+	if (sws_is_supported) {
+		config->dv_flow_en = 1;
+		config->allow_duplicate_pattern = 1;
+	} else {
+		config->dv_flow_en = 2;
+		config->allow_duplicate_pattern = 0;
+	}
 	config->decap_en = 1;
-	config->allow_duplicate_pattern = 1;
 	config->fdb_def_rule = 1;
 	config->cnt_svc.cycle_time = MLX5_CNT_SVC_CYCLE_TIME_DEFAULT;
 	config->cnt_svc.service_core = rte_get_main_lcore();
@@ -1508,6 +1517,18 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		if (ret) {
 			DRV_LOG(ERR, "Failed to process device arguments: %s",
 				strerror(rte_errno));
+			return -rte_errno;
+		}
+	}
+	if (!sws_is_supported) {
+		if (config->dv_flow_en == 1) {
+			DRV_LOG(ERR, "DV flow steering is not supported.");
+			rte_errno = ENODEV;
+			return -rte_errno;
+		}
+		if (config->allow_duplicate_pattern == 1) {
+			DRV_LOG(ERR, "Duplicate pattern is not allowed.");
+			rte_errno = ENODEV;
 			return -rte_errno;
 		}
 	}
