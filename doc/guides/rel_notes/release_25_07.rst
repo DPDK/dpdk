@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Support matching on IPv6 frag extension header with rte_flow template API.
+
 
 Removed Items
 -------------
