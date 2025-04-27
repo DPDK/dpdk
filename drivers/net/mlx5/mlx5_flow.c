@@ -3333,10 +3333,10 @@ mlx5_flow_validate_item_gre_key(const struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "GRE key following a wrong item");
-	gre_mask = gre_item->mask;
+	gre_mask = gre_item ? gre_item->mask : NULL;
 	if (!gre_mask)
 		gre_mask = &rte_flow_item_gre_mask;
-	gre_spec = gre_item->spec;
+	gre_spec = gre_item ? gre_item->spec : NULL;
 	if (gre_spec && (gre_mask->c_rsvd0_ver & RTE_BE16(0x2000)) &&
 			 !(gre_spec->c_rsvd0_ver & RTE_BE16(0x2000)))
 		return rte_flow_error_set(error, EINVAL,
@@ -3379,8 +3379,8 @@ mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
 				   const struct rte_flow_item *gre_item,
 				   struct rte_flow_error *error)
 {
-	const struct rte_flow_item_gre *gre_spec = gre_item->spec;
-	const struct rte_flow_item_gre *gre_mask = gre_item->mask;
+	const struct rte_flow_item_gre *gre_spec = gre_item ? gre_item->spec : NULL;
+	const struct rte_flow_item_gre *gre_mask = gre_item ? gre_item->mask : NULL;
 	const struct rte_flow_item_gre_opt *spec = item->spec;
 	const struct rte_flow_item_gre_opt *mask = item->mask;
 	struct mlx5_priv *priv = dev->data->dev_private;
