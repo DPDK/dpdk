@@ -8361,10 +8361,11 @@ struct mlx5_hw_pattern_validation_ctx {
 };
 
 static int
-flow_hw_pattern_validate(struct rte_eth_dev *dev,
+__flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 const struct rte_flow_pattern_template_attr *attr,
 			 const struct rte_flow_item items[],
 			 uint64_t *item_flags,
+			 bool nt_flow,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -8532,10 +8533,16 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
 		{
 			last_item = MLX5_FLOW_LAYER_GENEVE_OPT;
-			ret = mlx5_flow_geneve_tlv_option_validate(priv, item,
-								   error);
-			if (ret < 0)
-				return ret;
+			/*
+			 * For non template the parser is internally created before
+			 * the flow creation.
+			 */
+			if (!nt_flow) {
+				ret = mlx5_flow_geneve_tlv_option_validate(priv, item,
+									   error);
+				if (ret < 0)
+					return ret;
+			}
 			break;
 		}
 		case RTE_FLOW_ITEM_TYPE_COMPARE:
@@ -8789,6 +8796,16 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		*item_flags |= last_item;
 	}
 	return 1 + RTE_PTR_DIFF(item, items) / sizeof(item[0]);
+}
+
+static int
+flow_hw_pattern_validate(struct rte_eth_dev *dev,
+			 const struct rte_flow_pattern_template_attr *attr,
+			 const struct rte_flow_item items[],
+			 uint64_t *item_flags,
+			 struct rte_flow_error *error)
+{
+	return __flow_hw_pattern_validate(dev, attr, items, item_flags, false, error);
 }
 
 /*
@@ -14010,8 +14027,8 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	};
 
 	/* Validate application items only */
-	ret = flow_hw_pattern_validate(dev, &pattern_template_attr, items,
-						&item_flags, error);
+	ret = __flow_hw_pattern_validate(dev, &pattern_template_attr, items,
+						&item_flags, true, error);
 	if (ret < 0)
 		return 0;
 
@@ -15137,8 +15154,8 @@ flow_hw_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 
 	if (external) {
 		/* Validate application items only */
-		ret = flow_hw_pattern_validate(dev, &pattern_template_attr, items,
-						    &item_flags, error);
+		ret = __flow_hw_pattern_validate(dev, &pattern_template_attr, items,
+						    &item_flags, true, error);
 		if (ret < 0)
 			return -rte_errno;
 	}
