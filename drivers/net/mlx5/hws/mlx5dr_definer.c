@@ -176,6 +176,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,          ip_fragmented,          !!v->fragment_offset,   rte_ipv4_hdr) \
 	X(SET_BE16,	ipv6_payload_len,	v->hdr.payload_len,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
+	X(SET,		ipv6_frag_proto,	v->hdr.next_header, rte_flow_item_ipv6_frag_ext) \
 	X(SET,		ipv6_routing_hdr,	IPPROTO_ROUTING,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_hop_limits,	v->hdr.hop_limits,	rte_flow_item_ipv6) \
 	X(SET_BE32P,	ipv6_src_addr_127_96,	&v->hdr.src_addr.a[0],	rte_flow_item_ipv6) \
@@ -2554,6 +2555,51 @@ mlx5dr_definer_conv_item_ipv6_routing_ext(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_ipv6_frag_ext(struct mlx5dr_definer_conv_data *cd,
+					  struct rte_flow_item *item,
+					  int item_idx)
+{
+	const struct rte_flow_item_ipv6_frag_ext *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	if (!cd->relaxed) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_VERSION, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipv6_version_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l3_type, inner);
+
+		/* Overwrite - Unset ethertype if present */
+		memset(&cd->fc[DR_CALC_FNAME(ETH_TYPE, inner)], 0, sizeof(*fc));
+
+		fc = &cd->fc[DR_CALC_FNAME(IP_FRAG, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_ones_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l4, ip_fragmented, inner);
+		}
+	}
+
+	if (!m)
+		return 0;
+
+	if (m->hdr.frag_data || m->hdr.id || m->hdr.reserved) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (m->hdr.next_header) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ipv6_frag_proto_set;
+		DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
+	}
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_item_random(struct mlx5dr_definer_conv_data *cd,
 				struct rte_flow_item *item,
 				int item_idx)
@@ -3284,6 +3330,11 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_ipv6(&cd, items, i);
 			item_flags |= cd.tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
 						  MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
+			ret = mlx5dr_definer_conv_item_ipv6_frag_ext(&cd, items, i);
+			item_flags |= cd.tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6_FRAG_EXT :
+						  MLX5_FLOW_LAYER_OUTER_L3_IPV6_FRAG_EXT;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5dr_definer_conv_item_udp(&cd, items, i);
