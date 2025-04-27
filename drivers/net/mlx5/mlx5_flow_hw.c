@@ -8917,6 +8917,7 @@ __flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			*item_flags |= MLX5_FLOW_LAYER_ECPRI;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IB_BTH:
+		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
 		case RTE_FLOW_ITEM_TYPE_VOID:
 		case RTE_FLOW_ITEM_TYPE_END:
 			break;
