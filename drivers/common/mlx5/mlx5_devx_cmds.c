@@ -1419,6 +1419,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 				      ft_field_support_2_esw_fdb.metadata_reg_c_8_15);
 		attr->set_reg_c &= ((0xff & reg_c_8_15) << 8) | esw_reg;
 	}
+	attr->sw_owner = MLX5_GET(flow_table_prop_layout, hcattr, sw_owner);
+	attr->sw_owner_v2 = MLX5_GET(flow_table_prop_layout, hcattr, sw_owner_v2);
 	return 0;
 error:
 	rc = (rc > 0) ? -rc : rc;
