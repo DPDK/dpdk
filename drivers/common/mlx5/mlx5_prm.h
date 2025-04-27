@@ -1591,9 +1591,13 @@ enum {
 #define MLX5_HCA_FLEX_GTPU_DW_0_ENABLED (1UL << 18)
 #define MLX5_HCA_FLEX_GTPU_TEID_ENABLED (1UL << 19)
 
-/* The device steering logic format. */
-#define MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 0x0
-#define MLX5_STEERING_LOGIC_FORMAT_CONNECTX_6DX 0x1
+/* The device steering logic format version. */
+enum {
+	MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 = 0,
+	MLX5_STEERING_LOGIC_FORMAT_CONNECTX_6DX = 1,
+	MLX5_STEERING_LOGIC_FORMAT_CONNECTX_7 = 2,
+	MLX5_STEERING_LOGIC_FORMAT_CONNECTX_8 = 3,
+};
 
 struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 access_other_hca_roce[0x1];
