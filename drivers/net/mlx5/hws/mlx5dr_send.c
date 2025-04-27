@@ -339,7 +339,7 @@ void mlx5dr_send_stes_fw(struct mlx5dr_send_engine *queue,
 	pdn = ctx->pd_num;
 
 	/* Writing through FW can't HW fence, therefore we drain the queue */
-	if (send_attr->fence)
+	if (send_attr->fence || send_attr->notify_hw)
 		mlx5dr_send_queue_action(ctx,
 					 queue_id,
 					 MLX5DR_SEND_QUEUE_ACTION_DRAIN_SYNC);
