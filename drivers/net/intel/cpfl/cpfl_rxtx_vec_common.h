@@ -54,8 +54,8 @@ cpfl_tx_vec_queue_default(struct idpf_tx_queue *txq)
 	if (txq == NULL)
 		return CPFL_SCALAR_PATH;
 
-	if (txq->rs_thresh < IDPF_VPMD_TX_MAX_BURST ||
-	    (txq->rs_thresh & 3) != 0)
+	if (txq->tx_rs_thresh < IDPF_VPMD_TX_MAX_BURST ||
+	    (txq->tx_rs_thresh & 3) != 0)
 		return CPFL_SCALAR_PATH;
 
 	if ((txq->offloads & CPFL_TX_NO_VECTOR_FLAGS) != 0)

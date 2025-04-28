@@ -187,7 +187,7 @@ idpf_rx_split_bufq_setup(struct rte_eth_dev *dev, struct idpf_rx_queue *rxq,
 	idpf_qc_split_rx_bufq_reset(bufq);
 	bufq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_buf_qtail_start +
 			 queue_idx * vport->chunks_info.rx_buf_qtail_spacing);
-	bufq->ops = &def_rxq_ops;
+	bufq->idpf_ops = &def_rxq_ops;
 	bufq->q_set = true;
 
 	if (bufq_id == IDPF_RX_SPLIT_BUFQ1_ID) {
@@ -305,7 +305,7 @@ idpf_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		idpf_qc_single_rx_queue_reset(rxq);
 		rxq->qrx_tail = hw->hw_addr + (vport->chunks_info.rx_qtail_start +
 				queue_idx * vport->chunks_info.rx_qtail_spacing);
-		rxq->ops = &def_rxq_ops;
+		rxq->idpf_ops = &def_rxq_ops;
 	} else {
 		idpf_qc_split_rx_descq_reset(rxq);
 
@@ -378,7 +378,7 @@ idpf_tx_complq_setup(struct rte_eth_dev *dev, struct idpf_tx_queue *txq,
 		ret = -ENOMEM;
 		goto err_mz_reserve;
 	}
-	cq->tx_ring_phys_addr = mz->iova;
+	cq->tx_ring_dma = mz->iova;
 	cq->compl_ring = mz->addr;
 	cq->mz = mz;
 	idpf_qc_split_tx_complq_reset(cq);
@@ -438,8 +438,8 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	is_splitq = !!(vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SPLIT);
 
 	txq->nb_tx_desc = nb_desc;
-	txq->rs_thresh = tx_rs_thresh;
-	txq->free_thresh = tx_free_thresh;
+	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->tx_free_thresh = tx_free_thresh;
 	txq->queue_id = vport->chunks_info.tx_start_qid + queue_idx;
 	txq->port_id = dev->data->port_id;
 	txq->offloads = idpf_tx_offload_convert(offloads);
@@ -458,7 +458,7 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		ret = -ENOMEM;
 		goto err_mz_reserve;
 	}
-	txq->tx_ring_phys_addr = mz->iova;
+	txq->tx_ring_dma = mz->iova;
 	txq->mz = mz;
 
 	txq->sw_ring = rte_zmalloc_socket("idpf tx sw ring",
@@ -471,7 +471,7 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	}
 
 	if (!is_splitq) {
-		txq->tx_ring = mz->addr;
+		txq->idpf_tx_ring = mz->addr;
 		idpf_qc_single_tx_queue_reset(txq);
 	} else {
 		txq->desc_ring = mz->addr;
@@ -486,7 +486,7 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	txq->qtx_tail = hw->hw_addr + (vport->chunks_info.tx_qtail_start +
 			queue_idx * vport->chunks_info.tx_qtail_spacing);
-	txq->ops = &def_txq_ops;
+	txq->idpf_ops = &def_txq_ops;
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 
@@ -682,11 +682,11 @@ idpf_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	rxq = dev->data->rx_queues[rx_queue_id];
 	rxq->q_started = false;
 	if (vport->rxq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
-		rxq->ops->release_mbufs(rxq);
+		rxq->idpf_ops->release_mbufs(rxq);
 		idpf_qc_single_rx_queue_reset(rxq);
 	} else {
-		rxq->bufq1->ops->release_mbufs(rxq->bufq1);
-		rxq->bufq2->ops->release_mbufs(rxq->bufq2);
+		rxq->bufq1->idpf_ops->release_mbufs(rxq->bufq1);
+		rxq->bufq2->idpf_ops->release_mbufs(rxq->bufq2);
 		idpf_qc_split_rx_queue_reset(rxq);
 	}
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
@@ -714,7 +714,7 @@ idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	txq = dev->data->tx_queues[tx_queue_id];
 	txq->q_started = false;
-	txq->ops->release_mbufs(txq);
+	txq->idpf_ops->release_mbufs(txq);
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
 		idpf_qc_single_tx_queue_reset(txq);
 	} else {

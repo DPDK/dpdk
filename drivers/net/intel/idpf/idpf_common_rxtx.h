@@ -135,7 +135,7 @@ struct idpf_rx_queue {
 	bool q_set;             /* if rx queue has been configured */
 	bool q_started;         /* if rx queue has been started */
 	bool rx_deferred_start; /* don't start this queue in dev start */
-	const struct idpf_rxq_ops *ops;
+	const struct idpf_rxq_ops *idpf_ops;
 
 	struct idpf_rx_stats rx_stats;
 
@@ -157,34 +157,35 @@ struct idpf_tx_entry {
 /* Structure associated with each TX queue. */
 struct idpf_tx_queue {
 	const struct rte_memzone *mz;		/* memzone for Tx ring */
-	volatile struct idpf_base_tx_desc *tx_ring;	/* Tx ring virtual address */
+	volatile struct idpf_base_tx_desc *idpf_tx_ring;	/* Tx ring virtual address */
 	volatile union {
 		struct idpf_flex_tx_sched_desc *desc_ring;
 		struct idpf_splitq_tx_compl_desc *compl_ring;
 	};
-	uint64_t tx_ring_phys_addr;		/* Tx ring DMA address */
+	rte_iova_t tx_ring_dma;		/* Tx ring DMA address */
 	struct idpf_tx_entry *sw_ring;		/* address array of SW ring */
 
 	uint16_t nb_tx_desc;		/* ring length */
 	uint16_t tx_tail;		/* current value of tail */
 	volatile uint8_t *qtx_tail;	/* register address of tail */
 	/* number of used desc since RS bit set */
-	uint16_t nb_used;
-	uint16_t nb_free;
+	uint16_t nb_tx_used;
+	uint16_t nb_tx_free;
 	uint16_t last_desc_cleaned;	/* last desc have been cleaned*/
-	uint16_t free_thresh;
-	uint16_t rs_thresh;
+	uint16_t tx_free_thresh;
+
+	uint16_t tx_rs_thresh;
 
 	uint16_t port_id;
 	uint16_t queue_id;
 	uint64_t offloads;
-	uint16_t next_dd;	/* next to set RS, for VPMD */
-	uint16_t next_rs;	/* next to check DD,  for VPMD */
+	uint16_t tx_next_dd;	/* next to set RS, for VPMD */
+	uint16_t tx_next_rs;	/* next to check DD,  for VPMD */
 
 	bool q_set;		/* if tx queue has been configured */
 	bool q_started;		/* if tx queue has been started */
 	bool tx_deferred_start; /* don't start this queue in dev start */
-	const struct idpf_txq_ops *ops;
+	const struct idpf_txq_ops *idpf_ops;
 
 	/* only valid for split queue mode */
 	uint16_t sw_nb_desc;
