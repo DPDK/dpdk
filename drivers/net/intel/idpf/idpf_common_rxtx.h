@@ -10,6 +10,7 @@
 #include <rte_mbuf_core.h>
 
 #include "idpf_common_device.h"
+#include "../common/tx.h"
 
 #define IDPF_RX_MAX_BURST		32
 
@@ -148,12 +149,6 @@ struct idpf_rx_queue {
 	uint32_t hw_register_set;
 };
 
-struct idpf_tx_entry {
-	struct rte_mbuf *mbuf;
-	uint16_t next_id;
-	uint16_t last_id;
-};
-
 /* Structure associated with each TX queue. */
 struct idpf_tx_queue {
 	const struct rte_memzone *mz;		/* memzone for Tx ring */
@@ -163,7 +158,7 @@ struct idpf_tx_queue {
 		struct idpf_splitq_tx_compl_desc *compl_ring;
 	};
 	rte_iova_t tx_ring_dma;		/* Tx ring DMA address */
-	struct idpf_tx_entry *sw_ring;		/* address array of SW ring */
+	struct ci_tx_entry *sw_ring;		/* address array of SW ring */
 
 	uint16_t nb_tx_desc;		/* ring length */
 	uint16_t tx_tail;		/* current value of tail */
@@ -207,10 +202,6 @@ union idpf_tx_offload {
 		uint64_t tso_segsz:16; /* TCP TSO segment size */
 		/* uint64_t unused : 24; */
 	};
-};
-
-struct idpf_tx_vec_entry {
-	struct rte_mbuf *mbuf;
 };
 
 union idpf_tx_desc {
