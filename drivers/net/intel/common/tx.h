@@ -35,6 +35,7 @@ struct ci_tx_queue {
 		volatile struct i40e_tx_desc *i40e_tx_ring;
 		volatile struct iavf_tx_desc *iavf_tx_ring;
 		volatile struct ice_tx_desc *ice_tx_ring;
+		volatile struct idpf_base_tx_desc *idpf_tx_ring;
 		volatile union ixgbe_adv_tx_desc *ixgbe_tx_ring;
 	};
 	volatile uint8_t *qtx_tail;               /* register address of tail */
@@ -99,6 +100,23 @@ struct ci_tx_queue {
 			uint8_t using_ipsec;  /**< indicates that IPsec TX feature is in use */
 			uint8_t is_vf;   /**< indicates that this is a VF queue */
 			uint8_t vf_ctx_initialized; /**< VF context descriptors initialized */
+		};
+		struct { /* idpf specific values */
+				volatile union {
+						struct idpf_flex_tx_sched_desc *desc_ring;
+						struct idpf_splitq_tx_compl_desc *compl_ring;
+				};
+				const struct idpf_txq_ops *idpf_ops;
+				struct ci_tx_queue *complq;
+				void **txqs;   /*only valid for split queue mode*/
+				bool q_started;   /* if tx queue has been started */
+				/* only valid for split queue mode */
+				uint32_t tx_start_qid;
+				uint16_t sw_nb_desc;
+				uint16_t sw_tail;
+#define IDPF_TX_CTYPE_NUM	8
+				uint16_t ctype[IDPF_TX_CTYPE_NUM];
+				uint8_t expected_gen_id;
 		};
 	};
 };
