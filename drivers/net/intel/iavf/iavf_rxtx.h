@@ -609,7 +609,10 @@ int iavf_dev_rx_queue_setup(struct rte_eth_dev *dev,
 int iavf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int iavf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 void iavf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
-
+int iavf_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
+			struct rte_eth_burst_mode *mode);
+int iavf_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
+			struct rte_eth_burst_mode *mode);
 int iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,

@@ -321,6 +321,7 @@ struct iavf_devargs {
 struct iavf_security_ctx;
 
 enum iavf_rx_burst_type {
+	IAVF_RX_DISABLED,
 	IAVF_RX_DEFAULT,
 	IAVF_RX_FLEX_RXD,
 	IAVF_RX_BULK_ALLOC,
@@ -349,6 +350,7 @@ enum iavf_rx_burst_type {
 };
 
 enum iavf_tx_burst_type {
+	IAVF_TX_DISABLED,
 	IAVF_TX_DEFAULT,
 	IAVF_TX_SSE,
 	IAVF_TX_AVX2,
