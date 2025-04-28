@@ -157,14 +157,14 @@ static const struct eth_dev_ops ixgbe_vf_representor_dev_ops = {
 	.mac_addr_set		= ixgbe_vf_representor_mac_addr_set,
 };
 
-static uint16_t
+uint16_t
 ixgbe_vf_representor_rx_burst(__rte_unused void *rx_queue,
 	__rte_unused struct rte_mbuf **rx_pkts, __rte_unused uint16_t nb_pkts)
 {
 	return 0;
 }
 
-static uint16_t
+uint16_t
 ixgbe_vf_representor_tx_burst(__rte_unused void *tx_queue,
 	__rte_unused struct rte_mbuf **tx_pkts, __rte_unused uint16_t nb_pkts)
 {

@@ -204,6 +204,8 @@ struct ixgbe_txq_ops {
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
 void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq);
+int ixgbe_tx_burst_mode_get(struct rte_eth_dev *dev,
+		uint16_t queue_id, struct rte_eth_burst_mode *mode);
 
 /**
  * Sets the rx_pkt_burst callback in the ixgbe rte_eth_dev instance.
@@ -220,6 +222,8 @@ void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq);
  * @dev rte_eth_dev handle
  */
 void ixgbe_set_rx_function(struct rte_eth_dev *dev);
+int ixgbe_rx_burst_mode_get(struct rte_eth_dev *dev,
+		uint16_t queue_id, struct rte_eth_burst_mode *mode);
 
 int ixgbe_check_supported_loopback_mode(struct rte_eth_dev *dev);
 uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,

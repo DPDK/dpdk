@@ -60,6 +60,7 @@ New Features
   Added support for Rx and Tx burst mode query to the following drivers:
 
     * e1000 (igb)
+    * ixgbe
 
 
 Removed Items
