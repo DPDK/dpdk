@@ -29,6 +29,18 @@
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 
 static inline int
+idpf_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
+{
+/* Check if the queue is using the splitq model */
+	if (txq->complq != NULL)
+		return 1;
+
+	return (txq->idpf_tx_ring[idx].qw1 &
+			rte_cpu_to_le_64(IDPF_TXD_QW1_DTYPE_M)) ==
+				rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE);
+}
+
+static inline int
 idpf_rx_vec_queue_default(struct idpf_rx_queue *rxq)
 {
 	if (rxq == NULL)
