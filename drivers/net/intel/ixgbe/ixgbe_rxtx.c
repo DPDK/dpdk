@@ -2626,6 +2626,39 @@ static const struct ixgbe_txq_ops def_txq_ops = {
 	.reset = ixgbe_reset_tx_queue,
 };
 
+static const struct {
+	eth_tx_burst_t pkt_burst;
+	const char *info;
+} ixgbe_tx_burst_info[] = {
+	{	ixgbe_xmit_pkts, "Scalar"},
+	{	ixgbe_xmit_pkts_simple, "Scalar simple"},
+	{       ixgbe_vf_representor_tx_burst, "Scalar representor"},
+#ifdef RTE_ARCH_X86
+	{	ixgbe_xmit_pkts_vec, "Vector SSE"},
+#elif defined(RTE_ARCH_ARM)
+	{	ixgbe_xmit_pkts_vec, "Vector NEON"},
+#endif
+};
+
+int
+ixgbe_tx_burst_mode_get(struct rte_eth_dev *dev,
+				__rte_unused uint16_t queue_id,
+				struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->tx_pkt_burst;
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(ixgbe_tx_burst_info); i++) {
+		if (pkt_burst == ixgbe_tx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 ixgbe_tx_burst_info[i].info);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
 /* Takes an ethdev and a queue and sets up the tx function to be used based on
  * the queue parameters. Used in tx_queue_setup by primary process and then
  * in dev_init by secondary process when attaching to an existing ethdev.
@@ -4937,6 +4970,43 @@ ixgbe_set_ivar(struct rte_eth_dev *dev, u8 entry, u8 vector, s8 type)
 	default:
 		break;
 	}
+}
+
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} ixgbe_rx_burst_info[] = {
+	{	ixgbe_recv_pkts, "Scalar"},
+	{	ixgbe_recv_pkts_bulk_alloc, "Scalar bulk alloc"},
+	{	ixgbe_recv_pkts_lro_bulk_alloc, "Scalar LRO bulk alloc"},
+	{	ixgbe_recv_pkts_lro_single_alloc, "Scalar LRO single alloc"},
+	{       ixgbe_vf_representor_rx_burst, "Scalar representor"},
+#ifdef RTE_ARCH_X86
+	{	ixgbe_recv_pkts_vec, "Vector SSE"},
+	{	ixgbe_recv_scattered_pkts_vec, "Vector SSE scattered"},
+#elif defined(RTE_ARCH_ARM)
+	{	ixgbe_recv_pkts_vec, "Vector NEON"},
+	{	ixgbe_recv_scattered_pkts_vec, "Vector NEON scattered"},
+#endif
+};
+
+int
+ixgbe_rx_burst_mode_get(struct rte_eth_dev *dev,
+				__rte_unused uint16_t queue_id,
+				struct rte_eth_burst_mode *mode)
+{
+	eth_tx_burst_t pkt_burst = dev->rx_pkt_burst;
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(ixgbe_rx_burst_info); i++) {
+		if (pkt_burst == ixgbe_rx_burst_info[i].pkt_burst) {
+			snprintf(mode->info, sizeof(mode->info), "%s",
+				 ixgbe_rx_burst_info[i].info);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
 }
 
 void __rte_cold

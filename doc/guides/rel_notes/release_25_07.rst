@@ -60,6 +60,7 @@ New Features
   Added support for rx_burst_mode_get and tx_burst_mode_get to the following drivers:
 
     * e1000 (igb)
+    * ixgbe
 
 Removed Items
 -------------
