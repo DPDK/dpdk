@@ -61,6 +61,7 @@ New Features
 
     * e1000 (igb)
     * ixgbe
+    * iavf
 
 Removed Items
 -------------
