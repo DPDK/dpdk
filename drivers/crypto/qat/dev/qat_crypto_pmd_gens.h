@@ -261,6 +261,152 @@ done:
 	return src_tot_length;
 }
 
+struct qat_sym_req_mid_info {
+	uint32_t data_len;
+	union rte_crypto_sym_ofs ofs;
+};
+
+static inline
+struct qat_sym_req_mid_info qat_sym_req_mid_set(
+	int *error, struct icp_qat_fw_la_bulk_req *const req,
+	struct qat_sym_op_cookie *const cookie, const void *const opaque,
+	const struct rte_crypto_sgl *sgl_src, const struct rte_crypto_sgl *sgl_dst,
+	const union rte_crypto_sym_ofs ofs)
+{
+	struct qat_sym_req_mid_info info = { };  /* Returned value */
+	uint32_t src_tot_length = 0;
+	uint32_t dst_tot_length = 0; /* Used only for input validity checks */
+	uint32_t src_length = 0;
+	uint32_t dst_length = 0;
+	uint64_t src_data_addr = 0;
+	uint64_t dst_data_addr = 0;
+	union rte_crypto_sym_ofs out_ofs = ofs;
+	const struct rte_crypto_vec * const vec_src = sgl_src->vec;
+	const struct rte_crypto_vec * const vec_dst = sgl_dst->vec;
+	const uint32_t n_src = sgl_src->num;
+	const uint32_t n_dst = sgl_dst->num;
+	const uint16_t offset = RTE_MIN(ofs.ofs.cipher.head, ofs.ofs.auth.head);
+	const uint8_t is_flat = !(n_src > 1 || n_dst > 1); /* Flat buffer or the SGL */
+	const uint8_t is_in_place = !n_dst; /* In-place or out-of-place */
+
+	*error = 0;
+	if (unlikely((n_src < 1 || n_src > QAT_SYM_SGL_MAX_NUMBER) ||
+			n_dst > QAT_SYM_SGL_MAX_NUMBER)) {
+		QAT_LOG(DEBUG,
+			"Invalid number of sgls, source no: %u, dst no: %u, opaque: %p",
+			n_src, n_dst, opaque);
+		*error = -1;
+		return info;
+	}
+
+	/* --- Flat buffer --- */
+	if (is_flat) {
+		src_data_addr = vec_src->iova;
+		dst_data_addr = vec_src->iova;
+		src_length = vec_src->len;
+		dst_length = vec_src->len;
+
+		if (is_in_place)
+			goto done;
+		/* Out-of-place
+		 * If OOP, we need to keep in mind that offset needs to
+		 * start where the aead starts
+		 */
+		dst_length = vec_dst->len;
+		/* Comparison between different types, intentional */
+		if (unlikely(offset > src_length || offset > dst_length)) {
+			QAT_LOG(DEBUG,
+				"Invalid size of the vector parameters, source length: %u, dst length: %u, opaque: %p",
+				src_length, dst_length, opaque);
+			*error = -1;
+			return info;
+		}
+		out_ofs.ofs.cipher.head -= offset;
+		out_ofs.ofs.auth.head -= offset;
+		src_data_addr += offset;
+		dst_data_addr = vec_dst->iova + offset;
+		src_length -= offset;
+		dst_length -= offset;
+		src_tot_length = src_length;
+		dst_tot_length = dst_length;
+		goto check;
+	}
+
+	/* --- Scatter-gather list --- */
+	struct qat_sgl * const qat_sgl_src = (struct qat_sgl *)&cookie->qat_sgl_src;
+	uint16_t i;
+
+	ICP_QAT_FW_COMN_PTR_TYPE_SET(req->comn_hdr.comn_req_flags,
+		QAT_COMN_PTR_TYPE_SGL);
+	qat_sgl_src->num_bufs = n_src;
+	src_data_addr = cookie->qat_sgl_src_phys_addr;
+	/* Fill all the source buffers but the first one */
+	for (i = 1; i < n_src; i++) {
+		qat_sgl_src->buffers[i].len = (vec_src + i)->len;
+		qat_sgl_src->buffers[i].addr = (vec_src + i)->iova;
+		src_tot_length += qat_sgl_src->buffers[i].len;
+	}
+
+	if (is_in_place) {
+		/* SGL source first entry, no OOP */
+		qat_sgl_src->buffers[0].len = vec_src->len;
+		qat_sgl_src->buffers[0].addr = vec_src->iova;
+		dst_data_addr = src_data_addr;
+		goto done;
+	}
+	/* Out-of-place */
+	struct qat_sgl * const qat_sgl_dst =
+			(struct qat_sgl *)&cookie->qat_sgl_dst;
+	/*
+	 * Offset reaching outside of the first buffer is not supported (RAW api).
+	 * Integer promotion here, but it does not bother this time
+	 */
+	if (unlikely(offset > vec_src->len || offset > vec_dst->len)) {
+		QAT_LOG(DEBUG,
+			"Invalid size of the vector parameters, source length: %u, dst length: %u, opaque: %p",
+			vec_src->len, vec_dst->len, opaque);
+		*error = -1;
+		return info;
+	}
+	out_ofs.ofs.cipher.head -= offset;
+	out_ofs.ofs.auth.head -= offset;
+	/* SGL source first entry, adjusted to OOP offsets */
+	qat_sgl_src->buffers[0].addr = vec_src->iova + offset;
+	qat_sgl_src->buffers[0].len = vec_src->len - offset;
+	/* SGL destination first entry, adjusted to OOP offsets */
+	qat_sgl_dst->buffers[0].addr = vec_dst->iova + offset;
+	qat_sgl_dst->buffers[0].len = vec_dst->len - offset;
+	/* Fill the remaining destination buffers */
+	for (i = 1; i < n_dst; i++) {
+		qat_sgl_dst->buffers[i].len = (vec_dst + i)->len;
+		qat_sgl_dst->buffers[i].addr = (vec_dst + i)->iova;
+		dst_tot_length += qat_sgl_dst->buffers[i].len;
+	}
+	dst_tot_length += qat_sgl_dst->buffers[0].len;
+	qat_sgl_dst->num_bufs = n_dst;
+	dst_data_addr = cookie->qat_sgl_dst_phys_addr;
+
+check:	/* If error, return directly. If success, jump to one of these labels */
+	if (src_tot_length != dst_tot_length) {
+		QAT_LOG(DEBUG,
+			"Source length is not equal to the destination length %u, dst no: %u, opaque: %p",
+			src_tot_length, dst_tot_length, opaque);
+		*error = -1;
+		return info;
+	}
+done:
+	req->comn_mid.opaque_data = (uintptr_t)opaque;
+	req->comn_mid.src_data_addr = src_data_addr;
+	req->comn_mid.dest_data_addr = dst_data_addr;
+	req->comn_mid.src_length = src_length;
+	req->comn_mid.dst_length = dst_length;
+
+	info.data_len = src_tot_length;
+	info.ofs = out_ofs;
+
+	return info;
+}
+
 static __rte_always_inline int32_t
 qat_sym_build_req_set_data(struct icp_qat_fw_la_bulk_req *req,
 		void *opaque, struct qat_sym_op_cookie *cookie,
