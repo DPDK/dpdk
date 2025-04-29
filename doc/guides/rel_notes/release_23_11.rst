@@ -1740,3 +1740,262 @@ Tested Platforms
 * Failed to add vdev when launch dpdk-pdump with vdev secondary process
 
     Fix available in upstream.
+
+23.11.4 Release Notes
+---------------------
+
+
+23.11.4 Fixes
+~~~~~~~~~~~~~
+
+* app/testpmd: avoid crash in DCB config
+* app/testpmd: fix out-of-bound reference in offload config
+* app/testpmd: show all DCB priority TC map
+* build: force GCC 15 to initialize padding bits
+* buildtools: fix some Python regex syntax warnings
+* bus/pci: fix registered device name
+* ci: build with MSVC in GHA
+* common/cnxk: fix DPI mailbox structure
+* common/cnxk: fix atomic load in batch ops
+* common/cnxk: fix inbound IPsec SA setup
+* common/cnxk: fix null check
+* common/idpf: fix void function returning a value
+* crypto/cnxk: fix asymmetric operation status code
+* crypto/cnxk: fix build with GCC 15
+* crypto/dpaa2_sec: fix bitmask truncation
+* crypto/dpaa_sec: fix bitmask truncation
+* crypto/openssl: fix CMAC auth context update
+* crypto/openssl: validate incorrect RSA signature
+* crypto/qat: fix SM3 state size
+* crypto/virtio: fix data queues iteration
+* crypto/virtio: fix redundant queue free
+* doc: fix feature flags for queue start/stop
+* doc: update ionic driver guide
+* eal/linux: fix memseg length in legacy mem init
+* eal/linux: remove useless assignments
+* eal/x86: fix some intrinsics header include for Windows
+* eal: fix devargs layers parsing out of bounds
+* eal: fix undetected NUMA nodes
+* ethdev: fix functions available in new device event
+* event/dpaa: fix bitmask truncation
+* eventdev: fix format string data type in log messages
+* examples/ipsec-secgw: fix IV length in CTR 192/256
+* examples/ipsec-secgw: fix cryptodev and eventdev IDs
+* examples/l3fwd: fix socket ID check
+* examples/ptpclient: fix message parsing
+* examples/vhost_crypto: fix user callbacks
+* fix ptp
+* gro: fix unprocessed IPv4 packets
+* mempool: fix errno in empty create
+* net/af_packet: fix socket close on device stop
+* net/bnxt: fix crash when representor is re-attached
+* net/bnxt: fix indication of allocation
+* net/bonding: fix dedicated queue setup
+* net/cnxk: fix NIX send header L3 type
+* net/cpfl: fix representor parsing log
+* net/dpaa2: fix bitmask truncation
+* net/dpaa: fix bitmask truncation
+* net/e1000/base: correct mPHY access logic
+* net/e1000/base: fix MAC address hash bit shift
+* net/e1000/base: fix NVM data type in bit shift
+* net/e1000/base: fix bitwise operation type
+* net/e1000/base: fix data type in MAC hash
+* net/e1000/base: fix iterator type
+* net/e1000/base: fix reset for 82580
+* net/e1000/base: fix semaphore timeout value
+* net/e1000/base: fix unchecked return
+* net/e1000/base: fix uninitialized variable
+* net/e1000/base: skip management check for 82575
+* net/e1000: fix crashes in secondary processes
+* net/enetfec: remove useless assignment
+* net/gve: allocate Rx QPL pages using malloc
+* net/hinic: fix flow type bitmask overflow
+* net/hns3: fix copper port initialization
+* net/hns3: fix mbuf freeing in simple Tx path
+* net/hns3: fix reset timeout
+* net/hns3: remove PVID info dump for VF
+* net/hns3: rename RAS module
+* net/iavf: check interrupt registration failure
+* net/iavf: fix crash on app exit on FreeBSD
+* net/iavf: fix mbuf release in Arm multi-process
+* net/iavf: remove reset of Tx prepare function pointer
+* net/ice: fix dropped packets when using VRRP
+* net/ice: fix flow engines order
+* net/ice: fix flows handling
+* net/ice: fix memory leak in scalar Rx
+* net/igc/base: fix LTR for i225
+* net/igc/base: fix MAC address hash bit shift
+* net/igc/base: fix NVM data type in bit shift
+* net/igc/base: fix bitwise operation type
+* net/igc/base: fix data type in MAC hash
+* net/igc/base: fix deadlock when writing i225 register
+* net/igc/base: fix infinite loop
+* net/igc/base: fix iterator type
+* net/igc/base: fix semaphore timeout value
+* net/igc/base: fix typo in LTR calculation
+* net/igc/base: fix unused value
+* net/igc/base: increase PHY power up delay
+* net/igc/base: reset loop variable
+* net/intel: fix build with icx
+* net/intel: fix void functions returning a value
+* net/ixgbe: fix crashes in secondary processes
+* net/ixgbe: fix minimum Rx/Tx descriptors
+* net/mana: fix multi-process tracking
+* net/mlx5/hws: fix DV FT type convert
+* net/mlx5/hws: fix GTP flags matching
+* net/mlx5/hws: fix crash using represented port without ID
+* net/mlx5/hws: fix fragmented packet type matching
+* net/mlx5: adjust actions per rule limitation
+* net/mlx5: fix GRE flow match with SWS
+* net/mlx5: fix GRE matching on root table
+* net/mlx5: fix IPIP tunnel verification
+* net/mlx5: fix LACP packet handling in isolated mode
+* net/mlx5: fix Netlink socket leak
+* net/mlx5: fix actions translation error overwrite
+* net/mlx5: fix flush of non-template flow rules
+* net/mlx5: fix hairpin queue release
+* net/mlx5: fix hardware packet type translation
+* net/mlx5: fix leak in HWS flow counter action
+* net/mlx5: fix polling CQEs
+* net/netvsc: remove device if its net devices removed
+* net/netvsc: scan all net devices under the PCI device
+* net/nfp: fix VF link speed problem
+* net/nfp: fix misuse of function return values
+* net/nfp: fix multi-PF control flag
+* net/nfp: fix multiple PFs check from NSP
+* net/octeon_ep: remove useless assignment
+* net/qede: fix debug messages array
+* net/qede: fix nested loops
+* net/sfc: remove unnecessary assignment
+* net/thunderx/base: fix build with GCC 15
+* net/txgbe: remove useless condition for SW-FW sync
+* pdump: clear statistics when enabled
+* raw/cnxk_gpio: fix file descriptor leak
+* stack: fix pop in C11 implementation
+* test/bbdev: update FFT test vectors
+* test/bonding: fix active backup receive test
+* test/crypto: fix AES-ECB test lengths
+* test/crypto: fix backport merge
+* test/crypto: fix callback setup tests
+* test/crypto: fix check for OOP header data
+* test/crypto: remove unused variable
+* test/dma: fix pointers in IOVA as PA mode
+* test/event: fix number of queues in eventdev conf
+* test/ring: fix init with custom number of lcores
+* update version to v23.11.4
+* use Python raw string notation
+* version: 23.11.4-rc4
+* version: 23.11.4-rc5
+* vhost/crypto: skip fetch before vring init
+* vhost: add null callback checks
+* vhost: check GSO size validity
+* vhost: check descriptor chains length
+* vhost: clear ring addresses when getting vring base
+* vhost: fix log when setting max queue num
+* vhost: reset packets count when not ready
+
+23.11.4 Validation
+~~~~~~~~~~~~~~~~~~
+
+* RedHat Testing:
+
+    * Test scenarios:
+
+        * VM with device assignment(PF) throughput testing(1G hugepage size)
+        * VM with device assignment(PF) throughput testing(2M hugepage size)
+        * VM with device assignment(VF) throughput testing
+        * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+        * PVP vhost-user 2Q throughput testing
+        * PVP vhost-user 1Q - cross numa node throughput testing
+        * VM with vhost-user 2 queues throughput testing
+        * vhost-user reconnect with dpdk-client, qemu-server(qemu reconnect)
+        * vhost-user reconnect with dpdk-client, qemu-server(ovs reconnect)
+        * PVP  reconnect with dpdk-client, qemu-server
+        * PVP 1Q live migration testing
+        * PVP 1Q cross numa node live migration testing
+        * VM with ovs+dpdk+vhost-user 1Q live migration testing
+        * VM with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+        * VM with ovs+dpdk+vhost-user 2Q live migration testing
+        * VM with ovs+dpdk+vhost-user 4Q live migration testing
+        * Host PF + DPDK testing
+        * Host VF + DPDK testing
+
+    * Test Versions and device:
+
+        * RHEL 9.4
+        * qemu-kvm-8.2.0
+        * kernel 5.14
+        * libvirt 10.0
+        * openvswitch 3.3
+        * X540-AT2 NIC(ixgbe, 10G)
+
+* Nvidia(R) Testing:
+
+    * Test scenarios:
+
+        * Send and receive multiple types of traffic.
+        * testpmd xstats counter test.
+        * testpmd timestamp test.
+        * Changing/checking link status through testpmd.
+        * rte_flow tests (https://doc.dpdk.org/guides/nics/mlx5.html#supported-hardware-offloads)
+        * RSS tests.
+        * VLAN filtering, stripping, and insertion tests.
+        * Checksum and TSO tests.
+        * ptype tests.
+        * link_status_interrupt example application tests.
+        * l3fwd-power example application tests.
+        * Multi-process example applications tests.
+        * Hardware LRO tests.
+        * Buffer Split tests.
+        * Tx scheduling tests.
+
+    * Test platform:
+
+        * NIC: ConnectX-6 Dx / OS: Ubuntu 22.04 / Driver: MLNX_OFED_LINUX-24.10-2.1.8.0 / Firmware: 22.43.2566
+        * DPU: BlueField-2 / DOCA SW version: 2.10.0 / Firmware: 24.44.1036
+
+    * OS/driver combinations:
+
+        * Ubuntu 24.04 with MLNX_OFED_LINUX-24.10-2.1.8.0.
+        * Ubuntu 24.04 with rdma-core master (324c42e).
+        * Ubuntu 24.04 with rdma-core v50.0.
+        * Fedora 41 with rdma-core v51.0.
+        * Fedora 43 (Rawhide) with rdma-core v56.0.
+        * OpenSUSE Leap 15.6 with rdma-core v49.1.
+        * Windows Server 2022 with Clang 16.0.6.
+
+* Intel(R) Testing:
+
+    * Basic NIC testing
+
+        * Build & CFLAG compile: cover the build test combination with latest GCC/Clang version and the popular OS revision such as Ubuntu24.10, Ubuntu22.04.1, Fedora41, RHEL9.4, RHEL9.5, RHEL10.0 beta, FreeBSD14.2, SUSE15.6, AzureLinux3.0, OpenAnolis8.9 etc.
+        * i40E-(XXV710, X722) PF/VF: test scenarios including basic/RTE_FLOW/TSO/Jumboframe/checksum offload/mac_filter/VLAN/VXLAN/RSS, etc.
+        * IXGBE-(82599) PF/VF: test scenarios including basic/RTE_FLOW/TSO/Jumboframe/checksum offload/mac_filter/VLAN/VXLAN/RSS, etc.
+        * ICE-(E810, E2100) PF/VF: test scenarios including basic/Switch/Package Management/Flow Director/Advanced Tx/Advanced RSS/ACL/DCF/Flexible Descriptor, etc.
+        * IPsec: test scenarios including ipsec/ipsec-gw/ipsec library basic test - QAT&SW/FIB library, etc.
+        * Virtio: both function and performance test are covered. Such as PVP/Virtio_loopback/virtio-user loopback/virtio-net VM2VM perf testing/VMAWARE ESXI 8.0, etc.
+        * Cryptodev: test scenarios including Cryptodev API testing/CompressDev ISA-L/QAT/ZLIB PMD Testing/FIPS, etc.
+        * DLB: test scenarios including DLB2.0 and DLB2.5
+        * Other: test scenarios including AF_XDP, Power, CBDMA, DSA
+
+    * Basic cryptodev and virtio testing
+
+        * Virtio: both function and performance test are covered. Such as PVP/Virtio_loopback/virtio-user loopback/virtio-net VM2VM perf testing/VMAWARE ESXI 8.0, etc.
+        * Cryptodev Function test: Cryptodev API testing/CompressDev ISA-L/QAT/ZLIB PMD Testing/FIPS, etc.
+        * Cryptodev Performance test: test scenarios including Throughput Performance/Cryptodev Latency, etc.
+
+    * Performance test
+
+        * Throughput Performance
+        * Cryptodev Latency
+        * PF/VF NIC single core
+        * XXV710/E810 NIC Performance
+
+23.11.4 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* Start dpdk-pdump in VM with virtio-0.95 protocol failed
+
+    Fix available in upstream.
+
+* compilation failed with gcc 15.0.1
