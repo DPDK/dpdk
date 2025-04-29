@@ -114,6 +114,7 @@ struct cperf_rsa_plaintext {
 };
 
 struct cperf_rsa_test_data {
+	char name[64];
 	enum rte_crypto_rsa_priv_key_type key_type;
 	rte_crypto_param n;
 	rte_crypto_param e;
@@ -177,9 +178,9 @@ extern struct cperf_modex_test_data modex_perf_data[10];
 extern struct cperf_ecdsa_test_data secp256r1_perf_data;
 extern struct cperf_eddsa_test_data ed25519_perf_data;
 extern struct cperf_sm2_test_data sm2_perf_data;
-extern struct cperf_rsa_test_data rsa_pub_perf_data;
-extern struct cperf_rsa_test_data rsa_exp_perf_data;
-extern struct cperf_rsa_test_data rsa_qt_perf_data;
+extern struct cperf_rsa_test_data rsa_pub_perf_data[4];
+extern struct cperf_rsa_test_data rsa_exp_perf_data[4];
+extern struct cperf_rsa_test_data rsa_qt_perf_data[4];
 extern struct cperf_rsa_plaintext rsa_plaintext;
 
 #endif

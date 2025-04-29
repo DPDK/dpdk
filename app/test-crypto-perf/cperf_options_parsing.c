@@ -65,6 +65,9 @@ usage(char *progname)
 		" --modex-len N: modex length, supported lengths are "
 		"60, 128, 255, 448. Default: 128\n"
 		" --asym-op encrypt / decrypt / sign / verify : set asym operation type\n"
+		" --rsa-priv-keytype exp / qt : set RSA private key type\n"
+		" --rsa-modlen N: RSA modulus length, supported lengths are "
+		"1024, 2048, 4096, 8192. Default: 1024\n"
 #ifdef RTE_LIB_SECURITY
 		" --pdcp-sn-sz N: set PDCP SN size N <5/7/12/15/18>\n"
 		" --pdcp-domain DOMAIN: set PDCP domain <control/user>\n"
@@ -347,19 +350,26 @@ parse_rsa_priv_keytype(struct cperf_options *opts, const char *arg)
 		},
 	};
 
-	int id = get_str_key_id_mapping(rsa_keytype_namemap,
+	opts->rsa_keytype = get_str_key_id_mapping(rsa_keytype_namemap,
 			RTE_DIM(rsa_keytype_namemap), arg);
 
-	if (id == RTE_RSA_KEY_TYPE_EXP)
-		opts->rsa_data = &rsa_exp_perf_data;
-	else if (id == RTE_RSA_KEY_TYPE_QT)
-		opts->rsa_data = &rsa_qt_perf_data;
-	else {
-		RTE_LOG(ERR, USER1, "invalid RSA key type specified\n");
-		return -1;
+	return 0;
+}
+
+static int
+parse_rsa_modlen(struct cperf_options *opts, const char *arg)
+{
+	uint16_t modlen = 0;
+	int ret;
+
+	ret =  parse_uint16_t(&modlen, arg);
+	if (ret) {
+		RTE_LOG(ERR, USER1, "failed to parse RSA modlen");
+		return ret;
 	}
 
-	return 0;
+	opts->rsa_modlen = modlen;
+	return ret;
 }
 
 static int
@@ -1009,6 +1019,7 @@ static struct option lgopts[] = {
 	{ CPERF_PTEST_TYPE, required_argument, 0, 0 },
 	{ CPERF_MODEX_LEN, required_argument, 0, 0 },
 	{ CPERF_RSA_PRIV_KEYTYPE, required_argument, 0, 0 },
+	{ CPERF_RSA_MODLEN, required_argument, 0, 0 },
 
 	{ CPERF_POOL_SIZE, required_argument, 0, 0 },
 	{ CPERF_TOTAL_OPS, required_argument, 0, 0 },
@@ -1135,12 +1146,13 @@ cperf_options_default(struct cperf_options *opts)
 	opts->docsis_hdr_sz = 17;
 #endif
 	opts->modex_data = (struct cperf_modex_test_data *)&modex_perf_data[0];
-	opts->rsa_data = &rsa_pub_perf_data;
+	opts->rsa_data = &rsa_pub_perf_data[0];
+	opts->rsa_keytype = UINT8_MAX;
 
 	opts->secp256r1_data = &secp256r1_perf_data;
 	opts->eddsa_data = &ed25519_perf_data;
 	opts->sm2_data = &sm2_perf_data;
-	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
 }
 
 static int
@@ -1150,6 +1162,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_PTEST_TYPE,	parse_cperf_test_type },
 		{ CPERF_MODEX_LEN,	parse_modex_len },
 		{ CPERF_RSA_PRIV_KEYTYPE,	parse_rsa_priv_keytype },
+		{ CPERF_RSA_MODLEN,	parse_rsa_modlen },
 		{ CPERF_SILENT,		parse_silent },
 		{ CPERF_POOL_SIZE,	parse_pool_sz },
 		{ CPERF_TOTAL_OPS,	parse_total_ops },
@@ -1508,6 +1521,93 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
+	if (options->rsa_keytype != UINT8_MAX) {
+		if (options->op_type != CPERF_ASYM_RSA) {
+			RTE_LOG(ERR, USER1, "Option rsa-priv-keytype should be used only with "
+					" optype: rsa.\n");
+			return -EINVAL;
+		}
+
+		switch (options->rsa_keytype) {
+		case RTE_RSA_KEY_TYPE_QT:
+			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_SIGN &&
+			    options->asym_op_type != RTE_CRYPTO_ASYM_OP_DECRYPT) {
+				RTE_LOG(ERR, USER1, "QT private key to be used in sign and decrypt op\n");
+				return -EINVAL;
+			}
+			options->rsa_data = &rsa_qt_perf_data[0];
+			break;
+		case RTE_RSA_KEY_TYPE_EXP:
+			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT &&
+			    options->asym_op_type != RTE_CRYPTO_ASYM_OP_VERIFY) {
+				RTE_LOG(ERR, USER1, "Exponent private key to be used in encrypt and verify op\n");
+				return -EINVAL;
+			}
+			options->rsa_data = &rsa_exp_perf_data[0];
+			break;
+		default:
+			RTE_LOG(ERR, USER1, "Invalid RSA key type specified\n");
+			return -EINVAL;
+		}
+	}
+
+	if (options->rsa_modlen) {
+		uint16_t modlen = options->rsa_modlen / 8;
+
+		if (options->op_type != CPERF_ASYM_RSA) {
+			RTE_LOG(ERR, USER1, "Option rsa-modlen should be used only with "
+					" optype: rsa.\n");
+			return -EINVAL;
+		}
+
+		if (options->rsa_keytype == RTE_RSA_KEY_TYPE_QT) {
+			for (i = 0; i < (int)RTE_DIM(rsa_qt_perf_data); i++) {
+				if (rsa_qt_perf_data[i].n.length == modlen) {
+					options->rsa_data =
+						(struct cperf_rsa_test_data *)&rsa_qt_perf_data[i];
+					break;
+				}
+			}
+
+			if (i == (int)RTE_DIM(rsa_qt_perf_data)) {
+				RTE_LOG(ERR, USER1,
+					"Option rsa_modlen: %d is not supported for QT private key\n",
+					options->rsa_modlen);
+					return -EINVAL;
+			}
+		} else if (options->rsa_keytype == RTE_RSA_KEY_TYPE_EXP) {
+			for (i = 0; i < (int)RTE_DIM(rsa_exp_perf_data); i++) {
+				if (rsa_exp_perf_data[i].n.length == modlen) {
+					options->rsa_data =
+						(struct cperf_rsa_test_data *)&rsa_exp_perf_data[i];
+					break;
+				}
+			}
+
+			if (i == (int)RTE_DIM(rsa_exp_perf_data)) {
+				RTE_LOG(ERR, USER1,
+					"Option rsa_modlen: %d is not supported for exponent private key\n",
+					options->rsa_modlen);
+					return -EINVAL;
+			}
+		} else {
+			for (i = 0; i < (int)RTE_DIM(rsa_pub_perf_data); i++) {
+				if (rsa_pub_perf_data[i].n.length == modlen) {
+					options->rsa_data =
+						(struct cperf_rsa_test_data *)&rsa_pub_perf_data[i];
+					break;
+				}
+			}
+
+			if (i == (int)RTE_DIM(rsa_pub_perf_data)) {
+				RTE_LOG(ERR, USER1,
+					"Option rsa_modlen: %d is not supported for public key\n",
+					options->rsa_modlen);
+					return -EINVAL;
+			}
+		}
+	}
+
 #ifdef RTE_LIB_SECURITY
 	if (options->op_type == CPERF_DOCSIS) {
 		if (check_docsis_buffer_length(options) < 0)
@@ -1574,9 +1674,13 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("#\n");
 	printf("# number of queue pairs per device: %u\n", opts->nb_qps);
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
-	if (cperf_is_asym_test(opts))
-		printf("# asym operation type: %s\n",
-				rte_crypto_asym_op_strings[opts->asym_op_type]);
+	if (cperf_is_asym_test(opts)) {
+		if (opts->op_type != CPERF_ASYM_MODEX)
+			printf("# asym operation type: %s\n",
+				   rte_crypto_asym_op_strings[opts->asym_op_type]);
+		if (opts->op_type == CPERF_ASYM_RSA)
+			printf("# rsa test name: %s\n", opts->rsa_data->name);
+	}
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
 	printf("# shared session: %s\n", opts->shared_session ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");

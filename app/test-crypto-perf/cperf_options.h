@@ -14,6 +14,7 @@
 #define CPERF_PTEST_TYPE	("ptest")
 #define CPERF_MODEX_LEN		("modex-len")
 #define CPERF_RSA_PRIV_KEYTYPE	("rsa-priv-keytype")
+#define CPERF_RSA_MODLEN	("rsa-modlen")
 #define CPERF_SILENT		("silent")
 #define CPERF_ENABLE_SDAP	("enable-sdap")
 
@@ -181,6 +182,8 @@ struct cperf_options {
 	enum rte_crypto_asym_op_type asym_op_type;
 	enum rte_crypto_auth_algorithm asym_hash_alg;
 	struct cperf_rsa_test_data *rsa_data;
+	uint16_t rsa_modlen;
+	uint8_t rsa_keytype;
 };
 
 void

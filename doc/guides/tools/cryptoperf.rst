@@ -177,6 +177,7 @@ The following are the application command-line options:
            modex
            ecdsa_p256r1
            eddsa_25519
+           rsa
            sm2
            ipsec
            tls-record
@@ -355,8 +356,20 @@ The following are the application command-line options:
 * ``--asym-op <sign/verify/encrypt/decrypt>``
 
         Set Asymmetric crypto operation mode.
-        To be used with SM2 asymmetric crypto ops.
-        Default is ``sign``.
+        Not applicable for modex op type.
+        Default is ``encrypt``.
+
+* ``--rsa-priv-keytype <exp/qt>``
+
+        Set RSA private key type.
+        To be used with RSA asymmetric crypto ops.
+
+* ``--rsa-modlen <n>``
+
+        Set RSA mod length (in bits) for asymmetric crypto perf test.
+        To be used with RSA asymmetric crypto ops.
+        Supported lengths are 1024, 2048, 4096, 8192.
+        Default length is 1024.
 
 * ``--tls-version <TLS1.2/TLS1.3/DTLS1.2>``
 
