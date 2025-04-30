@@ -8760,12 +8760,21 @@ __flow_hw_pattern_validate(struct rte_eth_dev *dev,
 				    MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT :
 				    MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT;
 			break;
-		case RTE_FLOW_ITEM_TYPE_FLEX:
-			/* match mlx5dr_definer_conv_items_to_hl() */
-			last_item = tunnel ?
-				    MLX5_FLOW_ITEM_INNER_FLEX :
-				    MLX5_FLOW_ITEM_OUTER_FLEX;
+		case RTE_FLOW_ITEM_TYPE_FLEX: {
+			enum rte_flow_item_flex_tunnel_mode tunnel_mode = FLEX_TUNNEL_MODE_SINGLE;
+
+			ret = mlx5_flex_get_tunnel_mode(item, &tunnel_mode);
+			if (ret < 0)
+				return rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_ITEM,
+							  item, "Unable to get flex item mode");
+			if (tunnel_mode == FLEX_TUNNEL_MODE_TUNNEL)
+				last_item = MLX5_FLOW_ITEM_FLEX_TUNNEL;
+			else
+				last_item = tunnel ?
+					    MLX5_FLOW_ITEM_INNER_FLEX :
+					    MLX5_FLOW_ITEM_OUTER_FLEX;
 			break;
+		}
 		case RTE_FLOW_ITEM_TYPE_RANDOM:
 			last_item = MLX5_FLOW_ITEM_RANDOM;
 			break;
