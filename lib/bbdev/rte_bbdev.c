@@ -451,10 +451,6 @@ int
 rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 		const struct rte_bbdev_queue_conf *conf)
 {
-
-	rte_bbdev_trace_queue_configure(dev_id, queue_id, rte_bbdev_op_type_str(conf->op_type),
-			conf->priority);
-
 	int ret = 0;
 	struct rte_bbdev_driver_info dev_info;
 	struct rte_bbdev *dev = get_dev(dev_id);
@@ -462,6 +458,11 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 	struct rte_bbdev_queue_conf *stored_conf;
 	const char *op_type_str;
 	unsigned int max_priority;
+
+	rte_bbdev_trace_queue_configure(dev_id, queue_id,
+			conf != NULL ? rte_bbdev_op_type_str(conf->op_type) : NULL,
+			conf != NULL ? conf->priority : 0);
+
 	VALID_DEV_OR_RET_ERR(dev, dev_id);
 
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
