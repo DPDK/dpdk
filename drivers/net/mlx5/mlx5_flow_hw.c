@@ -1168,35 +1168,6 @@ flow_hw_represented_port_compile(struct rte_eth_dev *dev,
 }
 
 static __rte_always_inline int
-flow_hw_meter_compile(struct rte_eth_dev *dev,
-		      const struct mlx5_flow_template_table_cfg *cfg,
-		      uint16_t aso_mtr_pos,
-		      uint16_t jump_pos,
-		      const struct rte_flow_action *action,
-		      struct mlx5_hw_actions *acts,
-		      struct rte_flow_error *error)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_aso_mtr *aso_mtr;
-	const struct rte_flow_action_meter *meter = action->conf;
-	uint32_t group = cfg->attr.flow_attr.group;
-
-	aso_mtr = mlx5_aso_meter_by_idx(priv, meter->mtr_id);
-	acts->rule_acts[aso_mtr_pos].action = priv->mtr_bulk.action;
-	acts->rule_acts[aso_mtr_pos].aso_meter.offset = aso_mtr->offset;
-	acts->jump = flow_hw_jump_action_register
-		(dev, cfg, aso_mtr->fm.group, error);
-	if (!acts->jump)
-		return -ENOMEM;
-	acts->rule_acts[jump_pos].action = (!!group) ?
-				    acts->jump->hws_action :
-				    acts->jump->root_action;
-	if (mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
-		return -ENOMEM;
-	return 0;
-}
-
-static __rte_always_inline int
 flow_hw_cnt_compile(struct rte_eth_dev *dev, uint32_t  start_pos,
 		      struct mlx5_hw_actions *acts)
 {
@@ -1389,7 +1360,6 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	bool reformat_used = false;
 	unsigned int of_vlan_offset;
 	uint16_t action_pos;
-	uint16_t jump_pos;
 	uint32_t ct_idx;
 	int err;
 	uint32_t target_grp = 0;
@@ -1603,27 +1573,6 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			if (flow_hw_represented_port_compile
 					(dev, attr, action_start, actions,
 					 masks, acts, action_pos, &sub_error))
-				goto err;
-			break;
-		case RTE_FLOW_ACTION_TYPE_METER:
-			/*
-			 * METER action is compiled to 2 DR actions - ASO_METER and FT.
-			 * Calculated DR offset is stored only for ASO_METER and FT
-			 * is assumed to be the next action.
-			 */
-			action_pos = at->actions_off[actions - at->actions];
-			jump_pos = action_pos + 1;
-			if (actions->conf && masks->conf &&
-			    ((const struct rte_flow_action_meter *)
-			     masks->conf)->mtr_id) {
-				err = flow_hw_meter_compile(dev, cfg,
-						action_pos, jump_pos, actions, acts, &sub_error);
-				if (err)
-					goto err;
-			} else if (__flow_hw_act_data_general_append(priv, acts,
-							actions->type,
-							actions - action_start,
-							action_pos))
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
@@ -2198,7 +2147,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	const struct rte_flow_action_raw_encap *raw_encap_data;
 	const struct rte_flow_item *enc_item = NULL;
 	const struct rte_flow_action_ethdev *port_action = NULL;
-	const struct rte_flow_action_meter *meter = NULL;
 	const struct rte_flow_action_age *age = NULL;
 	uint8_t *buf = job->encap_data;
 	struct rte_flow_attr attr = {
@@ -2347,28 +2295,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				goto error;
 			rule_acts[act_data->action_dst].action =
 					priv->hw_vport[port_action->port_id];
-			break;
-		case RTE_FLOW_ACTION_TYPE_METER:
-			meter = action->conf;
-			mtr_id = meter->mtr_id;
-			aso_mtr = mlx5_aso_meter_by_idx(priv, mtr_id);
-			rule_acts[act_data->action_dst].action =
-				priv->mtr_bulk.action;
-			rule_acts[act_data->action_dst].aso_meter.offset =
-								aso_mtr->offset;
-			jump = flow_hw_jump_action_register
-				(dev, &table->cfg, aso_mtr->fm.group, NULL);
-			if (!jump)
-				goto error;
-			MLX5_ASSERT
-				(!rule_acts[act_data->action_dst + 1].action);
-			rule_acts[act_data->action_dst + 1].action =
-					(!!attr.group) ? jump->hws_action :
-							 jump->root_action;
-			job->flow->jump = jump;
-			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
-			if (mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
-				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			age = action->conf;
@@ -4082,10 +4008,6 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			/* TODO: Validation logic */
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			break;
-		case RTE_FLOW_ACTION_TYPE_METER:
-			/* TODO: Validation logic */
-			action_flags |= MLX5_FLOW_ACTION_METER;
-			break;
 		case RTE_FLOW_ACTION_TYPE_METER_MARK:
 			ret = flow_hw_validate_action_meter_mark(dev, action,
 								 error);
@@ -4320,13 +4242,6 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 				type = mlx5_hw_dr_action_types[at->actions[i].type];
 				action_types[mhdr_off] = type;
 			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_METER:
-			at->actions_off[i] = curr_off;
-			action_types[curr_off++] = MLX5DR_ACTION_TYP_ASO_METER;
-			if (curr_off >= MLX5_HW_MAX_ACTS)
-				goto err_actions_num;
-			action_types[curr_off++] = MLX5DR_ACTION_TYP_FT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 			type = mlx5_hw_dr_action_types[at->actions[i].type];
