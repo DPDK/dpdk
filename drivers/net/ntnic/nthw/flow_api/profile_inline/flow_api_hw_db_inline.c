@@ -10,6 +10,7 @@
 #include "flow_api_hw_db_inline.h"
 #include "flow_api_profile_inline_config.h"
 #include "flow_hsh_cfg.h"
+#include "ntlog.h"
 
 #define HW_DB_INLINE_ACTION_SET_NB 512
 #define HW_DB_INLINE_MATCH_SET_NB 512
@@ -2914,7 +2915,9 @@ void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle, struct h
 		 * it is not used by any flow
 		 */
 		if (idx.ids > 0) {
-			hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, idx.ids, 0, 0x0);
+			int res = hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL,
+				idx.ids, 0, 0x0);
+			NT_LOG(ERR, FILTER, "Failed to preset HSH RCP %u: %d", idx.ids, res);
 			hw_mod_hsh_rcp_flush(&ndev->be, idx.ids, 1);
 
 			memset(&db->hsh[idx.ids].data, 0x0, sizeof(struct hw_db_inline_hsh_data));
