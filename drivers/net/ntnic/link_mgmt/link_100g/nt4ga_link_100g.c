@@ -256,11 +256,11 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
 	nim_i2c_ctx_t *nim_ctx;
 	sfp_nim_state_t nim;
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
-	nthw_mac_pcs_t *mac_pcs = &link_info->u.var100g.mac_pcs100g[port];
 
 	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
 	RTE_ASSERT(link_info->variables_initialized);
 
+	nthw_mac_pcs_t *mac_pcs = &link_info->u.var100g.mac_pcs100g[port];
 	gpio_phy = &link_info->u.var100g.gpio_phy[port];
 	nim_ctx = &link_info->u.var100g.nim_ctx[port];
 

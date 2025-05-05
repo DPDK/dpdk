@@ -592,10 +592,10 @@ static int nthw_release_mngd_rx_virt_queue(struct nthw_virt_queue *rxvq)
 
 static int dbs_internal_release_tx_virt_queue(struct nthw_virt_queue *txvq)
 {
-	nthw_dbs_t *p_nthw_dbs = txvq->mp_nthw_dbs;
-
 	if (txvq == NULL)
 		return -1;
+
+	nthw_dbs_t *p_nthw_dbs = txvq->mp_nthw_dbs;
 
 	/* Clear UW */
 	txvq->used_struct_phys_addr = NULL;

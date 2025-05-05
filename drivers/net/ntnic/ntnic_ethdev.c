@@ -332,6 +332,11 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 
+	if (internals == NULL) {
+		NT_LOG(ERR, NTNIC, "PMD-specific private data not initialized");
+		return -1;
+	}
+
 	const int n_intf_no = internals->n_intf_no;
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
 

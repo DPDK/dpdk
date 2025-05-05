@@ -246,7 +246,7 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 	(void)p_adapter_info;
 	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
 
-	if (flow_filter_ops == NULL)
+	if (flow_filter_ops == NULL || p_nt4ga_stat == NULL)
 		return -1;
 
 	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
@@ -256,7 +256,7 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 	const int n_tx_ports = p_nt4ga_stat->mn_tx_ports;
 	int c, h, p;
 
-	if (!p_nthw_stat || !p_nt4ga_stat)
+	if (p_nthw_stat == NULL)
 		return -1;
 
 	if (p_nthw_stat->mn_stat_layout_version < 6) {

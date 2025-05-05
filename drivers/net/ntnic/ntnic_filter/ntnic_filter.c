@@ -478,17 +478,18 @@ static int convert_flow(struct rte_eth_dev *eth_dev,
 	struct rte_flow_error *error)
 {
 	struct pmd_internals *internals = eth_dev->data->dev_private;
-	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
-
-	error->type = RTE_FLOW_ERROR_TYPE_NONE;
-	error->message = "none";
-	uint32_t queue_offset = 0;
 
 	if (!internals) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			"Missing eth_dev");
 		return -1;
 	}
+
+	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
+
+	error->type = RTE_FLOW_ERROR_TYPE_NONE;
+	error->message = "none";
+	uint32_t queue_offset = 0;
 
 	if (internals->type == PORT_TYPE_OVERRIDE && internals->vpq_nb_vq > 0) {
 		/*
