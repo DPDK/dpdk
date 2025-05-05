@@ -93,9 +93,6 @@ int nthw_rac_init(nthw_rac_t *p, nthw_fpga_t *p_fpga, struct fpga_info_s *p_fpga
 	if (p->mp_reg_dbg_data)
 		p->mp_fld_dbg_data = nthw_register_query_field(p->mp_reg_dbg_data, RAC_DBG_DATA_D);
 
-	else
-		p->mp_reg_dbg_data = NULL;
-
 	p->mp_reg_rab_ib_data = nthw_module_get_register(p->mp_mod_rac, RAC_RAB_IB_DATA);
 	p->mp_fld_rab_ib_data = nthw_register_get_field(p->mp_reg_rab_ib_data, RAC_RAB_IB_DATA_D);
 

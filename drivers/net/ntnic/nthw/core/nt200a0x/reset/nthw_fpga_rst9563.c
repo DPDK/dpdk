@@ -59,7 +59,6 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 	p->mp_fld_rst_mac_rx = nthw_register_get_field(p_curr_reg, RST9563_RST_MAC_RX);
 	p->mp_fld_rst_mac_tx = NULL;
 	p->mp_fld_rst_ptp = nthw_register_get_field(p_curr_reg, RST9563_RST_PTP);
-	p->mp_fld_rst_ptp = nthw_register_get_field(p_curr_reg, RST9563_RST_PTP);
 	p->mp_fld_rst_ts = nthw_register_get_field(p_curr_reg, RST9563_RST_TS);
 	p->mp_fld_rst_ptp_mmcm = nthw_register_get_field(p_curr_reg, RST9563_RST_PTP_MMCM);
 	p->mp_fld_rst_ts_mmcm = nthw_register_get_field(p_curr_reg, RST9563_RST_TS_MMCM);

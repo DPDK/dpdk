@@ -685,21 +685,13 @@ static int nim_ready_100_gb(adapter_info_t *p_info, int port)
 		return 1;
 	}
 
-	if (port == 0) {
-		/* setTxEqualization(uint8_t intf_no, uint8_t lane, uint32_t pre_tap2,
-		 * uint32_t main_tap, uint32_t pre_tap1, uint32_t post_tap1)
-		 */
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 0, 0, 44, 2, 9);
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 1, 0, 44, 2, 9);
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 2, 0, 44, 2, 9);
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 3, 0, 44, 2, 9);
-
-	} else {
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 0, 0, 44, 2, 9);
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 1, 0, 44, 2, 9);
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 2, 0, 44, 2, 9);
-		nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 3, 0, 44, 2, 9);
-	}
+	/* setTxEqualization(uint8_t intf_no, uint8_t lane, uint32_t pre_tap2,
+	 * uint32_t main_tap, uint32_t pre_tap1, uint32_t post_tap1)
+	 */
+	nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 0, 0, 44, 2, 9);
+	nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 1, 0, 44, 2, 9);
+	nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 2, 0, 44, 2, 9);
+	nthw_phy_tile_set_tx_equalization(p_phy_tile, port, 3, 0, 44, 2, 9);
 
 	/*
 	 * Perform a full reset. If the RX is in reset from the start this sequence will
