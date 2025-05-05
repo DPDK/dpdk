@@ -23,7 +23,7 @@ struct hsh_nthw *hsh_nthw_new(void)
 	struct hsh_nthw *p = malloc(sizeof(struct hsh_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -31,7 +31,7 @@ struct hsh_nthw *hsh_nthw_new(void)
 void hsh_nthw_delete(struct hsh_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

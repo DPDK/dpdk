@@ -22,7 +22,7 @@ struct rpp_lr_nthw *rpp_lr_nthw_new(void)
 	struct rpp_lr_nthw *p = malloc(sizeof(struct rpp_lr_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -30,7 +30,7 @@ struct rpp_lr_nthw *rpp_lr_nthw_new(void)
 void rpp_lr_nthw_delete(struct rpp_lr_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

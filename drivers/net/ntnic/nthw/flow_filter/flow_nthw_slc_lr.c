@@ -23,7 +23,7 @@ struct slc_lr_nthw *slc_lr_nthw_new(void)
 	struct slc_lr_nthw *p = malloc(sizeof(struct slc_lr_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -31,7 +31,7 @@ struct slc_lr_nthw *slc_lr_nthw_new(void)
 void slc_lr_nthw_delete(struct slc_lr_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

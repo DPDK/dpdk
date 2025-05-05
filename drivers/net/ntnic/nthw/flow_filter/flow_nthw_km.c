@@ -32,7 +32,7 @@ struct km_nthw *km_nthw_new(void)
 	struct km_nthw *p = malloc(sizeof(struct km_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -40,7 +40,7 @@ struct km_nthw *km_nthw_new(void)
 void km_nthw_delete(struct km_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

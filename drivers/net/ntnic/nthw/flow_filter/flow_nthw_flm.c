@@ -20,7 +20,7 @@ struct flm_nthw *flm_nthw_new(void)
 	struct flm_nthw *p = malloc(sizeof(struct flm_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -28,7 +28,7 @@ struct flm_nthw *flm_nthw_new(void)
 void flm_nthw_delete(struct flm_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

@@ -18,7 +18,7 @@ struct cat_nthw *cat_nthw_new(void)
 	struct cat_nthw *p = malloc(sizeof(struct cat_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -26,7 +26,7 @@ struct cat_nthw *cat_nthw_new(void)
 void cat_nthw_delete(struct cat_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

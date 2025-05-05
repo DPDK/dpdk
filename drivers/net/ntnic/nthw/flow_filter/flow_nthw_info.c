@@ -23,7 +23,7 @@ struct info_nthw *info_nthw_new(void)
 	struct info_nthw *p = malloc(sizeof(struct info_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -31,7 +31,7 @@ struct info_nthw *info_nthw_new(void)
 void info_nthw_delete(struct info_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

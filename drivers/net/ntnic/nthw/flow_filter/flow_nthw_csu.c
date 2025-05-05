@@ -22,7 +22,7 @@ struct csu_nthw *csu_nthw_new(void)
 	struct csu_nthw *p = malloc(sizeof(struct csu_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -30,7 +30,7 @@ struct csu_nthw *csu_nthw_new(void)
 void csu_nthw_delete(struct csu_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

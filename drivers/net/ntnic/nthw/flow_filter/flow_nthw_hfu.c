@@ -22,7 +22,7 @@ struct hfu_nthw *hfu_nthw_new(void)
 	struct hfu_nthw *p = malloc(sizeof(struct hfu_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -30,7 +30,7 @@ struct hfu_nthw *hfu_nthw_new(void)
 void hfu_nthw_delete(struct hfu_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

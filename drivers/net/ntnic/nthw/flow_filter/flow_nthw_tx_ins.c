@@ -22,7 +22,7 @@ struct tx_ins_nthw *tx_ins_nthw_new(void)
 	struct tx_ins_nthw *p = malloc(sizeof(struct tx_ins_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -30,7 +30,7 @@ struct tx_ins_nthw *tx_ins_nthw_new(void)
 void tx_ins_nthw_delete(struct tx_ins_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

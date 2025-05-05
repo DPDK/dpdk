@@ -304,7 +304,7 @@ static int qsfp_nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
 	RTE_ASSERT(ctx && state);
 	RTE_ASSERT(ctx->nim_id != NT_NIM_UNKNOWN && "Nim is not initialized");
 
-	(void)memset(state, 0, sizeof(*state));
+	memset(state, 0, sizeof(*state));
 
 	switch (ctx->nim_id) {
 	case 12U:

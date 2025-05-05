@@ -22,7 +22,7 @@ struct ifr_nthw *ifr_nthw_new(void)
 	struct ifr_nthw *p = malloc(sizeof(struct ifr_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
