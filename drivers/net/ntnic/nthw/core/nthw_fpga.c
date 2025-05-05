@@ -152,26 +152,6 @@ int nthw_fpga_silabs_detect(nthw_fpga_t *p_fpga, const int n_instance_no, const 
 	return res;
 }
 
-/*
- * Calculate CRC-16-CCITT of passed data
- * CRC-16-CCITT ^16 + ^12 + ^5 + 1 (0x1021) (X.25, HDLC, XMODEM, Bluetooth,
- *   SD, many others; known as CRC-CCITT)
- */
-static uint16_t crc16(uint8_t *buffer, size_t length)
-{
-	uint16_t seed = 0;
-
-	while (length--) {
-		seed = (uint16_t)(seed >> 8 | seed << 8);
-		seed = (uint16_t)(seed ^ *buffer++);
-		seed = (uint16_t)(seed ^ (seed & 0xff) >> 4);
-		seed = (uint16_t)(seed ^ seed << 8 << 4);
-		seed = (uint16_t)(seed ^ (seed & 0xff) << 4 << 1);
-	}
-
-	return seed;
-}
-
 int nthw_fpga_avr_probe(nthw_fpga_t *p_fpga, const int n_instance_no)
 {
 	struct fpga_info_s *p_fpga_info = p_fpga->p_fpga_info;
@@ -314,150 +294,15 @@ int nthw_fpga_avr_probe(nthw_fpga_t *p_fpga, const int n_instance_no)
 		rx_buf.p_buf = &rx_data;
 		res = nthw_spi_v3_transfer(p_avr_spi, AVR_OP_SYSINFO_2, &tx_buf, &rx_buf);
 
-		if (res == 0 && avr_vpd_info.n_avr_spi_version >= 3 && rx_buf.size >= 16) {
-			if (rx_buf.size != 16) {
-				NT_LOG(WRN, NTHW,
-					"%s: AVR%d: SYSINFO2: reply is larger than expected: %04X %04X",
-					p_adapter_id_str, n_instance_no, rx_buf.size, 16);
+		/* AVR_OP_SYSINFO */
+		tx_buf.size = 0;
+		tx_buf.p_buf = NULL;
+		rx_buf.size = sizeof(rx_data);
+		rx_buf.p_buf = &rx_data;
+		res = nthw_spi_v3_transfer(p_avr_spi, AVR_OP_SYSINFO, &tx_buf, &rx_buf);
 
-			} else {
-				NT_LOG(DBG, NTHW, "%s: AVR%d: SYSINFO2: OK: res=%d sz=%d",
-					p_adapter_id_str, n_instance_no, res, rx_buf.size);
-			}
-
-			avr_vpd_info.sysinfo_container_version = rx_data[0];
-			NT_LOG(DBG, NTHW, "%s: AVR%d: SYSINFO_REQ_VER: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_container_version);
-
-			memcpy(&avr_vpd_info.sysinfo_avr_libc_version, &rx_data[0 + 1],
-				sizeof(avr_vpd_info.sysinfo_avr_libc_version));
-			NT_LOG(DBG, NTHW, "%s: AVR%d: LIBC_VER: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_avr_libc_version);
-
-			avr_vpd_info.sysinfo_signature_0 = rx_data[5];
-			avr_vpd_info.sysinfo_signature_1 = rx_data[6];
-			avr_vpd_info.sysinfo_signature_2 = rx_data[7];
-			NT_LOG(DBG, NTHW, "%s: AVR%d: SIGNATURE: %02x%02x%02x", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_signature_0,
-				avr_vpd_info.sysinfo_signature_1, avr_vpd_info.sysinfo_signature_2);
-
-			avr_vpd_info.sysinfo_spi_version = rx_data[8];
-			NT_LOG(DBG, NTHW, "%s: AVR%d: SPI_VER: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_spi_version);
-
-			avr_vpd_info.sysinfo_hw_revision = rx_data[9];
-			NT_LOG(DBG, NTHW, "%s: AVR%d: HW_REV: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_hw_revision);
-
-			avr_vpd_info.sysinfo_ticks_per_second = rx_data[10];
-			NT_LOG(DBG, NTHW, "%s: AVR%d: TICKS_PER_SEC: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_ticks_per_second);
-
-			memcpy(&avr_vpd_info.sysinfo_uptime, &rx_data[11],
-				sizeof(avr_vpd_info.sysinfo_uptime));
-			NT_LOG(DBG, NTHW, "%s: AVR%d: UPTIME: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_uptime);
-
-			avr_vpd_info.sysinfo_osccal = rx_data[15];
-			NT_LOG(DBG, NTHW, "%s: AVR%d: OSCCAL: %d", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.sysinfo_osccal);
-
-			{
-				bool b_spi_ver_match = (avr_vpd_info.n_avr_spi_version ==
-						avr_vpd_info.sysinfo_spi_version);
-				(void)b_spi_ver_match;
-				NT_LOG(DBG, NTHW, "%s: AVR%d: SPI_VER_TST: %s (%d %d)",
-					p_adapter_id_str, n_instance_no,
-					(b_spi_ver_match ? "OK" : "MISMATCH"),
-					avr_vpd_info.n_avr_spi_version,
-					avr_vpd_info.sysinfo_spi_version);
-			}
-
-			/* SYSINFO2: if response: only populate hw_id not hw_id_emulated */
-			p_fpga_info->nthw_hw_info.hw_id = avr_vpd_info.sysinfo_hw_revision;
-
-		} else {
-			/* AVR_OP_SYSINFO */
-			tx_buf.size = 0;
-			tx_buf.p_buf = NULL;
-			rx_buf.size = sizeof(rx_data);
-			rx_buf.p_buf = &rx_data;
-			res = nthw_spi_v3_transfer(p_avr_spi, AVR_OP_SYSINFO, &tx_buf, &rx_buf);
-
-			if (res == 0 && avr_vpd_info.n_avr_spi_version >= 3 && rx_buf.size >= 16) {
-				if (rx_buf.size != 16) {
-					NT_LOG(WRN, NTHW,
-						"%s: AVR%d: SYSINFO: reply is larger than expected: %04X %04X",
-						p_adapter_id_str, n_instance_no, rx_buf.size, 16);
-
-				} else {
-					NT_LOG(DBG, NTHW, "%s: AVR%d: SYSINFO: OK: res=%d sz=%d",
-						p_adapter_id_str, n_instance_no, res, rx_buf.size);
-				}
-
-				avr_vpd_info.sysinfo_container_version = rx_data[0];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: SYSINFO_REQ_VER: %d",
-					p_adapter_id_str, n_instance_no,
-					avr_vpd_info.sysinfo_container_version);
-
-				memcpy(&avr_vpd_info.sysinfo_avr_libc_version, &rx_data[0 + 1],
-					sizeof(avr_vpd_info.sysinfo_avr_libc_version));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: LIBC_VER: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.sysinfo_avr_libc_version);
-
-				avr_vpd_info.sysinfo_signature_0 = rx_data[5];
-				avr_vpd_info.sysinfo_signature_1 = rx_data[6];
-				avr_vpd_info.sysinfo_signature_2 = rx_data[7];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: SIGNATURE: %02x%02x%02x",
-					p_adapter_id_str, n_instance_no,
-					avr_vpd_info.sysinfo_signature_0,
-					avr_vpd_info.sysinfo_signature_1,
-					avr_vpd_info.sysinfo_signature_2);
-
-				avr_vpd_info.sysinfo_spi_version = rx_data[8];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: SPI_VER: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.sysinfo_spi_version);
-
-				avr_vpd_info.sysinfo_hw_revision = rx_data[9];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: HW_REV: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.sysinfo_hw_revision);
-				NT_LOG(INF, NTHW, "%s: AVR%d: HW_REV: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.sysinfo_hw_revision);
-
-				avr_vpd_info.sysinfo_ticks_per_second = rx_data[10];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: TICKS_PER_SEC: %d",
-					p_adapter_id_str, n_instance_no,
-					avr_vpd_info.sysinfo_ticks_per_second);
-
-				memcpy(&avr_vpd_info.sysinfo_uptime, &rx_data[11],
-					sizeof(avr_vpd_info.sysinfo_uptime));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: UPTIME: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.sysinfo_uptime);
-
-				avr_vpd_info.sysinfo_osccal = rx_data[15];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: OSCCAL: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.sysinfo_osccal);
-
-				{
-					bool b_spi_ver_match = (avr_vpd_info.n_avr_spi_version ==
-							avr_vpd_info.sysinfo_spi_version);
-					(void)b_spi_ver_match;
-					NT_LOG(DBG, NTHW, "%s: AVR%d: SPI_VER_TST: %s (%d %d)",
-						p_adapter_id_str, n_instance_no,
-						(b_spi_ver_match ? "OK" : "MISMATCH"),
-						avr_vpd_info.n_avr_spi_version,
-						avr_vpd_info.sysinfo_spi_version);
-				}
-
-				p_fpga_info->nthw_hw_info.hw_id = avr_vpd_info.sysinfo_hw_revision;
-				p_fpga_info->nthw_hw_info.hw_id_emulated =
-					avr_vpd_info.sysinfo_hw_revision;
-
-			} else {
-				NT_LOG(ERR, NTHW, "%s: AVR%d: SYSINFO: NA: res=%d sz=%d",
-					p_adapter_id_str, n_instance_no, res, rx_buf.size);
-			}
-		}
+		NT_LOG(ERR, NTHW, "%s: AVR%d: SYSINFO: NA: res=%d sz=%d",
+				p_adapter_id_str, n_instance_no, res, rx_buf.size);
 
 		/* AVR_OP_VPD_READ */
 		tx_buf.size = 0;
@@ -466,132 +311,10 @@ int nthw_fpga_avr_probe(nthw_fpga_t *p_fpga, const int n_instance_no)
 		rx_buf.p_buf = &rx_data;
 		res = nthw_spi_v3_transfer(p_avr_spi, AVR_OP_VPD_READ, &tx_buf, &rx_buf);
 
-		if (res == 0 && avr_vpd_info.n_avr_spi_version >= 3 &&
-			rx_buf.size >= GEN2_VPD_SIZE_TOTAL) {
-			avr_vpd_info.n_crc16_calced = crc16(rx_buf.p_buf, rx_buf.size - 2);
-			memcpy(&avr_vpd_info.n_crc16_stored, &rx_data[rx_buf.size - 2],
-				sizeof(avr_vpd_info.n_crc16_stored));
-			NT_LOG(DBG, NTHW, "%s: AVR%d: VPD_CRC: %04X %04X", p_adapter_id_str,
-				n_instance_no, avr_vpd_info.n_crc16_stored,
-				avr_vpd_info.n_crc16_calced);
-
-			avr_vpd_info.b_crc16_valid =
-				(avr_vpd_info.n_crc16_stored == avr_vpd_info.n_crc16_calced);
-			NT_LOG(DBG, NTHW, "%s: AVR%d: CRC_TST: %s", p_adapter_id_str,
-				n_instance_no, (avr_vpd_info.b_crc16_valid ? "OK" : "ERROR"));
-
-			if (avr_vpd_info.b_crc16_valid) {
-				memcpy(&avr_vpd_info.psu_hw_version, &rx_data[0],
-					sizeof(avr_vpd_info.psu_hw_version));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: PSU_HW_VER: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.psu_hw_version);
-
-				memcpy(&avr_vpd_info.vpd_pn, &rx_data[0 + 1],
-					sizeof(avr_vpd_info.vpd_pn));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: PN: '%.*s'", p_adapter_id_str,
-					n_instance_no, GEN2_PN_SIZE, avr_vpd_info.vpd_pn);
-
-				memcpy(&avr_vpd_info.vpd_pba, &rx_data[0 + 1 + GEN2_PN_SIZE],
-					sizeof(avr_vpd_info.vpd_pba));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: PBA: '%.*s'", p_adapter_id_str,
-					n_instance_no, GEN2_PBA_SIZE, avr_vpd_info.vpd_pba);
-
-				memcpy(&avr_vpd_info.vpd_sn,
-					&rx_data[0 + 1 + GEN2_PN_SIZE + GEN2_PBA_SIZE],
-					sizeof(avr_vpd_info.vpd_sn));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: SN: '%.*s", p_adapter_id_str,
-					n_instance_no, GEN2_SN_SIZE, avr_vpd_info.vpd_sn);
-
-				memcpy(&avr_vpd_info.vpd_board_name,
-					&rx_data[0 + 1 + GEN2_PN_SIZE + GEN2_PBA_SIZE +
-						GEN2_SN_SIZE],
-					sizeof(avr_vpd_info.vpd_board_name));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: BN: '%.*s'", p_adapter_id_str,
-					n_instance_no, GEN2_BNAME_SIZE,
-					avr_vpd_info.vpd_board_name);
-
-				union mac_u {
-					uint8_t a_u8[8];
-					uint16_t a_u16[4];
-					uint32_t a_u32[2];
-					uint64_t a_u64[1];
-				} mac;
-
-				/* vpd_platform_section */
-				uint8_t *p_vpd_board_info =
-					(uint8_t *)(&rx_data[1 + GEN2_PN_SIZE + GEN2_PBA_SIZE +
-					GEN2_SN_SIZE + GEN2_BNAME_SIZE]);
-				memcpy(&avr_vpd_info.product_family, &p_vpd_board_info[0],
-					sizeof(avr_vpd_info.product_family));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: PROD_FAM: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.product_family);
-
-				memcpy(&avr_vpd_info.feature_mask, &p_vpd_board_info[0 + 4],
-					sizeof(avr_vpd_info.feature_mask));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: FMSK_VAL: 0x%08X",
-					p_adapter_id_str, n_instance_no, avr_vpd_info.feature_mask);
-
-				memcpy(&avr_vpd_info.invfeature_mask, &p_vpd_board_info[0 + 4 + 4],
-					sizeof(avr_vpd_info.invfeature_mask));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: FMSK_INV: 0x%08X",
-					p_adapter_id_str, n_instance_no,
-					avr_vpd_info.invfeature_mask);
-
-				avr_vpd_info.b_feature_mask_valid =
-					(avr_vpd_info.feature_mask ==
-						~avr_vpd_info.invfeature_mask);
-				NT_LOG(DBG, NTHW, "%s: AVR%d: FMSK_TST: %s", p_adapter_id_str,
-					n_instance_no,
-					(avr_vpd_info.b_feature_mask_valid ? "OK" : "ERROR"));
-
-				memcpy(&avr_vpd_info.no_of_macs, &p_vpd_board_info[0 + 4 + 4 + 4],
-					sizeof(avr_vpd_info.no_of_macs));
-				NT_LOG(DBG, NTHW, "%s: AVR%d: NUM_MACS: %d", p_adapter_id_str,
-					n_instance_no, avr_vpd_info.no_of_macs);
-
-				memcpy(&avr_vpd_info.mac_address,
-					&p_vpd_board_info[0 + 4 + 4 + 4 + 1],
-					sizeof(avr_vpd_info.mac_address));
-				NT_LOG(DBG, NTHW,
-					"%s: AVR%d: MAC_ADDR: %02x:%02x:%02x:%02x:%02x:%02x",
-					p_adapter_id_str, n_instance_no,
-					avr_vpd_info.mac_address[0], avr_vpd_info.mac_address[1],
-					avr_vpd_info.mac_address[2], avr_vpd_info.mac_address[3],
-					avr_vpd_info.mac_address[4], avr_vpd_info.mac_address[5]);
-
-				mac.a_u64[0] = 0;
-				memcpy(&mac.a_u8[2], &avr_vpd_info.mac_address,
-					sizeof(avr_vpd_info.mac_address));
-				{
-					const uint32_t u1 = ntohl(mac.a_u32[0]);
-
-					if (u1 != mac.a_u32[0]) {
-						const uint32_t u0 = ntohl(mac.a_u32[1]);
-						mac.a_u32[0] = u0;
-						mac.a_u32[1] = u1;
-					}
-				}
-
-				avr_vpd_info.n_mac_val = mac.a_u64[0];
-				NT_LOG(DBG, NTHW, "%s: AVR%d: MAC_U64: %012" PRIX64 "",
-					p_adapter_id_str, n_instance_no, avr_vpd_info.n_mac_val);
-			}
-
-			p_fpga_info->nthw_hw_info.vpd_info.mn_mac_addr_count =
-				avr_vpd_info.no_of_macs;
-			p_fpga_info->nthw_hw_info.vpd_info.mn_mac_addr_value =
-				avr_vpd_info.n_mac_val;
-			memcpy(p_fpga_info->nthw_hw_info.vpd_info.ma_mac_addr_octets,
-				avr_vpd_info.mac_address,
-				ARRAY_SIZE(p_fpga_info->nthw_hw_info.vpd_info.ma_mac_addr_octets));
-
-		} else {
-			NT_LOG(ERR, NTHW, "%s:%u: res=%d", __func__, __LINE__, res);
-			NT_LOG(ERR, NTHW, "%s: AVR%d: SYSINFO2: NA: res=%d sz=%d",
-				p_adapter_id_str, n_instance_no, res, rx_buf.size);
-		}
+		NT_LOG(ERR, NTHW, "%s:%u: res=%d", __func__, __LINE__, res);
+		NT_LOG(ERR, NTHW, "%s: AVR%d: SYSINFO2: NA: res=%d sz=%d",
+			p_adapter_id_str, n_instance_no, res, rx_buf.size);
 	}
-
 	return res;
 }
 
