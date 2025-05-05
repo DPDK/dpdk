@@ -517,13 +517,6 @@ int nthw_rac_rab_read32_dma(nthw_rac_t *p, nthw_rab_bus_id_t bus_id, uint32_t ad
 		return -1;
 	}
 
-	if ((word_cnt + 3) > RAB_DMA_BUF_CNT) {
-		NT_LOG(ERR, NTHW,
-			"%s: Failed rab dma read length check - bus: %d addr: 0x%08X wordcount: %d",
-			p_adapter_id_str, bus_id, address, word_cnt);
-		return -1;
-	}
-
 	if (p->m_in_free < 3) {
 		/*
 		 * No more memory available.

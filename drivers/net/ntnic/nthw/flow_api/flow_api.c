@@ -829,8 +829,7 @@ struct flow_nic_dev *nthw_flow_api_create(uint8_t adapter_no,
 
 err_exit:
 
-	if (ndev)
-		nthw_flow_api_done(ndev);
+	nthw_flow_api_done(ndev);
 
 	NT_LOG(DBG, FILTER, "ERR: %s", __func__);
 	return NULL;

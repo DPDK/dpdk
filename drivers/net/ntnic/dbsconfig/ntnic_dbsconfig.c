@@ -761,8 +761,7 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 */
 	if (irq_vector < 0) {
 		if (set_tx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
-				TX_AM_ENABLE, host_id, 0,
-				irq_vector >= 0 ? 1 : 0) != 0) {
+				TX_AM_ENABLE, host_id, 0, 0) != 0) {
 			return NULL;
 		}
 	}
