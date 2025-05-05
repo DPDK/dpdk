@@ -79,14 +79,14 @@ void *nthw_callocate_mod(struct common_func_s *mod, int sets, ...)
 	va_end(args);
 
 	mod->base = base;
-	mod->alloced_size = total_bytes;
+	mod->allocated_size = total_bytes;
 
 	return base;
 }
 
 void nthw_zero_module_cache(struct common_func_s *mod)
 {
-	memset(mod->base, 0, mod->alloced_size);
+	memset(mod->base, 0, mod->allocated_size);
 }
 
 int nthw_flow_api_backend_init(struct flow_api_backend_s *dev,
