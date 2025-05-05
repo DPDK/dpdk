@@ -181,15 +181,15 @@ static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_st
 	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
 	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
-	const int if_index = internals->n_intf_no;
+	const int n_intf_no = internals->n_intf_no;
 	uint64_t rx_total = 0;
 	uint64_t rx_total_b = 0;
 	uint64_t tx_total = 0;
 	uint64_t tx_total_b = 0;
 	uint64_t tx_err_total = 0;
 
-	if (!p_nthw_stat || !p_nt4ga_stat || !stats || if_index < 0 ||
-		if_index > NUM_ADAPTER_PORTS_MAX) {
+	if (!p_nthw_stat || !p_nt4ga_stat || !stats || n_intf_no < 0 ||
+		n_intf_no > NUM_ADAPTER_PORTS_MAX) {
 		NT_LOG_DBGX(WRN, NTNIC, "error exit");
 		return -1;
 	}
@@ -315,8 +315,8 @@ static int eth_stats_reset(struct rte_eth_dev *eth_dev)
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
-	const int if_index = internals->n_intf_no;
-	dpdk_stats_reset(internals, p_nt_drv, if_index);
+	const int n_intf_no = internals->n_intf_no;
+	dpdk_stats_reset(internals, p_nt_drv, n_intf_no);
 	return 0;
 }
 
@@ -1529,7 +1529,7 @@ static int eth_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *sta
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
-	int if_index = internals->n_intf_no;
+	int n_intf_no = internals->n_intf_no;
 	int nb_xstats;
 
 	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
@@ -1540,7 +1540,7 @@ static int eth_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *sta
 	}
 
 	rte_spinlock_lock(&p_nt_drv->stat_lck);
-	nb_xstats = ntnic_xstats_ops->nthw_xstats_get(p_nt4ga_stat, stats, n, if_index);
+	nb_xstats = ntnic_xstats_ops->nthw_xstats_get(p_nt4ga_stat, stats, n, n_intf_no);
 	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 	return nb_xstats;
 }
@@ -1554,7 +1554,7 @@ static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
-	int if_index = internals->n_intf_no;
+	int n_intf_no = internals->n_intf_no;
 	int nb_xstats;
 
 	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
@@ -1566,7 +1566,7 @@ static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 
 	rte_spinlock_lock(&p_nt_drv->stat_lck);
 	nb_xstats =
-		ntnic_xstats_ops->nthw_xstats_get_by_id(p_nt4ga_stat, ids, values, n, if_index);
+		ntnic_xstats_ops->nthw_xstats_get_by_id(p_nt4ga_stat, ids, values, n, n_intf_no);
 	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 	return nb_xstats;
 }
@@ -1577,7 +1577,7 @@ static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
-	int if_index = internals->n_intf_no;
+	int n_intf_no = internals->n_intf_no;
 
 	struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
 
@@ -1587,9 +1587,9 @@ static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_spinlock_lock(&p_nt_drv->stat_lck);
-	ntnic_xstats_ops->nthw_xstats_reset(p_nt4ga_stat, if_index);
+	ntnic_xstats_ops->nthw_xstats_reset(p_nt4ga_stat, n_intf_no);
 	rte_spinlock_unlock(&p_nt_drv->stat_lck);
-	return dpdk_stats_reset(internals, p_nt_drv, if_index);
+	return dpdk_stats_reset(internals, p_nt_drv, n_intf_no);
 }
 
 static int eth_xstats_get_names(struct rte_eth_dev *eth_dev,
