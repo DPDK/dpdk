@@ -21,6 +21,22 @@
 static struct graph_head graph_list = STAILQ_HEAD_INITIALIZER(graph_list);
 static rte_spinlock_t graph_lock = RTE_SPINLOCK_INITIALIZER;
 
+bool
+graph_is_node_active_in_graph(struct node *node)
+{
+	struct graph *graph;
+
+	STAILQ_FOREACH(graph, &graph_list, next) {
+		struct graph_node *graph_node;
+
+		STAILQ_FOREACH(graph_node, &graph->node_list, next)
+			if (graph_node->node == node)
+				return 1;
+	}
+
+	return 0;
+}
+
 /* Private functions */
 static struct graph *
 graph_from_id(rte_graph_t id)

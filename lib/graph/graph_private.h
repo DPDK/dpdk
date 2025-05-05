@@ -455,4 +455,17 @@ int graph_sched_wq_create(struct graph *_graph, struct graph *_parent_graph,
  */
 void graph_sched_wq_destroy(struct graph *_graph);
 
+/**
+ * @internal
+ *
+ * Check if given node present in any of the created graphs.
+ *
+ * @param node
+ *   The node object
+ *
+ * @return
+ *   0 if not present in any graph, else return 1.
+ */
+bool graph_is_node_active_in_graph(struct node *_node);
+
 #endif /* _RTE_GRAPH_PRIVATE_H_ */

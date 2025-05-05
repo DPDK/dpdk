@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 #include <rte_common.h>
+#include <rte_compat.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -660,6 +661,20 @@ rte_node_is_invalid(rte_node_t id)
 {
 	return (id == RTE_NODE_ID_INVALID);
 }
+
+/**
+ * Release the memory allocated for a node created using RTE_NODE_REGISTER or rte_node_clone,
+ * if it is not linked to any graphs.
+ *
+ * @param id
+ *   Node id to check.
+ *
+ * @return
+ *   - 0: Success.
+ *   -<0: Failure.
+ */
+__rte_experimental
+int rte_node_free(rte_node_t id);
 
 /**
  * Test the validity of edge id.

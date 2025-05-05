@@ -516,3 +516,29 @@ node_override_process_func(rte_node_t id, rte_node_process_t process)
 fail:
 	return -1;
 }
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_node_free, 25.07)
+int
+rte_node_free(rte_node_t id)
+{
+	struct node *node;
+	int rc = -1;
+
+	if (node_from_id(id) == NULL)
+		goto fail;
+
+	graph_spinlock_lock();
+	STAILQ_FOREACH(node, &node_list, next) {
+		if (id == node->id) {
+			if (!graph_is_node_active_in_graph(node)) {
+				STAILQ_REMOVE(&node_list, node, node, next);
+				free(node);
+				rc = 0;
+			}
+			break;
+		}
+	}
+	graph_spinlock_unlock();
+fail:
+	return rc;
+}
