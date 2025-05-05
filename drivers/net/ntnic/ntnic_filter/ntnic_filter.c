@@ -248,6 +248,11 @@ interpret_end:
 
 int nthw_create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr)
 {
+	if (!attribute) {
+		NT_LOG(ERR, FILTER, "ERROR no attribute to iterate!");
+		return -1;
+	}
+
 	memset(&attribute->attr, 0x0, sizeof(struct rte_flow_attr));
 
 	if (attr) {

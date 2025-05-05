@@ -114,7 +114,8 @@ void ntnic_id_table_free_id(void *id_table, uint32_t id)
 
 	struct ntnic_id_table_element *current_element =
 		ntnic_id_table_array_find_element(handle, id);
-	memset(current_element, 0, sizeof(struct ntnic_id_table_element));
+	if (current_element)
+		memset(current_element, 0, sizeof(struct ntnic_id_table_element));
 
 	struct ntnic_id_table_element *element =
 		ntnic_id_table_array_find_element(handle, handle->free_head);
