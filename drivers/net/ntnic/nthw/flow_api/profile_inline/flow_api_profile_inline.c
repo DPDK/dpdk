@@ -518,9 +518,8 @@ static void flm_mtr_read_sta_records(struct flow_eth_dev *dev, uint32_t *data, u
 			uint8_t port;
 			bool remote_caller = is_remote_caller(caller_id, &port);
 
-			rte_spinlock_lock(&dev->ndev->mtx);
-			((struct flow_handle *)flm_h.p)->learn_ignored = 1;
-			rte_spinlock_unlock(&dev->ndev->mtx);
+			rte_atomic_store_explicit(&((struct flow_handle *)flm_h.p)->learn_ignored,
+				1, rte_memory_order_seq_cst);
 			struct flm_status_event_s data = {
 				.flow = flm_h.p,
 				.learn_ignore = sta_data->lis,
@@ -972,7 +971,7 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 	if (flm_op == NT_FLM_OP_UNLEARN) {
 		ntnic_id_table_free_id(fh->dev->ndev->id_table_handle, flm_id);
 
-		if (fh->learn_ignored == 1)
+		if (rte_atomic_load_explicit(&fh->learn_ignored, rte_memory_order_seq_cst) == 1)
 			return 0;
 	}
 
