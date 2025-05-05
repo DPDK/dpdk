@@ -71,11 +71,11 @@ static int hsh_set_part(struct flow_nic_dev *ndev, int hsh_idx, struct hsh_words
 	words[word].free = false;
 
 	res |= hw_mod_hsh_rcp_set(&ndev->be, words[word].pe, hsh_idx, 0, pe);
-	NT_LOG(DBG, FILTER, "hw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %d)", words[word].pe,
-		hsh_idx, pe);
+	NT_LOG(DBG, FILTER, "hw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %" PRIu32 ")",
+		(int)words[word].pe, hsh_idx, pe);
 	res |= hw_mod_hsh_rcp_set(&ndev->be, words[word].ofs, hsh_idx, 0, ofs);
-	NT_LOG(DBG, FILTER, "hw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %d)", words[word].ofs,
-		hsh_idx, ofs);
+	NT_LOG(DBG, FILTER, "hw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %" PRIu32 ")",
+		(int)words[word].ofs, hsh_idx, ofs);
 
 
 	/* set HW_HSH_RCP_WORD_MASK based on used QW/W and given 'bit_len' */

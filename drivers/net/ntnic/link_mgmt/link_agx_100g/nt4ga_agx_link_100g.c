@@ -316,7 +316,7 @@ static void adjust_maturing_delay(adapter_info_t *drv, int port)
 
 	} else {
 		NT_LOG(WRN, NTNIC,
-			"Port %u: Cannot set the RPF adjusted maturing delay to %i because "
+			"Port %i: Cannot set the RPF adjusted maturing delay to %i because "
 			"that value is outside the legal range [%i:%i]",
 			port, delay, min_delay, max_delay);
 	}
@@ -367,8 +367,8 @@ static void get_link_state(adapter_info_t *drv, nim_i2c_ctx_p ctx, link_state_t 
 		&remote_fault);
 
 	if (curr_link_state != state->link_state)
-		NT_LOG(DBG, NTNIC, "Port %d: Faults(Local = %d, Remote = %d)", port, local_fault,
-			remote_fault);
+		NT_LOG(DBG, NTNIC, "Port %i: Faults(Local = %" PRIu32 ", Remote = %" PRIu32 ")",
+			port, local_fault, remote_fault);
 
 	state->nim_present = nim_is_present(ctx, port);
 
@@ -382,13 +382,13 @@ static void get_link_state(adapter_info_t *drv, nim_i2c_ctx_p ctx, link_state_t 
 
 	if (remote_fault == 0) {
 		phy_reset_rx(drv, port);
-		NT_LOG(DBG, NTNIC, "Port %u: resetRx due to local fault.", port);
+		NT_LOG(DBG, NTNIC, "Port %i: resetRx due to local fault.", port);
 		return;
 	}
 
 	/* In case of too many errors perform a reset */
 	if (nthw_phy_tile_get_rx_hi_ber(p, port)) {
-		NT_LOG(INF, NTNIC, "Port %u: HiBer", port);
+		NT_LOG(INF, NTNIC, "Port %i: HiBer", port);
 		phy_reset_rx(drv, port);
 		return;
 	}
@@ -974,7 +974,7 @@ int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nthw_f
 		res = nthw_rpf_init(p_nthw_agx->p_rpf, fpga, adapter_no);
 
 		if (res != 0) {
-			NT_LOG(ERR, NTNIC, "%s: Failed to initialize RPF module (%u)",
+			NT_LOG(ERR, NTNIC, "%s: Failed to initialize RPF module (%i)",
 				p_adapter_info->mp_adapter_id_str, res);
 			return res;
 		}
@@ -982,7 +982,7 @@ int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nthw_f
 		res = nthw_gfg_init(&gfg_mod[adapter_no], fpga, 0 /* Only one instance */);
 
 		if (res != 0) {
-			NT_LOG(ERR, NTNIC, "%s: Failed to initialize GFG module (%u)",
+			NT_LOG(ERR, NTNIC, "%s: Failed to initialize GFG module (%i)",
 				p_adapter_info->mp_adapter_id_str, res);
 			return res;
 		}

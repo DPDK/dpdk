@@ -83,7 +83,7 @@ int nthw_phy_tile_init(nthw_phy_tile_t *p, nthw_fpga_t *p_fpga, int mn_phy_tile_
 		break;
 
 	default:
-		NT_LOG_DBG(DBG, NTHW, "unknown product ID: %u", p_fpga->mn_product_id);
+		NT_LOG_DBG(DBG, NTHW, "unknown product ID: %i", p_fpga->mn_product_id);
 		break;
 	}
 
