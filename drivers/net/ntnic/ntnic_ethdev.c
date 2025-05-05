@@ -379,7 +379,7 @@ static __rte_always_inline int copy_virtqueue_to_mbuf(struct rte_mbuf *mbuf,
 	 * 1. virtqueue packets may be segmented
 	 * 2. the mbuf size may be too small and may need to be segmented
 	 */
-	char *data = (char *)hw_recv->addr + SG_HDR_SIZE;
+	char *data = (char *)hw_recv[src_pkt].addr + SG_HDR_SIZE;
 	char *dst = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
 
 	/* set packet length */

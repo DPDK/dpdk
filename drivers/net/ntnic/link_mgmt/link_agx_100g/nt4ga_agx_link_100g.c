@@ -908,10 +908,10 @@ static void *_common_ptp_nim_state_machine(void *data)
 				RTE_ASSERT(new_state.br); /* Cannot be zero if NIM is present */
 				NT_LOG(DBG, NTNIC,
 					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'",
-					drv->mp_port_id_str[i], nim_ctx->nim_id,
-					nthw_nim_id_to_text(nim_ctx->nim_id),
-					(unsigned int)new_state.br, nim_ctx->vendor_name,
-					nim_ctx->prod_no, nim_ctx->serial_no);
+					drv->mp_port_id_str[i], nim_ctx[i].nim_id,
+					nthw_nim_id_to_text(nim_ctx[i].nim_id),
+					(unsigned int)new_state.br, nim_ctx[i].vendor_name,
+					nim_ctx[i].prod_no, nim_ctx[i].serial_no);
 				link_state[i].lh_nim_absent = false;
 				NT_LOG(DBG, NTNIC, "%s: NIM module initialized",
 					drv->mp_port_id_str[i]);
