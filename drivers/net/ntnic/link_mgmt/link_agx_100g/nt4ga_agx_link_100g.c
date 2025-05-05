@@ -519,10 +519,11 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 	const uint8_t valid_nim_id = NT_NIM_QSFP28;
 	sfp_nim_state_t nim;
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
-	nim_i2c_ctx_t *nim_ctx = &link_info->u.nim_ctx[port];
 
 	RTE_ASSERT(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
 	RTE_ASSERT(link_info->variables_initialized);
+
+	nim_i2c_ctx_t *nim_ctx = &link_info->u.nim_ctx[port];
 
 	if (!enable) {
 		phy_reset_rx(drv, port);

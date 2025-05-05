@@ -343,6 +343,7 @@ int nthw_fpga_si5340_clock_synth_init_fmt2(nthw_fpga_t *p_fpga, const uint8_t n_
 
 int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 {
+	RTE_ASSERT(p_fpga_info);
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 
 	nthw_hif_t *p_nthw_hif = NULL;
@@ -358,8 +359,6 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	char s_fpga_prod_ver_rev_str[32] = { 0 };
 
 	int res = 0;
-
-	RTE_ASSERT(p_fpga_info);
 
 	{
 		const uint64_t n_fpga_ident = nthw_fpga_read_ident(p_fpga_info);
