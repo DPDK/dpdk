@@ -123,8 +123,7 @@ static int nim_read_write_data_lin(nim_i2c_ctx_p ctx, bool m_page_addressing, ui
 		 * Find out how much can be read from the current block in case of
 		 * single byte access
 		 */
-		if (multi_byte == 1)
-			max_seq_cnt = block_size - (lin_addr % block_size);
+		max_seq_cnt = block_size - (lin_addr % block_size);
 
 		if (m_page_addressing) {
 			if (lin_addr >= 128) {	/* Only page setup above this address */

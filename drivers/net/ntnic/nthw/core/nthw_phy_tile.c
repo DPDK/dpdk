@@ -806,7 +806,7 @@ static uint32_t nthw_phy_tile_cpi_request(nthw_phy_tile_t *p, uint8_t intf_no, u
 
 	nt_os_wait_usec(10000);
 
-	for (int i = 20; i > 0; i--) {
+	for (int i = 20; i >= 0; i--) {
 		data = nthw_phy_tile_read_xcvr(p, intf_no, lane, phy_addr + lane_offset);
 
 		value =

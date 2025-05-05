@@ -834,9 +834,6 @@ int hw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint
 			break;
 
 		default: {
-			if (_VER_ < 18)
-				return UNSUP_FIELD;
-
 			switch (field) {
 			case HW_FLM_STAT_STA_DONE:
 				*value = be->flm.v25.sta_done->cnt;

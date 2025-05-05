@@ -132,8 +132,7 @@ int nthw_sdc_get_states(nthw_sdc_t *p, uint64_t *pn_result_mask)
 	if (val != 0)
 		n_err_cnt++;
 
-	if (pn_result_mask)
-		*pn_result_mask = n_mask;
+	*pn_result_mask = n_mask;
 
 	return n_err_cnt;	/* 0 = all ok */
 }

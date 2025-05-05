@@ -4267,8 +4267,6 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 	RTE_ASSERT(dev);
 	RTE_ASSERT(fh);
 
-	int err = 0;
-
 	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	/* take flow out of ndev list - may not have been put there yet */
@@ -4318,11 +4316,6 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 		fh->fd = NULL;
 	}
 
-	if (err) {
-		NT_LOG(ERR, FILTER, "FAILED removing flow: %p", fh);
-		nthw_flow_nic_set_error(ERR_REMOVE_FLOW_FAILED, error);
-	}
-
 	free(fh);
 	fh = NULL;
 
@@ -4330,7 +4323,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 	dev->ndev->be.iface->set_debug_mode(dev->ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
 #endif
 
-	return err;
+	return 0;
 }
 
 int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *flow,

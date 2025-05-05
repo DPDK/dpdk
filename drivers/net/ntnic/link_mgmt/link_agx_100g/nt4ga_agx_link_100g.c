@@ -1010,20 +1010,18 @@ int nt4ga_agx_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nthw_f
 
 		nthw_rpf_set_ts_at_eof(p_nthw_agx->p_rpf, true);
 
-		if (res == 0) {
-			p_adapter_info->nt4ga_link.speed_capa = NT_LINK_SPEED_100G;
-			p_adapter_info->nt4ga_link.variables_initialized = true;
-		}
+
+		p_adapter_info->nt4ga_link.speed_capa = NT_LINK_SPEED_100G;
+		p_adapter_info->nt4ga_link.variables_initialized = true;
 	}
 
 	/*
 	 * Create state-machine thread
 	 */
-	if (res == 0) {
-		if (!monitor_task_is_running[adapter_no]) {
-			res = rte_thread_create(&monitor_tasks[adapter_no], NULL,
-					nt4ga_agx_link_100g_mon, p_adapter_info);
-		}
+
+	if (!monitor_task_is_running[adapter_no]) {
+		res = rte_thread_create(&monitor_tasks[adapter_no], NULL,
+				nt4ga_agx_link_100g_mon, p_adapter_info);
 	}
 
 	return res;

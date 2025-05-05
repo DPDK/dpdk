@@ -104,11 +104,6 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 		nthw_register_get_field(p_curr_reg, RST9563_STAT_TS_MMCM_LOCKED);
 	p->mp_fld_stat_tsm_ref_mmcm_locked = NULL;	/* Field not present on 9563 */
 
-	if (!p->mp_fld_stat_tsm_ref_mmcm_locked) {
-		NT_LOG(DBG, NTHW, "%s: No RST9563_STAT_TSM_REF_MMCM_LOCKED found",
-			p_adapter_id_str);
-	}
-
 	nthw_register_update(p_curr_reg);
 
 	/* STICKY register field pointers */
@@ -125,11 +120,6 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 		nthw_register_get_field(p_curr_reg, RST9563_STICKY_CORE_MMCM_UNLOCKED);
 	p->mp_fld_sticky_pci_sys_mmcm_unlocked = NULL;	/* Field not present on 9563 */
 	p->mp_fld_sticky_tsm_ref_mmcm_unlocked = NULL;	/* Field not present on 9563 */
-
-	if (!p->mp_fld_sticky_tsm_ref_mmcm_unlocked) {
-		NT_LOG(DBG, NTHW, "%s: No RST9563_STICKY_TSM_REF_MMCM_UNLOCKED found",
-			p_adapter_id_str);
-	}
 
 	nthw_register_update(p_curr_reg);
 

@@ -184,8 +184,7 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 		/* reset specific */
 	switch (p_fpga_info->n_fpga_prod_id) {
 	case 9574:
-		if (rst9574_ops)
-			res = rst9574_ops->nthw_fpga_rst9574_init(p_fpga_info, &rst);
+		res = rst9574_ops->nthw_fpga_rst9574_init(p_fpga_info, &rst);
 
 		if (res) {
 			NT_LOG(ERR, NTHW,
