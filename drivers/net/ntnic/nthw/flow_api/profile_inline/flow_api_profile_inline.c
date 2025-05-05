@@ -3198,15 +3198,15 @@ static void setup_db_qsl_data(struct nic_flow_def *fd, struct hw_db_inline_qsl_d
 	} else {
 		RTE_ASSERT(fd->dst_num_avail < HW_DB_INLINE_MAX_QST_PER_QSL);
 
-		uint32_t ports[fd->dst_num_avail];
-		uint32_t queues[fd->dst_num_avail];
+		uint32_t ports[HW_DB_INLINE_MAX_QST_PER_QSL];
+		uint32_t queues[HW_DB_INLINE_MAX_QST_PER_QSL];
 
 		uint32_t port_index = 0;
 		uint32_t queue_index = 0;
 		uint32_t max = num_dest_port > num_queues ? num_dest_port : num_queues;
 
-		memset(ports, 0, fd->dst_num_avail);
-		memset(queues, 0, fd->dst_num_avail);
+		memset(ports, 0, sizeof(ports));
+		memset(queues, 0, sizeof(queues));
 
 		qsl_data->table_size = max;
 		qsl_data->retransmit = num_dest_port > 0 ? 1 : 0;
