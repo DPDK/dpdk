@@ -629,8 +629,8 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		}
 		if (tmp == diff) {
 			tmp = txoff_func[i].olx ^ txoff_func[m].olx;
-			if (__builtin_ffsl(txoff_func[i].olx & ~tmp) <
-			    __builtin_ffsl(txoff_func[m].olx & ~tmp)) {
+			if (rte_ffs32(txoff_func[i].olx & ~tmp) <
+			    rte_ffs32(txoff_func[m].olx & ~tmp)) {
 				/* Lighter not requested offload. */
 				m = i;
 			}

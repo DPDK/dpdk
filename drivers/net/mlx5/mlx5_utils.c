@@ -89,7 +89,7 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	if (!cfg || (!cfg->malloc ^ !cfg->free) ||
 	    (cfg->per_core_cache && cfg->release_mem_en) ||
 	    (cfg->trunk_size && ((cfg->trunk_size & (cfg->trunk_size - 1)) ||
-	    ((__builtin_ffs(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
+	    ((rte_ffs32(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
 		return NULL;
 	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool) + cfg->grow_trunk *
 			   sizeof(pool->grow_tbl[0]), RTE_CACHE_LINE_SIZE,
