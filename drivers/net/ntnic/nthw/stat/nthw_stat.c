@@ -318,6 +318,10 @@ int nthw_stat_init(nthw_stat_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	/* Set the sliding windows size for port load */
 	if (p->mp_fld_load_bin) {
 		uint32_t rpp = nthw_fpga_get_product_param(p_fpga, NT_RPP_PER_PS, 0);
+		if (rpp == 0) {
+			NT_LOG(ERR, NTHW, "RPP has wrong value"); /* Avoid divide by 0 */
+			return -1;
+		}
 		uint32_t bin =
 			(uint32_t)(((PORT_LOAD_WINDOWS_SIZE * 1000000000000ULL) / (32ULL * rpp)) -
 				1ULL);
