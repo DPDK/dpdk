@@ -68,6 +68,8 @@ static void *mbuf_p[MAX_NODES + 1][MBUFF_SIZE];
 static rte_graph_t graph_id;
 static uint64_t obj_stats[MAX_NODES + 1];
 static uint64_t fn_calls[MAX_NODES + 1];
+static uint32_t dummy_nodes_id[MAX_NODES];
+static uint32_t dummy_nodes_id_count;
 
 const char *node_patterns[] = {
 	"test_node_source1",	   "test_node00",
@@ -542,6 +544,66 @@ test_lookup_functions(void)
 }
 
 static int
+test_node_id(void)
+{
+	uint32_t node_id, odummy_id, dummy_id, dummy_id1;
+
+	node_id = rte_node_from_name("test_node00");
+
+	dummy_id = rte_node_clone(node_id, "test_node_id00");
+	if (rte_node_is_invalid(dummy_id)) {
+		printf("Got invalid id when clone\n");
+		return -1;
+	}
+
+	dummy_id1 = rte_node_clone(node_id, "test_node_id01");
+	if (rte_node_is_invalid(dummy_id1)) {
+		printf("Got invalid id when clone\n");
+		return -1;
+	}
+
+	/* Expect next node id to be node_id + 1 */
+	if ((dummy_id + 1) != dummy_id1) {
+		printf("Node id didn't match, expected = %d got = %d\n",
+		       dummy_id+1, dummy_id1);
+		return -1;
+	}
+
+	odummy_id = dummy_id;
+	/* Free one of the cloned node */
+	if (rte_node_free(dummy_id)) {
+		printf("Failed to free node\n");
+		return -1;
+	}
+
+	/* Clone again, should get the same id, that is freed */
+	dummy_id = rte_node_clone(node_id, "test_node_id00");
+	if (rte_node_is_invalid(dummy_id)) {
+		printf("Got invalid id when clone\n");
+		return -1;
+	}
+
+	if (dummy_id != odummy_id) {
+		printf("Node id didn't match, expected = %d got = %d\n",
+		       odummy_id, dummy_id);
+		return -1;
+	}
+
+	/* Free the node */
+	if (rte_node_free(dummy_id)) {
+		printf("Failed to free node\n");
+		return -1;
+	}
+
+	if (rte_node_free(dummy_id1)) {
+		printf("Failed to free node\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 test_node_clone(void)
 {
 	test_main_t *tm = &test_main;
@@ -551,11 +613,12 @@ test_node_clone(void)
 	node_id = rte_node_from_name("test_node00");
 	tm->test_node[0].idx = node_id;
 
-	dummy_id = rte_node_clone(node_id, "test_node00");
-	if (rte_node_is_invalid(dummy_id)) {
+	dummy_nodes_id[dummy_nodes_id_count] = rte_node_clone(node_id, "test_node00");
+	if (rte_node_is_invalid(dummy_nodes_id[dummy_nodes_id_count])) {
 		printf("Got invalid id when clone, Expecting fail\n");
 		return -1;
 	}
+	dummy_nodes_id_count++;
 
 	/* Clone with same name, should fail */
 	dummy_id = rte_node_clone(node_id, "test_node00");
@@ -635,15 +698,15 @@ test_create_graph(void)
 		.nb_node_patterns = 6,
 		.node_patterns = node_patterns_dummy,
 	};
-	uint32_t dummy_node_id;
 	uint32_t node_id;
 
 	node_id = rte_node_from_name("test_node00");
-	dummy_node_id = rte_node_clone(node_id, "dummy_node");
-	if (rte_node_is_invalid(dummy_node_id)) {
+	dummy_nodes_id[dummy_nodes_id_count] = rte_node_clone(node_id, "dummy_node");
+	if (rte_node_is_invalid(dummy_nodes_id[dummy_nodes_id_count])) {
 		printf("Got invalid node id\n");
 		return -1;
 	}
+	dummy_nodes_id_count++;
 
 	graph_id = rte_graph_create("worker0", &gconf);
 	if (graph_id != RTE_GRAPH_ID_INVALID) {
@@ -1026,17 +1089,39 @@ graph_setup(void)
 	}
 	printf("test_node_clone: pass\n");
 
+	if (test_node_id()) {
+		printf("test_node_id: fail\n");
+		return -1;
+	}
+	printf("test_node_id: pass\n");
+
 	return 0;
 }
 
 static void
 graph_teardown(void)
 {
+	uint32_t i;
 	int id;
 
 	id = rte_graph_destroy(rte_graph_from_name("worker0"));
 	if (id)
 		printf("Graph Destroy failed\n");
+
+	for (i = 1; i < MAX_NODES; i++) {
+		if (rte_node_free(test_main.test_node[i].idx)) {
+			printf("Node free failed\n");
+			return;
+		}
+	}
+
+	for (i = 0; i < dummy_nodes_id_count; i++) {
+		if (rte_node_free(dummy_nodes_id[i])) {
+			printf("Node free failed\n");
+			return;
+		}
+	}
+	dummy_nodes_id_count = 0;
 }
 
 static struct unit_test_suite graph_testsuite = {
