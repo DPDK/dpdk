@@ -254,7 +254,6 @@ int nthw_stat_init(nthw_stat_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		p->mn_stat_layout_version = 1;
 
 	} else {
-		p->mn_stat_layout_version = 0;
 		NT_LOG(ERR, NTHW, "%s: unknown module_version 0x%08lX layout=%d",
 			p_adapter_id_str, n_module_version_packed64, p->mn_stat_layout_version);
 	}
