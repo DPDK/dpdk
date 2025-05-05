@@ -550,10 +550,8 @@ int nthw_fpga_shutdown(struct fpga_info_s *p_fpga_info)
 {
 	int res = -1;
 
-	if (p_fpga_info) {
-		if (p_fpga_info && p_fpga_info->mp_nthw_rac)
+		if (p_fpga_info->mp_nthw_rac)
 			res = nthw_rac_rab_reset(p_fpga_info->mp_nthw_rac);
-	}
 
 	return res;
 }
