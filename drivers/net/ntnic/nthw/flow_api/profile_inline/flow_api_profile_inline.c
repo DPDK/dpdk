@@ -3476,6 +3476,12 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 {
 	struct flow_handle *fh = calloc(1, sizeof(struct flow_handle));
 
+	if (fh == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate flow_handle";
+		goto error_out;
+	}
+
 	fh->type = FLOW_HANDLE_TYPE_FLOW;
 	fh->port_id = port_id;
 	fh->dev = dev;
@@ -4929,6 +4935,13 @@ struct flow_pattern_template *flow_pattern_template_create_profile_inline(struct
 
 	struct flow_pattern_template *template = calloc(1, sizeof(struct flow_pattern_template));
 
+	if (template == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate actions_template";
+		free(fd);
+		return NULL;
+	}
+
 	template->fd = fd;
 
 	return template;
@@ -4993,6 +5006,13 @@ flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
 	}
 
 	struct flow_actions_template *template = calloc(1, sizeof(struct flow_actions_template));
+
+	if (template == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate actions_template";
+		free(fd);
+		return NULL;
+	}
 
 	template->fd = fd;
 	template->num_dest_port = num_dest_port;
@@ -5265,6 +5285,12 @@ struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
 	/* FLM learn */
 	if (fh == NULL && status == CELL_STATUS_INITIALIZED_TYPE_FLM) {
 		fh = calloc(1, sizeof(struct flow_handle));
+
+		if (fh == NULL) {
+			error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+			error->message = "Failed to allocate flow_handle";
+			goto err_exit;
+		}
 
 		fh->type = FLOW_HANDLE_TYPE_FLM;
 		fh->dev = dev;
