@@ -109,12 +109,12 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
 						    (const void *)((uintptr_t)
 						    txq->cqes),
 						    sizeof(struct mlx5_error_cqe) *
-						    (1 << txq->cqe_n));
+						    (size_t)RTE_BIT32(txq->cqe_n));
 			mlx5_dump_debug_information(name, "MLX5 Error SQ:",
 						    (const void *)((uintptr_t)
 						    txq->wqes),
 						    MLX5_WQE_SIZE *
-						    (1 << txq->wqe_n));
+						    (size_t)RTE_BIT32(txq->wqe_n));
 			txq_ctrl->dump_file_n++;
 		}
 		if (!seen)

@@ -1360,7 +1360,7 @@ mlx5_txq_obj_hairpin_new(struct rte_eth_dev *dev, uint16_t idx)
 		MLX5_ASSERT(hca_attr->hairpin_sq_wqe_bb_size > 0);
 		rte_memcpy(&host_mem_attr, &dev_mem_attr, sizeof(host_mem_attr));
 		umem_size = MLX5_WQE_SIZE *
-			RTE_BIT32(host_mem_attr.wq_attr.log_hairpin_num_packets);
+			(size_t)RTE_BIT32(host_mem_attr.wq_attr.log_hairpin_num_packets);
 		umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 		umem_size += MLX5_DBR_SIZE;
 		umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,

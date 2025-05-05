@@ -1472,7 +1472,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	MLX5_ASSERT(log_strd_num && log_strd_sz);
 	buf_len = RTE_BIT32(log_strd_num) * RTE_BIT32(log_strd_sz);
 	obj_size = sizeof(struct mlx5_mprq_buf) + buf_len +
-		   RTE_BIT32(log_strd_num) *
+		   (size_t)RTE_BIT32(log_strd_num) *
 		   sizeof(struct rte_mbuf_ext_shared_info) +
 		   RTE_PKTMBUF_HEADROOM;
 	/*

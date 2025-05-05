@@ -383,7 +383,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 			scat = &((volatile struct mlx5_wqe_mprq *)
 				rxq->wqes)[i].dseg;
 			addr = (uintptr_t)mlx5_mprq_buf_addr
-					(buf, RTE_BIT32(rxq->log_strd_num));
+					(buf, (uintptr_t)RTE_BIT32(rxq->log_strd_num));
 			byte_count = RTE_BIT32(rxq->log_strd_sz) *
 				     RTE_BIT32(rxq->log_strd_num);
 			lkey = mlx5_rx_addr2mr(rxq, addr);

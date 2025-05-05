@@ -1186,7 +1186,7 @@ continue_dev_start:
 	fine_inline = rte_mbuf_dynflag_lookup
 		(RTE_PMD_MLX5_FINE_GRANULARITY_INLINE, NULL);
 	if (fine_inline >= 0)
-		rte_net_mlx5_dynf_inline_mask = 1UL << fine_inline;
+		rte_net_mlx5_dynf_inline_mask = RTE_BIT64(fine_inline);
 	else
 		rte_net_mlx5_dynf_inline_mask = 0;
 	if (dev->data->nb_rx_queues > 0) {
