@@ -297,7 +297,7 @@ struct flow_handle {
 	enum flow_handle_type type;
 	uint32_t flm_id;
 	uint16_t caller_id;
-	uint16_t learn_ignored;
+	RTE_ATOMIC(uint16_t) learn_ignored;
 
 	struct flow_eth_dev *dev;
 	struct flow_handle *next;
