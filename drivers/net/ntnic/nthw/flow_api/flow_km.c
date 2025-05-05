@@ -84,6 +84,10 @@ void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle)
 		*handle = calloc(1,
 			(size_t)CAM_ENTRIES + sizeof(uint32_t) + (size_t)TCAM_ENTRIES +
 			sizeof(struct hasher_s));
+		if (!*handle) {
+			NT_LOG(ERR, FILTER, "Failed to allocate CAM and TCAM record manager");
+			return;
+		}
 		NT_LOG(DBG, FILTER, "Allocate NIC DEV CAM and TCAM record manager");
 	}
 
