@@ -226,8 +226,7 @@ struct flm_v25_scrub_s {
 	uint8_t inf;
 };
 
-#pragma pack(1)
-struct flm_v25_lrn_data_s {
+struct __rte_packed_begin flm_v25_lrn_data_s {
 	uint32_t sw9;	/* 31:0 (32) */
 	uint32_t sw8;	/* 63:32 (32) */
 	uint32_t qw4[4];/* 191:64 (128) */
@@ -267,9 +266,9 @@ struct flm_v25_lrn_data_s {
 	uint64_t nofi : 1;	/* 716:716 (1) */
 	uint64_t pad : 50;	/* 766:717 (50) */
 	uint64_t eor : 1;	/* 767:767 (1) */
-};
+} __rte_packed_end;
 
-struct flm_v25_inf_data_s {
+struct __rte_packed_begin flm_v25_inf_data_s {
 	uint64_t bytes;
 	uint64_t packets;
 	uint64_t ts;
@@ -277,9 +276,9 @@ struct flm_v25_inf_data_s {
 	uint64_t cause : 3;
 	uint64_t pad : 60;
 	uint64_t eor : 1;
-};
+} __rte_packed_end;
 
-struct flm_v25_sta_data_s {
+struct __rte_packed_begin flm_v25_sta_data_s {
 	uint32_t id;
 	uint64_t lds : 1;
 	uint64_t lfs : 1;
@@ -292,8 +291,7 @@ struct flm_v25_sta_data_s {
 	uint64_t pis : 1;
 	uint64_t pad : 54;
 	uint64_t eor : 1;
-};
-#pragma pack()
+} __rte_packed_end;
 
 struct hw_mod_flm_v25_s {
 	struct flm_v25_control_s *control;
