@@ -78,7 +78,6 @@ graph_nodes_populate(struct graph *_graph)
 	struct rte_graph *graph = _graph->graph;
 	struct graph_node *graph_node;
 	rte_edge_t count, nb_edges;
-	const char *parent;
 	rte_node_t pid;
 
 	STAILQ_FOREACH(graph_node, &_graph->node_list, next) {
@@ -94,8 +93,14 @@ graph_nodes_populate(struct graph *_graph)
 		memcpy(node->name, graph_node->node->name, RTE_GRAPH_NAMESIZE);
 		pid = graph_node->node->parent_id;
 		if (pid != RTE_NODE_ID_INVALID) { /* Cloned node */
-			parent = rte_node_id_to_name(pid);
-			memcpy(node->parent, parent, RTE_GRAPH_NAMESIZE);
+			struct node *pnode;
+
+			STAILQ_FOREACH(pnode, node_list_head_get(), next) {
+				if (pnode->id == pid) {
+					memcpy(node->parent, pnode->name, RTE_GRAPH_NAMESIZE);
+					break;
+				}
+			}
 		}
 		node->id = graph_node->node->id;
 		node->parent_id = pid;

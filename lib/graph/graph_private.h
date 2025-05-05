@@ -33,14 +33,6 @@ extern int rte_graph_logtype;
 #define graph_info(...) GRAPH_LOG(INFO, __VA_ARGS__)
 #define graph_dbg(...) GRAPH_LOG(DEBUG, __VA_ARGS__)
 
-#define ID_CHECK(id, id_max)                                                   \
-	do {                                                                   \
-		if ((id) >= (id_max)) {                                        \
-			rte_errno = EINVAL;                                    \
-			goto fail;                                             \
-		}                                                              \
-	} while (0)
-
 #define SET_ERR_JMP(err, where, fmt, ...)                                      \
 	do {                                                                   \
 		graph_err(fmt, ##__VA_ARGS__);                                 \
