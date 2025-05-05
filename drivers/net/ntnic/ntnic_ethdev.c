@@ -967,19 +967,19 @@ static void eth_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 	deallocate_hw_virtio_queues(&rx_q->hwq);
 }
 
-static int num_queues_alloced;
+static int num_queues_allocated;
 
 /* Returns num queue starting at returned queue num or -1 on fail */
 static int allocate_queue(int num)
 {
-	int next_free = num_queues_alloced;
-	NT_LOG_DBGX(DBG, NTNIC, "num_queues_alloced=%u, New queues=%u, Max queues=%u",
-		num_queues_alloced, num, MAX_TOTAL_QUEUES);
+	int next_free = num_queues_allocated;
+	NT_LOG_DBGX(DBG, NTNIC, "num_queues_allocated=%u, New queues=%u, Max queues=%u",
+		num_queues_allocated, num, MAX_TOTAL_QUEUES);
 
-	if (num_queues_alloced + num > MAX_TOTAL_QUEUES)
+	if (num_queues_allocated + num > MAX_TOTAL_QUEUES)
 		return -1;
 
-	num_queues_alloced += num;
+	num_queues_allocated += num;
 	return next_free;
 }
 

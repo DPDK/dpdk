@@ -145,7 +145,7 @@ enum km_flm_if_select_e {
 #define COMMON_FUNC_INFO_S                                                                        \
 	int ver;                                                                                  \
 	void *base;                                                                               \
-	unsigned int alloced_size;                                                                \
+	unsigned int allocated_size;                                                              \
 	int debug
 
 enum frame_offs_e {
