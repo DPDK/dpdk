@@ -23,7 +23,7 @@ struct pdb_nthw *pdb_nthw_new(void)
 	struct pdb_nthw *p = malloc(sizeof(struct pdb_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -31,7 +31,7 @@ struct pdb_nthw *pdb_nthw_new(void)
 void pdb_nthw_delete(struct pdb_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }

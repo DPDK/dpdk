@@ -1256,7 +1256,7 @@ eth_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 			mc_addrs[i] = mc_addr_set[i];
 
 		else
-			(void)memset(&mc_addrs[i], 0, sizeof(mc_addrs[i]));
+			memset(&mc_addrs[i], 0, sizeof(mc_addrs[i]));
 
 	return 0;
 }

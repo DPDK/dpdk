@@ -23,7 +23,7 @@ struct qsl_nthw *qsl_nthw_new(void)
 	struct qsl_nthw *p = malloc(sizeof(struct qsl_nthw));
 
 	if (p)
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 
 	return p;
 }
@@ -31,7 +31,7 @@ struct qsl_nthw *qsl_nthw_new(void)
 void qsl_nthw_delete(struct qsl_nthw *p)
 {
 	if (p) {
-		(void)memset(p, 0, sizeof(*p));
+		memset(p, 0, sizeof(*p));
 		free(p);
 	}
 }
