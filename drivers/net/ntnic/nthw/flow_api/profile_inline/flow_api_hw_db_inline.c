@@ -1343,9 +1343,11 @@ static int hw_db_inline_alloc_prioritized_cfn(struct flow_nic_dev *ndev,
 	struct {
 		uint64_t priority;
 		uint32_t idx;
-	} sorted_priority[db->nb_cat];
+	} *sorted_priority;
 
-	memset(sorted_priority, 0x0, sizeof(sorted_priority));
+	sorted_priority = calloc(db->nb_cat, sizeof(*sorted_priority));
+	if (!sorted_priority)
+		return -1;
 
 	uint32_t in_use_count = 0;
 
@@ -1360,13 +1362,16 @@ static int hw_db_inline_alloc_prioritized_cfn(struct flow_nic_dev *ndev,
 		}
 	}
 
-	if (in_use_count >= db->nb_cat - 1)
+	if (in_use_count >= db->nb_cat - 1) {
+		free(sorted_priority);
 		return -1;
+	}
 
 	if (in_use_count == 0) {
 		db->cfn[db_cfn_idx].ref = 1;
 		db->cfn[db_cfn_idx].cfn_hw = 1;
 		db->cfn[db_cfn_idx].priority = priority;
+		free(sorted_priority);
 		return db_cfn_idx;
 	}
 
@@ -1400,6 +1405,7 @@ static int hw_db_inline_alloc_prioritized_cfn(struct flow_nic_dev *ndev,
 		db->cfn[db_cfn_idx].ref = 1;
 		db->cfn[db_cfn_idx].cfn_hw = goal;
 		db->cfn[db_cfn_idx].priority = priority;
+		free(sorted_priority);
 		return db_cfn_idx;
 	}
 
@@ -1425,6 +1431,7 @@ static int hw_db_inline_alloc_prioritized_cfn(struct flow_nic_dev *ndev,
 	db->cfn[db_cfn_idx].ref = 1;
 	db->cfn[db_cfn_idx].cfn_hw = goal;
 	db->cfn[db_cfn_idx].priority = priority;
+	free(sorted_priority);
 
 	return db_cfn_idx;
 }
