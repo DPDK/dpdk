@@ -877,7 +877,7 @@ bool nthw_qsfp28_set_fec_enable(nim_i2c_ctx_p ctx, bool media_side_fec, bool hos
 
 	write_data_lin(ctx, addr, sizeof(data), &data);
 	ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = media_side_fec;
-	ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = host_side_fec;
+	ctx->specific_u.qsfp.specific_u.qsfp28.host_side_fec_ena = host_side_fec;
 	return true;
 }
 

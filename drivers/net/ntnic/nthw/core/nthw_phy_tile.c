@@ -797,7 +797,6 @@ static uint32_t nthw_phy_tile_cpi_request(nthw_phy_tile_t *p, uint8_t intf_no, u
 	/* Find quad lane */
 	quad_lane = nthw_phy_tile_read_xcvr(p, intf_no, lane, 0xFFFFC) & 0x3;
 
-	xcvr_instance = lane;
 	lane_offset = (uint32_t)(lane << 20);
 
 	cpi_cmd = (data << 16) | cpi_assert | cpi_set_get | (quad_lane << 8) | op_code;

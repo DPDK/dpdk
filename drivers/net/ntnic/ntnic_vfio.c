@@ -68,7 +68,6 @@ nt_vfio_setup(struct rte_pci_device *dev)
 
 	vfio->dev_fd = -1;
 	vfio->group_fd = -1;
-	vfio->container_fd = -1;
 	vfio->iova_addr = START_VF_IOVA;
 
 	rte_pci_device_name(&dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
