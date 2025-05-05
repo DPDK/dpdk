@@ -854,8 +854,10 @@ void nthw_register_flush(const nthw_register_t *p, uint32_t cnt)
 
 void nthw_register_clr(nthw_register_t *p)
 {
-	memset(p->mp_shadow, 0, p->mn_len * sizeof(uint32_t));
-	nthw_register_make_dirty(p);
+	if (p->mp_shadow) {
+		memset(p->mp_shadow, 0, p->mn_len * sizeof(uint32_t));
+		nthw_register_make_dirty(p);
+	}
 }
 
 /*

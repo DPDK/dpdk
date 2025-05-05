@@ -1714,15 +1714,14 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 	*in_port_id = UINT32_MAX;
 
-	memset(packet_data, 0x0, sizeof(uint32_t) * 10);
-	memset(packet_mask, 0x0, sizeof(uint32_t) * 10);
-	memset(key_def, 0x0, sizeof(struct flm_flow_key_def_s));
-
-	if (elem == NULL) {
+	if (packet_data == NULL || packet_mask == NULL || key_def == NULL || elem == NULL) {
 		nthw_flow_nic_set_error(ERR_FAILED, error);
 		NT_LOG(ERR, FILTER, "Flow items missing");
 		return -1;
 	}
+	memset(packet_data, 0x0, sizeof(uint32_t) * 10);
+	memset(packet_mask, 0x0, sizeof(uint32_t) * 10);
+	memset(key_def, 0x0, sizeof(struct flm_flow_key_def_s));
 
 	if (implicit_vlan_vid > 0) {
 		uint32_t *sw_data = &packet_data[1 - sw_counter];
@@ -3192,6 +3191,9 @@ static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_d
 static void setup_db_qsl_data(struct nic_flow_def *fd, struct hw_db_inline_qsl_data *qsl_data,
 	uint32_t num_dest_port, uint32_t num_queues)
 {
+	if (qsl_data == NULL)
+		return;
+
 	memset(qsl_data, 0x0, sizeof(struct hw_db_inline_qsl_data));
 
 	if (fd->dst_num_avail <= 0) {
@@ -3236,6 +3238,9 @@ static void setup_db_qsl_data(struct nic_flow_def *fd, struct hw_db_inline_qsl_d
 
 static void setup_db_hsh_data(struct nic_flow_def *fd, struct hw_db_inline_hsh_data *hsh_data)
 {
+	if (hsh_data == NULL)
+		return;
+
 	memset(hsh_data, 0x0, sizeof(struct hw_db_inline_hsh_data));
 
 	hsh_data->func = fd->hsh.func;
@@ -4816,7 +4821,8 @@ int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	int res = 0;
 
 	nthw_flow_nic_set_error(ERR_SUCCESS, error);
-	memset(port_info, 0, sizeof(struct rte_flow_port_info));
+	if (port_info)
+		memset(port_info, 0, sizeof(struct rte_flow_port_info));
 
 	port_info->max_nb_aging_objects = dev->nb_aging_objects;
 

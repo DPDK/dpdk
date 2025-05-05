@@ -137,6 +137,8 @@ static int _link_state_build(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs,
 	uint32_t lh_internal_local_fault;
 	uint32_t lh_received_local_fault;
 
+	RTE_ASSERT(state);
+
 	memset(state, 0, sizeof(*state));
 	state->link_disabled = is_port_disabled;
 	nthw_mac_pcs_get_link_summary(mac_pcs, &abs, &phy_link_state, &lh_abs, &ll_phy_link_state,

@@ -86,7 +86,8 @@ void *nthw_callocate_mod(struct common_func_s *mod, int sets, ...)
 
 void nthw_zero_module_cache(struct common_func_s *mod)
 {
-	memset(mod->base, 0, mod->allocated_size);
+	if (mod)
+		memset(mod->base, 0, mod->allocated_size);
 }
 
 int nthw_flow_api_backend_init(struct flow_api_backend_s *dev,

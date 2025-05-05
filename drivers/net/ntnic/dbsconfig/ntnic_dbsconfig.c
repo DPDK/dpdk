@@ -911,6 +911,9 @@ static int nthw_setup_managed_virt_queue_packed(struct nthw_virt_queue *vq,
 	RTE_ASSERT(p_packet_buffers);
 
 	/* clean canvas */
+	if (p_virt_struct_area->virt_addr == NULL)
+		return -1;
+
 	memset(p_virt_struct_area->virt_addr, 0,
 		sizeof(struct pvirtq_desc) * vq->queue_size +
 		sizeof(struct pvirtq_event_suppress) * 2 + sizeof(int) * vq->queue_size);
