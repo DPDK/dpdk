@@ -200,8 +200,6 @@ static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_st
 	 */
 	ntnic_filter_ops->poll_statistics(internals);
 
-	memset(stats, 0, sizeof(*stats));
-
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < internals->nb_rx_queues; i++) {
 		stats->q_ipackets[i] = internals->rxq_scg[i].rx_pkts;
 		stats->q_ibytes[i] = internals->rxq_scg[i].rx_bytes;
