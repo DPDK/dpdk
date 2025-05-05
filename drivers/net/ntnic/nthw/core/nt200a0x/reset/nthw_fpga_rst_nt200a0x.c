@@ -528,7 +528,16 @@ static int nthw_fpga_rst_nt200a0x_init(struct fpga_info_s *p_fpga_info,
 	nthw_rac_rab_setup(p_fpga_info->mp_nthw_rac);
 
 	res = nthw_fpga_iic_scan(p_fpga, 0, 0);
+	if (res == -1) {
+		NT_LOG(ERR, NTHW, "Failed to init iic instance %d - %d for NT200 (%d)", 0, 0, res);
+		return -1;
+	}
+
 	res = nthw_fpga_iic_scan(p_fpga, 2, 3);
+	if (res == -1) {
+		NT_LOG(ERR, NTHW, "Failed to init iic instance %d - %d for NT200 (%d)", 2, 3, res);
+		return -1;
+	}
 
 	/*
 	 * Detect clock synth model
