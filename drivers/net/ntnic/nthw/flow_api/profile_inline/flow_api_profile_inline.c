@@ -403,18 +403,14 @@ static uint32_t flm_lrn_update(struct flow_eth_dev *dev, uint32_t *inf_word_cnt,
 	uint32_t *sta_word_cnt)
 {
 	read_record r = flm_lrn_queue_get_read_buffer(flm_lrn_queue_arr);
+	uint32_t handled_records = 0;
 
 	if (r.num) {
-		uint32_t handled_records = 0;
-
-		if (hw_mod_flm_lrn_data_set_flush(&dev->ndev->be, HW_FLM_FLOW_LRN_DATA, r.p, r.num,
-			&handled_records, inf_word_cnt, sta_word_cnt)) {
+		if (hw_mod_flm_lrn_data_set_flush(&dev->ndev->be, HW_FLM_FLOW_LRN_DATA, r.p,
+			r.num, &handled_records, inf_word_cnt, sta_word_cnt))
 			NT_LOG(ERR, FILTER, "Flow programming failed");
-
-		} else if (handled_records > 0) {
-			flm_lrn_queue_release_read_buffer(flm_lrn_queue_arr, handled_records);
-		}
 	}
+	flm_lrn_queue_release_read_buffer(flm_lrn_queue_arr, handled_records);
 
 	return r.num;
 }
