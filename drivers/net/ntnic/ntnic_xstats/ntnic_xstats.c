@@ -758,7 +758,10 @@ static int nthw_xstats_get_names(nt4ga_stat_t *p_nt4ga_stat,
 		return nb_names;
 
 	for (i = 0; i < size && i < nb_names; i++) {
-		strlcpy(xstats_names[i].name, names[i].name, sizeof(xstats_names[i].name));
+		size_t written =
+			strlcpy(xstats_names[i].name, names[i].name, sizeof(xstats_names[i].name));
+		if (written >= sizeof(xstats_names[i].name))
+			NT_LOG(WRN, NTNIC, "xstats name %s truncated", names[i].name);
 		count++;
 	}
 
@@ -795,9 +798,11 @@ static int nthw_xstats_get_names_by_id(nt4ga_stat_t *p_nt4ga_stat,
 
 	for (i = 0; i < size; i++) {
 		if (ids[i] < nb_names) {
-			strlcpy(xstats_names[i].name,
+			size_t written = strlcpy(xstats_names[i].name,
 				names[ids[i]].name,
 				RTE_ETH_XSTATS_NAME_SIZE);
+			if (written >= RTE_ETH_XSTATS_NAME_SIZE)
+				NT_LOG(WRN, NTNIC, "xstats name %s truncated", names[ids[i]].name);
 		}
 
 		count++;
