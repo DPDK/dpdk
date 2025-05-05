@@ -355,8 +355,8 @@ int nthw_create_action_elements_inline(struct cnv_action_s *action,
 				case RTE_ETH_HASH_FUNCTION_MAX:
 				default:
 					NT_LOG(ERR, FILTER,
-						"RTE ACTION RSS - unsupported function: %u",
-						rss->func);
+						"RTE ACTION RSS - unsupported function: %i",
+						(int)rss->func);
 					return -1;
 				}
 

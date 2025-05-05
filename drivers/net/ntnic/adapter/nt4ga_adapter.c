@@ -126,7 +126,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 			PCIIDENT_TO_BUSNR(p_adapter_info->fpga_info.pciident),
 			PCIIDENT_TO_DEVNR(p_adapter_info->fpga_info.pciident),
 			PCIIDENT_TO_FUNCNR(p_adapter_info->fpga_info.pciident));
-		NT_LOG(DBG, NTNIC, "%s: %s", p_adapter_id_str, p_dev_name);
+		NT_LOG(DBG, NTNIC, "%s: %s", p_adapter_id_str, p_dev_name ? p_dev_name : "NA");
 	}
 
 	{
@@ -147,8 +147,9 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	res = nthw_fpga_init(&p_adapter_info->fpga_info);
 
 	if (res) {
-		NT_LOG_DBGX(ERR, NTNIC, "%s: %s: FPGA=%04d res=x%08X", p_adapter_id_str,
-			p_dev_name, fpga_info->n_fpga_prod_id, res);
+		NT_LOG_DBGX(ERR, NTNIC, "%s: %s: FPGA=%04d res=x%08X",
+			p_adapter_id_str ? p_adapter_id_str : "NA",
+			p_dev_name ? p_dev_name : "NA", fpga_info->n_fpga_prod_id, res);
 		return res;
 	}
 

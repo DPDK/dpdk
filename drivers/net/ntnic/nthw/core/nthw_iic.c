@@ -239,7 +239,7 @@ int nthw_iic_init(nthw_iic_t *p, nthw_fpga_t *p_fpga, int n_iic_instance,
 
 	/* Setup controller timing */
 	if (p->mn_iic_cycle_time) {
-		NT_LOG(DBG, NTHW, "%s: I2C%d: cycletime=%d", p_adapter_id_str,
+		NT_LOG(DBG, NTHW, "%s: I2C%d: cycletime=%" PRIu32 "", p_adapter_id_str,
 			p->mn_iic_instance, p->mn_iic_cycle_time);
 		nthw_iic_reg_set_timing(p, p->mn_iic_cycle_time);
 	}

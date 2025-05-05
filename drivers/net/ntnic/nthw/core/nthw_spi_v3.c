@@ -125,7 +125,7 @@ static void dump_hex(uint8_t *p_data, uint16_t count)
 int nthw_spi_v3_init(nthw_spi_v3_t *p, nthw_fpga_t *p_fpga, int n_instance_no)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
-	uint32_t result;
+	int result;
 
 	p->mn_instance_no = n_instance_no;
 

@@ -1159,8 +1159,9 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				fd->dst_num_avail++;
 
 				NT_LOG(DBG, FILTER,
-					"Dev:%p: RTE_FLOW_ACTION_TYPE_QUEUE port %u, queue index: %u, hw id %u",
-					dev, dev->port, queue->index, hw_id);
+					"Dev:%p: RTE_FLOW_ACTION_TYPE_QUEUE port %u, queue index:"
+					"%" PRIu16 ",hw id %i",
+					dev, (unsigned int)dev->port, queue->index, hw_id);
 
 				fd->full_offload = 0;
 				*num_queues += 1;
@@ -1202,8 +1203,9 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				fd->hsh.key_len = rss->key_len;
 
 				NT_LOG(DBG, FILTER,
-					"Dev:%p: RSS func: %d, types: 0x%" PRIX64 ", key_len: %d",
-					dev, rss->func, rss->types, rss->key_len);
+					"Dev:%p: RSS func: %i, types: 0x%" PRIX64
+					", key_len: %" PRIu32 "",
+					dev, (int)rss->func, rss->types, rss->key_len);
 
 				fd->full_offload = 0;
 				*num_queues += rss->queue_num;
@@ -1222,7 +1224,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					sizeof(struct rte_flow_action_mark));
 
 				fd->mark = mark->id;
-				NT_LOG(DBG, FILTER, "Mark: %i", mark->id);
+				NT_LOG(DBG, FILTER, "Mark: %u", mark->id);
 			}
 
 			break;
@@ -3138,7 +3140,7 @@ static int copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def *
 			break;
 
 		default:
-			NT_LOG(DBG, FILTER, "Unknown modify field: %d",
+			NT_LOG(DBG, FILTER, "Unknown modify field: %" PRIu32,
 				fd->modify_field[i].select);
 			break;
 		}
@@ -4516,7 +4518,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 				break;
 
 			default:
-				NT_LOG(DBG, FILTER, "Unknown modify field: %d",
+				NT_LOG(DBG, FILTER, "Unknown modify field: %" PRIu32,
 					fd->modify_field[i].select);
 				break;
 			}

@@ -211,7 +211,7 @@ void nthw_flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_
 
 int nthw_flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
 {
-	NT_LOG(DBG, FILTER, "Reference resource %s idx %i (before ref cnt %i)",
+	NT_LOG(DBG, FILTER, "Reference resource %s idx %i (before ref cnt %" PRIu32 ")",
 		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
 	RTE_ASSERT(flow_nic_is_resource_used(ndev, res_type, index));
 
@@ -224,7 +224,7 @@ int nthw_flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_ty
 
 int nthw_flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
 {
-	NT_LOG(DBG, FILTER, "De-reference resource %s idx %i (before ref cnt %i)",
+	NT_LOG(DBG, FILTER, "De-reference resource %s idx %i (before ref cnt %" PRIu32 ")",
 		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
 	RTE_ASSERT(flow_nic_is_resource_used(ndev, res_type, index));
 	RTE_ASSERT(ndev->res[res_type].ref[index]);
@@ -425,7 +425,7 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 			int used = flow_nic_is_resource_used(ndev, i, ii);
 
 			if (ref || used) {
-				NT_LOG(DBG, FILTER, "  [%i]: ref cnt %i, used %i", ii, ref,
+				NT_LOG(DBG, FILTER, "  [%u]: ref cnt %i, used %i", ii, ref,
 					used);
 				err = 1;
 			}
@@ -434,7 +434,6 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 		if (err)
 			NT_LOG(DBG, FILTER, "ERROR - some resources not freed");
 	}
-
 }
 
 int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
