@@ -105,20 +105,27 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 {
 	char devname[PATH_MAX]; /* contains the /dev/uioX */
 	struct rte_pci_addr *loc;
+	int fd;
 
 	loc = &dev->addr;
 
 	snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
 
-	if (access(devname, O_RDWR) < 0) {
-		RTE_LOG(WARNING, EAL, "  "PCI_PRI_FMT" not managed by UIO driver, "
-				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
-		return 1;
+	fd = open(devname, O_RDWR);
+	if (fd < 0) {
+		if (errno == ENOENT) {
+			RTE_LOG(WARNING, EAL, PCI_PRI_FMT" not managed by UIO driver, skipping\n",
+					loc->domain, loc->bus, loc->devid, loc->function);
+			return 1;
+		}
+		RTE_LOG(ERR, EAL, "Failed to open device file for " PCI_PRI_FMT " (%s)\n",
+				loc->domain, loc->bus, loc->devid, loc->function, devname);
+		return -1;
 	}
 
 	/* save fd if in primary process */
-	if (rte_intr_fd_set(dev->intr_handle, open(devname, O_RDWR))) {
+	if (rte_intr_fd_set(dev->intr_handle, fd)) {
 		RTE_LOG(WARNING, EAL, "Failed to save fd");
 		goto error;
 	}
