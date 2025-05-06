@@ -137,7 +137,7 @@ mlx5dr_bwc_matcher_create(struct mlx5dr_table *table,
 						     bwc_matcher->num_of_at,
 						     &attr);
 	if (!bwc_matcher->matcher) {
-		rte_errno = EINVAL;
+		/* rte_errno must be set */
 		goto free_at;
 	}
 
