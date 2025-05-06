@@ -467,7 +467,6 @@ int rte_pci_write_config(const struct rte_pci_device *dev,
 			.pc_func = dev->addr.function,
 		},
 		.pi_reg = offset,
-		.pi_data = *(const uint32_t *)buf,
 		.pi_width = len,
 	};
 
@@ -476,7 +475,7 @@ int rte_pci_write_config(const struct rte_pci_device *dev,
 		goto error;
 	}
 
-	memcpy(&pi.pi_data, buf, len);
+	memcpy(&pi.pi_data, buf, RTE_MIN(len, sizeof(pi.pi_data)));
 
 	fd = open("/dev/pci", O_RDWR);
 	if (fd < 0) {
