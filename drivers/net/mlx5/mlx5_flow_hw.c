@@ -13602,7 +13602,7 @@ error:
 		if (sub_error.type != RTE_FLOW_ERROR_TYPE_NONE)
 			rte_memcpy(error, &sub_error, sizeof(sub_error));
 	}
-	return rte_flow_error_set(error, ENOMEM,
+	return rte_flow_error_set(error, rte_errno,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					NULL, "fail to register matcher");
 }
@@ -13769,8 +13769,12 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		goto error;
 
 	ret = flow_hw_register_matcher(dev, attr, items, external, *flow, &matcher, error);
-	if (ret)
+	if (ret) {
+		if (rte_errno == E2BIG)
+			rte_flow_error_set(error, E2BIG, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"flow pattern is too big");
 		goto error;
+	}
 
 	/*
 	 * ASO allocation – iterating on actions list to allocate missing resources.
