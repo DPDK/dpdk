@@ -818,6 +818,18 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 	uint8_t qg_lvl = q_lvl - 1;
 
 	struct ice_sched_node *new_vsi_root = hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0];
+	/* handle case where VSI node needs to move DOWN the hierarchy */
+	while (new_vsi_root->tx_sched_layer < new_root_level) {
+		if (new_vsi_root->num_children == 0)
+			return -1;
+		/* remove all child nodes but the first */
+		while (new_vsi_root->num_children > 1)
+			free_sched_node_recursive(pi, new_vsi_root,
+					new_vsi_root->children[1],
+					new_vsi_root->vsi_handle);
+		new_vsi_root = new_vsi_root->children[0];
+	}
+	/* handle case where VSI node needs to move UP the hierarchy */
 	while (new_vsi_root->tx_sched_layer > new_root_level)
 		new_vsi_root = new_vsi_root->parent;
 
