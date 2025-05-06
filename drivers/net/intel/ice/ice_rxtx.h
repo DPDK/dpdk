@@ -65,9 +65,6 @@
 #define ICE_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ ICE_TX_OFFLOAD_MASK)
 
-extern uint64_t ice_timestamp_dynflag;
-extern int ice_timestamp_dynfield_offset;
-
 /* Max header size can be 2K - 64 bytes */
 #define ICE_RX_HDR_BUF_SIZE    (2048 - 64)
 
@@ -143,7 +140,8 @@ struct ice_rx_queue {
 	/* address of temp buffer for RX split mbufs */
 	struct rte_eth_rxseg_split rxseg[ICE_RX_MAX_NSEG];
 	uint32_t rxseg_nb;
-	bool ts_enable; /* if rxq timestamp is enabled */
+	int ts_offset; /* dynamic mbuf timestamp field offset */
+	uint64_t ts_flag; /* dynamic mbuf timestamp flag */
 };
 
 /* Offload features */

@@ -44,9 +44,6 @@
 
 #define ICE_CYCLECOUNTER_MASK  0xffffffffffffffffULL
 
-uint64_t ice_timestamp_dynflag;
-int ice_timestamp_dynfield_offset = -1;
-
 static const char * const ice_valid_args[] = {
 	ICE_SAFE_MODE_SUPPORT_ARG,
 	ICE_PROTO_XTR_ARG,
@@ -3973,16 +3970,6 @@ ice_dev_start(struct rte_eth_dev *dev)
 		ret = ice_tx_queue_start(dev, nb_txq);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "fail to start Tx queue %u", nb_txq);
-			goto tx_err;
-		}
-	}
-
-	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
-		/* Register mbuf field and flag for Rx timestamp */
-		ret = rte_mbuf_dyn_rx_timestamp_register(&ice_timestamp_dynfield_offset,
-							 &ice_timestamp_dynflag);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "Cannot register mbuf field/flag for timestamp");
 			goto tx_err;
 		}
 	}
