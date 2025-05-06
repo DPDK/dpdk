@@ -34,7 +34,12 @@ enum rte_map_flags {
 	 * may remove all other mappings in the requested region. However,
 	 * it is not required to do so, thus mapping with this flag may fail.
 	 */
-	RTE_MAP_FORCE_ADDRESS = 1 << 3
+	RTE_MAP_FORCE_ADDRESS = 1 << 3,
+	/**
+	 * Force mapping to the requested address,
+	 * but fail if a preexisting mapping collides with the request.
+	 */
+	RTE_MAP_FORCE_ADDRESS_NOREPLACE = 1 << 4,
 };
 
 /**

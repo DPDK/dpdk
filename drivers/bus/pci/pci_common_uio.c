@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 
 #include <rte_eal.h>
+#include <rte_eal_paging.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_tailq.h>
@@ -58,7 +59,8 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 
 			void *mapaddr = pci_map_resource(uio_res->maps[i].addr,
 					fd, (off_t)uio_res->maps[i].offset,
-					(size_t)uio_res->maps[i].size, 0);
+					(size_t)uio_res->maps[i].size,
+					RTE_MAP_FORCE_ADDRESS_NOREPLACE);
 
 			/* fd is not needed in secondary process, close it */
 			close(fd);

@@ -211,7 +211,12 @@ enum eal_mem_reserve_flags {
 	 * @see RTE_MAP_FORCE_ADDRESS for description of possible consequences
 	 *      (although implementations are not required to use it).
 	 */
-	EAL_RESERVE_FORCE_ADDRESS = 1 << 1
+	EAL_RESERVE_FORCE_ADDRESS = 1 << 1,
+	/**
+	 * Force reserving memory at the requested address,
+	 * but fail if a preexisting mapping collides with the request.
+	 */
+	EAL_RESERVE_FORCE_ADDRESS_NOREPLACE = 1 << 2,
 };
 
 /**

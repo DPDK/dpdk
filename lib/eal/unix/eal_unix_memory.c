@@ -17,11 +17,13 @@
 #ifdef RTE_EXEC_ENV_LINUX
 #define EAL_DONTDUMP MADV_DONTDUMP
 #define EAL_DODUMP   MADV_DODUMP
+#define EAL_FIXED_NOREPLACE MAP_FIXED_NOREPLACE
 #elif defined RTE_EXEC_ENV_FREEBSD
 #define EAL_DONTDUMP MADV_NOCORE
 #define EAL_DODUMP   MADV_CORE
+#define EAL_FIXED_NOREPLACE (MAP_FIXED | MAP_EXCL)
 #else
-#error "madvise doesn't support this OS"
+#error "EAL doesn't support this OS"
 #endif
 
 static void *
@@ -68,6 +70,8 @@ eal_mem_reserve(void *requested_addr, size_t size, int flags)
 
 	if (flags & EAL_RESERVE_FORCE_ADDRESS)
 		sys_flags |= MAP_FIXED;
+	if (flags & EAL_RESERVE_FORCE_ADDRESS_NOREPLACE)
+		sys_flags |= EAL_FIXED_NOREPLACE;
 
 	return mem_map(requested_addr, size, PROT_NONE, sys_flags, -1, 0);
 }
@@ -124,6 +128,8 @@ rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 		sys_flags |= MAP_PRIVATE;
 	if (flags & RTE_MAP_FORCE_ADDRESS)
 		sys_flags |= MAP_FIXED;
+	if (flags & RTE_MAP_FORCE_ADDRESS_NOREPLACE)
+		sys_flags |= EAL_FIXED_NOREPLACE;
 
 	return mem_map(requested_addr, size, sys_prot, sys_flags, fd, offset);
 }
