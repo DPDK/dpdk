@@ -27,7 +27,7 @@ from framework.utils import (
 )
 
 from .cpu import Architecture
-from .os_session import OSSession, OSSessionInfo
+from .os_session import FilePermissions, OSSession, OSSessionInfo
 
 
 class PosixSession(OSSession):
@@ -150,6 +150,15 @@ class PosixSession(OSSession):
         )
         self.extract_remote_tarball(remote_tar_path, destination_dir, strip_root_dir=True)
         self.remove_remote_file(remote_tar_path)
+
+    def change_permissions(
+        self, remote_path: PurePath, permissions: FilePermissions, recursive: bool = False
+    ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.change_permissions`."""
+        self.send_command(
+            f"chmod {'-R ' if recursive else ''}{permissions.to_octal()} {remote_path}",
+            privileged=True,
+        )
 
     def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
         """Overrides :meth:`~.os_session.OSSession.remove_remote_dir`."""
