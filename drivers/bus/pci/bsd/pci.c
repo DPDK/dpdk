@@ -182,7 +182,15 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 
 	/* if matching map is found, then use it */
 	offset = res_idx * pagesz;
-	mapaddr = pci_map_resource(NULL, fd, (off_t)offset,
+
+	/*
+	 * Use baseaddr as a hint to avoid mapping resources
+	 * where malloc(3) et al. usually make allocations.
+	 * This reduces mapping conflicts in secondary processes
+	 * that make memory allocations before initializing EAL.
+	 */
+	mapaddr = pci_map_resource((void *)rte_eal_get_baseaddr(),
+			fd, (off_t)offset,
 			(size_t)dev->mem_resource[res_idx].len, 0);
 	close(fd);
 	if (mapaddr == NULL)
