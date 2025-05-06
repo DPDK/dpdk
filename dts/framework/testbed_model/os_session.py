@@ -26,6 +26,7 @@ Example:
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
+from enum import Flag, auto
 from pathlib import Path, PurePath, PurePosixPath
 
 from framework.config.node import NodeConfiguration
@@ -42,6 +43,33 @@ from framework.utils import MesonArgs, TarCompressionFormat
 
 from .cpu import Architecture, LogicalCore
 from .port import Port, PortInfo
+
+
+class FilePermissions(Flag):
+    """The permissions for a file and/or directory."""
+
+    #:
+    OTHERS_EXECUTE = auto()
+    #:
+    OTHERS_WRITE = auto()
+    #:
+    OTHERS_READ = auto()
+    #:
+    GROUP_EXECUTE = auto()
+    #:
+    GROUP_WRITE = auto()
+    #:
+    GROUP_READ = auto()
+    #:
+    OWNER_EXECUTE = auto()
+    #:
+    OWNER_WRITE = auto()
+    #:
+    OWNER_READ = auto()
+
+    def to_octal(self) -> str:
+        """Convert this flag to an octal representation."""
+        return format(self.value, "03o")
 
 
 @dataclass(slots=True, frozen=True)
@@ -312,6 +340,12 @@ class OSSession(ABC):
             exclude: Patterns for files or directories to exclude from the tarball.
                 These patterns are used with `fnmatch.fnmatch` to filter out files.
         """
+
+    @abstractmethod
+    def change_permissions(
+        self, remote_path: PurePath, permissions: FilePermissions, recursive: bool = False
+    ) -> None:
+        """Change the permissions of the given path."""
 
     @abstractmethod
     def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
