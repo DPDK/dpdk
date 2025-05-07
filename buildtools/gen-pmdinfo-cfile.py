@@ -5,17 +5,17 @@
 import os
 import subprocess
 import sys
-import tempfile
 
-_, tmp_root, ar, archive, output, *pmdinfogen = sys.argv
-with tempfile.TemporaryDirectory(dir=tmp_root) as temp:
-    paths = []
-    for name in subprocess.run([ar, "t", archive], stdout=subprocess.PIPE,
-                               check=True).stdout.decode().splitlines():
-        if os.path.exists(name):
-            paths.append(name)
-        else:
-            subprocess.run([ar, "x", os.path.abspath(archive), name],
-                           check=True, cwd=temp)
-            paths.append(os.path.join(temp, name))
-    subprocess.run(pmdinfogen + paths + [output], check=True)
+_, ar, tmp_dir, archive, output, *pmdinfogen = sys.argv
+paths = []
+for name in subprocess.run([ar, "t", archive], stdout=subprocess.PIPE,
+                            check=True).stdout.decode().splitlines():
+    if os.path.exists(name):
+        paths.append(name)
+    else:
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+        subprocess.run([ar, "x", os.path.abspath(archive), name],
+                        check=True, cwd=tmp_dir)
+        paths.append(os.path.join(tmp_dir, name))
+subprocess.run(pmdinfogen + paths + [output], check=True)

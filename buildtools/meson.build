@@ -34,7 +34,7 @@ install_data([
         install_dir: 'bin')
 
 # select library and object file format
-pmdinfo = py3 + files('gen-pmdinfo-cfile.py') + [meson.current_build_dir()]
+pmdinfo = py3 + files('gen-pmdinfo-cfile.py')
 pmdinfogen = py3 + files('pmdinfogen.py')
 if host_machine.system() == 'windows'
     if cc.get_id() == 'gcc'

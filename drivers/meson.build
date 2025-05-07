@@ -294,7 +294,7 @@ foreach subpath:subdirs
                 c_args: cflags)
         objs += tmp_lib.extract_all_objects(recursive: true)
         sources_pmd_info = custom_target(out_filename,
-                command: [pmdinfo, tmp_lib.full_path(), '@OUTPUT@', pmdinfogen],
+                command: [pmdinfo, '@PRIVATE_DIR@', tmp_lib.full_path(), '@OUTPUT@', pmdinfogen],
                 output: out_filename,
                 depends: [tmp_lib])
 
