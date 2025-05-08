@@ -2052,6 +2052,11 @@ eal_adjust_config(struct internal_config *internal_cfg)
 	if (!core_parsed)
 		eal_auto_detect_cores(cfg);
 
+	if (cfg->lcore_count == 0) {
+		EAL_LOG(ERR, "No detected lcore is enabled, please check the core list");
+		return -1;
+	}
+
 	if (internal_conf->process_type == RTE_PROC_AUTO)
 		internal_conf->process_type = eal_proc_type_detect();
 
