@@ -75,6 +75,7 @@ static uint16_t dst_ports[RTE_MAX_ETHPORTS];
 static volatile bool force_quit;
 static bool dump_iterations;
 static bool delete_flag;
+static bool query_flag;
 static bool dump_socket_mem_flag;
 static bool enable_fwd;
 static bool unique_data;
@@ -129,6 +130,7 @@ static struct lcore_info lcore_infos[RTE_MAX_LCORE];
 struct used_cpu_time {
 	double insertion[MAX_PORTS][RTE_MAX_LCORE];
 	double deletion[MAX_PORTS][RTE_MAX_LCORE];
+	double query[MAX_PORTS][RTE_MAX_LCORE];
 };
 
 struct __rte_cache_aligned multi_cores_pool {
@@ -488,6 +490,7 @@ usage(char *progname)
 		" iteration\n");
 	printf("  --deletion-rate: Enable deletion rate"
 		" calculations\n");
+	printf("  --query-rate: Enable query rate calculations\n");
 	printf("  --dump-socket-mem: To dump all socket memory\n");
 	printf("  --enable-fwd: To enable packets forwarding"
 		" after insertion\n");
@@ -657,6 +660,7 @@ args_parse(int argc, char **argv)
 		{ "rules-batch",                1, 0, 0 },
 		{ "dump-iterations",            0, 0, 0 },
 		{ "deletion-rate",              0, 0, 0 },
+		{ "query-rate",                 0, 0, 0 },
 		{ "dump-socket-mem",            0, 0, 0 },
 		{ "enable-fwd",                 0, 0, 0 },
 		{ "unique-data",                0, 0, 0 },
@@ -884,6 +888,9 @@ args_parse(int argc, char **argv)
 			if (strcmp(lgopts[opt_idx].name,
 					"deletion-rate") == 0)
 				delete_flag = true;
+			if (strcmp(lgopts[opt_idx].name,
+					"query-rate") == 0)
+				query_flag = true;
 			if (strcmp(lgopts[opt_idx].name,
 					"dump-socket-mem") == 0)
 				dump_socket_mem_flag = true;
@@ -1376,6 +1383,81 @@ destroy_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
 	mc_pool.flows_record.deletion[port_id][core_id] = cpu_time_used;
 }
 
+static inline void
+query_flows(int port_id, uint8_t core_id, struct rte_flow **flows_list)
+{
+	struct rte_flow_error error;
+	clock_t start_batch, end_batch;
+	double cpu_time_used = 0;
+	double query_rate;
+	double cpu_time_per_batch[MAX_BATCHES_COUNT] = { 0 };
+	double delta;
+	uint32_t i;
+	int rules_batch_idx;
+	int rules_count_per_core;
+	union {
+		struct rte_flow_query_count count;
+		struct rte_flow_action_rss rss_conf;
+		struct rte_flow_query_age age;
+	} query;
+	struct rte_flow_action count_action[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_COUNT,
+			.conf = NULL,
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+
+	rules_count_per_core = rules_count / mc_pool.cores_count;
+	/* If group > 0 , should add 1 flow which created in group 0 */
+	if (flow_group > 0 && core_id == 0)
+		rules_count_per_core++;
+
+	memset(&query, 0, sizeof(query));
+	start_batch = rte_get_timer_cycles();
+	for (i = 0; i < (uint32_t)rules_count_per_core; i++) {
+		if (flows_list[i] == 0)
+			break;
+
+		memset(&error, 0x33, sizeof(error));
+		if (rte_flow_query(port_id, flows_list[i],
+				   count_action, &query, &error)) {
+			print_flow_error(error);
+			rte_exit(EXIT_FAILURE, "Error in deleting flow\n");
+		}
+
+		/*
+		 * Save the query rate for rules batch.
+		 * Check if the query reached the rules
+		 * patch counter, then save the query rate
+		 * for this batch.
+		 */
+		if (!((i + 1) % rules_batch)) {
+			end_batch = rte_get_timer_cycles();
+			delta = (double)(end_batch - start_batch);
+			rules_batch_idx = ((i + 1) / rules_batch) - 1;
+			cpu_time_per_batch[rules_batch_idx] = delta / rte_get_timer_hz();
+			cpu_time_used += cpu_time_per_batch[rules_batch_idx];
+			start_batch = rte_get_timer_cycles();
+		}
+	}
+
+	/* Print query rates for all batches */
+	if (dump_iterations)
+		print_rules_batches(cpu_time_per_batch);
+
+	/* query rate for all rules */
+	query_rate = ((double)(rules_count_per_core / cpu_time_used) / 1000);
+	printf(":: Port %d :: Core %d :: Rules query rate -> %f K Rule/Sec\n",
+		port_id, core_id, query_rate);
+	printf(":: Port %d :: Core %d :: The time for query %d rules is %f seconds\n",
+		port_id, core_id, rules_count_per_core, cpu_time_used);
+
+	mc_pool.flows_record.query[port_id][core_id] = cpu_time_used;
+}
+
 static struct rte_flow **
 insert_flows(int port_id, uint8_t core_id, uint16_t dst_port_id)
 {
@@ -1527,6 +1609,9 @@ flows_handler(uint8_t core_id)
 			rte_exit(EXIT_FAILURE, "Error: Insertion Failed!\n");
 		mc_pool.current_alloc[core_id] = (int64_t)dump_socket_mem(stdout);
 
+		if (query_flag)
+			query_flows(port_id, core_id, flows_list);
+
 		/* Deletion part. */
 		if (delete_flag) {
 			destroy_flows(port_id, core_id, flows_list);
@@ -1553,8 +1638,11 @@ dump_used_cpu_time(const char *item,
 	double insertion_throughput_time;
 	double deletion_latency_time;
 	double deletion_throughput_time;
+	double query_latency_time;
+	double query_throughput_time;
 	double insertion_latency, insertion_throughput;
 	double deletion_latency, deletion_throughput;
+	double query_latency, query_throughput;
 
 	/* Save first insertion/deletion rates from first thread.
 	 * Start comparing with all threads, if any thread used
@@ -1570,30 +1658,40 @@ dump_used_cpu_time(const char *item,
 
 	insertion_latency_time = used_time->insertion[port][0];
 	deletion_latency_time = used_time->deletion[port][0];
+	query_latency_time = used_time->query[port][0];
 	insertion_throughput_time = used_time->insertion[port][0];
 	deletion_throughput_time = used_time->deletion[port][0];
+	query_throughput_time = used_time->query[port][0];
 
 	i = mc_pool.cores_count;
 	while (i-- > 1) {
 		insertion_throughput_time += used_time->insertion[port][i];
 		deletion_throughput_time += used_time->deletion[port][i];
+		query_throughput_time += used_time->query[port][i];
 		if (insertion_latency_time < used_time->insertion[port][i])
 			insertion_latency_time = used_time->insertion[port][i];
 		if (deletion_latency_time < used_time->deletion[port][i])
 			deletion_latency_time = used_time->deletion[port][i];
+		if (query_throughput_time < used_time->query[port][i])
+			query_throughput_time = used_time->query[port][i];
 	}
 
 	insertion_latency = ((double) (mc_pool.rules_count
 				/ insertion_latency_time) / 1000);
 	deletion_latency = ((double) (mc_pool.rules_count
 				/ deletion_latency_time) / 1000);
+	query_latency = ((double)(mc_pool.rules_count
+				/ query_latency_time) / 1000);
 
 	insertion_throughput_time /= mc_pool.cores_count;
 	deletion_throughput_time /= mc_pool.cores_count;
+	query_throughput_time /= mc_pool.cores_count;
 	insertion_throughput = ((double) (mc_pool.rules_count
 				/ insertion_throughput_time) / 1000);
 	deletion_throughput = ((double) (mc_pool.rules_count
 				/ deletion_throughput_time) / 1000);
+	query_throughput = ((double)(mc_pool.rules_count
+				/ query_throughput_time) / 1000);
 
 	/* Latency stats */
 	printf("\n%s\n:: [Latency | Insertion] All Cores :: Port %d :: ",
@@ -1630,6 +1728,26 @@ dump_used_cpu_time(const char *item,
 			port);
 		printf("The average time for deleting %d rules is %f seconds\n",
 			mc_pool.rules_count, deletion_throughput_time);
+	}
+
+	if (query_flag) {
+		/* Latency stats */
+		printf(":: [Latency | query] All Cores :: Port %d :: Total "
+			"query rate -> %f K Rules/Sec\n",
+			port, query_latency);
+		printf(":: [Latency | query] All Cores :: Port %d :: ",
+			port);
+		printf("The time for querying %d rules is %f seconds\n",
+			mc_pool.rules_count, query_latency_time);
+
+		/* Throughput stats */
+		printf(":: [Throughput | query] All Cores :: Port %d :: Total "
+			"query rate -> %f K Rules/Sec\n",
+			port, query_throughput);
+		printf(":: [Throughput | query] All Cores :: Port %d :: ",
+			port);
+		printf("The average time for querying %d rules is %f seconds\n",
+			mc_pool.rules_count, query_throughput_time);
 	}
 }
 
@@ -2121,6 +2239,7 @@ main(int argc, char **argv)
 	rules_count = DEFAULT_RULES_COUNT;
 	rules_batch = DEFAULT_RULES_BATCH;
 	delete_flag = false;
+	query_flag = false;
 	dump_socket_mem_flag = false;
 	flow_group = DEFAULT_GROUP;
 	unique_data = false;
