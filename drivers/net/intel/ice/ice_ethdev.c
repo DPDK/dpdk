@@ -2026,7 +2026,7 @@ load_fw:
 
 	err = ice_copy_and_init_pkg(hw, buf, bufsz, adapter->devargs.ddp_load_sched);
 	if (!ice_is_init_pkg_successful(err)) {
-		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d", err);
+		PMD_INIT_LOG(ERR, "Failed to load DDP package: %d", err);
 		free(buf);
 		return -1;
 	}
