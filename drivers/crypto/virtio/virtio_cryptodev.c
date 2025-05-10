@@ -1533,6 +1533,29 @@ virtio_crypto_asym_rsa_xform_to_der(
 }
 
 static int
+virtio_crypto_asym_rsa_xform_to_public_der(
+		struct rte_crypto_asym_xform *xform,
+		uint8_t *der)
+{
+	uint8_t data[VIRTIO_CRYPTO_MAX_CTRL_DATA];
+	size_t tlen = 0, len;
+	uint8_t *tlv;
+
+	if (xform->xform_type != RTE_CRYPTO_ASYM_XFORM_RSA)
+		return -EINVAL;
+
+	tlv = data;
+	len = tlv_encode(tlv, 0x02, xform->rsa.n.data, xform->rsa.n.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.e.data, xform->rsa.e.length);
+	tlen += len;
+
+	RTE_ASSERT(tlen < VIRTIO_CRYPTO_MAX_CTRL_DATA);
+	len = tlv_encode(der, 0x30, data, tlen);
+	return len;
+}
+
+static int
 virtio_crypto_asym_rsa_configure_session(
 		struct rte_crypto_rsa_xform *rsa,
 		struct virtio_crypto_akcipher_session_para *para)
@@ -1615,7 +1638,13 @@ virtio_crypto_asym_configure_session(
 			return ret;
 		}
 
-		ret = virtio_crypto_asym_rsa_xform_to_der(xform, ctrl->data);
+		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_EXP) {
+			ret = virtio_crypto_asym_rsa_xform_to_public_der(
+					xform, ctrl->data);
+		} else {
+			ret = virtio_crypto_asym_rsa_xform_to_der(xform,
+					ctrl->data);
+		}
 		if (ret <= 0) {
 			VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid RSA primitives");
 			return ret;
