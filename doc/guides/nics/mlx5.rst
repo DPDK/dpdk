@@ -1429,6 +1429,13 @@ is not supported on HW root table.
 In :ref:`HW steering <mlx5_hws>`, the action ``RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL``
 is not supported on guest port.
 
+Example
+^^^^^^^
+
+Usage of ``RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL`` in testpmd::
+
+   testpmd> flow create 0 ingress priority 0 group 1 pattern eth type spec 0x0800 type mask 0xffff / end actions send_to_kernel / end
+
 
 Multiport E-Switch
 ~~~~~~~~~~~~~~~~~~
@@ -1755,6 +1762,11 @@ Limitations
 ^^^^^^^^^^^
 
 #. Matching on aggregated affinity is supported only in group 0.
+
+Example
+^^^^^^^
+
+See `affinity matching with testpmd`_.
 
 
 .. _mlx5_shared_rx:
@@ -2250,6 +2262,15 @@ Limitations
    but only on template tables
    with ``RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG`` specialization.
 
+Examples
+^^^^^^^^
+
+- `RSS`_
+- `RSS IPv6`_
+- `RSS IPv6 in indirect action`_
+- `RSS in flow template`_
+- `RSS with custom hash`_
+
 
 .. _mlx5_flow_queue:
 
@@ -2333,6 +2354,18 @@ Limitations
    to the representor of the source virtual port (SF/VF), while if it is disabled,
    the traffic will be routed based on the steering rules in the ingress domain.
 
+Examples
+^^^^^^^^
+
+- When testpmd starts with a PF, a VF-rep0 and a VF-rep1,
+  the below example will redirect packets from VF0 and VF1 to the wire::
+
+     testpmd> flow create 0 ingress transfer pattern eth / port_representor / end actions represented_port ethdev_port_id 0 / end
+
+- To match on traffic from port representor 1 and redirect to port 2::
+
+     testpmd> flow create 0 transfer pattern eth / port_representor port_id is 1 / end actions represented_port ethdev_port_id 2 / end
+
 
 .. _mlx5_flow_drop:
 
@@ -2393,6 +2426,11 @@ Limitations
    from a template table with a different specialization
    is supported since firmware version xx.43.1014.
 
+Example
+^^^^^^^
+
+See `jump to table index with testpmd`_.
+
 
 .. _mlx5_indirect:
 
@@ -2416,6 +2454,11 @@ Limitations
 
 #. If an indirect actions list handle is masked,
    the mask will be used in template creation and flow rule.
+
+Example
+^^^^^^^
+
+- `indirect list of encap/decap`_
 
 
 .. _mlx5_meta:
@@ -2727,6 +2770,11 @@ Limitations
 #. ``RTE_FLOW_ACTION_TYPE_QUOTA`` cannot be used in the same rule
    with a meter action or ``RTE_FLOW_ACTION_TYPE_CONNTRACK``.
 
+Example
+^^^^^^^
+
+See `quota usage with testpmd`_.
+
 
 .. _mlx5_meter:
 
@@ -2817,6 +2865,12 @@ Limitations
 
 #. The maximal number of HW quota and HW meter objects is ``16e6``.
 
+Examples
+^^^^^^^^
+
+- `meter mark with sync API`_
+- `meter mark with template API`_
+
 
 .. _mlx5_sample:
 
@@ -2870,6 +2924,21 @@ Limitations
 #. For ConnectX-5 trusted device, the application metadata with SET_TAG index 0
    is not supported before ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action.
 
+Examples
+^^^^^^^^
+
+Create an indirect action list with sample and jump::
+
+   testpmd> set sample_actions 1 port_representor port_id 0xffff / end
+   testpmd> flow indirect_action 0 create transfer list actions sample ratio 1 index 1 / jump group 2 / end
+
+E-Switch mirroring: the matched ingress packets are sent to port 2,
+mirror the packets with NVGRE encapsulation and send to port 0::
+
+   testpmd> set nvgre ip-version ipv4 tni 4 ip-src 127.0.0.1 ip-dst 128.0.0.1 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+   testpmd> set sample_actions 0 nvgre_encap / port_id id 0 / end
+   testpmd> flow create 0 transfer pattern eth / end actions sample ratio 1 index 0 / port_id id 2 / end
+
 
 .. _mlx5_random:
 
@@ -2891,6 +2960,11 @@ Limitations
 #. NIC ingress/egress flow in group 0 is not supported.
 
 #. Supported only in template table with ``nb_flows=1``.
+
+Example
+^^^^^^^
+
+See `random matching with testpmd`_.
 
 
 .. _mlx5_flex_item:
@@ -3075,6 +3149,12 @@ Limitations
 
 #. Encapsulation levels greater than ``2`` are not supported.
 
+Examples
+^^^^^^^^
+
+- `set value`_
+- `copy field`_
+
 
 .. _mlx5_compare:
 
@@ -3114,6 +3194,15 @@ Limitations
 #. The field type ``RTE_FLOW_FIELD_RANDOM`` can only be compared with
    ``RTE_FLOW_FIELD_VALUE``.
 
+Examples
+^^^^^^^^
+
+- `compare ESP to value`_
+- `compare ESP to meta`_
+- `compare meta to value`_
+- `compare tag to value`_
+- `compare random to value`_
+
 
 .. _mlx5_ptype:
 
@@ -3152,6 +3241,11 @@ Limitations
    Providing ``RTE_PTYPE_L4_MASK`` during pattern template creation
    and ``RTE_PTYPE_L4_FRAG`` during flow rule creation
    will cause unexpected behavior.
+
+Example
+^^^^^^^
+
+See `packet type matching with testpmd`_.
 
 
 .. _mlx5_eth:
@@ -3562,6 +3656,18 @@ Limitations
 
 #. L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
+Examples
+^^^^^^^^
+
+- match VXLAN-GPE flags, next protocol, VNI, rsvd0 and rsvd1::
+
+     testpmd> flow create 0 transfer group 0 pattern eth / end actions count / jump group 1 / end
+     testpmd> flow create 0 transfer group 1 pattern eth / ipv4 / udp / vxlan-gpe flags is 12 protocol is 6 rsvd1 is 8 vni is 100 rsvd0 is 5 / end actions count / jump group 2 / end
+
+- `match VXLAN-GBP`_
+
+- `modify VXLAN header`_
+
 
 .. _mlx5_gre:
 
@@ -3824,6 +3930,11 @@ Limitations
 #. MPLS matching with :ref:`HW steering <mlx5_hws>` is not supported on group 0.
 
 #. The maximum supported MPLS headers is 5.
+
+Example
+^^^^^^^
+
+See `matching MPLSoGRE with testpmd`_.
 
 
 .. _mlx5_nsh:
@@ -4476,3 +4587,30 @@ Destroy GENEVE TLV parser for specific port::
 
 This command doesn't destroy the global list,
 For releasing options, ``flush`` command should be used.
+
+
+.. links to examples on GitHub:
+
+.. _affinity matching with testpmd: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/items/classification_and_integrity/port_affinity_match.yaml
+.. _RSS IPv6 in indirect action: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/fate/rss_ip6_indirect.yaml
+.. _RSS IPv6: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/fate/rss_ip6.yaml
+.. _RSS: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/fate/rss_simple.yaml
+.. _RSS in flow template: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/actions/fate/rss_basic.yaml
+.. _RSS with custom hash: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/actions/fate/customized_rss_hash.yaml
+.. _jump to table index with testpmd: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/actions/fate/jump_table_index_action.yaml
+.. _indirect list of encap/decap: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/packet_reformat/indirect_raw_encap_decap.yaml
+.. _quota usage with testpmd: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/actions/monitor_diagnostic/quota/quota.yaml
+.. _meter mark with template API: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/actions/monitor_diagnostic/meter/meter_mark.yaml
+.. _meter mark with sync API: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/monitor_diagnostic/meter/meter_mark_no_cfg.yaml
+.. _random matching with testpmd: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/random/random.yaml
+.. _set value: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/packet_reformat/modify_header_src_value.yaml
+.. _copy field: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/actions/packet_reformat/modify_header_src_field.yaml
+.. _compare ESP to value: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/compare/esp_seq_to_value.yaml
+.. _compare ESP to meta: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/compare/esp_seq_to_meta.yaml
+.. _compare meta to value: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/compare/meta_to_value.yaml
+.. _compare tag to value: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/compare/tag_to_value.yaml
+.. _compare random to value: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/compare/random_to_value.yaml
+.. _packet type matching with testpmd: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/classification_and_integrity/ptype_l4_tcp.yaml
+.. _match VXLAN-GBP: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/items/UDP_tunnels/vxlan/vxlan_gbp.yaml
+.. _modify VXLAN header: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_template_async/actions/packet_reformat/vxlan_modify_last_rsvd.yaml
+.. _matching MPLSoGRE with testpmd: https://github.com/Mellanox/dpdk-utest/blob/main/tests/flow_sync/items/MPLS/mpls_o_gre.yaml
