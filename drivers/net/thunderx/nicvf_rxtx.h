@@ -83,7 +83,7 @@ nicvf_mbuff_init_mseg_update(struct rte_mbuf *pkt, const uint64_t mbuf_init,
 	*(uint64_t *)(&pkt->rearm_data) = init.value;
 }
 
-uint32_t nicvf_dev_rx_queue_count(void *rx_queue);
+int nicvf_dev_rx_queue_count(void *rx_queue);
 uint32_t nicvf_dev_rbdr_refill(struct rte_eth_dev *dev, uint16_t queue_idx);
 
 uint16_t nicvf_recv_pkts_no_offload(void *rxq, struct rte_mbuf **rx_pkts,

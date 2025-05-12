@@ -73,7 +73,7 @@ mlx5_lro_update_hdr(uint8_t *__rte_restrict padd,
  * @return
  *   The number of used Rx descriptor.
  */
-static uint32_t
+static int
 rx_queue_count(struct mlx5_rxq_data *rxq)
 {
 	struct rxq_zip *zip = &rxq->zip;
@@ -259,7 +259,7 @@ mlx5_rx_burst_mode_get(struct rte_eth_dev *dev,
  *   The number of used rx descriptor.
  *   -EINVAL if the queue is invalid
  */
-uint32_t
+int
 mlx5_rx_queue_count(void *rx_queue)
 {
 	struct mlx5_rxq_data *rxq = rx_queue;

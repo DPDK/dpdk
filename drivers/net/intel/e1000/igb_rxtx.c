@@ -1792,7 +1792,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-uint32_t
+int
 eth_igb_rx_queue_count(void *rx_queue)
 {
 #define IGB_RXQ_SCAN_INTERVAL 4

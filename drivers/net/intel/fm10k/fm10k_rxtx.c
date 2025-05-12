@@ -364,7 +364,7 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rcv;
 }
 
-uint32_t
+int
 fm10k_dev_rx_queue_count(void *rx_queue)
 {
 #define FM10K_RXQ_SCAN_INTERVAL 4

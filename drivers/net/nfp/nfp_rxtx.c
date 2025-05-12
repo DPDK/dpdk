@@ -202,7 +202,7 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
-uint32_t
+int
 nfp_net_rx_queue_count(void *rx_queue)
 {
 	uint32_t idx;

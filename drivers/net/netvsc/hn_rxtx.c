@@ -1057,7 +1057,7 @@ hn_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
  * Get the number of used descriptor in a rx queue
  * For this device that means how many packets are pending in the ring.
  */
-uint32_t
+int
 hn_dev_rx_queue_count(void *rx_queue)
 {
 	struct hn_rx_queue *rxq = rx_queue;

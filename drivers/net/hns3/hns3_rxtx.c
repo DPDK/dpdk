@@ -4827,7 +4827,7 @@ hns3_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 		return RTE_ETH_TX_DESC_DONE;
 }
 
-uint32_t
+int
 hns3_rx_queue_count(void *rx_queue)
 {
 	/*

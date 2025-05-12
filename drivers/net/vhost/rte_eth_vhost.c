@@ -1407,7 +1407,7 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-static uint32_t
+static int
 eth_rx_queue_count(void *rx_queue)
 {
 	struct vhost_queue *vq;

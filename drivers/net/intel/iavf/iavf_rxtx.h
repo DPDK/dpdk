@@ -641,7 +641,7 @@ void iavf_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			  struct rte_eth_rxq_info *qinfo);
 void iavf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			  struct rte_eth_txq_info *qinfo);
-uint32_t iavf_dev_rxq_count(void *rx_queue);
+int iavf_dev_rxq_count(void *rx_queue);
 int iavf_dev_rx_desc_status(void *rx_queue, uint16_t offset);
 int iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset);
 

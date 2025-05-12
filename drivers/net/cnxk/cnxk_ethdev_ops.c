@@ -870,7 +870,7 @@ cnxk_nix_txq_info_get(struct rte_eth_dev *eth_dev, uint16_t qid,
 	memcpy(&qinfo->conf, &txq_sp->qconf.conf.tx, sizeof(qinfo->conf));
 }
 
-uint32_t
+int
 cnxk_nix_rx_queue_count(void *rxq)
 {
 	struct cnxk_eth_rxq_sp *rxq_sp = cnxk_eth_rxq_to_sp(rxq);
