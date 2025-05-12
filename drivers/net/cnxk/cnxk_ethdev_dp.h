@@ -74,7 +74,7 @@ struct cnxk_eth_txq_comp {
 	uint32_t qmask;
 	uint32_t nb_desc_mask;
 	uint32_t available;
-	uint32_t sqe_id;
+	uint32_t __rte_atomic sqe_id;
 	bool ena;
 	struct rte_mbuf **ptr;
 	rte_spinlock_t ext_buf_lock;

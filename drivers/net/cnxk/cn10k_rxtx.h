@@ -47,8 +47,8 @@
 
 struct cn10k_eth_txq {
 	uint64_t send_hdr_w0;
-	int64_t fc_cache_pkts;
-	uint64_t *fc_mem;
+	int64_t __rte_atomic fc_cache_pkts;
+	uint64_t __rte_atomic *fc_mem;
 	uintptr_t lmt_base;
 	rte_iova_t io_addr;
 	uint16_t sqes_per_sqb_log2;
@@ -56,9 +56,9 @@ struct cn10k_eth_txq {
 	uint8_t flag;
 	rte_iova_t cpt_io_addr;
 	uint64_t sa_base;
-	uint64_t *cpt_fc;
+	uint64_t __rte_atomic *cpt_fc;
 	uint16_t cpt_desc;
-	int32_t *cpt_fc_sw;
+	int32_t __rte_atomic *cpt_fc_sw;
 	uint64_t lso_tun_fmt;
 	uint64_t ts_mem;
 	uint64_t mark_flag : 8;

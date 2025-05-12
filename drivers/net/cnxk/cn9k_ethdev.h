@@ -20,7 +20,7 @@ struct cn9k_eth_txq {
 	int16_t nb_sqb_bufs_adj;
 	rte_iova_t cpt_io_addr;
 	uint64_t sa_base;
-	uint64_t *cpt_fc;
+	uint64_t __rte_atomic *cpt_fc;
 	uint16_t cpt_desc;
 	uint64_t mark_flag : 8;
 	uint64_t mark_fmt : 48;

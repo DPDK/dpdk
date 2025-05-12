@@ -251,7 +251,7 @@ cn9k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		inl_lf = dev->outb.lf_base + crypto_qid;
 
 		txq->cpt_io_addr = inl_lf->io_addr;
-		txq->cpt_fc = inl_lf->fc_addr;
+		txq->cpt_fc = (uint64_t __rte_atomic *)inl_lf->fc_addr;
 		txq->cpt_desc = inl_lf->nb_desc * 0.7;
 		txq->sa_base = (uint64_t)dev->outb.sa_base;
 		txq->sa_base |= eth_dev->data->port_id;

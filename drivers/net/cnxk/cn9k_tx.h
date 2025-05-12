@@ -112,7 +112,8 @@ cn9k_nix_prefree_seg(struct rte_mbuf *m, struct rte_mbuf **extm, struct cn9k_eth
 			m->next = prev;
 			txq->tx_compl.ptr[sqe_id] = m;
 		} else {
-			sqe_id = __atomic_fetch_add(&txq->tx_compl.sqe_id, 1, __ATOMIC_RELAXED);
+			sqe_id = rte_atomic_fetch_add_explicit(&txq->tx_compl.sqe_id, 1,
+							       rte_memory_order_relaxed);
 			send_hdr->w0.pnc = 1;
 			send_hdr->w1.sqe_id = sqe_id &
 				txq->tx_compl.nb_desc_mask;
@@ -597,9 +598,9 @@ static __rte_always_inline void
 cn9k_nix_sec_fc_wait_one(const struct cn9k_eth_txq *txq)
 {
 	uint64_t nb_desc = txq->cpt_desc;
-	uint64_t *fc = txq->cpt_fc;
+	uint64_t __rte_atomic *fc = txq->cpt_fc;
 
-	while (nb_desc <= __atomic_load_n(fc, __ATOMIC_RELAXED))
+	while (nb_desc <= rte_atomic_load_explicit(fc, rte_memory_order_relaxed))
 		;
 }
 
