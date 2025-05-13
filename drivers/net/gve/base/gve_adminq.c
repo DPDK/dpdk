@@ -196,18 +196,10 @@ gve_process_device_options(struct gve_priv *priv,
 	return 0;
 }
 
-static uint8_t
-gve_get_pci_revision_id(struct gve_priv *priv)
-{
-	uint8_t rev_id;
-
-	rte_pci_read_config(priv->pci_dev, &rev_id, GVE_PCI_REV_SIZE,
-			    GVE_PCI_REV_OFFSET);
-	return rev_id;
-}
-
 int gve_adminq_alloc(struct gve_priv *priv)
 {
+	uint8_t pci_rev_id;
+
 	priv->adminq = gve_alloc_dma_mem(&priv->adminq_dma_mem, PAGE_SIZE);
 	if (unlikely(!priv->adminq))
 		return -ENOMEM;
@@ -231,7 +223,9 @@ int gve_adminq_alloc(struct gve_priv *priv)
 	priv->adminq_get_ptype_map_cnt = 0;
 
 	/* Setup Admin queue with the device */
-	if (gve_get_pci_revision_id(priv) < 0x1) { /* Use AQ PFN. */
+	rte_pci_read_config(priv->pci_dev, &pci_rev_id, sizeof(pci_rev_id),
+			    RTE_PCI_REVISION_ID);
+	if (pci_rev_id < 0x1) { /* Use AQ PFN. */
 		iowrite32be(priv->adminq_dma_mem.pa / PAGE_SIZE,
 			    &priv->reg_bar0->adminq_pfn);
 	} else { /* Use full AQ address. */
@@ -251,10 +245,13 @@ int gve_adminq_alloc(struct gve_priv *priv)
 
 void gve_adminq_release(struct gve_priv *priv)
 {
+	uint8_t pci_rev_id;
 	int i = 0;
 
 	/* Tell the device the adminq is leaving */
-	if (gve_get_pci_revision_id(priv) < 0x1) {
+	rte_pci_read_config(priv->pci_dev, &pci_rev_id, sizeof(pci_rev_id),
+			    RTE_PCI_REVISION_ID);
+	if (pci_rev_id < 0x1) {
 		iowrite32be(0x0, &priv->reg_bar0->adminq_pfn);
 		while (ioread32be(&priv->reg_bar0->adminq_pfn)) {
 			/* If this is reached the device is unrecoverable and still

@@ -14,8 +14,6 @@
 #endif
 
 #define GVE_DEV_ID		0x0042
-#define GVE_PCI_REV_OFFSET	0x8
-#define GVE_PCI_REV_SIZE	1
 
 #define GVE_REG_BAR		0
 #define GVE_DB_BAR		2
