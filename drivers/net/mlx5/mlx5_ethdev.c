@@ -315,6 +315,37 @@ mlx5_set_txlimit_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 }
 
 /**
+ * Get maximal work queue size in WQEs
+ *
+ * @param sh
+ *   Pointer to the device shared context.
+ * @return
+ *   Maximal number of WQEs in queue
+ */
+uint16_t
+mlx5_dev_get_max_wq_size(struct mlx5_dev_ctx_shared *sh)
+{
+	uint16_t max_wqe = MLX5_WQ_INDEX_MAX;
+
+	if (sh->cdev->config.devx) {
+		/* use HCA properties for DevX config */
+		MLX5_ASSERT(sh->cdev->config.hca_attr.log_max_wq_sz != 0);
+		MLX5_ASSERT(sh->cdev->config.hca_attr.log_max_wq_sz < MLX5_WQ_INDEX_WIDTH);
+		if (sh->cdev->config.hca_attr.log_max_wq_sz != 0 &&
+		    sh->cdev->config.hca_attr.log_max_wq_sz < MLX5_WQ_INDEX_WIDTH)
+			max_wqe = 1u << sh->cdev->config.hca_attr.log_max_wq_sz;
+	} else {
+		/* use IB device capabilities */
+		MLX5_ASSERT(sh->dev_cap.max_qp_wr > 0);
+		MLX5_ASSERT((unsigned int)sh->dev_cap.max_qp_wr <= MLX5_WQ_INDEX_MAX);
+		if (sh->dev_cap.max_qp_wr > 0 &&
+		    (uint32_t)sh->dev_cap.max_qp_wr <= MLX5_WQ_INDEX_MAX)
+			max_wqe = (uint16_t)sh->dev_cap.max_qp_wr;
+	}
+	return max_wqe;
+}
+
+/**
  * DPDK callback to get information about the device.
  *
  * @param dev
@@ -327,6 +358,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int max;
+	uint16_t max_wqe;
 
 	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
@@ -359,10 +391,9 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
 	mlx5_set_default_params(dev, info);
 	mlx5_set_txlimit_params(dev, info);
-	info->rx_desc_lim.nb_max =
-		1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz;
-	info->tx_desc_lim.nb_max =
-		1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz;
+	max_wqe = mlx5_dev_get_max_wq_size(priv->sh);
+	info->rx_desc_lim.nb_max = max_wqe;
+	info->tx_desc_lim.nb_max = max_wqe;
 	if (priv->sh->cdev->config.hca_attr.mem_rq_rmp &&
 	    priv->obj_ops.rxq_obj_new == devx_obj_ops.rxq_obj_new)
 		info->dev_capa |= RTE_ETH_DEV_CAPA_RXQ_SHARE;
