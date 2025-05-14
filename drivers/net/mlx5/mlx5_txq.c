@@ -333,7 +333,7 @@ mlx5_tx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (*desc > 1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz) {
+	if (*desc > mlx5_dev_get_max_wq_size(priv->sh)) {
 		DRV_LOG(ERR,
 			"port %u number of descriptors requested for Tx queue"
 			" %u is more than supported",
@@ -728,7 +728,7 @@ txq_calc_inline_max(struct mlx5_txq_ctrl *txq_ctrl)
 	struct mlx5_priv *priv = txq_ctrl->priv;
 	unsigned int wqe_size;
 
-	wqe_size = priv->sh->dev_cap.max_qp_wr / desc;
+	wqe_size = mlx5_dev_get_max_wq_size(priv->sh) / desc;
 	if (!wqe_size)
 		return 0;
 	/*
@@ -1083,6 +1083,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_ctrl *tmpl;
+	uint16_t max_wqe;
 
 	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
 			   desc * sizeof(struct rte_mbuf *), 0, socket);
@@ -1108,13 +1109,12 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	txq_set_params(tmpl);
 	if (txq_adjust_params(tmpl))
 		goto error;
-	if (txq_calc_wqebb_cnt(tmpl) >
-	    priv->sh->dev_cap.max_qp_wr) {
+	max_wqe = mlx5_dev_get_max_wq_size(priv->sh);
+	if (txq_calc_wqebb_cnt(tmpl) > max_wqe) {
 		DRV_LOG(ERR,
 			"port %u Tx WQEBB count (%d) exceeds the limit (%d),"
 			" try smaller queue size",
-			dev->data->port_id, txq_calc_wqebb_cnt(tmpl),
-			priv->sh->dev_cap.max_qp_wr);
+			dev->data->port_id, txq_calc_wqebb_cnt(tmpl), max_wqe);
 		rte_errno = ENOMEM;
 		goto error;
 	}
