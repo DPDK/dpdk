@@ -1965,8 +1965,8 @@ mlx5_flow_rxq_dynf_set(struct rte_eth_dev *dev)
 				data->flow_meta_offset = rte_flow_dynf_metadata_offs;
 				data->flow_meta_port_mask = priv->sh->dv_meta_mask;
 			}
-			data->mark_flag = mark_flag;
 		}
+		data->mark_flag = mark_flag;
 	}
 }
 
