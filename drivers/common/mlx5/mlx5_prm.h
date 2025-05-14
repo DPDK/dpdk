@@ -41,6 +41,7 @@
 /* Hardware index widths. */
 #define MLX5_CQ_INDEX_WIDTH 24
 #define MLX5_WQ_INDEX_WIDTH 16
+#define MLX5_WQ_INDEX_MAX (1u << (MLX5_WQ_INDEX_WIDTH - 1))
 
 /* WQE Segment sizes in bytes. */
 #define MLX5_WSEG_SIZE 16u
