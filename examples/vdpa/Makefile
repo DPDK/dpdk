@@ -31,14 +31,6 @@ LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 build/commands.h: commands.list Makefile
 	dpdk-cmdline-gen.py -o $@ --context-name=main_ctx $<
 
-ifeq ($(MAKECMDGOALS),static)
-# check for broken pkg-config
-ifeq ($(shell echo $(LDFLAGS_STATIC) | grep 'whole-archive.*l:lib.*no-whole-archive'),)
-$(warning "pkg-config output list does not contain drivers between 'whole-archive'/'no-whole-archive' flags.")
-$(error "Cannot generate statically-linked binaries with this version of pkg-config")
-endif
-endif
-
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build $(SRC-DEPS)
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
