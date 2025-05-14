@@ -215,8 +215,8 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		/* Should not release Rx queues but return immediately. */
 		return -rte_errno;
 	}
-	DRV_LOG(DEBUG, "Port %u dev_cap.max_qp_wr is %d.",
-		dev->data->port_id, priv->sh->dev_cap.max_qp_wr);
+	DRV_LOG(DEBUG, "Port %u max work queue size is %d.",
+		dev->data->port_id, mlx5_dev_get_max_wq_size(priv->sh));
 	DRV_LOG(DEBUG, "Port %u dev_cap.max_sge is %d.",
 		dev->data->port_id, priv->sh->dev_cap.max_sge);
 	for (i = 0; i != priv->rxqs_n; ++i) {
