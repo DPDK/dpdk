@@ -1527,7 +1527,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	wqe_size = RTE_ALIGN(wqe_size, MLX5_WQE_SIZE) / MLX5_WQE_SIZE;
 	/* Create Send Queue object with DevX. */
 	wqe_n = RTE_MIN((1UL << txq_data->elts_n) * wqe_size,
-			(uint32_t)priv->sh->dev_cap.max_qp_wr);
+			(uint32_t)mlx5_dev_get_max_wq_size(priv->sh));
 	log_desc_n = log2above(wqe_n);
 	ret = mlx5_txq_create_devx_sq_resources(dev, idx, log_desc_n);
 	if (ret) {
