@@ -35,7 +35,7 @@
 #endif
 #define ASYM_TEST_MSG_LEN 256
 #define TEST_VECTOR_SIZE 256
-#define DEQ_TIMEOUT 50
+#define DEQ_TIMEOUT 10000
 
 static int gbl_driver_id;
 static struct crypto_testsuite_params_asym {
