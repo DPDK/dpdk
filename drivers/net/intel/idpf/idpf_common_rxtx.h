@@ -57,7 +57,6 @@
 #define IDPF_VPMD_DESCS_PER_LOOP	4
 #define IDPF_RXQ_REARM_THRESH		64
 #define IDPD_TXQ_SCAN_CQ_THRESH	64
-#define IDPF_TX_CTYPE_NUM	8
 
 /* MTS */
 #define GLTSYN_CMD_SYNC_0_0	(PF_TIMESYNC_BASE + 0x0)
@@ -171,10 +170,6 @@ struct idpf_rxq_ops {
 	void (*release_mbufs)(struct idpf_rx_queue *rxq);
 };
 
-struct idpf_txq_ops {
-	void (*release_mbufs)(struct ci_tx_queue *txq);
-};
-
 extern int idpf_timestamp_dynfield_offset;
 extern uint64_t idpf_timestamp_dynflag;
 
@@ -185,8 +180,6 @@ int idpf_qc_tx_thresh_check(uint16_t nb_desc, uint16_t tx_rs_thresh,
 			    uint16_t tx_free_thresh);
 __rte_internal
 void idpf_qc_rxq_mbufs_release(struct idpf_rx_queue *rxq);
-__rte_internal
-void idpf_qc_txq_mbufs_release(struct ci_tx_queue *txq);
 __rte_internal
 void idpf_qc_split_rx_descq_reset(struct idpf_rx_queue *rxq);
 __rte_internal

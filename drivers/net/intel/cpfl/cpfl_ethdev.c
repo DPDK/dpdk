@@ -958,8 +958,6 @@ cpfl_start_queues(struct rte_eth_dev *dev)
 			if (err)
 				PMD_DRV_LOG(ERR, "Failed to switch hairpin TX queue %u on",
 					    i);
-			else
-				cpfl_txq->base.q_started = true;
 		}
 	}
 
@@ -1273,7 +1271,6 @@ cpfl_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port)
 				    i);
 			return err;
 		}
-		cpfl_txq->base.q_started = true;
 	}
 
 	err = cpfl_switch_hairpin_complq(cpfl_tx_vport, true);
@@ -1309,17 +1306,14 @@ cpfl_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port)
 	struct cpfl_vport *cpfl_tx_vport = dev->data->dev_private;
 	struct rte_eth_dev *peer_dev = &rte_eth_devices[rx_port];
 	struct cpfl_vport *cpfl_rx_vport = peer_dev->data->dev_private;
-	struct cpfl_tx_queue *cpfl_txq;
 	struct cpfl_rx_queue *cpfl_rxq;
 	int i;
 
 	/* disable hairpin queues */
 	for (i = cpfl_tx_vport->nb_data_txq; i < dev->data->nb_tx_queues; i++) {
-		cpfl_txq = dev->data->tx_queues[i];
 		cpfl_switch_hairpin_rxtx_queue(cpfl_tx_vport,
 					       i - cpfl_tx_vport->nb_data_txq,
 					       false, false);
-		cpfl_txq->base.q_started = false;
 	}
 
 	cpfl_switch_hairpin_complq(cpfl_tx_vport, false);

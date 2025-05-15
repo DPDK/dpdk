@@ -106,16 +106,12 @@ struct ci_tx_queue {
 						struct idpf_flex_tx_sched_desc *desc_ring;
 						struct idpf_splitq_tx_compl_desc *compl_ring;
 				};
-				const struct idpf_txq_ops *idpf_ops;
 				struct ci_tx_queue *complq;
 				void **txqs;   /*only valid for split queue mode*/
-				bool q_started;   /* if tx queue has been started */
-				/* only valid for split queue mode */
 				uint32_t tx_start_qid;
 				uint16_t sw_nb_desc;
 				uint16_t sw_tail;
-#define IDPF_TX_CTYPE_NUM	8
-				uint16_t ctype[IDPF_TX_CTYPE_NUM];
+				uint16_t rs_compl_count;
 				uint8_t expected_gen_id;
 		};
 	};

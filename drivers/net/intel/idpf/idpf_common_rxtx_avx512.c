@@ -1192,7 +1192,8 @@ idpf_splitq_scan_cq_ring(struct ci_tx_queue *cq)
 		txq_qid = (rte_le_to_cpu_16(compl_ring->qid_comptype_gen) &
 			IDPF_TXD_COMPLQ_QID_M) >> IDPF_TXD_COMPLQ_QID_S;
 		txq = cq->txqs[txq_qid - cq->tx_start_qid];
-		txq->ctype[ctype]++;
+		if (ctype == IDPF_TXD_COMPLT_RS)
+			txq->rs_compl_count++;
 		cq_qid++;
 	}
 
@@ -1342,9 +1343,9 @@ idpf_splitq_xmit_pkts_vec_avx512_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t ret, num;
 		idpf_splitq_scan_cq_ring(txq->complq);
 
-		if (txq->ctype[IDPF_TXD_COMPLT_RS] > txq->tx_free_thresh) {
+		if (txq->rs_compl_count > txq->tx_free_thresh) {
 			ci_tx_free_bufs_vec(txq, idpf_tx_desc_done, false);
-			txq->ctype[IDPF_TXD_COMPLT_RS] -= txq->tx_rs_thresh;
+			txq->rs_compl_count -= txq->tx_rs_thresh;
 		}
 
 		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
@@ -1368,34 +1369,6 @@ idpf_dp_splitq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return idpf_splitq_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts);
 }
 
-static inline void
-idpf_tx_release_mbufs_avx512(struct ci_tx_queue *txq)
-{
-	unsigned int i;
-	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
-	struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
-
-	if (txq->sw_ring == NULL || txq->nb_tx_free == max_desc)
-		return;
-
-	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
-	if (txq->tx_tail < i) {
-		for (; i < txq->nb_tx_desc; i++) {
-			rte_pktmbuf_free_seg(swr[i].mbuf);
-			swr[i].mbuf = NULL;
-		}
-		i = 0;
-	}
-	for (; i < txq->tx_tail; i++) {
-		rte_pktmbuf_free_seg(swr[i].mbuf);
-		swr[i].mbuf = NULL;
-	}
-}
-
-static const struct idpf_txq_ops avx512_tx_vec_ops = {
-	.release_mbufs = idpf_tx_release_mbufs_avx512,
-};
-
 RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_tx_vec_avx512_setup)
 int __rte_cold
 idpf_qc_tx_vec_avx512_setup(struct ci_tx_queue *txq)
@@ -1403,6 +1376,6 @@ idpf_qc_tx_vec_avx512_setup(struct ci_tx_queue *txq)
 	if (!txq)
 		return 0;
 
-	txq->idpf_ops = &avx512_tx_vec_ops;
+	txq->vector_tx = true;
 	return 0;
 }
