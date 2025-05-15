@@ -1271,6 +1271,11 @@ class TestPmdVerbosePacket(TextParser):
     l3_len: int | None = field(default=None, metadata=TextParser.find_int(r"l3_len=(\d+)"))
     #:
     l4_len: int | None = field(default=None, metadata=TextParser.find_int(r"l4_len=(\d+)"))
+    #:
+    l4_dport: int | None = field(
+        default=None,
+        metadata=TextParser.find_int(r"Destination (?:TCP|UDP) port=(\d+)"),
+    )
 
 
 class RxOffloadCapability(Flag):
