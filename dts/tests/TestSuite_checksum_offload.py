@@ -70,7 +70,7 @@ class TestChecksumOffload(TestSuite):
             )
 
     def send_packet_and_verify_checksum(
-        self, packet: Packet, good_L4: bool, good_IP: bool, testpmd: TestPmdShell, id: str
+        self, packet: Packet, good_L4: bool, good_IP: bool, testpmd: TestPmdShell, id: int
     ) -> None:
         """Send packet and verify verbose output matches expected output.
 
@@ -81,13 +81,13 @@ class TestChecksumOffload(TestSuite):
             good_IP: Verifies RTE_MBUF_F_RX_IP_CKSUM_GOOD in verbose output
                 if :data:`True`, or RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN if :data:`False`.
             testpmd: Testpmd shell session to analyze verbose output of.
-            id: The destination mac address that matches the sent packet in verbose output.
+            id: The destination port that matches the sent packet in verbose output.
         """
         testpmd.start()
         self.send_packet_and_capture(packet=packet)
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
         for testpmd_packet in verbose_output:
-            if testpmd_packet.dst_mac == id:
+            if testpmd_packet.l4_dport == id:
                 is_IP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in testpmd_packet.ol_flags
                 is_L4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in testpmd_packet.ol_flags
         self.verify(is_L4 == good_L4, "Layer 4 checksum flag did not match expected checksum flag.")
@@ -120,13 +120,13 @@ class TestChecksumOffload(TestSuite):
             Verify packets are received.
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         payload = b"xxxxx"
         packet_list = [
-            Ether(dst=mac_id) / IP() / UDP() / Raw(payload),
-            Ether(dst=mac_id) / IP() / TCP() / Raw(payload),
-            Ether(dst=mac_id) / IPv6(src="::1") / UDP() / Raw(payload),
-            Ether(dst=mac_id) / IPv6(src="::1") / TCP() / Raw(payload),
+            Ether() / IP() / UDP(dport=dport_id) / Raw(payload),
+            Ether() / IP() / TCP(dport=dport_id) / Raw(payload),
+            Ether() / IPv6(src="::1") / UDP(dport=dport_id) / Raw(payload),
+            Ether() / IPv6(src="::1") / TCP(dport=dport_id) / Raw(payload),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -136,7 +136,7 @@ class TestChecksumOffload(TestSuite):
             self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
             for i in range(0, len(packet_list)):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
     @func_test
@@ -152,13 +152,13 @@ class TestChecksumOffload(TestSuite):
             Verify packets are received.
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         payload = b"xxxxx"
         packet_list = [
-            Ether(dst=mac_id) / IP() / UDP() / Raw(payload),
-            Ether(dst=mac_id) / IP() / TCP() / Raw(payload),
-            Ether(dst=mac_id) / IPv6(src="::1") / UDP() / Raw(payload),
-            Ether(dst=mac_id) / IPv6(src="::1") / TCP() / Raw(payload),
+            Ether() / IP() / UDP(dport=dport_id) / Raw(payload),
+            Ether() / IP() / TCP(dport=dport_id) / Raw(payload),
+            Ether() / IPv6(src="::1") / UDP(dport=dport_id) / Raw(payload),
+            Ether() / IPv6(src="::1") / TCP(dport=dport_id) / Raw(payload),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -167,7 +167,7 @@ class TestChecksumOffload(TestSuite):
             self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
             for i in range(0, len(packet_list)):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
     @func_test
@@ -183,12 +183,12 @@ class TestChecksumOffload(TestSuite):
         Verify:
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / UDP(),
-            Ether(dst=mac_id) / IP() / TCP(),
-            Ether(dst=mac_id) / IP() / UDP(chksum=0xF),
-            Ether(dst=mac_id) / IP() / TCP(chksum=0xF),
+            Ether() / IP() / UDP(dport=dport_id),
+            Ether() / IP() / TCP(dport=dport_id),
+            Ether() / IP() / UDP(chksum=0xF, dport=dport_id),
+            Ether() / IP() / TCP(chksum=0xF, dport=dport_id),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -196,11 +196,11 @@ class TestChecksumOffload(TestSuite):
             self.setup_hw_offload(testpmd=testpmd)
             for i in range(0, 2):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
             for i in range(2, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
     @func_test
@@ -216,12 +216,12 @@ class TestChecksumOffload(TestSuite):
         Verify:
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / UDP(),
-            Ether(dst=mac_id) / IP() / TCP(),
-            Ether(dst=mac_id) / IP(chksum=0xF) / UDP(),
-            Ether(dst=mac_id) / IP(chksum=0xF) / TCP(),
+            Ether() / IP() / UDP(dport=dport_id),
+            Ether() / IP() / TCP(dport=dport_id),
+            Ether() / IP(chksum=0xF) / UDP(dport=dport_id),
+            Ether() / IP(chksum=0xF) / TCP(dport=dport_id),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -229,11 +229,11 @@ class TestChecksumOffload(TestSuite):
             self.setup_hw_offload(testpmd=testpmd)
             for i in range(0, 2):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
             for i in range(2, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=True, good_IP=False, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=False, testpmd=testpmd, id=dport_id
                 )
 
     @func_test
@@ -249,16 +249,16 @@ class TestChecksumOffload(TestSuite):
         Verify:
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / UDP(),
-            Ether(dst=mac_id) / IP() / TCP(),
-            Ether(dst=mac_id) / IPv6(src="::1") / UDP(),
-            Ether(dst=mac_id) / IPv6(src="::1") / TCP(),
-            Ether(dst=mac_id) / IP(chksum=0x0) / UDP(chksum=0xF),
-            Ether(dst=mac_id) / IP(chksum=0x0) / TCP(chksum=0xF),
-            Ether(dst=mac_id) / IPv6(src="::1") / UDP(chksum=0xF),
-            Ether(dst=mac_id) / IPv6(src="::1") / TCP(chksum=0xF),
+            Ether() / IP() / UDP(dport=dport_id),
+            Ether() / IP() / TCP(dport=dport_id),
+            Ether() / IPv6(src="::1") / UDP(dport=dport_id),
+            Ether() / IPv6(src="::1") / TCP(dport=dport_id),
+            Ether() / IP(chksum=0x0) / UDP(chksum=0xF, dport=dport_id),
+            Ether() / IP(chksum=0x0) / TCP(chksum=0xF, dport=dport_id),
+            Ether() / IPv6(src="::1") / UDP(chksum=0xF, dport=dport_id),
+            Ether() / IPv6(src="::1") / TCP(chksum=0xF, dport=dport_id),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -266,15 +266,19 @@ class TestChecksumOffload(TestSuite):
             self.setup_hw_offload(testpmd=testpmd)
             for i in range(0, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
             for i in range(4, 6):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=False, good_IP=False, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i],
+                    good_L4=False,
+                    good_IP=False,
+                    testpmd=testpmd,
+                    id=dport_id,
                 )
             for i in range(6, 8):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
     @requires(NicCapability.RX_OFFLOAD_VLAN)
@@ -291,13 +295,29 @@ class TestChecksumOffload(TestSuite):
         Verify:
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         payload = b"xxxxx"
         packet_list = [
-            Ether(dst=mac_id) / Dot1Q(vlan=1) / IP(chksum=0x0) / UDP(chksum=0xF) / Raw(payload),
-            Ether(dst=mac_id) / Dot1Q(vlan=1) / IP(chksum=0x0) / TCP(chksum=0xF) / Raw(payload),
-            Ether(dst=mac_id) / Dot1Q(vlan=1) / IPv6(src="::1") / UDP(chksum=0xF) / Raw(payload),
-            Ether(dst=mac_id) / Dot1Q(vlan=1) / IPv6(src="::1") / TCP(chksum=0xF) / Raw(payload),
+            Ether()
+            / Dot1Q(vlan=1)
+            / IP(chksum=0x0)
+            / UDP(chksum=0xF, dport=dport_id)
+            / Raw(payload),
+            Ether()
+            / Dot1Q(vlan=1)
+            / IP(chksum=0x0)
+            / TCP(chksum=0xF, dport=dport_id)
+            / Raw(payload),
+            Ether()
+            / Dot1Q(vlan=1)
+            / IPv6(src="::1")
+            / UDP(chksum=0xF, dport=dport_id)
+            / Raw(payload),
+            Ether()
+            / Dot1Q(vlan=1)
+            / IPv6(src="::1")
+            / TCP(chksum=0xF, dport=dport_id)
+            / Raw(payload),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -307,11 +327,15 @@ class TestChecksumOffload(TestSuite):
             self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
             for i in range(0, 2):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=False, good_IP=False, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i],
+                    good_L4=False,
+                    good_IP=False,
+                    testpmd=testpmd,
+                    id=dport_id,
                 )
             for i in range(2, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
     @requires(NicCapability.RX_OFFLOAD_SCTP_CKSUM)
@@ -328,10 +352,10 @@ class TestChecksumOffload(TestSuite):
         Verify:
             Verify packet checksums match the expected flags.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / SCTP(),
-            Ether(dst=mac_id) / IP() / SCTP(chksum=0xF),
+            Ether() / IP() / UDP(dport=dport_id) / SCTP(),
+            Ether() / IP() / UDP(dport=dport_id) / SCTP(chksum=0xF),
         ]
         with TestPmdShell(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
@@ -339,8 +363,8 @@ class TestChecksumOffload(TestSuite):
             testpmd.csum_set_hw(layers=ChecksumOffloadOptions.sctp)
             testpmd.start()
             self.send_packet_and_verify_checksum(
-                packet=packet_list[0], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
+                packet=packet_list[0], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
             )
             self.send_packet_and_verify_checksum(
-                packet=packet_list[1], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
+                packet=packet_list[1], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
             )
