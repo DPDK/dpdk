@@ -30,7 +30,6 @@ from framework.testbed_model.capability import NicCapability, TopologyType, requ
 
 
 @requires(topology_type=TopologyType.two_links)
-@requires(NicCapability.RX_OFFLOAD_CHECKSUM)
 @requires(NicCapability.RX_OFFLOAD_IPV4_CKSUM)
 @requires(NicCapability.RX_OFFLOAD_UDP_CKSUM)
 @requires(NicCapability.RX_OFFLOAD_TCP_CKSUM)
