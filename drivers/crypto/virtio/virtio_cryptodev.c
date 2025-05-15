@@ -799,6 +799,10 @@ virtio_crypto_clear_session(
 	}
 
 	malloc_phys_addr = rte_malloc_virt2iova(ctrl);
+	if (malloc_phys_addr == RTE_BAD_IOVA) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("malloc_phys_addr is invalid");
+		return;
+	}
 
 	/* status part */
 	status = &(((struct virtio_crypto_inhdr *)
@@ -916,6 +920,10 @@ virtio_crypto_clear_session_packed(
 	}
 
 	malloc_phys_addr = rte_malloc_virt2iova(ctrl);
+	if (malloc_phys_addr == RTE_BAD_IOVA) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("malloc_phys_addr is invalid");
+		return;
+	}
 
 	/* status part */
 	status = &(((struct virtio_crypto_inhdr *)
