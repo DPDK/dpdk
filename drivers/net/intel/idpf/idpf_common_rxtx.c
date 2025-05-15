@@ -93,32 +93,6 @@ idpf_qc_rxq_mbufs_release(struct idpf_rx_queue *rxq)
 	}
 }
 
-RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_txq_mbufs_release)
-void
-idpf_qc_txq_mbufs_release(struct ci_tx_queue *txq)
-{
-	uint16_t nb_desc, i;
-
-	if (txq == NULL || txq->sw_ring == NULL) {
-		DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
-		return;
-	}
-
-	if (txq->sw_nb_desc != 0) {
-		/* For split queue model, descriptor ring */
-		nb_desc = txq->sw_nb_desc;
-	} else {
-		/* For single queue model */
-		nb_desc = txq->nb_tx_desc;
-	}
-	for (i = 0; i < nb_desc; i++) {
-		if (txq->sw_ring[i].mbuf != NULL) {
-			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-			txq->sw_ring[i].mbuf = NULL;
-		}
-	}
-}
-
 RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_split_rx_descq_reset)
 void
 idpf_qc_split_rx_descq_reset(struct idpf_rx_queue *rxq)
@@ -250,7 +224,7 @@ idpf_qc_split_tx_descq_reset(struct ci_tx_queue *txq)
 	txq->sw_tail = 0;
 	txq->nb_tx_free = txq->nb_tx_desc - 1;
 
-	memset(txq->ctype, 0, sizeof(txq->ctype));
+	txq->rs_compl_count = 0;
 	txq->tx_next_dd = txq->tx_rs_thresh - 1;
 	txq->tx_next_rs = txq->tx_rs_thresh - 1;
 }
@@ -357,7 +331,7 @@ idpf_qc_tx_queue_release(void *txq)
 		rte_free(q->complq);
 	}
 
-	q->idpf_ops->release_mbufs(q);
+	ci_txq_release_all_mbufs(q, false);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -893,7 +867,7 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint8_t cmd_dtype;
 	uint16_t nb_ctx;
 
-	if (unlikely(txq == NULL) || unlikely(!txq->q_started))
+	if (unlikely(txq == NULL))
 		return nb_tx;
 
 	txr = txq->desc_ring;
@@ -1390,7 +1364,7 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_tx = 0;
 	txq = tx_queue;
 
-	if (unlikely(txq == NULL) || unlikely(!txq->q_started))
+	if (unlikely(txq == NULL))
 		return nb_tx;
 
 	sw_ring = txq->sw_ring;
