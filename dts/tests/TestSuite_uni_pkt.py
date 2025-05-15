@@ -44,7 +44,7 @@ class TestUniPkt(TestSuite):
     ) -> bool:
         """Returns :data:`True` if the packet in verbose output contains all specified flags."""
         for packet in output:
-            if packet.dst_mac == "00:00:00:00:00:01":
+            if packet.l4_dport == 50000:
                 if flags not in packet.hw_ptype and flags not in packet.sw_ptype:
                     return False
         return True
@@ -82,8 +82,8 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
-        packet_list = [Ether(dst=mac_id, type=0x88F7) / Raw(), Ether(dst=mac_id) / ARP() / Raw()]
+        dport_id = 50000
+        packet_list = [Ether(type=0x88F7) / UDP(dport=dport_id) / Raw(), Ether() / ARP() / Raw()]
         flag_list = [RtePTypes.L2_ETHER_TIMESYNC, RtePTypes.L2_ETHER_ARP]
         with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
@@ -101,14 +101,14 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / Raw(),
-            Ether(dst=mac_id) / IP() / UDP() / Raw(),
-            Ether(dst=mac_id) / IP() / TCP() / Raw(),
-            Ether(dst=mac_id) / IP() / SCTP() / Raw(),
-            Ether(dst=mac_id) / IP() / ICMP() / Raw(),
-            Ether(dst=mac_id) / IP(frag=5) / TCP() / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / Raw(),
+            Ether() / IP() / UDP(dport=dport_id) / Raw(),
+            Ether() / IP() / TCP(dport=dport_id) / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / SCTP() / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / ICMP() / Raw(),
+            Ether() / IP(frag=5) / TCP(dport=dport_id) / Raw(),
         ]
         flag_list = [
             RtePTypes.L3_IPV4 | RtePTypes.L2_ETHER,
@@ -134,12 +134,12 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IPv6() / Raw(),
-            Ether(dst=mac_id) / IPv6() / UDP() / Raw(),
-            Ether(dst=mac_id) / IPv6() / TCP() / Raw(),
-            Ether(dst=mac_id) / IPv6() / IPv6ExtHdrFragment() / Raw(),
+            Ether() / UDP(dport=dport_id) / IPv6() / Raw(),
+            Ether() / IPv6() / UDP(dport=dport_id) / Raw(),
+            Ether() / IPv6() / TCP(dport=dport_id) / Raw(),
+            Ether() / UDP(dport=dport_id) / IPv6() / IPv6ExtHdrFragment() / Raw(),
         ]
         flag_list = [
             RtePTypes.L2_ETHER | RtePTypes.L3_IPV6,
@@ -163,15 +163,15 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / IP(frag=5) / UDP() / Raw(),
-            Ether(dst=mac_id) / IP() / IP() / Raw(),
-            Ether(dst=mac_id) / IP() / IP() / UDP() / Raw(),
-            Ether(dst=mac_id) / IP() / IP() / TCP() / Raw(),
-            Ether(dst=mac_id) / IP() / IP() / SCTP() / Raw(),
-            Ether(dst=mac_id) / IP() / IP() / ICMP() / Raw(),
-            Ether(dst=mac_id) / IP() / IPv6() / IPv6ExtHdrFragment() / Raw(),
+            Ether() / IP() / IP(frag=5) / UDP(dport=dport_id) / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / IP() / Raw(),
+            Ether() / IP() / IP() / UDP(dport=dport_id) / Raw(),
+            Ether() / IP() / IP() / TCP(dport=dport_id) / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / IP() / SCTP() / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / IP() / ICMP() / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / IPv6() / IPv6ExtHdrFragment() / Raw(),
         ]
         flag_list = [
             RtePTypes.TUNNEL_IP | RtePTypes.L3_IPV4_EXT_UNKNOWN | RtePTypes.INNER_L4_FRAG,
@@ -198,14 +198,14 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / GRE() / IP(frag=5) / Raw(),
-            Ether(dst=mac_id) / IP() / GRE() / IP() / Raw(),
-            Ether(dst=mac_id) / IP() / GRE() / IP() / UDP() / Raw(),
-            Ether(dst=mac_id) / IP() / GRE() / IP() / TCP() / Raw(),
-            Ether(dst=mac_id) / IP() / GRE() / IP() / SCTP() / Raw(),
-            Ether(dst=mac_id) / IP() / GRE() / IP() / ICMP() / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / GRE() / IP(frag=5) / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / GRE() / IP() / Raw(),
+            Ether() / IP() / GRE() / IP() / UDP(dport=dport_id) / Raw(),
+            Ether() / IP() / GRE() / IP() / TCP(dport=dport_id) / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / GRE() / IP() / SCTP() / Raw(),
+            Ether() / UDP(dport=dport_id) / IP() / GRE() / IP() / ICMP() / Raw(),
         ]
         flag_list = [
             RtePTypes.TUNNEL_GRENAT | RtePTypes.INNER_L4_FRAG | RtePTypes.INNER_L3_IPV4_EXT_UNKNOWN,
@@ -231,15 +231,20 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id, type=0x894F) / NSH() / IP(),
-            Ether(dst=mac_id, type=0x894F) / NSH() / IP() / ICMP(),
-            Ether(dst=mac_id, type=0x894F) / NSH() / IP(frag=1, flags="MF"),
-            Ether(dst=mac_id, type=0x894F) / NSH() / IP() / TCP(),
-            Ether(dst=mac_id, type=0x894F) / NSH() / IP() / UDP(),
-            Ether(dst=mac_id, type=0x894F) / NSH() / IP() / SCTP(tag=1) / SCTPChunkData(data="x"),
-            Ether(dst=mac_id, type=0x894F) / NSH() / IPv6(),
+            Ether(type=0x894F) / UDP(dport=dport_id) / NSH() / IP(),
+            Ether(type=0x894F) / UDP(dport=dport_id) / NSH() / IP() / ICMP(),
+            Ether(type=0x894F) / UDP(dport=dport_id) / NSH() / IP(frag=1, flags="MF"),
+            Ether(type=0x894F) / NSH() / IP() / TCP(dport=dport_id),
+            Ether(type=0x894F) / NSH() / IP() / UDP(dport=dport_id),
+            Ether(type=0x894F)
+            / UDP(dport=dport_id)
+            / NSH()
+            / IP()
+            / SCTP(tag=1)
+            / SCTPChunkData(data="x"),
+            Ether(type=0x894F) / UDP(dport=dport_id) / NSH() / IPv6(),
         ]
         flag_list = [
             RtePTypes.L2_ETHER_NSH | RtePTypes.L3_IPV4_EXT_UNKNOWN | RtePTypes.L4_NONFRAG,
@@ -267,24 +272,15 @@ class TestUniPkt(TestSuite):
             Check that each packet has a destination MAC address matching the set ID.
             Check the packet type fields in verbose output, verify the flags match.
         """
-        mac_id = "00:00:00:00:00:01"
+        dport_id = 50000
         packet_list = [
-            Ether(dst=mac_id) / IP() / UDP() / VXLAN() / Ether() / IP(frag=5) / Raw(),
-            Ether(dst=mac_id) / IP() / UDP() / VXLAN() / Ether() / IP() / Raw(),
-            Ether(dst=mac_id) / IP() / UDP() / VXLAN() / Ether() / IP() / UDP() / Raw(),
-            Ether(dst=mac_id) / IP() / UDP() / VXLAN() / Ether() / IP() / TCP() / Raw(),
-            Ether(dst=mac_id) / IP() / UDP() / VXLAN() / Ether() / IP() / SCTP() / Raw(),
-            Ether(dst=mac_id) / IP() / UDP() / VXLAN() / Ether() / IP() / ICMP() / Raw(),
-            (
-                Ether(dst=mac_id)
-                / IP()
-                / UDP()
-                / VXLAN()
-                / Ether()
-                / IPv6()
-                / IPv6ExtHdrFragment()
-                / Raw()
-            ),
+            Ether() / IP() / UDP(dport=dport_id) / VXLAN() / Ether() / IP(frag=5) / Raw(),
+            Ether() / IP() / UDP(dport=dport_id) / VXLAN() / Ether() / IP() / Raw(),
+            Ether() / IP() / UDP(dport=dport_id) / VXLAN() / Ether() / IP() / UDP() / Raw(),
+            Ether() / IP() / UDP(dport=dport_id) / VXLAN() / Ether() / IP() / TCP() / Raw(),
+            Ether() / IP() / UDP(dport=dport_id) / VXLAN() / Ether() / IP() / SCTP() / Raw(),
+            Ether() / IP() / UDP(dport=dport_id) / VXLAN() / Ether() / IP() / ICMP() / Raw(),
+            (Ether() / IP() / UDP() / VXLAN() / Ether() / IPv6() / IPv6ExtHdrFragment() / Raw()),
         ]
         flag_list = [
             RtePTypes.TUNNEL_GRENAT | RtePTypes.INNER_L4_FRAG | RtePTypes.INNER_L3_IPV4_EXT_UNKNOWN,
