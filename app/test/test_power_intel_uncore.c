@@ -35,7 +35,7 @@ static int check_power_uncore_init(void)
 			"may occur if environment is not configured "
 			"correctly(APCI cpufreq) or operating in another valid "
 			"Power management environment\n", VALID_PKG, VALID_DIE);
-		return -1;
+		return TEST_SKIPPED;
 	}
 
 	/* Unsuccessful Test */
@@ -257,8 +257,11 @@ test_power_intel_uncore(void)
 	}
 
 	ret = check_power_uncore_init();
-	if (ret < 0)
+	if (ret != 0) {
+		if (ret == TEST_SKIPPED)
+			return TEST_SKIPPED;
 		goto fail_all;
+	}
 
 	ret = check_power_get_uncore_freq();
 	if (ret < 0)
