@@ -307,26 +307,27 @@ power_intel_uncore_exit(unsigned int pkg, unsigned int die)
 
 	ui = &uncore_info[pkg][die];
 
-	if (fprintf(ui->f_cur_min, "%u", ui->org_min_freq) < 0) {
-		RTE_LOG(ERR, POWER, "Fail to write original uncore frequency for "
-				"pkg %02u die %02u\n", ui->pkg, ui->die);
-		return -1;
+	if (ui->f_cur_min != NULL) {
+		if (fprintf(ui->f_cur_min, "%u", ui->org_min_freq) < 0) {
+			RTE_LOG(ERR, POWER, "Fail to write original uncore frequency for "
+					"pkg %02u die %02u\n", ui->pkg, ui->die);
+			return -1;
+		}
+		fflush(ui->f_cur_min);
+		fclose(ui->f_cur_min);
+		ui->f_cur_min = NULL;
 	}
 
-	if (fprintf(ui->f_cur_max, "%u", ui->org_max_freq) < 0) {
-		RTE_LOG(ERR, POWER, "Fail to write original uncore frequency for "
-				"pkg %02u die %02u\n", ui->pkg, ui->die);
-		return -1;
+	if (ui->f_cur_max != NULL) {
+		if (fprintf(ui->f_cur_max, "%u", ui->org_max_freq) < 0) {
+			RTE_LOG(ERR, POWER, "Fail to write original uncore frequency for "
+					"pkg %02u die %02u\n", ui->pkg, ui->die);
+			return -1;
+		}
+		fflush(ui->f_cur_max);
+		fclose(ui->f_cur_max);
+		ui->f_cur_max = NULL;
 	}
-
-	fflush(ui->f_cur_min);
-	fflush(ui->f_cur_max);
-
-	/* Close FD of setting freq */
-	fclose(ui->f_cur_min);
-	fclose(ui->f_cur_max);
-	ui->f_cur_min = NULL;
-	ui->f_cur_max = NULL;
 
 	return 0;
 }
