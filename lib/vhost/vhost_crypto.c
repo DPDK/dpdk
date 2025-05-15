@@ -1492,10 +1492,10 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	struct vhost_crypto_data_req *vc_req, *vc_req_out;
 	struct rte_cryptodev_asym_session *asym_session;
 	struct rte_cryptodev_sym_session *sym_session;
+	struct vhost_crypto_data_req data_req = {0};
 	struct vhost_crypto_session *vhost_session;
 	struct vhost_crypto_desc *desc = descs;
 	uint32_t nb_descs = 0, max_n_descs, i;
-	struct vhost_crypto_data_req data_req;
 	struct virtio_crypto_op_data_req req;
 	struct virtio_crypto_inhdr *inhdr;
 	struct vring_desc *src_desc;
