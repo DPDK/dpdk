@@ -191,7 +191,7 @@ static __rte_always_inline int
 cnxk_ae_fill_ec_params(struct cnxk_ae_sess *sess, struct rte_crypto_asym_xform *xform)
 {
 	struct roc_ae_ec_ctx *ec = &sess->ec_ctx;
-	union cpt_inst_w4 w4;
+	union cpt_inst_w4 w4 = {0};
 
 	switch (xform->ec.curve_id) {
 	case RTE_CRYPTO_EC_GROUP_SECP192R1:
