@@ -155,6 +155,7 @@ queue_ops_rsa_sign_verify(void *sess)
 	if (result_op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
 		RTE_LOG(ERR, USER1, "Failed to process sign-verify op\n");
 		status = TEST_FAILED;
+		goto error_exit;
 	}
 
 	status = TEST_SUCCESS;
