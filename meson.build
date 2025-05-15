@@ -10,7 +10,7 @@ project('DPDK', 'c',
             'default_library=static',
             'warning_level=2',
         ],
-        meson_version: '>= 0.57'
+        meson_version: '>= 0.57.2'
 )
 
 fs = import('fs')

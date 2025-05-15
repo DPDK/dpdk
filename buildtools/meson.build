@@ -21,11 +21,16 @@ list_dir_globs = py3 + files('list-dir-globs.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
 get_cpu_count_cmd = py3 + files('get-cpu-count.py')
 get_numa_count_cmd = py3 + files('get-numa-count.py')
+get_min_meson_version_cmd = py3 + files('get-min-meson-version.py')
 get_test_suites_cmd = py3 + files('get-test-suites.py')
 header_gen_cmd = py3 + files('gen-header.py')
 has_hugepages_cmd = py3 + files('has-hugepages.py')
 cmdline_gen_cmd = py3 + files('dpdk-cmdline-gen.py')
 check_dts_requirements = py3 + files('check-dts-requirements.py')
+
+# check that we can correctly report minimum Meson version
+min_ver = run_command(get_min_meson_version_cmd, check: true, capture: true)
+message('Minimum Meson required version is ' + min_ver.stdout())
 
 # install any build tools that end-users might want also
 install_data([
