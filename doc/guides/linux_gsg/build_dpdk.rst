@@ -177,6 +177,124 @@ Once the build directory has been configured,
 DPDK can be compiled using ``ninja`` as described above.
 
 
+Building DPDK for a New ARM SoC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build options for ARM
+^^^^^^^^^^^^^^^^^^^^^
+
+The build system for ARM platforms has changed in DPDK 25.03
+to improve clarity, usability, and performance optimization.
+
+The option ``-march`` defines the general architecture,
+and ``-mtune`` optimizes performance for a specific CPU
+but does not allow the compiler to make assumptions about available instructions.
+
+Before DPDK 25.03, the ARM build process utilized a mixture
+of compiler flags (``-mcpu``, ``-march``, and ``-mtune``),
+which could inadvertently cause the compiler to fall back
+to older instruction sets, resulting in suboptimal performance.
+
+Following Arm's official guidance,
+the recommended practice is to prioritize the ``-mcpu`` flag
+whenever the compiler supports the targeted CPU.
+The ``-mcpu`` option specifies the exact CPU,
+enabling the compiler to optimize code generation,
+select appropriate instruction sets,
+and fine-tune performance characteristics explicitly for the given processor.
+
+Since DPDK 25.03:
+
+- For CPUs directly supported by a compiler's ``-mcpu`` option,
+  references to ``-march`` and related features are eliminated
+  to simplify and improve the build configuration.
+
+- For CPUs lacking direct compiler support,
+  pseudo-CPU definitions explicitly specify architecture (``march``)
+  and extensions (``march_extensions``)
+  to ensure optimal performance without unintended downgrades.
+
+- When unsupported ``-mcpu``, ``march`` or extensions are specified,
+  the build explicitly fails, providing guidance to resolve the issue,
+  without unintended fallbacks to lower-performing architectures.
+
+Adding Support for a New SoC
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If building DPDK for an ARM SoC that is not already supported,
+follow the guidelines below to add support for a new SoC based on compiler support.
+
+- Compiler ``-mcpu`` option supports the SoC
+
+  #. In the appropriate ``part_number_config`` dictionary
+     (located in ``config/arm/meson.build``),
+     assign to ``mcpu`` the SoC supported by the compiler ``-mcpu`` option.
+     The following example is for SoC *foo* where the compiler supports ``-mcpu=foo``.
+
+     .. code-block:: meson
+
+        '<Part_Number>': {
+            'mcpu': 'foo',
+            'flags': [
+                ['RTE_MACHINE', '"Foo"'],
+                # Additional flags as needed
+            ]
+        },
+
+- Compiler lacks specific ``-mcpu`` support or features (pseudo-CPU required)
+
+  If the compiler does not fully support your SoC, perform the following steps:
+
+  #. Assign a pseudo-CPU name:
+
+     In the appropriate ``part_number_config`` dictionary
+     (located in ``config/arm/meson.build``),
+     assign to ``mcpu`` a unique pseudo-CPU name prefixed with ``mcpu_``.
+     This name should clearly represent your SoC.
+     The following example is for SoC *foo*.
+
+     .. code-block:: meson
+
+        '<Part_Number>': {
+            'mcpu': 'mcpu_foo',
+            'flags': [
+                ['RTE_MACHINE', '"Foo"'],
+                # Additional flags as needed
+            ]
+        },
+
+  #. Define the pseudo-CPU details:
+
+     In the ``mcpu_defs`` dictionary, add your pseudo-CPU definition.
+     Clearly specify the architecture (``march``)
+     and list any compiler-supported extensions (``march_extensions``).
+     Extensions such as ``sve`` or ``crypto`` are examples.
+     It is acceptable to leave ``march_extensions`` empty if no specific extensions are required.
+
+     .. code-block:: meson
+
+        'mcpu_foo': {
+            'march': 'armv8.x-a',
+            'march_extensions': ['sve', 'crypto']
+        },
+
+     Replace ``armv8.x-a`` and the listed extensions with the appropriate ISA
+     and features for your SoC.
+
+- Older compiler without specific ``-mcpu`` support
+
+  #. Upgrade your compiler to a newer version that supports the required CPU.
+
+  #. Alternatively, utilize a generic build configuration:
+
+     .. code-block:: console
+
+        meson setup -Dplatform=generic build
+
+By adhering to these guidelines, you will ensure the most optimized build
+for ARM-based DPDK targets.
+
+
 .. _building_app_using_installed_dpdk:
 
 Building Applications Using Installed DPDK
