@@ -2383,18 +2383,16 @@ hns3_rxd_to_vlan_tci(struct hns3_rx_queue *rxq, struct rte_mbuf *mb,
 }
 
 static inline void
-recalculate_data_len(struct rte_mbuf *first_seg, struct rte_mbuf *last_seg,
-		    struct rte_mbuf *rxm, struct hns3_rx_queue *rxq,
-		    uint16_t data_len)
+recalculate_data_len(struct rte_mbuf *last_seg, struct rte_mbuf *rxm,
+		     struct hns3_rx_queue *rxq)
 {
+	uint16_t data_len = rxm->data_len;
 	uint8_t crc_len = rxq->crc_len;
 
 	if (data_len <= crc_len) {
-		rte_pktmbuf_free_seg(rxm);
-		first_seg->nb_segs--;
+		rxm->data_len = 0;
 		last_seg->data_len = (uint16_t)(last_seg->data_len -
 			(crc_len - data_len));
-		last_seg->next = NULL;
 	} else
 		rxm->data_len = (uint16_t)(data_len - crc_len);
 }
@@ -2725,8 +2723,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
 			first_seg->pkt_len -= rxq->crc_len;
-			recalculate_data_len(first_seg, last_seg, rxm, rxq,
-				rxm->data_len);
+			recalculate_data_len(last_seg, rxm, rxq);
 		}
 
 		first_seg->port = rxq->port_id;
