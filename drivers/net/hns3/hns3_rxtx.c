@@ -11,6 +11,7 @@
 #include <rte_io.h>
 #include <rte_net.h>
 #include <rte_malloc.h>
+#include <rte_net_crc.h>
 #if defined(RTE_ARCH_ARM64)
 #include <rte_cpuflags.h>
 #include <rte_vect.h>
@@ -93,6 +94,10 @@ hns3_rx_queue_release(void *queue)
 		if (rxq->sw_ring) {
 			rte_free(rxq->sw_ring);
 			rxq->sw_ring = NULL;
+		}
+		if (rxq->crc_ctx) {
+			rte_net_crc_free(rxq->crc_ctx);
+			rxq->crc_ctx = NULL;
 		}
 		rte_free(rxq);
 	}
@@ -1768,8 +1773,9 @@ hns3_rx_buf_len_calc(struct rte_mempool *mp, uint16_t *rx_buf_len)
 }
 
 static int
-hns3_rxq_conf_runtime_check(struct hns3_hw *hw, uint16_t buf_size,
-				uint16_t nb_desc)
+hns3_rxq_conf_runtime_check(struct hns3_hw *hw,
+			    const struct rte_eth_rxconf *conf,
+			    uint16_t buf_size, uint16_t nb_desc)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hw->data->port_id];
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
@@ -1802,6 +1808,14 @@ hns3_rxq_conf_runtime_check(struct hns3_hw *hw, uint16_t buf_size,
 			return -EINVAL;
 		}
 	}
+
+	if ((conf->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) &&
+	    pkt_burst != hns3_recv_pkts_simple &&
+	    pkt_burst != hns3_recv_scattered_pkts) {
+		hns3_err(hw, "KEEP_CRC offload is not supported with the current Rx function.");
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -1838,7 +1852,7 @@ hns3_rx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_rxconf *conf,
 	}
 
 	if (hw->data->dev_started) {
-		ret = hns3_rxq_conf_runtime_check(hw, *buf_size, nb_desc);
+		ret = hns3_rxq_conf_runtime_check(hw, conf, *buf_size, nb_desc);
 		if (ret) {
 			hns3_err(hw, "Rx queue runtime setup fail.");
 			return ret;
@@ -1958,6 +1972,15 @@ hns3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t nb_desc,
 		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
+
+	rxq->keep_crc_fail_ptype = hw->strip_crc_ptype;
+
+	rxq->crc_ctx = rte_net_crc_set_alg(RTE_NET_CRC_SCALAR, RTE_NET_CRC32_ETH);
+	if (rxq->crc_ctx == NULL) {
+		hns3_err(hw, "Failed to allocate the CRC context.");
+		hns3_rx_queue_release(rxq);
+		return -ENOMEM;
+	}
 
 	rxq->bulk_mbuf_num = 0;
 
@@ -2433,6 +2456,54 @@ hns3_rx_ptp_timestamp_handle(struct hns3_rx_queue *rxq, struct rte_mbuf *mbuf,
 	pf->rx_timestamp = timestamp;
 }
 
+static inline bool
+hns3_need_recalculate_crc(struct hns3_rx_queue *rxq, struct rte_mbuf *m)
+{
+	uint32_t ptype = m->packet_type;
+
+	if (rxq->keep_crc_fail_ptype == HNS3_STRIP_CRC_PTYPE_NONE)
+		return false;
+
+	if (m->pkt_len > HNS3_KEEP_CRC_OK_MIN_PKT_LEN)
+		return false;
+
+	if (!(RTE_ETH_IS_IPV4_HDR(ptype) || RTE_ETH_IS_IPV6_HDR(ptype)))
+		return false;
+
+	if (rxq->keep_crc_fail_ptype == HNS3_STRIP_CRC_PTYPE_TCP)
+		return (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP;
+
+	return true;
+}
+
+/*
+ * The hns3 driver requires that mbuf size must be at least 512B.
+ * When CRC is stripped by hardware, the pkt_len must be less than
+ * or equal to 60B. Therefore, the space of the mbuf is enough
+ * to insert the CRC.
+ */
+static_assert(HNS3_KEEP_CRC_OK_MIN_PKT_LEN < HNS3_MIN_BD_BUF_SIZE,
+	      "buffer size too small to insert CRC");
+
+static inline void
+hns3_recalculate_crc(struct hns3_rx_queue *rxq, struct rte_mbuf *m)
+{
+	char *append_data;
+	uint32_t crc;
+
+	crc = rte_net_crc_calc(rxq->crc_ctx, rte_pktmbuf_mtod(m, void *), m->data_len);
+
+	/*
+	 * After CRC is stripped by hardware, pkt_len and data_len do not
+	 * contain the CRC length. Therefore, after CRC data is appended
+	 * by PMD again.
+	 */
+	append_data = rte_pktmbuf_append(m, RTE_ETHER_CRC_LEN);
+
+	/* CRC data is binary data and does not care about the byte order. */
+	memcpy(append_data, &crc, RTE_ETHER_CRC_LEN);
+}
+
 uint16_t
 hns3_recv_pkts_simple(void *rx_queue,
 		      struct rte_mbuf **rx_pkts,
@@ -2503,8 +2574,7 @@ hns3_recv_pkts_simple(void *rx_queue,
 		rxdp->rx.bd_base_info = 0;
 
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
-		rxm->pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.pkt_len)) -
-				rxq->crc_len;
+		rxm->pkt_len = (uint16_t)(rte_le_to_cpu_16(rxd.rx.pkt_len));
 		rxm->data_len = rxm->pkt_len;
 		rxm->port = rxq->port_id;
 		rxm->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
@@ -2528,6 +2598,12 @@ hns3_recv_pkts_simple(void *rx_queue,
 
 		if (rxm->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
 			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+
+		if (unlikely(rxq->crc_len > 0) &&
+		    hns3_need_recalculate_crc(rxq, rxm))
+			hns3_recalculate_crc(rxq, rxm);
+		rxm->pkt_len -= rxq->crc_len;
+		rxm->data_len -= rxq->crc_len;
 
 		hns3_rxd_to_vlan_tci(rxq, rxm, l234_info, &rxd);
 
@@ -2695,10 +2771,10 @@ hns3_recv_scattered_pkts(void *rx_queue,
 
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->data_len = rte_le_to_cpu_16(rxd.rx.size);
+		rxm->next = NULL;
 
 		if (!(bd_base_info & BIT(HNS3_RXD_FE_B))) {
 			last_seg = rxm;
-			rxm->next = NULL;
 			continue;
 		}
 
@@ -2712,22 +2788,6 @@ hns3_recv_scattered_pkts(void *rx_queue,
 		 * subtract it, same as data len.
 		 */
 		first_seg->pkt_len = rte_le_to_cpu_16(rxd.rx.pkt_len);
-
-		/*
-		 * This is the last buffer of the received packet. If the CRC
-		 * is not stripped by the hardware:
-		 *  - Subtract the CRC length from the total packet length.
-		 *  - If the last buffer only contains the whole CRC or a part
-		 *  of it, free the mbuf associated to the last buffer. If part
-		 *  of the CRC is also contained in the previous mbuf, subtract
-		 *  the length of that CRC part from the data length of the
-		 *  previous mbuf.
-		 */
-		rxm->next = NULL;
-		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt_len -= rxq->crc_len;
-			recalculate_data_len(last_seg, rxm, rxq);
-		}
 
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
@@ -2757,6 +2817,31 @@ hns3_recv_scattered_pkts(void *rx_queue,
 
 		if (first_seg->packet_type == RTE_PTYPE_L2_ETHER_TIMESYNC)
 			rxm->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP;
+		/*
+		 * This is the last buffer of the received packet. If the CRC
+		 * is not stripped by the hardware:
+		 *  - Subtract the CRC length from the total packet length.
+		 *  - If the last buffer only contains the whole CRC or a part
+		 *  of it, free the mbuf associated to the last buffer. If part
+		 *  of the CRC is also contained in the previous mbuf, subtract
+		 *  the length of that CRC part from the data length of the
+		 *  previous mbuf.
+		 *
+		 * In addition, the CRC is still stripped for a kind of packets
+		 * in hns3 NIC:
+		 * 1. All IP-TCP packet whose the length is less than and equal
+		 *    to 60 Byte (no CRC) on HIP08 network engine.
+		 * 2. All IP packet whose the length is less than and equal to
+		 *    60 Byte (no CRC) on HIP09 network engine.
+		 * In this case, the PMD calculates the CRC and appends it to
+		 * mbuf.
+		 */
+		if (unlikely(rxq->crc_len > 0)) {
+			if (hns3_need_recalculate_crc(rxq, first_seg))
+				hns3_recalculate_crc(rxq, first_seg);
+			first_seg->pkt_len -= rxq->crc_len;
+			recalculate_data_len(last_seg, rxm, rxq);
+		}
 
 		hns3_rxd_to_vlan_tci(rxq, first_seg, l234_info, &rxd);
 

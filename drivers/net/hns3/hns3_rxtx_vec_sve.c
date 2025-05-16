@@ -36,8 +36,7 @@ hns3_desc_parse_field_sve(struct hns3_rx_queue *rxq,
 		/* init rte_mbuf.rearm_data last 64-bit */
 		rx_pkts[i]->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
 		rx_pkts[i]->hash.rss = rxdp[i].rx.rss_hash;
-		rx_pkts[i]->pkt_len = rte_le_to_cpu_16(rxdp[i].rx.pkt_len) -
-					rxq->crc_len;
+		rx_pkts[i]->pkt_len = rte_le_to_cpu_16(rxdp[i].rx.pkt_len);
 		rx_pkts[i]->data_len = rx_pkts[i]->pkt_len;
 
 		l234_info = rxdp[i].rx.l234_info;
