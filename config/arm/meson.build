@@ -118,6 +118,16 @@ part_number_config_arm = {
             ['RTE_MAX_LCORE', 192],
             ['RTE_MAX_NUMA_NODES', 2]
         ]
+    },
+    '0xd84': {
+        'mcpu' : 'neoverse-v3',
+        'flags': [
+            ['RTE_MACHINE', '"neoverse-v3"'],
+            ['RTE_ARM_FEATURE_ATOMICS', true],
+            ['RTE_ARM_FEATURE_WFXT', true],
+            ['RTE_MAX_LCORE', 128],
+            ['RTE_MAX_NUMA_NODES', 2]
+        ]
     }
 }
 implementer_arm = {
@@ -631,6 +641,13 @@ soc_v2 = {
     'numa': true
 }
 
+soc_v3 = {
+    'description': 'Arm Neoverse V3',
+    'implementer': '0x41',
+    'part_number': '0xd84',
+    'numa': true
+}
+
 mcpu_defs = {
     'mcpu_centriq2400': {
         'march': 'armv8-a',
@@ -711,6 +728,7 @@ thunderxt88:     Marvell ThunderX T88
 tys2500:         Phytium TengYun S2500
 tys5000c:        Phytium TengYun S5000c
 v2:              Arm Neoverse V2
+v3:              Arm Neoverse V3
 End of SoCs list
 '''
 # The string above is included in the documentation, keep it in sync with the
@@ -751,6 +769,7 @@ socs = {
     'tys2500': soc_tys2500,
     'tys5000c': soc_tys5000c,
     'v2': soc_v2,
+    'v3': soc_v3,
 }
 
 dpdk_conf.set('RTE_ARCH_ARM', 1)
