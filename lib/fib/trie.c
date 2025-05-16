@@ -338,7 +338,7 @@ write_edge(struct rte_trie_tbl *dp, const uint8_t *ip_part, uint64_t next_hop,
 		if (ret < 0)
 			return ret;
 		if (edge == LEDGE) {
-			write_to_dp((uint8_t *)p + (1 << dp->nh_sz),
+			write_to_dp(RTE_PTR_ADD(p, (uintptr_t)(1) << dp->nh_sz),
 				next_hop << 1, dp->nh_sz, UINT8_MAX - *ip_part);
 		} else {
 			write_to_dp(get_tbl_p_by_idx(dp->tbl8, tbl8_idx *
