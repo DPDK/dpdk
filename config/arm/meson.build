@@ -110,17 +110,7 @@ part_number_config_arm = {
         ]
     },
     '0xd8e': {
-        # Only when -march=armv9-a+wfxt is used will the WFET
-        # feature be compiled with armv9 instructions.
-        # However, +wfxt is not supported by GCC at the moment.
-        # Although armv9-a is the fitting version of Arm ISA for
-        # Neoverse N3, it cannot be used when enabling wfxt for
-        # the above reasons.
-        # The workaround for this is to use armv8.7-a, which
-        # doesn't require +wfxt for binutils version 2.36 or greater.
-        'march': 'armv8.7-a',
-        'march_features': ['sve2'],
-        'fallback_march': 'armv8.5-a',
+        'mcpu' : 'neoverse-n3',
         'flags': [
             ['RTE_MACHINE', '"neoverse-n3"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -712,6 +702,7 @@ kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
 n1sdp:           Arm Neoverse N1SDP
 n2:              Arm Neoverse N2
+n3:              Arm Neoverse N3
 odyssey:         Marvell Odyssey
 stingray:        Broadcom Stingray
 thunderx2:       Marvell ThunderX2 T99
