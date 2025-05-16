@@ -139,6 +139,7 @@ The following are the application command-line options:
 * ``--segment-sz <n>``
 
         Set the size of the segment to use, for Scatter Gather List testing.
+        Use list of values in ``buffer-sz`` in descending order if ``segment-sz`` is used.
         By default, it is set to the size of the maximum buffer size, including the digest size,
         so a single segment is created.
 
