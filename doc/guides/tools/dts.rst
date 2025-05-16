@@ -405,6 +405,12 @@ There are four types of methods that comprise a test suite:
    If there's any functionality or logic missing from the framework,
    it should be implemented so that the test suites can use one of these two ways.
 
+   Test suites may also be configured individually using a file provided at the command line.
+   The file is a simple mapping of test suite names to their corresponding configurations.
+
+   Any test suite can be designed to require custom configuration attributes or optional ones.
+   Any optional attributes should supply a default value for the test suite to use.
+
 #. **Test case verification**
 
    Test case verification should be done with the ``verify`` method, which records the result.
@@ -505,5 +511,21 @@ And they both have two network ports which are physically connected to each othe
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. literalinclude:: ../../../dts/nodes.example.yaml
+   :language: yaml
+   :start-at: # Define
+
+Additionally, an example configuration file is provided
+to demonstrate custom test suite configuration:
+
+.. note::
+   You do not need to supply configurations for all test suites,
+   and not all test suites will support or need additional configuration.
+
+.. _tests_config_example:
+
+``dts/tests_config.example.yaml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../../dts/tests_config.example.yaml
    :language: yaml
    :start-at: # Define
