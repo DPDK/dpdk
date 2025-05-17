@@ -1427,6 +1427,7 @@ rte_log2_u64(uint64_t v)
 #ifdef __cplusplus
 }
 
+extern "C++" {
 /*
  * Since C++ doesn't support generic selection (i.e., _Generic),
  * function overloading is used instead. Such functions must be
@@ -1588,7 +1589,7 @@ __RTE_BIT_OVERLOAD_3R(atomic_, test_and_clear,, bool, unsigned int, nr, int, mem
 __RTE_BIT_OVERLOAD_4R(atomic_, test_and_assign,, bool, unsigned int, nr, bool, value,
 	int, memory_order)
 #endif
-
+}
 #endif
 
 #endif /* _RTE_BITOPS_H_ */
