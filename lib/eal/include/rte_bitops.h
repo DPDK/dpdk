@@ -110,9 +110,6 @@ extern "C" {
 		((typeof(mask))(((reg) & (mask)) >> rte_ctz64(mask)))
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Test bit in word.
  *
  * Generic selection macro to test the value of a bit in a 32-bit or
@@ -140,9 +137,6 @@ extern "C" {
 			(addr, nr)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set bit in word.
  *
  * Generic selection macro to set a bit in a 32-bit or 64-bit
@@ -166,9 +160,6 @@ extern "C" {
 			(addr, nr)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Clear bit in word.
  *
  * Generic selection macro to clear a bit in a 32-bit or 64-bit
@@ -192,9 +183,6 @@ extern "C" {
 			(addr, nr)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Assign a value to a bit in word.
  *
  * Generic selection macro to assign a value to a bit in a 32-bit or 64-bit
@@ -219,9 +207,6 @@ extern "C" {
 			(addr, nr, value)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Flip a bit in word.
  *
  * Generic selection macro to change the value of a bit to '0' if '1'
@@ -245,9 +230,6 @@ extern "C" {
 			(addr, nr)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Test if a particular bit in a word is set with a particular memory
  * order.
  *
@@ -276,9 +258,6 @@ extern "C" {
 			(addr, nr, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically set bit in word.
  *
  * Generic selection macro to atomically set bit specified by @c nr in
@@ -301,9 +280,6 @@ extern "C" {
 			(addr, nr, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically clear bit in word.
  *
  * Generic selection macro to atomically set bit specified by @c nr in
@@ -326,9 +302,6 @@ extern "C" {
 			(addr, nr, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically assign a value to bit in word.
  *
  * Generic selection macro to atomically set bit specified by @c nr in the
@@ -353,9 +326,6 @@ extern "C" {
 			(addr, nr, value, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically flip bit in word.
  *
  * Generic selection macro to atomically negate the value of the bit
@@ -379,9 +349,6 @@ extern "C" {
 			(addr, nr, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically test and set a bit in word.
  *
  * Generic selection macro to atomically test and set bit specified by
@@ -406,9 +373,6 @@ extern "C" {
 			(addr, nr, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically test and clear a bit in word.
  *
  * Generic selection macro to atomically test and clear bit specified
@@ -433,9 +397,6 @@ extern "C" {
 			(addr, nr, memory_order)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Atomically test and assign a bit in word.
  *
  * Generic selection macro to atomically test and assign bit specified
@@ -463,7 +424,6 @@ extern "C" {
 			(addr, nr, value, memory_order)
 
 #define __RTE_GEN_BIT_TEST(variant, qualifier, size) \
-__rte_experimental \
 static inline bool \
 __rte_bit_ ## variant ## test ## size(const qualifier uint ## size ## _t *addr, unsigned int nr) \
 { \
@@ -473,7 +433,6 @@ __rte_bit_ ## variant ## test ## size(const qualifier uint ## size ## _t *addr, 
 }
 
 #define __RTE_GEN_BIT_SET(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_ ## variant ## set ## size(qualifier uint ## size ## _t *addr, unsigned int nr) \
 { \
@@ -483,7 +442,6 @@ __rte_bit_ ## variant ## set ## size(qualifier uint ## size ## _t *addr, unsigne
 }
 
 #define __RTE_GEN_BIT_CLEAR(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_ ## variant ## clear ## size(qualifier uint ## size ## _t *addr, unsigned int nr) \
 { \
@@ -493,7 +451,6 @@ __rte_bit_ ## variant ## clear ## size(qualifier uint ## size ## _t *addr, unsig
 }
 
 #define __RTE_GEN_BIT_ASSIGN(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_ ## variant ## assign ## size(qualifier uint ## size ## _t *addr, unsigned int nr, \
 		bool value) \
@@ -505,7 +462,6 @@ __rte_bit_ ## variant ## assign ## size(qualifier uint ## size ## _t *addr, unsi
 }
 
 #define __RTE_GEN_BIT_FLIP(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, unsigned int nr) \
 { \
@@ -525,13 +481,10 @@ __rte_bit_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, unsign
 	__RTE_GEN_BIT_OPS(,, size) \
 	__RTE_GEN_BIT_OPS(v_, volatile, size)
 
-#ifdef ALLOW_EXPERIMENTAL_API
 __RTE_GEN_BIT_OPS_SIZE(32)
 __RTE_GEN_BIT_OPS_SIZE(64)
-#endif
 
 #define __RTE_GEN_BIT_ATOMIC_TEST(variant, qualifier, size) \
-__rte_experimental \
 static inline bool \
 __rte_bit_atomic_ ## variant ## test ## size(const qualifier uint ## size ## _t *addr, \
 		unsigned int nr, int memory_order) \
@@ -544,7 +497,6 @@ __rte_bit_atomic_ ## variant ## test ## size(const qualifier uint ## size ## _t 
 }
 
 #define __RTE_GEN_BIT_ATOMIC_SET(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_atomic_ ## variant ## set ## size(qualifier uint ## size ## _t *addr, \
 		unsigned int nr, int memory_order) \
@@ -557,7 +509,6 @@ __rte_bit_atomic_ ## variant ## set ## size(qualifier uint ## size ## _t *addr, 
 }
 
 #define __RTE_GEN_BIT_ATOMIC_CLEAR(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_atomic_ ## variant ## clear ## size(qualifier uint ## size ## _t *addr, \
 		unsigned int nr, int memory_order) \
@@ -570,7 +521,6 @@ __rte_bit_atomic_ ## variant ## clear ## size(qualifier uint ## size ## _t *addr
 }
 
 #define __RTE_GEN_BIT_ATOMIC_FLIP(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_atomic_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, \
 		unsigned int nr, int memory_order) \
@@ -583,7 +533,6 @@ __rte_bit_atomic_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr,
 }
 
 #define __RTE_GEN_BIT_ATOMIC_ASSIGN(variant, qualifier, size) \
-__rte_experimental \
 static inline void \
 __rte_bit_atomic_## variant ## assign ## size(qualifier uint ## size ## _t *addr, \
 		unsigned int nr, bool value, int memory_order) \
@@ -595,7 +544,6 @@ __rte_bit_atomic_## variant ## assign ## size(qualifier uint ## size ## _t *addr
 }
 
 #define __RTE_GEN_BIT_ATOMIC_TEST_AND_SET(variant, qualifier, size) \
-__rte_experimental \
 static inline bool \
 __rte_bit_atomic_ ## variant ## test_and_set ## size(qualifier uint ## size ## _t *addr, \
 		unsigned int nr, int memory_order) \
@@ -610,7 +558,6 @@ __rte_bit_atomic_ ## variant ## test_and_set ## size(qualifier uint ## size ## _
 }
 
 #define __RTE_GEN_BIT_ATOMIC_TEST_AND_CLEAR(variant, qualifier, size) \
-__rte_experimental \
 static inline bool \
 __rte_bit_atomic_ ## variant ## test_and_clear ## size(qualifier uint ## size ## _t *addr, \
 		unsigned int nr, int memory_order) \
@@ -625,7 +572,6 @@ __rte_bit_atomic_ ## variant ## test_and_clear ## size(qualifier uint ## size ##
 }
 
 #define __RTE_GEN_BIT_ATOMIC_TEST_AND_ASSIGN(variant, qualifier, size) \
-__rte_experimental \
 static inline bool \
 __rte_bit_atomic_ ## variant ## test_and_assign ## size( \
 		qualifier uint ## size ## _t *addr, unsigned int nr, bool value, \
@@ -653,10 +599,8 @@ __rte_bit_atomic_ ## variant ## test_and_assign ## size( \
 	__RTE_GEN_BIT_ATOMIC_OPS(,, size) \
 	__RTE_GEN_BIT_ATOMIC_OPS(v_, volatile, size)
 
-#ifdef ALLOW_EXPERIMENTAL_API
 __RTE_GEN_BIT_ATOMIC_OPS_SIZE(32)
 __RTE_GEN_BIT_ATOMIC_OPS_SIZE(64)
-#endif
 
 /*------------------------ 32-bit relaxed operations ------------------------*/
 
@@ -1571,7 +1515,6 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 	__RTE_BIT_OVERLOAD_SZ_4R(family, fun, qualifier, 64, ret_type, arg1_type, arg1_name, \
 		arg2_type, arg2_name, arg3_type, arg3_name)
 
-#ifdef ALLOW_EXPERIMENTAL_API
 __RTE_BIT_OVERLOAD_2R(, test, const, bool, unsigned int, nr)
 __RTE_BIT_OVERLOAD_2(, set,, unsigned int, nr)
 __RTE_BIT_OVERLOAD_2(, clear,, unsigned int, nr)
@@ -1587,7 +1530,6 @@ __RTE_BIT_OVERLOAD_3R(atomic_, test_and_set,, bool, unsigned int, nr, int, memor
 __RTE_BIT_OVERLOAD_3R(atomic_, test_and_clear,, bool, unsigned int, nr, int, memory_order)
 __RTE_BIT_OVERLOAD_4R(atomic_, test_and_assign,, bool, unsigned int, nr, bool, value,
 	int, memory_order)
-#endif
 
 #endif
 
