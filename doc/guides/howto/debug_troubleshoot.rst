@@ -221,7 +221,8 @@ Memory objects close to NUMA :numref:`dtg_mempool`.
    by defining the compilation flag ``RTE_MBUF_HISTORY_DEBUG``.
    Then the libraries will mark the mbufs,
    and more marks can be added in the application.
-   Some dump functions must be used to collect the history.
+   Some dump functions must be used to collect the history,
+   and a script can parse it.
 
 #. Lower performance between the pipeline processing stages can be
 

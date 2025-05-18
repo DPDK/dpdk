@@ -279,6 +279,8 @@ More marks can be added by the application
 by calling functions like ``rte_mbuf_history_mark_bulk()``.
 Then the history can be stored in a file
 by calling functions like ``rte_mbuf_history_dump_all()``.
+The dump file will be easier to read after being processed
+by the script ``dpdk-mbuf-history-parser.py``.
 
 
 Use Cases

@@ -76,6 +76,7 @@ New Features
   Added history dynamic field in mbuf (disabled by default)
   to store successive states of the mbuf lifecycle.
   Some functions were added to dump statistics.
+  A script was added to parse mbuf tracking stored in a file.
 
 * **Updated NXP DPAA2 ethernet driver.**
 

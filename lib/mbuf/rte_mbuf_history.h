@@ -19,6 +19,9 @@
  * The history is stored as an atomic value (64-bit) in a dynamic field of the mbuf,
  * with each event encoded in 4 bits, allowing up to 16 events to be tracked.
  * Atomic operations ensure thread safety for cloned mbufs accessed by multiple lcores.
+ *
+ * After dumping the history in a file,
+ * the script dpdk-mbuf-history-parser.py can be used for parsing.
  */
 
 #include <rte_common.h>
