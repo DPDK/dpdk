@@ -3575,6 +3575,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		session->auth_key.data = NULL;
 		session->auth_key.length = 0;
 		session->auth_alg = 0;
+		authdata.algtype = PDCP_AUTH_TYPE_NULL;
 	}
 	authdata.key = (size_t)session->auth_key.data;
 	authdata.keylen = session->auth_key.length;
