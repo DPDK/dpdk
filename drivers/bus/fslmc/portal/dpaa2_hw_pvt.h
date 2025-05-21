@@ -84,6 +84,16 @@
 #define DPAA2_INVALID_FLOW_ID 0xffff
 #define DPAA2_INVALID_CGID 0xff
 
+#define SEC_FLC_DHR_OUTBOUND	(-114)
+#define SEC_FLC_DHR_INBOUND	0
+
+/** Consider aligning with 8 bytes to multiply point size with 2.*/
+#define DPAA2_SEC_SIMPLE_FD_OB_MIN \
+	((-SEC_FLC_DHR_OUTBOUND) + sizeof(void *) * 2)
+
+#define DPAA2_SEC_SIMPLE_FD_IB_MIN \
+	((-SEC_FLC_DHR_INBOUND) + sizeof(void *) * 2)
+
 struct dpaa2_queue;
 
 struct eqresp_metadata {
