@@ -74,9 +74,7 @@ void tfo_open(void **tfo, bool is_pf)
 	rc = cfa_bld_mpc_bind(CFA_P70, &tfco->mpc_info);
 	if (rc) {
 		PMD_DRV_LOG_LINE(ERR, "MPC bind failed");
-		rte_free(tfco);
-		*tfo = NULL;
-		return;
+		goto cleanup;
 	}
 	if (is_pf) {
 		/* Allocate TIM */
@@ -104,8 +102,8 @@ void tfo_open(void **tfo, bool is_pf)
 	return;
 
  cleanup:
-	if (tfco != NULL)
-		rte_free(tfo);
+	rte_free(tfco);
+	*tfo = NULL;
 }
 
 void tfo_close(void **tfo)
