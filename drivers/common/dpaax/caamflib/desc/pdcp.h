@@ -619,7 +619,7 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
-	if ((sn_size != PDCP_SN_SIZE_18 &&
+	if ((authdata && sn_size != PDCP_SN_SIZE_18 &&
 			!(rta_sec_era == RTA_SEC_ERA_8 &&
 				authdata->algtype == 0))
 			|| (rta_sec_era == RTA_SEC_ERA_10)) {
@@ -631,6 +631,7 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 				 (uint16_t)cipherdata->algtype << 8);
 		return 0;
 	}
+
 	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
 	switch (sn_size) {
 	case PDCP_SN_SIZE_5:
@@ -2719,12 +2720,23 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 		case PDCP_CIPHER_TYPE_AES:
 		case PDCP_CIPHER_TYPE_SNOW:
 		case PDCP_CIPHER_TYPE_NULL:
-			if (rta_sec_era == RTA_SEC_ERA_8 &&
+			if (rta_sec_era >= RTA_SEC_ERA_8 &&
 					authdata && authdata->algtype == 0){
 				err = pdcp_insert_uplane_with_int_op(p, swap,
 						cipherdata, authdata,
 						sn_size,
 						OP_TYPE_ENCAP_PROTOCOL);
+				if (err)
+					return err;
+				break;
+			}
+			if (rta_sec_era >= RTA_SEC_ERA_8 &&
+					cipherdata->algtype == PDCP_CIPHER_TYPE_AES
+					&& !authdata
+					&& sn_size == PDCP_SN_SIZE_12) {
+				err = pdcp_insert_cplane_enc_only_op(p, swap, cipherdata,
+						authdata,
+						OP_TYPE_ENCAP_PROTOCOL, sn_size);
 				if (err)
 					return err;
 				break;
