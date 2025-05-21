@@ -251,7 +251,8 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 		if (unlikely(gnh == NULL))
 			return 0;
 		geneve_len = sizeof(*gnh) + gnh->opt_len * 4;
-		*off = geneve_len;
+		*off += geneve_len;
+		hdr_lens->inner_l2_len = sizeof(struct rte_udp_hdr) + geneve_len;
 		*proto = gnh->proto;
 		if (gnh->proto == 0)
 			*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
