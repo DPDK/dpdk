@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2019,2022-2025 NXP
  *
  */
 
@@ -37,6 +37,14 @@
 RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_bpid_info)
 struct dpaa2_bp_info *rte_dpaa2_bpid_info;
 static struct dpaa2_bp_list *h_bp_list;
+
+static int16_t s_dpaa2_pool_ops_idx = RTE_MEMPOOL_MAX_OPS_IDX;
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_mpool_get_ops_idx)
+int rte_dpaa2_mpool_get_ops_idx(void)
+{
+	return s_dpaa2_pool_ops_idx;
+}
 
 static int
 rte_hw_mbuf_create_pool(struct rte_mempool *mp)
@@ -119,6 +127,14 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	bp_list->buf_pool.dpbp_node = avail_dpbp;
 	/* Identification for our offloaded pool_data structure */
 	bp_list->dpaa2_ops_index = mp->ops_index;
+	if (s_dpaa2_pool_ops_idx == RTE_MEMPOOL_MAX_OPS_IDX) {
+		s_dpaa2_pool_ops_idx = mp->ops_index;
+	} else if (s_dpaa2_pool_ops_idx != mp->ops_index) {
+		DPAA2_MEMPOOL_ERR("Only single ops index only");
+		ret = -EINVAL;
+		goto err4;
+	}
+
 	bp_list->next = h_bp_list;
 	bp_list->mp = mp;
 
@@ -150,6 +166,8 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	}
 
 	return 0;
+err4:
+	rte_free(bp_list);
 err3:
 	rte_free(bp_info);
 err2:
