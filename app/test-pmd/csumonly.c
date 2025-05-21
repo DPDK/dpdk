@@ -627,7 +627,6 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint32_t rx_bad_outer_l4_csum;
 	uint32_t rx_bad_outer_ip_csum;
 	struct testpmd_offload_info info;
-	struct rte_net_hdr_lens hdr_lens = {0};
 	uint32_t ptype;
 
 	/* receive a burst of packet */
@@ -666,6 +665,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 #endif
 
 	for (i = 0; i < nb_rx; i++) {
+		struct rte_net_hdr_lens hdr_lens = {0};
+
 		if (likely(i < nb_rx - 1))
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
 						       void *));
