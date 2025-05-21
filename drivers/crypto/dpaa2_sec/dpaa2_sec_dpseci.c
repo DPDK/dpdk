@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2023 NXP
+ *   Copyright 2016-2025 NXP
  *
  */
 
@@ -4413,33 +4413,27 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 {
 	struct rte_cryptodev *cryptodev;
 	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-
 	int retval;
+	struct rte_cryptodev_pmd_init_params init_params = {
+		.name = "",
+		.private_data_size = sizeof(struct dpaa2_sec_dev_private),
+		.socket_id = rte_socket_id(),
+		.max_nb_queue_pairs =
+			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
+			/* setting default, will be updated in init. */
+	};
 
 	snprintf(cryptodev_name, sizeof(cryptodev_name), "dpsec-%d",
 			dpaa2_dev->object_id);
 
-	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
-	if (cryptodev == NULL)
+	cryptodev = rte_cryptodev_pmd_create(cryptodev_name, &dpaa2_dev->device,
+			&init_params);
+	if (cryptodev == NULL) {
+		DPAA2_SEC_ERR("failed to create cryptodev vdev");
 		return -ENOMEM;
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		cryptodev->data->dev_private = rte_zmalloc_socket(
-					"cryptodev private structure",
-					sizeof(struct dpaa2_sec_dev_private),
-					RTE_CACHE_LINE_SIZE,
-					rte_socket_id());
-
-		if (cryptodev->data->dev_private == NULL)
-			rte_panic("Cannot allocate memzone for private "
-				  "device data");
 	}
 
 	dpaa2_dev->cryptodev = cryptodev;
-	cryptodev->device = &dpaa2_dev->device;
-
-	/* init user callbacks */
-	TAILQ_INIT(&(cryptodev->link_intr_cbs));
 
 	if (dpaa2_svr_family == SVR_LX2160A)
 		rta_set_sec_era(RTA_SEC_ERA_10);
@@ -4454,11 +4448,7 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 		rte_cryptodev_pmd_probing_finish(cryptodev);
 		return 0;
 	}
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
-
-	cryptodev->attached = RTE_CRYPTODEV_DETACHED;
+	rte_cryptodev_pmd_destroy(cryptodev);
 
 	return -ENXIO;
 }

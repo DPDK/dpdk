@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2024 NXP
+ *   Copyright 2017-2025 NXP
  *
  */
 
@@ -3614,16 +3614,10 @@ static const struct rte_security_ops dpaa_sec_security_ops = {
 static int
 dpaa_sec_uninit(struct rte_cryptodev *dev)
 {
-	struct dpaa_sec_dev_private *internals;
-
 	if (dev == NULL)
 		return -ENODEV;
 
-	internals = dev->data->dev_private;
 	rte_free(dev->security_ctx);
-
-	rte_free(internals);
-
 	DPAA_SEC_INFO("Closing DPAA_SEC device %s on numa socket %u",
 		      dev->data->name, rte_socket_id());
 
@@ -3780,33 +3774,26 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 {
 	struct rte_cryptodev *cryptodev;
 	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-
 	int retval;
+	struct rte_cryptodev_pmd_init_params init_params = {
+		.name = "",
+		.private_data_size = sizeof(struct dpaa_sec_dev_private),
+		.socket_id = rte_socket_id(),
+		.max_nb_queue_pairs =
+			RTE_DPAA_MAX_NB_SEC_QPS,
+	};
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	snprintf(cryptodev_name, sizeof(cryptodev_name), "%s", dpaa_dev->name);
 
-	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
-	if (cryptodev == NULL)
+	cryptodev = rte_cryptodev_pmd_create(cryptodev_name, &dpaa_dev->device, &init_params);
+	if (cryptodev == NULL) {
+		DPAA_SEC_ERR("failed to create cryptodev vdev");
 		return -ENOMEM;
-
-	cryptodev->data->dev_private = rte_zmalloc_socket(
-				"cryptodev private structure",
-				sizeof(struct dpaa_sec_dev_private),
-				RTE_CACHE_LINE_SIZE,
-				rte_socket_id());
-
-	if (cryptodev->data->dev_private == NULL)
-		rte_panic("Cannot allocate memzone for private "
-				"device data");
-
+	}
 	dpaa_dev->crypto_dev = cryptodev;
-	cryptodev->device = &dpaa_dev->device;
-
-	/* init user callbacks */
-	TAILQ_INIT(&(cryptodev->link_intr_cbs));
 
 	/* if sec device version is not configured */
 	if (!rta_get_sec_era()) {
@@ -3841,10 +3828,7 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 
 	retval = -ENXIO;
 out:
-	/* In case of error, cleanup is done */
-	rte_free(cryptodev->data->dev_private);
-
-	rte_cryptodev_pmd_release_device(cryptodev);
+	rte_cryptodev_pmd_destroy(cryptodev);
 
 	return retval;
 }
