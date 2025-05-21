@@ -35,6 +35,7 @@
 #include "dpaa2_sec_priv.h"
 #include "dpaa2_sec_event.h"
 #include "dpaa2_sec_logs.h"
+#include "dpaa2_hw_dpni_annot.h"
 
 /* RTA header files */
 #include <desc/ipsec.h>
@@ -66,6 +67,14 @@ enum dpaa2_sec_dump_levels {
 
 uint8_t cryptodev_driver_id;
 uint8_t dpaa2_sec_dp_dump = DPAA2_SEC_DP_ERR_DUMP;
+
+static int s_dpaa2_sec_cntx_pos = -1;
+
+static const struct rte_mbuf_dynfield s_dpaa2_sec_cntx_pos_dyn = {
+	.name = "dpaa2_sec_cntx_pos_dyn",
+	.size = sizeof(void *),
+	.align = alignof(void *),
+};
 
 static inline void
 dpaa2_sec_dp_fd_dump(const struct qbman_fd *fd, uint16_t bpid,
@@ -319,29 +328,57 @@ build_proto_fd(dpaa2_sec_session *sess,
 	       struct qbman_fd *fd, uint16_t bpid, struct dpaa2_sec_qp *qp)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct sec_flow_context *flc;
+	struct ctxt_priv *priv = sess->ctxt;
+	int min_hdr;
+	void **op_context;
+
 	if (sym_op->m_dst)
 		return build_proto_compound_fd(sess, op, fd, bpid, qp);
 
-	struct ctxt_priv *priv = sess->ctxt;
-	struct sec_flow_context *flc;
-	struct rte_mbuf *mbuf = sym_op->m_src;
-
-	if (likely(bpid < MAX_BPID))
-		DPAA2_SET_FD_BPID(fd, bpid);
+	if (sess->dir == DIR_ENC)
+		min_hdr = -SEC_FLC_DHR_OUTBOUND;
 	else
-		DPAA2_SET_FD_IVP(fd);
+		min_hdr = SEC_FLC_DHR_INBOUND;
 
-	/* Save the shared descriptor */
 	flc = &priv->flc_desc[0].flc;
+
+	if (likely(bpid < MAX_BPID)) {
+		if (unlikely(s_dpaa2_sec_cntx_pos < 0)) {
+			DPAA2_SEC_ERR("SEC context position not registered!");
+			return -EINVAL;
+		}
+		op_context = (void *)((uint8_t *)sym_op->m_src +
+			s_dpaa2_sec_cntx_pos);
+		*op_context = op;
+		DPAA2_SET_FD_BPID(fd, bpid);
+	} else {
+		op_context = rte_pktmbuf_mtod_offset(sym_op->m_src,
+			void **, -(min_hdr + sizeof(void *)));
+		op_context = (void **)RTE_ALIGN_FLOOR((uintptr_t)op_context,
+			sizeof(void *));
+		if (unlikely((uint64_t)op_context <
+			(uint64_t)sym_op->m_src->buf_addr)) {
+			DPAA2_SEC_ERR("Too short offset to save context %p < %p",
+				op_context, sym_op->m_src->buf_addr);
+			return -EINVAL;
+		}
+		if (unlikely(sess->dir == DIR_ENC &&
+			(uint64_t)op_context <
+			((uint64_t)sym_op->m_src->buf_addr +
+			DPAA2_DYN_TX_MIN_FD_OFFSET))) {
+			DPAA2_SEC_ERR("ENC FAEAD being overlapped %p < %p + %" PRIu64,
+				op_context, sym_op->m_src->buf_addr,
+				(uint64_t)DPAA2_DYN_TX_MIN_FD_OFFSET);
+			return -EINVAL;
+		}
+		DPAA2_SET_FD_IVP(fd);
+	}
 
 	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
 	DPAA2_SET_FD_OFFSET(fd, sym_op->m_src->data_off);
 	DPAA2_SET_FD_LEN(fd, sym_op->m_src->pkt_len);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
-
-	/* save physical address of mbuf */
-	op->sym->aead.digest.phys_addr = mbuf->buf_iova;
-	mbuf->buf_iova = (size_t)op;
 
 	return 0;
 }
@@ -1503,7 +1540,11 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			/*Clear the unused FD fields before sending*/
 			memset(&fd_arr[loop], 0, sizeof(struct qbman_fd));
 			mb_pool = (*ops)->sym->m_src->pool;
-			bpid = mempool_to_bpid(mb_pool);
+			if (mb_pool->ops_index ==
+				rte_dpaa2_mpool_get_ops_idx())
+				bpid = mempool_to_bpid(mb_pool);
+			else
+				bpid = MAX_BPID;
 			ret = build_sec_fd(*ops, &fd_arr[loop], bpid, dpaa2_qp);
 			if (ret) {
 				DPAA2_SEC_DP_DEBUG("FD build failed");
@@ -1549,37 +1590,51 @@ skip_tx:
 }
 
 static inline struct rte_crypto_op *
-sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
+dpaa2_sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	struct rte_crypto_op *op;
-	uint16_t len = DPAA2_GET_FD_LEN(fd);
+	uint16_t len = DPAA2_GET_FD_LEN(fd), bpid = MAX_BPID;
 	int16_t diff = 0;
-	dpaa2_sec_session *sess_priv __rte_unused;
+	struct rte_mbuf *mbuf;
+	dpaa2_sec_session *sess_priv;
+	uint8_t *vir;
+	void **op_context;
 
-	if (unlikely(DPAA2_GET_FD_IVP(fd))) {
-		DPAA2_SEC_ERR("error: non inline buffer");
-		return NULL;
+	vir = DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+
+	if (likely(!DPAA2_GET_FD_IVP(fd))) {
+		bpid = DPAA2_GET_FD_BPID(fd);
+		mbuf = DPAA2_INLINE_MBUF_FROM_BUF(vir,
+			rte_dpaa2_bpid_info[bpid].meta_data_size);
+		if (unlikely(s_dpaa2_sec_cntx_pos < 0)) {
+			DPAA2_SEC_ERR("SEC context position not registered!");
+			return NULL;
+		}
+		op_context = (void *)((uintptr_t)mbuf + s_dpaa2_sec_cntx_pos);
+		op = *op_context;
+	} else {
+		op_context = (void **)RTE_PTR_ALIGN_FLOOR(vir +
+			DPAA2_GET_FD_OFFSET(fd) - sizeof(void *),
+			sizeof(void *));
+
+		op = *op_context;
+		mbuf = op->sym->m_src;
 	}
-	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
-		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
-		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+	sess_priv = SECURITY_GET_SESS_PRIV(op->sym->session);
 
 	diff = len - mbuf->pkt_len;
 	mbuf->pkt_len += diff;
 	mbuf->data_len += diff;
-	op = (struct rte_crypto_op *)(size_t)mbuf->buf_iova;
-	mbuf->buf_iova = op->sym->aead.digest.phys_addr;
-	op->sym->aead.digest.phys_addr = 0L;
 
-	sess_priv = SECURITY_GET_SESS_PRIV(op->sym->session);
 	if (sess_priv->dir == DIR_ENC)
 		mbuf->data_off += SEC_FLC_DHR_OUTBOUND;
 	else
 		mbuf->data_off += SEC_FLC_DHR_INBOUND;
 
 	if (unlikely(fd->simple.frc)) {
-		DPAA2_SEC_ERR("SEC returned Error - %x",
-				fd->simple.frc);
+		DPAA2_SEC_ERR("SEC %s returned Error - %x",
+			sess_priv->dir == DIR_ENC ? "encap" : "decap",
+			fd->simple.frc);
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	} else {
 		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -1589,14 +1644,15 @@ sec_simple_fd_to_mbuf(const struct qbman_fd *fd)
 }
 
 static inline struct rte_crypto_op *
-sec_fd_to_mbuf(const struct qbman_fd *fd, struct dpaa2_sec_qp *qp)
+dpaa2_sec_fd_to_mbuf(const struct qbman_fd *fd,
+	struct dpaa2_sec_qp *qp)
 {
 	struct qbman_fle *fle;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *dst, *src;
 
 	if (DPAA2_FD_GET_FORMAT(fd) == qbman_fd_single)
-		return sec_simple_fd_to_mbuf(fd);
+		return dpaa2_sec_simple_fd_to_mbuf(fd);
 
 	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
 
@@ -1728,7 +1784,7 @@ dpaa2_sec_free_eqresp_buf(uint16_t eqresp_ci,
 
 	dpaa2_qp = container_of(dpaa2_q, struct dpaa2_sec_qp, tx_vq);
 	fd = qbman_result_eqresp_fd(&dpio_dev->eqresp[eqresp_ci]);
-	op = sec_fd_to_mbuf(fd, dpaa2_qp);
+	op = dpaa2_sec_fd_to_mbuf(fd, dpaa2_qp);
 	/* Instead of freeing, enqueue it to the sec tx queue (sec->core)
 	 * after setting an error in FD. But this will have performance impact.
 	 */
@@ -1843,7 +1899,11 @@ dpaa2_sec_enqueue_burst_ordered(void *qp, struct rte_crypto_op **ops,
 			/*Clear the unused FD fields before sending*/
 			memset(&fd_arr[loop], 0, sizeof(struct qbman_fd));
 			mb_pool = (*ops)->sym->m_src->pool;
-			bpid = mempool_to_bpid(mb_pool);
+			if (mb_pool->ops_index ==
+				rte_dpaa2_mpool_get_ops_idx())
+				bpid = mempool_to_bpid(mb_pool);
+			else
+				bpid = MAX_BPID;
 			ret = build_sec_fd(*ops, &fd_arr[loop], bpid, dpaa2_qp);
 			if (ret) {
 				DPAA2_SEC_DP_DEBUG("FD build failed");
@@ -1965,7 +2025,7 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		}
 
 		fd = qbman_result_DQ_fd(dq_storage);
-		ops[num_rx] = sec_fd_to_mbuf(fd, dpaa2_qp);
+		ops[num_rx] = dpaa2_sec_fd_to_mbuf(fd, dpaa2_qp);
 
 		if (unlikely(fd->simple.frc)) {
 			/* TODO Parse SEC errors */
@@ -3374,6 +3434,15 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		goto out;
 	}
 
+	ret = rte_mbuf_dynfield_register(&s_dpaa2_sec_cntx_pos_dyn);
+	if (ret < 0) {
+		DPAA2_SEC_ERR("Failed to register context pos");
+		goto out;
+	}
+	DPAA2_SEC_INFO("Register mbuf offset(%d) for sec context pos",
+		ret);
+	s_dpaa2_sec_cntx_pos = ret;
+
 	flc->word1_sdl = (uint8_t)bufsize;
 
 	flc_iova = DPAA2_VADDR_TO_IOVA(flc);
@@ -4028,7 +4097,7 @@ dpaa2_sec_process_parallel_event(struct qbman_swp *swp,
 	ev->sched_type = rxq->ev.sched_type;
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
-	ev->event_ptr = sec_fd_to_mbuf(fd, qp);
+	ev->event_ptr = dpaa2_sec_fd_to_mbuf(fd, qp);
 
 	qbman_swp_dqrr_consume(swp, dq);
 }
@@ -4053,7 +4122,7 @@ dpaa2_sec_process_atomic_event(struct qbman_swp *swp __rte_unused,
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
 
-	crypto_op = sec_fd_to_mbuf(fd, qp);
+	crypto_op = dpaa2_sec_fd_to_mbuf(fd, qp);
 	dqrr_index = qbman_get_dqrr_idx(dq);
 	*dpaa2_seqn(crypto_op->sym->m_src) = QBMAN_ENQUEUE_FLAG_DCA | dqrr_index;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
@@ -4080,7 +4149,7 @@ dpaa2_sec_process_ordered_event(struct qbman_swp *swp,
 	ev->sched_type = rxq->ev.sched_type;
 	ev->queue_id = rxq->ev.queue_id;
 	ev->priority = rxq->ev.priority;
-	crypto_op = sec_fd_to_mbuf(fd, qp);
+	crypto_op = dpaa2_sec_fd_to_mbuf(fd, qp);
 
 	*dpaa2_seqn(crypto_op->sym->m_src) = DPAA2_ENQUEUE_FLAG_ORP;
 	*dpaa2_seqn(crypto_op->sym->m_src) |= qbman_result_DQ_odpid(dq) <<
@@ -4355,7 +4424,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	}
 
 	/* Initialize security_ctx only for primary process*/
-	security_instance = rte_malloc("rte_security_instances_ops",
+	security_instance = rte_zmalloc("rte_security_instances_ops",
 				sizeof(struct rte_security_ctx), 0);
 	if (security_instance == NULL)
 		return -ENOMEM;
