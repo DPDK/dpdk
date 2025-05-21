@@ -774,6 +774,10 @@ ntb_stats_clear(void)
 		return;
 	}
 	ids = malloc(sizeof(uint32_t) * nb_ids);
+	if (ids == NULL) {
+		printf("Cannot allocate memory for statistics IDs\n");
+		return;
+	}
 	for (i = 0; i < nb_ids; i++)
 		ids[i] = i;
 	rte_rawdev_xstats_reset(dev_id, ids, nb_ids);
@@ -843,9 +847,20 @@ ntb_stats_display(void)
 		return;
 	}
 	ids = malloc(sizeof(uint32_t) * nb_ids);
+	if (ids == NULL) {
+		printf("Cannot allocate memory for statistics IDs\n");
+		free(xstats_names);
+		return;
+	}
 	for (i = 0; i < nb_ids; i++)
 		ids[i] = i;
 	values = malloc(sizeof(uint64_t) * nb_ids);
+	if (values == NULL) {
+		printf("Cannot allocate memory to save fetching values\n");
+		free(xstats_names);
+		free(ids);
+		return;
+	}
 	if (nb_ids != rte_rawdev_xstats_get(dev_id, ids, values, nb_ids)) {
 		printf("Error: Unable to get xstats\n");
 		free(xstats_names);
