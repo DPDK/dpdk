@@ -70,8 +70,12 @@
 /* Disable RX tail drop, default is enable */
 #define DPAA2_RX_TAILDROP_OFF	0x04
 /* Tx confirmation enabled */
-#define DPAA2_TX_CONF_ENABLE	0x06
+#define DPAA2_TX_CONF_ENABLE	0x08
 
+/* Tx dynamic confirmation enabled,
+ * only valid with Tx confirmation enabled.
+ */
+#define DPAA2_TX_DYNAMIC_CONF_ENABLE	0x10
 /* DPDMUX index for DPMAC */
 #define DPAA2_DPDMUX_DPMAC_IDX 0
 
