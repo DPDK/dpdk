@@ -1988,10 +1988,10 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 		return 0;
 	}
 
-	if (sn_size == PDCP_SN_SIZE_15) {
+	if (sn_size == PDCP_SN_SIZE_12) {
 		SEQLOAD(p, MATH0, 6, 2, 0);
-		sn_mask = (swap == false) ? PDCP_U_PLANE_15BIT_SN_MASK :
-					PDCP_U_PLANE_15BIT_SN_MASK_BE;
+		sn_mask = (swap == false) ? PDCP_12BIT_SN_MASK :
+			PDCP_12BIT_SN_MASK_BE;
 	} else { /* SN Size == PDCP_SN_SIZE_18 */
 		SEQLOAD(p, MATH0, 5, 3, 0);
 		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
@@ -2000,7 +2000,7 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 	MATHB(p, MATH0, AND, sn_mask, MATH1, 8, IFB | IMMED2);
 
-	if (sn_size == PDCP_SN_SIZE_15)
+	if (sn_size == PDCP_SN_SIZE_12)
 		SEQSTORE(p, MATH0, 6, 2, 0);
 	else /* SN Size == PDCP_SN_SIZE_18 */
 		SEQSTORE(p, MATH0, 5, 3, 0);
@@ -2047,7 +2047,7 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 
 	default:
 		pr_err("%s: Invalid encrypt algorithm selected: %d\n",
-		       "pdcp_insert_uplane_15bit_op", cipherdata->algtype);
+		       "pdcp_insert_uplane_no_int_op", cipherdata->algtype);
 		return -EINVAL;
 	}
 
@@ -2734,8 +2734,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 					cipherdata->algtype == PDCP_CIPHER_TYPE_AES
 					&& !authdata
 					&& sn_size == PDCP_SN_SIZE_12) {
-				err = pdcp_insert_cplane_enc_only_op(p, swap, cipherdata,
-						authdata,
+				err = pdcp_insert_uplane_no_int_op(p, swap, cipherdata,
 						OP_TYPE_ENCAP_PROTOCOL, sn_size);
 				if (err)
 					return err;
