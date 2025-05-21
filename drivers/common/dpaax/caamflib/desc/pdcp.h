@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause or GPL-2.0+
  * Copyright 2008-2013 Freescale Semiconductor, Inc.
- * Copyright 2019-2022 NXP
+ * Copyright 2019-2025 NXP
  */
 
 #ifndef __DESC_PDCP_H__
@@ -1981,8 +1981,7 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
-	if ((sn_size == PDCP_SN_SIZE_15) ||
-			(rta_sec_era >= RTA_SEC_ERA_10)) {
+	if (sn_size == PDCP_SN_SIZE_15) {
 		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER,
 			 (uint16_t)cipherdata->algtype);
 		return 0;
@@ -2747,6 +2746,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 			    (uint64_t)cipherdata->key, cipherdata->keylen,
 			    INLINE_KEY(cipherdata));
 
+			JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 			if (authdata)
 				PROTOCOL(p, OP_TYPE_ENCAP_PROTOCOL,
 					 OP_PCLID_LTE_PDCP_USER_RN,
