@@ -78,6 +78,15 @@ Allocate a memory pool for managing mbufs used within the application:
    :end-before: >8 End of allocating a mempool to hold the mbufs.
    :dedent: 1
 
+Some snippets may require different configuration of the port and flow attributes,
+those configuration are defined in the snippet file.
+
+.. literalinclude:: ../../../examples/flow_filtering/main.c
+   :language: c
+   :start-after: Add snippet-specific configuration. 8<
+   :end-before: >8 End of snippet-specific configuration.
+   :dedent: 1
+
 Initialize the ports using the user-defined ``init_port()`` function,
 configuring Ethernet ports with default settings, including both Rx and Tx queues for a single port:
 
@@ -183,5 +192,12 @@ For example, within ``snippet_match_ipv4_flow.c``, developers can find the funct
 - ``snippet_ipv4_flow_create_patterns()`` for setting packet matching patterns,
 - ``snippet_ipv4_flow_create_table()`` for creating the patterns and actions template table.
 
-These functions can simply be called in the appropriate place
-in ``flow_skeleton.c`` to change the default created flow.
+To use a different snippet, simply update the include statement in ``flow_skeleton.c``
+to point to the desired snippet file, this will change the default created flow.
+
+Some snippets may require different configuration,
+those configuration are defined in the snippet file:
+
+- ``snippet_init_ipv4`` for configuration of the port and flow attributes.
+
+In order to use them the developer should include the snippet header file in main.c

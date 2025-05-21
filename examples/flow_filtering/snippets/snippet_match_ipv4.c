@@ -11,6 +11,12 @@
 #include "../common.h"
 
 void
+snippet_init_ipv4(void)
+{
+	init_default_snippet();
+}
+
+void
 snippet_ipv4_flow_create_actions(struct rte_flow_action *action)
 {
 	/*
@@ -20,7 +26,7 @@ snippet_ipv4_flow_create_actions(struct rte_flow_action *action)
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));
 	if (queue == NULL)
 		fprintf(stderr, "Failed to allocate memory for queue\n");
-	queue->index = QUEUE_ID; /* The selected target queue.*/
+	queue->index = 1; /* The selected target queue.*/
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
 	action[0].conf = queue;
 	action[1].type = RTE_FLOW_ACTION_TYPE_END;
@@ -54,10 +60,14 @@ snippet_ipv4_flow_create_patterns(struct rte_flow_item *patterns)
 	if (ip_mask == NULL)
 		fprintf(stderr, "Failed to allocate memory for ip_mask\n");
 
-	ip_spec->hdr.dst_addr = htonl(DEST_IP); /* The dest ip value to match the input packet. */
-	ip_mask->hdr.dst_addr = FULL_MASK; /* The mask to apply to the dest ip. */
-	ip_spec->hdr.src_addr = htonl(SRC_IP); /* The src ip value to match the input packet. */
-	ip_mask->hdr.src_addr = EMPTY_MASK; /* The mask to apply to the src ip. */
+	/* Match destination IP 192.168.1.1 with full mask */
+	ip_spec->hdr.dst_addr = htonl(((192<<24) + (168<<16) + (1<<8) + 1));
+	ip_mask->hdr.dst_addr = 0xffffffff;
+
+	/* Match any source IP by using empty mask */
+	ip_spec->hdr.src_addr = htonl(((0<<24) + (0<<16) + (0<<8) + 0));
+	ip_mask->hdr.src_addr = 0x0;
+
 	patterns[1].spec = ip_spec;
 	patterns[1].mask = ip_mask;
 
@@ -102,8 +112,8 @@ snippet_ipv4_flow_create_pattern_template(uint16_t port_id, struct rte_flow_erro
 
 	titems[0].type = RTE_FLOW_ITEM_TYPE_ETH;
 	titems[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
-	ip_mask.hdr.src_addr = EMPTY_MASK;
-	ip_mask.hdr.dst_addr = FULL_MASK;
+	ip_mask.hdr.src_addr = 0x0;  /* empty mask */
+	ip_mask.hdr.dst_addr = 0xffffffff;  /* full mask */
 	titems[1].mask = &ip_mask;
 	titems[2].type = RTE_FLOW_ITEM_TYPE_END;
 

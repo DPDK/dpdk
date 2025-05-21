@@ -30,6 +30,10 @@
 #include <rte_argparse.h>
 
 #include "common.h"
+#include "snippets/snippet_match_ipv4.h"
+
+bool enable_promiscuous_mode = true; /* default configuration of promiscuous mode */
+bool enable_flow_isolation; /* some snippet may need isolation mode instead of promiscuous mode */
 
 /* Template API enabled by default. */
 static int use_template_api = 1;
@@ -212,12 +216,23 @@ init_port(void)
 		}
 	}
 
-	/* Setting the RX port to promiscuous mode. */
-	ret = rte_eth_promiscuous_enable(port_id);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE,
-			":: promiscuous mode enable failed: err=%s, port=%u\n",
-			rte_strerror(-ret), port_id);
+	if (enable_promiscuous_mode) {
+		/* Setting the RX port to promiscuous mode. */
+		ret = rte_eth_promiscuous_enable(port_id);
+		printf(":: promiscuous mode enabled\n");
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				":: promiscuous mode enable failed: err=%s, port=%u\n",
+				rte_strerror(-ret), port_id);
+	} else if (enable_flow_isolation) {
+		/* Setting the RX port to isolate mode. */
+		ret = rte_flow_isolate(port_id, 1, NULL);
+		printf(":: isolate mode enabled\n");
+		if (ret != 0)
+			rte_exit(EXIT_FAILURE,
+				":: isolate mode enable failed: err=%s, port=%u\n",
+				rte_strerror(-ret), port_id);
+	}
 
 	ret = rte_eth_dev_start(port_id);
 	if (ret < 0) {
@@ -327,6 +342,10 @@ main(int argc, char **argv)
 	/* >8 End of allocating a mempool to hold the mbufs. */
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
+
+	/* Add snippet-specific configuration. 8< */
+	snippet_init();
+	/* >8 End of snippet-specific configuration. */
 
 	/* Initializes all the ports using the user defined init_port(). 8< */
 	init_port();

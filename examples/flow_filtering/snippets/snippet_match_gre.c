@@ -5,7 +5,16 @@
 #include <stdlib.h>
 #include <rte_flow.h>
 
+#include <rte_common.h>
+
+#include "../common.h"
 #include "snippet_match_gre.h"
+
+void
+snippet_init_gre(void)
+{
+	init_default_snippet();
+}
 
 static void
 snippet_match_gre_create_actions(struct rte_flow_action *action)
@@ -51,4 +60,12 @@ snippet_match_gre_create_patterns(struct rte_flow_item *pattern)
 	pattern[3].spec = gre_opt_spec;
 	pattern[3].mask = gre_opt_spec;
 	pattern[4].type = RTE_FLOW_ITEM_TYPE_END;
+}
+
+static struct rte_flow_template_table *
+snippet_gre_flow_create_table(
+	__rte_unused uint16_t port_id,
+	__rte_unused struct rte_flow_error *error)
+{
+	return NULL;
 }

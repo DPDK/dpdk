@@ -5,10 +5,16 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define QUEUE_ID 1
+extern bool enable_promiscuous_mode;
+extern bool enable_flow_isolation;
+extern struct rte_flow_attr flow_attr;
 
-extern struct rte_flow_attr attr;
-extern struct rte_flow_op_attr ops_attr;
+static inline void init_default_snippet(void)
+{
+	enable_promiscuous_mode = true;
+	enable_flow_isolation = false;
+	flow_attr.ingress = 1;
+}
 
 /**
  * Skeleton for creation of a flow rule using template and non template API.

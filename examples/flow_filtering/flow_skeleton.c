@@ -10,12 +10,11 @@
 #include "common.h"
 #include "snippets/snippet_match_ipv4.h"
 
-
-struct rte_flow_attr attr = { .ingress = 1 };
+struct rte_flow_attr flow_attr;
 struct rte_flow_op_attr ops_attr = { .postpone = 0 };
 
 static struct rte_flow *
-create_flow_non_template(uint16_t port_id, struct rte_flow_attr *attr,
+create_flow_non_template(uint16_t port_id, struct rte_flow_attr *flow_attr,
 						struct rte_flow_item *patterns,
 						struct rte_flow_action *actions,
 						struct rte_flow_error *error)
@@ -23,8 +22,8 @@ create_flow_non_template(uint16_t port_id, struct rte_flow_attr *attr,
 	struct rte_flow *flow = NULL;
 
 	/* Validate the rule and create it. */
-	if (rte_flow_validate(port_id, attr, patterns, actions, error) == 0)
-		flow = rte_flow_create(port_id, attr, patterns, actions, error);
+	if (rte_flow_validate(port_id, flow_attr, patterns, actions, error) == 0)
+		flow = rte_flow_create(port_id, flow_attr, patterns, actions, error);
 	return flow;
 }
 
@@ -34,10 +33,7 @@ create_flow_template(uint16_t port_id, struct rte_flow_op_attr *ops_attr,
 					struct rte_flow_action *actions,
 					struct rte_flow_error *error)
 {
-	/* Replace this function call with
-	 * snippet_*_create_table() function from the snippets directory.
-	 */
-	struct rte_flow_template_table *table = snippet_ipv4_flow_create_table(port_id, error);
+	struct rte_flow_template_table *table = snippet_skeleton_flow_create_table(port_id, error);
 	if (table == NULL) {
 		printf("Failed to create table: %s (%s)\n",
 		error->message, rte_strerror(rte_errno));
@@ -45,7 +41,7 @@ create_flow_template(uint16_t port_id, struct rte_flow_op_attr *ops_attr,
 	}
 
 	return rte_flow_async_create(port_id,
-		QUEUE_ID, /* Flow queue used to insert the rule. */
+		1, /* Flow queue used to insert the rule. */
 		ops_attr,
 		table,
 		patterns,
@@ -63,15 +59,9 @@ generate_flow_skeleton(uint16_t port_id, struct rte_flow_error *error, int use_t
 	struct rte_flow_action actions[MAX_ACTION_NUM] = {0};
 	struct rte_flow_item patterns[MAX_PATTERN_NUM] = {0};
 
-	/* Replace this function call with
-	 * snippet_*_create_actions() function from the snippets directory
-	 */
-	snippet_ipv4_flow_create_actions(actions);
+	snippet_skeleton_flow_create_actions(actions);
 
-	/* Replace this function call with
-	 * snippet_*_create_patterns() function from the snippets directory
-	 */
-	snippet_ipv4_flow_create_patterns(patterns);
+	snippet_skeleton_flow_create_patterns(patterns);
 	/* >8 End of setting the common action and pattern structures. */
 
 	/* Create a flow rule using template API 8< */
@@ -80,6 +70,6 @@ generate_flow_skeleton(uint16_t port_id, struct rte_flow_error *error, int use_t
 	/* >8 End of creating a flow rule using template API. */
 
 	/* Validate and create the rule 8< */
-	return create_flow_non_template(port_id, &attr, patterns, actions, error);
+	return create_flow_non_template(port_id, &flow_attr, patterns, actions, error);
 	/* >8 End of validating and creating the rule. */
 }

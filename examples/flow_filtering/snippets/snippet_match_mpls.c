@@ -11,6 +11,13 @@
 #include "../common.h"
 #include "snippet_match_mpls.h"
 
+
+static void
+snippet_init_mpls(void)
+{
+	init_default_snippet();
+}
+
 static void
 snippet_mpls_create_actions(struct rte_flow_action *actions)
 {

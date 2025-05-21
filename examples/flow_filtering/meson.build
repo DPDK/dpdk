@@ -15,6 +15,7 @@ sources = files(
         'snippets/snippet_match_ipv4.c',
         'snippets/snippet_match_gre.c',
         'snippets/snippet_match_mpls.c',
+        'snippets/snippet_re_route_to_kernel.c',
 )
 
 # The code snippets are not utilized.
