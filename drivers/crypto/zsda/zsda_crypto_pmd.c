@@ -35,9 +35,20 @@ zsda_dev_stop(struct rte_cryptodev *dev)
 }
 
 static int
-zsda_dev_close(struct rte_cryptodev *dev __rte_unused)
+zsda_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
+{
+	return zsda_queue_pair_release(
+		(struct zsda_qp **)&(dev->data->queue_pairs[queue_pair_id]));
+}
+
+static int
+zsda_dev_close(struct rte_cryptodev *dev)
 {
 	int ret = ZSDA_SUCCESS;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_queue_pairs; i++)
+		ret |= zsda_qp_release(dev, i);
 	return ret;
 }
 
@@ -98,6 +109,69 @@ zsda_crypto_stats_reset(struct rte_cryptodev *dev)
 }
 
 
+static int
+zsda_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
+		  const struct rte_cryptodev_qp_conf *qp_conf,
+		  int socket_id)
+{
+	int ret = ZSDA_SUCCESS;
+	struct zsda_qp *qp_new;
+	struct zsda_qp **qp_addr =
+		(struct zsda_qp **)&(dev->data->queue_pairs[qp_id]);
+	struct zsda_crypto_dev_private *crypto_dev_priv = dev->data->dev_private;
+	struct zsda_pci_device *zsda_pci_dev = crypto_dev_priv->zsda_pci_dev;
+	uint32_t nb_des = qp_conf->nb_descriptors;
+	struct task_queue_info task_q_info;
+
+	nb_des = (nb_des == NB_DES) ? nb_des : NB_DES;
+
+	if (*qp_addr != NULL) {
+		ret = zsda_qp_release(dev, qp_id);
+		if (ret)
+			return ret;
+	}
+
+	qp_new = rte_zmalloc_socket("zsda PMD qp metadata", sizeof(*qp_new),
+				    RTE_CACHE_LINE_SIZE, socket_id);
+	if (qp_new == NULL) {
+		ZSDA_LOG(ERR, "Failed to alloc mem for qp struct");
+		return -ENOMEM;
+	}
+
+	task_q_info.nb_des = nb_des;
+	task_q_info.socket_id = socket_id;
+	task_q_info.qp_id = qp_id;
+	task_q_info.rx_cb = NULL;
+
+	task_q_info.type = ZSDA_SERVICE_CRYPTO_ENCRY;
+	task_q_info.service_str = "encry";
+	task_q_info.tx_cb = NULL;
+	task_q_info.match = NULL;
+	ret = zsda_task_queue_setup(zsda_pci_dev, qp_new, &task_q_info);
+
+	task_q_info.type = ZSDA_SERVICE_CRYPTO_DECRY;
+	task_q_info.service_str = "decry";
+	task_q_info.tx_cb = NULL;
+	task_q_info.match = NULL;
+	ret |= zsda_task_queue_setup(zsda_pci_dev, qp_new, &task_q_info);
+
+	task_q_info.type = ZSDA_SERVICE_HASH_ENCODE;
+	task_q_info.service_str = "hash";
+	task_q_info.tx_cb = NULL;
+	task_q_info.match = NULL;
+	ret |= zsda_task_queue_setup(zsda_pci_dev, qp_new, &task_q_info);
+
+	if (ret) {
+		ZSDA_LOG(ERR, "zsda_task_queue_setup crypto is failed!");
+		rte_free(qp_new);
+		return ret;
+	}
+
+	*qp_addr = qp_new;
+
+	return ret;
+}
+
 static struct rte_cryptodev_ops crypto_zsda_ops = {
 	.dev_configure = zsda_dev_config,
 	.dev_start = zsda_dev_start,
@@ -107,8 +181,8 @@ static struct rte_cryptodev_ops crypto_zsda_ops = {
 
 	.stats_get = zsda_crypto_stats_get,
 	.stats_reset = zsda_crypto_stats_reset,
-	.queue_pair_setup = NULL,
-	.queue_pair_release = NULL,
+	.queue_pair_setup = zsda_qp_setup,
+	.queue_pair_release = zsda_qp_release,
 
 	.sym_session_get_size = NULL,
 	.sym_session_configure = NULL,
