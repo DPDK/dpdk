@@ -50,3 +50,9 @@ The ZSDA crypto service is built by default with a standard DPDK build.
 
 Testing
 -------
+
+ZSDA SYM crypto PMD can be tested by running the test application::
+
+   cd ./<build_dir>/app/test
+   ./dpdk-test -l1 -n1 -a <your zsda bdf>
+   RTE>>cryptodev_zsda_autotest
