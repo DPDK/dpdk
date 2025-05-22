@@ -3006,7 +3006,7 @@ int
 rte_eth_promiscuous_enable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
-	int diag = 0;
+	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -3018,7 +3018,8 @@ rte_eth_promiscuous_enable(uint16_t port_id)
 		return -ENOTSUP;
 
 	diag = dev->dev_ops->promiscuous_enable(dev);
-	dev->data->promiscuous = (diag == 0) ? 1 : 0;
+	if (diag == 0)
+		dev->data->promiscuous = 1;
 
 	diag = eth_err(port_id, diag);
 
@@ -3033,7 +3034,7 @@ int
 rte_eth_promiscuous_disable(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
-	int diag = 0;
+	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -3044,10 +3045,9 @@ rte_eth_promiscuous_disable(uint16_t port_id)
 	if (dev->dev_ops->promiscuous_disable == NULL)
 		return -ENOTSUP;
 
-	dev->data->promiscuous = 0;
 	diag = dev->dev_ops->promiscuous_disable(dev);
-	if (diag != 0)
-		dev->data->promiscuous = 1;
+	if (diag == 0)
+		dev->data->promiscuous = 0;
 
 	diag = eth_err(port_id, diag);
 
@@ -3086,8 +3086,10 @@ rte_eth_allmulticast_enable(uint16_t port_id)
 
 	if (dev->dev_ops->allmulticast_enable == NULL)
 		return -ENOTSUP;
+
 	diag = dev->dev_ops->allmulticast_enable(dev);
-	dev->data->all_multicast = (diag == 0) ? 1 : 0;
+	if (diag == 0)
+		dev->data->all_multicast = 1;
 
 	diag = eth_err(port_id, diag);
 
@@ -3112,10 +3114,10 @@ rte_eth_allmulticast_disable(uint16_t port_id)
 
 	if (dev->dev_ops->allmulticast_disable == NULL)
 		return -ENOTSUP;
-	dev->data->all_multicast = 0;
+
 	diag = dev->dev_ops->allmulticast_disable(dev);
-	if (diag != 0)
-		dev->data->all_multicast = 1;
+	if (diag == 0)
+		dev->data->all_multicast = 0;
 
 	diag = eth_err(port_id, diag);
 
