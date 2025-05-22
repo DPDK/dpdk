@@ -42,4 +42,6 @@ int zsda_crypto_wqe_build(void *op_in, const struct zsda_queue *queue,
 int zsda_hash_wqe_build(void *op_in, const struct zsda_queue *queue,
 		       void **op_cookies, const uint16_t new_tail);
 
+int zsda_crypto_callback(void *cookie_in, struct zsda_cqe *cqe);
+
 #endif /* _ZSDA_CRYPTO_H_ */

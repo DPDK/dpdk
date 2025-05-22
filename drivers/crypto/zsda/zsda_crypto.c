@@ -254,3 +254,19 @@ zsda_hash_wqe_build(void *op_in, const struct zsda_queue *queue,
 
 	return ret;
 }
+
+int
+zsda_crypto_callback(void *cookie_in, struct zsda_cqe *cqe)
+{
+	struct zsda_op_cookie *tmp_cookie = cookie_in;
+	struct rte_crypto_op *op = tmp_cookie->op;
+
+	if (!(CQE_ERR0(cqe->err0) || CQE_ERR1(cqe->err1)))
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	else {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return ZSDA_FAILED;
+	}
+
+	return ZSDA_SUCCESS;
+}
