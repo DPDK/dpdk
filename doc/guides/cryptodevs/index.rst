@@ -34,3 +34,4 @@ Crypto Device Drivers
     uadk
     virtio
     zuc
+    zsda

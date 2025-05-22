@@ -15,6 +15,9 @@ static uint8_t zsda_num_used_qps;
 static struct ring_size zsda_qp_hw_ring_size[ZSDA_MAX_SERVICES] = {
 	[ZSDA_SERVICE_COMPRESSION] = {32, 16},
 	[ZSDA_SERVICE_DECOMPRESSION] = {32, 16},
+	[ZSDA_SERVICE_CRYPTO_ENCRY] = {128, 16},
+	[ZSDA_SERVICE_CRYPTO_DECRY] = {128, 16},
+	[ZSDA_SERVICE_HASH_ENCODE] = {32, 16},
 };
 
 static const uint8_t crc8_table[256] = {
@@ -480,6 +483,12 @@ zsda_nb_qps_get(const struct zsda_pci_device *zsda_pci_dev)
 		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_COMPRESSION);
 	zsda_nb_qps.decomp =
 		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_DECOMPRESSION);
+	zsda_nb_qps.encrypt =
+		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_CRYPTO_ENCRY);
+	zsda_nb_qps.decrypt =
+		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_CRYPTO_DECRY);
+	zsda_nb_qps.hash =
+		zsda_num_qps_get(zsda_pci_dev, ZSDA_SERVICE_HASH_ENCODE);
 }
 
 int

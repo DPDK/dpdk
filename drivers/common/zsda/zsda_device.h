@@ -7,6 +7,7 @@
 
 #include "zsda_qp_common.h"
 #include "zsda_comp_pmd.h"
+#include "zsda_crypto_pmd.h"
 
 #define MAX_QPS_ON_FUNCTION			128
 #define ZSDA_DEV_NAME_MAX_LEN		64
@@ -20,6 +21,11 @@ struct zsda_device_info {
 	/**< This represents the compression subset of this pci device.
 	 * Register with this rather than with the one in
 	 * pci_dev so that its driver can have a compression-specific name
+	 */
+	struct rte_device crypto_rte_dev;
+	/**< This represents the crypto subset of this pci device.
+	 * Register with this rather than with the one in
+	 * pci_dev so that its driver can have a crypto-specific name
 	 */
 	struct rte_pci_device *pci_dev;
 };
@@ -51,6 +57,10 @@ struct zsda_pci_device {
 	/* Data relating to compression service */
 	struct zsda_comp_dev_private *comp_dev;
 	/**< link back to compressdev private data */
+
+	/* Data relating to crypto service */
+	struct zsda_crypto_dev_private *crypto_dev_priv;
+	/**< link back to cryptodev private data */
 
 	struct zsda_qp_hw zsda_hw_qps[ZSDA_MAX_SERVICES];
 	uint16_t zsda_qp_hw_num[ZSDA_MAX_SERVICES];

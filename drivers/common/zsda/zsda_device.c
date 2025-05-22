@@ -152,6 +152,7 @@ zsda_pci_dev_destroy(struct zsda_pci_device *zsda_pci_dev,
 {
 
 	zsda_comp_dev_destroy(zsda_pci_dev);
+	zsda_crypto_dev_destroy(zsda_pci_dev);
 
 	return zsda_pci_device_release(pci_dev);
 }
@@ -177,9 +178,20 @@ zsda_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	ret = zsda_comp_dev_create(zsda_pci_dev);
 	if (ret)
-		ZSDA_LOG(ERR, "Failed! dev create.");
+		ZSDA_LOG(ERR, "Failed! comp_dev create.");
+
+	ret = zsda_crypto_dev_create(zsda_pci_dev);
+	if (ret) {
+		ZSDA_LOG(ERR, "Failed! crypto_dev create.");
+		goto exit;
+	}
 
 	return ret;
+
+exit:
+	zsda_comp_dev_destroy(zsda_pci_dev);
+
+	return ZSDA_FAILED;
 }
 
 static int
