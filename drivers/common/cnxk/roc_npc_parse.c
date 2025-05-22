@@ -505,6 +505,7 @@ npc_parse_lb(struct npc_parse_state *pst)
 		 */
 		lt = NPC_LT_LB_ETAG;
 		lflags = 0;
+		info.len = pattern->size;
 
 		last_pattern = pst->pattern;
 		pattern = npc_parse_skip_void_and_any_items(pst->pattern + 1);
@@ -519,7 +520,6 @@ npc_parse_lb(struct npc_parse_state *pst)
 			lflags = NPC_F_ETAG_CTAG;
 			last_pattern = pattern;
 		}
-		info.len = pattern->size;
 	} else if (pst->pattern->type == ROC_NPC_ITEM_TYPE_QINQ) {
 		info.hw_mask = NULL;
 		info.len = pattern->size;
