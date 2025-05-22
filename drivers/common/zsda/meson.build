@@ -30,7 +30,7 @@ zsda_crypto_path = 'crypto/zsda'
 zsda_crypto_relpath = '../../' + zsda_crypto_path
 includes += include_directories(zsda_crypto_relpath)
 if zsda_crypto
-    foreach f: ['zsda_crypto_pmd.c']
+    foreach f: ['zsda_crypto_pmd.c', 'zsda_crypto_session.c']
         sources += files(join_paths(zsda_crypto_relpath, f))
     endforeach
 endif

@@ -5,6 +5,7 @@
 #include <rte_cryptodev.h>
 
 #include "zsda_crypto_pmd.h"
+#include "zsda_crypto_session.h"
 
 uint8_t zsda_crypto_driver_id;
 
@@ -172,6 +173,44 @@ zsda_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return ret;
 }
 
+static unsigned int
+zsda_sym_session_private_size_get(struct rte_cryptodev *dev __rte_unused)
+{
+	return RTE_ALIGN_CEIL(sizeof(struct zsda_sym_session), 8);
+}
+
+static int
+zsda_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
+			   struct rte_crypto_sym_xform *xform,
+			   struct rte_cryptodev_sym_session *sess)
+{
+	void *sess_private_data;
+	int ret;
+
+	if (unlikely(sess == NULL)) {
+		ZSDA_LOG(ERR, "Invalid session struct");
+		return -EINVAL;
+	}
+
+	sess_private_data = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+
+	ret = zsda_crypto_session_parameters_set(
+			sess_private_data, xform);
+
+	if (ret != ZSDA_SUCCESS)
+		ZSDA_LOG(ERR, "Failed configure session parameters");
+
+	return ret;
+}
+
+static void
+zsda_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
+			struct rte_cryptodev_sym_session  *sess)
+{
+	struct zsda_sym_session *sess_priv = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	memset(sess_priv, 0, sizeof(struct zsda_sym_session));
+}
+
 static struct rte_cryptodev_ops crypto_zsda_ops = {
 	.dev_configure = zsda_dev_config,
 	.dev_start = zsda_dev_start,
@@ -184,9 +223,9 @@ static struct rte_cryptodev_ops crypto_zsda_ops = {
 	.queue_pair_setup = zsda_qp_setup,
 	.queue_pair_release = zsda_qp_release,
 
-	.sym_session_get_size = NULL,
-	.sym_session_configure = NULL,
-	.sym_session_clear = NULL,
+	.sym_session_get_size = zsda_sym_session_private_size_get,
+	.sym_session_configure = zsda_sym_session_configure,
+	.sym_session_clear = zsda_sym_session_clear,
 };
 
 static const char zsda_crypto_drv_name[] = RTE_STR(CRYPTODEV_NAME_ZSDA_PMD);
