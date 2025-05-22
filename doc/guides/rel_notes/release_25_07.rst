@@ -67,6 +67,13 @@ New Features
 
   * Added support for Rx and Tx burst mode query.
 
+* **Added ZTE Storage Data Accelerator (ZSDA) crypto driver.**
+
+  Added a crypto driver for ZSDA devices
+  to support some encrypt, decrypt and hash algorithms.
+
+  See the :doc:`../cryptodevs/zsda` guide for more details on the new driver.
+
 
 Removed Items
 -------------
