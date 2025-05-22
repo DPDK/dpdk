@@ -78,6 +78,26 @@ zsda_dev_info_get(struct rte_cryptodev *dev,
 	}
 }
 
+static void
+zsda_crypto_stats_get(struct rte_cryptodev *dev, struct rte_cryptodev_stats *stats)
+{
+	struct zsda_qp_stat comm = {0};
+
+	zsda_stats_get(dev->data->queue_pairs, dev->data->nb_queue_pairs,
+		       &comm);
+	stats->enqueued_count = comm.enqueued_count;
+	stats->dequeued_count = comm.dequeued_count;
+	stats->enqueue_err_count = comm.enqueue_err_count;
+	stats->dequeue_err_count = comm.dequeue_err_count;
+}
+
+static void
+zsda_crypto_stats_reset(struct rte_cryptodev *dev)
+{
+	zsda_stats_reset(dev->data->queue_pairs, dev->data->nb_queue_pairs);
+}
+
+
 static struct rte_cryptodev_ops crypto_zsda_ops = {
 	.dev_configure = zsda_dev_config,
 	.dev_start = zsda_dev_start,
@@ -85,8 +105,8 @@ static struct rte_cryptodev_ops crypto_zsda_ops = {
 	.dev_close = zsda_dev_close,
 	.dev_infos_get = zsda_dev_info_get,
 
-	.stats_get = NULL,
-	.stats_reset = NULL,
+	.stats_get = zsda_crypto_stats_get,
+	.stats_reset = zsda_crypto_stats_reset,
 	.queue_pair_setup = NULL,
 	.queue_pair_release = NULL,
 
