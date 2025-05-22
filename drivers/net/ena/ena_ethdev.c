@@ -106,6 +106,12 @@ struct ena_stats {
  * driver.
  */
 #define ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL "control_path_poll_interval"
+/*
+ * Toggles fragment bypass mode. Fragmented egress packets are rate limited by
+ * EC2 per ENI; this devarg bypasses the PPS limit but may impact performance.
+ * Disabled by default.
+ */
+#define ENA_DEVARG_ENABLE_FRAG_BYPASS "enable_frag_bypass"
 
 /*
  * Each rte_memzone should have unique name.
@@ -306,6 +312,9 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 static int ena_process_llq_policy_devarg(const char *key,
 			const char *value,
 			void *opaque);
+static int ena_process_bool_devarg(const char *key,
+				   const char *value,
+				   void *opaque);
 static int ena_parse_devargs(struct ena_adapter *adapter,
 			     struct rte_devargs *devargs);
 static void ena_copy_customer_metrics(struct ena_adapter *adapter,
@@ -1335,6 +1344,12 @@ static int ena_start(struct rte_eth_dev *dev)
 	rc = ena_queue_start_all(dev, ENA_RING_TYPE_TX);
 	if (rc)
 		goto err_start_tx;
+
+	if (adapter->enable_frag_bypass) {
+		rc = ena_com_set_frag_bypass(&adapter->ena_dev, true);
+		if (rc)
+			PMD_DRV_LOG_LINE(WARNING, "Failed to enable frag bypass, rc: %d", rc);
+	}
 
 	if (adapter->edev_data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		rc = ena_rss_configure(adapter);
@@ -3764,6 +3779,31 @@ static int ena_process_llq_policy_devarg(const char *key, const char *value, voi
 	PMD_INIT_LOG_LINE(INFO,
 		"LLQ policy is %u [0 - disabled, 1 - device recommended, 2 - normal, 3 - large]",
 		adapter->llq_header_policy);
+
+	return 0;
+}
+
+static int ena_process_bool_devarg(const char *key, const char *value, void *opaque)
+{
+	struct ena_adapter *adapter = opaque;
+	bool bool_value;
+
+	/* Parse the value. */
+	if (strcmp(value, "1") == 0) {
+		bool_value = true;
+	} else if (strcmp(value, "0") == 0) {
+		bool_value = false;
+	} else {
+		PMD_INIT_LOG_LINE(ERR,
+			"Invalid value: '%s' for key '%s'. Accepted: '0' or '1'",
+			value, key);
+		return -EINVAL;
+	}
+
+	/* Now, assign it to the proper adapter field. */
+	if (strcmp(key, ENA_DEVARG_ENABLE_FRAG_BYPASS) == 0)
+		adapter->enable_frag_bypass = bool_value;
+
 	return 0;
 }
 
@@ -3773,6 +3813,7 @@ static int ena_parse_devargs(struct ena_adapter *adapter, struct rte_devargs *de
 		ENA_DEVARG_LLQ_POLICY,
 		ENA_DEVARG_MISS_TXC_TO,
 		ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL,
+		ENA_DEVARG_ENABLE_FRAG_BYPASS,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -3797,6 +3838,10 @@ static int ena_parse_devargs(struct ena_adapter *adapter, struct rte_devargs *de
 		goto exit;
 	rc = rte_kvargs_process(kvlist, ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL,
 		ena_process_uint_devarg, adapter);
+	if (rc != 0)
+		goto exit;
+	rc = rte_kvargs_process(kvlist, ENA_DEVARG_ENABLE_FRAG_BYPASS,
+		ena_process_bool_devarg, adapter);
 	if (rc != 0)
 		goto exit;
 
@@ -4021,6 +4066,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ena,
 	ENA_DEVARG_LLQ_POLICY "=<0|1|2|3> "
 	ENA_DEVARG_MISS_TXC_TO "=<uint>"
 	ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL "=<0-1000>");
+	ENA_DEVARG_ENABLE_FRAG_BYPASS "=<0|1> ");
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX

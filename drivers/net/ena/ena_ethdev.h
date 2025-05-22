@@ -348,6 +348,8 @@ struct ena_adapter {
 	/* Time (in microseconds) of the control path queues monitoring interval */
 	uint64_t control_path_poll_interval;
 
+	bool enable_frag_bypass;
+
 	/*
 	 * Helper variables for holding the information about the supported
 	 * metrics.

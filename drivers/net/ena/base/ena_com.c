@@ -3459,3 +3459,36 @@ int ena_com_config_dev_mode(struct ena_com_dev *ena_dev,
 
 	return 0;
 }
+int ena_com_set_frag_bypass(struct ena_com_dev *ena_dev, bool enable)
+{
+	struct ena_admin_set_feat_resp set_feat_resp;
+	struct ena_com_admin_queue *admin_queue;
+	struct ena_admin_set_feat_cmd cmd;
+	int ret;
+
+	if (!ena_com_check_supported_feature_id(ena_dev, ENA_ADMIN_FRAG_BYPASS)) {
+		ena_trc_dbg(ena_dev, "Feature %d isn't supported\n",
+			    ENA_ADMIN_FRAG_BYPASS);
+		return ENA_COM_UNSUPPORTED;
+	}
+
+	memset(&cmd, 0x0, sizeof(cmd));
+	admin_queue = &ena_dev->admin_queue;
+
+	cmd.aq_common_descriptor.opcode = ENA_ADMIN_SET_FEATURE;
+	cmd.aq_common_descriptor.flags = 0;
+	cmd.feat_common.feature_id = ENA_ADMIN_FRAG_BYPASS;
+	cmd.feat_common.feature_version = ENA_ADMIN_FRAG_BYPASS_FEATURE_VERSION_0;
+	cmd.u.frag_bypass.enable = (u8)enable;
+
+	ret = ena_com_execute_admin_command(admin_queue,
+					    (struct ena_admin_aq_entry *)&cmd,
+					    sizeof(cmd),
+					    (struct ena_admin_acq_entry *)&set_feat_resp,
+					    sizeof(set_feat_resp));
+
+	if (unlikely(ret))
+		ena_trc_err(ena_dev, "Failed to enable frag bypass. error: %d\n", ret);
+
+	return ret;
+}
