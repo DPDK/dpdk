@@ -3044,10 +3044,9 @@ rte_eth_promiscuous_disable(uint16_t port_id)
 	if (dev->dev_ops->promiscuous_disable == NULL)
 		return -ENOTSUP;
 
-	dev->data->promiscuous = 0;
 	diag = dev->dev_ops->promiscuous_disable(dev);
-	if (diag != 0)
-		dev->data->promiscuous = 1;
+	if (diag == 0)
+		dev->data->promiscuous = 0;
 
 	diag = eth_err(port_id, diag);
 
@@ -3112,10 +3111,10 @@ rte_eth_allmulticast_disable(uint16_t port_id)
 
 	if (dev->dev_ops->allmulticast_disable == NULL)
 		return -ENOTSUP;
-	dev->data->all_multicast = 0;
+
 	diag = dev->dev_ops->allmulticast_disable(dev);
-	if (diag != 0)
-		dev->data->all_multicast = 1;
+	if (diag == 0)
+		dev->data->all_multicast = 0;
 
 	diag = eth_err(port_id, diag);
 
