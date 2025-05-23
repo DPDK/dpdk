@@ -337,7 +337,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 		cq_w5 = *((const uint64_t *)rx + 4);
 		len = rlen + ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
 		num_frags = hdr->w0.num_frags;
-		sg_base = cpth + (offset ? (offset << 3) : 256);
+		sg_base = cpth + (offset ? (offset << 5) : 256);
 		finfo = (const struct cpt_frag_info_s *)sg_base;
 		sg_base += num_frags ? (num_frags > 4 ? 32 : 16) : 0;
 		sg = *(uint64_t *)sg_base;
