@@ -107,6 +107,40 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq,
 	return i;
 }
 
+static __rte_always_inline uint8_t
+virtqueue_crypto_check_cipher_request(struct virtio_crypto_cipher_data_req *req)
+{
+	if (likely((req->para.iv_len <= VIRTIO_CRYPTO_MAX_IV_SIZE) &&
+		(req->para.src_data_len <= RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.dst_data_len >= req->para.src_data_len) &&
+		(req->para.dst_data_len <= RTE_MBUF_DEFAULT_BUF_SIZE)))
+		return VIRTIO_CRYPTO_OK;
+	return VIRTIO_CRYPTO_BADMSG;
+}
+
+static __rte_always_inline uint8_t
+virtqueue_crypto_check_chain_request(struct virtio_crypto_alg_chain_data_req *req)
+{
+	if (likely((req->para.iv_len <= VIRTIO_CRYPTO_MAX_IV_SIZE) &&
+		(req->para.src_data_len <= RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.dst_data_len >= req->para.src_data_len) &&
+		(req->para.dst_data_len <= RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.cipher_start_src_offset <
+			RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.len_to_cipher <= RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.hash_start_src_offset <
+			RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.len_to_hash <= RTE_MBUF_DEFAULT_BUF_SIZE) &&
+		(req->para.cipher_start_src_offset + req->para.len_to_cipher <=
+			req->para.src_data_len) &&
+		(req->para.hash_start_src_offset + req->para.len_to_hash <=
+			req->para.src_data_len) &&
+		(req->para.dst_data_len + req->para.hash_result_len <=
+			RTE_MBUF_DEFAULT_BUF_SIZE)))
+		return VIRTIO_CRYPTO_OK;
+	return VIRTIO_CRYPTO_BADMSG;
+}
+
 static int
 virtqueue_crypto_sym_pkt_header_arrange(
 		struct rte_crypto_op *cop,
@@ -142,6 +176,9 @@ virtqueue_crypto_sym_pkt_header_arrange(
 				sym_op->cipher.data.offset);
 		req_data->u.sym_req.u.cipher.para.dst_data_len =
 			req_data->u.sym_req.u.cipher.para.src_data_len;
+		if (virtqueue_crypto_check_cipher_request(
+			&req_data->u.sym_req.u.cipher) != VIRTIO_CRYPTO_OK)
+			return -1;
 		break;
 	case VIRTIO_CRYPTO_SYM_OP_ALGORITHM_CHAINING:
 		req_data->u.sym_req.op_type =
@@ -181,6 +218,9 @@ virtqueue_crypto_sym_pkt_header_arrange(
 			VIRTIO_CRYPTO_SYM_HASH_MODE_AUTH)
 			req_data->u.sym_req.u.chain.para.hash_result_len =
 				chain_para->u.mac_param.hash_result_len;
+		if (virtqueue_crypto_check_chain_request(
+			&req_data->u.sym_req.u.chain) != VIRTIO_CRYPTO_OK)
+			return -1;
 		break;
 	default:
 		return -1;
