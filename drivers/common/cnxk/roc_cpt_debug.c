@@ -36,8 +36,8 @@ cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 	cpt_dump(file, "W1: wqe_ptr \t0x%016lx\t", cpth->wqe_ptr);
 
 	/* W2 */
-	cpt_dump(file, "W2: pkt_inline \t0x%x\t\tnew_pkt_aura \t0x%x\t\torig_pkt_aura \t0x%x",
-		 cpth->w2.pkt_inline, cpth->w2.new_pkt_aura, cpth->w2.orig_pkt_aura);
+	cpt_dump(file, "W2: pkt_inline \t0x%x\t\torig_pkt_aura \t0x%x", cpth->w2.pkt_inline,
+		 cpth->w2.orig_pkt_aura);
 	cpt_dump(file, "W2: il3_off \t0x%x\t\tptr_pad \t0x%x \t", cpth->w2.il3_off,
 		 cpth->w2.ptr_pad);
 	cpt_dump(file, "W2: ptr_offset \t0x%x \t", cpth->w2.ptr_offset);
@@ -53,9 +53,9 @@ cpt_cnxk_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth)
 	cpt_dump(file, "W4: channel \t0x%x\t\tsctr_size \t0x%08x\t\tgthr_size \t0x%08x",
 		 cpth->w4.channel, cpth->w4.sctr_size, cpth->w4.gthr_size);
 
-	/* offset of 0 implies 256B, otherwise it implies offset*8B */
+	/* offset of 0 implies 256B, otherwise it implies offset*32B */
 	offset = cpth->w2.ptr_offset;
-	offset = (((offset - 1) & 0x1f) + 1) * 8;
+	offset = (((offset - 1) & 0x7) + 1) * 32;
 	frag_info = PLT_PTR_ADD(cpth, offset);
 
 	if (cpth->w0.num_frags > 0) {

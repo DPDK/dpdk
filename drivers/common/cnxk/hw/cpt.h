@@ -358,11 +358,11 @@ union cpt_parse_hdr_u {
 			struct {
 				uint64_t rsvd_134_128 : 7;
 				uint64_t pkt_inline : 1;
-				uint64_t new_pkt_aura : 20;
+				uint64_t rsvd_155_136 : 20;
 				uint64_t orig_pkt_aura : 20;
 				uint64_t il3_off : 8;
-				uint64_t ptr_pad : 3;
-				uint64_t ptr_offset : 5;
+				uint64_t ptr_pad : 5;
+				uint64_t ptr_offset : 3;
 			};
 		} w2;
 
@@ -383,10 +383,12 @@ union cpt_parse_hdr_u {
 			uint64_t u64;
 			struct {
 				uint32_t l4_chksum;
-				uint32_t l4_chksum_type : 1;
-				uint32_t rsvd_298_289 : 10;
+				uint32_t l4_chksum_type : 2;
+				uint32_t rsvd_292_290 : 3;
 				uint32_t channel : 12;
+				uint32_t rsvd_308_305 : 4;
 				uint32_t sctr_size : 4;
+				uint32_t rsvd_314_313 : 2;
 				uint32_t gthr_size : 5;
 			};
 		} w4;
