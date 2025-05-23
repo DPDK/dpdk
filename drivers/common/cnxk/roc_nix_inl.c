@@ -399,6 +399,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 	struct nix_inl_dev *inl_dev = NULL;
 	uint64_t max_sa, i, sa_pow2_sz;
 	uint64_t sa_idx_w, lenm1_max;
+	uint64_t res_addr_offset;
 	uint8_t profile_id = 0;
 	struct mbox *mbox;
 	size_t inb_sa_sz;
@@ -497,11 +498,16 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 				def_cptq = inl_dev->nix_inb_qids[0];
 		}
 
+		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+		if (res_addr_offset)
+			res_addr_offset |= (1UL << 56);
+
 		lf_cfg->enable = 1;
 		lf_cfg->profile_id = profile_id; /* IPsec profile is 0th one */
 		lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id];
-		lf_cfg->rx_inline_cfg0 = ((def_cptq << 57) | ((uint64_t)SSO_TT_ORDERED << 44) |
-					  (sa_pow2_sz << 16) | lenm1_max);
+		lf_cfg->rx_inline_cfg0 =
+			((def_cptq << 57) | res_addr_offset | ((uint64_t)SSO_TT_ORDERED << 44) |
+			 (sa_pow2_sz << 16) | lenm1_max);
 		lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_idx_w << 32);
 	}
 
@@ -570,9 +576,13 @@ static int
 nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	struct nix_inl_dev *inl_dev = NULL;
 	uint64_t max_sa = 1, sa_pow2_sz;
 	uint64_t sa_idx_w, lenm1_max;
+	uint64_t res_addr_offset;
+	uint64_t def_cptq = 0;
 	size_t inb_sa_sz = 1;
 	uint8_t profile_id;
 	struct mbox *mbox;
@@ -612,11 +622,22 @@ nix_inl_reass_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	sa_idx_w = plt_log2_u32(max_sa);
 	lenm1_max = roc_nix_max_pkt_len(roc_nix) - 1;
 
+	if (idev && idev->nix_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
+		if (inl_dev->nb_inb_cptlfs)
+			def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
+	}
+
+	res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+	if (res_addr_offset)
+		res_addr_offset |= (1UL << 56);
+
 	lf_cfg->enable = 1;
 	lf_cfg->profile_id = profile_id;
 	lf_cfg->rx_inline_sa_base = (uintptr_t)nix->inb_sa_base[profile_id];
 	lf_cfg->rx_inline_cfg0 =
-		(((uint64_t)SSO_TT_ORDERED << 44) | (sa_pow2_sz << 16) | lenm1_max);
+		((def_cptq << 57) | res_addr_offset | ((uint64_t)SSO_TT_ORDERED << 44) |
+		 (sa_pow2_sz << 16) | lenm1_max);
 	lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_idx_w << 32);
 
 	rc = mbox_process(mbox);

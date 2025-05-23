@@ -376,6 +376,7 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 		}
 	} else {
 		struct nix_rx_inl_lf_cfg_req *lf_cfg;
+		uint64_t res_addr_offset;
 		uint64_t def_cptq;
 
 		lf_cfg = mbox_alloc_msg_nix_rx_inl_lf_cfg(mbox);
@@ -390,13 +391,17 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 		else
 			def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
 
+		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+		if (res_addr_offset)
+			res_addr_offset |= (1UL << 56);
+
 		lf_cfg->profile_id = inl_dev->ipsec_prof_id;
 		if (ena) {
 			lf_cfg->enable = 1;
 			lf_cfg->rx_inline_sa_base = (uintptr_t)inl_dev->inb_sa_base[profile_id];
 			lf_cfg->rx_inline_cfg0 =
-				((def_cptq << 57) | ((uint64_t)SSO_TT_ORDERED << 44) |
-				 (sa_pow2_sz << 16) | lenm1_max);
+				((def_cptq << 57) | res_addr_offset |
+				 ((uint64_t)SSO_TT_ORDERED << 44) | (sa_pow2_sz << 16) | lenm1_max);
 			lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_w << 32);
 		} else {
 			lf_cfg->enable = 0;
@@ -611,6 +616,7 @@ nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
 	struct mbox *mbox = mbox_get((&inl_dev->dev)->mbox);
 	uint64_t max_sa, sa_w, sa_pow2_sz, lenm1_max;
 	struct nix_rx_inl_lf_cfg_req *lf_cfg;
+	uint64_t res_addr_offset;
 	uint64_t def_cptq;
 	size_t inb_sa_sz;
 	void *sa;
@@ -646,11 +652,16 @@ nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
 	else
 		def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id + 1];
 
+	res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
+	if (res_addr_offset)
+		res_addr_offset |= (1UL << 56);
+
 	lf_cfg->enable = 1;
 	lf_cfg->profile_id = profile_id;
 	lf_cfg->rx_inline_sa_base = (uintptr_t)inl_dev->inb_sa_base[profile_id];
-	lf_cfg->rx_inline_cfg0 = ((def_cptq << 57) | ((uint64_t)SSO_TT_ORDERED << 44) |
-				  (sa_pow2_sz << 16) | lenm1_max);
+	lf_cfg->rx_inline_cfg0 =
+		((def_cptq << 57) | res_addr_offset | ((uint64_t)SSO_TT_ORDERED << 44) |
+		 (sa_pow2_sz << 16) | lenm1_max);
 	lf_cfg->rx_inline_cfg1 = (max_sa - 1) | (sa_w << 32);
 
 	rc = mbox_process(mbox);
