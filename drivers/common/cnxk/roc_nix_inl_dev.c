@@ -385,7 +385,6 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 			goto exit;
 		}
 
-		/*TODO default cptq */
 		if (!inl_dev->nb_inb_cptlfs)
 			def_cptq = 0;
 		else
@@ -646,11 +645,10 @@ nix_inl_nix_profile_config(struct nix_inl_dev *inl_dev, uint8_t profile_id)
 	sa_w = plt_log2_u32(max_sa);
 	sa_pow2_sz = plt_log2_u32(inb_sa_sz);
 
-	/*TODO default cptq, Assuming Reassembly cpt lf ID at inl_dev->inb_cpt_lf_id + 1 */
 	if (!inl_dev->nb_inb_cptlfs)
 		def_cptq = 0;
 	else
-		def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id + 1];
+		def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
 
 	res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
 	if (res_addr_offset)

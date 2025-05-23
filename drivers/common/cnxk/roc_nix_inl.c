@@ -495,7 +495,7 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 			if (!inl_dev->nb_inb_cptlfs)
 				def_cptq = 0;
 			else
-				def_cptq = inl_dev->nix_inb_qids[0];
+				def_cptq = inl_dev->nix_inb_qids[inl_dev->inb_cpt_lf_id];
 		}
 
 		res_addr_offset = (uint64_t)(inl_dev->res_addr_offset & 0xFF) << 48;
@@ -1996,6 +1996,14 @@ roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool enable)
 			return -EFAULT;
 
 		inl_dev = idev->nix_inl_dev;
+
+		if (!roc_model_is_cn10k()) {
+			if (inl_rq->spb_ena) {
+				rc = -EINVAL;
+				plt_err("inline RQ enable is not supported rc=%d", rc);
+				return rc;
+			}
+		}
 
 		rc = nix_rq_ena_dis(&inl_dev->dev, inl_rq, enable);
 		if (rc)
