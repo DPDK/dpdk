@@ -471,6 +471,11 @@ nix_inl_inb_ipsec_sa_tbl_setup(struct roc_nix *roc_nix)
 		lf_cfg->ipsec_cfg0.sa_pow2_size = sa_pow2_sz;
 		lf_cfg->ipsec_cfg0.tag_const = 0;
 		lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+		if (roc_nix->res_addr_offset) {
+			lf_cfg->ipsec_cfg0_ext.res_addr_offset_valid = 1;
+			lf_cfg->ipsec_cfg0_ext.res_addr_offset =
+				(roc_nix->res_addr_offset & 0x80) | abs(roc_nix->res_addr_offset);
+		}
 	} else {
 		struct nix_rx_inl_lf_cfg_req *lf_cfg;
 		uint64_t def_cptq = 0;
@@ -2155,6 +2160,8 @@ roc_nix_inl_inb_tag_update(struct roc_nix *roc_nix, uint32_t tag_const,
 	cfg.max_sa = nix->inb_spi_mask + 1;
 	cfg.tt = tt;
 	cfg.tag_const = tag_const;
+	if (roc_nix->res_addr_offset)
+		cfg.res_addr_offset = roc_nix->res_addr_offset;
 
 	return roc_nix_lf_inl_ipsec_cfg(roc_nix, &cfg, true);
 }

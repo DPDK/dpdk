@@ -120,6 +120,11 @@ roc_nix_lf_inl_ipsec_cfg(struct roc_nix *roc_nix, struct roc_nix_ipsec_cfg *cfg,
 		lf_cfg->ipsec_cfg0.sa_pow2_size = plt_log2_u32(cfg->sa_size);
 		lf_cfg->ipsec_cfg0.tag_const = cfg->tag_const;
 		lf_cfg->ipsec_cfg0.tt = cfg->tt;
+		if (cfg->res_addr_offset) {
+			lf_cfg->ipsec_cfg0_ext.res_addr_offset_valid = 1;
+			lf_cfg->ipsec_cfg0_ext.res_addr_offset =
+				(cfg->res_addr_offset & 0x80) | abs(cfg->res_addr_offset);
+		}
 	} else {
 		lf_cfg->enable = 0;
 	}

@@ -431,6 +431,7 @@ struct roc_nix_ipsec_cfg {
 	plt_iova_t iova;
 	uint16_t max_sa;
 	uint8_t tt;
+	int8_t res_addr_offset;
 };
 
 /* Link status update callback */
@@ -469,6 +470,7 @@ struct roc_nix {
 	uint32_t dwrr_mtu;
 	bool ipsec_out_sso_pffunc;
 	bool custom_sa_action;
+	int8_t res_addr_offset;
 	bool local_meta_aura_ena;
 	uint32_t meta_buf_sz;
 	bool force_rx_aura_bp;

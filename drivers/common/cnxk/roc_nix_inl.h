@@ -99,6 +99,8 @@ struct roc_nix_inl_dev {
 	uint8_t rx_inj_ena; /* Rx Inject Enable */
 	uint8_t custom_inb_sa;
 	uint8_t nb_inb_cptlfs;
+	int8_t res_addr_offset; /* CPT result address offset */
+
 	/* End of input parameters */
 
 #define ROC_NIX_INL_MEM_SZ (6144)

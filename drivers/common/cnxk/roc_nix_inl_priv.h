@@ -67,6 +67,7 @@ struct nix_inl_dev {
 	uint16_t inb_sa_sz[NIX_INL_PROFILE_CNT];
 	uint32_t inb_sa_max[NIX_INL_PROFILE_CNT];
 	uint8_t nb_cptlf;
+	int8_t res_addr_offset;
 
 	/* CPT data */
 	struct roc_cpt_lf cpt_lf[MAX_NIX_INL_DEV_CPT_LF];

@@ -365,6 +365,12 @@ nix_inl_nix_ipsec_cfg(struct nix_inl_dev *inl_dev, bool ena)
 
 			lf_cfg->ipsec_cfg0.tag_const = 0;
 			lf_cfg->ipsec_cfg0.tt = SSO_TT_ORDERED;
+			if (inl_dev->res_addr_offset) {
+				lf_cfg->ipsec_cfg0_ext.res_addr_offset_valid = 1;
+				lf_cfg->ipsec_cfg0_ext.res_addr_offset =
+					(inl_dev->res_addr_offset & 0x80) |
+					abs(inl_dev->res_addr_offset);
+			}
 		} else {
 			lf_cfg->enable = 0;
 		}
@@ -1370,6 +1376,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->nix_inb_q_bpid = -1;
 	inl_dev->nb_cptlf = 1;
 	inl_dev->ipsec_prof_id = 0;
+	inl_dev->res_addr_offset = roc_inl_dev->res_addr_offset;
 
 	if (roc_model_is_cn9k() || roc_model_is_cn10k())
 		inl_dev->eng_grpmask = (1ULL << ROC_LEGACY_CPT_DFLT_ENG_GRP_SE |
