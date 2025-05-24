@@ -1053,6 +1053,147 @@ prepare_m2d_auto_free(int16_t dev_id, uint16_t vchan)
 }
 
 static int
+test_enq_deq_ops(int16_t dev_id, uint16_t vchan)
+{
+#define BURST_SIZE 16
+#define ROUNDS	   2E7
+#define CPY_LEN	   64
+	struct rte_mempool *ops_pool, *pkt_pool;
+	struct rte_mbuf *mbufs[BURST_SIZE * 2];
+	struct rte_dma_op *ops[BURST_SIZE];
+	uint64_t enq_lat, deq_lat, start;
+	int ret, i, j, enq, deq, n, max;
+	struct rte_dma_sge ssg, dsg;
+	struct rte_dma_info info;
+	uint64_t tenq, tdeq;
+
+	memset(&info, 0, sizeof(info));
+	ret = rte_dma_info_get(dev_id, &info);
+	if (ret != 0)
+		ERR_RETURN("Error with rte_dma_info_get()\n");
+
+	pkt_pool = rte_pktmbuf_pool_create("pkt_pool", info.max_desc * 2, 0, 0,
+					   CPY_LEN + RTE_PKTMBUF_HEADROOM, rte_socket_id());
+	if (pkt_pool == NULL)
+		ERR_RETURN("Error creating pkt pool\n");
+
+	ops_pool = rte_mempool_create("ops_pool", info.max_desc,
+				      sizeof(struct rte_dma_op) + (sizeof(struct rte_dma_sge) * 2),
+				      0, 0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
+	if (ops_pool == NULL)
+		ERR_RETURN("Error creating ops pool\n");
+
+	max = info.max_desc - BURST_SIZE;
+	tenq = 0;
+	tdeq = 0;
+	enq_lat = 0;
+	deq_lat = 0;
+
+	for (i = 0; i < ROUNDS / max; i++) {
+		n = 0;
+		while (n != max) {
+			if (rte_mempool_get_bulk(ops_pool, (void **)ops, BURST_SIZE) != 0)
+				continue;
+
+			if (rte_pktmbuf_alloc_bulk(pkt_pool, mbufs, BURST_SIZE * 2) != 0)
+				ERR_RETURN("Error allocating mbufs %d\n", n);
+
+			for (j = 0; j < BURST_SIZE; j++) {
+				ops[j]->src_dst_seg[0].addr = rte_pktmbuf_iova(mbufs[j]);
+				ops[j]->src_dst_seg[1].addr =
+					rte_pktmbuf_iova(mbufs[j + BURST_SIZE]);
+				ops[j]->src_dst_seg[0].length = CPY_LEN;
+				ops[j]->src_dst_seg[1].length = CPY_LEN;
+
+				ops[j]->nb_src = 1;
+				ops[j]->nb_dst = 1;
+				ops[j]->user_meta = (uint64_t)mbufs[j];
+				ops[j]->event_meta = (uint64_t)mbufs[j + BURST_SIZE];
+
+				memset((void *)(uintptr_t)ops[j]->src_dst_seg[0].addr,
+				       rte_rand() & 0xFF, CPY_LEN);
+				memset((void *)(uintptr_t)ops[j]->src_dst_seg[1].addr, 0, CPY_LEN);
+			}
+
+			start = rte_rdtsc_precise();
+			enq = rte_dma_enqueue_ops(dev_id, vchan, ops, BURST_SIZE);
+			while (enq != BURST_SIZE) {
+				enq += rte_dma_enqueue_ops(dev_id, vchan, ops + enq,
+							   BURST_SIZE - enq);
+			}
+
+			enq_lat += rte_rdtsc_precise() - start;
+			n += enq;
+		}
+		tenq += n;
+
+		memset(ops, 0, sizeof(ops));
+		n = 0;
+		while (n != max) {
+			start = rte_rdtsc_precise();
+			deq = rte_dma_dequeue_ops(dev_id, vchan, ops, BURST_SIZE);
+			while (deq != BURST_SIZE) {
+				deq += rte_dma_dequeue_ops(dev_id, vchan, ops + deq,
+							   BURST_SIZE - deq);
+			}
+			n += deq;
+			deq_lat += rte_rdtsc_precise() - start;
+
+			for (j = 0; j < deq; j++) {
+				/* check the data is correct */
+				ssg = ops[j]->src_dst_seg[0];
+				dsg = ops[j]->src_dst_seg[1];
+				if (memcmp((void *)(uintptr_t)ssg.addr, (void *)(uintptr_t)dsg.addr,
+					   ssg.length) != 0)
+					ERR_RETURN("Error with copy operation\n");
+				rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)ops[j]->user_meta);
+				rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)ops[j]->event_meta);
+			}
+			rte_mempool_put_bulk(ops_pool, (void **)ops, BURST_SIZE);
+		}
+		tdeq += n;
+
+		printf("\rEnqueued %" PRIu64 " Latency %.3f Dequeued %" PRIu64 " Latency %.3f",
+		       tenq, (double)enq_lat / tenq, tdeq, (double)deq_lat / tdeq);
+	}
+	printf("\n");
+
+	rte_mempool_free(pkt_pool);
+	rte_mempool_free(ops_pool);
+
+	return 0;
+}
+
+static int
+prepare_enq_deq_ops(int16_t dev_id, uint16_t vchan)
+{
+	const struct rte_dma_conf conf = {.nb_vchans = 1, .flags = RTE_DMA_CFG_FLAG_ENQ_DEQ};
+	struct rte_dma_vchan_conf qconf;
+	struct rte_dma_info info;
+
+	memset(&qconf, 0, sizeof(qconf));
+	memset(&info, 0, sizeof(info));
+
+	int ret = rte_dma_info_get(dev_id, &info);
+	if (ret != 0)
+		ERR_RETURN("Error with rte_dma_info_get()\n");
+
+	qconf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+	qconf.nb_desc = info.max_desc;
+
+	if (rte_dma_stop(dev_id) < 0)
+		ERR_RETURN("Error stopping device %u\n", dev_id);
+	if (rte_dma_configure(dev_id, &conf) != 0)
+		ERR_RETURN("Error with rte_dma_configure()\n");
+	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
+		ERR_RETURN("Error with queue configuration\n");
+	if (rte_dma_start(dev_id) != 0)
+		ERR_RETURN("Error with rte_dma_start()\n");
+
+	return 0;
+}
+
+static int
 test_dmadev_sg_copy_setup(void)
 {
 	int ret = TEST_SUCCESS;
@@ -1123,6 +1264,20 @@ test_dmadev_autofree_setup(void)
 		if (prepare_m2d_auto_free(test_dev_id, vchan) != 0)
 			return ret;
 
+		ret = TEST_SUCCESS;
+	}
+
+	return ret;
+}
+
+static int
+test_dmadev_enq_deq_setup(void)
+{
+	int ret = TEST_SKIPPED;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_OPS_ENQ_DEQ)) {
+		if (prepare_enq_deq_ops(test_dev_id, vchan) != 0)
+			return ret;
 		ret = TEST_SUCCESS;
 	}
 
@@ -1210,6 +1365,7 @@ test_dmadev_instance(int16_t dev_id)
 		  TEST_ERR,
 		  TEST_FILL,
 		  TEST_M2D,
+		  TEST_ENQ_DEQ,
 		  TEST_END
 	};
 
@@ -1221,6 +1377,7 @@ test_dmadev_instance(int16_t dev_id)
 		{"error_handling", test_completion_handling, 1},
 		{"fill", test_enqueue_fill, 1},
 		{"m2d_auto_free", test_m2d_auto_free, 128},
+		{"dma_enq_deq", test_enq_deq_ops, 1},
 	};
 
 	static struct unit_test_suite ts = {
@@ -1249,6 +1406,9 @@ test_dmadev_instance(int16_t dev_id)
 			TEST_CASE_NAMED_WITH_DATA("m2d_autofree",
 				test_dmadev_autofree_setup, NULL,
 				runtest, &param[TEST_M2D]),
+			TEST_CASE_NAMED_WITH_DATA("dma_enq_deq",
+				test_dmadev_enq_deq_setup, NULL,
+				runtest, &param[TEST_ENQ_DEQ]),
 			TEST_CASES_END()
 		}
 	};
