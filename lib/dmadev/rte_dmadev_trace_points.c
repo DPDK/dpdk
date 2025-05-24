@@ -64,3 +64,11 @@ RTE_TRACE_POINT_REGISTER(rte_dma_trace_completed_status,
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_dma_trace_burst_capacity, 24.03)
 RTE_TRACE_POINT_REGISTER(rte_dma_trace_burst_capacity,
 	lib.dmadev.burst_capacity)
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_dma_trace_enqueue_ops, 25.11)
+RTE_TRACE_POINT_REGISTER(rte_dma_trace_enqueue_ops,
+	lib.dmadev.enqueue_ops)
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_dma_trace_dequeue_ops, 25.11)
+RTE_TRACE_POINT_REGISTER(rte_dma_trace_dequeue_ops,
+	lib.dmadev.dequeue_ops)

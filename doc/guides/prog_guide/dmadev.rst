@@ -108,6 +108,38 @@ completed operations along with the status of each operation (filled into the
 completed operation's ``ring_idx`` which could help user track operations within
 their own application-defined rings.
 
+Alternatively, if the DMA device supports enqueue and dequeue operations,
+as indicated by ``RTE_DMA_CAPA_OPS_ENQ_DEQ`` capability in ``rte_dma_info::dev_capa``,
+the application can utilize the ``rte_dma_enqueue_ops`` and ``rte_dma_dequeue_ops`` API.
+To enable this, the DMA device must be configured in operations mode
+by setting ``RTE_DMA_CFG_FLAG_ENQ_DEQ`` flag in ``rte_dma_config::flags``.
+
+The following example demonstrates the usage of enqueue and dequeue operations:
+
+.. code-block:: C
+
+   struct rte_dma_op *op;
+
+   op = rte_zmalloc(sizeof(struct rte_dma_op) + (sizeof(struct rte_dma_sge) * 2), 0);
+
+   op->src_dst_seg[0].addr = src_addr;
+   op->src_dst_seg[0].length = src_len;
+   op->src_dst_seg[1].addr = dst_addr;
+   op->src_dst_seg[1].length = dst_len;
+
+   ret = rte_dma_enqueue_ops(dev_id, &op, 1);
+   if (ret < 0) {
+       PRINT_ERR("Failed to enqueue DMA op\n");
+       return -1;
+   }
+
+   op = NULL;
+   ret = rte_dma_dequeue_ops(dev_id, &op, 1);
+   if (ret < 0) {
+       PRINT_ERR("Failed to dequeue DMA op\n");
+       return -1;
+   }
+
 
 Querying Device Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

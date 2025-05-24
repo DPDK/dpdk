@@ -954,7 +954,7 @@ dpaa_qdma_configure(struct rte_dma_dev *dmadev,
 {
 	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
 
-	fsl_qdma->is_silent = dev_conf->enable_silent;
+	fsl_qdma->is_silent = dev_conf->flags & RTE_DMA_CFG_FLAG_SILENT;
 	return 0;
 }
 

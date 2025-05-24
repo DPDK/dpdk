@@ -1275,7 +1275,7 @@ dpaa2_qdma_configure(struct rte_dma_dev *dev,
 	}
 
 	qdma_dev->num_vqs = dev_conf->nb_vchans;
-	qdma_dev->is_silent = dev_conf->enable_silent;
+	qdma_dev->is_silent = dev_conf->flags & RTE_DMA_CFG_FLAG_SILENT;
 
 	return 0;
 

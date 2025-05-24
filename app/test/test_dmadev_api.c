@@ -159,7 +159,7 @@ test_dma_configure(void)
 	/* Check enable silent mode */
 	memset(&conf, 0, sizeof(conf));
 	conf.nb_vchans = info.max_vchans;
-	conf.enable_silent = true;
+	conf.flags = RTE_DMA_CFG_FLAG_SILENT;
 	ret = rte_dma_configure(test_dev_id, &conf);
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 

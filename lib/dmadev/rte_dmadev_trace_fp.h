@@ -125,6 +125,26 @@ RTE_TRACE_POINT_FP(
 	rte_trace_point_emit_u16(ret);
 )
 
+RTE_TRACE_POINT_FP(
+	rte_dma_trace_enqueue_ops,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan, void **ops,
+			     uint16_t nb_ops),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_u16(vchan);
+	rte_trace_point_emit_ptr(ops);
+	rte_trace_point_emit_u16(nb_ops);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_dma_trace_dequeue_ops,
+	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan, void **ops,
+			     uint16_t nb_ops),
+	rte_trace_point_emit_i16(dev_id);
+	rte_trace_point_emit_u16(vchan);
+	rte_trace_point_emit_ptr(ops);
+	rte_trace_point_emit_u16(nb_ops);
+)
+
 #ifdef __cplusplus
 }
 #endif
