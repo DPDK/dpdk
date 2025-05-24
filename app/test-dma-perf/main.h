@@ -58,6 +58,7 @@ struct test_configure {
 	uint16_t opcode;
 	bool is_dma;
 	bool is_sg;
+	bool use_ops;
 	struct lcore_dma_config dma_config[MAX_WORKER_NB];
 	struct test_configure_entry mem_size;
 	struct test_configure_entry buf_size;

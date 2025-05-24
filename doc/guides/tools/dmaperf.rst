@@ -69,6 +69,7 @@ along with the application to demonstrate all the parameters.
    lcore_dma1=lcore=11,dev=0000:00:04.2,dir=dev2mem,raddr=0x200000000,coreid=1,pfid=2,vfid=3
    lcore_dma2=lcore=12,dev=0000:00:04.3,dir=mem2dev,raddr=0x200000000,coreid=1,pfid=2,vfid=3
    eal_args=--in-memory --file-prefix=test
+   use_enq_deq_ops=0
 
 The configuration file is divided into multiple sections, each section represents a test case.
 The four mandatory variables ``mem_size``, ``buf_size``, ``dma_ring_size``, and ``kick_batch``
@@ -83,6 +84,8 @@ The variables for mem2dev and dev2mem copy are
 and can vary for each device.
 
 For scatter-gather copy test ``dma_src_sge``, ``dma_dst_sge`` must be configured.
+
+Enqueue and dequeue operations can be enabled by setting ``use_enq_deq_ops=1``.
 
 Each case can only have one variable change,
 and each change will generate a scenario, so each case can have multiple scenarios.
@@ -169,6 +172,10 @@ Configuration Parameters
 
 ``eal_args``
   Specifies the EAL arguments.
+
+``use_enq_deq_ops``
+  Specifies whether to use enqueue/dequeue operations.
+  ``0`` indicates to not use and ``1`` to use.
 
 
 Running the Application

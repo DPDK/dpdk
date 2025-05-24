@@ -297,8 +297,8 @@ load_configs(const char *path)
 	char section_name[CFG_NAME_LEN];
 	const char *case_type;
 	const char *lcore_dma;
-	const char *mem_size_str, *buf_size_str, *ring_size_str, *kick_batch_str,
-		*src_sges_str, *dst_sges_str;
+	const char *mem_size_str, *buf_size_str, *ring_size_str, *kick_batch_str, *src_sges_str,
+		*dst_sges_str, *use_dma_ops;
 	const char *skip;
 	struct rte_kvargs *kvlist;
 	int args_nr, nb_vp;
@@ -347,6 +347,15 @@ load_configs(const char *path)
 			printf("Error: Wrong test case type %s in case%d.\n", case_type, i + 1);
 			test_case->is_valid = false;
 			continue;
+		}
+
+		if (is_dma) {
+			use_dma_ops =
+				rte_cfgfile_get_entry(cfgfile, section_name, "use_enq_deq_ops");
+			if (use_dma_ops != NULL && (atoi(use_dma_ops) == 1))
+				test_case->use_ops = true;
+			else
+				test_case->use_ops = false;
 		}
 
 		test_case->is_dma = is_dma;

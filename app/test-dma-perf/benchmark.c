@@ -54,6 +54,7 @@ struct lcore_params {
 	struct rte_mbuf **srcs;
 	struct rte_mbuf **dsts;
 	struct sge_info sge;
+	struct rte_dma_op **dma_ops;
 	volatile struct worker_info worker_info;
 };
 
@@ -197,6 +198,16 @@ configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg, uint8_t sges
 
 	if (vchan_data_populate(dev_id, &qconf, cfg, dev_num) != 0)
 		rte_exit(EXIT_FAILURE, "Error with vchan data populate.\n");
+
+	if (rte_dma_info_get(dev_id, &info) != 0)
+		rte_exit(EXIT_FAILURE, "Error with getting device info.\n");
+
+	if (cfg->use_ops && !(info.dev_capa & RTE_DMA_CAPA_OPS_ENQ_DEQ))
+		rte_exit(EXIT_FAILURE, "Error with device %s not support enq_deq ops.\n",
+			 info.dev_name);
+
+	if (cfg->use_ops)
+		dev_config.flags = RTE_DMA_CFG_FLAG_ENQ_DEQ;
 
 	if (rte_dma_configure(dev_id, &dev_config) != 0)
 		rte_exit(EXIT_FAILURE, "Error with dma configure.\n");
@@ -396,6 +407,61 @@ dma_copy:
 }
 
 static inline int
+do_dma_enq_deq_mem_copy(void *p)
+{
+#define DEQ_SZ 64
+	struct lcore_params *para = (struct lcore_params *)p;
+	volatile struct worker_info *worker_info = &(para->worker_info);
+	struct rte_dma_op **dma_ops = para->dma_ops;
+	uint16_t kick_batch = para->kick_batch, sz;
+	uint16_t enq, deq, poll_cnt;
+	uint64_t tenq, tdeq;
+	const uint16_t dev_id = para->dev_id;
+	uint32_t nr_buf = para->nr_buf;
+	struct rte_dma_op *op[DEQ_SZ];
+	uint32_t i;
+
+	worker_info->stop_flag = false;
+	worker_info->ready_flag = true;
+
+	while (!worker_info->start_flag)
+		;
+
+	if (kick_batch > nr_buf)
+		kick_batch = nr_buf;
+
+	tenq = 0;
+	tdeq = 0;
+	while (1) {
+		for (i = 0; i < nr_buf; i += kick_batch) {
+			sz = RTE_MIN(nr_buf - i, kick_batch);
+			enq = rte_dma_enqueue_ops(dev_id, 0, &dma_ops[i], sz);
+			while (enq < sz) {
+				do {
+					deq = rte_dma_dequeue_ops(dev_id, 0, op, DEQ_SZ);
+					tdeq += deq;
+				} while (deq);
+				enq += rte_dma_enqueue_ops(dev_id, 0, &dma_ops[i + enq], sz - enq);
+				if (worker_info->stop_flag)
+					break;
+			}
+			tenq += enq;
+
+			worker_info->total_cpl += enq;
+		}
+
+		if (worker_info->stop_flag)
+			break;
+	}
+
+	poll_cnt = 0;
+	while ((tenq != tdeq) && (poll_cnt++ < POLL_MAX))
+		tdeq += rte_dma_dequeue_ops(dev_id, 0, op, DEQ_SZ);
+
+	return 0;
+}
+
+static inline int
 do_cpu_mem_copy(void *p)
 {
 	struct lcore_params *para = (struct lcore_params *)p;
@@ -436,16 +502,17 @@ dummy_free_ext_buf(void *addr, void *opaque)
 }
 
 static int
-setup_memory_env(struct test_configure *cfg,
-			 struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
-			 struct rte_dma_sge **src_sges, struct rte_dma_sge **dst_sges)
+setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
+		 struct rte_dma_sge **src_sges, struct rte_dma_sge **dst_sges,
+		 struct rte_dma_op ***dma_ops)
 {
 	unsigned int cur_buf_size = cfg->buf_size.cur;
 	unsigned int buf_size = cur_buf_size + RTE_PKTMBUF_HEADROOM;
-	unsigned int nr_sockets;
-	uint32_t nr_buf = cfg->nr_buf;
-	uint32_t i;
 	bool is_src_numa_incorrect, is_dst_numa_incorrect;
+	uint32_t nr_buf = cfg->nr_buf;
+	unsigned int nr_sockets;
+	uintptr_t ops;
+	uint32_t i;
 
 	nr_sockets = rte_socket_count();
 	is_src_numa_incorrect = (cfg->src_numa_node >= nr_sockets);
@@ -540,6 +607,34 @@ setup_memory_env(struct test_configure *cfg,
 			if (!((i+1) % nb_dst_sges))
 				(*dst_sges)[i].length += (cur_buf_size % nb_dst_sges);
 		}
+
+		if (cfg->use_ops) {
+
+			nr_buf /= RTE_MAX(nb_src_sges, nb_dst_sges);
+			*dma_ops = rte_zmalloc(NULL, nr_buf * (sizeof(struct rte_dma_op *)),
+					       RTE_CACHE_LINE_SIZE);
+			if (*dma_ops == NULL) {
+				printf("Error: dma_ops container malloc failed.\n");
+				return -1;
+			}
+
+			ops = (uintptr_t)rte_zmalloc(
+				NULL,
+				nr_buf * (sizeof(struct rte_dma_op) + ((nb_src_sges + nb_dst_sges) *
+								       sizeof(struct rte_dma_sge))),
+				RTE_CACHE_LINE_SIZE);
+			if (ops == 0) {
+				printf("Error: dma_ops malloc failed.\n");
+				return -1;
+			}
+
+			for (i = 0; i < nr_buf; i++)
+				(*dma_ops)[i] =
+					(struct rte_dma_op *)(ops +
+							      (i * (sizeof(struct rte_dma_op) +
+								    ((nb_src_sges + nb_dst_sges) *
+								     sizeof(struct rte_dma_sge)))));
+		}
 	}
 
 	return 0;
@@ -582,8 +677,12 @@ get_work_function(struct test_configure *cfg)
 	if (cfg->is_dma) {
 		if (!cfg->is_sg)
 			fn = do_dma_plain_mem_copy;
-		else
-			fn = do_dma_sg_mem_copy;
+		else {
+			if (cfg->use_ops)
+				fn = do_dma_enq_deq_mem_copy;
+			else
+				fn = do_dma_sg_mem_copy;
+		}
 	} else {
 		fn = do_cpu_mem_copy;
 	}
@@ -680,6 +779,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 	struct rte_dma_sge *src_sges = NULL, *dst_sges = NULL;
 	struct vchan_dev_config *vchan_dev = NULL;
 	struct lcore_dma_map_t *lcore_dma_map = NULL;
+	struct rte_dma_op **dma_ops = NULL;
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
 	uint16_t nb_workers = cfg->num_worker;
@@ -690,13 +790,13 @@ mem_copy_benchmark(struct test_configure *cfg)
 	float mops, mops_total;
 	float bandwidth, bandwidth_total;
 	uint32_t nr_sgsrc = 0, nr_sgdst = 0;
-	uint32_t nr_buf;
+	uint32_t nr_buf, nr_ops;
 	int ret = 0;
 
 	nr_buf = align_buffer_count(cfg, &nr_sgsrc, &nr_sgdst);
 	cfg->nr_buf = nr_buf;
 
-	if (setup_memory_env(cfg, &srcs, &dsts, &src_sges, &dst_sges) < 0)
+	if (setup_memory_env(cfg, &srcs, &dsts, &src_sges, &dst_sges, &dma_ops) < 0)
 		goto out;
 
 	if (cfg->is_dma)
@@ -749,6 +849,25 @@ mem_copy_benchmark(struct test_configure *cfg)
 			if (attach_ext_buffer(vchan_dev, lcores[i], cfg->is_sg,
 					      (nr_sgsrc/nb_workers), (nr_sgdst/nb_workers)) < 0)
 				goto out;
+		}
+
+		if (cfg->is_sg && cfg->use_ops) {
+			nr_ops = nr_buf / RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges);
+			lcores[i]->nr_buf = nr_ops / nb_workers;
+			lcores[i]->dma_ops = dma_ops + (nr_ops / nb_workers * i);
+			for (j = 0; j < (nr_ops / nb_workers); j++) {
+				for (k = 0; k < cfg->nb_src_sges; k++)
+					lcores[i]->dma_ops[j]->src_dst_seg[k] =
+						lcores[i]->sge.srcs[(j * cfg->nb_src_sges) + k];
+
+				for (k = 0; k < cfg->nb_dst_sges; k++)
+					lcores[i]->dma_ops[j]->src_dst_seg[k + cfg->nb_src_sges] =
+						lcores[i]->sge.dsts[(j * cfg->nb_dst_sges) + k];
+
+				lcores[i]->dma_ops[j]->nb_src = cfg->nb_src_sges;
+				lcores[i]->dma_ops[j]->nb_dst = cfg->nb_dst_sges;
+				lcores[i]->dma_ops[j]->vchan = 0;
+			}
 		}
 
 		rte_eal_remote_launch(get_work_function(cfg), (void *)(lcores[i]), lcore_id);
