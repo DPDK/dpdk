@@ -234,7 +234,7 @@ test_op_forward_mode(void)
 {
 	struct rte_mbuf *src_mbuf[TEST_MAX_OP];
 	struct rte_mbuf *dst_mbuf[TEST_MAX_OP];
-	struct rte_event_dma_adapter_op *op;
+	struct rte_dma_op *op;
 	struct rte_event ev[TEST_MAX_OP];
 	int ret, i;
 
@@ -266,7 +266,7 @@ test_op_forward_mode(void)
 		op->vchan = TEST_DMA_VCHAN_ID;
 		op->event_meta = dma_response_info.event;
 
-		/* Fill in event info and update event_ptr with rte_event_dma_adapter_op */
+		/* Fill in event info and update event_ptr with rte_dma_op */
 		memset(&ev[i], 0, sizeof(struct rte_event));
 		ev[i].event = 0;
 		ev[i].op = RTE_EVENT_OP_NEW;
@@ -396,7 +396,7 @@ configure_dmadev(void)
 						       rte_socket_id());
 	RTE_TEST_ASSERT_NOT_NULL(params.dst_mbuf_pool, "Can't create DMA_DST_MBUFPOOL\n");
 
-	elt_size = sizeof(struct rte_event_dma_adapter_op) + (sizeof(struct rte_dma_sge) * 2);
+	elt_size = sizeof(struct rte_dma_op) + (sizeof(struct rte_dma_sge) * 2);
 	params.op_mpool = rte_mempool_create("EVENT_DMA_OP_POOL", DMA_OP_POOL_SIZE, elt_size, 0,
 					     0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
 	RTE_TEST_ASSERT_NOT_NULL(params.op_mpool, "Can't create DMA_OP_POOL\n");

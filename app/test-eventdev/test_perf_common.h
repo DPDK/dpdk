@@ -146,7 +146,7 @@ perf_mark_fwd_latency(enum evt_prod_type prod_type, struct rte_event *const ev)
 		}
 		pe->timestamp = rte_get_timer_cycles();
 	} else if (prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
-		struct rte_event_dma_adapter_op *op = ev->event_ptr;
+		struct rte_dma_op *op = ev->event_ptr;
 
 		op->user_meta = rte_get_timer_cycles();
 	} else {
@@ -304,7 +304,7 @@ perf_process_last_stage_latency(struct rte_mempool *const pool, enum evt_prod_ty
 		tstamp = pe->timestamp;
 		rte_crypto_op_free(op);
 	} else if (prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
-		struct rte_event_dma_adapter_op *op = ev->event_ptr;
+		struct rte_dma_op *op = ev->event_ptr;
 
 		to_free_in_bulk = op;
 		tstamp = op->user_meta;

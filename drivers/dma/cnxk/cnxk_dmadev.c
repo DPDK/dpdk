@@ -622,7 +622,7 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_de
 	rdpi = &dpivf->rdpi;
 
 	rdpi->pci_dev = pci_dev;
-	rc = roc_dpi_dev_init(rdpi, offsetof(struct rte_event_dma_adapter_op, impl_opaque));
+	rc = roc_dpi_dev_init(rdpi, offsetof(struct rte_dma_op, impl_opaque));
 	if (rc < 0)
 		goto err_out_free;
 

@@ -455,7 +455,7 @@ uint16_t
 cn10k_dma_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 {
 	const struct rte_dma_sge *src, *dst;
-	struct rte_event_dma_adapter_op *op;
+	struct rte_dma_op *op;
 	struct cnxk_dpi_conf *dpi_conf;
 	struct cnxk_dpi_vf_s *dpivf;
 	struct cn10k_sso_hws *work;
@@ -515,7 +515,7 @@ uint16_t
 cn9k_dma_adapter_dual_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 {
 	const struct rte_dma_sge *fptr, *lptr;
-	struct rte_event_dma_adapter_op *op;
+	struct rte_dma_op *op;
 	struct cn9k_sso_hws_dual *work;
 	struct cnxk_dpi_conf *dpi_conf;
 	struct cnxk_dpi_vf_s *dpivf;
@@ -531,7 +531,7 @@ cn9k_dma_adapter_dual_enqueue(void *ws, struct rte_event ev[], uint16_t nb_event
 	for (count = 0; count < nb_events; count++) {
 		op = ev[count].event_ptr;
 		rsp_info = (struct rte_event *)((uint8_t *)op +
-						sizeof(struct rte_event_dma_adapter_op));
+						sizeof(struct rte_dma_op));
 		dpivf = rte_dma_fp_objs[op->dma_dev_id].dev_private;
 		dpi_conf = &dpivf->conf[op->vchan];
 
@@ -586,7 +586,7 @@ uint16_t
 cn9k_dma_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 {
 	const struct rte_dma_sge *fptr, *lptr;
-	struct rte_event_dma_adapter_op *op;
+	struct rte_dma_op *op;
 	struct cnxk_dpi_conf *dpi_conf;
 	struct cnxk_dpi_vf_s *dpivf;
 	struct cn9k_sso_hws *work;
@@ -653,11 +653,11 @@ RTE_EXPORT_INTERNAL_SYMBOL(cnxk_dma_adapter_dequeue)
 uintptr_t
 cnxk_dma_adapter_dequeue(uintptr_t get_work1)
 {
-	struct rte_event_dma_adapter_op *op;
+	struct rte_dma_op *op;
 	struct cnxk_dpi_conf *dpi_conf;
 	struct cnxk_dpi_vf_s *dpivf;
 
-	op = (struct rte_event_dma_adapter_op *)get_work1;
+	op = (struct rte_dma_op *)get_work1;
 	dpivf = rte_dma_fp_objs[op->dma_dev_id].dev_private;
 	dpi_conf = &dpivf->conf[op->vchan];
 

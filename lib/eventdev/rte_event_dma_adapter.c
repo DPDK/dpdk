@@ -40,8 +40,8 @@ struct __rte_cache_aligned dma_ops_circular_buffer {
 	/* Size of circular buffer */
 	uint16_t size;
 
-	/* Pointer to hold rte_event_dma_adapter_op for processing */
-	struct rte_event_dma_adapter_op **op_buffer;
+	/* Pointer to hold rte_dma_op for processing */
+	struct rte_dma_op **op_buffer;
 };
 
 /* Vchan information */
@@ -202,7 +202,7 @@ edma_circular_buffer_space_for_batch(struct dma_ops_circular_buffer *bufp)
 static inline int
 edma_circular_buffer_init(const char *name, struct dma_ops_circular_buffer *buf, uint16_t sz)
 {
-	buf->op_buffer = rte_zmalloc(name, sizeof(struct rte_event_dma_adapter_op *) * sz, 0);
+	buf->op_buffer = rte_zmalloc(name, sizeof(struct rte_dma_op *) * sz, 0);
 	if (buf->op_buffer == NULL)
 		return -ENOMEM;
 
@@ -218,7 +218,7 @@ edma_circular_buffer_free(struct dma_ops_circular_buffer *buf)
 }
 
 static inline int
-edma_circular_buffer_add(struct dma_ops_circular_buffer *bufp, struct rte_event_dma_adapter_op *op)
+edma_circular_buffer_add(struct dma_ops_circular_buffer *bufp, struct rte_dma_op *op)
 {
 	uint16_t *tail = &bufp->tail;
 
@@ -236,7 +236,7 @@ edma_circular_buffer_flush_to_dma_dev(struct event_dma_adapter *adapter,
 				      struct dma_ops_circular_buffer *bufp, uint8_t dma_dev_id,
 				      uint16_t vchan, uint16_t *nb_ops_flushed)
 {
-	struct rte_event_dma_adapter_op *op;
+	struct rte_dma_op *op;
 	uint16_t *head = &bufp->head;
 	uint16_t *tail = &bufp->tail;
 	struct dma_vchan_info *tq;
@@ -503,7 +503,7 @@ edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, uns
 {
 	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	struct dma_vchan_info *vchan_qinfo = NULL;
-	struct rte_event_dma_adapter_op *dma_op;
+	struct rte_dma_op *dma_op;
 	uint16_t vchan, nb_enqueued = 0;
 	int16_t dma_dev_id;
 	unsigned int i, n;
@@ -646,7 +646,7 @@ edma_adapter_enq_run(struct event_dma_adapter *adapter, unsigned int max_enq)
 #define DMA_ADAPTER_MAX_EV_ENQ_RETRIES 100
 
 static inline uint16_t
-edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_adapter_op **ops,
+edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_dma_op **ops,
 		       uint16_t num)
 {
 	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
@@ -692,7 +692,7 @@ edma_circular_buffer_flush_to_evdev(struct event_dma_adapter *adapter,
 				    struct dma_ops_circular_buffer *bufp,
 				    uint16_t *enqueue_count)
 {
-	struct rte_event_dma_adapter_op **ops = bufp->op_buffer;
+	struct rte_dma_op **ops = bufp->op_buffer;
 	uint16_t n = 0, nb_ops_flushed;
 	uint16_t *head = &bufp->head;
 	uint16_t *tail = &bufp->tail;
@@ -741,7 +741,7 @@ edma_adapter_deq_run(struct event_dma_adapter *adapter, unsigned int max_deq)
 	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	struct dma_vchan_info *vchan_info;
 	struct dma_ops_circular_buffer *tq_buf;
-	struct rte_event_dma_adapter_op *ops;
+	struct rte_dma_op *ops;
 	uint16_t n, nb_deq, nb_enqueued, i;
 	struct dma_device_info *dev_info;
 	uint16_t vchan, num_vchan;

@@ -152,63 +152,6 @@ extern "C" {
 #endif
 
 /**
- * A structure used to hold event based DMA operation entry. All the information
- * required for a DMA transfer shall be populated in "struct rte_event_dma_adapter_op"
- * instance.
- */
-struct rte_event_dma_adapter_op {
-	uint64_t flags;
-	/**< Flags related to the operation.
-	 * @see RTE_DMA_OP_FLAG_*
-	 */
-	struct rte_mempool *op_mp;
-	/**< Mempool from which op is allocated. */
-	enum rte_dma_status_code status;
-	/**< Status code for this operation. */
-	uint32_t rsvd;
-	/**< Reserved for future use. */
-	uint64_t impl_opaque[2];
-	/**< Implementation-specific opaque data.
-	 * An dma device implementation use this field to hold
-	 * implementation specific values to share between dequeue and enqueue
-	 * operations.
-	 * The application should not modify this field.
-	 */
-	uint64_t user_meta;
-	/**<  Memory to store user specific metadata.
-	 * The dma device implementation should not modify this area.
-	 */
-	uint64_t event_meta;
-	/**< Event metadata of DMA completion event.
-	 * Used when RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND is not
-	 * supported in OP_NEW mode.
-	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_NEW
-	 * @see RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND
-	 *
-	 * Used when RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD is not
-	 * supported in OP_FWD mode.
-	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_FORWARD
-	 * @see RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD
-	 *
-	 * @see struct rte_event::event
-	 */
-	int16_t dma_dev_id;
-	/**< DMA device ID to be used with OP_FORWARD mode.
-	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_FORWARD
-	 */
-	uint16_t vchan;
-	/**< DMA vchan ID to be used with OP_FORWARD mode
-	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_FORWARD
-	 */
-	uint16_t nb_src;
-	/**< Number of source segments. */
-	uint16_t nb_dst;
-	/**< Number of destination segments. */
-	struct rte_dma_sge src_dst_seg[];
-	/**< Source and destination segments. */
-};
-
-/**
  *  DMA event adapter mode
  */
 enum rte_event_dma_adapter_mode {
