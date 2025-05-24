@@ -93,6 +93,7 @@ struct cnxk_dpi_cdesc_data_s {
 	uint16_t head;
 	uint16_t tail;
 	uint8_t *compl_ptr;
+	struct rte_dma_op **ops;
 };
 
 struct cnxk_dpi_conf {
@@ -131,5 +132,11 @@ int cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iov
 int cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
 			 const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst,
 			 uint64_t flags);
+uint16_t cnxk_dma_ops_enqueue(void *dev_private, uint16_t vchan, struct rte_dma_op **ops,
+			      uint16_t nb_ops);
+uint16_t cn10k_dma_ops_enqueue(void *dev_private, uint16_t vchan, struct rte_dma_op **ops,
+			       uint16_t nb_ops);
+uint16_t cnxk_dma_ops_dequeue(void *dev_private, uint16_t vchan, struct rte_dma_op **ops,
+			      uint16_t nb_ops);
 
 #endif
