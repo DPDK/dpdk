@@ -700,6 +700,7 @@ acc_error_log(struct acc_queue *q, void *op, uint8_t acc_error_idx, const char *
 
 	rte_bbdev_vrb_trace_error(0, rte_bbdev_op_type_str(q->op_type),
 			acc_error_string[acc_error_idx]);
+	rte_bbdev_ops_trace(op, q->op_type);
 
 	va_end(args);
 }
