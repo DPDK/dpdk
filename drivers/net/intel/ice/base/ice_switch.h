@@ -548,6 +548,7 @@ ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
 int ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
 void ice_rem_all_sw_rules_info(struct ice_hw *hw);
 int ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
+int ice_add_mac_with_fltr_flag(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list, u16 flag);
 int ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 int
 ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);

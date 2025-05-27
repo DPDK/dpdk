@@ -5112,11 +5112,12 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
 }
 
 /**
- * ice_add_mac_rule - Add a MAC address based filter rule
+ * ice_add_mac_rule_with_fltr_flag - Add a MAC address based filter rule
  * @hw: pointer to the hardware structure
  * @m_list: list of MAC addresses and forwarding information
  * @sw: pointer to switch info struct for which function add rule
  * @lport: logic port number on which function add rule
+ * @flag: filter flag
  *
  * IMPORTANT: When the umac_shared flag is set to false and m_list has
  * multiple unicast addresses, the function assumes that all the
@@ -5125,8 +5126,8 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
  * list should be taken care of in the caller of this function.
  */
 static int
-ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
-		 struct ice_switch_info *sw, u8 lport)
+ice_add_mac_rule_with_fltr_flag(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
+			struct ice_switch_info *sw, u8 lport, u16 flag)
 {
 	struct ice_sw_recipe *recp_list = &sw->recp_list[ICE_SW_LKUP_MAC];
 	struct ice_sw_rule_lkup_rx_tx *s_rule, *r_iter;
@@ -5148,7 +5149,7 @@ ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
 		u16 vsi_handle;
 		u16 hw_vsi_id;
 
-		m_list_itr->fltr_info.flag = ICE_FLTR_TX;
+		m_list_itr->fltr_info.flag = flag;
 		vsi_handle = m_list_itr->fltr_info.vsi_handle;
 		if (!ice_is_vsi_valid(hw, vsi_handle))
 			return ICE_ERR_PARAM;
@@ -5269,6 +5270,26 @@ ice_add_mac_exit:
 }
 
 /**
+ * ice_add_mac_rule - Add a MAC address based filter rule
+ * @hw: pointer to the hardware structure
+ * @m_list: list of MAC addresses and forwarding information
+ * @sw: pointer to switch info struct for which function add rule
+ * @lport: logic port number on which function add rule
+ *
+ * IMPORTANT: When the umac_shared flag is set to false and m_list has
+ * multiple unicast addresses, the function assumes that all the
+ * addresses are unique in a given add_mac call. It doesn't
+ * check for duplicates in this case, removing duplicates from a given
+ * list should be taken care of in the caller of this function.
+ */
+static int
+ice_add_mac_rule(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list,
+		 struct ice_switch_info *sw, u8 lport)
+{
+	return ice_add_mac_rule_with_fltr_flag(hw, m_list, sw, lport, ICE_FLTR_TX);
+}
+
+/**
  * ice_add_mac - Add a MAC address based filter rule
  * @hw: pointer to the hardware structure
  * @m_list: list of MAC addresses and forwarding information
@@ -5282,6 +5303,23 @@ int ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list)
 
 	return ice_add_mac_rule(hw, m_list, hw->switch_info,
 				hw->port_info->lport);
+}
+
+/**
+ * ice_add_mac_with_fltr_flag - Add a MAC address based filter rule
+ * @hw: pointer to the hardware structure
+ * @m_list: list of MAC addresses and forwarding information
+ * @flag: filter flag
+ *
+ * Function add MAC rule for logical port from HW struct
+ */
+int ice_add_mac_with_fltr_flag(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list, u16 flag)
+{
+	if (!m_list || !hw)
+		return ICE_ERR_PARAM;
+
+	return ice_add_mac_rule_with_fltr_flag(hw, m_list, hw->switch_info,
+				hw->port_info->lport, flag);
 }
 
 /**
