@@ -25,7 +25,7 @@
  */
 static inline bool ice_is_pow2(u64 val)
 {
-	return (val && !(val & (val - 1)));
+	return val != 0 && (val & (val - 1)) == 0;
 }
 
 /**
