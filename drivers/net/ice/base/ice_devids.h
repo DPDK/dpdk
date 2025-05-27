@@ -72,7 +72,7 @@
 #define ICE_DEV_ID_E825C_QSFP	        0x579D
 /* Intel(R) Ethernet Connection E825-C for SFP */
 #define ICE_DEV_ID_E825C_SFP	        0x579E
-/* Intel(R) Ethernet Connection E825-C 1GbE */
+/* Intel(R) Ethernet Connection E825-C 10GbE */
 #define ICE_DEV_ID_E825C_SGMII		0x579F
 #define ICE_DEV_ID_C825X		0x0DCD
 #endif /* _ICE_DEVIDS_H_ */
