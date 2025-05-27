@@ -136,6 +136,8 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
+		/* Output Scatter List */
+		last_seg->data_len += sess->max_extended_len + pad_bytes;
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
@@ -156,8 +158,6 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
 		w4.s.opcode_minor = pad_len;
 
-		/* Output Scatter List */
-		last_seg->data_len += sess->max_extended_len + pad_bytes;
 		inst->w4.u64 = w4.u64;
 	} else {
 		struct roc_sg2list_comp *scatter_comp, *gather_comp;
@@ -189,6 +189,8 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 		g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
 
+		/* Output Scatter List */
+		last_seg->data_len += sess->max_extended_len + pad_bytes;
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
@@ -209,8 +211,6 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		w4.s.opcode_minor = pad_len;
 		w4.s.param1 = w4.s.dlen;
 		w4.s.param2 = cop->param1.tls_record.content_type;
-		/* Output Scatter List */
-		last_seg->data_len += sess->max_extended_len + pad_bytes;
 		inst->w4.u64 = w4.u64;
 	}
 
