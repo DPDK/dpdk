@@ -552,7 +552,7 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, NULL,
 			MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION |
-			MLX5_HCA_CAP_OPMOD_GET_CUR);
+			(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr) {
 		DRV_LOG(DEBUG, "Failed to query devx VDPA capabilities");
 		vdpa_attr->valid = 0;
@@ -851,7 +851,7 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_PARSE_GRAPH_NODE_CAP |
-			MLX5_HCA_CAP_OPMOD_GET_CUR);
+			(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr)
 		return rc;
 	attr->node_in = MLX5_GET(parse_graph_node_cap, hcattr, node_in);
@@ -884,7 +884,7 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 	/* Get the max supported samples from HCA CAP 2 */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
-			MLX5_HCA_CAP_OPMOD_GET_CUR);
+			(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr)
 		return rc;
 	attr->max_num_prog_sample =
@@ -943,7 +943,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE |
-			MLX5_HCA_CAP_OPMOD_GET_CUR);
+			(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr)
 		return rc;
 	hca_cap_2_sup = MLX5_GET(cmd_hca_cap, hcattr, hca_cap_2);
@@ -1127,7 +1127,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_single_block_le_tweak);
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_CRYPTO |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr)
 			return -1;
 		attr->crypto_wrapped_import_method = !!(MLX5_GET(crypto_caps,
@@ -1152,7 +1152,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	if (hca_cap_2_sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr) {
 			DRV_LOG(DEBUG,
 				"Failed to query DevX HCA capabilities 2.");
@@ -1193,7 +1193,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	if (attr->qos.sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_QOS_CAP |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr) {
 			DRV_LOG(DEBUG, "Failed to query devx QOS capabilities");
 			return rc;
@@ -1229,7 +1229,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	/* Query Flow Sampler Capability From FLow Table Properties Layout. */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
-			MLX5_HCA_CAP_OPMOD_GET_CUR);
+			(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr) {
 		attr->log_max_ft_sampler_num = 0;
 		return rc;
@@ -1286,7 +1286,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	/* Query HCA offloads for Ethernet protocol. */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
-			MLX5_HCA_CAP_OPMOD_GET_CUR);
+			(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr) {
 		attr->eth_net_offloads = 0;
 		return rc;
@@ -1355,7 +1355,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	if (attr->wqe_based_flow_table_sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_WQE_BASED_FLOW_TABLE |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr) {
 			DRV_LOG(DEBUG, "Failed to query WQE Based Flow table capabilities");
 			return rc;
@@ -1378,7 +1378,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	if (attr->roce) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_ROCE |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr) {
 			DRV_LOG(DEBUG,
 				"Failed to query devx HCA ROCE capabilities");
@@ -1396,7 +1396,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	if (attr->eswitch_manager) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_SET_HCA_CAP_OP_MOD_ESW |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr)
 			return rc;
 		attr->esw_mgr_vport_id_valid =
@@ -1410,7 +1410,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_ESW_FLOW_TABLE |
-				MLX5_HCA_CAP_OPMOD_GET_CUR);
+				(uint32_t)MLX5_HCA_CAP_OPMOD_GET_CUR);
 		if (!hcattr)
 			return rc;
 		esw_reg = MLX5_GET(flow_table_esw_cap, hcattr,
