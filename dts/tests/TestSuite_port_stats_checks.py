@@ -51,10 +51,15 @@ class TestPortStatsChecks(TestSuite):
 
     #: Length of the packet being sent including the IP and frame headers.
     total_packet_len: ClassVar[int] = 100
-    #: Packet to send during testing.
-    send_pkt: ClassVar[Packet] = (
-        Ether() / IP() / Raw(b"X" * (total_packet_len - ip_header_len - ether_header_len))
-    )
+
+    @property
+    def send_pkt(self) -> Packet:
+        """Packet to send during testing."""
+        return (
+            Ether()
+            / IP()
+            / Raw(b"X" * (self.total_packet_len - self.ip_header_len - self.ether_header_len))
+        )
 
     def extract_noise_information(
         self, verbose_out: list[TestPmdVerbosePacket]
