@@ -27,7 +27,47 @@ Lcore-related options
     The grouping ``()`` can be omitted for single element group.
     The ``@`` can be omitted if cpus and lcores have the same value.
 
-.. Note::
+    Examples:
+
+    ``--lcores=1-3``
+      Run threads on physical CPUs 1, 2 and 3,
+      with each thread having the same lcore id as the physical CPU id.
+
+    ``--lcores=1@(1,2)``
+      Run a single thread with lcore id 1,
+      but with that thread bound to both physical CPUs 1 and 2,
+      so it can run on either, as determined by the operating system.
+
+    ``--lcores=1@31,2@32,3@33``
+      Run threads having internal lcore ids of 1, 2 and 3,
+      but with the threads being bound to physical CPUs 31, 32 and 33 respectively.
+
+    ``--lcores='(1-3)@(31-33)'``
+      Run three threads with lcore ids 1, 2 and 3.
+      Unlike the previous example above,
+      each of these threads is not bound to one specific physical CPU,
+      but rather, all three threads are instead bound to the three physical CPUs 31, 32 and 33.
+      This means that each of the three threads can move between the physical CPUs 31-33,
+      as decided by the OS as the application runs.
+
+    ``--lcores='(1-3)@20'``
+      Run three threads, with lcore ids 1, 2 and 3,
+      where all three threads are bound to (can only run on) physical CPU 20.
+
+.. note::
+
+   Binding multiple DPDK lcores to a single physical CPU can cause problems with poor performance
+   or deadlock when using DPDK rings or memory pools or spinlocks.
+   Such a configuration should only be used with care.
+
+.. note::
+
+   As shown in the examples above, and depending on the shell in use,
+   it is sometimes necessary to enclose the lcores parameter value in quotes,
+   for example, when the parameter value starts with a ``(`` character.
+
+.. note::
+
     At a given instance only one core option ``--lcores``, ``-l`` or ``-c`` can
     be used.
 
