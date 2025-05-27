@@ -1285,6 +1285,29 @@ rte_bbdev_queue_ops_dump(uint16_t dev_id, uint16_t queue_id, FILE *f)
 	return dev->dev_ops->queue_ops_dump(dev, queue_id, f);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bbdev_ops_trace, 25.03)
+void
+rte_bbdev_ops_trace(void *op, enum rte_bbdev_op_type op_type)
+{
+	struct rte_bbdev_dec_op *op_dec = op;
+	struct rte_bbdev_enc_op *op_enc = op;
+	struct rte_bbdev_fft_op *op_fft = op;
+	struct rte_bbdev_mldts_op *op_mldts = op;
+
+	if (op_type == RTE_BBDEV_OP_LDPC_DEC)
+		rte_bbdev_trace_op_ldpc_dec(op_dec->ldpc_dec);
+	else if (op_type == RTE_BBDEV_OP_LDPC_ENC)
+		rte_bbdev_trace_op_ldpc_enc(op_enc->ldpc_enc);
+	else if (op_type == RTE_BBDEV_OP_FFT)
+		rte_bbdev_trace_op_fft(op_fft->fft);
+	else if (op_type == RTE_BBDEV_OP_MLDTS)
+		rte_bbdev_trace_op_mldts(op_mldts->mldts);
+	else if (op_type == RTE_BBDEV_OP_TURBO_DEC)
+		rte_bbdev_trace_op_turbo_dec(op_dec->turbo_dec);
+	else if (op_type == RTE_BBDEV_OP_TURBO_ENC)
+		rte_bbdev_trace_op_turbo_enc(op_enc->turbo_enc);
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bbdev_ops_param_string, 24.11)
 char *
 rte_bbdev_ops_param_string(void *op, enum rte_bbdev_op_type op_type, char *str, uint32_t len)

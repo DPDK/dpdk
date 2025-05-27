@@ -1147,6 +1147,20 @@ __rte_experimental
 char *
 rte_bbdev_ops_param_string(void *op, enum rte_bbdev_op_type op_type, char *str, uint32_t len);
 
+/**
+ * Add a trace with detail of operation.
+ *
+ *  @param op
+ *    Pointer to an operation.
+ *
+ *  @param op_type
+ *    Operation type enum.
+ *
+ */
+__rte_experimental
+void
+rte_bbdev_ops_trace(void *op, enum rte_bbdev_op_type op_type);
+
 #ifdef __cplusplus
 }
 #endif
