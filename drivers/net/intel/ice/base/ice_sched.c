@@ -1748,6 +1748,7 @@ ice_sched_add_vsi_child_nodes(struct ice_port_info *pi, u16 vsi_handle,
 				node = node->sibling;
 			}
 		} else {
+			ice_memfence_read();
 			parent = parent->children[0];
 		}
 	}
@@ -1840,6 +1841,7 @@ ice_sched_add_vsi_support_nodes(struct ice_port_info *pi, u16 vsi_handle,
 		/* The newly added node can be a new parent for the next
 		 * layer nodes
 		 */
+		ice_memfence_read();
 		if (num_added)
 			parent = ice_sched_find_node_by_teid(tc_node,
 							     first_node_teid);
@@ -2431,6 +2433,7 @@ ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
 		/* The newly added node can be a new parent for the next
 		 * layer nodes
 		 */
+		ice_memfence_read();
 		if (num_nodes_added)
 			parent = ice_sched_find_node_by_teid(tc_node,
 							     first_node_teid);

@@ -1280,6 +1280,7 @@ ice_prof_has_mask_idx(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 idx,
 			if (hw->blk[blk].masks.masks[i].in_use &&
 			    hw->blk[blk].masks.masks[i].idx == idx) {
 				found = true;
+				ice_memfence_read();
 				if (hw->blk[blk].masks.masks[i].mask == mask)
 					match = true;
 				break;
@@ -1648,6 +1649,7 @@ ice_alloc_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 idx, u16 mask,
 			/* if mask is in use and it exactly duplicates the
 			 * desired mask and index, then in can be reused
 			 */
+			ice_memfence_read();
 			if (hw->blk[blk].masks.masks[i].mask == mask &&
 			    hw->blk[blk].masks.masks[i].idx == idx) {
 				found_copy = true;
