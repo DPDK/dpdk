@@ -520,9 +520,6 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		  ice_clk_src_str(dw23.field.time_ref_sel),
 		  ice_clk_freq_str(dw9.field.time_ref_freq_sel));
 
-	*clk_freq = (enum ice_time_ref_freq)dw9.field.time_ref_freq_sel;
-	*clk_src = (enum ice_clk_src)dw23.field.time_ref_sel;
-
 	return 0;
 }
 
@@ -798,11 +795,11 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 		ice_warn(hw, "Failed to lock TS PLL to predefined frequency. Retrying with fallback frequency.\n");
 
 		/* Try to lock to internal 25 MHz TCXO as a fallback */
+		time_ref_freq = ICE_TIME_REF_FREQ_25_000;
+		clk_src = ICE_CLK_SRC_TCX0;
 		if (hw->phy_model == ICE_PHY_ETH56G)
 			time_ref_freq = ICE_TIME_REF_FREQ_156_250;
-		else
-			time_ref_freq = ICE_TIME_REF_FREQ_25_000;
-		clk_src = ICE_CLK_SRC_TCX0;
+
 		if (ice_is_e825c(hw))
 			err = ice_cfg_cgu_pll_e825c(hw, &time_ref_freq,
 						    &clk_src);
