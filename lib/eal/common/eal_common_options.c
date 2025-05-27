@@ -46,7 +46,6 @@
 #define BITS_PER_HEX 4
 #define LCORE_OPT_LST 1
 #define LCORE_OPT_MSK 2
-#define LCORE_OPT_MAP 3
 
 const char
 eal_short_options[] =
@@ -915,85 +914,6 @@ eal_parse_service_corelist(const char *corelist)
 	return 0;
 }
 
-static int
-eal_parse_corelist(const char *corelist, int *cores)
-{
-	unsigned int count = 0, i;
-	int lcores[RTE_MAX_LCORE];
-	char *end = NULL;
-	int min, max;
-	int idx;
-
-	for (idx = 0; idx < RTE_MAX_LCORE; idx++)
-		cores[idx] = -1;
-
-	/* Remove all blank characters ahead */
-	while (isblank(*corelist))
-		corelist++;
-
-	/* Get list of cores */
-	min = -1;
-	do {
-		while (isblank(*corelist))
-			corelist++;
-		if (*corelist == '\0')
-			return -1;
-		errno = 0;
-		idx = strtol(corelist, &end, 10);
-		if (errno || end == NULL)
-			return -1;
-		if (idx < 0)
-			return -1;
-		while (isblank(*end))
-			end++;
-		if (*end == '-') {
-			min = idx;
-		} else if ((*end == ',') || (*end == '\0')) {
-			max = idx;
-			if (min == -1)
-				min = idx;
-			for (idx = min; idx <= max; idx++) {
-				bool dup = false;
-
-				/* Check if this idx is already present */
-				for (i = 0; i < count; i++) {
-					if (lcores[i] == idx)
-						dup = true;
-				}
-				if (dup)
-					continue;
-				if (count >= RTE_MAX_LCORE) {
-					EAL_LOG(ERR, "Too many lcores provided. Cannot exceed RTE_MAX_LCORE (%d)",
-						RTE_MAX_LCORE);
-					return -1;
-				}
-				lcores[count++] = idx;
-			}
-			min = -1;
-		} else
-			return -1;
-		corelist = end + 1;
-	} while (*end != '\0');
-
-	if (count == 0)
-		return -1;
-
-	if (check_core_list(lcores, count))
-		return -1;
-
-	/*
-	 * Now that we've got a list of cores no longer than RTE_MAX_LCORE,
-	 * and no lcore in that list is greater than RTE_MAX_LCORE, populate
-	 * the cores array.
-	 */
-	do {
-		count--;
-		cores[lcores[count]] = count;
-	} while (count != 0);
-
-	return 0;
-}
-
 /* Changes the lcore id of the main thread */
 static int
 eal_parse_main_lcore(const char *arg)
@@ -1697,10 +1617,10 @@ eal_parse_common_option(int opt, const char *optarg,
 		}
 
 		if (core_parsed) {
-			EAL_LOG(ERR, "Option -c is ignored, because (%s) is set!",
-				(core_parsed == LCORE_OPT_LST) ? "-l" :
-				(core_parsed == LCORE_OPT_MAP) ? "--lcores" :
-				"-c");
+			if (core_parsed == LCORE_OPT_MSK)
+				EAL_LOG(ERR, "Option '-c' passed multiple times to EAL");
+			else
+				EAL_LOG(ERR, "Option -c is ignored, because option -l/--lcores used");
 			return -1;
 		}
 
@@ -1709,31 +1629,20 @@ eal_parse_common_option(int opt, const char *optarg,
 	}
 	/* corelist */
 	case 'l': {
-		int lcore_indexes[RTE_MAX_LCORE];
-
 		if (eal_service_cores_parsed())
 			EAL_LOG(WARNING,
 				"Service cores parsed before dataplane cores. Please ensure -l is before -s or -S");
 
-		if (eal_parse_corelist(optarg, lcore_indexes) < 0) {
-			EAL_LOG(ERR, "invalid core list syntax");
-			return -1;
-		}
-		if (update_lcore_config(lcore_indexes) < 0) {
-			char *available = available_cores();
-
-			EAL_LOG(ERR,
-				"invalid core list, please check specified cores are part of %s",
-				available);
-			free(available);
+		if (eal_parse_lcores(optarg) < 0) {
+			EAL_LOG(ERR, "invalid parameter for -l/--" OPT_LCORES);
 			return -1;
 		}
 
 		if (core_parsed) {
-			EAL_LOG(ERR, "Option -l is ignored, because (%s) is set!",
-				(core_parsed == LCORE_OPT_MSK) ? "-c" :
-				(core_parsed == LCORE_OPT_MAP) ? "--lcores" :
-				"-l");
+			if (core_parsed == LCORE_OPT_LST)
+				EAL_LOG(ERR, "Core list option passed multiple times to EAL");
+			else
+				EAL_LOG(ERR, "Option '-l/--lcores' is ignored, because coremask option used");
 			return -1;
 		}
 
@@ -1920,23 +1829,6 @@ eal_parse_common_option(int opt, const char *optarg,
 	}
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-	case OPT_LCORES_NUM:
-		if (eal_parse_lcores(optarg) < 0) {
-			EAL_LOG(ERR, "invalid parameter for --"
-				OPT_LCORES);
-			return -1;
-		}
-
-		if (core_parsed) {
-			EAL_LOG(ERR, "Option --lcores is ignored, because (%s) is set!",
-				(core_parsed == LCORE_OPT_LST) ? "-l" :
-				(core_parsed == LCORE_OPT_MSK) ? "-c" :
-				"--lcores");
-			return -1;
-		}
-
-		core_parsed = LCORE_OPT_MAP;
-		break;
 	case OPT_LEGACY_MEM_NUM:
 		conf->legacy_mem = 1;
 		break;
@@ -2213,10 +2105,11 @@ eal_common_usage(void)
 	printf("[options]\n\n"
 	       "EAL common options:\n"
 	       "  -c COREMASK         Hexadecimal bitmask of cores to run on\n"
-	       "  -l CORELIST         List of cores to run on\n"
-	       "                      The argument format is <c1>[-c2][,c3[-c4],...]\n"
+	       "  -l, --"OPT_LCORES" CORELIST\n"
+	       "                      List of cores to run on\n"
+	       "                      The basic argument format is <c1>[-c2][,c3[-c4],...]\n"
 	       "                      where c1, c2, etc are core indexes between 0 and %d\n"
-	       "  --"OPT_LCORES" COREMAP    Map lcore set to physical cpu set\n"
+	       "                      Can also be used to map lcore set to physical CPU set\n"
 	       "                      The argument format is\n"
 	       "                            '<lcores[@cpus]>[<,lcores[@cpus]>...]'\n"
 	       "                      lcores and cpus list are grouped by '(' and ')'\n"

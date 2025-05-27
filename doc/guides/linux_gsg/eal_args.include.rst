@@ -8,16 +8,14 @@ Lcore-related options
 
     Set the hexadecimal bitmask of the cores to run on.
 
-*   ``-l <core list>``
+*   ``-l/--lcores <core list>``
 
     List of cores to run on
 
-    The argument format is ``<c1>[-c2][,c3[-c4],...]``
-    where ``c1``, ``c2``, etc are core indexes between 0 and 128.
+    Simplest argument format is ``<c1>[-c2][,c3[-c4],...]``
+    where ``c1``, ``c2``, etc are core indexes between 0 and ``RTE_MAX_LCORE`` (default 128).
 
-*   ``--lcores <core map>``
-
-    Map lcore set to physical cpu set
+    This argument can also be used to map lcore set to physical cpu set
 
     The argument format is::
 

@@ -729,7 +729,7 @@ As EAL pthreads usually bind 1:1 to the physical CPU, the *_lcore_id* is typical
 
 When using multiple pthreads, however, the binding is no longer always 1:1 between an EAL pthread and a specified physical CPU.
 The EAL pthread may have affinity to a CPU set, and as such the *_lcore_id* will not be the same as the CPU ID.
-For this reason, there is an EAL long option '--lcores' defined to assign the CPU affinity of lcores.
+For this reason, there is an EAL option ``--lcores`` (or just ``-l``) defined to assign the CPU affinity of lcores.
 For a specified lcore ID or ID group, the option allows setting the CPU set for that EAL pthread.
 
 The format pattern:
@@ -753,7 +753,6 @@ If a '\@cpu_set' value is not supplied, the value of 'cpu_set' will default to t
     	    lcore 8 runs on cpuset 0x100 (cpu 8).
 
 Using this option, for each given lcore ID, the associated CPUs can be assigned.
-It's also compatible with the pattern of corelist('-l') option.
 
 non-EAL pthread support
 ~~~~~~~~~~~~~~~~~~~~~~~

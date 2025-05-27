@@ -17,6 +17,8 @@ enum {
 	OPT_DEV_ALLOW_NUM       = 'a',
 #define OPT_DEV_BLOCK         "block"
 	OPT_DEV_BLOCK_NUM      = 'b',
+#define OPT_LCORES            "lcores"
+	OPT_LCORES_NUM         = 'l',
 
 	/* first long only option value must be >= 256, so that we won't
 	 * conflict with short options */
@@ -31,8 +33,6 @@ enum {
 	OPT_HUGE_DIR_NUM,
 #define OPT_HUGE_UNLINK       "huge-unlink"
 	OPT_HUGE_UNLINK_NUM,
-#define OPT_LCORES            "lcores"
-	OPT_LCORES_NUM,
 #define OPT_LOG_COLOR	      "log-color"
 	OPT_LOG_COLOR_NUM,
 #define OPT_LOG_LEVEL         "log-level"
