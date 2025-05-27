@@ -90,6 +90,11 @@ meta_data_type_emit(char **meta, int *offset)
 #else
 		"typealias integer {size = 32; base = x;} := size_t;\n"
 #endif
+#if defined(_TIME_BITS) && _TIME_BITS == 64
+		"typealias integer {size = 64; base = x;} := time_t;\n"
+#else
+		"typealias integer {size = 32; base = x;} := time_t;\n"
+#endif
 		"typealias floating_point {\n"
 		"    exp_dig = 8;\n"
 		"    mant_dig = 24;\n"
