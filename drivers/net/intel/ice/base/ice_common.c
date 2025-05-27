@@ -452,7 +452,7 @@ static void ice_set_media_type(struct ice_port_info *pi)
 		 ((phy_type_low & ICE_MEDIA_OPT_PHY_TYPE_LOW_M ||
 		   phy_type_high & ICE_MEDIA_OPT_PHY_TYPE_HIGH_M) &&
 		  (phy_type_low & ICE_MEDIA_C2M_PHY_TYPE_LOW_M ||
-		   phy_type_high & ICE_MEDIA_C2C_PHY_TYPE_HIGH_M)))
+		   phy_type_high & ICE_MEDIA_C2M_PHY_TYPE_HIGH_M)))
 		*media_type = ICE_MEDIA_FIBER;
 	/* else if PHY types are only DA, or DA and C2C, then media type DA */
 	else if (ice_phy_maps_to_media(phy_type_low, phy_type_high,
