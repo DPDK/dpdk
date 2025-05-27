@@ -48,11 +48,8 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	if (ret)
 		return ret;
 
-	sess->custom_hdr_len =
-		sizeof(struct roc_ie_on_outb_hdr) - ROC_IE_ON_MAX_IV_LEN;
+	sess->custom_hdr_len = sizeof(struct roc_ie_on_outb_hdr) - ROC_IE_ON_MAX_IV_LEN;
 
-#ifdef LA_IPSEC_DEBUG
-	/* Use IV from application in debug mode */
 	if (ipsec->options.iv_gen_disable == 1) {
 		sess->custom_hdr_len = sizeof(struct roc_ie_on_outb_hdr);
 
@@ -67,12 +64,6 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 			sess->cipher_iv_len = crypto_xform->auth.iv.length;
 		}
 	}
-#else
-	if (ipsec->options.iv_gen_disable != 0) {
-		plt_err("Application provided IV is not supported");
-		return -ENOTSUP;
-	}
-#endif
 
 	ret = cnxk_on_ipsec_outb_sa_create(ipsec, crypto_xform, &sa->out_sa);
 
@@ -89,16 +80,8 @@ cn9k_ipsec_outb_sa_create(struct cnxk_cpt_qp *qp,
 	param1.u16 = 0;
 	param1.s.ikev2 = 1;
 
-#ifdef LA_IPSEC_DEBUG
-	/* Use IV from application in debug mode */
 	if (ipsec->options.iv_gen_disable == 1)
 		param1.s.per_pkt_iv = ROC_IE_ON_IV_SRC_FROM_DPTR;
-#else
-	if (ipsec->options.iv_gen_disable != 0) {
-		plt_err("Application provided IV is not supported");
-		return -ENOTSUP;
-	}
-#endif
 
 	w4.s.param1 = param1.u16;
 
