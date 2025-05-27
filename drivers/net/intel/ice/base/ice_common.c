@@ -6554,6 +6554,8 @@ bool ice_fw_supports_fec_dis_auto(struct ice_hw *hw)
 {
 	if (ice_is_e830(hw))
 		return true;
+	if (ice_is_e825c(hw))
+		return true;
 	return ice_is_fw_min_ver(hw, ICE_FW_VER_BRANCH_E810,
 				 ICE_FW_FEC_DIS_AUTO_MAJ,
 				 ICE_FW_FEC_DIS_AUTO_MIN,
