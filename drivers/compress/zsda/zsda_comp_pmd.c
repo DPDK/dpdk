@@ -14,12 +14,12 @@ static const struct rte_compressdev_capabilities zsda_comp_capabilities[] = {
 	{
 		.algo = RTE_COMP_ALGO_DEFLATE,
 		.comp_feature_flags = RTE_COMP_FF_HUFFMAN_DYNAMIC |
-							RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
-							RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
-							RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
-							RTE_COMP_FF_CRC32_CHECKSUM |
-							RTE_COMP_FF_ADLER32_CHECKSUM |
-							RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
+				RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
+				RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
+				RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
+				RTE_COMP_FF_CRC32_CHECKSUM |
+				RTE_COMP_FF_ADLER32_CHECKSUM |
+				RTE_COMP_FF_SHAREABLE_PRIV_XFORM,
 		.window_size = {.min = 15, .max = 15, .increment = 0},
 	},
 };
@@ -66,8 +66,8 @@ zsda_comp_xform_pool_create(struct zsda_comp_dev_private *comp_dev,
 }
 
 static int
-zsda_comp_dev_config(struct rte_compressdev *dev,
-		     struct rte_compressdev_config *config)
+zsda_dev_config(struct rte_compressdev *dev,
+		struct rte_compressdev_config *config)
 {
 	struct zsda_comp_dev_private *comp_dev = dev->data->dev_private;
 
@@ -83,7 +83,7 @@ zsda_comp_dev_config(struct rte_compressdev *dev,
 }
 
 static int
-zsda_comp_dev_start(struct rte_compressdev *dev)
+zsda_dev_start(struct rte_compressdev *dev)
 {
 	struct zsda_comp_dev_private *comp_dev = dev->data->dev_private;
 	int ret;
@@ -97,7 +97,7 @@ zsda_comp_dev_start(struct rte_compressdev *dev)
 }
 
 static void
-zsda_comp_dev_stop(struct rte_compressdev *dev)
+zsda_dev_stop(struct rte_compressdev *dev)
 {
 	struct zsda_comp_dev_private *comp_dev = dev->data->dev_private;
 
@@ -105,19 +105,19 @@ zsda_comp_dev_stop(struct rte_compressdev *dev)
 }
 
 static int
-zsda_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
+zsda_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 {
 	return zsda_queue_pair_release(
 		(struct zsda_qp **)&(dev->data->queue_pairs[queue_pair_id]));
 }
 
 static int
-zsda_comp_dev_close(struct rte_compressdev *dev)
+zsda_dev_close(struct rte_compressdev *dev)
 {
 	struct zsda_comp_dev_private *comp_dev = dev->data->dev_private;
 
 	for (int i = 0; i < dev->data->nb_queue_pairs; i++)
-		zsda_comp_qp_release(dev, i);
+		zsda_qp_release(dev, i);
 
 	rte_mempool_free(comp_dev->xformpool);
 	comp_dev->xformpool = NULL;
@@ -143,8 +143,8 @@ zsda_comp_max_nb_qps(void)
 }
 
 static void
-zsda_comp_dev_info_get(struct rte_compressdev *dev,
-		       struct rte_compressdev_info *info)
+zsda_dev_info_get(struct rte_compressdev *dev,
+		struct rte_compressdev_info *info)
 {
 	struct zsda_comp_dev_private *comp_dev = dev->data->dev_private;
 
@@ -176,9 +176,9 @@ zsda_comp_stats_reset(struct rte_compressdev *dev)
 }
 
 static int
-zsda_comp_private_xform_create(struct rte_compressdev *dev,
-			       const struct rte_comp_xform *xform,
-			       void **private_xform)
+zsda_private_xform_create(struct rte_compressdev *dev,
+			const struct rte_comp_xform *xform,
+			void **private_xform)
 {
 	struct zsda_comp_dev_private *zsda = dev->data->dev_private;
 
@@ -210,8 +210,8 @@ zsda_comp_private_xform_create(struct rte_compressdev *dev,
 }
 
 static int
-zsda_comp_private_xform_free(struct rte_compressdev *dev __rte_unused,
-			     void *private_xform)
+zsda_private_xform_free(struct rte_compressdev *dev __rte_unused,
+			void *private_xform)
 {
 	struct zsda_comp_xform *zsda_xform = private_xform;
 
@@ -226,8 +226,8 @@ zsda_comp_private_xform_free(struct rte_compressdev *dev __rte_unused,
 }
 
 static int
-zsda_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
-		   uint32_t max_inflight_ops, int socket_id)
+zsda_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
+		uint32_t max_inflight_ops, int socket_id)
 {
 	int ret = ZSDA_SUCCESS;
 	struct zsda_qp *qp_new;
@@ -242,7 +242,7 @@ zsda_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	nb_des = (nb_des == NB_DES) ? nb_des : NB_DES;
 
 	if (*qp_addr != NULL) {
-		ret = zsda_comp_qp_release(dev, qp_id);
+		ret = zsda_qp_release(dev, qp_id);
 		if (ret)
 			return ret;
 	}
@@ -261,7 +261,7 @@ zsda_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 
 	task_q_info.type = ZSDA_SERVICE_COMPRESSION;
 	task_q_info.service_str = "comp";
-	task_q_info.tx_cb = zsda_comp_request_build;
+	task_q_info.tx_cb = zsda_comp_wqe_build;
 	task_q_info.match = zsda_comp_match;
 	ret = zsda_task_queue_setup(zsda_pci_dev, qp_new, &task_q_info);
 
@@ -282,20 +282,19 @@ zsda_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 }
 
 static struct rte_compressdev_ops compress_zsda_ops = {
-
-	.dev_configure = zsda_comp_dev_config,
-	.dev_start = zsda_comp_dev_start,
-	.dev_stop = zsda_comp_dev_stop,
-	.dev_close = zsda_comp_dev_close,
-	.dev_infos_get = zsda_comp_dev_info_get,
+	.dev_configure = zsda_dev_config,
+	.dev_start = zsda_dev_start,
+	.dev_stop = zsda_dev_stop,
+	.dev_close = zsda_dev_close,
+	.dev_infos_get = zsda_dev_info_get,
 
 	.stats_get = zsda_comp_stats_get,
 	.stats_reset = zsda_comp_stats_reset,
-	.queue_pair_setup = zsda_comp_qp_setup,
-	.queue_pair_release = zsda_comp_qp_release,
+	.queue_pair_setup = zsda_qp_setup,
+	.queue_pair_release = zsda_qp_release,
 
-	.private_xform_create = zsda_comp_private_xform_create,
-	.private_xform_free = zsda_comp_private_xform_free,
+	.private_xform_create = zsda_private_xform_create,
+	.private_xform_free = zsda_private_xform_free,
 };
 
 /* An rte_driver is needed in the registration of the device with compressdev.
@@ -305,7 +304,9 @@ static struct rte_compressdev_ops compress_zsda_ops = {
  */
 static const char zsda_comp_drv_name[] = RTE_STR(COMPRESSDEV_NAME_ZSDA_PMD);
 static const struct rte_driver compdev_zsda_driver = {
-	.name = zsda_comp_drv_name, .alias = zsda_comp_drv_name};
+	.name = zsda_comp_drv_name,
+	.alias = zsda_comp_drv_name
+};
 
 static uint16_t
 zsda_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
@@ -409,7 +410,7 @@ zsda_comp_dev_destroy(struct zsda_pci_device *zsda_pci_dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_memzone_free(zsda_pci_dev->comp_dev->capa_mz);
 
-	zsda_comp_dev_close(comp_dev->compressdev);
+	zsda_dev_close(comp_dev->compressdev);
 
 	rte_compressdev_pmd_destroy(comp_dev->compressdev);
 	zsda_pci_dev->comp_dev = NULL;

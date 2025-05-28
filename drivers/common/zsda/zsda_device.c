@@ -213,7 +213,8 @@ static struct rte_pci_driver rte_zsda_pmd = {
 	.id_table = pci_id_zsda_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	.probe = zsda_pci_probe,
-	.remove = zsda_pci_remove };
+	.remove = zsda_pci_remove
+};
 
 RTE_PMD_REGISTER_PCI(ZSDA_PCI_NAME, rte_zsda_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(ZSDA_PCI_NAME, pci_id_zsda_map);

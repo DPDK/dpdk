@@ -35,7 +35,7 @@ struct __rte_packed_begin zsda_wqe_comp {
 int zsda_comp_match(const void *op_in);
 int zsda_decomp_match(const void *op_in);
 
-int zsda_comp_request_build(void *op_in, const struct zsda_queue *queue,
+int zsda_comp_wqe_build(void *op_in, const struct zsda_queue *queue,
 		       void **op_cookies, const uint16_t new_tail);
 
 int zsda_decomp_request_build(void *op_in, const struct zsda_queue *queue,
