@@ -16,10 +16,10 @@
 #include "bus_pci_driver.h"
 #include "zsda_logs.h"
 
-#define ZSDA_MAX_DEV				RTE_PMD_ZSDA_MAX_PCI_DEVICES
+#define ZSDA_MAX_DEV	RTE_PMD_ZSDA_MAX_PCI_DEVICES
 
-#define ZSDA_SUCCESS			0
-#define ZSDA_FAILED				(-1)
+#define ZSDA_SUCCESS	0
+#define ZSDA_FAILED	(-1)
 
 enum zsda_service_type {
 	ZSDA_SERVICE_COMPRESSION = 0,
@@ -36,21 +36,16 @@ enum zsda_service_type {
 #define ZSDA_CSR_READ8(addr)	      rte_read8((addr))
 #define ZSDA_CSR_WRITE8(addr, value)  rte_write8_relaxed((value), (addr))
 
-#define NB_DES					512
-#define ZSDA_SGL_MAX_NUMBER		512
-#define COMP_REMOVE_SPACE_LEN 16
+#define NB_DES			512
+#define ZSDA_SGL_MAX_NUMBER	512
+#define COMP_REMOVE_SPACE_LEN	16
 
 #define ZSDA_MAX_DESC		512
 #define ZSDA_MAX_CYCLE		256
 #define ZSDA_MAX_DEV		RTE_PMD_ZSDA_MAX_PCI_DEVICES
-#define MAX_NUM_OPS			0x1FF
+#define MAX_NUM_OPS		0x1FF
 #define ZSDA_SGL_FRAGMENT_SIZE	32
-
-#define ZSDA_OPC_COMP_GZIP		0x10 /* Encomp deflate-Gzip */
-#define ZSDA_OPC_COMP_ZLIB		0x11 /* Encomp deflate-Zlib */
-#define ZSDA_OPC_DECOMP_GZIP	0x18 /* Decomp inflate-Gzip */
-#define ZSDA_OPC_DECOMP_ZLIB	0x19 /* Decomp inflate-Zlib */
-#define ZSDA_OPC_INVALID		0xff
+#define ZSDA_OPC_INVALID	0xff
 
 #define CQE_VALID(value) (value & 0x8000)
 #define CQE_ERR0(value) (value & 0xFFFF)
@@ -99,10 +94,10 @@ struct __rte_packed_begin zsda_admin_resp_qcfg {
 struct zsda_queue {
 	char memz_name[RTE_MEMZONE_NAMESIZE];
 	uint8_t *io_addr;
-	uint8_t *base_addr;	   /* Base address */
-	rte_iova_t base_phys_addr; /* Queue physical address */
-	uint16_t head;		   /* Shadow copy of the head */
-	uint16_t tail;		   /* Shadow copy of the tail */
+	uint8_t *base_addr;	   /**< Base address */
+	rte_iova_t base_phys_addr; /**< Queue physical address */
+	uint16_t head;		   /**< Shadow copy of the head */
+	uint16_t tail;		   /**< Shadow copy of the tail */
 	uint16_t modulo_mask;
 	uint16_t msg_size;
 	uint16_t queue_size;
@@ -110,27 +105,27 @@ struct zsda_queue {
 	uint16_t pushed_wqe;
 
 	uint8_t hw_queue_number;
-	uint32_t csr_head; /* last written head value */
-	uint32_t csr_tail; /* last written tail value */
+	uint32_t csr_head; /**< last written head value */
+	uint32_t csr_tail; /**< last written tail value */
 
 	uint8_t valid;
 	uint16_t sid;
 };
 
 struct zsda_qp_stat {
-	/**< Count of all operations enqueued */
 	uint64_t enqueued_count;
-	/**< Count of all operations dequeued */
+	/**< Count of all operations enqueued */
 	uint64_t dequeued_count;
+	/**< Count of all operations dequeued */
 
-	/**< Total error count on operations enqueued */
 	uint64_t enqueue_err_count;
-	/**< Total error count on operations dequeued */
+	/**< Total error count on operations enqueued */
 	uint64_t dequeue_err_count;
+	/**< Total error count on operations dequeued */
 };
 
 struct __rte_packed_begin zsda_cqe {
-	uint8_t valid; /* cqe_cycle */
+	uint8_t valid; /**< cqe_cycle */
 	uint8_t op_code;
 	uint16_t sid;
 	uint8_t state;

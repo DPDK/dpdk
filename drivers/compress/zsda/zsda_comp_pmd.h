@@ -9,8 +9,14 @@
 
 #include "zsda_qp.h"
 
-/**< ZSDA Compression PMD driver name */
+/* ZSDA Compression PMD driver name */
 #define COMPRESSDEV_NAME_ZSDA_PMD compress_zsda
+
+#define ZSDA_OPC_COMP_GZIP	0x10 /* Encomp deflate-Gzip */
+#define ZSDA_OPC_COMP_ZLIB	0x11 /* Encomp deflate-Zlib */
+#define ZSDA_OPC_DECOMP_GZIP	0x18 /* Decomp inflate-Gzip */
+#define ZSDA_OPC_DECOMP_ZLIB	0x19 /* Decomp inflate-Zlib */
+
 
 /** private data structure for a ZSDA compression device.
  * This ZSDA device is a device offering only a compression service,
@@ -22,11 +28,11 @@ struct zsda_comp_dev_private {
 	struct rte_compressdev *compressdev;
 	/**< The pointer to this compression device structure */
 	const struct rte_compressdev_capabilities *zsda_dev_capabilities;
-	/* ZSDA device compression capabilities */
+	/**< ZSDA device compression capabilities */
 	struct rte_mempool *xformpool;
 	/**< The device's pool for zsda_comp_xforms */
 	const struct rte_memzone *capa_mz;
-	/* Shared memzone for storing capabilities */
+	/**< Shared memzone for storing capabilities */
 };
 
 struct zsda_comp_xform {

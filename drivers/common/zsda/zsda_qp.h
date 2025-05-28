@@ -9,43 +9,43 @@
 
 #include "zsda_device.h"
 
-#define ZSDA_ADMIN_Q_START		0x100
-#define ZSDA_ADMIN_Q_STOP		0x100
+#define ZSDA_ADMIN_Q_START	0x100
+#define ZSDA_ADMIN_Q_STOP	0x100
 #define ZSDA_ADMIN_Q_STOP_RESP	0x104
-#define ZSDA_ADMIN_Q_CLR		0x108
+#define ZSDA_ADMIN_Q_CLR	0x108
 #define ZSDA_ADMIN_Q_CLR_RESP	0x10C
 
-#define ZSDA_IO_Q_START			0x200
-#define ZSDA_IO_Q_STOP			0x200
-#define ZSDA_IO_Q_STOP_RESP		0x400
-#define ZSDA_IO_Q_CLR			0x600
-#define ZSDA_IO_Q_CLR_RESP		0x800
+#define ZSDA_IO_Q_START		0x200
+#define ZSDA_IO_Q_STOP		0x200
+#define ZSDA_IO_Q_STOP_RESP	0x400
+#define ZSDA_IO_Q_CLR		0x600
+#define ZSDA_IO_Q_CLR_RESP	0x800
 
-#define ZSDA_ADMIN_WQ			0x40
-#define ZSDA_ADMIN_WQ_BASE7		0x5C
-#define ZSDA_ADMIN_WQ_CRC		0x5C
+#define ZSDA_ADMIN_WQ		0x40
+#define ZSDA_ADMIN_WQ_BASE7	0x5C
+#define ZSDA_ADMIN_WQ_CRC	0x5C
 #define ZSDA_ADMIN_WQ_VERSION	0x5D
-#define ZSDA_ADMIN_WQ_FLAG		0x5E
-#define ZSDA_ADMIN_CQ			0x60
-#define ZSDA_ADMIN_CQ_BASE7		0x7C
-#define ZSDA_ADMIN_CQ_CRC		0x7C
+#define ZSDA_ADMIN_WQ_FLAG	0x5E
+#define ZSDA_ADMIN_CQ		0x60
+#define ZSDA_ADMIN_CQ_BASE7	0x7C
+#define ZSDA_ADMIN_CQ_CRC	0x7C
 #define ZSDA_ADMIN_CQ_VERSION	0x7D
-#define ZSDA_ADMIN_CQ_FLAG		0x7E
-#define ZSDA_ADMIN_WQ_TAIL		0x80
-#define ZSDA_ADMIN_CQ_HEAD		0x84
+#define ZSDA_ADMIN_CQ_FLAG	0x7E
+#define ZSDA_ADMIN_WQ_TAIL	0x80
+#define ZSDA_ADMIN_CQ_HEAD	0x84
 
 #define ZSDA_Q_START		0x1
-#define ZSDA_Q_STOP			0x0
+#define ZSDA_Q_STOP		0x0
 #define ZSDA_CLEAR_VALID	0x1
 #define ZSDA_CLEAR_INVALID	0x0
 #define ZSDA_RESP_VALID		0x1
 #define ZSDA_RESP_INVALID	0x0
 
-#define ADMIN_BUF_DATA_LEN		0x1C
-#define ADMIN_BUF_TOTAL_LEN		0x20
+#define ADMIN_BUF_DATA_LEN	0x1C
+#define ADMIN_BUF_TOTAL_LEN	0x20
 
 #define IO_DB_INITIAL_CONFIG	0x1C00
-#define SET_CYCLE			0xff
+#define SET_CYCLE		0xff
 #define SET_HEAD_INTI		0x0
 
 #define ZSDA_TIME_SLEEP_US	100
@@ -55,8 +55,8 @@
 #define WQ_CSR_UBASE	0x1004
 #define CQ_CSR_LBASE	0x1400
 #define CQ_CSR_UBASE	0x1404
-#define WQ_TAIL			0x1800
-#define CQ_HEAD			0x1804
+#define WQ_TAIL		0x1800
+#define CQ_HEAD		0x1804
 
 /* CSR write macro */
 #define ZSDA_CSR_WR(csrAddr, csrOffset, val)                                   \

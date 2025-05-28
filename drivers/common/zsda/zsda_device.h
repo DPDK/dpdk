@@ -9,8 +9,8 @@
 #include "zsda_comp_pmd.h"
 #include "zsda_crypto_pmd.h"
 
-#define MAX_QPS_ON_FUNCTION			128
-#define ZSDA_DEV_NAME_MAX_LEN		64
+#define MAX_QPS_ON_FUNCTION	128
+#define ZSDA_DEV_NAME_MAX_LEN	64
 
 struct zsda_device_info {
 	const struct rte_memzone *mz;
@@ -45,8 +45,8 @@ struct zsda_qp_hw {
 	struct zsda_qp_hw_data data[MAX_QPS_ON_FUNCTION];
 };
 
+/* Data used by all services */
 struct zsda_pci_device {
-	/* Data used by all services */
 	char name[ZSDA_DEV_NAME_MAX_LEN];
 	/**< Name of zsda pci device */
 	uint8_t zsda_dev_id;
