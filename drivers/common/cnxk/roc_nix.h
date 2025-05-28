@@ -354,6 +354,8 @@ struct roc_nix_rq {
 	bool lpb_drop_ena;
 	/* SPB aura drop enable */
 	bool spb_drop_ena;
+	/* XQE drop enable */
+	bool xqe_drop_ena;
 	/* End of Input parameters */
 	struct roc_nix *roc_nix;
 	uint64_t meta_aura_handle;
