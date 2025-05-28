@@ -1676,7 +1676,9 @@ test_ecdsa_sign_verify_all_curve(void)
 	const char *msg;
 
 	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
-		if (curve_id == ED25519 || curve_id == ED448)
+		if (curve_id == ED25519 || curve_id == ED448 ||
+		    curve_id == ECGROUP19 || curve_id == ECGROUP20 ||
+		    curve_id == ECGROUP21)
 			continue;
 
 		status = test_ecdsa_sign_verify(curve_id);
@@ -1840,7 +1842,9 @@ test_ecpm_all_curve(void)
 	const char *msg;
 
 	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
-		if (curve_id == SECP521R1_UA || curve_id == ED25519 || curve_id == ED448)
+		if (curve_id == SECP521R1_UA || curve_id == ECGROUP19 ||
+		    curve_id == ECGROUP20 || curve_id == ECGROUP21 ||
+		    curve_id == ED25519 || curve_id == ED448)
 			continue;
 
 		status = test_ecpm(curve_id);
@@ -2043,6 +2047,15 @@ test_ecdh_pub_key_generate(enum curve curve_id)
 	case SECP521R1:
 		input_params = ecdh_param_secp521r1;
 		break;
+	case ECGROUP19:
+		input_params = ecdh_param_group19;
+		break;
+	case ECGROUP20:
+		input_params = ecdh_param_group20;
+		break;
+	case ECGROUP21:
+		input_params = ecdh_param_group21;
+		break;
 	case ED25519:
 		input_params = ecdh_param_ed25519;
 		break;
@@ -2204,6 +2217,15 @@ test_ecdh_pub_key_verify(enum curve curve_id)
 	case SECP521R1:
 		input_params = ecdh_param_secp521r1;
 		break;
+	case ECGROUP19:
+		input_params = ecdh_param_group19;
+		break;
+	case ECGROUP20:
+		input_params = ecdh_param_group20;
+		break;
+	case ECGROUP21:
+		input_params = ecdh_param_group21;
+		break;
 	default:
 		RTE_LOG(ERR, USER1,
 				"line %u FAILED: %s", __LINE__,
@@ -2333,6 +2355,15 @@ test_ecdh_shared_secret(enum curve curve_id)
 		break;
 	case SECP521R1:
 		input_params = ecdh_param_secp521r1;
+		break;
+	case ECGROUP19:
+		input_params = ecdh_param_group19;
+		break;
+	case ECGROUP20:
+		input_params = ecdh_param_group20;
+		break;
+	case ECGROUP21:
+		input_params = ecdh_param_group21;
 		break;
 	default:
 		RTE_LOG(ERR, USER1,
@@ -2556,7 +2587,9 @@ test_ecdh_all_curve(void)
 	const char *msg;
 
 	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
-		if (curve_id == SECP521R1_UA || curve_id == ED25519 || curve_id == ED448)
+		if (curve_id == SECP521R1_UA || curve_id == ECGROUP19 ||
+		    curve_id == ECGROUP20 || curve_id == ECGROUP21 ||
+		    curve_id == ED25519 || curve_id == ED448)
 			continue;
 
 		status = test_ecdh_priv_key_generate(curve_id);
