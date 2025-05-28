@@ -261,7 +261,7 @@ qdisc_create_multiq(int nlsk_fd, unsigned int ifindex)
 	int err = 0;
 
 	err = qdisc_add_multiq(nlsk_fd, ifindex);
-	if (err < 0 && errno != -EEXIST) {
+	if (err < 0 && errno != EEXIST) {
 		TAP_LOG(ERR, "Could not add multiq qdisc (%d): %s",
 			errno, strerror(errno));
 		return -1;
@@ -287,7 +287,7 @@ qdisc_create_ingress(int nlsk_fd, unsigned int ifindex)
 	int err = 0;
 
 	err = qdisc_add_ingress(nlsk_fd, ifindex);
-	if (err < 0 && errno != -EEXIST) {
+	if (err < 0 && errno != EEXIST) {
 		TAP_LOG(ERR, "Could not add ingress qdisc (%d): %s",
 			errno, strerror(errno));
 		return -1;
