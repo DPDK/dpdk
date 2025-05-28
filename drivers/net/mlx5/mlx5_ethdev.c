@@ -634,6 +634,14 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	ret = mlx5_get_mtu(dev, &kern_mtu);
 	if (ret)
 		return ret;
+
+	if (kern_mtu == mtu) {
+		priv->mtu = mtu;
+		DRV_LOG(DEBUG, "port %u adapter MTU was already set to %u",
+			dev->data->port_id, mtu);
+		return 0;
+	}
+
 	/* Set kernel interface MTU first. */
 	ret = mlx5_set_mtu(dev, mtu);
 	if (ret)
