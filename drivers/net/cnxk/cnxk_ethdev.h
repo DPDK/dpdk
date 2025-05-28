@@ -106,6 +106,8 @@
 /* Fastpath lookup */
 #define CNXK_NIX_FASTPATH_LOOKUP_MEM "cnxk_nix_fastpath_lookup_mem"
 
+#define CNXK_NIX_DMAC_IDX_INVALID -1
+
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
 	uint8_t rx_pause;
@@ -342,6 +344,7 @@ struct cnxk_eth_dev {
 	uint8_t max_mac_entries;
 	bool dmac_filter_enable;
 	int *dmac_idx_map;
+	struct rte_ether_addr *dmac_addrs;
 
 	uint16_t flags;
 	uint8_t ptype_disable;

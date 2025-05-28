@@ -1230,8 +1230,8 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	uint16_t nb_rxq, nb_txq, nb_cq;
 	struct rte_ether_addr *ea;
 	uint64_t rx_cfg;
+	int rc, i;
 	void *qs;
-	int rc;
 
 	rc = -EINVAL;
 
@@ -1286,6 +1286,12 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		roc_nix_tm_fini(nix);
 		nix_rxchan_cfg_disable(dev);
 		roc_nix_lf_free(nix);
+
+		/* Reset to invalid */
+		for (i = 0; i < dev->max_mac_entries; i++)
+			dev->dmac_idx_map[i] = CNXK_NIX_DMAC_IDX_INVALID;
+
+		dev->dmac_filter_count = 1;
 	}
 
 	dev->rx_offloads = rxmode->offloads;
@@ -1891,7 +1897,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_security_ctx *sec_ctx;
 	struct roc_nix *nix = &dev->nix;
 	struct rte_pci_device *pci_dev;
-	int rc, max_entries;
+	int rc, max_entries, i;
 
 	eth_dev->dev_ops = &cnxk_eth_dev_ops;
 	eth_dev->rx_queue_count = cnxk_nix_rx_queue_count;
@@ -1993,6 +1999,17 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto free_mac_addrs;
 	}
 
+	dev->dmac_addrs = rte_malloc("dmac_addrs", max_entries * RTE_ETHER_ADDR_LEN, 0);
+	if (dev->dmac_addrs == NULL) {
+		plt_err("Failed to allocate memory for dmac addresses");
+		rc = -ENOMEM;
+		goto free_mac_addrs;
+	}
+
+	/* Reset to invalid */
+	for (i = 0; i < max_entries; i++)
+		dev->dmac_idx_map[i] = CNXK_NIX_DMAC_IDX_INVALID;
+
 	dev->max_mac_entries = max_entries;
 	dev->dmac_filter_count = 1;
 
@@ -2051,6 +2068,8 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 free_mac_addrs:
 	rte_free(eth_dev->data->mac_addrs);
+	rte_free(dev->dmac_addrs);
+	dev->dmac_addrs = NULL;
 	rte_free(dev->dmac_idx_map);
 dev_fini:
 	roc_nix_dev_fini(nix);
@@ -2181,6 +2200,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	rte_free(dev->dmac_idx_map);
 	dev->dmac_idx_map = NULL;
+
+	rte_free(dev->dmac_addrs);
+	dev->dmac_addrs = NULL;
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
