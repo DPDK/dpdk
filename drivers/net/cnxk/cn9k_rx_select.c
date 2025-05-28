@@ -5,7 +5,8 @@
 #include "cn9k_ethdev.h"
 #include "cn9k_rx.h"
 
-static __rte_used void
+#if defined(RTE_ARCH_ARM64) && !defined(CNXK_DIS_TMPLT_FUNC)
+static void
 pick_rx_func(struct rte_eth_dev *eth_dev,
 	     const eth_rx_burst_t rx_burst[NIX_RX_OFFLOAD_MAX])
 {
@@ -19,6 +20,7 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 		rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst =
 			eth_dev->rx_pkt_burst;
 }
+#endif
 
 #if defined(RTE_ARCH_ARM64)
 static void

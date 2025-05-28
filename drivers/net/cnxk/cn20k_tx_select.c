@@ -5,7 +5,8 @@
 #include "cn20k_ethdev.h"
 #include "cn20k_tx.h"
 
-static __rte_used inline void
+#if defined(RTE_ARCH_ARM64) && !defined(CNXK_DIS_TMPLT_FUNC)
+static inline void
 pick_tx_func(struct rte_eth_dev *eth_dev, const eth_tx_burst_t tx_burst[NIX_TX_OFFLOAD_MAX])
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -16,6 +17,7 @@ pick_tx_func(struct rte_eth_dev *eth_dev, const eth_tx_burst_t tx_burst[NIX_TX_O
 	if (eth_dev->data->dev_started)
 		rte_eth_fp_ops[eth_dev->data->port_id].tx_pkt_burst = eth_dev->tx_pkt_burst;
 }
+#endif
 
 #if defined(RTE_ARCH_ARM64)
 static int

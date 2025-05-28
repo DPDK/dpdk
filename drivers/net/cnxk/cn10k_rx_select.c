@@ -5,7 +5,8 @@
 #include "cn10k_ethdev.h"
 #include "cn10k_rx.h"
 
-static __rte_used void
+#if defined(RTE_ARCH_ARM64) && !defined(CNXK_DIS_TMPLT_FUNC)
+static void
 pick_rx_func(struct rte_eth_dev *eth_dev,
 	     const eth_rx_burst_t rx_burst[NIX_RX_OFFLOAD_MAX])
 {
@@ -21,6 +22,7 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 
 	rte_atomic_thread_fence(rte_memory_order_release);
 }
+#endif
 
 static uint16_t __rte_noinline __rte_hot __rte_unused
 cn10k_nix_flush_rx(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts)
