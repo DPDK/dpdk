@@ -626,6 +626,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	struct roc_nix *nix = &dev->nix;
 	struct cnxk_eth_rxq_sp *rxq_sp;
 	struct rte_mempool_ops *ops;
+	uint32_t desc_cnt = nb_desc;
 	const char *platform_ops;
 	struct roc_nix_rq *rq;
 	struct roc_nix_cq *cq;
@@ -747,7 +748,7 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	rxq_sp->qconf.conf.rx = *rx_conf;
 	/* Queue config should reflect global offloads */
 	rxq_sp->qconf.conf.rx.offloads = dev->rx_offloads;
-	rxq_sp->qconf.nb_desc = nb_desc;
+	rxq_sp->qconf.nb_desc = desc_cnt;
 	rxq_sp->qconf.mp = lpb_pool;
 	rxq_sp->tc = 0;
 	rxq_sp->tx_pause = (dev->fc_cfg.mode == RTE_ETH_FC_FULL ||
