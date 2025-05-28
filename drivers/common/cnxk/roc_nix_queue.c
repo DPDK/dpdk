@@ -530,7 +530,7 @@ nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 	aq->rq.rq_int_ena = 0;
 	/* Many to one reduction */
 	aq->rq.qint_idx = rq->qid % qints;
-	aq->rq.xqe_drop_ena = 1;
+	aq->rq.xqe_drop_ena = rq->xqe_drop_ena;
 
 	/* If RED enabled, then fill enable for all cases */
 	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
@@ -613,6 +613,7 @@ nix_rq_cn10k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cf
 		aq->rq.wqe_skip = rq->wqe_skip;
 		aq->rq.wqe_caching = 1;
 
+		aq->rq.xqe_drop_ena = 0;
 		aq->rq.good_utag = rq->tag_mask >> 24;
 		aq->rq.bad_utag = rq->tag_mask >> 24;
 		aq->rq.ltag = rq->tag_mask & BITMASK_ULL(24, 0);
@@ -632,6 +633,8 @@ nix_rq_cn10k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cf
 		aq->rq.bad_utag = rq->tag_mask >> 24;
 		aq->rq.ltag = rq->tag_mask & BITMASK_ULL(24, 0);
 		aq->rq.cq = rq->cqid;
+		if (rq->xqe_drop_ena)
+			aq->rq.xqe_drop_ena = 1;
 	}
 
 	if (rq->ipsech_ena) {
@@ -680,7 +683,6 @@ nix_rq_cn10k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cf
 	aq->rq.rq_int_ena = 0;
 	/* Many to one reduction */
 	aq->rq.qint_idx = rq->qid % qints;
-	aq->rq.xqe_drop_ena = 0;
 	aq->rq.lpb_drop_ena = rq->lpb_drop_ena;
 	aq->rq.spb_drop_ena = rq->spb_drop_ena;
 
@@ -725,6 +727,7 @@ nix_rq_cn10k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cf
 			aq->rq_mask.bad_utag = ~aq->rq_mask.bad_utag;
 			aq->rq_mask.ltag = ~aq->rq_mask.ltag;
 			aq->rq_mask.cq = ~aq->rq_mask.cq;
+			aq->rq_mask.xqe_drop_ena = ~aq->rq_mask.xqe_drop_ena;
 		}
 
 		if (rq->ipsech_ena)
@@ -949,6 +952,10 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 
 	rq->roc_nix = roc_nix;
 	rq->tc = ROC_NIX_PFC_CLASS_INVALID;
+
+	/* Enable XQE/CQ drop on cn10k to count pkt drops only when inline is disabled */
+	if (roc_model_is_cn10k() && !roc_nix_inl_inb_is_enabled(roc_nix))
+		rq->xqe_drop_ena = true;
 
 	if (is_cn9k)
 		rc = nix_rq_cn9k_cfg(dev, rq, nix->qints, false, ena);
