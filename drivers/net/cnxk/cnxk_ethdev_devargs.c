@@ -281,6 +281,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_NIX_RX_INJ_ENABLE	"rx_inj_ena"
 #define CNXK_CUSTOM_META_AURA_DIS "custom_meta_aura_dis"
 #define CNXK_CUSTOM_INB_SA	  "custom_inb_sa"
+#define CNXK_FORCE_TAIL_DROP	  "force_tail_drop"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -301,6 +302,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t outb_nb_desc = 8200;
 	struct sdp_channel sdp_chan;
 	uint16_t rss_tag_as_xor = 0;
+	uint8_t force_tail_drop = 0;
 	uint16_t scalar_enable = 0;
 	uint16_t tx_compl_ena = 0;
 	uint16_t custom_sa_act = 0;
@@ -364,6 +366,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_CUSTOM_META_AURA_DIS, &parse_flag,
 			   &custom_meta_aura_dis);
 	rte_kvargs_process(kvlist, CNXK_CUSTOM_INB_SA, &parse_flag, &custom_inb_sa);
+	rte_kvargs_process(kvlist, CNXK_FORCE_TAIL_DROP, &parse_flag, &force_tail_drop);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -405,6 +408,7 @@ null_devargs:
 	dev->npc.flow_age.aging_poll_freq = aging_thread_poll_freq;
 	if (roc_feature_nix_has_rx_inject())
 		dev->nix.rx_inj_ena = rx_inj_ena;
+	dev->nix.force_tail_drop = force_tail_drop;
 	return 0;
 exit:
 	return -EINVAL;
@@ -429,4 +433,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_SQB_SLACK "=<12-512>"
 			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>"
 			      CNXK_NIX_RX_INJ_ENABLE "=1"
-			      CNXK_CUSTOM_META_AURA_DIS "=1");
+			      CNXK_CUSTOM_META_AURA_DIS "=1"
+			      CNXK_FORCE_TAIL_DROP "=1");
