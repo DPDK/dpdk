@@ -138,7 +138,7 @@ zsda_opcode_get(const struct zsda_comp_xform *xform)
 }
 
 int
-zsda_comp_request_build(void *op_in, const struct zsda_queue *queue,
+zsda_comp_wqe_build(void *op_in, const struct zsda_queue *queue,
 		   void **op_cookies, const uint16_t new_tail)
 {
 	struct rte_comp_op *op = op_in;
