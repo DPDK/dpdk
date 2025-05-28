@@ -157,7 +157,8 @@ nix_fc_cq_config_get(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	if (rc)
 		goto exit;
 
-	fc_cfg->cq_cfg.cq_drop = rsp->cq.bp;
+	fc_cfg->cq_cfg.cq_drop = rsp->cq.drop;
+	fc_cfg->cq_cfg.cq_bp = rsp->cq.bp;
 	fc_cfg->cq_cfg.enable = rsp->cq.bp_ena;
 	fc_cfg->type = ROC_NIX_FC_CQ_CFG;
 
@@ -288,7 +289,7 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->cq_cfg.enable) {
 			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
-			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
+			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
 
@@ -310,7 +311,7 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->cq_cfg.enable) {
 			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
-			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
+			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
 
@@ -332,7 +333,7 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->cq_cfg.enable) {
 			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
-			aq->cq.bp = fc_cfg->cq_cfg.cq_drop;
+			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
 
@@ -389,6 +390,7 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	tmp.cq_cfg.rq = fc_cfg->rq_cfg.rq;
 	tmp.cq_cfg.tc = fc_cfg->rq_cfg.tc;
 	tmp.cq_cfg.cq_drop = fc_cfg->rq_cfg.cq_drop;
+	tmp.cq_cfg.cq_bp = fc_cfg->rq_cfg.cq_bp;
 	tmp.cq_cfg.enable = fc_cfg->rq_cfg.enable;
 
 	rc = nix_fc_cq_config_set(roc_nix, &tmp);

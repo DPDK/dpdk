@@ -954,7 +954,8 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	rq->tc = ROC_NIX_PFC_CLASS_INVALID;
 
 	/* Enable XQE/CQ drop on cn10k to count pkt drops only when inline is disabled */
-	if (roc_model_is_cn10k() && !roc_nix_inl_inb_is_enabled(roc_nix))
+	if (roc_model_is_cn10k() &&
+	    (roc_nix->force_tail_drop || !roc_nix_inl_inb_is_enabled(roc_nix)))
 		rq->xqe_drop_ena = true;
 
 	if (is_cn9k)
@@ -1150,9 +1151,9 @@ roc_nix_cn20k_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->lbpid_low = cpt_lbpid & 0x7;
 			cq_ctx->lbpid_med = (cpt_lbpid >> 3) & 0x7;
 			cq_ctx->lbpid_high = (cpt_lbpid >> 6) & 0x7;
-			cq_ctx->lbp_frac = NIX_CQ_LPB_THRESH_FRAC;
+			cq_ctx->lbp_frac = NIX_CQ_LBP_THRESH_FRAC;
 		}
-		drop_thresh = NIX_CQ_SEC_THRESH_LEVEL;
+		drop_thresh = NIX_CQ_SEC_BP_THRESH_LEVEL;
 	}
 
 	/* Many to one reduction */
@@ -1178,6 +1179,7 @@ roc_nix_cn20k_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->drop_ena = 1;
 		}
 	}
+	cq->bp_thresh = cq->drop_thresh;
 	cq_ctx->bp = cq->drop_thresh;
 
 	if (roc_feature_nix_has_cqe_stash()) {
@@ -1206,9 +1208,11 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct mbox *mbox = (&nix->dev)->mbox;
 	volatile struct nix_cq_ctx_s *cq_ctx = NULL;
-	uint16_t drop_thresh = NIX_CQ_THRESH_LEVEL;
 	uint16_t cpt_lbpid = nix->cpt_lbpid;
 	enum nix_q_size qsize;
+	bool force_tail_drop;
+	uint16_t drop_thresh;
+	uint16_t bp_thresh;
 	size_t desc_sz;
 	int rc;
 
@@ -1262,6 +1266,8 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 		cq_ctx = &aq->cq;
 	}
 
+	force_tail_drop = roc_nix->force_tail_drop;
+
 	cq_ctx->ena = 1;
 	cq_ctx->caching = 1;
 	cq_ctx->qsize = qsize;
@@ -1269,6 +1275,9 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	cq_ctx->avg_level = 0xff;
 	cq_ctx->cq_err_int_ena = BIT(NIX_CQERRINT_CQE_FAULT);
 	cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
+	drop_thresh = force_tail_drop ? NIX_CQ_THRESH_LEVEL_REF1 : NIX_CQ_THRESH_LEVEL;
+	bp_thresh = force_tail_drop ? NIX_CQ_BP_THRESH_LEVEL_REF1 : drop_thresh;
+
 	if (roc_feature_nix_has_late_bp() && roc_nix_inl_inb_is_enabled(roc_nix)) {
 		cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_CPT_DROP);
 		cq_ctx->cpt_drop_err_en = 1;
@@ -1278,9 +1287,16 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->lbpid_low = cpt_lbpid & 0x7;
 			cq_ctx->lbpid_med = (cpt_lbpid >> 3) & 0x7;
 			cq_ctx->lbpid_high = (cpt_lbpid >> 6) & 0x7;
-			cq_ctx->lbp_frac = NIX_CQ_LPB_THRESH_FRAC;
+			cq_ctx->lbp_frac = force_tail_drop ? NIX_CQ_LBP_THRESH_FRAC_REF1 :
+							     NIX_CQ_LBP_THRESH_FRAC;
 		}
-		drop_thresh = NIX_CQ_SEC_THRESH_LEVEL;
+
+		/* CQ drop is disabled by default when inline device in use and
+		 * force_tail_drop disabled, so will not configure drop threshold.
+		 */
+		drop_thresh = force_tail_drop ? NIX_CQ_SEC_THRESH_LEVEL_REF1 : 0;
+		bp_thresh = force_tail_drop ? NIX_CQ_SEC_BP_THRESH_LEVEL_REF1 :
+					      NIX_CQ_SEC_BP_THRESH_LEVEL;
 	}
 
 	/* Many to one reduction */
@@ -1296,17 +1312,20 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 		cq_ctx->drop = min_rx_drop;
 		cq_ctx->drop_ena = 1;
 		cq->drop_thresh = min_rx_drop;
+		bp_thresh = min_rx_drop;
+		cq->bp_thresh = bp_thresh;
 	} else {
 		cq->drop_thresh = drop_thresh;
+		cq->bp_thresh = bp_thresh;
 		/* Drop processing or red drop cannot be enabled due to
 		 * due to packets coming for second pass from CPT.
 		 */
-		if (!roc_nix_inl_inb_is_enabled(roc_nix)) {
+		if (!roc_nix_inl_inb_is_enabled(roc_nix) || force_tail_drop) {
 			cq_ctx->drop = cq->drop_thresh;
 			cq_ctx->drop_ena = 1;
 		}
 	}
-	cq_ctx->bp = cq->drop_thresh;
+	cq_ctx->bp = bp_thresh;
 
 	if (roc_feature_nix_has_cqe_stash()) {
 		if (cq_ctx->caching) {
