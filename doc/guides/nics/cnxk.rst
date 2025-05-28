@@ -470,6 +470,19 @@ Runtime Config Options
    With the above configuration, inline inbound IPsec post-processing
    should be done by the application.
 
+- ``Enable force tail drop feature`` (default ``0``)
+
+   Force tail drop can be enabled
+   by specifying ``force_tail_drop`` devargs parameter.
+   This option is for OCTEON CN10K SoC family.
+
+   For example::
+
+      -a 0002:02:00.0,force_tail_drop=1
+
+   With the above configuration, descriptors are internally increased
+   and back pressures are optimized to avoid CQ full situation due to inflight packets.
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the

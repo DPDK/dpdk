@@ -708,6 +708,10 @@ cnxk_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
 		nb_desc = nix_inl_cq_sz_clamp_up(nix, lpb_pool, nb_desc);
 
+	/* Double the CQ descriptors */
+	if (nix->force_tail_drop)
+		nb_desc = 2 * RTE_MAX(nb_desc, (uint32_t)4096);
+
 	/* Setup ROC CQ */
 	cq = &dev->cqs[qid];
 	cq->qid = qid;
