@@ -189,6 +189,7 @@ struct roc_nix_fc_cfg {
 			uint32_t rq;
 			uint16_t tc;
 			uint16_t cq_drop;
+			uint16_t cq_bp;
 			bool enable;
 		} cq_cfg;
 
@@ -196,6 +197,7 @@ struct roc_nix_fc_cfg {
 			uint32_t rq;
 			uint16_t tc;
 			uint16_t cq_drop;
+			uint16_t cq_bp;
 			uint64_t pool;
 			uint64_t spb_pool;
 			uint64_t pool_drop_pct;
@@ -371,6 +373,7 @@ struct roc_nix_cq {
 	uint8_t stash_thresh;
 	/* End of Input parameters */
 	uint16_t drop_thresh;
+	uint16_t bp_thresh;
 	struct roc_nix *roc_nix;
 	uintptr_t door;
 	int64_t *status;
@@ -483,6 +486,7 @@ struct roc_nix {
 	uint32_t root_sched_weight;
 	uint16_t inb_cfg_param1;
 	uint16_t inb_cfg_param2;
+	bool force_tail_drop;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
