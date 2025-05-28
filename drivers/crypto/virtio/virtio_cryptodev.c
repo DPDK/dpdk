@@ -731,7 +731,6 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 	if (cryptodev == NULL)
 		return -ENODEV;
 
-	cryptodev->driver_id = cryptodev_virtio_driver_id;
 	cryptodev->dev_ops = &virtio_crypto_dev_ops;
 
 	cryptodev->enqueue_burst = virtio_crypto_pkt_tx_burst;
@@ -755,6 +754,7 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 
 	if (virtio_crypto_init_device(cryptodev,
 			VIRTIO_CRYPTO_PMD_GUEST_FEATURES) < 0)
+	cryptodev->driver_id = cryptodev_virtio_driver_id;
 		return -1;
 
 	rte_cryptodev_pmd_probing_finish(cryptodev);
@@ -1392,7 +1392,7 @@ virtio_crypto_dev_info_get(struct rte_cryptodev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (info != NULL) {
-		info->driver_id = cryptodev_virtio_driver_id;
+		info->driver_id = dev->driver_id;
 		info->feature_flags = dev->feature_flags;
 		info->max_nb_queue_pairs = hw->max_dataqueues;
 		/* No limit of number of sessions */
