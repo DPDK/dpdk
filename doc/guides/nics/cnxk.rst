@@ -483,6 +483,16 @@ Runtime Config Options
    With the above configuration, descriptors are internally increased
    and back pressures are optimized to avoid CQ full situation due to inflight packets.
 
+- ``Disable RQ XQE drop`` (default ``0``)
+
+   Rx XQE drop can be disabled
+   by specifying ``disable_xqe_drop`` devargs parameter.
+   This option is for OCTEON CN10K SoC family.
+
+   For example::
+
+      -a 0002:02:00.0,disable_xqe_drop=1
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the
