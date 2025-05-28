@@ -282,6 +282,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_CUSTOM_META_AURA_DIS "custom_meta_aura_dis"
 #define CNXK_CUSTOM_INB_SA	  "custom_inb_sa"
 #define CNXK_FORCE_TAIL_DROP	  "force_tail_drop"
+#define CNXK_DIS_XQE_DROP	  "disable_xqe_drop"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -308,6 +309,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t custom_sa_act = 0;
 	uint16_t custom_inb_sa = 0;
 	struct rte_kvargs *kvlist;
+	uint8_t dis_xqe_drop = 0;
 	uint32_t meta_buf_sz = 0;
 	uint16_t lock_rx_ctx = 0;
 	uint16_t rx_inj_ena = 0;
@@ -367,6 +369,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 			   &custom_meta_aura_dis);
 	rte_kvargs_process(kvlist, CNXK_CUSTOM_INB_SA, &parse_flag, &custom_inb_sa);
 	rte_kvargs_process(kvlist, CNXK_FORCE_TAIL_DROP, &parse_flag, &force_tail_drop);
+	rte_kvargs_process(kvlist, CNXK_DIS_XQE_DROP, &parse_flag, &dis_xqe_drop);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -409,6 +412,7 @@ null_devargs:
 	if (roc_feature_nix_has_rx_inject())
 		dev->nix.rx_inj_ena = rx_inj_ena;
 	dev->nix.force_tail_drop = force_tail_drop;
+	dev->nix.dis_xqe_drop = !!dis_xqe_drop;
 	return 0;
 exit:
 	return -EINVAL;
@@ -434,4 +438,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>"
 			      CNXK_NIX_RX_INJ_ENABLE "=1"
 			      CNXK_CUSTOM_META_AURA_DIS "=1"
-			      CNXK_FORCE_TAIL_DROP "=1");
+			      CNXK_FORCE_TAIL_DROP "=1"
+			      CNXK_DIS_XQE_DROP "=1");
