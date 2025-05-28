@@ -26,6 +26,8 @@
 
 #define virtio_user_get_dev(hwp) container_of(hwp, struct virtio_user_dev, hw)
 
+uint8_t cryptodev_virtio_user_driver_id;
+
 static void
 virtio_user_read_dev_config(struct virtio_crypto_hw *hw, size_t offset,
 		     void *dst, int length __rte_unused)
@@ -460,6 +462,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 		goto end;
 	}
 
+	cryptodev->driver_id = cryptodev_virtio_user_driver_id;
 	if (crypto_virtio_dev_init(cryptodev, VIRTIO_USER_CRYPTO_PMD_GUEST_FEATURES,
 			NULL) < 0) {
 		PMD_INIT_LOG(ERR, "crypto_virtio_dev_init fails");
@@ -562,8 +565,6 @@ static struct rte_vdev_driver virtio_user_driver = {
 };
 
 static struct cryptodev_driver virtio_crypto_drv;
-
-uint8_t cryptodev_virtio_user_driver_id;
 
 RTE_PMD_REGISTER_VDEV(crypto_virtio_user, virtio_user_driver);
 RTE_PMD_REGISTER_CRYPTO_DRIVER(virtio_crypto_drv,
