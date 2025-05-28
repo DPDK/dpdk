@@ -487,6 +487,7 @@ struct roc_nix {
 	uint16_t inb_cfg_param1;
 	uint16_t inb_cfg_param2;
 	bool force_tail_drop;
+	bool dis_xqe_drop;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;

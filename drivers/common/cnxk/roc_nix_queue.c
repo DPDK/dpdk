@@ -956,7 +956,7 @@ roc_nix_rq_init(struct roc_nix *roc_nix, struct roc_nix_rq *rq, bool ena)
 	/* Enable XQE/CQ drop on cn10k to count pkt drops only when inline is disabled */
 	if (roc_model_is_cn10k() &&
 	    (roc_nix->force_tail_drop || !roc_nix_inl_inb_is_enabled(roc_nix)))
-		rq->xqe_drop_ena = true;
+		rq->xqe_drop_ena = roc_nix->dis_xqe_drop ? false : true;
 
 	if (is_cn9k)
 		rc = nix_rq_cn9k_cfg(dev, rq, nix->qints, false, ena);
