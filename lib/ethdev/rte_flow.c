@@ -1489,21 +1489,21 @@ rte_flow_configure(uint16_t port_id,
 		RTE_FLOW_LOG(INFO,
 			"Device with port_id=%"PRIu16" is not configured.\n",
 			port_id);
-		return -EINVAL;
+		goto error;
 	}
 	if (dev->data->dev_started != 0) {
 		RTE_FLOW_LOG(INFO,
 			"Device with port_id=%"PRIu16" already started.\n",
 			port_id);
-		return -EINVAL;
+		goto error;
 	}
 	if (port_attr == NULL) {
 		RTE_FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.\n", port_id);
-		return -EINVAL;
+		goto error;
 	}
 	if (queue_attr == NULL) {
 		RTE_FLOW_LOG(ERR, "Port %"PRIu16" queue info is NULL.\n", port_id);
-		return -EINVAL;
+		goto error;
 	}
 	if (likely(!!ops->configure)) {
 		ret = ops->configure(dev, port_attr, nb_queue, queue_attr, error);
@@ -1514,6 +1514,10 @@ rte_flow_configure(uint16_t port_id,
 	return rte_flow_error_set(error, ENOTSUP,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, rte_strerror(ENOTSUP));
+error:
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, rte_strerror(EINVAL));
 }
 
 struct rte_flow_pattern_template *
