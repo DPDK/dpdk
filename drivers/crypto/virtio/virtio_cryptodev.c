@@ -778,8 +778,7 @@ virtio_crypto_dev_uninit(struct rte_cryptodev *cryptodev)
 	cryptodev->enqueue_burst = NULL;
 	cryptodev->dequeue_burst = NULL;
 
-	rte_free(cryptodev->data);
-	cryptodev->data = NULL;
+	rte_cryptodev_pmd_release_device(cryptodev);
 
 	VIRTIO_CRYPTO_DRV_LOG_INFO("dev_uninit completed");
 
