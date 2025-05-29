@@ -59,7 +59,7 @@
 	(RTE_ETH_RSS_PORT | RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP |                   \
 	 RTE_ETH_RSS_SCTP | RTE_ETH_RSS_TUNNEL | RTE_ETH_RSS_L2_PAYLOAD |                          \
 	 CNXK_NIX_RSS_L3_L4_SRC_DST | RTE_ETH_RSS_LEVEL_MASK | RTE_ETH_RSS_C_VLAN |                \
-	 RTE_ETH_RSS_ESP)
+	 RTE_ETH_RSS_ESP | RTE_ETH_RSS_IB_BTH)
 
 #define CNXK_NIX_TX_OFFLOAD_CAPA                                                                   \
 	(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE | RTE_ETH_TX_OFFLOAD_MT_LOCKFREE |                      \
