@@ -582,6 +582,7 @@ Eventdev Vector Adapter API - EXPERIMENTAL
 M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*vector_adapter*
+F: app/test/test_event_vector_adapter.c
 F: doc/guides/prog_guide/eventdev/event_vector_adapter.rst
 
 Raw device API

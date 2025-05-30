@@ -130,6 +130,10 @@ The following are the application command-line options:
 
         Use DMA device as producer.
 
+* ``--prod_type_vector``
+
+        Use event vector adapter as producer.
+
 * ``--timer_tick_nsec``
 
        Used to dictate number of nano seconds between bucket traversal of the
@@ -635,6 +639,7 @@ Supported application command line options are following::
         --prod_type_timerdev
         --prod_type_cryptodev
         --prod_type_dmadev
+        --prod_type_vector
         --prod_enq_burst_sz
         --timer_tick_nsec
         --max_tmo_nsec
@@ -756,6 +761,7 @@ Supported application command line options are following::
         --prod_type_timerdev
         --prod_type_cryptodev
         --prod_type_dmadev
+        --prod_type_vector
         --timer_tick_nsec
         --max_tmo_nsec
         --expiry_nsec

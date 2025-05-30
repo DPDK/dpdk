@@ -103,6 +103,8 @@ New Features
   that allow applications to offload creation of event vectors,
   thereby reducing the scheduling latency.
 
+  Added vector adapter producer mode in eventdev test to measure performance.
+
   See the :doc:`../prog_guide/eventdev/event_vector_adapter` guide
   for more details on the new library.
 

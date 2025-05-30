@@ -6,8 +6,6 @@
 
 #include <rte_common.h>
 #include <rte_malloc.h>
-#include <rte_mempool.h>
-#include <rte_random.h>
 
 #include "test.h"
 
