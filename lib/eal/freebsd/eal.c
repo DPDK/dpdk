@@ -904,9 +904,9 @@ rte_eal_cleanup(void)
 	rte_service_finalize();
 	rte_mp_channel_cleanup();
 	eal_bus_cleanup();
+	rte_eal_alarm_cleanup();
 	rte_trace_save();
 	eal_trace_fini();
-	rte_eal_alarm_cleanup();
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
 	eal_cleanup_config(internal_conf);
