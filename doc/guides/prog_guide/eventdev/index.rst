@@ -14,3 +14,4 @@ Event Device Library
     event_crypto_adapter
     event_dma_adapter
     dispatcher_lib
+    event_vector_adapter

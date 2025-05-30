@@ -1985,6 +1985,16 @@ int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
 
+/* Vector adapter capability bitmap flags */
+#define RTE_EVENT_VECTOR_ADAPTER_CAP_INTERNAL_PORT	0x1
+/**< This flag is set when the vector adapter is capable of generating events
+ * using an internal event port.
+ */
+
+__rte_experimental
+int
+rte_event_vector_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
+
 /**
  * Converts nanoseconds to *timeout_ticks* value for rte_event_dequeue_burst()
  *

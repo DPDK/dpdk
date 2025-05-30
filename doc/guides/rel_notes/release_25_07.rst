@@ -67,6 +67,16 @@ New Features
 
   * Added support for Rx and Tx burst mode query.
 
+* **Added eventdev vector adapter.**
+
+  Added the Event vector Adapter Library. This library extends the event-based
+  model by introducing APIs that allow applications to offload creation of
+  event vectors, thereby reducing the scheduling latency.
+
+  See the :doc:`../prog_guide/eventdev/event_vector_adapter` guide for more
+  details on the new library.
+
+
 
 Removed Items
 -------------
