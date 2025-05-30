@@ -96,6 +96,16 @@ New Features
 
   * Added support for CN20K SoC in cnxk CPT driver.
 
+* **Added eventdev vector adapter.**
+
+  Added the event vector adapter library.
+  This library extends the event-based model by introducing API
+  that allow applications to offload creation of event vectors,
+  thereby reducing the scheduling latency.
+
+  See the :doc:`../prog_guide/eventdev/event_vector_adapter` guide
+  for more details on the new library.
+
 
 Removed Items
 -------------

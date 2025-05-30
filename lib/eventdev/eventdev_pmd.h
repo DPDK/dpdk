@@ -26,6 +26,7 @@
 
 #include "event_timer_adapter_pmd.h"
 #include "rte_event_eth_rx_adapter.h"
+#include "rte_event_vector_adapter.h"
 #include "rte_eventdev.h"
 
 #ifdef __cplusplus
@@ -1555,6 +1556,36 @@ typedef int (*eventdev_dma_adapter_stats_get)(const struct rte_eventdev *dev,
 typedef int (*eventdev_dma_adapter_stats_reset)(const struct rte_eventdev *dev,
 						const int16_t dma_dev_id);
 
+/**
+ * Event device vector adapter capabilities.
+ *
+ * @param dev
+ *   Event device pointer
+ * @param caps
+ *   Vector adapter capabilities
+ * @param ops
+ *   Vector adapter ops
+ *
+ * @return
+ *   Return 0 on success.
+ *
+ */
+typedef int (*eventdev_vector_adapter_caps_get_t)(const struct rte_eventdev *dev, uint32_t *caps,
+						  const struct event_vector_adapter_ops **ops);
+
+/**
+ * Event device vector adapter info.
+ *
+ * @param dev
+ *   Event device pointer
+ * @param info
+ *   Vector adapter info
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_vector_adapter_info_get_t)(const struct rte_eventdev *dev,
+						  struct rte_event_vector_adapter_info *info);
 
 /** Event device operations function pointer table */
 struct eventdev_ops {
@@ -1696,6 +1727,11 @@ struct eventdev_ops {
 	/**< Get DMA stats */
 	eventdev_dma_adapter_stats_reset dma_adapter_stats_reset;
 	/**< Reset DMA stats */
+
+	eventdev_vector_adapter_caps_get_t vector_adapter_caps_get;
+	/**< Get vector adapter capabilities */
+	eventdev_vector_adapter_info_get_t vector_adapter_info_get;
+	/**< Get vector adapter info */
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */
