@@ -79,6 +79,7 @@ source_file_deps = {
     'test_event_eth_tx_adapter.c': ['bus_vdev', 'ethdev', 'net_ring', 'eventdev'],
     'test_event_ring.c': ['eventdev'],
     'test_event_timer_adapter.c': ['ethdev', 'eventdev', 'bus_vdev'],
+    'test_event_vector_adapter.c': ['eventdev', 'bus_vdev'],
     'test_eventdev.c': ['eventdev', 'bus_vdev'],
     'test_external_mem.c': [],
     'test_fbarray.c': [],
