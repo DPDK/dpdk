@@ -272,6 +272,8 @@ rte_event_vector_adapter_caps_get(uint8_t dev_id, uint32_t *caps)
 		return -EINVAL;
 
 	if (dev->dev_ops->vector_adapter_caps_get == NULL)
+		*caps = RTE_EVENT_VECTOR_ADAPTER_SW_CAP;
+	else
 		*caps = 0;
 
 	return dev->dev_ops->vector_adapter_caps_get ?
