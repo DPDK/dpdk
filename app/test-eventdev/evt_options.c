@@ -186,6 +186,13 @@ evt_parse_dma_adptr_mode(struct evt_options *opt, const char *arg)
 	return ret;
 }
 
+static int
+evt_parse_vector_prod_type(struct evt_options *opt,
+			   const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_VECTOR_ADPTR;
+	return 0;
+}
 
 static int
 evt_parse_crypto_prod_type(struct evt_options *opt,
@@ -494,6 +501,7 @@ usage(char *program)
 		"\t                     in ns.\n"
 		"\t--prod_type_timerdev_burst : use timer device as producer\n"
 		"\t                             burst mode.\n"
+		"\t--prod_type_vector : use vector adapter as producer.\n"
 		"\t--nb_timers        : number of timers to arm.\n"
 		"\t--nb_timer_adptrs  : number of timer adapters to use.\n"
 		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
@@ -591,6 +599,7 @@ static struct option lgopts[] = {
 	{ EVT_PROD_CRYPTODEV,      0, 0, 0 },
 	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
 	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
+	{ EVT_PROD_VECTOR,         0, 0, 0 },
 	{ EVT_DMA_ADPTR_MODE,      1, 0, 0 },
 	{ EVT_CRYPTO_ADPTR_MODE,   1, 0, 0 },
 	{ EVT_CRYPTO_OP_TYPE,	   1, 0, 0 },
@@ -642,6 +651,7 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_PROD_DMADEV, evt_parse_dma_prod_type},
 		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
 		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
+		{ EVT_PROD_VECTOR, evt_parse_vector_prod_type },
 		{ EVT_DMA_ADPTR_MODE, evt_parse_dma_adptr_mode},
 		{ EVT_CRYPTO_ADPTR_MODE, evt_parse_crypto_adptr_mode},
 		{ EVT_CRYPTO_OP_TYPE, evt_parse_crypto_op_type},
@@ -721,4 +731,8 @@ evt_options_dump(struct evt_options *opt)
 	evt_dump_end;
 	evt_dump_nb_flows(opt);
 	evt_dump_worker_dequeue_depth(opt);
+	if (opt->ena_vector || opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		evt_dump("vector_sz", "%d", opt->vector_size);
+		evt_dump("vector_tmo_ns", "%"PRIu64, opt->vector_tmo_nsec);
+	}
 }

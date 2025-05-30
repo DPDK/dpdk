@@ -38,6 +38,7 @@
 #define EVT_PROD_DMADEV          ("prod_type_dmadev")
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
+#define EVT_PROD_VECTOR          ("prod_type_vector")
 #define EVT_DMA_ADPTR_MODE       ("dma_adptr_mode")
 #define EVT_CRYPTO_ADPTR_MODE	 ("crypto_adptr_mode")
 #define EVT_CRYPTO_OP_TYPE	 ("crypto_op_type")

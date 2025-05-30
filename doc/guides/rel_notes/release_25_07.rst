@@ -77,6 +77,11 @@ New Features
   details on the new library.
 
 
+* **Added vector adapter producer mode in eventdev test.**
+
+  Added vector adapter producer mode to measure performance of event vector
+  adapter.
+
 
 Removed Items
 -------------

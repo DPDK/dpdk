@@ -102,16 +102,20 @@ perf_test_result(struct evt_test *test, struct evt_options *opt)
 	int i;
 	uint64_t total = 0;
 	struct test_perf *t = evt_test_priv(test);
+	uint8_t is_vec;
 
 	printf("Packet distribution across worker cores :\n");
+	is_vec = (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR);
 	for (i = 0; i < t->nb_workers; i++)
-		total += t->worker[i].processed_pkts;
+		total += is_vec ? t->worker[i].processed_vecs : t->worker[i].processed_pkts;
 	for (i = 0; i < t->nb_workers; i++)
-		printf("Worker %d packets: "CLGRN"%"PRIx64" "CLNRM"percentage:"
-				CLGRN" %3.2f"CLNRM"\n", i,
-				t->worker[i].processed_pkts,
-				(((double)t->worker[i].processed_pkts)/total)
-				* 100);
+		printf("Worker %d packets: " CLGRN "%" PRIx64 " " CLNRM "percentage:" CLGRN
+		       " %3.2f" CLNRM "\n",
+		       i, is_vec ? t->worker[i].processed_vecs : t->worker[i].processed_pkts,
+		       (((double)(is_vec ? t->worker[i].processed_vecs :
+					   t->worker[i].processed_pkts)) /
+			total) *
+			       100);
 
 	return t->result;
 }
@@ -888,6 +892,31 @@ perf_event_crypto_producer_burst(void *arg)
 }
 
 static int
+perf_event_vector_producer(struct prod_data *p)
+{
+	struct rte_event_vector_adapter *adptr = p->va.vector_adptr;
+	struct evt_options *opt = p->t->opt;
+	const struct test_perf *t = p->t;
+	uint64_t objs[BURST_SIZE];
+	uint16_t enq;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d vector adapter %p\n", __func__, rte_lcore_id(), adptr);
+
+	while (t->done == false) {
+		enq = rte_event_vector_adapter_enqueue(adptr, objs, BURST_SIZE, 0);
+		while (enq < BURST_SIZE) {
+			enq += rte_event_vector_adapter_enqueue(adptr, objs + enq, BURST_SIZE - enq,
+								0);
+			if (t->done)
+				break;
+			rte_pause();
+		}
+	}
+	return 0;
+}
+
+static int
 perf_producer_wrapper(void *arg)
 {
 	struct rte_event_dev_info dev_info;
@@ -930,6 +959,8 @@ perf_producer_wrapper(void *arg)
 			return perf_event_crypto_producer(arg);
 	} else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR)
 		return perf_event_dma_producer(arg);
+	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR)
+		return perf_event_vector_producer(p);
 
 	return 0;
 }
@@ -947,6 +978,18 @@ processed_pkts(struct test_perf *t)
 }
 
 static inline uint64_t
+processed_vecs(struct test_perf *t)
+{
+	uint8_t i;
+	uint64_t total = 0;
+
+	for (i = 0; i < t->nb_workers; i++)
+		total += t->worker[i].processed_vecs;
+
+	return total;
+}
+
+static inline uint64_t
 total_latency(struct test_perf *t)
 {
 	uint8_t i;
@@ -958,104 +1001,80 @@ total_latency(struct test_perf *t)
 	return total;
 }
 
-
-int
-perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
-		int (*worker)(void *))
+static void
+check_work_status(struct test_perf *t, struct evt_options *opt)
 {
-	int ret, lcore_id;
-	struct test_perf *t = evt_test_priv(test);
-
-	int port_idx = 0;
-	/* launch workers */
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (!(opt->wlcores[lcore_id]))
-			continue;
-
-		ret = rte_eal_remote_launch(worker,
-				 &t->worker[port_idx], lcore_id);
-		if (ret) {
-			evt_err("failed to launch worker %d", lcore_id);
-			return ret;
-		}
-		port_idx++;
-	}
-
-	/* launch producers */
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (!(opt->plcores[lcore_id]))
-			continue;
-
-		ret = rte_eal_remote_launch(perf_producer_wrapper,
-				&t->prod[port_idx], lcore_id);
-		if (ret) {
-			evt_err("failed to launch perf_producer %d", lcore_id);
-			return ret;
-		}
-		port_idx++;
-	}
-
-	const uint64_t total_pkts = t->outstand_pkts;
-
-	uint64_t dead_lock_cycles = rte_get_timer_cycles();
-	int64_t dead_lock_remaining  =  total_pkts;
 	const uint64_t dead_lock_sample = rte_get_timer_hz() * 5;
-
-	uint64_t perf_cycles = rte_get_timer_cycles();
-	int64_t perf_remaining  = total_pkts;
-	const uint64_t perf_sample = rte_get_timer_hz();
-
-	static float total_mpps;
-	static uint64_t samples;
-
 	const uint64_t freq_mhz = rte_get_timer_hz() / 1000000;
-	int64_t remaining = t->outstand_pkts - processed_pkts(t);
+	uint64_t dead_lock_cycles = rte_get_timer_cycles();
+	const uint64_t perf_sample = rte_get_timer_hz();
+	uint64_t perf_cycles = rte_get_timer_cycles();
+	const uint64_t total_pkts = t->outstand_pkts;
+	int64_t dead_lock_remaining = total_pkts;
+	int64_t perf_remaining  = total_pkts;
+	static uint64_t samples;
+	static float total_mpps;
+	int64_t remaining;
+	uint8_t is_vec;
+
+	is_vec = (t->opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR);
+	remaining = t->outstand_pkts - (is_vec ? processed_vecs(t) : processed_pkts(t));
 
 	while (t->done == false) {
 		const uint64_t new_cycles = rte_get_timer_cycles();
 
 		if ((new_cycles - perf_cycles) > perf_sample) {
 			const uint64_t latency = total_latency(t);
-			const uint64_t pkts = processed_pkts(t);
+			const uint64_t pkts = is_vec ? processed_vecs(t) : processed_pkts(t);
+			uint64_t fallback_pkts = processed_pkts(t);
 
 			remaining = t->outstand_pkts - pkts;
-			float mpps = (float)(perf_remaining-remaining)/1000000;
+			float mpps = (float)(perf_remaining - remaining) / 1E6;
 
 			perf_remaining = remaining;
 			perf_cycles = new_cycles;
 			total_mpps += mpps;
 			++samples;
+
 			if (opt->fwd_latency && pkts > 0) {
-				printf(CLGRN"\r%.3f mpps avg %.3f mpps [avg fwd latency %.3f us] "CLNRM,
-					mpps, total_mpps/samples,
-					(float)(latency/pkts)/freq_mhz);
+				if (is_vec) {
+					printf(CLGRN
+					       "\r%.3f mvps avg %.3f mvps [avg fwd latency %.3f us] "
+					       "fallback mpps %.3f" CLNRM,
+					       mpps, total_mpps / samples,
+					       (float)(latency / pkts) / freq_mhz,
+					       fallback_pkts / 1E6);
+				} else {
+					printf(CLGRN
+					       "\r%.3f mpps avg %.3f mpps [avg fwd latency %.3f us] "
+					       CLNRM,
+					       mpps, total_mpps / samples,
+					       (float)(latency / pkts) / freq_mhz);
+				}
 			} else {
-				printf(CLGRN"\r%.3f mpps avg %.3f mpps"CLNRM,
-					mpps, total_mpps/samples);
+				if (is_vec) {
+					printf(CLGRN
+					       "\r%.3f mvps avg %.3f mvps fallback mpps %.3f" CLNRM,
+					       mpps, total_mpps / samples, fallback_pkts / 1E6);
+				} else {
+					printf(CLGRN "\r%.3f mpps avg %.3f mpps" CLNRM, mpps,
+					       total_mpps / samples);
+				}
 			}
 			fflush(stdout);
 
 			if (remaining <= 0) {
 				t->result = EVT_TEST_SUCCESS;
-				if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
-				    opt->prod_type ==
-					    EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-				    opt->prod_type ==
-					    EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR ||
-				    opt->prod_type ==
-					    EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+				if (opt->prod_type != EVT_PROD_TYPE_ETH_RX_ADPTR) {
 					t->done = true;
 					break;
 				}
 			}
 		}
-
 		if (new_cycles - dead_lock_cycles > dead_lock_sample &&
-		    (opt->prod_type == EVT_PROD_TYPE_SYNT ||
-		     opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-		     opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR ||
-		     opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR)) {
-			remaining = t->outstand_pkts - processed_pkts(t);
+		    (opt->prod_type != EVT_PROD_TYPE_ETH_RX_ADPTR)) {
+			remaining =
+				t->outstand_pkts - (is_vec ? processed_vecs(t) : processed_pkts(t));
 			if (dead_lock_remaining == remaining) {
 				rte_event_dev_dump(opt->dev_id, stdout);
 				evt_err("No schedules for seconds, deadlock");
@@ -1067,6 +1086,45 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 		}
 	}
 	printf("\n");
+}
+
+int
+perf_launch_lcores(struct evt_test *test, struct evt_options *opt, int (*worker)(void *))
+{
+	int ret, lcore_id;
+	struct test_perf *t = evt_test_priv(test);
+
+	int port_idx = 0;
+	/* launch workers */
+	RTE_LCORE_FOREACH_WORKER(lcore_id)
+	{
+		if (!(opt->wlcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(worker, &t->worker[port_idx], lcore_id);
+		if (ret) {
+			evt_err("failed to launch worker %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	/* launch producers */
+	RTE_LCORE_FOREACH_WORKER(lcore_id)
+	{
+		if (!(opt->plcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(perf_producer_wrapper, &t->prod[port_idx], lcore_id);
+		if (ret) {
+			evt_err("failed to launch perf_producer %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	check_work_status(t, opt);
+
 	return 0;
 }
 
@@ -1564,6 +1622,70 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 
 			prod++;
 		}
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		struct rte_event_vector_adapter_conf conf;
+		struct rte_event_vector_adapter_info info;
+
+		ret = rte_event_vector_adapter_info_get(opt->dev_id, &info);
+
+		if (opt->vector_size < info.min_vector_sz ||
+		    opt->vector_size > info.max_vector_sz) {
+			evt_err("Vector size [%d] not within limits max[%d] min[%d]",
+				opt->vector_size, info.max_vector_sz, info.min_vector_sz);
+			return -EINVAL;
+		}
+
+		if (opt->vector_tmo_nsec > info.max_vector_timeout_ns ||
+		    opt->vector_tmo_nsec < info.min_vector_timeout_ns) {
+			evt_err("Vector timeout [%" PRIu64 "] not within limits "
+				"max[%" PRIu64 "] min[%" PRIu64 "]",
+				opt->vector_tmo_nsec, info.max_vector_timeout_ns,
+				info.min_vector_timeout_ns);
+			return -EINVAL;
+		}
+
+		memset(&conf, 0, sizeof(struct rte_event_vector_adapter_conf));
+		conf.event_dev_id = opt->dev_id;
+		conf.vector_sz = opt->vector_size;
+		conf.vector_timeout_ns = opt->vector_tmo_nsec;
+		conf.socket_id = opt->socket_id;
+		conf.vector_mp = t->pool;
+
+		conf.ev.sched_type = opt->sched_type_list[0];
+		conf.ev.event_type = RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU;
+
+		conf.ev_fallback.event_type = RTE_EVENT_TYPE_CPU;
+
+		prod = 0;
+		for (; port < perf_nb_event_ports(opt); port++) {
+			struct rte_event_vector_adapter *vector_adptr;
+			struct prod_data *p = &t->prod[port];
+			uint32_t service_id;
+
+			p->queue_id = prod * stride;
+			p->t = t;
+
+			conf.ev.queue_id = p->queue_id;
+
+			vector_adptr = rte_event_vector_adapter_create(&conf);
+			if (vector_adptr == NULL) {
+				evt_err("Failed to create vector adapter for port %d", port);
+				return -ENOMEM;
+			}
+			p->va.vector_adptr = vector_adptr;
+			prod++;
+
+			if (rte_event_vector_adapter_service_id_get(vector_adptr, &service_id) ==
+			    0) {
+				ret = evt_service_setup(service_id);
+				if (ret) {
+					evt_err("Failed to setup service core"
+						" for vector adapter\n");
+					return ret;
+				}
+				rte_service_runstate_set(service_id, 1);
+			}
+		}
 	} else {
 		prod = 0;
 		for ( ; port < perf_nb_event_ports(opt); port++) {
@@ -1727,6 +1849,20 @@ perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
 	if (opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
 		for (i = 0; i < opt->nb_timer_adptrs; i++)
 			rte_event_timer_adapter_stop(t->timer_adptr[i]);
+	}
+
+	if (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		for (i = 0; i < evt_nr_active_lcores(opt->plcores); i++) {
+			struct prod_data *p = &t->prod[i];
+			uint32_t service_id;
+
+			if (p->va.vector_adptr) {
+				if (rte_event_vector_adapter_service_id_get(p->va.vector_adptr,
+									    &service_id) == 0)
+					rte_service_runstate_set(service_id, 0);
+				rte_event_vector_adapter_destroy(p->va.vector_adptr);
+			}
+		}
 	}
 	rte_event_dev_stop(opt->dev_id);
 	rte_event_dev_close(opt->dev_id);
@@ -2119,6 +2255,9 @@ perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
 					     cache_sz,		       /* cache size*/
 					     0, NULL, NULL, NULL,      /* obj constructor */
 					     NULL, opt->socket_id, 0); /* flags */
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		t->pool = rte_event_vector_pool_create(test->name, opt->pool_sz, cache_sz,
+						       opt->vector_size, opt->socket_id);
 	} else {
 		t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
