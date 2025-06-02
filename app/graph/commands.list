@@ -27,6 +27,7 @@ ipv4_lookup mode <STRING>lkup_mode                       # Set IPv4 lookup mode
 help ipv4_lookup                                         # Print help on ipv4_lookup commands
 
 ipv6_lookup route add ipv6 <IPv6>ip netmask <IPv6>mask via <IPv6>via_ip # Add IPv6 route to LPM6 table
+ipv6_lookup mode <STRING>lkup_mode                       # Set IPv6 lookup mode
 help ipv6_lookup                                         # Print help on ipv6_lookup commands
 
 neigh add ipv4 <IPv4>ip <STRING>mac                      # Add static neighbour for IPv4
