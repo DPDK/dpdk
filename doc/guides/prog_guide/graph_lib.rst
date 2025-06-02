@@ -993,6 +993,9 @@ On FIB lookup failure, objects are redirected to pkt_drop node.
 ``rte_node_ip4_fib_route_add()`` is control path API to add IPv4 routes.
 To achieve home run, node use ``rte_node_stream_move()`` as mentioned in above sections.
 
+This node is used only when lookup mode is given as FIB in the application.
+Otherwise, the ``ip4_lookup`` node is used by default which does LPM lookup.
+
 ip4_rewrite
 ~~~~~~~~~~~
 This node gets packets from ``ip4_lookup`` node with next-hop id for each
