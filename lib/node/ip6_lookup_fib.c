@@ -40,6 +40,153 @@ static struct ip6_lookup_fib_node_main ip6_lookup_fib_nm;
 #define IP6_LOOKUP_FIB_NODE_PRIV1_OFF(ctx) \
 	(((struct ip6_lookup_fib_node_ctx *)ctx)->mbuf_priv1_off)
 
+static uint16_t
+ip6_lookup_fib_node_process(struct rte_graph *graph, struct rte_node *node, void **objs,
+			    uint16_t nb_objs)
+{
+	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3, **pkts;
+	const int dyn = IP6_LOOKUP_FIB_NODE_PRIV1_OFF(node->ctx);
+	struct rte_fib6 *fib = IP6_LOOKUP_FIB_NODE(node->ctx);
+	struct rte_ipv6_addr ip[RTE_GRAPH_BURST_SIZE] = { 0 };
+	uint64_t next_hop[RTE_GRAPH_BURST_SIZE];
+	struct rte_ipv6_hdr *ipv6_hdr;
+	uint16_t lookup_err = 0;
+	void **to_next, **from;
+	uint16_t last_spec = 0;
+	rte_edge_t next_index;
+	uint16_t n_left_from;
+	uint16_t held = 0;
+	uint16_t next;
+	int i;
+
+	/* Speculative next */
+	next_index = RTE_NODE_IP6_LOOKUP_NEXT_REWRITE;
+
+	pkts = (struct rte_mbuf **)objs;
+	from = objs;
+	n_left_from = nb_objs;
+
+	/* Get stream for the speculated next node */
+	to_next = rte_node_next_stream_get(graph, node, next_index, nb_objs);
+
+	for (i = 0; i < 4 && i < n_left_from; i++)
+		rte_prefetch0(rte_pktmbuf_mtod_offset(pkts[i], void *,
+					sizeof(struct rte_ether_hdr)));
+
+	i = 0;
+	while (n_left_from >= 4) {
+		if (likely(n_left_from > 7)) {
+
+			/* Prefetch next-next mbufs */
+			if (likely(n_left_from > 11)) {
+				rte_prefetch0(pkts[8]);
+				rte_prefetch0(pkts[9]);
+				rte_prefetch0(pkts[10]);
+				rte_prefetch0(pkts[11]);
+			}
+
+			/* Prefetch next mbuf data */
+			rte_prefetch0(rte_pktmbuf_mtod_offset(pkts[4], void *,
+					sizeof(struct rte_ether_hdr)));
+			rte_prefetch0(rte_pktmbuf_mtod_offset(pkts[5], void *,
+					sizeof(struct rte_ether_hdr)));
+			rte_prefetch0(rte_pktmbuf_mtod_offset(pkts[6], void *,
+					sizeof(struct rte_ether_hdr)));
+			rte_prefetch0(rte_pktmbuf_mtod_offset(pkts[7], void *,
+					sizeof(struct rte_ether_hdr)));
+		}
+
+		mbuf0 = pkts[0];
+		mbuf1 = pkts[1];
+		mbuf2 = pkts[2];
+		mbuf3 = pkts[3];
+		pkts += 4;
+		n_left_from -= 4;
+		/* Extract DIP of mbuf0 */
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf0, struct rte_ipv6_hdr *,
+				sizeof(struct rte_ether_hdr));
+		/* Extract hop_limits as ipv6 hdr is in cache */
+		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv6_hdr->hop_limits;
+
+		ip[i++] = ipv6_hdr->dst_addr;
+
+		/* Extract DIP of mbuf1 */
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf1, struct rte_ipv6_hdr *,
+				sizeof(struct rte_ether_hdr));
+		/* Extract hop_limits as ipv6 hdr is in cache */
+		node_mbuf_priv1(mbuf1, dyn)->ttl = ipv6_hdr->hop_limits;
+
+		ip[i++] = ipv6_hdr->dst_addr;
+
+		/* Extract DIP of mbuf2 */
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf2, struct rte_ipv6_hdr *,
+				sizeof(struct rte_ether_hdr));
+		/* Extract hop_limits as ipv6 hdr is in cache */
+		node_mbuf_priv1(mbuf2, dyn)->ttl = ipv6_hdr->hop_limits;
+
+		ip[i++] = ipv6_hdr->dst_addr;
+
+		/* Extract DIP of mbuf3 */
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf3, struct rte_ipv6_hdr *,
+				sizeof(struct rte_ether_hdr));
+		/* Extract hop_limits as ipv6 hdr is in cache */
+		node_mbuf_priv1(mbuf3, dyn)->ttl = ipv6_hdr->hop_limits;
+
+		ip[i++] = ipv6_hdr->dst_addr;
+	}
+	while (n_left_from > 0) {
+		mbuf0 = pkts[0];
+		pkts += 1;
+		n_left_from -= 1;
+
+		/* Extract DIP of mbuf0 */
+		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf0, struct rte_ipv6_hdr *,
+				sizeof(struct rte_ether_hdr));
+		/* Extract hop_limits as ipv6 hdr is in cache */
+		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv6_hdr->hop_limits;
+
+		ip[i++] = ipv6_hdr->dst_addr;
+	}
+
+	rte_fib6_lookup_bulk(fib, ip, next_hop, nb_objs);
+
+	for (i = 0; i < nb_objs; i++) {
+		mbuf0 = (struct rte_mbuf *)objs[i];
+		node_mbuf_priv1(mbuf0, dyn)->nh = (uint16_t)next_hop[i];
+		next = (uint16_t)(next_hop[i] >> 16);
+
+		if (unlikely(next_index ^ next)) {
+			/* Copy things successfully speculated till now */
+			rte_memcpy(to_next, from, last_spec * sizeof(from[0]));
+			from += last_spec;
+			to_next += last_spec;
+			held += last_spec;
+			last_spec = 0;
+
+			rte_node_enqueue_x1(graph, node, next, from[0]);
+			from += 1;
+		} else {
+			last_spec += 1;
+		}
+
+		if (unlikely(next_hop[i] == FIB6_DEFAULT_NH))
+			lookup_err += 1;
+	}
+
+	/* !!! Home run !!! */
+	if (likely(last_spec == nb_objs)) {
+		rte_node_next_stream_move(graph, node, next_index);
+		return nb_objs;
+	}
+
+	NODE_INCREMENT_XSTAT_ID(node, 0, lookup_err != 0, lookup_err);
+	held += last_spec;
+	rte_memcpy(to_next, from, last_spec * sizeof(from[0]));
+	rte_node_next_stream_put(graph, node, next_index, held);
+
+	return nb_objs;
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_node_ip6_fib_create, 25.07)
 int
 rte_node_ip6_fib_create(int socket, struct rte_fib6_conf *conf)
@@ -159,6 +306,7 @@ static struct rte_node_xstats ip6_lookup_fib_xstats = {
 };
 
 static struct rte_node_register ip6_lookup_fib_node = {
+	.process = ip6_lookup_fib_node_process,
 	.name = "ip6_lookup_fib",
 
 	.init = ip6_lookup_fib_node_init,
