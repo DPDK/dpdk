@@ -86,6 +86,25 @@ int rte_node_ip6_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
 __rte_experimental
 int rte_node_ip6_fib_create(int socket, struct rte_fib6_conf *conf);
 
+/**
+ * Add IPv6 route to FIB.
+ *
+ * @param ip
+ *   IPv6 address of route to be added.
+ * @param depth
+ *   Depth of the rule to be added.
+ * @param next_hop
+ *   Next hop id of the rule result to be added.
+ * @param next_node
+ *   Next node to redirect traffic to.
+ *
+ * @return
+ *   0 on success, negative otherwise.
+ */
+__rte_experimental
+int rte_node_ip6_fib_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16_t next_hop,
+			       enum rte_node_ip6_lookup_next next_node);
+
 #ifdef __cplusplus
 }
 #endif
