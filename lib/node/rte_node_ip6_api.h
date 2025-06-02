@@ -17,6 +17,7 @@
  */
 #include <rte_common.h>
 #include <rte_compat.h>
+#include <rte_fib6.h>
 #include <rte_ip6.h>
 
 #ifdef __cplusplus
@@ -70,6 +71,20 @@ int rte_node_ip6_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16
 __rte_experimental
 int rte_node_ip6_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
 			     uint8_t rewrite_len, uint16_t dst_port);
+
+/**
+ * Create ipv6 FIB.
+ *
+ * @param socket
+ *   NUMA socket for FIB memory allocation.
+ * @param conf
+ *   Structure containing FIB configuration.
+ *
+ * @return
+ *   0 on success, negative otherwise.
+ */
+__rte_experimental
+int rte_node_ip6_fib_create(int socket, struct rte_fib6_conf *conf);
 
 #ifdef __cplusplus
 }

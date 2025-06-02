@@ -21,6 +21,7 @@ digraph dpdk_inbuilt_nodes_flow {
     kernel_tx [color="blue"]
     pkt_cls [color="red"]
     ip4_lookup [label="ip4_lookup / ip4_lookup_fib"]
+    ip6_lookup [label="ip6_lookup / ip6_lookup_fib"]
 
     ethdev_rx -> pkt_cls
     kernel_rx -> pkt_cls
@@ -144,7 +145,7 @@ digraph dpdk_inbuilt_nodes_flow {
 <g id="node8" class="node">
 <title>ip6_lookup</title>
 <ellipse fill="none" stroke="black" cx="605.95" cy="-251" rx="135.38" ry="18"/>
-<text text-anchor="middle" x="605.95" y="-247.3" font-family="Times,serif" font-size="14.00">ip6_lookup</text>
+<text text-anchor="middle" x="605.95" y="-247.3" font-family="Times,serif" font-size="14.00">ip6_lookup / ip6_lookup_fib</text>
 </g>
 <!-- pkt_cls&#45;&gt;ip6_lookup -->
 <g id="edge4" class="edge">

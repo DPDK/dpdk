@@ -18,6 +18,7 @@ sources = files(
         'ip4_reassembly.c',
         'ip4_rewrite.c',
         'ip6_lookup.c',
+        'ip6_lookup_fib.c',
         'ip6_rewrite.c',
         'kernel_rx.c',
         'kernel_tx.c',
