@@ -100,7 +100,18 @@ part_number_config_arm = {
             ['RTE_MAX_LCORE', 128],
             ['RTE_MAX_NUMA_NODES', 2]
         ]
-    }
+    },
+    '0xd4f': {
+        'march': 'armv9-a',
+        'march_features': ['sve2'],
+        'mcpu' : 'neoverse-v2',
+        'flags': [
+            ['RTE_MACHINE', '"neoverse-v2"'],
+            ['RTE_ARM_FEATURE_ATOMICS', true],
+            ['RTE_MAX_LCORE', 144],
+            ['RTE_MAX_NUMA_NODES', 2]
+         ]
+     }
 }
 implementer_arm = {
     'description': 'Arm',
@@ -414,6 +425,14 @@ soc_tys2500 = {
     'numa': true
 }
 
+soc_grace = {
+    'description': 'NVIDIA Grace',
+    'implementer': '0x41',
+    'part_number': '0xd4f',
+    'extra_march_features': ['crypto'],
+    'numa': true
+}
+
 soc_graviton2 = {
     'description': 'AWS Graviton2',
     'implementer': '0x41',
@@ -534,6 +553,7 @@ dpaa:            NXP DPAA
 emag:            Ampere eMAG
 ft2000plus:      Phytium FT-2000+
 tys2500:         Phytium TengYun S2500
+grace:           NVIDIA Grace
 graviton2:       AWS Graviton2
 graviton3:       AWS Graviton3
 hip10:           HiSilicon HIP10
@@ -565,6 +585,7 @@ socs = {
     'emag': soc_emag,
     'ft2000plus': soc_ft2000plus,
     'tys2500': soc_tys2500,
+    'grace': soc_grace,
     'graviton2': soc_graviton2,
     'graviton3': soc_graviton3,
     'hip10': soc_hip10,
@@ -702,7 +723,7 @@ if update_flags
             candidate_march = part_number_config['march']
         else
             supported_marchs = ['armv8.6-a', 'armv8.5-a', 'armv8.4-a', 'armv8.3-a',
-                                'armv8.2-a', 'armv8.1-a', 'armv8-a']
+                                'armv8.2-a', 'armv8.1-a', 'armv8-a', 'armv9-a']
             check_compiler_support = false
             foreach supported_march: supported_marchs
                 if supported_march == part_number_config['march']
