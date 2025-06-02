@@ -979,6 +979,13 @@ On LPM lookup failure, objects are redirected to pkt_drop node.
 To achieve home run, node use ``rte_node_stream_move()`` as mentioned in above
 sections.
 
+ip4_lookup_fib
+~~~~~~~~~~~~~~
+
+This node is an intermediate node that does FIB lookup
+for the received IPv4 packets
+and the result determines each packets next node.
+
 ip4_rewrite
 ~~~~~~~~~~~
 This node gets packets from ``ip4_lookup`` node with next-hop id for each

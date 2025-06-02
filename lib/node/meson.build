@@ -14,6 +14,7 @@ sources = files(
         'interface_tx_feature.c',
         'ip4_local.c',
         'ip4_lookup.c',
+        'ip4_lookup_fib.c',
         'ip4_reassembly.c',
         'ip4_rewrite.c',
         'ip6_lookup.c',
@@ -35,4 +36,4 @@ headers = files(
 
 # Strict-aliasing rules are violated by uint8_t[] to context size casts.
 cflags += '-fno-strict-aliasing'
-deps += ['graph', 'mbuf', 'lpm', 'ethdev', 'mempool', 'cryptodev', 'ip_frag']
+deps += ['graph', 'mbuf', 'lpm', 'ethdev', 'mempool', 'cryptodev', 'ip_frag', 'fib']

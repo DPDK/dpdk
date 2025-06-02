@@ -18,6 +18,7 @@
 #include <rte_common.h>
 #include <rte_compat.h>
 
+#include <rte_fib.h>
 #include <rte_graph.h>
 
 #ifdef __cplusplus
@@ -120,6 +121,20 @@ int rte_node_ip4_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
  */
 __rte_experimental
 int rte_node_ip4_reassembly_configure(struct rte_node_ip4_reassembly_cfg *cfg, uint16_t cnt);
+
+/**
+ * Create ipv4 FIB.
+ *
+ * @param socket
+ *   NUMA socket for FIB memory allocation.
+ * @param conf
+ *   Structure containing FIB configuration.
+ *
+ * @return
+ *   0 on success, negative otherwise.
+ */
+__rte_experimental
+int rte_node_ip4_fib_create(int socket, struct rte_fib_conf *conf);
 
 #ifdef __cplusplus
 }
