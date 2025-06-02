@@ -27,6 +27,9 @@ extern "C" {
 struct rte_fib;
 struct rte_rib;
 
+/* Maximum length of a FIB name. */
+#define RTE_FIB_NAMESIZE	64
+
 /** Maximum depth value possible for IPv4 FIB. */
 #define RTE_FIB_MAXDEPTH	32
 

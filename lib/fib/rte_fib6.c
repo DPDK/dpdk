@@ -28,9 +28,6 @@ static struct rte_tailq_elem rte_fib6_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_fib6_tailq)
 
-/* Maximum length of a FIB name. */
-#define FIB6_NAMESIZE	64
-
 #if defined(RTE_LIBRTE_FIB_DEBUG)
 #define FIB6_RETURN_IF_TRUE(cond, retval) do {		\
 	if (cond)					\
@@ -41,7 +38,7 @@ EAL_REGISTER_TAILQ(rte_fib6_tailq)
 #endif
 
 struct rte_fib6 {
-	char			name[FIB6_NAMESIZE];
+	char			name[RTE_FIB6_NAMESIZE];
 	enum rte_fib6_type	type;	/**< Type of FIB struct */
 	struct rte_rib6		*rib;	/**< RIB helper datastructure */
 	void			*dp;	/**< pointer to the dataplane struct*/
@@ -157,7 +154,7 @@ RTE_EXPORT_SYMBOL(rte_fib6_create)
 struct rte_fib6 *
 rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
 {
-	char mem_name[FIB6_NAMESIZE];
+	char mem_name[RTE_FIB6_NAMESIZE];
 	int ret;
 	struct rte_fib6 *fib = NULL;
 	struct rte_rib6 *rib = NULL;
@@ -190,7 +187,7 @@ rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
 	/* guarantee there's no existing */
 	TAILQ_FOREACH(te, fib_list, next) {
 		fib = (struct rte_fib6 *)te->data;
-		if (strncmp(name, fib->name, FIB6_NAMESIZE) == 0)
+		if (strncmp(name, fib->name, RTE_FIB6_NAMESIZE) == 0)
 			break;
 	}
 	fib = NULL;
@@ -261,7 +258,7 @@ rte_fib6_find_existing(const char *name)
 	rte_mcfg_tailq_read_lock();
 	TAILQ_FOREACH(te, fib_list, next) {
 		fib = (struct rte_fib6 *) te->data;
-		if (strncmp(name, fib->name, FIB6_NAMESIZE) == 0)
+		if (strncmp(name, fib->name, RTE_FIB6_NAMESIZE) == 0)
 			break;
 	}
 	rte_mcfg_tailq_read_unlock();

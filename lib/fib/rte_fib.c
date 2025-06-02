@@ -28,9 +28,6 @@ static struct rte_tailq_elem rte_fib_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_fib_tailq)
 
-/* Maximum length of a FIB name. */
-#define RTE_FIB_NAMESIZE	64
-
 #if defined(RTE_LIBRTE_FIB_DEBUG)
 #define FIB_RETURN_IF_TRUE(cond, retval) do {		\
 	if (cond)					\

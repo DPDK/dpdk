@@ -28,6 +28,9 @@ extern "C" {
 /** Maximum depth value possible for IPv6 FIB. */
 #define RTE_FIB6_MAXDEPTH (RTE_DEPRECATED(RTE_FIB6_MAXDEPTH) RTE_IPV6_MAX_DEPTH)
 
+/* Maximum length of a FIB name. */
+#define RTE_FIB6_NAMESIZE	64
+
 struct rte_fib6;
 struct rte_rib6;
 
