@@ -136,6 +136,25 @@ int rte_node_ip4_reassembly_configure(struct rte_node_ip4_reassembly_cfg *cfg, u
 __rte_experimental
 int rte_node_ip4_fib_create(int socket, struct rte_fib_conf *conf);
 
+/**
+ * Add ipv4 route to FIB.
+ *
+ * @param ip
+ *   IP address of route to be added.
+ * @param depth
+ *   Depth of the rule to be added.
+ * @param next_hop
+ *   Next hop id of the rule result to be added.
+ * @param next_node
+ *   Next node to redirect traffic to.
+ *
+ * @return
+ *   0 on success, negative otherwise.
+ */
+__rte_experimental
+int rte_node_ip4_fib_route_add(uint32_t ip, uint8_t depth, uint16_t next_hop,
+			       enum rte_node_ip4_lookup_next next_node);
+
 #ifdef __cplusplus
 }
 #endif

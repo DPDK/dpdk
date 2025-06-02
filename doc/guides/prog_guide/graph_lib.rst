@@ -986,6 +986,10 @@ This node is an intermediate node that does FIB lookup
 for the received IPv4 packets
 and the result determines each packets next node.
 
+On FIB lookup failure, objects are redirected to pkt_drop node.
+``rte_node_ip4_fib_route_add()`` is control path API to add IPv4 routes.
+To achieve home run, node use ``rte_node_stream_move()`` as mentioned in above sections.
+
 ip4_rewrite
 ~~~~~~~~~~~
 This node gets packets from ``ip4_lookup`` node with next-hop id for each
