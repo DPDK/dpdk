@@ -16,4 +16,37 @@
 #define SEC_SESS_SIZE sizeof(struct rte_security_session)
 
 void cn20k_sec_ops_override(void);
+
+struct __rte_aligned(ROC_ALIGN) cn20k_sec_session {
+	uint8_t rte_sess[SEC_SESS_SIZE];
+
+	/** PMD private space */
+	alignas(RTE_CACHE_LINE_MIN_SIZE)
+
+	/** Pre-populated CPT inst words */
+	struct cnxk_cpt_inst_tmpl inst;
+	uint16_t max_extended_len;
+	uint16_t iv_offset;
+	uint8_t proto;
+	uint8_t iv_length;
+	union {
+		uint16_t u16;
+		struct {
+			uint8_t ip_csum;
+			uint8_t is_outbound : 1;
+		} ipsec;
+	};
+	/** Queue pair */
+	struct cnxk_cpt_qp *qp;
+	/** Userdata to be set for Rx inject */
+	void *userdata;
+
+	/**
+	 * End of SW mutable area
+	 */
+	union {
+		struct cn20k_ipsec_sa sa;
+	};
+};
+
 #endif /* __CN20K_CRYPTODEV_SEC_H__ */
