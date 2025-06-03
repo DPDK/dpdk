@@ -320,6 +320,164 @@ cn20k_cpt_ipsec_post_process(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *
 }
 
 static inline void
+cn20k_cpt_tls12_trim_mac(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res, uint8_t mac_len)
+{
+	struct rte_mbuf *mac_prev_seg = NULL, *mac_seg = NULL, *seg;
+	uint32_t pad_len, trim_len, mac_offset, pad_offset;
+	struct rte_mbuf *mbuf = cop->sym->m_src;
+	uint16_t m_len = res->rlen;
+	uint32_t i, nb_segs = 1;
+	uint8_t pad_res = 0;
+	uint8_t pad_val;
+
+	pad_val = ((res->spi >> 16) & 0xff);
+	pad_len = pad_val + 1;
+	trim_len = pad_len + mac_len;
+	mac_offset = m_len - trim_len;
+	pad_offset = mac_offset + mac_len;
+
+	/* Handle Direct Mode */
+	if (mbuf->next == NULL) {
+		uint8_t *ptr = rte_pktmbuf_mtod_offset(mbuf, uint8_t *, pad_offset);
+
+		for (i = 0; i < pad_len; i++)
+			pad_res |= ptr[i] ^ pad_val;
+
+		if (pad_res) {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			cop->aux_flags = res->uc_compcode;
+		}
+		mbuf->pkt_len = m_len - trim_len;
+		mbuf->data_len = m_len - trim_len;
+
+		return;
+	}
+
+	/* Handle SG mode */
+	seg = mbuf;
+	while (mac_offset >= seg->data_len) {
+		mac_offset -= seg->data_len;
+		mac_prev_seg = seg;
+		seg = seg->next;
+		nb_segs++;
+	}
+	mac_seg = seg;
+
+	pad_offset = mac_offset + mac_len;
+	while (pad_offset >= seg->data_len) {
+		pad_offset -= seg->data_len;
+		seg = seg->next;
+	}
+
+	while (pad_len != 0) {
+		uint8_t *ptr = rte_pktmbuf_mtod_offset(seg, uint8_t *, pad_offset);
+		uint8_t len = RTE_MIN(seg->data_len - pad_offset, pad_len);
+
+		for (i = 0; i < len; i++)
+			pad_res |= ptr[i] ^ pad_val;
+
+		pad_offset = 0;
+		pad_len -= len;
+		seg = seg->next;
+	}
+
+	if (pad_res) {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		cop->aux_flags = res->uc_compcode;
+	}
+
+	mbuf->pkt_len = m_len - trim_len;
+	if (mac_offset) {
+		rte_pktmbuf_free(mac_seg->next);
+		mac_seg->next = NULL;
+		mac_seg->data_len = mac_offset;
+		mbuf->nb_segs = nb_segs;
+	} else {
+		rte_pktmbuf_free(mac_seg);
+		mac_prev_seg->next = NULL;
+		mbuf->nb_segs = nb_segs - 1;
+	}
+}
+
+/* TLS-1.3:
+ * Read from last until a non-zero value is encountered.
+ * Return the non zero value as the content type.
+ * Remove the MAC and content type and padding bytes.
+ */
+static inline void
+cn20k_cpt_tls13_trim_mac(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res)
+{
+	struct rte_mbuf *mbuf = cop->sym->m_src;
+	struct rte_mbuf *seg = mbuf;
+	uint16_t m_len = res->rlen;
+	uint8_t *ptr, type = 0x0;
+	int len, i, nb_segs = 1;
+
+	while (m_len && !type) {
+		len = m_len;
+		seg = mbuf;
+
+		/* get the last seg */
+		while (len > seg->data_len) {
+			len -= seg->data_len;
+			seg = seg->next;
+			nb_segs++;
+		}
+
+		/* walkthrough from last until a non zero value is found */
+		ptr = rte_pktmbuf_mtod(seg, uint8_t *);
+		i = len;
+		while (i && (ptr[--i] == 0))
+			;
+
+		type = ptr[i];
+		m_len -= len;
+	}
+
+	if (type) {
+		cop->param1.tls_record.content_type = type;
+		mbuf->pkt_len = m_len + i;
+		mbuf->nb_segs = nb_segs;
+		seg->data_len = i;
+		rte_pktmbuf_free(seg->next);
+		seg->next = NULL;
+	} else {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	}
+}
+
+static inline void
+cn20k_cpt_tls_post_process(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res,
+			   struct cn20k_sec_session *sess)
+{
+	struct cn20k_tls_opt tls_opt = sess->tls_opt;
+	struct rte_mbuf *mbuf = cop->sym->m_src;
+	uint16_t m_len = res->rlen;
+
+	if (!res->uc_compcode) {
+		if (mbuf->next == NULL)
+			mbuf->data_len = m_len;
+		mbuf->pkt_len = m_len;
+		cop->param1.tls_record.content_type = (res->spi >> 24) & 0xff;
+		return;
+	}
+
+	/* Any error other than post process */
+	if (res->uc_compcode != ROC_SE_ERR_SSL_POST_PROCESS) {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		cop->aux_flags = res->uc_compcode;
+		plt_err("crypto op failed with UC compcode: 0x%x", res->uc_compcode);
+		return;
+	}
+
+	/* Extra padding scenario: Verify padding. Remove padding and MAC */
+	if (tls_opt.tls_ver != RTE_SECURITY_VERSION_TLS_1_3)
+		cn20k_cpt_tls12_trim_mac(cop, res, (uint8_t)tls_opt.mac_len);
+	else
+		cn20k_cpt_tls13_trim_mac(cop, res);
+}
+
+static inline void
 cn20k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res)
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
@@ -328,6 +486,8 @@ cn20k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *re
 	sess = sym_op->session;
 	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
 		cn20k_cpt_ipsec_post_process(cop, res);
+	else if (sess->proto == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		cn20k_cpt_tls_post_process(cop, res, sess);
 }
 
 static inline void
