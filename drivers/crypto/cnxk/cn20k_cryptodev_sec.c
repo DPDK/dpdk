@@ -38,8 +38,21 @@ cn20k_sec_session_create(void *dev, struct rte_security_session_conf *conf,
 static int
 cn20k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(sec_sess);
+	struct cn20k_sec_session *cn20k_sec_sess;
+	struct rte_cryptodev *crypto_dev = dev;
+	struct cnxk_cpt_qp *qp;
+
+	if (unlikely(sec_sess == NULL))
+		return -EINVAL;
+
+	qp = crypto_dev->data->queue_pairs[0];
+	if (unlikely(qp == NULL))
+		return -ENOTSUP;
+
+	cn20k_sec_sess = (struct cn20k_sec_session *)sec_sess;
+
+	if (cn20k_sec_sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
+		return cn20k_sec_ipsec_session_destroy(qp, cn20k_sec_sess);
 
 	return -EINVAL;
 }
