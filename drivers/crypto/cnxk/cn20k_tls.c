@@ -820,12 +820,17 @@ cn20k_tls_record_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 				struct cn20k_sec_session *sess,
 				struct rte_security_session_conf *conf)
 {
-	RTE_SET_USED(vf);
-	RTE_SET_USED(qp);
-	RTE_SET_USED(sess);
-	RTE_SET_USED(conf);
+	struct roc_cpt *roc_cpt;
+	int ret;
 
-	return 0;
+	if (conf->tls_record.type == RTE_SECURITY_TLS_SESS_TYPE_READ)
+		return -ENOTSUP;
+
+	roc_cpt = &vf->cpt;
+	ret = cn20k_tls_write_sa_create(roc_cpt, &qp->lf, &conf->tls_record, conf->crypto_xform,
+					(struct cn20k_sec_session *)sess);
+
+	return ret;
 }
 
 int
