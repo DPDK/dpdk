@@ -12,8 +12,18 @@
 #include "roc_cpt.h"
 
 #include "cn20k_ipsec.h"
+#include "cn20k_tls.h"
 
 #define SEC_SESS_SIZE sizeof(struct rte_security_session)
+
+struct cn20k_tls_opt {
+	uint16_t pad_shift : 3;
+	uint16_t enable_padding : 1;
+	uint16_t tail_fetch_len : 2;
+	uint16_t tls_ver : 2;
+	uint16_t is_write : 1;
+	uint16_t mac_len : 7;
+};
 
 void cn20k_sec_ops_override(void);
 
@@ -31,6 +41,7 @@ struct __rte_aligned(ROC_ALIGN) cn20k_sec_session {
 	uint8_t iv_length;
 	union {
 		uint16_t u16;
+		struct cn20k_tls_opt tls_opt;
 		struct {
 			uint8_t ip_csum;
 			uint8_t is_outbound : 1;
@@ -46,6 +57,7 @@ struct __rte_aligned(ROC_ALIGN) cn20k_sec_session {
 	 */
 	union {
 		struct cn20k_ipsec_sa sa;
+		struct cn20k_tls_record tls_rec;
 	};
 };
 
