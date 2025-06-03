@@ -225,14 +225,147 @@ pend_q_commit:
 	return count + i;
 }
 
+static inline void
+cn20k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
+			       struct cpt_inflight_req *infl_req, struct cpt_cn20k_res_s *res)
+{
+	const uint8_t uc_compcode = res->uc_compcode;
+	const uint8_t compcode = res->compcode;
+
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+	if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC &&
+	    cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		struct cnxk_ae_sess *sess;
+
+		sess = (struct cnxk_ae_sess *)cop->asym->session;
+		if (sess->xfrm_type == RTE_CRYPTO_ASYM_XFORM_ECDH &&
+		    cop->asym->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY) {
+			if (likely(compcode == CPT_COMP_GOOD)) {
+				if (uc_compcode == ROC_AE_ERR_ECC_POINT_NOT_ON_CURVE) {
+					cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+					return;
+				} else if (uc_compcode == ROC_AE_ERR_ECC_PAI) {
+					cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+					return;
+				}
+			}
+		}
+	}
+
+	if (likely(compcode == CPT_COMP_GOOD)) {
+#ifdef CPT_INST_DEBUG_ENABLE
+		cpt_request_data_sgv2_mode_dump(infl_req->rptr, 0, infl_req->scatter_sz);
+#endif
+
+		if (unlikely(uc_compcode)) {
+			if (uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
+				cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+			else
+				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+
+			plt_dp_info("Request failed with microcode error");
+			plt_dp_info("MC completion code 0x%x", res->uc_compcode);
+			cop->aux_flags = uc_compcode;
+			goto temp_sess_free;
+		}
+
+		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			/* Verify authentication data if required */
+			if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_AUTH_VERIFY)) {
+				uintptr_t *rsp = infl_req->mdata;
+
+				compl_auth_verify(cop, (uint8_t *)rsp[0], rsp[1]);
+			}
+		} else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+			struct rte_crypto_asym_op *op = cop->asym;
+			uintptr_t *mdata = infl_req->mdata;
+			struct cnxk_ae_sess *sess = (struct cnxk_ae_sess *)op->session;
+
+			cnxk_ae_post_process(cop, sess, (uint8_t *)mdata[0]);
+		}
+	} else {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		plt_dp_info("HW completion code 0x%x", res->compcode);
+
+		switch (compcode) {
+		case CPT_COMP_INSTERR:
+			plt_dp_err("Request failed with instruction error");
+			break;
+		case CPT_COMP_FAULT:
+			plt_dp_err("Request failed with DMA fault");
+			break;
+		case CPT_COMP_HWERR:
+			plt_dp_err("Request failed with hardware error");
+			break;
+		default:
+			plt_dp_err("Request failed with unknown completion code");
+		}
+	}
+
+temp_sess_free:
+	if (unlikely(cop->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
+		if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			sym_session_clear(cop->sym->session, true);
+			rte_mempool_put(qp->sess_mp, cop->sym->session);
+			cop->sym->session = NULL;
+		}
+	}
+}
+
 static uint16_t
 cn20k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
-	(void)qptr;
-	(void)ops;
-	(void)nb_ops;
+	struct cpt_inflight_req *infl_req;
+	struct cnxk_cpt_qp *qp = qptr;
+	struct pending_queue *pend_q;
+	uint64_t infl_cnt, pq_tail;
+	struct rte_crypto_op *cop;
+	union cpt_res_s res;
+	int i;
 
-	return 0;
+	pend_q = &qp->pend_q;
+
+	const uint64_t pq_mask = pend_q->pq_mask;
+
+	pq_tail = pend_q->tail;
+	infl_cnt = pending_queue_infl_cnt(pend_q->head, pq_tail, pq_mask);
+	nb_ops = RTE_MIN(nb_ops, infl_cnt);
+
+	/* Ensure infl_cnt isn't read before data lands */
+	rte_atomic_thread_fence(rte_memory_order_acquire);
+
+	for (i = 0; i < nb_ops; i++) {
+		infl_req = &pend_q->req_queue[pq_tail];
+
+		res.u64[0] = rte_atomic_load_explicit(
+			(RTE_ATOMIC(uint64_t) *)(&infl_req->res.u64[0]), rte_memory_order_relaxed);
+
+		if (unlikely(res.cn20k.compcode == CPT_COMP_NOT_DONE)) {
+			if (unlikely(rte_get_timer_cycles() > pend_q->time_out)) {
+				plt_err("Request timed out");
+				cnxk_cpt_dump_on_err(qp);
+				pend_q->time_out = rte_get_timer_cycles() +
+						   DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+			}
+			break;
+		}
+
+		pending_queue_advance(&pq_tail, pq_mask);
+
+		cop = infl_req->cop;
+
+		ops[i] = cop;
+
+		cn20k_cpt_dequeue_post_process(qp, cop, infl_req, &res.cn20k);
+
+		if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
+			rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
+	}
+
+	pend_q->tail = pq_tail;
+
+	return i;
 }
 
 void
