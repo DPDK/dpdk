@@ -157,6 +157,12 @@ int cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp
 
 uint32_t cnxk_cpt_qp_depth_used(void *qptr);
 
+#ifdef CPT_INST_DEBUG_ENABLE
+void cnxk_cpt_request_data_sg_mode_dump(uint8_t *in_buffer, bool glist);
+
+void cnxk_cpt_request_data_sgv2_mode_dump(uint8_t *in_buffer, bool glist, uint16_t components);
+#endif
+
 static __rte_always_inline void
 pending_queue_advance(uint64_t *index, const uint64_t mask)
 {

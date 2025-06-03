@@ -4,6 +4,7 @@
 
 #include <cryptodev_pmd.h>
 #include <rte_cryptodev.h>
+#include <rte_hexdump.h>
 
 #include "roc_cpt.h"
 #include "roc_idev.h"
@@ -143,8 +144,8 @@ cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 	plt_err("param2:%d", inst[0].w4.s.param2);
 	plt_err("dlen:%d", inst[0].w4.s.dlen);
 
-	cpt_request_data_sgv2_mode_dump((void *)inst[0].dptr, 1, inst[0].w5.s.gather_sz);
-	cpt_request_data_sgv2_mode_dump((void *)inst[0].rptr, 0, inst[0].w6.s.scatter_sz);
+	cnxk_cpt_request_data_sgv2_mode_dump((void *)inst[0].dptr, 1, inst[0].w5.s.gather_sz);
+	cnxk_cpt_request_data_sgv2_mode_dump((void *)inst[0].rptr, 0, inst[0].w6.s.scatter_sz);
 #endif
 
 	return 1;
@@ -255,7 +256,7 @@ cn20k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop
 
 	if (likely(compcode == CPT_COMP_GOOD)) {
 #ifdef CPT_INST_DEBUG_ENABLE
-		cpt_request_data_sgv2_mode_dump(infl_req->rptr, 0, infl_req->scatter_sz);
+		cnxk_cpt_request_data_sgv2_mode_dump(infl_req->rptr, 0, infl_req->scatter_sz);
 #endif
 
 		if (unlikely(uc_compcode)) {
