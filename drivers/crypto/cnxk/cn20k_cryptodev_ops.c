@@ -30,6 +30,35 @@ cn20k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused, vo
 	return 0;
 }
 
+static uint16_t
+cn20k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	(void)qptr;
+	(void)ops;
+	(void)nb_ops;
+
+	return 0;
+}
+
+static uint16_t
+cn20k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	(void)qptr;
+	(void)ops;
+	(void)nb_ops;
+
+	return 0;
+}
+
+void
+cn20k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev)
+{
+	dev->enqueue_burst = cn20k_cpt_enqueue_burst;
+	dev->dequeue_burst = cn20k_cpt_dequeue_burst;
+
+	rte_mb();
+}
+
 static void
 cn20k_cpt_dev_info_get(struct rte_cryptodev *dev, struct rte_cryptodev_info *info)
 {

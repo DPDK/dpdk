@@ -20,4 +20,5 @@
 
 extern struct rte_cryptodev_ops cn20k_cpt_ops;
 
+void cn20k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev);
 #endif /* _CN20K_CRYPTODEV_OPS_H_ */

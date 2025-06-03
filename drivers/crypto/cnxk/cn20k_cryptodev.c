@@ -92,6 +92,7 @@ cn20k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_
 	dev->feature_flags = cnxk_cpt_default_ff_get();
 
 	dev->qp_depth_used = cnxk_cpt_qp_depth_used;
+	cn20k_cpt_set_enqdeq_fns(dev);
 
 	rte_cryptodev_pmd_probing_finish(dev);
 
