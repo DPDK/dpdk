@@ -1,42 +1,37 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2021 Marvell.
+ * Copyright(C) 2025 Marvell.
  */
 
 #include <bus_pci_driver.h>
+#include <cryptodev_pmd.h>
+#include <dev_driver.h>
 #include <rte_common.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#include <cryptodev_pmd.h>
-#include <dev_driver.h>
 #include <rte_pci.h>
 
-#include "cn10k_cryptodev.h"
-#include "cn10k_cryptodev_ops.h"
-#include "cn10k_cryptodev_sec.h"
+#include "cn20k_cryptodev.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
+#include "cnxk_cryptodev_ops.h"
 #include "cnxk_cryptodev_sec.h"
 
 #include "roc_api.h"
 
-uint8_t cn10k_cryptodev_driver_id;
+uint8_t cn20k_cryptodev_driver_id;
 
 static struct rte_pci_id pci_id_cpt_table[] = {
-	CNXK_PCI_ID(PCI_SUBSYSTEM_DEVID_CN10KA, PCI_DEVID_CN10K_RVU_CPT_VF),
-	CNXK_PCI_ID(PCI_SUBSYSTEM_DEVID_CN10KAS, PCI_DEVID_CN10K_RVU_CPT_VF),
-	CNXK_PCI_ID(PCI_SUBSYSTEM_DEVID_CN10KB, PCI_DEVID_CN10K_RVU_CPT_VF),
+	CNXK_PCI_ID(PCI_SUBSYSTEM_DEVID_CN20KA, PCI_DEVID_CN20K_RVU_CPT_VF),
 	{.vendor_id = 0},
 };
 
 static int
-cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		    struct rte_pci_device *pci_dev)
+cn20k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_device *pci_dev)
 {
-	struct rte_cryptodev_pmd_init_params init_params = {
-		.name = "",
-		.socket_id = rte_socket_id(),
-		.private_data_size = sizeof(struct cnxk_cpt_vf)
-	};
+	struct rte_cryptodev_pmd_init_params init_params = {.name = "",
+							    .socket_id = rte_socket_id(),
+							    .private_data_size =
+								    sizeof(struct cnxk_cpt_vf)};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *dev;
 	struct roc_cpt *roc_cpt;
@@ -91,13 +86,9 @@ cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	cnxk_cpt_caps_populate(vf);
 
-	dev->dev_ops = &cn10k_cpt_ops;
-	dev->driver_id = cn10k_cryptodev_driver_id;
 	dev->feature_flags = cnxk_cpt_default_ff_get();
 
 	dev->qp_depth_used = cnxk_cpt_qp_depth_used;
-	cn10k_cpt_set_enqdeq_fns(dev, vf);
-	cn10k_sec_ops_override();
 
 	rte_cryptodev_pmd_probing_finish(dev);
 
@@ -109,13 +100,13 @@ dev_fini:
 pmd_destroy:
 	rte_cryptodev_pmd_destroy(dev);
 exit:
-	plt_err("Could not create device (vendor_id: 0x%x device_id: 0x%x)",
-		pci_dev->id.vendor_id, pci_dev->id.device_id);
+	plt_err("Could not create device (vendor_id: 0x%x device_id: 0x%x)", pci_dev->id.vendor_id,
+		pci_dev->id.device_id);
 	return rc;
 }
 
 static int
-cn10k_cpt_pci_remove(struct rte_pci_device *pci_dev)
+cn20k_cpt_pci_remove(struct rte_pci_device *pci_dev)
 {
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *dev;
@@ -145,17 +136,17 @@ cn10k_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	return rte_cryptodev_pmd_destroy(dev);
 }
 
-static struct rte_pci_driver cn10k_cryptodev_pmd = {
+static struct rte_pci_driver cn20k_cryptodev_pmd = {
 	.id_table = pci_id_cpt_table,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA,
-	.probe = cn10k_cpt_pci_probe,
-	.remove = cn10k_cpt_pci_remove,
+	.probe = cn20k_cpt_pci_probe,
+	.remove = cn20k_cpt_pci_remove,
 };
 
-static struct cryptodev_driver cn10k_cryptodev_drv;
+static struct cryptodev_driver cn20k_cryptodev_drv;
 
-RTE_PMD_REGISTER_PCI(CRYPTODEV_NAME_CN10K_PMD, cn10k_cryptodev_pmd);
-RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_CN10K_PMD, pci_id_cpt_table);
-RTE_PMD_REGISTER_KMOD_DEP(CRYPTODEV_NAME_CN10K_PMD, "vfio-pci");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(cn10k_cryptodev_drv, cn10k_cryptodev_pmd.driver,
-			       cn10k_cryptodev_driver_id);
+RTE_PMD_REGISTER_PCI(CRYPTODEV_NAME_CN20K_PMD, cn20k_cryptodev_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_CN20K_PMD, pci_id_cpt_table);
+RTE_PMD_REGISTER_KMOD_DEP(CRYPTODEV_NAME_CN20K_PMD, "vfio-pci");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cn20k_cryptodev_drv, cn20k_cryptodev_pmd.driver,
+			       cn20k_cryptodev_driver_id);
