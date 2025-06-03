@@ -231,7 +231,13 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 		 */
 		if (gh->msg_type == 0xff) {
 			ip_ver = *(const uint8_t *)((const char *)gh + gtp_len);
-			*proto = (ip_ver) & 0xf0;
+			ip_ver = (ip_ver) & 0xf0;
+			if (ip_ver == RTE_GTP_TYPE_IPV4)
+				*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			else if (ip_ver == RTE_GTP_TYPE_IPV6)
+				*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			else
+				*proto = 0;
 		} else {
 			*proto = 0;
 		}
