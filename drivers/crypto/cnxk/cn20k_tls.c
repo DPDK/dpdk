@@ -785,6 +785,36 @@ sa_dptr_free:
 	return ret;
 }
 
+static void
+tls_write_sa_init(struct roc_ie_ow_tls_write_sa *sa)
+{
+	size_t offset;
+
+	memset(sa, 0, sizeof(struct roc_ie_ow_tls_write_sa));
+
+	offset = offsetof(struct roc_ie_ow_tls_write_sa, tls_12.w26_rsvd7);
+	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;
+	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off;
+	sa->w0.s.ctx_size = ROC_IE_OW_TLS_CTX_ILEN;
+	sa->w0.s.ctx_hdr_size = ROC_IE_OW_TLS_CTX_HDR_SIZE;
+	sa->w0.s.aop_valid = 1;
+}
+
+static void
+tls_read_sa_init(struct roc_ie_ow_tls_read_sa *sa)
+{
+	size_t offset;
+
+	memset(sa, 0, sizeof(struct roc_ie_ow_tls_read_sa));
+
+	offset = offsetof(struct roc_ie_ow_tls_read_sa, tls_12.ctx);
+	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;
+	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off;
+	sa->w0.s.ctx_size = ROC_IE_OW_TLS_CTX_ILEN;
+	sa->w0.s.ctx_hdr_size = ROC_IE_OW_TLS_CTX_HDR_SIZE;
+	sa->w0.s.aop_valid = 1;
+}
+
 int
 cn20k_tls_record_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 				struct cn20k_sec_session *sess,
@@ -824,9 +854,59 @@ cn20k_tls_record_session_create(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 int
 cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *sess)
 {
+	struct cn20k_tls_record *tls;
+	struct roc_cpt_lf *lf;
+	void *sa_dptr = NULL;
+	int ret = -ENOMEM;
 
-	RTE_SET_USED(qp);
-	RTE_SET_USED(sess);
+	lf = &qp->lf;
+
+	tls = &sess->tls_rec;
+
+	/* Trigger CTX flush to write dirty data back to DRAM */
+	roc_cpt_lf_ctx_flush(lf, &tls->read_sa, false);
+
+	if (sess->tls_opt.is_write) {
+		sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_write_sa), 8);
+		if (sa_dptr != NULL) {
+			tls_write_sa_init(sa_dptr);
+
+			ret = roc_cpt_ctx_write(lf, sa_dptr, &tls->write_sa,
+						sizeof(struct roc_ie_ow_tls_write_sa));
+			plt_free(sa_dptr);
+		}
+		if (ret) {
+			/* MC write_ctx failed. Attempt reload of CTX */
+
+			/* Wait for 1 ms so that flush is complete */
+			rte_delay_ms(1);
+
+			rte_atomic_thread_fence(rte_memory_order_seq_cst);
+
+			/* Trigger CTX reload to fetch new data from DRAM */
+			roc_cpt_lf_ctx_reload(lf, &tls->write_sa);
+		}
+	} else {
+		sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_read_sa), 8);
+		if (sa_dptr != NULL) {
+			tls_read_sa_init(sa_dptr);
+
+			ret = roc_cpt_ctx_write(lf, sa_dptr, &tls->read_sa,
+						sizeof(struct roc_ie_ow_tls_read_sa));
+			plt_free(sa_dptr);
+		}
+		if (ret) {
+			/* MC write_ctx failed. Attempt reload of CTX */
+
+			/* Wait for 1 ms so that flush is complete */
+			rte_delay_ms(1);
+
+			rte_atomic_thread_fence(rte_memory_order_seq_cst);
+
+			/* Trigger CTX reload to fetch new data from DRAM */
+			roc_cpt_lf_ctx_reload(lf, &tls->read_sa);
+		}
+	}
 
 	return 0;
 }

@@ -58,6 +58,9 @@ cn20k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 	if (cn20k_sec_sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
 		return cn20k_sec_ipsec_session_destroy(qp, cn20k_sec_sess);
 
+	if (cn20k_sec_sess->proto == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cn20k_sec_tls_session_destroy(qp, cn20k_sec_sess);
+
 	return -EINVAL;
 }
 
