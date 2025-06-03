@@ -12,6 +12,7 @@
 
 #include "cn20k_cryptodev.h"
 #include "cn20k_cryptodev_ops.h"
+#include "cn20k_cryptodev_sec.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_cryptodev_ops.h"
@@ -93,6 +94,7 @@ cn20k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_
 
 	dev->qp_depth_used = cnxk_cpt_qp_depth_used;
 	cn20k_cpt_set_enqdeq_fns(dev);
+	cn20k_sec_ops_override();
 
 	rte_cryptodev_pmd_probing_finish(dev);
 

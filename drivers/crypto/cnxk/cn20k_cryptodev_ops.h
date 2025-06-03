@@ -25,6 +25,14 @@ extern struct rte_cryptodev_ops cn20k_cpt_ops;
 
 void cn20k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev);
 
+__rte_internal
+uint16_t __rte_hot cn20k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
+						     struct rte_security_session **sess,
+						     uint16_t nb_pkts);
+
+__rte_internal
+int cn20k_cryptodev_sec_rx_inject_configure(void *device, uint16_t port_id, bool enable);
+
 static __rte_always_inline void __rte_hot
 cn20k_cpt_lmtst_dual_submit(uint64_t *io_addr, const uint16_t lmt_id, int *i)
 {
