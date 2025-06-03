@@ -21,6 +21,7 @@ sources = files(
         'cn20k_cryptodev_ops.c',
         'cn20k_cryptodev_sec.c',
         'cn20k_ipsec.c',
+        'cn20k_tls.c',
         'cnxk_cryptodev.c',
         'cnxk_cryptodev_capabilities.c',
         'cnxk_cryptodev_devargs.c',
