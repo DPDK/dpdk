@@ -18,7 +18,60 @@
 
 #include "cnxk_cryptodev.h"
 
+#define CN20K_PKTS_PER_STEORL	  32
+#define CN20K_LMTLINES_PER_STEORL 16
+
 extern struct rte_cryptodev_ops cn20k_cpt_ops;
 
 void cn20k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev);
+
+static __rte_always_inline void __rte_hot
+cn20k_cpt_lmtst_dual_submit(uint64_t *io_addr, const uint16_t lmt_id, int *i)
+{
+	uint64_t lmt_arg;
+
+	/* Check if the total number of instructions is odd or even. */
+	const int flag_odd = *i & 0x1;
+
+	/* Reduce i by 1 when odd number of instructions.*/
+	*i -= flag_odd;
+
+	if (*i > CN20K_PKTS_PER_STEORL) {
+		lmt_arg = ROC_CN20K_DUAL_CPT_LMT_ARG | (CN20K_LMTLINES_PER_STEORL - 1) << 12 |
+			  (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, *io_addr);
+		lmt_arg = ROC_CN20K_DUAL_CPT_LMT_ARG |
+			  (*i / 2 - CN20K_LMTLINES_PER_STEORL - 1) << 12 |
+			  (uint64_t)(lmt_id + CN20K_LMTLINES_PER_STEORL);
+		roc_lmt_submit_steorl(lmt_arg, *io_addr);
+		if (flag_odd) {
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN20K_CPT_INST_DW_M1 << 4);
+			lmt_arg = (uint64_t)(lmt_id + *i / 2);
+			roc_lmt_submit_steorl(lmt_arg, *io_addr);
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN20K_TWO_CPT_INST_DW_M1 << 4);
+			*i += 1;
+		}
+	} else {
+		if (*i != 0) {
+			lmt_arg =
+				ROC_CN20K_DUAL_CPT_LMT_ARG | (*i / 2 - 1) << 12 | (uint64_t)lmt_id;
+			roc_lmt_submit_steorl(lmt_arg, *io_addr);
+		}
+
+		if (flag_odd) {
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN20K_CPT_INST_DW_M1 << 4);
+			lmt_arg = (uint64_t)(lmt_id + *i / 2);
+			roc_lmt_submit_steorl(lmt_arg, *io_addr);
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN20K_TWO_CPT_INST_DW_M1 << 4);
+			*i += 1;
+		}
+	}
+
+	rte_io_wmb();
+}
+
 #endif /* _CN20K_CRYPTODEV_OPS_H_ */
