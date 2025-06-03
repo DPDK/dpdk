@@ -32,14 +32,13 @@
 
 #define MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
 
-#define CN10K_CPT_PKTS_PER_LOOP	  64
+#define CN10K_CPT_PKTS_PER_LOOP 64
+#define CN20K_CPT_PKTS_PER_LOOP 64
 
 /* Macros to form words in CPT instruction */
-#define CNXK_CPT_INST_W2(tag, tt, grp, rvu_pf_func)                            \
-	((tag) | ((uint64_t)(tt) << 32) | ((uint64_t)(grp) << 34) |            \
-	 ((uint64_t)(rvu_pf_func) << 48))
-#define CNXK_CPT_INST_W3(qord, wqe_ptr)                                        \
-	(qord | ((uintptr_t)(wqe_ptr) >> 3) << 3)
+#define CNXK_CPT_INST_W2(tag, tt, grp, rvu_pf_func)                                                \
+	((tag) | ((uint64_t)(tt) << 32) | ((uint64_t)(grp) << 34) | ((uint64_t)(rvu_pf_func) << 48))
+#define CNXK_CPT_INST_W3(qord, wqe_ptr) (qord | ((uintptr_t)(wqe_ptr) >> 3) << 3)
 
 struct cpt_qp_meta_info {
 	struct rte_mempool *pool;
