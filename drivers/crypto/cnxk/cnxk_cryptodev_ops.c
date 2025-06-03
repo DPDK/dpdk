@@ -741,8 +741,10 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 		inst_w7.s.cptr += 8;
 
 	/* Set the engine group */
-	if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3 || sess->is_sm3 ||
-	    sess->passthrough || sess->is_sm4)
+	if (roc_model_is_cn20k())
+		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
+	else if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3 || sess->is_sm3 ||
+		 sess->passthrough || sess->is_sm4)
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
 	else
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
@@ -1043,7 +1045,7 @@ RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_submit, 24.03)
 void
 rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
 {
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn10k() || roc_model_is_cn20k())
 		return cnxk_crypto_cn10k_submit(qptr, inst, nb_inst);
 	else if (roc_model_is_cn9k())
 		return cnxk_crypto_cn9k_submit(qptr, inst, nb_inst);
@@ -1068,7 +1070,7 @@ rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
 		return -EINVAL;
 	}
 
-	if (unlikely(!roc_model_is_cn10k())) {
+	if (unlikely(roc_model_is_cn9k())) {
 		plt_err("Invalid cnxk model");
 		return -EINVAL;
 	}
@@ -1106,6 +1108,12 @@ rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 	}
 
 	if (rte_sess->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		if (roc_model_is_cn20k()) {
+			struct cn20k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
+
+			return PLT_PTR_CAST(&sec_sess->sa);
+		}
+
 		if (roc_model_is_cn10k()) {
 			struct cn10k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
 			return PLT_PTR_CAST(&sec_sess->sa);

@@ -1976,16 +1976,16 @@ crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, kasumi);
 	CPT_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, des);
 
-	if (!roc_model_is_cn10k())
+	if (roc_model_is_cn9k())
 		cn9k_crypto_caps_add(cnxk_caps, &cur_pos);
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn10k() || roc_model_is_cn20k())
 		cn10k_crypto_caps_add(cnxk_caps, hw_caps, &cur_pos);
 
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_null, RTE_DIM(caps_null));
 	cpt_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn10k() || roc_model_is_cn20k())
 		cn10k_crypto_caps_update(cnxk_caps);
 }
 
@@ -2060,7 +2060,7 @@ sec_ipsec_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 	SEC_IPSEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, des);
 	SEC_IPSEC_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, sha1_sha2);
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn10k() || roc_model_is_cn20k())
 		cn10k_sec_ipsec_crypto_caps_update(cnxk_caps, &cur_pos);
 	else
 		cn9k_sec_ipsec_crypto_caps_update(cnxk_caps);
@@ -2189,7 +2189,7 @@ cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 
 			cnxk_sec_ipsec_caps_update(&vf->sec_caps[i]);
 
-			if (roc_model_is_cn10k())
+			if (roc_model_is_cn10k() || roc_model_is_cn20k())
 				cn10k_sec_ipsec_caps_update(&vf->sec_caps[i]);
 
 			if (roc_model_is_cn9k())
