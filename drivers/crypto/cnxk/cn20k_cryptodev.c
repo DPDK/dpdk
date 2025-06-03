@@ -11,6 +11,7 @@
 #include <rte_pci.h>
 
 #include "cn20k_cryptodev.h"
+#include "cn20k_cryptodev_ops.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_cryptodev_ops.h"
@@ -86,6 +87,8 @@ cn20k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_
 
 	cnxk_cpt_caps_populate(vf);
 
+	dev->dev_ops = &cn20k_cpt_ops;
+	dev->driver_id = cn20k_cryptodev_driver_id;
 	dev->feature_flags = cnxk_cpt_default_ff_get();
 
 	dev->qp_depth_used = cnxk_cpt_qp_depth_used;
