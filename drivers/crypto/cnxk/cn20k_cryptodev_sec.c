@@ -32,6 +32,10 @@ cn20k_sec_session_create(void *dev, struct rte_security_session_conf *conf,
 		return cn20k_ipsec_session_create(vf, qp, &conf->ipsec, conf->crypto_xform, sess);
 	}
 
+	if (conf->protocol == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cn20k_tls_record_session_create(vf, qp, &conf->tls_record,
+						       conf->crypto_xform, sess);
+
 	return -ENOTSUP;
 }
 
