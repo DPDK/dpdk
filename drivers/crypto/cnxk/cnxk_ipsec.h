@@ -10,6 +10,7 @@
 #include "roc_cpt.h"
 #include "roc_ie_on.h"
 #include "roc_ie_ot.h"
+#include "roc_model.h"
 
 extern struct rte_security_ops cnxk_sec_ops;
 

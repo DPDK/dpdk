@@ -51,7 +51,7 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	RTE_SET_USED(roc_cpt);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, out_sa);
 
 #ifdef LA_IPSEC_DEBUG
 	/* Use IV from application in debug mode */
@@ -178,7 +178,7 @@ cn20k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	sec_sess->ipsec.is_outbound = 0;
-	RTE_SET_USED(roc_cpt);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, in_sa);
 
 	/* Save index/SPI in cookie, requirement for Rx Inject */
 	sa_dptr->w1.s.cookie = 0xFFFFFFFF;
