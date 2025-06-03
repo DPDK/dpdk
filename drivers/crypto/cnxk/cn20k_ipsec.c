@@ -333,9 +333,24 @@ int
 cn20k_ipsec_stats_get(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *sess,
 		      struct rte_security_stats *stats)
 {
-	RTE_SET_USED(qp);
-	RTE_SET_USED(sess);
-	RTE_SET_USED(stats);
+	struct roc_ow_ipsec_outb_sa *out_sa;
+	struct roc_ow_ipsec_inb_sa *in_sa;
+	struct cn20k_ipsec_sa *sa;
+
+	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
+	sa = &sess->sa;
+
+	if (sess->ipsec.is_outbound) {
+		out_sa = &sa->out_sa;
+		roc_cpt_lf_ctx_flush(&qp->lf, out_sa, false);
+		stats->ipsec.opackets = out_sa->ctx.mib_pkts;
+		stats->ipsec.obytes = out_sa->ctx.mib_octs;
+	} else {
+		in_sa = &sa->in_sa;
+		roc_cpt_lf_ctx_flush(&qp->lf, in_sa, false);
+		stats->ipsec.ipackets = in_sa->ctx.mib_pkts;
+		stats->ipsec.ibytes = in_sa->ctx.mib_octs;
+	}
 
 	return 0;
 }
@@ -344,10 +359,20 @@ int
 cn20k_ipsec_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 			   struct cn20k_sec_session *sess, struct rte_security_session_conf *conf)
 {
-	RTE_SET_USED(vf);
-	RTE_SET_USED(qp);
-	RTE_SET_USED(sess);
-	RTE_SET_USED(conf);
+	struct roc_cpt *roc_cpt;
+	int ret;
+
+	if (conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		return -ENOTSUP;
+
+	ret = cnxk_ipsec_xform_verify(&conf->ipsec, conf->crypto_xform);
+	if (ret)
+		return ret;
+
+	roc_cpt = &vf->cpt;
+
+	return cn20k_ipsec_outb_sa_create(roc_cpt, &qp->lf, &conf->ipsec, conf->crypto_xform,
+					  (struct cn20k_sec_session *)sess);
 
 	return 0;
 }
