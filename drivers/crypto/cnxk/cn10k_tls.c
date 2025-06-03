@@ -690,7 +690,7 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	sec_sess->tls_opt.tls_ver = tls_ver;
 	sec_sess->inst.w4 = inst_w4.u64;
-	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, read_sa);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, read_sa);
 
 	memset(read_sa, 0, sizeof(struct roc_ie_ot_tls_read_sa));
 
@@ -783,7 +783,7 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
 	}
 	sec_sess->inst.w4 = inst_w4.u64;
-	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, write_sa);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, write_sa);
 
 	memset(write_sa, 0, sizeof(struct roc_ie_ot_tls_write_sa));
 

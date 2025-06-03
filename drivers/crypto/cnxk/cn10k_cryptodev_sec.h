@@ -59,20 +59,6 @@ struct __rte_aligned(ROC_ALIGN) cn10k_sec_session {
 	};
 };
 
-static inline uint64_t
-cpt_inst_w7_get(struct roc_cpt *roc_cpt, void *cptr)
-{
-	union cpt_inst_w7 w7;
-
-	w7.u64 = 0;
-	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
-	w7.s.ctx_val = 1;
-	w7.s.cptr = (uint64_t)cptr;
-	rte_mb();
-
-	return w7.u64;
-}
-
 void cn10k_sec_ops_override(void);
 
 #endif /* __CN10K_CRYPTODEV_SEC_H__ */
