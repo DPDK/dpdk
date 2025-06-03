@@ -276,8 +276,55 @@ cn20k_ipsec_session_create(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 int
 cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *sess)
 {
-	RTE_SET_USED(qp);
-	RTE_SET_USED(sess);
+	union roc_ow_ipsec_sa_word2 *w2;
+	struct cn20k_ipsec_sa *sa;
+	struct roc_cpt_lf *lf;
+	void *sa_dptr = NULL;
+	int ret;
+
+	lf = &qp->lf;
+
+	sa = &sess->sa;
+
+	/* Trigger CTX flush to write dirty data back to DRAM */
+	roc_cpt_lf_ctx_flush(lf, &sa->in_sa, false);
+
+	ret = -1;
+
+	if (sess->ipsec.is_outbound) {
+		sa_dptr = plt_zmalloc(sizeof(struct roc_ow_ipsec_outb_sa), 8);
+		if (sa_dptr != NULL) {
+			roc_ow_ipsec_outb_sa_init(sa_dptr);
+
+			ret = roc_cpt_ctx_write(lf, sa_dptr, &sa->out_sa,
+						sizeof(struct roc_ow_ipsec_outb_sa));
+		}
+	} else {
+		sa_dptr = plt_zmalloc(sizeof(struct roc_ow_ipsec_inb_sa), 8);
+		if (sa_dptr != NULL) {
+			roc_ow_ipsec_inb_sa_init(sa_dptr);
+
+			ret = roc_cpt_ctx_write(lf, sa_dptr, &sa->in_sa,
+						sizeof(struct roc_ow_ipsec_inb_sa));
+		}
+	}
+
+	plt_free(sa_dptr);
+
+	if (ret) {
+		/* MC write_ctx failed. Attempt reload of CTX */
+
+		/* Wait for 1 ms so that flush is complete */
+		rte_delay_ms(1);
+
+		w2 = (union roc_ow_ipsec_sa_word2 *)&sa->in_sa.w2;
+		w2->s.valid = 0;
+
+		rte_atomic_thread_fence(rte_memory_order_seq_cst);
+
+		/* Trigger CTX reload to fetch new data from DRAM */
+		roc_cpt_lf_ctx_reload(lf, &sa->in_sa);
+	}
 
 	return 0;
 }
