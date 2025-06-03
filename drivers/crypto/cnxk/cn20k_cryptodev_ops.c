@@ -33,8 +33,10 @@ cn20k_cpt_crypto_adapter_ev_mdata_set(struct rte_cryptodev *dev __rte_unused, vo
 static void
 cn20k_cpt_dev_info_get(struct rte_cryptodev *dev, struct rte_cryptodev_info *info)
 {
-	(void)dev;
-	(void)info;
+	if (info != NULL) {
+		cnxk_cpt_dev_info_get(dev, info);
+		info->driver_id = cn20k_cryptodev_driver_id;
+	}
 }
 
 static int
