@@ -16,6 +16,7 @@
 #include "cn20k_cryptodev_ops.h"
 #include "cn20k_cryptodev_sec.h"
 #include "cn20k_ipsec_la_ops.h"
+#include "cn20k_tls_ops.h"
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
@@ -87,12 +88,25 @@ cpt_sec_ipsec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 }
 
 static __rte_always_inline int __rte_hot
+cpt_sec_tls_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
+		      struct cn20k_sec_session *sess, struct cpt_inst_s *inst,
+		      struct cpt_inflight_req *infl_req)
+{
+	if (sess->tls_opt.is_write)
+		return process_tls_write(&qp->lf, op, sess, &qp->meta_info, infl_req, inst);
+	else
+		return process_tls_read(op, sess, &qp->meta_info, infl_req, inst);
+}
+
+static __rte_always_inline int __rte_hot
 cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn20k_sec_session *sess,
 		  struct cpt_inst_s *inst, struct cpt_inflight_req *infl_req)
 {
 
 	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
 		return cpt_sec_ipsec_inst_fill(qp, op, sess, &inst[0], infl_req);
+	else if (sess->proto == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cpt_sec_tls_inst_fill(qp, op, sess, &inst[0], infl_req);
 
 	return 0;
 }
