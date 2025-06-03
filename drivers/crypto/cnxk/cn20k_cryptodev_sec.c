@@ -116,6 +116,9 @@ cn20k_sec_session_update(void *dev, struct rte_security_session *sec_sess,
 	if (cn20k_sec_sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
 		return cn20k_ipsec_session_update(vf, qp, cn20k_sec_sess, conf);
 
+	if (conf->protocol == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cn20k_tls_record_session_update(vf, qp, cn20k_sec_sess, conf);
+
 	return -ENOTSUP;
 }
 
