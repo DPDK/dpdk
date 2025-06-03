@@ -12,6 +12,8 @@
 
 #include "cn20k_cryptodev.h"
 #include "cn20k_cryptodev_ops.h"
+#include "cn20k_cryptodev_sec.h"
+#include "cn20k_ipsec_la_ops.h"
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
@@ -61,10 +63,43 @@ sess_put:
 	return NULL;
 }
 
+static __rte_always_inline int __rte_hot
+cpt_sec_ipsec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
+			struct cn20k_sec_session *sess, struct cpt_inst_s *inst,
+			struct cpt_inflight_req *infl_req)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	int ret;
+
+	if (unlikely(sym_op->m_dst && sym_op->m_dst != sym_op->m_src)) {
+		plt_dp_err("Out of place is not supported");
+		return -ENOTSUP;
+	}
+
+	if (sess->ipsec.is_outbound)
+		ret = process_outb_sa(&qp->lf, op, sess, &qp->meta_info, infl_req, inst);
+	else
+		ret = process_inb_sa(op, sess, inst, &qp->meta_info, infl_req);
+
+	return ret;
+}
+
+static __rte_always_inline int __rte_hot
+cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn20k_sec_session *sess,
+		  struct cpt_inst_s *inst, struct cpt_inflight_req *infl_req)
+{
+
+	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
+		return cpt_sec_ipsec_inst_fill(qp, op, sess, &inst[0], infl_req);
+
+	return 0;
+}
+
 static inline int
 cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct cpt_inst_s inst[],
 		    struct cpt_inflight_req *infl_req)
 {
+	struct cn20k_sec_session *sec_sess;
 	struct rte_crypto_asym_op *asym_op;
 	struct rte_crypto_sym_op *sym_op;
 	struct cnxk_ae_sess *ae_sess;
@@ -86,7 +121,13 @@ cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 	sym_op = op->sym;
 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
-		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+			sec_sess = (struct cn20k_sec_session *)sym_op->session;
+			ret = cpt_sec_inst_fill(qp, op, sec_sess, &inst[0], infl_req);
+			if (unlikely(ret))
+				return 0;
+			w7 = sec_sess->inst.w7;
+		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			sess = (struct cnxk_se_sess *)(sym_op->session);
 			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], true);
 			if (unlikely(ret))
@@ -228,6 +269,52 @@ pend_q_commit:
 }
 
 static inline void
+cn20k_cpt_ipsec_post_process(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res)
+{
+	struct rte_mbuf *mbuf = cop->sym->m_src;
+	const uint16_t m_len = res->rlen;
+
+	switch (res->uc_compcode) {
+	case ROC_IE_OW_UCC_SUCCESS_PKT_IP_BADCSUM:
+		mbuf->ol_flags &= ~RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+		mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+		break;
+	case ROC_IE_OW_UCC_SUCCESS_PKT_L4_GOODCSUM:
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD | RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+		break;
+	case ROC_IE_OW_UCC_SUCCESS_PKT_L4_BADCSUM:
+		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD | RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+		break;
+	case ROC_IE_OW_UCC_SUCCESS_PKT_IP_GOODCSUM:
+		break;
+	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_FIRST:
+	case ROC_IE_OW_UCC_SUCCESS_SA_SOFTEXP_AGAIN:
+		cop->aux_flags = RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY;
+		break;
+	default:
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		cop->aux_flags = res->uc_compcode;
+		return;
+	}
+
+	if (mbuf->next == NULL)
+		mbuf->data_len = m_len;
+
+	mbuf->pkt_len = m_len;
+}
+
+static inline void
+cn20k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res)
+{
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct cn20k_sec_session *sess;
+
+	sess = sym_op->session;
+	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
+		cn20k_cpt_ipsec_post_process(cop, res);
+}
+
+static inline void
 cn20k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 			       struct cpt_inflight_req *infl_req, struct cpt_cn20k_res_s *res)
 {
@@ -236,8 +323,23 @@ cn20k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop
 
 	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
-	if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC &&
-	    cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC &&
+	    cop->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		if (likely(compcode == CPT_COMP_GOOD || compcode == CPT_COMP_WARN)) {
+			/* Success with additional info */
+			cn20k_cpt_sec_post_process(cop, res);
+		} else {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			plt_dp_info("HW completion code 0x%x", res->compcode);
+			if (compcode == CPT_COMP_GOOD) {
+				plt_dp_info("Request failed with microcode error");
+				plt_dp_info("MC completion code 0x%x", uc_compcode);
+			}
+		}
+
+		return;
+	} else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC &&
+		   cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		struct cnxk_ae_sess *sess;
 
 		sess = (struct cnxk_ae_sess *)cop->asym->session;

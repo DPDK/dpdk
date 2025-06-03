@@ -31,6 +31,8 @@
 
 #include "cn10k_cryptodev_ops.h"
 #include "cn10k_cryptodev_sec.h"
+#include "cn20k_cryptodev_ops.h"
+#include "cn20k_cryptodev_sec.h"
 #include "cn9k_cryptodev_ops.h"
 #include "cn9k_ipsec.h"
 
