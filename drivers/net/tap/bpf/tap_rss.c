@@ -113,7 +113,6 @@ skip_ip6_ext(__u16 proto, const struct __sk_buff *skb, __u32 *off, int *frag)
 	*frag = 0;
 
 #define MAX_EXT_HDRS 5
-#pragma unroll
 	for (i = 0; i < MAX_EXT_HDRS; i++) {
 		switch (proto) {
 		case IPPROTO_HOPOPTS:
@@ -164,7 +163,6 @@ parse_ipv6(const struct __sk_buff *skb, __u32 hash_type, const __u32 *key)
 	if (bpf_skb_load_bytes_relative(skb, off, &ip6h, sizeof(ip6h), BPF_HDR_START_NET))
 		return 0;	/* missing IPv6 header */
 
-#pragma unroll
 	for (j = 0; j < 4; j++) {
 		v6_tuple.src_addr[j] = bpf_ntohl(ip6h.saddr.in6_u.u6_addr32[j]);
 		v6_tuple.dst_addr[j] = bpf_ntohl(ip6h.daddr.in6_u.u6_addr32[j]);
