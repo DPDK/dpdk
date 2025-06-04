@@ -137,7 +137,7 @@ static const char *default_solib_dir = RTE_EAL_PMD_PATH;
  * Note: PLEASE DO NOT ALTER THIS without making a corresponding
  * change to usertools/dpdk-pmdinfo.py
  */
-static const char dpdk_solib_path[] __rte_used =
+RTE_PMD_EXPORT_SYMBOL(const char, dpdk_solib_path)[] =
 "DPDK_PLUGIN_PATH=" RTE_EAL_PMD_PATH;
 
 TAILQ_HEAD(device_option_list, device_option);
