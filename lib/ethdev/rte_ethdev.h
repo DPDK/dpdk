@@ -603,6 +603,9 @@ struct rte_eth_rss_conf {
 #define RTE_ETH_RSS_L2TPV2             RTE_BIT64(36)
 #define RTE_ETH_RSS_IPV6_FLOW_LABEL    RTE_BIT64(37)
 
+/** RSS with RoCE InfiniBand BTH (Base Transport Header) */
+#define RTE_ETH_RSS_IB_BTH             RTE_BIT64(38)
+
 /*
  * We use the following macros to combine with above RTE_ETH_RSS_* for
  * more specific input set selection. These bits are defined starting

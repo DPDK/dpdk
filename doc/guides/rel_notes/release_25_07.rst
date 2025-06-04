@@ -60,6 +60,11 @@ New Features
   Added a new network PMD which supports Mucse 10 Gigabit Ethernet NICs.
   See the :doc:`../nics/rnp` for more details.
 
+* **Added RSS type for RoCE v2.**
+
+  Added ``RTE_ETH_RSS_IB_BTH`` flag so that the RoCE InfiniBand Base Transport Header
+  can be used as input for RSS.
+
 * **Added burst mode query function to Intel drivers.**
 
   Added support for Rx and Tx burst mode query to the following drivers:
