@@ -44,6 +44,8 @@ pmdinfogen = py3 + files('pmdinfogen.py')
 if host_machine.system() == 'windows'
     if cc.get_id() == 'gcc'
         pmdinfo += 'ar'
+    elif cc.get_id() == 'msvc'
+        pmdinfo += 'lib'
     else
         pmdinfo += 'llvm-ar'
     endif
