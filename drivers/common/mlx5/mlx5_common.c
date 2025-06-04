@@ -75,9 +75,18 @@ static inline void mlx5_cpu_id(unsigned int level,
 				unsigned int *eax, unsigned int *ebx,
 				unsigned int *ecx, unsigned int *edx)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	int data[4];
+	__cpuid(data, level);
+	*eax = data[0];
+	*ebx = data[1];
+	*ecx = data[2];
+	*edx = data[3];
+#else
 	__asm__("cpuid\n\t"
-		: "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
-		: "0" (level));
+	: "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
+	: "0" (level));
+#endif
 }
 #endif
 
