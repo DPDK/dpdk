@@ -3888,6 +3888,7 @@ flow_hw_async_flow_create_generic(struct rte_eth_dev *dev,
 		rte_errno = ENOMEM;
 		goto error;
 	}
+	flow->nt_rule = false;
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
@@ -4094,7 +4095,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	}
 	aux = mlx5_flow_hw_aux(dev->data->port_id, of);
 	nf = &aux->upd_flow;
-	memset(nf, 0, sizeof(struct rte_flow_hw));
+	nf->nt_rule = false;
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
