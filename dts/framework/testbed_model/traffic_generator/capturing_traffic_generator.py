@@ -70,7 +70,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
         receive_port: Port,
         filter_config: PacketFilteringConfig,
         duration: float,
-        capture_name: str = _get_default_capture_name(),
+        capture_name: str = None,
     ) -> list[Packet]:
         """Send `packets` and capture received traffic.
 
@@ -103,6 +103,9 @@ class CapturingTrafficGenerator(TrafficGenerator):
             filter_config,
             duration,
         )
+
+        if capture_name is None:
+            capture_name = _get_default_capture_name()
 
         self._logger.debug(f"Received packets: {get_packet_summaries(received_packets)}")
         self._write_capture_from_packets(capture_name, received_packets)
