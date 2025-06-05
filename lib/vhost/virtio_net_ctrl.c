@@ -227,7 +227,7 @@ virtio_net_ctrl_push(struct virtio_net *dev, struct virtio_net_ctrl_elem *ctrl_e
 
 	used_elem = &cvq->used->ring[cvq->last_used_idx & (cvq->size - 1)];
 	used_elem->id = ctrl_elem->head_idx;
-	used_elem->len = ctrl_elem->n_descs;
+	used_elem->len = sizeof(*ctrl_elem->desc_ack);
 
 	cvq->last_used_idx++;
 
