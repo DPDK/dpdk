@@ -90,6 +90,7 @@ source_file_deps = {
     'test_flow_classify.c': ['net', 'acl', 'table', 'ethdev', 'flow_classify'],
     'test_func_reentrancy.c': ['hash', 'lpm'],
     'test_graph.c': ['graph'],
+    'test_graph_feature_arc.c': ['graph'],
     'test_graph_perf.c': ['graph'],
     'test_hash.c': ['net', 'hash'],
     'test_hash_functions.c': ['hash'],
