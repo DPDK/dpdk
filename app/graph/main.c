@@ -28,6 +28,7 @@ static struct app_params {
 	struct conn_params conn;
 	char *script_name;
 	bool enable_graph_stats;
+	bool enable_feature_arc;
 } app = {
 	.conn = {
 		.welcome = "\nWelcome!\n\n",
@@ -42,6 +43,7 @@ static struct app_params {
 	},
 	.script_name = NULL,
 	.enable_graph_stats = false,
+	.enable_feature_arc = false,
 };
 
 static void
@@ -59,6 +61,7 @@ app_args_parse(int argc, char **argv)
 	struct option lgopts[] = {
 		{"help", 0, 0, 'H'},
 		{"enable-graph-stats", 0, 0, 'g'},
+		{"enable-graph-feature-arc", 0, 0, 'f'},
 	};
 	int h_present, p_present, s_present, n_args, i;
 	char *app_name = argv[0];
@@ -81,7 +84,7 @@ app_args_parse(int argc, char **argv)
 	p_present = 0;
 	s_present = 0;
 
-	while ((opt = getopt_long(argc, argv, "h:p:s:", lgopts, &option_index)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "h:p:s:f", lgopts, &option_index)) != EOF) {
 		switch (opt) {
 		case 'h':
 			if (h_present) {
@@ -142,6 +145,10 @@ app_args_parse(int argc, char **argv)
 			       "--enable-graph-stats");
 			break;
 
+		case 'f':
+			app.enable_feature_arc = true;
+			break;
+
 		case 'H':
 		default:
 			printf(usage, app_name);
@@ -157,6 +164,12 @@ bool
 app_graph_stats_enabled(void)
 {
 	return app.enable_graph_stats;
+}
+
+bool
+app_graph_feature_arc_enabled(void)
+{
+	return app.enable_feature_arc;
 }
 
 bool

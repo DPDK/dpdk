@@ -20,6 +20,7 @@
 #include "neigh.h"
 #include "route.h"
 #include "utils.h"
+#include "feature.h"
 
 /*
  * Externs
@@ -28,6 +29,7 @@ extern volatile bool force_quit;
 extern struct conn *conn;
 
 bool app_graph_stats_enabled(void);
+bool app_graph_feature_arc_enabled(void);
 bool app_graph_exit(void);
 
 #endif

@@ -31,3 +31,9 @@ help ipv6_lookup                                         # Print help on ipv6_lo
 neigh add ipv4 <IPv4>ip <STRING>mac                      # Add static neighbour for IPv4
 neigh add ipv6 <IPv6>ip <STRING>mac                      # Add static neighbour for IPv6
 help neigh                                               # Print help on neigh commands
+
+feature arcs                                             # show all feature arcs
+feature <STRING>name show                                # Show feature arc details
+feature enable <STRING>arc_name <STRING>feature_name <UINT16>interface   # Enable feature on interface
+feature disable <STRING>arc_name <STRING>feature_name <UINT16>interface  # Disable feature on interface
+help feature                                             # Print help on feature command

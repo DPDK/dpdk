@@ -62,6 +62,11 @@ Following are the application command-line options:
    Enable graph statistics printing on console.
    By default, graph statistics are disabled.
 
+``--enable-graph-feature-arc``
+
+   Enable feature arc functionality in graph nodes.
+   By default, feature arc is disabled.
+
 ``--help``
 
    Dumps application usage.
@@ -272,6 +277,18 @@ file to express the requested use case configuration.
    +--------------------------------------+-----------------------------------+-------------------+----------+
    | help ethdev_rx                       | | Command to dump ethdev_rx help  | :ref:`2 <scopes>` |    Yes   |
    |                                      | | message.                        |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | help feature                         | | Command to dump feature arc     | :ref:`2 <scopes>` |    Yes   |
+   |                                      | | help message.                   |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | feature arcs                         | | Command to dump all created     | :ref:`2 <scopes>` |    Yes   |
+   |                                      | | feature arcs                    |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | | feature enable <arc name>          | | Enable <feature name> of <arc   | :ref:`2 <scopes>` |    Yes   |
+   | | <feature name> <interface index>   | | name> on an interface.          |                   |          |
+   +--------------------------------------+-----------------------------------+-------------------+----------+
+   | | feature disable <arc name>         | | Disable <feature name> of <arc  | :ref:`2 <scopes>` |    Yes   |
+   | | <feature name> <interface index>   | | name> on an interface.          |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
 
 .. _scopes:

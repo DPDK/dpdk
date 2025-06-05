@@ -12,6 +12,7 @@
 #include <cmdline_socket.h>
 #include <rte_ethdev.h>
 #include <rte_graph_worker.h>
+#include <rte_graph_feature_arc_worker.h>
 #include <rte_log.h>
 
 #include "graph_priv.h"
@@ -264,6 +265,9 @@ cmd_graph_start_parsed(__rte_unused void *parsed_result, __rte_unused struct cmd
 	struct rte_node_ethdev_config *conf;
 	uint32_t nb_graphs = 0, nb_conf, i;
 	int rc = -EINVAL;
+
+	if (app_graph_feature_arc_enabled())
+		rte_graph_feature_arc_init(0);
 
 	conf = graph_rxtx_node_config_get(&nb_conf, &nb_graphs);
 	for (i = 0; i < MAX_GRAPH_USECASES; i++) {
