@@ -17,6 +17,11 @@
 
 #define NUM_EXTRA_FEATURE_DATA   (2)
 
+#define graph_uint_cast(f)		((unsigned int)(f))
+
+#define fdata_fix_get(arc, feat, index)	\
+			RTE_GRAPH_FEATURE_TO_FEATURE_DATA(arc, feat, index)
+
 #define feat_dbg graph_dbg
 
 #define FEAT_COND_ERR(cond, ...)                                           \
@@ -58,6 +63,135 @@ static STAILQ_HEAD(, rte_graph_feature_arc_register) feature_arc_list =
 /* global feature arc list */
 static STAILQ_HEAD(, rte_graph_feature_register) feature_list =
 					STAILQ_HEAD_INITIALIZER(feature_list);
+
+ /*
+  * feature data index is not fixed for given [feature, index], although it can
+  * be, which is calculated as follows (fdata_fix_get())
+  *
+  * fdata = (arc->max_features * feature ) + index;
+  *
+  * But feature data index should not be fixed for any index. i.e
+  * on any index, feature data can be placed. A slow path array is
+  * maintained and within a feature range [start, end] it is checked where
+  * feature_data_index is already placed.
+  *
+  * If is_release == false. feature_data_index is searched in a feature range.
+  * If found, index is returned. If not found, then reserve and return.
+  *
+  * If is_release == true, then feature_data_index is released for further
+  * usage
+  */
+static rte_graph_feature_data_t
+fdata_dyn_reserve_or_rel(struct rte_graph_feature_arc *arc, rte_graph_feature_t f,
+			 uint32_t index, bool is_release,
+			 bool fdata_provided, rte_graph_feature_data_t fd)
+{
+	rte_graph_feature_data_t start, end, fdata;
+	rte_graph_feature_t next_feat;
+
+	if (fdata_provided)
+		fdata = fd;
+	else
+		fdata = fdata_fix_get(arc, f, index);
+
+	next_feat = f + 1;
+	/* Find in a given feature range, feature data is stored or not */
+	for (start = fdata_fix_get(arc, f, 0),
+	     end = fdata_fix_get(arc, next_feat, 0);
+	     start < end;
+	     start++) {
+		if (arc->feature_data_by_index[start] == fdata) {
+			if (is_release)
+				arc->feature_data_by_index[start] = RTE_GRAPH_FEATURE_DATA_INVALID;
+
+			return start;
+		}
+	}
+
+	if (is_release)
+		return RTE_GRAPH_FEATURE_DATA_INVALID;
+
+	/* If not found, then reserve valid one */
+	for (start = fdata_fix_get(arc, f, 0),
+	     end = fdata_fix_get(arc, next_feat, 0);
+	     start < end;
+	     start++) {
+		if (arc->feature_data_by_index[start] == RTE_GRAPH_FEATURE_DATA_INVALID) {
+			arc->feature_data_by_index[start] = fdata;
+			return start;
+		}
+	}
+
+	return RTE_GRAPH_FEATURE_DATA_INVALID;
+}
+
+static rte_graph_feature_data_t
+fdata_reserve(struct rte_graph_feature_arc *arc,
+	      rte_graph_feature_t feature,
+	      uint32_t index)
+{
+	return fdata_dyn_reserve_or_rel(arc, feature + 1, index, false, false, 0);
+}
+
+static rte_graph_feature_data_t
+fdata_release(struct rte_graph_feature_arc *arc,
+	      rte_graph_feature_t feature,
+	      uint32_t index)
+{
+	return fdata_dyn_reserve_or_rel(arc, feature + 1, index, true, false, 0);
+}
+
+static rte_graph_feature_data_t
+first_fdata_reserve(struct rte_graph_feature_arc *arc,
+		    uint32_t index)
+{
+	return fdata_dyn_reserve_or_rel(arc, 0, index, false, false, 0);
+}
+
+static rte_graph_feature_data_t
+first_fdata_release(struct rte_graph_feature_arc *arc,
+		    uint32_t index)
+{
+	return fdata_dyn_reserve_or_rel(arc, 0, index, true, false, 0);
+}
+
+static rte_graph_feature_data_t
+extra_fdata_reserve(struct rte_graph_feature_arc *arc,
+		    rte_graph_feature_t feature,
+		    uint32_t index)
+{
+	rte_graph_feature_data_t fdata, fdata2;
+	rte_graph_feature_t f;
+
+	f = arc->num_added_features + NUM_EXTRA_FEATURE_DATA - 1;
+
+	fdata = fdata_dyn_reserve_or_rel(arc, f, index,
+					 false, true, fdata_fix_get(arc, feature + 1, index));
+
+	/* we do not have enough space in as
+	 * extra fdata accommodates indexes for all features
+	 * Needed (feature * index) space but has only (index) number of space.
+	 * So dynamic allocation can fail.  When fail use static allocation
+	 */
+	if (fdata == RTE_GRAPH_FEATURE_DATA_INVALID) {
+		fdata = fdata_fix_get(arc, feature + 1, index);
+		fdata2 = fdata_fix_get(arc, f, index);
+		arc->feature_data_by_index[fdata2] = fdata;
+	}
+	return fdata;
+}
+
+static rte_graph_feature_data_t
+extra_fdata_release(struct rte_graph_feature_arc *arc,
+		    rte_graph_feature_t feature,
+		    uint32_t index)
+{
+	rte_graph_feature_t f;
+
+	f = arc->num_added_features + NUM_EXTRA_FEATURE_DATA - 1;
+	return fdata_dyn_reserve_or_rel(arc, f, index,
+					true, true, fdata_fix_get(arc, feature + 1, index));
+}
 
 /* feature registration validate */
 static int
@@ -339,7 +473,10 @@ graph_first_feature_data_ptr_get(struct rte_graph_feature_arc *arc,
 static int
 feature_arc_data_reset(struct rte_graph_feature_arc *arc)
 {
+	rte_graph_feature_data_t first_fdata;
+	struct rte_graph_feature_data *fdata;
 	rte_graph_feature_data_t *f = NULL;
+	rte_graph_feature_t iter;
 	uint16_t index;
 
 	arc->runtime_enabled_features = 0;
@@ -349,6 +486,15 @@ feature_arc_data_reset(struct rte_graph_feature_arc *arc)
 		*f = RTE_GRAPH_FEATURE_DATA_INVALID;
 	}
 
+	for (iter = 0; iter < arc->max_features + NUM_EXTRA_FEATURE_DATA; iter++) {
+		first_fdata = fdata_fix_get(arc, iter, 0);
+		for (index = 0; index < arc->max_indexes; index++) {
+			fdata = rte_graph_feature_data_get(arc, first_fdata + index);
+			fdata->next_feature_data = RTE_GRAPH_FEATURE_DATA_INVALID;
+			fdata->app_cookie = UINT16_MAX;
+			fdata->next_edge = RTE_EDGE_ID_INVALID;
+		}
+	}
 	return 0;
 }
 
@@ -370,7 +516,6 @@ nodeinfo_lkup_by_name(struct rte_graph_feature_arc *arc, const char *feat_name,
 		*slot = UINT32_MAX;
 
 	STAILQ_FOREACH(finfo, &arc->all_features, next_feature) {
-		RTE_VERIFY(finfo->feature_arc == arc);
 		if (!strncmp(finfo->feature_name, feat_name, strlen(finfo->feature_name))) {
 			if (ffinfo)
 				*ffinfo = finfo;
@@ -398,7 +543,6 @@ nodeinfo_add_lookup(struct rte_graph_feature_arc *arc, const char *feat_node_nam
 		*slot = 0;
 
 	STAILQ_FOREACH(finfo, &arc->all_features, next_feature) {
-		RTE_VERIFY(finfo->feature_arc == arc);
 		if (!strncmp(finfo->feature_name, feat_node_name, strlen(finfo->feature_name))) {
 			if (ffinfo)
 				*ffinfo = finfo;
@@ -432,7 +576,7 @@ nodeinfo_lkup_by_index(struct rte_graph_feature_arc *arc, uint32_t feature_index
 		/* Check sanity */
 		if (do_sanity_check)
 			if (finfo->finfo_index != index)
-				RTE_VERIFY(0);
+				return -1;
 		if (index == feature_index) {
 			*ppfinfo = finfo;
 			return 0;
@@ -474,6 +618,102 @@ get_existing_edge(const char *arc_name, rte_node_t parent_node,
 	}
 	free(next_edges);
 
+	return -1;
+}
+
+
+/* prepare feature arc after addition of all features */
+static int
+prepare_feature_arc_before_first_enable(struct rte_graph_feature_arc *arc)
+{
+	struct rte_graph_feature_node_list *lfinfo = NULL;
+	struct rte_graph_feature_node_list *finfo = NULL;
+	char name[2 * RTE_GRAPH_FEATURE_ARC_NAMELEN];
+	uint32_t findex = 0, iter;
+	uint16_t num_fdata;
+	rte_edge_t edge;
+	size_t sz = 0;
+
+	STAILQ_FOREACH(lfinfo, &arc->all_features, next_feature) {
+		lfinfo->finfo_index = findex;
+		findex++;
+	}
+	if (!findex) {
+		graph_err("No feature added to arc: %s", arc->feature_arc_name);
+		return -1;
+	}
+	arc->num_added_features = findex;
+	num_fdata = arc->num_added_features + NUM_EXTRA_FEATURE_DATA;
+
+	sz = num_fdata * arc->max_indexes * sizeof(rte_graph_feature_data_t);
+
+	snprintf(name, sizeof(name), "%s-fdata", arc->feature_arc_name);
+
+	arc->feature_data_by_index = rte_malloc(name, sz, 0);
+	if (!arc->feature_data_by_index) {
+		graph_err("fdata/index rte_malloc failed for %s", name);
+		return -1;
+	}
+
+	for (iter = 0; iter < (num_fdata * arc->max_indexes); iter++)
+		arc->feature_data_by_index[iter] = RTE_GRAPH_FEATURE_DATA_INVALID;
+
+	/* Grab finfo corresponding to end_feature */
+	nodeinfo_lkup_by_index(arc, arc->num_added_features - 1, &lfinfo, 0);
+
+	/* lfinfo should be the info corresponding to end_feature
+	 * Add edge from all features to end feature node to have exception path
+	 * in fast path from all feature nodes to end feature node during enable/disable
+	 */
+	if (lfinfo->feature_node_id != arc->end_feature.feature_node_id) {
+		graph_err("end_feature node mismatch [found-%s: exp-%s]",
+			  rte_node_id_to_name(lfinfo->feature_node_id),
+			  rte_node_id_to_name(arc->end_feature.feature_node_id));
+		goto free_fdata_by_index;
+	}
+
+	STAILQ_FOREACH(finfo, &arc->all_features, next_feature) {
+		if (get_existing_edge(arc->feature_arc_name, arc->start_node->id,
+				      finfo->feature_node_id, &edge)) {
+			graph_err("No edge found from %s to %s",
+				  rte_node_id_to_name(arc->start_node->id),
+				  rte_node_id_to_name(finfo->feature_node_id));
+			goto free_fdata_by_index;
+		}
+		finfo->edge_to_this_feature = edge;
+
+		if (finfo == lfinfo)
+			continue;
+
+		if (get_existing_edge(arc->feature_arc_name, finfo->feature_node_id,
+				      lfinfo->feature_node_id, &edge)) {
+			graph_err("No edge found from %s to %s",
+				  rte_node_id_to_name(finfo->feature_node_id),
+				  rte_node_id_to_name(lfinfo->feature_node_id));
+			goto free_fdata_by_index;
+		}
+		finfo->edge_to_last_feature = edge;
+	}
+	/**
+	 * Enable end_feature in control bitmask
+	 * (arc->feature_bit_mask_by_index) but not in fast path bitmask
+	 * arc->fp_feature_enable_bitmask. This is due to:
+	 * 1. Application may not explicitly enabling end_feature node
+	 * 2. However it should be enabled internally so that when a feature is
+	 *    disabled (say on an interface), next_edge of data should be
+	 *    updated to end_feature node hence packet can exit arc.
+	 * 3. We do not want to set bit for end_feature in fast path bitmask as
+	 *    it will void the purpose of fast path APIs
+	 *    rte_graph_feature_arc_is_any_feature_enabled(). Since enabling
+	 *    end_feature would make these APIs to always return "true"
+	 */
+	for (iter = 0; iter < arc->max_indexes; iter++)
+		arc->feature_bit_mask_by_index[iter] |= (1 << lfinfo->finfo_index);
+
+	return 0;
+
+free_fdata_by_index:
+	rte_free(arc->feature_data_by_index);
 	return -1;
 }
 
@@ -582,6 +822,241 @@ feature_arc_main_init(rte_graph_feature_arc_main_t **pfl, uint32_t max_feature_a
 	pm->max_feature_arcs = max_feature_arcs;
 
 	*pfl = pm;
+
+	return 0;
+}
+
+static int
+feature_enable_disable_validate(rte_graph_feature_arc_t _arc, uint32_t index,
+				const char *feature_name,
+				int is_enable_disable, bool emit_logs)
+{
+	struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(_arc);
+	struct rte_graph_feature_node_list *finfo = NULL;
+	uint32_t slot, last_end_feature;
+
+	if (!arc)
+		return -EINVAL;
+
+	/* validate _arc */
+	if (arc->feature_arc_main != __rte_graph_feature_arc_main) {
+		FEAT_COND_ERR(emit_logs, "invalid feature arc: 0x%x", _arc);
+		return -EINVAL;
+	}
+
+	/* validate index */
+	if (index >= arc->max_indexes) {
+		FEAT_COND_ERR(emit_logs, "%s: Invalid provided index: %u >= %u configured",
+			      arc->feature_arc_name, index, arc->max_indexes);
+		return -1;
+	}
+
+	/* validate feature_name is already added or not  */
+	if (nodeinfo_lkup_by_name(arc, feature_name, &finfo, &slot)) {
+		FEAT_COND_ERR(emit_logs, "%s: No feature %s added",
+			      arc->feature_arc_name, feature_name);
+		return -EINVAL;
+	}
+
+	if (!finfo) {
+		FEAT_COND_ERR(emit_logs, "%s: No feature: %s found to enable/disable",
+			      arc->feature_arc_name, feature_name);
+		return -EINVAL;
+	}
+
+	/* slot should be in valid range */
+	if (slot >= arc->num_added_features) {
+		FEAT_COND_ERR(emit_logs, "%s/%s: Invalid free slot %u(max=%u) for feature",
+			      arc->feature_arc_name, feature_name, slot, arc->num_added_features);
+		return -EINVAL;
+	}
+
+	/* slot should be in range of 0 - 63 */
+	if (slot > (GRAPH_FEATURE_MAX_NUM_PER_ARC - 1)) {
+		FEAT_COND_ERR(emit_logs, "%s/%s: Invalid slot: %u", arc->feature_arc_name,
+			      feature_name, slot);
+		return -EINVAL;
+	}
+
+	last_end_feature = rte_fls_u64(arc->feature_bit_mask_by_index[index]);
+	if (!last_end_feature) {
+		FEAT_COND_ERR(emit_logs, "%s: End feature not enabled", arc->feature_arc_name);
+		return -EINVAL;
+	}
+
+	/* if enabled feature is not end feature node and already enabled */
+	if (is_enable_disable &&
+	    (arc->feature_bit_mask_by_index[index] & RTE_BIT64(slot)) &&
+	    (slot != (last_end_feature - 1))) {
+		FEAT_COND_ERR(emit_logs, "%s: %s already enabled on index: %u",
+			      arc->feature_arc_name, feature_name, index);
+		return -1;
+	}
+
+	if (!is_enable_disable && !arc->runtime_enabled_features) {
+		FEAT_COND_ERR(emit_logs, "%s: No feature enabled to disable",
+			      arc->feature_arc_name);
+		return -1;
+	}
+
+	if (!is_enable_disable && !(arc->feature_bit_mask_by_index[index] & RTE_BIT64(slot))) {
+		FEAT_COND_ERR(emit_logs, "%s: %s not enabled in bitmask for index: %u",
+			      arc->feature_arc_name, feature_name, index);
+		return -1;
+	}
+
+	/* If no feature has been enabled, avoid extra sanity checks */
+	if (!arc->runtime_enabled_features)
+		return 0;
+
+	if (finfo->finfo_index != slot) {
+		FEAT_COND_ERR(emit_logs,
+			      "%s/%s: lookup slot mismatch for finfo idx: %u and lookup slot: %u",
+			      arc->feature_arc_name, feature_name, finfo->finfo_index, slot);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+refill_fastpath_data(struct rte_graph_feature_arc *arc, uint32_t feature_bit,
+		     uint16_t index /* array index */, int is_enable_disable)
+{
+	struct rte_graph_feature_data *gfd = NULL, *prev_gfd = NULL, *fdptr = NULL;
+	struct rte_graph_feature_node_list *finfo = NULL, *prev_finfo = NULL;
+	RTE_ATOMIC(rte_graph_feature_data_t) * first_fdata = NULL;
+	uint32_t fi = 0, prev_fi = 0, next_fi = 0, cfi = 0;
+	uint64_t bitmask = 0, prev_bitmask, next_bitmask;
+	rte_graph_feature_data_t *__first_fd = NULL;
+	rte_edge_t edge = RTE_EDGE_ID_INVALID;
+	rte_graph_feature_data_t fdata, _fd;
+	bool update_first_feature = false;
+
+	if (is_enable_disable)
+		bitmask = RTE_BIT64(feature_bit);
+
+	/* set bit from (feature_bit + 1) to 64th bit */
+	next_bitmask = UINT64_MAX << (feature_bit + 1);
+
+	/* set bits from 0 to (feature_bit - 1) */
+	prev_bitmask = ((UINT64_MAX & ~next_bitmask) & ~(RTE_BIT64(feature_bit)));
+
+	next_bitmask &= arc->feature_bit_mask_by_index[index];
+	prev_bitmask &= arc->feature_bit_mask_by_index[index];
+
+	/* Set next bit set in next_bitmask */
+	if (rte_bsf64_safe(next_bitmask, &next_fi))
+		bitmask |= RTE_BIT64(next_fi);
+
+	/* Set prev bit set in prev_bitmask*/
+	prev_fi = rte_fls_u64(prev_bitmask);
+	if (prev_fi)
+		bitmask |= RTE_BIT64(prev_fi - 1);
+
+	/* for each feature set for index, set fast path data */
+	prev_gfd = NULL;
+	while (rte_bsf64_safe(bitmask, &fi)) {
+		_fd = fdata_reserve(arc, fi, index);
+		gfd = rte_graph_feature_data_get(arc, _fd);
+
+		if (nodeinfo_lkup_by_index(arc, fi, &finfo, 1) < 0) {
+			graph_err("[%s/index:%2u,cookie:%u]: No finfo found for index: %u",
+				  arc->feature_arc_name, index, gfd->app_cookie, fi);
+			return -1;
+		}
+
+		/* Reset next edge to point to last feature node so that packet
+		 * can exit from arc
+		 */
+		rte_atomic_store_explicit(&gfd->next_edge,
+					  finfo->edge_to_last_feature,
+					  rte_memory_order_relaxed);
+
+		/* If previous feature_index was valid in last loop */
+		if (prev_gfd != NULL) {
+			/*
+			 * Get edge of previous feature node connecting
+			 * to this feature node
+			 */
+			if (nodeinfo_lkup_by_index(arc, prev_fi, &prev_finfo, 1) < 0) {
+				graph_err("[%s/index:%2u,cookie:%u]: No prev_finfo found idx: %u",
+					  arc->feature_arc_name, index, gfd->app_cookie, prev_fi);
+				return -1;
+			}
+
+			if (!get_existing_edge(arc->feature_arc_name,
+					      prev_finfo->feature_node_id,
+					      finfo->feature_node_id, &edge)) {
+				feat_dbg("\t[%s/index:%2u,cookie:%u]: (%u->%u)%s[%u] = %s",
+					 arc->feature_arc_name, index,
+					 gfd->app_cookie, prev_fi, fi,
+					 rte_node_id_to_name(prev_finfo->feature_node_id),
+					 edge, rte_node_id_to_name(finfo->feature_node_id));
+
+				rte_atomic_store_explicit(&prev_gfd->next_edge,
+							  edge,
+							  rte_memory_order_relaxed);
+
+				rte_atomic_store_explicit(&prev_gfd->next_feature_data, _fd,
+							  rte_memory_order_relaxed);
+			} else {
+				/* Should not fail */
+				graph_err("[%s/index:%2u,cookie:%u]: No edge found from %s to %s",
+					  arc->feature_arc_name, index, gfd->app_cookie,
+					  rte_node_id_to_name(prev_finfo->feature_node_id),
+					  rte_node_id_to_name(finfo->feature_node_id));
+				return -1;
+			}
+		}
+		/* On first feature
+		 * 1. Update fdata with next_edge from start_node to feature node
+		 * 2. Update first enabled feature in its index array
+		 */
+		if (rte_bsf64_safe(arc->feature_bit_mask_by_index[index], &cfi)) {
+			update_first_feature = (cfi == fi) ? true : false;
+
+			if (update_first_feature) {
+				feat_dbg("\t[%s/index:%2u,cookie:%u]: (->%u)%s[%u]=%s",
+					 arc->feature_arc_name, index,
+					 gfd->app_cookie, fi,
+					 arc->start_node->name, finfo->edge_to_this_feature,
+					 rte_node_id_to_name(finfo->feature_node_id));
+
+				/* Reserve feature data @0th index for first feature */
+				fdata = first_fdata_reserve(arc, index);
+				fdptr = rte_graph_feature_data_get(arc, fdata);
+
+				/* add next edge into feature data
+				 * First set feature data then first feature memory
+				 */
+				rte_atomic_store_explicit(&fdptr->next_edge,
+							  finfo->edge_to_this_feature,
+							  rte_memory_order_relaxed);
+
+				rte_atomic_store_explicit(&fdptr->next_feature_data,
+							  _fd,
+							  rte_memory_order_relaxed);
+
+				__first_fd = graph_first_feature_data_ptr_get(arc, index);
+				first_fdata = (RTE_ATOMIC(rte_graph_feature_data_t) *)__first_fd;
+
+				/* Save reserved feature data @fp_index */
+				rte_atomic_store_explicit(first_fdata, fdata,
+							  rte_memory_order_relaxed);
+			}
+		}
+		prev_fi = fi;
+		prev_gfd = gfd;
+		/* Clear current feature index */
+		bitmask &= ~RTE_BIT64(fi);
+	}
+	/* If all features are disabled on index, except end feature
+	 * then release 0th index
+	 */
+	if (!is_enable_disable &&
+	    (rte_popcount64(arc->feature_bit_mask_by_index[index]) == 1))
+		first_fdata_release(arc, index);
 
 	return 0;
 }
@@ -1128,6 +1603,199 @@ rte_graph_feature_lookup(rte_graph_feature_arc_t _arc, const char *feature_name,
 	return -1;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_graph_feature_enable, 25.07)
+int
+rte_graph_feature_enable(rte_graph_feature_arc_t _arc, uint32_t index,
+			 const char *feature_name, uint16_t app_cookie,
+			 struct rte_rcu_qsbr *qsbr)
+{
+	struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(_arc);
+	struct rte_graph_feature_node_list *finfo = NULL;
+	struct rte_graph_feature_data *gfd = NULL;
+	uint64_t bitmask;
+	uint32_t slot;
+
+	if (!arc) {
+		graph_err("Invalid feature arc: 0x%x", _arc);
+		return -1;
+	}
+
+	feat_dbg("%s: Enabling feature: %s for index: %u",
+		 arc->feature_arc_name, feature_name, index);
+
+	if ((!arc->runtime_enabled_features &&
+	    (prepare_feature_arc_before_first_enable(arc) < 0)))
+		return -1;
+
+	if (feature_enable_disable_validate(_arc, index, feature_name, 1 /* enable */, true))
+		return -1;
+
+	/** This should not fail as validate() has passed */
+	if (nodeinfo_lkup_by_name(arc, feature_name, &finfo, &slot))
+		return -1;
+
+	gfd = rte_graph_feature_data_get(arc, fdata_reserve(arc, slot, index));
+
+	/* Set current app_cookie */
+	rte_atomic_store_explicit(&gfd->app_cookie, app_cookie, rte_memory_order_relaxed);
+
+	/* Set bitmask in control path bitmask */
+	rte_bit_relaxed_set64(graph_uint_cast(slot), &arc->feature_bit_mask_by_index[index]);
+
+	if (refill_fastpath_data(arc, slot, index, 1 /* enable */) < 0)
+		return -1;
+
+	/* On very first feature enable instance */
+	if (!finfo->ref_count) {
+		/* If first time feature getting enabled
+		 */
+		bitmask = rte_atomic_load_explicit(&arc->fp_feature_enable_bitmask,
+						   rte_memory_order_relaxed);
+
+		bitmask |= RTE_BIT64(slot);
+
+		rte_atomic_store_explicit(&arc->fp_feature_enable_bitmask,
+					  bitmask, rte_memory_order_relaxed);
+	}
+
+	/* Slow path updates */
+	arc->runtime_enabled_features++;
+
+	/* Increase feature node info reference count */
+	finfo->ref_count++;
+
+	/* Release extra fdata, if reserved before */
+	extra_fdata_release(arc, slot, index);
+
+	if (qsbr)
+		rte_rcu_qsbr_synchronize(qsbr, RTE_QSBR_THRID_INVALID);
+
+	if (finfo->notifier_cb)
+		finfo->notifier_cb(arc->feature_arc_name, finfo->feature_name,
+				   finfo->feature_node_id, index,
+				   true /* enable */, gfd->app_cookie);
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_graph_feature_disable, 25.07)
+int
+rte_graph_feature_disable(rte_graph_feature_arc_t _arc, uint32_t index, const char *feature_name,
+			  struct rte_rcu_qsbr *qsbr)
+{
+	struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(_arc);
+	struct rte_graph_feature_data *gfd = NULL, *extra_gfd = NULL;
+	struct rte_graph_feature_node_list *finfo = NULL;
+	rte_graph_feature_data_t extra_fdata;
+	uint32_t slot, last_end_feature;
+	uint64_t bitmask;
+
+	if (!arc) {
+		graph_err("Invalid feature arc: 0x%x", _arc);
+		return -1;
+	}
+	feat_dbg("%s: Disable feature: %s for index: %u",
+		 arc->feature_arc_name, feature_name, index);
+
+	if (feature_enable_disable_validate(_arc, index, feature_name, 0, true))
+		return -1;
+
+	if (nodeinfo_lkup_by_name(arc, feature_name, &finfo, &slot))
+		return -1;
+
+	last_end_feature = rte_fls_u64(arc->feature_bit_mask_by_index[index]);
+	if (last_end_feature != arc->num_added_features) {
+		graph_err("%s/%s: No end feature enabled",
+			  arc->feature_arc_name, feature_name);
+		return -1;
+	}
+
+	/* If feature is not last feature, unset in control plane bitmask */
+	last_end_feature = arc->num_added_features - 1;
+	if (slot != last_end_feature)
+		rte_bit_relaxed_clear64(graph_uint_cast(slot),
+					&arc->feature_bit_mask_by_index[index]);
+
+	/* we have allocated one extra feature data space. Get extra feature data
+	 * No need to reserve instead use fixed  extra data for an index
+	 */
+	extra_fdata = extra_fdata_reserve(arc, slot, index);
+	extra_gfd = rte_graph_feature_data_get(arc, extra_fdata);
+
+	gfd = rte_graph_feature_data_get(arc, fdata_reserve(arc, slot, index));
+
+	/*
+	 * Packets may have reached to feature node which is getting disabled.
+	 * We want to steer those packets to last feature node so that they can
+	 * exit arc
+	 * - First, reset next_edge of extra feature data to point to last_feature_node
+	 * - Secondly, reset next_feature_data of current feature getting disabled to extra
+	 *   feature data
+	 */
+	rte_atomic_store_explicit(&extra_gfd->next_edge, finfo->edge_to_last_feature,
+				  rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&extra_gfd->next_feature_data, RTE_GRAPH_FEATURE_DATA_INVALID,
+				  rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&gfd->next_feature_data, extra_fdata,
+				  rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&gfd->next_edge, finfo->edge_to_last_feature,
+				  rte_memory_order_relaxed);
+
+	/* Now we can unwire fast path*/
+	if (refill_fastpath_data(arc, slot, index, 0 /* disable */) < 0)
+		return -1;
+
+	finfo->ref_count--;
+
+	/* When last feature is disabled */
+	if (!finfo->ref_count) {
+		/* If no feature enabled, reset feature in u64 fast path bitmask */
+		bitmask = rte_atomic_load_explicit(&arc->fp_feature_enable_bitmask,
+						   rte_memory_order_relaxed);
+		bitmask &= ~(RTE_BIT64(slot));
+		rte_atomic_store_explicit(&arc->fp_feature_enable_bitmask, bitmask,
+					  rte_memory_order_relaxed);
+	}
+
+	if (qsbr)
+		rte_rcu_qsbr_synchronize(qsbr, RTE_QSBR_THRID_INVALID);
+
+	/* Call notifier cb with valid app_cookie */
+	if (finfo->notifier_cb)
+		finfo->notifier_cb(arc->feature_arc_name, finfo->feature_name,
+				   finfo->feature_node_id, index,
+				   false /* disable */, gfd->app_cookie);
+
+	/*
+	 * 1. Do not reset gfd for now as feature node might be in execution
+	 *
+	 * 2. We also don't call fdata_release() as that may return same
+	 * feature_data for other index for case like:
+	 *
+	 * feature_enable(arc, index-0, feature_name, cookie1);
+	 * feature_enable(arc, index-1, feature_name, cookie2);
+	 *
+	 * Second call can return same fdata which we avoided releasing here.
+	 * In order to make above case work, application has to mandatory use
+	 * RCU mechanism. For now fdata is not released until arc_destroy
+	 *
+	 * Only exception is
+	 * for(i=0; i< 100; i++) {
+	 *   feature_enable(arc, index-0, feature_name, cookie1);
+	 *   feature_disable(arc, index-0, feature_name, cookie1);
+	 * }
+	 * where RCU should be used but this is not valid use-case from control plane.
+	 * If it is valid use-case then provide RCU argument
+	 */
+
+	/* Reset app_cookie later after calling notifier_cb */
+	rte_atomic_store_explicit(&gfd->app_cookie, UINT16_MAX, rte_memory_order_relaxed);
+
+	arc->runtime_enabled_features--;
+
+	return 0;
+}
+
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_graph_feature_arc_destroy, 25.07)
 int
 rte_graph_feature_arc_destroy(rte_graph_feature_arc_t _arc)
@@ -1135,6 +1803,8 @@ rte_graph_feature_arc_destroy(rte_graph_feature_arc_t _arc)
 	struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(_arc);
 	rte_graph_feature_arc_main_t *dm = __rte_graph_feature_arc_main;
 	struct rte_graph_feature_node_list *node_info = NULL;
+	struct rte_graph_feature_data *fdptr = NULL;
+	rte_graph_feature_data_t fdata;
 	int iter;
 
 	if (!arc) {
@@ -1153,11 +1823,28 @@ rte_graph_feature_arc_destroy(rte_graph_feature_arc_t _arc)
 				    RTE_BIT64(node_info->finfo_index)))
 					continue;
 
-				node_info->notifier_cb(arc->feature_arc_name,
-						       node_info->feature_name,
-						       node_info->feature_node_id,
-						       iter, false /* disable */,
-						       UINT16_MAX /* invalid cookie */);
+				/* fdata_reserve would return already allocated
+				 * fdata for [finfo_index, iter]
+				 */
+				fdata = fdata_reserve(arc, node_info->finfo_index, iter);
+				if (fdata != RTE_GRAPH_FEATURE_DATA_INVALID) {
+					fdptr = rte_graph_feature_data_get(arc, fdata);
+					node_info->notifier_cb(arc->feature_arc_name,
+							       node_info->feature_name,
+							       node_info->feature_node_id,
+							       iter, false /* disable */,
+							       fdptr->app_cookie);
+				} else {
+					node_info->notifier_cb(arc->feature_arc_name,
+							       node_info->feature_name,
+							       node_info->feature_node_id,
+							       iter, false /* disable */,
+							       UINT16_MAX /* invalid cookie */);
+				}
+				/* fdata_release() is not used yet, use it for sake
+				 * of function unused warnings
+				 */
+				fdata = fdata_release(arc, node_info->finfo_index, iter);
 			}
 		}
 		rte_free(node_info);
@@ -1235,6 +1922,20 @@ rte_graph_feature_arc_lookup_by_name(const char *arc_name, rte_graph_feature_arc
 	}
 
 	return -1;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_graph_feature_arc_num_enabled_features, 25.07)
+uint32_t
+rte_graph_feature_arc_num_enabled_features(rte_graph_feature_arc_t _arc)
+{
+	struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(_arc);
+
+	if (!arc) {
+		graph_err("Invalid feature arc: 0x%x", _arc);
+		return 0;
+	}
+
+	return arc->runtime_enabled_features;
 }
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_graph_feature_arc_num_features, 25.07)

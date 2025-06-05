@@ -35,6 +35,7 @@ struct rte_graph_feature_node_list {
 	/** Next feature */
 	STAILQ_ENTRY(rte_graph_feature_node_list) next_feature;
 
+	/** Name of the feature */
 	char feature_name[RTE_GRAPH_FEATURE_ARC_NAMELEN];
 
 	/** node id representing feature */
@@ -162,6 +163,45 @@ struct __rte_cache_aligned rte_graph_feature_arc {
 	 */
 	int mbuf_dyn_offset;
 
+	/** Fast path arc data starts */
+	/*
+	 * Arc specific fast path data
+	 * It accommodates:
+	 *
+	 *	1. first enabled feature data for every index (rte_graph_feature_data_t or fdata)
+	 *	+--------------------------------------------------------------+ <- cache_aligned
+	 *	|  0th Index    | 1st Index   |  ... | max_index - 1           |
+	 *	+--------------------------------------------------------------+
+	 *	|  Startfdata0  | Startfdata1 |  ... | Startfdata(max_index-1) |
+	 *	+--------------------------------------------------------------+
+	 *
+	 *	2. struct rte_graph_feature_data per index per feature
+	 *	+----------------------------------------+ ^ <- Start (Reserved, cache aligned)
+	 *	|  struct rte_graph_feature_data[Index0] | |
+	 *	+----------------------------------------+ | feature_size
+	 *	|  struct rte_graph_feature_data[Index1] | |
+	 *	+----------------------------------------+ ^ <- Feature-0 (cache_aligned)
+	 *	|  struct rte_graph_feature_data[Index0] | |
+	 *	+----------------------------------------+ | feature_size
+	 *	|  struct rte_graph_feature_data[Index1] | |
+	 *	+----------------------------------------+ v <- Feature-1 (cache aligned)
+	 *	|  struct rte_graph_feature_data[Index0] | ^
+	 *	+----------------------------------------+ | feature_size
+	 *	|  struct rte_graph_feature_data[Index1] | |
+	 *	+----------------------------------------+ v
+	 *	|         ...            ....            |
+	 *	|         ...            ....            |
+	 *	|         ...            ....            |
+	 *	+----------------------------------------+ v <- Feature Index-1 (cache aligned)
+	 *	|  struct rte_graph_feature_data[Index0] | ^
+	 *	+----------------------------------------+ | feature_size
+	 *	|  struct rte_graph_feature_data[Index1] | |
+	 *	+----------------------------------------+ v <- Extra (Reserved, cache aligned)
+	 *	|  struct rte_graph_feature_data[Index0] | ^
+	 *	+----------------------------------------+ | feature_size
+	 *	|  struct rte_graph_feature_data[Index1] | |
+	 *	+----------------------------------------+ v
+	 */
 	RTE_MARKER8 fp_arc_data;
 };
 
@@ -196,13 +236,15 @@ typedef struct rte_feature_arc_main {
  *  It holds
  *  - edge to reach to next feature node
  *  - next_feature_data corresponding to next enabled feature
+ *  - app_cookie set by application in rte_graph_feature_enable()
  */
 struct rte_graph_feature_data {
 	/** edge from this feature node to next enabled feature node */
 	RTE_ATOMIC(rte_edge_t) next_edge;
 
 	/**
-	 * app_cookie
+	 * app_cookie set by application in rte_graph_feature_enable() for
+	 * current feature data
 	 */
 	RTE_ATOMIC(uint16_t) app_cookie;
 
@@ -218,6 +260,18 @@ struct rte_graph_feature_arc_mbuf_dynfields {
 
 /** Name of dynamic mbuf field offset registered in rte_graph_feature_arc_init() */
 #define RTE_GRAPH_FEATURE_ARC_DYNFIELD_NAME    "__rte_graph_feature_arc_mbuf_dynfield"
+
+/** log2(sizeof (struct rte_graph_feature_data)) */
+#define RTE_GRAPH_FEATURE_DATA_SIZE_LOG2	3
+
+/** Number of struct rte_graph_feature_data per feature*/
+#define RTE_GRAPH_FEATURE_DATA_NUM_PER_FEATURE(arc)				\
+	(arc->feature_size >> RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)
+
+/** Get rte_graph_feature_data_t from rte_graph_feature_t */
+#define RTE_GRAPH_FEATURE_TO_FEATURE_DATA(arc, feature, index)			\
+		((rte_graph_feature_data_t)					\
+		 ((RTE_GRAPH_FEATURE_DATA_NUM_PER_FEATURE(arc) * (feature)) + (index)))
 
 /**
  * @internal macro
@@ -275,6 +329,23 @@ rte_graph_feature_is_valid(rte_graph_feature_t feature)
 }
 
 /**
+ * API to know if feature data is valid or not
+ *
+ * @param feature_data
+ *  rte_graph_feature_data_t
+ *
+ * @return
+ *  1: If feature data is valid
+ *  0: If feature data is invalid
+ */
+__rte_experimental
+static __rte_always_inline int
+rte_graph_feature_data_is_valid(rte_graph_feature_data_t feature_data)
+{
+	return (feature_data != RTE_GRAPH_FEATURE_DATA_INVALID);
+}
+
+/**
  * Get pointer to feature arc object from rte_graph_feature_arc_t
  *
  * @param arc
@@ -298,6 +369,253 @@ rte_graph_feature_arc_get(rte_graph_feature_arc_t arc)
 
 	return (fa == GRAPH_FEATURE_ARC_PTR_INITIALIZER) ?
 		NULL : (struct rte_graph_feature_arc *)fa;
+}
+
+/**
+ * Get rte_graph_feature_t from feature arc object without any checks
+ *
+ * @param arc
+ *  feature arc
+ * @param fdata
+ *  feature data object
+ *
+ * @return
+ *   Pointer to feature data object
+ */
+__rte_experimental
+static __rte_always_inline struct rte_graph_feature_data*
+__rte_graph_feature_data_get(struct rte_graph_feature_arc *arc,
+			     rte_graph_feature_data_t fdata)
+{
+	return ((struct rte_graph_feature_data *) ((uint8_t *)arc + arc->fp_feature_data_offset +
+						   (fdata << RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)));
+}
+
+/**
+ * Get next edge from feature data pointer, without any check
+ *
+ * @param fdata
+ *  feature data object
+ *
+ * @return
+ *  next edge
+ */
+__rte_experimental
+static __rte_always_inline rte_edge_t
+__rte_graph_feature_data_edge_get(struct rte_graph_feature_data *fdata)
+{
+	return rte_atomic_load_explicit(&fdata->next_edge, rte_memory_order_relaxed);
+}
+
+/**
+ * Get app_cookie from feature data pointer, without any check
+ *
+ * @param fdata
+ *  feature data object
+ *
+ * @return
+ *  app_cookie set by caller in rte_graph_feature_enable() API
+ */
+__rte_experimental
+static __rte_always_inline uint16_t
+__rte_graph_feature_data_app_cookie_get(struct rte_graph_feature_data *fdata)
+{
+	return rte_atomic_load_explicit(&fdata->app_cookie, rte_memory_order_relaxed);
+}
+
+/**
+ * Get next_enabled_feature_data from pointer to feature data, without any check
+ *
+ * @param fdata
+ *  feature data object
+ *
+ * @return
+ *  next enabled feature data from this feature data
+ */
+__rte_experimental
+static __rte_always_inline rte_graph_feature_data_t
+__rte_graph_feature_data_next_feature_get(struct rte_graph_feature_data *fdata)
+{
+	return rte_atomic_load_explicit(&fdata->next_feature_data, rte_memory_order_relaxed);
+}
+
+
+/**
+ * Get app_cookie from feature data object with checks
+ *
+ * @param arc
+ *  feature arc
+ * @param fdata
+ *  feature data object
+ *
+ * @return
+ *  app_cookie set by caller in rte_graph_feature_enable() API
+ */
+__rte_experimental
+static __rte_always_inline uint16_t
+rte_graph_feature_data_app_cookie_get(struct rte_graph_feature_arc *arc,
+				      rte_graph_feature_data_t fdata)
+{
+	struct rte_graph_feature_data *fdata_obj = ((struct rte_graph_feature_data *)
+						    ((uint8_t *)arc + arc->fp_feature_data_offset +
+						    (fdata << RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)));
+
+
+	return rte_atomic_load_explicit(&fdata_obj->app_cookie, rte_memory_order_relaxed);
+}
+
+/**
+ * Get next_enabled_feature_data from current feature data object with checks
+ *
+ * @param arc
+ *  feature arc
+ * @param fdata
+ *  Pointer to feature data object
+ * @param[out] next_edge
+ *  next_edge from current feature to next enabled feature
+ *
+ * @return
+ *  1: if next feature enabled on index
+ *  0: if no feature is enabled on index
+ */
+__rte_experimental
+static __rte_always_inline int
+rte_graph_feature_data_next_feature_get(struct rte_graph_feature_arc *arc,
+					rte_graph_feature_data_t *fdata,
+					rte_edge_t *next_edge)
+{
+	struct rte_graph_feature_data *fdptr = ((struct rte_graph_feature_data *)
+						((uint8_t *)arc + arc->fp_feature_data_offset +
+						((*fdata) << RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)));
+	*fdata = rte_atomic_load_explicit(&fdptr->next_feature_data, rte_memory_order_relaxed);
+	*next_edge = rte_atomic_load_explicit(&fdptr->next_edge, rte_memory_order_relaxed);
+
+
+	return ((*fdata) != RTE_GRAPH_FEATURE_DATA_INVALID);
+}
+
+/**
+ * Get struct rte_graph_feature_data from rte_graph_feature_dat_t
+ *
+ * @param arc
+ *   feature arc
+ * @param fdata
+ *  feature data object
+ *
+ * @return
+ *   NULL: On Failure
+ *   Non-NULL pointer on Success
+ */
+__rte_experimental
+static __rte_always_inline struct rte_graph_feature_data*
+rte_graph_feature_data_get(struct rte_graph_feature_arc *arc,
+			   rte_graph_feature_data_t fdata)
+{
+	if (fdata != RTE_GRAPH_FEATURE_DATA_INVALID)
+		return ((struct rte_graph_feature_data *)
+			((uint8_t *)arc + arc->fp_feature_data_offset +
+			(fdata << RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)));
+	else
+		return NULL;
+}
+
+/**
+ * Get feature data corresponding to first enabled feature on index
+ * @param arc
+ *   feature arc
+ * @param index
+ *   Interface index
+ * @param[out] fdata
+ *  feature data object
+ * @param[out] edge
+ *  rte_edge object
+ *
+ * @return
+ *  1: if any feature enabled on index, return corresponding valid feature data
+ *  0: if no feature is enabled on index
+ */
+__rte_experimental
+static __rte_always_inline int
+rte_graph_feature_data_first_feature_get(struct rte_graph_feature_arc *arc,
+					 uint32_t index,
+					 rte_graph_feature_data_t *fdata,
+					 rte_edge_t *edge)
+{
+	struct rte_graph_feature_data *fdata_obj = NULL;
+	rte_graph_feature_data_t *fd;
+
+	fd = (rte_graph_feature_data_t *)((uint8_t *)arc + arc->fp_first_feature_offset +
+					  (sizeof(rte_graph_feature_data_t) * index));
+
+	if ((*fd) != RTE_GRAPH_FEATURE_DATA_INVALID) {
+		fdata_obj = ((struct rte_graph_feature_data *)
+			     ((uint8_t *)arc + arc->fp_feature_data_offset +
+			     ((*fd) << RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)));
+
+		*edge = rte_atomic_load_explicit(&fdata_obj->next_edge,
+						 rte_memory_order_relaxed);
+
+		*fdata = rte_atomic_load_explicit(&fdata_obj->next_feature_data,
+						  rte_memory_order_relaxed);
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Fast path API to check if any feature enabled on a feature arc
+ * Typically from arc->start_node process function
+ *
+ * @param arc
+ *   Feature arc object
+ *
+ * @return
+ *  0: If no feature enabled
+ *  Non-Zero: Bitmask of features enabled.
+ *
+ */
+__rte_experimental
+static __rte_always_inline uint64_t
+rte_graph_feature_arc_is_any_feature_enabled(struct rte_graph_feature_arc *arc)
+{
+	if (unlikely(arc == NULL))
+		return 0;
+
+	return (rte_atomic_load_explicit(&arc->fp_feature_enable_bitmask,
+					 rte_memory_order_relaxed));
+}
+
+/**
+ * Prefetch feature arc fast path cache line
+ *
+ * @param arc
+ *   RTE_GRAPH feature arc object
+ */
+__rte_experimental
+static __rte_always_inline void
+rte_graph_feature_arc_prefetch(struct rte_graph_feature_arc *arc)
+{
+	rte_prefetch0((void *)arc->fast_path_variables);
+}
+
+/**
+ * Prefetch feature data related fast path cache line
+ *
+ * @param arc
+ *   RTE_GRAPH feature arc object
+ * @param fdata
+ *   Pointer to feature data object
+ */
+__rte_experimental
+static __rte_always_inline void
+rte_graph_feature_arc_feature_data_prefetch(struct rte_graph_feature_arc *arc,
+					    rte_graph_feature_data_t fdata)
+{
+	struct rte_graph_feature_data *fdata_obj = ((struct rte_graph_feature_data *)
+						    ((uint8_t *)arc + arc->fp_feature_data_offset +
+						    (fdata << RTE_GRAPH_FEATURE_DATA_SIZE_LOG2)));
+	rte_prefetch0((void *)fdata_obj);
 }
 
 #ifdef __cplusplus

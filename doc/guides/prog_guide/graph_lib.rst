@@ -460,6 +460,8 @@ Feature arc provides application to overload default node path
 by providing hook points (like netfilter)
 to insert out-of-tree or another protocol nodes in packet path.
 
+.. _Control_Data_Plane_Synchronization:
+
 Control/Data plane synchronization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -707,6 +709,11 @@ during ``feature disable`` which might have allocated during feature enable.
 ``notifier_cb()`` is called, at runtime, for every enable/disable of ``[feature, index]``
 from control thread.
 
+If RCU is provided to enable/disable API,
+notifier_cb() is called after ``rte_rcu_qsbr_synchronize()``.
+Application also needs to call ``rte_rcu_qsbr_quiescent()`` in worker thread
+(preferably after every ``rte_graph_walk()`` iteration)
+
 override_index_cb()
 ....................
 
@@ -739,6 +746,184 @@ If not called, feature arc has no impact on application.
 
    ``rte_graph_feature_arc_init()`` API should be called before ``rte_graph_create()``.
    If not called, feature arc is a ``NOP`` to application.
+
+Runtime feature enable/disable
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A feature can be enabled or disabled at runtime from control thread
+using ``rte_graph_feature_enable()`` and ``rte_graph_feature_disable()`` functions respectively.
+
+.. code-block:: c
+
+   struct rte_rcu_qsbr *rcu_qsbr = app_get_rcu_qsbr();
+   rte_graph_feature_arc_t _arc;
+   uint16_t app_cookie;
+
+   if (rte_graph_feature_arc_lookup_by_name("Arc1", &_arc) < 0) {
+       RTE_LOG(ERR, GRAPH, "Arc1 not found\n");
+       return -ENOENT;
+   }
+   app_cookie = 100; /* Specific to ['Feature-1`, `port-0`] */
+
+   /* Enable feature */
+   rte_graph_feature_enable(_arc, 0 /* port-0 */,
+                            "Feature-1" /* Name of the node feature */,
+                            app_cookie, rcu_qsbr);
+
+   /* Disable feature */
+   rte_graph_feature_disable(_arc, 0 /* port-0 */,
+                             "Feature-1" /* Name of the node feature */,
+                             rcu_qsbr);
+
+.. note::
+
+   RCU argument is optional argument to enable/disable API.
+   See :ref:`control/data plane synchronization <Control_Data_Plane_Synchronization>`
+   and :ref:`notifier_cb <Feature_Notifier_Cb>` for more details on when RCU is needed.
+
+Fast path traversal rules
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``Start node``
+**************
+
+If feature arc is :ref:`initialized <Feature_Arc_Initialization>`,
+``start_node_feature_process_fn()`` will be called by ``rte_graph_walk()``
+instead of node's original ``process()``.
+This function should allow packets to enter arc path
+whenever any feature is enabled at runtime.
+
+.. code-block:: c
+
+   static int nodeA_init(const struct rte_graph *graph, struct rte_node *node)
+   {
+       rte_graph_feature_arc_t _arc;
+
+       if (rte_graph_feature_arc_lookup_by_name("Arc1", &_arc) < 0) {
+           RTE_LOG(ERR, GRAPH, "Arc1 not found\n");
+           return -ENOENT;
+       }
+
+       /* Save arc in node context */
+       node->ctx = _arc;
+       return 0;
+   }
+
+   int nodeA_process_inline(struct rte_graph *graph, struct rte_node *node,
+                            void **objs, uint16_t nb_objs,
+                            struct rte_graph_feature_arc *arc,
+                            const int do_arc_processing)
+   {
+       for(uint16_t i = 0; i < nb_objs; i++) {
+           struct rte_mbuf *mbuf = objs[i];
+           rte_edge_t edge_to_child = 0; /* By default to Node-B */
+
+           if (do_arc_processing) {
+               struct rte_graph_feature_arc_mbuf_dynfields *dyn =
+                   rte_graph_feature_arc_mbuf_dynfields_get(mbuf, arc->mbuf_dyn_offset);
+
+               if (rte_graph_feature_data_first_feature_get(mbuf, mbuf->port,
+                                                            &dyn->feature_data,
+                                                            &edge_to_child) < 0) {
+
+                   /* Some feature is enabled, edge_to_child is overloaded */
+               }
+           }
+           /* enqueue as usual */
+           rte_node_enqueue_x1(graph, node, mbuf, edge_to_child);
+      }
+   }
+
+   int nodeA_feature_process_fn(struct rte_graph *graph, struct rte_node *node,
+                                void **objs, uint16_t nb_objs)
+   {
+       struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(node->ctx);
+
+       if (unlikely(rte_graph_feature_arc_has_any_feature(arc)))
+           return nodeA_process_inline(graph, node, objs, nb_objs, arc, 1 /* do arc processing */);
+       else
+           return nodeA_process_inline(graph, node, objs, nb_objs, NULL, 0 /* skip arc processing */);
+   }
+
+``Feature nodes``
+*****************
+
+Following code-snippet explains fast path traversal rule for ``Feature-1``
+:ref:`feature node <Feature_Nodes>` shown in :ref:`figure <Figure_Arc_2>`.
+
+.. code-block:: c
+
+   static int Feature1_node_init(const struct rte_graph *graph, struct rte_node *node)
+   {
+       rte_graph_feature_arc_t _arc;
+
+       if (rte_graph_feature_arc_lookup_by_name("Arc1", &_arc) < 0) {
+           RTE_LOG(ERR, GRAPH, "Arc1 not found\n");
+           return -ENOENT;
+       }
+
+       /* Save arc in node context */
+       node->ctx = _arc;
+       return 0;
+   }
+
+   int feature1_process_inline(struct rte_graph *graph, struct rte_node *node,
+                               void **objs, uint16_t nb_objs,
+                               struct rte_graph_feature_arc *arc)
+   {
+       for (uint16_t i = 0; i < nb_objs; i++) {
+           struct rte_mbuf *mbuf = objs[i];
+           rte_edge_t edge_to_child = 0; /* By default to Node-B */
+
+           struct rte_graph_feature_arc_mbuf_dynfields *dyn =
+                   rte_graph_feature_arc_mbuf_dynfields_get(mbuf, arc->mbuf_dyn_offset);
+
+           /* Get feature app cookie for mbuf */
+           uint16_t app_cookie = rte_graph_feature_data_app_cookie_get(mbuf, &dyn->feature_data);
+
+           if (feature_local_lookup(app_cookie) {
+
+               /* Packets is relevant to this feature. Move packet from arc path */
+               edge_to_child = X;
+
+           } else {
+
+               /* Packet not relevant to this feature.
+                * Send this packet to next enabled feature.
+                */
+               rte_graph_feature_data_next_feature_get(mbuf, &dyn->feature_data,
+                                                       &edge_to_child);
+           }
+
+           /* enqueue as usual */
+           rte_node_enqueue_x1(graph, node, mbuf, edge_to_child);
+      }
+   }
+
+   int feature1_process_fn(struct rte_graph *graph, struct rte_node *node,
+                           void **objs, uint16_t nb_objs)
+   {
+       struct rte_graph_feature_arc *arc = rte_graph_feature_arc_get(node->ctx);
+
+       return feature1_process_inline(graph, node, objs, nb_objs, arc);
+   }
+
+``End feature node``
+********************
+
+An end feature node is a feature node through which packets exits feature arc path.
+It should not use any feature arc fast path API.
+
+Feature arc destroy
+^^^^^^^^^^^^^^^^^^^
+
+``rte_graph_feature_arc_destroy()`` can be used to free a arc object.
+
+Feature arc cleanup
+^^^^^^^^^^^^^^^^^^^
+
+``rte_graph_feature_arc_cleanup()`` can be used to free all resources
+associated with feature arc module.
 
 Inbuilt Nodes
 -------------

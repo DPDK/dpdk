@@ -27,4 +27,4 @@ indirect_headers += files(
         'rte_graph_worker_common.h',
 )
 
-deps += ['eal', 'pcapng', 'mempool', 'ring']
+deps += ['eal', 'pcapng', 'mempool', 'ring', 'rcu']

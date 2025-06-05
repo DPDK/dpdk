@@ -18,6 +18,7 @@
 #include <rte_compat.h>
 #include <rte_debug.h>
 #include <rte_graph.h>
+#include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +50,7 @@ extern "C" {
  * plane. Protocols enabled on one interface may not be enabled on another
  * interface.
  *
- * When more than one protocols are present at a networking layer (say IPv4,
+ * When more than one protocols are present in a networking layer (say IPv4,
  * IP tables, IPsec etc), it becomes imperative to steer packets (in dataplane)
  * across each protocol processing in a defined sequential order. In ingress
  * direction, stack decides to perform IPsec decryption first before IP
@@ -92,7 +93,9 @@ extern "C" {
  * A feature arc in a graph is represented via *start_node* and
  * *end_feature_node*.  Feature nodes are added between start_node and
  * end_feature_node. Packets enter feature arc path via start_node while they
- * exit from end_feature_node.
+ * exit from end_feature_node. Packets steering from start_node to feature
+ * nodes are controlled in control plane via rte_graph_feature_enable(),
+ * rte_graph_feature_disable().
  *
  * This library facilitates rte graph based applications to implement stack
  * functionalities described above by providing "edge" to the next enabled
@@ -101,7 +104,7 @@ extern "C" {
  * In order to use feature-arc APIs, applications needs to do following in
  * control plane:
  * - Create feature arc object using RTE_GRAPH_FEATURE_ARC_REGISTER()
- * - New feature nodes (In-built/Out-of-tree) can be added to an arc via
+ * - New feature nodes (In-built or out-of-tree) can be added to an arc via
  *   RTE_GRAPH_FEATURE_REGISTER(). RTE_GRAPH_FEATURE_REGISTER() has
  *   rte_graph_feature_register::runs_after and
  *   rte_graph_feature_register::runs_before to specify protocol
@@ -109,6 +112,8 @@ extern "C" {
  * - Before calling rte_graph_create(), rte_graph_feature_arc_init() API must
  *   be called. If rte_graph_feature_arc_init() is not called by application,
  *   feature arc library has no affect.
+ * - Features can be enabled/disabled on any index at runtime via
+ *   rte_graph_feature_enable(), rte_graph_feature_disable().
  * - Feature arc can be destroyed via rte_graph_feature_arc_destroy()
  *
  * If a given feature likes to control number of indexes (which is higher than
@@ -119,10 +124,66 @@ extern "C" {
  * maximum value returned by any of the feature is used for
  * rte_graph_feature_arc_create()
  *
+ * Before enabling a feature, control plane might allocate certain resources
+ * (like VRF table for IP lookup or IPsec SA for inbound policy etc). A
+ * reference of allocated resource can be passed from control plane to
+ * dataplane via *app_cookie* argument in @ref rte_graph_feature_enable(). A
+ * corresponding dataplane API @ref rte_graph_feature_data_app_cookie_get() can
+ * be used to retrieve same cookie in fast path.
+ *
+ * When a feature is disabled, resources allocated during feature enable can be
+ * safely released via registering a callback in
+ * rte_graph_feature_register::notifier_cb(). See fast path synchronization
+ * section below for more details.
+ *
+ * If current feature node is not consuming packet, it might want to send it to
+ * next enabled feature. Depending upon current node is a:
+ * - start_node (via @ref rte_graph_feature_data_first_feature_get())
+ * - feature nodes added between start_node and end_node (via @ref
+ *   rte_graph_feature_data_next_feature_get())
+ * - end_feature_node (must not call any feature arc steering APIs) as from
+ *   this node packet exits feature arc
+ *
+ * Above APIs deals with fast path object: feature_data (struct
+ * rte_graph_feature_data), which is unique for every index per feature with in
+ * a feature arc. It holds three data fields: next node edge, next enabled
+ * feature data and app_cookie.
+ *
+ * rte_mbuf carries [feature_data] into feature arc specific mbuf dynamic
+ * field. See @ref rte_graph_feature_arc_mbuf_dynfields and @ref
+ * rte_graph_feature_arc_mbuf_dynfields_get() for more details.
+ *
+ * Fast path synchronization
+ * -------------------------
+ * Any feature enable/disable in control plane does not require stopping of
+ * worker cores. rte_graph_feature_enable()/rte_graph_feature_disable() APIs
+ * are almost thread-safe avoiding any RCU usage. Only condition when race
+ * condition could occur is when application is trying to enable/disable
+ * feature very fast for [feature, index] combination. In that case,
+ * application should use rte_graph_feature_enable(),
+ * rte_graph_feature_disable() APIs with RCU argument
+ *
+ * RCU synchronization may also be required when application needs to free
+ * resources (using rte_graph_feature_register::notifier_cb()) which it may have
+ * allocated during feature enable. Resources can be freed only when no worker
+ * core is not acting on it.
+ *
+ * If RCU argument to rte_graph_feature_enable(), rte_graph_feature_disable()
+ * is non-NULL, as part of APIs:
+ *  - rte_rcu_qsbr_synchronize() is called to synchronize all worker cores
+ *  - If set, rte_graph_feature_register::notifier_cb() is called in which
+ *  application can safely release resources associated with [feature, index]
+ *
+ * It is application responsibility to pass valid RCU argument to APIs. It is
+ * recommended that application calls rte_rcu_qsbr_quiescent() after every
+ * iteration of rte_graph_walk()
+ *
  * Constraints
  * -----------
  *  - rte_graph_feature_arc_init(), rte_graph_feature_arc_create() and
  *  rte_graph_feature_add() must be called before rte_graph_create().
+ *  - rte_graph_feature_enable(), rte_graph_feature_disable() should be called
+ *  after rte_graph_create()
  *  - Not more than 63 features can be added to a feature arc. There is no
  *  limit to number of feature arcs i.e. number of
  *  RTE_GRAPH_FEATURE_ARC_REGISTER()
@@ -349,7 +410,7 @@ int rte_graph_feature_arc_create(struct rte_graph_feature_arc_register *reg,
  * Get feature arc object with name
  *
  * @param arc_name
- *   Feature arc name provided to successful @ref rte_graph_feature_arc_create
+ *   Feature arc name provided to successful @ref rte_graph_feature_arc_create()
  * @param[out] _arc
  *   Feature arc object returned. Valid only when API returns SUCCESS
  *
@@ -369,6 +430,9 @@ int rte_graph_feature_arc_lookup_by_name(const char *arc_name, rte_graph_feature
  * Pointer to struct rte_graph_feature_register
  *
  * <I> Must be called before rte_graph_create() </I>
+ * <I> rte_graph_feature_add() is not allowed after call to
+ * rte_graph_feature_enable() so all features must be added before they can be
+ * enabled </I>
  * <I> When called by application, then feature_node_id should be appropriately set as
  *     freg->feature_node_id = freg->feature_node->id;
  * </I>
@@ -381,13 +445,70 @@ __rte_experimental
 int rte_graph_feature_add(struct rte_graph_feature_register *feat_reg);
 
 /**
+ * Enable feature within a feature arc
+ *
+ * Must be called after @b rte_graph_create().
+ *
+ * @param _arc
+ *   Feature arc object returned by @ref rte_graph_feature_arc_create() or @ref
+ *   rte_graph_feature_arc_lookup_by_name()
+ * @param index
+ *   Application specific index. Can be corresponding to interface_id/port_id etc
+ * @param feature_name
+ *   Name of the node which is already added via @ref rte_graph_feature_add()
+ * @param app_cookie
+ *   Application specific data which is retrieved in fast path
+ * @param qsbr
+ *   RCU QSBR object.  After enabling feature, API calls
+ *   rte_rcu_qsbr_synchronize() followed by call to struct
+ *   rte_graph_feature_register::notifier_cb(), if it is set, to notify feature
+ *   caller This object can be passed NULL as well if no RCU synchronization is
+ *   required
+ *
+ * @return
+ *  0: Success
+ * <0: Failure
+ */
+__rte_experimental
+int rte_graph_feature_enable(rte_graph_feature_arc_t _arc, uint32_t index, const
+			     char *feature_name, uint16_t app_cookie,
+			     struct rte_rcu_qsbr *qsbr);
+
+/**
+ * Disable already enabled feature within a feature arc
+ *
+ * Must be called after @b rte_graph_create(). API is *NOT* Thread-safe
+ *
+ * @param _arc
+ *   Feature arc object returned by @ref rte_graph_feature_arc_create() or @ref
+ *   rte_graph_feature_arc_lookup_by_name()
+ * @param index
+ *   Application specific index. Can be corresponding to interface_id/port_id etc
+ * @param feature_name
+ *   Name of the node which is already added via @ref rte_graph_feature_add()
+ * @param qsbr
+ *   RCU QSBR object.  After disabling feature, API calls
+ *   rte_rcu_qsbr_synchronize() followed by call to struct
+ *   RTE_GRAPH_FEATURE_ARC_REGISTER::notifier_cb(), if it is set, to notify feature
+ *   caller. This object can be passed NULL as well if no RCU synchronization is
+ *   required
+ *
+ * @return
+ *  0: Success
+ * <0: Failure
+ */
+__rte_experimental
+int rte_graph_feature_disable(rte_graph_feature_arc_t _arc, uint32_t index,
+			      const char *feature_name, struct rte_rcu_qsbr *qsbr);
+
+/**
  * Get rte_graph_feature_t object from feature name
  *
  * @param arc
- *   Feature arc object returned by @ref rte_graph_feature_arc_create or @ref
- *   rte_graph_feature_arc_lookup_by_name
+ *   Feature arc object returned by @ref rte_graph_feature_arc_create() or @ref
+ *   rte_graph_feature_arc_lookup_by_name()
  * @param feature_name
- *   Feature name provided to @ref rte_graph_feature_add
+ *   Feature name provided to @ref rte_graph_feature_add()
  * @param[out] feature
  *   Feature object
  *
@@ -403,8 +524,8 @@ int rte_graph_feature_lookup(rte_graph_feature_arc_t arc, const char *feature_na
  * Delete feature_arc object
  *
  * @param _arc
- *   Feature arc object returned by @ref rte_graph_feature_arc_create or @ref
- *   rte_graph_feature_arc_lookup_by_name
+ *   Feature arc object returned by @ref rte_graph_feature_arc_create() or @ref
+ *   rte_graph_feature_arc_lookup_by_name()
  *
  * @return
  *  0: Success
@@ -434,6 +555,19 @@ int rte_graph_feature_arc_cleanup(void);
  */
 __rte_experimental
 uint32_t rte_graph_feature_arc_num_features(rte_graph_feature_arc_t _arc);
+
+/**
+ * Slow path API to know how many features are currently enabled within a
+ * feature arc across all indexes. If a single feature is enabled on all interfaces,
+ * this API would return "number_of_interfaces" as count (but not "1")
+ *
+ * @param _arc
+ *  Feature arc object
+ *
+ * @return: Number of enabled features across all indexes
+ */
+__rte_experimental
+uint32_t rte_graph_feature_arc_num_enabled_features(rte_graph_feature_arc_t _arc);
 
 /**
  * Slow path API to get feature node name from rte_graph_feature_t object
