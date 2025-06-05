@@ -20,7 +20,7 @@ sources = files(
         'graph_feature_arc.c',
 )
 headers = files('rte_graph.h', 'rte_graph_worker.h')
-headers += files('rte_graph_feature_arc.h')
+headers += files('rte_graph_feature_arc.h', 'rte_graph_feature_arc_worker.h')
 indirect_headers += files(
         'rte_graph_model_mcore_dispatch.h',
         'rte_graph_model_rtc.h',

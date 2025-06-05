@@ -24,6 +24,10 @@ extern int rte_graph_logtype;
 	RTE_LOG_LINE_PREFIX(level, GRAPH,                                      \
 		"%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
+#define GRAPH_LOG2(level, _fname, _linenum, ...)                               \
+	RTE_LOG_LINE_PREFIX(level, GRAPH,                                      \
+		"%s():%u ", _fname RTE_LOG_COMMA _linenum, __VA_ARGS__)
+
 #define graph_err(...) GRAPH_LOG(ERR, __VA_ARGS__)
 #define graph_warn(...) GRAPH_LOG(WARNING, __VA_ARGS__)
 #define graph_info(...) GRAPH_LOG(INFO, __VA_ARGS__)

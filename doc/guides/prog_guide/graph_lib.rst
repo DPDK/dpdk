@@ -680,7 +680,7 @@ can be added to existing arc as follows:
            ...
            ...
            ...
-       .override_index_cb = Feature-3_override_index_cb(),
+       .override_index_cb = Feature-2_override_index_cb(),
        .runs_after = "Feature-1",
        .runs_before = "Custom-Feature",
    };
@@ -718,6 +718,27 @@ In case of multiple features, largest value returned by any feature
 would be selected for creating feature arc.
 
 .. _Feature_Arc_Initialization:
+
+Initializing Feature arc
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Following code shows how to initialize feature arc sub-system.
+``rte_graph_feature_arc_init()`` API is used to initialize a feature arc sub-system.
+If not called, feature arc has no impact on application.
+
+.. code-block:: c
+
+   struct rte_graph_param *graph_param = app_get_graph_param();
+
+   /* Initialize feature arc before graph create */
+   rte_graph_feature_arc_init(0);
+
+   rte_graph_create(graph_param);
+
+.. note::
+
+   ``rte_graph_feature_arc_init()`` API should be called before ``rte_graph_create()``.
+   If not called, feature arc is a ``NOP`` to application.
 
 Inbuilt Nodes
 -------------
