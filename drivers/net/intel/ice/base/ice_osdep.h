@@ -128,6 +128,15 @@ writeq(uint64_t value, volatile void *addr)
 #define wr64(a, reg, value) writeq((value), (a)->hw_addr + (reg))
 #define rd64(a, reg)        readq((a)->hw_addr + (reg))
 
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __builtin_add_overflow(a, b, res) \
+	_Generic((a), \
+		uint8_t : _addcarry_u8, \
+		uint16_t : _addcarry_u16, \
+		uint32_t : _addcarry_u32, \
+		uint64_t : _addcarry_u64)(0, a, b, res)
+#endif
+
 #endif /* __INTEL_NET_BASE_OSDEP__ */
 
 #ifndef __always_unused
