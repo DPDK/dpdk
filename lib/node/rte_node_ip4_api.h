@@ -24,6 +24,10 @@
 extern "C" {
 #endif
 
+/** IP4 output arc */
+#define RTE_IP4_OUTPUT_FEATURE_ARC_NAME "rte_ip4_output_arc"
+#define RTE_IP4_OUTPUT_END_FEATURE_NAME "rte_if_tx_feature"
+
 /**
  * IP4 lookup next nodes.
  */

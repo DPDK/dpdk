@@ -13,6 +13,7 @@
 #include <rte_mbuf_dyn.h>
 
 #include <rte_graph_worker_common.h>
+#include <rte_graph_feature_arc_worker.h>
 
 extern int rte_node_logtype;
 #define RTE_LOGTYPE_NODE rte_node_logtype

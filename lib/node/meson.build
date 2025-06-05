@@ -11,6 +11,7 @@ sources = files(
         'ethdev_ctrl.c',
         'ethdev_rx.c',
         'ethdev_tx.c',
+        'interface_tx_feature.c',
         'ip4_local.c',
         'ip4_lookup.c',
         'ip4_reassembly.c',

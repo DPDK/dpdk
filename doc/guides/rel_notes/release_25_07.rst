@@ -121,6 +121,8 @@ New Features
 
   See section ``Graph feature arc`` in :doc:`../prog_guide/graph_lib` for more details.
 
+  * Added ``ip4 output`` feature arc processing in ``ip4_rewrite`` node.
+
 
 Removed Items
 -------------
