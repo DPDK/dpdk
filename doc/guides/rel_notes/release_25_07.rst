@@ -113,6 +113,14 @@ New Features
   See the :doc:`../prog_guide/eventdev/event_vector_adapter` guide
   for more details on the new library.
 
+* **Added feature arc support in graph library.**
+
+  Feature arc helps ``rte_graph`` based applications
+  to manage multiple network protocols/features with runtime configurability,
+  in-built node-reusability and optimized control/data plane synchronization.
+
+  See section ``Graph feature arc`` in :doc:`../prog_guide/graph_lib` for more details.
+
 
 Removed Items
 -------------

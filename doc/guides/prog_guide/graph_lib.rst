@@ -404,6 +404,321 @@ The graph_nodes_mem_create() creates and populate this memory. The functions
 such as ``rte_graph_walk()`` and ``rte_node_enqueue_*`` use this memory
 to enable fastpath services.
 
+Graph feature arc
+-----------------
+
+Introduction
+~~~~~~~~~~~~
+
+Graph feature arc is an abstraction to manage more than one network protocols
+(or features) in a graph application with:
+
+* Runtime network configurability
+* Overloading of default node packet path
+* Control/Data plane synchronization
+
+.. note::
+
+   Feature arc abstraction is introduced as an optional functionality
+   to the graph library.
+   Feature arc is a ``NOP`` to application which skips
+   :ref:`feature arc initialization <Feature_Arc_Initialization>`
+
+Runtime network configurability
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Feature arc facilitates to enable/disable protocols at runtime from control thread.
+In fast path, it provides API to steer packets across nodes of those protocols
+which are enabled from control thread.
+
+Feature arc uses ``index`` object to enable/disable a protocol which is generic
+to cater all the possibilities of configuring a protocol.
+Examples of ``index`` object are
+interface index, route index, flow index, classification index etc.
+
+Runtime configuration of one ``index`` is independent of another ``index`` configuration.
+In other words, packet received on an interface0 are steered independent
+from packets received on interface1.
+Both interface0 and interface1 can have separate sets of protocols enabled at the same time.
+
+Feature arc also provides mechanism to express ``protocol sequencing order`` for packets.
+If more than one protocols are active in a network layer,
+packets may be required to be steered among protocol nodes in a specific order.
+For example: in a typical firewall,
+IPv4, IPsec and IP tables may be enabled at the same time in IP layer.
+Feature arc provides mechanism to express sequence order
+in which protocol nodes are to be traversed by packets received/sent on an interface.
+
+Default node packet path overloading
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Each network function has defined node packet path.
+As an example, IPv4 router as a forwarder includes nodes performing -
+packet ingress, ethernet reception, IPv4 reception, IPv4 lookup,
+ethernet rewrite and packet egress.
+Feature arc provides application to overload default node path
+by providing hook points (like netfilter)
+to insert out-of-tree or another protocol nodes in packet path.
+
+Control/Data plane synchronization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Feature arc does not stop worker cores for any runtime control plane updates.
+i.e. any feature (protocol) enable/disable at runtime does not stop worker cores.
+Control plane feature enable/disable API also provides RCU mechanism, if needed.
+
+When a feature is enabled in control plane, certain resources may be allocated
+by application specific to ``[feature, index]``.
+For example when IPsec is enabled either on an interface (policy based IPsec)
+or route (route based IPsec), a security association(SA) would be allocated/initialized
+and attached to interface/route.
+Feature arc API is provided to pass SA from control thread to worker threads
+for applying it (SA) on packets received/sent via interface or SA tunnel route.
+
+Furthermore, when IPsec gets disabled for same ``[feature, index]`` in later point of time,
+cleanup would be required to free resources associated with SA.
+Cleanup can only be done in control thread when it ensures that no worker thread is using the SA.
+For this use case, application can use RCU mechanism provided with enable/disable API.
+See :ref:`notifier_cb <Feature_Notifier_Cb>`.
+
+Objects
+~~~~~~~
+
+Feature
+^^^^^^^
+
+Feature is analogous to a protocol.
+
+.. _Feature_Nodes:
+
+Features nodes
+^^^^^^^^^^^^^^
+
+A feature node is a node which performs specific feature processing in a given network layer.
+Feature nodes incorporates fast path feature arc API in their ``process()`` function
+and are part of a unique arc.
+
+Not all nodes in graph required to be made feature nodes.
+
+.. _Start_Node:
+
+Start node
+^^^^^^^^^^
+
+A node through which packets enters feature arc path is called ``Start node``.
+It is a node which provides a hook point to overload node packet path.
+Each feature arc object has unique ``start node``.
+It can be a new node or any existing node in a graph.
+Start node is not counted as a feature node in an arc.
+
+.. _End_Feature_Node:
+
+End feature node
+^^^^^^^^^^^^^^^^
+
+An end feature node is a feature node through which packets exits feature arc path.
+It is required for exiting packets, from feature arc path,
+which are getting processed by feature node
+which is getting disabled at runtime in control thread.
+It is always the last feature node in an arc.
+As an exception to other feature nodes,
+this node does not uses any feature arc fast path API.
+
+Feature arc
+^^^^^^^^^^^
+
+.. _Figure_Arc_1:
+
+.. figure:: img/feature_arc-1.*
+   :alt: feature-arc-1
+   :width: 350px
+   :align: center
+
+   Feature arc representation
+
+An ordered list of feature nodes in a given network layer is called as feature arc.
+It consists of three objects:
+
+- :ref:`Start node <Start_Node>`
+- :ref:`End feature node <End_Feature_Node>`
+- :ref:`Zero or more feature nodes <Feature_Nodes>`
+
+In order to :ref:`create <Feature_Arc_Registration>` a feature arc object,
+only ``start node`` and ``end feature node`` are required.
+Once created, feature nodes can be :ref:`added <Feature_Registration>` to the arc.
+
+Feature data
+^^^^^^^^^^^^
+
+It is a fast path object which hold information to steer packets across nodes.
+
+Programming model
+~~~~~~~~~~~~~~~~~
+
+Arc/Feature Registrations
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Feature arc and feature registrations happens using constructor based macros.
+While feature arc registration creates a feature arc object,
+the feature registration adds provided node to a feature arc object.
+
+.. note::
+
+   During registration, no memory is allocated associated with any feature arc.
+   Actual memory allocation, object creation and connecting of nodes via edges
+   corresponding to all registered feature arcs happens as part of
+   :ref:`feature arc initialization <Feature_Arc_Initialization>`.
+
+.. _Feature_Arc_Registration:
+
+Feature arc registration
+************************
+
+A feature arc object creation require ``feature arc registration``.
+Once registered, feature arc is created as part of
+:ref:`initialization <Feature_Arc_Initialization>`.
+A feature arc is registered via ``RTE_GRAPH_FEATURE_ARC_REGISTER()``.
+An arc shown in :ref:`figure <Figure_Arc_1>` can be registered as follows:
+
+.. code-block:: c
+
+   /* Existing nodes */
+   RTE_NODE_REGISTER(Node-A);
+   RTE_NODE_REGISTER(Node-B);
+
+   /* Define End feature node: Node-B */
+   struct rte_graph_feature_register Node-B-feature = {
+       .feature_name = "Node-B-feature",
+       .arc_name = "Arc1",
+       .feature_process_fn = nodeB_process_fn(),
+       .feature_node = &Node-B,
+   };
+
+   /* Arc1 registration */
+   struct rte_graph_feature_arc_register arc1 = {
+       .arc_name = "Arc1",
+       .max_indexes = RTE_MAX_ETHPORTS,
+       .start_node = &Node-A,
+       .start_node_feature_process_fn = nodeA_feature_process_fn(),
+       .end_feature_node = &Node-B-feature,
+   };
+
+   /* Call constructor */
+    RTE_GRAPH_FEATURE_ARC_REGISTER(arc1);
+
+.. note::
+
+   Feature arc can also be created using ``rte_graph_feature_arc_create()`` API as well.
+
+.. _Feature_Registration:
+
+Feature registration
+********************
+
+A feature registration means defining a feature node
+which would be added to a unique ``arc``.
+A feature nodes needs to know ``arc name`` to which it wants to connect to.
+Registration happens via ``RTE_GRAPH_FEATURE_REGISTER()``.
+
+A ``Feature-1`` shown in :ref:`figure <Figure_Arc_1>` can be registered as follows:
+
+.. code-block:: c
+
+   /* Existing node */
+   RTE_NODE_REGISTER(Feature-1);
+
+   /* Define feature node: Feature-1 */
+   struct rte_graph_feature_register Feature-1 = {
+       .feature_name = "Feature-1",
+       .arc_name = "Arc1",
+       .feature_process_fn = feature1_process_fn(),
+       .feature_node = &Feature-1,
+   };
+
+   /* Call constructor */
+   RTE_GRAPH_FEATURE_REGISTER(Feature-1);
+
+.. note::
+
+   A feature node can be out-of-tree application node
+   which is willing to connect to an arc defined by DPDK built-in nodes.
+   This way application can hook its node to standard node packet path.
+
+Advance parameters
+``````````````````
+
+.. _Figure_Arc_2:
+
+.. figure:: img/feature_arc-2.*
+   :alt: feature-arc-2
+   :width: 550px
+   :align: center
+
+   Feature registration advance parameters
+
+Feature registration have some advance parameters to control the feature node.
+As shown in above figure, ``Custom Feature`` and ``Feature-2`` nodes
+can be added to existing arc as follows:
+
+.. code-block:: c
+
+   /* Define feature node: Custom-Feature */
+   struct rte_graph_feature_register Custom-Feature = {
+       .feature_name = "Custom-Feature",
+       .arc_name = "Arc1",
+           ...
+           ...
+           ...
+       .notifier_cb = Custom-Feature_notifier_fn(),  /* Optional notifier function */
+       .runs_after = "Feature-1",
+   };
+
+   /* Define feature node: Feature-2 */
+   struct rte_graph_feature_register Feature-2 = {
+       .feature_name = "Feature-2",
+       .arc_name = "Arc1",
+           ...
+           ...
+           ...
+       .override_index_cb = Feature-3_override_index_cb(),
+       .runs_after = "Feature-1",
+       .runs_before = "Custom-Feature",
+   };
+
+runs_after/runs_before
+......................
+
+These parameters are used to express the sequencing order of feature nodes.
+If ``Custom Feature`` needs to run after ``Feature-1``,
+it can be defined as shown above.
+Similarly, if ``Feature-2`` needs to run before ``Custom-Feature`` but after ``Feature-1``,
+it can be done as shown above.
+
+.. _Feature_Notifier_Cb:
+
+notifier_cb()
+.............
+
+If non-NULL, every feature enable/disable in control plane
+will invoke the notifier callback on control thread.
+This notifier callback can be used to destroy resources for ``[feature, index]`` pair
+during ``feature disable`` which might have allocated during feature enable.
+
+``notifier_cb()`` is called, at runtime, for every enable/disable of ``[feature, index]``
+from control thread.
+
+override_index_cb()
+....................
+
+A feature arc is :ref:`registered <Feature_Arc_Registration>`
+to operate on certain number of ``max_indexes``.
+If particular feature like to overload this ``max_indexes``
+with a larger value, it can do so by returning larger value in this callback.
+In case of multiple features, largest value returned by any feature
+would be selected for creating feature arc.
+
+.. _Feature_Arc_Initialization:
+
 Inbuilt Nodes
 -------------
 

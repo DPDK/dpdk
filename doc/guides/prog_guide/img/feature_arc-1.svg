@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(C) 2025 Marvell International Ltd. -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   id="svg4977"
+   version="1.1"
+   overflow="hidden"
+   xml:space="preserve"
+   height="1455"
+   width="1995"><metadata
+     id="metadata4983"><rdf:RDF><cc:Work
+         rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
+     id="defs4981" /><g
+     id="g4975"
+     transform="translate(-637 -359)"><path
+       id="path4901"
+       fill-rule="evenodd"
+       fill="#00B5E2"
+       stroke-miterlimit="8"
+       stroke-width="6.875"
+       stroke="#212322"
+       d="M640.5 543.5C640.5 460.657 788.917 393.5 972 393.5 1155.08 393.5 1303.5 460.657 1303.5 543.5 1303.5 626.343 1155.08 693.5 972 693.5 788.917 693.5 640.5 626.343 640.5 543.5Z" /><text
+       id="text4903"
+       transform="matrix(1 0 0 1 831.669 574)"
+       font-size="83"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">Node</text>
+<text
+       id="text4905"
+       transform="matrix(1 0 0 1 1028.75 574)"
+       font-size="83"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">-</text>
+<text
+       id="text4907"
+       transform="matrix(1 0 0 1 1056.25 574)"
+       font-size="83"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">A</text>
+<path
+       id="path4909"
+       fill-rule="evenodd"
+       fill="#00B5E2"
+       stroke-miterlimit="8"
+       stroke-width="6.875"
+       stroke="#212322"
+       d="M640.5 1660.5C640.5 1577.66 788.917 1510.5 972 1510.5 1155.08 1510.5 1303.5 1577.66 1303.5 1660.5 1303.5 1743.34 1155.08 1810.5 972 1810.5 788.917 1810.5 640.5 1743.34 640.5 1660.5Z" /><text
+       id="text4911"
+       transform="matrix(1 0 0 1 831.669 1691)"
+       font-size="83"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">Node</text>
+<text
+       id="text4913"
+       transform="matrix(1 0 0 1 1028.75 1691)"
+       font-size="83"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">-</text>
+<text
+       id="text4915"
+       transform="matrix(1 0 0 1 1056.25 1691)"
+       font-size="83"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">B</text>
+<path
+       id="path4917"
+       fill-rule="evenodd"
+       fill="#00B050"
+       stroke-miterlimit="8"
+       stroke-width="6.875"
+       stroke="#212322"
+       d="M1303.5 1132.5C1303.5 1049.66 1452.14 982.5 1635.5 982.5 1818.86 982.5 1967.5 1049.66 1967.5 1132.5 1967.5 1215.34 1818.86 1282.5 1635.5 1282.5 1452.14 1282.5 1303.5 1215.34 1303.5 1132.5Z" /><text
+       id="text4919"
+       transform="matrix(1 0 0 1 1455.56 1159)"
+       font-size="73"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">Feature </text>
+<text
+       id="text4921"
+       transform="matrix(1 0 0 1 1728.84 1159)"
+       font-size="73"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">-</text>
+<text
+       id="text4923"
+       transform="matrix(1 0 0 1 1774.1 1159)"
+       font-size="73"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#FFFFFF">1</text>
+<path
+       id="path4925"
+       fill="#63666A"
+       d="M977.875 693 977.875 1475.28 964.125 1475.28 964.125 693ZM991.625 1468.41 971 1509.66 950.375 1468.41Z" /><path
+       id="path4927"
+       fill="#003967"
+       d="M972.869 690.347 998.093 701.303 995.354 707.609 970.13 696.653ZM1017.01 709.52 1042.23 720.476 1039.49 726.782 1014.27 715.826ZM1061.15 728.693 1086.37 739.649 1083.64 745.955 1058.41 734.999ZM1105.29 747.866 1130.52 758.822 1127.78 765.127 1102.55 754.172ZM1149.43 767.039 1174.66 777.995 1171.92 784.3 1146.69 773.344ZM1193.57 786.211 1218.8 797.167 1216.06 803.473 1190.83 792.517ZM1237.71 805.384 1262.94 816.34 1260.2 822.646 1234.98 811.69ZM1281.86 824.557 1307.08 835.513 1304.34 841.819 1279.12 830.863ZM1326 843.73 1351.22 854.686 1348.48 860.992 1323.26 850.036ZM1370.14 862.903 1395.36 873.859 1392.62 880.165 1367.4 869.209ZM1414.28 882.076 1439.5 893.032 1436.76 899.338 1411.54 888.382ZM1458.42 901.249 1483.64 912.205 1480.9 918.511 1455.68 907.555ZM1502.56 920.422 1527.78 931.378 1525.04 937.684 1499.82 926.728ZM1546.7 939.595 1571.92 950.551 1569.18 956.857 1543.96 945.901ZM1590.84 958.768 1615.56 969.504 1612.82 975.81 1588.1 965.074ZM1615.46 958.219 1635.21 981.786 1604.51 983.442Z" /><path
+       id="path4929"
+       transform="matrix(-1 0 0 1 1635.21 1282.5)"
+       fill="#003967"
+       d="M1.11695-3.25097 27.1247 5.68467 24.8908 12.1866-1.11695 3.25097ZM46.6306 12.3864 72.6383 21.322 70.4044 27.824 44.3967 18.8883ZM92.1442 28.0238 118.152 36.9594 115.918 43.4613 89.9103 34.5257ZM137.658 43.6611 163.666 52.5968 161.432 59.0987 135.424 50.1631ZM183.171 59.2985 209.179 68.2341 206.945 74.7361 180.937 65.8004ZM228.685 74.9359 254.693 83.8715 252.459 90.3734 226.451 81.4378ZM274.199 90.5732 300.206 99.5089 297.972 106.011 271.965 97.0752ZM319.712 106.211 345.72 115.146 343.486 121.648 317.478 112.713ZM365.226 121.848 391.234 130.784 389 137.286 362.992 128.35ZM410.739 137.485 436.747 146.421 434.513 152.923 408.505 143.987ZM456.253 153.123 482.261 162.058 480.027 168.56 454.019 159.625ZM501.767 168.76 527.774 177.696 525.54 184.198 499.533 175.262ZM547.28 184.397 573.288 193.333 571.054 199.835 545.046 190.899ZM592.794 200.035 618.802 208.97 616.568 215.472 590.56 206.537ZM638.307 215.672 643.152 217.337 640.918 223.839 636.073 222.174ZM642.168 206.094 663.708 228.034 633.232 232.102Z" /><text
+       id="text4931"
+       transform="matrix(-1.83697e-16 -1 1 -1.83697e-16 943.025 1309)"
+       font-size="55"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Static Packet  Path</text>
+<text
+       id="text4933"
+       transform="matrix(-1.83697e-16 -1 1 -1.83697e-16 1009.03 1200)"
+       font-size="55"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">edge == 0</text>
+<text
+       id="text4935"
+       transform="matrix(0.916122 0.4009 -0.4009 0.916122 1103.93 809)"
+       font-size="64"
+       font-weight="400"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">edge == 1</text>
+<text
+       id="text4937"
+       transform="matrix(1 0 0 1 1522.09 429)"
+       font-size="55"
+       font-weight="700"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Start Node</text>
+<text
+       id="text4941"
+       transform="matrix(1 0 0 1 1618.96 1583)"
+       font-size="55"
+       font-weight="700"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">End Feature</text>
+<text
+       id="text4943"
+       transform="matrix(1 0 0 1 1671.66 1649)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Node</text>
+<text
+       id="text4945"
+       transform="matrix(1 0 0 1 2196.79 1078)"
+       font-size="55"
+       font-weight="700"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Feature</text>
+<text
+       id="text4947"
+       transform="matrix(1 0 0 1 2230.59 1144)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Node</text>
+<path
+       id="path4949"
+       transform="matrix(-1 0 0 1 1486.34 450.5)"
+       fill="#63666A"
+       d="M0.259414-0.510821 162.664 81.9641 162.145 82.9858-0.259414 0.510821ZM164.544 68.1399 182.837 92.8515 152.092 92.6593Z" /><path
+       id="path4951"
+       transform="matrix(-1 0 0 1 1537.94 1604.5)"
+       fill="#63666A"
+       d="M0.133795-0.557075 212.291 50.3976 212.023 51.5117-0.133795 0.557075ZM210.911 36.5145 234.44 56.3064 204.489 63.2541Z" /><path
+       id="path4953"
+       transform="matrix(-1 0 0 1 2159.31 1099.5)"
+       fill="#63666A"
+       d="M0.0965444-0.564724 169.317 28.3649 169.124 29.4944-0.0965444 0.564724ZM167.019 14.6039 191.809 32.7914 162.385 41.7106Z" /><path
+       id="path4955"
+       transform="matrix(-1 0 0 1 1737.41 724.5)"
+       fill="#63666A"
+       d="M0.229683-0.524861 295.142 128.531 294.683 129.581-0.229683 0.524861ZM296.226 114.622 315.907 138.243 285.201 139.815Z" /><text
+       id="text4957"
+       transform="matrix(1 0 0 1 1833.68 703)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Packet path gets activated in </text>
+<text
+       id="text4959"
+       transform="matrix(1 0 0 1 1865.62 769)"
+       text-decoration="underline"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">Node</text>
+<text
+       id="text4961"
+       transform="matrix(1 0 0 1 1996.25 769)"
+       text-decoration="underline"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">-</text>
+<text
+       id="text4963"
+       transform="matrix(1 0 0 1 2014.58 769)"
+       text-decoration="underline"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">A</text>
+<text
+       id="text4965"
+       transform="matrix(1 0 0 1 2064.68 769)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">when Feature</text>
+<text
+       id="text4967"
+       transform="matrix(1 0 0 1 2399.83 769)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">-</text>
+<text
+       id="text4969"
+       transform="matrix(1 0 0 1 2418.17 769)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">1 is </text>
+<text
+       id="text4971"
+       transform="matrix(1 0 0 1 1898.42 835)"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">enabled on </text>
+<text
+       id="text4973"
+       transform="matrix(1 0 0 1 2184.3 835)"
+       text-decoration="underline"
+       font-size="55"
+       font-weight="400"
+       font-style="italic"
+       font-family="Arial,Arial_MSFontService,sans-serif"
+       fill="#212322">an interface</text>
+</g></svg>

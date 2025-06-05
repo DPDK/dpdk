@@ -17,8 +17,10 @@ sources = files(
         'graph_pcap.c',
         'rte_graph_worker.c',
         'rte_graph_model_mcore_dispatch.c',
+        'graph_feature_arc.c',
 )
 headers = files('rte_graph.h', 'rte_graph_worker.h')
+headers += files('rte_graph_feature_arc.h')
 indirect_headers += files(
         'rte_graph_model_mcore_dispatch.h',
         'rte_graph_model_rtc.h',
