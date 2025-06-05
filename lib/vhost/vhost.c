@@ -495,7 +495,7 @@ vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	size = req_size;
 	vq->desc = (struct vring_desc *)(uintptr_t)vhost_iova_to_vva(dev, vq,
 						vq->ring_addrs.desc_user_addr,
-						&size, VHOST_ACCESS_RW);
+						&size, VHOST_ACCESS_RO);
 	if (!vq->desc || size != req_size)
 		return -1;
 
@@ -506,7 +506,7 @@ vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	size = req_size;
 	vq->avail = (struct vring_avail *)(uintptr_t)vhost_iova_to_vva(dev, vq,
 						vq->ring_addrs.avail_user_addr,
-						&size, VHOST_ACCESS_RW);
+						&size, VHOST_ACCESS_RO);
 	if (!vq->avail || size != req_size)
 		return -1;
 
@@ -542,7 +542,7 @@ vring_translate_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	size = req_size;
 	vq->driver_event = (struct vring_packed_desc_event *)(uintptr_t)
 		vhost_iova_to_vva(dev, vq, vq->ring_addrs.avail_user_addr,
-				&size, VHOST_ACCESS_RW);
+				&size, VHOST_ACCESS_RO);
 	if (!vq->driver_event || size != req_size)
 		return -1;
 
