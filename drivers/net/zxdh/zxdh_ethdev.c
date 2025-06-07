@@ -1429,6 +1429,7 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.allmulticast_disable	 = zxdh_dev_allmulticast_disable,
 	.vlan_filter_set		 = zxdh_dev_vlan_filter_set,
 	.vlan_offload_set		 = zxdh_dev_vlan_offload_set,
+	.vlan_tpid_set			 = zxdh_vlan_tpid_set,
 	.reta_update			 = zxdh_dev_rss_reta_update,
 	.reta_query				 = zxdh_dev_rss_reta_query,
 	.rss_hash_update		 = zxdh_rss_hash_update,
@@ -1907,6 +1908,7 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 static int
 zxdh_tables_init(struct rte_eth_dev *dev)
 {
+	struct zxdh_hw *hw = dev->data->dev_private;
 	int ret = 0;
 
 	ret = zxdh_port_attr_init(dev);
@@ -1927,9 +1929,15 @@ zxdh_tables_init(struct rte_eth_dev *dev)
 		return ret;
 	}
 
-	ret = zxdh_vlan_filter_table_init(dev);
+	ret = zxdh_vlan_filter_table_init(hw, hw->vport.vport);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "vlan filter table init failed");
+		return ret;
+	}
+
+	ret = zxdh_port_vlan_table_init(hw, hw->vport.vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "port vlan table init failed");
 		return ret;
 	}
 

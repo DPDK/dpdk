@@ -1234,6 +1234,24 @@ zxdh_vf_promisc_uninit(struct zxdh_hw *hw, union zxdh_virport_num vport)
 }
 
 static int
+zxdh_vf_vlan_table_init(struct zxdh_hw *hw, uint16_t vport)
+{
+	int ret = 0;
+	ret = zxdh_vlan_filter_table_init(hw, vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vf vlan filter table init failed, code:%d", ret);
+		return -1;
+	}
+
+	ret = zxdh_port_vlan_table_init(hw, vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vf port vlan table init failed, code:%d", ret);
+		return -1;
+	}
+	return ret;
+}
+
+static int
 zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 		void *res_info, uint16_t *res_len)
 {
@@ -1254,7 +1272,7 @@ zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	port_attr.port_base_qid = vf_init_msg->base_qid;
 	uint16_t vfid = zxdh_vport_to_vfid(port);
 
-	ret = zxdh_set_port_attr(pf_hw, vfid, &port_attr);
+	ret = zxdh_set_port_attr(pf_hw, vport, &port_attr);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "set vport attr failed, code:%d", ret);
 		goto proc_end;
@@ -1265,6 +1283,13 @@ zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 		PMD_DRV_LOG(ERR, "vf_promisc_table_init failed, code:%d", ret);
 		goto proc_end;
 	}
+
+	ret = zxdh_vf_vlan_table_init(pf_hw, vport);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vf vlan table init failed, code:%d", ret);
+		goto proc_end;
+	}
+
 	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_SUCC);
 	*res_len = sizeof(uint8_t);
 
@@ -2131,6 +2156,36 @@ zxdh_vf_mtr_hw_profile_cfg(struct zxdh_hw *pf_hw __rte_unused,
 	return 0;
 }
 
+static int
+zxdh_vf_vlan_tpid_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
+		void *res_info, uint16_t *res_len)
+{
+	union zxdh_virport_num port = {.vport = vport};
+	struct zxdh_vlan_tpid *vlan_tpid = (struct zxdh_vlan_tpid *)cfg_data;
+	struct zxdh_port_vlan_table port_vlan_table = {0};
+	int ret = 0;
+
+	RTE_ASSERT(!cfg_data || !pf_hw || !res_info || !res_len);
+
+	ret = zxdh_get_port_vlan_attr(pf_hw, vport, &port_vlan_table);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get port vlan attr failed, code:%d", ret);
+		goto proc_end;
+	}
+	port_vlan_table.hit_flag = 1;
+	port_vlan_table.business_vlan_tpid = vlan_tpid->tpid;
+	ret = zxdh_set_port_vlan_attr(pf_hw, vport, &port_vlan_table);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "set port vlan attr failed, code:%d", ret);
+		goto proc_end;
+	}
+
+proc_end:
+	*res_len = sizeof(uint8_t);
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_FAIL);
+	return ret;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -2142,6 +2197,7 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_VLAN_FILTER_ADD] = zxdh_vf_vlan_filter_table_add,
 	[ZXDH_VLAN_FILTER_DEL] = zxdh_vf_vlan_filter_table_del,
 	[ZXDH_VLAN_OFFLOAD] = zxdh_vf_set_vlan_offload,
+	[ZXDH_VLAN_SET_TPID] = zxdh_vf_vlan_tpid_set,
 	[ZXDH_RSS_ENABLE] = zxdh_vf_rss_enable,
 	[ZXDH_RSS_RETA_GET] = zxdh_vf_rss_table_get,
 	[ZXDH_RSS_RETA_SET] = zxdh_vf_rss_table_set,
