@@ -12,8 +12,7 @@
 #include "zxdh_ethdev.h"
 
 #define ZXDH_ETH_RSS_L2  RTE_ETH_RSS_L2_PAYLOAD
-#define ZXDH_ETH_RSS_IP \
-			(RTE_ETH_RSS_IPV4 | \
+#define ZXDH_ETH_RSS_IP (RTE_ETH_RSS_IPV4 | \
 			 RTE_ETH_RSS_FRAG_IPV4 | \
 			 RTE_ETH_RSS_IPV6 | \
 			 RTE_ETH_RSS_FRAG_IPV6)
@@ -25,6 +24,7 @@
 #define ZXDH_HF_F3_ETH        ZXDH_ETH_RSS_IP
 #define ZXDH_HF_MAC_VLAN_ETH  ZXDH_ETH_RSS_L2
 #define ZXDH_RSS_HF  ((ZXDH_HF_MAC_VLAN_ETH | ZXDH_HF_F3_ETH | ZXDH_HF_F5_ETH))
+#define ZXDH_RSS_HASH_KEY_LEN  40U
 
 #define ZXDH_ETHER_MIN_MTU      68
 

@@ -620,7 +620,7 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 
 	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &entry, 1);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "unicast_table_get_failed:%d", hw->vfid);
+		PMD_DRV_LOG(ERR, "unicast_table_get_failed:%d", vfid);
 		return -ret;
 	}
 
@@ -637,20 +637,20 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 
 	ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d", hw->vfid);
+		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d", vfid);
 		return -ret;
 	}
 
 	ret = zxdh_get_port_attr(hw, vport, &port_attr);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "port_attr_table_get_failed:%d", hw->vfid);
+		PMD_DRV_LOG(ERR, "port_attr_table_get_failed:%d", vfid);
 		return -ret;
 	}
 
 	port_attr.promisc_enable = enable;
 	ret = zxdh_set_port_attr(hw, vport, &port_attr);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "port_attr_table_set_failed:%d", hw->vfid);
+		PMD_DRV_LOG(ERR, "port_attr_table_set_failed:%d", vfid);
 		return -ret;
 	}
 

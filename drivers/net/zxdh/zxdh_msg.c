@@ -1270,7 +1270,6 @@ zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	port_attr.pf_vfid = pf_hw->vfid;
 	port_attr.hash_search_index = pf_hw->hash_search_index;
 	port_attr.port_base_qid = vf_init_msg->base_qid;
-	uint16_t vfid = zxdh_vport_to_vfid(port);
 
 	ret = zxdh_set_port_attr(pf_hw, vport, &port_attr);
 	if (ret) {
@@ -1714,12 +1713,14 @@ zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_u
 	if (ret)
 		sprintf(str, "set rss reta tbl failed, code:%d", ret);
 
-	*res_len = strlen(str) + sizeof(uint8_t);
-	if (ret == 0)
+	if (ret == 0) {
+		*res_len = ZXDH_ST_SZ_BYTES(rss_reta) + sizeof(uint8_t);
 		ZXDH_SET(msg_reply_body, reply, flag, ZXDH_REPS_SUCC);
-	else
+	} else {
+		*res_len = strlen(str) + sizeof(uint8_t);
 		ZXDH_SET(msg_reply_body, reply, flag, ZXDH_REPS_FAIL);
-	memcpy(reply_data_addr, str, strlen(str) + 1);
+		memcpy(reply_data_addr, str, strlen(str) + 1);
+	}
 	return ret;
 }
 
@@ -2160,7 +2161,6 @@ static int
 zxdh_vf_vlan_tpid_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 		void *res_info, uint16_t *res_len)
 {
-	union zxdh_virport_num port = {.vport = vport};
 	struct zxdh_vlan_tpid *vlan_tpid = (struct zxdh_vlan_tpid *)cfg_data;
 	struct zxdh_port_vlan_table port_vlan_table = {0};
 	int ret = 0;

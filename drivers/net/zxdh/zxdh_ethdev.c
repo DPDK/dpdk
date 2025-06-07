@@ -66,6 +66,7 @@ zxdh_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->rx_offload_capa |=  RTE_ETH_RX_OFFLOAD_TCP_LRO;
 	dev_info->rx_offload_capa |=  RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
+	dev_info->hash_key_size = ZXDH_RSS_HASH_KEY_LEN;
 	dev_info->reta_size = RTE_ETH_RSS_RETA_SIZE_256;
 	dev_info->flow_type_rss_offloads = ZXDH_RSS_HF;
 
