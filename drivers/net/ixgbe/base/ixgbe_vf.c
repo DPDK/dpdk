@@ -409,6 +409,7 @@ s32 ixgbevf_update_xcast_mode(struct ixgbe_hw *hw, int xcast_mode)
 		/* Fall through */
 	case ixgbe_mbox_api_13:
 	case ixgbe_mbox_api_15:
+	case ixgbe_mbox_api_16:
 		break;
 	default:
 		return IXGBE_ERR_FEATURE_NOT_SUPPORTED;
@@ -453,6 +454,47 @@ s32 ixgbe_get_link_state_vf(struct ixgbe_hw *hw, bool *link_state)
 	}
 
 	return ret_val;
+}
+
+/**
+ * ixgbevf_get_pf_link_state - Get PF's link status
+ * @hw: pointer to the HW structure
+ * @speed - link speed
+ * @link_up - indicate if link is up/down
+ *
+ * Ask PF to provide link_up state and speed of the link.
+ *
+ * Return: IXGBE_ERR_MBX in the  case of mailbox error,
+ * IXGBE_ERR_FEATURE_NOT_SUPPORTED if the op is not supported or 0 on success.
+ */
+int ixgbevf_get_pf_link_state(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
+			      bool *link_up)
+{
+	u32 msgbuf[3] = {};
+	int err;
+
+	switch (hw->api_version) {
+	case ixgbe_mbox_api_16:
+		break;
+	default:
+		return IXGBE_ERR_FEATURE_NOT_SUPPORTED;
+	}
+
+	msgbuf[0] = IXGBE_VF_GET_PF_LINK_STATE;
+
+	err = ixgbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 6);
+	if (err || (msgbuf[0] & IXGBE_VT_MSGTYPE_FAILURE)) {
+		err = IXGBE_ERR_MBX;
+		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+		/* No need to set @link_up to false as it will be done in
+		 * ixgbe_check_mac_link_vf().
+		 */
+	} else {
+		*speed = msgbuf[1];
+		*link_up = msgbuf[2];
+	}
+
+	return err;
 }
 
 /**
@@ -569,36 +611,25 @@ s32 ixgbe_setup_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 }
 
 /**
- * ixgbe_check_mac_link_vf - Get link/speed status
- * @hw: pointer to hardware structure
- * @speed: pointer to link speed
- * @link_up: true is link is up, false otherwise
- * @autoneg_wait_to_complete: true when waiting for completion is needed
+ * ixgbe_read_vflinks - Read VFLINKS register
+ * @hw: pointer to the HW structure
+ * @speed - link speed
+ * @link_up - indicate if link is up/down
  *
- * Reads the links register to determine if link is up and the current speed
- **/
-s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
-			    bool *link_up, bool autoneg_wait_to_complete)
+ * Get linkup status and link speed from the VFLINKS register.
+ */
+static void ixgbe_read_vflinks(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
+			       bool *link_up)
 {
-	struct ixgbe_mbx_info *mbx = &hw->mbx;
 	struct ixgbe_mac_info *mac = &hw->mac;
-	s32 ret_val = IXGBE_SUCCESS;
-	u32 in_msg = 0;
 	u32 links_reg;
-
-	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
-
-	/* If we were hit with a reset drop the link */
-	if (!mbx->ops[0].check_for_rst(hw, 0) || !mbx->timeout)
-		mac->get_link_status = true;
-
-	if (!mac->get_link_status)
-		goto out;
 
 	/* if link status is down no point in checking to see if pf is up */
 	links_reg = IXGBE_READ_REG(hw, IXGBE_VFLINKS);
-	if (!(links_reg & IXGBE_LINKS_UP))
-		goto out;
+	if (!(links_reg & IXGBE_LINKS_UP)) {
+		*link_up = false;
+		return;
+	}
 
 	/* for SFP+ modules and DA cables on 82599 it can take up to 500usecs
 	 * before the link status is correct
@@ -610,10 +641,14 @@ s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 			usec_delay(100);
 			links_reg = IXGBE_READ_REG(hw, IXGBE_VFLINKS);
 
-			if (!(links_reg & IXGBE_LINKS_UP))
-				goto out;
+			if (!(links_reg & IXGBE_LINKS_UP)) {
+				*link_up = false;
+				return;
+			}
 		}
 	}
+	/* We have link at this point */
+	*link_up = true;
 
 	switch (links_reg & IXGBE_LINKS_SPEED_82599) {
 	case IXGBE_LINKS_SPEED_10G_82599:
@@ -628,8 +663,7 @@ s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		break;
 	case IXGBE_LINKS_SPEED_100_82599:
 		*speed = IXGBE_LINK_SPEED_100_FULL;
-		if (hw->mac.type == ixgbe_mac_X550_vf ||
-		    hw->mac.type == ixgbe_mac_E610_vf) {
+		if (hw->mac.type == ixgbe_mac_X550_vf) {
 			if (links_reg & IXGBE_LINKS_SPEED_NON_STD)
 				*speed = IXGBE_LINK_SPEED_5GB_FULL;
 		}
@@ -642,6 +676,43 @@ s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		break;
 	default:
 		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+	}
+}
+
+/**
+ * ixgbe_check_mac_link_vf - Get link/speed status
+ * @hw: pointer to hardware structure
+ * @speed: pointer to link speed
+ * @link_up: true is link is up, false otherwise
+ * @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ * Reads the links register to determine if link is up and the current speed
+ */
+s32 ixgbe_check_mac_link_vf(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
+			    bool *link_up, bool autoneg_wait_to_complete)
+{
+	struct ixgbe_mbx_info *mbx = &hw->mbx;
+	struct ixgbe_mac_info *mac = &hw->mac;
+	s32 ret_val = IXGBE_SUCCESS;
+	u32 in_msg = 0;
+
+	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
+
+	/* If we were hit with a reset drop the link */
+	if (!mbx->ops[0].check_for_rst(hw, 0) || !mbx->timeout)
+		mac->get_link_status = true;
+
+	if (!mac->get_link_status)
+		goto out;
+
+	if (hw->mac.type != ixgbe_mac_E610_vf) {
+		ixgbe_read_vflinks(hw, speed, link_up);
+		if (*link_up == false)
+			goto out;
+	} else {
+		ret_val = ixgbevf_get_pf_link_state(hw, speed, link_up);
+		if (ret_val)
+			goto out;
 	}
 
 	/* if the read failed it could just be a mailbox collision, best wait
@@ -742,6 +813,7 @@ int ixgbevf_get_queues(struct ixgbe_hw *hw, unsigned int *num_tcs,
 	case ixgbe_mbox_api_12:
 	case ixgbe_mbox_api_13:
 	case ixgbe_mbox_api_15:
+	case ixgbe_mbox_api_16:
 		break;
 	default:
 		return 0;
