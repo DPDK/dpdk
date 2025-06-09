@@ -6,7 +6,7 @@ Intel® IXGBE driver
 ===================
 
 This directory contains source code of ixgbe base driver generated on
-2024-12-20 released by the team which develops
+2025-06-04 released by the team which develops
 basic drivers for any ixgbe NIC. The sub-directory of base/
 contains the original source package.
 This driver is valid for the product(s) listed below
