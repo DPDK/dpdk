@@ -752,7 +752,7 @@ ixgbe_parse_common_caps(struct ixgbe_hw *hw, struct ixgbe_hw_common_caps *caps,
 			  prefix, caps->next_cluster_id_support);
 		break;
 	case IXGBE_ACI_CAPS_PTP_BY_PHY:
-		caps->ptp_by_phy_support = (number == 1);
+		caps->ptp_by_phy_support = 0;
 		DEBUGOUT2("%s: ptp_by_phy_support = %d\n", prefix,
 			  caps->ptp_by_phy_support);
 		break;
