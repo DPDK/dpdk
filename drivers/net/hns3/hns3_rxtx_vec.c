@@ -184,7 +184,9 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 {
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint64_t offloads_mask = RTE_ETH_RX_OFFLOAD_TCP_LRO |
-				 RTE_ETH_RX_OFFLOAD_VLAN |
+				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				 RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
+				 RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
 				 RTE_ETH_RX_OFFLOAD_TIMESTAMP |
 				 RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
