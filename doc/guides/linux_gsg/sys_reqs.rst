@@ -32,7 +32,8 @@ Compilation of the DPDK
     GCC (version 8.0+ recommended) or Clang (version 7+ recommended),
     and ``pkg-config`` or ``pkgconf`` to be used when building end-user binaries against DPDK.
 
-    * For RHEL/Fedora systems these can be installed using ``dnf groupinstall "Development Tools"``
+    * For RHEL systems these can be installed using ``dnf groupinstall "Development Tools"``
+    * For Fedora systems these can be installed using ``dnf group install development-tools``
     * For Ubuntu/Debian systems these can be installed using ``apt install build-essential``
     * For Alpine Linux, ``apk add alpine-sdk bsd-compat-headers``
 

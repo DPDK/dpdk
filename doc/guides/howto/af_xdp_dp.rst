@@ -159,7 +159,7 @@ Build a DPDK container image (using Docker)
           python3-pyelftools \
           python38 \
           iproute
-      RUN dnf groupinstall -y 'Development Tools'
+      RUN dnf group install -y development-tools
 
       # Create DPDK dir and copy over sources
       # Create DPDK dir and copy over sources
