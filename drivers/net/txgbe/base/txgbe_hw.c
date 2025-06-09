@@ -226,6 +226,15 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw)
 				      TXGBE_MD_DEV_AUTO_NEG, reg_cu);
 	}
 
+	/*
+	 * Reconfig mac ctrl frame fwd rule to make sure it still
+	 * working after port stop/start.
+	 */
+	wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_CTL_MASK,
+	      (hw->fc.mac_ctrl_frame_fwd ?
+	       TXGBE_MACRXFLT_CTL_NOPS : TXGBE_MACRXFLT_CTL_DROP));
+	txgbe_flush(hw);
+
 	DEBUGOUT("Set up FC; reg = 0x%08X", reg);
 out:
 	return err;
