@@ -16,11 +16,11 @@
 int
 hns3_tx_check_vec_support(struct rte_eth_dev *dev)
 {
-	struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
-	/* Only support RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE */
-	if (txmode->offloads != RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+	/* Only support when Tx offloads is RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE or 0. */
+	if (tx_offloads != RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE && tx_offloads != 0)
 		return -ENOTSUP;
 
 	/*
