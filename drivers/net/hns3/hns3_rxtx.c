@@ -281,12 +281,25 @@ hns3_free_all_queues(struct rte_eth_dev *dev)
 static int
 hns3_check_rx_dma_addr(struct hns3_hw *hw, uint64_t dma_addr)
 {
+	uint64_t rx_offload = hw->data->dev_conf.rxmode.offloads;
 	uint64_t rem;
 
 	rem = dma_addr & (hw->rx_dma_addr_align - 1);
 	if (rem > 0) {
-		hns3_err(hw, "The IO address of the beginning of the mbuf data "
-			 "must be %u-byte aligned", hw->rx_dma_addr_align);
+		hns3_err(hw,
+			 "mbuf DMA address must be %u-byte aligned",
+			 hw->rx_dma_addr_align);
+		return -EINVAL;
+	}
+
+	/*
+	 * This check is for HIP08 network engine. The GRO function
+	 * requires that mbuf DMA address is 64-byte aligned.
+	 */
+	rem = dma_addr & (HNS3_RX_DMA_ADDR_ALIGN_128 - 1);
+	if ((rx_offload & RTE_ETH_RX_OFFLOAD_TCP_LRO) && rem > 0) {
+		hns3_err(hw,
+			 "GRO requires that mbuf DMA address be 64-byte aligned");
 		return -EINVAL;
 	}
 	return 0;
