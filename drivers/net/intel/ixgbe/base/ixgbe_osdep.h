@@ -39,6 +39,7 @@
 #define DEBUGOUT1(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 #define DEBUGOUT2(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 #define DEBUGOUT3(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT4(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 #define DEBUGOUT6(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 #define DEBUGOUT7(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 

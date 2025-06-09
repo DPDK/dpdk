@@ -10,6 +10,8 @@
 void ixgbe_init_aci(struct ixgbe_hw *hw);
 void ixgbe_shutdown_aci(struct ixgbe_hw *hw);
 
+void ixgbe_aci_debug(struct ixgbe_hw *hw, void *desc, void *buf, u16 buf_len);
+
 s32 ixgbe_aci_send_cmd(struct ixgbe_hw *hw, struct ixgbe_aci_desc *desc,
 		       void *buf, u16 buf_size);
 bool ixgbe_aci_check_event_pending(struct ixgbe_hw *hw);

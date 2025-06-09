@@ -361,6 +361,7 @@
 #define IXGBE_ACI_DESC_COOKIE_L_DWORD_OFFSET	3
 #define IXGBE_ACI_SEND_DELAY_TIME_MS		10
 #define IXGBE_ACI_SEND_MAX_EXECUTE		3
+#define IXGBE_ACI_MAX_DEBUG_STRING_LENGTH	128
 /* [ms] timeout of waiting for sync response */
 #define IXGBE_ACI_SYNC_RESPONSE_TIMEOUT		100000
 /* [ms] timeout of waiting for async response */
