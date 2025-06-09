@@ -117,6 +117,7 @@ New Features
 * **Updated Marvell cnxk crypto driver.**
 
   * Added support for CN20K SoC in cnxk CPT driver.
+  * Added support for session-less asymmetric operations.
 
 * **Added eventdev vector adapter.**
 
