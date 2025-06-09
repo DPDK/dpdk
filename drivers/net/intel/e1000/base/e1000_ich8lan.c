@@ -285,6 +285,43 @@ STATIC void e1000_toggle_lanphypc_pch_lpt(struct e1000_hw *hw)
 }
 
 /**
+ * e1000_reconfigure_k1_exit_timeout
+ * @hw: pointer to the HW structure
+ *
+ * Reconfigure K1 exit timeout as a workaround to the PHY sycndhronization issue
+ * on MTL, LNL, PTL and WCL.
+ *
+ * Assuming PHY semaphore is taken prior to this function call.
+ **/
+STATIC s32 e1000_reconfigure_k1_exit_timeout(struct e1000_hw *hw)
+{
+	s32 ret_val = E1000_SUCCESS;
+	u32 fextnvm12;
+	u16 phy_timeout;
+
+	DEBUGFUNC("e1000_reconfigure_k1_exit_timeout");
+
+	if (hw->mac.type < e1000_pch_mtp)
+		return E1000_SUCCESS;
+
+	fextnvm12 = E1000_READ_REG(hw, E1000_FEXTNVM12);
+	fextnvm12 |= (1 << 23);
+	fextnvm12 &= ~((1 << 22));
+	E1000_WRITE_REG(hw, E1000_FEXTNVM12, fextnvm12);
+
+	msec_delay_irq(1);
+
+	ret_val = hw->phy.ops.read_reg_locked(hw, E1000_PHY_TIMEOUTS_REG,
+					      &phy_timeout);
+	phy_timeout &= ~E1000_PHY_TIMEOUTS_K1_EXIT_TO_MASK;
+	phy_timeout |= 0xF00;
+	ret_val = hw->phy.ops.write_reg_locked(hw, E1000_PHY_TIMEOUTS_REG,
+					       phy_timeout);
+
+	return ret_val;
+}
+
+/**
  *  e1000_init_phy_workarounds_pchlan - PHY initialization workarounds
  *  @hw: pointer to the HW structure
  *
@@ -332,6 +369,14 @@ STATIC s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+		/* Due to clock synchronization issue on MTL and above prior to
+		 * disabling k1 it is required to disable P0s state and
+		 * reconfigure PHY k1 exit timeout. At this point the PHY might
+		 * be inaccessible so don't propagate the failure.
+		 */
+		if (hw->mac.type >= e1000_pch_mtp)
+			e1000_reconfigure_k1_exit_timeout(hw);
+
 		if (e1000_phy_is_accessible_pchlan(hw))
 			break;
 
@@ -417,6 +462,16 @@ STATIC s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 		ret_val = hw->phy.ops.check_reset_block(hw);
 		if (ret_val)
 			ERROR_REPORT("ME blocked access to PHY after reset\n");
+
+		if (hw->mac.type >= e1000_pch_mtp) {
+			ret_val = hw->phy.ops.acquire(hw);
+			if (ret_val) {
+				DEBUGOUT("Failed to reconfigure K1 exit timeout\n");
+				goto out;
+			}
+			ret_val = e1000_reconfigure_k1_exit_timeout(hw);
+			hw->phy.ops.release(hw);
+		}
 	}
 
 out:
@@ -2462,18 +2517,6 @@ s32 e1000_configure_k1_ich8lan(struct e1000_hw *hw, bool k1_enable)
 	u16 kmrn_reg = 0;
 
 	DEBUGFUNC("e1000_configure_k1_ich8lan");
-
-	/* Due to clock synchronization issue on MTL and above prior to
-	 * disabling k1 it is required to disable P0s state
-	 */
-	if ((!k1_enable) && (hw->mac.type >= e1000_pch_mtp)) {
-		u32 fextnvm12 = E1000_READ_REG(hw, E1000_FEXTNVM12);
-		fextnvm12 |= (1 << 23);
-		fextnvm12 &= ~((1 << 22));
-		E1000_WRITE_REG(hw, E1000_FEXTNVM12, fextnvm12);
-
-		usec_delay(100);
-	}
 
 	ret_val = e1000_read_kmrn_reg_locked(hw, E1000_KMRNCTRLSTA_K1_CONFIG,
 					     &kmrn_reg);
@@ -5085,6 +5128,21 @@ STATIC s32 e1000_init_hw_ich8lan(struct e1000_hw *hw)
 	DEBUGFUNC("e1000_init_hw_ich8lan");
 
 	e1000_initialize_hw_bits_ich8lan(hw);
+
+
+	if (hw->mac.type >= e1000_pch_mtp) {
+		ret_val = hw->phy.ops.acquire(hw);
+		if (ret_val)
+			return ret_val;
+
+		ret_val = e1000_reconfigure_k1_exit_timeout(hw);
+		hw->phy.ops.release(hw);
+
+		if (ret_val) {
+			DEBUGOUT("Error reconfiguring PHY K1 exit timeout\n");
+			return ret_val;
+		}
+	}
 
 	/* Initialize identification LED */
 	ret_val = mac->ops.id_led_init(hw);
