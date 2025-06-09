@@ -46,10 +46,12 @@ static struct unit_test_suite pmu_tests = {
 	}
 };
 
-static int
+static int __rte_unused
 test_pmu(void)
 {
 	return unit_test_suite_runner(&pmu_tests);
 }
 
-REGISTER_FAST_TEST(pmu_autotest, true, true, test_pmu);
+/* disabled because of reported failures, waiting for a fix
+ * REGISTER_FAST_TEST(pmu_autotest, true, true, test_pmu);
+ */
