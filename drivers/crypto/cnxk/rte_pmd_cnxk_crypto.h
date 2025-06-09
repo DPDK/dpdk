@@ -13,6 +13,9 @@
 
 #include <stdint.h>
 
+#include <rte_crypto.h>
+#include <rte_security.h>
+
 /* Forward declarations */
 
 /**
