@@ -187,18 +187,12 @@ txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	/*
-	 * Program the relevant mask registers.  If src/dst_port or src/dst_addr
-	 * are zero, then assume a full mask for that field. Also assume that
-	 * a VLAN of 0 is unspecified, so mask that out as well.  L4type
-	 * cannot be masked out in this implementation.
-	 */
-	if (info->mask.dst_port_mask == 0 && info->mask.src_port_mask == 0) {
-		/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
-		fdirm |= TXGBE_FDIRMSK_L4P;
-	}
+	/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
+	if (info->mask.pkt_type_mask == 0 && info->mask.dst_port_mask == 0 &&
+	    info->mask.src_port_mask == 0)
+		info->mask.pkt_type_mask |= TXGBE_FDIRMSK_L4P;
 
-	/* TBD: don't support encapsulation yet */
+	fdirm |= info->mask.pkt_type_mask;
 	wr32(hw, TXGBE_FDIRMSK, fdirm);
 
 	/* store the TCP/UDP port masks */
@@ -216,15 +210,12 @@ txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 	wr32(hw, TXGBE_FDIRSIP4MSK, ~info->mask.src_ipv4_mask);
 	wr32(hw, TXGBE_FDIRDIP4MSK, ~info->mask.dst_ipv4_mask);
 
-	if (mode == RTE_FDIR_MODE_SIGNATURE) {
-		/*
-		 * Store source and destination IPv6 masks (bit reversed)
-		 */
-		fdiripv6m = TXGBE_FDIRIP6MSK_DST(info->mask.dst_ipv6_mask) |
-			    TXGBE_FDIRIP6MSK_SRC(info->mask.src_ipv6_mask);
-
-		wr32(hw, TXGBE_FDIRIP6MSK, ~fdiripv6m);
-	}
+	/*
+	 * Store source and destination IPv6 masks (bit reversed)
+	 */
+	fdiripv6m = TXGBE_FDIRIP6MSK_DST(info->mask.dst_ipv6_mask) |
+		    TXGBE_FDIRIP6MSK_SRC(info->mask.src_ipv6_mask);
+	wr32(hw, TXGBE_FDIRIP6MSK, ~fdiripv6m);
 
 	return 0;
 }
@@ -258,9 +249,24 @@ txgbe_fdir_store_input_mask(struct rte_eth_dev *dev)
 	return 0;
 }
 
+uint16_t
+txgbe_fdir_get_flex_base(struct txgbe_fdir_rule *rule)
+{
+	if (!rule->flex_relative)
+		return TXGBE_FDIRFLEXCFG_BASE_MAC;
+
+	if (rule->input.flow_type & TXGBE_ATR_L4TYPE_MASK)
+		return TXGBE_FDIRFLEXCFG_BASE_PAY;
+
+	if (rule->input.flow_type & TXGBE_ATR_L3TYPE_MASK)
+		return TXGBE_FDIRFLEXCFG_BASE_L3;
+
+	return TXGBE_FDIRFLEXCFG_BASE_L2;
+}
+
 int
 txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
-				uint16_t offset)
+				uint16_t offset, uint16_t flex_base)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	int i;
@@ -268,7 +274,7 @@ txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
 	for (i = 0; i < 64; i++) {
 		uint32_t flexreg, flex;
 		flexreg = rd32(hw, TXGBE_FDIRFLEXCFG(i / 4));
-		flex = TXGBE_FDIRFLEXCFG_BASE_MAC;
+		flex = flex_base;
 		flex |= TXGBE_FDIRFLEXCFG_OFST(offset / 2);
 		flexreg &= ~(TXGBE_FDIRFLEXCFG_ALL(~0UL, i % 4));
 		flexreg |= TXGBE_FDIRFLEXCFG_ALL(flex, i % 4);
@@ -633,6 +639,8 @@ fdir_write_perfect_filter(struct txgbe_hw *hw,
 	fdircmd |= TXGBE_FDIRPICMD_QP(queue);
 	fdircmd |= TXGBE_FDIRPICMD_POOL(input->vm_pool);
 
+	if (input->flow_type & TXGBE_ATR_L3TYPE_IPV6)
+		fdircmd |= TXGBE_FDIRPICMD_IP6;
 	wr32(hw, TXGBE_FDIRPICMD, fdircmd);
 
 	PMD_DRV_LOG(DEBUG, "Rx Queue=%x hash=%x", queue, fdirhash);
@@ -801,11 +809,6 @@ txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 		is_perfect = TRUE;
 
 	if (is_perfect) {
-		if (rule->input.flow_type & TXGBE_ATR_L3TYPE_IPV6) {
-			PMD_DRV_LOG(ERR, "IPv6 is not supported in"
-				    " perfect mode!");
-			return -ENOTSUP;
-		}
 		fdirhash = atr_compute_perfect_hash(&rule->input,
 				TXGBE_DEV_FDIR_CONF(dev)->pballoc);
 		fdirhash |= TXGBE_FDIRPIHASH_IDX(rule->soft_id);
@@ -909,6 +912,11 @@ txgbe_fdir_flush(struct rte_eth_dev *dev)
 	info->f_remove = 0;
 	info->add = 0;
 	info->remove = 0;
+
+	memset(&info->mask, 0, sizeof(struct txgbe_hw_fdir_mask));
+	info->mask_added = false;
+	info->flex_relative = false;
+	info->flex_bytes_offset = 0;
 
 	return ret;
 }
