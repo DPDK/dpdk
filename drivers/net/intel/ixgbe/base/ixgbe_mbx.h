@@ -101,6 +101,7 @@ enum ixgbe_pfvf_api_rev {
 	/* API 1.4 is being used in the upstream for IPsec */
 	ixgbe_mbox_api_14,	/* API version 1.4, linux/freebsd VF driver */
 	ixgbe_mbox_api_15,	/* API version 1.5, linux/freebsd VF driver */
+	ixgbe_mbox_api_16,	/* API version 1.6, linux/freebsd VF driver */
 	/* This value should always be last */
 	ixgbe_mbox_api_unknown,	/* indicates that API version is not known */
 };
@@ -124,6 +125,9 @@ enum ixgbe_pfvf_api_rev {
 #define IXGBE_VF_GET_RSS_KEY	0x0b    /* get RSS key */
 #define IXGBE_VF_UPDATE_XCAST_MODE	0x0c
 #define IXGBE_VF_GET_LINK_STATE 0x10 /* get vf link state */
+
+/* mailbox API, version 1.6 VF requests */
+#define IXGBE_VF_GET_PF_LINK_STATE 0x11 /* get status of the link on PF */
 
 /* mode choices for IXGBE_VF_UPDATE_XCAST_MODE */
 enum ixgbevf_xcast_modes {
