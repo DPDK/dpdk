@@ -1117,6 +1117,19 @@ s32 ixgbe_set_vlvf(struct ixgbe_hw *hw, u32 vlan, u32 vind, bool vlan_on,
 }
 
 /**
+ * ixgbe_toggle_txdctl - Toggle VF's queues
+ * @hw: pointer to hardware structure
+ * @vind: VMDq pool index
+ *
+ * Enable and disable each queue in VF.
+ */
+s32 ixgbe_toggle_txdctl(struct ixgbe_hw *hw, u32 vind)
+{
+	return ixgbe_call_func(hw, hw->mac.ops.toggle_txdctl, (hw,
+			       vind), IXGBE_NOT_IMPLEMENTED);
+}
+
+/**
  * ixgbe_fc_enable - Enable flow control
  * @hw: pointer to hardware structure
  *

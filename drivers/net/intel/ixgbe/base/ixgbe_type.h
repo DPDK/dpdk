@@ -4026,6 +4026,7 @@ struct ixgbe_mac_operations {
 	void (*set_vlan_anti_spoofing)(struct ixgbe_hw *, bool, int);
 	s32 (*update_xcast_mode)(struct ixgbe_hw *, int);
 	s32 (*set_rlpml)(struct ixgbe_hw *, u16);
+	s32 (*toggle_txdctl)(struct ixgbe_hw *hw, u32 vf_index);
 
 	/* Flow Control */
 	s32 (*fc_enable)(struct ixgbe_hw *);

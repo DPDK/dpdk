@@ -104,6 +104,7 @@ s32 ixgbe_init_ops_generic(struct ixgbe_hw *hw)
 	mac->ops.init_uta_tables = NULL;
 	mac->ops.enable_rx = ixgbe_enable_rx_generic;
 	mac->ops.disable_rx = ixgbe_disable_rx_generic;
+	mac->ops.toggle_txdctl = ixgbe_toggle_txdctl_generic;
 
 	/* Flow Control */
 	mac->ops.fc_enable = ixgbe_fc_enable_generic;
@@ -4102,6 +4103,61 @@ s32 ixgbe_clear_vfta_generic(struct ixgbe_hw *hw)
 		IXGBE_WRITE_REG(hw, IXGBE_VLVF(offset), 0);
 		IXGBE_WRITE_REG(hw, IXGBE_VLVFB(offset * 2), 0);
 		IXGBE_WRITE_REG(hw, IXGBE_VLVFB(offset * 2 + 1), 0);
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_toggle_txdctl_generic - Toggle VF's queues
+ * @hw: pointer to hardware structure
+ * @vf_number: VF index
+ *
+ * Enable and disable each queue in VF.
+ */
+s32 ixgbe_toggle_txdctl_generic(struct ixgbe_hw *hw, u32 vf_number)
+{
+	u8  queue_count, i;
+	u32 offset, reg;
+
+	if (vf_number > 63)
+		return IXGBE_ERR_PARAM;
+
+	/*
+	 * Determine number of queues by checking
+	 * number of virtual functions
+	 */
+	reg = IXGBE_READ_REG(hw, IXGBE_GCR_EXT);
+	switch (reg & IXGBE_GCR_EXT_VT_MODE_MASK) {
+	case IXGBE_GCR_EXT_VT_MODE_64:
+		queue_count = 2;
+		break;
+	case IXGBE_GCR_EXT_VT_MODE_32:
+		queue_count = 4;
+		break;
+	case IXGBE_GCR_EXT_VT_MODE_16:
+		queue_count = 8;
+		break;
+	default:
+		return IXGBE_ERR_CONFIG;
+	}
+
+	/* Toggle queues */
+	for (i = 0; i < queue_count; ++i) {
+		/* Calculate offset of current queue */
+		offset = queue_count * vf_number + i;
+
+		/* Enable queue */
+		reg = IXGBE_READ_REG(hw, IXGBE_PVFTXDCTL(offset));
+		reg |= IXGBE_TXDCTL_ENABLE;
+		IXGBE_WRITE_REG(hw, IXGBE_PVFTXDCTL(offset), reg);
+		IXGBE_WRITE_FLUSH(hw);
+
+		/* Disable queue */
+		reg = IXGBE_READ_REG(hw, IXGBE_PVFTXDCTL(offset));
+		reg &= ~IXGBE_TXDCTL_ENABLE;
+		IXGBE_WRITE_REG(hw, IXGBE_PVFTXDCTL(offset), reg);
+		IXGBE_WRITE_FLUSH(hw);
 	}
 
 	return IXGBE_SUCCESS;
