@@ -200,7 +200,7 @@ class Driver:
 
 def load_drivers(image):
     drivers = []
-    for symbol in image.find_by_pattern("^this_pmd_name[0-9]+$"):
+    for symbol in image.find_by_pattern("^this_pmd_name[0-9a-zA-Z_]+$"):
         drivers.append(Driver.load(image, symbol))
     return drivers
 

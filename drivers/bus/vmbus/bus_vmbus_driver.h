@@ -101,7 +101,7 @@ void rte_vmbus_unregister(struct rte_vmbus_driver *driver);
 		(vmbus_drv).driver.name = RTE_STR(nm);	\
 		rte_vmbus_register(&vmbus_drv);		\
 	}						\
-	RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+	RTE_PMD_EXPORT_NAME(nm)
 
 #ifdef __cplusplus
 }

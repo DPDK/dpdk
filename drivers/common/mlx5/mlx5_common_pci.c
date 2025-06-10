@@ -245,4 +245,4 @@ RTE_FINI(mlx5_common_pci_finish)
 	}
 }
 
-RTE_PMD_EXPORT_NAME(mlx5_common_pci, __COUNTER__);
+RTE_PMD_EXPORT_NAME(mlx5_common_pci);

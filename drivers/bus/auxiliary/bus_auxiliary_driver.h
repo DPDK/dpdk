@@ -168,7 +168,7 @@ void rte_auxiliary_register(struct rte_auxiliary_driver *driver);
 		(auxiliary_drv).driver.name = RTE_STR(nm); \
 		rte_auxiliary_register(&(auxiliary_drv)); \
 	} \
-	RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+	RTE_PMD_EXPORT_NAME(nm)
 
 /**
  * Unregister an auxiliary driver.

@@ -153,7 +153,7 @@ void rte_cdx_register(struct rte_cdx_driver *driver);
 		(cdx_drv).driver.name = RTE_STR(nm);\
 		rte_cdx_register(&cdx_drv); \
 	} \
-	RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+	RTE_PMD_EXPORT_NAME(nm)
 
 /**
  * Enables VFIO Interrupts for CDX bus devices.

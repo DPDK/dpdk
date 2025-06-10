@@ -205,7 +205,7 @@ RTE_INIT(dpaa2initfn_ ##nm) \
 	(dpaa2_drv).driver.name = RTE_STR(nm);\
 	rte_fslmc_driver_register(&dpaa2_drv); \
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 /**
  * Register a DPAA2 MC Object driver.
@@ -236,7 +236,7 @@ RTE_INIT(dpaa2objinitfn_ ##nm) \
 	(dpaa2_obj).name = RTE_STR(nm);\
 	rte_fslmc_object_register(&dpaa2_obj); \
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 #ifdef __cplusplus
 }

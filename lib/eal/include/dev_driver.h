@@ -30,11 +30,8 @@ struct rte_device {
 	struct rte_devargs *devargs;  /**< Arguments for latest probing */
 };
 
-#define RTE_PMD_EXPORT_NAME_ARRAY(n, idx) n##idx[]
-
-#define RTE_PMD_EXPORT_NAME(name, idx) \
-static const char RTE_PMD_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
-__rte_used = RTE_STR(name)
+#define RTE_PMD_EXPORT_NAME(name) \
+static const char this_pmd_name ## name __rte_used = RTE_STR(name)
 
 #define DRV_EXP_TAG(name, tag) __##name##_##tag
 
