@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <stdlib.h>
 #include <math.h>
 
 #include <eal_export.h>
@@ -42,11 +43,14 @@ static uint64_t samp_intvl;
 static uint64_t timer_tsc;
 static uint64_t prev_tsc;
 
+#define LATENCY_AVG_SCALE     4
+#define LATENCY_JITTER_SCALE 16
+
 struct rte_latency_stats {
-	float min_latency; /**< Minimum latency in nano seconds */
-	float avg_latency; /**< Average latency in nano seconds */
-	float max_latency; /**< Maximum latency in nano seconds */
-	float jitter; /** Latency variation */
+	uint64_t min_latency; /**< Minimum latency */
+	uint64_t avg_latency; /**< Average latency */
+	uint64_t max_latency; /**< Maximum latency */
+	uint64_t jitter; /** Latency variation */
 	rte_spinlock_t lock; /** Latency calculation lock */
 };
 
@@ -62,32 +66,39 @@ static struct rxtx_cbs tx_cbs[RTE_MAX_ETHPORTS][RTE_MAX_QUEUES_PER_PORT];
 struct latency_stats_nameoff {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	unsigned int offset;
+	unsigned int scale;
 };
 
 static const struct latency_stats_nameoff lat_stats_strings[] = {
-	{"min_latency_ns", offsetof(struct rte_latency_stats, min_latency)},
-	{"avg_latency_ns", offsetof(struct rte_latency_stats, avg_latency)},
-	{"max_latency_ns", offsetof(struct rte_latency_stats, max_latency)},
-	{"jitter_ns", offsetof(struct rte_latency_stats, jitter)},
+	{"min_latency_ns", offsetof(struct rte_latency_stats, min_latency), 1},
+	{"avg_latency_ns", offsetof(struct rte_latency_stats, avg_latency), LATENCY_AVG_SCALE},
+	{"max_latency_ns", offsetof(struct rte_latency_stats, max_latency), 1},
+	{"jitter_ns", offsetof(struct rte_latency_stats, jitter), LATENCY_JITTER_SCALE},
 };
 
 #define NUM_LATENCY_STATS (sizeof(lat_stats_strings) / \
 				sizeof(lat_stats_strings[0]))
 
+static void
+latencystats_collect(uint64_t values[])
+{
+	unsigned int i;
+	const uint64_t *stats;
+
+	for (i = 0; i < NUM_LATENCY_STATS; i++) {
+		stats = RTE_PTR_ADD(glob_stats, lat_stats_strings[i].offset);
+		values[i] = floor(*stats / (cycles_per_ns * lat_stats_strings[i].scale));
+	}
+}
+
 RTE_EXPORT_SYMBOL(rte_latencystats_update)
 int32_t
 rte_latencystats_update(void)
 {
-	unsigned int i;
-	float *stats_ptr = NULL;
-	uint64_t values[NUM_LATENCY_STATS] = {0};
+	uint64_t values[NUM_LATENCY_STATS];
 	int ret;
 
-	for (i = 0; i < NUM_LATENCY_STATS; i++) {
-		stats_ptr = RTE_PTR_ADD(glob_stats,
-				lat_stats_strings[i].offset);
-		values[i] = floor(*stats_ptr / cycles_per_ns);
-	}
+	latencystats_collect(values);
 
 	ret = rte_metrics_update_values(RTE_METRICS_GLOBAL,
 					latency_stats_index,
@@ -99,16 +110,16 @@ rte_latencystats_update(void)
 }
 
 static void
-rte_latencystats_fill_values(struct rte_metric_value *values)
+rte_latencystats_fill_values(struct rte_metric_value *metrics)
 {
+	uint64_t values[NUM_LATENCY_STATS];
 	unsigned int i;
-	float *stats_ptr = NULL;
+
+	latencystats_collect(values);
 
 	for (i = 0; i < NUM_LATENCY_STATS; i++) {
-		stats_ptr = RTE_PTR_ADD(glob_stats,
-				lat_stats_strings[i].offset);
-		values[i].key = i;
-		values[i].value = floor(*stats_ptr / cycles_per_ns);
+		metrics[i].key = i;
+		metrics[i].value = values[i];
 	}
 }
 
@@ -153,15 +164,9 @@ calc_latency(uint16_t pid __rte_unused,
 		void *_ __rte_unused)
 {
 	unsigned int i;
-	uint64_t now;
-	float latency;
-	static float prev_latency;
-	/*
-	 * Alpha represents degree of weighting decrease in EWMA,
-	 * a constant smoothing factor between 0 and 1. The value
-	 * is used below for measuring average latency.
-	 */
-	const float alpha = 0.2f;
+	uint64_t now, latency;
+	static uint64_t prev_latency;
+	static bool first_sample = true;
 
 	now = rte_rdtsc();
 
@@ -172,32 +177,45 @@ calc_latency(uint16_t pid __rte_unused,
 
 		latency = now - *timestamp_dynfield(pkts[i]);
 
-		/*
-		 * The jitter is calculated as statistical mean of interpacket
-		 * delay variation. The "jitter estimate" is computed by taking
-		 * the absolute values of the ipdv sequence and applying an
-		 * exponential filter with parameter 1/16 to generate the
-		 * estimate. i.e J=J+(|D(i-1,i)|-J)/16. Where J is jitter,
-		 * D(i-1,i) is difference in latency of two consecutive packets
-		 * i-1 and i.
-		 * Reference: Calculated as per RFC 5481, sec 4.1,
-		 * RFC 3393 sec 4.5, RFC 1889 sec.
-		 */
-		glob_stats->jitter +=  (fabsf(prev_latency - latency)
-					- glob_stats->jitter)/16;
-		if (glob_stats->min_latency == 0)
+		if (unlikely(first_sample)) {
+			first_sample = false;
+
 			glob_stats->min_latency = latency;
-		else if (latency < glob_stats->min_latency)
-			glob_stats->min_latency = latency;
-		else if (latency > glob_stats->max_latency)
 			glob_stats->max_latency = latency;
-		/*
-		 * The average latency is measured using exponential moving
-		 * average, i.e. using EWMA
-		 * https://en.wikipedia.org/wiki/Moving_average
-		 */
-		glob_stats->avg_latency +=
-			alpha * (latency - glob_stats->avg_latency);
+			glob_stats->avg_latency = latency * 4;
+			/* start ad if previous sample had 0 latency */
+			glob_stats->jitter = latency / LATENCY_JITTER_SCALE;
+		} else {
+			/*
+			 * The jitter is calculated as statistical mean of interpacket
+			 * delay variation. The "jitter estimate" is computed by taking
+			 * the absolute values of the ipdv sequence and applying an
+			 * exponential filter with parameter 1/16 to generate the
+			 * estimate. i.e J=J+(|D(i-1,i)|-J)/16. Where J is jitter,
+			 * D(i-1,i) is difference in latency of two consecutive packets
+			 * i-1 and i. Jitter is scaled by 16.
+			 * Reference: Calculated as per RFC 5481, sec 4.1,
+			 * RFC 3393 sec 4.5, RFC 1889 sec.
+			 */
+			long long delta = prev_latency - latency;
+			glob_stats->jitter += llabs(delta)
+				- glob_stats->jitter / LATENCY_JITTER_SCALE;
+
+			if (latency < glob_stats->min_latency)
+				glob_stats->min_latency = latency;
+			if (latency > glob_stats->max_latency)
+				glob_stats->max_latency = latency;
+			/*
+			 * The average latency is measured using exponential moving
+			 * average, i.e. using EWMA
+			 * https://en.wikipedia.org/wiki/Moving_average
+			 *
+			 * Alpha is .25, avg_latency is scaled by 4.
+			 */
+			glob_stats->avg_latency += latency
+				- glob_stats->avg_latency / LATENCY_AVG_SCALE;
+		}
+
 		prev_latency = latency;
 	}
 	rte_spinlock_unlock(&glob_stats->lock);
