@@ -1722,7 +1722,7 @@ Supported HCAs:
 
 Supported mlx5 kernel modules versions:
 
-- Upstream Linux - from version 6.3.
+- Upstream Linux - from version 6.3 with CONFIG_NET_TC_SKB_EXT and CONFIG_MLX5_CLS_ACT enabled.
 - Modules packaged in MLNX_OFED - from version v23.04-0.5.3.3.
 
 Configuration
