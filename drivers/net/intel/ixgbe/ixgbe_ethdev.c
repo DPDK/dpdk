@@ -3358,38 +3358,40 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 					IXGBE_FDIRFSTAT) >> 16) & 0xFFFF;
 	}
 	/* MACsec Stats registers */
-	macsec_stats->out_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECTXUT);
-	macsec_stats->out_pkts_encrypted +=
-		IXGBE_READ_REG(hw, IXGBE_LSECTXPKTE);
-	macsec_stats->out_pkts_protected +=
-		IXGBE_READ_REG(hw, IXGBE_LSECTXPKTP);
-	macsec_stats->out_octets_encrypted +=
-		IXGBE_READ_REG(hw, IXGBE_LSECTXOCTE);
-	macsec_stats->out_octets_protected +=
-		IXGBE_READ_REG(hw, IXGBE_LSECTXOCTP);
-	macsec_stats->in_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECRXUT);
-	macsec_stats->in_pkts_badtag += IXGBE_READ_REG(hw, IXGBE_LSECRXBAD);
-	macsec_stats->in_pkts_nosci += IXGBE_READ_REG(hw, IXGBE_LSECRXNOSCI);
-	macsec_stats->in_pkts_unknownsci +=
-		IXGBE_READ_REG(hw, IXGBE_LSECRXUNSCI);
-	macsec_stats->in_octets_decrypted +=
-		IXGBE_READ_REG(hw, IXGBE_LSECRXOCTD);
-	macsec_stats->in_octets_validated +=
-		IXGBE_READ_REG(hw, IXGBE_LSECRXOCTV);
-	macsec_stats->in_pkts_unchecked += IXGBE_READ_REG(hw, IXGBE_LSECRXUNCH);
-	macsec_stats->in_pkts_delayed += IXGBE_READ_REG(hw, IXGBE_LSECRXDELAY);
-	macsec_stats->in_pkts_late += IXGBE_READ_REG(hw, IXGBE_LSECRXLATE);
-	for (i = 0; i < 2; i++) {
-		macsec_stats->in_pkts_ok +=
-			IXGBE_READ_REG(hw, IXGBE_LSECRXOK(i));
-		macsec_stats->in_pkts_invalid +=
-			IXGBE_READ_REG(hw, IXGBE_LSECRXINV(i));
-		macsec_stats->in_pkts_notvalid +=
-			IXGBE_READ_REG(hw, IXGBE_LSECRXNV(i));
+	if (hw->mac.type != ixgbe_mac_E610) {
+		macsec_stats->out_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECTXUT);
+		macsec_stats->out_pkts_encrypted +=
+			IXGBE_READ_REG(hw, IXGBE_LSECTXPKTE);
+		macsec_stats->out_pkts_protected +=
+			IXGBE_READ_REG(hw, IXGBE_LSECTXPKTP);
+		macsec_stats->out_octets_encrypted +=
+			IXGBE_READ_REG(hw, IXGBE_LSECTXOCTE);
+		macsec_stats->out_octets_protected +=
+			IXGBE_READ_REG(hw, IXGBE_LSECTXOCTP);
+		macsec_stats->in_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECRXUT);
+		macsec_stats->in_pkts_badtag += IXGBE_READ_REG(hw, IXGBE_LSECRXBAD);
+		macsec_stats->in_pkts_nosci += IXGBE_READ_REG(hw, IXGBE_LSECRXNOSCI);
+		macsec_stats->in_pkts_unknownsci +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXUNSCI);
+		macsec_stats->in_octets_decrypted +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXOCTD);
+		macsec_stats->in_octets_validated +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXOCTV);
+		macsec_stats->in_pkts_unchecked += IXGBE_READ_REG(hw, IXGBE_LSECRXUNCH);
+		macsec_stats->in_pkts_delayed += IXGBE_READ_REG(hw, IXGBE_LSECRXDELAY);
+		macsec_stats->in_pkts_late += IXGBE_READ_REG(hw, IXGBE_LSECRXLATE);
+		for (i = 0; i < 2; i++) {
+			macsec_stats->in_pkts_ok +=
+				IXGBE_READ_REG(hw, IXGBE_LSECRXOK(i));
+			macsec_stats->in_pkts_invalid +=
+				IXGBE_READ_REG(hw, IXGBE_LSECRXINV(i));
+			macsec_stats->in_pkts_notvalid +=
+				IXGBE_READ_REG(hw, IXGBE_LSECRXNV(i));
+		}
+		macsec_stats->in_pkts_unusedsa += IXGBE_READ_REG(hw, IXGBE_LSECRXUNSA);
+		macsec_stats->in_pkts_notusingsa +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXNUSA);
 	}
-	macsec_stats->in_pkts_unusedsa += IXGBE_READ_REG(hw, IXGBE_LSECRXUNSA);
-	macsec_stats->in_pkts_notusingsa +=
-		IXGBE_READ_REG(hw, IXGBE_LSECRXNUSA);
 }
 
 /*
@@ -3482,15 +3484,19 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 	(IXGBE_NB_TXQ_PRIO_STATS * IXGBE_NB_TXQ_PRIO_VALUES))
 
 static unsigned
-ixgbe_xstats_calc_num(void)
+ixgbe_xstats_calc_num(struct rte_eth_dev *dev)
 {
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if (hw->mac.type == ixgbe_mac_E610)
+		return IXGBE_XSTATS_CALC_NUM - IXGBE_NB_MACSEC_STATS;
 	return IXGBE_XSTATS_CALC_NUM;
 }
 
-static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+static int ixgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned int size)
 {
-	const unsigned cnt_stats = ixgbe_xstats_calc_num();
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const unsigned int cnt_stats = ixgbe_xstats_calc_num(dev);
 	unsigned stat, i, count;
 
 	if (xstats_names != NULL) {
@@ -3509,11 +3515,13 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		}
 
 		/* MACsec Stats */
-		for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
-			strlcpy(xstats_names[count].name,
-				rte_ixgbe_macsec_strings[i].name,
-				sizeof(xstats_names[count].name));
-			count++;
+		if (hw->mac.type != ixgbe_mac_E610) {
+			for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+				strlcpy(xstats_names[count].name,
+					rte_ixgbe_macsec_strings[i].name,
+					sizeof(xstats_names[count].name));
+				count++;
+			}
 		}
 
 		/* RX Priority Stats */
@@ -3548,7 +3556,8 @@ static int ixgbe_dev_xstats_get_names_by_id(
 	unsigned int limit)
 {
 	if (!ids) {
-		const unsigned int cnt_stats = ixgbe_xstats_calc_num();
+		struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		const unsigned int cnt_stats = ixgbe_xstats_calc_num(dev);
 		unsigned int stat, i, count;
 
 		if (xstats_names != NULL) {
@@ -3567,11 +3576,13 @@ static int ixgbe_dev_xstats_get_names_by_id(
 			}
 
 			/* MACsec Stats */
-			for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
-				strlcpy(xstats_names[count].name,
-					rte_ixgbe_macsec_strings[i].name,
-					sizeof(xstats_names[count].name));
-				count++;
+			if (hw->mac.type != ixgbe_mac_E610) {
+				for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+					strlcpy(xstats_names[count].name,
+						rte_ixgbe_macsec_strings[i].name,
+						sizeof(xstats_names[count].name));
+					count++;
+				}
 			}
 
 			/* RX Priority Stats */
@@ -3647,7 +3658,7 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
 	unsigned i, stat, count = 0;
 
-	count = ixgbe_xstats_calc_num();
+	count = ixgbe_xstats_calc_num(dev);
 
 	if (n < count)
 		return count;
@@ -3676,11 +3687,13 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	}
 
 	/* MACsec Stats */
-	for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
-		xstats[count].value = *(uint64_t *)(((char *)macsec_stats) +
-				rte_ixgbe_macsec_strings[i].offset);
-		xstats[count].id = count;
-		count++;
+	if (hw->mac.type != ixgbe_mac_E610) {
+		for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+			xstats[count].value = *(uint64_t *)(((char *)macsec_stats) +
+					rte_ixgbe_macsec_strings[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
 	}
 
 	/* RX Priority Stats */
@@ -3723,7 +3736,7 @@ ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
 		unsigned int i, stat, count = 0;
 
-		count = ixgbe_xstats_calc_num();
+		count = ixgbe_xstats_calc_num(dev);
 
 		if (!ids && n < count)
 			return count;
@@ -3807,7 +3820,7 @@ ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 			IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(
 				dev->data->dev_private);
 
-	unsigned count = ixgbe_xstats_calc_num();
+	unsigned int count = ixgbe_xstats_calc_num(dev);
 
 	/* HW registers are cleared on read */
 	ixgbe_dev_xstats_get(dev, NULL, count);
