@@ -98,7 +98,7 @@ test_per_lcore(void)
 	}
 
 	/* test if it could do remote launch twice at the same time or not */
-	ret = rte_eal_mp_remote_launch(test_per_lcore_delay, &wait, SKIP_MAIN);
+	ret = rte_eal_mp_remote_launch(test_per_lcore_delay, RTE_PTR_UNQUAL(&wait), SKIP_MAIN);
 	if (ret < 0) {
 		printf("It fails to do remote launch but it should able to do\n");
 		return -1;
