@@ -59,6 +59,7 @@ struct rte_latency_stats {
 	uint64_t avg_latency; /**< Average latency */
 	uint64_t max_latency; /**< Maximum latency */
 	uint64_t jitter; /** Latency variation */
+	uint64_t samples;    /** Number of latency samples */
 	rte_spinlock_t lock; /** Latency calculation lock */
 };
 
@@ -82,20 +83,26 @@ static const struct latency_stats_nameoff lat_stats_strings[] = {
 	{"avg_latency_ns", offsetof(struct rte_latency_stats, avg_latency), LATENCY_AVG_SCALE},
 	{"max_latency_ns", offsetof(struct rte_latency_stats, max_latency), 1},
 	{"jitter_ns", offsetof(struct rte_latency_stats, jitter), LATENCY_JITTER_SCALE},
+	{"samples", offsetof(struct rte_latency_stats, samples), 0},
 };
 
-#define NUM_LATENCY_STATS (sizeof(lat_stats_strings) / \
-				sizeof(lat_stats_strings[0]))
+#define NUM_LATENCY_STATS RTE_DIM(lat_stats_strings)
 
 static void
 latencystats_collect(uint64_t values[])
 {
-	unsigned int i;
+	unsigned int i, scale;
 	const uint64_t *stats;
 
 	for (i = 0; i < NUM_LATENCY_STATS; i++) {
 		stats = RTE_PTR_ADD(glob_stats, lat_stats_strings[i].offset);
-		values[i] = floor(*stats / (cycles_per_ns * lat_stats_strings[i].scale));
+		scale = lat_stats_strings[i].scale;
+
+		/* used to mark samples which are not a time interval */
+		if (scale == 0)
+			values[i] = *stats;
+		else
+			values[i] = floor(*stats / (cycles_per_ns * scale));
 	}
 }
 
@@ -174,7 +181,6 @@ calc_latency(uint16_t pid __rte_unused,
 	unsigned int i;
 	uint64_t now, latency;
 	static uint64_t prev_latency;
-	static bool first_sample = true;
 
 	now = rte_rdtsc();
 
@@ -185,9 +191,7 @@ calc_latency(uint16_t pid __rte_unused,
 
 		latency = now - *timestamp_dynfield(pkts[i]);
 
-		if (unlikely(first_sample)) {
-			first_sample = false;
-
+		if (glob_stats->samples++ == 0) {
 			glob_stats->min_latency = latency;
 			glob_stats->max_latency = latency;
 			glob_stats->avg_latency = latency * 4;
