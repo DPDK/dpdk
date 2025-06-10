@@ -232,11 +232,8 @@ int rte_dev_remove(struct rte_device *dev);
  */
 typedef int (*rte_dev_cmp_t)(const struct rte_device *dev, const void *data);
 
-#define RTE_PMD_EXPORT_NAME_ARRAY(n, idx) n##idx[]
-
-#define RTE_PMD_EXPORT_NAME(name, idx) \
-static const char RTE_PMD_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
-__rte_used = RTE_STR(name)
+#define RTE_PMD_EXPORT_NAME(name) \
+static const char this_pmd_name ## name __rte_used = RTE_STR(name)
 
 #define DRV_EXP_TAG(name, tag) __##name##_##tag
 

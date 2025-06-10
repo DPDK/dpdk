@@ -171,7 +171,7 @@ RTE_INIT(pciinitfn_ ##nm) \
 	(pci_drv).driver.name = RTE_STR(nm);\
 	rte_pci_register(&pci_drv); \
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 /**
  * Unregister a PCI driver.
