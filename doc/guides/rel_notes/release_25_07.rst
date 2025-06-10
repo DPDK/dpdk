@@ -55,6 +55,18 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Enhanced EAL ``-l`` corelist argument.**
+
+  Added support to the EAL ``-l`` argument for the full range of core-to-cpu mapping
+  options supported by the ``--lcores`` EAL argument.
+  Previously, ``-l`` only supported a subset of the options,
+  allowing only a list of CPUs to be specified,
+  which would be mapped 1:1 with internal lcore IDs.
+  Now, it is possible to use the shortened ``-l`` form
+  to map lcore IDs to threads running on specific CPUs.
+
+  See the :doc:`../linux_gsg/eal_args.include` guide for examples.
+
 * **Added PMU library.**
 
   Added a Performance Monitoring Unit (PMU) library which allows Linux applications
