@@ -198,7 +198,7 @@ jobs:
       shell: cmd
       run: |
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -host_arch=amd64 -arch=amd64
-        meson setup -Denable_stdatomic=true build
+        meson setup -Denable_stdatomic=true -Dwerror=true build
     - name: Build
       shell: cmd
       run: |
