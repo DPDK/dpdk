@@ -262,7 +262,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	latency_stats_index = rte_metrics_reg_names(ptr_strings,
 							NUM_LATENCY_STATS);
 	if (latency_stats_index < 0) {
-		LATENCY_STATS_LOG(DEBUG,
+		LATENCY_STATS_LOG(ERR,
 			"Failed to register latency stats names");
 		return -1;
 	}
@@ -282,8 +282,8 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 
 		ret = rte_eth_dev_info_get(pid, &dev_info);
 		if (ret != 0) {
-			LATENCY_STATS_LOG(INFO,
-				"Error during getting device (port %u) info: %s",
+			LATENCY_STATS_LOG(NOTICE,
+				"Can not get info for device (port %u): %s",
 				pid, strerror(-ret));
 
 			continue;
@@ -294,18 +294,18 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 			cbs->cb = rte_eth_add_first_rx_callback(pid, qid,
 					add_time_stamps, user_cb);
 			if (!cbs->cb)
-				LATENCY_STATS_LOG(INFO, "Failed to "
-					"register Rx callback for pid=%d, "
-					"qid=%d", pid, qid);
+				LATENCY_STATS_LOG(NOTICE,
+					"Failed to register Rx callback for pid=%u, qid=%u",
+					pid, qid);
 		}
 		for (qid = 0; qid < dev_info.nb_tx_queues; qid++) {
 			cbs = &tx_cbs[pid][qid];
 			cbs->cb =  rte_eth_add_tx_callback(pid, qid,
 					calc_latency, user_cb);
 			if (!cbs->cb)
-				LATENCY_STATS_LOG(INFO, "Failed to "
-					"register Tx callback for pid=%d, "
-					"qid=%d", pid, qid);
+				LATENCY_STATS_LOG(NOTICE,
+					"Failed to register Tx callback for pid=%u, qid=%u",
+					pid, qid);
 		}
 	}
 	return 0;
@@ -327,10 +327,9 @@ rte_latencystats_uninit(void)
 
 		ret = rte_eth_dev_info_get(pid, &dev_info);
 		if (ret != 0) {
-			LATENCY_STATS_LOG(INFO,
-				"Error during getting device (port %u) info: %s",
+			LATENCY_STATS_LOG(NOTICE,
+				"Can not get info for device (port %u): %s",
 				pid, strerror(-ret));
-
 			continue;
 		}
 
@@ -338,17 +337,17 @@ rte_latencystats_uninit(void)
 			cbs = &rx_cbs[pid][qid];
 			ret = rte_eth_remove_rx_callback(pid, qid, cbs->cb);
 			if (ret)
-				LATENCY_STATS_LOG(INFO, "failed to "
-					"remove Rx callback for pid=%d, "
-					"qid=%d", pid, qid);
+				LATENCY_STATS_LOG(NOTICE,
+					"Failed to remove Rx callback for pid=%u, qid=%u",
+					pid, qid);
 		}
 		for (qid = 0; qid < dev_info.nb_tx_queues; qid++) {
 			cbs = &tx_cbs[pid][qid];
 			ret = rte_eth_remove_tx_callback(pid, qid, cbs->cb);
 			if (ret)
-				LATENCY_STATS_LOG(INFO, "failed to "
-					"remove Tx callback for pid=%d, "
-					"qid=%d", pid, qid);
+				LATENCY_STATS_LOG(NOTICE,
+					"Failed to remove Tx callback for pid=%u, qid=%u",
+					pid, qid);
 		}
 	}
 
