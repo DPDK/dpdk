@@ -30,7 +30,7 @@
 
 static double cycles_per_ns;
 
-RTE_LOG_REGISTER_DEFAULT(latencystat_logtype, INFO);
+static RTE_LOG_REGISTER_DEFAULT(latencystat_logtype, INFO);
 #define RTE_LOGTYPE_LATENCY_STATS latencystat_logtype
 #define LATENCY_STATS_LOG(level, ...) \
 	RTE_LOG_LINE(level, LATENCY_STATS, "" __VA_ARGS__)
@@ -248,6 +248,10 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	if (rte_memzone_lookup(MZ_RTE_LATENCY_STATS))
 		return -EEXIST;
 
+	/** Reserved for possible future use */
+	if (user_cb != NULL)
+		return -ENOTSUP;
+
 	/** Allocate stats in shared memory fo multi process support */
 	mz = rte_memzone_reserve(MZ_RTE_LATENCY_STATS, sizeof(*glob_stats),
 					rte_socket_id(), flags);
@@ -300,7 +304,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 		for (qid = 0; qid < dev_info.nb_rx_queues; qid++) {
 			cbs = &rx_cbs[pid][qid];
 			cbs->cb = rte_eth_add_first_rx_callback(pid, qid,
-					add_time_stamps, user_cb);
+					add_time_stamps, NULL);
 			if (!cbs->cb)
 				LATENCY_STATS_LOG(NOTICE,
 					"Failed to register Rx callback for pid=%u, qid=%u",
@@ -309,7 +313,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 		for (qid = 0; qid < dev_info.nb_tx_queues; qid++) {
 			cbs = &tx_cbs[pid][qid];
 			cbs->cb =  rte_eth_add_tx_callback(pid, qid,
-					calc_latency, user_cb);
+					calc_latency, NULL);
 			if (!cbs->cb)
 				LATENCY_STATS_LOG(NOTICE,
 					"Failed to register Tx callback for pid=%u, qid=%u",
