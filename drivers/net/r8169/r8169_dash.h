@@ -20,6 +20,7 @@
 #define HW_DASH_SUPPORT_TYPE_3(_M)      ((_M)->HwSuppDashVer == 3)
 #define HW_DASH_SUPPORT_TYPE_4(_M)      ((_M)->HwSuppDashVer == 4)
 #define HW_DASH_SUPPORT_CMAC(_M)        (HW_DASH_SUPPORT_TYPE_2(_M) || HW_DASH_SUPPORT_TYPE_3(_M))
+#define HW_DASH_SUPPORT_IPC2(_M)        (HW_DASH_SUPPORT_TYPE_4(_M))
 #define HW_DASH_SUPPORT_GET_FIRMWARE_VERSION(_M) (HW_DASH_SUPPORT_TYPE_2(_M) || \
 						  HW_DASH_SUPPORT_TYPE_3(_M) || \
 						  HW_DASH_SUPPORT_TYPE_4(_M))
