@@ -41,10 +41,6 @@ struct rtl_tx_desc {
 	RTE_ATOMIC(u32) opts1;
 	u32 opts2;
 	u64 addr;
-	u32 reserved0;
-	u32 reserved1;
-	u32 reserved2;
-	u32 reserved3;
 };
 
 /* Struct RxDesc in kernel r8169 */
@@ -186,6 +182,9 @@ enum _DescStatusBit {
 #define TCPHO_MAX      0x3ffU
 #define LSOPKTSIZE_MAX 0xffffU
 #define MSS_MAX        0x07ffu /* MSS value */
+
+typedef void (*rtl_clear_rdu_func)(struct rtl_hw *);
+static rtl_clear_rdu_func rtl_clear_rdu;
 
 /* ---------------------------------RX---------------------------------- */
 
@@ -384,8 +383,8 @@ rtl_alloc_rx_queue_mbufs(struct rtl_rx_queue *rxq)
 	return 0;
 }
 
-static int
-rtl_hw_set_features(struct rtl_hw *hw, uint64_t offloads)
+static void
+rtl8125_hw_set_features(struct rtl_hw *hw, uint64_t offloads)
 {
 	u16 cp_cmd;
 	u32 rx_config;
@@ -406,8 +405,35 @@ rtl_hw_set_features(struct rtl_hw *hw, uint64_t offloads)
 		cp_cmd &= ~RxChkSum;
 
 	RTL_W16(hw, CPlusCmd, cp_cmd);
+}
 
-	return 0;
+static void
+rtl8168_hw_set_features(struct rtl_hw *hw, uint64_t offloads)
+{
+	u16 cp_cmd;
+
+	cp_cmd = RTL_R16(hw, CPlusCmd);
+
+	if (offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM)
+		cp_cmd |= RxChkSum;
+	else
+		cp_cmd &= ~RxChkSum;
+
+	if (offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+		cp_cmd |= RxVlan;
+	else
+		cp_cmd &= ~RxVlan;
+
+	RTL_W16(hw, CPlusCmd, cp_cmd);
+}
+
+static void
+rtl_hw_set_features(struct rtl_hw *hw, uint64_t offloads)
+{
+	if (rtl_is_8125(hw))
+		rtl8125_hw_set_features(hw, offloads);
+	else
+		rtl8168_hw_set_features(hw, offloads);
 }
 
 static void
@@ -421,6 +447,18 @@ rtl_hw_set_rx_packet_filter(struct rtl_hw *hw)
 	RTL_W32(hw, RxConfig, rx_mode | (RTL_R32(hw, RxConfig)));
 }
 
+static void
+rtl8125_clear_rdu(struct rtl_hw *hw)
+{
+	RTL_W32(hw, ISR0_8125, (RxOK | RxErr | RxDescUnavail));
+}
+
+static void
+rtl8168_clear_rdu(struct rtl_hw *hw)
+{
+	RTL_W16(hw, IntrStatus, (RxOK | RxErr | RxDescUnavail));
+}
+
 int
 rtl_rx_init(struct rte_eth_dev *dev)
 {
@@ -428,7 +466,7 @@ rtl_rx_init(struct rte_eth_dev *dev)
 	struct rtl_hw *hw = &adapter->hw;
 	struct rtl_rx_queue *rxq;
 	int ret;
-	u32 max_rx_pkt_size;
+	u32 csi_tmp, max_rx_pkt_size;
 
 	rxq = dev->data->rx_queues[0];
 
@@ -463,6 +501,37 @@ rtl_rx_init(struct rte_eth_dev *dev)
 
 	rtl_enable_cfg9346_write(hw);
 
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		/* RX ftr mcu enable */
+		csi_tmp = rtl_eri_read(hw, 0xDC, 1, ERIAR_ExGMAC);
+		csi_tmp &= ~BIT_0;
+		rtl_eri_write(hw, 0xDC, 1, csi_tmp, ERIAR_ExGMAC);
+		csi_tmp |= BIT_0;
+		rtl_eri_write(hw, 0xDC, 1, csi_tmp, ERIAR_ExGMAC);
+
+		/* RSS disable */
+		rtl_eri_write(hw, 0xC0, 2, 0x0000, ERIAR_ExGMAC); /* queue num = 1 */
+		rtl_eri_write(hw, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
+		break;
+	}
+
 	/* RX accept type and csum vlan offload */
 	rtl_hw_set_features(hw, rxq->offloads);
 
@@ -476,6 +545,11 @@ rtl_rx_init(struct rte_eth_dev *dev)
 	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdRxEnb);
 
 	dev->data->rx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	if (rtl_is_8125(hw))
+		rtl_clear_rdu = rtl8125_clear_rdu;
+	else
+		rtl_clear_rdu = rtl8168_clear_rdu;
 
 	return 0;
 }
@@ -527,10 +601,10 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t nb_rx = 0;
 	uint16_t nb_hold = 0;
 	uint16_t tail = rxq->rx_tail;
+	uint16_t pkt_len = 0;
 	const uint16_t nb_rx_desc = rxq->nb_rx_desc;
 	uint32_t opts1;
 	uint32_t opts2;
-	uint16_t pkt_len = 0;
 	uint64_t dma_addr;
 
 	hw_ring = rxq->hw_ring;
@@ -632,7 +706,7 @@ rtl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rte_wmb();
 
 		/* Clear RDU */
-		RTL_W32(hw, ISR0_8125, (RxOK | RxErr | RxDescUnavail));
+		rtl_clear_rdu(hw);
 
 		nb_hold = 0;
 	}
@@ -829,7 +903,7 @@ next_desc:
 		rte_wmb();
 
 		/* Clear RDU */
-		RTL_W32(hw, ISR0_8125, (RxOK | RxErr | RxDescUnavail));
+		rtl_clear_rdu(hw);
 
 		nb_hold = 0;
 	}
@@ -941,7 +1015,7 @@ rtl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq = rte_zmalloc_socket("r8169 TX queue", sizeof(struct rtl_tx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 
-	if (txq == NULL) {
+	if (!txq) {
 		PMD_INIT_LOG(ERR, "Cannot allocate Tx queue structure");
 		return -ENOMEM;
 	}
@@ -995,6 +1069,44 @@ rtl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
+static void
+rtl8125_set_tx_tag_num(struct rtl_hw *hw)
+{
+	u32 mac_ocp_data;
+
+	mac_ocp_data = rtl_mac_ocp_read(hw, 0xE614);
+	mac_ocp_data &= ~(BIT_10 | BIT_9 | BIT_8);
+	switch (hw->mcfg) {
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_53:
+		mac_ocp_data |= (2 << 8);
+		break;
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		if (hw->EnableTxNoClose)
+			mac_ocp_data |= (4 << 8);
+		else
+			mac_ocp_data |= (3 << 8);
+		break;
+	default:
+		mac_ocp_data |= (3 << 8);
+		break;
+	}
+	rtl_mac_ocp_write(hw, 0xE614, mac_ocp_data);
+}
+
+/* Set MTPS: Max Tx Pkt Size */
+static void
+rtl8168_set_mtps(struct rtl_hw *hw)
+{
+	if (hw->mtu > RTE_ETHER_MTU)
+		RTL_W8(hw, MTPS, 0x27);
+	else
+		RTL_W8(hw, MTPS, 0x3F);
+}
+
 int
 rtl_tx_init(struct rte_eth_dev *dev)
 {
@@ -1010,10 +1122,45 @@ rtl_tx_init(struct rte_eth_dev *dev)
 
 	rtl_enable_cfg9346_write(hw);
 
+	if (rtl_is_8125(hw))
+		rtl8125_set_tx_tag_num(hw);
+	else
+		rtl8168_set_mtps(hw);
+
 	/* Set TDFNR: TX Desc Fetch NumbeR */
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		RTL_W8(hw, TDFNR, 0x4);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		RTL_W8(hw, TDFNR, 0x10);
 		break;
 	}
@@ -1187,7 +1334,12 @@ rtl_xmit_pkt(struct rtl_hw *hw, struct rtl_tx_queue *txq,
 		rtl_setup_csum_offload(tx_pkt, tx_ol_flags, opts);
 
 		switch (hw->mcfg) {
-		case CFG_METHOD_48 ... CFG_METHOD_53:
+		case CFG_METHOD_48:
+		case CFG_METHOD_49:
+		case CFG_METHOD_50:
+		case CFG_METHOD_51:
+		case CFG_METHOD_52:
+		case CFG_METHOD_53:
 			rtl8125_ptp_patch(tx_pkt);
 			break;
 		}
@@ -1270,7 +1422,7 @@ rtl_get_opts1(struct rtl_tx_desc *txd)
 }
 
 static void
-rtl_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
+rtl8125_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 {
 	struct rtl_tx_entry *sw_ring = txq->sw_ring;
 	struct rtl_tx_entry *txe;
@@ -1282,7 +1434,7 @@ rtl_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 	uint32_t tx_left;
 	uint32_t tx_desc_closed, next_hw_desc_clo_ptr0;
 
-	if (txq == NULL)
+	if (!txq)
 		return;
 
 	if (enable_tx_no_close) {
@@ -1319,8 +1471,54 @@ rtl_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 	txq->tx_head = head;
 }
 
-int
-rtl_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
+static void
+rtl8168_tx_clean(struct rtl_hw *hw __rte_unused, struct rtl_tx_queue *txq)
+{
+	struct rtl_tx_entry *sw_ring = txq->sw_ring;
+	struct rtl_tx_entry *txe;
+	struct rtl_tx_desc *txd;
+	const uint16_t nb_tx_desc = txq->nb_tx_desc;
+	const int tx_tail = txq->tx_tail % nb_tx_desc;
+	int head = txq->tx_head;
+	uint16_t desc_freed = 0;
+
+	if (!txq)
+		return;
+
+	while (1) {
+		txd = &txq->hw_ring[head];
+
+		if (rtl_get_opts1(txd) & DescOwn)
+			break;
+
+		txe = &sw_ring[head];
+		if (txe->mbuf) {
+			rte_pktmbuf_free_seg(txe->mbuf);
+			txe->mbuf = NULL;
+		}
+
+		head = (head + 1) % nb_tx_desc;
+		desc_freed++;
+
+		if (head == tx_tail)
+			break;
+	}
+
+	txq->tx_free += desc_freed;
+	txq->tx_head = head;
+}
+
+static void
+rtl_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
+{
+	if (rtl_is_8125(hw))
+		rtl8125_tx_clean(hw, txq);
+	else
+		rtl8168_tx_clean(hw, txq);
+}
+
+static int
+rtl8125_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 {
 	struct rtl_tx_queue *txq = tx_queue;
 	struct rtl_hw *hw = txq->hw;
@@ -1336,7 +1534,7 @@ rtl_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 	uint32_t status;
 	uint32_t tx_desc_closed, next_hw_desc_clo_ptr0;
 
-	if (txq == NULL)
+	if (!txq)
 		return -ENODEV;
 
 	if (enable_tx_no_close) {
@@ -1385,8 +1583,70 @@ rtl_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 	return count;
 }
 
+static int
+rtl8168_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
+{
+	struct rtl_tx_queue *txq = tx_queue;
+	struct rtl_tx_entry *sw_ring = txq->sw_ring;
+	struct rtl_tx_entry *txe;
+	struct rtl_tx_desc *txd;
+	const uint16_t nb_tx_desc = txq->nb_tx_desc;
+	const int tx_tail = txq->tx_tail % nb_tx_desc;
+	int head = txq->tx_head;
+	uint16_t desc_freed = 0;
+	int count = 0;
+	uint32_t status;
+
+	if (!txq)
+		return -ENODEV;
+
+	while (1) {
+		txd = &txq->hw_ring[head];
+
+		status = rtl_get_opts1(txd);
+
+		if (status & DescOwn)
+			break;
+
+		txe = &sw_ring[head];
+		if (txe->mbuf) {
+			rte_pktmbuf_free_seg(txe->mbuf);
+			txe->mbuf = NULL;
+		}
+
+		head = (head + 1) % nb_tx_desc;
+		desc_freed++;
+
+		if (status & LastFrag) {
+			count++;
+			if ((uint32_t)count == free_cnt)
+				break;
+		}
+
+		if (head == tx_tail)
+			break;
+	}
+
+	txq->tx_free += desc_freed;
+	txq->tx_head = head;
+
+	return count;
+}
+
+int
+rtl_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
+{
+	struct rtl_tx_queue *txq = tx_queue;
+	struct rtl_hw *hw = txq->hw;
+
+	if (rtl_is_8125(hw))
+		return rtl8125_tx_done_cleanup(tx_queue, free_cnt);
+	else
+		return rtl8168_tx_done_cleanup(tx_queue, free_cnt);
+}
+
 static void
-rtl_doorbell(struct rtl_hw *hw, struct rtl_tx_queue *txq)
+rtl8125_doorbell(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 {
 	if (hw->EnableTxNoClose)
 		if (hw->HwSuppTxNoCloseVer > 3)
@@ -1395,6 +1655,21 @@ rtl_doorbell(struct rtl_hw *hw, struct rtl_tx_queue *txq)
 			RTL_W16(hw, hw->sw_tail_ptr_reg, txq->tx_tail);
 	else
 		RTL_W16(hw, TPPOLL_8125, BIT_0);
+}
+
+static void
+rtl8168_doorbell(struct rtl_hw *hw)
+{
+	RTL_W8(hw, TxPoll, NPQ);
+}
+
+static void
+rtl_doorbell(struct rtl_hw *hw, struct rtl_tx_queue *txq)
+{
+	if (rtl_is_8125(hw))
+		rtl8125_doorbell(hw, txq);
+	else
+		rtl8168_doorbell(hw);
 }
 
 /* PMD transmit function */

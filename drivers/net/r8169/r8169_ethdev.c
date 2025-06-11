@@ -26,12 +26,12 @@
 #include "r8169_hw.h"
 #include "r8169_dash.h"
 
-static int rtl_dev_configure(struct rte_eth_dev *dev);
+static int rtl_dev_configure(struct rte_eth_dev *dev __rte_unused);
 static int rtl_dev_start(struct rte_eth_dev *dev);
 static int rtl_dev_stop(struct rte_eth_dev *dev);
 static int rtl_dev_reset(struct rte_eth_dev *dev);
 static int rtl_dev_close(struct rte_eth_dev *dev);
-static int rtl_dev_link_update(struct rte_eth_dev *dev, int wait);
+static int rtl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused);
 static int rtl_dev_set_link_up(struct rte_eth_dev *dev);
 static int rtl_dev_set_link_down(struct rte_eth_dev *dev);
 static int rtl_dev_infos_get(struct rte_eth_dev *dev,
@@ -55,6 +55,7 @@ static const struct rte_pci_id pci_id_r8169_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8162) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8126) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x5000) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8168) },
 	{.vendor_id = 0, /* sentinel */ },
 };
 
@@ -116,15 +117,23 @@ static void
 rtl_disable_intr(struct rtl_hw *hw)
 {
 	PMD_INIT_FUNC_TRACE();
-	RTL_W32(hw, IMR0_8125, 0x0000);
-	RTL_W32(hw, ISR0_8125, RTL_R32(hw, ISR0_8125));
+	if (rtl_is_8125(hw)) {
+		RTL_W32(hw, IMR0_8125, 0x0000);
+		RTL_W32(hw, ISR0_8125, RTL_R32(hw, ISR0_8125));
+	} else {
+		RTL_W16(hw, IntrMask, 0x0000);
+		RTL_W16(hw, IntrStatus, RTL_R16(hw, IntrStatus));
+	}
 }
 
 static void
 rtl_enable_intr(struct rtl_hw *hw)
 {
 	PMD_INIT_FUNC_TRACE();
-	RTL_W32(hw, IMR0_8125, LinkChg);
+	if (rtl_is_8125(hw))
+		RTL_W32(hw, IMR0_8125, LinkChg);
+	else
+		RTL_W16(hw, IntrMask, LinkChg);
 }
 
 static int
@@ -134,10 +143,35 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 	struct rtl_hw *hw = &adapter->hw;
 	u64 adv = 0;
 	u32 *link_speeds = &dev->data->dev_conf.link_speeds;
+	unsigned int speed_mode;
 
 	/* Setup link speed and duplex */
 	if (*link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
-		rtl_set_link_option(hw, AUTONEG_ENABLE, SPEED_5000, DUPLEX_FULL, rtl_fc_full);
+		switch (hw->mcfg) {
+		case CFG_METHOD_48:
+		case CFG_METHOD_49:
+		case CFG_METHOD_50:
+		case CFG_METHOD_51:
+		case CFG_METHOD_52:
+		case CFG_METHOD_53:
+		case CFG_METHOD_54:
+		case CFG_METHOD_55:
+		case CFG_METHOD_56:
+		case CFG_METHOD_57:
+			speed_mode = SPEED_2500;
+			break;
+		case CFG_METHOD_69:
+		case CFG_METHOD_70:
+		case CFG_METHOD_71:
+			speed_mode = SPEED_5000;
+			break;
+		default:
+			speed_mode = SPEED_1000;
+			break;
+		}
+
+		rtl_set_link_option(hw, AUTONEG_ENABLE, speed_mode, DUPLEX_FULL,
+				    rtl_fc_full);
 	} else if (*link_speeds != 0) {
 		if (*link_speeds & ~(RTE_ETH_LINK_SPEED_10M_HD | RTE_ETH_LINK_SPEED_10M |
 				     RTE_ETH_LINK_SPEED_100M_HD | RTE_ETH_LINK_SPEED_100M |
@@ -225,6 +259,18 @@ rtl_setup_link(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* Set PCI configuration space offset 0x79 to setting */
+static void
+set_offset79(struct rte_pci_device *pdev, u8 setting)
+{
+	u8 device_control;
+
+	PCI_READ_CONFIG_BYTE(pdev, &device_control, 0x79);
+	device_control &= ~0x70;
+	device_control |= setting;
+	PCI_WRITE_CONFIG_BYTE(pdev, &device_control, 0x79);
+}
+
 /*
  * Configure device link speed and setup link.
  * It returns 0 on success.
@@ -248,6 +294,28 @@ rtl_dev_start(struct rte_eth_dev *dev)
 	rtl_hw_phy_config(hw);
 
 	rtl_hw_config(hw);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		set_offset79(pci_dev, 0x40);
+		break;
+	}
 
 	/* Initialize transmission unit */
 	rtl_tx_init(dev);
@@ -295,8 +363,19 @@ rtl_dev_stop(struct rte_eth_dev *dev)
 	rtl_nic_reset(hw);
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_mac_ocp_write(hw, 0xE00A, hw->mcu_pme_setting);
 		break;
 	}
@@ -333,8 +412,19 @@ rtl_dev_set_link_down(struct rte_eth_dev *dev)
 
 	/* mcu pme intr masks */
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_mac_ocp_write(hw, 0xE00A, hw->mcu_pme_setting & ~(BIT_11 | BIT_14));
 		break;
 	}
@@ -515,20 +605,63 @@ rtl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 
 		if (status & FullDup) {
 			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-			if (hw->mcfg == CFG_METHOD_2)
+			switch (hw->mcfg) {
+			case CFG_METHOD_21:
+			case CFG_METHOD_22:
+			case CFG_METHOD_23:
+			case CFG_METHOD_24:
+			case CFG_METHOD_25:
+			case CFG_METHOD_26:
+			case CFG_METHOD_27:
+			case CFG_METHOD_28:
+			case CFG_METHOD_29:
+			case CFG_METHOD_30:
+			case CFG_METHOD_31:
+			case CFG_METHOD_32:
+			case CFG_METHOD_33:
+			case CFG_METHOD_34:
+			case CFG_METHOD_35:
+			case CFG_METHOD_36:
+			case CFG_METHOD_37:
+			case CFG_METHOD_48:
 				RTL_W32(hw, TxConfig, (RTL_R32(hw, TxConfig) |
-						       (BIT_24 | BIT_25)) & ~BIT_19);
-
+						      (BIT_24 | BIT_25)) & ~BIT_19);
+				break;
+			}
 		} else {
 			link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
-			if (hw->mcfg == CFG_METHOD_2)
+			switch (hw->mcfg) {
+			case CFG_METHOD_21:
+			case CFG_METHOD_22:
+			case CFG_METHOD_23:
+			case CFG_METHOD_24:
+			case CFG_METHOD_25:
+			case CFG_METHOD_26:
+			case CFG_METHOD_27:
+			case CFG_METHOD_28:
+			case CFG_METHOD_29:
+			case CFG_METHOD_30:
+			case CFG_METHOD_31:
+			case CFG_METHOD_32:
+			case CFG_METHOD_33:
+			case CFG_METHOD_34:
+			case CFG_METHOD_35:
+			case CFG_METHOD_36:
+			case CFG_METHOD_37:
+			case CFG_METHOD_48:
 				RTL_W32(hw, TxConfig, (RTL_R32(hw, TxConfig) | BIT_25) &
-					~(BIT_19 | BIT_24));
+						      ~(BIT_19 | BIT_24));
+				break;
+			}
 		}
 
-		if (status & _5000bpsF)
+		/*
+		 * The PHYstatus register for the RTL8168 is 8 bits,
+		 * while for the RTL8125 and RTL8126, it is 16 bits.
+		 */
+		if (status & _5000bpsF && rtl_is_8125(hw))
 			speed = 5000;
-		else if (status & _2500bpsF)
+		else if (status & _2500bpsF && rtl_is_8125(hw))
 			speed = 2500;
 		else if (status & _1000bpsF)
 			speed = 1000;
@@ -556,7 +689,10 @@ rtl_dev_interrupt_handler(void *param)
 	struct rtl_hw *hw = &adapter->hw;
 	uint32_t intr;
 
-	intr = RTL_R32(hw, ISR0_8125);
+	if (rtl_is_8125(hw))
+		intr = RTL_R32(hw, ISR0_8125);
+	else
+		intr = RTL_R16(hw, IntrStatus);
 
 	/* Clear all cause mask */
 	rtl_disable_intr(hw);
@@ -586,7 +722,7 @@ rtl_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	if (HW_DASH_SUPPORT_DASH(hw))
-		rtl8125_driver_stop(hw);
+		rtl_driver_stop(hw);
 
 	ret_stp = rtl_dev_stop(dev);
 
@@ -656,14 +792,15 @@ rtl_dev_init(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = &rtl_xmit_pkts;
 	dev->rx_pkt_burst = &rtl_recv_pkts;
 
-	/* For secondary processes, the primary process has done all the work */
+	/* For secondary processes, the primary process has done all the work. */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		if (dev->data->scattered_rx)
 			dev->rx_pkt_burst = &rtl_recv_scattered_pkts;
 		return 0;
 	}
 
-	hw->mmio_addr = (u8 *)pci_dev->mem_resource[2].addr; /* RTL8169 uses BAR2 */
+	/* R8169 uses BAR2 */
+	hw->mmio_addr = (u8 *)pci_dev->mem_resource[2].addr;
 
 	rtl_get_mac_version(hw, pci_dev);
 

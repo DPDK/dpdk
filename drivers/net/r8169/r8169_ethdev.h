@@ -15,6 +15,7 @@
 struct rtl_hw;
 
 struct rtl_hw_ops {
+	void (*hw_config)(struct rtl_hw *hw);
 	void (*hw_init_rxcfg)(struct rtl_hw *hw);
 	void (*hw_ephy_config)(struct rtl_hw *hw);
 	void (*hw_phy_config)(struct rtl_hw *hw);
@@ -36,13 +37,12 @@ struct rtl_hw {
 	u8  *mmio_addr;
 	u8  *cmac_ioaddr; /* cmac memory map physical address */
 	u8  chipset_name;
-	u8  efuse_ver;
 	u8  HwIcVerUnknown;
 	u32 mcfg;
 	u32 mtu;
 	u8  HwSuppIntMitiVer;
 	u16 cur_page;
-	u8  mac_addr[MAC_ADDR_LEN];
+	u8  mac_addr[RTE_ETHER_ADDR_LEN];
 	u32 rx_buf_sz;
 
 	struct rtl_counters *tally_vaddr;
@@ -53,9 +53,9 @@ struct rtl_hw {
 	u8  HwSuppMacMcuVer;
 	u16 MacMcuPageSize;
 
-	u8  NotWrRamCodeToMicroP;
-	u8  HwHasWrRamCodeToMicroP;
-	u8  HwSuppCheckPhyDisableModeVer;
+	u8 NotWrRamCodeToMicroP;
+	u8 HwHasWrRamCodeToMicroP;
+	u8 HwSuppCheckPhyDisableModeVer;
 
 	u16 sw_ram_code_ver;
 	u16 hw_ram_code_ver;
@@ -68,7 +68,7 @@ struct rtl_hw {
 
 	u32 HwSuppMaxPhyLinkSpeed;
 
-	u8  HwSuppNowIsOobVer;
+	u8 HwSuppNowIsOobVer;
 
 	u16 mcu_pme_setting;
 
@@ -86,6 +86,8 @@ struct rtl_hw {
 	u8 DASH;
 	u8 HwSuppOcpChannelVer;
 	u8 AllowAccessDashOcp;
+	u8 HwPkgDet;
+	u8 HwSuppSerDesPhyVer;
 };
 
 struct rtl_sw_stats {
@@ -107,6 +109,24 @@ struct rtl_adapter {
 
 #define R8169_LINK_CHECK_TIMEOUT  50   /* 10s */
 #define R8169_LINK_CHECK_INTERVAL 200  /* ms */
+
+#define PCI_READ_CONFIG_BYTE(dev, val, where) \
+	rte_pci_read_config(dev, val, 1, where)
+
+#define PCI_READ_CONFIG_WORD(dev, val, where) \
+	rte_pci_read_config(dev, val, 2, where)
+
+#define PCI_READ_CONFIG_DWORD(dev, val, where) \
+	rte_pci_read_config(dev, val, 4, where)
+
+#define PCI_WRITE_CONFIG_BYTE(dev, val, where) \
+	rte_pci_write_config(dev, val, 1, where)
+
+#define PCI_WRITE_CONFIG_WORD(dev, val, where) \
+	rte_pci_write_config(dev, val, 2, where)
+
+#define PCI_WRITE_CONFIG_DWORD(dev, val, where) \
+	rte_pci_write_config(dev, val, 4, where)
 
 int rtl_rx_init(struct rte_eth_dev *dev);
 int rtl_tx_init(struct rte_eth_dev *dev);
