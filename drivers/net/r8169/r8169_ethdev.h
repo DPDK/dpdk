@@ -90,6 +90,9 @@ struct rtl_hw {
 	u8 AllowAccessDashOcp;
 	u8 HwPkgDet;
 	u8 HwSuppSerDesPhyVer;
+
+	/* Fiber */
+	u32 HwFiberModeVer;
 };
 
 struct rtl_sw_stats {

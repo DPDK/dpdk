@@ -7,6 +7,7 @@ sources = files(
         'r8169_rxtx.c',
         'r8169_phy.c',
         'r8169_dash.c',
+        'r8169_fiber.c',
         'base/rtl8125a.c',
         'base/rtl8125a_mcu.c',
         'base/rtl8125b.c',

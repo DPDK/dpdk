@@ -47,7 +47,7 @@ void rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry,
 
 void rtl_hw_initialize(struct rtl_hw *hw);
 
-bool rtl_is_speed_mode_valid(u32 speed);
+bool rtl_is_speed_mode_valid(struct rtl_hw *hw, u32 speed);
 
 void rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev);
 int rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea);

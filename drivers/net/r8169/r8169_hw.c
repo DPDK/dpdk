@@ -12,6 +12,7 @@
 #include "r8169_hw.h"
 #include "r8169_logs.h"
 #include "r8169_dash.h"
+#include "r8169_fiber.h"
 
 static u32
 rtl_eri_read_with_oob_base_address(struct rtl_hw *hw, int addr, int len,
@@ -1439,18 +1440,28 @@ rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry, u16 entry_cnt)
 }
 
 bool
-rtl_is_speed_mode_valid(u32 speed)
+rtl_is_speed_mode_valid(struct rtl_hw *hw, u32 speed)
 {
-	switch (speed) {
-	case SPEED_10000:
-	case SPEED_5000:
-	case SPEED_2500:
-	case SPEED_1000:
-	case SPEED_100:
-	case SPEED_10:
-		return true;
-	default:
-		return false;
+	if (HW_FIBER_MODE_ENABLED(hw)) {
+		switch (speed) {
+		case SPEED_10000:
+		case SPEED_1000:
+			return true;
+		default:
+			return false;
+		}
+	} else {
+		switch (speed) {
+		case SPEED_10000:
+		case SPEED_5000:
+		case SPEED_2500:
+		case SPEED_1000:
+		case SPEED_100:
+		case SPEED_10:
+			return true;
+		default:
+			return false;
+		}
 	}
 }
 
@@ -1482,9 +1493,9 @@ void
 rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
 		    enum rtl_fc_mode fc)
 {
-	u64 adv;
+	u64 adv = 0;
 
-	if (!rtl_is_speed_mode_valid(speed))
+	if (!rtl_is_speed_mode_valid(hw, speed))
 		speed = hw->HwSuppMaxPhyLinkSpeed;
 
 	if (!rtl_is_duplex_mode_valid(duplex))
@@ -1495,22 +1506,34 @@ rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
 
 	speed = RTE_MIN(speed, hw->HwSuppMaxPhyLinkSpeed);
 
-	adv = 0;
-	switch (speed) {
-	case SPEED_10000:
-		adv |= ADVERTISE_10000_FULL;
-	/* Fall through */
-	case SPEED_5000:
-		adv |= ADVERTISE_5000_FULL;
-	/* Fall through */
-	case SPEED_2500:
-		adv |= ADVERTISE_2500_FULL;
-	/* Fall through */
-	default:
-		adv |= (ADVERTISE_10_HALF | ADVERTISE_10_FULL |
-			ADVERTISE_100_HALF | ADVERTISE_100_FULL |
-			ADVERTISE_1000_HALF | ADVERTISE_1000_FULL);
-		break;
+	if (HW_FIBER_MODE_ENABLED(hw)) {
+		switch (speed) {
+		case SPEED_10000:
+			adv |= ADVERTISE_10000_FULL;
+		/* Fall through */
+		case SPEED_1000:
+			adv |= ADVERTISE_1000_FULL;
+			break;
+		default:
+			break;
+		}
+	} else {
+		switch (speed) {
+		case SPEED_10000:
+			adv |= ADVERTISE_10000_FULL;
+		/* Fall through */
+		case SPEED_5000:
+			adv |= ADVERTISE_5000_FULL;
+		/* Fall through */
+		case SPEED_2500:
+			adv |= ADVERTISE_2500_FULL;
+		/* Fall through */
+		default:
+			adv |= (ADVERTISE_10_HALF | ADVERTISE_10_FULL |
+				ADVERTISE_100_HALF | ADVERTISE_100_FULL |
+				ADVERTISE_1000_HALF | ADVERTISE_1000_FULL);
+			break;
+		}
 	}
 
 	hw->autoneg = autoneg;
@@ -1959,6 +1982,16 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
 		hw->HwSuppIntMitiVer = 5;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_91:
+		tmp = (u8)rtl_mac_ocp_read(hw, 0xD006);
+		if (tmp == 0x07)
+			hw->HwFiberModeVer = FIBER_MODE_RTL8127ATF;
+		break;
+	default:
 		break;
 	}
 
