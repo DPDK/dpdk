@@ -509,6 +509,39 @@ parse_arg_u64(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
+parse_arg_str(struct rte_argparse_arg *arg, const char *value)
+{
+	if (value == NULL) {
+		*(char **)arg->val_saver = arg->val_set;
+		return 0;
+	}
+	*(const char **)arg->val_saver = value;
+
+	return 0;
+}
+
+static int
+parse_arg_bool(struct rte_argparse_arg *arg, const char *value)
+{
+	if (value == NULL) {
+		*(bool *)arg->val_saver = (arg->val_set != NULL);
+		return 0;
+	}
+
+	if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0)
+		*(bool *)arg->val_saver = true;
+	else if (strcmp(value, "false") == 0 || strcmp(value, "0") == 0)
+		*(bool *)arg->val_saver = false;
+	else {
+		ARGPARSE_LOG(ERR, "argument %s expects a boolean (true/false, 0/1) value!",
+			arg->name_long);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 {
 	static struct {
@@ -521,6 +554,8 @@ parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 		{ parse_arg_u16 },
 		{ parse_arg_u32 },
 		{ parse_arg_u64 },
+		{ parse_arg_str},
+		{ parse_arg_bool },
 	};
 	uint32_t index = arg_attr_val_type(arg);
 	int ret = -EINVAL;

@@ -761,6 +761,12 @@ test_argparse_parse_type(void)
 	char *str_erange_u8 = test_strdup("256");
 	char *str_invalid = test_strdup("1a");
 	char *str_ok = test_strdup("123");
+	char *bool_true = test_strdup("true");
+	char *bool_false = test_strdup("false");
+	char *bool_invalid = test_strdup("invalid");
+	char *bool_numeric_true = test_strdup("1");
+	char *bool_numeric_false = test_strdup("0");
+	char *bool_numeric_invalid = test_strdup("2");
 	uint16_t val_u16;
 	uint32_t val_u32;
 	uint64_t val_u64;
@@ -823,6 +829,25 @@ test_argparse_parse_type(void)
 	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
 	TEST_ASSERT(val_u64 == 123, "Argparse parse type expect failed!");
 
+	/* test for string parsing - all it does is save string, so all are valid */
+	const char *val_str;
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_STR, &val_str);
+	TEST_ASSERT(ret == 0, "Argparse parse a string failed unexpectedly!");
+
+	/* test for boolean parsing */
+	bool val_bool = false;
+	ret = rte_argparse_parse_type(bool_true, RTE_ARGPARSE_ARG_VALUE_BOOL, &val_bool);
+	TEST_ASSERT(ret == 0 && val_bool == true, "Argparse parse type for bool (true) failed!");
+	ret = rte_argparse_parse_type(bool_false, RTE_ARGPARSE_ARG_VALUE_BOOL, &val_bool);
+	TEST_ASSERT(ret == 0 && val_bool == false, "Argparse parse type for bool (false) failed!");
+	ret = rte_argparse_parse_type(bool_invalid, RTE_ARGPARSE_ARG_VALUE_BOOL, &val_bool);
+	TEST_ASSERT(ret != 0, "Argparse parse type for bool (invalid) passed unexpectedly!");
+	ret = rte_argparse_parse_type(bool_numeric_true, RTE_ARGPARSE_ARG_VALUE_BOOL, &val_bool);
+	TEST_ASSERT(ret == 0 && val_bool == true, "Argparse parse type for bool (numeric true) failed!");
+	ret = rte_argparse_parse_type(bool_numeric_false, RTE_ARGPARSE_ARG_VALUE_BOOL, &val_bool);
+	TEST_ASSERT(ret == 0 && val_bool == false, "Argparse parse type for bool (numeric false) failed!");
+	ret = rte_argparse_parse_type(bool_numeric_invalid, RTE_ARGPARSE_ARG_VALUE_BOOL, &val_bool);
+	TEST_ASSERT(ret != 0, "Argparse parse type for bool (numeric invalid) passed unexpectedly!");
 	return 0;
 }
 
