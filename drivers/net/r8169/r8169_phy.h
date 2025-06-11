@@ -102,17 +102,16 @@
 
 #define HW_SUPPORT_CHECK_PHY_DISABLE_MODE(_M) ((_M)->HwSuppCheckPhyDisableModeVer > 0)
 
+#define HW_SUPP_PHY_LINK_SPEED_10000M(_M)     ((_M)->HwSuppMaxPhyLinkSpeed >= 10000)
 #define HW_SUPP_PHY_LINK_SPEED_5000M(_M)      ((_M)->HwSuppMaxPhyLinkSpeed >= 5000)
 
 #define MDIO_EEE_100TX  0x0002
 #define MDIO_EEE_1000T  0x0004
 #define MDIO_EEE_2_5GT  0x0001
 #define MDIO_EEE_5GT    0x0002
+#define MDIO_EEE_10GT   0x0008  /* 10GT EEE cap */
 
 #define HW_SUPP_SERDES_PHY(_M)  ((_M)->HwSuppSerDesPhyVer > 0)
-
-void rtl_clear_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
-void rtl_set_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
 
 u32 rtl_mdio_direct_read_phy_ocp(struct rtl_hw *hw, u32 RegAddr);
 void rtl_mdio_direct_write_phy_ocp(struct rtl_hw *hw, u32 RegAddr, u32 value);
@@ -154,5 +153,7 @@ void rtl_clear_and_set_eth_phy_bit(struct rtl_hw *hw, u8 addr, u16 clearmask,
 				   u16 setmask);
 void rtl_clear_eth_phy_bit(struct rtl_hw *hw, u8 addr, u16 mask);
 void rtl_set_eth_phy_bit(struct rtl_hw *hw, u8 addr, u16 mask);
+
+void rtl8127_clear_ephy_ext_addr(struct rtl_hw *hw);
 
 #endif /* R8169_PHY_H */

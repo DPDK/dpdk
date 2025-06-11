@@ -18,6 +18,9 @@
 u16 rtl_mac_ocp_read(struct rtl_hw *hw, u16 addr);
 void rtl_mac_ocp_write(struct rtl_hw *hw, u16 addr, u16 value);
 
+void rtl_clear_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
+void rtl_set_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
+
 u32 rtl_ocp_read(struct rtl_hw *hw, u16 addr, u8 len);
 void rtl_ocp_write(struct rtl_hw *hw, u16 addr, u8 len, u32 value);
 
@@ -73,6 +76,9 @@ void rtl8168_clear_and_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr,
 void rtl8168_clear_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
 void rtl8168_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
 
+u64 rtl_get_hw_mcu_patch_code_ver(struct rtl_hw *hw);
+u64 rtl_get_bin_mcu_patch_code_ver(const u16 *entry, u16 entry_cnt);
+
 extern const struct rtl_hw_ops rtl8168g_ops;
 extern const struct rtl_hw_ops rtl8168h_ops;
 extern const struct rtl_hw_ops rtl8168ep_ops;
@@ -84,6 +90,7 @@ extern const struct rtl_hw_ops rtl8125bp_ops;
 extern const struct rtl_hw_ops rtl8125d_ops;
 extern const struct rtl_hw_ops rtl8126a_ops;
 extern const struct rtl_hw_ops rtl8168kb_ops;
+extern const struct rtl_hw_ops rtl8127_ops;
 
 #define NO_BASE_ADDRESS       0x00000000
 #define RTL8168FP_OOBMAC_BASE 0xBAF70000
@@ -128,6 +135,7 @@ extern const struct rtl_hw_ops rtl8168kb_ops;
 #define NIC_RAMCODE_VERSION_CFG_METHOD_69  (0x0023)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_70  (0x0033)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_71  (0x0060)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_91  (0x0015)
 
 #define RTL_MAC_MCU_PAGE_SIZE 256
 #define RTL_DEFAULT_MTU       1500

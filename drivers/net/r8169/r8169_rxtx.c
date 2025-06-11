@@ -501,24 +501,7 @@ rtl_rx_init(struct rte_eth_dev *dev)
 
 	rtl_enable_cfg9346_write(hw);
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	if (!rtl_is_8125(hw)) {
 		/* RX ftr mcu enable */
 		csi_tmp = rtl_eri_read(hw, 0xDC, 1, ERIAR_ExGMAC);
 		csi_tmp &= ~BIT_0;
@@ -529,7 +512,6 @@ rtl_rx_init(struct rte_eth_dev *dev)
 		/* RSS disable */
 		rtl_eri_write(hw, 0xC0, 2, 0x0000, ERIAR_ExGMAC); /* queue num = 1 */
 		rtl_eri_write(hw, 0xB8, 4, 0x00000000, ERIAR_ExGMAC);
-		break;
 	}
 
 	/* RX accept type and csum vlan offload */
@@ -1090,6 +1072,9 @@ rtl8125_set_tx_tag_num(struct rtl_hw *hw)
 		else
 			mac_ocp_data |= (3 << 8);
 		break;
+	case CFG_METHOD_91:
+		mac_ocp_data |= (15 << 8);
+		break;
 	default:
 		mac_ocp_data |= (3 << 8);
 		break;
@@ -1122,47 +1107,14 @@ rtl_tx_init(struct rte_eth_dev *dev)
 
 	rtl_enable_cfg9346_write(hw);
 
-	if (rtl_is_8125(hw))
+	if (rtl_is_8125(hw)) {
 		rtl8125_set_tx_tag_num(hw);
-	else
+
+		RTL_W8(hw, TDFNR, 0x10);
+	} else {
 		rtl8168_set_mtps(hw);
 
-	/* Set TDFNR: TX Desc Fetch NumbeR */
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
 		RTL_W8(hw, TDFNR, 0x4);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-		RTL_W8(hw, TDFNR, 0x10);
-		break;
 	}
 
 	rtl_disable_cfg9346_write(hw);

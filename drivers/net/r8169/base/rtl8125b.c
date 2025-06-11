@@ -362,10 +362,9 @@ hw_mac_mcu_config_8125b(struct rtl_hw *hw)
 	if (hw->NotWrMcuPatchCode)
 		return;
 
+	rtl_hw_disable_mac_mcu_bps(hw);
+
 	switch (hw->mcfg) {
-	case CFG_METHOD_50:
-		rtl_set_mac_mcu_8125b_1(hw);
-		break;
 	case CFG_METHOD_51:
 		rtl_set_mac_mcu_8125b_2(hw);
 		break;

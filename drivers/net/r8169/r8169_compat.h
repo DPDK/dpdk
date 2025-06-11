@@ -105,6 +105,7 @@ enum mcfg {
 	CFG_METHOD_69,
 	CFG_METHOD_70,
 	CFG_METHOD_71,
+	CFG_METHOD_91,
 	CFG_METHOD_MAX,
 	CFG_METHOD_DEFAULT = 0xFF
 };
@@ -393,8 +394,13 @@ enum RTL_register_content {
 
 	/* PHY status */
 	PowerSaveStatus = 0x80,
+	_1000bpsL       = 0x80000,
+	_10000bpsF      = 0x4000,
+	_10000bpsL      = 0x2000,
 	_5000bpsF       = 0x1000,
+	_5000bpsL       = 0x800,
 	_2500bpsF       = 0x400,
+	_2500bpsL       = 0x200,
 	TxFlowCtrl      = 0x40,
 	RxFlowCtrl      = 0x20,
 	_1000bpsF       = 0x10,
@@ -429,6 +435,7 @@ enum RTL_register_content {
 	EPHYAR_Reg_Mask_v2 = 0x7f,
 	EPHYAR_Reg_shift   = 16,
 	EPHYAR_Data_Mask   = 0xffff,
+	EPHYAR_EXT_ADDR    = 0x0ffe,
 
 	/* CSI access */
 	CSIAR_Flag         = 0x80000000,
@@ -513,6 +520,7 @@ enum RTL_chipset_name {
 	RTL8168G,
 	RTL8168H,
 	RTL8168M,
+	RTL8127,
 	UNKNOWN
 };
 
@@ -551,28 +559,28 @@ enum RTL_chipset_name {
 #define TRUE  1
 #define FALSE 0
 
-#define SPEED_10	10
-#define SPEED_100	100
-#define SPEED_1000	1000
-#define SPEED_2500	2500
-#define SPEED_5000	5000
+#define SPEED_10     10
+#define SPEED_100    100
+#define SPEED_1000   1000
+#define SPEED_2500   2500
+#define SPEED_5000   5000
+#define SPEED_10000  10000
 
-#define DUPLEX_HALF	1
-#define DUPLEX_FULL	2
+#define DUPLEX_HALF 1
+#define DUPLEX_FULL 2
 
-#define AUTONEG_ENABLE	1
-#define AUTONEG_DISABLE	0
+#define AUTONEG_ENABLE  1
+#define AUTONEG_DISABLE 0
 
-#define ADVERTISE_10_HALF     0x0001
-#define ADVERTISE_10_FULL     0x0002
-#define ADVERTISE_100_HALF    0x0004
-#define ADVERTISE_100_FULL    0x0008
-#define ADVERTISE_1000_HALF   0x0010 /* Not used, just FYI */
-#define ADVERTISE_1000_FULL   0x0020
-#define ADVERTISE_2500_HALF   0x0040 /* NOT used, just FYI */
-#define ADVERTISE_2500_FULL   0x0080
-#define ADVERTISE_5000_HALF   0x0100 /* NOT used, just FYI */
-#define ADVERTISE_5000_FULL   0x0200
+#define ADVERTISE_10_HALF     RTE_BIT64(0)
+#define ADVERTISE_10_FULL     RTE_BIT64(1)
+#define ADVERTISE_100_HALF    RTE_BIT64(2)
+#define ADVERTISE_100_FULL    RTE_BIT64(3)
+#define ADVERTISE_1000_HALF   RTE_BIT64(4)
+#define ADVERTISE_1000_FULL   RTE_BIT64(5)
+#define ADVERTISE_2500_FULL   RTE_BIT64(15)
+#define ADVERTISE_5000_FULL   RTE_BIT64(48)
+#define ADVERTISE_10000_FULL  RTE_BIT64(12)
 
 #define RTL_MAX_TX_DESC 4096
 #define RTL_MAX_RX_DESC 4096

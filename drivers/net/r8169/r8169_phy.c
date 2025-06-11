@@ -15,30 +15,6 @@
 #include "r8169_logs.h"
 #include "r8169_dash.h"
 
-static void
-rtl_clear_set_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 clearmask,
-			  u16 setmask)
-{
-	u16 phy_reg_value;
-
-	phy_reg_value = rtl_mac_ocp_read(hw, addr);
-	phy_reg_value &= ~clearmask;
-	phy_reg_value |= setmask;
-	rtl_mac_ocp_write(hw, addr, phy_reg_value);
-}
-
-void
-rtl_clear_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask)
-{
-	rtl_clear_set_mac_ocp_bit(hw, addr, mask, 0);
-}
-
-void
-rtl_set_mac_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask)
-{
-	rtl_clear_set_mac_ocp_bit(hw, addr, 0, mask);
-}
-
 static u16
 rtl_map_phy_ocp_addr(u16 PageNum, u8 RegNum)
 {
@@ -172,12 +148,12 @@ void
 rtl_clear_and_set_eth_phy_ocp_bit(struct rtl_hw *hw, u16 addr, u16 clearmask,
 				  u16 setmask)
 {
-	u16 phy_reg_value;
+	u16 val;
 
-	phy_reg_value = rtl_mdio_direct_read_phy_ocp(hw, addr);
-	phy_reg_value &= ~clearmask;
-	phy_reg_value |= setmask;
-	rtl_mdio_direct_write_phy_ocp(hw, addr, phy_reg_value);
+	val = rtl_mdio_direct_read_phy_ocp(hw, addr);
+	val &= ~clearmask;
+	val |= setmask;
+	rtl_mdio_direct_write_phy_ocp(hw, addr, val);
 }
 
 void
@@ -208,18 +184,10 @@ exit:
 	return addr;
 }
 
-void
-rtl_ephy_write(struct rtl_hw *hw, int addr, int value)
+static void
+_rtl_ephy_write(struct rtl_hw *hw, int addr, int value, unsigned int mask)
 {
 	int i;
-	unsigned int mask;
-
-	if (rtl_is_8125(hw)) {
-		mask = EPHYAR_Reg_Mask_v2;
-	} else {
-		mask = EPHYAR_Reg_Mask;
-		addr = rtl8168_check_ephy_addr(hw, addr);
-	}
 
 	RTL_W32(hw, EPHYAR, EPHYAR_Write | (addr & mask) << EPHYAR_Reg_shift |
 		(value & EPHYAR_Data_Mask));
@@ -235,19 +203,47 @@ rtl_ephy_write(struct rtl_hw *hw, int addr, int value)
 	rte_delay_us(RTL_CHANNEL_EXIT_DELAY_TIME);
 }
 
-u16
-rtl_ephy_read(struct rtl_hw *hw, int addr)
+static void
+rtl8127_set_ephy_ext_addr(struct rtl_hw *hw, int addr)
+{
+	_rtl_ephy_write(hw, EPHYAR_EXT_ADDR, addr, EPHYAR_Reg_Mask_v2);
+}
+
+static int
+rtl8127_check_ephy_ext_addr(struct rtl_hw *hw, int addr)
+{
+	int data;
+
+	data = ((u16)addr >> 12);
+
+	rtl8127_set_ephy_ext_addr(hw, data);
+
+	return (addr & 0xfff);
+}
+
+void
+rtl_ephy_write(struct rtl_hw *hw, int addr, int value)
+{
+	unsigned int mask;
+
+	if (!rtl_is_8125(hw)) {
+		mask = EPHYAR_Reg_Mask;
+		addr = rtl8168_check_ephy_addr(hw, addr);
+	} else if (hw->mcfg >= CFG_METHOD_91) {
+		mask = EPHYAR_Reg_Mask_v2;
+		addr = rtl8127_check_ephy_ext_addr(hw, addr);
+	} else {
+		mask = EPHYAR_Reg_Mask_v2;
+	}
+
+	_rtl_ephy_write(hw, addr, value, mask);
+}
+
+static u16
+_rtl_ephy_read(struct rtl_hw *hw, int addr, unsigned int mask)
 {
 	int i;
 	u16 value = 0xffff;
-	unsigned int mask;
-
-	if (rtl_is_8125(hw)) {
-		mask = EPHYAR_Reg_Mask_v2;
-	} else {
-		mask = EPHYAR_Reg_Mask;
-		addr = rtl8168_check_ephy_addr(hw, addr);
-	}
 
 	RTL_W32(hw, EPHYAR, EPHYAR_Read | (addr & mask) << EPHYAR_Reg_shift);
 
@@ -264,6 +260,24 @@ rtl_ephy_read(struct rtl_hw *hw, int addr)
 	rte_delay_us(RTL_CHANNEL_EXIT_DELAY_TIME);
 
 	return value;
+}
+
+u16
+rtl_ephy_read(struct rtl_hw *hw, int addr)
+{
+	unsigned int mask;
+
+	if (!rtl_is_8125(hw)) {
+		mask = EPHYAR_Reg_Mask;
+		addr = rtl8168_check_ephy_addr(hw, addr);
+	} else if (hw->mcfg >= CFG_METHOD_91) {
+		mask = EPHYAR_Reg_Mask_v2;
+		addr = rtl8127_check_ephy_ext_addr(hw, addr);
+	} else {
+		mask = EPHYAR_Reg_Mask_v2;
+	}
+
+	return _rtl_ephy_read(hw, addr, mask);
 }
 
 void
@@ -297,24 +311,19 @@ rtl_set_phy_mcu_patch_request(struct rtl_hw *hw)
 	u16 wait_cnt;
 	bool bool_success = TRUE;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	if (rtl_is_8125(hw)) {
+		rtl_set_eth_phy_ocp_bit(hw, 0xB820, BIT_4);
+
+		wait_cnt = 0;
+		do {
+			gphy_val = rtl_mdio_direct_read_phy_ocp(hw, 0xB800);
+			rte_delay_us(100);
+			wait_cnt++;
+		} while (!(gphy_val & BIT_6) && (wait_cnt < 1000));
+
+		if (!(gphy_val & BIT_6) && wait_cnt == 1000)
+			bool_success = FALSE;
+	} else {
 		rtl_mdio_write(hw, 0x1f, 0x0B82);
 		rtl_set_eth_phy_bit(hw, 0x10, BIT_4);
 
@@ -330,33 +339,8 @@ rtl_set_phy_mcu_patch_request(struct rtl_hw *hw)
 			bool_success = FALSE;
 
 		rtl_mdio_write(hw, 0x1f, 0x0000);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-		rtl_set_eth_phy_ocp_bit(hw, 0xB820, BIT_4);
-
-		wait_cnt = 0;
-		do {
-			gphy_val = rtl_mdio_direct_read_phy_ocp(hw, 0xB800);
-			rte_delay_us(100);
-			wait_cnt++;
-		} while (!(gphy_val & BIT_6) && (wait_cnt < 1000));
-
-		if (!(gphy_val & BIT_6) && wait_cnt == 1000)
-			bool_success = FALSE;
-		break;
 	}
+
 	if (!bool_success)
 		PMD_INIT_LOG(NOTICE, "%s fail.", __func__);
 
@@ -370,24 +354,19 @@ rtl_clear_phy_mcu_patch_request(struct rtl_hw *hw)
 	u16 wait_cnt;
 	bool bool_success = TRUE;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	if (rtl_is_8125(hw)) {
+		rtl_clear_eth_phy_ocp_bit(hw, 0xB820, BIT_4);
+
+		wait_cnt = 0;
+		do {
+			gphy_val = rtl_mdio_direct_read_phy_ocp(hw, 0xB800);
+			rte_delay_us(100);
+			wait_cnt++;
+		} while ((gphy_val & BIT_6) && (wait_cnt < 1000));
+
+		if ((gphy_val & BIT_6) && wait_cnt == 1000)
+			bool_success = FALSE;
+	} else {
 		rtl_mdio_write(hw, 0x1f, 0x0B82);
 		rtl_clear_eth_phy_bit(hw, 0x10, BIT_4);
 
@@ -403,32 +382,6 @@ rtl_clear_phy_mcu_patch_request(struct rtl_hw *hw)
 			bool_success = FALSE;
 
 		rtl_mdio_write(hw, 0x1f, 0x0000);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-		rtl_clear_eth_phy_ocp_bit(hw, 0xB820, BIT_4);
-
-		wait_cnt = 0;
-		do {
-			gphy_val = rtl_mdio_direct_read_phy_ocp(hw, 0xB800);
-			rte_delay_us(100);
-			wait_cnt++;
-		} while ((gphy_val & BIT_6) && (wait_cnt < 1000));
-
-		if ((gphy_val & BIT_6) && wait_cnt == 1000)
-			bool_success = FALSE;
-		break;
 	}
 
 	if (!bool_success)
@@ -545,6 +498,7 @@ rtl_wait_phy_ups_resume(struct rtl_hw *hw, u16 PhyState)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		do {
 			tmp_phy_state = rtl_mdio_direct_read_phy_ocp(hw, 0xA420);
 			tmp_phy_state &= 0x7;
@@ -597,6 +551,7 @@ rtl_phy_power_up(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		rtl_wait_phy_ups_resume(hw, 3);
 		break;
 	}
@@ -634,6 +589,7 @@ rtl_powerup_pll(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		RTL_W8(hw, PMCH, RTL_R8(hw, PMCH) | BIT_7 | BIT_6);
 		break;
 	}
@@ -699,6 +655,7 @@ rtl_phy_power_down(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		rtl_mdio_write(hw, MII_BMCR, BMCR_ANENABLE | BMCR_PDOWN);
 		break;
 	default:
@@ -745,6 +702,7 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 		case CFG_METHOD_69:
 		case CFG_METHOD_70:
 		case CFG_METHOD_71:
+		case CFG_METHOD_91:
 			RTL_W8(hw, PMCH, RTL_R8(hw, PMCH) & ~BIT_7);
 			break;
 		}
@@ -783,6 +741,7 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_6);
 		break;
 	}
@@ -813,31 +772,39 @@ rtl_wait_phy_reset_complete(struct rtl_hw *hw)
 static void
 rtl_xmii_reset_enable(struct rtl_hw *hw)
 {
+	u32 val;
+
 	if (rtl_is_in_phy_disable_mode(hw))
 		return;
 
 	rtl_mdio_write(hw, 0x1F, 0x0000);
-	rtl_mdio_write(hw, MII_ADVERTISE, rtl_mdio_read(hw, MII_ADVERTISE) &
-		       ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
-		       ADVERTISE_100HALF | ADVERTISE_100FULL));
-	rtl_mdio_write(hw, MII_CTRL1000, rtl_mdio_read(hw, MII_CTRL1000) &
-		       ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL));
 
-	if (rtl_is_8125(hw))
-		rtl_mdio_direct_write_phy_ocp(hw, 0xA5D4,
-					      rtl_mdio_direct_read_phy_ocp(hw, 0xA5D4) &
-					      ~(RTK_ADVERTISE_2500FULL | RTK_ADVERTISE_5000FULL));
+	val = rtl_mdio_read(hw, MII_ADVERTISE);
+	val &= ~(ADVERTISE_10HALF | ADVERTISE_10FULL | ADVERTISE_100HALF |
+		 ADVERTISE_100FULL);
+	rtl_mdio_write(hw, MII_ADVERTISE, val);
+
+	val = rtl_mdio_read(hw, MII_CTRL1000);
+	val &= ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
+	rtl_mdio_write(hw, MII_CTRL1000, val);
+
+	if (rtl_is_8125(hw)) {
+		val = rtl_mdio_direct_read_phy_ocp(hw, 0xA5D4);
+		val &= ~(RTK_ADVERTISE_2500FULL | RTK_ADVERTISE_5000FULL |
+			 RTK_ADVERTISE_10000FULL);
+		rtl_mdio_direct_write_phy_ocp(hw, 0xA5D4, val);
+	}
 
 	rtl_mdio_write(hw, MII_BMCR, BMCR_RESET | BMCR_ANENABLE);
 
-	if (rtl_wait_phy_reset_complete(hw) == 0)
-		return;
+	if (rtl_wait_phy_reset_complete(hw))
+		PMD_INIT_LOG(NOTICE, "PHY reset failed.");
 }
 
 static void
 rtl8125_set_hw_phy_before_init_phy_mcu(struct rtl_hw *hw)
 {
-	u16 phy_reg_value;
+	u16 val;
 
 	switch (hw->mcfg) {
 	case CFG_METHOD_50:
@@ -846,11 +813,11 @@ rtl8125_set_hw_phy_before_init_phy_mcu(struct rtl_hw *hw)
 		rtl_set_eth_phy_ocp_bit(hw, 0xC402, BIT_10);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xC402, BIT_10);
 
-		phy_reg_value = rtl_mdio_direct_read_phy_ocp(hw, 0xBF86);
-		phy_reg_value &= (BIT_1 | BIT_0);
-		if (phy_reg_value != 0)
+		val = rtl_mdio_direct_read_phy_ocp(hw, 0xBF86);
+		val &= (BIT_1 | BIT_0);
+		if (val != 0)
 			PMD_INIT_LOG(NOTICE, "PHY watch dog not clear, value = 0x%x",
-				     phy_reg_value);
+				     val);
 
 		rtl_mdio_direct_write_phy_ocp(hw, 0xBD86, 0x1010);
 		rtl_mdio_direct_write_phy_ocp(hw, 0xBD88, 0x1010);
@@ -867,45 +834,14 @@ rtl_get_hw_phy_mcu_code_ver(struct rtl_hw *hw)
 {
 	u16 hw_ram_code_ver = ~0;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	if (rtl_is_8125(hw)) {
+		rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x801E);
+		hw_ram_code_ver = rtl_mdio_direct_read_phy_ocp(hw, 0xA438);
+	} else {
 		rtl_mdio_write(hw, 0x1F, 0x0A43);
 		rtl_mdio_write(hw, 0x13, 0x801E);
 		hw_ram_code_ver = rtl_mdio_read(hw, 0x14);
 		rtl_mdio_write(hw, 0x1F, 0x0000);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-		rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x801E);
-		hw_ram_code_ver = rtl_mdio_direct_read_phy_ocp(hw, 0xA438);
-		break;
 	}
 
 	return hw_ram_code_ver;
@@ -931,47 +867,16 @@ rtl_check_hw_phy_mcu_code_ver(struct rtl_hw *hw)
 static void
 rtl_write_hw_phy_mcu_code_ver(struct rtl_hw *hw)
 {
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	if (rtl_is_8125(hw)) {
+		rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x801E);
+		rtl_mdio_direct_write_phy_ocp(hw, 0xA438, hw->sw_ram_code_ver);
+		hw->hw_ram_code_ver = hw->sw_ram_code_ver;
+	} else {
 		rtl_mdio_write(hw, 0x1F, 0x0A43);
 		rtl_mdio_write(hw, 0x13, 0x801E);
 		rtl_mdio_write(hw, 0x14, hw->sw_ram_code_ver);
 		rtl_mdio_write(hw, 0x1F, 0x0000);
 		hw->hw_ram_code_ver = hw->sw_ram_code_ver;
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-		rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x801E);
-		rtl_mdio_direct_write_phy_ocp(hw, 0xA438, hw->sw_ram_code_ver);
-		hw->hw_ram_code_ver = hw->sw_ram_code_ver;
-		break;
 	}
 }
 
@@ -1010,25 +915,25 @@ rtl_disable_phy_disable_mode(struct rtl_hw *hw)
 static int
 rtl8168_phy_ram_code_check(struct rtl_hw *hw)
 {
-	u16 phy_reg_value;
+	u16 val;
 	int retval = TRUE;
 
 	if (hw->mcfg == CFG_METHOD_21) {
 		rtl_mdio_write(hw, 0x1f, 0x0A40);
-		phy_reg_value = rtl_mdio_read(hw, 0x10);
-		phy_reg_value &= ~BIT_11;
-		rtl_mdio_write(hw, 0x10, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x10);
+		val &= ~BIT_11;
+		rtl_mdio_write(hw, 0x10, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A00);
-		phy_reg_value = rtl_mdio_read(hw, 0x10);
-		phy_reg_value &= ~(BIT_12 | BIT_13 | BIT_14 | BIT_15);
-		rtl_mdio_write(hw, 0x10, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x10);
+		val &= ~(BIT_12 | BIT_13 | BIT_14 | BIT_15);
+		rtl_mdio_write(hw, 0x10, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A43);
 		rtl_mdio_write(hw, 0x13, 0x8010);
-		phy_reg_value = rtl_mdio_read(hw, 0x14);
-		phy_reg_value &= ~BIT_11;
-		rtl_mdio_write(hw, 0x14, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x14);
+		val &= ~BIT_11;
+		rtl_mdio_write(hw, 0x14, val);
 
 		retval = rtl_set_phy_mcu_patch_request(hw);
 
@@ -1036,20 +941,20 @@ rtl8168_phy_ram_code_check(struct rtl_hw *hw)
 		rtl_mdio_write(hw, 0x10, 0x0140);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A4A);
-		phy_reg_value = rtl_mdio_read(hw, 0x13);
-		phy_reg_value &= ~BIT_6;
-		phy_reg_value |= BIT_7;
-		rtl_mdio_write(hw, 0x13, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x13);
+		val &= ~BIT_6;
+		val |= BIT_7;
+		rtl_mdio_write(hw, 0x13, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A44);
-		phy_reg_value = rtl_mdio_read(hw, 0x14);
-		phy_reg_value |= BIT_2;
-		rtl_mdio_write(hw, 0x14, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x14);
+		val |= BIT_2;
+		rtl_mdio_write(hw, 0x14, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A50);
-		phy_reg_value = rtl_mdio_read(hw, 0x11);
-		phy_reg_value |= (BIT_11 | BIT_12);
-		rtl_mdio_write(hw, 0x11, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x11);
+		val |= (BIT_11 | BIT_12);
+		rtl_mdio_write(hw, 0x11, val);
 
 		retval = rtl_clear_phy_mcu_patch_request(hw);
 
@@ -1057,32 +962,32 @@ rtl8168_phy_ram_code_check(struct rtl_hw *hw)
 		rtl_mdio_write(hw, 0x10, 0x1040);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A4A);
-		phy_reg_value = rtl_mdio_read(hw, 0x13);
-		phy_reg_value &= ~(BIT_6 | BIT_7);
-		rtl_mdio_write(hw, 0x13, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x13);
+		val &= ~(BIT_6 | BIT_7);
+		rtl_mdio_write(hw, 0x13, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A44);
-		phy_reg_value = rtl_mdio_read(hw, 0x14);
-		phy_reg_value &= ~BIT_2;
-		rtl_mdio_write(hw, 0x14, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x14);
+		val &= ~BIT_2;
+		rtl_mdio_write(hw, 0x14, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A50);
-		phy_reg_value = rtl_mdio_read(hw, 0x11);
-		phy_reg_value &= ~(BIT_11 | BIT_12);
-		rtl_mdio_write(hw, 0x11, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x11);
+		val &= ~(BIT_11 | BIT_12);
+		rtl_mdio_write(hw, 0x11, val);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A43);
 		rtl_mdio_write(hw, 0x13, 0x8010);
-		phy_reg_value = rtl_mdio_read(hw, 0x14);
-		phy_reg_value |= BIT_11;
-		rtl_mdio_write(hw, 0x14, phy_reg_value);
+		val = rtl_mdio_read(hw, 0x14);
+		val |= BIT_11;
+		rtl_mdio_write(hw, 0x14, val);
 
 		retval = rtl_set_phy_mcu_patch_request(hw);
 
 		rtl_mdio_write(hw, 0x1f, 0x0A20);
-		phy_reg_value = rtl_mdio_read(hw, 0x13);
-		if (phy_reg_value & BIT_11) {
-			if (phy_reg_value & BIT_10)
+		val = rtl_mdio_read(hw, 0x13);
+		if (val & BIT_11) {
+			if (val & BIT_10)
 				retval = FALSE;
 		}
 
@@ -1149,41 +1054,7 @@ rtl_disable_aldps(struct rtl_hw *hw)
 	u32 timeout = 0;
 	u32 wait_cnt = 200;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
-		tmp_ushort = rtl_mdio_real_direct_read_phy_ocp(hw, 0xA430);
-		if (tmp_ushort & BIT_2)
-			rtl_clear_eth_phy_ocp_bit(hw, 0xA430, BIT_2);
-		break;
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
+	if (rtl_is_8125(hw)) {
 		tmp_ushort = rtl_mdio_real_direct_read_phy_ocp(hw, 0xA430);
 		if (tmp_ushort & BIT_2) {
 			rtl_clear_eth_phy_ocp_bit(hw, 0xA430, BIT_2);
@@ -1194,7 +1065,10 @@ rtl_disable_aldps(struct rtl_hw *hw)
 				timeout++;
 			} while (!(tmp_ushort & BIT_7) && timeout < wait_cnt);
 		}
-		break;
+	} else {
+		tmp_ushort = rtl_mdio_real_direct_read_phy_ocp(hw, 0xA430);
+		if (tmp_ushort & BIT_2)
+			rtl_clear_eth_phy_ocp_bit(hw, 0xA430, BIT_2);
 	}
 }
 
@@ -1232,6 +1106,7 @@ rtl_is_adv_eee_enabled(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		if (rtl_mdio_direct_read_phy_ocp(hw, 0xA430) & BIT_15)
 			enabled = true;
 		break;
@@ -1315,6 +1190,7 @@ _rtl_disable_adv_eee(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		rtl_clear_mac_ocp_bit(hw, 0xE052, BIT_0);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA442, (BIT_12 | BIT_13));
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA430, BIT_15);
@@ -1372,6 +1248,7 @@ static void
 rtl_disable_eee(struct rtl_hw *hw)
 {
 	u16 data;
+	u16 mask;
 	u32 csi_tmp;
 
 	switch (hw->mcfg) {
@@ -1438,12 +1315,16 @@ rtl_disable_eee(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
+	case CFG_METHOD_91:
 		rtl_clear_mac_ocp_bit(hw, 0xE040, (BIT_1 | BIT_0));
 
-		rtl_clear_eth_phy_ocp_bit(hw, 0xA5D0, (MDIO_EEE_100TX | MDIO_EEE_1000T));
-		rtl_clear_eth_phy_ocp_bit(hw, 0xA6D4, MDIO_EEE_2_5GT);
-		if (HW_SUPP_PHY_LINK_SPEED_5000M(hw))
-			rtl_clear_eth_phy_ocp_bit(hw, 0xA6D4, MDIO_EEE_5GT);
+		if (HW_SUPP_PHY_LINK_SPEED_10000M(hw))
+			mask = MDIO_EEE_100TX | MDIO_EEE_1000T | MDIO_EEE_10GT;
+		else
+			mask = MDIO_EEE_100TX | MDIO_EEE_1000T;
+		rtl_clear_eth_phy_ocp_bit(hw, 0xA5D0, mask);
+
+		rtl_clear_eth_phy_ocp_bit(hw, 0xA6D4, MDIO_EEE_2_5GT | MDIO_EEE_5GT);
 
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA6D8, BIT_4);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_7);
@@ -1488,23 +1369,8 @@ rtl_hw_phy_config(struct rtl_hw *hw)
 	rtl_disable_aldps(hw);
 
 	/* Legacy force mode (chap 22) */
-	switch (hw->mcfg) {
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
+	if (rtl_is_8125(hw))
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA5B4, BIT_15);
-		break;
-	}
 
 	rtl_mdio_write(hw, 0x1F, 0x0000);
 
@@ -1550,8 +1416,9 @@ rtl_phy_setup_force_mode(struct rtl_hw *hw, u32 speed, u8 duplex)
 }
 
 static int
-rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u32 adv)
+rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 {
+	u16 mask = 0;
 	int auto_nego = 0;
 	int giga_ctrl = 0;
 	int ctrl_2500 = 0;
@@ -1577,6 +1444,14 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u32 adv)
 		rtl_mdio_write(hw, 0x1F, 0x0A40);
 		rtl_mdio_write(hw, 0x1F, 0x0000);
 		break;
+	case CFG_METHOD_91:
+		mask |= BIT_2;
+	/* Fall through */
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		mask |= BIT_1;
+	/* Fall through */
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
 	case CFG_METHOD_50:
@@ -1587,14 +1462,9 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u32 adv)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
+		mask |= BIT_0;
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_9);
-		rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, BIT_0);
-
-		if (HW_SUPP_PHY_LINK_SPEED_5000M(hw))
-			rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, BIT_1);
+		rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, mask);
 		break;
 	}
 
@@ -1608,7 +1478,8 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u32 adv)
 	giga_ctrl &= ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
 	if (rtl_is_8125(hw)) {
 		ctrl_2500 = rtl_mdio_direct_read_phy_ocp(hw, 0xA5D4);
-		ctrl_2500 &= ~(RTK_ADVERTISE_2500FULL | RTK_ADVERTISE_5000FULL);
+		ctrl_2500 &= ~(RTK_ADVERTISE_2500FULL | RTK_ADVERTISE_5000FULL |
+			       RTK_ADVERTISE_10000FULL);
 	}
 
 	if (autoneg == AUTONEG_ENABLE) {
@@ -1634,6 +1505,8 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u32 adv)
 			ctrl_2500 |= RTK_ADVERTISE_2500FULL;
 		if (adv & ADVERTISE_5000_FULL)
 			ctrl_2500 |= RTK_ADVERTISE_5000FULL;
+		if (adv & ADVERTISE_10000_FULL)
+			ctrl_2500 |= RTK_ADVERTISE_10000FULL;
 
 		/* Flow control */
 		if (hw->fcpause == rtl_fc_full)
@@ -1678,12 +1551,12 @@ void
 rtl_clear_and_set_eth_phy_bit(struct rtl_hw *hw, u8 addr, u16 clearmask,
 			      u16 setmask)
 {
-	u16 phy_reg_value;
+	u16 val;
 
-	phy_reg_value = rtl_mdio_read(hw, addr);
-	phy_reg_value &= ~clearmask;
-	phy_reg_value |= setmask;
-	rtl_mdio_write(hw, addr, phy_reg_value);
+	val = rtl_mdio_read(hw, addr);
+	val &= ~clearmask;
+	val |= setmask;
+	rtl_mdio_write(hw, addr, val);
 }
 
 void
@@ -1696,4 +1569,10 @@ void
 rtl_set_eth_phy_bit(struct rtl_hw *hw, u8 addr, u16 mask)
 {
 	rtl_clear_and_set_eth_phy_bit(hw, addr, 0, mask);
+}
+
+void
+rtl8127_clear_ephy_ext_addr(struct rtl_hw *hw)
+{
+	rtl8127_set_ephy_ext_addr(hw, 0x0000);
 }

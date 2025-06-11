@@ -102,18 +102,12 @@ rtl_set_mac_mcu_8125d_1(struct rtl_hw *hw)
 		0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x6938,
 		0x0A18, 0x0217, 0x0D2A
 	};
-	rtl_hw_disable_mac_mcu_bps(hw);
+
 	rtl_write_mac_mcu_ram_code(hw, mcu_patch_code_8125d_1,
 				   ARRAY_SIZE(mcu_patch_code_8125d_1));
 	rtl_mac_ocp_write(hw, 0xFC26, 0x8000);
 	rtl_mac_ocp_write(hw, 0xFC28, 0x14A2);
 	rtl_mac_ocp_write(hw, 0xFC48, 0x0001);
-}
-
-void
-rtl_set_mac_mcu_8125d_2(struct rtl_hw *hw)
-{
-	rtl_hw_disable_mac_mcu_bps(hw);
 }
 
 /* ------------------------------------PHY 8125D--------------------------------------- */
