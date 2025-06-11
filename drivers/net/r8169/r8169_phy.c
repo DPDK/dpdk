@@ -682,7 +682,6 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 		case CFG_METHOD_69:
 		case CFG_METHOD_70:
 		case CFG_METHOD_71:
-		case CFG_METHOD_91:
 			RTL_W8(hw, PMCH, RTL_R8(hw, PMCH) & ~BIT_7);
 			break;
 		}
