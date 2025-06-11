@@ -1207,41 +1207,11 @@ rtl_disable_adv_eee(struct rtl_hw *hw)
 	if (hw->mcfg < CFG_METHOD_25 || hw->mcfg == CFG_METHOD_37)
 		return;
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_23:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_52:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-		rtl_oob_mutex_lock(hw);
-		break;
-	}
+	rtl_oob_mutex_lock(hw);
 
 	_rtl_disable_adv_eee(hw);
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_23:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_52:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-		rtl_oob_mutex_unlock(hw);
-		break;
-	}
+	rtl_oob_mutex_unlock(hw);
 }
 
 static void
