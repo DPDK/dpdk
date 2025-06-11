@@ -32,6 +32,7 @@ rtl_is_allow_access_dash_ocp(struct rtl_hw *hw)
 		break;
 	case CFG_METHOD_54:
 	case CFG_METHOD_55:
+	case CFG_METHOD_91:
 		mac_ocp_data = rtl_mac_ocp_read(hw, 0xd4c0);
 		if (mac_ocp_data == 0xffff || (mac_ocp_data & BIT_3))
 			allow_access = false;

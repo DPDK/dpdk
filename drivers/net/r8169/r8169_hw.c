@@ -334,6 +334,7 @@ rtl_oob_mutex_lock(struct rtl_hw *hw)
 	case CFG_METHOD_52:
 	case CFG_METHOD_54:
 	case CFG_METHOD_55:
+	case CFG_METHOD_91:
 		ocp_reg_mutex_oob = 0x110;
 		ocp_reg_mutex_ib = 0x114;
 		ocp_reg_mutex_prio = 0x11C;
@@ -392,6 +393,7 @@ rtl_oob_mutex_unlock(struct rtl_hw *hw)
 	case CFG_METHOD_52:
 	case CFG_METHOD_54:
 	case CFG_METHOD_55:
+	case CFG_METHOD_91:
 		ocp_reg_mutex_ib = 0x114;
 		ocp_reg_mutex_prio = 0x11C;
 		break;
@@ -1057,15 +1059,7 @@ rtl8125_hw_config(struct rtl_hw *hw)
 	mac_ocp_data |= BIT_0;
 	rtl_mac_ocp_write(hw, 0xEA1C, mac_ocp_data);
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_52:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-		rtl_oob_mutex_lock(hw);
-		break;
-	}
+	rtl_oob_mutex_lock(hw);
 
 	/* MAC_PWRDWN_CR0 */
 	rtl_mac_ocp_write(hw, 0xE0C0, 0x4000);
@@ -1073,15 +1067,7 @@ rtl8125_hw_config(struct rtl_hw *hw)
 	rtl_set_mac_ocp_bit(hw, 0xE052, (BIT_6 | BIT_5));
 	rtl_clear_mac_ocp_bit(hw, 0xE052, (BIT_3 | BIT_7));
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_52:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-		rtl_oob_mutex_unlock(hw);
-		break;
-	}
+	rtl_oob_mutex_unlock(hw);
 
 	/*
 	 * DMY_PWR_REG_0
@@ -1574,9 +1560,12 @@ rtl_init_software_variable(struct rtl_hw *hw)
 		break;
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
+	case CFG_METHOD_91:
 		tmp = (u8)rtl_mac_ocp_read(hw, 0xD006);
 		if (tmp == 0x02 || tmp == 0x04)
 			hw->HwSuppDashVer = 2;
+		else if (tmp == 0x03)
+			hw->HwSuppDashVer = 4;
 		break;
 	case CFG_METHOD_54:
 	case CFG_METHOD_55:
@@ -1615,6 +1604,8 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_23:
 	case CFG_METHOD_27:
 	case CFG_METHOD_28:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
 		hw->HwSuppOcpChannelVer = 2;
 		break;
 	case CFG_METHOD_31:
@@ -1625,12 +1616,9 @@ rtl_init_software_variable(struct rtl_hw *hw)
 		break;
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
+	case CFG_METHOD_91:
 		if (HW_DASH_SUPPORT_DASH(hw))
 			hw->HwSuppOcpChannelVer = 2;
-		break;
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-		hw->HwSuppOcpChannelVer = 2;
 		break;
 	default:
 		hw->HwSuppOcpChannelVer = 0;
