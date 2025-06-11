@@ -14,6 +14,7 @@
 #include "r8169_phy.h"
 #include "r8169_logs.h"
 #include "r8169_dash.h"
+#include "r8169_fiber.h"
 
 static u16
 rtl_map_phy_ocp_addr(u16 PageNum, u8 RegNum)
@@ -1327,6 +1328,9 @@ rtl_hw_phy_config(struct rtl_hw *hw)
 	if (rtl_is_8125(hw))
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA5B4, BIT_15);
 
+	if (HW_FIBER_MODE_ENABLED(hw))
+		rtl8127_hw_fiber_phy_config(hw);
+
 	rtl_mdio_write(hw, 0x1F, 0x0000);
 
 	if (HW_HAS_WRITE_PHY_MCU_RAM_CODE(hw))
@@ -1424,11 +1428,14 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 		break;
 	}
 
-	if (!rtl_is_speed_mode_valid(speed)) {
+	if (!rtl_is_speed_mode_valid(hw, speed)) {
 		speed = hw->HwSuppMaxPhyLinkSpeed;
 		duplex = DUPLEX_FULL;
 		adv |= hw->advertising;
 	}
+
+	if (HW_FIBER_MODE_ENABLED(hw))
+		goto set_speed;
 
 	giga_ctrl = rtl_mdio_read(hw, MII_CTRL1000);
 	giga_ctrl &= ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
@@ -1482,10 +1489,15 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 		else
 			goto out;
 	}
+
+set_speed:
 	hw->autoneg = autoneg;
 	hw->speed = speed;
 	hw->duplex = duplex;
 	hw->advertising = adv;
+
+	if (HW_FIBER_MODE_ENABLED(hw))
+		rtl8127_hw_fiber_phy_config(hw);
 
 	rc = 0;
 out:
