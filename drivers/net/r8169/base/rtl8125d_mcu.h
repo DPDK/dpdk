@@ -9,5 +9,6 @@ void rtl_set_mac_mcu_8125d_1(struct rtl_hw *hw);
 void rtl_set_mac_mcu_8125d_2(struct rtl_hw *hw);
 
 void rtl_set_phy_mcu_8125d_1(struct rtl_hw *hw);
+void rtl_set_phy_mcu_8125d_2(struct rtl_hw *hw);
 
 #endif /* RTL8125D_MCU_H */
