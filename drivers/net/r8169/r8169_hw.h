@@ -30,8 +30,8 @@ void rtl_nic_reset(struct rtl_hw *hw);
 void rtl_enable_cfg9346_write(struct rtl_hw *hw);
 void rtl_disable_cfg9346_write(struct rtl_hw *hw);
 
-void rtl8125_oob_mutex_lock(struct rtl_hw *hw);
-void rtl8125_oob_mutex_unlock(struct rtl_hw *hw);
+void rtl_oob_mutex_lock(struct rtl_hw *hw);
+void rtl_oob_mutex_unlock(struct rtl_hw *hw);
 
 void rtl_disable_rxdvgate(struct rtl_hw *hw);
 
@@ -60,6 +60,24 @@ void rtl_clear_tally_stats(struct rtl_hw *hw);
 int rtl_tally_init(struct rte_eth_dev *dev);
 void rtl_tally_free(struct rte_eth_dev *dev);
 
+bool rtl_is_8125(struct rtl_hw *hw);
+
+u32 rtl_eri_read(struct rtl_hw *hw, int addr, int len, int type);
+int rtl_eri_write(struct rtl_hw *hw, int addr, int len, u32 value, int type);
+
+u32 rtl_csi_other_fun_read(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr);
+void rtl_csi_other_fun_write(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr,
+			     u32 value);
+void rtl8168_clear_and_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr,
+				       u16 clearmask, u16 setmask);
+void rtl8168_clear_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
+void rtl8168_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask);
+
+extern const struct rtl_hw_ops rtl8168g_ops;
+extern const struct rtl_hw_ops rtl8168h_ops;
+extern const struct rtl_hw_ops rtl8168ep_ops;
+extern const struct rtl_hw_ops rtl8168fp_ops;
+extern const struct rtl_hw_ops rtl8168m_ops;
 extern const struct rtl_hw_ops rtl8125a_ops;
 extern const struct rtl_hw_ops rtl8125b_ops;
 extern const struct rtl_hw_ops rtl8125bp_ops;
@@ -67,7 +85,8 @@ extern const struct rtl_hw_ops rtl8125d_ops;
 extern const struct rtl_hw_ops rtl8126a_ops;
 extern const struct rtl_hw_ops rtl8168kb_ops;
 
-#define NO_BASE_ADDRESS 0x00000000
+#define NO_BASE_ADDRESS       0x00000000
+#define RTL8168FP_OOBMAC_BASE 0xBAF70000
 
 /* Channel wait count */
 #define RTL_CHANNEL_WAIT_COUNT      20000
@@ -80,15 +99,24 @@ extern const struct rtl_hw_ops rtl8168kb_ops;
 #define HW_HAS_WRITE_PHY_MCU_RAM_CODE(_M) ((_M)->HwHasWrRamCodeToMicroP ? 1 : 0)
 
 /* Tx NO CLOSE */
-#define MAX_TX_NO_CLOSE_DESC_PTR_V2            0x10000
-#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V2       0xFFFF
-#define MAX_TX_NO_CLOSE_DESC_PTR_V3            0x100000000
-#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V3       0xFFFFFFFF
-#define MAX_TX_NO_CLOSE_DESC_PTR_V4            0x80000000
-#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V4       0x7FFFFFFF
-#define TX_NO_CLOSE_SW_PTR_MASK_V2             0x1FFFF
+#define MAX_TX_NO_CLOSE_DESC_PTR_V2       0x10000
+#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V2  0xFFFF
+#define MAX_TX_NO_CLOSE_DESC_PTR_V3       0x100000000
+#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V3  0xFFFFFFFF
+#define MAX_TX_NO_CLOSE_DESC_PTR_V4       0x80000000
+#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V4  0x7FFFFFFF
+#define TX_NO_CLOSE_SW_PTR_MASK_V2        0x1FFFF
 
 /* Ram code version */
+#define NIC_RAMCODE_VERSION_CFG_METHOD_21  (0x0042)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_24  (0x0001)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_23  (0x0015)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_26  (0x0012)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_28  (0x0019)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_29  (0x0083)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_31  (0x0003)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_35  (0x0027)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_36  (0x0000)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_48  (0x0b11)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_49  (0x0b33)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_50  (0x0b17)
@@ -103,13 +131,5 @@ extern const struct rtl_hw_ops rtl8168kb_ops;
 
 #define RTL_MAC_MCU_PAGE_SIZE 256
 #define RTL_DEFAULT_MTU       1500
-
-enum effuse {
-	EFUSE_NOT_SUPPORT = 0,
-	EFUSE_SUPPORT_V1,
-	EFUSE_SUPPORT_V2,
-	EFUSE_SUPPORT_V3,
-	EFUSE_SUPPORT_V4,
-};
 
 #endif /* R8169_HW_H */

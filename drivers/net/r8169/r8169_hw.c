@@ -77,6 +77,12 @@ rtl_eri_read_with_oob_base_address(struct rtl_hw *hw, int addr, int len,
 	return value2;
 }
 
+u32
+rtl_eri_read(struct rtl_hw *hw, int addr, int len, int type)
+{
+	return rtl_eri_read_with_oob_base_address(hw, addr, len, type, 0);
+}
+
 static int
 rtl_eri_write_with_oob_base_address(struct rtl_hw *hw, int addr,
 				    int len, u32 value, int type,
@@ -144,6 +150,13 @@ rtl_eri_write_with_oob_base_address(struct rtl_hw *hw, int addr,
 	return 0;
 }
 
+int
+rtl_eri_write(struct rtl_hw *hw, int addr, int len, u32 value, int type)
+{
+	return rtl_eri_write_with_oob_base_address(hw, addr, len, value, type,
+						   NO_BASE_ADDRESS);
+}
+
 static u32
 rtl_ocp_read_with_oob_base_address(struct rtl_hw *hw, u16 addr, u8 len,
 				   const u32 base_address)
@@ -152,17 +165,122 @@ rtl_ocp_read_with_oob_base_address(struct rtl_hw *hw, u16 addr, u8 len,
 						  base_address);
 }
 
+static u32
+rtl8168_real_ocp_read(struct rtl_hw *hw, u16 addr, u8 len)
+{
+	int i, val_shift, shift = 0;
+	u32 value1, value2, mask;
+
+	value1 = 0;
+	value2 = 0;
+
+	if (len > 4 || len <= 0)
+		return -1;
+
+	while (len > 0) {
+		val_shift = addr % 4;
+		addr = addr & ~0x3;
+
+		RTL_W32(hw, OCPAR, (0x0F << 12) | (addr & 0xFFF));
+
+		for (i = 0; i < 20; i++) {
+			rte_delay_us(100);
+			if (RTL_R32(hw, OCPAR) & OCPAR_Flag)
+				break;
+		}
+
+		if (len == 1)
+			mask = (0xFF << (val_shift * 8)) & 0xFFFFFFFF;
+		else if (len == 2)
+			mask = (0xFFFF << (val_shift * 8)) & 0xFFFFFFFF;
+		else if (len == 3)
+			mask = (0xFFFFFF << (val_shift * 8)) & 0xFFFFFFFF;
+		else
+			mask = (0xFFFFFFFF << (val_shift * 8)) & 0xFFFFFFFF;
+
+		value1 = RTL_R32(hw, OCPDR) & mask;
+		value2 |= (value1 >> val_shift * 8) << shift * 8;
+
+		if (len <= 4 - val_shift) {
+			len = 0;
+		} else {
+			len -= (4 - val_shift);
+			shift = 4 - val_shift;
+			addr += 4;
+		}
+	}
+
+	rte_delay_us(20);
+
+	return value2;
+}
+
+static int
+rtl8168_real_ocp_write(struct rtl_hw *hw, u16 addr, u8 len, u32 value)
+{
+	int i, val_shift, shift = 0;
+	u32 mask, value1 = 0;
+
+	if (len > 4 || len <= 0)
+		return -1;
+
+	while (len > 0) {
+		val_shift = addr % 4;
+		addr = addr & ~0x3;
+
+		if (len == 1)
+			mask = (0xFF << (val_shift * 8)) & 0xFFFFFFFF;
+		else if (len == 2)
+			mask = (0xFFFF << (val_shift * 8)) & 0xFFFFFFFF;
+		else if (len == 3)
+			mask = (0xFFFFFF << (val_shift * 8)) & 0xFFFFFFFF;
+		else
+			mask = (0xFFFFFFFF << (val_shift * 8)) & 0xFFFFFFFF;
+
+		value1 = rtl_ocp_read(hw, addr, 4) & ~mask;
+		value1 |= ((value << val_shift * 8) >> shift * 8);
+
+		RTL_W32(hw, OCPDR, value1);
+		RTL_W32(hw, OCPAR, OCPAR_Flag | (0x0F << 12) | (addr & 0xFFF));
+
+		for (i = 0; i < 10; i++) {
+			rte_delay_us(100);
+
+			/* Check if the RTL8168 has completed ERI write */
+			if (!(RTL_R32(hw, OCPAR) & OCPAR_Flag))
+				break;
+		}
+
+		if (len <= 4 - val_shift) {
+			len = 0;
+		} else {
+			len -= (4 - val_shift);
+			shift = 4 - val_shift;
+			addr += 4;
+		}
+	}
+
+	rte_delay_us(20);
+
+	return 0;
+}
+
 u32
 rtl_ocp_read(struct rtl_hw *hw, u16 addr, u8 len)
 {
 	u32 value = 0;
 
-	if (!hw->AllowAccessDashOcp)
+	if (rtl_is_8125(hw) && !hw->AllowAccessDashOcp)
 		return 0xffffffff;
 
 	if (hw->HwSuppOcpChannelVer == 2)
 		value = rtl_ocp_read_with_oob_base_address(hw, addr, len,
 							   NO_BASE_ADDRESS);
+	else if (hw->HwSuppOcpChannelVer == 3)
+		value = rtl_ocp_read_with_oob_base_address(hw, addr, len,
+							   RTL8168FP_OOBMAC_BASE);
+	else
+		value = rtl8168_real_ocp_read(hw, addr, len);
 
 	return value;
 }
@@ -171,23 +289,28 @@ static u32
 rtl_ocp_write_with_oob_base_address(struct rtl_hw *hw, u16 addr, u8 len,
 				    u32 value, const u32 base_address)
 {
-	return rtl_eri_write_with_oob_base_address(hw, addr, len, value, ERIAR_OOB,
-						   base_address);
+	return rtl_eri_write_with_oob_base_address(hw, addr, len, value,
+						   ERIAR_OOB, base_address);
 }
 
 void
 rtl_ocp_write(struct rtl_hw *hw, u16 addr, u8 len, u32 value)
 {
-	if (!hw->AllowAccessDashOcp)
+	if (rtl_is_8125(hw) && !hw->AllowAccessDashOcp)
 		return;
 
 	if (hw->HwSuppOcpChannelVer == 2)
 		rtl_ocp_write_with_oob_base_address(hw, addr, len, value,
 						    NO_BASE_ADDRESS);
+	else if (hw->HwSuppOcpChannelVer == 3)
+		rtl_ocp_write_with_oob_base_address(hw, addr, len, value,
+						    RTL8168FP_OOBMAC_BASE);
+	else
+		rtl8168_real_ocp_write(hw, addr, len, value);
 }
 
 void
-rtl8125_oob_mutex_lock(struct rtl_hw *hw)
+rtl_oob_mutex_lock(struct rtl_hw *hw)
 {
 	u8 reg_16, reg_a0;
 	u16 ocp_reg_mutex_ib;
@@ -199,6 +322,13 @@ rtl8125_oob_mutex_lock(struct rtl_hw *hw)
 		return;
 
 	switch (hw->mcfg) {
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
 	case CFG_METHOD_52:
@@ -241,7 +371,7 @@ rtl8125_oob_mutex_lock(struct rtl_hw *hw)
 }
 
 void
-rtl8125_oob_mutex_unlock(struct rtl_hw *hw)
+rtl_oob_mutex_unlock(struct rtl_hw *hw)
 {
 	u16 ocp_reg_mutex_ib;
 	u16 ocp_reg_mutex_prio;
@@ -250,6 +380,13 @@ rtl8125_oob_mutex_unlock(struct rtl_hw *hw)
 		return;
 
 	switch (hw->mcfg) {
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
 	case CFG_METHOD_52:
@@ -295,34 +432,62 @@ rtl_mac_ocp_read(struct rtl_hw *hw, u16 addr)
 }
 
 u32
-rtl_csi_read(struct rtl_hw *hw, u32 addr)
+rtl_csi_other_fun_read(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr)
 {
 	u32 cmd;
 	int i;
-	u32 value = 0;
+	u32 value = 0xffffffff;
 
 	cmd = CSIAR_Read | CSIAR_ByteEn << CSIAR_ByteEn_shift |
 	      (addr & CSIAR_Addr_Mask);
 
+	if (multi_fun_sel_bit > 7)
+		goto exit;
+
+	cmd |= multi_fun_sel_bit << 16;
+
 	RTL_W32(hw, CSIAR, cmd);
 
-	for (i = 0; i < 10; i++) {
-		rte_delay_us(100);
+	for (i = 0; i < RTL_CHANNEL_WAIT_COUNT; i++) {
+		rte_delay_us(RTL_CHANNEL_WAIT_TIME);
 
 		/* Check if the NIC has completed CSI read */
 		if (RTL_R32(hw, CSIAR) & CSIAR_Flag) {
-			value = RTL_R32(hw, CSIDR);
+			value = (u32)RTL_R32(hw, CSIDR);
 			break;
 		}
 	}
 
-	rte_delay_us(20);
+	rte_delay_us(RTL_CHANNEL_EXIT_DELAY_TIME);
 
+exit:
 	return value;
 }
 
+u32
+rtl_csi_read(struct rtl_hw *hw, u32 addr)
+{
+	u8 multi_fun_sel_bit;
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_26:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		multi_fun_sel_bit = 1;
+		break;
+	default:
+		multi_fun_sel_bit = 0;
+		break;
+	}
+
+	return rtl_csi_other_fun_read(hw, multi_fun_sel_bit, addr);
+}
+
 void
-rtl_csi_write(struct rtl_hw *hw, u32 addr, u32 value)
+rtl_csi_other_fun_write(struct rtl_hw *hw, u8 multi_fun_sel_bit, u32 addr,
+			u32 value)
 {
 	u32 cmd;
 	int i;
@@ -330,6 +495,11 @@ rtl_csi_write(struct rtl_hw *hw, u32 addr, u32 value)
 	RTL_W32(hw, CSIDR, value);
 	cmd = CSIAR_Write | CSIAR_ByteEn << CSIAR_ByteEn_shift |
 	      (addr & CSIAR_Addr_Mask);
+
+	if (multi_fun_sel_bit > 7)
+		return;
+
+	cmd |= multi_fun_sel_bit << 16;
 
 	RTL_W32(hw, CSIAR, cmd);
 
@@ -344,14 +514,88 @@ rtl_csi_write(struct rtl_hw *hw, u32 addr, u32 value)
 	rte_delay_us(RTL_CHANNEL_EXIT_DELAY_TIME);
 }
 
+void
+rtl_csi_write(struct rtl_hw *hw, u32 addr, u32 value)
+{
+	u8 multi_fun_sel_bit;
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_26:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		multi_fun_sel_bit = 1;
+		break;
+	default:
+		multi_fun_sel_bit = 0;
+		break;
+	}
+
+	rtl_csi_other_fun_write(hw, multi_fun_sel_bit, addr, value);
+}
+
+void
+rtl8168_clear_and_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 clearmask,
+				  u16 setmask)
+{
+	u16 reg_value;
+
+	reg_value = rtl_mac_ocp_read(hw, addr);
+	reg_value &= ~clearmask;
+	reg_value |= setmask;
+	rtl_mac_ocp_write(hw, addr, reg_value);
+}
+
+void
+rtl8168_clear_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask)
+{
+	rtl8168_clear_and_set_mcu_ocp_bit(hw, addr, mask, 0);
+}
+
+void
+rtl8168_set_mcu_ocp_bit(struct rtl_hw *hw, u16 addr, u16 mask)
+{
+	rtl8168_clear_and_set_mcu_ocp_bit(hw, addr, 0, mask);
+}
+
 static void
 rtl_enable_rxdvgate(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) | BIT_3);
 		rte_delay_ms(2);
+		break;
 	}
 }
 
@@ -359,15 +603,44 @@ void
 rtl_disable_rxdvgate(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_3);
 		rte_delay_ms(2);
+		break;
 	}
 }
 
 static void
-rtl_stop_all_request(struct rtl_hw *hw)
+rtl8125_stop_all_request(struct rtl_hw *hw)
 {
 	int i;
 
@@ -393,13 +666,94 @@ rtl_stop_all_request(struct rtl_hw *hw)
 }
 
 static void
+rtl8168_stop_all_request(struct rtl_hw *hw)
+{
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		rte_delay_ms(2);
+		break;
+	default:
+		rte_delay_ms(10);
+		break;
+	}
+}
+
+static void
+rtl_stop_all_request(struct rtl_hw *hw)
+{
+	if (rtl_is_8125(hw))
+		rtl8125_stop_all_request(hw);
+	else
+		rtl8168_stop_all_request(hw);
+}
+
+static void
 rtl_wait_txrx_fifo_empty(struct rtl_hw *hw)
 {
 	int i;
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		for (i = 0; i < 10; i++) {
+			rte_delay_us(100);
+			if (RTL_R32(hw, TxConfig) & BIT_11)
+				break;
+		}
+
+		for (i = 0; i < 10; i++) {
+			rte_delay_us(100);
+			if ((RTL_R8(hw, MCUCmd_reg) & (Txfifo_empty | Rxfifo_empty)) ==
+			    (Txfifo_empty | Rxfifo_empty))
+				break;
+		}
+
+		rte_delay_ms(1);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		for (i = 0; i < 3000; i++) {
 			rte_delay_us(50);
 			if ((RTL_R8(hw, MCUCmd_reg) & (Txfifo_empty | Rxfifo_empty)) ==
@@ -412,8 +766,14 @@ rtl_wait_txrx_fifo_empty(struct rtl_hw *hw)
 	switch (hw->mcfg) {
 	case CFG_METHOD_50:
 	case CFG_METHOD_51:
-	case CFG_METHOD_53 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		for (i = 0; i < 3000; i++) {
 			rte_delay_us(50);
 			if ((RTL_R16(hw, IntrMitigate) & (BIT_0 | BIT_1 | BIT_8)) ==
@@ -473,19 +833,66 @@ rtl_disable_cfg9346_write(struct rtl_hw *hw)
 static void
 rtl_enable_force_clkreq(struct rtl_hw *hw, bool enable)
 {
-	if (enable)
-		RTL_W8(hw, 0xF1, RTL_R8(hw, 0xF1) | BIT_7);
-	else
-		RTL_W8(hw, 0xF1, RTL_R8(hw, 0xF1) & ~BIT_7);
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		if (enable)
+			RTL_W8(hw, 0xF1, RTL_R8(hw, 0xF1) | BIT_7);
+		else
+			RTL_W8(hw, 0xF1, RTL_R8(hw, 0xF1) & ~BIT_7);
+		break;
+	}
 }
 
 static void
 rtl_enable_aspm_clkreq_lock(struct rtl_hw *hw, bool enable)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69:
-		rtl_enable_cfg9346_write(hw);
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
 		if (enable) {
 			RTL_W8(hw, Config2, RTL_R8(hw, Config2) | BIT_7);
 			RTL_W8(hw, Config5, RTL_R8(hw, Config5) | BIT_0);
@@ -493,11 +900,29 @@ rtl_enable_aspm_clkreq_lock(struct rtl_hw *hw, bool enable)
 			RTL_W8(hw, Config2, RTL_R8(hw, Config2) & ~BIT_7);
 			RTL_W8(hw, Config5, RTL_R8(hw, Config5) & ~BIT_0);
 		}
-		rtl_disable_cfg9346_write(hw);
+		rte_delay_us(10);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+		if (enable) {
+			RTL_W8(hw, Config2, RTL_R8(hw, Config2) | BIT_7);
+			RTL_W8(hw, Config5, RTL_R8(hw, Config5) | BIT_0);
+		} else {
+			RTL_W8(hw, Config2, RTL_R8(hw, Config2) & ~BIT_7);
+			RTL_W8(hw, Config5, RTL_R8(hw, Config5) & ~BIT_0);
+		}
 		break;
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
-		rtl_enable_cfg9346_write(hw);
 		if (enable) {
 			RTL_W8(hw, INT_CFG0_8125, RTL_R8(hw, INT_CFG0_8125) | BIT_3);
 			RTL_W8(hw, Config5, RTL_R8(hw, Config5) | BIT_0);
@@ -505,26 +930,35 @@ rtl_enable_aspm_clkreq_lock(struct rtl_hw *hw, bool enable)
 			RTL_W8(hw, INT_CFG0_8125, RTL_R8(hw, INT_CFG0_8125) & ~BIT_3);
 			RTL_W8(hw, Config5, RTL_R8(hw, Config5) & ~BIT_0);
 		}
-		rtl_disable_cfg9346_write(hw);
 		break;
 	}
 }
 
 static void
-rtl_disable_l1_timeout(struct rtl_hw *hw)
+rtl8126_disable_l1_timeout(struct rtl_hw *hw)
 {
 	rtl_csi_write(hw, 0x890, rtl_csi_read(hw, 0x890) & ~BIT_0);
 }
 
 static void
-rtl_disable_eee_plus(struct rtl_hw *hw)
+rtl8125_disable_eee_plus(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_mac_ocp_write(hw, 0xE080, rtl_mac_ocp_read(hw, 0xE080) & ~BIT_1);
 		break;
-
 	default:
 		/* Not support EEEPlus */
 		break;
@@ -535,8 +969,41 @@ static void
 rtl_hw_clear_timer_int(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		RTL_W32(hw, TimeInt0, 0x0000);
+		RTL_W32(hw, TimeInt1, 0x0000);
+		RTL_W32(hw, TimeInt2, 0x0000);
+		RTL_W32(hw, TimeInt3, 0x0000);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		RTL_W32(hw, TIMER_INT0_8125, 0x0000);
 		RTL_W32(hw, TIMER_INT1_8125, 0x0000);
 		RTL_W32(hw, TIMER_INT2_8125, 0x0000);
@@ -546,7 +1013,7 @@ rtl_hw_clear_timer_int(struct rtl_hw *hw)
 }
 
 static void
-rtl_hw_clear_int_miti(struct rtl_hw *hw)
+rtl8125_hw_clear_int_miti(struct rtl_hw *hw)
 {
 	int i;
 
@@ -577,8 +1044,8 @@ rtl_hw_clear_int_miti(struct rtl_hw *hw)
 	}
 }
 
-void
-rtl_hw_config(struct rtl_hw *hw)
+static void
+rtl8125_hw_config(struct rtl_hw *hw)
 {
 	u32 mac_ocp_data;
 
@@ -590,18 +1057,24 @@ rtl_hw_config(struct rtl_hw *hw)
 	rtl_enable_cfg9346_write(hw);
 
 	/* Disable aspm clkreq internal */
-	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
-		rtl_enable_force_clkreq(hw, 0);
-		rtl_enable_aspm_clkreq_lock(hw, 0);
-		break;
-	}
+	rtl_enable_force_clkreq(hw, 0);
+	rtl_enable_aspm_clkreq_lock(hw, 0);
 
 	/* Disable magic packet */
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		mac_ocp_data = 0;
 		rtl_mac_ocp_write(hw, 0xC0B6, mac_ocp_data);
 		break;
@@ -616,21 +1089,38 @@ rtl_hw_config(struct rtl_hw *hw)
 
 	/* TCAM */
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_53:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
 		RTL_W16(hw, 0x382, 0x221B);
 		break;
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_69 ... CFG_METHOD_71:
-		rtl_disable_l1_timeout(hw);
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		rtl8126_disable_l1_timeout(hw);
 		break;
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
-
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		/* RSS_control_0 */
 		RTL_W32(hw, RSS_CTRL_8125, 0x00);
 
@@ -644,32 +1134,16 @@ rtl_hw_config(struct rtl_hw *hw)
 		rtl_mac_ocp_write(hw, 0xC140, 0xFFFF);
 		rtl_mac_ocp_write(hw, 0xC142, 0xFFFF);
 
-		/* New TX desc format */
+		/* Disable new TX desc format */
 		mac_ocp_data = rtl_mac_ocp_read(hw, 0xEB58);
 		if (hw->mcfg == CFG_METHOD_70 || hw->mcfg == CFG_METHOD_71)
 			mac_ocp_data &= ~(BIT_0 | BIT_1);
-		mac_ocp_data |= BIT_0;
+		else
+			mac_ocp_data &= ~BIT_0;
 		rtl_mac_ocp_write(hw, 0xEB58, mac_ocp_data);
 
 		if (hw->mcfg == CFG_METHOD_70 || hw->mcfg == CFG_METHOD_71)
 			RTL_W8(hw, 0xD8, RTL_R8(hw, 0xD8) & ~BIT_1);
-
-		/*
-		 * MTPS
-		 * 15-8 maximum tx use credit number
-		 * 7-0 reserved for pcie product line
-		 */
-		mac_ocp_data = rtl_mac_ocp_read(hw, 0xE614);
-		mac_ocp_data &= ~(BIT_10 | BIT_9 | BIT_8);
-		if (hw->mcfg == CFG_METHOD_50 || hw->mcfg == CFG_METHOD_51 ||
-		    hw->mcfg == CFG_METHOD_53)
-			mac_ocp_data |= ((2 & 0x07) << 8);
-		else if (hw->mcfg == CFG_METHOD_69 || hw->mcfg == CFG_METHOD_70 ||
-			 hw->mcfg == CFG_METHOD_71)
-			mac_ocp_data |= ((4 & 0x07) << 8);
-		else
-			mac_ocp_data |= ((3 & 0x07) << 8);
-		rtl_mac_ocp_write(hw, 0xE614, mac_ocp_data);
 
 		mac_ocp_data = rtl_mac_ocp_read(hw, 0xE63E);
 		mac_ocp_data &= ~(BIT_5 | BIT_4);
@@ -724,7 +1198,7 @@ rtl_hw_config(struct rtl_hw *hw)
 		case CFG_METHOD_52:
 		case CFG_METHOD_54:
 		case CFG_METHOD_55:
-			rtl8125_oob_mutex_lock(hw);
+			rtl_oob_mutex_lock(hw);
 			break;
 		}
 
@@ -740,7 +1214,7 @@ rtl_hw_config(struct rtl_hw *hw)
 		case CFG_METHOD_52:
 		case CFG_METHOD_54:
 		case CFG_METHOD_55:
-			rtl8125_oob_mutex_unlock(hw);
+			rtl_oob_mutex_unlock(hw);
 			break;
 		}
 
@@ -766,7 +1240,7 @@ rtl_hw_config(struct rtl_hw *hw)
 		    hw->mcfg == CFG_METHOD_52)
 			RTL_W8(hw, MCUCmd_reg, RTL_R8(hw, MCUCmd_reg) | BIT_0);
 
-		rtl_disable_eee_plus(hw);
+		rtl8125_disable_eee_plus(hw);
 
 		mac_ocp_data = rtl_mac_ocp_read(hw, 0xEA1C);
 		mac_ocp_data &= ~BIT_2;
@@ -782,7 +1256,10 @@ rtl_hw_config(struct rtl_hw *hw)
 		RTL_W16(hw, 0x1880, RTL_R16(hw, 0x1880) & ~(BIT_4 | BIT_5));
 
 		switch (hw->mcfg) {
-		case CFG_METHOD_54 ... CFG_METHOD_57:
+		case CFG_METHOD_54:
+		case CFG_METHOD_55:
+		case CFG_METHOD_56:
+		case CFG_METHOD_57:
 			RTL_W8(hw, 0xd8, RTL_R8(hw, 0xd8) & ~EnableRxDescV4_0);
 			break;
 		}
@@ -791,11 +1268,22 @@ rtl_hw_config(struct rtl_hw *hw)
 	/* Other hw parameters */
 	rtl_hw_clear_timer_int(hw);
 
-	rtl_hw_clear_int_miti(hw);
+	rtl8125_hw_clear_int_miti(hw);
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_mac_ocp_write(hw, 0xE098, 0xC302);
 		break;
 	}
@@ -805,10 +1293,198 @@ rtl_hw_config(struct rtl_hw *hw)
 	rte_delay_us(10);
 }
 
+static void
+rtl8168_hw_config(struct rtl_hw *hw)
+{
+	u32 csi_tmp;
+	int timeout;
+
+	rtl_nic_reset(hw);
+
+	rtl_enable_cfg9346_write(hw);
+
+	/* Disable aspm clkreq internal */
+	rtl_enable_force_clkreq(hw, 0);
+	rtl_enable_aspm_clkreq_lock(hw, 0);
+
+	/* Clear io_rdy_l23 */
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		RTL_W8(hw, Config3, RTL_R8(hw, Config3) & ~BIT_1);
+		break;
+	}
+
+	/* Keep magic packet only */
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		csi_tmp = rtl_eri_read(hw, 0xDE, 1, ERIAR_ExGMAC);
+		csi_tmp &= BIT_0;
+		rtl_eri_write(hw, 0xDE, 1, csi_tmp, ERIAR_ExGMAC);
+		break;
+	}
+
+	/* Set TxConfig to default */
+	RTL_W32(hw, TxConfig, (TX_DMA_BURST_unlimited << TxDMAShift) |
+		(InterFrameGap << TxInterFrameGapShift));
+
+	hw->hw_ops.hw_config(hw);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+		rtl_eri_write(hw, 0x2F8, 2, 0x1D8F, ERIAR_ExGMAC);
+		break;
+	}
+
+	rtl_hw_clear_timer_int(hw);
+
+	/* Clkreq exit masks */
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		csi_tmp = rtl_eri_read(hw, 0xD4, 4, ERIAR_ExGMAC);
+		csi_tmp |= (BIT_7 | BIT_8 | BIT_9 | BIT_10 | BIT_11 | BIT_12);
+		rtl_eri_write(hw, 0xD4, 4, csi_tmp, ERIAR_ExGMAC);
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_25:
+		rtl_mac_ocp_write(hw, 0xD3C0, 0x0B00);
+		rtl_mac_ocp_write(hw, 0xD3C2, 0x0000);
+		break;
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		rtl_mac_ocp_write(hw, 0xE098, 0x0AA2);
+		break;
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		rtl_mac_ocp_write(hw, 0xE098, 0xC302);
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+		for (timeout = 0; timeout < 10; timeout++) {
+			if ((rtl_eri_read(hw, 0x1AE, 2, ERIAR_ExGMAC) & BIT_13) == 0)
+				break;
+			rte_delay_ms(1);
+		}
+		break;
+	}
+
+	rtl_disable_cfg9346_write(hw);
+
+	rte_delay_us(10);
+}
+
+void
+rtl_hw_config(struct rtl_hw *hw)
+{
+	if (rtl_is_8125(hw))
+		rtl8125_hw_config(hw);
+	else
+		rtl8168_hw_config(hw);
+}
+
 int
 rtl_set_hw_ops(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
+	/* 8168G */
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	/* 8168GU */
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+		hw->hw_ops = rtl8168g_ops;
+		return 0;
+	/* 8168EP */
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+		hw->hw_ops = rtl8168ep_ops;
+		return 0;
+	/* 8168H */
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+		hw->hw_ops = rtl8168h_ops;
+		return 0;
+	/* 8168FP */
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		hw->hw_ops = rtl8168fp_ops;
+		return 0;
+	/* 8168M */
+	case CFG_METHOD_37:
+		hw->hw_ops = rtl8168m_ops;
+		return 0;
 	/* 8125A */
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
@@ -835,7 +1511,9 @@ rtl_set_hw_ops(struct rtl_hw *hw)
 		hw->hw_ops = rtl8125d_ops;
 		return 0;
 	/* 8126A */
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->hw_ops = rtl8126a_ops;
 		return 0;
 	default:
@@ -848,23 +1526,80 @@ rtl_hw_disable_mac_mcu_bps(struct rtl_hw *hw)
 {
 	u16 reg_addr;
 
+	rtl_enable_cfg9346_write(hw);
 	rtl_enable_aspm_clkreq_lock(hw, 0);
+	rtl_disable_cfg9346_write(hw);
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		rtl_mac_ocp_write(hw, 0xFC38, 0x0000);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_mac_ocp_write(hw, 0xFC48, 0x0000);
 		break;
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		for (reg_addr = 0xFC28; reg_addr < 0xFC38; reg_addr += 2)
+			rtl_mac_ocp_write(hw, reg_addr, 0x0000);
+
+		rte_delay_ms(3);
+		rtl_mac_ocp_write(hw, 0xFC26, 0x0000);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		for (reg_addr = 0xFC28; reg_addr < 0xFC48; reg_addr += 2)
 			rtl_mac_ocp_write(hw, reg_addr, 0x0000);
 
 		rte_delay_ms(3);
-
 		rtl_mac_ocp_write(hw, 0xFC26, 0x0000);
 		break;
 	}
@@ -973,7 +1708,7 @@ rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
 	u64 adv;
 
 	if (!rtl_is_speed_mode_valid(speed))
-		speed = SPEED_5000;
+		speed = SPEED_1000;
 
 	if (!rtl_is_duplex_mode_valid(duplex))
 		duplex = DUPLEX_FULL;
@@ -1009,12 +1744,46 @@ static void
 rtl_init_software_variable(struct rtl_hw *hw)
 {
 	int tx_no_close_enable = 1;
-	unsigned int speed_mode = SPEED_5000;
+	unsigned int speed_mode;
 	unsigned int duplex_mode = DUPLEX_FULL;
 	unsigned int autoneg_mode = AUTONEG_ENABLE;
-	u8 tmp;
+	u32 tmp;
 
 	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+		speed_mode = SPEED_2500;
+		break;
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		speed_mode = SPEED_5000;
+		break;
+	default:
+		speed_mode = SPEED_1000;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+		hw->HwSuppDashVer = 2;
+		break;
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		hw->HwSuppDashVer = 3;
+		break;
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
 		tmp = (u8)rtl_mac_ocp_read(hw, 0xD006);
@@ -1031,6 +1800,41 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	}
 
 	switch (hw->mcfg) {
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		tmp = rtl_mac_ocp_read(hw, 0xDC00);
+		hw->HwPkgDet = (tmp >> 3) & 0x0F;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		if (hw->HwPkgDet == 0x06) {
+			tmp = rtl_eri_read(hw, 0xE6, 1, ERIAR_ExGMAC);
+			if (tmp == 0x02)
+				hw->HwSuppSerDesPhyVer = 1;
+			else if (tmp == 0x00)
+				hw->HwSuppSerDesPhyVer = 2;
+		}
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+		hw->HwSuppOcpChannelVer = 2;
+		break;
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		hw->HwSuppOcpChannelVer = 3;
+		break;
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
 		if (HW_DASH_SUPPORT_DASH(hw))
@@ -1040,9 +1844,13 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_55:
 		hw->HwSuppOcpChannelVer = 2;
 		break;
+	default:
+		hw->HwSuppOcpChannelVer = 0;
+		break;
 	}
 
-	hw->AllowAccessDashOcp = rtl_is_allow_access_dash_ocp(hw);
+	if (rtl_is_8125(hw))
+		hw->AllowAccessDashOcp = rtl_is_allow_access_dash_ocp(hw);
 
 	if (HW_DASH_SUPPORT_DASH(hw) && rtl_check_dash(hw))
 		hw->DASH = 1;
@@ -1053,6 +1861,32 @@ rtl_init_software_variable(struct rtl_hw *hw)
 		hw->cmac_ioaddr = hw->mmio_addr;
 
 	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+		hw->chipset_name = RTL8168G;
+		break;
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+		hw->chipset_name = RTL8168EP;
+		break;
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+		hw->chipset_name = RTL8168H;
+		break;
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		hw->chipset_name = RTL8168FP;
+		break;
+	case CFG_METHOD_37:
+		hw->chipset_name = RTL8168M;
+		break;
 	case CFG_METHOD_48:
 	case CFG_METHOD_49:
 		hw->chipset_name = RTL8125A;
@@ -1073,7 +1907,9 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_57:
 		hw->chipset_name = RTL8125D;
 		break;
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->chipset_name = RTL8126A;
 		break;
 	default:
@@ -1082,23 +1918,91 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->HwSuppNowIsOobVer = 1;
+		break;
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		hw->HwSuppCheckPhyDisableModeVer = 2;
+		break;
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->HwSuppCheckPhyDisableModeVer = 3;
+		break;
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_51:
-	case CFG_METHOD_54 ... CFG_METHOD_57:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
 		hw->HwSuppMaxPhyLinkSpeed = SPEED_2500;
 		break;
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->HwSuppMaxPhyLinkSpeed = SPEED_5000;
 		break;
 	default:
@@ -1107,10 +2011,18 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_53:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
 		hw->HwSuppTxNoCloseVer = 3;
 		break;
-	case CFG_METHOD_54 ... CFG_METHOD_57:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
 		hw->HwSuppTxNoCloseVer = 6;
 		break;
 	case CFG_METHOD_69:
@@ -1158,6 +2070,41 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	}
 
 	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_21;
+		break;
+	case CFG_METHOD_23:
+	case CFG_METHOD_27:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_23;
+		break;
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_24;
+		break;
+	case CFG_METHOD_26:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_26;
+		break;
+	case CFG_METHOD_28:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_28;
+		break;
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_37:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_29;
+		break;
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_31;
+		break;
+	case CFG_METHOD_35:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_35;
+		break;
+	case CFG_METHOD_36:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_36;
+		break;
 	case CFG_METHOD_48:
 		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_48;
 		break;
@@ -1201,15 +2148,37 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->HwSuppMacMcuVer = 2;
 		break;
 	}
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->MacMcuPageSize = RTL_MAC_MCU_PAGE_SIZE;
 		break;
 	}
@@ -1235,7 +2204,10 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	case CFG_METHOD_69:
 		hw->HwSuppIntMitiVer = 4;
 		break;
-	case CFG_METHOD_54 ... CFG_METHOD_57:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
 		hw->HwSuppIntMitiVer = 6;
 		break;
 	case CFG_METHOD_70:
@@ -1247,8 +2219,19 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	rtl_set_link_option(hw, autoneg_mode, speed_mode, duplex_mode, rtl_fc_full);
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		hw->mcu_pme_setting = rtl_mac_ocp_read(hw, 0xE00A);
 		break;
 	}
@@ -1259,11 +2242,67 @@ rtl_init_software_variable(struct rtl_hw *hw)
 static void
 rtl_exit_realwow(struct rtl_hw *hw)
 {
+	u32 csi_tmp;
+
 	/* Disable realwow function */
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+		RTL_W32(hw, MACOCP, 0x605E0000);
+		RTL_W32(hw, MACOCP, (0xE05E << 16) |
+				    (RTL_R32(hw, MACOCP) & 0xFFFE));
+		RTL_W32(hw, MACOCP, 0xE9720000);
+		RTL_W32(hw, MACOCP, 0xF2140010);
+		break;
+	case CFG_METHOD_26:
+		RTL_W32(hw, MACOCP, 0xE05E00FF);
+		RTL_W32(hw, MACOCP, 0xE9720000);
+		rtl_mac_ocp_write(hw, 0xE428, 0x0010);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_mac_ocp_write(hw, 0xC0BC, 0x00FF);
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+		rtl_eri_write(hw, 0x174, 2, 0x0000, ERIAR_ExGMAC);
+		rtl_mac_ocp_write(hw, 0xE428, 0x0010);
+		break;
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_28:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+		rtl_eri_write(hw, 0x174, 2, 0x00FF, ERIAR_ExGMAC);
+		rtl_mac_ocp_write(hw, 0xE428, 0x0010);
+		break;
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		csi_tmp = rtl_eri_read(hw, 0x174, 2, ERIAR_ExGMAC);
+		csi_tmp &= ~BIT_8;
+		csi_tmp |= BIT_15;
+		rtl_eri_write(hw, 0x174, 2, csi_tmp, ERIAR_ExGMAC);
+		rtl_mac_ocp_write(hw, 0xE428, 0x0010);
 		break;
 	}
 }
@@ -1288,15 +2327,34 @@ rtl_wait_ll_share_fifo_ready(struct rtl_hw *hw)
 }
 
 static void
+rtl8168_switch_to_sgmii_mode(struct rtl_hw *hw)
+{
+	if (!HW_SUPP_SERDES_PHY(hw))
+		return;
+
+	switch (hw->HwSuppSerDesPhyVer) {
+	case 1:
+		rtl_mac_ocp_write(hw, 0xEB00, 0x2);
+		rtl8168_set_mcu_ocp_bit(hw, 0xEB16, BIT_1);
+		break;
+	}
+}
+
+static void
 rtl_exit_oob(struct rtl_hw *hw)
 {
 	u16 data16;
 
 	rtl_disable_rx_packet_filter(hw);
 
+	if (HW_SUPP_SERDES_PHY(hw)) {
+		if (hw->HwSuppSerDesPhyVer == 1)
+			rtl8168_switch_to_sgmii_mode(hw);
+	}
+
 	if (HW_DASH_SUPPORT_DASH(hw)) {
-		rtl8125_driver_start(hw);
-		rtl8125_dash2_disable_txrx(hw);
+		rtl_driver_start(hw);
+		rtl_dash2_disable_txrx(hw);
 	}
 
 	rtl_exit_realwow(hw);
@@ -1304,8 +2362,47 @@ rtl_exit_oob(struct rtl_hw *hw)
 	rtl_nic_reset(hw);
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		rtl_disable_now_is_oob(hw);
+
+		data16 = rtl_mac_ocp_read(hw, 0xE8DE) & ~BIT_14;
+		rtl_mac_ocp_write(hw, 0xE8DE, data16);
+		rtl_wait_ll_share_fifo_ready(hw);
+
+		data16 = rtl_mac_ocp_read(hw, 0xE8DE) | BIT_15;
+		rtl_mac_ocp_write(hw, 0xE8DE, data16);
+
+		rtl_wait_ll_share_fifo_ready(hw);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		rtl_disable_now_is_oob(hw);
 
 		data16 = rtl_mac_ocp_read(hw, 0xE8DE) & ~BIT_14;
@@ -1327,20 +2424,66 @@ static void
 rtl_disable_ups(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
-		rtl_mac_ocp_write(hw, 0xD40A, rtl_mac_ocp_read(hw, 0xD40A) & ~BIT_4);
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+		rtl_mac_ocp_write(hw, 0xD400,
+				  rtl_mac_ocp_read(hw, 0xD400) & ~BIT_0);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		rtl_mac_ocp_write(hw, 0xD40A,
+				  rtl_mac_ocp_read(hw, 0xD40A) & ~BIT_4);
 		break;
 	}
 }
 
 static void
-rtl8125_disable_ocp_phy_power_saving(struct rtl_hw *hw)
+rtl_disable_ocp_phy_power_saving(struct rtl_hw *hw)
 {
 	u16 val;
 
-	if (hw->mcfg == CFG_METHOD_48 || hw->mcfg == CFG_METHOD_49 ||
-	    hw->mcfg == CFG_METHOD_52) {
+	switch (hw->mcfg) {
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		val = rtl_mdio_real_read_phy_ocp(hw, 0x0C41, 0x13);
+		if (val != 0x0500) {
+			rtl_set_phy_mcu_patch_request(hw);
+			rtl_mdio_real_write_phy_ocp(hw, 0x0C41, 0x13, 0x0000);
+			rtl_mdio_real_write_phy_ocp(hw, 0x0C41, 0x13, 0x0500);
+			rtl_clear_phy_mcu_patch_request(hw);
+		}
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_52:
 		val = rtl_mdio_direct_read_phy_ocp(hw, 0xC416);
 		if (val != 0x0050) {
 			rtl_set_phy_mcu_patch_request(hw);
@@ -1348,26 +2491,108 @@ rtl8125_disable_ocp_phy_power_saving(struct rtl_hw *hw)
 			rtl_mdio_direct_write_phy_ocp(hw, 0xC416, 0x0500);
 			rtl_clear_phy_mcu_patch_request(hw);
 		}
+		break;
+	}
+}
+
+static void
+rtl8168_disable_dma_agg(struct rtl_hw *hw)
+{
+	switch (hw->mcfg) {
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		rtl_mac_ocp_write(hw, 0xE63E, rtl_mac_ocp_read(hw, 0xE63E) &
+					      ~(BIT_3 | BIT_2 | BIT_1));
+		rtl_mac_ocp_write(hw, 0xE63E,
+				  rtl_mac_ocp_read(hw, 0xE63E) | (BIT_0));
+		rtl_mac_ocp_write(hw, 0xE63E,
+				  rtl_mac_ocp_read(hw, 0xE63E) & ~(BIT_0));
+		rtl_mac_ocp_write(hw, 0xC094, 0x0);
+		rtl_mac_ocp_write(hw, 0xC09E, 0x0);
+		break;
 	}
 }
 
 static void
 rtl_hw_init(struct rtl_hw *hw)
 {
-	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
-		rtl_enable_aspm_clkreq_lock(hw, 0);
-		rtl_enable_force_clkreq(hw, 0);
-		break;
-	}
+	u32 csi_tmp;
+
+	/* Disable aspm clkreq internal */
+	rtl_enable_force_clkreq(hw, 0);
+	rtl_enable_cfg9346_write(hw);
+	rtl_enable_aspm_clkreq_lock(hw, 0);
+	rtl_disable_cfg9346_write(hw);
 
 	rtl_disable_ups(hw);
+
+	/* Disable DMA aggregation */
+	rtl8168_disable_dma_agg(hw);
 
 	hw->hw_ops.hw_mac_mcu_config(hw);
 
 	/* Disable ocp phy power saving */
-	rtl8125_disable_ocp_phy_power_saving(hw);
+	rtl_disable_ocp_phy_power_saving(hw);
+
+	/* Set PCIE uncorrectable error status mask pcie 0x108 */
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		csi_tmp = rtl_csi_read(hw, 0x108);
+		csi_tmp |= BIT_20;
+		rtl_csi_write(hw, 0x108, csi_tmp);
+		break;
+	}
+
+	/* MCU PME setting */
+	switch (hw->mcfg) {
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+		csi_tmp = rtl_eri_read(hw, 0x1AB, 1, ERIAR_ExGMAC);
+		csi_tmp |= (BIT_2 | BIT_3 | BIT_4 | BIT_5 | BIT_6 | BIT_7);
+		rtl_eri_write(hw, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
+		break;
+	case CFG_METHOD_25:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		csi_tmp = rtl_eri_read(hw, 0x1AB, 1, ERIAR_ExGMAC);
+		csi_tmp |= (BIT_3 | BIT_6);
+		rtl_eri_write(hw, 0x1AB, 1, csi_tmp, ERIAR_ExGMAC);
+		break;
+	}
 }
 
 void
@@ -1393,33 +2618,200 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 	ic_version_id = val32 & 0x00700000;
 
 	switch (reg) {
+	case 0x30000000:
+		hw->mcfg = CFG_METHOD_1;
+		break;
+	case 0x38000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_2;
+		} else if (ic_version_id == 0x00500000) {
+			hw->mcfg = CFG_METHOD_3;
+		} else {
+			hw->mcfg = CFG_METHOD_3;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x3C000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_4;
+		} else if (ic_version_id == 0x00200000) {
+			hw->mcfg = CFG_METHOD_5;
+		} else if (ic_version_id == 0x00400000) {
+			hw->mcfg = CFG_METHOD_6;
+		} else {
+			hw->mcfg = CFG_METHOD_6;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x3C800000:
+		if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_7;
+		} else if (ic_version_id == 0x00300000) {
+			hw->mcfg = CFG_METHOD_8;
+		} else {
+			hw->mcfg = CFG_METHOD_8;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x28000000:
+		if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_9;
+		} else if (ic_version_id == 0x00300000) {
+			hw->mcfg = CFG_METHOD_10;
+		} else {
+			hw->mcfg = CFG_METHOD_10;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x28800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_11;
+		} else if (ic_version_id == 0x00200000) {
+			hw->mcfg = CFG_METHOD_12;
+			RTL_W32(hw, 0xD0, RTL_R32(hw, 0xD0) | 0x00020000);
+		} else if (ic_version_id == 0x00300000) {
+			hw->mcfg = CFG_METHOD_13;
+		} else {
+			hw->mcfg = CFG_METHOD_13;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x2C000000:
+		if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_14;
+		} else if (ic_version_id == 0x00200000) {
+			hw->mcfg = CFG_METHOD_15;
+		} else {
+			hw->mcfg = CFG_METHOD_15;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x2C800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_16;
+		} else if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_17;
+		} else {
+			hw->mcfg = CFG_METHOD_17;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x48000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_18;
+		} else if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_19;
+		} else {
+			hw->mcfg = CFG_METHOD_19;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x48800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_20;
+		} else {
+			hw->mcfg = CFG_METHOD_20;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x4C000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_21;
+		} else if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_22;
+		} else {
+			hw->mcfg = CFG_METHOD_22;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x50000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_23;
+		} else if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_27;
+		} else if (ic_version_id == 0x00200000) {
+			hw->mcfg = CFG_METHOD_28;
+		} else {
+			hw->mcfg = CFG_METHOD_28;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x50800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_24;
+		} else if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_25;
+		} else {
+			hw->mcfg = CFG_METHOD_25;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x5C800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_26;
+		} else {
+			hw->mcfg = CFG_METHOD_26;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x54000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_29;
+		} else if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_30;
+		} else {
+			hw->mcfg = CFG_METHOD_30;
+			hw->HwIcVerUnknown = TRUE;
+		}
+
+		if (hw->mcfg == CFG_METHOD_30) {
+			if ((rtl_mac_ocp_read(hw, 0xD006) & 0xFF00) == 0x0100)
+				hw->mcfg = CFG_METHOD_35;
+			else if ((rtl_mac_ocp_read(hw, 0xD006) & 0xFF00) == 0x0300)
+				hw->mcfg = CFG_METHOD_36;
+		}
+		break;
+	case 0x6C000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_37;
+		} else {
+			hw->mcfg = CFG_METHOD_37;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
+	case 0x54800000:
+		if (ic_version_id == 0x00100000) {
+			hw->mcfg = CFG_METHOD_31;
+		} else if (ic_version_id == 0x00200000) {
+			hw->mcfg = CFG_METHOD_32;
+		} else if (ic_version_id == 0x00300000) {
+			hw->mcfg = CFG_METHOD_33;
+		} else if (ic_version_id == 0x00400000) {
+			hw->mcfg = CFG_METHOD_34;
+		} else {
+			hw->mcfg = CFG_METHOD_34;
+			hw->HwIcVerUnknown = TRUE;
+		}
+		break;
 	case 0x60800000:
 		if (ic_version_id == 0x00000000) {
 			hw->mcfg = CFG_METHOD_48;
-
 		} else if (ic_version_id == 0x100000) {
 			hw->mcfg = CFG_METHOD_49;
-
 		} else {
 			hw->mcfg = CFG_METHOD_49;
 			hw->HwIcVerUnknown = TRUE;
 		}
-
-		hw->efuse_ver = EFUSE_SUPPORT_V4;
 		break;
 	case 0x64000000:
 		if (ic_version_id == 0x00000000) {
 			hw->mcfg = CFG_METHOD_50;
-
 		} else if (ic_version_id == 0x100000) {
 			hw->mcfg = CFG_METHOD_51;
-
 		} else {
 			hw->mcfg = CFG_METHOD_51;
 			hw->HwIcVerUnknown = TRUE;
 		}
-
-		hw->efuse_ver = EFUSE_SUPPORT_V4;
 		break;
 	case 0x68000000:
 		if (ic_version_id == 0x00000000) {
@@ -1430,8 +2822,6 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 			hw->mcfg = CFG_METHOD_55;
 			hw->HwIcVerUnknown = TRUE;
 		}
-
-		hw->efuse_ver = EFUSE_SUPPORT_V4;
 		break;
 	case 0x68800000:
 		if (ic_version_id == 0x00000000) {
@@ -1442,8 +2832,6 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 			hw->mcfg = CFG_METHOD_57;
 			hw->HwIcVerUnknown = TRUE;
 		}
-
-		hw->efuse_ver = EFUSE_SUPPORT_V4;
 		break;
 	case 0x64800000:
 		if (ic_version_id == 0x00000000) {
@@ -1456,14 +2844,11 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 			hw->mcfg = CFG_METHOD_71;
 			hw->HwIcVerUnknown = TRUE;
 		}
-
-		hw->efuse_ver = EFUSE_SUPPORT_V4;
 		break;
 	default:
 		PMD_INIT_LOG(NOTICE, "unknown chip version (%x)", reg);
 		hw->mcfg = CFG_METHOD_DEFAULT;
 		hw->HwIcVerUnknown = TRUE;
-		hw->efuse_ver = EFUSE_NOT_SUPPORT;
 		break;
 	}
 
@@ -1478,11 +2863,42 @@ rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
 int
 rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea)
 {
-	u8 mac_addr[MAC_ADDR_LEN] = {0};
+	u8 mac_addr[RTE_ETHER_ADDR_LEN] = {0};
 
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_57:
-	case CFG_METHOD_69 ... CFG_METHOD_71:
+	case CFG_METHOD_21:
+	case CFG_METHOD_22:
+	case CFG_METHOD_23:
+	case CFG_METHOD_24:
+	case CFG_METHOD_25:
+	case CFG_METHOD_26:
+	case CFG_METHOD_27:
+	case CFG_METHOD_28:
+	case CFG_METHOD_29:
+	case CFG_METHOD_30:
+	case CFG_METHOD_31:
+	case CFG_METHOD_32:
+	case CFG_METHOD_33:
+	case CFG_METHOD_34:
+	case CFG_METHOD_35:
+	case CFG_METHOD_36:
+	case CFG_METHOD_37:
+		*(u32 *)&mac_addr[0] = rtl_eri_read(hw, 0xE0, 4, ERIAR_ExGMAC);
+		*(u16 *)&mac_addr[4] = rtl_eri_read(hw, 0xE4, 2, ERIAR_ExGMAC);
+		break;
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_69:
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
 		*(u32 *)&mac_addr[0] = RTL_R32(hw, BACKUP_ADDR0_8125);
 		*(u16 *)&mac_addr[4] = RTL_R16(hw, BACKUP_ADDR1_8125);
 		break;
@@ -1495,6 +2911,7 @@ rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea)
 	return 0;
 }
 
+/* Puts an ethernet address into a receive address register. */
 void
 rtl_rar_set(struct rtl_hw *hw, uint8_t *addr)
 {
@@ -1592,4 +3009,10 @@ void
 rtl_tally_free(struct rte_eth_dev *dev)
 {
 	rte_eth_dma_zone_free(dev, "tally_counters", 0);
+}
+
+bool
+rtl_is_8125(struct rtl_hw *hw)
+{
+	return hw->mcfg >= CFG_METHOD_48;
 }

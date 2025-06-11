@@ -355,16 +355,16 @@ enum RTL_register_content {
 	/* Config3 register */
 	Isolate_en  = (1UL << 12), /* Isolate enable */
 	MagicPacket = (1UL << 5),  /* Wake up when receives a magic packet */
-	LinkUp      = (1UL << 4),  /* This bit is reserved in RTL8125B. */
+	LinkUp      = (1UL << 4),
 
 	/* Wake up when the cable connection is re-established */
-	ECRCEN      = (1UL << 3), /* This bit is reserved in RTL8125B. */
-	Jumbo_En0   = (1UL << 2), /* This bit is reserved in RTL8125B. */
-	RDY_TO_L23  = (1UL << 1), /* This bit is reserved in RTL8125B. */
-	Beacon_en   = (1UL << 0), /* This bit is reserved in RTL8125B. */
+	ECRCEN      = (1UL << 3),
+	Jumbo_En0   = (1UL << 2),
+	RDY_TO_L23  = (1UL << 1),
+	Beacon_en   = (1UL << 0),
 
 	/* Config4 register */
-	Jumbo_En1   = (1UL << 1), /* This bit is reserved in RTL8125B. */
+	Jumbo_En1   = (1UL << 1),
 
 	/* Config5 register */
 	BWF         = (1UL << 6), /* Accept broadcast wakeup frame */
@@ -380,8 +380,8 @@ enum RTL_register_content {
 	Force_halfdup   = (1UL << 12),
 	Force_rxflow_en = (1UL << 11),
 	Force_txflow_en = (1UL << 10),
-	Cxpl_dbg_sel    = (1UL << 9), /* This bit is reserved in RTL8125B. */
-	ASF             = (1UL << 8), /* This bit is reserved in RTL8125C. */
+	Cxpl_dbg_sel    = (1UL << 9),
+	ASF             = (1UL << 8),
 	PktCntrDisable  = (1UL << 7),
 	RxVlan          = (1UL << 6),
 	RxChkSum        = (1UL << 5),
@@ -508,6 +508,11 @@ enum RTL_chipset_name {
 	RTL8125BP,
 	RTL8125D,
 	RTL8126A,
+	RTL8168EP,
+	RTL8168FP,
+	RTL8168G,
+	RTL8168H,
+	RTL8168M,
 	UNKNOWN
 };
 
@@ -540,6 +545,8 @@ enum RTL_chipset_name {
 #define InterFrameGap       0x03    /* 3 means InterFrameGap = the shortest one */
 #define Rx_Fetch_Number_8  (1 << 30)
 #define Rx_Close_Multiple  (1 << 21)
+#define RxEarly_off_V2	   (1 << 11)
+#define Rx_Single_fetch_V2 (1 << 14)
 
 #define TRUE  1
 #define FALSE 0
@@ -566,8 +573,6 @@ enum RTL_chipset_name {
 #define ADVERTISE_2500_FULL   0x0080
 #define ADVERTISE_5000_HALF   0x0100 /* NOT used, just FYI */
 #define ADVERTISE_5000_FULL   0x0200
-
-#define MAC_ADDR_LEN    RTE_ETHER_ADDR_LEN
 
 #define RTL_MAX_TX_DESC 4096
 #define RTL_MAX_RX_DESC 4096

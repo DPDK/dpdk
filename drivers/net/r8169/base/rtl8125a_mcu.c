@@ -162,7 +162,12 @@ static void
 rtl_release_phy_mcu_patch_key_lock(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_48 ... CFG_METHOD_53:
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
 		rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x0000);
 		rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x0000);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xB82E, BIT_0);
