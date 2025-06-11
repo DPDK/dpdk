@@ -63,18 +63,23 @@ _rtl_check_dash(struct rtl_hw *hw)
 	if (!hw->AllowAccessDashOcp)
 		return 0;
 
-	if (HW_DASH_SUPPORT_TYPE_2(hw) || HW_DASH_SUPPORT_TYPE_3(hw) ||
-	    HW_DASH_SUPPORT_TYPE_4(hw)) {
+	switch (hw->HwSuppDashVer) {
+	case 2:
+		if (rtl_is_8125(hw))
+			return 0;
+	/* Fall through */
+	case 3:
+	case 4:
 		if (rtl_ocp_read(hw, 0x128, 1) & BIT_0)
 			return 1;
 		else
 			return 0;
-	} else if (HW_DASH_SUPPORT_TYPE_1(hw)) {
+	case 1:
 		if (rtl_ocp_read(hw, 0x10, 2) & 0x00008000)
 			return 1;
 		else
 			return 0;
-	} else {
+	default:
 		return 0;
 	}
 }
@@ -193,7 +198,7 @@ rtl8168_csi_to_cmac_w8(struct rtl_hw *hw, u32 reg, u8 value)
 static void
 rtl_cmac_w8(struct rtl_hw *hw, u32 reg, u8 value)
 {
-	if (HW_DASH_SUPPORT_TYPE_2(hw) || HW_DASH_SUPPORT_TYPE_4(hw))
+	if (HW_DASH_SUPPORT_TYPE_2(hw))
 		RTL_CMAC_W8(hw, reg, value);
 	else if (HW_DASH_SUPPORT_TYPE_3(hw))
 		rtl8168_csi_to_cmac_w8(hw, reg, value);
@@ -202,7 +207,7 @@ rtl_cmac_w8(struct rtl_hw *hw, u32 reg, u8 value)
 static u8
 rtl_cmac_r8(struct rtl_hw *hw, u32 reg)
 {
-	if (HW_DASH_SUPPORT_TYPE_2(hw) || HW_DASH_SUPPORT_TYPE_4(hw))
+	if (HW_DASH_SUPPORT_TYPE_2(hw))
 		return RTL_CMAC_R8(hw, reg);
 	else if (HW_DASH_SUPPORT_TYPE_3(hw))
 		return rtl8168_csi_to_cmac_r8(hw, reg);
@@ -270,9 +275,6 @@ rtl8125_notify_dash_oob_cmac(struct rtl_hw *hw, u32 cmd)
 static void
 rtl8125_notify_dash_oob_ipc2(struct rtl_hw *hw, u32 cmd)
 {
-	if (!HW_DASH_SUPPORT_TYPE_4(hw))
-		return;
-
 	rtl_ocp_write(hw, IB2SOC_DATA, 4, cmd);
 	rtl_ocp_write(hw, IB2SOC_CMD, 4, 0x00);
 	rtl_ocp_write(hw, IB2SOC_SET, 4, 0x01);
@@ -553,9 +555,6 @@ rtl8125_driver_stop(struct rtl_hw *hw)
 {
 	if (!hw->AllowAccessDashOcp)
 		return;
-
-	if (HW_DASH_SUPPORT_CMAC(hw))
-		rtl_dash2_disable_txrx(hw);
 
 	rtl8125_notify_dash_oob(hw, OOB_CMD_DRIVER_STOP);
 
