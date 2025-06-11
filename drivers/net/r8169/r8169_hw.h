@@ -91,6 +91,7 @@ extern const struct rtl_hw_ops rtl8125d_ops;
 extern const struct rtl_hw_ops rtl8126a_ops;
 extern const struct rtl_hw_ops rtl8168kb_ops;
 extern const struct rtl_hw_ops rtl8127_ops;
+extern const struct rtl_hw_ops rtl8125cp_ops;
 
 #define NO_BASE_ADDRESS       0x00000000
 #define RTL8168FP_OOBMAC_BASE 0xBAF70000
@@ -132,6 +133,7 @@ extern const struct rtl_hw_ops rtl8127_ops;
 #define NIC_RAMCODE_VERSION_CFG_METHOD_55  (0x0001)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_56  (0x0027)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_57  (0x0027)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_58  (0x0008)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_69  (0x0023)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_70  (0x0033)
 #define NIC_RAMCODE_VERSION_CFG_METHOD_71  (0x0060)

@@ -495,6 +495,7 @@ rtl_wait_phy_ups_resume(struct rtl_hw *hw, u16 PhyState)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -529,32 +530,7 @@ rtl_phy_power_up(struct rtl_hw *hw)
 	}
 
 	/* Wait ups resume (phy state 3) */
-	switch (hw->mcfg) {
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
-	case CFG_METHOD_91:
-		rtl_wait_phy_ups_resume(hw, 3);
-		break;
-	}
+	rtl_wait_phy_ups_resume(hw, 3);
 }
 
 void
@@ -586,6 +562,7 @@ rtl_powerup_pll(struct rtl_hw *hw)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -652,6 +629,7 @@ rtl_phy_power_down(struct rtl_hw *hw)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -699,6 +677,7 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 		case CFG_METHOD_55:
 		case CFG_METHOD_56:
 		case CFG_METHOD_57:
+		case CFG_METHOD_58:
 		case CFG_METHOD_69:
 		case CFG_METHOD_70:
 		case CFG_METHOD_71:
@@ -738,6 +717,7 @@ rtl_powerdown_pll(struct rtl_hw *hw)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -1103,6 +1083,7 @@ rtl_is_adv_eee_enabled(struct rtl_hw *hw)
 	case CFG_METHOD_53:
 	case CFG_METHOD_54:
 	case CFG_METHOD_55:
+	case CFG_METHOD_58:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -1187,6 +1168,9 @@ _rtl_disable_adv_eee(struct rtl_hw *hw)
 	case CFG_METHOD_53:
 	case CFG_METHOD_54:
 	case CFG_METHOD_55:
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 	case CFG_METHOD_69:
 	case CFG_METHOD_70:
 	case CFG_METHOD_71:
@@ -1272,6 +1256,7 @@ rtl_disable_eee(struct rtl_hw *hw)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 		rtl_clear_mac_ocp_bit(hw, 0xE040, (BIT_1 | BIT_0));
 
 		rtl_set_eth_phy_ocp_bit(hw, 0xA432, BIT_4);
@@ -1432,6 +1417,7 @@ rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u64 adv)
 	case CFG_METHOD_55:
 	case CFG_METHOD_56:
 	case CFG_METHOD_57:
+	case CFG_METHOD_58:
 		mask |= BIT_0;
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_9);
 		rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, mask);
