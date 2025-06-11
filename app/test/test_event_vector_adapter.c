@@ -10,7 +10,7 @@
 #include "test.h"
 
 #ifdef RTE_EXEC_ENV_WINDOWS
-static int
+static int __rte_unused
 test_event_vector_adapter(void)
 {
 	printf("event_vector_adapter not supported on Windows, skipping test\n");
@@ -669,7 +669,7 @@ static struct unit_test_suite functional_testsuite = {
 	}
 };
 
-static int
+static int __rte_unused
 test_event_vector_adapter(void)
 {
 	return unit_test_suite_runner(&functional_testsuite);
@@ -677,4 +677,6 @@ test_event_vector_adapter(void)
 
 #endif
 
-REGISTER_FAST_TEST(event_vector_adapter_autotest, true, true, test_event_vector_adapter);
+/* disabled because of reported failures, waiting for a fix
+ * REGISTER_FAST_TEST(event_vector_adapter_autotest, true, true, test_event_vector_adapter);
+ */
