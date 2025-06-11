@@ -102,6 +102,13 @@ rtl_hw_phy_config_8127a_1(struct rtl_hw *hw)
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x83EF);
 	rtl_clear_eth_phy_ocp_bit(hw, 0xB87E, 0x0E00);
 
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xBF38, 0x01F0, 0x0160);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xBF3A, 0x001F, 0x0014);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xBF28, 0x6000);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xBF2C, 0xC000);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xBF28, 0x1FFF, 0x0187);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xBF2A, 0x003F, 0x0003);
+
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x8173);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x8620);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x8175);
@@ -205,7 +212,7 @@ rtl_hw_phy_config_8127a_1(struct rtl_hw *hw)
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8015);
 	rtl_set_eth_phy_ocp_bit(hw, 0xB87E, BIT_9);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8016);
-	rtl_set_eth_phy_ocp_bit(hw, 0xB87E, BIT_11);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xB87E, BIT_11);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FE6);
 	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x0800);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FE4);
@@ -241,6 +248,16 @@ rtl_hw_phy_config_8127a_1(struct rtl_hw *hw)
 	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0x3F00, 0x2A00);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x81B1);
 	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xA438, 0xFF00, 0x0B00);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FED);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x4E00);
+
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x88AC);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x2300);
+	rtl_set_eth_phy_ocp_bit(hw, 0xBF0C, 0x3800);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x88DE);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x80B4);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0x5195);
 
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x8370);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xA438, 0x8671);
@@ -300,20 +317,23 @@ rtl_hw_phy_config_8127a_1(struct rtl_hw *hw)
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FEE);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0xFFDF);
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF0);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0xFFDF);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF1);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0xDF0A);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF3);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0x4AAA);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF5);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0x5A0A);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF7);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0x4AAA);
-	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF9);
-	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x5A00);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0xFFFF);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF2);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0x0A4A);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF4);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0xAA5A);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF6);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0x0A4A);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x8FF8);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xB87E, 0xAA5A);
 
 	rtl_mdio_direct_write_phy_ocp(hw, 0xB87C, 0x88D5);
 	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xB87E, 0xFF00, 0x0200);
+
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x84BB);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xA438, 0xFF00, 0x0A00);
+	rtl_mdio_direct_write_phy_ocp(hw, 0xA436, 0x84C0);
+	rtl_clear_and_set_eth_phy_ocp_bit(hw, 0xA438, 0xFF00, 0x1600);
 
 	rtl_set_eth_phy_ocp_bit(hw, 0xA430, BIT_1 | BIT_0);
 }
