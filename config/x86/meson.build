@@ -4,11 +4,13 @@
 if is_ms_compiler
     cc_avx2_flags = ['/arch:AVX2']
 else
-    cc_avx2_flags = ['-mavx2']
+    cc_avx2_flags = []
+    if cc.get_define('__AVX2__', args: machine_args) == ''
+        cc_avx2_flags = ['-mavx2']
+    endif
 endif
 
 cc_has_avx512 = false
-target_has_avx512 = false
 
 dpdk_conf.set('RTE_ARCH_X86', 1)
 if dpdk_conf.get('RTE_ARCH_64')
@@ -65,26 +67,36 @@ if is_linux or cc.get_id() == 'gcc'
     endif
 endif
 
-cc_avx512_flags = ['-mavx512f', '-mavx512vl', '-mavx512dq', '-mavx512bw', '-mavx512cd']
-if (binutils_ok and cc.has_multi_arguments(cc_avx512_flags)
+avx512_march_flag = '-march=x86-64-v4'
+if not cc.has_argument(avx512_march_flag)
+    avx512_march_flag = '-march=skylake-avx512'
+endif
+cc_avx512_flags = []
+if (binutils_ok and cc.has_argument(avx512_march_flag)
         and '-mno-avx512f' not in get_option('c_args'))
     # check if compiler is working with _mm512_extracti64x4_epi64
     # Ref: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82887
     code = '''#include <immintrin.h>
     void test(__m512i zmm){
         __m256i ymm = _mm512_extracti64x4_epi64(zmm, 0);}'''
-    result = cc.compiles(code, args : cc_avx512_flags, name : 'AVX512 checking')
+    result = cc.compiles(code, args : [avx512_march_flag], name : 'AVX512 checking')
     if result == false
         machine_args += '-mno-avx512f'
         warning('Broken _mm512_extracti64x4_epi64, disabling AVX512 support')
     else
         cc_has_avx512 = true
-        target_has_avx512 = (
-                cc.get_define('__AVX512F__', args: machine_args) != '' and
-                cc.get_define('__AVX512BW__', args: machine_args) != '' and
-                cc.get_define('__AVX512DQ__', args: machine_args) != '' and
-                cc.get_define('__AVX512VL__', args: machine_args) != ''
-            )
+        if cc.get_define('__AVX512F__', args: machine_args) == ''
+            cc_avx512_flags = [avx512_march_flag]
+            if cc.has_argument('-Wno-overriding-option')
+                cc_avx512_flags += '-Wno-overriding-option'
+            endif
+        endif
+    endif
+endif
+if developer_mode and meson.version().version_compare('>=0.60.2')
+    message('Extra C flags needed for AVX2 output: @0@'.format(cc_avx2_flags))
+    if cc_has_avx512
+        message('Extra C flags needed for AVX512 output: @0@'.format(cc_avx512_flags))
     endif
 endif
 
