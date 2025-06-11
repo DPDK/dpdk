@@ -25,8 +25,6 @@ rtl_set_mac_mcu_8126a_1(struct rtl_hw *hw)
 		0xBE00, 0x0000, 0xC602, 0xBE00, 0x0000, 0xC602, 0xBE00, 0x0000
 	};
 
-	rtl_hw_disable_mac_mcu_bps(hw);
-
 	rtl_write_mac_mcu_ram_code(hw, mcu_patch_code_8126a_1,
 				   ARRAY_SIZE(mcu_patch_code_8126a_1));
 
@@ -67,10 +65,13 @@ rtl_set_mac_mcu_8126a_2(struct rtl_hw *hw)
 		0x0000, 0xC602, 0xBE00, 0x0000, 0x6847, 0x0A18, 0x0C02, 0x0B30
 	};
 
-	rtl_hw_disable_mac_mcu_bps(hw);
+	/* Get BIN mac mcu patch code version */
+	hw->bin_mcu_patch_code_ver = rtl_get_bin_mcu_patch_code_ver(mcu_patch_code,
+								    ARRAY_SIZE(mcu_patch_code));
 
-	rtl_write_mac_mcu_ram_code(hw, mcu_patch_code,
-				   ARRAY_SIZE(mcu_patch_code));
+	if (hw->hw_mcu_patch_code_ver != hw->bin_mcu_patch_code_ver)
+		rtl_write_mac_mcu_ram_code(hw, mcu_patch_code,
+					   ARRAY_SIZE(mcu_patch_code));
 
 	rtl_mac_ocp_write(hw, 0xFC26, 0x8000);
 
@@ -104,10 +105,13 @@ rtl_set_mac_mcu_8126a_3(struct rtl_hw *hw)
 		0x0000, 0x6847, 0x0B18, 0x0C02, 0x0D10
 	};
 
-	rtl_hw_disable_mac_mcu_bps(hw);
+	/* Get BIN mac mcu patch code version */
+	hw->bin_mcu_patch_code_ver = rtl_get_bin_mcu_patch_code_ver(mcu_patch_code,
+								    ARRAY_SIZE(mcu_patch_code));
 
-	rtl_write_mac_mcu_ram_code(hw, mcu_patch_code,
-				   ARRAY_SIZE(mcu_patch_code));
+	if (hw->hw_mcu_patch_code_ver != hw->bin_mcu_patch_code_ver)
+		rtl_write_mac_mcu_ram_code(hw, mcu_patch_code,
+					   ARRAY_SIZE(mcu_patch_code));
 
 	rtl_mac_ocp_write(hw, 0xFC26, 0x8000);
 

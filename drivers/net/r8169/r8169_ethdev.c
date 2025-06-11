@@ -56,6 +56,8 @@ static const struct rte_pci_id pci_id_r8169_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8126) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x5000) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8168) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8127) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x0E10) },
 	{.vendor_id = 0, /* sentinel */ },
 };
 
@@ -165,6 +167,9 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 		case CFG_METHOD_71:
 			speed_mode = SPEED_5000;
 			break;
+		case CFG_METHOD_91:
+			speed_mode = SPEED_10000;
+			break;
 		default:
 			speed_mode = SPEED_1000;
 			break;
@@ -176,7 +181,8 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 		if (*link_speeds & ~(RTE_ETH_LINK_SPEED_10M_HD | RTE_ETH_LINK_SPEED_10M |
 				     RTE_ETH_LINK_SPEED_100M_HD | RTE_ETH_LINK_SPEED_100M |
 				     RTE_ETH_LINK_SPEED_1G | RTE_ETH_LINK_SPEED_2_5G |
-				     RTE_ETH_LINK_SPEED_5G | RTE_ETH_LINK_SPEED_FIXED))
+				     RTE_ETH_LINK_SPEED_5G | RTE_ETH_LINK_SPEED_10G |
+				     RTE_ETH_LINK_SPEED_FIXED))
 			goto error_invalid_config;
 
 		if (*link_speeds & RTE_ETH_LINK_SPEED_10M_HD) {
@@ -213,6 +219,11 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 			hw->speed = SPEED_5000;
 			hw->duplex = DUPLEX_FULL;
 			adv |= ADVERTISE_5000_FULL;
+		}
+		if (*link_speeds & RTE_ETH_LINK_SPEED_10G) {
+			hw->speed = SPEED_10000;
+			hw->duplex = DUPLEX_FULL;
+			adv |= ADVERTISE_10000_FULL;
 		}
 
 		hw->autoneg = AUTONEG_ENABLE;
@@ -295,27 +306,8 @@ rtl_dev_start(struct rte_eth_dev *dev)
 
 	rtl_hw_config(hw);
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_21:
-	case CFG_METHOD_22:
-	case CFG_METHOD_23:
-	case CFG_METHOD_24:
-	case CFG_METHOD_25:
-	case CFG_METHOD_26:
-	case CFG_METHOD_27:
-	case CFG_METHOD_28:
-	case CFG_METHOD_29:
-	case CFG_METHOD_30:
-	case CFG_METHOD_31:
-	case CFG_METHOD_32:
-	case CFG_METHOD_33:
-	case CFG_METHOD_34:
-	case CFG_METHOD_35:
-	case CFG_METHOD_36:
-	case CFG_METHOD_37:
+	if (!rtl_is_8125(hw))
 		set_offset79(pci_dev, 0x40);
-		break;
-	}
 
 	/* Initialize transmission unit */
 	rtl_tx_init(dev);
@@ -362,23 +354,8 @@ rtl_dev_stop(struct rte_eth_dev *dev)
 
 	rtl_nic_reset(hw);
 
-	switch (hw->mcfg) {
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
+	if (rtl_is_8125(hw))
 		rtl_mac_ocp_write(hw, 0xE00A, hw->mcu_pme_setting);
-		break;
-	}
 
 	rtl_powerdown_pll(hw);
 
@@ -411,23 +388,8 @@ rtl_dev_set_link_down(struct rte_eth_dev *dev)
 	struct rtl_hw *hw = &adapter->hw;
 
 	/* mcu pme intr masks */
-	switch (hw->mcfg) {
-	case CFG_METHOD_48:
-	case CFG_METHOD_49:
-	case CFG_METHOD_50:
-	case CFG_METHOD_51:
-	case CFG_METHOD_52:
-	case CFG_METHOD_53:
-	case CFG_METHOD_54:
-	case CFG_METHOD_55:
-	case CFG_METHOD_56:
-	case CFG_METHOD_57:
-	case CFG_METHOD_69:
-	case CFG_METHOD_70:
-	case CFG_METHOD_71:
+	if (rtl_is_8125(hw))
 		rtl_mac_ocp_write(hw, 0xE00A, hw->mcu_pme_setting & ~(BIT_11 | BIT_14));
-		break;
-	}
 
 	rtl_powerdown_pll(hw);
 
@@ -463,6 +425,9 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			       RTE_ETH_LINK_SPEED_1G;
 
 	switch (hw->chipset_name) {
+	case RTL8127:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_10G;
+	/* fallthrough */
 	case RTL8126A:
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_5G;
 	/* fallthrough */
@@ -605,61 +570,23 @@ rtl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 
 		if (status & FullDup) {
 			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-			switch (hw->mcfg) {
-			case CFG_METHOD_21:
-			case CFG_METHOD_22:
-			case CFG_METHOD_23:
-			case CFG_METHOD_24:
-			case CFG_METHOD_25:
-			case CFG_METHOD_26:
-			case CFG_METHOD_27:
-			case CFG_METHOD_28:
-			case CFG_METHOD_29:
-			case CFG_METHOD_30:
-			case CFG_METHOD_31:
-			case CFG_METHOD_32:
-			case CFG_METHOD_33:
-			case CFG_METHOD_34:
-			case CFG_METHOD_35:
-			case CFG_METHOD_36:
-			case CFG_METHOD_37:
-			case CFG_METHOD_48:
+			if (!rtl_is_8125(hw) || hw->mcfg == CFG_METHOD_48)
 				RTL_W32(hw, TxConfig, (RTL_R32(hw, TxConfig) |
 						      (BIT_24 | BIT_25)) & ~BIT_19);
-				break;
-			}
 		} else {
 			link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
-			switch (hw->mcfg) {
-			case CFG_METHOD_21:
-			case CFG_METHOD_22:
-			case CFG_METHOD_23:
-			case CFG_METHOD_24:
-			case CFG_METHOD_25:
-			case CFG_METHOD_26:
-			case CFG_METHOD_27:
-			case CFG_METHOD_28:
-			case CFG_METHOD_29:
-			case CFG_METHOD_30:
-			case CFG_METHOD_31:
-			case CFG_METHOD_32:
-			case CFG_METHOD_33:
-			case CFG_METHOD_34:
-			case CFG_METHOD_35:
-			case CFG_METHOD_36:
-			case CFG_METHOD_37:
-			case CFG_METHOD_48:
+			if (!rtl_is_8125(hw) || hw->mcfg == CFG_METHOD_48)
 				RTL_W32(hw, TxConfig, (RTL_R32(hw, TxConfig) | BIT_25) &
 						      ~(BIT_19 | BIT_24));
-				break;
-			}
 		}
 
 		/*
 		 * The PHYstatus register for the RTL8168 is 8 bits,
-		 * while for the RTL8125 and RTL8126, it is 16 bits.
+		 * while for the RTL8125, RTL8126 and RTL8127, it is 16 bits.
 		 */
-		if (status & _5000bpsF && rtl_is_8125(hw))
+		if (status & _10000bpsF && rtl_is_8125(hw))
+			speed = 10000;
+		else if (status & _5000bpsF && rtl_is_8125(hw))
 			speed = 5000;
 		else if (status & _2500bpsF && rtl_is_8125(hw))
 			speed = 2500;

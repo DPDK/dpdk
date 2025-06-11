@@ -52,6 +52,8 @@ struct rtl_hw {
 	u8  NotWrMcuPatchCode;
 	u8  HwSuppMacMcuVer;
 	u16 MacMcuPageSize;
+	u64 hw_mcu_patch_code_ver;
+	u64 bin_mcu_patch_code_ver;
 
 	u8 NotWrRamCodeToMicroP;
 	u8 HwHasWrRamCodeToMicroP;
@@ -63,7 +65,7 @@ struct rtl_hw {
 	u8  autoneg;
 	u8  duplex;
 	u32 speed;
-	u32 advertising;
+	u64 advertising;
 	enum rtl_fc_mode fcpause;
 
 	u32 HwSuppMaxPhyLinkSpeed;

@@ -91,8 +91,13 @@ hw_mac_mcu_config_8168kb(struct rtl_hw *hw)
 	if (hw->NotWrMcuPatchCode)
 		return;
 
+	rtl_hw_disable_mac_mcu_bps(hw);
+
 	switch (hw->mcfg) {
 	case CFG_METHOD_52:
+		/* Get H/W mac mcu patch code version */
+		hw->hw_mcu_patch_code_ver = rtl_get_hw_mcu_patch_code_ver(hw);
+
 		rtl_set_mac_mcu_8125a_2(hw);
 		break;
 	case CFG_METHOD_53:

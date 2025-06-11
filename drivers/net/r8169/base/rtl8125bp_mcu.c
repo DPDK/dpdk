@@ -14,7 +14,8 @@
 void
 rtl_set_mac_mcu_8125bp_1(struct rtl_hw *hw)
 {
-	static const u16 mcu_patch_code_8125bp_1[] = {
+	u16 entry_cnt;
+	static const u16 mcu_patch_code[] = {
 		0xE010, 0xE014, 0xE027, 0xE04A, 0xE04D, 0xE050, 0xE052, 0xE054, 0xE056,
 		0xE058, 0xE05A, 0xE05C, 0xE05E, 0xE060, 0xE062, 0xE064, 0x1BC8, 0x46EB,
 		0xC302, 0xBB00, 0x0F14, 0xC211, 0x400A, 0xF00A, 0xC20F, 0x400A, 0xF007,
@@ -31,10 +32,14 @@ rtl_set_mac_mcu_8125bp_1(struct rtl_hw *hw)
 		0x0000, 0x6936, 0x0A18, 0x0C02, 0x0D21
 	};
 
-	rtl_hw_disable_mac_mcu_bps(hw);
+	entry_cnt = ARRAY_SIZE(mcu_patch_code);
 
-	rtl_write_mac_mcu_ram_code(hw, mcu_patch_code_8125bp_1,
-				   ARRAY_SIZE(mcu_patch_code_8125bp_1));
+	/* Get BIN mac mcu patch code version */
+	hw->bin_mcu_patch_code_ver = rtl_get_bin_mcu_patch_code_ver(mcu_patch_code,
+								    entry_cnt);
+
+	if (hw->hw_mcu_patch_code_ver != hw->bin_mcu_patch_code_ver)
+		rtl_write_mac_mcu_ram_code(hw, mcu_patch_code, entry_cnt);
 
 	rtl_mac_ocp_write(hw, 0xFC26, 0x8000);
 
@@ -52,7 +57,8 @@ rtl_set_mac_mcu_8125bp_1(struct rtl_hw *hw)
 void
 rtl_set_mac_mcu_8125bp_2(struct rtl_hw *hw)
 {
-	static const u16 mcu_patch_code_8125bp_2[] = {
+	u16 entry_cnt;
+	static const u16 mcu_patch_code[] = {
 		0xE010, 0xE033, 0xE046, 0xE04A, 0xE04D, 0xE050, 0xE052, 0xE054, 0xE056,
 		0xE058, 0xE05A, 0xE05C, 0xE05E, 0xE060, 0xE062, 0xE064, 0xB406, 0x1000,
 		0xF016, 0xC61F, 0x400E, 0xF012, 0x218E, 0x25BE, 0x1300, 0xF007, 0x7340,
@@ -68,9 +74,15 @@ rtl_set_mac_mcu_8125bp_2(struct rtl_hw *hw)
 		0x0000, 0xC602, 0xBE00, 0x0000, 0xC602, 0xBE00, 0x0000, 0xC602, 0xBE00,
 		0x0000, 0x6936, 0x0B18, 0x0C02, 0x0D22
 	};
-	rtl_hw_disable_mac_mcu_bps(hw);
-	rtl_write_mac_mcu_ram_code(hw, mcu_patch_code_8125bp_2,
-				   ARRAY_SIZE(mcu_patch_code_8125bp_2));
+
+	entry_cnt = ARRAY_SIZE(mcu_patch_code);
+
+	/* Get BIN mac mcu patch code version */
+	hw->bin_mcu_patch_code_ver = rtl_get_bin_mcu_patch_code_ver(mcu_patch_code,
+								    entry_cnt);
+
+	if (hw->hw_mcu_patch_code_ver != hw->bin_mcu_patch_code_ver)
+		rtl_write_mac_mcu_ram_code(hw, mcu_patch_code, entry_cnt);
 
 	rtl_mac_ocp_write(hw, 0xFC26, 0x8000);
 
