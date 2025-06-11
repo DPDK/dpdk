@@ -184,6 +184,17 @@ ABI Changes
 
 * No ABI change that would break compatibility with 24.11.
 
+* argparse: The experimental argparse library has had the following updates:
+
+  * The main parsing function, ``rte_argparse_parse()``,
+    now returns the number of arguments parsed on success, rather than zero.
+    It still returns a negative value on error.
+
+  * When parsing a list of arguments,
+    ``rte_argparse_parse()`` stops processing arguments when a ``--`` argument is encountered.
+    This behaviour mirrors the behaviour of the ``getopt()`` function,
+    as well as the behaviour of ``rte_eal_init()`` function.
+
 
 Known Issues
 ------------
