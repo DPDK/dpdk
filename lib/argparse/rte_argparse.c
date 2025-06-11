@@ -30,30 +30,48 @@ is_arg_positional(const struct rte_argparse_arg *arg)
 	return arg->name_long[0] != '-';
 }
 
-static inline uint32_t
-arg_attr_has_val(const struct rte_argparse_arg *arg)
+static inline bool
+is_valid_has_value_field(const struct rte_argparse_arg *arg)
 {
-	return RTE_FIELD_GET64(RTE_ARGPARSE_HAS_VAL_BITMASK, arg->flags);
+	switch (arg->value_required) {
+	case RTE_ARGPARSE_VALUE_NONE:
+	case RTE_ARGPARSE_VALUE_OPTIONAL:
+	case RTE_ARGPARSE_VALUE_REQUIRED:
+		return true;
+	/* omit default case so compiler warns on any missing enum values */
+	}
+	return false;
 }
 
-static inline uint32_t
-arg_attr_val_type(const struct rte_argparse_arg *arg)
+static inline bool
+is_valid_value_type_field(const struct rte_argparse_arg *arg)
 {
-	return RTE_FIELD_GET64(RTE_ARGPARSE_VAL_TYPE_BITMASK, arg->flags);
+	switch (arg->value_type) {
+	case RTE_ARGPARSE_VALUE_TYPE_NONE:
+	case RTE_ARGPARSE_VALUE_TYPE_INT:
+	case RTE_ARGPARSE_VALUE_TYPE_U8:
+	case RTE_ARGPARSE_VALUE_TYPE_U16:
+	case RTE_ARGPARSE_VALUE_TYPE_U32:
+	case RTE_ARGPARSE_VALUE_TYPE_U64:
+	case RTE_ARGPARSE_VALUE_TYPE_STR:
+	case RTE_ARGPARSE_VALUE_TYPE_BOOL:
+		return true;
+	/* omit default case so compiler warns on any missing enum values */
+	}
+	return false;
 }
+
 
 static inline bool
 arg_attr_flag_multi(const struct rte_argparse_arg *arg)
 {
-	return RTE_FIELD_GET64(RTE_ARGPARSE_ARG_SUPPORT_MULTI, arg->flags);
+	return (arg->flags & RTE_ARGPARSE_FLAG_SUPPORT_MULTI) != 0;
 }
 
 static inline uint64_t
 arg_attr_unused_bits(const struct rte_argparse_arg *arg)
 {
-#define USED_BIT_MASK	(RTE_ARGPARSE_HAS_VAL_BITMASK | \
-			 RTE_ARGPARSE_VAL_TYPE_BITMASK | \
-			 RTE_ARGPARSE_ARG_SUPPORT_MULTI)
+#define USED_BIT_MASK	(RTE_ARGPARSE_FLAG_SUPPORT_MULTI)
 	return arg->flags & ~USED_BIT_MASK;
 }
 
@@ -110,18 +128,14 @@ verify_arg_help(const struct rte_argparse_arg *arg)
 static int
 verify_arg_has_val(const struct rte_argparse_arg *arg)
 {
-	uint32_t has_val = arg_attr_has_val(arg);
-
-	if (is_arg_positional(arg)) {
-		if (has_val == RTE_ARGPARSE_ARG_REQUIRED_VALUE)
-			return 0;
-		ARGPARSE_LOG(ERR, "argument %s is positional, must config required-val!",
-			     arg->name_long);
+	if (!is_valid_has_value_field(arg)) {
+		ARGPARSE_LOG(ERR, "argument %s has invalid value field!", arg->name_long);
 		return -EINVAL;
 	}
-
-	if (has_val == 0) {
-		ARGPARSE_LOG(ERR, "argument %s is optional, has-value config wrong!",
+	if (is_arg_positional(arg)) {
+		if (arg->value_required == RTE_ARGPARSE_VALUE_REQUIRED)
+			return 0;
+		ARGPARSE_LOG(ERR, "argument %s is positional, must config required-val!",
 			     arg->name_long);
 		return -EINVAL;
 	}
@@ -132,34 +146,33 @@ verify_arg_has_val(const struct rte_argparse_arg *arg)
 static int
 verify_arg_saver(const struct rte_argparse *obj, uint32_t index)
 {
-	uint32_t cmp_max = RTE_FIELD_GET64(RTE_ARGPARSE_VAL_TYPE_BITMASK,
-					   RTE_ARGPARSE_ARG_VALUE_MAX);
 	const struct rte_argparse_arg *arg = &obj->args[index];
-	uint32_t val_type = arg_attr_val_type(arg);
-	uint32_t has_val = arg_attr_has_val(arg);
 
 	if (arg->val_saver == NULL) {
-		if (val_type != 0) {
+		if (arg->value_type != RTE_ARGPARSE_VALUE_TYPE_NONE) {
 			ARGPARSE_LOG(ERR, "argument %s parsed by callback, value-type should not be set!",
 				     arg->name_long);
 			return -EINVAL;
 		}
-
 		if (obj->callback == NULL) {
 			ARGPARSE_LOG(ERR, "argument %s parsed by callback, but callback is NULL!",
 				     arg->name_long);
 			return -EINVAL;
 		}
-
 		return 0;
 	}
 
-	if (val_type == 0 || val_type >= cmp_max) {
-		ARGPARSE_LOG(ERR, "argument %s value-type config wrong!", arg->name_long);
+	/* check value_type field */
+	if (!is_valid_value_type_field(arg)) {
+		ARGPARSE_LOG(ERR, "argument %s has invalid value-type field!", arg->name_long);
+		return -EINVAL;
+	}
+	if (arg->value_type == RTE_ARGPARSE_VALUE_TYPE_NONE) {
+		ARGPARSE_LOG(ERR, "missing value-type for argument %s!", arg->name_long);
 		return -EINVAL;
 	}
 
-	if (has_val == RTE_ARGPARSE_ARG_REQUIRED_VALUE && arg->val_set != NULL) {
+	if (arg->value_required == RTE_ARGPARSE_VALUE_REQUIRED && arg->val_set != NULL) {
 		ARGPARSE_LOG(ERR, "argument %s has required value, value-set should be NULL!",
 			     arg->name_long);
 		return -EINVAL;
@@ -180,7 +193,7 @@ verify_arg_flags(const struct rte_argparse *obj, uint32_t index)
 		return -EINVAL;
 	}
 
-	if (!(arg->flags & RTE_ARGPARSE_ARG_SUPPORT_MULTI))
+	if (!(arg->flags & RTE_ARGPARSE_FLAG_SUPPORT_MULTI))
 		return 0;
 
 	if (is_arg_positional(arg)) {
@@ -544,26 +557,27 @@ parse_arg_bool(struct rte_argparse_arg *arg, const char *value)
 static int
 parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 {
-	static struct {
-		int (*f_parse_type)(struct rte_argparse_arg *arg, const char *value);
-	} map[] = {
-		/* Sort by RTE_ARGPARSE_ARG_VALUE_XXX. */
-		{ NULL          },
-		{ parse_arg_int },
-		{ parse_arg_u8  },
-		{ parse_arg_u16 },
-		{ parse_arg_u32 },
-		{ parse_arg_u64 },
-		{ parse_arg_str},
-		{ parse_arg_bool },
-	};
-	uint32_t index = arg_attr_val_type(arg);
-	int ret = -EINVAL;
-
-	if (index > 0 && index < RTE_DIM(map))
-		ret = map[index].f_parse_type(arg, value);
-
-	return ret;
+	switch (arg->value_type) {
+	case RTE_ARGPARSE_VALUE_TYPE_NONE:
+		ARGPARSE_LOG(ERR, "argument %s doesn't specify a value-type!", arg->name_long);
+		return -EINVAL;
+	case RTE_ARGPARSE_VALUE_TYPE_INT:
+		return parse_arg_int(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_U8:
+		return parse_arg_u8(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_U16:
+		return parse_arg_u16(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_U32:
+		return parse_arg_u32(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_U64:
+		return parse_arg_u64(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_STR:
+		return parse_arg_str(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_BOOL:
+		return parse_arg_bool(arg, value);
+	/* omit default case so compiler warns on missing enum values */
+	}
+	return -EINVAL;
 }
 
 /* arg_parse indicates the name entered by the user, which can be long-name or short-name. */
@@ -616,7 +630,7 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 			/* process positional parameters. */
 			position_index++;
 			if (position_index > position_count) {
-				ARGPARSE_LOG(ERR, "too much positional argument %s!", curr_argv);
+				ARGPARSE_LOG(ERR, "too many positional arguments %s!", curr_argv);
 				return -EINVAL;
 			}
 			arg = find_position_arg(obj, position_index);
@@ -641,23 +655,21 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 		}
 
 		if ((arg->flags & ARG_ATTR_FLAG_PARSED_MASK) && !arg_attr_flag_multi(arg)) {
-			ARGPARSE_LOG(ERR, "argument %s should not occur multiple!",
-				     arg_name);
+			ARGPARSE_LOG(ERR, "argument %s should not occur multiple times!", arg_name);
 			return -EINVAL;
 		}
 
 		value = (has_equal != NULL ? has_equal + 1 : NULL);
-		if (arg_attr_has_val(arg) == RTE_ARGPARSE_ARG_NO_VALUE) {
+		if (arg->value_required == RTE_ARGPARSE_VALUE_NONE) {
 			if (value != NULL) {
-				ARGPARSE_LOG(ERR, "argument %s should not take value!",
-					     arg_name);
+				ARGPARSE_LOG(ERR, "argument %s should not take value!", arg_name);
 				return -EINVAL;
 			}
-		} else if (arg_attr_has_val(arg) == RTE_ARGPARSE_ARG_REQUIRED_VALUE) {
+		} else if (arg->value_required == RTE_ARGPARSE_VALUE_REQUIRED) {
 			if (value == NULL) {
 				if (i >= argc - 1) {
 					ARGPARSE_LOG(ERR, "argument %s doesn't have value!",
-						     arg_name);
+							arg_name);
 					return -EINVAL;
 				}
 				/* Set value and make i move next. */
@@ -809,21 +821,18 @@ error:
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_argparse_parse_type, 24.03)
 int
-rte_argparse_parse_type(const char *str, uint64_t val_type, void *val)
+rte_argparse_parse_type(const char *str, enum rte_argparse_value_type val_type, void *val)
 {
-	uint32_t cmp_max = RTE_FIELD_GET64(RTE_ARGPARSE_VAL_TYPE_BITMASK,
-					   RTE_ARGPARSE_ARG_VALUE_MAX);
 	struct rte_argparse_arg arg = {
 		.name_long = str,
 		.name_short = NULL,
 		.val_saver = val,
 		.val_set = NULL,
-		.flags = val_type,
+		.value_type = val_type,
 	};
-	uint32_t value_type = arg_attr_val_type(&arg);
-
-	if (value_type == 0 || value_type >= cmp_max)
+	if (val_type == RTE_ARGPARSE_VALUE_TYPE_NONE) {
+		ARGPARSE_LOG(ERR, "argument %s doesn't have value-type!", str);
 		return -EINVAL;
-
+	}
 	return parse_arg_autosave(&arg, str);
 }

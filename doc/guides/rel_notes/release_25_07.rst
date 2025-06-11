@@ -166,6 +166,9 @@ API Changes
 
 * graph: Added ``graph`` field to the ``rte_node.dispatch`` structure.
 
+* argparse: The ``rte_argparse_arg`` structure used for defining arguments has been updated.
+  See ABI changes in the next section for details.
+
 
 ABI Changes
 -----------
@@ -194,6 +197,41 @@ ABI Changes
     ``rte_argparse_parse()`` stops processing arguments when a ``--`` argument is encountered.
     This behaviour mirrors the behaviour of the ``getopt()`` function,
     as well as the behaviour of ``rte_eal_init()`` function.
+
+  * The ``rte_argparse_arg`` structure used for defining arguments has been updated
+    to separate out into separate fields the options for:
+
+    #. Whether the argument is required or optional.
+    #. What the type of the argument is (in case of saving the parameters automatically).
+    #. Any other flags - of which there is only one, ``RTE_ARGPARSE_FLAG_SUPPORT_MULTI``,
+       at this time.
+
+  * With the splitting of the flags into separate enums for categories,
+    the names of the flags have been changed to better reflect their purpose.
+    The flags/enum values are:
+
+    * For the ``value_required`` field:
+
+      * ``RTE_ARGPARSE_VALUE_NONE``
+      * ``RTE_ARGPARSE_VALUE_REQUIRED``
+      * ``RTE_ARGPARSE_VALUE_OPTIONAL``
+
+    * For the ``value_type`` field:
+
+      * ``RTE_ARGPARSE_VALUE_TYPE_NONE``
+        (No argument value type is specified, callback is to be used for processing.)
+      * ``RTE_ARGPARSE_VALUE_TYPE_INT``
+      * ``RTE_ARGPARSE_VALUE_TYPE_U8``
+      * ``RTE_ARGPARSE_VALUE_TYPE_U16``
+      * ``RTE_ARGPARSE_VALUE_TYPE_U32``
+      * ``RTE_ARGPARSE_VALUE_TYPE_U64``
+      * ``RTE_ARGPARSE_VALUE_TYPE_STR``
+      * ``RTE_ARGPARSE_VALUE_TYPE_BOOL``
+
+    * Other flags:
+
+      * ``RTE_ARGPARSE_FLAG_SUPPORT_MULTI``
+        (Allows the argument to be specified multiple times.)
 
 
 Known Issues

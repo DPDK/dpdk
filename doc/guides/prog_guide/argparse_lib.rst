@@ -70,14 +70,14 @@ The following code demonstrates how to use:
       .exit_on_error = true,
       .callback = argparse_user_callback,
       .args = {
-         { "--aaa", "-a", "aaa argument", &aaa_val, (void *)100, RTE_ARGPARSE_ARG_NO_VALUE       | RTE_ARGPARSE_ARG_VALUE_INT },
-         { "--bbb", "-b", "bbb argument", &bbb_val, NULL,        RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_VALUE_INT },
-         { "--ccc", "-c", "ccc argument", &ccc_val, (void *)200, RTE_ARGPARSE_ARG_OPTIONAL_VALUE | RTE_ARGPARSE_ARG_VALUE_INT },
-         { "--ddd", "-d", "ddd argument", NULL,     (void *)1,   RTE_ARGPARSE_ARG_NO_VALUE       },
-         { "--eee", "-e", "eee argument", NULL,     (void *)2,   RTE_ARGPARSE_ARG_REQUIRED_VALUE },
-         { "--fff", "-f", "fff argument", NULL,     (void *)3,   RTE_ARGPARSE_ARG_OPTIONAL_VALUE },
-         { "ooo",   NULL, "ooo argument", &ooo_val, NULL,        RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_VALUE_INT },
-         { "ppp",   NULL, "ppp argument", NULL,     (void *)300, RTE_ARGPARSE_ARG_REQUIRED_VALUE },
+         { "--aaa", "-a", "aaa argument", &aaa_val, (void *)100, RTE_ARGPARSE_VALUE_NONE,     RTE_ARGPARSE_VALUE_TYPE_INT },
+         { "--bbb", "-b", "bbb argument", &bbb_val, NULL,        RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_INT },
+         { "--ccc", "-c", "ccc argument", &ccc_val, (void *)200, RTE_ARGPARSE_VALUE_OPTIONAL, RTE_ARGPARSE_VALUE_TYPE_INT },
+         { "--ddd", "-d", "ddd argument", NULL,     (void *)1,   RTE_ARGPARSE_VALUE_NONE },
+         { "--eee", "-e", "eee argument", NULL,     (void *)2,   RTE_ARGPARSE_VALUE_REQUIRED },
+         { "--fff", "-f", "fff argument", NULL,     (void *)3,   RTE_ARGPARSE_VALUE_OPTIONAL },
+         { "ooo",   NULL, "ooo argument", &ooo_val, NULL,        RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_INT },
+         { "ppp",   NULL, "ppp argument", NULL,     (void *)300, RTE_ARGPARSE_VALUE_REQUIRED },
       },
    };
 
@@ -95,12 +95,12 @@ and the arguments which don't start with a hyphen (-) are positional arguments
 (they're ``ooo``/``ppp``).
 
 Every argument must be set whether to carry a value (one of
-``RTE_ARGPARSE_ARG_NO_VALUE``, ``RTE_ARGPARSE_ARG_REQUIRED_VALUE`` and
-``RTE_ARGPARSE_ARG_OPTIONAL_VALUE``).
+``RTE_ARGPARSE_VALUE_NONE``, ``RTE_ARGPARSE_VALUE_REQUIRED`` and
+``RTE_ARGPARSE_VALUE_OPTIONAL``).
 
 .. note::
 
-   Positional argument must set ``RTE_ARGPARSE_ARG_REQUIRED_VALUE``.
+   Positional argument must set ``RTE_ARGPARSE_VALUE_REQUIRED``.
 
 User Input Requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,7 +135,7 @@ their values are parsing in the order defined.
 Parsing by autosave way
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Argument of known value type (e.g. ``RTE_ARGPARSE_ARG_VALUE_INT``)
+Argument of known value type (e.g. ``RTE_ARGPARSE_VALUE_TYPE_INT``)
 could be parsed using this autosave way,
 and its result will save in the ``val_saver`` field.
 
@@ -172,12 +172,20 @@ Multiple times argument
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 If want to support the ability to enter the same argument multiple times,
-then should mark ``RTE_ARGPARSE_ARG_SUPPORT_MULTI`` in the ``flags`` field.
+then should mark ``RTE_ARGPARSE_FLAG_SUPPORT_MULTI`` in the ``flags`` field.
 For example:
 
 .. code-block:: C
 
-   { "--xyz", "-x", "xyz argument", NULL, (void *)10, RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_SUPPORT_MULTI },
+   {
+      .long_name = "--xyz",
+      .short_name = "-x",
+      .desc = "xyz argument",
+      .val_set = (void *)10,
+      .val_mode = RTE_ARGPARSE_VALUE_REQUIRED,
+      // val_type is implicitly RTE_ARGPARSE_VALUE_TYPE_NONE,
+      .flags = RTE_ARGPARSE_FLAG_SUPPORT_MULTI,
+   },
 
 Then the user input could contain multiple ``--xyz`` arguments.
 
