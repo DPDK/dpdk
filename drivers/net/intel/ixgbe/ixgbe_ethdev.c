@@ -4080,21 +4080,14 @@ ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		RTE_PTYPE_INNER_L4_UDP,
 	};
 
-	if (dev->rx_pkt_burst == ixgbe_recv_pkts ||
-	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_single_alloc ||
-	    dev->rx_pkt_burst == ixgbe_recv_pkts_lro_bulk_alloc ||
-	    dev->rx_pkt_burst == ixgbe_recv_pkts_bulk_alloc) {
+	/*
+	 * Currently, all Rx functions support all packet types, except for VF representor Rx
+	 * function which has no data path and is not meant to be used directly.
+	 */
+	if (dev->rx_pkt_burst != NULL && dev->rx_pkt_burst != ixgbe_vf_representor_rx_burst) {
 		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
 	}
-
-#if defined(RTE_ARCH_X86) || defined(__ARM_NEON)
-	if (dev->rx_pkt_burst == ixgbe_recv_pkts_vec ||
-	    dev->rx_pkt_burst == ixgbe_recv_scattered_pkts_vec) {
-		*no_of_elements = RTE_DIM(ptypes);
-		return ptypes;
-	}
-#endif
 	return NULL;
 }
 
