@@ -1353,7 +1353,7 @@ efx_mae_match_spec_clone(
 		goto fail1;
 	}
 
-	memcpy(clone, orig, sizeof (efx_mae_match_spec_t));
+	*clone = *orig;
 
 	*clonep = clone;
 

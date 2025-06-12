@@ -444,7 +444,7 @@ zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 	} else {
 		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
 		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
-		memcpy(&mac_filter->mac, addr, sizeof(struct rte_ether_addr));
+		mac_filter->mac = *addr;
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
@@ -460,7 +460,7 @@ zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 
 		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
 		mac_filter->mac_flag = true;
-		memcpy(&mac_filter->mac, old_addr, sizeof(struct rte_ether_addr));
+		mac_filter->mac = *old_addr;
 		zxdh_msg_head_build(hw, ZXDH_MAC_DEL, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
@@ -532,7 +532,7 @@ zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
 
 		mac_filter->filter_flag = ZXDH_MAC_FILTER;
-		memcpy(&mac_filter->mac, mac_addr, sizeof(struct rte_ether_addr));
+		mac_filter->mac = *mac_addr;
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num < ZXDH_MAX_UC_MAC_ADDRS) {
@@ -614,7 +614,7 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
 
 		mac_filter->filter_flag = ZXDH_MAC_FILTER;
-		memcpy(&mac_filter->mac, mac_addr, sizeof(struct rte_ether_addr));
+		mac_filter->mac = *mac_addr;
 		zxdh_msg_head_build(hw, ZXDH_MAC_DEL, &msg_info);
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num <= ZXDH_MAX_UC_MAC_ADDRS) {
