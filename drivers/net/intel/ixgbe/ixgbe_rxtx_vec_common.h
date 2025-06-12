@@ -12,9 +12,9 @@
 #include "ixgbe_rxtx.h"
 
 int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
-int ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq);
+int ixgbe_rxq_vec_setup(struct ci_rx_queue *rxq);
 int ixgbe_txq_vec_setup(struct ci_tx_queue *txq);
-void ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq);
+void ixgbe_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq);
 void ixgbe_reset_tx_queue_vec(struct ci_tx_queue *txq);
 void ixgbe_tx_free_swring_vec(struct ci_tx_queue *txq);
 uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
@@ -79,5 +79,4 @@ ixgbe_tx_free_bufs_vec(struct ci_tx_queue *txq)
 
 	return txq->tx_rs_thresh;
 }
-
 #endif

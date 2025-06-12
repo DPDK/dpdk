@@ -61,7 +61,7 @@ ixgbe_reset_tx_queue_vec(struct ci_tx_queue *txq)
 }
 
 void __rte_cold
-ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 {
 	unsigned int i;
 
@@ -90,7 +90,7 @@ ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 }
 
 int __rte_cold
-ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
+ixgbe_rxq_vec_setup(struct ci_rx_queue *rxq)
 {
 	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
 	return 0;
@@ -126,7 +126,7 @@ ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 		return -1;
 
 	for (uint16_t i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
+		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
 		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
@@ -173,15 +173,15 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 void
 ixgbe_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs)
 {
-	struct ixgbe_rx_queue *rxq = rx_queue;
-	struct ixgbe_rx_entry *rxep;
+	struct ci_rx_queue *rxq = rx_queue;
+	struct ci_rx_entry *rxep;
 	volatile union ixgbe_adv_rx_desc *rxdp;
 	uint16_t rx_id;
 	uint64_t paddr;
 	uint64_t dma_addr;
 	uint16_t i;
 
-	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+	rxdp = rxq->ixgbe_rx_ring + rxq->rxrearm_start;
 	rxep = &rxq->sw_ring[rxq->rxrearm_start];
 
 	for (i = 0; i < nb_mbufs; i++) {

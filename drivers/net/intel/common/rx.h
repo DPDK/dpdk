@@ -10,14 +10,75 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 
-#define CI_RX_BURST 32
+#define CI_RX_MAX_BURST 32
+
+struct ci_rx_queue;
+
+struct ci_rx_entry {
+	struct rte_mbuf *mbuf; /* mbuf associated with RX descriptor. */
+};
+
+struct ci_rx_entry_sc {
+	struct rte_mbuf *fbuf; /* First segment of the fragmented packet.*/
+};
+
+/**
+ * Structure associated with each RX queue.
+ */
+struct ci_rx_queue {
+	struct rte_mempool  *mp; /**< mbuf pool to populate RX ring. */
+	union { /* RX ring virtual address */
+		volatile union ixgbe_adv_rx_desc *ixgbe_rx_ring;
+	};
+	volatile uint8_t *qrx_tail;   /**< register address of tail */
+	struct ci_rx_entry *sw_ring; /**< address of RX software ring. */
+	struct ci_rx_entry_sc *sw_sc_ring; /**< address of scattered Rx software ring. */
+	rte_iova_t rx_ring_phys_addr; /**< RX ring DMA address. */
+	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
+	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
+	/** hold packets to return to application */
+	struct rte_mbuf *rx_stage[CI_RX_MAX_BURST * 2];
+	uint16_t nb_rx_desc; /**< number of RX descriptors. */
+	uint16_t rx_tail;  /**< current value of tail register. */
+	uint16_t rx_nb_avail; /**< nr of staged pkts ready to ret to app */
+	uint16_t nb_rx_hold; /**< number of held free RX desc. */
+	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
+	uint16_t rx_free_thresh; /**< max free RX desc to hold. */
+	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
+	uint16_t rxrearm_nb;     /**< number of remaining to be re-armed */
+	uint16_t rxrearm_start;  /**< the idx we start the re-arming from */
+	uint16_t queue_id; /**< RX queue index. */
+	uint16_t port_id;  /**< Device port identifier. */
+	uint16_t reg_idx;  /**< RX queue register index. */
+	uint8_t crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
+	bool rx_deferred_start; /**< queue is not started on dev start. */
+	bool vector_rx; /**< indicates that vector RX is in use */
+	bool drop_en;  /**< if 1, drop packets if no descriptors are available. */
+	uint64_t mbuf_initializer; /**< value to init mbufs */
+	uint64_t offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_* */
+	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
+	struct rte_mbuf fake_mbuf;
+	const struct rte_memzone *mz;
+	union {
+		struct { /* ixgbe specific values */
+			/** flags to set in mbuf when a vlan is detected. */
+			uint64_t vlan_flags;
+			/** Packet type mask for different NICs. */
+			uint16_t pkt_type_mask;
+			/** indicates that IPsec RX feature is in use */
+			uint8_t using_ipsec;
+			/** UDP frames with a 0 checksum can be marked as checksum errors. */
+			uint8_t rx_udp_csum_zero_err;
+		};
+	};
+};
 
 static inline uint16_t
 ci_rx_reassemble_packets(struct rte_mbuf **rx_bufs, uint16_t nb_bufs, uint8_t *split_flags,
 		struct rte_mbuf **pkt_first_seg, struct rte_mbuf **pkt_last_seg,
 		const uint8_t crc_len)
 {
-	struct rte_mbuf *pkts[CI_RX_BURST] = {0}; /*finished pkts*/
+	struct rte_mbuf *pkts[CI_RX_MAX_BURST] = {0}; /*finished pkts*/
 	struct rte_mbuf *start = *pkt_first_seg;
 	struct rte_mbuf *end = *pkt_last_seg;
 	unsigned int pkt_idx, buf_idx;
@@ -97,7 +158,7 @@ static inline bool
 ci_rxq_vec_capable(uint16_t nb_desc, uint16_t rx_free_thresh, uint64_t offloads)
 {
 	if (!rte_is_power_of_2(nb_desc) ||
-			rx_free_thresh < CI_RX_BURST ||
+			rx_free_thresh < CI_RX_MAX_BURST ||
 			(nb_desc % rx_free_thresh) != 0)
 		return false;
 
