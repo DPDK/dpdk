@@ -35,10 +35,10 @@
 
 #define ICE_VPMD_RX_BURST           32
 #define ICE_VPMD_TX_BURST           32
-#define ICE_RXQ_REARM_THRESH        64
-#define ICE_MAX_RX_BURST            ICE_RXQ_REARM_THRESH
+#define ICE_VPMD_RXQ_REARM_THRESH   64
 #define ICE_TX_MAX_FREE_BUF_SZ      64
-#define ICE_DESCS_PER_LOOP          4
+#define ICE_VPMD_DESCS_PER_LOOP      4
+#define ICE_VPMD_DESCS_PER_LOOP_WIDE 8
 
 #define ICE_FDIR_PKT_LEN	512
 
