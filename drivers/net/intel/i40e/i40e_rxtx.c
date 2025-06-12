@@ -2633,7 +2633,7 @@ i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq)
 	uint16_t i;
 
 	/* SSE Vector driver has a different way of releasing mbufs. */
-	if (rxq->rx_using_sse) {
+	if (rxq->vector_rx) {
 		i40e_rx_queue_release_mbufs_vec(rxq);
 		return;
 	}
@@ -3316,7 +3316,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	uint16_t rx_using_sse, i;
+	uint16_t vector_rx, i;
 	/* In order to allow Vector Rx there are a few configuration
 	 * conditions to be met and Rx Bulk Allocation should be allowed.
 	 */
@@ -3427,7 +3427,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 
 	/* Propagate information about RX function choice through all queues. */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		rx_using_sse =
+		vector_rx =
 			(dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec ||
 			 dev->rx_pkt_burst == i40e_recv_pkts_vec ||
 #ifdef CC_AVX512_SUPPORT
@@ -3441,7 +3441,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 			struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
 
 			if (rxq)
-				rxq->rx_using_sse = rx_using_sse;
+				rxq->vector_rx = vector_rx;
 		}
 	}
 }
