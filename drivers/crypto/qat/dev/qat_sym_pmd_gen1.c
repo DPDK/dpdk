@@ -248,9 +248,6 @@ qat_sym_build_op_cipher_gen1(void *in_op, struct qat_sym_session *ctx,
 		return -EINVAL;
 	}
 
-	if (ctx->is_zuc256)
-		zuc256_modify_iv(cipher_iv.va);
-
 	enqueue_one_cipher_job_gen1(ctx, req, &cipher_iv, ofs, total_len, op_cookie);
 
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
@@ -302,9 +299,6 @@ qat_sym_build_op_auth_gen1(void *in_op, struct qat_sym_session *ctx,
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
 	}
-
-	if (ctx->is_zuc256)
-		zuc256_modify_iv(auth_iv.va);
 
 	enqueue_one_auth_job_gen1(ctx, req, &digest, &auth_iv, ofs,
 			total_len);
@@ -394,11 +388,6 @@ qat_sym_build_op_chain_gen1(void *in_op, struct qat_sym_session *ctx,
 	if (unlikely(total_len < 0)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
-	}
-
-	if (ctx->is_zuc256) {
-		zuc256_modify_iv(cipher_iv.va);
-		zuc256_modify_iv(auth_iv.va);
 	}
 
 	enqueue_one_chain_job_gen1(ctx, req, in_sgl.vec, in_sgl.num,
@@ -527,9 +516,6 @@ qat_sym_dp_enqueue_single_cipher_gen1(void *qp_data, uint8_t *drv_ctx,
 	if (unlikely(data_len < 0))
 		return -1;
 
-	if (ctx->is_zuc256)
-		zuc256_modify_iv(iv->va);
-
 	enqueue_one_cipher_job_gen1(ctx, req, iv, ofs, (uint32_t)data_len, cookie);
 
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, iv,
@@ -591,9 +577,6 @@ qat_sym_dp_enqueue_cipher_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 		if (unlikely(data_len < 0 || error))
 			break;
 
-		if (ctx->is_zuc256)
-			zuc256_modify_iv(vec->iv[i].va);
-
 		enqueue_one_cipher_job_gen1(ctx, req, &vec->iv[i], ofs,
 			(uint32_t)data_len, cookie);
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
@@ -643,9 +626,6 @@ qat_sym_dp_enqueue_single_auth_gen1(void *qp_data, uint8_t *drv_ctx,
 			data, n_data_vecs, NULL, 0);
 	if (unlikely(data_len < 0))
 		return -1;
-
-	if (ctx->is_zuc256)
-		zuc256_modify_iv(auth_iv->va);
 
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
 		null_digest.iova = cookie->digest_null_phys_addr;
@@ -716,9 +696,6 @@ qat_sym_dp_enqueue_auth_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 		if (unlikely(data_len < 0 || error))
 			break;
 
-		if (ctx->is_zuc256)
-			zuc256_modify_iv(vec->auth_iv[i].va);
-
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
 			null_digest.iova = cookie->digest_null_phys_addr;
 			job_digest = &null_digest;
@@ -773,11 +750,6 @@ qat_sym_dp_enqueue_single_chain_gen1(void *qp_data, uint8_t *drv_ctx,
 			data, n_data_vecs, NULL, 0);
 	if (unlikely(data_len < 0))
 		return -1;
-
-	if (ctx->is_zuc256) {
-		zuc256_modify_iv(cipher_iv->va);
-		zuc256_modify_iv(auth_iv->va);
-	}
 
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
 		null_digest.iova = cookie->digest_null_phys_addr;
@@ -848,11 +820,6 @@ qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 
 		if (unlikely(data_len < 0 || error))
 			break;
-
-		if (ctx->is_zuc256) {
-			zuc256_modify_iv(vec->iv[i].va);
-			zuc256_modify_iv(vec->auth_iv[i].va);
-		}
 
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
 			null_digest.iova = cookie->digest_null_phys_addr;

@@ -146,6 +146,12 @@ New Features
 Removed Items
 -------------
 
+* **Removed ZUC-256 algorithms from Intel QuickAssist Technology (QAT) PMD.**
+
+  Due to changes in the specification related to IV size and initialization sequence
+  support for ZUC-256 cipher and integrity algorithms was removed from
+  Gen 3 and Gen 5 PMD.
+
 .. This section should contain removed items in this release. Sample format:
 
    * Add a short 1-2 sentence description of the removed item
