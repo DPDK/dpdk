@@ -118,13 +118,11 @@ static __rte_always_inline int
 ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txep;
-	uint32_t status;
 	int i, nb_free = 0;
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bit on threshold descriptor */
-	status = txq->ixgbe_tx_ring[txq->tx_next_dd].wb.status;
-	if (!(status & rte_cpu_to_le_32(IXGBE_ADVTXD_STAT_DD)))
+	if (!ixgbe_tx_desc_done(txq, txq->tx_next_dd))
 		return 0;
 
 	/*
@@ -3412,7 +3410,6 @@ int
 ixgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
 	struct ci_tx_queue *txq = tx_queue;
-	volatile uint32_t *status;
 	uint32_t desc;
 
 	if (unlikely(offset >= txq->nb_tx_desc))
@@ -3428,8 +3425,7 @@ ixgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 			desc -= txq->nb_tx_desc;
 	}
 
-	status = &txq->ixgbe_tx_ring[desc].wb.status;
-	if (*status & rte_cpu_to_le_32(IXGBE_ADVTXD_STAT_DD))
+	if (ixgbe_tx_desc_done(txq, desc))
 		return RTE_ETH_TX_DESC_DONE;
 
 	return RTE_ETH_TX_DESC_FULL;

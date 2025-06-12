@@ -215,7 +215,6 @@ ixgbe_recycle_tx_mbufs_reuse_vec(void *tx_queue,
 	struct ci_tx_entry *txep;
 	struct rte_mbuf **rxep;
 	int i, n;
-	uint32_t status;
 	uint16_t nb_recycle_mbufs;
 	uint16_t avail = 0;
 	uint16_t mbuf_ring_size = recycle_rxq_info->mbuf_ring_size;
@@ -232,8 +231,7 @@ ixgbe_recycle_tx_mbufs_reuse_vec(void *tx_queue,
 		return 0;
 
 	/* check DD bits on threshold descriptor */
-	status = txq->ixgbe_tx_ring[txq->tx_next_dd].wb.status;
-	if (!(status & IXGBE_ADVTXD_STAT_DD))
+	if (!ixgbe_tx_desc_done(txq, txq->tx_next_dd))
 		return 0;
 
 	n = txq->tx_rs_thresh;

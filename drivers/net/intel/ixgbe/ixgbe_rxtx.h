@@ -5,6 +5,8 @@
 #ifndef _IXGBE_RXTX_H_
 #define _IXGBE_RXTX_H_
 
+#include "ixgbe_type.h"
+
 #include "../common/tx.h"
 
 /*
@@ -240,5 +242,24 @@ uint64_t ixgbe_get_rx_queue_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_tx_queue_offloads(struct rte_eth_dev *dev);
 int ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
+
+/**
+ * Check if the Tx descriptor DD bit is set.
+ *
+ * @param txq
+ *   Pointer to the Tx queue structure.
+ * @param idx
+ *   Index of the Tx descriptor to check.
+ *
+ * @return
+ *   1 if the Tx descriptor is done, 0 otherwise.
+ */
+static inline int
+ixgbe_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
+{
+	const uint32_t status = txq->ixgbe_tx_ring[idx].wb.status;
+
+	return !!(status & rte_cpu_to_le_32(IXGBE_ADVTXD_STAT_DD));
+}
 
 #endif /* _IXGBE_RXTX_H_ */
