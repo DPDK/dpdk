@@ -7,6 +7,7 @@
 
 #include "ixgbe_type.h"
 
+#include "../common/rx.h"
 #include "../common/tx.h"
 
 /*
@@ -32,7 +33,7 @@
 #define	IXGBE_MAX_RING_DESC	8192
 
 #define IXGBE_TX_MAX_BURST            32
-#define IXGBE_RX_MAX_BURST            32
+#define IXGBE_RX_MAX_BURST            CI_RX_MAX_BURST
 #define IXGBE_TX_MAX_FREE_BUF_SZ      64
 
 #define IXGBE_VPMD_DESCS_PER_LOOP     4
@@ -65,64 +66,6 @@
 #define IXGBE_PACKET_TYPE_MAX               0X80
 #define IXGBE_PACKET_TYPE_TN_MAX            0X100
 #define IXGBE_PACKET_TYPE_SHIFT             0X04
-
-/**
- * Structure associated with each descriptor of the RX ring of a RX queue.
- */
-struct ixgbe_rx_entry {
-	struct rte_mbuf *mbuf; /**< mbuf associated with RX descriptor. */
-};
-
-struct ixgbe_scattered_rx_entry {
-	struct rte_mbuf *fbuf; /**< First segment of the fragmented packet. */
-};
-
-/**
- * Structure associated with each RX queue.
- */
-struct ixgbe_rx_queue {
-	struct rte_mempool  *mp; /**< mbuf pool to populate RX ring. */
-	volatile union ixgbe_adv_rx_desc *rx_ring; /**< RX ring virtual address. */
-	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
-	volatile uint32_t   *qrx_tail; /**< RDT register address. */
-	struct ixgbe_rx_entry *sw_ring; /**< address of RX software ring. */
-	struct ixgbe_scattered_rx_entry *sw_sc_ring; /**< address of scattered Rx software ring. */
-	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
-	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet. */
-	uint64_t            mbuf_initializer; /**< value to init mbufs */
-	uint16_t            nb_rx_desc; /**< number of RX descriptors. */
-	uint16_t            rx_tail;  /**< current value of RDT register. */
-	uint16_t            nb_rx_hold; /**< number of held free RX desc. */
-	uint16_t rx_nb_avail; /**< nr of staged pkts ready to ret to app */
-	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
-	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
-	uint8_t            vector_rx;
-	/**< indicates that vector RX is in use */
-#ifdef RTE_LIB_SECURITY
-	uint8_t            using_ipsec;
-	/**< indicates that IPsec RX feature is in use */
-#endif
-	uint16_t            rxrearm_nb;     /**< number of remaining to be re-armed */
-	uint16_t            rxrearm_start;  /**< the idx we start the re-arming from */
-	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
-	uint16_t            queue_id; /**< RX queue index. */
-	uint16_t            reg_idx;  /**< RX queue register index. */
-	uint16_t            pkt_type_mask;  /**< Packet type mask for different NICs. */
-	uint16_t            port_id;  /**< Device port identifier. */
-	uint8_t             crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
-	uint8_t             drop_en;  /**< If not 0, set SRRCTL.Drop_En. */
-	uint8_t             rx_deferred_start; /**< not in global dev start. */
-	/** UDP frames with a 0 checksum can be marked as checksum errors. */
-	uint8_t             rx_udp_csum_zero_err;
-	/** flags to set in mbuf when a vlan is detected. */
-	uint64_t            vlan_flags;
-	uint64_t	    offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_* */
-	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
-	struct rte_mbuf fake_mbuf;
-	/** hold packets to return to application */
-	struct rte_mbuf *rx_stage[IXGBE_RX_MAX_BURST * 2];
-	const struct rte_memzone *mz;
-};
 
 /**
  * IXGBE CTX Constants

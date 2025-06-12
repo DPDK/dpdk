@@ -13,12 +13,12 @@
 #include <rte_vect.h>
 
 static inline void
-ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
+ixgbe_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	int i;
 	uint16_t rx_id;
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 			RTE_PKTMBUF_HEADROOM);
@@ -26,7 +26,7 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 
 	const __m128i hba_msk = _mm_set_epi64x(0, UINT64_MAX);
 
-	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+	rxdp = rxq->ixgbe_rx_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
@@ -327,11 +327,11 @@ desc_to_ptype_v(__m128i descs[4], uint16_t pkt_type_mask,
  * - floor align nb_pkts to a IXGBE_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
-_recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+_recv_raw_pkts_vec(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts, uint8_t *split_packet)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_entry *sw_ring;
+	struct ci_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 #ifdef RTE_LIB_SECURITY
 	uint8_t use_ipsec = rxq->using_ipsec;
@@ -377,7 +377,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles
 	 */
-	rxdp = rxq->rx_ring + rxq->rx_tail;
+	rxdp = rxq->ixgbe_rx_ring + rxq->rx_tail;
 
 	rte_prefetch0(rxdp);
 
@@ -609,7 +609,7 @@ static uint16_t
 ixgbe_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts)
 {
-	struct ixgbe_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[IXGBE_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
