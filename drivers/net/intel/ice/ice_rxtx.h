@@ -23,7 +23,7 @@
 #define ICE_CHK_Q_ENA_COUNT        100
 #define ICE_CHK_Q_ENA_INTERVAL_US  100
 
-#ifdef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifdef RTE_NET_INTEL_USE_16BYTE_DESC
 #define ice_rx_flex_desc ice_16b_rx_flex_desc
 #else
 #define ice_rx_flex_desc ice_32b_rx_flex_desc
