@@ -2967,15 +2967,9 @@ ixgbe_free_sc_cluster(struct rte_mbuf *m)
 }
 
 static void __rte_cold
-ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_queue_release_mbufs_non_vec(struct ixgbe_rx_queue *rxq)
 {
 	unsigned i;
-
-	/* SSE Vector driver has a different way of releasing mbufs. */
-	if (rxq->vector_rx) {
-		ixgbe_rx_queue_release_mbufs_vec(rxq);
-		return;
-	}
 
 	if (rxq->sw_ring != NULL) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
@@ -3001,6 +2995,15 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 				ixgbe_free_sc_cluster(rxq->sw_sc_ring[i].fbuf);
 				rxq->sw_sc_ring[i].fbuf = NULL;
 			}
+}
+
+static void __rte_cold
+ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
+{
+	if (rxq->vector_rx)
+		ixgbe_rx_queue_release_mbufs_vec(rxq);
+	else
+		ixgbe_rx_queue_release_mbufs_non_vec(rxq);
 }
 
 static void __rte_cold
