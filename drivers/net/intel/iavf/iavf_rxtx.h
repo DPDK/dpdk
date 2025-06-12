@@ -5,6 +5,11 @@
 #ifndef _IAVF_RXTX_H_
 #define _IAVF_RXTX_H_
 
+/* IAVF does not support 16-byte descriptors */
+#ifdef RTE_NET_INTEL_USE_16BYTE_DESC
+#undef RTE_NET_INTEL_USE_16BYTE_DESC
+#endif
+
 #include "../common/rx.h"
 #include "../common/tx.h"
 
@@ -17,7 +22,7 @@
 #define IAVF_RING_BASE_ALIGN      128
 
 /* used for Rx Bulk Allocate */
-#define IAVF_RX_MAX_BURST         32
+#define IAVF_RX_MAX_BURST         CI_RX_MAX_BURST
 
 /* Max data buffer size must be 16K - 128 bytes */
 #define IAVF_RX_MAX_DATA_BUF_SIZE (16 * 1024 - 128)
@@ -123,63 +128,12 @@ extern uint64_t iavf_timestamp_dynflag;
 extern int iavf_timestamp_dynfield_offset;
 extern int rte_pmd_iavf_tx_lldp_dynfield_offset;
 
-/**
- * Rx Flex Descriptors
- * These descriptors are used instead of the legacy version descriptors
- */
-union iavf_32b_rx_flex_desc {
-	struct {
-		__le64 pkt_addr; /* Packet buffer address */
-		__le64 hdr_addr; /* Header buffer address */
-				 /* bit 0 of hdr_addr is DD bit */
-		__le64 rsvd1;
-		__le64 rsvd2;
-	} read;
-	struct {
-		/* Qword 0 */
-		u8 rxdid; /* descriptor builder profile ID */
-		u8 mir_id_umb_cast; /* mirror=[5:0], umb=[7:6] */
-		__le16 ptype_flex_flags0; /* ptype=[9:0], ff0=[15:10] */
-		__le16 pkt_len; /* [15:14] are reserved */
-		__le16 hdr_len_sph_flex_flags1; /* header=[10:0] */
-						/* sph=[11:11] */
-						/* ff1/ext=[15:12] */
-
-		/* Qword 1 */
-		__le16 status_error0;
-		__le16 l2tag1;
-		__le16 flex_meta0;
-		__le16 flex_meta1;
-
-		/* Qword 2 */
-		__le16 status_error1;
-		u8 flex_flags2;
-		u8 time_stamp_low;
-		__le16 l2tag2_1st;
-		__le16 l2tag2_2nd;
-
-		/* Qword 3 */
-		__le16 flex_meta2;
-		__le16 flex_meta3;
-		union {
-			struct {
-				__le16 flex_meta4;
-				__le16 flex_meta5;
-			} flex;
-			__le32 ts_high;
-		} flex_ts;
-	} wb; /* writeback */
-};
-
-#define iavf_rx_desc iavf_32byte_rx_desc
-#define iavf_rx_flex_desc iavf_32b_rx_flex_desc
-
-typedef void (*iavf_rxd_to_pkt_fields_t)(struct iavf_rx_queue *rxq,
+typedef void (*iavf_rxd_to_pkt_fields_t)(struct ci_rx_queue *rxq,
 				struct rte_mbuf *mb,
-				volatile union iavf_rx_flex_desc *rxdp);
+				volatile union ci_rx_flex_desc *rxdp);
 
 struct iavf_rxq_ops {
-	void (*release_mbufs)(struct iavf_rx_queue *rxq);
+	void (*release_mbufs)(struct ci_rx_queue *rxq);
 };
 
 struct iavf_txq_ops {
@@ -190,59 +144,6 @@ struct iavf_txq_ops {
 struct iavf_rx_queue_stats {
 	uint64_t reserved;
 	struct iavf_ipsec_crypto_stats ipsec_crypto;
-};
-
-/* Structure associated with each Rx queue. */
-struct iavf_rx_queue {
-	struct rte_mempool *mp;       /* mbuf pool to populate Rx ring */
-	const struct rte_memzone *mz; /* memzone for Rx ring */
-	volatile union iavf_rx_desc *rx_ring; /* Rx ring virtual address */
-	uint64_t rx_ring_phys_addr;   /* Rx ring DMA address */
-	struct rte_mbuf **sw_ring;     /* address of SW ring */
-	uint16_t nb_rx_desc;          /* ring length */
-	uint16_t rx_tail;             /* current value of tail */
-	volatile uint8_t *qrx_tail;   /* register address of tail */
-	uint16_t rx_free_thresh;      /* max free RX desc to hold */
-	uint16_t nb_rx_hold;          /* number of held free RX desc */
-	struct rte_mbuf *pkt_first_seg; /* first segment of current packet */
-	struct rte_mbuf *pkt_last_seg;  /* last segment of current packet */
-	struct rte_mbuf fake_mbuf;      /* dummy mbuf */
-	uint8_t rxdid;
-	uint8_t rel_mbufs_type;
-
-	/* used for VPMD */
-	uint16_t rxrearm_nb;       /* number of remaining to be re-armed */
-	uint16_t rxrearm_start;    /* the idx we start the re-arming from */
-	uint64_t mbuf_initializer; /* value to init mbufs */
-
-	/* for rx bulk */
-	uint16_t rx_nb_avail;      /* number of staged packets ready */
-	uint16_t rx_next_avail;    /* index of next staged packets */
-	uint16_t rx_free_trigger;  /* triggers rx buffer allocation */
-	struct rte_mbuf *rx_stage[IAVF_RX_MAX_BURST * 2]; /* store mbuf */
-
-	uint16_t port_id;        /* device port ID */
-	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
-	uint8_t fdir_enabled;   /* 0 if FDIR disabled, 1 when enabled */
-	uint16_t queue_id;      /* Rx queue index */
-	uint16_t rx_buf_len;    /* The packet buffer size */
-	uint16_t rx_hdr_len;    /* The header buffer size */
-	uint16_t max_pkt_len;   /* Maximum packet length */
-	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
-
-	bool q_set;             /* if rx queue has been configured */
-	bool rx_deferred_start; /* don't start this queue in dev start */
-	const struct iavf_rxq_ops *ops;
-	uint8_t rx_flags;
-#define IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1     BIT(0)
-#define IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2   BIT(1)
-	uint8_t proto_xtr; /* protocol extraction type */
-	uint64_t xtr_ol_flag;
-		/* flexible descriptor metadata extraction offload flag */
-	struct iavf_rx_queue_stats *stats;
-	uint64_t offloads;
-	uint64_t phc_time;
-	uint64_t hw_time_update;
 };
 
 /* Offload features */
@@ -662,7 +563,7 @@ uint16_t iavf_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pk
 int iavf_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 int iavf_rx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_tx_vec_dev_check(struct rte_eth_dev *dev);
-int iavf_rxq_vec_setup(struct iavf_rx_queue *rxq);
+int iavf_rxq_vec_setup(struct ci_rx_queue *rxq);
 int iavf_txq_vec_setup(struct ci_tx_queue *txq);
 uint16_t iavf_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
@@ -702,16 +603,16 @@ uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
 
 void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
 void iavf_tx_queue_release_mbufs_avx512(struct ci_tx_queue *txq);
-void iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq);
+void iavf_rx_queue_release_mbufs_sse(struct ci_rx_queue *rxq);
 void iavf_tx_queue_release_mbufs_sse(struct ci_tx_queue *txq);
-void iavf_rx_queue_release_mbufs_neon(struct iavf_rx_queue *rxq);
+void iavf_rx_queue_release_mbufs_neon(struct ci_rx_queue *rxq);
 
 static inline
-void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,
+void iavf_dump_rx_descriptor(struct ci_rx_queue *rxq,
 			    const volatile void *desc,
 			    uint16_t rx_id)
 {
-	const volatile union iavf_32byte_rx_desc *rx_desc = desc;
+	const volatile union ci_rx_desc *rx_desc = desc;
 
 	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64
 	       " QW2: 0x%016"PRIx64" QW3: 0x%016"PRIx64"\n", rxq->queue_id,
@@ -757,7 +658,7 @@ void iavf_dump_tx_descriptor(const struct ci_tx_queue *txq,
 #define FDIR_PROC_ENABLE_PER_QUEUE(ad, on) do { \
 	int i; \
 	for (i = 0; i < (ad)->dev_data->nb_rx_queues; i++) { \
-		struct iavf_rx_queue *rxq = (ad)->dev_data->rx_queues[i]; \
+		struct ci_rx_queue *rxq = (ad)->dev_data->rx_queues[i]; \
 		if (!rxq) \
 			continue; \
 		rxq->fdir_enabled = on; \
