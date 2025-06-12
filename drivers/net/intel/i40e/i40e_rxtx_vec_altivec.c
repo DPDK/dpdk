@@ -13,91 +13,14 @@
 #include "i40e_rxtx.h"
 #include "i40e_rxtx_vec_common.h"
 
+#include "../common/rx_vec_ppc.h"
+
 #include <rte_altivec.h>
 
 static inline void
 i40e_rxq_rearm(struct ci_rx_queue *rxq)
 {
-	int i;
-	uint16_t rx_id;
-	volatile union ci_rx_desc *rxdp;
-
-	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
-	struct rte_mbuf *mb0, *mb1;
-
-	__vector unsigned long hdr_room = (__vector unsigned long){
-						RTE_PKTMBUF_HEADROOM,
-						RTE_PKTMBUF_HEADROOM};
-	__vector unsigned long dma_addr0, dma_addr1;
-
-	rxdp = rxq->rx_ring + rxq->rxrearm_start;
-
-	/* Pull 'n' more MBUFs into the software ring */
-	if (rte_mempool_get_bulk(rxq->mp,
-				 (void *)rxep,
-				 I40E_VPMD_RXQ_REARM_THRESH) < 0) {
-		if (rxq->rxrearm_nb + I40E_VPMD_RXQ_REARM_THRESH >=
-		    rxq->nb_rx_desc) {
-			dma_addr0 = (__vector unsigned long){};
-			for (i = 0; i < I40E_VPMD_DESCS_PER_LOOP; i++) {
-				rxep[i].mbuf = &rxq->fake_mbuf;
-				vec_st(dma_addr0, 0,
-					RTE_CAST_PTR(__vector unsigned long *, &rxdp[i].read));
-			}
-		}
-		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			I40E_VPMD_RXQ_REARM_THRESH;
-		return;
-	}
-
-	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < I40E_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
-		__vector unsigned long vaddr0, vaddr1;
-		uintptr_t p0, p1;
-
-		mb0 = rxep[0].mbuf;
-		mb1 = rxep[1].mbuf;
-
-		 /* Flush mbuf with pkt template.
-		  * Data to be rearmed is 6 bytes long.
-		  * Though, RX will overwrite ol_flags that are coming next
-		  * anyway. So overwrite whole 8 bytes with one load:
-		  * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
-		  */
-		p0 = (uintptr_t)&mb0->rearm_data;
-		*(uint64_t *)p0 = rxq->mbuf_initializer;
-		p1 = (uintptr_t)&mb1->rearm_data;
-		*(uint64_t *)p1 = rxq->mbuf_initializer;
-
-		/* load buf_addr(lo 64bit) and buf_iova(hi 64bit) */
-		vaddr0 = vec_ld(0, (__vector unsigned long *)&mb0->buf_addr);
-		vaddr1 = vec_ld(0, (__vector unsigned long *)&mb1->buf_addr);
-
-		/* convert pa to dma_addr hdr/data */
-		dma_addr0 = vec_mergel(vaddr0, vaddr0);
-		dma_addr1 = vec_mergel(vaddr1, vaddr1);
-
-		/* add headroom to pa values */
-		dma_addr0 = vec_add(dma_addr0, hdr_room);
-		dma_addr1 = vec_add(dma_addr1, hdr_room);
-
-		/* flush desc with pa dma_addr */
-		vec_st(dma_addr0, 0, RTE_CAST_PTR(__vector unsigned long *, &rxdp++->read));
-		vec_st(dma_addr1, 0, RTE_CAST_PTR(__vector unsigned long *, &rxdp++->read));
-	}
-
-	rxq->rxrearm_start += I40E_VPMD_RXQ_REARM_THRESH;
-	rx_id = rxq->rxrearm_start - 1;
-
-	if (unlikely(rxq->rxrearm_start >= rxq->nb_rx_desc)) {
-		rxq->rxrearm_start = 0;
-		rx_id = rxq->nb_rx_desc - 1;
-	}
-
-	rxq->rxrearm_nb -= I40E_VPMD_RXQ_REARM_THRESH;
-
-	/* Update the tail pointer on the NIC */
-	I40E_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+	ci_rxq_rearm(rxq);
 }
 
 static inline void
