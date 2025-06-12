@@ -1150,7 +1150,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 
 /* Notice:
  * - nb_pkts < IAVF_DESCS_PER_LOOP, just return no packet
- * - nb_pkts > IAVF_VPMD_RX_MAX_BURST, only scan IAVF_VPMD_RX_MAX_BURST
+ * - nb_pkts > IAVF_VPMD_RX_BURST, only scan IAVF_VPMD_RX_BURST
  *   numbers of DD bits
  */
 uint16_t
@@ -1162,7 +1162,7 @@ iavf_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 /* Notice:
  * - nb_pkts < IAVF_DESCS_PER_LOOP, just return no packet
- * - nb_pkts > IAVF_VPMD_RX_MAX_BURST, only scan IAVF_VPMD_RX_MAX_BURST
+ * - nb_pkts > IAVF_VPMD_RX_BURST, only scan IAVF_VPMD_RX_BURST
  *   numbers of DD bits
  */
 uint16_t
@@ -1183,7 +1183,7 @@ iavf_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			      uint16_t nb_pkts)
 {
 	struct iavf_rx_queue *rxq = rx_queue;
-	uint8_t split_flags[IAVF_VPMD_RX_MAX_BURST] = {0};
+	uint8_t split_flags[IAVF_VPMD_RX_BURST] = {0};
 	unsigned int i = 0;
 
 	/* get some new buffers */
@@ -1222,15 +1222,15 @@ iavf_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	uint16_t retval = 0;
 
-	while (nb_pkts > IAVF_VPMD_RX_MAX_BURST) {
+	while (nb_pkts > IAVF_VPMD_RX_BURST) {
 		uint16_t burst;
 
 		burst = iavf_recv_scattered_burst_vec(rx_queue,
 						      rx_pkts + retval,
-						      IAVF_VPMD_RX_MAX_BURST);
+						      IAVF_VPMD_RX_BURST);
 		retval += burst;
 		nb_pkts -= burst;
-		if (burst < IAVF_VPMD_RX_MAX_BURST)
+		if (burst < IAVF_VPMD_RX_BURST)
 			return retval;
 	}
 
@@ -1252,7 +1252,7 @@ iavf_recv_scattered_burst_vec_flex_rxd(void *rx_queue,
 				       uint16_t nb_pkts)
 {
 	struct iavf_rx_queue *rxq = rx_queue;
-	uint8_t split_flags[IAVF_VPMD_RX_MAX_BURST] = {0};
+	uint8_t split_flags[IAVF_VPMD_RX_BURST] = {0};
 	unsigned int i = 0;
 
 	/* get some new buffers */
@@ -1292,15 +1292,15 @@ iavf_recv_scattered_pkts_vec_flex_rxd(void *rx_queue,
 {
 	uint16_t retval = 0;
 
-	while (nb_pkts > IAVF_VPMD_RX_MAX_BURST) {
+	while (nb_pkts > IAVF_VPMD_RX_BURST) {
 		uint16_t burst;
 
 		burst = iavf_recv_scattered_burst_vec_flex_rxd(rx_queue,
 						rx_pkts + retval,
-						IAVF_VPMD_RX_MAX_BURST);
+						IAVF_VPMD_RX_BURST);
 		retval += burst;
 		nb_pkts -= burst;
-		if (burst < IAVF_VPMD_RX_MAX_BURST)
+		if (burst < IAVF_VPMD_RX_BURST)
 			return retval;
 	}
 

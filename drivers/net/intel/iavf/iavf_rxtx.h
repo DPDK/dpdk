@@ -23,11 +23,12 @@
 #define IAVF_RX_MAX_DATA_BUF_SIZE (16 * 1024 - 128)
 
 /* used for Vector PMD */
-#define IAVF_VPMD_RX_MAX_BURST    32
-#define IAVF_VPMD_TX_MAX_BURST    32
-#define IAVF_RXQ_REARM_THRESH     32
-#define IAVF_VPMD_DESCS_PER_LOOP  4
-#define IAVF_VPMD_TX_MAX_FREE_BUF 64
+#define IAVF_VPMD_RX_BURST             32
+#define IAVF_VPMD_TX_BURST             32
+#define IAVF_VPMD_RXQ_REARM_THRESH     32
+#define IAVF_VPMD_DESCS_PER_LOOP       4
+#define IAVF_VPMD_DESCS_PER_LOOP_WIDE  8
+#define IAVF_VPMD_TX_MAX_FREE_BUF      64
 
 #define IAVF_TX_NO_VECTOR_FLAGS (				 \
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |		 \
