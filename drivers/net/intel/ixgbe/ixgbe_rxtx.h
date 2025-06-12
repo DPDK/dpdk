@@ -81,10 +81,10 @@ struct ixgbe_scattered_rx_entry {
  * Structure associated with each RX queue.
  */
 struct ixgbe_rx_queue {
-	struct rte_mempool  *mb_pool; /**< mbuf pool to populate RX ring. */
+	struct rte_mempool  *mp; /**< mbuf pool to populate RX ring. */
 	volatile union ixgbe_adv_rx_desc *rx_ring; /**< RX ring virtual address. */
 	uint64_t            rx_ring_phys_addr; /**< RX ring DMA address. */
-	volatile uint32_t   *rdt_reg_addr; /**< RDT register address. */
+	volatile uint32_t   *qrx_tail; /**< RDT register address. */
 	struct ixgbe_rx_entry *sw_ring; /**< address of RX software ring. */
 	struct ixgbe_scattered_rx_entry *sw_sc_ring; /**< address of scattered Rx software ring. */
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet. */
@@ -96,7 +96,7 @@ struct ixgbe_rx_queue {
 	uint16_t rx_nb_avail; /**< nr of staged pkts ready to ret to app */
 	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
-	uint8_t            rx_using_sse;
+	uint8_t            vector_rx;
 	/**< indicates that vector RX is in use */
 #ifdef RTE_LIB_SECURITY
 	uint8_t            using_ipsec;

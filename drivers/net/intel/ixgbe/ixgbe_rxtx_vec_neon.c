@@ -27,7 +27,7 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
-	if (unlikely(rte_mempool_get_bulk(rxq->mb_pool,
+	if (unlikely(rte_mempool_get_bulk(rxq->mp,
 					  (void *)rxep,
 					  RTE_IXGBE_RXQ_REARM_THRESH) < 0)) {
 		if (rxq->rxrearm_nb + RTE_IXGBE_RXQ_REARM_THRESH >=
@@ -76,7 +76,7 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 			     (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
 
 	/* Update the tail pointer on the NIC */
-	IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
+	IXGBE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
 }
 
 static inline void

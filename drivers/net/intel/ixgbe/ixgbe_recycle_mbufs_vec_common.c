@@ -42,7 +42,7 @@ ixgbe_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs)
 			(rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
 
 	/* Update the tail pointer on the NIC */
-	IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
+	IXGBE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
 }
 
 uint16_t
