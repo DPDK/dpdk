@@ -10,7 +10,7 @@
 #include "test.h"
 
 #ifdef RTE_EXEC_ENV_WINDOWS
-static int __rte_unused
+static int
 test_event_vector_adapter(void)
 {
 	printf("event_vector_adapter not supported on Windows, skipping test\n");
@@ -39,11 +39,36 @@ static int adapter_slcore = -1;
 static uint8_t evdev;
 static bool using_services;
 static uint8_t vector_adptr_id;
+static uint32_t vector_service_id = UINT32_MAX;
+static uint32_t evdev_service_id = UINT32_MAX;
+static uint64_t vector_tmo_us;
 static uint8_t evdev_max_queues;
 static struct rte_mempool *vector_mp;
 
 static uint64_t objs[MAX_VECTOR_SIZE] = {0xDEADBEAF, 0xDEADBEEF, 0xDEADC0DE, 0xDEADCAFE,
 					 0xDEADFACE, 0xDEADFADE, 0xDEADFAAA, 0xDEADFAAB};
+
+static void
+wait_service_us(uint32_t service_id, uint64_t us)
+{
+#define USEC2TICK(__us, __freq) (((__us) * (__freq)) / 1E6)
+	uint64_t service_cycles;
+	uint64_t cycles = USEC2TICK(us, rte_get_timer_hz());
+
+	if (service_id == UINT32_MAX) {
+		rte_delay_us(us);
+		return;
+	}
+
+	rte_service_attr_reset_all(service_id);
+	do {
+		service_cycles = 0;
+		if (vector_service_id != UINT32_MAX)
+			rte_service_attr_get(vector_service_id, RTE_SERVICE_ATTR_CYCLES,
+					     &service_cycles);
+		rte_delay_us(us);
+	} while ((vector_service_id != UINT32_MAX && service_cycles < cycles));
+}
 
 static int
 test_event_vector_adapter_create_multi(void)
@@ -121,7 +146,7 @@ test_event_vector_adapter_create(void)
 	conf.event_dev_id = evdev;
 	conf.socket_id = rte_socket_id();
 	conf.vector_sz = RTE_MIN(MAX_VECTOR_SIZE, info.max_vector_sz);
-	conf.vector_timeout_ns = info.max_vector_timeout_ns;
+	conf.vector_timeout_ns = RTE_MIN(1E6, info.max_vector_timeout_ns);
 	conf.vector_mp = vector_mp;
 
 	conf.ev.queue_id = 0;
@@ -150,7 +175,12 @@ test_event_vector_adapter_create(void)
 			    "Failed to map adapter service");
 		TEST_ASSERT(rte_service_runstate_set(service_id, 1) == 0,
 			    "Failed to start adapter service");
+		rte_service_set_stats_enable(service_id, 1);
+		vector_service_id = service_id;
 	}
+
+	vector_tmo_us = (conf.vector_timeout_ns / 1E3) * 2;
+
 	return TEST_SUCCESS;
 }
 
@@ -171,6 +201,7 @@ test_event_vector_adapter_free(void)
 				rte_service_lcore_del(adapter_slcore);
 			}
 			adapter_slcore = -1;
+			vector_service_id = UINT32_MAX;
 		}
 		rte_event_vector_adapter_destroy(adapter);
 	}
@@ -191,21 +222,22 @@ test_event_vector_adapter_enqueue(void)
 	ret = rte_event_vector_adapter_enqueue(adapter, objs, MAX_VECTOR_SIZE, 0);
 	TEST_ASSERT((ret == MAX_VECTOR_SIZE), "Failed to enqueue event vector %d", ret);
 
+	wait_service_us(vector_service_id, 1E2);
 	for (i = 0; i < MAX_RETRIES; i++) {
 		ret = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
 
 	TEST_ASSERT((ev.vec->nb_elem == MAX_VECTOR_SIZE), "Incomplete event vector %d",
 		    ev.vec->nb_elem);
 	TEST_ASSERT((ev.queue_id == 0), "Invalid event type %d", ev.queue_id);
-	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
-		    "Invalid event type %d", ev.event_type);
 	TEST_ASSERT((ev.sched_type == RTE_SCHED_TYPE_PARALLEL), "Invalid sched type %d",
 		    ev.sched_type);
 
@@ -219,15 +251,10 @@ test_event_vector_adapter_enqueue(void)
 static int
 test_event_vector_adapter_enqueue_tmo(void)
 {
-	struct rte_event_vector_adapter_info info;
 	struct rte_event_vector_adapter *adapter;
 	uint16_t vec_sz = MAX_VECTOR_SIZE - 4;
 	struct rte_event ev;
 	int ret, i;
-
-	memset(&info, 0, sizeof(info));
-	ret = rte_event_vector_adapter_info_get(evdev, &info);
-	TEST_ASSERT_SUCCESS(ret, "Failed to get event vector adapter info");
 
 	adapter = rte_event_vector_adapter_lookup(vector_adptr_id);
 	TEST_ASSERT(adapter != NULL, "Failed to lookup event vector adapter");
@@ -235,22 +262,22 @@ test_event_vector_adapter_enqueue_tmo(void)
 	ret = rte_event_vector_adapter_enqueue(adapter, objs, vec_sz, 0);
 	TEST_ASSERT((ret == vec_sz), "Failed to enqueue event vector %d", ret);
 
-	rte_delay_us(info.max_vector_timeout_ns / 1000);
+	wait_service_us(vector_service_id, vector_tmo_us);
 
 	for (i = 0; i < MAX_RETRIES; i++) {
 		ret = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
 
 	TEST_ASSERT((ev.vec->nb_elem == vec_sz), "Incomplete event vector %d", ev.vec->nb_elem);
 	TEST_ASSERT((ev.queue_id == 0), "Invalid event type %d", ev.queue_id);
-	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
-		    "Invalid event type %d", ev.event_type);
 	TEST_ASSERT((ev.sched_type == RTE_SCHED_TYPE_PARALLEL), "Invalid sched type %d",
 		    ev.sched_type);
 
@@ -278,12 +305,13 @@ test_event_vector_adapter_enqueue_fallback(void)
 	ret = rte_event_vector_adapter_enqueue(adapter, objs, 1, 0);
 	TEST_ASSERT((ret == 1), "Failed to enqueue event vector %d", ret);
 
+	wait_service_us(vector_service_id, vector_tmo_us);
 	for (i = 0; i < MAX_RETRIES; i++) {
 		ret = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
@@ -300,16 +328,11 @@ test_event_vector_adapter_enqueue_fallback(void)
 static int
 test_event_vector_adapter_enqueue_sov(void)
 {
-	struct rte_event_vector_adapter_info info;
 	struct rte_event_vector_adapter *adapter;
 	uint16_t vec_sz = MAX_VECTOR_SIZE - 4;
 	struct rte_event ev;
 	uint32_t caps;
 	int ret, i;
-
-	memset(&info, 0, sizeof(info));
-	ret = rte_event_vector_adapter_info_get(evdev, &info);
-	TEST_ASSERT_SUCCESS(ret, "Failed to get event vector adapter info");
 
 	caps = 0;
 	ret = rte_event_vector_adapter_caps_get(evdev, &caps);
@@ -329,30 +352,34 @@ test_event_vector_adapter_enqueue_sov(void)
 	ret = rte_event_vector_adapter_enqueue(adapter, &objs[vec_sz], 2, RTE_EVENT_VECTOR_ENQ_SOV);
 	TEST_ASSERT((ret == 2), "Failed to enqueue event vector %d", ret);
 
+	wait_service_us(vector_service_id, vector_tmo_us);
 	for (i = 0; i < MAX_RETRIES; i++) {
 		ret = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
+
+	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
+	TEST_ASSERT((ev.vec->nb_elem == vec_sz), "Incorrect event vector %d", ev.vec->nb_elem);
 
 	for (i = 0; i < vec_sz; i++)
 		TEST_ASSERT((ev.vec->u64s[i] == objs[i]), "Invalid object in event vector %" PRIx64,
 			    ev.vec->u64s[i]);
 
-	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
-	TEST_ASSERT((ev.vec->nb_elem == vec_sz), "Incorrect event vector %d", ev.vec->nb_elem);
-
-	rte_delay_us(info.max_vector_timeout_ns / 1000);
 	for (i = 0; i < MAX_RETRIES; i++) {
 		ret = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
 	TEST_ASSERT((ev.vec->nb_elem == 2), "Incorrect event vector %d", ev.vec->nb_elem);
 
 	for (i = 0; i < 2; i++)
@@ -365,16 +392,11 @@ test_event_vector_adapter_enqueue_sov(void)
 static int
 test_event_vector_adapter_enqueue_eov(void)
 {
-	struct rte_event_vector_adapter_info info;
 	struct rte_event_vector_adapter *adapter;
 	uint16_t vec_sz = MAX_VECTOR_SIZE - 4;
 	struct rte_event ev;
 	uint32_t caps;
 	int ret, i;
-
-	memset(&info, 0, sizeof(info));
-	ret = rte_event_vector_adapter_info_get(evdev, &info);
-	TEST_ASSERT_SUCCESS(ret, "Failed to get event vector adapter info");
 
 	caps = 0;
 	ret = rte_event_vector_adapter_caps_get(evdev, &caps);
@@ -399,10 +421,12 @@ test_event_vector_adapter_enqueue_eov(void)
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
 	TEST_ASSERT((ev.vec->nb_elem == vec_sz + 1), "Incorrect event vector %d", ev.vec->nb_elem);
 
 	ret = rte_event_vector_adapter_enqueue(adapter, objs, MAX_VECTOR_SIZE - 1, 0);
@@ -417,10 +441,12 @@ test_event_vector_adapter_enqueue_eov(void)
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
 	TEST_ASSERT((ev.vec->nb_elem == MAX_VECTOR_SIZE), "Incorrect event vector %d",
 		    ev.vec->nb_elem);
 
@@ -431,14 +457,17 @@ test_event_vector_adapter_enqueue_eov(void)
 	TEST_ASSERT((ev.vec->u64s[MAX_VECTOR_SIZE - 1] == objs[vec_sz]),
 		    "Invalid object in event vector %" PRIx64, ev.vec->u64s[MAX_VECTOR_SIZE - 1]);
 
+	wait_service_us(vector_service_id, vector_tmo_us);
 	for (i = 0; i < MAX_RETRIES; i++) {
 		ret = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
+	TEST_ASSERT((ev.event_type == (RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU)),
+		    "Invalid event type %d", ev.event_type);
 	TEST_ASSERT((ev.vec->nb_elem == vec_sz - 1), "Incorrect event vector %d", ev.vec->nb_elem);
 
 	for (i = 0; i < vec_sz - 1; i++)
@@ -483,7 +512,7 @@ test_event_vector_adapter_enqueue_sov_eov(void)
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
@@ -504,7 +533,7 @@ test_event_vector_adapter_enqueue_sov_eov(void)
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
 	if (info.min_vector_sz > 1)
@@ -538,7 +567,7 @@ test_event_vector_adapter_enqueue_flush(void)
 		if (ret)
 			break;
 
-		rte_delay_ms(1);
+		wait_service_us(evdev_service_id, 1E2);
 	}
 
 	TEST_ASSERT((ret == 1), "Failed to dequeue event vector %d", ret);
@@ -598,6 +627,8 @@ eventdev_setup(void)
 				    "Failed to map evdev service");
 		TEST_ASSERT_SUCCESS(rte_service_runstate_set(service_id, 1),
 				    "Failed to start evdev service");
+		rte_service_set_stats_enable(service_id, 1);
+		evdev_service_id = service_id;
 	}
 
 	ret = rte_event_dev_start(evdev);
@@ -669,7 +700,7 @@ static struct unit_test_suite functional_testsuite = {
 	}
 };
 
-static int __rte_unused
+static int
 test_event_vector_adapter(void)
 {
 	return unit_test_suite_runner(&functional_testsuite);
@@ -677,6 +708,4 @@ test_event_vector_adapter(void)
 
 #endif
 
-/* disabled because of reported failures, waiting for a fix
- * REGISTER_FAST_TEST(event_vector_adapter_autotest, true, true, test_event_vector_adapter);
- */
+REGISTER_FAST_TEST(event_vector_adapter_autotest, true, true, test_event_vector_adapter);
