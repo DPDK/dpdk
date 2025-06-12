@@ -31,16 +31,16 @@
 #define	IXGBE_MIN_RING_DESC	64
 #define	IXGBE_MAX_RING_DESC	8192
 
-#define RTE_PMD_IXGBE_TX_MAX_BURST 32
-#define RTE_PMD_IXGBE_RX_MAX_BURST 32
-#define RTE_IXGBE_TX_MAX_FREE_BUF_SZ 64
+#define IXGBE_TX_MAX_BURST            32
+#define IXGBE_RX_MAX_BURST            32
+#define IXGBE_TX_MAX_FREE_BUF_SZ      64
 
-#define RTE_IXGBE_DESCS_PER_LOOP    4
+#define IXGBE_VPMD_DESCS_PER_LOOP     4
 
-#define RTE_IXGBE_RXQ_REARM_THRESH      32
-#define RTE_IXGBE_MAX_RX_BURST          RTE_IXGBE_RXQ_REARM_THRESH
+#define IXGBE_VPMD_RXQ_REARM_THRESH   32
+#define IXGBE_VPMD_RX_BURST           IXGBE_VPMD_RXQ_REARM_THRESH
 
-#define RX_RING_SZ ((IXGBE_MAX_RING_DESC + RTE_PMD_IXGBE_RX_MAX_BURST) * \
+#define RX_RING_SZ ((IXGBE_MAX_RING_DESC + IXGBE_RX_MAX_BURST) * \
 		    sizeof(union ixgbe_adv_rx_desc))
 
 #ifdef RTE_PMD_PACKET_PREFETCH
@@ -49,9 +49,9 @@
 #define rte_packet_prefetch(p)  do {} while(0)
 #endif
 
-#define RTE_IXGBE_REGISTER_POLL_WAIT_10_MS  10
-#define RTE_IXGBE_WAIT_100_US               100
-#define RTE_IXGBE_VMTXSW_REGISTER_COUNT     2
+#define IXGBE_REGISTER_POLL_WAIT_10_MS  10
+#define IXGBE_WAIT_100_US               100
+#define IXGBE_VMTXSW_REGISTER_COUNT     2
 
 #define IXGBE_TX_MAX_SEG                    40
 
@@ -120,7 +120,7 @@ struct ixgbe_rx_queue {
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
-	struct rte_mbuf *rx_stage[RTE_PMD_IXGBE_RX_MAX_BURST*2];
+	struct rte_mbuf *rx_stage[IXGBE_RX_MAX_BURST * 2];
 	const struct rte_memzone *mz;
 };
 

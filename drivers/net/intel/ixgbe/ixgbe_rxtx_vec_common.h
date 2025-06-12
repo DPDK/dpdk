@@ -32,7 +32,7 @@ ixgbe_tx_free_bufs_vec(struct ci_tx_queue *txq)
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
-	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
+	struct rte_mbuf *m, *free[IXGBE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bit on threshold descriptor */
 	if (!ixgbe_tx_desc_done(txq, txq->tx_next_dd))

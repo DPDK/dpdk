@@ -31,23 +31,23 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
 				 (void *)rxep,
-				 RTE_IXGBE_RXQ_REARM_THRESH) < 0) {
-		if (rxq->rxrearm_nb + RTE_IXGBE_RXQ_REARM_THRESH >=
+				 IXGBE_VPMD_RXQ_REARM_THRESH) < 0) {
+		if (rxq->rxrearm_nb + IXGBE_VPMD_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
 			dma_addr0 = _mm_setzero_si128();
-			for (i = 0; i < RTE_IXGBE_DESCS_PER_LOOP; i++) {
+			for (i = 0; i < IXGBE_VPMD_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
 				_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i].read),
 						dma_addr0);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			RTE_IXGBE_RXQ_REARM_THRESH;
+			IXGBE_VPMD_RXQ_REARM_THRESH;
 		return;
 	}
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < RTE_IXGBE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
+	for (i = 0; i < IXGBE_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		__m128i vaddr0, vaddr1;
 
 		mb0 = rxep[0].mbuf;
@@ -76,11 +76,11 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->read), dma_addr1);
 	}
 
-	rxq->rxrearm_start += RTE_IXGBE_RXQ_REARM_THRESH;
+	rxq->rxrearm_start += IXGBE_VPMD_RXQ_REARM_THRESH;
 	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
 		rxq->rxrearm_start = 0;
 
-	rxq->rxrearm_nb -= RTE_IXGBE_RXQ_REARM_THRESH;
+	rxq->rxrearm_nb -= IXGBE_VPMD_RXQ_REARM_THRESH;
 
 	rx_id = (uint16_t) ((rxq->rxrearm_start == 0) ?
 			     (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
@@ -262,10 +262,10 @@ static inline uint32_t get_packet_type(int index,
 				       uint32_t etqf_check,
 				       uint32_t tunnel_check)
 {
-	if (etqf_check & (0x02 << (index * RTE_IXGBE_DESCS_PER_LOOP)))
+	if (etqf_check & (0x02 << (index * IXGBE_VPMD_DESCS_PER_LOOP)))
 		return RTE_PTYPE_UNKNOWN;
 
-	if (tunnel_check & (0x02 << (index * RTE_IXGBE_DESCS_PER_LOOP))) {
+	if (tunnel_check & (0x02 << (index * IXGBE_VPMD_DESCS_PER_LOOP))) {
 		pkt_info &= IXGBE_PACKET_TYPE_MASK_TUNNEL;
 		return ptype_table_tn[pkt_info];
 	}
@@ -320,11 +320,11 @@ desc_to_ptype_v(__m128i descs[4], uint16_t pkt_type_mask,
 }
 
 /**
- * vPMD raw receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
+ * vPMD raw receive routine, only accept(nb_pkts >= IXGBE_VPMD_DESCS_PER_LOOP)
  *
  * Notice:
- * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
- * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
+ * - nb_pkts < IXGBE_VPMD_DESCS_PER_LOOP, just return no packet
+ * - floor align nb_pkts to a IXGBE_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
 _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
@@ -369,10 +369,10 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 * So we need to make some restrictions to ensure that
 	 * `rx_tail` will not exceed `rxrearm_start`.
 	 */
-	nb_pkts = RTE_MIN(nb_pkts, RTE_IXGBE_RXQ_REARM_THRESH);
+	nb_pkts = RTE_MIN(nb_pkts, IXGBE_VPMD_RXQ_REARM_THRESH);
 
-	/* nb_pkts has to be floor-aligned to RTE_IXGBE_DESCS_PER_LOOP */
-	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_IXGBE_DESCS_PER_LOOP);
+	/* nb_pkts has to be floor-aligned to IXGBE_VPMD_DESCS_PER_LOOP */
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, IXGBE_VPMD_DESCS_PER_LOOP);
 
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles
@@ -384,7 +384,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act
 	 */
-	if (rxq->rxrearm_nb > RTE_IXGBE_RXQ_REARM_THRESH)
+	if (rxq->rxrearm_nb > IXGBE_VPMD_RXQ_REARM_THRESH)
 		ixgbe_rxq_rearm(rxq);
 
 	/* Before we start moving massive data around, check to see if
@@ -446,9 +446,9 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 * D. fill info. from desc to mbuf
 	 */
 	for (pos = 0, nb_pkts_recd = 0; pos < nb_pkts;
-			pos += RTE_IXGBE_DESCS_PER_LOOP,
-			rxdp += RTE_IXGBE_DESCS_PER_LOOP) {
-		__m128i descs[RTE_IXGBE_DESCS_PER_LOOP];
+			pos += IXGBE_VPMD_DESCS_PER_LOOP,
+			rxdp += IXGBE_VPMD_DESCS_PER_LOOP) {
+		__m128i descs[IXGBE_VPMD_DESCS_PER_LOOP];
 		__m128i pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
 		__m128i zero, staterr, sterr_tmp1, sterr_tmp2;
 		/* 2 64 bit or 4 32 bit mbuf pointers in one XMM reg. */
@@ -554,7 +554,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			eop_bits = _mm_shuffle_epi8(eop_bits, eop_shuf_mask);
 			/* store the resulting 32-bit value */
 			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
-			split_packet += RTE_IXGBE_DESCS_PER_LOOP;
+			split_packet += IXGBE_VPMD_DESCS_PER_LOOP;
 		}
 
 		/* C.3 calc available number of desc */
@@ -572,7 +572,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* C.4 calc available number of desc */
 		var = rte_popcount64(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
-		if (likely(var != RTE_IXGBE_DESCS_PER_LOOP))
+		if (likely(var != IXGBE_VPMD_DESCS_PER_LOOP))
 			break;
 	}
 
@@ -585,11 +585,11 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 }
 
 /**
- * vPMD receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
+ * vPMD receiIXGBE_VPMD_RX_BURSTt(nb_pkts >= IXGBE_VPMD_DESCS_PER_LOOP)
  *
  * Notice:
- * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
- * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
+ * - nb_pkts <IXGBE_VPMD_RX_BURSTOOP, just return no packet
+ * - floor align nb_pkts to a IXGBE_VPMD_DESCS_PER_LOOP power-of-two
  */
 uint16_t
 ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -602,15 +602,15 @@ ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
  * vPMD receive routine that reassembles scattered packets
  *
  * Notice:
- * - nb_pkts < RTE_IXGBE_DESCS_PER_LOOP, just return no packet
- * - floor align nb_pkts to a RTE_IXGBE_DESC_PER_LOOP power-of-two
+ * - nb_pkts < IXGBE_VPMD_DESCS_PER_LOOP, just return no packet
+ * - floor align nb_pkts to a IXGBE_VPMD_DESCS_PER_LOOP power-of-two
  */
 static uint16_t
 ixgbe_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts)
 {
 	struct ixgbe_rx_queue *rxq = rx_queue;
-	uint8_t split_flags[RTE_IXGBE_MAX_RX_BURST] = {0};
+	uint8_t split_flags[IXGBE_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
 	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
@@ -648,15 +648,15 @@ ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	uint16_t retval = 0;
 
-	while (nb_pkts > RTE_IXGBE_MAX_RX_BURST) {
+	while (nb_pkts > IXGBE_VPMD_RX_BURST) {
 		uint16_t burst;
 
 		burst = ixgbe_recv_scattered_burst_vec(rx_queue,
 						       rx_pkts + retval,
-						       RTE_IXGBE_MAX_RX_BURST);
+						       IXGBE_VPMD_RX_BURST);
 		retval += burst;
 		nb_pkts -= burst;
-		if (burst < RTE_IXGBE_MAX_RX_BURST)
+		if (burst < IXGBE_VPMD_RX_BURST)
 			return retval;
 	}
 
