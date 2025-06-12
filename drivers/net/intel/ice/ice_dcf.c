@@ -1175,8 +1175,7 @@ ice_dcf_init_rss(struct ice_dcf_hw *hw)
 int
 ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 {
-	struct ice_rx_queue **rxq =
-		(struct ice_rx_queue **)hw->eth_dev->data->rx_queues;
+	struct ci_rx_queue **rxq = (struct ci_rx_queue **)hw->eth_dev->data->rx_queues;
 	struct ci_tx_queue **txq =
 		(struct ci_tx_queue **)hw->eth_dev->data->tx_queues;
 	struct virtchnl_vsi_queue_config_info *vc_config;

@@ -5,6 +5,7 @@
 #ifndef _COMMON_INTEL_RX_H_
 #define _COMMON_INTEL_RX_H_
 
+#include <stddef.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <rte_mbuf.h>
@@ -13,6 +14,7 @@
 #include "desc.h"
 
 #define CI_RX_MAX_BURST 32
+#define CI_RX_MAX_NSEG 2
 
 struct ci_rx_queue;
 
@@ -24,6 +26,8 @@ struct ci_rx_entry_sc {
 	struct rte_mbuf *fbuf; /* First segment of the fragmented packet.*/
 };
 
+typedef void (*ci_rx_release_mbufs_t)(struct ci_rx_queue *rxq);
+
 /**
  * Structure associated with each RX queue.
  */
@@ -32,6 +36,7 @@ struct ci_rx_queue {
 	union { /* RX ring virtual address */
 		volatile union ixgbe_adv_rx_desc *ixgbe_rx_ring;
 		volatile union ci_rx_desc *rx_ring;
+		volatile union ci_rx_flex_desc *rx_flex_ring;
 	};
 	volatile uint8_t *qrx_tail;   /**< register address of tail */
 	struct ci_rx_entry *sw_ring; /**< address of RX software ring. */
@@ -64,10 +69,16 @@ struct ci_rx_queue {
 	bool drop_en;  /**< if 1, drop packets if no descriptors are available. */
 	uint64_t mbuf_initializer; /**< value to init mbufs */
 	uint64_t offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_* */
+	uint32_t rxdid; /**< RX descriptor format ID. */
+	uint32_t proto_xtr; /* protocol extraction type */
+	uint64_t xtr_ol_flag; /* flexible descriptor metadata extraction offload flag */
+	ptrdiff_t xtr_field_offs; /* Protocol extraction matedata offset*/
+	uint64_t hw_time_update; /**< Last time HW timestamp was updated */
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
 	union { /* the VSI this queue belongs to */
 		struct i40e_vsi *i40e_vsi;
+		struct ice_vsi *ice_vsi;
 	};
 	const struct rte_memzone *mz;
 	union {
@@ -84,6 +95,18 @@ struct ci_rx_queue {
 		struct { /* i40e specific values */
 			uint8_t hs_mode; /**< Header Split mode */
 			uint8_t dcb_tc; /**< Traffic class of rx queue */
+		};
+		struct { /* ice specific values */
+			ci_rx_release_mbufs_t rx_rel_mbufs; /**< release mbuf function */
+			/** holds buffer split information */
+			struct rte_eth_rxseg_split rxseg[CI_RX_MAX_NSEG];
+			struct ci_rx_entry *sw_split_buf; /**< Buffer split SW ring */
+			uint32_t rxseg_nb; /**< number of buffer split segments */
+			uint32_t time_high; /* high 32 bits of hardware timestamp register */
+			uint32_t hw_time_high; /* high 32 bits of timestamp */
+			uint32_t hw_time_low; /* low 32 bits of timestamp */
+			int ts_offset; /* dynamic mbuf timestamp field offset */
+			uint64_t ts_flag; /* dynamic mbuf timestamp flag */
 		};
 	};
 };
