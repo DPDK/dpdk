@@ -79,6 +79,7 @@ struct ci_rx_queue {
 	union { /* the VSI this queue belongs to */
 		struct i40e_vsi *i40e_vsi;
 		struct ice_vsi *ice_vsi;
+		struct iavf_vsi *iavf_vsi;
 	};
 	const struct rte_memzone *mz;
 	union {
@@ -107,6 +108,15 @@ struct ci_rx_queue {
 			uint32_t hw_time_low; /* low 32 bits of timestamp */
 			int ts_offset; /* dynamic mbuf timestamp field offset */
 			uint64_t ts_flag; /* dynamic mbuf timestamp flag */
+		};
+		struct { /* iavf specific values */
+			const struct iavf_rxq_ops *ops; /**< queue ops */
+			struct iavf_rx_queue_stats *stats; /**< per-queue stats */
+			uint64_t phc_time; /**< HW timestamp */
+			uint8_t rel_mbufs_type; /**< type of release mbuf function */
+			uint8_t rx_flags; /**< Rx VLAN tag location flags */
+#define IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG1     BIT(0)
+#define IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2   BIT(1)
 		};
 	};
 };

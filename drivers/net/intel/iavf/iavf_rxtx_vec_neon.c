@@ -15,12 +15,12 @@
 #include "iavf_rxtx_vec_common.h"
 
 static inline void
-iavf_rxq_rearm(struct iavf_rx_queue *rxq)
+iavf_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	int i;
 	uint16_t rx_id;
-	volatile union iavf_rx_desc *rxdp;
-	struct rte_mbuf **rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
 	uint64x2_t dma_addr0, dma_addr1;
 	uint64x2_t zero = vdupq_n_u64(0);
@@ -35,7 +35,7 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 		if (rxq->rxrearm_nb + IAVF_VPMD_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
 			for (i = 0; i < IAVF_VPMD_DESCS_PER_LOOP; i++) {
-				rxep[i] = &rxq->fake_mbuf;
+				rxep[i].mbuf = &rxq->fake_mbuf;
 				vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp[i].read), zero);
 			}
 		}
@@ -46,8 +46,8 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < IAVF_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
-		mb0 = rxep[0];
-		mb1 = rxep[1];
+		mb0 = rxep[0].mbuf;
+		mb1 = rxep[1].mbuf;
 
 		paddr = mb0->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr0 = vdupq_n_u64(paddr);
@@ -75,7 +75,7 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 }
 
 static inline void
-desc_to_olflags_v(struct iavf_rx_queue *rxq, volatile union iavf_rx_desc *rxdp,
+desc_to_olflags_v(struct ci_rx_queue *rxq, volatile union ci_rx_desc *rxdp,
 		  uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 {
 	RTE_SET_USED(rxdp);
@@ -193,17 +193,17 @@ desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **__rte_restrict rx_pkts,
  * - floor align nb_pkts to a IAVF_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
-_recv_raw_pkts_vec(struct iavf_rx_queue *__rte_restrict rxq,
+_recv_raw_pkts_vec(struct ci_rx_queue *__rte_restrict rxq,
 		   struct rte_mbuf **__rte_restrict rx_pkts,
 		   uint16_t nb_pkts, uint8_t *split_packet)
 {
 	RTE_SET_USED(split_packet);
 
-	volatile union iavf_rx_desc *rxdp;
-	struct rte_mbuf **sw_ring;
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->iavf_vsi->adapter->ptype_tbl;
 
 	/* mask to shuffle from desc. to mbuf */
 	uint8x16_t shuf_msk = {
@@ -283,8 +283,8 @@ _recv_raw_pkts_vec(struct iavf_rx_queue *__rte_restrict rxq,
 		descs[0] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp), descs[0], 0);
 
 		/* B.1 load 4 mbuf point */
-		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
-		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
+		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos].mbuf);
+		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2].mbuf);
 
 		/* B.2 copy 4 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
@@ -394,13 +394,13 @@ iavf_recv_pkts_vec(void *__rte_restrict rx_queue,
 }
 
 void __rte_cold
-iavf_rx_queue_release_mbufs_neon(struct iavf_rx_queue *rxq)
+iavf_rx_queue_release_mbufs_neon(struct ci_rx_queue *rxq)
 {
 	_iavf_rx_queue_release_mbufs_vec(rxq);
 }
 
 int __rte_cold
-iavf_rxq_vec_setup(struct iavf_rx_queue *rxq)
+iavf_rxq_vec_setup(struct ci_rx_queue *rxq)
 {
 	rxq->rel_mbufs_type = IAVF_REL_MBUFS_NEON_VEC;
 	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
