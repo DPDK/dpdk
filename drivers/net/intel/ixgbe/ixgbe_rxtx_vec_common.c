@@ -139,6 +139,37 @@ ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 #endif
 }
 
+uint16_t
+ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+
+	/* we might check first packet's mempool */
+	if (unlikely(nb_pkts == 0))
+		return nb_pkts;
+
+	/* check if we need to initialize default context descriptor */
+	if (unlikely(!txq->vf_ctx_initialized) &&
+			ixgbe_write_default_ctx_desc(txq, tx_pkts[0]->pool, true))
+		return 0;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = ixgbe_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx],
+							num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 void
 ixgbe_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs)
 {

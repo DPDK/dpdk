@@ -17,6 +17,10 @@ int ixgbe_txq_vec_setup(struct ci_tx_queue *txq);
 void ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq);
 void ixgbe_reset_tx_queue_vec(struct ci_tx_queue *txq);
 void ixgbe_tx_free_swring_vec(struct ci_tx_queue *txq);
+uint16_t ixgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t ixgbe_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 void ixgbe_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs);
 uint16_t ixgbe_recycle_tx_mbufs_reuse_vec(void *tx_queue,
 		struct rte_eth_recycle_rxq_info *recycle_rxq_info);

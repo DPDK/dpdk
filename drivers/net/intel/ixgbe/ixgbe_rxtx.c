@@ -91,7 +91,6 @@
 
 /* forward-declare some functions */
 static int ixgbe_is_vf(struct rte_eth_dev *dev);
-static int ixgbe_write_default_ctx_desc(struct ci_tx_queue *txq, struct rte_mempool *mp, bool vec);
 
 /*********************************************************************
  *
@@ -355,37 +354,6 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_tx = (uint16_t)(nb_tx + ret);
 		nb_pkts = (uint16_t)(nb_pkts - ret);
 		if (ret < n)
-			break;
-	}
-
-	return nb_tx;
-}
-
-static uint16_t
-ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-		    uint16_t nb_pkts)
-{
-	uint16_t nb_tx = 0;
-	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-
-	/* we might check first packet's mempool */
-	if (unlikely(nb_pkts == 0))
-		return nb_pkts;
-
-	/* check if we need to initialize default context descriptor */
-	if (unlikely(!txq->vf_ctx_initialized) &&
-			ixgbe_write_default_ctx_desc(txq, tx_pkts[0]->pool, true))
-		return 0;
-
-	while (nb_pkts) {
-		uint16_t ret, num;
-
-		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
-		ret = ixgbe_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx],
-						 num);
-		nb_tx += ret;
-		nb_pkts -= ret;
-		if (ret < num)
 			break;
 	}
 
@@ -2376,7 +2344,7 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  *
  **********************************************************************/
 
-static inline int
+int
 ixgbe_write_default_ctx_desc(struct ci_tx_queue *txq, struct rte_mempool *mp, bool vec)
 {
 	volatile struct ixgbe_adv_tx_context_desc *ctx_txd;
@@ -6278,6 +6246,13 @@ int
 ixgbe_rxq_vec_setup(struct ixgbe_rx_queue __rte_unused *rxq)
 {
 	return -1;
+}
+
+uint16_t
+ixgbe_xmit_pkts_vec(void __rte_unused * tx_queue, struct rte_mbuf __rte_unused * *tx_pkts,
+		__rte_unused uint16_t nb_pkts)
+{
+	return 0;
 }
 
 uint16_t
