@@ -17,12 +17,12 @@
 #include "i40e_rxtx_vec_common.h"
 
 static inline void
-i40e_rxq_rearm(struct i40e_rx_queue *rxq)
+i40e_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	int i;
 	uint16_t rx_id;
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
 	uint64x2_t dma_addr0, dma_addr1;
 	uint64x2_t zero = vdupq_n_u64(0);
@@ -80,7 +80,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 /* NEON version of FDIR mark extraction for 4 32B descriptors at a time */
 static inline uint32x4_t
-descs_to_fdir_32b(volatile union i40e_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
+descs_to_fdir_32b(volatile union ci_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
 {
 	/* 32B descriptors: Load 2nd half of descriptors for FDIR ID data */
 	uint64x2_t desc0_qw23, desc1_qw23, desc2_qw23, desc3_qw23;
@@ -203,7 +203,7 @@ descs_to_fdir_16b(uint32x4_t fltstat, uint64x2_t descs[4], struct rte_mbuf **rx_
 #endif
 
 static inline void
-desc_to_olflags_v(struct i40e_rx_queue *rxq, volatile union i40e_rx_desc *rxdp,
+desc_to_olflags_v(struct ci_rx_queue *rxq, volatile union ci_rx_desc *rxdp,
 		  uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 {
 	uint32x4_t vlan0, vlan1, rss, l3_l4e;
@@ -332,15 +332,15 @@ desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **__rte_restrict rx_pkts,
  * - floor align nb_pkts to a I40E_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
-_recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
+_recv_raw_pkts_vec(struct ci_rx_queue *__rte_restrict rxq,
 		   struct rte_mbuf **__rte_restrict rx_pkts,
 		   uint16_t nb_pkts, uint8_t *split_packet)
 {
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_entry *sw_ring;
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->i40e_vsi->adapter->ptype_tbl;
 
 	/* mask to shuffle from desc. to mbuf */
 	uint8x16_t shuf_msk = {
@@ -591,7 +591,7 @@ i40e_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			      uint16_t nb_pkts)
 {
 
-	struct i40e_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[I40E_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
@@ -737,13 +737,13 @@ i40e_xmit_fixed_burst_vec(void *__rte_restrict tx_queue,
 }
 
 void __rte_cold
-i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq)
+i40e_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 {
 	_i40e_rx_queue_release_mbufs_vec(rxq);
 }
 
 int __rte_cold
-i40e_rxq_vec_setup(struct i40e_rx_queue *rxq)
+i40e_rxq_vec_setup(struct ci_rx_queue *rxq)
 {
 	rxq->vector_rx = 1;
 	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
