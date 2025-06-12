@@ -1679,7 +1679,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 	/* allocate buffers in bulk directly into the S/W ring */
 	alloc_idx = rxq->rx_free_trigger - (rxq->rx_free_thresh - 1);
 	rxep = &rxq->sw_ring[alloc_idx];
-	diag = rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
+	diag = rte_mempool_get_bulk(rxq->mp, (void *)rxep,
 				    rxq->rx_free_thresh);
 	if (unlikely(diag != 0))
 		return -ENOMEM;
@@ -1778,8 +1778,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* update tail pointer */
 		rte_wmb();
-		IXGBE_PCI_REG_WC_WRITE_RELAXED(rxq->rdt_reg_addr,
-					    cur_free_trigger);
+		IXGBE_PCI_REG_WC_WRITE_RELAXED(rxq->qrx_tail, cur_free_trigger);
 	}
 
 	if (rxq->rx_tail >= rxq->nb_rx_desc)
@@ -1908,7 +1907,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   (unsigned) rx_id, (unsigned) staterr,
 			   (unsigned) rte_le_to_cpu_16(rxd.wb.upper.length));
 
-		nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (nmb == NULL) {
 			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
 				   "queue_id=%u", (unsigned) rxq->port_id,
@@ -2017,7 +2016,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   (unsigned) nb_rx);
 		rx_id = (uint16_t) ((rx_id == 0) ?
 				     (rxq->nb_rx_desc - 1) : (rx_id - 1));
-		IXGBE_PCI_REG_WC_WRITE(rxq->rdt_reg_addr, rx_id);
+		IXGBE_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);
 		nb_hold = 0;
 	}
 	rxq->nb_rx_hold = nb_hold;
@@ -2165,7 +2164,7 @@ next_desc:
 			   rte_le_to_cpu_16(rxd.wb.upper.length));
 
 		if (!bulk_alloc) {
-			nmb = rte_mbuf_raw_alloc(rxq->mb_pool);
+			nmb = rte_mbuf_raw_alloc(rxq->mp);
 			if (nmb == NULL) {
 				PMD_RX_LOG(DEBUG, "RX mbuf alloc failed "
 						  "port_id=%u queue_id=%u",
@@ -2181,7 +2180,7 @@ next_desc:
 			if (!ixgbe_rx_alloc_bufs(rxq, false)) {
 				rte_wmb();
 				IXGBE_PCI_REG_WC_WRITE_RELAXED(
-							rxq->rdt_reg_addr,
+							rxq->qrx_tail,
 							next_rdt);
 				nb_hold -= rxq->rx_free_thresh;
 			} else {
@@ -2347,7 +2346,7 @@ next_desc:
 			   rxq->port_id, rxq->queue_id, rx_id, nb_hold, nb_rx);
 
 		rte_wmb();
-		IXGBE_PCI_REG_WC_WRITE_RELAXED(rxq->rdt_reg_addr, prev_id);
+		IXGBE_PCI_REG_WC_WRITE_RELAXED(rxq->qrx_tail, prev_id);
 		nb_hold = 0;
 	}
 
@@ -2974,7 +2973,7 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 	unsigned i;
 
 	/* SSE Vector driver has a different way of releasing mbufs. */
-	if (rxq->rx_using_sse) {
+	if (rxq->vector_rx) {
 		ixgbe_rx_queue_release_mbufs_vec(rxq);
 		return;
 	}
@@ -3238,7 +3237,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
 		return -ENOMEM;
-	rxq->mb_pool = mp;
+	rxq->mp = mp;
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
@@ -3297,10 +3296,10 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * Modified to setup VFRDT for Virtual Function
 	 */
 	if (ixgbe_is_vf(dev))
-		rxq->rdt_reg_addr =
+		rxq->qrx_tail =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_VFRDT(queue_idx));
 	else
-		rxq->rdt_reg_addr =
+		rxq->qrx_tail =
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_RDT(rxq->reg_idx));
 
 	rxq->rx_ring_phys_addr = rz->iova;
@@ -3409,7 +3408,7 @@ ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 		return -EINVAL;
 
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-	if (rxq->rx_using_sse)
+	if (rxq->vector_rx)
 		nb_hold = rxq->rxrearm_nb;
 	else
 #endif
@@ -4677,7 +4676,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 	/* Initialize software ring entries */
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
 		volatile union ixgbe_adv_rx_desc *rxd;
-		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
+		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mp);
 
 		if (mbuf == NULL) {
 			PMD_INIT_LOG(ERR, "RX mbuf alloc failed queue_id=%u",
@@ -5111,7 +5110,7 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
 
-		rxq->rx_using_sse = rx_using_sse;
+		rxq->vector_rx = rx_using_sse;
 #ifdef RTE_LIB_SECURITY
 		rxq->using_ipsec = !!(dev->data->dev_conf.rxmode.offloads &
 				RTE_ETH_RX_OFFLOAD_SECURITY);
@@ -5217,7 +5216,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 		 */
 
 		rscctl |= IXGBE_RSCCTL_RSCEN;
-		rscctl |= ixgbe_get_rscctl_maxdesc(rxq->mb_pool);
+		rscctl |= ixgbe_get_rscctl_maxdesc(rxq->mp);
 		psrtype |= IXGBE_PSRTYPE_TCPHDR;
 
 		/*
@@ -5374,7 +5373,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * The value is in 1 KB resolution. Valid values can be from
 		 * 1 KB to 16 KB.
 		 */
-		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
 			RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &
 			   IXGBE_SRRCTL_BSIZEPKT_MASK);
@@ -5827,7 +5826,7 @@ ixgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	rxq = dev->data->rx_queues[queue_id];
 
-	qinfo->mp = rxq->mb_pool;
+	qinfo->mp = rxq->mp;
 	qinfo->scattered_rx = dev->data->scattered_rx;
 	qinfo->nb_desc = rxq->nb_rx_desc;
 
@@ -5867,7 +5866,7 @@ ixgbe_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	rxq = dev->data->rx_queues[queue_id];
 
 	recycle_rxq_info->mbuf_ring = (void *)rxq->sw_ring;
-	recycle_rxq_info->mp = rxq->mb_pool;
+	recycle_rxq_info->mp = rxq->mp;
 	recycle_rxq_info->mbuf_ring_size = rxq->nb_rx_desc;
 	recycle_rxq_info->receive_tail = &rxq->rx_tail;
 
@@ -5972,7 +5971,7 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		 * The value is in 1 KB resolution. Valid values can be from
 		 * 1 KB to 16 KB.
 		 */
-		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
 			RTE_PKTMBUF_HEADROOM);
 		srrctl |= ((buf_size >> IXGBE_SRRCTL_BSIZEPKT_SHIFT) &
 			   IXGBE_SRRCTL_BSIZEPKT_MASK);
