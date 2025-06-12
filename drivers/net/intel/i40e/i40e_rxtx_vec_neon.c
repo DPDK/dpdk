@@ -33,21 +33,21 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	/* Pull 'n' more MBUFs into the software ring */
 	if (unlikely(rte_mempool_get_bulk(rxq->mp,
 					  (void *)rxep,
-					  RTE_I40E_RXQ_REARM_THRESH) < 0)) {
-		if (rxq->rxrearm_nb + RTE_I40E_RXQ_REARM_THRESH >=
+					  I40E_VPMD_RXQ_REARM_THRESH) < 0)) {
+		if (rxq->rxrearm_nb + I40E_VPMD_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
-			for (i = 0; i < RTE_I40E_DESCS_PER_LOOP; i++) {
+			for (i = 0; i < I40E_VPMD_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
 				vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp[i].read), zero);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			RTE_I40E_RXQ_REARM_THRESH;
+			I40E_VPMD_RXQ_REARM_THRESH;
 		return;
 	}
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < RTE_I40E_RXQ_REARM_THRESH; i += 2, rxep += 2) {
+	for (i = 0; i < I40E_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
@@ -62,7 +62,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr1);
 	}
 
-	rxq->rxrearm_start += RTE_I40E_RXQ_REARM_THRESH;
+	rxq->rxrearm_start += I40E_VPMD_RXQ_REARM_THRESH;
 	rx_id = rxq->rxrearm_start - 1;
 
 	if (unlikely(rxq->rxrearm_start >= rxq->nb_rx_desc)) {
@@ -70,7 +70,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		rx_id = rxq->nb_rx_desc - 1;
 	}
 
-	rxq->rxrearm_nb -= RTE_I40E_RXQ_REARM_THRESH;
+	rxq->rxrearm_nb -= I40E_VPMD_RXQ_REARM_THRESH;
 
 	rte_io_wmb();
 	/* Update the tail pointer on the NIC */
@@ -325,11 +325,11 @@ desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **__rte_restrict rx_pkts,
 }
 
 /**
- * vPMD raw receive routine, only accept(nb_pkts >= RTE_I40E_DESCS_PER_LOOP)
+ * vPMD raw receive routine, only accept(nb_pkts >= I40E_VPMD_DESCS_PER_LOOP)
  *
  * Notice:
- * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
- * - floor align nb_pkts to a RTE_I40E_DESCS_PER_LOOP power-of-two
+ * - nb_pkts < I40E_VPMD_DESCS_PER_LOOP, just return no packet
+ * - floor align nb_pkts to a I40E_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
 _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
@@ -368,8 +368,8 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 		0, 0, 0       /* ignore non-length fields */
 		};
 
-	/* nb_pkts has to be floor-aligned to RTE_I40E_DESCS_PER_LOOP */
-	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, RTE_I40E_DESCS_PER_LOOP);
+	/* nb_pkts has to be floor-aligned to I40E_VPMD_DESCS_PER_LOOP */
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, I40E_VPMD_DESCS_PER_LOOP);
 
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles
@@ -381,7 +381,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act
 	 */
-	if (rxq->rxrearm_nb > RTE_I40E_RXQ_REARM_THRESH)
+	if (rxq->rxrearm_nb > I40E_VPMD_RXQ_REARM_THRESH)
 		i40e_rxq_rearm(rxq);
 
 	/* Before we start moving massive data around, check to see if
@@ -405,9 +405,9 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 	 */
 
 	for (pos = 0, nb_pkts_recd = 0; pos < nb_pkts;
-			pos += RTE_I40E_DESCS_PER_LOOP,
-			rxdp += RTE_I40E_DESCS_PER_LOOP) {
-		uint64x2_t descs[RTE_I40E_DESCS_PER_LOOP];
+			pos += I40E_VPMD_DESCS_PER_LOOP,
+			rxdp += I40E_VPMD_DESCS_PER_LOOP) {
+		uint64x2_t descs[I40E_VPMD_DESCS_PER_LOOP];
 		uint8x16_t pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
 		uint16x8x2_t sterr_tmp1, sterr_tmp2;
 		uint64x2_t mbp1, mbp2;
@@ -502,9 +502,8 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 
-		if (likely(pos + RTE_I40E_DESCS_PER_LOOP < nb_pkts)) {
-			rte_prefetch_non_temporal(rxdp + RTE_I40E_DESCS_PER_LOOP);
-		}
+		if (likely(pos + I40E_VPMD_DESCS_PER_LOOP < nb_pkts))
+			rte_prefetch_non_temporal(rxdp + I40E_VPMD_DESCS_PER_LOOP);
 
 		/* C.1 4=>2 filter staterr info only */
 		sterr_tmp2 = vzipq_u16(vreinterpretq_u16_u64(descs[1]),
@@ -538,7 +537,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 			/* store the resulting 32-bit value */
 			vst1q_lane_u32((uint32_t *)split_packet,
 				       vreinterpretq_u32_u8(eop_bits), 0);
-			split_packet += RTE_I40E_DESCS_PER_LOOP;
+			split_packet += I40E_VPMD_DESCS_PER_LOOP;
 
 			/* zero-out next pointers */
 			rx_pkts[pos]->next = NULL;
@@ -555,7 +554,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 
 		/* C.4 calc available number of desc */
 		if (unlikely(stat == 0)) {
-			nb_pkts_recd += RTE_I40E_DESCS_PER_LOOP;
+			nb_pkts_recd += I40E_VPMD_DESCS_PER_LOOP;
 		} else {
 			nb_pkts_recd += rte_ctz64(stat) / I40E_UINT16_BIT;
 			break;
@@ -572,7 +571,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 
  /*
  * Notice:
- * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < I40E_VPMD_DESCS_PER_LOOP, just return no packet
  */
 uint16_t
 i40e_recv_pkts_vec(void *__rte_restrict rx_queue,
@@ -585,7 +584,7 @@ i40e_recv_pkts_vec(void *__rte_restrict rx_queue,
  * vPMD receive routine that reassembles single burst of 32 scattered packets
  *
  * Notice:
- * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < I40E_VPMD_DESCS_PER_LOOP, just return no packet
  */
 static uint16_t
 i40e_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -593,7 +592,7 @@ i40e_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 
 	struct i40e_rx_queue *rxq = rx_queue;
-	uint8_t split_flags[RTE_I40E_VPMD_RX_BURST] = {0};
+	uint8_t split_flags[I40E_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
 	uint16_t nb_bufs = _recv_raw_pkts_vec(rxq, rx_pkts, nb_pkts,
@@ -633,15 +632,15 @@ i40e_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	uint16_t retval = 0;
 
-	while (nb_pkts > RTE_I40E_VPMD_RX_BURST) {
+	while (nb_pkts > I40E_VPMD_RX_BURST) {
 		uint16_t burst;
 
 		burst = i40e_recv_scattered_burst_vec(rx_queue,
 						      rx_pkts + retval,
-						      RTE_I40E_VPMD_RX_BURST);
+						      I40E_VPMD_RX_BURST);
 		retval += burst;
 		nb_pkts -= burst;
-		if (burst < RTE_I40E_VPMD_RX_BURST)
+		if (burst < I40E_VPMD_RX_BURST)
 			return retval;
 	}
 

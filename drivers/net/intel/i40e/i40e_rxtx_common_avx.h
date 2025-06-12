@@ -25,19 +25,19 @@ i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
 				 (void *)rxep,
-				 RTE_I40E_RXQ_REARM_THRESH) < 0) {
-		if (rxq->rxrearm_nb + RTE_I40E_RXQ_REARM_THRESH >=
+				 I40E_VPMD_RXQ_REARM_THRESH) < 0) {
+		if (rxq->rxrearm_nb + I40E_VPMD_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
 			__m128i dma_addr0;
 			dma_addr0 = _mm_setzero_si128();
-			for (i = 0; i < RTE_I40E_DESCS_PER_LOOP; i++) {
+			for (i = 0; i < I40E_VPMD_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
 				_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i].read),
 						dma_addr0);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			RTE_I40E_RXQ_REARM_THRESH;
+			I40E_VPMD_RXQ_REARM_THRESH;
 		return;
 	}
 
@@ -47,7 +47,7 @@ i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 			RTE_PKTMBUF_HEADROOM);
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < RTE_I40E_RXQ_REARM_THRESH; i += 2, rxep += 2) {
+	for (i = 0; i < I40E_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		__m128i vaddr0, vaddr1;
 
 		mb0 = rxep[0].mbuf;
@@ -79,7 +79,7 @@ i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
 		__m512i dma_addr0_3, dma_addr4_7;
 		__m512i hdr_room = _mm512_set1_epi64(RTE_PKTMBUF_HEADROOM);
 		/* Initialize the mbufs in vector, process 8 mbufs in one loop */
-		for (i = 0; i < RTE_I40E_RXQ_REARM_THRESH;
+		for (i = 0; i < I40E_VPMD_RXQ_REARM_THRESH;
 				i += 8, rxep += 8, rxdp += 8) {
 			__m128i vaddr0, vaddr1, vaddr2, vaddr3;
 			__m128i vaddr4, vaddr5, vaddr6, vaddr7;
@@ -152,7 +152,7 @@ i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
 		__m256i dma_addr0_1, dma_addr2_3;
 		__m256i hdr_room = _mm256_set1_epi64x(RTE_PKTMBUF_HEADROOM);
 		/* Initialize the mbufs in vector, process 4 mbufs in one loop */
-		for (i = 0; i < RTE_I40E_RXQ_REARM_THRESH;
+		for (i = 0; i < I40E_VPMD_RXQ_REARM_THRESH;
 				i += 4, rxep += 4, rxdp += 4) {
 			__m128i vaddr0, vaddr1, vaddr2, vaddr3;
 			__m256i vaddr0_1, vaddr2_3;
@@ -197,7 +197,7 @@ i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
 
 #endif
 
-	rxq->rxrearm_start += RTE_I40E_RXQ_REARM_THRESH;
+	rxq->rxrearm_start += I40E_VPMD_RXQ_REARM_THRESH;
 	rx_id = rxq->rxrearm_start - 1;
 
 	if (unlikely(rxq->rxrearm_start >= rxq->nb_rx_desc)) {
@@ -205,7 +205,7 @@ i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
 		rx_id = rxq->nb_rx_desc - 1;
 	}
 
-	rxq->rxrearm_nb -= RTE_I40E_RXQ_REARM_THRESH;
+	rxq->rxrearm_nb -= I40E_VPMD_RXQ_REARM_THRESH;
 
 	/* Update the tail pointer on the NIC */
 	I40E_PCI_REG_WC_WRITE(rxq->qrx_tail, rx_id);

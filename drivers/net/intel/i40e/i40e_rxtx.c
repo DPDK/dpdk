@@ -424,11 +424,11 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct i40e_rx_queue *rxq)
 	int ret = 0;
 
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
-	if (!(rxq->rx_free_thresh >= RTE_PMD_I40E_RX_MAX_BURST)) {
+	if (!(rxq->rx_free_thresh >= I40E_RX_MAX_BURST)) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
 			     "rxq->rx_free_thresh=%d, "
-			     "RTE_PMD_I40E_RX_MAX_BURST=%d",
-			     rxq->rx_free_thresh, RTE_PMD_I40E_RX_MAX_BURST);
+			     "I40E_RX_MAX_BURST=%d",
+			     rxq->rx_free_thresh, I40E_RX_MAX_BURST);
 		ret = -EINVAL;
 	} else if (!(rxq->rx_free_thresh < rxq->nb_rx_desc)) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions: "
@@ -484,7 +484,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 	 * Scan LOOK_AHEAD descriptors at a time to determine which
 	 * descriptors reference packets that are ready to be received.
 	 */
-	for (i = 0; i < RTE_PMD_I40E_RX_MAX_BURST; i+=I40E_LOOK_AHEAD,
+	for (i = 0; i < I40E_RX_MAX_BURST; i += I40E_LOOK_AHEAD,
 			rxdp += I40E_LOOK_AHEAD, rxep += I40E_LOOK_AHEAD) {
 		/* Read desc statuses backwards to avoid race condition */
 		for (j = I40E_LOOK_AHEAD - 1; j >= 0; j--) {
@@ -680,11 +680,11 @@ i40e_recv_pkts_bulk_alloc(void *rx_queue,
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
-	if (likely(nb_pkts <= RTE_PMD_I40E_RX_MAX_BURST))
+	if (likely(nb_pkts <= I40E_RX_MAX_BURST))
 		return rx_recv_pkts(rx_queue, rx_pkts, nb_pkts);
 
 	while (nb_pkts) {
-		n = RTE_MIN(nb_pkts, RTE_PMD_I40E_RX_MAX_BURST);
+		n = RTE_MIN(nb_pkts, I40E_RX_MAX_BURST);
 		count = rx_recv_pkts(rx_queue, &rx_pkts[nb_rx], n);
 		nb_rx = (uint16_t)(nb_rx + count);
 		nb_pkts = (uint16_t)(nb_pkts - count);
@@ -1334,9 +1334,9 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 	struct ci_tx_entry *txep;
 	uint16_t tx_rs_thresh = txq->tx_rs_thresh;
 	uint16_t i = 0, j = 0;
-	struct rte_mbuf *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
-	const uint16_t k = RTE_ALIGN_FLOOR(tx_rs_thresh, RTE_I40E_TX_MAX_FREE_BUF_SZ);
-	const uint16_t m = tx_rs_thresh % RTE_I40E_TX_MAX_FREE_BUF_SZ;
+	struct rte_mbuf *free[I40E_TX_MAX_FREE_BUF_SZ];
+	const uint16_t k = RTE_ALIGN_FLOOR(tx_rs_thresh, I40E_TX_MAX_FREE_BUF_SZ);
+	const uint16_t m = tx_rs_thresh % I40E_TX_MAX_FREE_BUF_SZ;
 
 	if ((txq->i40e_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
@@ -1350,13 +1350,13 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 
 	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
 		if (k) {
-			for (j = 0; j != k; j += RTE_I40E_TX_MAX_FREE_BUF_SZ) {
-				for (i = 0; i < RTE_I40E_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
+			for (j = 0; j != k; j += I40E_TX_MAX_FREE_BUF_SZ) {
+				for (i = 0; i < I40E_TX_MAX_FREE_BUF_SZ; ++i, ++txep) {
 					free[i] = txep->mbuf;
 					txep->mbuf = NULL;
 				}
 				rte_mempool_put_bulk(free[0]->pool, (void **)free,
-						RTE_I40E_TX_MAX_FREE_BUF_SZ);
+						I40E_TX_MAX_FREE_BUF_SZ);
 			}
 		}
 
@@ -2146,7 +2146,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 * Allocating a little more memory because vectorized/bulk_alloc Rx
 	 * functions doesn't check boundaries each time.
 	 */
-	len += RTE_PMD_I40E_RX_MAX_BURST;
+	len += I40E_RX_MAX_BURST;
 
 	ring_size = RTE_ALIGN(len * sizeof(union i40e_rx_desc),
 			      I40E_DMA_MEM_ALIGN);
@@ -2166,7 +2166,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->rx_ring_phys_addr = rz->iova;
 	rxq->rx_ring = (union i40e_rx_desc *)rz->addr;
 
-	len = (uint16_t)(nb_desc + RTE_PMD_I40E_RX_MAX_BURST);
+	len = (uint16_t)(nb_desc + I40E_RX_MAX_BURST);
 
 	/* Allocate the software ring. */
 	rxq->sw_ring =
@@ -2370,7 +2370,7 @@ i40e_dev_tx_queue_setup_runtime(struct rte_eth_dev *dev,
 
 	/* check vector conflict */
 	if (ad->tx_vec_allowed) {
-		if (txq->tx_rs_thresh > RTE_I40E_TX_MAX_FREE_BUF_SZ ||
+		if (txq->tx_rs_thresh > I40E_TX_MAX_FREE_BUF_SZ ||
 		    i40e_txq_vec_setup(txq)) {
 			PMD_DRV_LOG(ERR, "Failed vector tx setup.");
 			return -EINVAL;
@@ -2379,7 +2379,7 @@ i40e_dev_tx_queue_setup_runtime(struct rte_eth_dev *dev,
 	/* check simple tx conflict */
 	if (ad->tx_simple_allowed) {
 		if ((txq->offloads & ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) != 0 ||
-				txq->tx_rs_thresh < RTE_PMD_I40E_TX_MAX_BURST) {
+				txq->tx_rs_thresh < I40E_TX_MAX_BURST) {
 			PMD_DRV_LOG(ERR, "No-simple tx is required.");
 			return -EINVAL;
 		}
@@ -2675,7 +2675,7 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
 	if (check_rx_burst_bulk_alloc_preconditions(rxq) == 0)
-		len = (uint16_t)(rxq->nb_rx_desc + RTE_PMD_I40E_RX_MAX_BURST);
+		len = (uint16_t)(rxq->nb_rx_desc + I40E_RX_MAX_BURST);
 	else
 #endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
 		len = rxq->nb_rx_desc;
@@ -2684,7 +2684,7 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 		((volatile char *)rxq->rx_ring)[i] = 0;
 
 	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
-	for (i = 0; i < RTE_PMD_I40E_RX_MAX_BURST; ++i)
+	for (i = 0; i < I40E_RX_MAX_BURST; ++i)
 		rxq->sw_ring[rxq->nb_rx_desc + i].mbuf = &rxq->fake_mbuf;
 
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
@@ -3276,7 +3276,7 @@ i40e_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	recycle_rxq_info->receive_tail = &rxq->rx_tail;
 
 	if (ad->rx_vec_allowed) {
-		recycle_rxq_info->refill_requirement = RTE_I40E_RXQ_REARM_THRESH;
+		recycle_rxq_info->refill_requirement = I40E_VPMD_RXQ_REARM_THRESH;
 		recycle_rxq_info->refill_head = &rxq->rxrearm_start;
 	} else {
 		recycle_rxq_info->refill_requirement = rxq->rx_free_thresh;
@@ -3501,9 +3501,9 @@ i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct ci_tx_queue *txq)
 	ad->tx_simple_allowed =
 		(txq->offloads ==
 		 (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
-		 txq->tx_rs_thresh >= RTE_PMD_I40E_TX_MAX_BURST);
+		 txq->tx_rs_thresh >= I40E_TX_MAX_BURST);
 	ad->tx_vec_allowed = (ad->tx_simple_allowed &&
-			txq->tx_rs_thresh <= RTE_I40E_TX_MAX_FREE_BUF_SZ);
+			txq->tx_rs_thresh <= I40E_TX_MAX_FREE_BUF_SZ);
 
 	if (ad->tx_vec_allowed)
 		PMD_INIT_LOG(DEBUG, "Vector Tx can be enabled on Tx queue %u.",

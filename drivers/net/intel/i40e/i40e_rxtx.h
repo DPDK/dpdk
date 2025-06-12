@@ -7,15 +7,14 @@
 
 #include "../common/tx.h"
 
-#define RTE_PMD_I40E_RX_MAX_BURST 32
-#define RTE_PMD_I40E_TX_MAX_BURST 32
+#define I40E_RX_MAX_BURST 32
+#define I40E_TX_MAX_BURST 32
 
-#define RTE_I40E_VPMD_RX_BURST        32
-#define RTE_I40E_VPMD_TX_BURST        32
-#define RTE_I40E_RXQ_REARM_THRESH      32
-#define RTE_I40E_MAX_RX_BURST          RTE_I40E_RXQ_REARM_THRESH
-#define RTE_I40E_TX_MAX_FREE_BUF_SZ    64
-#define RTE_I40E_DESCS_PER_LOOP    4
+#define I40E_VPMD_RX_BURST            32
+#define I40E_VPMD_RXQ_REARM_THRESH    32
+#define I40E_TX_MAX_FREE_BUF_SZ       64
+#define I40E_VPMD_DESCS_PER_LOOP      4
+#define I40E_VPMD_DESCS_PER_LOOP_WIDE 8
 
 #define I40E_RXBUF_SZ_1024 1024
 #define I40E_RXBUF_SZ_2048 2048
@@ -97,7 +96,7 @@ struct i40e_rx_queue {
 	uint16_t rx_nb_avail; /**< number of staged packets ready */
 	uint16_t rx_next_avail; /**< index of next staged packets */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
-	struct rte_mbuf *rx_stage[RTE_PMD_I40E_RX_MAX_BURST * 2];
+	struct rte_mbuf *rx_stage[I40E_RX_MAX_BURST * 2];
 #endif
 
 	uint16_t rxrearm_nb;	/**< number of remaining to be re-armed */
