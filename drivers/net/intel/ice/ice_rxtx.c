@@ -36,12 +36,12 @@ ice_monitor_callback(const uint64_t value,
 int
 ice_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_queue *rxq = rx_queue;
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint16_t desc;
 
 	desc = rxq->rx_tail;
-	rxdp = &rxq->rx_ring[desc];
+	rxdp = &rxq->rx_flex_ring[desc];
 	/* watch for changes in status bit */
 	pmc->addr = &rxdp->wb.status_error0;
 
@@ -73,9 +73,9 @@ ice_proto_xtr_type_to_rxdid(uint8_t xtr_type)
 }
 
 static inline void
-ice_rxd_to_pkt_fields_by_comms_generic(__rte_unused struct ice_rx_queue *rxq,
+ice_rxd_to_pkt_fields_by_comms_generic(__rte_unused struct ci_rx_queue *rxq,
 				       struct rte_mbuf *mb,
-				       volatile union ice_rx_flex_desc *rxdp)
+				       volatile union ci_rx_flex_desc *rxdp)
 {
 	volatile struct ice_32b_rx_flex_desc_comms *desc =
 			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
@@ -95,9 +95,9 @@ ice_rxd_to_pkt_fields_by_comms_generic(__rte_unused struct ice_rx_queue *rxq,
 }
 
 static inline void
-ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ice_rx_queue *rxq,
+ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ci_rx_queue *rxq,
 				   struct rte_mbuf *mb,
-				   volatile union ice_rx_flex_desc *rxdp)
+				   volatile union ci_rx_flex_desc *rxdp)
 {
 	volatile struct ice_32b_rx_flex_desc_comms_ovs *desc =
 			(volatile struct ice_32b_rx_flex_desc_comms_ovs *)rxdp;
@@ -120,9 +120,9 @@ ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ice_rx_queue *rxq,
 }
 
 static inline void
-ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ice_rx_queue *rxq,
+ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ci_rx_queue *rxq,
 				      struct rte_mbuf *mb,
-				      volatile union ice_rx_flex_desc *rxdp)
+				      volatile union ci_rx_flex_desc *rxdp)
 {
 	volatile struct ice_32b_rx_flex_desc_comms *desc =
 			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
@@ -164,9 +164,9 @@ ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ice_rx_queue *rxq,
 }
 
 static inline void
-ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
+ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ci_rx_queue *rxq,
 				      struct rte_mbuf *mb,
-				      volatile union ice_rx_flex_desc *rxdp)
+				      volatile union ci_rx_flex_desc *rxdp)
 {
 	volatile struct ice_32b_rx_flex_desc_comms *desc =
 			(volatile struct ice_32b_rx_flex_desc_comms *)rxdp;
@@ -215,7 +215,7 @@ static const ice_rxd_to_pkt_fields_t rxd_to_pkt_fields_ops[] = {
 };
 
 void
-ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
+ice_select_rxd_to_pkt_fields_handler(struct ci_rx_queue *rxq, uint32_t rxdid)
 {
 	rxq->rxdid = rxdid;
 
@@ -243,17 +243,17 @@ ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 }
 
 static int
-ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
+ice_program_hw_rx_queue(struct ci_rx_queue *rxq)
 {
-	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_vsi *vsi = rxq->ice_vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
-	struct rte_eth_dev_data *dev_data = rxq->vsi->adapter->pf.dev_data;
+	struct rte_eth_dev_data *dev_data = rxq->ice_vsi->adapter->pf.dev_data;
 	struct ice_rlan_ctx rx_ctx;
 	uint16_t buf_size;
 	uint32_t rxdid = ICE_RXDID_COMMS_OVS;
 	uint32_t regval;
-	struct ice_adapter *ad = rxq->vsi->adapter;
+	struct ice_adapter *ad = rxq->ice_vsi->adapter;
 	uint32_t frame_size = dev_data->mtu + ICE_ETH_OVERHEAD;
 	int err;
 
@@ -451,15 +451,15 @@ set_hsplit_finish:
 
 /* Allocate mbufs for all descriptors in rx queue */
 static int
-ice_alloc_rx_queue_mbufs(struct ice_rx_queue *rxq)
+ice_alloc_rx_queue_mbufs(struct ci_rx_queue *rxq)
 {
-	struct ice_rx_entry *rxe = rxq->sw_ring;
+	struct ci_rx_entry *rxe = rxq->sw_ring;
 	uint64_t dma_addr;
 	uint16_t i;
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
-		volatile union ice_rx_flex_desc *rxd;
-		rxd = &rxq->rx_ring[i];
+		volatile union ci_rx_flex_desc *rxd;
+		rxd = &rxq->rx_flex_ring[i];
 		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mp);
 
 		if (unlikely(!mbuf)) {
@@ -513,7 +513,7 @@ ice_alloc_rx_queue_mbufs(struct ice_rx_queue *rxq)
 
 /* Free all mbufs for descriptors in rx queue */
 static void
-_ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
+_ice_rx_queue_release_mbufs(struct ci_rx_queue *rxq)
 {
 	uint16_t i;
 
@@ -590,7 +590,7 @@ ice_switch_rx_queue(struct ice_hw *hw, uint16_t q_idx, bool on)
 }
 
 static inline int
-ice_check_rx_burst_bulk_alloc_preconditions(struct ice_rx_queue *rxq)
+ice_check_rx_burst_bulk_alloc_preconditions(struct ci_rx_queue *rxq)
 {
 	int ret = 0;
 
@@ -617,9 +617,9 @@ ice_check_rx_burst_bulk_alloc_preconditions(struct ice_rx_queue *rxq)
 	return ret;
 }
 
-/* reset fields in ice_rx_queue back to default */
+/* reset fields in ci_rx_queue back to default */
 static void
-ice_reset_rx_queue(struct ice_rx_queue *rxq)
+ice_reset_rx_queue(struct ci_rx_queue *rxq)
 {
 	unsigned int i;
 	uint16_t len;
@@ -631,8 +631,8 @@ ice_reset_rx_queue(struct ice_rx_queue *rxq)
 
 	len = (uint16_t)(rxq->nb_rx_desc + ICE_RX_MAX_BURST);
 
-	for (i = 0; i < len * sizeof(union ice_rx_flex_desc); i++)
-		((volatile char *)rxq->rx_ring)[i] = 0;
+	for (i = 0; i < len * sizeof(union ci_rx_flex_desc); i++)
+		((volatile char *)rxq->rx_flex_ring)[i] = 0;
 
 	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
 	for (i = 0; i < ICE_RX_MAX_BURST; ++i)
@@ -654,7 +654,7 @@ ice_reset_rx_queue(struct ice_rx_queue *rxq)
 int
 ice_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int err;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -714,7 +714,7 @@ ice_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 ice_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int err;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -833,9 +833,9 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 }
 
 static int
-ice_fdir_program_hw_rx_queue(struct ice_rx_queue *rxq)
+ice_fdir_program_hw_rx_queue(struct ci_rx_queue *rxq)
 {
-	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_vsi *vsi = rxq->ice_vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint32_t rxdid = ICE_RXDID_LEGACY_1;
 	struct ice_rlan_ctx rx_ctx;
@@ -908,7 +908,7 @@ ice_fdir_program_hw_rx_queue(struct ice_rx_queue *rxq)
 int
 ice_fdir_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int err;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -1098,7 +1098,7 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 int
 ice_fdir_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int err;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -1169,7 +1169,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	const struct rte_memzone *rz;
 	uint32_t ring_size, tlen;
 	uint16_t len;
@@ -1205,7 +1205,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket(NULL,
-				 sizeof(struct ice_rx_queue),
+				 sizeof(struct ci_rx_queue),
 				 RTE_CACHE_LINE_SIZE,
 				 socket_id);
 
@@ -1239,7 +1239,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 		rxq->crc_len = 0;
 
 	rxq->drop_en = rx_conf->rx_drop_en;
-	rxq->vsi = vsi;
+	rxq->ice_vsi = vsi;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->proto_xtr = pf->proto_xtr != NULL ?
 			 pf->proto_xtr[queue_idx] : PROTO_XTR_NONE;
@@ -1258,7 +1258,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	len += ICE_RX_MAX_BURST;
 
 	/* Allocate the maximum number of RX ring hardware descriptor. */
-	ring_size = sizeof(union ice_rx_flex_desc) * len;
+	ring_size = sizeof(union ci_rx_flex_desc) * len;
 	ring_size = RTE_ALIGN(ring_size, ICE_DMA_MEM_ALIGN);
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
 				      ring_size, ICE_RING_BASE_ALIGN,
@@ -1274,7 +1274,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	memset(rz->addr, 0, ring_size);
 
 	rxq->rx_ring_phys_addr = rz->iova;
-	rxq->rx_ring = rz->addr;
+	rxq->rx_flex_ring = rz->addr;
 
 	/* always reserve more for bulk alloc */
 	len = (uint16_t)(nb_desc + ICE_RX_MAX_BURST);
@@ -1286,7 +1286,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the software ring. */
 	rxq->sw_ring = rte_zmalloc_socket(NULL,
-					  sizeof(struct ice_rx_entry) * tlen,
+					  sizeof(struct ci_rx_entry) * tlen,
 					  RTE_CACHE_LINE_SIZE,
 					  socket_id);
 	if (!rxq->sw_ring) {
@@ -1323,7 +1323,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 void
 ice_rx_queue_release(void *rxq)
 {
-	struct ice_rx_queue *q = (struct ice_rx_queue *)rxq;
+	struct ci_rx_queue *q = (struct ci_rx_queue *)rxq;
 
 	if (!q) {
 		PMD_DRV_LOG(DEBUG, "Pointer to rxq is NULL");
@@ -1547,7 +1547,7 @@ void
 ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		 struct rte_eth_rxq_info *qinfo)
 {
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	rxq = dev->data->rx_queues[queue_id];
 
@@ -1584,12 +1584,12 @@ uint32_t
 ice_rx_queue_count(void *rx_queue)
 {
 #define ICE_RXQ_SCAN_INTERVAL 4
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_queue *rxq;
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_queue *rxq;
 	uint16_t desc = 0;
 
 	rxq = rx_queue;
-	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxdp = &rxq->rx_flex_ring[rxq->rx_tail];
 	while ((desc < rxq->nb_rx_desc) &&
 	       rte_le_to_cpu_16(rxdp->wb.status_error0) &
 	       (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)) {
@@ -1601,8 +1601,7 @@ ice_rx_queue_count(void *rx_queue)
 		desc += ICE_RXQ_SCAN_INTERVAL;
 		rxdp += ICE_RXQ_SCAN_INTERVAL;
 		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
-			rxdp = &(rxq->rx_ring[rxq->rx_tail +
-				 desc - rxq->nb_rx_desc]);
+			rxdp = &rxq->rx_flex_ring[rxq->rx_tail + desc - rxq->nb_rx_desc];
 	}
 
 	return desc;
@@ -1655,7 +1654,7 @@ ice_rxd_error_to_pkt_flags(uint16_t stat_err0)
 }
 
 static inline void
-ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
+ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ci_rx_flex_desc *rxdp)
 {
 	if (rte_le_to_cpu_16(rxdp->wb.status_error0) &
 	    (1 << ICE_RX_FLEX_DESC_STATUS0_L2TAG1P_S)) {
@@ -1694,25 +1693,25 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
 #define ICE_PTP_TS_VALID 0x1
 
 static inline int
-ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
+ice_rx_scan_hw_ring(struct ci_rx_queue *rxq)
 {
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_entry *rxep;
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t stat_err0;
 	uint16_t pkt_len, hdr_len;
 	int32_t s[ICE_LOOK_AHEAD], nb_dd;
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags = 0;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->ice_vsi->adapter->ptype_tbl;
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	bool is_tsinit = false;
 	uint64_t ts_ns;
-	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_vsi *vsi = rxq->ice_vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
-	struct ice_adapter *ad = rxq->vsi->adapter;
+	struct ice_adapter *ad = rxq->ice_vsi->adapter;
 #endif
-	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxdp = &rxq->rx_flex_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
 
 	stat_err0 = rte_le_to_cpu_16(rxdp->wb.status_error0);
@@ -1842,7 +1841,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 }
 
 static inline uint16_t
-ice_rx_fill_from_stage(struct ice_rx_queue *rxq,
+ice_rx_fill_from_stage(struct ci_rx_queue *rxq,
 		       struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts)
 {
@@ -1861,10 +1860,10 @@ ice_rx_fill_from_stage(struct ice_rx_queue *rxq,
 }
 
 static inline int
-ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
+ice_rx_alloc_bufs(struct ci_rx_queue *rxq)
 {
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_entry *rxep;
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t alloc_idx, i;
 	uint64_t dma_addr;
@@ -1893,7 +1892,7 @@ ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
 		}
 	}
 
-	rxdp = &rxq->rx_ring[alloc_idx];
+	rxdp = &rxq->rx_flex_ring[alloc_idx];
 	for (i = 0; i < rxq->rx_free_thresh; i++) {
 		if (likely(i < (rxq->rx_free_thresh - 1)))
 			/* Prefetch next mbuf */
@@ -1932,7 +1931,7 @@ ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
 static inline uint16_t
 rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
-	struct ice_rx_queue *rxq = (struct ice_rx_queue *)rx_queue;
+	struct ci_rx_queue *rxq = (struct ci_rx_queue *)rx_queue;
 	uint16_t nb_rx = 0;
 
 	if (!nb_pkts)
@@ -1950,7 +1949,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (ice_rx_alloc_bufs(rxq) != 0) {
 			uint16_t i, j;
 
-			rxq->vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed +=
+			rxq->ice_vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed +=
 				rxq->rx_free_thresh;
 			PMD_RX_LOG(DEBUG, "Rx mbuf alloc failed for "
 				   "port_id=%u, queue_id=%u",
@@ -2005,12 +2004,12 @@ ice_recv_scattered_pkts(void *rx_queue,
 			struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts)
 {
-	struct ice_rx_queue *rxq = rx_queue;
-	volatile union ice_rx_flex_desc *rx_ring = rxq->rx_ring;
-	volatile union ice_rx_flex_desc *rxdp;
-	union ice_rx_flex_desc rxd;
-	struct ice_rx_entry *sw_ring = rxq->sw_ring;
-	struct ice_rx_entry *rxe;
+	struct ci_rx_queue *rxq = rx_queue;
+	volatile union ci_rx_flex_desc *rx_ring = rxq->rx_flex_ring;
+	volatile union ci_rx_flex_desc *rxdp;
+	union ci_rx_flex_desc rxd;
+	struct ci_rx_entry *sw_ring = rxq->sw_ring;
+	struct ci_rx_entry *rxe;
 	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
 	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
 	struct rte_mbuf *nmb; /* new allocated mbuf */
@@ -2022,13 +2021,13 @@ ice_recv_scattered_pkts(void *rx_queue,
 	uint16_t rx_stat_err0;
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->ice_vsi->adapter->ptype_tbl;
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	bool is_tsinit = false;
 	uint64_t ts_ns;
-	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_vsi *vsi = rxq->ice_vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
-	struct ice_adapter *ad = rxq->vsi->adapter;
+	struct ice_adapter *ad = rxq->ice_vsi->adapter;
 
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
@@ -2049,7 +2048,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		/* allocate mbuf */
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb)) {
-			rxq->vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
+			rxq->ice_vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
 			break;
 		}
 		rxd = *rxdp; /* copy descriptor in ring to temp variable*/
@@ -2317,8 +2316,8 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 int
 ice_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_queue *rxq = rx_queue;
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint32_t desc;
 
 	if (unlikely(offset >= rxq->nb_rx_desc))
@@ -2331,7 +2330,7 @@ ice_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (desc >= rxq->nb_rx_desc)
 		desc -= rxq->nb_rx_desc;
 
-	rxdp = &rxq->rx_ring[desc];
+	rxdp = &rxq->rx_flex_ring[desc];
 	if (rte_le_to_cpu_16(rxdp->wb.status_error0) &
 	    (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S))
 		return RTE_ETH_RX_DESC_DONE;
@@ -2458,7 +2457,7 @@ ice_fdir_setup_tx_resources(struct ice_pf *pf)
 int
 ice_fdir_setup_rx_resources(struct ice_pf *pf)
 {
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	const struct rte_memzone *rz = NULL;
 	uint32_t ring_size;
 	struct rte_eth_dev *dev;
@@ -2472,7 +2471,7 @@ ice_fdir_setup_rx_resources(struct ice_pf *pf)
 
 	/* Allocate the RX queue data structure. */
 	rxq = rte_zmalloc_socket("ice fdir rx queue",
-				 sizeof(struct ice_rx_queue),
+				 sizeof(struct ci_rx_queue),
 				 RTE_CACHE_LINE_SIZE,
 				 SOCKET_ID_ANY);
 	if (!rxq) {
@@ -2498,12 +2497,12 @@ ice_fdir_setup_rx_resources(struct ice_pf *pf)
 	rxq->nb_rx_desc = ICE_FDIR_NUM_RX_DESC;
 	rxq->queue_id = ICE_FDIR_QUEUE_ID;
 	rxq->reg_idx = pf->fdir.fdir_vsi->base_queue;
-	rxq->vsi = pf->fdir.fdir_vsi;
+	rxq->ice_vsi = pf->fdir.fdir_vsi;
 
 	rxq->rx_ring_phys_addr = rz->iova;
 	memset(rz->addr, 0, ICE_FDIR_NUM_RX_DESC *
 	       sizeof(union ice_32byte_rx_desc));
-	rxq->rx_ring = (union ice_rx_flex_desc *)rz->addr;
+	rxq->rx_flex_ring = (union ci_rx_flex_desc *)rz->addr;
 
 	/*
 	 * Don't need to allocate software ring and reset for the fdir
@@ -2522,12 +2521,12 @@ ice_recv_pkts(void *rx_queue,
 	      struct rte_mbuf **rx_pkts,
 	      uint16_t nb_pkts)
 {
-	struct ice_rx_queue *rxq = rx_queue;
-	volatile union ice_rx_flex_desc *rx_ring = rxq->rx_ring;
-	volatile union ice_rx_flex_desc *rxdp;
-	union ice_rx_flex_desc rxd;
-	struct ice_rx_entry *sw_ring = rxq->sw_ring;
-	struct ice_rx_entry *rxe;
+	struct ci_rx_queue *rxq = rx_queue;
+	volatile union ci_rx_flex_desc *rx_ring = rxq->rx_flex_ring;
+	volatile union ci_rx_flex_desc *rxdp;
+	union ci_rx_flex_desc rxd;
+	struct ci_rx_entry *sw_ring = rxq->sw_ring;
+	struct ci_rx_entry *rxe;
 	struct rte_mbuf *nmb; /* new allocated mbuf */
 	struct rte_mbuf *nmb_pay; /* new allocated payload mbuf */
 	struct rte_mbuf *rxm; /* pointer to store old mbuf in SW ring */
@@ -2539,13 +2538,13 @@ ice_recv_pkts(void *rx_queue,
 	uint16_t rx_stat_err0;
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->ice_vsi->adapter->ptype_tbl;
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	bool is_tsinit = false;
 	uint64_t ts_ns;
-	struct ice_vsi *vsi = rxq->vsi;
+	struct ice_vsi *vsi = rxq->ice_vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
-	struct ice_adapter *ad = rxq->vsi->adapter;
+	struct ice_adapter *ad = rxq->ice_vsi->adapter;
 
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
@@ -2566,7 +2565,7 @@ ice_recv_pkts(void *rx_queue,
 		/* allocate header mbuf */
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb)) {
-			rxq->vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
+			rxq->ice_vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
 			break;
 		}
 
@@ -2593,7 +2592,7 @@ ice_recv_pkts(void *rx_queue,
 			/* allocate payload mbuf */
 			nmb_pay = rte_mbuf_raw_alloc(rxq->rxseg[1].mp);
 			if (unlikely(!nmb_pay)) {
-				rxq->vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
+				rxq->ice_vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
 				rxe->mbuf = NULL;
 				nb_hold--;
 				if (unlikely(rx_id == 0))
@@ -3471,7 +3470,7 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 #ifdef RTE_ARCH_X86
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int i;
 	int rx_check_ret = -1;
 
@@ -4633,7 +4632,7 @@ ice_set_default_ptype_table(struct rte_eth_dev *dev)
  * tx queue
  */
 static inline int
-ice_check_fdir_programming_status(struct ice_rx_queue *rxq)
+ice_check_fdir_programming_status(struct ci_rx_queue *rxq)
 {
 	volatile union ice_32byte_rx_desc *rxdp;
 	uint64_t qword1;
@@ -4642,8 +4641,7 @@ ice_check_fdir_programming_status(struct ice_rx_queue *rxq)
 	uint32_t id;
 	int ret = -EAGAIN;
 
-	rxdp = (volatile union ice_32byte_rx_desc *)
-		(&rxq->rx_ring[rxq->rx_tail]);
+	rxdp = (volatile union ice_32byte_rx_desc *)&rxq->rx_flex_ring[rxq->rx_tail];
 	qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
 	rx_status = (qword1 & ICE_RXD_QW1_STATUS_M)
 			>> ICE_RXD_QW1_STATUS_S;
@@ -4688,7 +4686,7 @@ int
 ice_fdir_programming(struct ice_pf *pf, struct ice_fltr_desc *fdir_desc)
 {
 	struct ci_tx_queue *txq = pf->fdir.txq;
-	struct ice_rx_queue *rxq = pf->fdir.rxq;
+	struct ci_rx_queue *rxq = pf->fdir.rxq;
 	volatile struct ice_fltr_desc *fdirdp;
 	volatile struct ice_tx_desc *txdp;
 	uint32_t td_cmd;

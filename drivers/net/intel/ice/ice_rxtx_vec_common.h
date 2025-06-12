@@ -17,7 +17,7 @@ ice_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 }
 
 static inline void
-_ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
+_ice_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 {
 	const unsigned int mask = rxq->nb_rx_desc - 1;
 	unsigned int i;
@@ -79,7 +79,7 @@ _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 #define ICE_VECTOR_OFFLOAD_PATH	1
 
 static inline int
-ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
+ice_rx_vec_queue_default(struct ci_rx_queue *rxq)
 {
 	if (!rxq)
 		return -1;
@@ -119,7 +119,7 @@ static inline int
 ice_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
 	int i;
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int ret = 0;
 	int result = 0;
 
