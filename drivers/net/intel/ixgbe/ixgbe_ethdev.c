@@ -2022,7 +2022,7 @@ ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev, uint16_t queue, bool on)
 {
 	struct ixgbe_hwstrip *hwstrip =
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(dev->data->dev_private);
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	if (queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return;
@@ -2157,7 +2157,7 @@ ixgbe_vlan_hw_strip_config(struct rte_eth_dev *dev)
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint32_t ctrl;
 	uint16_t i;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	bool on;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2200,7 +2200,7 @@ ixgbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev, int mask)
 {
 	uint16_t i;
 	struct rte_eth_rxmode *rxmode;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
 		rxmode = &dev->data->dev_conf.rxmode;
@@ -5795,7 +5795,7 @@ ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 static int
 ixgbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask)
 {
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint16_t i;
 	int on = 0;
 

@@ -1403,11 +1403,11 @@ int
 ixgbe_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint16_t desc;
 
 	desc = rxq->rx_tail;
-	rxdp = &rxq->rx_ring[desc];
+	rxdp = &rxq->ixgbe_rx_ring[desc];
 	/* watch for changes in status bit */
 	pmc->addr = &rxdp->wb.upper.status_error;
 
@@ -1547,10 +1547,10 @@ rx_desc_error_to_pkt_flags(uint32_t rx_status, uint16_t pkt_info,
 #error "PMD IXGBE: LOOK_AHEAD must be 8\n"
 #endif
 static inline int
-ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_scan_hw_ring(struct ci_rx_queue *rxq)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_entry *rxep;
+	struct ci_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
 	uint64_t pkt_flags;
@@ -1562,7 +1562,7 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 	uint64_t vlan_flags = rxq->vlan_flags;
 
 	/* get references to current descriptor and S/W ring entry */
-	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxdp = &rxq->ixgbe_rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
 
 	status = rxdp->wb.upper.status_error;
@@ -1647,10 +1647,10 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 }
 
 static inline int
-ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
+ixgbe_rx_alloc_bufs(struct ci_rx_queue *rxq, bool reset_mbuf)
 {
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_entry *rxep;
+	struct ci_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t alloc_idx;
 	__le64 dma_addr;
@@ -1664,7 +1664,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 	if (unlikely(diag != 0))
 		return -ENOMEM;
 
-	rxdp = &rxq->rx_ring[alloc_idx];
+	rxdp = &rxq->ixgbe_rx_ring[alloc_idx];
 	for (i = 0; i < rxq->rx_free_thresh; ++i) {
 		/* populate the static rte mbuf fields */
 		mb = rxep[i].mbuf;
@@ -1691,7 +1691,7 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 }
 
 static inline uint16_t
-ixgbe_rx_fill_from_stage(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+ixgbe_rx_fill_from_stage(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
 	struct rte_mbuf **stage = &rxq->rx_stage[rxq->rx_next_avail];
@@ -1715,7 +1715,7 @@ static inline uint16_t
 rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	     uint16_t nb_pkts)
 {
-	struct ixgbe_rx_queue *rxq = (struct ixgbe_rx_queue *)rx_queue;
+	struct ci_rx_queue *rxq = (struct ci_rx_queue *)rx_queue;
 	uint16_t nb_rx = 0;
 
 	/* Any previously recv'd pkts will be returned from the Rx stage */
@@ -1804,11 +1804,11 @@ uint16_t
 ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	volatile union ixgbe_adv_rx_desc *rx_ring;
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_entry *sw_ring;
-	struct ixgbe_rx_entry *rxe;
+	struct ci_rx_entry *sw_ring;
+	struct ci_rx_entry *rxe;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
 	union ixgbe_adv_rx_desc rxd;
@@ -1826,7 +1826,7 @@ ixgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	nb_hold = 0;
 	rxq = rx_queue;
 	rx_id = rxq->rx_tail;
-	rx_ring = rxq->rx_ring;
+	rx_ring = rxq->ixgbe_rx_ring;
 	sw_ring = rxq->sw_ring;
 	vlan_flags = rxq->vlan_flags;
 	while (nb_rx < nb_pkts) {
@@ -2031,7 +2031,7 @@ static inline void
 ixgbe_fill_cluster_head_buf(
 	struct rte_mbuf *head,
 	union ixgbe_adv_rx_desc *desc,
-	struct ixgbe_rx_queue *rxq,
+	struct ci_rx_queue *rxq,
 	uint32_t staterr)
 {
 	uint32_t pkt_info;
@@ -2093,10 +2093,10 @@ static inline uint16_t
 ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 		    bool bulk_alloc)
 {
-	struct ixgbe_rx_queue *rxq = rx_queue;
-	volatile union ixgbe_adv_rx_desc *rx_ring = rxq->rx_ring;
-	struct ixgbe_rx_entry *sw_ring = rxq->sw_ring;
-	struct ixgbe_scattered_rx_entry *sw_sc_ring = rxq->sw_sc_ring;
+	struct ci_rx_queue *rxq = rx_queue;
+	volatile union ixgbe_adv_rx_desc *rx_ring = rxq->ixgbe_rx_ring;
+	struct ci_rx_entry *sw_ring = rxq->sw_ring;
+	struct ci_rx_entry_sc *sw_sc_ring = rxq->sw_sc_ring;
 	uint16_t rx_id = rxq->rx_tail;
 	uint16_t nb_rx = 0;
 	uint16_t nb_hold = rxq->nb_rx_hold;
@@ -2104,10 +2104,10 @@ ixgbe_recv_pkts_lro(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 
 	while (nb_rx < nb_pkts) {
 		bool eop;
-		struct ixgbe_rx_entry *rxe;
-		struct ixgbe_scattered_rx_entry *sc_entry;
-		struct ixgbe_scattered_rx_entry *next_sc_entry = NULL;
-		struct ixgbe_rx_entry *next_rxe = NULL;
+		struct ci_rx_entry *rxe;
+		struct ci_rx_entry_sc *sc_entry;
+		struct ci_rx_entry_sc *next_sc_entry = NULL;
+		struct ci_rx_entry *next_rxe = NULL;
 		struct rte_mbuf *first_seg;
 		struct rte_mbuf *rxm;
 		struct rte_mbuf *nmb = NULL;
@@ -2949,7 +2949,7 @@ ixgbe_free_sc_cluster(struct rte_mbuf *m)
 }
 
 static void __rte_cold
-ixgbe_rx_queue_release_mbufs_non_vec(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_queue_release_mbufs_non_vec(struct ci_rx_queue *rxq)
 {
 	unsigned i;
 
@@ -2980,7 +2980,7 @@ ixgbe_rx_queue_release_mbufs_non_vec(struct ixgbe_rx_queue *rxq)
 }
 
 static void __rte_cold
-ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_queue_release_mbufs(struct ci_rx_queue *rxq)
 {
 	if (rxq->vector_rx)
 		ixgbe_rx_queue_release_mbufs_vec(rxq);
@@ -2989,7 +2989,7 @@ ixgbe_rx_queue_release_mbufs(struct ixgbe_rx_queue *rxq)
 }
 
 static void __rte_cold
-ixgbe_rx_queue_release(struct ixgbe_rx_queue *rxq)
+ixgbe_rx_queue_release(struct ci_rx_queue *rxq)
 {
 	if (rxq != NULL) {
 		ixgbe_rx_queue_release_mbufs(rxq);
@@ -3015,7 +3015,7 @@ ixgbe_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
  *           function must be used.
  */
 static inline int __rte_cold
-check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
+check_rx_burst_bulk_alloc_preconditions(struct ci_rx_queue *rxq)
 {
 	int ret = 0;
 
@@ -3052,7 +3052,7 @@ check_rx_burst_bulk_alloc_preconditions(struct ixgbe_rx_queue *rxq)
 
 /* Reset dynamic ixgbe_rx_queue fields back to defaults */
 static void __rte_cold
-ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
+ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ci_rx_queue *rxq)
 {
 	static const union ixgbe_adv_rx_desc zeroed_desc = {{0}};
 	unsigned i;
@@ -3073,7 +3073,7 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 	 * reads extra memory as zeros.
 	 */
 	for (i = 0; i < len; i++) {
-		rxq->rx_ring[i] = zeroed_desc;
+		rxq->ixgbe_rx_ring[i] = zeroed_desc;
 	}
 
 	/*
@@ -3185,7 +3185,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			 struct rte_mempool *mp)
 {
 	const struct rte_memzone *rz;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	struct ixgbe_hw     *hw;
 	uint16_t len;
 	struct ixgbe_adapter *adapter = dev->data->dev_private;
@@ -3214,7 +3214,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* First allocate the rx queue data structure */
-	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct ixgbe_rx_queue),
+	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct ci_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
 		return -ENOMEM;
@@ -3284,7 +3284,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			IXGBE_PCI_REG_ADDR(hw, IXGBE_RDT(rxq->reg_idx));
 
 	rxq->rx_ring_phys_addr = rz->iova;
-	rxq->rx_ring = (union ixgbe_adv_rx_desc *) rz->addr;
+	rxq->ixgbe_rx_ring = (union ixgbe_adv_rx_desc *)rz->addr;
 
 	/*
 	 * Certain constraints must be met in order to use the bulk buffer
@@ -3309,7 +3309,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		len += IXGBE_RX_MAX_BURST;
 
 	rxq->sw_ring = rte_zmalloc_socket("rxq->sw_ring",
-					  sizeof(struct ixgbe_rx_entry) * len,
+					  sizeof(struct ci_rx_entry) * len,
 					  RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq->sw_ring) {
 		ixgbe_rx_queue_release(rxq);
@@ -3326,7 +3326,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	rxq->sw_sc_ring =
 		rte_zmalloc_socket("rxq->sw_sc_ring",
-				   sizeof(struct ixgbe_scattered_rx_entry) * len,
+				   sizeof(struct ci_rx_entry_sc) * len,
 				   RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq->sw_sc_ring) {
 		ixgbe_rx_queue_release(rxq);
@@ -3335,7 +3335,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p sw_sc_ring=%p hw_ring=%p "
 			    "dma_addr=0x%"PRIx64,
-		     rxq->sw_ring, rxq->sw_sc_ring, rxq->rx_ring,
+		     rxq->sw_ring, rxq->sw_sc_ring, rxq->ixgbe_rx_ring,
 		     rxq->rx_ring_phys_addr);
 
 	if (!rte_is_power_of_2(nb_desc)) {
@@ -3359,11 +3359,11 @@ ixgbe_dev_rx_queue_count(void *rx_queue)
 {
 #define IXGBE_RXQ_SCAN_INTERVAL 4
 	volatile union ixgbe_adv_rx_desc *rxdp;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint32_t desc = 0;
 
 	rxq = rx_queue;
-	rxdp = &(rxq->rx_ring[rxq->rx_tail]);
+	rxdp = &rxq->ixgbe_rx_ring[rxq->rx_tail];
 
 	while ((desc < rxq->nb_rx_desc) &&
 		(rxdp->wb.upper.status_error &
@@ -3371,7 +3371,7 @@ ixgbe_dev_rx_queue_count(void *rx_queue)
 		desc += IXGBE_RXQ_SCAN_INTERVAL;
 		rxdp += IXGBE_RXQ_SCAN_INTERVAL;
 		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
-			rxdp = &(rxq->rx_ring[rxq->rx_tail +
+			rxdp = &(rxq->ixgbe_rx_ring[rxq->rx_tail +
 				desc - rxq->nb_rx_desc]);
 	}
 
@@ -3381,7 +3381,7 @@ ixgbe_dev_rx_queue_count(void *rx_queue)
 int
 ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
-	struct ixgbe_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	volatile uint32_t *status;
 	uint32_t nb_hold, desc;
 
@@ -3399,7 +3399,7 @@ ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (desc >= rxq->nb_rx_desc)
 		desc -= rxq->nb_rx_desc;
 
-	status = &rxq->rx_ring[desc].wb.upper.status_error;
+	status = &rxq->ixgbe_rx_ring[desc].wb.upper.status_error;
 	if (*status & rte_cpu_to_le_32(IXGBE_RXDADV_STAT_DD))
 		return RTE_ETH_RX_DESC_DONE;
 
@@ -3482,7 +3482,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
+		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 
 		if (rxq != NULL) {
 			ixgbe_rx_queue_release_mbufs(rxq);
@@ -4644,9 +4644,9 @@ ixgbe_vmdq_tx_hw_configure(struct ixgbe_hw *hw)
 }
 
 static int __rte_cold
-ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
+ixgbe_alloc_rx_queue_mbufs(struct ci_rx_queue *rxq)
 {
-	struct ixgbe_rx_entry *rxe = rxq->sw_ring;
+	struct ci_rx_entry *rxe = rxq->sw_ring;
 	uint64_t dma_addr;
 	unsigned int i;
 
@@ -4666,7 +4666,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 
 		dma_addr =
 			rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
-		rxd = &rxq->rx_ring[i];
+		rxd = &rxq->ixgbe_rx_ring[i];
 		rxd->read.hdr_addr = 0;
 		rxd->read.pkt_addr = dma_addr;
 		rxe[i].mbuf = mbuf;
@@ -5083,7 +5083,7 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 		dev->rx_pkt_burst == ixgbe_recv_pkts_vec);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
+		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 
 		rxq->vector_rx = rx_using_sse;
 #ifdef RTE_LIB_SECURITY
@@ -5161,7 +5161,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 
 	/* Per-queue RSC configuration (chapter 4.6.7.2.2 of 82599 Spec) */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
+		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 		uint32_t srrctl =
 			IXGBE_READ_REG(hw, IXGBE_SRRCTL(rxq->reg_idx));
 		uint32_t rscctl =
@@ -5237,7 +5237,7 @@ int __rte_cold
 ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint64_t bus_addr;
 	uint32_t rxctrl;
 	uint32_t fctrl;
@@ -5533,7 +5533,7 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
 	struct ci_tx_queue *txq;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint32_t txdctl;
 	uint32_t dmatxctl;
 	uint32_t rxctrl;
@@ -5620,7 +5620,7 @@ int __rte_cold
 ixgbe_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint32_t rxdctl;
 	int poll_ms;
 
@@ -5663,7 +5663,7 @@ ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct ixgbe_hw     *hw;
 	struct ixgbe_adapter *adapter = dev->data->dev_private;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint32_t rxdctl;
 	int poll_ms;
 
@@ -5797,7 +5797,7 @@ void
 ixgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo)
 {
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	rxq = dev->data->rx_queues[queue_id];
 
@@ -5835,7 +5835,7 @@ void
 ixgbe_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_recycle_rxq_info *recycle_rxq_info)
 {
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	struct ixgbe_adapter *adapter = dev->data->dev_private;
 
 	rxq = dev->data->rx_queues[queue_id];
@@ -5861,7 +5861,7 @@ int __rte_cold
 ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint32_t frame_size = dev->data->mtu + IXGBE_ETH_OVERHEAD;
 	uint64_t bus_addr;
@@ -6048,7 +6048,7 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
 	struct ci_tx_queue *txq;
-	struct ixgbe_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint32_t txdctl;
 	uint32_t rxdctl;
 	uint16_t i;
