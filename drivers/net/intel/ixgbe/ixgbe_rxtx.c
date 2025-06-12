@@ -2682,8 +2682,9 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq)
 			dev->recycle_tx_mbufs_reuse = ixgbe_recycle_tx_mbufs_reuse_vec;
 #endif
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
-		} else
-		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
+		} else {
+			dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
+		}
 	} else {
 		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
 		PMD_INIT_LOG(DEBUG,
