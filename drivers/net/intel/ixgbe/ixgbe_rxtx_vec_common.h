@@ -12,7 +12,7 @@
 #include "ixgbe_rxtx.h"
 
 static __rte_always_inline int
-ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
+ixgbe_tx_free_bufs_vec(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry_vec *txep;
 	uint32_t status;
