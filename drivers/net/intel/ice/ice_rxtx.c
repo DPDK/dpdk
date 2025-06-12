@@ -370,7 +370,7 @@ set_hsplit_finish:
 		rx_ctx.dtype = 0; /* No Protocol Based Buffer Split mode */
 	}
 
-	rx_ctx.base = rxq->rx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
+	rx_ctx.base = rxq->rx_ring_phys_addr / ICE_QUEUE_BASE_ADDR_UNIT;
 	rx_ctx.qlen = rxq->nb_rx_desc;
 	rx_ctx.dbuf = rxq->rx_buf_len >> ICE_RLAN_CTX_DBUF_S;
 	rx_ctx.hbuf = rxq->rx_hdr_len >> ICE_RLAN_CTX_HBUF_S;
@@ -847,7 +847,7 @@ ice_fdir_program_hw_rx_queue(struct ice_rx_queue *rxq)
 
 	memset(&rx_ctx, 0, sizeof(rx_ctx));
 
-	rx_ctx.base = rxq->rx_ring_dma / ICE_QUEUE_BASE_ADDR_UNIT;
+	rx_ctx.base = rxq->rx_ring_phys_addr / ICE_QUEUE_BASE_ADDR_UNIT;
 	rx_ctx.qlen = rxq->nb_rx_desc;
 	rx_ctx.dbuf = rxq->rx_buf_len >> ICE_RLAN_CTX_DBUF_S;
 	rx_ctx.hbuf = rxq->rx_hdr_len >> ICE_RLAN_CTX_HBUF_S;
@@ -1273,7 +1273,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Zero all the descriptors in the ring. */
 	memset(rz->addr, 0, ring_size);
 
-	rxq->rx_ring_dma = rz->iova;
+	rxq->rx_ring_phys_addr = rz->iova;
 	rxq->rx_ring = rz->addr;
 
 	/* always reserve more for bulk alloc */
@@ -2500,7 +2500,7 @@ ice_fdir_setup_rx_resources(struct ice_pf *pf)
 	rxq->reg_idx = pf->fdir.fdir_vsi->base_queue;
 	rxq->vsi = pf->fdir.fdir_vsi;
 
-	rxq->rx_ring_dma = rz->iova;
+	rxq->rx_ring_phys_addr = rz->iova;
 	memset(rz->addr, 0, ICE_FDIR_NUM_RX_DESC *
 	       sizeof(union ice_32byte_rx_desc));
 	rxq->rx_ring = (union ice_rx_flex_desc *)rz->addr;
