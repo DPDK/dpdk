@@ -345,10 +345,8 @@ alloc_rxq_mbufs(struct iavf_rx_queue *rxq)
 		rxd = &rxq->rx_ring[i];
 		rxd->read.pkt_addr = dma_addr;
 		rxd->read.hdr_addr = 0;
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		rxd->read.rsvd1 = 0;
 		rxd->read.rsvd2 = 0;
-#endif
 
 		rxq->sw_ring[i] = mbuf;
 	}
@@ -401,22 +399,18 @@ iavf_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct iavf_rx_queue *rxq,
 {
 	volatile struct iavf_32b_rx_flex_desc_comms_ovs *desc =
 			(volatile struct iavf_32b_rx_flex_desc_comms_ovs *)rxdp;
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	uint16_t stat_err;
-#endif
 
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
 	}
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
 	if (likely(stat_err & (1 << IAVF_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
 		mb->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
-#endif
 }
 
 static inline void
@@ -434,7 +428,6 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v1(struct iavf_rx_queue *rxq,
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
@@ -458,7 +451,6 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v1(struct iavf_rx_queue *rxq,
 			*RTE_PMD_IFD_DYNF_PROTO_XTR_METADATA(mb) = metadata;
 		}
 	}
-#endif
 }
 
 static inline void
@@ -476,7 +468,6 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v2(struct iavf_rx_queue *rxq,
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
@@ -496,7 +487,6 @@ iavf_rxd_to_pkt_fields_by_comms_aux_v2(struct iavf_rx_queue *rxq,
 			*RTE_PMD_IFD_DYNF_PROTO_XTR_METADATA(mb) = metadata;
 		}
 	}
-#endif
 }
 
 static const
@@ -1177,7 +1167,6 @@ iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
 		mb->vlan_tci = 0;
 	}
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (rte_le_to_cpu_16(rxdp->wb.status_error1) &
 	    (1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S)) {
 		mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED |
@@ -1192,7 +1181,6 @@ iavf_flex_rxd_to_vlan_tci(struct rte_mbuf *mb,
 	} else {
 		mb->vlan_tci_outer = 0;
 	}
-#endif
 }
 
 static inline void
@@ -1301,7 +1289,6 @@ static inline uint64_t
 iavf_rxd_build_fdir(volatile union iavf_rx_desc *rxdp, struct rte_mbuf *mb)
 {
 	uint64_t flags = 0;
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	uint16_t flexbh;
 
 	flexbh = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
@@ -1313,11 +1300,6 @@ iavf_rxd_build_fdir(volatile union iavf_rx_desc *rxdp, struct rte_mbuf *mb)
 			rte_le_to_cpu_32(rxdp->wb.qword3.hi_dword.fd_id);
 		flags |= RTE_MBUF_F_RX_FDIR_ID;
 	}
-#else
-	mb->hash.fdir.hi =
-		rte_le_to_cpu_32(rxdp->wb.qword0.hi_dword.fd_id);
-	flags |= RTE_MBUF_F_RX_FDIR_ID;
-#endif
 	return flags;
 }
 

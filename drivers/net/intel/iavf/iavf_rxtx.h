@@ -126,30 +126,6 @@ extern int rte_pmd_iavf_tx_lldp_dynfield_offset;
  * Rx Flex Descriptors
  * These descriptors are used instead of the legacy version descriptors
  */
-union iavf_16b_rx_flex_desc {
-	struct {
-		__le64 pkt_addr; /* Packet buffer address */
-		__le64 hdr_addr; /* Header buffer address */
-				 /* bit 0 of hdr_addr is DD bit */
-	} read;
-	struct {
-		/* Qword 0 */
-		u8 rxdid; /* descriptor builder profile ID */
-		u8 mir_id_umb_cast; /* mirror=[5:0], umb=[7:6] */
-		__le16 ptype_flex_flags0; /* ptype=[9:0], ff0=[15:10] */
-		__le16 pkt_len; /* [15:14] are reserved */
-		__le16 hdr_len_sph_flex_flags1; /* header=[10:0] */
-						/* sph=[11:11] */
-						/* ff1/ext=[15:12] */
-
-		/* Qword 1 */
-		__le16 status_error0;
-		__le16 l2tag1;
-		__le16 flex_meta0;
-		__le16 flex_meta1;
-	} wb; /* writeback */
-};
-
 union iavf_32b_rx_flex_desc {
 	struct {
 		__le64 pkt_addr; /* Packet buffer address */
@@ -194,14 +170,8 @@ union iavf_32b_rx_flex_desc {
 	} wb; /* writeback */
 };
 
-/* HW desc structure, both 16-byte and 32-byte types are supported */
-#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-#define iavf_rx_desc iavf_16byte_rx_desc
-#define iavf_rx_flex_desc iavf_16b_rx_flex_desc
-#else
 #define iavf_rx_desc iavf_32byte_rx_desc
 #define iavf_rx_flex_desc iavf_32b_rx_flex_desc
-#endif
 
 typedef void (*iavf_rxd_to_pkt_fields_t)(struct iavf_rx_queue *rxq,
 				struct rte_mbuf *mb,
@@ -740,20 +710,12 @@ void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,
 			    const volatile void *desc,
 			    uint16_t rx_id)
 {
-#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-	const volatile union iavf_16byte_rx_desc *rx_desc = desc;
-
-	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64"\n",
-	       rxq->queue_id, rx_id, rx_desc->read.pkt_addr,
-	       rx_desc->read.hdr_addr);
-#else
 	const volatile union iavf_32byte_rx_desc *rx_desc = desc;
 
 	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64
 	       " QW2: 0x%016"PRIx64" QW3: 0x%016"PRIx64"\n", rxq->queue_id,
 	       rx_id, rx_desc->read.pkt_addr, rx_desc->read.hdr_addr,
 	       rx_desc->read.rsvd1, rx_desc->read.rsvd2);
-#endif
 }
 
 /* All the descriptors are 16 bytes, so just use one of them
