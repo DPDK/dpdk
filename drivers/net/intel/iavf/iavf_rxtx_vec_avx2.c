@@ -2,6 +2,7 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
+#include "../common/rx_vec_x86.h"
 #include "iavf_rxtx_vec_common.h"
 
 #include <rte_vect.h>
@@ -9,7 +10,7 @@
 static __rte_always_inline void
 iavf_rxq_rearm(struct ci_rx_queue *rxq)
 {
-	iavf_rxq_rearm_common(rxq, false);
+	ci_rxq_rearm(rxq, CI_RX_VEC_LEVEL_AVX2);
 }
 
 #define PKTLEN_SHIFT     10
