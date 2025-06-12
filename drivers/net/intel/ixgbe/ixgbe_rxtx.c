@@ -2678,9 +2678,7 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq)
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
 					ixgbe_txq_vec_setup(txq) == 0)) {
 			PMD_INIT_LOG(DEBUG, "Vector tx enabled.");
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 			dev->recycle_tx_mbufs_reuse = ixgbe_recycle_tx_mbufs_reuse_vec;
-#endif
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
 		} else {
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
@@ -3112,11 +3110,8 @@ ixgbe_reset_rx_queue(struct ixgbe_adapter *adapter, struct ixgbe_rx_queue *rxq)
 
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
-
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	rxq->rxrearm_start = 0;
 	rxq->rxrearm_nb = 0;
-#endif
 }
 
 static int
@@ -3408,11 +3403,9 @@ ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (unlikely(offset >= rxq->nb_rx_desc))
 		return -EINVAL;
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	if (rxq->vector_rx)
 		nb_hold = rxq->rxrearm_nb;
 	else
-#endif
 		nb_hold = rxq->nb_rx_hold;
 	if (offset >= rxq->nb_rx_desc - nb_hold)
 		return RTE_ETH_RX_DESC_UNAVAIL;
@@ -5050,10 +5043,8 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 			PMD_INIT_LOG(DEBUG, "Using Vector Scattered Rx "
 					    "callback (port=%d).",
 				     dev->data->port_id);
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 			dev->recycle_rx_descriptors_refill =
 				ixgbe_recycle_rx_descriptors_refill_vec;
-#endif
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
 		} else if (adapter->rx_bulk_alloc_allowed) {
 			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
@@ -5082,9 +5073,7 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 				    "burst size no less than %d (port=%d).",
 			     RTE_IXGBE_DESCS_PER_LOOP,
 			     dev->data->port_id);
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 		dev->recycle_rx_descriptors_refill = ixgbe_recycle_rx_descriptors_refill_vec;
-#endif
 		dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
 	} else if (adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
@@ -5872,10 +5861,8 @@ ixgbe_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	recycle_rxq_info->receive_tail = &rxq->rx_tail;
 
 	if (adapter->rx_vec_allowed) {
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 		recycle_rxq_info->refill_requirement = RTE_IXGBE_RXQ_REARM_THRESH;
 		recycle_rxq_info->refill_head = &rxq->rxrearm_start;
-#endif
 	} else {
 		recycle_rxq_info->refill_requirement = rxq->rx_free_thresh;
 		recycle_rxq_info->refill_head = &rxq->rx_free_trigger;
@@ -6249,6 +6236,19 @@ int
 ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)
 {
 	return -1;
+}
+
+void
+ixgbe_recycle_rx_descriptors_refill_vec(void __rte_unused * rx_queue,
+		uint16_t __rte_unused nb_mbufs)
+{
+}
+
+uint16_t
+ixgbe_recycle_tx_mbufs_reuse_vec(void __rte_unused * tx_queue,
+	struct rte_eth_recycle_rxq_info __rte_unused * recycle_rxq_info)
+{
+	return 0;
 }
 
 uint16_t
