@@ -97,7 +97,7 @@
 #define IAVF_L2TPV2_FLAGS_LEN	0x4000
 
 struct iavf_adapter;
-struct iavf_rx_queue;
+struct ci_rx_queue;
 struct ci_tx_queue;
 
 
@@ -555,7 +555,7 @@ int iavf_ipsec_crypto_request(struct iavf_adapter *adapter,
 		uint8_t *resp_msg, size_t resp_msg_len);
 extern const struct rte_tm_ops iavf_tm_ops;
 int iavf_get_ptp_cap(struct iavf_adapter *adapter);
-int iavf_get_phc_time(struct iavf_rx_queue *rxq);
+int iavf_get_phc_time(struct ci_rx_queue *rxq);
 int iavf_flow_sub(struct iavf_adapter *adapter,
 		  struct iavf_fsub_conf *filter);
 int iavf_flow_unsub(struct iavf_adapter *adapter,

@@ -728,7 +728,7 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
-iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
+iavf_init_rxq(struct rte_eth_dev *dev, struct ci_rx_queue *rxq)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_dev_data *dev_data = dev->data;
@@ -779,8 +779,7 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 static int
 iavf_init_queues(struct rte_eth_dev *dev)
 {
-	struct iavf_rx_queue **rxq =
-		(struct iavf_rx_queue **)dev->data->rx_queues;
+	struct ci_rx_queue **rxq = (struct ci_rx_queue **)dev->data->rx_queues;
 	int i, ret = IAVF_SUCCESS;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -955,7 +954,7 @@ qv_map_alloc_err:
 static int
 iavf_start_queues(struct rte_eth_dev *dev)
 {
-	struct iavf_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	struct ci_tx_queue *txq;
 	int i;
 	uint16_t nb_txq, nb_rxq;
@@ -1867,9 +1866,9 @@ iavf_dev_update_ipsec_xstats(struct rte_eth_dev *ethdev,
 {
 	uint16_t idx;
 	for (idx = 0; idx < ethdev->data->nb_rx_queues; idx++) {
-		struct iavf_rx_queue *rxq;
+		struct ci_rx_queue *rxq;
 		struct iavf_ipsec_crypto_stats *stats;
-		rxq = (struct iavf_rx_queue *)ethdev->data->rx_queues[idx];
+		rxq = (struct ci_rx_queue *)ethdev->data->rx_queues[idx];
 		stats = &rxq->stats->ipsec_crypto;
 		ips->icount += stats->icount;
 		ips->ibytes += stats->ibytes;
