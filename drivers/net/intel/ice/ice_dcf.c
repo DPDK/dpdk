@@ -1214,7 +1214,7 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 		vc_qp->rxq.dma_ring_addr = rxq[i]->rx_ring_phys_addr;
 		vc_qp->rxq.databuffer_size = rxq[i]->rx_buf_len;
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		if (hw->vf_res->vf_cap_flags &
 		    VIRTCHNL_VF_OFFLOAD_RX_FLEX_DESC &&
 		    hw->supported_rxdid &

@@ -462,7 +462,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 		} /* if() on fdir_enabled */
 
 		if (do_offload) {
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 			/**
 			 * needs to load 2nd 16B of each desc for RSS hash parsing,
 			 * will cause performance drop to get into this context.

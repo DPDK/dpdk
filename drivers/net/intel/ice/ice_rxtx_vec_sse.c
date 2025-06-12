@@ -477,7 +477,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
 		pkt_mb0 = _mm_add_epi16(pkt_mb0, crc_adjust);
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		/**
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.

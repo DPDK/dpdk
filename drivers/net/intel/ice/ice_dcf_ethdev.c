@@ -308,7 +308,7 @@ alloc_rxq_mbufs(struct ice_rx_queue *rxq)
 		rxd = &rxq->rx_ring[i];
 		rxd->read.pkt_addr = dma_addr;
 		rxd->read.hdr_addr = 0;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		rxd->read.rsvd1 = 0;
 		rxd->read.rsvd2 = 0;
 #endif
