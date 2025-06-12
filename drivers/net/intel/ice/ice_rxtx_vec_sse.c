@@ -42,23 +42,23 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
 				 (void *)rxep,
-				 ICE_RXQ_REARM_THRESH) < 0) {
-		if (rxq->rxrearm_nb + ICE_RXQ_REARM_THRESH >=
+				 ICE_VPMD_RXQ_REARM_THRESH) < 0) {
+		if (rxq->rxrearm_nb + ICE_VPMD_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
 			dma_addr0 = _mm_setzero_si128();
-			for (i = 0; i < ICE_DESCS_PER_LOOP; i++) {
+			for (i = 0; i < ICE_VPMD_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
 				_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i].read),
 						dma_addr0);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			ICE_RXQ_REARM_THRESH;
+			ICE_VPMD_RXQ_REARM_THRESH;
 		return;
 	}
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < ICE_RXQ_REARM_THRESH; i += 2, rxep += 2) {
+	for (i = 0; i < ICE_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		__m128i vaddr0, vaddr1;
 
 		mb0 = rxep[0].mbuf;
@@ -91,11 +91,11 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->read), dma_addr1);
 	}
 
-	rxq->rxrearm_start += ICE_RXQ_REARM_THRESH;
+	rxq->rxrearm_start += ICE_VPMD_RXQ_REARM_THRESH;
 	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
 		rxq->rxrearm_start = 0;
 
-	rxq->rxrearm_nb -= ICE_RXQ_REARM_THRESH;
+	rxq->rxrearm_nb -= ICE_VPMD_RXQ_REARM_THRESH;
 
 	rx_id = (uint16_t)((rxq->rxrearm_start == 0) ?
 			   (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
@@ -294,11 +294,11 @@ ice_rx_desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts,
 }
 
 /**
- * vPMD raw receive routine, only accept(nb_pkts >= ICE_DESCS_PER_LOOP)
+ * vPMD raw receive routine, only accept(nb_pkts >= ICE_VPMD_DESCS_PER_LOOP)
  *
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
- * - floor align nb_pkts to a ICE_DESCS_PER_LOOP power-of-two
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
+ * - floor align nb_pkts to a ICE_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
 _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
@@ -355,8 +355,8 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	const __m128i eop_check = _mm_set_epi64x(0x0000000200000002LL,
 						 0x0000000200000002LL);
 
-	/* nb_pkts has to be floor-aligned to ICE_DESCS_PER_LOOP */
-	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, ICE_DESCS_PER_LOOP);
+	/* nb_pkts has to be floor-aligned to ICE_VPMD_DESCS_PER_LOOP */
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, ICE_VPMD_DESCS_PER_LOOP);
 
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles
@@ -368,7 +368,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act
 	 */
-	if (rxq->rxrearm_nb > ICE_RXQ_REARM_THRESH)
+	if (rxq->rxrearm_nb > ICE_VPMD_RXQ_REARM_THRESH)
 		ice_rxq_rearm(rxq);
 
 	/* Before we start moving massive data around, check to see if
@@ -406,9 +406,9 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	 */
 
 	for (pos = 0, nb_pkts_recd = 0; pos < nb_pkts;
-	     pos += ICE_DESCS_PER_LOOP,
-	     rxdp += ICE_DESCS_PER_LOOP) {
-		__m128i descs[ICE_DESCS_PER_LOOP];
+	     pos += ICE_VPMD_DESCS_PER_LOOP,
+	     rxdp += ICE_VPMD_DESCS_PER_LOOP) {
+		__m128i descs[ICE_VPMD_DESCS_PER_LOOP];
 		__m128i pkt_mb0, pkt_mb1, pkt_mb2, pkt_mb3;
 		__m128i staterr, sterr_tmp1, sterr_tmp2;
 		/* 2 64 bit or 4 32 bit mbuf pointers in one XMM reg. */
@@ -556,7 +556,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			eop_bits = _mm_shuffle_epi8(eop_bits, eop_shuf_mask);
 			/* store the resulting 32-bit value */
 			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
-			split_packet += ICE_DESCS_PER_LOOP;
+			split_packet += ICE_VPMD_DESCS_PER_LOOP;
 		}
 
 		/* C.3 calc available number of desc */
@@ -573,7 +573,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* C.4 calc available number of desc */
 		var = rte_popcount64(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
-		if (likely(var != ICE_DESCS_PER_LOOP))
+		if (likely(var != ICE_VPMD_DESCS_PER_LOOP))
 			break;
 	}
 
@@ -587,7 +587,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 /**
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  * - nb_pkts > ICE_VPMD_RX_BURST, only scan ICE_VPMD_RX_BURST
  *   numbers of DD bits
  */
@@ -602,7 +602,7 @@ ice_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
  * vPMD receive routine that reassembles single burst of 32 scattered packets
  *
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 static uint16_t
 ice_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
