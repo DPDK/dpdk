@@ -77,7 +77,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	I40E_PCI_REG_WRITE_RELAXED(rxq->qrx_tail, rx_id);
 }
 
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 /* NEON version of FDIR mark extraction for 4 32B descriptors at a time */
 static inline uint32x4_t
 descs_to_fdir_32b(volatile union i40e_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
@@ -284,7 +284,7 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, volatile union i40e_rx_desc *rxdp,
 
 	/* Extract FDIR ID only if FDIR is enabled to avoid useless work */
 	if (rxq->fdir_enabled) {
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		uint32x4_t v_fdir_ol_flags = descs_to_fdir_32b(rxdp, rx_pkts);
 #else
 		(void)rxdp; /* rxdp not required for 16B desc mode */

@@ -68,7 +68,7 @@ enum i40e_header_split_mode {
 			       I40E_HEADER_SPLIT_SCTP)
 
 /* HW desc structure, both 16-byte and 32-byte types are supported */
-#ifdef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifdef RTE_NET_INTEL_USE_16BYTE_DESC
 #define i40e_rx_desc i40e_16byte_rx_desc
 #else
 #define i40e_rx_desc i40e_32byte_rx_desc

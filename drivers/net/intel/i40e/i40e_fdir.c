@@ -112,7 +112,7 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 	rx_ctx.hbuff = 0;
 	rx_ctx.base = rxq->rx_ring_phys_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	rx_ctx.qlen = rxq->nb_rx_desc;
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	rx_ctx.dsize = 1;
 #endif
 	rx_ctx.dtype = i40e_header_split_none;

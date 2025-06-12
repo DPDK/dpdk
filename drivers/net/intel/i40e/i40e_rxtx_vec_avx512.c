@@ -23,7 +23,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	i40e_rxq_rearm_common(rxq, true);
 }
 
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 /* Handles 32B descriptor FDIR ID processing:
  * rxdp: receive descriptor ring, required to load 2nd 16B half of each desc
  * rx_pkts: required to store metadata back to mbufs
@@ -102,7 +102,7 @@ desc_fdir_processing_32b(volatile union i40e_rx_desc *rxdp,
 	/* NOT REACHED, see above switch returns */
 	return _mm256_setzero_si256();
 }
-#endif /* RTE_LIBRTE_I40E_16BYTE_RX_DESC */
+#endif /* RTE_NET_INTEL_USE_16BYTE_DESC */
 
 #define PKTLEN_SHIFT     10
 
@@ -419,7 +419,7 @@ _recv_raw_pkts_vec_avx512(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		 * not always performed. Branch over the code when not enabled.
 		 */
 		if (rxq->fdir_enabled) {
-#ifdef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifdef RTE_NET_INTEL_USE_16BYTE_DESC
 			/* 16B descriptor code path:
 			 * RSS and FDIR ID use the same offset in the desc, so
 			 * only one can be present at a time. The code below
@@ -539,7 +539,7 @@ _recv_raw_pkts_vec_avx512(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			mbuf_flags =
 				_mm256_or_si256(mbuf_flags, fdir_add_flags);
 			/* End 32B desc handling */
-#endif /* RTE_LIBRTE_I40E_16BYTE_RX_DESC */
+#endif /* RTE_NET_INTEL_USE_16BYTE_DESC */
 
 		} /* if() on FDIR enabled */
 

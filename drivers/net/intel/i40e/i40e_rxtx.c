@@ -125,7 +125,7 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
 	} else {
 		mb->vlan_tci = 0;
 	}
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
 		(1 << I40E_RX_DESC_EXT_STATUS_L2TAG2P_SHIFT)) {
 		mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ |
@@ -217,7 +217,7 @@ static inline uint64_t
 i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
 {
 	uint64_t flags = 0;
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	uint16_t flexbh, flexbl;
 
 	flexbh = (rte_le_to_cpu_32(rxdp->wb.qword2.ext_status) >>
@@ -2925,10 +2925,10 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
 		rxd = &rxq->rx_ring[i];
 		rxd->read.pkt_addr = dma_addr;
 		rxd->read.hdr_addr = 0;
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		rxd->read.rsvd1 = 0;
 		rxd->read.rsvd2 = 0;
-#endif /* RTE_LIBRTE_I40E_16BYTE_RX_DESC */
+#endif /* RTE_NET_INTEL_USE_16BYTE_DESC */
 
 		rxe[i].mbuf = mbuf;
 	}
@@ -3010,7 +3010,7 @@ i40e_rx_queue_init(struct i40e_rx_queue *rxq)
 
 	rx_ctx.base = rxq->rx_ring_phys_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	rx_ctx.qlen = rxq->nb_rx_desc;
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	rx_ctx.dsize = 1;
 #endif
 	rx_ctx.dtype = rxq->hs_mode;
