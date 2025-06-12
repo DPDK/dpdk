@@ -52,7 +52,23 @@
 #include "base/ixgbe_common.h"
 #include "ixgbe_rxtx.h"
 
+#ifdef IXGBE_VPMD_SUPPORTED
 #include "ixgbe_rxtx_vec_common.h"
+#else
+/* alias unsupported Rx/Tx vector functions to scalar implementations */
+#define ixgbe_recv_pkts_vec ixgbe_recv_pkts
+#define ixgbe_recv_scattered_pkts_vec ixgbe_recv_pkts_lro_single_alloc
+#define ixgbe_xmit_pkts_vec ixgbe_xmit_pkts_simple
+/* ensure all vector checks/setup always fail */
+#define ixgbe_rx_vec_dev_conf_condition_check(unused) (RTE_SET_USED(unused), -1)
+#define ixgbe_rxq_vec_setup(unused) RTE_SET_USED(unused)
+#define ixgbe_txq_vec_setup(unused) (RTE_SET_USED(unused), -1)
+/* use scalar mbuf release function */
+#define ixgbe_rx_queue_release_mbufs_vec ixgbe_rx_queue_release_mbufs_non_vec
+/* these are not applicable to scalar paths */
+#define ixgbe_recycle_rx_descriptors_refill_vec NULL
+#define ixgbe_recycle_tx_mbufs_reuse_vec NULL
+#endif
 
 #ifdef RTE_LIBRTE_IEEE1588
 #define IXGBE_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
@@ -2602,10 +2618,12 @@ static const struct {
 	{	ixgbe_xmit_pkts, "Scalar"},
 	{	ixgbe_xmit_pkts_simple, "Scalar simple"},
 	{       ixgbe_vf_representor_tx_burst, "Scalar representor"},
+#ifdef IXGBE_VPMD_SUPPORTED
 #ifdef RTE_ARCH_X86
 	{	ixgbe_xmit_pkts_vec, "Vector SSE"},
 #elif defined(RTE_ARCH_ARM)
 	{	ixgbe_xmit_pkts_vec, "Vector NEON"},
+#endif
 #endif
 };
 
@@ -4942,12 +4960,14 @@ static const struct {
 	{	ixgbe_recv_pkts_lro_bulk_alloc, "Scalar LRO bulk alloc"},
 	{	ixgbe_recv_pkts_lro_single_alloc, "Scalar LRO single alloc"},
 	{       ixgbe_vf_representor_rx_burst, "Scalar representor"},
+#ifdef IXGBE_VPMD_SUPPORTED
 #ifdef RTE_ARCH_X86
 	{	ixgbe_recv_pkts_vec, "Vector SSE"},
 	{	ixgbe_recv_scattered_pkts_vec, "Vector SSE scattered"},
 #elif defined(RTE_ARCH_ARM)
 	{	ixgbe_recv_pkts_vec, "Vector NEON"},
 	{	ixgbe_recv_scattered_pkts_vec, "Vector NEON scattered"},
+#endif
 #endif
 };
 
@@ -6199,79 +6219,3 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 
 	return 0;
 }
-
-/* Stubs needed for linkage when RTE_ARCH_PPC_64, RTE_ARCH_RISCV or
- * RTE_ARCH_LOONGARCH is set.
- */
-#if defined(RTE_ARCH_PPC_64) || defined(RTE_ARCH_RISCV) || \
-	defined(RTE_ARCH_LOONGARCH)
-int
-ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)
-{
-	return -1;
-}
-
-void
-ixgbe_recycle_rx_descriptors_refill_vec(void __rte_unused * rx_queue,
-		uint16_t __rte_unused nb_mbufs)
-{
-}
-
-uint16_t
-ixgbe_recycle_tx_mbufs_reuse_vec(void __rte_unused * tx_queue,
-	struct rte_eth_recycle_rxq_info __rte_unused * recycle_rxq_info)
-{
-	return 0;
-}
-
-uint16_t
-ixgbe_recv_pkts_vec(
-	void __rte_unused *rx_queue,
-	struct rte_mbuf __rte_unused **rx_pkts,
-	uint16_t __rte_unused nb_pkts)
-{
-	return 0;
-}
-
-uint16_t
-ixgbe_recv_scattered_pkts_vec(
-	void __rte_unused *rx_queue,
-	struct rte_mbuf __rte_unused **rx_pkts,
-	uint16_t __rte_unused nb_pkts)
-{
-	return 0;
-}
-
-int
-ixgbe_rxq_vec_setup(struct ixgbe_rx_queue __rte_unused *rxq)
-{
-	return -1;
-}
-
-uint16_t
-ixgbe_xmit_pkts_vec(void __rte_unused * tx_queue, struct rte_mbuf __rte_unused * *tx_pkts,
-		__rte_unused uint16_t nb_pkts)
-{
-	return 0;
-}
-
-uint16_t
-ixgbe_xmit_fixed_burst_vec(void __rte_unused *tx_queue,
-		struct rte_mbuf __rte_unused **tx_pkts,
-		uint16_t __rte_unused nb_pkts)
-{
-	return 0;
-}
-
-int
-ixgbe_txq_vec_setup(struct ci_tx_queue *txq __rte_unused)
-{
-	return -1;
-}
-
-void
-ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue __rte_unused *rxq)
-{
-	return;
-}
-#endif
