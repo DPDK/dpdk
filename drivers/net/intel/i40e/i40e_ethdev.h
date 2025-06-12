@@ -333,7 +333,7 @@ struct i40e_vsi_list {
 	struct i40e_vsi *vsi;
 };
 
-struct i40e_rx_queue;
+struct ci_rx_queue;
 struct ci_tx_queue;
 
 /* Bandwidth limit information */
@@ -739,7 +739,7 @@ struct i40e_fdir_info {
 	struct i40e_vsi *fdir_vsi;     /* pointer to fdir VSI structure */
 	uint16_t match_counter_index;  /* Statistic counter index used for fdir*/
 	struct ci_tx_queue *txq;
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	void *prg_pkt[I40E_FDIR_PRG_PKT_CNT];     /* memory for fdir program packet */
 	uint64_t dma_addr[I40E_FDIR_PRG_PKT_CNT]; /* physic address of packet memory*/
 	/*
