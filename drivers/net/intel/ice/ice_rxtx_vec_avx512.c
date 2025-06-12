@@ -7,8 +7,6 @@
 
 #include <rte_vect.h>
 
-#define ICE_DESCS_PER_LOOP_AVX 8
-
 static __rte_always_inline void
 ice_rxq_rearm(struct ice_rx_queue *rxq)
 {
@@ -49,13 +47,13 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 
 	rte_prefetch0(rxdp);
 
-	/* nb_pkts has to be floor-aligned to ICE_DESCS_PER_LOOP_AVX */
-	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, ICE_DESCS_PER_LOOP_AVX);
+	/* nb_pkts has to be floor-aligned to ICE_VPMD_DESCS_PER_LOOP_WIDE */
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, ICE_VPMD_DESCS_PER_LOOP_WIDE);
 
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act
 	 */
-	if (rxq->rxrearm_nb > ICE_RXQ_REARM_THRESH)
+	if (rxq->rxrearm_nb > ICE_VPMD_RXQ_REARM_THRESH)
 		ice_rxq_rearm(rxq);
 
 	/* Before we start moving massive data around, check to see if
@@ -224,8 +222,8 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 	uint16_t i, received;
 
 	for (i = 0, received = 0; i < nb_pkts;
-	     i += ICE_DESCS_PER_LOOP_AVX,
-	     rxdp += ICE_DESCS_PER_LOOP_AVX) {
+	     i += ICE_VPMD_DESCS_PER_LOOP_WIDE,
+	     rxdp += ICE_VPMD_DESCS_PER_LOOP_WIDE) {
 		/* step 1, copy over 8 mbuf pointers to rx_pkts array */
 		_mm256_storeu_si256((void *)&rx_pkts[i],
 				    _mm256_loadu_si256((void *)&sw_ring[i]));
@@ -292,7 +290,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 		if (split_packet) {
 			int j;
 
-			for (j = 0; j < ICE_DESCS_PER_LOOP_AVX; j++)
+			for (j = 0; j < ICE_VPMD_DESCS_PER_LOOP_WIDE; j++)
 				rte_mbuf_prefetch_part2(rx_pkts[i + j]);
 		}
 
@@ -660,7 +658,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 			split_bits = _mm_shuffle_epi8(split_bits, eop_shuffle);
 			*(uint64_t *)split_packet =
 				_mm_cvtsi128_si64(split_bits);
-			split_packet += ICE_DESCS_PER_LOOP_AVX;
+			split_packet += ICE_VPMD_DESCS_PER_LOOP_WIDE;
 		}
 
 		/* perform dd_check */
@@ -676,7 +674,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 				(_mm_cvtsi128_si64
 					(_mm256_castsi256_si128(status0_7)));
 		received += burst;
-		if (burst != ICE_DESCS_PER_LOOP_AVX)
+		if (burst != ICE_VPMD_DESCS_PER_LOOP_WIDE)
 			break;
 	}
 
@@ -693,7 +691,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 
 /**
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 uint16_t
 ice_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -704,7 +702,7 @@ ice_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 /**
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 uint16_t
 ice_recv_pkts_vec_avx512_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -717,7 +715,7 @@ ice_recv_pkts_vec_avx512_offload(void *rx_queue, struct rte_mbuf **rx_pkts,
 /**
  * vPMD receive routine that reassembles single burst of 32 scattered packets
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 static uint16_t
 ice_recv_scattered_burst_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -758,7 +756,7 @@ ice_recv_scattered_burst_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 /**
  * vPMD receive routine that reassembles single burst of 32 scattered packets
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 static uint16_t
 ice_recv_scattered_burst_vec_avx512_offload(void *rx_queue,
@@ -801,7 +799,7 @@ ice_recv_scattered_burst_vec_avx512_offload(void *rx_queue,
  * vPMD receive routine that reassembles scattered packets.
  * Main receive routine that can handle arbitrary burst sizes
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 uint16_t
 ice_recv_scattered_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
@@ -825,7 +823,7 @@ ice_recv_scattered_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
  * vPMD receive routine that reassembles scattered packets.
  * Main receive routine that can handle arbitrary burst sizes
  * Notice:
- * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ * - nb_pkts < ICE_VPMD_DESCS_PER_LOOP, just return no packet
  */
 uint16_t
 ice_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
