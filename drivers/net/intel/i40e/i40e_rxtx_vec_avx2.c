@@ -11,14 +11,15 @@
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 #include "i40e_rxtx_vec_common.h"
-#include "i40e_rxtx_common_avx.h"
+
+#include "../common/rx_vec_x86.h"
 
 #include <rte_vect.h>
 
 static __rte_always_inline void
 i40e_rxq_rearm(struct ci_rx_queue *rxq)
 {
-	i40e_rxq_rearm_common(rxq, false);
+	ci_rxq_rearm(rxq, CI_RX_VEC_LEVEL_AVX2);
 }
 
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
