@@ -86,7 +86,7 @@ ice_rxd_to_pkt_fields_by_comms_generic(__rte_unused struct ice_rx_queue *rxq,
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
@@ -101,7 +101,7 @@ ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ice_rx_queue *rxq,
 {
 	volatile struct ice_32b_rx_flex_desc_comms_ovs *desc =
 			(volatile struct ice_32b_rx_flex_desc_comms_ovs *)rxdp;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	uint16_t stat_err;
 #endif
 
@@ -110,7 +110,7 @@ ice_rxd_to_pkt_fields_by_comms_ovs(__rte_unused struct ice_rx_queue *rxq,
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
 	}
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	stat_err = rte_le_to_cpu_16(desc->status_error0);
 	if (likely(stat_err & (1 << ICE_RX_FLEX_DESC_STATUS0_RSS_VALID_S))) {
 		mb->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
@@ -134,7 +134,7 @@ ice_rxd_to_pkt_fields_by_comms_aux_v1(struct ice_rx_queue *rxq,
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
@@ -178,7 +178,7 @@ ice_rxd_to_pkt_fields_by_comms_aux_v2(struct ice_rx_queue *rxq,
 		mb->hash.rss = rte_le_to_cpu_32(desc->rss_hash);
 	}
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (desc->flow_id != 0xFFFFFFFF) {
 		mb->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 		mb->hash.fdir.hi = rte_le_to_cpu_32(desc->flow_id);
@@ -374,7 +374,7 @@ set_hsplit_finish:
 	rx_ctx.qlen = rxq->nb_rx_desc;
 	rx_ctx.dbuf = rxq->rx_buf_len >> ICE_RLAN_CTX_DBUF_S;
 	rx_ctx.hbuf = rxq->rx_hdr_len >> ICE_RLAN_CTX_HBUF_S;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	rx_ctx.dsize = 1; /* 32B descriptors */
 #endif
 	rx_ctx.rxmax = rxq->max_pkt_len;
@@ -501,7 +501,7 @@ ice_alloc_rx_queue_mbufs(struct ice_rx_queue *rxq)
 			rxd->read.pkt_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf_pay));
 		}
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		rxd->read.rsvd1 = 0;
 		rxd->read.rsvd2 = 0;
 #endif
@@ -1668,7 +1668,7 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_flex_desc *rxdp)
 		mb->vlan_tci = 0;
 	}
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (rte_le_to_cpu_16(rxdp->wb.status_error1) &
 	    (1 << ICE_RX_FLEX_DESC_STATUS1_L2TAG2P_S)) {
 		mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ |
@@ -1705,7 +1705,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags = 0;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	bool is_tsinit = false;
 	uint64_t ts_ns;
 	struct ice_vsi *vsi = rxq->vsi;
@@ -1721,7 +1721,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 	if (!(stat_err0 & (1 << ICE_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
 
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 		uint64_t sw_cur_time = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 
@@ -1783,7 +1783,7 @@ ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
 				rte_le_to_cpu_16(rxdp[j].wb.ptype_flex_flags0)];
 			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
 			rxd_to_pkt_fields_ops[rxq->rxdid](rxq, mb, &rxdp[j]);
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 			if (rxq->ts_flag > 0 &&
 			    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 				rxq->time_high =
@@ -2023,7 +2023,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	bool is_tsinit = false;
 	uint64_t ts_ns;
 	struct ice_vsi *vsi = rxq->vsi;
@@ -2151,7 +2151,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 		ice_rxd_to_vlan_tci(first_seg, &rxd);
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, first_seg, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		if (rxq->ts_flag > 0 &&
 		    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 			rxq->time_high =
@@ -2540,7 +2540,7 @@ ice_recv_pkts(void *rx_queue,
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
 	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	bool is_tsinit = false;
 	uint64_t ts_ns;
 	struct ice_vsi *vsi = rxq->vsi;
@@ -2649,7 +2649,7 @@ ice_recv_pkts(void *rx_queue,
 		ice_rxd_to_vlan_tci(rxm, &rxd);
 		rxd_to_pkt_fields_ops[rxq->rxdid](rxq, rxm, &rxd);
 		pkt_flags = ice_rxd_error_to_pkt_flags(rx_stat_err0);
-#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 		if (rxq->ts_flag > 0 &&
 		    (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 			rxq->time_high =
