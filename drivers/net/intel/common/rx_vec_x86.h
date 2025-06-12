@@ -285,7 +285,7 @@ ci_rxq_rearm(struct ci_rx_queue *rxq, const enum ci_rx_vec_level vec_level)
 		/* fall through */
 #endif
 	case CI_RX_VEC_LEVEL_SSE:
-		_ci_rxq_rearm_sse(rxq, desc_len);
+		_ci_rxq_rearm_sse(rxq);
 		break;
 	}
 #else

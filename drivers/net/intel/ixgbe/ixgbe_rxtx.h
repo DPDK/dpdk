@@ -7,6 +7,15 @@
 
 #include "ixgbe_type.h"
 
+/*
+ * For IXGBE, descriptor size is always 16 bytes, so in order to have all
+ * vectorized and common code building correctly and with proper offsets, force
+ * the common parts to consider IXGBE descriptors to be 16-bytes in size.
+ */
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
+#define RTE_NET_INTEL_USE_16BYTE_DESC
+#endif
+
 #include "../common/rx.h"
 #include "../common/tx.h"
 
@@ -36,10 +45,10 @@
 #define IXGBE_RX_MAX_BURST            CI_RX_MAX_BURST
 #define IXGBE_TX_MAX_FREE_BUF_SZ      64
 
-#define IXGBE_VPMD_DESCS_PER_LOOP     4
+#define IXGBE_VPMD_DESCS_PER_LOOP     CI_VPMD_DESCS_PER_LOOP
 
-#define IXGBE_VPMD_RXQ_REARM_THRESH   32
-#define IXGBE_VPMD_RX_BURST           IXGBE_VPMD_RXQ_REARM_THRESH
+#define IXGBE_VPMD_RXQ_REARM_THRESH   CI_VPMD_RX_REARM_THRESH
+#define IXGBE_VPMD_RX_BURST           CI_VPMD_RX_BURST
 
 #define RX_RING_SZ ((IXGBE_MAX_RING_DESC + IXGBE_RX_MAX_BURST) * \
 		    sizeof(union ixgbe_adv_rx_desc))
