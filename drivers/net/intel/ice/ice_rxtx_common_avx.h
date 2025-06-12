@@ -9,14 +9,14 @@
 
 #ifdef __AVX2__
 static __rte_always_inline void
-ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
+ice_rxq_rearm_common(struct ci_rx_queue *rxq, __rte_unused bool avx512)
 {
 	int i;
 	uint16_t rx_id;
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 
-	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+	rxdp = rxq->rx_flex_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,

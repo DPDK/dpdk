@@ -8,7 +8,7 @@
 #include <rte_vect.h>
 
 static __rte_always_inline void
-ice_rxq_rearm(struct ice_rx_queue *rxq)
+ice_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	ice_rxq_rearm_common(rxq, false);
 }
@@ -33,15 +33,15 @@ ice_flex_rxd_to_fdir_flags_vec_avx2(const __m256i fdir_id0_7)
 }
 
 static __rte_always_inline uint16_t
-_ice_recv_raw_pkts_vec_avx2(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+_ice_recv_raw_pkts_vec_avx2(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			    uint16_t nb_pkts, uint8_t *split_packet,
 			    bool offload)
 {
-	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	const uint32_t *ptype_tbl = rxq->ice_vsi->adapter->ptype_tbl;
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0,
 			0, rxq->mbuf_initializer);
-	struct ice_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
-	volatile union ice_rx_flex_desc *rxdp = rxq->rx_ring + rxq->rx_tail;
+	struct ci_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
+	volatile union ci_rx_flex_desc *rxdp = rxq->rx_flex_ring + rxq->rx_tail;
 	const int avx_aligned = ((rxq->rx_tail & 1) == 0);
 
 	rte_prefetch0(rxdp);
@@ -443,7 +443,7 @@ _ice_recv_raw_pkts_vec_avx2(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 * needs to load 2nd 16B of each desc for RSS hash parsing,
 			 * will cause performance drop to get into this context.
 			 */
-			if (rxq->vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
+			if (rxq->ice_vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
 					RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 = _mm_load_si128
@@ -692,7 +692,7 @@ static __rte_always_inline uint16_t
 ice_recv_scattered_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  uint16_t nb_pkts, bool offload)
 {
-	struct ice_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[ICE_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */

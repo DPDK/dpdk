@@ -26,18 +26,18 @@ ice_flex_rxd_to_fdir_flags_vec(const __m128i fdir_id0_3)
 }
 
 static inline void
-ice_rxq_rearm(struct ice_rx_queue *rxq)
+ice_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	int i;
 	uint16_t rx_id;
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 	struct rte_mbuf *mb0, *mb1;
 	__m128i hdr_room = _mm_set_epi64x(RTE_PKTMBUF_HEADROOM,
 					  RTE_PKTMBUF_HEADROOM);
 	__m128i dma_addr0, dma_addr1;
 
-	rxdp = rxq->rx_ring + rxq->rxrearm_start;
+	rxdp = rxq->rx_flex_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
 	if (rte_mempool_get_bulk(rxq->mp,
@@ -105,7 +105,7 @@ ice_rxq_rearm(struct ice_rx_queue *rxq)
 }
 
 static inline void
-ice_rx_desc_to_olflags_v(struct ice_rx_queue *rxq, __m128i descs[4],
+ice_rx_desc_to_olflags_v(struct ci_rx_queue *rxq, __m128i descs[4],
 			 struct rte_mbuf **rx_pkts)
 {
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
@@ -301,15 +301,15 @@ ice_rx_desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts,
  * - floor align nb_pkts to a ICE_VPMD_DESCS_PER_LOOP power-of-two
  */
 static inline uint16_t
-_ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+_ice_recv_raw_pkts_vec(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts, uint8_t *split_packet)
 {
-	volatile union ice_rx_flex_desc *rxdp;
-	struct ice_rx_entry *sw_ring;
+	volatile union ci_rx_flex_desc *rxdp;
+	struct ci_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
 	uint64_t var;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->ice_vsi->adapter->ptype_tbl;
 	__m128i crc_adjust = _mm_set_epi16
 				(0, 0, 0,       /* ignore non-length fields */
 				 -rxq->crc_len, /* sub crc on data_len */
@@ -361,7 +361,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	/* Just the act of getting into the function from the application is
 	 * going to cost about 7 cycles
 	 */
-	rxdp = rxq->rx_ring + rxq->rx_tail;
+	rxdp = rxq->rx_flex_ring + rxq->rx_tail;
 
 	rte_prefetch0(rxdp);
 
@@ -482,7 +482,7 @@ _ice_recv_raw_pkts_vec(struct ice_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		 * needs to load 2nd 16B of each desc for RSS hash parsing,
 		 * will cause performance drop to get into this context.
 		 */
-		if (rxq->vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
+		if (rxq->ice_vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
 				RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 			/* load bottom half of every 32B desc */
 			const __m128i raw_desc_bh3 =
@@ -608,7 +608,7 @@ static uint16_t
 ice_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			     uint16_t nb_pkts)
 {
-	struct ice_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[ICE_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
@@ -779,7 +779,7 @@ ice_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 int __rte_cold
-ice_rxq_vec_setup(struct ice_rx_queue *rxq)
+ice_rxq_vec_setup(struct ci_rx_queue *rxq)
 {
 	if (!rxq)
 		return -1;

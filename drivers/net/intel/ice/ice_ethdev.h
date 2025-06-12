@@ -257,7 +257,7 @@ struct ice_vsi_list {
 	struct ice_vsi *vsi;
 };
 
-struct ice_rx_queue;
+struct ci_rx_queue;
 struct ci_tx_queue;
 
 
@@ -425,7 +425,7 @@ struct ice_fdir_counter_pool_container {
 struct ice_fdir_info {
 	struct ice_vsi *fdir_vsi;     /* pointer to fdir VSI structure */
 	struct ci_tx_queue *txq;
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
 	const struct rte_memzone *mz;

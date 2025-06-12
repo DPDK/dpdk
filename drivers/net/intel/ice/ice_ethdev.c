@@ -6724,7 +6724,7 @@ ice_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_adapter *ad =
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ice_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	uint32_t ts_high;
 	uint64_t ts_ns;
 
