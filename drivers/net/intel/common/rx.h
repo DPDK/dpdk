@@ -10,6 +10,8 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 
+#include "desc.h"
+
 #define CI_RX_MAX_BURST 32
 
 struct ci_rx_queue;
@@ -29,6 +31,7 @@ struct ci_rx_queue {
 	struct rte_mempool  *mp; /**< mbuf pool to populate RX ring. */
 	union { /* RX ring virtual address */
 		volatile union ixgbe_adv_rx_desc *ixgbe_rx_ring;
+		volatile union ci_rx_desc *rx_ring;
 	};
 	volatile uint8_t *qrx_tail;   /**< register address of tail */
 	struct ci_rx_entry *sw_ring; /**< address of RX software ring. */
@@ -50,14 +53,22 @@ struct ci_rx_queue {
 	uint16_t queue_id; /**< RX queue index. */
 	uint16_t port_id;  /**< Device port identifier. */
 	uint16_t reg_idx;  /**< RX queue register index. */
+	uint16_t rx_buf_len; /* The packet buffer size */
+	uint16_t rx_hdr_len; /* The header buffer size */
+	uint16_t max_pkt_len; /* Maximum packet length */
 	uint8_t crc_len;  /**< 0 if CRC stripped, 4 otherwise. */
+	bool q_set; /**< indicate if rx queue has been configured */
 	bool rx_deferred_start; /**< queue is not started on dev start. */
+	bool fdir_enabled; /* 0 if FDIR disabled, 1 when enabled */
 	bool vector_rx; /**< indicates that vector RX is in use */
 	bool drop_en;  /**< if 1, drop packets if no descriptors are available. */
 	uint64_t mbuf_initializer; /**< value to init mbufs */
 	uint64_t offloads; /**< Rx offloads with RTE_ETH_RX_OFFLOAD_* */
 	/** need to alloc dummy mbuf, for wraparound when scanning hw ring */
 	struct rte_mbuf fake_mbuf;
+	union { /* the VSI this queue belongs to */
+		struct i40e_vsi *i40e_vsi;
+	};
 	const struct rte_memzone *mz;
 	union {
 		struct { /* ixgbe specific values */
@@ -69,6 +80,10 @@ struct ci_rx_queue {
 			uint8_t using_ipsec;
 			/** UDP frames with a 0 checksum can be marked as checksum errors. */
 			uint8_t rx_udp_csum_zero_err;
+		};
+		struct { /* i40e specific values */
+			uint8_t hs_mode; /**< Header Split mode */
+			uint8_t dcb_tc; /**< Traffic class of rx queue */
 		};
 	};
 };

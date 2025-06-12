@@ -13,9 +13,9 @@
 void
 i40e_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs)
 {
-	struct i40e_rx_queue *rxq = rx_queue;
-	struct i40e_rx_entry *rxep;
-	volatile union i40e_rx_desc *rxdp;
+	struct ci_rx_queue *rxq = rx_queue;
+	struct ci_rx_entry *rxep;
+	volatile union ci_rx_desc *rxdp;
 	uint16_t rx_id;
 	uint64_t paddr;
 	uint64_t dma_addr;

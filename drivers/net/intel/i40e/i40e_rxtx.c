@@ -94,8 +94,8 @@ i40e_monitor_callback(const uint64_t value,
 int
 i40e_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 {
-	struct i40e_rx_queue *rxq = rx_queue;
-	volatile union i40e_rx_desc *rxdp;
+	struct ci_rx_queue *rxq = rx_queue;
+	volatile union ci_rx_desc *rxdp;
 	uint16_t desc;
 
 	desc = rxq->rx_tail;
@@ -113,7 +113,7 @@ i40e_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
 }
 
 static inline void
-i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
+i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ci_rx_desc *rxdp)
 {
 	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
 		(1 << I40E_RX_DESC_STATUS_L2TAG1P_SHIFT)) {
@@ -214,7 +214,7 @@ i40e_get_iee15888_flags(struct rte_mbuf *mb, uint64_t qword)
 #endif
 
 static inline uint64_t
-i40e_rxd_build_fdir(volatile union i40e_rx_desc *rxdp, struct rte_mbuf *mb)
+i40e_rxd_build_fdir(volatile union ci_rx_desc *rxdp, struct rte_mbuf *mb)
 {
 	uint64_t flags = 0;
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
@@ -416,9 +416,9 @@ i40e_xmit_cleanup(struct ci_tx_queue *txq)
 
 static inline int
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
-check_rx_burst_bulk_alloc_preconditions(struct i40e_rx_queue *rxq)
+check_rx_burst_bulk_alloc_preconditions(struct ci_rx_queue *rxq)
 #else
-check_rx_burst_bulk_alloc_preconditions(__rte_unused struct i40e_rx_queue *rxq)
+check_rx_burst_bulk_alloc_preconditions(__rte_unused struct ci_rx_queue *rxq)
 #endif
 {
 	int ret = 0;
@@ -456,10 +456,10 @@ check_rx_burst_bulk_alloc_preconditions(__rte_unused struct i40e_rx_queue *rxq)
 #error "PMD I40E: I40E_LOOK_AHEAD must be 8\n"
 #endif
 static inline int
-i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
+i40e_rx_scan_hw_ring(struct ci_rx_queue *rxq)
 {
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_entry *rxep;
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t pkt_len;
 	uint64_t qword1;
@@ -467,7 +467,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 	int32_t s[I40E_LOOK_AHEAD], var, nb_dd;
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->i40e_vsi->adapter->ptype_tbl;
 
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
@@ -558,7 +558,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 }
 
 static inline uint16_t
-i40e_rx_fill_from_stage(struct i40e_rx_queue *rxq,
+i40e_rx_fill_from_stage(struct ci_rx_queue *rxq,
 			struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts)
 {
@@ -577,10 +577,10 @@ i40e_rx_fill_from_stage(struct i40e_rx_queue *rxq,
 }
 
 static inline int
-i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
+i40e_rx_alloc_bufs(struct ci_rx_queue *rxq)
 {
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_entry *rxep;
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *rxep;
 	struct rte_mbuf *mb;
 	uint16_t alloc_idx, i;
 	uint64_t dma_addr;
@@ -629,7 +629,7 @@ i40e_rx_alloc_bufs(struct i40e_rx_queue *rxq)
 static inline uint16_t
 rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
-	struct i40e_rx_queue *rxq = (struct i40e_rx_queue *)rx_queue;
+	struct ci_rx_queue *rxq = (struct ci_rx_queue *)rx_queue;
 	struct rte_eth_dev *dev;
 	uint16_t nb_rx = 0;
 
@@ -648,7 +648,7 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (i40e_rx_alloc_bufs(rxq) != 0) {
 			uint16_t i, j;
 
-			dev = I40E_VSI_TO_ETH_DEV(rxq->vsi);
+			dev = I40E_VSI_TO_ETH_DEV(rxq->i40e_vsi);
 			dev->data->rx_mbuf_alloc_failed +=
 				rxq->rx_free_thresh;
 
@@ -707,12 +707,12 @@ i40e_recv_pkts_bulk_alloc(void __rte_unused *rx_queue,
 uint16_t
 i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
-	struct i40e_rx_queue *rxq;
-	volatile union i40e_rx_desc *rx_ring;
-	volatile union i40e_rx_desc *rxdp;
-	union i40e_rx_desc rxd;
-	struct i40e_rx_entry *sw_ring;
-	struct i40e_rx_entry *rxe;
+	struct ci_rx_queue *rxq;
+	volatile union ci_rx_desc *rx_ring;
+	volatile union ci_rx_desc *rxdp;
+	union ci_rx_desc rxd;
+	struct ci_rx_entry *sw_ring;
+	struct ci_rx_entry *rxe;
 	struct rte_eth_dev *dev;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
@@ -731,7 +731,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	sw_ring = rxq->sw_ring;
-	ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	ptype_tbl = rxq->i40e_vsi->adapter->ptype_tbl;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -745,7 +745,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb)) {
-			dev = I40E_VSI_TO_ETH_DEV(rxq->vsi);
+			dev = I40E_VSI_TO_ETH_DEV(rxq->i40e_vsi);
 			dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -837,12 +837,12 @@ i40e_recv_scattered_pkts(void *rx_queue,
 			 struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
-	struct i40e_rx_queue *rxq = rx_queue;
-	volatile union i40e_rx_desc *rx_ring = rxq->rx_ring;
-	volatile union i40e_rx_desc *rxdp;
-	union i40e_rx_desc rxd;
-	struct i40e_rx_entry *sw_ring = rxq->sw_ring;
-	struct i40e_rx_entry *rxe;
+	struct ci_rx_queue *rxq = rx_queue;
+	volatile union ci_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union ci_rx_desc *rxdp;
+	union ci_rx_desc rxd;
+	struct ci_rx_entry *sw_ring = rxq->sw_ring;
+	struct ci_rx_entry *rxe;
 	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
 	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
 	struct rte_mbuf *nmb, *rxm;
@@ -853,7 +853,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 	uint64_t qword1;
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
-	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	uint32_t *ptype_tbl = rxq->i40e_vsi->adapter->ptype_tbl;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -867,7 +867,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb)) {
-			dev = I40E_VSI_TO_ETH_DEV(rxq->vsi);
+			dev = I40E_VSI_TO_ETH_DEV(rxq->i40e_vsi);
 			dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
@@ -1798,7 +1798,7 @@ i40e_get_queue_offset_by_qindex(struct i40e_pf *pf, uint16_t queue_idx)
 int
 i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int err;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1841,7 +1841,7 @@ i40e_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	int err;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -2004,7 +2004,7 @@ i40e_dev_first_queue(uint16_t idx, void **queues, int num)
 
 static int
 i40e_dev_rx_queue_setup_runtime(struct rte_eth_dev *dev,
-				struct i40e_rx_queue *rxq)
+				struct ci_rx_queue *rxq)
 {
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -2081,7 +2081,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct i40e_vsi *vsi;
 	struct i40e_pf *pf = NULL;
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	const struct rte_memzone *rz;
 	uint32_t ring_size;
 	uint16_t len, i;
@@ -2116,7 +2116,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("i40e rx queue",
-				 sizeof(struct i40e_rx_queue),
+				 sizeof(struct ci_rx_queue),
 				 RTE_CACHE_LINE_SIZE,
 				 socket_id);
 	if (!rxq) {
@@ -2135,7 +2135,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	else
 		rxq->crc_len = 0;
 	rxq->drop_en = rx_conf->rx_drop_en;
-	rxq->vsi = vsi;
+	rxq->i40e_vsi = vsi;
 	rxq->rx_deferred_start = rx_conf->rx_deferred_start;
 	rxq->offloads = offloads;
 
@@ -2148,7 +2148,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	len += I40E_RX_MAX_BURST;
 
-	ring_size = RTE_ALIGN(len * sizeof(union i40e_rx_desc),
+	ring_size = RTE_ALIGN(len * sizeof(union ci_rx_desc),
 			      I40E_DMA_MEM_ALIGN);
 
 	rz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
@@ -2164,14 +2164,14 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	memset(rz->addr, 0, ring_size);
 
 	rxq->rx_ring_phys_addr = rz->iova;
-	rxq->rx_ring = (union i40e_rx_desc *)rz->addr;
+	rxq->rx_ring = (union ci_rx_desc *)rz->addr;
 
 	len = (uint16_t)(nb_desc + I40E_RX_MAX_BURST);
 
 	/* Allocate the software ring. */
 	rxq->sw_ring =
 		rte_zmalloc_socket("i40e rx sw ring",
-				   sizeof(struct i40e_rx_entry) * len,
+				   sizeof(struct ci_rx_entry) * len,
 				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!rxq->sw_ring) {
@@ -2242,7 +2242,7 @@ i40e_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 void
 i40e_rx_queue_release(void *rxq)
 {
-	struct i40e_rx_queue *q = (struct i40e_rx_queue *)rxq;
+	struct ci_rx_queue *q = (struct ci_rx_queue *)rxq;
 
 	if (!q) {
 		PMD_DRV_LOG(DEBUG, "Pointer to rxq is NULL");
@@ -2259,8 +2259,8 @@ uint32_t
 i40e_dev_rx_queue_count(void *rx_queue)
 {
 #define I40E_RXQ_SCAN_INTERVAL 4
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_queue *rxq;
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_queue *rxq;
 	uint16_t desc = 0;
 
 	rxq = rx_queue;
@@ -2287,7 +2287,7 @@ i40e_dev_rx_queue_count(void *rx_queue)
 int
 i40e_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
-	struct i40e_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	volatile uint64_t *status;
 	uint64_t mask;
 	uint32_t desc;
@@ -2628,7 +2628,7 @@ i40e_memzone_reserve(const char *name, uint32_t len, int socket_id)
 }
 
 void
-i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq)
+i40e_rx_queue_release_mbufs(struct ci_rx_queue *rxq)
 {
 	uint16_t i;
 
@@ -2663,7 +2663,7 @@ i40e_rx_queue_release_mbufs(struct i40e_rx_queue *rxq)
 }
 
 void
-i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
+i40e_reset_rx_queue(struct ci_rx_queue *rxq)
 {
 	unsigned i;
 	uint16_t len;
@@ -2680,7 +2680,7 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 #endif /* RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC */
 		len = rxq->nb_rx_desc;
 
-	for (i = 0; i < len * sizeof(union i40e_rx_desc); i++)
+	for (i = 0; i < len * sizeof(union ci_rx_desc); i++)
 		((volatile char *)rxq->rx_ring)[i] = 0;
 
 	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
@@ -2898,14 +2898,14 @@ i40e_tx_queue_init(struct ci_tx_queue *txq)
 }
 
 int
-i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
+i40e_alloc_rx_queue_mbufs(struct ci_rx_queue *rxq)
 {
-	struct i40e_rx_entry *rxe = rxq->sw_ring;
+	struct ci_rx_entry *rxe = rxq->sw_ring;
 	uint64_t dma_addr;
 	uint16_t i;
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
-		volatile union i40e_rx_desc *rxd;
+		volatile union ci_rx_desc *rxd;
 		struct rte_mbuf *mbuf = rte_mbuf_raw_alloc(rxq->mp);
 
 		if (unlikely(!mbuf)) {
@@ -2941,10 +2941,10 @@ i40e_alloc_rx_queue_mbufs(struct i40e_rx_queue *rxq)
  * and maximum packet length.
  */
 static int
-i40e_rx_queue_config(struct i40e_rx_queue *rxq)
+i40e_rx_queue_config(struct ci_rx_queue *rxq)
 {
-	struct i40e_pf *pf = I40E_VSI_TO_PF(rxq->vsi);
-	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->vsi);
+	struct i40e_pf *pf = I40E_VSI_TO_PF(rxq->i40e_vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->i40e_vsi);
 	struct rte_eth_dev_data *data = pf->dev_data;
 	uint16_t buf_size;
 
@@ -2988,11 +2988,11 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 
 /* Init the RX queue in hardware */
 int
-i40e_rx_queue_init(struct i40e_rx_queue *rxq)
+i40e_rx_queue_init(struct ci_rx_queue *rxq)
 {
 	int err = I40E_SUCCESS;
-	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->vsi);
-	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(rxq->vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->i40e_vsi);
+	struct rte_eth_dev_data *dev_data = I40E_VSI_TO_DEV_DATA(rxq->i40e_vsi);
 	uint16_t pf_q = rxq->reg_idx;
 	uint16_t buf_size;
 	struct i40e_hmc_obj_rxq rx_ctx;
@@ -3166,7 +3166,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 enum i40e_status_code
 i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 {
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	const struct rte_memzone *rz = NULL;
 	uint32_t ring_size;
 	struct rte_eth_dev *dev;
@@ -3180,7 +3180,7 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 
 	/* Allocate the RX queue data structure. */
 	rxq = rte_zmalloc_socket("i40e fdir rx queue",
-				  sizeof(struct i40e_rx_queue),
+				  sizeof(struct ci_rx_queue),
 				  RTE_CACHE_LINE_SIZE,
 				  SOCKET_ID_ANY);
 	if (!rxq) {
@@ -3190,7 +3190,7 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	}
 
 	/* Allocate RX hardware ring descriptors. */
-	ring_size = sizeof(union i40e_rx_desc) * I40E_FDIR_NUM_RX_DESC;
+	ring_size = sizeof(union ci_rx_desc) * I40E_FDIR_NUM_RX_DESC;
 	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
 
 	rz = rte_eth_dma_zone_reserve(dev, "fdir_rx_ring",
@@ -3206,11 +3206,11 @@ i40e_fdir_setup_rx_resources(struct i40e_pf *pf)
 	rxq->nb_rx_desc = I40E_FDIR_NUM_RX_DESC;
 	rxq->queue_id = I40E_FDIR_QUEUE_ID;
 	rxq->reg_idx = pf->fdir.fdir_vsi->base_queue;
-	rxq->vsi = pf->fdir.fdir_vsi;
+	rxq->i40e_vsi = pf->fdir.fdir_vsi;
 
 	rxq->rx_ring_phys_addr = rz->iova;
-	memset(rz->addr, 0, I40E_FDIR_NUM_RX_DESC * sizeof(union i40e_rx_desc));
-	rxq->rx_ring = (union i40e_rx_desc *)rz->addr;
+	memset(rz->addr, 0, I40E_FDIR_NUM_RX_DESC * sizeof(union ci_rx_desc));
+	rxq->rx_ring = (union ci_rx_desc *)rz->addr;
 
 	/*
 	 * Don't need to allocate software ring and reset for the fdir
@@ -3226,7 +3226,7 @@ void
 i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo)
 {
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	rxq = dev->data->rx_queues[queue_id];
 
@@ -3264,7 +3264,7 @@ void
 i40e_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_recycle_rxq_info *recycle_rxq_info)
 {
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
@@ -3335,7 +3335,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 		}
 		if (ad->rx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				struct i40e_rx_queue *rxq =
+				struct ci_rx_queue *rxq =
 					dev->data->rx_queues[i];
 
 				if (rxq && i40e_rxq_vec_setup(rxq)) {
@@ -3438,7 +3438,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 			 dev->rx_pkt_burst == i40e_recv_pkts_vec_avx2);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
+			struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 
 			if (rxq)
 				rxq->vector_rx = vector_rx;

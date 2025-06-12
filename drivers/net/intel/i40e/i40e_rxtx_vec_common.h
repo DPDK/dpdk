@@ -21,7 +21,7 @@ i40e_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 }
 
 static inline void
-_i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq)
+_i40e_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 {
 	const unsigned mask = rxq->nb_rx_desc - 1;
 	unsigned i;
@@ -68,7 +68,7 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	 */
 	ad->rx_vec_allowed = true;
 	for (uint16_t i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
+		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
 		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads)) {

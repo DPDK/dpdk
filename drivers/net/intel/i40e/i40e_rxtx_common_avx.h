@@ -13,12 +13,12 @@
 
 #ifdef __AVX2__
 static __rte_always_inline void
-i40e_rxq_rearm_common(struct i40e_rx_queue *rxq, __rte_unused bool avx512)
+i40e_rxq_rearm_common(struct ci_rx_queue *rxq, __rte_unused bool avx512)
 {
 	int i;
 	uint16_t rx_id;
-	volatile union i40e_rx_desc *rxdp;
-	struct i40e_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
+	volatile union ci_rx_desc *rxdp;
+	struct ci_rx_entry *rxep = &rxq->sw_ring[rxq->rxrearm_start];
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 

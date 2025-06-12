@@ -6607,7 +6607,7 @@ i40e_dev_rx_init(struct i40e_pf *pf)
 	struct rte_eth_dev_data *data = pf->dev_data;
 	int ret = I40E_SUCCESS;
 	uint16_t i;
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	i40e_pf_config_rss(pf);
 	for (i = 0; i < data->nb_rx_queues; i++) {
@@ -8972,7 +8972,7 @@ i40e_pf_calc_configured_queues_num(struct i40e_pf *pf)
 {
 	struct rte_eth_dev_data *data = pf->dev_data;
 	int i, num;
-	struct i40e_rx_queue *rxq;
+	struct ci_rx_queue *rxq;
 
 	num = 0;
 	for (i = 0; i < pf->lan_nb_qps; i++) {
