@@ -92,11 +92,7 @@
 #define IXGBE_TX_OFFLOAD_NOTSUP_MASK \
 		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ IXGBE_TX_OFFLOAD_MASK)
 
-#if 1
-#define RTE_PMD_USE_PREFETCH
-#endif
-
-#ifdef RTE_PMD_USE_PREFETCH
+#ifdef RTE_PMD_PACKET_PREFETCH
 /*
  * Prefetch a cache line into all cache levels.
  */
