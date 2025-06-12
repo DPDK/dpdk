@@ -52,6 +52,8 @@
 #include "base/ixgbe_common.h"
 #include "ixgbe_rxtx.h"
 
+#include "ixgbe_rxtx_vec_common.h"
+
 #ifdef RTE_LIBRTE_IEEE1588
 #define IXGBE_TX_IEEE1588_TMST RTE_MBUF_F_TX_IEEE1588_TMST
 #else

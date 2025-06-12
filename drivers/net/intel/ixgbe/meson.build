@@ -24,11 +24,11 @@ testpmd_sources = files('ixgbe_testpmd.c')
 deps += ['hash', 'security']
 
 if arch_subdir == 'x86'
+    sources += files('ixgbe_rxtx_vec_common.c')
     sources += files('ixgbe_rxtx_vec_sse.c')
-    sources += files('ixgbe_recycle_mbufs_vec_common.c')
 elif arch_subdir == 'arm'
+    sources += files('ixgbe_rxtx_vec_common.c')
     sources += files('ixgbe_rxtx_vec_neon.c')
-    sources += files('ixgbe_recycle_mbufs_vec_common.c')
 endif
 
 headers = files('rte_pmd_ixgbe.h')
