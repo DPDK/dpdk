@@ -27,26 +27,26 @@
 #define IAVF_RX_TS_OFFLOAD
 
 static __rte_always_inline void
-iavf_rxq_rearm(struct iavf_rx_queue *rxq)
+iavf_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	iavf_rxq_rearm_common(rxq, true);
 }
 
 #define IAVF_RX_LEN_MASK 0x80808080
 static __rte_always_inline uint16_t
-_iavf_recv_raw_pkts_vec_avx512(struct iavf_rx_queue *rxq,
+_iavf_recv_raw_pkts_vec_avx512(struct ci_rx_queue *rxq,
 			       struct rte_mbuf **rx_pkts,
 			       uint16_t nb_pkts, uint8_t *split_packet,
 			       bool offload)
 {
 #ifdef IAVF_RX_PTYPE_OFFLOAD
-	const uint32_t *type_table = rxq->vsi->adapter->ptype_tbl;
+	const uint32_t *type_table = rxq->iavf_vsi->adapter->ptype_tbl;
 #endif
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0,
 						    rxq->mbuf_initializer);
-	struct rte_mbuf **sw_ring = &rxq->sw_ring[rxq->rx_tail];
-	volatile union iavf_rx_desc *rxdp = rxq->rx_ring + rxq->rx_tail;
+	struct ci_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
+	volatile union ci_rx_desc *rxdp = rxq->rx_ring + rxq->rx_tail;
 
 	rte_prefetch0(rxdp);
 
@@ -577,13 +577,13 @@ flex_rxd_to_fdir_flags_vec_avx512(const __m256i fdir_id0_7)
 }
 
 static __rte_always_inline uint16_t
-_iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
+_iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct ci_rx_queue *rxq,
 					struct rte_mbuf **rx_pkts,
 					uint16_t nb_pkts,
 					uint8_t *split_packet,
 					bool offload)
 {
-	struct iavf_adapter *adapter = rxq->vsi->adapter;
+	struct iavf_adapter *adapter = rxq->iavf_vsi->adapter;
 	uint64_t offloads = adapter->dev_data->dev_conf.rxmode.offloads;
 #ifdef IAVF_RX_PTYPE_OFFLOAD
 	const uint32_t *type_table = adapter->ptype_tbl;
@@ -591,9 +591,8 @@ _iavf_recv_raw_pkts_vec_avx512_flex_rxd(struct iavf_rx_queue *rxq,
 
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0, 0,
 						    rxq->mbuf_initializer);
-	struct rte_mbuf **sw_ring = &rxq->sw_ring[rxq->rx_tail];
-	volatile union iavf_rx_flex_desc *rxdp =
-		(volatile union iavf_rx_flex_desc *)rxq->rx_ring + rxq->rx_tail;
+	struct ci_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
+	volatile union ci_rx_flex_desc *rxdp = rxq->rx_flex_ring + rxq->rx_tail;
 
 	rte_prefetch0(rxdp);
 
@@ -1642,7 +1641,7 @@ static __rte_always_inline uint16_t
 iavf_recv_scattered_burst_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 				     uint16_t nb_pkts, bool offload)
 {
-	struct iavf_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[IAVF_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
@@ -1718,7 +1717,7 @@ iavf_recv_scattered_burst_vec_avx512_flex_rxd(void *rx_queue,
 					      uint16_t nb_pkts,
 					      bool offload)
 {
-	struct iavf_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[IAVF_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */
