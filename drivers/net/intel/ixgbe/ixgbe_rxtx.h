@@ -35,10 +35,8 @@
 
 #define RTE_IXGBE_DESCS_PER_LOOP    4
 
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 #define RTE_IXGBE_RXQ_REARM_THRESH      32
 #define RTE_IXGBE_MAX_RX_BURST          RTE_IXGBE_RXQ_REARM_THRESH
-#endif
 
 #define RX_RING_SZ ((IXGBE_MAX_RING_DESC + RTE_PMD_IXGBE_RX_MAX_BURST) * \
 		    sizeof(union ixgbe_adv_rx_desc))
@@ -102,10 +100,8 @@ struct ixgbe_rx_queue {
 	uint8_t            using_ipsec;
 	/**< indicates that IPsec RX feature is in use */
 #endif
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
 	uint16_t            rxrearm_nb;     /**< number of remaining to be re-armed */
 	uint16_t            rxrearm_start;  /**< the idx we start the re-arming from */
-#endif
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
 	uint16_t            reg_idx;  /**< RX queue register index. */
