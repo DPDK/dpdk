@@ -16,7 +16,7 @@
 #include <rte_vect.h>
 
 static __rte_always_inline void
-i40e_rxq_rearm(struct i40e_rx_queue *rxq)
+i40e_rxq_rearm(struct ci_rx_queue *rxq)
 {
 	i40e_rxq_rearm_common(rxq, false);
 }
@@ -29,7 +29,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
  * desc_idx: required to select the correct shift at compile time
  */
 static inline __m256i
-desc_fdir_processing_32b(volatile union i40e_rx_desc *rxdp,
+desc_fdir_processing_32b(volatile union ci_rx_desc *rxdp,
 			 struct rte_mbuf **rx_pkts,
 			 const uint32_t pkt_idx,
 			 const uint32_t desc_idx)
@@ -105,14 +105,14 @@ desc_fdir_processing_32b(volatile union i40e_rx_desc *rxdp,
 
 /* Force inline as some compilers will not inline by default. */
 static __rte_always_inline uint16_t
-_recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+_recv_raw_pkts_vec_avx2(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts, uint8_t *split_packet)
 {
-	const uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	const uint32_t *ptype_tbl = rxq->i40e_vsi->adapter->ptype_tbl;
 	const __m256i mbuf_init = _mm256_set_epi64x(0, 0,
 			0, rxq->mbuf_initializer);
-	struct i40e_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
-	volatile union i40e_rx_desc *rxdp = rxq->rx_ring + rxq->rx_tail;
+	struct ci_rx_entry *sw_ring = &rxq->sw_ring[rxq->rx_tail];
+	volatile union ci_rx_desc *rxdp = rxq->rx_ring + rxq->rx_tail;
 	const int avx_aligned = ((rxq->rx_tail & 1) == 0);
 	rte_prefetch0(rxdp);
 
@@ -623,7 +623,7 @@ static uint16_t
 i40e_recv_scattered_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 			     uint16_t nb_pkts)
 {
-	struct i40e_rx_queue *rxq = rx_queue;
+	struct ci_rx_queue *rxq = rx_queue;
 	uint8_t split_flags[I40E_VPMD_RX_BURST] = {0};
 
 	/* get some new buffers */

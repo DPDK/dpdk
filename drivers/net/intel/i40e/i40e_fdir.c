@@ -100,9 +100,9 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  bool add, bool wait_status);
 
 static int
-i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
+i40e_fdir_rx_queue_init(struct ci_rx_queue *rxq)
 {
-	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->vsi);
+	struct i40e_hw *hw = I40E_VSI_TO_HW(rxq->i40e_vsi);
 	struct i40e_hmc_obj_rxq rx_ctx;
 	int err = I40E_SUCCESS;
 
@@ -139,7 +139,7 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 		return err;
 	}
 	rxq->qrx_tail = hw->hw_addr +
-		I40E_QRX_TAIL(rxq->vsi->base_queue);
+		I40E_QRX_TAIL(rxq->i40e_vsi->base_queue);
 
 	rte_wmb();
 	/* Init the RX tail register. */
@@ -382,7 +382,7 @@ i40e_fdir_rx_proc_enable(struct rte_eth_dev *dev, bool on)
 	int32_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		struct i40e_rx_queue *rxq = dev->data->rx_queues[i];
+		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
 		rxq->fdir_enabled = on;
@@ -929,9 +929,9 @@ i40e_build_ctob(uint32_t td_cmd,
  * tx queue
  */
 static inline int
-i40e_check_fdir_programming_status(struct i40e_rx_queue *rxq)
+i40e_check_fdir_programming_status(struct ci_rx_queue *rxq)
 {
-	volatile union i40e_rx_desc *rxdp;
+	volatile union ci_rx_desc *rxdp;
 	uint64_t qword1;
 	uint32_t rx_status;
 	uint32_t len, id;
@@ -987,7 +987,7 @@ i40e_check_fdir_programming_status(struct i40e_rx_queue *rxq)
 }
 
 static inline void
-i40e_fdir_programming_status_cleanup(struct i40e_rx_queue *rxq)
+i40e_fdir_programming_status_cleanup(struct ci_rx_queue *rxq)
 {
 	uint16_t retry_count = 0;
 
@@ -1626,7 +1626,7 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  bool add, bool wait_status)
 {
 	struct ci_tx_queue *txq = pf->fdir.txq;
-	struct i40e_rx_queue *rxq = pf->fdir.rxq;
+	struct ci_rx_queue *rxq = pf->fdir.rxq;
 	const struct i40e_fdir_action *fdir_action = &filter->action;
 	volatile struct i40e_tx_desc *txdp;
 	volatile struct i40e_filter_program_desc *fdirdp;
