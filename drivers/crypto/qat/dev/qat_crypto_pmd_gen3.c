@@ -662,16 +662,19 @@ qat_sym_dp_enqueue_auth_jobs_gen3(void *qp_data, uint8_t *drv_ctx,
 	for (i = 0; i < n; i++) {
 		struct qat_sym_op_cookie *cookie =
 			qp->op_cookies[tail >> tx_queue->trailz];
+		int error = 0;
 
 		req  = (struct icp_qat_fw_la_bulk_req *)(
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 		if (vec->dest_sgl) {
-			data_len = qat_sym_build_req_set_data(req,
-				user_data[i], cookie,
-				vec->src_sgl[i].vec, vec->src_sgl[i].num,
-				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+			data_len = qat_reqs_mid_set(&error, req, cookie, user_data[i],
+					&vec->src_sgl[i], &vec->dest_sgl[i], ofs);
+			/* In oop there is no offset, src/dst addresses are moved
+			 * to avoid overwriting the dst header
+			 */
+			ofs.ofs.cipher.head = 0;
 		} else {
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
@@ -679,7 +682,7 @@ qat_sym_dp_enqueue_auth_jobs_gen3(void *qp_data, uint8_t *drv_ctx,
 				vec->src_sgl[i].num, NULL, 0);
 		}
 
-		if (unlikely(data_len < 0))
+		if (unlikely(data_len < 0) || error)
 			break;
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
 			null_digest.iova = cookie->digest_null_phys_addr;
