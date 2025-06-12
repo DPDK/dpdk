@@ -15,6 +15,10 @@
 
 #define CI_RX_MAX_BURST 32
 #define CI_RX_MAX_NSEG 2
+#define CI_VPMD_RX_BURST            32
+#define CI_VPMD_DESCS_PER_LOOP      4
+#define CI_VPMD_DESCS_PER_LOOP_WIDE 8
+#define CI_VPMD_RX_REARM_THRESH     64
 
 struct ci_rx_queue;
 
