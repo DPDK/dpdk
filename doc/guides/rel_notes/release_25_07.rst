@@ -169,6 +169,12 @@ Removed Items
 
 * eal: Removed the ``rte_function_versioning.h`` header from the exported headers.
 
+* crypto/qat: Removed ZUC-256 algorithms from Intel QuickAssist Technology PMD.
+
+  Due to changes in the specification related to IV size and initialization sequence,
+  support for ZUC-256 cipher and integrity algorithms
+  was removed from Gen 3 and Gen 5 PMD.
+
 
 API Changes
 -----------

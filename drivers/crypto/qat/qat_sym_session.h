@@ -147,7 +147,6 @@ struct qat_sym_session {
 	uint8_t is_auth;
 	uint8_t is_cnt_zero;
 	/* Some generations need different setup of counter */
-	uint8_t is_zuc256;
 	uint8_t is_wireless;
 	uint32_t slice_types;
 	struct rte_net_crc *crc;

@@ -541,8 +541,6 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
-		if (cipher_xform->key.length == ICP_QAT_HW_ZUC_256_KEY_SZ)
-			session->is_zuc256 = 1;
 		if (internals->qat_dev->options.has_wireless_slice)
 			is_wireless = 1;
 		break;
@@ -989,25 +987,8 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 				rte_cryptodev_get_auth_algo_string(auth_xform->algo));
 			return -ENOTSUP;
 		}
-		if (key_length == ICP_QAT_HW_ZUC_3G_EEA3_KEY_SZ)
+		if (key_length == ICP_QAT_HW_ZUC_3G_EEA3_KEY_SZ) {
 			session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3;
-		else if (key_length == ICP_QAT_HW_ZUC_256_KEY_SZ) {
-			switch (auth_xform->digest_length) {
-			case 4:
-				session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_32;
-				break;
-			case 8:
-				session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_64;
-				break;
-			case 16:
-				session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_128;
-				break;
-			default:
-				QAT_LOG(ERR, "Invalid digest length: %d",
-						auth_xform->digest_length);
-				return -ENOTSUP;
-			}
-			session->is_zuc256 = 1;
 		} else {
 			QAT_LOG(ERR, "Invalid key length: %d", key_length);
 			return -ENOTSUP;
@@ -2238,8 +2219,8 @@ int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 		cdesc->qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_ZUC;
 	} else if (cdesc->qat_cipher_alg ==
 			ICP_QAT_HW_CIPHER_ALGO_ZUC_256) {
-		if (cdesc->cipher_iv.length != 23 && cdesc->cipher_iv.length != 25) {
-			QAT_LOG(ERR, "Invalid IV length for ZUC256, must be 23 or 25.");
+		if (cdesc->cipher_iv.length != ICP_QAT_HW_ZUC_256_IV_SZ) {
+			QAT_LOG(ERR, "Invalid IV length for ZUC256");
 			return -EINVAL;
 		}
 		total_key_size = ICP_QAT_HW_ZUC_256_KEY_SZ +

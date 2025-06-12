@@ -881,26 +881,6 @@ qat_sym_convert_op_to_vec_aead(struct rte_crypto_op *op,
 	return 0;
 }
 
-static inline void
-zuc256_modify_iv(uint8_t *iv)
-{
-	uint8_t iv_tmp[8];
-
-	iv_tmp[0] = iv[16];
-	/* pack the last 8 bytes of IV to 6 bytes.
-	 * discard the 2 MSB bits of each byte
-	 */
-	iv_tmp[1] = (((iv[17] & 0x3f) << 2) | ((iv[18] >> 4) & 0x3));
-	iv_tmp[2] = (((iv[18] & 0xf) << 4) | ((iv[19] >> 2) & 0xf));
-	iv_tmp[3] = (((iv[19] & 0x3) << 6) | (iv[20] & 0x3f));
-
-	iv_tmp[4] = (((iv[21] & 0x3f) << 2) | ((iv[22] >> 4) & 0x3));
-	iv_tmp[5] = (((iv[22] & 0xf) << 4) | ((iv[23] >> 2) & 0xf));
-	iv_tmp[6] = (((iv[23] & 0x3) << 6) | (iv[24] & 0x3f));
-
-	memcpy(iv + 16, iv_tmp, 8);
-}
-
 static __rte_always_inline void
 qat_set_cipher_iv(struct icp_qat_fw_la_cipher_req_params *cipher_param,
 		struct rte_crypto_va_iova_ptr *iv_ptr, uint32_t iv_len,
