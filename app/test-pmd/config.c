@@ -4483,7 +4483,7 @@ ring_rxd_display_dword(union igb_ring_dword dword)
 
 static void
 ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 			   portid_t port_id,
 #else
 			   __rte_unused portid_t port_id,
@@ -4492,7 +4492,7 @@ ring_rx_descriptor_display(const struct rte_memzone *ring_mz,
 {
 	struct igb_ring_desc_16_bytes *ring =
 		(struct igb_ring_desc_16_bytes *)ring_mz->addr;
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	int ret;
 	struct rte_eth_dev_info dev_info;
 

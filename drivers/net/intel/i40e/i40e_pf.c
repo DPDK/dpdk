@@ -401,7 +401,7 @@ i40e_pf_host_hmc_config_rxq(struct i40e_hw *hw,
 	rx_ctx.hbuff = rxq->hdr_size >> I40E_RXQ_CTX_HBUFF_SHIFT;
 	rx_ctx.base = rxq->dma_ring_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	rx_ctx.qlen = rxq->ring_len;
-#ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	rx_ctx.dsize = 1;
 #endif
 
