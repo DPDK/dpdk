@@ -204,15 +204,9 @@ flex_rxd_to_fdir_flags_vec(const __m128i fdir_id0_3)
 	return fdir_flags;
 }
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 static inline void
 flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4], __m128i descs_bh[4],
 		       struct rte_mbuf **rx_pkts)
-#else
-static inline void
-flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
-		       struct rte_mbuf **rx_pkts)
-#endif
 {
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
 	__m128i rearm0, rearm1, rearm2, rearm3;
@@ -325,7 +319,6 @@ flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
 	/* merge the flags */
 	flags = _mm_or_si128(flags, rss_vlan);
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (rxq->rx_flags & IAVF_RX_FLAGS_VLAN_TAG_LOC_L2TAG2_2) {
 		const __m128i l2tag2_mask =
 			_mm_set1_epi32(1 << IAVF_RX_FLEX_DESC_STATUS1_L2TAG2P_S);
@@ -356,7 +349,6 @@ flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
 		/* merge with vlan_flags */
 		flags = _mm_or_si128(flags, vlan_flags);
 	}
-#endif
 
 	if (rxq->fdir_enabled) {
 		const __m128i fdir_id0_1 =
@@ -388,10 +380,8 @@ flex_desc_to_olflags_v(struct iavf_rx_queue *rxq, __m128i descs[4],
 			_mm_extract_epi32(fdir_id0_3, 3);
 	} /* if() on fdir_enabled */
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 		flags = _mm_or_si128(flags, _mm_set1_epi32(iavf_timestamp_dynflag));
-#endif
 
 	/**
 	 * At this point, we have the 4 sets of flags in the low 16-bits
@@ -724,9 +714,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	int pos;
 	uint64_t var;
 	struct iavf_adapter *adapter = rxq->vsi->adapter;
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	uint64_t offloads = adapter->dev_data->dev_conf.rxmode.offloads;
-#endif
 	const uint32_t *ptype_tbl = adapter->ptype_tbl;
 	__m128i crc_adjust = _mm_set_epi16
 				(0, 0, 0,       /* ignore non-length fields */
@@ -796,7 +784,6 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	      rte_cpu_to_le_32(1 << IAVF_RX_FLEX_DESC_STATUS0_DD_S)))
 		return 0;
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 	uint8_t inflection_point = 0;
 	bool is_tsinit = false;
 	__m128i hw_low_last = _mm_set_epi32(0, 0, 0, (uint32_t)rxq->phc_time);
@@ -811,8 +798,6 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 			hw_low_last = _mm_set_epi32(0, 0, 0, (uint32_t)rxq->phc_time);
 		}
 	}
-
-#endif
 
 	/**
 	 * Compile-time verify the shuffle mask
@@ -845,9 +830,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 	     pos += IAVF_VPMD_DESCS_PER_LOOP,
 	     rxdp += IAVF_VPMD_DESCS_PER_LOOP) {
 		__m128i descs[IAVF_VPMD_DESCS_PER_LOOP];
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		__m128i descs_bh[IAVF_VPMD_DESCS_PER_LOOP] = {_mm_setzero_si128()};
-#endif
 		__m128i pkt_mb0, pkt_mb1, pkt_mb2, pkt_mb3;
 		__m128i staterr, sterr_tmp1, sterr_tmp2;
 		/* 2 64 bit or 4 32 bit mbuf pointers in one XMM reg. */
@@ -914,7 +897,6 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		pkt_mb1 = _mm_add_epi16(pkt_mb1, crc_adjust);
 		pkt_mb0 = _mm_add_epi16(pkt_mb0, crc_adjust);
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		/**
 		 * needs to load 2nd 16B of each desc,
 		 * will cause performance drop to get into this context.
@@ -1076,9 +1058,6 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		} /* if() on Timestamp parsing */
 
 		flex_desc_to_olflags_v(rxq, descs, descs_bh, &rx_pkts[pos]);
-#else
-		flex_desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
-#endif
 
 		/* C.2 get 4 pkts staterr value  */
 		staterr = _mm_unpacklo_epi32(sterr_tmp1, sterr_tmp2);
@@ -1121,7 +1100,6 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 		var = rte_popcount64(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
 			inflection_point = (inflection_point <= var) ? inflection_point : 0;
 			switch (inflection_point) {
@@ -1151,18 +1129,15 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 
 			rxq->hw_time_update = rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
 		}
-#endif
 
 		if (likely(var != IAVF_VPMD_DESCS_PER_LOOP))
 			break;
 	}
 
-#ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
 #ifdef IAVF_RX_TS_OFFLOAD
 	if (nb_pkts_recd > 0 && (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
 		rxq->phc_time = *RTE_MBUF_DYNFIELD(rx_pkts[nb_pkts_recd - 1],
 						iavf_timestamp_dynfield_offset, uint32_t *);
-#endif
 #endif
 
 	/* Update our internal tail pointer */
