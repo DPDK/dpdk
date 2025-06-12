@@ -212,7 +212,7 @@ static inline bool
 check_tx_vec_allow(struct ci_tx_queue *txq)
 {
 	if (!(txq->offloads & IAVF_TX_NO_VECTOR_FLAGS) &&
-	    txq->tx_rs_thresh >= IAVF_VPMD_TX_MAX_BURST &&
+	    txq->tx_rs_thresh >= IAVF_VPMD_TX_BURST &&
 	    txq->tx_rs_thresh <= IAVF_VPMD_TX_MAX_FREE_BUF) {
 		PMD_INIT_LOG(DEBUG, "Vector tx can be enabled on this txq.");
 		return true;

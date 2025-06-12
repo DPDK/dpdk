@@ -31,8 +31,8 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 	/* Pull 'n' more MBUFs into the software ring */
 	if (unlikely(rte_mempool_get_bulk(rxq->mp,
 					  (void *)rxep,
-					  IAVF_RXQ_REARM_THRESH) < 0)) {
-		if (rxq->rxrearm_nb + IAVF_RXQ_REARM_THRESH >=
+					  IAVF_VPMD_RXQ_REARM_THRESH) < 0)) {
+		if (rxq->rxrearm_nb + IAVF_VPMD_RXQ_REARM_THRESH >=
 		    rxq->nb_rx_desc) {
 			for (i = 0; i < IAVF_VPMD_DESCS_PER_LOOP; i++) {
 				rxep[i] = &rxq->fake_mbuf;
@@ -40,12 +40,12 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
-			IAVF_RXQ_REARM_THRESH;
+			IAVF_VPMD_RXQ_REARM_THRESH;
 		return;
 	}
 
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
-	for (i = 0; i < IAVF_RXQ_REARM_THRESH; i += 2, rxep += 2) {
+	for (i = 0; i < IAVF_VPMD_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		mb0 = rxep[0];
 		mb1 = rxep[1];
 
@@ -60,11 +60,11 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr1);
 	}
 
-	rxq->rxrearm_start += IAVF_RXQ_REARM_THRESH;
+	rxq->rxrearm_start += IAVF_VPMD_RXQ_REARM_THRESH;
 	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
 		rxq->rxrearm_start = 0;
 
-	rxq->rxrearm_nb -= IAVF_RXQ_REARM_THRESH;
+	rxq->rxrearm_nb -= IAVF_VPMD_RXQ_REARM_THRESH;
 
 	rx_id = (uint16_t)((rxq->rxrearm_start == 0) ?
 			     (rxq->nb_rx_desc - 1) : (rxq->rxrearm_start - 1));
@@ -233,7 +233,7 @@ _recv_raw_pkts_vec(struct iavf_rx_queue *__rte_restrict rxq,
 	/* See if we need to rearm the RX queue - gives the prefetch a bit
 	 * of time to act
 	 */
-	if (rxq->rxrearm_nb > IAVF_RXQ_REARM_THRESH)
+	if (rxq->rxrearm_nb > IAVF_VPMD_RXQ_REARM_THRESH)
 		iavf_rxq_rearm(rxq);
 
 	/* Before we start moving massive data around, check to see if
