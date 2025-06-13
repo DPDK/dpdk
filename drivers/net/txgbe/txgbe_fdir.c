@@ -210,15 +210,12 @@ txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 	wr32(hw, TXGBE_FDIRSIP4MSK, ~info->mask.src_ipv4_mask);
 	wr32(hw, TXGBE_FDIRDIP4MSK, ~info->mask.dst_ipv4_mask);
 
-	if (mode == RTE_FDIR_MODE_SIGNATURE) {
-		/*
-		 * Store source and destination IPv6 masks (bit reversed)
-		 */
-		fdiripv6m = TXGBE_FDIRIP6MSK_DST(info->mask.dst_ipv6_mask) |
-			    TXGBE_FDIRIP6MSK_SRC(info->mask.src_ipv6_mask);
-
-		wr32(hw, TXGBE_FDIRIP6MSK, ~fdiripv6m);
-	}
+	/*
+	 * Store source and destination IPv6 masks (bit reversed)
+	 */
+	fdiripv6m = TXGBE_FDIRIP6MSK_DST(info->mask.dst_ipv6_mask) |
+		    TXGBE_FDIRIP6MSK_SRC(info->mask.src_ipv6_mask);
+	wr32(hw, TXGBE_FDIRIP6MSK, ~fdiripv6m);
 
 	return 0;
 }
@@ -642,6 +639,8 @@ fdir_write_perfect_filter(struct txgbe_hw *hw,
 	fdircmd |= TXGBE_FDIRPICMD_QP(queue);
 	fdircmd |= TXGBE_FDIRPICMD_POOL(input->vm_pool);
 
+	if (input->flow_type & TXGBE_ATR_L3TYPE_IPV6)
+		fdircmd |= TXGBE_FDIRPICMD_IP6;
 	wr32(hw, TXGBE_FDIRPICMD, fdircmd);
 
 	PMD_DRV_LOG(DEBUG, "Rx Queue=%x hash=%x", queue, fdirhash);
@@ -810,11 +809,6 @@ txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 		is_perfect = TRUE;
 
 	if (is_perfect) {
-		if (rule->input.flow_type & TXGBE_ATR_L3TYPE_IPV6) {
-			PMD_DRV_LOG(ERR, "IPv6 is not supported in"
-				    " perfect mode!");
-			return -ENOTSUP;
-		}
 		fdirhash = atr_compute_perfect_hash(&rule->input,
 				TXGBE_DEV_FDIR_CONF(dev)->pballoc);
 		fdirhash |= TXGBE_FDIRPIHASH_IDX(rule->soft_id);
