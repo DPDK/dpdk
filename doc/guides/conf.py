@@ -477,10 +477,20 @@ def setup(app):
                             'Crypto adapter Features',
                             'Features availability for Crypto adapters',
                             'Feature')
-    table_file = dirname(__file__) + '/eventdevs/overview_timer_adptr_feature_table.txt'
+    table_file = dirname(__file__) + '/eventdevs/overview_dma_adptr_feature_table.txt'
     generate_overview_table(table_file, 5,
+                            'DMA adapter Features',
+                            'Features availability for DMA adapters',
+                            'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_timer_adptr_feature_table.txt'
+    generate_overview_table(table_file, 6,
                             'Timer adapter Features',
                             'Features availability for Timer adapters',
+                            'Feature')
+    table_file = dirname(__file__) + '/eventdevs/overview_vector_adptr_feature_table.txt'
+    generate_overview_table(table_file, 7,
+                            'Vector adapter Features',
+                            'Features availability for Vector adapters',
                             'Feature')
 
     if Version(sphinx_version) < Version('1.3.1'):
