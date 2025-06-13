@@ -26,6 +26,7 @@ doc/guides/eventdevs/overview_rx_adptr_feature_table.txt
 doc/guides/eventdevs/overview_tx_adptr_feature_table.txt
 doc/guides/eventdevs/overview_crypto_adptr_feature_table.txt
 doc/guides/eventdevs/overview_timer_adptr_feature_table.txt
+doc/guides/eventdevs/overview_dma_adptr_feature_table.txt
 
 # ignore generated ctags/cscope files
 cscope.out.po
