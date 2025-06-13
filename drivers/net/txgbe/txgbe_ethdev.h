@@ -116,11 +116,13 @@ struct txgbe_fdir_rule {
 	uint32_t soft_id; /* an unique value for this rule */
 	uint8_t queue; /* assigned rx queue */
 	uint8_t flex_bytes_offset;
+	bool flex_relative;
 };
 
 struct txgbe_hw_fdir_info {
 	struct txgbe_hw_fdir_mask mask;
 	uint8_t     flex_bytes_offset;
+	bool        flex_relative;
 	uint16_t    collision;
 	uint16_t    free;
 	uint16_t    maxhash;
@@ -561,8 +563,9 @@ void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
  */
 int txgbe_fdir_configure(struct rte_eth_dev *dev);
 int txgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
+uint16_t txgbe_fdir_get_flex_base(struct txgbe_fdir_rule *rule);
 int txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
-				    uint16_t offset);
+				    uint16_t offset, uint16_t flex_base);
 int txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			      struct txgbe_fdir_rule *rule,
 			      bool del, bool update);
