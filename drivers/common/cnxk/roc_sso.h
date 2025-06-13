@@ -112,7 +112,7 @@ int __roc_api roc_sso_hwgrp_stash_config(struct roc_sso *roc_sso,
 void __roc_api roc_sso_hws_gwc_invalidate(struct roc_sso *roc_sso, uint8_t *hws,
 					  uint8_t nb_hws);
 int __roc_api roc_sso_hwgrp_agq_alloc(struct roc_sso *roc_sso, uint16_t hwgrp,
-				      struct roc_sso_agq_data *data);
+				      struct roc_sso_agq_data *data, uint32_t *agq_id);
 void __roc_api roc_sso_hwgrp_agq_free(struct roc_sso *roc_sso, uint16_t hwgrp, uint32_t agq_id);
 void __roc_api roc_sso_hwgrp_agq_release(struct roc_sso *roc_sso, uint16_t hwgrp);
 uint32_t __roc_api roc_sso_hwgrp_agq_from_tag(struct roc_sso *roc_sso, uint16_t hwgrp, uint32_t tag,
