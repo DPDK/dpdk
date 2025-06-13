@@ -2652,6 +2652,10 @@ ngbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP ||
 	    rss_hf & RTE_ETH_RSS_IPV6_UDP_EX)
 		mrqc |= NGBE_RACTL_RSSIPV6UDP;
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+		mrqc |= NGBE_RACTL_RSSIPV4SCTP;
+	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+		mrqc |= NGBE_RACTL_RSSIPV6SCTP;
 
 	if (rss_hf)
 		mrqc |= NGBE_RACTL_RSSENA;
@@ -2704,6 +2708,10 @@ ngbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (mrqc & NGBE_RACTL_RSSIPV6UDP)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP |
 			  RTE_ETH_RSS_IPV6_UDP_EX;
+	if (mrqc & NGBE_RACTL_RSSIPV4SCTP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+	if (mrqc & NGBE_RACTL_RSSIPV6SCTP)
+		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 	if (!(mrqc & NGBE_RACTL_RSSENA))
 		rss_hf = 0;
 
