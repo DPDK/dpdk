@@ -2063,9 +2063,7 @@ void txgbe_set_pba(struct txgbe_hw *hw, int num_pb, u32 headroom,
 	u32 rxpktsize, txpktsize, txpbthresh;
 
 	UNREFERENCED_PARAMETER(hw);
-
-	/* Reserve headroom */
-	pbsize -= headroom;
+	UNREFERENCED_PARAMETER(headroom);
 
 	if (!num_pb)
 		num_pb = 1;
