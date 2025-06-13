@@ -361,7 +361,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END &&
 		(!item->spec && !item->mask)) {
-		goto action;
+		goto item_end;
 	}
 
 	/* get the TCP/UDP/SCTP info */
@@ -490,6 +490,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		goto action;
 	}
 
+item_end:
 	/* check if the next not void item is END */
 	item = next_no_void_pattern(pattern, item);
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
