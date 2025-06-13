@@ -131,6 +131,12 @@ New Features
   See the :doc:`../prog_guide/eventdev/event_vector_adapter` guide
   for more details on the new library.
 
+* **Added event vector adapter support in CN20K event device driver.**
+
+  Added support for the event vector adapter in the CN20K event device driver.
+  This allows the CN20K to offload ``rte_event_vector`` creation and aggregation
+  of objects originating from the CPU.
+
 * **Added feature arc support in graph library.**
 
   Feature arc helps ``rte_graph`` based applications

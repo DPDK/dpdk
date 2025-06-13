@@ -11,6 +11,7 @@
 #include "cn20k_worker.h"
 #include "cnxk_common.h"
 #include "cnxk_eventdev.h"
+#include "cnxk_vector_adptr.h"
 #include "cnxk_worker.h"
 
 #define CN20K_SET_EVDEV_DEQ_OP(dev, deq_op, deq_ops)                                               \
@@ -710,11 +711,11 @@ cn20k_sso_rx_adapter_vwqe_enable(struct cnxk_sso_evdev *dev, uint16_t port_id, u
 	data.vwqe_wait_tmo = queue_conf->vector_timeout_ns / ((SSO_AGGR_DEF_TMO + 1) * 100);
 	data.xqe_type = 0;
 
-	rc = roc_sso_hwgrp_agq_alloc(&dev->sso, queue_conf->ev.queue_id, &data);
+	agq = UINT32_MAX;
+	rc = roc_sso_hwgrp_agq_alloc(&dev->sso, queue_conf->ev.queue_id, &data, &agq);
 	if (rc < 0)
 		return rc;
 
-	agq = roc_sso_hwgrp_agq_from_tag(&dev->sso, queue_conf->ev.queue_id, tag_mask, 0);
 	return agq;
 }
 
@@ -1149,6 +1150,9 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.crypto_adapter_queue_pair_add = cn20k_crypto_adapter_qp_add,
 	.crypto_adapter_queue_pair_del = cn20k_crypto_adapter_qp_del,
 	.crypto_adapter_vector_limits_get = cn20k_crypto_adapter_vec_limits,
+
+	.vector_adapter_caps_get = cnxk_vector_caps_get,
+	.vector_adapter_info_get = cnxk_vector_info_get,
 
 	.xstats_get = cnxk_sso_xstats_get,
 	.xstats_reset = cnxk_sso_xstats_reset,

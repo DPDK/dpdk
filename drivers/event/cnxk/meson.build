@@ -26,6 +26,7 @@ sources = files(
         'cnxk_eventdev_stats.c',
         'cnxk_tim_evdev.c',
         'cnxk_tim_worker.c',
+        'cnxk_vector_adptr.c',
 )
 
 disable_template = false

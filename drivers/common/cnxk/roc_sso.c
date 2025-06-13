@@ -514,7 +514,8 @@ sso_agq_op_wait(struct roc_sso *roc_sso, uint16_t hwgrp)
 }
 
 int
-roc_sso_hwgrp_agq_alloc(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_agq_data *data)
+roc_sso_hwgrp_agq_alloc(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_agq_data *data,
+			uint32_t *agq_id)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_aggr_setconfig *req;
@@ -621,6 +622,7 @@ roc_sso_hwgrp_agq_alloc(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_
 
 	plt_wmb();
 	sso->agg_used[hwgrp]++;
+	*agq_id = off;
 
 	return 0;
 }
