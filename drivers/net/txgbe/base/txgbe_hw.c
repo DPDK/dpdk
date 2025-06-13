@@ -2485,6 +2485,16 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 	return status;
 }
 
+bool txgbe_is_pf(struct txgbe_hw *hw)
+{
+	switch (hw->mac.type) {
+	case txgbe_mac_raptor:
+		return true;
+	default:
+		return false;
+	}
+}
+
 /**
  *  txgbe_set_mac_type - Sets MAC type
  *  @hw: pointer to the HW structure

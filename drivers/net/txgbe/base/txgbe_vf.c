@@ -357,6 +357,7 @@ s32 txgbevf_update_xcast_mode(struct txgbe_hw *hw, int xcast_mode)
 			return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
 		/* Fall through */
 	case txgbe_mbox_api_13:
+	case txgbe_mbox_api_21:
 		break;
 	default:
 		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
@@ -610,6 +611,7 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 	case txgbe_mbox_api_11:
 	case txgbe_mbox_api_12:
 	case txgbe_mbox_api_13:
+	case txgbe_mbox_api_21:
 		break;
 	default:
 		return 0;
@@ -655,4 +657,31 @@ int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 	}
 
 	return err;
+}
+
+int
+txgbevf_add_5tuple_filter(struct txgbe_hw *hw, u32 *msg, u16 index)
+{
+	if (hw->api_version < txgbe_mbox_api_21)
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	msg[TXGBEVF_5T_REQ] = TXGBE_VF_SET_5TUPLE;
+	msg[TXGBEVF_5T_CMD] = index;
+	msg[TXGBEVF_5T_CMD] |= 1 << TXGBEVF_5T_ADD_SHIFT;
+
+	return txgbevf_write_msg_read_ack(hw, msg, msg, TXGBEVF_5T_MAX);
+}
+
+int
+txgbevf_del_5tuple_filter(struct txgbe_hw *hw, u16 index)
+{
+	u32 msg[2] = {0, 0};
+
+	if (hw->api_version < txgbe_mbox_api_21)
+		return TXGBE_ERR_FEATURE_NOT_SUPPORTED;
+
+	msg[TXGBEVF_5T_REQ] = TXGBE_VF_SET_5TUPLE;
+	msg[TXGBEVF_5T_CMD] = index;
+
+	return txgbevf_write_msg_read_ack(hw, msg, msg, 2);
 }

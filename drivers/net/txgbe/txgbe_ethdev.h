@@ -526,6 +526,11 @@ int txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 int txgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add);
+int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev);
+
+int txgbevf_inject_5tuple_filter(struct rte_eth_dev *dev,
+				 struct txgbe_5tuple_filter *filter);
+void txgbevf_remove_5tuple_filter(struct rte_eth_dev *dev, u16 index);
 
 /**
  * l2 tunnel configuration.

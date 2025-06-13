@@ -2768,6 +2768,11 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 		goto out;
 	}
 
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		PMD_DRV_LOG(ERR, "Flow type not suppotted yet on VF.");
+		goto out;
+	}
+
 	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
 	ret = txgbe_parse_ethertype_filter(dev, attr, pattern,
 				actions, &ethertype_filter, error);
@@ -3144,6 +3149,10 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	txgbe_clear_all_ntuple_filter(dev);
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
+		goto out;
+
 	txgbe_clear_all_ethertype_filter(dev);
 	txgbe_clear_syn_filter(dev);
 
@@ -3163,6 +3172,7 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 
 	txgbe_clear_rss_filter(dev);
 
+out:
 	txgbe_filterlist_flush();
 
 	return 0;

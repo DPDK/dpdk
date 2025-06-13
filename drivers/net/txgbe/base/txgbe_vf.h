@@ -58,5 +58,7 @@ s32 txgbevf_rlpml_set_vf(struct txgbe_hw *hw, u16 max_size);
 int txgbevf_negotiate_api_version(struct txgbe_hw *hw, int api);
 int txgbevf_get_queues(struct txgbe_hw *hw, unsigned int *num_tcs,
 		       unsigned int *default_tc);
+int txgbevf_add_5tuple_filter(struct txgbe_hw *hw, u32 *msg, u16 index);
+int txgbevf_del_5tuple_filter(struct txgbe_hw *hw, u16 index);
 
 #endif /* __TXGBE_VF_H__ */

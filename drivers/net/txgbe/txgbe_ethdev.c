@@ -826,7 +826,7 @@ eth_txgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
+int txgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(eth_dev);
 	struct txgbe_5tuple_filter *p_5tuple;
@@ -4236,7 +4236,10 @@ txgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 		return -ENOSYS;
 	}
 
-	txgbe_inject_5tuple_filter(dev, filter);
+	if (txgbe_is_pf(TXGBE_DEV_HW(dev)))
+		txgbe_inject_5tuple_filter(dev, filter);
+	else
+		txgbevf_inject_5tuple_filter(dev, filter);
 
 	return 0;
 }
@@ -4260,6 +4263,11 @@ txgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
 				~(1 << (index % (sizeof(uint32_t) * NBBY)));
 	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
 	rte_free(filter);
+
+	if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
+		txgbevf_remove_5tuple_filter(dev, index);
+		return;
+	}
 
 	wr32(hw, TXGBE_5TFDADDR(index), 0);
 	wr32(hw, TXGBE_5TFSADDR(index), 0);
