@@ -68,13 +68,6 @@
 				"devtype": "crypto_aesni_mb"
 			}
 		},
-		"AES-CBC-128 SHA1-HMAC auth-then-cipher decrypt": {
-			"cipher-algo": "aes-cbc",
-			"cipher-key-sz": "16",
-			"auth-algo": "sha1-hmac",
-			"optype": "auth-then-cipher",
-			"cipher-op": "decrypt"
-		},
 		"AES-GCM-256 aead-op encrypt": {
 			"aead-algo": "aes-gcm",
 			"aead-key-sz": "32",
