@@ -187,18 +187,12 @@ txgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	/*
-	 * Program the relevant mask registers.  If src/dst_port or src/dst_addr
-	 * are zero, then assume a full mask for that field. Also assume that
-	 * a VLAN of 0 is unspecified, so mask that out as well.  L4type
-	 * cannot be masked out in this implementation.
-	 */
-	if (info->mask.dst_port_mask == 0 && info->mask.src_port_mask == 0) {
-		/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
-		fdirm |= TXGBE_FDIRMSK_L4P;
-	}
+	/* use the L4 protocol mask for raw IPv4/IPv6 traffic */
+	if (info->mask.pkt_type_mask == 0 && info->mask.dst_port_mask == 0 &&
+	    info->mask.src_port_mask == 0)
+		info->mask.pkt_type_mask |= TXGBE_FDIRMSK_L4P;
 
-	/* TBD: don't support encapsulation yet */
+	fdirm |= info->mask.pkt_type_mask;
 	wr32(hw, TXGBE_FDIRMSK, fdirm);
 
 	/* store the TCP/UDP port masks */
