@@ -2066,6 +2066,8 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 	/* Get the flex byte info */
 	if (item->type == RTE_FLOW_ITEM_TYPE_RAW) {
+		uint16_t pattern = 0;
+
 		/* Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -2082,6 +2084,7 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			return -rte_errno;
 		}
 
+		rule->b_mask = TRUE;
 		raw_mask = item->mask;
 
 		/* check mask */
@@ -2098,19 +2101,21 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			return -rte_errno;
 		}
 
+		rule->b_spec = TRUE;
 		raw_spec = item->spec;
 
 		/* check spec */
-		if (raw_spec->relative != 0 ||
-		    raw_spec->search != 0 ||
+		if (raw_spec->search != 0 ||
 		    raw_spec->reserved != 0 ||
 		    raw_spec->offset > TXGBE_MAX_FLX_SOURCE_OFF ||
 		    raw_spec->offset % 2 ||
 		    raw_spec->limit != 0 ||
-		    raw_spec->length != 2 ||
+		    raw_spec->length != 4 ||
 		    /* pattern can't be 0xffff */
 		    (raw_spec->pattern[0] == 0xff &&
-		     raw_spec->pattern[1] == 0xff)) {
+		     raw_spec->pattern[1] == 0xff &&
+		     raw_spec->pattern[2] == 0xff &&
+		     raw_spec->pattern[3] == 0xff)) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2120,7 +2125,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 		/* check pattern mask */
 		if (raw_mask->pattern[0] != 0xff ||
-		    raw_mask->pattern[1] != 0xff) {
+		    raw_mask->pattern[1] != 0xff ||
+		    raw_mask->pattern[2] != 0xff ||
+		    raw_mask->pattern[3] != 0xff) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2129,10 +2136,19 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		}
 
 		rule->mask.flex_bytes_mask = 0xffff;
-		rule->input.flex_bytes =
-			(((uint16_t)raw_spec->pattern[1]) << 8) |
-			raw_spec->pattern[0];
+		/* Convert pattern string to hex bytes */
+		if (sscanf((const char *)raw_spec->pattern, "%hx", &pattern) != 1) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Failed to parse raw pattern");
+			return -rte_errno;
+		}
+		rule->input.flex_bytes = (pattern & 0x00FF) << 8;
+		rule->input.flex_bytes |= (pattern & 0xFF00) >> 8;
+
 		rule->flex_bytes_offset = raw_spec->offset;
+		rule->flex_relative = raw_spec->relative;
 	}
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
@@ -2833,10 +2849,16 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 					sizeof(struct txgbe_hw_fdir_mask));
 				fdir_info->flex_bytes_offset =
 					fdir_rule.flex_bytes_offset;
+				fdir_info->flex_relative = fdir_rule.flex_relative;
 
-				if (fdir_rule.mask.flex_bytes_mask)
+				if (fdir_rule.mask.flex_bytes_mask) {
+					uint16_t flex_base;
+
+					flex_base = txgbe_fdir_get_flex_base(&fdir_rule);
 					txgbe_fdir_set_flexbytes_offset(dev,
-						fdir_rule.flex_bytes_offset);
+									fdir_rule.flex_bytes_offset,
+									flex_base);
+				}
 
 				ret = txgbe_fdir_set_input_mask(dev);
 				if (ret)
@@ -2858,7 +2880,9 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 				}
 
 				if (fdir_info->flex_bytes_offset !=
-						fdir_rule.flex_bytes_offset)
+				    fdir_rule.flex_bytes_offset ||
+				    fdir_info->flex_relative !=
+				    fdir_rule.flex_relative)
 					goto out;
 			}
 		}
@@ -3086,8 +3110,13 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 			TAILQ_REMOVE(&filter_fdir_list,
 				fdir_rule_ptr, entries);
 			rte_free(fdir_rule_ptr);
-			if (TAILQ_EMPTY(&filter_fdir_list))
+			if (TAILQ_EMPTY(&filter_fdir_list)) {
+				memset(&fdir_info->mask, 0,
+					sizeof(struct txgbe_hw_fdir_mask));
 				fdir_info->mask_added = false;
+				fdir_info->flex_relative = false;
+				fdir_info->flex_bytes_offset = 0;
+			}
 		}
 		break;
 	case RTE_ETH_FILTER_L2_TUNNEL:
