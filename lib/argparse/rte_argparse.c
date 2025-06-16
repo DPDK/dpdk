@@ -323,10 +323,10 @@ calc_position_count(const struct rte_argparse *obj)
 	return count;
 }
 
-static struct rte_argparse_arg *
-find_position_arg(struct rte_argparse *obj, uint32_t index)
+static const struct rte_argparse_arg *
+find_position_arg(const struct rte_argparse *obj, uint32_t index)
 {
-	struct rte_argparse_arg *arg;
+	const struct rte_argparse_arg *arg;
 	uint32_t count = 0;
 	uint32_t i;
 
@@ -345,7 +345,7 @@ find_position_arg(struct rte_argparse *obj, uint32_t index)
 }
 
 static bool
-is_arg_match(struct rte_argparse_arg *arg, const char *curr_argv, uint32_t len)
+is_arg_match(const struct rte_argparse_arg *arg, const char *curr_argv, uint32_t len)
 {
 	if (strlen(arg->name_long) == len && strncmp(arg->name_long, curr_argv, len) == 0)
 		return true;
@@ -359,12 +359,12 @@ is_arg_match(struct rte_argparse_arg *arg, const char *curr_argv, uint32_t len)
 	return false;
 }
 
-static struct rte_argparse_arg *
-find_option_arg(struct rte_argparse *obj, uint32_t *idx,
+static const struct rte_argparse_arg *
+find_option_arg(const struct rte_argparse *obj, uint32_t *idx,
 		const char *curr_argv, const char *has_equal, const char **arg_name)
 {
 	uint32_t len = strlen(curr_argv) - (has_equal != NULL ? strlen(has_equal) : 0);
-	struct rte_argparse_arg *arg;
+	const struct rte_argparse_arg *arg;
 	uint32_t i;
 	bool match;
 
@@ -385,7 +385,7 @@ find_option_arg(struct rte_argparse *obj, uint32_t *idx,
 }
 
 static int
-parse_arg_int(struct rte_argparse_arg *arg, const char *value)
+parse_arg_int(const struct rte_argparse_arg *arg, const char *value)
 {
 	char *s = NULL;
 
@@ -410,7 +410,7 @@ parse_arg_int(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_u8(struct rte_argparse_arg *arg, const char *value)
+parse_arg_u8(const struct rte_argparse_arg *arg, const char *value)
 {
 	unsigned long val;
 	char *s = NULL;
@@ -438,7 +438,7 @@ parse_arg_u8(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_u16(struct rte_argparse_arg *arg, const char *value)
+parse_arg_u16(const struct rte_argparse_arg *arg, const char *value)
 {
 	unsigned long val;
 	char *s = NULL;
@@ -466,7 +466,7 @@ parse_arg_u16(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_u32(struct rte_argparse_arg *arg, const char *value)
+parse_arg_u32(const struct rte_argparse_arg *arg, const char *value)
 {
 	unsigned long val;
 	char *s = NULL;
@@ -494,7 +494,7 @@ parse_arg_u32(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_u64(struct rte_argparse_arg *arg, const char *value)
+parse_arg_u64(const struct rte_argparse_arg *arg, const char *value)
 {
 	unsigned long val;
 	char *s = NULL;
@@ -522,7 +522,7 @@ parse_arg_u64(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_str(struct rte_argparse_arg *arg, const char *value)
+parse_arg_str(const struct rte_argparse_arg *arg, const char *value)
 {
 	if (value == NULL) {
 		*(char **)arg->val_saver = arg->val_set;
@@ -534,7 +534,7 @@ parse_arg_str(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_bool(struct rte_argparse_arg *arg, const char *value)
+parse_arg_bool(const struct rte_argparse_arg *arg, const char *value)
 {
 	if (value == NULL) {
 		*(bool *)arg->val_saver = (arg->val_set != NULL);
@@ -555,7 +555,7 @@ parse_arg_bool(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
-parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
+parse_arg_autosave(const struct rte_argparse_arg *arg, const char *value)
 {
 	switch (arg->value_type) {
 	case RTE_ARGPARSE_VALUE_TYPE_NONE:
@@ -582,8 +582,8 @@ parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 
 /* arg_parse indicates the name entered by the user, which can be long-name or short-name. */
 static int
-parse_arg_val(struct rte_argparse *obj, const char *arg_name,
-	      struct rte_argparse_arg *arg, char *value)
+parse_arg_val(const struct rte_argparse *obj, const char *arg_name,
+	      const struct rte_argparse_arg *arg, char *value)
 {
 	int ret;
 
@@ -606,11 +606,11 @@ is_help(const char *curr_argv)
 }
 
 static int
-parse_args(struct rte_argparse *obj, bool *arg_parsed,
+parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 		int argc, char **argv, bool *show_help)
 {
 	uint32_t position_count = calc_position_count(obj);
-	struct rte_argparse_arg *arg;
+	const struct rte_argparse_arg *arg;
 	uint32_t position_index = 0;
 	const char *arg_name;
 	uint32_t arg_idx;
@@ -795,7 +795,7 @@ show_args_help(const struct rte_argparse *obj)
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_argparse_parse, 24.03)
 int
-rte_argparse_parse(struct rte_argparse *obj, int argc, char **argv)
+rte_argparse_parse(const struct rte_argparse *obj, int argc, char **argv)
 {
 	bool *arg_parsed = NULL;
 	bool show_help = false;

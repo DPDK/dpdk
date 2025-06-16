@@ -187,7 +187,7 @@ struct rte_argparse {
  *   Otherwise negative error code is returned.
  */
 __rte_experimental
-int rte_argparse_parse(struct rte_argparse *obj, int argc, char **argv);
+int rte_argparse_parse(const struct rte_argparse *obj, int argc, char **argv);
 
 /**
  * @warning
