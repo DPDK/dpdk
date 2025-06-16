@@ -340,7 +340,7 @@ crypto_testsuite_eddsa_params eddsa_test_params[] = {
 	.instance = RTE_CRYPTO_EDCURVE_25519CTX
 },
 {
-	.description = "EdDSA 25519PH (msg=1, ph=1)",
+	.description = "EdDSA 25519PH (msg=3, ph=1)",
 	.pkey = {
 		.data = {
 			0x83, 0x3f, 0xe6, 0x24, 0x09, 0x23, 0x7b, 0x9d,
