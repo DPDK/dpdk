@@ -344,8 +344,9 @@ class TestRunSetup(State):
 
         test_run.ctx.sut_node.setup()
         test_run.ctx.tg_node.setup()
-        test_run.ctx.topology.setup()
         test_run.ctx.dpdk.setup()
+        test_run.ctx.topology.setup()
+        test_run.ctx.topology.configure_ports("sut", "dpdk")
         test_run.ctx.tg.setup(test_run.ctx.topology)
 
         self.result.ports = test_run.ctx.topology.sut_ports + test_run.ctx.topology.tg_ports
@@ -433,8 +434,8 @@ class TestRunTeardown(State):
         """Next state."""
         self.test_run.ctx.shell_pool.terminate_current_pool()
         self.test_run.ctx.tg.teardown()
-        self.test_run.ctx.dpdk.teardown()
         self.test_run.ctx.topology.teardown()
+        self.test_run.ctx.dpdk.teardown()
         self.test_run.ctx.tg_node.teardown()
         self.test_run.ctx.sut_node.teardown()
         self.result.update_teardown(Result.PASS)
