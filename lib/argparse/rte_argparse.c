@@ -16,8 +16,6 @@ RTE_LOG_REGISTER_DEFAULT(rte_argparse_logtype, INFO);
 #define ARGPARSE_LOG(level, ...) \
 	RTE_LOG_LINE(level, ARGPARSE, "" __VA_ARGS__)
 
-#define ARG_ATTR_FLAG_PARSED_MASK	RTE_BIT64(63)
-
 static inline bool
 is_arg_optional(const struct rte_argparse_arg *arg)
 {
@@ -273,9 +271,9 @@ verify_argparse_arg(const struct rte_argparse *obj, uint32_t index)
 }
 
 static int
-verify_argparse(const struct rte_argparse *obj)
+verify_argparse(const struct rte_argparse *obj, size_t *nb_args)
 {
-	uint32_t idx;
+	size_t idx;
 	int ret;
 
 	if (obj->prog_name == NULL) {
@@ -302,6 +300,7 @@ verify_argparse(const struct rte_argparse *obj)
 			return ret;
 		idx++;
 	}
+	*nb_args = idx;
 
 	return 0;
 }
@@ -361,8 +360,8 @@ is_arg_match(struct rte_argparse_arg *arg, const char *curr_argv, uint32_t len)
 }
 
 static struct rte_argparse_arg *
-find_option_arg(struct rte_argparse *obj, const char *curr_argv, const char *has_equal,
-		const char **arg_name)
+find_option_arg(struct rte_argparse *obj, uint32_t *idx,
+		const char *curr_argv, const char *has_equal, const char **arg_name)
 {
 	uint32_t len = strlen(curr_argv) - (has_equal != NULL ? strlen(has_equal) : 0);
 	struct rte_argparse_arg *arg;
@@ -377,6 +376,7 @@ find_option_arg(struct rte_argparse *obj, const char *curr_argv, const char *has
 		if (match) {
 			/* Obtains the exact matching name (long or short). */
 			*arg_name = len > 2 ? arg->name_long : arg->name_short;
+			*idx = i;
 			return arg;
 		}
 	}
@@ -606,12 +606,14 @@ is_help(const char *curr_argv)
 }
 
 static int
-parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
+parse_args(struct rte_argparse *obj, bool *arg_parsed,
+		int argc, char **argv, bool *show_help)
 {
 	uint32_t position_count = calc_position_count(obj);
 	struct rte_argparse_arg *arg;
 	uint32_t position_index = 0;
 	const char *arg_name;
+	uint32_t arg_idx;
 	char *curr_argv;
 	char *has_equal;
 	char *value;
@@ -648,13 +650,13 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 
 		has_equal = strchr(curr_argv, '=');
 		arg_name = NULL;
-		arg = find_option_arg(obj, curr_argv, has_equal, &arg_name);
+		arg = find_option_arg(obj, &arg_idx, curr_argv, has_equal, &arg_name);
 		if (arg == NULL || arg_name == NULL) {
 			ARGPARSE_LOG(ERR, "unknown argument %s!", curr_argv);
 			return -EINVAL;
 		}
 
-		if ((arg->flags & ARG_ATTR_FLAG_PARSED_MASK) && !arg_attr_flag_multi(arg)) {
+		if (arg_parsed[arg_idx] && !arg_attr_flag_multi(arg)) {
 			ARGPARSE_LOG(ERR, "argument %s should not occur multiple times!", arg_name);
 			return -EINVAL;
 		}
@@ -684,7 +686,7 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 			return ret;
 
 		/* This argument parsed success! then mark it parsed. */
-		arg->flags |= ARG_ATTR_FLAG_PARSED_MASK;
+		arg_parsed[arg_idx] = true;
 	}
 
 	return i;
@@ -795,14 +797,25 @@ RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_argparse_parse, 24.03)
 int
 rte_argparse_parse(struct rte_argparse *obj, int argc, char **argv)
 {
+	bool *arg_parsed = NULL;
 	bool show_help = false;
+	size_t nb_args = 0;
 	int ret;
 
-	ret = verify_argparse(obj);
+	ret = verify_argparse(obj, &nb_args);
 	if (ret != 0)
 		goto error;
 
-	ret = parse_args(obj, argc, argv, &show_help);
+	/* allocate the flags array to indicate what arguments are parsed or not */
+	arg_parsed = calloc(nb_args, sizeof(*arg_parsed));
+	if (arg_parsed == NULL) {
+		ARGPARSE_LOG(ERR, "failed to allocate memory for argument flags!");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	ret = parse_args(obj, arg_parsed, argc, argv, &show_help);
+	free(arg_parsed);
 	if (ret < 0)
 		goto error;
 
