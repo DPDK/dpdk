@@ -124,6 +124,8 @@ struct cperf_rsa_test_data {
 	rte_crypto_param dp;
 	rte_crypto_param dq;
 	rte_crypto_param qinv;
+	rte_crypto_param sign;
+	rte_crypto_param cipher;
 	enum rte_crypto_rsa_padding_type padding;
 };
 

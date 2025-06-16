@@ -12,6 +12,8 @@
 #include "cperf_test_vectors.h"
 
 
+#define CRYPTO_BUF_SIZE  4096
+
 typedef void *(*cperf_sessions_create_t)(
 		struct rte_mempool *sess_mp,
 		uint8_t dev_id, const struct cperf_options *options,
