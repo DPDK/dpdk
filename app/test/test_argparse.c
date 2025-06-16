@@ -330,6 +330,38 @@ test_argparse_invalid_option(void)
 }
 
 static int
+test_argparse_invalid_repeated_option(void)
+{
+	/* test that we allow repeated args only with the MULTI flag */
+	struct rte_argparse *obj;
+	char *argv[3];
+	int ret;
+
+	/* check that we error out with two "-a" flags */
+	obj = test_argparse_init_obj();
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("-a");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse did not error out with two '-a' flags!");
+
+	obj = test_argparse_init_obj();
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	obj->args[0].flags |= RTE_ARGPARSE_FLAG_SUPPORT_MULTI;
+	/* check that we allow two "-a" flags with MULTI flag set */
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("-a");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 3, "Argparse failed to handle duplicate '-a' flags!");
+
+	return 0;
+}
+
+static int
 test_argparse_opt_autosave_parse_int_of_no_val(void)
 {
 	struct rte_argparse *obj;
@@ -864,6 +896,7 @@ static struct unit_test_suite argparse_test_suite = {
 		TEST_CASE(test_argparse_invalid_arg_flags),
 		TEST_CASE(test_argparse_invalid_arg_repeat),
 		TEST_CASE(test_argparse_invalid_option),
+		TEST_CASE(test_argparse_invalid_repeated_option),
 		TEST_CASE(test_argparse_opt_autosave_parse_int_of_no_val),
 		TEST_CASE(test_argparse_opt_autosave_parse_int_of_required_val),
 		TEST_CASE(test_argparse_opt_autosave_parse_int_of_optional_val),
