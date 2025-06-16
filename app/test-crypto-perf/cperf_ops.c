@@ -45,7 +45,7 @@ cperf_set_ops_asym_rsa(struct rte_crypto_op **ops,
 		   uint32_t *imix_idx __rte_unused,
 		   uint64_t *tsc_start __rte_unused)
 {
-	uint8_t cipher_buf[4096] = {0};
+	uint8_t crypto_buf[CRYPTO_BUF_SIZE] = {0};
 	uint16_t i;
 
 	for (i = 0; i < nb_ops; i++) {
@@ -53,16 +53,31 @@ cperf_set_ops_asym_rsa(struct rte_crypto_op **ops,
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		asym_op->rsa.op_type = options->asym_op_type;
-		asym_op->rsa.message.data = rsa_plaintext.data;
-		asym_op->rsa.message.length = rsa_plaintext.len;
 		if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
-			asym_op->rsa.sign.data = cipher_buf;
+			asym_op->rsa.message.data = rsa_plaintext.data;
+			asym_op->rsa.message.length = rsa_plaintext.len;
+			asym_op->rsa.sign.data = crypto_buf;
 			asym_op->rsa.sign.length = options->rsa_data->n.length;
 		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
-			asym_op->rsa.cipher.data = cipher_buf;
+			asym_op->rsa.message.data = rsa_plaintext.data;
+			asym_op->rsa.message.length = rsa_plaintext.len;
+			asym_op->rsa.cipher.data = crypto_buf;
 			asym_op->rsa.cipher.length = options->rsa_data->n.length;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			asym_op->rsa.cipher.data = options->rsa_data->cipher.data;
+			asym_op->rsa.cipher.length = options->rsa_data->cipher.length;
+			asym_op->rsa.message.data = crypto_buf;
+			asym_op->rsa.message.length = options->rsa_data->n.length;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+			memcpy(crypto_buf, options->rsa_data->sign.data,
+				options->rsa_data->sign.length);
+			asym_op->rsa.sign.data = crypto_buf;
+			asym_op->rsa.sign.length = options->rsa_data->sign.length;
+			asym_op->rsa.message.data = rsa_plaintext.data;
+			asym_op->rsa.message.length = rsa_plaintext.len;
 		} else {
-			printf("RSA DECRYPT/VERIFY not supported");
+			rte_panic("Unsupported RSA operation type %d\n",
+				  options->asym_op_type);
 		}
 		rte_crypto_op_attach_asym_session(ops[i], sess);
 	}

@@ -1549,6 +1549,11 @@ cperf_options_check(struct cperf_options *options)
 			RTE_LOG(ERR, USER1, "Invalid RSA key type specified\n");
 			return -EINVAL;
 		}
+	} else {
+		if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			RTE_LOG(ERR, USER1, "Public key to be used in encrypt op\n");
+			return -EINVAL;
+		}
 	}
 
 	if (options->rsa_modlen) {
