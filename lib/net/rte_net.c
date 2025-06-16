@@ -197,6 +197,7 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 	switch (port_no) {
 	case RTE_VXLAN_DEFAULT_PORT: {
 		*off += sizeof(struct rte_vxlan_hdr);
+		hdr_lens->tunnel_len = sizeof(struct rte_vxlan_hdr);
 		hdr_lens->inner_l2_len = RTE_ETHER_VXLAN_HLEN;
 		*proto = RTE_VXLAN_GPE_TYPE_ETH; /* just for eth header parse. */
 		return RTE_PTYPE_TUNNEL_VXLAN;
@@ -208,6 +209,7 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 		if (unlikely(vgh == NULL))
 			return 0;
 		*off += sizeof(struct rte_vxlan_gpe_hdr);
+		hdr_lens->tunnel_len = sizeof(struct rte_vxlan_gpe_hdr);
 		hdr_lens->inner_l2_len = RTE_ETHER_VXLAN_GPE_HLEN;
 		*proto = vgh->proto;
 
@@ -243,6 +245,7 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 		}
 		*off += gtp_len;
 		hdr_lens->inner_l2_len = gtp_len + sizeof(struct rte_udp_hdr);
+		hdr_lens->tunnel_len = gtp_len;
 		if (port_no == RTE_GTPC_UDP_PORT)
 			return RTE_PTYPE_TUNNEL_GTPC;
 		else if (port_no == RTE_GTPU_UDP_PORT)
@@ -258,6 +261,7 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 			return 0;
 		geneve_len = sizeof(*gnh) + gnh->opt_len * 4;
 		*off += geneve_len;
+		hdr_lens->tunnel_len = geneve_len;
 		hdr_lens->inner_l2_len = sizeof(struct rte_udp_hdr) + geneve_len;
 		*proto = gnh->proto;
 		if (gnh->proto == 0)
