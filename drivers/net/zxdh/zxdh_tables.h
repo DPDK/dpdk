@@ -362,7 +362,7 @@ int zxdh_promisc_table_init(struct rte_eth_dev *dev);
 int zxdh_promisc_table_uninit(struct rte_eth_dev *dev);
 int zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
 int zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
-int zxdh_vlan_filter_table_init(struct rte_eth_dev *dev);
+int zxdh_vlan_filter_table_init(struct zxdh_hw *hw, uint16_t vport);
 int zxdh_vlan_filter_table_set(struct zxdh_hw *hw, uint16_t vport,
 		uint16_t vlan_id, uint8_t enable);
 int zxdh_rss_table_set(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss_reta);
@@ -372,5 +372,10 @@ int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_
 int zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
 int zxdh_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, uint8_t enable);
 int zxdh_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, uint8_t type, uint8_t enable);
+int zxdh_set_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_vlan_table *port_vlan);
+int zxdh_get_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
+		struct zxdh_port_vlan_table *port_vlan);
+int zxdh_port_vlan_table_init(struct zxdh_hw *hw, uint16_t vport);
 
 #endif /* ZXDH_TABLES_H */

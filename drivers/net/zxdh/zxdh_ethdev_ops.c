@@ -553,7 +553,7 @@ zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 						zxdh_msg_reply_info,
 						ZXDH_ST_SZ_BYTES(msg_reply_info));
 				if (ret) {
-					flag = ZXDH_GET(mac_reply_msg,
+					uint8_t flag = ZXDH_GET(mac_reply_msg,
 						mac_reply_msg_addr, mac_flag);
 					if (flag == ZXDH_EEXIST_MAC_FLAG) {
 						PMD_DRV_LOG(ERR, "pf mac add failed mac is in used");
@@ -895,7 +895,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 					return -EAGAIN;
 				}
 			} else {
-				msg.data.vlan_filter_set_msg.enable = true;
+				msg.data.vlan_filter_set_msg.enable = false;
 				zxdh_msg_head_build(hw, ZXDH_VLAN_FILTER_SET, &msg);
 				ret = zxdh_vf_send_msg_to_pf(hw->eth_dev, &msg,
 						sizeof(struct zxdh_msg_info), NULL, 0);
