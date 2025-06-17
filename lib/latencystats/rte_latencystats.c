@@ -194,10 +194,17 @@ calc_latency(uint16_t pid __rte_unused,
 {
 	unsigned int i;
 	uint64_t now, latency;
+	uint64_t ts_flags = 0;
 	static uint64_t prev_latency;
 
-	now = rte_rdtsc();
+	for (i = 0; i < nb_pkts; i++)
+		ts_flags |= (pkts[i]->ol_flags & timestamp_dynflag);
 
+	/* no samples in this burst, skip locking */
+	if (likely(ts_flags == 0))
+		return nb_pkts;
+
+	now = rte_rdtsc();
 	rte_spinlock_lock(&glob_stats->lock);
 	for (i = 0; i < nb_pkts; i++) {
 		if (!(pkts[i]->ol_flags & timestamp_dynflag))
