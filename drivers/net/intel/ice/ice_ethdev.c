@@ -187,6 +187,7 @@ static int ice_timesync_read_time(struct rte_eth_dev *dev,
 static int ice_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
 static int ice_timesync_disable(struct rte_eth_dev *dev);
+static int ice_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 static int ice_fec_get_capability(struct rte_eth_dev *dev, struct rte_eth_fec_capa *speed_fec_capa,
 			   unsigned int num);
 static int ice_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa);
@@ -317,6 +318,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.timesync_read_time           = ice_timesync_read_time,
 	.timesync_write_time          = ice_timesync_write_time,
 	.timesync_disable             = ice_timesync_disable,
+	.read_clock                   = ice_read_clock,
 	.tm_ops_get                   = ice_tm_ops_get,
 	.fec_get_capability           = ice_fec_get_capability,
 	.fec_get                      = ice_fec_get,
@@ -6931,6 +6933,21 @@ ice_timesync_disable(struct rte_eth_dev *dev)
 	ICE_WRITE_REG(hw, GLTSYN_INCVAL_H(tmr_idx), 0);
 
 	ad->ptp_ena = 0;
+
+	return 0;
+}
+
+static int
+ice_read_clock(__rte_unused struct rte_eth_dev *dev, uint64_t *clock)
+{
+	struct timespec system_time;
+
+#ifdef RTE_EXEC_ENV_LINUX
+	clock_gettime(CLOCK_MONOTONIC_RAW, &system_time);
+#else
+	clock_gettime(CLOCK_MONOTONIC, &system_time);
+#endif
+	*clock = system_time.tv_sec * NSEC_PER_SEC + system_time.tv_nsec;
 
 	return 0;
 }
