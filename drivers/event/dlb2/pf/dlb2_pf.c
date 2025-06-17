@@ -45,20 +45,39 @@ static unsigned int dlb2_qe_sa_pct = 1;
 static unsigned int dlb2_qid_sa_pct;
 
 static void
-dlb2_pf_low_level_io_init(void)
+dlb2_pf_low_level_io_init(struct dlb2_hw_dev *handle)
 {
 	int i;
-	/* Addresses will be initialized at port create */
-	for (i = 0; i < DLB2_MAX_NUM_PORTS(DLB2_HW_V2_5); i++) {
-		/* First directed ports */
-		dlb2_port[i][DLB2_DIR_PORT].pp_addr = NULL;
-		dlb2_port[i][DLB2_DIR_PORT].cq_base = NULL;
-		dlb2_port[i][DLB2_DIR_PORT].mmaped = true;
 
-		/* Now load balanced ports */
-		dlb2_port[i][DLB2_LDB_PORT].pp_addr = NULL;
-		dlb2_port[i][DLB2_LDB_PORT].cq_base = NULL;
-		dlb2_port[i][DLB2_LDB_PORT].mmaped = true;
+	if (handle == NULL) {
+		/* Addresses will be initialized at port create in primary process*/
+		for (i = 0; i < DLB2_MAX_NUM_PORTS(DLB2_HW_V2_5); i++) {
+			/* First directed ports */
+			dlb2_port[i][DLB2_DIR_PORT].pp_addr = NULL;
+			dlb2_port[i][DLB2_DIR_PORT].cq_base = NULL;
+			dlb2_port[i][DLB2_DIR_PORT].mmaped = false;
+
+			/* Now load balanced ports */
+			dlb2_port[i][DLB2_LDB_PORT].pp_addr = NULL;
+			dlb2_port[i][DLB2_LDB_PORT].cq_base = NULL;
+			dlb2_port[i][DLB2_LDB_PORT].mmaped = false;
+		}
+	} else {
+		/* Retrieve stored addresses in secondary processes */
+		struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+		struct dlb2_ldb_port *ldb_ports = dlb2_dev->hw.rsrcs.ldb_ports;
+		struct dlb2_dir_pq_pair *dir_ports = dlb2_dev->hw.rsrcs.dir_pq_pairs;
+
+		for (i = 0; i < DLB2_MAX_NUM_LDB_PORTS; i++) {
+			dlb2_port[i][DLB2_LDB_PORT].cq_base = ldb_ports[i].port_data.cq_base;
+			dlb2_port[i][DLB2_LDB_PORT].pp_addr = ldb_ports[i].port_data.pp_addr;
+			dlb2_port[i][DLB2_LDB_PORT].mmaped = true;
+		}
+		for (i = 0; i < DLB2_MAX_NUM_DIR_PORTS_V2_5; i++) {
+			dlb2_port[i][DLB2_DIR_PORT].cq_base = dir_ports[i].port_data.cq_base;
+			dlb2_port[i][DLB2_DIR_PORT].pp_addr = dir_ports[i].port_data.pp_addr;
+			dlb2_port[i][DLB2_DIR_PORT].mmaped = true;
+		}
 	}
 }
 
@@ -304,6 +323,7 @@ dlb2_pf_ldb_port_create(struct dlb2_hw_dev *handle,
 			enum dlb2_cq_poll_modes poll_mode)
 {
 	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct process_local_port_data *port_data;
 	struct dlb2_cmd_response response = {0};
 	struct dlb2_port_memory port_memory;
 	int ret, cq_alloc_depth;
@@ -355,6 +375,7 @@ dlb2_pf_ldb_port_create(struct dlb2_hw_dev *handle,
 		(void *)(pp_base + (rte_mem_page_size() * response.id));
 
 	dlb2_port[response.id][DLB2_LDB_PORT].cq_base = (void *)(port_base);
+	dlb2_port[response.id][DLB2_LDB_PORT].mmaped = true;
 	memset(&port_memory, 0, sizeof(port_memory));
 
 	dlb2_port[response.id][DLB2_LDB_PORT].mz = mz;
@@ -362,6 +383,11 @@ dlb2_pf_ldb_port_create(struct dlb2_hw_dev *handle,
 	dlb2_list_init_head(&port_memory.list);
 
 	cfg->response = response;
+
+	/* Store cq_base and pp_addr for secondary processes*/
+	port_data = &dlb2_dev->hw.rsrcs.ldb_ports[response.id].port_data;
+	port_data->pp_addr = dlb2_port[response.id][DLB2_LDB_PORT].pp_addr;
+	port_data->cq_base = (struct dlb2_dequeue_qe *)cq_base;
 
 	return 0;
 
@@ -380,6 +406,7 @@ dlb2_pf_dir_port_create(struct dlb2_hw_dev *handle,
 			enum dlb2_cq_poll_modes poll_mode)
 {
 	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct process_local_port_data *port_data;
 	struct dlb2_cmd_response response = {0};
 	struct dlb2_port_memory port_memory;
 	int ret;
@@ -431,6 +458,7 @@ dlb2_pf_dir_port_create(struct dlb2_hw_dev *handle,
 
 	dlb2_port[response.id][DLB2_DIR_PORT].cq_base =
 		(void *)(port_base);
+	dlb2_port[response.id][DLB2_DIR_PORT].mmaped = true;
 	memset(&port_memory, 0, sizeof(port_memory));
 
 	dlb2_port[response.id][DLB2_DIR_PORT].mz = mz;
@@ -438,6 +466,11 @@ dlb2_pf_dir_port_create(struct dlb2_hw_dev *handle,
 	dlb2_list_init_head(&port_memory.list);
 
 	cfg->response = response;
+
+	/* Store cq_base and pp_addr for secondary processes*/
+	port_data = &dlb2_dev->hw.rsrcs.dir_pq_pairs[response.id].port_data;
+	port_data->pp_addr = dlb2_port[response.id][DLB2_DIR_PORT].pp_addr;
+	port_data->cq_base = (struct dlb2_dequeue_qe *)cq_base;
 
 	return 0;
 
