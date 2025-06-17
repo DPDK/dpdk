@@ -3257,6 +3257,9 @@ __dlb2_event_enqueue_burst_reorder(void *event_port,
 
 	port_data = &dlb2_port[qm_port->id][PORT_TYPE(qm_port)];
 
+	if (!port_data->mmaped)
+		dlb2_iface_low_level_io_init(&ev_port->dlb2->qm_instance);
+
 	num_tx = RTE_MIN(num, ev_port->conf.enqueue_depth);
 #if DLB2_BYPASS_FENCE_ON_PP == 1
 	if (!qm_port->is_producer) /* Call memory fense once at the start */
@@ -3390,6 +3393,10 @@ __dlb2_event_enqueue_burst(void *event_port,
 	i = 0;
 
 	port_data = &dlb2_port[qm_port->id][PORT_TYPE(qm_port)];
+
+	if (!port_data->mmaped)
+		dlb2_iface_low_level_io_init(&ev_port->dlb2->qm_instance);
+
 	num_tx = RTE_MIN(num, ev_port->conf.enqueue_depth);
 	while (i < num_tx) {
 		uint8_t sched_types[DLB2_NUM_QES_PER_CACHE_LINE];
@@ -4448,10 +4455,16 @@ dlb2_event_dequeue_burst(void *event_port, struct rte_event *ev, uint16_t num,
 	struct dlb2_port *qm_port = &ev_port->qm_port;
 	struct dlb2_eventdev *dlb2 = ev_port->dlb2;
 	struct dlb2_reorder *order = qm_port->order;
+	struct process_local_port_data *port_data;
 	uint16_t cnt;
 
 	RTE_ASSERT(ev_port->setup_done);
 	RTE_ASSERT(ev != NULL);
+
+	port_data = &dlb2_port[qm_port->id][PORT_TYPE(qm_port)];
+
+	if (!port_data->mmaped)
+		dlb2_iface_low_level_io_init(&dlb2->qm_instance);
 
 	if (ev_port->implicit_release && ev_port->outstanding_releases > 0) {
 		uint16_t out_rels = ev_port->outstanding_releases;
@@ -4495,10 +4508,16 @@ dlb2_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 	struct dlb2_port *qm_port = &ev_port->qm_port;
 	struct dlb2_eventdev *dlb2 = ev_port->dlb2;
 	struct dlb2_reorder *order = qm_port->order;
+	struct process_local_port_data *port_data;
 	uint16_t cnt;
 
 	RTE_ASSERT(ev_port->setup_done);
 	RTE_ASSERT(ev != NULL);
+
+	port_data = &dlb2_port[qm_port->id][PORT_TYPE(qm_port)];
+
+	if (!port_data->mmaped)
+		dlb2_iface_low_level_io_init(&dlb2->qm_instance);
 
 	if (ev_port->implicit_release && ev_port->outstanding_releases > 0) {
 		uint16_t out_rels = ev_port->outstanding_releases;
@@ -4983,7 +5002,7 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 	rte_spinlock_init(&dlb2->qm_instance.resource_lock);
 
-	dlb2_iface_low_level_io_init();
+	dlb2_iface_low_level_io_init(NULL);
 
 	dlb2_entry_points_init(dev);
 
@@ -5015,7 +5034,7 @@ dlb2_secondary_eventdev_probe(struct rte_eventdev *dev,
 		return err;
 	}
 
-	dlb2_iface_low_level_io_init();
+	dlb2_iface_low_level_io_init(&dlb2->qm_instance);
 
 	dlb2_entry_points_init(dev);
 
