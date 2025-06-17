@@ -1005,6 +1005,43 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 }
 
 int
+zxdh_vlan_tpid_set(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type, uint16_t tpid)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_port_vlan_table port_vlan_table = {0};
+	struct zxdh_msg_info msg = {0};
+	int ret = 0;
+
+	if (vlan_type != RTE_ETH_VLAN_TYPE_OUTER) {
+		PMD_DRV_LOG(ERR, "unsupported rte vlan type!");
+		return -1;
+	}
+
+	if (hw->is_pf) {
+		ret = zxdh_get_port_vlan_attr(hw, hw->vport.vport, &port_vlan_table);
+		if (ret != 0)
+			PMD_DRV_LOG(ERR, "get port vlan attr table failed");
+		port_vlan_table.hit_flag = 1;
+		port_vlan_table.business_vlan_tpid = tpid;
+		ret = zxdh_set_port_vlan_attr(hw, hw->vport.vport, &port_vlan_table);
+		if (ret != 0)
+			PMD_DRV_LOG(ERR, "set port vlan tpid %d attr table failed", tpid);
+	} else {
+		zxdh_msg_head_build(hw, ZXDH_VLAN_SET_TPID, &msg);
+		msg.data.zxdh_vlan_tpid.tpid = tpid;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg,
+				sizeof(struct zxdh_msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "port %d vlan tpid %d set failed",
+				hw->vfid, tpid);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int
 zxdh_dev_rss_reta_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size)

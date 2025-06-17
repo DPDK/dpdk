@@ -120,6 +120,7 @@ int zxdh_dev_allmulticast_enable(struct rte_eth_dev *dev);
 int zxdh_dev_allmulticast_disable(struct rte_eth_dev *dev);
 int zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 int zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+int zxdh_vlan_tpid_set(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type, uint16_t tpid);
 int zxdh_dev_rss_reta_update(struct rte_eth_dev *dev,
 			 struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size);

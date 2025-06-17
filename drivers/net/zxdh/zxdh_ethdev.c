@@ -1429,6 +1429,7 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.allmulticast_disable	 = zxdh_dev_allmulticast_disable,
 	.vlan_filter_set		 = zxdh_dev_vlan_filter_set,
 	.vlan_offload_set		 = zxdh_dev_vlan_offload_set,
+	.vlan_tpid_set			 = zxdh_vlan_tpid_set,
 	.reta_update			 = zxdh_dev_rss_reta_update,
 	.reta_query				 = zxdh_dev_rss_reta_query,
 	.rss_hash_update		 = zxdh_rss_hash_update,
