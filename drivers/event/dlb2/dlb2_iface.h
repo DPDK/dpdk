@@ -11,7 +11,7 @@
  * If PCI (PF PMD),  these will be implemented locally in user mode.
  */
 
-extern void (*dlb2_iface_low_level_io_init)(void);
+extern void (*dlb2_iface_low_level_io_init)(struct dlb2_hw_dev *handle);
 
 extern int (*dlb2_iface_open)(struct dlb2_hw_dev *handle, const char *name);
 
