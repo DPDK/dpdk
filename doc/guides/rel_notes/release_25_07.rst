@@ -90,6 +90,11 @@ New Features
     * ixgbe
     * iavf
 
+* **Added Tx packet pacing support to Intel ice net driver.**
+
+  Intel\ |reg| Ethernet E830 network adapters support delayed/timed packet Tx based on timestamp.
+  Support for this feature was added to the ice ethdev driver.
+
 * **Updated NVIDIA mlx5 driver.**
 
   * Support matching on IPv6 frag extension header with async flow template API.

@@ -4139,7 +4139,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO |
 			RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO |
 			RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO |
-			RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
+			RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+			RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP;
 		dev_info->flow_type_rss_offloads |= ICE_RSS_OFFLOAD_ALL;
 	}
 

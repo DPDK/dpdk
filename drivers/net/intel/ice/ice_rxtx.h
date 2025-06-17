@@ -9,11 +9,31 @@
 #include "../common/tx.h"
 #include "ice_ethdev.h"
 
+#define FIELD_GET(_mask, _reg) \
+	(__extension__ ({ \
+		typeof(_mask) _x = (_mask); \
+		(typeof(_x))(((_reg) & (_x)) >> rte_bsf32(_x)); \
+	}))
+#define FIELD_PREP(_mask, _val) \
+	(__extension__ ({ \
+		typeof(_mask) _x = (_mask); \
+		((typeof(_x))(_val) << rte_bsf32(_x)) & (_x); \
+	}))
+
 #define ICE_ALIGN_RING_DESC  32
 #define ICE_MIN_RING_DESC    64
 #define ICE_MAX_RING_DESC    (8192 - 32)
+#define ICE_MAX_RING_DESC_E830	  8096
+#define ICE_MAX_NUM_DESC_BY_MAC(hw) ((hw)->phy_model == \
+					ICE_PHY_E830 ? \
+				    ICE_MAX_RING_DESC_E830 : \
+				    ICE_MAX_RING_DESC)
 #define ICE_DMA_MEM_ALIGN    4096
 #define ICE_RING_BASE_ALIGN  128
+
+#define ICE_TXTIME_TX_DESC_IDX_M	RTE_GENMASK32(12, 0)
+#define ICE_TXTIME_STAMP_M		RTE_GENMASK32(31, 13)
+#define ICE_REQ_DESC_MULTIPLE	32
 
 #define ICE_RX_MAX_BURST CI_RX_MAX_BURST
 #define ICE_TX_MAX_BURST 32
@@ -78,6 +98,18 @@ enum ice_rx_dtype {
 	ICE_RX_DTYPE_NO_SPLIT       = 0,
 	ICE_RX_DTYPE_HEADER_SPLIT   = 1,
 	ICE_RX_DTYPE_SPLIT_ALWAYS   = 2,
+};
+
+/**
+ * Structure associated with Tx Time based queue
+ */
+struct ice_txtime {
+	volatile struct ice_ts_desc *ice_ts_ring; /* Tx time ring virtual address */
+	uint16_t nb_ts_desc; /* number of Tx Time descriptors */
+	uint16_t ts_tail; /* current value of tail register */
+	int ts_offset; /* dynamic mbuf Tx timestamp field offset */
+	uint64_t ts_flag; /* dynamic mbuf Tx timestamp flag */
+	const struct rte_memzone *ts_mz;
 };
 
 /* Offload features */

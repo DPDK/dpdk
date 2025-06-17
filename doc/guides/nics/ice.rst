@@ -415,6 +415,34 @@ and add the ``--force-max-simd-bitwidth=64`` startup parameter to disable vector
 
    examples/dpdk-ptpclient -c f -n 3 -a 0000:ec:00.1 --force-max-simd-bitwidth=64 -- -T 1 -p 0x1 -c 1
 
+Tx Packet Pacing
+~~~~~~~~~~~~~~~~
+
+In order to deliver the timestamp with every packet,
+a special type of Tx Host Queue is used, the TS Queue.
+This feature is currently supported only in E830 adapters.
+
+The flag ``RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP`` is used to enable the feature.
+In order to deliver timestamps internally ``set txtimes`` is used,
+where inter burst and intra burst time interval in nsecs is provided.
+For example:
+
+.. code-block:: console
+
+   dpdk-testpmd -a 0000:31:00.0 -c f -n 4 -- -i --tx-offloads=0x200000
+   set fwd txonly
+   set txtimes <inter_burst>,<intra_burst>
+   start
+
+Based on the Tx offload initialised during port configuration time,
+Tx Time Queue will be enabled during ``ice_tx_queue_setup()`` only for E830 adapters.
+The initial time should be fetched using ``rte_eth_read_clock()``.
+Further the timestamps should be calculated based on the inter burst and intra burst times,
+then storing it into proper format (refer to ``struct tx_timestamp`` in ``tx_only.c``),
+as to be placed in packet header.
+The timestamps should be copied to packet mbufs
+and manually adjust packet header length accordingly.
+
 Generic Flow Support
 ~~~~~~~~~~~~~~~~~~~~
 
