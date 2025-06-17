@@ -141,6 +141,11 @@ New Features
   String values are simply saved as-is,
   while the boolean support allows for values "true", "false", "1" or "0".
 
+* **Added Tx Packet Pacing support to ice net driver.**
+
+  Intel® Ethernet E830 Network Adapters, support delayed/timed packet Tx based on timestamp.
+  Support for this feature was added to the ice ethdev driver.
+
 
 Removed Items
 -------------

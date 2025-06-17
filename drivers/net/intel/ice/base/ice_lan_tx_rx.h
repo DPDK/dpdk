@@ -1278,6 +1278,8 @@ struct ice_ts_desc {
 #define ICE_TXTIME_MAX_QUEUE		2047
 #define ICE_SET_TXTIME_MAX_Q_AMOUNT	127
 #define ICE_OP_TXTIME_MAX_Q_AMOUNT	2047
+#define ICE_TXTIME_FETCH_TS_DESC_DFLT	8
+#define ICE_TXTIME_FETCH_PROFILE_CNT	16
 /* Tx Time queue context data
  *
  * The sizes of the variables may be larger than needed due to crossing byte
@@ -1303,10 +1305,12 @@ struct ice_txtime_ctx {
 	u8 drbell_mode_32;
 #define ICE_TXTIME_CTX_DRBELL_MODE_32	1
 	u8 ts_res;
+#define ICE_TXTIME_CTX_RESOLUTION_128NS 7
 	u8 ts_round_type;
 	u8 ts_pacing_slot;
 	u8 merging_ena;
 	u8 ts_fetch_prof_id;
+#define ICE_TXTIME_CTX_FETCH_PROF_ID_0 0
 	u8 ts_fetch_cache_line_aln_thld;
 	u8 tx_pipe_delay_mode;
 	u8 int_q_state; /* width not needed - internal - DO NOT WRITE!!! */

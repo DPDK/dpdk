@@ -76,6 +76,7 @@ struct ci_tx_queue {
 
 	union {
 		struct { /* ICE driver specific values */
+			struct ice_txtime *tsq; /* Tx Time based queue */
 			uint32_t q_teid; /* TX schedule node id. */
 		};
 		struct { /* I40E driver specific values */
