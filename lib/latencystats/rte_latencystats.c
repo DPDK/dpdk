@@ -12,6 +12,7 @@
 #include <rte_metrics.h>
 #include <rte_memzone.h>
 #include <rte_lcore.h>
+#include <rte_stdatomic.h>
 
 #include "rte_latencystats.h"
 
@@ -38,11 +39,20 @@ timestamp_dynfield(struct rte_mbuf *mbuf)
 			timestamp_dynfield_offset, rte_mbuf_timestamp_t *);
 }
 
+/* Compare two 64 bit timer counter but deal with wraparound correctly. */
+static inline bool tsc_after(uint64_t t0, uint64_t t1)
+{
+	return (int64_t)(t1 - t0) < 0;
+}
+
+#define tsc_before(a, b) tsc_after(b, a)
+
 static const char *MZ_RTE_LATENCY_STATS = "rte_latencystats";
 static int latency_stats_index;
+
+static rte_spinlock_t sample_lock = RTE_SPINLOCK_INITIALIZER;
 static uint64_t samp_intvl;
-static uint64_t timer_tsc;
-static uint64_t prev_tsc;
+static RTE_ATOMIC(uint64_t) next_tsc;
 
 struct rte_latency_stats {
 	float min_latency; /**< Minimum latency in nano seconds */
@@ -124,25 +134,29 @@ add_time_stamps(uint16_t pid __rte_unused,
 		void *user_cb __rte_unused)
 {
 	unsigned int i;
-	uint64_t diff_tsc, now;
+	uint64_t now = rte_rdtsc();
 
-	/*
-	 * For every sample interval,
-	 * time stamp is marked on one received packet.
-	 */
-	now = rte_rdtsc();
-	for (i = 0; i < nb_pkts; i++) {
-		diff_tsc = now - prev_tsc;
-		timer_tsc += diff_tsc;
+	/* Check without locking */
+	if (likely(tsc_before(now, rte_atomic_load_explicit(&next_tsc,
+							    rte_memory_order_relaxed))))
+		return nb_pkts;
 
-		if ((pkts[i]->ol_flags & timestamp_dynflag) == 0
-				&& (timer_tsc >= samp_intvl)) {
-			*timestamp_dynfield(pkts[i]) = now;
-			pkts[i]->ol_flags |= timestamp_dynflag;
-			timer_tsc = 0;
+	/* Try and get sample, skip if sample is being done by other core. */
+	if (likely(rte_spinlock_trylock(&sample_lock))) {
+		for (i = 0; i < nb_pkts; i++) {
+			struct rte_mbuf *m = pkts[i];
+
+			/* skip if already timestamped */
+			if (unlikely(m->ol_flags & timestamp_dynflag))
+				continue;
+
+			m->ol_flags |= timestamp_dynflag;
+			*timestamp_dynfield(m) = now;
+			rte_atomic_store_explicit(&next_tsc, now + samp_intvl,
+						  rte_memory_order_relaxed);
+			break;
 		}
-		prev_tsc = now;
-		now = rte_rdtsc();
+		rte_spinlock_unlock(&sample_lock);
 	}
 
 	return nb_pkts;
@@ -235,6 +249,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	glob_stats = mz->addr;
 	rte_spinlock_init(&glob_stats->lock);
 	samp_intvl = app_samp_intvl * latencystat_cycles_per_ns();
+	next_tsc = rte_rdtsc();
 
 	/** Register latency stats with stats library */
 	for (i = 0; i < NUM_LATENCY_STATS; i++)
