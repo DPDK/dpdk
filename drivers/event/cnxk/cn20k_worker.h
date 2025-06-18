@@ -8,6 +8,7 @@
 #include <rte_event_timer_adapter.h>
 #include <rte_eventdev.h>
 
+#include "cn20k_cryptodev_event_dp.h"
 #include "cn20k_eventdev.h"
 #include "cn20k_rx.h"
 #include "cnxk_worker.h"
@@ -166,7 +167,11 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 
 	u64[0] = (u64[0] & (0x3ull << 32)) << 6 | (u64[0] & (0x3FFull << 36)) << 4 |
 		 (u64[0] & 0xffffffff);
-	if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
+	if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV) {
+		u64[1] = cn20k_cpt_crypto_adapter_dequeue(u64[1]);
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV_VECTOR) {
+		u64[1] = cn20k_cpt_crypto_adapter_vector_dequeue(u64[1]);
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
 		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
 		uintptr_t cpth = 0;
 		uint64_t mbuf;

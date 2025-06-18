@@ -33,6 +33,10 @@ uint16_t __rte_hot cn20k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf 
 __rte_internal
 int cn20k_cryptodev_sec_rx_inject_configure(void *device, uint16_t port_id, bool enable);
 
+__rte_internal
+uint16_t __rte_hot cn20k_cpt_crypto_adapter_enqueue(void *ws, struct rte_event ev[],
+						    uint16_t nb_events);
+
 static __rte_always_inline void __rte_hot
 cn20k_cpt_lmtst_dual_submit(uint64_t *io_addr, const uint16_t lmt_id, int *i)
 {
