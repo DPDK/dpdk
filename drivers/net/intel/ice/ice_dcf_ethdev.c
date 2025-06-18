@@ -1451,8 +1451,7 @@ ice_dcf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
 
-	/* Just set it to default value now. */
-	rss_conf->rss_hf = ICE_RSS_OFFLOAD_ALL;
+	rss_conf->rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 
 	if (!rss_conf->rss_key)
 		return 0;
