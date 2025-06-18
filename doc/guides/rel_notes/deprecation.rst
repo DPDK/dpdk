@@ -59,7 +59,7 @@ Deprecation Notices
 
 * lib: Multiple issues relating to unaligned accesses have been detected using the UBSan checker.
   As part of resolving those issues, alignment in some structures will be updated in 25.11,
-  namely (but not exhaustively): ``struct rte_stack_lf_head`` and ``struct rte_mp_msg``.
+  namely (but not exhaustively): ``struct rte_mp_msg``.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is

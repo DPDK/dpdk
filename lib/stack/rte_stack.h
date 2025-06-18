@@ -33,14 +33,14 @@ struct rte_stack_lf_elem {
 	struct rte_stack_lf_elem *next;	/**< Next pointer */
 };
 
-struct rte_stack_lf_head {
+struct __rte_aligned(16) rte_stack_lf_head {
 	struct rte_stack_lf_elem *top; /**< Stack top */
 	uint64_t cnt; /**< Modification counter for avoiding ABA problem */
 };
 
 struct rte_stack_lf_list {
 	/** List head */
-	alignas(16) struct rte_stack_lf_head head;
+	struct rte_stack_lf_head head;
 	/** List len */
 	RTE_ATOMIC(uint64_t) len;
 };

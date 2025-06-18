@@ -100,6 +100,9 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* stack: The structure ``rte_stack_lf_head`` alignment has been updated to 16 bytes
+  to avoid unaligned accesses.
+
 
 Known Issues
 ------------
