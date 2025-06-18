@@ -847,9 +847,11 @@ test_mempool(void)
 	size_t alignment = 0;
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
-	struct rte_mempool *mp_stack_anon = NULL;
-	struct rte_mempool *mp_stack_mempool_iter = NULL;
+	struct rte_mempool *mp_anon = NULL;
+	struct rte_mempool *mp_mempool_iter = NULL;
+#ifdef RTE_MEMPOOL_STACK
 	struct rte_mempool *mp_stack = NULL;
+#endif
 	struct rte_mempool *default_pool = NULL;
 	struct rte_mempool *mp_alignment = NULL;
 	struct mp_data cb_arg = {
@@ -884,28 +886,28 @@ test_mempool(void)
 	}
 
 	/* create an empty mempool  */
-	mp_stack_anon = rte_mempool_create_empty("test_stack_anon",
+	mp_anon = rte_mempool_create_empty("test_anon",
 		MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE,
 		RTE_MEMPOOL_CACHE_MAX_SIZE, 0,
 		SOCKET_ID_ANY, 0);
 
-	if (mp_stack_anon == NULL)
+	if (mp_anon == NULL)
 		GOTO_ERR(ret, err);
 
 	/* populate an empty mempool */
-	ret = rte_mempool_populate_anon(mp_stack_anon);
+	ret = rte_mempool_populate_anon(mp_anon);
 	printf("%s ret = %d\n", __func__, ret);
 	if (ret < 0)
 		GOTO_ERR(ret, err);
 
 	/* Try to populate when already populated */
-	ret = rte_mempool_populate_anon(mp_stack_anon);
+	ret = rte_mempool_populate_anon(mp_anon);
 	if (ret != 0)
 		GOTO_ERR(ret, err);
 
 	/* create a mempool  */
-	mp_stack_mempool_iter = rte_mempool_create("test_iter_obj",
+	mp_mempool_iter = rte_mempool_create("test_iter_obj",
 		MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE,
 		RTE_MEMPOOL_CACHE_MAX_SIZE, 0,
@@ -913,20 +915,21 @@ test_mempool(void)
 		my_obj_init, NULL,
 		SOCKET_ID_ANY, 0);
 
-	if (mp_stack_mempool_iter == NULL)
+	if (mp_mempool_iter == NULL)
 		GOTO_ERR(ret, err);
 
 	/* test to initialize mempool objects and memory */
-	nb_objs = rte_mempool_obj_iter(mp_stack_mempool_iter, my_obj_init,
+	nb_objs = rte_mempool_obj_iter(mp_mempool_iter, my_obj_init,
 			NULL);
 	if (nb_objs == 0)
 		GOTO_ERR(ret, err);
 
-	nb_mem_chunks = rte_mempool_mem_iter(mp_stack_mempool_iter,
+	nb_mem_chunks = rte_mempool_mem_iter(mp_mempool_iter,
 			test_mp_mem_init, &cb_arg);
 	if (nb_mem_chunks == 0 || cb_arg.ret < 0)
 		GOTO_ERR(ret, err);
 
+#ifdef RTE_MEMPOOL_STACK
 	/* create a mempool with an external handler */
 	mp_stack = rte_mempool_create_empty("test_stack",
 		MEMPOOL_SIZE,
@@ -947,6 +950,7 @@ test_mempool(void)
 		GOTO_ERR(ret, err);
 	}
 	rte_mempool_obj_iter(mp_stack, my_obj_init, NULL);
+#endif /* RTE_MEMPOOL_STACK */
 
 	/* Create a mempool based on Default handler */
 	printf("Testing %s mempool handler\n", default_pool_ops);
@@ -1077,9 +1081,11 @@ test_mempool(void)
 	if (test_mempool_same_name_twice_creation() < 0)
 		GOTO_ERR(ret, err);
 
+#ifdef RTE_MEMPOOL_STACK
 	/* test the stack handler */
 	if (test_mempool_basic(mp_stack, 1) < 0)
 		GOTO_ERR(ret, err);
+#endif
 
 	if (test_mempool_basic(default_pool, 1) < 0)
 		GOTO_ERR(ret, err);
@@ -1105,9 +1111,11 @@ test_mempool(void)
 err:
 	rte_mempool_free(mp_nocache);
 	rte_mempool_free(mp_cache);
-	rte_mempool_free(mp_stack_anon);
-	rte_mempool_free(mp_stack_mempool_iter);
+	rte_mempool_free(mp_anon);
+	rte_mempool_free(mp_mempool_iter);
+#ifdef RTE_MEMPOOL_STACK
 	rte_mempool_free(mp_stack);
+#endif
 	rte_mempool_free(default_pool);
 	rte_mempool_free(mp_alignment);
 
