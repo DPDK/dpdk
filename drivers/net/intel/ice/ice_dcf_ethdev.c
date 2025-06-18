@@ -1393,6 +1393,26 @@ ice_dcf_dev_rss_reta_query(struct rte_eth_dev *dev,
 }
 
 static int
+ice_dcf_set_rss_key(struct ice_dcf_hw *hw, uint8_t *key, uint8_t key_len)
+{
+	/* HENA setting, it is enabled by default, no change */
+	if (!key || key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		return 0;
+	} else if (key_len != hw->vf_res->rss_key_size) {
+		PMD_DRV_LOG(ERR, "The size of hash key configured "
+			"(%d) doesn't match the size of hardware can "
+			"support (%d)", key_len,
+			hw->vf_res->rss_key_size);
+		return -EINVAL;
+	}
+
+	rte_memcpy(hw->rss_key, key, key_len);
+
+	return ice_dcf_configure_rss_key(hw);
+}
+
+static int
 ice_dcf_dev_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
@@ -1403,21 +1423,8 @@ ice_dcf_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (!(hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF))
 		return -ENOTSUP;
 
-	/* HENA setting, it is enabled by default, no change */
-	if (!rss_conf->rss_key || rss_conf->rss_key_len == 0) {
-		PMD_DRV_LOG(DEBUG, "No key to be configured");
-		return 0;
-	} else if (rss_conf->rss_key_len != hw->vf_res->rss_key_size) {
-		PMD_DRV_LOG(ERR, "The size of hash key configured "
-			"(%d) doesn't match the size of hardware can "
-			"support (%d)", rss_conf->rss_key_len,
-			hw->vf_res->rss_key_size);
-		return -EINVAL;
-	}
-
-	rte_memcpy(hw->rss_key, rss_conf->rss_key, rss_conf->rss_key_len);
-
-	ret = ice_dcf_configure_rss_key(hw);
+	/* set hash key */
+	ret = ice_dcf_set_rss_key(hw, rss_conf->rss_key, rss_conf->rss_key_len);
 	if (ret)
 		return ret;
 
