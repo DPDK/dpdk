@@ -409,10 +409,10 @@ generate_subkey(struct rte_thash_ctx *ctx, struct thash_lfsr *lfsr,
 static inline uint32_t
 get_subvalue(struct rte_thash_ctx *ctx, uint32_t offset)
 {
-	uint32_t *tmp, val;
+	uint32_t tmp, val;
 
-	tmp = (uint32_t *)(&ctx->hash_key[offset >> 3]);
-	val = rte_be_to_cpu_32(*tmp);
+	tmp = *(unaligned_uint32_t *)&ctx->hash_key[offset >> 3];
+	val = rte_be_to_cpu_32(tmp);
 	val >>= (TOEPLITZ_HASH_LEN - ((offset & (CHAR_BIT - 1)) +
 		ctx->reta_sz_log));
 
