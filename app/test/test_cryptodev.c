@@ -13246,6 +13246,7 @@ test_multi_session(void)
 
 		/* free crypto operation structure */
 		rte_crypto_op_free(ut_params->op);
+		ut_params->op = NULL;
 
 		/*
 		 * free mbuf - both obuf and ibuf are usually the same,
@@ -13387,6 +13388,7 @@ test_multi_session_random_usage(void)
 					ut_paramz[j].iv);
 
 		rte_crypto_op_free(ut_paramz[j].ut_params.op);
+		ut_paramz[j].ut_params.op = NULL;
 
 		/*
 		 * free mbuf - both obuf and ibuf are usually the same,
