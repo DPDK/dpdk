@@ -2664,7 +2664,7 @@ dlb2_eventdev_port_unlink(struct rte_eventdev *dev, void *event_port,
 		DLB2_LOG_LINE_DBG("dlb2: ignore unlink from dir port %d",
 			     ev_port->id);
 		rte_errno = 0;
-		return nb_unlinks; /* as if success */
+		goto ret_credits;
 	}
 
 	dlb2 = ev_port->dlb2;
