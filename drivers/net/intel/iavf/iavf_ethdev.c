@@ -622,7 +622,7 @@ iavf_dev_vlan_insert_set(struct rte_eth_dev *dev)
 		return 0;
 
 	enable = !!(dev->data->dev_conf.txmode.offloads &
-		    RTE_ETH_TX_OFFLOAD_VLAN_INSERT);
+		    (RTE_ETH_TX_OFFLOAD_VLAN_INSERT | RTE_ETH_TX_OFFLOAD_QINQ_INSERT));
 	iavf_config_vlan_insert_v2(adapter, enable);
 
 	return 0;
@@ -1157,7 +1157,6 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->tx_offload_capa =
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
-		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
@@ -1180,6 +1179,11 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2 &&
+			vf->vlan_v2_caps.offloads.insertion_support.inner &&
+			vf->vlan_v2_caps.offloads.insertion_support.outer)
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 
 	if (iavf_ipsec_crypto_supported(adapter)) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
