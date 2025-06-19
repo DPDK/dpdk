@@ -1956,4 +1956,22 @@ int dlb2_hw_enable_cq_weight(struct dlb2_hw *hw,
 			     bool vdev_request,
 			     unsigned int vdev_id);
 
+/**
+ * This function configures the inflight control threshold for a cq.
+ *
+ * This must be called after creating the port.
+ *
+ * Return:
+ * Returns 0 upon success, < 0 otherwise. If an error occurs, resp->status is
+ * assigned a detailed error code from enum dlb2_error. If successful, resp->id
+ * contains the queue ID.
+ *
+ * Errors:
+ * EINVAL - The domain or port is not configured.
+ */
+int dlb2_hw_set_cq_inflight_ctrl(struct dlb2_hw *hw, u32 domain_id,
+			struct dlb2_cq_inflight_ctrl_args *args,
+			struct dlb2_cmd_response *resp,
+			bool vdev_request, unsigned int vdev_id);
+
 #endif /* __DLB2_RESOURCE_H */

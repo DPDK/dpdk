@@ -367,6 +367,7 @@ dlb2_pf_ldb_port_create(struct dlb2_hw_dev *handle,
 				      cfg,
 				      cq_base,
 				      &response);
+	cfg->response = response;
 	if (ret)
 		goto create_port_err;
 
@@ -449,6 +450,9 @@ dlb2_pf_dir_port_create(struct dlb2_hw_dev *handle,
 				      cfg,
 				      cq_base,
 				      &response);
+
+	cfg->response = response;
+
 	if (ret)
 		goto create_port_err;
 
@@ -680,6 +684,26 @@ dlb2_pf_enable_cq_weight(struct dlb2_hw_dev *handle,
 }
 
 static int
+dlb2_pf_set_cq_inflight_ctrl(struct dlb2_hw_dev *handle,
+			     struct dlb2_cq_inflight_ctrl_args *args)
+{
+	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)handle->pf_dev;
+	struct dlb2_cmd_response response = {0};
+	int ret = 0;
+
+	DLB2_INFO(dev->dlb2_device, "Entering %s()\n", __func__);
+
+	ret = dlb2_hw_set_cq_inflight_ctrl(&dlb2_dev->hw, handle->domain_id,
+					   args, &response, false, 0);
+	args->response = response;
+
+	DLB2_INFO(dev->dlb2_device, "Exiting %s() with ret=%d",
+		  __func__, ret);
+
+	return ret;
+}
+
+static int
 dlb2_pf_set_cos_bandwidth(struct dlb2_hw_dev *handle,
 			  struct dlb2_set_cos_bw_args *args)
 {
@@ -724,6 +748,7 @@ dlb2_pf_iface_fn_ptrs_init(void)
 	dlb2_iface_get_sn_occupancy = dlb2_pf_get_sn_occupancy;
 	dlb2_iface_enable_cq_weight = dlb2_pf_enable_cq_weight;
 	dlb2_iface_set_cos_bw = dlb2_pf_set_cos_bandwidth;
+	dlb2_iface_set_cq_inflight_ctrl = dlb2_pf_set_cq_inflight_ctrl;
 }
 
 /* PCI DEV HOOKS */
@@ -743,7 +768,9 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		.hw_credit_quanta = DLB2_SW_CREDIT_BATCH_SZ,
 		.default_depth_thresh = DLB2_DEPTH_THRESH_DEFAULT,
 		.max_cq_depth = DLB2_DEFAULT_CQ_DEPTH,
-		.max_enq_depth = DLB2_MAX_ENQUEUE_DEPTH
+		.max_enq_depth = DLB2_MAX_ENQUEUE_DEPTH,
+		.use_default_hl = true,
+		.alloc_hl_entries = 0
 	};
 	struct dlb2_eventdev *dlb2;
 	int q;
