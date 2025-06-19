@@ -4253,7 +4253,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 					    dev->data->port_id);
 			} else if (check_ret == IAVF_VECTOR_CTX_OFFLOAD_PATH) {
 				PMD_DRV_LOG(DEBUG,
-					"AVX2 does not support outer checksum offload.");
+					"AVX2 does not support requested Tx offloads.");
 				goto normal;
 			} else {
 				tx_burst_type = IAVF_TX_AVX2_OFFLOAD;

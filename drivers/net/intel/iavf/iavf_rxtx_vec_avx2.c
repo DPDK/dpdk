@@ -1631,14 +1631,14 @@ iavf_recv_scattered_pkts_vec_avx2_flex_rxd_offload(void *rx_queue,
 
 static __rte_always_inline void
 iavf_vtx1(volatile struct iavf_tx_desc *txdp,
-	  struct rte_mbuf *pkt, uint64_t flags, bool offload)
+	  struct rte_mbuf *pkt, uint64_t flags, bool offload, uint8_t vlan_flag)
 {
 	uint64_t high_qw =
 		(IAVF_TX_DESC_DTYPE_DATA |
 		 ((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT) |
 		 ((uint64_t)pkt->data_len << IAVF_TXD_QW1_TX_BUF_SZ_SHIFT));
 	if (offload)
-		iavf_txd_enable_offload(pkt, &high_qw);
+		iavf_txd_enable_offload(pkt, &high_qw, vlan_flag);
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 				pkt->buf_iova + pkt->data_off);
@@ -1647,14 +1647,14 @@ iavf_vtx1(volatile struct iavf_tx_desc *txdp,
 
 static __rte_always_inline void
 iavf_vtx(volatile struct iavf_tx_desc *txdp,
-	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags, bool offload)
+	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags, bool offload, uint8_t vlan_flag)
 {
 	const uint64_t hi_qw_tmpl = (IAVF_TX_DESC_DTYPE_DATA |
 			((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT));
 
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
-		iavf_vtx1(txdp, *pkt, flags, offload);
+		iavf_vtx1(txdp, *pkt, flags, offload, vlan_flag);
 		nb_pkts--, txdp++, pkt++;
 	}
 
@@ -1665,25 +1665,25 @@ iavf_vtx(volatile struct iavf_tx_desc *txdp,
 			((uint64_t)pkt[3]->data_len <<
 			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
 		if (offload)
-			iavf_txd_enable_offload(pkt[3], &hi_qw3);
+			iavf_txd_enable_offload(pkt[3], &hi_qw3, vlan_flag);
 		uint64_t hi_qw2 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[2]->data_len <<
 			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
 		if (offload)
-			iavf_txd_enable_offload(pkt[2], &hi_qw2);
+			iavf_txd_enable_offload(pkt[2], &hi_qw2, vlan_flag);
 		uint64_t hi_qw1 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[1]->data_len <<
 			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
 		if (offload)
-			iavf_txd_enable_offload(pkt[1], &hi_qw1);
+			iavf_txd_enable_offload(pkt[1], &hi_qw1, vlan_flag);
 		uint64_t hi_qw0 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[0]->data_len <<
 			 IAVF_TXD_QW1_TX_BUF_SZ_SHIFT);
 		if (offload)
-			iavf_txd_enable_offload(pkt[0], &hi_qw0);
+			iavf_txd_enable_offload(pkt[0], &hi_qw0, vlan_flag);
 
 		__m256i desc2_3 =
 			_mm256_set_epi64x
@@ -1703,7 +1703,7 @@ iavf_vtx(volatile struct iavf_tx_desc *txdp,
 
 	/* do any last ones */
 	while (nb_pkts) {
-		iavf_vtx1(txdp, *pkt, flags, offload);
+		iavf_vtx1(txdp, *pkt, flags, offload, vlan_flag);
 		txdp++, pkt++, nb_pkts--;
 	}
 }
@@ -1738,11 +1738,11 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (nb_commit >= n) {
 		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
 
-		iavf_vtx(txdp, tx_pkts, n - 1, flags, offload);
+		iavf_vtx(txdp, tx_pkts, n - 1, flags, offload, txq->vlan_flag);
 		tx_pkts += (n - 1);
 		txdp += (n - 1);
 
-		iavf_vtx1(txdp, *tx_pkts++, rs, offload);
+		iavf_vtx1(txdp, *tx_pkts++, rs, offload, txq->vlan_flag);
 
 		nb_commit = (uint16_t)(nb_commit - n);
 
@@ -1756,7 +1756,7 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
 
-	iavf_vtx(txdp, tx_pkts, nb_commit, flags, offload);
+	iavf_vtx(txdp, tx_pkts, nb_commit, flags, offload, txq->vlan_flag);
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
