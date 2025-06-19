@@ -347,7 +347,7 @@ struct dlb2_port {
 	bool gen_bit;
 	uint16_t dir_credits;
 	uint32_t dequeue_depth;
-	enum dlb2_token_pop_mode token_pop_mode;
+	enum rte_pmd_dlb2_token_pop_mode token_pop_mode;
 	union dlb2_port_config cfg;
 	RTE_ATOMIC(uint32_t) *credit_pool[DLB2_NUM_QUEUE_TYPES];
 	union {

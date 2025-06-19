@@ -1671,7 +1671,7 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	/* The default enqueue functions do not include delayed-pop support for
 	 * performance reasons.
 	 */
-	if (qm_port->token_pop_mode == DELAYED_POP) {
+	if (qm_port->token_pop_mode == RTE_PMD_DLB2_DELAYED_POP) {
 		dlb2->event_dev->enqueue_burst =
 			dlb2_event_enqueue_burst_delayed;
 		dlb2->event_dev->enqueue_new_burst =
@@ -1880,7 +1880,7 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 	qm_port->dequeue_depth = dequeue_depth;
 
 	/* Directed ports are auto-pop, by default. */
-	qm_port->token_pop_mode = AUTO_POP;
+	qm_port->token_pop_mode = RTE_PMD_DLB2_AUTO_POP;
 	qm_port->owed_tokens = 0;
 	qm_port->issued_releases = 0;
 
@@ -3132,7 +3132,7 @@ __dlb2_event_enqueue_burst_reorder(void *event_port,
 		}
 		}
 
-		if (use_delayed && qm_port->token_pop_mode == DELAYED_POP &&
+		if (use_delayed && qm_port->token_pop_mode == RTE_PMD_DLB2_DELAYED_POP &&
 		    (events[i].op == RTE_EVENT_OP_FORWARD ||
 		     events[i].op == RTE_EVENT_OP_RELEASE) &&
 		    qm_port->issued_releases >= thresh - 1) {
@@ -3237,7 +3237,7 @@ __dlb2_event_enqueue_burst(void *event_port,
 			int ret;
 
 			if (use_delayed &&
-			    qm_port->token_pop_mode == DELAYED_POP &&
+			    qm_port->token_pop_mode == RTE_PMD_DLB2_DELAYED_POP &&
 			    (ev->op == RTE_EVENT_OP_FORWARD ||
 			     ev->op == RTE_EVENT_OP_RELEASE) &&
 			    qm_port->issued_releases >= thresh - 1) {
@@ -3387,7 +3387,7 @@ dlb2_event_release(struct dlb2_eventdev *dlb2,
 		for (; j < DLB2_NUM_QES_PER_CACHE_LINE && (i + j) < n; j++) {
 			int16_t thresh = qm_port->token_pop_thresh;
 
-			if (qm_port->token_pop_mode == DELAYED_POP &&
+			if (qm_port->token_pop_mode == RTE_PMD_DLB2_DELAYED_POP &&
 			    qm_port->issued_releases >= thresh - 1) {
 				/* Insert the token pop QE */
 				dlb2_construct_token_pop_qe(qm_port, j);
@@ -4131,7 +4131,7 @@ dlb2_hw_dequeue_sparse(struct dlb2_eventdev *dlb2,
 	qm_port->owed_tokens += num;
 
 	if (num) {
-		if (qm_port->token_pop_mode == AUTO_POP)
+		if (qm_port->token_pop_mode == RTE_PMD_DLB2_AUTO_POP)
 			dlb2_consume_qe_immediate(qm_port, num);
 
 		ev_port->outstanding_releases += num;
@@ -4259,7 +4259,7 @@ dlb2_hw_dequeue(struct dlb2_eventdev *dlb2,
 	qm_port->owed_tokens += num;
 
 	if (num) {
-		if (qm_port->token_pop_mode == AUTO_POP)
+		if (qm_port->token_pop_mode == RTE_PMD_DLB2_AUTO_POP)
 			dlb2_consume_qe_immediate(qm_port, num);
 
 		ev_port->outstanding_releases += num;
@@ -4296,7 +4296,7 @@ dlb2_event_dequeue_burst(void *event_port, struct rte_event *ev, uint16_t num,
 					order->enq_reorder[i].u64[1] = release_u64;
 
 			__dlb2_event_enqueue_burst_reorder(event_port, NULL, 0,
-						   qm_port->token_pop_mode == DELAYED_POP);
+					qm_port->token_pop_mode == RTE_PMD_DLB2_DELAYED_POP);
 		} else {
 			dlb2_event_release(dlb2, ev_port->id, out_rels);
 		}
@@ -4304,7 +4304,7 @@ dlb2_event_dequeue_burst(void *event_port, struct rte_event *ev, uint16_t num,
 		DLB2_INC_STAT(ev_port->stats.tx_implicit_rel, out_rels);
 	}
 
-	if (qm_port->token_pop_mode == DEFERRED_POP && qm_port->owed_tokens)
+	if (qm_port->token_pop_mode == RTE_PMD_DLB2_DEFERRED_POP && qm_port->owed_tokens)
 		dlb2_consume_qe_immediate(qm_port, qm_port->owed_tokens);
 
 	cnt = dlb2_hw_dequeue(dlb2, ev_port, ev, num, wait);
@@ -4345,7 +4345,8 @@ dlb2_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 					if (num_releases == RTE_DIM(release_burst)) {
 						__dlb2_event_enqueue_burst_reorder(event_port,
 							release_burst, RTE_DIM(release_burst),
-							qm_port->token_pop_mode == DELAYED_POP);
+							qm_port->token_pop_mode ==
+									RTE_PMD_DLB2_DELAYED_POP);
 						num_releases = 0;
 					}
 				}
@@ -4353,7 +4354,8 @@ dlb2_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 
 			if (num_releases)
 				__dlb2_event_enqueue_burst_reorder(event_port, release_burst
-					, num_releases, qm_port->token_pop_mode == DELAYED_POP);
+					, num_releases,
+					qm_port->token_pop_mode == RTE_PMD_DLB2_DELAYED_POP);
 		} else {
 			dlb2_event_release(dlb2, ev_port->id, out_rels);
 		}
@@ -4362,7 +4364,7 @@ dlb2_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 		DLB2_INC_STAT(ev_port->stats.tx_implicit_rel, out_rels);
 	}
 
-	if (qm_port->token_pop_mode == DEFERRED_POP && qm_port->owed_tokens)
+	if (qm_port->token_pop_mode == RTE_PMD_DLB2_DEFERRED_POP && qm_port->owed_tokens)
 		dlb2_consume_qe_immediate(qm_port, qm_port->owed_tokens);
 
 	cnt = dlb2_hw_dequeue_sparse(dlb2, ev_port, ev, num, wait);
@@ -4804,7 +4806,7 @@ dlb2_primary_eventdev_probe(struct rte_eventdev *dev,
 
 	/* Initialize each port's token pop mode */
 	for (i = 0; i < DLB2_MAX_NUM_PORTS(dlb2->version); i++)
-		dlb2->ev_ports[i].qm_port.token_pop_mode = AUTO_POP;
+		dlb2->ev_ports[i].qm_port.token_pop_mode = RTE_PMD_DLB2_AUTO_POP;
 
 	rte_spinlock_init(&dlb2->qm_instance.resource_lock);
 
