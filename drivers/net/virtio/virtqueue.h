@@ -144,7 +144,6 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 
 #define VTNET_SQ_RQ_QUEUE_IDX 0
 #define VTNET_SQ_TQ_QUEUE_IDX 1
-#define VTNET_SQ_CQ_QUEUE_IDX 2
 
 enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
 /**
