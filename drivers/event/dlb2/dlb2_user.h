@@ -472,6 +472,8 @@ struct dlb2_create_ldb_port_args {
 	__u16 cq_history_list_size;
 	__u8 cos_id;
 	__u8 cos_strict;
+	__u8 enable_inflight_ctrl;
+	__u16 inflight_threshold;
 };
 
 /*
@@ -715,6 +717,28 @@ struct dlb2_enable_cq_weight_args {
 	/* Input parameters */
 	__u32 port_id;
 	__u32 limit;
+};
+
+/*
+ * DLB2_DOMAIN_CMD_SET_CQ_INFLIGHT_CTRL: Set Per-CQ inflight control for
+ *  {ATM,UNO,ORD} QEs.
+ *
+ * Input parameters:
+ * - port_id: Load-balanced port ID.
+ * - enable: True if inflight control is enabled. False otherwise
+ * - threshold: Per CQ inflight threshold.
+ *
+ * Output parameters:
+ * - response.status: Detailed error code. In certain cases, such as if the
+ *	ioctl request arg is invalid, the driver won't set status.
+ */
+struct dlb2_cq_inflight_ctrl_args {
+	/* Output parameters */
+	struct dlb2_cmd_response response;
+	/* Input parameters */
+	__u32 port_id;
+	__u16 enable;
+	__u16 threshold;
 };
 
 /*
