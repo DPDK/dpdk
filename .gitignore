@@ -5,6 +5,7 @@
 !.github/
 !.gitignore*
 !.mailmap*
+!.devcontainer/
 
 # ignore generated documentation tables
 doc/guides/nics/overview_table.txt

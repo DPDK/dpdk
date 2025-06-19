@@ -1,0 +1,36 @@
+{
+  "name": "DPDK Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  // コンテナ実行時に渡す引数
+  "runArgs": [
+    "--privileged",
+    "--network=host",
+    // DPDKデバイスアクセス用
+    "--volume=/sys/bus/pci/devices:/sys/bus/pci/devices",
+    // Hugepages制御用
+    "--volume=/sys/kernel/mm/hugepages:/sys/kernel/mm/hugepages",
+    // Hugepagesアクセス用
+    "--volume=/dev/hugepages:/dev/hugepages",
+    // lspciやlsmodなどがカーネルモジュール情報を参照するために必要
+    "--volume=/lib/modules:/lib/modules:ro"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-azure-tools.vscode-docker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  // コンテナ起動時に実行するコマンド
+  // 以前に作成したbuildディレクトリがあれば削除。Mesonでビルド設定を行い、Ninjaでビルドを実行
+  "postCreateCommand": "rm -rf build && meson setup build -Dexamples=all && ninja -C build",
+  "remoteUser": "root"
+}
