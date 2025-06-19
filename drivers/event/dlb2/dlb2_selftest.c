@@ -1105,13 +1105,13 @@ test_deferred_sched(void)
 		return -1;
 	}
 
-	ret = rte_pmd_dlb2_set_token_pop_mode(evdev, 0, DEFERRED_POP);
+	ret = rte_pmd_dlb2_set_token_pop_mode(evdev, 0, RTE_PMD_DLB2_DEFERRED_POP);
 	if (ret < 0) {
 		printf("%d: Error setting deferred scheduling\n", __LINE__);
 		goto err;
 	}
 
-	ret = rte_pmd_dlb2_set_token_pop_mode(evdev, 1, DEFERRED_POP);
+	ret = rte_pmd_dlb2_set_token_pop_mode(evdev, 1, RTE_PMD_DLB2_DEFERRED_POP);
 	if (ret < 0) {
 		printf("%d: Error setting deferred scheduling\n", __LINE__);
 		goto err;
@@ -1257,7 +1257,7 @@ test_delayed_pop(void)
 		return -1;
 	}
 
-	ret = rte_pmd_dlb2_set_token_pop_mode(evdev, 0, DELAYED_POP);
+	ret = rte_pmd_dlb2_set_token_pop_mode(evdev, 0, RTE_PMD_DLB2_DELAYED_POP);
 	if (ret < 0) {
 		printf("%d: Error setting deferred scheduling\n", __LINE__);
 		goto err;
