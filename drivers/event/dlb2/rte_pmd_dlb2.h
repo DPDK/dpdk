@@ -45,7 +45,7 @@ extern "C" {
 
 /**
  * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ * @b EXPERIMENTAL: these enums may change, or be removed, without prior notice
  *
  * Selects the token pop mode for a DLB2 port.
  */
@@ -63,7 +63,7 @@ enum dlb2_token_pop_mode {
 	NUM_TOKEN_POP_MODES
 };
 
-/*!
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
  *
@@ -91,6 +91,57 @@ rte_pmd_dlb2_set_token_pop_mode(uint8_t dev_id,
 				uint8_t port_id,
 				enum dlb2_token_pop_mode mode);
 
+/** Set inflight threshold for flow migration */
+#define DLB2_SET_PORT_FLOW_MIGRATION_THRESHOLD RTE_BIT64(0)
+
+/** Set port history list */
+#define DLB2_SET_PORT_HL RTE_BIT64(1)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * Sets TDT threshold and HL size for a DLB2 port.
+ */
+struct rte_pmd_dlb2_port_param {
+	uint16_t inflight_threshold : 12;
+	/**< Inflight threshold for re-enabling the event port after TDT trigger
+	 *   disables it
+	 */
+	uint16_t port_hl;
+	/**< Number of History List entries allocated to a DLB Loadbalance port.
+	 */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Configure various port parameters.
+ * This function must be called before calling rte_event_port_setup()
+ * for the port, and after calling rte_event_dev_configure().
+ *
+ * @param dev_id
+ *    The identifier of the event device.
+ * @param port_id
+ *    The identifier of the event port.
+ * @param flags
+ *    Bitmask of the parameters being set.
+ * @param val
+ *    Structure containing the values of parameters being set.
+ *
+ * @return
+ * - 0: Success
+ * - EINVAL: Invalid dev_id, port_id, or mode
+ * - EINVAL: The DLB2 is not configured, is already running, or the port is
+ *   already setup
+ */
+__rte_experimental
+int
+rte_pmd_dlb2_set_port_param(uint8_t dev_id,
+			    uint8_t port_id,
+			    uint64_t flags,
+			    struct rte_pmd_dlb2_port_param *val);
 #ifdef __cplusplus
 }
 #endif
