@@ -10885,9 +10885,21 @@ flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *key,
 
 	MLX5_ASSERT(wks);
 	if (pid_v && pid_v->id == MLX5_PORT_ESW_MGR) {
-		flow_dv_translate_item_source_vport(key,
-				key_type & MLX5_SET_MATCHER_V ?
-				mlx5_flow_get_esw_manager_vport_id(dev) : 0xffff);
+		priv = dev->data->dev_private;
+		if (priv->sh->dev_cap.esw_info.regc_mask) {
+			if (key_type & MLX5_SET_MATCHER_M) {
+				vport_meta = priv->sh->dev_cap.esw_info.regc_mask;
+			} else {
+				vport_meta = priv->sh->dev_cap.esw_info.regc_value;
+				wks->vport_meta_tag = vport_meta;
+			}
+			flow_dv_translate_item_meta_vport(key, vport_meta,
+							  priv->sh->dev_cap.esw_info.regc_mask);
+		} else {
+			flow_dv_translate_item_source_vport(key,
+					key_type & MLX5_SET_MATCHER_V ?
+					mlx5_flow_get_esw_manager_vport_id(dev) : 0xffff);
+		}
 		return 0;
 	}
 	mask = pid_m ? pid_m->id : 0xffff;
