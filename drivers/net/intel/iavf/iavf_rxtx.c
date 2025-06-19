@@ -4227,16 +4227,16 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		if (check_ret == IAVF_VECTOR_PATH) {
 			use_sse = true;
 		}
-		if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
-		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-			use_avx2 = true;
 #ifdef CC_AVX512_SUPPORT
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 			use_avx512 = true;
 #endif
+		if (!use_avx512 && (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+		     rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
+			use_avx2 = true;
 
 		if (!use_sse && !use_avx2 && !use_avx512)
 			goto normal;
