@@ -801,17 +801,32 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			&adapter->vf.vlan_v2_caps.offloads.insertion_support;
 		uint32_t insertion_cap;
 
-		if (insertion_support->outer)
-			insertion_cap = insertion_support->outer;
-		else
-			insertion_cap = insertion_support->inner;
+		if (insertion_support->outer == VIRTCHNL_VLAN_UNSUPPORTED ||
+				insertion_support->inner == VIRTCHNL_VLAN_UNSUPPORTED) {
+			/* Only one insertion is supported. */
+			if (insertion_support->outer)
+				insertion_cap = insertion_support->outer;
+			else
+				insertion_cap = insertion_support->inner;
 
-		if (insertion_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1) {
-			txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1;
-			PMD_INIT_LOG(DEBUG, "VLAN insertion_cap: L2TAG1");
-		} else if (insertion_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG2) {
-			txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2;
-			PMD_INIT_LOG(DEBUG, "VLAN insertion_cap: L2TAG2");
+			if (insertion_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1) {
+				txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1;
+				PMD_INIT_LOG(DEBUG, "VLAN insertion_cap: L2TAG1");
+			} else if (insertion_cap & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG2) {
+				txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2;
+				PMD_INIT_LOG(DEBUG, "VLAN insertion_cap: L2TAG2");
+			}
+		} else {
+			 /* Both outer and inner insertion supported. */
+			if (insertion_support->inner & VIRTCHNL_VLAN_TAG_LOCATION_L2TAG1) {
+				txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1;
+				PMD_INIT_LOG(DEBUG, "Inner VLAN insertion_cap: L2TAG1");
+				PMD_INIT_LOG(DEBUG, "Outer VLAN insertion_cap: L2TAG2");
+			} else {
+				txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2;
+				PMD_INIT_LOG(DEBUG, "Inner VLAN insertion_cap: L2TAG2");
+				PMD_INIT_LOG(DEBUG, "Outer VLAN insertion_cap: L2TAG1");
+			}
 		}
 	} else {
 		txq->vlan_flag = IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1;
@@ -2388,7 +2403,7 @@ iavf_calc_context_desc(struct rte_mbuf *mb, uint8_t vlan_flag)
 	uint64_t flags = mb->ol_flags;
 	if (flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG |
 	    RTE_MBUF_F_TX_TUNNEL_MASK | RTE_MBUF_F_TX_OUTER_IP_CKSUM |
-	    RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
+	    RTE_MBUF_F_TX_OUTER_UDP_CKSUM | RTE_MBUF_F_TX_QINQ))
 		return 1;
 	if (flags & RTE_MBUF_F_TX_VLAN &&
 	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
@@ -2410,8 +2425,9 @@ iavf_fill_ctx_desc_cmd_field(volatile uint64_t *field, struct rte_mbuf *m,
 	if (m->ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))
 		cmd = IAVF_TX_CTX_DESC_TSO << IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
-	if (m->ol_flags & RTE_MBUF_F_TX_VLAN &&
-			vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
+	if ((m->ol_flags & RTE_MBUF_F_TX_VLAN &&
+			vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) ||
+			m->ol_flags & RTE_MBUF_F_TX_QINQ) {
 		cmd |= IAVF_TX_CTX_DESC_IL2TAG2
 			<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 	}
@@ -2586,6 +2602,10 @@ iavf_fill_context_desc(volatile struct iavf_tx_context_desc *desc,
 
 	if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
 		desc->l2tag2 = m->vlan_tci;
+
+	if (m->ol_flags & RTE_MBUF_F_TX_QINQ)
+		desc->l2tag2 = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 ? m->vlan_tci :
+										m->vlan_tci_outer;
 }
 
 
@@ -2638,6 +2658,13 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 			m->ol_flags & RTE_MBUF_F_TX_VLAN) {
 		command |= (uint64_t)IAVF_TX_DESC_CMD_IL2TAG1;
 		l2tag1 |= m->vlan_tci;
+	}
+
+	/* Descriptor based QinQ insertion */
+	if (m->ol_flags & RTE_MBUF_F_TX_QINQ) {
+		command |= (uint64_t)IAVF_TX_DESC_CMD_IL2TAG1;
+		l2tag1 = vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1 ? m->vlan_tci :
+									m->vlan_tci_outer;
 	}
 
 	if ((m->ol_flags &
