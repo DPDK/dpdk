@@ -12,7 +12,7 @@
 int
 rte_pmd_dlb2_set_token_pop_mode(uint8_t dev_id,
 				uint8_t port_id,
-				enum dlb2_token_pop_mode mode)
+				enum rte_pmd_dlb2_token_pop_mode mode)
 {
 	struct dlb2_eventdev *dlb2;
 	struct rte_eventdev *dev;
@@ -22,7 +22,7 @@ rte_pmd_dlb2_set_token_pop_mode(uint8_t dev_id,
 
 	dlb2 = dlb2_pmd_priv(dev);
 
-	if (mode >= NUM_TOKEN_POP_MODES)
+	if (mode >= RTE_PMD_DLB2_NUM_TOKEN_POP_MODES)
 		return -EINVAL;
 
 	/* The event device must be configured, but not yet started */
