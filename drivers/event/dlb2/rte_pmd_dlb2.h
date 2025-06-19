@@ -20,6 +20,12 @@ extern "C" {
 #include <rte_compat.h>
 
 /**
+ * Macro function to get QID depth of rte_event metadata.
+ * Currently lower 2 bits of 'rsvd' field are used to store QID depth.
+ */
+ #define RTE_PMD_DLB2_GET_QID_DEPTH(x) ((x)->rsvd & 0x3)
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
  *
