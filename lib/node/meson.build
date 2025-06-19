@@ -23,6 +23,7 @@ sources = files(
         'kernel_rx.c',
         'kernel_tx.c',
         'log.c',
+        'node_mbuf_dynfield.c',
         'null.c',
         'pkt_cls.c',
         'pkt_drop.c',
@@ -32,6 +33,7 @@ headers = files(
         'rte_node_eth_api.h',
         'rte_node_ip4_api.h',
         'rte_node_ip6_api.h',
+        'rte_node_mbuf_dynfield.h',
         'rte_node_pkt_cls_api.h',
         'rte_node_udp4_input_api.h',
 )
