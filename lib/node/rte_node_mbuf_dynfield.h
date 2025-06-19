@@ -47,6 +47,15 @@ extern "C" {
  */
 typedef struct rte_node_mbuf_overload_fields {
 	union {
+		/* Following fields used by ip[4|6]-lookup -> ip[4|6]-rewrite nodes */
+		union {
+			struct {
+				uint16_t nh;
+				uint16_t ttl;
+				uint32_t cksum;
+			};
+			uint64_t u;
+		};
 		uint8_t data[RTE_NODE_MBUF_OVERLOADABLE_FIELDS_SIZE];
 	};
 } rte_node_mbuf_overload_fields_t;

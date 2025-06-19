@@ -32,8 +32,6 @@ struct ip4_lookup_node_ctx {
 	int mbuf_priv1_off;
 };
 
-int node_mbuf_priv1_dynfield_offset = -1;
-
 static struct ip4_lookup_node_main ip4_lookup_nm;
 
 #define IP4_LOOKUP_NODE_LPM(ctx) \
@@ -182,17 +180,15 @@ ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 {
 	uint16_t socket, lcore_id;
 	static uint8_t init_once;
-	int rc;
+	int rc, dyn;
 
 	RTE_SET_USED(graph);
 	RTE_BUILD_BUG_ON(sizeof(struct ip4_lookup_node_ctx) > RTE_NODE_CTX_SZ);
 
+	dyn = rte_node_mbuf_dynfield_register();
+	if (dyn < 0)
+		return -rte_errno;
 	if (!init_once) {
-		node_mbuf_priv1_dynfield_offset = rte_mbuf_dynfield_register(
-				&node_mbuf_priv1_dynfield_desc);
-		if (node_mbuf_priv1_dynfield_offset < 0)
-			return -rte_errno;
-
 		/* Setup LPM tables for all sockets */
 		RTE_LCORE_FOREACH(lcore_id)
 		{
@@ -210,7 +206,7 @@ ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 
 	/* Update socket's LPM and mbuf dyn priv1 offset in node ctx */
 	IP4_LOOKUP_NODE_LPM(node->ctx) = ip4_lookup_nm.lpm_tbl[graph->socket];
-	IP4_LOOKUP_NODE_PRIV1_OFF(node->ctx) = node_mbuf_priv1_dynfield_offset;
+	IP4_LOOKUP_NODE_PRIV1_OFF(node->ctx) = dyn;
 
 #if defined(__ARM_NEON) || defined(RTE_ARCH_X86)
 	if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128)

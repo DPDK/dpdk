@@ -486,16 +486,18 @@ ip4_rewrite_node_init(const struct rte_graph *graph, struct rte_node *node)
 {
 	rte_graph_feature_arc_t feature_arc = RTE_GRAPH_FEATURE_ARC_INITIALIZER;
 	static bool init_once;
+	int dyn;
 
 	RTE_SET_USED(graph);
 	RTE_BUILD_BUG_ON(sizeof(struct ip4_rewrite_node_ctx) > RTE_NODE_CTX_SZ);
 
-	if (!init_once) {
-		node_mbuf_priv1_dynfield_offset = rte_mbuf_dynfield_register(
-				&node_mbuf_priv1_dynfield_desc);
-		if (node_mbuf_priv1_dynfield_offset < 0)
-			return -rte_errno;
+	dyn = rte_node_mbuf_dynfield_register();
+	if (dyn < 0) {
+		node_err("ip4_rewrite", "Failed to register mbuf dynfield");
+		return -rte_errno;
+	}
 
+	if (!init_once) {
 		/* Create ipv4-output feature arc, if not created
 		 */
 		if (rte_graph_feature_arc_lookup_by_name(RTE_IP4_OUTPUT_FEATURE_ARC_NAME,
@@ -507,19 +509,19 @@ ip4_rewrite_node_init(const struct rte_graph *graph, struct rte_node *node)
 				 RTE_IP4_OUTPUT_FEATURE_ARC_NAME);
 		}
 
+		IP4_REWRITE_NODE_OUTPUT_FEATURE_ARC(node->ctx) = feature_arc;
+
+		if (rte_graph_feature_arc_get(feature_arc))
+			IP4_REWRITE_NODE_FEAT_OFF(node->ctx) =
+				rte_graph_feature_arc_get(feature_arc)->mbuf_dyn_offset;
+
+		/* By default, set cached next node to pkt_drop */
+		IP4_REWRITE_NODE_LAST_NEXT(node->ctx) = 0;
+		IP4_REWRITE_NODE_LAST_TX_IF(node->ctx) = 0;
+
 		init_once = true;
 	}
-	IP4_REWRITE_NODE_PRIV1_OFF(node->ctx) = node_mbuf_priv1_dynfield_offset;
-	IP4_REWRITE_NODE_OUTPUT_FEATURE_ARC(node->ctx) = feature_arc;
-
-	if (rte_graph_feature_arc_get(feature_arc))
-		IP4_REWRITE_NODE_FEAT_OFF(node->ctx) =
-			rte_graph_feature_arc_get(feature_arc)->mbuf_dyn_offset;
-
-	/* By default, set cached next node to pkt_drop */
-	IP4_REWRITE_NODE_LAST_NEXT(node->ctx) = 0;
-	IP4_REWRITE_NODE_LAST_TX_IF(node->ctx) = 0;
-
+	IP4_REWRITE_NODE_PRIV1_OFF(node->ctx) = dyn;
 	node_dbg("ip4_rewrite", "Initialized ip4_rewrite node initialized");
 
 	return 0;

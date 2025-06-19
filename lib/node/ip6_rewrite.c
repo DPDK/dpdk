@@ -243,19 +243,15 @@ ip6_rewrite_node_process(struct rte_graph *graph, struct rte_node *node,
 static int
 ip6_rewrite_node_init(const struct rte_graph *graph, struct rte_node *node)
 {
-	static bool init_once;
+	int dyn;
 
 	RTE_SET_USED(graph);
 	RTE_BUILD_BUG_ON(sizeof(struct ip6_rewrite_node_ctx) > RTE_NODE_CTX_SZ);
 
-	if (!init_once) {
-		node_mbuf_priv1_dynfield_offset = rte_mbuf_dynfield_register(
-				&node_mbuf_priv1_dynfield_desc);
-		if (node_mbuf_priv1_dynfield_offset < 0)
-			return -rte_errno;
-		init_once = true;
-	}
-	IP6_REWRITE_NODE_PRIV1_OFF(node->ctx) = node_mbuf_priv1_dynfield_offset;
+	dyn = rte_node_mbuf_dynfield_register();
+	if (dyn < 0)
+		return -rte_errno;
+	IP6_REWRITE_NODE_PRIV1_OFF(node->ctx) = dyn;
 
 	node_dbg("ip6_rewrite", "Initialized ip6_rewrite node");
 
