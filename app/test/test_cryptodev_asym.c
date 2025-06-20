@@ -152,7 +152,10 @@ queue_ops_rsa_enc_dec(void *sess)
 	struct rte_crypto_op *op, *result_op;
 	struct rte_crypto_asym_op *asym_op;
 	uint8_t cipher_buf[TEST_DATA_SIZE] = {0};
-	int ret, status = TEST_SUCCESS;
+	uint8_t msg_buf[TEST_DATA_SIZE] = {0};
+	int ret, status;
+
+	memcpy(msg_buf, rsaplaintext.data, rsaplaintext.len);
 
 	/* Set up crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -167,7 +170,7 @@ queue_ops_rsa_enc_dec(void *sess)
 	/* Compute encryption on the test vector */
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
 
-	asym_op->rsa.message.data = rsaplaintext.data;
+	asym_op->rsa.message.data = msg_buf;
 	asym_op->rsa.cipher.data = cipher_buf;
 	asym_op->rsa.cipher.length = RTE_DIM(rsa_n);
 	asym_op->rsa.message.length = rsaplaintext.len;
@@ -204,6 +207,7 @@ queue_ops_rsa_enc_dec(void *sess)
 	asym_op->rsa.message.length = RTE_DIM(rsa_n);
 	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_DECRYPT;
 	asym_op->rsa.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5;
+	memset(asym_op->rsa.message.data, 0, asym_op->rsa.message.length);
 
 	/* Process crypto operation */
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
@@ -220,11 +224,20 @@ queue_ops_rsa_enc_dec(void *sess)
 		status = TEST_FAILED;
 		goto error_exit;
 	}
-	status = TEST_SUCCESS;
-	ret = rsa_verify(&rsaplaintext, result_op);
-	if (ret)
-		status = TEST_FAILED;
 
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1, "Expected crypto op to succeed\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	ret = rsa_verify(&rsaplaintext, result_op);
+	if (ret) {
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	status = TEST_SUCCESS;
 error_exit:
 
 	rte_crypto_op_free(op);
