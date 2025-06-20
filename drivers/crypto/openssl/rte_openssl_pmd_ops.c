@@ -995,7 +995,7 @@ static int openssl_set_asym_session_parameters(
 		if (rsa == NULL)
 			goto err_rsa;
 
-		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_EXP) {
+		if (xform->rsa.d.length > 0) {
 			d = BN_bin2bn(
 			(const unsigned char *)xform->rsa.d.data,
 			xform->rsa.d.length,
@@ -1004,7 +1004,9 @@ static int openssl_set_asym_session_parameters(
 				RSA_free(rsa);
 				goto err_rsa;
 			}
-		} else {
+		}
+
+		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_QT) {
 			p = BN_bin2bn((const unsigned char *)
 					xform->rsa.qt.p.data,
 					xform->rsa.qt.p.length,
