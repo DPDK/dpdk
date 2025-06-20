@@ -260,6 +260,7 @@ test_rsa_sign_verify(void)
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_cryptodev_asym_capability_idx idx;
 	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform;
 	void *sess = NULL;
 	struct rte_cryptodev_info dev_info;
 	int ret, status = TEST_SUCCESS;
@@ -280,7 +281,10 @@ test_rsa_sign_verify(void)
 		return TEST_SKIPPED;
 	}
 
-	ret = rte_cryptodev_asym_session_create(dev_id, &rsa_xform, sess_mpool, &sess);
+	memcpy(&xform, &rsa_xform, sizeof(rsa_xform));
+	xform.rsa.key_type = RTE_RSA_KEY_TYPE_EXP;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Session creation failed for "
@@ -306,6 +310,7 @@ test_rsa_enc_dec(void)
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_cryptodev_asym_capability_idx idx;
 	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform;
 	void *sess = NULL;
 	struct rte_cryptodev_info dev_info;
 	int ret, status = TEST_SUCCESS;
@@ -326,7 +331,10 @@ test_rsa_enc_dec(void)
 		return TEST_SKIPPED;
 	}
 
-	ret = rte_cryptodev_asym_session_create(dev_id, &rsa_xform, sess_mpool, &sess);
+	memcpy(&xform, &rsa_xform, sizeof(rsa_xform));
+	xform.rsa.key_type = RTE_RSA_KEY_TYPE_EXP;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Session creation failed for enc_dec\n");
@@ -371,7 +379,7 @@ test_rsa_sign_verify_crt(void)
 		return TEST_SKIPPED;
 	}
 
-	ret = rte_cryptodev_asym_session_create(dev_id, &rsa_xform_crt, sess_mpool, &sess);
+	ret = rte_cryptodev_asym_session_create(dev_id, &rsa_xform, sess_mpool, &sess);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Session creation failed for "
@@ -417,7 +425,7 @@ test_rsa_enc_dec_crt(void)
 		return TEST_SKIPPED;
 	}
 
-	ret = rte_cryptodev_asym_session_create(dev_id, &rsa_xform_crt, sess_mpool, &sess);
+	ret = rte_cryptodev_asym_session_create(dev_id, &rsa_xform, sess_mpool, &sess);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Session creation failed for "

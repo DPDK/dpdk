@@ -340,7 +340,7 @@ uint8_t rsa_qInv[] = {
 	0x71, 0x94, 0xdd, 0xa0, 0xf5, 0x1e, 0x6d, 0xcc
 };
 
-/** rsa xform using exponent key */
+/** rsa xform (of QT private key type by default) */
 struct rte_crypto_asym_xform rsa_xform = {
 	.next = NULL,
 	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
@@ -354,29 +354,6 @@ struct rte_crypto_asym_xform rsa_xform = {
 			.data = rsa_e,
 			.length = sizeof(rsa_e)
 		},
-		.key_type = RTE_RSA_KEY_TYPE_EXP,
-		.d = {
-			.data = rsa_d,
-			.length = sizeof(rsa_d)
-		}
-	}
-};
-
-/** rsa xform using quintuple key */
-struct rte_crypto_asym_xform rsa_xform_crt = {
-	.next = NULL,
-	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
-	.rsa = {
-		.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5,
-		.n = {
-			.data = rsa_n,
-			.length = sizeof(rsa_n)
-		},
-		.e = {
-			.data = rsa_e,
-			.length = sizeof(rsa_e)
-		},
-		.key_type = RTE_RSA_KEY_TYPE_QT,
 		.qt = {
 			.p = {
 				.data = rsa_p,
@@ -398,7 +375,12 @@ struct rte_crypto_asym_xform rsa_xform_crt = {
 				.data = rsa_qInv,
 				.length = sizeof(rsa_qInv)
 			},
-		}
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
 	}
 };
 
