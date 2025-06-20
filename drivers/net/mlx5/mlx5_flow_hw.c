@@ -8335,7 +8335,8 @@ mlx5_hw_flow_tunnel_ip_check(uint64_t last_item, uint64_t *item_flags)
 {
 	bool tunnel;
 
-	if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV4) {
+	if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV4 ||
+	    last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6) {
 		tunnel = true;
 		*item_flags |= MLX5_FLOW_LAYER_IPIP;
 	} else if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6 ||
