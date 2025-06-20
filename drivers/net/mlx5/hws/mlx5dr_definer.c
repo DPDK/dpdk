@@ -3322,11 +3322,21 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				(MLX5_FLOW_LAYER_OUTER_VLAN | MLX5_FLOW_LAYER_OUTER_L2);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
+			if (cd.last_item == RTE_FLOW_ITEM_TYPE_IPV4 ||
+			    cd.last_item == RTE_FLOW_ITEM_TYPE_IPV6) {
+				cd.tunnel = true;
+				item_flags |= MLX5_FLOW_LAYER_IPIP;
+			}
 			ret = mlx5dr_definer_conv_item_ipv4(&cd, items, i);
 			item_flags |= cd.tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
 						  MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
+			if (cd.last_item == RTE_FLOW_ITEM_TYPE_IPV4 ||
+			    cd.last_item == RTE_FLOW_ITEM_TYPE_IPV6) {
+				cd.tunnel = true;
+				item_flags |= MLX5_FLOW_LAYER_IPIP;
+			}
 			ret = mlx5dr_definer_conv_item_ipv6(&cd, items, i);
 			item_flags |= cd.tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
 						  MLX5_FLOW_LAYER_OUTER_L3_IPV6;
