@@ -1785,8 +1785,14 @@ memseg_primary_init_32(void)
 		unsigned int main_lcore_socket;
 		struct rte_config *cfg = rte_eal_get_configuration();
 		bool skip;
+		int ret;
 
-		socket_id = rte_socket_id_by_idx(i);
+		ret = rte_socket_id_by_idx(i);
+		if (ret == -1) {
+			EAL_LOG(ERR, "Cannot get socket ID for socket index %u", i);
+			return -1;
+		}
+		socket_id = (unsigned int)ret;
 
 #ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
 		/* we can still sort pages by socket in legacy mode */
