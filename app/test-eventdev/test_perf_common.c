@@ -1711,9 +1711,9 @@ perf_worker_cleanup(struct rte_mempool *const pool, uint8_t dev_id,
 		for (i = nb_enq; i < nb_deq; i++)
 			rte_mempool_put(pool, events[i].event_ptr);
 
-		for (i = 0; i < nb_deq; i++)
+		for (i = nb_enq; i < nb_deq; i++)
 			events[i].op = RTE_EVENT_OP_RELEASE;
-		rte_event_enqueue_burst(dev_id, port_id, events, nb_deq);
+		rte_event_enqueue_burst(dev_id, port_id, events + nb_enq, nb_deq - nb_enq);
 	}
 	rte_event_port_quiesce(dev_id, port_id, perf_event_port_flush, pool);
 }

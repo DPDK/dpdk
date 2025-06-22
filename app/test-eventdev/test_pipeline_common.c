@@ -684,10 +684,10 @@ pipeline_worker_cleanup(uint8_t dev, uint8_t port, struct rte_event ev[],
 				rte_pktmbuf_free(ev[i].mbuf);
 		}
 
-		for (i = 0; i < deq; i++)
+		for (i = enq; i < deq; i++)
 			ev[i].op = RTE_EVENT_OP_RELEASE;
 
-		rte_event_enqueue_burst(dev, port, ev, deq);
+		rte_event_enqueue_burst(dev, port, ev + enq, deq - enq);
 	}
 
 	rte_event_port_quiesce(dev, port, pipeline_event_port_flush, NULL);
