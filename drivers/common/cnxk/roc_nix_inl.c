@@ -1312,7 +1312,7 @@ static int
 nix_inl_legacy_inb_init(struct roc_nix *roc_nix)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct roc_cpt_inline_ipsec_inb_cfg cfg;
+	struct roc_cpt_inline_ipsec_inb_cfg cfg = {0};
 	struct idev_cfg *idev = idev_get_cfg();
 	uint16_t bpids[ROC_NIX_MAX_BPID_CNT];
 	struct roc_cpt *roc_cpt;
@@ -2219,7 +2219,7 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 	if (idev)
 		inl_dev = idev->nix_inl_dev;
 
-	if (!inl_dev && roc_nix == NULL)
+	if ((!inl_dev && roc_nix == NULL) || sa == NULL)
 		return -EINVAL;
 
 	if (roc_nix) {
@@ -2299,7 +2299,7 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	if (idev)
 		inl_dev = idev->nix_inl_dev;
 
-	if (!inl_dev && roc_nix == NULL)
+	if ((!inl_dev && roc_nix == NULL) || sa_dptr == NULL || sa_cptr == NULL)
 		return -EINVAL;
 
 	if (roc_nix) {
