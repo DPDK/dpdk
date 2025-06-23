@@ -1253,7 +1253,7 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 	if (idev)
 		inl_dev = idev->nix_inl_dev;
 
-	if (!inl_dev && roc_nix == NULL)
+	if ((!inl_dev && roc_nix == NULL) || sa == NULL)
 		return -EINVAL;
 
 	if (roc_nix) {
@@ -1316,7 +1316,7 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	if (idev)
 		inl_dev = idev->nix_inl_dev;
 
-	if (!inl_dev && roc_nix == NULL)
+	if ((!inl_dev && roc_nix == NULL) || sa_dptr == NULL || sa_cptr == NULL)
 		return -EINVAL;
 
 	if (roc_nix) {
