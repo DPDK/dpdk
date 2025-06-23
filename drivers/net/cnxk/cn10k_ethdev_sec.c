@@ -800,7 +800,6 @@ cn10k_eth_sec_session_create(void *device,
 		return -EEXIST;
 	}
 
-	memset(eth_sec, 0, sizeof(struct cnxk_eth_sec_sess));
 	sess_priv.u64 = 0;
 
 	lock = inbound ? &dev->inb.lock : &dev->outb.lock;
@@ -809,6 +808,8 @@ cn10k_eth_sec_session_create(void *device,
 	/* Acquire lock on inline dev for inbound */
 	if (inbound && inl_dev)
 		roc_nix_inl_dev_lock();
+
+	memset(eth_sec, 0, sizeof(struct cnxk_eth_sec_sess));
 
 	if (inbound) {
 		struct roc_ot_ipsec_inb_sa *inb_sa, *inb_sa_dptr;
@@ -1015,7 +1016,7 @@ cn10k_eth_sec_session_create(void *device,
 		roc_nix_inl_dev_unlock();
 	rte_spinlock_unlock(lock);
 
-	plt_nix_dbg("Created %s session with spi=%u, sa_idx=%u inl_dev=%u",
+	plt_nix_dbg("Created %s session with spi=0x%x, sa_idx=0x%x inl_dev=%u",
 		    inbound ? "inbound" : "outbound", eth_sec->spi,
 		    eth_sec->sa_idx, eth_sec->inl_dev);
 	/*
@@ -1097,7 +1098,7 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 
 	rte_spinlock_unlock(lock);
 
-	plt_nix_dbg("Destroyed %s session with spi=%u, sa_idx=%u, inl_dev=%u",
+	plt_nix_dbg("Destroyed %s session with spi=0x%x, sa_idx=0x%x, inl_dev=%u",
 		    eth_sec->inb ? "inbound" : "outbound", eth_sec->spi,
 		    eth_sec->sa_idx, eth_sec->inl_dev);
 
@@ -1120,7 +1121,8 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 	struct cn10k_sec_sess_priv sess_priv;
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec;
-	bool inbound;
+	bool inbound, inl_dev;
+	rte_spinlock_t *lock;
 	int rc;
 
 	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL ||
@@ -1134,6 +1136,14 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
 	if (!eth_sec)
 		return -ENOENT;
+
+	inl_dev = !!dev->inb.inl_dev;
+	lock = inbound ? &dev->inb.lock : &dev->outb.lock;
+	rte_spinlock_lock(lock);
+
+	/* Acquire lock on inline dev for inbound */
+	if (inbound && inl_dev)
+		roc_nix_inl_dev_lock();
 
 	eth_sec->spi = conf->ipsec.spi;
 
@@ -1149,7 +1159,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto,
 					       true);
 		if (rc)
-			return -EINVAL;
+			goto err;
 		/* Use cookie for original data */
 		inb_sa_dptr->w1.s.cookie = inb_sa->w1.s.cookie;
 
@@ -1167,7 +1177,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 					   eth_sec->inb,
 					   sizeof(struct roc_ot_ipsec_inb_sa));
 		if (rc)
-			return -EINVAL;
+			goto err;
 
 		/* Save userdata in inb private area */
 		inb_priv->userdata = conf->userdata;
@@ -1184,7 +1194,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 
 		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
 		if (rc)
-			return -EINVAL;
+			goto err;
 
 		/* Save rlen info */
 		cnxk_ipsec_outb_rlens_get(rlens, ipsec, crypto);
@@ -1213,24 +1223,40 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 					   eth_sec->inb,
 					   sizeof(struct roc_ot_ipsec_outb_sa));
 		if (rc)
-			return -EINVAL;
+			goto err;
 
 		/* Save userdata */
 		outb_priv->userdata = conf->userdata;
 		sess->fast_mdata = sess_priv.u64;
 	}
 
+	if (inbound && inl_dev)
+		roc_nix_inl_dev_unlock();
+	rte_spinlock_unlock(lock);
+
+	plt_nix_dbg("Updated %s session with spi=0x%x, sa_idx=0x%x inl_dev=%u",
+		    inbound ? "inbound" : "outbound", eth_sec->spi, eth_sec->sa_idx,
+		    eth_sec->inl_dev);
 	return 0;
+
+err:
+	if (inbound && inl_dev)
+		roc_nix_inl_dev_unlock();
+	rte_spinlock_unlock(lock);
+
+	return rc;
 }
 
 static int
 cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
-			    struct rte_security_stats *stats)
+				struct rte_security_stats *stats)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct cnxk_macsec_sess *macsec_sess;
 	struct cnxk_eth_sec_sess *eth_sec;
+	rte_spinlock_t *lock;
+	bool inl_dev, inb;
 	int rc;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
@@ -1241,10 +1267,18 @@ cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
 		return -EINVAL;
 	}
 
-	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb,
-			    ROC_NIX_INL_SA_OP_FLUSH);
+	inl_dev = !!dev->inb.inl_dev;
+	inb = eth_sec->inb;
+	lock = inb ? &dev->inb.lock : &dev->outb.lock;
+	rte_spinlock_lock(lock);
+
+	/* Acquire lock on inline dev for inbound */
+	if (inb && inl_dev)
+		roc_nix_inl_dev_lock();
+
+	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb, ROC_NIX_INL_SA_OP_FLUSH);
 	if (rc)
-		return -EINVAL;
+		goto err;
 	rte_delay_ms(1);
 
 	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
@@ -1261,7 +1295,12 @@ cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
 			((struct roc_ot_ipsec_outb_sa *)eth_sec->sa)->ctx.mib_octs;
 	}
 
-	return 0;
+err:
+	if (inb && inl_dev)
+		roc_nix_inl_dev_unlock();
+	rte_spinlock_unlock(lock);
+
+	return rc;
 }
 
 static void
