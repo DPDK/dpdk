@@ -84,7 +84,7 @@ eal_mem_set_dump(void *virt, size_t size, bool dump)
 	int ret = madvise(virt, size, flags);
 	if (ret) {
 		RTE_LOG(DEBUG, EAL, "madvise(%p, %#zx, %d) failed: %s\n",
-				virt, size, flags, strerror(rte_errno));
+				virt, size, flags, strerror(errno));
 		rte_errno = errno;
 	}
 	return ret;
