@@ -31,6 +31,7 @@
 #include <rte_launch.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
+#include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_service_component.h>
@@ -179,7 +180,7 @@ static int
 rte_eal_config_create(void)
 {
 	struct rte_config *config = rte_eal_get_configuration();
-	size_t page_sz = sysconf(_SC_PAGE_SIZE);
+	size_t page_sz = rte_mem_page_size();
 	size_t cfg_len = sizeof(*config->mem_config);
 	size_t cfg_len_aligned = RTE_ALIGN(cfg_len, page_sz);
 	void *rte_mem_cfg_addr, *mapped_mem_cfg_addr;

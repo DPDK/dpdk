@@ -147,8 +147,20 @@ rte_mem_page_size(void)
 {
 	static size_t page_size;
 
-	if (!page_size)
+	if (unlikely(page_size == 0)) {
+		/*
+		 * When the sysconf value cannot be determined, sysconf()
+		 * returns -1 without setting errno.
+		 * To distinguish an indeterminate value from an error,
+		 * clear errno before calling sysconf(), and check whether
+		 * errno has been set if sysconf() returns -1.
+		 */
+		errno = 0;
 		page_size = sysconf(_SC_PAGESIZE);
+		if ((ssize_t)page_size < 0)
+			rte_panic("sysconf(_SC_PAGESIZE) failed: %s",
+					errno == 0 ? "Indeterminate" : strerror(errno));
+	}
 
 	return page_size;
 }

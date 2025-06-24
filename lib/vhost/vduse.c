@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 
 #include <rte_common.h>
+#include <rte_eal_paging.h>
 #include <rte_thread.h>
 
 #include "fd_man.h"
@@ -690,7 +691,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		dev_config->vendor_id = 0;
 		dev_config->features = features;
 		dev_config->vq_num = total_queues;
-		dev_config->vq_align = sysconf(_SC_PAGE_SIZE);
+		dev_config->vq_align = rte_mem_page_size();
 		dev_config->config_size = sizeof(struct virtio_net_config);
 		memcpy(dev_config->config, &vnet_config, sizeof(vnet_config));
 
