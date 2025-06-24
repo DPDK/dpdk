@@ -212,13 +212,39 @@ out:
 	return ret;
 }
 
+/* Inspired by rte_mem_page_size() from /lib/eal/unix/eal_unix_memory.c */
+static size_t
+mem_page_size(void)
+{
+	static size_t page_size;
+
+	if (unlikely(page_size == 0)) {
+		/*
+		 * When the sysconf value cannot be determined, sysconf()
+		 * returns -1 without setting errno.
+		 * To distinguish an indeterminate value from an error,
+		 * clear errno before calling sysconf(), and check whether
+		 * errno has been set if sysconf() returns -1.
+		 */
+		errno = 0;
+		page_size = sysconf(_SC_PAGESIZE);
+		if ((ssize_t)page_size < 0 && errno == 0)
+			errno = ENOENT;
+	}
+
+	return page_size;
+}
+
 static int
 mmap_events(struct rte_pmu_event_group *group)
 {
-	long page_size = sysconf(_SC_PAGE_SIZE);
+	size_t page_size = mem_page_size();
 	unsigned int i;
 	void *addr;
 	int ret;
+
+	if ((ssize_t)page_size < 0)
+		return -errno;
 
 	for (i = 0; i < rte_pmu.num_group_events; i++) {
 		addr = mmap(0, page_size, PROT_READ, MAP_SHARED, group->fds[i], 0);
@@ -243,6 +269,7 @@ out:
 static void
 cleanup_events(struct rte_pmu_event_group *group)
 {
+	size_t page_size = mem_page_size();
 	unsigned int i;
 
 	if (group->fds[0] != -1)
@@ -250,7 +277,8 @@ cleanup_events(struct rte_pmu_event_group *group)
 
 	for (i = 0; i < rte_pmu.num_group_events; i++) {
 		if (group->mmap_pages[i]) {
-			munmap(group->mmap_pages[i], sysconf(_SC_PAGE_SIZE));
+			__rte_assume((ssize_t)page_size >= 0);
+			munmap(group->mmap_pages[i], page_size);
 			group->mmap_pages[i] = NULL;
 		}
 
