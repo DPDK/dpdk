@@ -282,10 +282,10 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 	return ret != 0;
 }
 
+#endif /* !RTE_FORCE_INTRINSICS */
+
 #ifdef __cplusplus
 }
-#endif
-
 #endif
 
 #ifdef RTE_ARCH_I686
@@ -294,6 +294,6 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 #include "rte_atomic_64.h"
 #endif
 
-#endif
+#endif /* !RTE_TOOLCHAIN_MSVC */
 
 #endif /* _RTE_ATOMIC_X86_H_ */
