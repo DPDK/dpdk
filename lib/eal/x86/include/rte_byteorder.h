@@ -48,10 +48,6 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 	return x;
 }
 
-#ifdef __cplusplus
-}
-#endif
-
 #define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap16(x) :		\
 				   rte_arch_bswap16(x)))
@@ -69,6 +65,11 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 #else
 #include "rte_byteorder_64.h"
 #endif
+
+#endif /* !RTE_FORCE_INTRINSICS */
+
+#ifdef __cplusplus
+}
 #endif
 
 #define rte_cpu_to_le_16(x) (x)
