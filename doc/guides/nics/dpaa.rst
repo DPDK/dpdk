@@ -254,7 +254,7 @@ for details.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -c 0xff -n 1 \
+      ./<build_dir>/app/dpdk-testpmd -l 0-7 -n 1 \
         -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
 
       .....

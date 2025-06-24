@@ -322,14 +322,14 @@ where each option means:
 Similarly for example, given the following command line to run application in
 event app mode::
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -c 0x3 -- -P -p 0x3 -u 0x1       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 0,1 -- -P -p 0x3 -u 0x1       \
            -f /path/to/config_file --transfer-mode event \
            --event-schedule-type parallel --event-vector --vector-size 32    \
            --vector-tmo 102400                           \
 
 where each option means:
 
-*   The ``-c`` option selects cores 0 and 1 to run on.
+*   The ``-l`` option selects cores 0 and 1 to run on.
 
 *   The ``-P`` option enables promiscuous mode.
 

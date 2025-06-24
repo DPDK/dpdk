@@ -33,16 +33,16 @@ The following is the list of options that can be given to the EAL:
 
 .. code-block:: console
 
-    ./rte-app [-c COREMASK | -l CORELIST] [-n NUM] [-b <domain:bus:devid.func>] \
+    ./rte-app [-l CORELIST] [-n NUM] [-b <domain:bus:devid.func>] \
               [--numa-mem=MB,...] [-d LIB.so|DIR] [-m MB] [-r NUM] [-v] [--file-prefix] \
 	      [--proc-type <primary|secondary|auto>]
 
 The EAL options are as follows:
 
-* ``-c COREMASK`` or ``-l CORELIST``:
-  An hexadecimal bit mask of the cores to run on. Note that core numbering can
-  change between platforms and should be determined beforehand. The corelist is
-  a set of core numbers instead of a bitmap core mask.
+* ``-l CORELIST``:
+  A comma-separated list of the cores, or ranges of cores to run on.
+  For example, ``-l 0,1,4-6`` will run on cores 0, 1, 4, 5 and 6.
+  Note that core numbering can change between platforms and should be determined beforehand.
 
 * ``-n NUM``:
   Number of memory channels per processor socket.

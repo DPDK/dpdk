@@ -408,9 +408,9 @@ the DLB device locally available on the same tile along with other
 resources. To allocate optimal resources, probing is done for each
 producer port (PP) for a given CPU and the best performing ports are
 allocated to producers. The cpu used for probing is either the first
-core of producer coremask (if present) or the second core of EAL
-coremask. This will be extended later to probe for all CPUs in the
-producer coremask or EAL coremask. Producer coremask can be passed
+core of producer coremask DLB2 device parameter (if present) or the second core of EAL
+core list. This will be extended later to probe for all CPUs in the
+producer coremask or EAL core list. Producer coremask can be passed
 along with the BDF of the DLB devices.
 
     .. code-block:: console

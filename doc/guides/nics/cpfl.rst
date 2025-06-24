@@ -215,7 +215,7 @@ low level hardware resources.
 
    .. code-block:: console
 
-      dpdk-testpmd -c 0x3 -n 4 -a 0000:af:00.6,vport=[0-1],flow_parser="refpkg.json" -- -i
+      dpdk-testpmd -l 0,1 -n 4 -a 0000:af:00.6,vport=[0-1],flow_parser="refpkg.json" -- -i
 
 #. Create one flow to forward ETH-IPV4-TCP from I/O port to a local(CPF's) vport. Flow should be created on
    vport X. Group M should match fxp module. Action port_representor Y means forward packet to local vport Y::

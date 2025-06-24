@@ -71,7 +71,7 @@ The following is an example command to run ip pipeline application configured fo
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-ip_pipeline -c 0x3 -- -s examples/route_ecmp.cli
+    $ ./<build_dir>/examples/dpdk-ip_pipeline -l 0,1 -- -s examples/route_ecmp.cli
 
 The application should start successfully and display as follows:
 

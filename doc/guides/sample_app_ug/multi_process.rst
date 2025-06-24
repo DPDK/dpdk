@@ -36,7 +36,7 @@ Running the Application
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 To run the application, start ``simple_mp`` binary in one terminal,
-passing at least two cores in the coremask/corelist:
+passing at least two cores in the corelist:
 
 .. code-block:: console
 
@@ -65,7 +65,7 @@ The process should start successfully and display a command prompt as follows:
     simple_mp >
 
 To run the secondary process to communicate with the primary process,
-again run the same binary setting at least two cores in the coremask/corelist:
+again run the same binary setting at least two cores in the corelist:
 
 .. code-block:: console
 
@@ -230,8 +230,8 @@ In addition to the EAL parameters, the application-specific parameters are:
 .. note::
 
    In the server process, has a single thread using the lowest numbered lcore
-   in the coremask/corelist, performs all packet I/O.
-   If coremask/corelist parameter specifies with more than a single lcore bit set,
+   in the corelist, performs all packet I/O.
+   If corelist parameter specifies with more than a single lcore,
    an additional lcore will be used for a thread to print packet count periodically.
 
 The server application stores configuration data in shared memory,

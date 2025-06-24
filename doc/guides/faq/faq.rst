@@ -47,11 +47,9 @@ therefore all the hugepages are allocated on the wrong socket.
 To avoid this scenario, either lower the amount of hugepage memory available to 1 GB size (or less), or run the application with taskset
 affinitizing the application to a would-be main core.
 
-For example, if your EAL coremask is 0xff0, the main core will usually be the first core in the coremask (0x10); this is what you have to supply to taskset::
+For example, if your EAL core list is '4-11', the main core will usually be the first core in the list (core 4); this is what you have to supply to taskset::
 
-   taskset 0x10 ./l2fwd -l 4-11 -n 2
-
-.. Note: Instead of '-c 0xff0' use the '-l 4-11' as a cleaner way to define lcores.
+   taskset -c 4 ./l2fwd -l 4-11 -n 2
 
 In this way, the hugepages have a greater chance of being allocated to the correct socket.
 Additionally, a ``--numa-mem`` option could be used to ensure the availability of memory for each socket, so that if hugepages were allocated on
@@ -167,7 +165,7 @@ Can I split packet RX to use DPDK and have an application's higher order functio
 ----------------------------------------------------------------------------------------------------------------
 
 The DPDK's lcore threads are Linux pthreads bound onto specific cores. Configure the DPDK to do work on the same
-cores and run the application's other work on other cores using the DPDK's "coremask" setting to specify which
+cores and run the application's other work on other cores using the DPDK's "core list" (-l/--lcores) setting to specify which
 cores it should launch itself on.
 
 

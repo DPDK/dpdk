@@ -136,11 +136,11 @@ DEK is passed in plaintext without keytag.
 
   The mlx5 crypto PMD can be verified by running the test application::
     Wrapped mode:
-      dpdk-test -c 1 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
+      dpdk-test -l 0 -n 1 -w <dev>,class=crypto,wcs_file=<file_path>
       RTE>>cryptodev_mlx5_autotest
 
     Plaintext mode:
-      dpdk-test -c 1 -n 1 -w <dev>,class=crypto
+      dpdk-test -l 0 -n 1 -w <dev>,class=crypto
       RTE>>cryptodev_mlx5_autotest
 
 

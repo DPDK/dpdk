@@ -60,5 +60,5 @@ Example:
 
 .. code-block:: console
 
-    ./<build_dir>/app/test/dpdk-test -c 0xf --base-virtaddr=0x100000000000 \
+    ./<build_dir>/app/test/dpdk-test -l 0-3 --base-virtaddr=0x100000000000 \
                         --mbuf-pool-ops-name="octeontx_fpavf"

@@ -31,10 +31,9 @@ Following are the EAL command-line options that can be used in conjunction
 with the ``dpdk-graph`` application.
 See the DPDK Getting Started Guides for more information on these options.
 
-``-c <COREMASK>`` or ``-l <CORELIST>``
+``-l <CORELIST>``
 
-   Set the hexadecimal bit mask of the cores to run on.
-   The CORELIST is a list of cores to be used.
+   List the set of cores to be used.
 
 Application Options
 ~~~~~~~~~~~~~~~~~~~
@@ -95,21 +94,21 @@ For H/W devices
 
 .. code-block:: console
 
-   ./dpdk-graph -c 0xff -a 0002:02:00.0 -a 0002:03:00.0 --
+   ./dpdk-graph -l 0-7 -a 0002:02:00.0 -a 0002:03:00.0 --
                 -s <dpdk_root_dir>/app/graph/examples/l3fwd.cli
 
-   ./dpdk-graph -c 0xff -a 0002:02:00.0 -a 0002:03:00.0 --
+   ./dpdk-graph -l 0-7 -a 0002:02:00.0 -a 0002:03:00.0 --
                 -s <dpdk_root_dir>/app/graph/examples/l2fwd.cli
 
 For net_pcapX devices
 
 .. code-block:: console
 
-   ./dpdk-graph -c 0xff --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
+   ./dpdk-graph -l 0-7 --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
                         --vdev=net_pcap1,rx_pcap=in_net_pcap1.pcap,tx_pcap=out_net_pcap0.pcap
                         -- -s <dpdk_root_dir>/app/graph/examples/l3fwd_pcap.cli
 
-   ./dpdk-graph -c 0xff --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
+   ./dpdk-graph -l 0-7 --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
                         --vdev=net_pcap1,rx_pcap=in_net_pcap1.pcap,tx_pcap=out_net_pcap0.pcap
                         -- -s <dpdk_root_dir>/app/graph/examples/l2fwd_pcap.cli
 

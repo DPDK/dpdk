@@ -43,10 +43,9 @@ The following are the EAL command-line options that can be used in conjunction
 with the ``dpdk-test-compress-perf`` application.
 See the DPDK Getting Started Guides for more information on these options.
 
-*   ``-c <COREMASK>`` or ``-l <CORELIST>``
+*   ``-l <CORELIST>``
 
-	Set the hexadecimal bitmask of the cores to run on. The corelist is a
-	list cores to use.
+	Specify the cores to be used by the application.
 
 .. Note::
 

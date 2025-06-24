@@ -28,9 +28,8 @@ The following are the EAL command-line options that can be used
 with the ``dpdk-test-mldev`` application.
 See the DPDK Getting Started Guides for more information on these options.
 
-``-c <COREMASK>`` or ``-l <CORELIST>``
-  Set the hexadecimal bitmask of the cores to run on.
-  The corelist is a list of cores to use.
+``-l <CORELIST>``
+  List the set of cores to use.
 
 ``-a <PCI_ID>``
   Attach a PCI based ML device.
@@ -160,14 +159,14 @@ Command to run ``device_ops`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=device_ops
 
 Command to run ``device_ops`` test with user options:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=device_ops --queue_pairs <M> --queue_size <N>
 
 
@@ -254,7 +253,7 @@ Command to run ``model_ops`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=model_ops --models model_1.bin,model_2.bin,model_3.bin, model_4.bin
 
 
@@ -349,14 +348,14 @@ Example command to run ``inference_ordered`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_ordered --filelist model.bin,input.bin,output.bin
 
 Example command to run ``inference_ordered`` test with a specific burst size:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_ordered --filelist model.bin,input.bin,output.bin \
         --burst_size 12
 
@@ -364,7 +363,7 @@ Example command to run ``inference_ordered`` test with multiple queue-pairs and 
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_ordered --filelist model.bin,input.bin,output.bin \
         --queue_pairs 4 --queue_size 16
 
@@ -372,7 +371,7 @@ Example command to run ``inference_ordered`` with output validation using tolera
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_ordered --filelist model.bin,input.bin,output.bin,reference.bin \
         --tolerance 1.0
 
@@ -405,14 +404,14 @@ Example command to run ``inference_interleave`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_interleave --filelist model.bin,input.bin,output.bin
 
 Example command to run ``inference_interleave`` test with multiple models:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_interleave --filelist model_A.bin,input_A.bin,output_A.bin \
         --filelist model_B.bin,input_B.bin,output_B.bin
 
@@ -421,7 +420,7 @@ with a specific burst size, multiple queue-pairs and queue size:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_interleave --filelist model.bin,input.bin,output.bin \
         --queue_pairs 8 --queue_size 12 --burst_size 16
 
@@ -430,7 +429,7 @@ with multiple models and output validation using tolerance of ``2.0%``:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-mldev -c 0xf -a <PCI_ID> -- \
+   sudo <build_dir>/app/dpdk-test-mldev -l 0-3 -a <PCI_ID> -- \
         --test=inference_interleave \
         --filelist model_A.bin,input_A.bin,output_A.bin,reference_A.bin \
         --filelist model_B.bin,input_B.bin,output_B.bin,reference_B.bin \

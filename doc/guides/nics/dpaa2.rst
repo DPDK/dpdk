@@ -445,7 +445,7 @@ for details.
 
    .. code-block:: console
 
-      ./dpdk-testpmd -c 0xff -n 1 -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
+      ./dpdk-testpmd -l 0-7 -n 1 -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
 
       .....
       EAL: Registered [pci] bus.
@@ -607,7 +607,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 
    .. code-block:: console
 
-	./dpdk-testpmd  -c 0xf -n 1 -- -i --portmask 0x3 --nb-cores=1 --txq=4 --rxq=4
+	./dpdk-testpmd  -l 0-3 -n 1 -- -i --portmask 0x3 --nb-cores=1 --txq=4 --rxq=4
 
 #. Stop all ports:
 

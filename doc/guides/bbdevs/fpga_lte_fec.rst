@@ -211,4 +211,4 @@ Specifically for the BBDEV FPGA LTE FEC PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config FPGA_LTE -c fpga_lte/fpga_lte_config_vf.cfg
-  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./turbo_dec_default.data
+  ./test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./turbo_dec_default.data

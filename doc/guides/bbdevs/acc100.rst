@@ -153,4 +153,4 @@ Specifically for the BBDEV ACC100 PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config ACC100 -c acc100/acc100_config_vf_5g.cfg
-  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data
+  ./test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data

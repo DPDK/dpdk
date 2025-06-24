@@ -162,7 +162,7 @@ In order to run testpmd example application following command can be used:
 
 .. code-block:: console
 
-   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 7 -- \
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -l 0-2 -- \
      --burst=128 --txd=2048 --rxd=1024 --rxq=2 --txq=2  --nb-cores=2 \
      -i -a --rss-udp
 
@@ -391,7 +391,7 @@ Usage example
 .. code-block:: console
 
    ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
-     -c 7 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
+     -l 0-2 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
 
 .. _flowapi:
 
@@ -504,7 +504,7 @@ Before proceeding run testpmd user application:
 
 .. code-block:: console
 
-   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -l 0,1 -- -i --p 3 -a --disable-hw-vlan-strip
 
 Example #1
 ^^^^^^^^^^
@@ -598,7 +598,7 @@ Usage example
 
    .. code-block:: console
 
-		./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 6 -- -i -p 3 -a --txd 1024 --rxd 1024
+		./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -l 1,2 -- -i -p 3 -a --txd 1024 --rxd 1024
 
 #. Create meter profile:
 
@@ -680,7 +680,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 
    .. code-block:: console
 
-		./dpdk-testpmd --vdev=net_mrvl,iface=eth0,iface=eth2,cfg=./qos_config -c 7 -- \
+		./dpdk-testpmd --vdev=net_mrvl,iface=eth0,iface=eth2,cfg=./qos_config -l 0-2 -- \
 		-i -p 3 --disable-hw-vlan-strip --rxq 3 --txq 3 --txd 1024 --rxd 1024
 
 #. Stop all ports:

@@ -163,4 +163,4 @@ Specifically for the bbdev Intel vRAN Boost v1 PMD, the command below can be use
 .. code-block:: console
 
    pf_bb_config ACC200 -c ./acc200/acc200_config_vf_5g.cfg
-   test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data
+   test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data

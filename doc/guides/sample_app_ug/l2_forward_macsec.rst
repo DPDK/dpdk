@@ -75,7 +75,7 @@ issue the command:
 .. code-block:: console
 
    $ ./<build_dir>/examples/dpdk-l2fwd-macsec -a 0002:04:00.0 -a 0002:05:00.0 \
-       -a 0002:06:00.0 -a 0002:07:00.0 -c 0x1E -- -p 0xf                      \
+       -a 0002:06:00.0 -a 0002:07:00.0 -l 1-4 -- -p 0xf                      \
        --mcs-tx-portmask 0x5 --mcs-rx-portmask 0xA                            \
        --mcs-port-config '(0,02:03:04:05:06:07,01:02:03:04:05:06),            \
        (1,02:03:04:05:06:17,01:02:03:04:05:16),                               \
@@ -89,7 +89,7 @@ issue the command:
 .. code-block:: console
 
    $ ./<build_dir>/examples/dpdk-l2fwd-macsec -a 0002:04:00.0 -a 0002:05:00.0 \
-       -a 0002:06:00.0 -a 0002:07:00.0 -c 0x1E -- -p 0xf                      \
+       -a 0002:06:00.0 -a 0002:07:00.0 -l 1-4 -- -p 0xf                      \
        --mcs-tx-portmask 0x5 --mcs-rx-portmask 0xA                            \
        --mcs-port-config="(0,02:03:04:05:06:07,01:02:03:04:05:06),            \
        (1,02:03:04:05:06:17,01:02:03:04:05:16),                               \

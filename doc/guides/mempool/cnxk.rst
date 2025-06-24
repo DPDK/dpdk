@@ -88,4 +88,4 @@ Standalone mempool device
 
    Example command to run ``mempool_autotest`` test with standalone CN10K NPA device::
 
-     echo "mempool_autotest" | <build_dir>/app/test/dpdk-test -c 0xf0 --mbuf-pool-ops-name="cn10k_mempool_ops"
+     echo "mempool_autotest" | <build_dir>/app/test/dpdk-test -l 4-7 --mbuf-pool-ops-name="cn10k_mempool_ops"

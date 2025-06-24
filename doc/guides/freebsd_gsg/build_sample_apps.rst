@@ -61,10 +61,10 @@ A large number of options can be given to the EAL when running an
 application. A full list of options can be got by passing `--help` to a
 DPDK application. Some of the EAL options for FreeBSD are as follows:
 
-*   ``-c COREMASK`` or ``-l CORELIST``:
-    A hexadecimal bit mask of the cores to run on.  Note that core numbering
-    can change between platforms and should be determined beforehand. The corelist
-    is a list of cores to use instead of a core mask.
+*   ``-l CORELIST``:
+    A comma-separated list of the cores, or ranges of cores to run on.
+    For example, ``-l 0,1,4-6`` will run on cores 0, 1, 4, 5 and 6.
+    Note that core numbering can change between platforms and should be determined beforehand.
 
 *   ``-b <domain:bus:devid.func>``:
     Blocklisting of ports; prevent EAL from using specified PCI device

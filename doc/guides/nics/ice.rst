@@ -189,7 +189,7 @@ Runtime Configuration
 
   .. code-block:: console
 
-    dpdk-testpmd -c 0xff -- -i
+    dpdk-testpmd -l 0-7 -- -i
     port stop 0
     port detach 0
     port attach 18:00.0,proto_xtr='[(1,2-3,8-9):tcp,10-13:vlan]',field_offs=92,field_name=pmd_dyn
@@ -200,7 +200,7 @@ Runtime Configuration
 
   .. code-block:: console
 
-    dpdk-testpmd -c 0xff -- -i
+    dpdk-testpmd -l 0-7 -- -i
     port stop 0
     port detach 0
     port attach 18:00.0,proto_xtr=vlan,proto_xtr='[(1,2-3,8-9):tcp,10-23:ipv6]', \
@@ -413,7 +413,7 @@ and add the ``--force-max-simd-bitwidth=64`` startup parameter to disable vector
 
 .. code-block:: console
 
-   examples/dpdk-ptpclient -c f -n 3 -a 0000:ec:00.1 --force-max-simd-bitwidth=64 -- -T 1 -p 0x1 -c 1
+   examples/dpdk-ptpclient -l 0-3 -n 3 -a 0000:ec:00.1 --force-max-simd-bitwidth=64 -- -T 1 -p 0x1 -c 1
 
 Tx Packet Pacing
 ~~~~~~~~~~~~~~~~
@@ -429,7 +429,7 @@ For example:
 
 .. code-block:: console
 
-   dpdk-testpmd -a 0000:31:00.0 -c f -n 4 -- -i --tx-offloads=0x200000
+   dpdk-testpmd -a 0000:31:00.0 -l 0-3 -n 4 -- -i --tx-offloads=0x200000
    set fwd txonly
    set txtimes <inter_burst>,<intra_burst>
    start

@@ -166,7 +166,7 @@ Some of these are documented below:
     so it is recommended that it be disabled only when absolutely necessary,
     and only when the implications of this change have been understood.
 
-*   All DPDK processes running as a single application and using shared memory must have distinct coremask/corelist arguments.
+*   All DPDK processes running as a single application and using shared memory must have distinct corelist arguments.
     It is not possible to have a primary and secondary instance, or two secondary instances,
     using any of the same logical cores.
     Attempting to do so can cause corruption of memory pool caches, among other issues.

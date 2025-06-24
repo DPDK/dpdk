@@ -67,7 +67,7 @@ issue the command:
 .. code-block:: console
 
     $ ./<build_dir>/examples/dpdk-bbdev --vdev='baseband_turbo_sw' -a <NIC0PCIADDR> \
-    -c 0x38 --numa-mem=2,2 --file-prefix=bbdev -- -e 0x10 -d 0x20
+    -l 3,4,5 --numa-mem=2,2 --file-prefix=bbdev -- -e 0x10 -d 0x20
 
 where, NIC0PCIADDR is the PCI address of the Rx port
 
@@ -98,12 +98,12 @@ ports.
 
 .. code-block:: console
 
-    $ ./pktgen-3.4.0/app/x86_64-native-linux-gcc/pktgen -c 0x3 \
+    $ ./pktgen-3.4.0/app/x86_64-native-linux-gcc/pktgen -l 1,2 \
     --numa-mem=1,1 --file-prefix=pg -a <NIC1PCIADDR> -- -m 1.0 -P
 
 where:
 
-* ``-c COREMASK``: A hexadecimal bitmask of cores to run on
+* ``-l CORELIST``: A list of cores on which the app should run
 * ``--numa-mem``: Memory to allocate on specific sockets (use comma separated values)
 * ``--file-prefix``: Prefix for hugepage filenames
 * ``-a <NIC1PCIADDR>``: Add a PCI device in allow list. The argument format is <[domain:]bus:devid.func>.
