@@ -79,6 +79,11 @@ Lcore-related options
 
     Hexadecimal bitmask of cores to be used as service cores.
 
+*   ``-S <service core list>``
+
+    List of cores to be used as service cores.
+
+
 Device-related options
 ~~~~~~~~~~~~~~~~~~~~~~
 
