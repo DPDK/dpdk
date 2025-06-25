@@ -470,7 +470,8 @@ cluster_node_arregate_stats(struct cluster_node *cluster, bool dispatch)
 	uint64_t *xstat;
 	uint8_t i;
 
-	memset(stat->xstat_count, 0, sizeof(uint64_t) * stat->xstat_cntrs);
+	if (stat->xstat_cntrs != 0)
+		memset(stat->xstat_count, 0, sizeof(uint64_t) * stat->xstat_cntrs);
 	for (count = 0; count < cluster->nb_nodes; count++) {
 		node = cluster->nodes[count];
 
