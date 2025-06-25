@@ -6,6 +6,7 @@
 #define __MANA_H__
 
 #define	PCI_VENDOR_ID_MICROSOFT		0x1414
+#define PCI_DEVICE_ID_MICROSOFT_MANA_PF	0x00b9
 #define PCI_DEVICE_ID_MICROSOFT_MANA	0x00ba
 
 struct mana_shared_data {

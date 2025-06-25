@@ -1651,6 +1651,10 @@ static const struct rte_pci_id mana_pci_id_map[] = {
 			       PCI_DEVICE_ID_MICROSOFT_MANA)
 	},
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MICROSOFT,
+			       PCI_DEVICE_ID_MICROSOFT_MANA_PF)
+	},
+	{
 		.vendor_id = 0
 	},
 };
