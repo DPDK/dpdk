@@ -129,12 +129,16 @@ mlx5_flow_hw_aux(uint16_t port_id, struct rte_flow_hw *flow)
 {
 	struct rte_flow_template_table *table = flow->table;
 
-	if (rte_flow_template_table_resizable(port_id, &table->cfg.attr)) {
-		size_t offset = sizeof(struct rte_flow_hw) + mlx5dr_rule_get_handle_size();
+	if (!flow->nt_rule) {
+		if (rte_flow_template_table_resizable(port_id, &table->cfg.attr)) {
+			size_t offset = sizeof(struct rte_flow_hw) + mlx5dr_rule_get_handle_size();
 
-		return RTE_PTR_ADD(flow, offset);
+			return RTE_PTR_ADD(flow, offset);
+		} else {
+			return &table->flow_aux[flow->idx - 1];
+		}
 	} else {
-		return ((flow->nt_rule) ? flow->nt2hws->flow_aux : &table->flow_aux[flow->idx - 1]);
+		return flow->nt2hws->flow_aux;
 	}
 }
 
