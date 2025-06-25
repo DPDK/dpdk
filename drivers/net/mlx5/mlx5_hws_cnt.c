@@ -733,7 +733,7 @@ mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 		LIST_REMOVE(cpool, next);
 	rte_spinlock_unlock(&sh->cpool_lock);
 	if (cpool->cfg.host_cpool == NULL) {
-		if (--sh->cnt_svc->refcnt == 0)
+		if (sh->cnt_svc && --sh->cnt_svc->refcnt == 0)
 			mlx5_hws_cnt_svc_deinit(sh);
 	}
 	mlx5_hws_cnt_pool_action_destroy(cpool);
