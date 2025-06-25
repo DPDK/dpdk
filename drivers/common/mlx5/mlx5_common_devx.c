@@ -110,8 +110,8 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	umem_size = sizeof(struct mlx5_cqe) * num_of_cqes;
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-			       alignment, socket);
+	umem_buf = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+					     alignment, socket);
 	if (!umem_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for CQ.");
 		rte_errno = ENOMEM;
@@ -484,8 +484,8 @@ mlx5_devx_wq_init(void *ctx, uint32_t wqe_size, uint16_t log_wqbb_n, int socket,
 	umem_size = wqe_size * (1 << log_wqbb_n);
 	umem_dbrec = RTE_ALIGN(umem_size, MLX5_DBR_SIZE);
 	umem_size += MLX5_DBR_SIZE;
-	umem_buf = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
-			       alignment, socket);
+	umem_buf = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, umem_size,
+					     alignment, socket);
 	if (!umem_buf) {
 		DRV_LOG(ERR, "Failed to allocate memory for RQ.");
 		rte_errno = ENOMEM;

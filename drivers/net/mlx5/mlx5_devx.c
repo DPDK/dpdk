@@ -1097,14 +1097,14 @@ mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 	 * They are required to hold pointers for cleanup
 	 * and are only accessible via drop queue DevX objects.
 	 */
-	rxq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq), 0, socket_id);
+	rxq = mlx5_malloc_numa_tolerant(MLX5_MEM_ZERO, sizeof(*rxq), 0, socket_id);
 	if (rxq == NULL) {
 		DRV_LOG(ERR, "Port %u could not allocate drop queue private",
 			dev->data->port_id);
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	rxq_ctrl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq_ctrl),
+	rxq_ctrl = mlx5_malloc_numa_tolerant(MLX5_MEM_ZERO, sizeof(*rxq_ctrl),
 			       0, socket_id);
 	if (rxq_ctrl == NULL) {
 		DRV_LOG(ERR, "Port %u could not allocate drop queue control",
@@ -1112,7 +1112,7 @@ mlx5_rxq_devx_obj_drop_create(struct rte_eth_dev *dev)
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	rxq_obj = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rxq_obj), 0, socket_id);
+	rxq_obj = mlx5_malloc_numa_tolerant(MLX5_MEM_ZERO, sizeof(*rxq_obj), 0, socket_id);
 	if (rxq_obj == NULL) {
 		DRV_LOG(ERR, "Port %u could not allocate drop queue object",
 			dev->data->port_id);

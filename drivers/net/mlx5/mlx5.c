@@ -2271,8 +2271,8 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 	 */
 	ppriv_size = sizeof(struct mlx5_proc_priv) +
 		     priv->txqs_n * sizeof(struct mlx5_uar_data);
-	ppriv = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, ppriv_size,
-			    RTE_CACHE_LINE_SIZE, dev->device->numa_node);
+	ppriv = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, ppriv_size,
+					  RTE_CACHE_LINE_SIZE, dev->device->numa_node);
 	if (!ppriv) {
 		rte_errno = ENOMEM;
 		return -rte_errno;

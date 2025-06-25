@@ -10,6 +10,29 @@
 
 /********************* Indexed pool **********************/
 
+#if defined(RTE_TOOLCHAIN_GCC) || defined(RTE_TOOLCHAIN_CLANG)
+#define pool_malloc(pool, flags, size, align, socket) (__extension__ ({ \
+	struct mlx5_indexed_pool *p = (struct mlx5_indexed_pool *)(pool); \
+	uint32_t f = (uint32_t)(flags); \
+	size_t s = (size_t)(size); \
+	uint32_t a = (uint32_t)(align); \
+	int so = (int)(socket); \
+	void *mem = p->cfg.malloc(f, s, a, so); \
+	if (mem == NULL && so != SOCKET_ID_ANY) { \
+		mem = p->cfg.malloc(f, s, a, SOCKET_ID_ANY); \
+		if (mem) { \
+			DRV_LOG(WARNING, \
+			"Allocated %p (size %zu socket %d) through NUMA tolerant fallback", \
+					mem, s, so); \
+		} \
+	} \
+	mem; \
+}))
+#else
+#define pool_malloc(pool, flags, size, align, socket)
+	(pool)->cfg.malloc((uint32_t)(flags) | NUMA_TOLERANT, (size), (align), (socket));
+#endif
+
 int mlx5_logtype_ipool;
 
 /* Initialize driver log type. */
@@ -149,7 +172,7 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 		int n_grow = pool->n_trunk_valid ? pool->n_trunk :
 			     RTE_CACHE_LINE_SIZE / sizeof(void *);
 
-		p = pool->cfg.malloc(0, (pool->n_trunk_valid + n_grow) *
+		p = pool_malloc(pool, MLX5_MEM_ZERO, (pool->n_trunk_valid + n_grow) *
 				     sizeof(struct mlx5_indexed_trunk *),
 				     RTE_CACHE_LINE_SIZE, rte_socket_id());
 		if (!p)
@@ -179,7 +202,7 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	/* rte_bitmap requires memory cacheline aligned. */
 	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
 	trunk_size += bmp_size;
-	trunk = pool->cfg.malloc(0, trunk_size,
+	trunk = pool_malloc(pool, MLX5_MEM_ZERO, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!trunk)
 		return -ENOMEM;
@@ -253,9 +276,10 @@ mlx5_ipool_grow_bmp(struct mlx5_indexed_pool *pool, uint32_t new_size)
 	pool->cache_validator.bmp_size = new_size;
 	bmp_mem_size = rte_bitmap_get_memory_footprint(new_size);
 
-	pool->cache_validator.bmp_mem = pool->cfg.malloc(MLX5_MEM_ZERO, bmp_mem_size,
-										RTE_CACHE_LINE_SIZE,
-										rte_socket_id());
+	pool->cache_validator.bmp_mem = pool_malloc(pool, MLX5_MEM_ZERO,
+							 bmp_mem_size,
+							 RTE_CACHE_LINE_SIZE,
+							 rte_socket_id());
 	if (unlikely(!pool->cache_validator.bmp_mem)) {
 		DRV_LOG_IPOOL(ERR, "Unable to allocate memory for a new bitmap");
 		return;
@@ -343,7 +367,7 @@ check_again:
 			     RTE_CACHE_LINE_SIZE / sizeof(void *);
 		cur_max_idx = mlx5_trunk_idx_offset_get(pool, trunk_n + n_grow);
 		/* Resize the trunk array. */
-		p = pool->cfg.malloc(0, ((trunk_idx + n_grow) *
+		p = pool_malloc(pool, MLX5_MEM_ZERO, ((trunk_idx + n_grow) *
 			sizeof(struct mlx5_indexed_trunk *)) +
 			(cur_max_idx * sizeof(uint32_t)) + sizeof(*p),
 			RTE_CACHE_LINE_SIZE, rte_socket_id());
@@ -365,7 +389,7 @@ check_again:
 	trunk_size = sizeof(*trunk);
 	data_size = mlx5_trunk_size_get(pool, trunk_idx);
 	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
-	trunk = pool->cfg.malloc(0, trunk_size,
+	trunk = pool_malloc(pool, MLX5_MEM_ZERO, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (unlikely(!trunk)) {
 		pool->cfg.free(p);
@@ -429,7 +453,7 @@ _mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 
 	MLX5_ASSERT(idx);
 	if (unlikely(!pool->cache[cidx])) {
-		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+		pool->cache[cidx] = pool_malloc(pool, MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
 			(pool->cfg.per_core_cache * sizeof(uint32_t)),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
@@ -515,7 +539,7 @@ _mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, int cidx,
 			 uint32_t *idx)
 {
 	if (unlikely(!pool->cache[cidx])) {
-		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+		pool->cache[cidx] = pool_malloc(pool, MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
 			(pool->cfg.per_core_cache * sizeof(uint32_t)),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
@@ -577,7 +601,7 @@ _mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 	 * case check if local cache on core B was allocated before.
 	 */
 	if (unlikely(!pool->cache[cidx])) {
-		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+		pool->cache[cidx] = pool_malloc(pool, MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
 			(pool->cfg.per_core_cache * sizeof(uint32_t)),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
@@ -881,7 +905,7 @@ mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool)
 	/* Reset bmp. */
 	bmp_num = mlx5_trunk_idx_offset_get(pool, gc->n_trunk_valid);
 	mem_size = rte_bitmap_get_memory_footprint(bmp_num);
-	pool->bmp_mem = pool->cfg.malloc(MLX5_MEM_ZERO, mem_size,
+	pool->bmp_mem = pool_malloc(pool, MLX5_MEM_ZERO, mem_size,
 					 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!pool->bmp_mem) {
 		DRV_LOG(ERR, "Ipool bitmap mem allocate failed.\n");

@@ -162,6 +162,13 @@ mlx5_alloc_align(size_t size, unsigned int align, unsigned int zero)
 	return buf;
 }
 
+static void *
+mlx5_malloc_socket_internal(size_t size, unsigned int align, int socket, bool zero)
+{
+	return zero ? rte_zmalloc_socket(NULL, size, align, socket) :
+		      rte_malloc_socket(NULL, size, align, socket);
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_malloc)
 void *
 mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
@@ -180,10 +187,16 @@ mlx5_malloc(uint32_t flags, size_t size, unsigned int align, int socket)
 	else
 		rte_mem = mlx5_sys_mem.enable ? false : true;
 	if (rte_mem) {
-		if (flags & MLX5_MEM_ZERO)
-			addr = rte_zmalloc_socket(NULL, size, align, socket);
-		else
-			addr = rte_malloc_socket(NULL, size, align, socket);
+		addr = mlx5_malloc_socket_internal(size, align, socket, !!(flags & MLX5_MEM_ZERO));
+		if (addr == NULL && socket != SOCKET_ID_ANY && (flags & MLX5_NUMA_TOLERANT)) {
+			size_t alloc_size = size;
+			addr = mlx5_malloc_socket_internal(size, align, SOCKET_ID_ANY,
+				!!(flags & MLX5_MEM_ZERO));
+			if (addr) {
+				DRV_LOG(WARNING, "Allocated %p (size %zu socket %d) through NUMA tolerant fallback",
+					(addr), (alloc_size), (socket));
+			}
+		}
 		mlx5_mem_update_msl(addr);
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 		if (addr)

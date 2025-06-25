@@ -5070,7 +5070,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	tbl_mem_size = sizeof(*tbl);
 	tbl_mem_size += nb_action_templates * priv->nb_queue * sizeof(tbl->rule_acts[0]);
 	/* Allocate the table memory. */
-	tbl = mlx5_malloc(MLX5_MEM_ZERO, tbl_mem_size, RTE_CACHE_LINE_SIZE, rte_socket_id());
+	tbl = mlx5_malloc(MLX5_MEM_ZERO, tbl_mem_size, RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!tbl)
 		goto error;
 	tbl->cfg = *table_cfg;
@@ -5080,7 +5080,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		goto error;
 	/* Allocate table of auxiliary flow rule structs. */
 	tbl->flow_aux = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct rte_flow_hw_aux) * nb_flows,
-				    RTE_CACHE_LINE_SIZE, rte_dev_numa_node(dev->device));
+				    RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!tbl->flow_aux)
 		goto error;
 	/* Register the flow group. */
@@ -8033,7 +8033,7 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		return NULL;
 	len += RTE_ALIGN(orig_act_len, 16);
 	at = mlx5_malloc(MLX5_MEM_ZERO, len + sizeof(*at),
-			 RTE_CACHE_LINE_SIZE, rte_socket_id());
+			 RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!at) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8201,7 +8201,7 @@ flow_hw_prepend_item(const struct rte_flow_item *items,
 
 	/* Allocate new array of items. */
 	size = sizeof(*copied_items) * (nb_items + 1);
-	copied_items = mlx5_malloc(MLX5_MEM_ZERO, size, 0, rte_socket_id());
+	copied_items = mlx5_malloc(MLX5_MEM_ZERO, size, 0, SOCKET_ID_ANY);
 	if (!copied_items) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -9018,7 +9018,7 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 		tmpl_items = items;
 	}
 setup_pattern_template:
-	it = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*it), 0, rte_socket_id());
+	it = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*it), 0, SOCKET_ID_ANY);
 	if (!it) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -9038,7 +9038,7 @@ setup_pattern_template:
 		goto error;
 	}
 	it_items_size = RTE_ALIGN(it_items_size, 16);
-	it->items = mlx5_malloc(MLX5_MEM_ZERO, it_items_size, 0, rte_dev_numa_node(dev->device));
+	it->items = mlx5_malloc(MLX5_MEM_ZERO, it_items_size, 0, SOCKET_ID_ANY);
 	if (it->items == NULL) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -11443,7 +11443,7 @@ flow_hw_create_ctrl_rx_tables(struct rte_eth_dev *dev)
 
 	MLX5_ASSERT(!priv->hw_ctrl_rx);
 	priv->hw_ctrl_rx = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*priv->hw_ctrl_rx),
-				       RTE_CACHE_LINE_SIZE, rte_socket_id());
+				       RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
 	if (!priv->hw_ctrl_rx) {
 		DRV_LOG(ERR, "Failed to allocate memory for Rx control flow tables");
 		rte_errno = ENOMEM;

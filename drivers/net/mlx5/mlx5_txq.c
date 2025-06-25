@@ -1052,26 +1052,45 @@ struct mlx5_txq_ctrl *
 mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	     unsigned int socket, const struct rte_eth_txconf *conf)
 {
+	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_ctrl *tmpl;
 	uint16_t max_wqe;
 
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
+	if (socket != (unsigned int)SOCKET_ID_ANY) {
+		tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
 			   desc * sizeof(struct rte_mbuf *), 0, socket);
+	} else {
+		tmpl = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
+					 desc * sizeof(struct rte_mbuf *), 0,
+					 dev->device->numa_node);
+	}
 	if (!tmpl) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	if (mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl,
-			      &priv->sh->cdev->mr_scache.dev_gen, socket)) {
-		/* rte_errno is already set. */
-		goto error;
+	if (socket != (unsigned int)SOCKET_ID_ANY) {
+		if (mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl,
+					&priv->sh->cdev->mr_scache.dev_gen, socket))
+			/* rte_errno is already set. */
+			goto error;
+	} else {
+		ret = mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl,
+					&priv->sh->cdev->mr_scache.dev_gen, dev->device->numa_node);
+		if (ret == -ENOMEM) {
+			ret = mlx5_mr_ctrl_init(&tmpl->txq.mr_ctrl,
+						&priv->sh->cdev->mr_scache.dev_gen, SOCKET_ID_ANY);
+		}
+		if (ret)
+			/* rte_errno is already set. */
+			goto error;
 	}
 	MLX5_ASSERT(desc > MLX5_TX_COMP_THRESH);
 	tmpl->txq.offloads = conf->offloads |
 			     dev->data->dev_conf.txmode.offloads;
 	tmpl->priv = priv;
-	tmpl->socket = socket;
+	tmpl->socket = (socket == (unsigned int)SOCKET_ID_ANY ?
+			(unsigned int)dev->device->numa_node : socket);
 	tmpl->txq.elts_n = log2above(desc);
 	tmpl->txq.elts_s = desc;
 	tmpl->txq.elts_m = desc - 1;

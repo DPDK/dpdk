@@ -1537,7 +1537,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
 	struct mlx5_devx_wq_attr *wq_attr;
 	struct mlx5_devx_obj *rq = NULL;
 
-	rq = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rq), 0, socket);
+	rq = mlx5_malloc_numa_tolerant(MLX5_MEM_ZERO, sizeof(*rq), 0, socket);
 	if (!rq) {
 		DRV_LOG(ERR, "Failed to allocate RQ data");
 		rte_errno = ENOMEM;
@@ -1680,7 +1680,7 @@ mlx5_devx_cmd_create_rmp(void *ctx,
 	struct mlx5_devx_wq_attr *wq_attr;
 	struct mlx5_devx_obj *rmp = NULL;
 
-	rmp = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*rmp), 0, socket);
+	rmp = mlx5_malloc_numa_tolerant(MLX5_MEM_ZERO, sizeof(*rmp), 0, socket);
 	if (!rmp) {
 		DRV_LOG(ERR, "Failed to allocate RMP data");
 		rte_errno = ENOMEM;

@@ -1756,6 +1756,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	     const struct rte_eth_rxseg_split *rx_seg, uint16_t n_seg,
 	     bool is_extmem)
 {
+	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *tmpl;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(rx_seg[0].mp);
@@ -1793,7 +1794,12 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		desc >>= mprq_log_actual_stride_num;
 		alloc_size += desc * sizeof(struct mlx5_mprq_buf *);
 	}
-	tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, alloc_size, 0, socket);
+	if (socket != (unsigned int)SOCKET_ID_ANY) {
+		tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, alloc_size, 0, socket);
+	} else {
+		tmpl = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, alloc_size, 0,
+						 dev->device->numa_node);
+	}
 	if (!tmpl) {
 		rte_errno = ENOMEM;
 		return NULL;
@@ -1882,12 +1888,24 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	tmpl->is_hairpin = false;
-	if (mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl,
-			      &priv->sh->cdev->mr_scache.dev_gen, socket)) {
-		/* rte_errno is already set. */
-		goto error;
+	if (socket != (unsigned int)SOCKET_ID_ANY) {
+		if (mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl,
+					&priv->sh->cdev->mr_scache.dev_gen, socket))
+			/* rte_errno is already set. */
+			goto error;
+	} else {
+		ret = mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl,
+					&priv->sh->cdev->mr_scache.dev_gen, dev->device->numa_node);
+		if (ret == -ENOMEM) {
+			ret = mlx5_mr_ctrl_init(&tmpl->rxq.mr_ctrl,
+						&priv->sh->cdev->mr_scache.dev_gen, SOCKET_ID_ANY);
+		}
+		if (ret)
+			/* rte_errno is already set. */
+			goto error;
 	}
-	tmpl->socket = socket;
+	tmpl->socket = (socket == (unsigned int)SOCKET_ID_ANY ?
+			(unsigned int)dev->device->numa_node : socket);
 	if (dev->data->dev_conf.intr_conf.rxq)
 		tmpl->irq = 1;
 	if (mprq_en) {

@@ -64,8 +64,8 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 		if (!txq_ctrl->is_hairpin)
 			txq_alloc_elts(txq_ctrl);
 		MLX5_ASSERT(!txq_ctrl->obj);
-		txq_ctrl->obj = mlx5_malloc(flags, sizeof(struct mlx5_txq_obj),
-					    0, txq_ctrl->socket);
+		txq_ctrl->obj = mlx5_malloc_numa_tolerant(flags, sizeof(struct mlx5_txq_obj),
+							  0, txq_ctrl->socket);
 		if (!txq_ctrl->obj) {
 			DRV_LOG(ERR, "Port %u Tx queue %u cannot allocate "
 				"memory resources.", dev->data->port_id,
@@ -82,9 +82,9 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 		if (!txq_ctrl->is_hairpin) {
 			size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
 
-			txq_data->fcqs = mlx5_malloc(flags, size,
-						     RTE_CACHE_LINE_SIZE,
-						     txq_ctrl->socket);
+			txq_data->fcqs = mlx5_malloc_numa_tolerant(flags, size,
+								   RTE_CACHE_LINE_SIZE,
+								   txq_ctrl->socket);
 			if (!txq_data->fcqs) {
 				DRV_LOG(ERR, "Port %u Tx queue %u cannot "
 					"allocate memory (FCQ).",
@@ -182,9 +182,9 @@ mlx5_rxq_ctrl_prepare(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 			return ret;
 	}
 	MLX5_ASSERT(!rxq_ctrl->obj);
-	rxq_ctrl->obj = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO,
-				    sizeof(*rxq_ctrl->obj), 0,
-				    rxq_ctrl->socket);
+	rxq_ctrl->obj = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO,
+						  sizeof(*rxq_ctrl->obj), 0,
+						  rxq_ctrl->socket);
 	if (!rxq_ctrl->obj) {
 		DRV_LOG(ERR, "Port %u Rx queue %u can't allocate resources.",
 			dev->data->port_id, idx);
