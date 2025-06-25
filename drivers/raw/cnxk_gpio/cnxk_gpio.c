@@ -513,7 +513,7 @@ static const struct {
 	{ CNXK_GPIO_PIN_EDGE_BOTH, GPIO_V2_LINE_FLAG_EDGE_FALLING | GPIO_V2_LINE_FLAG_EDGE_RISING },
 };
 
-static enum gpio_v2_line_flag
+static int
 cnxk_gpio_edge_to_flag(enum cnxk_gpio_pin_edge edge)
 {
 	unsigned int i;
@@ -522,11 +522,13 @@ cnxk_gpio_edge_to_flag(enum cnxk_gpio_pin_edge edge)
 		if (cnxk_gpio_edge_flag[i].edge == edge)
 			break;
 	}
+	if (i == RTE_DIM(cnxk_gpio_edge_flag))
+		return -EINVAL;
 
 	return cnxk_gpio_edge_flag[i].flag;
 }
 
-static enum cnxk_gpio_pin_edge
+static int
 cnxk_gpio_flag_to_edge(enum gpio_v2_line_flag flag)
 {
 	unsigned int i;
@@ -535,6 +537,8 @@ cnxk_gpio_flag_to_edge(enum gpio_v2_line_flag flag)
 		if ((cnxk_gpio_edge_flag[i].flag & flag) == cnxk_gpio_edge_flag[i].flag)
 			break;
 	}
+	if (i == RTE_DIM(cnxk_gpio_edge_flag))
+		return -EINVAL;
 
 	return cnxk_gpio_edge_flag[i].edge;
 }
@@ -549,7 +553,7 @@ static const struct {
 	{ CNXK_GPIO_PIN_DIR_LOW, GPIO_V2_LINE_FLAG_OUTPUT },
 };
 
-static enum gpio_v2_line_flag
+static int
 cnxk_gpio_dir_to_flag(enum cnxk_gpio_pin_dir dir)
 {
 	unsigned int i;
@@ -558,11 +562,13 @@ cnxk_gpio_dir_to_flag(enum cnxk_gpio_pin_dir dir)
 		if (cnxk_gpio_dir_flag[i].dir == dir)
 			break;
 	}
+	if (i == RTE_DIM(cnxk_gpio_dir_flag))
+		return -EINVAL;
 
 	return cnxk_gpio_dir_flag[i].flag;
 }
 
-static enum cnxk_gpio_pin_dir
+static int
 cnxk_gpio_flag_to_dir(enum gpio_v2_line_flag flag)
 {
 	unsigned int i;
@@ -571,6 +577,8 @@ cnxk_gpio_flag_to_dir(enum gpio_v2_line_flag flag)
 		if ((cnxk_gpio_dir_flag[i].flag & flag) == cnxk_gpio_dir_flag[i].flag)
 			break;
 	}
+	if (i == RTE_DIM(cnxk_gpio_dir_flag))
+		return -EINVAL;
 
 	return cnxk_gpio_dir_flag[i].dir;
 }
@@ -675,7 +683,10 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 	case CNXK_GPIO_MSG_TYPE_SET_PIN_EDGE:
 		edge = *(enum cnxk_gpio_pin_edge *)msg->data;
 		info.flags &= ~(GPIO_V2_LINE_FLAG_EDGE_RISING | GPIO_V2_LINE_FLAG_EDGE_FALLING);
-		info.flags |= cnxk_gpio_edge_to_flag(edge);
+		ret = cnxk_gpio_edge_to_flag(edge);
+		if (ret < 0)
+			break;
+		info.flags |= ret;
 
 		config.attrs[config.num_attrs].attr.id = GPIO_V2_LINE_ATTR_ID_FLAGS;
 		config.attrs[config.num_attrs].attr.flags = info.flags;
@@ -687,7 +698,10 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 	case CNXK_GPIO_MSG_TYPE_SET_PIN_DIR:
 		dir = *(enum cnxk_gpio_pin_dir *)msg->data;
 		config.attrs[config.num_attrs].attr.id = GPIO_V2_LINE_ATTR_ID_FLAGS;
-		config.attrs[config.num_attrs].attr.flags = cnxk_gpio_dir_to_flag(dir);
+		ret = cnxk_gpio_dir_to_flag(dir);
+		if (ret < 0)
+			break;
+		config.attrs[config.num_attrs].attr.flags = ret;
 		config.attrs[config.num_attrs].mask = RTE_BIT64(gpio->num);
 		config.num_attrs++;
 
@@ -727,18 +741,26 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 		*(int *)rsp = !!(values.bits & RTE_BIT64(gpio->num));
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_EDGE:
+		ret = cnxk_gpio_flag_to_edge(info.flags);
+		if (ret < 0)
+			return ret;
+
 		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_edge), 0);
 		if (!rsp)
 			return -ENOMEM;
 
-		*(enum cnxk_gpio_pin_edge *)rsp = cnxk_gpio_flag_to_edge(info.flags);
+		*(enum cnxk_gpio_pin_edge *)rsp = ret;
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_DIR:
+		ret = cnxk_gpio_flag_to_dir(info.flags);
+		if (ret < 0)
+			return ret;
+
 		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_edge), 0);
 		if (!rsp)
 			return -ENOMEM;
 
-		*(enum cnxk_gpio_pin_dir *)rsp = cnxk_gpio_flag_to_dir(info.flags);
+		*(enum cnxk_gpio_pin_dir *)rsp = ret;
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_ACTIVE_LOW:
 		rsp = rte_zmalloc(NULL, sizeof(int), 0);
