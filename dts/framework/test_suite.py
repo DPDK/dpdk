@@ -39,7 +39,7 @@ from framework.testbed_model.traffic_generator.capturing_traffic_generator impor
     PacketFilteringConfig,
 )
 
-from .exception import ConfigurationError, InternalError, TestCaseVerifyError
+from .exception import ConfigurationError, InternalError, SkippedTestException, TestCaseVerifyError
 from .logger import DTSLogger, get_dts_logger
 from .utils import get_packet_summaries, to_pascal_case
 
@@ -410,6 +410,25 @@ class TestSuite(TestProtocol):
         for command_res in self._ctx.tg_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
         raise TestCaseVerifyError(failure_description)
+
+    def verify_else_skip(self, condition: bool, skip_reason: str) -> None:
+        """Verify `condition` and handle skips.
+
+        When `condition` is :data:`False`, raise a skip exception.
+
+        Args:
+            condition: The condition to check.
+            skip_reason: Description of the reason for skipping.
+
+        Raises:
+            SkippedTestException: `condition` is :data:`False`.
+        """
+        if not condition:
+            self._skip_test_case_verify(skip_reason)
+
+    def _skip_test_case_verify(self, skip_description: str) -> None:
+        self._logger.debug(f"Test case skipped: {skip_description}")
+        raise SkippedTestException(skip_description)
 
     def verify_packets(self, expected_packet: Packet, received_packets: list[Packet]) -> None:
         """Verify that `expected_packet` has been received.
