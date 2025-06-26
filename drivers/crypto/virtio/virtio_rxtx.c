@@ -479,6 +479,7 @@ virtqueue_crypto_sym_enqueue_xmit_packed(
 		struct rte_crypto_op *cop)
 {
 	uint16_t idx = 0;
+	uint16_t num_entry;
 	uint16_t needed = 1;
 	uint16_t head_idx;
 	struct vq_desc_extra *dxp;
@@ -598,13 +599,20 @@ virtqueue_crypto_sym_enqueue_xmit_packed(
 	/* packed vring: last part, status returned */
 	desc[idx].addr = op_data_req_phys_addr + req_data_len;
 	desc[idx].len = sizeof(struct virtio_crypto_inhdr);
-	desc[idx++].flags = flags | VRING_DESC_F_WRITE;
+	desc[idx++].flags = txvq->vq_packed.cached_flags | VRING_DESC_F_WRITE;
+
+	num_entry = idx;
+	txvq->vq_avail_idx += num_entry;
+	if (txvq->vq_avail_idx >= txvq->vq_nentries) {
+		txvq->vq_avail_idx -= txvq->vq_nentries;
+		txvq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
 
 	/* save the infos to use when receiving packets */
 	dxp->crypto_op = (void *)cop;
 	dxp->ndescs = needed;
 
-	txvq->vq_desc_head_idx += idx & (txvq->vq_nentries - 1);
+	txvq->vq_desc_head_idx = (txvq->vq_desc_head_idx + idx) & (txvq->vq_nentries - 1);
 	if (txvq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
 		txvq->vq_desc_tail_idx = idx;
 	txvq->vq_free_cnt = (uint16_t)(txvq->vq_free_cnt - needed);
