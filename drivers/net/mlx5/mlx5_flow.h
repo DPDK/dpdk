@@ -201,6 +201,21 @@ enum mlx5_feature_name {
 	MLX5_SAMPLE_ID,
 };
 
+#define MLX5_MIRROR_MAX_CLONES_NUM 3
+#define MLX5_MIRROR_MAX_SAMPLE_ACTIONS_LEN 4
+
+struct mlx5_mirror_clone {
+	enum rte_flow_action_type type;
+	void *action_ctx;
+};
+
+struct mlx5_mirror {
+	struct mlx5_indirect_list indirect;
+	uint32_t clones_num;
+	struct mlx5dr_action *mirror_action;
+	struct mlx5_mirror_clone clone[MLX5_MIRROR_MAX_CLONES_NUM];
+};
+
 /* Default queue number. */
 #define MLX5_RSSQ_DEFAULT_NUM 16
 
@@ -3721,6 +3736,12 @@ mlx5_flow_nta_update_copy_table(struct rte_eth_dev *dev,
 				struct rte_flow_error *error);
 
 struct mlx5_ecpri_parser_profile *flow_hw_get_ecpri_parser_profile(void *dr_ctx);
+
+struct mlx5_mirror *
+mlx5_hw_create_mirror(struct rte_eth_dev *dev,
+		      const struct mlx5_flow_template_table_cfg *table_cfg,
+		      const struct rte_flow_action *actions,
+		      struct rte_flow_error *error);
 
 #endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
