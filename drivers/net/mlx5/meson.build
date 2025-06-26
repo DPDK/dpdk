@@ -53,6 +53,7 @@ if is_linux
             'mlx5_flow_verbs.c',
             'mlx5_hws_cnt.c',
             'mlx5_nta_split.c',
+            'mlx5_nta_sample.c',
     )
 endif
 
