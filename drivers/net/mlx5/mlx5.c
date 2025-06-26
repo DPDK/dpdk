@@ -2368,6 +2368,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_flex_item_port_cleanup(dev);
 	mlx5_indirect_list_handles_release(dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
+	mlx5_nta_sample_context_free(dev);
 	flow_hw_destroy_vport_action(dev);
 	/* dr context will be closed after mlx5_os_free_shared_dr. */
 	flow_hw_resource_release(dev);
