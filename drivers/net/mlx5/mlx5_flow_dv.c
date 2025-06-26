@@ -18146,6 +18146,11 @@ flow_dv_query(struct rte_eth_dev *dev,
 						  error);
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
+			if (flow->indirect_type == MLX5_INDIRECT_ACTION_TYPE_CT)
+				return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "age not available");
 			ret = flow_dv_query_age(dev, flow, data, error);
 			break;
 		default:
