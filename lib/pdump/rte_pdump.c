@@ -426,7 +426,7 @@ rte_pdump_init(void)
 	int ret;
 
 	mz = rte_memzone_reserve(MZ_RTE_PDUMP_STATS, sizeof(*pdump_stats),
-				 rte_socket_id(), 0);
+				 SOCKET_ID_ANY, 0);
 	if (mz == NULL) {
 		PDUMP_LOG_LINE(ERR, "cannot allocate pdump statistics");
 		rte_errno = ENOMEM;

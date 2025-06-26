@@ -343,7 +343,7 @@ eth_dev_shared_data_prepare(void)
 		/* Allocate port data and ownership shared memory. */
 		mz = rte_memzone_reserve(MZ_RTE_ETH_DEV_DATA,
 				sizeof(*eth_dev_shared_data),
-				rte_socket_id(), flags);
+				SOCKET_ID_ANY, flags);
 		if (mz == NULL) {
 			RTE_ETHDEV_LOG_LINE(ERR, "Cannot allocate ethdev shared data");
 			goto out;

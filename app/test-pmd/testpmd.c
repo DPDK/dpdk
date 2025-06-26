@@ -1729,8 +1729,7 @@ init_config(void)
 			mempools[i] = mbuf_pool_create
 					(mbuf_data_size[i],
 					 nb_mbuf_per_pool,
-					 socket_num == UMA_NO_CONFIG ?
-					 0 : socket_num, i);
+					 SOCKET_ID_ANY, i);
 	}
 
 	init_port_config();
@@ -3056,7 +3055,8 @@ start_port(portid_t pid)
 				} else {
 					struct rte_mempool *mp =
 						mbuf_pool_find
-							(port->socket_id, 0);
+							((numa_support ? port->socket_id :
+							(unsigned int)SOCKET_ID_ANY), 0);
 					if (mp == NULL) {
 						fprintf(stderr,
 							"Failed to setup RX queue: No mempool allocation on the socket %d\n",
@@ -4475,7 +4475,7 @@ main(int argc, char** argv)
 
 #ifdef RTE_LIB_METRICS
 	/* Init metrics library */
-	rte_metrics_init(rte_socket_id());
+	rte_metrics_init(SOCKET_ID_ANY);
 #endif
 
 #ifdef RTE_LIB_LATENCYSTATS
