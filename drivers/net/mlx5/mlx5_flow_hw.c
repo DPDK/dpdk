@@ -14807,7 +14807,7 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	enum mlx5_indirect_list_type list_type;
 	struct rte_flow_action_list_handle *handle;
 	struct mlx5_priv *priv = dev->data->dev_private;
-	const struct mlx5_flow_template_table_cfg table_cfg = {
+	struct mlx5_flow_template_table_cfg table_cfg = {
 		.external = true,
 		.attr = {
 			.flow_attr = {
@@ -14844,6 +14844,11 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	}
 	switch (list_type) {
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
+		/*
+		 * Mirror action is only supported in HWS group. Setting group to
+		 * non-zero will ensure that the action resources are allocated correctly.
+		 */
+		table_cfg.attr.flow_attr.group = 1;
 		handle = mlx5_hw_mirror_handle_create(dev, &table_cfg,
 						      actions, error);
 		break;
