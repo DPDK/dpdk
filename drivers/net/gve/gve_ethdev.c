@@ -1366,5 +1366,5 @@ static struct rte_pci_driver rte_gve_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_gve, rte_gve_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_gve, pci_id_gve_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_gve, "* igb_uio | vfio-pci");
+RTE_PMD_REGISTER_KMOD_DEP(net_gve, "* igb_uio | vfio-pci | nic_uio");
 RTE_LOG_REGISTER_SUFFIX(gve_logtype_driver, driver, NOTICE);

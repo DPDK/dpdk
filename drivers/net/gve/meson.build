@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(C) 2022 Intel Corporation
 
-if not is_linux
+if is_windows
     build = false
-    reason = 'only supported on Linux'
+    reason = 'not supported on Windows'
     subdir_done()
 endif
 

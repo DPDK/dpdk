@@ -25,9 +25,7 @@
 
 #include "../gve_logs.h"
 
-#ifdef RTE_EXEC_ENV_LINUX
 #include <sys/utsname.h>
-#endif
 
 #ifndef u8
 #define u8 uint8_t
