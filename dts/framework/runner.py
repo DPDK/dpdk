@@ -18,16 +18,10 @@ from framework.exception import ConfigurationError
 from framework.test_run import TestRun
 from framework.testbed_model.node import Node
 
-from .config import (
-    Configuration,
-    load_config,
-)
+from .config import Configuration, load_config
 from .logger import DTSLogger, get_dts_logger
 from .settings import SETTINGS
-from .test_result import (
-    DTSResult,
-    Result,
-)
+from .test_result import ResultNode, TestRunResult
 
 
 class DTSRunner:
@@ -35,7 +29,7 @@ class DTSRunner:
 
     _configuration: Configuration
     _logger: DTSLogger
-    _result: DTSResult
+    _result: TestRunResult
 
     def __init__(self):
         """Initialize the instance with configuration, logger, result and string constants."""
@@ -54,7 +48,9 @@ class DTSRunner:
         if not os.path.exists(SETTINGS.output_dir):
             os.makedirs(SETTINGS.output_dir)
         self._logger.add_dts_root_logger_handlers(SETTINGS.verbose, SETTINGS.output_dir)
-        self._result = DTSResult(SETTINGS.output_dir, self._logger)
+
+        test_suites_result = ResultNode(label="test_suites")
+        self._result = TestRunResult(test_suites=test_suites_result)
 
     def run(self) -> None:
         """Run DTS.
@@ -66,34 +62,30 @@ class DTSRunner:
         try:
             # check the python version of the server that runs dts
             self._check_dts_python_version()
-            self._result.update_setup(Result.PASS)
 
             for node_config in self._configuration.nodes:
                 nodes.append(Node(node_config))
 
-            test_run_result = self._result.add_test_run(self._configuration.test_run)
             test_run = TestRun(
                 self._configuration.test_run,
                 self._configuration.tests_config,
                 nodes,
-                test_run_result,
+                self._result,
             )
             test_run.spin()
 
         except Exception as e:
-            self._logger.exception("An unexpected error has occurred.")
+            self._logger.exception("An unexpected error has occurred.", e)
             self._result.add_error(e)
-            # raise
 
         finally:
             try:
                 self._logger.set_stage("post_run")
                 for node in nodes:
                     node.close()
-                self._result.update_teardown(Result.PASS)
             except Exception as e:
-                self._logger.exception("The final cleanup of nodes failed.")
-                self._result.update_teardown(Result.ERROR, e)
+                self._logger.exception("The final cleanup of nodes failed.", e)
+                self._result.add_error(e)
 
         # we need to put the sys.exit call outside the finally clause to make sure
         # that unexpected exceptions will propagate
@@ -116,9 +108,6 @@ class DTSRunner:
 
     def _exit_dts(self) -> None:
         """Process all errors and exit with the proper exit code."""
-        self._result.process()
-
         if self._logger:
             self._logger.info("DTS execution has ended.")
-
-        sys.exit(self._result.get_return_code())
+        sys.exit(self._result.process())
