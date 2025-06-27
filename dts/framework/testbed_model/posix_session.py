@@ -425,7 +425,9 @@ class PosixSession(OSSession):
             SETTINGS.timeout,
         ).stdout.split("\n")
         kernel_version = self.send_command("uname -r", SETTINGS.timeout).stdout
-        return OSSessionInfo(os_release_info[0].strip(), os_release_info[1].strip(), kernel_version)
+        return OSSessionInfo(
+            os_release_info[0].strip('"'), os_release_info[1].strip('"'), kernel_version
+        )
 
     def get_arch_info(self) -> str:
         """Overrides :meth'~.os_session.OSSession.get_arch_info'."""
