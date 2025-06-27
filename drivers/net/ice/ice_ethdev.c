@@ -4744,11 +4744,11 @@ static void ice_vsi_update_l2tsel(struct ice_vsi *vsi, enum ice_l2tsel l2tsel)
 		l2tsel_bit = BIT(ICE_L2TSEL_BIT_OFFSET);
 
 	for (i = 0; i < dev_data->nb_rx_queues; i++) {
+		const struct ice_rx_queue *rxq = dev_data->rx_queues[i];
 		u32 qrx_context_offset;
 		u32 regval;
 
-		qrx_context_offset =
-			QRX_CONTEXT(ICE_L2TSEL_QRX_CONTEXT_REG_IDX, i);
+		qrx_context_offset = QRX_CONTEXT(ICE_L2TSEL_QRX_CONTEXT_REG_IDX, rxq->reg_idx);
 
 		regval = rd32(hw, qrx_context_offset);
 		regval &= ~BIT(ICE_L2TSEL_BIT_OFFSET);
