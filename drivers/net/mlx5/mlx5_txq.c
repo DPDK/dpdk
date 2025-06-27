@@ -708,6 +708,7 @@ txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
 		   MLX5_WSEG_SIZE -
 		   MLX5_ESEG_MIN_INLINE_SIZE +
 		   txq_ctrl->max_inline_data;
+	wqe_size = RTE_MAX(wqe_size, MLX5_WQE_SIZE);
 	return rte_align32pow2(wqe_size * desc) / MLX5_WQE_SIZE;
 }
 
