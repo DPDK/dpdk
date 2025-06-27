@@ -110,8 +110,11 @@ class TestSuite(TestProtocol):
 
     @property
     def name(self) -> str:
-        """The name of the test suite class."""
-        return type(self).__name__
+        """The name of the test suite."""
+        module_prefix = (
+            f"{TestSuiteSpec.TEST_SUITES_PACKAGE_NAME}.{TestSuiteSpec.TEST_SUITE_MODULE_PREFIX}"
+        )
+        return type(self).__module__[len(module_prefix) :]
 
     @property
     def topology(self) -> Topology:
