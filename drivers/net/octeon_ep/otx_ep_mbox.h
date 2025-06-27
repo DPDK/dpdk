@@ -63,7 +63,7 @@ enum otx_ep_link_autoneg {
 	OTX_EP_LINK_AUTONEG,
 };
 
-#define OTX_EP_MBOX_TIMEOUT_MS     1200
+#define OTX_EP_MBOX_TIMEOUT_MS     2500
 #define OTX_EP_MBOX_MAX_RETRIES    2
 #define OTX_EP_MBOX_MAX_DATA_SIZE  6
 #define OTX_EP_MBOX_MAX_DATA_BUF_SIZE 256
