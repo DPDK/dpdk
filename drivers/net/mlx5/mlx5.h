@@ -386,13 +386,14 @@ struct mlx5_sh_config {
 	uint32_t hw_fcs_strip:1; /* FCS stripping is supported. */
 	uint32_t allow_duplicate_pattern:1;
 	uint32_t lro_allowed:1; /* Whether LRO is allowed. */
+	/* Allow/Prevent the duplicate rules pattern. */
+	uint32_t fdb_def_rule:1; /* Create FDB default jump rule */
+	uint32_t repr_matching:1; /* Enable implicit vport matching in HWS FDB. */
+	uint32_t txq_mem_algn; /* logarithm value of the TxQ address alignment. */
 	struct {
 		uint16_t service_core;
 		uint32_t cycle_time; /* query cycle time in milli-second. */
 	} cnt_svc; /* configure for HW steering's counter's service. */
-	/* Allow/Prevent the duplicate rules pattern. */
-	uint32_t fdb_def_rule:1; /* Create FDB default jump rule */
-	uint32_t repr_matching:1; /* Enable implicit vport matching in HWS FDB. */
 };
 
 /* Structure for VF VLAN workaround. */

@@ -185,6 +185,14 @@
 /* Device parameter to control representor matching in ingress/egress flows with HWS. */
 #define MLX5_REPR_MATCHING_EN "repr_matching_en"
 
+/*
+ * Alignment of the Tx queue starting address,
+ * If not set, using separate umem and MR for each TxQ.
+ * If set, using consecutive memory address and single MR for all Tx queues,
+ * each TxQ will start at the alignment specified.
+ */
+#define MLX5_TXQ_MEM_ALGN "txq_mem_algn"
+
 /* Shared memory between primary and secondary processes. */
 struct mlx5_shared_data *mlx5_shared_data;
 
@@ -1447,6 +1455,8 @@ mlx5_dev_args_check_handler(const char *key, const char *val, void *opaque)
 		config->cnt_svc.cycle_time = tmp;
 	} else if (strcmp(MLX5_REPR_MATCHING_EN, key) == 0) {
 		config->repr_matching = !!tmp;
+	} else if (strcmp(MLX5_TXQ_MEM_ALGN, key) == 0) {
+		config->txq_mem_algn = (uint32_t)tmp;
 	}
 	return 0;
 }
@@ -1486,9 +1496,17 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		MLX5_HWS_CNT_SERVICE_CORE,
 		MLX5_HWS_CNT_CYCLE_TIME,
 		MLX5_REPR_MATCHING_EN,
+		MLX5_TXQ_MEM_ALGN,
 		NULL,
 	};
 	int ret = 0;
+	size_t alignment = rte_mem_page_size();
+	uint32_t max_queue_umem_size = MLX5_WQE_SIZE * mlx5_dev_get_max_wq_size(sh);
+
+	if (alignment == (size_t)-1) {
+		alignment = (1 << MLX5_LOG_PAGE_SIZE);
+		DRV_LOG(WARNING, "Failed to get page_size, using default %zu size.", alignment);
+	}
 
 	/* Default configuration. */
 	memset(config, 0, sizeof(*config));
@@ -1501,6 +1519,7 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 	config->cnt_svc.cycle_time = MLX5_CNT_SVC_CYCLE_TIME_DEFAULT;
 	config->cnt_svc.service_core = rte_get_main_lcore();
 	config->repr_matching = 1;
+	config->txq_mem_algn = log2above(alignment);
 	if (mkvlist != NULL) {
 		/* Process parameters. */
 		ret = mlx5_kvargs_process(mkvlist, params,
@@ -1567,6 +1586,16 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		config->hw_fcs_strip = 0;
 	else
 		config->hw_fcs_strip = sh->dev_cap.hw_fcs_strip;
+	if (config->txq_mem_algn != 0 && config->txq_mem_algn < log2above(alignment)) {
+		DRV_LOG(WARNING,
+			"\"txq_mem_algn\" too small %u, round up to %u.",
+			config->txq_mem_algn, log2above(alignment));
+		config->txq_mem_algn = log2above(alignment);
+	} else if (config->txq_mem_algn > log2above(max_queue_umem_size)) {
+		DRV_LOG(WARNING,
+			"\"txq_mem_algn\" with value %u bigger than %u.",
+			config->txq_mem_algn, log2above(max_queue_umem_size));
+	}
 	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 		(config->hw_fcs_strip ? "" : "not "));
 	DRV_LOG(DEBUG, "\"tx_pp\" is %d.", config->tx_pp);
@@ -1584,6 +1613,7 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		config->allow_duplicate_pattern);
 	DRV_LOG(DEBUG, "\"fdb_def_rule_en\" is %u.", config->fdb_def_rule);
 	DRV_LOG(DEBUG, "\"repr_matching_en\" is %u.", config->repr_matching);
+	DRV_LOG(DEBUG, "\"txq_mem_algn\" is %u.", config->txq_mem_algn);
 	return 0;
 }
 
@@ -3149,6 +3179,12 @@ mlx5_probe_again_args_validate(struct mlx5_common_device *cdev,
 		DRV_LOG(ERR, "\"tx_skew\" "
 			"configuration mismatch for shared %s context.",
 			sh->ibdev_name);
+		goto error;
+	}
+	if (sh->config.txq_mem_algn != config->txq_mem_algn) {
+		DRV_LOG(ERR, "\"TxQ memory alignment\" "
+			"configuration mismatch for shared %s context. %u - %u",
+			sh->ibdev_name, sh->config.txq_mem_algn, config->txq_mem_algn);
 		goto error;
 	}
 	mlx5_free(config);
