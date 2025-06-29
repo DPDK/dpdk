@@ -17,6 +17,7 @@
 #include <bus_pci_driver.h>
 #include <rte_common.h>
 #include <rte_eal_paging.h>
+#include <rte_bitops.h>
 
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
@@ -1032,6 +1033,57 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 		    !txq_ctrl->txq.inlen_empw);
 }
 
+/*
+ * Calculate WQ memory length for a Tx queue.
+ *
+ * @param log_wqe_cnt
+ *   Logarithm value of WQE numbers.
+ *
+ * @return
+ *   memory length of this WQ.
+ */
+static uint32_t mlx5_txq_wq_mem_length(uint32_t log_wqe_cnt)
+{
+	uint32_t num_of_wqbbs = 1U << log_wqe_cnt;
+	uint32_t umem_size;
+
+	umem_size = MLX5_WQE_SIZE * num_of_wqbbs;
+	return umem_size;
+}
+
+/*
+ * Calculate CQ memory length for a Tx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param txq_ctrl
+ *   Pointer to the TxQ control structure of the CQ.
+ *
+ * @return
+ *   memory length of this CQ.
+ */
+static uint32_t
+mlx5_txq_cq_mem_length(struct rte_eth_dev *dev, struct mlx5_txq_ctrl *txq_ctrl)
+{
+	uint32_t cqe_n, log_desc_n;
+
+	if (__rte_trace_point_fp_is_enabled() &&
+	    txq_ctrl->txq.offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP)
+		cqe_n = UINT16_MAX / 2 - 1;
+	else
+		cqe_n = (1UL << txq_ctrl->txq.elts_n) / MLX5_TX_COMP_THRESH +
+			1 + MLX5_TX_COMP_THRESH_INLINE_DIV;
+	log_desc_n = log2above(cqe_n);
+	cqe_n = 1UL << log_desc_n;
+	if (cqe_n > UINT16_MAX) {
+		DRV_LOG(ERR, "Port %u Tx queue %u requests to many CQEs %u.",
+			dev->data->port_id, txq_ctrl->txq.idx, cqe_n);
+		rte_errno = EINVAL;
+		return 0;
+	}
+	return sizeof(struct mlx5_cqe) * cqe_n;
+}
+
 /**
  * Create a DPDK Tx queue.
  *
@@ -1057,6 +1109,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_txq_ctrl *tmpl;
 	uint16_t max_wqe;
+	uint32_t wqebb_cnt, log_desc_n;
 
 	if (socket != (unsigned int)SOCKET_ID_ANY) {
 		tmpl = mlx5_malloc(MLX5_MEM_RTE | MLX5_MEM_ZERO, sizeof(*tmpl) +
@@ -1099,14 +1152,24 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
 	txq_adjust_params(tmpl);
+	wqebb_cnt = txq_calc_wqebb_cnt(tmpl);
 	max_wqe = mlx5_dev_get_max_wq_size(priv->sh);
-	if (txq_calc_wqebb_cnt(tmpl) > max_wqe) {
+	if (wqebb_cnt > max_wqe) {
 		DRV_LOG(ERR,
 			"port %u Tx WQEBB count (%d) exceeds the limit (%d),"
 			" try smaller queue size",
-			dev->data->port_id, txq_calc_wqebb_cnt(tmpl), max_wqe);
+			dev->data->port_id, wqebb_cnt, max_wqe);
 		rte_errno = ENOMEM;
 		goto error;
+	}
+	if (priv->sh->config.txq_mem_algn != 0) {
+		log_desc_n = log2above(wqebb_cnt);
+		tmpl->txq.sq_mem_len = mlx5_txq_wq_mem_length(log_desc_n);
+		tmpl->txq.cq_mem_len = mlx5_txq_cq_mem_length(dev, tmpl);
+		DRV_LOG(DEBUG, "Port %u TxQ %u WQ length %u, CQ length %u before align.",
+			dev->data->port_id, idx, tmpl->txq.sq_mem_len, tmpl->txq.cq_mem_len);
+		priv->consec_tx_mem.sq_total_size += tmpl->txq.sq_mem_len;
+		priv->consec_tx_mem.cq_total_size += tmpl->txq.cq_mem_len;
 	}
 	rte_atomic_fetch_add_explicit(&tmpl->refcnt, 1, rte_memory_order_relaxed);
 	tmpl->is_hairpin = false;

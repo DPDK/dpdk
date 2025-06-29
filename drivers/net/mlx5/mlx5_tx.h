@@ -149,6 +149,7 @@ struct __rte_cache_aligned mlx5_txq_data {
 	uint16_t inlen_mode; /* Minimal data length to inline. */
 	uint8_t tx_aggr_affinity; /* TxQ affinity configuration. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
+	uint32_t sq_mem_len; /* Length of TxQ for WQEs */
 	uint64_t offloads; /* Offloads for Tx Queue. */
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct mlx5_wqe *wqes; /* Work queue. */
@@ -167,6 +168,7 @@ struct __rte_cache_aligned mlx5_txq_data {
 	uint64_t ts_mask; /* Timestamp flag dynamic mask. */
 	uint64_t ts_last; /* Last scheduled timestamp. */
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
+	uint32_t cq_mem_len; /* Length of TxQ for CQEs */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 	struct mlx5_txq_stats stats_reset; /* stats on last reset. */
