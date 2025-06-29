@@ -1135,6 +1135,89 @@ mlx5_hw_representor_port_allowed_start(struct rte_eth_dev *dev)
 
 #endif
 
+/*
+ * Allocate TxQs unique umem and register its MR.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int mlx5_dev_allocate_consec_tx_mem(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	size_t alignment;
+	uint32_t total_size;
+	struct mlx5dv_devx_umem *umem_obj = NULL;
+	void *umem_buf = NULL;
+
+	/* Legacy per queue allocation, do nothing here. */
+	if (priv->sh->config.txq_mem_algn == 0)
+		return 0;
+	alignment = (size_t)1 << priv->sh->config.txq_mem_algn;
+	total_size = priv->consec_tx_mem.sq_total_size + priv->consec_tx_mem.cq_total_size;
+	/*
+	 * Hairpin queues can be skipped later
+	 * queue size alignment is bigger than doorbell alignment, no need to align or
+	 * round-up again. One queue have two DBs (for CQ + WQ).
+	 */
+	total_size += MLX5_DBR_SIZE * priv->txqs_n * 2;
+	umem_buf = mlx5_malloc_numa_tolerant(MLX5_MEM_RTE | MLX5_MEM_ZERO, total_size,
+					     alignment, priv->sh->numa_node);
+	if (!umem_buf) {
+		DRV_LOG(ERR, "Failed to allocate consecutive memory for TxQs.");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	umem_obj = mlx5_os_umem_reg(priv->sh->cdev->ctx, (void *)(uintptr_t)umem_buf,
+				    total_size, IBV_ACCESS_LOCAL_WRITE);
+	if (!umem_obj) {
+		DRV_LOG(ERR, "Failed to register unique umem for all SQs.");
+		rte_errno = errno;
+		if (umem_buf)
+			mlx5_free(umem_buf);
+		return -rte_errno;
+	}
+	priv->consec_tx_mem.umem = umem_buf;
+	priv->consec_tx_mem.sq_cur_off = 0;
+	priv->consec_tx_mem.cq_cur_off = priv->consec_tx_mem.sq_total_size;
+	priv->consec_tx_mem.umem_obj = umem_obj;
+	DRV_LOG(DEBUG, "Allocated umem %p with size %u for %u queues with sq_len %u,"
+		" cq_len %u and registered object %p on port %u",
+		umem_buf, total_size, priv->txqs_n, priv->consec_tx_mem.sq_total_size,
+		priv->consec_tx_mem.cq_total_size, (void *)umem_obj, dev->data->port_id);
+	return 0;
+}
+
+/*
+ * Release TxQs unique umem and register its MR.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param on_stop
+ *   If this is on device stop stage.
+ */
+static void mlx5_dev_free_consec_tx_mem(struct rte_eth_dev *dev, bool on_stop)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->consec_tx_mem.umem_obj) {
+		mlx5_os_umem_dereg(priv->consec_tx_mem.umem_obj);
+		priv->consec_tx_mem.umem_obj = NULL;
+	}
+	if (priv->consec_tx_mem.umem) {
+		mlx5_free(priv->consec_tx_mem.umem);
+		priv->consec_tx_mem.umem = NULL;
+	}
+	/* Queues information will not be reset. */
+	if (on_stop) {
+		/* Reset to 0s for re-setting up queues. */
+		priv->consec_tx_mem.sq_cur_off = 0;
+		priv->consec_tx_mem.cq_cur_off = 0;
+	}
+}
+
 /**
  * DPDK callback to start the device.
  *
@@ -1224,6 +1307,12 @@ continue_dev_start:
 		ret = priv->obj_ops.lb_dummy_queue_create(dev);
 		if (ret)
 			goto error;
+	}
+	ret = mlx5_dev_allocate_consec_tx_mem(dev);
+	if (ret) {
+		DRV_LOG(ERR, "port %u Tx queues memory allocation failed: %s",
+			dev->data->port_id, strerror(rte_errno));
+		goto error;
 	}
 	ret = mlx5_txq_start(dev);
 	if (ret) {
@@ -1358,6 +1447,7 @@ error:
 	mlx5_rxq_stop(dev);
 	if (priv->obj_ops.lb_dummy_queue_release)
 		priv->obj_ops.lb_dummy_queue_release(dev);
+	mlx5_dev_free_consec_tx_mem(dev, false);
 	mlx5_txpp_stop(dev); /* Stop last. */
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
@@ -1470,6 +1560,7 @@ continue_dev_stop:
 	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
+	mlx5_dev_free_consec_tx_mem(dev, true);
 	if (priv->obj_ops.lb_dummy_queue_release)
 		priv->obj_ops.lb_dummy_queue_release(dev);
 	mlx5_txpp_stop(dev);
