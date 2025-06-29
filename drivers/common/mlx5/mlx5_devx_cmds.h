@@ -483,6 +483,11 @@ struct mlx5_devx_create_sq_attr {
 	uint32_t packet_pacing_rate_limit_index:16;
 	uint32_t tis_lst_sz:16;
 	uint32_t tis_num:24;
+	uint32_t q_off;
+	void *umem;
+	void *umem_obj;
+	uint32_t q_len;
+	uint32_t db_off;
 	struct mlx5_devx_wq_attr wq_attr;
 };
 
@@ -514,6 +519,11 @@ struct mlx5_devx_cq_attr {
 	uint64_t db_umem_offset;
 	uint32_t eqn;
 	uint64_t db_addr;
+	void *umem;
+	void *umem_obj;
+	uint32_t q_off;
+	uint32_t q_len;
+	uint32_t db_off;
 };
 
 /* Virtq attributes structure, used by VIRTQ operations. */

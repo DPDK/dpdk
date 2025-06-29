@@ -51,52 +51,56 @@ static int
 mlx5_txq_start(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i;
+	uint32_t log_max_wqe = log2above(mlx5_dev_get_max_wq_size(priv->sh));
+	uint32_t flags = MLX5_MEM_RTE | MLX5_MEM_ZERO;
+	unsigned int i, cnt;
 	int ret;
 
-	for (i = 0; i != priv->txqs_n; ++i) {
-		struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
-		struct mlx5_txq_data *txq_data = &txq_ctrl->txq;
-		uint32_t flags = MLX5_MEM_RTE | MLX5_MEM_ZERO;
+	for (cnt = log_max_wqe; cnt > 0; cnt -= 1) {
+		for (i = 0; i != priv->txqs_n; ++i) {
+			struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
+			struct mlx5_txq_data *txq_data = &txq_ctrl->txq;
 
-		if (!txq_ctrl)
-			continue;
-		if (!txq_ctrl->is_hairpin)
-			txq_alloc_elts(txq_ctrl);
-		MLX5_ASSERT(!txq_ctrl->obj);
-		txq_ctrl->obj = mlx5_malloc_numa_tolerant(flags, sizeof(struct mlx5_txq_obj),
-							  0, txq_ctrl->socket);
-		if (!txq_ctrl->obj) {
-			DRV_LOG(ERR, "Port %u Tx queue %u cannot allocate "
-				"memory resources.", dev->data->port_id,
-				txq_data->idx);
-			rte_errno = ENOMEM;
-			goto error;
-		}
-		ret = priv->obj_ops.txq_obj_new(dev, i);
-		if (ret < 0) {
-			mlx5_free(txq_ctrl->obj);
-			txq_ctrl->obj = NULL;
-			goto error;
-		}
-		if (!txq_ctrl->is_hairpin) {
-			size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
-
-			txq_data->fcqs = mlx5_malloc_numa_tolerant(flags, size,
-								   RTE_CACHE_LINE_SIZE,
-								   txq_ctrl->socket);
-			if (!txq_data->fcqs) {
-				DRV_LOG(ERR, "Port %u Tx queue %u cannot "
-					"allocate memory (FCQ).",
-					dev->data->port_id, i);
+			if (!txq_ctrl || txq_data->elts_n != cnt)
+				continue;
+			if (!txq_ctrl->is_hairpin)
+				txq_alloc_elts(txq_ctrl);
+			MLX5_ASSERT(!txq_ctrl->obj);
+			txq_ctrl->obj = mlx5_malloc_numa_tolerant(flags,
+								  sizeof(struct mlx5_txq_obj),
+								  0, txq_ctrl->socket);
+			if (!txq_ctrl->obj) {
+				DRV_LOG(ERR, "Port %u Tx queue %u cannot allocate "
+					"memory resources.", dev->data->port_id,
+					txq_data->idx);
 				rte_errno = ENOMEM;
 				goto error;
 			}
-		}
-		DRV_LOG(DEBUG, "Port %u txq %u updated with %p.",
-			dev->data->port_id, i, (void *)&txq_ctrl->obj);
-		LIST_INSERT_HEAD(&priv->txqsobj, txq_ctrl->obj, next);
+			ret = priv->obj_ops.txq_obj_new(dev, i);
+			if (ret < 0) {
+				mlx5_free(txq_ctrl->obj);
+				txq_ctrl->obj = NULL;
+				goto error;
+			}
+			if (!txq_ctrl->is_hairpin) {
+				size_t size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
+
+				txq_data->fcqs = mlx5_malloc_numa_tolerant(flags, size,
+									   RTE_CACHE_LINE_SIZE,
+									   txq_ctrl->socket);
+				if (!txq_data->fcqs) {
+					DRV_LOG(ERR, "Port %u Tx queue %u cannot "
+						"allocate memory (FCQ).",
+						dev->data->port_id, i);
+					rte_errno = ENOMEM;
+					goto error;
+				}
+			}
+			DRV_LOG(DEBUG, "Port %u txq %u updated with %p.",
+				dev->data->port_id, i, (void *)&txq_ctrl->obj);
+			LIST_INSERT_HEAD(&priv->txqsobj, txq_ctrl->obj, next);
 	}
+}
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
