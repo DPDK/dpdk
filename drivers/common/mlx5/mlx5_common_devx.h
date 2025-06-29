@@ -21,6 +21,7 @@ struct mlx5_devx_cq {
 		volatile struct mlx5_cqe *cqes; /* The CQ ring buffer. */
 	};
 	volatile uint32_t *db_rec; /* The CQ doorbell record. */
+	bool consec; /* Using consecutive memory. */
 };
 
 /* DevX Send Queue structure. */
@@ -33,6 +34,7 @@ struct mlx5_devx_sq {
 		volatile struct mlx5_aso_wqe *aso_wqes;
 	};
 	volatile uint32_t *db_rec; /* The SQ doorbell record. */
+	bool consec; /* Using consecutive memory. */
 };
 
 /* DevX Queue Pair structure. */
