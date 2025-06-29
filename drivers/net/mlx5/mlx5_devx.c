@@ -1493,10 +1493,22 @@ mlx5_txq_create_devx_sq_resources(struct rte_eth_dev *dev, uint16_t idx,
 			mlx5_ts_format_conv(cdev->config.hca_attr.sq_ts_format),
 		.tis_num = mlx5_get_txq_tis_num(dev, idx),
 	};
+	uint32_t db_start = priv->consec_tx_mem.sq_total_size + priv->consec_tx_mem.cq_total_size;
+	int ret;
 
 	/* Create Send Queue object with DevX. */
-	return mlx5_devx_sq_create(cdev->ctx, &txq_obj->sq_obj,
-				   log_desc_n, &sq_attr, priv->sh->numa_node);
+	if (priv->sh->config.txq_mem_algn) {
+		sq_attr.umem = priv->consec_tx_mem.umem;
+		sq_attr.umem_obj = priv->consec_tx_mem.umem_obj;
+		sq_attr.q_off = priv->consec_tx_mem.sq_cur_off;
+		sq_attr.db_off = db_start + (2 * idx) * MLX5_DBR_SIZE;
+		sq_attr.q_len = txq_data->sq_mem_len;
+	}
+	ret = mlx5_devx_sq_create(cdev->ctx, &txq_obj->sq_obj,
+				  log_desc_n, &sq_attr, priv->sh->numa_node);
+	if (!ret && priv->sh->config.txq_mem_algn)
+		priv->consec_tx_mem.sq_cur_off += txq_data->sq_mem_len;
+	return ret;
 }
 #endif
 
@@ -1536,6 +1548,7 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 	uint32_t cqe_n, log_desc_n;
 	uint32_t wqe_n, wqe_size;
 	int ret = 0;
+	uint32_t db_start = priv->consec_tx_mem.sq_total_size + priv->consec_tx_mem.cq_total_size;
 
 	MLX5_ASSERT(txq_data);
 	MLX5_ASSERT(txq_obj);
@@ -1556,6 +1569,13 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 			dev->data->port_id, txq_data->idx, cqe_n);
 		rte_errno = EINVAL;
 		return 0;
+	}
+	if (priv->sh->config.txq_mem_algn) {
+		cq_attr.umem = priv->consec_tx_mem.umem;
+		cq_attr.umem_obj = priv->consec_tx_mem.umem_obj;
+		cq_attr.q_off = priv->consec_tx_mem.cq_cur_off;
+		cq_attr.db_off = db_start + (2 * idx + 1) * MLX5_DBR_SIZE;
+		cq_attr.q_len = txq_data->cq_mem_len;
 	}
 	/* Create completion queue object with DevX. */
 	ret = mlx5_devx_cq_create(sh->cdev->ctx, &txq_obj->cq_obj, log_desc_n,
@@ -1641,6 +1661,8 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 #endif
 	txq_ctrl->uar_mmap_offset =
 			mlx5_os_get_devx_uar_mmap_offset(sh->tx_uar.obj);
+	if (priv->sh->config.txq_mem_algn)
+		priv->consec_tx_mem.cq_cur_off += txq_data->cq_mem_len;
 	ppriv->uar_table[txq_data->idx] = sh->tx_uar.bf_db;
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
