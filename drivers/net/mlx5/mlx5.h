@@ -2138,6 +2138,10 @@ struct mlx5_priv {
 	struct mlx5_nta_sample_ctx *nta_sample_ctx;
 #endif
 	struct rte_eth_dev *shared_host; /* Host device for HW steering. */
+	struct {
+		uint32_t sq_total_size;
+		uint32_t cq_total_size;
+	} consec_tx_mem;
 	RTE_ATOMIC(uint16_t) shared_refcnt; /* HW steering host reference counter. */
 };
 
