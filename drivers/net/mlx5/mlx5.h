@@ -2141,6 +2141,10 @@ struct mlx5_priv {
 	struct {
 		uint32_t sq_total_size;
 		uint32_t cq_total_size;
+		void *umem;
+		void *umem_obj;
+		uint32_t sq_cur_off;
+		uint32_t cq_cur_off;
 	} consec_tx_mem;
 	RTE_ATOMIC(uint16_t) shared_refcnt; /* HW steering host reference counter. */
 };
