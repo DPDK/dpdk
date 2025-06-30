@@ -69,6 +69,7 @@ typedef struct rte_node_mbuf_overload_fields {
  * 2. Overloadable fields: Fields which can be repurposed by two adjacent nodes.
  */
 typedef struct rte_node_mbuf_dynfield {
+#if RTE_NODE_MBUF_PERSISTENT_FIELDS_SIZE > 0
 	/**
 	 * Persistent mbuf region across nodes in graph walk
 	 *
@@ -78,6 +79,7 @@ typedef struct rte_node_mbuf_dynfield {
 	union {
 		uint8_t persistent_data[RTE_NODE_MBUF_PERSISTENT_FIELDS_SIZE];
 	};
+#endif
 	/**
 	 * Overloadable mbuf fields across graph walk. Fields which can change.
 	 *
