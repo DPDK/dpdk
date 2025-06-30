@@ -57,6 +57,7 @@ enum ena_admin_aq_feature_id {
 	ENA_ADMIN_EXTRA_PROPERTIES_STRINGS          = 5,
 	ENA_ADMIN_EXTRA_PROPERTIES_FLAGS            = 6,
 	ENA_ADMIN_MAX_QUEUES_EXT                    = 7,
+	ENA_ADMIN_FRAG_BYPASS                       = 8,
 	ENA_ADMIN_RSS_HASH_FUNCTION                 = 10,
 	ENA_ADMIN_STATELESS_OFFLOAD_CONFIG          = 11,
 	ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG      = 12,
@@ -165,6 +166,10 @@ enum ena_admin_ena_srd_flags {
 	ENA_ADMIN_ENA_SRD_UDP_ORDERING_BYPASS_ENABLED = BIT(2),
 };
 
+enum ena_admin_frag_bypass_feature_version {
+	/* Enable only */
+	ENA_ADMIN_FRAG_BYPASS_FEATURE_VERSION_0     = 0,
+};
 struct ena_admin_aq_common_desc {
 	/* 11:0 : command_id
 	 * 15:12 : reserved12
@@ -706,6 +711,12 @@ struct ena_admin_feature_llq_desc {
 	struct ena_admin_accel_mode_req accel_mode;
 };
 
+struct ena_admin_feature_frag_bypass_desc {
+	/* Enable frag_bypass */
+	uint8_t enable;
+
+	uint8_t reserved[3];
+};
 struct ena_admin_queue_ext_feature_fields {
 	uint32_t max_tx_sq_num;
 
@@ -1180,6 +1191,9 @@ struct ena_admin_set_feat_cmd {
 
 		/* PHC configuration */
 		struct ena_admin_feature_phc_desc phc;
+
+		/* Fragment bypass configuration */
+		struct ena_admin_feature_frag_bypass_desc frag_bypass;
 	} u;
 };
 
