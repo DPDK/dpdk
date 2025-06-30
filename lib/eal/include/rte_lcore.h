@@ -102,7 +102,6 @@ unsigned int rte_lcore_count(void);
  * When option -c or -l is given, the index corresponds
  * to the order in the list.
  * For example:
- * -c 0x30, lcore 4 has index 0, and 5 has index 1.
  * -l 22,18 lcore 22 has index 0, and 18 has index 1.
  *
  * @param lcore_id

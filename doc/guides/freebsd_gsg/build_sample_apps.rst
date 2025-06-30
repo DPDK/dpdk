@@ -94,8 +94,6 @@ Other options, specific to Linux and are not supported under FreeBSD are as foll
 *   ``--file-prefix``:
     The prefix text used for hugepage filenames.
 
-The ``-c`` or ``-l`` option is mandatory; the others are optional.
-
 .. _running_non_root:
 
 Running DPDK Applications Without Root Privileges

@@ -108,8 +108,6 @@ The EAL options are as follows:
   Store memory segments in fewer files (dynamic memory mode only - does not
   affect legacy memory mode).
 
-The ``-c`` or ``-l`` and option is mandatory; the others are optional.
-
 Copy the DPDK application binary to your target, then run the application as follows
 (assuming the platform has four memory channels per processor socket,
 and that cores 0-3 are present and are to be used for running the application)::
@@ -126,10 +124,9 @@ and that cores 0-3 are present and are to be used for running the application)::
 Logical Core Use by Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The coremask (-c 0x0f) or corelist (-l 0-3) parameter is always mandatory for DPDK applications.
-Each bit of the mask corresponds to the equivalent logical core number as reported by Linux. The preferred corelist option is a cleaner method to define cores to be used.
+The corelist (``-l``/``--lcores``) parameter is generally used for DPDK applications to specify the cores on which the application should run.
 Since these logical core numbers, and their mapping to specific cores on specific NUMA sockets, can vary from platform to platform,
-it is recommended that the core layout for each platform be considered when choosing the coremask/corelist to use in each case.
+it is recommended that the core layout for each platform be considered when choosing the corelist to use in each case.
 
 On initialization of the EAL layer by a DPDK application, the logical cores to be used and their socket location are displayed.
 This information can also be determined for all cores on the system by examining the ``/proc/cpuinfo`` file, for example, by running cat ``/proc/cpuinfo``.
@@ -151,7 +148,7 @@ This can be useful when using other processors to understand the mapping of the 
 
 .. warning::
 
-    The logical core layout can change between different board layouts and should be checked before selecting an application coremask/corelist.
+    The logical core layout can change between different board layouts and should be checked before selecting an application corelist.
 
 Hugepage Memory Use by Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
