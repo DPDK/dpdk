@@ -168,7 +168,7 @@ struct pmd_internals {
 	int start_queue_idx;
 	int queue_cnt;
 	int max_queue_cnt;
-	int combined_queue_cnt;
+	int configured_queue_cnt;
 	bool shared_umem;
 	char prog_path[PATH_MAX];
 	bool custom_prog_configured;
@@ -2043,11 +2043,11 @@ parse_prog_arg(const char *key __rte_unused,
 
 static int
 xdp_get_channels_info(const char *if_name, int *max_queues,
-				int *combined_queues)
+				int *configured_queues)
 {
 	struct ethtool_channels channels;
 	struct ifreq ifr;
-	int fd, ret;
+	int fd, ret, rxtx_q_count;
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0)
@@ -2066,15 +2066,23 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 		}
 	}
 
-	if (channels.max_combined == 0 || errno == EOPNOTSUPP) {
+	/* For drivers with rx/tx queue configured */
+	rxtx_q_count = RTE_MIN(channels.rx_count, channels.tx_count);
+
+	if ((channels.max_combined == 0 && rxtx_q_count == 0) || errno == EOPNOTSUPP) {
 		/* If the device says it has no channels, then all traffic
 		 * is sent to a single stream, so max queues = 1.
 		 */
 		*max_queues = 1;
-		*combined_queues = 1;
-	} else {
+		*configured_queues = 1;
+	} else if (channels.max_combined > 0) {
 		*max_queues = channels.max_combined;
-		*combined_queues = channels.combined_count;
+		*configured_queues = channels.combined_count;
+		AF_XDP_LOG_LINE(INFO, "Using Combined queues configuration");
+	} else {
+		*max_queues = RTE_MIN(channels.max_rx, channels.max_tx);
+		*configured_queues = rxtx_q_count;
+		AF_XDP_LOG_LINE(INFO, "Using Rx/Tx queues configuration");
 	}
 
  out:
@@ -2215,15 +2223,15 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	strlcpy(internals->dp_path, dp_path, PATH_MAX);
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
-				  &internals->combined_queue_cnt)) {
+				  &internals->configured_queue_cnt)) {
 		AF_XDP_LOG_LINE(ERR, "Failed to get channel info of interface: %s",
 				if_name);
 		goto err_free_internals;
 	}
 
-	if (queue_cnt > internals->combined_queue_cnt) {
-		AF_XDP_LOG_LINE(ERR, "Specified queue count %d is larger than combined queue count %d.",
-				queue_cnt, internals->combined_queue_cnt);
+	if (queue_cnt > internals->configured_queue_cnt) {
+		AF_XDP_LOG_LINE(ERR, "Specified queue count %d is larger than configured queue count %d.",
+				queue_cnt, internals->configured_queue_cnt);
 		goto err_free_internals;
 	}
 
