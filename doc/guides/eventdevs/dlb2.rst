@@ -7,6 +7,12 @@ Driver for the Intel® Dynamic Load Balancer (DLB)
 The DPDK DLB poll mode driver supports the Intel® Dynamic Load Balancer,
 hardware versions 2.0 and 2.5.
 
+Please follow the links below to download the Programmer Guides.
+
+`Intel Dynamic Load Balancer 2.0 Programmer Guide <https://cdrdv2.intel.com/v1/dl/getContent/613545>`_. (Device: 0x2710)
+
+`Intel Dynamic Load Balancer 2.5 Programmer Guide <https://cdrdv2.intel.com/v1/dl/getContent/639481>`_. (Device: 0x2714)
+
 Prerequisites
 -------------
 
@@ -476,6 +482,26 @@ Example command to use as meson option for credit handling:
     .. code-block:: console
 
        meson configure -Dc_args='-DDLB_SW_CREDITS_CHECKS=0 -DDLB_HW_CREDITS_CHECKS=1'
+
+DLB History List Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every DLB Load Balancing port
+(i.e., eventdev port not using ``RTE_EVENT_PORT_CFG_SINGLE_LINK`` flag)
+has a hardware resource call history list entries (HL) associated with it.
+This count decides the number of events that can be inflight to the port from the DLB hardware.
+DLB has 2048 total HL entries.
+As DLB supports 64 load-balanced ports, by default DLB PMD assigns 32 HL entries to each port.
+Following devargs arguments allow application to control HL entries overriding default mode.
+DLB API ``rte_pmd_dlb2_set_port_param()`` allows setting HL entries for the DLB eventdev ports.
+Please refer to section "Fine Tuning History List Entries" in DLB Programmer Guide for details.
+
+    .. code-block:: console
+
+       --allow ea:00.0,use_default_hl=0,alloc_hl_entries=1024
+
+         use_default_hl: 1=Enable (default), 0=Disable
+         alloc_hl_entries: [0-2048] Total HL entries
 
 Running Eventdev Applications with DLB Device
 ---------------------------------------------
