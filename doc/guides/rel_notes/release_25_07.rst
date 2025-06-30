@@ -72,6 +72,11 @@ New Features
   Added a Performance Monitoring Unit (PMU) library which allows Linux applications
   to perform self monitoring activities without depending on external utilities like perf.
 
+* **Updated Amazon ENA (Elastic Network Adapter) net driver.**
+
+  * Added support for enabling fragment bypass mode for egress packets.
+    This mode bypasses the PPS limit enforced by EC2 for fragmented egress packets on every ENI.
+
 * **Added Mucse rnp net driver.**
 
   Added a new network PMD which supports Mucse 10 Gigabit Ethernet NICs.
