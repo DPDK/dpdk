@@ -37,7 +37,8 @@ struct sg_ops_s {
 		uint32_t host_id,
 		uint32_t header,
 		uint32_t vq_type,
-		int irq_vector);
+		int irq_vector,
+		uint8_t rx_deferred_start);
 	struct nthw_virt_queue *(*nthw_setup_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
 		uint32_t index,
 		uint16_t start_idx,
@@ -52,7 +53,8 @@ struct sg_ops_s {
 		uint32_t header,
 		uint32_t vq_type,
 		int irq_vector,
-		uint32_t in_order);
+		uint32_t in_order,
+		uint8_t tx_deferred_start);
 	struct nthw_virt_queue *(*nthw_setup_mngd_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
 		uint32_t index,
 		uint32_t queue_size,
@@ -70,7 +72,8 @@ struct sg_ops_s {
 		 */
 		struct nthw_memory_descriptor *p_packet_buffers,
 		uint32_t vq_type,
-		int irq_vector);
+		int irq_vector,
+		uint8_t rx_deferred_start);
 	int (*nthw_release_mngd_rx_virt_queue)(struct nthw_virt_queue *rxvq);
 	struct nthw_virt_queue *(*nthw_setup_mngd_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
 		uint32_t index,
@@ -92,7 +95,8 @@ struct sg_ops_s {
 		struct nthw_memory_descriptor *p_packet_buffers,
 		uint32_t vq_type,
 		int irq_vector,
-		uint32_t in_order);
+		uint32_t in_order,
+		uint8_t tx_deferred_start);
 	int (*nthw_release_mngd_tx_virt_queue)(struct nthw_virt_queue *txvq);
 	int (*nthw_switch_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs, uint32_t index, uint32_t enable);
 	int (*nthw_switch_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs, uint32_t index, uint32_t enable);

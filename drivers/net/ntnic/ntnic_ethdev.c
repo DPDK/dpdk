@@ -995,7 +995,7 @@ static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t rx_queue_id,
 	uint16_t nb_rx_desc __rte_unused,
 	unsigned int socket_id __rte_unused,
-	const struct rte_eth_rxconf *rx_conf __rte_unused,
+	const struct rte_eth_rxconf *rx_conf,
 	struct rte_mempool *mb_pool)
 {
 	NT_LOG_DBGX(DBG, NTNIC, "Rx queue setup");
@@ -1029,7 +1029,8 @@ static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 
 	mbp_priv = rte_mempool_get_priv(rx_q->mb_pool);
 	rx_q->buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM);
-	rx_q->enabled = 1;
+	rx_q->enabled = !rx_conf->rx_deferred_start;
+	rx_q->rx_deferred_start = rx_conf->rx_deferred_start;
 
 	if (allocate_hw_virtio_queues(eth_dev, EXCEPTION_PATH_HID, &rx_q->hwq,
 			SG_NB_HW_RX_DESCRIPTORS, SG_HW_RX_PKT_BUFFER_SIZE) < 0)
@@ -1048,7 +1049,8 @@ static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 			&rx_q->hwq.virt_queues_ctrl,
 			rx_q->hwq.pkt_buffers,
 			SPLIT_RING,
-			-1);
+			-1,
+			rx_conf->rx_deferred_start);
 
 	NT_LOG(DBG, NTNIC, "(%" PRIu32 ") NTNIC RX OVS-SW queues successfully setup",
 		internals->port);
@@ -1060,7 +1062,7 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 	uint16_t tx_queue_id,
 	uint16_t nb_tx_desc __rte_unused,
 	unsigned int socket_id __rte_unused,
-	const struct rte_eth_txconf *tx_conf __rte_unused)
+	const struct rte_eth_txconf *tx_conf)
 {
 	const struct port_ops *port_ops = get_port_ops();
 
@@ -1141,9 +1143,11 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 			tx_q->hwq.pkt_buffers,
 			SPLIT_RING,
 			-1,
-			IN_ORDER);
+			IN_ORDER,
+			tx_conf->tx_deferred_start);
 
-	tx_q->enabled = 1;
+	tx_q->enabled = !tx_conf->tx_deferred_start;
+	tx_q->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	NT_LOG(DBG, NTNIC, "(%" PRIu32 ") NTNIC TX OVS-SW queues successfully setup",
 		internals->port);
@@ -1365,10 +1369,12 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 	uint q;
 
 	for (q = 0; q < internals->nb_rx_queues; q++)
-		eth_rx_queue_start(eth_dev, q);
+		if (!internals->rxq_scg[q].rx_deferred_start)
+			eth_rx_queue_start(eth_dev, q);
 
 	for (q = 0; q < internals->nb_tx_queues; q++)
-		eth_tx_queue_start(eth_dev, q);
+		if (!internals->txq_scg[q].tx_deferred_start)
+			eth_tx_queue_start(eth_dev, q);
 
 	if (internals->type == PORT_TYPE_VIRTUAL || internals->type == PORT_TYPE_OVERRIDE) {
 		eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;

@@ -369,7 +369,8 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	uint32_t host_id,
 	uint32_t header,
 	uint32_t vq_type,
-	int irq_vector)
+	int irq_vector,
+	uint8_t rx_deferred_start)
 {
 	uint32_t qs = dbs_qsize_log2(queue_size);
 	uint32_t int_enable;
@@ -430,7 +431,8 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 * 2. Configure the DBS.RX_AM_DATA memory and enable the queues you plan to use;
 	 *  good idea to initialize all DBS_RX_QUEUES entries.
 	 */
-	if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr, RX_AM_ENABLE,
+	uint32_t enable = rx_deferred_start ? RX_AM_DISABLE : RX_AM_ENABLE;
+	if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr, enable,
 			host_id, 0, irq_vector >= 0 ? 1 : 0) != 0) {
 		return NULL;
 	}
@@ -698,7 +700,8 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	uint32_t header,
 	uint32_t vq_type,
 	int irq_vector,
-	uint32_t in_order)
+	uint32_t in_order,
+	uint8_t tx_deferred_start)
 {
 	uint32_t int_enable;
 	uint32_t vec;
@@ -760,8 +763,9 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	 *            kernel).
 	 */
 	if (irq_vector < 0) {
+		uint32_t enable = tx_deferred_start ? TX_AM_DISABLE : TX_AM_ENABLE;
 		if (set_tx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
-				TX_AM_ENABLE, host_id, 0, 0) != 0) {
+				enable, host_id, 0, 0) != 0) {
 			return NULL;
 		}
 	}
@@ -794,7 +798,8 @@ nthw_setup_mngd_rx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 	uint32_t header,
 	struct nthw_memory_descriptor *p_virt_struct_area,
 	struct nthw_memory_descriptor *p_packet_buffers,
-	int irq_vector)
+	int irq_vector,
+	uint8_t rx_deferred_start)
 {
 	struct virtq_struct_layout_s virtq_struct_layout = dbs_calc_struct_layout(queue_size);
 
@@ -831,7 +836,7 @@ nthw_setup_mngd_rx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 		virtq_struct_layout.used_offset,
 		(char *)p_virt_struct_area->phys_addr +
 		virtq_struct_layout.desc_offset,
-		(uint16_t)queue_size, host_id, header, SPLIT_RING, irq_vector);
+		(uint16_t)queue_size, host_id, header, SPLIT_RING, irq_vector, rx_deferred_start);
 
 	rxvq[index].usage = NTHW_VIRTQ_MANAGED;
 
@@ -849,7 +854,8 @@ nthw_setup_mngd_tx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 	int irq_vector,
 	uint32_t in_order,
 	struct nthw_memory_descriptor *p_virt_struct_area,
-	struct nthw_memory_descriptor *p_packet_buffers)
+	struct nthw_memory_descriptor *p_packet_buffers,
+	uint8_t tx_deferred_start)
 {
 	struct virtq_struct_layout_s virtq_struct_layout = dbs_calc_struct_layout(queue_size);
 
@@ -889,7 +895,7 @@ nthw_setup_mngd_tx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 		(char *)p_virt_struct_area->phys_addr +
 		virtq_struct_layout.desc_offset,
 		(uint16_t)queue_size, host_id, port, virtual_port, header,
-		SPLIT_RING, irq_vector, in_order);
+		SPLIT_RING, irq_vector, in_order, tx_deferred_start);
 
 	txvq[index].usage = NTHW_VIRTQ_MANAGED;
 
@@ -977,7 +983,8 @@ nthw_setup_managed_rx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
 	uint32_t header,
 	struct nthw_memory_descriptor *p_virt_struct_area,
 	struct nthw_memory_descriptor *p_packet_buffers,
-	int irq_vector)
+	int irq_vector,
+	uint8_t rx_deferred_start)
 {
 	struct pvirtq_struct_layout_s pvirtq_layout;
 	struct nthw_virt_queue *vq = &rxvq[index];
@@ -996,7 +1003,7 @@ nthw_setup_managed_rx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
 		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
 			pvirtq_layout.device_event_offset),
 		p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
-		header, PACKED_RING, irq_vector);
+		header, PACKED_RING, irq_vector, rx_deferred_start);
 
 	vq->usage = NTHW_VIRTQ_MANAGED;
 	return vq;
@@ -1013,7 +1020,8 @@ nthw_setup_managed_tx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
 	int irq_vector,
 	uint32_t in_order,
 	struct nthw_memory_descriptor *p_virt_struct_area,
-	struct nthw_memory_descriptor *p_packet_buffers)
+	struct nthw_memory_descriptor *p_packet_buffers,
+	uint8_t tx_deferred_start)
 {
 	struct pvirtq_struct_layout_s pvirtq_layout;
 	struct nthw_virt_queue *vq = &txvq[index];
@@ -1030,7 +1038,7 @@ nthw_setup_managed_tx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
 		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
 			pvirtq_layout.device_event_offset),
 		p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
-		port, virtual_port, header, PACKED_RING, irq_vector, in_order);
+		port, virtual_port, header, PACKED_RING, irq_vector, in_order, tx_deferred_start);
 
 	vq->usage = NTHW_VIRTQ_MANAGED;
 	return vq;
@@ -1052,18 +1060,19 @@ nthw_setup_mngd_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	struct nthw_memory_descriptor *p_virt_struct_area,
 	struct nthw_memory_descriptor *p_packet_buffers,
 	uint32_t vq_type,
-	int irq_vector)
+	int irq_vector,
+	uint8_t rx_deferred_start)
 {
 	switch (vq_type) {
 	case SPLIT_RING:
 		return nthw_setup_mngd_rx_virt_queue_split(p_nthw_dbs, index, queue_size,
 				host_id, header, p_virt_struct_area,
-				p_packet_buffers, irq_vector);
+				p_packet_buffers, irq_vector, rx_deferred_start);
 
 	case PACKED_RING:
 		return nthw_setup_managed_rx_virt_queue_packed(p_nthw_dbs, index, queue_size,
 				host_id, header, p_virt_struct_area,
-				p_packet_buffers, irq_vector);
+				p_packet_buffers, irq_vector, rx_deferred_start);
 
 	default:
 		break;
@@ -1091,7 +1100,8 @@ nthw_setup_mngd_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	struct nthw_memory_descriptor *p_packet_buffers,
 	uint32_t vq_type,
 	int irq_vector,
-	uint32_t in_order)
+	uint32_t in_order,
+	uint8_t tx_deferred_start)
 {
 	switch (vq_type) {
 	case SPLIT_RING:
@@ -1099,14 +1109,14 @@ nthw_setup_mngd_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 				host_id, port, virtual_port, header,
 				irq_vector, in_order,
 				p_virt_struct_area,
-				p_packet_buffers);
+				p_packet_buffers, tx_deferred_start);
 
 	case PACKED_RING:
 		return nthw_setup_managed_tx_virt_queue_packed(p_nthw_dbs, index, queue_size,
 				host_id, port, virtual_port, header,
 				irq_vector, in_order,
 				p_virt_struct_area,
-				p_packet_buffers);
+				p_packet_buffers, tx_deferred_start);
 
 	default:
 		break;
