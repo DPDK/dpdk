@@ -678,7 +678,7 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_tx_q)
 	hw->tx_qnum_per_tc = tx_qnum_per_tc;
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		tc_queue = &hw->tc_queue[i];
-		if (hw->hw_tc_map & BIT(i) && i < hw->dcb_info.num_tc) {
+		if (hw->dcb_info.hw_tc_map & BIT(i) && i < hw->dcb_info.num_tc) {
 			tc_queue->enable = true;
 			tc_queue->tqp_offset = i * hw->tx_qnum_per_tc;
 			tc_queue->tqp_count = hw->tx_qnum_per_tc;
@@ -762,7 +762,7 @@ hns3_dcb_info_init(struct hns3_hw *hw)
 		if (i != 0)
 			continue;
 
-		hw->dcb_info.pg_info[i].tc_bit_map = hw->hw_tc_map;
+		hw->dcb_info.pg_info[i].tc_bit_map = hw->dcb_info.hw_tc_map;
 		for (k = 0; k < hw->dcb_info.num_tc; k++)
 			hw->dcb_info.pg_info[i].tc_dwrr[k] = BW_MAX_PERCENT;
 	}
@@ -1395,15 +1395,14 @@ static int
 hns3_dcb_info_cfg(struct hns3_adapter *hns)
 {
 	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
-	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	uint8_t tc_bw, bw_rest;
 	uint8_t i, j;
 	int ret;
 
 	dcb_rx_conf = &hw->data->dev_conf.rx_adv_conf.dcb_rx_conf;
-	pf->local_max_tc = (uint8_t)dcb_rx_conf->nb_tcs;
-	pf->pfc_max = (uint8_t)dcb_rx_conf->nb_tcs;
+	hw->dcb_info.local_max_tc = (uint8_t)dcb_rx_conf->nb_tcs;
+	hw->dcb_info.pfc_max = (uint8_t)dcb_rx_conf->nb_tcs;
 
 	/* Config pg0 */
 	memset(hw->dcb_info.pg_info, 0,
@@ -1412,7 +1411,7 @@ hns3_dcb_info_cfg(struct hns3_adapter *hns)
 	hw->dcb_info.pg_info[0].pg_id = 0;
 	hw->dcb_info.pg_info[0].pg_sch_mode = HNS3_SCH_MODE_DWRR;
 	hw->dcb_info.pg_info[0].bw_limit = hw->max_tm_rate;
-	hw->dcb_info.pg_info[0].tc_bit_map = hw->hw_tc_map;
+	hw->dcb_info.pg_info[0].tc_bit_map = hw->dcb_info.hw_tc_map;
 
 	/* Each tc has same bw for valid tc by default */
 	tc_bw = BW_MAX_PERCENT / hw->dcb_info.num_tc;
@@ -1482,7 +1481,7 @@ hns3_dcb_info_update(struct hns3_adapter *hns, uint8_t num_tc)
 		bit_map = 1;
 		hw->dcb_info.num_tc = 1;
 	}
-	hw->hw_tc_map = bit_map;
+	hw->dcb_info.hw_tc_map = bit_map;
 
 	return hns3_dcb_info_cfg(hns);
 }

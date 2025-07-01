@@ -130,7 +130,11 @@ struct hns3_tc_info {
 };
 
 struct hns3_dcb_info {
+	uint8_t tc_max;     /* max number of tc driver supported */
 	uint8_t num_tc;     /* Total number of enabled TCs */
+	uint8_t hw_tc_map;
+	uint8_t local_max_tc; /* max number of local tc */
+	uint8_t pfc_max;
 	uint8_t num_pg;     /* It must be 1 if vNET-Base schd */
 	uint8_t pg_dwrr[HNS3_PG_NUM];
 	uint8_t prio_tc[HNS3_MAX_USER_PRIO];
@@ -534,7 +538,6 @@ struct hns3_hw {
 	uint16_t rss_ind_tbl_size;
 	uint16_t rss_key_size;
 
-	uint8_t hw_tc_map;
 	enum hns3_fc_mode requested_fc_mode; /* FC mode requested by user */
 	struct hns3_dcb_info dcb_info;
 	enum hns3_fc_status current_fc_status; /* current flow control status */
@@ -831,9 +834,6 @@ struct hns3_pf {
 	uint16_t mps; /* Max packet size */
 
 	uint8_t tx_sch_mode;
-	uint8_t tc_max; /* max number of tc driver supported */
-	uint8_t local_max_tc; /* max number of local tc */
-	uint8_t pfc_max;
 	uint16_t pause_time;
 	bool support_fc_autoneg;       /* support FC autonegotiate */
 	bool support_multi_tc_pause;

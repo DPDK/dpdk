@@ -1876,7 +1876,6 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
 	enum rte_eth_tx_mq_mode tx_mq_mode = dev->data->dev_conf.txmode.mq_mode;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
 	struct rte_eth_dcb_tx_conf *dcb_tx_conf;
 	uint8_t num_tc;
@@ -1894,9 +1893,9 @@ hns3_check_mq_mode(struct rte_eth_dev *dev)
 	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
 	dcb_tx_conf = &dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
 	if ((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
-		if (dcb_rx_conf->nb_tcs > pf->tc_max) {
+		if (dcb_rx_conf->nb_tcs > hw->dcb_info.tc_max) {
 			hns3_err(hw, "nb_tcs(%u) > max_tc(%u) driver supported.",
-				 dcb_rx_conf->nb_tcs, pf->tc_max);
+				 dcb_rx_conf->nb_tcs, hw->dcb_info.tc_max);
 			return -EINVAL;
 		}
 
@@ -2837,25 +2836,25 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 		return ret;
 	}
 
-	pf->tc_max = cfg.tc_num;
-	if (pf->tc_max > HNS3_MAX_TC_NUM || pf->tc_max < 1) {
+	hw->dcb_info.tc_max = cfg.tc_num;
+	if (hw->dcb_info.tc_max > HNS3_MAX_TC_NUM || hw->dcb_info.tc_max < 1) {
 		PMD_INIT_LOG(WARNING,
 			     "Get TC num(%u) from flash, set TC num to 1",
-			     pf->tc_max);
-		pf->tc_max = 1;
+			     hw->dcb_info.tc_max);
+		hw->dcb_info.tc_max = 1;
 	}
 
 	/* Dev does not support DCB */
 	if (!hns3_dev_get_support(hw, DCB)) {
-		pf->tc_max = 1;
-		pf->pfc_max = 0;
+		hw->dcb_info.tc_max = 1;
+		hw->dcb_info.pfc_max = 0;
 	} else
-		pf->pfc_max = pf->tc_max;
+		hw->dcb_info.pfc_max = hw->dcb_info.tc_max;
 
 	hw->dcb_info.num_tc = 1;
 	hw->alloc_rss_size = RTE_MIN(hw->rss_size_max,
 				     hw->tqps_num / hw->dcb_info.num_tc);
-	hns3_set_bit(hw->hw_tc_map, 0, 1);
+	hns3_set_bit(hw->dcb_info.hw_tc_map, 0, 1);
 	pf->tx_sch_mode = HNS3_FLAG_TC_BASE_SCH_MODE;
 
 	pf->wanted_umv_size = cfg.umv_space;
@@ -3025,7 +3024,7 @@ hns3_tx_buffer_calc(struct hns3_hw *hw, struct hns3_pkt_buf_alloc *buf_alloc)
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		priv = &buf_alloc->priv_buf[i];
 
-		if (hw->hw_tc_map & BIT(i)) {
+		if (hw->dcb_info.hw_tc_map & BIT(i)) {
 			if (total_size < pf->tx_buf_size)
 				return -ENOMEM;
 
@@ -3076,7 +3075,7 @@ hns3_get_tc_num(struct hns3_hw *hw)
 	uint8_t i;
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++)
-		if (hw->hw_tc_map & BIT(i))
+		if (hw->dcb_info.hw_tc_map & BIT(i))
 			cnt++;
 	return cnt;
 }
@@ -3136,7 +3135,7 @@ hns3_get_no_pfc_priv_num(struct hns3_hw *hw,
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		priv = &buf_alloc->priv_buf[i];
-		if (hw->hw_tc_map & BIT(i) &&
+		if (hw->dcb_info.hw_tc_map & BIT(i) &&
 		    !(hw->dcb_info.hw_pfc_map & BIT(i)) && priv->enable)
 			cnt++;
 	}
@@ -3235,7 +3234,7 @@ hns3_rx_buf_calc_all(struct hns3_hw *hw, bool max,
 		priv->wl.high = 0;
 		priv->buf_size = 0;
 
-		if (!(hw->hw_tc_map & BIT(i)))
+		if (!(hw->dcb_info.hw_tc_map & BIT(i)))
 			continue;
 
 		priv->enable = 1;
@@ -3274,7 +3273,7 @@ hns3_drop_nopfc_buf_till_fit(struct hns3_hw *hw,
 	for (i = HNS3_MAX_TC_NUM - 1; i >= 0; i--) {
 		priv = &buf_alloc->priv_buf[i];
 		mask = BIT((uint8_t)i);
-		if (hw->hw_tc_map & mask &&
+		if (hw->dcb_info.hw_tc_map & mask &&
 		    !(hw->dcb_info.hw_pfc_map & mask)) {
 			/* Clear the no pfc TC private buffer */
 			priv->wl.low = 0;
@@ -3311,7 +3310,7 @@ hns3_drop_pfc_buf_till_fit(struct hns3_hw *hw,
 	for (i = HNS3_MAX_TC_NUM - 1; i >= 0; i--) {
 		priv = &buf_alloc->priv_buf[i];
 		mask = BIT((uint8_t)i);
-		if (hw->hw_tc_map & mask && hw->dcb_info.hw_pfc_map & mask) {
+		if (hw->dcb_info.hw_tc_map & mask && hw->dcb_info.hw_pfc_map & mask) {
 			/* Reduce the number of pfc TC with private buffer */
 			priv->wl.low = 0;
 			priv->enable = 0;
@@ -3369,7 +3368,7 @@ hns3_only_alloc_priv_buff(struct hns3_hw *hw,
 		priv->wl.high = 0;
 		priv->buf_size = 0;
 
-		if (!(hw->hw_tc_map & BIT(i)))
+		if (!(hw->dcb_info.hw_tc_map & BIT(i)))
 			continue;
 
 		priv->enable = 1;
@@ -5494,13 +5493,12 @@ static int
 hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
 	int i;
 
 	rte_spinlock_lock(&hw->lock);
 	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
-		dcb_info->nb_tcs = pf->local_max_tc;
+		dcb_info->nb_tcs = hw->dcb_info.local_max_tc;
 	else
 		dcb_info->nb_tcs = 1;
 

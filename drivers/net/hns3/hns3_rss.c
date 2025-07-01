@@ -940,13 +940,13 @@ hns3_set_rss_tc_mode_entry(struct hns3_hw *hw, uint8_t *tc_valid,
 			 * has to enable the unused TC by using TC0 queue
 			 * mapping configuration.
 			 */
-			tc_valid[i] = (hw->hw_tc_map & BIT(i)) ?
-					!!(hw->hw_tc_map & BIT(i)) : 1;
+			tc_valid[i] = (hw->dcb_info.hw_tc_map & BIT(i)) ?
+					!!(hw->dcb_info.hw_tc_map & BIT(i)) : 1;
 			tc_size[i] = roundup_size;
-			tc_offset[i] = (hw->hw_tc_map & BIT(i)) ?
+			tc_offset[i] = (hw->dcb_info.hw_tc_map & BIT(i)) ?
 					rss_size * i : 0;
 		} else {
-			tc_valid[i] = !!(hw->hw_tc_map & BIT(i));
+			tc_valid[i] = !!(hw->dcb_info.hw_tc_map & BIT(i));
 			tc_size[i] = tc_valid[i] ? roundup_size : 0;
 			tc_offset[i] = tc_valid[i] ? rss_size * i : 0;
 		}
