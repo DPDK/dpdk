@@ -10,4 +10,6 @@ deps += ['net']
 
 if dpdk_conf.has('RTE_ARCH_X86_64')
     sources_avx512 += files('dir24_8_avx512.c', 'trie_avx512.c')
+elif dpdk_conf.has('RTE_ARCH_RISCV')
+    sources += files('dir24_8_rvv.c')
 endif
