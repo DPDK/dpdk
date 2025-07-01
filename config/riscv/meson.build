@@ -119,6 +119,31 @@ foreach flag: arch_config['machine_args']
     endif
 endforeach
 
+# check if we can do buildtime detection of extensions supported by the target
+riscv_extension_macros = false
+if (cc.get_define('__riscv_arch_test', args: machine_args) == '1')
+    message('Detected architecture extension test macros')
+    riscv_extension_macros = true
+else
+    warning('RISC-V architecture extension test macros not available. Build-time detection of extensions not possible')
+endif
+
+# detect extensions
+# Requires intrinsics available in GCC 14.1.0+ and Clang 18.1.0+
+if (riscv_extension_macros and
+        (cc.get_define('__riscv_vector', args: machine_args) != ''))
+    if ((cc.get_id() == 'gcc' and cc.version().version_compare('>=14.1.0'))
+            or (cc.get_id() == 'clang' and cc.version().version_compare('>=18.1.0')))
+        if (cc.compiles('''#include <riscv_vector.h>
+                int main(void) { size_t vl = __riscv_vsetvl_e32m1(1); }''', args: machine_args))
+            message('Compiling with the V extension')
+            machine_args += ['-DRTE_RISCV_FEATURE_V']
+        endif
+    else
+        warning('Detected V extension but cannot use because intrinsics are not available (present in GCC 14.1.0+ and Clang 18.1.0+)')
+    endif
+endif
+
 # apply flags
 foreach flag: dpdk_flags
     if flag.length() > 0
