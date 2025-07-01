@@ -51,6 +51,7 @@ struct nthw_memory_descriptor {
 struct hwq_s {
 	int vf_num;
 	struct nthw_memory_descriptor virt_queues_ctrl;
+	struct nthw_memory_descriptor pkt_buffers_ctrl;
 	struct nthw_memory_descriptor *pkt_buffers;
 };
 
