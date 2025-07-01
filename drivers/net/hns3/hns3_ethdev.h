@@ -916,6 +916,7 @@ enum hns3_dev_cap {
 	HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B,
 	HNS3_DEV_SUPPORT_FC_AUTO_B,
 	HNS3_DEV_SUPPORT_GRO_B,
+	HNS3_DEV_SUPPORT_VF_MULTI_TCS_B,
 };
 
 #define hns3_dev_get_support(hw, _name) \
