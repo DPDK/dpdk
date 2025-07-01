@@ -211,9 +211,6 @@ nt_vfio_dma_unmap(int vf_num, void *virt_addr, uint64_t iova_addr, uint64_t size
 		return -1;
 	}
 
-	if (vfio->container_fd == -1)
-		return 0;
-
 	int res = rte_vfio_container_dma_unmap(vfio->container_fd, gp_virt_base, iova_addr, size);
 
 	if (res != 0) {
