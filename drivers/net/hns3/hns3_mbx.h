@@ -53,7 +53,7 @@ enum HNS3_MBX_OPCODE {
 
 struct hns3_basic_info {
 	uint8_t hw_tc_map;
-	uint8_t rsv;
+	uint8_t tc_max;
 	uint16_t pf_vf_if_version;
 	/* capabilities of VF dependent on PF */
 	uint32_t caps;

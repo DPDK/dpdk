@@ -209,6 +209,7 @@ hns3_get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 		"  - Device Base Info:\n"
 		"\t  -- name: %s\n"
 		"\t  -- adapter_state=%s\n"
+		"\t  -- tc_max=%u tc_num=%u\n"
 		"\t  -- nb_rx_queues=%u nb_tx_queues=%u\n"
 		"\t  -- total_tqps_num=%u tqps_num=%u intr_tqps_num=%u\n"
 		"\t  -- rss_size_max=%u alloc_rss_size=%u tx_qnum_per_tc=%u\n"
@@ -221,6 +222,7 @@ hns3_get_device_basic_info(FILE *file, struct rte_eth_dev *dev)
 		"\t  -- intr_conf: lsc=%u rxq=%u\n",
 		dev->data->name,
 		hns3_get_adapter_state_name(hw->adapter_state),
+		hw->dcb_info.tc_max, hw->dcb_info.num_tc,
 		dev->data->nb_rx_queues, dev->data->nb_tx_queues,
 		hw->total_tqps_num, hw->tqps_num, hw->intr_tqps_num,
 		hw->rss_size_max, hw->alloc_rss_size, hw->tx_qnum_per_tc,
