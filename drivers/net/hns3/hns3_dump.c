@@ -914,7 +914,7 @@ hns3_is_link_fc_mode(struct hns3_adapter *hns)
 	if (hw->current_fc_status == HNS3_FC_STATUS_PFC)
 		return false;
 
-	if (hw->num_tc > 1 && !pf->support_multi_tc_pause)
+	if (hw->dcb_info.num_tc > 1 && !pf->support_multi_tc_pause)
 		return false;
 
 	return true;

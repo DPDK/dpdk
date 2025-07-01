@@ -519,13 +519,13 @@ hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 
 	if (node_id >= pf->tm_conf.nb_nodes_max - 1 ||
 	    node_id < pf->tm_conf.nb_leaf_nodes_max ||
-	    hns3_tm_calc_node_tc_no(&pf->tm_conf, node_id) >= hw->num_tc) {
+	    hns3_tm_calc_node_tc_no(&pf->tm_conf, node_id) >= hw->dcb_info.num_tc) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 		error->message = "invalid tc node ID";
 		return -EINVAL;
 	}
 
-	if (pf->tm_conf.nb_tc_node >= hw->num_tc) {
+	if (pf->tm_conf.nb_tc_node >= hw->dcb_info.num_tc) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 		error->message = "too many TCs";
 		return -EINVAL;
@@ -974,7 +974,7 @@ hns3_tm_configure_check(struct hns3_hw *hw, struct rte_tm_error *error)
 		}
 
 		if (hns3_tm_calc_node_tc_no(tm_conf, tm_node->id) >=
-			hw->num_tc) {
+			hw->dcb_info.num_tc) {
 			error->type = RTE_TM_ERROR_TYPE_NODE_ID;
 			error->message = "node's TC not exist";
 			return false;
