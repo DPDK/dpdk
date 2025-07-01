@@ -1180,25 +1180,97 @@ static int dev_set_mtu_inline(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 static int eth_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
+	if (sg_ops == NULL) {
+		NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	nthw_dbs_t *p_nthw_dbs = p_nt_drv->adapter_info.fpga_info.mp_nthw_dbs;
+	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[rx_queue_id];
+	int index = rx_q->queue.hw_id;
+
+	if (sg_ops->nthw_switch_rx_virt_queue(p_nthw_dbs, index, 1) != 0) {
+		NT_LOG_DBGX(DBG, NTNIC, "Failed to start Rx queue #%d", index);
+		return -1;
+	}
+
+	rx_q->enabled = 1;
 	eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 }
 
 static int eth_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
+	if (sg_ops == NULL) {
+		NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	nthw_dbs_t *p_nthw_dbs = p_nt_drv->adapter_info.fpga_info.mp_nthw_dbs;
+	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[rx_queue_id];
+	int index = rx_q->queue.hw_id;
+
+	if (sg_ops->nthw_switch_rx_virt_queue(p_nthw_dbs, index, 0) != 0) {
+		NT_LOG_DBGX(DBG, NTNIC, "Failed to stop Rx queue #%d", index);
+		return -1;
+	}
+
+	rx_q->enabled = 0;
 	eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
 }
 
-static int eth_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+static int eth_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
-	eth_dev->data->tx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	if (sg_ops == NULL) {
+		NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	nthw_dbs_t *p_nthw_dbs = p_nt_drv->adapter_info.fpga_info.mp_nthw_dbs;
+	struct ntnic_tx_queue *tx_q = &internals->txq_scg[tx_queue_id];
+	int index = tx_q->queue.hw_id;
+
+	if (sg_ops->nthw_switch_tx_virt_queue(p_nthw_dbs, index, 1) != 0) {
+		NT_LOG_DBGX(DBG, NTNIC, "Failed to start Tx queue #%d", index);
+		return -1;
+	}
+
+	tx_q->enabled = 1;
+	eth_dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 }
 
-static int eth_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+static int eth_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 {
-	eth_dev->data->tx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	if (sg_ops == NULL) {
+		NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	nthw_dbs_t *p_nthw_dbs = p_nt_drv->adapter_info.fpga_info.mp_nthw_dbs;
+	struct ntnic_tx_queue *tx_q = &internals->txq_scg[tx_queue_id];
+	int index = tx_q->queue.hw_id;
+
+	if (sg_ops->nthw_switch_tx_virt_queue(p_nthw_dbs, index, 0) != 0) {
+		NT_LOG_DBGX(DBG, NTNIC, "Failed to stop Tx queue #%d", index);
+		return -1;
+	}
+
+	tx_q->enabled = 0;
+	eth_dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	return 0;
 }
 

@@ -1115,6 +1115,16 @@ nthw_setup_mngd_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	return NULL;
 }
 
+static int nthw_switch_rx_virt_queue(nthw_dbs_t *p_nthw_dbs, uint32_t index, uint32_t enable)
+{
+	return set_rx_am_data_enable(p_nthw_dbs, index, enable);
+}
+
+static int nthw_switch_tx_virt_queue(nthw_dbs_t *p_nthw_dbs, uint32_t index, uint32_t enable)
+{
+	return set_tx_am_data_enable(p_nthw_dbs, index, enable);
+}
+
 static uint16_t nthw_get_rx_packets(struct nthw_virt_queue *rxvq,
 	uint16_t n,
 	struct nthw_received_packets *rp,
@@ -1419,6 +1429,8 @@ static struct sg_ops_s sg_ops = {
 	.nthw_release_mngd_rx_virt_queue = nthw_release_mngd_rx_virt_queue,
 	.nthw_setup_mngd_tx_virt_queue = nthw_setup_mngd_tx_virt_queue,
 	.nthw_release_mngd_tx_virt_queue = nthw_release_mngd_tx_virt_queue,
+	.nthw_switch_rx_virt_queue = nthw_switch_rx_virt_queue,
+	.nthw_switch_tx_virt_queue = nthw_switch_tx_virt_queue,
 	.nthw_get_rx_packets = nthw_get_rx_packets,
 	.nthw_release_rx_packets = nthw_release_rx_packets,
 	.nthw_get_tx_packets = nthw_get_tx_packets,
