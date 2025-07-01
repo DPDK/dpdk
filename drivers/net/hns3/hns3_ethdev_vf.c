@@ -380,6 +380,236 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id,
 }
 
 static int
+hns3vf_set_multi_tc(struct hns3_hw *hw, const struct hns3_mbx_tc_config *config)
+{
+	struct hns3_mbx_tc_config *payload;
+	struct hns3_vf_to_pf_msg req;
+	int ret;
+
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_TC, 0);
+	payload = (struct hns3_mbx_tc_config *)req.data;
+	memcpy(payload, config, sizeof(*payload));
+	payload->prio_tc_map = rte_cpu_to_le_32(config->prio_tc_map);
+	ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
+	if (ret)
+		hns3_err(hw, "failed to set multi-tc, ret = %d.", ret);
+
+	return ret;
+}
+
+static int
+hns3vf_unset_multi_tc(struct hns3_hw *hw)
+{
+	struct hns3_mbx_tc_config *paylod;
+	struct hns3_vf_to_pf_msg req;
+	int ret;
+
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_TC, 0);
+	paylod = (struct hns3_mbx_tc_config *)req.data;
+	paylod->tc_dwrr[0] = HNS3_ETS_DWRR_MAX;
+	paylod->num_tc = 1;
+	ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
+	if (ret)
+		hns3_err(hw, "failed to unset multi-tc, ret = %d.", ret);
+
+	return ret;
+}
+
+static int
+hns3vf_check_multi_tc_config(struct rte_eth_dev *dev, const struct hns3_mbx_tc_config *info)
+{
+	struct rte_eth_dcb_rx_conf *rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t prio_tc_map = info->prio_tc_map;
+	uint8_t map;
+	int i;
+
+	if (rx_conf->nb_tcs != info->num_tc) {
+		hns3_err(hw, "num_tcs(%d) is not equal to PF config(%u)!",
+			 rx_conf->nb_tcs, info->num_tc);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < HNS3_MAX_USER_PRIO; i++) {
+		map = prio_tc_map & HNS3_MBX_PRIO_MASK;
+		prio_tc_map >>= HNS3_MBX_PRIO_SHIFT;
+		if (rx_conf->dcb_tc[i] != map) {
+			hns3_err(hw, "dcb_tc[%d] = %u is not equal to PF config(%u)!",
+				 i, rx_conf->dcb_tc[i], map);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int
+hns3vf_get_multi_tc_info(struct hns3_hw *hw, struct hns3_mbx_tc_config *info)
+{
+	uint8_t resp_msg[HNS3_MBX_MAX_RESP_DATA_SIZE];
+	struct hns3_mbx_tc_prio_map *map = (struct hns3_mbx_tc_prio_map *)resp_msg;
+	struct hns3_mbx_tc_ets_info *ets = (struct hns3_mbx_tc_ets_info *)resp_msg;
+	struct hns3_vf_to_pf_msg req;
+	int i, ret;
+
+	memset(info, 0, sizeof(*info));
+
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_TC, HNS3_MBX_GET_PRIO_MAP);
+	ret = hns3vf_mbx_send(hw, &req, true, resp_msg, sizeof(resp_msg));
+	if (ret) {
+		hns3_err(hw, "failed to get multi-tc prio map, ret = %d.", ret);
+		return ret;
+	}
+	info->prio_tc_map = rte_le_to_cpu_32(map->prio_tc_map);
+
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_TC, HNS3_MBX_GET_ETS_INFO);
+	ret = hns3vf_mbx_send(hw, &req, true, resp_msg, sizeof(resp_msg));
+	if (ret) {
+		hns3_err(hw, "failed to get multi-tc ETS info, ret = %d.", ret);
+		return ret;
+	}
+	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
+		if (ets->sch_mode[i] == HNS3_ETS_SCHED_MODE_INVALID)
+			continue;
+		info->tc_dwrr[i] = ets->sch_mode[i];
+		info->num_tc++;
+		if (ets->sch_mode[i] > 0)
+			info->tc_sch_mode |= 1u << i;
+	}
+
+	return 0;
+}
+
+static void
+hns3vf_update_dcb_info(struct hns3_hw *hw, const struct hns3_mbx_tc_config *info)
+{
+	uint32_t prio_tc_map;
+	uint8_t map;
+	int i;
+
+	hw->dcb_info.local_max_tc = hw->dcb_info.num_tc;
+	hw->dcb_info.hw_tc_map = (1u << hw->dcb_info.num_tc) - 1u;
+	memset(hw->dcb_info.pg_info[0].tc_dwrr, 0, sizeof(hw->dcb_info.pg_info[0].tc_dwrr));
+
+	if (hw->dcb_info.num_tc == 1) {
+		memset(hw->dcb_info.prio_tc, 0, sizeof(hw->dcb_info.prio_tc));
+		hw->dcb_info.pg_info[0].tc_dwrr[0] = HNS3_ETS_DWRR_MAX;
+		return;
+	}
+
+	if (info == NULL)
+		return;
+
+	prio_tc_map = info->prio_tc_map;
+	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
+		map = prio_tc_map & HNS3_MBX_PRIO_MASK;
+		prio_tc_map >>= HNS3_MBX_PRIO_SHIFT;
+		hw->dcb_info.prio_tc[i] = map;
+	}
+	for (i = 0; i < hw->dcb_info.num_tc; i++)
+		hw->dcb_info.pg_info[0].tc_dwrr[i] = info->tc_dwrr[i];
+}
+
+static int
+hns3vf_setup_dcb(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_mbx_tc_config info;
+	int ret;
+
+	if (!hns3_dev_get_support(hw, VF_MULTI_TCS)) {
+		hns3_err(hw, "this port does not support dcb configurations.");
+		return -ENOTSUP;
+	}
+
+	if (dev->data->dev_conf.dcb_capability_en & RTE_ETH_DCB_PFC_SUPPORT) {
+		hns3_err(hw, "VF don't support PFC!");
+		return -ENOTSUP;
+	}
+
+	ret = hns3vf_get_multi_tc_info(hw, &info);
+	if (ret)
+		return ret;
+
+	ret = hns3vf_check_multi_tc_config(dev, &info);
+	if (ret)
+		return ret;
+
+	/*
+	 * If multiple-TCs have been configured, cancel the configuration
+	 * first. Otherwise, the configuration will fail.
+	 */
+	if (hw->dcb_info.num_tc > 1) {
+		ret = hns3vf_unset_multi_tc(hw);
+		if (ret)
+			return ret;
+		hw->dcb_info.num_tc = 1;
+		hns3vf_update_dcb_info(hw, NULL);
+	}
+
+	ret = hns3vf_set_multi_tc(hw, &info);
+	if (ret)
+		return ret;
+
+	hw->dcb_info.num_tc = info.num_tc;
+	hns3vf_update_dcb_info(hw, &info);
+
+	return hns3_queue_to_tc_mapping(hw, hw->data->nb_rx_queues, hw->data->nb_rx_queues);
+}
+
+static int
+hns3vf_unset_dcb(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	if (hw->dcb_info.num_tc > 1) {
+		ret = hns3vf_unset_multi_tc(hw);
+		if (ret)
+			return ret;
+	}
+
+	hw->dcb_info.num_tc = 1;
+	hns3vf_update_dcb_info(hw, NULL);
+
+	return hns3_queue_to_tc_mapping(hw, hw->data->nb_rx_queues, hw->data->nb_rx_queues);
+}
+
+static int
+hns3vf_config_dcb(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	uint32_t rx_mq_mode = conf->rxmode.mq_mode;
+	int ret;
+
+	if (rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
+		ret = hns3vf_setup_dcb(dev);
+	else
+		ret = hns3vf_unset_dcb(dev);
+
+	return ret;
+}
+
+static int
+hns3vf_check_dev_conf(struct rte_eth_dev *dev)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	int ret;
+
+	ret = hns3_check_dev_mq_mode(dev);
+	if (ret)
+		return ret;
+
+	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
+		hns3_err(hw, "setting link speed/duplex not supported");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static int
 hns3vf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
@@ -412,11 +642,13 @@ hns3vf_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	hw->adapter_state = HNS3_NIC_CONFIGURING;
-	if (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) {
-		hns3_err(hw, "setting link speed/duplex not supported");
-		ret = -EINVAL;
+	ret = hns3vf_check_dev_conf(dev);
+	if (ret)
 		goto cfg_err;
-	}
+
+	ret = hns3vf_config_dcb(dev);
+	if (ret)
+		goto cfg_err;
 
 	/* When RSS is not configured, redirect the packet queue 0 */
 	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
@@ -1497,6 +1729,15 @@ err_cmd_init_queue:
 }
 
 static void
+hns3vf_notify_uninit(struct hns3_hw *hw)
+{
+	struct hns3_vf_to_pf_msg req;
+
+	hns3vf_mbx_setup(&req, HNS3_MBX_VF_UNINIT, 0);
+	(void)hns3vf_mbx_send(hw, &req, false, NULL, 0);
+}
+
+static void
 hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -1515,6 +1756,7 @@ hns3vf_uninit_vf(struct rte_eth_dev *eth_dev)
 	rte_intr_disable(pci_dev->intr_handle);
 	hns3_intr_unregister(pci_dev->intr_handle, hns3vf_interrupt_handler,
 			     eth_dev);
+	(void)hns3vf_notify_uninit(hw);
 	hns3_cmd_uninit(hw);
 	hns3_cmd_destroy_queue(hw);
 	hw->io_base = NULL;
@@ -1652,13 +1894,7 @@ static int
 hns3vf_do_start(struct hns3_adapter *hns, bool reset_queue)
 {
 	struct hns3_hw *hw = &hns->hw;
-	uint16_t nb_rx_q = hw->data->nb_rx_queues;
-	uint16_t nb_tx_q = hw->data->nb_tx_queues;
 	int ret;
-
-	ret = hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
-	if (ret)
-		return ret;
 
 	hns3_enable_rxd_adv_layout(hw);
 
@@ -2240,6 +2476,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.vlan_filter_set    = hns3vf_vlan_filter_set,
 	.vlan_offload_set   = hns3vf_vlan_offload_set,
 	.get_reg            = hns3_get_regs,
+	.get_dcb_info       = hns3_get_dcb_info,
 	.dev_supported_ptypes_get = hns3_dev_supported_ptypes_get,
 	.tx_done_cleanup    = hns3_tx_done_cleanup,
 	.eth_dev_priv_dump  = hns3_eth_dev_priv_dump,

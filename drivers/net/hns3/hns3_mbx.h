@@ -9,6 +9,8 @@
 
 #include <rte_spinlock.h>
 
+#include "hns3_cmd.h"
+
 enum HNS3_MBX_OPCODE {
 	HNS3_MBX_RESET = 0x01,          /* (VF -> PF) assert reset */
 	HNS3_MBX_ASSERTING_RESET,       /* (PF -> VF) PF is asserting reset */
@@ -45,11 +47,13 @@ enum HNS3_MBX_OPCODE {
 	HNS3_MBX_PUSH_VLAN_INFO = 34,   /* (PF -> VF) push port base vlan */
 
 	HNS3_MBX_PUSH_PROMISC_INFO = 36, /* (PF -> VF) push vf promisc info */
+	HNS3_MBX_VF_UNINIT,              /* (VF -> PF) vf is unintializing */
 
 	HNS3_MBX_HANDLE_VF_TBL = 38,    /* (VF -> PF) store/clear hw cfg tbl */
 	HNS3_MBX_GET_RING_VECTOR_MAP,   /* (VF -> PF) get ring-to-vector map */
 
 	HNS3_MBX_GET_TC = 47,           /* (VF -> PF) get tc info of PF configured */
+	HNS3_MBX_SET_TC,                /* (VF -> PF) set tc */
 
 	HNS3_MBX_PUSH_LINK_STATUS = 201, /* (IMP -> PF) get port link status */
 };
@@ -64,7 +68,42 @@ struct hns3_basic_info {
 
 enum hns3_mbx_get_tc_subcode {
 	HNS3_MBX_GET_PRIO_MAP = 0, /* query priority to tc map */
+	HNS3_MBX_GET_ETS_INFO,     /* query ets info */
 };
+
+struct hns3_mbx_tc_prio_map {
+	/*
+	 * Each four bits correspond to one priority's TC.
+	 * Bit0-3 correspond to priority-0's TC, bit4-7 correspond to
+	 * priority-1's TC, and so on.
+	 */
+	uint32_t prio_tc_map;
+};
+
+#define HNS3_ETS_SCHED_MODE_INVALID	255
+#define HNS3_ETS_DWRR_MAX		100
+struct hns3_mbx_tc_ets_info {
+	uint8_t sch_mode[HNS3_MAX_TC_NUM]; /* 1~100: DWRR, 0: SP; 255-invalid */
+};
+
+#define HNS3_MBX_PRIO_SHIFT	4
+#define HNS3_MBX_PRIO_MASK	0xFu
+struct __rte_packed_begin hns3_mbx_tc_config {
+	/*
+	 * Each four bits correspond to one priority's TC.
+	 * Bit0-3 correspond to priority-0's TC, bit4-7 correspond to
+	 * priority-1's TC, and so on.
+	 */
+	uint32_t prio_tc_map;
+	uint8_t tc_dwrr[HNS3_MAX_TC_NUM];
+	uint8_t num_tc;
+	/*
+	 * Each bit correspond to one TC's scheduling mode, 0 means SP
+	 * scheduling mode, 1 means DWRR scheduling mode.
+	 * Bit0 corresponds to TC0, bit1 corresponds to TC1, and so on.
+	 */
+	uint8_t tc_sch_mode;
+} __rte_packed_end;
 
 /* below are per-VF mac-vlan subcodes */
 enum hns3_mbx_mac_vlan_subcode {

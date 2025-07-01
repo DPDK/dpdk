@@ -215,4 +215,8 @@ int hns3_update_queue_map_configure(struct hns3_adapter *hns);
 int hns3_port_shaper_update(struct hns3_hw *hw, uint32_t speed);
 uint8_t hns3_txq_mapped_tc_get(struct hns3_hw *hw, uint16_t txq_no);
 
+int hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info);
+
+int hns3_check_dev_mq_mode(struct rte_eth_dev *dev);
+
 #endif /* HNS3_DCB_H */

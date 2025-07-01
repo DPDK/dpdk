@@ -1800,3 +1800,109 @@ setup_fc_fail:
 
 	return ret;
 }
+
+int
+hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int i;
+
+	if (hns->is_vf && !hns3_dev_get_support(hw, VF_MULTI_TCS))
+		return -ENOTSUP;
+
+	rte_spinlock_lock(&hw->lock);
+	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
+		dcb_info->nb_tcs = hw->dcb_info.local_max_tc;
+	else
+		dcb_info->nb_tcs = 1;
+
+	for (i = 0; i < HNS3_MAX_USER_PRIO; i++)
+		dcb_info->prio_tc[i] = hw->dcb_info.prio_tc[i];
+	for (i = 0; i < dcb_info->nb_tcs; i++)
+		dcb_info->tc_bws[i] = hw->dcb_info.pg_info[0].tc_dwrr[i];
+
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
+		dcb_info->tc_queue.tc_rxq[0][i].base = hw->alloc_rss_size * i;
+		dcb_info->tc_queue.tc_txq[0][i].base =
+						hw->tc_queue[i].tqp_offset;
+		dcb_info->tc_queue.tc_rxq[0][i].nb_queue = hw->alloc_rss_size;
+		dcb_info->tc_queue.tc_txq[0][i].nb_queue =
+						hw->tc_queue[i].tqp_count;
+	}
+	rte_spinlock_unlock(&hw->lock);
+
+	return 0;
+}
+
+int
+hns3_check_dev_mq_mode(struct rte_eth_dev *dev)
+{
+	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
+	enum rte_eth_tx_mq_mode tx_mq_mode = dev->data->dev_conf.txmode.mq_mode;
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
+	struct rte_eth_dcb_tx_conf *dcb_tx_conf;
+	uint8_t num_tc;
+	int max_tc = 0;
+	int i;
+
+	if (((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) ||
+	    (tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB ||
+	     tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_ONLY)) {
+		hns3_err(hw, "VMDQ is not supported, rx_mq_mode = %d, tx_mq_mode = %d.",
+			 rx_mq_mode, tx_mq_mode);
+		return -EOPNOTSUPP;
+	}
+
+	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
+	dcb_tx_conf = &dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;
+	if ((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
+		if (dcb_rx_conf->nb_tcs > hw->dcb_info.tc_max) {
+			hns3_err(hw, "nb_tcs(%u) > max_tc(%u) driver supported.",
+				 dcb_rx_conf->nb_tcs, hw->dcb_info.tc_max);
+			return -EINVAL;
+		}
+
+		/*
+		 * The PF driver supports only four or eight TCs. But the
+		 * number of TCs supported by the VF driver is flexible,
+		 * therefore, only the number of TCs in the PF is verified.
+		 */
+		if (!hns->is_vf && !(dcb_rx_conf->nb_tcs == HNS3_4_TCS ||
+				     dcb_rx_conf->nb_tcs == HNS3_8_TCS)) {
+			hns3_err(hw, "on RTE_ETH_MQ_RX_DCB_RSS mode, "
+				 "nb_tcs(%d) != %d or %d in rx direction.",
+				 dcb_rx_conf->nb_tcs, HNS3_4_TCS, HNS3_8_TCS);
+			return -EINVAL;
+		}
+
+		if (dcb_rx_conf->nb_tcs != dcb_tx_conf->nb_tcs) {
+			hns3_err(hw, "num_tcs(%d) of tx is not equal to rx(%d)",
+				 dcb_tx_conf->nb_tcs, dcb_rx_conf->nb_tcs);
+			return -EINVAL;
+		}
+
+		for (i = 0; i < HNS3_MAX_USER_PRIO; i++) {
+			if (dcb_rx_conf->dcb_tc[i] != dcb_tx_conf->dcb_tc[i]) {
+				hns3_err(hw, "dcb_tc[%d] = %u in rx direction, "
+					 "is not equal to one in tx direction.",
+					 i, dcb_rx_conf->dcb_tc[i]);
+				return -EINVAL;
+			}
+			if (dcb_rx_conf->dcb_tc[i] > max_tc)
+				max_tc = dcb_rx_conf->dcb_tc[i];
+		}
+
+		num_tc = max_tc + 1;
+		if (num_tc > dcb_rx_conf->nb_tcs) {
+			hns3_err(hw, "max num_tc(%u) mapped > nb_tcs(%u)",
+				 num_tc, dcb_rx_conf->nb_tcs);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
