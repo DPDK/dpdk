@@ -48,6 +48,9 @@ enum HNS3_MBX_OPCODE {
 
 	HNS3_MBX_HANDLE_VF_TBL = 38,    /* (VF -> PF) store/clear hw cfg tbl */
 	HNS3_MBX_GET_RING_VECTOR_MAP,   /* (VF -> PF) get ring-to-vector map */
+
+	HNS3_MBX_GET_TC = 47,           /* (VF -> PF) get tc info of PF configured */
+
 	HNS3_MBX_PUSH_LINK_STATUS = 201, /* (IMP -> PF) get port link status */
 };
 
@@ -57,6 +60,10 @@ struct hns3_basic_info {
 	uint16_t pf_vf_if_version;
 	/* capabilities of VF dependent on PF */
 	uint32_t caps;
+};
+
+enum hns3_mbx_get_tc_subcode {
+	HNS3_MBX_GET_PRIO_MAP = 0, /* query priority to tc map */
 };
 
 /* below are per-VF mac-vlan subcodes */

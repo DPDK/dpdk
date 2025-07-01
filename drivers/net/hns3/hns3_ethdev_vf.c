@@ -816,11 +816,44 @@ hns3vf_get_queue_info(struct hns3_hw *hw)
 }
 
 static void
+hns3vf_update_multi_tcs_cap(struct hns3_hw *hw, uint32_t pf_multi_tcs_bit)
+{
+	uint8_t resp_msg[HNS3_MBX_MAX_RESP_DATA_SIZE];
+	struct hns3_vf_to_pf_msg req;
+	int ret;
+
+	if (!hns3_dev_get_support(hw, VF_MULTI_TCS))
+		return;
+
+	if (pf_multi_tcs_bit == 0) {
+		/*
+		 * Early PF driver versions may don't report
+		 * HNS3VF_CAPS_MULTI_TCS_B when VF query basic info, so clear
+		 * the corresponding capability bit.
+		 */
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_VF_MULTI_TCS_B, 0);
+		return;
+	}
+
+	/*
+	 * Early PF driver versions may also report HNS3VF_CAPS_MULTI_TCS_B
+	 * when VF query basic info, but they don't support query TC info
+	 * mailbox message, so clear the corresponding capability bit.
+	 */
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_TC, HNS3_MBX_GET_PRIO_MAP);
+	ret = hns3vf_mbx_send(hw, &req, true, resp_msg, sizeof(resp_msg));
+	if (ret)
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_VF_MULTI_TCS_B, 0);
+}
+
+static void
 hns3vf_update_caps(struct hns3_hw *hw, uint32_t caps)
 {
 	if (hns3_get_bit(caps, HNS3VF_CAPS_VLAN_FLT_MOD_B))
 		hns3_set_bit(hw->capability,
 				HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B, 1);
+
+	hns3vf_update_multi_tcs_cap(hw, hns3_get_bit(caps, HNS3VF_CAPS_MULTI_TCS_B));
 }
 
 static int

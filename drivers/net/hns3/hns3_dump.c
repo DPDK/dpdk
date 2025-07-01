@@ -105,7 +105,8 @@ hns3_get_dev_feature_capability(FILE *file, struct hns3_hw *hw)
 		{HNS3_DEV_SUPPORT_TM_B, "TM"},
 		{HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B, "VF VLAN FILTER MOD"},
 		{HNS3_DEV_SUPPORT_FC_AUTO_B, "FC AUTO"},
-		{HNS3_DEV_SUPPORT_GRO_B, "GRO"}
+		{HNS3_DEV_SUPPORT_GRO_B, "GRO"},
+		{HNS3_DEV_SUPPORT_VF_MULTI_TCS_B, "VF MULTI TCS"},
 	};
 	uint32_t i;
 

@@ -482,7 +482,8 @@ static void
 hns3_parse_capability(struct hns3_hw *hw,
 		      struct hns3_query_version_cmd *cmd)
 {
-	uint32_t caps = rte_le_to_cpu_32(cmd->caps[0]);
+	uint64_t caps = ((uint64_t)rte_le_to_cpu_32(cmd->caps[1]) << 32) |
+			rte_le_to_cpu_32(cmd->caps[0]);
 
 	if (hns3_get_bit(caps, HNS3_CAPS_FD_QUEUE_REGION_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FD_QUEUE_REGION_B,
@@ -524,6 +525,8 @@ hns3_parse_capability(struct hns3_hw *hw,
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_FC_AUTO_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_GRO_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_GRO_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_VF_MULTI_TCS_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_VF_MULTI_TCS_B, 1);
 }
 
 static uint32_t
