@@ -111,13 +111,15 @@ arch_config = arch_config[arch_id]
 # Concatenate flags respecting priorities.
 dpdk_flags = flags_common + vendor_config['flags'] + arch_config.get('flags', [])
 
-# apply supported machine args
-machine_args = [] # Clear previous machine args
-foreach flag: arch_config['machine_args']
-    if cc.has_argument(flag)
-        machine_args += flag
-    endif
-endforeach
+if (cpu_instruction_set == 'rv64gc')
+    # apply supported machine args
+    machine_args = [] # Clear previous machine args
+    foreach flag: arch_config['machine_args']
+        if cc.has_argument(flag)
+            machine_args += flag
+        endif
+    endforeach
+endif
 
 # check if we can do buildtime detection of extensions supported by the target
 riscv_extension_macros = false
