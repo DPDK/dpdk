@@ -1175,12 +1175,14 @@ hns3_init_txq(struct hns3_tx_queue *txq)
 	hns3_init_tx_queue_hw(txq);
 }
 
-static void
+static int
 hns3_init_tx_ring_tc(struct hns3_adapter *hns)
 {
+	struct hns3_cmd_desc desc;
+	struct hns3vf_tx_ring_tc_cmd *req = (struct hns3vf_tx_ring_tc_cmd *)desc.data;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_tx_queue *txq;
-	int i, num;
+	int i, num, ret;
 
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		struct hns3_tc_queue_info *tc_queue = &hw->tc_queue[i];
@@ -1195,9 +1197,24 @@ hns3_init_tx_ring_tc(struct hns3_adapter *hns)
 			if (txq == NULL)
 				continue;
 
-			hns3_write_dev(txq, HNS3_RING_TX_TC_REG, tc_queue->tc);
+			if (!hns->is_vf) {
+				hns3_write_dev(txq, HNS3_RING_TX_TC_REG, tc_queue->tc);
+				continue;
+			}
+
+			hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_TQP_TX_QUEUE_TC, false);
+			req->tqp_id = rte_cpu_to_le_16(num);
+			req->tc_id  = tc_queue->tc;
+			ret = hns3_cmd_send(hw, &desc, 1);
+			if (ret != 0) {
+				hns3_err(hw, "config Tx queue (%u)'s TC failed! ret = %d.",
+					 num, ret);
+				return ret;
+			}
 		}
 	}
+
+	return 0;
 }
 
 static int
@@ -1273,9 +1290,8 @@ hns3_init_tx_queues(struct hns3_adapter *hns)
 		txq = (struct hns3_tx_queue *)hw->fkq_data.tx_queues[i];
 		hns3_init_txq(txq);
 	}
-	hns3_init_tx_ring_tc(hns);
 
-	return 0;
+	return hns3_init_tx_ring_tc(hns);
 }
 
 /*
