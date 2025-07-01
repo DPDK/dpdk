@@ -94,6 +94,8 @@ struct sg_ops_s {
 		int irq_vector,
 		uint32_t in_order);
 	int (*nthw_release_mngd_tx_virt_queue)(struct nthw_virt_queue *txvq);
+	int (*nthw_switch_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs, uint32_t index, uint32_t enable);
+	int (*nthw_switch_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs, uint32_t index, uint32_t enable);
 	/*
 	 * These functions handles both Split and Packed including merged buffers (jumbo)
 	 */

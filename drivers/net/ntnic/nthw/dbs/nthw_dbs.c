@@ -618,6 +618,16 @@ int set_rx_am_data(nthw_dbs_t *p,
 	return 0;
 }
 
+int set_rx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable)
+{
+	if (!p->mp_reg_rx_avail_monitor_data)
+		return -ENOTSUP;
+
+	nthw_dbs_set_shadow_rx_am_data_enable(p, index, enable);
+	flush_rx_am_data(p, index);
+	return 0;
+}
+
 static void set_tx_am_data_index(nthw_dbs_t *p, uint32_t index)
 {
 	nthw_field_set_val32(p->mp_fld_tx_avail_monitor_control_adr, index);
@@ -676,6 +686,16 @@ int set_tx_am_data(nthw_dbs_t *p,
 
 	set_shadow_tx_am_data(p, index, guest_physical_address, enable, host_id, packed,
 		int_enable);
+	flush_tx_am_data(p, index);
+	return 0;
+}
+
+int set_tx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable)
+{
+	if (!p->mp_reg_tx_avail_monitor_data)
+		return -ENOTSUP;
+
+	p->m_tx_am_shadow[index].enable = enable;
 	flush_tx_am_data(p, index);
 	return 0;
 }

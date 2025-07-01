@@ -267,6 +267,7 @@ int set_rx_am_data(nthw_dbs_t *p,
 	uint32_t host_id,
 	uint32_t packed,
 	uint32_t int_enable);
+int set_rx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable);
 int set_tx_am_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
@@ -274,6 +275,7 @@ int set_tx_am_data(nthw_dbs_t *p,
 	uint32_t host_id,
 	uint32_t packed,
 	uint32_t int_enable);
+int set_tx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable);
 int set_rx_uw_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
