@@ -1351,10 +1351,6 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 			return -1;
 		}
 		break;
-	case MLX5_INDIRECT_ACTION_TYPE_AGE:
-		/* Not supported, prevent by validate function. */
-		MLX5_ASSERT(0);
-		break;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
 		if (flow_hw_ct_compile(dev, MLX5_HW_INV_QUEUE,
 				       idx, &acts->rule_acts[action_dst])) {
@@ -6405,6 +6401,10 @@ flow_hw_validate_action_indirect(struct rte_eth_dev *dev,
 		*action_flags |= MLX5_FLOW_ACTION_INDIRECT_COUNT;
 		break;
 	case RTE_FLOW_ACTION_TYPE_AGE:
+		if (action->conf && mask->conf)
+			return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+						  action,
+						  "Fixed indirect age action is not supported");
 		ret = flow_hw_validate_action_age(dev, action, *action_flags,
 						  *fixed_cnt, error);
 		if (ret < 0)
