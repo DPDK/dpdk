@@ -130,7 +130,7 @@ struct hns3_tc_info {
 };
 
 struct hns3_dcb_info {
-	uint8_t num_tc;
+	uint8_t num_tc;     /* Total number of enabled TCs */
 	uint8_t num_pg;     /* It must be 1 if vNET-Base schd */
 	uint8_t pg_dwrr[HNS3_PG_NUM];
 	uint8_t prio_tc[HNS3_MAX_USER_PRIO];
@@ -534,7 +534,6 @@ struct hns3_hw {
 	uint16_t rss_ind_tbl_size;
 	uint16_t rss_key_size;
 
-	uint8_t num_tc;             /* Total number of enabled TCs */
 	uint8_t hw_tc_map;
 	enum hns3_fc_mode requested_fc_mode; /* FC mode requested by user */
 	struct hns3_dcb_info dcb_info;

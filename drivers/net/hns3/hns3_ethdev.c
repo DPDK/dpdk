@@ -5432,7 +5432,7 @@ hns3_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return -EOPNOTSUPP;
 	}
 
-	if (hw->num_tc > 1 && !pf->support_multi_tc_pause) {
+	if (hw->dcb_info.num_tc > 1 && !pf->support_multi_tc_pause) {
 		hns3_err(hw, "in multi-TC scenarios, MAC pause is not supported.");
 		return -EOPNOTSUPP;
 	}
@@ -5509,7 +5509,7 @@ hns3_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info)
 	for (i = 0; i < dcb_info->nb_tcs; i++)
 		dcb_info->tc_bws[i] = hw->dcb_info.pg_info[0].tc_dwrr[i];
 
-	for (i = 0; i < hw->num_tc; i++) {
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
 		dcb_info->tc_queue.tc_rxq[0][i].base = hw->alloc_rss_size * i;
 		dcb_info->tc_queue.tc_txq[0][i].base =
 						hw->tc_queue[i].tqp_offset;

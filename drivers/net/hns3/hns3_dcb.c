@@ -623,7 +623,7 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 	uint16_t used_rx_queues;
 	uint16_t i;
 
-	rx_qnum_per_tc = nb_rx_q / hw->num_tc;
+	rx_qnum_per_tc = nb_rx_q / hw->dcb_info.num_tc;
 	if (rx_qnum_per_tc > hw->rss_size_max) {
 		hns3_err(hw, "rx queue number of per tc (%u) is greater than "
 			 "value (%u) hardware supported.",
@@ -631,11 +631,11 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 		return -EINVAL;
 	}
 
-	used_rx_queues = hw->num_tc * rx_qnum_per_tc;
+	used_rx_queues = hw->dcb_info.num_tc * rx_qnum_per_tc;
 	if (used_rx_queues != nb_rx_q) {
 		hns3_err(hw, "rx queue number (%u) configured must be an "
 			 "integral multiple of valid tc number (%u).",
-			 nb_rx_q, hw->num_tc);
+			 nb_rx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 	hw->alloc_rss_size = rx_qnum_per_tc;
@@ -665,12 +665,12 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_tx_q)
 	uint16_t tx_qnum_per_tc;
 	uint8_t i;
 
-	tx_qnum_per_tc = nb_tx_q / hw->num_tc;
-	used_tx_queues = hw->num_tc * tx_qnum_per_tc;
+	tx_qnum_per_tc = nb_tx_q / hw->dcb_info.num_tc;
+	used_tx_queues = hw->dcb_info.num_tc * tx_qnum_per_tc;
 	if (used_tx_queues != nb_tx_q) {
 		hns3_err(hw, "tx queue number (%u) configured must be an "
 			 "integral multiple of valid tc number (%u).",
-			 nb_tx_q, hw->num_tc);
+			 nb_tx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 
@@ -678,7 +678,7 @@ hns3_tc_queue_mapping_cfg(struct hns3_hw *hw, uint16_t nb_tx_q)
 	hw->tx_qnum_per_tc = tx_qnum_per_tc;
 	for (i = 0; i < HNS3_MAX_TC_NUM; i++) {
 		tc_queue = &hw->tc_queue[i];
-		if (hw->hw_tc_map & BIT(i) && i < hw->num_tc) {
+		if (hw->hw_tc_map & BIT(i) && i < hw->dcb_info.num_tc) {
 			tc_queue->enable = true;
 			tc_queue->tqp_offset = i * hw->tx_qnum_per_tc;
 			tc_queue->tqp_count = hw->tx_qnum_per_tc;
@@ -720,15 +720,15 @@ hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q, uint16_t nb_tx_q)
 {
 	int ret;
 
-	if (nb_rx_q < hw->num_tc) {
+	if (nb_rx_q < hw->dcb_info.num_tc) {
 		hns3_err(hw, "number of Rx queues(%u) is less than number of TC(%u).",
-			 nb_rx_q, hw->num_tc);
+			 nb_rx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 
-	if (nb_tx_q < hw->num_tc) {
+	if (nb_tx_q < hw->dcb_info.num_tc) {
 		hns3_err(hw, "number of Tx queues(%u) is less than number of TC(%u).",
-			 nb_tx_q, hw->num_tc);
+			 nb_tx_q, hw->dcb_info.num_tc);
 		return -EINVAL;
 	}
 
@@ -737,15 +737,6 @@ hns3_queue_to_tc_mapping(struct hns3_hw *hw, uint16_t nb_rx_q, uint16_t nb_tx_q)
 		return ret;
 
 	return hns3_tc_queue_mapping_cfg(hw, nb_tx_q);
-}
-
-static int
-hns3_dcb_update_tc_queue_mapping(struct hns3_hw *hw, uint16_t nb_rx_q,
-				 uint16_t nb_tx_q)
-{
-	hw->num_tc = hw->dcb_info.num_tc;
-
-	return hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 }
 
 int
@@ -1028,7 +1019,7 @@ hns3_q_to_qs_map(struct hns3_hw *hw)
 	uint32_t i, j;
 	int ret;
 
-	for (i = 0; i < hw->num_tc; i++) {
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
 		tc_queue = &hw->tc_queue[i];
 		for (j = 0; j < tc_queue->tqp_count; j++) {
 			q_id = tc_queue->tqp_offset + j;
@@ -1053,7 +1044,7 @@ hns3_pri_q_qs_cfg(struct hns3_hw *hw)
 		return -EINVAL;
 
 	/* Cfg qs -> pri mapping */
-	for (i = 0; i < hw->num_tc; i++) {
+	for (i = 0; i < hw->dcb_info.num_tc; i++) {
 		ret = hns3_qs_to_pri_map_cfg(hw, i, i);
 		if (ret) {
 			hns3_err(hw, "qs_to_pri mapping fail: %d", ret);
@@ -1448,8 +1439,8 @@ hns3_dcb_info_cfg(struct hns3_adapter *hns)
 	for (i = 0; i < HNS3_MAX_USER_PRIO; i++)
 		hw->dcb_info.prio_tc[i] = dcb_rx_conf->dcb_tc[i];
 
-	ret = hns3_dcb_update_tc_queue_mapping(hw, hw->data->nb_rx_queues,
-					       hw->data->nb_tx_queues);
+	ret = hns3_queue_to_tc_mapping(hw, hw->data->nb_rx_queues,
+				       hw->data->nb_tx_queues);
 	if (ret)
 		hns3_err(hw, "update tc queue mapping failed, ret = %d.", ret);
 
@@ -1635,8 +1626,7 @@ hns3_dcb_init(struct hns3_hw *hw)
 		 */
 		default_tqp_num = RTE_MIN(hw->rss_size_max,
 					  hw->tqps_num / hw->dcb_info.num_tc);
-		ret = hns3_dcb_update_tc_queue_mapping(hw, default_tqp_num,
-						       default_tqp_num);
+		ret = hns3_queue_to_tc_mapping(hw, default_tqp_num, default_tqp_num);
 		if (ret) {
 			hns3_err(hw,
 				 "update tc queue mapping failed, ret = %d.",
@@ -1673,7 +1663,7 @@ hns3_update_queue_map_configure(struct hns3_adapter *hns)
 	if ((uint32_t)mq_mode & RTE_ETH_MQ_RX_DCB_FLAG)
 		return 0;
 
-	ret = hns3_dcb_update_tc_queue_mapping(hw, nb_rx_q, nb_tx_q);
+	ret = hns3_queue_to_tc_mapping(hw, nb_rx_q, nb_tx_q);
 	if (ret) {
 		hns3_err(hw, "failed to update tc queue mapping, ret = %d.",
 			 ret);

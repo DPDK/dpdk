@@ -854,7 +854,7 @@ hns3vf_get_basic_info(struct hns3_hw *hw)
 
 	basic_info = (struct hns3_basic_info *)resp_msg;
 	hw->hw_tc_map = basic_info->hw_tc_map;
-	hw->num_tc = hns3vf_get_num_tc(hw);
+	hw->dcb_info.num_tc = hns3vf_get_num_tc(hw);
 	hw->pf_vf_if_version = basic_info->pf_vf_if_version;
 	hns3vf_update_caps(hw, basic_info->caps);
 
