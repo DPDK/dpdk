@@ -21,6 +21,7 @@
 #include "base/hinic3_hw_comm.h"
 #include "base/hinic3_nic_cfg.h"
 #include "base/hinic3_nic_event.h"
+#include "mml/hinic3_mml_lib.h"
 #include "hinic3_nic_io.h"
 #include "hinic3_tx.h"
 #include "hinic3_rx.h"
@@ -2276,6 +2277,16 @@ hinic3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+hinic3_get_eeprom(__rte_unused struct rte_eth_dev *dev,
+		  struct rte_dev_eeprom_info *info)
+{
+#define MAX_BUF_OUT_LEN 2048
+
+	return hinic3_pmd_mml_lib(info->data, info->offset, info->data,
+				  &info->length, MAX_BUF_OUT_LEN);
+}
+
 /**
  * Get device generic statistics.
  *
@@ -2879,6 +2890,7 @@ static const struct eth_dev_ops hinic3_pmd_ops = {
 	.vlan_offload_set              = hinic3_vlan_offload_set,
 	.allmulticast_enable           = hinic3_dev_allmulticast_enable,
 	.allmulticast_disable          = hinic3_dev_allmulticast_disable,
+	.get_eeprom                    = hinic3_get_eeprom,
 	.stats_get                     = hinic3_dev_stats_get,
 	.stats_reset                   = hinic3_dev_stats_reset,
 	.xstats_get                    = hinic3_dev_xstats_get,
@@ -2919,6 +2931,7 @@ static const struct eth_dev_ops hinic3_pmd_vf_ops = {
 	.vlan_offload_set              = hinic3_vlan_offload_set,
 	.allmulticast_enable           = hinic3_dev_allmulticast_enable,
 	.allmulticast_disable          = hinic3_dev_allmulticast_disable,
+	.get_eeprom                    = hinic3_get_eeprom,
 	.stats_get                     = hinic3_dev_stats_get,
 	.stats_reset                   = hinic3_dev_stats_reset,
 	.xstats_get                    = hinic3_dev_xstats_get,
