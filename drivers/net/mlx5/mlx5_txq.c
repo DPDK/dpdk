@@ -1009,6 +1009,8 @@ txq_adjust_params(struct mlx5_txq_ctrl *txq_ctrl)
 			"txq_inline_mpw requirements (%u) are not satisfied (%u) on port %u",
 			txq_ctrl->txq.inlen_empw, max_inline, priv->dev_data->port_id);
 	}
+	MLX5_ASSERT(max_inline >= (MLX5_ESEG_MIN_INLINE_SIZE - MLX5_DSEG_MIN_INLINE_SIZE));
+	max_inline -= MLX5_ESEG_MIN_INLINE_SIZE - MLX5_DSEG_MIN_INLINE_SIZE;
 	if (txq_ctrl->txq.tso_en && max_inline < MLX5_MAX_TSO_HEADER) {
 		DRV_LOG(WARNING,
 			"tso header inline requirements (%u) are not satisfied (%u) on port %u",
