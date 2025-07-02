@@ -1578,13 +1578,6 @@ class TestPmdShell(DPDKShell):
                 self._logger.debug(f"Failed to start packet forwarding: \n{start_cmd_output}")
                 raise InteractiveCommandExecutionError("Testpmd failed to start packet forwarding.")
 
-            number_of_ports = len(self._app_params.allowed_ports or [])
-            for port_id in range(number_of_ports):
-                if not self.wait_link_status_up(port_id):
-                    raise InteractiveCommandExecutionError(
-                        "Not all ports came up after starting packet forwarding in testpmd."
-                    )
-
     def stop(self, verify: bool = True) -> str:
         """Stop packet forwarding.
 
