@@ -117,6 +117,7 @@ def setup_and_teardown_test(
     return wrap
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 class TestDynamicQueueConf(TestSuite):
     """DPDK dynamic queue configuration test suite.
 

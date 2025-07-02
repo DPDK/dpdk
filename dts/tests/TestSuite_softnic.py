@@ -9,7 +9,7 @@ Create a softnic virtual device and verify it successfully forwards packets.
 from pathlib import Path, PurePath
 
 from framework.params.testpmd import EthPeer
-from framework.remote_session.testpmd_shell import TestPmdShell
+from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import requires
 from framework.testbed_model.topology import TopologyType
@@ -17,6 +17,7 @@ from framework.testbed_model.virtual_device import VirtualDevice
 from framework.utils import generate_random_packets
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 @requires(topology_type=TopologyType.two_links)
 class TestSoftnic(TestSuite):
     """Softnic test suite."""

@@ -28,6 +28,7 @@ from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import NicCapability, requires
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 @requires(NicCapability.RX_OFFLOAD_SCATTER)
 class TestPmdBufferScatter(TestSuite):
     """DPDK PMD packet scattering test suite.

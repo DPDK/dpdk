@@ -25,6 +25,7 @@ from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import requires
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 class TestMacFilter(TestSuite):
     """Mac address allowlist filtering test suite.
 

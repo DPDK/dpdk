@@ -13,11 +13,12 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Packet, Raw
 
 from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import TestPmdShell
+from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import TopologyType, requires
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 @requires(topology_type=TopologyType.two_links)
 class TestPortControl(TestSuite):
     """DPDK Port Control Testing Suite."""

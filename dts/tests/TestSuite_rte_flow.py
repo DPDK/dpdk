@@ -316,6 +316,7 @@ class TestRteFlow(TestSuite):
             test_queue=2,
         )
 
+    @requires(NicCapability.PHYSICAL_FUNCTION)
     @func_test
     def test_queue_action_L4(self) -> None:
         """Validate flow rules with queue actions and TCP/UDP patterns.
