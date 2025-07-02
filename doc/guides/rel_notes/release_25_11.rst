@@ -55,6 +55,9 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated DPAA2 ethernet driver.**
+
+  * Enabled software taildrop for ordered queues.
 
 Removed Items
 -------------
@@ -114,7 +117,6 @@ Known Issues
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
-
 
 Tested Platforms
 ----------------
