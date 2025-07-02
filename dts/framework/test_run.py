@@ -342,6 +342,10 @@ class TestRunSetup(State):
         test_run.ctx.tg_node.setup()
         test_run.ctx.dpdk.setup()
         test_run.ctx.topology.setup()
+
+        if test_run.config.use_virtual_functions:
+            test_run.ctx.topology.instantiate_vf_ports()
+
         test_run.ctx.topology.configure_ports("sut", "dpdk")
         test_run.ctx.tg.setup(test_run.ctx.topology)
 
@@ -428,6 +432,9 @@ class TestRunTeardown(State):
 
     def next(self) -> State | None:
         """Next state."""
+        if self.test_run.config.use_virtual_functions:
+            self.test_run.ctx.topology.delete_vf_ports()
+
         self.test_run.ctx.shell_pool.terminate_current_pool()
         self.test_run.ctx.tg.teardown()
         self.test_run.ctx.topology.teardown()

@@ -467,6 +467,8 @@ class TestRunConfiguration(FrozenModel):
     perf: bool
     #: Whether to run functional tests.
     func: bool
+    #: Whether to run the testing with virtual functions instead of physical functions
+    use_virtual_functions: bool
     #: Whether to skip smoke tests.
     skip_smoke_tests: bool = False
     #: The names of test suites and/or test cases to execute.
