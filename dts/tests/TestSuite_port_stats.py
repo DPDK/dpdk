@@ -19,6 +19,7 @@ from scapy.packet import Packet, Raw
 
 from framework.params.testpmd import SimpleForwardingModes
 from framework.remote_session.testpmd_shell import (
+    NicCapability,
     RtePTypes,
     TestPmdShell,
     TestPmdVerbosePacket,
@@ -27,6 +28,7 @@ from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import TopologyType, requires
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 @requires(topology_type=TopologyType.two_links)
 class TestPortStats(TestSuite):
     """DPDK Port statistics testing suite.

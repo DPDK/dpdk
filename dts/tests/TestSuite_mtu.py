@@ -17,8 +17,9 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework.remote_session.testpmd_shell import TestPmdShell
+from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.capability import requires
 
 STANDARD_FRAME = 1518  # --max-pkt-len will subtract l2 information at a minimum of 18 bytes.
 JUMBO_FRAME = 9018
@@ -30,6 +31,7 @@ IP_HEADER_LEN = 20
 VENDOR_AGNOSTIC_PADDING = 9  # Used as a work around for varying MTU definitions between vendors.
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 class TestMtu(TestSuite):
     """DPDK PMD jumbo frames and MTU update test suite.
 

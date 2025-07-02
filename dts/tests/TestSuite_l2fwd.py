@@ -9,7 +9,7 @@ The forwarding test is performed with several packets being sent at once.
 
 from framework.context import filter_cores
 from framework.params.testpmd import EthPeer, SimpleForwardingModes
-from framework.remote_session.testpmd_shell import TestPmdShell
+from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.capability import requires
 from framework.testbed_model.cpu import LogicalCoreCount
@@ -17,6 +17,7 @@ from framework.testbed_model.topology import TopologyType
 from framework.utils import generate_random_packets
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 @requires(topology_type=TopologyType.two_links)
 class TestL2fwd(TestSuite):
     """L2 forwarding test suite."""

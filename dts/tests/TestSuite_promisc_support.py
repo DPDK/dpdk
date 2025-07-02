@@ -11,10 +11,12 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework.remote_session.testpmd_shell import TestPmdShell
+from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.capability import requires
 
 
+@requires(NicCapability.PHYSICAL_FUNCTION)
 class TestPromiscSupport(TestSuite):
     """Promiscuous mode support test suite."""
 

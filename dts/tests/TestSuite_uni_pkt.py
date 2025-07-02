@@ -20,6 +20,7 @@ from scapy.layers.vxlan import VXLAN
 from scapy.packet import Packet, Raw
 
 from framework.remote_session.testpmd_shell import (
+    NicCapability,
     RtePTypes,
     SimpleForwardingModes,
     TestPmdShell,
@@ -258,6 +259,7 @@ class TestUniPkt(TestSuite):
         with TestPmdShell() as testpmd:
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
+    @requires(NicCapability.PHYSICAL_FUNCTION)
     @func_test
     def test_vxlan_tunnel_packet_detect(self) -> None:
         """Ensure the correct flags are shown in the verbose output when sending VXLAN packets.
