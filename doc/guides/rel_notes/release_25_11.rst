@@ -55,6 +55,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated NXP DPAA2 ethernet driver.**
+
+  * Enabled software taildrop for ordered queues.
+
 
 Removed Items
 -------------
