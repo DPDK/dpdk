@@ -2,13 +2,20 @@
 # Copyright(c) 2025 Huawei Technologies Co., Ltd
 
 sources = files(
-        'hinic3_dbg.c',
-        'hinic3_mml_cmd.c',
-        'hinic3_mml_ioctl.c',
-        'hinic3_mml_lib.c',
-        'hinic3_mml_main.c',
-        'hinic3_mml_queue.c',
+        'hinic3_cmdq.c',
+        'hinic3_eqs.c',
+        'hinic3_hw_cfg.c',
+        'hinic3_hw_comm.c',
+        'hinic3_hwdev.c',
+        'hinic3_hwif.c',
+        'hinic3_mbox.c',
+        'hinic3_mgmt.c',
+        'hinic3_nic_cfg.c',
+        'hinic3_nic_event.c',
+        'hinic3_wq.c',
 )
+
+extra_flags = []
 
 # The driver runs only on arch64 machine, remove 32bit warnings
 if not dpdk_conf.get('RTE_ARCH_64')
@@ -25,13 +32,11 @@ foreach flag: extra_flags
 endforeach
 
 deps += ['hash']
-
 c_args = cflags
 includes += include_directories('../')
-includes += include_directories('../base/')
 
-mml_lib = static_library(
-    'hinic3_mml',
+base_lib = static_library(
+    'spnic_base',
     sources,
     dependencies: [
         static_rte_eal,
@@ -42,4 +47,4 @@ mml_lib = static_library(
     include_directories: includes,
     c_args: c_args,
 )
-mml_objs = mml_lib.extract_all_objects()
+base_objs = base_lib.extract_all_objects()
