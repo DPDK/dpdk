@@ -8,6 +8,8 @@
 #include <rte_ethdev.h>
 #include <rte_ethdev_core.h>
 
+#include "hinic3_fdir.h"
+
 #define HINIC3_PMD_DRV_VERSION "B106"
 
 #define PCI_DEV_TO_INTR_HANDLE(pci_dev) ((pci_dev)->intr_handle)
@@ -83,6 +85,9 @@ enum nic_feature_cap {
 
 #define DEFAULT_DRV_FEATURE 0x3FFF
 
+TAILQ_HEAD(hinic3_ethertype_filter_list, rte_flow);
+TAILQ_HEAD(hinic3_fdir_rule_filter_list, rte_flow);
+
 struct hinic3_nic_dev {
 	struct hinic3_hwdev *hwdev; /**< Hardware device. */
 	struct hinic3_txq **txqs;
@@ -114,13 +119,25 @@ struct hinic3_nic_dev {
 
 	RTE_ATOMIC(u64) dev_status;
 
+	u8 pause_set; /**< Flag of PAUSE frame setting. */
+	pthread_mutex_t pause_mutex;
+	struct nic_pause_config nic_pause;
+
 	struct rte_ether_addr default_addr;
 	struct rte_ether_addr *mc_list;
 
 	char dev_name[HINIC3_DEV_NAME_LEN];
 	u64 feature_cap;
 	u32 vfta[HINIC3_VFTA_SIZE]; /**< VLAN bitmap. */
+
+	u16 tcam_rule_nums;
+	u16 ethertype_rule_nums;
+	struct hinic3_tcam_info tcam;
+	struct hinic3_ethertype_filter_list filter_ethertype_list;
+	struct hinic3_fdir_rule_filter_list filter_fdir_rule_list;
 };
+
+extern const struct rte_flow_ops hinic3_flow_ops;
 
 /**
  * Enable interrupt for the specified RX queue.
