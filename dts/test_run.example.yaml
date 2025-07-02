@@ -27,6 +27,7 @@ traffic_generator:
   type: SCAPY
 perf: false # disable performance testing
 func: true # enable functional testing
+use_virtual_functions: false # use virtual functions (VFs) instead of physical functions
 skip_smoke_tests: true # optional
 # by removing the `test_suites` field, this test run will run every test suite available
 test_suites: # the following test suites will be run in their entirety

@@ -161,6 +161,54 @@ There are two areas that need to be set up on a System Under Test:
 
       sudo usermod -aG sudo <sut_user>
 
+#. **SR-IOV**
+
+   Before configuring virtual functions, SR-IOV support must be enabled in the system BIOS/UEFI:
+
+   #. Reboot the system and enter BIOS/UEFI settings.
+   #. Locate the SR-IOV option (often under PCIe or Advanced settings).
+   #. Set SR-IOV to **Enabled** and save changes.
+
+   For Mellanox environments, the following additional setup steps are required:
+
+   #. **Install mstflint tools** (if not already installed):
+
+      .. code-block:: bash
+
+         sudo apt install mstflint        # On Debian/Ubuntu
+         sudo yum install mstflint        # On RHEL/CentOS
+
+   #. **Start the MST service**:
+
+      .. code-block:: bash
+
+         sudo mst start
+
+   #. **List Mellanox devices**:
+
+      .. code-block:: bash
+
+         sudo mst status
+
+      This will output paths such as ``/dev/mst/mt4121_pciconf0``
+      and possibly additional functions (e.g., ``pciconf0.1``).
+
+   #. **Enable SR-IOV and configure number of VFs**:
+
+      .. code-block:: bash
+
+         sudo mlxconfig -d /dev/mst/mt4121_pciconf0 set SRIOV_EN=1 NUM_OF_VFS=8
+         sudo mlxconfig -d /dev/mst/mt4121_pciconf0.1 set SRIOV_EN=1 NUM_OF_VFS=8
+
+      Replace the device names with those matching your setup (from ``mst status``).
+      The number of VFs can be adjusted as needed.
+
+   #. **Reboot the system**:
+
+      .. code-block:: bash
+
+         sudo reboot now
+
 
 Setting up Traffic Generator Node
 ---------------------------------

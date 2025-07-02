@@ -19,7 +19,7 @@ from typing_extensions import Self
 from framework.exception import ConfigurationError, InternalError
 from framework.testbed_model.node import Node
 
-from .port import DriverKind, Port
+from .port import DriverKind, Port, PortConfig
 
 
 class TopologyType(int, Enum):
@@ -74,6 +74,8 @@ class Topology:
     type: TopologyType
     sut_ports: list[Port]
     tg_ports: list[Port]
+    pf_ports: list[Port]
+    vf_ports: list[Port]
 
     @classmethod
     def from_port_links(cls, port_links: Iterator[PortLink]) -> Self:
@@ -101,7 +103,7 @@ class Topology:
                     msg = "More than two links in a topology are not supported."
                     raise ConfigurationError(msg)
 
-        return cls(type, sut_ports, tg_ports)
+        return cls(type, sut_ports, tg_ports, [], [])
 
     def node_and_ports_from_id(self, node_identifier: NodeIdentifier) -> tuple[Node, list[Port]]:
         """Retrieve node and its ports for the current topology.
@@ -159,6 +161,50 @@ class Topology:
                     "Could not gather a valid MAC address and/or logical name "
                     f"for port {port.name} in node {node.name}."
                 )
+
+    def instantiate_vf_ports(self) -> None:
+        """Create, setup, and add virtual functions to the list of ports on the SUT node.
+
+        Raises:
+            InternalError: If virtual function creation fails.
+        """
+        from framework.context import get_ctx
+
+        ctx = get_ctx()
+
+        for port in self.sut_ports:
+            self.pf_ports.append(port)
+
+        for port in self.pf_ports:
+            ctx.sut_node.main_session.create_vfs(port)
+            addr_list = ctx.sut_node.main_session.get_pci_addr_of_vfs(port)
+            if addr_list == []:
+                raise InternalError(f"Failed to create virtual function on port {port.pci}")
+            for addr in addr_list:
+                vf_config = PortConfig(
+                    name=f"{port.name}-vf-{addr}",
+                    pci=addr,
+                    os_driver_for_dpdk=port.config.os_driver_for_dpdk,
+                    os_driver=port.config.os_driver,
+                )
+                self.vf_ports.append(Port(node=port.node, config=vf_config))
+            ctx.sut_node.main_session.send_command(f"ip link set {port.logical_name} vf 0 trust on")
+
+        self.sut_ports.clear()
+        self.sut_ports.extend(self.vf_ports)
+
+        ctx.sut_node.main_session.bring_up_link(self.pf_ports)
+
+    def delete_vf_ports(self) -> None:
+        """Delete virtual functions from the SUT node during test run teardown."""
+        from framework.context import get_ctx
+
+        ctx = get_ctx()
+
+        for port in self.pf_ports:
+            ctx.sut_node.main_session.delete_vfs(port)
+        self.sut_ports.clear()
+        self.sut_ports.extend(self.pf_ports)
 
     def configure_ports(
         self, node_identifier: NodeIdentifier, drivers: DriverKind | tuple[DriverKind, ...]
