@@ -97,6 +97,10 @@ struct hinic3_nic_dev {
 	u16 rx_buff_len;
 	u16 mtu_size;
 
+	u16 rss_state;
+	u8 num_rss; /**< Number of RSS queues. */
+	u8 rsvd0;   /**< Reserved field 0. */
+
 	u32 rx_mode;
 	u8 rx_queue_list[HINIC3_MAX_QUEUE_NUM];
 	rte_spinlock_t queue_list_lock;
@@ -105,6 +109,8 @@ struct hinic3_nic_dev {
 
 	u32 default_cos;
 	u32 rx_csum_en;
+
+	u8 rss_key[HINIC3_RSS_KEY_SIZE];
 
 	RTE_ATOMIC(u64) dev_status;
 
@@ -115,5 +121,30 @@ struct hinic3_nic_dev {
 	u64 feature_cap;
 	u32 vfta[HINIC3_VFTA_SIZE]; /**< VLAN bitmap. */
 };
+
+/**
+ * Enable interrupt for the specified RX queue.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] queue_id
+ * The ID of the receive queue for which the interrupt is being enabled.
+ * @return
+ * 0 on success, a negative error code on failure.
+ */
+int hinic3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+
+/**
+ * Disable interrupt for the specified RX queue.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] queue_id
+ * The ID of the receive queue for which the interrupt is being disabled.
+ * @return
+ * 0 on success, a negative error code on failure.
+ */
+int hinic3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
+				     uint16_t queue_id);
 
 #endif /* _HINIC3_ETHDEV_H_ */
