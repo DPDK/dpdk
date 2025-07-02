@@ -33,7 +33,7 @@ its own ports.
 3. DTS uses ssh key auth to control the nodes. Copy your ssh keys to the TG and SUT:
     ssh-copy-id dts@{your host}.
 
-For additional detail, please refer to [dts.rst](doc/guides/tools/dts.rst)
+For additional detail on how to set up a valid DPDK environment, please refer to [dts.rst](doc/guides/tools/dts.rst)
 
 # DTS Configuration
 
