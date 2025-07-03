@@ -61,8 +61,12 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 			struct mlx5_txq_ctrl *txq_ctrl = mlx5_txq_get(dev, i);
 			struct mlx5_txq_data *txq_data = &txq_ctrl->txq;
 
-			if (!txq_ctrl || txq_data->elts_n != cnt)
+			if (!txq_ctrl)
 				continue;
+			if (txq_data->elts_n != cnt) {
+				mlx5_txq_release(dev, i);
+				continue;
+			}
 			if (!txq_ctrl->is_hairpin)
 				txq_alloc_elts(txq_ctrl);
 			MLX5_ASSERT(!txq_ctrl->obj);
