@@ -67,26 +67,31 @@ if is_linux or cc.get_id() == 'gcc'
     endif
 endif
 
-avx512_march_flag = '-march=x86-64-v4'
+avx512_march_flag = ['-march=x86-64-v4']
 if not cc.has_argument(avx512_march_flag)
-    avx512_march_flag = '-march=skylake-avx512'
+    avx512_march_flag = ['-march=skylake-avx512']
+endif
+# workaround for older compilers, e.g. GCC 8.5 on RHEL 8.
+# if march flag overriding doesn't work, explicitly add flags for AVX512.
+if cc.get_define('__AVX512F__', args: machine_args + avx512_march_flag) == ''
+    avx512_march_flag = ['-mavx512f', '-mavx512bw', '-mavx512cd', '-mavx512dq', '-mavx512vl']
 endif
 cc_avx512_flags = []
-if (binutils_ok and cc.has_argument(avx512_march_flag)
+if (binutils_ok and cc.has_multi_arguments(avx512_march_flag)
         and '-mno-avx512f' not in get_option('c_args'))
     # check if compiler is working with _mm512_extracti64x4_epi64
     # Ref: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82887
     code = '''#include <immintrin.h>
     void test(__m512i zmm){
         __m256i ymm = _mm512_extracti64x4_epi64(zmm, 0);}'''
-    result = cc.compiles(code, args : [avx512_march_flag], name : 'AVX512 checking')
+    result = cc.compiles(code, args : avx512_march_flag, name : 'AVX512 checking')
     if result == false
         machine_args += '-mno-avx512f'
         warning('Broken _mm512_extracti64x4_epi64, disabling AVX512 support')
     else
         cc_has_avx512 = true
         if cc.get_define('__AVX512F__', args: machine_args) == ''
-            cc_avx512_flags = [avx512_march_flag]
+            cc_avx512_flags = avx512_march_flag
             if cc.has_argument('-Wno-overriding-option')
                 cc_avx512_flags += '-Wno-overriding-option'
             endif
