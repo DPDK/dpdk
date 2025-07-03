@@ -153,6 +153,14 @@ Deprecation Notices
   ``drivers/bus/vmbus/rte_bus_vmbus.h`` will become internal to DPDK.
   Those API functions are used internally by DPDK core and netvsc PMD.
 
+* net/intel: Drivers that have an SSE vector path alongside other vector paths,
+  namely i40e, iavf and ice, will have their SSE vector paths removed in DPDK 25.11.
+  Modern x86 systems all support AVX2, if not AVX-512,
+  so the SSE path is no longer widely used.
+  This change will not result in any feature loss,
+  as the fallback scalar paths which have feature parity with SSE
+  will be used in the cases where the SSE paths would have been used.
+
 * net/mlx5: ``repr_matching_en`` device argument is deprecated
   and will be removed in DPDK 25.11 release.
   With disabled representor matching, behavior of Rx datapath in mlx5 PMD
