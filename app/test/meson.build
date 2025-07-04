@@ -154,7 +154,7 @@ source_file_deps = {
     'test_prefetch.c': [],
     'test_ptr_compress.c': ['ptr_compress'],
     'test_rand_perf.c': [],
-    'test_rawdev.c': ['rawdev', 'bus_vdev'],
+    'test_rawdev.c': ['rawdev', 'bus_vdev', 'raw_skeleton'],
     'test_rcu_qsbr.c': ['rcu', 'hash'],
     'test_rcu_qsbr_perf.c': ['rcu', 'hash'],
     'test_reassembly_perf.c': ['net', 'ip_frag'],
