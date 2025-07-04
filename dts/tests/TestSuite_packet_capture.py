@@ -24,12 +24,10 @@ from scapy.layers.l2 import Dot1Q, Ether
 from scapy.layers.sctp import SCTP
 from scapy.packet import Packet, Raw, raw
 from scapy.utils import rdpcap
-from typing_extensions import Self
 
-from framework.context import get_ctx
 from framework.params import Params
+from framework.remote_session.blocking_app import BlockingApp
 from framework.remote_session.dpdk_shell import compute_eal_params
-from framework.remote_session.interactive_shell import InteractiveShell
 from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
 from framework.test_suite import TestSuite, func_test
@@ -61,56 +59,30 @@ class DumpcapParams(Params):
     packet_filter: str | None = field(default=None, metadata=Params.short("f"))
 
 
-class Dumpcap(InteractiveShell):
-    """Class to spawn and manage a dpdk-dumpcap process.
-
-    The dpdk-dumpcap is a DPDK app but instead of providing a regular DPDK EAL interface to the
-    user, it replicates the Wireshark dumpcap app.
-    """
-
-    _app_params: DumpcapParams
-
-    def __init__(self, params: DumpcapParams) -> None:
-        """Extends :meth:`~.interactive_shell.InteractiveShell.__init__`."""
-        self.ctx = get_ctx()
-        eal_params = compute_eal_params()
-        params.lcore_list = eal_params.lcore_list
-        params.file_prefix = eal_params.prefix
-
-        super().__init__(self.ctx.sut_node, name=None, privileged=True, app_params=params)
-
-    @property
-    def path(self) -> PurePath:
-        """Path to the shell executable."""
-        return PurePath(self.ctx.dpdk_build.remote_dpdk_build_dir).joinpath("app/dpdk-dumpcap")
-
-    def wait_until_ready(self) -> Self:
-        """Start app and wait until ready."""
-        self.start_application(f"Capturing on '{self._app_params.interface}'")
-        return self
-
-    def close(self) -> None:
-        """Close the application.
-
-        Sends a SIGINT to close the application.
-        """
-        self.send_command("\x03")
-        super().close()
-
-
 @requires(topology_type=TopologyType.two_links)
 class TestPacketCapture(TestSuite):
     """Packet Capture TestSuite.
 
     Attributes:
-        packets: List of packets to send for testing pdump.
-        rx_pcap_path: The remote path where to create the Rx packets pcap with pdump.
-        tx_pcap_path: The remote path where to create the Tx packets pcap with pdump.
+        packets: List of packets to send for testing dumpcap.
+        rx_pcap_path: The remote path where to create the Rx packets pcap with dumpcap.
+        tx_pcap_path: The remote path where to create the Tx packets pcap with dumpcap.
     """
 
     packets: list[Packet]
     rx_pcap_path: PurePath
     tx_pcap_path: PurePath
+
+    def _run_dumpcap(self, params: DumpcapParams) -> BlockingApp:
+        eal_params = compute_eal_params()
+        params.lcore_list = eal_params.lcore_list
+        params.file_prefix = eal_params.prefix
+        return BlockingApp(
+            self._ctx.sut_node,
+            self._ctx.dpdk_build.get_app("dumpcap"),
+            app_params=params,
+            privileged=True,
+        ).wait_until_ready(f"Capturing on '{params.interface}'")
 
     def set_up_suite(self) -> None:
         """Test suite setup.
@@ -147,21 +119,21 @@ class TestPacketCapture(TestSuite):
     def _send_and_dump(
         self, packet_filter: str | None = None, rx_only: bool = False
     ) -> list[Packet]:
-        dumpcap_rx = Dumpcap(
+        dumpcap_rx = self._run_dumpcap(
             DumpcapParams(
                 interface=self.topology.sut_port_ingress.pci,
                 output_pcap_path=self.rx_pcap_path,
                 packet_filter=packet_filter,
             )
-        ).wait_until_ready()
+        )
         if not rx_only:
-            dumpcap_tx = Dumpcap(
+            dumpcap_tx = self._run_dumpcap(
                 DumpcapParams(
                     interface=self.topology.sut_port_egress.pci,
                     output_pcap_path=self.tx_pcap_path,
                     packet_filter=packet_filter,
                 )
-            ).wait_until_ready()
+            )
 
         received_packets = self.send_packets_and_capture(
             self.packets, PacketFilteringConfig(no_lldp=False)
