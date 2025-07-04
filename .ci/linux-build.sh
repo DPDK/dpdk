@@ -144,7 +144,7 @@ if [ "$UBSAN" = "true" ]; then
         # Restrict drivers to a minimum set for now
         OPTS="$OPTS -Denable_drivers=net/null"
         # There are still known issues in various libraries, disable them for now
-        OPTS="$OPTS -Ddisable_libs=*"
+        OPTS="$OPTS -Ddisable_libs=acl,bpf,distributor,member,ptr_compress,table"
         # No examples are run
         OPTS="$OPTS -Dexamples="
         # The UBSan target takes a good amount of time and headers coverage is done in other
