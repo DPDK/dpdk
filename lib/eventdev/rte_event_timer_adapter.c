@@ -1324,7 +1324,7 @@ handle_ta_info(const char *cmd __rte_unused, const char *params,
 
 	adapter_id = atoi(params);
 
-	if (adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
+	if (adapters == NULL || adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
 		EVTIM_LOG_ERR("Invalid timer adapter id %u", adapter_id);
 		return -EINVAL;
 	}
@@ -1365,7 +1365,7 @@ handle_ta_stats(const char *cmd __rte_unused, const char *params,
 
 	adapter_id = atoi(params);
 
-	if (adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
+	if (adapters == NULL || adapter_id >= RTE_EVENT_TIMER_ADAPTER_NUM_MAX) {
 		EVTIM_LOG_ERR("Invalid timer adapter id %u", adapter_id);
 		return -EINVAL;
 	}
