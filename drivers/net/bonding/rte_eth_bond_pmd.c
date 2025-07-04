@@ -1901,12 +1901,13 @@ slave_start(struct rte_eth_dev *bonded_eth_dev,
 		}
 	}
 
-	/* If RSS is enabled for bonding, synchronize RETA */
-	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) {
+	/*
+	 * If flow-isolation is not enabled, then check whether RSS is enabled for
+	 * bonding, synchronize RETA
+	 */
+	if (internals->flow_isolated_valid == 0 &&
+		(bonded_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS)) {
 		int i;
-		struct bond_dev_private *internals;
-
-		internals = bonded_eth_dev->data->dev_private;
 
 		for (i = 0; i < internals->slave_count; i++) {
 			if (internals->slaves[i].port_id == slave_eth_dev->data->port_id) {
