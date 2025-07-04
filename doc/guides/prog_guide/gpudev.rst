@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: BSD-3-Clause
    Copyright (c) 2021 NVIDIA Corporation & Affiliates
 
-General-Purpose Graphics Processing Unit Library
-================================================
+General-Purpose Graphics Processing Unit (GPU) Library
+======================================================
 
 When mixing networking activity with task processing on a GPU device,
 there may be the need to put in communication the CPU with the device

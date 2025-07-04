@@ -2,14 +2,18 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <string.h>
+#include <stdalign.h>
 #include <stdio.h>
+#include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 
 #include "rte_table_array.h"
+
+#include "table_log.h"
 
 #ifdef RTE_TABLE_STATS_COLLECT
 
@@ -25,7 +29,7 @@
 
 #endif
 
-struct rte_table_array {
+struct __rte_cache_aligned rte_table_array {
 	struct rte_table_stats stats;
 
 	/* Input parameters */
@@ -37,8 +41,8 @@ struct rte_table_array {
 	uint32_t entry_pos_mask;
 
 	/* Internal table */
-	uint8_t array[0] __rte_cache_aligned;
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[];
+};
 
 static void *
 rte_table_array_create(void *params, int socket_id, uint32_t entry_size)
@@ -61,8 +65,8 @@ rte_table_array_create(void *params, int socket_id, uint32_t entry_size)
 	total_size = total_cl_size * RTE_CACHE_LINE_SIZE;
 	t = rte_zmalloc_socket("TABLE", total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (t == NULL) {
-		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for array table\n",
+		TABLE_LOG(ERR,
+			"%s: Cannot allocate %u bytes for array table",
 			__func__, total_size);
 		return NULL;
 	}
@@ -83,7 +87,7 @@ rte_table_array_free(void *table)
 
 	/* Check input parameters */
 	if (t == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
+		TABLE_LOG(ERR, "%s: table parameter is NULL", __func__);
 		return -EINVAL;
 	}
 
@@ -107,24 +111,24 @@ rte_table_array_entry_add(
 
 	/* Check input parameters */
 	if (table == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: table parameter is NULL\n", __func__);
+		TABLE_LOG(ERR, "%s: table parameter is NULL", __func__);
 		return -EINVAL;
 	}
 	if (key == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: key parameter is NULL\n", __func__);
+		TABLE_LOG(ERR, "%s: key parameter is NULL", __func__);
 		return -EINVAL;
 	}
 	if (entry == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: entry parameter is NULL\n", __func__);
+		TABLE_LOG(ERR, "%s: entry parameter is NULL", __func__);
 		return -EINVAL;
 	}
 	if (key_found == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: key_found parameter is NULL\n",
+		TABLE_LOG(ERR, "%s: key_found parameter is NULL",
 			__func__);
 		return -EINVAL;
 	}
 	if (entry_ptr == NULL) {
-		RTE_LOG(ERR, TABLE, "%s: entry_ptr parameter is NULL\n",
+		TABLE_LOG(ERR, "%s: entry_ptr parameter is NULL",
 			__func__);
 		return -EINVAL;
 	}
@@ -146,12 +150,12 @@ rte_table_array_lookup(
 	void **entries)
 {
 	struct rte_table_array *t = (struct rte_table_array *) table;
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 	RTE_TABLE_ARRAY_STATS_PKTS_IN_ADD(t, n_pkts_in);
 	*lookup_hit_mask = pkts_mask;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++) {
@@ -164,7 +168,7 @@ rte_table_array_lookup(
 		}
 	} else {
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 			uint32_t entry_pos = RTE_MBUF_METADATA_UINT32(pkt,
@@ -193,6 +197,7 @@ rte_table_array_stats_read(void *table, struct rte_table_stats *stats, int clear
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_array_ops)
 struct rte_table_ops rte_table_array_ops = {
 	.f_create = rte_table_array_create,
 	.f_free = rte_table_array_free,

@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-fs = import('fs')
+if is_ms_compiler
+    subdir_done()
+endif
 
 # Defines the order of dependencies evaluation
 subdirs = [
@@ -9,8 +11,11 @@ subdirs = [
         'bus',
         'common/cnxk',    # depends on bus.
         'common/mlx5',    # depends on bus.
+        'common/nfp',     # depends on bus.
+        'common/nitrox',  # depends on bus.
         'common/qat',     # depends on bus.
         'common/sfc_efx', # depends on bus.
+        'common/zsda',    # depends on bus.
         'mempool',        # depends on common and bus.
         'dma',            # depends on common and bus.
         'net',            # depends on common, bus, mempool
@@ -23,11 +28,12 @@ subdirs = [
         'event',          # depends on common, bus, mempool and net.
         'baseband',       # depends on common and bus.
         'gpu',            # depends on common and bus.
+        'power',
 ]
 
 if meson.is_cross_build()
-    disable_drivers += ',' + meson.get_cross_property('disable_drivers', '')
-    enable_drivers += ',' + meson.get_cross_property('enable_drivers', '')
+    disable_drivers += ',' + meson.get_external_property('disable_drivers', '')
+    enable_drivers += ',' + meson.get_external_property('enable_drivers', '')
 endif
 
 # add cmdline disabled drivers and meson disabled drivers together
@@ -37,8 +43,10 @@ disable_drivers = run_command(list_dir_globs, disable_drivers, check: true).stdo
 # add cmdline enabled drivers and meson enabled drivers together
 enable_drivers = ',' + get_option('enable_drivers')
 enable_drivers = run_command(list_dir_globs, enable_drivers, check: true).stdout().split()
+require_drivers = true
 if enable_drivers.length() == 0
-    enable_drivers = run_command(list_dir_globs, '*/*', check: true).stdout().split()
+    require_drivers = false
+    enable_drivers = run_command(list_dir_globs, '*/*,*/*/*', check: true).stdout().split()
 endif
 
 # these drivers must always be enabled, otherwise the build breaks
@@ -51,9 +59,12 @@ default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
 default_cflags += ['-DALLOW_INTERNAL_API']
 
-if cc.has_argument('-Wno-format-truncation')
-    default_cflags += '-Wno-format-truncation'
-endif
+warning_disable_cflags = ['-Wno-format-truncation', '-Wno-address-of-packed-member']
+foreach cflag:warning_disable_cflags
+    if cc.has_argument(cflag)
+        default_cflags += cflag
+    endif
+endforeach
 
 dpdk_drivers_build_dir = meson.current_build_dir()
 
@@ -70,6 +81,25 @@ foreach subpath:subdirs
     else
         class = subpath
         subdir(class)
+        skip_class = false
+        foreach d:std_deps
+            if not is_variable('shared_rte_' + d)
+                skip_class = true
+                reason = 'missing internal dependency, "@0@"'.format(d)
+                if dpdk_libs_deprecated.contains(d)
+                    reason += ' (deprecated lib)'
+                endif
+                message('Disabling @1@/* drivers: missing internal dependency "@0@"'
+                        .format(d, class))
+                break
+            endif
+        endforeach
+        if skip_class
+            drv_path = join_paths(class, '*')
+            dpdk_drvs_disabled += drv_path
+            set_variable('drv_' + drv_path.underscorify() + '_disable_reason', reason)
+            continue
+        endif
     endif
 
     # save class name on first occurrence
@@ -92,8 +122,10 @@ foreach subpath:subdirs
         build = true # set to false to disable, e.g. missing deps
         reason = '<unknown reason>' # set if build == false to explain
         name = drv
-        annotate_locks = false
+        annotate_locks = true
         sources = []
+        sources_avx2 = []
+        sources_avx512 = []
         headers = []
         driver_sdk_headers = [] # public headers included by drivers
         objs = []
@@ -111,6 +143,16 @@ foreach subpath:subdirs
         pkgconfig_extra_libs = []
         testpmd_sources = []
         require_iova_in_mbuf = true
+        # for handling base code files which may need extra cflags
+        base_sources = []
+        base_cflags = []
+
+        if fs.is_dir(drv_path / 'base')
+            includes += include_directories(drv_path / 'base')
+        endif
+        if name.contains('/')
+            name = name.split('/')[1]
+        endif
 
         if not enable_drivers.contains(drv_path)
             build = false
@@ -132,6 +174,12 @@ foreach subpath:subdirs
                 build = false
                 reason = 'requires IOVA in mbuf (set enable_iova_as_pa option)'
             endif
+            # error out if we can't build a driver and that driver was explicitly requested,
+            # i.e. not via wildcard.
+            if not build and require_drivers and get_option('enable_drivers').contains(drv_path)
+                error('Cannot build explicitly requested driver "@0@".\n'.format(drv_path)
+                        +'\tReason: ' + reason)
+            endif
 
             # get dependency objs from strings
             shared_deps = ext_deps
@@ -148,6 +196,12 @@ foreach subpath:subdirs
                     endif
                     message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
                             .format(d, name, 'drivers/' + drv_path))
+                    # error out if we can't build a driver and that driver was explicitly
+                    # requested, i.e. not via wildcard.
+                    if require_drivers and get_option('enable_drivers').contains(drv_path)
+                        error('Cannot build explicitly requested driver "@0@".\n'.format(drv_path)
+                                +'\tPlease enable missing dependency "@0@"'.format(d))
+                    endif
                 else
                     shared_deps += [get_variable('shared_rte_' + d)]
                     static_deps += [get_variable('static_rte_' + d)]
@@ -161,9 +215,23 @@ foreach subpath:subdirs
             # component disable printout in those cases
             if reason != ''
                 dpdk_drvs_disabled += drv_path
-                set_variable(drv_path.underscorify() + '_disable_reason', reason)
+                set_variable('drv_' + drv_path.underscorify() + '_disable_reason', reason)
             endif
             continue
+        endif
+
+        # not all drivers base code is lock annotation safe, so do base code builds before
+        # adding on the lock annotation flags. NOTE: If no custom cflags, the lock annotation
+        # checks will be done though.
+        if base_cflags != []
+            base_lib = static_library(lib_name + '_base_lib',
+                    base_sources,
+                    dependencies: static_deps,
+                    include_directories: includes,
+                    c_args: cflags + base_cflags)
+            objs += base_lib.extract_objects(base_sources)
+        else
+            sources += base_sources
         endif
 
         enabled_drivers += name
@@ -181,9 +249,31 @@ foreach subpath:subdirs
         if get_option('enable_driver_sdk')
             install_headers(driver_sdk_headers)
         endif
+        dpdk_chkinc_headers += driver_sdk_headers
 
         if headers.length() > 0
             dpdk_includes += include_directories(drv_path)
+        endif
+
+        # handle avx2 and avx512 source files
+        if arch_subdir == 'x86'
+            if sources_avx2.length() > 0
+                avx2_lib = static_library(lib_name + '_avx2_lib',
+                        sources_avx2,
+                        dependencies: static_deps,
+                        include_directories: includes,
+                        c_args: [cflags, cc_avx2_flags])
+                objs += avx2_lib.extract_objects(sources_avx2)
+            endif
+            if sources_avx512.length() > 0 and cc_has_avx512
+                cflags += '-DCC_AVX512_SUPPORT'
+                avx512_lib = static_library(lib_name + '_avx512_lib',
+                        sources_avx512,
+                        dependencies: static_deps,
+                        include_directories: includes,
+                        c_args: [cflags, cc_avx512_flags])
+                objs += avx512_lib.extract_objects(sources_avx512)
+            endif
         endif
 
         # generate pmdinfo sources by building a temporary
@@ -196,14 +286,14 @@ foreach subpath:subdirs
                 dependencies: static_deps,
                 c_args: cflags)
         objs += tmp_lib.extract_all_objects(recursive: true)
-        sources = custom_target(out_filename,
-                command: [pmdinfo, tmp_lib.full_path(), '@OUTPUT@', pmdinfogen],
+        sources_pmd_info = custom_target(out_filename,
+                command: [pmdinfo, '@PRIVATE_DIR@', tmp_lib.full_path(), '@OUTPUT@', pmdinfogen],
                 output: out_filename,
                 depends: [tmp_lib])
 
         # now build the static driver
         static_lib = static_library(lib_name,
-                sources,
+                sources_pmd_info,
                 objects: objs,
                 include_directories: includes,
                 dependencies: static_deps,
@@ -211,53 +301,42 @@ foreach subpath:subdirs
                 install: true)
 
         # now build the shared driver
-        version_map = '@0@/@1@/version.map'.format(meson.current_source_dir(), drv_path)
-
-        lk_deps = []
-        lk_args = []
-        if not fs.is_file(version_map)
-            version_map = '@0@/version.map'.format(meson.current_source_dir())
-            lk_deps += [version_map]
+        if is_ms_linker
+            link_mode = 'mslinker'
+        elif is_windows
+            link_mode = 'mingw'
         else
-            lk_deps += [version_map]
-            if not is_windows and developer_mode
-                # on unix systems check the output of the
-                # check-symbols.sh script, using it as a
-                # dependency of the .so build
-                lk_deps += custom_target(lib_name + '.sym_chk',
-                        command: [check_symbols, version_map, '@INPUT@'],
-                        capture: true,
-                        input: static_lib,
-                        output: lib_name + '.sym_chk')
-            endif
+            link_mode = 'gnu'
+        endif
+        version_map = custom_target(lib_name + '_map',
+                command: [gen_version_map, '--linker', link_mode,
+                          '--abi-version', abi_version_file, '--output', '@OUTPUT@',
+                          '--source', '@INPUT@'],
+                input: sources + sources_avx2 + sources_avx512,
+                output: '_'.join([class, name, 'exports.map']))
+        lk_deps = [version_map]
+
+        if is_ms_linker and is_ms_compiler
+            lk_args = ['/def:' + version_map.full_path()]
+        elif is_ms_linker
+            lk_args = ['-Wl,/def:' + version_map.full_path()]
+        else
+            lk_args = ['-Wl,--version-script=' + version_map.full_path()]
         endif
 
-        if is_windows
-            if is_ms_linker
-                def_file = custom_target(lib_name + '_def',
-                        command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                        input: version_map,
-                        output: '@0@_exports.def'.format(lib_name))
-                lk_deps += [def_file]
-
-                lk_args = ['-Wl,/def:' + def_file.full_path()]
-                if meson.version().version_compare('<0.54.0')
-                    lk_args += ['-Wl,/implib:drivers\\lib' + lib_name + '.dll.a']
-                endif
-            else
-                mingw_map = custom_target(lib_name + '_mingw',
-                        command: [map_to_win_cmd, '@INPUT@', '@OUTPUT@'],
-                        input: version_map,
-                        output: '@0@_mingw.map'.format(lib_name))
-                lk_deps += [mingw_map]
-
-                lk_args = ['-Wl,--version-script=' + mingw_map.full_path()]
-            endif
-        else
-            lk_args = ['-Wl,--version-script=' + version_map]
+        if not is_windows and developer_mode
+            # on unix systems check the output of the
+            # check-symbols.sh script, using it as a
+            # dependency of the .so build
+            lk_deps += custom_target(lib_name + '.sym_chk',
+                    command: [check_symbols, version_map.full_path(), '@INPUT@'],
+                    capture: true,
+                    input: static_lib,
+                    output: lib_name + '.sym_chk',
+                    depends: [version_map])
         endif
 
-        shared_lib = shared_library(lib_name, sources,
+        shared_lib = shared_library(lib_name, sources_pmd_info,
                 objects: objs,
                 include_directories: includes,
                 dependencies: shared_deps,

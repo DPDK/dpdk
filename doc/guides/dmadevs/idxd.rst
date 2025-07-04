@@ -35,6 +35,12 @@ Device Setup
 Intel\ |reg| DSA devices can use the IDXD kernel driver or DPDK-supported drivers,
 such as ``vfio-pci``. Both are supported by the IDXD PMD.
 
+.. note::
+
+   To use Intel\ |reg| DSA devices in DPDK multi-process applications,
+   the devices should be bound to the vfio-pci driver.
+   Multi-process is not supported when using the kernel IDXD driver.
+
 Intel\ |reg| DSA devices using IDXD kernel driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -51,6 +57,10 @@ The internal engines, which do the copies or other operations,
 and the work-queues, which are used by applications to assign work to the device,
 need to be assigned to groups, and the various other configuration options,
 such as priority or queue depth, need to be set for each queue.
+Furthermore, to mark a work-queue for use by DPDK,
+so it will be picked up in device scans,
+the queue must be assigned a name starting with either ``dpdk_``
+or the DPDK application's ``file-prefix`` parameter (default ``rte_``).
 
 To assign an engine to a group::
 
@@ -65,6 +75,9 @@ Some configuration options include:
 * wq-size: the size of the WQ. Sum of all WQ sizes must be less that the total-size defined by the device.
 * type: WQ type (kernel/mdev/user). Determines how the device is presented.
 * name: identifier given to the WQ.
+  For DPDK to automatically find and use the queue as a DMA device,
+  the queue must be assigned a name starting with either ``dpdk_``
+  or the DPDK application's ``file-prefix`` parameter (default ``rte_``).
 
 Example configuration for a work queue::
 
@@ -116,6 +129,13 @@ and to bind them to a suitable DPDK-supported driver, such as ``vfio-pci``.
 For example::
 
 	$ dpdk-devbind.py -b vfio-pci 6a:01.0
+
+.. note::
+
+   Since each individual queue on the HW device is its own separate dmadev instance,
+   the internal DMA device name includes the HW queue ID as a suffix on the PCI address.
+   The above device when used by a DPDK application will be accessible via dmadevs with names:
+   ``0000:6a:01.0-q0``, ``00006a:01.0-q1``, etc.
 
 Device Probing and Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

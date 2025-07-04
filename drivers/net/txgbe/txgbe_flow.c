@@ -1807,9 +1807,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 		/* check src addr mask */
 		for (j = 0; j < 16; j++) {
-			if (ipv6_mask->hdr.src_addr[j] == UINT8_MAX) {
+			if (ipv6_mask->hdr.src_addr.a[j] == UINT8_MAX) {
 				rule->mask.src_ipv6_mask |= 1 << j;
-			} else if (ipv6_mask->hdr.src_addr[j] != 0) {
+			} else if (ipv6_mask->hdr.src_addr.a[j] != 0) {
 				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1820,9 +1820,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 
 		/* check dst addr mask */
 		for (j = 0; j < 16; j++) {
-			if (ipv6_mask->hdr.dst_addr[j] == UINT8_MAX) {
+			if (ipv6_mask->hdr.dst_addr.a[j] == UINT8_MAX) {
 				rule->mask.dst_ipv6_mask |= 1 << j;
-			} else if (ipv6_mask->hdr.dst_addr[j] != 0) {
+			} else if (ipv6_mask->hdr.dst_addr.a[j] != 0) {
 				memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1835,9 +1835,9 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 			rule->b_spec = TRUE;
 			ipv6_spec = item->spec;
 			rte_memcpy(rule->input.src_ip,
-				   ipv6_spec->hdr.src_addr, 16);
+				   &ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(rule->input.dst_ip,
-				   ipv6_spec->hdr.dst_addr, 16);
+				   &ipv6_spec->hdr.dst_addr, 16);
 		}
 
 		/**
@@ -2827,9 +2827,7 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 		if (fdir_rule.b_mask) {
 			if (!fdir_info->mask_added) {
 				/* It's the first time the mask is set. */
-				rte_memcpy(&fdir_info->mask,
-					&fdir_rule.mask,
-					sizeof(struct txgbe_hw_fdir_mask));
+				fdir_info->mask = fdir_rule.mask;
 				fdir_info->flex_bytes_offset =
 					fdir_rule.flex_bytes_offset;
 

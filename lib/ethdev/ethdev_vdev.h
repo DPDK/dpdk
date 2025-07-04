@@ -6,14 +6,14 @@
 #ifndef _RTE_ETHDEV_VDEV_H_
 #define _RTE_ETHDEV_VDEV_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_config.h>
 #include <rte_malloc.h>
 #include <bus_vdev_driver.h>
 #include <ethdev_driver.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal

@@ -38,13 +38,13 @@
 #include <rte_ppp.h>
 #include <rte_gre.h>
 #include <rte_macsec.h>
+#include <rte_ib.h>
+
+#include "rte_ethdev.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define RTE_FLOW_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, rte_eth_dev_logtype, "" __VA_ARGS__)
 
 /**
  * Flow rule attributes.
@@ -126,6 +126,12 @@ struct rte_flow_attr {
 	 */
 	uint32_t transfer:1;
 	uint32_t reserved:29; /**< Reserved, must be zero. */
+};
+
+struct rte_flow_group_attr {
+	uint32_t ingress:1;
+	uint32_t egress:1;
+	uint32_t transfer:1;
 };
 
 /**
@@ -349,6 +355,9 @@ enum rte_flow_item_type {
 	RTE_FLOW_ITEM_TYPE_GENEVE,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ITEM_TYPE_VXLAN
+	 *
 	 * Matches a VXLAN-GPE header.
 	 *
 	 * See struct rte_flow_item_vxlan_gpe.
@@ -672,6 +681,49 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_aggr_affinity.
 	 */
 	RTE_FLOW_ITEM_TYPE_AGGR_AFFINITY,
+
+	/**
+	 * Match Tx queue number.
+	 * This is valid only for egress rules.
+	 *
+	 * @see struct rte_flow_item_tx_queue
+	 */
+	 RTE_FLOW_ITEM_TYPE_TX_QUEUE,
+
+	/**
+	 * Matches an InfiniBand base transport header in RoCE packet.
+	 *
+	 * @see struct rte_flow_item_ib_bth.
+	 */
+	RTE_FLOW_ITEM_TYPE_IB_BTH,
+
+	/**
+	 * Matches the packet type as defined in rte_mbuf_ptype.
+	 *
+	 * See struct rte_flow_item_ptype.
+	 *
+	 */
+	RTE_FLOW_ITEM_TYPE_PTYPE,
+
+	/**
+	 * [META]
+	 *
+	 * Matches a random value.
+	 *
+	 * This value is not based on the packet data/headers.
+	 * The application shouldn't assume that this value is kept
+	 * during the lifetime of the packet.
+	 *
+	 * @see struct rte_flow_item_random.
+	 */
+	RTE_FLOW_ITEM_TYPE_RANDOM,
+
+	/**
+	 * Match packet with various comparison types.
+	 *
+	 * See struct rte_flow_item_compare.
+	 */
+	RTE_FLOW_ITEM_TYPE_COMPARE,
 };
 
 /**
@@ -710,7 +762,6 @@ static const struct rte_flow_item_quota rte_flow_item_quota_mask = {
  * RTE_FLOW_ITEM_TYPE_HIGIG2
  * Matches higig2 header
  */
-RTE_STD_C11
 struct rte_flow_item_higig2_hdr {
 	struct rte_higig2_hdr hdr;
 };
@@ -832,7 +883,6 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
  * the EtherType/TPID field. Also, it's possible to leave the two fields unused.
  * If this is the case, both tagged and untagged packets will match the pattern.
  */
-RTE_STD_C11
 struct rte_flow_item_eth {
 	union {
 		struct {
@@ -853,8 +903,8 @@ struct rte_flow_item_eth {
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
 #ifndef __cplusplus
 static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.hdr.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+	.hdr.src_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.ether_type = RTE_BE16(0x0000),
 };
 #endif
@@ -874,7 +924,6 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  * If the @p eth_proto of @p hdr and @p has_more_vlan fields are not specified,
  * then any tagged packets will match the pattern.
  */
-RTE_STD_C11
 struct rte_flow_item_vlan {
 	union {
 		struct {
@@ -956,12 +1005,8 @@ struct rte_flow_item_ipv6 {
 #ifndef __cplusplus
 static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 	.hdr = {
-		.src_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
-		.dst_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.src_addr = RTE_IPV6_MASK_FULL,
+		.dst_addr = RTE_IPV6_MASK_FULL,
 	},
 };
 #endif
@@ -1057,9 +1102,13 @@ static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
 /**
  * RTE_FLOW_ITEM_TYPE_VXLAN.
  *
- * Matches a VXLAN header (RFC 7348).
+ * Matches a VXLAN header (RFC 7348),
+ * including GPE (draft-ietf-nvo3-vxlan-gpe-13.txt)
+ * and GBP (draft-smith-vxlan-group-policy-05.txt).
+ *
+ * GPE is distinguished with its UDP port.
+ * UDP port may be specified with ``rte_eth_dev_udp_tunnel_port_add()``.
  */
-RTE_STD_C11
 struct rte_flow_item_vxlan {
 	union {
 		struct {
@@ -1079,7 +1128,7 @@ struct rte_flow_item_vxlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
-	.hdr.vni = "\xff\xff\xff",
+	.hdr.vni = { 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1132,7 +1181,7 @@ struct rte_flow_item_nvgre {
 /** Default mask for RTE_FLOW_ITEM_TYPE_NVGRE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_nvgre rte_flow_item_nvgre_mask = {
-	.tni = "\xff\xff\xff",
+	.tni =  { 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1152,7 +1201,7 @@ struct rte_flow_item_mpls {
 /** Default mask for RTE_FLOW_ITEM_TYPE_MPLS. */
 #ifndef __cplusplus
 static const struct rte_flow_item_mpls rte_flow_item_mpls_mask = {
-	.label_tc_s = "\xff\xff\xf0",
+	.label_tc_s = { 0xff, 0xff, 0xf0 },
 };
 #endif
 
@@ -1230,7 +1279,6 @@ static const struct rte_flow_item_fuzzy rte_flow_item_fuzzy_mask = {
  *
  * Matches a GTPv1 header.
  */
-RTE_STD_C11
 struct rte_flow_item_gtp {
 	union {
 		struct {
@@ -1297,16 +1345,18 @@ struct rte_flow_item_geneve {
 /** Default mask for RTE_FLOW_ITEM_TYPE_GENEVE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_geneve rte_flow_item_geneve_mask = {
-	.vni = "\xff\xff\xff",
+	.vni =  { 0xff, 0xff, 0xff },
 };
 #endif
 
 /**
+ * @deprecated
+ * @see rte_flow_item_vxlan
+ *
  * RTE_FLOW_ITEM_TYPE_VXLAN_GPE (draft-ietf-nvo3-vxlan-gpe-05).
  *
  * Matches a VXLAN-GPE header.
  */
-RTE_STD_C11
 struct rte_flow_item_vxlan_gpe {
 	union {
 		struct {
@@ -1324,10 +1374,15 @@ struct rte_flow_item_vxlan_gpe {
 	};
 };
 
-/** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE. */
+/**
+ * @deprecated
+ * @see rte_flow_item_vxlan_mask
+ *
+ * Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE.
+ */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
-	.hdr.vni = "\xff\xff\xff",
+	.hdr.vni =  { 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1336,7 +1391,6 @@ static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
  *
  * Matches an ARP header for Ethernet/IPv4.
  */
-RTE_STD_C11
 struct rte_flow_item_arp_eth_ipv4 {
 	union {
 		struct {
@@ -1362,9 +1416,9 @@ struct rte_flow_item_arp_eth_ipv4 {
 #ifndef __cplusplus
 static const struct rte_flow_item_arp_eth_ipv4
 rte_flow_item_arp_eth_ipv4_mask = {
-	.hdr.arp_data.arp_sha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.arp_data.arp_sha.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.arp_data.arp_sip = RTE_BE32(UINT32_MAX),
-	.hdr.arp_data.arp_tha.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.arp_data.arp_tha.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.arp_data.arp_tip = RTE_BE32(UINT32_MAX),
 };
 #endif
@@ -1444,16 +1498,14 @@ struct rte_flow_item_icmp6_nd_ns {
 	uint8_t code; /**< ICMPv6 code, normally 0. */
 	rte_be16_t checksum; /**< ICMPv6 checksum. */
 	rte_be32_t reserved; /**< Reserved, normally 0. */
-	uint8_t target_addr[16]; /**< Target address. */
+	struct rte_ipv6_addr target_addr; /**< Target address. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_NS. */
 #ifndef __cplusplus
 static const
 struct rte_flow_item_icmp6_nd_ns rte_flow_item_icmp6_nd_ns_mask = {
-	.target_addr =
-		"\xff\xff\xff\xff\xff\xff\xff\xff"
-		"\xff\xff\xff\xff\xff\xff\xff\xff",
+	.target_addr = RTE_IPV6_MASK_FULL,
 };
 #endif
 
@@ -1471,16 +1523,14 @@ struct rte_flow_item_icmp6_nd_na {
 	 * reserved (29b).
 	 */
 	rte_be32_t rso_reserved;
-	uint8_t target_addr[16]; /**< Target address. */
+	struct rte_ipv6_addr target_addr; /**< Target address. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_NA. */
 #ifndef __cplusplus
 static const
 struct rte_flow_item_icmp6_nd_na rte_flow_item_icmp6_nd_na_mask = {
-	.target_addr =
-		"\xff\xff\xff\xff\xff\xff\xff\xff"
-		"\xff\xff\xff\xff\xff\xff\xff\xff",
+	.target_addr = RTE_IPV6_MASK_FULL,
 };
 #endif
 
@@ -1529,7 +1579,7 @@ struct rte_flow_item_icmp6_nd_opt_sla_eth {
 #ifndef __cplusplus
 static const struct rte_flow_item_icmp6_nd_opt_sla_eth
 rte_flow_item_icmp6_nd_opt_sla_eth_mask = {
-	.sla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.sla.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1554,7 +1604,7 @@ struct rte_flow_item_icmp6_nd_opt_tla_eth {
 #ifndef __cplusplus
 static const struct rte_flow_item_icmp6_nd_opt_tla_eth
 rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
-	.tla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.tla.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 };
 #endif
 
@@ -1710,7 +1760,6 @@ static const struct rte_flow_item_mark rte_flow_item_mark_mask = {
  * RTE_FLOW_ITEM_TYPE_NSH
  *
  * Match network service header (NSH), RFC 8300
- *
  */
 struct rte_flow_item_nsh {
 	uint32_t version:2;
@@ -1742,7 +1791,6 @@ static const struct rte_flow_item_nsh rte_flow_item_nsh_mask = {
  * RTE_FLOW_ITEM_TYPE_IGMP
  *
  * Match Internet Group Management Protocol (IGMP), RFC 2236
- *
  */
 struct rte_flow_item_igmp {
 	uint32_t type:8;
@@ -1765,7 +1813,6 @@ static const struct rte_flow_item_igmp rte_flow_item_igmp_mask = {
  * RTE_FLOW_ITEM_TYPE_AH
  *
  * Match IP Authentication Header (AH), RFC 4302
- *
  */
 struct rte_flow_item_ah {
 	uint32_t next_hdr:8;
@@ -1861,7 +1908,6 @@ struct rte_flow_item_integrity {
 	 * @see rte_flow_action_rss
 	 */
 	uint32_t level;
-	RTE_STD_C11
 	union {
 		__extension__
 		struct {
@@ -2004,6 +2050,44 @@ static const struct rte_flow_item_ppp rte_flow_item_ppp_mask = {
 		.ctrl = 0xff,
 		.proto_id = RTE_BE16(0xffff),
 	}
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_IB_BTH.
+ *
+ * Matches an InfiniBand base transport header in RoCE packet.
+ */
+struct rte_flow_item_ib_bth {
+	struct rte_ib_bth hdr; /**< InfiniBand base transport header definition. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_IB_BTH. */
+#ifndef __cplusplus
+static const struct rte_flow_item_ib_bth rte_flow_item_ib_bth_mask = {
+	.hdr = {
+		.opcode = 0xff,
+		.dst_qp =  { 0xff, 0xff, 0xff },
+	},
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ITEM_TYPE_RANDOM
+ *
+ * Matches a random value.
+ */
+struct rte_flow_item_random {
+	uint32_t value;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_RANDOM. */
+#ifndef __cplusplus
+static const struct rte_flow_item_random rte_flow_item_random_mask = {
+	.value = UINT32_MAX,
 };
 #endif
 
@@ -2259,6 +2343,223 @@ rte_flow_item_aggr_affinity_mask = {
 	.affinity = 0xff,
 };
 #endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_TX_QUEUE
+ *
+ * Tx queue number.
+ *
+ * @see struct rte_flow_item_tx_queue
+ */
+struct rte_flow_item_tx_queue {
+	/** Tx queue number of packet being transmitted. */
+	uint16_t tx_queue;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TX_QUEUE. */
+#ifndef __cplusplus
+static const struct rte_flow_item_tx_queue rte_flow_item_tx_queue_mask = {
+	.tx_queue = 0xffff,
+};
+#endif
+
+/**
+ *
+ * RTE_FLOW_ITEM_TYPE_PTYPE
+ *
+ * Matches the packet type as defined in rte_mbuf_ptype.
+ */
+struct rte_flow_item_ptype {
+	uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PTYPE. */
+#ifndef __cplusplus
+static const struct rte_flow_item_ptype rte_flow_item_ptype_mask = {
+	.packet_type = 0xffffffff,
+};
+#endif
+
+/**
+ * Packet header field IDs, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ * and RTE_FLOW_ITEM_TYPE_COMPARE.
+ */
+enum rte_flow_field_id {
+	RTE_FLOW_FIELD_START = 0,       /**< Start of a packet. */
+	RTE_FLOW_FIELD_MAC_DST,         /**< Destination MAC Address. */
+	RTE_FLOW_FIELD_MAC_SRC,         /**< Source MAC Address. */
+	RTE_FLOW_FIELD_VLAN_TYPE,       /**< VLAN Tag Identifier. */
+	RTE_FLOW_FIELD_VLAN_ID,         /**< VLAN Identifier. */
+	RTE_FLOW_FIELD_MAC_TYPE,        /**< EtherType. */
+	RTE_FLOW_FIELD_IPV4_DSCP,       /**< IPv4 DSCP. */
+	RTE_FLOW_FIELD_IPV4_TTL,        /**< IPv4 Time To Live. */
+	RTE_FLOW_FIELD_IPV4_SRC,        /**< IPv4 Source Address. */
+	RTE_FLOW_FIELD_IPV4_DST,        /**< IPv4 Destination Address. */
+	RTE_FLOW_FIELD_IPV6_DSCP,       /**< IPv6 DSCP. */
+	RTE_FLOW_FIELD_IPV6_HOPLIMIT,   /**< IPv6 Hop Limit. */
+	RTE_FLOW_FIELD_IPV6_SRC,        /**< IPv6 Source Address. */
+	RTE_FLOW_FIELD_IPV6_DST,        /**< IPv6 Destination Address. */
+	RTE_FLOW_FIELD_TCP_PORT_SRC,    /**< TCP Source Port Number. */
+	RTE_FLOW_FIELD_TCP_PORT_DST,    /**< TCP Destination Port Number. */
+	RTE_FLOW_FIELD_TCP_SEQ_NUM,     /**< TCP Sequence Number. */
+	RTE_FLOW_FIELD_TCP_ACK_NUM,     /**< TCP Acknowledgment Number. */
+	RTE_FLOW_FIELD_TCP_FLAGS,       /**< TCP Flags. */
+	RTE_FLOW_FIELD_UDP_PORT_SRC,    /**< UDP Source Port Number. */
+	RTE_FLOW_FIELD_UDP_PORT_DST,    /**< UDP Destination Port Number. */
+	RTE_FLOW_FIELD_VXLAN_VNI,       /**< VXLAN Network Identifier. */
+	RTE_FLOW_FIELD_GENEVE_VNI,      /**< GENEVE Network Identifier. */
+	RTE_FLOW_FIELD_GTP_TEID,        /**< GTP Tunnel Endpoint Identifier. */
+	RTE_FLOW_FIELD_TAG,             /**< Tag value. */
+	RTE_FLOW_FIELD_MARK,            /**< Mark value. */
+	RTE_FLOW_FIELD_META,            /**< Metadata value. */
+	RTE_FLOW_FIELD_POINTER,         /**< Memory pointer. */
+	RTE_FLOW_FIELD_VALUE,           /**< Immediate value. */
+	RTE_FLOW_FIELD_IPV4_ECN,        /**< IPv4 ECN. */
+	RTE_FLOW_FIELD_IPV6_ECN,        /**< IPv6 ECN. */
+	RTE_FLOW_FIELD_GTP_PSC_QFI,     /**< GTP QFI. */
+	RTE_FLOW_FIELD_METER_COLOR,     /**< Meter color marker. */
+	RTE_FLOW_FIELD_IPV6_PROTO,      /**< IPv6 next header. */
+	RTE_FLOW_FIELD_FLEX_ITEM,       /**< Flex item. */
+	RTE_FLOW_FIELD_HASH_RESULT,     /**< Hash result. */
+	RTE_FLOW_FIELD_GENEVE_OPT_TYPE, /**< GENEVE option type. */
+	RTE_FLOW_FIELD_GENEVE_OPT_CLASS,/**< GENEVE option class. */
+	RTE_FLOW_FIELD_GENEVE_OPT_DATA, /**< GENEVE option data. */
+	RTE_FLOW_FIELD_MPLS,            /**< MPLS header. */
+	RTE_FLOW_FIELD_TCP_DATA_OFFSET, /**< TCP data offset. */
+	RTE_FLOW_FIELD_IPV4_IHL,        /**< IPv4 IHL. */
+	RTE_FLOW_FIELD_IPV4_TOTAL_LEN,  /**< IPv4 total length. */
+	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN,/**< IPv6 payload length. */
+	RTE_FLOW_FIELD_IPV4_PROTO,      /**< IPv4 next protocol. */
+	RTE_FLOW_FIELD_IPV6_FLOW_LABEL, /**< IPv6 flow label. */
+	RTE_FLOW_FIELD_IPV6_TRAFFIC_CLASS, /**< IPv6 traffic class. */
+	RTE_FLOW_FIELD_ESP_SPI,         /**< ESP SPI. */
+	RTE_FLOW_FIELD_ESP_SEQ_NUM,     /**< ESP Sequence Number. */
+	RTE_FLOW_FIELD_ESP_PROTO,       /**< ESP next protocol value. */
+	RTE_FLOW_FIELD_RANDOM,          /**< Random value. */
+	RTE_FLOW_FIELD_VXLAN_LAST_RSVD, /**< VXLAN last reserved byte. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ * and RTE_FLOW_ITEM_TYPE_COMPARE.
+ */
+struct rte_flow_field_data {
+	enum rte_flow_field_id field; /**< Field or memory type ID. */
+	union {
+		struct {
+			/** Encapsulation level and tag index or flex item handle. */
+			union {
+				struct {
+					/**
+					 * Packet encapsulation level containing
+					 * the field to modify.
+					 *
+					 * - @p 0 requests the default behavior.
+					 *   Depending on the packet type, it
+					 *   can mean outermost, innermost or
+					 *   anything in between.
+					 *
+					 *   It basically stands for the
+					 *   innermost encapsulation level.
+					 *   Modification can be performed
+					 *   according to PMD and device
+					 *   capabilities.
+					 *
+					 * - @p 1 requests modification to be
+					 *   performed on the outermost packet
+					 *   encapsulation level.
+					 *
+					 * - @p 2 and subsequent values request
+					 *   modification to be performed on
+					 *   the specified inner packet
+					 *   encapsulation level, from
+					 *   outermost to innermost (lower to
+					 *   higher values).
+					 *
+					 * Values other than @p 0 are not
+					 * necessarily supported.
+					 *
+					 * @note that for MPLS field,
+					 * encapsulation level also include
+					 * tunnel since MPLS may appear in
+					 * outer, inner or tunnel.
+					 */
+					uint8_t level;
+					union {
+						/**
+						 * Tag index array inside
+						 * encapsulation level.
+						 * Used for VLAN, MPLS or TAG types.
+						 */
+						uint8_t tag_index;
+						/**
+						 * Geneve option identifier.
+						 * Relevant only for
+						 * RTE_FLOW_FIELD_GENEVE_OPT_XXXX
+						 * modification type.
+						 */
+						struct {
+							/**
+							 * Geneve option type.
+							 */
+							uint8_t type;
+							/**
+							 * Geneve option class.
+							 */
+							rte_be16_t class_id;
+						};
+					};
+				};
+				struct rte_flow_item_flex_handle *flex_handle;
+			};
+			/** Number of bits to skip from a field. */
+			uint32_t offset;
+		};
+		/**
+		 * Immediate value for RTE_FLOW_FIELD_VALUE, presented in the
+		 * same byte order and length as in relevant rte_flow_item_xxx.
+		 * The immediate source bitfield offset is inherited from
+		 * the destination's one.
+		 */
+		uint8_t value[16];
+		/**
+		 * Memory address for RTE_FLOW_FIELD_POINTER, memory layout
+		 * should be the same as for relevant field in the
+		 * rte_flow_item_xxx structure.
+		 */
+		void *pvalue;
+	};
+};
+
+/**
+ * Expected operation types for compare item.
+ */
+enum rte_flow_item_compare_op {
+	RTE_FLOW_ITEM_COMPARE_EQ,	/* Compare result equal. */
+	RTE_FLOW_ITEM_COMPARE_NE,	/* Compare result not equal. */
+	RTE_FLOW_ITEM_COMPARE_LT,	/* Compare result less than. */
+	RTE_FLOW_ITEM_COMPARE_LE,	/* Compare result less than or equal. */
+	RTE_FLOW_ITEM_COMPARE_GT,	/* Compare result great than. */
+	RTE_FLOW_ITEM_COMPARE_GE,	/* Compare result great than or equal. */
+};
+
+/**
+ *
+ * RTE_FLOW_ITEM_TYPE_COMPARE
+ *
+ * Matches the packet with compare result.
+ *
+ * The operation means a compare with b result.
+ */
+struct rte_flow_item_compare {
+	enum rte_flow_item_compare_op operation; /* The compare operation. */
+	struct rte_flow_field_data a;		 /* Field be compared.  */
+	struct rte_flow_field_data b;		 /* Field as comparator. */
+	uint32_t width;				 /* Compare width. */
+};
 
 /**
  * Action types.
@@ -2888,7 +3189,6 @@ enum rte_flow_action_type {
 	 * The packets will be received by the kernel driver sharing
 	 * the same device as the DPDK port on which this action is configured.
 	 * This action mostly suits bifurcated driver model.
-	 * This is an ingress non-transfer action only.
 	 *
 	 * No associated configuration structure.
 	 */
@@ -2912,6 +3212,57 @@ enum rte_flow_action_type {
 	 * applied to the given ethdev Rx queue.
 	 */
 	RTE_FLOW_ACTION_TYPE_SKIP_CMAN,
+
+	/**
+	 * RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH
+	 *
+	 * Push IPv6 extension into IPv6 packet.
+	 *
+	 * @see struct rte_flow_action_ipv6_ext_push.
+	 */
+	RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH,
+
+	/**
+	 * RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE
+	 *
+	 * Remove IPv6 extension from IPv6 packet whose type
+	 * is provided in its configuration buffer.
+	 *
+	 * @see struct rte_flow_action_ipv6_ext_remove.
+	 */
+	RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE,
+
+	/**
+	 * Action handle to reference flow actions list.
+	 *
+	 * @see struct rte_flow_action_indirect_list
+	 */
+	RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
+
+	/**
+	 * Program action. These actions are defined by the program currently
+	 * loaded on the device. For example, these actions are applicable to
+	 * devices that can be programmed through the P4 language.
+	 *
+	 * @see struct rte_flow_action_prog.
+	 */
+	RTE_FLOW_ACTION_TYPE_PROG,
+
+	/**
+	 * NAT64 translation of IPv4/IPv6 headers.
+	 *
+	 * @see struct rte_flow_action_nat64
+	 */
+	RTE_FLOW_ACTION_TYPE_NAT64,
+
+	/**
+	 * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX,
+	 *
+	 * Redirects packets to a particular index in a flow table.
+	 *
+	 * @see struct rte_flow_action_jump_to_table_index.
+	 */
+	RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX,
 };
 
 /**
@@ -2948,7 +3299,6 @@ struct rte_flow_action_quota {
  * Query indirect QUOTA action.
  *
  * @see RTE_FLOW_ACTION_TYPE_QUOTA
- *
  */
 struct rte_flow_query_quota {
 	int64_t quota; /**< Quota value. */
@@ -3116,22 +3466,6 @@ struct rte_flow_query_count {
 };
 
 /**
- * Hash function types.
- */
-enum rte_eth_hash_function {
-	RTE_ETH_HASH_FUNCTION_DEFAULT = 0,
-	RTE_ETH_HASH_FUNCTION_TOEPLITZ, /**< Toeplitz */
-	RTE_ETH_HASH_FUNCTION_SIMPLE_XOR, /**< Simple XOR */
-	/**
-	 * Symmetric Toeplitz: src, dst will be replaced by
-	 * xor(src, dst). For the case with src/dst only,
-	 * src or dst address will xor with zero pair.
-	 */
-	RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
-	RTE_ETH_HASH_FUNCTION_MAX,
-};
-
-/**
  * RTE_FLOW_ACTION_TYPE_RSS
  *
  * Similar to QUEUE, except RSS is additionally performed on packets to
@@ -3268,6 +3602,26 @@ struct rte_flow_action_security {
 };
 
 /**
+ * NAT64 translation type for IP headers.
+ */
+enum rte_flow_nat64_type {
+	RTE_FLOW_NAT64_6TO4 = 0, /**< IPv6 to IPv4 headers translation. */
+	RTE_FLOW_NAT64_4TO6 = 1, /**< IPv4 to IPv6 headers translation. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_NAT64
+ *
+ * Specify the NAT64 translation type.
+ */
+struct rte_flow_action_nat64 {
+	enum rte_flow_nat64_type type;
+};
+
+/**
  * RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN
  *
  * Implements OFPAT_PUSH_VLAN ("push a new VLAN tag") as defined by the
@@ -3342,7 +3696,6 @@ struct rte_flow_action_of_push_mpls {
  * - ETH / IPV4 / UDP / VXLAN / END
  * - ETH / IPV6 / UDP / VXLAN / END
  * - ETH / VLAN / IPV4 / UDP / VXLAN / END
- *
  */
 struct rte_flow_action_vxlan_encap {
 	/**
@@ -3376,11 +3729,10 @@ struct rte_flow_action_vxlan_encap {
  *
  * - ETH / IPV4 / NVGRE / END
  * - ETH / VLAN / IPV6 / NVGRE / END
- *
  */
 struct rte_flow_action_nvgre_encap {
 	/**
-	 * Encapsulating vxlan tunnel definition
+	 * Encapsulating nvgre tunnel definition
 	 * (terminated by the END pattern item).
 	 */
 	struct rte_flow_item *definition;
@@ -3458,7 +3810,39 @@ struct rte_flow_action_set_ipv4 {
  * specified outermost IPv6 header.
  */
 struct rte_flow_action_set_ipv6 {
-	uint8_t ipv6_addr[16];
+	struct rte_ipv6_addr ipv6_addr;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH
+ *
+ * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH include:
+ *
+ * - IPV6_EXT TYPE / IPV6_EXT_HEADER_IN_TYPE / END
+ *
+ * The data must be added as the last IPv6 extension.
+ */
+struct rte_flow_action_ipv6_ext_push {
+	uint8_t *data; /**< IPv6 extension header data. */
+	size_t size; /**< Size (in bytes) of @p data. */
+	uint8_t type; /**< Type of IPv6 extension. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE
+ *
+ * Valid flow definition for RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE include:
+ *
+ * - IPV6_EXT TYPE / END
+ */
+struct rte_flow_action_ipv6_ext_remove {
+	uint8_t type; /**< Type of IPv6 extension. */
 };
 
 /**
@@ -3734,83 +4118,6 @@ struct rte_flow_action_ethdev {
 };
 
 /**
- * Field IDs for MODIFY_FIELD action.
- */
-enum rte_flow_field_id {
-	RTE_FLOW_FIELD_START = 0,	/**< Start of a packet. */
-	RTE_FLOW_FIELD_MAC_DST,		/**< Destination MAC Address. */
-	RTE_FLOW_FIELD_MAC_SRC,		/**< Source MAC Address. */
-	RTE_FLOW_FIELD_VLAN_TYPE,	/**< 802.1Q Tag Identifier. */
-	RTE_FLOW_FIELD_VLAN_ID,		/**< 802.1Q VLAN Identifier. */
-	RTE_FLOW_FIELD_MAC_TYPE,	/**< EtherType. */
-	RTE_FLOW_FIELD_IPV4_DSCP,	/**< IPv4 DSCP. */
-	RTE_FLOW_FIELD_IPV4_TTL,	/**< IPv4 Time To Live. */
-	RTE_FLOW_FIELD_IPV4_SRC,	/**< IPv4 Source Address. */
-	RTE_FLOW_FIELD_IPV4_DST,	/**< IPv4 Destination Address. */
-	RTE_FLOW_FIELD_IPV6_DSCP,	/**< IPv6 DSCP. */
-	RTE_FLOW_FIELD_IPV6_HOPLIMIT,	/**< IPv6 Hop Limit. */
-	RTE_FLOW_FIELD_IPV6_SRC,	/**< IPv6 Source Address. */
-	RTE_FLOW_FIELD_IPV6_DST,	/**< IPv6 Destination Address. */
-	RTE_FLOW_FIELD_TCP_PORT_SRC,	/**< TCP Source Port Number. */
-	RTE_FLOW_FIELD_TCP_PORT_DST,	/**< TCP Destination Port Number. */
-	RTE_FLOW_FIELD_TCP_SEQ_NUM,	/**< TCP Sequence Number. */
-	RTE_FLOW_FIELD_TCP_ACK_NUM,	/**< TCP Acknowledgment Number. */
-	RTE_FLOW_FIELD_TCP_FLAGS,	/**< TCP Flags. */
-	RTE_FLOW_FIELD_UDP_PORT_SRC,	/**< UDP Source Port Number. */
-	RTE_FLOW_FIELD_UDP_PORT_DST,	/**< UDP Destination Port Number. */
-	RTE_FLOW_FIELD_VXLAN_VNI,	/**< VXLAN Network Identifier. */
-	RTE_FLOW_FIELD_GENEVE_VNI,	/**< GENEVE Network Identifier. */
-	RTE_FLOW_FIELD_GTP_TEID,	/**< GTP Tunnel Endpoint Identifier. */
-	RTE_FLOW_FIELD_TAG,		/**< Tag value. */
-	RTE_FLOW_FIELD_MARK,		/**< Mark value. */
-	RTE_FLOW_FIELD_META,		/**< Metadata value. */
-	RTE_FLOW_FIELD_POINTER,		/**< Memory pointer. */
-	RTE_FLOW_FIELD_VALUE,		/**< Immediate value. */
-	RTE_FLOW_FIELD_IPV4_ECN,	/**< IPv4 ECN. */
-	RTE_FLOW_FIELD_IPV6_ECN,	/**< IPv6 ECN. */
-	RTE_FLOW_FIELD_GTP_PSC_QFI,	/**< GTP QFI. */
-	RTE_FLOW_FIELD_METER_COLOR,	/**< Meter color marker. */
-	RTE_FLOW_FIELD_IPV6_PROTO,	/**< IPv6 next header. */
-	RTE_FLOW_FIELD_FLEX_ITEM,	/**< Flex item. */
-	RTE_FLOW_FIELD_HASH_RESULT,	/**< Hash result. */
-};
-
-/**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
- * Field description for MODIFY_FIELD action.
- */
-struct rte_flow_action_modify_data {
-	enum rte_flow_field_id field; /**< Field or memory type ID. */
-	RTE_STD_C11
-	union {
-		struct {
-			/** Encapsulation level or tag index or flex item handle. */
-			union {
-				uint32_t level;
-				struct rte_flow_item_flex_handle *flex_handle;
-			};
-			/** Number of bits to skip from a field. */
-			uint32_t offset;
-		};
-		/**
-		 * Immediate value for RTE_FLOW_FIELD_VALUE, presented in the
-		 * same byte order and length as in relevant rte_flow_item_xxx.
-		 * The immediate source bitfield offset is inherited from
-		 * the destination's one.
-		 */
-		uint8_t value[16];
-		/**
-		 * Memory address for RTE_FLOW_FIELD_POINTER, memory layout
-		 * should be the same as for relevant field in the
-		 * rte_flow_item_xxx structure.
-		 */
-		void *pvalue;
-	};
-};
-
-/**
  * Operation types for MODIFY_FIELD action.
  */
 enum rte_flow_modify_op {
@@ -3831,8 +4138,8 @@ enum rte_flow_modify_op {
  */
 struct rte_flow_action_modify_field {
 	enum rte_flow_modify_op operation; /**< Operation to perform. */
-	struct rte_flow_action_modify_data dst; /**< Destination field. */
-	struct rte_flow_action_modify_data src; /**< Source field. */
+	struct rte_flow_field_data dst; /**< Destination field. */
+	struct rte_flow_field_data src; /**< Source field. */
 	uint32_t width; /**< Number of bits to use from a source field. */
 };
 
@@ -3855,8 +4162,6 @@ struct rte_flow_action_meter_mark {
 	struct rte_flow_meter_policy *policy;
 	/** Metering mode: 0 - Color-Blind, 1 - Color-Aware. */
 	int color_mode;
-	/** Initial Color applied to packets in Color-Aware mode. */
-	enum rte_color init_color;
 	/** Metering state: 0 - Disabled, 1 - Enabled. */
 	int state;
 };
@@ -3865,7 +4170,6 @@ struct rte_flow_action_meter_mark {
  * RTE_FLOW_ACTION_TYPE_METER_MARK
  *
  * Wrapper structure for the context update interface.
- *
  */
 struct rte_flow_update_meter_mark {
 	/** New meter_mark parameters to be updated. */
@@ -3876,12 +4180,63 @@ struct rte_flow_update_meter_mark {
 	uint32_t policy_valid:1;
 	/** The color mode will be updated. */
 	uint32_t color_mode_valid:1;
-	/** The initial color will be updated. */
-	uint32_t init_color_valid:1;
 	/** The meter state will be updated. */
 	uint32_t state_valid:1;
 	/** Reserved bits for the future usage. */
-	uint32_t reserved:27;
+	uint32_t reserved:28;
+};
+
+/**
+ * @see RTE_FLOW_ACTION_TYPE_METER_MARK
+ * @see RTE_FLOW_ACTION_TYPE_INDIRECT_LIST
+ *
+ * Update flow mutable context.
+ */
+struct rte_flow_indirect_update_flow_meter_mark {
+	/** Updated init color applied to packet */
+	enum rte_color init_color;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * Program action argument configuration parameters.
+ *
+ * For each action argument, its *size* must be non-zero and its *value* must
+ * point to a valid array of *size* bytes specified in network byte order.
+ *
+ * @see struct rte_flow_action_prog
+ */
+struct rte_flow_action_prog_argument {
+	/** Argument name. */
+	const char *name;
+	/** Argument size in bytes. */
+	uint32_t size;
+	/** Argument value. */
+	const uint8_t *value;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_PROG
+ *
+ * Program action configuration parameters.
+ *
+ * Each action can have zero or more arguments. When *args_num* is non-zero, the
+ * *args* parameter must point to a valid array of *args_num* elements.
+ *
+ * @see RTE_FLOW_ACTION_TYPE_PROG
+ */
+struct rte_flow_action_prog {
+	/** Action name. */
+	const char *name;
+	/** Number of action arguments. */
+	uint32_t args_num;
+	/** Action arguments array. */
+	const struct rte_flow_action_prog_argument *args;
 };
 
 /* Mbuf dynamic field offset for metadata. */
@@ -3911,6 +4266,20 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
 {
 	*RTE_FLOW_DYNF_METADATA(m) = v;
 }
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX
+ *
+ * Redirects packets to a particular index in a flow table.
+ *
+ */
+struct rte_flow_action_jump_to_table_index {
+	struct rte_flow_template_table *table;
+	uint32_t index;
+};
 
 /**
  * Definition of a single action.
@@ -4020,7 +4389,6 @@ struct rte_flow_error {
  * @see RTE_FLOW_CONV_OP_RULE
  * @see rte_flow_conv()
  */
-RTE_STD_C11
 struct rte_flow_conv_rule {
 	union {
 		const struct rte_flow_attr *attr_ro; /**< RO attributes. */
@@ -4072,6 +4440,18 @@ enum rte_flow_conv_op {
 	 *   @code struct rte_flow_item * @endcode
 	 */
 	RTE_FLOW_CONV_OP_ITEM,
+
+	/**
+	 * Convert a single item mask.
+	 *
+	 * Duplicates only @p mask.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_item * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_item * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM_MASK,
 
 	/**
 	 * Convert a single action.
@@ -4135,7 +4515,7 @@ enum rte_flow_conv_op {
 	 *   @code (const void *)enum rte_flow_item_type @endcode
 	 * - @p dst type:
 	 *   @code char * @endcode
-	 **/
+	 */
 	RTE_FLOW_CONV_OP_ITEM_NAME,
 
 	/**
@@ -4149,7 +4529,7 @@ enum rte_flow_conv_op {
 	 *   @code (const void *)enum rte_flow_action_type @endcode
 	 * - @p dst type:
 	 *   @code char * @endcode
-	 **/
+	 */
 	RTE_FLOW_CONV_OP_ACTION_NAME,
 
 	/**
@@ -4342,6 +4722,29 @@ int
 rte_flow_destroy(uint16_t port_id,
 		 struct rte_flow *flow,
 		 struct rte_flow_error *error);
+
+/**
+ * Update a flow rule with new actions on a given port.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param flow
+ *   Flow rule handle to update.
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_actions_update(uint16_t port_id,
+			struct rte_flow *flow,
+			const struct rte_flow_action actions[],
+			struct rte_flow_error *error);
 
 /**
  * Destroy all flow rules associated with a port.
@@ -4799,15 +5202,14 @@ struct rte_flow_tunnel {
 	enum rte_flow_item_type	type;
 	uint64_t tun_id; /**< Tunnel identification. */
 
-	RTE_STD_C11
 	union {
 		struct {
 			rte_be32_t src_addr; /**< IPv4 source address. */
 			rte_be32_t dst_addr; /**< IPv4 destination address. */
 		} ipv4;
 		struct {
-			uint8_t src_addr[16]; /**< IPv6 source address. */
-			uint8_t dst_addr[16]; /**< IPv6 destination address. */
+			struct rte_ipv6_addr src_addr; /**< IPv6 source address. */
+			struct rte_ipv6_addr dst_addr; /**< IPv6 destination address. */
 		} ipv6;
 	};
 	rte_be16_t tp_src; /**< Tunnel port source. */
@@ -4918,7 +5320,23 @@ rte_flow_tunnel_match(uint16_t port_id,
 		      struct rte_flow_error *error);
 
 /**
- * Populate the current packet processing state, if exists, for the given mbuf.
+ * On reception of a mbuf from HW, a call to rte_flow_get_restore_info() may be
+ * required to retrieve some metadata.
+ * This function returns the associated mbuf ol_flags.
+ *
+ * Note: the dynamic flag is registered during a call to
+ * rte_eth_rx_metadata_negotiate() with RTE_ETH_RX_METADATA_TUNNEL_ID.
+ *
+ * @return
+ *   The offload flag indicating rte_flow_get_restore_info() must be called.
+ */
+__rte_experimental
+uint64_t
+rte_flow_restore_info_dynflag(void);
+
+/**
+ * If a mbuf contains the rte_flow_restore_info_dynflag() flag in ol_flags,
+ * populate the current packet processing state.
  *
  * One should negotiate tunnel metadata delivery from the NIC to the HW.
  * @see rte_eth_rx_metadata_negotiate()
@@ -5070,12 +5488,18 @@ rte_flow_flex_item_release(uint16_t port_id,
 #define RTE_FLOW_PORT_FLAG_STRICT_QUEUE RTE_BIT32(0)
 
 /**
+ * Indicate all steering objects should be created on contexts
+ * of the host port, providing indirect object sharing between
+ * ports.
+ */
+#define RTE_FLOW_PORT_FLAG_SHARE_INDIRECT RTE_BIT32(1)
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
  * Information about flow engine resources.
  * The zero value means a resource is not supported.
- *
  */
 struct rte_flow_port_info {
 	/**
@@ -5119,7 +5543,6 @@ struct rte_flow_port_info {
  *
  * Information about flow engine asynchronous queues.
  * The value only valid if @p port_attr.max_nb_queues is not zero.
- *
  */
 struct rte_flow_queue_info {
 	/**
@@ -5157,19 +5580,11 @@ rte_flow_info_get(uint16_t port_id,
 		  struct rte_flow_error *error);
 
 /**
- * Indicate all steering objects should be created on contexts
- * of the host port, providing indirect object sharing between
- * ports.
- */
-#define RTE_FLOW_PORT_FLAG_SHARE_INDIRECT RTE_BIT32(0)
-
-/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
  * Flow engine resources settings.
  * The zero value means on demand resource allocations only.
- *
  */
 struct rte_flow_port_attr {
 	/**
@@ -5213,7 +5628,6 @@ struct rte_flow_port_attr {
  *
  * Flow engine asynchronous queues settings.
  * The value means default value picked by PMD.
- *
  */
 struct rte_flow_queue_attr {
 	/**
@@ -5478,6 +5892,10 @@ struct rte_flow_template_table;
  * if the hint is supported.
  */
 #define RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG RTE_BIT32(1)
+/**
+ * Specialize table for resize.
+ */
+#define RTE_FLOW_TABLE_SPECIALIZE_RESIZABLE RTE_BIT32(2)
 /**@}*/
 
 /**
@@ -5495,6 +5913,10 @@ enum rte_flow_table_insertion_type {
 	 * Index-based insertion.
 	 */
 	RTE_FLOW_TABLE_INSERTION_TYPE_INDEX,
+	/**
+	 * Index-based insertion with pattern.
+	 */
+	RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN,
 };
 
 /**
@@ -5555,6 +5977,25 @@ struct rte_flow_template_table_attr {
 	 */
 	enum rte_flow_table_hash_func hash_func;
 };
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Query whether a table can be resized.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param tbl_attr
+ *   Template table.
+ *
+ * @return
+ *   True if the table can be resized.
+ */
+__rte_experimental
+bool
+rte_flow_template_table_resizable(__rte_unused uint16_t port_id,
+		const struct rte_flow_template_table_attr *tbl_attr);
 
 /**
  * @warning
@@ -5628,14 +6069,43 @@ rte_flow_template_table_destroy(uint16_t port_id,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Set group miss actions.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param group_id
+ *   Identifier of a group to set miss actions for.
+ * @param attr
+ *   Group attributes.
+ * @param actions
+ *   List of group miss actions.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_group_set_miss_actions(uint16_t port_id,
+				uint32_t group_id,
+				const struct rte_flow_group_attr *attr,
+				const struct rte_flow_action actions[],
+				struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Asynchronous operation attributes.
  */
 __extension__
 struct rte_flow_op_attr {
-	 /**
-	  * When set, the requested action will not be sent to the HW immediately.
-	  * The application must call the rte_flow_queue_push to actually send it.
-	  */
+	/**
+	 * When set, the requested action will not be sent to the HW immediately.
+	 * The application must call the rte_flow_queue_push to actually send it.
+	 */
 	uint32_t postpone:1;
 };
 
@@ -5736,6 +6206,60 @@ rte_flow_async_create_by_index(uint16_t port_id,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Enqueue rule creation by index with pattern operation.
+ * Packets are only matched if there is a rule inserted at the index.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue_id
+ *   Flow queue used to insert the rule.
+ * @param[in] op_attr
+ *   Rule creation operation attributes.
+ * @param[in] template_table
+ *   Template table to select templates from.
+ * @param[in] rule_index
+ *   Rule index in the table.
+ *   Inserting a rule to already occupied index results in undefined behavior.
+ * @param[in] pattern
+ *   List of pattern items to be used.
+ *   The list order should match the order in the pattern template.
+ *   The spec is the only relevant member of the item that is being used.
+ * @param[in] pattern_template_index
+ *   Pattern template index in the table.
+ * @param[in] actions
+ *   List of actions to be used.
+ *   The list order should match the order in the actions template.
+ * @param[in] actions_template_index
+ *   Actions template index in the table.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   Handle on success, NULL otherwise and rte_errno is set.
+ *   The rule handle doesn't mean that the rule has been populated.
+ *   Only completion result indicates that if there was success or failure.
+ */
+__rte_experimental
+struct rte_flow *
+rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
+					    uint32_t queue_id,
+					    const struct rte_flow_op_attr *op_attr,
+					    struct rte_flow_template_table *template_table,
+					    uint32_t rule_index,
+					    const struct rte_flow_item pattern[],
+					    uint8_t pattern_template_index,
+					    const struct rte_flow_action actions[],
+					    uint8_t actions_template_index,
+					    void *user_data,
+					    struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Enqueue rule destruction operation.
  *
  * This function enqueues a destruction operation on the queue.
@@ -5769,6 +6293,45 @@ rte_flow_async_destroy(uint16_t port_id,
 		       struct rte_flow *flow,
 		       void *user_data,
 		       struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue rule update operation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue_id
+ *   Flow queue used to insert the rule.
+ * @param[in] op_attr
+ *   Rule creation operation attributes.
+ * @param[in] flow
+ *   Flow rule to be updated.
+ * @param[in] actions
+ *   List of actions to be used.
+ *   The list order should match the order in the actions template.
+ * @param[in] actions_template_index
+ *   Actions template index in the table.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+__rte_experimental
+int
+rte_flow_async_actions_update(uint16_t port_id,
+			      uint32_t queue_id,
+			      const struct rte_flow_op_attr *op_attr,
+			      struct rte_flow *flow,
+			      const struct rte_flow_action actions[],
+			      uint8_t actions_template_index,
+			      void *user_data,
+			      struct rte_flow_error *error);
 
 /**
  * @warning
@@ -6117,6 +6680,451 @@ rte_flow_async_action_handle_query_update(uint16_t port_id, uint32_t queue_id,
 					  enum rte_flow_query_update_mode mode,
 					  void *user_data,
 					  struct rte_flow_error *error);
+
+struct rte_flow_action_list_handle;
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Configure INDIRECT_LIST flow action.
+ *
+ * @see RTE_FLOW_ACTION_TYPE_INDIRECT_LIST
+ */
+struct rte_flow_action_indirect_list {
+	/** Indirect action list handle */
+	struct rte_flow_action_list_handle *handle;
+	/**
+	 * Flow mutable configuration array.
+	 * NULL if the handle has no flow mutable configuration update.
+	 * Otherwise, if the handle was created with list A1 / A2 .. An / END
+	 * size of conf is n.
+	 * conf[i] points to flow mutable update of Ai in the handle
+	 * actions list or NULL if Ai has no update.
+	 */
+	const void **conf;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Create an indirect flow action object from flow actions list.
+ * The object is identified by a unique handle.
+ * The handle has single state and configuration
+ * across all the flow rules using it.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] conf
+ *   Action configuration for the indirect action list creation.
+ * @param[in] actions
+ *   Specific configuration of the indirect action lists.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   A valid handle in case of success, NULL otherwise and rte_errno is set
+ *   to one of the error codes defined:
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-EINVAL) if *actions* list invalid.
+ *   - (-ENOTSUP) if *action* list element valid but unsupported.
+ */
+__rte_experimental
+struct rte_flow_action_list_handle *
+rte_flow_action_list_handle_create(uint16_t port_id,
+				   const
+				   struct rte_flow_indir_action_conf *conf,
+				   const struct rte_flow_action *actions,
+				   struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Async function call to create an indirect flow action object
+ * from flow actions list.
+ * The object is identified by a unique handle.
+ * The handle has single state and configuration
+ * across all the flow rules using it.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] queue_id
+ *   Flow queue which is used to update the rule.
+ * @param[in] attr
+ *   Indirect action update operation attributes.
+ * @param[in] conf
+ *   Action configuration for the indirect action list creation.
+ * @param[in] actions
+ *   Specific configuration of the indirect action list.
+ * @param[in] user_data
+ *   The user data that will be returned on async completion event.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   A valid handle in case of success, NULL otherwise and rte_errno is set
+ *   to one of the error codes defined:
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-EINVAL) if *actions* list invalid.
+ *   - (-ENOTSUP) if *action* list element valid but unsupported.
+ */
+__rte_experimental
+struct rte_flow_action_list_handle *
+rte_flow_async_action_list_handle_create(uint16_t port_id, uint32_t queue_id,
+					 const struct rte_flow_op_attr *attr,
+					 const struct rte_flow_indir_action_conf *conf,
+					 const struct rte_flow_action *actions,
+					 void *user_data,
+					 struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destroy indirect actions list by handle.
+ *
+ * @param[in] port_id
+ *    The port identifier of the Ethernet device.
+ * @param[in] handle
+ *   Handle for the indirect actions list to be destroyed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-ENOENT) if actions list pointed by *action* handle was not found.
+ *   - (-EBUSY) if actions list pointed by *action* handle still used
+ */
+__rte_experimental
+int
+rte_flow_action_list_handle_destroy(uint16_t port_id,
+				    struct rte_flow_action_list_handle *handle,
+				    struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue indirect action list destruction operation.
+ * The destroy queue must be the same
+ * as the queue on which the action was created.
+ *
+ * @param[in] port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] queue_id
+ *   Flow queue which is used to destroy the rule.
+ * @param[in] op_attr
+ *   Indirect action destruction operation attributes.
+ * @param[in] handle
+ *   Handle for the indirect action object to be destroyed.
+ * @param[in] user_data
+ *   The user data that will be returned on the completion events.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOSYS) if underlying device does not support this functionality.
+ *   - (-EIO) if underlying device is removed.
+ *   - (-ENOENT) if actions list pointed by *action* handle was not found.
+ *   - (-EBUSY) if actions list pointed by *action* handle still used
+ */
+__rte_experimental
+int
+rte_flow_async_action_list_handle_destroy
+		(uint16_t port_id, uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 struct rte_flow_action_list_handle *handle,
+		 void *user_data, struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Query and/or update indirect flow actions list.
+ * If both query and update not NULL, the function atomically
+ * queries and updates indirect action. Query and update are carried in order
+ * specified in the mode parameter.
+ * If ether query or update is NULL, the function executes
+ * complementing operation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param handle
+ *   Handle for the indirect actions list object to be updated.
+ * @param update
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL update parameter is an array [U1, U2, ... Un] where Ui points to
+ *   Ai update context or NULL if Ai should not be updated.
+ * @param query
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL query parameter is an array [Q1, Q2, ... Qn] where Qi points to
+ *   Ai query context or NULL if Ai should not be queried.
+ * @param mode
+ *   Operational mode.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ * - (-ENODEV) if *port_id* invalid.
+ * - (-ENOTSUP) if underlying device does not support this functionality.
+ * - (-EINVAL) if *handle* or *mode* invalid or
+ *             both *query* and *update* are NULL.
+ */
+__rte_experimental
+int
+rte_flow_action_list_handle_query_update(uint16_t port_id,
+					 const struct rte_flow_action_list_handle *handle,
+					 const void **update, void **query,
+					 enum rte_flow_query_update_mode mode,
+					 struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Enqueue async indirect flow actions list query and/or update
+ * If both query and update not NULL, the function atomically
+ * queries and updates indirect action. Query and update are carried in order
+ * specified in the mode parameter.
+ * If ether query or update is NULL, the function executes
+ * complementing operation.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue_id
+ *   Flow queue which is used to update the rule.
+ * @param attr
+ *   Indirect action update operation attributes.
+ * @param handle
+ *   Handle for the indirect actions list object to be updated.
+ * @param update
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL update parameter is an array [U1, U2, ... Un] where Ui points to
+ *   Ai update context or NULL if Ai should not be updated.
+ * @param query
+ *   If the action list handle was created from n actions A1 / A2 ... An / END
+ *   non-NULL query parameter is an array [Q1, Q2, ... Qn] where Qi points to
+ *   Ai query context or NULL if Ai should not be queried.
+ *   Query result returned on async completion event.
+ * @param mode
+ *   Operational mode.
+ * @param user_data
+ *   The user data that will be returned on async completion event.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ * - (-ENODEV) if *port_id* invalid.
+ * - (-ENOTSUP) if underlying device does not support this functionality.
+ * - (-EINVAL) if *handle* or *mode* invalid or
+ *             both *update* and *query* are NULL.
+ */
+__rte_experimental
+int
+rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_id,
+					  const struct rte_flow_op_attr *attr,
+					  const struct rte_flow_action_list_handle *handle,
+					  const void **update, void **query,
+					  enum rte_flow_query_update_mode mode,
+					  void *user_data,
+					  struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Calculate the hash for a given pattern in a given table as
+ * calculated by the HW.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param table
+ *   The table the SW wishes to simulate.
+ * @param pattern
+ *   The values to be used in the hash calculation.
+ * @param pattern_template_index
+ *   The pattern index in the table to be used for the calculation.
+ * @param hash
+ *   Used to return the calculated hash.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ */
+__rte_experimental
+int
+rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table *table,
+			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
+			 uint32_t *hash, struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destination field type for the hash calculation, when encap action is used.
+ * The encap field implies the size, meaning XXX_SRC_PORT hash len is 2 bytes,
+ * while XXX_NVGRE_FLOW_ID hash len is 1 byte.
+ *
+ * @see function rte_flow_calc_encap_hash
+ */
+enum rte_flow_encap_hash_field {
+	/** Calculate hash placed in UDP source port field. */
+	RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT,
+	/** Calculate hash placed in NVGRE flow ID field. */
+	RTE_FLOW_ENCAP_HASH_FIELD_NVGRE_FLOW_ID,
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Simulate HW hash calculation that is done when an encap action is being used.
+ * This hash can be stored in tunnel outer header to improve packet distribution.
+ *
+ * @param[in] port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] pattern
+ *   The values to be used in the hash calculation.
+ * @param[in] dest_field
+ *   Type of destination field for hash calculation.
+ * @param[in] hash_len
+ *   The length of the hash pointer in bytes. Should be according to dest_field.
+ * @param[out] hash
+ *   Used to return the calculated hash. It will be written in network order,
+ *   so hash[0] is the MSB.
+ *   The number of bytes is based on the destination field type.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ *   - (-EINVAL) if *pattern* doesn't hold enough information to calculate the hash
+ *               or the dest is not supported.
+ */
+__rte_experimental
+int
+rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
+			 enum rte_flow_encap_hash_field dest_field, uint8_t hash_len,
+			 uint8_t *hash, struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Update template table for new flow rules capacity.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param table
+ *   Template table to modify.
+ * @param nb_rules
+ *   New flow rules capacity.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ *   - (-EINVAL) if *table* is not resizable or
+ *               *table* resize to *nb_rules* is not supported or
+ *               unrecoverable *table* error.
+ */
+__rte_experimental
+int
+rte_flow_template_table_resize(uint16_t port_id,
+			       struct rte_flow_template_table *table,
+			       uint32_t nb_rules,
+			       struct rte_flow_error *error);
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Update *rule* for the new *table* configuration after table resize.
+ * Must be called for each *rule* created before *table* resize.
+ * If called for *rule* created after *table* resize returns success.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param queue
+ *   Flow queue for async operation.
+ * @param attr
+ *   Async operation attributes.
+ * @param rule
+ *   Flow rule to update.
+ * @param user_data
+ *   The user data that will be returned on async completion event.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ *   - (-EINVAL) if *table* was not resized.
+ *               If *rule* cannot be updated after *table* resize,
+ *               unrecoverable *table* error.
+ */
+__rte_experimental
+int
+rte_flow_async_update_resized(uint16_t port_id, uint32_t queue,
+			      const struct rte_flow_op_attr *attr,
+			      struct rte_flow *rule, void *user_data,
+			      struct rte_flow_error *error);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Resume normal operational mode after table was resized and
+ * table rules were updated for the new table configuration.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param table
+ *   Template table that undergoing resize operation.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ *   - (-EBUSY) if not all *table* rules were updated.
+ *   - (-EINVAL) if *table* cannot complete table resize,
+ *               unrecoverable error.
+ */
+__rte_experimental
+int
+rte_flow_template_table_resize_complete(uint16_t port_id,
+					struct rte_flow_template_table *table,
+					struct rte_flow_error *error);
 
 #ifdef __cplusplus
 }

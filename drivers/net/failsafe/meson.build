@@ -7,7 +7,7 @@ if is_windows
     subdir_done()
 endif
 
-cflags += '-std=gnu99'
+cflags += no_wvla_cflag
 cflags += '-D_DEFAULT_SOURCE'
 cflags += '-D_XOPEN_SOURCE=700'
 cflags += '-pedantic'
@@ -29,3 +29,7 @@ sources = files(
 )
 
 require_iova_in_mbuf = false
+
+if is_freebsd
+    annotate_locks = false
+endif

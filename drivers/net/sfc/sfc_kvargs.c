@@ -74,6 +74,16 @@ sfc_kvargs_process(struct sfc_adapter *sa, const char *key_match,
 }
 
 int
+sfc_kvargs_process_opt(struct sfc_adapter *sa, const char *key_match,
+		       arg_handler_t handler, void *opaque_arg)
+{
+	if (sa->kvargs == NULL)
+		return 0;
+
+	return -rte_kvargs_process_opt(sa->kvargs, key_match, handler, opaque_arg);
+}
+
+int
 sfc_kvarg_bool_handler(__rte_unused const char *key,
 		       const char *value_str, void *opaque)
 {
@@ -104,7 +114,7 @@ sfc_kvarg_long_handler(__rte_unused const char *key,
 	long value;
 	char *endptr;
 
-	if (!value_str || !opaque)
+	if (!opaque)
 		return -EINVAL;
 
 	value = strtol(value_str, &endptr, 0);

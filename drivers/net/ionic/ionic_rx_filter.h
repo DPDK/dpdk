@@ -7,7 +7,6 @@
 
 #include <rte_spinlock.h>
 
-#include "ionic_osdep.h"
 #include "ionic_if.h"
 
 #define IONIC_RXQ_INDEX_ANY		(0xFFFF)

@@ -1,5 +1,10 @@
 # ignore hidden files
 .*
+# except the tracked ones and derivatives
+!.ci/
+!.github/
+!.gitignore*
+!.mailmap*
 
 # ignore generated documentation tables
 doc/guides/nics/overview_table.txt
@@ -21,6 +26,8 @@ doc/guides/eventdevs/overview_rx_adptr_feature_table.txt
 doc/guides/eventdevs/overview_tx_adptr_feature_table.txt
 doc/guides/eventdevs/overview_crypto_adptr_feature_table.txt
 doc/guides/eventdevs/overview_timer_adptr_feature_table.txt
+doc/guides/eventdevs/overview_dma_adptr_feature_table.txt
+doc/guides/eventdevs/overview_vector_adptr_feature_table.txt
 
 # ignore generated ctags/cscope files
 cscope.out.po
@@ -38,6 +45,8 @@ TAGS
 
 # DTS results
 dts/output
+dts/nodes.yaml
+dts/test_run.yaml
 
 # ignore default build directory, and directories from test-meson-builds.sh
 build

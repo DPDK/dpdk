@@ -36,6 +36,7 @@ struct sfc_repr_entity_info {
 int sfc_repr_create(struct rte_eth_dev *parent,
 		    struct sfc_repr_entity_info *entity,
 		    uint16_t switch_domain_id,
+		    unsigned int max_pdu,
 		    const efx_mport_sel_t *mport_sel);
 
 #ifdef __cplusplus

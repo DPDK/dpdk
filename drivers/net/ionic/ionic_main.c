@@ -180,6 +180,12 @@ ionic_adminq_service(struct ionic_cq *cq, uint16_t cq_desc_index,
 	return true;
 }
 
+uint16_t
+ionic_adminq_space_avail(struct ionic_lif *lif)
+{
+	return ionic_q_space_avail(&lif->adminqcq->qcq.q);
+}
+
 /** ionic_adminq_post - Post an admin command.
  * @lif:                Handle to lif.
  * @cmd_ctx:            Api admin command context.
@@ -191,7 +197,7 @@ ionic_adminq_service(struct ionic_cq *cq, uint16_t cq_desc_index,
  *
  * Return: zero or negative error status.
  */
-static int
+int
 ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 {
 	struct ionic_queue *q = &lif->adminqcq->qcq.q;
@@ -217,7 +223,6 @@ ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 	q->head_idx = Q_NEXT_TO_POST(q, 1);
 
 	/* Ring doorbell */
-	rte_wmb();
 	ionic_q_flush(q);
 
 err_out:
@@ -279,7 +284,6 @@ ionic_adminq_wait_for_completion(struct ionic_lif *lif,
 int
 ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 {
-	bool done;
 	int err;
 
 	IONIC_PRINT(DEBUG, "Sending %s (%d) via the admin queue",
@@ -291,6 +295,14 @@ ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
 			ctx->cmd.cmd.opcode, err);
 		return err;
 	}
+
+	return ionic_adminq_wait(lif, ctx);
+}
+
+int
+ionic_adminq_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx)
+{
+	bool done;
 
 	done = ionic_adminq_wait_for_completion(lif, ctx,
 		IONIC_DEVCMD_TIMEOUT);

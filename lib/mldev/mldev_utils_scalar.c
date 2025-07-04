@@ -4,15 +4,19 @@
 
 #include "mldev_utils_scalar.h"
 
+#include <eal_export.h>
+
 /* Description:
  * This file implements scalar versions of Machine Learning utility functions used to convert data
  * types from higher precision to lower precision and vice-versa, except bfloat16.
  */
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int8, 22.11)
 int
-rte_ml_io_float32_to_int8(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_int8(const void *input, void *output, uint64_t nb_elements, float scale,
+			  int8_t zero_point)
 {
-	float *input_buffer;
+	const float *input_buffer;
 	int8_t *output_buffer;
 	uint64_t i;
 	int i32;
@@ -20,11 +24,11 @@ rte_ml_io_float32_to_int8(float scale, uint64_t nb_elements, void *input, void *
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float *)input;
+	input_buffer = (const float *)input;
 	output_buffer = (int8_t *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		i32 = (int32_t)round((*input_buffer) * scale);
+		i32 = (int32_t)(round(*input_buffer / scale) + zero_point);
 
 		if (i32 < INT8_MIN)
 			i32 = INT8_MIN;
@@ -41,21 +45,23 @@ rte_ml_io_float32_to_int8(float scale, uint64_t nb_elements, void *input, void *
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int8_to_float32, 22.11)
 int
-rte_ml_io_int8_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_int8_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			  int8_t zero_point)
 {
-	int8_t *input_buffer;
+	const int8_t *input_buffer;
 	float *output_buffer;
 	uint64_t i;
 
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (int8_t *)input;
+	input_buffer = (const int8_t *)input;
 	output_buffer = (float *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		*output_buffer = scale * (float)(*input_buffer);
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
 
 		input_buffer++;
 		output_buffer++;
@@ -64,10 +70,12 @@ rte_ml_io_int8_to_float32(float scale, uint64_t nb_elements, void *input, void *
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint8, 22.11)
 int
-rte_ml_io_float32_to_uint8(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_uint8(const void *input, void *output, uint64_t nb_elements, float scale,
+			   uint8_t zero_point)
 {
-	float *input_buffer;
+	const float *input_buffer;
 	uint8_t *output_buffer;
 	int32_t i32;
 	uint64_t i;
@@ -75,11 +83,11 @@ rte_ml_io_float32_to_uint8(float scale, uint64_t nb_elements, void *input, void 
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float *)input;
+	input_buffer = (const float *)input;
 	output_buffer = (uint8_t *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		i32 = (int32_t)round((*input_buffer) * scale);
+		i32 = (int32_t)(round(*input_buffer / scale) + zero_point);
 
 		if (i32 < 0)
 			i32 = 0;
@@ -96,21 +104,23 @@ rte_ml_io_float32_to_uint8(float scale, uint64_t nb_elements, void *input, void 
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint8_to_float32, 22.11)
 int
-rte_ml_io_uint8_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_uint8_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			   uint8_t zero_point)
 {
-	uint8_t *input_buffer;
+	const uint8_t *input_buffer;
 	float *output_buffer;
 	uint64_t i;
 
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (uint8_t *)input;
+	input_buffer = (const uint8_t *)input;
 	output_buffer = (float *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		*output_buffer = scale * (float)(*input_buffer);
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
 
 		input_buffer++;
 		output_buffer++;
@@ -119,10 +129,12 @@ rte_ml_io_uint8_to_float32(float scale, uint64_t nb_elements, void *input, void 
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int16, 22.11)
 int
-rte_ml_io_float32_to_int16(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_int16(const void *input, void *output, uint64_t nb_elements, float scale,
+			   int16_t zero_point)
 {
-	float *input_buffer;
+	const float *input_buffer;
 	int16_t *output_buffer;
 	int32_t i32;
 	uint64_t i;
@@ -130,11 +142,11 @@ rte_ml_io_float32_to_int16(float scale, uint64_t nb_elements, void *input, void 
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float *)input;
+	input_buffer = (const float *)input;
 	output_buffer = (int16_t *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		i32 = (int32_t)round((*input_buffer) * scale);
+		i32 = (int32_t)(round(*input_buffer / scale) + zero_point);
 
 		if (i32 < INT16_MIN)
 			i32 = INT16_MIN;
@@ -151,21 +163,23 @@ rte_ml_io_float32_to_int16(float scale, uint64_t nb_elements, void *input, void 
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int16_to_float32, 22.11)
 int
-rte_ml_io_int16_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_int16_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			   int16_t zero_point)
 {
-	int16_t *input_buffer;
+	const int16_t *input_buffer;
 	float *output_buffer;
 	uint64_t i;
 
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (int16_t *)input;
+	input_buffer = (const int16_t *)input;
 	output_buffer = (float *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		*output_buffer = scale * (float)(*input_buffer);
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
 
 		input_buffer++;
 		output_buffer++;
@@ -174,10 +188,12 @@ rte_ml_io_int16_to_float32(float scale, uint64_t nb_elements, void *input, void 
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint16, 22.11)
 int
-rte_ml_io_float32_to_uint16(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_uint16(const void *input, void *output, uint64_t nb_elements, float scale,
+			    uint16_t zero_point)
 {
-	float *input_buffer;
+	const float *input_buffer;
 	uint16_t *output_buffer;
 	int32_t i32;
 	uint64_t i;
@@ -185,11 +201,11 @@ rte_ml_io_float32_to_uint16(float scale, uint64_t nb_elements, void *input, void
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float *)input;
+	input_buffer = (const float *)input;
 	output_buffer = (uint16_t *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		i32 = (int32_t)round((*input_buffer) * scale);
+		i32 = (int32_t)(round(*input_buffer / scale) + zero_point);
 
 		if (i32 < 0)
 			i32 = 0;
@@ -206,21 +222,235 @@ rte_ml_io_float32_to_uint16(float scale, uint64_t nb_elements, void *input, void
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint16_to_float32, 22.11)
 int
-rte_ml_io_uint16_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+rte_ml_io_uint16_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			    uint16_t zero_point)
 {
-	uint16_t *input_buffer;
+	const uint16_t *input_buffer;
 	float *output_buffer;
 	uint64_t i;
 
 	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (uint16_t *)input;
+	input_buffer = (const uint16_t *)input;
 	output_buffer = (float *)output;
 
 	for (i = 0; i < nb_elements; i++) {
-		*output_buffer = scale * (float)(*input_buffer);
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int32, 22.11)
+int
+rte_ml_io_float32_to_int32(const void *input, void *output, uint64_t nb_elements, float scale,
+			   int32_t zero_point)
+{
+	const float *input_buffer;
+	int32_t *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const float *)input;
+	output_buffer = (int32_t *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = (int32_t)(round(*input_buffer / scale) + zero_point);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int32_to_float32, 22.11)
+int
+rte_ml_io_int32_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			   int32_t zero_point)
+{
+	const int32_t *input_buffer;
+	float *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const int32_t *)input;
+	output_buffer = (float *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint32, 22.11)
+int
+rte_ml_io_float32_to_uint32(const void *input, void *output, uint64_t nb_elements, float scale,
+			    uint32_t zero_point)
+{
+	const float *input_buffer;
+	uint32_t *output_buffer;
+	int32_t i32;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const float *)input;
+	output_buffer = (uint32_t *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		i32 = (int32_t)(round(*input_buffer / scale) + zero_point);
+
+		if (i32 < 0)
+			i32 = 0;
+
+		*output_buffer = (uint32_t)i32;
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint32_to_float32, 22.11)
+int
+rte_ml_io_uint32_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			    uint32_t zero_point)
+{
+	const uint32_t *input_buffer;
+	float *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const uint32_t *)input;
+	output_buffer = (float *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_int64, 22.11)
+int
+rte_ml_io_float32_to_int64(const void *input, void *output, uint64_t nb_elements, float scale,
+			   int64_t zero_point)
+{
+	const float *input_buffer;
+	int64_t *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const float *)input;
+	output_buffer = (int64_t *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = (int64_t)(round(*input_buffer / scale) + zero_point);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_int64_to_float32, 22.11)
+int
+rte_ml_io_int64_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			   int64_t zero_point)
+{
+	const int64_t *input_buffer;
+	float *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const int64_t *)input;
+	output_buffer = (float *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_uint64, 22.11)
+int
+rte_ml_io_float32_to_uint64(const void *input, void *output, uint64_t nb_elements, float scale,
+			    uint64_t zero_point)
+{
+	const float *input_buffer;
+	uint64_t *output_buffer;
+	int64_t i64;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const float *)input;
+	output_buffer = (uint64_t *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		i64 = (int64_t)(round(*input_buffer / scale) + zero_point);
+
+		if (i64 < 0)
+			i64 = 0;
+
+		*output_buffer = (uint64_t)i64;
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_uint64_to_float32, 22.11)
+int
+rte_ml_io_uint64_to_float32(const void *input, void *output, uint64_t nb_elements, float scale,
+			    uint64_t zero_point)
+{
+	const uint64_t *input_buffer;
+	float *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (const uint64_t *)input;
+	output_buffer = (float *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = scale * (float)(*input_buffer - zero_point);
 
 		input_buffer++;
 		output_buffer++;
@@ -351,17 +581,18 @@ __float32_to_float16_scalar_rtn(float x)
 	return u16;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float32_to_float16, 22.11)
 int
-rte_ml_io_float32_to_float16(uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_float16(const void *input, void *output, uint64_t nb_elements)
 {
-	float *input_buffer;
+	const float *input_buffer;
 	uint16_t *output_buffer;
 	uint64_t i;
 
 	if ((nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float *)input;
+	input_buffer = (const float *)input;
 	output_buffer = (uint16_t *)output;
 
 	for (i = 0; i < nb_elements; i++) {
@@ -413,7 +644,7 @@ __float16_to_float32_scalar_rtx(uint16_t f16)
 		if (f16_m == 0) { /* zero signed */
 			f32_e = 0;
 		} else { /* subnormal numbers */
-			clz = __builtin_clz((uint32_t)f16_m) - sizeof(uint32_t) * 8 + FP16_LSB_E;
+			clz = rte_clz32((uint32_t)f16_m) - sizeof(uint32_t) * 8 + FP16_LSB_E;
 			e_16 = (int)f16_e - clz;
 			f32_e = FP32_BIAS_E + e_16 - FP16_BIAS_E;
 
@@ -435,17 +666,18 @@ __float16_to_float32_scalar_rtx(uint16_t f16)
 	return f32.f;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_float16_to_float32, 22.11)
 int
-rte_ml_io_float16_to_float32(uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float16_to_float32(const void *input, void *output, uint64_t nb_elements)
 {
-	uint16_t *input_buffer;
+	const uint16_t *input_buffer;
 	float *output_buffer;
 	uint64_t i;
 
 	if ((nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (uint16_t *)input;
+	input_buffer = (const uint16_t *)input;
 	output_buffer = (float *)output;
 
 	for (i = 0; i < nb_elements; i++) {

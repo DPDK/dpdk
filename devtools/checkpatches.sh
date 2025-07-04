@@ -9,7 +9,7 @@
 # - DPDK_CHECKPATCH_OPTIONS
 . $(dirname $(readlink -f $0))/load-devel-config
 
-VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.sh
+VALIDATE_NEW_API=$(dirname $(readlink -f $0))/check-symbol-change.py
 
 # Enable codespell by default. This can be overwritten from a config file.
 # Codespell can also be enabled by setting DPDK_CHECKPATCH_CODESPELL to a valid path
@@ -33,7 +33,7 @@ VOLATILE,PREFER_PACKED,PREFER_ALIGNED,PREFER_PRINTF,STRLCPY,\
 PREFER_KERNEL_TYPES,PREFER_FALLTHROUGH,BIT_MACRO,CONST_STRUCT,\
 SPLIT_STRING,LONG_LINE_STRING,C99_COMMENT_TOLERANCE,\
 LINE_SPACING,PARENTHESIS_ALIGNMENT,NETWORKING_BLOCK_COMMENT_STYLE,\
-NEW_TYPEDEFS,COMPARISON_TO_NULL"
+NEW_TYPEDEFS,COMPARISON_TO_NULL,AVOID_BUG,EXPORT_SYMBOL"
 options="$options $DPDK_CHECKPATCH_OPTIONS"
 
 print_usage () {
@@ -53,6 +53,31 @@ print_usage () {
 check_forbidden_additions() { # <patch>
 	res=0
 
+	# refrain from new calls to RTE_LOG in libraries
+	awk -v FOLDERS="lib" \
+		-v EXPRESSIONS="RTE_LOG\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer RTE_LOG_LINE' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from new calls to RTE_LOG in drivers (but leave some leeway for base drivers)
+	awk -v FOLDERS="drivers" \
+		-v SKIP_FILES='.*osdep.h$' \
+		-v EXPRESSIONS="RTE_LOG\\\( RTE_LOG_DP\\\( rte_log\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer RTE_LOG_LINE/RTE_LOG_DP_LINE' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# no output on stdout or stderr
+	awk -v FOLDERS="lib drivers" \
+		-v EXPRESSIONS="\\\<printf\\\> \\\<fprintf\\\(stdout, \\\<fprintf\\\(stderr," \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Writing to stdout or stderr' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# refrain from new additions of rte_panic() and rte_exit()
 	# multiple folders and expressions are separated by spaces
 	awk -v FOLDERS="lib drivers" \
@@ -64,6 +89,7 @@ check_forbidden_additions() { # <patch>
 
 	# refrain from using compiler attribute without defining a common macro
 	awk -v FOLDERS="lib drivers app examples" \
+		-v SKIP_FILES='lib/eal/include/rte_common.h' \
 		-v EXPRESSIONS="__attribute__" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using compiler attribute directly' \
@@ -75,14 +101,6 @@ check_forbidden_additions() { # <patch>
 		-v EXPRESSIONS='%ll*[xud]' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using %l format, prefer %PRI*64 if type is [u]int64_t' \
-		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
-		"$1" || res=1
-
-	# forbid variable declaration inside "for" loop
-	awk -v FOLDERS='.' \
-		-v EXPRESSIONS='for[[:space:]]*\\((char|u?int|unsigned|s?size_t)' \
-		-v RET_ON_FAIL=1 \
-		-v MESSAGE='Declaring a variable inside for()' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -110,12 +128,28 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
-	# refrain from using compiler __atomic_thread_fence()
+	# refrain from using compiler __rte_atomic_thread_fence()
 	# It should be avoided on x86 for SMP case.
 	awk -v FOLDERS="lib drivers app examples" \
-		-v EXPRESSIONS="__atomic_thread_fence\\\(" \
+		-v EXPRESSIONS="__rte_atomic_thread_fence\\\(" \
 		-v RET_ON_FAIL=1 \
-		-v MESSAGE='Using __atomic_thread_fence' \
+		-v MESSAGE='Using __rte_atomic_thread_fence, prefer rte_atomic_thread_fence' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from using compiler __atomic_xxx builtins
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="__atomic_.*\\\( __ATOMIC_(RELAXED|CONSUME|ACQUIRE|RELEASE|ACQ_REL|SEQ_CST)" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __atomic_xxx/__ATOMIC_XXX built-ins, prefer rte_atomic_xxx/rte_memory_order_xxx' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from using some pthread functions
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="pthread_(create|join|detach|set(_?name_np|affinity_np)|attr_set(inheritsched|schedpolicy))\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using pthread functions, prefer rte_thread' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -124,6 +158,55 @@ check_forbidden_additions() { # <patch>
 		-v EXPRESSIONS='\\<__reserved\\>' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using __reserved' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of __alignof__
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='\\<__alignof__\\>' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __alignof__, prefer C11 alignof' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of __typeof__
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='\\<__typeof__\\>' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __typeof__, prefer typeof' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of compiler __builtin_*
+	awk -v FOLDERS="lib drivers app examples" \
+		-v SKIP_FILES='lib/eal/ drivers/.*/base/ drivers/.*osdep.h$' \
+		-v EXPRESSIONS='\\<__builtin_' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __builtin helpers, prefer EAL macros' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid inclusion of Linux header for PCI constants
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='include.*linux/pci_regs\\.h' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using linux/pci_regs.h, prefer rte_pci.h' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of variadic argument pack extension in macros
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='#[[:space:]]*define.*[^(,[:space:]]\\.\\.\\.[[:space:]]*)' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Do not use variadic argument pack in macros' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of __rte_packed_begin with enums
+	awk -v FOLDERS='lib drivers app examples' \
+		-v EXPRESSIONS='enum.*__rte_packed_begin' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __rte_packed_begin with enum is not allowed' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -143,11 +226,36 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# forbid non-internal thread in drivers and libs
+	awk -v FOLDERS='lib drivers' \
+		-v EXPRESSIONS="rte_thread_(set_name|create_control)\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer rte_thread_(set_prefixed_name|create_internal_control)' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid rte_ symbols in cnxk base driver
+	awk -v FOLDERS='drivers/common/cnxk/roc_*' \
+		-v SKIP_FILES='.*roc_platform.*' \
+		-v EXPRESSIONS="rte_ RTE_" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Use plt_ symbols instead of rte_ API in cnxk base driver' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid inclusion of driver specific headers in apps and examples
 	awk -v FOLDERS='app examples' \
 		-v EXPRESSIONS='include.*_driver\\.h include.*_pmd\\.h' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using driver specific headers in applications' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# prevent addition of tests not in one of our test suites
+	awk -v FOLDERS='app/test' \
+		-v EXPRESSIONS='REGISTER_TEST_COMMAND' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using REGISTER_TEST_COMMAND instead of REGISTER_<suite_name>_TEST' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -164,6 +272,14 @@ check_forbidden_additions() { # <patch>
 		-v EXPRESSIONS='http://.*dpdk.org' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using non https link to dpdk.org' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# prefer Sphinx references for internal documentation
+	awk -v FOLDERS='doc' \
+		-v EXPRESSIONS='//doc.dpdk.org/guides/' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using explicit URL to doc.dpdk.org, prefer :ref: or :doc:' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
@@ -235,6 +351,45 @@ check_internal_tags() { # <patch>
 	END {
 		exit ret;
 	}' || res=1
+
+	return $res
+}
+
+check_aligned_attributes() { # <patch>
+	res=0
+
+	for token in __rte_aligned __rte_cache_aligned __rte_cache_min_aligned; do
+		if [ $(grep -E '^\+.*\<'$token'\>' "$1" | \
+				grep -vE '\<(struct|union)[[:space:]]*'$token'\>' | \
+				wc -l) != 0 ]; then
+			echo "Please use $token only for struct or union types alignment."
+			res=1
+		fi
+	done
+
+	return $res
+}
+
+check_packed_attributes() { # <patch>
+	res=0
+
+	if [ $(grep -E '^\+.*__rte_packed_begin' "$1" | \
+			grep -vE '\<struct[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<union[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_cache_aligned[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_cache_min_aligned[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_aligned\(.*\)[[:space:]]*__rte_packed_begin\>' | \
+			wc -l) != 0 ]; then
+		echo "Use __rte_packed_begin only after struct, union or alignment attributes."
+		res=1
+	fi
+
+	begin_count=$(grep '__rte_packed_begin' "$1" | wc -l)
+	end_count=$(grep '__rte_packed_end' "$1" | wc -l)
+	if [ $begin_count != $end_count ]; then
+		echo "__rte_packed_begin and __rte_packed_end should always be used in pairs."
+		res=1
+	fi
 
 	return $res
 }
@@ -317,7 +472,7 @@ check () { # <patch-file> <commit>
 	fi
 
 	! $verbose || printf '\nChecking API additions/removals:\n'
-	report=$($VALIDATE_NEW_API "$tmpinput")
+	report=$($VALIDATE_NEW_API --patch "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"
@@ -342,6 +497,22 @@ check () { # <patch-file> <commit>
 
 	! $verbose || printf '\nChecking __rte_internal tags:\n'
 	report=$(check_internal_tags "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$subject"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking alignment attributes:\n'
+	report=$(check_aligned_attributes "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$subject"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking packed attributes:\n'
+	report=$(check_packed_attributes "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"

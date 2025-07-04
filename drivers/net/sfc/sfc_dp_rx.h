@@ -69,6 +69,8 @@ struct sfc_dp_rx_qcreate_info {
 	/** Receive queue flags initializer */
 	unsigned int		flags;
 #define SFC_RXQ_FLAG_RSS_HASH	0x1
+#define SFC_RXQ_FLAG_INGRESS_MPORT	0x2
+#define SFC_RXQ_FLAG_VLAN_STRIPPED_TCI	0x4
 
 	/** Rx queue size */
 	unsigned int		rxq_entries;
@@ -196,8 +198,8 @@ typedef bool (sfc_dp_rx_qrx_ps_ev_t)(struct sfc_dp_rxq *dp_rxq,
 typedef void (sfc_dp_rx_qpurge_t)(struct sfc_dp_rxq *dp_rxq);
 
 /** Get packet types recognized/classified */
-typedef const uint32_t * (sfc_dp_rx_supported_ptypes_get_t)(
-				uint32_t tunnel_encaps);
+typedef const uint32_t * (sfc_dp_rx_supported_ptypes_get_t)(uint32_t tunnel_encaps,
+							    size_t *no_of_elements);
 
 /** Get number of pending Rx descriptors */
 typedef unsigned int (sfc_dp_rx_qdesc_npending_t)(struct sfc_dp_rxq *dp_rxq);

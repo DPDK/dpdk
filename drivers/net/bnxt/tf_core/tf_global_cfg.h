@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -146,5 +146,4 @@ int tf_global_cfg_set(struct tf *tfp,
  */
 int tf_global_cfg_get(struct tf *tfp,
 		      struct tf_global_cfg_parms *parms);
-
 #endif /* TF_GLOBAL_CFG_H */

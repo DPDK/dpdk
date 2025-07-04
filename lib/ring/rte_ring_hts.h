@@ -24,11 +24,11 @@
  * To achieve that 64-bit CAS is used by head update routine.
  */
 
+#include <rte_ring_hts_elem_pvt.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring_hts_elem_pvt.h>
 
 /**
  * Enqueue several objects on the HTS ring (multi-producers safe).

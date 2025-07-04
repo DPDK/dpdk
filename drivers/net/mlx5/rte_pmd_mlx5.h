@@ -38,9 +38,9 @@ extern "C" {
 __rte_experimental
 int rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n);
 
-#define MLX5_DOMAIN_BIT_NIC_RX	(1 << 0) /**< NIC RX domain bit mask. */
-#define MLX5_DOMAIN_BIT_NIC_TX	(1 << 1) /**< NIC TX domain bit mask. */
-#define MLX5_DOMAIN_BIT_FDB	(1 << 2) /**< FDB (TX + RX) domain bit mask. */
+#define RTE_PMD_MLX5_DOMAIN_BIT_NIC_RX	(1 << 0) /**< NIC RX domain bit mask. */
+#define RTE_PMD_MLX5_DOMAIN_BIT_NIC_TX	(1 << 1) /**< NIC TX domain bit mask. */
+#define RTE_PMD_MLX5_DOMAIN_BIT_FDB	(1 << 2) /**< FDB (TX + RX) domain bit mask. */
 
 /**
  * Synchronize the flows to make them take effort on hardware.
@@ -52,7 +52,7 @@ int rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n);
  * @param[in] domains
  *   Refer to "/usr/include/infiniband/mlx5dv.h".
  *   Bitmask of domains in which the synchronization will be done.
- *   MLX5_DOMAIN_BIT* macros are used to specify the domains.
+ *   RTE_PMD_MLX5_DOMAIN_BIT_* macros are used to specify the domains.
  *   An ADD or OR operation could be used to synchronize flows in more than
  *   one domain per call.
  *
@@ -66,12 +66,17 @@ int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains);
 /**
  * External Rx queue rte_flow index minimal value.
  */
-#define MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
+#define RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
+
+/**
+ * External Tx queue rte_flow index minimal value.
+ */
+#define MLX5_EXTERNAL_TX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
 
 /**
  * Tag level to set the linear hash index.
  */
-#define MLX5_LINEAR_HASH_TAG_INDEX 255
+#define RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX 255
 
 /**
  * Update mapping between rte_flow queue index (16 bits) and HW queue index (32
@@ -117,13 +122,56 @@ int rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id,
 					    uint16_t dpdk_idx);
 
 /**
+ * Update mapping between rte_flow Tx queue index (16 bits) and HW queue index (32
+ * bits) for TxQs which is created outside the PMD.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] dpdk_idx
+ *   Queue index in rte_flow.
+ * @param[in] hw_idx
+ *   Queue index in hardware.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EEXIST - a mapping with the same rte_flow index already exists.
+ *   - EINVAL - invalid rte_flow index, out of range.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ *   - ENOTSUP - the port doesn't support external TxQ.
+ */
+__rte_experimental
+int rte_pmd_mlx5_external_tx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
+					  uint32_t hw_idx);
+
+/**
+ * Remove mapping between rte_flow Tx queue index (16 bits) and HW queue index (32
+ * bits) for TxQs which is created outside the PMD.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] dpdk_idx
+ *   Queue index in rte_flow.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EINVAL - invalid index, out of range, still referenced or doesn't exist.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ *   - ENOTSUP - the port doesn't support external TxQ.
+ */
+__rte_experimental
+int rte_pmd_mlx5_external_tx_queue_id_unmap(uint16_t port_id,
+					    uint16_t dpdk_idx);
+
+/**
  * The rate of the host port shaper will be updated directly at the next
  * available descriptor threshold event to the rate that comes with this flag set;
  * set rate 0 to disable this rate update.
  * Unset this flag to update the rate of the host port shaper directly in
  * the API call; use rate 0 to disable the current shaper.
  */
-#define MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED 0
+#define RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED 0
 
 /**
  * Configure a HW shaper to limit Tx rate for a host port.
@@ -135,7 +183,7 @@ int rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id,
  * @param[in] rate
  *   Unit is 100Mbps, setting the rate to 0 disables the shaper.
  * @param[in] flags
- *   Host shaper flags.
+ *   Host shaper flags (see RTE_PMD_MLX5_HOST_SHAPER_FLAG_*).
  * @return
  *   0 : operation success.
  *   Otherwise:
@@ -164,16 +212,16 @@ __rte_experimental
 int rte_pmd_mlx5_external_sq_enable(uint16_t port_id, uint32_t sq_num);
 
 /* MLX5 flow engine mode definition for live migration. */
-enum mlx5_flow_engine_mode {
-	MLX5_FLOW_ENGINE_MODE_ACTIVE, /* active means high priority, effective in HW. */
-	MLX5_FLOW_ENGINE_MODE_STANDBY, /* standby mode with lower priority flow rules. */
+enum rte_pmd_mlx5_flow_engine_mode {
+	RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE, /* active means high priority, effective in HW. */
+	RTE_PMD_MLX5_FLOW_ENGINE_MODE_STANDBY, /* standby mode with lower priority flow rules. */
 };
 
 /**
  * When set on the flow engine of a standby process, ingress flow rules will be effective
  * in active and standby processes, so the ingress traffic may be duplicated.
  */
-#define MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS      RTE_BIT32(0)
+#define RTE_PMD_MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS      RTE_BIT32(0)
 
 /**
  * @warning
@@ -217,9 +265,9 @@ enum mlx5_flow_engine_mode {
  *   old:    shutdown
  *
  * @param mode
- *   The desired mode `mlx5_flow_engine_mode`.
+ *   The desired mode (see rte_pmd_mlx5_flow_engine_mode).
  * @param flags
- *   Mode specific flags.
+ *   Mode specific flags (see RTE_PMD_MLX5_FLOW_ENGINE_FLAG_*).
  * @return
  *   Positive value on success, -rte_errno value on error:
  *   - (> 0) Number of switched devices.
@@ -227,7 +275,145 @@ enum mlx5_flow_engine_mode {
  *   - (-EPERM) if operation failed and can't recover.
  */
 __rte_experimental
-int rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flags);
+int rte_pmd_mlx5_flow_engine_set_mode(enum rte_pmd_mlx5_flow_engine_mode mode, uint32_t flags);
+
+/**
+ * User configuration structure using to create parser for single GENEVE TLV option.
+ */
+struct rte_pmd_mlx5_geneve_tlv {
+	/**
+	 * The class of the GENEVE TLV option.
+	 * Relevant only when 'match_on_class_mode' is 1.
+	 */
+	rte_be16_t option_class;
+	/**
+	 * The type of the GENEVE TLV option.
+	 * This field is the identifier of the option.
+	 */
+	uint8_t option_type;
+	/**
+	 * The length of the GENEVE TLV option data excluding the option header
+	 * in DW granularity.
+	 */
+	uint8_t option_len;
+	/**
+	 * Indicator about class field role in this option:
+	 *  0 - class is ignored.
+	 *  1 - class is fixed (the class defines the option along with the type).
+	 *  2 - class matching per flow.
+	 */
+	uint8_t match_on_class_mode;
+	/**
+	 * The offset of the first sample in DW granularity.
+	 * This offset is relative to first of option data.
+	 * The 'match_data_mask' corresponds to option data since this offset.
+	 */
+	uint8_t offset;
+	/**
+	 * The number of DW to sample.
+	 * This field describes the length of 'match_data_mask' in DW
+	 * granularity.
+	 */
+	uint8_t sample_len;
+	/**
+	 * Array of DWs which each bit marks if this bit should be sampled.
+	 * Each nonzero DW consumes one DW from maximum 7 DW in total.
+	 */
+	rte_be32_t *match_data_mask;
+};
+
+/**
+ * Creates GENEVE TLV parser for the selected port.
+ * This function must be called before first use of GENEVE option.
+ *
+ * This API is port oriented, but the configuration is done once for all ports
+ * under the same physical device. Each port should call this API before using
+ * GENEVE OPT item, but it must use the same options in the same order inside
+ * the list.
+ *
+ * Each physical device has 7 DWs for GENEVE TLV options. Each nonzero element
+ * in 'match_data_mask' array consumes one DW, and choosing matchable mode for
+ * class consumes additional one.
+ * Calling this API for second port under same physical device doesn't consume
+ * more DW, it uses same configuration.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] tlv_list
+ *   A list of GENEVE TLV options to create parser for them.
+ * @param[in] nb_options
+ *   The number of options in TLV list.
+ *
+ * @return
+ *   A pointer to TLV handle on success, NULL otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - ENOMEM - not enough memory to create GENEVE TLV parser.
+ *   - EEXIST - this port already has GENEVE TLV parser or another port under
+ *              same physical device has already prepared a different parser.
+ *   - EINVAL - invalid GENEVE TLV requested.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ *   - ENOTSUP - the port doesn't support GENEVE TLV parsing.
+ */
+__rte_experimental
+void *
+rte_pmd_mlx5_create_geneve_tlv_parser(uint16_t port_id,
+				      const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
+				      uint8_t nb_options);
+
+/**
+ * Destroy GENEVE TLV parser for the selected port.
+ * This function must be called after last use of GENEVE option and before port
+ * closing.
+ *
+ * @param[in] handle
+ *   Handle for the GENEVE TLV parser object to be destroyed.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EINVAL - invalid handle.
+ *   - ENOENT - there is no valid GENEVE TLV parser in this handle.
+ *   - EBUSY - one of options is in used by template table.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_destroy_geneve_tlv_parser(void *handle);
+
+/**
+ * Dump Rx Queue Context for a given port/queue
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Rx Queue Context
+ *
+ * @return
+ *   0 for success, non-zero value depending on failure type
+ */
+
+__rte_experimental
+int
+rte_pmd_mlx5_rxq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename);
+
+/**
+ * Dump Tx Queue Context for a given port/queue
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Tx Queue Context
+ *
+ * @return
+ *   0 for success, non-zero value depending on failure type
+ */
+
+__rte_experimental
+int
+rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename);
 
 #ifdef __cplusplus
 }

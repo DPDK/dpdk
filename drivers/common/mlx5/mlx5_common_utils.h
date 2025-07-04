@@ -27,20 +27,20 @@ struct mlx5_list;
  * Structure of the entry in the mlx5 list, user should define its own struct
  * that contains this in order to store the data.
  */
-struct mlx5_list_entry {
+struct __rte_packed_begin mlx5_list_entry {
 	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
-	uint32_t ref_cnt __rte_aligned(8); /* 0 means, entry is invalid. */
+	alignas(8) RTE_ATOMIC(uint32_t) ref_cnt; /* 0 means, entry is invalid. */
 	uint32_t lcore_idx;
 	union {
 		struct mlx5_list_entry *gentry;
 		uint32_t bucket_idx;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
-struct mlx5_list_cache {
+struct __rte_cache_aligned mlx5_list_cache {
 	LIST_HEAD(mlx5_list_head, mlx5_list_entry) h;
-	uint32_t inv_cnt; /* Invalid entries counter. */
-} __rte_cache_aligned;
+	RTE_ATOMIC(uint32_t) inv_cnt; /* Invalid entries counter. */
+};
 
 /**
  * Type of callback function for entry removal.
@@ -111,7 +111,7 @@ struct mlx5_list_const {
 struct mlx5_list_inconst {
 	rte_rwlock_t lock; /* read/write lock. */
 	volatile uint32_t gen_cnt; /* List modification may update it. */
-	volatile uint32_t count; /* number of entries in list. */
+	volatile RTE_ATOMIC(uint32_t) count; /* number of entries in list. */
 	struct mlx5_list_cache *cache[MLX5_LIST_MAX];
 	/* Lcore cache, last index is the global cache. */
 };
@@ -131,7 +131,7 @@ struct mlx5_list_inconst {
  * For huge amount of entries, please consider hash list.
  *
  */
-struct mlx5_list {
+struct __rte_aligned(16) mlx5_list {
 	struct mlx5_list_const l_const;
 	struct mlx5_list_inconst l_inconst;
 };
@@ -243,9 +243,9 @@ mlx5_list_get_entry_num(struct mlx5_list *list);
 /********************* Hash List **********************/
 
 /* Hash list bucket. */
-struct mlx5_hlist_bucket {
+struct __rte_cache_aligned mlx5_hlist_bucket {
 	struct mlx5_list_inconst l;
-} __rte_cache_aligned;
+};
 
 /**
  * Hash list table structure
@@ -257,7 +257,7 @@ struct mlx5_hlist {
 	uint8_t flags;
 	bool direct_key; /* Whether to use the key directly as hash index. */
 	struct mlx5_list_const l_const; /* List constant data. */
-	struct mlx5_hlist_bucket buckets[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hlist_bucket buckets[];
 };
 
 /**

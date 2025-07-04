@@ -42,7 +42,6 @@ cpu_flag_result(int result)
  * ===========
  *
  * - Check flags from different registers with rte_cpu_get_flag_enabled()
- * - Check if register and CPUID functions fail properly
  */
 
 static int
@@ -157,6 +156,9 @@ test_cpuflags(void)
 
 	printf("Check for SVEBF16:\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_SVEBF16);
+
+	printf("Check for WFXT:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_WFXT);
 #endif
 
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)
@@ -322,16 +324,7 @@ test_cpuflags(void)
 	CHECK_FOR_FLAG(RTE_CPUFLAG_LBT_MIPS);
 #endif
 
-	/*
-	 * Check if invalid data is handled properly
-	 */
-	printf("\nCheck for invalid flag:\t");
-	result = rte_cpu_get_flag_enabled(RTE_CPUFLAG_NUMFLAGS);
-	printf("%s\n", cpu_flag_result(result));
-	if (result != -ENOENT)
-		return -1;
-
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(cpuflags_autotest, test_cpuflags);
+REGISTER_FAST_TEST(cpuflags_autotest, true, true, test_cpuflags);

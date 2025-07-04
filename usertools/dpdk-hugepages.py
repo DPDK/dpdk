@@ -1,13 +1,15 @@
 #! /usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2020 Microsoft Corporation
+
 """Script to query and setup huge pages for DPDK applications."""
 
 import argparse
-import glob
 import os
 import re
+import subprocess
 import sys
+import typing as T
 from math import log2
 
 # Standard binary prefix
@@ -15,194 +17,266 @@ BINARY_PREFIX = "KMG"
 
 # systemd mount point for huge pages
 HUGE_MOUNT = "/dev/hugepages"
+# default directory for non-NUMA huge pages
+NO_NUMA_HUGE_DIR = "/sys/kernel/mm/hugepages"
+# default base directory for NUMA nodes
+NUMA_NODE_BASE_DIR = "/sys/devices/system/node"
+# procfs paths
+MEMINFO_PATH = "/proc/meminfo"
+MOUNTS_PATH = "/proc/mounts"
 
 
-def fmt_memsize(kb):
-    '''Format memory size in kB into conventional format'''
+class HugepageMount:
+    """Mount operations for huge page filesystem."""
+
+    def __init__(self, path: str, mounted: bool):
+        self.path = path
+        # current mount status
+        self.mounted = mounted
+
+    def mount(
+        self, pagesize_kb: int, user: T.Optional[str], group: T.Optional[str]
+    ) -> None:
+        """Mount the huge TLB file system"""
+        if self.mounted:
+            return
+        cmd = ["mount", "-t", "hugetlbfs"]
+        cmd += ["-o", f"pagesize={pagesize_kb * 1024}"]
+        if user is not None:
+            cmd += ["-o", f"uid={user}"]
+        if group is not None:
+            cmd += ["-o", f"gid={group}"]
+        cmd += ["nodev", self.path]
+
+        subprocess.run(cmd, check=True)
+        self.mounted = True
+
+    def unmount(self) -> None:
+        """Unmount the huge TLB file system (if mounted)"""
+        if self.mounted:
+            subprocess.run(["umount", self.path], check=True)
+            self.mounted = False
+
+
+class HugepageRes:
+    """Huge page reserve operations. Can be NUMA-node-specific."""
+
+    def __init__(self, path: str, node: T.Optional[int] = None):
+        self.path = path
+        # if this is a per-NUMA node huge page dir, store the node number
+        self.node = node
+        self.valid_page_sizes = self._get_valid_page_sizes()
+
+    def _get_valid_page_sizes(self) -> T.List[int]:
+        """Extract valid huge page sizes"""
+        return [get_memsize(d.split("-")[1]) for d in os.listdir(self.path)]
+
+    def _nr_pages_path(self, sz: int) -> str:
+        if sz not in self.valid_page_sizes:
+            raise ValueError(
+                f"Invalid page size {sz}. " f"Valid sizes: {self.valid_page_sizes}"
+            )
+        return os.path.join(self.path, f"hugepages-{sz}kB", "nr_hugepages")
+
+    def __getitem__(self, sz: int) -> int:
+        """Get current number of reserved pages of specified size"""
+        with open(self._nr_pages_path(sz), encoding="utf-8") as f:
+            return int(f.read())
+
+    def __setitem__(self, sz: int, nr_pages: int) -> None:
+        """Set number of reserved pages of specified size"""
+        with open(self._nr_pages_path(sz), "w", encoding="utf-8") as f:
+            f.write(f"{nr_pages}\n")
+
+
+def fmt_memsize(kb: int) -> str:
+    """Format memory size in kB into conventional format"""
     logk = int(log2(kb) / 10)
     suffix = BINARY_PREFIX[logk]
-    unit = 2**(logk * 10)
-    return '{}{}b'.format(int(kb / unit), suffix)
+    unit = 2 ** (logk * 10)
+    return f"{int(kb / unit)}{suffix}b"
 
 
-def get_memsize(arg):
-    '''Convert memory size with suffix to kB'''
-    match = re.match(r'(\d+)([' + BINARY_PREFIX + r']?)$', arg.upper())
+def get_memsize(arg: str) -> int:
+    """Convert memory size with suffix to kB"""
+    # arg may have a 'b' at the end
+    if arg[-1].lower() == "b":
+        arg = arg[:-1]
+    match = re.match(rf"(\d+)([{BINARY_PREFIX}]?)$", arg.upper())
     if match is None:
-        sys.exit('{} is not a valid size'.format(arg))
+        raise ValueError(f"{arg} is not a valid size")
     num = float(match.group(1))
     suffix = match.group(2)
-    if suffix == "":
+    if not suffix:
         return int(num / 1024)
     idx = BINARY_PREFIX.find(suffix)
-    return int(num * (2**(idx * 10)))
+    return int(num * (2 ** (idx * 10)))
 
 
-def is_numa():
-    '''Test if NUMA is necessary on this system'''
-    return os.path.exists('/sys/devices/system/node')
+def is_numa() -> bool:
+    """Check if NUMA is supported"""
+    return os.path.exists(NUMA_NODE_BASE_DIR)
 
 
-def get_valid_page_sizes(path):
-    '''Extract valid hugepage sizes'''
-    dir = os.path.dirname(path)
-    pg_sizes = (d.split("-")[1] for d in os.listdir(dir))
-    return " ".join(pg_sizes)
-
-
-def get_hugepages(path):
-    '''Read number of reserved pages'''
-    with open(path + '/nr_hugepages') as nr_hugepages:
-        return int(nr_hugepages.read())
-    return 0
-
-
-def set_hugepages(path, reqpages):
-    '''Write the number of reserved huge pages'''
-    filename = path + '/nr_hugepages'
-    try:
-        with open(filename, 'w') as nr_hugepages:
-            nr_hugepages.write('{}\n'.format(reqpages))
-    except PermissionError:
-        sys.exit('Permission denied: need to be root!')
-    except FileNotFoundError:
-        sys.exit("Invalid page size. Valid page sizes: {}".format(
-                 get_valid_page_sizes(path)))
-    gotpages = get_hugepages(path)
-    if gotpages != reqpages:
-        sys.exit('Unable to set pages ({} instead of {} in {}).'.format(
-                 gotpages, reqpages, filename))
-
-
-def show_numa_pages():
-    '''Show huge page reservations on Numa system'''
-    print('Node Pages Size Total')
-    for numa_path in glob.glob('/sys/devices/system/node/node*'):
-        node = numa_path[29:]  # slice after /sys/devices/system/node/node
-        path = numa_path + '/hugepages'
-        if not os.path.exists(path):
-            continue
-        for hdir in os.listdir(path):
-            pages = get_hugepages(path + '/' + hdir)
-            if pages > 0:
-                kb = int(hdir[10:-2])  # slice out of hugepages-NNNkB
-                print('{:<4} {:<5} {:<6} {}'.format(node, pages,
-                                                    fmt_memsize(kb),
-                                                    fmt_memsize(pages * kb)))
-
-
-def show_non_numa_pages():
-    '''Show huge page reservations on non Numa system'''
-    print('Pages Size Total')
-    path = '/sys/kernel/mm/hugepages'
-    for hdir in os.listdir(path):
-        pages = get_hugepages(path + '/' + hdir)
-        if pages > 0:
-            kb = int(hdir[10:-2])
-            print('{:<5} {:<6} {}'.format(pages, fmt_memsize(kb),
-                                          fmt_memsize(pages * kb)))
-
-
-def show_pages():
-    '''Show existing huge page settings'''
-    if is_numa():
-        show_numa_pages()
-    else:
-        show_non_numa_pages()
-
-
-def clear_pages():
-    '''Clear all existing huge page mappings'''
-    if is_numa():
-        dirs = glob.glob(
-            '/sys/devices/system/node/node*/hugepages/hugepages-*')
-    else:
-        dirs = glob.glob('/sys/kernel/mm/hugepages/hugepages-*')
-
-    for path in dirs:
-        set_hugepages(path, 0)
-
-
-def default_pagesize():
-    '''Get default huge page size from /proc/meminfo'''
-    with open('/proc/meminfo') as meminfo:
+def default_pagesize() -> int:
+    """Get default huge page size from /proc/meminfo"""
+    key = "Hugepagesize"
+    with open(MEMINFO_PATH, encoding="utf-8") as meminfo:
         for line in meminfo:
-            if line.startswith('Hugepagesize:'):
+            if line.startswith(f"{key}:"):
                 return int(line.split()[1])
-    return None
+    raise KeyError(f'"{key}" not found in {MEMINFO_PATH}')
 
 
-def set_numa_pages(pages, hugepgsz, node=None):
-    '''Set huge page reservation on Numa system'''
-    if node:
-        nodes = ['/sys/devices/system/node/node{}/hugepages'.format(node)]
-    else:
-        nodes = glob.glob('/sys/devices/system/node/node*/hugepages')
-
-    for node_path in nodes:
-        huge_path = '{}/hugepages-{}kB'.format(node_path, hugepgsz)
-        set_hugepages(huge_path, pages)
-
-
-def set_non_numa_pages(pages, hugepgsz):
-    '''Set huge page reservation on non Numa system'''
-    path = '/sys/kernel/mm/hugepages/hugepages-{}kB'.format(hugepgsz)
-    set_hugepages(path, pages)
-
-
-def reserve_pages(pages, hugepgsz, node=None):
-    '''Set the number of huge pages to be reserved'''
-    if node or is_numa():
-        set_numa_pages(pages, hugepgsz, node=node)
-    else:
-        set_non_numa_pages(pages, hugepgsz)
-
-
-def get_mountpoints():
-    '''Get list of where hugepage filesystem is mounted'''
-    mounted = []
-    with open('/proc/mounts') as mounts:
+def get_hugetlbfs_mountpoints() -> T.List[str]:
+    """Get list of where huge page filesystem is mounted"""
+    mounted: T.List[str] = []
+    with open(MOUNTS_PATH, encoding="utf-8") as mounts:
         for line in mounts:
             fields = line.split()
-            if fields[2] != 'hugetlbfs':
+            if fields[2] != "hugetlbfs":
                 continue
             mounted.append(fields[1])
     return mounted
 
 
-def mount_huge(pagesize, mountpoint, user, group):
-    '''Mount the huge TLB file system'''
-    if mountpoint in get_mountpoints():
-        print(mountpoint, "already mounted")
-        return
-    cmd = "mount -t hugetlbfs"
-    if pagesize:
-        cmd += ' -o pagesize={}'.format(pagesize * 1024)
-    if user:
-        cmd += ' -o uid=' + user
-    if group:
-        cmd += ' -o gid=' + group
-    cmd += ' nodev ' + mountpoint
-    os.system(cmd)
+def print_row(cells: T.Tuple[str, ...], widths: T.List[int]) -> None:
+    """Print a row of a table with the given column widths"""
+    first, *rest = cells
+    w_first, *w_rest = widths
+    first_end = " " * 2
+    rest_end = " " * 2
+
+    print(first.ljust(w_first), end=first_end)
+    for cell, width in zip(rest, w_rest):
+        print(cell.rjust(width), end=rest_end)
+    print()
 
 
-def umount_huge(mountpoint):
-    '''Unmount the huge TLB file system (if mounted)'''
-    if mountpoint in get_mountpoints():
-        os.system("umount " + mountpoint)
+def print_hp_status(hp_res: T.List[HugepageRes]) -> None:
+    """Display status of huge page reservations"""
+    numa = is_numa()
 
-
-def show_mount():
-    '''Show where huge page filesystem is mounted'''
-    mounted = get_mountpoints()
-    if mounted:
-        print("Hugepages mounted on", *mounted)
+    # print out huge page information in a table
+    rows: T.List[T.Tuple[str, ...]]
+    headers: T.Tuple[str, ...]
+    if numa:
+        headers = "Node", "Pages", "Size", "Total"
+        rows = [
+            (
+                str(hp.node),
+                str(nr_pages),
+                fmt_memsize(sz),
+                fmt_memsize(sz * nr_pages),
+            )
+            # iterate over each huge page sysfs node...
+            for hp in hp_res
+            # ...and each page size within that node...
+            for sz in hp.valid_page_sizes
+            # ...we need number of pages multiple times, so we read it here...
+            for nr_pages in [hp[sz]]
+            # ...include this row only if there are pages reserved
+            if nr_pages
+        ]
     else:
-        print("Hugepages not mounted")
+        headers = "Pages", "Size", "Total"
+        # if NUMA is disabled, we know there's only one huge page dir
+        hp = hp_res[0]
+        rows = [
+            (str(nr_pages), fmt_memsize(sz), fmt_memsize(sz * nr_pages))
+            # iterate over each page size within the huge page dir
+            for sz in hp.valid_page_sizes
+            # read number of pages for this size
+            for nr_pages in [hp[sz]]
+            # skip if no pages
+            if nr_pages
+        ]
+    if not rows:
+        print("No huge pages reserved")
+        return
+
+    # find max widths for each column, including header and rows
+    col_widths = [
+        max(len(tup[col_idx]) for tup in rows + [headers])
+        for col_idx in range(len(headers))
+    ]
+
+    # print everything
+    print_row(headers, col_widths)
+    for r in rows:
+        print_row(r, col_widths)
+
+
+def print_mount_status() -> None:
+    """Display status of huge page filesystem mounts"""
+    mounted = get_hugetlbfs_mountpoints()
+    if not mounted:
+        print("No huge page filesystems mounted")
+        return
+    print("Huge page filesystems mounted at:", *mounted, sep=" ")
+
+
+def scan_huge_dirs(node: T.Optional[int]) -> T.List[HugepageRes]:
+    """Return a HugepageRes object for each huge page directory"""
+    # if NUMA is enabled, scan per-NUMA node huge pages
+    if is_numa():
+        # helper function to extract node number from directory name
+        def _get_node(path: str) -> T.Optional[int]:
+            m = re.match(r"node(\d+)", os.path.basename(path))
+            return int(m.group(1)) if m else None
+
+        # we want a sorted list of NUMA nodes
+        nodes = sorted(
+            n
+            # iterate over all directories in the base directory
+            for d in os.listdir(NUMA_NODE_BASE_DIR)
+            # extract the node number from the directory name
+            for n in [_get_node(d)]
+            # filter out None values (non-NUMA node directories)
+            if n is not None
+        )
+        return [
+            HugepageRes(os.path.join(NUMA_NODE_BASE_DIR, f"node{n}", "hugepages"), n)
+            for n in nodes
+            # if user requested a specific node, only include that one
+            if node is None or n == node
+        ]
+    # otherwise, use non-NUMA huge page directory
+    if node is not None:
+        raise ValueError("NUMA node requested but not supported")
+    return [HugepageRes(NO_NUMA_HUGE_DIR)]
+
+
+def try_reserve_huge_pages(
+    hp_res: T.List[HugepageRes], mem_sz: str, pagesize_kb: int
+) -> None:
+    """Reserve huge pages if possible"""
+    reserve_kb = get_memsize(mem_sz)
+
+    # is this a valid request?
+    if reserve_kb % pagesize_kb != 0:
+        fmt_res = fmt_memsize(reserve_kb)
+        fmt_sz = fmt_memsize(pagesize_kb)
+        raise ValueError(
+            f"Huge reservation {fmt_res} is " f"not a multiple of page size {fmt_sz}"
+        )
+
+    # request is valid, reserve pages
+    for hp in hp_res:
+        req = reserve_kb // pagesize_kb
+        hp[pagesize_kb] = req
+        got = hp[pagesize_kb]
+        # did we fulfill our request?
+        if got != req:
+            raise OSError(
+                f"Failed to reserve {req} pages of size "
+                f"{fmt_memsize(pagesize_kb)}, "
+                f"got {got} pages instead"
+            )
 
 
 def main():
-    '''Process the command line arguments and setup huge pages'''
+    """Process the command line arguments and setup huge pages"""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Setup huge pages",
@@ -214,58 +288,68 @@ To display current huge page settings:
 
 To a complete setup of with 2 Gigabyte of 1G huge pages:
     %(prog)s -p 1G --setup 2G
-""")
+""",
+    )
     parser.add_argument(
-        '--show',
-        '-s',
-        action='store_true',
-        help="print the current huge page configuration")
+        "--show",
+        "-s",
+        action="store_true",
+        help="Print current huge page configuration",
+    )
     parser.add_argument(
-        '--clear', '-c', action='store_true', help="clear existing huge pages")
+        "--clear", "-c", action="store_true", help="Clear existing huge pages"
+    )
     parser.add_argument(
-        '--mount',
-        '-m',
-        action='store_true',
-        help='mount the huge page filesystem')
+        "--mount",
+        "-m",
+        action="store_true",
+        help="Mount the huge page filesystem",
+    )
     parser.add_argument(
-        '--unmount',
-        '-u',
-        action='store_true',
-        help='unmount the system huge page directory')
+        "--unmount",
+        "-u",
+        action="store_true",
+        help="Unmount the system huge page directory",
+    )
     parser.add_argument(
-        '--directory',
-        '-d',
-        metavar='DIR',
+        "--directory",
+        "-d",
+        metavar="DIR",
         default=HUGE_MOUNT,
-        help='mount point')
+        help="Mount point for huge pages",
+    )
     parser.add_argument(
-        '--user',
-        '-U',
-        metavar='UID',
-        help='set the mounted directory owner user')
+        "--user",
+        "-U",
+        metavar="UID",
+        help="Set the mounted directory owner user",
+    )
     parser.add_argument(
-        '--group',
-        '-G',
-        metavar='GID',
-        help='set the mounted directory owner group')
+        "--group",
+        "-G",
+        metavar="GID",
+        help="Set the mounted directory owner group",
+    )
     parser.add_argument(
-        '--node', '-n', help='select numa node to reserve pages on')
+        "--node", "-n", type=int, help="Select numa node to reserve pages on"
+    )
     parser.add_argument(
-        '--pagesize',
-        '-p',
-        metavar='SIZE',
-        help='choose huge page size to use')
+        "--pagesize", "-p", metavar="SIZE", help="Choose huge page size to use"
+    )
     parser.add_argument(
-        '--reserve',
-        '-r',
-        metavar='SIZE',
-        help='reserve huge pages. Size is in bytes with K, M, or G suffix')
+        "--reserve",
+        "-r",
+        metavar="SIZE",
+        help="Reserve huge pages. Size is in bytes with K, M, or G suffix",
+    )
     parser.add_argument(
-        '--setup',
-        metavar='SIZE',
-        help='setup huge pages by doing clear, unmount, reserve and mount')
+        "--setup",
+        metavar="SIZE",
+        help="Setup huge pages by doing clear, unmount, reserve and mount",
+    )
     args = parser.parse_args()
 
+    # setup is clear, then unmount, then reserve, then mount
     if args.setup:
         args.clear = True
         args.unmount = True
@@ -275,33 +359,51 @@ To a complete setup of with 2 Gigabyte of 1G huge pages:
     if not (args.show or args.mount or args.unmount or args.clear or args.reserve):
         parser.error("no action specified")
 
+    # read huge page data from sysfs
+    hp_res = scan_huge_dirs(args.node)
+
+    # read huge page mountpoint data
+    hp_mountpoint = args.directory
+    hp_mounted = hp_mountpoint in get_hugetlbfs_mountpoints()
+    hp_mount = HugepageMount(hp_mountpoint, hp_mounted)
+
+    # get requested page size we will be working with
     if args.pagesize:
         pagesize_kb = get_memsize(args.pagesize)
     else:
         pagesize_kb = default_pagesize()
-    if not pagesize_kb:
-        sys.exit("Invalid page size: {}kB".format(pagesize_kb))
 
+    # were we asked to clear?
     if args.clear:
-        clear_pages()
-    if args.unmount:
-        umount_huge(args.directory)
+        for hp in hp_res:
+            for sz in hp.valid_page_sizes:
+                hp[sz] = 0
 
+    # were we asked to unmount?
+    if args.unmount:
+        hp_mount.unmount()
+
+    # were we asked to reserve pages?
     if args.reserve:
-        reserve_kb = get_memsize(args.reserve)
-        if reserve_kb % pagesize_kb != 0:
-            sys.exit(
-                'Huge reservation {}kB is not a multiple of page size {}kB'.
-                format(reserve_kb, pagesize_kb))
-        reserve_pages(
-            int(reserve_kb / pagesize_kb), pagesize_kb, node=args.node)
+        try_reserve_huge_pages(hp_res, args.reserve, pagesize_kb)
+
+    # were we asked to mount?
     if args.mount:
-        mount_huge(pagesize_kb, args.directory, args.user, args.group)
+        hp_mount.mount(pagesize_kb, args.user, args.group)
+
+    # were we asked to display status?
     if args.show:
-        show_pages()
+        print_hp_status(hp_res)
         print()
-        show_mount()
+        print_mount_status()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except PermissionError:
+        sys.exit("Permission denied: need to be root!")
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"Command failed: {e}")
+    except (KeyError, ValueError, OSError) as e:
+        sys.exit(f"Error: {e}")

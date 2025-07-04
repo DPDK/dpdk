@@ -17,10 +17,11 @@
 #define DRIVER_NAME baseband_null
 
 RTE_LOG_REGISTER_DEFAULT(bbdev_null_logtype, NOTICE);
+#define RTE_LOGTYPE_BBDEV_NULL bbdev_null_logtype
 
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, bbdev_null_logtype, fmt "\n", ##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, BBDEV_NULL, __VA_ARGS__)
 
 #define rte_bbdev_log_debug(fmt, ...) \
 	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
@@ -47,9 +48,9 @@ struct bbdev_private {
 };
 
 /* queue */
-struct bbdev_queue {
+struct __rte_cache_aligned bbdev_queue {
 	struct rte_ring *processed_pkts;  /* Ring for processed packets */
-} __rte_cache_aligned;
+};
 
 /* Get device info */
 static void

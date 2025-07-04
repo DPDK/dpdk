@@ -20,6 +20,7 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_pci.h>
+#include <rte_seqcount.h>
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
 #include <rte_tailq.h>
@@ -43,7 +44,6 @@
 #define PLT_ASSERT		 RTE_ASSERT
 #define PLT_VERIFY		 RTE_VERIFY
 #define PLT_MEMZONE_NAMESIZE	 RTE_MEMZONE_NAMESIZE
-#define PLT_STD_C11		 RTE_STD_C11
 #define PLT_PTR_ADD		 RTE_PTR_ADD
 #define PLT_PTR_SUB		 RTE_PTR_SUB
 #define PLT_PTR_DIFF		 RTE_PTR_DIFF
@@ -70,6 +70,13 @@
 #define PLT_ETHER_ADDR_LEN RTE_ETHER_ADDR_LEN
 #endif
 
+#define PLT_DISABLE_TEMPLATE_FUNC 0
+#if PLT_DISABLE_TEMPLATE_FUNC
+#ifndef CNXK_DIS_TMPLT_FUNC
+#define CNXK_DIS_TMPLT_FUNC
+#endif
+#endif
+
 /* Cast to specific datatypes */
 #define PLT_PTR_CAST(val) ((void *)(val))
 #define PLT_U64_CAST(val) ((uint64_t)(val))
@@ -82,7 +89,7 @@
 
 /** Divide ceil */
 #define PLT_DIV_CEIL(x, y)			\
-	({					\
+	__extension__ ({			\
 		__typeof(x) __x = x;		\
 		__typeof(y) __y = y;		\
 		(__x + __y - 1) / __y;		\
@@ -90,7 +97,8 @@
 
 #define __plt_cache_aligned __rte_cache_aligned
 #define __plt_always_inline __rte_always_inline
-#define __plt_packed	    __rte_packed
+#define __plt_packed_begin  __rte_packed_begin
+#define __plt_packed_end    __rte_packed_end
 #define __plt_unused	    __rte_unused
 #define __roc_api	    __rte_internal
 #define plt_iova_t	    rte_iova_t
@@ -111,6 +119,7 @@
 
 #define __plt_aligned	    __rte_aligned
 #define plt_align32pow2	    rte_align32pow2
+#define plt_align64pow2	    rte_align64pow2
 #define plt_align32prevpow2 rte_align32prevpow2
 
 #define plt_bitmap			rte_bitmap
@@ -130,12 +139,27 @@
 #define plt_spinlock_unlock  rte_spinlock_unlock
 #define plt_spinlock_trylock rte_spinlock_trylock
 
+#define plt_seqcount_t			rte_seqcount_t
+#define plt_seqcount_init		rte_seqcount_init
+#define plt_seqcount_read_begin		rte_seqcount_read_begin
+#define plt_seqcount_read_retry		rte_seqcount_read_retry
+#define plt_seqcount_write_begin	rte_seqcount_write_begin
+#define plt_seqcount_write_end		rte_seqcount_write_end
+
+#define plt_thread_t		     rte_thread_t
 #define plt_intr_callback_register   rte_intr_callback_register
 #define plt_intr_callback_unregister rte_intr_callback_unregister
 #define plt_intr_disable	     rte_intr_disable
 #define plt_thread_is_intr	     rte_thread_is_intr
 #define plt_intr_callback_fn	     rte_intr_callback_fn
-#define plt_ctrl_thread_create	     rte_ctrl_thread_create
+#define plt_thread_create_control    rte_thread_create_internal_control
+#define plt_thread_join	             rte_thread_join
+
+static inline bool
+plt_thread_is_valid(plt_thread_t thr)
+{
+	return thr.opaque_id ? true : false;
+}
 
 #define plt_intr_efd_counter_size_get	rte_intr_efd_counter_size_get
 #define plt_intr_efd_counter_size_set	rte_intr_efd_counter_size_set
@@ -163,6 +187,7 @@
 #define plt_intr_efds_index_set		rte_intr_efds_index_set
 #define plt_intr_elist_index_get	rte_intr_elist_index_get
 #define plt_intr_elist_index_set	rte_intr_elist_index_set
+#define plt_is_aligned			rte_is_aligned
 
 #define plt_alarm_set	 rte_eal_alarm_set
 #define plt_alarm_cancel rte_eal_alarm_cancel
@@ -194,6 +219,11 @@
 #define plt_bit_relaxed_get64   rte_bit_relaxed_get64
 #define plt_bit_relaxed_set64   rte_bit_relaxed_set64
 #define plt_bit_relaxed_clear64 rte_bit_relaxed_clear64
+
+#define plt_popcount32		rte_popcount32
+#define plt_popcount64		rte_popcount64
+#define plt_clz32		rte_clz32
+#define plt_ctz64		rte_ctz64
 
 #define plt_mmap       mmap
 #define PLT_PROT_READ  PROT_READ
@@ -230,35 +260,54 @@
 #define plt_tel_data_add_dict_string rte_tel_data_add_dict_string
 #define plt_tel_data_add_dict_u64    rte_tel_data_add_dict_uint
 #define plt_telemetry_register_cmd   rte_telemetry_register_cmd
+#define __plt_atomic __rte_atomic
 
 /* Log */
 extern int cnxk_logtype_base;
+#define RTE_LOGTYPE_base cnxk_logtype_base
 extern int cnxk_logtype_mbox;
+#define RTE_LOGTYPE_mbox cnxk_logtype_mbox
 extern int cnxk_logtype_cpt;
+#define RTE_LOGTYPE_cpt cnxk_logtype_cpt
 extern int cnxk_logtype_ml;
+#define RTE_LOGTYPE_ml cnxk_logtype_ml
 extern int cnxk_logtype_npa;
+#define RTE_LOGTYPE_npa cnxk_logtype_npa
 extern int cnxk_logtype_nix;
+#define RTE_LOGTYPE_nix cnxk_logtype_nix
 extern int cnxk_logtype_npc;
+#define RTE_LOGTYPE_npc cnxk_logtype_npc
 extern int cnxk_logtype_sso;
+#define RTE_LOGTYPE_sso cnxk_logtype_sso
 extern int cnxk_logtype_tim;
+#define RTE_LOGTYPE_tim cnxk_logtype_tim
 extern int cnxk_logtype_tm;
+#define RTE_LOGTYPE_tm cnxk_logtype_tm
 extern int cnxk_logtype_ree;
+#define RTE_LOGTYPE_ree cnxk_logtype_ree
+extern int cnxk_logtype_dpi;
+#define RTE_LOGTYPE_dpi cnxk_logtype_dpi
+extern int cnxk_logtype_rep;
+#define RTE_LOGTYPE_rep cnxk_logtype_rep
+extern int cnxk_logtype_esw;
+#define RTE_LOGTYPE_esw cnxk_logtype_esw
 
-#define plt_err(fmt, args...)                                                  \
-	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_info(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
-#define plt_warn(fmt, args...) RTE_LOG(WARNING, PMD, fmt "\n", ##args)
-#define plt_print(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
+#define RTE_LOGTYPE_CNXK cnxk_logtype_base
+
+#define plt_err(...) \
+	RTE_LOG_LINE_PREFIX(ERR, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
+#define plt_info(...) RTE_LOG_LINE(INFO, CNXK, __VA_ARGS__)
+#define plt_warn(...) RTE_LOG_LINE(WARNING, CNXK, __VA_ARGS__)
+#define plt_print(...) RTE_LOG_LINE(INFO, CNXK, __VA_ARGS__)
 #define plt_dump(fmt, ...)      fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 #define plt_dump_no_nl(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
 
 /**
  * Log debug message if given subsystem logging is enabled.
  */
-#define plt_dbg(subsystem, fmt, args...)                                       \
-	rte_log(RTE_LOG_DEBUG, cnxk_logtype_##subsystem,                       \
-		"[%s] %s():%u " fmt "\n", #subsystem, __func__, __LINE__,      \
-##args)
+#define plt_dbg(subsystem, ...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, subsystem, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
 
 #define plt_base_dbg(fmt, ...)	plt_dbg(base, fmt, ##__VA_ARGS__)
 #define plt_cpt_dbg(fmt, ...)	plt_dbg(cpt, fmt, ##__VA_ARGS__)
@@ -271,14 +320,20 @@ extern int cnxk_logtype_ree;
 #define plt_tim_dbg(fmt, ...)	plt_dbg(tim, fmt, ##__VA_ARGS__)
 #define plt_tm_dbg(fmt, ...)	plt_dbg(tm, fmt, ##__VA_ARGS__)
 #define plt_ree_dbg(fmt, ...)	plt_dbg(ree, fmt, ##__VA_ARGS__)
+#define plt_dpi_dbg(fmt, ...)	plt_dbg(dpi, fmt, ##__VA_ARGS__)
+#define plt_rep_dbg(fmt, ...)	plt_dbg(rep, fmt, ##__VA_ARGS__)
+#define plt_esw_dbg(fmt, ...)	plt_dbg(esw, fmt, ##__VA_ARGS__)
 
 /* Datapath logs */
-#define plt_dp_err(fmt, args...)                                               \
-	RTE_LOG_DP(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_dp_info(fmt, args...)                                              \
-	RTE_LOG_DP(INFO, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_dp_dbg(fmt, args...)                                              \
-	RTE_LOG_DP(DEBUG, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+#define plt_dp_err(...) \
+	RTE_LOG_DP_LINE_PREFIX(ERR, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
+#define plt_dp_info(...) \
+	RTE_LOG_DP_LINE_PREFIX(INFO, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
+#define plt_dp_dbg(...) \
+	RTE_LOG_DP_LINE_PREFIX(DEBUG, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \
@@ -296,6 +351,13 @@ extern int cnxk_logtype_ree;
 }
 #endif
 
+int plt_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, void *data,
+		     unsigned int vec);
+void plt_irq_unregister(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, void *data,
+			unsigned int vec);
+int plt_irq_reconfigure(struct plt_intr_handle *intr_handle, uint16_t max_intr);
+int plt_irq_disable(struct plt_intr_handle *intr_handle);
+
 /* Device memory does not support unaligned access, instruct compiler to
  * not optimize the memory access when working with mailbox memory.
  */
@@ -305,6 +367,11 @@ extern int cnxk_logtype_ree;
 
 __rte_internal
 int roc_plt_init(void);
+
+__rte_internal
+uint16_t roc_plt_control_lmt_id_get(void);
+__rte_internal
+uint16_t roc_plt_lmt_validate(void);
 
 /* Init callbacks */
 typedef int (*roc_plt_init_cb_t)(void);

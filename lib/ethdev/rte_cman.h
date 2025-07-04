@@ -5,10 +5,6 @@
 #ifndef RTE_CMAN_H
 #define RTE_CMAN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bitops.h>
 
 /**
@@ -47,9 +43,5 @@ struct rte_cman_red_params {
 	/** Inverse of packet marking probability maximum value (maxp = 1 / maxp_inv) */
 	uint16_t maxp_inv;
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_CMAN_H */

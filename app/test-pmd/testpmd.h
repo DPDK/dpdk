@@ -84,7 +84,7 @@ extern volatile uint8_t f_quit;
 /* Maximum number of pools supported per Rx queue */
 #define MAX_MEMPOOL 8
 
-typedef uint8_t  lcoreid_t;
+typedef uint32_t lcoreid_t;
 typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
 typedef uint16_t streamid_t;
@@ -110,11 +110,31 @@ enum {
 enum {
 	QUEUE_JOB_TYPE_FLOW_CREATE,
 	QUEUE_JOB_TYPE_FLOW_DESTROY,
+	QUEUE_JOB_TYPE_FLOW_TRANSFER,
+	QUEUE_JOB_TYPE_FLOW_UPDATE,
 	QUEUE_JOB_TYPE_ACTION_CREATE,
 	QUEUE_JOB_TYPE_ACTION_DESTROY,
 	QUEUE_JOB_TYPE_ACTION_UPDATE,
 	QUEUE_JOB_TYPE_ACTION_QUERY,
 };
+
+enum noisy_fwd_mode {
+	NOISY_FWD_MODE_IO,
+	NOISY_FWD_MODE_MAC,
+	NOISY_FWD_MODE_MACSWAP,
+	NOISY_FWD_MODE_5TSWAP,
+	NOISY_FWD_MODE_MAX,
+};
+
+/**
+ * Command line arguments parser sets `hairpin_multiport_mode` to True
+ * if explicit hairpin map configuration mode was used.
+ */
+extern bool hairpin_multiport_mode;
+
+/** Hairpin maps list. */
+struct hairpin_map;
+extern void hairpin_add_multiport_map(struct hairpin_map *map);
 
 /**
  * The data structure associated with RX and TX packet burst statistics
@@ -179,6 +199,8 @@ struct fwd_stream {
 	struct pkt_burst_stats rx_burst_stats;
 	struct pkt_burst_stats tx_burst_stats;
 	struct fwd_lcore *lcore; /**< Lcore being scheduled. */
+	/**< Rx queue information for recycling mbufs */
+	struct rte_eth_recycle_rxq_info recycle_rxq_info;
 };
 
 /**
@@ -208,7 +230,7 @@ struct port_table {
 	uint32_t id; /**< Table ID. */
 	uint32_t nb_pattern_templates; /**< Number of pattern templates. */
 	uint32_t nb_actions_templates; /**< Number of actions templates. */
-	struct rte_flow_attr flow_attr; /**< Flow attributes. */
+	struct rte_flow_template_table_attr attr; /**< Table attributes. */
 	struct rte_flow_template_table *table; /**< PMD opaque template object */
 };
 
@@ -216,7 +238,9 @@ struct port_table {
 struct port_flow {
 	struct port_flow *next; /**< Next flow in list. */
 	struct port_flow *tmp; /**< Temporary linking. */
-	uint32_t id; /**< Flow rule ID. */
+	uint64_t id; /**< Flow rule ID. */
+	uint64_t user_id; /**< User rule ID. */
+	struct port_table *table; /**< Flow table. */
 	struct rte_flow *flow; /**< Opaque flow object returned by PMD. */
 	struct rte_flow_conv_rule rule; /**< Saved flow rule description. */
 	enum age_action_context_type age_type; /**< Age action context type. */
@@ -228,7 +252,12 @@ struct port_indirect_action {
 	struct port_indirect_action *next; /**< Next flow in list. */
 	uint32_t id; /**< Indirect action ID. */
 	enum rte_flow_action_type type; /**< Action type. */
-	struct rte_flow_action_handle *handle;	/**< Indirect action handle. */
+	union {
+		struct rte_flow_action_handle *handle;
+		/**< Indirect action handle. */
+		struct rte_flow_action_list_handle *list_handle;
+		/**< Indirect action list handle*/
+	};
 	enum age_action_context_type age_type; /**< Age action context type. */
 };
 
@@ -321,7 +350,7 @@ struct rte_port {
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	queueid_t               queue_nb; /**< nb. of queues for flow rules */
 	uint32_t                queue_sz; /**< size of a queue for flow rules */
-	uint8_t                 slave_flag : 1, /**< bonding slave port */
+	uint8_t                 member_flag : 1, /**< bonding member port */
 				bond_flag : 1, /**< port is bond device */
 				fwd_mac_swap : 1, /**< swap packet MAC before forward */
 				update_conf : 1; /**< need to update bonding device configuration */
@@ -391,6 +420,7 @@ struct fwd_engine {
 	port_fwd_end_t   port_fwd_end;   /**< NULL if nothing special to do. */
 	stream_init_t    stream_init;    /**< NULL if nothing special to do. */
 	packet_fwd_t     packet_fwd;     /**< Mandatory. */
+	const char       *status;        /**< NULL if nothing to display. */
 };
 
 void common_fwd_stream_init(struct fwd_stream *fs);
@@ -432,6 +462,7 @@ extern struct fwd_engine csum_fwd_engine;
 extern struct fwd_engine icmp_echo_engine;
 extern struct fwd_engine noisy_vnf_engine;
 extern struct fwd_engine five_tuple_swap_fwd_engine;
+extern struct fwd_engine recycle_mbufs_engine;
 #ifdef RTE_LIBRTE_IEEE1588
 extern struct fwd_engine ieee1588_fwd_engine;
 #endif
@@ -467,6 +498,8 @@ enum dcb_mode_enable
 };
 
 extern uint8_t xstats_hide_zero; /**< Hide zero values for xstats display */
+extern uint8_t xstats_hide_disabled; /**< Hide disabled xstat for xstats display */
+extern uint8_t xstats_show_state; /**< Show xstat state in xstats display */
 
 /* globals used for configuration */
 extern uint8_t record_core_cycles; /**< Enables measurement of CPU cycles */
@@ -477,6 +510,7 @@ extern uint8_t  interactive;
 extern uint8_t  auto_start;
 extern uint8_t  tx_first;
 extern char cmdline_filename[PATH_MAX]; /**< offline commands file */
+extern bool echo_cmdline_file;  /** unset if cmdline-file-noecho is used */
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
@@ -555,6 +589,8 @@ extern int8_t rx_drop_en;
 extern int16_t tx_free_thresh;
 extern int16_t tx_rs_thresh;
 
+extern enum noisy_fwd_mode noisy_fwd_mode;
+extern const char * const noisy_fwd_mode_desc[];
 extern uint16_t noisy_tx_sw_bufsz;
 extern uint16_t noisy_tx_sw_buf_flush_time;
 extern uint64_t noisy_lkup_mem_sz;
@@ -689,8 +725,8 @@ struct vxlan_encap_conf {
 	rte_be16_t udp_dst;
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t ip_tos;
 	uint8_t ip_ttl;
@@ -707,8 +743,8 @@ struct nvgre_encap_conf {
 	uint8_t tni[3];
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -739,8 +775,8 @@ struct mplsogre_encap_conf {
 	uint8_t label[3];
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -763,8 +799,8 @@ struct mplsoudp_encap_conf {
 	rte_be16_t udp_dst;
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -900,10 +936,13 @@ void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
 void nic_xstats_display(portid_t port_id);
 void nic_xstats_clear(portid_t port_id);
+void nic_xstats_set_counter(portid_t port_id, char *counter_name, int on);
 void device_infos_display(const char *identifier);
 void port_infos_display(portid_t port_id);
 void port_summary_display(portid_t port_id);
 void port_eeprom_display(portid_t port_id);
+void port_eeprom_set(portid_t port_id, uint32_t magic, uint32_t offset,
+		     uint32_t length, uint8_t *value);
 void port_module_eeprom_display(portid_t port_id);
 void port_summary_header_display(void);
 void rx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
@@ -919,9 +958,10 @@ int init_fwd_streams(void);
 void update_fwd_ports(portid_t new_pid);
 
 void set_fwd_eth_peer(portid_t port_id, char *peer_addr);
+void set_dev_led(portid_t port_id, bool active);
 
 void port_mtu_set(portid_t port_id, uint16_t mtu);
-int port_action_handle_create(portid_t port_id, uint32_t id,
+int port_action_handle_create(portid_t port_id, uint32_t id, bool indirect_list,
 			      const struct rte_flow_indir_action_conf *conf,
 			      const struct rte_flow_action *action);
 int port_action_handle_destroy(portid_t port_id,
@@ -959,16 +999,27 @@ int port_flow_template_table_create(portid_t port_id, uint32_t id,
 		   uint32_t nb_actions_templates, uint32_t *actions_templates);
 int port_flow_template_table_destroy(portid_t port_id,
 			    uint32_t n, const uint32_t *table);
+int port_queue_flow_update_resized(portid_t port_id, queueid_t queue_id,
+				   bool postpone, uint32_t flow_id);
 int port_flow_template_table_flush(portid_t port_id);
+int port_flow_template_table_resize_complete(portid_t port_id, uint32_t table_id);
+int port_flow_template_table_resize(portid_t port_id,
+				    uint32_t table_id, uint32_t flows_num);
+int port_queue_group_set_miss_actions(portid_t port_id, const struct rte_flow_attr *attr,
+				      const struct rte_flow_action *actions);
 int port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 			   bool postpone, uint32_t table_id, uint32_t rule_idx,
 			   uint32_t pattern_idx, uint32_t actions_idx,
 			   const struct rte_flow_item *pattern,
 			   const struct rte_flow_action *actions);
 int port_queue_flow_destroy(portid_t port_id, queueid_t queue_id,
-			    bool postpone, uint32_t n, const uint32_t *rule);
+			    bool postpone, uint32_t n, const uint64_t *rule);
+int port_queue_flow_update(portid_t port_id, queueid_t queue_id,
+			   bool postpone, uint32_t rule_idx, uint32_t actions_idx,
+			   const struct rte_flow_action *actions);
 int port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 			bool postpone, uint32_t id,
+			bool indirect_list,
 			const struct rte_flow_indir_action_conf *conf,
 			const struct rte_flow_action *action);
 int port_queue_action_handle_destroy(portid_t port_id,
@@ -987,6 +1038,11 @@ port_queue_action_handle_query_update(portid_t port_id,
 				      const struct rte_flow_action *action);
 int port_queue_flow_push(portid_t port_id, queueid_t queue_id);
 int port_queue_flow_pull(portid_t port_id, queueid_t queue_id);
+int port_flow_hash_calc(portid_t port_id, uint32_t table_id,
+			uint8_t pattern_template_index, const struct rte_flow_item pattern[]);
+int port_flow_hash_calc_encap(portid_t port_id,
+			      enum rte_flow_encap_hash_field encap_hash_field,
+			      const struct rte_flow_item pattern[]);
 void port_queue_flow_aged(portid_t port_id, uint32_t queue_id, uint8_t destroy);
 int port_flow_validate(portid_t port_id,
 		       const struct rte_flow_attr *attr,
@@ -997,17 +1053,22 @@ int port_flow_create(portid_t port_id,
 		     const struct rte_flow_attr *attr,
 		     const struct rte_flow_item *pattern,
 		     const struct rte_flow_action *actions,
-		     const struct tunnel_ops *tunnel_ops);
+		     const struct tunnel_ops *tunnel_ops,
+		     uintptr_t user_id);
 int port_action_handle_query(portid_t port_id, uint32_t id);
 void update_age_action_context(const struct rte_flow_action *actions,
 		     struct port_flow *pf);
 int mcast_addr_pool_destroy(portid_t port_id);
-int port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule);
+int port_flow_destroy(portid_t port_id, uint32_t n, const uint64_t *rule,
+		      bool is_user_id);
+int port_flow_update(portid_t port_id, uint32_t rule,
+		     const struct rte_flow_action *actions, bool is_user_id);
 int port_flow_flush(portid_t port_id);
 int port_flow_dump(portid_t port_id, bool dump_all,
-			uint32_t rule, const char *file_name);
-int port_flow_query(portid_t port_id, uint32_t rule,
-		    const struct rte_flow_action *action);
+			uint64_t rule, const char *file_name,
+			bool is_user_id);
+int port_flow_query(portid_t port_id, uint64_t rule,
+		    const struct rte_flow_action *action, bool is_user_id);
 void port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group);
 void port_flow_aged(portid_t port_id, uint8_t destroy);
 const char *port_flow_tunnel_type(struct rte_flow_tunnel *tunnel);
@@ -1054,6 +1115,8 @@ void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 
 void set_xstats_hide_zero(uint8_t on_off);
+void set_xstats_show_state(uint8_t on_off);
+void set_xstats_hide_disabled(uint8_t on_off);
 
 void set_record_core_cycles(uint8_t on_off);
 void set_record_burst_stats(uint8_t on_off);
@@ -1082,13 +1145,16 @@ void stop_packet_forwarding(void);
 void dev_set_link_up(portid_t pid);
 void dev_set_link_down(portid_t pid);
 void init_port_config(void);
-void set_port_slave_flag(portid_t slave_pid);
-void clear_port_slave_flag(portid_t slave_pid);
-uint8_t port_is_bonding_slave(portid_t slave_pid);
+void set_port_member_flag(portid_t member_pid);
+void clear_port_member_flag(portid_t member_pid);
+uint8_t port_is_bonding_member(portid_t member_pid);
 
 int init_port_dcb_config(portid_t pid, enum dcb_mode_enable dcb_mode,
 		     enum rte_eth_nb_tcs num_tcs,
-		     uint8_t pfc_en);
+		     uint8_t pfc_en,
+		     uint8_t prio_tc[RTE_ETH_DCB_NUM_USER_PRIORITIES],
+		     uint8_t prio_tc_en,
+		     uint8_t keep_qnum);
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
@@ -1121,7 +1187,7 @@ int set_vf_rate_limit(portid_t port_id, uint16_t vf, uint32_t rate,
 int set_rxq_avail_thresh(portid_t port_id, uint16_t queue_id,
 			 uint8_t avail_thresh);
 
-void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);
+void port_rss_hash_conf_show(portid_t port_id, int show_rss_key, int show_rss_algo);
 void port_rss_hash_key_update(portid_t port_id, char rss_type[],
 			      uint8_t *hash_key, uint8_t hash_key_len);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
@@ -1151,6 +1217,7 @@ void show_mcast_macs(portid_t port_id);
 /* Functions to manage the set of filtered Multicast MAC addresses */
 void mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr);
 void mcast_addr_remove(portid_t port_id, struct rte_ether_addr *mc_addr);
+void mcast_addr_flush(portid_t port_id);
 void port_dcb_info_display(portid_t port_id);
 
 uint8_t *open_file(const char *file_path, uint32_t *size);
@@ -1207,6 +1274,10 @@ extern int flow_parse(const char *src, void *result, unsigned int size,
 		      struct rte_flow_attr **attr,
 		      struct rte_flow_item **pattern,
 		      struct rte_flow_action **actions);
+int setup_hairpin_queues(portid_t pi, portid_t p_pi, uint16_t cnt_pi);
+int hairpin_bind(uint16_t cfg_pi, portid_t *pl, portid_t *peer_pl);
+void hairpin_map_usage(void);
+int parse_hairpin_map(const char *hpmap);
 
 uint64_t str_to_rsstypes(const char *str);
 const char *rsstypes_to_str(uint64_t rss_type);
@@ -1230,26 +1301,10 @@ RTE_INIT(__##c) \
 	testpmd_add_driver_commands(&c); \
 }
 
-/*
- * Work-around of a compilation error with ICC on invocations of the
- * rte_be_to_cpu_16() function.
- */
-#ifdef __GCC__
 #define RTE_BE_TO_CPU_16(be_16_v)  rte_be_to_cpu_16((be_16_v))
 #define RTE_CPU_TO_BE_16(cpu_16_v) rte_cpu_to_be_16((cpu_16_v))
-#else
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-#define RTE_BE_TO_CPU_16(be_16_v)  (be_16_v)
-#define RTE_CPU_TO_BE_16(cpu_16_v) (cpu_16_v)
-#else
-#define RTE_BE_TO_CPU_16(be_16_v) \
-	(uint16_t) ((((be_16_v) & 0xFF) << 8) | ((be_16_v) >> 8))
-#define RTE_CPU_TO_BE_16(cpu_16_v) \
-	(uint16_t) ((((cpu_16_v) & 0xFF) << 8) | ((cpu_16_v) >> 8))
-#endif
-#endif /* __GCC__ */
 
-#define TESTPMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## args)
+#define TESTPMD_LOG(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## __VA_ARGS__)
 
 #endif /* _TESTPMD_H_ */

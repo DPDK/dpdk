@@ -17,6 +17,37 @@
 #define DW_SELECTORS_RANGE 2
 #define BYTE_SELECTORS_RANGE 8
 
+enum mlx5dr_definer_compare_ste_dw_offset {
+	/* In compare STE the matching DW's starts after the 3 actions */
+	MLX5DR_DEFINER_COMPARE_STE_ARGUMENT_1 = 3,
+	MLX5DR_DEFINER_COMPARE_STE_ARGUMENT_0,
+	MLX5DR_DEFINER_COMPARE_STE_BASE_1,
+	MLX5DR_DEFINER_COMPARE_STE_BASE_0,
+	MLX5DR_DEFINER_COMPARE_STE_TAG_DW_3,
+	MLX5DR_DEFINER_COMPARE_STE_TAG_DW_2,
+	MLX5DR_DEFINER_COMPARE_STE_TAG_DW_1,
+	MLX5DR_DEFINER_COMPARE_STE_TAG_DW_0,
+};
+
+enum mlx5dr_definer_dw_selectors {
+	MLX5DR_DEFINER_SELECTOR_DW0,
+	MLX5DR_DEFINER_SELECTOR_DW1,
+	MLX5DR_DEFINER_SELECTOR_DW2,
+	MLX5DR_DEFINER_SELECTOR_DW3,
+	MLX5DR_DEFINER_SELECTOR_DW4,
+	MLX5DR_DEFINER_SELECTOR_DW5,
+	MLX5DR_DEFINER_SELECTOR_DW6,
+	MLX5DR_DEFINER_SELECTOR_DW7,
+	MLX5DR_DEFINER_SELECTOR_DW8,
+};
+
+enum mlx5dr_definer_compare_dw_selectors {
+	MLX5DR_DEFINER_COMPARE_ARGUMENT_0 = MLX5DR_DEFINER_SELECTOR_DW4,
+	MLX5DR_DEFINER_COMPARE_ARGUMENT_1 = MLX5DR_DEFINER_SELECTOR_DW5,
+	MLX5DR_DEFINER_COMPARE_BASE_0 = MLX5DR_DEFINER_SELECTOR_DW2,
+	MLX5DR_DEFINER_COMPARE_BASE_1 = MLX5DR_DEFINER_SELECTOR_DW3,
+};
+
 enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_ETH_SMAC_48_16_O,
 	MLX5DR_DEFINER_FNAME_ETH_SMAC_48_16_I,
@@ -44,6 +75,8 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_IP_VERSION_I,
 	MLX5DR_DEFINER_FNAME_IP_FRAG_O,
 	MLX5DR_DEFINER_FNAME_IP_FRAG_I,
+	MLX5DR_DEFINER_FNAME_IP_ID_O,
+	MLX5DR_DEFINER_FNAME_IP_ID_I,
 	MLX5DR_DEFINER_FNAME_IP_LEN_O,
 	MLX5DR_DEFINER_FNAME_IP_LEN_I,
 	MLX5DR_DEFINER_FNAME_IP_TOS_O,
@@ -77,6 +110,7 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_GTP_TEID,
 	MLX5DR_DEFINER_FNAME_GTP_MSG_TYPE,
 	MLX5DR_DEFINER_FNAME_GTP_EXT_FLAG,
+	MLX5DR_DEFINER_FNAME_GTP_FLAGS,
 	MLX5DR_DEFINER_FNAME_GTP_NEXT_EXT_HDR,
 	MLX5DR_DEFINER_FNAME_GTP_EXT_HDR_PDU,
 	MLX5DR_DEFINER_FNAME_GTP_EXT_HDR_QFI,
@@ -89,8 +123,16 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_FLEX_PARSER_6,
 	MLX5DR_DEFINER_FNAME_FLEX_PARSER_7,
 	MLX5DR_DEFINER_FNAME_VPORT_REG_C_0,
-	MLX5DR_DEFINER_FNAME_VXLAN_FLAGS,
-	MLX5DR_DEFINER_FNAME_VXLAN_VNI,
+	MLX5DR_DEFINER_FNAME_VXLAN_DW0,
+	MLX5DR_DEFINER_FNAME_VXLAN_DW1,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_FLAGS,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_RSVD0,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_PROTO,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_VNI,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_RSVD1,
+	MLX5DR_DEFINER_FNAME_GENEVE_CTRL,
+	MLX5DR_DEFINER_FNAME_GENEVE_PROTO,
+	MLX5DR_DEFINER_FNAME_GENEVE_VNI,
 	MLX5DR_DEFINER_FNAME_SOURCE_QP,
 	MLX5DR_DEFINER_FNAME_REG_0,
 	MLX5DR_DEFINER_FNAME_REG_1,
@@ -100,6 +142,10 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_REG_5,
 	MLX5DR_DEFINER_FNAME_REG_6,
 	MLX5DR_DEFINER_FNAME_REG_7,
+	MLX5DR_DEFINER_FNAME_REG_8,
+	MLX5DR_DEFINER_FNAME_REG_9,
+	MLX5DR_DEFINER_FNAME_REG_10,
+	MLX5DR_DEFINER_FNAME_REG_11,
 	MLX5DR_DEFINER_FNAME_REG_A,
 	MLX5DR_DEFINER_FNAME_REG_B,
 	MLX5DR_DEFINER_FNAME_GRE_KEY_PRESENT,
@@ -108,6 +154,9 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_GRE_OPT_KEY,
 	MLX5DR_DEFINER_FNAME_GRE_OPT_SEQ,
 	MLX5DR_DEFINER_FNAME_GRE_OPT_CHECKSUM,
+	MLX5DR_DEFINER_FNAME_NVGRE_C_K_S,
+	MLX5DR_DEFINER_FNAME_NVGRE_PROTOCOL,
+	MLX5DR_DEFINER_FNAME_NVGRE_DW1,
 	MLX5DR_DEFINER_FNAME_INTEGRITY_O,
 	MLX5DR_DEFINER_FNAME_INTEGRITY_I,
 	MLX5DR_DEFINER_FNAME_ICMP_DW1,
@@ -134,6 +183,37 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_OKS2_MPLS2_I,
 	MLX5DR_DEFINER_FNAME_OKS2_MPLS3_I,
 	MLX5DR_DEFINER_FNAME_OKS2_MPLS4_I,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_0,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_1,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_2,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_3,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_4,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_5,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_6,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_7,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_0,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_1,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_2,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_3,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_4,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_5,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_6,
+	MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_7,
+	MLX5DR_DEFINER_FNAME_IB_L4_OPCODE,
+	MLX5DR_DEFINER_FNAME_IB_L4_QPN,
+	MLX5DR_DEFINER_FNAME_IB_L4_A,
+	MLX5DR_DEFINER_FNAME_PTYPE_L2_O,
+	MLX5DR_DEFINER_FNAME_PTYPE_L2_I,
+	MLX5DR_DEFINER_FNAME_PTYPE_L3_O,
+	MLX5DR_DEFINER_FNAME_PTYPE_L3_I,
+	MLX5DR_DEFINER_FNAME_PTYPE_L4_O,
+	MLX5DR_DEFINER_FNAME_PTYPE_L4_I,
+	MLX5DR_DEFINER_FNAME_PTYPE_L4_EXT_O,
+	MLX5DR_DEFINER_FNAME_PTYPE_L4_EXT_I,
+	MLX5DR_DEFINER_FNAME_PTYPE_TUNNEL,
+	MLX5DR_DEFINER_FNAME_PTYPE_FRAG_O,
+	MLX5DR_DEFINER_FNAME_PTYPE_FRAG_I,
+	MLX5DR_DEFINER_FNAME_RANDOM_NUM,
 	MLX5DR_DEFINER_FNAME_MAX,
 };
 
@@ -146,10 +226,17 @@ enum mlx5dr_definer_type {
 struct mlx5dr_definer_fc {
 	uint8_t item_idx;
 	uint8_t is_range;
+	uint8_t compare_idx;
+	bool compare_set_base;
+	union {
+		uint32_t extra_data;
+		void *dr_ctx;
+	};
 	uint32_t byte_off;
 	int bit_off;
 	uint32_t bit_mask;
 	enum mlx5dr_definer_fname fname;
+	uint8_t not_overwrite;
 	void (*tag_set)(struct mlx5dr_definer_fc *fc,
 			const void *item_spec,
 			uint8_t *tag);
@@ -390,6 +477,11 @@ struct mlx5_ifc_definer_hl_ipv4_src_dst_bits {
 	u8 destination_address[0x20];
 };
 
+struct mlx5_ifc_definer_hl_random_number_bits {
+	u8 random_number[0x10];
+	u8 reserved[0x10];
+};
+
 struct mlx5_ifc_definer_hl_ipv6_addr_bits {
 	u8 ipv6_address_127_96[0x20];
 	u8 ipv6_address_95_64[0x20];
@@ -499,17 +591,15 @@ struct mlx5_ifc_definer_hl_bits {
 	struct mlx5_ifc_definer_hl_mpls_bits mpls_inner;
 	u8 unsupported_config_headers_outer[0x80];
 	u8 unsupported_config_headers_inner[0x80];
-	u8 unsupported_random_number[0x20];
+	struct mlx5_ifc_definer_hl_random_number_bits random_number;
 	struct mlx5_ifc_definer_hl_ipsec_bits ipsec;
 	struct mlx5_ifc_definer_hl_metadata_bits metadata;
 	u8 unsupported_utc_timestamp[0x40];
 	u8 unsupported_free_running_timestamp[0x40];
 	struct mlx5_ifc_definer_hl_flex_parser_bits flex_parser;
 	struct mlx5_ifc_definer_hl_registers_bits registers;
-	/* struct x ib_l3_extended; */
-	/* struct x rwh */
-	/* struct x dcceth */
-	/* struct x dceth */
+	/* Reserved in case header layout on future HW */
+	u8 unsupported_reserved[0xd40];
 };
 
 enum mlx5dr_definer_gtp {
@@ -517,12 +607,17 @@ enum mlx5dr_definer_gtp {
 };
 
 struct mlx5_ifc_header_gtp_bits {
-	u8 version[0x3];
-	u8 proto_type[0x1];
-	u8 reserved1[0x1];
-	u8 ext_hdr_flag[0x1];
-	u8 seq_num_flag[0x1];
-	u8 pdu_flag[0x1];
+	union {
+		 u8 v_pt_rsv_flags[0x8];
+		struct {
+			u8 version[0x3];
+			u8 proto_type[0x1];
+			u8 reserved1[0x1];
+			u8 ext_hdr_flag[0x1];
+			u8 seq_num_flag[0x1];
+			u8 pdu_flag[0x1];
+		};
+	};
 	u8 msg_type[0x8];
 	u8 msg_len[0x8];
 	u8 teid[0x20];
@@ -576,6 +671,14 @@ struct mlx5_ifc_header_vxlan_bits {
 	u8 reserved2[0x8];
 };
 
+struct mlx5_ifc_header_vxlan_gpe_bits {
+	u8 flags[0x8];
+	u8 rsvd0[0x10];
+	u8 protocol[0x8];
+	u8 vni[0x18];
+	u8 rsvd1[0x8];
+};
+
 struct mlx5_ifc_header_gre_bits {
 	union {
 		u8 c_rsvd0_ver[0x10];
@@ -591,6 +694,29 @@ struct mlx5_ifc_header_gre_bits {
 	u8 gre_protocol[0x10];
 	u8 checksum[0x10];
 	u8 reserved_at_30[0x10];
+};
+
+struct mlx5_ifc_header_geneve_bits {
+	union {
+		u8 ver_opt_len_o_c_rsvd[0x10];
+		struct {
+			u8 version[0x2];
+			u8 opt_len[0x6];
+			u8 o_flag[0x1];
+			u8 c_flag[0x1];
+			u8 reserved_at_a[0x6];
+		};
+	};
+	u8 protocol_type[0x10];
+	u8 vni[0x18];
+	u8 reserved_at_38[0x8];
+};
+
+struct mlx5_ifc_header_geneve_opt_bits {
+	u8 class[0x10];
+	u8 type[0x8];
+	u8 reserved[0x3];
+	u8 len[0x5];
 };
 
 struct mlx5_ifc_header_icmp_bits {
@@ -655,5 +781,8 @@ void mlx5dr_definer_matcher_uninit(struct mlx5dr_matcher *matcher);
 int mlx5dr_definer_init_cache(struct mlx5dr_definer_cache **cache);
 
 void mlx5dr_definer_uninit_cache(struct mlx5dr_definer_cache *cache);
+
+int mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
+			   struct mlx5dr_definer *definer_b);
 
 #endif

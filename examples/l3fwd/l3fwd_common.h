@@ -19,6 +19,13 @@
 #define	IPV4_MIN_LEN_BE	(sizeof(struct rte_ipv4_hdr) << 8)
 
 /*
+ * send_packet_multi() specific number of dest ports
+ * due to implementation we need to allocate array bigger then
+ * actual max number of elements in the array.
+ */
+#define SENDM_PORT_OVERHEAD(x) (x)
+
+/*
  * From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2:
  * - The IP version number must be 4.
  * - The IP header length field must be large enough to hold the

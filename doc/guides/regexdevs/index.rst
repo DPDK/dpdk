@@ -8,7 +8,7 @@ The following are a list of RegEx (Regular Expression) device drivers,
 which can be used from an application through RegEx API.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :numbered:
 
    features_overview

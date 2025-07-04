@@ -50,8 +50,10 @@ eth_mac_cmp(const char *key __rte_unused,
 	if (rte_ether_unformat_addr(value, &mac) < 0)
 		return -1; /* invalid devargs value */
 
+	if (rte_eth_dev_info_get(data->port_id, &dev_info) != 0)
+		return -1; /* device MAC address unavailable */
+
 	/* Return 0 if devargs MAC is matching one of the device MACs. */
-	rte_eth_dev_info_get(data->port_id, &dev_info);
 	for (index = 0; index < dev_info.max_mac_addrs; index++)
 		if (rte_is_same_ether_addr(&mac, &data->mac_addrs[index]))
 			return 0;
@@ -69,7 +71,7 @@ eth_representor_cmp(const char *key __rte_unused,
 	struct rte_eth_devargs eth_da;
 	uint16_t id = 0, nc, np, nf, i, c, p, f;
 
-	if ((data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0)
+	if (!rte_eth_dev_is_repr(edev))
 		return -1; /* not a representor port */
 
 	/* Parse devargs representor values. */
@@ -143,7 +145,7 @@ eth_dev_match(const struct rte_eth_dev *edev,
 	}
 	/* if no representor key, default is to not match representor ports */
 	if (ret != 0)
-		if ((edev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0)
+		if (rte_eth_dev_is_repr(edev))
 			return -1; /* do not match any representor */
 
 	return 0;
@@ -165,7 +167,7 @@ eth_dev_iterate(const void *start,
 			valid_keys = eth_params_keys;
 		kvargs = rte_kvargs_parse(str, valid_keys);
 		if (kvargs == NULL) {
-			RTE_LOG(ERR, EAL, "cannot parse argument list\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "cannot parse argument list");
 			rte_errno = EINVAL;
 			return NULL;
 		}

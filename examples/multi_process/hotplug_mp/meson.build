@@ -7,7 +7,16 @@
 # DPDK instance, use 'make'
 
 allow_experimental_apis = true
+
+cmd_h = custom_target('commands_hdr',
+        output: 'commands.h',
+        input: files('commands.list'),
+        capture: true,
+        command: [cmdline_gen_cmd, '--context-name=main_ctx', '@INPUT@']
+)
+
 sources = files(
         'commands.c',
         'main.c',
 )
+sources += cmd_h

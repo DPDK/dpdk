@@ -176,6 +176,9 @@ ef10_nic_get_port_mode_bandwidth(
 	case TLV_PORT_MODE_2x1_2x1:			/* mode 5 */
 		bandwidth = (2 * single_lane) + (2 * single_lane);
 		break;
+	case TLV_PORT_MODE_4x1_4x1:			/* mode 26 */
+		bandwidth = (4 * single_lane) + (4 * single_lane);
+		break;
 	case TLV_PORT_MODE_1x2_1x2:			/* mode 12 */
 		bandwidth = dual_lane + dual_lane;
 		break;
@@ -1044,6 +1047,83 @@ fail1:
 	return (rc);
 }
 
+static	__checkReturn			efx_rc_t
+ef10_nic_get_physical_port_usage(
+	__in				efx_nic_t *enp,
+	__in_ecount(pfs_to_ports_size)	uint8_t *pfs_to_ports,
+	__in				size_t pfs_to_ports_size,
+	__out				efx_port_usage_t *port_usagep)
+{
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	efx_port_usage_t port_usage;
+	uint8_t phy_port;
+	efx_rc_t rc;
+	size_t pf;
+
+	/*
+	 * The sharing of physical ports between functions are determined
+	 * in the following way.
+	 * 1. If VFs are enabled then the physical port is shared.
+	 * 2. Retrieve PFs to ports assignment.
+	 * 3. If PF 0 assignment cannot be retrieved(ACCESS_DENIED), it
+	 *    implies this is an unprivileged function. An unprivileged
+	 *    function indicates the physical port must be shared with
+	 *    another privileged function.
+	 * 4. If PF 0 assignment can be retrieved, it indicates this
+	 *    function is privileged. Now, read all other PF's physical
+	 *    port number assignment and check if the current PF's physical
+	 *    port is shared with any other PF's physical port.
+	 * NOTE: PF 0 is always privileged function.
+	 */
+
+	if (EFX_PCI_FUNCTION_IS_VF(encp)) {
+		port_usage = EFX_PORT_USAGE_SHARED;
+		goto out;
+	}
+
+	if (pfs_to_ports[0] ==
+	    MC_CMD_GET_CAPABILITIES_V2_OUT_ACCESS_NOT_PERMITTED) {
+		/*
+		 * This is unprivileged function as it do not have sufficient
+		 * privileges to read the value, this implies the physical port
+		 * is shared between this function and another privileged
+		 * function
+		 */
+		port_usage = EFX_PORT_USAGE_SHARED;
+		goto out;
+	}
+
+	if (encp->enc_pf >= pfs_to_ports_size) {
+		rc = EINVAL;
+		goto fail1;
+	}
+	phy_port = pfs_to_ports[encp->enc_pf];
+
+	/*
+	 * This is privileged function as it is able read the value of
+	 * PF 0. Now, check if any other function share the same physical
+	 * port number as this function.
+	 */
+	for (pf = 0; pf < pfs_to_ports_size; pf++) {
+		if ((encp->enc_pf != pf) && (phy_port == pfs_to_ports[pf])) {
+			/* Found match, PFs share the same physical port */
+			port_usage = EFX_PORT_USAGE_SHARED;
+			goto out;
+		}
+	}
+
+	port_usage = EFX_PORT_USAGE_EXCLUSIVE;
+
+out:
+	*port_usagep = port_usage;
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return (rc);
+}
+
 static	__checkReturn	efx_rc_t
 ef10_get_datapath_caps(
 	__in		efx_nic_t *enp)
@@ -1146,6 +1226,12 @@ ef10_get_datapath_caps(
 	else
 		encp->enc_hw_tx_insert_vlan_enabled = B_FALSE;
 
+	/* Check if firmware supports VLAN stripping. */
+	if (CAP_FLAGS1(req, RX_VLAN_STRIPPING))
+		encp->enc_rx_vlan_stripping_supported = B_TRUE;
+	else
+		encp->enc_rx_vlan_stripping_supported = B_FALSE;
+
 	/* Check if the firmware supports RX event batching */
 	if (CAP_FLAGS1(req, RX_BATCHING))
 		encp->enc_rx_batching_enabled = B_TRUE;
@@ -1166,6 +1252,12 @@ ef10_get_datapath_caps(
 
 	/* No limit on maximum number of Rx scatter elements per packet. */
 	encp->enc_rx_scatter_max = -1;
+
+	/* Check if the firmware supports include FCS on RX */
+	if (CAP_FLAGS1(req, RX_INCLUDE_FCS))
+		encp->enc_rx_include_fcs_supported = B_TRUE;
+	else
+		encp->enc_rx_include_fcs_supported = B_FALSE;
 
 	/* Check if the firmware supports packed stream mode */
 	if (CAP_FLAGS1(req, RX_PACKED_STREAM))
@@ -1307,9 +1399,33 @@ ef10_get_datapath_caps(
 		encp->enc_tunnel_config_udp_entries_max = 0;
 	}
 
+#define CAP_PFS_TO_PORTS(_n)	\
+	(MC_CMD_GET_CAPABILITIES_V2_OUT_PFS_TO_PORTS_ASSIGNMENT_ ## _n)
+
+	encp->enc_port_usage = EFX_PORT_USAGE_UNKNOWN;
+
+	if (req.emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V2_OUT_LEN) {
+		/* PFs to ports assignment */
+		uint8_t pfs_to_ports[CAP_PFS_TO_PORTS(NUM)];
+
+		EFX_STATIC_ASSERT((CAP_PFS_TO_PORTS(NUM) * CAP_PFS_TO_PORTS(LEN)) ==
+		    EFX_ARRAY_SIZE(pfs_to_ports));
+
+		memcpy(pfs_to_ports, MCDI_OUT(req, efx_byte_t, CAP_PFS_TO_PORTS(OFST)),
+		    EFX_ARRAY_SIZE(pfs_to_ports));
+
+		rc = ef10_nic_get_physical_port_usage(enp, pfs_to_ports,
+		    EFX_ARRAY_SIZE(pfs_to_ports), &encp->enc_port_usage);
+		if (rc != 0) {
+			/* PF to port mapping lookup failed */
+			encp->enc_port_usage = EFX_PORT_USAGE_UNKNOWN;
+		}
+	}
+#undef  CAP_PFS_TO_PORTS
+
 	/*
 	 * Check if firmware reports the VI window mode.
-	 * Medford2 has a variable VI window size (8K, 16K or 64K).
+	 * Medford2 and Medford4 have a variable VI window size (8K, 16K or 64K).
 	 * Medford and Huntington have a fixed 8K VI window size.
 	 */
 	if (req.emr_out_length_used >= MC_CMD_GET_CAPABILITIES_V3_OUT_LEN) {
@@ -1366,6 +1482,7 @@ ef10_get_datapath_caps(
 
 		switch (enp->en_family) {
 		case EFX_FAMILY_MEDFORD2:
+		case EFX_FAMILY_MEDFORD4:
 			encp->enc_rx_scale_hash_alg_mask =
 			    (1U << EFX_RX_HASHALG_TOEPLITZ);
 			break;
@@ -1809,6 +1926,63 @@ static struct ef10_external_port_map_s {
 		(1U << TLV_PORT_MODE_1x1_1x1),			/* mode 2 */
 		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
 	},
+	/*
+	 * Modes that on Medford4 allocate 2 adjacent port numbers to cage 1
+	 * and the rest to cage 2.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 2
+	 *	port 3 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_2x1_2x1) |			/* mode 5 */
+		(1U << TLV_PORT_MODE_2x1_1x4) |			/* mode 7 */
+		(1U << TLV_PORT_MODE_2x2_NA) |			/* mode 13 */
+		(1U << TLV_PORT_MODE_2x1_1x2),			/* mode 18 */
+		{ 0, 2, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate up to 4 adjacent port numbers
+	 * to cage 1.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 1
+	 *	port 3 -> cage 1
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_4x1_NA),			/* mode 4 */
+		{ 0, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate up to 4 adjacent port numbers
+	 * to cage 1 and 4 port numbers to cage 2.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 1
+	 *	port 2 -> cage 1
+	 *	port 3 -> cage 1
+	 *	port 4 -> cage 2
+	 *	port 5 -> cage 2
+	 *	port 6 -> cage 2
+	 *	port 7 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_4x1_4x1),			/* mode 26 */
+		{ 0, 4, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
+	/*
+	 * Modes that on Medford4 allocate each port number to a separate cage.
+	 *	port 0 -> cage 1
+	 *	port 1 -> cage 2
+	 */
+	{
+		EFX_FAMILY_MEDFORD4,
+		(1U << TLV_PORT_MODE_1x1_1x1) |			/* mode 2 */
+		(1U << TLV_PORT_MODE_1x4_1x4),			/* mode 3 */
+		{ 0, 1, EFX_EXT_PORT_NA, EFX_EXT_PORT_NA }
+	},
 };
 
 static	__checkReturn	efx_rc_t
@@ -2046,6 +2220,9 @@ efx_mcdi_nic_board_cfg(
 
 	encp->enc_board_type = board_type;
 
+	if (efx_np_supported(enp) != B_FALSE)
+		goto skip_phy_props;
+
 	/* Fill out fields in enp->en_port and enp->en_nic_cfg from MCDI */
 	if ((rc = efx_mcdi_get_phy_cfg(enp)) != 0)
 		goto fail8;
@@ -2071,6 +2248,7 @@ efx_mcdi_nic_board_cfg(
 	epp->ep_default_adv_cap_mask = els.epls.epls_adv_cap_mask;
 	epp->ep_adv_cap_mask = els.epls.epls_adv_cap_mask;
 
+skip_phy_props:
 	/* Check capabilities of running datapath firmware */
 	if ((rc = ef10_get_datapath_caps(enp)) != 0)
 		goto fail10;
@@ -2324,6 +2502,10 @@ ef10_nic_probe(
 	if ((rc = ef10_nic_board_cfg(enp)) != 0)
 		goto fail4;
 
+	rc = efx_np_attach(enp);
+	if (rc != 0)
+		goto fail5;
+
 	/*
 	 * Set default driver config limits (based on board config).
 	 *
@@ -2341,36 +2523,41 @@ ef10_nic_probe(
 #if EFSYS_OPT_MAC_STATS
 	/* Wipe the MAC statistics */
 	if ((rc = efx_mcdi_mac_stats_clear(enp)) != 0)
-		goto fail5;
+		goto fail6;
 #endif
 
 #if EFSYS_OPT_LOOPBACK
-	if ((rc = efx_mcdi_get_loopback_modes(enp)) != 0)
-		goto fail6;
+	if (efx_np_supported(enp) == B_FALSE) {
+		rc = efx_mcdi_get_loopback_modes(enp);
+		if (rc != 0)
+			goto fail7;
+	}
 #endif
 
 #if EFSYS_OPT_MON_STATS
 	if ((rc = mcdi_mon_cfg_build(enp)) != 0) {
 		/* Unprivileged functions do not have access to sensors */
 		if (rc != EACCES)
-			goto fail7;
+			goto fail8;
 	}
 #endif
 
 	return (0);
 
 #if EFSYS_OPT_MON_STATS
+fail8:
+	EFSYS_PROBE(fail8);
+#endif
+#if EFSYS_OPT_LOOPBACK
 fail7:
 	EFSYS_PROBE(fail7);
 #endif
-#if EFSYS_OPT_LOOPBACK
+#if EFSYS_OPT_MAC_STATS
 fail6:
 	EFSYS_PROBE(fail6);
 #endif
-#if EFSYS_OPT_MAC_STATS
 fail5:
 	EFSYS_PROBE(fail5);
-#endif
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -2830,6 +3017,9 @@ ef10_nic_unprobe(
 #if EFSYS_OPT_MON_STATS
 	mcdi_mon_cfg_free(enp);
 #endif /* EFSYS_OPT_MON_STATS */
+
+	efx_np_detach(enp);
+
 	(void) efx_mcdi_drv_attach(enp, B_FALSE);
 }
 

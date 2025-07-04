@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_debug.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -20,11 +21,16 @@
 #include <rte_errno.h>
 #include <rte_memcpy.h>
 
+#include "mbuf_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(mbuf_logtype, INFO);
+
 /*
  * pktmbuf pool constructor, given as a callback function to
  * rte_mempool_create(), or called directly if using
  * rte_mempool_create_empty()/rte_mempool_populate()
  */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_init)
 void
 rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 {
@@ -65,6 +71,7 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
  * rte_mempool_obj_iter() or rte_mempool_create().
  * Set the fields of a packet mbuf to their default values.
  */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_init)
 void
 rte_pktmbuf_init(struct rte_mempool *mp,
 		 __rte_unused void *opaque_arg,
@@ -215,6 +222,7 @@ __rte_pktmbuf_init_extmem(struct rte_mempool *mp,
 }
 
 /* Helper to create a mbuf pool with given mempool ops name*/
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_create_by_ops)
 struct rte_mempool *
 rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
@@ -227,7 +235,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	int ret;
 
 	if (RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) != priv_size) {
-		RTE_LOG(ERR, MBUF, "mbuf priv_size=%u is not aligned\n",
+		MBUF_LOG(ERR, "mbuf priv_size=%u is not aligned",
 			priv_size);
 		rte_errno = EINVAL;
 		return NULL;
@@ -247,7 +255,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 		mp_ops_name = rte_mbuf_best_mempool_ops();
 	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
 	if (ret != 0) {
-		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
+		MBUF_LOG(ERR, "error setting mempool handler");
 		rte_mempool_free(mp);
 		rte_errno = -ret;
 		return NULL;
@@ -267,6 +275,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 }
 
 /* helper to create a mbuf pool */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_create)
 struct rte_mempool *
 rte_pktmbuf_pool_create(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size, uint16_t data_room_size,
@@ -277,6 +286,7 @@ rte_pktmbuf_pool_create(const char *name, unsigned int n,
 }
 
 /* Helper to create a mbuf pool with pinned external data buffers. */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_pool_create_extbuf)
 struct rte_mempool *
 rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size,
@@ -293,7 +303,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	int ret;
 
 	if (RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) != priv_size) {
-		RTE_LOG(ERR, MBUF, "mbuf priv_size=%u is not aligned\n",
+		MBUF_LOG(ERR, "mbuf priv_size=%u is not aligned",
 			priv_size);
 		rte_errno = EINVAL;
 		return NULL;
@@ -303,12 +313,12 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 		const struct rte_pktmbuf_extmem *extm = ext_mem + i;
 
 		if (!extm->elt_size || !extm->buf_len || !extm->buf_ptr) {
-			RTE_LOG(ERR, MBUF, "invalid extmem descriptor\n");
+			MBUF_LOG(ERR, "invalid extmem descriptor");
 			rte_errno = EINVAL;
 			return NULL;
 		}
 		if (data_room_size > extm->elt_size) {
-			RTE_LOG(ERR, MBUF, "ext elt_size=%u is too small\n",
+			MBUF_LOG(ERR, "ext elt_size=%u is too small",
 				priv_size);
 			rte_errno = EINVAL;
 			return NULL;
@@ -317,7 +327,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	}
 	/* Check whether enough external memory provided. */
 	if (n_elts < n) {
-		RTE_LOG(ERR, MBUF, "not enough extmem\n");
+		MBUF_LOG(ERR, "not enough extmem");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -338,7 +348,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	mp_ops_name = rte_mbuf_best_mempool_ops();
 	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
 	if (ret != 0) {
-		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
+		MBUF_LOG(ERR, "error setting mempool handler");
 		rte_mempool_free(mp);
 		rte_errno = -ret;
 		return NULL;
@@ -364,6 +374,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 }
 
 /* do some sanity checks on a mbuf: panic if it fails */
+RTE_EXPORT_SYMBOL(rte_mbuf_sanity_check)
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 {
@@ -373,6 +384,7 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 		rte_panic("%s\n", reason);
 }
 
+RTE_EXPORT_SYMBOL(rte_mbuf_check)
 int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
 		   const char **reason)
 {
@@ -482,6 +494,7 @@ __rte_pktmbuf_free_seg_via_array(struct rte_mbuf *m,
 #define RTE_PKTMBUF_FREE_PENDING_SZ 64
 
 /* Free a bulk of packet mbufs back into their original mempools. */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_free_bulk)
 void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 {
 	struct rte_mbuf *m, *m_next, *pending[RTE_PKTMBUF_FREE_PENDING_SZ];
@@ -508,6 +521,7 @@ void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 }
 
 /* Creates a shallow copy of mbuf */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_clone)
 struct rte_mbuf *
 rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp)
 {
@@ -547,6 +561,7 @@ rte_pktmbuf_clone(struct rte_mbuf *md, struct rte_mempool *mp)
 }
 
 /* convert multi-segment mbuf to single mbuf */
+RTE_EXPORT_SYMBOL(__rte_pktmbuf_linearize)
 int
 __rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
 {
@@ -584,6 +599,7 @@ __rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
 }
 
 /* Create a deep copy of mbuf */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_copy)
 struct rte_mbuf *
 rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 		 uint32_t off, uint32_t len)
@@ -661,6 +677,7 @@ rte_pktmbuf_copy(const struct rte_mbuf *m, struct rte_mempool *mp,
 }
 
 /* dump a mbuf on console */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_dump)
 void
 rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 {
@@ -703,6 +720,7 @@ rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len)
 }
 
 /* read len data bytes in a mbuf at specified offset (internal) */
+RTE_EXPORT_SYMBOL(__rte_pktmbuf_read)
 const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
 	uint32_t len, void *buf)
 {
@@ -740,6 +758,7 @@ const void *__rte_pktmbuf_read(const struct rte_mbuf *m, uint32_t off,
  * Get the name of a RX offload flag. Must be kept synchronized with flag
  * definitions in rte_mbuf.h.
  */
+RTE_EXPORT_SYMBOL(rte_get_rx_ol_flag_name)
 const char *rte_get_rx_ol_flag_name(uint64_t mask)
 {
 	switch (mask) {
@@ -779,6 +798,7 @@ struct flag_mask {
 };
 
 /* write the list of rx ol flags in buffer buf */
+RTE_EXPORT_SYMBOL(rte_get_rx_ol_flag_list)
 int
 rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 {
@@ -845,6 +865,7 @@ rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
  * Get the name of a TX offload flag. Must be kept synchronized with flag
  * definitions in rte_mbuf.h.
  */
+RTE_EXPORT_SYMBOL(rte_get_tx_ol_flag_name)
 const char *rte_get_tx_ol_flag_name(uint64_t mask)
 {
 	switch (mask) {
@@ -879,6 +900,7 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 }
 
 /* write the list of tx ol flags in buffer buf */
+RTE_EXPORT_SYMBOL(rte_get_tx_ol_flag_list)
 int
 rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 {

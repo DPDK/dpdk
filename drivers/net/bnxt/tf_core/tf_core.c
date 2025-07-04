@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -34,8 +34,8 @@ tf_open_session(struct tf *tfp,
 	 * side. It is assumed that the Firmware will be supported if
 	 * firmware open session succeeds.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_WH &&
-	    parms->device_type != TF_DEVICE_TYPE_THOR &&
+	if (parms->device_type != TF_DEVICE_TYPE_P4 &&
+	    parms->device_type != TF_DEVICE_TYPE_P5 &&
 	    parms->device_type != TF_DEVICE_TYPE_SR) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
@@ -83,7 +83,7 @@ tf_open_session(struct tf *tfp,
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%u\n",
+		    "domain:%x, bus:%x, device:%u\n",
 		    parms->session_id.internal.domain,
 		    parms->session_id.internal.bus,
 		    parms->session_id.internal.device);
@@ -176,7 +176,7 @@ tf_close_session(struct tf *tfp)
 		return rc;
 
 	TFP_DRV_LOG(INFO,
-		    "domain:%d, bus:%d, device:%d\n",
+		    "domain:%d, bus:%x, device:%d\n",
 		    cparms.session_id->internal.domain,
 		    cparms.session_id->internal.bus,
 		    cparms.session_id->internal.device);
@@ -742,7 +742,6 @@ tf_set_tcam_entry(struct tf *tfp,
 
 	memset(&sparms, 0, sizeof(struct tf_tcam_set_parms));
 
-
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
@@ -790,6 +789,10 @@ tf_set_tcam_entry(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+	TFP_DRV_LOG(DEBUG,
+		    "%s: TCAM type %d set idx:%d key size %d result size %d\n",
+		    tf_dir_2_str(parms->dir), sparms.type,
+		    sparms.idx, sparms.key_size, sparms.result_size);
 
 	return 0;
 }
@@ -806,7 +809,6 @@ tf_get_tcam_entry(struct tf *tfp __rte_unused,
 	TF_CHECK_PARMS2(tfp, parms);
 
 	memset(&gparms, 0, sizeof(struct tf_tcam_get_parms));
-
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
@@ -917,7 +919,6 @@ tf_free_tcam_entry(struct tf *tfp,
 	return 0;
 }
 
-#ifdef TF_TCAM_SHARED
 int
 tf_move_tcam_shared_entries(struct tf *tfp,
 			    struct tf_move_tcam_shared_entries_parms *parms)
@@ -1019,7 +1020,6 @@ tf_clear_tcam_shared_entries(struct tf *tfp,
 
 	return 0;
 }
-#endif /* TF_TCAM_SHARED */
 
 int
 tf_alloc_tbl_entry(struct tf *tfp,
@@ -1101,6 +1101,21 @@ tf_alloc_tbl_entry(struct tf *tfp,
 
 	parms->idx = idx;
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Update resource usage buffer */
+	if (!rc && dev->ops->tf_dev_update_tbl_usage_buffer) {
+		rc = dev->ops->tf_dev_update_tbl_usage_buffer(tfp,
+							      parms->dir,
+							      parms->type,
+							      TF_RESC_ALLOC);
+		if (rc) {
+			TFP_DRV_LOG(DEBUG,
+				    "%s: Table usage update failed!\n",
+				    tf_dir_2_str(parms->dir));
+		}
+	}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return 0;
 }
 
@@ -1181,6 +1196,22 @@ tf_free_tbl_entry(struct tf *tfp,
 			return rc;
 		}
 	}
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Update resource usage buffer */
+	if (!rc && dev->ops->tf_dev_update_tbl_usage_buffer) {
+		rc = dev->ops->tf_dev_update_tbl_usage_buffer(tfp,
+							      parms->dir,
+							      parms->type,
+							      TF_RESC_FREE);
+		if (rc) {
+			TFP_DRV_LOG(DEBUG,
+				    "%s: Table usage update failed!\n",
+				    tf_dir_2_str(parms->dir));
+		}
+	}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return 0;
 }
 
@@ -1814,8 +1845,8 @@ int tf_get_version(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_WH &&
-	    parms->device_type != TF_DEVICE_TYPE_THOR &&
+	if (parms->device_type != TF_DEVICE_TYPE_P4 &&
+	    parms->device_type != TF_DEVICE_TYPE_P5 &&
 	    parms->device_type != TF_DEVICE_TYPE_SR) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
@@ -1847,7 +1878,7 @@ int tf_query_sram_resources(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+	if (parms->device_type != TF_DEVICE_TYPE_P5) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
 			    parms->device_type);
@@ -1929,7 +1960,7 @@ int tf_set_sram_policy(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+	if (parms->device_type != TF_DEVICE_TYPE_P5) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
 			    parms->device_type);
@@ -1970,7 +2001,7 @@ int tf_get_sram_policy(struct tf *tfp,
 	/* This function can be called before open session, filter
 	 * out any non-supported device types on the Core side.
 	 */
-	if (parms->device_type != TF_DEVICE_TYPE_THOR) {
+	if (parms->device_type != TF_DEVICE_TYPE_P5) {
 		TFP_DRV_LOG(ERR,
 			    "Unsupported device type %d\n",
 			    parms->device_type);
@@ -1999,3 +2030,150 @@ int tf_get_sram_policy(struct tf *tfp,
 
 	return rc;
 }
+
+int tf_set_session_hotup_state(struct tf *tfp,
+			       struct tf_set_session_hotup_state_parms *parms)
+{
+	int rc = 0;
+
+	TF_CHECK_PARMS1(tfp);
+
+	rc = tf_session_set_hotup_state(tfp, parms);
+	if (rc)
+		return rc;
+
+	return rc;
+}
+
+int tf_get_session_hotup_state(struct tf *tfp,
+			       struct tf_get_session_hotup_state_parms *parms)
+{
+	int rc = 0;
+
+	TF_CHECK_PARMS1(tfp);
+
+	rc = tf_session_get_hotup_state(tfp, parms);
+	if (rc)
+		return rc;
+
+	return rc;
+}
+
+#ifdef TF_FLOW_SCALE_QUERY
+/* Update TF resource usage state with firmware */
+int tf_update_resc_usage(struct tf *tfp,
+			 enum tf_dir dir,
+			 enum tf_flow_resc_type flow_resc_type)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+	TF_CHECK_PARMS1(tfp);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Support Thor(P5) on the first session */
+	if (dev->type != TF_DEVICE_TYPE_P5 || tfs->session_id.internal.fw_session_id)
+		return rc;
+
+	if (dev->ops->tf_dev_update_resc_usage == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_update_resc_usage(tfp, dir, flow_resc_type);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Flow resource usage update failed, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	TFP_DRV_LOG(DEBUG,
+		    "%s: Flow resource usage updated: usage type %d\n",
+		    tf_dir_2_str(dir), flow_resc_type);
+
+	return 0;
+}
+
+/* Get TF resource usage state from firmware*/
+int tf_query_resc_usage(struct tf *tfp,
+			struct tf_query_resc_usage_parms *parms)
+{
+	int rc;
+	struct tf_session *tfs;
+	struct tf_dev_info *dev;
+
+	TF_CHECK_PARMS2(tfp, parms);
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Support Thor(P5) on the first session */
+	if (dev->type != TF_DEVICE_TYPE_P5 || tfs->session_id.internal.fw_session_id)
+		return rc;
+
+	if (dev->ops->tf_dev_query_resc_usage == NULL) {
+		rc = -EOPNOTSUPP;
+		TFP_DRV_LOG(ERR,
+			    "%s: Operation not supported, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = dev->ops->tf_dev_query_resc_usage(tfp, parms);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Flow resource usage query failed, rc:%s\n",
+			    tf_dir_2_str(parms->dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	TFP_DRV_LOG(DEBUG,
+		    "%s: Flow resource usage query successfully: usage type %d\n",
+		    tf_dir_2_str(parms->dir), parms->flow_resc_type);
+	return 0;
+}
+#endif /* TF_FLOW_SCALE_QUERY */

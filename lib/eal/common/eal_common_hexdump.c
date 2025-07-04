@@ -2,11 +2,13 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 #include <stdio.h>
+#include <eal_export.h>
 #include <rte_hexdump.h>
 #include <rte_string_fns.h>
 
 #define LINE_LEN 128
 
+RTE_EXPORT_SYMBOL(rte_hexdump)
 void
 rte_hexdump(FILE *f, const char *title, const void *buf, unsigned int len)
 {
@@ -15,7 +17,7 @@ rte_hexdump(FILE *f, const char *title, const void *buf, unsigned int len)
 	char line[LINE_LEN];	/* space needed 8+16*3+3+16 == 75 */
 
 	fprintf(f, "%s at [%p], len=%u\n",
-		title ? : "  Dump data", data, len);
+		title != NULL ? title : "  Dump data", data, len);
 	ofs = 0;
 	while (ofs < len) {
 		/* format the line in the buffer */
@@ -45,6 +47,7 @@ rte_hexdump(FILE *f, const char *title, const void *buf, unsigned int len)
 	fflush(f);
 }
 
+RTE_EXPORT_SYMBOL(rte_memdump)
 void
 rte_memdump(FILE *f, const char *title, const void *buf, unsigned int len)
 {

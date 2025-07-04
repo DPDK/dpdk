@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
@@ -382,7 +383,7 @@ mlx5_rxq_initialize(struct mlx5_rxq_data *rxq)
 			scat = &((volatile struct mlx5_wqe_mprq *)
 				rxq->wqes)[i].dseg;
 			addr = (uintptr_t)mlx5_mprq_buf_addr
-					(buf, RTE_BIT32(rxq->log_strd_num));
+					(buf, (uintptr_t)RTE_BIT32(rxq->log_strd_num));
 			byte_count = RTE_BIT32(rxq->log_strd_sz) *
 				     RTE_BIT32(rxq->log_strd_num);
 			lkey = mlx5_rx_addr2mr(rxq, addr);
@@ -459,7 +460,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	union {
 		volatile struct mlx5_cqe *cqe;
-		volatile struct mlx5_err_cqe *err_cqe;
+		volatile struct mlx5_error_cqe *err_cqe;
 	} u = {
 		.cqe = &(*rxq->cqes)[(rxq->cq_ci - vec) & cqe_mask],
 	};
@@ -613,7 +614,8 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
  * @param mprq
  *   Indication if it is called from MPRQ.
  * @return
- *   0 in case of empty CQE, MLX5_REGULAR_ERROR_CQE_RET in case of error CQE,
+ *   0 in case of empty CQE,
+ *   MLX5_REGULAR_ERROR_CQE_RET in case of error CQE,
  *   MLX5_CRITICAL_ERROR_CQE_RET in case of error CQE lead to Rx queue reset,
  *   otherwise the packet size in regular RxQ,
  *   and striding byte count format in mprq case.
@@ -697,6 +699,11 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 					if (ret == MLX5_RECOVERY_ERROR_RET ||
 						ret == MLX5_RECOVERY_COMPLETED_RET)
 						return MLX5_CRITICAL_ERROR_CQE_RET;
+					if (!mprq && ret == MLX5_RECOVERY_IGNORE_RET) {
+						*skip_cnt = 1;
+						++rxq->cq_ci;
+						return MLX5_ERROR_CQE_MASK;
+					}
 				} else {
 					return 0;
 				}
@@ -857,7 +864,7 @@ rxq_cq_to_mbuf(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt,
 		if (MLX5_FLOW_MARK_IS_VALID(mark)) {
 			pkt->ol_flags |= RTE_MBUF_F_RX_FDIR;
 			if (mark != RTE_BE32(MLX5_FLOW_MARK_DEFAULT)) {
-				pkt->ol_flags |= RTE_MBUF_F_RX_FDIR_ID;
+				pkt->ol_flags |= rxq->mark_flag;
 				pkt->hash.fdir.hi = mlx5_flow_mark_get(mark);
 			}
 		}
@@ -971,19 +978,18 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
 			len = mlx5_rx_poll_len(rxq, cqe, cqe_n, cqe_mask, &mcqe, &skip_cnt, false);
 			if (unlikely(len & MLX5_ERROR_CQE_MASK)) {
+				/* We drop packets with non-critical errors */
+				rte_mbuf_raw_free(rep);
 				if (len == MLX5_CRITICAL_ERROR_CQE_RET) {
-					rte_mbuf_raw_free(rep);
 					rq_ci = rxq->rq_ci << sges_n;
 					break;
 				}
+				/* Skip specified amount of error CQEs packets */
 				rq_ci >>= sges_n;
 				rq_ci += skip_cnt;
 				rq_ci <<= sges_n;
-				idx = rq_ci & wqe_mask;
-				wqe = &((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
-				seg = (*rxq->elts)[idx];
-				cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_mask];
-				len = len & ~MLX5_ERROR_CQE_MASK;
+				MLX5_ASSERT(!pkt);
+				continue;
 			}
 			if (len == 0) {
 				rte_mbuf_raw_free(rep);
@@ -1089,6 +1095,7 @@ mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
 		tcp->tcp_flags |= RTE_TCP_PSH_FLAG;
 	tcp->cksum = 0;
 	csum += rte_raw_cksum(tcp, (tcp->data_off >> 4) * 4);
+	csum = ((csum & 0xffff0000) >> 16) + (csum & 0xffff);
 	csum = ((csum & 0xffff0000) >> 16) + (csum & 0xffff);
 	csum = (~csum) & 0xffff;
 	if (csum == 0)
@@ -1553,13 +1560,14 @@ mlxreg_host_shaper_config(struct rte_eth_dev *dev,
 #endif
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_host_shaper_config, 22.07)
 int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate,
 				    uint32_t flags)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct mlx5_priv *priv = dev->data->dev_private;
 	bool lwm_triggered =
-	     !!(flags & RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+	     !!(flags & RTE_BIT32(RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
 
 	if (!lwm_triggered) {
 		priv->sh->host_shaper_rate = rate;
@@ -1579,4 +1587,87 @@ int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate,
 	}
 	return mlxreg_host_shaper_config(dev, priv->sh->lwm_triggered,
 					 priv->sh->host_shaper_rate);
+}
+
+/**
+ * Dump RQ/CQ Context to a file.
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Rx Queue Context
+ *
+ * @return
+ *   0 for Success, non-zero value depending on failure type
+ */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_rxq_dump_contexts, 24.07)
+int rte_pmd_mlx5_rxq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_rxq_priv *rxq;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+	struct mlx5_rxq_obj *rxq_obj;
+	struct mlx5_devx_rq *rq;
+	struct mlx5_devx_cq *cq;
+	struct mlx5_devx_obj *rq_devx_obj;
+	struct mlx5_devx_obj *cq_devx_obj;
+
+	uint32_t rq_out[MLX5_ST_SZ_DW(query_rq_out)] = {0};
+	uint32_t cq_out[MLX5_ST_SZ_DW(query_cq_out)] = {0};
+
+	int ret;
+	FILE *fd;
+	MKSTR(path, "./%s", filename);
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -ENODEV;
+
+	if (rte_eth_rx_queue_is_valid(port_id, queue_id))
+		return -EINVAL;
+
+	fd = fopen(path, "w");
+	if (!fd) {
+		rte_errno = errno;
+		return -EIO;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	rxq = mlx5_rxq_ref(dev, queue_id);
+	rxq_ctrl = rxq->ctrl;
+	rxq_obj = rxq_ctrl->obj;
+	rq = &rxq->devx_rq;
+	cq = &rxq_obj->cq_obj;
+	rq_devx_obj = rq->rq;
+	cq_devx_obj = cq->cq;
+
+	do {
+		ret = mlx5_devx_cmd_query_rq(rq_devx_obj, rq_out, sizeof(rq_out));
+		if (ret)
+			break;
+
+		/* Dump rq query output to file */
+		MKSTR(rq_headline, "RQ DevX ID = %u Port = %u Queue index = %u ",
+					rq_devx_obj->id, port_id, queue_id);
+		mlx5_dump_to_file(fd, NULL, rq_headline, 0);
+		mlx5_dump_to_file(fd, "Query RQ Dump:",
+					(const void *)((uintptr_t)rq_out),
+					sizeof(rq_out));
+
+		ret = mlx5_devx_cmd_query_cq(cq_devx_obj, cq_out, sizeof(cq_out));
+		if (ret)
+			break;
+
+		/* Dump cq query output to file */
+		MKSTR(cq_headline, "CQ DevX ID = %u Port = %u Queue index = %u ",
+					cq_devx_obj->id, port_id, queue_id);
+		mlx5_dump_to_file(fd, NULL, cq_headline, 0);
+		mlx5_dump_to_file(fd, "Query CQ Dump:",
+					(const void *)((uintptr_t)cq_out),
+					sizeof(cq_out));
+	} while (false);
+
+	fclose(fd);
+	return ret;
 }

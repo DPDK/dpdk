@@ -9,7 +9,7 @@
 #include "trie_avx512.h"
 
 static __rte_always_inline void
-transpose_x16(uint8_t ips[16][RTE_FIB6_IPV6_ADDR_SIZE],
+transpose_x16(const struct rte_ipv6_addr *ips,
 	__m512i *first, __m512i *second, __m512i *third, __m512i *fourth)
 {
 	__m512i tmp1, tmp2, tmp3, tmp4;
@@ -21,10 +21,10 @@ transpose_x16(uint8_t ips[16][RTE_FIB6_IPV6_ADDR_SIZE],
 	};
 
 	/* load all ip addresses */
-	tmp1 = _mm512_loadu_si512(&ips[0][0]);
-	tmp2 = _mm512_loadu_si512(&ips[4][0]);
-	tmp3 = _mm512_loadu_si512(&ips[8][0]);
-	tmp4 = _mm512_loadu_si512(&ips[12][0]);
+	tmp1 = _mm512_loadu_si512(&ips[0]);
+	tmp2 = _mm512_loadu_si512(&ips[4]);
+	tmp3 = _mm512_loadu_si512(&ips[8]);
+	tmp4 = _mm512_loadu_si512(&ips[12]);
 
 	/* transpose 4 byte chunks of 16 ips */
 	tmp5 = _mm512_unpacklo_epi32(tmp1, tmp2);
@@ -48,7 +48,7 @@ transpose_x16(uint8_t ips[16][RTE_FIB6_IPV6_ADDR_SIZE],
 }
 
 static __rte_always_inline void
-transpose_x8(uint8_t ips[8][RTE_FIB6_IPV6_ADDR_SIZE],
+transpose_x8(const struct rte_ipv6_addr *ips,
 	__m512i *first, __m512i *second)
 {
 	__m512i tmp1, tmp2, tmp3, tmp4;
@@ -57,8 +57,8 @@ transpose_x8(uint8_t ips[8][RTE_FIB6_IPV6_ADDR_SIZE],
 		},
 	};
 
-	tmp1 = _mm512_loadu_si512(&ips[0][0]);
-	tmp2 = _mm512_loadu_si512(&ips[4][0]);
+	tmp1 = _mm512_loadu_si512(&ips[0]);
+	tmp2 = _mm512_loadu_si512(&ips[4]);
 
 	tmp3 = _mm512_unpacklo_epi64(tmp1, tmp2);
 	*first = _mm512_permutexvar_epi64(perm_idxes.z, tmp3);
@@ -67,7 +67,7 @@ transpose_x8(uint8_t ips[8][RTE_FIB6_IPV6_ADDR_SIZE],
 }
 
 static __rte_always_inline void
-trie_vec_lookup_x16x2(void *p, uint8_t ips[32][RTE_FIB6_IPV6_ADDR_SIZE],
+trie_vec_lookup_x16x2(void *p, const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, int size)
 {
 	struct rte_trie_tbl *dp = (struct rte_trie_tbl *)p;
@@ -213,7 +213,7 @@ trie_vec_lookup_x16x2(void *p, uint8_t ips[32][RTE_FIB6_IPV6_ADDR_SIZE],
 }
 
 static void
-trie_vec_lookup_x8x2_8b(void *p, uint8_t ips[16][RTE_FIB6_IPV6_ADDR_SIZE],
+trie_vec_lookup_x8x2_8b(void *p, const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops)
 {
 	struct rte_trie_tbl *dp = (struct rte_trie_tbl *)p;
@@ -306,40 +306,40 @@ trie_vec_lookup_x8x2_8b(void *p, uint8_t ips[16][RTE_FIB6_IPV6_ADDR_SIZE],
 }
 
 void
-rte_trie_vec_lookup_bulk_2b(void *p, uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+rte_trie_vec_lookup_bulk_2b(void *p, const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, const unsigned int n)
 {
 	uint32_t i;
 	for (i = 0; i < (n / 32); i++) {
-		trie_vec_lookup_x16x2(p, (uint8_t (*)[16])&ips[i * 32][0],
+		trie_vec_lookup_x16x2(p, &ips[i * 32],
 				next_hops + i * 32, sizeof(uint16_t));
 	}
-	rte_trie_lookup_bulk_2b(p, (uint8_t (*)[16])&ips[i * 32][0],
+	rte_trie_lookup_bulk_2b(p, &ips[i * 32],
 			next_hops + i * 32, n - i * 32);
 }
 
 void
-rte_trie_vec_lookup_bulk_4b(void *p, uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+rte_trie_vec_lookup_bulk_4b(void *p, const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, const unsigned int n)
 {
 	uint32_t i;
 	for (i = 0; i < (n / 32); i++) {
-		trie_vec_lookup_x16x2(p, (uint8_t (*)[16])&ips[i * 32][0],
+		trie_vec_lookup_x16x2(p, &ips[i * 32],
 				next_hops + i * 32, sizeof(uint32_t));
 	}
-	rte_trie_lookup_bulk_4b(p, (uint8_t (*)[16])&ips[i * 32][0],
+	rte_trie_lookup_bulk_4b(p, &ips[i * 32],
 			next_hops + i * 32, n - i * 32);
 }
 
 void
-rte_trie_vec_lookup_bulk_8b(void *p, uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+rte_trie_vec_lookup_bulk_8b(void *p, const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, const unsigned int n)
 {
 	uint32_t i;
 	for (i = 0; i < (n / 16); i++) {
-		trie_vec_lookup_x8x2_8b(p, (uint8_t (*)[16])&ips[i * 16][0],
+		trie_vec_lookup_x8x2_8b(p, &ips[i * 16],
 				next_hops + i * 16);
 	}
-	rte_trie_lookup_bulk_8b(p, (uint8_t (*)[16])&ips[i * 16][0],
+	rte_trie_lookup_bulk_8b(p, &ips[i * 16],
 			next_hops + i * 16, n - i * 16);
 }

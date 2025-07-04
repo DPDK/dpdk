@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_LPM_H__
 #define __INCLUDE_RTE_TABLE_LPM_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table LPM for IPv4
@@ -39,12 +35,15 @@ extern "C" {
  * has to carefully manage the format of the LPM table entry (i.e.  the next
  * hop information) so that any next hop data that changes value during
  * run-time (e.g. counters) is placed outside of this area.
- *
- ***/
+ */
 
 #include <stdint.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** LPM table parameters */
 struct rte_table_lpm_params {

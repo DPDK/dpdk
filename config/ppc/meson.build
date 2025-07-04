@@ -105,6 +105,14 @@ else
     endif
 endif
 machine_args = ['-mcpu=' + cpu_instruction_set, '-mtune=' + cpu_instruction_set]
+
+# GCC versions < 11.4 may fail to build for power10, see https://bugs.dpdk.org/show_bug.cgi?id=1251.
+# Explicitly specify a default used in GCC 11.4 and later to workaround the issue.
+if (cpu_instruction_set == 'power10' and cc.get_id() == 'gcc' and
+        cc.version().version_compare('<=11.4'))
+    machine_args += '-mno-block-ops-vector-pair'
+endif
+
 dpdk_conf.set('RTE_MACHINE', cpu_instruction_set)
 
 

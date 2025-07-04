@@ -29,6 +29,7 @@
 #define TXGBE_FDIRCMD_CMD_POLL			10
 #define TXGBE_VF_INIT_TIMEOUT	200 /* Number of retries to clear RSTI */
 #define TXGBE_SPI_TIMEOUT	10000
+#define TXGBE_PCI_MASTER_DISABLE_TIMEOUT	800
 
 #define TXGBE_ALIGN		128 /* as intel did */
 
@@ -777,12 +778,15 @@ struct txgbe_hw {
 	u16 vendor_id;
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
+	u8 port_id;
 	u8 revision_id;
 	bool adapter_stopped;
 	int api_version;
 	bool allow_unsupported_sfp;
+	bool lldp_enabled;
 	bool need_crosstalk_fix;
 	bool dev_start;
+	bool autoneg;
 	struct txgbe_devargs devarg;
 
 	uint64_t isb_dma;

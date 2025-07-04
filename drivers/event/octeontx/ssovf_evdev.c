@@ -151,6 +151,9 @@ ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 	dev_info->max_event_port_enqueue_depth = 1;
 	dev_info->max_num_events =  edev->max_num_events;
 	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
+					RTE_EVENT_DEV_CAP_ATOMIC |
+					RTE_EVENT_DEV_CAP_ORDERED |
+					RTE_EVENT_DEV_CAP_PARALLEL |
 					RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
 					RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES|
 					RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
@@ -158,7 +161,7 @@ ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 					RTE_EVENT_DEV_CAP_NONSEQ_MODE |
 					RTE_EVENT_DEV_CAP_CARRY_FLOW_ID |
 					RTE_EVENT_DEV_CAP_MAINTENANCE_FREE;
-
+	dev_info->max_profiles_per_port = 1;
 }
 
 static int
@@ -714,10 +717,20 @@ ssovf_close(struct rte_eventdev *dev)
 }
 
 static int
-ssovf_parsekv(const char *key __rte_unused, const char *value, void *opaque)
+ssovf_parsekv(const char *key, const char *value, void *opaque)
 {
-	int *flag = opaque;
-	*flag = !!atoi(value);
+	uint8_t *flag = opaque;
+	uint64_t v;
+	char *end;
+
+	errno = 0;
+	v = strtoul(value, &end, 0);
+	if ((errno != 0) || (value == end) || *end != '\0' || v > 1) {
+		ssovf_log_err("invalid %s value %s", key, value);
+		return -EINVAL;
+	}
+
+	*flag = !!v;
 	return 0;
 }
 
@@ -880,7 +893,7 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 	}
 
 	eventdev = rte_event_pmd_vdev_init(name, sizeof(struct ssovf_evdev),
-				rte_socket_id());
+				rte_socket_id(), vdev);
 	if (eventdev == NULL) {
 		ssovf_log_err("Failed to create eventdev vdev %s", name);
 		return -ENOMEM;

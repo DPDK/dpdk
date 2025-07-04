@@ -12,11 +12,11 @@
 #define HW_ATL_FLUSH() { (void)aq_hw_read_reg(self, 0x10); }
 
 /* Hardware tx descriptor */
-struct hw_atl_txd_s {
+struct __rte_packed_begin hw_atl_txd_s {
 	u64 buf_addr;
 
 	union {
-		struct {
+		struct __rte_packed_begin {
 			u32 type:3;
 			u32:1;
 			u32 len:16;
@@ -27,19 +27,19 @@ struct hw_atl_txd_s {
 			u32 ct_idx:1;
 			u32 ct_en:1;
 			u32 pay_len:18;
-		} __rte_packed;
+		} __rte_packed_end;
 		u64 flags;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 /* Hardware tx context descriptor */
-union hw_atl_txc_s {
+union __rte_packed_begin hw_atl_txc_s {
 	struct {
 		u64 flags1;
 		u64 flags2;
 	};
 
-	struct {
+	struct __rte_packed_begin {
 		u64:40;
 		u32 tun_len:8;
 		u32 out_len:16;
@@ -51,8 +51,8 @@ union hw_atl_txc_s {
 		u32 l3_len:9;
 		u32 l4_len:8;
 		u32 mss_len:16;
-	} __rte_packed;
-} __rte_packed;
+	} __rte_packed_end;
+} __rte_packed_end;
 
 enum aq_tx_desc_type {
 	tx_desc_type_desc = 1,
@@ -70,13 +70,13 @@ enum aq_tx_desc_cmd {
 
 
 /* Hardware rx descriptor */
-struct hw_atl_rxd_s {
+struct __rte_packed_begin hw_atl_rxd_s {
 	u64 buf_addr;
 	u64 hdr_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Hardware rx descriptor writeback */
-struct hw_atl_rxd_wb_s {
+struct __rte_packed_begin hw_atl_rxd_wb_s {
 	u32 rss_type:4;
 	u32 pkt_type:8;
 	u32 type:20;
@@ -89,9 +89,9 @@ struct hw_atl_rxd_wb_s {
 	u16 pkt_len;
 	u16 next_desc_ptr;
 	u16 vlan;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hw_atl_stats_s {
+struct __rte_packed_begin hw_atl_stats_s {
 	u32 uprc;
 	u32 mprc;
 	u32 bprc;
@@ -107,9 +107,9 @@ struct hw_atl_stats_s {
 	u32 ubrc;
 	u32 ubtc;
 	u32 dpc;
-} __rte_packed;
+} __rte_packed_end;
 
-union ip_addr {
+union __rte_packed_begin ip_addr {
 	struct {
 		u8 addr[16];
 	} v6;
@@ -117,9 +117,9 @@ union ip_addr {
 		u8 padding[12];
 		u8 addr[4];
 	} v4;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hw_aq_atl_utils_fw_rpc {
+struct __rte_packed_begin hw_aq_atl_utils_fw_rpc {
 	u32 msg_id;
 
 	union {
@@ -226,15 +226,15 @@ struct hw_aq_atl_utils_fw_rpc {
 		} msg_del_id;
 
 	};
-} __rte_packed;
+} __rte_packed_end;
 
-struct hw_aq_atl_utils_mbox_header {
+struct __rte_packed_begin hw_aq_atl_utils_mbox_header {
 	u32 version;
 	u32 transaction_id;
 	u32 error;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hw_aq_info {
+struct __rte_packed_begin hw_aq_info {
 	u8 reserved[6];
 	u16 phy_fault_code;
 	u16 phy_temperature;
@@ -244,13 +244,13 @@ struct hw_aq_info {
 	u8 reserved2[32];
 	u32 caps_lo;
 	u32 caps_hi;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hw_aq_atl_utils_mbox {
+struct __rte_packed_begin hw_aq_atl_utils_mbox {
 	struct hw_aq_atl_utils_mbox_header header;
 	struct hw_atl_stats_s stats;
 	struct hw_aq_info info;
-} __rte_packed;
+} __rte_packed_end;
 
 /* fw2x */
 typedef u16	in_port_t;
@@ -259,11 +259,11 @@ typedef int	int32_t;
 typedef short	int16_t;
 typedef u32	fw_offset_t;
 
-struct ip6_addr {
+struct __rte_packed_begin ip6_addr {
 	u32 addr[4];
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_ka_v4 {
+struct __rte_packed_begin offload_ka_v4 {
 	u32 timeout;
 	in_port_t local_port;
 	in_port_t remote_port;
@@ -273,9 +273,9 @@ struct offload_ka_v4 {
 	u32 ack_num;
 	ip4_addr_t local_ip;
 	ip4_addr_t remote_ip;
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_ka_v6 {
+struct __rte_packed_begin offload_ka_v6 {
 	u32 timeout;
 	in_port_t local_port;
 	in_port_t remote_port;
@@ -285,9 +285,9 @@ struct offload_ka_v6 {
 	u32 ack_num;
 	struct ip6_addr local_ip;
 	struct ip6_addr remote_ip;
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_ip_info {
+struct __rte_packed_begin offload_ip_info {
 	u8 v4_local_addr_count;
 	u8 v4_addr_count;
 	u8 v6_local_addr_count;
@@ -296,32 +296,32 @@ struct offload_ip_info {
 	fw_offset_t v4_prefix;
 	fw_offset_t v6_addr;
 	fw_offset_t v6_prefix;
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_port_info {
+struct __rte_packed_begin offload_port_info {
 	u16 udp_port_count;
 	u16 tcp_port_count;
 	fw_offset_t udp_port;
 	fw_offset_t tcp_port;
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_ka_info {
+struct __rte_packed_begin offload_ka_info {
 	u16 v4_ka_count;
 	u16 v6_ka_count;
 	u32 retry_count;
 	u32 retry_interval;
 	fw_offset_t v4_ka;
 	fw_offset_t v6_ka;
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_rr_info {
+struct __rte_packed_begin offload_rr_info {
 	u32 rr_count;
 	u32 rr_buf_len;
 	fw_offset_t rr_id_x;
 	fw_offset_t rr_buf;
-} __rte_packed;
+} __rte_packed_end;
 
-struct offload_info {
+struct __rte_packed_begin offload_info {
 	u32 version;		// current version is 0x00000000
 	u32 len;		// The whole structure length
 				// including the variable-size buf
@@ -335,14 +335,14 @@ struct offload_info {
 	struct offload_ka_info kas;
 	struct offload_rr_info rrs;
 	u8 buf[];
-} __rte_packed;
+} __rte_packed_end;
 
-struct smbus_request {
+struct __rte_packed_begin smbus_request {
 	u32 msg_id; /* not used */
 	u32 device_id;
 	u32 address;
 	u32 length;
-} __rte_packed;
+} __rte_packed_end;
 
 enum macsec_msg_type {
 	macsec_cfg_msg = 0,
@@ -353,14 +353,14 @@ enum macsec_msg_type {
 	macsec_get_stats_msg,
 };
 
-struct macsec_cfg {
+struct __rte_packed_begin macsec_cfg {
 	uint32_t enabled;
 	uint32_t egress_threshold;
 	uint32_t ingress_threshold;
 	uint32_t interrupts_enabled;
-} __rte_packed;
+} __rte_packed_end;
 
-struct add_rx_sc {
+struct __rte_packed_begin add_rx_sc {
 	uint32_t index;
 	uint32_t pi; /* Port identifier */
 	uint32_t sci[2]; /* Secure Channel identifier */
@@ -376,9 +376,9 @@ struct add_rx_sc {
 	uint32_t anti_replay_window; /* default 0 */
 	/* 1: auto_rollover enabled (when SA next_pn is saturated */
 	uint32_t an_rol;
-} __rte_packed;
+} __rte_packed_end;
 
-struct add_tx_sc {
+struct __rte_packed_begin add_tx_sc {
 	uint32_t index;
 	uint32_t pi; /* Port identifier */
 	uint32_t sci[2]; /* Secure Channel identifier */
@@ -391,28 +391,28 @@ struct add_tx_sc {
 	uint32_t da_mask; /* 0: ignore mac_da */
 	uint32_t protect;
 	uint32_t curr_an; /* SA index which currently used */
-} __rte_packed;
+} __rte_packed_end;
 
-struct add_rx_sa {
+struct __rte_packed_begin add_rx_sa {
 	uint32_t index;
 	uint32_t next_pn;
 	uint32_t key[4]; /* 128 bit key */
-} __rte_packed;
+} __rte_packed_end;
 
-struct add_tx_sa {
+struct __rte_packed_begin add_tx_sa {
 	uint32_t index;
 	uint32_t next_pn;
 	uint32_t key[4]; /* 128 bit key */
-} __rte_packed;
+} __rte_packed_end;
 
-struct get_stats {
+struct __rte_packed_begin get_stats {
 	uint32_t version_only;
 	uint32_t ingress_sa_index;
 	uint32_t egress_sa_index;
 	uint32_t egress_sc_index;
-} __rte_packed;
+} __rte_packed_end;
 
-struct macsec_stats {
+struct __rte_packed_begin macsec_stats {
 	uint32_t api_version;
 	/* Ingress Common Counters */
 	uint64_t in_ctl_pkts;
@@ -471,9 +471,9 @@ struct macsec_stats {
 	uint32_t ingress_threshold_expired;
 	uint32_t egress_expired;
 	uint32_t ingress_expired;
-} __rte_packed;
+} __rte_packed_end;
 
-struct macsec_msg_fw_request {
+struct __rte_packed_begin macsec_msg_fw_request {
 	uint32_t offset; /* not used */
 	uint32_t msg_type;
 
@@ -485,12 +485,12 @@ struct macsec_msg_fw_request {
 		struct add_tx_sa txsa;
 		struct get_stats stats;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
-struct macsec_msg_fw_response {
+struct __rte_packed_begin macsec_msg_fw_response {
 	uint32_t result;
 	struct macsec_stats stats;
-} __rte_packed;
+} __rte_packed_end;
 
 #define HAL_ATLANTIC_UTILS_CHIP_MIPS         0x00000001U
 #define HAL_ATLANTIC_UTILS_CHIP_TPO2         0x00000002U

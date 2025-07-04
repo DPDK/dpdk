@@ -15,15 +15,15 @@ More information about SoC can be found at `Cavium, Inc Official Website
 Common Offload HW Block Drivers
 -------------------------------
 
-1. **Crypto Driver**
+#. **Crypto Driver**
    See :doc:`../cryptodevs/octeontx` for octeontx crypto driver
    information.
 
-2. **Eventdev Driver**
+#. **Eventdev Driver**
    See :doc:`../eventdevs/octeontx` for octeontx ssovf eventdev driver
    information.
 
-3. **Mempool Driver**
+#. **Mempool Driver**
    See :doc:`../mempool/octeontx` for octeontx fpavf mempool driver
    information.
 
@@ -33,24 +33,24 @@ Steps To Setup Platform
 There are three main pre-prerequisites for setting up Platform drivers on
 OCTEON TX compatible board:
 
-1. **OCTEON TX Linux kernel PF driver for Network acceleration HW blocks**
+#. **OCTEON TX Linux kernel PF driver for Network acceleration HW blocks**
 
    The OCTEON TX Linux kernel drivers (includes the required PF driver for the
    Platform drivers) are available on Github at `octeontx-kmod <https://github.com/caviumnetworks/octeontx-kmod>`_
    along with build, install and dpdk usage instructions.
 
-.. note::
+   .. note::
 
-   The PF driver and the required microcode for the crypto offload block will be
-   available with OCTEON TX SDK only. So for using crypto offload, follow the steps
-   mentioned in :ref:`setup_platform_using_OCTEON_TX_SDK`.
+      The PF driver and the required microcode for the crypto offload block will be
+      available with OCTEON TX SDK only. So for using crypto offload, follow the steps
+      mentioned in :ref:`setup_platform_using_OCTEON_TX_SDK`.
 
-2. **ARM64 Tool Chain**
+#. **ARM64 Tool Chain**
 
    For example, the *aarch64* Linaro Toolchain, which can be obtained from
    `here <https://releases.linaro.org/components/toolchain/binaries/4.9-2017.01/aarch64-linux-gnu>`_.
 
-3. **Rootfile system**
+#. **Rootfile system**
 
    Any *aarch64* supporting filesystem can be used. For example,
    Ubuntu 15.10 (Wily) or 16.04 LTS (Xenial) userland which can be obtained
@@ -60,7 +60,7 @@ OCTEON TX compatible board:
    as part of SDK from Cavium. The SDK includes all the above prerequisites necessary
    to bring up a OCTEON TX board. Please refer :ref:`setup_platform_using_OCTEON_TX_SDK`.
 
-- Follow the DPDK :doc:`../linux_gsg/index` to setup the basic DPDK environment.
+#. Follow the DPDK :doc:`../linux_gsg/index` to setup the basic DPDK environment.
 
 .. _setup_platform_using_OCTEON_TX_SDK:
 

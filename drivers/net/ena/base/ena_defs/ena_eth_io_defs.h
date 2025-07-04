@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
+
 #ifndef _ENA_ETH_IO_H_
 #define _ENA_ETH_IO_H_
 
@@ -152,7 +153,8 @@ struct ena_eth_io_tx_cdesc {
 
 	/* flags
 	 * 0 : phase
-	 * 7:1 : reserved1
+	 * 5:1 : reserved1
+	 * 7:6 : mbz6 - MBZ
 	 */
 	uint8_t flags;
 
@@ -198,7 +200,7 @@ struct ena_eth_io_rx_desc {
 struct ena_eth_io_rx_cdesc_base {
 	/* 4:0 : l3_proto_idx
 	 * 6:5 : src_vlan_cnt
-	 * 7 : reserved7 - MBZ
+	 * 7 : mbz7 - MBZ
 	 * 12:8 : l4_proto_idx
 	 * 13 : l3_csum_err - when set, either the L3
 	 *    checksum error detected, or, the controller didn't
@@ -214,7 +216,8 @@ struct ena_eth_io_rx_cdesc_base {
 	 * 16 : l4_csum_checked - L4 checksum was verified
 	 *    (could be OK or error), when cleared the status of
 	 *    checksum is unknown
-	 * 23:17 : reserved17 - MBZ
+	 * 17 : mbz17 - MBZ
+	 * 23:18 : reserved18
 	 * 24 : phase
 	 * 25 : l3_csum2 - second checksum engine result
 	 * 26 : first - Indicates first descriptor in
@@ -261,7 +264,8 @@ struct ena_eth_io_intr_reg {
 	/* 14:0 : rx_intr_delay
 	 * 29:15 : tx_intr_delay
 	 * 30 : intr_unmask
-	 * 31 : reserved
+	 * 31 : no_moderation_update - 0 - moderation
+	 *    updated, 1 - moderation not updated
 	 */
 	uint32_t intr_control;
 };
@@ -340,6 +344,8 @@ struct ena_eth_io_numa_node_cfg_reg {
 
 /* tx_cdesc */
 #define ENA_ETH_IO_TX_CDESC_PHASE_MASK                      BIT(0)
+#define ENA_ETH_IO_TX_CDESC_MBZ6_SHIFT                      6
+#define ENA_ETH_IO_TX_CDESC_MBZ6_MASK                       GENMASK(7, 6)
 
 /* rx_desc */
 #define ENA_ETH_IO_RX_DESC_PHASE_MASK                       BIT(0)
@@ -354,6 +360,8 @@ struct ena_eth_io_numa_node_cfg_reg {
 #define ENA_ETH_IO_RX_CDESC_BASE_L3_PROTO_IDX_MASK          GENMASK(4, 0)
 #define ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_SHIFT         5
 #define ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_MASK          GENMASK(6, 5)
+#define ENA_ETH_IO_RX_CDESC_BASE_MBZ7_SHIFT                 7
+#define ENA_ETH_IO_RX_CDESC_BASE_MBZ7_MASK                  BIT(7)
 #define ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_SHIFT         8
 #define ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_MASK          GENMASK(12, 8)
 #define ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM_ERR_SHIFT          13
@@ -364,6 +372,8 @@ struct ena_eth_io_numa_node_cfg_reg {
 #define ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_MASK             BIT(15)
 #define ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_CHECKED_SHIFT      16
 #define ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_CHECKED_MASK       BIT(16)
+#define ENA_ETH_IO_RX_CDESC_BASE_MBZ17_SHIFT                17
+#define ENA_ETH_IO_RX_CDESC_BASE_MBZ17_MASK                 BIT(17)
 #define ENA_ETH_IO_RX_CDESC_BASE_PHASE_SHIFT                24
 #define ENA_ETH_IO_RX_CDESC_BASE_PHASE_MASK                 BIT(24)
 #define ENA_ETH_IO_RX_CDESC_BASE_L3_CSUM2_SHIFT             25
@@ -381,6 +391,8 @@ struct ena_eth_io_numa_node_cfg_reg {
 #define ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK              GENMASK(29, 15)
 #define ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT               30
 #define ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK                BIT(30)
+#define ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT      31
+#define ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK       BIT(31)
 
 /* numa_node_cfg_reg */
 #define ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK              GENMASK(7, 0)
@@ -728,6 +740,15 @@ static inline void set_ena_eth_io_tx_cdesc_phase(struct ena_eth_io_tx_cdesc *p, 
 	p->flags |= val & ENA_ETH_IO_TX_CDESC_PHASE_MASK;
 }
 
+static inline uint8_t get_ena_eth_io_tx_cdesc_mbz6(const struct ena_eth_io_tx_cdesc *p)
+{
+	return (p->flags & ENA_ETH_IO_TX_CDESC_MBZ6_MASK) >> ENA_ETH_IO_TX_CDESC_MBZ6_SHIFT;
+}
+static inline void set_ena_eth_io_tx_cdesc_mbz6(struct ena_eth_io_tx_cdesc *p, uint8_t val)
+{
+	p->flags |= (val << ENA_ETH_IO_TX_CDESC_MBZ6_SHIFT) & ENA_ETH_IO_TX_CDESC_MBZ6_MASK;
+}
+
 static inline uint8_t get_ena_eth_io_rx_desc_phase(const struct ena_eth_io_rx_desc *p)
 {
 	return p->ctrl & ENA_ETH_IO_RX_DESC_PHASE_MASK;
@@ -788,6 +809,19 @@ static inline void set_ena_eth_io_rx_cdesc_base_src_vlan_cnt(struct ena_eth_io_r
 	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_SRC_VLAN_CNT_MASK;
 }
 
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_mbz7(const struct ena_eth_io_rx_cdesc_base *p)
+{
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_MBZ7_MASK) >>
+		ENA_ETH_IO_RX_CDESC_BASE_MBZ7_SHIFT;
+}
+
+static inline void set_ena_eth_io_rx_cdesc_base_mbz7(struct ena_eth_io_rx_cdesc_base *p,
+							      uint32_t val)
+{
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_MBZ7_SHIFT) &
+		      ENA_ETH_IO_RX_CDESC_BASE_MBZ7_MASK;
+}
+
 static inline uint32_t get_ena_eth_io_rx_cdesc_base_l4_proto_idx(const struct ena_eth_io_rx_cdesc_base *p)
 {
 	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_MASK) >> ENA_ETH_IO_RX_CDESC_BASE_L4_PROTO_IDX_SHIFT;
@@ -836,6 +870,19 @@ static inline uint32_t get_ena_eth_io_rx_cdesc_base_l4_csum_checked(const struct
 static inline void set_ena_eth_io_rx_cdesc_base_l4_csum_checked(struct ena_eth_io_rx_cdesc_base *p, uint32_t val)
 {
 	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_CHECKED_SHIFT) & ENA_ETH_IO_RX_CDESC_BASE_L4_CSUM_CHECKED_MASK;
+}
+
+static inline uint32_t get_ena_eth_io_rx_cdesc_base_mbz17(const struct ena_eth_io_rx_cdesc_base *p)
+{
+	return (p->status & ENA_ETH_IO_RX_CDESC_BASE_MBZ17_MASK) >>
+		ENA_ETH_IO_RX_CDESC_BASE_MBZ17_SHIFT;
+}
+
+static inline void set_ena_eth_io_rx_cdesc_base_mbz17(struct ena_eth_io_rx_cdesc_base *p,
+								uint32_t val)
+{
+	p->status |= (val << ENA_ETH_IO_RX_CDESC_BASE_MBZ17_SHIFT) &
+		      ENA_ETH_IO_RX_CDESC_BASE_MBZ17_MASK;
 }
 
 static inline uint32_t get_ena_eth_io_rx_cdesc_base_phase(const struct ena_eth_io_rx_cdesc_base *p)
@@ -916,6 +963,20 @@ static inline uint32_t get_ena_eth_io_intr_reg_intr_unmask(const struct ena_eth_
 static inline void set_ena_eth_io_intr_reg_intr_unmask(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
 	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT) & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
+}
+
+static inline
+uint32_t get_ena_eth_io_intr_reg_no_moderation_update(const struct ena_eth_io_intr_reg *p)
+{
+	return (p->intr_control & ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK) >>
+			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT;
+}
+
+static inline
+void set_ena_eth_io_intr_reg_no_moderation_update(struct ena_eth_io_intr_reg *p, uint32_t val)
+{
+	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT) &
+			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK;
 }
 
 static inline uint32_t get_ena_eth_io_numa_node_cfg_reg_numa(const struct ena_eth_io_numa_node_cfg_reg *p)

@@ -11,7 +11,7 @@ bitmap_ctzll(uint64_t slab)
 	if (slab == 0)
 		return 0;
 
-	return __builtin_ctzll(slab);
+	return plt_ctz64(slab);
 }
 
 void
@@ -328,6 +328,9 @@ nix_tm_bp_config_set(struct roc_nix *roc_nix, uint16_t sq, uint16_t tc,
 	uint8_t k = 0;
 	int rc = 0, i;
 
+	if (roc_nix_is_sdp(roc_nix))
+		return 0;
+
 	sq_s = nix->sqs[sq];
 	if (!sq_s)
 		return -ENOENT;
@@ -610,8 +613,6 @@ roc_nix_tm_sq_flush_spin(struct roc_nix_sq *sq)
 
 	return 0;
 exit:
-	roc_nix_tm_dump(sq->roc_nix, NULL);
-	roc_nix_queues_ctx_dump(sq->roc_nix, NULL);
 	return -EFAULT;
 }
 
@@ -748,6 +749,70 @@ roc_nix_tm_sq_free_pending_sqe(struct nix *nix, int q)
 	return 0;
 }
 
+static inline int
+nix_tm_sdp_sq_drop_pkts(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	struct nix_txschq_config *req = NULL, *rsp;
+	enum roc_nix_tm_tree tree = nix->tm_tree;
+	int rc = 0, qid = sq->qid;
+	struct nix_tm_node *node;
+	uint64_t regval;
+
+	/* Find the node for this SQ */
+	node = nix_tm_node_search(nix, qid, tree);
+	while (node) {
+		if (node->hw_lvl != NIX_TXSCH_LVL_TL4) {
+			node = node->parent;
+			continue;
+		}
+		break;
+	}
+	if (!node) {
+		plt_err("Invalid node/state for sq %u", qid);
+		return -EFAULT;
+	}
+
+	/* Get present link config */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->read = 1;
+	req->lvl = NIX_TXSCH_LVL_TL4;
+	req->reg[0] = NIX_AF_TL4X_SDP_LINK_CFG(node->hw_id);
+	req->num_regs = 1;
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc || rsp->num_regs != 1)
+		goto err;
+	regval = rsp->regval[0];
+	/* Disable BP_ENA in SDP link config */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = NIX_TXSCH_LVL_TL4;
+	req->reg[0] = NIX_AF_TL4X_SDP_LINK_CFG(node->hw_id);
+	req->regval[0] = 0x0ull;
+	req->regval_mask[0] = ~(BIT_ULL(13));
+	req->num_regs = 1;
+	rc = mbox_process(mbox);
+	if (rc)
+		goto err;
+	mbox_put(mbox);
+	/* Flush SQ to drop all packets */
+	rc = roc_nix_tm_sq_flush_spin(sq);
+	if (rc)
+		plt_nix_dbg("SQ flush failed with link reset config rc %d", rc);
+	mbox = mbox_get((&nix->dev)->mbox);
+	/* Restore link config */
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->reg[0] = NIX_AF_TL4X_SDP_LINK_CFG(node->hw_id);
+	req->lvl = NIX_TXSCH_LVL_TL4;
+	req->regval[0] = regval;
+	req->regval_mask[0] = ~(BIT_ULL(13) | BIT_ULL(12) | GENMASK_ULL(7, 0));
+	req->num_regs = 1;
+	rc = mbox_process(mbox);
+err:
+	mbox_put(mbox);
+	return rc;
+}
+
 /* Flush and disable tx queue and its parent SMQ */
 int
 nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
@@ -825,18 +890,25 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 		if (!sq)
 			continue;
 
-		rc = roc_nix_tm_sq_aura_fc(sq, false);
-		if (rc) {
-			plt_err("Failed to disable sqb aura fc, rc=%d", rc);
-			goto cleanup;
+		if (sq->enable) {
+			rc = roc_nix_tm_sq_aura_fc(sq, false);
+			if (rc) {
+				plt_err("Failed to disable sqb aura fc, rc=%d", rc);
+				goto cleanup;
+			}
 		}
 
 		/* Wait for sq entries to be flushed */
 		rc = roc_nix_tm_sq_flush_spin(sq);
 		if (rc) {
-			rc = roc_nix_tm_sq_free_pending_sqe(nix, sq->qid);
+			if (nix->sdp_link)
+				rc = nix_tm_sdp_sq_drop_pkts(roc_nix, sq);
+			else
+				rc = roc_nix_tm_sq_free_pending_sqe(nix, sq->qid);
 			if (rc) {
-				plt_err("Failed to drain sq %u, rc=%d\n", sq->qid, rc);
+				roc_nix_tm_dump(sq->roc_nix, NULL);
+				roc_nix_queues_ctx_dump(sq->roc_nix, NULL);
+				plt_err("Failed to drain sq %u, rc=%d", sq->qid, rc);
 				return rc;
 			}
 			/* Freed all pending SQEs for this SQ, so disable this node */
@@ -930,10 +1002,12 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 			once = true;
 		}
 
-		rc = roc_nix_tm_sq_aura_fc(s_sq, true);
-		if (rc) {
-			plt_err("Failed to enable sqb aura fc, rc=%d", rc);
-			return rc;
+		if (s_sq->enable) {
+			rc = roc_nix_tm_sq_aura_fc(s_sq, true);
+			if (rc) {
+				plt_err("Failed to enable sqb aura fc, rc=%d", rc);
+				return rc;
+			}
 		}
 	}
 
@@ -984,10 +1058,30 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		}
 		aq->sq.smq_rr_quantum = rr_quantum;
 		aq->sq_mask.smq_rr_quantum = ~aq->sq_mask.smq_rr_quantum;
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_SQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+
+		/* smq update only when needed */
+		if (!rr_quantum_only) {
+			aq->sq.smq = smq;
+			aq->sq_mask.smq = ~aq->sq_mask.smq;
+		}
+		aq->sq.smq_rr_weight = rr_quantum;
+		aq->sq_mask.smq_rr_weight = ~aq->sq_mask.smq_rr_weight;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
 		if (!aq) {
 			rc = -ENOSPC;
 			goto exit;
@@ -1515,7 +1609,11 @@ nix_tm_prepare_default_tree(struct roc_nix *roc_nix)
 		node->id = nonleaf_id;
 		node->parent_id = parent;
 		node->priority = 0;
-		node->weight = NIX_TM_DFLT_RR_WT;
+		/* Default VF root RR_QUANTUM is in sync with kernel */
+		if (lvl == ROC_TM_LVL_ROOT && !nix_tm_have_tl1_access(nix))
+			node->weight = roc_nix->root_sched_weight;
+		else
+			node->weight = NIX_TM_DFLT_RR_WT;
 		node->shaper_profile_id = ROC_NIX_TM_SHAPER_PROFILE_NONE;
 		node->lvl = lvl;
 		node->tree = ROC_NIX_TM_DEFAULT;

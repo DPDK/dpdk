@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2019 Arm Limited.
 
-.. _RCU_Library:
-
-RCU Library
-============
+Read-Copy-Update (RCU) Library
+==============================
 
 Lockless data structures provide scalability and determinism.
 They enable use cases where locking may not be allowed

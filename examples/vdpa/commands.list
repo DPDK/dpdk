@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2023 Intel Corporation
+#
+help                                    # show help
+list                                    # list all available vdpa devices
+create <STRING>socket_path <STRING>bdf  # create a new vdpa port
+stats <STRING>bdf <UINT32>qid           # show device statistics
+quit                                    # exit application

@@ -106,6 +106,7 @@ struct mlx5dr_send_ring_dep_wqe {
 	uint32_t rtc_1;
 	uint32_t retry_rtc_0;
 	uint32_t retry_rtc_1;
+	uint32_t direct_index;
 	void *user_data;
 };
 
@@ -113,7 +114,6 @@ struct mlx5dr_send_ring_sq {
 	char *buf;
 	uint32_t sqn;
 	__be32 *db;
-	void *reg_addr;
 	uint16_t cur_post;
 	uint16_t buf_mask;
 	struct mlx5dr_send_ring_priv *wr_priv;
@@ -143,7 +143,7 @@ struct mlx5dr_completed_poll {
 	uint16_t mask;
 };
 
-struct mlx5dr_send_engine {
+struct __rte_cache_aligned mlx5dr_send_engine {
 	struct mlx5dr_send_ring send_ring[MLX5DR_NUM_SEND_RINGS]; /* For now 1:1 mapping */
 	struct mlx5dv_devx_uar *uar; /* Uar is shared between rings of a queue */
 	struct mlx5dr_completed_poll completed;
@@ -152,7 +152,7 @@ struct mlx5dr_send_engine {
 	uint16_t rings;
 	uint16_t num_entries;
 	bool err;
-} __rte_cache_aligned;
+};
 
 struct mlx5dr_send_engine_post_ctrl {
 	struct mlx5dr_send_engine *queue;
@@ -202,8 +202,6 @@ struct mlx5dr_send_ste_attr {
  *   value to write in CPU endian format.
  * @param addr
  *   Address to write to.
- * @param lock
- *   Address of the lock to use for that UAR access.
  */
 static __rte_always_inline void
 mlx5dr_uar_write64_relaxed(uint64_t val, void *addr)

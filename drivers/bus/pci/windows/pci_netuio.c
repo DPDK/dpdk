@@ -96,7 +96,7 @@ get_netuio_device_interface_detail(HDEVINFO di_set)
 
 	dev_ifx_detail = malloc(required_size);
 	if (!dev_ifx_detail) {
-		RTE_LOG(ERR, EAL, "Could not allocate memory for dev interface.\n");
+		PCI_LOG(ERR, "Could not allocate memory for dev interface.");
 		goto end;
 	}
 	dev_ifx_detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
@@ -148,15 +148,14 @@ get_netuio_device_info(HDEVINFO dev_info, PSP_DEVINFO_DATA dev_info_data,
 		NULL);
 	if (netuio == INVALID_HANDLE_VALUE) {
 		RTE_LOG_WIN32_ERR("CreateFile");
-		RTE_LOG(ERR, EAL, "Unable to open driver file \"%s\".\n",
-			dev_ifx_detail->DevicePath);
+		PCI_LOG(ERR, "Unable to open driver file \"%s\".", dev_ifx_detail->DevicePath);
 		goto end;
 	}
 
 	/* send ioctl to retrieve device information */
 	if (send_ioctl(netuio, IOCTL_NETUIO_MAP_HW_INTO_USERSPACE, NULL, 0,
 		&hw_info, sizeof(hw_info)) != ERROR_SUCCESS) {
-		RTE_LOG(ERR, EAL, "Unable to send ioctl to driver.\n");
+		PCI_LOG(ERR, "Unable to send ioctl to driver.");
 		goto end;
 	}
 

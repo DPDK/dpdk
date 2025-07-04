@@ -5,22 +5,21 @@
 #ifndef __INCLUDE_RTE_PORT_FD_H__
 #define __INCLUDE_RTE_PORT_FD_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port FD Device
  *
  * fd_reader: input port built on top of valid non-blocking file descriptor
  * fd_writer: output port built on top of valid non-blocking file descriptor
- *
- ***/
+ */
 
 #include <stdint.h>
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** fd_reader port parameters */
 struct rte_port_fd_reader_params {

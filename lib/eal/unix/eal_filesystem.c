@@ -14,6 +14,7 @@
 
 #include <rte_log.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_filesystem.h"
 
@@ -41,7 +42,7 @@ int eal_create_runtime_dir(void)
 	/* create DPDK subdirectory under runtime dir */
 	ret = snprintf(tmp, sizeof(tmp), "%s/dpdk", directory);
 	if (ret < 0 || ret == sizeof(tmp)) {
-		RTE_LOG(ERR, EAL, "Error creating DPDK runtime path name\n");
+		EAL_LOG(ERR, "Error creating DPDK runtime path name");
 		return -1;
 	}
 
@@ -49,7 +50,7 @@ int eal_create_runtime_dir(void)
 	ret = snprintf(run_dir, sizeof(run_dir), "%s/%s",
 			tmp, eal_get_hugefile_prefix());
 	if (ret < 0 || ret == sizeof(run_dir)) {
-		RTE_LOG(ERR, EAL, "Error creating prefix-specific runtime path name\n");
+		EAL_LOG(ERR, "Error creating prefix-specific runtime path name");
 		return -1;
 	}
 
@@ -58,14 +59,14 @@ int eal_create_runtime_dir(void)
 	 */
 	ret = mkdir(tmp, 0700);
 	if (ret < 0 && errno != EEXIST) {
-		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
+		EAL_LOG(ERR, "Error creating '%s': %s",
 			tmp, strerror(errno));
 		return -1;
 	}
 
 	ret = mkdir(run_dir, 0700);
 	if (ret < 0 && errno != EEXIST) {
-		RTE_LOG(ERR, EAL, "Error creating '%s': %s\n",
+		EAL_LOG(ERR, "Error creating '%s': %s",
 			run_dir, strerror(errno));
 		return -1;
 	}
@@ -77,6 +78,7 @@ int eal_create_runtime_dir(void)
 }
 
 /* parse a sysfs (or other) file containing one integer value */
+RTE_EXPORT_SYMBOL(eal_parse_sysfs_value)
 int eal_parse_sysfs_value(const char *filename, unsigned long *val)
 {
 	FILE *f;
@@ -84,20 +86,20 @@ int eal_parse_sysfs_value(const char *filename, unsigned long *val)
 	char *end = NULL;
 
 	if ((f = fopen(filename, "r")) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs value %s\n",
+		EAL_LOG(ERR, "%s(): cannot open sysfs value %s",
 			__func__, filename);
 		return -1;
 	}
 
 	if (fgets(buf, sizeof(buf), f) == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot read sysfs value %s\n",
+		EAL_LOG(ERR, "%s(): cannot read sysfs value %s",
 			__func__, filename);
 		fclose(f);
 		return -1;
 	}
 	*val = strtoul(buf, &end, 0);
 	if ((buf[0] == '\0') || (end == NULL) || (*end != '\n')) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs value %s\n",
+		EAL_LOG(ERR, "%s(): cannot parse sysfs value %s",
 				__func__, filename);
 		fclose(f);
 		return -1;

@@ -3,28 +3,34 @@
  */
 
 #ifdef __RDSEED__
+#ifndef RTE_TOOLCHAIN_MSVC
 #include <x86intrin.h>
+#endif
 #endif
 #include <unistd.h>
 
+#include <rte_bitops.h>
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
 #include <rte_lcore.h>
+#include <rte_lcore_var.h>
 #include <rte_random.h>
 
-struct rte_rand_state {
+#include <eal_export.h>
+#include "eal_private.h"
+
+struct __rte_cache_aligned rte_rand_state {
 	uint64_t z1;
 	uint64_t z2;
 	uint64_t z3;
 	uint64_t z4;
 	uint64_t z5;
-} __rte_cache_aligned;
+};
 
-/* One instance each for every lcore id-equipped thread, and one
- * additional instance to be shared by all others threads (i.e., all
- * unregistered non-EAL threads).
- */
-static struct rte_rand_state rand_states[RTE_MAX_LCORE + 1];
+static RTE_LCORE_VAR_HANDLE(struct rte_rand_state, rand_state);
+
+/* instance to be shared by all unregistered non-EAL threads */
+static struct rte_rand_state unregistered_rand_state;
 
 static uint32_t
 __rte_rand_lcg32(uint32_t *seed)
@@ -77,14 +83,21 @@ __rte_srand_lfsr258(uint64_t seed, struct rte_rand_state *state)
 	state->z5 = __rte_rand_lfsr258_gen_seed(&lcg_seed, 8388608UL);
 }
 
+RTE_EXPORT_SYMBOL(rte_srand)
 void
 rte_srand(uint64_t seed)
 {
 	unsigned int lcore_id;
 
 	/* add lcore_id to seed to avoid having the same sequence */
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++)
-		__rte_srand_lfsr258(seed + lcore_id, &rand_states[lcore_id]);
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		struct rte_rand_state *lcore_state =
+			RTE_LCORE_VAR_LCORE(lcore_id, rand_state);
+
+		__rte_srand_lfsr258(seed + lcore_id, lcore_state);
+	}
+
+	__rte_srand_lfsr258(seed + lcore_id, &unregistered_rand_state);
 }
 
 static __rte_always_inline uint64_t
@@ -122,13 +135,16 @@ struct rte_rand_state *__rte_rand_get_state(void)
 
 	idx = rte_lcore_id();
 
-	/* last instance reserved for unregistered non-EAL threads */
-	if (unlikely(idx == LCORE_ID_ANY))
-		idx = RTE_MAX_LCORE;
+	if (unlikely(idx == LCORE_ID_ANY)) {
+		/* Make sure rte_*rand() was called after rte_eal_init(). */
+		RTE_ASSERT(rand_state != NULL);
+		return &unregistered_rand_state;
+	}
 
-	return &rand_states[idx];
+	return RTE_LCORE_VAR(rand_state);
 }
 
+RTE_EXPORT_SYMBOL(rte_rand)
 uint64_t
 rte_rand(void)
 {
@@ -139,6 +155,7 @@ rte_rand(void)
 	return __rte_rand_lfsr258(state);
 }
 
+RTE_EXPORT_SYMBOL(rte_rand_max)
 uint64_t
 rte_rand_max(uint64_t upper_bound)
 {
@@ -153,7 +170,7 @@ rte_rand_max(uint64_t upper_bound)
 
 	state = __rte_rand_get_state();
 
-	ones = __builtin_popcountll(upper_bound);
+	ones = rte_popcount64(upper_bound);
 
 	/* Handle power-of-2 upper_bound as a special case, since it
 	 * has no bias issues.
@@ -168,7 +185,7 @@ rte_rand_max(uint64_t upper_bound)
 	 * the value and generate a new one.
 	 */
 
-	leading_zeros = __builtin_clzll(upper_bound);
+	leading_zeros = rte_clz64(upper_bound);
 	mask >>= leading_zeros;
 
 	do {
@@ -178,6 +195,7 @@ rte_rand_max(uint64_t upper_bound)
 	return res;
 }
 
+RTE_EXPORT_SYMBOL(rte_drand)
 double
 rte_drand(void)
 {
@@ -222,9 +240,12 @@ __rte_random_initial_seed(void)
 	return rte_get_tsc_cycles();
 }
 
-RTE_INIT(rte_rand_init)
+void
+eal_rand_init(void)
 {
 	uint64_t seed;
+
+	RTE_LCORE_VAR_ALLOC(rand_state);
 
 	seed = __rte_random_initial_seed();
 

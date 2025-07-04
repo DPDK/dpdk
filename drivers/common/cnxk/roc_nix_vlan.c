@@ -7,7 +7,7 @@
 
 int
 roc_nix_vlan_mcam_entry_read(struct roc_nix *roc_nix, uint32_t index,
-			     struct npc_mcam_read_entry_rsp **rsp)
+			     void **rsp)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
@@ -27,24 +27,34 @@ exit:
 }
 
 int
-roc_nix_vlan_mcam_entry_write(struct roc_nix *roc_nix, uint32_t index,
-			      struct mcam_entry *entry, uint8_t intf,
+roc_nix_vlan_mcam_entry_write(struct roc_nix *roc_nix, uint32_t index, void *entry, uint8_t intf,
 			      uint8_t enable)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
 	struct npc_mcam_write_entry_req *req;
+	struct npc_cn20k_mcam_write_entry_req *cn20k_req;
 	struct msghdr *rsp;
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
-	if (req == NULL)
-		goto exit;
-	req->entry = index;
-	req->intf = intf;
-	req->enable_entry = enable;
-	mbox_memcpy(&req->entry_data, entry, sizeof(struct mcam_entry));
+	if (roc_model_is_cn20k()) {
+		cn20k_req = mbox_alloc_msg_npc_cn20k_mcam_write_entry(mbox);
+		if (cn20k_req == NULL)
+			goto exit;
+		cn20k_req->entry = index;
+		cn20k_req->intf = intf;
+		cn20k_req->enable_entry = enable;
+		mbox_memcpy(&cn20k_req->entry_data, entry, sizeof(struct cn20k_mcam_entry));
+	} else {
+		req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
+		if (req == NULL)
+			goto exit;
+		req->entry = index;
+		req->intf = intf;
+		req->enable_entry = enable;
+		mbox_memcpy(&req->entry_data, entry, sizeof(struct mcam_entry));
+	}
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 exit:
@@ -53,25 +63,39 @@ exit:
 }
 
 int
-roc_nix_vlan_mcam_entry_alloc_and_write(struct roc_nix *roc_nix,
-					struct mcam_entry *entry, uint8_t intf,
+roc_nix_vlan_mcam_entry_alloc_and_write(struct roc_nix *roc_nix, void *entry, uint8_t intf,
 					uint8_t priority, uint8_t ref_entry)
 {
-	struct npc_mcam_alloc_and_write_entry_req *req;
 	struct npc_mcam_alloc_and_write_entry_rsp *rsp;
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
 
-	req = mbox_alloc_msg_npc_mcam_alloc_and_write_entry(mbox);
-	if (req == NULL)
-		goto exit;
-	req->priority = priority;
-	req->ref_entry = ref_entry;
-	req->intf = intf;
-	req->enable_entry = true;
-	mbox_memcpy(&req->entry_data, entry, sizeof(struct mcam_entry));
+	if (roc_model_is_cn20k()) {
+		struct npc_cn20k_mcam_alloc_and_write_entry_req *req;
+
+		req = mbox_alloc_msg_npc_cn20k_mcam_alloc_and_write_entry(mbox);
+		if (req == NULL)
+			goto exit;
+		req->ref_prio = priority;
+		req->ref_entry = ref_entry;
+		req->intf = intf;
+		req->enable_entry = true;
+		mbox_memcpy(&req->entry_data, entry, sizeof(struct cn20k_mcam_entry));
+
+	} else {
+		struct npc_mcam_alloc_and_write_entry_req *req;
+
+		req = mbox_alloc_msg_npc_mcam_alloc_and_write_entry(mbox);
+		if (req == NULL)
+			goto exit;
+		req->ref_priority = priority;
+		req->ref_entry = ref_entry;
+		req->intf = intf;
+		req->enable_entry = true;
+		mbox_memcpy(&req->entry_data, entry, sizeof(struct mcam_entry));
+	}
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
@@ -211,18 +235,17 @@ exit:
 }
 
 int
-roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid)
+nix_vlan_tpid_set(struct mbox *mbox, uint16_t pcifunc, uint32_t type, uint16_t tpid)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct dev *dev = &nix->dev;
-	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_set_vlan_tpid *tpid_cfg;
 	int rc = -ENOSPC;
 
-	tpid_cfg = mbox_alloc_msg_nix_set_vlan_tpid(mbox);
+	/* Configuring for PF */
+	tpid_cfg = mbox_alloc_msg_nix_set_vlan_tpid(mbox_get(mbox));
 	if (tpid_cfg == NULL)
 		goto exit;
 	tpid_cfg->tpid = tpid;
+	tpid_cfg->hdr.pcifunc = pcifunc;
 
 	if (type & ROC_NIX_VLAN_TYPE_OUTER)
 		tpid_cfg->vlan_type = NIX_VLAN_TYPE_OUTER;
@@ -232,5 +255,19 @@ roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid)
 	rc = mbox_process(mbox);
 exit:
 	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	int rc;
+
+	rc = nix_vlan_tpid_set(dev->mbox, dev->pf_func, type, tpid);
+	if (rc)
+		plt_err("Failed to set tpid for PF, rc %d", rc);
+
 	return rc;
 }

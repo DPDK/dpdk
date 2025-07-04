@@ -55,7 +55,7 @@
 /* Bunch of defines for shared code bogosity */
 
 static inline void UNREFERENCED(const char *a __rte_unused, ...) {}
-#define UNREFERENCED_PARAMETER(args...) UNREFERENCED("", ##args)
+#define UNREFERENCED_PARAMETER(...) UNREFERENCED("", ##__VA_ARGS__)
 
 #define STATIC static
 
@@ -180,8 +180,5 @@ static inline u64 REVERT_BIT_MASK64(u64 mask)
 
 #define ETH_P_8021Q      0x8100
 #define ETH_P_8021AD     0x88A8
-
-#define PCI_COMMAND		0x04
-#define  PCI_COMMAND_MASTER	0x4
 
 #endif /* _NGBE_OS_H_ */

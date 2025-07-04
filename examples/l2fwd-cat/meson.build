@@ -14,6 +14,7 @@ endif
 
 ext_deps += pqos
 allow_experimental_apis = true
+cflags += no_wvla_cflag
 cflags += '-I/usr/local/include' # assume pqos lib installed in /usr/local
 sources = files(
         'cat.c',

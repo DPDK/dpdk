@@ -21,8 +21,14 @@ There are two key differences from the L2 Forwarding sample application:
 *   The forwarding decision is taken based on information read from the input packet's IPv4 header.
 
 The lookup method is the Four-byte Key (FBK) hash-based method.
-The lookup table is composed of pairs of destination IPv4 address (the FBK)
+The lookup table is composed of pairs of destination IPv4 addresses (the FBK)
 and a port mask associated with that IPv4 address.
+By default, the following IP addresses and their respective port masks are added:
+
+.. literalinclude:: ../../../examples/ipv4_multicast/main.c
+   :language: c
+   :start-after: mcast_group_table
+   :end-before: };
 
 .. note::
 
@@ -32,14 +38,15 @@ and a port mask associated with that IPv4 address.
 
 For convenience and simplicity, this sample application does not take IANA-assigned multicast addresses into account,
 but instead equates the last four bytes of the multicast group (that is, the last four bytes of the destination IP address)
-with the mask of ports to multicast packets to.
+with the mask of ports to multicast packets.
+
 Also, the application does not consider the Ethernet addresses;
 it looks only at the IPv4 destination address for any given packet.
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``ipv4_multicast`` sub-directory.
 
@@ -103,8 +110,8 @@ Memory pools for indirect buffers are initialized differently from the memory po
     :end-before: >8 End of create mbuf pools.
     :dedent: 1
 
-The reason for this is because indirect buffers are not supposed to hold any packet data and
-therefore can be initialized with lower amount of reserved memory for each buffer.
+The reason for this is that indirect buffers are not supposed to hold any packet data and
+therefore can be initialized with the lower amount of reserved memory for each buffer.
 
 Hash Initialization
 ~~~~~~~~~~~~~~~~~~~
@@ -119,7 +126,7 @@ The hash object is created and loaded with the pre-configured entries read from 
 Forwarding
 ~~~~~~~~~~
 
-All forwarding is done inside the mcast_forward() function.
+All forwarding is done inside the ``mcast_forward()`` function.
 Firstly, the Ethernet* header is removed from the packet and the IPv4 address is extracted from the IPv4 header:
 
 .. literalinclude:: ../../../examples/ipv4_multicast/main.c
@@ -137,7 +144,8 @@ if the routing table has any ports assigned to the destination address:
     :end-before: >8 End of valid multicast address check.
     :dedent: 1
 
-Then, the number of ports in the destination portmask is calculated with the help of the bitcnt() function:
+Next, the number of ports in the destination portmask
+is calculated with the help of the ``bitcnt()`` function:
 
 .. literalinclude:: ../../../examples/ipv4_multicast/main.c
     :language: c
@@ -164,7 +172,7 @@ with the Ethernet address 01:00:5e:00:00:00, as per RFC 1112:
     :start-after: Construct Ethernet multicast address from IPv4 multicast Address. 8<
     :end-before: >8 End of Construction of multicast address from IPv4 multicast address.
 
-Then, packets are dispatched to the destination ports according to the portmask associated with a multicast group:
+Packets are then dispatched to the destination ports according to the portmask associated with a multicast group:
 
 .. literalinclude:: ../../../examples/ipv4_multicast/main.c
     :language: c
@@ -172,7 +180,7 @@ Then, packets are dispatched to the destination ports according to the portmask 
     :end-before: >8 End of packets dispatched to destination ports.
     :dedent: 1
 
-The actual packet transmission is done in the mcast_send_pkt() function:
+The actual packet transmission is done in the ``mcast_send_pkt()`` function:
 
 .. literalinclude:: ../../../examples/ipv4_multicast/main.c
     :language: c
@@ -182,36 +190,39 @@ The actual packet transmission is done in the mcast_send_pkt() function:
 Buffer Cloning
 ~~~~~~~~~~~~~~
 
-This is the most important part of the application since it demonstrates the use of zero- copy buffer cloning.
-There are two approaches for creating the outgoing packet and although both are based on the data zero-copy idea,
-there are some differences in the detail.
+This is the most important part of the application
+since it demonstrates the use of zero-copy buffer cloning.
+There are two approaches for creating the outgoing packet.
+Although both are based on the data zero-copy idea,
+there are some differences in the details.
 
-The first approach creates a clone of the input packet, for example,
+The first approach creates a clone of the input packet. For example,
 walk though all segments of the input packet and for each of segment,
 create a new buffer and attach that new buffer to the segment
-(refer to rte_pktmbuf_clone() in the rte_mbuf library for more details).
+(refer to ``rte_pktmbuf_clone()`` in the mbuf library for more details).
 A new buffer is then allocated for the packet header and is prepended to the cloned buffer.
 
-The second approach does not make a clone, it just increments the reference counter for all input packet segment,
+The second approach does not make a clone.
+It simply increments the reference counter for all input packet segments,
 allocates a new buffer for the packet header and prepends it to the input packet.
 
 Basically, the first approach reuses only the input packet's data, but creates its own copy of packet's metadata.
 The second approach reuses both input packet's data and metadata.
 
-The advantage of first approach is that each outgoing packet has its own copy of the metadata,
+The advantage of the first approach is that each outgoing packet has its own copy of the metadata,
 so we can safely modify the data pointer of the input packet.
 That allows us to skip creation if the output packet is for the last destination port
-and instead modify input packet's header in place.
-For example, for N destination ports, we need to invoke mcast_out_pkt() (N-1) times.
+and, instead, modify the input packet's header in place.
+For example, for N destination ports, we need to invoke ``mcast_out_pkt()`` (N-1) times.
 
-The advantage of the second approach is that there is less work to be done for each outgoing packet,
-that is, the "clone" operation is skipped completely.
+The advantage of the second approach is that there is less work to be done for each outgoing packet.
+The "clone" operation is skipped completely.
 However, there is a price to pay.
-The input packet's metadata must remain intact, so for N destination ports,
-we need to invoke mcast_out_pkt() (N) times.
+The input packet's metadata must remain intact. For N destination ports,
+we need to invoke ``mcast_out_pkt()`` (N) times.
 
 Therefore, for a small number of outgoing ports (and segments in the input packet),
-first approach is faster.
+the first approach is faster.
 As the number of outgoing ports (and/or input segments) grows, the second approach becomes more preferable.
 
 Depending on the number of segments or the number of ports in the outgoing portmask,
@@ -223,7 +234,8 @@ either the first (with cloning) or the second (without cloning) approach is take
     :end-before: >8 End of using rte_pktmbuf_clone().
     :dedent: 1
 
-It is the mcast_out_pkt() function that performs the packet duplication (either with or without actually cloning the buffers):
+It is the ``mcast_out_pkt()`` function that performs the packet duplication
+(either with or without actually cloning the buffers):
 
 .. literalinclude:: ../../../examples/ipv4_multicast/main.c
     :language: c

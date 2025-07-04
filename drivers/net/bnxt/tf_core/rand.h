@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -32,5 +32,4 @@ uint32_t rand32(void);
  *
  */
 void rand_init(void);
-
 #endif /* __RAND_H__ */

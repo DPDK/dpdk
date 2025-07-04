@@ -5,24 +5,23 @@
 #ifndef __INCLUDE_RTE_PORT_SCHED_H__
 #define __INCLUDE_RTE_PORT_SCHED_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port Hierarchical Scheduler
  *
  * sched_reader: input port built on top of pre-initialized rte_sched_port
  * sched_writer: output port built on top of pre-initialized rte_sched_port
- *
- ***/
+ */
 
 #include <stdint.h>
 
 #include <rte_sched.h>
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** sched_reader port parameters */
 struct rte_port_sched_reader_params {

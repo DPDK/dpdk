@@ -56,3 +56,42 @@ Performing Data Copies
 Refer to the :ref:`Enqueue / Dequeue APIs <dmadev_enqueue_dequeue>` section
 of the dmadev library documentation
 for details on operation enqueue and submission API usage.
+
+Performance Tuning Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To achieve higher performance, DMA device needs to be tuned
+using PF kernel driver module parameters.
+The PF kernel driver is part of the OCTEON SDK.
+Module parameters shall be configured during module insert as in below example::
+
+    $ sudo insmod octeontx2_dpi.ko mps=128 mrrs=128 eng_fifo_buf=0x101008080808
+
+``mps``
+
+  Maximum payload size.
+  MPS size shall not exceed the size selected by PCI config.
+  Maximum size that shall be configured can be found
+  on executing ``lspci`` command for the device.
+
+``mrrs``
+
+  Maximum read request size.
+  MRRS size shall not exceed the size selected by PCI config.
+  Maximum size that shall be configured can be found
+  on executing ``lspci`` command for the device.
+
+``eng_fifo_buf``
+
+  CNXK supports 6 DMA engines and each engine has an associated FIFO.
+  By default, all engine's FIFO is configured to 8 KB.
+  Engine FIFO size can be tuned using this 64-bit variable,
+  where each byte represents an engine.
+  In the example above, engine 0-3 FIFO are configure as 8 KB
+  and engine 4-5 are configured as 16 KB.
+
+.. note::
+
+   MPS and MRRS performance tuning parameters help achieve higher performance
+   only for inbound and outbound DMA transfers.
+   The parameter has no effect for internal only DMA transfer.

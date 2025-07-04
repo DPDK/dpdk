@@ -35,10 +35,13 @@ struct null_queue {
 	struct pmd_internals *internals;
 
 	struct rte_mempool *mb_pool;
-	struct rte_mbuf *dummy_packet;
+	void *dummy_packet;
 
-	rte_atomic64_t rx_pkts;
-	rte_atomic64_t tx_pkts;
+	uint64_t rx_pkts;
+	uint64_t rx_bytes;
+
+	RTE_ATOMIC(uint64_t) tx_pkts;
+	RTE_ATOMIC(uint64_t) tx_bytes;
 };
 
 struct pmd_options {
@@ -76,20 +79,18 @@ static struct rte_eth_link pmd_link = {
 };
 
 RTE_LOG_REGISTER_DEFAULT(eth_null_logtype, NOTICE);
+#define RTE_LOGTYPE_ETH_NULL eth_null_logtype
 
-#define PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, eth_null_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, ETH_NULL, "%s(): ", __func__, __VA_ARGS__)
 
 static uint16_t
 eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
-	int i;
+	unsigned int i;
 	struct null_queue *h = q;
 	unsigned int packet_size;
-
-	if ((q == NULL) || (bufs == NULL))
-		return 0;
+	uint64_t bytes = 0;
 
 	packet_size = h->internals->packet_size;
 	if (rte_pktmbuf_alloc_bulk(h->mb_pool, bufs, nb_bufs) != 0)
@@ -98,23 +99,22 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	for (i = 0; i < nb_bufs; i++) {
 		bufs[i]->data_len = (uint16_t)packet_size;
 		bufs[i]->pkt_len = packet_size;
+		bytes += packet_size;
 		bufs[i]->port = h->internals->port_id;
 	}
 
-	rte_atomic64_add(&(h->rx_pkts), i);
-
-	return i;
+	h->rx_pkts += nb_bufs;
+	h->rx_bytes += bytes;
+	return nb_bufs;
 }
 
 static uint16_t
 eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
-	int i;
+	unsigned int i;
 	struct null_queue *h = q;
 	unsigned int packet_size;
-
-	if ((q == NULL) || (bufs == NULL))
-		return 0;
+	uint64_t bytes = 0;
 
 	packet_size = h->internals->packet_size;
 	if (rte_pktmbuf_alloc_bulk(h->mb_pool, bufs, nb_bufs) != 0)
@@ -125,12 +125,13 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 					packet_size);
 		bufs[i]->data_len = (uint16_t)packet_size;
 		bufs[i]->pkt_len = packet_size;
+		bytes += packet_size;
 		bufs[i]->port = h->internals->port_id;
 	}
 
-	rte_atomic64_add(&(h->rx_pkts), i);
-
-	return i;
+	h->rx_pkts += nb_bufs;
+	h->rx_bytes += bytes;
+	return nb_bufs;
 }
 
 static uint16_t
@@ -143,40 +144,38 @@ eth_null_no_rx(void *q __rte_unused, struct rte_mbuf **bufs __rte_unused,
 static uint16_t
 eth_null_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
-	int i;
 	struct null_queue *h = q;
-
-	if ((q == NULL) || (bufs == NULL))
-		return 0;
+	unsigned int i;
+	uint64_t bytes = 0;
 
 	for (i = 0; i < nb_bufs; i++)
-		rte_pktmbuf_free(bufs[i]);
+		bytes += rte_pktmbuf_pkt_len(bufs[i]);
 
-	rte_atomic64_add(&(h->tx_pkts), i);
+	rte_pktmbuf_free_bulk(bufs, nb_bufs);
+	rte_atomic_fetch_add_explicit(&h->tx_pkts, nb_bufs, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&h->tx_bytes, bytes, rte_memory_order_relaxed);
 
-	return i;
+	return nb_bufs;
 }
 
 static uint16_t
 eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
-	int i;
 	struct null_queue *h = q;
-	unsigned int packet_size;
+	unsigned int i;
+	uint64_t bytes = 0;
 
-	if ((q == NULL) || (bufs == NULL))
-		return 0;
-
-	packet_size = h->internals->packet_size;
 	for (i = 0; i < nb_bufs; i++) {
-		rte_memcpy(h->dummy_packet, rte_pktmbuf_mtod(bufs[i], void *),
-					packet_size);
-		rte_pktmbuf_free(bufs[i]);
+		struct rte_mbuf *m = bufs[i];
+		size_t len = RTE_MIN(h->internals->packet_size, m->data_len);
+
+		rte_memcpy(h->dummy_packet, rte_pktmbuf_mtod(m, void *), len);
+		bytes += m->pkt_len;
 	}
 
-	rte_atomic64_add(&(h->tx_pkts), i);
-
-	return i;
+	rte_atomic_fetch_add_explicit(&h->tx_pkts, nb_bufs, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&h->tx_bytes, bytes, rte_memory_order_relaxed);
+	return nb_bufs;
 }
 
 static int
@@ -188,20 +187,35 @@ eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 static int
 eth_dev_start(struct rte_eth_dev *dev)
 {
+	uint16_t i;
+
 	if (dev == NULL)
 		return -EINVAL;
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
 static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
+	uint16_t i;
+
 	if (dev == NULL)
 		return 0;
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -295,43 +309,49 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = RTE_DIM(internals->rx_null_queues);
 	dev_info->max_tx_queues = RTE_DIM(internals->tx_null_queues);
 	dev_info->min_rx_bufsize = 0;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS | RTE_ETH_TX_OFFLOAD_MT_LOCKFREE;
+
 	dev_info->reta_size = internals->reta_size;
 	dev_info->flow_type_rss_offloads = internals->flow_type_rss_offloads;
+	dev_info->hash_key_size = sizeof(internals->rss_key);
 
 	return 0;
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	unsigned int i, num_stats;
-	unsigned long rx_total = 0, tx_total = 0;
-	const struct pmd_internals *internal;
+	const struct pmd_internals *internal = dev->data->dev_private;
+	unsigned int i;
 
-	if ((dev == NULL) || (igb_stats == NULL))
-		return -EINVAL;
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		uint64_t pkts = internal->rx_null_queues[i].rx_pkts;
+		uint64_t bytes = internal->rx_null_queues[i].rx_bytes;
 
-	internal = dev->data->dev_private;
-	num_stats = RTE_MIN((unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS,
-			RTE_MIN(dev->data->nb_rx_queues,
-				RTE_DIM(internal->rx_null_queues)));
-	for (i = 0; i < num_stats; i++) {
-		igb_stats->q_ipackets[i] =
-			internal->rx_null_queues[i].rx_pkts.cnt;
-		rx_total += igb_stats->q_ipackets[i];
+		stats->ipackets += pkts;
+		stats->ibytes += bytes;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = pkts;
+			stats->q_ibytes[i] = bytes;
+		}
 	}
 
-	num_stats = RTE_MIN((unsigned int)RTE_ETHDEV_QUEUE_STAT_CNTRS,
-			RTE_MIN(dev->data->nb_tx_queues,
-				RTE_DIM(internal->tx_null_queues)));
-	for (i = 0; i < num_stats; i++) {
-		igb_stats->q_opackets[i] =
-			internal->tx_null_queues[i].tx_pkts.cnt;
-		tx_total += igb_stats->q_opackets[i];
-	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		const struct null_queue *q = &internal->tx_null_queues[i];
+		uint64_t pkts, bytes;
 
-	igb_stats->ipackets = rx_total;
-	igb_stats->opackets = tx_total;
+		pkts = rte_atomic_load_explicit(&q->tx_pkts, rte_memory_order_relaxed);
+		bytes = rte_atomic_load_explicit(&q->tx_bytes, rte_memory_order_relaxed);
+
+		stats->opackets = pkts;
+		stats->obytes = bytes;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = pkts;
+			stats->q_obytes[i] = bytes;
+		}
+	}
 
 	return 0;
 }
@@ -339,17 +359,20 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *internal = dev->data->dev_private;
 	unsigned int i;
-	struct pmd_internals *internal;
 
-	if (dev == NULL)
-		return -EINVAL;
+	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++) {
+		internal->rx_null_queues[i].rx_pkts = 0;
+		internal->rx_null_queues[i].rx_bytes = 0;
+	}
 
-	internal = dev->data->dev_private;
-	for (i = 0; i < RTE_DIM(internal->rx_null_queues); i++)
-		internal->rx_null_queues[i].rx_pkts.cnt = 0;
-	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++)
-		internal->tx_null_queues[i].tx_pkts.cnt = 0;
+	for (i = 0; i < RTE_DIM(internal->tx_null_queues); i++) {
+		struct null_queue *q = &internal->tx_null_queues[i];
+
+		rte_atomic_store_explicit(&q->tx_pkts, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&q->tx_bytes, 0, rte_memory_order_relaxed);
+	}
 
 	return 0;
 }

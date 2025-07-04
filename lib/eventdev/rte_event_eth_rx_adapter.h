@@ -27,6 +27,7 @@
  *  - rte_event_eth_rx_adapter_create_ext()
  *  - rte_event_eth_rx_adapter_create()
  *  - rte_event_eth_rx_adapter_create_with_params()
+ *  - rte_event_eth_rx_adapter_create_ext_with_params()
  *  - rte_event_eth_rx_adapter_free()
  *  - rte_event_eth_rx_adapter_queue_add()
  *  - rte_event_eth_rx_adapter_queue_del()
@@ -45,7 +46,8 @@
  *
  * The application creates an ethernet to event adapter using
  * rte_event_eth_rx_adapter_create_ext() or rte_event_eth_rx_adapter_create()
- * or rte_event_eth_rx_adapter_create_with_params() functions.
+ * or rte_event_eth_rx_adapter_create_with_params() or
+ * rte_event_eth_rx_adapter_create_ext_with_params() functions.
  *
  * The adapter needs to know which ethernet rx queues to poll for mbufs as well
  * as event device parameters such as the event queue identifier, event
@@ -85,16 +87,16 @@
  * event based so the callback can also modify the event data if it needs to.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_service.h>
 
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE 32
 
@@ -464,9 +466,41 @@ int rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
  *   - 0: Success
  *   - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 			struct rte_event_port_conf *port_config,
+			struct rte_event_eth_rx_adapter_params *rxa_params);
+
+/**
+ * This is a variant of rte_event_eth_rx_adapter_create_ext() with additional
+ * adapter params specified in ``struct rte_event_eth_rx_adapter_params``.
+ *
+ * @param id
+ *  The identifier of the ethernet Rx event adapter.
+ *
+ * @param dev_id
+ *  The identifier of the event device to configure.
+ *
+ * @param conf_cb
+ *  Callback function that fills in members of a
+ *  struct rte_event_eth_rx_adapter_conf struct passed into
+ *  it.
+ *
+ * @param conf_arg
+ *  Argument that is passed to the conf_cb function.
+ *
+ * @param rxa_params
+ *  Pointer to struct rte_event_eth_rx_adapter_params.
+ *  In case of NULL, default values are used.
+ *
+ * @return
+ *   - 0: Success
+ *   - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_rx_adapter_create_ext_with_params(uint8_t id, uint8_t dev_id,
+			rte_event_eth_rx_adapter_conf_cb conf_cb,
+			void *conf_arg,
 			struct rte_event_eth_rx_adapter_params *rxa_params);
 
 /**
@@ -518,6 +552,39 @@ int rte_event_eth_rx_adapter_queue_add(uint8_t id,
 			uint16_t eth_dev_id,
 			int32_t rx_queue_id,
 			const struct rte_event_eth_rx_adapter_queue_conf *conf);
+
+/**
+ * Add multiple receive queues to an event adapter.
+ *
+ * @param id
+ *  Adapter identifier.
+ *
+ * @param eth_dev_id
+ *  Port identifier of Ethernet device.
+ *
+ * @param rx_queue_id
+ *  Array of Ethernet device receive queue indices.
+ *  If nb_rx_queues is 0, then rx_queue_id is ignored.
+ *
+ * @param conf
+ *  Array of additional configuration structures of type
+ *  *rte_event_eth_rx_adapter_queue_conf*. conf[i] is used for rx_queue_id[i].
+ *  If nb_rx_queues is 0, then conf[0] is used for all Rx queues.
+ *
+ * @param nb_rx_queues
+ *  Number of receive queues to add.
+ *  If nb_rx_queues is 0, then all Rx queues configured for
+ *  the device are added with the same configuration in conf[0].
+ * @see RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ
+ *
+ * @return
+ *  - 0: Success, Receive queues added correctly.
+ *  - <0: Error code on failure.
+ */
+__rte_experimental
+int rte_event_eth_rx_adapter_queues_add(uint8_t id, uint16_t eth_dev_id, int32_t rx_queue_id[],
+					const struct rte_event_eth_rx_adapter_queue_conf conf[],
+					uint16_t nb_rx_queues);
 
 /**
  * Delete receive queue from an event adapter.
@@ -676,7 +743,6 @@ int rte_event_eth_rx_adapter_vector_limits_get(
  *  - 0: Success, Receive queue added correctly.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 			uint16_t eth_dev_id,
 			uint16_t rx_queue_id,
@@ -701,7 +767,6 @@ int rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
  *  - 0: Success, queue buffer stats retrieved.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 		uint16_t eth_dev_id,
@@ -724,7 +789,6 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
  *  - 0: Success, queue buffer stats retrieved.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 		uint16_t eth_dev_id,
@@ -745,7 +809,6 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
  *  - <0: Error code on failure, if the adapter doesn't use a rte_service
  * function, this function returns -ESRCH.
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
@@ -766,7 +829,6 @@ rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 				      uint16_t rx_queue_id,

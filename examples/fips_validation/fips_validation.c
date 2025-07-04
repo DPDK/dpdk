@@ -13,14 +13,6 @@
 
 #include "fips_validation.h"
 
-#define skip_white_spaces(pos)			\
-({						\
-	__typeof__(pos) _p = (pos);		\
-	for ( ; isspace(*_p); _p++)		\
-		;				\
-	_p;					\
-})
-
 static int
 get_file_line(void)
 {
@@ -483,6 +475,8 @@ fips_test_parse_one_json_vector_set(void)
 		info.algo = FIPS_TEST_ALGO_RSA;
 	else if (strstr(algo_str, "ECDSA"))
 		info.algo = FIPS_TEST_ALGO_ECDSA;
+	else if (strstr(algo_str, "EDDSA"))
+		info.algo = FIPS_TEST_ALGO_EDDSA;
 	else
 		return -EINVAL;
 
@@ -579,13 +573,13 @@ parser_read_uint64_hex(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 
 	val = strtoul(p, &next, 16);
 	if (p == next)
 		return -EINVAL;
 
-	p = skip_white_spaces(next);
+	p = rte_str_skip_leading_spaces(next);
 	if (*p != '\0')
 		return -EINVAL;
 
@@ -759,7 +753,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -785,7 +779,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 		break;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (*p != '\0')
 		return -EINVAL;
 

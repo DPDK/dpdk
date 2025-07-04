@@ -68,7 +68,6 @@ common_sources()
 linux_sources()
 {
 	find_sources "lib/eal/linux" '*.[chS]'
-	find_sources "kernel/linux" '*.[chS]'
 }
 
 bsd_sources()

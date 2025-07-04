@@ -582,12 +582,13 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 
 		/* Configure TL4 to send to SDP channel instead of CGX/LBK */
 		if (nix->sdp_link) {
-			plt_tm_dbg("relchan=%u schq=%u tx_chan_cnt=%u\n", relchan, schq,
+			relchan = nix->tx_chan_base & 0xff;
+			plt_tm_dbg("relchan=%u schq=%u tx_chan_cnt=%u", relchan, schq,
 				   nix->tx_chan_cnt);
 			reg[k] = NIX_AF_TL4X_SDP_LINK_CFG(schq);
 			regval[k] = BIT_ULL(12);
 			regval[k] |= BIT_ULL(13);
-			regval[k] |= relchan;
+			regval[k] |= (uint64_t)relchan;
 			k++;
 		}
 		break;
@@ -605,7 +606,7 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		if (!nix->sdp_link &&
 		    nix->tm_link_cfg_lvl == NIX_TXSCH_LVL_TL3) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
-			regval[k] = BIT_ULL(12) | relchan;
+			regval[k] = BIT_ULL(12) | (uint64_t)relchan;
 			k++;
 		}
 
@@ -624,7 +625,7 @@ nix_tm_topology_reg_prep(struct nix *nix, struct nix_tm_node *node,
 		if (!nix->sdp_link &&
 		    nix->tm_link_cfg_lvl == NIX_TXSCH_LVL_TL2) {
 			reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(schq, link);
-			regval[k] = BIT_ULL(12) | relchan;
+			regval[k] = BIT_ULL(12) | (uint64_t)relchan;
 			k++;
 		}
 
@@ -926,7 +927,7 @@ nix_tm_resource_avail(struct nix *nix, uint8_t hw_lvl, bool contig)
 	/* Count bit set */
 	start_pos = pos;
 	do {
-		count += __builtin_popcountll(slab);
+		count += plt_popcount64(slab);
 		if (!plt_bitmap_scan(bmp, &pos, &slab))
 			break;
 	} while (pos != start_pos);
@@ -1266,7 +1267,8 @@ roc_nix_tm_shaper_default_red_algo(struct roc_nix_tm_node *node,
 	tm_node->red_algo = roc_prof->red_algo;
 
 	/* C0 doesn't support STALL when both PIR & CIR are enabled */
-	if (roc_model_is_cn96_cx()) {
+	if (roc_model_is_cn96_cx() || roc_model_is_cnf95xxn_a0() || roc_model_is_cnf95xxo_a0() ||
+	    roc_model_is_cnf95xxn_a1() || roc_model_is_cnf95xxn_b0()) {
 		nix_tm_shaper_conf_get(profile, &cir, &pir);
 
 		if (pir.rate && cir.rate)

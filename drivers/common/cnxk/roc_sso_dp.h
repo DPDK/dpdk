@@ -13,13 +13,13 @@ roc_sso_hws_head_wait(uintptr_t base)
 
 #if defined(__aarch64__)
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
-		     "		ldr %[tag], [%[tag_op]]	\n"
-		     "		tbnz %[tag], 35, done%=		\n"
+		     "		ldr %[tag], [%[tag_op]]		\n"
+		     "		tbnz %[tag], 35, .Ldone%=	\n"
 		     "		sevl				\n"
-		     "rty%=:	wfe				\n"
-		     "		ldr %[tag], [%[tag_op]]	\n"
-		     "		tbz %[tag], 35, rty%=		\n"
-		     "done%=:					\n"
+		     ".Lrty%=:	wfe				\n"
+		     "		ldr %[tag], [%[tag_op]]		\n"
+		     "		tbz %[tag], 35, .Lrty%=		\n"
+		     ".Ldone%=:					\n"
 		     : [tag] "=&r"(tag)
 		     : [tag_op] "r"(tag_op));
 #else
@@ -28,6 +28,14 @@ roc_sso_hws_head_wait(uintptr_t base)
 	} while (!(tag & BIT_ULL(35)));
 #endif
 	return tag;
+}
+
+static __plt_always_inline uint8_t
+roc_sso_hws_is_head(uintptr_t base)
+{
+	uintptr_t tag_op = base + SSOW_LF_GWS_TAG;
+
+	return !!(plt_read64(tag_op) & BIT_ULL(35));
 }
 
 #endif /* _ROC_SSO_DP_H_ */

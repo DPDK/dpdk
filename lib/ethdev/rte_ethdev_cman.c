@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include "rte_ethdev.h"
 #include "ethdev_driver.h"
@@ -11,6 +12,7 @@
 #include "ethdev_trace.h"
 
 /* Get congestion management information for a port */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_info_get, 22.11)
 int
 rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 {
@@ -21,17 +23,17 @@ rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 	dev = &rte_eth_devices[port_id];
 
 	if (info == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management info is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management info is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_info_get == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
 	memset(info, 0, sizeof(struct rte_eth_cman_info));
-	ret = eth_err(port_id, (*dev->dev_ops->cman_info_get)(dev, info));
+	ret = eth_err(port_id, dev->dev_ops->cman_info_get(dev, info));
 
 	rte_eth_trace_cman_info_get(port_id, info, ret);
 
@@ -39,6 +41,7 @@ rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 }
 
 /* Initialize congestion management structure with default values */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_config_init, 22.11)
 int
 rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 {
@@ -49,17 +52,17 @@ rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 	dev = &rte_eth_devices[port_id];
 
 	if (config == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management config is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management config is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_config_init == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
 	memset(config, 0, sizeof(struct rte_eth_cman_config));
-	ret = eth_err(port_id, (*dev->dev_ops->cman_config_init)(dev, config));
+	ret = eth_err(port_id, dev->dev_ops->cman_config_init(dev, config));
 
 	rte_eth_trace_cman_config_init(port_id, config, ret);
 
@@ -67,6 +70,7 @@ rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 }
 
 /* Configure congestion management on a port */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_config_set, 22.11)
 int
 rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *config)
 {
@@ -77,16 +81,16 @@ rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *conf
 	dev = &rte_eth_devices[port_id];
 
 	if (config == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management config is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management config is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_config_set == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
-	ret = eth_err(port_id, (*dev->dev_ops->cman_config_set)(dev, config));
+	ret = eth_err(port_id, dev->dev_ops->cman_config_set(dev, config));
 
 	rte_eth_trace_cman_config_set(port_id, config, ret);
 
@@ -94,6 +98,7 @@ rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *conf
 }
 
 /* Retrieve congestion management configuration of a port */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_cman_config_get, 22.11)
 int
 rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config)
 {
@@ -104,17 +109,17 @@ rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config)
 	dev = &rte_eth_devices[port_id];
 
 	if (config == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management config is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management config is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_config_get == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
 	memset(config, 0, sizeof(struct rte_eth_cman_config));
-	ret = eth_err(port_id, (*dev->dev_ops->cman_config_get)(dev, config));
+	ret = eth_err(port_id, dev->dev_ops->cman_config_get(dev, config));
 
 	rte_eth_trace_cman_config_get(port_id, config, ret);
 

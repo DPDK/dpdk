@@ -1584,4 +1584,4 @@ test_lpm(void)
 	return global_status;
 }
 
-REGISTER_TEST_COMMAND(lpm_autotest, test_lpm);
+REGISTER_FAST_TEST(lpm_autotest, true, true, test_lpm);

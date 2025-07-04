@@ -8,6 +8,7 @@
 #include <sys/queue.h>
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
@@ -52,7 +53,7 @@ static rte_spinlock_t intr_lock = RTE_SPINLOCK_INITIALIZER;
 static struct rte_intr_source_list intr_sources;
 
 /* interrupt handling thread */
-static pthread_t intr_thread;
+static rte_thread_t intr_thread;
 
 static volatile int kq = -1;
 
@@ -80,6 +81,7 @@ intr_source_to_kevent(const struct rte_intr_handle *ih, struct kevent *ke)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_register)
 int
 rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		rte_intr_callback_fn cb, void *cb_arg)
@@ -90,12 +92,12 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 
 	/* first do parameter checking */
 	if (rte_intr_fd_get(intr_handle) < 0 || cb == NULL) {
-		RTE_LOG(ERR, EAL,
-			"Registering with invalid input parameter\n");
+		EAL_LOG(ERR,
+			"Registering with invalid input parameter");
 		return -EINVAL;
 	}
 	if (kq < 0) {
-		RTE_LOG(ERR, EAL, "Kqueue is not active: %d\n", kq);
+		EAL_LOG(ERR, "Kqueue is not active: %d", kq);
 		return -ENODEV;
 	}
 
@@ -120,7 +122,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		/* allocate a new interrupt callback entity */
 		callback = calloc(1, sizeof(*callback));
 		if (callback == NULL) {
-			RTE_LOG(ERR, EAL, "Can not allocate memory\n");
+			EAL_LOG(ERR, "Can not allocate memory");
 			ret = -ENOMEM;
 			goto fail;
 		}
@@ -132,13 +134,13 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		if (src == NULL) {
 			src = calloc(1, sizeof(*src));
 			if (src == NULL) {
-				RTE_LOG(ERR, EAL, "Can not allocate memory\n");
+				EAL_LOG(ERR, "Can not allocate memory");
 				ret = -ENOMEM;
 				goto fail;
 			} else {
 				src->intr_handle = rte_intr_instance_dup(intr_handle);
 				if (src->intr_handle == NULL) {
-					RTE_LOG(ERR, EAL, "Can not create intr instance\n");
+					EAL_LOG(ERR, "Can not create intr instance");
 					ret = -ENOMEM;
 					free(src);
 					src = NULL;
@@ -167,7 +169,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		ke.flags = EV_ADD; /* mark for addition to the queue */
 
 		if (intr_source_to_kevent(intr_handle, &ke) < 0) {
-			RTE_LOG(ERR, EAL, "Cannot convert interrupt handle to kevent\n");
+			EAL_LOG(ERR, "Cannot convert interrupt handle to kevent");
 			ret = -ENODEV;
 			goto fail;
 		}
@@ -181,10 +183,10 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 			 * user. so, don't output it unless debug log level set.
 			 */
 			if (errno == ENODEV)
-				RTE_LOG(DEBUG, EAL, "Interrupt handle %d not supported\n",
+				EAL_LOG(DEBUG, "Interrupt handle %d not supported",
 					rte_intr_fd_get(src->intr_handle));
 			else
-				RTE_LOG(ERR, EAL, "Error adding fd %d kevent, %s\n",
+				EAL_LOG(ERR, "Error adding fd %d kevent, %s",
 					rte_intr_fd_get(src->intr_handle),
 					strerror(errno));
 			ret = -errno;
@@ -211,6 +213,7 @@ fail:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_pending)
 int
 rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 				rte_intr_callback_fn cb_fn, void *cb_arg,
@@ -222,13 +225,13 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 
 	/* do parameter checking first */
 	if (rte_intr_fd_get(intr_handle) < 0) {
-		RTE_LOG(ERR, EAL,
-		"Unregistering with invalid input parameter\n");
+		EAL_LOG(ERR,
+		"Unregistering with invalid input parameter");
 		return -EINVAL;
 	}
 
 	if (kq < 0) {
-		RTE_LOG(ERR, EAL, "Kqueue is not active\n");
+		EAL_LOG(ERR, "Kqueue is not active");
 		return -ENODEV;
 	}
 
@@ -267,6 +270,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister)
 int
 rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		rte_intr_callback_fn cb_fn, void *cb_arg)
@@ -277,12 +281,12 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 
 	/* do parameter checking first */
 	if (rte_intr_fd_get(intr_handle) < 0) {
-		RTE_LOG(ERR, EAL,
-		"Unregistering with invalid input parameter\n");
+		EAL_LOG(ERR,
+		"Unregistering with invalid input parameter");
 		return -EINVAL;
 	}
 	if (kq < 0) {
-		RTE_LOG(ERR, EAL, "Kqueue is not active\n");
+		EAL_LOG(ERR, "Kqueue is not active");
 		return -ENODEV;
 	}
 
@@ -312,7 +316,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		ke.flags = EV_DELETE; /* mark for deletion from the queue */
 
 		if (intr_source_to_kevent(intr_handle, &ke) < 0) {
-			RTE_LOG(ERR, EAL, "Cannot convert to kevent\n");
+			EAL_LOG(ERR, "Cannot convert to kevent");
 			ret = -ENODEV;
 			goto out;
 		}
@@ -321,7 +325,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		 * remove intr file descriptor from wait list.
 		 */
 		if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
-			RTE_LOG(ERR, EAL, "Error removing fd %d kevent, %s\n",
+			EAL_LOG(ERR, "Error removing fd %d kevent, %s",
 				rte_intr_fd_get(src->intr_handle),
 				strerror(errno));
 			/* removing non-existent even is an expected condition
@@ -354,6 +358,7 @@ out:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_sync)
 int
 rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
 		rte_intr_callback_fn cb_fn, void *cb_arg)
@@ -366,6 +371,7 @@ rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_enable)
 int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
@@ -396,7 +402,7 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 		break;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+		EAL_LOG(ERR, "Unknown handle type of fd %d",
 			rte_intr_fd_get(intr_handle));
 		rc = -1;
 		break;
@@ -407,6 +413,7 @@ out:
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_disable)
 int
 rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
@@ -437,7 +444,7 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 		break;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+		EAL_LOG(ERR, "Unknown handle type of fd %d",
 			rte_intr_fd_get(intr_handle));
 		rc = -1;
 		break;
@@ -447,6 +454,7 @@ out:
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_ack)
 int
 rte_intr_ack(const struct rte_intr_handle *intr_handle)
 {
@@ -513,13 +521,13 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 				if (errno == EINTR || errno == EWOULDBLOCK)
 					continue;
 
-				RTE_LOG(ERR, EAL, "Error reading from file "
-					"descriptor %d: %s\n",
+				EAL_LOG(ERR, "Error reading from file "
+					"descriptor %d: %s",
 					event_fd,
 					strerror(errno));
 			} else if (bytes_read == 0)
-				RTE_LOG(ERR, EAL, "Read nothing from file "
-					"descriptor %d\n", event_fd);
+				EAL_LOG(ERR, "Read nothing from file "
+					"descriptor %d", event_fd);
 			else
 				call = true;
 		}
@@ -556,7 +564,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 				ke.flags = EV_DELETE;
 
 				if (intr_source_to_kevent(src->intr_handle, &ke) < 0) {
-					RTE_LOG(ERR, EAL, "Cannot convert to kevent\n");
+					EAL_LOG(ERR, "Cannot convert to kevent");
 					rte_spinlock_unlock(&intr_lock);
 					return;
 				}
@@ -565,7 +573,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 				 * remove intr file descriptor from wait list.
 				 */
 				if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
-					RTE_LOG(ERR, EAL, "Error removing fd %d kevent, %s\n",
+					EAL_LOG(ERR, "Error removing fd %d kevent, %s",
 						rte_intr_fd_get(src->intr_handle),
 						strerror(errno));
 					/* removing non-existent even is an expected
@@ -591,7 +599,7 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 	}
 }
 
-static void *
+static uint32_t
 eal_intr_thread_main(void *arg __rte_unused)
 {
 	struct kevent events[MAX_INTR_EVENTS];
@@ -606,8 +614,8 @@ eal_intr_thread_main(void *arg __rte_unused)
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
-			RTE_LOG(ERR, EAL,
-				"kevent returns with fail\n");
+			EAL_LOG(ERR,
+				"kevent returns with fail");
 			break;
 		}
 		/* kevent timeout, will never happen here */
@@ -619,7 +627,7 @@ eal_intr_thread_main(void *arg __rte_unused)
 	}
 	close(kq);
 	kq = -1;
-	return NULL;
+	return 0;
 }
 
 int
@@ -632,22 +640,23 @@ rte_eal_intr_init(void)
 
 	kq = kqueue();
 	if (kq < 0) {
-		RTE_LOG(ERR, EAL, "Cannot create kqueue instance\n");
+		EAL_LOG(ERR, "Cannot create kqueue instance");
 		return -1;
 	}
 
 	/* create the host thread to wait/handle the interrupt */
-	ret = rte_ctrl_thread_create(&intr_thread, "eal-intr-thread", NULL,
+	ret = rte_thread_create_internal_control(&intr_thread, "intr",
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;
-		RTE_LOG(ERR, EAL,
-			"Failed to create thread for interrupt handling\n");
+		EAL_LOG(ERR,
+			"Failed to create thread for interrupt handling");
 	}
 
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_rx_ctl)
 int
 rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
 		int epfd, int op, unsigned int vec, void *data)
@@ -661,6 +670,7 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_enable)
 int
 rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 {
@@ -670,12 +680,14 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_disable)
 void
 rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 {
 	RTE_SET_USED(intr_handle);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dp_is_en)
 int
 rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 {
@@ -683,6 +695,7 @@ rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_allow_others)
 int
 rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 {
@@ -690,6 +703,7 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 	return 1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_cap_multiple)
 int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 {
@@ -697,6 +711,7 @@ rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait)
 int
 rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 		int maxevents, int timeout)
@@ -709,6 +724,7 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait_interruptible)
 int
 rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
 			     int maxevents, int timeout)
@@ -721,6 +737,7 @@ rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_ctl)
 int
 rte_epoll_ctl(int epfd, int op, int fd, struct rte_epoll_event *event)
 {
@@ -732,19 +749,22 @@ rte_epoll_ctl(int epfd, int op, int fd, struct rte_epoll_event *event)
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_tls_epfd)
 int
 rte_intr_tls_epfd(void)
 {
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_free_epoll_fd)
 void
 rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 {
 	RTE_SET_USED(intr_handle);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_is_intr)
 int rte_thread_is_intr(void)
 {
-	return pthread_equal(intr_thread, pthread_self());
+	return rte_thread_equal(intr_thread, rte_thread_self());
 }

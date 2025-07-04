@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <io.h>
 
+#include <eal_export.h>
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
 
@@ -72,10 +73,18 @@ static VirtualAlloc2_type VirtualAlloc2_ptr;
 
 #ifdef RTE_TOOLCHAIN_GCC
 
+#ifndef MEM_COALESCE_PLACEHOLDERS
 #define MEM_COALESCE_PLACEHOLDERS 0x00000001
+#endif
+#ifndef MEM_PRESERVE_PLACEHOLDER
 #define MEM_PRESERVE_PLACEHOLDER  0x00000002
+#endif
+#ifndef MEM_REPLACE_PLACEHOLDER
 #define MEM_REPLACE_PLACEHOLDER   0x00004000
+#endif
+#ifndef MEM_RESERVE_PLACEHOLDER
 #define MEM_RESERVE_PLACEHOLDER   0x00040000
+#endif
 
 int
 eal_mem_win32api_init(void)
@@ -102,12 +111,12 @@ eal_mem_win32api_init(void)
 	VirtualAlloc2_ptr = (VirtualAlloc2_type)(
 		(void *)GetProcAddress(library, function));
 	if (VirtualAlloc2_ptr == NULL) {
-		RTE_LOG_WIN32_ERR("GetProcAddress(\"%s\", \"%s\")\n",
+		RTE_LOG_WIN32_ERR("GetProcAddress(\"%s\", \"%s\")",
 			library_name, function);
 
 		/* Contrary to the docs, Server 2016 is not supported. */
-		RTE_LOG(ERR, EAL, "Windows 10 or Windows Server 2019 "
-			" is required for memory management\n");
+		EAL_LOG(ERR, "Windows 10 or Windows Server 2019 "
+			" is required for memory management");
 		ret = -1;
 	}
 
@@ -165,8 +174,8 @@ eal_mem_virt2iova_init(void)
 
 	detail = malloc(detail_size);
 	if (detail == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate virt2phys "
-			"device interface detail data\n");
+		EAL_LOG(ERR, "Cannot allocate virt2phys "
+			"device interface detail data");
 		goto exit;
 	}
 
@@ -177,7 +186,7 @@ eal_mem_virt2iova_init(void)
 		goto exit;
 	}
 
-	RTE_LOG(DEBUG, EAL, "Found virt2phys device: %s\n", detail->DevicePath);
+	EAL_LOG(DEBUG, "Found virt2phys device: %s", detail->DevicePath);
 
 	virt2phys_device = CreateFile(
 		detail->DevicePath, 0, 0, NULL, OPEN_EXISTING, 0, NULL);
@@ -204,6 +213,7 @@ eal_mem_virt2iova_cleanup(void)
 		CloseHandle(virt2phys_device);
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_virt2phy)
 phys_addr_t
 rte_mem_virt2phy(const void *virt)
 {
@@ -224,6 +234,7 @@ rte_mem_virt2phy(const void *virt)
 	return phys.QuadPart;
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_virt2iova)
 rte_iova_t
 rte_mem_virt2iova(const void *virt)
 {
@@ -239,6 +250,7 @@ rte_mem_virt2iova(const void *virt)
 }
 
 /* Always using physical addresses under Windows if they can be obtained. */
+RTE_EXPORT_SYMBOL(rte_eal_using_phys_addrs)
 int
 rte_eal_using_phys_addrs(void)
 {
@@ -510,6 +522,7 @@ eal_mem_set_dump(void *virt, size_t size, bool dump)
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_map)
 void *
 rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 	int fd, uint64_t offset)
@@ -566,8 +579,8 @@ rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 		int ret = mem_free(requested_addr, size, true);
 		if (ret) {
 			if (ret > 0) {
-				RTE_LOG(ERR, EAL, "Cannot map memory "
-					"to a region not reserved\n");
+				EAL_LOG(ERR, "Cannot map memory "
+					"to a region not reserved");
 				rte_errno = EADDRNOTAVAIL;
 			}
 			return NULL;
@@ -593,6 +606,7 @@ rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 	return virt;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_unmap)
 int
 rte_mem_unmap(void *virt, size_t size)
 {
@@ -616,6 +630,7 @@ eal_get_baseaddr(void)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_page_size)
 size_t
 rte_mem_page_size(void)
 {
@@ -627,6 +642,7 @@ rte_mem_page_size(void)
 	return info.dwPageSize;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_lock)
 int
 rte_mem_lock(const void *virt, size_t size)
 {
@@ -683,7 +699,7 @@ eal_nohuge_init(void)
 		NULL, mem_sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if (addr == NULL) {
 		RTE_LOG_WIN32_ERR("VirtualAlloc(size=%#zx)", mem_sz);
-		RTE_LOG(ERR, EAL, "Cannot allocate memory\n");
+		EAL_LOG(ERR, "Cannot allocate memory");
 		return -1;
 	}
 
@@ -694,9 +710,9 @@ eal_nohuge_init(void)
 
 	if (mcfg->dma_maskbits &&
 		rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
-		RTE_LOG(ERR, EAL,
+		EAL_LOG(ERR,
 			"%s(): couldn't allocate memory due to IOVA "
-			"exceeding limits of current DMA mask.\n", __func__);
+			"exceeding limits of current DMA mask.", __func__);
 		return -1;
 	}
 

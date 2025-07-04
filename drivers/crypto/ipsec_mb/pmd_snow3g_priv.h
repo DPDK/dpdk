@@ -65,14 +65,14 @@ static const struct rte_cryptodev_capabilities snow3g_capabilities[] = {
 };
 
 /** SNOW 3G private session structure */
-struct snow3g_session {
+struct __rte_cache_aligned snow3g_session {
 	enum ipsec_mb_operation op;
 	enum rte_crypto_auth_operation auth_op;
 	snow3g_key_schedule_t pKeySched_cipher;
 	snow3g_key_schedule_t pKeySched_hash;
 	uint16_t cipher_iv_offset;
 	uint16_t auth_iv_offset;
-} __rte_cache_aligned;
+};
 
 struct snow3g_qp_data {
 	uint8_t temp_digest[SNOW3G_DIGEST_LENGTH];

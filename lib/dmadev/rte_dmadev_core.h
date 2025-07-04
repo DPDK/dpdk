@@ -61,7 +61,7 @@ typedef uint16_t (*rte_dma_burst_capacity_t)(const void *dev_private, uint16_t v
  * The 'dev_private' field was placed in the first cache line to optimize
  * performance because the PMD mainly depends on this field.
  */
-struct rte_dma_fp_object {
+struct __rte_cache_aligned rte_dma_fp_object {
 	/** PMD-specific private data. The driver should copy
 	 * rte_dma_dev.data->dev_private to this field during initialization.
 	 */
@@ -73,7 +73,7 @@ struct rte_dma_fp_object {
 	rte_dma_completed_t        completed;
 	rte_dma_completed_status_t completed_status;
 	rte_dma_burst_capacity_t   burst_capacity;
-} __rte_aligned(128);
+};
 
 extern struct rte_dma_fp_object *rte_dma_fp_objs;
 

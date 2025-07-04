@@ -2,6 +2,7 @@
  * Copyright 2020 Mellanox Technologies, Ltd
  */
 
+#include <eal_export.h>
 #include <rte_interrupts.h>
 
 #include "eal_private.h"
@@ -9,7 +10,7 @@
 
 #define IOCP_KEY_SHUTDOWN UINT32_MAX
 
-static pthread_t intr_thread;
+static rte_thread_t intr_thread;
 
 static HANDLE intr_iocp;
 static HANDLE intr_thread_handle;
@@ -33,13 +34,13 @@ eal_intr_thread_handle_init(void)
 	return 0;
 }
 
-static void *
+static uint32_t
 eal_intr_thread_main(LPVOID arg __rte_unused)
 {
 	bool finished = false;
 
 	if (eal_intr_thread_handle_init() < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open interrupt thread handle\n");
+		EAL_LOG(ERR, "Cannot open interrupt thread handle");
 		goto cleanup;
 	}
 
@@ -57,7 +58,7 @@ eal_intr_thread_main(LPVOID arg __rte_unused)
 			DWORD error = GetLastError();
 			if (error != WAIT_IO_COMPLETION) {
 				RTE_LOG_WIN32_ERR("GetQueuedCompletionStatusEx()");
-				RTE_LOG(ERR, EAL, "Failed waiting for interrupts\n");
+				EAL_LOG(ERR, "Failed waiting for interrupts");
 				break;
 			}
 
@@ -78,12 +79,12 @@ eal_intr_thread_main(LPVOID arg __rte_unused)
 	intr_thread_handle = NULL;
 
 cleanup:
-	intr_thread = 0;
+	intr_thread.opaque_id = 0;
 
 	CloseHandle(intr_iocp);
 	intr_iocp = NULL;
 
-	return NULL;
+	return 0;
 }
 
 int
@@ -94,26 +95,28 @@ rte_eal_intr_init(void)
 	intr_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
 	if (intr_iocp == NULL) {
 		RTE_LOG_WIN32_ERR("CreateIoCompletionPort()");
-		RTE_LOG(ERR, EAL, "Cannot create interrupt IOCP\n");
+		EAL_LOG(ERR, "Cannot create interrupt IOCP");
 		return -1;
 	}
 
-	ret = rte_ctrl_thread_create(&intr_thread, "eal-intr-thread", NULL,
+	ret = rte_thread_create_internal_control(&intr_thread, "intr",
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;
-		RTE_LOG(ERR, EAL, "Cannot create interrupt thread\n");
+		EAL_LOG(ERR, "Cannot create interrupt thread");
 	}
 
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_is_intr)
 int
 rte_thread_is_intr(void)
 {
-	return pthread_equal(intr_thread, pthread_self());
+	return rte_thread_equal(intr_thread, rte_thread_self());
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_rx_ctl)
 int
 rte_intr_rx_ctl(__rte_unused struct rte_intr_handle *intr_handle,
 		__rte_unused int epfd, __rte_unused int op,
@@ -140,13 +143,14 @@ eal_intr_thread_cancel(void)
 	if (!PostQueuedCompletionStatus(
 			intr_iocp, 0, IOCP_KEY_SHUTDOWN, NULL)) {
 		RTE_LOG_WIN32_ERR("PostQueuedCompletionStatus()");
-		RTE_LOG(ERR, EAL, "Cannot cancel interrupt thread\n");
+		EAL_LOG(ERR, "Cannot cancel interrupt thread");
 		return;
 	}
 
 	WaitForSingleObject(intr_thread_handle, INFINITE);
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_register)
 int
 rte_intr_callback_register(
 	__rte_unused const struct rte_intr_handle *intr_handle,
@@ -155,6 +159,7 @@ rte_intr_callback_register(
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_pending)
 int
 rte_intr_callback_unregister_pending(
 	__rte_unused const struct rte_intr_handle *intr_handle,
@@ -164,6 +169,7 @@ rte_intr_callback_unregister_pending(
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister)
 int
 rte_intr_callback_unregister(
 	__rte_unused const struct rte_intr_handle *intr_handle,
@@ -172,6 +178,7 @@ rte_intr_callback_unregister(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_sync)
 int
 rte_intr_callback_unregister_sync(
 	__rte_unused const struct rte_intr_handle *intr_handle,
@@ -180,24 +187,28 @@ rte_intr_callback_unregister_sync(
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_enable)
 int
 rte_intr_enable(__rte_unused const struct rte_intr_handle *intr_handle)
 {
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_ack)
 int
 rte_intr_ack(__rte_unused const struct rte_intr_handle *intr_handle)
 {
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_disable)
 int
 rte_intr_disable(__rte_unused const struct rte_intr_handle *intr_handle)
 {
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_enable)
 int
 rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 {
@@ -207,12 +218,14 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_disable)
 void
 rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 {
 	RTE_SET_USED(intr_handle);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dp_is_en)
 int
 rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 {
@@ -221,6 +234,7 @@ rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_allow_others)
 int
 rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 {
@@ -229,6 +243,7 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 	return 1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_cap_multiple)
 int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 {
@@ -237,6 +252,7 @@ rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait)
 int
 rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 		int maxevents, int timeout)
@@ -249,6 +265,7 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait_interruptible)
 int
 rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
 			     int maxevents, int timeout)
@@ -261,6 +278,7 @@ rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_ctl)
 int
 rte_epoll_ctl(int epfd, int op, int fd, struct rte_epoll_event *event)
 {
@@ -272,12 +290,14 @@ rte_epoll_ctl(int epfd, int op, int fd, struct rte_epoll_event *event)
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_tls_epfd)
 int
 rte_intr_tls_epfd(void)
 {
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_free_epoll_fd)
 void
 rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 {

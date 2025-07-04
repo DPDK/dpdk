@@ -5,7 +5,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_class.h>
@@ -19,6 +21,7 @@
 #include "mlx5_common_defs.h"
 #include "mlx5_common_private.h"
 
+RTE_EXPORT_INTERNAL_SYMBOL(haswell_broadwell_cpu)
 uint8_t haswell_broadwell_cpu;
 
 /* Driver type key for new device global syntax. */
@@ -38,6 +41,9 @@ uint8_t haswell_broadwell_cpu;
 
 /* The default memory allocator used in PMD. */
 #define MLX5_SYS_MEM_EN "sys_mem_en"
+
+/* Probe optimization in PMD. */
+#define MLX5_PROBE_OPT "probe_opt_en"
 
 /*
  * Device parameter to force doorbell register mapping
@@ -69,9 +75,18 @@ static inline void mlx5_cpu_id(unsigned int level,
 				unsigned int *eax, unsigned int *ebx,
 				unsigned int *ecx, unsigned int *edx)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	int data[4];
+	__cpuid(data, level);
+	*eax = data[0];
+	*ebx = data[1];
+	*ecx = data[2];
+	*edx = data[3];
+#else
 	__asm__("cpuid\n\t"
-		: "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
-		: "0" (level));
+	: "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
+	: "0" (level));
+#endif
 }
 #endif
 
@@ -123,6 +138,7 @@ driver_get(uint32_t class)
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_kvargs_process)
 int
 mlx5_kvargs_process(struct mlx5_kvargs_ctrl *mkvlist, const char *const keys[],
 		    arg_handler_t handler, void *opaque_arg)
@@ -294,6 +310,8 @@ mlx5_common_args_check_handler(const char *key, const char *val, void *opaque)
 		config->device_fd = tmp;
 	} else if (strcmp(key, MLX5_PD_HANDLE) == 0) {
 		config->pd_handle = tmp;
+	} else if (strcmp(key, MLX5_PROBE_OPT) == 0) {
+		config->probe_opt = !!tmp;
 	}
 	return 0;
 }
@@ -323,6 +341,7 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 		MLX5_MR_MEMPOOL_REG_EN,
 		MLX5_DEVICE_FD,
 		MLX5_PD_HANDLE,
+		MLX5_PROBE_OPT,
 		NULL,
 	};
 	int ret = 0;
@@ -331,6 +350,7 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 	config->mr_ext_memseg_en = 1;
 	config->mr_mempool_reg_en = 1;
 	config->sys_mem_en = 0;
+	config->probe_opt = 0;
 	config->dbnc = MLX5_ARG_UNSET;
 	config->device_fd = MLX5_ARG_UNSET;
 	config->pd_handle = MLX5_ARG_UNSET;
@@ -350,6 +370,7 @@ mlx5_common_config_get(struct mlx5_kvargs_ctrl *mkvlist,
 	DRV_LOG(DEBUG, "mr_ext_memseg_en is %u.", config->mr_ext_memseg_en);
 	DRV_LOG(DEBUG, "mr_mempool_reg_en is %u.", config->mr_mempool_reg_en);
 	DRV_LOG(DEBUG, "sys_mem_en is %u.", config->sys_mem_en);
+	DRV_LOG(DEBUG, "probe_opt_en is %u.", config->probe_opt);
 	DRV_LOG(DEBUG, "Send Queue doorbell mapping parameter is %d.",
 		config->dbnc);
 	return ret;
@@ -454,6 +475,7 @@ to_mlx5_device(const struct rte_device *rte_dev)
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_to_pci_str)
 int
 mlx5_dev_to_pci_str(const struct rte_device *dev, char *addr, size_t size)
 {
@@ -503,6 +525,7 @@ mlx5_dev_mempool_register(struct mlx5_common_device *cdev,
  * @param mp
  *   Mempool being unregistered.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_mempool_unregister)
 void
 mlx5_dev_mempool_unregister(struct mlx5_common_device *cdev,
 			    struct rte_mempool *mp)
@@ -582,6 +605,7 @@ mlx5_dev_mempool_event_cb(enum rte_mempool_event event, struct rte_mempool *mp,
  * Callbacks addresses are local in each process.
  * Therefore, each process can register private callbacks.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_dev_mempool_subscribe)
 int
 mlx5_dev_mempool_subscribe(struct mlx5_common_device *cdev)
 {
@@ -734,6 +758,11 @@ mlx5_common_dev_release(struct mlx5_common_device *cdev)
 		if (TAILQ_EMPTY(&devices_list))
 			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
 							  NULL);
+		if (cdev->dev_info.port_info != NULL) {
+			mlx5_free(cdev->dev_info.port_info);
+			cdev->dev_info.port_info = NULL;
+		}
+		cdev->dev_info.port_num = 0;
 		mlx5_dev_mempool_unsubscribe(cdev);
 		mlx5_mr_release_cache(&cdev->mr_scache);
 		mlx5_dev_hw_global_release(cdev);
@@ -785,6 +814,7 @@ mlx5_common_dev_create(struct rte_device *eal_dev, uint32_t classes,
 	if (TAILQ_EMPTY(&devices_list))
 		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
 						mlx5_mr_mem_event_cb, NULL);
+	cdev->dev_info.probe_opt = cdev->config.probe_opt;
 exit:
 	pthread_mutex_lock(&devices_list_lock);
 	TAILQ_INSERT_HEAD(&devices_list, cdev, next);
@@ -870,6 +900,12 @@ mlx5_common_probe_again_args_validate(struct mlx5_common_device *cdev,
 	}
 	if (cdev->config.sys_mem_en != config->sys_mem_en) {
 		DRV_LOG(ERR, "\"" MLX5_SYS_MEM_EN "\" "
+			"configuration mismatch for device %s.",
+			cdev->dev->name);
+		goto error;
+	}
+	if (cdev->config.probe_opt != config->probe_opt) {
+		DRV_LOG(ERR, "\"" MLX5_PROBE_OPT"\" "
 			"configuration mismatch for device %s.",
 			cdev->dev->name);
 		goto error;
@@ -1199,6 +1235,7 @@ mlx5_common_dev_dma_unmap(struct rte_device *rte_dev, void *addr,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_class_driver_register)
 void
 mlx5_class_driver_register(struct mlx5_class_driver *driver)
 {
@@ -1221,6 +1258,7 @@ static bool mlx5_common_initialized;
  * for multiple PMDs. Each mlx5 PMD that depends on mlx5_common module,
  * must invoke in its constructor.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_common_init)
 void
 mlx5_common_init(void)
 {
@@ -1379,6 +1417,7 @@ exit:
 	return uar;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_uar_release)
 void
 mlx5_devx_uar_release(struct mlx5_uar *uar)
 {
@@ -1387,6 +1426,7 @@ mlx5_devx_uar_release(struct mlx5_uar *uar)
 	memset(uar, 0, sizeof(*uar));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_uar_prepare)
 int
 mlx5_devx_uar_prepare(struct mlx5_common_device *cdev, struct mlx5_uar *uar)
 {
@@ -1421,4 +1461,4 @@ mlx5_devx_uar_prepare(struct mlx5_common_device *cdev, struct mlx5_uar *uar)
 	return 0;
 }
 
-RTE_PMD_EXPORT_NAME(mlx5_common_driver, __COUNTER__);
+RTE_PMD_EXPORT_NAME(mlx5_common_driver);

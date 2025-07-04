@@ -379,7 +379,7 @@ enum ionic_lif_state {
  * @queue_count:    Queue counts per queue-type
  */
 union ionic_lif_config {
-	struct {
+	struct __rte_packed_begin {
 		u8     state;
 		u8     rsvd[3];
 		char   name[IONIC_IFNAMSIZ];
@@ -388,7 +388,7 @@ union ionic_lif_config {
 		__le16 vlan;
 		__le64 features;
 		__le32 queue_count[IONIC_QTYPE_MAX];
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[64];
 };
 
@@ -425,10 +425,10 @@ union ionic_lif_config {
  *     @eq_qtype:        RDMA Event Qtype
  */
 union ionic_lif_identity {
-	struct {
+	struct __rte_packed_begin {
 		__le64 capabilities;
 
-		struct {
+		struct __rte_packed_begin {
 			u8 version;
 			u8 rsvd[3];
 			__le32 max_ucast_filters;
@@ -438,9 +438,9 @@ union ionic_lif_identity {
 			__le32 max_mtu;
 			u8 rsvd2[106];
 			union ionic_lif_config config;
-		} __rte_packed eth;
+		} __rte_packed_end eth;
 
-		struct {
+		struct __rte_packed_begin {
 			u8 version;
 			u8 qp_opcodes;
 			u8 admin_opcodes;
@@ -460,8 +460,8 @@ union ionic_lif_identity {
 			struct ionic_lif_logical_qtype rq_qtype;
 			struct ionic_lif_logical_qtype cq_qtype;
 			struct ionic_lif_logical_qtype eq_qtype;
-		} __rte_packed rdma;
-	} __rte_packed;
+		} __rte_packed_end rdma;
+	} __rte_packed_end;
 	__le32 words[478];
 };
 
@@ -584,7 +584,7 @@ union ionic_q_identity {
  * @cq_ring_base: Completion queue ring base address
  * @sg_ring_base: Scatter/Gather ring base address
  */
-struct ionic_q_init_cmd {
+struct __rte_packed_begin ionic_q_init_cmd {
 	u8     opcode;
 	u8     rsvd;
 	__le16 lif_index;
@@ -607,7 +607,7 @@ struct ionic_q_init_cmd {
 	__le64 cq_ring_base;
 	__le64 sg_ring_base;
 	u8     rsvd2[20];
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * struct ionic_q_init_comp - Queue init command completion
@@ -1236,7 +1236,7 @@ union ionic_port_config {
  * @fec_type:           fec type (enum ionic_port_fec_type)
  * @xcvr:               transceiver status
  */
-struct ionic_port_status {
+struct __rte_packed_begin ionic_port_status {
 	__le32 id;
 	__le32 speed;
 	u8     status;
@@ -1244,7 +1244,7 @@ struct ionic_port_status {
 	u8     fec_type;
 	u8     rsvd[48];
 	struct ionic_xcvr_status  xcvr;
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * struct ionic_port_identify_cmd - Port identify command
@@ -1414,7 +1414,7 @@ struct ionic_port_getattr_cmd {
 struct ionic_port_getattr_comp {
 	u8     status;
 	u8     rsvd[3];
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		__le32  speed;
 		__le32  mtu;
@@ -1423,7 +1423,7 @@ struct ionic_port_getattr_comp {
 		u8      pause_type;
 		u8      loopback_mode;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1489,12 +1489,12 @@ struct ionic_dev_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 rsvd;
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		char    name[IONIC_IFNAMSIZ];
 		__le64  features;
 		u8      rsvd2[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 /**
@@ -1506,10 +1506,10 @@ struct ionic_dev_setattr_cmd {
 struct ionic_dev_setattr_comp {
 	u8     status;
 	u8     rsvd[3];
-	union {
+	union __rte_packed_begin {
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1533,10 +1533,10 @@ struct ionic_dev_getattr_cmd {
 struct ionic_dev_getattr_comp {
 	u8     status;
 	u8     rsvd[3];
-	union {
+	union __rte_packed_begin {
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1594,7 +1594,7 @@ struct ionic_lif_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 index;
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		char    name[IONIC_IFNAMSIZ];
 		__le32  mtu;
@@ -1608,7 +1608,7 @@ struct ionic_lif_setattr_cmd {
 		} rss;
 		u8      stats_ctl;
 		u8      rsvd[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 /**
@@ -1622,10 +1622,10 @@ struct ionic_lif_setattr_comp {
 	u8     status;
 	u8     rsvd;
 	__le16 comp_index;
-	union {
+	union __rte_packed_begin {
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1657,13 +1657,13 @@ struct ionic_lif_getattr_comp {
 	u8     status;
 	u8     rsvd;
 	__le16 comp_index;
-	union {
+	union __rte_packed_begin {
 		u8      state;
 		__le32  mtu;
 		u8      mac[6];
 		__le64  features;
 		u8      rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1811,7 +1811,7 @@ struct ionic_vf_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 vf_index;
-	union {
+	union __rte_packed_begin {
 		u8     macaddr[6];
 		__le16 vlanid;
 		__le32 maxrate;
@@ -1820,7 +1820,7 @@ struct ionic_vf_setattr_cmd {
 		u8     linkstate;
 		__le64 stats_pa;
 		u8     pad[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 struct ionic_vf_setattr_comp {
@@ -1849,7 +1849,7 @@ struct ionic_vf_getattr_comp {
 	u8     status;
 	u8     attr;
 	__le16 vf_index;
-	union {
+	union __rte_packed_begin {
 		u8     macaddr[6];
 		__le16 vlanid;
 		__le32 maxrate;
@@ -1858,7 +1858,7 @@ struct ionic_vf_getattr_comp {
 		u8     linkstate;
 		__le64 stats_pa;
 		u8     pad[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -1953,7 +1953,7 @@ enum ionic_qos_sched_type {
  * @ip_dscp:		IP dscp values
  */
 union ionic_qos_config {
-	struct {
+	struct __rte_packed_begin {
 #define IONIC_QOS_CONFIG_F_ENABLE		BIT(0)
 #define IONIC_QOS_CONFIG_F_NO_DROP		BIT(1)
 /* Used to rewrite PCP or DSCP value. */
@@ -1988,7 +1988,7 @@ union ionic_qos_config {
 				u8      ip_dscp[IONIC_QOS_DSCP_MAX];
 			};
 		};
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32  words[64];
 };
 
@@ -2592,41 +2592,41 @@ struct ionic_lif_stats {
 	__le64 rsvd16;
 	__le64 rsvd17;
 
-	__le64 rsvd18;
-	__le64 rsvd19;
-	__le64 rsvd20;
-	__le64 rsvd21;
-	__le64 rsvd22;
-	__le64 rsvd23;
-	__le64 rsvd24;
-	__le64 rsvd25;
+	__le64 flex1;
+	__le64 flex2;
+	__le64 flex3;
+	__le64 flex4;
+	__le64 flex5;
+	__le64 flex6;
+	__le64 flex7;
+	__le64 flex8;
 
-	__le64 rsvd26;
-	__le64 rsvd27;
-	__le64 rsvd28;
-	__le64 rsvd29;
-	__le64 rsvd30;
-	__le64 rsvd31;
-	__le64 rsvd32;
-	__le64 rsvd33;
+	__le64 flex9;
+	__le64 flex10;
+	__le64 flex11;
+	__le64 flex12;
+	__le64 flex13;
+	__le64 flex14;
+	__le64 flex15;
+	__le64 flex16;
 
-	__le64 rsvd34;
-	__le64 rsvd35;
-	__le64 rsvd36;
-	__le64 rsvd37;
-	__le64 rsvd38;
-	__le64 rsvd39;
-	__le64 rsvd40;
-	__le64 rsvd41;
+	__le64 flex17;
+	__le64 flex18;
+	__le64 flex19;
+	__le64 flex20;
+	__le64 flex21;
+	__le64 flex22;
+	__le64 flex23;
+	__le64 flex24;
 
-	__le64 rsvd42;
-	__le64 rsvd43;
-	__le64 rsvd44;
-	__le64 rsvd45;
-	__le64 rsvd46;
-	__le64 rsvd47;
-	__le64 rsvd48;
-	__le64 rsvd49;
+	__le64 flex25;
+	__le64 flex26;
+	__le64 flex27;
+	__le64 flex28;
+	__le64 flex29;
+	__le64 flex30;
+	__le64 flex31;
+	__le64 flex32;
 
 	/* RDMA/ROCE REQ Error/Debugs (768 - 895) */
 	__le64 rdma_req_rx_pkt_seq_err;
@@ -2785,14 +2785,14 @@ union ionic_dev_info_regs {
  * @data:            Opcode-specific side-data
  */
 union ionic_dev_cmd_regs {
-	struct {
+	struct __rte_packed_begin {
 		u32                   doorbell;
 		u32                   done;
 		union ionic_dev_cmd         cmd;
 		union ionic_dev_cmd_comp    comp;
 		u8                    rsvd[48];
 		u32                   data[478];
-	} __rte_packed;
+	} __rte_packed_end;
 	u32 words[512];
 };
 
@@ -2802,10 +2802,10 @@ union ionic_dev_cmd_regs {
  * @devcmd:          Device command registers
  */
 union ionic_dev_regs {
-	struct {
+	struct __rte_packed_begin {
 		union ionic_dev_info_regs info;
 		union ionic_dev_cmd_regs  devcmd;
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[1024];
 };
 
@@ -2835,131 +2835,6 @@ union ionic_adminq_comp {
 	struct ionic_lif_getattr_comp lif_getattr;
 	struct ionic_rx_filter_add_comp rx_filter_add;
 	struct ionic_fw_control_comp fw_control;
-};
-
-#define IONIC_BARS_MAX			6
-#define IONIC_PCI_BAR_DBELL		1
-
-/* BAR0 */
-#define IONIC_BAR0_SIZE				0x8000
-
-#define IONIC_BAR0_DEV_INFO_REGS_OFFSET		0x0000
-#define IONIC_BAR0_DEV_CMD_REGS_OFFSET		0x0800
-#define IONIC_BAR0_DEV_CMD_DATA_REGS_OFFSET	0x0c00
-#define IONIC_BAR0_INTR_STATUS_OFFSET		0x1000
-#define IONIC_BAR0_INTR_CTRL_OFFSET		0x2000
-#define IONIC_DEV_CMD_DONE			0x00000001
-
-#define IONIC_ASIC_TYPE_CAPRI			0
-
-/**
- * struct ionic_doorbell - Doorbell register layout
- * @p_index: Producer index
- * @ring:    Selects the specific ring of the queue to update
- *           Type-specific meaning:
- *              ring=0: Default producer/consumer queue
- *              ring=1: (CQ, EQ) Re-Arm queue.  RDMA CQs
- *              send events to EQs when armed.  EQs send
- *              interrupts when armed.
- * @qid_lo:  Queue destination for the producer index and flags (low bits)
- * @qid_hi:  Queue destination for the producer index and flags (high bits)
- */
-struct ionic_doorbell {
-	__le16 p_index;
-	u8     ring;
-	u8     qid_lo;
-	__le16 qid_hi;
-	u16    rsvd2;
-};
-
-/**
- * struct ionic_intr_ctrl - Interrupt control register
- * @coalescing_init:  Coalescing timer initial value, in
- *                    device units.  Use @identity->intr_coal_mult
- *                    and @identity->intr_coal_div to convert from
- *                    usecs to device units:
- *
- *                      coal_init = coal_usecs * coal_mult / coal_div
- *
- *                    When an interrupt is sent the interrupt
- *                    coalescing timer current value
- *                    (@coalescing_curr) is initialized with this
- *                    value and begins counting down.  No more
- *                    interrupts are sent until the coalescing
- *                    timer reaches 0.  When @coalescing_init=0
- *                    interrupt coalescing is effectively disabled
- *                    and every interrupt assert results in an
- *                    interrupt.  Reset value: 0
- * @mask:             Interrupt mask.  When @mask=1 the interrupt
- *                    resource will not send an interrupt.  When
- *                    @mask=0 the interrupt resource will send an
- *                    interrupt if an interrupt event is pending
- *                    or on the next interrupt assertion event.
- *                    Reset value: 1
- * @int_credits:      Interrupt credits.  This register indicates
- *                    how many interrupt events the hardware has
- *                    sent.  When written by software this
- *                    register atomically decrements @int_credits
- *                    by the value written.  When @int_credits
- *                    becomes 0 then the "pending interrupt" bit
- *                    in the Interrupt Status register is cleared
- *                    by the hardware and any pending but unsent
- *                    interrupts are cleared.
- *                    !!!IMPORTANT!!! This is a signed register.
- * @flags:            Interrupt control flags
- *                       @unmask -- When this bit is written with a 1
- *                       the interrupt resource will set mask=0.
- *                       @coal_timer_reset -- When this
- *                       bit is written with a 1 the
- *                       @coalescing_curr will be reloaded with
- *                       @coalescing_init to reset the coalescing
- *                       timer.
- * @mask_on_assert:   Automatically mask on assertion.  When
- *                    @mask_on_assert=1 the interrupt resource
- *                    will set @mask=1 whenever an interrupt is
- *                    sent.  When using interrupts in Legacy
- *                    Interrupt mode the driver must select
- *                    @mask_on_assert=0 for proper interrupt
- *                    operation.
- * @coalescing_curr:  Coalescing timer current value, in
- *                    microseconds.  When this value reaches 0
- *                    the interrupt resource is again eligible to
- *                    send an interrupt.  If an interrupt event
- *                    is already pending when @coalescing_curr
- *                    reaches 0 the pending interrupt will be
- *                    sent, otherwise an interrupt will be sent
- *                    on the next interrupt assertion event.
- */
-struct ionic_intr_ctrl {
-	u8 coalescing_init;
-	u8 rsvd[3];
-	u8 mask;
-	u8 rsvd2[3];
-	u16 int_credits;
-	u16 flags;
-#define INTR_F_UNMASK		0x0001
-#define INTR_F_TIMER_RESET	0x0002
-	u8 mask_on_assert;
-	u8 rsvd3[3];
-	u8 coalescing_curr;
-	u8 rsvd4[3];
-	u32 rsvd6[3];
-};
-
-#define IONIC_INTR_CTRL_REGS_MAX	2048
-#define IONIC_INTR_CTRL_COAL_MAX	0x3F
-
-#define intr_to_coal(intr_ctrl)		\
-		((void __iomem *)&(intr_ctrl)->coalescing_init)
-#define intr_to_mask(intr_ctrl)		\
-		((void __iomem *)&(intr_ctrl)->mask)
-#define intr_to_credits(intr_ctrl)	\
-		((void __iomem *)&(intr_ctrl)->int_credits)
-#define intr_to_mask_on_assert(intr_ctrl)\
-		((void __iomem *)&(intr_ctrl)->mask_on_assert)
-
-struct ionic_intr_status {
-	u32 status[2];
 };
 
 struct ionic_notifyq_cmd {

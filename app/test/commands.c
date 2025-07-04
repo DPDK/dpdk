@@ -108,6 +108,7 @@ dump_struct_sizes(void)
 #undef DUMP_SIZE
 }
 
+/* Add the dump_* tests cases 8< */
 static void cmd_dump_parsed(void *parsed_result,
 			    __rte_unused struct cmdline *cl,
 			    __rte_unused void *data)
@@ -155,6 +156,7 @@ cmdline_parse_inst_t cmd_dump = {
 		NULL,
 	},
 };
+/* >8 End of add the dump_* tests cases */
 
 /****************/
 

@@ -17,7 +17,7 @@
 	 BITS_PER_LONG_LONG)
 
 #define WORD_SHIFT 6
-#define WORD_SIZE  (1 << WORD_SHIFT)
+#define WORD_SIZE  (1ULL << WORD_SHIFT)
 #define WORD_MASK  (WORD_SIZE - 1)
 
 #define IPSEC_ANTI_REPLAY_FAILED (-1)

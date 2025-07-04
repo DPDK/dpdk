@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_ptype.h>
 #include <rte_byteorder.h>
@@ -14,6 +15,9 @@
 #include <rte_sctp.h>
 #include <rte_gre.h>
 #include <rte_mpls.h>
+#include <rte_geneve.h>
+#include <rte_vxlan.h>
+#include <rte_gtp.h>
 #include <rte_net.h>
 #include <rte_os_shim.h>
 
@@ -126,7 +130,7 @@ ptype_inner_l4(uint8_t proto)
 
 /* get the tunnel packet type if any, update proto and off. */
 static uint32_t
-ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
+ptype_tunnel_without_udp(uint16_t *proto, const struct rte_mbuf *m,
 	uint32_t *off)
 {
 	switch (*proto) {
@@ -172,7 +176,101 @@ ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
 	}
 }
 
+/* get the tunnel packet type with UDP port if any, update proto and off. */
+static uint32_t
+ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
+			uint32_t *off, struct rte_net_hdr_lens *hdr_lens)
+{
+	const struct rte_udp_hdr *uh;
+	struct rte_udp_hdr uh_copy;
+	uint16_t port_no;
+
+	uh = rte_pktmbuf_read(m, *off, sizeof(*uh), &uh_copy);
+	if (unlikely(uh == NULL))
+		return 0;
+
+	*off += sizeof(*uh);
+	if (rte_be_to_cpu_16(uh->src_port) == RTE_GTPC_UDP_PORT)
+		port_no = rte_be_to_cpu_16(uh->src_port);
+	else
+		port_no = rte_be_to_cpu_16(uh->dst_port);
+	switch (port_no) {
+	case RTE_VXLAN_DEFAULT_PORT: {
+		*off += sizeof(struct rte_vxlan_hdr);
+		hdr_lens->inner_l2_len = RTE_ETHER_VXLAN_HLEN;
+		*proto = RTE_VXLAN_GPE_TYPE_ETH; /* just for eth header parse. */
+		return RTE_PTYPE_TUNNEL_VXLAN;
+	}
+	case RTE_VXLAN_GPE_DEFAULT_PORT: {
+		const struct rte_vxlan_gpe_hdr *vgh;
+		struct rte_vxlan_gpe_hdr vgh_copy;
+		vgh = rte_pktmbuf_read(m, *off, sizeof(*vgh), &vgh_copy);
+		if (unlikely(vgh == NULL))
+			return 0;
+		*off += sizeof(struct rte_vxlan_gpe_hdr);
+		hdr_lens->inner_l2_len = RTE_ETHER_VXLAN_GPE_HLEN;
+		*proto = vgh->proto;
+
+		return RTE_PTYPE_TUNNEL_VXLAN_GPE;
+	}
+	case RTE_GTPC_UDP_PORT:
+	case RTE_GTPU_UDP_PORT: {
+		const struct rte_gtp_hdr *gh;
+		struct rte_gtp_hdr gh_copy;
+		uint8_t gtp_len;
+		uint8_t ip_ver;
+		gh = rte_pktmbuf_read(m, *off, sizeof(*gh), &gh_copy);
+		if (unlikely(gh == NULL))
+			return 0;
+		gtp_len = sizeof(*gh);
+		if (gh->e || gh->s || gh->pn)
+			gtp_len += sizeof(struct rte_gtp_hdr_ext_word);
+		/*
+		 * Check message type. If message type is 0xff, it is
+		 * a GTP data packet. If not, it is a GTP control packet
+		 */
+		if (gh->msg_type == 0xff) {
+			ip_ver = *(const uint8_t *)((const char *)gh + gtp_len);
+			ip_ver = (ip_ver) & 0xf0;
+			if (ip_ver == RTE_GTP_TYPE_IPV4)
+				*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+			else if (ip_ver == RTE_GTP_TYPE_IPV6)
+				*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
+			else
+				*proto = 0;
+		} else {
+			*proto = 0;
+		}
+		*off += gtp_len;
+		hdr_lens->inner_l2_len = gtp_len + sizeof(struct rte_udp_hdr);
+		if (port_no == RTE_GTPC_UDP_PORT)
+			return RTE_PTYPE_TUNNEL_GTPC;
+		else if (port_no == RTE_GTPU_UDP_PORT)
+			return RTE_PTYPE_TUNNEL_GTPU;
+		return 0;
+	}
+	case RTE_GENEVE_DEFAULT_PORT: {
+		const struct rte_geneve_hdr *gnh;
+		struct rte_geneve_hdr gnh_copy;
+		uint16_t geneve_len;
+		gnh = rte_pktmbuf_read(m, *off, sizeof(*gnh), &gnh_copy);
+		if (unlikely(gnh == NULL))
+			return 0;
+		geneve_len = sizeof(*gnh) + gnh->opt_len * 4;
+		*off += geneve_len;
+		hdr_lens->inner_l2_len = sizeof(struct rte_udp_hdr) + geneve_len;
+		*proto = gnh->proto;
+		if (gnh->proto == 0)
+			*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+		return RTE_PTYPE_TUNNEL_GENEVE;
+	}
+	default:
+		return 0;
+	}
+}
+
 /* parse ipv6 extended headers, update offset and return next proto */
+RTE_EXPORT_SYMBOL(rte_net_skip_ip6_ext)
 int
 rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 	int *frag)
@@ -219,6 +317,7 @@ rte_net_skip_ip6_ext(uint16_t proto, const struct rte_mbuf *m, uint32_t *off,
 }
 
 /* parse mbuf data to get packet type */
+RTE_EXPORT_SYMBOL(rte_net_get_ptype)
 uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	struct rte_net_hdr_lens *hdr_lens, uint32_t layers)
 {
@@ -352,7 +451,9 @@ l3:
 
 	if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP) {
 		hdr_lens->l4_len = sizeof(struct rte_udp_hdr);
-		return pkt_type;
+		if ((layers & RTE_PTYPE_TUNNEL_MASK) == 0)
+			return pkt_type;
+		pkt_type |= ptype_tunnel_with_udp(&proto, m, &off, hdr_lens);
 	} else if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
 		const struct rte_tcp_hdr *th;
 		struct rte_tcp_hdr th_copy;
@@ -374,7 +475,7 @@ l3:
 		if ((layers & RTE_PTYPE_TUNNEL_MASK) == 0)
 			return pkt_type;
 
-		pkt_type |= ptype_tunnel(&proto, m, &off);
+		pkt_type |= ptype_tunnel_without_udp(&proto, m, &off);
 		hdr_lens->tunnel_len = off - prev_off;
 	}
 
@@ -384,15 +485,16 @@ l3:
 	if ((layers & RTE_PTYPE_INNER_L2_MASK) == 0)
 		return pkt_type;
 
-	hdr_lens->inner_l2_len = 0;
-	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_TEB)) {
+	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_TEB) ||
+		proto == rte_cpu_to_be_16(RTE_GENEVE_TYPE_ETH) ||
+		proto == RTE_VXLAN_GPE_TYPE_ETH) {
 		eh = rte_pktmbuf_read(m, off, sizeof(*eh), &eh_copy);
 		if (unlikely(eh == NULL))
 			return pkt_type;
 		pkt_type |= RTE_PTYPE_INNER_L2_ETHER;
 		proto = eh->ether_type;
 		off += sizeof(*eh);
-		hdr_lens->inner_l2_len = sizeof(*eh);
+		hdr_lens->inner_l2_len += sizeof(*eh);
 	}
 
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
@@ -425,7 +527,8 @@ l3:
 	if ((layers & RTE_PTYPE_INNER_L3_MASK) == 0)
 		return pkt_type;
 
-	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
+	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) ||
+		proto == RTE_VXLAN_GPE_TYPE_IPV4) {
 		const struct rte_ipv4_hdr *ip4h;
 		struct rte_ipv4_hdr ip4h_copy;
 
@@ -448,7 +551,8 @@ l3:
 		}
 		proto = ip4h->next_proto_id;
 		pkt_type |= ptype_inner_l4(proto);
-	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
+	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6) ||
+			proto == RTE_VXLAN_GPE_TYPE_IPV6) {
 		const struct rte_ipv6_hdr *ip6h;
 		struct rte_ipv6_hdr ip6h_copy;
 		int frag = 0;

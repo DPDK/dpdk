@@ -121,6 +121,17 @@ struct rte_flow_ops {
 		 const void *update, void *query,
 		 enum rte_flow_query_update_mode qu_mode,
 		 struct rte_flow_error *error);
+	/** @see rte_flow_action_list_handle_create() */
+	struct rte_flow_action_list_handle *(*action_list_handle_create)
+		(struct rte_eth_dev *dev,
+		 const struct rte_flow_indir_action_conf *conf,
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error);
+	/** @see rte_flow_action_list_handle_destroy() */
+	int (*action_list_handle_destroy)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow_action_list_handle *handle,
+		 struct rte_flow_error *error);
 	/** See rte_flow_tunnel_decap_set() */
 	int (*tunnel_decap_set)
 		(struct rte_eth_dev *dev,
@@ -216,92 +227,51 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev,
 		 struct rte_flow_template_table *template_table,
 		 struct rte_flow_error *err);
-	/** See rte_flow_async_create() */
-	struct rte_flow *(*async_create)
+	/** See rte_flow_group_set_miss_actions() */
+	int (*group_set_miss_actions)
 		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 struct rte_flow_template_table *template_table,
-		 const struct rte_flow_item pattern[],
-		 uint8_t pattern_template_index,
+		 uint32_t group_id,
+		 const struct rte_flow_group_attr *attr,
 		 const struct rte_flow_action actions[],
-		 uint8_t actions_template_index,
-		 void *user_data,
 		 struct rte_flow_error *err);
-	/** See rte_flow_async_create_by_index() */
-	struct rte_flow *(*async_create_by_index)
+	/** See rte_flow_actions_update(). */
+	int (*actions_update)
 		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 struct rte_flow_template_table *template_table,
-		 uint32_t rule_index,
-		 const struct rte_flow_action actions[],
-		 uint8_t actions_template_index,
-		 void *user_data,
-		 struct rte_flow_error *err);
-	/** See rte_flow_async_destroy() */
-	int (*async_destroy)
-		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
 		 struct rte_flow *flow,
-		 void *user_data,
-		 struct rte_flow_error *err);
-	/** See rte_flow_push() */
-	int (*push)
-		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 struct rte_flow_error *err);
-	/** See rte_flow_pull() */
-	int (*pull)
-		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 struct rte_flow_op_result res[],
-		 uint16_t n_res,
+		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error);
-	/** See rte_flow_async_action_handle_create() */
-	struct rte_flow_action_handle *(*async_action_handle_create)
+	/** @see rte_flow_action_list_handle_query_update() */
+	int (*action_list_handle_query_update)
 		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 const struct rte_flow_indir_action_conf *indir_action_conf,
-		 const struct rte_flow_action *action,
-		 void *user_data,
-		 struct rte_flow_error *err);
-	/** See rte_flow_async_action_handle_destroy() */
-	int (*async_action_handle_destroy)
-		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 struct rte_flow_action_handle *action_handle,
-		 void *user_data,
+		 const struct rte_flow_action_list_handle *handle,
+		 const void **update, void **query,
+		 enum rte_flow_query_update_mode mode,
 		 struct rte_flow_error *error);
-	/** See rte_flow_async_action_handle_update() */
-	int (*async_action_handle_update)
-		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 struct rte_flow_action_handle *action_handle,
-		 const void *update,
-		 void *user_data,
+	/** @see rte_flow_calc_table_hash() */
+	int (*flow_calc_table_hash)
+		(struct rte_eth_dev *dev, const struct rte_flow_template_table *table,
+		 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
+		 uint32_t *hash, struct rte_flow_error *error);
+	/** @see rte_flow_calc_encap_hash() */
+	int (*flow_calc_encap_hash)
+		(struct rte_eth_dev *dev, const struct rte_flow_item pattern[],
+		 enum rte_flow_encap_hash_field dest_field, uint8_t *hash,
 		 struct rte_flow_error *error);
-	/** See rte_flow_async_action_handle_query() */
-	int (*async_action_handle_query)
+	/** @see rte_flow_template_table_resize() */
+	int (*flow_template_table_resize)(struct rte_eth_dev *dev,
+					  struct rte_flow_template_table *table,
+					  uint32_t nb_rules,
+					  struct rte_flow_error *error);
+	/** @see rte_flow_async_update_resized() */
+	int (*flow_update_resized)(struct rte_eth_dev *dev, uint32_t queue,
+				   const struct rte_flow_op_attr *attr,
+				   struct rte_flow *rule, void *user_data,
+				   struct rte_flow_error *error);
+	/** @see rte_flow_template_table_resize_complete() */
+	int (*flow_template_table_resize_complete)
 		(struct rte_eth_dev *dev,
-		 uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 const struct rte_flow_action_handle *action_handle,
-		 void *data,
-		 void *user_data,
+		 struct rte_flow_template_table *table,
 		 struct rte_flow_error *error);
-	/** See rte_flow_async_action_handle_query_update */
-	int (*async_action_handle_query_update)
-		(struct rte_eth_dev *dev, uint32_t queue_id,
-		 const struct rte_flow_op_attr *op_attr,
-		 struct rte_flow_action_handle *action_handle,
-		 const void *update, void *query,
-		 enum rte_flow_query_update_mode qu_mode,
-		 void *user_data, struct rte_flow_error *error);
 };
 
 /**
@@ -319,6 +289,185 @@ struct rte_flow_ops {
  */
 const struct rte_flow_ops *
 rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error);
+
+/**
+ * Register mbuf dynamic flag for rte_flow_get_restore_info.
+ */
+int
+rte_flow_restore_info_dynflag_register(void);
+
+/** @internal Enqueue rule creation operation. */
+typedef struct rte_flow *(*rte_flow_async_create_t)(struct rte_eth_dev *dev,
+						    uint32_t queue,
+						    const struct rte_flow_op_attr *attr,
+						    struct rte_flow_template_table *table,
+						    const struct rte_flow_item *items,
+						    uint8_t pattern_template_index,
+						    const struct rte_flow_action *actions,
+						    uint8_t action_template_index,
+						    void *user_data,
+						    struct rte_flow_error *error);
+
+/** @internal Enqueue rule creation by index operation. */
+typedef struct rte_flow *(*rte_flow_async_create_by_index_t)(struct rte_eth_dev *dev,
+							     uint32_t queue,
+							     const struct rte_flow_op_attr *attr,
+							     struct rte_flow_template_table *table,
+							     uint32_t rule_index,
+							     const struct rte_flow_action *actions,
+							     uint8_t action_template_index,
+							     void *user_data,
+							     struct rte_flow_error *error);
+
+/** @internal Enqueue rule creation by index with pattern operation. */
+typedef struct rte_flow *(*rte_flow_async_create_by_index_with_pattern_t)(struct rte_eth_dev *dev,
+							uint32_t queue,
+							const struct rte_flow_op_attr *attr,
+							struct rte_flow_template_table *table,
+							uint32_t rule_index,
+							const struct rte_flow_item *items,
+							uint8_t pattern_template_index,
+							const struct rte_flow_action *actions,
+							uint8_t action_template_index,
+							void *user_data,
+							struct rte_flow_error *error);
+
+/** @internal Enqueue rule update operation. */
+typedef int (*rte_flow_async_actions_update_t)(struct rte_eth_dev *dev,
+					       uint32_t queue_id,
+					       const struct rte_flow_op_attr *op_attr,
+					       struct rte_flow *flow,
+					       const struct rte_flow_action *actions,
+					       uint8_t actions_template_index,
+					       void *user_data,
+					       struct rte_flow_error *error);
+
+/** @internal Enqueue rule destruction operation. */
+typedef int (*rte_flow_async_destroy_t)(struct rte_eth_dev *dev,
+					uint32_t queue_id,
+					const struct rte_flow_op_attr *op_attr,
+					struct rte_flow *flow,
+					void *user_data,
+					struct rte_flow_error *error);
+
+/** @internal Push all internally stored rules to the HW. */
+typedef int (*rte_flow_push_t)(struct rte_eth_dev *dev,
+			       uint32_t queue_id,
+			       struct rte_flow_error *error);
+
+/** @internal Pull the flow rule operations results from the HW. */
+typedef int (*rte_flow_pull_t)(struct rte_eth_dev *dev,
+			       uint32_t queue_id,
+			       struct rte_flow_op_result *res,
+			       uint16_t n_res,
+			       struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action creation operation. */
+typedef struct rte_flow_action_handle *(*rte_flow_async_action_handle_create_t)(
+					struct rte_eth_dev *dev,
+					uint32_t queue_id,
+					const struct rte_flow_op_attr *op_attr,
+					const struct rte_flow_indir_action_conf *indir_action_conf,
+					const struct rte_flow_action *action,
+					void *user_data,
+					struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action destruction operation. */
+typedef int (*rte_flow_async_action_handle_destroy_t)(struct rte_eth_dev *dev,
+						      uint32_t queue_id,
+						      const struct rte_flow_op_attr *op_attr,
+						      struct rte_flow_action_handle *action_handle,
+						      void *user_data,
+						      struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action update operation. */
+typedef int (*rte_flow_async_action_handle_update_t)(struct rte_eth_dev *dev,
+						     uint32_t queue_id,
+						     const struct rte_flow_op_attr *op_attr,
+						     struct rte_flow_action_handle *action_handle,
+						     const void *update,
+						     void *user_data,
+						     struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action query operation. */
+typedef int (*rte_flow_async_action_handle_query_t)
+		(struct rte_eth_dev *dev,
+		 uint32_t queue_id,
+		 const struct rte_flow_op_attr *op_attr,
+		 const struct rte_flow_action_handle *action_handle,
+		 void *data,
+		 void *user_data,
+		 struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action query and/or update operation. */
+typedef int (*rte_flow_async_action_handle_query_update_t)(struct rte_eth_dev *dev,
+							   uint32_t queue_id,
+							   const struct rte_flow_op_attr *attr,
+							   struct rte_flow_action_handle *handle,
+							   const void *update, void *query,
+							   enum rte_flow_query_update_mode mode,
+							   void *user_data,
+							   struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action list creation operation. */
+typedef struct rte_flow_action_list_handle *(*rte_flow_async_action_list_handle_create_t)(
+	struct rte_eth_dev *dev,
+	uint32_t queue_id,
+	const struct rte_flow_op_attr *attr,
+	const struct rte_flow_indir_action_conf *conf,
+	const struct rte_flow_action *actions,
+	void *user_data,
+	struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action list destruction operation. */
+typedef int (*rte_flow_async_action_list_handle_destroy_t)(
+	struct rte_eth_dev *dev,
+	uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr,
+	struct rte_flow_action_list_handle *handle,
+	void *user_data,
+	struct rte_flow_error *error);
+
+/** @internal Enqueue indirect action list query and/or update operation. */
+typedef int (*rte_flow_async_action_list_handle_query_update_t)(
+	struct rte_eth_dev *dev,
+	uint32_t queue_id,
+	const struct rte_flow_op_attr *attr,
+	const struct rte_flow_action_list_handle *handle,
+	const void **update,
+	void **query,
+	enum rte_flow_query_update_mode mode,
+	void *user_data,
+	struct rte_flow_error *error);
+
+/**
+ * @internal
+ *
+ * Fast path async flow functions are held in a flat array, one entry per ethdev.
+ */
+struct __rte_cache_aligned rte_flow_fp_ops {
+	rte_flow_async_create_t async_create;
+	rte_flow_async_create_by_index_t async_create_by_index;
+	rte_flow_async_actions_update_t async_actions_update;
+	rte_flow_async_create_by_index_with_pattern_t async_create_by_index_with_pattern;
+	rte_flow_async_destroy_t async_destroy;
+	rte_flow_push_t push;
+	rte_flow_pull_t pull;
+	rte_flow_async_action_handle_create_t async_action_handle_create;
+	rte_flow_async_action_handle_destroy_t async_action_handle_destroy;
+	rte_flow_async_action_handle_update_t async_action_handle_update;
+	rte_flow_async_action_handle_query_t async_action_handle_query;
+	rte_flow_async_action_handle_query_update_t async_action_handle_query_update;
+	rte_flow_async_action_list_handle_create_t async_action_list_handle_create;
+	rte_flow_async_action_list_handle_destroy_t async_action_list_handle_destroy;
+	rte_flow_async_action_list_handle_query_update_t async_action_list_handle_query_update;
+};
+
+/**
+ * @internal
+ * Default implementation of fast path flow API functions.
+ */
+extern struct rte_flow_fp_ops rte_flow_fp_default_ops;
 
 #ifdef __cplusplus
 }

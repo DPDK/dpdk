@@ -5,10 +5,6 @@
 #ifndef _CRYPTODEV_PMD_H_
 #define _CRYPTODEV_PMD_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** @file
  * RTE Crypto PMD APIs
  *
@@ -27,6 +23,10 @@ extern "C" {
 
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #define RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS	8
@@ -61,11 +61,11 @@ struct rte_cryptodev_pmd_init_params {
  * This structure is safe to place in shared memory to be common among
  * different processes in a multi-process configuration.
  */
-struct rte_cryptodev_data {
+struct __rte_cache_aligned rte_cryptodev_data {
 	/** Device ID for this instance */
 	uint8_t dev_id;
 	/** Socket ID where memory is allocated */
-	uint8_t socket_id;
+	int socket_id;
 	/** Unique identifier name */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 
@@ -82,10 +82,10 @@ struct rte_cryptodev_data {
 
 	/** PMD-specific private data */
 	void *dev_private;
-} __rte_cache_aligned;
+};
 
 /** @internal The data structure associated with each crypto device. */
-struct rte_cryptodev {
+struct __rte_cache_aligned rte_cryptodev {
 	/** Pointer to PMD dequeue function. */
 	dequeue_pkt_burst_t dequeue_burst;
 	/** Pointer to PMD enqueue function. */
@@ -117,7 +117,9 @@ struct rte_cryptodev {
 	struct rte_cryptodev_cb_rcu *enq_cbs;
 	/** User application callback for post dequeue processing */
 	struct rte_cryptodev_cb_rcu *deq_cbs;
-} __rte_cache_aligned;
+	/** Pointer to PMD function to get used queue pair depth */
+	crypto_qp_depth_used_t qp_depth_used;
+};
 
 /** Global structure used for maintaining state of allocated crypto devices */
 struct rte_cryptodev_global {
@@ -139,7 +141,6 @@ struct cryptodev_driver {
  * has a fixed algo, key, op-type, digest_len etc.
  */
 struct rte_cryptodev_sym_session {
-	RTE_MARKER cacheline0;
 	uint64_t opaque_data;
 	/**< Can be used for external metadata */
 	uint32_t sess_data_sz;
@@ -151,9 +152,9 @@ struct rte_cryptodev_sym_session {
 	rte_iova_t driver_priv_data_iova;
 	/**< Session driver data IOVA address */
 
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE)
 	/**< Second cache line - start of the driver session data */
-	uint8_t driver_priv_data[0];
+	uint8_t driver_priv_data[];
 	/**< Driver specific session data, variable size */
 };
 
@@ -290,6 +291,22 @@ typedef int (*cryptodev_queue_pair_release_t)(struct rte_cryptodev *dev,
 		uint16_t qp_id);
 
 /**
+ * Reset or reconfigure a queue pair for a device.
+ *
+ * @param	dev		Crypto device pointer
+ * @param	qp_id		Queue pair index
+ * @param	qp_conf		Queue configuration structure
+ * @param	socket_id	Socket index
+ *
+ * @return
+ *  - 0: on success.
+ *  - ENOTSUP: if crypto device does not support the operation.
+ */
+typedef int (*cryptodev_queue_pair_reset_t)(struct rte_cryptodev *dev,
+		uint16_t qp_id,	const struct rte_cryptodev_qp_conf *qp_conf,
+		int socket_id);
+
+/**
  * Create a session mempool to allocate sessions from
  *
  * @param	dev		Crypto device pointer
@@ -390,7 +407,6 @@ typedef void (*cryptodev_asym_clear_session_t)(struct rte_cryptodev *dev,
  *
  * @return
  *  - Returns number of successfully processed packets.
- *
  */
 typedef uint32_t (*cryptodev_sym_cpu_crypto_process_t)
 	(struct rte_cryptodev *dev, struct rte_cryptodev_sym_session *sess,
@@ -476,6 +492,8 @@ struct rte_cryptodev_ops {
 	/**< Set up a device queue pair. */
 	cryptodev_queue_pair_release_t queue_pair_release;
 	/**< Release a queue pair. */
+	cryptodev_queue_pair_reset_t queue_pair_reset;
+	/**< Reset a queue pair. */
 
 	cryptodev_sym_get_session_private_size_t sym_session_get_size;
 	/**< Return private session. */
@@ -535,7 +553,7 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id);
  *   - 0 on success, negative on error
  */
 __rte_internal
-extern int
+int
 rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev);
 
 
@@ -684,7 +702,7 @@ rte_cryptodev_session_event_mdata_get(struct rte_crypto_op *op);
  * @internal
  * Cryptodev asymmetric crypto session.
  */
-RTE_STD_C11 struct rte_cryptodev_asym_session {
+struct rte_cryptodev_asym_session {
 	uint8_t driver_id;
 	/**< Session driver ID. */
 	uint16_t max_priv_data_sz;
@@ -696,6 +714,12 @@ RTE_STD_C11 struct rte_cryptodev_asym_session {
 	/**< Event metadata (aka *union rte_event_crypto_metadata*) */
 	uint8_t sess_private_data[];
 };
+
+/**
+ * Helper macro to get session private data
+ */
+#define CRYPTODEV_GET_ASYM_SESS_PRIV(s) \
+	((void *)(((struct rte_cryptodev_asym_session *)s)->sess_private_data))
 
 #ifdef __cplusplus
 }

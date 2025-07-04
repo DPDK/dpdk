@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_mldev.h>
 #include <rte_string_fns.h>
 
@@ -14,6 +15,7 @@
  * This file implements Machine Learning utility routines, except type conversion routines.
  */
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_io_type_size_get)
 int
 rte_ml_io_type_size_get(enum rte_ml_io_type type)
 {
@@ -32,6 +34,10 @@ rte_ml_io_type_size_get(enum rte_ml_io_type type)
 		return sizeof(int32_t);
 	case RTE_ML_IO_TYPE_UINT32:
 		return sizeof(uint32_t);
+	case RTE_ML_IO_TYPE_INT64:
+		return sizeof(int64_t);
+	case RTE_ML_IO_TYPE_UINT64:
+		return sizeof(uint64_t);
 	case RTE_ML_IO_TYPE_FP8:
 		return sizeof(uint8_t);
 	case RTE_ML_IO_TYPE_FP16:
@@ -45,6 +51,7 @@ rte_ml_io_type_size_get(enum rte_ml_io_type type)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_io_type_to_str)
 void
 rte_ml_io_type_to_str(enum rte_ml_io_type type, char *str, int len)
 {
@@ -81,36 +88,6 @@ rte_ml_io_type_to_str(enum rte_ml_io_type type, char *str, int len)
 		break;
 	case RTE_ML_IO_TYPE_BFLOAT16:
 		rte_strlcpy(str, "bfloat16", len);
-		break;
-	default:
-		rte_strlcpy(str, "invalid", len);
-	}
-}
-
-void
-rte_ml_io_format_to_str(enum rte_ml_io_format format, char *str, int len)
-{
-	switch (format) {
-	case RTE_ML_IO_FORMAT_NCHW:
-		rte_strlcpy(str, "NCHW", len);
-		break;
-	case RTE_ML_IO_FORMAT_NHWC:
-		rte_strlcpy(str, "NHWC", len);
-		break;
-	case RTE_ML_IO_FORMAT_CHWN:
-		rte_strlcpy(str, "CHWN", len);
-		break;
-	case RTE_ML_IO_FORMAT_3D:
-		rte_strlcpy(str, "3D", len);
-		break;
-	case RTE_ML_IO_FORMAT_2D:
-		rte_strlcpy(str, "Matrix", len);
-		break;
-	case RTE_ML_IO_FORMAT_1D:
-		rte_strlcpy(str, "Vector", len);
-		break;
-	case RTE_ML_IO_FORMAT_SCALAR:
-		rte_strlcpy(str, "Scalar", len);
 		break;
 	default:
 		rte_strlcpy(str, "invalid", len);

@@ -16,10 +16,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  *
  * higig2 frc header.
@@ -136,7 +132,6 @@ struct rte_higig2_ppt_type1 {
  *
  * higig2 header
  */
-RTE_STD_C11
 struct rte_higig2_hdr {
 	struct rte_higig2_frc fcr;
 	union {
@@ -144,9 +139,5 @@ struct rte_higig2_hdr {
 		struct rte_higig2_ppt_type1 ppt1;
 	};
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_HIGIG_H_ */

@@ -3,7 +3,6 @@
  *
  * Implements SFF-8024 Rev 4.0 of pluggable I/O configuration and some
  * common utilities for SFF-8436/8636 and SFF-8472/8079
- *
  */
 
 #ifndef _SFF_COMMON_H_

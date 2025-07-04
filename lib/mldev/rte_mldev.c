@@ -2,6 +2,7 @@
  * Copyright (c) 2022 Marvell.
  */
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_mldev.h>
@@ -23,12 +24,14 @@ struct rte_ml_op_pool_private {
 	/*< Size of private user data with each operation. */
 };
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_dev_pmd_get_dev)
 struct rte_ml_dev *
 rte_ml_dev_pmd_get_dev(int16_t dev_id)
 {
 	return &ml_dev_globals.devs[dev_id];
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_dev_pmd_get_named_dev)
 struct rte_ml_dev *
 rte_ml_dev_pmd_get_named_dev(const char *name)
 {
@@ -47,6 +50,7 @@ rte_ml_dev_pmd_get_named_dev(const char *name)
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_dev_pmd_allocate)
 struct rte_ml_dev *
 rte_ml_dev_pmd_allocate(const char *name, uint8_t socket_id)
 {
@@ -120,6 +124,7 @@ rte_ml_dev_pmd_allocate(const char *name, uint8_t socket_id)
 	return dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ml_dev_pmd_release)
 int
 rte_ml_dev_pmd_release(struct rte_ml_dev *dev)
 {
@@ -155,11 +160,12 @@ rte_ml_dev_pmd_release(struct rte_ml_dev *dev)
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_init, 22.11)
 int
 rte_ml_dev_init(size_t dev_max)
 {
 	if (dev_max == 0 || dev_max > INT16_MAX) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_max = %zu (> %d)\n", dev_max, INT16_MAX);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_max = %zu (> %d)", dev_max, INT16_MAX);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -190,12 +196,14 @@ rte_ml_dev_init(size_t dev_max)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_count, 22.11)
 uint16_t
 rte_ml_dev_count(void)
 {
 	return ml_dev_globals.nb_devs;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_is_valid_dev, 22.11)
 int
 rte_ml_dev_is_valid_dev(int16_t dev_id)
 {
@@ -211,13 +219,14 @@ rte_ml_dev_is_valid_dev(int16_t dev_id)
 		return 1;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_socket_id, 22.11)
 int
 rte_ml_dev_socket_id(int16_t dev_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -226,29 +235,31 @@ rte_ml_dev_socket_id(int16_t dev_id)
 	return dev->data->socket_id;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_info_get, 22.11)
 int
 rte_ml_dev_info_get(int16_t dev_id, struct rte_ml_dev_info *dev_info)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_info_get == NULL)
+	if (dev->dev_ops->dev_info_get == NULL)
 		return -ENOTSUP;
 
 	if (dev_info == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, dev_info cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, dev_info cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 	memset(dev_info, 0, sizeof(struct rte_ml_dev_info));
 
-	return (*dev->dev_ops->dev_info_get)(dev, dev_info);
+	return dev->dev_ops->dev_info_get(dev, dev_info);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_configure, 22.11)
 int
 rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 {
@@ -257,12 +268,12 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 	int ret;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_configure == NULL)
+	if (dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started) {
@@ -271,7 +282,7 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 	}
 
 	if (config == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, config cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, config cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -280,26 +291,27 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 		return ret;
 
 	if (config->nb_queue_pairs > dev_info.max_queue_pairs) {
-		RTE_MLDEV_LOG(ERR, "Device %d num of queues %u > %u\n", dev_id,
+		RTE_MLDEV_LOG(ERR, "Device %d num of queues %u > %u", dev_id,
 			      config->nb_queue_pairs, dev_info.max_queue_pairs);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_configure)(dev, config);
+	return dev->dev_ops->dev_configure(dev, config);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_close, 22.11)
 int
 rte_ml_dev_close(int16_t dev_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_close == NULL)
+	if (dev->dev_ops->dev_close == NULL)
 		return -ENOTSUP;
 
 	/* Device must be stopped before it can be closed */
@@ -308,9 +320,10 @@ rte_ml_dev_close(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	return (*dev->dev_ops->dev_close)(dev);
+	return dev->dev_ops->dev_close(dev);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_start, 22.11)
 int
 rte_ml_dev_start(int16_t dev_id)
 {
@@ -318,12 +331,12 @@ rte_ml_dev_start(int16_t dev_id)
 	int ret;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_start == NULL)
+	if (dev->dev_ops->dev_start == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started != 0) {
@@ -331,13 +344,14 @@ rte_ml_dev_start(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	ret = (*dev->dev_ops->dev_start)(dev);
+	ret = dev->dev_ops->dev_start(dev);
 	if (ret == 0)
 		dev->data->dev_started = 1;
 
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_stop, 22.11)
 int
 rte_ml_dev_stop(int16_t dev_id)
 {
@@ -345,12 +359,12 @@ rte_ml_dev_stop(int16_t dev_id)
 	int ret;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_stop == NULL)
+	if (dev->dev_ops->dev_stop == NULL)
 		return -ENOTSUP;
 
 	if (dev->data->dev_started == 0) {
@@ -358,13 +372,30 @@ rte_ml_dev_stop(int16_t dev_id)
 		return -EBUSY;
 	}
 
-	ret = (*dev->dev_ops->dev_stop)(dev);
+	ret = dev->dev_ops->dev_stop(dev);
 	if (ret == 0)
 		dev->data->dev_started = 0;
 
 	return ret;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_queue_pair_count, 22.11)
+uint16_t
+rte_ml_dev_queue_pair_count(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+
+	return dev->data->nb_queue_pairs;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_queue_pair_setup, 22.11)
 int
 rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 			    const struct rte_ml_dev_qp_conf *qp_conf, int socket_id)
@@ -372,12 +403,12 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_queue_pair_setup == NULL)
+	if (dev->dev_ops->dev_queue_pair_setup == NULL)
 		return -ENOTSUP;
 
 	if (queue_pair_id >= dev->data->nb_queue_pairs) {
@@ -386,7 +417,7 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 	}
 
 	if (qp_conf == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, qp_conf cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, qp_conf cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -395,391 +426,372 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 		return -EBUSY;
 	}
 
-	return (*dev->dev_ops->dev_queue_pair_setup)(dev, queue_pair_id, qp_conf, socket_id);
+	return dev->dev_ops->dev_queue_pair_setup(dev, queue_pair_id, qp_conf, socket_id);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_stats_get, 22.11)
 int
 rte_ml_dev_stats_get(int16_t dev_id, struct rte_ml_dev_stats *stats)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_stats_get == NULL)
+	if (dev->dev_ops->dev_stats_get == NULL)
 		return -ENOTSUP;
 
 	if (stats == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, stats cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, stats cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 	memset(stats, 0, sizeof(struct rte_ml_dev_stats));
 
-	return (*dev->dev_ops->dev_stats_get)(dev, stats);
+	return dev->dev_ops->dev_stats_get(dev, stats);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_stats_reset, 22.11)
 void
 rte_ml_dev_stats_reset(int16_t dev_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_stats_reset == NULL)
+	if (dev->dev_ops->dev_stats_reset == NULL)
 		return;
 
-	(*dev->dev_ops->dev_stats_reset)(dev);
+	dev->dev_ops->dev_stats_reset(dev);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_xstats_names_get, 22.11)
 int
-rte_ml_dev_xstats_names_get(int16_t dev_id, struct rte_ml_dev_xstats_map *xstats_map, uint32_t size)
+rte_ml_dev_xstats_names_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+			    struct rte_ml_dev_xstats_map *xstats_map, uint32_t size)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_names_get == NULL)
+	if (dev->dev_ops->dev_xstats_names_get == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->dev_xstats_names_get)(dev, xstats_map, size);
+	return dev->dev_ops->dev_xstats_names_get(dev, mode, model_id, xstats_map, size);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_xstats_by_name_get, 22.11)
 int
 rte_ml_dev_xstats_by_name_get(int16_t dev_id, const char *name, uint16_t *stat_id, uint64_t *value)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_by_name_get == NULL)
+	if (dev->dev_ops->dev_xstats_by_name_get == NULL)
 		return -ENOTSUP;
 
 	if (name == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, name cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, name cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (value == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, value cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, value cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_xstats_by_name_get)(dev, name, stat_id, value);
+	return dev->dev_ops->dev_xstats_by_name_get(dev, name, stat_id, value);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_xstats_get, 22.11)
 int
-rte_ml_dev_xstats_get(int16_t dev_id, const uint16_t *stat_ids, uint64_t *values, uint16_t nb_ids)
+rte_ml_dev_xstats_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+		      const uint16_t stat_ids[], uint64_t values[], uint16_t nb_ids)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_get == NULL)
+	if (dev->dev_ops->dev_xstats_get == NULL)
 		return -ENOTSUP;
 
 	if (stat_ids == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, stat_ids cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, stat_ids cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (values == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, values cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, values cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_xstats_get)(dev, stat_ids, values, nb_ids);
+	return dev->dev_ops->dev_xstats_get(dev, mode, model_id, stat_ids, values, nb_ids);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_xstats_reset, 22.11)
 int
-rte_ml_dev_xstats_reset(int16_t dev_id, const uint16_t *stat_ids, uint16_t nb_ids)
+rte_ml_dev_xstats_reset(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t model_id,
+			const uint16_t stat_ids[], uint16_t nb_ids)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_xstats_reset == NULL)
+	if (dev->dev_ops->dev_xstats_reset == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->dev_xstats_reset)(dev, stat_ids, nb_ids);
+	return dev->dev_ops->dev_xstats_reset(dev, mode, model_id, stat_ids, nb_ids);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_dump, 22.11)
 int
 rte_ml_dev_dump(int16_t dev_id, FILE *fd)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_dump == NULL)
+	if (dev->dev_ops->dev_dump == NULL)
 		return -ENOTSUP;
 
 	if (fd == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, file descriptor cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, file descriptor cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->dev_dump)(dev, fd);
+	return dev->dev_ops->dev_dump(dev, fd);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_selftest, 22.11)
 int
 rte_ml_dev_selftest(int16_t dev_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->dev_selftest == NULL)
+	if (dev->dev_ops->dev_selftest == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->dev_selftest)(dev);
+	return dev->dev_ops->dev_selftest(dev);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_model_load, 22.11)
 int
 rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *model_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_load == NULL)
+	if (dev->dev_ops->model_load == NULL)
 		return -ENOTSUP;
 
 	if (params == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, params cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, params cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (model_id == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, model_id cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, model_id cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->model_load)(dev, params, model_id);
+	return dev->dev_ops->model_load(dev, params, model_id);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_model_unload, 22.11)
 int
 rte_ml_model_unload(int16_t dev_id, uint16_t model_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_unload == NULL)
+	if (dev->dev_ops->model_unload == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->model_unload)(dev, model_id);
+	return dev->dev_ops->model_unload(dev, model_id);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_model_start, 22.11)
 int
 rte_ml_model_start(int16_t dev_id, uint16_t model_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_start == NULL)
+	if (dev->dev_ops->model_start == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->model_start)(dev, model_id);
+	return dev->dev_ops->model_start(dev, model_id);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_model_stop, 22.11)
 int
 rte_ml_model_stop(int16_t dev_id, uint16_t model_id)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_stop == NULL)
+	if (dev->dev_ops->model_stop == NULL)
 		return -ENOTSUP;
 
-	return (*dev->dev_ops->model_stop)(dev, model_id);
+	return dev->dev_ops->model_stop(dev, model_id);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_model_info_get, 22.11)
 int
 rte_ml_model_info_get(int16_t dev_id, uint16_t model_id, struct rte_ml_model_info *model_info)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_info_get == NULL)
+	if (dev->dev_ops->model_info_get == NULL)
 		return -ENOTSUP;
 
 	if (model_info == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, model_id %u, model_info cannot be NULL\n", dev_id,
+		RTE_MLDEV_LOG(ERR, "Dev %d, model_id %u, model_info cannot be NULL", dev_id,
 			      model_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->model_info_get)(dev, model_id, model_info);
+	return dev->dev_ops->model_info_get(dev, model_id, model_info);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_model_params_update, 22.11)
 int
 rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->model_params_update == NULL)
+	if (dev->dev_ops->model_params_update == NULL)
 		return -ENOTSUP;
 
 	if (buffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, buffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, buffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->model_params_update)(dev, model_id, buffer);
+	return dev->dev_ops->model_params_update(dev, model_id, buffer);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_quantize, 22.11)
 int
-rte_ml_io_input_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
-			 uint64_t *input_qsize, uint64_t *input_dsize)
+rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **dbuffer,
+		   struct rte_ml_buff_seg **qbuffer)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_input_size_get == NULL)
-		return -ENOTSUP;
-
-	return (*dev->dev_ops->io_input_size_get)(dev, model_id, nb_batches, input_qsize,
-						  input_dsize);
-}
-
-int
-rte_ml_io_output_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
-			  uint64_t *output_qsize, uint64_t *output_dsize)
-{
-	struct rte_ml_dev *dev;
-
-	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
-		return -EINVAL;
-	}
-
-	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_output_size_get == NULL)
-		return -ENOTSUP;
-
-	return (*dev->dev_ops->io_output_size_get)(dev, model_id, nb_batches, output_qsize,
-						   output_dsize);
-}
-
-int
-rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void *dbuffer,
-		   void *qbuffer)
-{
-	struct rte_ml_dev *dev;
-
-	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
-		return -EINVAL;
-	}
-
-	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_quantize == NULL)
+	if (dev->dev_ops->io_quantize == NULL)
 		return -ENOTSUP;
 
 	if (dbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (qbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->io_quantize)(dev, model_id, nb_batches, dbuffer, qbuffer);
+	return dev->dev_ops->io_quantize(dev, model_id, dbuffer, qbuffer);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_io_dequantize, 22.11)
 int
-rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void *qbuffer,
-		     void *dbuffer)
+rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **qbuffer,
+		     struct rte_ml_buff_seg **dbuffer)
 {
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_dequantize == NULL)
+	if (dev->dev_ops->io_dequantize == NULL)
 		return -ENOTSUP;
 
 	if (qbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (dbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
-	return (*dev->dev_ops->io_dequantize)(dev, model_id, nb_batches, qbuffer, dbuffer);
+	return dev->dev_ops->io_dequantize(dev, model_id, qbuffer, dbuffer);
 }
 
 /** Initialise rte_ml_op mempool element */
@@ -794,6 +806,7 @@ ml_op_init(struct rte_mempool *mempool, __rte_unused void *opaque_arg, void *_op
 	op->mempool = mempool;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_op_pool_create, 22.11)
 struct rte_mempool *
 rte_ml_op_pool_create(const char *name, unsigned int nb_elts, unsigned int cache_size,
 		      uint16_t user_size, int socket_id)
@@ -833,12 +846,14 @@ rte_ml_op_pool_create(const char *name, unsigned int nb_elts, unsigned int cache
 	return mp;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_op_pool_free, 22.11)
 void
 rte_ml_op_pool_free(struct rte_mempool *mempool)
 {
 	rte_mempool_free(mempool);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_enqueue_burst, 22.11)
 uint16_t
 rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uint16_t nb_ops)
 {
@@ -846,25 +861,25 @@ rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 
 #ifdef RTE_LIBRTE_ML_DEV_DEBUG
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->enqueue_burst == NULL) {
+	if (dev->enqueue_burst == NULL) {
 		rte_errno = -ENOTSUP;
 		return 0;
 	}
 
 	if (ops == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
 
 	if (qp_id >= dev->data->nb_queue_pairs) {
-		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u\n", qp_id);
+		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u", qp_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -872,9 +887,10 @@ rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
 #endif
 
-	return (*dev->enqueue_burst)(dev, qp_id, ops, nb_ops);
+	return dev->enqueue_burst(dev, qp_id, ops, nb_ops);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dequeue_burst, 22.11)
 uint16_t
 rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uint16_t nb_ops)
 {
@@ -882,25 +898,25 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 
 #ifdef RTE_LIBRTE_ML_DEV_DEBUG
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dequeue_burst == NULL) {
+	if (dev->dequeue_burst == NULL) {
 		rte_errno = -ENOTSUP;
 		return 0;
 	}
 
 	if (ops == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
 
 	if (qp_id >= dev->data->nb_queue_pairs) {
-		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u\n", qp_id);
+		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u", qp_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -908,9 +924,10 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
 #endif
 
-	return (*dev->dequeue_burst)(dev, qp_id, ops, nb_ops);
+	return dev->dequeue_burst(dev, qp_id, ops, nb_ops);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_op_error_get, 22.11)
 int
 rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error *error)
 {
@@ -918,28 +935,29 @@ rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error
 
 #ifdef RTE_LIBRTE_ML_DEV_DEBUG
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->op_error_get == NULL)
+	if (dev->op_error_get == NULL)
 		return -ENOTSUP;
 
 	if (op == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, op cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, op cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (error == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, error cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, error cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 #else
 	dev = rte_ml_dev_pmd_get_dev(dev_id);
 #endif
 
-	return (*dev->op_error_get)(dev, op, error);
+	return dev->op_error_get(dev, op, error);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_ml_dev_logtype, 22.11)
 RTE_LOG_REGISTER_DEFAULT(rte_ml_dev_logtype, INFO);

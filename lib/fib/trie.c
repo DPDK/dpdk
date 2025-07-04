@@ -14,11 +14,11 @@
 #include <rte_fib6.h>
 #include "trie.h"
 
-#ifdef CC_TRIE_AVX512_SUPPORT
+#ifdef CC_AVX512_SUPPORT
 
 #include "trie_avx512.h"
 
-#endif /* CC_TRIE_AVX512_SUPPORT */
+#endif /* CC_AVX512_SUPPORT */
 
 #define TRIE_NAMESIZE		64
 
@@ -45,9 +45,11 @@ get_scalar_fn(enum rte_fib_trie_nh_sz nh_sz)
 static inline rte_fib6_lookup_fn_t
 get_vector_fn(enum rte_fib_trie_nh_sz nh_sz)
 {
-#ifdef CC_TRIE_AVX512_SUPPORT
-	if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0) ||
-			(rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512))
+#ifdef CC_AVX512_SUPPORT
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ) <= 0 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) <= 0 ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512)
 		return NULL;
 	switch (nh_sz) {
 	case RTE_FIB6_TRIE_2B:
@@ -225,7 +227,7 @@ tbl8_recycle(struct rte_trie_tbl *dp, void *par, uint64_t tbl8_idx)
 
 #define BYTE_SIZE	8
 static inline uint32_t
-get_idx(const uint8_t *ip, uint32_t prev_idx, int bytes, int first_byte)
+get_idx(const struct rte_ipv6_addr *ip, uint32_t prev_idx, int bytes, int first_byte)
 {
 	int i;
 	uint32_t idx = 0;
@@ -233,7 +235,7 @@ get_idx(const uint8_t *ip, uint32_t prev_idx, int bytes, int first_byte)
 
 	for (i = first_byte; i < (first_byte + bytes); i++) {
 		bitshift = (int8_t)(((first_byte + bytes - 1) - i)*BYTE_SIZE);
-		idx |= ip[i] <<  bitshift;
+		idx |= ip->a[i] <<  bitshift;
 	}
 	return (prev_idx * TRIE_TBL8_GRP_NUM_ENT) + idx;
 }
@@ -280,7 +282,7 @@ recycle_root_path(struct rte_trie_tbl *dp, const uint8_t *ip_part,
 }
 
 static inline int
-build_common_root(struct rte_trie_tbl *dp, const uint8_t *ip,
+build_common_root(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ip,
 	int common_bytes, void **tbl)
 {
 	void *tbl_ptr = NULL;
@@ -336,7 +338,7 @@ write_edge(struct rte_trie_tbl *dp, const uint8_t *ip_part, uint64_t next_hop,
 		if (ret < 0)
 			return ret;
 		if (edge == LEDGE) {
-			write_to_dp((uint8_t *)p + (1 << dp->nh_sz),
+			write_to_dp(RTE_PTR_ADD(p, (uintptr_t)(1) << dp->nh_sz),
 				next_hop << 1, dp->nh_sz, UINT8_MAX - *ip_part);
 		} else {
 			write_to_dp(get_tbl_p_by_idx(dp->tbl8, tbl8_idx *
@@ -350,13 +352,13 @@ write_edge(struct rte_trie_tbl *dp, const uint8_t *ip_part, uint64_t next_hop,
 	return ret;
 }
 
-#define IPV6_MAX_IDX	(RTE_FIB6_IPV6_ADDR_SIZE - 1)
+#define IPV6_MAX_IDX	(RTE_IPV6_ADDR_SIZE - 1)
 #define TBL24_BYTES	3
-#define TBL8_LEN	(RTE_FIB6_IPV6_ADDR_SIZE - TBL24_BYTES)
+#define TBL8_LEN	(RTE_IPV6_ADDR_SIZE - TBL24_BYTES)
 
 static int
-install_to_dp(struct rte_trie_tbl *dp, const uint8_t *ledge, const uint8_t *r,
-	uint64_t next_hop)
+install_to_dp(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ledge,
+	const struct rte_ipv6_addr *r, uint64_t next_hop)
 {
 	void *common_root_tbl;
 	void *ent;
@@ -364,18 +366,18 @@ install_to_dp(struct rte_trie_tbl *dp, const uint8_t *ledge, const uint8_t *r,
 	int i;
 	int common_bytes;
 	int llen, rlen;
-	uint8_t redge[16];
+	struct rte_ipv6_addr redge;
 
 	/* decrement redge by 1*/
-	rte_rib6_copy_addr(redge, r);
+	redge = *r;
 	for (i = 15; i >= 0; i--) {
-		redge[i]--;
-		if (redge[i] != 0xff)
+		redge.a[i]--;
+		if (redge.a[i] != 0xff)
 			break;
 	}
 
 	for (common_bytes = 0; common_bytes < 15; common_bytes++) {
-		if (ledge[common_bytes] != redge[common_bytes])
+		if (ledge->a[common_bytes] != redge.a[common_bytes])
 			break;
 	}
 
@@ -386,14 +388,14 @@ install_to_dp(struct rte_trie_tbl *dp, const uint8_t *ledge, const uint8_t *r,
 	uint8_t first_tbl8_byte = RTE_MAX(common_bytes, TBL24_BYTES);
 
 	for (i = IPV6_MAX_IDX; i > first_tbl8_byte; i--) {
-		if (ledge[i] != 0)
+		if (ledge->a[i] != 0)
 			break;
 	}
 
 	llen = i - first_tbl8_byte + (common_bytes < 3);
 
 	for (i = IPV6_MAX_IDX; i > first_tbl8_byte; i--) {
-		if (redge[i] != UINT8_MAX)
+		if (redge.a[i] != UINT8_MAX)
 			break;
 	}
 	rlen = i - first_tbl8_byte + (common_bytes < 3);
@@ -403,10 +405,10 @@ install_to_dp(struct rte_trie_tbl *dp, const uint8_t *ledge, const uint8_t *r,
 	uint8_t first_idx_len = (common_bytes < 3) ? 3 : 1;
 
 	uint32_t left_idx = get_idx(ledge, 0, first_idx_len, first_byte_idx);
-	uint32_t right_idx = get_idx(redge, 0, first_idx_len, first_byte_idx);
+	uint32_t right_idx = get_idx(&redge, 0, first_idx_len, first_byte_idx);
 
 	ent = get_tbl_p_by_idx(common_root_tbl, left_idx, dp->nh_sz);
-	ret = write_edge(dp, &ledge[first_tbl8_byte + !(common_bytes < 3)],
+	ret = write_edge(dp, &ledge->a[first_tbl8_byte + !(common_bytes < 3)],
 		next_hop, llen, LEDGE, ent);
 	if (ret < 0)
 		return ret;
@@ -418,7 +420,7 @@ install_to_dp(struct rte_trie_tbl *dp, const uint8_t *ledge, const uint8_t *r,
 			right_idx - (left_idx + 1));
 	}
 	ent = get_tbl_p_by_idx(common_root_tbl, right_idx, dp->nh_sz);
-	ret = write_edge(dp, &redge[first_tbl8_byte + !((common_bytes < 3))],
+	ret = write_edge(dp, &redge.a[first_tbl8_byte + !((common_bytes < 3))],
 		next_hop, rlen, REDGE, ent);
 	if (ret < 0)
 		return ret;
@@ -426,12 +428,12 @@ install_to_dp(struct rte_trie_tbl *dp, const uint8_t *ledge, const uint8_t *r,
 	uint8_t	common_tbl8 = (common_bytes < TBL24_BYTES) ?
 			0 : common_bytes - (TBL24_BYTES - 1);
 	ent = get_tbl24_p(dp, ledge, dp->nh_sz);
-	recycle_root_path(dp, ledge + TBL24_BYTES, common_tbl8, ent);
+	recycle_root_path(dp, ledge->a + TBL24_BYTES, common_tbl8, ent);
 	return 0;
 }
 
 static void
-get_nxt_net(uint8_t *ip, uint8_t depth)
+get_nxt_net(struct rte_ipv6_addr *ip, uint8_t depth)
 {
 	int i;
 	uint8_t part_depth;
@@ -440,12 +442,12 @@ get_nxt_net(uint8_t *ip, uint8_t depth)
 	for (i = 0, part_depth = depth; part_depth > 8; part_depth -= 8, i++)
 		;
 
-	prev_byte = ip[i];
-	ip[i] += 1 << (8 - part_depth);
-	if (ip[i] < prev_byte) {
+	prev_byte = ip->a[i];
+	ip->a[i] += 1 << (8 - part_depth);
+	if (ip->a[i] < prev_byte) {
 		while (i > 0) {
-			ip[--i] += 1;
-			if (ip[i] != 0)
+			ip->a[--i] += 1;
+			if (ip->a[i] != 0)
 				break;
 		}
 	}
@@ -453,19 +455,18 @@ get_nxt_net(uint8_t *ip, uint8_t depth)
 
 static int
 modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
-	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop)
 {
 	struct rte_rib6_node *tmp = NULL;
-	uint8_t ledge[RTE_FIB6_IPV6_ADDR_SIZE];
-	uint8_t redge[RTE_FIB6_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr ledge, redge;
 	int ret;
 	uint8_t tmp_depth;
 
 	if (next_hop > get_max_nh(dp->nh_sz))
 		return -EINVAL;
 
-	rte_rib6_copy_addr(ledge, ip);
+	ledge = *ip;
 	do {
 		tmp = rte_rib6_get_nxt(rib, ip, depth, tmp,
 			RTE_RIB6_GET_NXT_COVER);
@@ -473,24 +474,30 @@ modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 			rte_rib6_get_depth(tmp, &tmp_depth);
 			if (tmp_depth == depth)
 				continue;
-			rte_rib6_get_ip(tmp, redge);
-			if (rte_rib6_is_equal(ledge, redge)) {
-				get_nxt_net(ledge, tmp_depth);
+			rte_rib6_get_ip(tmp, &redge);
+			if (rte_ipv6_addr_eq(&ledge, &redge)) {
+				get_nxt_net(&ledge, tmp_depth);
 				continue;
 			}
-			ret = install_to_dp(dp, ledge, redge,
-				next_hop);
+			ret = install_to_dp(dp, &ledge, &redge, next_hop);
 			if (ret != 0)
 				return ret;
-			get_nxt_net(redge, tmp_depth);
-			rte_rib6_copy_addr(ledge, redge);
-		} else {
-			rte_rib6_copy_addr(redge, ip);
-			get_nxt_net(redge, depth);
-			if (rte_rib6_is_equal(ledge, redge))
+			get_nxt_net(&redge, tmp_depth);
+			ledge = redge;
+			/*
+			 * we got to the end of address space
+			 * and wrapped around
+			 */
+			if (rte_ipv6_addr_is_unspec(&ledge))
 				break;
-			ret = install_to_dp(dp, ledge, redge,
-				next_hop);
+		} else {
+			redge = *ip;
+			get_nxt_net(&redge, depth);
+			if (rte_ipv6_addr_eq(&ledge, &redge) &&
+					!rte_ipv6_addr_is_unspec(&ledge))
+				break;
+
+			ret = install_to_dp(dp, &ledge, &redge, next_hop);
 			if (ret != 0)
 				return ret;
 		}
@@ -500,7 +507,7 @@ modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 }
 
 int
-trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop, int op)
 {
 	struct rte_trie_tbl *dp;
@@ -508,12 +515,12 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 	struct rte_rib6_node *tmp = NULL;
 	struct rte_rib6_node *node;
 	struct rte_rib6_node *parent;
-	uint8_t	ip_masked[RTE_FIB6_IPV6_ADDR_SIZE];
-	int i, ret = 0;
+	struct rte_ipv6_addr ip_masked;
+	int ret = 0;
 	uint64_t par_nh, node_nh;
 	uint8_t tmp_depth, depth_diff = 0, parent_depth = 24;
 
-	if ((fib == NULL) || (ip == NULL) || (depth > RTE_FIB6_MAXDEPTH))
+	if ((fib == NULL) || (ip == NULL) || (depth > RTE_IPV6_MAX_DEPTH))
 		return -EINVAL;
 
 	dp = rte_fib6_get_dp(fib);
@@ -521,11 +528,11 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 	rib = rte_fib6_get_rib(fib);
 	RTE_ASSERT(rib);
 
-	for (i = 0; i < RTE_FIB6_IPV6_ADDR_SIZE; i++)
-		ip_masked[i] = ip[i] & get_msk_part(depth, i);
+	ip_masked = *ip;
+	rte_ipv6_addr_mask(&ip_masked, depth);
 
 	if (depth > 24) {
-		tmp = rte_rib6_get_nxt(rib, ip_masked,
+		tmp = rte_rib6_get_nxt(rib, &ip_masked,
 			RTE_ALIGN_FLOOR(depth, 8), NULL,
 			RTE_RIB6_GET_NXT_COVER);
 		if (tmp == NULL) {
@@ -539,14 +546,14 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 			depth_diff = depth_diff >> 3;
 		}
 	}
-	node = rte_rib6_lookup_exact(rib, ip_masked, depth);
+	node = rte_rib6_lookup_exact(rib, &ip_masked, depth);
 	switch (op) {
 	case RTE_FIB6_ADD:
 		if (node != NULL) {
 			rte_rib6_get_nh(node, &node_nh);
 			if (node_nh == next_hop)
 				return 0;
-			ret = modify_dp(dp, rib, ip_masked, depth, next_hop);
+			ret = modify_dp(dp, rib, &ip_masked, depth, next_hop);
 			if (ret == 0)
 				rte_rib6_set_nh(node, next_hop);
 			return 0;
@@ -556,7 +563,7 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 				dp->number_tbl8s - depth_diff))
 			return -ENOSPC;
 
-		node = rte_rib6_insert(rib, ip_masked, depth);
+		node = rte_rib6_insert(rib, &ip_masked, depth);
 		if (node == NULL)
 			return -rte_errno;
 		rte_rib6_set_nh(node, next_hop);
@@ -566,9 +573,9 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 			if (par_nh == next_hop)
 				return 0;
 		}
-		ret = modify_dp(dp, rib, ip_masked, depth, next_hop);
+		ret = modify_dp(dp, rib, &ip_masked, depth, next_hop);
 		if (ret != 0) {
-			rte_rib6_remove(rib, ip_masked, depth);
+			rte_rib6_remove(rib, &ip_masked, depth);
 			return ret;
 		}
 
@@ -583,10 +590,10 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 			rte_rib6_get_nh(parent, &par_nh);
 			rte_rib6_get_nh(node, &node_nh);
 			if (par_nh != node_nh)
-				ret = modify_dp(dp, rib, ip_masked, depth,
+				ret = modify_dp(dp, rib, &ip_masked, depth,
 					par_nh);
 		} else
-			ret = modify_dp(dp, rib, ip_masked, depth, dp->def_nh);
+			ret = modify_dp(dp, rib, &ip_masked, depth, dp->def_nh);
 
 		if (ret != 0)
 			return ret;
@@ -629,8 +636,8 @@ trie_create(const char *name, int socket_id,
 
 	snprintf(mem_name, sizeof(mem_name), "DP_%s", name);
 	dp = rte_zmalloc_socket(name, sizeof(struct rte_trie_tbl) +
-		TRIE_TBL24_NUM_ENT * (1 << nh_sz), RTE_CACHE_LINE_SIZE,
-		socket_id);
+		TRIE_TBL24_NUM_ENT * (1 << nh_sz) + sizeof(uint32_t),
+		RTE_CACHE_LINE_SIZE, socket_id);
 	if (dp == NULL) {
 		rte_errno = ENOMEM;
 		return dp;

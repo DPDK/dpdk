@@ -2,32 +2,39 @@
  * Copyright(c) 2021 Microsoft Corporation
  */
 
+#include <eal_export.h>
 #include <rte_dev.h>
 
+#include "eal_private.h"
+
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_start)
 int
 rte_dev_event_monitor_start(void)
 {
-	RTE_LOG(ERR, EAL, "Device event is not supported for Windows\n");
+	EAL_LOG(ERR, "Device event is not supported for Windows");
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_monitor_stop)
 int
 rte_dev_event_monitor_stop(void)
 {
-	RTE_LOG(ERR, EAL, "Device event is not supported for Windows\n");
+	EAL_LOG(ERR, "Device event is not supported for Windows");
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_enable)
 int
 rte_dev_hotplug_handle_enable(void)
 {
-	RTE_LOG(ERR, EAL, "Device event is not supported for Windows\n");
+	EAL_LOG(ERR, "Device event is not supported for Windows");
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_hotplug_handle_disable)
 int
 rte_dev_hotplug_handle_disable(void)
 {
-	RTE_LOG(ERR, EAL, "Device event is not supported for Windows\n");
+	EAL_LOG(ERR, "Device event is not supported for Windows");
 	return -1;
 }

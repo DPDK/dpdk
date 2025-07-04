@@ -5,19 +5,18 @@
 #ifndef __INCLUDE_RTE_SWX_PORT_RING_H__
 #define __INCLUDE_RTE_SWX_PORT_RING_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Ring Input and Output Ports
- ***/
+ */
 
 #include <stdint.h>
 
-
 #include "rte_swx_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Ring input port (reader) creation parameters. */
 struct rte_swx_port_ring_reader_params {

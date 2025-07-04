@@ -155,9 +155,9 @@ use_cni
 ~~~~~~~
 
 The EAL vdev argument ``use_cni`` is used to indicate that the user wishes to
-enable the `AF_XDP Plugin for Kubernetes`_ within a DPDK application.
+enable the `AF_XDP Device Plugin for Kubernetes`_ with a DPDK application/pod.
 
-.. _AF_XDP Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 .. code-block:: console
 
@@ -170,6 +170,47 @@ enable the `AF_XDP Plugin for Kubernetes`_ within a DPDK application.
    Since the DPDK application is running in limited privileges
    so enabling and disabling of the promiscuous mode through the DPDK application
    is also not supported.
+
+use_pinned_map
+~~~~~~~~~~~~~~
+
+The EAL vdev argument ``use_pinned_map`` is used to indicate that the user wishes to
+load a pinned xskmap mounted by `AF_XDP Device Plugin for Kubernetes`_ in the DPDK
+application/pod.
+
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
+
+.. code-block:: console
+
+   --vdev=net_af_xdp0,use_pinned_map=1
+
+.. note::
+
+    This feature can also be used with any external entity that can pin an eBPF map, not just
+    the `AF_XDP Device Plugin for Kubernetes`_.
+
+dp_path
+~~~~~~~
+
+The EAL vdev argument ``dp_path`` is used alongside
+the ``use_cni`` or ``use_pinned_map`` arguments
+to explicitly tell the AF_XDP PMD where to find either:
+
+1. The UDS to interact with the AF_XDP Device Plugin. OR
+2. The pinned xskmap to use when creating AF_XDP sockets.
+
+If this argument is not passed alongside the ``use_cni`` or ``use_pinned_map`` arguments then
+the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Kubernetes`_.
+
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
+
+.. code-block:: console
+
+   --vdev=net_af_xdp0,use_cni=1,dp_path="/tmp/afxdp_dp/<<interface name>>/afxdp.sock"
+
+.. code-block:: console
+
+   --vdev=net_af_xdp0,use_pinned_map=1,dp_path="/tmp/afxdp_dp/<<interface name>>/xsks_map"
 
 Limitations
 -----------

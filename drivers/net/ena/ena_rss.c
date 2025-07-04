@@ -45,6 +45,17 @@ static void ena_reorder_rss_hash_key(uint8_t *reordered_key,
 				     size_t key_size);
 static int ena_get_rss_hash_key(struct ena_com_dev *ena_dev, uint8_t *rss_key);
 
+size_t ena_rss_get_indirection_table_size(struct ena_adapter *adapter)
+{
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+	if (!ena_com_indirection_table_config_supported(ena_dev)) {
+		PMD_DRV_LOG_LINE(WARNING,
+			"Indirection table is not supported by the device.");
+		return 0;
+	}
+	adapter->indirect_table_size = (1UL << ena_dev->rss.tbl_log_size);
+	return adapter->indirect_table_size;
+}
 void ena_rss_key_fill(void *key, size_t size)
 {
 	static bool key_generated;
@@ -71,20 +82,22 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 	u16 entry_value;
 	int conf_idx;
 	int idx;
+	size_t tbl_size;
 
 	if (reta_size == 0 || reta_conf == NULL)
 		return -EINVAL;
 
 	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
-		PMD_DRV_LOG(ERR,
-			"RSS was not configured for the PMD\n");
+		PMD_DRV_LOG_LINE(ERR,
+			"RSS was not configured for the PMD");
 		return -ENOTSUP;
 	}
 
-	if (reta_size > ENA_RX_RSS_TABLE_SIZE) {
-		PMD_DRV_LOG(WARNING,
-			"Requested indirection table size (%d) is bigger than supported: %d\n",
-			reta_size, ENA_RX_RSS_TABLE_SIZE);
+	tbl_size = ena_rss_get_indirection_table_size(adapter);
+	if (reta_size != tbl_size) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Requested indirection table size (%" PRIu16 ") isn't supported (expected: %zu)",
+			reta_size, tbl_size);
 		return -EINVAL;
 	}
 
@@ -103,8 +116,8 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 			rc = ena_com_indirect_table_fill_entry(ena_dev, i,
 				entry_value);
 			if (unlikely(rc != 0)) {
-				PMD_DRV_LOG(ERR,
-					"Cannot fill indirection table\n");
+				PMD_DRV_LOG_LINE(ERR,
+					"Cannot fill indirection table");
 				rte_spinlock_unlock(&adapter->admin_lock);
 				return rc;
 			}
@@ -114,11 +127,11 @@ int ena_rss_reta_update(struct rte_eth_dev *dev,
 	rc = ena_mp_indirect_table_set(adapter);
 	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc != 0)) {
-		PMD_DRV_LOG(ERR, "Cannot set the indirection table\n");
+		PMD_DRV_LOG_LINE(ERR, "Cannot set the indirection table");
 		return rc;
 	}
 
-	PMD_DRV_LOG(DEBUG, "RSS configured %d entries for port %d\n",
+	PMD_DRV_LOG_LINE(DEBUG, "RSS configured %d entries for port %d",
 		reta_size, dev->data->port_id);
 
 	return 0;
@@ -129,27 +142,39 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_reta_entry64 *reta_conf,
 		       uint16_t reta_size)
 {
-	uint32_t indirect_table[ENA_RX_RSS_TABLE_SIZE];
 	struct ena_adapter *adapter = dev->data->dev_private;
 	int rc;
 	int i;
 	int reta_conf_idx;
 	int reta_idx;
+	size_t tbl_size;
 
 	if (reta_size == 0 || reta_conf == NULL)
 		return -EINVAL;
 
 	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
-		PMD_DRV_LOG(ERR,
-			"RSS was not configured for the PMD\n");
+		PMD_DRV_LOG_LINE(ERR,
+			"RSS was not configured for the PMD");
 		return -ENOTSUP;
 	}
 
+	tbl_size = ena_rss_get_indirection_table_size(adapter);
+	if (reta_size != tbl_size) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot get indirection table: size (%" PRIu16 ") mismatch (expected: %zu)",
+			reta_size, tbl_size);
+		return -EINVAL;
+	}
+	if (!adapter->indirect_table) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot get indirection table: local table not allocated");
+		return -EINVAL;
+	}
 	rte_spinlock_lock(&adapter->admin_lock);
-	rc = ena_mp_indirect_table_get(adapter, indirect_table);
-	rte_spinlock_unlock(&adapter->admin_lock);
+	rc = ena_mp_indirect_table_get(adapter, adapter->indirect_table);
 	if (unlikely(rc != 0)) {
-		PMD_DRV_LOG(ERR, "Cannot get indirection table\n");
+		rte_spinlock_unlock(&adapter->admin_lock);
+		PMD_DRV_LOG_LINE(ERR, "Cannot get indirection table");
 		return rc;
 	}
 
@@ -158,8 +183,9 @@ int ena_rss_reta_query(struct rte_eth_dev *dev,
 		reta_idx = i % RTE_ETH_RETA_GROUP_SIZE;
 		if (TEST_BIT(reta_conf[reta_conf_idx].mask, reta_idx))
 			reta_conf[reta_conf_idx].reta[reta_idx] =
-				ENA_IO_RXQ_IDX_REV(indirect_table[i]);
+				ENA_IO_RXQ_IDX_REV(adapter->indirect_table[i]);
 	}
+	rte_spinlock_unlock(&adapter->admin_lock);
 
 	return 0;
 }
@@ -177,8 +203,8 @@ static int ena_fill_indirect_table_default(struct ena_com_dev *ena_dev,
 		rc = ena_com_indirect_table_fill_entry(ena_dev, i,
 			ENA_IO_RXQ_IDX(val));
 		if (unlikely(rc != 0)) {
-			PMD_DRV_LOG(DEBUG,
-				"Failed to set %zu indirection table entry with val %" PRIu16 "\n",
+			PMD_DRV_LOG_LINE(DEBUG,
+				"Failed to set %zu indirection table entry with val %" PRIu16 "",
 				i, val);
 			return rc;
 		}
@@ -380,8 +406,8 @@ static int ena_set_hash_fields(struct ena_com_dev *ena_dev, uint64_t rss_hf)
 			(enum ena_admin_flow_hash_proto)i,
 			selected_fields[i].fields);
 		if (unlikely(rc != 0)) {
-			PMD_DRV_LOG(DEBUG,
-				"Failed to set ENA HF %d with fields %" PRIu16 "\n",
+			PMD_DRV_LOG_LINE(DEBUG,
+				"Failed to set ENA HF %d with fields %" PRIu16 "",
 				i, selected_fields[i].fields);
 			return rc;
 		}
@@ -411,23 +437,23 @@ static int ena_rss_hash_set(struct ena_com_dev *ena_dev,
 	rc = ena_com_fill_hash_function(ena_dev, ENA_ADMIN_TOEPLITZ,
 		rss_key, ENA_HASH_KEY_SIZE, 0);
 	if (rc != 0 && !(default_allowed && rc == ENA_COM_UNSUPPORTED)) {
-		PMD_DRV_LOG(ERR,
-			"Failed to set RSS hash function in the device\n");
+		PMD_DRV_LOG_LINE(ERR,
+			"Failed to set RSS hash function in the device");
 		return rc;
 	}
 
 	rc = ena_set_hash_fields(ena_dev, rss_conf->rss_hf);
 	if (rc == ENA_COM_UNSUPPORTED) {
 		if (rss_conf->rss_key == NULL && !default_allowed) {
-			PMD_DRV_LOG(ERR,
-				"Setting RSS hash fields is not supported\n");
+			PMD_DRV_LOG_LINE(ERR,
+				"Setting RSS hash fields is not supported");
 			return -ENOTSUP;
 		}
-		PMD_DRV_LOG(WARNING,
-			"Setting RSS hash fields is not supported. Using default values: 0x%" PRIx64 "\n",
+		PMD_DRV_LOG_LINE(WARNING,
+			"Setting RSS hash fields is not supported. Using default values: 0x%"PRIx64,
 			(uint64_t)(ENA_ALL_RSS_HF));
 	} else if (rc != 0)  {
-		PMD_DRV_LOG(ERR, "Failed to set RSS hash fields\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to set RSS hash fields");
 		return rc;
 	}
 
@@ -456,8 +482,8 @@ static int ena_get_rss_hash_key(struct ena_com_dev *ena_dev, uint8_t *rss_key)
 	 * explicitly set, this operation shouldn't be supported.
 	 */
 	if (ena_dev->rss.hash_key == NULL) {
-		PMD_DRV_LOG(WARNING,
-			"Retrieving default RSS hash key is not supported\n");
+		PMD_DRV_LOG_LINE(WARNING,
+			"Retrieving default RSS hash key is not supported");
 		return -ENOTSUP;
 	}
 
@@ -475,6 +501,7 @@ int ena_rss_configure(struct ena_adapter *adapter)
 	struct rte_eth_rss_conf *rss_conf;
 	struct ena_com_dev *ena_dev;
 	int rc;
+	size_t tbl_size;
 
 	ena_dev = &adapter->ena_dev;
 	rss_conf = &adapter->edev_data->dev_conf.rx_adv_conf.rss_conf;
@@ -482,32 +509,35 @@ int ena_rss_configure(struct ena_adapter *adapter)
 	if (adapter->edev_data->nb_rx_queues == 0)
 		return 0;
 
+	tbl_size = ena_rss_get_indirection_table_size(adapter);
+	if (!tbl_size)
+		return 0;
 	/* Restart the indirection table. The number of queues could change
 	 * between start/stop calls, so it must be reinitialized with default
 	 * values.
 	 */
-	rc = ena_fill_indirect_table_default(ena_dev, ENA_RX_RSS_TABLE_SIZE,
+	rc = ena_fill_indirect_table_default(ena_dev, tbl_size,
 		adapter->edev_data->nb_rx_queues);
 	if (unlikely(rc != 0)) {
-		PMD_DRV_LOG(ERR,
-			"Failed to fill indirection table with default values\n");
+		PMD_DRV_LOG_LINE(ERR,
+			"Failed to fill indirection table with default values");
 		return rc;
 	}
 
 	rc = ena_com_indirect_table_set(ena_dev);
 	if (unlikely(rc != 0 && rc != ENA_COM_UNSUPPORTED)) {
-		PMD_DRV_LOG(ERR,
-			"Failed to set indirection table in the device\n");
+		PMD_DRV_LOG_LINE(ERR,
+			"Failed to set indirection table in the device");
 		return rc;
 	}
 
 	rc = ena_rss_hash_set(ena_dev, rss_conf, true);
 	if (unlikely(rc != 0)) {
-		PMD_DRV_LOG(ERR, "Failed to set RSS hash\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to set RSS hash");
 		return rc;
 	}
 
-	PMD_DRV_LOG(DEBUG, "RSS configured for port %d\n",
+	PMD_DRV_LOG_LINE(DEBUG, "RSS configured for port %d",
 		adapter->edev_data->port_id);
 
 	return 0;
@@ -523,7 +553,7 @@ int ena_rss_hash_update(struct rte_eth_dev *dev,
 	rc = ena_rss_hash_set(&adapter->ena_dev, rss_conf, false);
 	rte_spinlock_unlock(&adapter->admin_lock);
 	if (unlikely(rc != 0)) {
-		PMD_DRV_LOG(ERR, "Failed to set RSS hash\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to set RSS hash");
 		return rc;
 	}
 
@@ -542,15 +572,15 @@ int ena_rss_hash_conf_get(struct rte_eth_dev *dev,
 	static bool warn_once;
 
 	if (!(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
-		PMD_DRV_LOG(ERR, "RSS was not configured for the PMD\n");
+		PMD_DRV_LOG_LINE(ERR, "RSS was not configured for the PMD");
 		return -ENOTSUP;
 	}
 
 	if (rss_conf->rss_key != NULL) {
 		rc = ena_get_rss_hash_key(ena_dev, rss_conf->rss_key);
 		if (unlikely(rc != 0)) {
-			PMD_DRV_LOG(ERR,
-				"Cannot retrieve RSS hash key, err: %d\n",
+			PMD_DRV_LOG_LINE(ERR,
+				"Cannot retrieve RSS hash key, err: %d",
 				rc);
 			return rc;
 		}
@@ -569,15 +599,15 @@ int ena_rss_hash_conf_get(struct rte_eth_dev *dev,
 			 * interested only in the key value.
 			 */
 			if (!warn_once) {
-				PMD_DRV_LOG(WARNING,
-					"Reading hash control from the device is not supported. .rss_hf will contain a default value.\n");
+				PMD_DRV_LOG_LINE(WARNING,
+					"Reading hash control from the device is not supported. .rss_hf will contain a default value.");
 				warn_once = true;
 			}
 			rss_hf = ENA_ALL_RSS_HF;
 			break;
 		} else if (rc != 0) {
-			PMD_DRV_LOG(ERR,
-				"Failed to retrieve hash ctrl for proto: %d with err: %d\n",
+			PMD_DRV_LOG_LINE(ERR,
+				"Failed to retrieve hash ctrl for proto: %d with err: %d",
 				i, rc);
 			return rc;
 		}

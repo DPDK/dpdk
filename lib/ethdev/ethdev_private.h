@@ -7,18 +7,22 @@
 
 #include <sys/queue.h>
 
+#include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_os_shim.h>
 
 #include "rte_ethdev.h"
 
 struct eth_dev_shared {
+	uint64_t allocated_owners;
 	uint64_t next_owner_id;
-	rte_spinlock_t ownership_lock;
+	uint64_t allocated_ports;
 	struct rte_eth_dev_data data[RTE_MAX_ETHPORTS];
 };
 
-extern struct eth_dev_shared *eth_dev_shared_data;
+/* Shared memory between primary and secondary processes. */
+extern struct eth_dev_shared *eth_dev_shared_data
+	__rte_guarded_by(rte_mcfg_ethdev_get_lock());
 
 /**
  * The user application callback description.
@@ -65,7 +69,10 @@ void eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 		const struct rte_eth_dev *dev);
 
 
-void eth_dev_shared_data_prepare(void);
+void *eth_dev_shared_data_prepare(void)
+	__rte_requires_capability(rte_mcfg_ethdev_get_lock());
+void eth_dev_shared_data_release(void)
+	__rte_requires_capability(rte_mcfg_ethdev_get_lock());
 
 void eth_dev_rxq_release(struct rte_eth_dev *dev, uint16_t qid);
 void eth_dev_txq_release(struct rte_eth_dev *dev, uint16_t qid);

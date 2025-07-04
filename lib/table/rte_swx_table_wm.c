@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_acl.h>
@@ -457,6 +458,7 @@ table_lookup(void *table,
 	return 1;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_wildcard_match_ops, 21.05)
 struct rte_swx_table_ops rte_swx_table_wildcard_match_ops = {
 	.footprint_get = NULL,
 	.mailbox_size_get = table_mailbox_size_get,

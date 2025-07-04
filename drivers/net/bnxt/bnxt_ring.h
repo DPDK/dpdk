@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -24,7 +24,7 @@
 #define DB_KEY_TX_PUSH						(0x4 << 28)
 #define DB_LONG_TX_PUSH						(0x2 << 24)
 
-#define DEFAULT_CP_RING_SIZE	256
+#define DEFAULT_CP_RING_SIZE	4096
 #define DEFAULT_RX_RING_SIZE	256
 #define DEFAULT_TX_RING_SIZE	256
 
@@ -37,7 +37,8 @@
 #define MAX_CP_DESC_CNT (16 * 1024)
 
 #define INVALID_HW_RING_ID      ((uint16_t)-1)
-#define INVALID_STATS_CTX_ID		((uint16_t)-1)
+#define INVALID_STATS_CTX_ID	((uint16_t)-1)
+#define MPC_HW_COS_ID		((uint16_t)-2)
 
 struct bnxt_ring {
 	void			*bd;
@@ -80,6 +81,15 @@ void bnxt_free_async_cp_ring(struct bnxt *bp);
 int bnxt_alloc_async_ring_struct(struct bnxt *bp);
 int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp);
 void bnxt_free_rxtx_nq_ring(struct bnxt *bp);
+void bnxt_init_dflt_coal(struct bnxt_coal *coal);
+int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
+			 struct bnxt_cp_ring_info *cpr);
+void bnxt_set_db(struct bnxt *bp,
+		 struct bnxt_db_info *db,
+		 uint32_t ring_type,
+		 uint32_t map_idx,
+		 uint32_t fid,
+		 uint32_t ring_mask);
 
 static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 {
@@ -89,11 +99,47 @@ static inline void bnxt_db_write(struct bnxt_db_info *db, uint32_t idx)
 	if (db->db_64) {
 		uint64_t key_idx = db->db_key64 | db_idx;
 
-		rte_write64(key_idx, doorbell);
+		rte_compiler_barrier();
+		rte_write64_relaxed(key_idx, doorbell);
 	} else {
 		uint32_t key_idx = db->db_key32 | db_idx;
 
 		rte_write32(key_idx, doorbell);
+	}
+}
+
+static inline void bnxt_db_epoch_write(struct bnxt_db_info *db, uint32_t idx, uint32_t epoch)
+{
+	uint32_t db_idx = DB_RING_IDX(db, idx);
+	void *doorbell = db->doorbell;
+
+	if (db->db_64) {
+		uint64_t key_idx = db->db_key64 | db_idx;
+
+		key_idx |= epoch << DBR_EPOCH_SFT;
+
+		rte_compiler_barrier();
+		rte_write64_relaxed(key_idx, doorbell);
+	} else {
+		uint32_t key_idx = db->db_key32 | db_idx;
+
+		rte_write32(key_idx, doorbell);
+	}
+}
+
+static inline void bnxt_db_mpc_write(struct bnxt_db_info *db, uint32_t idx, uint32_t epoch)
+{
+	uint32_t db_idx = DB_RING_IDX(db, idx);
+	void *doorbell = db->doorbell;
+
+	if (likely(db->db_64)) {
+		uint64_t key_idx = db->db_key64 | db_idx |
+			(epoch << 24);
+		rte_write64_relaxed(key_idx, doorbell);
+	} else {
+		uint32_t key_idx = db->db_key32 | db_idx;
+
+		rte_write32_relaxed(key_idx, doorbell);
 	}
 }
 
@@ -131,6 +177,26 @@ static inline void bnxt_db_cq(struct bnxt_cp_ring_info *cpr)
 
 	if (db->db_64) {
 		uint64_t key_idx = db->db_key64 | idx;
+		void *doorbell = db->doorbell;
+
+		rte_compiler_barrier();
+		rte_write64_relaxed(key_idx, doorbell);
+	} else {
+		uint32_t cp_raw_cons = cpr->cp_raw_cons;
+
+		rte_compiler_barrier();
+		B_CP_DIS_DB(cpr, cp_raw_cons);
+	}
+}
+
+static inline void bnxt_db_mpc_cq(struct bnxt_cp_ring_info *cpr)
+{
+	struct bnxt_db_info *db = &cpr->cp_db;
+	uint32_t idx = DB_RING_IDX(&cpr->cp_db, cpr->cp_raw_cons);
+
+	if (likely(db->db_64)) {
+		uint64_t key_idx = db->db_key64 | idx |
+			(cpr->epoch << 24);
 		void *doorbell = db->doorbell;
 
 		rte_compiler_barrier();

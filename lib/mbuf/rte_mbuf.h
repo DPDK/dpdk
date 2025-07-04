@@ -32,7 +32,7 @@
  */
 
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_mempool.h>
@@ -108,7 +108,7 @@ int rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen);
 static inline void
 rte_mbuf_prefetch_part1(struct rte_mbuf *m)
 {
-	rte_prefetch0(&m->cacheline0);
+	rte_prefetch0(m);
 }
 
 /**
@@ -126,7 +126,7 @@ static inline void
 rte_mbuf_prefetch_part2(struct rte_mbuf *m)
 {
 #if RTE_CACHE_LINE_SIZE == 64
-	rte_prefetch0(&m->cacheline1);
+	rte_prefetch0(RTE_PTR_ADD(m, RTE_CACHE_LINE_MIN_SIZE));
 #else
 	RTE_SET_USED(m);
 #endif
@@ -361,7 +361,7 @@ rte_pktmbuf_priv_flags(struct rte_mempool *mp)
 static inline uint16_t
 rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 {
-	return __atomic_load_n(&m->refcnt, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&m->refcnt, rte_memory_order_relaxed);
 }
 
 /**
@@ -374,15 +374,15 @@ rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 static inline void
 rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 {
-	__atomic_store_n(&m->refcnt, new_value, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&m->refcnt, new_value, rte_memory_order_relaxed);
 }
 
 /* internal */
 static inline uint16_t
 __rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
 {
-	return __atomic_add_fetch(&m->refcnt, (uint16_t)value,
-				 __ATOMIC_ACQ_REL);
+	return rte_atomic_fetch_add_explicit(&m->refcnt, value,
+				 rte_memory_order_acq_rel) + value;
 }
 
 /**
@@ -463,7 +463,7 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 static inline uint16_t
 rte_mbuf_ext_refcnt_read(const struct rte_mbuf_ext_shared_info *shinfo)
 {
-	return __atomic_load_n(&shinfo->refcnt, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&shinfo->refcnt, rte_memory_order_relaxed);
 }
 
 /**
@@ -478,7 +478,7 @@ static inline void
 rte_mbuf_ext_refcnt_set(struct rte_mbuf_ext_shared_info *shinfo,
 	uint16_t new_value)
 {
-	__atomic_store_n(&shinfo->refcnt, new_value, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&shinfo->refcnt, new_value, rte_memory_order_relaxed);
 }
 
 /**
@@ -502,8 +502,8 @@ rte_mbuf_ext_refcnt_update(struct rte_mbuf_ext_shared_info *shinfo,
 		return (uint16_t)value;
 	}
 
-	return __atomic_add_fetch(&shinfo->refcnt, (uint16_t)value,
-				 __ATOMIC_ACQ_REL);
+	return rte_atomic_fetch_add_explicit(&shinfo->refcnt, value,
+				 rte_memory_order_acq_rel) + value;
 }
 
 /** Mbuf prefetch */
@@ -568,6 +568,10 @@ __rte_mbuf_raw_sanity_check(__rte_unused const struct rte_mbuf *m)
 	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);
 	RTE_ASSERT(m->next == NULL);
 	RTE_ASSERT(m->nb_segs == 1);
+	RTE_ASSERT(!RTE_MBUF_CLONED(m));
+	RTE_ASSERT(!RTE_MBUF_HAS_EXTBUF(m) ||
+			(RTE_MBUF_HAS_PINNED_EXTBUF(m) &&
+			rte_mbuf_ext_refcnt_read(m->shinfo) == 1));
 	__rte_mbuf_sanity_check(m, 0);
 }
 
@@ -595,12 +599,53 @@ __rte_mbuf_raw_sanity_check(__rte_unused const struct rte_mbuf *m)
  */
 static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 {
-	struct rte_mbuf *m;
+	union {
+		void *ptr;
+		struct rte_mbuf *m;
+	} ret;
 
-	if (rte_mempool_get(mp, (void **)&m) < 0)
+	if (rte_mempool_get(mp, &ret.ptr) < 0)
 		return NULL;
-	__rte_mbuf_raw_sanity_check(m);
-	return m;
+	__rte_mbuf_raw_sanity_check(ret.m);
+	return ret.m;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: This API may change, or be removed, without prior notice.
+ *
+ * Allocate a bulk of uninitialized mbufs from mempool *mp*.
+ *
+ * This function can be used by PMDs (especially in Rx functions)
+ * to allocate a bulk of uninitialized mbufs.
+ * The driver is responsible of initializing all the required fields.
+ * See rte_pktmbuf_reset().
+ * For standard needs, prefer rte_pktmbuf_alloc_bulk().
+ *
+ * The caller can expect that the following fields of the mbuf structure
+ * are initialized:
+ * buf_addr, buf_iova, buf_len, refcnt=1, nb_segs=1, next=NULL, pool, priv_size.
+ * The other fields must be initialized by the caller.
+ *
+ * @param mp
+ *   The mempool from which mbufs are allocated.
+ * @param mbufs
+ *   Array of pointers to mbufs.
+ * @param count
+ *   Array size.
+ * @return
+ *   - 0: Success.
+ *   - -ENOENT: Not enough entries in the mempool; no mbufs are retrieved.
+ */
+__rte_experimental
+static __rte_always_inline int
+rte_mbuf_raw_alloc_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
+{
+	int rc = rte_mempool_get_bulk(mp, (void **)mbufs, count);
+	if (likely(rc == 0))
+		for (unsigned int idx = 0; idx < count; idx++)
+			__rte_mbuf_raw_sanity_check(mbufs[idx]);
+	return rc;
 }
 
 /**
@@ -620,10 +665,45 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 static __rte_always_inline void
 rte_mbuf_raw_free(struct rte_mbuf *m)
 {
-	RTE_ASSERT(!RTE_MBUF_CLONED(m) &&
-		  (!RTE_MBUF_HAS_EXTBUF(m) || RTE_MBUF_HAS_PINNED_EXTBUF(m)));
 	__rte_mbuf_raw_sanity_check(m);
 	rte_mempool_put(m->pool, m);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: This API may change, or be removed, without prior notice.
+ *
+ * Put a bulk of mbufs allocated from the same mempool back into the mempool.
+ *
+ * The caller must ensure that the mbufs come from the specified mempool,
+ * are direct and properly reinitialized (refcnt=1, next=NULL, nb_segs=1),
+ * as done by rte_pktmbuf_prefree_seg().
+ *
+ * This function should be used with care, when optimization is required.
+ * For standard needs, prefer rte_pktmbuf_free_bulk().
+ *
+ * @see RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
+ *
+ * @param mp
+ *   The mempool to which the mbufs belong.
+ * @param mbufs
+ *   Array of pointers to packet mbufs.
+ *   The array must not contain NULL pointers.
+ * @param count
+ *   Array size.
+ */
+__rte_experimental
+static __rte_always_inline void
+rte_mbuf_raw_free_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
+{
+	for (unsigned int idx = 0; idx < count; idx++) {
+		const struct rte_mbuf *m = mbufs[idx];
+		RTE_ASSERT(m != NULL);
+		RTE_ASSERT(m->pool == mp);
+		__rte_mbuf_raw_sanity_check(m);
+	}
+
+	rte_mempool_put_bulk(mp, (void **)mbufs, count);
 }
 
 /**
@@ -800,7 +880,6 @@ struct rte_pktmbuf_extmem {
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-__rte_experimental
 struct rte_mempool *
 rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size,
@@ -1120,6 +1199,9 @@ rte_pktmbuf_attach_extbuf(struct rte_mbuf *m, void *buf_addr,
 static inline void
 rte_mbuf_dynfield_copy(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
 {
+#if !RTE_IOVA_IN_MBUF
+	mdst->dynfield2 = msrc->dynfield2;
+#endif
 	memcpy(&mdst->dynfield1, msrc->dynfield1, sizeof(mdst->dynfield1));
 }
 
@@ -1315,8 +1397,8 @@ static inline int __rte_pktmbuf_pinned_extbuf_decref(struct rte_mbuf *m)
 	 * Direct usage of add primitive to avoid
 	 * duplication of comparing with one.
 	 */
-	if (likely(__atomic_add_fetch(&shinfo->refcnt, (uint16_t)-1,
-				     __ATOMIC_ACQ_REL)))
+	if (likely(rte_atomic_fetch_add_explicit(&shinfo->refcnt, -1,
+				     rte_memory_order_acq_rel) - 1))
 		return 1;
 
 	/* Reinitialize counter before mbuf freeing. */

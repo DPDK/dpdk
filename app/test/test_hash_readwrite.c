@@ -25,6 +25,8 @@
 #define NUM_TEST 3
 unsigned int core_cnt[NUM_TEST] = {2, 4, 8};
 
+#define OFFSET_STR_LEN 16
+
 unsigned int worker_core_ids[RTE_MAX_LCORE];
 struct perf {
 	uint32_t single_read;
@@ -45,22 +47,26 @@ struct {
 	struct rte_hash *h;
 } tbl_rw_test_param;
 
-static uint64_t gcycles;
-static uint64_t ginsertions;
+static RTE_ATOMIC(uint64_t) gcycles;
+static RTE_ATOMIC(uint64_t) ginsertions;
 
-static uint64_t gread_cycles;
-static uint64_t gwrite_cycles;
+static RTE_ATOMIC(uint64_t) gread_cycles;
+static RTE_ATOMIC(uint64_t) gwrite_cycles;
 
-static uint64_t greads;
-static uint64_t gwrites;
+static RTE_ATOMIC(uint64_t) greads;
+static RTE_ATOMIC(uint64_t) gwrites;
 
 static int
 test_hash_readwrite_worker(__rte_unused void *arg)
 {
+	char offset_start[OFFSET_STR_LEN];
+	char offset_end[OFFSET_STR_LEN];
 	uint64_t i, offset;
 	uint32_t lcore_id = rte_lcore_id();
 	uint64_t begin, cycles;
 	int *ret;
+	const bool use_iec = true;
+	const char *unit = NULL;
 
 	ret = rte_malloc(NULL, sizeof(int) *
 				tbl_rw_test_param.num_insert, 0);
@@ -70,9 +76,13 @@ test_hash_readwrite_worker(__rte_unused void *arg)
 	}
 	offset = tbl_rw_test_param.num_insert * i;
 
-	printf("Core #%d inserting and reading %d: %'"PRId64" - %'"PRId64"\n",
+	rte_size_to_str(offset_start, RTE_DIM(offset_start), offset, use_iec, unit);
+	rte_size_to_str(offset_end, RTE_DIM(offset_end),
+			offset + tbl_rw_test_param.num_insert - 1, use_iec, unit);
+
+	printf("Core #%u inserting and reading %u: %s - %s\n",
 	       lcore_id, tbl_rw_test_param.num_insert,
-	       offset, offset + tbl_rw_test_param.num_insert - 1);
+	       offset_start, offset_end);
 
 	begin = rte_rdtsc_precise();
 
@@ -110,8 +120,8 @@ test_hash_readwrite_worker(__rte_unused void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&gcycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&ginsertions, i - offset, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&gcycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&ginsertions, i - offset, rte_memory_order_relaxed);
 
 	for (; i < offset + tbl_rw_test_param.num_insert; i++)
 		tbl_rw_test_param.keys[i] = RTE_RWTEST_FAIL;
@@ -162,7 +172,7 @@ init_params(int use_ext, int use_htm, int rw_lf, int use_jhash)
 
 	handle = rte_hash_create(&hash_params);
 	if (handle == NULL) {
-		printf("hash creation failed");
+		printf("hash creation failed\n");
 		return -1;
 	}
 
@@ -209,8 +219,8 @@ test_hash_readwrite_functional(int use_htm, int use_rw_lf, int use_ext)
 	int worker_cnt = rte_lcore_count() - 1;
 	uint32_t tot_insert = 0;
 
-	__atomic_store_n(&gcycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&ginsertions, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&gcycles, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&ginsertions, 0, rte_memory_order_relaxed);
 
 	if (init_params(use_ext, use_htm, use_rw_lf, use_jhash) != 0)
 		goto err;
@@ -269,8 +279,8 @@ test_hash_readwrite_functional(int use_htm, int use_rw_lf, int use_ext)
 	printf("No key corrupted during read-write test.\n");
 
 	unsigned long long int cycles_per_insertion =
-		__atomic_load_n(&gcycles, __ATOMIC_RELAXED) /
-		__atomic_load_n(&ginsertions, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&gcycles, rte_memory_order_relaxed) /
+		rte_atomic_load_explicit(&ginsertions, rte_memory_order_relaxed);
 
 	printf("cycles per insertion and lookup: %llu\n", cycles_per_insertion);
 
@@ -310,8 +320,8 @@ test_rw_reader(void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&gread_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&greads, i, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&gread_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&greads, i, rte_memory_order_relaxed);
 	return 0;
 }
 
@@ -344,9 +354,9 @@ test_rw_writer(void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&gwrite_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&gwrites, tbl_rw_test_param.num_insert,
-							__ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&gwrite_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&gwrites, tbl_rw_test_param.num_insert,
+							rte_memory_order_relaxed);
 	return 0;
 }
 
@@ -369,11 +379,11 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 	uint64_t start = 0, end = 0;
 
-	__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&greads, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&gwrites, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&greads, 0, rte_memory_order_relaxed);
 
-	__atomic_store_n(&gread_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&gread_cycles, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&gwrite_cycles, 0, rte_memory_order_relaxed);
 
 	if (init_params(0, use_htm, 0, use_jhash) != 0)
 		goto err;
@@ -430,10 +440,10 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 		if (tot_worker_lcore < core_cnt[n] * 2)
 			goto finish;
 
-		__atomic_store_n(&greads, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&gread_cycles, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&greads, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&gread_cycles, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&gwrites, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&gwrite_cycles, 0, rte_memory_order_relaxed);
 
 		rte_hash_reset(tbl_rw_test_param.h);
 
@@ -475,8 +485,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		if (reader_faster) {
 			unsigned long long int cycles_per_insertion =
-				__atomic_load_n(&gread_cycles, __ATOMIC_RELAXED) /
-				__atomic_load_n(&greads, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&gread_cycles, rte_memory_order_relaxed) /
+				rte_atomic_load_explicit(&greads, rte_memory_order_relaxed);
 			perf_results->read_only[n] = cycles_per_insertion;
 			printf("Reader only: cycles per lookup: %llu\n",
 							cycles_per_insertion);
@@ -484,17 +494,17 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		else {
 			unsigned long long int cycles_per_insertion =
-				__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED) /
-				__atomic_load_n(&gwrites, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&gwrite_cycles, rte_memory_order_relaxed) /
+				rte_atomic_load_explicit(&gwrites, rte_memory_order_relaxed);
 			perf_results->write_only[n] = cycles_per_insertion;
 			printf("Writer only: cycles per writes: %llu\n",
 							cycles_per_insertion);
 		}
 
-		__atomic_store_n(&greads, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&gread_cycles, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&gwrites, 0, __ATOMIC_RELAXED);
-		__atomic_store_n(&gwrite_cycles, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&greads, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&gread_cycles, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&gwrites, 0, rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&gwrite_cycles, 0, rte_memory_order_relaxed);
 
 		rte_hash_reset(tbl_rw_test_param.h);
 
@@ -569,8 +579,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		if (reader_faster) {
 			unsigned long long int cycles_per_insertion =
-				__atomic_load_n(&gread_cycles, __ATOMIC_RELAXED) /
-				__atomic_load_n(&greads, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&gread_cycles, rte_memory_order_relaxed) /
+				rte_atomic_load_explicit(&greads, rte_memory_order_relaxed);
 			perf_results->read_write_r[n] = cycles_per_insertion;
 			printf("Read-write cycles per lookup: %llu\n",
 							cycles_per_insertion);
@@ -578,8 +588,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		else {
 			unsigned long long int cycles_per_insertion =
-				__atomic_load_n(&gwrite_cycles, __ATOMIC_RELAXED) /
-				__atomic_load_n(&gwrites, __ATOMIC_RELAXED);
+				rte_atomic_load_explicit(&gwrite_cycles, rte_memory_order_relaxed) /
+				rte_atomic_load_explicit(&gwrites, rte_memory_order_relaxed);
 			perf_results->read_write_w[n] = cycles_per_insertion;
 			printf("Read-write cycles per writes: %llu\n",
 							cycles_per_insertion);
@@ -760,5 +770,5 @@ test_hash_rw_func_main(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_readwrite_func_autotest, test_hash_rw_func_main);
-REGISTER_TEST_COMMAND(hash_readwrite_perf_autotest, test_hash_rw_perf_main);
+REGISTER_FAST_TEST(hash_readwrite_func_autotest, false, true, test_hash_rw_func_main);
+REGISTER_PERF_TEST(hash_readwrite_perf_autotest, test_hash_rw_perf_main);

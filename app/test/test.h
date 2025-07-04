@@ -12,6 +12,7 @@
 
 #include <rte_hexdump.h>
 #include <rte_common.h>
+#include <rte_os_shim.h>
 
 #define TEST_SUCCESS EXIT_SUCCESS
 #define TEST_FAILED  -1
@@ -127,7 +128,7 @@ struct unit_test_case {
 		{ setup, teardown, NULL, testcase, #testcase, 1, data }
 
 #define TEST_CASE_NAMED_ST(name, setup, teardown, testcase) \
-		{ setup, teardown, NULL, testcase, name, 1, NULL }
+		{ setup, teardown, testcase, NULL, name, 1, NULL }
 
 #define TEST_CASE_NAMED_WITH_DATA(name, setup, teardown, testcase, data) \
 		{ setup, teardown, NULL, testcase, name, 1, data }
@@ -190,7 +191,7 @@ struct test_command {
 
 void add_test_command(struct test_command *t);
 
-/* Register a test function with its command string */
+/* Register a test function with its command string. Should not be used directly */
 #define REGISTER_TEST_COMMAND(cmd, func) \
 	static struct test_command test_struct_##cmd = { \
 		.command = RTE_STR(cmd), \
@@ -200,5 +201,13 @@ void add_test_command(struct test_command *t);
 	{ \
 		add_test_command(&test_struct_##cmd); \
 	}
+
+/* Register a test function as a particular type.
+ * These can be used to build up test suites automatically
+ */
+#define REGISTER_FAST_TEST(cmd, no_huge, ASan, func)  REGISTER_TEST_COMMAND(cmd, func)
+#define REGISTER_PERF_TEST REGISTER_TEST_COMMAND
+#define REGISTER_DRIVER_TEST REGISTER_TEST_COMMAND
+#define REGISTER_STRESS_TEST REGISTER_TEST_COMMAND
 
 #endif

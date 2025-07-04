@@ -41,6 +41,11 @@ static void virtio_crypto_sym_clear_session(struct rte_cryptodev *dev,
 static int virtio_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *session);
+static void virtio_crypto_asym_clear_session(struct rte_cryptodev *dev,
+		struct rte_cryptodev_asym_session *sess);
+static int virtio_crypto_asym_configure_session(struct rte_cryptodev *dev,
+		struct rte_crypto_asym_xform *xform,
+		struct rte_cryptodev_asym_session *session);
 
 /*
  * The set of PCI devices this driver supports
@@ -53,214 +58,11 @@ static const struct rte_pci_id pci_id_virtio_crypto_map[] = {
 
 static const struct rte_cryptodev_capabilities virtio_capabilities[] = {
 	VIRTIO_SYM_CAPABILITIES,
+	VIRTIO_ASYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
 uint8_t cryptodev_virtio_driver_id;
-
-#define NUM_ENTRY_SYM_CREATE_SESSION 4
-
-static int
-virtio_crypto_send_command(struct virtqueue *vq,
-		struct virtio_crypto_op_ctrl_req *ctrl, uint8_t *cipher_key,
-		uint8_t *auth_key, struct virtio_crypto_session *session)
-{
-	uint8_t idx = 0;
-	uint8_t needed = 1;
-	uint32_t head = 0;
-	uint32_t len_cipher_key = 0;
-	uint32_t len_auth_key = 0;
-	uint32_t len_ctrl_req = sizeof(struct virtio_crypto_op_ctrl_req);
-	uint32_t len_session_input = sizeof(struct virtio_crypto_session_input);
-	uint32_t len_total = 0;
-	uint32_t input_offset = 0;
-	void *virt_addr_started = NULL;
-	phys_addr_t phys_addr_started;
-	struct vring_desc *desc;
-	uint32_t desc_offset;
-	struct virtio_crypto_session_input *input;
-	int ret;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (session == NULL) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("session is NULL.");
-		return -EINVAL;
-	}
-	/* cipher only is supported, it is available if auth_key is NULL */
-	if (!cipher_key) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("cipher key is NULL.");
-		return -EINVAL;
-	}
-
-	head = vq->vq_desc_head_idx;
-	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_desc_head_idx = %d, vq = %p",
-					head, vq);
-
-	if (vq->vq_free_cnt < needed) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("Not enough entry");
-		return -ENOSPC;
-	}
-
-	/* calculate the length of cipher key */
-	if (cipher_key) {
-		switch (ctrl->u.sym_create_session.op_type) {
-		case VIRTIO_CRYPTO_SYM_OP_CIPHER:
-			len_cipher_key
-				= ctrl->u.sym_create_session.u.cipher
-							.para.keylen;
-			break;
-		case VIRTIO_CRYPTO_SYM_OP_ALGORITHM_CHAINING:
-			len_cipher_key
-				= ctrl->u.sym_create_session.u.chain
-					.para.cipher_param.keylen;
-			break;
-		default:
-			VIRTIO_CRYPTO_SESSION_LOG_ERR("invalid op type");
-			return -EINVAL;
-		}
-	}
-
-	/* calculate the length of auth key */
-	if (auth_key) {
-		len_auth_key =
-			ctrl->u.sym_create_session.u.chain.para.u.mac_param
-				.auth_key_len;
-	}
-
-	/*
-	 * malloc memory to store indirect vring_desc entries, including
-	 * ctrl request, cipher key, auth key, session input and desc vring
-	 */
-	desc_offset = len_ctrl_req + len_cipher_key + len_auth_key
-		+ len_session_input;
-	virt_addr_started = rte_malloc(NULL,
-		desc_offset + NUM_ENTRY_SYM_CREATE_SESSION
-			* sizeof(struct vring_desc), RTE_CACHE_LINE_SIZE);
-	if (virt_addr_started == NULL) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("not enough heap memory");
-		return -ENOSPC;
-	}
-	phys_addr_started = rte_malloc_virt2iova(virt_addr_started);
-
-	/* address to store indirect vring desc entries */
-	desc = (struct vring_desc *)
-		((uint8_t *)virt_addr_started + desc_offset);
-
-	/*  ctrl req part */
-	memcpy(virt_addr_started, ctrl, len_ctrl_req);
-	desc[idx].addr = phys_addr_started;
-	desc[idx].len = len_ctrl_req;
-	desc[idx].flags = VRING_DESC_F_NEXT;
-	desc[idx].next = idx + 1;
-	idx++;
-	len_total += len_ctrl_req;
-	input_offset += len_ctrl_req;
-
-	/* cipher key part */
-	if (len_cipher_key > 0) {
-		memcpy((uint8_t *)virt_addr_started + len_total,
-			cipher_key, len_cipher_key);
-
-		desc[idx].addr = phys_addr_started + len_total;
-		desc[idx].len = len_cipher_key;
-		desc[idx].flags = VRING_DESC_F_NEXT;
-		desc[idx].next = idx + 1;
-		idx++;
-		len_total += len_cipher_key;
-		input_offset += len_cipher_key;
-	}
-
-	/* auth key part */
-	if (len_auth_key > 0) {
-		memcpy((uint8_t *)virt_addr_started + len_total,
-			auth_key, len_auth_key);
-
-		desc[idx].addr = phys_addr_started + len_total;
-		desc[idx].len = len_auth_key;
-		desc[idx].flags = VRING_DESC_F_NEXT;
-		desc[idx].next = idx + 1;
-		idx++;
-		len_total += len_auth_key;
-		input_offset += len_auth_key;
-	}
-
-	/* input part */
-	input = (struct virtio_crypto_session_input *)
-		((uint8_t *)virt_addr_started + input_offset);
-	input->status = VIRTIO_CRYPTO_ERR;
-	input->session_id = ~0ULL;
-	desc[idx].addr = phys_addr_started + len_total;
-	desc[idx].len = len_session_input;
-	desc[idx].flags = VRING_DESC_F_WRITE;
-	idx++;
-
-	/* use a single desc entry */
-	vq->vq_ring.desc[head].addr = phys_addr_started + desc_offset;
-	vq->vq_ring.desc[head].len = idx * sizeof(struct vring_desc);
-	vq->vq_ring.desc[head].flags = VRING_DESC_F_INDIRECT;
-	vq->vq_free_cnt--;
-
-	vq->vq_desc_head_idx = vq->vq_ring.desc[head].next;
-
-	vq_update_avail_ring(vq, head);
-	vq_update_avail_idx(vq);
-
-	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_queue_index = %d",
-					vq->vq_queue_index);
-
-	virtqueue_notify(vq);
-
-	rte_rmb();
-	while (vq->vq_used_cons_idx == vq->vq_ring.used->idx) {
-		rte_rmb();
-		usleep(100);
-	}
-
-	while (vq->vq_used_cons_idx != vq->vq_ring.used->idx) {
-		uint32_t idx, desc_idx, used_idx;
-		struct vring_used_elem *uep;
-
-		used_idx = (uint32_t)(vq->vq_used_cons_idx
-				& (vq->vq_nentries - 1));
-		uep = &vq->vq_ring.used->ring[used_idx];
-		idx = (uint32_t) uep->id;
-		desc_idx = idx;
-
-		while (vq->vq_ring.desc[desc_idx].flags & VRING_DESC_F_NEXT) {
-			desc_idx = vq->vq_ring.desc[desc_idx].next;
-			vq->vq_free_cnt++;
-		}
-
-		vq->vq_ring.desc[desc_idx].next = vq->vq_desc_head_idx;
-		vq->vq_desc_head_idx = idx;
-
-		vq->vq_used_cons_idx++;
-		vq->vq_free_cnt++;
-	}
-
-	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_free_cnt=%d\n"
-			"vq->vq_desc_head_idx=%d",
-			vq->vq_free_cnt, vq->vq_desc_head_idx);
-
-	/* get the result */
-	if (input->status != VIRTIO_CRYPTO_OK) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("Something wrong on backend! "
-				"status=%u, session_id=%" PRIu64 "",
-				input->status, input->session_id);
-		rte_free(virt_addr_started);
-		ret = -1;
-	} else {
-		session->session_id = input->session_id;
-
-		VIRTIO_CRYPTO_SESSION_LOG_INFO("Create session successfully, "
-				"session_id=%" PRIu64 "", input->session_id);
-		rte_free(virt_addr_started);
-		ret = 0;
-	}
-
-	return ret;
-}
 
 void
 virtio_crypto_queue_release(struct virtqueue *vq)
@@ -274,6 +76,7 @@ virtio_crypto_queue_release(struct virtqueue *vq)
 		/* Select and deactivate the queue */
 		VTPCI_OPS(hw)->del_queue(hw, vq);
 
+		hw->vqs[vq->vq_queue_index] = NULL;
 		rte_memzone_free(vq->mz);
 		rte_mempool_free(vq->mpool);
 		rte_free(vq);
@@ -292,8 +95,7 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 {
 	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
 	char mpool_name[MPOOL_MAX_NAME_SZ];
-	const struct rte_memzone *mz;
-	unsigned int vq_size, size;
+	unsigned int vq_size;
 	struct virtio_crypto_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = NULL;
 	uint32_t i = 0;
@@ -332,15 +134,25 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 				"dev%d_controlqueue_mpool",
 				dev->data->dev_id);
 	}
-	size = RTE_ALIGN_CEIL(sizeof(*vq) +
-				vq_size * sizeof(struct vq_desc_extra),
-				RTE_CACHE_LINE_SIZE);
-	vq = rte_zmalloc_socket(vq_name, size, RTE_CACHE_LINE_SIZE,
-				socket_id);
+
+	/*
+	 * Using part of the vring entries is permitted, but the maximum
+	 * is vq_size
+	 */
+	if (nb_desc == 0 || nb_desc > vq_size)
+		nb_desc = vq_size;
+
+	if (hw->vqs[vtpci_queue_idx])
+		vq = hw->vqs[vtpci_queue_idx];
+	else
+		vq = virtcrypto_queue_alloc(hw, vtpci_queue_idx, nb_desc,
+				socket_id, vq_name);
 	if (vq == NULL) {
 		VIRTIO_CRYPTO_INIT_LOG_ERR("Can not allocate virtqueue");
 		return -ENOMEM;
 	}
+
+	hw->vqs[vtpci_queue_idx] = vq;
 
 	if (queue_type == VTCRYPTO_DATAQ) {
 		/* pre-allocate a mempool and use it in the data plane to
@@ -349,7 +161,7 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 		vq->mpool = rte_mempool_lookup(mpool_name);
 		if (vq->mpool == NULL)
 			vq->mpool = rte_mempool_create(mpool_name,
-					vq_size,
+					nb_desc,
 					sizeof(struct virtio_crypto_op_cookie),
 					RTE_CACHE_LINE_SIZE, 0,
 					NULL, NULL, NULL, NULL, socket_id,
@@ -359,7 +171,7 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 					"Cannot create mempool");
 			goto mpool_create_err;
 		}
-		for (i = 0; i < vq_size; i++) {
+		for (i = 0; i < nb_desc; i++) {
 			vq->vq_descx[i].cookie =
 				rte_zmalloc("crypto PMD op cookie pointer",
 					sizeof(struct virtio_crypto_op_cookie),
@@ -372,67 +184,10 @@ virtio_crypto_queue_setup(struct rte_cryptodev *dev,
 		}
 	}
 
-	vq->hw = hw;
-	vq->dev_id = dev->data->dev_id;
-	vq->vq_queue_index = vtpci_queue_idx;
-	vq->vq_nentries = vq_size;
-
-	/*
-	 * Using part of the vring entries is permitted, but the maximum
-	 * is vq_size
-	 */
-	if (nb_desc == 0 || nb_desc > vq_size)
-		nb_desc = vq_size;
-	vq->vq_free_cnt = nb_desc;
-
-	/*
-	 * Reserve a memzone for vring elements
-	 */
-	size = vring_size(vq_size, VIRTIO_PCI_VRING_ALIGN);
-	vq->vq_ring_size = RTE_ALIGN_CEIL(size, VIRTIO_PCI_VRING_ALIGN);
-	VIRTIO_CRYPTO_INIT_LOG_DBG("%s vring_size: %d, rounded_vring_size: %d",
-			(queue_type == VTCRYPTO_DATAQ) ? "dataq" : "ctrlq",
-			size, vq->vq_ring_size);
-
-	mz = rte_memzone_reserve_aligned(vq_name, vq->vq_ring_size,
-			socket_id, 0, VIRTIO_PCI_VRING_ALIGN);
-	if (mz == NULL) {
-		if (rte_errno == EEXIST)
-			mz = rte_memzone_lookup(vq_name);
-		if (mz == NULL) {
-			VIRTIO_CRYPTO_INIT_LOG_ERR("not enough memory");
-			goto mz_reserve_err;
-		}
-	}
-
-	/*
-	 * Virtio PCI device VIRTIO_PCI_QUEUE_PF register is 32bit,
-	 * and only accepts 32 bit page frame number.
-	 * Check if the allocated physical memory exceeds 16TB.
-	 */
-	if ((mz->iova + vq->vq_ring_size - 1)
-				>> (VIRTIO_PCI_QUEUE_ADDR_SHIFT + 32)) {
-		VIRTIO_CRYPTO_INIT_LOG_ERR("vring address shouldn't be "
-					"above 16TB!");
-		goto vring_addr_err;
-	}
-
-	memset(mz->addr, 0, sizeof(mz->len));
-	vq->mz = mz;
-	vq->vq_ring_mem = mz->iova;
-	vq->vq_ring_virt_mem = mz->addr;
-	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_ring_mem(physical): 0x%"PRIx64,
-					(uint64_t)mz->iova);
-	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_ring_virt_mem: 0x%"PRIx64,
-					(uint64_t)(uintptr_t)mz->addr);
-
 	*pvq = vq;
 
 	return 0;
 
-vring_addr_err:
-	rte_memzone_free(mz);
-mz_reserve_err:
 cookie_alloc_err:
 	rte_mempool_free(vq->mpool);
 	if (i != 0) {
@@ -444,31 +199,6 @@ mpool_create_err:
 	return -ENOMEM;
 }
 
-static int
-virtio_crypto_ctrlq_setup(struct rte_cryptodev *dev, uint16_t queue_idx)
-{
-	int ret;
-	struct virtqueue *vq;
-	struct virtio_crypto_hw *hw = dev->data->dev_private;
-
-	/* if virtio device has started, do not touch the virtqueues */
-	if (dev->data->dev_started)
-		return 0;
-
-	PMD_INIT_FUNC_TRACE();
-
-	ret = virtio_crypto_queue_setup(dev, VTCRYPTO_CTRLQ, queue_idx,
-			0, SOCKET_ID_ANY, &vq);
-	if (ret < 0) {
-		VIRTIO_CRYPTO_INIT_LOG_ERR("control vq initialization failed");
-		return ret;
-	}
-
-	hw->cvq = vq;
-
-	return 0;
-}
-
 static void
 virtio_crypto_free_queues(struct rte_cryptodev *dev)
 {
@@ -477,17 +207,25 @@ virtio_crypto_free_queues(struct rte_cryptodev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* control queue release */
-	virtio_crypto_queue_release(hw->cvq);
-
 	/* data queue release */
-	for (i = 0; i < hw->max_dataqueues; i++)
+	for (i = 0; i < hw->max_dataqueues; i++) {
 		virtio_crypto_queue_release(dev->data->queue_pairs[i]);
+		dev->data->queue_pairs[i] = NULL;
+	}
 }
 
 static int
 virtio_crypto_dev_close(struct rte_cryptodev *dev __rte_unused)
 {
+	struct virtio_crypto_hw *hw = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* control queue release */
+	if (hw->cvq)
+		virtio_crypto_queue_release(virtcrypto_cq_to_vq(hw->cvq));
+
+	hw->cvq = NULL;
 	return 0;
 }
 
@@ -511,7 +249,10 @@ static struct rte_cryptodev_ops virtio_crypto_dev_ops = {
 	/* Crypto related operations */
 	.sym_session_get_size		= virtio_crypto_sym_get_session_private_size,
 	.sym_session_configure		= virtio_crypto_sym_configure_session,
-	.sym_session_clear		= virtio_crypto_sym_clear_session
+	.sym_session_clear		= virtio_crypto_sym_clear_session,
+	.asym_session_get_size		= virtio_crypto_sym_get_session_private_size,
+	.asym_session_configure		= virtio_crypto_asym_configure_session,
+	.asym_session_clear		= virtio_crypto_asym_clear_session
 };
 
 static void
@@ -591,7 +332,7 @@ virtio_crypto_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			qp_conf->nb_descriptors, socket_id, &vq);
 	if (ret < 0) {
 		VIRTIO_CRYPTO_INIT_LOG_ERR(
-			"virtio crypto data queue initialization failed\n");
+			"virtio crypto data queue initialization failed");
 		return ret;
 	}
 
@@ -614,6 +355,7 @@ virtio_crypto_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 	}
 
 	virtio_crypto_queue_release(vq);
+	dev->data->queue_pairs[queue_pair_id] = NULL;
 	return 0;
 }
 
@@ -664,6 +406,99 @@ virtio_negotiate_features(struct virtio_crypto_hw *hw, uint64_t req_features)
 	return 0;
 }
 
+static void
+virtio_control_queue_notify(struct virtqueue *vq, __rte_unused void *cookie)
+{
+	virtqueue_notify(vq);
+}
+
+static int
+virtio_crypto_init_queue(struct rte_cryptodev *dev, uint16_t queue_idx)
+{
+	struct virtio_crypto_hw *hw = dev->data->dev_private;
+	int queue_type = virtio_get_queue_type(hw, queue_idx);
+	int numa_node = dev->device->numa_node;
+	char vq_name[VIRTQUEUE_MAX_NAME_SZ];
+	unsigned int vq_size;
+	struct virtqueue *vq;
+	int ret;
+
+	PMD_INIT_LOG(INFO, "setting up queue: %u on NUMA node %d",
+			queue_idx, numa_node);
+
+	/*
+	 * Read the virtqueue size from the Queue Size field
+	 * Always power of 2 and if 0 virtqueue does not exist
+	 */
+	vq_size = VTPCI_OPS(hw)->get_queue_num(hw, queue_idx);
+	PMD_INIT_LOG(DEBUG, "vq_size: %u", vq_size);
+	if (vq_size == 0) {
+		PMD_INIT_LOG(ERR, "virtqueue does not exist");
+		return -EINVAL;
+	}
+
+	if (!rte_is_power_of_2(vq_size)) {
+		PMD_INIT_LOG(ERR, "split virtqueue size is not power of 2");
+		return -EINVAL;
+	}
+
+	snprintf(vq_name, sizeof(vq_name), "dev%d_vq%d", dev->data->dev_id, queue_idx);
+
+	vq = virtcrypto_queue_alloc(hw, queue_idx, vq_size, numa_node, vq_name);
+	if (!vq) {
+		PMD_INIT_LOG(ERR, "virtqueue init failed");
+		return -ENOMEM;
+	}
+
+	hw->vqs[queue_idx] = vq;
+
+	if (queue_type == VTCRYPTO_CTRLQ) {
+		hw->cvq = &vq->cq;
+		vq->cq.notify_queue = &virtio_control_queue_notify;
+	}
+
+	if (VTPCI_OPS(hw)->setup_queue(hw, vq) < 0) {
+		PMD_INIT_LOG(ERR, "setup_queue failed");
+		ret = -EINVAL;
+		goto clean_vq;
+	}
+
+	return 0;
+
+clean_vq:
+	if (queue_type == VTCRYPTO_CTRLQ)
+		hw->cvq = NULL;
+	virtcrypto_queue_free(vq);
+	hw->vqs[queue_idx] = NULL;
+
+	return ret;
+}
+
+static int
+virtio_crypto_alloc_queues(struct rte_cryptodev *dev)
+{
+	struct virtio_crypto_hw *hw = dev->data->dev_private;
+	uint16_t nr_vq = hw->max_dataqueues + 1;
+	uint16_t i;
+	int ret;
+
+	hw->vqs = rte_zmalloc(NULL, sizeof(struct virtqueue *) * nr_vq, 0);
+	if (!hw->vqs) {
+		PMD_INIT_LOG(ERR, "failed to allocate vqs");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < nr_vq; i++) {
+		ret = virtio_crypto_init_queue(dev, i);
+		if (ret < 0) {
+			virtio_crypto_free_queues(dev);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 /* reset device and renegotiate features if needed */
 static int
 virtio_crypto_init_device(struct rte_cryptodev *cryptodev,
@@ -709,6 +544,43 @@ virtio_crypto_init_device(struct rte_cryptodev *cryptodev,
 	return 0;
 }
 
+int
+crypto_virtio_dev_init(struct rte_cryptodev *cryptodev, uint64_t features,
+		struct rte_pci_device *pci_dev)
+{
+	struct virtio_crypto_hw *hw;
+
+	cryptodev->dev_ops = &virtio_crypto_dev_ops;
+
+	cryptodev->enqueue_burst = virtio_crypto_pkt_tx_burst;
+	cryptodev->dequeue_burst = virtio_crypto_pkt_rx_burst;
+
+	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+		RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
+		RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT |
+		RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+		RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
+
+	hw = cryptodev->data->dev_private;
+	hw->dev_id = cryptodev->data->dev_id;
+	hw->virtio_dev_capabilities = virtio_capabilities;
+
+	if (pci_dev) {
+		/* pci device init */
+		VIRTIO_CRYPTO_INIT_LOG_DBG("dev %d vendorID=0x%x deviceID=0x%x",
+			cryptodev->data->dev_id, pci_dev->id.vendor_id,
+			pci_dev->id.device_id);
+
+		if (vtpci_cryptodev_init(pci_dev, hw))
+			return -1;
+	}
+
+	if (virtio_crypto_init_device(cryptodev, features) < 0)
+		return -1;
+
+	return 0;
+}
+
 /*
  * This function is based on probe() function
  * It returns 0 on success.
@@ -718,7 +590,6 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 		struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *cryptodev;
-	struct virtio_crypto_hw *hw;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -728,29 +599,8 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 		return -ENODEV;
 
 	cryptodev->driver_id = cryptodev_virtio_driver_id;
-	cryptodev->dev_ops = &virtio_crypto_dev_ops;
-
-	cryptodev->enqueue_burst = virtio_crypto_pkt_tx_burst;
-	cryptodev->dequeue_burst = virtio_crypto_pkt_rx_burst;
-
-	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-		RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
-		RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
-
-	hw = cryptodev->data->dev_private;
-	hw->dev_id = cryptodev->data->dev_id;
-	hw->virtio_dev_capabilities = virtio_capabilities;
-
-	VIRTIO_CRYPTO_INIT_LOG_DBG("dev %d vendorID=0x%x deviceID=0x%x",
-		cryptodev->data->dev_id, pci_dev->id.vendor_id,
-		pci_dev->id.device_id);
-
-	/* pci device init */
-	if (vtpci_cryptodev_init(pci_dev, hw))
-		return -1;
-
-	if (virtio_crypto_init_device(cryptodev,
-			VIRTIO_CRYPTO_PMD_GUEST_FEATURES) < 0)
+	if (crypto_virtio_dev_init(cryptodev, VIRTIO_CRYPTO_PMD_GUEST_FEATURES,
+			pci_dev) < 0)
 		return -1;
 
 	rte_cryptodev_pmd_probing_finish(cryptodev);
@@ -761,8 +611,6 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 static int
 virtio_crypto_dev_uninit(struct rte_cryptodev *cryptodev)
 {
-	struct virtio_crypto_hw *hw = cryptodev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -777,11 +625,7 @@ virtio_crypto_dev_uninit(struct rte_cryptodev *cryptodev)
 	cryptodev->enqueue_burst = NULL;
 	cryptodev->dequeue_burst = NULL;
 
-	/* release control queue */
-	virtio_crypto_queue_release(hw->cvq);
-
-	rte_free(cryptodev->data);
-	cryptodev->data = NULL;
+	rte_cryptodev_pmd_release_device(cryptodev);
 
 	VIRTIO_CRYPTO_DRV_LOG_INFO("dev_uninit completed");
 
@@ -792,8 +636,6 @@ static int
 virtio_crypto_dev_configure(struct rte_cryptodev *cryptodev,
 	struct rte_cryptodev_config *config __rte_unused)
 {
-	struct virtio_crypto_hw *hw = cryptodev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (virtio_crypto_init_device(cryptodev,
@@ -804,10 +646,11 @@ virtio_crypto_dev_configure(struct rte_cryptodev *cryptodev,
 	 * [0, 1, ... ,(config->max_dataqueues - 1)] are data queues
 	 * config->max_dataqueues is the control queue
 	 */
-	if (virtio_crypto_ctrlq_setup(cryptodev, hw->max_dataqueues) < 0) {
-		VIRTIO_CRYPTO_INIT_LOG_ERR("control queue setup error");
+	if (virtio_crypto_alloc_queues(cryptodev) < 0) {
+		VIRTIO_CRYPTO_DRV_LOG_ERR("failed to create virtqueues");
 		return -1;
 	}
+
 	virtio_crypto_ctrlq_start(cryptodev);
 
 	return 0;
@@ -850,9 +693,8 @@ static void
 virtio_crypto_dev_free_mbufs(struct rte_cryptodev *dev)
 {
 	uint32_t i;
-	struct virtio_crypto_hw *hw = dev->data->dev_private;
 
-	for (i = 0; i < hw->max_dataqueues; i++) {
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		VIRTIO_CRYPTO_INIT_LOG_DBG("Before freeing dataq[%d] used "
 			"and unused buf", i);
 		VIRTQUEUE_DUMP((struct virtqueue *)
@@ -926,32 +768,24 @@ virtio_crypto_check_sym_clear_session_paras(
 #define NUM_ENTRY_SYM_CLEAR_SESSION 2
 
 static void
-virtio_crypto_sym_clear_session(
+virtio_crypto_clear_session(
 		struct rte_cryptodev *dev,
-		struct rte_cryptodev_sym_session *sess)
+		struct virtio_crypto_op_ctrl_req *ctrl)
 {
 	struct virtio_crypto_hw *hw;
 	struct virtqueue *vq;
-	struct virtio_crypto_session *session;
-	struct virtio_crypto_op_ctrl_req *ctrl;
 	struct vring_desc *desc;
 	uint8_t *status;
 	uint8_t needed = 1;
 	uint32_t head;
-	uint8_t *malloc_virt_addr;
 	uint64_t malloc_phys_addr;
 	uint8_t len_inhdr = sizeof(struct virtio_crypto_inhdr);
 	uint32_t len_op_ctrl_req = sizeof(struct virtio_crypto_op_ctrl_req);
 	uint32_t desc_offset = len_op_ctrl_req + len_inhdr;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (virtio_crypto_check_sym_clear_session_paras(dev, sess) < 0)
-		return;
+	uint64_t session_id = ctrl->u.destroy_session.session_id;
 
 	hw = dev->data->dev_private;
-	vq = hw->cvq;
-	session = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	vq = virtcrypto_cq_to_vq(hw->cvq);
 
 	VIRTIO_CRYPTO_SESSION_LOG_INFO("vq->vq_desc_head_idx = %d, "
 			"vq = %p", vq->vq_desc_head_idx, vq);
@@ -963,34 +797,19 @@ virtio_crypto_sym_clear_session(
 		return;
 	}
 
-	/*
-	 * malloc memory to store information of ctrl request op,
-	 * returned status and desc vring
-	 */
-	malloc_virt_addr = rte_malloc(NULL, len_op_ctrl_req + len_inhdr
-		+ NUM_ENTRY_SYM_CLEAR_SESSION
-		* sizeof(struct vring_desc), RTE_CACHE_LINE_SIZE);
-	if (malloc_virt_addr == NULL) {
-		VIRTIO_CRYPTO_SESSION_LOG_ERR("not enough heap room");
+	malloc_phys_addr = rte_malloc_virt2iova(ctrl);
+	if (malloc_phys_addr == RTE_BAD_IOVA) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("malloc_phys_addr is invalid");
 		return;
 	}
-	malloc_phys_addr = rte_malloc_virt2iova(malloc_virt_addr);
-
-	/* assign ctrl request op part */
-	ctrl = (struct virtio_crypto_op_ctrl_req *)malloc_virt_addr;
-	ctrl->header.opcode = VIRTIO_CRYPTO_CIPHER_DESTROY_SESSION;
-	/* default data virtqueue is 0 */
-	ctrl->header.queue_id = 0;
-	ctrl->u.destroy_session.session_id = session->session_id;
 
 	/* status part */
 	status = &(((struct virtio_crypto_inhdr *)
-		((uint8_t *)malloc_virt_addr + len_op_ctrl_req))->status);
+		((uint8_t *)ctrl + len_op_ctrl_req))->status);
 	*status = VIRTIO_CRYPTO_ERR;
 
 	/* indirect desc vring part */
-	desc = (struct vring_desc *)((uint8_t *)malloc_virt_addr
-		+ desc_offset);
+	desc = (struct vring_desc *)((uint8_t *)ctrl + desc_offset);
 
 	/* ctrl request part */
 	desc[0].addr = malloc_phys_addr;
@@ -1005,14 +824,14 @@ virtio_crypto_sym_clear_session(
 
 	/* use only a single desc entry */
 	head = vq->vq_desc_head_idx;
-	vq->vq_ring.desc[head].flags = VRING_DESC_F_INDIRECT;
-	vq->vq_ring.desc[head].addr = malloc_phys_addr + desc_offset;
-	vq->vq_ring.desc[head].len
+	vq->vq_split.ring.desc[head].flags = VRING_DESC_F_INDIRECT;
+	vq->vq_split.ring.desc[head].addr = malloc_phys_addr + desc_offset;
+	vq->vq_split.ring.desc[head].len
 		= NUM_ENTRY_SYM_CLEAR_SESSION
 		* sizeof(struct vring_desc);
 	vq->vq_free_cnt -= needed;
 
-	vq->vq_desc_head_idx = vq->vq_ring.desc[head].next;
+	vq->vq_desc_head_idx = vq->vq_split.ring.desc[head].next;
 
 	vq_update_avail_ring(vq, head);
 	vq_update_avail_idx(vq);
@@ -1023,27 +842,27 @@ virtio_crypto_sym_clear_session(
 	virtqueue_notify(vq);
 
 	rte_rmb();
-	while (vq->vq_used_cons_idx == vq->vq_ring.used->idx) {
+	while (vq->vq_used_cons_idx == vq->vq_split.ring.used->idx) {
 		rte_rmb();
 		usleep(100);
 	}
 
-	while (vq->vq_used_cons_idx != vq->vq_ring.used->idx) {
+	while (vq->vq_used_cons_idx != vq->vq_split.ring.used->idx) {
 		uint32_t idx, desc_idx, used_idx;
 		struct vring_used_elem *uep;
 
 		used_idx = (uint32_t)(vq->vq_used_cons_idx
 				& (vq->vq_nentries - 1));
-		uep = &vq->vq_ring.used->ring[used_idx];
+		uep = &vq->vq_split.ring.used->ring[used_idx];
 		idx = (uint32_t) uep->id;
 		desc_idx = idx;
-		while (vq->vq_ring.desc[desc_idx].flags
+		while (vq->vq_split.ring.desc[desc_idx].flags
 				& VRING_DESC_F_NEXT) {
-			desc_idx = vq->vq_ring.desc[desc_idx].next;
+			desc_idx = vq->vq_split.ring.desc[desc_idx].next;
 			vq->vq_free_cnt++;
 		}
 
-		vq->vq_ring.desc[desc_idx].next = vq->vq_desc_head_idx;
+		vq->vq_split.ring.desc[desc_idx].next = vq->vq_desc_head_idx;
 		vq->vq_desc_head_idx = idx;
 		vq->vq_used_cons_idx++;
 		vq->vq_free_cnt++;
@@ -1052,19 +871,224 @@ virtio_crypto_sym_clear_session(
 	if (*status != VIRTIO_CRYPTO_OK) {
 		VIRTIO_CRYPTO_SESSION_LOG_ERR("Close session failed "
 				"status=%"PRIu32", session_id=%"PRIu64"",
-				*status, session->session_id);
-		rte_free(malloc_virt_addr);
+				*status, session_id);
+		rte_free(ctrl);
 		return;
 	}
 
-	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_free_cnt=%d\n"
+	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_free_cnt=%d", vq->vq_free_cnt);
+	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_desc_head_idx=%d", vq->vq_desc_head_idx);
+
+	VIRTIO_CRYPTO_SESSION_LOG_INFO("Close session %"PRIu64" successfully ",
+			session_id);
+
+	rte_free(ctrl);
+}
+
+static void
+virtio_crypto_clear_session_packed(
+		struct rte_cryptodev *dev,
+		struct virtio_crypto_op_ctrl_req *ctrl)
+{
+	struct virtio_crypto_hw *hw;
+	struct virtqueue *vq;
+	struct vring_packed_desc *desc;
+	uint8_t *status;
+	uint8_t needed = 1;
+	uint32_t head;
+	uint64_t malloc_phys_addr;
+	uint8_t len_inhdr = sizeof(struct virtio_crypto_inhdr);
+	uint32_t len_op_ctrl_req = sizeof(struct virtio_crypto_op_ctrl_req);
+	uint64_t session_id = ctrl->u.destroy_session.session_id;
+	uint16_t flags;
+	uint8_t nb_descs = 0;
+
+	hw = dev->data->dev_private;
+	vq = virtcrypto_cq_to_vq(hw->cvq);
+	head = vq->vq_avail_idx;
+	flags = vq->vq_packed.cached_flags;
+
+	VIRTIO_CRYPTO_SESSION_LOG_INFO("vq->vq_desc_head_idx = %d, "
+			"vq = %p", vq->vq_desc_head_idx, vq);
+
+	if (vq->vq_free_cnt < needed) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR(
+				"vq->vq_free_cnt = %d is less than %d, "
+				"not enough", vq->vq_free_cnt, needed);
+		return;
+	}
+
+	malloc_phys_addr = rte_malloc_virt2iova(ctrl);
+	if (malloc_phys_addr == RTE_BAD_IOVA) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("malloc_phys_addr is invalid");
+		return;
+	}
+
+	/* status part */
+	status = &(((struct virtio_crypto_inhdr *)
+		((uint8_t *)ctrl + len_op_ctrl_req))->status);
+	*status = VIRTIO_CRYPTO_ERR;
+
+	/* indirect desc vring part */
+	desc = vq->vq_packed.ring.desc;
+
+	/* ctrl request part */
+	desc[head].addr = malloc_phys_addr;
+	desc[head].len = len_op_ctrl_req;
+	desc[head].flags = VRING_DESC_F_NEXT | vq->vq_packed.cached_flags;
+	vq->vq_free_cnt--;
+	nb_descs++;
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	/* status part */
+	desc[vq->vq_avail_idx].addr = malloc_phys_addr + len_op_ctrl_req;
+	desc[vq->vq_avail_idx].len = len_inhdr;
+	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE;
+	vq->vq_free_cnt--;
+	nb_descs++;
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
+	}
+
+	virtqueue_store_flags_packed(&desc[head], VRING_DESC_F_NEXT | flags,
+			vq->hw->weak_barriers);
+
+	virtio_wmb(vq->hw->weak_barriers);
+	virtqueue_notify(vq);
+
+	/* wait for used desc in virtqueue
+	 * desc_is_used has a load-acquire or rte_io_rmb inside
+	 */
+	rte_rmb();
+	while (!desc_is_used(&desc[head], vq)) {
+		rte_rmb();
+		usleep(100);
+	}
+
+	/* now get used descriptors */
+	vq->vq_free_cnt += nb_descs;
+	vq->vq_used_cons_idx += nb_descs;
+	if (vq->vq_used_cons_idx >= vq->vq_nentries) {
+		vq->vq_used_cons_idx -= vq->vq_nentries;
+		vq->vq_packed.used_wrap_counter ^= 1;
+	}
+
+	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d "
+			"vq->vq_queue_idx=%d "
+			"vq->vq_avail_idx=%d "
+			"vq->vq_used_cons_idx=%d "
+			"vq->vq_packed.cached_flags=0x%x "
+			"vq->vq_packed.used_wrap_counter=%d",
+			vq->vq_free_cnt,
+			vq->vq_queue_index,
+			vq->vq_avail_idx,
+			vq->vq_used_cons_idx,
+			vq->vq_packed.cached_flags,
+			vq->vq_packed.used_wrap_counter);
+
+	if (*status != VIRTIO_CRYPTO_OK) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("Close session failed "
+				"status=%"PRIu32", session_id=%"PRIu64"",
+				*status, session_id);
+		rte_free(ctrl);
+		return;
+	}
+
+	VIRTIO_CRYPTO_INIT_LOG_DBG("vq->vq_free_cnt=%d "
 			"vq->vq_desc_head_idx=%d",
 			vq->vq_free_cnt, vq->vq_desc_head_idx);
 
 	VIRTIO_CRYPTO_SESSION_LOG_INFO("Close session %"PRIu64" successfully ",
-			session->session_id);
+			session_id);
 
-	rte_free(malloc_virt_addr);
+	rte_free(ctrl);
+}
+
+static void
+virtio_crypto_sym_clear_session(
+		struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
+{
+	uint32_t len_op_ctrl_req = sizeof(struct virtio_crypto_op_ctrl_req);
+	uint8_t len_inhdr = sizeof(struct virtio_crypto_inhdr);
+	struct virtio_crypto_op_ctrl_req *ctrl;
+	struct virtio_crypto_session *session;
+	uint8_t *malloc_virt_addr;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (virtio_crypto_check_sym_clear_session_paras(dev, sess) < 0)
+		return;
+
+	session = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+
+	/*
+	 * malloc memory to store information of ctrl request op,
+	 * returned status and desc vring
+	 */
+	malloc_virt_addr = rte_malloc(NULL, len_op_ctrl_req + len_inhdr
+		+ NUM_ENTRY_SYM_CLEAR_SESSION
+		* sizeof(struct vring_desc), RTE_CACHE_LINE_SIZE);
+	if (malloc_virt_addr == NULL) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("not enough heap room");
+		return;
+	}
+
+	/* assign ctrl request op part */
+	ctrl = (struct virtio_crypto_op_ctrl_req *)malloc_virt_addr;
+	ctrl->header.opcode = VIRTIO_CRYPTO_CIPHER_DESTROY_SESSION;
+	/* default data virtqueue is 0 */
+	ctrl->header.queue_id = 0;
+	ctrl->u.destroy_session.session_id = session->session_id;
+
+	if (vtpci_with_packed_queue(dev->data->dev_private))
+		return virtio_crypto_clear_session_packed(dev, ctrl);
+
+	return virtio_crypto_clear_session(dev, ctrl);
+}
+
+static void
+virtio_crypto_asym_clear_session(
+		struct rte_cryptodev *dev,
+		struct rte_cryptodev_asym_session *sess)
+{
+	uint32_t len_op_ctrl_req = sizeof(struct virtio_crypto_op_ctrl_req);
+	uint8_t len_inhdr = sizeof(struct virtio_crypto_inhdr);
+	struct virtio_crypto_op_ctrl_req *ctrl;
+	struct virtio_crypto_session *session;
+	uint8_t *malloc_virt_addr;
+
+	PMD_INIT_FUNC_TRACE();
+
+	session = CRYPTODEV_GET_ASYM_SESS_PRIV(sess);
+
+	/*
+	 * malloc memory to store information of ctrl request op,
+	 * returned status and desc vring
+	 */
+	malloc_virt_addr = rte_malloc(NULL, len_op_ctrl_req + len_inhdr
+		+ NUM_ENTRY_SYM_CLEAR_SESSION
+		* sizeof(struct vring_desc), RTE_CACHE_LINE_SIZE);
+	if (malloc_virt_addr == NULL) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("not enough heap room");
+		return;
+	}
+
+	/* assign ctrl request op part */
+	ctrl = (struct virtio_crypto_op_ctrl_req *)malloc_virt_addr;
+	ctrl->header.opcode = VIRTIO_CRYPTO_AKCIPHER_DESTROY_SESSION;
+	/* default data virtqueue is 0 */
+	ctrl->header.queue_id = 0;
+	ctrl->u.destroy_session.session_id = session->session_id;
+
+	if (vtpci_with_packed_queue(dev->data->dev_private))
+		return virtio_crypto_clear_session_packed(dev, ctrl);
+
+	return virtio_crypto_clear_session(dev, ctrl);
 }
 
 static struct rte_crypto_cipher_xform *
@@ -1296,19 +1320,38 @@ virtio_crypto_check_sym_configure_session_paras(
 }
 
 static int
+virtio_crypto_check_asym_configure_session_paras(
+		struct rte_cryptodev *dev,
+		struct rte_crypto_asym_xform *xform,
+		struct rte_cryptodev_asym_session *asym_sess)
+{
+	if (unlikely(xform == NULL) || unlikely(asym_sess == NULL)) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("NULL pointer");
+		return -1;
+	}
+
+	if (virtio_crypto_check_sym_session_paras(dev) < 0)
+		return -1;
+
+	return 0;
+}
+
+static int
 virtio_crypto_sym_configure_session(
 		struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess)
 {
-	int ret;
-	struct virtio_crypto_session *session;
-	struct virtio_crypto_op_ctrl_req *ctrl_req;
-	enum virtio_crypto_cmd_id cmd_id;
 	uint8_t cipher_key_data[VIRTIO_CRYPTO_MAX_KEY_SIZE] = {0};
 	uint8_t auth_key_data[VIRTIO_CRYPTO_MAX_KEY_SIZE] = {0};
+	struct virtio_crypto_op_ctrl_req *ctrl_req;
+	struct virtio_crypto_session_input *input;
+	struct virtio_crypto_session *session;
+	enum virtio_crypto_cmd_id cmd_id;
 	struct virtio_crypto_hw *hw;
-	struct virtqueue *control_vq;
+	struct virtio_pmd_ctrl *ctrl;
+	int dlen[2], dnum;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1320,13 +1363,13 @@ virtio_crypto_sym_configure_session(
 	}
 	session = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
 	memset(session, 0, sizeof(struct virtio_crypto_session));
-	ctrl_req = &session->ctrl;
+	ctrl = &session->ctrl;
+	ctrl_req = &ctrl->hdr;
 	ctrl_req->header.opcode = VIRTIO_CRYPTO_CIPHER_CREATE_SESSION;
 	/* FIXME: support multiqueue */
 	ctrl_req->header.queue_id = 0;
 
 	hw = dev->data->dev_private;
-	control_vq = hw->cvq;
 
 	cmd_id = virtio_crypto_get_chain_order(xform);
 	if (cmd_id == VIRTIO_CRYPTO_CMD_CIPHER_HASH)
@@ -1338,7 +1381,13 @@ virtio_crypto_sym_configure_session(
 
 	switch (cmd_id) {
 	case VIRTIO_CRYPTO_CMD_CIPHER_HASH:
-	case VIRTIO_CRYPTO_CMD_HASH_CIPHER:
+	case VIRTIO_CRYPTO_CMD_HASH_CIPHER: {
+		struct rte_crypto_cipher_xform *cipher_xform = NULL;
+		struct rte_crypto_auth_xform *auth_xform = NULL;
+
+		cipher_xform = virtio_crypto_get_cipher_xform(xform);
+		auth_xform = virtio_crypto_get_auth_xform(xform);
+
 		ctrl_req->u.sym_create_session.op_type
 			= VIRTIO_CRYPTO_SYM_OP_ALGORITHM_CHAINING;
 
@@ -1349,15 +1398,19 @@ virtio_crypto_sym_configure_session(
 				"padding sym op ctrl req failed");
 			goto error_out;
 		}
-		ret = virtio_crypto_send_command(control_vq, ctrl_req,
-			cipher_key_data, auth_key_data, session);
-		if (ret < 0) {
-			VIRTIO_CRYPTO_SESSION_LOG_ERR(
-				"create session failed: %d", ret);
-			goto error_out;
-		}
+
+		dlen[0] = cipher_xform->key.length;
+		memcpy(ctrl->data, cipher_key_data, dlen[0]);
+		dlen[1] = auth_xform->key.length;
+		memcpy(ctrl->data + dlen[0], auth_key_data, dlen[1]);
+		dnum = 2;
 		break;
-	case VIRTIO_CRYPTO_CMD_CIPHER:
+	}
+	case VIRTIO_CRYPTO_CMD_CIPHER: {
+		struct rte_crypto_cipher_xform *cipher_xform = NULL;
+
+		cipher_xform = virtio_crypto_get_cipher_xform(xform);
+
 		ctrl_req->u.sym_create_session.op_type
 			= VIRTIO_CRYPTO_SYM_OP_CIPHER;
 		ret = virtio_crypto_sym_pad_op_ctrl_req(ctrl_req, xform,
@@ -1367,21 +1420,267 @@ virtio_crypto_sym_configure_session(
 				"padding sym op ctrl req failed");
 			goto error_out;
 		}
-		ret = virtio_crypto_send_command(control_vq, ctrl_req,
-			cipher_key_data, NULL, session);
-		if (ret < 0) {
-			VIRTIO_CRYPTO_SESSION_LOG_ERR(
-				"create session failed: %d", ret);
-			goto error_out;
-		}
+
+		dlen[0] = cipher_xform->key.length;
+		memcpy(ctrl->data, cipher_key_data, dlen[0]);
+		dnum = 1;
 		break;
+	}
 	default:
+		ret = -ENOTSUP;
 		VIRTIO_CRYPTO_SESSION_LOG_ERR(
 			"Unsupported operation chain order parameter");
 		goto error_out;
 	}
-	return 0;
 
+	input = &ctrl->input;
+	input->status = VIRTIO_CRYPTO_ERR;
+	input->session_id = ~0ULL;
+
+	ret = virtio_crypto_send_command(hw->cvq, ctrl, dlen, dnum);
+	if (ret < 0) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("create session failed: %d", ret);
+		goto error_out;
+	}
+
+	ctrl = hw->cvq->hdr_mz->addr;
+	input = &ctrl->input;
+	if (input->status != VIRTIO_CRYPTO_OK) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("Something wrong on backend! "
+				"status=%u, session_id=%" PRIu64 "",
+				input->status, input->session_id);
+		goto error_out;
+	} else {
+		session->session_id = input->session_id;
+		VIRTIO_CRYPTO_SESSION_LOG_INFO("Create session successfully, "
+				"session_id=%" PRIu64 "", input->session_id);
+	}
+
+	return 0;
+error_out:
+	return ret;
+}
+
+static size_t
+tlv_encode(uint8_t *tlv, uint8_t type, uint8_t *data, size_t len)
+{
+	uint8_t *lenval = tlv;
+	size_t lenval_n = 0;
+
+	if (len > 65535) {
+		goto _exit;
+	} else if (len > 255) {
+		lenval_n = 4 + len;
+		lenval[0] = type;
+		lenval[1] = 0x82;
+		lenval[2] = (len & 0xFF00) >> 8;
+		lenval[3] = (len & 0xFF);
+		rte_memcpy(&lenval[4], data, len);
+	} else if (len > 127) {
+		lenval_n = 3 + len;
+		lenval[0] = type;
+		lenval[1] = 0x81;
+		lenval[2] = len;
+		rte_memcpy(&lenval[3], data, len);
+	} else {
+		lenval_n = 2 + len;
+		lenval[0] = type;
+		lenval[1] = len;
+		rte_memcpy(&lenval[2], data, len);
+	}
+
+_exit:
+	return lenval_n;
+}
+
+static int
+virtio_crypto_asym_rsa_xform_to_der(
+		struct rte_crypto_asym_xform *xform,
+		uint8_t *der)
+{
+	uint8_t data[VIRTIO_CRYPTO_MAX_CTRL_DATA];
+	uint8_t ver[3] = {0x02, 0x01, 0x00};
+	size_t tlen, len;
+	uint8_t *tlv;
+
+	if (xform->xform_type != RTE_CRYPTO_ASYM_XFORM_RSA)
+		return -EINVAL;
+
+	tlv = data;
+	rte_memcpy(tlv, ver, RTE_DIM(ver));
+	tlen = RTE_DIM(ver);
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.n.data, xform->rsa.n.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.e.data, xform->rsa.e.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.d.data, xform->rsa.d.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.qt.p.data, xform->rsa.qt.p.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.qt.q.data, xform->rsa.qt.q.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.qt.dP.data, xform->rsa.qt.dP.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.qt.dQ.data, xform->rsa.qt.dQ.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.qt.qInv.data, xform->rsa.qt.qInv.length);
+	tlen += len;
+
+	RTE_ASSERT(tlen < VIRTIO_CRYPTO_MAX_CTRL_DATA);
+	len = tlv_encode(der, 0x30, data, tlen);
+	return len;
+}
+
+static int
+virtio_crypto_asym_rsa_xform_to_public_der(
+		struct rte_crypto_asym_xform *xform,
+		uint8_t *der)
+{
+	uint8_t data[VIRTIO_CRYPTO_MAX_CTRL_DATA];
+	size_t tlen = 0, len;
+	uint8_t *tlv;
+
+	if (xform->xform_type != RTE_CRYPTO_ASYM_XFORM_RSA)
+		return -EINVAL;
+
+	tlv = data;
+	len = tlv_encode(tlv, 0x02, xform->rsa.n.data, xform->rsa.n.length);
+	tlen += len;
+	len = tlv_encode(tlv + tlen, 0x02, xform->rsa.e.data, xform->rsa.e.length);
+	tlen += len;
+
+	RTE_ASSERT(tlen < VIRTIO_CRYPTO_MAX_CTRL_DATA);
+	len = tlv_encode(der, 0x30, data, tlen);
+	return len;
+}
+
+static int
+virtio_crypto_asym_rsa_configure_session(
+		struct rte_crypto_rsa_xform *rsa,
+		struct virtio_crypto_akcipher_session_para *para)
+{
+	para->algo = VIRTIO_CRYPTO_AKCIPHER_RSA;
+	if (rsa->key_type == RTE_RSA_KEY_TYPE_EXP)
+		para->keytype = VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PUBLIC;
+	else
+		para->keytype = VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PRIVATE;
+
+	if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
+		para->u.rsa.padding_algo = VIRTIO_CRYPTO_RSA_RAW_PADDING;
+	} else if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_PKCS1_5) {
+		para->u.rsa.padding_algo = VIRTIO_CRYPTO_RSA_PKCS1_PADDING;
+		switch (rsa->padding.hash) {
+		case  RTE_CRYPTO_AUTH_SHA1:
+			para->u.rsa.hash_algo = VIRTIO_CRYPTO_RSA_SHA1;
+			break;
+		case  RTE_CRYPTO_AUTH_SHA224:
+			para->u.rsa.hash_algo = VIRTIO_CRYPTO_RSA_SHA224;
+			break;
+		case  RTE_CRYPTO_AUTH_SHA256:
+			para->u.rsa.hash_algo = VIRTIO_CRYPTO_RSA_SHA256;
+			break;
+		case  RTE_CRYPTO_AUTH_SHA512:
+			para->u.rsa.hash_algo = VIRTIO_CRYPTO_RSA_SHA512;
+			break;
+		case  RTE_CRYPTO_AUTH_MD5:
+			para->u.rsa.hash_algo = VIRTIO_CRYPTO_RSA_MD5;
+			break;
+		default:
+			para->u.rsa.hash_algo = VIRTIO_CRYPTO_RSA_NO_HASH;
+		}
+	} else {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid padding type");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+virtio_crypto_asym_configure_session(
+		struct rte_cryptodev *dev,
+		struct rte_crypto_asym_xform *xform,
+		struct rte_cryptodev_asym_session *sess)
+{
+	struct virtio_crypto_akcipher_session_para *para;
+	struct virtio_crypto_op_ctrl_req *ctrl_req;
+	struct virtio_crypto_session_input *input;
+	struct virtio_crypto_session *session;
+	struct virtio_crypto_hw *hw;
+	struct virtio_pmd_ctrl *ctrl;
+	int dlen[1];
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = virtio_crypto_check_asym_configure_session_paras(dev, xform,
+			sess);
+	if (ret < 0) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid parameters");
+		return ret;
+	}
+
+	session = CRYPTODEV_GET_ASYM_SESS_PRIV(sess);
+	memset(session, 0, sizeof(struct virtio_crypto_session));
+	ctrl = &session->ctrl;
+	ctrl_req = &ctrl->hdr;
+	ctrl_req->header.opcode = VIRTIO_CRYPTO_AKCIPHER_CREATE_SESSION;
+	ctrl_req->header.queue_id = 0;
+	para = &ctrl_req->u.akcipher_create_session.para;
+
+	switch (xform->xform_type) {
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+		ctrl_req->header.algo = VIRTIO_CRYPTO_AKCIPHER_RSA;
+		ret = virtio_crypto_asym_rsa_configure_session(&xform->rsa, para);
+		if (ret < 0) {
+			VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid RSA parameters");
+			return ret;
+		}
+
+		if (xform->rsa.key_type == RTE_RSA_KEY_TYPE_EXP) {
+			ret = virtio_crypto_asym_rsa_xform_to_public_der(
+					xform, ctrl->data);
+		} else {
+			ret = virtio_crypto_asym_rsa_xform_to_der(xform,
+					ctrl->data);
+		}
+		if (ret <= 0) {
+			VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid RSA primitives");
+			return ret;
+		}
+
+		ctrl_req->u.akcipher_create_session.para.keylen = ret;
+		break;
+	default:
+		para->algo = VIRTIO_CRYPTO_NO_AKCIPHER;
+	}
+
+	dlen[0] = ret;
+	input = &ctrl->input;
+	input->status = VIRTIO_CRYPTO_ERR;
+	input->session_id = ~0ULL;
+
+	hw = dev->data->dev_private;
+	ret = virtio_crypto_send_command(hw->cvq, ctrl, dlen, 1);
+	if (ret < 0) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("create session failed: %d", ret);
+		goto error_out;
+	}
+
+	ctrl = hw->cvq->hdr_mz->addr;
+	input = &ctrl->input;
+	if (input->status != VIRTIO_CRYPTO_OK) {
+		VIRTIO_CRYPTO_SESSION_LOG_ERR("Something wrong on backend! "
+				"status=%u, session_id=%" PRIu64 "",
+				input->status, input->session_id);
+		goto error_out;
+	} else {
+		session->session_id = input->session_id;
+		VIRTIO_CRYPTO_SESSION_LOG_INFO("Create session successfully, "
+				"session_id=%" PRIu64 "", input->session_id);
+	}
+
+	return 0;
 error_out:
 	return -1;
 }
@@ -1395,7 +1694,7 @@ virtio_crypto_dev_info_get(struct rte_cryptodev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (info != NULL) {
-		info->driver_id = cryptodev_virtio_driver_id;
+		info->driver_id = dev->driver_id;
 		info->feature_flags = dev->feature_flags;
 		info->max_nb_queue_pairs = hw->max_dataqueues;
 		/* No limit of number of sessions */

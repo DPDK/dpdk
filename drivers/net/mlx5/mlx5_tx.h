@@ -13,12 +13,15 @@
 #include <rte_mempool.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
+#include <rte_trace_point.h>
 
 #include <mlx5_common.h>
 #include <mlx5_common_mr.h>
 
 #include "mlx5.h"
 #include "mlx5_autoconf.h"
+#include "mlx5_rxtx.h"
+#include "mlx5_trace.h"
 
 /* TX burst subroutines return codes. */
 enum mlx5_txcmp_code {
@@ -80,9 +83,9 @@ uint16_t mlx5_tx_burst_##func(void *txq, \
 extern uint64_t rte_net_mlx5_dynf_inline_mask;
 #define RTE_MBUF_F_TX_DYNF_NOINLINE rte_net_mlx5_dynf_inline_mask
 
-extern uint32_t mlx5_ptype_table[] __rte_cache_aligned;
-extern uint8_t mlx5_cksum_table[1 << 10] __rte_cache_aligned;
-extern uint8_t mlx5_swp_types_table[1 << 10] __rte_cache_aligned;
+extern alignas(RTE_CACHE_LINE_SIZE) uint32_t mlx5_ptype_table[];
+extern alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_cksum_table[1 << 10];
+extern alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_swp_types_table[1 << 10];
 
 struct mlx5_txq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -109,7 +112,7 @@ struct mlx5_txq_local {
 
 /* TX queue descriptor. */
 __extension__
-struct mlx5_txq_data {
+struct __rte_cache_aligned mlx5_txq_data {
 	uint16_t elts_head; /* Current counter in (*elts)[]. */
 	uint16_t elts_tail; /* Counter of first element awaiting completion. */
 	uint16_t elts_comp; /* elts index since last completion request. */
@@ -146,6 +149,7 @@ struct mlx5_txq_data {
 	uint16_t inlen_mode; /* Minimal data length to inline. */
 	uint8_t tx_aggr_affinity; /* TxQ affinity configuration. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
+	uint32_t sq_mem_len; /* Length of TxQ for WQEs */
 	uint64_t offloads; /* Offloads for Tx Queue. */
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	struct mlx5_wqe *wqes; /* Work queue. */
@@ -162,19 +166,22 @@ struct mlx5_txq_data {
 	uint16_t idx; /* Queue index. */
 	uint64_t rt_timemask; /* Scheduling timestamp mask. */
 	uint64_t ts_mask; /* Timestamp flag dynamic mask. */
+	uint64_t ts_last; /* Last scheduled timestamp. */
 	int32_t ts_offset; /* Timestamp field dynamic offset. */
+	uint32_t cq_mem_len; /* Length of TxQ for CQEs */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 	struct mlx5_txq_stats stats_reset; /* stats on last reset. */
 	struct mlx5_uar_data uar_data;
-	struct rte_mbuf *elts[0];
+	struct rte_mbuf *elts[];
 	/* Storage for queued packets, must be the last field. */
-} __rte_cache_aligned;
+};
 
 /* TX queue control descriptor. */
+__extension__
 struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	bool is_hairpin; /* Whether TxQ type is Hairpin. */
 	unsigned int max_inline_data; /* Max inline data. */
@@ -222,6 +229,8 @@ void mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev);
 int mlx5_count_aggr_ports(struct rte_eth_dev *dev);
 int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			      uint8_t affinity);
+int mlx5_ext_txq_verify(struct rte_eth_dev *dev);
+struct mlx5_external_q *mlx5_ext_txq_get(struct rte_eth_dev *dev, uint16_t idx);
 
 /* mlx5_tx.c */
 
@@ -334,8 +343,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 		 * the service thread, data should be re-read.
 		 */
 		rte_compiler_barrier();
-		ci = __atomic_load_n(&sh->txpp.ts.ci_ts, __ATOMIC_RELAXED);
-		ts = __atomic_load_n(&sh->txpp.ts.ts, __ATOMIC_RELAXED);
+		ci = rte_atomic_load_explicit(&sh->txpp.ts.ci_ts, rte_memory_order_relaxed);
+		ts = rte_atomic_load_explicit(&sh->txpp.ts.ts, rte_memory_order_relaxed);
 		rte_compiler_barrier();
 		if (!((ts ^ ci) << (64 - MLX5_CQ_INDEX_WIDTH)))
 			break;
@@ -345,8 +354,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts -= ts;
 	if (unlikely(mts >= UINT64_MAX / 2)) {
 		/* We have negative integer, mts is in the past. */
-		__atomic_fetch_add(&sh->txpp.err_ts_past,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&sh->txpp.err_ts_past,
+				   1, rte_memory_order_relaxed);
 		return -1;
 	}
 	tick = sh->txpp.tick;
@@ -355,14 +364,54 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts = (mts + tick - 1) / tick;
 	if (unlikely(mts >= (1 << MLX5_CQ_INDEX_WIDTH) / 2 - 1)) {
 		/* We have mts is too distant future. */
-		__atomic_fetch_add(&sh->txpp.err_ts_future,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&sh->txpp.err_ts_future,
+				   1, rte_memory_order_relaxed);
 		return -1;
 	}
 	mts <<= 64 - MLX5_CQ_INDEX_WIDTH;
 	ci += mts;
 	ci >>= 64 - MLX5_CQ_INDEX_WIDTH;
 	return ci;
+}
+
+/**
+ * Read real time clock counter directly from the device PCI BAR area.
+ * The PCI BAR must be mapped to the process memory space at initialization.
+ *
+ * @param dev
+ *   Device to read clock counter from
+ *
+ * @return
+ *   0 - if HCA BAR is not supported or not mapped.
+ *   !=0 - read 64-bit value of real-time in UTC formatv (nanoseconds)
+ */
+static __rte_always_inline uint64_t mlx5_read_pcibar_clock(struct rte_eth_dev *dev)
+{
+	struct mlx5_proc_priv *ppriv = dev->process_private;
+
+	if (ppriv && ppriv->hca_bar) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		struct mlx5_dev_ctx_shared *sh = priv->sh;
+		uint64_t *hca_ptr = (uint64_t *)(ppriv->hca_bar) +
+				  __mlx5_64_off(initial_seg, real_time);
+		uint64_t __rte_atomic *ts_addr;
+		uint64_t ts;
+
+		ts_addr = (uint64_t __rte_atomic *)hca_ptr;
+		ts = rte_atomic_load_explicit(ts_addr, rte_memory_order_seq_cst);
+		ts = rte_be_to_cpu_64(ts);
+		ts = mlx5_txpp_convert_rx_ts(sh, ts);
+		return ts;
+	}
+	return 0;
+}
+
+static __rte_always_inline uint64_t mlx5_read_pcibar_clock_from_txq(struct mlx5_txq_data *txq)
+{
+	struct mlx5_txq_ctrl *txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
+	struct rte_eth_dev *dev = ETH_DEV(txq_ctrl->priv);
+
+	return mlx5_read_pcibar_clock(dev);
 }
 
 /**
@@ -726,6 +775,54 @@ mlx5_tx_request_completion(struct mlx5_txq_data *__rte_restrict txq,
 }
 
 /**
+ * Set completion request flag for all issued WQEs.
+ * This routine is intended to be used with enabled fast path tracing
+ * and send scheduling on time to provide the detailed report in trace
+ * for send completions on every WQE.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param loc
+ *   Pointer to burst routine local context.
+ * @param olx
+ *   Configured Tx offloads mask. It is fully defined at
+ *   compile time and may be used for optimization.
+ */
+static __rte_always_inline void
+mlx5_tx_request_completion_trace(struct mlx5_txq_data *__rte_restrict txq,
+				 struct mlx5_txq_local *__rte_restrict loc,
+				 unsigned int olx)
+{
+	uint16_t head = txq->elts_comp;
+
+	while (txq->wqe_comp != txq->wqe_ci) {
+		volatile struct mlx5_wqe *wqe;
+		uint32_t wqe_n;
+
+		MLX5_ASSERT(loc->wqe_last);
+		wqe = txq->wqes + (txq->wqe_comp & txq->wqe_m);
+		if (wqe == loc->wqe_last) {
+			head = txq->elts_head;
+			head +=	MLX5_TXOFF_CONFIG(INLINE) ?
+				0 : loc->pkts_sent - loc->pkts_copy;
+			txq->elts_comp = head;
+		}
+		/* Completion request flag was set on cseg constructing. */
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head |
+			  (wqe->cseg.opcode >> 8) << 16;
+#else
+		txq->fcqs[txq->cq_pi++ & txq->cqe_m] = head;
+#endif
+		/* A CQE slot must always be available. */
+		MLX5_ASSERT((txq->cq_pi - txq->cq_ci) <= txq->cqe_s);
+		/* Advance to the next WQE in the queue. */
+		wqe_n = rte_be_to_cpu_32(wqe->cseg.sq_ds) & 0x3F;
+		txq->wqe_comp += RTE_ALIGN(wqe_n, 4) / 4;
+	}
+}
+
+/**
  * Build the Control Segment with specified opcode:
  * - MLX5_OPCODE_SEND
  * - MLX5_OPCODE_ENHANCED_MPSW
@@ -751,18 +848,29 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 		  struct mlx5_wqe *__rte_restrict wqe,
 		  unsigned int ds,
 		  unsigned int opcode,
-		  unsigned int olx __rte_unused)
+		  unsigned int olx)
 {
 	struct mlx5_wqe_cseg *__rte_restrict cs = &wqe->cseg;
+	uint64_t real_time;
 
 	/* For legacy MPW replace the EMPW by TSO with modifier. */
 	if (MLX5_TXOFF_CONFIG(MPW) && opcode == MLX5_OPCODE_ENHANCED_MPSW)
 		opcode = MLX5_OPCODE_TSO | MLX5_OPC_MOD_MPW << 24;
 	cs->opcode = rte_cpu_to_be_32((txq->wqe_ci << 8) | opcode);
 	cs->sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
-	cs->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
-			     MLX5_COMP_MODE_OFFSET);
+	if (MLX5_TXOFF_CONFIG(TXPP) && __rte_trace_point_fp_is_enabled())
+		cs->flags = RTE_BE32(MLX5_COMP_ALWAYS <<
+				     MLX5_COMP_MODE_OFFSET);
+	else
+		cs->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
+				     MLX5_COMP_MODE_OFFSET);
 	cs->misc = RTE_BE32(0);
+	if (__rte_trace_point_fp_is_enabled()) {
+		real_time = mlx5_read_pcibar_clock_from_txq(txq);
+		if (!loc->pkts_sent)
+			rte_pmd_mlx5_trace_tx_entry(real_time, txq->port_id, txq->idx);
+		rte_pmd_mlx5_trace_tx_wqe(real_time, (txq->wqe_ci << 8) | opcode);
+	}
 }
 
 /**
@@ -1682,11 +1790,16 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 			return MLX5_TXCMP_CODE_EXIT;
 		/* Convert the timestamp into completion to wait. */
 		ts = *RTE_MBUF_DYNFIELD(loc->mbuf, txq->ts_offset, uint64_t *);
+		if (txq->ts_last && ts < txq->ts_last)
+			rte_atomic_fetch_add_explicit(&txq->sh->txpp.err_ts_order,
+					   1, rte_memory_order_relaxed);
+		txq->ts_last = ts;
 		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 		sh = txq->sh;
 		if (txq->wait_on_time) {
 			/* The wait on time capability should be used. */
 			ts -= sh->txpp.skew;
+			rte_pmd_mlx5_trace_tx_wait(ts);
 			mlx5_tx_cseg_init(txq, loc, wqe,
 					  1 + sizeof(struct mlx5_wqe_wseg) /
 					      MLX5_WSEG_SIZE,
@@ -1701,6 +1814,7 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 			if (unlikely(wci < 0))
 				return MLX5_TXCMP_CODE_SINGLE;
 			/* Build the WAIT WQE with specified completion. */
+			rte_pmd_mlx5_trace_tx_wait(ts - sh->txpp.skew);
 			mlx5_tx_cseg_init(txq, loc, wqe,
 					  1 + sizeof(struct mlx5_wqe_qseg) /
 					      MLX5_WSEG_SIZE,
@@ -1805,6 +1919,7 @@ mlx5_tx_packet_multi_tso(struct mlx5_txq_data *__rte_restrict txq,
 	wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 	loc->wqe_last = wqe;
 	mlx5_tx_cseg_init(txq, loc, wqe, 0, MLX5_OPCODE_TSO, olx);
+	rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 	ds = mlx5_tx_mseg_build(txq, loc, wqe, vlan, inlen, 1, olx);
 	wqe->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
@@ -1887,6 +2002,7 @@ mlx5_tx_packet_multi_send(struct mlx5_txq_data *__rte_restrict txq,
 	wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 	loc->wqe_last = wqe;
 	mlx5_tx_cseg_init(txq, loc, wqe, ds, MLX5_OPCODE_SEND, olx);
+	rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 	mlx5_tx_eseg_none(txq, loc, wqe, olx);
 	dseg = &wqe->dseg[0];
 	do {
@@ -1979,7 +2095,7 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 		uintptr_t start;
 
 		mbuf = loc->mbuf;
-		nxlen = rte_pktmbuf_data_len(mbuf);
+		nxlen = rte_pktmbuf_data_len(mbuf) + vlan;
 		/*
 		 * Packet length exceeds the allowed inline data length,
 		 * check whether the minimal inlining is required.
@@ -2110,6 +2226,7 @@ do_build:
 	wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 	loc->wqe_last = wqe;
 	mlx5_tx_cseg_init(txq, loc, wqe, 0, MLX5_OPCODE_SEND, olx);
+	rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 	ds = mlx5_tx_mseg_build(txq, loc, wqe, vlan, inlen, 0, olx);
 	wqe->cseg.sq_ds = rte_cpu_to_be_32(txq->qp_num_8s | ds);
 	txq->wqe_ci += (ds + 3) / 4;
@@ -2313,8 +2430,8 @@ mlx5_tx_burst_tso(struct mlx5_txq_data *__rte_restrict txq,
 		 */
 		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 		loc->wqe_last = wqe;
-		mlx5_tx_cseg_init(txq, loc, wqe, ds,
-				  MLX5_OPCODE_TSO, olx);
+		mlx5_tx_cseg_init(txq, loc, wqe, ds, MLX5_OPCODE_TSO, olx);
+		rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 		dseg = mlx5_tx_eseg_data(txq, loc, wqe, vlan, hlen, 1, olx);
 		dptr = rte_pktmbuf_mtod(loc->mbuf, uint8_t *) + hlen - vlan;
 		dlen -= hlen - vlan;
@@ -2683,6 +2800,7 @@ next_empw:
 			/* Update sent data bytes counter. */
 			slen += dlen;
 #endif
+			rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 			mlx5_tx_dseg_ptr
 				(txq, loc, dseg,
 				 rte_pktmbuf_mtod(loc->mbuf, uint8_t *),
@@ -2921,6 +3039,7 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *__rte_restrict txq,
 				tlen += sizeof(struct rte_vlan_hdr);
 				if (room < tlen)
 					break;
+				rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 				dseg = mlx5_tx_dseg_vlan(txq, loc, dseg,
 							 dptr, dlen, olx);
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -2930,6 +3049,7 @@ mlx5_tx_burst_empw_inline(struct mlx5_txq_data *__rte_restrict txq,
 			} else {
 				if (room < tlen)
 					break;
+				rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 				dseg = mlx5_tx_dseg_empw(txq, loc, dseg,
 							 dptr, dlen, olx);
 			}
@@ -2975,6 +3095,7 @@ pointer_empw:
 			if (MLX5_TXOFF_CONFIG(VLAN))
 				MLX5_ASSERT(!(loc->mbuf->ol_flags &
 					    RTE_MBUF_F_TX_VLAN));
+			rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 			mlx5_tx_dseg_ptr(txq, loc, dseg, dptr, dlen, olx);
 			/* We have to store mbuf in elts.*/
 			txq->elts[txq->elts_head++ & txq->elts_m] = loc->mbuf;
@@ -3189,6 +3310,7 @@ single_inline:
 				loc->wqe_last = wqe;
 				mlx5_tx_cseg_init(txq, loc, wqe, seg_n,
 						  MLX5_OPCODE_SEND, olx);
+				rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 				mlx5_tx_eseg_data(txq, loc, wqe,
 						  vlan, inlen, 0, olx);
 				txq->wqe_ci += wqe_n;
@@ -3251,6 +3373,7 @@ single_min_inline:
 				loc->wqe_last = wqe;
 				mlx5_tx_cseg_init(txq, loc, wqe, ds,
 						  MLX5_OPCODE_SEND, olx);
+				rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 				dseg = mlx5_tx_eseg_data(txq, loc, wqe, vlan,
 							 txq->inlen_mode,
 							 0, olx);
@@ -3292,6 +3415,7 @@ single_part_inline:
 				loc->wqe_last = wqe;
 				mlx5_tx_cseg_init(txq, loc, wqe, 4,
 						  MLX5_OPCODE_SEND, olx);
+				rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 				mlx5_tx_eseg_dmin(txq, loc, wqe, vlan, olx);
 				dptr = rte_pktmbuf_mtod(loc->mbuf, uint8_t *) +
 				       MLX5_ESEG_MIN_INLINE_SIZE - vlan;
@@ -3333,6 +3457,7 @@ single_no_inline:
 			loc->wqe_last = wqe;
 			mlx5_tx_cseg_init(txq, loc, wqe, 3,
 					  MLX5_OPCODE_SEND, olx);
+			rte_pmd_mlx5_trace_tx_push(loc->mbuf, txq->wqe_ci);
 			mlx5_tx_eseg_none(txq, loc, wqe, olx);
 			mlx5_tx_dseg_ptr
 				(txq, loc, &wqe->dseg[0],
@@ -3639,7 +3764,10 @@ enter_send_single:
 	if (unlikely(loc.pkts_sent == loc.pkts_loop))
 		goto burst_exit;
 	/* Request CQE generation if limits are reached. */
-	mlx5_tx_request_completion(txq, &loc, olx);
+	if (MLX5_TXOFF_CONFIG(TXPP) && __rte_trace_point_fp_is_enabled())
+		mlx5_tx_request_completion_trace(txq, &loc, olx);
+	else
+		mlx5_tx_request_completion(txq, &loc, olx);
 	/*
 	 * Ring QP doorbell immediately after WQE building completion
 	 * to improve latencies. The pure software related data treatment
@@ -3702,7 +3830,34 @@ burst_exit:
 #endif
 	if (MLX5_TXOFF_CONFIG(INLINE) && loc.mbuf_free)
 		__mlx5_tx_free_mbuf(txq, pkts, loc.mbuf_free, olx);
+	/* Trace productive bursts only. */
+	if (__rte_trace_point_fp_is_enabled() && loc.pkts_sent)
+		rte_pmd_mlx5_trace_tx_exit(mlx5_read_pcibar_clock_from_txq(txq),
+					   loc.pkts_sent, pkts_n);
 	return loc.pkts_sent;
+}
+
+/**
+ * Check whether given TxQ is external.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue_idx
+ *   Tx queue index.
+ *
+ * @return
+ *   True if is external TxQ, otherwise false.
+ */
+static __rte_always_inline bool
+mlx5_is_external_txq(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_external_q *txq;
+
+	if (!priv->ext_txqs || queue_idx < MLX5_EXTERNAL_TX_QUEUE_ID_MIN)
+		return false;
+	txq = &priv->ext_txqs[queue_idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN];
+	return !!rte_atomic_load_explicit(&txq->refcnt, rte_memory_order_relaxed);
 }
 
 #endif /* RTE_PMD_MLX5_TX_H_ */

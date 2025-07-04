@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <stdalign.h>
 #include <string.h>
 
 #include <rte_common.h>
@@ -19,8 +20,8 @@ struct crc_pmull_ctx {
 	uint64x2_t rk7_rk8;
 };
 
-struct crc_pmull_ctx crc32_eth_pmull __rte_aligned(16);
-struct crc_pmull_ctx crc16_ccitt_pmull __rte_aligned(16);
+alignas(16) struct crc_pmull_ctx crc32_eth_pmull;
+alignas(16) struct crc_pmull_ctx crc16_ccitt_pmull;
 
 /**
  * @brief Performs one folding round
@@ -96,10 +97,10 @@ static inline uint32_t
 crcr32_reduce_64_to_32(uint64x2_t data64,
 	uint64x2_t precomp)
 {
-	static uint32_t mask1[4] __rte_aligned(16) = {
+	static alignas(16) uint32_t mask1[4] = {
 		0xffffffff, 0xffffffff, 0x00000000, 0x00000000
 	};
-	static uint32_t mask2[4] __rte_aligned(16) = {
+	static alignas(16) uint32_t mask2[4] = {
 		0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
 	};
 	uint64x2_t tmp0, tmp1, tmp2;
@@ -148,7 +149,7 @@ crc32_eth_calc_pmull(
 
 		if (unlikely(data_len < 16)) {
 			/* 0 to 15 bytes */
-			uint8_t buffer[16] __rte_aligned(16);
+			alignas(16) uint8_t buffer[16];
 
 			memset(buffer, 0, sizeof(buffer));
 			memcpy(buffer, data, data_len);

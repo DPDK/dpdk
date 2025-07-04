@@ -32,10 +32,7 @@
 #define HNS3_DEV_ID_100G_VF			0xA22E
 #define HNS3_DEV_ID_100G_RDMA_PFC_VF		0xA22F
 
-/* PCI Config offsets */
-#define HNS3_PCI_REVISION_ID			0x08
-#define HNS3_PCI_REVISION_ID_LEN		1
-
+/* Revision IDs */
 #define PCI_REVISION_ID_HIP08_B			0x21
 #define PCI_REVISION_ID_HIP09_A			0x30
 
@@ -53,6 +50,10 @@
 
 #define HNS3_SPECIAL_PORT_SW_CKSUM_MODE         0
 #define HNS3_SPECIAL_PORT_HW_CKSUM_MODE         1
+
+#define HNS3_STRIP_CRC_PTYPE_NONE         0
+#define HNS3_STRIP_CRC_PTYPE_TCP          1
+#define HNS3_STRIP_CRC_PTYPE_IP           2
 
 #define HNS3_UC_MACADDR_NUM		128
 #define HNS3_VF_UC_MACADDR_NUM		48
@@ -214,6 +215,8 @@ struct hns3_mac {
 	uint32_t advertising;     /* advertised capability in the local part */
 	uint32_t lp_advertising; /* advertised capability in the link partner */
 	uint8_t support_autoneg;
+	/* current supported fec modes. see HNS3_FIBER_FEC_XXX_BIT */
+	uint32_t fec_capa;
 };
 
 struct hns3_fake_queue_data {
@@ -397,17 +400,17 @@ enum hns3_schedule {
 
 struct hns3_reset_data {
 	enum hns3_reset_stage stage;
-	uint16_t schedule;
+	RTE_ATOMIC(uint16_t) schedule;
 	/* Reset flag, covering the entire reset process */
-	uint16_t resetting;
+	RTE_ATOMIC(uint16_t) resetting;
 	/* Used to disable sending cmds during reset */
-	uint16_t disable_cmd;
+	RTE_ATOMIC(uint16_t) disable_cmd;
 	/* The reset level being processed */
 	enum hns3_reset_level level;
 	/* Reset level set, each bit represents a reset level */
-	uint64_t pending;
+	RTE_ATOMIC(uint64_t) pending;
 	/* Request reset level set, from interrupt or mailbox */
-	uint64_t request;
+	RTE_ATOMIC(uint64_t) request;
 	int attempts; /* Reset failure retry */
 	int retries;  /* Timeout failure retry in reset_post */
 	/*
@@ -483,6 +486,9 @@ struct hns3_queue_intr {
 #define HNS3_PKTS_DROP_STATS_MODE1		0
 #define HNS3_PKTS_DROP_STATS_MODE2		1
 
+#define HNS3_RX_DMA_ADDR_ALIGN_128	128
+#define HNS3_RX_DMA_ADDR_ALIGN_64	64
+
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
@@ -495,7 +501,7 @@ struct hns3_hw {
 	 * by dev_set_link_up() or dev_start().
 	 */
 	bool set_link_down;
-	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
+	RTE_ATOMIC(unsigned int) secondary_cnt; /* Number of secondary processes init'd. */
 	struct hns3_tqp_stats tqp_stats;
 	/* Include Mac stats | Rx stats | Tx stats */
 	struct hns3_mac_stats mac_stats;
@@ -550,6 +556,11 @@ struct hns3_hw {
 	 * direction.
 	 */
 	uint8_t min_tx_pkt_len;
+	/*
+	 * The required alignment of the DMA address of the RX buffer.
+	 * See HNS3_RX_DMA_ADDR_ALIGN_XXX for available values.
+	 */
+	uint16_t rx_dma_addr_align;
 
 	struct hns3_queue_intr intr;
 	/*
@@ -644,6 +655,25 @@ struct hns3_hw {
 	 *     directly calculate the checksum of these UDP packets.
 	 */
 	uint8_t udp_cksum_mode;
+
+	/*
+	 * When KEEP_CRC offload is enabled, the CRC data of some type packets
+	 * whose length is less than or equal to HNS3_KEEP_CRC_OK_MIN_PKT_LEN
+	 * is still be stripped on some network engine. So here has to use this
+	 * field to distinguish the difference between different network engines.
+	 * value range:
+	 *  - HNS3_STRIP_CRC_PTYPE_TCP
+	 *     This value for HIP08 network engine.
+	 *     Indicates that only the IP-TCP packet type is stripped.
+	 *
+	 *  - HNS3_STRIP_CRC_PTYPE_IP
+	 *     This value for HIP09 network engine.
+	 *     Indicates that all IP packet types are stripped.
+	 *
+	 *  - HNS3_STRIP_CRC_PTYPE_NONE
+	 *     Indicates that all packet types are not stripped.
+	 */
+	uint8_t strip_crc_ptype;
 
 	struct hns3_port_base_vlan_config port_base_vlan_cfg;
 
@@ -763,7 +793,7 @@ struct hns3_ptype_table {
 	 * descriptor, it functions only when firmware report the capability of
 	 * HNS3_CAPS_RXD_ADV_LAYOUT_B and driver enabled it.
 	 */
-	uint32_t ptype[HNS3_PTYPE_NUM] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t ptype[HNS3_PTYPE_NUM];
 };
 
 #define HNS3_FIXED_MAX_TQP_NUM_MODE		0
@@ -840,7 +870,7 @@ struct hns3_vf {
 	struct hns3_adapter *adapter;
 
 	/* Whether PF support push link status change to VF */
-	uint16_t pf_push_lsc_cap;
+	RTE_ATOMIC(uint16_t) pf_push_lsc_cap;
 
 	/*
 	 * If PF support push link status change, VF still need send request to
@@ -849,7 +879,7 @@ struct hns3_vf {
 	 */
 	uint16_t req_link_info_cnt;
 
-	uint16_t poll_job_started; /* whether poll job is started */
+	RTE_ATOMIC(uint16_t) poll_job_started; /* whether poll job is started */
 };
 
 struct hns3_adapter {
@@ -868,15 +898,8 @@ struct hns3_adapter {
 	uint64_t dev_caps_mask;
 	uint16_t mbx_time_limit_ms; /* wait time for mbx message */
 
-	struct hns3_ptype_table ptype_tbl __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct hns3_ptype_table ptype_tbl;
 };
-
-#define HNS3_DEVARG_RX_FUNC_HINT	"rx_func_hint"
-#define HNS3_DEVARG_TX_FUNC_HINT	"tx_func_hint"
-
-#define HNS3_DEVARG_DEV_CAPS_MASK	"dev_caps_mask"
-
-#define HNS3_DEVARG_MBX_TIME_LIMIT_MS	"mbx_time_limit_ms"
 
 enum hns3_dev_cap {
 	HNS3_DEV_SUPPORT_DCB_B,
@@ -886,11 +909,14 @@ enum hns3_dev_cap {
 	HNS3_DEV_SUPPORT_TX_PUSH_B,
 	HNS3_DEV_SUPPORT_INDEP_TXRX_B,
 	HNS3_DEV_SUPPORT_STASH_B,
+	HNS3_DEV_SUPPORT_SIMPLE_BD_B,
 	HNS3_DEV_SUPPORT_RXD_ADV_LAYOUT_B,
 	HNS3_DEV_SUPPORT_OUTER_UDP_CKSUM_B,
 	HNS3_DEV_SUPPORT_RAS_IMP_B,
 	HNS3_DEV_SUPPORT_TM_B,
 	HNS3_DEV_SUPPORT_VF_VLAN_FLT_MOD_B,
+	HNS3_DEV_SUPPORT_FC_AUTO_B,
+	HNS3_DEV_SUPPORT_GRO_B,
 };
 
 #define hns3_dev_get_support(hw, _name) \
@@ -997,32 +1023,32 @@ static inline uint32_t hns3_read_reg(void *base, uint32_t reg)
 	hns3_read_reg((a)->io_base, (reg))
 
 static inline uint64_t
-hns3_atomic_test_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_atomic_test_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
 	uint64_t res;
 
-	res = (__atomic_load_n(addr, __ATOMIC_RELAXED) & (1UL << nr)) != 0;
+	res = (rte_atomic_load_explicit(addr, rte_memory_order_relaxed) & (1UL << nr)) != 0;
 	return res;
 }
 
 static inline void
-hns3_atomic_set_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_atomic_set_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
-	__atomic_fetch_or(addr, (1UL << nr), __ATOMIC_RELAXED);
+	rte_atomic_fetch_or_explicit(addr, (1UL << nr), rte_memory_order_relaxed);
 }
 
 static inline void
-hns3_atomic_clear_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_atomic_clear_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
-	__atomic_fetch_and(addr, ~(1UL << nr), __ATOMIC_RELAXED);
+	rte_atomic_fetch_and_explicit(addr, ~(1UL << nr), rte_memory_order_relaxed);
 }
 
 static inline uint64_t
-hns3_test_and_clear_bit(unsigned int nr, volatile uint64_t *addr)
+hns3_test_and_clear_bit(unsigned int nr, volatile RTE_ATOMIC(uint64_t) *addr)
 {
 	uint64_t mask = (1UL << nr);
 
-	return __atomic_fetch_and(addr, ~mask, __ATOMIC_RELAXED) & mask;
+	return rte_atomic_fetch_and_explicit(addr, ~mask, rte_memory_order_relaxed) & mask;
 }
 
 int
@@ -1036,22 +1062,10 @@ void hns3_update_linkstatus_and_event(struct hns3_hw *hw, bool query);
 void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
 void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
+void hns3_clear_reset_event(struct hns3_hw *hw);
+void hns3vf_clear_reset_event(struct hns3_hw *hw);
 
-int hns3_restore_ptp(struct hns3_adapter *hns);
-int hns3_mbuf_dyn_rx_timestamp_register(struct rte_eth_dev *dev,
-				    struct rte_eth_conf *conf);
-int hns3_ptp_init(struct hns3_hw *hw);
-int hns3_timesync_enable(struct rte_eth_dev *dev);
-int hns3_timesync_disable(struct rte_eth_dev *dev);
-int hns3_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
-				struct timespec *timestamp,
-				uint32_t flags __rte_unused);
-int hns3_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
-				struct timespec *timestamp);
-int hns3_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts);
-int hns3_timesync_write_time(struct rte_eth_dev *dev,
-			const struct timespec *ts);
-int hns3_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+const char *hns3_get_media_type_name(uint8_t media_type);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)
@@ -1062,6 +1076,17 @@ is_reset_pending(struct hns3_adapter *hns)
 	else
 		ret = hns3_is_reset_pending(hns);
 	return ret;
+}
+
+static inline void
+hns3_clear_reset_status(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+
+	if (hns->is_vf)
+		hns3vf_clear_reset_event(hw);
+	else
+		hns3_clear_reset_event(hw);
 }
 
 #endif /* HNS3_ETHDEV_H */

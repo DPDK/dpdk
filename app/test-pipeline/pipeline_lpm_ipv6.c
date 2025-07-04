@@ -123,20 +123,15 @@ app_main_loop_worker_pipeline_lpm_ipv6(void) {
 		uint32_t ip;
 		int key_found, status;
 
-		key.depth = 8 + __builtin_popcount(app.n_ports - 1);
+		key.depth = 8 + rte_popcount32(app.n_ports - 1);
 
 		ip = rte_bswap32(i << (24 -
-			__builtin_popcount(app.n_ports - 1)));
-		memcpy(key.ip, &ip, sizeof(uint32_t));
+			rte_popcount32(app.n_ports - 1)));
+		memcpy(&key.ip, &ip, sizeof(uint32_t));
 
 		printf("Adding rule to IPv6 LPM table (IPv6 destination = "
-			"%.2x%.2x:%.2x%.2x:%.2x%.2x:%.2x%.2x:"
-			"%.2x%.2x:%.2x%.2x:%.2x%.2x:%.2x%.2x/%u => "
-			"port out = %u)\n",
-			key.ip[0], key.ip[1], key.ip[2], key.ip[3],
-			key.ip[4], key.ip[5], key.ip[6], key.ip[7],
-			key.ip[8], key.ip[9], key.ip[10], key.ip[11],
-			key.ip[12], key.ip[13], key.ip[14], key.ip[15],
+			RTE_IPV6_ADDR_FMT "/%u => port out = %u)\n",
+			RTE_IPV6_ADDR_SPLIT(&key.ip),
 			key.depth, i);
 
 		status = rte_pipeline_table_entry_add(p, table_id, &key, &entry,
@@ -158,14 +153,16 @@ app_main_loop_worker_pipeline_lpm_ipv6(void) {
 
 	/* Run-time */
 #if APP_FLUSH == 0
-	for ( ; ; )
+	while (!force_quit)
 		rte_pipeline_run(p);
 #else
-	for (i = 0; ; i++) {
+	i = 0;
+	while (!force_quit) {
 		rte_pipeline_run(p);
 
 		if ((i & APP_FLUSH) == 0)
 			rte_pipeline_flush(p);
+		i++;
 	}
 #endif
 }

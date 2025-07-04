@@ -4,7 +4,6 @@
 #ifndef _ICP_QAT_FW_H_
 #define _ICP_QAT_FW_H_
 #include <sys/types.h>
-#include "icp_qat_hw.h"
 
 #define QAT_FIELD_SET(flags, val, bitpos, mask) \
 { (flags) = (((flags) & (~((mask) << (bitpos)))) | \
@@ -58,6 +57,12 @@ struct icp_qat_fw_comn_req_hdr_cd_pars {
 	} u;
 };
 
+struct lce_key_buff_desc {
+	uint64_t keybuff;
+	uint32_t keybuff_resrvd1;
+	uint32_t keybuff_resrvd2;
+};
+
 struct icp_qat_fw_comn_req_mid {
 	uint64_t opaque_data;
 	uint64_t src_data_addr;
@@ -76,7 +81,8 @@ struct icp_qat_fw_comn_req_hdr {
 	uint8_t service_type;
 	uint8_t hdr_flags;
 	uint16_t serv_specif_flags;
-	uint16_t comn_req_flags;
+	uint8_t comn_req_flags;
+	uint8_t ext_flags;
 };
 
 struct icp_qat_fw_comn_req_rqpars {
@@ -124,6 +130,12 @@ struct icp_qat_fw_comn_resp {
 #define ICP_QAT_FW_COMN_NULL_VERSION_FLAG_BITPOS 0
 #define ICP_QAT_FW_COMN_NULL_VERSION_FLAG_MASK 0x1
 
+/* GEN_LCE specific Common Header fields */
+#define ICP_QAT_FW_COMN_DESC_LAYOUT_BITPOS 5
+#define ICP_QAT_FW_COMN_DESC_LAYOUT_MASK 0x3
+#define ICP_QAT_FW_COMN_GEN_LCE_DESC_LAYOUT 3
+#define ICP_QAT_FW_COMN_GEN_LCE_STATUS_FLAG_ERROR 0
+
 #define ICP_QAT_FW_COMN_OV_SRV_TYPE_GET(icp_qat_fw_comn_req_hdr_t) \
 	icp_qat_fw_comn_req_hdr_t.service_type
 
@@ -169,6 +181,12 @@ struct icp_qat_fw_comn_resp {
 	(((valid) & ICP_QAT_FW_COMN_VALID_FLAG_MASK) << \
 	 ICP_QAT_FW_COMN_VALID_FLAG_BITPOS)
 
+#define ICP_QAT_FW_COMN_HDR_FLAGS_BUILD_GEN_LCE(valid, desc_layout) \
+	((((valid) & ICP_QAT_FW_COMN_VALID_FLAG_MASK) << \
+	ICP_QAT_FW_COMN_VALID_FLAG_BITPOS) | \
+	(((desc_layout) & ICP_QAT_FW_COMN_DESC_LAYOUT_MASK) << \
+	ICP_QAT_FW_COMN_DESC_LAYOUT_BITPOS))
+
 #define QAT_COMN_PTR_TYPE_BITPOS 0
 #define QAT_COMN_PTR_TYPE_MASK 0x1
 #define QAT_COMN_CD_FLD_TYPE_BITPOS 1
@@ -177,13 +195,20 @@ struct icp_qat_fw_comn_resp {
 #define QAT_COMN_PTR_TYPE_SGL 0x1
 #define QAT_COMN_CD_FLD_TYPE_64BIT_ADR 0x0
 #define QAT_COMN_CD_FLD_TYPE_16BYTE_DATA 0x1
-#define QAT_COMN_EXT_FLAGS_BITPOS 8
-#define QAT_COMN_EXT_FLAGS_MASK 0x1
-#define QAT_COMN_EXT_FLAGS_USED 0x1
+
+/* GEN_LCE specific Common Request Flags fields */
+#define QAT_COMN_KEYBUF_USAGE_BITPOS 1
+#define QAT_COMN_KEYBUF_USAGE_MASK 0x1
+#define QAT_COMN_KEY_BUFFER_USED 1
 
 #define ICP_QAT_FW_COMN_FLAGS_BUILD(cdt, ptr) \
 	((((cdt) & QAT_COMN_CD_FLD_TYPE_MASK) << QAT_COMN_CD_FLD_TYPE_BITPOS) \
 	 | (((ptr) & QAT_COMN_PTR_TYPE_MASK) << QAT_COMN_PTR_TYPE_BITPOS))
+
+#define ICP_QAT_FW_COMN_FLAGS_BUILD_GEN_LCE(ptr, keybuf) \
+	((((ptr) & QAT_COMN_PTR_TYPE_MASK) << QAT_COMN_PTR_TYPE_BITPOS) | \
+	 (((keybuf) & QAT_COMN_PTR_TYPE_MASK) << \
+	   QAT_COMN_KEYBUF_USAGE_BITPOS))
 
 #define ICP_QAT_FW_COMN_PTR_TYPE_GET(flags) \
 	QAT_FIELD_GET(flags, QAT_COMN_PTR_TYPE_BITPOS, QAT_COMN_PTR_TYPE_MASK)
@@ -250,6 +275,8 @@ struct icp_qat_fw_comn_resp {
 #define QAT_COMN_RESP_CMP_END_OF_LAST_BLK_MASK 0x1
 #define QAT_COMN_RESP_UNSUPPORTED_REQUEST_BITPOS 2
 #define QAT_COMN_RESP_UNSUPPORTED_REQUEST_MASK 0x1
+#define QAT_COMN_RESP_INVALID_PARAM_BITPOS 1
+#define QAT_COMN_RESP_INVALID_PARAM_MASK 0x1
 #define QAT_COMN_RESP_XLT_WA_APPLIED_BITPOS 0
 #define QAT_COMN_RESP_XLT_WA_APPLIED_MASK 0x1
 
@@ -280,6 +307,10 @@ struct icp_qat_fw_comn_resp {
 #define ICP_QAT_FW_COMN_RESP_UNSUPPORTED_REQUEST_STAT_GET(status) \
 	QAT_FIELD_GET(status, QAT_COMN_RESP_UNSUPPORTED_REQUEST_BITPOS, \
 	QAT_COMN_RESP_UNSUPPORTED_REQUEST_MASK)
+
+#define ICP_QAT_FW_COMN_RESP_INVALID_PARAM_STAT_GET(status) \
+	QAT_FIELD_GET(status, QAT_COMN_RESP_INVALID_PARAM_BITPOS, \
+	QAT_COMN_RESP_INVALID_PARAM_MASK)
 
 #define ICP_QAT_FW_COMN_STATUS_FLAG_OK 0
 #define ICP_QAT_FW_COMN_STATUS_FLAG_ERROR 1

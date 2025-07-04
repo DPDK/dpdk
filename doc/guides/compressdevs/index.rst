@@ -6,12 +6,15 @@ Compression Device Drivers
 
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     overview
     isal
     mlx5
+    nitrox
     octeontx
     qat_comp
+    uadk
     zlib
+    zsda

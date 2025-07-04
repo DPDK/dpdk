@@ -10,12 +10,14 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 
+#include <eal_export.h>
 #include "eal_interrupts.h"
+#include "eal_private.h"
 
 /* Macros to check for valid interrupt handle */
 #define CHECK_VALID_INTR_HANDLE(intr_handle) do { \
 	if (intr_handle == NULL) { \
-		RTE_LOG(DEBUG, EAL, "Interrupt instance unallocated\n"); \
+		EAL_LOG(DEBUG, "Interrupt instance unallocated"); \
 		rte_errno = EINVAL; \
 		goto fail; \
 	} \
@@ -28,6 +30,7 @@
 #define RTE_INTR_INSTANCE_USES_RTE_MEMORY(flags) \
 	(!!(flags & RTE_INTR_INSTANCE_F_SHARED))
 
+RTE_EXPORT_SYMBOL(rte_intr_instance_alloc)
 struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 {
 	struct rte_intr_handle *intr_handle;
@@ -37,7 +40,7 @@ struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 	 * defined flags.
 	 */
 	if ((flags & ~RTE_INTR_INSTANCE_KNOWN_FLAGS) != 0) {
-		RTE_LOG(DEBUG, EAL, "Invalid alloc flag passed 0x%x\n", flags);
+		EAL_LOG(DEBUG, "Invalid alloc flag passed 0x%x", flags);
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -48,7 +51,7 @@ struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 	else
 		intr_handle = calloc(1, sizeof(*intr_handle));
 	if (intr_handle == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to allocate intr_handle\n");
+		EAL_LOG(ERR, "Failed to allocate intr_handle");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -61,7 +64,7 @@ struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 			sizeof(int));
 	}
 	if (intr_handle->efds == NULL) {
-		RTE_LOG(ERR, EAL, "Fail to allocate event fd list\n");
+		EAL_LOG(ERR, "Fail to allocate event fd list");
 		rte_errno = ENOMEM;
 		goto fail;
 	}
@@ -75,7 +78,7 @@ struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 			sizeof(struct rte_epoll_event));
 	}
 	if (intr_handle->elist == NULL) {
-		RTE_LOG(ERR, EAL, "fail to allocate event fd list\n");
+		EAL_LOG(ERR, "fail to allocate event fd list");
 		rte_errno = ENOMEM;
 		goto fail;
 	}
@@ -95,12 +98,13 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_instance_dup)
 struct rte_intr_handle *rte_intr_instance_dup(const struct rte_intr_handle *src)
 {
 	struct rte_intr_handle *intr_handle;
 
 	if (src == NULL) {
-		RTE_LOG(DEBUG, EAL, "Source interrupt instance unallocated\n");
+		EAL_LOG(DEBUG, "Source interrupt instance unallocated");
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -120,6 +124,7 @@ struct rte_intr_handle *rte_intr_instance_dup(const struct rte_intr_handle *src)
 	return intr_handle;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_event_list_update)
 int rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size)
 {
 	struct rte_epoll_event *tmp_elist;
@@ -129,7 +134,7 @@ int rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size)
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (size == 0) {
-		RTE_LOG(DEBUG, EAL, "Size can't be zero\n");
+		EAL_LOG(DEBUG, "Size can't be zero");
 		rte_errno = EINVAL;
 		goto fail;
 	}
@@ -143,7 +148,7 @@ int rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size)
 		tmp_efds = realloc(intr_handle->efds, size * sizeof(int));
 	}
 	if (tmp_efds == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to realloc the efds list\n");
+		EAL_LOG(ERR, "Failed to realloc the efds list");
 		rte_errno = ENOMEM;
 		goto fail;
 	}
@@ -157,7 +162,7 @@ int rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size)
 			size * sizeof(struct rte_epoll_event));
 	}
 	if (tmp_elist == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to realloc the event list\n");
+		EAL_LOG(ERR, "Failed to realloc the event list");
 		rte_errno = ENOMEM;
 		goto fail;
 	}
@@ -170,6 +175,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_instance_free)
 void rte_intr_instance_free(struct rte_intr_handle *intr_handle)
 {
 	if (intr_handle == NULL)
@@ -185,6 +191,7 @@ void rte_intr_instance_free(struct rte_intr_handle *intr_handle)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_fd_set)
 int rte_intr_fd_set(struct rte_intr_handle *intr_handle, int fd)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -196,6 +203,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_fd_get)
 int rte_intr_fd_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -205,6 +213,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_type_set)
 int rte_intr_type_set(struct rte_intr_handle *intr_handle,
 	enum rte_intr_handle_type type)
 {
@@ -217,6 +226,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_type_get)
 enum rte_intr_handle_type rte_intr_type_get(
 	const struct rte_intr_handle *intr_handle)
 {
@@ -227,6 +237,7 @@ fail:
 	return RTE_INTR_HANDLE_UNKNOWN;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dev_fd_set)
 int rte_intr_dev_fd_set(struct rte_intr_handle *intr_handle, int fd)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -238,6 +249,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dev_fd_get)
 int rte_intr_dev_fd_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -247,14 +259,15 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_max_intr_set)
 int rte_intr_max_intr_set(struct rte_intr_handle *intr_handle,
 				 int max_intr)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (max_intr > intr_handle->nb_intr) {
-		RTE_LOG(DEBUG, EAL, "Maximum interrupt vector ID (%d) exceeds "
-			"the number of available events (%d)\n", max_intr,
+		EAL_LOG(DEBUG, "Maximum interrupt vector ID (%d) exceeds "
+			"the number of available events (%d)", max_intr,
 			intr_handle->nb_intr);
 		rte_errno = ERANGE;
 		goto fail;
@@ -267,6 +280,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_max_intr_get)
 int rte_intr_max_intr_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -276,6 +290,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_nb_efd_set)
 int rte_intr_nb_efd_set(struct rte_intr_handle *intr_handle, int nb_efd)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -287,6 +302,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_nb_efd_get)
 int rte_intr_nb_efd_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -296,6 +312,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_nb_intr_get)
 int rte_intr_nb_intr_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -305,6 +322,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_counter_size_set)
 int rte_intr_efd_counter_size_set(struct rte_intr_handle *intr_handle,
 	uint8_t efd_counter_size)
 {
@@ -317,6 +335,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_counter_size_get)
 int rte_intr_efd_counter_size_get(const struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -326,13 +345,14 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efds_index_get)
 int rte_intr_efds_index_get(const struct rte_intr_handle *intr_handle,
 	int index)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (index >= intr_handle->nb_intr) {
-		RTE_LOG(DEBUG, EAL, "Invalid index %d, max limit %d\n", index,
+		EAL_LOG(DEBUG, "Invalid index %d, max limit %d", index,
 			intr_handle->nb_intr);
 		rte_errno = EINVAL;
 		goto fail;
@@ -343,13 +363,14 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efds_index_set)
 int rte_intr_efds_index_set(struct rte_intr_handle *intr_handle,
 	int index, int fd)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (index >= intr_handle->nb_intr) {
-		RTE_LOG(DEBUG, EAL, "Invalid index %d, max limit %d\n", index,
+		EAL_LOG(DEBUG, "Invalid index %d, max limit %d", index,
 			intr_handle->nb_intr);
 		rte_errno = ERANGE;
 		goto fail;
@@ -362,13 +383,14 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_elist_index_get)
 struct rte_epoll_event *rte_intr_elist_index_get(
 	struct rte_intr_handle *intr_handle, int index)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (index >= intr_handle->nb_intr) {
-		RTE_LOG(DEBUG, EAL, "Invalid index %d, max limit %d\n", index,
+		EAL_LOG(DEBUG, "Invalid index %d, max limit %d", index,
 			intr_handle->nb_intr);
 		rte_errno = ERANGE;
 		goto fail;
@@ -379,13 +401,14 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_elist_index_set)
 int rte_intr_elist_index_set(struct rte_intr_handle *intr_handle,
 	int index, struct rte_epoll_event elist)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (index >= intr_handle->nb_intr) {
-		RTE_LOG(DEBUG, EAL, "Invalid index %d, max limit %d\n", index,
+		EAL_LOG(DEBUG, "Invalid index %d, max limit %d", index,
 			intr_handle->nb_intr);
 		rte_errno = ERANGE;
 		goto fail;
@@ -398,6 +421,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_vec_list_alloc)
 int rte_intr_vec_list_alloc(struct rte_intr_handle *intr_handle,
 	const char *name, int size)
 {
@@ -408,7 +432,7 @@ int rte_intr_vec_list_alloc(struct rte_intr_handle *intr_handle,
 		return 0;
 
 	if (size > intr_handle->nb_intr) {
-		RTE_LOG(DEBUG, EAL, "Invalid size %d, max limit %d\n", size,
+		EAL_LOG(DEBUG, "Invalid size %d, max limit %d", size,
 			intr_handle->nb_intr);
 		rte_errno = ERANGE;
 		goto fail;
@@ -419,7 +443,7 @@ int rte_intr_vec_list_alloc(struct rte_intr_handle *intr_handle,
 	else
 		intr_handle->intr_vec = calloc(size, sizeof(int));
 	if (intr_handle->intr_vec == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to allocate %d intr_vec\n", size);
+		EAL_LOG(ERR, "Failed to allocate %d intr_vec", size);
 		rte_errno = ENOMEM;
 		goto fail;
 	}
@@ -431,13 +455,14 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_vec_list_index_get)
 int rte_intr_vec_list_index_get(const struct rte_intr_handle *intr_handle,
 				int index)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (index >= intr_handle->vec_list_size) {
-		RTE_LOG(DEBUG, EAL, "Index %d greater than vec list size %d\n",
+		EAL_LOG(DEBUG, "Index %d greater than vec list size %d",
 			index, intr_handle->vec_list_size);
 		rte_errno = ERANGE;
 		goto fail;
@@ -448,13 +473,14 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_vec_list_index_set)
 int rte_intr_vec_list_index_set(struct rte_intr_handle *intr_handle,
 				int index, int vec)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
 
 	if (index >= intr_handle->vec_list_size) {
-		RTE_LOG(DEBUG, EAL, "Index %d greater than vec list size %d\n",
+		EAL_LOG(DEBUG, "Index %d greater than vec list size %d",
 			index, intr_handle->vec_list_size);
 		rte_errno = ERANGE;
 		goto fail;
@@ -467,6 +493,7 @@ fail:
 	return -rte_errno;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_vec_list_free)
 void rte_intr_vec_list_free(struct rte_intr_handle *intr_handle)
 {
 	if (intr_handle == NULL)
@@ -479,6 +506,7 @@ void rte_intr_vec_list_free(struct rte_intr_handle *intr_handle)
 	intr_handle->vec_list_size = 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_instance_windows_handle_get)
 void *rte_intr_instance_windows_handle_get(struct rte_intr_handle *intr_handle)
 {
 	CHECK_VALID_INTR_HANDLE(intr_handle);
@@ -488,6 +516,7 @@ fail:
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_instance_windows_handle_set)
 int rte_intr_instance_windows_handle_set(struct rte_intr_handle *intr_handle,
 	void *windows_handle)
 {

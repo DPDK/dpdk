@@ -14,7 +14,6 @@
  * public API because they are used by inline functions in the published API.
  *
  * Applications should not use these directly.
- *
  */
 
 typedef uint16_t (*dequeue_pkt_burst_t)(void *qp,
@@ -24,6 +23,9 @@ typedef uint16_t (*dequeue_pkt_burst_t)(void *qp,
 typedef uint16_t (*enqueue_pkt_burst_t)(void *qp,
 		struct rte_crypto_op **ops,	uint16_t nb_ops);
 /**< Enqueue packets for processing on queue pair of a device. */
+
+typedef uint32_t (*crypto_qp_depth_used_t)(void *qp);
+/**< Get used descriptor depth in a queue pair of a device. */
 
 /**
  * @internal
@@ -41,16 +43,18 @@ struct rte_cryptodev_qpdata {
 	struct rte_cryptodev_cb_rcu *deq_cb;
 };
 
-struct rte_crypto_fp_ops {
+struct __rte_cache_aligned rte_crypto_fp_ops {
 	/** PMD enqueue burst function. */
 	enqueue_pkt_burst_t enqueue_burst;
 	/** PMD dequeue burst function. */
 	dequeue_pkt_burst_t dequeue_burst;
 	/** Internal queue pair data pointers. */
 	struct rte_cryptodev_qpdata qp;
+	/** Get the number of used queue pair descriptors. */
+	crypto_qp_depth_used_t qp_depth_used;
 	/** Reserved for future ops. */
-	uintptr_t reserved[3];
-} __rte_cache_aligned;
+	uintptr_t reserved[2];
+};
 
 extern struct rte_crypto_fp_ops rte_crypto_fp_ops[RTE_CRYPTO_MAX_DEVS];
 

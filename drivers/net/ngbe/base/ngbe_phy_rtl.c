@@ -120,6 +120,8 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 	hw->init_phy = true;
 	msec_delay(1);
 
+	hw->phy.set_phy_power(hw, true);
+
 	for (i = 0; i < 15; i++) {
 		if (!rd32m(hw, NGBE_STAT,
 			NGBE_STAT_GPHY_IN_RST(hw->bus.lan_id)))
@@ -145,6 +147,11 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 
 	hw->phy.write_reg(hw, 27, 0xa42, 0x8011);
 	hw->phy.write_reg(hw, 28, 0xa42, 0x5737);
+
+	/* Disable fall to 100m if signal is not good */
+	hw->phy.read_reg(hw, 17, 0xa44, &value);
+	value &= ~0x8;
+	hw->phy.write_reg(hw, 17, 0xa44, value);
 
 	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EXTINI);
 	hw->phy.read_reg(hw, RTL_SCR, 0xa46, &value);
@@ -288,7 +295,10 @@ s32 ngbe_setup_phy_link_rtl(struct ngbe_hw *hw,
 	}
 
 	/* restart AN and wait AN done interrupt */
-	autoneg_reg = RTL_BMCR_RESTART_AN | RTL_BMCR_ANE;
+	if (!hw->ncsi_enabled)
+		autoneg_reg = RTL_BMCR_RESTART_AN | RTL_BMCR_ANE;
+	else
+		autoneg_reg = RTL_BMCR_ANE;
 	hw->phy.write_reg(hw, RTL_BMCR, RTL_DEV_ZERO, autoneg_reg);
 
 skip_an:
@@ -390,6 +400,26 @@ s32 ngbe_check_phy_link_rtl(struct ngbe_hw *hw, u32 *speed, bool *link_up)
 			*speed = NGBE_LINK_SPEED_10M_FULL;
 	}
 
+	if (hw->lsc)
+		return status;
+
+	/*
+	 * Because of the slow speed of getting link state, RTL_PHYSR
+	 * may still be up while the actual link state is down.
+	 * So we read RTL_GBSR to get accurate state when speed is 1G
+	 * in polling mode.
+	 */
+	if (*speed == NGBE_LINK_SPEED_1GB_FULL) {
+		status = hw->phy.read_reg(hw, RTL_GBSR,
+				RTL_DEV_ZERO, &phy_data);
+		phy_link = phy_data & RTL_GBSR_LRS;
+
+		/* Only need to detect link down */
+		if (!phy_link) {
+			*link_up = false;
+			*speed = NGBE_LINK_SPEED_UNKNOWN;
+		}
+	}
 	return status;
 }
 

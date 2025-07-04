@@ -35,7 +35,10 @@ extern "C" {
 #define MARKER_TLV_TYPE_INFO                0x01
 #define MARKER_TLV_TYPE_RESP                0x02
 
-typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint16_t slave_id,
+#define SLOW_TX_QUEUE_HW_DEFAULT_SIZE       512
+#define SLOW_RX_QUEUE_HW_DEFAULT_SIZE       512
+
+typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint16_t member_id,
 						  struct rte_mbuf *lacp_pkt);
 
 enum rte_bond_8023ad_selection {
@@ -51,40 +54,40 @@ enum rte_bond_8023ad_agg_selection {
 };
 
 /** Generic slow protocol structure */
-struct slow_protocol {
+struct __rte_packed_begin slow_protocol {
 	uint8_t subtype;
 	uint8_t reserved_119[119];
-} __rte_packed;
+} __rte_packed_end;
 
 /** Generic slow protocol frame type structure */
-struct slow_protocol_frame {
+struct __rte_aligned(2) __rte_packed_begin slow_protocol_frame {
 	struct rte_ether_hdr eth_hdr;
 	struct slow_protocol slow_protocol;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct port_params {
+struct __rte_aligned(2) __rte_packed_begin port_params {
 	uint16_t system_priority;
 	/**< System priority (unused in current implementation) */
 	struct rte_ether_addr system;
-	/**< System ID - Slave MAC address, same as bonding MAC address */
+	/**< System ID - Member MAC address, same as bonding MAC address */
 	uint16_t key;
 	/**< Speed information (implementation dependent) and duplex. */
 	uint16_t port_priority;
 	/**< Priority of this (unused in current implementation) */
 	uint16_t port_number;
-	/**< Port number. It corresponds to slave port id. */
-} __rte_packed __rte_aligned(2);
+	/**< Port number. It corresponds to member port id. */
+} __rte_packed_end;
 
-struct lacpdu_actor_partner_params {
+struct __rte_aligned(2) __rte_packed_begin lacpdu_actor_partner_params {
 	uint8_t tlv_type_info;
 	uint8_t info_length;
 	struct port_params port_params;
 	uint8_t state;
 	uint8_t reserved_3[3];
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 /** LACPDU structure (5.4.2 in 802.1AX documentation). */
-struct lacpdu {
+struct __rte_aligned(2) __rte_packed_begin lacpdu {
 	uint8_t subtype;
 	uint8_t version_number;
 
@@ -99,15 +102,15 @@ struct lacpdu {
 	uint8_t tlv_type_terminator;
 	uint8_t terminator_length;
 	uint8_t reserved_50[50];
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 /** LACPDU frame: Contains ethernet header and LACPDU. */
-struct lacpdu_header {
+struct __rte_aligned(2) __rte_packed_begin lacpdu_header {
 	struct rte_ether_hdr eth_hdr;
 	struct lacpdu lacpdu;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct marker {
+struct __rte_aligned(2) __rte_packed_begin marker {
 	uint8_t subtype;
 	uint8_t version_number;
 
@@ -121,12 +124,12 @@ struct marker {
 	uint8_t tlv_type_terminator;
 	uint8_t terminator_length;
 	uint8_t reserved_90[90];
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
-struct marker_header {
+struct __rte_aligned(2) __rte_packed_begin marker_header {
 	struct rte_ether_hdr eth_hdr;
 	struct marker marker;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 struct rte_eth_bond_8023ad_conf {
 	uint32_t fast_periodic_ms;
@@ -141,7 +144,7 @@ struct rte_eth_bond_8023ad_conf {
 	enum rte_bond_8023ad_agg_selection agg_selection;
 };
 
-struct rte_eth_bond_8023ad_slave_info {
+struct rte_eth_bond_8023ad_member_info {
 	enum rte_bond_8023ad_selection selected;
 	uint8_t actor_state;
 	struct port_params actor;
@@ -184,104 +187,100 @@ rte_eth_bond_8023ad_setup(uint16_t port_id,
 /**
  * @internal
  *
- * Function returns current state of given slave device.
+ * Function returns current state of given member device.
  *
- * @param slave_id  Port id of valid slave.
+ * @param member_id  Port id of valid member.
  * @param conf		buffer for configuration
  * @return
  *   0 - if ok
- *   -EINVAL if conf is NULL or slave id is invalid (not a slave of given
- *       bonded device or is not inactive).
+ *   -EINVAL if conf is NULL or member id is invalid (not a member of given
+ *       bonding device or is not inactive).
  */
 int
-rte_eth_bond_8023ad_slave_info(uint16_t port_id, uint16_t slave_id,
-		struct rte_eth_bond_8023ad_slave_info *conf);
-
-#ifdef __cplusplus
-}
-#endif
+rte_eth_bond_8023ad_member_info(uint16_t port_id, uint16_t member_id,
+		struct rte_eth_bond_8023ad_member_info *conf);
 
 /**
- * Configure a slave port to start collecting.
+ * Configure a member port to start collecting.
  *
  * @param port_id	Bonding device id
- * @param slave_id	Port id of valid slave.
+ * @param member_id	Port id of valid member.
  * @param enabled	Non-zero when collection enabled.
  * @return
  *   0 - if ok
- *   -EINVAL if slave is not valid.
+ *   -EINVAL if member is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t slave_id,
+rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t member_id,
 				int enabled);
 
 /**
- * Get COLLECTING flag from slave port actor state.
+ * Get COLLECTING flag from member port actor state.
  *
  * @param port_id	Bonding device id
- * @param slave_id	Port id of valid slave.
+ * @param member_id	Port id of valid member.
  * @return
  *   0 - if not set
  *   1 - if set
- *   -EINVAL if slave is not valid.
+ *   -EINVAL if member is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_collect_get(uint16_t port_id, uint16_t slave_id);
+rte_eth_bond_8023ad_ext_collect_get(uint16_t port_id, uint16_t member_id);
 
 /**
- * Configure a slave port to start distributing.
+ * Configure a member port to start distributing.
  *
  * @param port_id	Bonding device id
- * @param slave_id	Port id of valid slave.
+ * @param member_id	Port id of valid member.
  * @param enabled	Non-zero when distribution enabled.
  * @return
  *   0 - if ok
- *   -EINVAL if slave is not valid.
+ *   -EINVAL if member is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t slave_id,
+rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t member_id,
 				int enabled);
 
 /**
- * Get DISTRIBUTING flag from slave port actor state.
+ * Get DISTRIBUTING flag from member port actor state.
  *
  * @param port_id	Bonding device id
- * @param slave_id	Port id of valid slave.
+ * @param member_id	Port id of valid member.
  * @return
  *   0 - if not set
  *   1 - if set
- *   -EINVAL if slave is not valid.
+ *   -EINVAL if member is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_distrib_get(uint16_t port_id, uint16_t slave_id);
+rte_eth_bond_8023ad_ext_distrib_get(uint16_t port_id, uint16_t member_id);
 
 /**
  * LACPDU transmit path for external 802.3ad state machine.  Caller retains
  * ownership of the packet on failure.
  *
  * @param port_id	Bonding device id
- * @param slave_id	Port ID of valid slave device.
+ * @param member_id	Port ID of valid member device.
  * @param lacp_pkt	mbuf containing LACPDU.
  *
  * @return
  *   0 on success, negative value otherwise.
  */
 int
-rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t slave_id,
+rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t member_id,
 		struct rte_mbuf *lacp_pkt);
 
 /**
- * Enable dedicated hw queues for 802.3ad control plane traffic on slaves
+ * Enable dedicated hw queues for 802.3ad control plane traffic on members
  *
- * This function creates an additional tx and rx queue on each slave for
+ * This function creates an additional tx and rx queue on each member for
  * dedicated 802.3ad control plane traffic . A flow filtering rule is
- * programmed on each slave to redirect all LACP slow packets to that rx queue
+ * programmed on each member to redirect all LACP slow packets to that rx queue
  * for processing in the LACP state machine, this removes the need to filter
- * these packets in the bonded devices data path. The additional tx queue is
+ * these packets in the bonding devices data path. The additional tx queue is
  * used to enable the LACP state machine to enqueue LACP packets directly to
- * slave hw independently of the bonded devices data path.
+ * member hw independently of the bonding devices data path.
  *
- * To use this feature all slaves must support the programming of the flow
+ * To use this feature all members must support the programming of the flow
  * filter rule required for rx and have enough queues that one rx and tx queue
  * can be reserved for the LACP state machines control packets.
  *
@@ -296,7 +295,7 @@ int
 rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port_id);
 
 /**
- * Disable slow queue on slaves
+ * Disable slow queue on members
  *
  * This function disables hardware slow packet filter.
  *
@@ -331,4 +330,9 @@ rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id);
 int
 rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 		enum rte_bond_8023ad_agg_selection agg_selection);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* RTE_ETH_BOND_8023AD_H_ */

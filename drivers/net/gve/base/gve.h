@@ -7,9 +7,7 @@
 #define _GVE_H_
 
 #include "gve_desc.h"
-
-#define GVE_VERSION		"1.3.0"
-#define GVE_VERSION_PREFIX	"GVE-"
+#include "gve_desc_dqo.h"
 
 #ifndef GOOGLE_VENDOR_ID
 #define GOOGLE_VENDOR_ID	0x1ae0
@@ -25,6 +23,8 @@
 
 /* PTYPEs are always 10 bits. */
 #define GVE_NUM_PTYPES		1024
+
+#define GVE_ADMINQ_BUFFER_SIZE	4096
 
 struct gve_irq_db {
 	rte_be32_t id;
@@ -52,5 +52,20 @@ enum gve_state_flags_bit {
 	GVE_PRIV_FLAGS_DEVICE_RINGS_OK		= 3,
 	GVE_PRIV_FLAGS_NAPI_ENABLED		= 4,
 };
+
+enum gve_rss_hash_algorithm {
+	GVE_RSS_HASH_UNDEFINED = 0,
+	GVE_RSS_HASH_TOEPLITZ = 1,
+};
+
+struct gve_rss_config {
+	uint16_t hash_types;
+	enum gve_rss_hash_algorithm alg;
+	uint16_t key_size;
+	uint16_t indir_size;
+	uint8_t *key;
+	uint32_t *indir;
+};
+
 
 #endif /* _GVE_H_ */

@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_TABLE_LEARNER_H__
 #define __INCLUDE_RTE_SWX_TABLE_LEARNER_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Learner Table
@@ -52,6 +48,10 @@ extern "C" {
 #include <rte_compat.h>
 
 #include "rte_swx_hash_func.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum number of key timeout values per learner table. */
 #ifndef RTE_SWX_TABLE_LEARNER_N_KEY_TIMEOUTS_MAX

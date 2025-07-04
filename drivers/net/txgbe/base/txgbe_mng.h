@@ -53,6 +53,9 @@
 #define FW_PHY_TOKEN_RETRIES ((FW_PHY_TOKEN_WAIT * 1000) / FW_PHY_TOKEN_DELAY)
 #define FW_DW_OPEN_NOTIFY               0xE9
 #define FW_DW_CLOSE_NOTIFY              0xEA
+#define FW_LLDP_GET_CMD                 0xF2
+#define FW_LLDP_SET_CMD_OFF             0xF1
+#define FW_LLDP_SET_CMD_ON              0xF0
 
 #define TXGBE_CHECKSUM_CAP_ST_PASS      0x80658383
 #define TXGBE_CHECKSUM_CAP_ST_FAIL      0x70657376
@@ -171,6 +174,13 @@ struct txgbe_hic_upg_verify {
 	u32 action_flag;
 };
 
+struct txgbe_hic_write_lldp {
+	struct txgbe_hic_hdr hdr;
+	u8 func;
+	u8 pad2;
+	u16 pad3;
+};
+
 s32 txgbe_hic_sr_read(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_hic_sr_write(struct txgbe_hw *hw, u32 addr, u8 *buf, int len);
 s32 txgbe_close_notify(struct txgbe_hw *hw);
@@ -181,4 +191,7 @@ s32 txgbe_hic_set_drv_ver(struct txgbe_hw *hw, u8 maj, u8 min, u8 build,
 s32 txgbe_hic_reset(struct txgbe_hw *hw);
 bool txgbe_mng_present(struct txgbe_hw *hw);
 bool txgbe_mng_enabled(struct txgbe_hw *hw);
+s32 txgbe_hic_get_lldp(struct txgbe_hw *hw);
+s32 txgbe_hic_set_lldp(struct txgbe_hw *hw, bool on);
+
 #endif /* _TXGBE_MNG_H_ */

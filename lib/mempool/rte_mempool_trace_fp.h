@@ -11,11 +11,11 @@
  * Mempool fast path API for trace support
  */
 
+#include <rte_trace_point.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_trace_point.h>
 
 RTE_TRACE_POINT_FP(
 	rte_mempool_trace_ops_dequeue_bulk,

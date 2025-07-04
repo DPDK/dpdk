@@ -5,6 +5,7 @@
 #ifndef HISI_DMADEV_H
 #define HISI_DMADEV_H
 
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_memzone.h>
@@ -14,7 +15,7 @@
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
 #define GENMASK(h, l) \
 		(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
-#define BF_SHF(x) (__builtin_ffsll(x) - 1)
+#define BF_SHF(x) rte_bsf64(x)
 #define FIELD_GET(mask, reg) \
 		((typeof(mask))(((reg) & (mask)) >> BF_SHF(mask)))
 
@@ -23,24 +24,15 @@
 
 #define PCI_VENDOR_ID_HUAWEI			0x19e5
 #define HISI_DMA_DEVICE_ID			0xA122
-#define HISI_DMA_PCI_REVISION_ID_REG		0x08
 #define HISI_DMA_REVISION_HIP08B		0x21
-#define HISI_DMA_REVISION_HIP09A		0x30
 
 #define HISI_DMA_MAX_HW_QUEUES			4
 #define HISI_DMA_MAX_DESC_NUM			8192
 #define HISI_DMA_MIN_DESC_NUM			32
 
-/**
- * The HIP08B(HiSilicon IP08) and HIP09B(HiSilicon IP09) are DMA iEPs, they
- * have the same pci device id but different pci revision.
- * Unfortunately, they have different register layouts, so two layout
- * enumerations are defined.
- */
 enum {
 	HISI_DMA_REG_LAYOUT_INVALID = 0,
-	HISI_DMA_REG_LAYOUT_HIP08,
-	HISI_DMA_REG_LAYOUT_HIP09
+	HISI_DMA_REG_LAYOUT_HIP08
 };
 
 /**
@@ -69,9 +61,6 @@ enum {
  * length of queue-region. The global offset for a single queue register is
  * calculated by:
  *     offset = queue-base + (queue-id * queue-region) + reg-offset-in-region.
- *
- * The first part of queue region is basically the same for HIP08 and HIP09
- * register layouts, therefore, HISI_QUEUE_* registers are defined for it.
  */
 #define HISI_DMA_QUEUE_SQ_BASE_L_REG		0x0
 #define HISI_DMA_QUEUE_SQ_BASE_H_REG		0x4
@@ -109,28 +98,6 @@ enum {
 #define HISI_DMA_HIP08_MODE_SEL_B			0
 #define HISI_DMA_HIP08_DUMP_START_REG			0x2000
 #define HISI_DMA_HIP08_DUMP_END_REG			0x2280
-
-/**
- * HiSilicon IP09 DMA register and field define:
- */
-#define HISI_DMA_HIP09_QUEUE_BASE			0x2000
-#define HISI_DMA_HIP09_QUEUE_CTRL0_ERR_ABORT_M		GENMASK(31, 28)
-#define HISI_DMA_HIP09_QUEUE_CTRL1_VA_ENABLE_B		2
-#define HISI_DMA_HIP09_QUEUE_INT_MASK_M			0x1
-#define HISI_DMA_HIP09_QUEUE_ERR_INT_STATUS_REG		0x48
-#define HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_REG		0x4C
-#define HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M		GENMASK(18, 1)
-#define HISI_DMA_HIP09_QUEUE_CFG_REG(queue_id)		(0x800 + \
-							 (queue_id) * 0x20)
-#define HISI_DMA_HIP09_QUEUE_CFG_LINK_DOWN_MASK_B	16
-#define HISI_DMA_HIP09_DUMP_REGION_A_START_REG		0x0
-#define HISI_DMA_HIP09_DUMP_REGION_A_END_REG		0x368
-#define HISI_DMA_HIP09_DUMP_REGION_B_START_REG		0x800
-#define HISI_DMA_HIP09_DUMP_REGION_B_END_REG		0xA08
-#define HISI_DMA_HIP09_DUMP_REGION_C_START_REG		0x1800
-#define HISI_DMA_HIP09_DUMP_REGION_C_END_REG		0x1A4C
-#define HISI_DMA_HIP09_DUMP_REGION_D_START_REG		0x1C00
-#define HISI_DMA_HIP09_DUMP_REGION_D_END_REG		0x1CC4
 
 /**
  * In fact, there are multiple states, but it need to pay attention to

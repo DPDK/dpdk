@@ -5,13 +5,13 @@
 #ifndef RTE_PREFETCH_LOONGARCH_H
 #define RTE_PREFETCH_LOONGARCH_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include "generic/rte_prefetch.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline void rte_prefetch0(const volatile void *p)
 {

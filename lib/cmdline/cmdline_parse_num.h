@@ -8,6 +8,7 @@
 #define _PARSE_NUM_H_
 
 #include <cmdline_parse.h>
+#include <cmdline_parse_string.h>
 
 #ifdef __cplusplus
 extern "C" {

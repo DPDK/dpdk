@@ -338,7 +338,7 @@ free_job_ring(int uio_fd)
 	}
 
 	if (job_ring == NULL) {
-		CAAM_JR_ERR("JR not available for fd = %x\n", uio_fd);
+		CAAM_JR_ERR("JR not available for fd = %x", uio_fd);
 		return;
 	}
 
@@ -378,7 +378,7 @@ uio_job_ring *config_job_ring(void)
 	}
 
 	if (job_ring == NULL) {
-		CAAM_JR_ERR("No free job ring\n");
+		CAAM_JR_ERR("No free job ring");
 		return NULL;
 	}
 
@@ -418,7 +418,7 @@ sec_configure(void)
 
 	d = opendir(SEC_UIO_DEVICE_SYS_ATTR_PATH);
 	if (d == NULL) {
-		printf("\nError opening directory '%s': %s\n",
+		CAAM_JR_ERR("Error opening directory '%s': %s",
 			SEC_UIO_DEVICE_SYS_ATTR_PATH, strerror(errno));
 		return -1;
 	}
@@ -441,7 +441,7 @@ sec_configure(void)
 					dir->d_name, "name", uio_name);
 			CAAM_JR_INFO("sec device uio name: %s", uio_name);
 			if (ret != 0) {
-				CAAM_JR_ERR("file_read_first_line failed\n");
+				CAAM_JR_ERR("file_read_first_line failed");
 				closedir(d);
 				return -1;
 			}

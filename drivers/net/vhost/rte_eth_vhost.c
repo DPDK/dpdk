@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <sys/epoll.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <ethdev_vdev.h>
@@ -22,9 +23,10 @@
 #include "rte_eth_vhost.h"
 
 RTE_LOG_REGISTER_DEFAULT(vhost_logtype, NOTICE);
+#define RTE_LOGTYPE_VHOST vhost_logtype
 
-#define VHOST_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, vhost_logtype, __VA_ARGS__)
+#define VHOST_LOG_LINE(level, ...) \
+	RTE_LOG_LINE(level, VHOST, __VA_ARGS__)
 
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
@@ -298,7 +300,7 @@ vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
 	if (internal->features & (1ULL << VIRTIO_NET_F_CSUM)) {
 		if (!(rxmode->offloads &
 				(RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))) {
-			VHOST_LOG(NOTICE, "Rx csum will be done in SW, may impact performance.\n");
+			VHOST_LOG_LINE(NOTICE, "Rx csum will be done in SW, may impact performance.");
 			internal->rx_sw_csum = true;
 		}
 	}
@@ -306,7 +308,7 @@ vhost_dev_csum_configure(struct rte_eth_dev *eth_dev)
 	if (!(internal->features & (1ULL << VIRTIO_NET_F_GUEST_CSUM))) {
 		if (txmode->offloads &
 				(RTE_ETH_TX_OFFLOAD_UDP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM)) {
-			VHOST_LOG(NOTICE, "Tx csum will be done in SW, may impact performance.\n");
+			VHOST_LOG_LINE(NOTICE, "Tx csum will be done in SW, may impact performance.");
 			internal->tx_sw_csum = true;
 		}
 	}
@@ -557,7 +559,7 @@ eth_vhost_update_intr(struct rte_eth_dev *eth_dev, uint16_t rxq_idx)
 		return;
 
 	if (rte_vhost_get_vhost_vring(vq->vid, (rxq_idx << 1) + 1, &vring) < 0) {
-		VHOST_LOG(DEBUG, "Failed to get rxq-%d's vring, skip!\n", rxq_idx);
+		VHOST_LOG_LINE(DEBUG, "Failed to get rxq-%d's vring, skip!", rxq_idx);
 		return;
 	}
 
@@ -566,10 +568,10 @@ eth_vhost_update_intr(struct rte_eth_dev *eth_dev, uint16_t rxq_idx)
 	/* Remove previous kickfd from proxy epoll */
 	if (vq->kickfd >= 0 && vq->kickfd != vring.kickfd) {
 		if (epoll_ctl(vq->ev.data.fd, EPOLL_CTL_DEL, vq->kickfd, &vq->ev) < 0) {
-			VHOST_LOG(DEBUG, "Failed to unregister %d from rxq-%d epoll: %s\n",
+			VHOST_LOG_LINE(DEBUG, "Failed to unregister %d from rxq-%d epoll: %s",
 				vq->kickfd, rxq_idx, strerror(errno));
 		} else {
-			VHOST_LOG(DEBUG, "Unregistered %d from rxq-%d epoll\n",
+			VHOST_LOG_LINE(DEBUG, "Unregistered %d from rxq-%d epoll",
 				vq->kickfd, rxq_idx);
 		}
 		vq->kickfd = -1;
@@ -578,11 +580,11 @@ eth_vhost_update_intr(struct rte_eth_dev *eth_dev, uint16_t rxq_idx)
 	/* Add new one, if valid */
 	if (vq->kickfd != vring.kickfd && vring.kickfd >= 0) {
 		if (epoll_ctl(vq->ev.data.fd, EPOLL_CTL_ADD, vring.kickfd, &vq->ev) < 0) {
-			VHOST_LOG(ERR, "Failed to register %d in rxq-%d epoll: %s\n",
+			VHOST_LOG_LINE(ERR, "Failed to register %d in rxq-%d epoll: %s",
 				vring.kickfd, rxq_idx, strerror(errno));
 		} else {
 			vq->kickfd = vring.kickfd;
-			VHOST_LOG(DEBUG, "Registered %d in rxq-%d epoll\n",
+			VHOST_LOG_LINE(DEBUG, "Registered %d in rxq-%d epoll",
 				vq->kickfd, rxq_idx);
 		}
 	}
@@ -643,7 +645,7 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 
 	dev->intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
 	if (dev->intr_handle == NULL) {
-		VHOST_LOG(ERR, "Fail to allocate intr_handle\n");
+		VHOST_LOG_LINE(ERR, "Fail to allocate intr_handle");
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -653,17 +655,17 @@ eth_vhost_install_intr(struct rte_eth_dev *dev)
 	}
 
 	if (rte_intr_vec_list_alloc(dev->intr_handle, NULL, nb_rxq)) {
-		VHOST_LOG(ERR, "Failed to allocate memory for interrupt vector\n");
+		VHOST_LOG_LINE(ERR, "Failed to allocate memory for interrupt vector");
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	VHOST_LOG(DEBUG, "Prepare intr vec\n");
+	VHOST_LOG_LINE(DEBUG, "Prepare intr vec");
 	for (i = 0; i < nb_rxq; i++) {
 		int epoll_fd = epoll_create1(0);
 
 		if (epoll_fd < 0) {
-			VHOST_LOG(ERR, "Failed to create proxy epoll fd for rxq-%d\n", i);
+			VHOST_LOG_LINE(ERR, "Failed to create proxy epoll fd for rxq-%d", i);
 			ret = -errno;
 			goto error;
 		}
@@ -707,7 +709,7 @@ eth_vhost_configure_intr(struct rte_eth_dev *dev)
 {
 	int i;
 
-	VHOST_LOG(DEBUG, "Configure intr vec\n");
+	VHOST_LOG_LINE(DEBUG, "Configure intr vec");
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		eth_vhost_update_intr(dev, i);
 }
@@ -718,7 +720,7 @@ eth_vhost_unconfigure_intr(struct rte_eth_dev *eth_dev)
 	struct vhost_queue *vq;
 	int i;
 
-	VHOST_LOG(DEBUG, "Unconfigure intr vec\n");
+	VHOST_LOG_LINE(DEBUG, "Unconfigure intr vec");
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		vq = eth_dev->data->rx_queues[i];
 		if (vq == NULL || vq->vid < 0)
@@ -729,10 +731,10 @@ eth_vhost_unconfigure_intr(struct rte_eth_dev *eth_dev)
 		/* Remove previous kickfd from proxy epoll */
 		if (vq->kickfd >= 0) {
 			if (epoll_ctl(vq->ev.data.fd, EPOLL_CTL_DEL, vq->kickfd, &vq->ev) < 0) {
-				VHOST_LOG(DEBUG, "Failed to unregister %d from rxq-%d epoll: %s\n",
+				VHOST_LOG_LINE(DEBUG, "Failed to unregister %d from rxq-%d epoll: %s",
 					vq->kickfd, i, strerror(errno));
 			} else {
-				VHOST_LOG(DEBUG, "Unregistered %d from rxq-%d epoll\n",
+				VHOST_LOG_LINE(DEBUG, "Unregistered %d from rxq-%d epoll",
 					vq->kickfd, i);
 			}
 			vq->kickfd = -1;
@@ -826,7 +828,7 @@ new_device(int vid)
 	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
 	if (list == NULL) {
-		VHOST_LOG(INFO, "Invalid device name: %s\n", ifname);
+		VHOST_LOG_LINE(INFO, "Invalid device name: %s", ifname);
 		return -1;
 	}
 
@@ -841,7 +843,7 @@ new_device(int vid)
 #endif
 
 	if (rte_vhost_get_negotiated_features(vid, &internal->features)) {
-		VHOST_LOG(ERR, "Failed to get device features\n");
+		VHOST_LOG_LINE(ERR, "Failed to get device features");
 		return -1;
 	}
 
@@ -864,7 +866,7 @@ new_device(int vid)
 	rte_atomic32_set(&internal->dev_attached, 1);
 	update_queuing_status(eth_dev, false);
 
-	VHOST_LOG(INFO, "Vhost device %d created\n", vid);
+	VHOST_LOG_LINE(INFO, "Vhost device %d created", vid);
 
 	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 
@@ -885,7 +887,7 @@ destroy_device(int vid)
 	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
 	if (list == NULL) {
-		VHOST_LOG(ERR, "Invalid interface name: %s\n", ifname);
+		VHOST_LOG_LINE(ERR, "Invalid interface name: %s", ifname);
 		return;
 	}
 	eth_dev = list->eth_dev;
@@ -921,7 +923,7 @@ destroy_device(int vid)
 	state->max_vring = 0;
 	rte_spinlock_unlock(&state->lock);
 
-	VHOST_LOG(INFO, "Vhost device %d destroyed\n", vid);
+	VHOST_LOG_LINE(INFO, "Vhost device %d destroyed", vid);
 
 	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
@@ -937,7 +939,7 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	rte_vhost_get_ifname(vid, ifname, sizeof(ifname));
 	list = find_internal_resource(ifname);
 	if (list == NULL) {
-		VHOST_LOG(ERR, "Invalid interface name: %s\n", ifname);
+		VHOST_LOG_LINE(ERR, "Invalid interface name: %s", ifname);
 		return -1;
 	}
 
@@ -959,7 +961,7 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 
 	update_queuing_status(eth_dev, false);
 
-	VHOST_LOG(INFO, "vring%u is %s\n",
+	VHOST_LOG_LINE(INFO, "vring%u is %s",
 			vring, enable ? "enabled" : "disabled");
 
 	rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE, NULL);
@@ -1013,14 +1015,17 @@ vhost_driver_setup(struct rte_eth_dev *eth_dev)
 			goto drv_unreg;
 	}
 
+	if (rte_vhost_driver_set_max_queue_num(internal->iface_name, internal->max_queues))
+		goto drv_unreg;
+
 	if (rte_vhost_driver_callback_register(internal->iface_name,
 					       &vhost_ops) < 0) {
-		VHOST_LOG(ERR, "Can't register callbacks\n");
+		VHOST_LOG_LINE(ERR, "Can't register callbacks");
 		goto drv_unreg;
 	}
 
 	if (rte_vhost_driver_start(internal->iface_name) < 0) {
-		VHOST_LOG(ERR, "Failed to start driver for %s\n",
+		VHOST_LOG_LINE(ERR, "Failed to start driver for %s",
 			  internal->iface_name);
 		goto drv_unreg;
 	}
@@ -1041,6 +1046,7 @@ free_list:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_vhost_get_queue_event)
 int
 rte_eth_vhost_get_queue_event(uint16_t port_id,
 		struct rte_eth_vhost_queue_event *event)
@@ -1050,13 +1056,13 @@ rte_eth_vhost_get_queue_event(uint16_t port_id,
 	int idx;
 
 	if (port_id >= RTE_MAX_ETHPORTS) {
-		VHOST_LOG(ERR, "Invalid port id\n");
+		VHOST_LOG_LINE(ERR, "Invalid port id");
 		return -1;
 	}
 
 	state = vring_states[port_id];
 	if (!state) {
-		VHOST_LOG(ERR, "Unused port\n");
+		VHOST_LOG_LINE(ERR, "Unused port");
 		return -1;
 	}
 
@@ -1078,6 +1084,7 @@ rte_eth_vhost_get_queue_event(uint16_t port_id,
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_vhost_get_vid_from_port_id)
 int
 rte_eth_vhost_get_vid_from_port_id(uint16_t port_id)
 {
@@ -1132,10 +1139,11 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct pmd_internal *internal = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &eth_dev->data->dev_conf;
+	uint16_t i;
 
 	eth_vhost_uninstall_intr(eth_dev);
 	if (dev_conf->intr_conf.rxq && eth_vhost_install_intr(eth_dev) < 0) {
-		VHOST_LOG(ERR, "Failed to install interrupt handler.\n");
+		VHOST_LOG_LINE(ERR, "Failed to install interrupt handler.");
 		return -1;
 	}
 
@@ -1147,6 +1155,11 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 	rte_atomic32_set(&internal->started, 1);
 	update_queuing_status(eth_dev, false);
 
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -1154,10 +1167,16 @@ static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	struct pmd_internal *internal = dev->data->dev_private;
+	uint16_t i;
 
 	dev->data->dev_started = 0;
 	rte_atomic32_set(&internal->started, 0);
 	update_queuing_status(dev, true);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -1220,7 +1239,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	vq = rte_zmalloc_socket(NULL, sizeof(struct vhost_queue),
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (vq == NULL) {
-		VHOST_LOG(ERR, "Failed to allocate memory for rx queue\n");
+		VHOST_LOG_LINE(ERR, "Failed to allocate memory for rx queue");
 		return -ENOMEM;
 	}
 
@@ -1244,7 +1263,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	vq = rte_zmalloc_socket(NULL, sizeof(struct vhost_queue),
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (vq == NULL) {
-		VHOST_LOG(ERR, "Failed to allocate memory for tx queue\n");
+		VHOST_LOG_LINE(ERR, "Failed to allocate memory for tx queue");
 		return -ENOMEM;
 	}
 
@@ -1264,7 +1283,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 
 	internal = dev->data->dev_private;
 	if (internal == NULL) {
-		VHOST_LOG(ERR, "Invalid device specified\n");
+		VHOST_LOG_LINE(ERR, "Invalid device specified");
 		return -ENODEV;
 	}
 
@@ -1296,6 +1315,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	unsigned i;
 	unsigned long rx_total = 0, tx_total = 0;
 	unsigned long rx_total_bytes = 0, tx_total_bytes = 0;
+	unsigned long tx_total_errors = 0;
 	struct vhost_queue *vq;
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
@@ -1320,12 +1340,15 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 		stats->q_obytes[i] = vq->stats.bytes;
 		tx_total_bytes += stats->q_obytes[i];
+
+		tx_total_errors += vq->stats.missed_pkts;
 	}
 
 	stats->ipackets = rx_total;
 	stats->opackets = tx_total;
 	stats->ibytes = rx_total_bytes;
 	stats->obytes = tx_total_bytes;
+	stats->oerrors = tx_total_errors;
 
 	return 0;
 }
@@ -1489,7 +1512,7 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	struct rte_eth_dev *eth_dev = NULL;
 	struct rte_ether_addr *eth_addr = NULL;
 
-	VHOST_LOG(INFO, "Creating VHOST-USER backend on numa socket %u\n",
+	VHOST_LOG_LINE(INFO, "Creating VHOST-USER backend on numa socket %u",
 		numa_node);
 
 	/* reserve an ethdev entry */
@@ -1594,12 +1617,12 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	struct rte_eth_dev *eth_dev;
 	const char *name = rte_vdev_device_name(dev);
 
-	VHOST_LOG(INFO, "Initializing pmd_vhost for %s\n", name);
+	VHOST_LOG_LINE(INFO, "Initializing pmd_vhost for %s", name);
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
-			VHOST_LOG(ERR, "Failed to probe %s\n", name);
+			VHOST_LOG_LINE(ERR, "Failed to probe %s", name);
 			return -1;
 		}
 		eth_dev->rx_pkt_burst = eth_vhost_rx;
@@ -1717,7 +1740,7 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	ret = eth_dev_vhost_create(dev, iface_name, queues,
 				   dev->device.numa_node, flags, disable_flags);
 	if (ret == -1)
-		VHOST_LOG(ERR, "Failed to create %s\n", name);
+		VHOST_LOG_LINE(ERR, "Failed to create %s", name);
 
 out_free:
 	rte_kvargs_free(kvlist);
@@ -1731,7 +1754,7 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 	struct rte_eth_dev *eth_dev = NULL;
 
 	name = rte_vdev_device_name(dev);
-	VHOST_LOG(INFO, "Un-Initializing pmd_vhost for %s\n", name);
+	VHOST_LOG_LINE(INFO, "Un-Initializing pmd_vhost for %s", name);
 
 	/* find an ethdev entry */
 	eth_dev = rte_eth_dev_allocated(name);

@@ -757,4 +757,4 @@ test_hash_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_perf_autotest, test_hash_perf);
+REGISTER_PERF_TEST(hash_perf_autotest, test_hash_perf);

@@ -157,7 +157,7 @@ hif_lib_client_init_rx_buffers(struct hif_client_s *client,
 		queue->queue_id = 0;
 		queue->port_id = client->port_id;
 		queue->priv = client->priv;
-		PFE_PMD_DEBUG("rx queue: %d, base: %p, size: %d\n", qno,
+		PFE_PMD_DEBUG("rx queue: %d, base: %p, size: %d", qno,
 			      queue->base, queue->size);
 	}
 

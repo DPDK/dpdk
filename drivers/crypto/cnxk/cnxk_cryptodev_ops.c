@@ -2,20 +2,41 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <eal_export.h>
+#include <rte_atomic.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
 #include <rte_errno.h>
+#ifdef CPT_INST_DEBUG_ENABLE
+#include <rte_hexdump.h>
+#endif
+#include <rte_security_driver.h>
 
 #include "roc_ae_fpm_tables.h"
 #include "roc_cpt.h"
 #include "roc_errata.h"
+#include "roc_idev.h"
 #include "roc_ie_on.h"
+#if defined(__aarch64__)
+#include "roc_io.h"
+#else
+#include "roc_io_generic.h"
+#endif
 
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_se.h"
+
+#include "cn10k_cryptodev_ops.h"
+#include "cn10k_cryptodev_sec.h"
+#include "cn20k_cryptodev_ops.h"
+#include "cn20k_cryptodev_sec.h"
+#include "cn9k_cryptodev_ops.h"
+#include "cn9k_ipsec.h"
+
+#include "rte_pmd_cnxk_crypto.h"
 
 #define CNXK_CPT_MAX_ASYM_OP_NUM_PARAMS	 5
 #define CNXK_CPT_MAX_ASYM_OP_MOD_LEN	 1024
@@ -53,7 +74,7 @@ cnxk_cpt_sec_get_mlen(void)
 	return len;
 }
 
-static int
+int
 cnxk_cpt_asym_get_mlen(void)
 {
 	uint32_t len;
@@ -67,14 +88,42 @@ cnxk_cpt_asym_get_mlen(void)
 	return len;
 }
 
+static int
+cnxk_cpt_dev_clear(struct rte_cryptodev *dev)
+{
+	struct cnxk_cpt_vf *vf = dev->data->dev_private;
+	int ret;
+
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
+		roc_ae_fpm_put();
+		roc_ae_ec_grp_put();
+	}
+
+	ret = roc_cpt_int_misc_cb_unregister(cnxk_cpt_int_misc_cb, NULL);
+	if (ret < 0) {
+		plt_err("Could not unregister CPT_MISC_INT cb");
+		return ret;
+	}
+
+	roc_cpt_dev_clear(&vf->cpt);
+
+	return 0;
+}
+
 int
-cnxk_cpt_dev_config(struct rte_cryptodev *dev,
-		    struct rte_cryptodev_config *conf)
+cnxk_cpt_dev_config(struct rte_cryptodev *dev, struct rte_cryptodev_config *conf)
 {
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 	uint16_t nb_lf_avail, nb_lf;
+	bool rxc_ena = false;
 	int ret;
+
+	/* If this is a reconfigure attempt, clear the device and configure again */
+	if (roc_cpt->nb_lf > 0) {
+		cnxk_cpt_dev_clear(dev);
+		roc_cpt->opaque = NULL;
+	}
 
 	dev->feature_flags = cnxk_cpt_default_ff_get() & ~conf->ff_disable;
 
@@ -84,7 +133,14 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev,
 	if (nb_lf > nb_lf_avail)
 		return -ENOTSUP;
 
-	ret = roc_cpt_dev_configure(roc_cpt, nb_lf);
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_SECURITY_RX_INJECT) {
+		if (rte_security_dynfield_register() < 0)
+			return -ENOTSUP;
+		rxc_ena = true;
+		vf->rx_chan_base = roc_idev_nix_rx_chan_base_get();
+	}
+
+	ret = roc_cpt_dev_configure(roc_cpt, nb_lf, rxc_ena, vf->rx_inject_qp);
 	if (ret) {
 		plt_err("Could not configure device");
 		return ret;
@@ -151,7 +207,6 @@ cnxk_cpt_dev_stop(struct rte_cryptodev *dev)
 int
 cnxk_cpt_dev_close(struct rte_cryptodev *dev)
 {
-	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	uint16_t i;
 	int ret;
 
@@ -163,19 +218,7 @@ cnxk_cpt_dev_close(struct rte_cryptodev *dev)
 		}
 	}
 
-	if (dev->feature_flags & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) {
-		roc_ae_fpm_put();
-		roc_ae_ec_grp_put();
-	}
-
-	ret = roc_cpt_int_misc_cb_unregister(cnxk_cpt_int_misc_cb, NULL);
-	if (ret < 0) {
-		plt_err("Could not unregister CPT_MISC_INT cb");
-		return ret;
-	}
-	roc_cpt_dev_clear(&vf->cpt);
-
-	return 0;
+	return cnxk_cpt_dev_clear(dev);
 }
 
 void
@@ -194,6 +237,10 @@ cnxk_cpt_dev_info_get(struct rte_cryptodev *dev,
 	info->sym.max_nb_sessions = 0;
 	info->min_mbuf_headroom_req = CNXK_CPT_MIN_HEADROOM_REQ;
 	info->min_mbuf_tailroom_req = CNXK_CPT_MIN_TAILROOM_REQ;
+
+	/* If the LF ID for RX Inject is less than the available lfs. */
+	if (vf->rx_inject_qp > info->max_nb_queue_pairs)
+		info->feature_flags &= ~RTE_CRYPTODEV_FF_SECURITY_RX_INJECT;
 }
 
 static void
@@ -428,7 +475,7 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	roc_cpt->lf[qp_id] = &qp->lf;
 
-	ret = roc_cpt_lmtline_init(roc_cpt, &qp->lmtline, qp_id);
+	ret = roc_cpt_lmtline_init(roc_cpt, &qp->lmtline, qp_id, true);
 	if (ret < 0) {
 		roc_cpt->lf[qp_id] = NULL;
 		plt_err("Could not init lmtline for queue pair %d", qp_id);
@@ -438,11 +485,61 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp->sess_mp = conf->mp_session;
 	dev->data->queue_pairs[qp_id] = qp;
 
+	if (qp_id == vf->rx_inject_qp) {
+		ret = roc_cpt_lmtline_init(roc_cpt, &vf->rx_inj_lmtline, vf->rx_inject_qp, true);
+		if (ret) {
+			plt_err("Could not init lmtline Rx inject");
+			goto exit;
+		}
+
+		vf->rx_inj_sso_pf_func = roc_idev_nix_inl_dev_pffunc_get();
+
+		/* Block the queue for other submissions */
+		qp->pend_q.pq_mask = 0;
+	}
+
 	return 0;
 
 exit:
 	cnxk_cpt_qp_destroy(dev, qp);
 	return ret;
+}
+
+int
+cnxk_cpt_queue_pair_reset(struct rte_cryptodev *dev, uint16_t qp_id,
+			  const struct rte_cryptodev_qp_conf *conf, int socket_id)
+{
+	if (conf == NULL) {
+		struct cnxk_cpt_vf *vf = dev->data->dev_private;
+		struct roc_cpt_lf *lf;
+
+		if (vf == NULL)
+			return -ENOTSUP;
+
+		lf = vf->cpt.lf[qp_id];
+		roc_cpt_lf_reset(lf);
+		roc_cpt_iq_enable(lf);
+
+		return 0;
+	}
+
+	return cnxk_cpt_queue_pair_setup(dev, qp_id, conf, socket_id);
+}
+
+uint32_t
+cnxk_cpt_qp_depth_used(void *qptr)
+{
+	struct cnxk_cpt_qp *qp = qptr;
+	struct pending_queue *pend_q;
+	union cpt_fc_write_s fc;
+
+	pend_q = &qp->pend_q;
+
+	fc.u64[0] = rte_atomic_load_explicit((RTE_ATOMIC(uint64_t)*)(qp->lmtline.fc_addr),
+			rte_memory_order_relaxed);
+
+	return RTE_MAX(pending_queue_infl_cnt(pend_q->head, pend_q->tail, pend_q->pq_mask),
+		       fc.s.qsize);
 }
 
 unsigned int
@@ -476,11 +573,12 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 	struct rte_crypto_sym_xform *aead_xfrm = NULL;
 	struct rte_crypto_sym_xform *c_xfrm = NULL;
 	struct rte_crypto_sym_xform *a_xfrm = NULL;
-	bool pdcp_chain_supported = false;
 	bool ciph_then_auth = false;
 
-	if (roc_model_is_cn9k() && (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain))
-		pdcp_chain_supported = true;
+	if (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain_zuc256)
+		sess->roc_se_ctx.pdcp_iv_offset = 24;
+	else
+		sess->roc_se_ctx.pdcp_iv_offset = 16;
 
 	if (xform == NULL)
 		return -EINVAL;
@@ -512,16 +610,13 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 		return -EINVAL;
 	}
 
-	if ((c_xfrm == NULL || c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_NULL) &&
-	    a_xfrm != NULL && a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL &&
-	    a_xfrm->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-		plt_dp_err("Null cipher + null auth verify is not supported");
-		return -ENOTSUP;
-	}
+	if ((aead_xfrm == NULL) &&
+	    (c_xfrm == NULL || c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_NULL) &&
+	    (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL))
+		sess->passthrough = 1;
 
 	/* Cipher only */
-	if (c_xfrm != NULL &&
-	    (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL)) {
+	if (c_xfrm != NULL && (a_xfrm == NULL || a_xfrm->auth.algo == RTE_CRYPTO_AUTH_NULL)) {
 		if (fill_sess_cipher(c_xfrm, sess))
 			return -ENOTSUP;
 		else
@@ -551,6 +646,11 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 		return -EINVAL;
 	}
 
+	if (c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_AES_XTS) {
+		plt_err("AES XTS with auth algorithm is not supported");
+		return -ENOTSUP;
+	}
+
 	if (c_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC &&
 	    a_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA1) {
 		plt_dp_err("3DES-CBC + SHA1 is not supported");
@@ -575,8 +675,7 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 			case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 			case RTE_CRYPTO_AUTH_ZUC_EIA3:
 			case RTE_CRYPTO_AUTH_AES_CMAC:
-				if (!pdcp_chain_supported ||
-				    !is_valid_pdcp_cipher_alg(c_xfrm, sess))
+				if (!is_valid_pdcp_cipher_alg(c_xfrm, sess))
 					return -ENOTSUP;
 				break;
 			default:
@@ -611,8 +710,7 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 		case RTE_CRYPTO_AUTH_ZUC_EIA3:
 		case RTE_CRYPTO_AUTH_AES_CMAC:
-			if (!pdcp_chain_supported ||
-			    !is_valid_pdcp_cipher_alg(c_xfrm, sess))
+			if (!is_valid_pdcp_cipher_alg(c_xfrm, sess))
 				return -ENOTSUP;
 			break;
 		default:
@@ -637,13 +735,16 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 
 	inst_w7.s.cptr = (uint64_t)&sess->roc_se_ctx.se_ctx;
 
-	if (roc_errata_cpt_hang_on_mixed_ctx_val())
+	if (hw_ctx_cache_enable())
 		inst_w7.s.ctx_val = 1;
 	else
 		inst_w7.s.cptr += 8;
 
 	/* Set the engine group */
-	if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3)
+	if (roc_model_is_cn20k())
+		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
+	else if (sess->zsk_flag || sess->aes_ctr_eea2 || sess->is_sha3 || sess->is_sm3 ||
+		 sess->passthrough || sess->is_sm4)
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
 	else
 		inst_w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
@@ -668,10 +769,12 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 
 	sess_priv->lf = roc_cpt->lf[0];
 
-	if (sess_priv->cpt_op & ROC_SE_OP_CIPHER_MASK) {
+	if (sess_priv->passthrough)
+		thr_type = CPT_DP_THREAD_TYPE_PT;
+	else if (sess_priv->cpt_op & ROC_SE_OP_CIPHER_MASK) {
 		switch (sess_priv->roc_se_ctx.fc_type) {
 		case ROC_SE_FC_GEN:
-			if (sess_priv->aes_gcm || sess_priv->chacha_poly)
+			if (sess_priv->aes_gcm || sess_priv->aes_ccm || sess_priv->chacha_poly)
 				thr_type = CPT_DP_THREAD_TYPE_FC_AEAD;
 			else
 				thr_type = CPT_DP_THREAD_TYPE_FC_CHAIN;
@@ -684,6 +787,9 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 			break;
 		case ROC_SE_PDCP_CHAIN:
 			thr_type = CPT_DP_THREAD_TYPE_PDCP_CHAIN;
+			break;
+		case ROC_SE_SM:
+			thr_type = CPT_DP_THREAD_TYPE_SM;
 			break;
 		default:
 			plt_err("Invalid op type");
@@ -710,7 +816,7 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 
 	sess_priv->cpt_inst_w7 = cnxk_cpt_inst_w7_get(sess_priv, roc_cpt);
 
-	if (roc_errata_cpt_hang_on_mixed_ctx_val())
+	if (hw_ctx_cache_enable())
 		roc_se_ctx_init(&sess_priv->roc_se_ctx);
 
 	return 0;
@@ -736,7 +842,7 @@ sym_session_clear(struct rte_cryptodev_sym_session *sess, bool is_session_less)
 	struct cnxk_se_sess *sess_priv = (struct cnxk_se_sess *)sess;
 
 	/* Trigger CTX flush + invalidate to remove from CTX_CACHE */
-	if (roc_errata_cpt_hang_on_mixed_ctx_val())
+	if (hw_ctx_cache_enable())
 		roc_cpt_lf_ctx_flush(sess_priv->lf, &sess_priv->roc_se_ctx.se_ctx, true);
 
 	if (sess_priv->roc_se_ctx.auth_key != NULL)
@@ -760,7 +866,8 @@ cnxk_ae_session_size_get(struct rte_cryptodev *dev __rte_unused)
 }
 
 void
-cnxk_ae_session_clear(struct rte_cryptodev *dev, struct rte_cryptodev_asym_session *sess)
+cnxk_ae_session_clear(struct rte_cryptodev *dev __rte_unused,
+		      struct rte_cryptodev_asym_session *sess)
 {
 	struct cnxk_ae_sess *priv = (struct cnxk_ae_sess *)sess;
 
@@ -772,7 +879,7 @@ cnxk_ae_session_clear(struct rte_cryptodev *dev, struct rte_cryptodev_asym_sessi
 	cnxk_ae_free_session_parameters(priv);
 
 	/* Reset and free object back to pool */
-	memset(priv, 0, cnxk_ae_session_size_get(dev));
+	memset(priv, 0, sizeof(struct cnxk_ae_sess));
 }
 
 int
@@ -854,6 +961,7 @@ cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp)
 
 	plt_print("");
 	roc_cpt_afs_print(qp->lf.roc_cpt);
+	roc_cpt_lfs_print(qp->lf.roc_cpt);
 }
 
 int
@@ -870,3 +978,360 @@ cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id)
 	}
 	return 0;
 }
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_qptr_get, 24.03)
+struct rte_pmd_cnxk_crypto_qptr *
+rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id)
+{
+	const struct rte_crypto_fp_ops *fp_ops;
+	void *qptr;
+
+	fp_ops = &rte_crypto_fp_ops[dev_id];
+	qptr = fp_ops->qp.data[qp_id];
+
+	return qptr;
+}
+
+static inline void
+cnxk_crypto_cn10k_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	uint64_t lmt_base, io_addr;
+	uint16_t lmt_id;
+	void *lmt_dst;
+	int i;
+
+	lmt_base = qp->lmtline.lmt_base;
+	io_addr = qp->lmtline.io_addr;
+
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+
+	lmt_dst = PLT_PTR_CAST(lmt_base);
+again:
+	i = RTE_MIN(nb_inst, CN10K_CPT_PKTS_PER_LOOP);
+
+	memcpy(lmt_dst, inst, i * sizeof(struct cpt_inst_s));
+
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
+
+	if (nb_inst - i > 0) {
+		nb_inst -= CN10K_CPT_PKTS_PER_LOOP;
+		inst = RTE_PTR_ADD(inst, CN10K_CPT_PKTS_PER_LOOP * sizeof(struct cpt_inst_s));
+		goto again;
+	}
+}
+
+static inline void
+cnxk_crypto_cn9k_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+
+	const uint64_t lmt_base = qp->lf.lmt_base;
+	const uint64_t io_addr = qp->lf.io_addr;
+
+	if (unlikely(nb_inst & 1)) {
+		cn9k_cpt_inst_submit(inst, lmt_base, io_addr);
+		inst = RTE_PTR_ADD(inst, sizeof(struct cpt_inst_s));
+		nb_inst -= 1;
+	}
+
+	while (nb_inst > 0) {
+		cn9k_cpt_inst_submit_dual(inst, lmt_base, io_addr);
+		inst = RTE_PTR_ADD(inst, 2 * sizeof(struct cpt_inst_s));
+		nb_inst -= 2;
+	}
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_submit, 24.03)
+void
+rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
+{
+	if (roc_model_is_cn10k() || roc_model_is_cn20k())
+		return cnxk_crypto_cn10k_submit(qptr, inst, nb_inst);
+	else if (roc_model_is_cn9k())
+		return cnxk_crypto_cn9k_submit(qptr, inst, nb_inst);
+
+	plt_err("Invalid cnxk model");
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_flush, 24.07)
+int
+rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
+			       struct rte_pmd_cnxk_crypto_cptr *cptr, bool invalidate)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(cptr == NULL)) {
+		plt_err("Invalid CPTR pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(roc_model_is_cn9k())) {
+		plt_err("Invalid cnxk model");
+		return -EINVAL;
+	}
+
+	return roc_cpt_lf_ctx_flush(&qp->lf, cptr, invalidate);
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_get, 24.07)
+struct rte_pmd_cnxk_crypto_cptr *
+rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
+{
+	if (rte_sess == NULL) {
+		plt_err("Invalid session pointer");
+		return NULL;
+	}
+
+	if (rte_sess->sec_sess == NULL) {
+		plt_err("Invalid RTE session pointer");
+		return NULL;
+	}
+
+	if (rte_sess->op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+		struct cnxk_ae_sess *ae_sess = PLT_PTR_CAST(rte_sess->crypto_asym_sess);
+		return PLT_PTR_CAST(&ae_sess->hw_ctx);
+	}
+
+	if (rte_sess->op_type != RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		plt_err("Invalid crypto operation type");
+		return NULL;
+	}
+
+	if (rte_sess->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		struct cnxk_se_sess *se_sess = PLT_PTR_CAST(rte_sess->crypto_sym_sess);
+		return PLT_PTR_CAST(&se_sess->roc_se_ctx.se_ctx);
+	}
+
+	if (rte_sess->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		if (roc_model_is_cn20k()) {
+			struct cn20k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
+
+			return PLT_PTR_CAST(&sec_sess->sa);
+		}
+
+		if (roc_model_is_cn10k()) {
+			struct cn10k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
+			return PLT_PTR_CAST(&sec_sess->sa);
+		}
+
+		if (roc_model_is_cn9k()) {
+			struct cn9k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
+			return PLT_PTR_CAST(&sec_sess->sa);
+		}
+
+		plt_err("Invalid cnxk model");
+		return NULL;
+	}
+
+	plt_err("Invalid session type");
+	return NULL;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_read, 24.07)
+int
+rte_pmd_cnxk_crypto_cptr_read(struct rte_pmd_cnxk_crypto_qptr *qptr,
+			      struct rte_pmd_cnxk_crypto_cptr *cptr, void *data, uint32_t len)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	int ret;
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(cptr == NULL)) {
+		plt_err("Invalid CPTR pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(data == NULL)) {
+		plt_err("Invalid data pointer");
+		return -EINVAL;
+	}
+
+	ret = roc_cpt_lf_ctx_flush(&qp->lf, cptr, false);
+	if (ret)
+		return ret;
+
+	/* Wait for the flush to complete. */
+	rte_delay_ms(1);
+
+	memcpy(data, cptr, len);
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_cptr_write, 24.07)
+int
+rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
+			       struct rte_pmd_cnxk_crypto_cptr *cptr, void *data, uint32_t len)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	int ret;
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(cptr == NULL)) {
+		plt_err("Invalid CPTR pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(data == NULL)) {
+		plt_err("Invalid data pointer");
+		return -EINVAL;
+	}
+
+	ret = roc_cpt_ctx_write(&qp->lf, data, cptr, len);
+	if (ret) {
+		plt_err("Could not write to CPTR");
+		return ret;
+	}
+
+	ret = roc_cpt_lf_ctx_flush(&qp->lf, cptr, false);
+	if (ret)
+		return ret;
+
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_crypto_qp_stats_get, 24.07)
+int
+rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				 struct rte_pmd_cnxk_crypto_qp_stats *stats)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	struct roc_cpt_lf *lf;
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(stats == NULL)) {
+		plt_err("Invalid stats pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(roc_model_is_cn9k())) {
+		plt_err("Invalid cnxk model");
+		return -EINVAL;
+	}
+
+	lf = &qp->lf;
+
+	stats->ctx_enc_pkts = plt_read64(lf->rbase + CPT_LF_CTX_ENC_PKT_CNT);
+	stats->ctx_enc_bytes = plt_read64(lf->rbase + CPT_LF_CTX_ENC_BYTE_CNT);
+	stats->ctx_dec_pkts = plt_read64(lf->rbase + CPT_LF_CTX_DEC_PKT_CNT);
+	stats->ctx_dec_bytes = plt_read64(lf->rbase + CPT_LF_CTX_DEC_BYTE_CNT);
+
+	return 0;
+}
+
+#ifdef CPT_INST_DEBUG_ENABLE
+void
+cnxk_cpt_request_data_sgv2_mode_dump(uint8_t *in_buffer, bool glist, uint16_t components)
+{
+	struct roc_se_buf_ptr list_ptr[ROC_MAX_SG_CNT];
+	const char *list = glist ? "glist" : "slist";
+	struct roc_sg2list_comp *sg_ptr = NULL;
+	uint16_t list_cnt = 0;
+	char suffix[64];
+	int i, j;
+
+	sg_ptr = (void *)in_buffer;
+	for (i = 0; i < components; i++) {
+		for (j = 0; j < sg_ptr->u.s.valid_segs; j++) {
+			list_ptr[i * 3 + j].size = sg_ptr->u.s.len[j];
+			list_ptr[i * 3 + j].vaddr = (void *)sg_ptr->ptr[j];
+			list_ptr[i * 3 + j].vaddr = list_ptr[i * 3 + j].vaddr;
+			list_cnt++;
+		}
+		sg_ptr++;
+	}
+
+	plt_err("Current %s: %u", list, list_cnt);
+
+	for (i = 0; i < list_cnt; i++) {
+		snprintf(suffix, sizeof(suffix), "%s[%d]: vaddr 0x%" PRIx64 ", vaddr %p len %u",
+			 list, i, (uint64_t)list_ptr[i].vaddr, list_ptr[i].vaddr, list_ptr[i].size);
+		rte_hexdump(rte_log_get_stream(), suffix, list_ptr[i].vaddr, list_ptr[i].size);
+	}
+}
+
+void
+cnxk_cpt_request_data_sg_mode_dump(uint8_t *in_buffer, bool glist)
+{
+	struct roc_se_buf_ptr list_ptr[ROC_MAX_SG_CNT];
+	const char *list = glist ? "glist" : "slist";
+	struct roc_sglist_comp *sg_ptr = NULL;
+	uint16_t list_cnt, components;
+	char suffix[64];
+	int i;
+
+	sg_ptr = (void *)(in_buffer + 8);
+	list_cnt = rte_be_to_cpu_16((((uint16_t *)in_buffer)[2]));
+	if (!glist) {
+		components = list_cnt / 4;
+		if (list_cnt % 4)
+			components++;
+		sg_ptr += components;
+		list_cnt = rte_be_to_cpu_16((((uint16_t *)in_buffer)[3]));
+	}
+
+	plt_err("Current %s: %u", list, list_cnt);
+	components = list_cnt / 4;
+	for (i = 0; i < components; i++) {
+		list_ptr[i * 4 + 0].size = rte_be_to_cpu_16(sg_ptr->u.s.len[0]);
+		list_ptr[i * 4 + 1].size = rte_be_to_cpu_16(sg_ptr->u.s.len[1]);
+		list_ptr[i * 4 + 2].size = rte_be_to_cpu_16(sg_ptr->u.s.len[2]);
+		list_ptr[i * 4 + 3].size = rte_be_to_cpu_16(sg_ptr->u.s.len[3]);
+		list_ptr[i * 4 + 0].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[0]);
+		list_ptr[i * 4 + 1].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[1]);
+		list_ptr[i * 4 + 2].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[2]);
+		list_ptr[i * 4 + 3].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[3]);
+		list_ptr[i * 4 + 0].vaddr = list_ptr[i * 4 + 0].vaddr;
+		list_ptr[i * 4 + 1].vaddr = list_ptr[i * 4 + 1].vaddr;
+		list_ptr[i * 4 + 2].vaddr = list_ptr[i * 4 + 2].vaddr;
+		list_ptr[i * 4 + 3].vaddr = list_ptr[i * 4 + 3].vaddr;
+		sg_ptr++;
+	}
+
+	components = list_cnt % 4;
+	switch (components) {
+	case 3:
+		list_ptr[i * 4 + 2].size = rte_be_to_cpu_16(sg_ptr->u.s.len[2]);
+		list_ptr[i * 4 + 2].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[2]);
+		list_ptr[i * 4 + 2].vaddr = list_ptr[i * 4 + 2].vaddr;
+		[[fallthrough]];
+	case 2:
+		list_ptr[i * 4 + 1].size = rte_be_to_cpu_16(sg_ptr->u.s.len[1]);
+		list_ptr[i * 4 + 1].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[1]);
+		list_ptr[i * 4 + 1].vaddr = list_ptr[i * 4 + 1].vaddr;
+		[[fallthrough]];
+	case 1:
+		list_ptr[i * 4 + 0].size = rte_be_to_cpu_16(sg_ptr->u.s.len[0]);
+		list_ptr[i * 4 + 0].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[0]);
+		list_ptr[i * 4 + 0].vaddr = list_ptr[i * 4 + 0].vaddr;
+		break;
+	default:
+		break;
+	}
+
+	for (i = 0; i < list_cnt; i++) {
+		snprintf(suffix, sizeof(suffix), "%s[%d]: vaddr 0x%" PRIx64 ", vaddr %p len %u",
+			 list, i, (uint64_t)list_ptr[i].vaddr, list_ptr[i].vaddr, list_ptr[i].size);
+		rte_hexdump(rte_log_get_stream(), suffix, list_ptr[i].vaddr, list_ptr[i].size);
+	}
+}
+#endif

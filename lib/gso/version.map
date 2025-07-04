@@ -1,7 +1,0 @@
-DPDK_23 {
-	global:
-
-	rte_gso_segment;
-
-	local: *;
-};

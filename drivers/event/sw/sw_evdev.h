@@ -170,14 +170,14 @@ struct sw_port {
 	int16_t num_ordered_qids;
 
 	/** Ring and buffer for pulling events from workers for scheduling */
-	struct rte_event_ring *rx_worker_ring __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event_ring *rx_worker_ring;
 	/** Ring and buffer for pushing packets to workers after scheduling */
 	struct rte_event_ring *cq_worker_ring;
 
 	/* hole */
 
 	/* num releases yet to be completed on this port */
-	uint16_t outstanding_releases __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t outstanding_releases;
 	uint16_t inflight_max; /* app requested max inflights for this port */
 	uint16_t inflight_credits; /* num credits this port has right now */
 	uint8_t implicit_release; /* release events before dequeuing */
@@ -191,7 +191,7 @@ struct sw_port {
 		/* bucket values in 4s for shorter reporting */
 
 	/* History list structs, containing info on pkts egressed to worker */
-	uint16_t hist_head __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t hist_head;
 	uint16_t hist_tail;
 	uint16_t inflights;
 	struct sw_hist_list_entry hist_list[SW_PORT_HIST_LIST];
@@ -221,7 +221,7 @@ struct sw_evdev {
 	uint32_t xstats_count_mode_queue;
 
 	/* Minimum burst size*/
-	uint32_t sched_min_burst_size __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t sched_min_burst_size;
 	/* Port dequeue burst size*/
 	uint32_t sched_deq_burst_size;
 	/* Refill pp buffers only once per scheduler call*/
@@ -231,9 +231,9 @@ struct sw_evdev {
 	uint32_t sched_min_burst;
 
 	/* Contains all ports - load balanced and directed */
-	struct sw_port ports[SW_PORTS_MAX] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct sw_port ports[SW_PORTS_MAX];
 
-	rte_atomic32_t inflights __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) rte_atomic32_t inflights;
 
 	/*
 	 * max events in this instance. Cached here for performance.
@@ -242,18 +242,18 @@ struct sw_evdev {
 	uint32_t nb_events_limit;
 
 	/* Internal queues - one per logical queue */
-	struct sw_qid qids[RTE_EVENT_MAX_QUEUES_PER_DEV] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct sw_qid qids[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	struct sw_queue_chunk *chunk_list_head;
 	struct sw_queue_chunk *chunks;
 
 	/* Cache how many packets are in each cq */
-	uint16_t cq_ring_space[SW_PORTS_MAX] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t cq_ring_space[SW_PORTS_MAX];
 
 	/* Array of pointers to load-balanced QIDs sorted by priority level */
 	struct sw_qid *qids_prioritized[RTE_EVENT_MAX_QUEUES_PER_DEV];
 
 	/* Stats */
-	struct sw_point_stats stats __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct sw_point_stats stats;
 	uint64_t sched_called;
 	int32_t sched_quanta;
 	uint64_t sched_no_iq_enqueues;
@@ -288,11 +288,9 @@ sw_pmd_priv_const(const struct rte_eventdev *eventdev)
 	return eventdev->data->dev_private;
 }
 
-uint16_t sw_event_enqueue(void *port, const struct rte_event *ev);
 uint16_t sw_event_enqueue_burst(void *port, const struct rte_event ev[],
 		uint16_t num);
 
-uint16_t sw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 			uint64_t wait);
 int32_t sw_event_schedule(struct rte_eventdev *dev);

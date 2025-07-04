@@ -12,20 +12,26 @@
  * for DPDK.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdint.h>
+#include <assert.h>
 #include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdalign.h>
 
+#include <rte_compat.h>
 #include <rte_config.h>
 
 /* OS specific include */
 #include <rte_os.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef RTE_TOOLCHAIN_MSVC
 #ifndef typeof
 #define typeof __typeof__
+#endif
 #endif
 
 #ifndef __cplusplus
@@ -34,11 +40,48 @@ extern "C" {
 #endif
 #endif
 
-/** C extension macro for environments lacking C11 features. */
-#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
-#define RTE_STD_C11 __extension__
+#ifdef RTE_TOOLCHAIN_MSVC
+#ifdef __cplusplus
+#define __extension__
+#endif
+#endif
+
+/*
+ * Macro __rte_constant checks if an expression's value can be determined at
+ * compile time. It takes a single argument, the expression to test, and
+ * returns 1 if the expression is a compile-time constant, and 0 otherwise.
+ * For most compilers it uses built-in function __builtin_constant_p, but for
+ * MSVC it uses a different method because MSVC does not have an equivalent
+ * to __builtin_constant_p.
+ *
+ * The trick used with MSVC relies on the way null pointer constants interact
+ * with the type of a ?: expression:
+ * An integer constant expression with the value 0, or such an expression cast
+ * to type void *, is called a null pointer constant.
+ * If both the second and third operands (of the ?: expression) are pointers or
+ * one is a null pointer constant and the other is a pointer, the result type
+ * is a pointer to a type qualified with all the type qualifiers of the types
+ * referenced by both operands. Furthermore, if both operands are pointers to
+ * compatible types or to differently qualified versions of compatible types,
+ * the result type is a pointer to an appropriately qualified version of the
+ * composite type; if one operand is a null pointer constant, the result has
+ * the type of the other operand; otherwise, one operand is a pointer to void
+ * or a qualified version of void, in which case the result type is a pointer
+ * to an appropriately qualified version of void.
+ *
+ * The _Generic keyword then checks the type of the expression
+ * (void *) ((e) * 0ll). It matches this type against the types listed in the
+ * _Generic construct:
+ *     - If the type is int *, the result is 1.
+ *     - If the type is void *, the result is 0.
+ *
+ * This explanation with some more details can be found at:
+ * https://stackoverflow.com/questions/49480442/detecting-integer-constant-expressions-in-macros
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_constant(e) _Generic((1 ? (void *) ((e) * 0ll) : (int *) 0), int * : 1, void * : 0)
 #else
-#define RTE_STD_C11
+#define __rte_constant(e) __extension__(__builtin_constant_p(e))
 #endif
 
 /*
@@ -50,8 +93,6 @@ extern "C" {
 #define RTE_CC_IS_GNU 0
 #if defined __clang__
 #define RTE_CC_CLANG
-#elif defined __INTEL_COMPILER
-#define RTE_CC_ICC
 #elif defined __GNUC__
 #define RTE_CC_GCC
 #undef RTE_CC_IS_GNU
@@ -63,9 +104,22 @@ extern "C" {
 #endif
 
 /**
- * Force alignment
+ * Force type alignment
+ *
+ * This macro should be used when alignment of a struct or union type
+ * is required. For toolchain compatibility it should appear between
+ * the {struct,union} keyword and tag. e.g.
+ *
+ *   struct __rte_aligned(8) tag { ... };
+ *
+ * If alignment of an object/variable is required then this macro should
+ * not be used, instead prefer C11 alignas(a).
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_aligned(a) __declspec(align(a))
+#else
 #define __rte_aligned(a) __attribute__((__aligned__(a)))
+#endif
 
 #ifdef RTE_ARCH_STRICT_ALIGN
 typedef uint64_t unaligned_uint64_t __rte_aligned(1);
@@ -78,18 +132,50 @@ typedef uint16_t unaligned_uint16_t;
 #endif
 
 /**
+ * @deprecated
+ * @see __rte_packed_begin
+ * @see __rte_packed_end
+ *
  * Force a structure to be packed
  */
-#define __rte_packed __attribute__((__packed__))
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_packed RTE_DEPRECATED(__rte_packed)
+#else
+#define __rte_packed (RTE_DEPRECATED(__rte_packed) __attribute__((__packed__)))
+#endif
+
+/**
+ * Force a structure to be packed
+ * Usage:
+ *     struct __rte_packed_begin mystruct { ... } __rte_packed_end;
+ *     union __rte_packed_begin myunion { ... } __rte_packed_end;
+ * Note: alignment attributes when present should precede __rte_packed_begin.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_packed_begin __pragma(pack(push, 1))
+#define __rte_packed_end __pragma(pack(pop))
+#else
+#define __rte_packed_begin
+#define __rte_packed_end __attribute__((__packed__))
+#endif
 
 /**
  * Macro to mark a type that is not subject to type-based aliasing rules
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_may_alias
+#else
 #define __rte_may_alias __attribute__((__may_alias__))
+#endif
 
 /******* Macro to mark functions and fields scheduled for removal *****/
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_deprecated
+#define __rte_deprecated_msg(msg)
+#else
 #define __rte_deprecated	__attribute__((__deprecated__))
 #define __rte_deprecated_msg(msg)	__attribute__((__deprecated__(msg)))
+#endif
 
 /**
  *  Macro to mark macros and defines scheduled for removal
@@ -103,21 +189,64 @@ typedef uint16_t unaligned_uint16_t;
 #endif
 
 /**
+ * Macros to cause the compiler to remember the state of the diagnostics as of
+ * each push, and restore to that point at each pop.
+ */
+#if !defined(RTE_TOOLCHAIN_MSVC)
+#define __rte_diagnostic_push _Pragma("GCC diagnostic push")
+#define __rte_diagnostic_pop  _Pragma("GCC diagnostic pop")
+#else
+#define __rte_diagnostic_push
+#define __rte_diagnostic_pop
+#endif
+
+/**
+ * Macro to disable compiler warnings about removing a type
+ * qualifier from the target type.
+ */
+#if !defined(RTE_TOOLCHAIN_MSVC)
+#define __rte_diagnostic_ignored_wcast_qual _Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
+#else
+#define __rte_diagnostic_ignored_wcast_qual
+#endif
+
+/**
  * Mark a function or variable to a weak reference.
  */
-#define __rte_weak __attribute__((__weak__))
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_weak RTE_DEPRECATED(__rte_weak)
+#else
+#define __rte_weak RTE_DEPRECATED(__rte_weak) __attribute__((__weak__))
+#endif
+
+/**
+ * Mark a function to be pure.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_pure
+#else
+#define __rte_pure __attribute__((pure))
+#endif
 
 /**
  * Force symbol to be generated even if it appears to be unused.
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_used
+#else
 #define __rte_used __attribute__((used))
+#endif
 
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**
  * short definition to mark a function parameter unused
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_unused
+#else
 #define __rte_unused __attribute__((__unused__))
+#endif
 
 /**
  * Mark pointer as restricted with regard to pointer aliasing.
@@ -141,12 +270,27 @@ typedef uint16_t unaligned_uint16_t;
  * even if the underlying stdio implementation is ANSI-compliant,
  * so this must be overridden.
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_format_printf(format_index, first_arg)
+#else
 #if RTE_CC_IS_GNU
 #define __rte_format_printf(format_index, first_arg) \
 	__attribute__((format(gnu_printf, format_index, first_arg)))
 #else
 #define __rte_format_printf(format_index, first_arg) \
 	__attribute__((format(printf, format_index, first_arg)))
+#endif
+#endif
+
+/**
+ * Specify data or function section/segment.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_section(name) \
+	__pragma(data_seg(name)) __declspec(allocate(name))
+#else
+#define __rte_section(name) \
+	__attribute__((section(name)))
 #endif
 
 /**
@@ -159,6 +303,40 @@ typedef uint16_t unaligned_uint16_t;
 	__attribute__((alloc_size(__VA_ARGS__)))
 #else
 #define __rte_alloc_size(...)
+#endif
+
+/**
+ * Tells the compiler that the function returns a value that points to
+ * memory aligned by a function argument.
+ *
+ * Note: not enabled on Clang because it warns if align argument is zero.
+ */
+#if defined(RTE_CC_GCC)
+#define __rte_alloc_align(argno) \
+	__attribute__((alloc_align(argno)))
+#else
+#define __rte_alloc_align(argno)
+#endif
+
+/**
+ * Tells the compiler this is a function like malloc and that the pointer
+ * returned cannot alias any other pointer (ie new memory).
+ */
+#if defined(RTE_CC_GCC) || defined(RTE_CC_CLANG)
+#define __rte_malloc __attribute__((__malloc__))
+#else
+#define __rte_malloc
+#endif
+
+/**
+ * With recent GCC versions also able to track that proper
+ * deallocator function is used for this pointer.
+ */
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 110000)
+#define __rte_dealloc(dealloc, argno) \
+	__attribute__((malloc(dealloc, argno)))
+#else
+#define __rte_dealloc(dealloc, argno)
 #endif
 
 #define RTE_PRIORITY_LOG 101
@@ -179,8 +357,29 @@ typedef uint16_t unaligned_uint16_t;
  *   Lowest number is the first to run.
  */
 #ifndef RTE_INIT_PRIO /* Allow to override from EAL */
+#ifndef RTE_TOOLCHAIN_MSVC
 #define RTE_INIT_PRIO(func, prio) \
 static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
+#else
+/* definition from the Microsoft CRT */
+typedef int(__cdecl *_PIFV)(void);
+
+#define CTOR_SECTION_LOG ".CRT$XIB"
+#define CTOR_SECTION_BUS ".CRT$XIC"
+#define CTOR_SECTION_CLASS ".CRT$XID"
+#define CTOR_SECTION_LAST ".CRT$XIY"
+
+#define CTOR_PRIORITY_TO_SECTION(priority) CTOR_SECTION_ ## priority
+
+#define RTE_INIT_PRIO(name, priority) \
+	static void name(void); \
+	static int __cdecl name ## _thunk(void) { name(); return 0; } \
+	__pragma(const_seg(CTOR_PRIORITY_TO_SECTION(priority))) \
+	__declspec(allocate(CTOR_PRIORITY_TO_SECTION(priority))) \
+	    _PIFV name ## _pointer = &name ## _thunk; \
+	__pragma(const_seg()) \
+	static void name(void)
+#endif
 #endif
 
 /**
@@ -204,8 +403,24 @@ static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
  *   Lowest number is the last to run.
  */
 #ifndef RTE_FINI_PRIO /* Allow to override from EAL */
+#ifndef RTE_TOOLCHAIN_MSVC
 #define RTE_FINI_PRIO(func, prio) \
 static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
+#else
+#define DTOR_SECTION_LOG "mydtor$B"
+#define DTOR_SECTION_BUS "mydtor$C"
+#define DTOR_SECTION_CLASS "mydtor$D"
+#define DTOR_SECTION_LAST "mydtor$Y"
+
+#define DTOR_PRIORITY_TO_SECTION(priority) DTOR_SECTION_ ## priority
+
+#define RTE_FINI_PRIO(name, priority) \
+	static void name(void); \
+	__pragma(const_seg(DTOR_PRIORITY_TO_SECTION(priority))) \
+	__declspec(allocate(DTOR_PRIORITY_TO_SECTION(priority))) void *name ## _pointer = &name; \
+	__pragma(const_seg()) \
+	static void name(void)
+#endif
 #endif
 
 /**
@@ -222,7 +437,20 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * Hint never returning function
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_noreturn
+#else
 #define __rte_noreturn __attribute__((noreturn))
+#endif
+
+/**
+ * Hint point in program never reached
+ */
+#if defined(RTE_TOOLCHAIN_GCC) || defined(RTE_TOOLCHAIN_CLANG)
+#define __rte_unreachable() __extension__(__builtin_unreachable())
+#else
+#define __rte_unreachable() __assume(0)
+#endif
 
 /**
  * Issue a warning in case the function's return value is ignored.
@@ -247,27 +475,63 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  *  }
  * @endcode
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_warn_unused_result
+#else
 #define __rte_warn_unused_result __attribute__((warn_unused_result))
+#endif
 
 /**
  * Force a function to be inlined
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_always_inline __forceinline
+#else
 #define __rte_always_inline inline __attribute__((always_inline))
+#endif
 
 /**
  * Force a function to be noinlined
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_noinline __declspec(noinline)
+#else
 #define __rte_noinline __attribute__((noinline))
+#endif
 
 /**
  * Hint function in the hot path
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_hot
+#else
 #define __rte_hot __attribute__((hot))
+#endif
 
 /**
  * Hint function in the cold path
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_cold
+#else
 #define __rte_cold __attribute__((cold))
+#endif
+
+/**
+ * Hint precondition
+ *
+ * @warning Depending on the compiler, any code in ``condition`` might be executed.
+ * This currently only occurs with GCC prior to version 13.
+ */
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION >= 130000)
+#define __rte_assume(condition) __attribute__((assume(condition)))
+#elif defined(RTE_TOOLCHAIN_GCC)
+#define __rte_assume(condition) do { if (!(condition)) __rte_unreachable(); } while (0)
+#elif defined(RTE_TOOLCHAIN_CLANG)
+#define __rte_assume(condition) __extension__(__builtin_assume(condition))
+#else
+#define __rte_assume(condition) __assume(condition)
+#endif
 
 /**
  * Disable AddressSanitizer on some code
@@ -300,6 +564,33 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * ptr1 is greater than ptr2.
  */
 #define RTE_PTR_DIFF(ptr1, ptr2) ((uintptr_t)(ptr1) - (uintptr_t)(ptr2))
+
+/*********** Macros for casting pointers ********/
+
+/**
+ * Macro to discard qualifiers (such as const, volatile, restrict) from a pointer,
+ * without the compiler emitting a warning.
+ */
+#define RTE_PTR_UNQUAL(X) ((void *)(uintptr_t)(X))
+
+/**
+ * Macro to cast a pointer to a specific type,
+ * without the compiler emitting a warning about discarding qualifiers.
+ *
+ * @warning
+ * When casting a pointer to point to a larger type, the resulting pointer may
+ * be misaligned, which results in undefined behavior.
+ * E.g.:
+ *
+ * struct s {
+ *       uint16_t a;
+ *       uint8_t  b;
+ *       uint8_t  c;
+ *       uint8_t  d;
+ *   } v;
+ *   uint16_t * p = RTE_CAST_PTR(uint16_t *, &v.c); // "p" is not 16 bit aligned!
+ */
+#define RTE_CAST_PTR(type, ptr) ((type)(uintptr_t)(ptr))
 
 /**
  * Workaround to cast a const field of a structure to non-const type.
@@ -386,7 +677,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * whichever difference is the lowest.
  */
 #define RTE_ALIGN_MUL_NEAR(v, mul)				\
-	({							\
+	__extension__ ({					\
 		typeof(v) ceil = RTE_ALIGN_MUL_CEIL(v, mul);	\
 		typeof(v) floor = RTE_ALIGN_MUL_FLOOR(v, mul);	\
 		(ceil - (v)) > ((v) - floor) ? floor : ceil;	\
@@ -411,10 +702,18 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 
 /*********** Macros for compile type checks ********/
 
+/* Workaround for toolchain issues with missing C11 macro in FreeBSD */
+#if !defined(static_assert) && !defined(__cplusplus)
+#define	static_assert	_Static_assert
+#endif
+
 /**
  * Triggers an error at compilation time if the condition is true.
+ *
+ * The do { } while(0) exists to workaround a bug in clang (#55821)
+ * where it would not handle _Static_assert in a switch case.
  */
-#define RTE_BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+#define RTE_BUILD_BUG_ON(condition) do { static_assert(!(condition), #condition); } while (0)
 
 /*********** Cache line related macros ********/
 
@@ -442,6 +741,19 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 /** Force minimum cache line alignment. */
 #define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
 
+#define _RTE_CACHE_GUARD_HELPER2(unique) \
+	alignas(RTE_CACHE_LINE_SIZE) \
+	char cache_guard_ ## unique[RTE_CACHE_LINE_SIZE * RTE_CACHE_GUARD_LINES]
+#define _RTE_CACHE_GUARD_HELPER1(unique) _RTE_CACHE_GUARD_HELPER2(unique)
+/**
+ * Empty cache lines, to guard against false sharing-like effects
+ * on systems with a next-N-lines hardware prefetcher.
+ *
+ * Use as spacing between data accessed by different lcores,
+ * to prevent cache thrashing on hardware with speculative prefetching.
+ */
+#define RTE_CACHE_GUARD _RTE_CACHE_GUARD_HELPER1(__COUNTER__)
+
 /*********** PA/IOVA type definitions ********/
 
 /** Physical address */
@@ -460,6 +772,8 @@ typedef uint64_t rte_iova_t;
 
 /*********** Structure alignment markers ********/
 
+#ifndef RTE_TOOLCHAIN_MSVC
+
 /** Generic marker for any place in a structure. */
 __extension__ typedef void    *RTE_MARKER[0];
 /** Marker for 1B alignment in a structure. */
@@ -471,139 +785,7 @@ __extension__ typedef uint32_t RTE_MARKER32[0];
 /** Marker for 8B alignment in a structure. */
 __extension__ typedef uint64_t RTE_MARKER64[0];
 
-/**
- * Combines 32b inputs most significant set bits into the least
- * significant bits to construct a value with the same MSBs as x
- * but all 1's under it.
- *
- * @param x
- *    The integer whose MSBs need to be combined with its LSBs
- * @return
- *    The combined value.
- */
-static inline uint32_t
-rte_combine32ms1b(uint32_t x)
-{
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
-
-	return x;
-}
-
-/**
- * Combines 64b inputs most significant set bits into the least
- * significant bits to construct a value with the same MSBs as x
- * but all 1's under it.
- *
- * @param v
- *    The integer whose MSBs need to be combined with its LSBs
- * @return
- *    The combined value.
- */
-static inline uint64_t
-rte_combine64ms1b(uint64_t v)
-{
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v |= v >> 32;
-
-	return v;
-}
-
-/*********** Macros to work with powers of 2 ********/
-
-/**
- * Macro to return 1 if n is a power of 2, 0 otherwise
- */
-#define RTE_IS_POWER_OF_2(n) ((n) && !(((n) - 1) & (n)))
-
-/**
- * Returns true if n is a power of 2
- * @param n
- *     Number to check
- * @return 1 if true, 0 otherwise
- */
-static inline int
-rte_is_power_of_2(uint32_t n)
-{
-	return n && !(n & (n - 1));
-}
-
-/**
- * Aligns input parameter to the next power of 2
- *
- * @param x
- *   The integer value to align
- *
- * @return
- *   Input parameter aligned to the next power of 2
- */
-static inline uint32_t
-rte_align32pow2(uint32_t x)
-{
-	x--;
-	x = rte_combine32ms1b(x);
-
-	return x + 1;
-}
-
-/**
- * Aligns input parameter to the previous power of 2
- *
- * @param x
- *   The integer value to align
- *
- * @return
- *   Input parameter aligned to the previous power of 2
- */
-static inline uint32_t
-rte_align32prevpow2(uint32_t x)
-{
-	x = rte_combine32ms1b(x);
-
-	return x - (x >> 1);
-}
-
-/**
- * Aligns 64b input parameter to the next power of 2
- *
- * @param v
- *   The 64b value to align
- *
- * @return
- *   Input parameter aligned to the next power of 2
- */
-static inline uint64_t
-rte_align64pow2(uint64_t v)
-{
-	v--;
-	v = rte_combine64ms1b(v);
-
-	return v + 1;
-}
-
-/**
- * Aligns 64b input parameter to the previous power of 2
- *
- * @param v
- *   The 64b value to align
- *
- * @return
- *   Input parameter aligned to the previous power of 2
- */
-static inline uint64_t
-rte_align64prevpow2(uint64_t v)
-{
-	v = rte_combine64ms1b(v);
-
-	return v - (v >> 1);
-}
+#endif
 
 /*********** Macros for calculating min and max **********/
 
@@ -618,6 +800,16 @@ rte_align64prevpow2(uint64_t v)
 	})
 
 /**
+ * Macro to return the minimum of two numbers
+ *
+ * As opposed to RTE_MIN, it does not use temporary variables so it is not safe
+ * if a or b is an expression. Yet it is guaranteed to be constant for use in
+ * static_assert().
+ */
+#define RTE_MIN_T(a, b, t) \
+	((t)(a) < (t)(b) ? (t)(a) : (t)(b))
+
+/**
  * Macro to return the maximum of two numbers
  */
 #define RTE_MAX(a, b) \
@@ -627,166 +819,17 @@ rte_align64prevpow2(uint64_t v)
 		_a > _b ? _a : _b; \
 	})
 
+/**
+ * Macro to return the maximum of two numbers
+ *
+ * As opposed to RTE_MAX, it does not use temporary variables so it is not safe
+ * if a or b is an expression. Yet it is guaranteed to be constant for use in
+ * static_assert().
+ */
+#define RTE_MAX_T(a, b, t) \
+	((t)(a) > (t)(b) ? (t)(a) : (t)(b))
+
 /*********** Other general functions / macros ********/
-
-/**
- * Searches the input parameter for the least significant set bit
- * (starting from zero).
- * If a least significant 1 bit is found, its bit index is returned.
- * If the content of the input parameter is zero, then the content of the return
- * value is undefined.
- * @param v
- *     input parameter, should not be zero.
- * @return
- *     least significant set bit in the input parameter.
- */
-static inline uint32_t
-rte_bsf32(uint32_t v)
-{
-	return (uint32_t)__builtin_ctz(v);
-}
-
-/**
- * Searches the input parameter for the least significant set bit
- * (starting from zero). Safe version (checks for input parameter being zero).
- *
- * @warning ``pos`` must be a valid pointer. It is not checked!
- *
- * @param v
- *     The input parameter.
- * @param pos
- *     If ``v`` was not 0, this value will contain position of least significant
- *     bit within the input parameter.
- * @return
- *     Returns 0 if ``v`` was 0, otherwise returns 1.
- */
-static inline int
-rte_bsf32_safe(uint32_t v, uint32_t *pos)
-{
-	if (v == 0)
-		return 0;
-
-	*pos = rte_bsf32(v);
-	return 1;
-}
-
-/**
- * Return the rounded-up log2 of a integer.
- *
- * @note Contrary to the logarithm mathematical operation,
- * rte_log2_u32(0) == 0 and not -inf.
- *
- * @param v
- *     The input parameter.
- * @return
- *     The rounded-up log2 of the input, or 0 if the input is 0.
- */
-static inline uint32_t
-rte_log2_u32(uint32_t v)
-{
-	if (v == 0)
-		return 0;
-	v = rte_align32pow2(v);
-	return rte_bsf32(v);
-}
-
-
-/**
- * Return the last (most-significant) bit set.
- *
- * @note The last (most significant) bit is at position 32.
- * @note rte_fls_u32(0) = 0, rte_fls_u32(1) = 1, rte_fls_u32(0x80000000) = 32
- *
- * @param x
- *     The input parameter.
- * @return
- *     The last (most-significant) bit set, or 0 if the input is 0.
- */
-static inline uint32_t
-rte_fls_u32(uint32_t x)
-{
-	return (x == 0) ? 0 : 32 - __builtin_clz(x);
-}
-
-/**
- * Searches the input parameter for the least significant set bit
- * (starting from zero).
- * If a least significant 1 bit is found, its bit index is returned.
- * If the content of the input parameter is zero, then the content of the return
- * value is undefined.
- * @param v
- *     input parameter, should not be zero.
- * @return
- *     least significant set bit in the input parameter.
- */
-static inline uint32_t
-rte_bsf64(uint64_t v)
-{
-	return (uint32_t)__builtin_ctzll(v);
-}
-
-/**
- * Searches the input parameter for the least significant set bit
- * (starting from zero). Safe version (checks for input parameter being zero).
- *
- * @warning ``pos`` must be a valid pointer. It is not checked!
- *
- * @param v
- *     The input parameter.
- * @param pos
- *     If ``v`` was not 0, this value will contain position of least significant
- *     bit within the input parameter.
- * @return
- *     Returns 0 if ``v`` was 0, otherwise returns 1.
- */
-static inline int
-rte_bsf64_safe(uint64_t v, uint32_t *pos)
-{
-	if (v == 0)
-		return 0;
-
-	*pos = rte_bsf64(v);
-	return 1;
-}
-
-/**
- * Return the last (most-significant) bit set.
- *
- * @note The last (most significant) bit is at position 64.
- * @note rte_fls_u64(0) = 0, rte_fls_u64(1) = 1,
- *       rte_fls_u64(0x8000000000000000) = 64
- *
- * @param x
- *     The input parameter.
- * @return
- *     The last (most-significant) bit set, or 0 if the input is 0.
- */
-static inline uint32_t
-rte_fls_u64(uint64_t x)
-{
-	return (x == 0) ? 0 : 64 - __builtin_clzll(x);
-}
-
-/**
- * Return the rounded-up log2 of a 64-bit integer.
- *
- * @note Contrary to the logarithm mathematical operation,
- * rte_log2_u64(0) == 0 and not -inf.
- *
- * @param v
- *     The input parameter.
- * @return
- *     The rounded-up log2 of the input, or 0 if the input is 0.
- */
-static inline uint32_t
-rte_log2_u64(uint64_t v)
-{
-	if (v == 0)
-		return 0;
-	v = rte_align64pow2(v);
-	/* we checked for v being 0 already, so no undefined behavior */
-	return rte_bsf64(v);
-}
 
 #ifndef offsetof
 /** Return the offset of a field in a structure. */
@@ -808,12 +851,17 @@ rte_log2_u64(uint64_t v)
  *  struct wrapper *w = container_of(x, struct wrapper, c);
  */
 #ifndef container_of
+#ifdef RTE_TOOLCHAIN_MSVC
+#define container_of(ptr, type, member) \
+			((type *)((uintptr_t)(ptr) - offsetof(type, member)))
+#else
 #define container_of(ptr, type, member)	__extension__ ({		\
 			const typeof(((type *)0)->member) *_ptr = (ptr); \
 			__rte_unused type *_target_ptr =	\
 				(type *)(ptr);				\
 			(type *)(((uintptr_t)_ptr) - offsetof(type, member)); \
 		})
+#endif
 #endif
 
 /** Swap two variables. */
@@ -872,6 +920,41 @@ rte_log2_u64(uint64_t v)
  */
 uint64_t
 rte_str_to_size(const char *str);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Converts the uint64_t value provided to a human-readable string.
+ * It null-terminates the string, truncating the data if needed.
+ * An optional unit (like "B") can be provided as a string. It will be
+ * appended to the number, and a space will be inserted before the unit if needed.
+ *
+ * Sample outputs: (1) "use_iec" disabled, (2) "use_iec" enabled,
+ *                 (3) "use_iec" enabled and "B" as unit.
+ * 0 : "0", "0", "0 B"
+ * 700 : "700", "700", "700 B"
+ * 1000 : "1.00 k", "1000", "1000 B"
+ * 1024 : "1.02 k", "1.00 ki", "1.00 kiB"
+ * 21474836480 : "21.5 G", "20.0 Gi", "20.0 GiB"
+ * 109951162777600 : "110 T", "100 Ti", "100 TiB"
+ *
+ * @param buf
+ *     Buffer to write the string to.
+ * @param buf_size
+ *     Size of the buffer.
+ * @param count
+ *     Number to convert.
+ * @param use_iec
+ *     If true, use IEC units (1024-based), otherwise use SI units (1000-based).
+ * @param unit
+ *     Unit to append to the string (Like "B" for bytes). Can be NULL.
+ * @return
+ *     buf on success, NULL if the buffer is too small.
+ */
+__rte_experimental
+char *
+rte_size_to_str(char *buf, int buf_size, uint64_t count, bool use_iec, const char *unit);
 
 /**
  * Function to terminate the application immediately, printing an error

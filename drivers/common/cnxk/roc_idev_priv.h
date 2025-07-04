@@ -13,9 +13,15 @@ struct nix_inl_dev;
 
 struct idev_nix_inl_cfg {
 	uint64_t meta_aura;
+	uintptr_t meta_mempool;
 	uint32_t nb_bufs;
 	uint32_t buf_sz;
 	uint32_t refs;
+};
+
+struct idev_nix_inl_rx_inj_cfg {
+	uint16_t chan[PLT_MAX_ETHPORTS];
+	uint8_t rx_inject_en[PLT_MAX_ETHPORTS];
 };
 
 struct idev_cfg {
@@ -30,10 +36,15 @@ struct idev_cfg {
 	struct roc_bphy *bphy;
 	struct roc_cpt *cpt;
 	struct roc_sso *sso;
+	struct roc_rvu_lf_head rvu_lf_list;
+	struct roc_mcs_head mcs_list;
 	struct nix_inl_dev *nix_inl_dev;
 	struct idev_nix_inl_cfg inl_cfg;
+	struct roc_nix_list roc_nix_list;
+	struct idev_nix_inl_rx_inj_cfg inl_rx_inj_cfg;
 	plt_spinlock_t nix_inl_dev_lock;
 	plt_spinlock_t npa_dev_lock;
+	uint8_t dma_cs_offset;
 };
 
 /* Generic */
@@ -52,6 +63,8 @@ void idev_sso_pffunc_set(uint16_t sso_pf_func);
 uint16_t idev_sso_pffunc_get(void);
 struct roc_sso *idev_sso_get(void);
 void idev_sso_set(struct roc_sso *sso);
+void idev_dma_cs_offset_set(uint8_t offset);
+uint8_t idev_dma_cs_offset_get(void);
 
 /* idev lmt */
 uint16_t idev_lmt_pffunc_get(void);

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -10,14 +10,15 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
-#endif /* TF_TCAM_SHARED */
 #include "tf_em.h"
 #include "tf_if_tbl.h"
 #include "tfp.h"
 #include "tf_msg_common.h"
+ #include "tf_msg.h"
 #include "tf_tbl_sram.h"
+#include "tf_util.h"
+#include "tf_resources.h"
 
 #define TF_DEV_P58_PARIF_MAX 16
 #define TF_DEV_P58_PF_MASK 0xfUL
@@ -81,33 +82,39 @@ struct tf_rm_element_cfg tf_tbl_p58[TF_DIR_MAX][TF_TBL_TYPE_MAX] = {
 	[TF_DIR_RX][TF_TBL_TYPE_FULL_ACT_RECORD] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_COMPACT_ACT_RECORD] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_FULL_ACT_RECORD,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	/* Policy - Encaps in bank 2 */
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_ENCAP_8B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_ENCAP_16B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_ENCAP_32B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 2,
+		.slices          = 4,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_ENCAP_64B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 2,
+	},
+	[TF_DIR_RX][TF_TBL_TYPE_ACT_ENCAP_128B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
@@ -118,49 +125,49 @@ struct tf_rm_element_cfg tf_tbl_p58[TF_DIR_MAX][TF_TBL_TYPE_MAX] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_MODIFY_16B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_MODIFY_32B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 2,
+		.slices          = 4,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_MODIFY_64B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 1,
+		.slices          = 2,
 	},
 	/* Policy - SP in bank 0 */
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_SP_SMAC] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices          = 2,
+		.slices          = 4,
 	},
 	/* Policy - Stats in bank 3 */
 	[TF_DIR_RX][TF_TBL_TYPE_ACT_STATS_64] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_3,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_EM_FKB] = {
 		TF_RM_ELEM_CFG_HCAPI_BA, CFA_RESOURCE_TYPE_P58_EM_FKB,
@@ -194,33 +201,39 @@ struct tf_rm_element_cfg tf_tbl_p58[TF_DIR_MAX][TF_TBL_TYPE_MAX] = {
 	[TF_DIR_TX][TF_TBL_TYPE_FULL_ACT_RECORD] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_COMPACT_ACT_RECORD] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_FULL_ACT_RECORD,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_1,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	/* Policy - Encaps in bank 2 */
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_ENCAP_8B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_ENCAP_16B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_ENCAP_32B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 2,
+		.slices          = 4,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_ENCAP_64B] = {
+		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
+		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
+		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
+		.slices          = 2,
+	},
+	[TF_DIR_TX][TF_TBL_TYPE_ACT_ENCAP_128B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
@@ -231,49 +244,49 @@ struct tf_rm_element_cfg tf_tbl_p58[TF_DIR_MAX][TF_TBL_TYPE_MAX] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 8,
+		.slices          = 16,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_MODIFY_16B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 4,
+		.slices          = 8,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_MODIFY_32B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 2,
+		.slices          = 4,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_MODIFY_64B] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_ENCAP_8B,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_2,
-		.slices          = 1,
+		.slices          = 2,
 	},
 	/* Policy - SP in bank 0 */
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_SP_SMAC] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices	         = 8,
+		.slices	         = 16,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_SP_SMAC_IPV4] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices	         = 4,
+		.slices	         = 8,
 	},
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_SP_SMAC_IPV6] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_CHILD,
 		.parent_subtype  = TF_TBL_TYPE_ACT_SP_SMAC,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_0,
-		.slices	         = 2,
+		.slices	         = 4,
 	},
 	/* Policy - Stats in bank 3 */
 	[TF_DIR_TX][TF_TBL_TYPE_ACT_STATS_64] = {
 		.cfg_type        = TF_RM_ELEM_CFG_HCAPI_BA_PARENT,
 		.hcapi_type      = CFA_RESOURCE_TYPE_P58_SRAM_BANK_3,
-		.slices          = 8,
+		.slices          = 16,
 	},
 };
 
@@ -408,10 +421,15 @@ tf_dev_p58_get_tcam_slice_info(struct tf *tfp,
 	if (rc)
 		return rc;
 
-#define CFA_P58_WC_TCAM_SLICE_SIZE     24
+#define CFA_P58_WC_TCAM_SLICE_SIZE (24)
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		*num_slices_per_row = tfs->wc_num_slices_per_row;
-		if (key_sz > *num_slices_per_row * CFA_P58_WC_TCAM_SLICE_SIZE)
+		if (key_sz <= 1 * CFA_P58_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_1_SLICE_PER_ROW;
+		else if (key_sz <= 2 * CFA_P58_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_2_SLICE_PER_ROW;
+		else if (key_sz <= 4 * CFA_P58_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_4_SLICE_PER_ROW;
+		else
 			return -ENOTSUP;
 	} else { /* for other type of tcam */
 		*num_slices_per_row = 1;
@@ -454,6 +472,7 @@ static int tf_dev_p58_get_shared_tbl_increment(struct tf *tfp __rte_unused,
 	case TF_TBL_TYPE_ACT_ENCAP_16B:
 	case TF_TBL_TYPE_ACT_ENCAP_32B:
 	case TF_TBL_TYPE_ACT_ENCAP_64B:
+	case TF_TBL_TYPE_ACT_ENCAP_128B:
 	case TF_TBL_TYPE_ACT_SP_SMAC:
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV4:
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV6:
@@ -463,7 +482,7 @@ static int tf_dev_p58_get_shared_tbl_increment(struct tf *tfp __rte_unused,
 	case TF_TBL_TYPE_ACT_MODIFY_16B:
 	case TF_TBL_TYPE_ACT_MODIFY_32B:
 	case TF_TBL_TYPE_ACT_MODIFY_64B:
-		parms->increment_cnt = 8;
+		parms->increment_cnt = 16;
 		break;
 	default:
 		parms->increment_cnt = 1;
@@ -495,6 +514,7 @@ static bool tf_dev_p58_is_sram_managed(struct tf *tfp __rte_unused,
 	case TF_TBL_TYPE_ACT_ENCAP_16B:
 	case TF_TBL_TYPE_ACT_ENCAP_32B:
 	case TF_TBL_TYPE_ACT_ENCAP_64B:
+	case TF_TBL_TYPE_ACT_ENCAP_128B:
 	case TF_TBL_TYPE_ACT_SP_SMAC:
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV4:
 	case TF_TBL_TYPE_ACT_SP_SMAC_IPV6:
@@ -529,7 +549,7 @@ static bool tf_dev_p58_is_sram_managed(struct tf *tfp __rte_unused,
  *
  * [in/out] shift
  *   Pointer to the factor to be used as a multiplier to translate
- *   between the RM units to the user address.  SRAM manages 64B entries
+ *   between the RM units to the user address.  SRAM manages 128B entries
  *   Addresses must be shifted to an 8B address.
  *
  * Returns
@@ -763,6 +783,99 @@ static int tf_dev_p58_get_sram_policy(enum tf_dir dir,
 	return 0;
 }
 
+#ifdef TF_FLOW_SCALE_QUERY
+/**
+ * Update resource usage to firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or transmit direction
+ *
+ * [in] flow_resc_type
+ *   Types of the resource to update their usage state.
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_update_resc_usage(struct tf *tfp,
+					enum tf_dir dir,
+					enum tf_flow_resc_type flow_resc_type)
+{
+	int rc;
+
+	struct cfa_tf_resc_usage *usage_state = &tf_resc_usage[dir];
+
+	flow_resc_type |= HWRM_TF_RESC_USAGE_SET_INPUT_TYPES_ALL;
+	rc = tf_msg_set_resc_usage(tfp,
+				   dir,
+				   flow_resc_type,
+				   sizeof(cfa_tf_resc_usage_t),
+				   (uint8_t *)usage_state);
+
+	return rc;
+}
+
+/**
+ * Query resource usage from firmware.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in/out] parms
+ *   Pointer to parms structure
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+static int tf_dev_p58_query_resc_usage(struct tf *tfp,
+				       struct tf_query_resc_usage_parms *parms)
+{
+	int rc = 0;
+
+	parms->size = sizeof(struct cfa_tf_resc_usage);
+	rc = tf_msg_query_resc_usage(tfp,
+				     parms->dir,
+				     parms->flow_resc_type,
+				     &parms->size,
+				     (void *)parms->data);
+	return rc;
+}
+
+/**
+ * Update buffer of table usage state
+ *
+ * [in] session_id
+ *   Pointer to TF handle
+ *
+ * [in] dir
+ *   Receive or transmit direction
+ *
+ * [in] tbl_type
+ *   SRAM table type to update its usage state
+ *
+ * [in] resc_opt
+ *   Alloca or free resource
+ *
+ *    returns:
+ *    0       - Success
+ *    -EINVAL - Error
+ */
+static int
+tf_dev_p58_update_tbl_usage_buffer(struct tf *tfp,
+				   enum tf_dir dir,
+				   enum tf_tbl_type tbl_type,
+				   enum tf_resc_opt resc_opt)
+{
+	int rc;
+	rc = tf_tbl_usage_update(tfp, dir, tbl_type, resc_opt);
+	return rc;
+}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 /**
  * Truflow P58 device specific functions
  */
@@ -817,6 +930,11 @@ const struct tf_dev_ops tf_dev_ops_p58_init = {
 	.tf_dev_get_sram_resources = tf_dev_p58_get_sram_resources,
 	.tf_dev_set_sram_policy = tf_dev_p58_set_sram_policy,
 	.tf_dev_get_sram_policy = tf_dev_p58_get_sram_policy,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = tf_dev_p58_update_resc_usage,
+	.tf_dev_query_resc_usage = tf_dev_p58_query_resc_usage,
+	.tf_dev_update_tbl_usage_buffer = tf_dev_p58_update_tbl_usage_buffer,
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**
@@ -835,12 +953,12 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_tbl_info = tf_dev_p58_get_sram_tbl_info,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
 	.tf_dev_alloc_sram_tbl = tf_tbl_sram_alloc,
-	.tf_dev_alloc_ext_tbl = tf_tbl_ext_alloc,
+	.tf_dev_alloc_ext_tbl = NULL,
 	.tf_dev_free_tbl = tf_tbl_free,
-	.tf_dev_free_ext_tbl = tf_tbl_ext_free,
+	.tf_dev_free_ext_tbl = NULL,
 	.tf_dev_free_sram_tbl = tf_tbl_sram_free,
 	.tf_dev_set_tbl = tf_tbl_set,
-	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
+	.tf_dev_set_ext_tbl = NULL,
 	.tf_dev_set_sram_tbl = tf_tbl_sram_set,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_sram_tbl = tf_tbl_sram_get,
@@ -848,20 +966,12 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_bulk_sram_tbl = tf_tbl_sram_bulk_get,
 	.tf_dev_get_shared_tbl_increment = tf_dev_p58_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
-#ifdef TF_TCAM_SHARED
 	.tf_dev_alloc_tcam = tf_tcam_shared_alloc,
 	.tf_dev_free_tcam = tf_tcam_shared_free,
 	.tf_dev_set_tcam = tf_tcam_shared_set,
 	.tf_dev_get_tcam = tf_tcam_shared_get,
 	.tf_dev_move_tcam = tf_tcam_shared_move_p58,
 	.tf_dev_clear_tcam = tf_tcam_shared_clear,
-#else /* !TF_TCAM_SHARED */
-	.tf_dev_alloc_tcam = tf_tcam_alloc,
-	.tf_dev_free_tcam = tf_tcam_free,
-	.tf_dev_set_tcam = tf_tcam_set,
-	.tf_dev_get_tcam = tf_tcam_get,
-#endif
-	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_get_tcam_resc_info = tf_tcam_get_resc_info,
 	.tf_dev_insert_int_em_entry = tf_em_hash_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_hash_delete_int_entry,
@@ -884,4 +994,9 @@ const struct tf_dev_ops tf_dev_ops_p58 = {
 	.tf_dev_get_sram_resources = tf_dev_p58_get_sram_resources,
 	.tf_dev_set_sram_policy = tf_dev_p58_set_sram_policy,
 	.tf_dev_get_sram_policy = tf_dev_p58_get_sram_policy,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = tf_dev_p58_update_resc_usage,
+	.tf_dev_query_resc_usage = tf_dev_p58_query_resc_usage,
+	.tf_dev_update_tbl_usage_buffer = tf_dev_p58_update_tbl_usage_buffer,
+#endif /* TF_FLOW_SCALE_QUERY */
 };

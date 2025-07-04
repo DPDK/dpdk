@@ -75,7 +75,7 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4, uint32_t *mask)
 }
 
 int
-parse_ipv6_addr(const char *token, struct in6_addr *ipv6, uint32_t *mask)
+parse_ipv6_addr(const char *token, struct rte_ipv6_addr *ipv6, uint32_t *mask)
 {
 	char ip_str[256] = {0};
 	char *pch;
@@ -388,7 +388,7 @@ cfg_parse_neigh(void *parsed_result, __rte_unused struct cmdline *cl,
 	rc = parse_mac(res->mac, &mac);
 	APP_CHECK(rc == 0, st, "invalid ether addr:%s", res->mac);
 	rc = add_dst_ethaddr(res->port, &mac);
-	APP_CHECK(rc == 0, st, "invalid port numer:%hu", res->port);
+	APP_CHECK(rc == 0, st, "invalid port number:%hu", res->port);
 	if (st->status < 0)
 		return;
 }

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017-2021 NXP
+ * Copyright 2017-2023 NXP
  */
 
 /* System headers */
@@ -204,139 +204,258 @@ struct fmc_model_t {
 
 struct fmc_model_t *g_fmc_model;
 
-static int dpaa_port_fmc_port_parse(struct fman_if *fif,
-				    const struct fmc_model_t *fmc_model,
-				    int apply_idx)
+static int
+dpaa_port_fmc_port_parse(struct fman_if *fif,
+	const struct fmc_model_t *fmc_model,
+	int apply_idx)
 {
 	int current_port = fmc_model->apply_order[apply_idx].index;
 	const fmc_port *pport = &fmc_model->port[current_port];
-	const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
-	const uint8_t mac_type[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2};
+	uint32_t num;
 
-	if (mac_idx[fif->mac_idx] != pport->number ||
-		mac_type[fif->mac_idx] != pport->type)
-		return -1;
+	if (pport->type == e_FM_PORT_TYPE_OH_OFFLINE_PARSING &&
+	    pport->number == fif->mac_idx &&
+	    (fif->mac_type == fman_offline_internal ||
+	     fif->mac_type == fman_onic))
+		return current_port;
 
-	return current_port;
+	if (fif->mac_type == fman_mac_1g) {
+		if (pport->type != e_FM_PORT_TYPE_RX)
+			return -ENODEV;
+		num = pport->number + DPAA_1G_MAC_START_IDX;
+		if (fif->mac_idx == num)
+			return current_port;
+
+		return -ENODEV;
+	}
+
+	if (fif->mac_type == fman_mac_2_5g) {
+		if (pport->type != e_FM_PORT_TYPE_RX_2_5G)
+			return -ENODEV;
+		num = pport->number + DPAA_2_5G_MAC_START_IDX;
+		if (fif->mac_idx == num)
+			return current_port;
+
+		return -ENODEV;
+	}
+
+	if (fif->mac_type == fman_mac_10g) {
+		if (pport->type != e_FM_PORT_TYPE_RX_10G)
+			return -ENODEV;
+		num = pport->number + DPAA_10G_MAC_START_IDX;
+		if (fif->mac_idx == num)
+			return current_port;
+
+		return -ENODEV;
+	}
+
+	DPAA_PMD_ERR("Invalid MAC(mac_idx=%d) type(%d)",
+		fif->mac_idx, fif->mac_type);
+
+	return -EINVAL;
 }
 
-static int dpaa_port_fmc_scheme_parse(struct fman_if *fif,
-				const struct fmc_model_t *fmc,
-				int apply_idx,
-				uint16_t *rxq_idx, int max_nb_rxq,
-				uint32_t *fqids, int8_t *vspids)
+static int
+dpaa_fq_is_in_kernel(uint32_t fqid,
+	struct fman_if *fif)
 {
-	int idx = fmc->apply_order[apply_idx].index;
+	if (!fif->is_shared_mac)
+		return false;
+
+	if ((fqid == fif->fqid_rx_def ||
+		(fqid >= fif->fqid_rx_pcd &&
+		fqid < (fif->fqid_rx_pcd + fif->fqid_rx_pcd_count)) ||
+		fqid == fif->fqid_rx_err ||
+		fqid == fif->fqid_tx_err))
+		return true;
+
+	return false;
+}
+
+static int
+dpaa_vsp_id_is_in_kernel(uint8_t vsp_id,
+	struct fman_if *fif)
+{
+	if (!fif->is_shared_mac)
+		return false;
+
+	if (vsp_id == fif->base_profile_id)
+		return true;
+
+	return false;
+}
+
+static uint8_t
+dpaa_enqueue_vsp_id(struct fman_if *fif,
+	const struct ioc_fm_pcd_cc_next_enqueue_params_t *eq_param)
+{
+	if (eq_param->override_fqid)
+		return eq_param->new_relative_storage_profile_id;
+
+	return fif->base_profile_id;
+}
+
+static int
+dpaa_kg_storage_is_in_kernel(struct fman_if *fif,
+	const struct ioc_fm_pcd_kg_storage_profile_t *kg_storage)
+{
+	if (!fif->is_shared_mac)
+		return false;
+
+	if (!kg_storage->direct ||
+		(kg_storage->direct &&
+		kg_storage->profile_select.direct_relative_profile_id ==
+		fif->base_profile_id))
+		return true;
+
+	return false;
+}
+
+static void
+dpaa_fmc_remove_fq_from_allocated(uint32_t *fqids,
+	uint16_t *rxq_idx, uint32_t rm_fqid)
+{
 	uint32_t i;
 
-	if (!fmc->scheme[idx].override_storage_profile &&
-		fif->is_shared_mac) {
-		DPAA_PMD_WARN("No VSP assigned to scheme %d for sharemac %d!",
-			idx, fif->mac_idx);
-		DPAA_PMD_WARN("Risk to receive pkts from skb pool to CRASH!");
-	}
-
-	if (e_IOC_FM_PCD_DONE ==
-		fmc->scheme[idx].next_engine) {
-		for (i = 0; i < fmc->scheme[idx]
-			.key_ext_and_hash.hash_dist_num_of_fqids; i++) {
-			uint32_t fqid = fmc->scheme[idx].base_fqid + i;
-			int k, found = 0;
-
-			if (fqid == fif->fqid_rx_def ||
-			    (fqid >= fif->fqid_rx_pcd &&
-					fqid < (fif->fqid_rx_pcd +
-						fif->fqid_rx_pcd_count))) {
-				if (fif->is_shared_mac &&
-				fmc->scheme[idx].override_storage_profile &&
-				fmc->scheme[idx].storage_profile.direct &&
-				fmc->scheme[idx].storage_profile
-				.profile_select.direct_relative_profile_id !=
-				fif->base_profile_id) {
-					DPAA_PMD_ERR("Def RXQ must be associated with def VSP on sharemac!");
-
-					return -1;
-				}
-				continue;
-			}
-
-			if (fif->is_shared_mac &&
-			!fmc->scheme[idx].override_storage_profile) {
-				DPAA_PMD_ERR("RXQ to DPDK must be associated with VSP on sharemac!");
-				return -1;
-			}
-
-			if (fif->is_shared_mac &&
-				fmc->scheme[idx].override_storage_profile &&
-				fmc->scheme[idx].storage_profile.direct &&
-				fmc->scheme[idx].storage_profile
-				.profile_select.direct_relative_profile_id ==
-				fif->base_profile_id) {
-				DPAA_PMD_ERR("RXQ can't be associated with default VSP on sharemac!");
-
-				return -1;
-			}
-
-			if ((*rxq_idx) >= max_nb_rxq) {
-				DPAA_PMD_DEBUG("Too many queues in FMC policy"
-					"%d overflow %d",
-					(*rxq_idx), max_nb_rxq);
-
-				continue;
-			}
-
-			for (k = 0; k < (*rxq_idx); k++) {
-				if (fqids[k] == fqid) {
-					found = 1;
-					break;
-				}
-			}
-
-			if (found)
-				continue;
-			fqids[(*rxq_idx)] = fqid;
-			if (fmc->scheme[idx].override_storage_profile) {
-				if (fmc->scheme[idx].storage_profile.direct) {
-					vspids[(*rxq_idx)] =
-						fmc->scheme[idx].storage_profile
-						.profile_select
-						.direct_relative_profile_id;
-				} else {
-					vspids[(*rxq_idx)] = -1;
-				}
-			} else {
-				vspids[(*rxq_idx)] = -1;
-			}
-			(*rxq_idx)++;
+	for (i = 0; i < (*rxq_idx); i++) {
+		if (fqids[i] != rm_fqid)
+			continue;
+		DPAA_PMD_WARN("Remove fq(0x%08x) allocated.",
+			rm_fqid);
+		if ((*rxq_idx) > (i + 1)) {
+			memmove(&fqids[i], &fqids[i + 1],
+				((*rxq_idx) - (i + 1)) * sizeof(uint32_t));
 		}
+		(*rxq_idx)--;
+		break;
 	}
-
-	return 0;
 }
 
-static int dpaa_port_fmc_ccnode_parse(struct fman_if *fif,
-				      const struct fmc_model_t *fmc_model,
-				      int apply_idx,
-				      uint16_t *rxq_idx, int max_nb_rxq,
-				      uint32_t *fqids, int8_t *vspids)
+static int
+dpaa_port_fmc_scheme_parse(struct fman_if *fif,
+	const struct fmc_model_t *fmc,
+	int apply_idx,
+	uint16_t *rxq_idx, int max_nb_rxq,
+	uint32_t *fqids, int8_t *vspids)
 {
-	uint16_t j, k, found = 0;
-	const struct ioc_keys_params_t *keys_params;
-	uint32_t fqid, cc_idx = fmc_model->apply_order[apply_idx].index;
+	int scheme_idx = fmc->apply_order[apply_idx].index;
+	int k, found = 0;
+	uint32_t i, num_rxq, fqid, rxq_idx_start = *rxq_idx;
+	const struct fm_pcd_kg_scheme_params_t *scheme;
+	const struct ioc_fm_pcd_kg_key_extract_and_hash_params_t *params;
+	const struct ioc_fm_pcd_kg_storage_profile_t *kg_storage;
+	uint8_t vsp_id;
 
-	keys_params = &fmc_model->ccnode[cc_idx].keys_params;
+	scheme = &fmc->scheme[scheme_idx];
+	params = &scheme->key_ext_and_hash;
+	num_rxq = params->hash_dist_num_of_fqids;
+	kg_storage = &scheme->storage_profile;
 
-	if ((*rxq_idx) >= max_nb_rxq) {
-		DPAA_PMD_WARN("Too many queues in FMC policy %d overflow %d",
-			      (*rxq_idx), max_nb_rxq);
+	if (scheme->override_storage_profile && kg_storage->direct)
+		vsp_id = kg_storage->profile_select.direct_relative_profile_id;
+	else
+		vsp_id = fif->base_profile_id;
+
+	if (dpaa_kg_storage_is_in_kernel(fif, kg_storage)) {
+		DPAA_PMD_WARN("Scheme[%d]'s VSP is in kernel",
+			scheme_idx);
+		/* The FQ may be allocated from previous CC or scheme,
+		 * find and remove it.
+		 */
+		for (i = 0; i < num_rxq; i++) {
+			fqid = scheme->base_fqid + i;
+			DPAA_PMD_WARN("Removed fqid(0x%08x) of Scheme[%d]",
+				fqid, scheme_idx);
+			dpaa_fmc_remove_fq_from_allocated(fqids,
+				rxq_idx, fqid);
+			if (!dpaa_fq_is_in_kernel(fqid, fif)) {
+				char reason_msg[128];
+				char result_msg[128];
+
+				sprintf(reason_msg,
+					"NOT handled in kernel");
+				sprintf(result_msg,
+					"will DRAIN kernel pool!");
+				DPAA_PMD_WARN("Traffic to FQ(%08x)(%s) %s",
+					fqid, reason_msg, result_msg);
+			}
+		}
 
 		return 0;
 	}
 
-	for (j = 0; j < keys_params->num_of_keys; ++j) {
+	if (e_IOC_FM_PCD_DONE != scheme->next_engine) {
+		/* Do nothing.*/
+		DPAA_PMD_DEBUG("Will parse scheme[%d]'s next engine(%d)",
+			scheme_idx, scheme->next_engine);
+		return 0;
+	}
+
+	for (i = 0; i < num_rxq; i++) {
+		fqid = scheme->base_fqid + i;
 		found = 0;
-		fqid = keys_params->key_params[j].cc_next_engine_params
-			.params.enqueue_params.new_fqid;
+
+		if (dpaa_fq_is_in_kernel(fqid, fif)) {
+			DPAA_PMD_WARN("FQ(0x%08x) is handled in kernel.",
+				fqid);
+			/* The FQ may be allocated from previous CC or scheme,
+			 * remove it.
+			 */
+			dpaa_fmc_remove_fq_from_allocated(fqids,
+				rxq_idx, fqid);
+			continue;
+		}
+
+		if ((*rxq_idx) >= max_nb_rxq) {
+			DPAA_PMD_WARN("Too many queues(%d) >= MAX number(%d)",
+				(*rxq_idx), max_nb_rxq);
+
+			break;
+		}
+
+		for (k = 0; k < (*rxq_idx); k++) {
+			if (fqids[k] == fqid) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (found)
+			continue;
+		fqids[(*rxq_idx)] = fqid;
+		vspids[(*rxq_idx)] = vsp_id;
+
+		(*rxq_idx)++;
+	}
+
+	return (*rxq_idx) - rxq_idx_start;
+}
+
+static int
+dpaa_port_fmc_ccnode_parse(struct fman_if *fif,
+	const struct fmc_model_t *fmc,
+	int apply_idx,
+	uint16_t *rxq_idx, int max_nb_rxq,
+	uint32_t *fqids, int8_t *vspids)
+{
+	uint16_t j, k, found = 0;
+	const struct ioc_keys_params_t *keys_params;
+	const struct ioc_fm_pcd_cc_next_engine_params_t *params;
+	uint32_t fqid, cc_idx = fmc->apply_order[apply_idx].index;
+	uint32_t rxq_idx_start = *rxq_idx;
+	uint8_t vsp_id;
+
+	keys_params = &fmc->ccnode[cc_idx].keys_params;
+
+	for (j = 0; j < keys_params->num_of_keys; ++j) {
+		if ((*rxq_idx) >= max_nb_rxq) {
+			DPAA_PMD_WARN("Too many queues(%d) >= MAX number(%d)",
+				(*rxq_idx), max_nb_rxq);
+
+			break;
+		}
+		found = 0;
+		params = &keys_params->key_params[j].cc_next_engine_params;
 
 		/* We read DPDK queue from last classification rule present in
 		 * FMC policy file. Hence, this check is required here.
@@ -344,15 +463,30 @@ static int dpaa_port_fmc_ccnode_parse(struct fman_if *fif,
 		 * have userspace queue so that it can be used by DPDK
 		 * application.
 		 */
-		if (keys_params->key_params[j].cc_next_engine_params
-			.next_engine != e_IOC_FM_PCD_DONE) {
-			DPAA_PMD_WARN("FMC CC next engine not support");
+		if (params->next_engine != e_IOC_FM_PCD_DONE) {
+			DPAA_PMD_WARN("CC next engine(%d) not support",
+				params->next_engine);
 			continue;
 		}
-		if (keys_params->key_params[j].cc_next_engine_params
-			.params.enqueue_params.action !=
+		if (params->params.enqueue_params.action !=
 			e_IOC_FM_PCD_ENQ_FRAME)
 			continue;
+
+		fqid = params->params.enqueue_params.new_fqid;
+		vsp_id = dpaa_enqueue_vsp_id(fif,
+			&params->params.enqueue_params);
+		if (dpaa_fq_is_in_kernel(fqid, fif) ||
+			dpaa_vsp_id_is_in_kernel(vsp_id, fif)) {
+			DPAA_PMD_DEBUG("FQ(0x%08x)/VSP(%d) is in kernel.",
+				fqid, vsp_id);
+			/* The FQ may be allocated from previous CC or scheme,
+			 * remove it.
+			 */
+			dpaa_fmc_remove_fq_from_allocated(fqids,
+				rxq_idx, fqid);
+			continue;
+		}
+
 		for (k = 0; k < (*rxq_idx); k++) {
 			if (fqids[k] == fqid) {
 				found = 1;
@@ -362,38 +496,22 @@ static int dpaa_port_fmc_ccnode_parse(struct fman_if *fif,
 		if (found)
 			continue;
 
-		if ((*rxq_idx) >= max_nb_rxq) {
-			DPAA_PMD_WARN("Too many queues in FMC policy %d overflow %d",
-				      (*rxq_idx), max_nb_rxq);
-
-			return 0;
-		}
-
 		fqids[(*rxq_idx)] = fqid;
-		vspids[(*rxq_idx)] =
-			keys_params->key_params[j].cc_next_engine_params
-				.params.enqueue_params
-				.new_relative_storage_profile_id;
+		vspids[(*rxq_idx)] = vsp_id;
 
-		if (vspids[(*rxq_idx)] == fif->base_profile_id &&
-		    fif->is_shared_mac) {
-			DPAA_PMD_ERR("VSP %d can NOT be used on DPDK.",
-				     vspids[(*rxq_idx)]);
-			DPAA_PMD_ERR("It is associated to skb pool of shared interface.");
-			return -1;
-		}
 		(*rxq_idx)++;
 	}
 
-	return 0;
+	return (*rxq_idx) - rxq_idx_start;
 }
 
-int dpaa_port_fmc_init(struct fman_if *fif,
-		       uint32_t *fqids, int8_t *vspids, int max_nb_rxq)
+int
+dpaa_port_fmc_init(struct fman_if *fif,
+	uint32_t *fqids, int8_t *vspids, int max_nb_rxq)
 {
 	int current_port = -1, ret;
 	uint16_t rxq_idx = 0;
-	const struct fmc_model_t *fmc_model;
+	const struct fmc_model_t *fmc;
 	uint32_t i;
 
 	if (!g_fmc_model) {
@@ -402,14 +520,14 @@ int dpaa_port_fmc_init(struct fman_if *fif,
 
 		if (!fp) {
 			DPAA_PMD_ERR("%s not exists", FMC_FILE);
-			return -1;
+			return -ENOENT;
 		}
 
 		g_fmc_model = rte_malloc(NULL, sizeof(struct fmc_model_t), 64);
 		if (!g_fmc_model) {
 			DPAA_PMD_ERR("FMC memory alloc failed");
 			fclose(fp);
-			return -1;
+			return -ENOBUFS;
 		}
 
 		bytes_read = fread(g_fmc_model,
@@ -419,25 +537,28 @@ int dpaa_port_fmc_init(struct fman_if *fif,
 			fclose(fp);
 			rte_free(g_fmc_model);
 			g_fmc_model = NULL;
-			return -1;
+			return -EIO;
 		}
 		fclose(fp);
 	}
 
-	fmc_model = g_fmc_model;
+	fmc = g_fmc_model;
 
-	if (fmc_model->format_version != FMC_OUTPUT_FORMAT_VER)
-		return -1;
+	if (fmc->format_version != FMC_OUTPUT_FORMAT_VER) {
+		DPAA_PMD_ERR("FMC version(0x%08x) != Supported ver(0x%08x)",
+			fmc->format_version, FMC_OUTPUT_FORMAT_VER);
+		return -EINVAL;
+	}
 
-	for (i = 0; i < fmc_model->apply_order_count; i++) {
-		switch (fmc_model->apply_order[i].type) {
+	for (i = 0; i < fmc->apply_order_count; i++) {
+		switch (fmc->apply_order[i].type) {
 		case fmcengine_start:
 			break;
 		case fmcengine_end:
 			break;
 		case fmcport_start:
 			current_port = dpaa_port_fmc_port_parse(fif,
-								fmc_model, i);
+				fmc, i);
 			break;
 		case fmcport_end:
 			break;
@@ -445,24 +566,24 @@ int dpaa_port_fmc_init(struct fman_if *fif,
 			if (current_port < 0)
 				break;
 
-			ret = dpaa_port_fmc_scheme_parse(fif, fmc_model,
-							 i, &rxq_idx,
-							 max_nb_rxq,
-							 fqids, vspids);
-			if (ret)
-				return ret;
+			ret = dpaa_port_fmc_scheme_parse(fif, fmc,
+				i, &rxq_idx, max_nb_rxq, fqids, vspids);
+			DPAA_PMD_INFO("%s %d RXQ(s) from scheme[%d]",
+				ret >= 0 ? "Alloc" : "Remove",
+				ret >= 0 ? ret : -ret,
+				fmc->apply_order[i].index);
 
 			break;
 		case fmcccnode:
 			if (current_port < 0)
 				break;
 
-			ret = dpaa_port_fmc_ccnode_parse(fif, fmc_model,
-							 i, &rxq_idx,
-							 max_nb_rxq, fqids,
-							 vspids);
-			if (ret)
-				return ret;
+			ret = dpaa_port_fmc_ccnode_parse(fif, fmc,
+				i, &rxq_idx, max_nb_rxq, fqids, vspids);
+			DPAA_PMD_INFO("%s %d RXQ(s) from cc[%d]",
+				ret >= 0 ? "Alloc" : "Remove",
+				ret >= 0 ? ret : -ret,
+				fmc->apply_order[i].index);
 
 			break;
 		case fmchtnode:

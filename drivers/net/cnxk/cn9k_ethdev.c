@@ -30,7 +30,7 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 		flags |= NIX_RX_MULTI_SEG_F;
 
-	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) || dev->ptp_en)
 		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
 
 	if (!dev->ptype_disable)
@@ -251,7 +251,7 @@ cn9k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 		inl_lf = dev->outb.lf_base + crypto_qid;
 
 		txq->cpt_io_addr = inl_lf->io_addr;
-		txq->cpt_fc = inl_lf->fc_addr;
+		txq->cpt_fc = (uint64_t __rte_atomic *)inl_lf->fc_addr;
 		txq->cpt_desc = inl_lf->nb_desc * 0.7;
 		txq->sa_base = (uint64_t)dev->outb.sa_base;
 		txq->sa_base |= eth_dev->data->port_id;
@@ -329,7 +329,12 @@ static int
 cn9k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 {
 	struct cn9k_eth_txq *txq = eth_dev->data->tx_queues[qidx];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint16_t flags = dev->tx_offload_flags;
+	struct roc_nix *nix = &dev->nix;
+	uint32_t head = 0, tail = 0;
 	int rc;
+
 
 	rc = cnxk_nix_tx_queue_stop(eth_dev, qidx);
 	if (rc)
@@ -337,6 +342,21 @@ cn9k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 
 	/* Clear fc cache pkts to trigger worker stop */
 	txq->fc_cache_pkts = 0;
+
+	if ((flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) && txq->tx_compl.ena) {
+		struct roc_nix_sq *sq = &dev->sqs[qidx];
+		do {
+			handle_tx_completion_pkts(txq, 0);
+			/* Check if SQ is empty */
+			roc_nix_sq_head_tail_get(nix, sq->qid, &head, &tail);
+			if (head != tail)
+				continue;
+
+			/* Check if completion CQ is empty */
+			roc_nix_cq_head_tail_get(nix, sq->cqid, &head, &tail);
+		} while (head != tail);
+	}
+
 	return 0;
 }
 
@@ -412,7 +432,7 @@ cn9k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
 	struct rte_eth_dev *eth_dev;
 	struct cn9k_eth_rxq *rxq;
-	int i;
+	int i, rc;
 
 	if (!dev)
 		return -EINVAL;
@@ -435,8 +455,21 @@ cn9k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 		 * and MTU setting also requires MBOX message to be
 		 * sent(VF->PF)
 		 */
+		if (dev->ptp_en) {
+			rc = rte_mbuf_dyn_rx_timestamp_register
+				(&dev->tstamp.tstamp_dynfield_offset,
+				 &dev->tstamp.rx_tstamp_dynflag);
+			if (rc != 0) {
+				plt_err("Failed to register Rx timestamp field/flag");
+				return -EINVAL;
+			}
+		}
 		eth_dev->rx_pkt_burst = nix_ptp_vf_burst;
+		rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst = eth_dev->rx_pkt_burst;
 		rte_mb();
+		if (dev->cnxk_sso_ptp_tstamp_cb)
+			dev->cnxk_sso_ptp_tstamp_cb(eth_dev->data->port_id,
+						    NIX_RX_OFFLOAD_TSTAMP_F, dev->ptp_en);
 	}
 
 	return 0;
@@ -650,6 +683,58 @@ exit:
 	return rc;
 }
 
+static int
+cn9k_nix_rx_avail_get(struct cn9k_eth_rxq *rxq)
+{
+	uint32_t qmask = rxq->qmask;
+	uint64_t reg, head, tail;
+	int available;
+
+	/* Use LDADDA version to avoid reorder */
+	reg = roc_atomic64_add_sync(rxq->wdata, rxq->cq_status);
+	/* CQ_OP_STATUS operation error */
+	if (reg & BIT_ULL(NIX_CQ_OP_STAT_OP_ERR) ||
+	    reg & BIT_ULL(NIX_CQ_OP_STAT_CQ_ERR))
+		return 0;
+	tail = reg & 0xFFFFF;
+	head = (reg >> 20) & 0xFFFFF;
+	if (tail < head)
+		available = tail - head + qmask + 1;
+	else
+		available = tail - head;
+
+	return available;
+}
+
+static int
+cn9k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid,
+			 uint16_t offset, uint16_t num, FILE *file)
+{
+	struct cn9k_eth_rxq *rxq = eth_dev->data->rx_queues[qid];
+	const uint32_t qmask = rxq->qmask;
+	const uintptr_t desc = rxq->desc;
+	uint32_t head = rxq->head;
+	struct nix_cqe_hdr_s *cq;
+	uint16_t count = 0;
+	int available_pkts;
+
+	available_pkts = cn9k_nix_rx_avail_get(rxq);
+
+	if ((offset + num - 1) >= available_pkts) {
+		plt_err("Invalid BD num=%u", num);
+		return -EINVAL;
+	}
+
+	while (count < num) {
+		cq = (struct nix_cqe_hdr_s *)(desc + CQE_SZ(head) +
+					      count + offset);
+		roc_nix_cqe_dump(file, cq);
+		count++;
+		head &= qmask;
+	}
+	return 0;
+}
+
 /* Update platform specific eth dev ops */
 static void
 nix_eth_dev_ops_override(void)
@@ -673,6 +758,7 @@ nix_eth_dev_ops_override(void)
 	cnxk_eth_dev_ops.mtr_ops_get = NULL;
 	cnxk_eth_dev_ops.timesync_read_tx_timestamp =
 		cn9k_nix_timesync_read_tx_timestamp;
+	cnxk_eth_dev_ops.eth_rx_descriptor_dump = cn9k_rx_descriptor_dump;
 }
 
 /* Update platform specific eth dev ops */

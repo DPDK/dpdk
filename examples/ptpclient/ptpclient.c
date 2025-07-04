@@ -20,6 +20,9 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <getopt.h>
+#include <signal.h>
+
+static volatile bool force_quit;
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -53,22 +56,22 @@ static const struct rte_ether_addr ether_multicast = {
 };
 
 /* Structs used for PTP handling. */
-struct tstamp {
+struct __rte_packed_begin tstamp {
 	uint16_t   sec_msb;
 	uint32_t   sec_lsb;
 	uint32_t   ns;
-}  __rte_packed;
+} __rte_packed_end;
 
 struct clock_id {
 	uint8_t id[8];
 };
 
-struct port_id {
+struct __rte_packed_begin port_id {
 	struct clock_id        clock_id;
 	uint16_t               port_number;
-}  __rte_packed;
+} __rte_packed_end;
 
-struct ptp_header {
+struct __rte_packed_begin ptp_header {
 	uint8_t              msg_type;
 	uint8_t              ver;
 	uint16_t             message_length;
@@ -81,49 +84,49 @@ struct ptp_header {
 	uint16_t             seq_id;
 	uint8_t              control;
 	int8_t               log_message_interval;
-} __rte_packed;
+} __rte_packed_end;
 
-struct sync_msg {
+struct __rte_packed_begin sync_msg {
 	struct ptp_header   hdr;
 	struct tstamp       origin_tstamp;
-} __rte_packed;
+} __rte_packed_end;
 
-struct follow_up_msg {
+struct __rte_packed_begin follow_up_msg {
 	struct ptp_header   hdr;
 	struct tstamp       precise_origin_tstamp;
 	uint8_t             suffix[];
-} __rte_packed;
+} __rte_packed_end;
 
-struct delay_req_msg {
+struct __rte_packed_begin delay_req_msg {
 	struct ptp_header   hdr;
 	struct tstamp       origin_tstamp;
-} __rte_packed;
+} __rte_packed_end;
 
-struct delay_resp_msg {
+struct __rte_packed_begin delay_resp_msg {
 	struct ptp_header    hdr;
 	struct tstamp        rx_tstamp;
 	struct port_id       req_port_id;
 	uint8_t              suffix[];
-} __rte_packed;
+} __rte_packed_end;
 
 struct ptp_message {
-	union {
+	union __rte_packed_begin {
 		struct ptp_header          header;
 		struct sync_msg            sync;
 		struct delay_req_msg       delay_req;
 		struct follow_up_msg       follow_up;
 		struct delay_resp_msg      delay_resp;
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
-struct ptpv2_data_slave_ordinary {
+struct ptpv2_time_receiver_ordinary {
 	struct rte_mbuf *m;
 	struct timespec tstamp1;
 	struct timespec tstamp2;
 	struct timespec tstamp3;
 	struct timespec tstamp4;
 	struct clock_id client_clock_id;
-	struct clock_id master_clock_id;
+	struct clock_id transmitter_clock_id;
 	struct timeval new_adj;
 	int64_t delta;
 	uint16_t portid;
@@ -134,7 +137,7 @@ struct ptpv2_data_slave_ordinary {
 	uint16_t current_ptp_port;
 };
 
-static struct ptpv2_data_slave_ordinary ptp_data;
+static struct ptpv2_time_receiver_ordinary ptp_data;
 
 static inline uint64_t timespec64_to_ns(const struct timespec *ts)
 {
@@ -263,52 +266,53 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 }
 
 static void
-print_clock_info(struct ptpv2_data_slave_ordinary *ptp_data)
+print_clock_info(struct ptpv2_time_receiver_ordinary *ptp_data)
 {
 	int64_t nsec;
 	struct timespec net_time, sys_time;
 
-	printf("Master Clock id: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-		ptp_data->master_clock_id.id[0],
-		ptp_data->master_clock_id.id[1],
-		ptp_data->master_clock_id.id[2],
-		ptp_data->master_clock_id.id[3],
-		ptp_data->master_clock_id.id[4],
-		ptp_data->master_clock_id.id[5],
-		ptp_data->master_clock_id.id[6],
-		ptp_data->master_clock_id.id[7]);
+	printf("time transmitter clock id: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+		ptp_data->transmitter_clock_id.id[0],
+		ptp_data->transmitter_clock_id.id[1],
+		ptp_data->transmitter_clock_id.id[2],
+		ptp_data->transmitter_clock_id.id[3],
+		ptp_data->transmitter_clock_id.id[4],
+		ptp_data->transmitter_clock_id.id[5],
+		ptp_data->transmitter_clock_id.id[6],
+		ptp_data->transmitter_clock_id.id[7]);
 
-	printf("\nT2 - Slave  Clock.  %lds %ldns",
+	printf("\nT2 - time receiver clock.  %lds %ldns",
 			(ptp_data->tstamp2.tv_sec),
 			(ptp_data->tstamp2.tv_nsec));
 
-	printf("\nT1 - Master Clock.  %lds %ldns ",
+	printf("\nT1 - time transmitter clock.  %lds %ldns ",
 			ptp_data->tstamp1.tv_sec,
 			(ptp_data->tstamp1.tv_nsec));
 
-	printf("\nT3 - Slave  Clock.  %lds %ldns",
+	printf("\nT3 - time receiver clock.  %lds %ldns",
 			ptp_data->tstamp3.tv_sec,
 			(ptp_data->tstamp3.tv_nsec));
 
-	printf("\nT4 - Master Clock.  %lds %ldns ",
+	printf("\nT4 - time transmitter clock.  %lds %ldns\n",
 			ptp_data->tstamp4.tv_sec,
 			(ptp_data->tstamp4.tv_nsec));
 
-	printf("\nDelta between master and slave clocks:%"PRId64"ns\n",
-			ptp_data->delta);
+	printf("\nDelta between transmitter and receiver clocks:%"PRId64"ns\n",
+		ptp_data->delta);
 
 	clock_gettime(CLOCK_REALTIME, &sys_time);
-	rte_eth_timesync_read_time(ptp_data->current_ptp_port, &net_time);
+	rte_eth_timesync_read_time(ptp_data->current_ptp_port,
+					&net_time);
 
 	time_t ts = net_time.tv_sec;
 
 	printf("\n\nComparison between Linux kernel Time and PTP:");
 
 	printf("\nCurrent PTP Time: %.24s %.9ld ns",
-			ctime(&ts), net_time.tv_nsec);
+		ctime(&ts), net_time.tv_nsec);
 
 	nsec = (int64_t)timespec64_to_ns(&net_time) -
-			(int64_t)timespec64_to_ns(&sys_time);
+		(int64_t)timespec64_to_ns(&sys_time);
 	ptp_data->new_adj = ns_to_timeval(nsec);
 
 	gettimeofday(&ptp_data->new_adj, NULL);
@@ -316,10 +320,10 @@ print_clock_info(struct ptpv2_data_slave_ordinary *ptp_data)
 	time_t tp = ptp_data->new_adj.tv_sec;
 
 	printf("\nCurrent SYS Time: %.24s %.6ld ns",
-				ctime(&tp), ptp_data->new_adj.tv_usec);
+		ctime(&tp), ptp_data->new_adj.tv_usec);
 
 	printf("\nDelta between PTP and Linux Kernel time:%"PRId64"ns\n",
-				nsec);
+		nsec);
 
 	printf("[Ctrl+C to quit]\n");
 
@@ -328,7 +332,7 @@ print_clock_info(struct ptpv2_data_slave_ordinary *ptp_data)
 }
 
 static int64_t
-delta_eval(struct ptpv2_data_slave_ordinary *ptp_data)
+delta_eval(struct ptpv2_time_receiver_ordinary *ptp_data)
 {
 	int64_t delta;
 	uint64_t t1 = 0;
@@ -350,22 +354,20 @@ delta_eval(struct ptpv2_data_slave_ordinary *ptp_data)
  * Parse the PTP SYNC message.
  */
 static void
-parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
+parse_sync(struct ptpv2_time_receiver_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 {
 	struct ptp_header *ptp_hdr;
 
-	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(ptp_data->m, char *)
-			+ sizeof(struct rte_ether_hdr));
+	ptp_hdr = rte_pktmbuf_mtod_offset(ptp_data->m, struct ptp_header *,
+					  sizeof(struct rte_ether_hdr));
 	ptp_data->seqID_SYNC = rte_be_to_cpu_16(ptp_hdr->seq_id);
 
 	if (ptp_data->ptpset == 0) {
-		rte_memcpy(&ptp_data->master_clock_id,
-				&ptp_hdr->source_port_id.clock_id,
-				sizeof(struct clock_id));
+		ptp_data->transmitter_clock_id = ptp_hdr->source_port_id.clock_id;
 		ptp_data->ptpset = 1;
 	}
 
-	if (memcmp(&ptp_hdr->source_port_id.clock_id,
+	if (memcmp(&ptp_data->transmitter_clock_id,
 			&ptp_hdr->source_port_id.clock_id,
 			sizeof(struct clock_id)) == 0) {
 
@@ -380,7 +382,7 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
  * Parse the PTP FOLLOWUP message and send DELAY_REQ to the main clock.
  */
 static void
-parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
+parse_fup(struct ptpv2_time_receiver_ordinary *ptp_data)
 {
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ether_addr eth_addr;
@@ -397,15 +399,15 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 	int ret;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-			+ sizeof(struct rte_ether_hdr));
-	if (memcmp(&ptp_data->master_clock_id,
+	ptp_hdr = rte_pktmbuf_mtod_offset(m, struct ptp_header *,
+					  sizeof(struct rte_ether_hdr));
+	if (memcmp(&ptp_data->transmitter_clock_id,
 			&ptp_hdr->source_port_id.clock_id,
 			sizeof(struct clock_id)) != 0)
 		return;
 
 	ptp_data->seqID_FOLLOWUP = rte_be_to_cpu_16(ptp_hdr->seq_id);
-	ptp_msg = (struct ptp_message *) (rte_pktmbuf_mtod(m, char *) +
+	ptp_msg = rte_pktmbuf_mtod_offset(m, struct ptp_message *,
 					  sizeof(struct rte_ether_hdr));
 
 	origin_tstamp = &ptp_msg->follow_up.precise_origin_tstamp;
@@ -466,9 +468,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		client_clkid->id[6] = eth_hdr->src_addr.addr_bytes[4];
 		client_clkid->id[7] = eth_hdr->src_addr.addr_bytes[5];
 
-		rte_memcpy(&ptp_data->client_clock_id,
-			   client_clkid,
-			   sizeof(struct clock_id));
+		ptp_data->client_clock_id = *client_clkid;
 
 		/* Enable flag for hardware timestamping. */
 		created_pkt->ol_flags |= RTE_MBUF_F_TX_IEEE1588_TMST;
@@ -530,15 +530,15 @@ update_kernel_time(void)
  * Parse the DELAY_RESP message.
  */
 static void
-parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
+parse_drsp(struct ptpv2_time_receiver_ordinary *ptp_data)
 {
 	struct rte_mbuf *m = ptp_data->m;
 	struct ptp_message *ptp_msg;
 	struct tstamp *rx_tstamp;
 	uint16_t seq_id;
 
-	ptp_msg = (struct ptp_message *) (rte_pktmbuf_mtod(m, char *) +
-					sizeof(struct rte_ether_hdr));
+	ptp_msg = rte_pktmbuf_mtod_offset(m, struct ptp_message *,
+					  sizeof(struct rte_ether_hdr));
 	seq_id = rte_be_to_cpu_16(ptp_msg->delay_resp.hdr.seq_id);
 	if (memcmp(&ptp_data->client_clock_id,
 		   &ptp_msg->delay_resp.req_port_id.clock_id,
@@ -554,7 +554,7 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 			ptp_data->delta = delta_eval(ptp_data);
 
 			rte_eth_timesync_adjust_time(ptp_data->portid,
-						     ptp_data->delta);
+							ptp_data->delta);
 
 			ptp_data->current_ptp_port = ptp_data->portid;
 
@@ -568,7 +568,7 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 	}
 }
 
-/* This function processes PTP packets, implementing slave PTP IEEE1588 L2
+/* This function processes PTP packets, implementing time receiver PTP IEEE1588 L2
  * functionality.
  */
 
@@ -585,8 +585,8 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
 	if (eth_type == PTP_PROTOCOL) {
 		ptp_data.m = m;
 		ptp_data.portid = portid;
-		ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-					+ sizeof(struct rte_ether_hdr));
+		ptp_hdr = rte_pktmbuf_mtod_offset(m, struct ptp_header *,
+						  sizeof(struct rte_ether_hdr));
 
 		switch (ptp_hdr->msg_type) {
 		case SYNC:
@@ -610,7 +610,7 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
  * The lcore main. This is the main thread that does the work, reading from an
  * input port and writing to an output port.
  */
-static __rte_noreturn void
+static void
 lcore_main(void)
 {
 	uint16_t portid;
@@ -622,7 +622,7 @@ lcore_main(void)
 
 	/* Run until the application is quit or killed. */
 
-	while (1) {
+	while (!force_quit) {
 		/* Read packet from RX queues. 8< */
 		for (portid = 0; portid < ptp_enabled_port_nb; portid++) {
 
@@ -735,6 +735,13 @@ ptp_parse_args(int argc, char **argv)
 	return 0;
 }
 
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM)
+		force_quit = true;
+}
+
 /*
  * The main function, which does initialization and calls the per-lcore
  * functions.
@@ -753,11 +760,15 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
 	/* >8 End of initialization of EAL. */
 
-	memset(&ptp_data, '\0', sizeof(struct ptpv2_data_slave_ordinary));
+	memset(&ptp_data, 0, sizeof(struct ptpv2_time_receiver_ordinary));
 
 	/* Parse specific arguments. 8< */
 	argc -= ret;
 	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	ret = ptp_parse_args(argc, argv);
 	if (ret < 0)
@@ -802,6 +813,20 @@ main(int argc, char *argv[])
 
 	/* Call lcore_main on the main core only. */
 	lcore_main();
+
+	RTE_ETH_FOREACH_DEV(portid) {
+		if ((ptp_enabled_port_mask & (1 << portid)) == 0)
+			continue;
+
+		/* Disable timesync timestamping for the Ethernet device */
+		rte_eth_timesync_disable(portid);
+
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%d, port=%d\n", ret, portid);
+
+		rte_eth_dev_close(portid);
+	}
 
 	/* clean up the EAL */
 	rte_eal_cleanup();

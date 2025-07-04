@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -119,16 +120,16 @@ struct app_config_params {
 	uint16_t num_dec_cores;
 };
 
-struct lcore_statistics {
+struct __rte_cache_aligned lcore_statistics {
 	unsigned int enqueued;
 	unsigned int dequeued;
 	unsigned int rx_lost_packets;
 	unsigned int enc_to_dec_lost_packets;
 	unsigned int tx_lost_packets;
-} __rte_cache_aligned;
+};
 
 /** each lcore configuration */
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint64_t core_type;
 
 	unsigned int port_id;
@@ -147,7 +148,7 @@ struct lcore_conf {
 	struct rte_ring *enc_to_dec_ring;
 
 	struct lcore_statistics *lcore_stats;
-} __rte_cache_aligned;
+};
 
 struct stats_lcore_params {
 	struct lcore_conf *lconf;
@@ -164,7 +165,7 @@ static const struct app_config_params def_app_config = {
 	.num_dec_cores = 1,
 };
 
-static uint16_t global_exit_flag;
+static RTE_ATOMIC(uint16_t) global_exit_flag;
 
 /* display usage */
 static inline void
@@ -241,7 +242,7 @@ bbdev_parse_args(int argc, char **argv,
 				return -1;
 			}
 			app_params->num_enc_cores =
-				__builtin_popcount(app_params->enc_core_mask);
+				rte_popcount32(app_params->enc_core_mask);
 			break;
 
 		case 'd':
@@ -252,7 +253,7 @@ bbdev_parse_args(int argc, char **argv,
 				return -1;
 			}
 			app_params->num_dec_cores =
-				__builtin_popcount(app_params->dec_core_mask);
+				rte_popcount32(app_params->dec_core_mask);
 			break;
 
 		case 'p':
@@ -276,7 +277,7 @@ static void
 signal_handler(int signum)
 {
 	printf("\nSignal %d received\n", signum);
-	__atomic_store_n(&global_exit_flag, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&global_exit_flag, 1, rte_memory_order_relaxed);
 }
 
 static void
@@ -320,7 +321,8 @@ check_port_link_status(uint16_t port_id)
 	fflush(stdout);
 
 	for (count = 0; count <= MAX_CHECK_TIME &&
-			!__atomic_load_n(&global_exit_flag, __ATOMIC_RELAXED); count++) {
+			!rte_atomic_load_explicit(&global_exit_flag,
+					rte_memory_order_relaxed); count++) {
 		memset(&link, 0, sizeof(link));
 		link_get_err = rte_eth_link_get_nowait(port_id, &link);
 
@@ -358,7 +360,7 @@ add_ether_hdr(struct rte_mbuf *pkt_src, struct rte_mbuf *pkt_dst)
 	eth_to = rte_pktmbuf_mtod(pkt_dst, struct rte_ether_hdr *);
 
 	/* copy header */
-	rte_memcpy(eth_to, eth_from, sizeof(struct rte_ether_hdr));
+	*eth_to = *eth_from;
 }
 
 static inline void
@@ -674,7 +676,7 @@ stats_loop(void *arg)
 {
 	struct stats_lcore_params *stats_lcore = arg;
 
-	while (!__atomic_load_n(&global_exit_flag, __ATOMIC_RELAXED)) {
+	while (!rte_atomic_load_explicit(&global_exit_flag, rte_memory_order_relaxed)) {
 		print_stats(stats_lcore);
 		rte_delay_ms(500);
 	}
@@ -920,7 +922,7 @@ processing_loop(void *arg)
 	const bool run_decoder = (lcore_conf->core_type &
 			(1 << RTE_BBDEV_OP_TURBO_DEC));
 
-	while (!__atomic_load_n(&global_exit_flag, __ATOMIC_RELAXED)) {
+	while (!rte_atomic_load_explicit(&global_exit_flag, rte_memory_order_relaxed)) {
 		if (run_encoder)
 			run_encoding(lcore_conf);
 		if (run_decoder)
@@ -1051,10 +1053,10 @@ main(int argc, char **argv)
 	static const struct rte_mbuf_dynfield input_dynfield_desc = {
 		.name = "example_bbdev_dynfield_input",
 		.size = sizeof(struct rte_mbuf *),
-		.align = __alignof__(struct rte_mbuf *),
+		.align = alignof(struct rte_mbuf *),
 	};
 
-	__atomic_store_n(&global_exit_flag, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&global_exit_flag, 0, rte_memory_order_relaxed);
 
 	sigret = signal(SIGTERM, signal_handler);
 	if (sigret == SIG_ERR)

@@ -11,13 +11,13 @@
  * API for cryptodev trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_trace_point.h>
 
 #include "rte_cryptodev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_TRACE_POINT(
 	rte_cryptodev_trace_configure,
@@ -56,6 +56,16 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u16(queue_pair_id);
 	rte_trace_point_emit_u32(conf->nb_descriptors);
 	rte_trace_point_emit_ptr(conf->mp_session);
+)
+
+RTE_TRACE_POINT(
+	rte_cryptodev_trace_queue_pair_reset,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint16_t queue_pair_id,
+		const struct rte_cryptodev_qp_conf *conf, int socket_id),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u16(queue_pair_id);
+	rte_trace_point_emit_u32(conf->nb_descriptors);
+	rte_trace_point_emit_int(socket_id);
 )
 
 RTE_TRACE_POINT(
@@ -517,6 +527,15 @@ RTE_TRACE_POINT(
 		enum rte_crypto_asym_op_type op_type, int ret),
 	rte_trace_point_emit_u32(op_types);
 	rte_trace_point_emit_int(op_type);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
+	rte_cryptodev_trace_asym_xform_capability_check_hash,
+	RTE_TRACE_POINT_ARGS(uint64_t hash_algos,
+		enum rte_crypto_auth_algorithm hash, int ret),
+	rte_trace_point_emit_u64(hash_algos);
+	rte_trace_point_emit_int(hash);
 	rte_trace_point_emit_int(ret);
 )
 

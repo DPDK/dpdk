@@ -3,11 +3,14 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_FLOWER_CTRL_H_
-#define _NFP_FLOWER_CTRL_H_
+#ifndef __NFP_FLOWER_CTRL_H__
+#define __NFP_FLOWER_CTRL_H__
 
-void nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower);
+#include "nfp_flower.h"
+
+void nfp_flower_ctrl_vnic_process(struct nfp_net_hw_priv *hw_priv);
 uint16_t nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf);
+void nfp_flower_ctrl_vnic_xmit_register(struct nfp_pf_dev *pf_dev);
 
-#endif /* _NFP_FLOWER_CTRL_H_ */
+#endif /* __NFP_FLOWER_CTRL_H__ */

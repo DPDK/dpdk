@@ -21,3 +21,4 @@ Getting Started Guide for Linux
     linux_eal_parameters
     enable_func
     nic_perf_intel_platform
+    amd_platform

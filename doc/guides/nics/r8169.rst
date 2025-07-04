@@ -1,0 +1,33 @@
+.. SPDX-License-Identifier: BSD-3-Clause
+   Copyright(c) 2024 Realtek Corporation. All rights reserved
+
+R8169 Poll Mode Driver
+======================
+
+The R8169 PMD provides poll mode driver support for Realtek
+1, 2.5, 5 and 10 Gigabit Ethernet NICs.
+
+More information about Realtek 1G Ethernet NIC can be found at `RTL8168
+<https://www.realtek.com/Product/Index?id=4080>`_.
+
+More information about Realtek 2.5G Ethernet NIC can be found at `RTL8125
+<https://www.realtek.com/Product/Index?id=3962&cate_id=786&menu_id=1010>`_.
+
+More information about Realtek 5G Ethernet NIC can be found at `RTL8126
+<https://www.realtek.com/Product/ProductHitsDetail?id=4425&menu_id=643>`_.
+
+Supported Chipsets and NICs
+---------------------------
+
+- Realtek RTL8168 1 Gigabit Ethernet Controller
+- Realtek RTL8125 2.5 Gigabit Ethernet Controller
+- Realtek RTL8126 5 Gigabit Ethernet Controller
+- Realtek RTL8127 10 Gigabit Ethernet Controller
+
+Features
+--------
+
+Features of the R8169 PMD are:
+
+* Checksum offload
+* Jumbo frames supported

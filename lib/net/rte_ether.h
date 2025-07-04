@@ -11,16 +11,18 @@
  * Ethernet Helpers in RTE
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include <assert.h>
+#include <stdalign.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include <rte_random.h>
 #include <rte_mbuf.h>
 #include <rte_byteorder.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_ETHER_ADDR_LEN  6 /**< Length of Ethernet address. */
 #define RTE_ETHER_TYPE_LEN  2 /**< Length of Ethernet type field. */
@@ -46,6 +48,20 @@ extern "C" {
 
 #define RTE_ETHER_MIN_MTU 68 /**< Minimum MTU for IPv4 packets, see RFC 791. */
 
+/* VLAN header fields */
+#define RTE_VLAN_DEI_SHIFT	12
+#define RTE_VLAN_PRI_SHIFT	13
+#define RTE_VLAN_PRI_MASK	0xe000 /* Priority Code Point */
+#define RTE_VLAN_DEI_MASK	0x1000 /* Drop Eligible Indicator */
+#define RTE_VLAN_ID_MASK	0x0fff /* VLAN Identifier */
+
+#define RTE_VLAN_TCI_ID(vlan_tci)	((vlan_tci) & RTE_VLAN_ID_MASK)
+#define RTE_VLAN_TCI_PRI(vlan_tci)	(((vlan_tci) & RTE_VLAN_PRI_MASK) >> RTE_VLAN_PRI_SHIFT)
+#define RTE_VLAN_TCI_DEI(vlan_tci)	(((vlan_tci) & RTE_VLAN_DEI_MASK) >> RTE_VLAN_DEI_SHIFT)
+#define RTE_VLAN_TCI_MAKE(id, pri, dei)	((id) |					\
+					 ((pri) << RTE_VLAN_PRI_SHIFT) |	\
+					 ((dei) << RTE_VLAN_DEI_SHIFT))
+
 /**
  * Ethernet address:
  * A universally administered address is uniquely assigned to a device by its
@@ -57,9 +73,14 @@ extern "C" {
  * administrator and does not contain OUIs.
  * See http://standards.ieee.org/regauth/groupmac/tutorial.html
  */
-struct rte_ether_addr {
+struct __rte_aligned(2) rte_ether_addr {
 	uint8_t addr_bytes[RTE_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
-} __rte_aligned(2);
+};
+
+static_assert(sizeof(struct rte_ether_addr) == 6,
+		"sizeof(struct rte_ether_addr) == 6");
+static_assert(alignof(struct rte_ether_addr) == 2,
+		"alignof(struct rte_ether_addr) == 2");
 
 #define RTE_ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
 #define RTE_ETHER_GROUP_ADDR  0x01 /**< Multicast or broadcast Eth. address. */
@@ -254,9 +275,15 @@ rte_ether_format_addr(char *buf, uint16_t size,
  *
  * @param str
  *   A pointer to buffer contains the formatted MAC address.
- *   The supported formats are:
- *     XX:XX:XX:XX:XX:XX or XXXX:XXXX:XXXX
+ *   Accepts either byte or word format separated by colon,
+ *   hyphen or period.
+ *
+ *   The example formats are:
+ *     XX:XX:XX:XX:XX:XX - Canonical form
+ *     XX-XX-XX-XX-XX-XX - Windows and IEEE 802
+ *     XXXX.XXXX.XXXX    - Cisco
  *   where XX is a hex digit: 0-9, a-f, or A-F.
+ *   In the byte format, leading zeros are optional.
  * @param eth_addr
  *   A pointer to a ether_addr structure.
  * @return
@@ -274,7 +301,12 @@ struct rte_ether_hdr {
 	struct rte_ether_addr dst_addr; /**< Destination address. */
 	struct rte_ether_addr src_addr; /**< Source address. */
 	rte_be16_t ether_type; /**< Frame type. */
-} __rte_aligned(2);
+};
+
+static_assert(sizeof(struct rte_ether_hdr) == 14,
+		"sizeof(struct rte_ether_hdr) == 14");
+static_assert(alignof(struct rte_ether_hdr) == 2,
+		"alignof(struct rte_ether_hdr) == 2");
 
 /**
  * Ethernet VLAN Header.
@@ -284,7 +316,12 @@ struct rte_ether_hdr {
 struct rte_vlan_hdr {
 	rte_be16_t vlan_tci;  /**< Priority (3) + CFI (1) + Identifier Code (12) */
 	rte_be16_t eth_proto; /**< Ethernet type of encapsulated frame. */
-} __rte_packed;
+};
+
+static_assert(sizeof(struct rte_vlan_hdr) == 4,
+		"sizeof(struct rte_vlan_hdr) == 4");
+static_assert(alignof(struct rte_vlan_hdr) == 2,
+		"alignof(struct rte_vlan_hdr) == 2");
 
 
 

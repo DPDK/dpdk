@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -11,6 +11,7 @@
 #include "tf_rm.h"
 #include "tf_if_tbl.h"
 #include "tf_global_cfg.h"
+#include "hcapi_cfa_defs.h"
 
 extern struct tf_rm_element_cfg tf_tbl_p4[TF_DIR_MAX][TF_TBL_TYPE_MAX];
 
@@ -181,5 +182,4 @@ const struct tf_hcapi_resource_map tf_hcapi_res_map_p4[CFA_RESOURCE_TYPE_P4_LAST
 		TF_MODULE_TYPE_EM, 1 << TF_EM_TBL_TYPE_TBL_SCOPE
 	},
 };
-
 #endif /* _TF_DEVICE_P4_H_ */

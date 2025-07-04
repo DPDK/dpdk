@@ -1,28 +1,53 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021 HiSilicon Limited
+ * Copyright(c) 2021-2024 HiSilicon Limited
  */
 
 #ifndef SKELETON_DMADEV_H
 #define SKELETON_DMADEV_H
 
-#include <pthread.h>
-
+#include <rte_dmadev.h>
 #include <rte_ring.h>
+#include <rte_thread.h>
 
 #define SKELDMA_ARG_LCORE	"lcore"
 
+#define SKELDMA_MAX_SGES	4
+
+enum skeldma_op {
+	SKELDMA_OP_COPY,
+	SKELDMA_OP_COPY_SG,
+	SKELDMA_OP_FILL,
+};
+
 struct skeldma_desc {
-	void *src;
-	void *dst;
-	uint32_t len;
+	enum skeldma_op op;
 	uint16_t ridx; /* ring idx */
+
+	union {
+		struct {
+			void *src;
+			void *dst;
+			uint32_t len;
+		} copy;
+		struct {
+			struct rte_dma_sge src[SKELDMA_MAX_SGES];
+			struct rte_dma_sge dst[SKELDMA_MAX_SGES];
+			uint16_t nb_src;
+			uint16_t nb_dst;
+		} copy_sg;
+		struct {
+			void *dst;
+			uint32_t len;
+			uint64_t pattern;
+		} fill;
+	};
 };
 
 struct skeldma_hw {
-	int lcore_id; /* cpucopy task affinity core */
+	int lcore_id; /* cpuwork task affinity core */
 	int socket_id;
-	pthread_t thread; /* cpucopy task thread */
-	volatile int exit_flag; /* cpucopy task exit flag */
+	rte_thread_t thread; /* cpuwork task thread */
+	volatile int exit_flag; /* cpuwork task exit flag */
 
 	struct skeldma_desc *desc_mem;
 
@@ -38,7 +63,7 @@ struct skeldma_hw {
 	 *       |get completed     |------------------|    |
 	 *       |                                     |    |
 	 *       |                                     v    v
-	 *  -----------     cpucopy thread working     -----------
+	 *  -----------     cpuwork thread working     -----------
 	 *  |completed|<-------------------------------| running |
 	 *  -----------                                -----------
 	 */
@@ -48,15 +73,15 @@ struct skeldma_hw {
 	struct rte_ring *desc_completed;
 
 	/* Cache delimiter for dataplane API's operation data */
-	char cache1 __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) char cache1;
 	uint16_t ridx;  /* ring idx */
 	uint16_t last_ridx;
 	uint64_t submitted_count;
 
-	/* Cache delimiter for cpucopy thread's operation data */
-	char cache2 __rte_cache_aligned;
+	/* Cache delimiter for cpuwork thread's operation data */
+	alignas(RTE_CACHE_LINE_SIZE) char cache2;
 	volatile uint32_t zero_req_count;
-	uint64_t completed_count;
+	RTE_ATOMIC(uint64_t) completed_count;
 };
 
 #endif /* SKELETON_DMADEV_H */

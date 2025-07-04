@@ -7,14 +7,28 @@
 
 #include <sys/queue.h>
 
+#include <rte_common.h>
+
+#if defined(RTE_ARCH_ARM64)
+#include <rte_cmp_arm64.h>
+#elif defined(RTE_ARCH_X86)
+#include <rte_cmp_x86.h>
+#endif
+
 #include "rte_ip_frag.h"
 #include "ip_reassembly.h"
 
+extern int ipfrag_logtype;
+#define RTE_LOGTYPE_IPFRAG	ipfrag_logtype
+
 /* logging macros. */
+#define IP_FRAG_LOG_LINE(level, ...) \
+	RTE_LOG_LINE(level, IPFRAG, "" __VA_ARGS__)
+
 #ifdef RTE_LIBRTE_IP_FRAG_DEBUG
-#define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
+#define IP_FRAG_LOG(lvl, ...) RTE_LOG(lvl, IPFRAG, __VA_ARGS__)
 #else
-#define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
+#define IP_FRAG_LOG(lvl, ...) do {} while (0)
 #endif /* IP_FRAG_DEBUG */
 
 #define IPV4_KEYLEN 1
@@ -75,12 +89,18 @@ ip_frag_key_invalidate(struct ip_frag_key * key)
 static inline uint64_t
 ip_frag_key_cmp(const struct ip_frag_key * k1, const struct ip_frag_key * k2)
 {
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
+	return (k1->id_key_len != k2->id_key_len) ||
+	       (k1->key_len == IPV4_KEYLEN ? k1->src_dst[0] != k2->src_dst[0] :
+					     rte_hash_k32_cmp_eq(k1, k2, 32));
+#else
 	uint32_t i;
 	uint64_t val;
 	val = k1->id_key_len ^ k2->id_key_len;
 	for (i = 0; i < k1->key_len; i++)
 		val |= k1->src_dst[i] ^ k2->src_dst[i];
 	return val;
+#endif
 }
 
 /*

@@ -17,3 +17,10 @@ cflags += ['-D_FILE_OFFSET_BITS=64']
 sources = files(
         'ntb_fwd.c',
 )
+cmd_h = custom_target('commands_hdr',
+        output: 'commands.h',
+        input: files('commands.list'),
+        capture: true,
+        command: [cmdline_gen_cmd, '--context-name=main_ctx', '@INPUT@']
+)
+sources += cmd_h

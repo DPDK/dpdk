@@ -11,13 +11,11 @@
  * Pseudo-random Generators in RTE
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-
-#include <rte_compat.h>
 
 /**
  * Seed the pseudo-random generator.
@@ -27,8 +25,8 @@ extern "C" {
  * value.
  *
  * This function is not multi-thread safe in regards to other
- * rte_srand() calls, nor is it in relation to concurrent rte_rand()
- * calls.
+ * rte_srand() calls, nor is it in relation to concurrent rte_rand(),
+ * rte_rand_max() or rte_drand() calls.
  *
  * @param seedval
  *   The value of the seed.
@@ -41,8 +39,9 @@ rte_srand(uint64_t seedval);
  *
  * The generator is not cryptographically secure.
  *
- * If called from EAL threads or registered non-EAL threads, this function
- * is thread-safe.
+ * rte_rand(), rte_rand_max() and rte_drand() are multi-thread safe,
+ * with the exception that they may not be called by multiple
+ * _unregistered_ non-EAL threads in parallel.
  *
  * @return
  *   A pseudo-random value between 0 and (1<<64)-1.
@@ -56,8 +55,9 @@ rte_rand(void);
  * This function returns an uniformly distributed (unbiased) random
  * number less than a user-specified maximum value.
  *
- * If called from EAL threads or registered non-EAL threads, this function
- * is thread-safe.
+ * rte_rand(), rte_rand_max() and rte_drand() are multi-thread safe,
+ * with the exception that they may not be called by multiple
+ * _unregistered_ non-EAL threads in parallel.
  *
  * @param upper_bound
  *   The upper bound of the generated number.
@@ -68,9 +68,6 @@ uint64_t
 rte_rand_max(uint64_t upper_bound);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Generates a pseudo-random floating point number.
  *
  * This function returns a non-negative double-precision floating random
@@ -78,13 +75,13 @@ rte_rand_max(uint64_t upper_bound);
  *
  * The generator is not cryptographically secure.
  *
- * If called from EAL threads or registered non-EAL threads, this function
- * is thread-safe.
+ * rte_rand(), rte_rand_max() and rte_drand() are multi-thread safe,
+ * with the exception that they may not be called by multiple
+ * _unregistered_ non-EAL threads in parallel.
  *
  * @return
  *   A pseudo-random value between 0 and 1.0.
  */
-__rte_experimental
 double rte_drand(void);
 
 #ifdef __cplusplus

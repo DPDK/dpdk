@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_tun.h"
 #include "ulp_utils.h"
 
@@ -19,7 +20,7 @@ ulp_app_tun_search_entry(struct bnxt_ulp_context *ulp_ctx,
 
 	tun_ent_list = bnxt_ulp_cntxt_ptr2_app_tun_list_get(ulp_ctx);
 	if (!tun_ent_list) {
-		BNXT_TF_DBG(ERR, "unable to get the app tunnel list\n");
+		BNXT_DRV_DBG(ERR, "unable to get the app tunnel list\n");
 		return -EINVAL;
 	}
 
@@ -39,12 +40,11 @@ ulp_app_tun_search_entry(struct bnxt_ulp_context *ulp_ctx,
 	}
 	if (free_entry >= 0) {
 		*tun_entry =  &tun_ent_list[free_entry];
-		memcpy(&tun_ent_list[free_entry].app_tunnel, app_tunnel,
-		       sizeof(struct rte_flow_tunnel));
+		tun_ent_list[free_entry].app_tunnel = *app_tunnel;
 		tun_ent_list[free_entry].ref_cnt = 1;
 		rc = 1;
 	} else {
-		BNXT_TF_DBG(ERR, "ulp app tunnel list is full\n");
+		BNXT_DRV_DBG(ERR, "ulp app tunnel list is full\n");
 		return -ENOMEM;
 	}
 
@@ -99,7 +99,7 @@ ulp_app_tun_match_entry(struct bnxt_ulp_context *ulp_ctx,
 
 	tun_ent_list = bnxt_ulp_cntxt_ptr2_app_tun_list_get(ulp_ctx);
 	if (!tun_ent_list) {
-		BNXT_TF_DBG(ERR, "unable to get the app tunnel list\n");
+		BNXT_DRV_DBG(ERR, "unable to get the app tunnel list\n");
 		return NULL;
 	}
 
@@ -121,7 +121,7 @@ ulp_get_tun_entry(struct ulp_rte_parser_params *params,
 
 	tun_tbl = bnxt_ulp_cntxt_ptr2_tun_tbl_get(params->ulp_ctx);
 	if (!tun_tbl) {
-		BNXT_TF_DBG(ERR, "Error: could not get Tunnel table\n");
+		BNXT_DRV_DBG(ERR, "Error: could not get Tunnel table\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -152,7 +152,8 @@ ulp_get_tun_entry(struct ulp_rte_parser_params *params,
 		}
 	}
 	if (first_free_entry == BNXT_ULP_TUN_ENTRY_INVALID) {
-		BNXT_TF_DBG(ERR, "Error: No entry available in tunnel table\n");
+		BNXT_DRV_DBG(ERR,
+			     "Error: No entry available in tunnel table\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -216,8 +217,6 @@ ulp_tunnel_offload_process(struct ulp_rte_parser_params *params)
 		tun_entry->outer_tun_flow_id = params->fid;
 	} else if (ULP_BITMAP_ISSET(params->hdr_bitmap.bits,
 			     BNXT_ULP_HDR_BIT_F2)) {
-		ULP_BITMAP_RESET(params->hdr_bitmap.bits,
-				 BNXT_ULP_HDR_BIT_F2);
 		/* add the vxlan decap action for F2 flows */
 		ULP_BITMAP_SET(params->act_bitmap.bits,
 			       BNXT_ULP_ACT_BIT_VXLAN_DECAP);

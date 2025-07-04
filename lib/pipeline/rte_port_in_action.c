@@ -2,9 +2,11 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 
@@ -199,6 +201,7 @@ struct rte_port_in_action_profile {
 	int frozen;
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_profile_create, 18.05)
 struct rte_port_in_action_profile *
 rte_port_in_action_profile_create(uint32_t socket_id)
 {
@@ -215,6 +218,7 @@ rte_port_in_action_profile_create(uint32_t socket_id)
 	return ap;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_profile_action_register, 18.05)
 int
 rte_port_in_action_profile_action_register(struct rte_port_in_action_profile *profile,
 	enum rte_port_in_action_type type,
@@ -254,6 +258,7 @@ rte_port_in_action_profile_action_register(struct rte_port_in_action_profile *pr
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_profile_freeze, 18.05)
 int
 rte_port_in_action_profile_freeze(struct rte_port_in_action_profile *profile)
 {
@@ -266,6 +271,7 @@ rte_port_in_action_profile_freeze(struct rte_port_in_action_profile *profile)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_profile_free, 18.05)
 int
 rte_port_in_action_profile_free(struct rte_port_in_action_profile *profile)
 {
@@ -282,7 +288,7 @@ rte_port_in_action_profile_free(struct rte_port_in_action_profile *profile)
 struct rte_port_in_action {
 	struct ap_config cfg;
 	struct ap_data data;
-	uint8_t memory[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 static __rte_always_inline void *
@@ -314,6 +320,7 @@ action_data_init(struct rte_port_in_action *action,
 	}
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_create, 18.05)
 struct rte_port_in_action *
 rte_port_in_action_create(struct rte_port_in_action_profile *profile,
 	uint32_t socket_id)
@@ -350,6 +357,7 @@ rte_port_in_action_create(struct rte_port_in_action_profile *profile,
 	return action;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_apply, 18.05)
 int
 rte_port_in_action_apply(struct rte_port_in_action *action,
 	enum rte_port_in_action_type type,
@@ -497,6 +505,7 @@ ah_selector(struct rte_port_in_action *action)
 	return NULL;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_params_get, 18.05)
 int
 rte_port_in_action_params_get(struct rte_port_in_action *action,
 	struct rte_pipeline_port_in_params *params)
@@ -517,6 +526,7 @@ rte_port_in_action_params_get(struct rte_port_in_action *action,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_port_in_action_free, 18.05)
 int
 rte_port_in_action_free(struct rte_port_in_action *action)
 {

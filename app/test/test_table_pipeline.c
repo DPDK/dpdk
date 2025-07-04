@@ -6,7 +6,6 @@
 
 #include <string.h>
 #include <rte_pipeline.h>
-#include <rte_log.h>
 #include <inttypes.h>
 #include <rte_hexdump.h>
 #include "test_table.h"
@@ -173,30 +172,31 @@ check_pipeline_invalid_params(void)
 
 	p = rte_pipeline_create(NULL);
 	if (p != NULL) {
-		RTE_LOG(INFO, PIPELINE,
+		fprintf(stderr,
 			"%s: configured pipeline with null params\n",
 			__func__);
 		goto fail;
 	}
 	p = rte_pipeline_create(&pipeline_params_1);
 	if (p != NULL) {
-		RTE_LOG(INFO, PIPELINE, "%s: Configure pipeline with NULL "
-			"name\n", __func__);
+		fprintf(stderr,
+			"%s: Configure pipeline with NULL name\n", __func__);
 		goto fail;
 	}
 
 	p = rte_pipeline_create(&pipeline_params_2);
 	if (p != NULL) {
-		RTE_LOG(INFO, PIPELINE, "%s: Configure pipeline with invalid "
-			"socket\n", __func__);
+		fprintf(stderr,
+			"%s: Configure pipeline with invalid socket\n", __func__);
 		goto fail;
 	}
 
 	if (rte_eal_has_hugepages()) {
 		p = rte_pipeline_create(&pipeline_params_3);
 		if (p != NULL) {
-			RTE_LOG(INFO, PIPELINE, "%s: Configure pipeline with "
-				"invalid socket\n", __func__);
+			fprintf(stderr,
+				"%s: Configure pipeline with invalid socket\n",
+				__func__);
 			goto fail;
 		}
 	}
@@ -224,20 +224,20 @@ setup_pipeline(int test_type)
 		.socket_id = 0,
 	};
 
-	RTE_LOG(INFO, PIPELINE, "%s: **** Setting up %s test\n",
+	fprintf(stderr, "%s: **** Setting up %s test\n",
 		__func__, pipeline_test_names[test_type]);
 
 	/* Pipeline configuration */
 	p = rte_pipeline_create(&pipeline_params);
 	if (p == NULL) {
-		RTE_LOG(INFO, PIPELINE, "%s: Failed to configure pipeline\n",
+		fprintf(stderr, "%s: Failed to configure pipeline\n",
 			__func__);
 		goto fail;
 	}
 
 	ret = rte_pipeline_free(p);
 	if (ret != 0) {
-		RTE_LOG(INFO, PIPELINE, "%s: Failed to free pipeline\n",
+		fprintf(stderr, "%s: Failed to free pipeline\n",
 			__func__);
 		goto fail;
 	}
@@ -245,7 +245,7 @@ setup_pipeline(int test_type)
 	/* Pipeline configuration */
 	p = rte_pipeline_create(&pipeline_params);
 	if (p == NULL) {
-		RTE_LOG(INFO, PIPELINE, "%s: Failed to configure pipeline\n",
+		fprintf(stderr, "%s: Failed to configure pipeline\n",
 			__func__);
 		goto fail;
 	}
@@ -411,7 +411,7 @@ test_pipeline_single_filter(int test_type, int expected_count)
 	int ret;
 	int tx_count;
 
-	RTE_LOG(INFO, PIPELINE, "%s: **** Running %s test\n",
+	fprintf(stderr, "%s: **** Running %s test\n",
 		__func__, pipeline_test_names[test_type]);
 	/* Run pipeline once */
 	for (i = 0; i < N_PORTS; i++)
@@ -420,7 +420,7 @@ test_pipeline_single_filter(int test_type, int expected_count)
 
 	ret = rte_pipeline_flush(NULL);
 	if (ret != -EINVAL) {
-		RTE_LOG(INFO, PIPELINE,
+		fprintf(stderr,
 			"%s: No pipeline flush error NULL pipeline (%d)\n",
 			__func__, ret);
 		goto fail;
@@ -445,7 +445,7 @@ test_pipeline_single_filter(int test_type, int expected_count)
 			k32 = (uint32_t *) key;
 			k32[0] = 0xadadadad >> (j % 2);
 
-			RTE_LOG(INFO, PIPELINE, "%s: Enqueue onto ring %d\n",
+			fprintf(stderr, "%s: Enqueue onto ring %d\n",
 				__func__, i);
 			rte_ring_enqueue(rings_rx[i], m);
 		}
@@ -487,9 +487,9 @@ test_pipeline_single_filter(int test_type, int expected_count)
 	}
 
 	if (tx_count != expected_count) {
-		RTE_LOG(INFO, PIPELINE,
-			"%s: Unexpected packets out for %s test, expected %d, "
-			"got %d\n", __func__, pipeline_test_names[test_type],
+		fprintf(stderr,
+			"%s: Unexpected packets out for %s test, expected %d, got %d\n",
+			__func__, pipeline_test_names[test_type],
 			expected_count, tx_count);
 		goto fail;
 	}
@@ -564,8 +564,8 @@ test_table_pipeline(void)
 	connect_miss_action_to_table = 0;
 
 	if (check_pipeline_invalid_params()) {
-		RTE_LOG(INFO, PIPELINE, "%s: Check pipeline invalid params "
-			"failed.\n", __func__);
+		fprintf(stderr, "%s: Check pipeline invalid params failed.\n",
+			__func__);
 		return -1;
 	}
 

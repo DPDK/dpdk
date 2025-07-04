@@ -11,6 +11,7 @@
 #include "roc_ie.h"
 
 #include "cn10k_cryptodev.h"
+#include "cn10k_cryptodev_sec.h"
 #include "cn10k_ipsec.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
@@ -31,7 +32,7 @@ ipsec_po_sa_iv_set(struct cn10k_sec_session *sess, struct rte_crypto_op *cop)
 }
 
 static inline void
-ipsec_po_sa_aes_gcm_iv_set(struct cn10k_sec_session *sess, struct rte_crypto_op *cop)
+ipsec_po_sa_aes_8b_iv_set(struct cn10k_sec_session *sess, struct rte_crypto_op *cop)
 {
 	uint8_t *iv = &sess->sa.out_sa.iv.s.iv_dbg1[0];
 	uint32_t *tmp_iv;
@@ -60,10 +61,11 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 
 #ifdef LA_IPSEC_DEBUG
 	if (sess->sa.out_sa.w2.s.iv_src == ROC_IE_OT_SA_IV_SRC_FROM_SA) {
-		if (sess->sa.out_sa.w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
-		    sess->sa.out_sa.w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
-		    sess->sa.out_sa.w2.s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC)
-			ipsec_po_sa_aes_gcm_iv_set(sess, cop);
+		if (sess->sa.out_sa.w2.s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+		    sess->sa.out_sa.w2.s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+		    sess->sa.out_sa.w2.s.auth_type == ROC_IE_SA_AUTH_AES_GMAC ||
+		    sess->sa.out_sa.w2.s.enc_type == ROC_IE_SA_ENC_AES_CTR)
+			ipsec_po_sa_aes_8b_iv_set(sess, cop);
 		else
 			ipsec_po_sa_iv_set(sess, cop);
 	}
@@ -72,12 +74,10 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 	roc_cpt_lf_ctx_reload(lf, &sess->sa.out_sa);
 	rte_delay_ms(1);
 #endif
+	const uint64_t ol_flags = m_src->ol_flags;
 
-	if (m_src->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
-		inst_w4_u64 &= ~BIT_ULL(33);
-
-	if (m_src->ol_flags & RTE_MBUF_F_TX_L4_MASK)
-		inst_w4_u64 &= ~BIT_ULL(32);
+	inst_w4_u64 &= ~(((uint64_t)(!!(ol_flags & RTE_MBUF_F_TX_IP_CKSUM)) << 33) |
+			 ((uint64_t)(!!(ol_flags & RTE_MBUF_F_TX_L4_MASK)) << 32));
 
 	if (likely(m_src->next == NULL)) {
 		if (unlikely(rte_pktmbuf_tailroom(m_src) < sess->max_extended_len)) {
@@ -106,6 +106,11 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 			return -ENOMEM;
 		}
 
+		if (unlikely(m_src->nb_segs > ROC_SG1_MAX_PTRS)) {
+			plt_dp_err("Exceeds max supported components. Reduce segments");
+			return -1;
+		}
+
 		m_data = alloc_op_meta(NULL, m_info->mlen, m_info->pool, infl_req);
 		if (unlikely(m_data == NULL)) {
 			plt_dp_err("Error allocating meta buffer for request");
@@ -121,7 +126,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
 
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -132,7 +137,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -160,6 +165,11 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 			return -ENOMEM;
 		}
 
+		if (unlikely(m_src->nb_segs > ROC_SG2_MAX_PTRS)) {
+			plt_dp_err("Exceeds max supported components. Reduce segments");
+			return -1;
+		}
+
 		m_data = alloc_op_meta(NULL, m_info->mlen, m_info->pool, infl_req);
 		if (unlikely(m_data == NULL)) {
 			plt_dp_err("Error allocating meta buffer for request");
@@ -170,7 +180,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		gather_comp = (struct roc_sg2list_comp *)((uint8_t *)m_data);
 
-		i = fill_ipsec_sg2_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(gather_comp, i, m_src);
 
 		cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 		g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
@@ -181,7 +191,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		i = fill_ipsec_sg2_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_src);
 
 		cpt_inst_w6.s.scatter_sz = ((i + 2) / 3);
 
@@ -211,7 +221,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		inst->w4.u64 = sess->inst.w4 | rte_pktmbuf_pkt_len(m_src);
 		dptr = rte_pktmbuf_mtod(m_src, uint64_t);
 		inst->dptr = dptr;
-		m_src->ol_flags |= (uint64_t)sess->ip_csum;
+		m_src->ol_flags |= (uint64_t)sess->ipsec.ip_csum;
 	} else if (is_sg_ver2 == false) {
 		struct roc_sglist_comp *scatter_comp, *gather_comp;
 		uint32_t g_size_bytes, s_size_bytes;
@@ -219,6 +229,11 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		uint32_t dlen;
 		void *m_data;
 		int i;
+
+		if (unlikely(m_src->nb_segs > ROC_SG1_MAX_PTRS)) {
+			plt_dp_err("Exceeds max supported components. Reduce segments");
+			return -1;
+		}
 
 		m_data = alloc_op_meta(NULL, m_info->mlen, m_info->pool, infl_req);
 		if (unlikely(m_data == NULL)) {
@@ -234,7 +249,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		/* Input Gather List */
 		i = 0;
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -242,7 +257,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		/* Output Scatter List */
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -260,6 +275,11 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		void *m_data;
 		int i;
 
+		if (unlikely(m_src->nb_segs > ROC_SG2_MAX_PTRS)) {
+			plt_dp_err("Exceeds max supported components. Reduce segments");
+			return -1;
+		}
+
 		m_data = alloc_op_meta(NULL, m_info->mlen, m_info->pool, infl_req);
 		if (unlikely(m_data == NULL)) {
 			plt_dp_err("Error allocating meta buffer for request");
@@ -270,7 +290,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		i = 0;
 		gather_comp = (struct roc_sg2list_comp *)((uint8_t *)m_data);
 
-		i = fill_ipsec_sg2_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(gather_comp, i, m_src);
 
 		cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 		g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
@@ -278,7 +298,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		/* Output Scatter List */
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
-		i = fill_ipsec_sg2_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_src);
 
 		cpt_inst_w6.s.scatter_sz = ((i + 2) / 3);
 

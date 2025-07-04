@@ -45,13 +45,13 @@ update_flow_mask(const struct acl_flow_avx512 *flow, uint32_t *fmsk,
 	fmsk[0] ^= rmsk[0];
 	m = rmsk[0];
 
-	k = __builtin_popcount(m);
+	k = rte_popcount32(m);
 	n = flow->total_packets - flow->num_packets;
 
 	if (n < k) {
 		/* reduce mask */
 		for (i = k - n; i != 0; i--) {
-			j = sizeof(m) * CHAR_BIT - 1 - __builtin_clz(m);
+			j = sizeof(m) * CHAR_BIT - 1 - rte_clz32(m);
 			m ^= 1 << j;
 		}
 	} else

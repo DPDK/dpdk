@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
@@ -55,7 +56,7 @@ tx_recover_qp(struct mlx5_txq_ctrl *txq_ctrl)
 
 /* Return 1 if the error CQE is signed otherwise, sign it and return 0. */
 static int
-check_err_cqe_seen(volatile struct mlx5_err_cqe *err_cqe)
+check_err_cqe_seen(volatile struct mlx5_error_cqe *err_cqe)
 {
 	static const uint8_t magic[] = "seen";
 	int ret = 1;
@@ -83,7 +84,7 @@ check_err_cqe_seen(volatile struct mlx5_err_cqe *err_cqe)
  */
 static int
 mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
-			 volatile struct mlx5_err_cqe *err_cqe)
+			 volatile struct mlx5_error_cqe *err_cqe)
 {
 	if (err_cqe->syndrome != MLX5_CQE_SYNDROME_WR_FLUSH_ERR) {
 		const uint16_t wqe_m = ((1 << txq->wqe_n) - 1);
@@ -107,13 +108,13 @@ mlx5_tx_error_cqe_handle(struct mlx5_txq_data *__rte_restrict txq,
 			mlx5_dump_debug_information(name, "MLX5 Error CQ:",
 						    (const void *)((uintptr_t)
 						    txq->cqes),
-						    sizeof(struct mlx5_cqe) *
-						    (1 << txq->cqe_n));
+						    sizeof(struct mlx5_error_cqe) *
+						    (size_t)RTE_BIT32(txq->cqe_n));
 			mlx5_dump_debug_information(name, "MLX5 Error SQ:",
 						    (const void *)((uintptr_t)
 						    txq->wqes),
 						    MLX5_WQE_SIZE *
-						    (1 << txq->wqe_n));
+						    (size_t)RTE_BIT32(txq->wqe_n));
 			txq_ctrl->dump_file_n++;
 		}
 		if (!seen)
@@ -206,7 +207,7 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 			 */
 			rte_wmb();
 			ret = mlx5_tx_error_cqe_handle
-				(txq, (volatile struct mlx5_err_cqe *)cqe);
+				(txq, (volatile struct mlx5_error_cqe *)cqe);
 			if (unlikely(ret < 0)) {
 				/*
 				 * Some error occurred on queue error
@@ -232,6 +233,15 @@ mlx5_tx_handle_completion(struct mlx5_txq_data *__rte_restrict txq,
 		MLX5_ASSERT((txq->fcqs[txq->cq_ci & txq->cqe_m] >> 16) ==
 			    cqe->wqe_counter);
 #endif
+		if (__rte_trace_point_fp_is_enabled()) {
+			uint64_t ts = rte_be_to_cpu_64(cqe->timestamp);
+			uint16_t wqe_id = rte_be_to_cpu_16(cqe->wqe_counter);
+
+			if (txq->rt_timestamp)
+				ts = mlx5_txpp_convert_rx_ts(NULL, ts);
+			rte_pmd_mlx5_trace_tx_complete(txq->port_id, txq->idx,
+						       wqe_id, ts);
+		}
 		ring_doorbell = true;
 		++txq->cq_ci;
 		last_cqe = cqe;
@@ -610,7 +620,7 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		 * Check whether it has minimal amount
 		 * of not requested offloads.
 		 */
-		tmp = __builtin_popcountl(tmp & ~olx);
+		tmp = rte_popcount64(tmp & ~olx);
 		if (m >= RTE_DIM(txoff_func) || tmp < diff) {
 			/* First or better match, save and continue. */
 			m = i;
@@ -619,8 +629,8 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		}
 		if (tmp == diff) {
 			tmp = txoff_func[i].olx ^ txoff_func[m].olx;
-			if (__builtin_ffsl(txoff_func[i].olx & ~tmp) <
-			    __builtin_ffsl(txoff_func[m].olx & ~tmp)) {
+			if (rte_ffs32(txoff_func[i].olx & ~tmp) <
+			    rte_ffs32(txoff_func[m].olx & ~tmp)) {
 				/* Lighter not requested offload. */
 				m = i;
 			}
@@ -751,4 +761,90 @@ mlx5_tx_burst_mode_get(struct rte_eth_dev *dev,
 		}
 	}
 	return -EINVAL;
+}
+
+/**
+ * Dump SQ/CQ Context to a file.
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Tx Queue Context
+ *
+ * @return
+ *   0 for success, non-zero value depending on failure.
+ *
+ */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_txq_dump_contexts, 24.07)
+int rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+	struct mlx5_txq_data *txq_data;
+	struct mlx5_txq_ctrl *txq_ctrl;
+	struct mlx5_txq_obj *txq_obj;
+	struct mlx5_devx_sq *sq;
+	struct mlx5_devx_cq *cq;
+	struct mlx5_devx_obj *sq_devx_obj;
+	struct mlx5_devx_obj *cq_devx_obj;
+
+	uint32_t sq_out[MLX5_ST_SZ_DW(query_sq_out)] = {0};
+	uint32_t cq_out[MLX5_ST_SZ_DW(query_cq_out)] = {0};
+
+	int ret;
+	FILE *fd;
+	MKSTR(path, "./%s", filename);
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -ENODEV;
+
+	if (rte_eth_tx_queue_is_valid(port_id, queue_id))
+		return -EINVAL;
+
+	fd = fopen(path, "w");
+	if (!fd) {
+		rte_errno = errno;
+		return -EIO;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	txq_data = (*priv->txqs)[queue_id];
+	txq_ctrl = container_of(txq_data, struct mlx5_txq_ctrl, txq);
+	txq_obj = txq_ctrl->obj;
+	sq = &txq_obj->sq_obj;
+	cq = &txq_obj->cq_obj;
+	sq_devx_obj = sq->sq;
+	cq_devx_obj = cq->cq;
+
+	do {
+		ret = mlx5_devx_cmd_query_sq(sq_devx_obj, sq_out, sizeof(sq_out));
+		if (ret)
+			break;
+
+		/* Dump sq query output to file */
+		MKSTR(sq_headline, "SQ DevX ID = %u Port = %u Queue index = %u ",
+					sq_devx_obj->id, port_id, queue_id);
+		mlx5_dump_to_file(fd, NULL, sq_headline, 0);
+		mlx5_dump_to_file(fd, "Query SQ Dump:",
+					(const void *)((uintptr_t)sq_out),
+					sizeof(sq_out));
+
+		ret = mlx5_devx_cmd_query_cq(cq_devx_obj, cq_out, sizeof(cq_out));
+		if (ret)
+			break;
+
+		/* Dump cq query output to file */
+		MKSTR(cq_headline, "CQ DevX ID = %u Port = %u Queue index = %u ",
+						cq_devx_obj->id, port_id, queue_id);
+		mlx5_dump_to_file(fd, NULL, cq_headline, 0);
+		mlx5_dump_to_file(fd, "Query CQ Dump:",
+					(const void *)((uintptr_t)cq_out),
+					sizeof(cq_out));
+	} while (false);
+
+	fclose(fd);
+	return ret;
 }

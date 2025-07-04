@@ -36,7 +36,7 @@
 
 /* Byte Enables of the Internal memory access. These are interpred in BE */
 #define PE_MEM_ACCESS_BYTE_ENABLE(offset, size)	\
-	({ typeof(size) size_ = (size);		\
+	__extension__ ({ typeof(size) size_ = (size);		\
 	(((BIT(size_) - 1) << (4 - (offset) - (size_))) & 0xf) << 24; })
 
 #include "cbus/emac_mtip.h"

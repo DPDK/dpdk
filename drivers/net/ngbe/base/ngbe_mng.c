@@ -117,21 +117,7 @@ ngbe_host_interface_command(struct ngbe_hw *hw, u32 *buffer,
 	for (bi = 0; bi < dword_len; bi++)
 		buffer[bi] = rd32a(hw, NGBE_MNGMBX, bi);
 
-	/*
-	 * If there is any thing in data position pull it in
-	 * Read Flash command requires reading buffer length from
-	 * two byes instead of one byte
-	 */
-	if (resp->cmd == 0x30) {
-		for (; bi < dword_len + 2; bi++)
-			buffer[bi] = rd32a(hw, NGBE_MNGMBX, bi);
-
-		buf_len = (((u16)(resp->cmd_or_resp.ret_status) << 3)
-				  & 0xF00) | resp->buf_len;
-		hdr_size += (2 << 2);
-	} else {
-		buf_len = resp->buf_len;
-	}
+	buf_len = resp->buf_len;
 	if (!buf_len)
 		goto rel_out;
 
@@ -378,4 +364,50 @@ s32 ngbe_phy_led_oem_chk(struct ngbe_hw *hw, u32 *data)
 	}
 
 	return err;
+}
+
+s32 ngbe_hic_get_lldp(struct ngbe_hw *hw)
+{
+	struct ngbe_hic_write_lldp buffer;
+	s32 err = 0;
+
+	buffer.hdr.cmd = FW_LLDP_GET_CMD;
+	buffer.hdr.buf_len = 0x1;
+	buffer.hdr.cmd_or_resp.cmd_resv = FW_CEM_CMD_RESERVED;
+	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.func = hw->bus.lan_id;
+
+	err = ngbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
+					  NGBE_HI_COMMAND_TIMEOUT, true);
+	if (err)
+		return err;
+
+	if (buffer.hdr.cmd_or_resp.ret_status == FW_CEM_RESP_STATUS_SUCCESS) {
+		/* this field returns the status of LLDP */
+		if (buffer.func)
+			hw->lldp_enabled = true;
+		else
+			hw->lldp_enabled = false;
+	} else {
+		err = NGBE_ERR_HOST_INTERFACE_COMMAND;
+	}
+
+	return err;
+}
+
+s32 ngbe_hic_set_lldp(struct ngbe_hw *hw, bool on)
+{
+	struct ngbe_hic_write_lldp buffer;
+
+	if (on)
+		buffer.hdr.cmd = FW_LLDP_SET_CMD_ON;
+	else
+		buffer.hdr.cmd = FW_LLDP_SET_CMD_OFF;
+	buffer.hdr.buf_len = 0x1;
+	buffer.hdr.cmd_or_resp.cmd_resv = FW_CEM_CMD_RESERVED;
+	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.func = hw->bus.lan_id;
+
+	return ngbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
+					   NGBE_HI_COMMAND_TIMEOUT, false);
 }

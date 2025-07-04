@@ -129,4 +129,4 @@ test_memcpy(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(memcpy_autotest, test_memcpy);
+REGISTER_FAST_TEST(memcpy_autotest, true, true, test_memcpy);

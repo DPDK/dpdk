@@ -24,6 +24,8 @@ Most of these differences are summarized below.
 
 More details about features can be found in :doc:`features`.
 
+.. rst-class:: widepage
+
 .. _table_net_pmd_features:
 
 .. include:: overview_table.txt

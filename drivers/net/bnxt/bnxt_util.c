@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -26,4 +26,14 @@ void bnxt_eth_hw_addr_random(uint8_t *mac_addr)
 	mac_addr[0] = 0x00;
 	mac_addr[1] = 0x0a;
 	mac_addr[2] = 0xf7;
+}
+
+uint8_t hweight32(uint32_t word32)
+{
+	uint32_t res = word32 - ((word32 >> 1) & 0x55555555);
+
+	res = (res & 0x33333333) + ((res >> 2) & 0x33333333);
+	res = (res + (res >> 4)) & 0x0F0F0F0F;
+	res = res + (res >> 8);
+	return (res + (res >> 16)) & 0x000000FF;
 }

@@ -188,21 +188,40 @@ static void
 app_init_ports(void)
 {
 	uint32_t i;
+	struct rte_eth_dev_info dev_info;
 
 	/* Init NIC ports, then start the ports */
 	for (i = 0; i < app.n_ports; i++) {
 		uint16_t port;
 		int ret;
+		struct rte_eth_conf local_port_conf = port_conf;
 
 		port = app.ports[i];
 		RTE_LOG(INFO, USER1, "Initializing NIC port %u ...\n", port);
 
+		ret = rte_eth_dev_info_get(port, &dev_info);
+		if (ret != 0)
+			rte_panic("Error during getting device (port %u) info: %s\n",
+					port, rte_strerror(-ret));
+
 		/* Init port */
+		local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
+			dev_info.flow_type_rss_offloads;
+		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
+				port_conf.rx_adv_conf.rss_conf.rss_hf) {
+			printf("Warning:"
+				"Port %u modified RSS hash function based on hardware support,"
+				"requested:%#"PRIx64" configured:%#"PRIx64"\n",
+				port,
+				port_conf.rx_adv_conf.rss_conf.rss_hf,
+				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
+		}
+
 		ret = rte_eth_dev_configure(
 			port,
 			1,
 			1,
-			&port_conf);
+			&local_port_conf);
 		if (ret < 0)
 			rte_panic("Cannot init NIC port %u (%d)\n", port, ret);
 

@@ -346,8 +346,7 @@ test_compressdev_invalid_configuration(void)
 	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
 
 	/* Invalid configuration with 0 queue pairs */
-	memcpy(&invalid_config, &valid_config,
-			sizeof(struct rte_compressdev_config));
+	invalid_config = valid_config;
 	invalid_config.nb_queue_pairs = 0;
 
 	TEST_ASSERT_FAIL(rte_compressdev_configure(0, &invalid_config),
@@ -360,8 +359,7 @@ test_compressdev_invalid_configuration(void)
 	 */
 	rte_compressdev_info_get(0, &dev_info);
 	if (dev_info.max_nb_queue_pairs != 0) {
-		memcpy(&invalid_config, &valid_config,
-			sizeof(struct rte_compressdev_config));
+		invalid_config = valid_config;
 		invalid_config.nb_queue_pairs = dev_info.max_nb_queue_pairs + 1;
 
 		TEST_ASSERT_FAIL(rte_compressdev_configure(0, &invalid_config),
@@ -2188,8 +2186,7 @@ test_compressdev_deflate_stateless_fixed(void)
 		goto exit;
 	}
 
-	memcpy(compress_xform, ts_params->def_comp_xform,
-			sizeof(struct rte_comp_xform));
+	*compress_xform = *ts_params->def_comp_xform;
 	compress_xform->compress.deflate.huffman = RTE_COMP_HUFFMAN_FIXED;
 
 	struct interim_data_params int_data = {
@@ -2260,8 +2257,7 @@ test_compressdev_deflate_stateless_dynamic(void)
 		goto exit;
 	}
 
-	memcpy(compress_xform, ts_params->def_comp_xform,
-			sizeof(struct rte_comp_xform));
+	*compress_xform = *ts_params->def_comp_xform;
 	compress_xform->compress.deflate.huffman = RTE_COMP_HUFFMAN_DYNAMIC;
 
 	struct interim_data_params int_data = {
@@ -2372,8 +2368,7 @@ test_compressdev_deflate_stateless_multi_level(void)
 		goto exit;
 	}
 
-	memcpy(compress_xform, ts_params->def_comp_xform,
-			sizeof(struct rte_comp_xform));
+	*compress_xform = *ts_params->def_comp_xform;
 
 	struct interim_data_params int_data = {
 		NULL,
@@ -2442,8 +2437,7 @@ test_compressdev_deflate_stateless_multi_xform(void)
 			goto exit;
 		}
 
-		memcpy(compress_xforms[i], ts_params->def_comp_xform,
-				sizeof(struct rte_comp_xform));
+		*compress_xforms[i] = *ts_params->def_comp_xform;
 		compress_xforms[i]->compress.level = level;
 		level++;
 
@@ -2456,8 +2450,7 @@ test_compressdev_deflate_stateless_multi_xform(void)
 			goto exit;
 		}
 
-		memcpy(decompress_xforms[i], ts_params->def_decomp_xform,
-				sizeof(struct rte_comp_xform));
+		*decompress_xforms[i] = *ts_params->def_decomp_xform;
 	}
 
 	for (i = 0; i < NUM_XFORMS; i++) {
@@ -2614,8 +2607,7 @@ test_compressdev_deflate_stateless_checksum(void)
 		return TEST_FAILED;
 	}
 
-	memcpy(compress_xform, ts_params->def_comp_xform,
-			sizeof(struct rte_comp_xform));
+	*compress_xform = *ts_params->def_comp_xform;
 
 	struct rte_comp_xform *decompress_xform =
 			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
@@ -2625,8 +2617,7 @@ test_compressdev_deflate_stateless_checksum(void)
 		return TEST_FAILED;
 	}
 
-	memcpy(decompress_xform, ts_params->def_decomp_xform,
-			sizeof(struct rte_comp_xform));
+	*decompress_xform = *ts_params->def_decomp_xform;
 
 	struct interim_data_params int_data = {
 		NULL,
@@ -2960,8 +2951,7 @@ test_compressdev_deflate_stateful_decomp_checksum(void)
 		return TEST_FAILED;
 	}
 
-	memcpy(compress_xform, ts_params->def_comp_xform,
-	       sizeof(struct rte_comp_xform));
+	*compress_xform = *ts_params->def_comp_xform;
 
 	struct rte_comp_xform *decompress_xform =
 			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
@@ -2971,8 +2961,7 @@ test_compressdev_deflate_stateful_decomp_checksum(void)
 		return TEST_FAILED;
 	}
 
-	memcpy(decompress_xform, ts_params->def_decomp_xform,
-	       sizeof(struct rte_comp_xform));
+	*decompress_xform = *ts_params->def_decomp_xform;
 
 	struct interim_data_params int_data = {
 		&compress_test_bufs[0],
@@ -3186,8 +3175,7 @@ test_compressdev_deflate_stateless_fixed_oos_recoverable(void)
 		goto exit;
 	}
 
-	memcpy(compress_xform, ts_params->def_comp_xform,
-			sizeof(struct rte_comp_xform));
+	*compress_xform = *ts_params->def_comp_xform;
 	compress_xform->compress.deflate.huffman = RTE_COMP_HUFFMAN_FIXED;
 
 	struct interim_data_params int_data = {
@@ -4267,4 +4255,4 @@ test_compressdev(void)
 	return unit_test_suite_runner(&compressdev_testsuite);
 }
 
-REGISTER_TEST_COMMAND(compressdev_autotest, test_compressdev);
+REGISTER_FAST_TEST(compressdev_autotest, false, true, test_compressdev);

@@ -5,7 +5,7 @@ DPDK Tools User Guides
 ======================
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     hugepages
@@ -14,6 +14,7 @@ DPDK Tools User Guides
     pmdinfo
     dumpcap
     pdump
+    dmaperf
     flow-perf
     securityperf
     testbbdev
@@ -22,4 +23,5 @@ DPDK Tools User Guides
     testeventdev
     testregex
     testmldev
+    graph
     dts

@@ -162,7 +162,7 @@ In order to run testpmd example application following command can be used:
 
 .. code-block:: console
 
-   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 7 -- \
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -l 0-2 -- \
      --burst=128 --txd=2048 --rxd=1024 --rxq=2 --txq=2  --nb-cores=2 \
      -i -a --rss-udp
 
@@ -391,7 +391,7 @@ Usage example
 .. code-block:: console
 
    ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
-     -c 7 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
+     -l 0-2 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
 
 .. _flowapi:
 
@@ -403,7 +403,7 @@ can be configured via generic flow API offered by DPDK.
 
 The :ref:`flow_isolated_mode` is supported.
 
-For an additional description please refer to DPDK :doc:`../prog_guide/rte_flow`.
+For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/flow_offload`.
 
 Supported flow actions
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -504,7 +504,7 @@ Before proceeding run testpmd user application:
 
 .. code-block:: console
 
-   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 3 -- -i --p 3 -a --disable-hw-vlan-strip
+   ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -l 0,1 -- -i --p 3 -a --disable-hw-vlan-strip
 
 Example #1
 ^^^^^^^^^^
@@ -572,11 +572,13 @@ Traffic metering and policing
 
 MVPP2 PMD supports DPDK traffic metering and policing that allows the following:
 
-1. Meter ingress traffic.
-2. Do policing.
-3. Gather statistics.
+#. Meter ingress traffic.
 
-For an additional description please refer to DPDK :doc:`Traffic Metering and Policing API <../prog_guide/traffic_metering_and_policing>`.
+#. Do policing.
+
+#. Gather statistics.
+
+For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/traffic_metering_and_policing`.
 
 The policer objects defined by this feature can work with the default policer defined via config file as described in :ref:`QoS Support <extconf>`.
 
@@ -592,25 +594,25 @@ The following capabilities are not supported:
 Usage example
 ~~~~~~~~~~~~~
 
-1. Run testpmd user app:
+#. Run testpmd user app:
 
    .. code-block:: console
 
-		./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -c 6 -- -i -p 3 -a --txd 1024 --rxd 1024
+		./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2 -l 1,2 -- -i -p 3 -a --txd 1024 --rxd 1024
 
-2. Create meter profile:
+#. Create meter profile:
 
    .. code-block:: console
 
 		testpmd> add port meter profile 0 0 srtcm_rfc2697 2000 256 256
 
-3. Create meter:
+#. Create meter:
 
    .. code-block:: console
 
 		testpmd> create port meter 0 0 0 yes d d d 0 1 0
 
-4. Create flow rule witch meter attached:
+#. Create flow rule witch meter attached:
 
    .. code-block:: console
 
@@ -628,10 +630,13 @@ Traffic Management API
 MVPP2 PMD supports generic DPDK Traffic Management API which allows to
 configure the following features:
 
-1. Hierarchical scheduling
-2. Traffic shaping
-3. Congestion management
-4. Packet marking
+#. Hierarchical scheduling
+
+#. Traffic shaping
+
+#. Congestion management
+
+#. Packet marking
 
 Internally TM is represented by a hierarchy (tree) of nodes.
 Node which has a parent is called a leaf whereas node without
@@ -653,7 +658,7 @@ of configured tx queues.
 After hierarchy is complete it can be committed.
 
 
-For an additional description please refer to DPDK :doc:`Traffic Management API <../prog_guide/traffic_management>`.
+For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/traffic_management`.
 
 Limitations
 ~~~~~~~~~~~
@@ -669,22 +674,22 @@ The following capabilities are not supported:
 Usage example
 ~~~~~~~~~~~~~
 
-For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`Testpmd Runtime Functions <../testpmd_app_ug/testpmd_funcs>`.
+For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`../testpmd_app_ug/testpmd_funcs`.
 
-1. Run testpmd as follows:
+#. Run testpmd as follows:
 
    .. code-block:: console
 
-		./dpdk-testpmd --vdev=net_mrvl,iface=eth0,iface=eth2,cfg=./qos_config -c 7 -- \
+		./dpdk-testpmd --vdev=net_mrvl,iface=eth0,iface=eth2,cfg=./qos_config -l 0-2 -- \
 		-i -p 3 --disable-hw-vlan-strip --rxq 3 --txq 3 --txd 1024 --rxd 1024
 
-2. Stop all ports:
+#. Stop all ports:
 
    .. code-block:: console
 
 		testpmd> port stop all
 
-3. Add shaper profile:
+#. Add shaper profile:
 
    .. code-block:: console
 
@@ -698,7 +703,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 		70000   - Bucket size in bytes.
 		0       - Packet length adjustment - ignored.
 
-4. Add non-leaf node for port 0:
+#. Add non-leaf node for port 0:
 
    .. code-block:: console
 
@@ -717,7 +722,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 		 3  - Enable statistics for both number of transmitted packets and bytes.
 		 0  - Number of shared shapers.
 
-5. Add leaf node for tx queue 0:
+#. Add leaf node for tx queue 0:
 
    .. code-block:: console
 
@@ -737,7 +742,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 		 1  - Enable statistics counter for number of transmitted packets.
 		 0  - Number of shared shapers.
 
-6. Add leaf node for tx queue 1:
+#. Add leaf node for tx queue 1:
 
    .. code-block:: console
 
@@ -757,7 +762,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 		 1  - Enable statistics counter for number of transmitted packets.
 		 0  - Number of shared shapers.
 
-7. Add leaf node for tx queue 2:
+#. Add leaf node for tx queue 2:
 
    .. code-block:: console
 
@@ -777,18 +782,18 @@ For a detailed usage description please refer to "Traffic Management" section in
 		 1  - Enable statistics counter for number of transmitted packets.
 		 0  - Number of shared shapers.
 
-8. Commit hierarchy:
+#. Commit hierarchy:
 
    .. code-block:: console
 
 		testpmd> port tm hierarchy commit 0 no
 
-  Parameters have following meaning::
+   Parameters have following meaning::
 
 		0  - Id of a port.
 		no - Do not flush TM hierarchy if commit fails.
 
-9. Start all ports
+#. Start all ports
 
    .. code-block:: console
 
@@ -796,7 +801,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 
 
 
-10. Enable forwarding
+#. Enable forwarding
 
    .. code-block:: console
 

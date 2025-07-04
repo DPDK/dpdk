@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -121,5 +121,4 @@ int ba_free_count(struct bitalloc *pool);
  * Returns the pool's in use count
  */
 int ba_inuse_count(struct bitalloc *pool);
-
 #endif /* _BITALLOC_H_ */

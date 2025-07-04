@@ -14,12 +14,12 @@
  * no specific type already available in DPDK.
  */
 
+#include <rte_common.h>
+#include <rte_memory.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include <rte_memory.h>
 
 /* Rawdevice object - essentially a void to be typecast by implementation */
 typedef void *rte_rawdev_obj_t;
@@ -90,7 +90,6 @@ struct rte_rawdev_info;
  * @return
  *   - 0: Success, driver updates the contextual information of the raw device
  *   - <0: Error code returned by the driver info get function.
- *
  */
 int
 rte_rawdev_info_get(uint16_t dev_id, struct rte_rawdev_info *dev_info,
@@ -152,7 +151,6 @@ rte_rawdev_configure(uint16_t dev_id, struct rte_rawdev_info *dev_conf,
  *   - <0: Error code returned by the driver info get function.
  *
  * @see rte_raw_queue_setup()
- *
  */
 int
 rte_rawdev_queue_conf_get(uint16_t dev_id,
@@ -281,7 +279,7 @@ rte_rawdev_reset(uint16_t dev_id);
  * It is a placeholder for PMD specific data, encapsulating only information
  * related to framework.
  */
-struct rte_rawdev {
+struct __rte_cache_aligned rte_rawdev {
 	/**< Socket ID where memory is allocated */
 	int socket_id;
 	/**< Device ID for this instance */
@@ -293,7 +291,6 @@ struct rte_rawdev {
 	/**< Driver info. supplied by probing */
 	const char *driver_name;
 
-	RTE_STD_C11
 	/**< Flag indicating the device is attached */
 	uint8_t attached : 1;
 	/**< Device state: STARTED(1)/STOPPED(0) */
@@ -303,7 +300,7 @@ struct rte_rawdev {
 	rte_rawdev_obj_t dev_private;
 	/**< Device name */
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
-} __rte_cache_aligned;
+};
 
 /** @internal The pool of rte_rawdev structures. */
 extern struct rte_rawdev *rte_rawdevs;

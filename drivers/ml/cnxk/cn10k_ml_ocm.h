@@ -8,6 +8,8 @@
 #include <rte_mldev.h>
 #include <rte_mldev_pmd.h>
 
+struct cnxk_ml_dev;
+
 /* Number of OCM tiles. */
 #define ML_CN10K_OCM_NUMTILES 0x8
 
@@ -27,7 +29,7 @@ struct cn10k_ml_ocm_tile_info {
 };
 
 /* Model OCM map structure */
-struct cn10k_ml_ocm_model_map {
+struct cn10k_ml_ocm_layer_map {
 	/* Status of OCM reservation */
 	bool ocm_reserved;
 
@@ -75,11 +77,12 @@ struct cn10k_ml_ocm {
 };
 
 int cn10k_ml_ocm_tilecount(uint64_t tilemask, int *start, int *end);
-int cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t wb_pages,
+int cn10k_ml_ocm_tilemask_find(struct cnxk_ml_dev *cnxk_mldev, uint8_t num_tiles, uint16_t wb_pages,
 			       uint16_t scratch_pages, uint64_t *tilemask);
-void cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t tilemask,
-				int wb_page_start, uint16_t wb_pages, uint16_t scratch_pages);
-void cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id);
-void cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp);
+void cn10k_ml_ocm_reserve_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id,
+				uint16_t layer_id, uint64_t tilemask, int wb_page_start,
+				uint16_t wb_pages, uint16_t scratch_pages);
+void cn10k_ml_ocm_free_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id, uint16_t layer_id);
+void cn10k_ml_ocm_print(struct cnxk_ml_dev *cnxk_mldev, FILE *fp);
 
 #endif /* _CN10K_ML_OCM_H_ */

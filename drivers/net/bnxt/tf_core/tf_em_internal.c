@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -7,7 +7,6 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-
 #include "tf_core.h"
 #include "tf_util.h"
 #include "tf_common.h"
@@ -15,6 +14,7 @@
 #include "tf_msg.h"
 #include "tfp.h"
 #include "tf_ext_flow_handle.h"
+
 #include "bnxt.h"
 
 #define TF_EM_DB_EM_REC 0
@@ -56,12 +56,11 @@ tf_em_insert_int_entry(struct tf *tfp,
 	pool = (struct dpool *)tfs->em_pool[parms->dir];
 	index = dpool_alloc(pool, TF_SESSION_EM_ENTRY_SIZE, 0);
 	if (index == DP_INVALID_INDEX) {
-		PMD_DRV_LOG(ERR,
-			    "%s, EM entry index allocation failed\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "%s, EM entry index allocation failed",
 			    tf_dir_2_str(parms->dir));
 		return -1;
 	}
-
 
 	rptr_index = index;
 	rc = tf_msg_insert_em_internal_entry(tfp,
@@ -74,6 +73,7 @@ tf_em_insert_int_entry(struct tf *tfp,
 		dpool_free(pool, index);
 		return -1;
 	}
+
 	TF_SET_GFID(gfid,
 		    ((rptr_index << TF_EM_INTERNAL_INDEX_SHIFT) |
 		     rptr_entry),
@@ -93,7 +93,6 @@ tf_em_insert_int_entry(struct tf *tfp,
 				     0);
 	return 0;
 }
-
 
 /** Delete EM internal entry API
  *
@@ -252,7 +251,6 @@ tf_em_int_bind(struct tf *tfp,
 		return db_rc[TF_DIR_RX];
 	}
 
-
 	if (!tf_session_is_shared_session(tfs)) {
 		for (i = 0; i < TF_DIR_MAX; i++) {
 			iparms.rm_db = em_db->em_db[i];
@@ -295,6 +293,13 @@ tf_em_int_bind(struct tf *tfp,
 			/* Logging handled in tf_create_em_pool */
 			if (rc)
 				return rc;
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* Initialize the usage state buffer for EM */
+			tf_em_usage_init(tfp,
+					 i,
+					 iparms.info->entry.stride);
+#endif /* TF_FLOW_SCALE_QUERY */
 		}
 
 		if (rc) {
@@ -334,11 +339,10 @@ tf_em_int_unbind(struct tf *tfp)
 	}
 
 	rc = tf_session_get_db(tfp, TF_MODULE_TYPE_EM, &em_db_ptr);
-	if (rc) {
+	if (rc)
 		return 0;
-	}
-	em_db = (struct em_rm_db *)em_db_ptr;
 
+	em_db = (struct em_rm_db *)em_db_ptr;
 	for (i = 0; i < TF_DIR_MAX; i++) {
 		if (em_db->em_db[i] == NULL)
 			continue;

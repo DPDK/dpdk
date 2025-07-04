@@ -4,6 +4,10 @@
 Hello World Sample Application
 ==============================
 
+
+Overview
+--------
+
 The Hello World sample application is an example of the simplest DPDK application that can be written.
 The application simply prints an "helloworld" message on every enabled lcore.
 
@@ -29,7 +33,7 @@ and the Environment Abstraction Layer (EAL) options.
 Explanation
 -----------
 
-The following sections provide some explanation of code.
+The following sections provide an explanation of the code.
 
 EAL Initialization
 ~~~~~~~~~~~~~~~~~~

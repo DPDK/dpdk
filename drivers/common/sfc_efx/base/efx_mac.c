@@ -89,6 +89,45 @@ static const efx_mac_ops_t	__efx_mac_rhead_ops = {
 };
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+static const efx_mac_ops_t	__efx_mac_medford4_ops = {
+	medford4_mac_poll,			/* emo_poll */
+	medford4_mac_up,			/* emo_up */
+	ef10_mac_addr_set,			/* emo_addr_set */
+	medford4_mac_pdu_set,			/* emo_pdu_set */
+	medford4_mac_pdu_get,			/* emo_pdu_get */
+	medford4_mac_reconfigure,		/* emo_reconfigure */
+	ef10_mac_multicast_list_set,		/* emo_multicast_list_set */
+	ef10_mac_filter_default_rxq_set,	/* emo_filter_default_rxq_set */
+	ef10_mac_filter_default_rxq_clear,
+					/* emo_filter_default_rxq_clear */
+#if EFSYS_OPT_LOOPBACK
+	ef10_mac_loopback_set,			/* emo_loopback_set */
+#endif	/* EFSYS_OPT_LOOPBACK */
+#if EFSYS_OPT_MAC_STATS
+	medford4_mac_stats_get_mask,		/* emo_stats_get_mask */
+	efx_mcdi_mac_stats_clear,		/* emo_stats_clear */
+	medford4_mac_stats_upload,		/* emo_stats_upload */
+	medford4_mac_stats_periodic,		/* emo_stats_periodic */
+	medford4_mac_stats_update		/* emo_stats_update */
+#endif	/* EFSYS_OPT_MAC_STATS */
+};
+#endif /* EFSYS_OPT_MEDFORD4 */
+
+			size_t
+efx_mac_pdu_from_sdu(
+	__in		efx_nic_t *enp,
+	__in		size_t sdu)
+{
+	if (efx_np_supported(enp) != B_FALSE) {
+		/* PDU size for netport MCDI capable adaptors. */
+		return sdu + 14 /* ETH */ + 4 /* VLAN */ + 4 /* FCS */;
+	} else {
+		/* PDU size for legacy MC_CMD_SET_MAC command. */
+		return EFX_MAC_PDU(sdu);
+	}
+}
+
 	__checkReturn			efx_rc_t
 efx_mac_pdu_set(
 	__in				efx_nic_t *enp,
@@ -96,6 +135,7 @@ efx_mac_pdu_set(
 {
 	efx_port_t *epp = &(enp->en_port);
 	const efx_mac_ops_t *emop = epp->ep_emop;
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	uint32_t old_pdu;
 	efx_rc_t rc;
 
@@ -103,12 +143,12 @@ efx_mac_pdu_set(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
 	EFSYS_ASSERT(emop != NULL);
 
-	if (pdu < EFX_MAC_PDU_MIN) {
+	if (pdu < encp->enc_mac_pdu_min) {
 		rc = EINVAL;
 		goto fail1;
 	}
 
-	if (pdu > EFX_MAC_PDU_MAX) {
+	if (pdu > encp->enc_mac_pdu_max) {
 		rc = EINVAL;
 		goto fail2;
 	}
@@ -270,6 +310,11 @@ efx_mac_drain(
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
 	EFSYS_ASSERT(emop != NULL);
+
+	if (efx_np_supported(enp) != B_FALSE) {
+		/* Only pre-Medford4 boards have supported MAC drain control. */
+		return (0);
+	}
 
 	if (epp->ep_mac_drain == enabled)
 		return (0);
@@ -527,6 +572,54 @@ efx_mac_filter_default_rxq_clear(
 		emop->emo_filter_default_rxq_clear(enp);
 }
 
+	__checkReturn	efx_rc_t
+efx_mac_include_fcs_set(
+	__in		efx_nic_t *enp,
+	__in		boolean_t enabled)
+{
+	efx_port_t *epp = &(enp->en_port);
+	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
+	const efx_mac_ops_t *emop = epp->ep_emop;
+	efx_rc_t rc;
+
+	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
+	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PORT);
+	EFSYS_ASSERT(emop != NULL);
+
+	if (enabled && !encp->enc_rx_include_fcs_supported) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	/*
+	 * Enabling 'include FCS' changes link control state and affects
+	 * behaviour for all PCI functions on the port, so to avoid this it
+	 * can be enabled only if the PCI function is exclusive port user
+	 */
+	if (enabled && encp->enc_port_usage != EFX_PORT_USAGE_EXCLUSIVE) {
+		rc = EACCES;
+		goto fail2;
+	}
+
+	if (epp->ep_include_fcs != enabled) {
+		epp->ep_include_fcs = enabled;
+
+		rc = emop->emo_reconfigure(enp);
+		if (rc != 0)
+			goto fail3;
+	}
+
+	return 0;
+
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+
+	return rc;
+}
 
 #if EFSYS_OPT_MAC_STATS
 
@@ -904,6 +997,13 @@ efx_mac_select(
 		type = EFX_MAC_RIVERHEAD;
 		break;
 #endif /* EFSYS_OPT_RIVERHEAD */
+
+#if EFSYS_OPT_MEDFORD4
+	case EFX_FAMILY_MEDFORD4:
+		emop = &__efx_mac_medford4_ops;
+		type = EFX_MAC_MEDFORD4;
+		break;
+#endif /* EFSYS_OPT_MEDFORD4 */
 
 	default:
 		rc = EINVAL;

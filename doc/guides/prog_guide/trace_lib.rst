@@ -175,13 +175,13 @@ events.
 
 There are many tools you can use to read DPDK traces:
 
-1. ``babeltrace`` is a command-line utility that converts trace formats; it
-supports the format that DPDK trace library produces, CTF, as well as a
-basic text output that can be grep'ed.
-The babeltrace command is part of the Open Source Babeltrace project.
+#. ``babeltrace`` is a command-line utility that converts trace formats; it
+   supports the format that DPDK trace library produces, CTF, as well as a
+   basic text output that can be grep'ed.
+   The babeltrace command is part of the Open Source Babeltrace project.
 
-2. ``Trace Compass`` is a graphical user interface for viewing and analyzing
-any type of logs or traces, including DPDK traces.
+#. ``Trace Compass`` is a graphical user interface for viewing and analyzing
+   any type of logs or traces, including DPDK traces.
 
 Use the babeltrace command-line tool
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

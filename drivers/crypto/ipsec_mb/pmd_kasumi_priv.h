@@ -9,8 +9,6 @@
 
 #define KASUMI_KEY_LENGTH 16
 #define KASUMI_IV_LENGTH 8
-#define KASUMI_MAX_BURST 4
-#define BYTE_LEN 8
 #define KASUMI_DIGEST_LENGTH 4
 
 uint8_t pmd_driver_id_kasumi;
@@ -58,24 +56,6 @@ static const struct rte_cryptodev_capabilities kasumi_capabilities[] = {
 		}, }
 	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
-};
-
-/** KASUMI private session structure */
-struct kasumi_session {
-	/* Keys have to be 16-byte aligned */
-	kasumi_key_sched_t pKeySched_cipher;
-	kasumi_key_sched_t pKeySched_hash;
-	enum ipsec_mb_operation op;
-	enum rte_crypto_auth_operation auth_op;
-	uint16_t cipher_iv_offset;
-} __rte_cache_aligned;
-
-struct kasumi_qp_data {
-	uint8_t temp_digest[KASUMI_DIGEST_LENGTH];
-	/* *< Buffers used to store the digest generated
-	 * by the driver when verifying a digest provided
-	 * by the user (using authentication verify operation)
-	 */
 };
 
 #endif /* _PMD_KASUMI_PRIV_H_ */

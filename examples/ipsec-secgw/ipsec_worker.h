@@ -37,11 +37,11 @@ struct route_table {
 /*
  * Conf required by event mode worker with tx internal port
  */
-struct lcore_conf_ev_tx_int_port_wrkr {
+struct __rte_cache_aligned lcore_conf_ev_tx_int_port_wrkr {
 	struct ipsec_ctx inbound;
 	struct ipsec_ctx outbound;
 	struct route_table rt;
-} __rte_cache_aligned;
+};
 
 void ipsec_poll_mode_worker(void);
 void ipsec_poll_mode_wrkr_inl_pr(void);
@@ -119,11 +119,10 @@ adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 }
 
 static __rte_always_inline void
-prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
+prepare_one_packet(void *ctx, struct rte_mbuf *pkt,
 		   struct ipsec_traffic *t)
 {
 	uint32_t ptype = pkt->packet_type;
-	const struct rte_ether_hdr *eth;
 	const struct rte_ipv4_hdr *iph4;
 	const struct rte_ipv6_hdr *iph6;
 	uint32_t tun_type, l3_type;
@@ -138,7 +137,6 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 	tun_type = ptype & RTE_PTYPE_TUNNEL_MASK;
 	l3_type = ptype & RTE_PTYPE_L3_MASK;
 
-	eth = rte_pktmbuf_mtod(pkt, const struct rte_ether_hdr *);
 	if (RTE_ETH_IS_IPV4_HDR(l3_type)) {
 		iph4 = (const struct rte_ipv4_hdr *)rte_pktmbuf_adj(pkt,
 			RTE_ETHER_HDR_LEN);
@@ -192,8 +190,7 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 		tx_offload = l3len << RTE_MBUF_L2_LEN_BITS;
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
-		RTE_LOG(ERR, IPSEC, "Unsupported packet type 0x%x\n",
-			rte_be_to_cpu_16(eth->ether_type));
+		RTE_LOG_DP(DEBUG, IPSEC, "Unsupported packet type 0x%x\n", ptype);
 		free_pkts(&pkt, 1);
 		return;
 	}
@@ -233,7 +230,7 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 }
 
 static __rte_always_inline void
-prepare_traffic(struct rte_security_ctx *ctx, struct rte_mbuf **pkts,
+prepare_traffic(void *ctx, struct rte_mbuf **pkts,
 		struct ipsec_traffic *t, uint16_t nb_pkts)
 {
 	int32_t i;
@@ -472,7 +469,7 @@ fail:
 
 static __rte_always_inline void
 route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[],
-	    uint8_t nb_pkts, uint64_t tx_offloads, bool ip_cksum)
+	    uint32_t nb_pkts, uint64_t tx_offloads, bool ip_cksum)
 {
 	uint32_t hop[MAX_PKT_BURST * 2];
 	uint32_t dst_ip[MAX_PKT_BURST * 2];
@@ -560,10 +557,10 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[],
 }
 
 static __rte_always_inline void
-route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint32_t nb_pkts)
 {
 	int32_t hop[MAX_PKT_BURST * 2];
-	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
+	struct rte_ipv6_addr dst_ip[MAX_PKT_BURST * 2];
 	struct rte_ether_hdr *ethhdr;
 	uint8_t *ip6_dst;
 	uint32_t pkt_hop = 0;
@@ -589,7 +586,7 @@ route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
 			offset = offsetof(struct ip6_hdr, ip6_dst);
 			ip6_dst = rte_pktmbuf_mtod_offset(pkt, uint8_t *,
 					offset);
-			memcpy(&dst_ip[lpm_pkts][0], ip6_dst, 16);
+			memcpy(&dst_ip[lpm_pkts], ip6_dst, 16);
 			lpm_pkts++;
 		}
 	}

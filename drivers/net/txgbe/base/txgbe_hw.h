@@ -40,6 +40,7 @@ s32 txgbe_setup_fc(struct txgbe_hw *hw);
 s32 txgbe_validate_mac_addr(u8 *mac_addr);
 s32 txgbe_acquire_swfw_sync(struct txgbe_hw *hw, u32 mask);
 void txgbe_release_swfw_sync(struct txgbe_hw *hw, u32 mask);
+s32 txgbe_set_pcie_master(struct txgbe_hw *hw, bool enable);
 
 s32 txgbe_get_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
 s32 txgbe_set_san_mac_addr(struct txgbe_hw *hw, u8 *san_mac_addr);
@@ -111,6 +112,6 @@ s32 txgbe_prot_autoc_read_raptor(struct txgbe_hw *hw, bool *locked, u64 *value);
 s32 txgbe_prot_autoc_write_raptor(struct txgbe_hw *hw, bool locked, u64 value);
 s32 txgbe_reinit_fdir_tables(struct txgbe_hw *hw);
 bool txgbe_verify_lesm_fw_enabled_raptor(struct txgbe_hw *hw);
-u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr);
-u32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr);
+s32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr);
+s32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr, u32 *data);
 #endif /* _TXGBE_HW_H_ */

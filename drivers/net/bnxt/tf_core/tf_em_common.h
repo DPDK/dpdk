@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
 #ifndef _TF_EM_COMMON_H_
 #define _TF_EM_COMMON_H_
 
+#include "hcapi_cfa_defs.h"
 #include "tf_core.h"
 #include "tf_session.h"
 #include "ll.h"
@@ -178,7 +179,6 @@ int tf_em_validate_num_entries(struct tf_tbl_scope_cb *tbl_scope_cb,
 int tf_em_size_table(struct hcapi_cfa_em_table *tbl,
 		     uint32_t page_size);
 
-
 /**
  * Look up table scope control block using tbl_scope_id from
  * tf_session
@@ -196,5 +196,4 @@ int tf_em_size_table(struct hcapi_cfa_em_table *tbl,
 struct tf_tbl_scope_cb *
 tf_em_ext_common_tbl_scope_find(struct tf *tfp,
 				uint32_t tbl_scope_id);
-
 #endif /* _TF_EM_COMMON_H_ */

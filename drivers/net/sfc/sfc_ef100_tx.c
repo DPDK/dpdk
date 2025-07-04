@@ -405,7 +405,7 @@ sfc_ef100_tx_qdesc_send_create(const struct sfc_ef100_txq *txq,
 				m->l2_len + m->l3_len) >> 1;
 	}
 
-	rc = sfc_ef100_tx_map(txq, rte_mbuf_data_iova_default(m),
+	rc = sfc_ef100_tx_map(txq, rte_mbuf_data_iova(m),
 			      rte_pktmbuf_data_len(m), &dma_addr);
 	if (unlikely(rc != 0))
 		return rc;
@@ -563,8 +563,7 @@ sfc_ef100_tx_pkt_descs_max(const struct rte_mbuf *m)
 		 * (split into many Tx descriptors).
 		 */
 		RTE_BUILD_BUG_ON(SFC_EF100_TX_SEND_DESC_LEN_MAX <
-				 RTE_MIN((unsigned int)EFX_MAC_PDU_MAX,
-				 SFC_MBUF_SEG_LEN_MAX));
+				 RTE_MIN_T(EFX_MAC_PDU_MAX, SFC_MBUF_SEG_LEN_MAX, uint32_t));
 	}
 
 	if (m->ol_flags & sfc_dp_mport_override) {

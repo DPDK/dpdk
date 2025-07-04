@@ -179,6 +179,7 @@ siena_board_cfg(
 	    (encp->enc_rxq_limit * EFX_RXQ_DC_NDESCS(EFX_RXQ_DC_SIZE));
 
 	encp->enc_hw_tx_insert_vlan_enabled = B_FALSE;
+	encp->enc_rx_vlan_stripping_supported = B_FALSE;
 	encp->enc_fw_assisted_tso_enabled = B_FALSE;
 	encp->enc_fw_assisted_tso_v2_enabled = B_FALSE;
 	encp->enc_fw_assisted_tso_v2_n_contexts = 0;
@@ -187,6 +188,7 @@ siena_board_cfg(
 	encp->enc_allow_set_mac_with_installed_filters = B_TRUE;
 	encp->enc_rx_packed_stream_supported = B_FALSE;
 	encp->enc_rx_var_packed_stream_supported = B_FALSE;
+	encp->enc_rx_include_fcs_supported = B_FALSE;
 	encp->enc_rx_es_super_buffer_supported = B_FALSE;
 	encp->enc_fw_subvariant_no_tx_csum_supported = B_FALSE;
 
@@ -204,6 +206,8 @@ siena_board_cfg(
 
 	encp->enc_mae_supported = B_FALSE;
 	encp->enc_mae_admin = B_FALSE;
+
+	encp->enc_table_api_supported = B_FALSE;
 
 	encp->enc_dma_mapping = EFX_NIC_DMA_MAPPING_FLAT;
 

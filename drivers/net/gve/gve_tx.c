@@ -536,7 +536,7 @@ gve_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (q->is_gqi_qpl) {
-		gve_adminq_unregister_page_list(q->hw, q->qpl->id);
+		gve_teardown_queue_page_list(q->hw, q->qpl);
 		rte_free(q->iov_ring);
 		q->qpl = NULL;
 	}
@@ -559,11 +559,12 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	uint16_t free_thresh;
 	int err = 0;
 
-	if (nb_desc != hw->tx_desc_cnt) {
-		PMD_DRV_LOG(WARNING, "gve doesn't support nb_desc config, use hw nb_desc %u.",
-			    hw->tx_desc_cnt);
+	/* Ring size is required to be a power of two. */
+	if (!rte_is_power_of_2(nb_desc)) {
+		PMD_DRV_LOG(ERR, "Invalid ring size %u. GVE ring size must be a power of 2.",
+			    nb_desc);
+		return -EINVAL;
 	}
-	nb_desc = hw->tx_desc_cnt;
 
 	/* Free memory if needed. */
 	if (dev->data->tx_queues[queue_id]) {
@@ -619,6 +620,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	txq->tx_ring_phys_addr = mz->iova;
 	txq->mz = mz;
 
+	/* QPL-specific allocations. */
 	if (txq->is_gqi_qpl) {
 		txq->iov_ring = rte_zmalloc_socket("gve tx iov ring",
 						   sizeof(struct gve_tx_iovec) * nb_desc,
@@ -628,10 +630,13 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 			err = -ENOMEM;
 			goto err_tx_ring;
 		}
-		txq->qpl = &hw->qpl[queue_id];
-		err = gve_adminq_register_page_list(hw, txq->qpl);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Failed to register qpl %u", queue_id);
+
+		txq->qpl = gve_setup_queue_page_list(hw, queue_id, false,
+						     hw->tx_pages_per_qpl);
+		if (!txq->qpl) {
+			err = -ENOMEM;
+			PMD_DRV_LOG(ERR, "Failed to alloc tx qpl for queue %hu.",
+				    queue_id);
 			goto err_iov_ring;
 		}
 	}
@@ -641,7 +646,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	if (mz == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for TX resource");
 		err = -ENOMEM;
-		goto err_iov_ring;
+		goto err_qpl;
 	}
 	txq->qres = (struct gve_queue_resources *)mz->addr;
 	txq->qres_mz = mz;
@@ -651,7 +656,11 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	dev->data->tx_queues[queue_id] = txq;
 
 	return 0;
-
+err_qpl:
+	if (txq->is_gqi_qpl) {
+		gve_teardown_queue_page_list(hw, txq->qpl);
+		txq->qpl = NULL;
+	}
 err_iov_ring:
 	if (txq->is_gqi_qpl)
 		rte_free(txq->iov_ring);
@@ -664,21 +673,66 @@ err_txq:
 	return err;
 }
 
+int
+gve_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct gve_priv *hw = dev->data->dev_private;
+	struct gve_tx_queue *txq;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	txq->qtx_tail = &hw->db_bar2[rte_be_to_cpu_32(txq->qres->db_index)];
+	txq->qtx_head =
+		&hw->cnt_array[rte_be_to_cpu_32(txq->qres->counter_index)];
+
+	rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), txq->ntfy_addr);
+
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+int
+gve_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct gve_tx_queue *txq;
+
+	if (tx_queue_id >= dev->data->nb_tx_queues)
+		return -EINVAL;
+
+	txq = dev->data->tx_queues[tx_queue_id];
+	gve_release_txq_mbufs(txq);
+	gve_reset_txq(txq);
+
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
 void
 gve_stop_tx_queues(struct rte_eth_dev *dev)
 {
 	struct gve_priv *hw = dev->data->dev_private;
-	struct gve_tx_queue *txq;
 	uint16_t i;
 	int err;
+
+	if (!gve_is_gqi(hw))
+		return gve_stop_tx_queues_dqo(dev);
 
 	err = gve_adminq_destroy_tx_queues(hw, dev->data->nb_tx_queues);
 	if (err != 0)
 		PMD_DRV_LOG(WARNING, "failed to destroy txqs");
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		txq = dev->data->tx_queues[i];
-		gve_release_txq_mbufs(txq);
-		gve_reset_txq(txq);
-	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		if (gve_tx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Tx queue %d", i);
+}
+
+void
+gve_set_tx_function(struct rte_eth_dev *dev)
+{
+	dev->tx_pkt_burst = gve_tx_burst;
 }

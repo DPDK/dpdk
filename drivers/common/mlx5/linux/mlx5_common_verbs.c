@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <inttypes.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_eal_paging.h>
 
@@ -105,6 +106,7 @@ mlx5_set_context_attr(struct rte_device *dev, struct ibv_context *ctx)
  * @return
  *   0 on successful registration, -1 otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_common_verbs_reg_mr)
 int
 mlx5_common_verbs_reg_mr(void *pd, void *addr, size_t length,
 			 struct mlx5_pmd_mr *pmd_mr)
@@ -134,6 +136,7 @@ mlx5_common_verbs_reg_mr(void *pd, void *addr, size_t length,
  *   pmd_mr struct set with lkey, address, length and pointer to mr object
  *
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_common_verbs_dereg_mr)
 void
 mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
 {
@@ -151,6 +154,7 @@ mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
  * @param[out] dereg_mr_cb
  *   Pointer to dereg_mr func
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_set_reg_mr_cb)
 void
 mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb)
 {

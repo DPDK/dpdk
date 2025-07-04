@@ -12,14 +12,6 @@
 
 #define PARSE_DELIMITER " \f\n\r\t\v"
 
-#define skip_white_spaces(pos) \
-	({ \
-		__typeof__(pos) _p = (pos); \
-		for (; isspace(*_p); _p++) \
-			; \
-		_p; \
-	})
-
 static inline size_t
 skip_digits(const char *src)
 {

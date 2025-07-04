@@ -77,11 +77,6 @@
 	for (iter = val; iter < size; iter++)
 #endif
 
-#ifdef VIRTIO_ICC_UNROLL_PRAGMA
-#define virtio_for_each_try_unroll(iter, val, size) _Pragma("unroll 4") \
-	for (iter = val; iter < size; iter++)
-#endif
-
 #ifndef virtio_for_each_try_unroll
 #define virtio_for_each_try_unroll(iter, val, size) \
 	for (iter = val; iter < size; iter++)

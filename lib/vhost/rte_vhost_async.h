@@ -5,14 +5,14 @@
 #ifndef _RTE_VHOST_ASYNC_H_
 #define _RTE_VHOST_ASYNC_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_mbuf.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Register an async channel for a vhost queue

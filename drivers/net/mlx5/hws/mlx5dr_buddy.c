@@ -61,7 +61,7 @@ static unsigned long bitmap_ffs(struct rte_bitmap *bmap,
 		DR_LOG(ERR, "Failed to get slab from bitmap.");
 		return m;
 	}
-	pos = pos + __builtin_ctzll(out_slab);
+	pos = pos + rte_ctz64(out_slab);
 
 	if (pos < n) {
 		DR_LOG(ERR, "Unexpected bit (%d < %"PRIx64") from bitmap", pos, n);

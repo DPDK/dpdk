@@ -244,22 +244,30 @@ mlx5_vdpa_queues_complete(struct mlx5_vdpa_priv *priv)
 	return max;
 }
 
+static void
+mlx5_vdpa_drain_cq_one(struct mlx5_vdpa_priv *priv,
+	struct mlx5_vdpa_virtq *virtq)
+{
+	struct mlx5_vdpa_cq *cq = &virtq->eqp.cq;
+
+	mlx5_vdpa_queue_complete(cq);
+	if (cq->cq_obj.cq) {
+		cq->cq_obj.cqes[0].wqe_counter = rte_cpu_to_be_16(UINT16_MAX);
+		virtq->eqp.qp_pi = 0;
+		if (!cq->armed)
+			mlx5_vdpa_cq_arm(priv, cq);
+	}
+}
+
 void
 mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv)
 {
+	struct mlx5_vdpa_virtq *virtq;
 	unsigned int i;
 
 	for (i = 0; i < priv->caps.max_num_virtio_queues; i++) {
-		struct mlx5_vdpa_cq *cq = &priv->virtqs[i].eqp.cq;
-
-		mlx5_vdpa_queue_complete(cq);
-		if (cq->cq_obj.cq) {
-			cq->cq_obj.cqes[0].wqe_counter =
-				rte_cpu_to_be_16(UINT16_MAX);
-			priv->virtqs[i].eqp.qp_pi = 0;
-			if (!cq->armed)
-				mlx5_vdpa_cq_arm(priv, cq);
-		}
+		virtq = &priv->virtqs[i];
+		mlx5_vdpa_drain_cq_one(priv, virtq);
 	}
 }
 
@@ -284,7 +292,7 @@ mlx5_vdpa_event_wait(struct mlx5_vdpa_priv *priv __rte_unused)
 	return NULL;
 }
 
-static void *
+static uint32_t
 mlx5_vdpa_event_handle(void *arg)
 {
 	struct mlx5_vdpa_priv *priv = arg;
@@ -324,7 +332,7 @@ mlx5_vdpa_event_handle(void *arg)
 			}
 			mlx5_vdpa_timer_sleep(priv, max);
 		}
-		return NULL;
+		return 0;
 	case MLX5_VDPA_EVENT_MODE_ONLY_INTERRUPT:
 		do {
 			virtq = mlx5_vdpa_event_wait(priv);
@@ -336,9 +344,9 @@ mlx5_vdpa_event_handle(void *arg)
 				pthread_mutex_unlock(&virtq->virtq_lock);
 			}
 		} while (1);
-		return NULL;
+		return 0;
 	default:
-		return NULL;
+		return 0;
 	}
 }
 
@@ -503,54 +511,30 @@ int
 mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 {
 	int ret;
-	rte_cpuset_t cpuset;
-	pthread_attr_t *attrp = NULL;
-	pthread_attr_t attr;
-	char name[16];
-	const struct sched_param sp = {
-		.sched_priority = sched_get_priority_max(SCHED_RR) - 1,
-	};
+	rte_thread_attr_t attr;
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
 
 	if (!priv->eventc)
 		/* All virtqs are in poll mode. */
 		return 0;
-	ret = pthread_attr_init(&attr);
+	ret = rte_thread_attr_init(&attr);
 	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to initialize thread attributes");
 		goto out;
 	}
-	attrp = &attr;
-	ret = pthread_attr_setschedpolicy(attrp, SCHED_RR);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to set thread sched policy = RR.");
-		goto out;
-	}
-	ret = pthread_attr_setschedparam(attrp, &sp);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to set thread priority.");
-		goto out;
-	}
-	ret = pthread_create(&priv->timer_tid, attrp, mlx5_vdpa_event_handle,
-			     (void *)priv);
-	if (ret) {
+	if (priv->event_core != -1)
+		CPU_SET(priv->event_core, &attr.cpuset);
+	else
+		attr.cpuset = rte_lcore_cpuset(rte_get_main_lcore());
+	ret = rte_thread_create(&priv->timer_tid,
+			&attr, mlx5_vdpa_event_handle, priv);
+	if (ret != 0) {
 		DRV_LOG(ERR, "Failed to create timer thread.");
 		goto out;
 	}
-	CPU_ZERO(&cpuset);
-	if (priv->event_core != -1)
-		CPU_SET(priv->event_core, &cpuset);
-	else
-		cpuset = rte_lcore_cpuset(rte_get_main_lcore());
-	ret = pthread_setaffinity_np(priv->timer_tid, sizeof(cpuset), &cpuset);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to set thread affinity.");
-		goto out;
-	}
-	snprintf(name, sizeof(name), "vDPA-mlx5-%d", priv->vid);
-	rte_thread_set_name((rte_thread_t){(uintptr_t)priv->timer_tid}, name);
+	snprintf(name, sizeof(name), "vmlx5-%d", priv->vid);
+	rte_thread_set_prefixed_name(priv->timer_tid, name);
 out:
-	if (attrp != NULL)
-		pthread_attr_destroy(attrp);
 	if (ret != 0)
 		return -1;
 	return 0;
@@ -560,19 +544,18 @@ void
 mlx5_vdpa_cqe_event_unset(struct mlx5_vdpa_priv *priv)
 {
 	struct mlx5_vdpa_virtq *virtq;
-	void *status;
 	int i;
 
-	if (priv->timer_tid) {
-		pthread_cancel(priv->timer_tid);
-		pthread_join(priv->timer_tid, &status);
+	if (priv->timer_tid.opaque_id != 0) {
+		pthread_cancel((pthread_t)priv->timer_tid.opaque_id);
+		rte_thread_join(priv->timer_tid, NULL);
 		/* The mutex may stay locked after event thread cancel, initiate it. */
 		for (i = 0; i < priv->nr_virtqs; i++) {
 			virtq = &priv->virtqs[i];
 			pthread_mutex_init(&virtq->virtq_lock, NULL);
 		}
 	}
-	priv->timer_tid = 0;
+	priv->timer_tid.opaque_id = 0;
 }
 
 void
@@ -657,6 +640,7 @@ mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	if (eqp->cq.cq_obj.cq != NULL && log_desc_n == eqp->cq.log_desc_n) {
 		/* Reuse existing resources. */
 		eqp->cq.callfd = callfd;
+		mlx5_vdpa_drain_cq_one(priv, virtq);
 		/* FW will set event qp to error state in q destroy. */
 		if (reset && !mlx5_vdpa_qps2rst2rts(eqp))
 			rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),

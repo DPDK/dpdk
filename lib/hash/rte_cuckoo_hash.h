@@ -11,6 +11,8 @@
 #ifndef _RTE_CUCKOO_HASH_H_
 #define _RTE_CUCKOO_HASH_H_
 
+#include <stdalign.h>
+
 #if defined(RTE_ARCH_X86)
 #include "rte_cmp_x86.h"
 #endif
@@ -27,17 +29,6 @@
 } while (0)
 #else
 #define RETURN_IF_TRUE(cond, retval)
-#endif
-
-#if defined(RTE_LIBRTE_HASH_DEBUG)
-#define ERR_IF_TRUE(cond, fmt, args...) do { \
-	if (cond) { \
-		RTE_LOG(ERR, HASH, fmt, ##args); \
-		return; \
-	} \
-} while (0)
-#else
-#define ERR_IF_TRUE(cond, fmt, args...)
 #endif
 
 #include <rte_hash_crc.h>
@@ -128,42 +119,34 @@ const rte_hash_cmp_eq_t cmp_jump_table[NUM_KEY_CMP_CASES] = {
 
 #define RTE_HASH_TSX_MAX_RETRY  10
 
-struct lcore_cache {
+struct __rte_cache_aligned lcore_cache {
 	unsigned len; /**< Cache len */
 	uint32_t objs[LCORE_CACHE_SIZE]; /**< Cache objects */
-} __rte_cache_aligned;
+};
 
 /* Structure that stores key-value pair */
 struct rte_hash_key {
 	union {
 		uintptr_t idata;
-		void *pdata;
+		RTE_ATOMIC(void *) pdata;
 	};
 	/* Variable key size */
 	char key[0];
 };
 
-/* All different signature compare functions */
-enum rte_hash_sig_compare_function {
-	RTE_HASH_COMPARE_SCALAR = 0,
-	RTE_HASH_COMPARE_SSE,
-	RTE_HASH_COMPARE_NEON,
-	RTE_HASH_COMPARE_NUM
-};
-
 /** Bucket structure */
-struct rte_hash_bucket {
+struct __rte_cache_aligned rte_hash_bucket {
 	uint16_t sig_current[RTE_HASH_BUCKET_ENTRIES];
 
-	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES];
+	RTE_ATOMIC(uint32_t) key_idx[RTE_HASH_BUCKET_ENTRIES];
 
 	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
 
 	void *next;
-} __rte_cache_aligned;
+};
 
 /** A hash table structure. */
-struct rte_hash {
+struct __rte_cache_aligned rte_hash {
 	char name[RTE_HASH_NAMESIZE];   /**< Name of the hash. */
 	uint32_t entries;               /**< Total table entries. */
 	uint32_t num_buckets;           /**< Number of buckets in table. */
@@ -181,7 +164,7 @@ struct rte_hash {
 
 	/* Fields used in lookup */
 
-	uint32_t key_len __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t key_len;
 	/**< Length of hash key. */
 	uint8_t hw_trans_mem_support;
 	/**< If hardware transactional memory is used. */
@@ -208,7 +191,7 @@ struct rte_hash {
 	/**< Custom function used to compare keys. */
 	enum cmp_jump_table_case cmp_jump_table_idx;
 	/**< Indicates which compare function to use. */
-	enum rte_hash_sig_compare_function sig_cmp_fn;
+	unsigned int sig_cmp_fn;
 	/**< Indicates which signature compare function to use. */
 	uint32_t bucket_bitmask;
 	/**< Bitmask for getting bucket index from hash signature. */
@@ -229,9 +212,9 @@ struct rte_hash {
 	 * is piggy-backed to freeing of the key index.
 	 */
 	uint32_t *ext_bkt_to_free;
-	uint32_t *tbl_chng_cnt;
+	RTE_ATOMIC(uint32_t) *tbl_chng_cnt;
 	/**< Indicates if the hash table changed from last read. */
-} __rte_cache_aligned;
+};
 
 struct queue_node {
 	struct rte_hash_bucket *bkt; /* Current bucket on the bfs search */

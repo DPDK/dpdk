@@ -196,37 +196,37 @@ do {                                                                        \
 } while (0)
 
 /* Run aligned memcpy tests for each cached/uncached permutation */
-#define ALL_PERF_TESTS_FOR_SIZE(n)                                       \
-do {                                                                     \
-    if (__builtin_constant_p(n))                                         \
-        printf("\nC%6u", (unsigned)n);                                   \
-    else                                                                 \
-        printf("\n%7u", (unsigned)n);                                    \
-    SINGLE_PERF_TEST(small_buf_write, 1, 0, small_buf_read, 1, 0, n);    \
-    SINGLE_PERF_TEST(large_buf_write, 0, 0, small_buf_read, 1, 0, n);    \
-    SINGLE_PERF_TEST(small_buf_write, 1, 0, large_buf_read, 0, 0, n);    \
-    SINGLE_PERF_TEST(large_buf_write, 0, 0, large_buf_read, 0, 0, n);    \
+#define ALL_PERF_TESTS_FOR_SIZE(n)                                           \
+do {                                                                         \
+	if (__rte_constant(n))                                               \
+		printf("\nC%6u", (unsigned int)n);                           \
+	else                                                                 \
+		printf("\n%7u", (unsigned int)n);                            \
+	SINGLE_PERF_TEST(small_buf_write, 1, 0, small_buf_read, 1, 0, n);    \
+	SINGLE_PERF_TEST(large_buf_write, 0, 0, small_buf_read, 1, 0, n);    \
+	SINGLE_PERF_TEST(small_buf_write, 1, 0, large_buf_read, 0, 0, n);    \
+	SINGLE_PERF_TEST(large_buf_write, 0, 0, large_buf_read, 0, 0, n);    \
 } while (0)
 
 /* Run unaligned memcpy tests for each cached/uncached permutation */
-#define ALL_PERF_TESTS_FOR_SIZE_UNALIGNED(n)                             \
-do {                                                                     \
-    if (__builtin_constant_p(n))                                         \
-        printf("\nC%6u", (unsigned)n);                                   \
-    else                                                                 \
-        printf("\n%7u", (unsigned)n);                                    \
-    SINGLE_PERF_TEST(small_buf_write, 1, 1, small_buf_read, 1, 5, n);    \
-    SINGLE_PERF_TEST(large_buf_write, 0, 1, small_buf_read, 1, 5, n);    \
-    SINGLE_PERF_TEST(small_buf_write, 1, 1, large_buf_read, 0, 5, n);    \
-    SINGLE_PERF_TEST(large_buf_write, 0, 1, large_buf_read, 0, 5, n);    \
+#define ALL_PERF_TESTS_FOR_SIZE_UNALIGNED(n)                                 \
+do {                                                                         \
+	if (__rte_constant(n))                                               \
+		printf("\nC%6u", (unsigned int)n);                           \
+	else                                                                 \
+		printf("\n%7u", (unsigned int)n);                            \
+	SINGLE_PERF_TEST(small_buf_write, 1, 1, small_buf_read, 1, 5, n);    \
+	SINGLE_PERF_TEST(large_buf_write, 0, 1, small_buf_read, 1, 5, n);    \
+	SINGLE_PERF_TEST(small_buf_write, 1, 1, large_buf_read, 0, 5, n);    \
+	SINGLE_PERF_TEST(large_buf_write, 0, 1, large_buf_read, 0, 5, n);    \
 } while (0)
 
 /* Run memcpy tests for constant length */
-#define ALL_PERF_TEST_FOR_CONSTANT                                      \
-do {                                                                    \
-    TEST_CONSTANT(6U); TEST_CONSTANT(64U); TEST_CONSTANT(128U);         \
-    TEST_CONSTANT(192U); TEST_CONSTANT(256U); TEST_CONSTANT(512U);      \
-    TEST_CONSTANT(768U); TEST_CONSTANT(1024U); TEST_CONSTANT(1536U);    \
+#define ALL_PERF_TEST_FOR_CONSTANT                                          \
+do {                                                                        \
+	TEST_CONSTANT(6U); TEST_CONSTANT(64U); TEST_CONSTANT(128U);         \
+	TEST_CONSTANT(192U); TEST_CONSTANT(256U); TEST_CONSTANT(512U);      \
+	TEST_CONSTANT(768U); TEST_CONSTANT(1024U); TEST_CONSTANT(1536U);    \
 } while (0)
 
 /* Run all memcpy tests for aligned constant cases */
@@ -253,7 +253,7 @@ perf_test_variable_aligned(void)
 {
 	unsigned i;
 	for (i = 0; i < RTE_DIM(buf_sizes); i++) {
-		ALL_PERF_TESTS_FOR_SIZE((size_t)buf_sizes[i]);
+		ALL_PERF_TESTS_FOR_SIZE(buf_sizes[i]);
 	}
 }
 
@@ -263,7 +263,7 @@ perf_test_variable_unaligned(void)
 {
 	unsigned i;
 	for (i = 0; i < RTE_DIM(buf_sizes); i++) {
-		ALL_PERF_TESTS_FOR_SIZE_UNALIGNED((size_t)buf_sizes[i]);
+		ALL_PERF_TESTS_FOR_SIZE_UNALIGNED(buf_sizes[i]);
 	}
 }
 
@@ -348,4 +348,4 @@ test_memcpy_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(memcpy_perf_autotest, test_memcpy_perf);
+REGISTER_PERF_TEST(memcpy_perf_autotest, test_memcpy_perf);

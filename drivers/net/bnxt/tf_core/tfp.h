@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -28,12 +28,12 @@ struct tfp_spinlock_parms {
 	rte_spinlock_t slock;
 };
 
-#define TFP_DRV_LOG_RAW(level, fmt, args...) \
+#define TFP_DRV_LOG_RAW(level, fmt, ...) \
 	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
+		__func__, ## __VA_ARGS__)
 
-#define TFP_DRV_LOG(level, fmt, args...) \
-	TFP_DRV_LOG_RAW(level, fmt, ## args)
+#define TFP_DRV_LOG(level, fmt, ...) \
+	TFP_DRV_LOG_RAW(level, fmt, ## __VA_ARGS__)
 
 /**
  * @file
@@ -185,7 +185,6 @@ void tfp_spinlock_unlock(struct tfp_spinlock_parms *slock);
  */
 int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
 
-
 /*
  * @ref tfp_cpu_to_le_16
  * @ref tfp_le_to_cpu_16
@@ -232,5 +231,4 @@ int tfp_get_fid(struct tf *tfp, uint16_t *fw_fid);
  *
  */
 int tfp_get_pf(struct tf *tfp, uint16_t *pf);
-
 #endif /* _TFP_H_ */

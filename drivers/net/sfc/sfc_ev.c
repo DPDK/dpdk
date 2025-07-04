@@ -467,9 +467,58 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 {
 	struct sfc_evq *evq = arg;
 	struct sfc_adapter *sa = evq->sa;
-	struct rte_eth_link new_link;
+	struct rte_eth_link new_link = {0};
 
+	if (sa->link_ev_need_poll) {
+		efx_link_mode_t new_mode;
+		bool poll_done = false;
+
+		/*
+		 * The event provides only the general status. When the link is
+		 * up, poll the port to get the speed, but it is not compulsory.
+		 */
+		if (link_mode != EFX_LINK_DOWN) {
+			int ret = 0;
+
+			if (sfc_adapter_trylock(sa)) {
+				/* Never poll when the adaptor is going down. */
+				if (sa->state == SFC_ETHDEV_STARTED) {
+					ret = efx_port_poll(sa->nic, &new_mode);
+					poll_done = true;
+				}
+
+				sfc_adapter_unlock(sa);
+			}
+
+			if (ret != 0) {
+				sfc_warn(sa, "port poll failed on link event");
+				poll_done = false;
+			}
+		}
+
+		if (poll_done) {
+			link_mode = new_mode;
+			goto decode_comprehensive;
+		}
+
+		new_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+		new_link.link_autoneg = RTE_ETH_LINK_AUTONEG;
+
+		if (link_mode == EFX_LINK_DOWN) {
+			new_link.link_speed  = RTE_ETH_SPEED_NUM_NONE;
+			new_link.link_status = RTE_ETH_LINK_DOWN;
+		} else {
+			new_link.link_speed  = RTE_ETH_SPEED_NUM_UNKNOWN;
+			new_link.link_status = RTE_ETH_LINK_UP;
+		}
+
+		goto set;
+	}
+
+decode_comprehensive:
 	sfc_port_link_mode_to_info(link_mode, &new_link);
+
+set:
 	if (rte_eth_linkstatus_set(sa->eth_dev, &new_link) == 0)
 		evq->sa->port.lsc_seq++;
 
@@ -570,6 +619,8 @@ static const efx_ev_callbacks_t sfc_ev_callbacks_dp_tx = {
 void
 sfc_ev_qpoll(struct sfc_evq *evq)
 {
+	struct sfc_adapter *sa;
+
 	SFC_ASSERT(evq->init_state == SFC_EVQ_STARTED ||
 		   evq->init_state == SFC_EVQ_STARTING);
 
@@ -577,8 +628,8 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 
 	efx_ev_qpoll(evq->common, &evq->read_ptr, evq->callbacks, evq);
 
-	if (unlikely(evq->exception) && sfc_adapter_trylock(evq->sa)) {
-		struct sfc_adapter *sa = evq->sa;
+	sa = evq->sa;
+	if (unlikely(evq->exception) && sfc_adapter_trylock(sa)) {
 		int rc;
 
 		if (evq->dp_rxq != NULL) {

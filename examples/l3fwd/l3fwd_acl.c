@@ -235,18 +235,6 @@ enum {
 RTE_ACL_RULE_DEF(acl4_rule, RTE_DIM(ipv4_defs));
 RTE_ACL_RULE_DEF(acl6_rule, RTE_DIM(ipv6_defs));
 
-struct acl_search_t {
-	const uint8_t *data_ipv4[MAX_PKT_BURST];
-	struct rte_mbuf *m_ipv4[MAX_PKT_BURST];
-	uint32_t res_ipv4[MAX_PKT_BURST];
-	int num_ipv4;
-
-	const uint8_t *data_ipv6[MAX_PKT_BURST];
-	struct rte_mbuf *m_ipv6[MAX_PKT_BURST];
-	uint32_t res_ipv6[MAX_PKT_BURST];
-	int num_ipv6;
-};
-
 static struct {
 	struct rte_acl_ctx *acx_ipv4[NB_SOCKETS];
 	struct rte_acl_ctx *acx_ipv6[NB_SOCKETS];
@@ -962,8 +950,6 @@ setup_acl(const int socket_id)
 	acl_log("IPv6 ACL entries %u:\n", acl_num_ipv6);
 	dump_ipv6_rules((struct acl6_rule *)acl_base_ipv6, acl_num_ipv6, 1);
 
-	memset(&acl_config, 0, sizeof(acl_config));
-
 	/* Check sockets a context should be created on */
 	if (socket_id >= NB_SOCKETS) {
 		acl_log("Socket %d is out "
@@ -972,6 +958,9 @@ setup_acl(const int socket_id)
 		acl_free_routes();
 		return;
 	}
+
+	rte_acl_free(acl_config.acx_ipv4[socket_id]);
+	rte_acl_free(acl_config.acx_ipv6[socket_id]);
 
 	acl_config.acx_ipv4[socket_id] = app_acl_init(route_base_ipv4,
 		acl_base_ipv4, route_num_ipv4, acl_num_ipv4,
@@ -988,16 +977,108 @@ setup_acl(const int socket_id)
 
 }
 
+static inline void
+dump_denied_pkt(const struct rte_mbuf *pkt, uint32_t res)
+{
+#ifdef L3FWDACL_DEBUG
+	if ((res & ACL_DENY_SIGNATURE) != 0) {
+		if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type))
+			dump_acl4_rule(pkt, res);
+		else if (RTE_ETH_IS_IPV6_HDR(pkt[i]->packet_type))
+			dump_acl6_rule(pkt[i], res[i]);
+	}
+#else
+	RTE_SET_USED(pkt);
+	RTE_SET_USED(res);
+#endif
+}
+
+/*
+ * run packets through ACL classify.
+ * returns number of packets to be dropped (hops[i] == BAD_PORT)
+ */
+static inline uint32_t
+acl_process_pkts(struct rte_mbuf *pkts[MAX_PKT_BURST],
+	uint16_t hops[MAX_PKT_BURST], uint32_t num, int32_t socketid)
+{
+	uint32_t i, k, n4, n6, res;
+	struct acl_search_t acl_search;
+
+	/* split packets burst depending on packet type (IPv4/IPv6) */
+	l3fwd_acl_prepare_acl_parameter(pkts, &acl_search, num);
+
+	if (acl_search.num_ipv4)
+		rte_acl_classify(acl_config.acx_ipv4[socketid],
+				acl_search.data_ipv4,
+				acl_search.res_ipv4,
+				acl_search.num_ipv4,
+				DEFAULT_MAX_CATEGORIES);
+
+	if (acl_search.num_ipv6)
+		rte_acl_classify(acl_config.acx_ipv6[socketid],
+				acl_search.data_ipv6,
+				acl_search.res_ipv6,
+				acl_search.num_ipv6,
+				DEFAULT_MAX_CATEGORIES);
+
+	/* combine lookup results back, into one array of next hops */
+	n4 = 0;
+	n6 = 0;
+	k = 0;
+	for (i = 0; i != num; i++) {
+		switch (acl_search.types[i]) {
+		case TYPE_IPV4:
+			res = acl_search.res_ipv4[n4++];
+			break;
+		case TYPE_IPV6:
+			res = acl_search.res_ipv6[n6++];
+			break;
+		default:
+			res = 0;
+		}
+		if (likely((res & ACL_DENY_SIGNATURE) == 0 && res != 0))
+			hops[i] = res - FWD_PORT_SHIFT;
+		else {
+			/* bad or denied by ACL rule packets */
+			hops[i] = BAD_PORT;
+			dump_denied_pkt(pkts[i], res);
+			k++;
+		}
+	}
+
+	return k;
+}
+
+/*
+ * send_packets_multi() can't deal properly with hops[i] == BAD_PORT
+ * (it assumes input hops[] contain only valid port numbers),
+ * so it is ok to use it only when there are no denied packets.
+ */
+static inline void
+acl_send_packets(struct lcore_conf *qconf, struct rte_mbuf *pkts[],
+	uint16_t hops[], uint32_t num, uint32_t nb_drop)
+{
+#if defined ACL_SEND_MULTI
+	if (nb_drop == 0)
+		send_packets_multi(qconf, pkts, hops, num);
+	else
+#else
+		RTE_SET_USED(nb_drop);
+#endif
+		send_packets_single(qconf, pkts, hops, num);
+}
+
 /* main processing loop */
 int
 acl_main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	uint16_t hops[SENDM_PORT_OVERHEAD(MAX_PKT_BURST)];
 	unsigned int lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
-	int i, nb_rx;
+	int i, nb_drop, nb_rx;
 	uint16_t portid;
-	uint8_t queueid;
+	uint16_t queueid;
 	struct lcore_conf *qconf;
 	int socketid;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
@@ -1020,7 +1101,7 @@ acl_main_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -1048,50 +1129,20 @@ acl_main_loop(__rte_unused void *dummy)
 		}
 
 		/*
-		 * Read packet from RX queues
+		 * Read packet from RX queues and process them
 		 */
 		for (i = 0; i < qconf->n_rx_queue; ++i) {
 
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
 			nb_rx = rte_eth_rx_burst(portid, queueid,
-				pkts_burst, MAX_PKT_BURST);
+				pkts_burst, nb_pkt_per_burst);
 
 			if (nb_rx > 0) {
-				struct acl_search_t acl_search;
-
-				l3fwd_acl_prepare_acl_parameter(pkts_burst, &acl_search,
-					nb_rx);
-
-				if (acl_search.num_ipv4) {
-					rte_acl_classify(
-						acl_config.acx_ipv4[socketid],
-						acl_search.data_ipv4,
-						acl_search.res_ipv4,
-						acl_search.num_ipv4,
-						DEFAULT_MAX_CATEGORIES);
-
-					l3fwd_acl_send_packets(
-						qconf,
-						pkts_burst,
-						acl_search.res_ipv4,
-						nb_rx);
-				}
-
-				if (acl_search.num_ipv6) {
-					rte_acl_classify(
-						acl_config.acx_ipv6[socketid],
-						acl_search.data_ipv6,
-						acl_search.res_ipv6,
-						acl_search.num_ipv6,
-						DEFAULT_MAX_CATEGORIES);
-
-					l3fwd_acl_send_packets(
-						qconf,
-						pkts_burst,
-						acl_search.res_ipv6,
-						nb_rx);
-				}
+				nb_drop = acl_process_pkts(pkts_burst, hops,
+					nb_rx, socketid);
+				acl_send_packets(qconf, pkts_burst, hops,
+					nb_rx, nb_drop);
 			}
 		}
 	}

@@ -5,10 +5,6 @@
 #ifndef _RTE_ACL_OSDEP_H_
 #define _RTE_ACL_OSDEP_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  *
@@ -48,9 +44,5 @@ extern "C" {
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
 #include <rte_debug.h>
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_ACL_OSDEP_H_ */

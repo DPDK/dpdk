@@ -165,7 +165,7 @@ parse_cb_ipv4_rule(char *str, struct rte_table_acl_rule_add_params *v)
 		&v->field_value[SRC_FIELD_IPV4].value.u32,
 		&v->field_value[SRC_FIELD_IPV4].mask_range.u32);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read src address/mask: %s\n",
+		fprintf(stderr, "failed to read src address/mask: %s\n",
 			in[CB_FLD_SRC_ADDR]);
 		return rc;
 	}
@@ -178,7 +178,7 @@ parse_cb_ipv4_rule(char *str, struct rte_table_acl_rule_add_params *v)
 		&v->field_value[DST_FIELD_IPV4].value.u32,
 		&v->field_value[DST_FIELD_IPV4].mask_range.u32);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read dest address/mask: %s\n",
+		fprintf(stderr, "failed to read dest address/mask: %s\n",
 			in[CB_FLD_DST_ADDR]);
 		return rc;
 	}
@@ -190,7 +190,7 @@ parse_cb_ipv4_rule(char *str, struct rte_table_acl_rule_add_params *v)
 		&v->field_value[SRCP_FIELD_IPV4].value.u16,
 		&v->field_value[SRCP_FIELD_IPV4].mask_range.u16);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read source port range: %s\n",
+		fprintf(stderr, "failed to read source port range: %s\n",
 			in[CB_FLD_SRC_PORT_RANGE]);
 		return rc;
 	}
@@ -202,7 +202,7 @@ parse_cb_ipv4_rule(char *str, struct rte_table_acl_rule_add_params *v)
 		&v->field_value[DSTP_FIELD_IPV4].value.u16,
 		&v->field_value[DSTP_FIELD_IPV4].mask_range.u16);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read dest port range: %s\n",
+		fprintf(stderr, "failed to read dest port range: %s\n",
 			in[CB_FLD_DST_PORT_RANGE]);
 		return rc;
 	}
@@ -254,7 +254,7 @@ parse_cb_ipv4_rule_del(char *str, struct rte_table_acl_rule_delete_params *v)
 		&v->field_value[SRC_FIELD_IPV4].value.u32,
 		&v->field_value[SRC_FIELD_IPV4].mask_range.u32);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read src address/mask: %s\n",
+		fprintf(stderr, "failed to read src address/mask: %s\n",
 			in[CB_FLD_SRC_ADDR]);
 		return rc;
 	}
@@ -267,7 +267,7 @@ parse_cb_ipv4_rule_del(char *str, struct rte_table_acl_rule_delete_params *v)
 		&v->field_value[DST_FIELD_IPV4].value.u32,
 		&v->field_value[DST_FIELD_IPV4].mask_range.u32);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read dest address/mask: %s\n",
+		fprintf(stderr, "failed to read dest address/mask: %s\n",
 			in[CB_FLD_DST_ADDR]);
 		return rc;
 	}
@@ -279,7 +279,7 @@ parse_cb_ipv4_rule_del(char *str, struct rte_table_acl_rule_delete_params *v)
 		&v->field_value[SRCP_FIELD_IPV4].value.u16,
 		&v->field_value[SRCP_FIELD_IPV4].mask_range.u16);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read source port range: %s\n",
+		fprintf(stderr, "failed to read source port range: %s\n",
 			in[CB_FLD_SRC_PORT_RANGE]);
 		return rc;
 	}
@@ -291,7 +291,7 @@ parse_cb_ipv4_rule_del(char *str, struct rte_table_acl_rule_delete_params *v)
 		&v->field_value[DSTP_FIELD_IPV4].value.u16,
 		&v->field_value[DSTP_FIELD_IPV4].mask_range.u16);
 	if (rc != 0) {
-		RTE_LOG(ERR, PIPELINE, "failed to read dest port range: %s\n",
+		fprintf(stderr, "failed to read dest port range: %s\n",
 			in[CB_FLD_DST_PORT_RANGE]);
 		return rc;
 	}
@@ -346,7 +346,7 @@ setup_acl_pipeline(void)
 	/* Pipeline configuration */
 	p = rte_pipeline_create(&pipeline_params);
 	if (p == NULL) {
-		RTE_LOG(INFO, PIPELINE, "%s: Failed to configure pipeline\n",
+		fprintf(stderr, "%s: Failed to configure pipeline\n",
 			__func__);
 		goto fail;
 	}
@@ -410,7 +410,7 @@ setup_acl_pipeline(void)
 		table_params.f_action_miss = NULL;
 		table_params.action_data_size = 0;
 
-		RTE_LOG(INFO, PIPELINE, "miss_action=%x\n",
+		printf("miss_action=%x\n",
 			table_entry_miss_action);
 
 		printf("RTE_ACL_RULE_SZ(%zu) = %zu\n", DIM(ipv4_defs),
@@ -471,9 +471,8 @@ setup_acl_pipeline(void)
 
 			ret = parser(line, &keys[n]);
 			if (ret != 0) {
-				RTE_LOG(ERR, PIPELINE,
-					"line %u: parse_cb_ipv4vlan_rule"
-					" failed, error code: %d (%s)\n",
+				fprintf(stderr,
+					"line %u: parse_cb_ipv4vlan_rule failed, error code: %d (%s)\n",
 					n, ret, strerror(-ret));
 				return ret;
 			}
@@ -513,9 +512,8 @@ setup_acl_pipeline(void)
 
 			ret = parse_cb_ipv4_rule_del(line, &keys[n]);
 			if (ret != 0) {
-				RTE_LOG(ERR, PIPELINE,
-					"line %u: parse_cb_ipv4vlan_rule"
-					" failed, error code: %d (%s)\n",
+				fprintf(stderr,
+					"line %u: parse_cb_ipv4vlan_rule failed, error code: %d (%s)\n",
 					n, ret, strerror(-ret));
 				return ret;
 			}
@@ -549,9 +547,8 @@ setup_acl_pipeline(void)
 
 			ret = parser(line, &rule_params);
 			if (ret != 0) {
-				RTE_LOG(ERR, PIPELINE,
-					"line %u: parse_cb_ipv4vlan_rule"
-					" failed, error code: %d (%s)\n",
+				fprintf(stderr,
+					"line %u: parse_cb_ipv4vlan_rule failed, error code: %d (%s)\n",
 					n, ret, strerror(-ret));
 				return ret;
 			}
@@ -575,8 +572,8 @@ setup_acl_pipeline(void)
 
 			ret = parser(line, &rule_params);
 			if (ret != 0) {
-				RTE_LOG(ERR, PIPELINE, "line %u: parse rule "
-					" failed, error code: %d (%s)\n",
+				fprintf(stderr,
+					"line %u: parse rule failed, error code: %d (%s)\n",
 					n, ret, strerror(-ret));
 				return ret;
 			}
@@ -602,8 +599,8 @@ setup_acl_pipeline(void)
 
 			ret = parser(line, &rule_params);
 			if (ret != 0) {
-				RTE_LOG(ERR, PIPELINE, "line %u: parse rule"
-					" failed, error code: %d (%s)\n",
+				fprintf(stderr,
+					"line %u: parse rule failed, error code: %d (%s)\n",
 					n, ret, strerror(-ret));
 				return ret;
 			}
@@ -667,7 +664,7 @@ test_pipeline_single_filter(int expected_count)
 
 			memcpy(rte_pktmbuf_mtod(mbuf, char *), &five_tuple,
 				sizeof(struct ipv4_5tuple));
-			RTE_LOG(INFO, PIPELINE, "%s: Enqueue onto ring %d\n",
+			printf("%s: Enqueue onto ring %d\n",
 				__func__, i);
 			rte_ring_enqueue(rings_rx[i], mbuf);
 		}
@@ -702,9 +699,8 @@ test_pipeline_single_filter(int expected_count)
 	}
 
 	if (tx_count != expected_count) {
-		RTE_LOG(INFO, PIPELINE,
-			"%s: Unexpected packets for ACL test, "
-			"expected %d, got %d\n",
+		fprintf(stderr,
+			"%s: Unexpected packets for ACL test, expected %d, got %d\n",
 			__func__, expected_count, tx_count);
 		goto fail;
 	}

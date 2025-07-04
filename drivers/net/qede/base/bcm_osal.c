@@ -47,9 +47,32 @@ void osal_poll_mode_dpc(osal_int_ptr_t hwfn_cookie)
 }
 
 /* Array of memzone pointers */
-static const struct rte_memzone *ecore_mz_mapping[RTE_MAX_MEMZONE];
+static const struct rte_memzone **ecore_mz_mapping;
 /* Counter to track current memzone allocated */
 static uint16_t ecore_mz_count;
+
+static RTE_ATOMIC(uint32_t) ref_cnt;
+
+int ecore_mz_mapping_alloc(void)
+{
+	if (rte_atomic_fetch_add_explicit(&ref_cnt, 1, rte_memory_order_relaxed) == 0) {
+		ecore_mz_mapping = rte_calloc("ecore_mz_map",
+				rte_memzone_max_get(), sizeof(struct rte_memzone *), 0);
+	}
+
+	if (!ecore_mz_mapping)
+		return -ENOMEM;
+
+	return 0;
+}
+
+void ecore_mz_mapping_free(void)
+{
+	if (rte_atomic_fetch_sub_explicit(&ref_cnt, 1, rte_memory_order_relaxed) - 1 == 0) {
+		rte_free(ecore_mz_mapping);
+		ecore_mz_mapping = NULL;
+	}
+}
 
 unsigned long qede_log2_align(unsigned long n)
 {
@@ -132,9 +155,9 @@ void *osal_dma_alloc_coherent(struct ecore_dev *p_dev,
 	uint32_t core_id = rte_lcore_id();
 	unsigned int socket_id;
 
-	if (ecore_mz_count >= RTE_MAX_MEMZONE) {
-		DP_ERR(p_dev, "Memzone allocation count exceeds %u\n",
-		       RTE_MAX_MEMZONE);
+	if (ecore_mz_count >= rte_memzone_max_get()) {
+		DP_ERR(p_dev, "Memzone allocation count exceeds %zu\n",
+		       rte_memzone_max_get());
 		*phys = 0;
 		return OSAL_NULL;
 	}
@@ -171,9 +194,9 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *p_dev,
 	uint32_t core_id = rte_lcore_id();
 	unsigned int socket_id;
 
-	if (ecore_mz_count >= RTE_MAX_MEMZONE) {
-		DP_ERR(p_dev, "Memzone allocation count exceeds %u\n",
-		       RTE_MAX_MEMZONE);
+	if (ecore_mz_count >= rte_memzone_max_get()) {
+		DP_ERR(p_dev, "Memzone allocation count exceeds %zu\n",
+		       rte_memzone_max_get());
 		*phys = 0;
 		return OSAL_NULL;
 	}

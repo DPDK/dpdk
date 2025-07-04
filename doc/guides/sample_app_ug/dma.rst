@@ -10,10 +10,10 @@ Overview
 --------
 
 This sample is intended as a demonstration of the basic components of a DPDK
-forwarding application and example of how to use the DMAdev API to make a packet
+forwarding application and an example of how to use the DMAdev API to make a packet
 copy application.
 
-Also while forwarding, the MAC addresses are affected as follows:
+Also, while forwarding, the MAC addresses are affected as follows:
 
 *   The source MAC address is replaced by the TX port MAC address
 
@@ -27,7 +27,7 @@ received/send packets and packets dropped or failed to copy.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``dma`` sub-directory.
 
@@ -38,8 +38,7 @@ Running the Application
 In order to run the hardware copy application, the copying device
 needs to be bound to user-space IO driver.
 
-Refer to the "DMAdev library" chapter in the "Programmers guide" for information
-on using the library.
+Refer to the :doc:`../prog_guide/dmadev` for information on using the library.
 
 The application requires a number of command line options:
 
@@ -70,11 +69,11 @@ where,
 
 *   i SI: set the interval, in second, between statistics prints (default is 1)
 
-The application can be launched in various configurations depending on
+The application can be launched in various configurations depending on the
 provided parameters. The app can use up to 2 lcores: one of them receives
 incoming traffic and makes a copy of each packet. The second lcore then
-updates MAC address and sends the copy. If one lcore per port is used,
-both operations are done sequentially. For each configuration an additional
+updates the MAC address and sends the copy. If one lcore per port is used,
+both operations are done sequentially. For each configuration, an additional
 lcore is needed since the main lcore does not handle traffic but is
 responsible for configuration, statistics printing and safe shutdown of
 all ports and devices.
@@ -159,7 +158,7 @@ multiple DMA channels per port:
     :end-before: >8 End of configuring port to use RSS for multiple RX queues.
     :dedent: 1
 
-For this example the ports are set up with the number of Rx queues provided
+For this example, the ports are set up with the number of Rx queues provided
 with -q option and 1 Tx queue using the ``rte_eth_rx_queue_setup()``
 and ``rte_eth_tx_queue_setup()`` functions.
 
@@ -172,7 +171,7 @@ The Ethernet port is then started:
     :dedent: 1
 
 
-Finally the Rx port is set in promiscuous mode:
+Finally, the Rx port is set in promiscuous mode:
 
 .. literalinclude:: ../../../examples/dma/dmafwd.c
     :language: c
@@ -181,7 +180,7 @@ Finally the Rx port is set in promiscuous mode:
     :dedent: 1
 
 
-After that each port application assigns resources needed.
+After that, each port application assigns resources needed.
 
 .. literalinclude:: ../../../examples/dma/dmafwd.c
     :language: c
@@ -224,7 +223,7 @@ using ``rte_dma_start()`` function. Each of the above operations is done in
 If initialization is successful, memory for hardware device
 statistics is allocated.
 
-Finally ``main()`` function starts all packet handling lcores and starts
+Finally, the ``main()`` function starts all packet handling lcores and starts
 printing stats in a loop on the main lcore. The application can be
 interrupted and closed using ``Ctrl-C``. The main lcore waits for
 all worker lcores to finish, deallocates resources and exits.
@@ -273,13 +272,13 @@ packet using ``pktmbuf_sw_copy()`` function and enqueue them to an rte_ring:
     :dedent: 0
 
 The packets are received in burst mode using ``rte_eth_rx_burst()``
-function. When using hardware copy mode the packets are enqueued in
+function. When using hardware copy mode the packets are enqueued in the
 copying device's buffer using ``dma_enqueue_packets()`` which calls
 ``rte_dma_copy()``. When all received packets are in the
-buffer the copy operations are started by calling ``rte_dma_submit()``.
+buffer, the copy operations are started by calling ``rte_dma_submit()``.
 Function ``rte_dma_copy()`` operates on physical address of
 the packet. Structure ``rte_mbuf`` contains only physical address to
-start of the data buffer (``buf_iova``). Thus the ``rte_pktmbuf_iova()`` API is
+start of the data buffer (``buf_iova``). Thus, the ``rte_pktmbuf_iova()`` API is
 used to get the address of the start of the data within the mbuf.
 
 .. literalinclude:: ../../../examples/dma/dmafwd.c
@@ -291,11 +290,11 @@ used to get the address of the start of the data within the mbuf.
 
 Once the copies have been completed (this includes gathering the completions in
 HW copy mode), the copied packets are enqueued to the ``rx_to_tx_ring``, which
-is used to pass the packets to the TX function.
+is used to pass the packets to the Tx function.
 
 All completed copies are processed by ``dma_tx_port()`` function. This function
-dequeues copied packets from the ``rx_to_tx_ring``. Then each packet MAC address is changed
-if it was enabled. After that copies are sent in burst mode using ``rte_eth_tx_burst()``.
+dequeues copied packets from the ``rx_to_tx_ring``. Then, each packet MAC address is changed
+if it was enabled. After that, copies are sent in burst mode using ``rte_eth_tx_burst()``.
 
 
 .. literalinclude:: ../../../examples/dma/dmafwd.c
@@ -307,7 +306,7 @@ if it was enabled. After that copies are sent in burst mode using ``rte_eth_tx_b
 The Packet Copying Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In order to perform SW packet copy, there are user-defined functions to first copy
+In order to perform SW packet copy, there are user-defined functions to the first copy
 the packet metadata (``pktmbuf_metadata_copy()``) and then the packet data
 (``pktmbuf_sw_copy()``):
 
@@ -321,5 +320,4 @@ The metadata in this example is copied from ``rx_descriptor_fields1`` marker of
 ``rte_mbuf`` struct up to ``buf_len`` member.
 
 In order to understand why software packet copying is done as shown
-above please refer to the "Mbuf Library" section of the
-*DPDK Programmer's Guide*.
+above, please refer to the :doc:`../prog_guide/mbuf_lib`.

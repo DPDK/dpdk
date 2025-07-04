@@ -194,10 +194,6 @@
  * - rte_regexdev_dequeue_burst()
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_dev.h>
@@ -206,21 +202,22 @@ extern "C" {
 #define RTE_REGEXDEV_NAME_MAX_LEN RTE_DEV_NAME_MAX_LEN
 
 extern int rte_regexdev_logtype;
+#define RTE_LOGTYPE_REGEXDEV rte_regexdev_logtype
 
-#define RTE_REGEXDEV_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, rte_regexdev_logtype, "" __VA_ARGS__)
+#define RTE_REGEXDEV_LOG_LINE(level, ...) \
+	RTE_LOG_LINE(level, REGEXDEV, "" __VA_ARGS__)
 
 /* Macros to check for valid port */
 #define RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, retval) do { \
 	if (!rte_regexdev_is_valid_dev(dev_id)) { \
-		RTE_REGEXDEV_LOG(ERR, "Invalid dev_id=%u\n", dev_id); \
+		RTE_REGEXDEV_LOG_LINE(ERR, "Invalid dev_id=%u", dev_id); \
 		return retval; \
 	} \
 } while (0)
 
 #define RTE_REGEXDEV_VALID_DEV_ID_OR_RET(dev_id) do { \
 	if (!rte_regexdev_is_valid_dev(dev_id)) { \
-		RTE_REGEXDEV_LOG(ERR, "Invalid dev_id=%u\n", dev_id); \
+		RTE_REGEXDEV_LOG_LINE(ERR, "Invalid dev_id=%u", dev_id); \
 		return; \
 	} \
 } while (0)
@@ -1246,7 +1243,6 @@ rte_regexdev_dump(uint8_t dev_id, FILE *f);
  * @see struct rte_regex_ops::matches
  */
 struct rte_regexdev_match {
-	RTE_STD_C11
 	union {
 		uint64_t u64;
 		struct {
@@ -1260,7 +1256,6 @@ struct rte_regexdev_match {
 			 */
 			uint16_t start_offset;
 			/**< Starting Byte Position for matched rule. */
-			RTE_STD_C11
 			union {
 				uint16_t len;
 				/**< Length of match in bytes */
@@ -1393,7 +1388,6 @@ struct rte_regex_ops {
 	 */
 
 	/* W3 */
-	RTE_STD_C11
 	union {
 		uint64_t user_id;
 		/**< Application specific opaque value. An application may use
@@ -1406,7 +1400,6 @@ struct rte_regex_ops {
 	};
 
 	/* W4 */
-	RTE_STD_C11
 	union {
 		uint64_t cross_buf_id;
 		/**< ID used by the RegEx device in order to support cross
@@ -1430,6 +1423,10 @@ struct rte_regex_ops {
 };
 
 #include "rte_regexdev_core.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @warning
@@ -1476,14 +1473,14 @@ rte_regexdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 	struct rte_regexdev *dev = &rte_regex_devices[dev_id];
 #ifdef RTE_LIBRTE_REGEXDEV_DEBUG
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
-	if (*dev->enqueue == NULL)
+	if (dev->enqueue == NULL)
 		return -ENOTSUP;
 	if (qp_id >= dev->data->dev_conf.nb_queue_pairs) {
-		RTE_REGEXDEV_LOG(ERR, "Invalid queue %d\n", qp_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Invalid queue %d", qp_id);
 		return -EINVAL;
 	}
 #endif
-	return (*dev->enqueue)(dev, qp_id, ops, nb_ops);
+	return dev->enqueue(dev, qp_id, ops, nb_ops);
 }
 
 /**
@@ -1536,14 +1533,14 @@ rte_regexdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 	struct rte_regexdev *dev = &rte_regex_devices[dev_id];
 #ifdef RTE_LIBRTE_REGEXDEV_DEBUG
 	RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, -EINVAL);
-	if (*dev->dequeue == NULL)
+	if (dev->dequeue == NULL)
 		return -ENOTSUP;
 	if (qp_id >= dev->data->dev_conf.nb_queue_pairs) {
-		RTE_REGEXDEV_LOG(ERR, "Invalid queue %d\n", qp_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Invalid queue %d", qp_id);
 		return -EINVAL;
 	}
 #endif
-	return (*dev->dequeue)(dev, qp_id, ops, nb_ops);
+	return dev->dequeue(dev, qp_id, ops, nb_ops);
 }
 
 #ifdef __cplusplus

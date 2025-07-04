@@ -3,6 +3,7 @@
  */
 
 #include <inttypes.h>
+#include <stdalign.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -11,13 +12,16 @@
 #include <rte_keepalive.h>
 #include <rte_malloc.h>
 
+#include <eal_export.h>
+#include "eal_private.h"
+
 struct rte_keepalive {
 	/** Core Liveness. */
 	struct {
 		/*
 		 * Each element must be cache aligned to prevent false sharing.
 		 */
-		enum rte_keepalive_state core_state __rte_cache_aligned;
+		alignas(RTE_CACHE_LINE_SIZE) enum rte_keepalive_state core_state;
 	} live_data[RTE_KEEPALIVE_MAXCORES];
 
 	/** Last-seen-alive timestamps */
@@ -53,13 +57,14 @@ struct rte_keepalive {
 static void
 print_trace(const char *msg, struct rte_keepalive *keepcfg, int idx_core)
 {
-	RTE_LOG(INFO, EAL, "%sLast seen %" PRId64 "ms ago.\n",
+	EAL_LOG(INFO, "%sLast seen %" PRId64 "ms ago.",
 		msg,
 		((rte_rdtsc() - keepcfg->last_alive[idx_core])*1000)
 		/ rte_get_tsc_hz()
 	      );
 }
 
+RTE_EXPORT_SYMBOL(rte_keepalive_dispatch_pings)
 void
 rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 	void *ptr_data)
@@ -114,6 +119,7 @@ rte_keepalive_dispatch_pings(__rte_unused void *ptr_timer,
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_keepalive_create)
 struct rte_keepalive *
 rte_keepalive_create(rte_keepalive_failure_callback_t callback,
 	void *data)
@@ -132,6 +138,7 @@ rte_keepalive_create(rte_keepalive_failure_callback_t callback,
 	return keepcfg;
 }
 
+RTE_EXPORT_SYMBOL(rte_keepalive_register_relay_callback)
 void rte_keepalive_register_relay_callback(struct rte_keepalive *keepcfg,
 	rte_keepalive_relay_callback_t callback,
 	void *data)
@@ -140,6 +147,7 @@ void rte_keepalive_register_relay_callback(struct rte_keepalive *keepcfg,
 	keepcfg->relay_callback_data = data;
 }
 
+RTE_EXPORT_SYMBOL(rte_keepalive_register_core)
 void
 rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 {
@@ -149,12 +157,14 @@ rte_keepalive_register_core(struct rte_keepalive *keepcfg, const int id_core)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_keepalive_mark_alive)
 void
 rte_keepalive_mark_alive(struct rte_keepalive *keepcfg)
 {
 	keepcfg->live_data[rte_lcore_id()].core_state = RTE_KA_STATE_ALIVE;
 }
 
+RTE_EXPORT_SYMBOL(rte_keepalive_mark_sleep)
 void
 rte_keepalive_mark_sleep(struct rte_keepalive *keepcfg)
 {

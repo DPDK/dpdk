@@ -79,7 +79,6 @@ struct mlx4_mp_param {
 	enum mlx4_mp_req_type type;
 	int port_id;
 	int result;
-	RTE_STD_C11
 	union {
 		uintptr_t addr; /* MLX4_MP_REQ_CREATE_MR */
 	} args;
@@ -230,7 +229,8 @@ int mlx4_flow_ctrl_get(struct rte_eth_dev *dev,
 		       struct rte_eth_fc_conf *fc_conf);
 int mlx4_flow_ctrl_set(struct rte_eth_dev *dev,
 		       struct rte_eth_fc_conf *fc_conf);
-const uint32_t *mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					      size_t *no_of_elements);
 int mlx4_is_removed(struct rte_eth_dev *dev);
 
 /* mlx4_intr.c */

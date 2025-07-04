@@ -23,6 +23,8 @@ endif
 if dpdk_conf.has('RTE_BASEBAND_ACC')
     deps += ['baseband_acc']
 endif
-if dpdk_conf.has('RTE_LIBRTE_PMD_BBDEV_LA12XX')
+if dpdk_conf.has('RTE_BASEBAND_LA12XX')
     deps += ['baseband_la12xx']
 endif
+
+cflags += no_wvla_cflag

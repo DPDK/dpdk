@@ -73,6 +73,9 @@ expression E;
 - if (E != NULL) rte_mempool_free(E);
 + rte_mempool_free(E);
 |
+- if (E != NULL) rte_memzone_free(E);
++ rte_memzone_free(E);
+|
 - if (E != NULL) rte_pktmbuf_free(E);
 + rte_pktmbuf_free(E);
 |
@@ -126,4 +129,16 @@ expression E;
 |
 - if (E != NULL) trie_free(E);
 + trie_free(E);
+|
+- if (E != NULL) EVP_PKEY_CTX_free(E);
++ EVP_PKEY_CTX_free(E);
+|
+- if (E != NULL) EVP_PKEY_free(E);
++ EVP_PKEY_free(E);
+|
+- if (E != NULL) BN_free(E);
++ BN_free(E);
+|
+- if (E != NULL) rte_net_crc_free(E);
++ rte_net_crc_free(E);
 )

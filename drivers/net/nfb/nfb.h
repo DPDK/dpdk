@@ -12,6 +12,11 @@
 #include <netcope/rxmac.h>
 #include <netcope/txmac.h>
 
+extern int nfb_logtype;
+#define RTE_LOGTYPE_NFB nfb_logtype
+#define NFB_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NFB, "%s(): ", __func__, __VA_ARGS__)
+
 #include "nfb_rx.h"
 #include "nfb_tx.h"
 
@@ -36,16 +41,12 @@
 
 #define RTE_NFB_DRIVER_NAME net_nfb
 
-/* Device arguments */
-static const char * const VALID_KEYS[] = {NULL};
 
 struct pmd_internals {
 	uint16_t         max_rxmac;
 	uint16_t         max_txmac;
 	struct nc_rxmac *rxmac[RTE_MAX_NC_RXMAC];
 	struct nc_txmac *txmac[RTE_MAX_NC_TXMAC];
-
-	char             nfb_dev[PATH_MAX];
 	struct nfb_device *nfb;
 };
 

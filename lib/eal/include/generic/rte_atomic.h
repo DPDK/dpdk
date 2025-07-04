@@ -13,8 +13,13 @@
  */
 
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_common.h>
+#include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef __DOXYGEN__
 
@@ -55,6 +60,14 @@ static inline void rte_rmb(void);
  * Guarantees that the LOAD and STORE operations that precede the
  * rte_smp_mb() call are globally visible across the lcores
  * before the LOAD and STORE operations that follows it.
+ *
+ * @note
+ *  This function is deprecated.
+ *  It provides similar synchronization primitive as atomic fence,
+ *  but has different syntax and memory ordering semantic. Hence
+ *  deprecated for the simplicity of memory ordering semantics in use.
+ *
+ *  rte_atomic_thread_fence(rte_memory_order_acq_rel) should be used instead.
  */
 static inline void rte_smp_mb(void);
 
@@ -64,6 +77,17 @@ static inline void rte_smp_mb(void);
  * Guarantees that the STORE operations that precede the
  * rte_smp_wmb() call are globally visible across the lcores
  * before the STORE operations that follows it.
+ *
+ * @note
+ *  This function is deprecated.
+ *  It provides similar synchronization primitive as atomic fence,
+ *  but has different syntax and memory ordering semantic. Hence
+ *  deprecated for the simplicity of memory ordering semantics in use.
+ *
+ *  rte_atomic_thread_fence(rte_memory_order_release) should be used instead.
+ *  The fence also guarantees LOAD operations that precede the call
+ *  are globally visible across the lcores before the STORE operations
+ *  that follows it.
  */
 static inline void rte_smp_wmb(void);
 
@@ -73,6 +97,17 @@ static inline void rte_smp_wmb(void);
  * Guarantees that the LOAD operations that precede the
  * rte_smp_rmb() call are globally visible across the lcores
  * before the LOAD operations that follows it.
+ *
+ * @note
+ *  This function is deprecated.
+ *  It provides similar synchronization primitive as atomic fence,
+ *  but has different syntax and memory ordering semantic. Hence
+ *  deprecated for the simplicity of memory ordering semantics in use.
+ *
+ *  rte_atomic_thread_fence(rte_memory_order_acquire) should be used instead.
+ *  The fence also guarantees LOAD operations that precede the call
+ *  are globally visible across the lcores before the STORE operations
+ *  that follows it.
  */
 static inline void rte_smp_rmb(void);
 ///@}
@@ -116,16 +151,22 @@ static inline void rte_io_rmb(void);
  * Guarantees that operation reordering does not occur at compile time
  * for operations directly before and after the barrier.
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define rte_compiler_barrier() _ReadWriteBarrier()
+#else
 #define	rte_compiler_barrier() do {		\
 	asm volatile ("" : : : "memory");	\
 } while(0)
+#endif
 
 /**
  * Synchronization fence between threads based on the specified memory order.
  */
-static inline void rte_atomic_thread_fence(int memorder);
+static inline void rte_atomic_thread_fence(rte_memory_order memorder);
 
 /*------------------------- 16 bit atomic operations -------------------------*/
+
+#ifndef RTE_TOOLCHAIN_MSVC
 
 /**
  * Atomic compare and set.
@@ -176,7 +217,7 @@ rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val);
 static inline uint16_t
 rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val)
 {
-	return __atomic_exchange_n(dst, val, __ATOMIC_SEQ_CST);
+	return rte_atomic_exchange_explicit(dst, val, rte_memory_order_seq_cst);
 }
 #endif
 
@@ -243,7 +284,8 @@ rte_atomic16_set(rte_atomic16_t *v, int16_t new_value)
 static inline void
 rte_atomic16_add(rte_atomic16_t *v, int16_t inc)
 {
-	__sync_fetch_and_add(&v->cnt, inc);
+	rte_atomic_fetch_add_explicit((volatile __rte_atomic int16_t *)&v->cnt, inc,
+		rte_memory_order_seq_cst);
 }
 
 /**
@@ -257,7 +299,8 @@ rte_atomic16_add(rte_atomic16_t *v, int16_t inc)
 static inline void
 rte_atomic16_sub(rte_atomic16_t *v, int16_t dec)
 {
-	__sync_fetch_and_sub(&v->cnt, dec);
+	rte_atomic_fetch_sub_explicit((volatile __rte_atomic int16_t *)&v->cnt, dec,
+		rte_memory_order_seq_cst);
 }
 
 /**
@@ -310,7 +353,8 @@ rte_atomic16_dec(rte_atomic16_t *v)
 static inline int16_t
 rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc)
 {
-	return __sync_add_and_fetch(&v->cnt, inc);
+	return rte_atomic_fetch_add_explicit((volatile __rte_atomic int16_t *)&v->cnt, inc,
+		rte_memory_order_seq_cst) + inc;
 }
 
 /**
@@ -330,7 +374,8 @@ rte_atomic16_add_return(rte_atomic16_t *v, int16_t inc)
 static inline int16_t
 rte_atomic16_sub_return(rte_atomic16_t *v, int16_t dec)
 {
-	return __sync_sub_and_fetch(&v->cnt, dec);
+	return rte_atomic_fetch_sub_explicit((volatile __rte_atomic int16_t *)&v->cnt, dec,
+		rte_memory_order_seq_cst) - dec;
 }
 
 /**
@@ -349,7 +394,8 @@ static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic16_inc_and_test(rte_atomic16_t *v)
 {
-	return __sync_add_and_fetch(&v->cnt, 1) == 0;
+	return rte_atomic_fetch_add_explicit((volatile __rte_atomic int16_t *)&v->cnt, 1,
+		rte_memory_order_seq_cst) + 1 == 0;
 }
 #endif
 
@@ -369,7 +415,8 @@ static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic16_dec_and_test(rte_atomic16_t *v)
 {
-	return __sync_sub_and_fetch(&v->cnt, 1) == 0;
+	return rte_atomic_fetch_sub_explicit((volatile __rte_atomic int16_t *)&v->cnt, 1,
+		rte_memory_order_seq_cst) - 1 == 0;
 }
 #endif
 
@@ -455,7 +502,7 @@ rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val);
 static inline uint32_t
 rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val)
 {
-	return __atomic_exchange_n(dst, val, __ATOMIC_SEQ_CST);
+	return rte_atomic_exchange_explicit(dst, val, rte_memory_order_seq_cst);
 }
 #endif
 
@@ -522,7 +569,8 @@ rte_atomic32_set(rte_atomic32_t *v, int32_t new_value)
 static inline void
 rte_atomic32_add(rte_atomic32_t *v, int32_t inc)
 {
-	__sync_fetch_and_add(&v->cnt, inc);
+	rte_atomic_fetch_add_explicit((volatile __rte_atomic int32_t *)&v->cnt, inc,
+		rte_memory_order_seq_cst);
 }
 
 /**
@@ -536,7 +584,8 @@ rte_atomic32_add(rte_atomic32_t *v, int32_t inc)
 static inline void
 rte_atomic32_sub(rte_atomic32_t *v, int32_t dec)
 {
-	__sync_fetch_and_sub(&v->cnt, dec);
+	rte_atomic_fetch_sub_explicit((volatile __rte_atomic int32_t *)&v->cnt, dec,
+		rte_memory_order_seq_cst);
 }
 
 /**
@@ -589,7 +638,8 @@ rte_atomic32_dec(rte_atomic32_t *v)
 static inline int32_t
 rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc)
 {
-	return __sync_add_and_fetch(&v->cnt, inc);
+	return rte_atomic_fetch_add_explicit((volatile __rte_atomic int32_t *)&v->cnt, inc,
+		rte_memory_order_seq_cst) + inc;
 }
 
 /**
@@ -609,7 +659,8 @@ rte_atomic32_add_return(rte_atomic32_t *v, int32_t inc)
 static inline int32_t
 rte_atomic32_sub_return(rte_atomic32_t *v, int32_t dec)
 {
-	return __sync_sub_and_fetch(&v->cnt, dec);
+	return rte_atomic_fetch_sub_explicit((volatile __rte_atomic int32_t *)&v->cnt, dec,
+		rte_memory_order_seq_cst) - dec;
 }
 
 /**
@@ -628,7 +679,8 @@ static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic32_inc_and_test(rte_atomic32_t *v)
 {
-	return __sync_add_and_fetch(&v->cnt, 1) == 0;
+	return rte_atomic_fetch_add_explicit((volatile __rte_atomic int32_t *)&v->cnt, 1,
+		rte_memory_order_seq_cst) + 1 == 0;
 }
 #endif
 
@@ -648,7 +700,8 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v);
 #ifdef RTE_FORCE_INTRINSICS
 static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 {
-	return __sync_sub_and_fetch(&v->cnt, 1) == 0;
+	return rte_atomic_fetch_sub_explicit((volatile __rte_atomic int32_t *)&v->cnt, 1,
+		rte_memory_order_seq_cst) - 1 == 0;
 }
 #endif
 
@@ -733,7 +786,7 @@ rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val);
 static inline uint64_t
 rte_atomic64_exchange(volatile uint64_t *dst, uint64_t val)
 {
-	return __atomic_exchange_n(dst, val, __ATOMIC_SEQ_CST);
+	return rte_atomic_exchange_explicit(dst, val, rte_memory_order_seq_cst);
 }
 #endif
 
@@ -854,7 +907,8 @@ rte_atomic64_add(rte_atomic64_t *v, int64_t inc);
 static inline void
 rte_atomic64_add(rte_atomic64_t *v, int64_t inc)
 {
-	__sync_fetch_and_add(&v->cnt, inc);
+	rte_atomic_fetch_add_explicit((volatile __rte_atomic int64_t *)&v->cnt, inc,
+		rte_memory_order_seq_cst);
 }
 #endif
 
@@ -873,7 +927,8 @@ rte_atomic64_sub(rte_atomic64_t *v, int64_t dec);
 static inline void
 rte_atomic64_sub(rte_atomic64_t *v, int64_t dec)
 {
-	__sync_fetch_and_sub(&v->cnt, dec);
+	rte_atomic_fetch_sub_explicit((volatile __rte_atomic int64_t *)&v->cnt, dec,
+		rte_memory_order_seq_cst);
 }
 #endif
 
@@ -931,7 +986,8 @@ rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc);
 static inline int64_t
 rte_atomic64_add_return(rte_atomic64_t *v, int64_t inc)
 {
-	return __sync_add_and_fetch(&v->cnt, inc);
+	return rte_atomic_fetch_add_explicit((volatile __rte_atomic int64_t *)&v->cnt, inc,
+		rte_memory_order_seq_cst) + inc;
 }
 #endif
 
@@ -955,7 +1011,8 @@ rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec);
 static inline int64_t
 rte_atomic64_sub_return(rte_atomic64_t *v, int64_t dec)
 {
-	return __sync_sub_and_fetch(&v->cnt, dec);
+	return rte_atomic_fetch_sub_explicit((volatile __rte_atomic int64_t *)&v->cnt, dec,
+		rte_memory_order_seq_cst) - dec;
 }
 #endif
 
@@ -1034,21 +1091,23 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
 }
 #endif
 
+#endif
+
 /*------------------------ 128 bit atomic operations -------------------------*/
 
 /**
  * 128-bit integer structure.
  */
-RTE_STD_C11
-typedef struct {
-	RTE_STD_C11
+typedef struct __rte_aligned(16) {
 	union {
 		uint64_t val[2];
 #ifdef RTE_ARCH_64
+#ifndef RTE_TOOLCHAIN_MSVC
 		__extension__ __int128 int128;
 #endif
+#endif
 	};
-} __rte_aligned(16) rte_int128_t;
+} rte_int128_t;
 
 #ifdef __DOXYGEN__
 
@@ -1086,12 +1145,11 @@ typedef struct {
  *   stronger) model.
  * @param failure
  *   If unsuccessful, the operation's memory behavior conforms to this (or a
- *   stronger) model. This argument cannot be __ATOMIC_RELEASE,
- *   __ATOMIC_ACQ_REL, or a stronger model than success.
+ *   stronger) model. This argument cannot be rte_memory_order_release,
+ *   rte_memory_order_acq_rel, or a stronger model than success.
  * @return
  *   Non-zero on success; 0 on failure.
  */
-__rte_experimental
 static inline int
 rte_atomic128_cmp_exchange(rte_int128_t *dst,
 			   rte_int128_t *exp,
@@ -1101,5 +1159,9 @@ rte_atomic128_cmp_exchange(rte_int128_t *dst,
 			   int failure);
 
 #endif /* __DOXYGEN__ */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_ATOMIC_H_ */

@@ -417,8 +417,15 @@ mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
 	return err;
 }
 
+void
+mlx5_flow_os_workspace_gc_add(struct mlx5_flow_workspace *ws)
+{
+	RTE_SET_USED(ws);
+}
+
 int
-mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
+mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
 			    uint64_t item_flags,
 			    uint8_t target_protocol,
 			    struct rte_flow_error *error)
@@ -453,7 +460,7 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 					  "matching on spi field in esp is not"
 					  " supported on Windows");
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&rte_flow_item_esp_mask,
 		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);

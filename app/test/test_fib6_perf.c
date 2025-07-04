@@ -9,6 +9,7 @@
 
 #include <rte_cycles.h>
 #include <rte_random.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_fib6.h>
 
@@ -73,8 +74,14 @@ test_fib6_perf(void)
 	uint64_t next_hop_add;
 	int status = 0;
 	int64_t count = 0;
-	uint8_t ip_batch[NUM_IPS_ENTRIES][16];
-	uint64_t next_hops[NUM_IPS_ENTRIES];
+
+	struct rte_ipv6_addr *ip_batch = rte_calloc("ip_batch",
+			NUM_IPS_ENTRIES, sizeof(struct rte_ipv6_addr), 0);
+	TEST_FIB_ASSERT(ip_batch != NULL);
+
+	uint64_t *next_hops = rte_calloc("next_hops",
+			NUM_IPS_ENTRIES, sizeof(uint64_t), 0);
+	TEST_FIB_ASSERT(next_hops != NULL);
 
 	conf.type = RTE_FIB6_TRIE;
 	conf.default_nh = 0;
@@ -82,8 +89,6 @@ test_fib6_perf(void)
 	conf.rib_ext_sz = 0;
 	conf.trie.nh_sz = RTE_FIB6_TRIE_4B;
 	conf.trie.num_tbl8 = RTE_MIN(get_max_nh(conf.trie.nh_sz), 1000000U);
-
-	rte_srand(rte_rdtsc());
 
 	printf("No. routes = %u\n", (unsigned int) NUM_ROUTE_ENTRIES);
 
@@ -103,7 +108,7 @@ test_fib6_perf(void)
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
 		next_hop_add = (i & ((1 << 14) - 1)) + 1;
-		if (rte_fib6_add(fib, large_route_table[i].ip,
+		if (rte_fib6_add(fib, &large_route_table[i].ip,
 				large_route_table[i].depth, next_hop_add) == 0)
 			status++;
 	}
@@ -119,7 +124,7 @@ test_fib6_perf(void)
 	count = 0;
 
 	for (i = 0; i < NUM_IPS_ENTRIES; i++)
-		memcpy(ip_batch[i], large_ips_table[i].ip, 16);
+		ip_batch[i] = large_ips_table[i].ip;
 
 	for (i = 0; i < ITERATIONS; i++) {
 
@@ -142,7 +147,7 @@ test_fib6_perf(void)
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
 		/* rte_fib_delete(fib, ip, depth) */
-		status += rte_fib6_delete(fib, large_route_table[i].ip,
+		status += rte_fib6_delete(fib, &large_route_table[i].ip,
 				large_route_table[i].depth);
 	}
 
@@ -153,7 +158,10 @@ test_fib6_perf(void)
 
 	rte_fib6_free(fib);
 
+	rte_free(next_hops);
+	rte_free(ip_batch);
+
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(fib6_perf_autotest, test_fib6_perf);
+REGISTER_PERF_TEST(fib6_perf_autotest, test_fib6_perf);

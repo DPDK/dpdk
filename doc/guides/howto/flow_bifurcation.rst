@@ -7,8 +7,7 @@ Flow Bifurcation How-to Guide
 Flow Bifurcation is a mechanism which uses hardware capable Ethernet devices
 to split traffic between Linux user space and kernel space. Since it is a
 hardware assisted feature this approach can provide line rate processing
-capability. Other than :ref:`KNI <kni>`, the software is just required to
-enable device configuration, there is no need to take care of the packet
+capability. There is no need to take care of the packet
 movement during the traffic split. This can yield better performance with
 less CPU overhead.
 
@@ -59,7 +58,7 @@ the :ref:`flow_isolated_mode` must be configured,
 so there is no default rule routing traffic to userspace.
 
 There is no specific instructions to follow.
-The recommended reading is the :doc:`../prog_guide/rte_flow` guide.
+The recommended reading is the :doc:`../prog_guide/ethdev/flow_offload` guide.
 Below is an example of testpmd commands
 for receiving VXLAN 42 in 4 queues of the DPDK port 0,
 while all other packets go to the kernel:

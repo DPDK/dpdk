@@ -27,7 +27,7 @@ qat_gen4_comp_capabilities[] = {
 	 .window_size = {.min = 15, .max = 15, .increment = 0} },
 	 RTE_COMP_END_OF_CAPABILITIES_LIST() };
 
-static int
+int
 qat_comp_dev_config_gen4(struct rte_compressdev *dev,
 		struct rte_compressdev_config *config)
 {
@@ -67,13 +67,13 @@ qat_comp_cap_get_gen4(struct qat_pci_device *qat_dev __rte_unused)
 	return capa_info;
 }
 
-static uint16_t
+uint16_t
 qat_comp_get_ram_bank_flags_gen4(void)
 {
 	return 0;
 }
 
-static int
+int
 qat_comp_set_slice_cfg_word_gen4(struct qat_comp_xform *qat_xform,
 		const struct rte_comp_xform *xform,
 		enum rte_comp_op_type op_type, uint32_t *comp_slice_cfg_word)
@@ -189,7 +189,7 @@ qat_comp_set_slice_cfg_word_gen4(struct qat_comp_xform *qat_xform,
 	return 0;
 }
 
-static unsigned int
+unsigned int
 qat_comp_get_num_im_bufs_required_gen4(void)
 {
 	return QAT_NUM_INTERM_BUFS_GEN4;
@@ -198,16 +198,22 @@ qat_comp_get_num_im_bufs_required_gen4(void)
 
 RTE_INIT(qat_comp_pmd_gen4_init)
 {
-	qat_comp_gen_dev_ops[QAT_GEN4].compressdev_ops =
+	qat_comp_gen_dev_ops[QAT_VQAT].compressdev_ops =
+		qat_comp_gen_dev_ops[QAT_GEN4].compressdev_ops =
 			&qat_comp_ops_gen4;
-	qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_capabilities =
+	qat_comp_gen_dev_ops[QAT_VQAT].qat_comp_get_capabilities =
+		qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_capabilities =
 			qat_comp_cap_get_gen4;
-	qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_num_im_bufs_required =
+	qat_comp_gen_dev_ops[QAT_VQAT].qat_comp_get_num_im_bufs_required =
+		qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_num_im_bufs_required =
 			qat_comp_get_num_im_bufs_required_gen4;
-	qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_ram_bank_flags =
+	qat_comp_gen_dev_ops[QAT_VQAT].qat_comp_get_ram_bank_flags =
+		qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_ram_bank_flags =
 			qat_comp_get_ram_bank_flags_gen4;
-	qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_set_slice_cfg_word =
+	qat_comp_gen_dev_ops[QAT_VQAT].qat_comp_set_slice_cfg_word =
+		qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_set_slice_cfg_word =
 			qat_comp_set_slice_cfg_word_gen4;
-	qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_feature_flags =
+	qat_comp_gen_dev_ops[QAT_VQAT].qat_comp_get_feature_flags =
+		qat_comp_gen_dev_ops[QAT_GEN4].qat_comp_get_feature_flags =
 			qat_comp_get_features_gen1;
 }

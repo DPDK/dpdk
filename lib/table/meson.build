@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+cflags += no_wvla_cflag
+
 sources = files(
         'rte_swx_keycmp.c',
         'rte_swx_table_em.c',
@@ -18,7 +20,9 @@ sources = files(
         'rte_table_lpm.c',
         'rte_table_lpm_ipv6.c',
         'rte_table_stub.c',
+        'table_log.c',
 )
+
 headers = files(
         'rte_lru.h',
         'rte_swx_hash_func.h',

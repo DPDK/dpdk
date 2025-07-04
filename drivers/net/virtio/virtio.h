@@ -30,6 +30,7 @@
 #define VIRTIO_NET_F_GUEST_ANNOUNCE 21	/* Guest can announce device on the network */
 #define VIRTIO_NET_F_MQ		22	/* Device supports Receive Flow Steering */
 #define VIRTIO_NET_F_CTRL_MAC_ADDR 23	/* Set MAC address */
+#define VIRTIO_NET_F_HASH_REPORT  57    /* Supports hash report */
 #define VIRTIO_NET_F_RSS	60	/* RSS supported */
 
 /*
@@ -157,7 +158,7 @@
  * config space; it is just a shadow structure.
  *
  */
-struct virtio_net_config {
+struct __rte_packed_begin virtio_net_config {
 	/* The config defining mac address (if VIRTIO_NET_F_MAC) */
 	uint8_t    mac[RTE_ETHER_ADDR_LEN];
 	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
@@ -178,7 +179,7 @@ struct virtio_net_config {
 	uint8_t rss_max_key_size;
 	uint16_t rss_max_indirection_table_length;
 	uint32_t supported_hash_types;
-} __rte_packed;
+} __rte_packed_end;
 
 struct virtio_hw {
 	struct virtqueue **vqs;
@@ -187,6 +188,7 @@ struct virtio_hw {
 	uint8_t started;
 	uint8_t weak_barriers;
 	uint8_t vlan_strip;
+	uint8_t has_hash_report;
 	bool rx_ol_scatter;
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;

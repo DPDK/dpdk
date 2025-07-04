@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_LRU_X86_H__
 #define __INCLUDE_RTE_LRU_X86_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_config.h>
@@ -20,7 +16,7 @@ extern "C" {
 
 #if RTE_TABLE_HASH_LRU_STRATEGY == 2
 
-#if RTE_CC_IS_GNU && (GCC_VERSION > 40306)
+#if RTE_CC_IS_GNU
 #include <x86intrin.h>
 #else
 #include <emmintrin.h>
@@ -64,7 +60,7 @@ do {									\
 
 #elif RTE_TABLE_HASH_LRU_STRATEGY == 3
 
-#if RTE_CC_IS_GNU && (GCC_VERSION > 40306)
+#if RTE_CC_IS_GNU
 #include <x86intrin.h>
 #else
 #include <emmintrin.h>
@@ -95,10 +91,6 @@ do {									\
 	bucket->lru_list = _mm_extract_epi64(lru, 0) | orvals[mru_val];	\
 } while (0)
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

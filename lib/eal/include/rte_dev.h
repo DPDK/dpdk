@@ -13,16 +13,15 @@
  * This file manages the list of device drivers.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 #include <rte_config.h>
 #include <rte_common.h>
-#include <rte_compat.h>
 #include <rte_log.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_bus;
 struct rte_devargs;
@@ -41,19 +40,6 @@ enum rte_dev_event_type {
 typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 					enum rte_dev_event_type event,
 					void *cb_arg);
-
-/* Macros to check for invalid function pointers */
-#define RTE_FUNC_PTR_OR_ERR_RET(func, retval) RTE_DEPRECATED(RTE_FUNC_PTR_OR_ERR_RET) \
-do { \
-	if ((func) == NULL) \
-		return retval; \
-} while (0)
-
-#define RTE_FUNC_PTR_OR_RET(func) RTE_DEPRECATED(RTE_FUNC_PTR_OR_RET) \
-do { \
-	if ((func) == NULL) \
-		return; \
-} while (0)
 
 /**
  * Device policies.
@@ -246,47 +232,6 @@ int rte_dev_remove(struct rte_device *dev);
  */
 typedef int (*rte_dev_cmp_t)(const struct rte_device *dev, const void *data);
 
-#define RTE_PMD_EXPORT_NAME_ARRAY(n, idx) n##idx[]
-
-#define RTE_PMD_EXPORT_NAME(name, idx) \
-static const char RTE_PMD_EXPORT_NAME_ARRAY(this_pmd_name, idx) \
-__rte_used = RTE_STR(name)
-
-#define DRV_EXP_TAG(name, tag) __##name##_##tag
-
-#define RTE_PMD_REGISTER_PCI_TABLE(name, table) \
-static const char DRV_EXP_TAG(name, pci_tbl_export)[] __rte_used = \
-RTE_STR(table)
-
-#define RTE_PMD_REGISTER_PARAM_STRING(name, str) \
-static const char DRV_EXP_TAG(name, param_string_export)[] \
-__rte_used = str
-
-/**
- * Advertise the list of kernel modules required to run this driver
- *
- * This string lists the kernel modules required for the devices
- * associated to a PMD. The format of each line of the string is:
- * "<device-pattern> <kmod-expression>".
- *
- * The possible formats for the device pattern are:
- *   "*"                     all devices supported by this driver
- *   "pci:*"                 all PCI devices supported by this driver
- *   "pci:v8086:d*:sv*:sd*"  all PCI devices supported by this driver
- *                           whose vendor id is 0x8086.
- *
- * The format of the kernel modules list is a parenthesized expression
- * containing logical-and (&) and logical-or (|).
- *
- * The device pattern and the kmod expression are separated by a space.
- *
- * Example:
- * - "* igb_uio | uio_pci_generic | vfio"
- */
-#define RTE_PMD_REGISTER_KMOD_DEP(name, str) \
-static const char DRV_EXP_TAG(name, kmod_dep_export)[] \
-__rte_used = str
-
 /**
  * Iteration context.
  *
@@ -354,7 +299,6 @@ typedef void *(*rte_dev_iterate_t)(const void *start,
  *   0 on successful initialization.
  *   <0 on error.
  */
-__rte_experimental
 int
 rte_dev_iterator_init(struct rte_dev_iterator *it, const char *str);
 
@@ -374,7 +318,6 @@ rte_dev_iterator_init(struct rte_dev_iterator *it, const char *str);
  *   NULL if an error occurred (rte_errno is set).
  *   NULL if no device could be found (rte_errno is not set).
  */
-__rte_experimental
 struct rte_device *
 rte_dev_iterator_next(struct rte_dev_iterator *it);
 
@@ -385,9 +328,6 @@ rte_dev_iterator_next(struct rte_dev_iterator *it);
 	     dev = rte_dev_iterator_next(it))
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * It registers the callback for the specific device.
  * Multiple callbacks can be registered at the same time.
  *
@@ -403,16 +343,12 @@ rte_dev_iterator_next(struct rte_dev_iterator *it);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_dev_event_callback_register(const char *device_name,
 				rte_dev_event_cb_fn cb_fn,
 				void *cb_arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * It unregisters the callback according to the specified device.
  *
  * @param device_name
@@ -428,16 +364,12 @@ rte_dev_event_callback_register(const char *device_name,
  *  - On success, return the number of callback entities removed.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_dev_event_callback_unregister(const char *device_name,
 				  rte_dev_event_cb_fn cb_fn,
 				  void *cb_arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Executes all the user application registered callbacks for
  * the specific device.
  *
@@ -446,64 +378,47 @@ rte_dev_event_callback_unregister(const char *device_name,
  * @param event
  *  the device event type.
  */
-__rte_experimental
 void
 rte_dev_event_callback_process(const char *device_name,
 			       enum rte_dev_event_type event);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Start the device event monitoring.
  *
  * @return
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_dev_event_monitor_start(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Stop the device event monitoring.
  *
  * @return
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_dev_event_monitor_stop(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Enable hotplug handling for devices.
  *
  * @return
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_dev_hotplug_handle_enable(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Disable hotplug handling for devices.
  *
  * @return
  *   - On success, zero.
  *   - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_dev_hotplug_handle_disable(void);
 
@@ -527,7 +442,6 @@ rte_dev_hotplug_handle_disable(void);
  *	0 if mapping was successful.
  *	Negative value and rte_errno is set otherwise.
  */
-__rte_experimental
 int
 rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
 
@@ -551,7 +465,6 @@ rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
  *	0 if un-mapping was successful.
  *	Negative value and rte_errno is set otherwise.
  */
-__rte_experimental
 int
 rte_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 		  size_t len);

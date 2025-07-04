@@ -8,12 +8,17 @@
 
 /* Key of thread specific flow workspace data. */
 static rte_thread_key key_workspace;
+/* Flow workspace global list head for garbage collector. */
+static struct mlx5_flow_workspace *gc_head;
+/* Spinlock for operating flow workspace list. */
+static rte_spinlock_t mlx5_flow_workspace_lock = RTE_SPINLOCK_INITIALIZER;
 
 int
-mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
-			    uint64_t item_flags,
-			    uint8_t target_protocol,
-			    struct rte_flow_error *error)
+mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       uint8_t target_protocol,
+			       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_esp *mask = item->mask;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
@@ -23,10 +28,12 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L3 is mandatory to filter on L4");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "L3 is mandatory to filter on L4");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -39,7 +46,7 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &rte_flow_item_esp_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&rte_flow_item_esp_mask,
 		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);
@@ -48,10 +55,30 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 	return 0;
 }
 
+void
+mlx5_flow_os_workspace_gc_add(struct mlx5_flow_workspace *ws)
+{
+	rte_spinlock_lock(&mlx5_flow_workspace_lock);
+	ws->gc = gc_head;
+	gc_head = ws;
+	rte_spinlock_unlock(&mlx5_flow_workspace_lock);
+}
+
+static void
+mlx5_flow_os_workspace_gc_release(void)
+{
+	while (gc_head) {
+		struct mlx5_flow_workspace *wks = gc_head;
+
+		gc_head = wks->gc;
+		flow_release_workspace(wks);
+	}
+}
+
 int
 mlx5_flow_os_init_workspace_once(void)
 {
-	if (rte_thread_key_create(&key_workspace, flow_release_workspace)) {
+	if (rte_thread_key_create(&key_workspace, NULL)) {
 		DRV_LOG(ERR, "Can't create flow workspace data thread key.");
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -75,4 +102,5 @@ void
 mlx5_flow_os_release_workspace(void)
 {
 	rte_thread_key_delete(key_workspace);
+	mlx5_flow_os_workspace_gc_release();
 }

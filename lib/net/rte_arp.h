@@ -21,17 +21,17 @@ extern "C" {
 /**
  * ARP header IPv4 payload.
  */
-struct rte_arp_ipv4 {
+struct __rte_aligned(2) __rte_packed_begin rte_arp_ipv4 {
 	struct rte_ether_addr arp_sha;  /**< sender hardware address */
 	rte_be32_t            arp_sip;  /**< sender IP address */
 	struct rte_ether_addr arp_tha;  /**< target hardware address */
 	rte_be32_t            arp_tip;  /**< target IP address */
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 /**
  * ARP header.
  */
-struct rte_arp_hdr {
+struct __rte_aligned(2) __rte_packed_begin rte_arp_hdr {
 	rte_be16_t arp_hardware; /**< format of hardware address */
 #define RTE_ARP_HRD_ETHER     1  /**< ARP Ethernet address format */
 
@@ -47,7 +47,7 @@ struct rte_arp_hdr {
 #define	RTE_ARP_OP_INVREPLY   9  /**< response identifying peer */
 
 	struct rte_arp_ipv4 arp_data;
-} __rte_packed __rte_aligned(2);
+} __rte_packed_end;
 
 /**
  * Make a RARP packet based on MAC addr.

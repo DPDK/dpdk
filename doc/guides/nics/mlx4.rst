@@ -145,6 +145,21 @@ Limitations
 - TSO (Transmit Segmentation Offload) is supported in OFED version
   4.4 and above.
 
+- RSS only works on power-of-two number of queues.
+
+- It is possible to open non-power-of-two queues,
+  but the PMD will round down to the highest power-of-two queues by default for RSS.
+  Other queues can be utilized through flow API.
+  Example::
+
+      ./dpdk-testpmd -a 08:00.0 -- -i --rxq 12 --txq 12 --rss-ip
+
+  The first 8 queues will be used by default for RSS over IP.
+  The rest of the queues can be utilized with flow API like the following::
+
+      flow create 0 ingress pattern eth / ipv4 / tcp / end actions rss queues 8 9 10 11 end / end
+
+
 Prerequisites
 -------------
 
@@ -234,9 +249,9 @@ NVIDIA MLNX_OFED as a fallback
 Installing NVIDIA MLNX_OFED
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Download latest NVIDIA MLNX_OFED.
+#. Download latest NVIDIA MLNX_OFED.
 
-2. Install the required libraries and kernel modules either by installing
+#. Install the required libraries and kernel modules either by installing
    only the required set, or by installing the entire NVIDIA MLNX_OFED:
 
    For bare metal use::
@@ -251,22 +266,22 @@ Installing NVIDIA MLNX_OFED
 
         ./mlnxofedinstall --dpdk --upstream-libs --guest
 
-3. Verify the firmware is the correct one::
+#. Verify the firmware is the correct one::
 
         ibv_devinfo
 
-4. Set all ports links to Ethernet, follow instructions on the screen::
+#. Set all ports links to Ethernet, follow instructions on the screen::
 
         connectx_port_config
 
-5. Continue with :ref:`section 2 of the Quick Start Guide <QSG_2>`.
+#. Continue with :ref:`section 2 of the Quick Start Guide <QSG_2>`.
 
 .. _qsg:
 
 Quick Start Guide
 -----------------
 
-1. Set all ports links to Ethernet::
+#. Set all ports links to Ethernet::
 
         PCI=<NIC PCI address>
         echo eth > "/sys/bus/pci/devices/$PCI/mlx4_port0"
@@ -280,7 +295,7 @@ Quick Start Guide
 
 .. _QSG_2:
 
-2. In case of bare metal or hypervisor, configure optimized steering mode
+#. In case of bare metal or hypervisor, configure optimized steering mode
    by adding the following line to ``/etc/modprobe.d/mlx4_core.conf``::
 
         options mlx4_core log_num_mgm_entry_size=-7
@@ -290,7 +305,7 @@ Quick Start Guide
         If VLAN filtering is used, set log_num_mgm_entry_size=-1.
         Performance degradation can occur on this case.
 
-3. Restart the driver::
+#. Restart the driver::
 
         /etc/init.d/openibd restart
 
@@ -298,17 +313,17 @@ Quick Start Guide
 
         service openibd restart
 
-4. Install DPDK and you are ready to go.
+#. Install DPDK and you are ready to go.
    See :doc:`compilation instructions <../linux_gsg/build_dpdk>`.
 
 Performance tuning
 ------------------
 
-1. Verify the optimized steering mode is configured::
+#. Verify the optimized steering mode is configured::
 
         cat /sys/module/mlx4_core/parameters/log_num_mgm_entry_size
 
-2. Use the CPU near local NUMA node to which the PCIe adapter is connected,
+#. Use the CPU near local NUMA node to which the PCIe adapter is connected,
    for better performance. For VMs, verify that the right CPU
    and NUMA node are pinned according to the above. Run::
 
@@ -316,21 +331,21 @@ Performance tuning
 
    to identify the NUMA node to which the PCIe adapter is connected.
 
-3. If more than one adapter is used, and root complex capabilities allow
+#. If more than one adapter is used, and root complex capabilities allow
    to put both adapters on the same NUMA node without PCI bandwidth degradation,
    it is recommended to locate both adapters on the same NUMA node.
    This in order to forward packets from one to the other without
    NUMA performance penalty.
 
-4. Disable pause frames::
+#. Disable pause frames::
 
         ethtool -A <netdev> rx off tx off
 
-5. Verify IO non-posted prefetch is disabled by default. This can be checked
+#. Verify IO non-posted prefetch is disabled by default. This can be checked
    via the BIOS configuration. Please contact you server provider for more
    information about the settings.
 
-.. note::
+   .. note::
 
         On some machines, depends on the machine integrator, it is beneficial
         to set the PCI max read request parameter to 1K. This can be
@@ -347,9 +362,9 @@ Performance tuning
         The XXX can be different on different systems. Make sure to configure
         according to the setpci output.
 
-6. To minimize overhead of searching Memory Regions:
+#. To minimize overhead of searching Memory Regions:
 
-   - '--socket-mem' is recommended to pin memory by predictable amount.
+   - '--numa-mem' is recommended to pin memory by predictable amount.
    - Configure per-lcore cache when creating Mempools for packet buffer.
    - Refrain from dynamically allocating/freeing memory in run-time.
 

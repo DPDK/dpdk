@@ -6,13 +6,10 @@ if not is_linux
     reason = 'only supported on Linux'
 endif
 
-deps += ['bus_pci']
-sources = files(
-        'nitrox_device.c',
-        'nitrox_hal.c',
-        'nitrox_logs.c',
+deps += ['common_nitrox', 'bus_pci', 'cryptodev']
+
+sources += files(
         'nitrox_sym.c',
         'nitrox_sym_capabilities.c',
         'nitrox_sym_reqmgr.c',
-        'nitrox_qp.c',
 )

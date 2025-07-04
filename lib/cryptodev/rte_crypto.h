@@ -9,12 +9,7 @@
  * @file rte_crypto.h
  *
  * RTE Cryptography Common Definitions
- *
  */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 
 #include <rte_mbuf.h>
@@ -24,6 +19,10 @@ extern "C" {
 
 #include "rte_crypto_sym.h"
 #include "rte_crypto_asym.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Crypto operation types */
 enum rte_crypto_op_type {
@@ -65,9 +64,18 @@ enum rte_crypto_op_sess_type {
 	RTE_CRYPTO_OP_SECURITY_SESSION	/**< Security session crypto operation */
 };
 
+/* Auxiliary flags related to crypto operation */
+#define RTE_CRYPTO_OP_AUX_FLAGS_SESS_SOFT_EXPIRY (1 << 0)
+/**< Session soft expiry limit has been reached.
+ * Applicable for any session that has a soft lifetime feature supported.
+ *
+ * @see rte_security_ipsec_lifetime
+ * @see rte_security_tls_record_lifetime
+ */
+
 /* Auxiliary flags related to IPsec offload with RTE_SECURITY */
 
-#define RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY (1 << 0)
+#define RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY RTE_CRYPTO_OP_AUX_FLAGS_SESS_SOFT_EXPIRY
 /**< SA soft expiry limit has been reached */
 
 /**
@@ -100,10 +108,45 @@ struct rte_crypto_op {
 			/**< operation session type */
 			uint8_t aux_flags;
 			/**< Operation specific auxiliary/additional flags.
-			 * These flags carry additional information from the
+			 * These flags carry additional information from/to the
 			 * operation. Processing of the same is optional.
+			 *
+			 * The flags are defined as RTE_CRYPTO_OP_AUX_FLAGS_* and
+			 * would be set by PMD for application consumption when
+			 * the status is RTE_CRYPTO_OP_STATUS_SUCCESS.
+			 * In case of errors, the value of this field is undefined.
+			 *
+			 * With TLS record offload (RTE_SECURITY_PROTOCOL_TLS_RECORD),
+			 * application may provide the extra padding required for the plaintext
+			 * provided. This field can be used for passing the same in units of 8B.
+			 * The value would be set by application for PMD consumption.
+			 *
+			 * @see struct rte_security_tls_record_sess_options
 			 */
-			uint8_t reserved[2];
+			union {
+				struct {
+					uint8_t content_type;
+					/**< Content type. The field can act both as input
+					 * and output.
+					 *
+					 * As input, for passing message type in case of record
+					 * write (encrypt) operation. Applicable for,
+					 * 1. TLS 1.2
+					 * 2. TLS 1.3
+					 * 3. DTLS 1.2
+					 *
+					 * As output, for returning message type in case of record
+					 * read (decrypt) operation. Applicable for,
+					 * 1. TLS 1.3
+					 *
+					 * Message types are listed as RTE_TLS_TYPE_* and
+					 * RTE_DTLS_TYPE_*.
+					 */
+				} tls_record;
+				/**< TLS record */
+			} param1;
+			/**< Additional per operation parameter 1. */
+			uint8_t reserved[1];
 			/**< Reserved bytes to fill 64 bits for
 			 * future additions
 			 */
@@ -217,7 +260,7 @@ __rte_crypto_op_get_priv_data_size(struct rte_mempool *mempool)
  *  - On success pointer to mempool
  *  - On failure NULL
  */
-extern struct rte_mempool *
+struct rte_mempool *
 rte_crypto_op_pool_create(const char *name, enum rte_crypto_op_type type,
 		unsigned nb_elts, unsigned cache_size, uint16_t priv_size,
 		int socket_id);

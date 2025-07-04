@@ -47,7 +47,7 @@ The final, install, step generally needs to be run as root::
   meson setup build
   cd build
   ninja
-  ninja install
+  meson install
 
 This will install the DPDK libraries and drivers to `/usr/local/lib` with a
 pkg-config file `libdpdk.pc` installed to `/usr/local/lib/pkgconfig`. The
@@ -86,6 +86,22 @@ module loading using::
     kenv hw.contigmem.num_buffers=n
     kenv hw.contigmem.buffer_size=m
 
+Where n is the number of blocks and m is the size in bytes of each area of contiguous memory.
+A default of two buffers of size 1073741824 bytes (1 Gigabyte) each
+is set during module load if they are not specified in the environment.
+
+Buffers are excluded from core dump by default.
+Mapped buffers can be included in core dump using the following tunable::
+
+   hw.contigmem.coredump_enable=1
+
+.. note::
+
+   Including contigmem buffers in core dump file increases its size,
+   which may fill the storage or overload the transport.
+   Buffers typically hold data processed by the application,
+   like network packets, which may contain sensitive information.
+
 The kernel environment variables can also be specified during boot by placing the
 following in ``/boot/loader.conf``:
 
@@ -93,14 +109,11 @@ following in ``/boot/loader.conf``:
 
     hw.contigmem.num_buffers=n
     hw.contigmem.buffer_size=m
+    hw.contigmem.coredump_enable=1
 
 The variables can be inspected using the following command::
 
     sysctl -a hw.contigmem
-
-Where n is the number of blocks and m is the size in bytes of each area of
-contiguous memory.  A default of two buffers of size 1073741824 bytes (1 Gigabyte)
-each is set during module load if they are not specified in the environment.
 
 The module can then be loaded using kldload::
 
@@ -115,13 +128,13 @@ up time.  This can be achieved by placing lines similar to the following into
 
     hw.contigmem.num_buffers=1
     hw.contigmem.buffer_size=1073741824
+    hw.contigmem.coredump_enable=1
     contigmem_load="YES"
 
 .. note::
 
-    The contigmem_load directive should be placed after any definitions of
-    ``hw.contigmem.num_buffers`` and ``hw.contigmem.buffer_size`` if the default values
-    are not to be used.
+   The ``contigmem_load`` directive should be placed after any definitions
+   of ``hw.contigmem.*`` if the default values are not to be used.
 
 An error such as::
 

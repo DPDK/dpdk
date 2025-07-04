@@ -47,9 +47,15 @@
 #define TIM_LF_RAS_INT_ENA_W1S	   (0x310)
 #define TIM_LF_RAS_INT_ENA_W1C	   (0x318)
 #define TIM_LF_RING_REL		   (0x400)
+#define TIM_LF_SCHED_TIMER0	   (0x480)
+#define TIM_LF_RING_FIRST_EXPIRY   (0x558)
 
 #define TIM_MAX_INTERVAL_TICKS ((1ULL << 32) - 1)
-#define TIM_MAX_BUCKET_SIZE    ((1ULL << 20) - 1)
-#define TIM_MIN_BUCKET_SIZE    3
+#define TIM_MAX_INTERVAL_EXT_TICKS ((1ULL << 34) - 1)
+#define TIM_MAX_BUCKET_SIZE    ((1ULL << 20) - 2)
+#define TIM_MIN_BUCKET_SIZE    1
+#define TIM_BUCKET_WRAP_SIZE   3
+#define TIM_BUCKET_MIN_GAP     1
+#define TIM_NPA_TMO            0xFFFF
 
 #endif /* __TIM_HW_H__ */

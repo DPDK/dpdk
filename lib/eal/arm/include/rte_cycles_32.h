@@ -5,20 +5,21 @@
 #ifndef _RTE_CYCLES_ARM32_H_
 #define _RTE_CYCLES_ARM32_H_
 
-/* ARM v7 does not have suitable source of clock signals. The only clock counter
-   available in the core is 32 bit wide. Therefore it is unsuitable as the
-   counter overlaps every few seconds and probably is not accessible by
-   userspace programs. Therefore we use clock_gettime(CLOCK_MONOTONIC_RAW) to
-   simulate counter running at 1GHz.
-*/
+/* ARM v7 does not have suitable source of clock signals.
+ * The only clock counter available in the core is 32 bit wide.
+ * Therefore it is unsuitable as the counter overlaps every few seconds
+ * and probably is not accessible by userspace programs.
+ * Therefore we use clock_gettime(CLOCK_MONOTONIC_RAW)
+ * to simulate counter running at 1GHz.
+ */
 
 #include <time.h>
+
+#include "generic/rte_cycles.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_cycles.h"
 
 /**
  * Read the time base register.

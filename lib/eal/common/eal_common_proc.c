@@ -26,14 +26,16 @@
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#include <rte_thread.h>
 
+#include <eal_export.h>
 #include "eal_memcfg.h"
 #include "eal_private.h"
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
 
-static int mp_fd = -1;
-static pthread_t mp_handle_tid;
+static RTE_ATOMIC(int) mp_fd = -1;
+static rte_thread_t mp_handle_tid;
 static char mp_filter[PATH_MAX];   /* Filter for secondary process sockets */
 static char mp_dir_path[PATH_MAX]; /* The directory path for all mp sockets */
 static pthread_mutex_t mp_mutex_action = PTHREAD_MUTEX_INITIALIZER;
@@ -80,7 +82,6 @@ struct pending_request {
 	struct rte_mp_msg *request;
 	struct rte_mp_msg *reply;
 	int reply_received;
-	RTE_STD_C11
 	union {
 		struct {
 			struct async_request_param *param;
@@ -142,6 +143,7 @@ create_socket_path(const char *name, char *buf, int len)
 		strlcpy(buf, prefix, len);
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_primary_proc_alive)
 int
 rte_eal_primary_proc_alive(const char *config_file_path)
 {
@@ -181,12 +183,12 @@ static int
 validate_action_name(const char *name)
 {
 	if (name == NULL) {
-		RTE_LOG(ERR, EAL, "Action name cannot be NULL\n");
+		EAL_LOG(ERR, "Action name cannot be NULL");
 		rte_errno = EINVAL;
 		return -1;
 	}
 	if (strnlen(name, RTE_MP_MAX_NAME_LEN) == 0) {
-		RTE_LOG(ERR, EAL, "Length of action name is zero\n");
+		EAL_LOG(ERR, "Length of action name is zero");
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -197,6 +199,7 @@ validate_action_name(const char *name)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_action_register)
 int
 rte_mp_action_register(const char *name, rte_mp_t action)
 {
@@ -208,7 +211,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 		return -1;
 
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -233,6 +236,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_action_unregister)
 void
 rte_mp_action_unregister(const char *name)
 {
@@ -244,7 +248,7 @@ rte_mp_action_unregister(const char *name)
 		return;
 
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
 		return;
 	}
 
@@ -291,12 +295,12 @@ retry:
 		if (errno == EINTR)
 			goto retry;
 
-		RTE_LOG(ERR, EAL, "recvmsg failed, %s\n", strerror(errno));
+		EAL_LOG(ERR, "recvmsg failed, %s", strerror(errno));
 		return -1;
 	}
 
 	if (msglen != buflen || (msgh.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
-		RTE_LOG(ERR, EAL, "truncated msg\n");
+		EAL_LOG(ERR, "truncated msg");
 		return -1;
 	}
 
@@ -311,14 +315,23 @@ retry:
 	}
 	/* sanity-check the response */
 	if (m->msg.num_fds < 0 || m->msg.num_fds > RTE_MP_MAX_FD_NUM) {
-		RTE_LOG(ERR, EAL, "invalid number of fd's received\n");
+		EAL_LOG(ERR, "invalid number of fd's received");
 		return -1;
 	}
 	if (m->msg.len_param < 0 || m->msg.len_param > RTE_MP_MAX_PARAM_LEN) {
-		RTE_LOG(ERR, EAL, "invalid received data length\n");
+		EAL_LOG(ERR, "invalid received data length");
 		return -1;
 	}
 	return msglen;
+}
+
+static void
+cleanup_msg_fds(const struct rte_mp_msg *msg)
+{
+	int i;
+
+	for (i = 0; i < msg->num_fds; i++)
+		close(msg->fds[i]);
 }
 
 static void
@@ -331,7 +344,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-	RTE_LOG(DEBUG, EAL, "msg: %s\n", msg->name);
+	EAL_LOG(DEBUG, "msg: %s", msg->name);
 
 	if (m->type == MP_REP || m->type == MP_IGN) {
 		struct pending_request *req = NULL;
@@ -349,8 +362,10 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			else if (pending_req->type == REQUEST_TYPE_ASYNC)
 				req = async_reply_handle_thread_unsafe(
 						pending_req);
-		} else
-			RTE_LOG(ERR, EAL, "Drop mp reply: %s\n", msg->name);
+		} else {
+			EAL_LOG(ERR, "Drop mp reply: %s", msg->name);
+			cleanup_msg_fds(msg);
+		}
 		pthread_mutex_unlock(&pending_requests.lock);
 
 		if (req != NULL)
@@ -377,22 +392,23 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			strlcpy(dummy.name, msg->name, sizeof(dummy.name));
 			mp_send(&dummy, s->sun_path, MP_IGN);
 		} else {
-			RTE_LOG(ERR, EAL, "Cannot find action: %s\n",
+			EAL_LOG(ERR, "Cannot find action: %s",
 				msg->name);
 		}
+		cleanup_msg_fds(msg);
 	} else if (action(msg, s->sun_path) < 0) {
-		RTE_LOG(ERR, EAL, "Fail to handle message: %s\n", msg->name);
+		EAL_LOG(ERR, "Fail to handle message: %s", msg->name);
 	}
 }
 
-static void *
+static uint32_t
 mp_handle(void *arg __rte_unused)
 {
 	struct mp_msg_internal msg;
 	struct sockaddr_un sa;
 	int fd;
 
-	while ((fd = __atomic_load_n(&mp_fd, __ATOMIC_RELAXED)) >= 0) {
+	while ((fd = rte_atomic_load_explicit(&mp_fd, rte_memory_order_relaxed)) >= 0) {
 		int ret;
 
 		ret = read_msg(fd, &msg, &sa);
@@ -402,7 +418,7 @@ mp_handle(void *arg __rte_unused)
 		process_msg(&msg, &sa);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -447,7 +463,7 @@ process_async_request(struct pending_request *sr, const struct timespec *now)
 		tmp = realloc(user_msgs, sizeof(*msg) *
 				(reply->nb_received + 1));
 		if (!tmp) {
-			RTE_LOG(ERR, EAL, "Fail to alloc reply for request %s:%s\n",
+			EAL_LOG(ERR, "Fail to alloc reply for request %s:%s",
 				sr->dst, sr->request->name);
 			/* this entry is going to be removed and its message
 			 * dropped, but we don't want to leak memory, so
@@ -506,7 +522,7 @@ async_reply_handle_thread_unsafe(void *arg)
 	struct timespec ts_now;
 
 	if (clock_gettime(CLOCK_MONOTONIC, &ts_now) < 0) {
-		RTE_LOG(ERR, EAL, "Cannot get current time\n");
+		EAL_LOG(ERR, "Cannot get current time");
 		goto no_trigger;
 	}
 
@@ -520,10 +536,10 @@ async_reply_handle_thread_unsafe(void *arg)
 		 * handling the same message twice.
 		 */
 		if (rte_errno == EINPROGRESS) {
-			RTE_LOG(DEBUG, EAL, "Request handling is already in progress\n");
+			EAL_LOG(DEBUG, "Request handling is already in progress");
 			goto no_trigger;
 		}
-		RTE_LOG(ERR, EAL, "Failed to cancel alarm\n");
+		EAL_LOG(ERR, "Failed to cancel alarm");
 	}
 
 	if (action == ACTION_TRIGGER)
@@ -558,7 +574,7 @@ open_socket_fd(void)
 
 	mp_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (mp_fd < 0) {
-		RTE_LOG(ERR, EAL, "failed to create unix socket\n");
+		EAL_LOG(ERR, "failed to create unix socket");
 		return -1;
 	}
 
@@ -570,13 +586,13 @@ open_socket_fd(void)
 	unlink(un.sun_path); /* May still exist since last run */
 
 	if (bind(mp_fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
-		RTE_LOG(ERR, EAL, "failed to bind %s: %s\n",
+		EAL_LOG(ERR, "failed to bind %s: %s",
 			un.sun_path, strerror(errno));
 		close(mp_fd);
 		return -1;
 	}
 
-	RTE_LOG(INFO, EAL, "Multi-process socket %s\n", un.sun_path);
+	EAL_LOG(INFO, "Multi-process socket %s", un.sun_path);
 	return mp_fd;
 }
 
@@ -602,7 +618,7 @@ rte_mp_channel_init(void)
 	 * so no need to initialize IPC.
 	 */
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC will be disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC will be disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -618,13 +634,13 @@ rte_mp_channel_init(void)
 	/* lock the directory */
 	dir_fd = open(mp_dir_path, O_RDONLY);
 	if (dir_fd < 0) {
-		RTE_LOG(ERR, EAL, "failed to open %s: %s\n",
+		EAL_LOG(ERR, "failed to open %s: %s",
 			mp_dir_path, strerror(errno));
 		return -1;
 	}
 
 	if (flock(dir_fd, LOCK_EX)) {
-		RTE_LOG(ERR, EAL, "failed to lock %s: %s\n",
+		EAL_LOG(ERR, "failed to lock %s: %s",
 			mp_dir_path, strerror(errno));
 		close(dir_fd);
 		return -1;
@@ -635,12 +651,12 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (rte_ctrl_thread_create(&mp_handle_tid, "rte_mp_handle",
-			NULL, mp_handle, NULL) < 0) {
-		RTE_LOG(ERR, EAL, "failed to create mp thread: %s\n",
+	if (rte_thread_create_internal_control(&mp_handle_tid, "mp-msg",
+			mp_handle, NULL) < 0) {
+		EAL_LOG(ERR, "failed to create mp thread: %s",
 			strerror(errno));
 		close(dir_fd);
-		close(__atomic_exchange_n(&mp_fd, -1, __ATOMIC_RELAXED));
+		close(rte_atomic_exchange_explicit(&mp_fd, -1, rte_memory_order_relaxed));
 		return -1;
 	}
 
@@ -656,12 +672,12 @@ rte_mp_channel_cleanup(void)
 {
 	int fd;
 
-	fd = __atomic_exchange_n(&mp_fd, -1, __ATOMIC_RELAXED);
+	fd = rte_atomic_exchange_explicit(&mp_fd, -1, rte_memory_order_relaxed);
 	if (fd < 0)
 		return;
 
-	pthread_cancel(mp_handle_tid);
-	pthread_join(mp_handle_tid, NULL);
+	pthread_cancel((pthread_t)mp_handle_tid.opaque_id);
+	rte_thread_join(mp_handle_tid, NULL);
 	close_socket_fd(fd);
 }
 
@@ -669,7 +685,6 @@ rte_mp_channel_cleanup(void)
  * Return -1, as fail to send message and it's caused by the local side.
  * Return 0, as fail to send message and it's caused by the remote side.
  * Return 1, as succeed to send message.
- *
  */
 static int
 send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
@@ -681,7 +696,8 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 	struct sockaddr_un dst;
 	struct mp_msg_internal m;
 	int fd_size = msg->num_fds * sizeof(int);
-	char control[CMSG_SPACE(fd_size)];
+	const int32_t control_sz = CMSG_SPACE(fd_size);
+	char control[CMSG_SPACE(sizeof(msg->fds))];
 
 	m.type = type;
 	memcpy(&m.msg, msg, sizeof(*msg));
@@ -701,7 +717,7 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_control = control;
-	msgh.msg_controllen = sizeof(control);
+	msgh.msg_controllen = control_sz;
 
 	cmsg = CMSG_FIRSTHDR(&msgh);
 	cmsg->cmsg_len = CMSG_LEN(fd_size);
@@ -721,7 +737,7 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 			unlink(dst_path);
 			return 0;
 		}
-		RTE_LOG(ERR, EAL, "failed to send to (%s) due to %s\n",
+		EAL_LOG(ERR, "failed to send to (%s) due to %s",
 			dst_path, strerror(errno));
 		return -1;
 	}
@@ -749,7 +765,7 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 	/* broadcast to all secondary processes */
 	mp_dir = opendir(mp_dir_path);
 	if (!mp_dir) {
-		RTE_LOG(ERR, EAL, "Unable to open directory %s\n",
+		EAL_LOG(ERR, "Unable to open directory %s",
 				mp_dir_path);
 		rte_errno = errno;
 		return -1;
@@ -758,7 +774,7 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 	dir_fd = dirfd(mp_dir);
 	/* lock the directory to prevent processes spinning up while we send */
 	if (flock(dir_fd, LOCK_SH)) {
-		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
+		EAL_LOG(ERR, "Unable to lock directory %s",
 			mp_dir_path);
 		rte_errno = errno;
 		closedir(mp_dir);
@@ -788,7 +804,7 @@ static int
 check_input(const struct rte_mp_msg *msg)
 {
 	if (msg == NULL) {
-		RTE_LOG(ERR, EAL, "Msg cannot be NULL\n");
+		EAL_LOG(ERR, "Msg cannot be NULL");
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -797,25 +813,25 @@ check_input(const struct rte_mp_msg *msg)
 		return -1;
 
 	if (msg->len_param < 0) {
-		RTE_LOG(ERR, EAL, "Message data length is negative\n");
+		EAL_LOG(ERR, "Message data length is negative");
 		rte_errno = EINVAL;
 		return -1;
 	}
 
 	if (msg->num_fds < 0) {
-		RTE_LOG(ERR, EAL, "Number of fd's is negative\n");
+		EAL_LOG(ERR, "Number of fd's is negative");
 		rte_errno = EINVAL;
 		return -1;
 	}
 
 	if (msg->len_param > RTE_MP_MAX_PARAM_LEN) {
-		RTE_LOG(ERR, EAL, "Message data is too long\n");
+		EAL_LOG(ERR, "Message data is too long");
 		rte_errno = E2BIG;
 		return -1;
 	}
 
 	if (msg->num_fds > RTE_MP_MAX_FD_NUM) {
-		RTE_LOG(ERR, EAL, "Cannot send more than %d FDs\n",
+		EAL_LOG(ERR, "Cannot send more than %d FDs",
 			RTE_MP_MAX_FD_NUM);
 		rte_errno = E2BIG;
 		return -1;
@@ -824,6 +840,7 @@ check_input(const struct rte_mp_msg *msg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_sendmsg)
 int
 rte_mp_sendmsg(struct rte_mp_msg *msg)
 {
@@ -834,12 +851,12 @@ rte_mp_sendmsg(struct rte_mp_msg *msg)
 		return -1;
 
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
 
-	RTE_LOG(DEBUG, EAL, "sendmsg: %s\n", msg->name);
+	EAL_LOG(DEBUG, "sendmsg: %s", msg->name);
 	return mp_send(msg, NULL, MP_MSG);
 }
 
@@ -854,7 +871,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 	pending_req = calloc(1, sizeof(*pending_req));
 	reply_msg = calloc(1, sizeof(*reply_msg));
 	if (pending_req == NULL || reply_msg == NULL) {
-		RTE_LOG(ERR, EAL, "Could not allocate space for sync request\n");
+		EAL_LOG(ERR, "Could not allocate space for sync request");
 		rte_errno = ENOMEM;
 		ret = -1;
 		goto fail;
@@ -870,7 +887,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 
 	exist = find_pending_request(dst, req->name);
 	if (exist) {
-		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
+		EAL_LOG(ERR, "A pending request %s:%s", dst, req->name);
 		rte_errno = EEXIST;
 		ret = -1;
 		goto fail;
@@ -878,7 +895,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 
 	ret = send_msg(dst, req, MP_REQ);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Fail to send request %s:%s\n",
+		EAL_LOG(ERR, "Fail to send request %s:%s",
 			dst, req->name);
 		ret = -1;
 		goto fail;
@@ -891,7 +908,7 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 	/* if alarm set fails, we simply ignore the reply */
 	if (rte_eal_alarm_set(ts->tv_sec * 1000000 + ts->tv_nsec / 1000,
 			      async_reply_handle, pending_req) < 0) {
-		RTE_LOG(ERR, EAL, "Fail to set alarm for request %s:%s\n",
+		EAL_LOG(ERR, "Fail to set alarm for request %s:%s",
 			dst, req->name);
 		ret = -1;
 		goto fail;
@@ -925,14 +942,14 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 
 	exist = find_pending_request(dst, req->name);
 	if (exist) {
-		RTE_LOG(ERR, EAL, "A pending request %s:%s\n", dst, req->name);
+		EAL_LOG(ERR, "A pending request %s:%s", dst, req->name);
 		rte_errno = EEXIST;
 		return -1;
 	}
 
 	ret = send_msg(dst, req, MP_REQ);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Fail to send request %s:%s\n",
+		EAL_LOG(ERR, "Fail to send request %s:%s",
 			dst, req->name);
 		return -1;
 	} else if (ret == 0)
@@ -950,13 +967,13 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 	TAILQ_REMOVE(&pending_requests.requests, &pending_req, next);
 
 	if (pending_req.reply_received == 0) {
-		RTE_LOG(ERR, EAL, "Fail to recv reply for request %s:%s\n",
+		EAL_LOG(ERR, "Fail to recv reply for request %s:%s",
 			dst, req->name);
 		rte_errno = ETIMEDOUT;
 		return -1;
 	}
 	if (pending_req.reply_received == -1) {
-		RTE_LOG(DEBUG, EAL, "Asked to ignore response\n");
+		EAL_LOG(DEBUG, "Asked to ignore response");
 		/* not receiving this message is not an error, so decrement
 		 * number of sent messages
 		 */
@@ -966,7 +983,7 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 
 	tmp = realloc(reply->msgs, sizeof(msg) * (reply->nb_received + 1));
 	if (!tmp) {
-		RTE_LOG(ERR, EAL, "Fail to alloc reply for request %s:%s\n",
+		EAL_LOG(ERR, "Fail to alloc reply for request %s:%s",
 			dst, req->name);
 		rte_errno = ENOMEM;
 		return -1;
@@ -977,6 +994,7 @@ mp_request_sync(const char *dst, struct rte_mp_msg *req,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_request_sync)
 int
 rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		const struct timespec *ts)
@@ -988,7 +1006,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-	RTE_LOG(DEBUG, EAL, "request: %s\n", req->name);
+	EAL_LOG(DEBUG, "request: %s", req->name);
 
 	reply->nb_sent = 0;
 	reply->nb_received = 0;
@@ -998,13 +1016,13 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		goto end;
 
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
 
 	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
-		RTE_LOG(ERR, EAL, "Failed to get current time\n");
+		EAL_LOG(ERR, "Failed to get current time");
 		rte_errno = errno;
 		goto end;
 	}
@@ -1024,7 +1042,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	/* for primary process, broadcast request, and collect reply 1 by 1 */
 	mp_dir = opendir(mp_dir_path);
 	if (!mp_dir) {
-		RTE_LOG(ERR, EAL, "Unable to open directory %s\n", mp_dir_path);
+		EAL_LOG(ERR, "Unable to open directory %s", mp_dir_path);
 		rte_errno = errno;
 		goto end;
 	}
@@ -1032,7 +1050,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	dir_fd = dirfd(mp_dir);
 	/* lock the directory to prevent processes spinning up while we send */
 	if (flock(dir_fd, LOCK_SH)) {
-		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
+		EAL_LOG(ERR, "Unable to lock directory %s",
 			mp_dir_path);
 		rte_errno = errno;
 		goto close_end;
@@ -1074,6 +1092,7 @@ end:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_request_async)
 int
 rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 		rte_mp_async_reply_t clb)
@@ -1091,19 +1110,19 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-	RTE_LOG(DEBUG, EAL, "request: %s\n", req->name);
+	EAL_LOG(DEBUG, "request: %s", req->name);
 
 	if (check_input(req) != 0)
 		return -1;
 
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
 
 	if (clock_gettime(CLOCK_MONOTONIC, &now) < 0) {
-		RTE_LOG(ERR, EAL, "Failed to get current time\n");
+		EAL_LOG(ERR, "Failed to get current time");
 		rte_errno = errno;
 		return -1;
 	}
@@ -1111,7 +1130,7 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	dummy = calloc(1, sizeof(*dummy));
 	param = calloc(1, sizeof(*param));
 	if (copy == NULL || dummy == NULL || param == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to allocate memory for async reply\n");
+		EAL_LOG(ERR, "Failed to allocate memory for async reply");
 		rte_errno = ENOMEM;
 		goto fail;
 	}
@@ -1169,7 +1188,7 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	/* for primary process, broadcast request */
 	mp_dir = opendir(mp_dir_path);
 	if (!mp_dir) {
-		RTE_LOG(ERR, EAL, "Unable to open directory %s\n", mp_dir_path);
+		EAL_LOG(ERR, "Unable to open directory %s", mp_dir_path);
 		rte_errno = errno;
 		goto unlock_fail;
 	}
@@ -1177,7 +1196,7 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 
 	/* lock the directory to prevent processes spinning up while we send */
 	if (flock(dir_fd, LOCK_SH)) {
-		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
+		EAL_LOG(ERR, "Unable to lock directory %s",
 			mp_dir_path);
 		rte_errno = errno;
 		goto closedir_fail;
@@ -1226,10 +1245,11 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_reply)
 int
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 {
-	RTE_LOG(DEBUG, EAL, "reply: %s\n", msg->name);
+	EAL_LOG(DEBUG, "reply: %s", msg->name);
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
@@ -1237,13 +1257,13 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 		return -1;
 
 	if (peer == NULL) {
-		RTE_LOG(ERR, EAL, "peer is not specified\n");
+		EAL_LOG(ERR, "peer is not specified");
 		rte_errno = EINVAL;
 		return -1;
 	}
 
 	if (internal_conf->no_shconf) {
-		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
 		return 0;
 	}
 
@@ -1271,13 +1291,14 @@ set_mp_status(enum mp_status status)
 
 	expected = MP_STATUS_UNKNOWN;
 	desired = status;
-	if (__atomic_compare_exchange_n(&mcfg->mp_status, &expected, desired,
-			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+	if (rte_atomic_compare_exchange_strong_explicit(&mcfg->mp_status, &expected, desired,
+			rte_memory_order_relaxed, rte_memory_order_relaxed))
 		return true;
 
-	return __atomic_load_n(&mcfg->mp_status, __ATOMIC_RELAXED) == desired;
+	return rte_atomic_load_explicit(&mcfg->mp_status, rte_memory_order_relaxed) == desired;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_disable)
 bool
 rte_mp_disable(void)
 {

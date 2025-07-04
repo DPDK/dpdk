@@ -1476,8 +1476,8 @@ emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 			emit_epilog(st);
 			break;
 		default:
-			RTE_BPF_LOG(ERR,
-				"%s(%p): invalid opcode %#x at pc: %u;\n",
+			RTE_BPF_LOG_LINE(ERR,
+				"%s(%p): invalid opcode %#x at pc: %u;",
 				__func__, bpf, ins->code, i);
 			return -EINVAL;
 		}

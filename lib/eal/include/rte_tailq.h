@@ -8,15 +8,14 @@
 /**
  * @file
  *  Here defines rte_tailq APIs for only internal use
- *
  */
+
+#include <stdio.h>
+#include <rte_debug.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdio.h>
-#include <rte_debug.h>
 
 /** dummy structure type used by the rte_tailq APIs */
 struct rte_tailq_entry {

@@ -16,11 +16,11 @@
 int
 hns3_tx_check_vec_support(struct rte_eth_dev *dev)
 {
-	struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
+	uint64_t tx_offloads = dev->data->dev_conf.txmode.offloads;
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 
-	/* Only support RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE */
-	if (txmode->offloads != RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
+	/* Only support when Tx offloads is RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE or 0. */
+	if (tx_offloads != RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE && tx_offloads != 0)
 		return -ENOTSUP;
 
 	/*
@@ -53,57 +53,6 @@ hns3_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	}
 
 	return nb_tx;
-}
-
-static inline void
-hns3_rxq_rearm_mbuf(struct hns3_rx_queue *rxq)
-{
-#define REARM_LOOP_STEP_NUM	4
-	struct hns3_entry *rxep = &rxq->sw_ring[rxq->rx_rearm_start];
-	struct hns3_desc *rxdp = rxq->rx_ring + rxq->rx_rearm_start;
-	uint64_t dma_addr;
-	int i;
-
-	if (unlikely(rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
-					  HNS3_DEFAULT_RXQ_REARM_THRESH) < 0)) {
-		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
-		return;
-	}
-
-	for (i = 0; i < HNS3_DEFAULT_RXQ_REARM_THRESH; i += REARM_LOOP_STEP_NUM,
-		rxep += REARM_LOOP_STEP_NUM, rxdp += REARM_LOOP_STEP_NUM) {
-		if (likely(i <
-			HNS3_DEFAULT_RXQ_REARM_THRESH - REARM_LOOP_STEP_NUM)) {
-			rte_prefetch_non_temporal(rxep[4].mbuf);
-			rte_prefetch_non_temporal(rxep[5].mbuf);
-			rte_prefetch_non_temporal(rxep[6].mbuf);
-			rte_prefetch_non_temporal(rxep[7].mbuf);
-		}
-
-		dma_addr = rte_mbuf_data_iova_default(rxep[0].mbuf);
-		rxdp[0].addr = rte_cpu_to_le_64(dma_addr);
-		rxdp[0].rx.bd_base_info = 0;
-
-		dma_addr = rte_mbuf_data_iova_default(rxep[1].mbuf);
-		rxdp[1].addr = rte_cpu_to_le_64(dma_addr);
-		rxdp[1].rx.bd_base_info = 0;
-
-		dma_addr = rte_mbuf_data_iova_default(rxep[2].mbuf);
-		rxdp[2].addr = rte_cpu_to_le_64(dma_addr);
-		rxdp[2].rx.bd_base_info = 0;
-
-		dma_addr = rte_mbuf_data_iova_default(rxep[3].mbuf);
-		rxdp[3].addr = rte_cpu_to_le_64(dma_addr);
-		rxdp[3].rx.bd_base_info = 0;
-	}
-
-	rxq->rx_rearm_start += HNS3_DEFAULT_RXQ_REARM_THRESH;
-	if (rxq->rx_rearm_start >= rxq->nb_rx_desc)
-		rxq->rx_rearm_start = 0;
-
-	rxq->rx_rearm_nb -= HNS3_DEFAULT_RXQ_REARM_THRESH;
-
-	hns3_write_reg_opt(rxq->io_head_reg, HNS3_DEFAULT_RXQ_REARM_THRESH);
 }
 
 uint16_t
@@ -235,8 +184,11 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 {
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	uint64_t offloads_mask = RTE_ETH_RX_OFFLOAD_TCP_LRO |
-				 RTE_ETH_RX_OFFLOAD_VLAN |
-				 RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+				 RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
+				 RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
+				 RTE_ETH_RX_OFFLOAD_TIMESTAMP |
+				 RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
 	if (dev->data->scattered_rx)
 		return -ENOTSUP;

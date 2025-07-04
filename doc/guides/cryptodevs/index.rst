@@ -6,7 +6,7 @@ Crypto Device Drivers
 
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     overview
@@ -20,6 +20,7 @@ Crypto Device Drivers
     cnxk
     dpaa2_sec
     dpaa_sec
+    ionic
     kasumi
     octeontx
     openssl
@@ -33,3 +34,4 @@ Crypto Device Drivers
     uadk
     virtio
     zuc
+    zsda

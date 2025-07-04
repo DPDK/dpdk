@@ -5,22 +5,21 @@
 #ifndef __INCLUDE_RTE_PORT_ETHDEV_H__
 #define __INCLUDE_RTE_PORT_ETHDEV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port Ethernet Device
  *
  * ethdev_reader: input port built on top of pre-initialized NIC RX queue
  * ethdev_writer: output port built on top of pre-initialized NIC TX queue
- *
- ***/
+ */
 
 #include <stdint.h>
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** ethdev_reader port parameters */
 struct rte_port_ethdev_reader_params {

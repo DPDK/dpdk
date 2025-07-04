@@ -11,14 +11,16 @@
 #ifndef _RTE_STRING_FNS_H_
 #define _RTE_STRING_FNS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Takes string "string" parameter and splits it at character "delim"
@@ -75,6 +77,10 @@ rte_strlcat(char *dst, const char *src, size_t size)
 	return l + strlen(src);
 }
 
+#ifdef __cplusplus
+}
+#endif
+
 /* pull in a strlcpy function */
 #ifdef RTE_EXEC_ENV_FREEBSD
 #ifndef __BSD_VISIBLE /* non-standard functions are hidden */
@@ -92,6 +98,10 @@ rte_strlcat(char *dst, const char *src, size_t size)
 
 #endif /* RTE_USE_LIBBSD */
 #endif /* FREEBSD */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Copy string src to buffer dst of size dsize.
@@ -114,6 +124,30 @@ rte_strlcat(char *dst, const char *src, size_t size)
  */
 ssize_t
 rte_strscpy(char *dst, const char *src, size_t dsize);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Search for the first non whitespace character.
+ *
+ * @param src
+ *   The input string to be analysed.
+ *
+ * @return
+ *  The address of the first non whitespace character.
+ */
+__rte_experimental
+static inline const char *
+rte_str_skip_leading_spaces(const char *src)
+{
+	const char *p = src;
+
+	while (isspace(*p))
+		p++;
+
+	return p;
+}
 
 #ifdef __cplusplus
 }

@@ -3,11 +3,13 @@
 
 drivers = [
         'auxiliary',
+        'cdx',
         'dpaa',
         'fslmc',
         'ifpga',
         'pci',
         'platform',
+        'uacce',
         'vdev',
         'vmbus',
 ]

@@ -7,9 +7,14 @@ Intel(R) QuickAssist (QAT) Compression Poll Mode Driver
 The QAT compression PMD provides poll mode compression & decompression driver
 support for the following hardware accelerator devices:
 
+* ``Intel QuickAssist Technology D15xx``
+* ``Intel QuickAssist Technology 200xx``
+* ``Intel QuickAssist Technology C4xxx``
+* ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology C62x``
 * ``Intel QuickAssist Technology C3xxx``
 * ``Intel QuickAssist Technology DH895x``
+* ``Intel QuickAssist Technology 300xx``
 
 
 Features

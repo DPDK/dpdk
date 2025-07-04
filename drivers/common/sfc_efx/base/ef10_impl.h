@@ -753,6 +753,7 @@ extern			void
 ef10_phy_link_ev(
 	__in		efx_nic_t *enp,
 	__in		efx_qword_t *eqp,
+	__in		boolean_t ev_is_v2,
 	__out		efx_link_mode_t *link_modep);
 
 LIBEFX_INTERNAL
@@ -799,6 +800,25 @@ ef10_phy_stats_update(
 	__inout_ecount(EFX_PHY_NSTATS)	uint32_t *stat);
 
 #endif	/* EFSYS_OPT_PHY_STATS */
+
+LIBEFX_INTERNAL
+extern				void
+mcdi_phy_decode_link_mode(
+	__in			efx_nic_t *enp,
+	__in			boolean_t fd,
+	__in			boolean_t up,
+	__in			unsigned int speed,
+	__in			unsigned int fcntl,
+	__in			uint32_t fec,
+	__out			efx_link_mode_t *link_modep,
+	__out			unsigned int *fcntlp,
+	__out			efx_phy_fec_type_t *fecp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_mcdi_phy_set_led(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_led_mode_t phy_led_mode);
 
 #if EFSYS_OPT_BIST
 
@@ -1345,6 +1365,12 @@ ef10_filter_reconfigure(
 	__in				boolean_t brdcst,
 	__in_ecount(6*count)		uint8_t const *addrs,
 	__in				uint32_t count);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+ef10_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp);
 
 LIBEFX_INTERNAL
 extern		void

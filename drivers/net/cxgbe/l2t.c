@@ -14,8 +14,8 @@
  */
 void cxgbe_l2t_release(struct l2t_entry *e)
 {
-	if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) != 0)
-		__atomic_sub_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
+	if (rte_atomic_load_explicit(&e->refcnt, rte_memory_order_relaxed) != 0)
+		rte_atomic_fetch_sub_explicit(&e->refcnt, 1, rte_memory_order_relaxed);
 }
 
 /**
@@ -112,7 +112,7 @@ static struct l2t_entry *find_or_alloc_l2e(struct l2t_data *d, u16 vlan,
 	struct l2t_entry *first_free = NULL;
 
 	for (e = &d->l2tab[0], end = &d->l2tab[d->l2t_size]; e != end; ++e) {
-		if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) == 0) {
+		if (rte_atomic_load_explicit(&e->refcnt, rte_memory_order_relaxed) == 0) {
 			if (!first_free)
 				first_free = e;
 		} else {
@@ -151,18 +151,18 @@ static struct l2t_entry *t4_l2t_alloc_switching(struct rte_eth_dev *dev,
 	e = find_or_alloc_l2e(d, vlan, port, eth_addr);
 	if (e) {
 		t4_os_lock(&e->lock);
-		if (__atomic_load_n(&e->refcnt, __ATOMIC_RELAXED) == 0) {
+		if (rte_atomic_load_explicit(&e->refcnt, rte_memory_order_relaxed) == 0) {
 			e->state = L2T_STATE_SWITCHING;
 			e->vlan = vlan;
 			e->lport = port;
 			rte_memcpy(e->dmac, eth_addr, RTE_ETHER_ADDR_LEN);
-			__atomic_store_n(&e->refcnt, 1, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&e->refcnt, 1, rte_memory_order_relaxed);
 			ret = write_l2e(dev, e, 0, !L2T_LPBK, !L2T_ARPMISS);
 			if (ret < 0)
 				dev_debug(adap, "Failed to write L2T entry: %d",
 					  ret);
 		} else {
-			__atomic_add_fetch(&e->refcnt, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&e->refcnt, 1, rte_memory_order_relaxed);
 		}
 		t4_os_unlock(&e->lock);
 	}

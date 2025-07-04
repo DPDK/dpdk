@@ -3,37 +3,35 @@
  * All rights reserved.
  */
 
+#include "nfp_flower_cmsg.h"
+
 #include "../nfpcore/nfp_nsp.h"
 #include "../nfp_logs.h"
-#include "../nfp_common.h"
-#include "nfp_flower.h"
-#include "nfp_flower_cmsg.h"
+#include "../nfp_net_meta.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
 
+static char*
+nfp_flower_cmsg_get_data(struct rte_mbuf *m)
+{
+	return rte_pktmbuf_mtod_offset(m, char *, NFP_NET_META_HEADER_SIZE +
+			NFP_NET_META_FIELD_SIZE + NFP_FLOWER_CMSG_HLEN);
+}
+
 static void *
-nfp_flower_cmsg_init(struct rte_mbuf *m,
+nfp_flower_cmsg_init(struct nfp_app_fw_flower *app_fw_flower,
+		struct rte_mbuf *m,
 		enum nfp_flower_cmsg_type type,
 		uint32_t size)
 {
 	char *pkt;
-	uint32_t data;
 	uint32_t new_size = size;
 	struct nfp_flower_cmsg_hdr *hdr;
 
 	pkt = rte_pktmbuf_mtod(m, char *);
-	PMD_DRV_LOG(DEBUG, "flower_cmsg_init using pkt at %p", pkt);
+	PMD_DRV_LOG(DEBUG, "The flower_cmsg_init using pkt at %p.", pkt);
 
-	data = rte_cpu_to_be_32(NFP_NET_META_PORTID);
-	rte_memcpy(pkt, &data, 4);
-	pkt += 4;
-	new_size += 4;
-
-	/* First the metadata as flower requires it */
-	data = rte_cpu_to_be_32(NFP_META_PORT_ID_CTRL);
-	rte_memcpy(pkt, &data, 4);
-	pkt += 4;
-	new_size += 4;
+	new_size += nfp_flower_pkt_add_metadata(app_fw_flower, m, NFP_NET_META_PORT_ID_CTRL);
 
 	/* Now the ctrl header */
 	hdr = (struct nfp_flower_cmsg_hdr *)pkt;
@@ -51,24 +49,27 @@ nfp_flower_cmsg_init(struct rte_mbuf *m,
 }
 
 static void
-nfp_flower_cmsg_mac_repr_init(struct rte_mbuf *mbuf, int num_ports)
+nfp_flower_cmsg_mac_repr_init(struct rte_mbuf *mbuf,
+		struct nfp_app_fw_flower *app_fw_flower)
 {
 	uint32_t size;
+	uint8_t num_ports;
 	struct nfp_flower_cmsg_mac_repr *msg;
 	enum nfp_flower_cmsg_type type = NFP_FLOWER_CMSG_TYPE_MAC_REPR;
 
+	num_ports = app_fw_flower->num_phyport_reprs;
 	size = sizeof(*msg) + (num_ports * sizeof(msg->ports[0]));
-	msg = nfp_flower_cmsg_init(mbuf, type, size);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf, type, size);
 	memset(msg->reserved, 0, sizeof(msg->reserved));
 	msg->num_ports = num_ports;
 }
 
 static void
 nfp_flower_cmsg_mac_repr_fill(struct rte_mbuf *m,
-		unsigned int idx,
-		unsigned int nbi,
-		unsigned int nbi_port,
-		unsigned int phys_port)
+		uint8_t idx,
+		uint32_t nbi,
+		uint32_t nbi_port,
+		uint32_t phys_port)
 {
 	struct nfp_flower_cmsg_mac_repr *msg;
 
@@ -80,30 +81,31 @@ nfp_flower_cmsg_mac_repr_fill(struct rte_mbuf *m,
 }
 
 int
-nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_pf_dev *pf_dev)
 {
-	int i;
+	uint8_t i;
+	uint8_t id;
 	uint16_t cnt;
-	unsigned int nbi;
-	unsigned int nbi_port;
-	unsigned int phys_port;
+	uint32_t nbi;
+	uint32_t nbi_port;
+	uint32_t phys_port;
 	struct rte_mbuf *mbuf;
-	struct nfp_eth_table *nfp_eth_table;
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(ERR, "Could not allocate mac repr cmsg");
+		PMD_DRV_LOG(ERR, "Could not allocate mac repr cmsg.");
 		return -ENOMEM;
 	}
 
-	nfp_flower_cmsg_mac_repr_init(mbuf, app_fw_flower->num_phyport_reprs);
+	nfp_flower_cmsg_mac_repr_init(mbuf, app_fw_flower);
 
 	/* Fill in the mac repr cmsg */
-	nfp_eth_table = app_fw_flower->pf_hw->pf_dev->nfp_eth_table;
 	for (i = 0; i < app_fw_flower->num_phyport_reprs; i++) {
-		nbi = nfp_eth_table->ports[i].nbi;
-		nbi_port = nfp_eth_table->ports[i].base;
-		phys_port = nfp_eth_table->ports[i].index;
+		id = nfp_function_id_get(pf_dev, i);
+		nbi = pf_dev->nfp_eth_table->ports[id].nbi;
+		nbi_port =  pf_dev->nfp_eth_table->ports[id].base;
+		phys_port =  pf_dev->nfp_eth_table->ports[id].index;
 
 		nfp_flower_cmsg_mac_repr_fill(mbuf, i, nbi, nbi_port, phys_port);
 	}
@@ -129,11 +131,12 @@ nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "alloc mbuf for repr reify failed");
+		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr reify failed.");
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PORT_REIFY, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_PORT_REIFY, sizeof(*msg));
 	msg->portnum  = rte_cpu_to_be_32(repr->port_id);
 	msg->reserved = 0;
 	msg->info     = rte_cpu_to_be_16(1);
@@ -158,11 +161,12 @@ nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "alloc mbuf for repr portmod failed");
+		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr portmod failed.");
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PORT_MOD, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_PORT_MOD, sizeof(*msg));
 	msg->portnum  = rte_cpu_to_be_32(port_id);
 	msg->reserved = 0;
 	msg->info     = carrier_ok;
@@ -199,7 +203,8 @@ nfp_flower_cmsg_flow_delete(struct nfp_app_fw_flower *app_fw_flower,
 	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
 			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;
 	msg_len += sizeof(struct nfp_fl_rule_metadata);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_FLOW_DEL, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_FLOW_DEL, msg_len);
 	rte_memcpy(msg, flow->payload.meta, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -228,12 +233,13 @@ nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
 		return -ENOMEM;
 	}
 
-	/* copy the flow to mbuf */
+	/* Copy the flow to mbuf */
 	nfp_flow_meta = flow->payload.meta;
 	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
 			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;
 	msg_len += sizeof(struct nfp_fl_rule_metadata);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_FLOW_ADD, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_FLOW_ADD, msg_len);
 	rte_memcpy(msg, flow->payload.meta, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -257,14 +263,15 @@ nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun neigh");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun neigh.");
 		return -ENOMEM;
 	}
 
 	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v4);
 	if (!nfp_flower_support_decap_v2(app_fw_flower))
 		msg_len -= sizeof(struct nfp_flower_tun_neigh_ext);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_NEIGH, msg_len);
 	memcpy(msg, payload, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -288,14 +295,15 @@ nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun neigh");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun neigh.");
 		return -ENOMEM;
 	}
 
 	msg_len = sizeof(struct nfp_flower_cmsg_tun_neigh_v6);
 	if (!nfp_flower_support_decap_v2(app_fw_flower))
 		msg_len -= sizeof(struct nfp_flower_tun_neigh_ext);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6, msg_len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_NEIGH_V6, msg_len);
 	memcpy(msg, payload, msg_len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -320,11 +328,12 @@ nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower)
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun addr");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun addr.");
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_IPS, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_IPS, sizeof(*msg));
 
 	priv = app_fw_flower->flow_priv;
 	rte_spinlock_lock(&priv->ipv4_off_lock);
@@ -362,11 +371,12 @@ nfp_flower_cmsg_tun_off_v6(struct nfp_app_fw_flower *app_fw_flower)
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun addr");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun addr.");
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_IPS_V6, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_IPS_V6, sizeof(*msg));
 
 	priv = app_fw_flower->flow_priv;
 	rte_spinlock_lock(&priv->ipv6_off_lock);
@@ -405,11 +415,12 @@ nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for pre tunnel rule");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for pre tunnel rule.");
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_PRE_TUN_RULE, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_PRE_TUN_RULE, sizeof(*msg));
 
 	meta_tci = (struct nfp_flower_meta_tci *)((char *)nfp_flow_meta +
 			sizeof(struct nfp_fl_rule_metadata));
@@ -446,11 +457,12 @@ nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for tunnel mac");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for tunnel mac.");
 		return -ENOMEM;
 	}
 
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_TUN_MAC, sizeof(*msg));
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_TUN_MAC, sizeof(*msg));
 
 	msg->count = rte_cpu_to_be_16(1);
 	msg->index = rte_cpu_to_be_16(mac_idx);
@@ -479,12 +491,13 @@ nfp_flower_cmsg_qos_add(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos add");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos add.");
 		return -ENOMEM;
 	}
 
 	len = sizeof(struct nfp_profile_conf);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_MOD, len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_QOS_MOD, len);
 	rte_memcpy(msg, conf, len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -508,12 +521,13 @@ nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos delete");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos delete.");
 		return -ENOMEM;
 	}
 
 	len = sizeof(struct nfp_profile_conf);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_DEL, len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_QOS_DEL, len);
 	rte_memcpy(msg, conf, len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);
@@ -537,12 +551,13 @@ nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos stats");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos stats.");
 		return -ENOMEM;
 	}
 
 	len = sizeof(struct nfp_cfg_head);
-	msg = nfp_flower_cmsg_init(mbuf, NFP_FLOWER_CMSG_TYPE_QOS_STATS, len);
+	msg = nfp_flower_cmsg_init(app_fw_flower, mbuf,
+			NFP_FLOWER_CMSG_TYPE_QOS_STATS, len);
 	rte_memcpy(msg, head, len);
 
 	cnt = nfp_flower_ctrl_vnic_xmit(app_fw_flower, mbuf);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017 NXP
+ *   Copyright 2017, 2020, 2023 NXP
  *
  */
 
@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
@@ -30,17 +31,30 @@ TAILQ_HEAD(dpci_dev_list, dpaa2_dpci_dev);
 static struct dpci_dev_list dpci_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpci_dev_list); /*!< DPCI device list */
 
+static struct dpaa2_dpci_dev *get_dpci_from_id(uint32_t dpci_id)
+{
+	struct dpaa2_dpci_dev *dpci_dev = NULL;
+
+	/* Get DPCI dev handle from list using index */
+	TAILQ_FOREACH(dpci_dev, &dpci_dev_list, next) {
+		if (dpci_dev->dpci_id == dpci_id)
+			break;
+	}
+
+	return dpci_dev;
+}
+
 static int
 rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
-			     struct vfio_device_info *obj_info __rte_unused,
-			     int dpci_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpci_dev *dpci_node;
 	struct dpci_attr attr;
 	struct dpci_rx_queue_cfg rx_queue_cfg;
 	struct dpci_rx_queue_attr rx_attr;
 	struct dpci_tx_queue_attr tx_attr;
-	int ret, i;
+	int ret, i, dpci_id = obj->object_id;
 
 	/* Allocate DPAA2 dpci handle */
 	dpci_node = rte_malloc(NULL, sizeof(struct dpaa2_dpci_dev), 0);
@@ -81,22 +95,10 @@ rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 		}
 
 		/* Allocate DQ storage for the DPCI Rx queues */
-		rxq = &(dpci_node->rx_queue[i]);
-		rxq->q_storage = rte_malloc("dq_storage",
-					sizeof(struct queue_storage_info_t),
-					RTE_CACHE_LINE_SIZE);
-		if (!rxq->q_storage) {
-			DPAA2_BUS_ERR("q_storage allocation failed\n");
-			ret = -ENOMEM;
+		rxq = &dpci_node->rx_queue[i];
+		ret = dpaa2_queue_storage_alloc(rxq, 1);
+		if (ret)
 			goto err;
-		}
-
-		memset(rxq->q_storage, 0, sizeof(struct queue_storage_info_t));
-		ret = dpaa2_alloc_dq_storage(rxq->q_storage);
-		if (ret) {
-			DPAA2_BUS_ERR("dpaa2_alloc_dq_storage failed\n");
-			goto err;
-		}
 	}
 
 	/* Enable the device */
@@ -141,18 +143,16 @@ rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 
 err:
 	for (i = 0; i < DPAA2_DPCI_MAX_QUEUES; i++) {
-		struct dpaa2_queue *rxq = &(dpci_node->rx_queue[i]);
+		struct dpaa2_queue *rxq = &dpci_node->rx_queue[i];
 
-		if (rxq->q_storage) {
-			dpaa2_free_dq_storage(rxq->q_storage);
-			rte_free(rxq->q_storage);
-		}
+		dpaa2_queue_storage_free(rxq, 1);
 	}
 	rte_free(dpci_node);
 
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_alloc_dpci_dev)
 struct dpaa2_dpci_dev *rte_dpaa2_alloc_dpci_dev(void)
 {
 	struct dpaa2_dpci_dev *dpci_dev = NULL;
@@ -166,6 +166,7 @@ struct dpaa2_dpci_dev *rte_dpaa2_alloc_dpci_dev(void)
 	return dpci_dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_free_dpci_dev)
 void rte_dpaa2_free_dpci_dev(struct dpaa2_dpci_dev *dpci)
 {
 	struct dpaa2_dpci_dev *dpci_dev = NULL;
@@ -179,9 +180,26 @@ void rte_dpaa2_free_dpci_dev(struct dpaa2_dpci_dev *dpci)
 	}
 }
 
+
+static void
+rte_dpaa2_close_dpci_device(int object_id)
+{
+	struct dpaa2_dpci_dev *dpci_dev = NULL;
+
+	dpci_dev = get_dpci_from_id((uint32_t)object_id);
+
+	if (dpci_dev) {
+		rte_dpaa2_free_dpci_dev(dpci_dev);
+		dpci_close(&dpci_dev->dpci, CMD_PRI_LOW, dpci_dev->token);
+		TAILQ_REMOVE(&dpci_dev_list, dpci_dev, next);
+		rte_free(dpci_dev);
+	}
+}
+
 static struct rte_dpaa2_object rte_dpaa2_dpci_obj = {
 	.dev_type = DPAA2_CI,
 	.create = rte_dpaa2_create_dpci_device,
+	.close = rte_dpaa2_close_dpci_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpci, rte_dpaa2_dpci_obj);

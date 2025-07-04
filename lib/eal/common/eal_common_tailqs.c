@@ -11,6 +11,7 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
@@ -22,6 +23,7 @@ static struct rte_tailq_elem_head rte_tailq_elem_head =
 /* number of tailqs registered, -1 before call to rte_eal_tailqs_init */
 static int rte_tailqs_count = -1;
 
+RTE_EXPORT_SYMBOL(rte_eal_tailq_lookup)
 struct rte_tailq_head *
 rte_eal_tailq_lookup(const char *name)
 {
@@ -40,6 +42,7 @@ rte_eal_tailq_lookup(const char *name)
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_dump_tailq)
 void
 rte_dump_tailq(FILE *f)
 {
@@ -105,12 +108,13 @@ rte_eal_tailq_update(struct rte_tailq_elem *t)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_tailq_register)
 int
 rte_eal_tailq_register(struct rte_tailq_elem *t)
 {
 	if (rte_eal_tailq_local_register(t) < 0) {
-		RTE_LOG(ERR, EAL,
-			"%s tailq is already registered\n", t->name);
+		EAL_LOG(ERR,
+			"%s tailq is already registered", t->name);
 		goto error;
 	}
 
@@ -119,8 +123,8 @@ rte_eal_tailq_register(struct rte_tailq_elem *t)
 	if (rte_tailqs_count >= 0) {
 		rte_eal_tailq_update(t);
 		if (t->head == NULL) {
-			RTE_LOG(ERR, EAL,
-				"Cannot initialize tailq: %s\n", t->name);
+			EAL_LOG(ERR,
+				"Cannot initialize tailq: %s", t->name);
 			TAILQ_REMOVE(&rte_tailq_elem_head, t, next);
 			goto error;
 		}
@@ -145,8 +149,8 @@ rte_eal_tailqs_init(void)
 		 * rte_eal_tailq_register and EAL_REGISTER_TAILQ */
 		rte_eal_tailq_update(t);
 		if (t->head == NULL) {
-			RTE_LOG(ERR, EAL,
-				"Cannot initialize tailq: %s\n", t->name);
+			EAL_LOG(ERR,
+				"Cannot initialize tailq: %s", t->name);
 			/* TAILQ_REMOVE not needed, error is already fatal */
 			goto fail;
 		}

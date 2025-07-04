@@ -32,12 +32,17 @@ The user can specify below arguments in `--vdev` option.
 
 #.  ``iface``:
 
-    It is used to specify a path to connect to a QEMU virtio-net device.
+    It is used to specify a path to connect to a Vhost-user frontend or VDUSE device.
 
 #.  ``queues``:
 
-    It is used to specify the number of queues virtio-net device has.
+    It is used to specify the number of queue pairs virtio-net device has.
     (Default: 1)
+
+#.  ``client``:
+
+    It is used to specify whether the Vhost PMD acts as client or server.
+    (Default: 0 (server))
 
 #.  ``iommu-support``:
 

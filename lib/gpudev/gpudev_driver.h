@@ -69,10 +69,10 @@ struct rte_gpu_mpshared {
 	/* Device info structure. */
 	struct rte_gpu_info info;
 	/* Counter of processes using the device. */
-	uint16_t process_refcnt; /* Updated by this library. */
+	RTE_ATOMIC(uint16_t) process_refcnt; /* Updated by this library. */
 };
 
-struct rte_gpu {
+struct __rte_cache_aligned rte_gpu {
 	/* Backing device. */
 	struct rte_device *device;
 	/* Data shared between processes. */
@@ -85,7 +85,7 @@ struct rte_gpu {
 	enum rte_gpu_state process_state; /* Updated by this library. */
 	/* Driver-specific private data for the running process. */
 	void *process_private;
-} __rte_cache_aligned;
+};
 
 __rte_internal
 struct rte_gpu *rte_gpu_get_by_name(const char *name);

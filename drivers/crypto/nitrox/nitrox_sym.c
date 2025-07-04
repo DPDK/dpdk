@@ -79,7 +79,7 @@ nitrox_sym_dev_config(struct rte_cryptodev *cdev,
 	struct nitrox_device *ndev = sym_dev->ndev;
 
 	if (config->nb_queue_pairs > ndev->nr_queues) {
-		NITROX_LOG(ERR, "Invalid queue pairs, max supported %d\n",
+		NITROX_LOG_LINE(ERR, "Invalid queue pairs, max supported %d",
 			   ndev->nr_queues);
 		return -EINVAL;
 	}
@@ -177,9 +177,9 @@ nitrox_sym_dev_qp_setup(struct rte_cryptodev *cdev, uint16_t qp_id,
 	struct nitrox_qp *qp = NULL;
 	int err;
 
-	NITROX_LOG(DEBUG, "queue %d\n", qp_id);
+	NITROX_LOG_LINE(DEBUG, "queue %d", qp_id);
 	if (qp_id >= ndev->nr_queues) {
-		NITROX_LOG(ERR, "queue %u invalid, max queues supported %d\n",
+		NITROX_LOG_LINE(ERR, "queue %u invalid, max queues supported %d",
 			   qp_id, ndev->nr_queues);
 		return -EINVAL;
 	}
@@ -194,10 +194,11 @@ nitrox_sym_dev_qp_setup(struct rte_cryptodev *cdev, uint16_t qp_id,
 				RTE_CACHE_LINE_SIZE,
 				socket_id);
 	if (!qp) {
-		NITROX_LOG(ERR, "Failed to allocate nitrox qp\n");
+		NITROX_LOG_LINE(ERR, "Failed to allocate nitrox qp");
 		return -ENOMEM;
 	}
 
+	qp->type = NITROX_QUEUE_SE;
 	qp->qno = qp_id;
 	err = nitrox_qp_setup(qp, ndev->bar_addr, cdev->data->name,
 			      qp_conf->nb_descriptors, NPS_PKT_IN_INSTR_SIZE,
@@ -211,7 +212,7 @@ nitrox_sym_dev_qp_setup(struct rte_cryptodev *cdev, uint16_t qp_id,
 		goto req_pool_err;
 
 	cdev->data->queue_pairs[qp_id] = qp;
-	NITROX_LOG(DEBUG, "queue %d setup done\n", qp_id);
+	NITROX_LOG_LINE(DEBUG, "queue %d setup done", qp_id);
 	return 0;
 
 req_pool_err:
@@ -229,21 +230,21 @@ nitrox_sym_dev_qp_release(struct rte_cryptodev *cdev, uint16_t qp_id)
 	struct nitrox_qp *qp;
 	int err;
 
-	NITROX_LOG(DEBUG, "queue %d\n", qp_id);
+	NITROX_LOG_LINE(DEBUG, "queue %d", qp_id);
 	if (qp_id >= ndev->nr_queues) {
-		NITROX_LOG(ERR, "queue %u invalid, max queues supported %d\n",
+		NITROX_LOG_LINE(ERR, "queue %u invalid, max queues supported %d",
 			   qp_id, ndev->nr_queues);
 		return -EINVAL;
 	}
 
 	qp = cdev->data->queue_pairs[qp_id];
 	if (!qp) {
-		NITROX_LOG(DEBUG, "queue %u already freed\n", qp_id);
+		NITROX_LOG_LINE(DEBUG, "queue %u already freed", qp_id);
 		return 0;
 	}
 
 	if (!nitrox_qp_is_empty(qp)) {
-		NITROX_LOG(ERR, "queue %d not empty\n", qp_id);
+		NITROX_LOG_LINE(ERR, "queue %d not empty", qp_id);
 		return -EAGAIN;
 	}
 
@@ -251,7 +252,7 @@ nitrox_sym_dev_qp_release(struct rte_cryptodev *cdev, uint16_t qp_id)
 	err = nitrox_qp_release(qp, ndev->bar_addr);
 	nitrox_sym_req_pool_free(qp->sr_mp);
 	rte_free(qp);
-	NITROX_LOG(DEBUG, "queue %d release done\n", qp_id);
+	NITROX_LOG_LINE(DEBUG, "queue %d release done", qp_id);
 	return err;
 }
 
@@ -279,7 +280,7 @@ get_crypto_chain_order(const struct rte_crypto_sym_xform *xform)
 			    RTE_CRYPTO_CIPHER_OP_DECRYPT) {
 				res = NITROX_CHAIN_AUTH_CIPHER;
 			} else {
-				NITROX_LOG(ERR, "auth op %d, cipher op %d\n",
+				NITROX_LOG_LINE(ERR, "auth op %d, cipher op %d",
 				    xform->auth.op, xform->next->cipher.op);
 			}
 		}
@@ -293,7 +294,7 @@ get_crypto_chain_order(const struct rte_crypto_sym_xform *xform)
 			    RTE_CRYPTO_AUTH_OP_GENERATE) {
 				res = NITROX_CHAIN_CIPHER_AUTH;
 			} else {
-				NITROX_LOG(ERR, "cipher op %d, auth op %d\n",
+				NITROX_LOG_LINE(ERR, "cipher op %d, auth op %d",
 				    xform->cipher.op, xform->next->auth.op);
 			}
 		}
@@ -324,7 +325,7 @@ get_flexi_cipher_type(enum rte_crypto_cipher_algorithm algo, bool *is_aes)
 		break;
 	default:
 		type = CIPHER_INVALID;
-		NITROX_LOG(ERR, "Algorithm not supported %d\n", algo);
+		NITROX_LOG_LINE(ERR, "Algorithm not supported %d", algo);
 		break;
 	}
 
@@ -350,7 +351,7 @@ flexi_aes_keylen(size_t keylen, bool is_aes)
 		aes_keylen = 3;
 		break;
 	default:
-		NITROX_LOG(ERR, "Invalid keylen %zu\n", keylen);
+		NITROX_LOG_LINE(ERR, "Invalid keylen %zu", keylen);
 		aes_keylen = -EINVAL;
 		break;
 	}
@@ -363,7 +364,7 @@ crypto_key_is_valid(struct rte_crypto_cipher_xform *xform,
 		    struct flexi_crypto_context *fctx)
 {
 	if (unlikely(xform->key.length > sizeof(fctx->crypto.key))) {
-		NITROX_LOG(ERR, "Invalid crypto key length %d\n",
+		NITROX_LOG_LINE(ERR, "Invalid crypto key length %d",
 			   xform->key.length);
 		return false;
 	}
@@ -426,7 +427,7 @@ get_flexi_auth_type(enum rte_crypto_auth_algorithm algo)
 		type = AUTH_SHA2_SHA256;
 		break;
 	default:
-		NITROX_LOG(ERR, "Algorithm not supported %d\n", algo);
+		NITROX_LOG_LINE(ERR, "Algorithm not supported %d", algo);
 		type = AUTH_INVALID;
 		break;
 	}
@@ -439,12 +440,12 @@ auth_key_is_valid(const uint8_t *data, uint16_t length,
 		  struct flexi_crypto_context *fctx)
 {
 	if (unlikely(!data && length)) {
-		NITROX_LOG(ERR, "Invalid auth key\n");
+		NITROX_LOG_LINE(ERR, "Invalid auth key");
 		return false;
 	}
 
 	if (unlikely(length > sizeof(fctx->auth.opad))) {
-		NITROX_LOG(ERR, "Invalid auth key length %d\n",
+		NITROX_LOG_LINE(ERR, "Invalid auth key length %d",
 			   length);
 		return false;
 	}
@@ -487,12 +488,13 @@ configure_aead_ctx(struct rte_crypto_aead_xform *xform,
 	struct flexi_crypto_context *fctx = &ctx->fctx;
 
 	if (unlikely(xform->aad_length > FLEXI_CRYPTO_MAX_AAD_LEN)) {
-		NITROX_LOG(ERR, "AAD length %d not supported\n",
+		NITROX_LOG_LINE(ERR, "AAD length %d not supported",
 			   xform->aad_length);
 		return -ENOTSUP;
 	}
 
-	if (unlikely(xform->algo != RTE_CRYPTO_AEAD_AES_GCM))
+	if (unlikely(xform->algo != RTE_CRYPTO_AEAD_AES_GCM &&
+		     xform->algo != RTE_CRYPTO_AEAD_AES_CCM))
 		return -ENOTSUP;
 
 	aes_keylen = flexi_aes_keylen(xform->key.length, true);
@@ -506,8 +508,29 @@ configure_aead_ctx(struct rte_crypto_aead_xform *xform,
 	if (unlikely(xform->iv.length > MAX_IV_LEN))
 		return -EINVAL;
 
+	if (xform->algo == RTE_CRYPTO_AEAD_AES_CCM) {
+		int L;
+
+		/* digest_length must be 4, 6, 8, 10, 12, 14, 16 bytes */
+		if (unlikely(xform->digest_length < 4 ||
+			     xform->digest_length > 16 ||
+			     (xform->digest_length & 1) == 1)) {
+			NITROX_LOG_LINE(ERR, "Invalid digest length %d",
+				   xform->digest_length);
+			return -EINVAL;
+		}
+
+		L = 15 - xform->iv.length;
+		if (unlikely(L < 2 || L > 8)) {
+			NITROX_LOG_LINE(ERR, "Invalid iv length %d",
+				   xform->iv.length);
+			return -EINVAL;
+		}
+	}
+
 	fctx->flags = rte_be_to_cpu_64(fctx->flags);
-	fctx->w0.cipher_type = CIPHER_AES_GCM;
+	fctx->w0.cipher_type = (xform->algo == RTE_CRYPTO_AEAD_AES_GCM) ?
+				CIPHER_AES_GCM : CIPHER_AES_CCM;
 	fctx->w0.aes_keylen = aes_keylen;
 	fctx->w0.iv_source = IV_FROM_DPTR;
 	fctx->w0.hash_type = AUTH_NULL;
@@ -526,6 +549,7 @@ configure_aead_ctx(struct rte_crypto_aead_xform *xform,
 	ctx->iv.length = xform->iv.length;
 	ctx->digest_length = xform->digest_length;
 	ctx->aad_length = xform->aad_length;
+	ctx->aead_algo = xform->algo;
 	return 0;
 }
 
@@ -557,23 +581,23 @@ nitrox_sym_dev_sess_configure(struct rte_cryptodev *cdev __rte_unused,
 		aead_xform = &xform->aead;
 		break;
 	default:
-		NITROX_LOG(ERR, "Crypto chain not supported\n");
+		NITROX_LOG_LINE(ERR, "Crypto chain not supported");
 		ret = -ENOTSUP;
 		goto err;
 	}
 
 	if (cipher_xform && unlikely(configure_cipher_ctx(cipher_xform, ctx))) {
-		NITROX_LOG(ERR, "Failed to configure cipher ctx\n");
+		NITROX_LOG_LINE(ERR, "Failed to configure cipher ctx");
 		goto err;
 	}
 
 	if (auth_xform && unlikely(configure_auth_ctx(auth_xform, ctx))) {
-		NITROX_LOG(ERR, "Failed to configure auth ctx\n");
+		NITROX_LOG_LINE(ERR, "Failed to configure auth ctx");
 		goto err;
 	}
 
 	if (aead_xform && unlikely(configure_aead_ctx(aead_xform, ctx))) {
-		NITROX_LOG(ERR, "Failed to configure aead ctx\n");
+		NITROX_LOG_LINE(ERR, "Failed to configure aead ctx");
 		goto err;
 	}
 
@@ -739,7 +763,7 @@ nitrox_sym_pmd_create(struct nitrox_device *ndev)
 	cdev = rte_cryptodev_pmd_create(name, &ndev->rte_sym_dev,
 					&init_params);
 	if (!cdev) {
-		NITROX_LOG(ERR, "Cryptodev '%s' creation failed\n", name);
+		NITROX_LOG_LINE(ERR, "Cryptodev '%s' creation failed", name);
 		return -ENODEV;
 	}
 
@@ -763,7 +787,7 @@ nitrox_sym_pmd_create(struct nitrox_device *ndev)
 
 	rte_cryptodev_pmd_probing_finish(cdev);
 
-	NITROX_LOG(DEBUG, "Created cryptodev '%s', dev_id %d, drv_id %d\n",
+	NITROX_LOG_LINE(DEBUG, "Created cryptodev '%s', dev_id %d, drv_id %d",
 		   cdev->data->name, cdev->data->dev_id, nitrox_sym_drv_id);
 	return 0;
 }
@@ -773,6 +797,12 @@ nitrox_sym_pmd_destroy(struct nitrox_device *ndev)
 {
 	return rte_cryptodev_pmd_destroy(ndev->sym_dev->cdev);
 }
+
+static struct nitrox_driver sym_drv = {
+	.create = nitrox_sym_pmd_create,
+	.destroy = nitrox_sym_pmd_destroy,
+};
+NITROX_REGISTER_DRIVER(sym_drv);
 
 static struct cryptodev_driver nitrox_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(nitrox_crypto_drv,

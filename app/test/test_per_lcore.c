@@ -59,10 +59,21 @@ display_vars(__rte_unused void *arg)
 }
 
 static int
-test_per_lcore_delay(__rte_unused void *arg)
+test_per_lcore_delay(void *arg)
 {
+	RTE_ATOMIC(bool) *wait;
+
 	rte_delay_ms(100);
 	printf("wait 100ms on lcore %u\n", rte_lcore_id());
+
+	if (arg == NULL)
+		return 0;
+
+	wait = arg;
+	while (rte_atomic_load_explicit(wait, rte_memory_order_relaxed)) {
+		rte_delay_ms(100);
+		printf("wait 100ms on lcore %u\n", rte_lcore_id());
+	}
 
 	return 0;
 }
@@ -70,6 +81,7 @@ test_per_lcore_delay(__rte_unused void *arg)
 static int
 test_per_lcore(void)
 {
+	RTE_ATOMIC(bool) wait = true;
 	unsigned lcore_id;
 	int ret;
 
@@ -86,7 +98,7 @@ test_per_lcore(void)
 	}
 
 	/* test if it could do remote launch twice at the same time or not */
-	ret = rte_eal_mp_remote_launch(test_per_lcore_delay, NULL, SKIP_MAIN);
+	ret = rte_eal_mp_remote_launch(test_per_lcore_delay, RTE_PTR_UNQUAL(&wait), SKIP_MAIN);
 	if (ret < 0) {
 		printf("It fails to do remote launch but it should able to do\n");
 		return -1;
@@ -97,6 +109,7 @@ test_per_lcore(void)
 		printf("It does remote launch successfully but it should not at this time\n");
 		return -1;
 	}
+	rte_atomic_store_explicit(&wait, false, rte_memory_order_relaxed);
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
@@ -105,4 +118,4 @@ test_per_lcore(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(per_lcore_autotest, test_per_lcore);
+REGISTER_FAST_TEST(per_lcore_autotest, true, true, test_per_lcore);

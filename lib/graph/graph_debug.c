@@ -5,6 +5,8 @@
 
 #include "graph_private.h"
 
+#include <eal_export.h>
+
 void
 graph_dump(FILE *f, struct graph *g)
 {
@@ -35,12 +37,22 @@ node_dump(FILE *f, struct node *n)
 	fprintf(f, "  flags=0x%" PRIx64 "\n", n->flags);
 	fprintf(f, "  addr=%p\n", n);
 	fprintf(f, "  process=%p\n", n->process);
+	if (n->parent_id == RTE_NODE_ID_INVALID)
+		fprintf(f, "  parent_id=RTE_NODE_ID_INVALID\n");
+	else
+		fprintf(f, "  parent_id=%" PRIu32 "\n", n->parent_id);
+	fprintf(f, "  init=%p\n", n->init);
+	fprintf(f, "  fini=%p\n", n->fini);
+	fprintf(f, "  xstats=%p\n", n->xstats);
+	fprintf(f, "  next node addr=%p\n", STAILQ_NEXT(n, next));
+	if (STAILQ_NEXT(n, next))
+		fprintf(f, "  next node name=%s\n", STAILQ_NEXT(n, next)->name);
 	fprintf(f, "  nb_edges=%d\n", n->nb_edges);
-
 	for (i = 0; i < n->nb_edges; i++)
 		fprintf(f, "     edge[%d] <%s>\n", i, n->next_nodes[i]);
 }
 
+RTE_EXPORT_SYMBOL(rte_graph_obj_dump)
 void
 rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 {
@@ -74,6 +86,12 @@ rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 		fprintf(f, "       size=%d\n", n->size);
 		fprintf(f, "       idx=%d\n", n->idx);
 		fprintf(f, "       total_objs=%" PRId64 "\n", n->total_objs);
+		if (rte_graph_worker_model_get(g) == RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+			fprintf(f, "       total_sched_objs=%" PRId64 "\n",
+				n->dispatch.total_sched_objs);
+			fprintf(f, "       total_sched_fail=%" PRId64 "\n",
+				n->dispatch.total_sched_fail);
+		}
 		fprintf(f, "       total_calls=%" PRId64 "\n", n->total_calls);
 		for (i = 0; i < n->nb_edges; i++)
 			fprintf(f, "          edge[%d] <%s>\n", i,

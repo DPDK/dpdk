@@ -90,7 +90,7 @@ Test steps
       meson setup build (--reconfigure)
       cd build
       ninja
-      sudo ninja install
+      sudo meson install
 
 #. Prepare hugepages for DPDK (see also :doc:`../tools/hugepages`)
 
@@ -110,3 +110,32 @@ Test steps
       sudo dpdk-test --vdev=crypto_uadk --log-level=6
       RTE>>cryptodev_uadk_autotest
       RTE>>quit
+
+
+Initialization
+--------------
+
+To use the PMD in an application, the user must:
+
+* Call ``rte_vdev_init("crypto_uadk")`` within the application.
+
+* Use ``--vdev="crypto_uadk"`` in the EAL options,
+  which will call rte_vdev_init() internally.
+
+The following parameters (all optional) can be provided in the previous two calls:
+
+``max_nb_queue_pairs``
+  Specify the maximum number of queue pairs in the device (8 by default).
+  The maximum value can be queried from the device property ``available_instances``.
+  Property ``available_instances`` value may differ from the devices and platforms.
+  Allocating queue pairs bigger than ``available_instances`` will fail.
+
+Example:
+
+.. code-block:: console
+
+	cat /sys/class/uacce/hisi_sec2-2/available_instances
+	256
+
+	sudo dpdk-test-crypto-perf -l 0-10 --vdev crypto_uadk,max_nb_queue_pairs=10 \
+		-- --devtype crypto_uadk --optype cipher-only --buffer-sz 8192

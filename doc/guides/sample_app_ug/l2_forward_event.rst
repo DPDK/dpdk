@@ -1,32 +1,31 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _l2_fwd_event_app:
-
 L2 Forwarding Eventdev Sample Application
 =========================================
 
-The L2 Forwarding eventdev sample application is a simple example of packet
-processing using the Data Plane Development Kit (DPDK) to demonstrate usage of
-poll and event mode packet I/O mechanism.
+The L2 Forwarding eventdev sample application is an example of
+packet processing using the Data Plane Development Kit (DPDK)
+to demonstrate the usage of the poll and event mode packet I/O mechanism.
 
 Overview
 --------
 
-The L2 Forwarding eventdev sample application, performs L2 forwarding for each
-packet that is received on an RX_PORT. The destination port is the adjacent port
-from the enabled portmask, that is, if the first four ports are enabled (portmask=0x0f),
-ports 1 and 2 forward into each other, and ports 3 and 4 forward into each other.
-Also, if MAC addresses updating is enabled, the MAC addresses are affected as follows:
+The L2 forwarding eventdev sample application performs
+L2 forwarding for each packet that is received on an Rx port.
+The destination port is the adjacent port from the enabled portmask.
+If the first four ports are enabled (portmask=0x0f),
+ports 1 and 2 forward into each other,
+and ports 3 and 4 forward into each other.
+Also, if MAC address updating is enabled,
+the MAC addresses are affected as follows:
 
-*   The source MAC address is replaced by the TX_PORT MAC address
+*   The source MAC address is replaced by the Tx port MAC address
+*   The destination MAC address is replaced by 02:00:00:00:00:<Tx port>
 
-*   The destination MAC address is replaced by  02:00:00:00:00:TX_PORT_ID
-
-Application receives packets from RX_PORT using below mentioned methods:
+Application receives packets from Rx port using these methods:
 
 *   Poll mode
-
 *   Eventdev mode (default)
 
 This application can be used to benchmark performance using a traffic-generator,
@@ -41,7 +40,7 @@ as shown in the :numref:`figure_l2fwd_event_benchmark_setup`.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l2fwd-event`` sub-directory.
 
@@ -63,7 +62,7 @@ where,
 
 *   p PORTMASK: A hexadecimal bitmask of the ports to configure
 
-*   q NQ: A number of queues (=ports) per lcore (default is 1)
+*   q NQ: Maximum number of queues per lcore (default is 1)
 
 *   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default).
 
@@ -79,7 +78,7 @@ where,
 
 *   --event-vector-tmo: Max timeout to form vector in nanoseconds if event vectorization is enabled.
 
-Sample usage commands are given below to run the application into different mode:
+Sample usage commands are given below to run the application into different modes:
 
 Poll mode with 4 lcores, 16 ports and 8 RX queues per lcore and MAC address updating enabled,
 issue the command:
@@ -88,7 +87,7 @@ issue the command:
 
     ./<build_dir>/examples/dpdk-l2fwd-event -l 0-3 -n 4 -- -q 8 -p ffff --mode=poll
 
-Eventdev mode with 4 lcores, 16 ports , sched method ordered and MAC address updating enabled,
+Eventdev mode with 4 lcores, 16 ports, schedule method ordered and MAC address updating enabled,
 issue the command:
 
 .. code-block:: console
@@ -102,17 +101,18 @@ or
     ./<build_dir>/examples/dpdk-l2fwd-event -l 0-3 -n 4 -- -q 8 -p ffff --mode=eventdev --eventq-sched=ordered
 
 Refer to the *DPDK Getting Started Guide* for general information on running
-applications and the Environment Abstraction Layer (EAL) options.
+applications and Environment Abstraction Layer (EAL) options.
 
-To run application with S/W scheduler, it uses following DPDK services:
+To run the application with S/W scheduler, it uses following DPDK services:
 
 *   Software scheduler
 *   Rx adapter service function
 *   Tx adapter service function
 
-Application needs service cores to run above mentioned services. Service cores
-must be provided as EAL parameters along with the --vdev=event_sw0 to enable S/W
-scheduler. Following is the sample command:
+The application needs service cores to run the above mentioned services.
+Service cores must be provided as EAL parameters
+along with the ``--vdev=event_sw0`` to enable S/W scheduler.
+The following is the sample command:
 
 .. code-block:: console
 
@@ -121,26 +121,27 @@ scheduler. Following is the sample command:
 Explanation
 -----------
 
-The following sections provide some explanation of the code.
+The following sections provide an explanation of the code.
 
 .. _l2_fwd_event_app_cmd_arguments:
 
 Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The L2 Forwarding eventdev sample application takes specific parameters,
-in addition to Environment Abstraction Layer (EAL) arguments.
-The preferred way to parse parameters is to use the getopt() function,
+The L2 forwarding eventdev sample application takes specific parameters
+and Environment Abstraction Layer (EAL) arguments.
+The preferred way to parse parameters is to use the ``getopt()`` function
 since it is part of a well-defined and portable library.
 
-The parsing of arguments is done in the **l2fwd_parse_args()** function for non
-eventdev parameters and in **parse_eventdev_args()** for eventdev parameters.
-The method of argument parsing is not described here. Refer to the
-*glibc getopt(3)* man page for details.
+The parsing of arguments is done in the ``l2fwd_parse_args()`` function
+for non-eventdev parameters
+and in ``parse_eventdev_args()`` for eventdev parameters.
+This method of argument parsing is not described here.
+Refer to the *glibc getopt(3)* main page for details.
 
-EAL arguments are parsed first, then application-specific arguments.
-This is done at the beginning of the main() function and eventdev parameters
-are parsed in eventdev_resource_setup() function during eventdev setup:
+EAL arguments are parsed first, then application-specific arguments follow.
+This is done at the beginning of the ``main()`` function and eventdev parameters
+are parsed in ``eventdev_resource_setup()`` function during eventdev setup:
 
 .. literalinclude:: ../../../examples/l2fwd-event/main.c
         :language: c
@@ -163,14 +164,14 @@ and the application to store network packet data:
 
 The rte_mempool is a generic structure used to handle pools of objects.
 In this case, it is necessary to create a pool that will be used by the driver.
-The number of allocated pkt mbufs is NB_MBUF, with a data room size of
-RTE_MBUF_DEFAULT_BUF_SIZE each.
+The number of allocated mbufs is ``NB_MBUF``,
+with a data room size of ``RTE_MBUF_DEFAULT_BUF_SIZE`` each.
 A per-lcore cache of 32 mbufs is kept.
 The memory is allocated in NUMA socket 0,
 but it is possible to extend this code to allocate one mbuf pool per socket.
 
-The rte_pktmbuf_pool_create() function uses the default mbuf pool and mbuf
-initializers, respectively rte_pktmbuf_pool_init() and rte_pktmbuf_init().
+The ``rte_pktmbuf_pool_create()`` function uses the default mbuf pool
+and mbuf initializers, respectively ``rte_pktmbuf_pool_init()`` and ``rte_pktmbuf_init()``.
 An advanced application may want to use the mempool API to create the
 mbuf pool with more control.
 
@@ -179,9 +180,9 @@ mbuf pool with more control.
 Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~
 
-The main part of the code in the main() function relates to the initialization
+The main part of the code in the ``main()`` function relates to the initialization
 of the driver. To fully understand this code, it is recommended to study the
-chapters that related to the Poll Mode and Event mode Driver in the
+chapters related to the Poll Mode and Event mode Driver in the
 *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
 .. literalinclude:: ../../../examples/l2fwd-event/main.c
@@ -192,7 +193,7 @@ chapters that related to the Poll Mode and Event mode Driver in the
 
 The next step is to configure the RX and TX queues. For each port, there is only
 one RX queue (only one lcore is able to poll a given port). The number of TX
-queues depends on the number of available lcores. The rte_eth_dev_configure()
+queues depends on the number of available lcores. The ``rte_eth_dev_configure()``
 function is used to configure the number of queues for a port:
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_common.c
@@ -234,7 +235,7 @@ loop (see :ref:`l2_fwd_event_app_rx_tx_packets`).
 TX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Each lcore should be able to transmit on any port. For every port, a single TX
+Each lcore should be able to transmit on any port. For each port, a single TX
 queue is initialized.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_common.c
@@ -243,7 +244,7 @@ queue is initialized.
         :end-before: >8 End of init one TX queue on each port.
         :dedent: 2
 
-To configure eventdev support, application setups following components:
+To configure eventdev support, the application sets up following components:
 
 *   Event dev
 *   Event queue
@@ -255,9 +256,10 @@ To configure eventdev support, application setups following components:
 
 Event device Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Application can use either H/W or S/W based event device scheduler
 implementation and supports single instance of event device. It configures event
-device as per below configuration
+device as per the following configuration:
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
         :language: c
@@ -265,9 +267,10 @@ device as per below configuration
         :end-before: >8 End of configuration event device as per below configuration.
         :dedent: 1
 
-In case of S/W scheduler, application runs eventdev scheduler service on service
-core. Application retrieves service id and finds the best possible service core to
-run S/W scheduler.
+In case of S/W scheduler, the application runs eventdev
+scheduler service on the service core.
+The application retrieves the service id
+and finds the best possible service core to run S/W scheduler.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
         :language: c
@@ -277,8 +280,9 @@ run S/W scheduler.
 
 Event queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Each Ethernet device is assigned a dedicated event queue which will be linked
-to all available event ports i.e. each lcore can dequeue packets from any of the
+to all available event ports, i.e. each lcore can dequeue packets from any of the
 Ethernet ports.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
@@ -294,9 +298,10 @@ Tx adapter service function for enqueue operation.
 
 Event port Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Each worker thread is assigned a dedicated event port for enq/deq operations
-to/from an event device. All event ports are linked with all available event
-queues.
+to/from an event device.
+All event ports are linked to all available event queues.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
         :language: c
@@ -304,8 +309,9 @@ queues.
         :end-before: >8 End of event port initialization.
         :dedent: 1
 
-In case of S/W scheduler, an extra event port is created by DPDK library which
-is retrieved  by the application and same will be used by Tx adapter service.
+In case of S/W scheduler, an extra event port is created by the DPDK library
+which is retrieved by the application.
+It will be used by Tx adapter service.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event_generic.c
         :language: c
@@ -315,6 +321,7 @@ is retrieved  by the application and same will be used by Tx adapter service.
 
 Rx/Tx adapter Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Each Ethernet port is assigned a dedicated Rx/Tx adapter for H/W scheduler. Each
 Ethernet port's Rx queues are connected to its respective event queue at
 priority 0 via Rx adapter configuration and Ethernet port's tx queues are
@@ -327,10 +334,10 @@ connected via Tx adapter.
         :dedent: 1
 
 For S/W scheduler instead of dedicated adapters, common Rx/Tx adapters are
-configured which will be shared among all the Ethernet ports. Also DPDK library
-need service cores to run internal services for Rx/Tx adapters. Application gets
-service id for Rx/Tx adapters and after successful setup it runs the services
-on dedicated service cores.
+configured which will be shared among all the Ethernet ports.
+Also, the DPDK library needs service cores to run internal services for Rx/Tx adapters.
+The application gets a service id for Rx/Tx adapters.
+After a successful setup, it runs the services on dedicated service cores.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
         :language: c
@@ -343,8 +350,9 @@ on dedicated service cores.
 Receive, Process and Transmit Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the **l2fwd_main_loop()** function, the main task is to read ingress packets from
-the RX queues. This is done using the following code:
+In the ``l2fwd_main_loop()`` function,
+the main task is to read ingress packets from the Rx queues.
+This is done using the following code:
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_poll.c
         :language: c
@@ -352,25 +360,24 @@ the RX queues. This is done using the following code:
         :end-before: >8 End of reading ingress packets.
         :dedent: 2
 
-Packets are read in a burst of size MAX_PKT_BURST. The rte_eth_rx_burst()
-function writes the mbuf pointers in a local table and returns the number of
-available mbufs in the table.
+Packets are read in a burst of size ``MAX_PKT_BURST``.
+The ``rte_eth_rx_burst()`` function writes the mbuf pointers
+in a local table and returns the number of available mbufs in the table.
 
-Then, each mbuf in the table is processed by the l2fwd_simple_forward()
-function. The processing is very simple: process the TX port from the RX port,
-then replace the source and destination MAC addresses if MAC addresses updating
-is enabled.
+Then, each mbuf in the table is processed by the ``l2fwd_simple_forward()`` function.
+The processing is very simple: process the Tx port from the Rx port,
+then replace the source and destination MAC addresses if MAC address updating is enabled.
 
 During the initialization process, a static array of destination ports
-(l2fwd_dst_ports[]) is filled such that for each source port, a destination port
+(``l2fwd_dst_ports[]``) is filled so that for each source port, a destination port
 is assigned that is either the next or previous enabled port from the portmask.
-If number of ports are odd in portmask then packet from last port will be
+If the number of ports are odd in portmask, then the packet from the last port will be
 forwarded to first port i.e. if portmask=0x07, then forwarding will take place
 like p0--->p1, p1--->p2, p2--->p0.
 
-Also to optimize enqueue operation, l2fwd_simple_forward() stores incoming mbufs
-up to MAX_PKT_BURST. Once it reaches up to limit, all packets are transmitted to
-destination ports.
+Also, to optimize enqueue operation, ``l2fwd_simple_forward()`` stores incoming mbufs
+up to ``MAX_PKT_BURST``.
+Once it reaches the limit, all packets are transmitted to destination ports.
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
         :language: c
@@ -379,18 +386,18 @@ destination ports.
 
 For this test application, the processing is exactly the same for all packets
 arriving on the same RX port. Therefore, it would have been possible to call
-the rte_eth_tx_buffer() function directly from the main loop to send all the
+the ``rte_eth_tx_buffer()`` function directly from the main loop to send all the
 received packets on the same TX port, using the burst-oriented send function,
 which is more efficient.
 
-However, in real-life applications (such as, L3 routing),
+However, in real-life applications (such as L3 routing),
 packet N is not necessarily forwarded on the same port as packet N-1.
-The application is implemented to illustrate that, so the same approach can be
+The application is implemented to illustrate so the same approach can be
 reused in a more complex application.
 
 To ensure that no packets remain in the tables, each lcore does a draining of TX
 queue in its main loop. This technique introduces some latency when there are
-not many packets to send, however it improves performance:
+not many packets to send. However, it improves performance:
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_poll.c
         :language: c
@@ -398,8 +405,9 @@ not many packets to send, however it improves performance:
         :end-before: >8 End of draining TX queue in main loop.
         :dedent: 2
 
-In the **l2fwd_event_loop()** function, the main task is to read ingress
-packets from the event ports. This is done using the following code:
+In the ``l2fwd_event_loop()`` function,
+the main task is to read ingress packets from the event ports.
+This is done using the following code:
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c
         :language: c
@@ -407,26 +415,26 @@ packets from the event ports. This is done using the following code:
         :end-before: >8 End of reading packets from eventdev.
         :dedent: 2
 
-
-Before reading packets, deq_len is fetched to ensure correct allowed deq length
-by the eventdev.
-The rte_event_dequeue_burst() function writes the mbuf pointers in a local table
+Before reading packets, ``deq_len`` is fetched
+to ensure the correct allowed deq length by the eventdev.
+The ``rte_event_dequeue_burst()`` function writes the mbuf pointers in a local table
 and returns the number of available mbufs in the table.
 
-Then, each mbuf in the table is processed by the l2fwd_eventdev_forward()
+Then, each mbuf in the table is processed by the ``l2fwd_eventdev_forward()``
 function. The processing is very simple: process the TX port from the RX port,
-then replace the source and destination MAC addresses if MAC addresses updating
+then replace the source and destination MAC addresses if MAC address updating
 is enabled.
 
 During the initialization process, a static array of destination ports
-(l2fwd_dst_ports[]) is filled such that for each source port, a destination port
+(``l2fwd_dst_ports[]``) is filled so that for each source port, a destination port
 is assigned that is either the next or previous enabled port from the portmask.
 If number of ports are odd in portmask then packet from last port will be
 forwarded to first port i.e. if portmask=0x07, then forwarding will take place
 like p0--->p1, p1--->p2, p2--->p0.
 
-l2fwd_eventdev_forward() does not stores incoming mbufs. Packet will forwarded
-be to destination ports via Tx adapter or generic event dev enqueue API
+``l2fwd_eventdev_forward()`` does not stores incoming mbufs.
+The packet will forwarded to destination ports
+via Tx adapter or generic event dev enqueue API
 depending H/W or S/W scheduler is used.
 
 .. literalinclude:: ../../../examples/l2fwd-event/l2fwd_event.c

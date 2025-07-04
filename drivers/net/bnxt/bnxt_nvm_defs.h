@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -66,5 +66,4 @@ enum bnxnvm_pkglog_field_index {
 	BNX_PKG_LOG_FIELD_IDX_INSTALLED_ITEMS		= 5,
 	BNX_PKG_LOG_FIELD_IDX_INSTALLED_MASK		= 6
 };
-
 #endif				/* Don't add anything after this line */

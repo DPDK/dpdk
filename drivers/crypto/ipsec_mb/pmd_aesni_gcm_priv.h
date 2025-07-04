@@ -130,7 +130,7 @@ struct aesni_gcm_ops {
 	aesni_gmac_finalize_t gmac_finalize;
 };
 
-RTE_DEFINE_PER_LCORE(struct aesni_gcm_ops[GCM_NUM_KEY_TYPES], gcm_ops);
+RTE_DEFINE_PER_LCORE(struct aesni_gcm_ops, gcm_ops[GCM_NUM_KEY_TYPES]);
 
 struct aesni_gcm_qp_data {
 	struct gcm_context_data gcm_ctx_data;

@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +39,19 @@
 #else
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
+
+static const uint32_t vhdr_hash_report_to_mbuf_pkt_type[] = {
+	RTE_PTYPE_UNKNOWN,
+	RTE_PTYPE_L3_IPV4,
+	RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+	RTE_PTYPE_L3_IPV6,
+	RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	RTE_PTYPE_L3_IPV6_EXT,
+	RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP,
+};
 
 void
 vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx, uint16_t num)
@@ -81,37 +95,26 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 }
 
 void
-virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
+virtio_update_packet_stats(struct virtnet_stats *const stats,
+		const struct rte_mbuf *const mbuf)
 {
 	uint32_t s = mbuf->pkt_len;
-	struct rte_ether_addr *ea;
+	const struct rte_ether_addr *const ea =
+			rte_pktmbuf_mtod(mbuf, const struct rte_ether_addr *);
 
 	stats->bytes += s;
 
-	if (s == 64) {
-		stats->size_bins[1]++;
-	} else if (s > 64 && s < 1024) {
-		uint32_t bin;
+	if (s >= 1024)
+		stats->size_bins[6 + (s > 1518)]++;
+	else if (s <= 64)
+		stats->size_bins[s >> 6]++;
+	else
+		stats->size_bins[32UL - rte_clz32(s) - 5]++;
 
-		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
-		stats->size_bins[bin]++;
-	} else {
-		if (s < 64)
-			stats->size_bins[0]++;
-		else if (s < 1519)
-			stats->size_bins[6]++;
-		else
-			stats->size_bins[7]++;
-	}
-
-	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
-	if (rte_is_multicast_ether_addr(ea)) {
-		if (rte_is_broadcast_ether_addr(ea))
-			stats->broadcast++;
-		else
-			stats->multicast++;
-	}
+	RTE_BUILD_BUG_ON(offsetof(struct virtnet_stats, broadcast) !=
+			offsetof(struct virtnet_stats, multicast) + sizeof(uint64_t));
+	if (unlikely(rte_is_multicast_ether_addr(ea)))
+		(&stats->multicast)[rte_is_broadcast_ether_addr(ea)]++;
 }
 
 static inline void
@@ -664,11 +667,6 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_conf->rx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Rx deferred start is not supported");
-		return -EINVAL;
-	}
-
 	buf_size = virtio_rx_mem_pool_buf_size(mp);
 	if (!virtio_rx_check_scatter(hw->max_rx_pkt_len, buf_size,
 				     hw->rx_ol_scatter, &error)) {
@@ -829,11 +827,6 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (tx_conf->tx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Tx deferred start is not supported");
-		return -EINVAL;
-	}
-
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
@@ -908,6 +901,16 @@ virtio_discard_rxbuf_inorder(struct virtqueue *vq, struct rte_mbuf *m)
 	if (unlikely(error)) {
 		PMD_DRV_LOG(ERR, "cannot requeue discarded mbuf");
 		rte_pktmbuf_free(m);
+	}
+}
+
+static inline void
+virtio_rx_update_hash_report(struct rte_mbuf *m, struct virtio_net_hdr_hash_report *hdr)
+{
+	if (likely(hdr->hash_report)) {
+		m->packet_type = vhdr_hash_report_to_mbuf_pkt_type[hdr->hash_report];
+		m->hash.rss = hdr->hash_value;
+		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 }
 
@@ -1144,6 +1147,9 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		hdr = (struct virtio_net_hdr *)((char *)rxm->buf_addr +
 			RTE_PKTMBUF_HEADROOM - hdr_size);
 
+		if (hw->has_hash_report)
+			virtio_rx_update_hash_report(rxm,
+						    (struct virtio_net_hdr_hash_report *)hdr);
 		if (hw->vlan_strip)
 			rte_vlan_strip(rxm);
 
@@ -1627,6 +1633,10 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 		if (hw->vlan_strip)
 			rte_vlan_strip(rx_pkts[nb_rx]);
 
+		if (hw->has_hash_report)
+			virtio_rx_update_hash_report(rxm,
+						    (struct virtio_net_hdr_hash_report *)header);
+
 		seg_res = seg_num - 1;
 
 		/* Merge remaining segments */
@@ -1797,7 +1807,7 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    txm->nb_segs == 1 &&
 		    rte_pktmbuf_headroom(txm) >= hdr_size &&
 		    rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
-			   __alignof__(struct virtio_net_hdr_mrg_rxbuf)))
+			   alignof(struct virtio_net_hdr_mrg_rxbuf)))
 			can_push = 1;
 		else if (virtio_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
 			 txm->nb_segs < VIRTIO_MAX_TX_INDIRECT)
@@ -1863,7 +1873,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	nb_used = virtqueue_nused(vq);
 
-	if (likely(nb_used > vq->vq_nentries - vq->vq_free_thresh))
+	if (likely(vq->vq_free_cnt < vq->vq_free_thresh))
 		virtio_xmit_cleanup(vq, nb_used);
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
@@ -1878,7 +1888,7 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		    txm->nb_segs == 1 &&
 		    rte_pktmbuf_headroom(txm) >= hdr_size &&
 		    rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
-				   __alignof__(struct virtio_net_hdr_mrg_rxbuf)))
+				   alignof(struct virtio_net_hdr_mrg_rxbuf)))
 			can_push = 1;
 		else if (virtio_with_feature(hw, VIRTIO_RING_F_INDIRECT_DESC) &&
 			 txm->nb_segs < VIRTIO_MAX_TX_INDIRECT)
@@ -1980,7 +1990,7 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 		     txm->nb_segs == 1 &&
 		     rte_pktmbuf_headroom(txm) >= hdr_size &&
 		     rte_is_aligned(rte_pktmbuf_mtod(txm, char *),
-				__alignof__(struct virtio_net_hdr_mrg_rxbuf))) {
+				alignof(struct virtio_net_hdr_mrg_rxbuf))) {
 			inorder_pkts[nb_inorder_pkts] = txm;
 			nb_inorder_pkts++;
 
@@ -2055,7 +2065,8 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 	return nb_tx;
 }
 
-__rte_weak uint16_t
+#ifndef VIRTIO_RXTX_PACKED_VEC
+uint16_t
 virtio_recv_pkts_packed_vec(void *rx_queue __rte_unused,
 			    struct rte_mbuf **rx_pkts __rte_unused,
 			    uint16_t nb_pkts __rte_unused)
@@ -2063,10 +2074,11 @@ virtio_recv_pkts_packed_vec(void *rx_queue __rte_unused,
 	return 0;
 }
 
-__rte_weak uint16_t
+uint16_t
 virtio_xmit_pkts_packed_vec(void *tx_queue __rte_unused,
 			    struct rte_mbuf **tx_pkts __rte_unused,
 			    uint16_t nb_pkts __rte_unused)
 {
 	return 0;
 }
+#endif /* DVIRTIO_RXTX_PACKED_VEC */

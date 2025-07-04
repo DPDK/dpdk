@@ -19,10 +19,9 @@
 
 #define EVENTDEV_NAME_OCTEONTX_PMD event_octeontx
 
-#define SSOVF_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, otx_logtype_ssovf, \
-			"[%s] %s() " fmt "\n", \
-			RTE_STR(EVENTDEV_NAME_OCTEONTX_PMD), __func__, ## args)
+#define SSOVF_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, OTX_SSOVF, "[%s] %s() ", \
+		RTE_STR(EVENTDEV_NAME_OCTEONTX_PMD) RTE_LOG_COMMA __func__, __VA_ARGS__)
 
 #define ssovf_log_info(fmt, ...) SSOVF_LOG(INFO, fmt, ##__VA_ARGS__)
 #define ssovf_log_dbg(fmt, ...) SSOVF_LOG(DEBUG, fmt, ##__VA_ARGS__)
@@ -96,14 +95,14 @@
 
 /* ARM64 specific functions */
 #if defined(RTE_ARCH_ARM64)
-#define ssovf_load_pair(val0, val1, addr) ({		\
+#define ssovf_load_pair(val0, val1, addr) __extension__ ({		\
 			asm volatile(			\
 			"ldp %x[x0], %x[x1], [%x[p1]]"	\
 			:[x0]"=r"(val0), [x1]"=r"(val1) \
 			:[p1]"r"(addr)			\
 			); })
 
-#define ssovf_store_pair(val0, val1, addr) ({		\
+#define ssovf_store_pair(val0, val1, addr) __extension__ ({		\
 			asm volatile(			\
 			"stp %x[x0], %x[x1], [%x[p1]]"	\
 			::[x0]"r"(val0), [x1]"r"(val1), [p1]"r"(addr) \
@@ -134,7 +133,7 @@ enum ssovf_type {
 	OCTEONTX_SSO_HWS,  /* SSO hardware workslot vf */
 };
 
-struct ssovf_evdev {
+struct __rte_cache_aligned ssovf_evdev {
 	OFFLOAD_FLAGS; /*Sequence should not be changed */
 	uint8_t max_event_queues;
 	uint8_t max_event_ports;
@@ -150,10 +149,10 @@ struct ssovf_evdev {
 	uint8_t *rxq_pool_rcnt;
 	uint16_t tim_ring_cnt;
 	uint16_t *tim_ring_ids;
-} __rte_cache_aligned;
+};
 
 /* Event port aka HWS */
-struct ssows {
+struct __rte_cache_aligned ssows {
 	uint8_t cur_tt;
 	uint8_t cur_grp;
 	uint8_t swtag_req;
@@ -162,7 +161,7 @@ struct ssows {
 	uint8_t *grps[SSO_MAX_VHGRP];
 	uint8_t port;
 	void *lookup_mem;
-} __rte_cache_aligned;
+};
 
 static inline struct ssovf_evdev *
 ssovf_pmd_priv(const struct rte_eventdev *eventdev)
@@ -171,8 +170,8 @@ ssovf_pmd_priv(const struct rte_eventdev *eventdev)
 }
 
 extern int otx_logtype_ssovf;
+#define RTE_LOGTYPE_OTX_SSOVF otx_logtype_ssovf
 
-uint16_t ssows_enq(void *port, const struct rte_event *ev);
 uint16_t ssows_enq_burst(void *port,
 		const struct rte_event ev[], uint16_t nb_events);
 uint16_t ssows_enq_new_burst(void *port,

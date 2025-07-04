@@ -7,6 +7,10 @@
 
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file
  *
@@ -71,7 +75,11 @@ rte_prefetch0_write(const void *p)
 	 * GCC docs where these integer constants are described in more detail:
 	 *  https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 	 */
+#ifdef RTE_TOOLCHAIN_MSVC
+	rte_prefetch0(p);
+#else
 	__builtin_prefetch(p, 1, 3);
+#endif
 }
 
 /**
@@ -92,7 +100,11 @@ rte_prefetch1_write(const void *p)
 	 * GCC docs where these integer constants are described in more detail:
 	 *  https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 	 */
+#ifdef RTE_TOOLCHAIN_MSVC
+	rte_prefetch1(p);
+#else
 	__builtin_prefetch(p, 1, 2);
+#endif
 }
 
 /**
@@ -113,7 +125,11 @@ rte_prefetch2_write(const void *p)
 	 * GCC docs where these integer constants are described in more detail:
 	 *  https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 	 */
+#ifdef RTE_TOOLCHAIN_MSVC
+	rte_prefetch2(p);
+#else
 	__builtin_prefetch(p, 1, 1);
+#endif
 }
 
 /**
@@ -133,5 +149,9 @@ rte_prefetch2_write(const void *p)
 __rte_experimental
 static inline void
 rte_cldemote(const volatile void *p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_PREFETCH_H_ */

@@ -76,7 +76,7 @@ struct bcmfs_queue {
 	char memz_name[RTE_MEMZONE_NAMESIZE];
 };
 
-struct bcmfs_qp {
+struct __rte_cache_aligned bcmfs_qp {
 	/* Queue-pair ID */
 	uint16_t qpair_id;
 	/* Mapped IO address */
@@ -104,7 +104,7 @@ struct bcmfs_qp {
 	/* a temporary buffer to keep message pointers */
 	struct bcmfs_qp_message *infl_msgs[BCMFS_MAX_REQS_BUFF];
 
-} __rte_cache_aligned;
+};
 
 /* Structure defining h/w queue pair operations */
 struct bcmfs_hw_queue_pair_ops {

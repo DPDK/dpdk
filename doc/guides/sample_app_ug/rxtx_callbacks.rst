@@ -4,24 +4,29 @@
 RX/TX Callbacks Sample Application
 ==================================
 
+Overview
+--------
+
 The RX/TX Callbacks sample application is a packet forwarding application that
 demonstrates the use of user defined callbacks on received and transmitted
 packets. The application performs a simple latency check, using callbacks, to
-determine the time packets spend within the application.
+determine the time that packets spend within the application.
 
-In the sample application a user defined callback is applied to all received
+In the sample application, a user defined callback is applied to all received
 packets to add a timestamp. A separate callback is applied to all packets
-prior to transmission to calculate the elapsed time, in CPU cycles.
+prior to transmission to calculate the elapsed time in CPU cycles.
 
 If hardware timestamping is supported by the NIC, the sample application will
-also display the average latency since the packet was timestamped in hardware,
+also display the average latency.
+The packet was timestamped in hardware
 on top of the latency since the packet was received and processed by the RX
 callback.
+
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``rxtx_callbacks`` sub-directory.
 
@@ -66,8 +71,8 @@ The main difference is in the user defined ``port_init()`` function where the
 callbacks are added. This is explained in the next section:
 
 
-The Port Initialization  Function
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The Port Initialization Function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The main functional part of the port initialization is shown below with
 comments:
@@ -122,5 +127,5 @@ packets prior to transmission:
 
 The ``calc_latency()`` function accumulates the total number of packets and
 the total number of cycles used. Once more than 100 million packets have been
-transmitted the average cycle count per packet is printed out and the counters
-are reset.
+transmitted, the average cycle count per packet is printed out
+and the counters are reset.

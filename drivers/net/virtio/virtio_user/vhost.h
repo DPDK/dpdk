@@ -90,6 +90,8 @@ struct virtio_user_backend_ops {
 	int (*server_disconnect)(struct virtio_user_dev *dev);
 	int (*server_reconnect)(struct virtio_user_dev *dev);
 	int (*get_intr_fd)(struct virtio_user_dev *dev);
+	int (*map_notification_area)(struct virtio_user_dev *dev);
+	int (*unmap_notification_area)(struct virtio_user_dev *dev);
 };
 
 extern struct virtio_user_backend_ops virtio_ops_user;

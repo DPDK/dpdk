@@ -25,7 +25,6 @@ enum port_in_type {
 	PORT_IN_SWQ,
 	PORT_IN_TMGR,
 	PORT_IN_TAP,
-	PORT_IN_KNI,
 	PORT_IN_SOURCE,
 	PORT_IN_CRYPTODEV,
 };
@@ -67,7 +66,6 @@ enum port_out_type {
 	PORT_OUT_SWQ,
 	PORT_OUT_TMGR,
 	PORT_OUT_TAP,
-	PORT_OUT_KNI,
 	PORT_OUT_SINK,
 	PORT_OUT_CRYPTODEV,
 };
@@ -213,7 +211,6 @@ pipeline_table_create(const char *pipeline_name,
 struct table_rule_match_acl {
 	int ip_version;
 
-	RTE_STD_C11
 	union {
 		struct {
 			uint32_t sa;
@@ -221,8 +218,8 @@ struct table_rule_match_acl {
 		} ipv4;
 
 		struct {
-			uint8_t sa[16];
-			uint8_t da[16];
+			struct rte_ipv6_addr sa;
+			struct rte_ipv6_addr da;
 		} ipv6;
 	};
 
@@ -256,10 +253,9 @@ struct table_rule_match_hash {
 struct table_rule_match_lpm {
 	int ip_version;
 
-	RTE_STD_C11
 	union {
 		uint32_t ipv4;
-		uint8_t ipv6[16];
+		struct rte_ipv6_addr ipv6;
 	};
 
 	uint8_t depth;

@@ -219,18 +219,6 @@ struct mlx5_action {
 	} dest_tir;
 };
 
-struct mlx5_err_cqe {
-	uint8_t		rsvd0[32];
-	uint32_t	srqn;
-	uint8_t		rsvd1[18];
-	uint8_t		vendor_err_synd;
-	uint8_t		syndrome;
-	uint32_t	s_wqe_opcode_qpn;
-	uint16_t	wqe_counter;
-	uint8_t		signature;
-	uint8_t		op_own;
-};
-
 struct mlx5_wqe_srq_next_seg {
 	uint8_t			rsvd0[2];
 	rte_be16_t		next_wqe_index;
@@ -269,5 +257,12 @@ enum {
 	MLX5_MATCH_MISC_PARAMETERS      = RTE_BIT32(1),
 	MLX5_MATCH_INNER_HEADERS        = RTE_BIT32(2),
 };
+
+#define MLX5_MIN_SINGLE_WQE_LOG_NUM_STRIDES 9
+#define MLX5_MAX_SINGLE_WQE_LOG_NUM_STRIDES 16
+#define MLX5_MIN_SINGLE_STRIDE_LOG_NUM_BYTES 6
+#define MLX5_MAX_SINGLE_STRIDE_LOG_NUM_BYTES 13
+#define MLX5_EXT_MIN_SINGLE_WQE_LOG_NUM_STRIDES 3
+#define IB_QPT_RAW_PACKET 8
 
 #endif /* MLX5_WIN_DEFS_H */

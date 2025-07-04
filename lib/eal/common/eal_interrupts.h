@@ -6,7 +6,6 @@
 #define EAL_INTERRUPTS_H
 
 struct rte_intr_handle {
-	RTE_STD_C11
 	union {
 		struct {
 			int dev_fd; /**< VFIO/UIO cfg device file descriptor */

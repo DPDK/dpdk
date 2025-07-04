@@ -5,10 +5,6 @@
 #ifndef _RTE_ATOMIC_X86_H_
 #define _RTE_ATOMIC_X86_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include <rte_config.h>
@@ -30,6 +26,10 @@ extern "C" {
 #define rte_smp_wmb() rte_compiler_barrier()
 
 #define rte_smp_rmb() rte_compiler_barrier()
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * From Intel Software Development Manual; Vol 3;
@@ -66,10 +66,14 @@ extern "C" {
 static __rte_always_inline void
 rte_smp_mb(void)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	_mm_mfence();
+#else
 #ifdef RTE_ARCH_I686
 	asm volatile("lock addl $0, -128(%%esp); " ::: "memory");
 #else
 	asm volatile("lock addl $0, -128(%%rsp); " ::: "memory");
+#endif
 #endif
 }
 
@@ -82,20 +86,30 @@ rte_smp_mb(void)
 /**
  * Synchronization fence between threads based on the specified memory order.
  *
- * On x86 the __atomic_thread_fence(__ATOMIC_SEQ_CST) generates full 'mfence'
+ * On x86 the __rte_atomic_thread_fence(rte_memory_order_seq_cst) generates full 'mfence'
  * which is quite expensive. The optimized implementation of rte_smp_mb is
  * used instead.
  */
 static __rte_always_inline void
-rte_atomic_thread_fence(int memorder)
+rte_atomic_thread_fence(rte_memory_order memorder)
 {
-	if (memorder == __ATOMIC_SEQ_CST)
+	if (memorder == rte_memory_order_seq_cst)
 		rte_smp_mb();
 	else
-		__atomic_thread_fence(memorder);
+		__rte_atomic_thread_fence(memorder);
 }
 
+#ifdef __cplusplus
+}
+#endif
+
+#ifndef RTE_TOOLCHAIN_MSVC
+
 /*------------------------- 16 bit atomic operations -------------------------*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_FORCE_INTRINSICS
 static inline int
@@ -267,6 +281,11 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 			);
 	return ret != 0;
 }
+
+#endif /* !RTE_FORCE_INTRINSICS */
+
+#ifdef __cplusplus
+}
 #endif
 
 #ifdef RTE_ARCH_I686
@@ -275,8 +294,6 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 #include "rte_atomic_64.h"
 #endif
 
-#ifdef __cplusplus
-}
-#endif
+#endif /* !RTE_TOOLCHAIN_MSVC */
 
 #endif /* _RTE_ATOMIC_X86_H_ */

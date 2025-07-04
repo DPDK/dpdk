@@ -119,6 +119,12 @@ efx_mcdi_init(
 		break;
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+	case EFX_FAMILY_MEDFORD4:
+		emcop = &__efx_mcdi_ef10_ops;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 	default:
 		EFSYS_ASSERT(0);
 		rc = ENOTSUP;
@@ -1620,10 +1626,16 @@ efx_mcdi_drv_attach(
 	 * such example is the ESXi native driver that attempts attaching with
 	 * FULL_FEATURED datapath firmware type first and fall backs to
 	 * DONT_CARE datapath firmware type if MC_CMD_DRV_ATTACH fails.
+	 *
+	 * Always set WANT_V2_LINKCHANGES to 1. Old firmware that only supports
+	 * v1 will ignore it, and for newer firmware it ensures that it always
+	 * sends v2 if possible. While EF100 always uses v2, there are some
+	 * older EF10 firmwares that only send v2 if it is requested.
 	 */
-	MCDI_IN_POPULATE_DWORD_2(req, DRV_ATTACH_IN_NEW_STATE,
+	MCDI_IN_POPULATE_DWORD_3(req, DRV_ATTACH_IN_NEW_STATE,
 	    DRV_ATTACH_IN_ATTACH, attach ? 1 : 0,
-	    DRV_ATTACH_IN_SUBVARIANT_AWARE, EFSYS_OPT_FW_SUBVARIANT_AWARE);
+	    DRV_ATTACH_IN_SUBVARIANT_AWARE, EFSYS_OPT_FW_SUBVARIANT_AWARE,
+	    DRV_ATTACH_IN_WANT_V2_LINKCHANGES, 1);
 	MCDI_IN_SET_DWORD(req, DRV_ATTACH_IN_UPDATE, 1);
 	MCDI_IN_SET_DWORD(req, DRV_ATTACH_IN_FIRMWARE_ID, enp->efv);
 
@@ -2232,10 +2244,18 @@ fail1:
 efx_mcdi_mac_stats_clear(
 	__in		efx_nic_t *enp)
 {
+	efx_port_t *epp = &(enp->en_port);
 	efx_rc_t rc;
 
-	if ((rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
-			EFX_STATS_CLEAR, 0)) != 0)
+	if (efx_np_supported(enp) != B_FALSE) {
+		rc = efx_np_mac_stats(enp, epp->ep_np_handle,
+			    EFX_STATS_CLEAR, NULL, 0);
+	} else {
+		rc = efx_mcdi_mac_stats(enp, enp->en_vport_id, NULL,
+				EFX_STATS_CLEAR, 0);
+	}
+
+	if (rc != 0)
 		goto fail1;
 
 	return (0);

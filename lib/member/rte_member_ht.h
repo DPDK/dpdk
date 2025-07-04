@@ -15,10 +15,10 @@ extern "C" {
 typedef uint16_t member_sig_t;			/* signature size is 16 bit */
 
 /* The bucket struct for ht setsum */
-struct member_ht_bucket {
+struct __rte_cache_aligned member_ht_bucket {
 	member_sig_t sigs[RTE_MEMBER_BUCKET_ENTRIES];	/* 2-byte signature */
 	member_set_t sets[RTE_MEMBER_BUCKET_ENTRIES];	/* 2-byte set */
-} __rte_cache_aligned;
+};
 
 int
 rte_member_create_ht(struct rte_member_setsum *ss,

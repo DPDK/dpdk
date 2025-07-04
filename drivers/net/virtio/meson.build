@@ -23,31 +23,27 @@ sources += files(
 )
 deps += ['kvargs', 'bus_pci']
 
+cflags += no_wvla_cflag
+
 if arch_subdir == 'x86'
-    if not machine_args.contains('-mno-avx512f')
-        if cc.has_argument('-mavx512f') and cc.has_argument('-mavx512vl') and cc.has_argument('-mavx512bw')
-            cflags += ['-DCC_AVX512_SUPPORT']
-            virtio_avx512_lib = static_library('virtio_avx512_lib',
-                          'virtio_rxtx_packed.c',
-                          dependencies: [static_rte_ethdev,
-                        static_rte_kvargs, static_rte_bus_pci],
-                          include_directories: includes,
-                          c_args: [cflags, '-mavx512f', '-mavx512bw', '-mavx512vl'])
-            objs += virtio_avx512_lib.extract_objects('virtio_rxtx_packed.c')
-            if (toolchain == 'gcc' and cc.version().version_compare('>=8.3.0'))
-                cflags += '-DVIRTIO_GCC_UNROLL_PRAGMA'
-            elif (toolchain == 'clang' and cc.version().version_compare('>=3.7.0'))
-                cflags += '-DVIRTIO_CLANG_UNROLL_PRAGMA'
-            elif (toolchain == 'icc' and cc.version().version_compare('>=16.0.0'))
-                cflags += '-DVIRTIO_ICC_UNROLL_PRAGMA'
-            endif
+    if cc_has_avx512
+        cflags += ['-DVIRTIO_RXTX_PACKED_VEC']
+        sources_avx512 += files('virtio_rxtx_packed.c')
+        if (toolchain == 'gcc' and cc.version().version_compare('>=8.3.0'))
+            cflags += '-DVIRTIO_GCC_UNROLL_PRAGMA'
+        elif (toolchain == 'clang' and cc.version().version_compare('>=3.7.0'))
+            cflags += '-DVIRTIO_CLANG_UNROLL_PRAGMA'
         endif
     endif
+    cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_sse.c')
 elif arch_subdir == 'ppc'
+    cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_altivec.c')
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
+    cflags += ['-DVIRTIO_RXTX_PACKED_VEC']
     sources += files('virtio_rxtx_packed.c')
+    cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_neon.c')
 endif
 

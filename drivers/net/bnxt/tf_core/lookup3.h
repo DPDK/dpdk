@@ -157,5 +157,4 @@ static inline uint32_t hashword(const uint32_t *k,
 	/*------------------------------------------------- report the result */
 	return c;
 }
-
 #endif /* _LOOKUP3_H_ */

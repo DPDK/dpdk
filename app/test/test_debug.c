@@ -140,4 +140,4 @@ test_debug(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(debug_autotest, test_debug);
+REGISTER_FAST_TEST(debug_autotest, true, true, test_debug);

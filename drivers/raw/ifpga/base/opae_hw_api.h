@@ -343,9 +343,9 @@ static inline void opae_adapter_remove_acc(struct opae_adapter *adapter,
 /* OPAE vBNG network datastruct */
 #define OPAE_ETHER_ADDR_LEN 6
 
-struct opae_ether_addr {
+struct __rte_packed_begin opae_ether_addr {
 	unsigned char addr_bytes[OPAE_ETHER_ADDR_LEN];
-} __rte_packed;
+} __rte_packed_end;
 
 /* OPAE vBNG network API*/
 int opae_manager_read_mac_rom(struct opae_manager *mgr, int port,

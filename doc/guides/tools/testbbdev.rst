@@ -1,6 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Intel Corporation
 
+.. _test_bbdev_application:
+
 dpdk-test-bbdev Application
 ===========================
 
@@ -76,7 +78,7 @@ The following are the command-line options:
 
 ``-l NUM_LCORES, --num_lcores NUM_LCORES``
  Specifies number of lcores to run. If not specified num_lcores is set
- according to value from RTE configuration (EAL coremask)
+ according to value from RTE configuration (EAL corelist)
 
 ``-b BURST_SIZE [BURST_SIZE ...], --burst-size BURST_SIZE [BURST_SIZE ...]``
  Specifies operations enqueue/dequeue burst size. If not specified burst_size is

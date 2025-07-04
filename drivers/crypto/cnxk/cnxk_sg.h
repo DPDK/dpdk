@@ -129,7 +129,7 @@ fill_sg_comp_from_iov(struct roc_sglist_comp *list, uint32_t i, struct roc_se_io
 }
 
 static __rte_always_inline uint32_t
-fill_ipsec_sg_comp_from_pkt(struct roc_sglist_comp *list, uint32_t i, struct rte_mbuf *pkt)
+fill_sg_comp_from_pkt(struct roc_sglist_comp *list, uint32_t i, struct rte_mbuf *pkt)
 {
 	uint32_t buf_sz;
 	void *vaddr;
@@ -150,7 +150,7 @@ fill_ipsec_sg_comp_from_pkt(struct roc_sglist_comp *list, uint32_t i, struct rte
 }
 
 static __rte_always_inline uint32_t
-fill_ipsec_sg2_comp_from_pkt(struct roc_sg2list_comp *list, uint32_t i, struct rte_mbuf *pkt)
+fill_sg2_comp_from_pkt(struct roc_sg2list_comp *list, uint32_t i, struct rte_mbuf *pkt)
 {
 	uint32_t buf_sz;
 	void *vaddr;

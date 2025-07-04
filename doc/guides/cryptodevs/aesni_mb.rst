@@ -36,6 +36,9 @@ Cipher algorithms:
 * RTE_CRYPTO_CIPHER_ZUC_EEA3
 * RTE_CRYPTO_CIPHER_SNOW3G_UEA2
 * RTE_CRYPTO_CIPHER_KASUMI_F8
+* RTE_CRYPTO_CIPHER_SM4_CBC
+* RTE_CRYPTO_CIPHER_SM4_ECB
+* RTE_CRYPTO_CIPHER_SM4_CTR
 
 Hash algorithms:
 
@@ -56,12 +59,15 @@ Hash algorithms:
 * RTE_CRYPTO_AUTH_ZUC_EIA3
 * RTE_CRYPTO_AUTH_SNOW3G_UIA2
 * RTE_CRYPTO_AUTH_KASUMI_F9
+* RTE_CRYPTO_AUTH_SM3
+* RTE_CRYPTO_AUTH_SM3 HMAC
 
 AEAD algorithms:
 
 * RTE_CRYPTO_AEAD_AES_CCM
 * RTE_CRYPTO_AEAD_AES_GCM
 * RTE_CRYPTO_AEAD_CHACHA20_POLY1305
+* RTE_CRYPTO_AEAD_SM4_GCM
 
 Protocol offloads:
 
@@ -99,8 +105,8 @@ Installation
 To build DPDK with the AESNI_MB_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.3, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
+The latest version of the library supported by this PMD is v1.5, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.5.zip>`_.
 
 .. code-block:: console
 
@@ -121,12 +127,6 @@ Once it is downloaded, extract it and follow these steps:
     make
     make install
 
-.. note::
-
-   Compilation of the Multi-Buffer library is broken when GCC < 5.0, if library <= v0.53.
-   If a lower GCC version than 5.0, the workaround proposed by the following link
-   should be used: `<https://github.com/intel/intel-ipsec-mb/issues/40>`_.
-
 As a reference, the following table shows a mapping between the past DPDK versions
 and the Multi-Buffer library version supported by them:
 
@@ -137,19 +137,10 @@ and the Multi-Buffer library version supported by them:
    ==============  ============================
    DPDK version    Multi-buffer library version
    ==============  ============================
-   2.2 - 16.11     0.43 - 0.44
-   17.02           0.44
-   17.05 - 17.08   0.45 - 0.48
-   17.11           0.47 - 0.48
-   18.02           0.48
-   18.05 - 19.02   0.49 - 0.52
-   19.05 - 19.08   0.52
-   19.11 - 20.08   0.52 - 0.55
-   20.11 - 21.08   0.53 - 1.3*
-   21.11+          1.0  - 1.3*
+   20.11 - 21.08   0.53 - 1.3
+   21.11 - 24.07   1.0  - 1.5
+   24.11+          1.4  - 1.5
    ==============  ============================
-
-\* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
 
 Initialization
 --------------

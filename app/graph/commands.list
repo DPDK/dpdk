@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2023 Marvell.
+#
+graph <STRING>usecase coremask <UINT64>mask bsz <UINT16>size tmo <UINT64>ns model <(rtc,mcd,default)>model_name <(pcap_enable)>capt_ena <UINT8>pcap_ena <(num_pcap_pkts)>capt_pkts_count <UINT64>num_pcap_pkts <(pcap_file)>capt_file <STRING>pcap_file # Command to create graph for given usecase
+graph start         # Comanmd to start a graph
+graph stats show    # Command to dump graph stats
+help graph          # Print help on graph commands
+
+mempool <STRING>name size <UINT16>buf_sz buffers <UINT16>nb_bufs cache <UINT16>cache_size numa <UINT16>node # Create mempool
+help mempool        # Print help on mempool commands
+
+ethdev <STRING>dev rxq <UINT16>nb_rxq txq <UINT16>nb_txq <STRING>mempool  # Create Ethernet device
+ethdev <STRING>__dev mtu <UINT16>size                    # Set MTU on Ethernet device
+ethdev <STRING>__dev promiscuous <(on,off)>enable        # Set promiscuous mode on Ethernet device
+ethdev <STRING>__dev show                                # Command to dump Ethernet device info
+ethdev <STRING>__dev stats                               # Command to dump Ethernet device stats
+ethdev forward <STRING>tx_dev <STRING>rx_dev             # Command to create Rx/Tx device map
+ethdev <STRING>__dev ip4 addr add <IPv4>ip netmask <IPv4>mask # Set IPv4 address on Ethernet device
+ethdev <STRING>__dev ip6 addr add <IPv6>ip netmask <IPv6>mask # Set IPv6 address on Ethernet device
+help ethdev                                              # Print help on ethdev commands
+
+ethdev_rx map port <STRING>dev queue <UINT32>qid core <UINT32>core_id # Port-Queue-Core mapping
+help ethdev_rx                                           # Print help on ethdev_rx commands
+
+ipv4_lookup route add ipv4 <IPv4>ip netmask <IPv4>mask via <IPv4>via_ip # Add IPv4 route to LPM table
+ipv4_lookup mode <STRING>lkup_mode                       # Set IPv4 lookup mode
+help ipv4_lookup                                         # Print help on ipv4_lookup commands
+
+ipv6_lookup route add ipv6 <IPv6>ip netmask <IPv6>mask via <IPv6>via_ip # Add IPv6 route to LPM6 table
+ipv6_lookup mode <STRING>lkup_mode                       # Set IPv6 lookup mode
+help ipv6_lookup                                         # Print help on ipv6_lookup commands
+
+neigh add ipv4 <IPv4>ip <STRING>mac                      # Add static neighbour for IPv4
+neigh add ipv6 <IPv6>ip <STRING>mac                      # Add static neighbour for IPv6
+help neigh                                               # Print help on neigh commands
+
+feature arcs                                             # show all feature arcs
+feature <STRING>name show                                # Show feature arc details
+feature enable <STRING>arc_name <STRING>feature_name <UINT16>interface   # Enable feature on interface
+feature disable <STRING>arc_name <STRING>feature_name <UINT16>interface  # Disable feature on interface
+help feature                                             # Print help on feature command

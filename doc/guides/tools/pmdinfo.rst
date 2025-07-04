@@ -82,5 +82,5 @@ Get only the required kernel modules for a given device:
 .. code-block:: console
 
    $ dpdk-pmdinfo.py /usr/bin/dpdk-testpmd | \
-       jq '.[] | select(.pci_ids[] | .vendor == "15b3" and .device == "1013").kmod'
+       jq '.[] | select(.pci_ids[]? | .vendor == "15b3" and .device == "1013").kmod'
    "* ib_uverbs & mlx5_core & mlx5_ib"

@@ -67,11 +67,11 @@
  * with enqueue/dequeue operation till _finish_ completes.
  */
 
+#include <rte_ring_peek_elem_pvt.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring_peek_elem_pvt.h>
 
 /**
  * Ring zero-copy information structure.
@@ -79,7 +79,7 @@ extern "C" {
  * This structure contains the pointers and length of the space
  * reserved on the ring storage.
  */
-struct rte_ring_zc_data {
+struct __rte_cache_aligned rte_ring_zc_data {
 	/* Pointer to the first space in the ring */
 	void *ptr1;
 	/* Pointer to the second space in the ring if there is wrap-around.
@@ -92,7 +92,7 @@ struct rte_ring_zc_data {
 	 * will give the number of elements available at ptr2.
 	 */
 	unsigned int n1;
-} __rte_cache_aligned;
+};
 
 static __rte_always_inline void
 __rte_ring_get_elem_addr(struct rte_ring *r, uint32_t head,

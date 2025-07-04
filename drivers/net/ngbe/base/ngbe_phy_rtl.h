@@ -35,6 +35,8 @@
 #define   RTL_ANLPAR_LP			MS16(10, 0x3)
 #define RTL_GBCR			0x9
 #define   RTL_GBCR_1000F		MS16(9, 0x1)
+#define RTL_GBSR			0xA
+#define   RTL_GBSR_LRS			MS16(13, 0x1)
 /* Page 0xa42*/
 #define RTL_GSR				0x10
 #define   RTL_GSR_ST			MS16(0, 0x7)

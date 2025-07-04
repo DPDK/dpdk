@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -73,11 +73,12 @@ const uint16_t tf_tbl_sram_hcapi_2_bank[CFA_RESOURCE_TYPE_P58_LAST] = {
  * Translate HCAPI type to SRAM Manager bank
  */
 const uint8_t tf_tbl_sram_slices_2_size[TF_TBL_SRAM_SLICES_MAX + 1] = {
-	[0] = TF_SRAM_SLICE_SIZE_64B, /* if 0 slices assume 1 64B block */
-	[1] = TF_SRAM_SLICE_SIZE_64B, /* 1 slice  per 64B block */
-	[2] = TF_SRAM_SLICE_SIZE_32B, /* 2 slices per 64B block */
-	[4] = TF_SRAM_SLICE_SIZE_16B, /* 4 slices per 64B block */
-	[8] = TF_SRAM_SLICE_SIZE_8B   /* 8 slices per 64B block */
+	[0] = TF_SRAM_SLICE_SIZE_128B,	/* if 0 slices assume 1 128B block */
+	[1] = TF_SRAM_SLICE_SIZE_128B,	/* 1 slice  per 128B block */
+	[2] = TF_SRAM_SLICE_SIZE_64B,	/* 2 slice  per 128B block */
+	[4] = TF_SRAM_SLICE_SIZE_32B,	/* 4 slices per 128B block */
+	[8] = TF_SRAM_SLICE_SIZE_16B,	/* 8 slices per 128B block */
+	[16] = TF_SRAM_SLICE_SIZE_8B	/* 16 slices per 128B block */
 };
 
 /**
@@ -340,7 +341,7 @@ tf_tbl_sram_free(struct tf *tfp __rte_unused,
 	rc = tf_sram_mgr_is_allocated(sram_handle, &aparms);
 	if (rc || !allocated) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Free of invalid entry:%s idx(%d):(%s)\n",
+			    "%s: Free of invalid entry:%s idx(0x%x):(%s)\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_tbl_type_2_str(parms->type),
 			    parms->idx,
@@ -361,7 +362,7 @@ tf_tbl_sram_free(struct tf *tfp __rte_unused,
 	rc = tf_sram_mgr_free(sram_handle, &fparms);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Failed to free entry:%s idx(%d)\n",
+			    "%s: Failed to free entry:%s idx(0x%x)\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_tbl_type_2_str(parms->type),
 			    parms->idx);
@@ -469,7 +470,7 @@ tf_tbl_sram_set(struct tf *tfp,
 
 		if (rallocated != TF_RM_ALLOCATED_ENTRY_IN_USE) {
 			TFP_DRV_LOG(ERR,
-			   "%s, Invalid or not allocated index, type:%s, idx:%d\n",
+			   "%s, Invalid or not allocated index, type:%s, idx:0x%x\n",
 			   tf_dir_2_str(parms->dir),
 			   tf_tbl_type_2_str(parms->type),
 			   parms->idx);
@@ -484,7 +485,7 @@ tf_tbl_sram_set(struct tf *tfp,
 		rc = tf_sram_mgr_is_allocated(sram_handle, &aparms);
 		if (rc || !allocated) {
 			TFP_DRV_LOG(ERR,
-				    "%s: Entry not allocated:%s idx(%d):(%s)\n",
+				    "%s: Entry not allocated:%s idx(0x%x):(%s)\n",
 				    tf_dir_2_str(parms->dir),
 				    tf_tbl_type_2_str(parms->type),
 				    parms->idx,
@@ -587,7 +588,7 @@ tf_tbl_sram_get(struct tf *tfp,
 	rc = tf_sram_mgr_is_allocated(sram_handle, &aparms);
 	if (rc || !allocated) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Entry not allocated:%s idx(%d):(%s)\n",
+			    "%s: Entry not allocated:%s idx(0x%x):(%s)\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_tbl_type_2_str(parms->type),
 			    parms->idx,
@@ -711,7 +712,7 @@ tf_tbl_sram_bulk_get(struct tf *tfp,
 	rc = tf_sram_mgr_is_allocated(sram_handle, &aparms);
 	if (rc || !allocated) {
 		TFP_DRV_LOG(ERR,
-			    "%s: Entry not allocated:%s last_idx(%d):(%s)\n",
+			    "%s: Entry not allocated:%s last_idx(0x%x):(%s)\n",
 			    tf_dir_2_str(parms->dir),
 			    tf_tbl_type_2_str(parms->type),
 			    idx,

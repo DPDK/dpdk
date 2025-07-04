@@ -5,12 +5,12 @@
 #ifndef RTE_SPINLOCK_LOONGARCH_H
 #define RTE_SPINLOCK_LOONGARCH_H
 
+#include <rte_common.h>
+#include "generic/rte_spinlock.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include "generic/rte_spinlock.h"
 
 #ifndef RTE_FORCE_INTRINSICS
 #  error Platform must be built with RTE_FORCE_INTRINSICS

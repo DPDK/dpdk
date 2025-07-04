@@ -1,7 +1,7 @@
 #!/bin/sh -xe
 
 if [ -z "${DEF_LIB:-}" ]; then
-    DEF_LIB=static ABI_CHECKS= BUILD_DOCS= RUN_TESTS= $0
+    DEF_LIB=static ABI_CHECKS= BUILD_DOCS= BUILD_EXAMPLES= RUN_TESTS= $0
     DEF_LIB=shared $0
     exit
 fi
@@ -12,15 +12,16 @@ fi
 install_libabigail() {
     version=$1
     instdir=$2
+    tarball=$version.tar.xz
 
-    wget -q "http://mirrors.kernel.org/sourceware/libabigail/${version}.tar.gz"
-    tar -xf ${version}.tar.gz
+    wget -q "http://mirrors.kernel.org/sourceware/libabigail/$tarball"
+    tar -xf $tarball
     cd $version && autoreconf -vfi && cd -
     mkdir $version/build
     cd $version/build && ../configure --prefix=$instdir && cd -
     make -C $version/build all install
     rm -rf $version
-    rm ${version}.tar.gz
+    rm $tarball
 }
 
 configure_coredump() {
@@ -41,6 +42,14 @@ catch_coredump() {
             -ex 'quit'
     done |tee -a build/gdb.log
     return 1
+}
+
+check_traces() {
+    which babeltrace >/dev/null || return 0
+    for file in $(sudo find $HOME -name metadata); do
+        ! sudo babeltrace $(dirname $file) >/dev/null 2>&1 || continue
+        sudo babeltrace $(dirname $file)
+    done
 }
 
 cross_file=
@@ -92,13 +101,21 @@ fi
 OPTS="$OPTS -Dplatform=generic"
 OPTS="$OPTS -Ddefault_library=$DEF_LIB"
 OPTS="$OPTS -Dbuildtype=$buildtype"
-OPTS="$OPTS -Dcheck_includes=true"
+if [ "$STDATOMIC" = "true" ]; then
+	OPTS="$OPTS -Denable_stdatomic=true"
+else
+	OPTS="$OPTS -Dcheck_includes=true"
+fi
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
     OPTS="$OPTS -Ddisable_libs=*"
+    if [ "$DEF_LIB" = "static" ]; then
+        OPTS="$OPTS -Dexamples=l2fwd"
+    fi
 else
-    OPTS="$OPTS -Ddisable_libs="
+    OPTS="$OPTS -Denable_deprecated_libs=*"
 fi
+OPTS="$OPTS -Dlibdir=lib"
 
 if [ "$ASAN" = "true" ]; then
     OPTS="$OPTS -Db_sanitize=address"
@@ -124,6 +141,7 @@ if [ -z "$cross_file" ]; then
     configure_coredump
     devtools/test-null.sh || failed="true"
     catch_coredump
+    check_traces
     [ "$failed" != "true" ]
 fi
 
@@ -139,8 +157,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
 
     export PATH=$(pwd)/libabigail/bin:$PATH
 
-    REF_GIT_REPO=${REF_GIT_REPO:-https://dpdk.org/git/dpdk}
-
     if [ "$(cat reference/VERSION 2>/dev/null)" != "$REF_GIT_TAG" ]; then
         rm -rf reference
     fi
@@ -150,14 +166,14 @@ if [ "$ABI_CHECKS" = "true" ]; then
         git clone --single-branch -b "$REF_GIT_TAG" $REF_GIT_REPO $refsrcdir
         meson setup $OPTS -Dexamples= $refsrcdir $refsrcdir/build
         ninja -C $refsrcdir/build
-        DESTDIR=$(pwd)/reference ninja -C $refsrcdir/build install
+        DESTDIR=$(pwd)/reference meson install -C $refsrcdir/build
         find reference/usr/local -name '*.a' -delete
         rm -rf reference/usr/local/bin
         rm -rf reference/usr/local/share
         echo $REF_GIT_TAG > reference/VERSION
     fi
 
-    DESTDIR=$(pwd)/install ninja -C build install
+    DESTDIR=$(pwd)/install meson install -C build
     devtools/check-abi.sh reference install ${ABI_CHECKS_WARN_ONLY:-}
 fi
 
@@ -166,5 +182,31 @@ if [ "$RUN_TESTS" = "true" ]; then
     configure_coredump
     sudo meson test -C build --suite fast-tests -t 3 || failed="true"
     catch_coredump
+    check_traces
     [ "$failed" != "true" ]
+fi
+
+# Test examples compilation with an installed dpdk
+if [ "$BUILD_EXAMPLES" = "true" ]; then
+    [ -d install ] || DESTDIR=$(pwd)/install meson install -C build
+    export LD_LIBRARY_PATH=$(dirname $(find $(pwd)/install -name librte_eal.so)):$LD_LIBRARY_PATH
+    export PATH=$(dirname $(find $(pwd)/install -name dpdk-devbind.py)):$PATH
+    export PKG_CONFIG_PATH=$(dirname $(find $(pwd)/install -name libdpdk.pc)):$PKG_CONFIG_PATH
+    export PKGCONF="pkg-config --define-prefix"
+    find build/examples -maxdepth 1 -type f -name "dpdk-*" |
+    while read target; do
+        target=${target%%:*}
+        target=${target#build/examples/dpdk-}
+        if [ -e examples/$target/Makefile ]; then
+            echo $target
+            continue
+        fi
+        # Some examples binaries are built from an example sub
+        # directory, discover the "top level" example name.
+        find examples -name Makefile |
+        sed -n "s,examples/\([^/]*\)\(/.*\|\)/$target/Makefile,\1,p"
+    done | sort -u |
+    while read example; do
+        make -C install/usr/local/share/dpdk/examples/$example clean shared
+    done
 fi

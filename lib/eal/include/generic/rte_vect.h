@@ -15,7 +15,11 @@
 
 #include <stdint.h>
 
-#include <rte_compat.h>
+#ifdef RTE_TOOLCHAIN_MSVC
+
+#include <intrin.h>
+
+#else
 
 /* Unsigned vector types */
 
@@ -186,6 +190,8 @@ typedef int32_t rte_v256s32_t __attribute__((vector_size(32), aligned(32)));
  */
 typedef int64_t rte_v256s64_t __attribute__((vector_size(32), aligned(32)));
 
+#endif
+
 /**
  * The max SIMD bitwidth value to limit vector path selection.
  */
@@ -203,22 +209,19 @@ enum rte_vect_max_simd {
 	 */
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the supported SIMD bitwidth.
  *
  * @return
  *   uint16_t bitwidth.
  */
-__rte_experimental
 uint16_t rte_vect_get_max_simd_bitwidth(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Set the supported SIMD bitwidth.
  * This API should only be called once at initialization, before EAL init.
  *
@@ -229,7 +232,10 @@ uint16_t rte_vect_get_max_simd_bitwidth(void);
  *   - -EINVAL on invalid bitwidth parameter.
  *   - -EPERM if bitwidth is forced.
  */
-__rte_experimental
 int rte_vect_set_max_simd_bitwidth(uint16_t bitwidth);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_VECT_H_ */

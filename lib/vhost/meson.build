@@ -5,29 +5,40 @@ if not is_linux
     build = false
     reason = 'only supported on Linux'
 endif
-if has_libnuma == 1
+if has_libnuma
     dpdk_conf.set10('RTE_LIBRTE_VHOST_NUMA', true)
 endif
 if (toolchain == 'gcc' and cc.version().version_compare('>=8.3.0'))
     cflags += '-DVHOST_GCC_UNROLL_PRAGMA'
 elif (toolchain == 'clang' and cc.version().version_compare('>=3.7.0'))
     cflags += '-DVHOST_CLANG_UNROLL_PRAGMA'
-elif (toolchain == 'icc' and cc.version().version_compare('>=16.0.0'))
-    cflags += '-DVHOST_ICC_UNROLL_PRAGMA'
 endif
 dpdk_conf.set('RTE_LIBRTE_VHOST_POSTCOPY', cc.has_header('linux/userfaultfd.h'))
-cflags += '-fno-strict-aliasing'
 
-annotate_locks = true
+cflags += no_wvla_cflag
+
+extra_flags = [
+        '-fno-strict-aliasing',
+        '-Wno-address-of-packed-member',
+]
+
+foreach arg: extra_flags
+    if cc.has_argument(arg)
+        cflags += arg
+    endif
+endforeach
+
 sources = files(
         'fd_man.c',
         'iotlb.c',
         'socket.c',
         'vdpa.c',
+        'vduse.c',
         'vhost.c',
         'vhost_crypto.c',
         'vhost_user.c',
         'virtio_net.c',
+        'virtio_net_ctrl.c',
 )
 headers = files(
         'rte_vdpa.h',

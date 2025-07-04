@@ -471,7 +471,7 @@ done:
 }
 
 const uint32_t *
-sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
+sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps, size_t *no_of_elements)
 {
 	static const uint32_t ef10_native_ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -483,7 +483,6 @@ sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 	static const uint32_t ef10_overlay_ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -505,7 +504,6 @@ sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 		RTE_PTYPE_INNER_L4_FRAG,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	/*
@@ -517,6 +515,7 @@ sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 	case (1u << EFX_TUNNEL_PROTOCOL_VXLAN |
 	      1u << EFX_TUNNEL_PROTOCOL_GENEVE |
 	      1u << EFX_TUNNEL_PROTOCOL_NVGRE):
+		*no_of_elements = RTE_DIM(ef10_overlay_ptypes);
 		return ef10_overlay_ptypes;
 	default:
 		SFC_GENERIC_LOG(ERR,
@@ -524,6 +523,7 @@ sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 			tunnel_encaps);
 		/* FALLTHROUGH */
 	case 0:
+		*no_of_elements = RTE_DIM(ef10_native_ptypes);
 		return ef10_native_ptypes;
 	}
 }
@@ -825,7 +825,8 @@ struct sfc_dp_rx sfc_ef10_rx = {
 				  SFC_DP_RX_FEAT_INTR,
 	.dev_offload_capa	= RTE_ETH_RX_OFFLOAD_CHECKSUM |
 				  RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-				  RTE_ETH_RX_OFFLOAD_RSS_HASH,
+				  RTE_ETH_RX_OFFLOAD_RSS_HASH |
+				  RTE_ETH_RX_OFFLOAD_KEEP_CRC,
 	.queue_offload_capa	= RTE_ETH_RX_OFFLOAD_SCATTER,
 	.get_dev_info		= sfc_ef10_rx_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_rx_qsize_up_rings,

@@ -1241,4 +1241,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_TEST_COMMAND(ring_autotest, test_ring);
+REGISTER_FAST_TEST(ring_autotest, true, true, test_ring);

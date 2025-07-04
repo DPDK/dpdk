@@ -49,10 +49,4 @@ struct rte_tel_data {
 	} data; /* data container */
 };
 
-/* versioned functions */
-int rte_tel_data_add_array_int_v23(struct rte_tel_data *d, int val);
-int rte_tel_data_add_array_int_v24(struct rte_tel_data *d, int64_t val);
-int rte_tel_data_add_dict_int_v23(struct rte_tel_data *d, const char *name, int val);
-int rte_tel_data_add_dict_int_v24(struct rte_tel_data *d, const char *name, int64_t val);
-
 #endif

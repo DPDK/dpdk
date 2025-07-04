@@ -47,7 +47,7 @@ The application execution command line is:
 
     ./dpdk-test-pipeline [EAL options] -- -p PORTMASK --TABLE_TYPE
 
-The -c or -l EAL CPU coremask/corelist option has to contain exactly 3 CPU cores.
+The ``-l/--lcores`` EAL CPU corelist option has to contain exactly 3 CPU cores.
 The first CPU core in the core mask is assigned for core A, the second for core B and the third for core C.
 
 The PORTMASK parameter must contain 2 or 4 ports.

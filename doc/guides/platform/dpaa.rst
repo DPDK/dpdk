@@ -22,15 +22,15 @@ processors-and-mcus/qoriq-layerscape-arm-processors:QORIQ-ARM>`_.
 Common Offload HW Block Drivers
 -------------------------------
 
-1. **Nics Driver**
+#. **Nics Driver**
 
    See :doc:`../nics/dpaa` for NXP dpaa nic driver information.
 
-2. **Cryptodev Driver**
+#. **Cryptodev Driver**
 
    See :doc:`../cryptodevs/dpaa_sec` for NXP dpaa cryptodev driver information.
 
-3. **Eventdev Driver**
+#. **Eventdev Driver**
 
    See :doc:`../eventdevs/dpaa` for NXP dpaa eventdev driver information.
 
@@ -41,22 +41,22 @@ Steps To Setup Platform
 There are four main pre-requisites for executing DPAA PMD on a DPAA
 compatible board:
 
-1. **ARM 64 Tool Chain**
+#. **ARM 64 Tool Chain**
 
    For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-i686_aarch64-linux-gnu.tar.xz>`_.
 
-2. **Linux Kernel**
+#. **Linux Kernel**
 
    It can be obtained from `NXP's Github hosting <https://source.codeaurora.org/external/qoriq/qoriq-components/linux>`_.
 
-3. **Rootfile system**
+#. **Rootfile system**
 
    Any *aarch64* supporting filesystem can be used. For example,
    Ubuntu 16.04 LTS (Xenial) or 18.04 (Bionic) userland which can be obtained
    from `here
    <http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04.1-base-arm64.tar.gz>`_.
 
-4. **FMC Tool**
+#. **FMC Tool**
 
    If one is planning to use more than 1 Recv queue and hardware capability to
    parse, classify and distribute the packets, the Frame Manager Configuration

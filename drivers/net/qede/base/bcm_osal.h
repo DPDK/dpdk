@@ -8,8 +8,11 @@
 #define __BCM_OSAL_H
 
 #include <stdbool.h>
+#include <pthread.h>
 #include <time.h>
+
 #include <rte_bitops.h>
+#include <rte_branch_prediction.h>
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
@@ -441,11 +444,9 @@ u32 qede_osal_log2(u32);
 #define OSAL_CACHE_LINE_SIZE RTE_CACHE_LINE_SIZE
 #define OSAL_IOMEM volatile
 #define OSAL_UNUSED    __rte_unused
-#define OSAL_UNLIKELY(x)  __builtin_expect(!!(x), 0)
-#define OSAL_MIN_T(type, __min1, __min2)	\
-	((type)(__min1) < (type)(__min2) ? (type)(__min1) : (type)(__min2))
-#define OSAL_MAX_T(type, __max1, __max2)	\
-	((type)(__max1) > (type)(__max2) ? (type)(__max1) : (type)(__max2))
+#define OSAL_UNLIKELY(x) unlikely(x)
+#define OSAL_MIN_T(type, __min1, __min2) RTE_MIN_T(__min1, __min2, type)
+#define OSAL_MAX_T(type, __max1, __max2) RTE_MAX_T(__max1, __max2, type)
 
 void qede_get_mcp_proto_stats(struct ecore_dev *, enum ecore_mcp_protocol_type,
 			      union ecore_mcp_protocol_stats *);
@@ -476,5 +477,8 @@ enum dbg_status	qed_dbg_alloc_user_data(struct ecore_hwfn *p_hwfn,
 #define OSAL_DBG_ALLOC_USER_DATA(p_hwfn, user_data_ptr) \
 	qed_dbg_alloc_user_data(p_hwfn, user_data_ptr)
 #define OSAL_DB_REC_OCCURRED(p_hwfn) nothing
+
+int ecore_mz_mapping_alloc(void);
+void ecore_mz_mapping_free(void);
 
 #endif /* __BCM_OSAL_H */

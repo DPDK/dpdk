@@ -7,7 +7,7 @@
 #include <rte_time.h>
 
 #include "hns3_ethdev.h"
-#include "hns3_regs.h"
+#include "hns3_ptp.h"
 #include "hns3_logs.h"
 
 uint64_t hns3_timestamp_rx_dynflag;
@@ -50,15 +50,29 @@ hns3_ptp_int_en(struct hns3_hw *hw, bool en)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
 		hns3_err(hw,
-			"failed to %s ptp interrupt, ret = %d\n",
+			"failed to %s ptp interrupt, ret = %d",
 			en ? "enable" : "disable", ret);
 
 	return ret;
 }
 
+static void
+hns3_ptp_timesync_write_time(struct hns3_hw *hw, const struct timespec *ts)
+{
+	uint64_t sec = ts->tv_sec;
+	uint64_t ns = ts->tv_nsec;
+
+	/* Set the timecounters to a new value. */
+	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_H, upper_32_bits(sec));
+	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_M, lower_32_bits(sec));
+	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_L, lower_32_bits(ns));
+	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_RDY, 1);
+}
+
 int
 hns3_ptp_init(struct hns3_hw *hw)
 {
+	struct timespec sys_time;
 	int ret;
 
 	if (!hns3_dev_get_support(hw, PTP))
@@ -70,6 +84,10 @@ hns3_ptp_init(struct hns3_hw *hw)
 
 	/* Start PTP timer */
 	hns3_write_dev(hw, HNS3_CFG_TIME_CYC_EN, 1);
+
+	/* Initializing the RTC. */
+	clock_gettime(CLOCK_REALTIME, &sys_time);
+	hns3_ptp_timesync_write_time(hw, &sys_time);
 
 	return 0;
 }
@@ -241,17 +259,11 @@ int
 hns3_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint64_t sec = ts->tv_sec;
-	uint64_t ns = ts->tv_nsec;
 
 	if (!hns3_dev_get_support(hw, PTP))
 		return -ENOTSUP;
 
-	/* Set the timecounters to a new value. */
-	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_H, upper_32_bits(sec));
-	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_M, lower_32_bits(sec));
-	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_L, lower_32_bits(ns));
-	hns3_write_dev(hw, HNS3_CFG_TIME_SYNC_RDY, 1);
+	hns3_ptp_timesync_write_time(hw, ts);
 
 	return 0;
 }
@@ -293,4 +305,22 @@ hns3_restore_ptp(struct hns3_adapter *hns)
 			 en, ret);
 
 	return ret;
+}
+
+void
+hns3_ptp_uninit(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int ret;
+
+	if (!hns3_dev_get_support(hw, PTP))
+		return;
+
+	ret = hns3_ptp_int_en(hw, false);
+	if (ret != 0)
+		hns3_err(hw, "disable PTP interrupt failed, ret = %d.", ret);
+
+	ret = hns3_timesync_configure(hns, false);
+	if (ret != 0)
+		hns3_err(hw, "disable timesync failed, ret = %d.", ret);
 }

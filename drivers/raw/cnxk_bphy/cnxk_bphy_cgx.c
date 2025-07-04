@@ -66,6 +66,7 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 	struct roc_bphy_cgx_cpri_mode_change rcpri_mode;
 	struct roc_bphy_cgx_cpri_mode_misc rmode_misc;
 	struct roc_bphy_cgx_cpri_mode_tx_ctrl rtx_ctrl;
+	struct roc_bphy_cgx_link_state rlink_state;
 	struct roc_bphy_cgx_link_info rlink_info;
 	struct roc_bphy_cgx_link_mode rlink_mode;
 	enum roc_bphy_cgx_eth_link_fec *fec;
@@ -134,8 +135,10 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 		break;
 	case CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_STATE:
 		link_state = msg->data;
-		ret = roc_bphy_cgx_set_link_state(cgx->rcgx, lmac,
-						  link_state->state);
+		rlink_state.state = link_state->state;
+		rlink_state.timeout = link_state->timeout;
+		rlink_state.rx_tx_dis = link_state->rx_tx_dis;
+		ret = roc_bphy_cgx_set_link_state(cgx->rcgx, lmac, &rlink_state);
 		break;
 	case CNXK_BPHY_CGX_MSG_TYPE_START_RXTX:
 		ret = roc_bphy_cgx_start_rxtx(cgx->rcgx, lmac);
@@ -189,7 +192,7 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 
 	/* get rid of last response if any */
 	if (qp->rsp) {
-		RTE_LOG(WARNING, PMD, "Previous response got overwritten\n");
+		CNXK_BPHY_LOG(WARNING, "Previous response got overwritten");
 		rte_free(qp->rsp);
 	}
 	qp->rsp = rsp;

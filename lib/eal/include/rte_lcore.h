@@ -9,7 +9,6 @@
  * @file
  *
  * API for lcore and socket manipulation
- *
  */
 #include <stdio.h>
 
@@ -103,7 +102,6 @@ unsigned int rte_lcore_count(void);
  * When option -c or -l is given, the index corresponds
  * to the order in the list.
  * For example:
- * -c 0x30, lcore 4 has index 0, and 5 has index 1.
  * -l 22,18 lcore 22 has index 0, and 18 has index 1.
  *
  * @param lcore_id
@@ -114,22 +112,21 @@ unsigned int rte_lcore_count(void);
 int rte_lcore_index(int lcore_id);
 
 /**
- * Return the ID of the physical socket of the logical core we are
- * running on.
+ * Return the ID of NUMA node of the logical core we are running on.
  * @return
- *   the ID of current lcoreid's physical socket
+ *   the ID of current lcoreid's NUMA node
  */
 unsigned int rte_socket_id(void);
 
 /**
- * Return number of physical sockets detected on the system.
+ * Return number of NUMA nodes detected on the system.
  *
- * Note that number of nodes may not be correspondent to their physical id's:
- * for example, a system may report two socket id's, but the actual socket id's
+ * Note that number of nodes may not be correspondent to their NUMA ID's:
+ * for example, a system may report two NUMA ID's, but the actual NUMA ID's
  * may be 0 and 8.
  *
  * @return
- *   the number of physical sockets as recognized by EAL
+ *   the number of NUMA ID's as recognized by EAL
  */
 unsigned int
 rte_socket_count(void);
@@ -138,26 +135,27 @@ rte_socket_count(void);
  * Return socket id with a particular index.
  *
  * This will return socket id at a particular position in list of all detected
- * physical socket id's. For example, on a machine with sockets [0, 8], passing
- * 1 as a parameter will return 8.
+ * NUMA node ID's.
+ * For example, on a machine with NUMA nodes [0, 8],
+ * passing 1 as a parameter will return 8.
  *
  * @param idx
- *   index of physical socket id to return
+ *   index of NUMA node ID to return
  *
  * @return
- *   - physical socket id as recognized by EAL
+ *   - NUMA node ID as recognized by EAL
  *   - -1 on error, with errno set to EINVAL
  */
 int
 rte_socket_id_by_idx(unsigned int idx);
 
 /**
- * Get the ID of the physical socket of the specified lcore
+ * Get the ID of the NUMA node of the specified lcore
  *
  * @param lcore_id
  *   the targeted lcore, which MUST be between 0 and RTE_MAX_LCORE-1.
  * @return
- *   the ID of lcoreid's physical socket
+ *   the ID of lcoreid's NUMA node
  */
 unsigned int
 rte_lcore_to_socket_id(unsigned int lcore_id);
@@ -360,9 +358,6 @@ struct rte_lcore_usage {
 typedef int (*rte_lcore_usage_cb)(unsigned int lcore_id, struct rte_lcore_usage *usage);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Register a callback from an application to be called in rte_lcore_dump() and
  * the /eal/lcore/info telemetry endpoint handler. Applications are expected to
  * report lcore usage statistics via this callback.
@@ -374,7 +369,6 @@ typedef int (*rte_lcore_usage_cb)(unsigned int lcore_id, struct rte_lcore_usage 
  * @param cb
  *   The callback function.
  */
-__rte_experimental
 void rte_lcore_register_usage_cb(rte_lcore_usage_cb cb);
 
 /**
@@ -385,20 +379,6 @@ void rte_lcore_register_usage_cb(rte_lcore_usage_cb cb);
  */
 void
 rte_lcore_dump(FILE *f);
-
-/**
- * Set thread names.
- *
- * @note It fails with glibc < 2.12.
- *
- * @param id
- *   Thread id.
- * @param name
- *   Thread name to set.
- * @return
- *   On success, return 0; otherwise return a negative value.
- */
-int rte_thread_setname(pthread_t id, const char *name);
 
 /**
  * Register current non-EAL thread as a lcore.
@@ -421,34 +401,6 @@ rte_thread_register(void);
  */
 void
 rte_thread_unregister(void);
-
-/**
- * Create a control thread.
- *
- * Creates a control thread with the given name and attributes. The
- * affinity of the new thread is based on the CPU affinity retrieved
- * at the time rte_eal_init() was called, the dataplane and service
- * lcores are then excluded. If setting the name of the thread fails,
- * the error is ignored and a debug message is logged.
- *
- * @param thread
- *   Filled with the thread id of the new created thread.
- * @param name
- *   The name of the control thread (max 16 characters including '\0').
- * @param attr
- *   Attributes for the new thread.
- * @param start_routine
- *   Function to be executed by the new thread.
- * @param arg
- *   Argument passed to start_routine.
- * @return
- *   On success, returns 0; on error, it returns a negative value
- *   corresponding to the error number.
- */
-int
-rte_ctrl_thread_create(pthread_t *thread, const char *name,
-		const pthread_attr_t *attr,
-		void *(*start_routine)(void *), void *arg);
 
 #ifdef __cplusplus
 }

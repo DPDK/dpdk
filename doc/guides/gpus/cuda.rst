@@ -12,20 +12,19 @@ Information and documentation about these devices can be found on the
 Build dependencies
 ------------------
 
-The CUDA GPU driver library has an header-only dependency on ``cuda.h`` and ``cudaTypedefs.h``.
-To get these headers there are two options:
+The CUDA GPU driver library has a header-only dependency on ``cuda.h`` and ``cudaTypedefs.h``.
+To get these headers, there are two options:
 
 - Install `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_
   (either regular or stubs installation).
 - Download these two headers from this `CUDA headers
   <https://gitlab.com/nvidia/headers/cuda-individual/cudart>`_ repository.
 
-You need to indicate to meson where CUDA headers files are through the CFLAGS variable.
-Three ways:
+You can point to CUDA header files either with the ``CFLAGS`` environment variable,
+or with the ``c_args`` Meson option. Examples:
 
-- Set ``export CFLAGS=-I/usr/local/cuda/include`` before building
-- Add CFLAGS in the meson command line ``CFLAGS=-I/usr/local/cuda/include meson setup build``
-- Add the ``-Dc_args`` in meson command line ``meson setup build -Dc_args=-I/usr/local/cuda/include``
+- ``CFLAGS=-I/usr/local/cuda/include meson setup build``
+- ``meson setup build -Dc_args=-I/usr/local/cuda/include``
 
 If headers are not found, the CUDA GPU driver library is not built.
 
@@ -46,15 +45,15 @@ A quick recipe to download, build and run GDRCopy library and driver:
   $ # Launch gdrdrv kernel module on the system
   $ sudo ./insmod.sh
 
-You need to indicate to meson where GDRCopy headers files are as in case of CUDA headers.
+You need to indicate to Meson where GDRCopy header files are as in case of CUDA headers.
 An example would be:
 
 .. code-block:: console
 
   $ meson setup build -Dc_args="-I/usr/local/cuda/include -I/path/to/gdrcopy/include"
 
-If headers are not found, the CUDA GPU driver library is built without the CPU map capability
-and will return error if the application invokes the gpudev ``rte_gpu_mem_cpu_map`` function.
+If headers are not found, the CUDA GPU driver library is built without the CPU map capability,
+and will return an error if the application invokes the gpudev ``rte_gpu_mem_cpu_map`` function.
 
 
 CUDA Shared Library
@@ -143,7 +142,7 @@ if the address is not in the table the CUDA driver library will return an error.
 Features
 --------
 
-- Register new child devices aka new CUDA Driver contexts.
+- Register new child devices, aka CUDA driver contexts.
 - Allocate memory on the GPU.
 - Register CPU memory to make it visible from GPU.
 
@@ -189,9 +188,10 @@ External references
 A good example of how to use the GPU CUDA driver library through the gpudev library
 is the l2fwd-nv application that can be found `here <https://github.com/NVIDIA/l2fwd-nv>`_.
 
-The application is based on vanilla DPDK example l2fwd
-and is enhanced with GPU memory managed through gpudev library
-and CUDA to launch the swap of packets MAC addresses workload on the GPU.
+The application is based on the DPDK example l2fwd,
+with GPU memory managed through gpudev library.
+It includes a CUDA workload swapping MAC addresses
+of packets received in the GPU.
 
 l2fwd-nv is not intended to be used for performance
 (testpmd is the good candidate for this).

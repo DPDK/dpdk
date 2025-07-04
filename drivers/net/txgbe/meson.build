@@ -8,7 +8,6 @@ if is_windows
 endif
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'txgbe_ethdev.c',
@@ -24,6 +23,12 @@ sources = files(
 
 deps += ['hash', 'security']
 
-includes += include_directories('base')
+cflags += no_wvla_cflag
+
+if arch_subdir == 'x86'
+    sources += files('txgbe_rxtx_vec_sse.c')
+elif arch_subdir == 'arm'
+    sources += files('txgbe_rxtx_vec_neon.c')
+endif
 
 install_headers('rte_pmd_txgbe.h')

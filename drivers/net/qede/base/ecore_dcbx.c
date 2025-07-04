@@ -1363,7 +1363,7 @@ ecore_lldp_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	struct ecore_dcbx_mib_meta_data data;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	struct lldp_received_tlvs_s tlvs;
-	int i;
+	int i, j;
 
 	for (i = 0; i < LLDP_MAX_LLDP_AGENTS; i++) {
 		OSAL_MEM_ZERO(&data, sizeof(data));
@@ -1381,9 +1381,9 @@ ecore_lldp_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		if (!tlvs.length)
 			continue;
 
-		for (i = 0; i < MAX_TLV_BUFFER; i++)
-			tlvs.tlvs_buffer[i] =
-				OSAL_CPU_TO_BE32(tlvs.tlvs_buffer[i]);
+		for (j = 0; j < MAX_TLV_BUFFER; j++)
+			tlvs.tlvs_buffer[j] =
+				OSAL_CPU_TO_BE32(tlvs.tlvs_buffer[j]);
 
 		OSAL_LLDP_RX_TLVS(p_hwfn, tlvs.tlvs_buffer, tlvs.length);
 	}

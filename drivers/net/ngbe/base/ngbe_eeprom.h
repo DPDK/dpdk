@@ -11,6 +11,10 @@
 #define NGBE_CALSUM_CAP_STATUS         0x10224
 #define NGBE_EEPROM_VERSION_STORE_REG  0x1022C
 
+#define NGBE_FW_SUPPORT_LLDP		0x19
+#define NGBE_FW_GET_LLDP		0x1B
+#define NGBE_FW_MASK			0xFF
+
 s32 ngbe_init_eeprom_params(struct ngbe_hw *hw);
 s32 ngbe_validate_eeprom_checksum_em(struct ngbe_hw *hw, u16 *checksum_val);
 s32 ngbe_get_eeprom_semaphore(struct ngbe_hw *hw);

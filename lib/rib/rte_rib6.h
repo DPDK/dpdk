@@ -16,12 +16,13 @@
 
 #include <rte_memcpy.h>
 #include <rte_common.h>
+#include <rte_ip6.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define RTE_RIB6_IPV6_ADDR_SIZE	16
+#define RTE_RIB6_IPV6_ADDR_SIZE (RTE_DEPRECATED(RTE_RIB6_IPV6_ADDR_SIZE) RTE_IPV6_ADDR_SIZE)
 
 /**
  * rte_rib6_get_nxt() flags
@@ -56,12 +57,15 @@ struct rte_rib6_conf {
  * @param src
  *  pointer from where to copy
  */
+static inline void rte_rib6_copy_addr(uint8_t *dst, const uint8_t *src)
+	__rte_deprecated_msg("use direct struct assignment");
+
 static inline void
 rte_rib6_copy_addr(uint8_t *dst, const uint8_t *src)
 {
 	if ((dst == NULL) || (src == NULL))
 		return;
-	rte_memcpy(dst, src, RTE_RIB6_IPV6_ADDR_SIZE);
+	rte_memcpy(dst, src, RTE_IPV6_ADDR_SIZE);
 }
 
 /**
@@ -76,13 +80,16 @@ rte_rib6_copy_addr(uint8_t *dst, const uint8_t *src)
  *  1 if equal
  *  0 otherwise
  */
+static inline int rte_rib6_is_equal(const uint8_t *ip1, const uint8_t *ip2)
+	__rte_deprecated_msg("use rte_ipv6_addr_eq");
+
 static inline int
 rte_rib6_is_equal(const uint8_t *ip1, const uint8_t *ip2) {
 	int i;
 
 	if ((ip1 == NULL) || (ip2 == NULL))
 		return 0;
-	for (i = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++) {
+	for (i = 0; i < RTE_IPV6_ADDR_SIZE; i++) {
 		if (ip1[i] != ip2[i])
 			return 0;
 	}
@@ -100,6 +107,8 @@ rte_rib6_is_equal(const uint8_t *ip1, const uint8_t *ip2) {
  * @return
  *  8-bit chunk of the 128-bit IPv6 mask
  */
+static inline uint8_t get_msk_part(uint8_t depth, int byte) __rte_deprecated;
+
 static inline uint8_t
 get_msk_part(uint8_t depth, int byte) {
 	uint8_t part;
@@ -124,7 +133,7 @@ get_msk_part(uint8_t depth, int byte) {
  */
 struct rte_rib6_node *
 rte_rib6_lookup(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE]);
+	const struct rte_ipv6_addr *ip);
 
 /**
  * Lookup less specific route into the RIB structure
@@ -154,7 +163,7 @@ rte_rib6_lookup_parent(struct rte_rib6_node *ent);
  */
 struct rte_rib6_node *
 rte_rib6_lookup_exact(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth);
+	const struct rte_ipv6_addr *ip, uint8_t depth);
 
 /**
  * Retrieve next more specific prefix from the RIB
@@ -181,7 +190,7 @@ rte_rib6_lookup_exact(struct rte_rib6 *rib,
  */
 struct rte_rib6_node *
 rte_rib6_get_nxt(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ip,
 	uint8_t depth, struct rte_rib6_node *last, int flag);
 
 /**
@@ -196,7 +205,7 @@ rte_rib6_get_nxt(struct rte_rib6 *rib,
  */
 void
 rte_rib6_remove(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth);
+	const struct rte_ipv6_addr *ip, uint8_t depth);
 
 /**
  * Insert prefix into the RIB
@@ -213,7 +222,7 @@ rte_rib6_remove(struct rte_rib6 *rib,
  */
 struct rte_rib6_node *
 rte_rib6_insert(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth);
+	const struct rte_ipv6_addr *ip, uint8_t depth);
 
 /**
  * Get an ip from rte_rib6_node
@@ -228,7 +237,7 @@ rte_rib6_insert(struct rte_rib6 *rib,
  */
 int
 rte_rib6_get_ip(const struct rte_rib6_node *node,
-		uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE]);
+		struct rte_ipv6_addr *ip);
 
 /**
  * Get a depth from rte_rib6_node
@@ -286,6 +295,16 @@ int
 rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh);
 
 /**
+ * Free an RIB object.
+ *
+ * @param rib
+ *   RIB object handle created with rte_rib6_create().
+ *   If rib is NULL, no operation is performed.
+ */
+void
+rte_rib6_free(struct rte_rib6 *rib);
+
+/**
  * Create RIB
  *
  * @param name
@@ -300,7 +319,8 @@ rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh);
  */
 struct rte_rib6 *
 rte_rib6_create(const char *name, int socket_id,
-		const struct rte_rib6_conf *conf);
+		const struct rte_rib6_conf *conf)
+	__rte_malloc __rte_dealloc(rte_rib6_free, 1);
 
 /**
  * Find an existing RIB object and return a pointer to it.
@@ -313,16 +333,6 @@ rte_rib6_create(const char *name, int socket_id,
  */
 struct rte_rib6 *
 rte_rib6_find_existing(const char *name);
-
-/**
- * Free an RIB object.
- *
- * @param rib
- *   RIB object handle created with rte_rib6_create().
- *   If rib is NULL, no operation is performed.
- */
-void
-rte_rib6_free(struct rte_rib6 *rib);
 
 #ifdef __cplusplus
 }

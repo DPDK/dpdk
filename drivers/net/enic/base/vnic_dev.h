@@ -199,5 +199,8 @@ int vnic_dev_capable_geneve(struct vnic_dev *vdev);
 uint64_t vnic_dev_capable_cq_entry_size(struct vnic_dev *vdev);
 int vnic_dev_set_cq_entry_size(struct vnic_dev *vdev, uint32_t rq_idx,
 			       uint32_t size_flag);
+int vnic_dev_alloc_sriov_stats_mem(struct vnic_dev *vdev);
+int vnic_dev_sriov_stats(struct vnic_dev *vdev, struct vnic_sriov_stats **stats);
+int vnic_dev_enable_admin_qp(struct vnic_dev *vdev, uint32_t enable);
 
 #endif /* _VNIC_DEV_H_ */

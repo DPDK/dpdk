@@ -20,6 +20,9 @@ struct virtqueue;
 #define VIRTIO_CRYPTO_PCI_VENDORID 0x1AF4
 #define VIRTIO_CRYPTO_PCI_DEVICEID 0x1054
 
+/* VirtIO device IDs. */
+#define VIRTIO_ID_CRYPTO  20
+
 /* VirtIO ABI version, this must match exactly. */
 #define VIRTIO_PCI_ABI_VERSION 0
 
@@ -56,7 +59,11 @@ struct virtqueue;
 #define VIRTIO_CONFIG_STATUS_DRIVER    0x02
 #define VIRTIO_CONFIG_STATUS_DRIVER_OK 0x04
 #define VIRTIO_CONFIG_STATUS_FEATURES_OK 0x08
+#define VIRTIO_CONFIG_STATUS_DEV_NEED_RESET	0x40
 #define VIRTIO_CONFIG_STATUS_FAILED    0x80
+
+/* The alignment to use between consumer and producer parts of vring. */
+#define VIRTIO_VRING_ALIGN 4096
 
 /*
  * Each virtqueue indirect descriptor list must be physically contiguous.
@@ -83,6 +90,25 @@ struct virtqueue;
 
 #define VIRTIO_F_VERSION_1		32
 #define VIRTIO_F_IOMMU_PLATFORM	33
+#define VIRTIO_F_RING_PACKED	34
+
+/*
+ * Inorder feature indicates that all buffers are used by the device
+ * in the same order in which they have been made available.
+ */
+#define VIRTIO_F_IN_ORDER 35
+
+/*
+ * This feature indicates that memory accesses by the driver and the device
+ * are ordered in a way described by the platform.
+ */
+#define VIRTIO_F_ORDER_PLATFORM 36
+
+/*
+ * This feature indicates that the driver passes extra data (besides
+ * identifying the virtqueue) in its device notifications.
+ */
+#define VIRTIO_F_NOTIFICATION_DATA 38
 
 /* The Guest publishes the used index for which it expects an interrupt
  * at the end of the avail ring. Host should ignore the avail->flags field.
@@ -176,8 +202,7 @@ struct virtio_pci_ops {
 };
 
 struct virtio_crypto_hw {
-	/* control queue */
-	struct virtqueue *cvq;
+	struct virtqueue **vqs;
 	uint16_t    dev_id;
 	uint16_t    max_dataqueues;
 	uint64_t    req_guest_features;
@@ -190,6 +215,9 @@ struct virtio_crypto_hw {
 	struct virtio_pci_common_cfg *common_cfg;
 	struct virtio_crypto_config *dev_cfg;
 	const struct rte_cryptodev_capabilities *virtio_dev_capabilities;
+	uint8_t weak_barriers;
+	struct virtcrypto_ctl *cvq;
+	bool use_va;
 };
 
 /*
@@ -226,6 +254,12 @@ static inline int
 vtpci_with_feature(struct virtio_crypto_hw *hw, uint64_t bit)
 {
 	return (hw->guest_features & (1ULL << bit)) != 0;
+}
+
+static inline int
+vtpci_with_packed_queue(struct virtio_crypto_hw *hw)
+{
+	return vtpci_with_feature(hw, VIRTIO_F_RING_PACKED);
 }
 
 /*

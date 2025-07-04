@@ -2,14 +2,14 @@
  * Copyright(c) 2017-2020 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_vect.h>
 #include <rte_branch_prediction.h>
 
 #include "net_crc.h"
-
-#include <x86intrin.h>
 
 /** PCLMULQDQ CRC computation context structure */
 struct crc_pclmulqdq_ctx {
@@ -18,8 +18,8 @@ struct crc_pclmulqdq_ctx {
 	__m128i rk7_rk8;
 };
 
-static struct crc_pclmulqdq_ctx crc32_eth_pclmulqdq __rte_aligned(16);
-static struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq __rte_aligned(16);
+static alignas(16) struct crc_pclmulqdq_ctx crc32_eth_pclmulqdq;
+static alignas(16) struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq;
 /**
  * @brief Performs one folding round
  *
@@ -96,11 +96,11 @@ crcr32_reduce_128_to_64(__m128i data128, __m128i precomp)
 static __rte_always_inline uint32_t
 crcr32_reduce_64_to_32(__m128i data64, __m128i precomp)
 {
-	static const uint32_t mask1[4] __rte_aligned(16) = {
+	static const alignas(16) uint32_t mask1[4] = {
 		0xffffffff, 0xffffffff, 0x00000000, 0x00000000
 	};
 
-	static const uint32_t mask2[4] __rte_aligned(16) = {
+	static const alignas(16) uint32_t mask2[4] = {
 		0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
 	};
 	__m128i tmp0, tmp1, tmp2;
@@ -118,7 +118,7 @@ crcr32_reduce_64_to_32(__m128i data64, __m128i precomp)
 	return _mm_extract_epi32(tmp2, 2);
 }
 
-static const uint8_t crc_xmm_shift_tab[48] __rte_aligned(16) = {
+static const alignas(16) uint8_t crc_xmm_shift_tab[48] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -175,7 +175,7 @@ crc32_eth_calc_pclmulqdq(
 
 		if (unlikely(data_len < 16)) {
 			/* 0 to 15 bytes */
-			uint8_t buffer[16] __rte_aligned(16);
+			alignas(16) uint8_t buffer[16];
 
 			memset(buffer, 0, sizeof(buffer));
 			memcpy(buffer, data, data_len);
@@ -212,11 +212,11 @@ crc32_eth_calc_pclmulqdq(
 partial_bytes:
 	if (likely(n < data_len)) {
 
-		const uint32_t mask3[4] __rte_aligned(16) = {
+		const alignas(16) uint32_t mask3[4] = {
 			0x80808080, 0x80808080, 0x80808080, 0x80808080
 		};
 
-		const uint8_t shf_table[32] __rte_aligned(16) = {
+		const alignas(16) uint8_t shf_table[32] = {
 			0x00, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 			0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
 			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -271,12 +271,9 @@ rte_net_crc_sse42_init(void)
 	p =  0x10811LLU;
 
 	/** Save the params in context structure */
-	crc16_ccitt_pclmulqdq.rk1_rk2 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k1), _mm_cvtsi64_m64(k2));
-	crc16_ccitt_pclmulqdq.rk5_rk6 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k5), _mm_cvtsi64_m64(k6));
-	crc16_ccitt_pclmulqdq.rk7_rk8 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(q), _mm_cvtsi64_m64(p));
+	crc16_ccitt_pclmulqdq.rk1_rk2 = _mm_set_epi64x(k2, k1);
+	crc16_ccitt_pclmulqdq.rk5_rk6 = _mm_set_epi64x(k6, k5);
+	crc16_ccitt_pclmulqdq.rk7_rk8 = _mm_set_epi64x(p, q);
 
 	/** Initialize CRC32 data */
 	k1 = 0xccaa009eLLU;
@@ -287,18 +284,9 @@ rte_net_crc_sse42_init(void)
 	p =  0x1db710641LLU;
 
 	/** Save the params in context structure */
-	crc32_eth_pclmulqdq.rk1_rk2 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k1), _mm_cvtsi64_m64(k2));
-	crc32_eth_pclmulqdq.rk5_rk6 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k5), _mm_cvtsi64_m64(k6));
-	crc32_eth_pclmulqdq.rk7_rk8 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(q), _mm_cvtsi64_m64(p));
-
-	/**
-	 * Reset the register as following calculation may
-	 * use other data types such as float, double, etc.
-	 */
-	_mm_empty();
+	crc32_eth_pclmulqdq.rk1_rk2 = _mm_set_epi64x(k2, k1);
+	crc32_eth_pclmulqdq.rk5_rk6 = _mm_set_epi64x(k6, k5);
+	crc32_eth_pclmulqdq.rk7_rk8 = _mm_set_epi64x(p, q);
 }
 
 uint32_t

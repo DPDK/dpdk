@@ -158,4 +158,4 @@ test_logs(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(logs_autotest, test_logs);
+REGISTER_FAST_TEST(logs_autotest, true, true, test_logs);

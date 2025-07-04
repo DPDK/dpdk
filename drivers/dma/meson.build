@@ -8,6 +8,7 @@ drivers = [
         'hisilicon',
         'idxd',
         'ioat',
+        'odm',
         'skeleton',
 ]
 std_deps = ['dmadev']

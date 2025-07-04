@@ -27,10 +27,9 @@ The following are the EAL command-line options that can be used in conjunction
 with the ``dpdk-test-eventdev`` application.
 See the DPDK Getting Started Guides for more information on these options.
 
-*   ``-c <COREMASK>`` or ``-l <CORELIST>``
+*   ``-l <CORELIST>``
 
-        Set the hexadecimal bitmask of the cores to run on. The corelist is a
-        list of cores to use.
+        List the set of cores to use.
 
 *   ``--vdev <driver><id>``
 
@@ -55,6 +54,8 @@ The following are the application command-line options:
 
          order_queue
          order_atq
+         atomic_queue
+         atomic_atq
          perf_queue
          perf_atq
          pipeline_atq
@@ -124,6 +125,14 @@ The following are the application command-line options:
 
         Use crypto device as producer.
 
+* ``--prod_type_dmadev``
+
+        Use DMA device as producer.
+
+* ``--prod_type_vector``
+
+        Use event vector adapter as producer.
+
 * ``--timer_tick_nsec``
 
        Used to dictate number of nano seconds between bucket traversal of the
@@ -156,6 +165,10 @@ The following are the application command-line options:
 
         Set crypto adapter mode. Use 0 for OP_NEW (default) and 1 for
         OP_FORWARD mode.
+
+* ``--dma_adptr_mode``
+
+        Set dma adapter mode. DMA adapter supports only OP_FORWARD mode.
 
 * ``--crypto_op_type``
 
@@ -227,6 +240,13 @@ The following are the application command-line options:
 
        Packet size to use for `--tx_first`.
        Only applicable for `pipeline_atq` and `pipeline_queue` tests.
+
+* ``--preschedule``
+
+       Enable pre-scheduling of events.
+       0 - Disable pre-scheduling.
+       1 - Enable pre-scheduling.
+       2 - Enable pre-schedule with adaptive mode (Default).
 
 
 Eventdev Tests
@@ -308,8 +328,102 @@ Example command to run order queue test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 -S 4 --vdev=event_sw0 -- \
                 --test=order_queue --plcores 1 --wlcores 2,3
+
+
+ORDER_ATOMIC Test
+~~~~~~~~~~~~~~~~~
+
+This is a functional test similar to the ORDER_QUEUE test,
+but differs in two critical ways:
+
+#. Both queues (q0 and q1) are atomic.
+   This makes it compatible with the distributed software event device (dsw).
+#. Atomicity is verified using spinlocks
+   for each combination of flow id and queue id.
+
+.. _table_eventdev_atomic_queue_test:
+
+.. table:: Atomic queue test eventdev configuration.
+
+   +---+--------------+----------------+---------------------------+
+   | # | Items        | Value          | Comments                  |
+   |   |              |                |                           |
+   +===+==============+================+===========================+
+   | 1 | nb_queues    | 2              | q0 (atomic), q1 (atomic)  |
+   |   |              |                |                           |
+   +---+--------------+----------------+---------------------------+
+   | 2 | nb_producers | 1              |                           |
+   |   |              |                |                           |
+   +---+--------------+----------------+---------------------------+
+   | 3 | nb_workers   | >= 1           |                           |
+   |   |              |                |                           |
+   +---+--------------+----------------+---------------------------+
+   | 4 | nb_ports     | nb_workers + 1 | Workers use port 0 to     |
+   |   |              |                | port n-1. Producer uses   |
+   |   |              |                | port n.                   |
+   +---+--------------+----------------+---------------------------+
+
+.. _figure_eventdev_atomic_queue_test:
+
+.. figure:: img/eventdev_atomic_queue_test.*
+
+   atomic queue test operation.
+
+When an event is dequeued for processing,
+a spinlock is acquired for the flow from which the event was dequeued.
+Once processing is complete, the lock is released.
+The test will fail if an attempt is made to take a lock that is already held.
+This indicates that multiple workers attempted to process the same flow
+at the same time, thereby violating atomicity.
+
+.. table:: Atomic queue test queue processing tasks.
+
+   +-----------+---------------------------------------------------+
+   | Queue ID  | Processing Task                                   |
+   |           |                                                   |
+   +===========+===================================================+
+   | 0         | Update queue ID for event and re-enqueue.         |
+   |           |                                                   |
+   +-----------+---------------------------------------------------+
+   | 1         | Verify sequence number.                           |
+   |           |                                                   |
+   +-----------+---------------------------------------------------+
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+   --verbose
+   --dev
+   --test
+   --socket_id
+   --pool_sz
+   --plcores
+   --wlcores
+   --nb_flows
+   --nb_pkts
+   --worker_deq_depth
+   --deq_tmo_nsec
+
+Example
+^^^^^^^
+
+Example command to run with the software event device:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 -S 4 --vdev=event_sw0 -- \
+                --test=atomic_queue --plcores 1 --wlcores 2,3
+
+Example command to run with the distributed software event device:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 --vdev=event_dsw0 -- \
+                --test=atomic_queue --plcores 1 --wlcores 2,3,4
 
 
 ORDER_ATQ Test
@@ -371,8 +485,72 @@ Example command to run order ``all types queue`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_octeontx -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 -- \
                         --test=order_atq --plcores 1 --wlcores 2,3
+
+
+ATOMIC_ATQ Test
+~~~~~~~~~~~~~~~
+
+This test verifies the same aspects of ``atomic_queue`` test,
+the difference is the number of queues used,
+this test operates on a single ``all types queue(atq)``
+instead of two different atomic queues.
+
+.. _table_eventdev_atomic_atq_test:
+
+.. table:: Order all types queue test eventdev configuration.
+
+   +---+--------------+----------------+-------------------------+
+   | # | Items        | Value          | Comments                |
+   |   |              |                |                         |
+   +===+==============+================+=========================+
+   | 1 | nb_queues    | 1              | q0 (all types queue)    |
+   |   |              |                |                         |
+   +---+--------------+----------------+-------------------------+
+   | 2 | nb_producers | 1              |                         |
+   |   |              |                |                         |
+   +---+--------------+----------------+-------------------------+
+   | 3 | nb_workers   | >= 1           |                         |
+   |   |              |                |                         |
+   +---+--------------+----------------+-------------------------+
+   | 4 | nb_ports     | nb_workers + 1 | Workers use port 0 to   |
+   |   |              |                | port n-1. Producer uses |
+   |   |              |                | port n.                 |
+   +---+--------------+----------------+-------------------------+
+
+.. _figure_eventdev_atomic_atq_test:
+
+.. figure:: img/eventdev_atomic_atq_test.*
+
+   atomic all types queue test operation.
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+   --verbose
+   --dev
+   --test
+   --socket_id
+   --pool_sz
+   --plcores
+   --wlcores
+   --nb_flows
+   --nb_pkts
+   --worker_deq_depth
+   --deq_tmo_nsec
+
+Example
+^^^^^^^
+
+Example command to run order ``all types queue`` test:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 -- \
+                        --test=atomic_atq --plcores 1 --wlcores 2,3
 
 
 PERF_QUEUE Test
@@ -459,6 +637,8 @@ Supported application command line options are following::
         --prod_type_timerdev_burst
         --prod_type_timerdev
         --prod_type_cryptodev
+        --prod_type_dmadev
+        --prod_type_vector
         --prod_enq_burst_sz
         --timer_tick_nsec
         --max_tmo_nsec
@@ -467,6 +647,7 @@ Supported application command line options are following::
         --nb_timer_adptrs
         --deq_tmo_nsec
         --crypto_adptr_mode
+        --dma_adptr_mode
 
 Example
 ^^^^^^^
@@ -475,14 +656,14 @@ Example command to run perf queue test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -S 1 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
 Example command to run perf queue test with producer enqueuing a burst of events:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -S 1 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0 \
         --prod_enq_burst_sz=32
 
@@ -490,16 +671,24 @@ Example command to run perf queue test with ethernet ports:
 
 .. code-block:: console
 
-   sudo build/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+   sudo build/app/dpdk-test-eventdev -l 0-3 -S 1 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --prod_type_ethdev
 
 Example command to run perf queue test with event timer adapter:
 
 .. code-block:: console
 
-   sudo  <build_dir>/app/dpdk-test-eventdev --vdev="event_octeontx" -- \
-                --wlcores 4 --plcores 12 --test perf_queue --stlist=a \
+   sudo  <build_dir>/app/dpdk-test-eventdev -l 0,4-15 \
+                -- --wlcores 4 --plcores 12 --test perf_queue --stlist=a \
                 --prod_type_timerdev --fwd_latency
+
+Example command to run perf queue test with event DMA adapter:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 -S 1 \
+               -- --test=perf_queue --plcores= 2 --wlcore=3 --stlist=a \
+               --prod_type_dmadev --dma_adptr_mode=1
 
 PERF_ATQ Test
 ~~~~~~~~~~~~~~~
@@ -570,6 +759,8 @@ Supported application command line options are following::
         --prod_type_timerdev_burst
         --prod_type_timerdev
         --prod_type_cryptodev
+        --prod_type_dmadev
+        --prod_type_vector
         --timer_tick_nsec
         --max_tmo_nsec
         --expiry_nsec
@@ -577,6 +768,7 @@ Supported application command line options are following::
         --nb_timer_adptrs
         --deq_tmo_nsec
         --crypto_adptr_mode
+        --dma_adptr_mode
 
 Example
 ^^^^^^^
@@ -585,17 +777,24 @@ Example command to run perf ``all types queue`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_octeontx -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -- \
                 --test=perf_atq --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
 Example command to run perf ``all types queue`` test with event timer adapter:
 
 .. code-block:: console
 
-   sudo  <build_dir>/app/dpdk-test-eventdev --vdev="event_octeontx" -- \
-                --wlcores 4 --plcores 12 --test perf_atq --verbose 20 \
+   sudo  <build_dir>/app/dpdk-test-eventdev -l 0,4-15 \
+                -- --wlcores 4 --plcores 12 --test perf_atq --verbose 20 \
                 --stlist=a --prod_type_timerdev --fwd_latency
 
+Example command to run perf atq test with event DMA adapter:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -l 0-4 -S 1 \
+               -- --test=perf_atq --plcores= 2 --wlcore=3 --stlist=a \
+               --prod_type_dmadev --dma_adptr_mode=1
 
 PIPELINE_QUEUE Test
 ~~~~~~~~~~~~~~~~~~~
@@ -711,14 +910,14 @@ Example command to run pipeline queue test:
 
 .. code-block:: console
 
-    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+    sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -S 3 --vdev=event_sw0 -- \
         --test=pipeline_queue --wlcore=1 --prod_type_ethdev --stlist=a
 
 Example command to run pipeline atq test with vector events:
 
 .. code-block:: console
 
-    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+    sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -S 3 --vdev=event_sw0 -- \
         --test=pipeline_queue --wlcore=1 --prod_type_ethdev --stlist=a \
         --enable_vector  --vector_size 512
 
@@ -817,13 +1016,13 @@ Example command to run pipeline atq test:
 
 .. code-block:: console
 
-    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+    sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -- \
         --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a
 
 Example command to run pipeline atq test with vector events:
 
 .. code-block:: console
 
-    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+    sudo <build_dir>/app/dpdk-test-eventdev -l 0-3 -- \
         --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a \
         --enable_vector  --vector_size 512

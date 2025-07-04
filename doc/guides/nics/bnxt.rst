@@ -538,10 +538,11 @@ Time Synchronization
 ~~~~~~~~~~~~~~~~~~~~
 
 System operators may run a PTP (Precision Time Protocol) client application to
-synchronize the time on the NIC (and optionally, on the system) to a PTP master.
+synchronize the time on the NIC (and optionally, on the system) to a PTP time transmitter.
 
-The BNXT PMD supports a PTP client application to communicate with a PTP master
-clock using DPDK IEEE1588 APIs. Note that the PTP client application needs to
+The BNXT PMD supports a PTP client application to communicate with a PTP time transmitter
+using DPDK IEEE1588 APIs.
+Note that the PTP client application needs to
 run on PF and vector mode needs to be disabled.
 
 .. code-block:: console
@@ -781,8 +782,8 @@ DPDK implements a light-weight library to allow PMDs to be bonded together and p
 
 .. code-block:: console
 
-    dpdk-testpmd -l 0-3 -n4 --vdev 'net_bonding0,mode=0,slave=<PCI B:D.F device 1>,slave=<PCI B:D.F device 2>,mac=XX:XX:XX:XX:XX:XX’ – --socket_num=1 – -i --port-topology=chained
-    (ex) dpdk-testpmd -l 1,3,5,7,9 -n4 --vdev 'net_bonding0,mode=0,slave=0000:82:00.0,slave=0000:82:00.1,mac=00:1e:67:1d:fd:1d' – --socket-num=1 – -i --port-topology=chained
+    dpdk-testpmd -l 0-3 -n4 --vdev 'net_bonding0,mode=0,member=<PCI B:D.F device 1>,member=<PCI B:D.F device 2>,mac=XX:XX:XX:XX:XX:XX’ – --socket_num=1 – -i --port-topology=chained
+    (ex) dpdk-testpmd -l 1,3,5,7,9 -n4 --vdev 'net_bonding0,mode=0,member=0000:82:00.0,member=0000:82:00.1,mac=00:1e:67:1d:fd:1d' – --socket-num=1 – -i --port-topology=chained
 
 Vector Processing
 -----------------
@@ -916,6 +917,7 @@ Shown below are DPDK LTS releases and their supported firmware versions:
 * ``DPDK Release 19.11`` ... Firmware 219.0.103 or later
 * ``DPDK Release 20.11`` ... Firmware 219.0.103 or later
 * ``DPDK Release 21.11`` ... Firmware 221.0.101 or later
+* ``DPDK Release 22.11`` ... Firmware 226.0.131 or later
 
 Supported APIs
 --------------
@@ -1019,40 +1021,41 @@ Listed below are the rte_flow functions supported:
 rte_flow Items
 ~~~~~~~~~~~~~~
 
-Refer to "Table 1.2 rte_flow items availability in networking drivers" in
-`Overview of Networking Drivers <https://doc.dpdk.org/guides/nics/overview.html>`.
+Refer to :ref:`rte_flow items availability in networking drivers`.
 
 Listed below are the rte_flow items supported:
 
 * ``any``
+* ``ecpri``
 * ``eth``
+* ``geneve``
 * ``gre``
 * ``icmp``
 * ``icmp6``
 * ``ipv4``
 * ``ipv6``
-* ``pf``
-* ``phy_port``
 * ``port_id``
 * ``port_representor``
 * ``represented_port``
 * ``tcp``
 * ``udp``
-* ``vf``
 * ``vlan``
 * ``vxlan``
+* ``vxlan_gpe``
 
 rte_flow Actions
 ~~~~~~~~~~~~~~~~
 
-Refer to "Table 1.3 rte_flow actions availability in networking drivers" in
-`Overview of Networking Drivers <https://doc.dpdk.org/guides/nics/overview.html>`.
+Refer to :ref:`rte_flow actions availability in networking drivers`.
 
 Listed below are the rte_flow actions supported:
 
 * ``count``
 * ``dec_ttl``
 * ``drop``
+* ``jump``
+* ``mark``
+* ``meter``
 * ``of_pop_vlan``
 * ``of_push_vlan``
 * ``of_set_vlan_pcp``
@@ -1063,10 +1066,14 @@ Listed below are the rte_flow actions supported:
 * ``port_representor``
 * ``represented_port``
 * ``rss``
+* ``sample``
 * ``set_ipv4_dst``
 * ``set_ipv4_src``
+* ``set_ipv6_dst``
+* ``set_ipv6_src``
 * ``set_tp_dst``
 * ``set_tp_src``
+* ``set_ttl``
 * ``vf``
 * ``vxlan_decap``
 * ``vxlan_encap``

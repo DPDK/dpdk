@@ -21,23 +21,41 @@ struct fbarray_testsuite_params {
 };
 
 static struct fbarray_testsuite_params param;
+static struct fbarray_testsuite_params unaligned;
 
 #define FBARRAY_TEST_ARR_NAME "fbarray_autotest"
 #define FBARRAY_TEST_LEN 256
+#define FBARRAY_UNALIGNED_TEST_ARR_NAME "fbarray_unaligned_autotest"
+#define FBARRAY_UNALIGNED_TEST_LEN 60
 #define FBARRAY_TEST_ELT_SZ (sizeof(int))
 
 static int autotest_setup(void)
 {
-	return rte_fbarray_init(&param.arr, FBARRAY_TEST_ARR_NAME,
+	int ret;
+
+	ret = rte_fbarray_init(&param.arr, FBARRAY_TEST_ARR_NAME,
 			FBARRAY_TEST_LEN, FBARRAY_TEST_ELT_SZ);
+	if (ret) {
+		printf("Failed to initialize test array\n");
+		return -1;
+	}
+	ret = rte_fbarray_init(&unaligned.arr, FBARRAY_UNALIGNED_TEST_ARR_NAME,
+			FBARRAY_UNALIGNED_TEST_LEN, FBARRAY_TEST_ELT_SZ);
+	if (ret) {
+		printf("Failed to initialize unaligned test array\n");
+		rte_fbarray_destroy(&param.arr);
+		return -1;
+	}
+	return 0;
 }
 
 static void autotest_teardown(void)
 {
 	rte_fbarray_destroy(&param.arr);
+	rte_fbarray_destroy(&unaligned.arr);
 }
 
-static int init_array(void)
+static int init_aligned(void)
 {
 	int i;
 	for (i = param.start; i <= param.end; i++) {
@@ -47,11 +65,35 @@ static int init_array(void)
 	return 0;
 }
 
-static void reset_array(void)
+static int init_unaligned(void)
+{
+	int i;
+	for (i = unaligned.start; i <= unaligned.end; i++) {
+		if (rte_fbarray_set_used(&unaligned.arr, i))
+			return -1;
+	}
+	return 0;
+}
+
+static void reset_aligned(void)
 {
 	int i;
 	for (i = 0; i < FBARRAY_TEST_LEN; i++)
 		rte_fbarray_set_free(&param.arr, i);
+	/* reset param as well */
+	param.start = -1;
+	param.end = -1;
+}
+
+static void reset_unaligned(void)
+{
+	int i;
+	for (i = 0; i < FBARRAY_UNALIGNED_TEST_LEN; i++)
+		rte_fbarray_set_free(&unaligned.arr, i);
+	/* reset param as well */
+	unaligned.start = -1;
+	unaligned.end = -1;
+
 }
 
 static int first_msk_test_setup(void)
@@ -59,23 +101,23 @@ static int first_msk_test_setup(void)
 	/* put all within first mask */
 	param.start = 3;
 	param.end = 10;
-	return init_array();
+	return init_aligned();
 }
 
-static int cross_msk_test_setup(void)
+static int contig_test_setup(void)
 {
 	/* put all within second and third mask */
 	param.start = 70;
 	param.end = 160;
-	return init_array();
+	return init_aligned();
 }
 
-static int multi_msk_test_setup(void)
+static int large_contig_test_setup(void)
 {
 	/* put all within first and last mask */
 	param.start = 3;
 	param.end = FBARRAY_TEST_LEN - 20;
-	return init_array();
+	return init_aligned();
 }
 
 static int last_msk_test_setup(void)
@@ -83,24 +125,70 @@ static int last_msk_test_setup(void)
 	/* put all within last mask */
 	param.start = FBARRAY_TEST_LEN - 20;
 	param.end = FBARRAY_TEST_LEN - 1;
-	return init_array();
+	return init_aligned();
+}
+
+static int full_index_test_setup(void)
+{
+	/* fill entire index */
+	param.start = 0;
+	param.end = FBARRAY_TEST_LEN - 1;
+	return init_aligned();
 }
 
 static int full_msk_test_setup(void)
 {
-	/* fill entire mask */
+	/* fill one mask */
 	param.start = 0;
-	param.end = FBARRAY_TEST_LEN - 1;
-	return init_array();
+	param.end = 63;
+	return init_aligned();
 }
 
-static int empty_msk_test_setup(void)
+static int full_msk_contig_fwd_test_setup(void)
 {
-	/* do not fill anything in */
-	reset_array();
-	param.start = -1;
-	param.end = -1;
-	return 0;
+	/* fill one mask plus one item */
+	param.start = 64;
+	param.end = 128;
+	return init_aligned();
+}
+
+static int full_msk_contig_rev_test_setup(void)
+{
+	/* fill one mask plus one item */
+	param.start = 63;
+	param.end = 127;
+	return init_aligned();
+}
+
+static int cross_msk_test_setup(void)
+{
+	/* set index 64 as used */
+	param.start = 64;
+	param.end = 64;
+	return init_aligned();
+}
+
+static int cross_msk_rev_test_setup(void)
+{
+	/* set index 63 as used */
+	param.start = 63;
+	param.end = 63;
+	return init_aligned();
+}
+
+static int unaligned_test_setup(void)
+{
+	unaligned.start = 0;
+	/* leave one free bit at the end */
+	unaligned.end = FBARRAY_UNALIGNED_TEST_LEN - 2;
+	return init_unaligned();
+}
+
+static int full_unaligned_test_setup(void)
+{
+	unaligned.start = 0;
+	unaligned.end = FBARRAY_UNALIGNED_TEST_LEN - 1;
+	return init_unaligned();
 }
 
 static int test_invalid(void)
@@ -454,7 +542,7 @@ static int test_basic(void)
 	if (check_free())
 		return TEST_FAILED;
 
-	reset_array();
+	reset_aligned();
 
 	return TEST_SUCCESS;
 }
@@ -697,6 +785,26 @@ static int test_find(void)
 	return TEST_SUCCESS;
 }
 
+static int test_find_unaligned(void)
+{
+	TEST_ASSERT_EQUAL((int)unaligned.arr.count, unaligned.end - unaligned.start + 1,
+			"Wrong element count\n");
+	/* ensure space is free before start */
+	if (ensure_correct(&unaligned.arr, 0, unaligned.start - 1, false))
+		return TEST_FAILED;
+	/* ensure space is occupied where it's supposed to be */
+	if (ensure_correct(&unaligned.arr, unaligned.start, unaligned.end, true))
+		return TEST_FAILED;
+	/* ensure space after end is free as well */
+	if (ensure_correct(&unaligned.arr, unaligned.end + 1, FBARRAY_UNALIGNED_TEST_LEN - 1,
+			false))
+		return TEST_FAILED;
+	/* test if find_biggest API's work correctly */
+	if (test_biggest(&unaligned.arr, unaligned.start, unaligned.end))
+		return TEST_FAILED;
+	return TEST_SUCCESS;
+}
+
 static int test_empty(void)
 {
 	TEST_ASSERT_EQUAL((int)param.arr.count, 0, "Wrong element count\n");
@@ -709,6 +817,87 @@ static int test_empty(void)
 	return TEST_SUCCESS;
 }
 
+static int test_cross_msk(void)
+{
+	int ret;
+
+	/* run regular test first */
+	ret = test_find();
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	/* test if we can find free chunk while not starting with 0 */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_next_n_free(&param.arr, 1, param.start),
+			param.start + 1, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
+
+static int test_cross_rev_msk(void)
+{
+	int ret, free_len = 2;
+
+	/* run regular test first */
+	ret = test_find();
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	/* test if we can find free chunk while crossing mask boundary */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_prev_n_free(&param.arr, param.start + 1, free_len),
+			param.start - free_len, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
+
+static int test_broken_run(void)
+{
+	/*
+	 * There is a certain type of search behavior we want to test here,
+	 * namely starting cross-mask runs and failing to find them. This is
+	 * achieved when these conditions happen:
+	 *
+	 *   0. Look for a big enough chunk of free space (say, 62 elements)
+	 *   1. Break a run somewhere inside mask 0 (indices 0-63) but leave
+	 *      some free elements at the end of mask 0 to start a run
+	 *   2. Break the run somewhere inside mask 1 (indices 64-127)
+	 *   3. Ensure that we can still find a free space run right after the
+	 *      second broken run
+	 */
+
+	/* break run on first mask */
+	rte_fbarray_set_used(&param.arr, 61);
+	/* break run on second mask */
+	rte_fbarray_set_used(&param.arr, 70);
+
+	/* we expect to find free space at 71 */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_next_n_free(&param.arr, 0, 62),
+			71, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
+
+static int test_rev_broken_run(void)
+{
+	/*
+	 * There is a certain type of search behavior we want to test here,
+	 * namely starting cross-mask runs and failing to find them. This is
+	 * achieved when these conditions happen:
+	 *
+	 *   0. Look for a big enough chunk of free space (say, 62 elements)
+	 *   1. Break a run somewhere inside mask 2 (indices 128-191) but leave
+	 *      some free elements at the beginning of mask 2 to start a run
+	 *   2. Break the run somewhere inside mask 1 (indices 64-127)
+	 *   3. Ensure that we can still find free space N elements down from
+	 *      our last broken run (inside mask 0 in this case)
+	 */
+
+	/* break run on mask 2 */
+	rte_fbarray_set_used(&param.arr, 130);
+	/* break run on mask 1 */
+	rte_fbarray_set_used(&param.arr, 70);
+
+	/* start from 190, we expect to find free space at 8 */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_prev_n_free(&param.arr, 190, 62),
+			8, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
 
 static struct unit_test_suite fbarray_test_suite = {
 	.suite_name = "fbarray autotest",
@@ -717,12 +906,23 @@ static struct unit_test_suite fbarray_test_suite = {
 	.unit_test_cases = {
 		TEST_CASE(test_invalid),
 		TEST_CASE(test_basic),
-		TEST_CASE_ST(first_msk_test_setup, reset_array, test_find),
-		TEST_CASE_ST(cross_msk_test_setup, reset_array, test_find),
-		TEST_CASE_ST(multi_msk_test_setup, reset_array, test_find),
-		TEST_CASE_ST(last_msk_test_setup, reset_array, test_find),
-		TEST_CASE_ST(full_msk_test_setup, reset_array, test_find),
-		TEST_CASE_ST(empty_msk_test_setup, reset_array, test_empty),
+		TEST_CASE_ST(first_msk_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(contig_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(large_contig_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(last_msk_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_msk_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_msk_contig_fwd_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_msk_contig_rev_test_setup, reset_aligned, test_find),
+		TEST_CASE_ST(full_index_test_setup, reset_aligned, test_find),
+		/* empty test does not need setup */
+		TEST_CASE_ST(NULL, reset_aligned, test_empty),
+		TEST_CASE_ST(cross_msk_test_setup, reset_aligned, test_cross_msk),
+		TEST_CASE_ST(cross_msk_rev_test_setup, reset_aligned, test_cross_rev_msk),
+		/* setup for these tests is more complex so do it in test func */
+		TEST_CASE_ST(NULL, reset_aligned, test_broken_run),
+		TEST_CASE_ST(NULL, reset_aligned, test_rev_broken_run),
+		TEST_CASE_ST(unaligned_test_setup, reset_unaligned, test_find_unaligned),
+		TEST_CASE_ST(full_unaligned_test_setup, reset_unaligned, test_find_unaligned),
 		TEST_CASES_END()
 	}
 };
@@ -733,4 +933,4 @@ test_fbarray(void)
 	return unit_test_suite_runner(&fbarray_test_suite);
 }
 
-REGISTER_TEST_COMMAND(fbarray_autotest, test_fbarray);
+REGISTER_FAST_TEST(fbarray_autotest, true, true, test_fbarray);

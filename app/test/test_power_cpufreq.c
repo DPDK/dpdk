@@ -9,6 +9,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <rte_cycles.h>
+#include <rte_lcore.h>
 
 #include "test.h"
 
@@ -29,7 +30,7 @@ test_power_caps(void)
 }
 
 #else
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 #define TEST_POWER_LCORE_ID      2U
 #define TEST_POWER_LCORE_INVALID ((unsigned)RTE_MAX_LCORE)
@@ -46,9 +47,10 @@ test_power_caps(void)
 
 static uint32_t total_freq_num;
 static uint32_t freqs[TEST_POWER_FREQS_NUM_MAX];
+static uint32_t cpu_id;
 
 static int
-check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
+check_cur_freq(__rte_unused unsigned int lcore_id, uint32_t idx, bool turbo)
 {
 #define TEST_POWER_CONVERT_TO_DECIMAL 10
 #define MAX_LOOP 100
@@ -62,13 +64,13 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 	int i;
 
 	if (snprintf(fullpath, sizeof(fullpath),
-		TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
+		TEST_POWER_SYSFILE_CPUINFO_FREQ, cpu_id) < 0) {
 		return 0;
 	}
 	f = fopen(fullpath, "r");
 	if (f == NULL) {
 		if (snprintf(fullpath, sizeof(fullpath),
-			TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
+			TEST_POWER_SYSFILE_SCALING_FREQ, cpu_id) < 0) {
 			return 0;
 		}
 		f = fopen(fullpath, "r");
@@ -93,6 +95,17 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 			freq_conv = (cur_freq + TEST_FREQ_ROUNDING_DELTA)
 						/ TEST_ROUND_FREQ_TO_N_100000;
 			freq_conv = freq_conv * TEST_ROUND_FREQ_TO_N_100000;
+		} else if (env == PM_ENV_AMD_PSTATE_CPUFREQ) {
+			freq_conv = cur_freq > freqs[idx] ? (cur_freq - freqs[idx]) :
+							(freqs[idx] - cur_freq);
+			if (freq_conv <= TEST_FREQ_ROUNDING_DELTA) {
+				/* workaround: current frequency may deviate from
+				 * nominal freq. Allow deviation of up to 50Mhz.
+				 */
+				printf("Current frequency deviated from nominal "
+					"frequency by %d Khz!\n", freq_conv);
+				freq_conv = freqs[idx];
+			}
 		}
 
 		if (turbo)
@@ -486,6 +499,19 @@ test_power_cpufreq(void)
 {
 	int ret = -1;
 	enum power_management_env env;
+	rte_cpuset_t lcore_cpus;
+
+	lcore_cpus = rte_lcore_cpuset(TEST_POWER_LCORE_ID);
+	if (CPU_COUNT(&lcore_cpus) != 1) {
+		printf("Power management doesn't support lcore %u mapping to %u CPUs\n",
+				TEST_POWER_LCORE_ID,
+				CPU_COUNT(&lcore_cpus));
+		return TEST_SKIPPED;
+	}
+	for (cpu_id = 0; cpu_id < CPU_SETSIZE; cpu_id++) {
+		if (CPU_ISSET(cpu_id, &lcore_cpus))
+			break;
+	}
 
 	/* Test initialisation of a valid lcore */
 	ret = rte_power_init(TEST_POWER_LCORE_ID);
@@ -502,60 +528,9 @@ test_power_cpufreq(void)
 	/* Test environment configuration */
 	env = rte_power_get_env();
 	if ((env != PM_ENV_ACPI_CPUFREQ) && (env != PM_ENV_PSTATE_CPUFREQ) &&
-			(env != PM_ENV_CPPC_CPUFREQ)) {
+			(env != PM_ENV_CPPC_CPUFREQ) &&
+			(env != PM_ENV_AMD_PSTATE_CPUFREQ)) {
 		printf("Unexpectedly got an environment other than ACPI/PSTATE\n");
-		goto fail_all;
-	}
-
-	/* verify that function pointers are not NULL */
-	if (rte_power_freqs == NULL) {
-		printf("rte_power_freqs should not be NULL, environment has not been "
-				"initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_get_freq == NULL) {
-		printf("rte_power_get_freq should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_set_freq == NULL) {
-		printf("rte_power_set_freq should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_up == NULL) {
-		printf("rte_power_freq_up should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_down == NULL) {
-		printf("rte_power_freq_down should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_max == NULL) {
-		printf("rte_power_freq_max should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_min == NULL) {
-		printf("rte_power_freq_min should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_turbo_status == NULL) {
-		printf("rte_power_turbo_status should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_enable_turbo == NULL) {
-		printf("rte_power_freq_enable_turbo should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_disable_turbo == NULL) {
-		printf("rte_power_freq_disable_turbo should not be NULL, environment has not "
-				"been initialised\n");
 		goto fail_all;
 	}
 
@@ -703,5 +678,5 @@ test_power_caps(void)
 
 #endif
 
-REGISTER_TEST_COMMAND(power_cpufreq_autotest, test_power_cpufreq);
+REGISTER_FAST_TEST(power_cpufreq_autotest, false, true, test_power_cpufreq);
 REGISTER_TEST_COMMAND(power_caps_autotest, test_power_caps);

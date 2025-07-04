@@ -12,7 +12,7 @@ following set of commands::
 	meson setup build
 	cd build
 	ninja
-	ninja install
+	meson install
 
 This will compile DPDK in the ``build`` subdirectory, and then install the
 resulting libraries, drivers and header files onto the system - generally
@@ -35,7 +35,7 @@ The ``meson`` tool is used to configure a DPDK build. On most Linux
 distributions this can be got using the local package management system,
 e.g. ``dnf install meson`` or ``apt-get install meson``. If meson is not
 available as a suitable package, it can also be installed using the Python
-3 ``pip`` tool, e.g. ``pip3 install meson``. Version 0.53.2 or later of meson is
+3 ``pip`` tool, e.g. ``pip3 install meson``. Version 0.57 or later of meson is
 required - if the version packaged is too old, the latest version is
 generally available from "pip".
 
@@ -165,7 +165,7 @@ printing each command on a new line as it runs.
 Installing the Compiled Files
 ------------------------------
 
-Use ``ninja install`` to install the required DPDK files onto the system.
+Use ``meson install`` to install the required DPDK files onto the system.
 The install prefix defaults to ``/usr/local`` but can be used as with other
 options above. The environment variable ``DESTDIR`` can be used to adjust
 the root directory for the install, for example when packaging.

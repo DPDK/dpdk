@@ -24,14 +24,14 @@ typedef int32x4_t xmm_t;
 #define	XMM_SIZE	(sizeof(xmm_t))
 #define	XMM_MASK	(XMM_SIZE - 1)
 
-typedef union rte_xmm {
+typedef union __rte_aligned(16) rte_xmm {
 	xmm_t    x;
 	uint8_t  u8[XMM_SIZE / sizeof(uint8_t)];
 	uint16_t u16[XMM_SIZE / sizeof(uint16_t)];
 	uint32_t u32[XMM_SIZE / sizeof(uint32_t)];
 	uint64_t u64[XMM_SIZE / sizeof(uint64_t)];
 	double   pd[XMM_SIZE / sizeof(double)];
-} __rte_aligned(16) rte_xmm_t;
+} rte_xmm_t;
 
 #if defined(RTE_ARCH_ARM) && defined(RTE_ARCH_32)
 /* NEON intrinsic vqtbl1q_u8() is not supported in ARMv7-A(AArch32) */
@@ -82,18 +82,6 @@ vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
 
 #if defined(RTE_ARCH_ARM64)
 #if RTE_CC_IS_GNU && (GCC_VERSION < 70000)
-
-#if (GCC_VERSION < 40900)
-typedef uint64_t poly64_t;
-typedef uint64x2_t poly64x2_t;
-typedef uint8_t poly128_t __attribute__((vector_size(16), aligned(16)));
-
-static inline uint32x4_t
-vceqzq_u32(uint32x4_t a)
-{
-	return (a == 0);
-}
-#endif
 
 /* NEON intrinsic vreinterpretq_u64_p128() is supported since GCC version 7 */
 static inline uint64x2_t

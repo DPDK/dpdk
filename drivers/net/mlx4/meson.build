@@ -8,6 +8,8 @@ if not is_linux
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
 static_ibverbs = (get_option('ibverbs_link') == 'static')
 dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_net_mlx4_glue.so'
@@ -103,12 +105,12 @@ has_sym_args = [
 config = configuration_data()
 foreach arg:has_sym_args
     config.set(arg[0], cc.has_header_symbol(arg[1], arg[2],
-        dependencies: libs))
+        dependencies: libs, args: cflags))
 endforeach
 foreach arg:has_member_args
     file_prefix = '#include <' + arg[1] + '>'
     config.set(arg[0], cc.has_member(arg[2], arg[3],
-        prefix: file_prefix, dependencies: libs))
+        prefix: file_prefix, dependencies: libs, args: cflags))
 endforeach
 configure_file(output : 'mlx4_autoconf.h', configuration : config)
 

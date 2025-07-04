@@ -671,14 +671,14 @@ test_missing_c_flag(void)
 	    launch_proc(argv26) == 0 || launch_proc(argv27) == 0 ||
 	    launch_proc(argv28) == 0 || launch_proc(argv30) == 0) {
 		printf("Error - "
-		       "process ran without error with invalid --lcore flag\n");
+		       "process ran without error with invalid --lcores flag\n");
 		return -1;
 	}
 
 	if (rte_lcore_is_enabled(0) && rte_lcore_is_enabled(1) &&
 	    rte_lcore_is_enabled(2) && rte_lcore_is_enabled(3) &&
-	    rte_lcore_is_enabled(3) && rte_lcore_is_enabled(5) &&
-	    rte_lcore_is_enabled(4) && rte_lcore_is_enabled(7) &&
+	    rte_lcore_is_enabled(4) && rte_lcore_is_enabled(5) &&
+	    rte_lcore_is_enabled(6) && rte_lcore_is_enabled(7) &&
 	    launch_proc(argv29) != 0) {
 		printf("Error - "
 		       "process did not run ok with valid corelist value\n");
@@ -985,12 +985,12 @@ test_misc_flags(void)
 	/* With -v */
 	const char *argv2[] = {prgname, prefix, mp_flag, "-v"};
 	/* With valid --syslog */
-	const char *argv3[] = {prgname, prefix, mp_flag,
-			"--syslog", "syslog"};
-	/* With empty --syslog (should fail) */
+	const char *argv3[] = {prgname, prefix, mp_flag, "--syslog=user"};
+	/* With empty --syslog (now defaults) */
 	const char *argv4[] = {prgname, prefix, mp_flag, "--syslog"};
 	/* With invalid --syslog */
-	const char *argv5[] = {prgname, prefix, mp_flag, "--syslog", "error"};
+	const char *argv5[] = {prgname, prefix, mp_flag, "--syslog=invalid"};
+
 	/* With no-sh-conf, also use no-huge to ensure this test runs on BSD */
 	const char *argv6[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			no_shconf, nosh_prefix, no_huge};
@@ -1017,7 +1017,7 @@ test_misc_flags(void)
 
 	/* try running with base-virtaddr param */
 	const char *argv13[] = {prgname, "--file-prefix=virtaddr",
-			"--base-virtaddr=0x12345678"};
+			"--base-virtaddr=0x23456789"};
 
 	/* try running with --vfio-intr INTx flag */
 	const char *argv14[] = {prgname, "--file-prefix=intr",
@@ -1055,6 +1055,30 @@ test_misc_flags(void)
 	const char * const argv22[] = {prgname, prefix, mp_flag,
 				       "--huge-worker-stack=512"};
 
+	/* Try running with --log-timestamp */
+	const char * const argv23[] = {prgname, prefix, mp_flag,
+				       "--log-timestamp" };
+
+	/* Try running with --log-timestamp=iso */
+	const char * const argv24[] = {prgname, prefix, mp_flag,
+				       "--log-timestamp=iso" };
+
+	/* Try running with invalid timestamp */
+	const char * const argv25[] = {prgname, prefix, mp_flag,
+				       "--log-timestamp=invalid" };
+
+	/* Try running with --log-color */
+	const char * const argv26[] = {prgname, prefix, mp_flag,
+				       "--log-color" };
+
+	/* Try running with --log-color=never */
+	const char * const argv27[] = {prgname, prefix, mp_flag,
+				       "--log-color=never" };
+
+	/* Try running with --log-color=invalid */
+	const char * const argv28[] = {prgname, prefix, mp_flag,
+				       "--log-color=invalid" };
+
 	/* run all tests also applicable to FreeBSD first */
 
 	if (launch_proc(argv0) == 0) {
@@ -1080,15 +1104,15 @@ test_misc_flags(void)
 #endif
 
 	if (launch_proc(argv3) != 0) {
+		printf("Error - process did not run ok with --syslog=user flag\n");
+		goto fail;
+	}
+	if (launch_proc(argv4) != 0) {
 		printf("Error - process did not run ok with --syslog flag\n");
 		goto fail;
 	}
-	if (launch_proc(argv4) == 0) {
-		printf("Error - process run ok with empty --syslog flag\n");
-		goto fail;
-	}
 	if (launch_proc(argv5) == 0) {
-		printf("Error - process run ok with invalid --syslog flag\n");
+		printf("Error - process run ok with --syslog=invalid flag\n");
 		goto fail;
 	}
 	if (launch_proc(argv7) != 0) {
@@ -1160,6 +1184,30 @@ test_misc_flags(void)
 	}
 	if (launch_proc(argv22) != 0) {
 		printf("Error - process did not run ok with --huge-worker-stack=size parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv23) != 0) {
+		printf("Error - process did not run ok with --log-timestamp parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv24) != 0) {
+		printf("Error - process did not run ok with --log-timestamp=iso parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv25) == 0) {
+		printf("Error - process did run ok with --log-timestamp=invalid parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv26) != 0) {
+		printf("Error - process did not run ok with --log-color parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv27) != 0) {
+		printf("Error - process did not run ok with --log-color=never parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv28) == 0) {
+		printf("Error - process did run ok with --log-timestamp=invalid parameter\n");
 		goto fail;
 	}
 
@@ -1644,15 +1692,15 @@ test_memory_flags(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(eal_flags_c_opt_autotest, test_missing_c_flag);
-REGISTER_TEST_COMMAND(eal_flags_main_opt_autotest, test_main_lcore_flag);
-REGISTER_TEST_COMMAND(eal_flags_n_opt_autotest, test_invalid_n_flag);
-REGISTER_TEST_COMMAND(eal_flags_hpet_autotest, test_no_hpet_flag);
-REGISTER_TEST_COMMAND(eal_flags_no_huge_autotest, test_no_huge_flag);
-REGISTER_TEST_COMMAND(eal_flags_a_opt_autotest, test_allow_flag);
-REGISTER_TEST_COMMAND(eal_flags_b_opt_autotest, test_invalid_b_flag);
-REGISTER_TEST_COMMAND(eal_flags_vdev_opt_autotest, test_invalid_vdev_flag);
-REGISTER_TEST_COMMAND(eal_flags_r_opt_autotest, test_invalid_r_flag);
-REGISTER_TEST_COMMAND(eal_flags_mem_autotest, test_memory_flags);
-REGISTER_TEST_COMMAND(eal_flags_file_prefix_autotest, test_file_prefix);
-REGISTER_TEST_COMMAND(eal_flags_misc_autotest, test_misc_flags);
+REGISTER_FAST_TEST(eal_flags_c_opt_autotest, false, false, test_missing_c_flag);
+REGISTER_FAST_TEST(eal_flags_main_opt_autotest, false, false, test_main_lcore_flag);
+REGISTER_FAST_TEST(eal_flags_n_opt_autotest, false, false, test_invalid_n_flag);
+REGISTER_FAST_TEST(eal_flags_hpet_autotest, false, false, test_no_hpet_flag);
+REGISTER_FAST_TEST(eal_flags_no_huge_autotest, false, false, test_no_huge_flag);
+REGISTER_FAST_TEST(eal_flags_a_opt_autotest, false, false, test_allow_flag);
+REGISTER_FAST_TEST(eal_flags_b_opt_autotest, false, false, test_invalid_b_flag);
+REGISTER_FAST_TEST(eal_flags_vdev_opt_autotest, false, false, test_invalid_vdev_flag);
+REGISTER_FAST_TEST(eal_flags_r_opt_autotest, false, false, test_invalid_r_flag);
+REGISTER_FAST_TEST(eal_flags_mem_autotest, false, false, test_memory_flags);
+REGISTER_FAST_TEST(eal_flags_file_prefix_autotest, false, false, test_file_prefix);
+REGISTER_FAST_TEST(eal_flags_misc_autotest, false, false, test_misc_flags);

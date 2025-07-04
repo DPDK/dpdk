@@ -10,29 +10,28 @@
 
 #include <rte_common.h>
 #include <rte_eal.h>
+#include <rte_spinlock.h>
+#include <rte_errno.h>
+#include <rte_string_fns.h>
 
 #include "rte_graph.h"
 #include "rte_graph_worker.h"
 
 extern int rte_graph_logtype;
+#define RTE_LOGTYPE_GRAPH rte_graph_logtype
 
 #define GRAPH_LOG(level, ...)                                                  \
-	rte_log(RTE_LOG_##level, rte_graph_logtype,                            \
-		RTE_FMT("GRAPH: %s():%u " RTE_FMT_HEAD(__VA_ARGS__, ) "\n",    \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__, )))
+	RTE_LOG_LINE_PREFIX(level, GRAPH,                                      \
+		"%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
+
+#define GRAPH_LOG2(level, _fname, _linenum, ...)                               \
+	RTE_LOG_LINE_PREFIX(level, GRAPH,                                      \
+		"%s():%u ", _fname RTE_LOG_COMMA _linenum, __VA_ARGS__)
 
 #define graph_err(...) GRAPH_LOG(ERR, __VA_ARGS__)
 #define graph_warn(...) GRAPH_LOG(WARNING, __VA_ARGS__)
 #define graph_info(...) GRAPH_LOG(INFO, __VA_ARGS__)
 #define graph_dbg(...) GRAPH_LOG(DEBUG, __VA_ARGS__)
-
-#define ID_CHECK(id, id_max)                                                   \
-	do {                                                                   \
-		if ((id) >= (id_max)) {                                        \
-			rte_errno = EINVAL;                                    \
-			goto fail;                                             \
-		}                                                              \
-	} while (0)
 
 #define SET_ERR_JMP(err, where, fmt, ...)                                      \
 	do {                                                                   \
@@ -50,13 +49,28 @@ struct node {
 	STAILQ_ENTRY(node) next;      /**< Next node in the list. */
 	char name[RTE_NODE_NAMESIZE]; /**< Name of the node. */
 	uint64_t flags;		      /**< Node configuration flag. */
+	unsigned int lcore_id;
+	/**< Node runs on the Lcore ID used for mcore dispatch model. */
 	rte_node_process_t process;   /**< Node process function. */
 	rte_node_init_t init;         /**< Node init function. */
 	rte_node_fini_t fini;	      /**< Node fini function. */
 	rte_node_t id;		      /**< Allocated identifier for the node. */
 	rte_node_t parent_id;	      /**< Parent node identifier. */
 	rte_edge_t nb_edges;	      /**< Number of edges from this node. */
+	struct rte_node_xstats *xstats;	      /**< Node specific xstats. */
 	char next_nodes[][RTE_NODE_NAMESIZE]; /**< Names of next nodes. */
+};
+
+/**
+ * @internal
+ *
+ * Structure that holds the graph scheduling workqueue node stream.
+ * Used for mcore dispatch model.
+ */
+struct __rte_cache_aligned graph_mcore_dispatch_wq_node {
+	rte_graph_off_t node_off;
+	uint16_t nb_objs;
+	void *objs[RTE_GRAPH_BURST_SIZE];
 };
 
 /**
@@ -85,6 +99,8 @@ struct graph {
 	/**< Memzone to store graph data. */
 	rte_graph_off_t nodes_start;
 	/**< Node memory start offset in graph reel. */
+	rte_graph_off_t xstats_start;
+	/**< Node xstats memory start offset in graph reel. */
 	rte_node_t src_node_count;
 	/**< Number of source nodes in a graph. */
 	struct rte_graph *graph;
@@ -97,6 +113,10 @@ struct graph {
 	/**< Circular buffer mask for wrap around. */
 	rte_graph_t id;
 	/**< Graph identifier. */
+	rte_graph_t parent_id;
+	/**< Parent graph identifier. */
+	unsigned int lcore_id;
+	/**< Lcore identifier where the graph prefer to run on. Used for mcore dispatch model. */
 	size_t mem_sz;
 	/**< Memory size of the graph. */
 	int socket;
@@ -108,6 +128,45 @@ struct graph {
 	STAILQ_HEAD(gnode_list, graph_node) node_list;
 	/**< Nodes in a graph. */
 };
+
+/* Node and graph common functions */
+/**
+ * @internal
+ *
+ * Naming a cloned graph or node by appending a string to base name.
+ *
+ * @param new_name
+ *   Pointer to the name of the cloned object.
+ * @param base_name
+ *   Pointer to the name of original object.
+ * @param append_str
+ *   Pointer to the appended string.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise.
+ */
+static inline int clone_name(char *new_name, char *base_name, const char *append_str)
+{
+	ssize_t sz, rc;
+
+#define SZ RTE_MIN(RTE_NODE_NAMESIZE, RTE_GRAPH_NAMESIZE)
+	rc = rte_strscpy(new_name, base_name, SZ);
+	if (rc < 0)
+		goto fail;
+	sz = rc;
+	rc = rte_strscpy(new_name + sz, "-", RTE_MAX((int16_t)(SZ - sz), 0));
+	if (rc < 0)
+		goto fail;
+	sz += rc;
+	sz = rte_strscpy(new_name + sz, append_str, RTE_MAX((int16_t)(SZ - sz), 0));
+	if (sz < 0)
+		goto fail;
+
+	return 0;
+fail:
+	rte_errno = E2BIG;
+	return -rte_errno;
+}
 
 /* Node functions */
 STAILQ_HEAD(node_head, node);
@@ -135,6 +194,17 @@ struct node_head *node_list_head_get(void);
  */
 struct node *node_from_name(const char *name);
 
+/**
+ * @internal
+ *
+ * Override process func of a node.
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Error
+ */
+int node_override_process_func(rte_node_t id, rte_node_process_t process);
+
 /* Graph list functions */
 STAILQ_HEAD(graph_head, graph);
 
@@ -148,20 +218,25 @@ STAILQ_HEAD(graph_head, graph);
  */
 struct graph_head *graph_list_head_get(void);
 
+rte_spinlock_t *
+graph_spinlock_get(void);
+
 /* Lock functions */
 /**
  * @internal
  *
  * Take a lock on the graph internal spin lock.
  */
-void graph_spinlock_lock(void);
+void graph_spinlock_lock(void)
+	__rte_acquire_capability(graph_spinlock_get());
 
 /**
  * @internal
  *
  * Release a lock on the graph internal spin lock.
  */
-void graph_spinlock_unlock(void);
+void graph_spinlock_unlock(void)
+	__rte_release_capability(graph_spinlock_get());
 
 /* Graph operations */
 /**
@@ -348,5 +423,49 @@ void graph_dump(FILE *f, struct graph *g);
  *   Pointer to the internal node object.
  */
 void node_dump(FILE *f, struct node *n);
+
+/**
+ * @internal
+ *
+ * Create the graph schedule work queue for mcore dispatch model.
+ * All cloned graphs attached to the parent graph MUST be destroyed together
+ * for fast schedule design limitation.
+ *
+ * @param _graph
+ *   The graph object
+ * @param _parent_graph
+ *   The parent graph object which holds the run-queue head.
+ * @param prm
+ *   Graph parameter, includes model-specific parameters in this graph.
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Graph schedule work queue related error.
+ */
+int graph_sched_wq_create(struct graph *_graph, struct graph *_parent_graph,
+			   struct rte_graph_param *prm);
+
+/**
+ * @internal
+ *
+ * Destroy the graph schedule work queue for mcore dispatch model.
+ *
+ * @param _graph
+ *   The graph object
+ */
+void graph_sched_wq_destroy(struct graph *_graph);
+
+/**
+ * @internal
+ *
+ * Check if given node present in any of the created graphs.
+ *
+ * @param node
+ *   The node object
+ *
+ * @return
+ *   0 if not present in any graph, else return 1.
+ */
+bool graph_is_node_active_in_graph(struct node *_node);
 
 #endif /* _RTE_GRAPH_PRIVATE_H_ */

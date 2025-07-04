@@ -68,11 +68,11 @@ Once configured, to build and then install DPDK system-wide use:
 
         cd build
         ninja
-        ninja install
+        meson install
         ldconfig
 
 The last two commands above generally need to be run as root,
-with the `ninja install` step copying the built objects to their final system-wide locations,
+with the `meson install` step copying the built objects to their final system-wide locations,
 and the last step causing the dynamic loader `ld.so` to update its cache to take account of the new objects.
 
 .. note::

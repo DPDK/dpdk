@@ -45,6 +45,8 @@
 #define	NIC_MBOX_MSG_CFG_DONE		0xF0	/* VF configuration done */
 #define	NIC_MBOX_MSG_SHUTDOWN		0xF1	/* VF is being shutdown */
 #define NIC_MBOX_MSG_RESET_XCAST	0xF2    /* Reset DCAM filtering mode */
+#define	NIC_MBOX_MSG_ADD_MCAST		0xF3	/* ADD MAC to DCAM filters */
+#define	NIC_MBOX_MSG_SET_XCAST		0xF4	/* Set MCAST/BCAST Rx mode */
 #define	NIC_MBOX_MSG_MAX		0x100	/* Maximum number of messages */
 
 /* Get vNIC VF configuration */
@@ -190,6 +192,12 @@ struct change_link_mode_msg {
 
 };
 
+struct xcast {
+	uint8_t    msg;
+	uint8_t    mode;
+	uint64_t   mac:48;
+};
+
 struct nic_mbx {
 /* 128 bit shared memory between PF and each VF */
 union {
@@ -209,6 +217,7 @@ union {
 	struct reset_stat_cfg	reset_stat;
 	struct set_link_state	set_link;
 	struct change_link_mode_msg mode;
+	struct xcast xcast;
 };
 };
 
@@ -239,5 +248,6 @@ void nicvf_mbox_cfg_done(struct nicvf *nic);
 void nicvf_mbox_link_change(struct nicvf *nic);
 void nicvf_mbox_reset_xcast(struct nicvf *nic);
 int nicvf_mbox_change_mode(struct nicvf *nic, struct change_link_mode *cfg);
+int nicvf_mbox_set_xcast(struct nicvf *nic, uint8_t  mode, uint64_t mac);
 
 #endif /* __THUNDERX_NICVF_MBOX__ */

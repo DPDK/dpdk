@@ -6,15 +6,13 @@
 #define _QAT_SYM_H_
 
 #include <cryptodev_pmd.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_net_crc.h>
-#endif
 
 #ifdef BUILD_QAT_SYM
+#ifdef RTE_QAT_OPENSSL
 #include <openssl/evp.h>
-#ifdef RTE_LIB_SECURITY
-#include <rte_security_driver.h>
 #endif
+#include <rte_security_driver.h>
 
 #include "qat_common.h"
 #include "qat_sym_session.h"
@@ -32,6 +30,7 @@
 
 /* Internal capabilities */
 #define QAT_SYM_CAP_MIXED_CRYPTO	(1 << 0)
+#define QAT_SYM_CAP_CIPHER_CRC		(1 << 1)
 #define QAT_SYM_CAP_VALID		(1 << 31)
 
 /**
@@ -96,12 +95,18 @@
 /* Maximum data length for single pass GMAC: 2^14-1 */
 #define QAT_AES_GMAC_SPC_MAX_SIZE 16383
 
+/* Digest length for GCM Algo is 16 bytes */
+#define GCM_256_DIGEST_LEN 16
+
+/* IV length for GCM algo is 12 bytes */
+#define GCM_IV_LENGTH_GEN_LCE 12
+
 struct qat_sym_session;
 
-struct qat_sym_sgl {
+struct __rte_cache_aligned __rte_packed_begin qat_sym_sgl {
 	qat_sgl_hdr;
 	struct qat_flat_buf buffers[QAT_SYM_SGL_MAX_NUMBER];
-} __rte_packed __rte_cache_aligned;
+} __rte_packed_end;
 
 struct qat_sym_op_cookie {
 	struct qat_sym_sgl qat_sgl_src;
@@ -111,11 +116,14 @@ struct qat_sym_op_cookie {
 	union {
 		/* Used for Single-Pass AES-GMAC only */
 		struct {
-			struct icp_qat_hw_cipher_algo_blk cd_cipher
-					__rte_packed __rte_cache_aligned;
+			alignas(RTE_CACHE_LINE_SIZE) struct __rte_packed_begin
+				icp_qat_hw_cipher_algo_blk cd_cipher __rte_packed_end;
 			phys_addr_t cd_phys_addr;
 		} spc_gmac;
 	} opt;
+	uint8_t digest_null[4];
+	phys_addr_t digest_null_phys_addr;
+	enum rte_crypto_op_status status;
 };
 
 struct qat_sym_dp_ctx {
@@ -134,6 +142,10 @@ uint16_t
 qat_sym_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops);
 
+uint16_t
+qat_sym_dequeue_burst_gen_lce(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops);
+
+#ifdef RTE_QAT_OPENSSL
 /** Encrypt a single partial block
  *  Depends on openssl libcrypto
  *  Uses ECB+XOR to do CFB encryption, same result, more performant
@@ -162,6 +174,19 @@ cipher_encrypt_err:
 	QAT_DP_LOG(ERR, "libcrypto ECB cipher encrypt failed");
 	return -EINVAL;
 }
+#else
+static __rte_always_inline void
+bpi_cipher_ipsec(uint8_t *src, uint8_t *dst, uint8_t *iv, int srclen,
+		uint64_t *expkey, IMB_MGR *m, uint8_t docsis_key_len)
+{
+	if (docsis_key_len == ICP_QAT_HW_AES_128_KEY_SZ)
+		IMB_AES128_CFB_ONE(m, dst, src, (uint64_t *)iv, expkey, srclen);
+	else if (docsis_key_len == ICP_QAT_HW_AES_256_KEY_SZ)
+		IMB_AES256_CFB_ONE(m, dst, src, (uint64_t *)iv, expkey, srclen);
+	else if (docsis_key_len == ICP_QAT_HW_DES_KEY_SZ)
+		des_cfb_one(dst, src, (uint64_t *)iv, expkey, srclen);
+}
+#endif
 
 static inline uint32_t
 qat_bpicipher_postprocess(struct qat_sym_session *ctx,
@@ -181,13 +206,14 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 
 		last_block_offset = sym_op->cipher.data.offset +
 				sym_op->cipher.data.length - last_block_len;
-		last_block = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_src,
-				uint8_t *, last_block_offset);
+		last_block = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+						     last_block_offset);
 
 		if (unlikely(sym_op->m_dst != NULL))
 			/* out-of-place operation (OOP) */
-			dst = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_dst,
-						uint8_t *, last_block_offset);
+			dst = rte_pktmbuf_mtod_offset(sym_op->m_dst,
+						      uint8_t *,
+						      last_block_offset);
 		else
 			dst = last_block;
 
@@ -207,8 +233,13 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 				"BPI: dst before post-process:",
 				dst, last_block_len);
 #endif
+#ifdef RTE_QAT_OPENSSL
 		bpi_cipher_encrypt(last_block, dst, iv, block_len,
 				last_block_len, ctx->bpi_ctx);
+#else
+		bpi_cipher_ipsec(last_block, dst, iv, last_block_len, ctx->expkey,
+			ctx->mb_mgr, ctx->docsis_key_len);
+#endif
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		QAT_DP_HEXDUMP_LOG(DEBUG, "BPI: src after post-process:",
 				last_block, last_block_len);
@@ -221,7 +252,6 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 	return sym_op->cipher.data.length - last_block_len;
 }
 
-#ifdef RTE_LIB_SECURITY
 static inline void
 qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
 {
@@ -237,8 +267,7 @@ qat_crc_verify(struct qat_sym_session *ctx, struct rte_crypto_op *op)
 		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
 				crc_data_ofs);
 
-		crc = rte_net_crc_calc(crc_data, crc_data_len,
-				RTE_NET_CRC32_ETH);
+		crc = rte_net_crc_calc(ctx->crc, crc_data, crc_data_len);
 
 		if (crc != *(uint32_t *)(crc_data + crc_data_len))
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
@@ -261,8 +290,7 @@ qat_crc_generate(struct qat_sym_session *ctx,
 		crc_data = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
 				sym_op->auth.data.offset);
 		crc = (uint32_t *)(crc_data + crc_data_len);
-		*crc = rte_net_crc_calc(crc_data, crc_data_len,
-				RTE_NET_CRC32_ETH);
+		*crc = rte_net_crc_calc(ctx->crc, crc_data, crc_data_len);
 	}
 }
 
@@ -279,14 +307,18 @@ qat_sym_preprocess_requests(void **ops, uint16_t nb_ops)
 		if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 			ctx = SECURITY_GET_SESS_PRIV(op->sym->session);
 
+#ifdef RTE_QAT_OPENSSL
 			if (ctx == NULL || ctx->bpi_ctx == NULL)
+#else
+			if (ctx == NULL || ctx->mb_mgr == NULL)
+#endif
 				continue;
 
-			qat_crc_generate(ctx, op);
+			if (ctx->qat_cmd != ICP_QAT_FW_LA_CMD_CIPHER_CRC)
+				qat_crc_generate(ctx, op);
 		}
 	}
 }
-#endif
 
 static __rte_always_inline int
 qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
@@ -298,13 +330,13 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 			(resp_msg->opaque_data);
 	struct qat_sym_session *sess;
 	uint8_t is_docsis_sec;
+	struct qat_sym_op_cookie *cookie = NULL;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_response:", (uint8_t *)resp_msg,
 			sizeof(struct icp_qat_fw_comn_resp));
 #endif
 
-#ifdef RTE_LIB_SECURITY
 	if (rx_op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
 		/*
 		 * Assuming at this point that if it's a security
@@ -312,9 +344,7 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 		 */
 		sess = SECURITY_GET_SESS_PRIV(rx_op->sym->session);
 		is_docsis_sec = 1;
-	} else
-#endif
-	{
+	} else {
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(rx_op->sym->session);
 		is_docsis_sec = 0;
 	}
@@ -327,12 +357,15 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 	} else {
 		rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
+#ifdef RTE_QAT_OPENSSL
 		if (sess->bpi_ctx) {
-			qat_bpicipher_postprocess(sess, rx_op);
-#ifdef RTE_LIB_SECURITY
-			if (is_docsis_sec)
-				qat_crc_verify(sess, rx_op);
+#else
+		if (sess->mb_mgr) {
 #endif
+			qat_bpicipher_postprocess(sess, rx_op);
+			if (is_docsis_sec && sess->qat_cmd !=
+						ICP_QAT_FW_LA_CMD_CIPHER_CRC)
+				qat_crc_verify(sess, rx_op);
 		}
 	}
 
@@ -341,6 +374,52 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 				(struct qat_sym_op_cookie *) op_cookie;
 		memset(cookie->opt.spc_gmac.cd_cipher.key, 0,
 				sess->auth_key_length);
+	}
+
+	cookie = (struct qat_sym_op_cookie *) op_cookie;
+	if (cookie->status == RTE_CRYPTO_OP_STATUS_INVALID_ARGS) {
+		rx_op->status = cookie->status;
+		cookie->status = 0;
+	}
+
+	*op = (void *)rx_op;
+
+	/*
+	 * return 1 as dequeue op only move on to the next op
+	 * if one was ready to return to API
+	 */
+	return 1;
+}
+
+static __rte_always_inline int
+qat_sym_process_response_gen_lce(void **op, uint8_t *resp, void *op_cookie __rte_unused,
+		uint64_t *dequeue_err_count __rte_unused)
+{
+	struct icp_qat_fw_comn_resp *resp_msg = (struct icp_qat_fw_comn_resp *)resp;
+	struct rte_crypto_op *rx_op = (struct rte_crypto_op *)(uintptr_t) (resp_msg->opaque_data);
+	struct qat_sym_session *sess;
+
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_response:", (uint8_t *)resp_msg,
+			sizeof(struct icp_qat_fw_comn_resp));
+#endif
+
+	sess = CRYPTODEV_GET_SYM_SESS_PRIV(rx_op->sym->session);
+
+	rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+	if (ICP_QAT_FW_COMN_STATUS_FLAG_OK != ICP_QAT_FW_COMN_RESP_UNSUPPORTED_REQUEST_STAT_GET(
+			resp_msg->comn_hdr.comn_status))
+		rx_op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+
+	else if (ICP_QAT_FW_COMN_STATUS_FLAG_OK != ICP_QAT_FW_COMN_RESP_INVALID_PARAM_STAT_GET(
+			resp_msg->comn_hdr.comn_status))
+		rx_op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+
+	if (sess->qat_dir == ICP_QAT_HW_CIPHER_DECRYPT) {
+		if (ICP_QAT_FW_LA_VER_STATUS_FAIL == ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
+				resp_msg->comn_hdr.comn_status))
+			rx_op->status =	RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	}
 
 	*op = (void *)rx_op;
@@ -417,7 +496,13 @@ qat_sym_preprocess_requests(void **ops __rte_unused,
 
 static inline void
 qat_sym_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
-	void *op_cookie __rte_unused)
+	void *op_cookie __rte_unused, uint64_t *dequeue_err_count __rte_unused)
+{
+}
+
+static inline void
+qat_sym_process_response_gen_lce(void **op __rte_unused, uint8_t *resp __rte_unused,
+	void *op_cookie __rte_unused, uint64_t *dequeue_err_count __rte_unused)
 {
 }
 

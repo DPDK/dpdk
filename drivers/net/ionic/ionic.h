@@ -8,13 +8,14 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+#include "ionic_common.h"
 #include "ionic_dev.h"
 #include "ionic_if.h"
-#include "ionic_osdep.h"
+#include "ionic_logs.h"
 
 #define IONIC_DRV_NAME			"ionic"
 #define IONIC_DRV_DESCRIPTION		"AMD Pensando Ethernet NIC Driver"
-#define IONIC_DRV_VERSION		"0.11.0-49"
+#define IONIC_DRV_VERSION		"1.3.0-112"
 
 /* Vendor ID */
 #define IONIC_PENSANDO_VENDOR_ID	0x1dd8
@@ -83,7 +84,10 @@ struct ionic_admin_ctx {
 	union ionic_adminq_comp comp;
 };
 
+int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
 int ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
+int ionic_adminq_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
+uint16_t ionic_adminq_space_avail(struct ionic_lif *lif);
 
 int ionic_dev_cmd_wait_check(struct ionic_dev *idev, unsigned long max_wait);
 int ionic_setup(struct ionic_adapter *adapter);

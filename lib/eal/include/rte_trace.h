@@ -16,15 +16,15 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdio.h>
 
 #include <rte_common.h>
 #include <rte_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  *  Test if trace is enabled.
@@ -34,6 +34,26 @@ extern "C" {
  */
 __rte_experimental
 bool rte_trace_is_enabled(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Test if trace feature is enabled at compile time.
+ *
+ * @return
+ *   true if trace feature is enabled, false otherwise.
+ */
+__rte_experimental
+static __rte_always_inline bool
+rte_trace_feature_is_enabled(void)
+{
+#ifdef RTE_TRACE
+	return true;
+#else
+	return false;
+#endif
+}
 
 /**
  * Enumerate trace mode operation.

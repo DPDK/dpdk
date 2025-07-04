@@ -10,12 +10,12 @@
  * Interface to GSO library
  */
 
+#include <stdint.h>
+#include <rte_mbuf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include <rte_mbuf.h>
 
 /* Minimum GSO segment size for TCP based packets. */
 #define RTE_GSO_SEG_SIZE_MIN (sizeof(struct rte_ether_hdr) + \
@@ -114,6 +114,7 @@ struct rte_gso_ctx {
  *  - The number of GSO segments filled in pkts_out on success.
  *  - Return 0 if it does not need to be GSO'd.
  *  - Return -ENOMEM if run out of memory in MBUF pools.
+ *  - Return -ENOTSUP for protocols that can not be segmented.
  *  - Return -EINVAL for invalid parameters.
  */
 int rte_gso_segment(struct rte_mbuf *pkt,

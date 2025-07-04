@@ -198,7 +198,8 @@ vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	queue = &dev->queues[queue_id];
 	vr    = &queue->vr;
 
-	avail_idx = __atomic_load_n(&vr->avail->idx, __ATOMIC_ACQUIRE);
+	avail_idx = rte_atomic_load_explicit((uint16_t __rte_atomic *)&vr->avail->idx,
+			rte_memory_order_acquire);
 	start_idx = queue->last_used_idx;
 	free_entries = avail_idx - start_idx;
 	count = RTE_MIN(count, free_entries);
@@ -231,7 +232,8 @@ vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 			rte_prefetch0(&vr->desc[desc_indexes[i+1]]);
 	}
 
-	__atomic_add_fetch(&vr->used->idx, count, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit((uint16_t __rte_atomic *)&vr->used->idx, count,
+			rte_memory_order_release);
 	queue->last_used_idx += count;
 
 	rte_vhost_vring_call(dev->vid, queue_id);
@@ -386,8 +388,8 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	queue = &dev->queues[queue_id];
 	vr    = &queue->vr;
 
-	free_entries = __atomic_load_n(&vr->avail->idx, __ATOMIC_ACQUIRE) -
-			queue->last_avail_idx;
+	free_entries = rte_atomic_load_explicit((uint16_t __rte_atomic *)&vr->avail->idx,
+			rte_memory_order_acquire) - queue->last_avail_idx;
 	if (free_entries == 0)
 		return 0;
 
@@ -442,7 +444,8 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	queue->last_avail_idx += i;
 	queue->last_used_idx += i;
 
-	__atomic_add_fetch(&vr->used->idx, i, __ATOMIC_ACQ_REL);
+	rte_atomic_fetch_add_explicit((uint16_t __rte_atomic *)&vr->used->idx, i,
+			rte_memory_order_acq_rel);
 
 	rte_vhost_vring_call(dev->vid, queue_id);
 

@@ -18,14 +18,13 @@
 
 #define TEST_DEV_NAME "rawdev_skeleton"
 
-#define SKELDEV_LOGS(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, skeleton_pmd_logtype, fmt "\n", \
-		##args)
+#define SKELDEV_LOGS(level, ...) \
+	RTE_LOG_LINE(level, SKELETON_PMD, __VA_ARGS__)
 
-#define SKELDEV_TEST_INFO(fmt, args...) \
-	SKELDEV_LOGS(INFO, fmt, ## args)
-#define SKELDEV_TEST_DEBUG(fmt, args...) \
-	SKELDEV_LOGS(DEBUG, fmt, ## args)
+#define SKELDEV_TEST_INFO(fmt, ...) \
+	SKELDEV_LOGS(INFO, fmt, ## __VA_ARGS__)
+#define SKELDEV_TEST_DEBUG(fmt, ...) \
+	SKELDEV_LOGS(DEBUG, fmt, ## __VA_ARGS__)
 
 #define SKELDEV_TEST_RUN(setup, teardown, test) \
 	skeldev_test_run(setup, teardown, test, #test)

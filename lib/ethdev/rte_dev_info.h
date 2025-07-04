@@ -5,11 +5,12 @@
 #ifndef _RTE_DEV_INFO_H_
 #define _RTE_DEV_INFO_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
+
+#define RTE_ETH_REG_NAME_SIZE 64
+struct rte_eth_reg_name {
+	char name[RTE_ETH_REG_NAME_SIZE];
+};
 
 /*
  * Placeholder for accessing device registers
@@ -20,6 +21,12 @@ struct rte_dev_reg_info {
 	uint32_t length; /**< Number of registers to fetch */
 	uint32_t width; /**< Size of device register */
 	uint32_t version; /**< Device version */
+	/**
+	 * Name of target module, filter for target subset of registers.
+	 * This field could affects register selection for data/length/names.
+	 */
+	const char *filter;
+	struct rte_eth_reg_name *names; /**< Registers name saver */
 };
 
 /*
@@ -51,9 +58,5 @@ struct rte_eth_dev_module_info {
 #define RTE_ETH_MODULE_SFF_8436             0x4
 #define RTE_ETH_MODULE_SFF_8436_LEN         256
 #define RTE_ETH_MODULE_SFF_8436_MAX_LEN     640
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_DEV_INFO_H_ */

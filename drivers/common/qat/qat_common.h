@@ -16,11 +16,26 @@
  * from one according to the generation of the device.
  * QAT_GEN* is used as the index to find all devices
  */
+
+extern const char *const *qat_cmdline_defines[];
+
+struct qat_options {
+	uint32_t slice_map;
+	/**< Map of the crypto and compression slices */
+	uint16_t has_wireless_slice;
+	/**< Wireless Slices supported */
+	uint8_t legacy_alg;
+	/**< are legacy algorithm supported */
+};
+
 enum qat_device_gen {
 	QAT_GEN1,
 	QAT_GEN2,
 	QAT_GEN3,
 	QAT_GEN4,
+	QAT_GEN5,
+	QAT_GEN_LCE,
+	QAT_VQAT,
 	QAT_N_GENS
 };
 
@@ -42,11 +57,11 @@ enum qat_svc_list {
 };
 
 /**< Common struct for scatter-gather list operations */
-struct qat_flat_buf {
+struct __rte_packed_begin qat_flat_buf {
 	uint32_t len;
 	uint32_t resrvd;
 	uint64_t addr;
-} __rte_packed;
+} __rte_packed_end;
 
 #define qat_sgl_hdr  struct { \
 	uint64_t resrvd; \
@@ -55,11 +70,11 @@ struct qat_flat_buf {
 }
 
 __extension__
-struct qat_sgl {
+struct __rte_cache_aligned __rte_packed_begin qat_sgl {
 	qat_sgl_hdr;
 	/* flexible array of flat buffers*/
 	struct qat_flat_buf buffers[0];
-} __rte_packed __rte_cache_aligned;
+} __rte_packed_end;
 
 /** Common, i.e. not service-specific, statistics */
 struct qat_common_stats {

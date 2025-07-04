@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 usage() {
 	echo "Usage: $(basename $0) [options] [directory]"
@@ -11,9 +12,10 @@ usage() {
 
 format=true
 lint=true
+typecheck=true
 
 # Comments after args serve as documentation; must be present
-while getopts "hfl" arg; do
+while getopts "hflt" arg; do
 	case $arg in
 	h) # Display this message
 		echo 'Run formatting and linting programs for DTS.'
@@ -25,6 +27,9 @@ while getopts "hfl" arg; do
 		;;
 	l) # Don't run linter
 		lint=false
+		;;
+	t) # Don't run type checker
+		typecheck=false
 		;;
 	?)
 		usage
@@ -47,18 +52,11 @@ if $format; then
 	if command -v git > /dev/null; then
 		if git rev-parse --is-inside-work-tree >&-; then
 			heading "Formatting in $directory/"
-			if command -v black > /dev/null; then
-				echo "Formatting code with black:"
-				black .
+			if command -v ruff > /dev/null; then
+				echo "Formatting code with ruff:"
+				ruff format
 			else
-				echo "black is not installed, not formatting"
-				errors=$((errors + 1))
-			fi
-			if command -v isort > /dev/null; then
-				echo "Sorting imports with isort:"
-				isort .
-			else
-				echo "isort is not installed, not sorting imports"
+				echo "ruff is not installed, not formatting"
 				errors=$((errors + 1))
 			fi
 
@@ -84,11 +82,33 @@ if $lint; then
 		echo
 	fi
 	heading "Linting in $directory/"
-	if command -v pylama > /dev/null; then
-		pylama .
+	if command -v ruff > /dev/null; then
+		ruff check --fix
+		errors=$((errors + $?))
+
+		git update-index --refresh
+		retval=$?
+		if [ $retval -ne 0 ]; then
+			echo 'The "needs update" files have been fixed by the linter.'
+			echo 'Please update your commit.'
+		fi
+		errors=$((errors + retval))
+	else
+		echo "ruff not found, unable to run linter"
+		errors=$((errors + 1))
+	fi
+fi
+
+if $typecheck; then
+	if $format || $lint; then
+		echo
+	fi
+	heading "Checking types in $directory/"
+	if command -v mypy > /dev/null; then
+		mypy .
 		errors=$((errors + $?))
 	else
-		echo "pylama not found, unable to run linter"
+		echo "mypy not found, unable to check types"
 		errors=$((errors + 1))
 	fi
 fi

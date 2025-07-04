@@ -5,11 +5,11 @@
 #ifndef RTE_BYTEORDER_LOONGARCH_H
 #define RTE_BYTEORDER_LOONGARCH_H
 
+#include "generic/rte_byteorder.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_byteorder.h"
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 

@@ -49,45 +49,44 @@
 /* LPB & SPB */
 #define CNXK_NIX_NUM_POOLS_MAX 2
 
-#define CNXK_NIX_RSS_L3_L4_SRC_DST                                             \
-	(RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY |                   \
-	 RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY)
+#define CNXK_NIX_DEF_SQ_COUNT 512
 
-#define CNXK_NIX_RSS_OFFLOAD                                                   \
-	(RTE_ETH_RSS_PORT | RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP |                 \
-	 RTE_ETH_RSS_TCP | RTE_ETH_RSS_SCTP | RTE_ETH_RSS_TUNNEL |             \
-	 RTE_ETH_RSS_L2_PAYLOAD | CNXK_NIX_RSS_L3_L4_SRC_DST |                 \
-	 RTE_ETH_RSS_LEVEL_MASK | RTE_ETH_RSS_C_VLAN)
+#define CNXK_NIX_RSS_L3_L4_SRC_DST                                                                 \
+	(RTE_ETH_RSS_L3_SRC_ONLY | RTE_ETH_RSS_L3_DST_ONLY | RTE_ETH_RSS_L4_SRC_ONLY |             \
+	 RTE_ETH_RSS_L4_DST_ONLY)
 
-#define CNXK_NIX_TX_OFFLOAD_CAPA                                               \
-	(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE | RTE_ETH_TX_OFFLOAD_MT_LOCKFREE |          \
-	 RTE_ETH_TX_OFFLOAD_VLAN_INSERT | RTE_ETH_TX_OFFLOAD_QINQ_INSERT |             \
-	 RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |    \
-	 RTE_ETH_TX_OFFLOAD_TCP_CKSUM | RTE_ETH_TX_OFFLOAD_UDP_CKSUM |                 \
-	 RTE_ETH_TX_OFFLOAD_SCTP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_TSO |                  \
-	 RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO | RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |        \
-	 RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO | RTE_ETH_TX_OFFLOAD_MULTI_SEGS |              \
+#define CNXK_NIX_RSS_OFFLOAD                                                                       \
+	(RTE_ETH_RSS_PORT | RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP |                   \
+	 RTE_ETH_RSS_SCTP | RTE_ETH_RSS_TUNNEL | RTE_ETH_RSS_L2_PAYLOAD |                          \
+	 CNXK_NIX_RSS_L3_L4_SRC_DST | RTE_ETH_RSS_LEVEL_MASK | RTE_ETH_RSS_C_VLAN |                \
+	 RTE_ETH_RSS_ESP | RTE_ETH_RSS_IB_BTH)
+
+#define CNXK_NIX_TX_OFFLOAD_CAPA                                                                   \
+	(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE | RTE_ETH_TX_OFFLOAD_MT_LOCKFREE |                      \
+	 RTE_ETH_TX_OFFLOAD_VLAN_INSERT | RTE_ETH_TX_OFFLOAD_QINQ_INSERT |                         \
+	 RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |                \
+	 RTE_ETH_TX_OFFLOAD_TCP_CKSUM | RTE_ETH_TX_OFFLOAD_UDP_CKSUM |                             \
+	 RTE_ETH_TX_OFFLOAD_SCTP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_TSO |                              \
+	 RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO | RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |                    \
+	 RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO | RTE_ETH_TX_OFFLOAD_MULTI_SEGS |                          \
 	 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_SECURITY)
 
-#define CNXK_NIX_RX_OFFLOAD_CAPA                                               \
-	(RTE_ETH_RX_OFFLOAD_CHECKSUM | RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |         \
-	 RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM | RTE_ETH_RX_OFFLOAD_SCATTER |    \
-	 RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_RSS_HASH |    \
-	 RTE_ETH_RX_OFFLOAD_TIMESTAMP | RTE_ETH_RX_OFFLOAD_VLAN_STRIP |        \
+#define CNXK_NIX_RX_OFFLOAD_CAPA                                                                   \
+	(RTE_ETH_RX_OFFLOAD_CHECKSUM | RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |                             \
+	 RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM | RTE_ETH_RX_OFFLOAD_SCATTER |                        \
+	 RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_RSS_HASH |                        \
+	 RTE_ETH_RX_OFFLOAD_TIMESTAMP | RTE_ETH_RX_OFFLOAD_VLAN_STRIP |                            \
 	 RTE_ETH_RX_OFFLOAD_SECURITY)
 
-#define RSS_IPV4_ENABLE                                                        \
-	(RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |                            \
-	 RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV4_TCP |         \
-	 RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+#define RSS_IPV4_ENABLE                                                                            \
+	(RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 | RTE_ETH_RSS_NONFRAG_IPV4_UDP |                 \
+	 RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
 
-#define RSS_IPV6_ENABLE                                                        \
-	(RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |                            \
-	 RTE_ETH_RSS_NONFRAG_IPV6_UDP | RTE_ETH_RSS_NONFRAG_IPV6_TCP |         \
-	 RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+#define RSS_IPV6_ENABLE                                                                            \
+	(RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 | RTE_ETH_RSS_NONFRAG_IPV6_UDP |                 \
+	 RTE_ETH_RSS_NONFRAG_IPV6_TCP | RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
-#define RSS_IPV6_EX_ENABLE                                                     \
-	(RTE_ETH_RSS_IPV6_EX | RTE_ETH_RSS_IPV6_TCP_EX | RTE_ETH_RSS_IPV6_UDP_EX)
+#define RSS_IPV6_EX_ENABLE (RTE_ETH_RSS_IPV6_EX | RTE_ETH_RSS_IPV6_TCP_EX | RTE_ETH_RSS_IPV6_UDP_EX)
 
 #define RSS_MAX_LEVELS 3
 
@@ -106,6 +105,8 @@
 
 /* Fastpath lookup */
 #define CNXK_NIX_FASTPATH_LOOKUP_MEM "cnxk_nix_fastpath_lookup_mem"
+
+#define CNXK_NIX_DMAC_IDX_INVALID -1
 
 struct cnxk_fc_cfg {
 	enum rte_eth_fc_mode mode;
@@ -217,6 +218,9 @@ struct cnxk_eth_sec_sess {
 
 	/* Inbound session on inl dev */
 	bool inl_dev;
+
+	/* Out-Of-Place processing */
+	bool inb_oop;
 };
 
 TAILQ_HEAD(cnxk_eth_sec_sess_list, cnxk_eth_sec_sess);
@@ -244,8 +248,20 @@ struct cnxk_eth_dev_sec_inb {
 	/* DPTR for WRITE_SA microcode op */
 	void *sa_dptr;
 
+	/* Number of oop sessions */
+	uint16_t nb_oop;
+
+	/* Reassembly enabled */
+	bool reass_en;
+
 	/* Lock to synchronize sa setup/release */
 	rte_spinlock_t lock;
+
+	/* Disable custom meta aura */
+	bool custom_meta_aura_dis;
+
+	/* Inline device CPT queue info */
+	struct roc_nix_inl_dev_q *inl_dev_q;
 };
 
 /* Outbound security data */
@@ -285,7 +301,25 @@ struct cnxk_eth_dev_sec_outb {
 
 	/* Lock to synchronize sa setup/release */
 	rte_spinlock_t lock;
+
+	/* Engine caps */
+	uint64_t cpt_eng_caps;
 };
+
+/* MACsec session private data */
+struct cnxk_macsec_sess {
+	/* List entry */
+	TAILQ_ENTRY(cnxk_macsec_sess) entry;
+
+	/* Back pointer to session */
+	struct rte_security_session *sess;
+	enum mcs_direction dir;
+	uint64_t sci;
+	uint8_t secy_id;
+	uint8_t sc_id;
+	uint8_t flow_id;
+};
+TAILQ_HEAD(cnxk_macsec_sess_list, cnxk_macsec_sess);
 
 struct cnxk_eth_dev {
 	/* ROC NIX */
@@ -309,6 +343,8 @@ struct cnxk_eth_dev {
 	uint8_t dmac_filter_count;
 	uint8_t max_mac_entries;
 	bool dmac_filter_enable;
+	int *dmac_idx_map;
+	struct rte_ether_addr *dmac_addrs;
 
 	uint16_t flags;
 	uint8_t ptype_disable;
@@ -390,6 +426,23 @@ struct cnxk_eth_dev {
 	/* Reassembly dynfield/flag offsets */
 	int reass_dynfield_off;
 	int reass_dynflag_bit;
+
+	/* MCS device */
+	struct cnxk_mcs_dev *mcs_dev;
+	struct cnxk_macsec_sess_list mcs_list;
+
+	/* Inject packets */
+	struct cnxk_ethdev_inj_cfg inj_cfg;
+
+	/* Eswitch domain ID */
+	uint16_t switch_domain_id;
+
+	/* SSO event dev */
+	void *evdev_priv;
+
+	/* SSO event dev ptp  */
+	void (*cnxk_sso_ptp_tstamp_cb)
+	     (uint16_t port_id, uint16_t flags, bool ptp_en);
 };
 
 struct cnxk_eth_rxq_sp {
@@ -424,6 +477,67 @@ cnxk_eth_txq_to_sp(void *__txq)
 	return ((struct cnxk_eth_txq_sp *)__txq) - 1;
 }
 
+static inline int
+cnxk_nix_tx_queue_count(uint64_t *mem, uint16_t sqes_per_sqb_log2)
+{
+	uint64_t val;
+
+	val = rte_atomic_load_explicit((RTE_ATOMIC(uint64_t)*)mem, rte_memory_order_relaxed);
+	val = (val << sqes_per_sqb_log2) - val;
+
+	return (val & 0xFFFF);
+}
+
+static inline int
+cnxk_nix_tx_queue_sec_count(uint64_t *mem, uint16_t sqes_per_sqb_log2, uint64_t *sec_fc)
+{
+	uint64_t sq_cnt, sec_cnt, val;
+
+	sq_cnt = rte_atomic_load_explicit((RTE_ATOMIC(uint64_t)*)mem, rte_memory_order_relaxed);
+	sq_cnt = (sq_cnt << sqes_per_sqb_log2) - sq_cnt;
+	sec_cnt = rte_atomic_load_explicit((RTE_ATOMIC(uint64_t)*)sec_fc,
+					   rte_memory_order_relaxed);
+	val = RTE_MAX(sq_cnt, sec_cnt);
+
+	return (val & 0xFFFF);
+}
+
+static inline int
+cnxk_nix_inl_fc_check(uint64_t __rte_atomic *fc, int32_t *fc_sw, uint32_t nb_desc, uint16_t nb_inst)
+{
+	uint8_t retry_count = 32;
+	int32_t val, newval;
+
+	/* Check if there is any CPT instruction to submit */
+	if (!nb_inst)
+		return -EINVAL;
+
+retry:
+	val = rte_atomic_fetch_sub_explicit((RTE_ATOMIC(int32_t)*)fc_sw, nb_inst,
+					    rte_memory_order_relaxed) - nb_inst;
+	if (likely(val >= 0))
+		return 0;
+
+	newval = (int64_t)nb_desc - rte_atomic_load_explicit((RTE_ATOMIC(uint64_t)*)fc,
+							     rte_memory_order_relaxed);
+	newval -= nb_inst;
+
+	if (!rte_atomic_compare_exchange_strong_explicit((RTE_ATOMIC(int32_t)*)fc_sw, &val, newval,
+							 rte_memory_order_release,
+							 rte_memory_order_relaxed)) {
+		if (retry_count) {
+			retry_count--;
+			goto retry;
+		} else {
+			return -EAGAIN;
+		}
+	}
+	if (unlikely(newval < 0))
+		return -EAGAIN;
+
+	return 0;
+}
+
 /* Common ethdev ops */
 extern struct eth_dev_ops cnxk_eth_dev_ops;
 
@@ -436,11 +550,25 @@ extern struct rte_security_ops cnxk_eth_sec_ops;
 /* Common tm ops */
 extern struct rte_tm_ops cnxk_tm_ops;
 
+/* Platform specific rte pmd cnxk ops */
+typedef uint16_t (*cnxk_inl_dev_submit_cb_t)(struct roc_nix_inl_dev_q *q, void *inst,
+					     uint16_t nb_inst);
+
+typedef void (*cnxk_ethdev_rx_offload_cb_t)(uint16_t port_id, uint64_t flags);
+
+extern cnxk_ethdev_rx_offload_cb_t cnxk_ethdev_rx_offload_cb;
+
+struct cnxk_ethdev_pmd_ops {
+	cnxk_inl_dev_submit_cb_t inl_dev_submit;
+};
+extern struct cnxk_ethdev_pmd_ops cnxk_pmd_ops;
+
 /* Ops */
 int cnxk_nix_probe(struct rte_pci_driver *pci_drv,
 		   struct rte_pci_device *pci_dev);
 int cnxk_nix_remove(struct rte_pci_device *pci_dev);
 int cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
+int cnxk_nix_sq_flush(struct rte_eth_dev *eth_dev);
 int cnxk_nix_mc_addr_list_configure(struct rte_eth_dev *eth_dev,
 				    struct rte_ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
@@ -522,6 +650,8 @@ int cnxk_nix_tm_mark_ip_ecn(struct rte_eth_dev *eth_dev, int mark_green,
 int cnxk_nix_tm_mark_ip_dscp(struct rte_eth_dev *eth_dev, int mark_green,
 			     int mark_yellow, int mark_red,
 			     struct rte_tm_error *error);
+int cnxk_nix_tx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t offset,
+				uint16_t num, FILE *file);
 
 /* MTR */
 int cnxk_nix_mtr_ops_get(struct rte_eth_dev *dev, void *ops);
@@ -578,7 +708,8 @@ int cnxk_nix_tx_descriptor_status(void *txq, uint16_t offset);
 uint32_t cnxk_nix_rx_queue_count(void *rxq);
 
 /* Lookup configuration */
-const uint32_t *cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev);
+const uint32_t *cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev,
+					      size_t *no_of_elements);
 void *cnxk_nix_fastpath_lookup_mem_get(void);
 
 /* Devargs */
@@ -596,15 +727,23 @@ int cnxk_nix_lookup_mem_sa_base_set(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_sa_base_clear(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_metapool_set(struct cnxk_eth_dev *dev);
 int cnxk_nix_lookup_mem_metapool_clear(struct cnxk_eth_dev *dev);
+int cnxk_nix_lookup_mem_bufsize_set(struct cnxk_eth_dev *dev, uint64_t size);
+int cnxk_nix_lookup_mem_bufsize_clear(struct cnxk_eth_dev *dev);
 __rte_internal
 int cnxk_nix_inb_mode_set(struct cnxk_eth_dev *dev, bool use_inl_dev);
-struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_spi(struct cnxk_eth_dev *dev,
-						       uint32_t spi, bool inb);
+__rte_internal
+void cnxk_ethdev_rx_offload_cb_register(cnxk_ethdev_rx_offload_cb_t cb);
+
+struct cnxk_eth_sec_sess *cnxk_eth_sec_sess_get_by_sa_idx(struct cnxk_eth_dev *dev,
+							  uint32_t sa_idx, bool inb);
 struct cnxk_eth_sec_sess *
 cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 			      struct rte_security_session *sess);
 int cnxk_nix_inl_meta_pool_cb(uint64_t *aura_handle, uintptr_t *mpool, uint32_t buf_sz,
 			      uint32_t nb_bufs, bool destroy, const char *mempool_name);
+int cnxk_nix_inl_custom_meta_pool_cb(uintptr_t pmpool, uintptr_t *mpool, const char *mempool_name,
+				     uint64_t *aura_handle, uint32_t buf_sz, uint32_t nb_bufs,
+				     bool destroy);
 
 /* Congestion Management */
 int cnxk_nix_cman_info_get(struct rte_eth_dev *dev, struct rte_eth_cman_info *info);
@@ -614,6 +753,17 @@ int cnxk_nix_cman_config_init(struct rte_eth_dev *dev, struct rte_eth_cman_confi
 int cnxk_nix_cman_config_set(struct rte_eth_dev *dev, const struct rte_eth_cman_config *config);
 
 int cnxk_nix_cman_config_get(struct rte_eth_dev *dev, struct rte_eth_cman_config *config);
+
+int cnxk_mcs_dev_init(struct cnxk_eth_dev *dev, uint8_t mcs_idx);
+void cnxk_mcs_dev_fini(struct cnxk_eth_dev *dev);
+
+struct cnxk_macsec_sess *cnxk_eth_macsec_sess_get_by_sess(struct cnxk_eth_dev *dev,
+							  const struct rte_security_session *sess);
+int cnxk_mcs_flow_configure(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[], struct rte_flow_error *error,
+			     void **mcs_flow);
+int cnxk_mcs_flow_destroy(struct cnxk_eth_dev *eth_dev, void *mcs_flow);
 
 /* Other private functions */
 int nix_recalc_mtu(struct rte_eth_dev *eth_dev);

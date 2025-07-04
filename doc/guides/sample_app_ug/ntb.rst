@@ -32,7 +32,7 @@ The only available options are the standard ones for the EAL:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ntb -c 0xf -n 6 -- -i
+    ./<build_dir>/examples/dpdk-ntb -l 0-3 -n 6 -- -i
 
 Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL)

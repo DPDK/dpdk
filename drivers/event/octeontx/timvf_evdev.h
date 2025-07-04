@@ -26,10 +26,9 @@
 #include <octeontx_mbox.h>
 #include <octeontx_fpavf.h>
 
-#define timvf_log(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, otx_logtype_timvf, \
-			"[%s] %s() " fmt "\n", \
-			RTE_STR(event_timer_octeontx), __func__, ## args)
+#define timvf_log(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, OTX_TIMVF, "[%s] %s() ", \
+		RTE_STR(event_timer_octeontx) RTE_LOG_COMMA __func__, __VA_ARGS__)
 
 #define timvf_log_info(fmt, ...) timvf_log(INFO, fmt, ##__VA_ARGS__)
 #define timvf_log_dbg(fmt, ...) timvf_log(DEBUG, fmt, ##__VA_ARGS__)
@@ -113,6 +112,7 @@
 #define TIMVF_ENABLE_STATS_ARG               ("timvf_stats")
 
 extern int otx_logtype_timvf;
+#define RTE_LOGTYPE_OTX_TIMVF otx_logtype_timvf
 static const uint16_t nb_chunk_slots = (TIM_CHUNK_SIZE / 16) - 1;
 
 enum timvf_clk_src {
@@ -123,35 +123,35 @@ enum timvf_clk_src {
 };
 
 /* TIM_MEM_BUCKET */
-struct tim_mem_bucket {
+struct __rte_aligned(8) __rte_packed_begin tim_mem_bucket {
 	uint64_t first_chunk;
 	union {
-		uint64_t w1;
+		RTE_ATOMIC(uint64_t) w1;
 		struct {
-			uint32_t nb_entry;
+			RTE_ATOMIC(uint32_t) nb_entry;
 			uint8_t sbt:1;
 			uint8_t hbt:1;
 			uint8_t bsk:1;
 			uint8_t rsvd:5;
-			uint8_t lock;
-			int16_t chunk_remainder;
+			RTE_ATOMIC(uint8_t) lock;
+			RTE_ATOMIC(int16_t) chunk_remainder;
 		};
 	};
 	uint64_t current_chunk;
 	uint64_t pad;
-} __rte_packed __rte_aligned(8);
+} __rte_packed_end;
 
-struct tim_mem_entry {
+struct __rte_packed_begin tim_mem_entry {
 	uint64_t w0;
 	uint64_t wqe;
-} __rte_packed;
+} __rte_packed_end;
 
-struct timvf_ctrl_reg {
+struct __rte_packed_begin timvf_ctrl_reg {
 	uint64_t rctrl0;
 	uint64_t rctrl1;
 	uint64_t rctrl2;
 	uint8_t use_pmu;
-} __rte_packed;
+} __rte_packed_end;
 
 struct timvf_ring;
 
@@ -160,7 +160,7 @@ typedef struct tim_mem_entry * (*refill_chunk)(
 		struct tim_mem_bucket * const bkt,
 		struct timvf_ring * const timr);
 
-struct timvf_ring {
+struct __rte_cache_aligned timvf_ring {
 	bkt_id get_target_bkt;
 	refill_chunk refill_chunk;
 	struct rte_reciprocal_u64 fast_div;
@@ -178,7 +178,7 @@ struct timvf_ring {
 	uint64_t nb_timers;
 	enum timvf_clk_src clk_src;
 	uint16_t tim_ring_id;
-} __rte_cache_aligned;
+};
 
 static __rte_always_inline uint32_t
 bkt_mod(const uint32_t rel_bkt, const uint32_t nb_bkts)

@@ -50,12 +50,12 @@
 			<text x="285.14" y="83.79" class="st2">DPDK</text>		</g>
 		<g id="shape8-6" transform="translate(12.5358,-7.83661)">
 			<title>Rectangle.8</title>
-			<desc>bonded ethdev</desc>
+			<desc>bonding ethdev</desc>
 			<g id="shadow8-7" transform="matrix(1,0,0,1,0.345598,1.97279)" class="st3">
 				<rect x="0" y="87.7965" width="171.911" height="70.8661" class="st4"/>
 			</g>
 			<rect x="0" y="87.7965" width="171.911" height="70.8661" class="st5"/>
-			<text x="55.03" y="100.8" class="st6">bonded ethdev</text>		</g>
+			<text x="55.03" y="100.8" class="st6">bonding ethdev</text>		</g>
 		<g id="shape3-12" transform="translate(3.0294,-121.309)">
 			<title>Rectangle</title>
 			<desc>User Application</desc>

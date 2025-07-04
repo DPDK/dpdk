@@ -38,15 +38,15 @@ void sfc_mae_counter_rxq_detach(struct sfc_adapter *sa);
 int sfc_mae_counter_rxq_init(struct sfc_adapter *sa);
 void sfc_mae_counter_rxq_fini(struct sfc_adapter *sa);
 
-int sfc_mae_counters_init(struct sfc_mae_counters *counters,
+int sfc_mae_counters_init(struct sfc_mae_counter_records *counters,
 			  uint32_t nb_counters_max);
-void sfc_mae_counters_fini(struct sfc_mae_counters *counters);
-int sfc_mae_counter_enable(struct sfc_adapter *sa,
-			   struct sfc_mae_counter_id *counterp);
-int sfc_mae_counter_disable(struct sfc_adapter *sa,
-			    struct sfc_mae_counter_id *counter);
-int sfc_mae_counter_get(struct sfc_mae_counters *counters,
-			const struct sfc_mae_counter_id *counter,
+void sfc_mae_counters_fini(struct sfc_mae_counter_records *counters);
+int sfc_mae_counter_fw_rsrc_enable(struct sfc_adapter *sa,
+				   struct sfc_mae_counter *counterp);
+int sfc_mae_counter_fw_rsrc_disable(struct sfc_adapter *sa,
+				    struct sfc_mae_counter *counter);
+int sfc_mae_counter_get(struct sfc_adapter *sa,
+			const struct sfc_mae_counter *counter,
 			struct rte_flow_query_count *data);
 
 int sfc_mae_counter_start(struct sfc_adapter *sa);

@@ -631,4 +631,4 @@ test_libipsec_perf(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(ipsec_perf_autotest, test_libipsec_perf);
+REGISTER_PERF_TEST(ipsec_perf_autotest, test_libipsec_perf);

@@ -11,6 +11,9 @@
 #include <bus_pci_driver.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
+#ifdef BUILD_QAT_SYM
+#include <rte_ether.h>
+#endif
 
 #include "qat_logs.h"
 #include "qat_device.h"
@@ -23,6 +26,44 @@
 
 #define ADF_MAX_DESC				4096
 #define ADF_MIN_DESC				128
+
+#ifdef BUILD_QAT_SYM
+/* Cipher-CRC capability check test parameters */
+static const uint8_t cipher_crc_cap_check_iv[] = {
+	0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+	0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11
+};
+
+static const uint8_t cipher_crc_cap_check_key[] = {
+	0x00, 0x00, 0x00, 0x00, 0xAA, 0xBB, 0xCC, 0xDD,
+	0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55
+};
+
+static const uint8_t cipher_crc_cap_check_plaintext[] = {
+	/* Outer protocol header */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	/* Ethernet frame */
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x06, 0x05,
+	0x04, 0x03, 0x02, 0x01, 0x08, 0x00, 0xAA, 0xAA,
+	0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+	/* CRC */
+	0xFF, 0xFF, 0xFF, 0xFF
+};
+
+static const uint8_t cipher_crc_cap_check_ciphertext[] = {
+	/* Outer protocol header */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	/* Ethernet frame */
+	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x06, 0x05,
+	0x04, 0x03, 0x02, 0x01, 0xD6, 0xE2, 0x70, 0x5C,
+	0xE6, 0x4D, 0xCC, 0x8C, 0x47, 0xB7, 0x09, 0xD6,
+	/* CRC */
+	0x54, 0x85, 0xF8, 0x32
+};
+
+static const uint8_t cipher_crc_cap_check_cipher_offset = 18;
+static const uint8_t cipher_crc_cap_check_crc_offset = 6;
+#endif
 
 struct qat_qp_hw_spec_funcs*
 	qat_qp_hw_spec[QAT_N_GENS];
@@ -226,7 +267,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	if (qat_qp_check_queue_alignment(queue->base_phys_addr,
 			queue_size_bytes)) {
 		QAT_LOG(ERR, "Invalid alignment on queue create "
-					" 0x%"PRIx64"\n",
+					" 0x%"PRIx64,
 					queue->base_phys_addr);
 		ret = -EFAULT;
 		goto queue_create_err;
@@ -245,7 +286,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	queue->msg_size = desc_size;
 
 	/* For fast calculation of cookie index, relies on msg_size being 2^n */
-	queue->trailz = __builtin_ctz(desc_size);
+	queue->trailz = rte_ctz32(desc_size);
 
 	/*
 	 * Write an unused pattern to the queue memory.
@@ -450,20 +491,6 @@ adf_configure_queues(struct qat_qp *qp, enum qat_device_gen qat_dev_gen)
 }
 
 static inline void
-txq_write_tail(enum qat_device_gen qat_dev_gen,
-		struct qat_qp *qp, struct qat_queue *q)
-{
-	struct qat_qp_hw_spec_funcs *ops =
-		qat_qp_hw_spec[qat_dev_gen];
-
-	/*
-	 * Pointer check should be done during
-	 * initialization
-	 */
-	ops->qat_qp_csr_write_tail(qp, q);
-}
-
-static inline void
 qat_qp_csr_write_head(enum qat_device_gen qat_dev_gen, struct qat_qp *qp,
 			struct qat_queue *q, uint32_t new_head)
 {
@@ -599,17 +626,15 @@ qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 		}
 	}
 
-#ifdef RTE_LIB_SECURITY
 	if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 		qat_sym_preprocess_requests(ops, nb_ops_possible);
-#endif
 
 	memset(tmp_qp->opaque, 0xff, sizeof(tmp_qp->opaque));
 
 	while (nb_ops_sent != nb_ops_possible) {
 		ret = op_build_request(*ops, base_addr + tail,
 				tmp_qp->op_cookies[tail >> queue->trailz],
-				tmp_qp->opaque, tmp_qp->qat_dev_gen);
+				tmp_qp);
 
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
@@ -626,179 +651,6 @@ qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 kick_tail:
 	queue->tail = tail;
 	tmp_qp->enqueued += nb_ops_sent;
-	tmp_qp->stats.enqueued_count += nb_ops_sent;
-	txq_write_tail(tmp_qp->qat_dev_gen, tmp_qp, queue);
-	return nb_ops_sent;
-}
-
-/* Use this for compression only - but keep consistent with above common
- * function as much as possible.
- */
-uint16_t
-qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops)
-{
-	register struct qat_queue *queue;
-	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
-	register uint32_t nb_ops_sent = 0;
-	register int nb_desc_to_build;
-	uint16_t nb_ops_possible = nb_ops;
-	register uint8_t *base_addr;
-	register uint32_t tail;
-
-	int descriptors_built, total_descriptors_built = 0;
-	int nb_remaining_descriptors;
-	int overflow = 0;
-
-	if (unlikely(nb_ops == 0))
-		return 0;
-
-	/* read params used a lot in main loop into registers */
-	queue = &(tmp_qp->tx_q);
-	base_addr = (uint8_t *)queue->base_addr;
-	tail = queue->tail;
-
-	/* Find how many can actually fit on the ring */
-	{
-		/* dequeued can only be written by one thread, but it may not
-		 * be this thread. As it's 4-byte aligned it will be read
-		 * atomically here by any Intel CPU.
-		 * enqueued can wrap before dequeued, but cannot
-		 * lap it as var size of enq/deq (uint32_t) > var size of
-		 * max_inflights (uint16_t). In reality inflights is never
-		 * even as big as max uint16_t, as it's <= ADF_MAX_DESC.
-		 * On wrapping, the calculation still returns the correct
-		 * positive value as all three vars are unsigned.
-		 */
-		uint32_t inflights =
-			tmp_qp->enqueued - tmp_qp->dequeued;
-
-		/* Find how many can actually fit on the ring */
-		overflow = (inflights + nb_ops) - tmp_qp->max_inflights;
-		if (overflow > 0) {
-			nb_ops_possible = nb_ops - overflow;
-			if (nb_ops_possible == 0)
-				return 0;
-		}
-
-		/* QAT has plenty of work queued already, so don't waste cycles
-		 * enqueueing, wait til the application has gathered a bigger
-		 * burst or some completed ops have been dequeued
-		 */
-		if (tmp_qp->min_enq_burst_threshold && inflights >
-				QAT_QP_MIN_INFL_THRESHOLD && nb_ops_possible <
-				tmp_qp->min_enq_burst_threshold) {
-			tmp_qp->stats.threshold_hit_count++;
-			return 0;
-		}
-	}
-
-	/* At this point nb_ops_possible is assuming a 1:1 mapping
-	 * between ops and descriptors.
-	 * Fewer may be sent if some ops have to be split.
-	 * nb_ops_possible is <= burst size.
-	 * Find out how many spaces are actually available on the qp in case
-	 * more are needed.
-	 */
-	nb_remaining_descriptors = nb_ops_possible
-			 + ((overflow >= 0) ? 0 : overflow * (-1));
-	QAT_DP_LOG(DEBUG, "Nb ops requested %d, nb descriptors remaining %d",
-			nb_ops, nb_remaining_descriptors);
-
-	while (nb_ops_sent != nb_ops_possible &&
-				nb_remaining_descriptors > 0) {
-		struct qat_comp_op_cookie *cookie =
-				tmp_qp->op_cookies[tail >> queue->trailz];
-
-		descriptors_built = 0;
-
-		QAT_DP_LOG(DEBUG, "--- data length: %u",
-			   ((struct rte_comp_op *)*ops)->src.length);
-
-		nb_desc_to_build = qat_comp_build_request(*ops,
-				base_addr + tail, cookie, tmp_qp->qat_dev_gen);
-		QAT_DP_LOG(DEBUG, "%d descriptors built, %d remaining, "
-			"%d ops sent, %d descriptors needed",
-			total_descriptors_built, nb_remaining_descriptors,
-			nb_ops_sent, nb_desc_to_build);
-
-		if (unlikely(nb_desc_to_build < 0)) {
-			/* this message cannot be enqueued */
-			tmp_qp->stats.enqueue_err_count++;
-			if (nb_ops_sent == 0)
-				return 0;
-			goto kick_tail;
-		} else if (unlikely(nb_desc_to_build > 1)) {
-			/* this op is too big and must be split - get more
-			 * descriptors and retry
-			 */
-
-			QAT_DP_LOG(DEBUG, "Build %d descriptors for this op",
-					nb_desc_to_build);
-
-			nb_remaining_descriptors -= nb_desc_to_build;
-			if (nb_remaining_descriptors >= 0) {
-				/* There are enough remaining descriptors
-				 * so retry
-				 */
-				int ret2 = qat_comp_build_multiple_requests(
-						*ops, tmp_qp, tail,
-						nb_desc_to_build);
-
-				if (unlikely(ret2 < 1)) {
-					QAT_DP_LOG(DEBUG,
-							"Failed to build (%d) descriptors, status %d",
-							nb_desc_to_build, ret2);
-
-					qat_comp_free_split_op_memzones(cookie,
-							nb_desc_to_build - 1);
-
-					tmp_qp->stats.enqueue_err_count++;
-
-					/* This message cannot be enqueued */
-					if (nb_ops_sent == 0)
-						return 0;
-					goto kick_tail;
-				} else {
-					descriptors_built = ret2;
-					total_descriptors_built +=
-							descriptors_built;
-					nb_remaining_descriptors -=
-							descriptors_built;
-					QAT_DP_LOG(DEBUG,
-							"Multiple descriptors (%d) built ok",
-							descriptors_built);
-				}
-			} else {
-				QAT_DP_LOG(ERR, "For the current op, number of requested descriptors (%d) "
-						"exceeds number of available descriptors (%d)",
-						nb_desc_to_build,
-						nb_remaining_descriptors +
-							nb_desc_to_build);
-
-				qat_comp_free_split_op_memzones(cookie,
-						nb_desc_to_build - 1);
-
-				/* Not enough extra descriptors */
-				if (nb_ops_sent == 0)
-					return 0;
-				goto kick_tail;
-			}
-		} else {
-			descriptors_built = 1;
-			total_descriptors_built++;
-			nb_remaining_descriptors--;
-			QAT_DP_LOG(DEBUG, "Single descriptor built ok");
-		}
-
-		tail = adf_modulo(tail + (queue->msg_size * descriptors_built),
-				  queue->modulo_mask);
-		ops++;
-		nb_ops_sent++;
-	}
-
-kick_tail:
-	queue->tail = tail;
-	tmp_qp->enqueued += total_descriptors_built;
 	tmp_qp->stats.enqueued_count += nb_ops_sent;
 	txq_write_tail(tmp_qp->qat_dev_gen, tmp_qp, queue);
 	return nb_ops_sent;
@@ -957,10 +809,138 @@ qat_cq_get_fw_version(struct qat_qp *qp)
 	return -EINVAL;
 }
 
-__rte_weak int
-qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
-			  void *op_cookie __rte_unused,
-			  uint64_t *dequeue_err_count __rte_unused)
+#ifdef BUILD_QAT_SYM
+/* Sends an LA bulk req message to determine if a QAT device supports Cipher-CRC
+ * offload. This assumes that there are no inflight messages, i.e. assumes
+ * there's space  on the qp, one message is sent and only one response
+ * collected. The status bit of the response and returned data are checked.
+ * Returns:
+ *     1 if status bit indicates success and returned data matches expected
+ *     data (i.e. Cipher-CRC supported)
+ *     0 if status bit indicates error or returned data does not match expected
+ *     data (i.e. Cipher-CRC not supported)
+ *     Negative error code in case of error
+ */
+int
+qat_cq_get_fw_cipher_crc_cap(struct qat_qp *qp)
 {
-	return  0;
+	struct qat_queue *queue = &(qp->tx_q);
+	uint8_t *base_addr = (uint8_t *)queue->base_addr;
+	struct icp_qat_fw_la_bulk_req cipher_crc_cap_msg = {{0}};
+	struct icp_qat_fw_comn_resp response = {{0}};
+	struct icp_qat_fw_la_cipher_req_params *cipher_param;
+	struct icp_qat_fw_la_auth_req_params *auth_param;
+	struct qat_sym_session *session;
+	phys_addr_t phy_src_addr;
+	uint64_t *src_data_addr;
+	int ret;
+
+	session = rte_zmalloc(NULL, sizeof(struct qat_sym_session), 0);
+	if (session == NULL)
+		return -EINVAL;
+
+	/* Verify the session physical address is known */
+	rte_iova_t session_paddr = rte_mem_virt2iova(session);
+	if (session_paddr == 0 || session_paddr == RTE_BAD_IOVA) {
+		QAT_LOG(ERR, "Session physical address unknown.");
+		return -EINVAL;
+	}
+
+	/* Prepare the LA bulk request */
+	ret = qat_cipher_crc_cap_msg_sess_prepare(session,
+					session_paddr,
+					cipher_crc_cap_check_key,
+					sizeof(cipher_crc_cap_check_key),
+					qp->qat_dev_gen);
+	if (ret < 0) {
+		rte_free(session);
+		/* Returning 0 here to allow qp setup to continue, but
+		 * indicate that Cipher-CRC offload is not supported on the
+		 * device
+		 */
+		return 0;
+	}
+
+	cipher_crc_cap_msg = session->fw_req;
+
+	src_data_addr = rte_zmalloc(NULL,
+					sizeof(cipher_crc_cap_check_plaintext),
+					0);
+	if (src_data_addr == NULL) {
+		rte_free(session);
+		return -EINVAL;
+	}
+
+	rte_memcpy(src_data_addr,
+			cipher_crc_cap_check_plaintext,
+			sizeof(cipher_crc_cap_check_plaintext));
+
+	phy_src_addr = rte_mem_virt2iova(src_data_addr);
+	if (phy_src_addr == 0 || phy_src_addr == RTE_BAD_IOVA) {
+		QAT_LOG(ERR, "Source physical address unknown.");
+		return -EINVAL;
+	}
+
+	cipher_crc_cap_msg.comn_mid.src_data_addr = phy_src_addr;
+	cipher_crc_cap_msg.comn_mid.src_length =
+					sizeof(cipher_crc_cap_check_plaintext);
+	cipher_crc_cap_msg.comn_mid.dest_data_addr = phy_src_addr;
+	cipher_crc_cap_msg.comn_mid.dst_length =
+					sizeof(cipher_crc_cap_check_plaintext);
+
+	cipher_param = (void *)&cipher_crc_cap_msg.serv_specif_rqpars;
+	auth_param = (void *)((uint8_t *)cipher_param +
+			ICP_QAT_FW_HASH_REQUEST_PARAMETERS_OFFSET);
+
+	rte_memcpy(cipher_param->u.cipher_IV_array,
+			cipher_crc_cap_check_iv,
+			sizeof(cipher_crc_cap_check_iv));
+
+	cipher_param->cipher_offset = cipher_crc_cap_check_cipher_offset;
+	cipher_param->cipher_length =
+			sizeof(cipher_crc_cap_check_plaintext) -
+			cipher_crc_cap_check_cipher_offset;
+	auth_param->auth_off = cipher_crc_cap_check_crc_offset;
+	auth_param->auth_len = sizeof(cipher_crc_cap_check_plaintext) -
+				cipher_crc_cap_check_crc_offset -
+				RTE_ETHER_CRC_LEN;
+
+	ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
+			cipher_crc_cap_msg.comn_hdr.serv_specif_flags,
+			ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
+
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_HEXDUMP_LOG(DEBUG, "LA Bulk request", &cipher_crc_cap_msg,
+			sizeof(cipher_crc_cap_msg));
+#endif
+
+	/* Send the cipher_crc_cap_msg request */
+	memcpy(base_addr + queue->tail,
+	       &cipher_crc_cap_msg,
+	       sizeof(cipher_crc_cap_msg));
+	queue->tail = adf_modulo(queue->tail + queue->msg_size,
+			queue->modulo_mask);
+	txq_write_tail(qp->qat_dev_gen, qp, queue);
+
+	/* Check for response and verify data is same as ciphertext */
+	if (qat_cq_dequeue_response(qp, &response)) {
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "LA response:", &response,
+				sizeof(response));
+#endif
+
+		if (memcmp(src_data_addr,
+				cipher_crc_cap_check_ciphertext,
+				sizeof(cipher_crc_cap_check_ciphertext)) != 0)
+			ret = 0; /* Cipher-CRC offload not supported */
+		else
+			ret = 1;
+	} else {
+		ret = -EINVAL;
+	}
+
+	rte_free(src_data_addr);
+	rte_free(session);
+	return ret;
 }
+#endif

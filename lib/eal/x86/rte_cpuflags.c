@@ -2,14 +2,17 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
+#include <eal_export.h>
 #include "rte_cpuflags.h"
 
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "rte_cpuid.h"
+#include "rte_atomic.h"
 
 /**
  * Struct to hold a processor feature entry
@@ -21,12 +24,14 @@ struct feature_entry {
 	uint32_t bit;				/**< cpuid register bit */
 #define CPU_FLAG_NAME_MAX_LEN 64
 	char name[CPU_FLAG_NAME_MAX_LEN];       /**< String for printing */
+	bool has_value;
+	bool value;
 };
 
 #define FEAT_DEF(name, leaf, subleaf, reg, bit) \
 	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name },
 
-const struct feature_entry rte_cpu_feature_table[] = {
+struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SSE3, 0x00000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(PCLMULQDQ, 0x00000001, 0, RTE_REG_ECX,  1)
 	FEAT_DEF(DTES64, 0x00000001, 0, RTE_REG_ECX,  2)
@@ -133,6 +138,7 @@ const struct feature_entry rte_cpu_feature_table[] = {
 
 	FEAT_DEF(LAHF_SAHF, 0x80000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(LZCNT, 0x80000001, 0, RTE_REG_ECX,  4)
+	FEAT_DEF(MONITORX, 0x80000001, 0, RTE_REG_ECX,  29)
 
 	FEAT_DEF(SYSCALL, 0x80000001, 0, RTE_REG_EDX, 11)
 	FEAT_DEF(XD, 0x80000001, 0, RTE_REG_EDX, 20)
@@ -143,18 +149,21 @@ const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(INVTSC, 0x80000007, 0, RTE_REG_EDX,  8)
 };
 
+RTE_EXPORT_SYMBOL(rte_cpu_get_flag_enabled)
 int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 {
-	const struct feature_entry *feat;
+	struct feature_entry *feat;
 	cpuid_registers_t regs;
 	unsigned int maxleaf;
 
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		/* Flag does not match anything in the feature tables */
 		return -ENOENT;
 
 	feat = &rte_cpu_feature_table[feature];
+	if (feat->has_value)
+		return feat->value;
 
 	if (!feat->leaf)
 		/* This entry in the table wasn't filled out! */
@@ -162,25 +171,37 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 
 	maxleaf = __get_cpuid_max(feat->leaf & 0x80000000, NULL);
 
-	if (maxleaf < feat->leaf)
-		return 0;
+	if (maxleaf < feat->leaf) {
+		feat->value = 0;
+		goto out;
+	}
 
-	 __cpuid_count(feat->leaf, feat->subleaf,
+#ifdef RTE_TOOLCHAIN_MSVC
+	__cpuidex(regs, feat->leaf, feat->subleaf);
+#else
+	__cpuid_count(feat->leaf, feat->subleaf,
 			 regs[RTE_REG_EAX], regs[RTE_REG_EBX],
 			 regs[RTE_REG_ECX], regs[RTE_REG_EDX]);
+#endif
 
 	/* check if the feature is enabled */
-	return (regs[feat->reg] >> feat->bit) & 1;
+	feat->value = (regs[feat->reg] >> feat->bit) & 1;
+out:
+	rte_compiler_barrier();
+	feat->has_value = true;
+	return feat->value;
 }
 
+RTE_EXPORT_SYMBOL(rte_cpu_get_flag_name)
 const char *
 rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
 {
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		return NULL;
 	return rte_cpu_feature_table[feature].name;
 }
 
+RTE_EXPORT_SYMBOL(rte_cpu_get_intrinsics_support)
 void
 rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
 {
@@ -191,5 +212,7 @@ rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
 		intrinsics->power_pause = 1;
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_RTM))
 			intrinsics->power_monitor_multi = 1;
+	} else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_MONITORX)) {
+		intrinsics->power_monitor = 1;
 	}
 }

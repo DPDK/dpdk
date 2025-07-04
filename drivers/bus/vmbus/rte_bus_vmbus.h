@@ -11,10 +11,6 @@
  *
  * VMBUS Interface
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -27,6 +23,10 @@ extern "C" {
 #include <rte_debug.h>
 #include <rte_interrupts.h>
 #include <rte_vmbus_reg.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Forward declarations */
 struct rte_vmbus_device;

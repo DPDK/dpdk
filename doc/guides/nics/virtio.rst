@@ -10,15 +10,12 @@ we provide a virtio Poll Mode Driver (PMD) as a software solution, comparing to 
 for fast guest VM to guest VM communication and guest VM to host communication.
 
 Vhost is a kernel acceleration module for virtio qemu backend.
-The DPDK extends kni to support vhost raw socket interface,
-which enables vhost to directly read/ write packets from/to a physical port.
-With this enhancement, virtio could achieve quite promising performance.
 
 For basic qemu-KVM installation and other Intel EM poll mode driver in guest VM,
 please refer to Chapter "Driver for VM Emulated Devices".
 
 In this chapter, we will demonstrate usage of virtio PMD with two backends,
-standard qemu vhost back end and vhost kni back end.
+standard qemu vhost back end.
 
 Virtio Implementation in DPDK
 -----------------------------
@@ -59,6 +56,7 @@ In this release, the virtio PMD provides the basic functionality of packet recep
     command line. Note that, mac/vlan filter is best effort: unwanted packets could still arrive.
 
 *   "RTE_PKTMBUF_HEADROOM" should be defined
+    no less than "sizeof(struct virtio_net_hdr_hash_report)", which is 20 bytes when using hash report or
     no less than "sizeof(struct virtio_net_hdr_mrg_rxbuf)", which is 12 bytes when mergeable or
     "VIRTIO_F_VERSION_1" is set.
     no less than "sizeof(struct virtio_net_hdr)", which is 10 bytes, when using non-mergeable.
@@ -70,6 +68,8 @@ In this release, the virtio PMD provides the basic functionality of packet recep
 *   Virtio supports Rx interrupt (so far, only support 1:1 mapping for queue/interrupt).
 
 *   Virtio supports software vlan stripping and inserting.
+
+*   Virtio supports hash report feature in packed queue mode.
 
 *   Virtio supports using port IO to get PCI resource when UIO module is not available.
 
@@ -89,93 +89,6 @@ The following prerequisites apply:
 *   When using legacy interface, ``SYS_RAWIO`` capability is required
     for ``iopl()`` call to enable access to PCI I/O ports.
 
-Virtio with kni vhost Back End
-------------------------------
-
-This section demonstrates kni vhost back end example setup for Phy-VM Communication.
-
-.. _figure_host_vm_comms:
-
-.. figure:: img/host_vm_comms.*
-
-   Host2VM Communication Example Using kni vhost Back End
-
-
-Host2VM communication example
-
-#.  Load the kni kernel module:
-
-    .. code-block:: console
-
-        insmod rte_kni.ko
-
-    Other basic DPDK preparations like hugepage enabling,
-    UIO port binding are not listed here.
-    Please refer to the *DPDK Getting Started Guide* for detailed instructions.
-
-#.  Launch the kni user application:
-
-    .. code-block:: console
-
-        <build_dir>/examples/dpdk-kni -l 0-3 -n 4 -- -p 0x1 -P --config="(0,1,3)"
-
-    This command generates one network device vEth0 for physical port.
-    If specify more physical ports, the generated network device will be vEth1, vEth2, and so on.
-
-    For each physical port, kni creates two user threads.
-    One thread loops to fetch packets from the physical NIC port into the kni receive queue.
-    The other user thread loops to send packets in the kni transmit queue.
-
-    For each physical port, kni also creates a kernel thread that retrieves packets from the kni receive queue,
-    place them onto kni's raw socket's queue and wake up the vhost kernel thread to exchange packets with the virtio virt queue.
-
-    For more details about kni, please refer to :ref:`kni`.
-
-#.  Enable the kni raw socket functionality for the specified physical NIC port,
-    get the generated file descriptor and set it in the qemu command line parameter.
-    Always remember to set ioeventfd_on and vhost_on.
-
-    Example:
-
-    .. code-block:: console
-
-        echo 1 > /sys/class/net/vEth0/sock_en
-        fd=`cat /sys/class/net/vEth0/sock_fd`
-        exec qemu-system-x86_64 -enable-kvm -cpu host \
-        -m 2048 -smp 4 -name dpdk-test1-vm1 \
-        -drive file=/data/DPDKVMS/dpdk-vm.img \
-        -netdev tap, fd=$fd,id=mynet_kni, script=no,vhost=on \
-        -device virtio-net-pci,netdev=mynet_kni,bus=pci.0,addr=0x3,ioeventfd=on \
-        -vnc:1 -daemonize
-
-    In the above example, virtio port 0 in the guest VM will be associated with vEth0, which in turns corresponds to a physical port,
-    which means received packets come from vEth0, and transmitted packets is sent to vEth0.
-
-#.  In the guest, bind the virtio device to the uio_pci_generic kernel module and start the forwarding application.
-    When the virtio port in guest bursts Rx, it is getting packets from the
-    raw socket's receive queue.
-    When the virtio port bursts Tx, it is sending packet to the tx_q.
-
-    .. code-block:: console
-
-        modprobe uio
-        dpdk-hugepages.py --setup 1G
-        modprobe uio_pci_generic
-        ./usertools/dpdk-devbind.py -b uio_pci_generic 00:03.0
-
-    We use testpmd as the forwarding application in this example.
-
-    .. figure:: img/console.*
-
-       Running testpmd
-
-#.  Use IXIA packet generator to inject a packet stream into the KNI physical port.
-
-    The packet reception and transmission flow path is:
-
-    IXIA packet generator->82599 PF->KNI Rx queue->KNI raw socket queue->Guest
-    VM virtio port 0 Rx burst->Guest VM virtio port 0 Tx burst-> KNI Tx queue
-    ->82599 PF-> IXIA packet generator
 
 Virtio with qemu virtio Back End
 --------------------------------
@@ -307,6 +220,7 @@ Prerequisites for Rx interrupts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To support Rx interrupts,
+
 #. Check if guest kernel supports VFIO-NOIOMMU:
 
     Linux started to support VFIO-NOIOMMU since 4.8.0. Make sure the guest
@@ -469,12 +383,16 @@ according to below configuration:
 
 #. Split virtqueue mergeable path: If Rx mergeable is negotiated, in-order feature is
    not negotiated, this path will be selected.
+
 #. Split virtqueue non-mergeable path: If Rx mergeable and in-order feature are not
    negotiated, also Rx offload(s) are requested, this path will be selected.
+
 #. Split virtqueue in-order mergeable path: If Rx mergeable and in-order feature are
    both negotiated, this path will be selected.
+
 #. Split virtqueue in-order non-mergeable path: If in-order feature is negotiated and
    Rx mergeable is not negotiated, this path will be selected.
+
 #. Split virtqueue vectorized Rx path: If Rx mergeable is disabled and no Rx offload
    requested, this path will be selected.
 
@@ -483,16 +401,21 @@ according to below configuration:
 
 #. Packed virtqueue mergeable path: If Rx mergeable is negotiated, in-order feature
    is not negotiated, this path will be selected.
+
 #. Packed virtqueue non-mergeable path: If Rx mergeable and in-order feature are not
    negotiated, this path will be selected.
+
 #. Packed virtqueue in-order mergeable path: If in-order and Rx mergeable feature are
    both negotiated, this path will be selected.
+
 #. Packed virtqueue in-order non-mergeable path: If in-order feature is negotiated and
    Rx mergeable is not negotiated, this path will be selected.
+
 #. Packed virtqueue vectorized Rx path: If building and running environment support
    (AVX512 || NEON) && in-order feature is negotiated && Rx mergeable
    is not negotiated && TCP_LRO Rx offloading is disabled && vectorized option enabled,
    this path will be selected.
+
 #. Packed virtqueue vectorized Tx path: If building and running environment support
    (AVX512 || NEON)  && in-order feature is negotiated && vectorized option enabled,
    this path will be selected.
@@ -570,5 +493,7 @@ or configuration, below steps can help you identify which path you selected and
 root cause faster.
 
 #. Run vhost/virtio test case;
+
 #. Run "perf top" and check virtio Rx/Tx callback names;
+
 #. Identify which virtio path is selected refer to above table.

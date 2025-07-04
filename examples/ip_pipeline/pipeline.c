@@ -11,9 +11,6 @@
 
 #include <rte_string_fns.h>
 #include <rte_port_ethdev.h>
-#ifdef RTE_LIB_KNI
-#include <rte_port_kni.h>
-#endif
 #include <rte_port_ring.h>
 #include <rte_port_source_sink.h>
 #include <rte_port_fd.h>
@@ -28,9 +25,6 @@
 #include <rte_table_lpm_ipv6.h>
 #include <rte_table_stub.h>
 
-#ifdef RTE_LIB_KNI
-#include "kni.h"
-#endif
 #include "link.h"
 #include "mempool.h"
 #include "pipeline.h"
@@ -160,9 +154,6 @@ pipeline_port_in_create(const char *pipeline_name,
 		struct rte_port_ring_reader_params ring;
 		struct rte_port_sched_reader_params sched;
 		struct rte_port_fd_reader_params fd;
-#ifdef RTE_LIB_KNI
-		struct rte_port_kni_reader_params kni;
-#endif
 		struct rte_port_source_params source;
 		struct rte_port_sym_crypto_reader_params sym_crypto;
 	} pp;
@@ -264,22 +255,6 @@ pipeline_port_in_create(const char *pipeline_name,
 		break;
 	}
 
-#ifdef RTE_LIB_KNI
-	case PORT_IN_KNI:
-	{
-		struct kni *kni;
-
-		kni = kni_find(params->dev_name);
-		if (kni == NULL)
-			return -1;
-
-		pp.kni.kni = kni->k;
-
-		p.ops = &rte_port_kni_reader_ops;
-		p.arg_create = &pp.kni;
-		break;
-	}
-#endif
 
 	case PORT_IN_SOURCE:
 	{
@@ -404,9 +379,6 @@ pipeline_port_out_create(const char *pipeline_name,
 		struct rte_port_ring_writer_params ring;
 		struct rte_port_sched_writer_params sched;
 		struct rte_port_fd_writer_params fd;
-#ifdef RTE_LIB_KNI
-		struct rte_port_kni_writer_params kni;
-#endif
 		struct rte_port_sink_params sink;
 		struct rte_port_sym_crypto_writer_params sym_crypto;
 	} pp;
@@ -415,9 +387,6 @@ pipeline_port_out_create(const char *pipeline_name,
 		struct rte_port_ethdev_writer_nodrop_params ethdev;
 		struct rte_port_ring_writer_nodrop_params ring;
 		struct rte_port_fd_writer_nodrop_params fd;
-#ifdef RTE_LIB_KNI
-		struct rte_port_kni_writer_nodrop_params kni;
-#endif
 		struct rte_port_sym_crypto_writer_nodrop_params sym_crypto;
 	} pp_nodrop;
 
@@ -537,32 +506,6 @@ pipeline_port_out_create(const char *pipeline_name,
 		break;
 	}
 
-#ifdef RTE_LIB_KNI
-	case PORT_OUT_KNI:
-	{
-		struct kni *kni;
-
-		kni = kni_find(params->dev_name);
-		if (kni == NULL)
-			return -1;
-
-		pp.kni.kni = kni->k;
-		pp.kni.tx_burst_sz = params->burst_size;
-
-		pp_nodrop.kni.kni = kni->k;
-		pp_nodrop.kni.tx_burst_sz = params->burst_size;
-		pp_nodrop.kni.n_retries = params->n_retries;
-
-		if (params->retry == 0) {
-			p.ops = &rte_port_kni_writer_ops;
-			p.arg_create = &pp.kni;
-		} else {
-			p.ops = &rte_port_kni_writer_nodrop_ops;
-			p.arg_create = &pp_nodrop.kni;
-		}
-		break;
-	}
-#endif
 
 	case PORT_OUT_SINK:
 	{
@@ -694,7 +637,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 1,
 		.input_index = 1,
-		.offset = offsetof(struct rte_ipv6_hdr, src_addr[0]),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr.a[0]),
 	},
 
 	[2] = {
@@ -702,7 +645,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 2,
 		.input_index = 2,
-		.offset = offsetof(struct rte_ipv6_hdr, src_addr[4]),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr.a[4]),
 	},
 
 	[3] = {
@@ -710,7 +653,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 3,
 		.input_index = 3,
-		.offset = offsetof(struct rte_ipv6_hdr, src_addr[8]),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr.a[8]),
 	},
 
 	[4] = {
@@ -718,7 +661,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 4,
 		.input_index = 4,
-		.offset = offsetof(struct rte_ipv6_hdr, src_addr[12]),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr.a[12]),
 	},
 
 	/* Destination IP address (IPv6) */
@@ -727,7 +670,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 5,
 		.input_index = 5,
-		.offset = offsetof(struct rte_ipv6_hdr, dst_addr[0]),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr.a[0]),
 	},
 
 	[6] = {
@@ -735,7 +678,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 6,
 		.input_index = 6,
-		.offset = offsetof(struct rte_ipv6_hdr, dst_addr[4]),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr.a[4]),
 	},
 
 	[7] = {
@@ -743,7 +686,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 7,
 		.input_index = 7,
-		.offset = offsetof(struct rte_ipv6_hdr, dst_addr[8]),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr.a[8]),
 	},
 
 	[8] = {
@@ -751,7 +694,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.size = sizeof(uint32_t),
 		.field_index = 8,
 		.input_index = 8,
-		.offset = offsetof(struct rte_ipv6_hdr, dst_addr[12]),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr.a[12]),
 	},
 
 	/* Source Port */

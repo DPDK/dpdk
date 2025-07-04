@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_debug.h>
@@ -43,8 +44,8 @@
 
 #define BPF_DIV_ZERO_CHECK(bpf, reg, ins, type) do { \
 	if ((type)(reg)[(ins)->src_reg] == 0) { \
-		RTE_BPF_LOG(ERR, \
-			"%s(%p): division by 0 at pc: %#zx;\n", \
+		RTE_BPF_LOG_LINE(ERR, \
+			"%s(%p): division by 0 at pc: %#zx;", \
 			__func__, bpf, \
 			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins); \
 		return 0; \
@@ -136,8 +137,8 @@ bpf_ld_mbuf(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM],
 	mb = (const struct rte_mbuf *)(uintptr_t)reg[EBPF_REG_6];
 	p = rte_pktmbuf_read(mb, off, len, reg + EBPF_REG_0);
 	if (p == NULL)
-		RTE_BPF_LOG(DEBUG, "%s(bpf=%p, mbuf=%p, ofs=%u, len=%u): "
-			"load beyond packet boundary at pc: %#zx;\n",
+		RTE_BPF_LOG_LINE(DEBUG, "%s(bpf=%p, mbuf=%p, ofs=%u, len=%u): "
+			"load beyond packet boundary at pc: %#zx;",
 			__func__, bpf, mb, off, len,
 			(uintptr_t)(ins) - (uintptr_t)(bpf)->prm.ins);
 	return p;
@@ -462,8 +463,8 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 		case (BPF_JMP | EBPF_EXIT):
 			return reg[EBPF_REG_0];
 		default:
-			RTE_BPF_LOG(ERR,
-				"%s(%p): invalid opcode %#x at pc: %#zx;\n",
+			RTE_BPF_LOG_LINE(ERR,
+				"%s(%p): invalid opcode %#x at pc: %#zx;",
 				__func__, bpf, ins->code,
 				(uintptr_t)ins - (uintptr_t)bpf->prm.ins);
 			return 0;
@@ -475,6 +476,7 @@ bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_exec_burst)
 uint32_t
 rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 	uint32_t num)
@@ -494,6 +496,7 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_exec)
 uint64_t
 rte_bpf_exec(const struct rte_bpf *bpf, void *ctx)
 {

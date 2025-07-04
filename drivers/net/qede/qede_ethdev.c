@@ -7,6 +7,7 @@
 #include "qede_ethdev.h"
 #include <rte_string_fns.h>
 #include <rte_alarm.h>
+#include <rte_random.h>
 #include <rte_kvargs.h>
 
 static const struct qed_eth_ops *qed_ops;
@@ -1040,9 +1041,8 @@ static void qede_prandom_bytes(uint32_t *buff)
 {
 	uint8_t i;
 
-	srand((unsigned int)time(NULL));
 	for (i = 0; i < ECORE_RSS_KEY_SIZE; i++)
-		buff[i] = rand();
+		buff[i] = rte_rand();
 }
 
 int qede_config_rss(struct rte_eth_dev *eth_dev)
@@ -2054,7 +2054,8 @@ static int qede_flow_ctrl_get(struct rte_eth_dev *eth_dev,
 }
 
 static const uint32_t *
-qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
+qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev,
+			      size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -2075,13 +2076,14 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
 		RTE_PTYPE_INNER_L4_FRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (eth_dev->rx_pkt_burst == qede_recv_pkts ||
 	    eth_dev->rx_pkt_burst == qede_recv_pkts_regular ||
-	    eth_dev->rx_pkt_burst == qede_recv_pkts_cmt)
+	    eth_dev->rx_pkt_burst == qede_recv_pkts_cmt) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 
 	return NULL;
 }
@@ -2142,6 +2144,7 @@ int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 		rss_params.rss_enable = 1;
 	}
 
+	rss_params.update_rss_ind_table = 1;
 	rss_params.update_rss_config = 1;
 	/* tbl_size has to be set with capabilities */
 	rss_params.rss_table_size_log = 7;

@@ -17,7 +17,7 @@
  */
 
 /* struct defining Tx meta data --  fixed in FPGA -- 8 bytes */
-union ark_tx_meta {
+union __rte_packed_begin ark_tx_meta {
 	uint64_t physaddr;
 	struct {
 		uint32_t usermeta0;
@@ -31,7 +31,7 @@ union ark_tx_meta {
 		uint8_t  meta_cnt;
 		uint32_t user1;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * DDM core hardware structures

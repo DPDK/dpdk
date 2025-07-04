@@ -13,12 +13,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <malloc.h>
 
 #include <sched.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* These macros are compatible with bundled sys/queue.h. */
 #define RTE_TAILQ_HEAD(name, type) \
@@ -59,8 +56,9 @@ struct { \
  */
 typedef long long ssize_t;
 
-#ifdef __cplusplus
-}
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __SIZEOF_LONG__ (sizeof(long))
+#define __SIZEOF_LONG_LONG__ (sizeof(long long))
 #endif
 
 #endif /* _RTE_OS_H_ */

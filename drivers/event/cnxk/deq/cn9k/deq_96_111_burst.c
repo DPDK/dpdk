@@ -6,9 +6,13 @@
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
 
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+
 #define R(name, flags)                                                         \
 	SSO_CMN_DEQ_BURST(cn9k_sso_hws_deq_burst_##name,                       \
 			  cn9k_sso_hws_deq_##name, flags)
 
 NIX_RX_FASTPATH_MODES_96_111
 #undef R
+
+#endif

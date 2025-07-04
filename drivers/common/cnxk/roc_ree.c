@@ -441,7 +441,7 @@ static void
 roc_ree_lf_err_intr_unregister(struct roc_ree_vf *vf, uint16_t msix_off,
 			       uintptr_t base)
 {
-	struct rte_pci_device *pci_dev = vf->pci_dev;
+	struct plt_pci_device *pci_dev = vf->pci_dev;
 
 	/* Disable error interrupts */
 	plt_write64(~0ull, base + REE_LF_MISC_INT_ENA_W1C);
@@ -468,7 +468,7 @@ static int
 roc_ree_lf_err_intr_register(struct roc_ree_vf *vf, uint16_t msix_off,
 			     uintptr_t base)
 {
-	struct rte_pci_device *pci_dev = vf->pci_dev;
+	struct plt_pci_device *pci_dev = vf->pci_dev;
 	int ret;
 
 	/* Disable error interrupts */

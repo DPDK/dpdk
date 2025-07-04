@@ -10,20 +10,24 @@ option('disable_apps', type: 'string', value: '', description:
        'Comma-separated list of apps to explicitly disable.')
 option('disable_drivers', type: 'string', value: '', description:
        'Comma-separated list of drivers to explicitly disable.')
-option('disable_libs', type: 'string', value: 'flow_classify,kni', description:
-       'Comma-separated list of libraries to explicitly disable. [NOTE: not all libs can be disabled]')
+option('disable_libs', type: 'string', value: '', description:
+       'Comma-separated list of optional libraries to explicitly disable. [NOTE: mandatory libs cannot be disabled]')
 option('drivers_install_subdir', type: 'string', value: 'dpdk/pmds-<VERSION>', description:
        'Subdirectory of libdir where to install PMDs. Defaults to using a versioned subdirectory.')
 option('enable_docs', type: 'boolean', value: false, description:
        'build documentation')
 option('enable_apps', type: 'string', value: '', description:
        'Comma-separated list of apps to build. If unspecified, build all apps.')
+option('enable_deprecated_libs', type: 'string', value: '', description:
+       'Comma-separated list of deprecated libraries to explicitly enable.')
 option('enable_drivers', type: 'string', value: '', description:
        'Comma-separated list of drivers to build. If unspecified, build all drivers.')
 option('enable_driver_sdk', type: 'boolean', value: false, description:
        'Install headers to build drivers.')
-option('enable_kmods', type: 'boolean', value: false, description:
-       'build kernel modules')
+option('enable_kmods', type: 'boolean', value: true, description:
+       '[Deprecated - will be removed in future release] build kernel modules')
+option('enable_libs', type: 'string', value: '', description:
+       'Comma-separated list of optional libraries to explicitly enable. [NOTE: mandatory libs are always enabled]')
 option('examples', type: 'string', value: '', description:
        'Comma-separated list of examples to build by default')
 option('ibverbs_link', type: 'combo', choices : ['static', 'shared', 'dlopen'], value: 'shared', description:
@@ -46,6 +50,10 @@ option('mbuf_refcnt_atomic', type: 'boolean', value: true, description:
        'Atomically access the mbuf refcnt.')
 option('platform', type: 'string', value: 'native', description:
        'Platform to build, either "native", "generic" or a SoC. Please refer to the Linux build guide for more information.')
+option('pkt_mbuf_headroom', type: 'integer', value: 128, description:
+       'Default data offset (in bytes) in a packet buffer to leave room for additional headers.')
+option('enable_stdatomic', type: 'boolean', value: false, description:
+       'enable use of C11 stdatomic')
 option('enable_trace_fp', type: 'boolean', value: false, description:
        'enable fast path trace points.')
 option('tests', type: 'boolean', value: true, description:

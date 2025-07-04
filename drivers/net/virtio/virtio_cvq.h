@@ -43,10 +43,10 @@ struct virtqueue;
  * 6 bytes MAC address. This functionality is present if the
  * VIRTIO_NET_F_CTRL_MAC_ADDR feature is available.
  */
-struct virtio_net_ctrl_mac {
+struct __rte_packed_begin virtio_net_ctrl_mac {
 	uint32_t entries;
 	uint8_t macs[][RTE_ETHER_ADDR_LEN];
-} __rte_packed;
+} __rte_packed_end;
 
 #define VIRTIO_NET_CTRL_MAC    1
 #define VIRTIO_NET_CTRL_MAC_TABLE_SET        0
@@ -98,10 +98,10 @@ struct virtio_net_ctrl_rss {
 #define VIRTIO_NET_CTRL_ANNOUNCE     3
 #define VIRTIO_NET_CTRL_ANNOUNCE_ACK 0
 
-struct virtio_net_ctrl_hdr {
+struct __rte_packed_begin virtio_net_ctrl_hdr {
 	uint8_t class;
 	uint8_t cmd;
-} __rte_packed;
+} __rte_packed_end;
 
 typedef uint8_t virtio_net_ctrl_ack;
 

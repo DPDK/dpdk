@@ -8,7 +8,8 @@
 #include <rte_cryptodev.h>
 #include <rte_security.h>
 
-#define IPSEC_TEST_PACKETS_MAX 32
+#include "test_security_proto.h"
+
 #define IPSEC_TEXT_MAX_LEN 16384u
 
 struct ipsec_test_data {
@@ -103,6 +104,7 @@ struct ipsec_test_flags {
 	bool fragment;
 	bool stats_success;
 	bool antireplay;
+	bool use_ext_mbuf;
 	enum df_flags df;
 	enum dscp_flags dscp;
 	enum flabel_flags flabel;
@@ -110,135 +112,8 @@ struct ipsec_test_flags {
 	bool ah;
 	uint32_t plaintext_len;
 	int nb_segs_in_mbuf;
-};
-
-struct crypto_param {
-	enum rte_crypto_sym_xform_type type;
-	union {
-		enum rte_crypto_cipher_algorithm cipher;
-		enum rte_crypto_auth_algorithm auth;
-		enum rte_crypto_aead_algorithm aead;
-	} alg;
-	uint16_t key_length;
-	uint16_t iv_length;
-	uint16_t digest_length;
-};
-
-static const struct crypto_param aead_list[] = {
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
-		.alg.aead =  RTE_CRYPTO_AEAD_AES_GCM,
-		.key_length = 16,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
-		.alg.aead = RTE_CRYPTO_AEAD_AES_GCM,
-		.key_length = 24,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
-		.alg.aead = RTE_CRYPTO_AEAD_AES_GCM,
-		.key_length = 32,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
-		.alg.aead = RTE_CRYPTO_AEAD_AES_CCM,
-		.key_length = 32
-	},
-};
-
-static const struct crypto_param cipher_list[] = {
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_NULL,
-		.key_length = 0,
-		.iv_length = 0,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_DES_CBC,
-		.key_length = 8,
-		.iv_length = 8,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_3DES_CBC,
-		.key_length = 24,
-		.iv_length = 8,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CBC,
-		.key_length = 16,
-		.iv_length = 16,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
-		.key_length = 16,
-		.iv_length = 16,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
-		.key_length = 24,
-		.iv_length = 16,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_CIPHER,
-		.alg.cipher =  RTE_CRYPTO_CIPHER_AES_CTR,
-		.key_length = 32,
-		.iv_length = 16,
-	},
-};
-
-static const struct crypto_param auth_list[] = {
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_NULL,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_MD5_HMAC,
-		.key_length = 16,
-		.digest_length = 12,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_SHA256_HMAC,
-		.key_length = 32,
-		.digest_length = 16,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_SHA384_HMAC,
-		.key_length = 48,
-		.digest_length = 24,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_SHA512_HMAC,
-		.key_length = 64,
-		.digest_length = 32,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_AES_XCBC_MAC,
-		.key_length = 16,
-		.digest_length = 12,
-	},
-	{
-		.type = RTE_CRYPTO_SYM_XFORM_AUTH,
-		.alg.auth =  RTE_CRYPTO_AUTH_AES_GMAC,
-		.key_length = 16,
-		.digest_length = 16,
-		.iv_length = 12,
-	},
-};
-
-struct crypto_param_comb {
-	const struct crypto_param *param1;
-	const struct crypto_param *param2;
+	bool inb_oop;
+	bool rx_inject;
 };
 
 extern struct ipsec_test_data pkt_aes_256_gcm;
@@ -246,31 +121,9 @@ extern struct ipsec_test_data pkt_aes_256_gcm_v6;
 extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256;
 extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256_v6;
 
-extern struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
-					 (RTE_DIM(cipher_list) *
-					  RTE_DIM(auth_list))];
-
-extern struct crypto_param_comb ah_alg_list[2 * (RTE_DIM(auth_list) - 1)];
-
-void test_ipsec_alg_list_populate(void);
-
-void test_ipsec_ah_alg_list_populate(void);
-
 int test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 			       const struct rte_security_capability *sec_cap,
 			       bool silent);
-
-int test_ipsec_crypto_caps_aead_verify(
-		const struct rte_security_capability *sec_cap,
-		struct rte_crypto_sym_xform *aead);
-
-int test_ipsec_crypto_caps_cipher_verify(
-		const struct rte_security_capability *sec_cap,
-		struct rte_crypto_sym_xform *cipher);
-
-int test_ipsec_crypto_caps_auth_verify(
-		const struct rte_security_capability *sec_cap,
-		struct rte_crypto_sym_xform *auth);
 
 void test_ipsec_td_in_from_out(const struct ipsec_test_data *td_out,
 			       struct ipsec_test_data *td_in);
@@ -286,9 +139,6 @@ void test_ipsec_td_update(struct ipsec_test_data td_inb[],
 			  int nb_td,
 			  const struct ipsec_test_flags *flags);
 
-void test_ipsec_display_alg(const struct crypto_param *param1,
-			    const struct crypto_param *param2);
-
 int test_ipsec_post_process(const struct rte_mbuf *m,
 			    const struct ipsec_test_data *td,
 			    struct ipsec_test_data *res_d, bool silent,
@@ -300,7 +150,7 @@ int test_ipsec_status_check(const struct ipsec_test_data *td,
 			    enum rte_security_ipsec_sa_direction dir,
 			    int pkt_num);
 
-int test_ipsec_stats_verify(struct rte_security_ctx *ctx,
+int test_ipsec_stats_verify(void *ctx,
 			    void *sess,
 			    const struct ipsec_test_flags *flags,
 			    enum rte_security_ipsec_sa_direction dir);

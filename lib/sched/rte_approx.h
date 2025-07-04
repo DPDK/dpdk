@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_APPROX_H__
 #define __INCLUDE_RTE_APPROX_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Rational Approximation
@@ -16,10 +12,13 @@ extern "C" {
  * Given a rational number alpha with 0 < alpha < 1 and a precision d, the goal
  * is to find positive integers p, q such that alpha - d < p/q < alpha + d, and
  * q is minimal.
- *
- ***/
+ */
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Find best rational approximation

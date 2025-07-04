@@ -12,9 +12,9 @@
  * Reorder library is a component which is designed to
  * provide ordering of out of ordered packets based on
  * sequence number present in mbuf.
- *
  */
 
+#include <rte_common.h>
 #include <rte_compat.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
@@ -46,6 +46,16 @@ rte_reorder_seqn(struct rte_mbuf *mbuf)
 }
 
 /**
+ * Free reorder buffer instance.
+ *
+ * @param b
+ *   Pointer to reorder buffer instance.
+ *   If b is NULL, no operation is performed.
+ */
+void
+rte_reorder_free(struct rte_reorder_buffer *b);
+
+/**
  * Create a new reorder buffer instance
  *
  * Allocate memory and initialize a new reorder buffer in that
@@ -65,7 +75,8 @@ rte_reorder_seqn(struct rte_mbuf *mbuf)
  *    - EINVAL - invalid parameters
  */
 struct rte_reorder_buffer *
-rte_reorder_create(const char *name, unsigned socket_id, unsigned int size);
+rte_reorder_create(const char *name, unsigned int socket_id, unsigned int size)
+	__rte_malloc __rte_dealloc(rte_reorder_free, 1);
 
 /**
  * Initializes given reorder buffer instance
@@ -111,16 +122,6 @@ rte_reorder_find_existing(const char *name);
  */
 void
 rte_reorder_reset(struct rte_reorder_buffer *b);
-
-/**
- * Free reorder buffer instance.
- *
- * @param b
- *   Pointer to reorder buffer instance.
- *   If b is NULL, no operation is performed.
- */
-void
-rte_reorder_free(struct rte_reorder_buffer *b);
 
 /**
  * Insert given mbuf in reorder buffer in its correct position
@@ -212,6 +213,23 @@ rte_reorder_drain_up_to_seqn(struct rte_reorder_buffer *b, struct rte_mbuf **mbu
 __rte_experimental
 unsigned int
 rte_reorder_min_seqn_set(struct rte_reorder_buffer *b, rte_reorder_seqn_t min_seqn);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Determine the amount of memory needed by the reorder buffer
+ * to accommodate a given number of elements.
+ * @see rte_reorder_init()
+ *
+ * @param size
+ *   Number of elements that can be stored in reorder buffer.
+ * @return
+ *   Reorder buffer footprint measured in bytes.
+ */
+__rte_experimental
+unsigned int
+rte_reorder_memory_footprint_get(unsigned int size);
 
 #ifdef __cplusplus
 }

@@ -70,7 +70,7 @@ rte_pci_dev_iterate(const void *start,
 	if (str != NULL) {
 		kvargs = rte_kvargs_parse(str, pci_params_keys);
 		if (kvargs == NULL) {
-			RTE_LOG(ERR, EAL, "cannot parse argument list\n");
+			PCI_LOG(ERR, "cannot parse argument list");
 			rte_errno = EINVAL;
 			return NULL;
 		}
@@ -94,22 +94,21 @@ rte_pci_devargs_parse(struct rte_devargs *da)
 
 	kvargs = rte_kvargs_parse(da->bus_str, NULL);
 	if (kvargs == NULL) {
-		RTE_LOG(ERR, EAL, "cannot parse argument list: %s\n",
-			da->bus_str);
+		PCI_LOG(ERR, "cannot parse argument list: %s", da->bus_str);
 		ret = -ENODEV;
 		goto out;
 	}
 
 	addr_str = rte_kvargs_get(kvargs, pci_params_keys[RTE_PCI_PARAM_ADDR]);
 	if (addr_str == NULL) {
-		RTE_LOG(DEBUG, EAL, "No PCI address specified using '%s=<id>' in: %s\n",
+		PCI_LOG(DEBUG, "No PCI address specified using '%s=<id>' in: %s",
 			pci_params_keys[RTE_PCI_PARAM_ADDR], da->bus_str);
 		goto out;
 	}
 
 	ret = rte_pci_addr_parse(addr_str, &addr);
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL, "PCI address invalid: %s\n", da->bus_str);
+		PCI_LOG(ERR, "PCI address invalid: %s", da->bus_str);
 		ret = -EINVAL;
 		goto out;
 	}

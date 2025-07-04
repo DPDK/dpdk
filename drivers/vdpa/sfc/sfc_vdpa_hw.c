@@ -13,8 +13,6 @@
 #include "sfc_vdpa.h"
 #include "sfc_vdpa_ops.h"
 
-extern uint32_t sfc_logtype_driver;
-
 #ifndef PAGE_SIZE
 #define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
 #endif

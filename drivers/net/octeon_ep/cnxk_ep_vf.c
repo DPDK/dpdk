@@ -2,11 +2,13 @@
  * Copyright(C) 2022 Marvell.
  */
 
+#include <inttypes.h>
 #include <errno.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
-
+#include <rte_memzone.h>
+#include "otx_ep_common.h"
 #include "cnxk_ep_vf.h"
 
 static void
@@ -47,37 +49,45 @@ cnxk_ep_vf_setup_global_oq_reg(struct otx_ep_device *otx_ep, int q_no)
 	oct_ep_write64(reg_val, otx_ep->hw_addr + CNXK_EP_R_OUT_CONTROL(q_no));
 }
 
-static void
+static int
 cnxk_ep_vf_setup_global_input_regs(struct otx_ep_device *otx_ep)
 {
 	uint64_t q_no = 0ull;
 
 	for (q_no = 0; q_no < (otx_ep->sriov_info.rings_per_vf); q_no++)
 		cnxk_ep_vf_setup_global_iq_reg(otx_ep, q_no);
+	return 0;
 }
 
-static void
+static int
 cnxk_ep_vf_setup_global_output_regs(struct otx_ep_device *otx_ep)
 {
 	uint32_t q_no;
 
 	for (q_no = 0; q_no < (otx_ep->sriov_info.rings_per_vf); q_no++)
 		cnxk_ep_vf_setup_global_oq_reg(otx_ep, q_no);
+	return 0;
 }
 
-static void
+static int
 cnxk_ep_vf_setup_device_regs(struct otx_ep_device *otx_ep)
 {
-	cnxk_ep_vf_setup_global_input_regs(otx_ep);
-	cnxk_ep_vf_setup_global_output_regs(otx_ep);
+	int ret;
+
+	ret = cnxk_ep_vf_setup_global_input_regs(otx_ep);
+	if (ret)
+		return ret;
+	ret = cnxk_ep_vf_setup_global_output_regs(otx_ep);
+	return ret;
 }
 
-static void
+static int
 cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 {
 	struct otx_ep_instr_queue *iq = otx_ep->instr_queue[iq_no];
-	uint64_t loop = OTX_EP_BUSY_LOOP_COUNT;
+	int loop = OTX_EP_BUSY_LOOP_COUNT;
 	volatile uint64_t reg_val = 0ull;
+	uint64_t ism_addr;
 
 	reg_val = oct_ep_read64(otx_ep->hw_addr + CNXK_EP_R_IN_CONTROL(iq_no));
 
@@ -91,10 +101,18 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 		} while ((!(reg_val & CNXK_EP_R_IN_CTL_IDLE)) && loop--);
 	}
 
-	if (!loop) {
-		otx_ep_err("IDLE bit is not set\n");
-		return;
+	if (loop < 0) {
+		otx_ep_err("IDLE bit is not set");
+		return -EIO;
 	}
+
+	/* Configure input queue instruction size. */
+	if (otx_ep->conf->iq.instr_type == OTX_EP_32BYTE_INSTR)
+		reg_val &= ~(CNXK_EP_R_IN_CTL_IS_64B);
+	else
+		reg_val |= CNXK_EP_R_IN_CTL_IS_64B;
+	oct_ep_write64(reg_val, otx_ep->hw_addr + CNXK_EP_R_IN_CONTROL(iq_no));
+	iq->desc_size = otx_ep->conf->iq.instr_type;
 
 	/* Write the start of the input queue's ring and its size  */
 	oct_ep_write64(iq->base_addr_dma, otx_ep->hw_addr + CNXK_EP_R_IN_INSTR_BADDR(iq_no));
@@ -115,9 +133,9 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 		rte_delay_ms(1);
 	} while (reg_val != 0 && loop--);
 
-	if (!loop) {
-		otx_ep_err("INST CNT REGISTER is not zero\n");
-		return;
+	if (loop < 0) {
+		otx_ep_err("INST CNT REGISTER is not zero");
+		return -EIO;
 	}
 
 	/* IN INTR_THRESHOLD is set to max(FFFFFFFF) which disable the IN INTR
@@ -125,15 +143,32 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	 */
 	oct_ep_write64(OTX_EP_CLEAR_SDP_IN_INT_LVLS,
 		       otx_ep->hw_addr + CNXK_EP_R_IN_INT_LEVELS(iq_no));
+	/* Set up IQ ISM registers and structures */
+	ism_addr = (otx_ep->ism_buffer_mz->iova | CNXK_EP_ISM_EN
+		    | CNXK_EP_ISM_MSIX_DIS)
+		    + CNXK_EP_IQ_ISM_OFFSET(iq_no);
+	rte_write64(ism_addr, (uint8_t *)otx_ep->hw_addr +
+		    CNXK_EP_R_IN_CNTS_ISM(iq_no));
+	iq->inst_cnt_ism =
+		(uint32_t __rte_atomic *)((uint8_t *)otx_ep->ism_buffer_mz->addr
+			     + CNXK_EP_IQ_ISM_OFFSET(iq_no));
+	otx_ep_err("SDP_R[%d] INST Q ISM virt: %p, dma: 0x%" PRIX64, iq_no,
+		   (void *)(uintptr_t)iq->inst_cnt_ism, ism_addr);
+	*iq->inst_cnt_ism = 0;
+	iq->inst_cnt_prev = 0;
+	iq->partial_ih = ((uint64_t)otx_ep->pkind) << 36;
+
+	return 0;
 }
 
-static void
+static int
 cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 {
 	volatile uint64_t reg_val = 0ull;
 	uint64_t oq_ctl = 0ull;
-	uint64_t loop = OTX_EP_BUSY_LOOP_COUNT;
+	int loop = OTX_EP_BUSY_LOOP_COUNT;
 	struct otx_ep_droq *droq = otx_ep->droq[oq_no];
+	uint64_t ism_addr;
 
 	/* Wait on IDLE to set to 1, supposed to configure BADDR
 	 * as long as IDLE is 0
@@ -145,9 +180,9 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 		rte_delay_ms(1);
 	}
 
-	if (!loop) {
-		otx_ep_err("OUT CNT REGISTER value is zero\n");
-		return;
+	if (loop < 0) {
+		otx_ep_err("OUT CNT REGISTER value is zero");
+		return -EIO;
 	}
 
 	oct_ep_write64(droq->desc_ring_dma, otx_ep->hw_addr + CNXK_EP_R_OUT_SLIST_BADDR(oq_no));
@@ -181,9 +216,9 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 		rte_delay_ms(1);
 	}
 
-	if (!loop) {
-		otx_ep_err("Packets credit register value is not cleared\n");
-		return;
+	if (loop < 0) {
+		otx_ep_err("Packets credit register value is not cleared");
+		return -EIO;
 	}
 
 	otx_ep_dbg("SDP_R[%d]_credit:%x", oq_no, rte_read32(droq->pkts_credit_reg));
@@ -193,26 +228,45 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	rte_write32((uint32_t)reg_val, droq->pkts_sent_reg);
 
 	otx_ep_dbg("SDP_R[%d]_sent: %x", oq_no, rte_read32(droq->pkts_sent_reg));
-	loop = OTX_EP_BUSY_LOOP_COUNT;
+	/* Set up ISM registers and structures */
+	ism_addr = (otx_ep->ism_buffer_mz->iova | CNXK_EP_ISM_EN
+		    | CNXK_EP_ISM_MSIX_DIS)
+		    + CNXK_EP_OQ_ISM_OFFSET(oq_no);
+	rte_write64(ism_addr, (uint8_t *)otx_ep->hw_addr +
+		    CNXK_EP_R_OUT_CNTS_ISM(oq_no));
+	droq->pkts_sent_ism =
+		(uint32_t __rte_atomic *)((uint8_t *)otx_ep->ism_buffer_mz->addr
+			     + CNXK_EP_OQ_ISM_OFFSET(oq_no));
+	otx_ep_err("SDP_R[%d] OQ ISM virt: %p dma: 0x%" PRIX64,
+		    oq_no, (void *)(uintptr_t)droq->pkts_sent_ism, ism_addr);
+	*droq->pkts_sent_ism = 0;
+	droq->pkts_sent_prev = 0;
 
-	while (((rte_read32(droq->pkts_sent_reg)) != 0ull)) {
+	loop = OTX_EP_BUSY_LOOP_COUNT;
+	while (((rte_read32(droq->pkts_sent_reg)) != 0ull) && loop--) {
 		reg_val = rte_read32(droq->pkts_sent_reg);
 		rte_write32((uint32_t)reg_val, droq->pkts_sent_reg);
 		rte_delay_ms(1);
 	}
 
-	if (!loop) {
-		otx_ep_err("Packets sent register value is not cleared\n");
-		return;
+	if (loop < 0) {
+		otx_ep_err("Packets sent register value is not cleared");
+		return -EIO;
 	}
 
 	otx_ep_dbg("SDP_R[%d]_sent: %x", oq_no, rte_read32(droq->pkts_sent_reg));
+
+	/* Set Watermark for backpressure */
+	oct_ep_write64(OTX_EP_OQ_WMARK_MIN,
+		       otx_ep->hw_addr + CNXK_EP_R_OUT_WMARK(oq_no));
+
+	return 0;
 }
 
 static int
 cnxk_ep_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 {
-	uint64_t loop = OTX_EP_BUSY_LOOP_COUNT;
+	int loop = OTX_EP_BUSY_LOOP_COUNT;
 	uint64_t reg_val = 0ull;
 
 	/* Resetting doorbells during IQ enabling also to handle abrupt
@@ -225,8 +279,8 @@ cnxk_ep_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 		rte_delay_ms(1);
 	}
 
-	if (!loop) {
-		otx_ep_err("INSTR DBELL not coming back to 0\n");
+	if (loop < 0) {
+		otx_ep_err("INSTR DBELL not coming back to 0");
 		return -EIO;
 	}
 
@@ -310,7 +364,7 @@ static const struct otx_ep_config default_cnxk_ep_conf = {
 	/* IQ attributes */
 	.iq                        = {
 		.max_iqs           = OTX_EP_CFG_IO_QUEUES,
-		.instr_type        = OTX_EP_64BYTE_INSTR,
+		.instr_type        = OTX_EP_32BYTE_INSTR,
 		.pending_list_size = (OTX_EP_MAX_IQ_DESCRIPTORS *
 				      OTX_EP_CFG_IO_QUEUES),
 	},
@@ -354,6 +408,8 @@ cnxk_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 
 	/* Get IOQs (RPVF] count */
 	reg_val = oct_ep_read64(otx_ep->hw_addr + CNXK_EP_R_IN_CONTROL(0));
+	if (reg_val == UINT64_MAX)
+		return -ENODEV;
 
 	otx_ep->sriov_info.rings_per_vf =
 		((reg_val >> CNXK_EP_R_IN_CTL_RPVF_POS) & CNXK_EP_R_IN_CTL_RPVF_MASK);

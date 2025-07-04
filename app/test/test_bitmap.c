@@ -91,7 +91,7 @@ test_bitmap_scan_operations(struct rte_bitmap *bmp)
 	start_pos = pos;
 	nb_set = 0;
 	do {
-		nb_set += __builtin_popcountll(out_slab);
+		nb_set += rte_popcount64(out_slab);
 		if (!rte_bitmap_scan(bmp, &pos, &out_slab))
 			break;
 	} while (pos != start_pos);
@@ -245,7 +245,7 @@ test_bitmap_all_set(void)
 			printf("Failed with init bitmap.\n");
 			return TEST_FAILED;
 		}
-		pos += (slab ? __builtin_ctzll(slab) : 0);
+		pos += (slab ? rte_ctz64(slab) : 0);
 		rte_bitmap_clear(bmp, pos);
 	}
 
@@ -269,4 +269,4 @@ test_bitmap(void)
 	return test_bitmap_all_set();
 }
 
-REGISTER_TEST_COMMAND(bitmap_autotest, test_bitmap);
+REGISTER_FAST_TEST(bitmap_autotest, true, true, test_bitmap);

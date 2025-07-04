@@ -17,10 +17,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * eCPRI Protocol Revision 1.0, 1.1, 1.2, 2.0: 0001b
  * Other values are reserved for future
@@ -66,7 +62,6 @@ extern "C" {
 /**
  * eCPRI Common Header
  */
-RTE_STD_C11
 struct rte_ecpri_common_hdr {
 	union {
 		rte_be32_t u32;			/**< 4B common header in BE */
@@ -123,7 +118,6 @@ struct rte_ecpri_msg_gen_data {
 /**
  * eCPRI Message Header of Type #4: Remote Memory Access
  */
-RTE_STD_C11
 struct rte_ecpri_msg_rm_access {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint32_t ele_id:16;		/**< Element ID */
@@ -169,7 +163,6 @@ struct rte_ecpri_msg_event_ind {
 /**
  * eCPRI Combined Message Header Format: Common Header + Message Types
  */
-RTE_STD_C11
 struct rte_ecpri_combined_msg_hdr {
 	struct rte_ecpri_common_hdr common;
 	union {
@@ -184,9 +177,5 @@ struct rte_ecpri_combined_msg_hdr {
 		rte_be32_t dummy[3];
 	};
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_ECPRI_H_ */

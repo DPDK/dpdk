@@ -20,7 +20,7 @@
 
 struct port_drv_mode_data {
 	void *sess;
-	struct rte_security_ctx *ctx;
+	void *ctx;
 };
 
 typedef void (*ipsec_worker_fn_t)(void);
@@ -298,17 +298,12 @@ route4_pkt(struct rte_mbuf *pkt, struct rt_ctx *rt_ctx)
 static inline uint16_t
 route6_pkt(struct rte_mbuf *pkt, struct rt_ctx *rt_ctx)
 {
-	uint8_t dst_ip[16];
-	uint8_t *ip6_dst;
-	uint16_t offset;
+	struct rte_ipv6_hdr *ip;
 	uint32_t hop;
 	int ret;
 
-	offset = RTE_ETHER_HDR_LEN + offsetof(struct ip6_hdr, ip6_dst);
-	ip6_dst = rte_pktmbuf_mtod_offset(pkt, uint8_t *, offset);
-	memcpy(&dst_ip[0], ip6_dst, 16);
-
-	ret = rte_lpm6_lookup((struct rte_lpm6 *)rt_ctx, dst_ip, &hop);
+	ip = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv6_hdr *, RTE_ETHER_HDR_LEN);
+	ret = rte_lpm6_lookup((struct rte_lpm6 *)rt_ctx, &ip->dst_addr, &hop);
 
 	if (ret == 0) {
 		/* We have a hit */
@@ -578,7 +573,7 @@ process_ipsec_ev_outbound(struct ipsec_ctx *ctx, struct route_table *rt,
 		 * Only plain IPv4 & IPv6 packets are allowed
 		 * on protected port. Drop the rest.
 		 */
-		RTE_LOG(ERR, IPSEC, "Unsupported packet type = %d\n", type);
+		RTE_LOG_DP(DEBUG, IPSEC, "Unsupported packet type = %d\n", type);
 		goto drop_pkt_and_exit;
 	}
 
@@ -705,6 +700,9 @@ ipsec_ev_inbound_route_pkts(struct rte_event_vector *vec,
 	struct rte_ipsec_session *sess;
 	struct rte_mbuf *pkt;
 	struct ipsec_sa *sa;
+	uint8_t mask = (1UL << RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO) |
+		       (1UL << RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL);
+
 
 	j = ipsec_ev_route_ip_pkts(vec, rt, t);
 
@@ -712,7 +710,7 @@ ipsec_ev_inbound_route_pkts(struct rte_event_vector *vec,
 	for (i = 0; i < t->ipsec.num; i++) {
 		pkt = t->ipsec.pkts[i];
 		sa = ipsec_mask_saptr(t->ipsec.saptr[i]);
-		if (unlikely(sa == NULL)) {
+		if (unlikely(sa == NULL) || ((1UL << sa->sessions[0].type) & mask)) {
 			free_pkts(&pkt, 1);
 			continue;
 		}
@@ -960,7 +958,18 @@ static void
 ipsec_event_vector_free(struct rte_event *ev)
 {
 	struct rte_event_vector *vec = ev->vec;
-	rte_pktmbuf_free_bulk(vec->mbufs + vec->elem_offset, vec->nb_elem);
+
+	if (ev->event_type == RTE_EVENT_TYPE_CRYPTODEV_VECTOR) {
+		struct rte_crypto_op *cop;
+		int i;
+
+		for (i = 0; i < vec->nb_elem; i++) {
+			cop = vec->ptrs[i];
+			rte_pktmbuf_free(cop->sym->m_src);
+		}
+	} else {
+		rte_pktmbuf_free_bulk(vec->mbufs + vec->elem_offset, vec->nb_elem);
+	}
 	rte_mempool_put(rte_mempool_from_obj(vec), vec);
 }
 
@@ -1598,8 +1607,7 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 	int32_t socket_id;
 	uint32_t lcore_id;
 	int32_t i, nb_rx;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 
 	prev_tsc = 0;
 	lcore_id = rte_lcore_id();
@@ -1633,7 +1641,7 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -1729,8 +1737,7 @@ ipsec_poll_mode_wrkr_inl_pr_ss(void)
 	uint32_t i, nb_rx, j;
 	int32_t socket_id;
 	uint32_t lcore_id;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 
 	prev_tsc = 0;
 	lcore_id = rte_lcore_id();
@@ -1764,7 +1771,7 @@ ipsec_poll_mode_wrkr_inl_pr_ss(void)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 

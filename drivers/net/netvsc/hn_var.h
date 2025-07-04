@@ -13,7 +13,7 @@
  * Tunable ethdev params
  */
 #define HN_MIN_RX_BUF_SIZE	1024
-#define HN_MAX_XFER_LEN		2048
+#define HN_MAX_XFER_LEN		RTE_ETHER_MAX_JUMBO_FRAME_LEN
 #define	HN_MAX_MAC_ADDRS	1
 #define HN_MAX_CHANNELS		64
 
@@ -30,10 +30,6 @@
 #define HN_RXCOPY_THRESHOLD	256
 
 #define HN_RX_EXTMBUF_ENABLE	0
-
-#ifndef PAGE_MASK
-#define PAGE_MASK (rte_mem_page_size() - 1)
-#endif
 
 struct hn_data;
 struct hn_txdesc;
@@ -94,12 +90,12 @@ struct hn_rx_queue {
 
 
 /* multi-packet data from host */
-struct hn_rx_bufinfo {
+struct __rte_cache_aligned hn_rx_bufinfo {
 	struct vmbus_channel *chan;
 	struct hn_rx_queue *rxq;
 	uint64_t	xactid;
 	struct rte_mbuf_ext_shared_info shinfo;
-} __rte_cache_aligned;
+};
 
 #define HN_INVALID_PORT	UINT16_MAX
 
@@ -246,9 +242,9 @@ int	hn_vf_info_get(struct hn_data *hv,
 int	hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv);
 int	hn_vf_configure_locked(struct rte_eth_dev *dev,
 			       const struct rte_eth_conf *dev_conf);
-const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev);
+const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev,
+				       size_t *no_of_elements);
 int	hn_vf_start(struct rte_eth_dev *dev);
-void	hn_vf_reset(struct rte_eth_dev *dev);
 int	hn_vf_close(struct rte_eth_dev *dev);
 int	hn_vf_stop(struct rte_eth_dev *dev);
 
@@ -288,6 +284,7 @@ int	hn_vf_rss_hash_update(struct rte_eth_dev *dev,
 int	hn_vf_reta_hash_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
 			       uint16_t reta_size);
+int hn_vf_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 int	hn_eth_rmv_event_callback(uint16_t port_id,
 				  enum rte_eth_event_type event __rte_unused,
 				  void *cb_arg, void *out __rte_unused);

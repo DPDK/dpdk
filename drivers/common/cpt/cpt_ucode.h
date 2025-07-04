@@ -2589,7 +2589,7 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform,
 		sess->cpt_op |= CPT_OP_CIPHER_DECRYPT;
 		sess->cpt_op |= CPT_OP_AUTH_VERIFY;
 	} else {
-		CPT_LOG_DP_ERR("Unknown aead operation\n");
+		CPT_LOG_DP_ERR("Unknown aead operation");
 		return -1;
 	}
 	switch (aead_form->algo) {
@@ -2658,7 +2658,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform,
 			ctx->dec_auth = 1;
 		}
 	} else {
-		CPT_LOG_DP_ERR("Unknown cipher operation\n");
+		CPT_LOG_DP_ERR("Unknown cipher operation");
 		return -1;
 	}
 
@@ -3167,9 +3167,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 				m = m_src;
 
 			/* hmac immediately following data is best case */
-			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
-			    mc_hash_off !=
-			    (uint8_t *)sym_op->aead.digest.data)) {
+			if (unlikely(rte_pktmbuf_mtod_offset(m, uint8_t *, mc_hash_off) !=
+				     (uint8_t *)sym_op->aead.digest.data)) {
 				flags |= VALID_MAC_BUF;
 				fc_params.mac_buf.size = sess_misc->mac_len;
 				fc_params.mac_buf.vaddr =
@@ -3211,9 +3210,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 
 			/* hmac immediately following data is best case */
 			if (!ctx->dec_auth && !ctx->auth_enc &&
-				 (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
-			    mc_hash_off !=
-			     (uint8_t *)sym_op->auth.digest.data))) {
+				 (unlikely(rte_pktmbuf_mtod_offset(m, uint8_t *, mc_hash_off) !=
+					   (uint8_t *)sym_op->auth.digest.data))) {
 				flags |= VALID_MAC_BUF;
 				fc_params.mac_buf.size =
 					sess_misc->mac_len;

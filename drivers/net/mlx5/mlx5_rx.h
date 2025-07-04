@@ -30,6 +30,12 @@
 /* First entry must be NULL for comparison. */
 #define mlx5_mr_btree_len(bt) ((bt)->len - 1)
 
+struct mlx5_rxq_stat {
+	int id;
+	uint64_t count;
+	struct mlx5_stat_counter_ctrl ctrl;
+};
+
 struct mlx5_rxq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint64_t ipackets; /**< Total of successfully received packets. */
@@ -37,6 +43,18 @@ struct mlx5_rxq_stats {
 #endif
 	uint64_t idropped; /**< Total of packets dropped when RX ring full. */
 	uint64_t rx_nombuf; /**< Total of RX mbuf allocation failures. */
+	struct mlx5_rxq_stat oobs; /**< Total of hairpin queue out of buffers. */
+};
+
+/* store statistics names and its offset in stats structure  */
+struct mlx5_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+struct mlx5_rq_stats {
+	/** Total number of hairpin queue packets received that are dropped. */
+	uint64_t q_oobs[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 };
 
 /* Compressed CQE context. */
@@ -79,7 +97,7 @@ struct mlx5_eth_rxseg {
 };
 
 /* RX queue descriptor. */
-struct mlx5_rxq_data {
+struct __rte_cache_aligned mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int hw_timestamp:1; /* Enable HW timestamp. */
 	unsigned int rt_timestamp:1; /* Realtime timestamp format. */
@@ -101,14 +119,14 @@ struct mlx5_rxq_data {
 	unsigned int shared:1; /* Shared RXQ. */
 	unsigned int delay_drop:1; /* Enable delay drop. */
 	unsigned int cqe_comp_layout:1; /* CQE Compression Layout*/
-	unsigned int cq_ci:24;
+	uint16_t port_id;
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
-	uint16_t port_id;
 	uint32_t elts_ci;
 	uint32_t rq_ci;
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint32_t rq_pi;
+	uint32_t cq_ci:24;
 	uint16_t rq_repl_thresh; /* Threshold for buffer replenishment. */
 	uint32_t byte_mask;
 	union {
@@ -136,6 +154,7 @@ struct mlx5_rxq_data {
 	struct mlx5_uar_data uar_data; /* CQ doorbell. */
 	uint32_t cqn; /* CQ number. */
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
+	uint64_t mark_flag; /* ol_flags to set with marks. */
 	uint32_t tunnel; /* Tunnel information. */
 	int timestamp_offset; /* Dynamic mbuf field for timestamp. */
 	uint64_t timestamp_rx_flag; /* Dynamic mbuf flag for timestamp. */
@@ -145,7 +164,7 @@ struct mlx5_rxq_data {
 	uint32_t rxseg_n; /* Number of split segment descriptions. */
 	struct mlx5_eth_rxseg rxseg[MLX5_MAX_RXQ_NSEG];
 	/* Buffer split segment descriptions - sizes, offsets, pools. */
-} __rte_cache_aligned;
+};
 
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
@@ -157,6 +176,7 @@ struct mlx5_rxq_ctrl {
 	bool is_hairpin; /* Whether RxQ type is Hairpin. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	LIST_ENTRY(mlx5_rxq_ctrl) share_entry; /* Entry in shared RXQ list. */
+	RTE_ATOMIC(int32_t) ctrl_ref; /* Reference counter. */
 	uint32_t share_group; /* Group ID of shared RXQ. */
 	uint16_t share_qid; /* Shared RxQ ID in group. */
 	unsigned int started:1; /* Whether (shared) RXQ has been started. */
@@ -172,7 +192,7 @@ struct mlx5_rxq_ctrl {
 /* RX queue private data. */
 struct mlx5_rxq_priv {
 	uint16_t idx; /* Queue index. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *ctrl; /* Shared Rx Queue. */
 	LIST_ENTRY(mlx5_rxq_priv) owner_entry; /* Entry in shared rxq_ctrl. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
@@ -182,12 +202,7 @@ struct mlx5_rxq_priv {
 	uint32_t lwm:16;
 	uint32_t lwm_event_pending:1;
 	uint32_t lwm_devx_subscribed:1;
-};
-
-/* External RX queue descriptor. */
-struct mlx5_external_rxq {
-	uint32_t hw_id; /* Queue index in the Hardware. */
-	uint32_t refcnt; /* Reference counter. */
+	struct mlx5_devx_obj *q_counter; /* DevX hairpin queue counter object. */
 };
 
 /* mlx5_rxq.c */
@@ -213,6 +228,7 @@ void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
+void mlx5_q_counters_destroy(struct rte_eth_dev *dev);
 struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_rxconf *conf,
@@ -226,10 +242,10 @@ uint32_t mlx5_rxq_deref(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_priv *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_ctrl *mlx5_rxq_ctrl_get(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_data *mlx5_rxq_data_get(struct rte_eth_dev *dev, uint16_t idx);
-struct mlx5_external_rxq *mlx5_ext_rxq_ref(struct rte_eth_dev *dev,
+struct mlx5_external_q *mlx5_ext_rxq_ref(struct rte_eth_dev *dev,
 					   uint16_t idx);
 uint32_t mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx);
-struct mlx5_external_rxq *mlx5_ext_rxq_get(struct rte_eth_dev *dev,
+struct mlx5_external_q *mlx5_ext_rxq_get(struct rte_eth_dev *dev,
 					   uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
@@ -283,7 +299,7 @@ uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 void mlx5_rxq_timestamp_set(struct rte_eth_dev *dev);
 int mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hxrq_idx,
 		     const uint8_t *rss_key, uint32_t rss_key_len,
-		     uint64_t hash_fields,
+		     uint64_t hash_fields, bool symmetric_hash_function,
 		     const uint16_t *queues, uint32_t queues_n);
 
 /* mlx5_rx.c */
@@ -377,25 +393,6 @@ mlx5_rx_mb2mr(struct mlx5_rxq_data *rxq, struct rte_mbuf *mb)
 }
 
 /**
- * Convert timestamp from HW format to linear counter
- * from Packet Pacing Clock Queue CQE timestamp format.
- *
- * @param sh
- *   Pointer to the device shared context. Might be needed
- *   to convert according current device configuration.
- * @param ts
- *   Timestamp from CQE to convert.
- * @return
- *   UTC in nanoseconds
- */
-static __rte_always_inline uint64_t
-mlx5_txpp_convert_rx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t ts)
-{
-	RTE_SET_USED(sh);
-	return (ts & UINT32_MAX) + (ts >> 32) * NS_PER_S;
-}
-
-/**
  * Set timestamp in mbuf dynamic field.
  *
  * @param mbuf
@@ -430,7 +427,7 @@ mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx)
 	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_idx];
 	void *addr;
 
-	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) > 1) {
+	if (rte_atomic_load_explicit(&buf->refcnt, rte_memory_order_relaxed) > 1) {
 		MLX5_ASSERT(rep != NULL);
 		/* Replace MPRQ buf. */
 		(*rxq->mprq_bufs)[rq_idx] = rep;
@@ -542,9 +539,9 @@ mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 		void *buf_addr;
 
 		/* Increment the refcnt of the whole chunk. */
-		__atomic_add_fetch(&buf->refcnt, 1, __ATOMIC_RELAXED);
-		MLX5_ASSERT(__atomic_load_n(&buf->refcnt,
-			    __ATOMIC_RELAXED) <= strd_n + 1);
+		rte_atomic_fetch_add_explicit(&buf->refcnt, 1, rte_memory_order_relaxed);
+		MLX5_ASSERT(rte_atomic_load_explicit(&buf->refcnt,
+			    rte_memory_order_relaxed) <= strd_n + 1);
 		buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
 		/*
 		 * MLX5 device doesn't use iova but it is necessary in a
@@ -679,12 +676,12 @@ static __rte_always_inline bool
 mlx5_is_external_rxq(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_external_rxq *rxq;
+	struct mlx5_external_q *rxq;
 
-	if (!priv->ext_rxqs || queue_idx < MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
+	if (!priv->ext_rxqs || queue_idx < RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
 		return false;
-	rxq = &priv->ext_rxqs[queue_idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
-	return !!__atomic_load_n(&rxq->refcnt, __ATOMIC_RELAXED);
+	rxq = &priv->ext_rxqs[queue_idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+	return !!rte_atomic_load_explicit(&rxq->refcnt, rte_memory_order_relaxed);
 }
 
 #define LWM_COOKIE_RXQID_OFFSET 0

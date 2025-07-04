@@ -7,9 +7,7 @@
 #include <cryptodev_pmd.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
-#endif
 
 /* RTA header files */
 #include <desc/algo.h>
@@ -645,7 +643,6 @@ build_dpaa_raw_dp_cipher_fd(uint8_t *drv_ctx,
 	return cf;
 }
 
-#ifdef RTE_LIB_SECURITY
 static inline struct dpaa_sec_job *
 build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 			struct rte_crypto_sgl *sgl,
@@ -764,7 +761,7 @@ build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 		fd->cmd = 0x80000000 |
 			*((uint32_t *)((uint8_t *)userdata +
 			ses->pdcp.hfn_ovd_offset));
-		DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u\n",
+		DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u",
 			*((uint32_t *)((uint8_t *)userdata +
 			ses->pdcp.hfn_ovd_offset)),
 			ses->pdcp.hfn_ovd);
@@ -772,7 +769,6 @@ build_dpaa_raw_proto_sg(uint8_t *drv_ctx,
 
 	return cf;
 }
-#endif
 
 static uint32_t
 dpaa_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
@@ -810,7 +806,7 @@ dpaa_sec_raw_enqueue_burst(void *qp_data, uint8_t *drv_ctx,
 			} else if (unlikely(ses->qp[rte_lcore_id() %
 						MAX_DPAA_CORES] != dpaa_qp)) {
 				DPAA_SEC_DP_ERR("Old:sess->qp = %p"
-					" New qp = %p\n",
+					" New qp = %p",
 					ses->qp[rte_lcore_id() %
 					MAX_DPAA_CORES], dpaa_qp);
 				frames_to_send = loop;
@@ -959,7 +955,7 @@ dpaa_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 	*dequeue_status = 1;
 	*n_success = num_rx;
 
-	DPAA_SEC_DP_DEBUG("SEC Received %d Packets\n", num_rx);
+	DPAA_SEC_DP_DEBUG("SEC Received %d Packets", num_rx);
 
 	return num_rx;
 }
@@ -1035,11 +1031,9 @@ dpaa_sec_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 		sess->build_raw_dp_fd = build_dpaa_raw_dp_chain_fd;
 	else if (sess->ctxt == DPAA_SEC_AEAD)
 		sess->build_raw_dp_fd = build_raw_cipher_auth_gcm_sg;
-#ifdef RTE_LIB_SECURITY
 	else if (sess->ctxt == DPAA_SEC_IPSEC ||
 			sess->ctxt == DPAA_SEC_PDCP)
 		sess->build_raw_dp_fd = build_dpaa_raw_proto_sg;
-#endif
 	else
 		return -ENOTSUP;
 	dp_ctx = (struct dpaa_sec_raw_dp_ctx *)raw_dp_ctx->drv_ctx_data;

@@ -60,7 +60,7 @@ void netcfg_release(struct netcfg_info *cfg_ptr);
 /* cfg_ptr: configuration information pointer.
  * This function dumps configuration data to stdout.
  */
-void dump_netcfg(struct netcfg_info *cfg_ptr);
+void dump_netcfg(struct netcfg_info *cfg_ptr, FILE *f);
 #endif
 
 #endif /* __NETCFG_H */

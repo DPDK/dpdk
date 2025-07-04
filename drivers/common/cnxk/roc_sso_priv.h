@@ -13,6 +13,10 @@ struct sso_rsrc {
 struct sso {
 	struct plt_pci_device *pci_dev;
 	struct dev dev;
+	/* EVA memory area */
+	uintptr_t agg_mem[MAX_RVU_BLKLF_CNT];
+	uint32_t agg_used[MAX_RVU_BLKLF_CNT];
+	uint32_t agg_cnt[MAX_RVU_BLKLF_CNT];
 	/* Interrupt handler args. */
 	struct sso_rsrc hws_rsrc[MAX_RVU_BLKLF_CNT];
 	struct sso_rsrc hwgrp_rsrc[MAX_RVU_BLKLF_CNT];
@@ -44,8 +48,8 @@ roc_sso_to_sso_priv(struct roc_sso *roc_sso)
 int sso_lf_alloc(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf,
 		 void **rsp);
 int sso_lf_free(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf);
-void sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
-			 uint16_t hwgrp[], uint16_t n, uint16_t enable);
+void sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp, uint16_t hwgrp[],
+			 uint16_t n, uint8_t set, uint16_t enable);
 int sso_hwgrp_alloc_xaq(struct dev *dev, uint32_t npa_aura_id, uint16_t hwgrps);
 int sso_hwgrp_release_xaq(struct dev *dev, uint16_t hwgrps);
 int sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,

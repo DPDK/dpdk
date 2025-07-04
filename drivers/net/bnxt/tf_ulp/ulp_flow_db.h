@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -15,28 +15,23 @@
 
 /* Defines for the fdb flag */
 #define ULP_FDB_FLAG_SHARED_SESSION	0x1
+#define ULP_FDB_FLAG_SHARED_WC_SESSION	0x2
+#define ULP_FDB_FLAG_SW_ONLY		0x4
+#define ULP_FDB_FLAG_CRITICAL_RES	0x8
 
 /*
  * Structure for the flow database resource information
  * The below structure is based on the below partitions
- * nxt_resource_idx = dir[31],resource_func_upper[30:28],nxt_resource_idx[27:0]
- * If resource_func is EM_TBL then use resource_em_handle.
- * Else the other part of the union is used and
- * resource_func is resource_func_upper[30:28] << 5 | resource_func_lower
+ * nxt_resource_idx = dir[31],nxt_resource_idx[30:0]
  */
 struct ulp_fdb_resource_info {
 	/* Points to next resource in the chained list. */
-	uint32_t			nxt_resource_idx;
-	union {
-		uint64_t		resource_em_handle;
-		struct {
-			uint8_t		resource_func_lower;
-			uint8_t		resource_type;
-			uint8_t		resource_sub_type;
-			uint8_t		fdb_flags;
-			uint32_t	resource_hndl;
-		};
-	};
+	uint32_t	nxt_resource_idx;
+	uint8_t		resource_func;
+	uint8_t		resource_type;
+	uint8_t		resource_sub_type;
+	uint8_t		fdb_flags;
+	uint64_t	resource_hndl;
 };
 
 /* Structure for the flow database resource information. */
@@ -60,6 +55,7 @@ struct bnxt_ulp_flow_tbl {
 struct ulp_fdb_parent_info {
 	uint32_t	valid;
 	uint32_t	parent_fid;
+	uint32_t	parent_ref_cnt;
 	uint32_t	counter_acc;
 	uint64_t	pkt_count;
 	uint64_t	byte_count;
@@ -259,7 +255,7 @@ ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
-				   uint16_t *cfa_action);
+				   uint32_t *cfa_action);
 
 /*
  * Set or reset the parent flow in the parent-child database
@@ -385,6 +381,7 @@ ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t flow_id,
 				  uint32_t pc_idx,
 				  uint64_t *packet_count,
 				  uint64_t *byte_count,
@@ -404,11 +401,33 @@ ulp_flow_db_parent_flow_count_reset(struct bnxt_ulp_context *ulp_ctxt);
  * Set the shared bit for the flow db entry
  *
  * res [in] Ptr to fdb entry
- * shared [in] shared flag
+ * s_type [in] session flag
  *
  * returns none
  */
 void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
-				    enum bnxt_ulp_shared_session shared);
+				    enum bnxt_ulp_session_type s_type);
+
+/*
+ * get the shared bit for the flow db entry
+ *
+ * res [in] Ptr to fdb entry
+ *
+ * returns session type
+ */
+enum bnxt_ulp_session_type
+ulp_flow_db_shared_session_get(struct ulp_flow_db_res_params *res);
+
+/*
+ * Get the parent flow table info
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * pc_idx [in] The index to parent child db
+ *
+ * returns Pointer of parent flow tbl
+ */
+struct ulp_fdb_parent_info *
+ulp_flow_db_pc_db_entry_get(struct bnxt_ulp_context *ulp_ctxt,
+			    uint32_t pc_idx);
 
 #endif /* _ULP_FLOW_DB_H_ */

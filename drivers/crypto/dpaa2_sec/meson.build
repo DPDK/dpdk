@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2018,2021 NXP
+# Copyright 2018,2021-2024 NXP
 
 if not is_linux
     build = false
@@ -14,3 +14,4 @@ sources = files(
 )
 
 includes += include_directories('mc', '../../common/dpaax', '../../common/dpaax/caamflib')
+includes += include_directories('../../net/dpaa2/base')

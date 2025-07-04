@@ -192,6 +192,8 @@ hunt_board_cfg(
 	/* All Huntington devices have a PCIe Gen3, 8 lane connector */
 	encp->enc_max_pcie_link_gen = EFX_PCIE_LINK_SPEED_GEN3;
 
+	encp->enc_table_api_supported = B_FALSE;
+
 	return (0);
 
 fail4:

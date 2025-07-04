@@ -39,7 +39,6 @@ struct malloc_req_alloc {
 };
 
 struct malloc_req_free {
-	RTE_STD_C11
 	union {
 		void *addr;
 		uint64_t addr_64;
@@ -49,7 +48,6 @@ struct malloc_req_free {
 
 struct malloc_mp_req {
 	enum malloc_req_type t;
-	RTE_STD_C11
 	union {
 		struct malloc_req_alloc alloc_req;
 		struct malloc_req_free free_req;

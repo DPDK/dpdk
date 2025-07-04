@@ -11,24 +11,19 @@
 /**< ARMv8 Crypto PMD device name */
 
 extern int crypto_armv8_log_type;
+#define RTE_LOGTYPE_CRYPTO_ARMV8 crypto_armv8_log_type
 
-#define ARMV8_CRYPTO_LOG_ERR(fmt, args...)			\
-	rte_log(RTE_LOG_ERR, crypto_armv8_log_type,		\
-			"[%s] %s() line %u: " fmt "\n",		\
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
-			__func__, __LINE__, ## args)
+#define ARMV8_CRYPTO_LOG_ERR(...) \
+	RTE_LOG_LINE_PREFIX(ERR, CRYPTO_ARMV8, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define ARMV8_CRYPTO_LOG_INFO(fmt, args...)			\
-	rte_log(RTE_LOG_INFO, crypto_armv8_log_type,		\
-			"[%s] %s() line %u: " fmt "\n",		\
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
-			__func__, __LINE__, ## args)
+#define ARMV8_CRYPTO_LOG_INFO(...) \
+	RTE_LOG_LINE_PREFIX(INFO, CRYPTO_ARMV8, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define ARMV8_CRYPTO_LOG_DBG(fmt, args...)			\
-	rte_log(RTE_LOG_DEBUG, crypto_armv8_log_type,		\
-			"[%s] %s() line %u: " fmt "\n",		\
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
-			__func__, __LINE__, ## args)
+#define ARMV8_CRYPTO_LOG_DBG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, CRYPTO_ARMV8, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define NBBY		8		/* Number of bits in a byte */
 #define BYTE_LENGTH(x)	((x) / NBBY)	/* Number of bytes in x (round down) */
@@ -99,7 +94,7 @@ struct armv8_crypto_private {
 };
 
 /** ARMv8 crypto queue pair */
-struct armv8_crypto_qp {
+struct __rte_cache_aligned armv8_crypto_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	struct rte_ring *processed_ops;
@@ -115,10 +110,10 @@ struct armv8_crypto_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-} __rte_cache_aligned;
+};
 
 /** ARMv8 crypto private session structure */
-struct armv8_crypto_session {
+struct __rte_cache_aligned armv8_crypto_session {
 	enum armv8_crypto_chain_order chain_order;
 	/**< chain order mode */
 	crypto_func_t crypto_func;
@@ -160,11 +155,9 @@ struct armv8_crypto_session {
 			} auth;
 
 			struct {
-				uint8_t i_key_pad[SHA_BLOCK_MAX]
-							__rte_cache_aligned;
+				alignas(RTE_CACHE_LINE_SIZE) uint8_t i_key_pad[SHA_BLOCK_MAX];
 				/**< inner pad (max supported block length) */
-				uint8_t o_key_pad[SHA_BLOCK_MAX]
-							__rte_cache_aligned;
+				alignas(RTE_CACHE_LINE_SIZE) uint8_t o_key_pad[SHA_BLOCK_MAX];
 				/**< outer pad (max supported block length) */
 				uint8_t key[SHA_BLOCK_MAX];
 				/**< HMAC key (max supported block length)*/
@@ -174,7 +167,7 @@ struct armv8_crypto_session {
 		/* Digest length */
 	} auth;
 
-} __rte_cache_aligned;
+};
 
 /** Set and validate ARMv8 crypto session parameters */
 extern int armv8_crypto_set_session_parameters(

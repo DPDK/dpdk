@@ -3,6 +3,10 @@
  * All rights reserved.
  */
 
+/*!
+ *   \file
+ *   \brief Exported functions for CFA HW programming
+ */
 #ifndef _HCAPI_CFA_H_
 #define _HCAPI_CFA_H_
 
@@ -104,18 +108,7 @@ struct hcapi_cfa_devops {
 
 extern const size_t CFA_RM_HANDLE_DATA_SIZE;
 
-#if SUPPORT_CFA_HW_ALL
 extern const struct hcapi_cfa_devops cfa_p4_devops;
 extern const struct hcapi_cfa_devops cfa_p58_devops;
-
-#elif defined(SUPPORT_CFA_HW_P4) && SUPPORT_CFA_HW_P4
-extern const struct hcapi_cfa_devops cfa_p4_devops;
-uint64_t hcapi_cfa_p4_key_hash(uint64_t *key_data, uint16_t bitlen);
-/* SUPPORT_CFA_HW_P4 */
-#elif defined(SUPPORT_CFA_HW_P58) && SUPPORT_CFA_HW_P58
-extern const struct hcapi_cfa_devops cfa_p58_devops;
-uint64_t hcapi_cfa_p58_key_hash(uint64_t *key_data, uint16_t bitlen);
-/* SUPPORT_CFA_HW_P58 */
-#endif
 
 #endif /* HCAPI_CFA_H_ */

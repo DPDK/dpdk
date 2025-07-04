@@ -4,9 +4,11 @@
  */
 
 
+#include <eal_export.h>
 #include "rte_event_ring.h"
 #include "eventdev_trace.h"
 
+RTE_EXPORT_SYMBOL(rte_event_ring_init)
 int
 rte_event_ring_init(struct rte_event_ring *r, const char *name,
 	unsigned int count, unsigned int flags)
@@ -22,6 +24,7 @@ rte_event_ring_init(struct rte_event_ring *r, const char *name,
 }
 
 /* create the ring */
+RTE_EXPORT_SYMBOL(rte_event_ring_create)
 struct rte_event_ring *
 rte_event_ring_create(const char *name, unsigned int count, int socket_id,
 		unsigned int flags)
@@ -34,6 +37,7 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
 }
 
 
+RTE_EXPORT_SYMBOL(rte_event_ring_lookup)
 struct rte_event_ring *
 rte_event_ring_lookup(const char *name)
 {
@@ -43,6 +47,7 @@ rte_event_ring_lookup(const char *name)
 }
 
 /* free the ring */
+RTE_EXPORT_SYMBOL(rte_event_ring_free)
 void
 rte_event_ring_free(struct rte_event_ring *r)
 {

@@ -6,7 +6,7 @@
 
 #include "test_perf_common.h"
 
-#define NB_CRYPTODEV_DESCRIPTORS 1024
+#define NB_CRYPTODEV_DESCRIPTORS 4096
 #define DATA_SIZE		512
 #define IV_OFFSET (sizeof(struct rte_crypto_op) + \
 		   sizeof(struct rte_crypto_sym_op) + \
@@ -102,16 +102,20 @@ perf_test_result(struct evt_test *test, struct evt_options *opt)
 	int i;
 	uint64_t total = 0;
 	struct test_perf *t = evt_test_priv(test);
+	uint8_t is_vec;
 
 	printf("Packet distribution across worker cores :\n");
+	is_vec = (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR);
 	for (i = 0; i < t->nb_workers; i++)
-		total += t->worker[i].processed_pkts;
+		total += is_vec ? t->worker[i].processed_vecs : t->worker[i].processed_pkts;
 	for (i = 0; i < t->nb_workers; i++)
-		printf("Worker %d packets: "CLGRN"%"PRIx64" "CLNRM"percentage:"
-				CLGRN" %3.2f"CLNRM"\n", i,
-				t->worker[i].processed_pkts,
-				(((double)t->worker[i].processed_pkts)/total)
-				* 100);
+		printf("Worker %d packets: " CLGRN "%" PRIx64 " " CLNRM "percentage:" CLGRN
+		       " %3.2f" CLNRM "\n",
+		       i, is_vec ? t->worker[i].processed_vecs : t->worker[i].processed_pkts,
+		       (((double)(is_vec ? t->worker[i].processed_vecs :
+					   t->worker[i].processed_pkts)) /
+			total) *
+			       100);
 
 	return t->result;
 }
@@ -131,8 +135,10 @@ perf_producer(void *arg)
 	uint32_t flow_counter = 0;
 	uint64_t count = 0;
 	struct perf_elt *m[BURST_SIZE + 1] = {NULL};
+	uint8_t enable_fwd_latency;
 	struct rte_event ev;
 
+	enable_fwd_latency = opt->fwd_latency;
 	if (opt->verbose_level > 1)
 		printf("%s(): lcore %d dev_id %d port=%d queue %d\n", __func__,
 				rte_lcore_id(), dev_id, port, p->queue_id);
@@ -151,13 +157,16 @@ perf_producer(void *arg)
 		for (i = 0; i < BURST_SIZE; i++) {
 			ev.flow_id = flow_counter++ % nb_flows;
 			ev.event_ptr = m[i];
-			m[i]->timestamp = rte_get_timer_cycles();
-			while (rte_event_enqueue_burst(dev_id,
-						       port, &ev, 1) != 1) {
+			if (enable_fwd_latency)
+				m[i]->timestamp = rte_get_timer_cycles();
+			while (rte_event_enqueue_new_burst(dev_id, port, &ev,
+							   1) != 1) {
 				if (t->done)
 					break;
 				rte_pause();
-				m[i]->timestamp = rte_get_timer_cycles();
+				if (enable_fwd_latency)
+					m[i]->timestamp =
+						rte_get_timer_cycles();
 			}
 		}
 		count += BURST_SIZE;
@@ -171,7 +180,6 @@ perf_producer_burst(void *arg)
 {
 	uint32_t i;
 	uint64_t timestamp;
-	struct rte_event_dev_info dev_info;
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
 	struct evt_options *opt = t->opt;
@@ -183,15 +191,13 @@ perf_producer_burst(void *arg)
 	uint32_t flow_counter = 0;
 	uint16_t enq = 0;
 	uint64_t count = 0;
-	struct perf_elt *m[MAX_PROD_ENQ_BURST_SIZE + 1];
-	struct rte_event ev[MAX_PROD_ENQ_BURST_SIZE + 1];
+	struct perf_elt *m[opt->prod_enq_burst_sz + 1];
+	struct rte_event ev[opt->prod_enq_burst_sz + 1];
 	uint32_t burst_size = opt->prod_enq_burst_sz;
+	uint8_t enable_fwd_latency;
 
-	memset(m, 0, sizeof(*m) * (MAX_PROD_ENQ_BURST_SIZE + 1));
-	rte_event_dev_info_get(dev_id, &dev_info);
-	if (dev_info.max_event_port_enqueue_depth < burst_size)
-		burst_size = dev_info.max_event_port_enqueue_depth;
-
+	enable_fwd_latency = opt->fwd_latency;
+	memset(m, 0, sizeof(*m) * (opt->prod_enq_burst_sz + 1));
 	if (opt->verbose_level > 1)
 		printf("%s(): lcore %d dev_id %d port=%d queue %d\n", __func__,
 				rte_lcore_id(), dev_id, port, p->queue_id);
@@ -212,19 +218,21 @@ perf_producer_burst(void *arg)
 		for (i = 0; i < burst_size; i++) {
 			ev[i].flow_id = flow_counter++ % nb_flows;
 			ev[i].event_ptr = m[i];
-			m[i]->timestamp = timestamp;
+			if (enable_fwd_latency)
+				m[i]->timestamp = timestamp;
 		}
-		enq = rte_event_enqueue_burst(dev_id, port, ev, burst_size);
+		enq = rte_event_enqueue_new_burst(dev_id, port, ev, burst_size);
 		while (enq < burst_size) {
-			enq += rte_event_enqueue_burst(dev_id, port,
-							ev + enq,
-							burst_size - enq);
+			enq += rte_event_enqueue_new_burst(
+				dev_id, port, ev + enq, burst_size - enq);
 			if (t->done)
 				break;
 			rte_pause();
-			timestamp = rte_get_timer_cycles();
-			for (i = enq; i < burst_size; i++)
-				m[i]->timestamp = timestamp;
+			if (enable_fwd_latency) {
+				timestamp = rte_get_timer_cycles();
+				for (i = enq; i < burst_size; i++)
+					m[i]->timestamp = timestamp;
+			}
 		}
 		count += burst_size;
 	}
@@ -555,6 +563,93 @@ crypto_adapter_enq_op_fwd(struct prod_data *p)
 		       __func__, rte_lcore_id(), alloc_failures);
 }
 
+static inline void
+dma_adapter_enq_op_fwd(struct prod_data *p)
+{
+	struct rte_event_dma_adapter_op *ops[BURST_SIZE] = {NULL};
+	struct test_perf *t = p->t;
+	const uint32_t nb_flows = t->nb_flows;
+	const uint64_t nb_pkts = t->nb_pkts;
+	struct rte_event_dma_adapter_op op;
+	struct rte_event evts[BURST_SIZE];
+	const uint8_t dev_id = p->dev_id;
+	struct evt_options *opt = t->opt;
+	const uint8_t port = p->port_id;
+	uint32_t flow_counter = 0;
+	struct rte_mempool *pool;
+	struct rte_event ev;
+	uint8_t *src, *dst;
+	uint64_t count = 0;
+	uint32_t flow;
+	int i;
+
+	pool = t->pool;
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d port %d queue %d dma_dev_id %u dma_dev_vchan_id %u\n",
+		       __func__, rte_lcore_id(), port, p->queue_id,
+		       p->da.dma_dev_id, p->da.vchan_id);
+
+	src = rte_zmalloc(NULL, nb_flows * RTE_CACHE_LINE_SIZE, RTE_CACHE_LINE_SIZE);
+	dst = rte_zmalloc(NULL, nb_flows * RTE_CACHE_LINE_SIZE, RTE_CACHE_LINE_SIZE);
+	if (!src || !dst) {
+		rte_free(src);
+		rte_free(dst);
+		evt_err("Failed to alloc memory for src/dst");
+		return;
+	}
+
+	ev.event = 0;
+	ev.op = RTE_EVENT_OP_NEW;
+	ev.queue_id = p->queue_id;
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev.event_type = RTE_EVENT_TYPE_CPU;
+
+	op.dma_dev_id = p->da.dma_dev_id;
+	op.vchan = p->da.vchan_id;
+	op.op_mp = pool;
+	op.flags = RTE_DMA_OP_FLAG_SUBMIT;
+	op.nb_src = 1;
+	op.nb_dst = 1;
+
+	while (count < nb_pkts && t->done == false) {
+		if (rte_mempool_get_bulk(pool, (void **)ops, BURST_SIZE) < 0)
+			continue;
+		for (i = 0; i < BURST_SIZE; i++) {
+			flow = flow_counter++ % nb_flows;
+			*ops[i] = op;
+			ops[i]->src_dst_seg[0].addr = (rte_iova_t)&src[flow * RTE_CACHE_LINE_SIZE];
+			ops[i]->src_dst_seg[1].addr = (rte_iova_t)&dst[flow * RTE_CACHE_LINE_SIZE];
+			ops[i]->src_dst_seg[0].length = RTE_CACHE_LINE_SIZE;
+			ops[i]->src_dst_seg[1].length = RTE_CACHE_LINE_SIZE;
+
+			evts[i].event = ev.event;
+			evts[i].flow_id = flow;
+			evts[i].event_ptr = ops[i];
+		}
+
+		i = rte_event_dma_adapter_enqueue(dev_id, port, evts, BURST_SIZE);
+		while (i < BURST_SIZE) {
+			i += rte_event_dma_adapter_enqueue(dev_id, port, evts + i, BURST_SIZE - i);
+			if (t->done)
+				break;
+			rte_pause();
+		}
+
+		count += BURST_SIZE;
+	}
+}
+
+static inline int
+perf_event_dma_producer(void *arg)
+{
+	struct prod_data *p = arg;
+
+	/* Only fwd mode is supported. */
+	dma_adapter_enq_op_fwd(p);
+
+	return 0;
+}
+
 static inline int
 perf_event_crypto_producer(void *arg)
 {
@@ -797,11 +892,46 @@ perf_event_crypto_producer_burst(void *arg)
 }
 
 static int
+perf_event_vector_producer(struct prod_data *p)
+{
+	struct rte_event_vector_adapter *adptr = p->va.vector_adptr;
+	struct evt_options *opt = p->t->opt;
+	const struct test_perf *t = p->t;
+	uint64_t objs[BURST_SIZE];
+	uint16_t enq;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d vector adapter %p\n", __func__, rte_lcore_id(), adptr);
+
+	while (t->done == false) {
+		enq = rte_event_vector_adapter_enqueue(adptr, objs, BURST_SIZE, 0);
+		while (enq < BURST_SIZE) {
+			enq += rte_event_vector_adapter_enqueue(adptr, objs + enq, BURST_SIZE - enq,
+								0);
+			if (t->done)
+				break;
+			rte_pause();
+		}
+	}
+	return 0;
+}
+
+static int
 perf_producer_wrapper(void *arg)
 {
+	struct rte_event_dev_info dev_info;
 	struct prod_data *p  = arg;
 	struct test_perf *t = p->t;
-	bool burst = evt_has_burst_mode(p->dev_id);
+
+	rte_event_dev_info_get(p->dev_id, &dev_info);
+	if (!t->opt->prod_enq_burst_sz) {
+		t->opt->prod_enq_burst_sz = MAX_PROD_ENQ_BURST_SIZE;
+		if (dev_info.max_event_port_enqueue_depth > 0 &&
+		    (uint32_t)dev_info.max_event_port_enqueue_depth <
+			    t->opt->prod_enq_burst_sz)
+			t->opt->prod_enq_burst_sz =
+				dev_info.max_event_port_enqueue_depth;
+	}
 
 	/* In case of synthetic producer, launch perf_producer or
 	 * perf_producer_burst depending on producer enqueue burst size
@@ -811,7 +941,7 @@ perf_producer_wrapper(void *arg)
 		return perf_producer(arg);
 	else if (t->opt->prod_type == EVT_PROD_TYPE_SYNT &&
 			t->opt->prod_enq_burst_sz > 1) {
-		if (!burst)
+		if (dev_info.max_event_port_enqueue_depth == 1)
 			evt_err("This event device does not support burst mode");
 		else
 			return perf_producer_burst(arg);
@@ -827,7 +957,11 @@ perf_producer_wrapper(void *arg)
 			return perf_event_crypto_producer_burst(arg);
 		else
 			return perf_event_crypto_producer(arg);
-	}
+	} else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR)
+		return perf_event_dma_producer(arg);
+	else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR)
+		return perf_event_vector_producer(p);
+
 	return 0;
 }
 
@@ -844,6 +978,18 @@ processed_pkts(struct test_perf *t)
 }
 
 static inline uint64_t
+processed_vecs(struct test_perf *t)
+{
+	uint8_t i;
+	uint64_t total = 0;
+
+	for (i = 0; i < t->nb_workers; i++)
+		total += t->worker[i].processed_vecs;
+
+	return total;
+}
+
+static inline uint64_t
 total_latency(struct test_perf *t)
 {
 	uint8_t i;
@@ -855,101 +1001,80 @@ total_latency(struct test_perf *t)
 	return total;
 }
 
-
-int
-perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
-		int (*worker)(void *))
+static void
+check_work_status(struct test_perf *t, struct evt_options *opt)
 {
-	int ret, lcore_id;
-	struct test_perf *t = evt_test_priv(test);
-
-	int port_idx = 0;
-	/* launch workers */
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (!(opt->wlcores[lcore_id]))
-			continue;
-
-		ret = rte_eal_remote_launch(worker,
-				 &t->worker[port_idx], lcore_id);
-		if (ret) {
-			evt_err("failed to launch worker %d", lcore_id);
-			return ret;
-		}
-		port_idx++;
-	}
-
-	/* launch producers */
-	RTE_LCORE_FOREACH_WORKER(lcore_id) {
-		if (!(opt->plcores[lcore_id]))
-			continue;
-
-		ret = rte_eal_remote_launch(perf_producer_wrapper,
-				&t->prod[port_idx], lcore_id);
-		if (ret) {
-			evt_err("failed to launch perf_producer %d", lcore_id);
-			return ret;
-		}
-		port_idx++;
-	}
-
-	const uint64_t total_pkts = t->outstand_pkts;
-
-	uint64_t dead_lock_cycles = rte_get_timer_cycles();
-	int64_t dead_lock_remaining  =  total_pkts;
 	const uint64_t dead_lock_sample = rte_get_timer_hz() * 5;
-
-	uint64_t perf_cycles = rte_get_timer_cycles();
-	int64_t perf_remaining  = total_pkts;
-	const uint64_t perf_sample = rte_get_timer_hz();
-
-	static float total_mpps;
-	static uint64_t samples;
-
 	const uint64_t freq_mhz = rte_get_timer_hz() / 1000000;
-	int64_t remaining = t->outstand_pkts - processed_pkts(t);
+	uint64_t dead_lock_cycles = rte_get_timer_cycles();
+	const uint64_t perf_sample = rte_get_timer_hz();
+	uint64_t perf_cycles = rte_get_timer_cycles();
+	const uint64_t total_pkts = t->outstand_pkts;
+	int64_t dead_lock_remaining = total_pkts;
+	int64_t perf_remaining  = total_pkts;
+	static uint64_t samples;
+	static float total_mpps;
+	int64_t remaining;
+	uint8_t is_vec;
+
+	is_vec = (t->opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR);
+	remaining = t->outstand_pkts - (is_vec ? processed_vecs(t) : processed_pkts(t));
 
 	while (t->done == false) {
 		const uint64_t new_cycles = rte_get_timer_cycles();
 
 		if ((new_cycles - perf_cycles) > perf_sample) {
 			const uint64_t latency = total_latency(t);
-			const uint64_t pkts = processed_pkts(t);
+			const uint64_t pkts = is_vec ? processed_vecs(t) : processed_pkts(t);
+			uint64_t fallback_pkts = processed_pkts(t);
 
 			remaining = t->outstand_pkts - pkts;
-			float mpps = (float)(perf_remaining-remaining)/1000000;
+			float mpps = (float)(perf_remaining - remaining) / 1E6;
 
 			perf_remaining = remaining;
 			perf_cycles = new_cycles;
 			total_mpps += mpps;
 			++samples;
+
 			if (opt->fwd_latency && pkts > 0) {
-				printf(CLGRN"\r%.3f mpps avg %.3f mpps [avg fwd latency %.3f us] "CLNRM,
-					mpps, total_mpps/samples,
-					(float)(latency/pkts)/freq_mhz);
+				if (is_vec) {
+					printf(CLGRN
+					       "\r%.3f mvps avg %.3f mvps [avg fwd latency %.3f us] "
+					       "fallback mpps %.3f" CLNRM,
+					       mpps, total_mpps / samples,
+					       (float)(latency / pkts) / freq_mhz,
+					       fallback_pkts / 1E6);
+				} else {
+					printf(CLGRN
+					       "\r%.3f mpps avg %.3f mpps [avg fwd latency %.3f us] "
+					       CLNRM,
+					       mpps, total_mpps / samples,
+					       (float)(latency / pkts) / freq_mhz);
+				}
 			} else {
-				printf(CLGRN"\r%.3f mpps avg %.3f mpps"CLNRM,
-					mpps, total_mpps/samples);
+				if (is_vec) {
+					printf(CLGRN
+					       "\r%.3f mvps avg %.3f mvps fallback mpps %.3f" CLNRM,
+					       mpps, total_mpps / samples, fallback_pkts / 1E6);
+				} else {
+					printf(CLGRN "\r%.3f mpps avg %.3f mpps" CLNRM, mpps,
+					       total_mpps / samples);
+				}
 			}
 			fflush(stdout);
 
 			if (remaining <= 0) {
 				t->result = EVT_TEST_SUCCESS;
-				if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
-				    opt->prod_type ==
-					    EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-				    opt->prod_type ==
-					    EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
+				if (opt->prod_type != EVT_PROD_TYPE_ETH_RX_ADPTR) {
 					t->done = true;
 					break;
 				}
 			}
 		}
-
 		if (new_cycles - dead_lock_cycles > dead_lock_sample &&
-		    (opt->prod_type == EVT_PROD_TYPE_SYNT ||
-		     opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-		     opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR)) {
-			remaining = t->outstand_pkts - processed_pkts(t);
+		    (opt->prod_type != EVT_PROD_TYPE_ETH_RX_ADPTR)) {
+			remaining =
+				t->outstand_pkts - (is_vec ? processed_vecs(t) : processed_pkts(t));
 			if (dead_lock_remaining == remaining) {
 				rte_event_dev_dump(opt->dev_id, stdout);
 				evt_err("No schedules for seconds, deadlock");
@@ -961,6 +1086,45 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 		}
 	}
 	printf("\n");
+}
+
+int
+perf_launch_lcores(struct evt_test *test, struct evt_options *opt, int (*worker)(void *))
+{
+	int ret, lcore_id;
+	struct test_perf *t = evt_test_priv(test);
+
+	int port_idx = 0;
+	/* launch workers */
+	RTE_LCORE_FOREACH_WORKER(lcore_id)
+	{
+		if (!(opt->wlcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(worker, &t->worker[port_idx], lcore_id);
+		if (ret) {
+			evt_err("failed to launch worker %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	/* launch producers */
+	RTE_LCORE_FOREACH_WORKER(lcore_id)
+	{
+		if (!(opt->plcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(perf_producer_wrapper, &t->prod[port_idx], lcore_id);
+		if (ret) {
+			evt_err("failed to launch perf_producer %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	check_work_status(t, opt);
+
 	return 0;
 }
 
@@ -1144,6 +1308,39 @@ perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 
 	ret = rte_event_crypto_adapter_queue_pair_add(
 		TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, &conf);
+
+	return ret;
+}
+
+static int
+perf_event_dma_adapter_setup(struct test_perf *t, struct prod_data *p)
+{
+	struct evt_options *opt = t->opt;
+	struct rte_event event;
+	uint32_t cap;
+	int ret;
+
+	ret = rte_event_dma_adapter_caps_get(p->dev_id, p->da.dma_dev_id, &cap);
+	if (ret) {
+		evt_err("Failed to get dma adapter capabilities");
+		return ret;
+	}
+
+	if (((opt->dma_adptr_mode == RTE_EVENT_DMA_ADAPTER_OP_NEW) &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW)) ||
+	    ((opt->dma_adptr_mode == RTE_EVENT_DMA_ADAPTER_OP_FORWARD) &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))) {
+		evt_err("dma adapter %s mode unsupported\n",
+			opt->dma_adptr_mode ? "OP_FORWARD" : "OP_NEW");
+		return -ENOTSUP;
+	}
+
+	if (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND)
+		ret = rte_event_dma_adapter_vchan_add(TEST_PERF_DA_ID, p->da.dma_dev_id,
+						      p->da.vchan_id, &event);
+	else
+		ret = rte_event_dma_adapter_vchan_add(TEST_PERF_DA_ID, p->da.dma_dev_id,
+						      p->da.vchan_id, NULL);
 
 	return ret;
 }
@@ -1387,6 +1584,108 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 			qp_id++;
 			prod++;
 		}
+	}  else if (opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+		struct rte_event_port_conf conf = *port_conf;
+		uint8_t dma_dev_id = 0;
+		uint16_t vchan_id = 0;
+
+		ret = rte_event_dma_adapter_create(TEST_PERF_DA_ID, opt->dev_id, &conf, 0);
+		if (ret) {
+			evt_err("Failed to create dma adapter");
+			return ret;
+		}
+
+		prod = 0;
+		for (; port < perf_nb_event_ports(opt); port++) {
+			struct prod_data *p = &t->prod[port];
+
+			p->dev_id = opt->dev_id;
+			p->port_id = port;
+			p->queue_id = prod * stride;
+			p->da.dma_dev_id = dma_dev_id;
+			p->da.vchan_id = vchan_id;
+			p->t = t;
+
+			ret = perf_event_dma_adapter_setup(t, p);
+			if (ret)
+				return ret;
+
+			conf.event_port_cfg |=
+				RTE_EVENT_PORT_CFG_HINT_PRODUCER |
+				RTE_EVENT_PORT_CFG_HINT_CONSUMER;
+
+			ret = rte_event_port_setup(opt->dev_id, port, &conf);
+			if (ret) {
+				evt_err("failed to setup port %d", port);
+				return ret;
+			}
+
+			prod++;
+		}
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		struct rte_event_vector_adapter_conf conf;
+		struct rte_event_vector_adapter_info info;
+
+		ret = rte_event_vector_adapter_info_get(opt->dev_id, &info);
+
+		if (opt->vector_size < info.min_vector_sz ||
+		    opt->vector_size > info.max_vector_sz) {
+			evt_err("Vector size [%d] not within limits max[%d] min[%d]",
+				opt->vector_size, info.max_vector_sz, info.min_vector_sz);
+			return -EINVAL;
+		}
+
+		if (opt->vector_tmo_nsec > info.max_vector_timeout_ns ||
+		    opt->vector_tmo_nsec < info.min_vector_timeout_ns) {
+			evt_err("Vector timeout [%" PRIu64 "] not within limits "
+				"max[%" PRIu64 "] min[%" PRIu64 "]",
+				opt->vector_tmo_nsec, info.max_vector_timeout_ns,
+				info.min_vector_timeout_ns);
+			return -EINVAL;
+		}
+
+		memset(&conf, 0, sizeof(struct rte_event_vector_adapter_conf));
+		conf.event_dev_id = opt->dev_id;
+		conf.vector_sz = opt->vector_size;
+		conf.vector_timeout_ns = opt->vector_tmo_nsec;
+		conf.socket_id = opt->socket_id;
+		conf.vector_mp = t->pool;
+
+		conf.ev.sched_type = opt->sched_type_list[0];
+		conf.ev.event_type = RTE_EVENT_TYPE_VECTOR | RTE_EVENT_TYPE_CPU;
+
+		conf.ev_fallback.event_type = RTE_EVENT_TYPE_CPU;
+
+		prod = 0;
+		for (; port < perf_nb_event_ports(opt); port++) {
+			struct rte_event_vector_adapter *vector_adptr;
+			struct prod_data *p = &t->prod[port];
+			uint32_t service_id;
+
+			p->queue_id = prod * stride;
+			p->t = t;
+
+			conf.ev.queue_id = p->queue_id;
+
+			vector_adptr = rte_event_vector_adapter_create(&conf);
+			if (vector_adptr == NULL) {
+				evt_err("Failed to create vector adapter for port %d", port);
+				return -ENOMEM;
+			}
+			p->va.vector_adptr = vector_adptr;
+			prod++;
+
+			if (rte_event_vector_adapter_service_id_get(vector_adptr, &service_id) ==
+			    0) {
+				ret = evt_service_setup(service_id);
+				if (ret) {
+					evt_err("Failed to setup service core"
+						" for vector adapter\n");
+					return ret;
+				}
+				rte_service_runstate_set(service_id, 1);
+			}
+		}
 	} else {
 		prod = 0;
 		for ( ; port < perf_nb_event_ports(opt); port++) {
@@ -1449,7 +1748,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 
 	if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
 	    opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-	    opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
+	    opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR ||
+	    opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
 		/* Validate producer lcores */
 		if (evt_lcores_has_overlap(opt->plcores,
 					rte_get_main_lcore())) {
@@ -1533,9 +1833,9 @@ perf_worker_cleanup(struct rte_mempool *const pool, uint8_t dev_id,
 		for (i = nb_enq; i < nb_deq; i++)
 			rte_mempool_put(pool, events[i].event_ptr);
 
-		for (i = 0; i < nb_deq; i++)
+		for (i = nb_enq; i < nb_deq; i++)
 			events[i].op = RTE_EVENT_OP_RELEASE;
-		rte_event_enqueue_burst(dev_id, port_id, events, nb_deq);
+		rte_event_enqueue_burst(dev_id, port_id, events + nb_enq, nb_deq - nb_enq);
 	}
 	rte_event_port_quiesce(dev_id, port_id, perf_event_port_flush, pool);
 }
@@ -1549,6 +1849,20 @@ perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
 	if (opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
 		for (i = 0; i < opt->nb_timer_adptrs; i++)
 			rte_event_timer_adapter_stop(t->timer_adptr[i]);
+	}
+
+	if (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		for (i = 0; i < evt_nr_active_lcores(opt->plcores); i++) {
+			struct prod_data *p = &t->prod[i];
+			uint32_t service_id;
+
+			if (p->va.vector_adptr) {
+				if (rte_event_vector_adapter_service_id_get(p->va.vector_adptr,
+									    &service_id) == 0)
+					rte_service_runstate_set(service_id, 0);
+				rte_event_vector_adapter_destroy(p->va.vector_adptr);
+			}
+		}
 	}
 	rte_event_dev_stop(opt->dev_id);
 	rte_event_dev_close(opt->dev_id);
@@ -1842,37 +2156,115 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 }
 
 int
+perf_dmadev_setup(struct evt_test *test, struct evt_options *opt)
+{
+	const struct rte_dma_conf conf = { .nb_vchans = 1};
+	const struct rte_dma_vchan_conf qconf = {
+			.direction = RTE_DMA_DIR_MEM_TO_MEM,
+			.nb_desc = 1024,
+	};
+	uint8_t dma_dev_count, dma_dev_id = 0;
+	int vchan_id;
+	int ret;
+
+	RTE_SET_USED(test);
+	if (opt->prod_type != EVT_PROD_TYPE_EVENT_DMA_ADPTR)
+		return 0;
+
+	dma_dev_count = rte_dma_count_avail();
+	if (dma_dev_count == 0) {
+		evt_err("No dma devices available\n");
+		return -ENODEV;
+	}
+
+	ret = rte_dma_configure(dma_dev_id, &conf);
+	if (ret) {
+		evt_err("Failed to configure dma dev (%u)", dma_dev_id);
+		goto err;
+	}
+
+	for (vchan_id = 0; vchan_id < conf.nb_vchans; vchan_id++) {
+		ret = rte_dma_vchan_setup(dma_dev_id, vchan_id, &qconf);
+		if (ret) {
+			evt_err("Failed to setup vchan on dma dev %u\n",
+				dma_dev_id);
+			goto err;
+		}
+	}
+
+	return 0;
+err:
+	rte_dma_close(dma_dev_id);
+
+	return ret;
+}
+
+void
+perf_dmadev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	uint8_t dma_dev_id = 0;
+	struct test_perf *t = evt_test_priv(test);
+	uint16_t port;
+
+	if (opt->prod_type != EVT_PROD_TYPE_EVENT_DMA_ADPTR)
+		return;
+
+	for (port = t->nb_workers; port < perf_nb_event_ports(opt); port++) {
+		struct prod_data *p = &t->prod[port];
+
+		rte_event_dma_adapter_vchan_del(TEST_PERF_DA_ID, p->da.dma_dev_id, p->da.vchan_id);
+	}
+
+	rte_event_dma_adapter_free(TEST_PERF_DA_ID);
+
+	rte_dma_stop(dma_dev_id);
+	rte_dma_close(dma_dev_id);
+}
+
+int
 perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
 {
 	struct test_perf *t = evt_test_priv(test);
+	unsigned int cache_sz;
 
+	cache_sz = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, (opt->pool_sz / 1.5) / t->nb_workers);
 	if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
 			opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR) {
 		t->pool = rte_mempool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
 				sizeof(struct perf_elt), /* element size*/
-				512, /* cache size*/
+				cache_sz, /* cache size*/
 				0, NULL, NULL,
 				perf_elt_init, /* obj constructor */
 				NULL, opt->socket_id, 0); /* flags */
 	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR &&
-			opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC)  {
+		   opt->crypto_op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		t->pool = rte_mempool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
 				sizeof(struct perf_elt) + modex_test_case.result_len,
 				/* element size*/
-				512, /* cache size*/
+				cache_sz, /* cache size*/
 				0, NULL, NULL,
 				NULL, /* obj constructor */
 				NULL, opt->socket_id, 0); /* flags */
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+		t->pool = rte_mempool_create(test->name,   /* mempool name */
+					     opt->pool_sz, /* number of elements*/
+					     sizeof(struct rte_event_dma_adapter_op) +
+						     (sizeof(struct rte_dma_sge) * 2),
+					     cache_sz,		       /* cache size*/
+					     0, NULL, NULL, NULL,      /* obj constructor */
+					     NULL, opt->socket_id, 0); /* flags */
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		t->pool = rte_event_vector_pool_create(test->name, opt->pool_sz, cache_sz,
+						       opt->vector_size, opt->socket_id);
 	} else {
 		t->pool = rte_pktmbuf_pool_create(test->name, /* mempool name */
 				opt->pool_sz, /* number of elements*/
-				512, /* cache size*/
+				cache_sz, /* cache size*/
 				0,
 				RTE_MBUF_DEFAULT_BUF_SIZE,
 				opt->socket_id); /* flags */
-
 	}
 
 	if (t->pool == NULL) {

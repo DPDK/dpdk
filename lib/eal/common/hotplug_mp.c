@@ -77,7 +77,7 @@ send_response_to_secondary(const struct eal_dev_mp_req *req,
 
 	ret = rte_mp_reply(&mp_resp, peer);
 	if (ret != 0)
-		RTE_LOG(ERR, EAL, "failed to send response to secondary\n");
+		EAL_LOG(ERR, "failed to send response to secondary");
 
 	return ret;
 }
@@ -101,18 +101,18 @@ __handle_secondary_request(void *param)
 	if (req->t == EAL_DEV_REQ_TYPE_ATTACH) {
 		ret = local_dev_probe(req->devargs, &dev);
 		if (ret != 0 && ret != -EEXIST) {
-			RTE_LOG(ERR, EAL, "Failed to hotplug add device on primary\n");
+			EAL_LOG(ERR, "Failed to hotplug add device on primary");
 			goto finish;
 		}
 		ret = eal_dev_hotplug_request_to_secondary(&tmp_req);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Failed to send hotplug request to secondary\n");
+			EAL_LOG(ERR, "Failed to send hotplug request to secondary");
 			ret = -ENOMSG;
 			goto rollback;
 		}
 		if (tmp_req.result != 0) {
 			ret = tmp_req.result;
-			RTE_LOG(ERR, EAL, "Failed to hotplug add device on secondary\n");
+			EAL_LOG(ERR, "Failed to hotplug add device on secondary");
 			if (ret != -EEXIST)
 				goto rollback;
 		}
@@ -123,27 +123,27 @@ __handle_secondary_request(void *param)
 
 		ret = eal_dev_hotplug_request_to_secondary(&tmp_req);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Failed to send hotplug request to secondary\n");
+			EAL_LOG(ERR, "Failed to send hotplug request to secondary");
 			ret = -ENOMSG;
 			goto rollback;
 		}
 
 		bus = rte_bus_find_by_name(da.bus->name);
 		if (bus == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", da.bus->name);
+			EAL_LOG(ERR, "Cannot find bus (%s)", da.bus->name);
 			ret = -ENOENT;
 			goto finish;
 		}
 
 		dev = bus->find_device(NULL, cmp_dev_name, da.name);
 		if (dev == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", da.name);
+			EAL_LOG(ERR, "Cannot find plugged device (%s)", da.name);
 			ret = -ENOENT;
 			goto finish;
 		}
 
 		if (tmp_req.result != 0) {
-			RTE_LOG(ERR, EAL, "Failed to hotplug remove device on secondary\n");
+			EAL_LOG(ERR, "Failed to hotplug remove device on secondary");
 			ret = tmp_req.result;
 			if (ret != -ENOENT)
 				goto rollback;
@@ -151,12 +151,12 @@ __handle_secondary_request(void *param)
 
 		ret = local_dev_remove(dev);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Failed to hotplug remove device on primary\n");
+			EAL_LOG(ERR, "Failed to hotplug remove device on primary");
 			if (ret != -ENOENT)
 				goto rollback;
 		}
 	} else {
-		RTE_LOG(ERR, EAL, "unsupported secondary to primary request\n");
+		EAL_LOG(ERR, "unsupported secondary to primary request");
 		ret = -ENOTSUP;
 	}
 	goto finish;
@@ -174,7 +174,7 @@ rollback:
 finish:
 	ret = send_response_to_secondary(&tmp_req, ret, bundle->peer);
 	if (ret)
-		RTE_LOG(ERR, EAL, "failed to send response to secondary\n");
+		EAL_LOG(ERR, "failed to send response to secondary");
 
 	rte_devargs_reset(&da);
 	free(bundle->peer);
@@ -191,7 +191,7 @@ handle_secondary_request(const struct rte_mp_msg *msg, const void *peer)
 
 	bundle = malloc(sizeof(*bundle));
 	if (bundle == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory\n");
+		EAL_LOG(ERR, "not enough memory");
 		return send_response_to_secondary(req, -ENOMEM, peer);
 	}
 
@@ -204,7 +204,7 @@ handle_secondary_request(const struct rte_mp_msg *msg, const void *peer)
 	bundle->peer = strdup(peer);
 	if (bundle->peer == NULL) {
 		free(bundle);
-		RTE_LOG(ERR, EAL, "not enough memory\n");
+		EAL_LOG(ERR, "not enough memory");
 		return send_response_to_secondary(req, -ENOMEM, peer);
 	}
 
@@ -214,7 +214,7 @@ handle_secondary_request(const struct rte_mp_msg *msg, const void *peer)
 	 */
 	ret = rte_eal_alarm_set(1, __handle_secondary_request, bundle);
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL, "failed to add mp task\n");
+		EAL_LOG(ERR, "failed to add mp task");
 		free(bundle->peer);
 		free(bundle);
 		return send_response_to_secondary(req, ret, peer);
@@ -257,14 +257,14 @@ static void __handle_primary_request(void *param)
 
 		bus = rte_bus_find_by_name(da->bus->name);
 		if (bus == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", da->bus->name);
+			EAL_LOG(ERR, "Cannot find bus (%s)", da->bus->name);
 			ret = -ENOENT;
 			goto quit;
 		}
 
 		dev = bus->find_device(NULL, cmp_dev_name, da->name);
 		if (dev == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", da->name);
+			EAL_LOG(ERR, "Cannot find plugged device (%s)", da->name);
 			ret = -ENOENT;
 			goto quit;
 		}
@@ -296,7 +296,7 @@ quit:
 	memcpy(resp, req, sizeof(*resp));
 	resp->result = ret;
 	if (rte_mp_reply(&mp_resp, bundle->peer) < 0)
-		RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+		EAL_LOG(ERR, "failed to send reply to primary request");
 
 	free(bundle->peer);
 	free(bundle);
@@ -320,11 +320,11 @@ handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
 
 	bundle = calloc(1, sizeof(*bundle));
 	if (bundle == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory\n");
+		EAL_LOG(ERR, "not enough memory");
 		resp->result = -ENOMEM;
 		ret = rte_mp_reply(&mp_resp, peer);
 		if (ret)
-			RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+			EAL_LOG(ERR, "failed to send reply to primary request");
 		return ret;
 	}
 
@@ -336,12 +336,12 @@ handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
 	 */
 	bundle->peer = (void *)strdup(peer);
 	if (bundle->peer == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory\n");
+		EAL_LOG(ERR, "not enough memory");
 		free(bundle);
 		resp->result = -ENOMEM;
 		ret = rte_mp_reply(&mp_resp, peer);
 		if (ret)
-			RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+			EAL_LOG(ERR, "failed to send reply to primary request");
 		return ret;
 	}
 
@@ -356,7 +356,7 @@ handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
 		resp->result = ret;
 		ret = rte_mp_reply(&mp_resp, peer);
 		if  (ret != 0) {
-			RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+			EAL_LOG(ERR, "failed to send reply to primary request");
 			return ret;
 		}
 	}
@@ -378,7 +378,7 @@ int eal_dev_hotplug_request_to_primary(struct eal_dev_mp_req *req)
 
 	ret = rte_mp_request_sync(&mp_req, &mp_reply, &ts);
 	if (ret || mp_reply.nb_received != 1) {
-		RTE_LOG(ERR, EAL, "Cannot send request to primary\n");
+		EAL_LOG(ERR, "Cannot send request to primary");
 		if (!ret)
 			return -1;
 		return ret;
@@ -408,14 +408,14 @@ int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
 	if (ret != 0) {
 		/* if IPC is not supported, behave as if the call succeeded */
 		if (rte_errno != ENOTSUP)
-			RTE_LOG(ERR, EAL, "rte_mp_request_sync failed\n");
+			EAL_LOG(ERR, "rte_mp_request_sync failed");
 		else
 			ret = 0;
 		return ret;
 	}
 
 	if (mp_reply.nb_sent != mp_reply.nb_received) {
-		RTE_LOG(ERR, EAL, "not all secondary reply\n");
+		EAL_LOG(ERR, "not all secondary reply");
 		free(mp_reply.msgs);
 		return -1;
 	}
@@ -448,7 +448,7 @@ int eal_mp_dev_hotplug_init(void)
 					handle_secondary_request);
 		/* primary is allowed to not support IPC */
 		if (ret != 0 && rte_errno != ENOTSUP) {
-			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+			EAL_LOG(ERR, "Couldn't register '%s' action",
 				EAL_DEV_MP_ACTION_REQUEST);
 			return ret;
 		}
@@ -456,7 +456,7 @@ int eal_mp_dev_hotplug_init(void)
 		ret = rte_mp_action_register(EAL_DEV_MP_ACTION_REQUEST,
 					handle_primary_request);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+			EAL_LOG(ERR, "Couldn't register '%s' action",
 				EAL_DEV_MP_ACTION_REQUEST);
 			return ret;
 		}

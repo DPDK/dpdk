@@ -44,131 +44,100 @@ static const uint32_t crc32_vec_res = 0xb491aab4;
 static const uint32_t crc32_vec1_res = 0xac54d294;
 static const uint32_t crc32_vec2_res = 0xefaae02f;
 static const uint32_t crc16_vec_res = 0x6bec;
-static const uint16_t crc16_vec1_res = 0x8cdd;
-static const uint16_t crc16_vec2_res = 0xec5b;
+static const uint32_t crc16_vec1_res = 0x8cdd;
+static const uint32_t crc16_vec2_res = 0xec5b;
 
 static int
-crc_calc(const uint8_t *vec,
-	uint32_t vec_len,
-	enum rte_net_crc_type type)
+crc_all_algs(const char *desc, enum rte_net_crc_type type,
+	const uint8_t *data, int data_len, uint32_t res)
 {
-	/* compute CRC */
-	uint32_t ret = rte_net_crc_calc(vec, vec_len, type);
+	struct rte_net_crc *ctx;
+	uint32_t crc;
+	int ret = TEST_SUCCESS;
 
-	/* dump data on console */
-	debug_hexdump(stdout, NULL, vec, vec_len);
+	ctx = rte_net_crc_set_alg(RTE_NET_CRC_SCALAR, type);
+	TEST_ASSERT_NOT_NULL(ctx, "cannot allocate the CRC context");
+	crc = rte_net_crc_calc(ctx, data, data_len);
+	if (crc != res) {
+		RTE_LOG(ERR, USER1, "TEST FAILED: %s SCALAR\n", desc);
+		debug_hexdump(stdout, "SCALAR", &crc, 4);
+		ret = TEST_FAILED;
+	}
+	rte_net_crc_free(ctx);
 
-	return  ret;
+	ctx = rte_net_crc_set_alg(RTE_NET_CRC_SSE42, type);
+	TEST_ASSERT_NOT_NULL(ctx, "cannot allocate the CRC context");
+	crc = rte_net_crc_calc(ctx, data, data_len);
+	if (crc != res) {
+		RTE_LOG(ERR, USER1, "TEST FAILED: %s SSE42\n", desc);
+		debug_hexdump(stdout, "SSE", &crc, 4);
+		ret = TEST_FAILED;
+	}
+
+	rte_net_crc_free(ctx);
+
+	ctx = rte_net_crc_set_alg(RTE_NET_CRC_AVX512, type);
+	TEST_ASSERT_NOT_NULL(ctx, "cannot allocate the CRC context");
+	crc = rte_net_crc_calc(ctx, data, data_len);
+	if (crc != res) {
+		RTE_LOG(ERR, USER1, "TEST FAILED: %s AVX512\n", desc);
+		debug_hexdump(stdout, "AVX512", &crc, 4);
+		ret = TEST_FAILED;
+	}
+	rte_net_crc_free(ctx);
+
+	ctx = rte_net_crc_set_alg(RTE_NET_CRC_NEON, type);
+	TEST_ASSERT_NOT_NULL(ctx, "cannot allocate the CRC context");
+	crc = rte_net_crc_calc(ctx, data, data_len);
+	if (crc != res) {
+		RTE_LOG(ERR, USER1, "TEST FAILED: %s NEON\n", desc);
+		debug_hexdump(stdout, "NEON", &crc, 4);
+		ret = TEST_FAILED;
+	}
+	rte_net_crc_free(ctx);
+
+	return ret;
 }
 
 static int
-test_crc_calc(void)
-{
+crc_autotest(void)
+{	uint8_t *test_data;
 	uint32_t i;
-	enum rte_net_crc_type type;
-	uint8_t *test_data;
-	uint32_t result;
-	int error;
+	int ret = TEST_SUCCESS;
 
 	/* 32-bit ethernet CRC: Test 1 */
-	type = RTE_NET_CRC32_ETH;
-
-	result = crc_calc(crc_vec, CRC_VEC_LEN, type);
-	if (result != crc32_vec_res)
-		return -1;
+	ret = crc_all_algs("32-bit ethernet CRC: Test 1", RTE_NET_CRC32_ETH, crc_vec,
+		sizeof(crc_vec), crc32_vec_res);
 
 	/* 32-bit ethernet CRC: Test 2 */
 	test_data = rte_zmalloc(NULL, CRC32_VEC_LEN1, 0);
 	if (test_data == NULL)
 		return -7;
-
 	for (i = 0; i < CRC32_VEC_LEN1; i += 12)
 		rte_memcpy(&test_data[i], crc32_vec1, 12);
-
-	result = crc_calc(test_data, CRC32_VEC_LEN1, type);
-	if (result != crc32_vec1_res) {
-		error = -2;
-		goto fail;
-	}
+	ret |= crc_all_algs("32-bit ethernet CRC: Test 2", RTE_NET_CRC32_ETH, test_data,
+		CRC32_VEC_LEN1, crc32_vec1_res);
 
 	/* 32-bit ethernet CRC: Test 3 */
+	memset(test_data, 0, CRC32_VEC_LEN1);
 	for (i = 0; i < CRC32_VEC_LEN2; i += 12)
 		rte_memcpy(&test_data[i], crc32_vec1, 12);
-
-	result = crc_calc(test_data, CRC32_VEC_LEN2, type);
-	if (result != crc32_vec2_res) {
-		error = -3;
-		goto fail;
-	}
+	ret |= crc_all_algs("32-bit ethernet CRC: Test 3", RTE_NET_CRC32_ETH, test_data,
+		CRC32_VEC_LEN2, crc32_vec2_res);
 
 	/* 16-bit CCITT CRC:  Test 4 */
-	type = RTE_NET_CRC16_CCITT;
-	result = crc_calc(crc_vec, CRC_VEC_LEN, type);
-	if (result != crc16_vec_res) {
-		error = -4;
-		goto fail;
-	}
+	crc_all_algs("16-bit CCITT CRC:  Test 4", RTE_NET_CRC16_CCITT, crc_vec,
+		sizeof(crc_vec), crc16_vec_res);
+
 	/* 16-bit CCITT CRC:  Test 5 */
-	result = crc_calc(crc16_vec1, CRC16_VEC_LEN1, type);
-	if (result != crc16_vec1_res) {
-		error = -5;
-		goto fail;
-	}
+	ret |= crc_all_algs("16-bit CCITT CRC:  Test 5", RTE_NET_CRC16_CCITT, crc16_vec1,
+		CRC16_VEC_LEN1, crc16_vec1_res);
+
 	/* 16-bit CCITT CRC:  Test 6 */
-	result = crc_calc(crc16_vec2, CRC16_VEC_LEN2, type);
-	if (result != crc16_vec2_res) {
-		error = -6;
-		goto fail;
-	}
+	ret |= crc_all_algs("16-bit CCITT CRC:  Test 6", RTE_NET_CRC16_CCITT, crc16_vec2,
+		CRC16_VEC_LEN2, crc16_vec2_res);
 
-	rte_free(test_data);
-	return 0;
-
-fail:
-	rte_free(test_data);
-	return error;
+	return ret;
 }
 
-static int
-test_crc(void)
-{
-	int ret;
-	/* set CRC scalar mode */
-	rte_net_crc_set_alg(RTE_NET_CRC_SCALAR);
-
-	ret = test_crc_calc();
-	if (ret < 0) {
-		printf("test_crc (scalar): failed (%d)\n", ret);
-		return ret;
-	}
-	/* set CRC sse4.2 mode */
-	rte_net_crc_set_alg(RTE_NET_CRC_SSE42);
-
-	ret = test_crc_calc();
-	if (ret < 0) {
-		printf("test_crc (x86_64_SSE4.2): failed (%d)\n", ret);
-		return ret;
-	}
-
-	/* set CRC avx512 mode */
-	rte_net_crc_set_alg(RTE_NET_CRC_AVX512);
-
-	ret = test_crc_calc();
-	if (ret < 0) {
-		printf("test crc (x86_64 AVX512): failed (%d)\n", ret);
-		return ret;
-	}
-
-	/* set CRC neon mode */
-	rte_net_crc_set_alg(RTE_NET_CRC_NEON);
-
-	ret = test_crc_calc();
-	if (ret < 0) {
-		printf("test crc (arm64 neon pmull): failed (%d)\n", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-REGISTER_TEST_COMMAND(crc_autotest, test_crc);
+REGISTER_FAST_TEST(crc_autotest, true, true, crc_autotest);

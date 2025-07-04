@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -62,7 +62,6 @@
 /* VEB TCAM */
 #define CFA_RESOURCE_TYPE_P59_VEB_TCAM           0x18UL
 #define CFA_RESOURCE_TYPE_P59_LAST              CFA_RESOURCE_TYPE_P59_VEB_TCAM
-
 
 /* Meter */
 #define CFA_RESOURCE_TYPE_P58_METER              0x0UL
@@ -184,7 +183,6 @@
 #define CFA_RESOURCE_TYPE_P45_TBL_SCOPE           0x23UL
 #define CFA_RESOURCE_TYPE_P45_LAST               CFA_RESOURCE_TYPE_P45_TBL_SCOPE
 
-
 /* Multicast Group */
 #define CFA_RESOURCE_TYPE_P4_MCG                 0x0UL
 /* Encap 8 byte record */
@@ -256,5 +254,4 @@
 /* Table Scope */
 #define CFA_RESOURCE_TYPE_P4_TBL_SCOPE           0x22UL
 #define CFA_RESOURCE_TYPE_P4_LAST               CFA_RESOURCE_TYPE_P4_TBL_SCOPE
-
 #endif /* _CFA_RESOURCE_TYPES_H_ */

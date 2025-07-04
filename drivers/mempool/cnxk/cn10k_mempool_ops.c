@@ -9,6 +9,8 @@
 
 #define BATCH_ALLOC_SZ              ROC_CN10K_NPA_BATCH_ALLOC_MAX_PTRS
 #define BATCH_OP_DATA_TABLE_MZ_NAME "batch_op_data_table_mz"
+#define BATCH_ALLOC_WAIT_US         5
+#define BATCH_ALLOC_RETRIES         4
 
 enum batch_op_status {
 	BATCH_ALLOC_OP_NOT_ISSUED = 0,
@@ -19,12 +21,13 @@ enum batch_op_status {
 struct batch_op_mem {
 	unsigned int sz;
 	enum batch_op_status status;
-	uint64_t objs[BATCH_ALLOC_SZ] __rte_aligned(ROC_ALIGN);
+	alignas(ROC_ALIGN) uint64_t objs[BATCH_ALLOC_SZ];
 };
 
 struct batch_op_data {
 	uint64_t lmt_addr;
-	struct batch_op_mem mem[RTE_MAX_LCORE] __rte_aligned(ROC_ALIGN);
+	uint32_t max_async_batch;
+	alignas(ROC_ALIGN) struct batch_op_mem mem[RTE_MAX_LCORE];
 };
 
 static struct batch_op_data **batch_op_data_tbl;
@@ -96,6 +99,10 @@ batch_op_init(struct rte_mempool *mp)
 	}
 
 	op_data->lmt_addr = roc_idev_lmt_base_addr_get();
+	op_data->max_async_batch =
+		RTE_MIN((unsigned int)BATCH_ALLOC_SZ,
+			RTE_ALIGN_CEIL(mp->cache_size, ROC_ALIGN / 8));
+
 	batch_op_data_set(mp->pool_id, op_data);
 	rte_wmb();
 
@@ -116,13 +123,17 @@ batch_op_fini(struct rte_mempool *mp)
 		return;
 	}
 
+	/* If max_async_batch == 0, then batch mem will be empty */
+	if (op_data->max_async_batch == 0)
+		goto free_op_data;
+
 	rte_wmb();
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
 		struct batch_op_mem *mem = &op_data->mem[i];
 
 		if (mem->status == BATCH_ALLOC_OP_ISSUED) {
 			mem->sz = roc_npa_aura_batch_alloc_extract(
-				mem->objs, mem->objs, BATCH_ALLOC_SZ);
+				mem->objs, mem->objs, op_data->max_async_batch);
 			mem->status = BATCH_ALLOC_OP_DONE;
 		}
 		if (mem->status == BATCH_ALLOC_OP_DONE) {
@@ -132,6 +143,7 @@ batch_op_fini(struct rte_mempool *mp)
 		}
 	}
 
+free_op_data:
 	rte_free(op_data);
 	batch_op_data_set(mp->pool_id, NULL);
 	rte_wmb();
@@ -149,6 +161,12 @@ cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
 	 * enqueued to the stack.
 	 */
 	rte_io_wmb();
+
+	/* For non-EAL threads, rte_lcore_id() will not be valid. Hence
+	 * fallback to bulk alloc
+	 */
+	if (unlikely(rte_lcore_id() == LCORE_ID_ANY))
+		return cnxk_mempool_enq(mp, obj_table, n);
 
 	if (n == 1) {
 		roc_npa_aura_op_free(mp->pool_id, 1, ptr[0]);
@@ -171,6 +189,9 @@ cn10k_mempool_get_count(const struct rte_mempool *mp)
 	int i;
 
 	op_data = batch_op_data_get(mp->pool_id);
+	/* If max_async_batch == 0, then batch alloc mem will be empty */
+	if (op_data->max_async_batch == 0)
+		goto npa_pool_count;
 
 	rte_wmb();
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
@@ -178,19 +199,27 @@ cn10k_mempool_get_count(const struct rte_mempool *mp)
 
 		if (mem->status == BATCH_ALLOC_OP_ISSUED)
 			count += roc_npa_aura_batch_alloc_count(
-				mem->objs, BATCH_ALLOC_SZ, 1);
+				mem->objs, op_data->max_async_batch,
+				BATCH_ALLOC_WAIT_US);
 
 		if (mem->status == BATCH_ALLOC_OP_DONE)
 			count += mem->sz;
 	}
 
+npa_pool_count:
 	count += cnxk_mempool_get_count(mp);
 
 	return count;
 }
 
-static int __rte_hot
-cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
+static inline unsigned int __rte_hot
+mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	return cnxk_mempool_deq(mp, obj_table, n) ? 0 : n;
+}
+
+static inline unsigned int __rte_hot
+mempool_deq_batch_async(struct rte_mempool *mp, void **obj_table, unsigned int n)
 {
 	struct batch_op_data *op_data;
 	struct batch_op_mem *mem;
@@ -204,24 +233,24 @@ cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 
 	/* Issue batch alloc */
 	if (mem->status == BATCH_ALLOC_OP_NOT_ISSUED) {
-		rc = roc_npa_aura_batch_alloc_issue(mp->pool_id, mem->objs,
-						    BATCH_ALLOC_SZ, 0, 1);
+		rc = roc_npa_aura_batch_alloc_issue(
+			mp->pool_id, mem->objs, op_data->max_async_batch, 0, 1);
 		/* If issue fails, try falling back to default alloc */
 		if (unlikely(rc))
-			return cnxk_mempool_deq(mp, obj_table, n);
+			return mempool_deq(mp, obj_table, n);
 		mem->status = BATCH_ALLOC_OP_ISSUED;
 	}
 
-	retry = 4;
+	retry = BATCH_ALLOC_RETRIES;
 	while (loop) {
 		unsigned int cur_sz;
 
 		if (mem->status == BATCH_ALLOC_OP_ISSUED) {
 			mem->sz = roc_npa_aura_batch_alloc_extract(
-				mem->objs, mem->objs, BATCH_ALLOC_SZ);
+				mem->objs, mem->objs, op_data->max_async_batch);
 
 			/* If partial alloc reduce the retry count */
-			retry -= (mem->sz != BATCH_ALLOC_SZ);
+			retry -= (mem->sz != op_data->max_async_batch);
 			/* Break the loop if retry count exhausted */
 			loop = !!retry;
 			mem->status = BATCH_ALLOC_OP_DONE;
@@ -243,12 +272,77 @@ cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 		/* Issue next batch alloc if pointers are exhausted */
 		if (mem->sz == 0) {
 			rc = roc_npa_aura_batch_alloc_issue(
-				mp->pool_id, mem->objs, BATCH_ALLOC_SZ, 0, 1);
+				mp->pool_id, mem->objs,
+				op_data->max_async_batch, 0, 1);
 			/* Break loop if issue failed and set status */
 			loop &= !rc;
 			mem->status = !rc;
 		}
 	}
+
+	return count;
+}
+
+static inline unsigned int __rte_hot
+mempool_deq_batch_sync(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	struct batch_op_data *op_data;
+	struct batch_op_mem *mem;
+	unsigned int count = 0;
+	int tid, retry, rc;
+
+	op_data = batch_op_data_get(mp->pool_id);
+	tid = rte_lcore_id();
+	mem = &op_data->mem[tid];
+
+	retry = BATCH_ALLOC_RETRIES;
+	while (count != n && retry) {
+		unsigned int cur_sz, batch_sz;
+
+		cur_sz = n - count;
+		batch_sz = RTE_MIN(BATCH_ALLOC_SZ, (int)cur_sz);
+
+		/* Issue batch alloc */
+		rc = roc_npa_aura_batch_alloc_issue(mp->pool_id, mem->objs,
+						    batch_sz, 0, 1);
+
+		/* If issue fails, try falling back to default alloc */
+		if (unlikely(rc))
+			return count +
+			       mempool_deq(mp, obj_table + count, n - count);
+
+		cur_sz = roc_npa_aura_batch_alloc_extract(mem->objs, mem->objs,
+							  batch_sz);
+
+		/* Dequeue the pointers */
+		memcpy(&obj_table[count], mem->objs,
+		       cur_sz * sizeof(uintptr_t));
+		count += cur_sz;
+
+		/* If partial alloc reduce the retry count */
+		retry -= (batch_sz != cur_sz);
+	}
+
+	return count;
+}
+
+static int __rte_hot
+cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
+{
+	struct batch_op_data *op_data;
+	unsigned int count = 0;
+
+	/* For non-EAL threads, rte_lcore_id() will not be valid. Hence
+	 * fallback to bulk alloc
+	 */
+	if (unlikely(rte_lcore_id() == LCORE_ID_ANY))
+		return cnxk_mempool_deq(mp, obj_table, n);
+
+	op_data = batch_op_data_get(mp->pool_id);
+	if (op_data->max_async_batch)
+		count = mempool_deq_batch_async(mp, obj_table, n);
+	else
+		count = mempool_deq_batch_sync(mp, obj_table, n);
 
 	if (unlikely(count != n)) {
 		/* No partial alloc allowed. Free up allocated pointers */

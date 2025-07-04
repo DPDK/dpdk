@@ -237,6 +237,8 @@ struct txgbe_tx_desc {
 #define RTE_PMD_TXGBE_RX_MAX_BURST 32
 #define RTE_TXGBE_TX_MAX_FREE_BUF_SZ 64
 
+#define RTE_TXGBE_DESCS_PER_LOOP    4
+
 #define RX_RING_SZ ((TXGBE_RING_DESC_MAX + RTE_PMD_TXGBE_RX_MAX_BURST) * \
 		    sizeof(struct txgbe_rx_desc))
 
@@ -298,6 +300,12 @@ struct txgbe_rx_queue {
 	uint8_t            using_ipsec;
 	/**< indicates that IPsec RX feature is in use */
 #endif
+	uint64_t	    mbuf_initializer; /**< value to init mbufs */
+	uint8_t             rx_using_sse;
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	uint16_t	    rxrearm_nb;     /**< number of remaining to be re-armed */
+	uint16_t	    rxrearm_start;  /**< the idx we start the re-arming from */
+#endif
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id; /**< RX queue index. */
 	uint16_t            reg_idx;  /**< RX queue register index. */
@@ -314,6 +322,7 @@ struct txgbe_rx_queue {
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_TXGBE_RX_MAX_BURST * 2];
+	const struct rte_memzone *mz;
 };
 
 /**
@@ -402,6 +411,9 @@ struct txgbe_tx_queue {
 	uint8_t		    using_ipsec;
 	/**< indicates that IPsec TX feature is in use */
 #endif
+	const struct rte_memzone *mz;
+	uint64_t	    desc_error;
+	bool		    resetting;
 };
 
 struct txgbe_txq_ops {
@@ -417,6 +429,16 @@ struct txgbe_txq_ops {
 void txgbe_set_tx_function(struct rte_eth_dev *dev, struct txgbe_tx_queue *txq);
 
 void txgbe_set_rx_function(struct rte_eth_dev *dev);
+uint16_t txgbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+uint16_t txgbe_recv_scattered_pkts_vec(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+int txgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
+int txgbe_rxq_vec_setup(struct txgbe_rx_queue *rxq);
+void txgbe_rx_queue_release_mbufs_vec(struct txgbe_rx_queue *rxq);
+uint16_t txgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+				    uint16_t nb_pkts);
+int txgbe_txq_vec_setup(struct txgbe_tx_queue *txq);
 int txgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt);
 
 uint64_t txgbe_get_tx_port_offloads(struct rte_eth_dev *dev);

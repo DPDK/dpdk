@@ -20,7 +20,7 @@ enum elem_state {
 	ELEM_PAD  /* element is a padding-only header */
 };
 
-struct malloc_elem {
+struct __rte_cache_aligned malloc_elem {
 	struct malloc_heap *heap;
 	struct malloc_elem *volatile prev;
 	/**< points to prev elem in memseg */
@@ -48,7 +48,7 @@ struct malloc_elem {
 	size_t user_size;
 	uint64_t asan_cookie[2]; /* must be next to header_cookie */
 #endif
-} __rte_cache_aligned;
+};
 
 static const unsigned int MALLOC_ELEM_HEADER_LEN = sizeof(struct malloc_elem);
 

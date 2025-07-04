@@ -14,4 +14,6 @@ drivers = [
         'turbo_sw',
 ]
 
+std_deps = [ 'bbdev' ]
+
 log_prefix = 'pmd.bb'

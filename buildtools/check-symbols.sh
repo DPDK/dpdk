@@ -7,28 +7,11 @@ OBJFILE=$2
 
 ROOTDIR=$(readlink -f $(dirname $(readlink -f $0))/..)
 LIST_SYMBOL=$ROOTDIR/buildtools/map-list-symbol.sh
-CHECK_SYMBOL_MAPS=$ROOTDIR/devtools/check-symbol-maps.sh
-
-# added check for "make -C test/" usage
-if [ ! -e $MAPFILE ] || [ ! -f $OBJFILE ]
-then
-	exit 0
-fi
-
-if [ -d $MAPFILE ]
-then
-	exit 0
-fi
-
 DUMPFILE=$(mktemp -t dpdk.${0##*/}.objdump.XXXXXX)
 trap 'rm -f "$DUMPFILE"' EXIT
 objdump -t $OBJFILE >$DUMPFILE
 
 ret=0
-
-if ! $CHECK_SYMBOL_MAPS $MAPFILE; then
-	ret=1
-fi
 
 for SYM in `$LIST_SYMBOL -S EXPERIMENTAL $MAPFILE |cut -d ' ' -f 3`
 do
@@ -37,26 +20,23 @@ do
 		$LIST_SYMBOL -s $SYM $MAPFILE | grep -q EXPERIMENTAL
 	then
 		cat >&2 <<- END_OF_MESSAGE
-		$SYM is not flagged as experimental
-		but is listed in version map
+		$SYM is not flagged as experimental but is exported as an experimental symbol
 		Please add __rte_experimental to the definition of $SYM
 		END_OF_MESSAGE
 		ret=1
 	fi
 done
 
-# Filter out symbols suffixed with a . for icc
 for SYM in `awk '{
-	if ($2 != "l" && $4 == ".text.experimental" && !($NF ~ /\.$/)) {
+	if ($2 != "l" && $4 == ".text.experimental") {
 		print $NF
 	}
 }' $DUMPFILE`
 do
 	$LIST_SYMBOL -S EXPERIMENTAL -s $SYM -q $MAPFILE || {
 		cat >&2 <<- END_OF_MESSAGE
-		$SYM is flagged as experimental
-		but is not listed in version map
-		Please add $SYM to the version map
+		$SYM is flagged as experimental but is not exported as an experimental symbol
+		Please add RTE_EXPORT_EXPERIMENTAL_SYMBOL to the definition of $SYM
 		END_OF_MESSAGE
 		ret=1
 	}
@@ -68,26 +48,23 @@ do
 		! grep -q "\.text\.internal.*[[:space:]]$SYM$" $DUMPFILE
 	then
 		cat >&2 <<- END_OF_MESSAGE
-		$SYM is not flagged as internal
-		but is listed in version map
+		$SYM is not flagged as internal but is exported as an internal symbol
 		Please add __rte_internal to the definition of $SYM
 		END_OF_MESSAGE
 		ret=1
 	fi
 done
 
-# Filter out symbols suffixed with a . for icc
 for SYM in `awk '{
-	if ($2 != "l" && $4 == ".text.internal" && !($NF ~ /\.$/)) {
+	if ($2 != "l" && $4 == ".text.internal") {
 		print $NF
 	}
 }' $DUMPFILE`
 do
 	$LIST_SYMBOL -S INTERNAL -s $SYM -q $MAPFILE || {
 		cat >&2 <<- END_OF_MESSAGE
-		$SYM is flagged as internal
-		but is not listed in version map
-		Please add $SYM to the version map
+		$SYM is flagged as internal but is not exported as an internal symbol
+		Please add RTE_EXPORT_INTERNAL_SYMBOL to the definition of $SYM
 		END_OF_MESSAGE
 		ret=1
 	}

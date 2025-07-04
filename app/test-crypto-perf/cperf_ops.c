@@ -10,7 +10,7 @@
 #include "cperf_test_vectors.h"
 
 static void
-cperf_set_ops_asym(struct rte_crypto_op **ops,
+cperf_set_ops_asym_modex(struct rte_crypto_op **ops,
 		   uint32_t src_buf_offset __rte_unused,
 		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
 		   void *sess,
@@ -21,7 +21,6 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		   uint64_t *tsc_start __rte_unused)
 {
 	uint16_t i;
-	void *asym_sess = (void *)sess;
 
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
@@ -31,9 +30,162 @@ cperf_set_ops_asym(struct rte_crypto_op **ops,
 		asym_op->modex.base.length = options->modex_data->base.len;
 		asym_op->modex.result.data = options->modex_data->result.data;
 		asym_op->modex.result.length = options->modex_data->result.len;
-		rte_crypto_op_attach_asym_session(ops[i], asym_sess);
+		rte_crypto_op_attach_asym_session(ops[i], sess);
 	}
 }
+
+static void
+cperf_set_ops_asym_rsa(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   void *sess,
+		   const struct cperf_options *options,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused,
+		   uint64_t *tsc_start __rte_unused)
+{
+	uint8_t crypto_buf[CRYPTO_BUF_SIZE] = {0};
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		asym_op->rsa.op_type = options->asym_op_type;
+		if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+			asym_op->rsa.message.data = rsa_plaintext.data;
+			asym_op->rsa.message.length = rsa_plaintext.len;
+			asym_op->rsa.sign.data = crypto_buf;
+			asym_op->rsa.sign.length = options->rsa_data->n.length;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			asym_op->rsa.message.data = rsa_plaintext.data;
+			asym_op->rsa.message.length = rsa_plaintext.len;
+			asym_op->rsa.cipher.data = crypto_buf;
+			asym_op->rsa.cipher.length = options->rsa_data->n.length;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			asym_op->rsa.cipher.data = options->rsa_data->cipher.data;
+			asym_op->rsa.cipher.length = options->rsa_data->cipher.length;
+			asym_op->rsa.message.data = crypto_buf;
+			asym_op->rsa.message.length = options->rsa_data->n.length;
+		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+			memcpy(crypto_buf, options->rsa_data->sign.data,
+				options->rsa_data->sign.length);
+			asym_op->rsa.sign.data = crypto_buf;
+			asym_op->rsa.sign.length = options->rsa_data->sign.length;
+			asym_op->rsa.message.data = rsa_plaintext.data;
+			asym_op->rsa.message.length = rsa_plaintext.len;
+		} else {
+			rte_panic("Unsupported RSA operation type %d\n",
+				  options->asym_op_type);
+		}
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+	}
+}
+
+static void
+cperf_set_ops_asym_ecdsa(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   void *sess,
+		   const struct cperf_options *options,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused,
+		   uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		asym_op->ecdsa.op_type = options->asym_op_type;
+		asym_op->ecdsa.message.data = options->secp256r1_data->message.data;
+		asym_op->ecdsa.message.length = options->secp256r1_data->message.length;
+
+		asym_op->ecdsa.k.data = options->secp256r1_data->k.data;
+		asym_op->ecdsa.k.length = options->secp256r1_data->k.length;
+
+		asym_op->ecdsa.r.data = options->secp256r1_data->sign_r.data;
+		asym_op->ecdsa.r.length = options->secp256r1_data->sign_r.length;
+		asym_op->ecdsa.s.data = options->secp256r1_data->sign_s.data;
+		asym_op->ecdsa.s.length = options->secp256r1_data->sign_s.length;
+	}
+}
+
+static void
+cperf_set_ops_asym_eddsa(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   void *sess,
+		   const struct cperf_options *options,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused,
+		   uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		asym_op->eddsa.op_type = options->asym_op_type;
+		asym_op->eddsa.message.data = options->eddsa_data->message.data;
+		asym_op->eddsa.message.length = options->eddsa_data->message.length;
+
+		asym_op->eddsa.instance = options->eddsa_data->instance;
+
+		asym_op->eddsa.sign.data = options->eddsa_data->sign.data;
+		asym_op->eddsa.sign.length = options->eddsa_data->sign.length;
+	}
+}
+
+static void
+cperf_set_ops_asym_sm2(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   void *sess,
+		   const struct cperf_options *options,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused,
+		   uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		/* Populate op with operational details */
+		asym_op->sm2.hash = options->asym_hash_alg;
+
+		asym_op->sm2.op_type = options->asym_op_type;
+		asym_op->sm2.message.data = options->sm2_data->message.data;
+		asym_op->sm2.message.length = options->sm2_data->message.length;
+		asym_op->sm2.cipher.data = options->sm2_data->cipher.data;
+		asym_op->sm2.cipher.length = options->sm2_data->cipher.length;
+		asym_op->sm2.id.data = options->sm2_data->id.data;
+		asym_op->sm2.id.length = options->sm2_data->id.length;
+
+		asym_op->sm2.k.data = options->sm2_data->k.data;
+		asym_op->sm2.k.length = options->sm2_data->k.length;
+
+		asym_op->sm2.r.data = options->sm2_data->sign_r.data;
+		asym_op->sm2.r.length = options->sm2_data->sign_r.length;
+		asym_op->sm2.s.data = options->sm2_data->sign_s.data;
+		asym_op->sm2.s.length = options->sm2_data->sign_s.length;
+	}
+}
+
 
 #ifdef RTE_LIB_SECURITY
 static void
@@ -43,10 +195,8 @@ test_ipsec_vec_populate(struct rte_mbuf *m, const struct cperf_options *options,
 	struct rte_ipv4_hdr *ip = rte_pktmbuf_mtod(m, struct rte_ipv4_hdr *);
 
 	if (options->is_outbound) {
-		memcpy(ip, test_vector->plaintext.data,
-		       sizeof(struct rte_ipv4_hdr));
-
-		ip->total_length = rte_cpu_to_be_16(m->data_len);
+		memcpy(ip, test_vector->plaintext.data, sizeof(struct rte_ipv4_hdr));
+		ip->total_length = rte_cpu_to_be_16(m->pkt_len);
 	}
 }
 
@@ -64,7 +214,6 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
-		void *sec_sess = (void *)sess;
 		uint32_t buf_sz;
 
 		uint32_t *per_pkt_hfn = rte_crypto_op_ctod_offset(ops[i],
@@ -72,7 +221,7 @@ cperf_set_ops_security(struct rte_crypto_op **ops,
 		*per_pkt_hfn = options->pdcp_ses_hfn_en ? 0 : PDCP_DEFAULT_HFN;
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-		rte_security_attach_session(ops[i], sec_sess);
+		rte_security_attach_session(ops[i], sess);
 		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
 							src_buf_offset);
 
@@ -129,10 +278,7 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
 		uint64_t *tsc_start)
 {
-	void *sec_sess = sess;
 	const uint32_t test_buffer_size = options->test_buffer_size;
-	const uint32_t headroom_sz = options->headroom_sz;
-	const uint32_t segment_sz = options->segment_sz;
 	uint64_t tsc_start_temp, tsc_end_temp;
 	uint16_t i = 0;
 
@@ -141,20 +287,27 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
 		struct rte_mbuf *m = sym_op->m_src;
+		uint32_t offset = test_buffer_size;
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-		rte_security_attach_session(ops[i], sec_sess);
-		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
-							src_buf_offset);
+		rte_security_attach_session(ops[i], sess);
+		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] + src_buf_offset);
+		sym_op->m_src->pkt_len = test_buffer_size;
 
-		/* In case of IPsec, headroom is consumed by PMD,
-		 * hence resetting it.
+		while ((m->next != NULL) && (offset >= m->data_len)) {
+			offset -= m->data_len;
+			m = m->next;
+		}
+		m->data_len = offset;
+		/*
+		 * If there is not enough room in segment,
+		 * place the digest in the next segment
 		 */
-		m->data_off = headroom_sz;
-
-		m->buf_len = segment_sz;
-		m->data_len = test_buffer_size;
-		m->pkt_len = test_buffer_size;
+		if (rte_pktmbuf_tailroom(m) < options->digest_sz) {
+			m = m->next;
+			offset = 0;
+		}
+		m->next = NULL;
 
 		sym_op->m_dst = NULL;
 	}
@@ -175,6 +328,52 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 	*tsc_start += tsc_end_temp - tsc_start_temp;
 }
 
+static void
+cperf_set_ops_security_tls(struct rte_crypto_op **ops,
+		uint32_t src_buf_offset __rte_unused,
+		uint32_t dst_buf_offset __rte_unused,
+		uint16_t nb_ops, void *sess,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector,
+		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
+		uint64_t *tsc_start)
+{
+	const uint32_t test_buffer_size = options->test_buffer_size;
+	uint16_t i = 0;
+
+	RTE_SET_USED(imix_idx);
+	RTE_SET_USED(tsc_start);
+	RTE_SET_USED(test_vector);
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
+		struct rte_mbuf *m = sym_op->m_src;
+		uint32_t offset = test_buffer_size;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		ops[i]->param1.tls_record.content_type = 0x17;
+		rte_security_attach_session(ops[i], sess);
+		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] + src_buf_offset);
+		sym_op->m_src->pkt_len = test_buffer_size;
+
+		while ((m->next != NULL) && (offset >= m->data_len)) {
+			offset -= m->data_len;
+			m = m->next;
+		}
+		m->data_len = offset;
+		/*
+		 * If there is not enough room in segment,
+		 * place the digest in the next segment
+		 */
+		if ((rte_pktmbuf_tailroom(m)) < options->digest_sz) {
+			m = m->next;
+			m->data_len = 0;
+		}
+		m->next = NULL;
+
+		sym_op->m_dst = NULL;
+	}
+}
 #endif
 
 static void
@@ -538,7 +737,9 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 	uint16_t i;
 	/* AAD is placed after the IV */
 	uint16_t aad_offset = iv_offset +
-			RTE_ALIGN_CEIL(test_vector->aead_iv.length, 16);
+			((options->aead_algo == RTE_CRYPTO_AEAD_AES_CCM) ?
+			RTE_ALIGN_CEIL(test_vector->aead_iv.length, 16) :
+			test_vector->aead_iv.length);
 
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
@@ -608,7 +809,10 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 	}
 
 	if ((options->test == CPERF_TEST_TYPE_VERIFY) ||
-			(options->test == CPERF_TEST_TYPE_LATENCY)) {
+	    (options->test == CPERF_TEST_TYPE_LATENCY) ||
+	    (options->test == CPERF_TEST_TYPE_THROUGHPUT &&
+	     (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT ||
+	      options->cipher_op == RTE_CRYPTO_CIPHER_OP_DECRYPT))) {
 		for (i = 0; i < nb_ops; i++) {
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);
@@ -749,8 +953,107 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 	else
 		sess_conf.ipsec.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 
-	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-				rte_cryptodev_get_sec_ctx(dev_id);
+	void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
+
+	/* Create security session */
+	return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
+}
+
+static void *
+create_tls_session(struct rte_mempool *sess_mp,
+		uint8_t dev_id,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector,
+		uint16_t iv_offset)
+{
+	struct rte_crypto_sym_xform auth_xform = {0};
+	struct rte_crypto_sym_xform *crypto_xform;
+	struct rte_crypto_sym_xform xform = {0};
+
+	if (options->aead_algo != 0) {
+		/* Setup AEAD Parameters */
+		xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+		xform.next = NULL;
+		xform.aead.algo = options->aead_algo;
+		xform.aead.op = options->aead_op;
+		xform.aead.iv.offset = iv_offset;
+		xform.aead.key.data = test_vector->aead_key.data;
+		xform.aead.key.length = test_vector->aead_key.length;
+		xform.aead.iv.length = test_vector->aead_iv.length;
+		xform.aead.digest_length = options->digest_sz;
+		xform.aead.aad_length = options->aead_aad_sz;
+		crypto_xform = &xform;
+	} else if (options->cipher_algo != 0 && options->auth_algo != 0) {
+		/* Setup Cipher Parameters */
+		xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		xform.cipher.algo = options->cipher_algo;
+		xform.cipher.op = options->cipher_op;
+		xform.cipher.iv.offset = iv_offset;
+		xform.cipher.iv.length = test_vector->cipher_iv.length;
+		/* cipher different than null */
+		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+			xform.cipher.key.data = test_vector->cipher_key.data;
+			xform.cipher.key.length = test_vector->cipher_key.length;
+		} else {
+			xform.cipher.key.data = NULL;
+			xform.cipher.key.length = 0;
+		}
+
+		/* Setup Auth Parameters */
+		auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		auth_xform.auth.algo = options->auth_algo;
+		auth_xform.auth.op = options->auth_op;
+		auth_xform.auth.iv.offset = iv_offset + xform.cipher.iv.length;
+		/* auth different than null */
+		if (options->auth_algo != RTE_CRYPTO_AUTH_NULL) {
+			auth_xform.auth.digest_length = options->digest_sz;
+			auth_xform.auth.key.length = test_vector->auth_key.length;
+			auth_xform.auth.key.data = test_vector->auth_key.data;
+			auth_xform.auth.iv.length = test_vector->auth_iv.length;
+		} else {
+			auth_xform.auth.digest_length = 0;
+			auth_xform.auth.key.length = 0;
+			auth_xform.auth.key.data = NULL;
+			auth_xform.auth.iv.length = 0;
+		}
+
+		if (options->is_outbound) {
+			/* Currently supporting AUTH then Encrypt mode only for TLS. */
+			crypto_xform = &auth_xform;
+			auth_xform.next = &xform;
+			xform.next = NULL;
+		} else {
+			crypto_xform = &xform;
+			xform.next = &auth_xform;
+			auth_xform.next = NULL;
+		}
+	} else {
+		return NULL;
+	}
+
+	struct rte_security_tls_record_sess_options opts = {
+		.iv_gen_disable = 0,
+		.extra_padding_enable = 0,
+	};
+	struct rte_security_session_conf sess_conf = {
+		.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_TLS_RECORD,
+		{.tls_record = {
+			.ver = RTE_SECURITY_VERSION_TLS_1_2,
+			.options = opts,
+		} },
+		.userdata = NULL,
+		.crypto_xform = crypto_xform,
+	};
+	if (options->tls_version)
+		sess_conf.tls_record.ver = options->tls_version;
+
+	if (options->is_outbound)
+		sess_conf.tls_record.type = RTE_SECURITY_TLS_SESS_TYPE_WRITE;
+	else
+		sess_conf.tls_record.type = RTE_SECURITY_TLS_SESS_TYPE_READ;
+
+	void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
 	/* Create security session */
 	return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
@@ -785,6 +1088,99 @@ cperf_create_session(struct rte_mempool *sess_mp,
 			RTE_LOG(ERR, USER1, "Asym session create failed\n");
 			return NULL;
 		}
+		return asym_sess;
+	}
+
+	if (options->op_type == CPERF_ASYM_RSA) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA;
+		xform.rsa.padding.type = options->rsa_data->padding;
+		xform.rsa.n.data = options->rsa_data->n.data;
+		xform.rsa.n.length = options->rsa_data->n.length;
+		xform.rsa.e.data = options->rsa_data->e.data;
+		xform.rsa.e.length = options->rsa_data->e.length;
+		xform.rsa.d.data = options->rsa_data->d.data;
+		xform.rsa.d.length = options->rsa_data->d.length;
+		xform.rsa.key_type = options->rsa_data->key_type;
+		if (xform.rsa.key_type == RTE_RSA_KEY_TYPE_QT) {
+			xform.rsa.qt.p.data = options->rsa_data->p.data;
+			xform.rsa.qt.p.length = options->rsa_data->p.length;
+			xform.rsa.qt.q.data = options->rsa_data->q.data;
+			xform.rsa.qt.q.length = options->rsa_data->q.length;
+			xform.rsa.qt.dP.data = options->rsa_data->dp.data;
+			xform.rsa.qt.dP.length = options->rsa_data->dp.length;
+			xform.rsa.qt.dQ.data = options->rsa_data->dq.data;
+			xform.rsa.qt.dQ.length = options->rsa_data->dq.length;
+			xform.rsa.qt.qInv.data = options->rsa_data->qinv.data;
+			xform.rsa.qt.qInv.length = options->rsa_data->qinv.length;
+		}
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "Asym session create failed\n");
+			return NULL;
+		}
+		return asym_sess;
+	}
+
+	if (options->op_type == CPERF_ASYM_SECP256R1) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDSA;
+		xform.ec.curve_id = options->secp256r1_data->curve;
+		xform.ec.pkey.data = options->secp256r1_data->pkey.data;
+		xform.ec.pkey.length = options->secp256r1_data->pkey.length;
+		xform.ec.q.x.data = options->secp256r1_data->pubkey_qx.data;
+		xform.ec.q.x.length = options->secp256r1_data->pubkey_qx.length;
+		xform.ec.q.y.data = options->secp256r1_data->pubkey_qy.data;
+		xform.ec.q.y.length = options->secp256r1_data->pubkey_qy.length;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "ECDSA Asym session create failed\n");
+			return NULL;
+		}
+
+		return asym_sess;
+	}
+
+	if (options->op_type == CPERF_ASYM_ED25519) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_EDDSA;
+		xform.ec.curve_id = options->eddsa_data->curve;
+		xform.ec.pkey.data = options->eddsa_data->pkey.data;
+		xform.ec.pkey.length = options->eddsa_data->pkey.length;
+		xform.ec.q.x.data = options->eddsa_data->pubkey.data;
+		xform.ec.q.x.length = options->eddsa_data->pubkey.length;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "EdDSA Asym session create failed\n");
+			return NULL;
+		}
+
+		return asym_sess;
+	}
+
+	if (options->op_type == CPERF_ASYM_SM2) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
+		xform.ec.curve_id = options->sm2_data->curve;
+		xform.ec.pkey.data = options->sm2_data->pkey.data;
+		xform.ec.pkey.length = options->sm2_data->pkey.length;
+		xform.ec.q.x.data = options->sm2_data->pubkey_qx.data;
+		xform.ec.q.x.length = options->sm2_data->pubkey_qx.length;
+		xform.ec.q.y.data = options->sm2_data->pubkey_qy.data;
+		xform.ec.q.y.length = options->sm2_data->pubkey_qy.length;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "SM2 Asym session create failed\n");
+			return NULL;
+		}
+
 		return asym_sess;
 	}
 #ifdef RTE_LIB_SECURITY
@@ -853,8 +1249,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 			.crypto_xform = &cipher_xform
 		};
 
-		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-					rte_cryptodev_get_sec_ctx(dev_id);
+		void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
 		/* Create security session */
 		return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
@@ -862,6 +1257,11 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 	if (options->op_type == CPERF_IPSEC) {
 		return create_ipsec_session(sess_mp, dev_id,
+				options, test_vector, iv_offset);
+	}
+
+	if (options->op_type == CPERF_TLS) {
+		return create_tls_session(sess_mp, dev_id,
 				options, test_vector, iv_offset);
 	}
 
@@ -901,8 +1301,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 			} },
 			.crypto_xform = &cipher_xform
 		};
-		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-					rte_cryptodev_get_sec_ctx(dev_id);
+		void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
 		/* Create security session */
 		return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
@@ -1082,7 +1481,19 @@ cperf_get_op_functions(const struct cperf_options *options,
 			op_fns->populate_ops = cperf_set_ops_cipher;
 		break;
 	case CPERF_ASYM_MODEX:
-		op_fns->populate_ops = cperf_set_ops_asym;
+		op_fns->populate_ops = cperf_set_ops_asym_modex;
+		break;
+	case CPERF_ASYM_RSA:
+		op_fns->populate_ops = cperf_set_ops_asym_rsa;
+		break;
+	case CPERF_ASYM_SECP256R1:
+		op_fns->populate_ops = cperf_set_ops_asym_ecdsa;
+		break;
+	case CPERF_ASYM_ED25519:
+		op_fns->populate_ops = cperf_set_ops_asym_eddsa;
+		break;
+	case CPERF_ASYM_SM2:
+		op_fns->populate_ops = cperf_set_ops_asym_sm2;
 		break;
 #ifdef RTE_LIB_SECURITY
 	case CPERF_PDCP:
@@ -1091,6 +1502,9 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 	case CPERF_IPSEC:
 		op_fns->populate_ops = cperf_set_ops_security_ipsec;
+		break;
+	case CPERF_TLS:
+		op_fns->populate_ops = cperf_set_ops_security_tls;
 		break;
 #endif
 	default:

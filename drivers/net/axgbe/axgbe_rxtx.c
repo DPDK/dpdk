@@ -92,7 +92,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	dma = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, size, 128,
 				       socket_id);
 	if (!dma) {
-		PMD_DRV_LOG(ERR, "ring_dma_zone_reserve for rx_ring failed\n");
+		PMD_DRV_LOG_LINE(ERR, "ring_dma_zone_reserve for rx_ring failed");
 		axgbe_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
@@ -105,7 +105,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					  RTE_CACHE_LINE_SIZE,
 					  socket_id);
 	if (!rxq->sw_ring) {
-		PMD_DRV_LOG(ERR, "rte_zmalloc for sw_ring failed\n");
+		PMD_DRV_LOG_LINE(ERR, "rte_zmalloc for sw_ring failed");
 		axgbe_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
@@ -139,8 +139,8 @@ static void axgbe_prepare_rx_stop(struct axgbe_port *pdata,
 	}
 
 	if (!time_before(rte_get_timer_cycles(), rx_timeout))
-		PMD_DRV_LOG(ERR,
-			    "timed out waiting for Rx queue %u to empty\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "timed out waiting for Rx queue %u to empty",
 			    queue);
 }
 
@@ -224,8 +224,8 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		tmbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(!tmbuf)) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed port_id = %u"
-				    " queue_id = %u\n",
+			PMD_DRV_LOG_LINE(ERR, "RX mbuf alloc failed port_id = %u"
+				    " queue_id = %u",
 				    (unsigned int)rxq->port_id,
 				    (unsigned int)rxq->queue_id);
 			rte_eth_devices[
@@ -359,8 +359,8 @@ next_desc:
 
 		tmbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(!tmbuf)) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed port_id = %u"
-				    " queue_id = %u\n",
+			PMD_DRV_LOG_LINE(ERR, "RX mbuf alloc failed port_id = %u"
+				    " queue_id = %u",
 				    (unsigned int)rxq->port_id,
 				    (unsigned int)rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
@@ -627,6 +627,9 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				RTE_ETH_TX_OFFLOAD_MULTI_SEGS))
 		pdata->multi_segs_tx = true;
 
+	if ((dev_data->dev_conf.txmode.offloads &
+				RTE_ETH_TX_OFFLOAD_TCP_TSO))
+		pdata->tso_tx = true;
 
 	return 0;
 }
@@ -677,8 +680,8 @@ static void axgbe_txq_prepare_tx_stop(struct axgbe_port *pdata,
 	}
 
 	if (!time_before(rte_get_timer_cycles(), tx_timeout))
-		PMD_DRV_LOG(ERR,
-			    "timed out waiting for Tx queue %u to empty\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "timed out waiting for Tx queue %u to empty",
 			    queue);
 }
 
@@ -721,8 +724,8 @@ static void axgbe_prepare_tx_stop(struct axgbe_port *pdata,
 	}
 
 	if (!time_before(rte_get_timer_cycles(), tx_timeout))
-		PMD_DRV_LOG(ERR,
-			    "timed out waiting for Tx DMA channel %u to stop\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "timed out waiting for Tx DMA channel %u to stop",
 			    queue);
 }
 
@@ -824,26 +827,77 @@ static int axgbe_xmit_hw(struct axgbe_tx_queue *txq,
 	volatile struct axgbe_tx_desc *desc;
 	uint16_t idx;
 	uint64_t mask;
+	int start_index;
+	uint64_t l2_len = 0;
+	uint64_t l3_len = 0;
+	uint64_t l4_len = 0;
+	uint64_t tso_segz = 0;
+	uint64_t total_hdr_len;
+	int tso = 0;
+
+	/*Parameters required for tso*/
+	l2_len = mbuf->l2_len;
+	l3_len = mbuf->l3_len;
+	l4_len = mbuf->l4_len;
+	total_hdr_len = l2_len + l3_len + l4_len;
+	tso_segz = mbuf->tso_segsz;
+
+	if (txq->pdata->tso_tx)
+		tso = 1;
+	else
+		tso = 0;
+
+	AXGMAC_DMA_IOWRITE_BITS(txq, DMA_CH_CR, MSS, tso_segz);
 
 	idx = AXGBE_GET_DESC_IDX(txq, txq->cur);
 	desc = &txq->desc[idx];
 
-	/* Update buffer address  and length */
-	desc->baddr = rte_mbuf_data_iova(mbuf);
-	AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, HL_B1L,
-			   mbuf->pkt_len);
-	/* Total msg length to transmit */
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FL,
-			   mbuf->pkt_len);
+	/* Saving the start index for setting the OWN bit finally */
+	start_index = idx;
+	if (tso) {
+		/* Update buffer address  and length */
+		desc->baddr = rte_mbuf_data_iova(mbuf);
+		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, HL_B1L,
+				total_hdr_len);
+	} else {
+		/* Update buffer address  and length */
+		desc->baddr = rte_mbuf_data_iova(mbuf);
+		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, HL_B1L,
+				mbuf->pkt_len);
+		/* Total msg length to transmit */
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FL,
+				mbuf->pkt_len);
+	}
 	/* Timestamp enablement check */
 	if (mbuf->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, TTSE, 1);
 	rte_wmb();
 	/* Mark it as First and Last Descriptor */
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FD, 1);
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, LD, 1);
 	/* Mark it as a NORMAL descriptor */
 	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CTXT, 0);
+	if (tso) {
+		/*Register settings for TSO*/
+		/* Enable TSO */
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, TSE, 1);
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, TPL,
+				((mbuf->pkt_len) - total_hdr_len));
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, THL,
+				(l4_len / 4));
+		rte_wmb();
+		txq->cur++;
+		idx = AXGBE_GET_DESC_IDX(txq, txq->cur);
+		desc = &txq->desc[idx];
+		desc->baddr = rte_mbuf_data_iova(mbuf);
+		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, HL_B1L,
+				(mbuf->pkt_len) - total_hdr_len);
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, LD, 1);
+		/* Mark it as a NORMAL descriptor */
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CTXT, 0);
+	} else {
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, LD, 1);
+	}
 	/* configure h/w Offload */
 	mask = mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
 	if (mask == RTE_MBUF_F_TX_TCP_CKSUM || mask == RTE_MBUF_F_TX_UDP_CKSUM)
@@ -867,12 +921,16 @@ static int axgbe_xmit_hw(struct axgbe_tx_queue *txq,
 	} else {
 		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, VTIR, 0x0);
 	}
-	rte_wmb();
 
-	/* Set OWN bit */
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
-	rte_wmb();
-
+	if (!tso) {
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
+		rte_wmb();
+	} else {
+		/* Set OWN bit for the first descriptor */
+		desc = &txq->desc[start_index];
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
+		rte_wmb();
+	}
 
 	/* Save mbuf */
 	txq->sw_ring[idx] = mbuf;
@@ -899,6 +957,7 @@ axgbe_xmit_hw_seg(struct axgbe_tx_queue *txq,
 	uint32_t pkt_len = 0;
 	int nb_desc_free;
 	struct rte_mbuf  *tx_pkt;
+	uint32_t tso = 0;
 
 	nb_desc_free = txq->nb_desc - (txq->cur - txq->dirty);
 
@@ -909,113 +968,107 @@ axgbe_xmit_hw_seg(struct axgbe_tx_queue *txq,
 			return RTE_ETH_TX_DESC_UNAVAIL;
 	}
 
-	idx = AXGBE_GET_DESC_IDX(txq, txq->cur);
-	desc = &txq->desc[idx];
-	/* Saving the start index for setting the OWN bit finally */
-	start_index = idx;
+	if (txq->pdata->tso_tx)
+		tso = 1;
+	else
+		tso = 0;
 
-	tx_pkt = mbuf;
-	/* Max_pkt len = 9018 ; need to update it according to Jumbo pkt size */
-	pkt_len = tx_pkt->pkt_len;
-
-	/* Update buffer address  and length */
-	desc->baddr = rte_mbuf_data_iova(tx_pkt);
-	AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, HL_B1L,
-					   tx_pkt->data_len);
-	/* Total msg length to transmit */
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FL,
-					   tx_pkt->pkt_len);
-	/* Timestamp enablement check */
-	if (mbuf->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
-		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, TTSE, 1);
-
-	rte_wmb();
-	/* Mark it as First Descriptor */
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FD, 1);
-	/* Mark it as a NORMAL descriptor */
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CTXT, 0);
-	/* configure h/w Offload */
-	mask = mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
-	if (mask == RTE_MBUF_F_TX_TCP_CKSUM || mask == RTE_MBUF_F_TX_UDP_CKSUM)
-		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x3);
-	else if (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
-		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x1);
-	rte_wmb();
-
-	if (mbuf->ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
-		/* Mark it as a CONTEXT descriptor */
-		AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
-				CTXT, 1);
-		/* Set the VLAN tag */
-		AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
-				VT, mbuf->vlan_tci);
-		/* Indicate this descriptor contains the VLAN tag */
-		AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
-				VLTV, 1);
-		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, VTIR,
-				TX_NORMAL_DESC2_VLAN_INSERT);
+	if (tso) {
+		axgbe_xmit_hw(txq, mbuf);
 	} else {
-		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, VTIR, 0x0);
-	}
-	rte_wmb();
-
-	/* Save mbuf */
-	txq->sw_ring[idx] = tx_pkt;
-	/* Update current index*/
-	txq->cur++;
-
-	tx_pkt = tx_pkt->next;
-
-	while (tx_pkt != NULL) {
 		idx = AXGBE_GET_DESC_IDX(txq, txq->cur);
 		desc = &txq->desc[idx];
+		/* Saving the start index for setting the OWN bit finally */
+		start_index = idx;
+		tx_pkt = mbuf;
+		/* Max_pkt len = 9018 ; need to update it according to Jumbo pkt size */
+		pkt_len = tx_pkt->pkt_len;
 
 		/* Update buffer address  and length */
 		desc->baddr = rte_mbuf_data_iova(tx_pkt);
-
-		AXGMAC_SET_BITS_LE(desc->desc2,
-				TX_NORMAL_DESC2, HL_B1L, tx_pkt->data_len);
-
+		AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, HL_B1L,
+				tx_pkt->data_len);
+		/* Total msg length to transmit */
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FL,
+				tx_pkt->pkt_len);
+		/* Timestamp enablement check */
+		if (mbuf->ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
+			AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, TTSE, 1);
 		rte_wmb();
-
+		/* Mark it as First Descriptor */
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, FD, 1);
 		/* Mark it as a NORMAL descriptor */
 		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CTXT, 0);
 		/* configure h/w Offload */
 		mask = mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
-		if (mask == RTE_MBUF_F_TX_TCP_CKSUM ||
-				mask == RTE_MBUF_F_TX_UDP_CKSUM)
-			AXGMAC_SET_BITS_LE(desc->desc3,
-					TX_NORMAL_DESC3, CIC, 0x3);
+		if (mask == RTE_MBUF_F_TX_TCP_CKSUM || mask == RTE_MBUF_F_TX_UDP_CKSUM)
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x3);
 		else if (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
-			AXGMAC_SET_BITS_LE(desc->desc3,
-					TX_NORMAL_DESC3, CIC, 0x1);
-
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CIC, 0x1);
 		rte_wmb();
-
-		 /* Set OWN bit */
-		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
+		if (mbuf->ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ)) {
+			/* Mark it as a CONTEXT descriptor */
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
+					CTXT, 1);
+			/* Set the VLAN tag */
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
+					VT, mbuf->vlan_tci);
+			/* Indicate this descriptor contains the VLAN tag */
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_CONTEXT_DESC3,
+					VLTV, 1);
+			AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, VTIR,
+					TX_NORMAL_DESC2_VLAN_INSERT);
+		} else {
+			AXGMAC_SET_BITS_LE(desc->desc2, TX_NORMAL_DESC2, VTIR, 0x0);
+		}
 		rte_wmb();
-
 		/* Save mbuf */
 		txq->sw_ring[idx] = tx_pkt;
 		/* Update current index*/
 		txq->cur++;
-
 		tx_pkt = tx_pkt->next;
+		while (tx_pkt != NULL) {
+			idx = AXGBE_GET_DESC_IDX(txq, txq->cur);
+			desc = &txq->desc[idx];
+			/* Update buffer address  and length */
+			desc->baddr = rte_mbuf_data_iova(tx_pkt);
+			AXGMAC_SET_BITS_LE(desc->desc2,
+					TX_NORMAL_DESC2, HL_B1L, tx_pkt->data_len);
+			rte_wmb();
+			/* Mark it as a NORMAL descriptor */
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, CTXT, 0);
+			/* configure h/w Offload */
+			mask = mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
+			if (mask == RTE_MBUF_F_TX_TCP_CKSUM ||
+					mask == RTE_MBUF_F_TX_UDP_CKSUM)
+				AXGMAC_SET_BITS_LE(desc->desc3,
+						TX_NORMAL_DESC3, CIC, 0x3);
+			else if (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
+				AXGMAC_SET_BITS_LE(desc->desc3,
+						TX_NORMAL_DESC3, CIC, 0x1);
+			rte_wmb();
+			/* Set OWN bit */
+			AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
+			rte_wmb();
+			/* Save mbuf */
+			txq->sw_ring[idx] = tx_pkt;
+			/* Update current index*/
+			txq->cur++;
+			tx_pkt = tx_pkt->next;
+		}
+
+		/* Set LD bit for the last descriptor */
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, LD, 1);
+		rte_wmb();
+
+		/* Update stats */
+		txq->bytes += pkt_len;
+
+		/* Set OWN bit for the first descriptor */
+		desc = &txq->desc[start_index];
+		AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
+		rte_wmb();
 	}
-
-	/* Set LD bit for the last descriptor */
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, LD, 1);
-	rte_wmb();
-
-	/* Update stats */
-	txq->bytes += pkt_len;
-
-	/* Set OWN bit for the first descriptor */
-	desc = &txq->desc[start_index];
-	AXGMAC_SET_BITS_LE(desc->desc3, TX_NORMAL_DESC3, OWN, 1);
-	rte_wmb();
-
 	return 0;
 }
 
@@ -1124,6 +1177,7 @@ void axgbe_dev_clear_queues(struct rte_eth_dev *dev)
 			axgbe_rx_queue_release(rxq);
 			dev->data->rx_queues[i] = NULL;
 		}
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -1133,6 +1187,7 @@ void axgbe_dev_clear_queues(struct rte_eth_dev *dev)
 			axgbe_tx_queue_release(txq);
 			dev->data->tx_queues[i] = NULL;
 		}
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 }
 

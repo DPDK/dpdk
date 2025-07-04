@@ -363,5 +363,5 @@ test_slow_rib(void)
 	return unit_test_suite_runner(&rib_slow_tests);
 }
 
-REGISTER_TEST_COMMAND(rib_autotest, test_rib);
-REGISTER_TEST_COMMAND(rib_slow_autotest, test_slow_rib);
+REGISTER_FAST_TEST(rib_autotest, true, true, test_rib);
+REGISTER_PERF_TEST(rib_slow_autotest, test_slow_rib);

@@ -24,7 +24,5 @@ html_guides = custom_target('html_guides',
         install: get_option('enable_docs'),
         install_dir: htmldir)
 
-install_data(files('custom.css'), install_dir: join_paths(htmldir,'_static', 'css'))
-
 doc_targets += html_guides
 doc_target_names += 'HTML_Guides'

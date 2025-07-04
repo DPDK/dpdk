@@ -13,7 +13,8 @@ optimized libraries to appear as virtual bbdev devices.
 The functional scope of the BBDEV library are those functions in relation to
 the 3GPP Layer 1 signal processing (channel coding, modulation, ...).
 
-The framework currently only supports FEC function.
+The framework currently supports FEC functions (5G/4G encoder/decoder),
+as well as FFT and MLD-TS.
 
 
 Design Principles
@@ -261,16 +262,66 @@ information:
   structure, this is where capabilities reside along with other specifics like:
   maximum queue sizes and priority level.
 
-.. code-block:: c
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev.h
+   :language: c
+   :start-after: Structure rte_bbdev_driver_info 8<
+   :end-before: >8 End of structure rte_bbdev_driver_info.
 
-    struct rte_bbdev_info {
-        int socket_id;
-        const char *dev_name;
-        const struct rte_device *device;
-        uint16_t num_queues;
-        bool started;
-        struct rte_bbdev_driver_info drv;
-    };
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev.h
+   :language: c
+   :start-after: Structure rte_bbdev_info 8<
+   :end-before: >8 End of structure rte_bbdev_info.
+
+Capabilities details for LDPC Decoder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On top of the ``RTE_BBDEV_LDPC_<*>`` capabilities
+the device also exposes the LLR numerical representation
+expected by the decoder as a fractional fixed-point representation.
+For instance, when the representation (``llr_size``, ``llr_decimals``) = (8, 2) respectively,
+this means that each input LLR in the data provided by the application must be computed
+as 8 total bits (including sign bit)
+where 2 of these are fractions bits (also referred to as S8.2 format).
+It is up to the user application during LLR generation to scale the LLR
+according to this optimal numerical representation.
+Any mis-scaled LLR would cause wireless performance degradation.
+
+The ``harq_buffer_size`` exposes the amount of dedicated DDR
+made available for the device operation.
+This is specific for accelerator non-integrated on the CPU (separate PCIe device)
+which may include separate on-card memory.
+
+Capabilities details for FFT function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The total number of distinct time windows supported
+for the post-FFT point-wise multiplication is exposed as ``fft_windows_num``.
+The ``window_index`` provided for each cyclic shift
+in each ``rte_bbdev_op_fft`` operation is expected to be limited to that size.
+
+The information related to the width of each of these pre-configured window
+is also exposed using the ``fft_window_width`` array.
+This provides the number of non-null samples
+used for each window index when scaling back the size to a reference of 1024 FFT.
+The actual shape size is effectively scaled up or down
+based on the dynamic size of the FFT operation being used.
+
+This allows to distinguish different version of the flexible pointwise windowing
+applied to the FFT and exposes this platform configuration to the application.
+
+Other optional capabilities exposed during device discovery
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The device status can be used to expose additional information
+related to the state of the platform notably based on its configuration state
+or related to error management (correctable or non).
+
+The queue topology exposed to the device is provided on top of the capabilities.
+This provides the number of queues available
+for the exposed bbdev device (the physical device may have more)
+for each operation as well as the different level of priority available for arbitration.
+These are based on the arrays and parameters
+``num_queues``, ``queue_priority``, ``max_num_queues``, ``queue_size_lim``.
 
 
 Operation Processing
@@ -903,6 +954,12 @@ given below.
 |RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK                        |
 | Set if a device supports loopback access to HARQ internal memory   |
 +--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_FILLERS                         |
+| Set if a device includes LLR filler bits in HARQ circular buffer   |
++--------------------------------------------------------------------+
+|RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION                                |
+|Set if a device supports input/output 4 bits HARQ compression       |
++--------------------------------------------------------------------+
 
 The structure passed for each LDPC decode operation is given below,
 with the operation flags forming a bitmask in the ``op_flags`` field.
@@ -964,6 +1021,8 @@ The LDPC decode parameters are set out in the table below.
 |                |ea          |Ea, length of the RM output sequence in bits, r < cab  |
 +----------------+------------+-------------------------------------------------------+
 |                |eb          |Eb, length of the RM output sequence in bits  r >= cab |
++----------------+------------+-------------------------------------------------------+
+|                |k0          |Optional k0 Rate matching starting position override   |
 +----------------+------------+-------------------------------------------------------+
 
 The mbuf input ``input`` encoded CB data is mandatory for all BBDEV PMDs
@@ -1111,6 +1170,18 @@ with the operation flags forming a bitmask in the ``op_flags`` field.
 |RTE_BBDEV_FFT_FP16_OUTPUT                                           |
 | Set if the output data shall use FP16 format instead of INT16      |
 +--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_TIMING_OFFSET_PER_CS                                  |
+| Set if device supports adjusting time offset per CS                |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_TIMING_ERROR                                          |
+| Set if device supports correcting for timing error                 |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_DEWINDOWING                                           |
+| Set if enabling the option FFT Dewindowing in Frequency domain     |
++--------------------------------------------------------------------+
+|RTE_BBDEV_FFT_FREQ_RESAMPLING                                       |
+| Set if device supports the optional frequency resampling           |
++--------------------------------------------------------------------+
 
 The FFT parameters are set out in the table below.
 
@@ -1120,6 +1191,8 @@ The FFT parameters are set out in the table below.
 |base_input               |input data                                                    |
 +-------------------------+--------------------------------------------------------------+
 |base_output              |output data                                                   |
++-------------------------+--------------------------------------------------------------+
+|dewindowing_input        |optional frequency domain dewindowing input data              |
 +-------------------------+--------------------------------------------------------------+
 |power_meas_output        |optional output data with power measurement on DFT output     |
 +-------------------------+--------------------------------------------------------------+
@@ -1155,6 +1228,16 @@ The FFT parameters are set out in the table below.
 +-------------------------+--------------------------------------------------------------+
 |fp16_exp_adjust          |value added to FP16 exponent at conversion from INT16         |
 +-------------------------+--------------------------------------------------------------+
+|freq_resample_mode       |frequency ressampling mode (0:transparent, 1-2: resample)     |
++-------------------------+--------------------------------------------------------------+
+| output_depadded_size    |output depadded size prior to frequency resampling            |
++-------------------------+--------------------------------------------------------------+
+|cs_theta_0               |timing error correction initial phase                         |
++-------------------------+--------------------------------------------------------------+
+|cs_theta_d               |timing error correction phase increment                       |
++-------------------------+--------------------------------------------------------------+
+|time_offset              |time offset per CS of time domain samples                     |
++-------------------------+--------------------------------------------------------------+
 
 The mbuf input ``base_input`` is mandatory for all bbdev PMDs and
 is the incoming data for the processing. Its size may not fit into an actual mbuf,
@@ -1164,6 +1247,59 @@ Each point is a complex number of 32bits :
 either as 2 INT16 or as 2 FP16 based when the option supported.
 The data layout is based on contiguous concatenation of output data
 first by cyclic shift then by antenna.
+
+BBDEV MLD-TS Operation
+~~~~~~~~~~~~~~~~~~~~~~
+
+This operation allows to run the Tree Search (TS) portion of a Maximum Likelihood processing (MLD).
+
+This alternate equalization option accelerates the exploration of the best combination of
+transmitted symbols across layers minimizing the Euclidean distance between the received and
+reconstructed signal, then generates the LLRs to be used by the LDPC Decoder.
+The input is the results of the Q R decomposition: Q^Hy signal and R matrix.
+
+The structure passed for each MLD-TS operation is given below,
+with the operation flags forming a bitmask in the ``op_flags`` field.
+
+  **NOTE:** The actual operation flags that may be used with a specific
+  bbdev PMD are dependent on the driver capabilities as reported via
+  ``rte_bbdev_info_get()``, and may be a subset of those below.
+
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev_op.h
+   :language: c
+   :start-after: Structure rte_bbdev_op_mldts 8<
+   :end-before: >8 End of structure rte_bbdev_op_mldts.
+
++--------------------------------------------------------------------+
+|Description of MLD-TS capability flags                              |
++====================================================================+
+|RTE_BBDEV_MLDTS_REP                                                 |
+| Set if the option to use repeated data from R channel is supported |
++--------------------------------------------------------------------+
+
+The MLD-TS parameters are set out in the table below.
+
++-------------------------+--------------------------------------------------------------+
+|Parameter                |Description                                                   |
++=========================+==============================================================+
+|qhy_input                |input data qHy                                                |
++-------------------------+--------------------------------------------------------------+
+|r_input                  |input data R triangular matrix                                |
++-------------------------+--------------------------------------------------------------+
+|output                   |output data (LLRs)                                            |
++-------------------------+--------------------------------------------------------------+
+|op_flags                 |bitmask of all active operation capabilities                  |
++-------------------------+--------------------------------------------------------------+
+|num_rbs                  |number of Resource Blocks                                     |
++-------------------------+--------------------------------------------------------------+
+|num_layers               |number of overlapping layers                                  |
++-------------------------+--------------------------------------------------------------+
+|q_m                      |array of modulation order for each layer                      |
++-------------------------+--------------------------------------------------------------+
+|r_rep                    |optional row repetition for the R matrix (subcarriers)        |
++-------------------------+--------------------------------------------------------------+
+|c_rep                    |optional column repetition for the R matrix (symbols)         |
++-------------------------+--------------------------------------------------------------+
 
 Sample code
 -----------

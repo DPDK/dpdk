@@ -59,7 +59,7 @@ __rte_ring_st_set_head_tail(struct rte_ring_headtail *ht, uint32_t tail,
 
 	pos = tail + num;
 	ht->head = pos;
-	__atomic_store_n(&ht->tail, pos, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ht->tail, pos, rte_memory_order_release);
 }
 
 /**
@@ -78,7 +78,7 @@ __rte_ring_hts_get_tail(struct rte_ring_hts_headtail *ht, uint32_t *tail,
 	uint32_t n;
 	union __rte_ring_hts_pos p;
 
-	p.raw = __atomic_load_n(&ht->ht.raw, __ATOMIC_RELAXED);
+	p.raw = rte_atomic_load_explicit(&ht->ht.raw, rte_memory_order_relaxed);
 	n = p.pos.head - p.pos.tail;
 
 	RTE_ASSERT(n >= num);
@@ -104,7 +104,7 @@ __rte_ring_hts_set_head_tail(struct rte_ring_hts_headtail *ht, uint32_t tail,
 	p.pos.head = tail + num;
 	p.pos.tail = p.pos.head;
 
-	__atomic_store_n(&ht->ht.raw, p.raw, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ht->ht.raw, p.raw, rte_memory_order_release);
 }
 
 /**

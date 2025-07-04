@@ -35,7 +35,11 @@ sources = files(
 
 require_iova_in_mbuf = false
 
+annotate_locks = false
+
 deps += ['hash']
+
+cflags += no_wvla_cflag
 
 if arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('hns3_rxtx_vec.c')

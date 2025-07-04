@@ -71,10 +71,12 @@ struct mbox {
 const char *mbox_id2name(uint16_t id);
 int mbox_id2size(uint16_t id);
 void mbox_reset(struct mbox *mbox, int devid);
-int mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
-	      int direction, int ndevsi, uint64_t intr_offset);
+int mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base, int direction, int ndevsi,
+	      uint64_t intr_offset);
 void mbox_fini(struct mbox *mbox);
 void mbox_msg_send(struct mbox *mbox, int devid);
+void mbox_msg_send_up(struct mbox *mbox, int devid);
+bool mbox_wait_for_zero(struct mbox *mbox, int devid);
 int mbox_wait_for_rsp(struct mbox *mbox, int devid);
 int mbox_wait_for_rsp_tmo(struct mbox *mbox, int devid, uint32_t tmo);
 int mbox_get_rsp(struct mbox *mbox, int devid, void **msg);

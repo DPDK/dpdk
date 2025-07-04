@@ -129,7 +129,6 @@ struct rte_mtr_meter_profile {
 	/** Traffic metering algorithm. */
 	enum rte_mtr_algorithm alg;
 
-	RTE_STD_C11
 	union {
 		/** Items only valid when *alg* is set to srTCM - RFC 2697. */
 		struct {
@@ -223,7 +222,6 @@ struct rte_mtr_meter_policy_params {
  * applicable for the current input packet wins;
  * if none is both enabled and applicable, the default input color is used.
  * @see function rte_mtr_color_in_protocol_set()
- *
  */
 enum rte_mtr_color_in_protocol {
 	/**
@@ -1043,7 +1041,6 @@ rte_mtr_color_in_protocol_set(uint16_t port_id, uint32_t mtr_id,
  *   Error details. Filled in only on error, when not NULL.
  * @return
  *   0 on success, non-zero error code otherwise.
- *
  */
 __rte_experimental
 int

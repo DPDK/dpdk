@@ -71,75 +71,11 @@ When the device first powers up, its PCI Physical Functions (PF) can be listed t
   sudo lspci -vd1172:5052
 
 The physical and virtual functions are compatible with Linux UIO drivers:
-``vfio`` and ``igb_uio``. However, in order to work the FPGA LTE FEC device firstly needs
+``vfio_pci`` and ``igb_uio``. However, in order to work the FPGA LTE FEC device firstly needs
 to be bound to one of these linux drivers through DPDK.
 
-
-Bind PF UIO driver(s)
-~~~~~~~~~~~~~~~~~~~~~
-
-Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
-``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
-
-The igb_uio driver may be bound to the PF PCI device using one of two methods:
-
-
-1. PCI functions (physical or virtual, depending on the use case) can be bound to
-the UIO driver by repeating this command for every function.
-
-.. code-block:: console
-
-  insmod igb_uio.ko
-  echo "1172 5052" > /sys/bus/pci/drivers/igb_uio/new_id
-  lspci -vd1172:
-
-
-2. Another way to bind PF with DPDK UIO driver is by using the ``dpdk-devbind.py`` tool
-
-.. code-block:: console
-
-  cd <dpdk-top-level-directory>
-  ./usertools/dpdk-devbind.py -b igb_uio 0000:06:00.0
-
-where the PCI device ID (example: 0000:06:00.0) is obtained using lspci -vd1172:
-
-
-In the same way the FPGA LTE FEC PF can be bound with vfio, but vfio driver does not
-support SR-IOV configuration right out of the box, so it will need to be patched.
-
-
-Enable Virtual Functions
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Now, it should be visible in the printouts that PCI PF is under igb_uio control
-"``Kernel driver in use: igb_uio``"
-
-To show the number of available VFs on the device, read ``sriov_totalvfs`` file..
-
-.. code-block:: console
-
-  cat /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_totalvfs
-
-  where 0000\:<b>\:<d>.<f> is the PCI device ID
-
-
-To enable VFs via igb_uio, echo the number of virtual functions intended to
-enable to ``max_vfs`` file..
-
-.. code-block:: console
-
-  echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/max_vfs
-
-
-Afterwards, all VFs must be bound to appropriate UIO drivers as required, same
-way it was done with the physical function previously.
-
-Enabling SR-IOV via vfio driver is pretty much the same, except that the file
-name is different:
-
-.. code-block:: console
-
-  echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_numvfs
+For more details on how to bind the PF device and create VF devices, see
+:ref:`linux_gsg_binding_kernel`.
 
 
 Configure the VFs through PF
@@ -226,44 +162,10 @@ Test Application
 ----------------
 
 BBDEV provides a test application, ``test-bbdev.py`` and range of test data for testing
-the functionality of FPGA LTE FEC turbo encode and turbo decode, depending on the device's
-capabilities. The test application is located under app->test-bbdev folder and has the
-following options:
+the functionality of the device, depending on the device's capabilities.
 
-.. code-block:: console
-
-  "-p", "--testapp-path": specifies path to the bbdev test app.
-  "-e", "--eal-params"	: EAL arguments which are passed to the test app.
-  "-t", "--timeout"	: Timeout in seconds (default=300).
-  "-c", "--test-cases"	: Defines test cases to run. Run all if not specified.
-  "-v", "--test-vector"	: Test vector path (default=dpdk_path+/app/test-bbdev/test_vectors/bbdev_null.data).
-  "-n", "--num-ops"	: Number of operations to process on device (default=32).
-  "-b", "--burst-size"	: Operations enqueue/dequeue burst size (default=32).
-  "-l", "--num-lcores"	: Number of lcores to run (default=16).
-  "-i", "--init-device" : Initialise PF device with default values.
-
-
-To execute the test application tool using simple turbo decode or turbo encode data,
-type one of the following:
-
-.. code-block:: console
-
-  ./test-bbdev.py -c validation -n 64 -b 8 -v ./turbo_dec_default.data
-  ./test-bbdev.py -c validation -n 64 -b 8 -v ./turbo_enc_default.data
-
-
-The test application ``test-bbdev.py``, supports the ability to configure the PF device with
-a default set of values, if the "-i" or "- -init-device" option is included. The default values
-are defined in test_bbdev_perf.c as:
-
-- VF_UL_QUEUE_VALUE 4
-- VF_DL_QUEUE_VALUE 4
-- UL_BANDWIDTH 3
-- DL_BANDWIDTH 3
-- UL_LOAD_BALANCE 128
-- DL_LOAD_BALANCE 128
-- FLR_TIMEOUT 610
-
+For more details on how to use the test application,
+see :ref:`test_bbdev_application`.
 
 Test Vectors
 ~~~~~~~~~~~~
@@ -309,4 +211,4 @@ Specifically for the BBDEV FPGA LTE FEC PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config FPGA_LTE -c fpga_lte/fpga_lte_config_vf.cfg
-  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./turbo_dec_default.data
+  ./test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./turbo_dec_default.data

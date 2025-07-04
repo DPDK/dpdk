@@ -5,10 +5,6 @@
 #ifndef _RTE_EVENTDEV_PMD_PCI_H_
 #define _RTE_EVENTDEV_PMD_PCI_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** @file
  * RTE Eventdev PCI PMD APIs
  *
@@ -27,6 +23,10 @@ extern "C" {
 #include <bus_pci_driver.h>
 
 #include "eventdev_pmd.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef int (*eventdev_pmd_pci_callback_t)(struct rte_eventdev *dev);
 

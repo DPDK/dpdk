@@ -411,15 +411,15 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 			      RTE_IPV6_HDR_TC_SHIFT,
 			      tos);
 
-	if (memcmp(val->hdr.dst_addr, z, sizeof(val->hdr.dst_addr)) ||
+	if (memcmp(&val->hdr.dst_addr, z, sizeof(val->hdr.dst_addr)) ||
 	    (umask &&
-	     memcmp(umask->hdr.dst_addr, z, sizeof(umask->hdr.dst_addr))))
+	     memcmp(&umask->hdr.dst_addr, z, sizeof(umask->hdr.dst_addr))))
 		CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr,
 				     lip);
 
-	if (memcmp(val->hdr.src_addr, z, sizeof(val->hdr.src_addr)) ||
+	if (memcmp(&val->hdr.src_addr, z, sizeof(val->hdr.src_addr)) ||
 	    (umask &&
-	     memcmp(umask->hdr.src_addr, z, sizeof(umask->hdr.src_addr))))
+	     memcmp(&umask->hdr.src_addr, z, sizeof(umask->hdr.src_addr))))
 		CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr,
 				     fip);
 
@@ -680,7 +680,7 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 						  "found.");
 
 		ipv6 = (const struct rte_flow_action_set_ipv6 *)a->conf;
-		memcpy(fs->nat_fip, ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
+		memcpy(fs->nat_fip, &ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
 		*nmode |= 1 << 0;
 		break;
 	case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
@@ -693,7 +693,7 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 						  "found.");
 
 		ipv6 = (const struct rte_flow_action_set_ipv6 *)a->conf;
-		memcpy(fs->nat_lip, ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
+		memcpy(fs->nat_lip, &ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
 		*nmode |= 1 << 1;
 		break;
 	case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
@@ -889,8 +889,8 @@ static struct chrte_fparse parseitem[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.fptr  = ch_rte_parsetype_eth,
 		.dmask = &(const struct rte_flow_item_eth){
-			.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-			.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+			.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 			.hdr.ether_type = 0xffff,
 		}
 	},
@@ -918,12 +918,8 @@ static struct chrte_fparse parseitem[] = {
 		.fptr  = ch_rte_parsetype_ipv6,
 		.dmask = &(const struct rte_flow_item_ipv6) {
 			.hdr = {
-				.src_addr =
-					"\xff\xff\xff\xff\xff\xff\xff\xff"
-					"\xff\xff\xff\xff\xff\xff\xff\xff",
-				.dst_addr =
-					"\xff\xff\xff\xff\xff\xff\xff\xff"
-					"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.src_addr = RTE_IPV6_MASK_FULL,
+				.dst_addr = RTE_IPV6_MASK_FULL,
 				.vtc_flow = RTE_BE32(0xff000000),
 			},
 		},

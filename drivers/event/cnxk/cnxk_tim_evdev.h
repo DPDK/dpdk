@@ -15,11 +15,7 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_reciprocal.h>
-
-#include "hw/tim.h"
-
-#include "roc_model.h"
-#include "roc_tim.h"
+#include <rte_vect.h>
 
 #define NSECPERSEC		 1E9
 #define USECPERSEC		 1E6
@@ -34,6 +30,8 @@
 #define CNXK_TIM_MIN_CHUNK_SLOTS    (0x1)
 #define CNXK_TIM_MAX_CHUNK_SLOTS    (0x1FFE)
 #define CNXK_TIM_MAX_POOL_CACHE_SZ  (16)
+#define CNXK_TIM_HWWQE_RES_OFFSET_B (24)
+#define CNXK_TIM_ENT_PER_LMT	    (7)
 
 #define CN9K_TIM_MIN_TMO_TKS (256)
 
@@ -108,33 +106,34 @@ struct cnxk_tim_evdev {
 struct cnxk_tim_bkt {
 	uint64_t first_chunk;
 	union {
-		uint64_t w1;
+		uint64_t __rte_atomic w1;
 		struct {
-			uint32_t nb_entry;
+			uint32_t __rte_atomic nb_entry;
 			uint8_t sbt : 1;
 			uint8_t hbt : 1;
 			uint8_t bsk : 1;
 			uint8_t rsvd : 5;
-			uint8_t lock;
-			int16_t chunk_remainder;
+			uint8_t __rte_atomic lock;
+			int16_t __rte_atomic chunk_remainder;
 		};
 	};
 	uint64_t current_chunk;
 	uint64_t pad;
 };
 
-struct cnxk_tim_ring {
+struct __rte_cache_aligned cnxk_tim_ring {
 	uint16_t nb_chunk_slots;
 	uint32_t nb_bkts;
 	uintptr_t tbase;
 	uint64_t (*tick_fn)(uint64_t tbase);
 	uint64_t ring_start_cyc;
+	uint64_t lmt_base;
 	struct cnxk_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
 	struct rte_reciprocal_u64 fast_div;
 	struct rte_reciprocal_u64 fast_bkt;
 	uint64_t tck_int;
-	uint64_t arm_cnt;
+	uint64_t __rte_atomic arm_cnt;
 	uintptr_t base;
 	uint8_t prod_type_sp;
 	uint8_t enable_stats;
@@ -149,7 +148,7 @@ struct cnxk_tim_ring {
 	uint64_t nb_chunks;
 	uint64_t chunk_sz;
 	enum roc_tim_clk_src clk_src;
-} __rte_cache_aligned;
+};
 
 struct cnxk_tim_ent {
 	uint64_t w0;
@@ -315,10 +314,23 @@ TIM_ARM_FASTPATH_MODES
 TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 
+uint16_t cnxk_tim_arm_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+				  struct rte_event_timer **tim, const uint16_t nb_timers);
+
+uint16_t cnxk_tim_arm_tmo_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+				      struct rte_event_timer **tim, const uint64_t timeout_tick,
+				      const uint16_t nb_timers);
+
 uint16_t
 cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 			    struct rte_event_timer **tim,
 			    const uint16_t nb_timers);
+
+uint16_t cnxk_tim_timer_cancel_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+					   struct rte_event_timer **tim, const uint16_t nb_timers);
+
+int cnxk_tim_remaining_ticks_get(const struct rte_event_timer_adapter *adapter,
+				 const struct rte_event_timer *evtim, uint64_t *ticks_remaining);
 
 int cnxk_tim_caps_get(const struct rte_eventdev *dev, uint64_t flags,
 		      uint32_t *caps,

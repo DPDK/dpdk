@@ -28,11 +28,11 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	if (unlikely(nb_ops == 0))
 		return 0;
 
-	scheduler_set_worker_session(ops, nb_ops, worker_idx);
+	scheduler_set_worker_sessions(ops, nb_ops, worker_idx);
 	processed_ops = rte_cryptodev_enqueue_burst(worker->dev_id,
 			worker->qp_id, ops, nb_ops);
 	if (processed_ops < nb_ops)
-		scheduler_retrieve_session(ops + processed_ops,
+		scheduler_retrieve_sessions(ops + processed_ops,
 			nb_ops - processed_ops);
 
 	worker->nb_inflight_cops += processed_ops;
@@ -87,7 +87,7 @@ schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	nb_deq_ops = rte_cryptodev_dequeue_burst(worker->dev_id,
 			worker->qp_id, ops, nb_ops);
-	scheduler_retrieve_session(ops, nb_deq_ops);
+	scheduler_retrieve_sessions(ops, nb_deq_ops);
 	last_worker_idx += 1;
 	last_worker_idx %= rr_qp_ctx->nb_workers;
 

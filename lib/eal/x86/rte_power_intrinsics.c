@@ -2,8 +2,12 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <stdalign.h>
+
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_lcore.h>
+#include <rte_lcore_var.h>
 #include <rte_rtm.h>
 #include <rte_spinlock.h>
 
@@ -12,10 +16,93 @@
 /*
  * Per-lcore structure holding current status of C0.2 sleeps.
  */
-static struct power_wait_status {
+struct power_wait_status {
 	rte_spinlock_t lock;
 	volatile void *monitor_addr; /**< NULL if not currently sleeping */
-} __rte_cache_aligned wait_status[RTE_MAX_LCORE];
+};
+
+RTE_LCORE_VAR_HANDLE(struct power_wait_status, wait_status);
+
+static void
+init_wait_status(void)
+{
+	if (wait_status != NULL)
+		return;
+	RTE_LCORE_VAR_ALLOC(wait_status);
+}
+
+/*
+ * This function uses UMONITOR/UMWAIT instructions and will enter C0.2 state.
+ * For more information about usage of these instructions, please refer to
+ * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
+ */
+static void intel_umonitor(volatile void *addr)
+{
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	/* cast away "volatile" when using the intrinsic */
+	_umonitor((void *)(uintptr_t)addr);
+#else
+	/*
+	 * we're using raw byte codes for compiler versions which
+	 * don't support this instruction natively.
+	 */
+	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
+			:
+			: "D"(addr));
+#endif
+}
+
+static void intel_umwait(const uint64_t timeout)
+{
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	_umwait(0, timeout);
+#else
+	const uint32_t tsc_l = (uint32_t)timeout;
+	const uint32_t tsc_h = (uint32_t)(timeout >> 32);
+
+	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
+			: /* ignore rflags */
+			: "D"(0), /* enter C0.2 */
+			  "a"(tsc_l), "d"(tsc_h));
+#endif
+}
+
+/*
+ * This function uses MONITORX/MWAITX instructions and will enter C1 state.
+ * For more information about usage of these instructions, please refer to
+ * AMD64 Architecture Programmer’s Manual.
+ */
+static void amd_monitorx(volatile void *addr)
+{
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__MWAITX__)
+	/* cast away "volatile" when using the intrinsic */
+	_mm_monitorx((void *)(uintptr_t)addr, 0, 0);
+#else
+	asm volatile(".byte 0x0f, 0x01, 0xfa;"
+			:
+			: "a"(addr),
+			"c"(0),  /* no extensions */
+			"d"(0)); /* no hints */
+#endif
+}
+
+static void amd_mwaitx(const uint64_t timeout)
+{
+	RTE_SET_USED(timeout);
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__MWAITX__)
+	_mm_mwaitx(0, 0, 0);
+#else
+	asm volatile(".byte 0x0f, 0x01, 0xfb;"
+			: /* ignore rflags */
+			: "a"(0), /* enter C1 */
+			"c"(0)); /* no time-out */
+#endif
+}
+
+static alignas(RTE_CACHE_LINE_SIZE) struct {
+	void (*mmonitor)(volatile void *addr);
+	void (*mwait)(const uint64_t timeout);
+} power_monitor_ops;
 
 static inline void
 __umwait_wakeup(volatile void *addr)
@@ -23,13 +110,15 @@ __umwait_wakeup(volatile void *addr)
 	uint64_t val;
 
 	/* trigger a write but don't change the value */
-	val = __atomic_load_n((volatile uint64_t *)addr, __ATOMIC_RELAXED);
-	__atomic_compare_exchange_n((volatile uint64_t *)addr, &val, val, 0,
-			__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	val = rte_atomic_load_explicit((volatile __rte_atomic uint64_t *)addr,
+			rte_memory_order_relaxed);
+	rte_atomic_compare_exchange_strong_explicit((volatile __rte_atomic uint64_t *)addr,
+			&val, val, rte_memory_order_relaxed, rte_memory_order_relaxed);
 }
 
 static bool wait_supported;
 static bool wait_multi_supported;
+static bool monitor_supported;
 
 static inline uint64_t
 __get_umwait_val(const volatile void *p, const uint8_t sz)
@@ -70,18 +159,17 @@ __check_val_size(const uint8_t sz)
  * For more information about usage of these instructions, please refer to
  * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
  */
+RTE_EXPORT_SYMBOL(rte_power_monitor)
 int
 rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		const uint64_t tsc_timestamp)
 {
-	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
-	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
 	const unsigned int lcore_id = rte_lcore_id();
 	struct power_wait_status *s;
 	uint64_t cur_value;
 
 	/* prevent user from running this instruction if it's not supported */
-	if (!wait_supported)
+	if (!monitor_supported)
 		return -ENOTSUP;
 
 	/* prevent non-EAL thread from using this API */
@@ -97,21 +185,15 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	if (pmc->fn == NULL)
 		return -EINVAL;
 
-	s = &wait_status[lcore_id];
+	init_wait_status();
+	s = RTE_LCORE_VAR_LCORE(lcore_id, wait_status);
 
 	/* update sleep address */
 	rte_spinlock_lock(&s->lock);
 	s->monitor_addr = pmc->addr;
 
-	/*
-	 * we're using raw byte codes for now as only the newest compiler
-	 * versions support this instruction natively.
-	 */
-
-	/* set address for UMONITOR */
-	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
-			:
-			: "D"(pmc->addr));
+	/* set address for memory monitor */
+	power_monitor_ops.mmonitor(pmc->addr);
 
 	/* now that we've put this address into monitor, we can unlock */
 	rte_spinlock_unlock(&s->lock);
@@ -122,11 +204,8 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	if (pmc->fn(cur_value, pmc->opaque) != 0)
 		goto end;
 
-	/* execute UMWAIT */
-	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
-			: /* ignore rflags */
-			: "D"(0), /* enter C0.2 */
-			  "a"(tsc_l), "d"(tsc_h));
+	/* execute mwait */
+	power_monitor_ops.mwait(tsc_timestamp);
 
 end:
 	/* erase sleep address */
@@ -142,21 +221,26 @@ end:
  * information about usage of this instruction, please refer to Intel(R) 64 and
  * IA-32 Architectures Software Developer's Manual.
  */
+RTE_EXPORT_SYMBOL(rte_power_pause)
 int
 rte_power_pause(const uint64_t tsc_timestamp)
 {
-	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
-	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
-
 	/* prevent user from running this instruction if it's not supported */
 	if (!wait_supported)
 		return -ENOTSUP;
 
 	/* execute TPAUSE */
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	_tpause(0, tsc_timestamp);
+#else
+	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
+	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
+
 	asm volatile(".byte 0x66, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
 			"a"(tsc_l), "d"(tsc_h));
+#endif
 
 	return 0;
 }
@@ -170,22 +254,34 @@ RTE_INIT(rte_power_intrinsics_init) {
 		wait_supported = 1;
 	if (i.power_monitor_multi)
 		wait_multi_supported = 1;
+	if (i.power_monitor)
+		monitor_supported = 1;
+
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_MONITORX)) {
+		power_monitor_ops.mmonitor = &amd_monitorx;
+		power_monitor_ops.mwait = &amd_mwaitx;
+	} else {
+		power_monitor_ops.mmonitor = &intel_umonitor;
+		power_monitor_ops.mwait = &intel_umwait;
+	}
 }
 
+RTE_EXPORT_SYMBOL(rte_power_monitor_wakeup)
 int
 rte_power_monitor_wakeup(const unsigned int lcore_id)
 {
 	struct power_wait_status *s;
 
 	/* prevent user from running this instruction if it's not supported */
-	if (!wait_supported)
+	if (!monitor_supported)
 		return -ENOTSUP;
 
 	/* prevent buffer overrun */
 	if (lcore_id >= RTE_MAX_LCORE)
 		return -EINVAL;
 
-	s = &wait_status[lcore_id];
+	init_wait_status();
+	s = RTE_LCORE_VAR_LCORE(lcore_id, wait_status);
 
 	/*
 	 * There is a race condition between sleep, wakeup and locking, but we
@@ -220,12 +316,12 @@ rte_power_monitor_wakeup(const unsigned int lcore_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_power_monitor_multi)
 int
 rte_power_monitor_multi(const struct rte_power_monitor_cond pmc[],
 		const uint32_t num, const uint64_t tsc_timestamp)
 {
-	const unsigned int lcore_id = rte_lcore_id();
-	struct power_wait_status *s = &wait_status[lcore_id];
+	struct power_wait_status *s;
 	uint32_t i, rc;
 
 	/* check if supported */
@@ -234,6 +330,9 @@ rte_power_monitor_multi(const struct rte_power_monitor_cond pmc[],
 
 	if (pmc == NULL || num == 0)
 		return -EINVAL;
+
+	init_wait_status();
+	s = RTE_LCORE_VAR(wait_status);
 
 	/* we are already inside transaction region, return */
 	if (rte_xtest() != 0)

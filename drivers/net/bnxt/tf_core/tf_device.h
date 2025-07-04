@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -11,9 +11,7 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
-#endif
 #include "tf_if_tbl.h"
 #include "tf_global_cfg.h"
 
@@ -86,7 +84,6 @@ struct tf_hcapi_resource_map {
  */
 int tf_dev_bind(struct tf *tfp,
 		enum tf_device_type type,
-		bool shadow_copy,
 		struct tf_session_resources *resources,
 		uint16_t wc_num_slices,
 		struct tf_dev_info *dev_handle);
@@ -705,7 +702,6 @@ struct tf_dev_ops {
 	int (*tf_dev_get_tcam)(struct tf *tfp,
 			       struct tf_tcam_get_parms *parms);
 
-#ifdef TF_TCAM_SHARED
 	/**
 	 * Move TCAM shared entries
 	 *
@@ -737,8 +733,6 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_clear_tcam)(struct tf *tfp,
 			      struct tf_clear_tcam_shared_entries_parms *parms);
-
-#endif /* TF_TCAM_SHARED */
 
 	/**
 	 * Retrieves the tcam resource info.
@@ -1133,6 +1127,71 @@ struct tf_dev_ops {
 	 */
 	int (*tf_dev_get_sram_policy)(enum tf_dir dir,
 				      enum tf_sram_bank_id *bank_id);
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/**
+	 * Update resource usage state with firmware
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] flow_resc_type
+	 *   Resource type to update its usage state
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_update_resc_usage)(struct tf *tfp,
+					enum tf_dir dir,
+					enum tf_flow_resc_type flow_resc_type);
+
+	/**
+	 * Query resource usage state from firmware
+	 *
+	 * [in] tfp
+	 *   Pointer to TF handle
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] flow_resc_type
+	 *   Resource type to query its usage state
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_query_resc_usage)(struct tf *tfp,
+				       struct tf_query_resc_usage_parms *parms);
+
+	/**
+	 * Update buffer of table usage
+	 *
+	 * [in] session_id
+	 *   The TruFlow session id
+	 *
+	 * [in] dir
+	 *   Receive or transmit direction
+	 *
+	 * [in] tbl_type
+	 *   SRAM table type to update its usage state
+	 *
+	 * [in] resc_opt
+	 *   Alloca or free resource
+	 *
+	 *    returns:
+	 *    0       - Success
+	 *    -EINVAL - Error
+	 */
+	int (*tf_dev_update_tbl_usage_buffer)(struct tf *tfp,
+					      enum tf_dir dir,
+					      enum tf_tbl_type tbl_type,
+					      uint32_t resc_opt);
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**
@@ -1148,5 +1207,4 @@ extern const struct tf_dev_ops tf_dev_ops_p58;
  */
 extern const struct tf_hcapi_resource_map tf_hcapi_res_map_p4[CFA_RESOURCE_TYPE_P4_LAST + 1];
 extern const struct tf_hcapi_resource_map tf_hcapi_res_map_p58[CFA_RESOURCE_TYPE_P58_LAST + 1];
-
 #endif /* _TF_DEVICE_H_ */

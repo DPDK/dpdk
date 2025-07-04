@@ -14,17 +14,17 @@
 
 struct test_data;
 
-struct lcore_data {
+struct __rte_cache_aligned lcore_data {
 	volatile bool done;
 	volatile bool started;
 	uint64_t total_cycles;
 	uint64_t total_calls;
-} __rte_cache_aligned;
+};
 
-struct test_data {
+struct __rte_cache_aligned test_data {
 	unsigned int nb_workers;
 	struct lcore_data ldata[];
-} __rte_cache_aligned;
+};
 
 #define STEP 100
 #define CENT_OPS(OP) do {     \
@@ -179,4 +179,4 @@ test_trace_perf(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(trace_perf_autotest, test_trace_perf);
+REGISTER_PERF_TEST(trace_perf_autotest, test_trace_perf);

@@ -1074,7 +1074,7 @@
          sodipodi:role="line"
          id="tspan5256-8"
          x="527.19458"
-         y="628.45935">m-&gt;pkt.next = NULL</tspan></text>
+         y="628.45935">m-&gt;next = NULL</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -1084,7 +1084,7 @@
          sodipodi:role="line"
          id="tspan5256-8-3"
          x="330.50363"
-         y="628.45935">m-&gt;pkt.next = mseg3</tspan></text>
+         y="628.45935">m-&gt;next = mseg3</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -1094,7 +1094,7 @@
          sodipodi:role="line"
          id="tspan5256-8-3-4"
          x="144.79388"
-         y="628.45935">m-&gt;pkt.next = mseg2</tspan></text>
+         y="628.45935">m-&gt;next = mseg2</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:10px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"

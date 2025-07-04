@@ -17,8 +17,8 @@ Configuration
 -------------
 
 The DLB PF PMD is a user-space PMD that uses VFIO to gain direct
-device access. To use this operation mode, the PCIe PF device must be bound
-to a DPDK-compatible VFIO driver, such as vfio-pci.
+device access. To use this operation mode, the PCIe PF device must
+be bound to a DPDK-compatible VFIO driver, such as vfio-pci.
 
 Eventdev API Notes
 ------------------
@@ -271,24 +271,29 @@ certain reconfiguration sequences that are valid in the eventdev API but not
 supported by the PMD.
 
 Specifically, the PMD supports the following configuration sequence:
-1. Configure and start the device
-2. Stop the device
-3. (Optional) Reconfigure the device
-4. (Optional) If step 3 is run:
 
-   a. Setup queue(s). The reconfigured queue(s) lose their previous port links.
-   b. The reconfigured port(s) lose their previous queue links.
+#. Configure and start the device
 
-5. (Optional, only if steps 4a and 4b are run) Link port(s) to queue(s)
-6. Restart the device. If the device is reconfigured in step 3 but one or more
+#. Stop the device
+
+#. (Optional) Reconfigure the device
+   Setup queue(s). The reconfigured queue(s) lose their previous port links.
+   The reconfigured port(s) lose their previous queue links.
+   Link port(s) to queue(s)
+
+#. Restart the device. If the device is reconfigured in step 3 but one or more
    of its ports or queues are not, the PMD will apply their previous
    configuration (including port->queue links) at this time.
 
 The PMD does not support the following configuration sequences:
-1. Configure and start the device
-2. Stop the device
-3. Setup queue or setup port
-4. Start the device
+
+#. Configure and start the device
+
+#. Stop the device
+
+#. Setup queue or setup port
+
+#. Start the device
 
 This sequence is not supported because the event device must be reconfigured
 before its ports or queues can be.
@@ -395,26 +400,6 @@ The depth must be between 32 and 1024, and must be a power of 2.
 
        --allow ea:00.0,max_enqueue_depth=<depth>
 
-QE Weight
-~~~~~~~~~
-
-DLB supports advanced scheduling mechanisms, such as CQ weight.
-Each load balanced CQ has a configurable work capacity (max 256)
-which corresponds to the total QE weight DLB will allow to be enqueued
-to that consumer. Every load balanced event/QE carries a weight of 0, 2, 4,
-or 8 and DLB will increment a (per CQ) load indicator when it schedules a
-QE to that CQ. The weight is also stored in the history list. When a
-completion arrives, the weight is popped from the history list and used to
-decrement the load indicator. This creates a new scheduling condition - a CQ
-whose load is equal to or in excess of capacity is not available for traffic.
-Note that the weight may not exceed the maximum CQ depth.
-
-    .. code-block:: console
-
-       --allow ea:00.0,cq_weight=all:<weight>
-       --allow ea:00.0,cq_weight=qidA-qidB:<weight>
-       --allow ea:00.0,cq_weight=qid:<weight>
-
 Producer Coremask
 ~~~~~~~~~~~~~~~~~
 
@@ -423,9 +408,9 @@ the DLB device locally available on the same tile along with other
 resources. To allocate optimal resources, probing is done for each
 producer port (PP) for a given CPU and the best performing ports are
 allocated to producers. The cpu used for probing is either the first
-core of producer coremask (if present) or the second core of EAL
-coremask. This will be extended later to probe for all CPUs in the
-producer coremask or EAL coremask. Producer coremask can be passed
+core of producer coremask DLB2 device parameter (if present) or the second core of EAL
+core list. This will be extended later to probe for all CPUs in the
+producer coremask or EAL core list. Producer coremask can be passed
 along with the BDF of the DLB devices.
 
     .. code-block:: console
@@ -450,3 +435,108 @@ won't be used.
     .. code-block:: console
 
        --allow ea:00.0,default_port_allocation=<y/Y>
+
+QE Weight
+~~~~~~~~~
+
+DLB supports advanced scheduling mechanisms, such as CQ weight.
+Each load balanced CQ has a configurable work capacity (max 256)
+which corresponds to the total QE weight DLB will allow to be enqueued
+to that consumer. Every load balanced event/QE carries a weight of 0, 2, 4,
+or 8 and DLB will increment a (per CQ) load indicator when it schedules a
+QE to that CQ. The weight is also stored in the history list. When a
+completion arrives, the weight is popped from the history list and used to
+decrement the load indicator. This creates a new scheduling condition - a CQ
+whose load is equal to or in excess of capacity is not available for traffic.
+Note that the weight may not exceed the maximum CQ depth.
+
+Example command to enable QE Weight feature:
+
+    .. code-block:: console
+
+       --allow ea:00.0,enable_cq_weight=<y/Y>
+
+Credit Handling Scenario Improvements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible for ports to hold on to unused credits and not release them
+due to insufficient accumulation (i.e. less than 2 * credit quanta).
+This can result in credit deadlocks situation.
+DLB2 PMD makes worker ports to release all accumulated credits
+when back-to-back zero poll count reaches a preset threshold
+and makes producer ports release all the accumulated credits
+if enqueue fails for a consecutive number of retries.
+
+New Meson options are provided through c_args for enabling and disabling
+credits handling option flags.
+Credit checks are enabled by default.
+
+Example command to use as meson option for credit handling:
+
+    .. code-block:: console
+
+       meson configure -Dc_args='-DDLB_SW_CREDITS_CHECKS=0 -DDLB_HW_CREDITS_CHECKS=1'
+
+Running Eventdev Applications with DLB Device
+---------------------------------------------
+
+This section explains how to run eventdev applications
+with DLB hardware as well as difference in command line parameter
+to switch between a DLB hardware and a virtual eventdev device such as SW0, hence
+users can run applications with or without DLB device to compare performance of
+a DLB device.
+
+In order to run eventdev applications, DLB device must be bound
+to a DPDK-compatible VFIO driver, such as vfio-pci.
+
+Example command to bind DLB device to vfio-pci driver:
+
+    .. code-block:: console
+
+       ../usertools/dpdk-devbind.py -b vfio-pci ea:00.0
+
+Eventdev applications can be run with or without a DLB device.
+Below examples give details of running eventdev application without DLB device
+and with DLB device. Notice that the primary difference between two examples are
+passing the parameter ``--vdev <driver><id>``. The first example run uses a virtual
+eventdev device SW0 while second example run directly and picks DLB device from
+VFIO driver.
+
+Example command to run eventdev application without a DLB device:
+
+	.. code-block:: console
+
+	   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+					--test=order_queue --plcores 1 --wlcores 2,3
+
+After binding DLB device to a supported pci driver such as vfio-pci,
+eventdev applications can be run on the DLB device.
+
+Example command to run eventdev application with a DLB device:
+
+	.. code-block:: console
+
+		sudo build/app/dpdk-test-eventdev -- --test=order_queue\
+			--plcores=1 --wlcores=2-7 --stlist=o --worker_deq_depth=128\
+			--prod_enq_burst_sz=64 --nb_flows=64 --nb_pkts=1000000
+
+A particular DLB device can also be picked from command line by passing
+	``--a`` or  ``--allow`` option:
+
+	.. code-block:: console
+
+		sudo build/app/dpdk-test-eventdev --allow ea:00.0 -- --test=order_queue\
+			--plcores=1 --wlcores=2-7 --stlist=o --worker_deq_depth=128\
+			--prod_enq_burst_sz=64 --nb_flows=64 --nb_pkts=1000000
+
+Debugging options
+~~~~~~~~~~~~~~~~~
+
+To specify log level for a DLB device use ``--log-level=dlb,8``.
+Example command to run eventdev application with a DLB device log level enabled:
+
+	.. code-block:: console
+
+		sudo build/app/dpdk-test-eventdev --allow ea:00.0 --log-level=dlb,8 -- --test=order_queue\
+			--plcores=1 --wlcores=2-7 --stlist=o --worker_deq_depth=128\
+			--prod_enq_burst_sz=64 --nb_flows=64 --nb_pkts=1000000

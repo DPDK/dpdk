@@ -10,6 +10,8 @@
 #ifndef _RTE_RING_HTS_ELEM_PVT_H_
 #define _RTE_RING_HTS_ELEM_PVT_H_
 
+#include <rte_stdatomic.h>
+
 /**
  * @file rte_ring_hts_elem_pvt.h
  * It is not recommended to include this file directly,
@@ -30,7 +32,7 @@ __rte_ring_hts_update_tail(struct rte_ring_hts_headtail *ht, uint32_t old_tail,
 	RTE_SET_USED(enqueue);
 
 	tail = old_tail + num;
-	__atomic_store_n(&ht->ht.pos.tail, tail, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ht->ht.pos.tail, tail, rte_memory_order_release);
 }
 
 /**
@@ -44,24 +46,44 @@ __rte_ring_hts_head_wait(const struct rte_ring_hts_headtail *ht,
 {
 	while (p->pos.head != p->pos.tail) {
 		rte_pause();
-		p->raw = __atomic_load_n(&ht->ht.raw, __ATOMIC_ACQUIRE);
+		p->raw = rte_atomic_load_explicit(&ht->ht.raw, rte_memory_order_acquire);
 	}
 }
 
 /**
- * @internal This function updates the producer head for enqueue
+ * @internal This is a helper function that moves the producer/consumer head
+ *
+ * @param d
+ *   A pointer to the headtail structure with head value to be moved
+ * @param s
+ *   A pointer to the counter-part headtail structure. Note that this
+ *   function only reads tail value from it
+ * @param capacity
+ *   Either ring capacity value (for producer), or zero (for consumer)
+ *   Indicates whether multi-thread safe path is needed or not
+ * @param num
+ *   The number of elements we want to move head value on
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Move on a fixed number of items
+ *   RTE_RING_QUEUE_VARIABLE: Move on as many items as possible
+ * @param old_head
+ *   Returns head value as it was before the move
+ * @param entries
+ *   Returns the number of ring entries available BEFORE head was moved
+ * @return
+ *   Actual number of objects the head was moved on
+ *   If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only
  */
-static __rte_always_inline unsigned int
-__rte_ring_hts_move_prod_head(struct rte_ring *r, unsigned int num,
+static __rte_always_inline uint32_t
+__rte_ring_hts_move_head(struct rte_ring_hts_headtail *d,
+	const struct rte_ring_headtail *s, uint32_t capacity, unsigned int num,
 	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
-	uint32_t *free_entries)
+	uint32_t *entries)
 {
 	uint32_t n;
 	union __rte_ring_hts_pos np, op;
 
-	const uint32_t capacity = r->capacity;
-
-	op.raw = __atomic_load_n(&r->hts_prod.ht.raw, __ATOMIC_ACQUIRE);
+	op.raw = rte_atomic_load_explicit(&d->ht.raw, rte_memory_order_acquire);
 
 	do {
 		/* Reset n to the initial burst count */
@@ -72,20 +94,20 @@ __rte_ring_hts_move_prod_head(struct rte_ring *r, unsigned int num,
 		 * make sure that we read prod head/tail *before*
 		 * reading cons tail.
 		 */
-		__rte_ring_hts_head_wait(&r->hts_prod, &op);
+		__rte_ring_hts_head_wait(d, &op);
 
 		/*
 		 *  The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
-		 * *old_head > cons_tail). So 'free_entries' is always between 0
+		 * *old_head > cons_tail). So 'entries' is always between 0
 		 * and capacity (which is < size).
 		 */
-		*free_entries = capacity + r->cons.tail - op.pos.head;
+		*entries = capacity + s->tail - op.pos.head;
 
 		/* check that we have enough room in ring */
-		if (unlikely(n > *free_entries))
+		if (unlikely(n > *entries))
 			n = (behavior == RTE_RING_QUEUE_FIXED) ?
-					0 : *free_entries;
+					0 : *entries;
 
 		if (n == 0)
 			break;
@@ -98,12 +120,24 @@ __rte_ring_hts_move_prod_head(struct rte_ring *r, unsigned int num,
 	 *  - OOO reads of cons tail value
 	 *  - OOO copy of elems from the ring
 	 */
-	} while (__atomic_compare_exchange_n(&r->hts_prod.ht.raw,
-			&op.raw, np.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&d->ht.raw,
+			(uint64_t *)(uintptr_t)&op.raw, np.raw,
+			rte_memory_order_acquire,
+			rte_memory_order_acquire) == 0);
 
 	*old_head = op.pos.head;
 	return n;
+}
+/**
+ * @internal This function updates the producer head for enqueue
+ */
+static __rte_always_inline unsigned int
+__rte_ring_hts_move_prod_head(struct rte_ring *r, unsigned int num,
+	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
+	uint32_t *free_entries)
+{
+	return __rte_ring_hts_move_head(&r->hts_prod, &r->cons,
+			r->capacity, num, behavior, old_head, free_entries);
 }
 
 /**
@@ -114,51 +148,8 @@ __rte_ring_hts_move_cons_head(struct rte_ring *r, unsigned int num,
 	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
 	uint32_t *entries)
 {
-	uint32_t n;
-	union __rte_ring_hts_pos np, op;
-
-	op.raw = __atomic_load_n(&r->hts_cons.ht.raw, __ATOMIC_ACQUIRE);
-
-	/* move cons.head atomically */
-	do {
-		/* Restore n as it may change every loop */
-		n = num;
-
-		/*
-		 * wait for tail to be equal to head,
-		 * make sure that we read cons head/tail *before*
-		 * reading prod tail.
-		 */
-		__rte_ring_hts_head_wait(&r->hts_cons, &op);
-
-		/* The subtraction is done between two unsigned 32bits value
-		 * (the result is always modulo 32 bits even if we have
-		 * cons_head > prod_tail). So 'entries' is always between 0
-		 * and size(ring)-1.
-		 */
-		*entries = r->prod.tail - op.pos.head;
-
-		/* Set the actual entries for dequeue */
-		if (n > *entries)
-			n = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : *entries;
-
-		if (unlikely(n == 0))
-			break;
-
-		np.pos.tail = op.pos.tail;
-		np.pos.head = op.pos.head + n;
-
-	/*
-	 * this CAS(ACQUIRE, ACQUIRE) serves as a hoist barrier to prevent:
-	 *  - OOO reads of prod tail value
-	 *  - OOO copy of elems from the ring
-	 */
-	} while (__atomic_compare_exchange_n(&r->hts_cons.ht.raw,
-			&op.raw, np.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
-
-	*old_head = op.pos.head;
-	return n;
+	return __rte_ring_hts_move_head(&r->hts_cons, &r->prod,
+			0, num, behavior, old_head, entries);
 }
 
 /**

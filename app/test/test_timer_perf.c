@@ -131,4 +131,4 @@ test_timer_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(timer_perf_autotest, test_timer_perf);
+REGISTER_PERF_TEST(timer_perf_autotest, test_timer_perf);

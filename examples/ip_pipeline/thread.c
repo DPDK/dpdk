@@ -63,7 +63,7 @@ struct pipeline_data {
 	uint8_t buffer[TABLE_RULE_ACTION_SIZE_MAX];
 };
 
-struct thread_data {
+struct __rte_cache_aligned thread_data {
 	struct rte_pipeline *p[THREAD_PIPELINES_MAX];
 	uint32_t n_pipelines;
 
@@ -73,7 +73,7 @@ struct thread_data {
 	uint64_t timer_period; /* Measured in CPU cycles. */
 	uint64_t time_next;
 	uint64_t time_next_min;
-} __rte_cache_aligned;
+};
 
 static struct thread_data thread_data[RTE_MAX_LCORE];
 
@@ -430,7 +430,7 @@ thread_pipeline_disable(uint32_t thread_id,
 static inline struct thread_msg_req *
 thread_msg_recv(struct rte_ring *msgq_req)
 {
-	struct thread_msg_req *req;
+	struct thread_msg_req *req = NULL;
 
 	int status = rte_ring_sc_dequeue(msgq_req, (void **) &req);
 
@@ -650,7 +650,6 @@ struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
 
-	RTE_STD_C11
 	union {
 		struct pipeline_msg_req_port_in_stats_read port_in_stats_read;
 		struct pipeline_msg_req_port_out_stats_read port_out_stats_read;
@@ -712,7 +711,6 @@ struct pipeline_msg_rsp_table_rule_time_read {
 struct pipeline_msg_rsp {
 	int status;
 
-	RTE_STD_C11
 	union {
 		struct pipeline_msg_rsp_port_in_stats_read port_in_stats_read;
 		struct pipeline_msg_rsp_port_out_stats_read port_out_stats_read;
@@ -2411,10 +2409,8 @@ match_convert(struct table_rule_match *mh,
 			}
 		else
 			if (add) {
-				uint32_t *sa32 =
-					(uint32_t *) mh->match.acl.ipv6.sa;
-				uint32_t *da32 =
-					(uint32_t *) mh->match.acl.ipv6.da;
+				uint32_t *sa32 = (uint32_t *)&mh->match.acl.ipv6.sa;
+				uint32_t *da32 = (uint32_t *)&mh->match.acl.ipv6.da;
 				uint32_t sa32_depth[4], da32_depth[4];
 				int status;
 
@@ -2482,10 +2478,8 @@ match_convert(struct table_rule_match *mh,
 				ml->acl_add.priority =
 					(int32_t) mh->match.acl.priority;
 			} else {
-				uint32_t *sa32 =
-					(uint32_t *) mh->match.acl.ipv6.sa;
-				uint32_t *da32 =
-					(uint32_t *) mh->match.acl.ipv6.da;
+				uint32_t *sa32 = (uint32_t *)&mh->match.acl.ipv6.sa;
+				uint32_t *da32 = (uint32_t *)&mh->match.acl.ipv6.da;
 				uint32_t sa32_depth[4], da32_depth[4];
 				int status;
 
@@ -2565,8 +2559,7 @@ match_convert(struct table_rule_match *mh,
 			ml->lpm_ipv4.ip = mh->match.lpm.ipv4;
 			ml->lpm_ipv4.depth = mh->match.lpm.depth;
 		} else {
-			memcpy(ml->lpm_ipv6.ip,
-				mh->match.lpm.ipv6, sizeof(ml->lpm_ipv6.ip));
+			ml->lpm_ipv6.ip = mh->match.lpm.ipv6;
 			ml->lpm_ipv6.depth = mh->match.lpm.depth;
 		}
 

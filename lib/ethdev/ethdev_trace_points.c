@@ -2,6 +2,7 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <eal_export.h>
 #include <rte_trace_point_register.h>
 
 #include <ethdev_trace.h>
@@ -25,17 +26,32 @@ RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_stop,
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_close,
 	lib.ethdev.close)
 
-RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst,
-	lib.ethdev.rx.burst)
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_ethdev_trace_rx_burst_empty, 24.11)
+RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst_empty,
+	lib.ethdev.rx.burst.empty)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_ethdev_trace_rx_burst_nonempty, 24.11)
+RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst_nonempty,
+	lib.ethdev.rx.burst.nonempty)
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_ethdev_trace_tx_burst, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_tx_burst,
 	lib.ethdev.tx.burst)
 
-RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks,
-	lib.ethdev.call_rx_callbacks)
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_eth_trace_call_rx_callbacks_empty, 24.11)
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks_empty,
+	lib.ethdev.call_rx_callbacks.empty)
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_eth_trace_call_rx_callbacks_nonempty, 24.11)
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks_nonempty,
+	lib.ethdev.call_rx_callbacks.nonempty)
 
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_tx_callbacks,
 	lib.ethdev.call_tx_callbacks)
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_eth_trace_tx_queue_count, 24.03)
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_tx_queue_count,
+	lib.ethdev.tx_queue_count)
 
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_iterator_init,
 	lib.ethdev.iterator_init)
@@ -406,6 +422,9 @@ RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_read_tx_timestamp,
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_adjust_time,
 	lib.ethdev.timesync_adjust_time)
 
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_adjust_freq,
+	lib.ethdev.timesync_adjust_freq)
+
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_read_time,
 	lib.ethdev.timesync_read_time)
 
@@ -489,6 +508,9 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_create,
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_destroy,
 	lib.ethdev.flow.destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_actions_update,
+	lib.ethdev.flow.update)
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_flush,
 	lib.ethdev.flow.flush)
@@ -577,8 +599,17 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_template_table_destroy,
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create,
 	lib.ethdev.flow.async_create)
 
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create_by_index,
+	lib.ethdev.flow.async_create_by_index)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create_by_index_with_pattern,
+	lib.ethdev.flow.async_create_by_index_with_pattern)
+
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_destroy,
 	lib.ethdev.flow.async_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_actions_update,
+	lib.ethdev.flow.async_update)
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_push,
 	lib.ethdev.flow.push)
@@ -685,6 +716,9 @@ RTE_TRACE_POINT_REGISTER(rte_tm_trace_mark_vlan_dei,
 RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_add,
 	lib.ethdev.tm.node_add)
 
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_query,
+	lib.ethdev.tm.node_query)
+
 RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_capabilities_get,
 	lib.ethdev.tm.node_capabilities_get)
 
@@ -750,3 +784,30 @@ RTE_TRACE_POINT_REGISTER(rte_tm_trace_wred_profile_add,
 
 RTE_TRACE_POINT_REGISTER(rte_tm_trace_wred_profile_delete,
 	lib.ethdev.tm.wred_profile_delete)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_list_handle_create,
+			 lib.ethdev.flow.action_list_handle_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_list_handle_destroy,
+			 lib.ethdev.flow.action_list_handle_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_action_list_handle_query_update,
+			 lib.ethdev.flow.action_list_handle_query_update)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_list_handle_create,
+	lib.ethdev.flow.async_action_list_handle_create)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_list_handle_destroy,
+	lib.ethdev.flow.async_action_list_handle_destroy)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_list_handle_query_update,
+			 lib.ethdev.flow.async_action_list_handle_query_update)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_template_table_resize,
+			 lib.ethdev.flow.template_table_resize)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_update_resized,
+			 lib.ethdev.flow.async_update_resized)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_table_resize_complete,
+			 lib.ethdev.flow.table_resize_complete)

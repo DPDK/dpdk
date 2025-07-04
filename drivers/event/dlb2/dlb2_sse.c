@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef CC_AVX512_SUPPORT
+
 #include "dlb2_priv.h"
 #include "dlb2_iface.h"
 #include "dlb2_inline_fns.h"
@@ -190,11 +192,11 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 		qe[3].data = ev[3].u64;
 
 		/* will only be set for DLB 2.5 + */
-		if (qm_port->cq_weight) {
-			qe[0].weight = ev[0].impl_opaque & 3;
-			qe[1].weight = ev[1].impl_opaque & 3;
-			qe[2].weight = ev[2].impl_opaque & 3;
-			qe[3].weight = ev[3].impl_opaque & 3;
+		if (qm_port->dlb2->enable_cq_weight) {
+			qe[0].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[0]);
+			qe[1].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[1]);
+			qe[2].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[2]);
+			qe[3].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[3]);
 		}
 
 		break;
@@ -205,6 +207,7 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 			qe[i].cmd_byte =
 				cmd_byte_map[qm_port->is_directed][ev[i].op];
 			qe[i].sched_type = sched_type[i];
+			qe[i].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[i]);
 			qe[i].data = ev[i].u64;
 			qe[i].qid = queue_id[i];
 			qe[i].priority = EV_TO_DLB2_PRIO(ev[i].priority);
@@ -225,3 +228,5 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 		break;
 	}
 }
+
+#endif /* !CC_AVX512_SUPPORT */

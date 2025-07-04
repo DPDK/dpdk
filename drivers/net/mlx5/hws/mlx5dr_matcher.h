@@ -26,6 +26,9 @@ enum mlx5dr_matcher_flags {
 	MLX5DR_MATCHER_FLAGS_RANGE_DEFINER	= 1 << 0,
 	MLX5DR_MATCHER_FLAGS_HASH_DEFINER	= 1 << 1,
 	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 2,
+	MLX5DR_MATCHER_FLAGS_RESIZABLE		= 1 << 3,
+	MLX5DR_MATCHER_FLAGS_COMPARE		= 1 << 4,
+	MLX5DR_MATCHER_FLAGS_STE_ARRAY		= 1 << 5,
 };
 
 struct mlx5dr_match_template {
@@ -59,6 +62,16 @@ struct mlx5dr_matcher_action_ste {
 	uint8_t max_stes;
 };
 
+struct mlx5dr_matcher_resize_data {
+	struct mlx5dr_pool_chunk ste;
+	struct mlx5dr_pool_chunk stc;
+	struct mlx5dr_devx_obj *action_ste_rtc_0;
+	struct mlx5dr_devx_obj *action_ste_rtc_1;
+	struct mlx5dr_pool *action_ste_pool;
+	uint8_t max_stes;
+	LIST_ENTRY(mlx5dr_matcher_resize_data) next;
+};
+
 struct mlx5dr_matcher {
 	struct mlx5dr_table *tbl;
 	struct mlx5dr_matcher_attr attr;
@@ -71,10 +84,12 @@ struct mlx5dr_matcher {
 	uint8_t flags;
 	struct mlx5dr_devx_obj *end_ft;
 	struct mlx5dr_matcher *col_matcher;
+	struct mlx5dr_matcher *resize_dst;
 	struct mlx5dr_matcher_match_ste match_ste;
 	struct mlx5dr_matcher_action_ste action_ste;
 	struct mlx5dr_definer *hash_definer;
 	LIST_ENTRY(mlx5dr_matcher) next;
+	LIST_HEAD(resize_data_head, mlx5dr_matcher_resize_data) resize_data;
 };
 
 static inline bool
@@ -89,12 +104,29 @@ mlx5dr_matcher_mt_is_range(struct mlx5dr_match_template *mt)
 	return (!!mt->range_definer);
 }
 
+static inline bool mlx5dr_matcher_is_resizable(struct mlx5dr_matcher *matcher)
+{
+	return !!(matcher->flags & MLX5DR_MATCHER_FLAGS_RESIZABLE);
+}
+
+static inline bool mlx5dr_matcher_is_in_resize(struct mlx5dr_matcher *matcher)
+{
+	return !!matcher->resize_dst;
+}
+
+static inline bool
+mlx5dr_matcher_is_compare(struct mlx5dr_matcher *matcher)
+{
+	return !!(matcher->flags & MLX5DR_MATCHER_FLAGS_COMPARE);
+}
+
 static inline bool mlx5dr_matcher_req_fw_wqe(struct mlx5dr_matcher *matcher)
 {
 	/* Currently HWS doesn't support hash different from match or range */
 	return unlikely(matcher->flags &
 			(MLX5DR_MATCHER_FLAGS_HASH_DEFINER |
-			 MLX5DR_MATCHER_FLAGS_RANGE_DEFINER));
+			 MLX5DR_MATCHER_FLAGS_RANGE_DEFINER |
+			 MLX5DR_MATCHER_FLAGS_COMPARE));
 }
 
 int mlx5dr_matcher_conv_items_to_prm(uint64_t *match_buf,
@@ -114,5 +146,17 @@ static inline bool mlx5dr_matcher_is_insert_by_idx(struct mlx5dr_matcher *matche
 {
 	return matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX;
 }
+
+static inline bool mlx5dr_matcher_is_always_hit(struct mlx5dr_matcher *matcher)
+{
+	return matcher->attr.match_mode == MLX5DR_MATCHER_MATCH_MODE_ALWAYS_HIT;
+}
+
+int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
+				     uint32_t fw_ft_type,
+				     enum mlx5dr_table_type type,
+				     struct mlx5dr_devx_obj *devx_obj);
+
+int mlx5dr_matcher_validate_compare_attr(struct mlx5dr_matcher *matcher);
 
 #endif /* MLX5DR_MATCHER_H_ */

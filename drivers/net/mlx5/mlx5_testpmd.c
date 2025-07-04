@@ -23,8 +23,47 @@
 #include "mlx5_testpmd.h"
 #include "testpmd.h"
 
-static uint8_t host_shaper_avail_thresh_triggered[RTE_MAX_ETHPORTS];
 #define SHAPER_DISABLE_DELAY_US 100000 /* 100ms */
+#define MAX_GENEVE_OPTIONS_RESOURCES 7
+#define PARSE_DELIMITER " \f\n\r\t\v"
+#define SPACE_DELIMITER (" ")
+
+static uint8_t host_shaper_avail_thresh_triggered[RTE_MAX_ETHPORTS];
+
+struct mlx5_port {
+	void *geneve_tlv_parser_handle;
+};
+
+static struct mlx5_port private_port[RTE_MAX_ETHPORTS] = {{0}};
+
+struct tlv_list_manager {
+	uint8_t nb_options;
+	struct rte_pmd_mlx5_geneve_tlv tlv_list[MAX_GENEVE_OPTIONS_RESOURCES];
+};
+
+static struct tlv_list_manager tlv_mng = {.nb_options = 0};
+
+static int
+parse_uint(uint64_t *value, const char *str)
+{
+	char *next = NULL;
+	uint64_t n;
+
+	errno = 0;
+	/* Parse number string */
+	if (!strncasecmp(str, "0x", 2)) {
+		str += 2;
+		n = strtol(str, &next, 16);
+	} else {
+		n = strtol(str, &next, 10);
+	}
+	if (errno != 0 || str == next || *next != '\0')
+		return -1;
+
+	*value = n;
+
+	return 0;
+}
 
 /**
  * Disable the host shaper and re-arm available descriptor threshold event.
@@ -112,10 +151,10 @@ mlx5_test_set_port_host_shaper(uint16_t port_id, uint16_t avail_thresh_triggered
 	host_shaper_avail_thresh_triggered[port_id] = avail_thresh_triggered ? 1 : 0;
 	if (!avail_thresh_triggered) {
 		ret = rte_pmd_mlx5_host_shaper_config(port_id, 0,
-		RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+		RTE_BIT32(RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
 	} else {
 		ret = rte_pmd_mlx5_host_shaper_config(port_id, 1,
-		RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+		RTE_BIT32(RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
 	}
 	if (ret)
 		return ret;
@@ -280,6 +319,88 @@ mlx5_test_attach_port_extend_devargs(char *identifier)
 	attach_port(identifier);
 }
 #endif
+
+static inline const char *
+mode2string(uint8_t mode)
+{
+	switch (mode) {
+	case 0:
+		return "ignored\t";
+	case 1:
+		return "fixed\t";
+	case 2:
+		return "matchable";
+	default:
+		break;
+	}
+	return "unknown";
+}
+
+static inline uint8_t
+string2mode(const char *mode)
+{
+	if (strcmp(mode, "ignored") == 0)
+		return 0;
+	if (strcmp(mode, "fixed") == 0)
+		return 1;
+	if (strcmp(mode, "matchable") == 0)
+		return 2;
+	return UINT8_MAX;
+}
+
+static int
+mlx5_test_parse_geneve_option_data(const char *buff, uint8_t data_len,
+				   rte_be32_t **match_data_mask)
+{
+	rte_be32_t *data;
+	char *buff2;
+	char *token;
+	uint8_t i = 0;
+
+	if (data_len == 0) {
+		*match_data_mask = NULL;
+		return 0;
+	}
+
+	data = calloc(data_len, sizeof(rte_be32_t));
+	if (data == NULL) {
+		TESTPMD_LOG(ERR, "Fail to allocate memory for GENEVE TLV option data\n");
+		return -ENOMEM;
+	}
+
+	buff2 = strdup(buff);
+	if (buff2 == NULL) {
+		TESTPMD_LOG(ERR,
+			    "Fail to duplicate GENEVE TLV option data string (%s)\n",
+			    buff);
+		free(data);
+		return -ENOMEM;
+	}
+
+	token = strtok(buff2, SPACE_DELIMITER);
+	while (token != NULL) {
+		if (i == data_len) {
+			TESTPMD_LOG(ERR,
+				    "GENEVE TLV option has more data then given data length %u\n",
+				    data_len);
+			free(buff2);
+			free(data);
+			return -EINVAL;
+		}
+
+		if (strcmp(token, "0xffffffff") == 0)
+			data[i] = 0xffffffff;
+		else
+			data[i] = 0x0;
+
+		token = strtok(NULL, SPACE_DELIMITER);
+		i++;
+	}
+
+	free(buff2);
+	*match_data_mask = data;
+	return 0;
+}
 
 /* *** SET HOST_SHAPER FOR A PORT *** */
 struct cmd_port_host_shaper_result {
@@ -561,6 +682,689 @@ cmdline_parse_inst_t mlx5_cmd_unmap_ext_rxq = {
 	}
 };
 
+/* Set flow engine mode with flags command. */
+struct mlx5_cmd_set_flow_engine_mode {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t flow_engine;
+	cmdline_multi_string_t mode;
+};
+
+static int
+parse_multi_token_flow_engine_mode(char *t_str,
+		enum rte_pmd_mlx5_flow_engine_mode *mode, uint32_t *flag)
+{
+	uint64_t val;
+	char *token;
+	int ret;
+
+	*flag = 0;
+	/* First token: mode string */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token ==  NULL)
+		return -1;
+
+	if (!strcmp(token, "active"))
+		*mode = RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE;
+	else if (!strcmp(token, "standby"))
+		*mode = RTE_PMD_MLX5_FLOW_ENGINE_MODE_STANDBY;
+	else
+		return -1;
+
+	/* Second token: flag */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token == NULL)
+		return 0;
+
+	ret = parse_uint(&val, token);
+	if (ret != 0 || val > UINT32_MAX)
+		return -1;
+
+	*flag = val;
+	return 0;
+}
+
+static void
+mlx5_cmd_set_flow_engine_mode_parsed(void *parsed_result,
+				     __rte_unused struct cmdline *cl,
+				     __rte_unused void *data)
+{
+	struct mlx5_cmd_set_flow_engine_mode *res = parsed_result;
+	enum rte_pmd_mlx5_flow_engine_mode mode;
+	uint32_t flag;
+	int ret;
+
+	ret = parse_multi_token_flow_engine_mode(res->mode, &mode, &flag);
+
+	if (ret < 0) {
+		fprintf(stderr, "Bad input\n");
+		return;
+	}
+
+	ret = rte_pmd_mlx5_flow_engine_set_mode(mode, flag);
+
+	if (ret < 0)
+		fprintf(stderr, "Fail to set flow_engine to %s mode with flag 0x%x, error %s\n",
+			mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag,
+			strerror(-ret));
+	else
+		TESTPMD_LOG(DEBUG, "Set %d ports flow_engine to %s mode with flag 0x%x\n", ret,
+			mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag);
+}
+
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_set =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, set,
+				 "set");
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_flow_engine =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, flow_engine,
+				 "flow_engine");
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_mode =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, mode,
+				 TOKEN_STRING_MULTI);
+
+cmdline_parse_inst_t mlx5_cmd_set_flow_engine_mode = {
+	.f = &mlx5_cmd_set_flow_engine_mode_parsed,
+	.data = NULL,
+	.help_str = "mlx5 set flow_engine <active|standby> [<flag>]",
+	.tokens = {
+		(void *)&mlx5_cmd_set_flow_engine_mode_mlx5,
+		(void *)&mlx5_cmd_set_flow_engine_mode_set,
+		(void *)&mlx5_cmd_set_flow_engine_mode_flow_engine,
+		(void *)&mlx5_cmd_set_flow_engine_mode_mode,
+		NULL,
+	}
+};
+
+/* Prepare single GENEVE TLV option and add it into global option list. */
+struct mlx5_cmd_set_tlv_option {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t tlv_option;
+	cmdline_fixed_string_t class;
+	uint16_t class_id;
+	cmdline_fixed_string_t type;
+	uint8_t type_id;
+	cmdline_fixed_string_t len;
+	uint8_t option_len;
+	cmdline_fixed_string_t offset;
+	uint8_t off;
+	cmdline_fixed_string_t sample_len;
+	uint8_t length;
+	cmdline_fixed_string_t class_mode;
+	cmdline_fixed_string_t cmode;
+	cmdline_fixed_string_t data;
+	cmdline_fixed_string_t data_mask;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, mlx5, "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_set =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, set, "set");
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_tlv_option =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, tlv_option,
+				 "tlv_option");
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_class =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, class,
+				 "class");
+cmdline_parse_token_num_t mlx5_cmd_set_tlv_option_class_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_set_tlv_option, class_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_type =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, type, "type");
+cmdline_parse_token_num_t mlx5_cmd_set_tlv_option_type_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_set_tlv_option, type_id,
+			      RTE_UINT8);
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_len =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, len, "len");
+cmdline_parse_token_num_t mlx5_cmd_set_tlv_option_option_len =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_set_tlv_option, option_len,
+			      RTE_UINT8);
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_offset =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, offset,
+				 "offset");
+cmdline_parse_token_num_t mlx5_cmd_set_tlv_option_off =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_set_tlv_option, off, RTE_UINT8);
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_sample_len =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, sample_len,
+				 "sample_len");
+cmdline_parse_token_num_t mlx5_cmd_set_tlv_option_length =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_set_tlv_option, length,
+			      RTE_UINT8);
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_class_mode =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, class_mode,
+				 "class_mode");
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_cmode =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, cmode,
+				 "ignored#fixed#matchable");
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_data =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, data, "data");
+cmdline_parse_token_string_t mlx5_cmd_set_tlv_option_data_mask =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_tlv_option, data_mask, "");
+
+static void
+mlx5_cmd_set_tlv_option_parsed(void *parsed_result,
+			       __rte_unused struct cmdline *cl,
+			       __rte_unused void *data)
+{
+	struct mlx5_cmd_set_tlv_option *res = parsed_result;
+	struct rte_pmd_mlx5_geneve_tlv *option;
+	uint8_t class_mode;
+	int ret;
+
+	if (tlv_mng.nb_options == MAX_GENEVE_OPTIONS_RESOURCES) {
+		fprintf(stderr, "GENEVE TLV option list is full\n");
+		return;
+	}
+
+	if (res->option_len < res->length + res->off) {
+		fprintf(stderr,
+			"GENEVE TLV option length (%u) cannot be less than offset (%u) + sample_len (%u)\n",
+			res->option_len, res->length, res->off);
+		return;
+	}
+
+	if (res->option_len > 32) {
+		fprintf(stderr,
+			"GENEVE TLV option length (%u) must be less than 32\n",
+			res->option_len);
+		return;
+	}
+
+	class_mode = string2mode(res->cmode);
+	if (class_mode == UINT8_MAX) {
+		fprintf(stderr, "Invalid class mode \"%s\"\n", res->cmode);
+		return;
+	}
+
+	if (res->length > 0) {
+		if (strcmp(res->data, "data") || !strcmp(res->data_mask, "")) {
+			fprintf(stderr,
+				"sample_len is %u but any data isn't provided\n",
+				res->length);
+			return;
+		}
+	} else {
+		if (!strcmp(res->data, "data") && strcmp(res->data_mask, "")) {
+			fprintf(stderr,
+				"sample_len is 0 but data is provided (%s)\n",
+				res->data_mask);
+			return;
+		}
+	}
+
+	option = &tlv_mng.tlv_list[tlv_mng.nb_options];
+	ret = mlx5_test_parse_geneve_option_data(res->data_mask, res->length,
+						 &option->match_data_mask);
+	if (ret < 0)
+		return;
+
+	option->match_on_class_mode = class_mode;
+	option->option_class = rte_cpu_to_be_16(res->class_id);
+	option->option_type = res->type_id;
+	option->option_len = res->option_len;
+	option->offset = res->off;
+	option->sample_len = res->length;
+	tlv_mng.nb_options++;
+
+	TESTPMD_LOG(DEBUG,
+		    "set new option in global list, now it has %u options\n",
+		    tlv_mng.nb_options);
+}
+
+cmdline_parse_inst_t mlx5_cmd_set_tlv_option = {
+	.f = mlx5_cmd_set_tlv_option_parsed,
+	.data = NULL,
+	.help_str = "mlx5 set tlv_option class <class_id> type <type_id> len "
+		"<option_len> offset <sample_offset> sample_len "
+		"<sample_length> class_mode <ignored|fixed|matchable> data <mask1 [mask2 [...]>",
+	.tokens = {
+		(void *)&mlx5_cmd_set_tlv_option_mlx5,
+		(void *)&mlx5_cmd_set_tlv_option_set,
+		(void *)&mlx5_cmd_set_tlv_option_tlv_option,
+		(void *)&mlx5_cmd_set_tlv_option_class,
+		(void *)&mlx5_cmd_set_tlv_option_class_id,
+		(void *)&mlx5_cmd_set_tlv_option_type,
+		(void *)&mlx5_cmd_set_tlv_option_type_id,
+		(void *)&mlx5_cmd_set_tlv_option_len,
+		(void *)&mlx5_cmd_set_tlv_option_option_len,
+		(void *)&mlx5_cmd_set_tlv_option_offset,
+		(void *)&mlx5_cmd_set_tlv_option_off,
+		(void *)&mlx5_cmd_set_tlv_option_sample_len,
+		(void *)&mlx5_cmd_set_tlv_option_length,
+		(void *)&mlx5_cmd_set_tlv_option_class_mode,
+		(void *)&mlx5_cmd_set_tlv_option_cmode,
+		(void *)&mlx5_cmd_set_tlv_option_data,
+		(void *)&mlx5_cmd_set_tlv_option_data_mask,
+		NULL,
+	}
+};
+
+/* Print all GENEVE TLV options which are configured so far. */
+struct mlx5_cmd_list_tlv_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t list;
+	cmdline_fixed_string_t tlv_options;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_list_tlv_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_list_tlv_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_list_tlv_options_list =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_list_tlv_options, list,
+				 "list");
+cmdline_parse_token_string_t mlx5_cmd_list_tlv_options_tlv_options =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_list_tlv_options, tlv_options,
+				 "tlv_options");
+
+static void
+mlx5_cmd_list_tlv_options_parsed(__rte_unused void *parsed_result,
+				 __rte_unused struct cmdline *cl,
+				 __rte_unused void *data)
+{
+	struct rte_pmd_mlx5_geneve_tlv *option;
+	uint8_t i, j;
+
+	printf("ID\tType\tClass\tClass_mode\tLen\tOffset\tSample_len\tData\n");
+	for (i = 0; i < tlv_mng.nb_options; ++i) {
+		option = &tlv_mng.tlv_list[i];
+		printf("%u\t%u\t%u\t%s\t%u\t%u\t%u\t\t", i,
+		       option->option_type, rte_be_to_cpu_16(option->option_class),
+		       mode2string(option->match_on_class_mode),
+		       option->option_len,
+		       option->offset, option->sample_len);
+		for (j = 0; j < option->sample_len; ++j)
+			printf("0x%x ", option->match_data_mask[j]);
+		printf("\n");
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_list_tlv_options = {
+	.f = mlx5_cmd_list_tlv_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 list tlv_options",
+	.tokens = {
+		(void *)&mlx5_cmd_list_tlv_options_mlx5,
+		(void *)&mlx5_cmd_list_tlv_options_list,
+		(void *)&mlx5_cmd_list_tlv_options_tlv_options,
+		NULL,
+	}
+};
+
+/* Clear all GENEVE TLV options which are configured so far. */
+struct mlx5_cmd_flush_tlv_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t flush;
+	cmdline_fixed_string_t tlv_options;
+	cmdline_fixed_string_t max;
+	uint8_t number;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_flush_tlv_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_flush_tlv_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_flush_tlv_options_flush =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_flush_tlv_options, flush,
+				 "flush");
+cmdline_parse_token_string_t mlx5_cmd_flush_tlv_options_tlv_options =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_flush_tlv_options, tlv_options,
+				 "tlv_options");
+cmdline_parse_token_string_t mlx5_cmd_flush_tlv_options_max =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_flush_tlv_options, max, "max");
+cmdline_parse_token_num_t mlx5_cmd_flush_tlv_options_number =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_flush_tlv_options, number,
+			      RTE_UINT8);
+
+static void
+mlx5_cmd_flush_tlv_options_parsed(void *parsed_result,
+				  __rte_unused struct cmdline *cl,
+				  __rte_unused void *data)
+{
+	struct mlx5_cmd_flush_tlv_options *res = parsed_result;
+	struct rte_pmd_mlx5_geneve_tlv *option;
+	uint8_t nb_options_flush = tlv_mng.nb_options;
+	uint8_t nb_options_left = 0;
+
+	if (strcmp(res->max, "max") == 0 && res->number < tlv_mng.nb_options) {
+		nb_options_left = tlv_mng.nb_options - res->number;
+		nb_options_flush = RTE_MIN(res->number, nb_options_flush);
+	}
+
+	while (tlv_mng.nb_options > nb_options_left) {
+		tlv_mng.nb_options--;
+		option = &tlv_mng.tlv_list[tlv_mng.nb_options];
+		if (option->match_data_mask) {
+			free(option->match_data_mask);
+			option->match_data_mask = NULL;
+		}
+	}
+
+	TESTPMD_LOG(DEBUG, "Flush %u latest configured GENEVE TLV options, "
+		    "current number of options in the list is %u\n",
+		    nb_options_flush, nb_options_left);
+}
+
+cmdline_parse_inst_t mlx5_cmd_flush_tlv_options = {
+	.f = mlx5_cmd_flush_tlv_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 flush tlv_options max <nb_options>",
+	.tokens = {
+		(void *)&mlx5_cmd_flush_tlv_options_mlx5,
+		(void *)&mlx5_cmd_flush_tlv_options_flush,
+		(void *)&mlx5_cmd_flush_tlv_options_tlv_options,
+		(void *)&mlx5_cmd_flush_tlv_options_max,
+		(void *)&mlx5_cmd_flush_tlv_options_number,
+		NULL,
+	}
+};
+
+/* Create GENEVE TLV parser using option list which is configured before. */
+struct mlx5_cmd_apply_tlv_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t apply;
+	cmdline_fixed_string_t tlv_options;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_apply_tlv_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_apply_tlv_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_apply_tlv_options_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_apply_tlv_options, port,
+				 "port");
+cmdline_parse_token_num_t mlx5_cmd_apply_tlv_options_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_apply_tlv_options, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_apply_tlv_options_apply =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_apply_tlv_options, apply,
+				 "apply");
+cmdline_parse_token_string_t mlx5_cmd_apply_tlv_options_tlv_options =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_apply_tlv_options, tlv_options,
+				 "tlv_options");
+
+static void
+mlx5_cmd_apply_tlv_options_parsed(void *parsed_result,
+				  __rte_unused struct cmdline *cl,
+				  __rte_unused void *data)
+{
+	struct mlx5_cmd_apply_tlv_options *res = parsed_result;
+	struct mlx5_port *port;
+	void *handle;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	if (tlv_mng.nb_options == 0) {
+		fprintf(stderr, "The option list is empty, please set options\n");
+		return;
+	}
+
+	handle = rte_pmd_mlx5_create_geneve_tlv_parser(res->port_id,
+						       tlv_mng.tlv_list,
+						       tlv_mng.nb_options);
+	if (handle == NULL) {
+		fprintf(stderr,
+			"Fail to create GENEVE TLV parser, nb_option=%u: %s\n",
+			tlv_mng.nb_options, strerror(rte_errno));
+		return;
+	}
+
+	TESTPMD_LOG(DEBUG, "GENEVE TLV options parser is successfully created:"
+		    " nb_option=%u, handle=%p\n", tlv_mng.nb_options, handle);
+
+	port = &private_port[res->port_id];
+	port->geneve_tlv_parser_handle = handle;
+}
+
+cmdline_parse_inst_t mlx5_cmd_apply_tlv_options = {
+	.f = mlx5_cmd_apply_tlv_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> apply tlv_options",
+	.tokens = {
+		(void *)&mlx5_cmd_apply_tlv_options_mlx5,
+		(void *)&mlx5_cmd_apply_tlv_options_port,
+		(void *)&mlx5_cmd_apply_tlv_options_port_id,
+		(void *)&mlx5_cmd_apply_tlv_options_apply,
+		(void *)&mlx5_cmd_apply_tlv_options_tlv_options,
+		NULL,
+	}
+};
+
+/* Destroy GENEVE TLV parser created by apply command. */
+struct mlx5_cmd_destroy_tlv_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t destroy;
+	cmdline_fixed_string_t tlv_options;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_destroy_tlv_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_destroy_tlv_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_destroy_tlv_options_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_destroy_tlv_options, port,
+				 "port");
+cmdline_parse_token_num_t mlx5_cmd_destroy_tlv_options_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_destroy_tlv_options, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_destroy_tlv_options_destroy =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_destroy_tlv_options, destroy,
+				 "destroy");
+cmdline_parse_token_string_t mlx5_cmd_destroy_tlv_options_tlv_options =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_destroy_tlv_options, tlv_options,
+				 "tlv_options");
+
+static void
+mlx5_cmd_destroy_tlv_options_parsed(void *parsed_result,
+				    __rte_unused struct cmdline *cl,
+				    __rte_unused void *data)
+{
+	struct mlx5_cmd_destroy_tlv_options *res = parsed_result;
+	struct mlx5_port *port;
+	int ret;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	port = &private_port[res->port_id];
+	if (!port->geneve_tlv_parser_handle)
+		return;
+
+	ret = rte_pmd_mlx5_destroy_geneve_tlv_parser(port->geneve_tlv_parser_handle);
+	if (ret < 0) {
+		fprintf(stderr, "Fail to destroy GENEVE TLV parser: %s\n",
+			strerror(-ret));
+		return;
+	}
+
+	TESTPMD_LOG(DEBUG, "GENEVE TLV options parser is successfully released:"
+		    " handle=%p\n", port->geneve_tlv_parser_handle);
+
+	port->geneve_tlv_parser_handle = NULL;
+}
+
+cmdline_parse_inst_t mlx5_cmd_destroy_tlv_options = {
+	.f = mlx5_cmd_destroy_tlv_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> destroy tlv_options",
+	.tokens = {
+		(void *)&mlx5_cmd_destroy_tlv_options_mlx5,
+		(void *)&mlx5_cmd_destroy_tlv_options_port,
+		(void *)&mlx5_cmd_destroy_tlv_options_port_id,
+		(void *)&mlx5_cmd_destroy_tlv_options_destroy,
+		(void *)&mlx5_cmd_destroy_tlv_options_tlv_options,
+		NULL,
+	}
+};
+
+/* Dump SQ Context for a given port/queue*/
+struct mlx5_cmd_dump_sq_context_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t queue;
+	queueid_t queue_id;
+	cmdline_fixed_string_t dump;
+	cmdline_fixed_string_t sq_context;
+	cmdline_fixed_string_t file_name;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, port,
+				 "port");
+cmdline_parse_token_num_t mlx5_cmd_dump_sq_context_options_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_queue =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, queue,
+				 "queue");
+cmdline_parse_token_num_t mlx5_cmd_dump_sq_context_options_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, queue_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_dump =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, dump,
+				 "dump");
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_sq_context =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, sq_context,
+				 "sq_context");
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_file_name =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, file_name,
+				 NULL);
+
+static void
+mlx5_cmd_dump_sq_context_options_parsed(void *parsed_result,
+				    __rte_unused struct cmdline *cl,
+				    __rte_unused void *data)
+{
+	struct mlx5_cmd_dump_sq_context_options *res = parsed_result;
+	int ret;
+
+	ret = rte_pmd_mlx5_txq_dump_contexts(res->port_id, res->queue_id, res->file_name);
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		fprintf(stderr, "invalid queue index (%u), out of range\n",
+			res->queue_id);
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		break;
+	case -EIO:
+		fprintf(stderr, "File Access Error (%s)\n", strerror(rte_errno));
+		break;
+	default:
+		fprintf(stderr, "Unable to dump SQ/CQ HW Context (%s)\n", strerror(rte_errno));
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_dump_sq_context_options = {
+	.f = mlx5_cmd_dump_sq_context_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> queue <queue_id> dump sq_context <file_name>",
+	.tokens = {
+		(void *)&mlx5_cmd_dump_sq_context_options_mlx5,
+		(void *)&mlx5_cmd_dump_sq_context_options_port,
+		(void *)&mlx5_cmd_dump_sq_context_options_port_id,
+		(void *)&mlx5_cmd_dump_sq_context_options_queue,
+		(void *)&mlx5_cmd_dump_sq_context_options_queue_id,
+		(void *)&mlx5_cmd_dump_sq_context_options_dump,
+		(void *)&mlx5_cmd_dump_sq_context_options_sq_context,
+		(void *)&mlx5_cmd_dump_sq_context_options_file_name,
+		NULL,
+	}
+};
+
+/* Dump RQ Context for a given port/queue*/
+struct mlx5_cmd_dump_rq_context_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t queue;
+	queueid_t queue_id;
+	cmdline_fixed_string_t dump;
+	cmdline_fixed_string_t rq_context;
+	cmdline_fixed_string_t file_name;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, port,
+				 "port");
+cmdline_parse_token_num_t mlx5_cmd_dump_rq_context_options_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_queue =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, queue,
+				 "queue");
+cmdline_parse_token_num_t mlx5_cmd_dump_rq_context_options_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, queue_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_dump =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, dump,
+				 "dump");
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_rq_context =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, rq_context,
+				 "rq_context");
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_file_name =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, file_name,
+				 NULL);
+
+static void
+mlx5_cmd_dump_rq_context_options_parsed(void *parsed_result,
+				    __rte_unused struct cmdline *cl,
+				    __rte_unused void *data)
+{
+	struct mlx5_cmd_dump_rq_context_options *res = parsed_result;
+	int ret;
+
+	ret = rte_pmd_mlx5_rxq_dump_contexts(res->port_id, res->queue_id, res->file_name);
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		fprintf(stderr, "invalid queue index (%u), out of range\n",
+			res->queue_id);
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		break;
+	case -EIO:
+		fprintf(stderr, "File Access Error (%s)\n", strerror(rte_errno));
+		break;
+	default:
+		fprintf(stderr, "Unable to dump RQ/CQ HW Context (%s)\n", strerror(rte_errno));
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_dump_rq_context_options = {
+	.f = mlx5_cmd_dump_rq_context_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> queue <queue_id> dump rq_context <file_name>",
+	.tokens = {
+		(void *)&mlx5_cmd_dump_rq_context_options_mlx5,
+		(void *)&mlx5_cmd_dump_rq_context_options_port,
+		(void *)&mlx5_cmd_dump_rq_context_options_port_id,
+		(void *)&mlx5_cmd_dump_rq_context_options_queue,
+		(void *)&mlx5_cmd_dump_rq_context_options_queue_id,
+		(void *)&mlx5_cmd_dump_rq_context_options_dump,
+		(void *)&mlx5_cmd_dump_rq_context_options_rq_context,
+		(void *)&mlx5_cmd_dump_rq_context_options_file_name,
+		NULL,
+	}
+};
+
 static struct testpmd_driver_commands mlx5_driver_cmds = {
 	.commands = {
 		{
@@ -587,6 +1391,54 @@ static struct testpmd_driver_commands mlx5_driver_cmds = {
 			.ctx = &mlx5_cmd_unmap_ext_rxq,
 			.help = "mlx5 port (port_id) ext_rxq unmap (sw_queue_id)\n"
 				"    Unmap external Rx queue ethdev index mapping\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_set_flow_engine_mode,
+			.help = "mlx5 set flow_engine (active|standby) [(flag)]\n"
+				"    Set flow_engine to the specific mode with flag.\n\n"
+		},
+		{
+			.ctx = &mlx5_cmd_set_tlv_option,
+			.help = "mlx5 set tlv_option class (class_id) type "
+				"(type_id) len (option_length) offset "
+				"(sample_offset) sample_len (sample_length) "
+				"class_mode (ignored|fixed|matchable) "
+				"data (mask1) [(mask2) [...]]\n"
+				"    Set single GENEVE TLV option inside global list "
+				"using later by apply command\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_list_tlv_options,
+			.help = "mlx5 list tlv_options\n"
+				"    Print all GENEVE TLV options which are configured "
+				"so far by TLV option set command\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_flush_tlv_options,
+			.help = "mlx5 flush tlv_options [max (number options)]\n"
+				"    Clear all GENEVE TLV options which are configured "
+				"so far by TLV option set command\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_apply_tlv_options,
+			.help = "mlx5 port (port_id) apply tlv_options\n"
+				"    Create GENEVE TLV parser using option list which is "
+				"configured before by TLV option set command\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_destroy_tlv_options,
+			.help = "mlx5 port (port_id) destroy tlv_options\n"
+				"    Destroy GENEVE TLV parser\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_dump_sq_context_options,
+			.help = "mlx5 port (port_id) queue (queue_id) dump sq_context (file_name)\n"
+				"    Dump mlx5 SQ Context\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_dump_rq_context_options,
+			.help = "mlx5 port (port_id) queue (queue_id) dump rq_context (file_name)\n"
+				"    Dump mlx5 RQ Context\n\n",
 		},
 		{
 			.ctx = NULL,

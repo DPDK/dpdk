@@ -4,17 +4,23 @@
 
 #include <stdarg.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_debug.h>
+#include <rte_errno.h>
 
+#include <eal_export.h>
+#include "eal_private.h"
+
+RTE_EXPORT_SYMBOL(__rte_panic)
 void
 __rte_panic(const char *funcname, const char *format, ...)
 {
 	va_list ap;
 
-	rte_log(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, "PANIC in %s():\n", funcname);
+	EAL_LOG(CRIT, "PANIC in %s():", funcname);
 	va_start(ap, format);
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
 	va_end(ap);
@@ -26,21 +32,20 @@ __rte_panic(const char *funcname, const char *format, ...)
  * Like rte_panic this terminates the application. However, no traceback is
  * provided and no core-dump is generated.
  */
+RTE_EXPORT_SYMBOL(rte_exit)
 void
 rte_exit(int exit_code, const char *format, ...)
 {
 	va_list ap;
 
 	if (exit_code != 0)
-		RTE_LOG(CRIT, EAL, "Error - exiting with code: %d\n"
-				"  Cause: ", exit_code);
+		EAL_LOG(CRIT, "Error - exiting with code: %d", exit_code);
 
 	va_start(ap, format);
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
 	va_end(ap);
 
-	if (rte_eal_cleanup() != 0)
-		RTE_LOG(CRIT, EAL,
-			"EAL could not release all resources\n");
+	if (rte_eal_cleanup() != 0 && rte_errno != EALREADY)
+		EAL_LOG(CRIT, "EAL could not release all resources");
 	exit(exit_code);
 }

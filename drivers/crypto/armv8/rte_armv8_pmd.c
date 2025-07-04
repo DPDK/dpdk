@@ -139,7 +139,7 @@ crypto_chain_order[] = {
  * Extract particular combined mode crypto function from the 3D array.
  */
 #define CRYPTO_GET_ALGO(order, cop, calg, aalg, keyl)			\
-({									\
+__extension__ ({							\
 	crypto_func_tbl_t *func_tbl =					\
 				(crypto_chain_order[(order)])[(cop)];	\
 									\
@@ -186,7 +186,7 @@ crypto_key_sched_dir[] = {
  * Extract particular combined mode crypto function from the 3D array.
  */
 #define CRYPTO_GET_KEY_SCHED(cop, calg, keyl)				\
-({									\
+__extension__ ({							\
 	crypto_key_sched_tbl_t *ks_tbl = crypto_key_sched_dir[(cop)];	\
 									\
 	(calg >= CRYPTO_CIPHER_MAX) ?					\
@@ -833,8 +833,8 @@ cryptodev_armv8_crypto_uninit(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD,
-		"Closing ARMv8 crypto device %s on numa socket %u\n",
+	ARMV8_CRYPTO_LOG_INFO(
+		"Closing ARMv8 crypto device %s on numa socket %u",
 		name, rte_socket_id());
 
 	cryptodev = rte_cryptodev_pmd_get_named_dev(name);

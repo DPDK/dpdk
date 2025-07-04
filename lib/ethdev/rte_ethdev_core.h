@@ -5,8 +5,6 @@
 #ifndef _RTE_ETHDEV_CORE_H_
 #define _RTE_ETHDEV_CORE_H_
 
-#include <pthread.h>
-
 /**
  * @file
  *
@@ -16,7 +14,6 @@
  * public API because they are used by inline functions in the published API.
  *
  * Applications should not use these directly.
- *
  */
 
 struct rte_eth_dev_callback;
@@ -53,8 +50,18 @@ typedef uint32_t (*eth_rx_queue_count_t)(void *rxq);
 /** @internal Check the status of a Rx descriptor */
 typedef int (*eth_rx_descriptor_status_t)(void *rxq, uint16_t offset);
 
+/** @internal Get number of used descriptors on a transmit queue. */
+typedef int (*eth_tx_queue_count_t)(void *txq);
+
 /** @internal Check the status of a Tx descriptor */
 typedef int (*eth_tx_descriptor_status_t)(void *txq, uint16_t offset);
+
+/** @internal Copy used mbufs from Tx mbuf ring into Rx mbuf ring */
+typedef uint16_t (*eth_recycle_tx_mbufs_reuse_t)(void *txq,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info);
+
+/** @internal Refill Rx descriptors with the recycling mbufs */
+typedef void (*eth_recycle_rx_descriptors_refill_t)(void *rxq, uint16_t nb);
 
 /**
  * @internal
@@ -67,7 +74,7 @@ struct rte_ethdev_qdata {
 	/** points to array of internal queue data pointers */
 	void **data;
 	/** points to array of queue callback data pointers */
-	void **clbk;
+	RTE_ATOMIC(void *) *clbk;
 };
 
 /**
@@ -77,22 +84,24 @@ struct rte_ethdev_qdata {
  * On 64-bit systems contents of this structure occupy exactly two 64B lines.
  * On 32-bit systems contents of this structure fits into one 64B line.
  */
-struct rte_eth_fp_ops {
+struct __rte_cache_aligned rte_eth_fp_ops {
 
 	/**@{*/
 	/**
 	 * Rx fast-path functions and related data.
 	 * 64-bit systems: occupies first 64B line
 	 */
+	/** Rx queues data. */
+	struct rte_ethdev_qdata rxq;
 	/** PMD receive function. */
 	eth_rx_burst_t rx_pkt_burst;
 	/** Get the number of used Rx descriptors. */
 	eth_rx_queue_count_t rx_queue_count;
 	/** Check the status of a Rx descriptor. */
 	eth_rx_descriptor_status_t rx_descriptor_status;
-	/** Rx queues data. */
-	struct rte_ethdev_qdata rxq;
-	uintptr_t reserved1[3];
+	/** Refill Rx descriptors with the recycling mbufs. */
+	eth_recycle_rx_descriptors_refill_t recycle_rx_descriptors_refill;
+	uintptr_t reserved1[2];
 	/**@}*/
 
 	/**@{*/
@@ -100,18 +109,22 @@ struct rte_eth_fp_ops {
 	 * Tx fast-path functions and related data.
 	 * 64-bit systems: occupies second 64B line
 	 */
+	/** Tx queues data. */
+	struct rte_ethdev_qdata txq;
 	/** PMD transmit function. */
 	eth_tx_burst_t tx_pkt_burst;
 	/** PMD transmit prepare function. */
 	eth_tx_prep_t tx_pkt_prepare;
 	/** Check the status of a Tx descriptor. */
 	eth_tx_descriptor_status_t tx_descriptor_status;
-	/** Tx queues data. */
-	struct rte_ethdev_qdata txq;
-	uintptr_t reserved2[3];
+	/** Copy used mbufs from Tx mbuf ring into Rx. */
+	eth_recycle_tx_mbufs_reuse_t recycle_tx_mbufs_reuse;
+	/** Get the number of used Tx descriptors. */
+	eth_tx_queue_count_t tx_queue_count;
+	uintptr_t reserved2[1];
 	/**@}*/
 
-} __rte_cache_aligned;
+};
 
 extern struct rte_eth_fp_ops rte_eth_fp_ops[RTE_MAX_ETHPORTS];
 

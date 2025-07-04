@@ -53,7 +53,7 @@ s32 ngbe_check_phy_mode_mvl(struct ngbe_hw *hw)
 	u8 value = 0;
 	u32 phy_mode = 0;
 
-	phy_mode = ngbe_flash_read_dword(hw, 0xFF010);
+	ngbe_flash_read_dword(hw, 0xFF010, &phy_mode);
 	value = (u8)(phy_mode >> (hw->bus.lan_id * 8));
 
 	if (MVL_GEN_CTL_MODE(value) == MVL_GEN_CTL_MODE_COPPER) {

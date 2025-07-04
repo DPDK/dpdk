@@ -15,6 +15,9 @@ SRCS-y += fips_validation_ccm.c
 SRCS-y += fips_validation_sha.c
 SRCS-y += fips_dev_self_test.c
 SRCS-y += fips_validation_xts.c
+SRCS-y += fips_validation_rsa.c
+SRCS-y += fips_validation_ecdsa.c
+SRCS-y += fips_validation_eddsa.c
 SRCS-y += main.c
 
 PKGCONF ?= pkg-config
@@ -40,14 +43,6 @@ JANSSON := $(shell $(PKGCONF) --exists jansson; echo $$?)
 ifeq ($(JANSSON), 0)
 LDFLAGS += $(shell $(PKGCONF) --libs jansson)
 CFLAGS += -DUSE_JANSSON
-endif
-
-ifeq ($(MAKECMDGOALS),static)
-# check for broken pkg-config
-ifeq ($(shell echo $(LDFLAGS_STATIC) | grep 'whole-archive.*l:lib.*no-whole-archive'),)
-$(warning "pkg-config output list does not contain drivers between 'whole-archive'/'no-whole-archive' flags.")
-$(error "Cannot generate statically-linked binaries with this version of pkg-config")
-endif
 endif
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API

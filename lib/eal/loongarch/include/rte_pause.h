@@ -5,13 +5,13 @@
 #ifndef RTE_PAUSE_LOONGARCH_H
 #define RTE_PAUSE_LOONGARCH_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "rte_atomic.h"
 
 #include "generic/rte_pause.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline void rte_pause(void)
 {

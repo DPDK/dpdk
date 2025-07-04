@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2015 Intel Corporation.
 
-Packet Classification and Access Control
-========================================
+Packet Classification and Access Control (ACL) Library
+======================================================
 
 The DPDK provides an Access Control library that gives the ability
 to classify an input packet based on a set of classification rules.
@@ -154,14 +154,14 @@ To define classification for the IPv6 2-tuple: <protocol, IPv6 source address> o
 
 .. code-block:: c
 
-    struct rte_ipv6_hdr {
+    struct __rte_packed_begin rte_ipv6_hdr {
         uint32_t vtc_flow;     /* IP version, traffic class & flow label. */
         uint16_t payload_len;  /* IP packet length - includes sizeof(ip_header). */
         uint8_t proto;         /* Protocol, next header. */
         uint8_t hop_limits;    /* Hop limits. */
         uint8_t src_addr[16];  /* IP address of source host. */
         uint8_t dst_addr[16];  /* IP address of destination host(s). */
-    } __rte_packed;
+    } __rte_packed_end;
 
 The following array of field definitions can be used:
 

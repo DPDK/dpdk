@@ -10,20 +10,20 @@ allows physical PMDs to be bonded together to create a single logical PMD.
 
 .. figure:: img/bond-overview.*
 
-   Bonded PMDs
+   Bonding PMDs
 
 
 The Link Bonding PMD library(librte_net_bond) supports bonding of groups of
 ``rte_eth_dev`` ports of the same speed and duplex to provide similar
 capabilities to that found in Linux bonding driver to allow the aggregation
-of multiple (slave) NICs into a single logical interface between a server
-and a switch. The new bonded PMD will then process these interfaces based on
+of multiple (member) NICs into a single logical interface between a server
+and a switch. The new bonding PMD will then process these interfaces based on
 the mode of operation specified to provide support for features such as
 redundant links, fault tolerance and/or load balancing.
 
 The librte_net_bond library exports a C API which provides an API for the
-creation of bonded devices as well as the configuration and management of the
-bonded device and its slave devices.
+creation of bonding devices as well as the configuration and management of the
+bonding device and its member devices.
 
 .. note::
 
@@ -45,7 +45,7 @@ Currently the Link Bonding PMD library supports following modes of operation:
 
 
     This mode provides load balancing and fault tolerance by transmission of
-    packets in sequential order from the first available slave device through
+    packets in sequential order from the first available member device through
     the last. Packets are bulk dequeued from devices then serviced in a
     round-robin manner. This mode does not guarantee in order reception of
     packets and down stream should be able to handle out of order packets.
@@ -57,10 +57,10 @@ Currently the Link Bonding PMD library supports following modes of operation:
    Active Backup (Mode 1)
 
 
-    In this mode only one slave in the bond is active at any time, a different
-    slave becomes active if, and only if, the primary active slave fails,
-    thereby providing fault tolerance to slave failure. The single logical
-    bonded interface's MAC address is externally visible on only one NIC (port)
+    In this mode only one member in the bond is active at any time, a different
+    member becomes active if, and only if, the primary active member fails,
+    thereby providing fault tolerance to member failure. The single logical
+    bonding interface's MAC address is externally visible on only one NIC (port)
     to avoid confusing the network switch.
 
 *   **Balance XOR (Mode 2):**
@@ -73,10 +73,10 @@ Currently the Link Bonding PMD library supports following modes of operation:
     This mode provides transmit load balancing (based on the selected
     transmission policy) and fault tolerance. The default policy (layer2) uses
     a simple calculation based on the packet flow source and destination MAC
-    addresses as well as the number of active slaves available to the bonded
-    device to classify the packet to a specific slave to transmit on. Alternate
+    addresses as well as the number of active members available to the bonding
+    device to classify the packet to a specific member to transmit on. Alternate
     transmission policies supported are layer 2+3, this takes the IP source and
-    destination addresses into the calculation of the transmit slave port and
+    destination addresses into the calculation of the transmit member port and
     the final supported policy is layer 3+4, this uses IP source and
     destination addresses as well as the TCP/UDP source and destination port.
 
@@ -92,7 +92,7 @@ Currently the Link Bonding PMD library supports following modes of operation:
    Broadcast (Mode 3)
 
 
-    This mode provides fault tolerance by transmission of packets on all slave
+    This mode provides fault tolerance by transmission of packets on all member
     ports.
 
 *   **Link Aggregation 802.3AD (Mode 4):**
@@ -114,7 +114,7 @@ Currently the Link Bonding PMD library supports following modes of operation:
        intervals period of less than 100ms.
 
     #. Calls to ``rte_eth_tx_burst`` must have a buffer size of at least 2xN,
-       where N is the number of slaves. This is a space required for LACP
+       where N is the number of members. This is a space required for LACP
        frames. Additionally LACP packets are included in the statistics, but
        they are not returned to the application.
 
@@ -126,88 +126,88 @@ Currently the Link Bonding PMD library supports following modes of operation:
 
 
     This mode provides an adaptive transmit load balancing. It dynamically
-    changes the transmitting slave, according to the computed load. Statistics
+    changes the transmitting member, according to the computed load. Statistics
     are collected in 100ms intervals and scheduled every 10ms.
 
 
 Implementation Details
 ----------------------
 
-The librte_net_bond bonded device are compatible with the Ethernet device API
+The librte_net_bond bonding device is compatible with the Ethernet device API
 exported by the Ethernet PMDs described in the *DPDK API Reference*.
 
-The Link Bonding Library supports the creation of bonded devices at application
+The Link Bonding Library supports the creation of bonding devices at application
 startup time during EAL initialization using the ``--vdev`` option as well as
 programmatically via the C API ``rte_eth_bond_create`` function.
 
-Bonded devices support the dynamical addition and removal of slave devices using
-the ``rte_eth_bond_slave_add`` / ``rte_eth_bond_slave_remove`` APIs.
+Bonding devices support the dynamical addition and removal of member devices using
+the ``rte_eth_bond_member_add`` / ``rte_eth_bond_member_remove`` APIs.
 
-After a slave device is added to a bonded device slave is stopped using
+After a member device is added to a bonding device member is stopped using
 ``rte_eth_dev_stop`` and then reconfigured using ``rte_eth_dev_configure``
 the RX and TX queues are also reconfigured using ``rte_eth_tx_queue_setup`` /
 ``rte_eth_rx_queue_setup`` with the parameters use to configure the bonding
 device. If RSS is enabled for bonding device, this mode is also enabled on new
-slave and configured as well.
+member and configured as well.
 Any flow which was configured to the bond device also is configured to the added
-slave.
+member.
 
 Setting up multi-queue mode for bonding device to RSS, makes it fully
-RSS-capable, so all slaves are synchronized with its configuration. This mode is
-intended to provide RSS configuration on slaves transparent for client
+RSS-capable, so all members are synchronized with its configuration. This mode is
+intended to provide RSS configuration on members transparent for client
 application implementation.
 
 Bonding device stores its own version of RSS settings i.e. RETA, RSS hash
-function and RSS key, used to set up its slaves. That let to define the meaning
+function and RSS key, used to set up its members. That let to define the meaning
 of RSS configuration of bonding device as desired configuration of whole bonding
-(as one unit), without pointing any of slave inside. It is required to ensure
+(as one unit), without pointing any of member inside. It is required to ensure
 consistency and made it more error-proof.
 
 RSS hash function set for bonding device, is a maximal set of RSS hash functions
-supported by all bonded slaves. RETA size is a GCD of all its RETA's sizes, so
-it can be easily used as a pattern providing expected behavior, even if slave
-RETAs' sizes are different. If RSS Key is not set for bonded device, it's not
-changed on the slaves and default key for device is used.
+supported by all bonding members. RETA size is a GCD of all its RETA's sizes, so
+it can be easily used as a pattern providing expected behavior, even if member
+RETAs' sizes are different. If RSS Key is not set for bonding device, it's not
+changed on the members and default key for device is used.
 
-As RSS configurations, there is flow consistency in the bonded slaves for the
+As RSS configurations, there is flow consistency in the bonding members for the
 next rte flow operations:
 
 Validate:
-	- Validate flow for each slave, failure at least for one slave causes to
+	- Validate flow for each member, failure at least for one member causes to
 	  bond validation failure.
 
 Create:
-	- Create the flow in all slaves.
-	- Save all the slaves created flows objects in bonding internal flow
+	- Create the flow in all members.
+	- Save all the members created flows objects in bonding internal flow
 	  structure.
-	- Failure in flow creation for existed slave rejects the flow.
-	- Failure in flow creation for new slaves in slave adding time rejects
-	  the slave.
+	- Failure in flow creation for existed member rejects the flow.
+	- Failure in flow creation for new members in member adding time rejects
+	  the member.
 
 Destroy:
-	- Destroy the flow in all slaves and release the bond internal flow
+	- Destroy the flow in all members and release the bond internal flow
 	  memory.
 
 Flush:
-	- Destroy all the bonding PMD flows in all the slaves.
+	- Destroy all the bonding PMD flows in all the members.
 
 .. note::
 
-    Don't call slaves flush directly, It destroys all the slave flows which
+    Don't call members flush directly, It destroys all the member flows which
     may include external flows or the bond internal LACP flow.
 
 Query:
-	- Summarize flow counters from all the slaves, relevant only for
+	- Summarize flow counters from all the members, relevant only for
 	  ``RTE_FLOW_ACTION_TYPE_COUNT``.
 
 Isolate:
-	- Call to flow isolate for all slaves.
-	- Failure in flow isolation for existed slave rejects the isolate mode.
-	- Failure in flow isolation for new slaves in slave adding time rejects
-	  the slave.
+	- Call to flow isolate for all members.
+	- Failure in flow isolation for existed member rejects the isolate mode.
+	- Failure in flow isolation for new members in member adding time rejects
+	  the member.
 
 All settings are managed through the bonding port API and always are propagated
-in one direction (from bonding to slaves).
+in one direction (from bonding to members).
 
 Link Status Change Interrupts / Polling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -215,16 +215,16 @@ Link Status Change Interrupts / Polling
 Link bonding devices support the registration of a link status change callback,
 using the ``rte_eth_dev_callback_register`` API, this will be called when the
 status of the bonding device changes. For example in the case of a bonding
-device which has 3 slaves, the link status will change to up when one slave
-becomes active or change to down when all slaves become inactive. There is no
-callback notification when a single slave changes state and the previous
-conditions are not met. If a user wishes to monitor individual slaves then they
-must register callbacks with that slave directly.
+device which has 3 members, the link status will change to up when one member
+becomes active or change to down when all members become inactive. There is no
+callback notification when a single member changes state and the previous
+conditions are not met. If a user wishes to monitor individual members then they
+must register callbacks with that member directly.
 
 The link bonding library also supports devices which do not implement link
 status change interrupts, this is achieved by polling the devices link status at
 a defined period which is set using the ``rte_eth_bond_link_monitoring_set``
-API, the default polling interval is 10ms. When a device is added as a slave to
+API, the default polling interval is 10ms. When a device is added as a member to
 a bonding device it is determined using the ``RTE_PCI_DRV_INTR_LSC`` flag
 whether the device supports interrupts or whether the link status should be
 monitored by polling it.
@@ -233,31 +233,31 @@ Requirements / Limitations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The current implementation only supports devices that support the same speed
-and duplex to be added as a slaves to the same bonded device. The bonded device
-inherits these attributes from the first active slave added to the bonded
-device and then all further slaves added to the bonded device must support
+and duplex to be added as a members to the same bonding device. The bonding device
+inherits these attributes from the first active member added to the bonding
+device and then all further members added to the bonding device must support
 these parameters.
 
-A bonding device must have a minimum of one slave before the bonding device
+A bonding device must have a minimum of one member before the bonding device
 itself can be started.
 
 To use a bonding device dynamic RSS configuration feature effectively, it is
-also required, that all slaves should be RSS-capable and support, at least one
+also required, that all members should be RSS-capable and support, at least one
 common hash function available for each of them. Changing RSS key is only
-possible, when all slave devices support the same key size.
+possible, when all member devices support the same key size.
 
-To prevent inconsistency on how slaves process packets, once a device is added
+To prevent inconsistency on how members process packets, once a device is added
 to a bonding device, RSS and rte flow configurations should be managed through
-the bonding device API, and not directly on the slave.
+the bonding device API, and not directly on the member.
 
 Like all other PMD, all functions exported by a PMD are lock-free functions
 that are assumed not to be invoked in parallel on different logical cores to
 work on the same target object.
 
 It should also be noted that the PMD receive function should not be invoked
-directly on a slave devices after they have been to a bonded device since
-packets read directly from the slave device will no longer be available to the
-bonded device to read.
+directly on a member devices after they have been to a bonding device since
+packets read directly from the member device will no longer be available to the
+bonding device to read.
 
 Configuration
 ~~~~~~~~~~~~~
@@ -265,62 +265,62 @@ Configuration
 Link bonding devices are created using the ``rte_eth_bond_create`` API
 which requires a unique device name, the bonding mode,
 and the socket Id to allocate the bonding device's resources on.
-The other configurable parameters for a bonded device are its slave devices,
-its primary slave, a user defined MAC address and transmission policy to use if
+The other configurable parameters for a bonding device are its member devices,
+its primary member, a user defined MAC address and transmission policy to use if
 the device is in balance XOR mode.
 
-Slave Devices
-^^^^^^^^^^^^^
+Member Devices
+^^^^^^^^^^^^^^
 
-Bonding devices support up to a maximum of ``RTE_MAX_ETHPORTS`` slave devices
-of the same speed and duplex. Ethernet devices can be added as a slave to a
-maximum of one bonded device. Slave devices are reconfigured with the
-configuration of the bonded device on being added to a bonded device.
+Bonding devices support up to a maximum of ``RTE_MAX_ETHPORTS`` member devices
+of the same speed and duplex. Ethernet devices can be added as a member to a
+maximum of one bonding device. Member devices are reconfigured with the
+configuration of the bonding device on being added to a bonding device.
 
-The bonded also guarantees to return the MAC address of the slave device to its
-original value of removal of a slave from it.
+The bonding also guarantees to return the MAC address of the member device to its
+original value of removal of a member from it.
 
-Primary Slave
-^^^^^^^^^^^^^
+Primary Member
+^^^^^^^^^^^^^^
 
-The primary slave is used to define the default port to use when a bonded
+The primary member is used to define the default port to use when a bonding
 device is in active backup mode. A different port will only be used if, and
 only if, the current primary port goes down. If the user does not specify a
-primary port it will default to being the first port added to the bonded device.
+primary port it will default to being the first port added to the bonding device.
 
 MAC Address
 ^^^^^^^^^^^
 
-The bonded device can be configured with a user specified MAC address, this
-address will be inherited by the some/all slave devices depending on the
+The bonding device can be configured with a user specified MAC address, this
+address will be inherited by the some/all member devices depending on the
 operating mode. If the device is in active backup mode then only the primary
-device will have the user specified MAC, all other slaves will retain their
-original MAC address. In mode 0, 2, 3, 4 all slaves devices are configure with
-the bonded devices MAC address.
+device will have the user specified MAC, all other members will retain their
+original MAC address. In mode 0, 2, 3, 4 all members devices are configure with
+the bonding devices MAC address.
 
-If a user defined MAC address is not defined then the bonded device will
-default to using the primary slaves MAC address.
+If a user defined MAC address is not defined then the bonding device will
+default to using the primary members MAC address.
 
 Balance XOR Transmit Policies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-There are 3 supported transmission policies for bonded device running in
+There are 3 supported transmission policies for bonding device running in
 Balance XOR mode. Layer 2, Layer 2+3, Layer 3+4.
 
 *   **Layer 2:**   Ethernet MAC address based balancing is the default
     transmission policy for Balance XOR bonding mode. It uses a simple XOR
     calculation on the source MAC address and destination MAC address of the
-    packet and then calculate the modulus of this value to calculate the slave
+    packet and then calculate the modulus of this value to calculate the member
     device to transmit the packet on.
 
 *   **Layer 2 + 3:** Ethernet MAC address & IP Address based balancing uses a
     combination of source/destination MAC addresses and the source/destination
-    IP addresses of the data packet to decide which slave port the packet will
+    IP addresses of the data packet to decide which member port the packet will
     be transmitted on.
 
 *   **Layer 3 + 4:**  IP Address & UDP Port based  balancing uses a combination
     of source/destination IP Address and the source/destination UDP ports of
-    the packet of the data packet to decide which slave port the packet will be
+    the packet of the data packet to decide which member port the packet will be
     transmitted on.
 
 All these policies support 802.1Q VLAN Ethernet packets, as well as IPv4, IPv6
@@ -350,17 +350,17 @@ device configure API ``rte_eth_dev_configure`` and then the RX and TX queues
 which will be used must be setup using ``rte_eth_tx_queue_setup`` /
 ``rte_eth_rx_queue_setup``.
 
-Slave devices can be dynamically added and removed from a link bonding device
-using the ``rte_eth_bond_slave_add`` / ``rte_eth_bond_slave_remove``
-APIs but at least one slave device must be added to the link bonding device
+Member devices can be dynamically added and removed from a link bonding device
+using the ``rte_eth_bond_member_add`` / ``rte_eth_bond_member_remove``
+APIs but at least one member device must be added to the link bonding device
 before it can be started using ``rte_eth_dev_start``.
 
-The link status of a bonded device is dictated by that of its slaves, if all
-slave device link status are down or if all slaves are removed from the link
+The link status of a bonding device is dictated by that of its members, if all
+member device link status are down or if all members are removed from the link
 bonding device then the link status of the bonding device will go down.
 
 It is also possible to configure / query the configuration of the control
-parameters of a bonded device using the provided APIs
+parameters of a bonding device using the provided APIs
 ``rte_eth_bond_mode_set/ get``, ``rte_eth_bond_primary_set/get``,
 ``rte_eth_bond_mac_set/reset`` and ``rte_eth_bond_xmit_policy_set/get``.
 
@@ -390,9 +390,9 @@ long as the following two rules are respected:
     where X can be any combination of numbers and/or letters,
     and the name is no greater than 32 characters long.
 
-*   A least one slave device is provided with for each bonded device definition.
+*   A least one member device is provided with for each bonding device definition.
 
-*   The operation mode of the bonded device being created is provided.
+*   The operation mode of the bonding device being created is provided.
 
 The different options are:
 
@@ -404,42 +404,42 @@ The different options are:
 
         mode=2
 
-*   slave: Defines the PMD device which will be added as slave to the bonded
+*   member: Defines the PMD device which will be added as member to the bonding
     device. This option can be selected multiple times, for each device to be
-    added as a slave. Physical devices should be specified using their PCI
+    added as a member. Physical devices should be specified using their PCI
     address, in the format domain:bus:devid.function
 
 .. code-block:: console
 
-        slave=0000:0a:00.0,slave=0000:0a:00.1
+        member=0000:0a:00.0,member=0000:0a:00.1
 
-*   primary: Optional parameter which defines the primary slave port,
-    is used in active backup mode to select the primary slave for data TX/RX if
+*   primary: Optional parameter which defines the primary member port,
+    is used in active backup mode to select the primary member for data TX/RX if
     it is available. The primary port also is used to select the MAC address to
-    use when it is not defined by the user. This defaults to the first slave
-    added to the device if it is specified. The primary device must be a slave
-    of the bonded device.
+    use when it is not defined by the user. This defaults to the first member
+    added to the device if it is specified. The primary device must be a member
+    of the bonding device.
 
 .. code-block:: console
 
         primary=0000:0a:00.0
 
 *   socket_id: Optional parameter used to select which socket on a NUMA device
-    the bonded devices resources will be allocated on.
+    the bonding devices resources will be allocated on.
 
 .. code-block:: console
 
         socket_id=0
 
 *   mac: Optional parameter to select a MAC address for link bonding device,
-    this overrides the value of the primary slave device.
+    this overrides the value of the primary member device.
 
 .. code-block:: console
 
         mac=00:1e:67:1d:fd:1d
 
 *   xmit_policy: Optional parameter which defines the transmission policy when
-    the bonded device is in  balance mode. If not user specified this defaults
+    the bonding device is in  balance mode. If not user specified this defaults
     to l2 (layer 2) forwarding, the other transmission policies available are
     l23 (layer 2+3) and l34 (layer 3+4)
 
@@ -474,29 +474,29 @@ The different options are:
 Examples of Usage
 ^^^^^^^^^^^^^^^^^
 
-Create a bonded device in round robin mode with two slaves specified by their PCI address:
+Create a bonding device in round robin mode with two members specified by their PCI address:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,slave=0000:0a:00.01,slave=0000:04:00.00' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,member=0000:0a:00.01,member=0000:04:00.00' -- --port-topology=chained
 
-Create a bonded device in round robin mode with two slaves specified by their PCI address and an overriding MAC address:
-
-.. code-block:: console
-
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,slave=0000:0a:00.01,slave=0000:04:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
-
-Create a bonded device in active backup mode with two slaves specified, and a primary slave specified by their PCI addresses:
+Create a bonding device in round robin mode with two members specified by their PCI address and an overriding MAC address:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=1,slave=0000:0a:00.01,slave=0000:04:00.00,primary=0000:0a:00.01' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,member=0000:0a:00.01,member=0000:04:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
 
-Create a bonded device in balance mode with two slaves specified by their PCI addresses, and a transmission policy of layer 3 + 4 forwarding:
+Create a bonding device in active backup mode with two members specified, and a primary member specified by their PCI addresses:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=2,slave=0000:0a:00.01,slave=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=1,member=0000:0a:00.01,member=0000:04:00.00,primary=0000:0a:00.01' -- --port-topology=chained
+
+Create a bonding device in balance mode with two members specified by their PCI addresses, and a transmission policy of layer 3 + 4 forwarding:
+
+.. code-block:: console
+
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=2,member=0000:0a:00.01,member=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained
 
 .. _bonding_testpmd_commands:
 
@@ -505,40 +505,40 @@ Testpmd driver specific commands
 
 Some bonding driver specific features are integrated in testpmd.
 
-create bonded device
-~~~~~~~~~~~~~~~~~~~~
+create bonding device
+~~~~~~~~~~~~~~~~~~~~~
 
 Create a new bonding device::
 
-   testpmd> create bonded device (mode) (socket)
+   testpmd> create bonding device (mode) (socket)
 
-For example, to create a bonded device in mode 1 on socket 0::
+For example, to create a bonding device in mode 1 on socket 0::
 
-   testpmd> create bonded device 1 0
-   created new bonded device (port X)
+   testpmd> create bonding device 1 0
+   created new bonding device (port X)
 
-add bonding slave
-~~~~~~~~~~~~~~~~~
+add bonding member
+~~~~~~~~~~~~~~~~~~
 
 Adds Ethernet device to a Link Bonding device::
 
-   testpmd> add bonding slave (slave id) (port id)
+   testpmd> add bonding member (member id) (port id)
 
 For example, to add Ethernet device (port 6) to a Link Bonding device (port 10)::
 
-   testpmd> add bonding slave 6 10
+   testpmd> add bonding member 6 10
 
 
-remove bonding slave
-~~~~~~~~~~~~~~~~~~~~
+remove bonding member
+~~~~~~~~~~~~~~~~~~~~~
 
-Removes an Ethernet slave device from a Link Bonding device::
+Removes an Ethernet member device from a Link Bonding device::
 
-   testpmd> remove bonding slave (slave id) (port id)
+   testpmd> remove bonding member (member id) (port id)
 
-For example, to remove Ethernet slave device (port 6) to a Link Bonding device (port 10)::
+For example, to remove Ethernet member device (port 6) to a Link Bonding device (port 10)::
 
-   testpmd> remove bonding slave 6 10
+   testpmd> remove bonding member 6 10
 
 set bonding mode
 ~~~~~~~~~~~~~~~~
@@ -554,11 +554,11 @@ For example, to set the bonding mode of a Link Bonding device (port 10) to broad
 set bonding primary
 ~~~~~~~~~~~~~~~~~~~
 
-Set an Ethernet slave device as the primary device on a Link Bonding device::
+Set an Ethernet member device as the primary device on a Link Bonding device::
 
-   testpmd> set bonding primary (slave id) (port id)
+   testpmd> set bonding primary (member id) (port id)
 
-For example, to set the Ethernet slave device (port 6) as the primary port of a Link Bonding device (port 10)::
+For example, to set the Ethernet member device (port 6) as the primary port of a Link Bonding device (port 10)::
 
    testpmd> set bonding primary 6 10
 
@@ -590,13 +590,13 @@ set bonding mon_period
 
 Set the link status monitoring polling period in milliseconds for a bonding device.
 
-This adds support for PMD slave devices which do not support link status interrupts.
+This adds support for PMD member devices which do not support link status interrupts.
 When the mon_period is set to a value greater than 0 then all PMD's which do not support
 link status ISR will be queried every polling interval to check if their link status has changed::
 
    testpmd> set bonding mon_period (port_id) (value)
 
-For example, to set the link status monitoring polling period of bonded device (port 5) to 150ms::
+For example, to set the link status monitoring polling period of bonding device (port 5) to 150ms::
 
    testpmd> set bonding mon_period 5 150
 
@@ -604,7 +604,7 @@ For example, to set the link status monitoring polling period of bonded device (
 set bonding lacp dedicated_queue
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Enable dedicated tx/rx queues on bonding devices slaves to handle LACP control plane traffic
+Enable dedicated tx/rx queues on bonding devices members to handle LACP control plane traffic
 when in mode 4 (link-aggregation-802.3ad)::
 
    testpmd> set bonding lacp dedicated_queues (port_id) (enable|disable)
@@ -627,13 +627,13 @@ it also shows link-aggregation-802.3ad information if the link mode is mode 4::
    testpmd> show bonding config (port id)
 
 For example,
-to show the configuration a Link Bonding device (port 9) with 3 slave devices (1, 3, 4)
+to show the configuration a Link Bonding device (port 9) with 3 member devices (1, 3, 4)
 in balance mode with a transmission policy of layer 2+3::
 
    testpmd> show bonding config 9
      - Dev basic:
         Bonding mode: BALANCE(2)
         Balance Xmit Policy: BALANCE_XMIT_POLICY_LAYER23
-        Slaves (3): [1 3 4]
-        Active Slaves (3): [1 3 4]
+        Members (3): [1 3 4]
+        Active Members (3): [1 3 4]
         Primary: [3]

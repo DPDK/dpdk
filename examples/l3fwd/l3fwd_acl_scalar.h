@@ -6,7 +6,40 @@
 #define L3FWD_ACL_SCALAR_H
 
 #include "l3fwd.h"
+#if defined RTE_ARCH_X86
+#include "l3fwd_sse.h"
+#elif defined __ARM_NEON
+#include "l3fwd_neon.h"
+#elif defined RTE_ARCH_PPC_64
+#include "l3fwd_altivec.h"
+#else
 #include "l3fwd_common.h"
+#endif
+/*
+ * If the machine has SSE, NEON or PPC 64 then multiple packets
+ * can be sent at once if not only single packets will be sent.
+ */
+#if defined RTE_ARCH_X86 || defined __ARM_NEON || defined RTE_ARCH_PPC_64
+#define ACL_SEND_MULTI
+#endif
+
+#define TYPE_NONE	0
+#define TYPE_IPV4	1
+#define TYPE_IPV6	2
+
+struct acl_search_t {
+
+	uint32_t num_ipv4;
+	uint32_t num_ipv6;
+
+	uint8_t types[MAX_PKT_BURST];
+
+	const uint8_t *data_ipv4[MAX_PKT_BURST];
+	uint32_t res_ipv4[MAX_PKT_BURST];
+
+	const uint8_t *data_ipv6[MAX_PKT_BURST];
+	uint32_t res_ipv6[MAX_PKT_BURST];
+};
 
 static inline void
 l3fwd_acl_prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
@@ -16,16 +49,16 @@ l3fwd_acl_prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
 		/* Fill acl structure */
-		acl->data_ipv4[acl->num_ipv4] = MBUF_IPV4_2PROTO(pkt);
-		acl->m_ipv4[(acl->num_ipv4)++] = pkt;
+		acl->data_ipv4[acl->num_ipv4++] = MBUF_IPV4_2PROTO(pkt);
+		acl->types[index] = TYPE_IPV4;
 
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
 		/* Fill acl structure */
-		acl->data_ipv6[acl->num_ipv6] = MBUF_IPV6_2PROTO(pkt);
-		acl->m_ipv6[(acl->num_ipv6)++] = pkt;
+		acl->data_ipv6[acl->num_ipv6++] = MBUF_IPV6_2PROTO(pkt);
+		acl->types[index] = TYPE_IPV6;
 	} else {
-		/* Unknown type, drop the packet */
-		rte_pktmbuf_free(pkt);
+		/* Unknown type, will drop the packet */
+		acl->types[index] = TYPE_NONE;
 	}
 }
 
@@ -78,32 +111,6 @@ send_packets_single(struct lcore_conf *qconf, struct rte_mbuf *pkts[], uint16_t 
 		} else
 			rte_pktmbuf_free(pkts[j]);
 	}
-}
-
-static inline void
-l3fwd_acl_send_packets(struct lcore_conf *qconf, struct rte_mbuf *pkts[], uint32_t res[],
-	uint32_t nb_tx)
-{
-	uint32_t i;
-	uint16_t dst_port[nb_tx];
-
-	for (i = 0; i != nb_tx; i++) {
-		if (likely((res[i] & ACL_DENY_SIGNATURE) == 0 && res[i] != 0)) {
-			dst_port[i] = res[i] - FWD_PORT_SHIFT;
-		} else {
-			dst_port[i] = BAD_PORT;
-#ifdef L3FWDACL_DEBUG
-			if ((res & ACL_DENY_SIGNATURE) != 0) {
-				if (RTE_ETH_IS_IPV4_HDR(pkts[i]->packet_type))
-					dump_acl4_rule(pkts[i], res[i]);
-				else if (RTE_ETH_IS_IPV6_HDR(pkt[i]->packet_type))
-					dump_acl6_rule(pkt[i], res[i]);
-			}
-#endif
-		}
-	}
-
-	send_packets_single(qconf, pkts, dst_port, nb_tx);
 }
 
 #endif /* L3FWD_ACL_SCALAR_H */

@@ -290,4 +290,4 @@ test_hash_functions(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_functions_autotest, test_hash_functions);
+REGISTER_PERF_TEST(hash_functions_autotest, test_hash_functions);

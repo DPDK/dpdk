@@ -37,11 +37,12 @@ struct rte_mem_config {
 	rte_rwlock_t qlock;   /**< used by tailqs for thread safety. */
 	rte_rwlock_t mplock;  /**< used by mempool library for thread safety. */
 	rte_spinlock_t tlock; /**< used by timer library for thread safety. */
+	rte_spinlock_t ethdev_lock; /**< used by ethdev library. */
 
 	rte_rwlock_t memory_hotplug_lock;
 	/**< Indicates whether memory hotplug request is in progress. */
 
-	uint8_t mp_status; /**< Multiprocess status. */
+	RTE_ATOMIC(uint8_t) mp_status; /**< Multiprocess status. */
 
 	/* memory segments and zones */
 	struct rte_fbarray memzones; /**< Memzone descriptors. */
@@ -75,6 +76,8 @@ struct rte_mem_config {
 	/**< TSC rate */
 
 	uint8_t dma_maskbits; /**< Keeps the more restricted dma mask. */
+
+	size_t max_memzone; /**< Maximum number of allocated memzones. */
 };
 
 /* update internal config from shared mem config */

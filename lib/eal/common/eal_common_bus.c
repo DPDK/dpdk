@@ -11,17 +11,20 @@
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 static struct rte_bus_list rte_bus_list =
 	TAILQ_HEAD_INITIALIZER(rte_bus_list);
 
+RTE_EXPORT_SYMBOL(rte_bus_name)
 const char *
 rte_bus_name(const struct rte_bus *bus)
 {
 	return bus->name;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_register)
 void
 rte_bus_register(struct rte_bus *bus)
 {
@@ -35,17 +38,19 @@ rte_bus_register(struct rte_bus *bus)
 	RTE_VERIFY(!bus->plug || bus->unplug);
 
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
-	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", rte_bus_name(bus));
+	EAL_LOG(DEBUG, "Registered [%s] bus.", rte_bus_name(bus));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_bus_unregister)
 void
 rte_bus_unregister(struct rte_bus *bus)
 {
 	TAILQ_REMOVE(&rte_bus_list, bus, next);
-	RTE_LOG(DEBUG, EAL, "Unregistered [%s] bus.\n", rte_bus_name(bus));
+	EAL_LOG(DEBUG, "Unregistered [%s] bus.", rte_bus_name(bus));
 }
 
 /* Scan all the buses for registered devices */
+RTE_EXPORT_SYMBOL(rte_bus_scan)
 int
 rte_bus_scan(void)
 {
@@ -55,7 +60,7 @@ rte_bus_scan(void)
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
 		ret = bus->scan();
 		if (ret)
-			RTE_LOG(ERR, EAL, "Scan for (%s) bus failed.\n",
+			EAL_LOG(ERR, "Scan for (%s) bus failed.",
 				rte_bus_name(bus));
 	}
 
@@ -63,6 +68,7 @@ rte_bus_scan(void)
 }
 
 /* Probe all devices of all buses */
+RTE_EXPORT_SYMBOL(rte_bus_probe)
 int
 rte_bus_probe(void)
 {
@@ -77,14 +83,14 @@ rte_bus_probe(void)
 
 		ret = bus->probe();
 		if (ret)
-			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
+			EAL_LOG(ERR, "Bus (%s) probe failed.",
 				rte_bus_name(bus));
 	}
 
 	if (vbus) {
 		ret = vbus->probe();
 		if (ret)
-			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
+			EAL_LOG(ERR, "Bus (%s) probe failed.",
 				rte_bus_name(vbus));
 	}
 
@@ -124,6 +130,7 @@ bus_dump_one(FILE *f, struct rte_bus *bus)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_dump)
 void
 rte_bus_dump(FILE *f)
 {
@@ -133,13 +140,14 @@ rte_bus_dump(FILE *f)
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
 		ret = bus_dump_one(f, bus);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "Unable to write to stream (%d)\n",
+			EAL_LOG(ERR, "Unable to write to stream (%d)",
 				ret);
 			break;
 		}
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_find)
 struct rte_bus *
 rte_bus_find(const struct rte_bus *start, rte_bus_cmp_t cmp,
 	     const void *data)
@@ -175,6 +183,7 @@ bus_find_device(const struct rte_bus *bus, const void *_dev)
 	return dev == NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_find_by_device)
 struct rte_bus *
 rte_bus_find_by_device(const struct rte_device *dev)
 {
@@ -189,6 +198,7 @@ cmp_bus_name(const struct rte_bus *bus, const void *_name)
 	return strcmp(rte_bus_name(bus), name);
 }
 
+RTE_EXPORT_SYMBOL(rte_bus_find_by_name)
 struct rte_bus *
 rte_bus_find_by_name(const char *busname)
 {
@@ -220,6 +230,7 @@ rte_bus_find_by_device_name(const char *str)
 /*
  * Get iommu class of devices on the bus.
  */
+RTE_EXPORT_SYMBOL(rte_bus_get_iommu_class)
 enum rte_iova_mode
 rte_bus_get_iommu_class(void)
 {
@@ -235,13 +246,17 @@ rte_bus_get_iommu_class(void)
 			continue;
 
 		bus_iova_mode = bus->get_iommu_class();
-		RTE_LOG(DEBUG, EAL, "Bus %s wants IOVA as '%s'\n",
+		EAL_LOG(DEBUG, "Bus %s wants IOVA as '%s'",
 			rte_bus_name(bus),
 			bus_iova_mode == RTE_IOVA_DC ? "DC" :
 			(bus_iova_mode == RTE_IOVA_PA ? "PA" : "VA"));
-		if (bus_iova_mode == RTE_IOVA_PA)
+		if (bus_iova_mode == RTE_IOVA_PA) {
 			buses_want_pa = true;
-		else if (bus_iova_mode == RTE_IOVA_VA)
+			if (!RTE_IOVA_IN_MBUF)
+				EAL_LOG(WARNING,
+					"Bus %s wants IOVA as PA not compatible with 'enable_iova_as_pa=false' build option.",
+					rte_bus_name(bus));
+		} else if (bus_iova_mode == RTE_IOVA_VA)
 			buses_want_va = true;
 	}
 	if (buses_want_va && !buses_want_pa) {
@@ -251,8 +266,8 @@ rte_bus_get_iommu_class(void)
 	} else {
 		mode = RTE_IOVA_DC;
 		if (buses_want_va) {
-			RTE_LOG(WARNING, EAL, "Some buses want 'VA' but forcing 'DC' because other buses want 'PA'.\n");
-			RTE_LOG(WARNING, EAL, "Depending on the final decision by the EAL, not all buses may be able to initialize.\n");
+			EAL_LOG(WARNING, "Some buses want 'VA' but forcing 'DC' because other buses want 'PA'.");
+			EAL_LOG(WARNING, "Depending on the final decision by the EAL, not all buses may be able to initialize.");
 		}
 	}
 

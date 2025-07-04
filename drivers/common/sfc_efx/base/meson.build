@@ -5,7 +5,7 @@
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
 
-sources = [
+base_sources = files(
         'efx_bootcfg.c',
         'efx_crc32.c',
         'efx_ev.c',
@@ -16,9 +16,11 @@ sources = [
         'efx_lic.c',
         'efx_mac.c',
         'efx_mae.c',
+        'efx_table.c',
         'efx_mcdi.c',
         'efx_mon.c',
         'efx_nic.c',
+        'efx_np.c',
         'efx_nvram.c',
         'efx_pci.c',
         'efx_phy.c',
@@ -55,6 +57,8 @@ sources = [
         'hunt_nic.c',
         'medford_nic.c',
         'medford2_nic.c',
+        'medford4_mac.c',
+        'medford4_phy.c',
         'rhead_ev.c',
         'rhead_intr.c',
         'rhead_nic.c',
@@ -63,30 +67,24 @@ sources = [
         'rhead_tunnel.c',
         'rhead_tx.c',
         'rhead_virtio.c',
-]
+)
 
-extra_flags = [
-        '-Wno-sign-compare',
-        '-Wno-unused-parameter',
-        '-Wno-unused-variable',
-        '-Wno-empty-body',
-        '-Wno-unused-but-set-variable',
-]
+if is_ms_compiler
+    extra_flags = [
+            '/wd4101', # unreferenced local variable
+    ]
+else
+    extra_flags = [
+            '-Wno-sign-compare',
+            '-Wno-unused-parameter',
+            '-Wno-unused-variable',
+            '-Wno-empty-body',
+            '-Wno-unused-but-set-variable',
+    ]
+endif
 
-c_args = cflags
 foreach flag: extra_flags
     if cc.has_argument(flag)
-        c_args += flag
+        base_cflags += flag
     endif
 endforeach
-
-if build
-    base_lib = static_library('sfc_base', sources,
-        include_directories: includes,
-        dependencies: static_rte_eal,
-        c_args: c_args)
-
-    base_objs = base_lib.extract_all_objects(recursive: true)
-else
-    base_objs = []
-endif

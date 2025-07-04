@@ -7,7 +7,7 @@ dpdk-test-crypto-perf Application
 The ``dpdk-test-crypto-perf`` tool is a Data Plane Development Kit (DPDK)
 utility that allows measuring performance parameters of PMDs available in the
 crypto tree. There are available two measurement types: throughput and latency.
-User can use multiply cores to run tests on but only
+User can use multiple cores to run tests on but only
 one type of crypto PMD can be measured during single application
 execution. Cipher parameters, type of device, type of operation and
 chain mode have to be specified in the command line as application
@@ -60,10 +60,9 @@ The following are the EAL command-line options that can be used in conjunction
 with the ``dpdk-test-crypto-perf`` application.
 See the DPDK Getting Started Guides for more information on these options.
 
-*   ``-c <COREMASK>`` or ``-l <CORELIST>``
+*   ``-l <CORELIST>``
 
-        Set the hexadecimal bitmask of the cores to run on. The corelist is a
-        list cores to use.
+        Specify the cores to be used by the application.
 
 *   ``-a <PCI>``
 
@@ -139,6 +138,7 @@ The following are the application command-line options:
 * ``--segment-sz <n>``
 
         Set the size of the segment to use, for Scatter Gather List testing.
+        Use list of values in ``buffer-sz`` in descending order if ``segment-sz`` is used.
         By default, it is set to the size of the maximum buffer size, including the digest size,
         so a single segment is created.
 
@@ -175,12 +175,25 @@ The following are the application command-line options:
            pdcp
            docsis
            modex
+           ecdsa_p256r1
+           eddsa_25519
+           rsa
+           sm2
+           ipsec
+           tls-record
 
         For GCM/CCM algorithms you should use aead flag.
 
 * ``--sessionless``
 
         Enable session-less crypto operations mode.
+
+* ``--shared-session``
+
+        Enable sharing sessions between all queue pairs on a single crypto PMD.
+        This can be useful for benchmarking this setup,
+        or finding and debugging concurrency errors
+        that can occur while using sessions on multiple lcores simultaneously.
 
 * ``--out-of-place``
 
@@ -232,7 +245,6 @@ The following are the application command-line options:
         Set authentication algorithm name, where ``name`` is one
         of the following::
 
-           3des-cbc
            aes-cbc-mac
            aes-cmac
            aes-gmac
@@ -340,6 +352,33 @@ The following are the application command-line options:
 
         Set modex length for asymmetric crypto perf test.
         Supported lengths are 60, 128, 255, 448. Default length is 128.
+
+* ``--asym-op <sign/verify/encrypt/decrypt>``
+
+        Set Asymmetric crypto operation mode.
+        Not applicable for modex op type.
+        Default is ``encrypt``.
+
+* ``--rsa-priv-keytype <exp/qt>``
+
+        Set RSA private key type.
+        To be used with RSA asymmetric crypto ops.
+
+* ``--rsa-modlen <n>``
+
+        Set RSA mod length (in bits) for asymmetric crypto perf test.
+        To be used with RSA asymmetric crypto ops.
+        Supported lengths are 1024, 2048, 4096, 8192.
+        Default length is 1024.
+
+* ``--tls-version <TLS1.2/TLS1.3/DTLS1.2>``
+
+        Set TLS/DTLS protocol version for perf test (default is TLS1.2).
+
+* ``--low-prio-qp-mask <mask>``
+
+        Set low priority for queue pairs set in the hexadecimal mask.
+        This is an optional parameter, if not set all queue pairs will be on same high priority.
 
 Test Vector File
 ~~~~~~~~~~~~~~~~

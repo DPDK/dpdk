@@ -8,10 +8,6 @@
 /**
  * @file rte_graph.h
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * Graph architecture abstracts the data processing functions as
  * "node" and "link" them together to create a complex "graph" to enable
  * reusable/modular data processing functions.
@@ -20,7 +16,6 @@
  * dump and destroy on graph and node operations such as clone,
  * edge update, and edge shrink, etc. The API also allows to create the stats
  * cluster to monitor per graph and per node stats.
- *
  */
 
 #include <stdbool.h>
@@ -35,6 +30,7 @@ extern "C" {
 
 #define RTE_GRAPH_NAMESIZE 64 /**< Max length of graph name. */
 #define RTE_NODE_NAMESIZE 64  /**< Max length of node name. */
+#define RTE_NODE_XSTAT_DESC_SIZE 64  /**< Max length of node xstat description. */
 #define RTE_GRAPH_PCAP_FILE_SZ 64 /**< Max length of pcap file name. */
 #define RTE_GRAPH_OFF_INVALID UINT32_MAX /**< Invalid graph offset. */
 #define RTE_NODE_ID_INVALID UINT32_MAX   /**< Invalid node id. */
@@ -95,7 +91,6 @@ struct rte_graph_cluster_node_stats; /**< Node stats within cluster of graphs */
  *   Number of objects processed.
  *
  * @see rte_graph_walk()
- *
  */
 typedef uint16_t (*rte_node_process_t)(struct rte_graph *graph,
 				       struct rte_node *node, void **objs,
@@ -169,6 +164,16 @@ struct rte_graph_param {
 	bool pcap_enable; /**< Pcap enable. */
 	uint64_t num_pkt_to_capture; /**< Number of packets to capture. */
 	char *pcap_filename; /**< Filename in which packets to be captured.*/
+
+	union {
+		struct {
+			uint64_t rsvd; /**< Reserved for rtc model. */
+		} rtc;
+		struct {
+			uint32_t wq_size_max; /**< Maximum size of workqueue for dispatch model. */
+			uint32_t mp_capacity; /**< Capacity of memory pool for dispatch model. */
+		} dispatch;
+	};
 };
 
 /**
@@ -183,7 +188,6 @@ struct rte_graph_cluster_stats_param {
 	/**< Stats print callback function. NULL value allowed, in that case,
 	 *   default print stat function used.
 	 */
-	RTE_STD_C11
 	union {
 		void *cookie;
 		FILE *f; /**< File pointer to dump the stats when fn == NULL. */
@@ -198,7 +202,7 @@ struct rte_graph_cluster_stats_param {
  *
  * @see struct rte_graph_cluster_stats_param::fn
  */
-struct rte_graph_cluster_node_stats {
+struct __rte_cache_aligned rte_graph_cluster_node_stats {
 	uint64_t ts;	    /**< Current timestamp. */
 	uint64_t calls;	    /**< Current number of calls made. */
 	uint64_t objs;      /**< Current number of objs processed. */
@@ -209,12 +213,25 @@ struct rte_graph_cluster_node_stats {
 	uint64_t prev_objs;	/**< Previous number of processed objs. */
 	uint64_t prev_cycles;	/**< Previous number of cycles. */
 
+	union {
+		struct {
+			uint64_t sched_objs;
+			/**< Previous number of scheduled objs for dispatch model. */
+			uint64_t sched_fail;
+			/**< Previous number of failed schedule objs for dispatch model. */
+		} dispatch;
+	};
+
 	uint64_t realloc_count; /**< Realloc count. */
+
+	uint8_t xstat_cntrs;			      /**< Number of Node xstat counters. */
+	char (*xstat_desc)[RTE_NODE_XSTAT_DESC_SIZE]; /**< Names of the Node xstat counters. */
+	uint64_t *xstat_count;			      /**< Total stat count per each xstat. */
 
 	rte_node_t id;	/**< Node identifier of stats. */
 	uint64_t hz;	/**< Cycles per seconds. */
 	char name[RTE_NODE_NAMESIZE];	/**< Name of the node. */
-} __rte_cache_aligned;
+};
 
 /**
  * Create Graph.
@@ -230,7 +247,6 @@ struct rte_graph_cluster_node_stats {
  * @return
  *   Unique graph id on success, RTE_GRAPH_ID_INVALID otherwise.
  */
-__rte_experimental
 rte_graph_t rte_graph_create(const char *name, struct rte_graph_param *prm);
 
 /**
@@ -244,8 +260,28 @@ rte_graph_t rte_graph_create(const char *name, struct rte_graph_param *prm);
  * @return
  *   0 on success, error otherwise.
  */
-__rte_experimental
 int rte_graph_destroy(rte_graph_t id);
+
+/**
+ * Clone Graph.
+ *
+ * Clone a graph from static graph (graph created from rte_graph_create()). And
+ * all cloned graphs attached to the parent graph MUST be destroyed together
+ * for fast schedule design limitation (stop ALL graph walk firstly).
+ *
+ * @param id
+ *   Static graph id to clone from.
+ * @param name
+ *   Name of the new graph. The library prepends the parent graph name to the
+ * user-specified name. The final graph name will be,
+ * "parent graph name" + "-" + name.
+ * @param prm
+ *   Graph parameter, includes model-specific parameters in this graph.
+ *
+ * @return
+ *   Valid graph id on success, RTE_GRAPH_ID_INVALID otherwise.
+ */
+rte_graph_t rte_graph_clone(rte_graph_t id, const char *name, struct rte_graph_param *prm);
 
 /**
  * Get graph id from graph name.
@@ -256,7 +292,6 @@ int rte_graph_destroy(rte_graph_t id);
  * @return
  *   Graph id on success, RTE_GRAPH_ID_INVALID otherwise.
  */
-__rte_experimental
 rte_graph_t rte_graph_from_name(const char *name);
 
 /**
@@ -268,7 +303,6 @@ rte_graph_t rte_graph_from_name(const char *name);
  * @return
  *   Graph name on success, NULL otherwise.
  */
-__rte_experimental
 char *rte_graph_id_to_name(rte_graph_t id);
 
 /**
@@ -282,8 +316,27 @@ char *rte_graph_id_to_name(rte_graph_t id);
  * @return
  *   0 on success, error otherwise.
  */
-__rte_experimental
 int rte_graph_export(const char *name, FILE *f);
+
+/**
+ * Bind graph with specific lcore for mcore dispatch model.
+ *
+ * @param id
+ *   Graph id to get the pointer of graph object
+ * @param lcore
+ * The lcore where the graph will run on
+ * @return
+ *   0 on success, error otherwise.
+ */
+int rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore);
+
+/**
+ * Unbind graph with lcore for mcore dispatch model
+ *
+ * @param id
+ * Graph id to get the pointer of graph object
+ */
+void rte_graph_model_mcore_dispatch_core_unbind(rte_graph_t id);
 
 /**
  * Get graph object from its name.
@@ -299,7 +352,6 @@ int rte_graph_export(const char *name, FILE *f);
  *
  * @see rte_graph_walk()
  */
-__rte_experimental
 struct rte_graph *rte_graph_lookup(const char *name);
 
 /**
@@ -308,7 +360,6 @@ struct rte_graph *rte_graph_lookup(const char *name);
  * @return
  *   Maximum graph count.
  */
-__rte_experimental
 rte_graph_t rte_graph_max_count(void);
 
 /**
@@ -319,7 +370,6 @@ rte_graph_t rte_graph_max_count(void);
  * @param id
  *   Graph id to get graph info.
  */
-__rte_experimental
 void rte_graph_dump(FILE *f, rte_graph_t id);
 
 /**
@@ -328,7 +378,6 @@ void rte_graph_dump(FILE *f, rte_graph_t id);
  * @param f
  *   File pointer to dump graph info.
  */
-__rte_experimental
 void rte_graph_list_dump(FILE *f);
 
 /**
@@ -341,7 +390,6 @@ void rte_graph_list_dump(FILE *f);
  * @param all
  *   true to dump nodes in the graph.
  */
-__rte_experimental
 void rte_graph_obj_dump(FILE *f, struct rte_graph *graph, bool all);
 
 /** Macro to browse rte_node object after the graph creation */
@@ -362,7 +410,6 @@ void rte_graph_obj_dump(FILE *f, struct rte_graph *graph, bool all);
  * @return
  *   Node pointer on success, NULL otherwise.
  */
-__rte_experimental
 struct rte_node *rte_graph_node_get(rte_graph_t graph_id, rte_node_t node_id);
 
 /**
@@ -376,7 +423,6 @@ struct rte_node *rte_graph_node_get(rte_graph_t graph_id, rte_node_t node_id);
  * @return
  *   Node pointer on success, NULL otherwise.
  */
-__rte_experimental
 struct rte_node *rte_graph_node_get_by_name(const char *graph,
 					    const char *name);
 
@@ -390,7 +436,6 @@ struct rte_node *rte_graph_node_get_by_name(const char *graph,
  * @return
  *   Valid pointer on success, NULL otherwise.
  */
-__rte_experimental
 struct rte_graph_cluster_stats *rte_graph_cluster_stats_create(
 			const struct rte_graph_cluster_stats_param *prm);
 
@@ -400,7 +445,6 @@ struct rte_graph_cluster_stats *rte_graph_cluster_stats_create(
  * @param stat
  *    Valid cluster pointer to destroy.
  */
-__rte_experimental
 void rte_graph_cluster_stats_destroy(struct rte_graph_cluster_stats *stat);
 
 /**
@@ -411,7 +455,6 @@ void rte_graph_cluster_stats_destroy(struct rte_graph_cluster_stats *stat);
  * @param skip_cb
  *   true to skip callback function invocation.
  */
-__rte_experimental
 void rte_graph_cluster_stats_get(struct rte_graph_cluster_stats *stat,
 				 bool skip_cb);
 
@@ -421,8 +464,16 @@ void rte_graph_cluster_stats_get(struct rte_graph_cluster_stats *stat,
  * @param stat
  *   Valid cluster stats pointer.
  */
-__rte_experimental
 void rte_graph_cluster_stats_reset(struct rte_graph_cluster_stats *stat);
+
+/**
+ * Structure defines the number of xstats a given node has and each xstat
+ * description.
+ */
+struct rte_node_xstats {
+	uint16_t nb_xstats;			     /**< Number of xstats. */
+	char xstat_desc[][RTE_NODE_XSTAT_DESC_SIZE]; /**< Names of xstats. */
+};
 
 /**
  * Structure defines the node registration parameters.
@@ -436,6 +487,7 @@ struct rte_node_register {
 	rte_node_process_t process; /**< Node process function. */
 	rte_node_init_t init;       /**< Node init function. */
 	rte_node_fini_t fini;       /**< Node fini function. */
+	struct rte_node_xstats *xstats; /**< Node specific xstats. */
 	rte_node_t id;		    /**< Node Identifier. */
 	rte_node_t parent_id;       /**< Identifier of parent node. */
 	rte_edge_t nb_edges;        /**< Number of edges from this node. */
@@ -455,7 +507,6 @@ struct rte_node_register {
  *
  * @see RTE_NODE_REGISTER()
  */
-__rte_experimental
 rte_node_t __rte_node_register(const struct rte_node_register *node);
 
 /**
@@ -487,7 +538,6 @@ rte_node_t __rte_node_register(const struct rte_node_register *node);
  * @return
  *   Valid node id on success, RTE_NODE_ID_INVALID otherwise.
  */
-__rte_experimental
 rte_node_t rte_node_clone(rte_node_t id, const char *name);
 
 /**
@@ -500,7 +550,6 @@ rte_node_t rte_node_clone(rte_node_t id, const char *name);
  * @return
  *   Valid node id on success, RTE_NODE_ID_INVALID otherwise.
  */
-__rte_experimental
 rte_node_t rte_node_from_name(const char *name);
 
 /**
@@ -512,7 +561,6 @@ rte_node_t rte_node_from_name(const char *name);
  * @return
  *   Valid node name on success, NULL otherwise.
  */
-__rte_experimental
 char *rte_node_id_to_name(rte_node_t id);
 
 /**
@@ -524,7 +572,6 @@ char *rte_node_id_to_name(rte_node_t id);
  * @return
  *   Valid edge count on success, RTE_EDGE_ID_INVALID otherwise.
  */
-__rte_experimental
 rte_edge_t rte_node_edge_count(rte_node_t id);
 
 /**
@@ -543,7 +590,6 @@ rte_edge_t rte_node_edge_count(rte_node_t id);
  * @return
  *   Valid edge count on success, 0 otherwise.
  */
-__rte_experimental
 rte_edge_t rte_node_edge_update(rte_node_t id, rte_edge_t from,
 				const char **next_nodes, uint16_t nb_edges);
 
@@ -558,7 +604,6 @@ rte_edge_t rte_node_edge_update(rte_node_t id, rte_edge_t from,
  * @return
  *   New size on success, RTE_EDGE_ID_INVALID otherwise.
  */
-__rte_experimental
 rte_edge_t rte_node_edge_shrink(rte_node_t id, rte_edge_t size);
 
 /**
@@ -574,7 +619,6 @@ rte_edge_t rte_node_edge_shrink(rte_node_t id, rte_edge_t size);
  *   When next_nodes == NULL, it returns the size of the array else
  *  number of item copied.
  */
-__rte_experimental
 rte_node_t rte_node_edge_get(rte_node_t id, char *next_nodes[]);
 
 /**
@@ -583,7 +627,6 @@ rte_node_t rte_node_edge_get(rte_node_t id, char *next_nodes[]);
  * @return
  *   Maximum nodes count.
  */
-__rte_experimental
 rte_node_t rte_node_max_count(void);
 
 /**
@@ -594,7 +637,6 @@ rte_node_t rte_node_max_count(void);
  * @param id
  *   Node id to get the info.
  */
-__rte_experimental
 void rte_node_dump(FILE *f, rte_node_t id);
 
 /**
@@ -603,7 +645,6 @@ void rte_node_dump(FILE *f, rte_node_t id);
  * @param f
  *   File pointer to dump the node info.
  */
-__rte_experimental
 void rte_node_list_dump(FILE *f);
 
 /**
@@ -620,6 +661,20 @@ rte_node_is_invalid(rte_node_t id)
 {
 	return (id == RTE_NODE_ID_INVALID);
 }
+
+/**
+ * Release the memory allocated for a node created using RTE_NODE_REGISTER or rte_node_clone,
+ * if it is not linked to any graphs.
+ *
+ * @param id
+ *   Node id to check.
+ *
+ * @return
+ *   - 0: Success.
+ *   -<0: Failure.
+ */
+__rte_experimental
+int rte_node_free(rte_node_t id);
 
 /**
  * Test the validity of edge id.

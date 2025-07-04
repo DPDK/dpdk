@@ -15,9 +15,6 @@
  * bloom filter (vBF). For HT setsummary, two subtypes or modes are available,
  * cache and non-cache modes. The table below summarize some properties of
  * the different implementations.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
  */
 
 /**
@@ -57,15 +54,10 @@
 #ifndef _RTE_MEMBER_H_
 #define _RTE_MEMBER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include <rte_compat.h>
 #include <rte_common.h>
 
 /** The set ID type that stored internally in hash table based set summary. */
@@ -104,30 +96,19 @@ typedef uint16_t member_set_t;
 #define MEMBER_HASH_FUNC       rte_jhash
 #endif
 
-extern int librte_member_logtype;
-
-#define RTE_MEMBER_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, \
-		librte_member_logtype, \
-		RTE_FMT("%s(): " RTE_FMT_HEAD(__VA_ARGS__,), \
-			__func__, \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** @internal setsummary structure. */
 struct rte_member_setsum;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Parameter struct used to create set summary
  */
 struct rte_member_parameters;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Define different set summary types
  */
 enum rte_member_setsum_type {
@@ -158,7 +139,7 @@ typedef void (*sketch_delete_fn_t)(const struct rte_member_setsum *ss,
 				   const void *key);
 
 /** @internal setsummary structure. */
-struct rte_member_setsum {
+struct __rte_cache_aligned rte_member_setsum {
 	enum rte_member_setsum_type type; /* Type of the set summary. */
 	uint32_t key_len;		/* Length of key. */
 	uint32_t prim_hash_seed;	/* Primary hash function seed. */
@@ -204,18 +185,14 @@ struct rte_member_setsum {
 #ifdef RTE_ARCH_X86
 	bool use_avx512;
 #endif
-} __rte_cache_aligned;
+};
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Parameters used when create the set summary table. Currently user can
  * specify two types of setsummary: HT based and vBF. For HT based, user can
  * specify cache or non-cache mode. Here is a table to describe some differences
- *
  */
-struct rte_member_parameters {
+struct __rte_cache_aligned rte_member_parameters {
 	const char *name;			/**< Name of the hash. */
 
 	/**
@@ -314,6 +291,7 @@ struct rte_member_parameters {
 	 * for bucket location.
 	 * For vBF type, these two hashes and their combinations are used as
 	 * hash locations to index the bit array.
+	 * For Sketch type, these seeds are not used.
 	 */
 	uint32_t prim_hash_seed;
 
@@ -348,12 +326,9 @@ struct rte_member_parameters {
 	uint32_t extra_flag;
 
 	int socket_id;			/**< NUMA Socket ID for memory. */
-} __rte_cache_aligned;
+};
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Find an existing set-summary and return a pointer to it.
  *
  * @param name
@@ -367,9 +342,16 @@ struct rte_member_setsum *
 rte_member_find_existing(const char *name);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
+ * De-allocate memory used by set-summary.
  *
+ * @param setsum
+ *   Pointer to the set summary.
+ *   If setsum is NULL, no operation is performed.
+ */
+void
+rte_member_free(struct rte_member_setsum *setsum);
+
+/**
  * Create set-summary (SS).
  *
  * @param params
@@ -379,12 +361,10 @@ rte_member_find_existing(const char *name);
  *   Return value is NULL if the creation failed.
  */
 struct rte_member_setsum *
-rte_member_create(const struct rte_member_parameters *params);
+rte_member_create(const struct rte_member_parameters *params)
+	__rte_malloc __rte_dealloc(rte_member_free, 1);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Lookup key in set-summary (SS).
  * Single key lookup and return as soon as the first match found
  *
@@ -402,9 +382,6 @@ rte_member_lookup(const struct rte_member_setsum *setsum, const void *key,
 			member_set_t *set_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Lookup bulk of keys in set-summary (SS).
  * Each key lookup returns as soon as the first match found
  *
@@ -427,9 +404,6 @@ rte_member_lookup_bulk(const struct rte_member_setsum *setsum,
 			member_set_t *set_ids);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Lookup a key in set-summary (SS) for multiple matches.
  * The key lookup will find all matched entries (multiple match).
  * Note that for cache mode of HT, each key can have at most one match. This is
@@ -456,9 +430,6 @@ rte_member_lookup_multi(const struct rte_member_setsum *setsum,
 		member_set_t *set_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Lookup a bulk of keys in set-summary (SS) for multiple matches each key.
  * Each key lookup will find all matched entries (multiple match).
  * Note that for cache mode HT, each key can have at most one match. So
@@ -489,9 +460,6 @@ rte_member_lookup_multi_bulk(const struct rte_member_setsum *setsum,
 		member_set_t *set_ids);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Insert key into set-summary (SS).
  *
  * @param setsum
@@ -522,9 +490,6 @@ rte_member_add(const struct rte_member_setsum *setsum, const void *key,
 			member_set_t set_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Add the packet byte size into the sketch.
  *
  * @param setsum
@@ -536,15 +501,11 @@ rte_member_add(const struct rte_member_setsum *setsum, const void *key,
  * @return
  * Return -EINVAL for invalid parameters, otherwise return 0.
  */
-__rte_experimental
 int
 rte_member_add_byte_count(const struct rte_member_setsum *setsum,
 			  const void *key, uint32_t byte_count);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Query packet count for a certain flow-key.
  *
  * @param setsum
@@ -556,16 +517,12 @@ rte_member_add_byte_count(const struct rte_member_setsum *setsum,
  * @return
  *   Return -EINVAL for invalid parameters.
  */
-__rte_experimental
 int
 rte_member_query_count(const struct rte_member_setsum *setsum,
 		       const void *key, uint64_t *count);
 
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Report heavyhitter flow-keys into set-summary (SS).
  *
  * @param setsum
@@ -578,29 +535,11 @@ rte_member_query_count(const struct rte_member_setsum *setsum,
  *   Return -EINVAL for invalid parameters. Return a positive integer indicate
  *   how many heavy hitters are reported.
  */
-__rte_experimental
 int
 rte_member_report_heavyhitter(const struct rte_member_setsum *setsum,
 			      void **keys, uint64_t *counts);
 
-
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * De-allocate memory used by set-summary.
- *
- * @param setsum
- *   Pointer to the set summary.
- *   If setsum is NULL, no operation is performed.
- */
-void
-rte_member_free(struct rte_member_setsum *setsum);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Reset the set-summary tables. E.g. reset bits to be 0 in BF,
  * reset set_id in each entry to be RTE_MEMBER_NO_MATCH in HT based SS.
  *
@@ -611,9 +550,6 @@ void
 rte_member_reset(const struct rte_member_setsum *setsum);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Delete items from the set-summary. Note that vBF does not support deletion
  * in current implementation. For vBF, error code of -EINVAL will be returned.
  *

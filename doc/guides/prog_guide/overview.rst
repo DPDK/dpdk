@@ -77,7 +77,7 @@ The services provided by the EAL are:
 
 *   Memory management (malloc)
 
-The EAL is fully described in :ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>`.
+The EAL is fully described in :doc:`env_abstraction_layer`.
 
 Core Components
 ---------------
@@ -97,11 +97,11 @@ Ring Manager (librte_ring)
 
 The ring structure provides a lockless multi-producer, multi-consumer FIFO API in a finite size table.
 It has some advantages over lockless queues; easier to implement, adapted to bulk operations and faster.
-A ring is used by the :ref:`Memory Pool Manager (librte_mempool) <Mempool_Library>`
+A ring is used by the :doc:`mempool_lib`
 and may be used as a general communication mechanism between cores
 and/or execution blocks connected together on a logical core.
 
-This ring buffer and its usage are fully described in :ref:`Ring Library <Ring_Library>`.
+This ring buffer and its usage are fully described in :doc:`ring_lib`.
 
 Memory Pool Manager (librte_mempool)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -111,7 +111,7 @@ A pool is identified by name and uses a ring to store free objects.
 It provides some other optional services,
 such as a per-core object cache and an alignment helper to ensure that objects are padded to spread them equally on all RAM channels.
 
-This memory pool allocator is described in  :ref:`Mempool Library <Mempool_Library>`.
+This memory pool allocator is described in :doc:`mempool_lib`.
 
 Network Packet Buffer Management (librte_mbuf)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,7 +123,7 @@ The message buffers are created at startup time and stored in a mempool, using t
 This library provides an API to allocate/free mbufs, manipulate
 packet buffers which are used to carry network packets.
 
-Network Packet Buffer Management is described in :ref:`Mbuf Library <Mbuf_Library>`.
+Network Packet Buffer Management is described in :doc:`mbuf_lib`.
 
 Timer Manager (librte_timer)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,7 +134,7 @@ It can be periodic function calls, or just a one-shot call.
 It uses the timer interface provided by the Environment Abstraction Layer (EAL)
 to get a precise time reference and can be initiated on a per-core basis as required.
 
-The library documentation is available in :ref:`Timer Library <Timer_Library>`.
+The library documentation is available in :doc:`timer_lib`.
 
 Ethernet* Poll Mode Driver Architecture
 ---------------------------------------
@@ -142,15 +142,13 @@ Ethernet* Poll Mode Driver Architecture
 The DPDK includes Poll Mode Drivers (PMDs) for 1 GbE, 10 GbE and 40GbE, and para virtualized virtio
 Ethernet controllers which are designed to work without asynchronous, interrupt-based signaling mechanisms.
 
-See  :ref:`Poll Mode Driver <Poll_Mode_Driver>`.
-
 Packet Forwarding Algorithm Support
 -----------------------------------
 
 The DPDK includes Hash (librte_hash) and Longest Prefix Match (LPM,librte_lpm)
 libraries to support the corresponding packet forwarding algorithms.
 
-See :ref:`Hash Library <Hash_Library>` and  :ref:`LPM Library <LPM_Library>` for more information.
+See :doc:`hash_lib` and  :doc:`lpm_lib` for more information.
 
 librte_net
 ----------

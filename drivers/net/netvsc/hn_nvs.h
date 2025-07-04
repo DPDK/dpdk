@@ -65,127 +65,131 @@
 #define NVS_TYPE_SUBCH_RESP	133	/* same as SUBCH_REQ */
 #define NVS_TYPE_TXTBL_NOTE	134	/* notification */
 
+/* Private data for primary/secondary processes */
+struct hn_nvs_process_priv {
+	struct rte_vmbus_device *vmbus_dev;
+};
 
 /* NVS message common header */
-struct hn_nvs_hdr {
+struct __rte_packed_begin hn_nvs_hdr {
 	uint32_t	type;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_init {
+struct __rte_packed_begin hn_nvs_init {
 	uint32_t	type;	/* NVS_TYPE_INIT */
 	uint32_t	ver_min;
 	uint32_t	ver_max;
 	uint8_t		rsvd[28];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_init_resp {
+struct __rte_packed_begin hn_nvs_init_resp {
 	uint32_t	type;	/* NVS_TYPE_INIT_RESP */
 	uint32_t	ver;	/* deprecated */
 	uint32_t	rsvd;
 	uint32_t	status;	/* NVS_STATUS_ */
-} __rte_packed;
+} __rte_packed_end;
 
 /* No response */
-struct hn_nvs_ndis_conf {
+struct __rte_packed_begin hn_nvs_ndis_conf {
 	uint32_t	type;	/* NVS_TYPE_NDIS_CONF */
 	uint32_t	mtu;
 	uint32_t	rsvd;
 	uint64_t	caps;	/* NVS_NDIS_CONF_ */
 	uint8_t		rsvd1[20];
-} __rte_packed;
+} __rte_packed_end;
 
 #define NVS_NDIS_CONF_SRIOV		0x0004
 #define NVS_NDIS_CONF_VLAN		0x0008
 
 /* No response */
-struct hn_nvs_ndis_init {
+struct __rte_packed_begin hn_nvs_ndis_init {
 	uint32_t	type;	/* NVS_TYPE_NDIS_INIT */
 	uint32_t	ndis_major;	/* NDIS_VERSION_MAJOR_ */
 	uint32_t	ndis_minor;	/* NDIS_VERSION_MINOR_ */
 	uint8_t		rsvd[28];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_vf_association {
+struct __rte_packed_begin hn_nvs_vf_association {
 	uint32_t	type;	/* NVS_TYPE_VFASSOC_NOTE */
 	uint32_t	allocated;
 	uint32_t	serial;
-} __rte_packed;
+} __rte_packed_end;
 
 #define NVS_DATAPATH_SYNTHETIC	0
 #define NVS_DATAPATH_VF		1
 
 /* No response */
-struct hn_nvs_datapath {
+struct __rte_packed_begin hn_nvs_datapath {
 	uint32_t	type;	/* NVS_TYPE_SET_DATAPATH */
 	uint32_t	active_path;/* NVS_DATAPATH_* */
 	uint8_t		rsvd[32];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_rxbuf_conn {
+struct __rte_packed_begin hn_nvs_rxbuf_conn {
 	uint32_t	type;	/* NVS_TYPE_RXBUF_CONN */
 	uint32_t	gpadl;	/* RXBUF vmbus GPADL */
 	uint16_t	sig;	/* NVS_RXBUF_SIG */
 	uint8_t		rsvd[30];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_rxbuf_sect {
+struct __rte_packed_begin hn_nvs_rxbuf_sect {
 	uint32_t	start;
 	uint32_t	slotsz;
 	uint32_t	slotcnt;
 	uint32_t	end;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_rxbuf_connresp {
+struct __rte_packed_begin hn_nvs_rxbuf_connresp {
 	uint32_t	type;	/* NVS_TYPE_RXBUF_CONNRESP */
 	uint32_t	status;	/* NVS_STATUS_ */
 	uint32_t	nsect;	/* # of elem in nvs_sect */
 	struct hn_nvs_rxbuf_sect nvs_sect[1];
-} __rte_packed;
+} __rte_packed_end;
 
 /* No response */
-struct hn_nvs_rxbuf_disconn {
+struct __rte_packed_begin hn_nvs_rxbuf_disconn {
 	uint32_t	type;	/* NVS_TYPE_RXBUF_DISCONN */
 	uint16_t	sig;	/* NVS_RXBUF_SIG */
 	uint8_t		rsvd[34];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_chim_conn {
+struct __rte_packed_begin hn_nvs_chim_conn {
 	uint32_t	type;	/* NVS_TYPE_CHIM_CONN */
 	uint32_t	gpadl;	/* chimney buf vmbus GPADL */
 	uint16_t	sig;	/* NDIS_NVS_CHIM_SIG */
 	uint8_t		rsvd[30];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_chim_connresp {
+struct __rte_packed_begin hn_nvs_chim_connresp {
 	uint32_t	type;	/* NVS_TYPE_CHIM_CONNRESP */
 	uint32_t	status;	/* NVS_STATUS_ */
 	uint32_t	sectsz;	/* section size */
-} __rte_packed;
+} __rte_packed_end;
 
 /* No response */
-struct hn_nvs_chim_disconn {
+struct __rte_packed_begin hn_nvs_chim_disconn {
 	uint32_t	type;	/* NVS_TYPE_CHIM_DISCONN */
 	uint16_t	sig;	/* NVS_CHIM_SIG */
 	uint8_t		rsvd[34];
-} __rte_packed;
+} __rte_packed_end;
 
 #define NVS_SUBCH_OP_ALLOC		1
 
-struct hn_nvs_subch_req {
+struct __rte_packed_begin hn_nvs_subch_req {
 	uint32_t	type;	/* NVS_TYPE_SUBCH_REQ */
 	uint32_t	op;	/* NVS_SUBCH_OP_ */
 	uint32_t	nsubch;
 	uint8_t		rsvd[28];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_subch_resp {
+struct __rte_packed_begin hn_nvs_subch_resp {
 	uint32_t	type;	/* NVS_TYPE_SUBCH_RESP */
 	uint32_t	status;	/* NVS_STATUS_ */
 	uint32_t	nsubch;
 	uint8_t		rsvd[28];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_rndis {
+struct __rte_packed_begin hn_nvs_rndis {
 	uint32_t	type;	/* NVS_TYPE_RNDIS */
 	uint32_t	rndis_mtype;/* NVS_RNDIS_MTYPE_ */
 	/*
@@ -199,13 +203,13 @@ struct hn_nvs_rndis {
 	uint32_t	chim_idx;
 	uint32_t	chim_sz;
 	uint8_t		rsvd[24];
-} __rte_packed;
+} __rte_packed_end;
 
-struct hn_nvs_rndis_ack {
+struct __rte_packed_begin hn_nvs_rndis_ack {
 	uint32_t	type;	/* NVS_TYPE_RNDIS_ACK */
 	uint32_t	status;	/* NVS_STATUS_ */
 	uint8_t		rsvd[32];
-} __rte_packed;
+} __rte_packed_end;
 
 
 int	hn_nvs_attach(struct hn_data *hv, unsigned int mtu);
@@ -216,6 +220,8 @@ int	hn_nvs_set_datapath(struct hn_data *hv, uint32_t path);
 void	hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 			      const struct vmbus_chanpkt_hdr *hdr,
 			      const void *data);
+
+struct rte_vmbus_device *get_vmbus_device(struct hn_data *hv);
 
 static inline int
 hn_nvs_send(struct vmbus_channel *chan, uint16_t flags,

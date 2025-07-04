@@ -28,7 +28,7 @@ failover_worker_enqueue(struct scheduler_worker *worker,
 {
 	uint16_t processed_ops;
 
-	scheduler_set_worker_session(ops, nb_ops, index);
+	scheduler_set_worker_sessions(ops, nb_ops, index);
 
 	processed_ops = rte_cryptodev_enqueue_burst(worker->dev_id,
 			worker->qp_id, ops, nb_ops);
@@ -51,7 +51,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			ops, nb_ops, PRIMARY_WORKER_IDX);
 
 	if (enqueued_ops < nb_ops) {
-		scheduler_retrieve_session(&ops[enqueued_ops],
+		scheduler_retrieve_sessions(&ops[enqueued_ops],
 						nb_ops - enqueued_ops);
 		enqueued_ops += failover_worker_enqueue(
 				&qp_ctx->secondary_worker,
@@ -59,7 +59,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 				nb_ops - enqueued_ops,
 				SECONDARY_WORKER_IDX);
 		if (enqueued_ops < nb_ops)
-			scheduler_retrieve_session(&ops[enqueued_ops],
+			scheduler_retrieve_sessions(&ops[enqueued_ops],
 						nb_ops - enqueued_ops);
 	}
 
@@ -102,7 +102,7 @@ schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	qp_ctx->deq_idx = (~qp_ctx->deq_idx) & WORKER_SWITCH_MASK;
 
 	if (nb_deq_ops == nb_ops)
-		goto retrieve_session;
+		goto retrieve_sessions;
 
 	worker = workers[qp_ctx->deq_idx];
 
@@ -112,8 +112,8 @@ schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		worker->nb_inflight_cops -= nb_deq_ops2;
 	}
 
-retrieve_session:
-	scheduler_retrieve_session(ops, nb_deq_ops + nb_deq_ops2);
+retrieve_sessions:
+	scheduler_retrieve_sessions(ops, nb_deq_ops + nb_deq_ops2);
 
 	return nb_deq_ops + nb_deq_ops2;
 }

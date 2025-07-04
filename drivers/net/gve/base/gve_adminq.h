@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  * Google Virtual Ethernet (gve) driver
- * Copyright (C) 2015-2022 Google, Inc.
+ * Copyright (C) 2015-2023 Google, Inc.
  */
 
 #ifndef _GVE_ADMINQ_H
@@ -19,10 +19,12 @@ enum gve_adminq_opcodes {
 	GVE_ADMINQ_DESTROY_TX_QUEUE		= 0x7,
 	GVE_ADMINQ_DESTROY_RX_QUEUE		= 0x8,
 	GVE_ADMINQ_DECONFIGURE_DEVICE_RESOURCES	= 0x9,
+	GVE_ADMINQ_CONFIGURE_RSS		= 0xA,
 	GVE_ADMINQ_SET_DRIVER_PARAMETER		= 0xB,
 	GVE_ADMINQ_REPORT_STATS			= 0xC,
 	GVE_ADMINQ_REPORT_LINK_SPEED		= 0xD,
 	GVE_ADMINQ_GET_PTYPE_MAP		= 0xE,
+	GVE_ADMINQ_VERIFY_DRIVER_COMPATIBILITY	= 0xF,
 };
 
 /* Admin queue status codes */
@@ -108,6 +110,21 @@ struct gve_device_option_dqo_rda {
 
 GVE_CHECK_STRUCT_LEN(8, gve_device_option_dqo_rda);
 
+struct gve_ring_size_bound {
+	__be16 rx;
+	__be16 tx;
+};
+
+GVE_CHECK_STRUCT_LEN(4, gve_ring_size_bound);
+
+struct gve_device_option_modify_ring {
+	__be32 supported_features_mask;
+	struct gve_ring_size_bound max_ring_size;
+	struct gve_ring_size_bound min_ring_size;
+};
+
+GVE_CHECK_STRUCT_LEN(12, gve_device_option_modify_ring);
+
 struct gve_device_option_jumbo_frames {
 	__be32 supported_features_mask;
 	__be16 max_mtu;
@@ -129,6 +146,7 @@ enum gve_dev_opt_id {
 	GVE_DEV_OPT_ID_GQI_RDA = 0x2,
 	GVE_DEV_OPT_ID_GQI_QPL = 0x3,
 	GVE_DEV_OPT_ID_DQO_RDA = 0x4,
+	GVE_DEV_OPT_ID_MODIFY_RING = 0x6,
 	GVE_DEV_OPT_ID_JUMBO_FRAMES = 0x8,
 };
 
@@ -137,14 +155,54 @@ enum gve_dev_opt_req_feat_mask {
 	GVE_DEV_OPT_REQ_FEAT_MASK_GQI_RDA = 0x0,
 	GVE_DEV_OPT_REQ_FEAT_MASK_GQI_QPL = 0x0,
 	GVE_DEV_OPT_REQ_FEAT_MASK_DQO_RDA = 0x0,
+	GVE_DEV_OPT_REQ_FEAT_MASK_MODIFY_RING = 0x0,
 	GVE_DEV_OPT_REQ_FEAT_MASK_JUMBO_FRAMES = 0x0,
 };
 
 enum gve_sup_feature_mask {
+	GVE_SUP_MODIFY_RING_MASK = 1 << 0,
 	GVE_SUP_JUMBO_FRAMES_MASK = 1 << 2,
 };
 
 #define GVE_DEV_OPT_LEN_GQI_RAW_ADDRESSING 0x0
+enum gve_driver_capbility {
+	gve_driver_capability_gqi_qpl = 0,
+	gve_driver_capability_gqi_rda = 1,
+	gve_driver_capability_dqo_qpl = 2, /* reserved for future use */
+	gve_driver_capability_dqo_rda = 3,
+};
+
+#define GVE_CAP1(a) BIT((int)a)
+
+#define GVE_DRIVER_CAPABILITY_FLAGS1 \
+	(GVE_CAP1(gve_driver_capability_gqi_qpl) | \
+	 GVE_CAP1(gve_driver_capability_gqi_rda) | \
+	 GVE_CAP1(gve_driver_capability_dqo_rda))
+
+#define GVE_DRIVER_CAPABILITY_FLAGS2 0x0
+#define GVE_DRIVER_CAPABILITY_FLAGS3 0x0
+#define GVE_DRIVER_CAPABILITY_FLAGS4 0x0
+
+struct gve_driver_info {
+	u8 os_type;	/* 0x05 = DPDK */
+	u8 driver_major;
+	u8 driver_minor;
+	u8 driver_sub;
+	__be32 os_version_major;
+	__be32 os_version_minor;
+	__be32 os_version_sub;
+	__be64 driver_capability_flags[4];
+	u8 os_version_str1[OS_VERSION_STRLEN];
+	u8 os_version_str2[OS_VERSION_STRLEN];
+};
+
+struct gve_adminq_verify_driver_compatibility {
+	__be64 driver_info_len;
+	__be64 driver_info_addr;
+};
+
+GVE_CHECK_STRUCT_LEN(16,  gve_adminq_verify_driver_compatibility);
+
 
 struct gve_adminq_configure_device_resources {
 	__be64 counter_array;
@@ -275,6 +333,17 @@ struct gve_stats_report {
 
 GVE_CHECK_STRUCT_LEN(8, gve_stats_report);
 
+/* Numbers of gve tx/rx stats in stats report. */
+#define GVE_TX_STATS_REPORT_NUM        6
+#define GVE_RX_STATS_REPORT_NUM        2
+
+/* Interval to schedule a stats report update, 20000ms. */
+#define GVE_STATS_REPORT_TIMER_PERIOD  20000
+
+/* Numbers of NIC tx/rx stats in stats report. */
+#define NIC_TX_STATS_REPORT_NUM        0
+#define NIC_RX_STATS_REPORT_NUM        4
+
 enum gve_stat_names {
 	/* stats from gve */
 	TX_WAKE_CNT			= 1,
@@ -327,6 +396,18 @@ struct gve_adminq_get_ptype_map {
 	__be64 ptype_map_addr;
 };
 
+
+/* RSS configuration command */
+struct gve_adminq_configure_rss {
+	__be16 hash_types;
+	u8 halg; /* hash algorithm */
+	u8 reserved;
+	__be16 hkey_len;
+	__be16 indir_len;
+	__be64 hkey_addr;
+	__be64 indir_addr;
+};
+
 union gve_adminq_command {
 	struct {
 		__be32 opcode;
@@ -341,10 +422,13 @@ union gve_adminq_command {
 			struct gve_adminq_describe_device describe_device;
 			struct gve_adminq_register_page_list reg_page_list;
 			struct gve_adminq_unregister_page_list unreg_page_list;
+			struct gve_adminq_configure_rss configure_rss;
 			struct gve_adminq_set_driver_parameter set_driver_param;
 			struct gve_adminq_report_stats report_stats;
 			struct gve_adminq_report_link_speed report_link_speed;
 			struct gve_adminq_get_ptype_map get_ptype_map;
+			struct gve_adminq_verify_driver_compatibility
+				verify_driver_compatibility;
 		};
 	};
 	u8 reserved[64];
@@ -352,6 +436,9 @@ union gve_adminq_command {
 
 GVE_CHECK_UNION_LEN(64, gve_adminq_command);
 
+struct gve_priv;
+struct gve_rss_config;
+struct gve_queue_page_list;
 int gve_adminq_alloc(struct gve_priv *priv);
 void gve_adminq_free(struct gve_priv *priv);
 void gve_adminq_release(struct gve_priv *priv);
@@ -377,5 +464,12 @@ int gve_adminq_report_link_speed(struct gve_priv *priv);
 struct gve_ptype_lut;
 int gve_adminq_get_ptype_map_dqo(struct gve_priv *priv,
 				 struct gve_ptype_lut *ptype_lut);
+
+int gve_adminq_verify_driver_compatibility(struct gve_priv *priv,
+					   u64 driver_info_len,
+					   dma_addr_t driver_info_addr);
+
+int gve_adminq_configure_rss(struct gve_priv *priv,
+			     struct gve_rss_config *rss_config);
 
 #endif /* _GVE_ADMINQ_H */

@@ -17,7 +17,8 @@ ENIC PMD supports all recent generations of Cisco VIC adapters including:
 
 - VIC 1200 series
 - VIC 1300 series
-- VIC 1400 series
+- VIC 1400/14000 series
+- VIC 15000 series
 
 Supported features
 ------------------
@@ -37,7 +38,7 @@ Supported features
 - UDP RSS hashing (1400 series and later adapters)
 - Scattered Rx
 - MTU update
-- SR-IOV on UCS managed servers connected to Fabric Interconnects
+- SR-IOV virtual function
 - Flow API
 - Overlay offload
 
@@ -135,103 +136,87 @@ Configuration information
     TCP, IPv4, TCP-IPv4, IPv6, TCP-IPv6, IPv6 Extension, TCP-IPv6 Extension.
 
 
-SR-IOV mode utilization
+SR-IOV Virtual Function
 -----------------------
 
-UCS blade servers configured with dynamic vNIC connection policies in UCSM
-are capable of supporting SR-IOV. SR-IOV virtual functions (VFs) are
-specialized vNICs, distinct from regular Ethernet vNICs. These VFs can be
-directly assigned to virtual machines (VMs) as 'passthrough' devices.
+VIC 1400 and later series supports SR-IOV.
+It can be enabled via both UCSM and CIMC.
+Please refer to the following guides to enable SR-IOV virtual functions (VFs).
 
-In UCS, SR-IOV VFs require the use of the Cisco Virtual Machine Fabric Extender
-(VM-FEX), which gives the VM a dedicated
-interface on the Fabric Interconnect (FI). Layer 2 switching is done at
-the FI. This may eliminate the requirement for software switching on the
-host to route intra-host VM traffic.
+  - CIMC: `Managing vNICs <https://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/c/sw/gui/config/guide/4_3/b_cisco_ucs_c-series_gui_configuration_guide_43/b_Cisco_UCS_C-series_GUI_Configuration_Guide_41_chapter_01011.html#d77871e5874a1635>`_
 
-Please refer to `Creating a Dynamic vNIC Connection Policy
-<http://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/sw/vm_fex/vmware/gui/config_guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide_chapter_010.html#task_433E01651F69464783A68E66DA8A47A5>`_
-for information on configuring SR-IOV adapter policies and port profiles
-using UCSM.
+  - UCSM: `Configuring SRIOV HPN Connection Policies <https://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/ucs-manager/GUI-User-Guides/Network-Mgmt/4-3/b_UCSM_Network_Mgmt_Guide_4_3/b_UCSM_Network_Mgmt_Guide_chapter_01010.html#d21438e9555a1635>`_
 
-Once the policies are in place and the host OS is rebooted, VFs should be
-visible on the host, E.g.:
+Note that the previous SR-IOV implementation that is tied to VM-FEX
+(Cisco Virtual Machine Fabric Extender) has been discontinued,
+and ENIC PMD no longer supports it.
+The current SR-IOV implementation does not require the Fabric Interconnect (FI),
+as layer 2 switching is done within the VIC adapter.
 
-.. code-block:: console
-
-     # lspci | grep Cisco | grep Ethernet
-     0d:00.0 Ethernet controller: Cisco Systems Inc VIC Ethernet NIC (rev a2)
-     0d:00.1 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-     0d:00.2 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-     0d:00.3 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-     0d:00.4 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-     0d:00.5 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-     0d:00.6 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-     0d:00.7 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
-
-Enable Intel IOMMU on the host and install KVM and libvirt, and reboot again as
-required. Then, using libvirt, create a VM instance with an assigned device.
-Below is an example ``interface`` block (part of the domain configuration XML)
-that adds the host VF 0d:00:01 to the VM. ``profileid='pp-vlan-25'`` indicates
-the port profile that has been configured in UCSM.
+Once SR-IOV is enabled, reboot the host OS and follow OS specific steps to create VFs
+and assign them to virtual machines (VMs) or containers as necessary.
+The VIC physical function (PF) drivers for ESXi and Linux support SR-IOV.
+The following shows simplified steps for Linux.
 
 .. code-block:: console
 
-    <interface type='hostdev' managed='yes'>
-      <mac address='52:54:00:ac:ff:b6'/>
+   # echo 4 > /sys/class/net/<pf-interface>/device/sriov_numvfs
+
+   # lspci | grep Cisco | grep Ethernet
+   12:00.0 Ethernet controller: Cisco Systems Inc VIC Ethernet NIC (rev a2)
+   12:00.1 Ethernet controller: Cisco Systems Inc Device 02b7 (rev a2)
+   12:00.2 Ethernet controller: Cisco Systems Inc Device 02b7 (rev a2)
+   12:00.3 Ethernet controller: Cisco Systems Inc Device 02b7 (rev a2)
+   12:00.4 Ethernet controller: Cisco Systems Inc Device 02b7 (rev a2)
+
+Writing 4 to ``sriov_numvfs`` creates 4 VFs.
+``lspci`` shows VFs and their PCI locations.
+Interfaces with device ID ``02b7`` are the VFs.
+The following snippet for libvirt XML assigns VF at ``12:00.1`` to VM.
+
+.. code-block:: console
+
+    <interface type="hostdev" managed="yes">
+      <mac address="fa:16:3e:46:39:c5"/>
       <driver name='vfio'/>
       <source>
-        <address type='pci' domain='0x0000' bus='0x0d' slot='0x00' function='0x1'/>
+        <address type="pci" domain="0x0000" bus="0x12" slot="0x00" function="0x1"/>
       </source>
-      <virtualport type='802.1Qbh'>
-        <parameters profileid='pp-vlan-25'/>
-      </virtualport>
+      <vlan>
+        <tag id="1000"/>
+      </vlan>
     </interface>
 
-
-Alternatively, the configuration can be done in a separate file using the
-``network`` keyword. These methods are described in the libvirt documentation for
-`Network XML format <https://libvirt.org/formatnetwork.html>`_.
-
-When the VM instance is started, libvirt will bind the host VF to
-vfio, complete provisioning on the FI and bring up the link.
-
-.. note::
-
-    It is not possible to use a VF directly from the host because it is not
-    fully provisioned until libvirt brings up the VM that it is assigned
-    to.
-
-In the VM instance, the VF will now be visible. E.g., here the VF 00:04.0 is
-seen on the VM instance and should be available for binding to a DPDK.
+When the VM instance is started, libvirt will bind the host VF to vfio-pci.
+In the VM instance, the VF will now be visible.
+In this example, VF at ``07:00.0`` is seen on the VM instance
+and is available for binding to DPDK.
 
 .. code-block:: console
 
-     # lspci | grep Ether
-     00:04.0 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+   # lspci | grep Cisco
+   07:00.0 Ethernet controller: Cisco Systems Inc Device 02b7 (rev a2)
 
-Follow the normal DPDK install procedure, binding the VF to either ``igb_uio``
-or ``vfio`` in non-IOMMU mode.
+There are two known limitations of the current SR-IOV implementation.
 
-In the VM, the kernel enic driver may be automatically bound to the VF during
-boot. Unbinding it currently hangs due to a known issue with the driver. To
-work around the issue, block the enic module as follows.
-Please see :ref:`Limitations <enic_limitations>` for limitations in
-the use of SR-IOV.
+  - Software Rx statistics
 
-.. code-block:: console
+    VF on old VIC models does not have hardware Rx counters. In this case,
+    ENIC PMD counts packets/bytes and reports them as device statistics.
 
-     # cat /etc/modprobe.d/enic.conf
-     blacklist enic
+  - Backward compatibility mode
 
-     # dracut --force
+    Old PF drivers on ESXi may lack full admin channel support.
+    ENIC PMD detects such PF driver during initialization
+    and reverts to the compatibility mode.
+    In this mode, ENIC PMD does not use the admin channel,
+    and trust mode (e.g. enabling promiscuous mode on VF) is not supported.
 
 .. note::
 
-    Passthrough does not require SR-IOV. If VM-FEX is not desired, the user
-    may create as many regular vNICs as necessary and assign them to VMs as
-    passthrough devices. Since these vNICs are not SR-IOV VFs, using them as
-    passthrough devices do not require libvirt, port profiles, and VM-FEX.
+   Passthrough does not require SR-IOV.
+   If SR-IOV is not desired, the user may create as many regular vNICs as necessary
+   and assign them to VMs as passthrough devices.
 
 
 .. _enic-generic-flow-api:
@@ -393,7 +378,7 @@ AVX2 SIMD instructions. It is meant for bulk, throughput oriented workloads
 where reducing cycles/packet in PMD is a priority. In order to use the
 vectorized handler, take the following steps.
 
-- Use a recent version of gcc, icc, or clang and build 64-bit DPDK. If
+- Use a recent version of gcc or clang and build 64-bit DPDK. If
   the compiler is known to support AVX2, DPDK build system
   automatically compiles the vectorized handler. Otherwise, the
   handler is not available.

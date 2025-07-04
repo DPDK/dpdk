@@ -40,6 +40,7 @@
 #include <rte_tm.h>
 #include <rte_hexdump.h>
 #include <rte_version.h>
+#include <rte_eventdev.h>
 
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
@@ -60,6 +61,7 @@ static unsigned long enabled_port_mask;
 static uint32_t enable_stats;
 /* Enable xstats. */
 static uint32_t enable_xstats;
+static uint32_t enable_xstats_hide_zero;
 /* Enable collectd format */
 static uint32_t enable_collectd_format;
 /* FD to send collectd format messages to STDOUT */
@@ -121,6 +123,25 @@ static uint32_t enable_shw_module_eeprom;
 static uint32_t enable_shw_rx_desc_dump;
 static uint32_t enable_shw_tx_desc_dump;
 
+/* Note: Port_queue_id in xstats APIs is 8 bits, so we have a maximum of
+ * 256 ports and queues for event_Dev
+ */
+#define MAX_PORTS_QUEUES 256
+
+struct eventdev_params {
+	uint16_t ports[MAX_PORTS_QUEUES];
+	uint16_t queues[MAX_PORTS_QUEUES];
+	uint16_t num_queues;
+	uint16_t num_ports;
+	uint8_t shw_all_queues:1,
+		shw_all_ports:1,
+		dump_xstats:1,
+		reset_xstats:1,
+		shw_device_xstats:1;
+};
+
+static struct eventdev_params eventdev_var[RTE_EVENT_MAX_DEVS];
+
 #define DESC_PARAM_NUM 3
 
 struct desc_param {
@@ -132,6 +153,8 @@ struct desc_param {
 static struct desc_param rx_desc_param;
 static struct desc_param tx_desc_param;
 
+#define RSS_HASH_KEY_SIZE 64
+
 /* display usage */
 static void
 proc_info_usage(const char *prgname)
@@ -140,8 +163,8 @@ proc_info_usage(const char *prgname)
 		"  -m to display DPDK memory zones, segments and TAILQ information\n"
 		"  -p PORTMASK: hexadecimal bitmask of ports to retrieve stats for\n"
 		"  --stats: to display port statistics, enabled by default\n"
-		"  --xstats: to display extended port statistics, disabled by "
-			"default\n"
+		"  --xstats[=hide_zero]: to display extended port statistics, disabled by default, "
+			"support hide zero.\n"
 #ifdef RTE_LIB_METRICS
 		"  --metrics: to display derived metrics of the ports, disabled by "
 			"default\n"
@@ -172,7 +195,12 @@ proc_info_usage(const char *prgname)
 			"offset: The offset of the descriptor starting from tail. "
 			"num: The number of the descriptors to dump.\n"
 		"  --iter-mempool=name: iterate mempool elements to display content\n"
-		"  --dump-regs=file-prefix: dump registers to file with the file-prefix\n",
+		"  --dump-regs=file-prefix: dump registers to file with the file-prefix\n"
+		"  --show-edev-queue-xstats=queue_num:evdev_id or *:evdev_id to get queue xstats for specified queue or all queues;\n"
+		"  --show-edev-port-xstats=port_num:evdev_id or *:evdev_id to get queue xstats for specified port or all ports;\n"
+		"  --edev-dump-xstats=evdev_id to dump all event_dev xstats for specified eventdev device;\n"
+		"  --edev-reset-xstats=evdev_id to reset event_dev xstats after reading;\n"
+		"  --show-edev-device-xstats=evdev_id to get event_dev device xstats for specified eventdev device;\n",
 		prgname);
 }
 
@@ -237,6 +265,125 @@ parse_descriptor_param(char *list, struct desc_param *desc)
 }
 
 static int
+parse_eventdev_id(const char *str)
+{
+	unsigned long evdev_id;
+	char *endp;
+
+	evdev_id = strtoul(str, &endp, 0);
+
+	if (*str == '\0' || *endp != '\0' || evdev_id >= rte_event_dev_count()) {
+		fprintf(stderr, "Invalid eventdev id: %s\n", str);
+		return -1;
+	}
+
+	return evdev_id;
+}
+
+static int
+parse_eventdev_dump_xstats_params(const char *list)
+{
+	int evdev_id = parse_eventdev_id(list);
+
+	if (evdev_id < 0)
+		return -EINVAL;
+
+	eventdev_var[evdev_id].dump_xstats = 1;
+
+	return 0;
+}
+
+static int
+parse_eventdev_reset_xstats_params(const char *list)
+{
+	int evdev_id = parse_eventdev_id(list);
+
+	if (evdev_id < 0)
+		return -EINVAL;
+
+	eventdev_var[evdev_id].reset_xstats = 1;
+
+	return 0;
+}
+
+static int
+parse_eventdev_device_xstats_params(const char *list)
+{
+	int evdev_id = parse_eventdev_id(list);
+
+	if (evdev_id < 0)
+		return -EINVAL;
+
+	eventdev_var[evdev_id].shw_device_xstats = 1;
+
+	return 0;
+}
+
+static int
+parse_eventdev_queue_xstats_params(const char *list)
+{
+	uint16_t queue_id;
+	uint16_t evdev_id;
+
+	if (sscanf(list, "*:%hu", &evdev_id) == 1) {
+		if (evdev_id >= rte_event_dev_count()) {
+			printf("Invalid eventdev id: %hu\n", evdev_id);
+			return -EINVAL;
+		}
+		eventdev_var[evdev_id].shw_all_queues = 1;
+	} else if (sscanf(list, "%hu:%hu", &queue_id, &evdev_id) == 2) {
+		if (evdev_id >= rte_event_dev_count()) {
+			printf("Invalid eventdev id: %hu\n", evdev_id);
+			return -EINVAL;
+		}
+
+		if (queue_id >= MAX_PORTS_QUEUES) {
+			printf("Invalid queue_id: %hu\n", queue_id);
+			return -EINVAL;
+		}
+
+		eventdev_var[evdev_id].queues[eventdev_var[evdev_id].num_queues] = queue_id;
+		eventdev_var[evdev_id].num_queues++;
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+parse_eventdev_port_xstats_params(const char *list)
+{
+	uint16_t port_id;
+	uint16_t evdev_id;
+
+	if (sscanf(list, "*:%hu", &evdev_id) == 1) {
+		if (evdev_id >= rte_event_dev_count()) {
+			printf("Invalid eventdev id: %hu\n", evdev_id);
+			return -EINVAL;
+		}
+		eventdev_var[evdev_id].shw_all_ports = 1;
+	} else if (sscanf(list, "%hu:%hu", &port_id, &evdev_id) == 2) {
+		if (evdev_id >= rte_event_dev_count()) {
+			printf("Invalid eventdev id: %hu\n", evdev_id);
+			return -EINVAL;
+		}
+
+		if (port_id >= MAX_PORTS_QUEUES) {
+			printf("Invalid port_id: %hu\n", port_id);
+			return -EINVAL;
+		}
+
+		eventdev_var[evdev_id].ports[eventdev_var[evdev_id].num_ports] = port_id;
+		eventdev_var[evdev_id].num_ports++;
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 proc_info_preparse_args(int argc, char **argv)
 {
 	char *prgname = argv[0];
@@ -279,7 +426,7 @@ proc_info_parse_args(int argc, char **argv)
 	static struct option long_option[] = {
 		{"stats", 0, NULL, 0},
 		{"stats-reset", 0, NULL, 0},
-		{"xstats", 0, NULL, 0},
+		{"xstats", optional_argument, NULL, 0},
 #ifdef RTE_LIB_METRICS
 		{"metrics", 0, NULL, 0},
 #endif
@@ -302,6 +449,11 @@ proc_info_parse_args(int argc, char **argv)
 		{"show-module-eeprom", 0, NULL, 0},
 		{"show-rx-descriptor", required_argument, NULL, 1},
 		{"show-tx-descriptor", required_argument, NULL, 1},
+		{"show-edev-queue-xstats", required_argument, NULL, 0},
+		{"show-edev-port-xstats", required_argument, NULL, 0},
+		{"edev-dump-xstats", required_argument, NULL, 0},
+		{"edev-reset-xstats", required_argument, NULL, 0},
+		{"show-edev-device-xstats", required_argument, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -325,12 +477,17 @@ proc_info_parse_args(int argc, char **argv)
 		case 0:
 			/* Print stats */
 			if (!strncmp(long_option[option_index].name, "stats",
-					MAX_LONG_OPT_SZ))
+					MAX_LONG_OPT_SZ)) {
 				enable_stats = 1;
 			/* Print xstats */
-			else if (!strncmp(long_option[option_index].name, "xstats",
-					MAX_LONG_OPT_SZ))
+			} else if (!strncmp(long_option[option_index].name, "xstats",
+					MAX_LONG_OPT_SZ)) {
 				enable_xstats = 1;
+				if (optarg != NULL && !strncmp(optarg, "hide_zero",
+				    MAX_LONG_OPT_SZ))
+					enable_xstats_hide_zero = 1;
+
+			}
 #ifdef RTE_LIB_METRICS
 			else if (!strncmp(long_option[option_index].name,
 					"metrics",
@@ -385,6 +542,47 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"show-module-eeprom", MAX_LONG_OPT_SZ))
 				enable_shw_module_eeprom = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"edev-dump-xstats", MAX_LONG_OPT_SZ)) {
+				int ret = parse_eventdev_dump_xstats_params(optarg);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing eventdev dump xstats params: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+			} else if (!strncmp(long_option[option_index].name,
+					"edev-reset-xstats", MAX_LONG_OPT_SZ)) {
+				int ret = parse_eventdev_reset_xstats_params(optarg);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing eventdev reset xstats params: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+			} else if (!strncmp(long_option[option_index].name,
+					"show-edev-device-xstats", MAX_LONG_OPT_SZ)) {
+				int ret = parse_eventdev_device_xstats_params(optarg);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing eventdev reset xstats params: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+			} else if (!strncmp(long_option[option_index].name,
+					"show-edev-queue-xstats", MAX_LONG_OPT_SZ)) {
+				int ret = parse_eventdev_queue_xstats_params(optarg);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing eventdev queue xstats params: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+			} else if (!strncmp(long_option[option_index].name,
+					"show-edev-port-xstats", MAX_LONG_OPT_SZ)) {
+				int ret = parse_eventdev_port_xstats_params(optarg);
+				if (ret < 0) {
+					fprintf(stderr, "Error parsing eventdev port xstats params: %s\n",
+						strerror(-ret));
+					return -1;
+				}
+			}
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -445,6 +643,10 @@ meminfo_display(void)
 	printf("------------ MEMORY_ZONES -------------\n");
 	rte_memzone_dump(stdout);
 	printf("---------- END_MEMORY_ZONES -----------\n");
+
+	printf("---------- MALLOC_HEAP_DUMP -----------\n");
+	rte_malloc_dump_heaps(stdout);
+	printf("-------- END_MALLOC_HEAP_DUMP ---------\n");
 
 	printf("------------- TAIL_QUEUES -------------\n");
 	rte_dump_tailq(stdout);
@@ -654,6 +856,8 @@ nic_xstats_display(uint16_t port_id)
 	}
 
 	for (i = 0; i < len; i++) {
+		if (enable_xstats_hide_zero && values[i] == 0)
+			continue;
 		if (enable_collectd_format) {
 			char counter_type[MAX_STRING_LEN];
 			char buf[MAX_STRING_LEN];
@@ -719,24 +923,23 @@ metrics_display(int port_id)
 		return;
 	}
 
-	metrics = rte_malloc("proc_info_metrics",
-		sizeof(struct rte_metric_value) * len, 0);
+	metrics = malloc(sizeof(struct rte_metric_value) * len);
 	if (metrics == NULL) {
 		printf("Cannot allocate memory for metrics\n");
 		return;
 	}
 
-	names =  rte_malloc(NULL, sizeof(struct rte_metric_name) * len, 0);
+	names = malloc(sizeof(struct rte_metric_name) * len);
 	if (names == NULL) {
 		printf("Cannot allocate memory for metrics names\n");
-		rte_free(metrics);
+		free(metrics);
 		return;
 	}
 
 	if (len != rte_metrics_get_names(names, len)) {
 		printf("Cannot get metrics names\n");
-		rte_free(metrics);
-		rte_free(names);
+		free(metrics);
+		free(names);
 		return;
 	}
 
@@ -748,8 +951,8 @@ metrics_display(int port_id)
 	ret = rte_metrics_get_values(port_id, metrics, len);
 	if (ret < 0 || ret > len) {
 		printf("Cannot get metrics values\n");
-		rte_free(metrics);
-		rte_free(names);
+		free(metrics);
+		free(names);
 		return;
 	}
 
@@ -758,8 +961,8 @@ metrics_display(int port_id)
 		printf("%s: %"PRIu64"\n", names[i].name, metrics[i].value);
 
 	printf("%s############################\n", nic_stats_border);
-	rte_free(metrics);
-	rte_free(names);
+	free(metrics);
+	free(names);
 }
 #endif
 
@@ -800,7 +1003,7 @@ show_offloads(uint64_t offloads,
 {
 	printf(" offloads :");
 	while (offloads != 0) {
-		uint64_t offload_flag = 1ULL << __builtin_ctzll(offloads);
+		uint64_t offload_flag = 1ULL << rte_ctz64(offloads);
 		printf(" %s", show_offload(offload_flag));
 		offloads &= ~offload_flag;
 	}
@@ -823,6 +1026,7 @@ show_port(void)
 		struct rte_eth_fc_conf fc_conf;
 		struct rte_ether_addr mac;
 		struct rte_eth_dev_owner owner;
+		uint8_t rss_key[RSS_HASH_KEY_SIZE];
 
 		/* Skip if port is not in mask */
 		if ((enabled_port_mask & (1ul << i)) == 0)
@@ -981,17 +1185,20 @@ show_port(void)
 			printf("\n");
 		}
 
+		rss_conf.rss_key = rss_key;
+		rss_conf.rss_key_len = dev_info.hash_key_size;
 		ret = rte_eth_dev_rss_hash_conf_get(i, &rss_conf);
 		if (ret == 0) {
-			if (rss_conf.rss_key) {
-				printf("  - RSS\n");
-				printf("\t  -- RSS len %u key (hex):",
-						rss_conf.rss_key_len);
-				for (k = 0; k < rss_conf.rss_key_len; k++)
-					printf(" %x", rss_conf.rss_key[k]);
-				printf("\t  -- hf 0x%"PRIx64"\n",
-						rss_conf.rss_hf);
-			}
+			printf("  - RSS info\n");
+			printf("\t  -- key len : %u\n",
+					rss_conf.rss_key_len);
+			printf("\t  -- key (hex) : ");
+			for (k = 0; k < rss_conf.rss_key_len; k++)
+				printf("%02x", rss_conf.rss_key[k]);
+			printf("\n\t  -- hash function : 0x%"PRIx64"\n",
+					rss_conf.rss_hf);
+			printf("\t  -- hash algorithm : %s\n",
+				rte_eth_dev_rss_algo_name(rss_conf.algorithm));
 		}
 
 #ifdef RTE_LIB_SECURITY
@@ -1744,6 +1951,187 @@ nic_tx_descriptor_display(uint16_t port_id, struct desc_param *desc)
 			strerror(-ret));
 }
 
+static void
+xstats_display(uint8_t dev_id,
+	  enum rte_event_dev_xstats_mode mode,
+	  uint8_t queue_port_id)
+{
+	int ret;
+	struct rte_event_dev_xstats_name *xstats_names;
+	uint64_t *ids;
+	uint64_t *values;
+	int size;
+	int i;
+
+	size = rte_event_dev_xstats_names_get(dev_id,
+					     mode,
+					     queue_port_id,
+					     NULL, /* names */
+					     NULL, /* ids */
+					     0);   /* num */
+
+	if (size < 0)
+		rte_panic("rte_event_dev_xstats_names_get err %d\n", size);
+
+	if (size == 0) {
+		printf(
+		"No stats available for this item, mode=%d, queue_port_id=%d\n",
+			mode, queue_port_id);
+		return;
+	}
+
+	/* Get memory to hold stat names, IDs, and values */
+	xstats_names = malloc(sizeof(struct rte_event_dev_xstats_name) * (unsigned int)size);
+	ids = malloc(sizeof(unsigned int) * size);
+
+	if (!xstats_names || !ids)
+		rte_panic("unable to alloc memory for stats retrieval\n");
+
+	ret = rte_event_dev_xstats_names_get(dev_id, mode, queue_port_id,
+					     xstats_names, ids,
+					     (unsigned int)size);
+	if (ret != size)
+		rte_panic("rte_event_dev_xstats_names_get err %d\n", ret);
+
+	values = malloc(sizeof(uint64_t) * size);
+	if (!values)
+		rte_panic("unable to alloc memory for stats retrieval\n");
+
+	ret = rte_event_dev_xstats_get(dev_id, mode, queue_port_id,
+					    ids, values, size);
+
+	if (ret != size)
+		rte_panic("rte_event_dev_xstats_get err %d\n", ret);
+
+	for (i = 0; i < size; i++) {
+		printf("id %"PRIu64"  %s = %"PRIu64"\n",
+			ids[i], &xstats_names[i].name[0], values[i]);
+	}
+
+	free(values);
+	free(xstats_names);
+	free(ids);
+
+}
+
+static void
+xstats_reset(uint8_t dev_id,
+	  enum rte_event_dev_xstats_mode mode,
+	  uint8_t queue_port_id)
+{
+	int ret;
+	struct rte_event_dev_xstats_name *xstats_names;
+	uint64_t *ids;
+	int size;
+
+	size = rte_event_dev_xstats_names_get(dev_id,
+					     mode,
+					     queue_port_id,
+					     NULL, /* names */
+					     NULL, /* ids */
+					     0);   /* num */
+
+	if (size < 0)
+		rte_panic("rte_event_dev_xstats_names_get err %d\n", size);
+
+	if (size == 0) {
+		printf(
+		"No stats available for this item, mode=%d, queue_port_id=%d\n",
+			mode, queue_port_id);
+		return;
+	}
+
+	/* Get memory to hold stat names, IDs, and values */
+	xstats_names = malloc(sizeof(struct rte_event_dev_xstats_name) * (unsigned int)size);
+	ids = malloc(sizeof(unsigned int) * size);
+
+	if (!xstats_names || !ids)
+		rte_panic("unable to alloc memory for stats retrieval\n");
+
+	ret = rte_event_dev_xstats_names_get(dev_id, mode, queue_port_id,
+					     xstats_names, ids,
+					     (unsigned int)size);
+	if (ret != size)
+		rte_panic("rte_event_dev_xstats_names_get err %d\n", ret);
+
+	rte_event_dev_xstats_reset(dev_id, mode, queue_port_id,
+					   ids, size);
+
+	free(xstats_names);
+	free(ids);
+
+}
+
+static unsigned int
+eventdev_xstats(void)
+{
+	unsigned int count = 0;
+	int i, j;
+
+	for (i = 0; i < rte_event_dev_count(); i++) {
+
+		if (eventdev_var[i].dump_xstats) {
+			++count;
+			int ret = rte_event_dev_dump(i, stdout);
+
+			if (ret)
+				rte_panic("dump failed with err=%d\n", ret);
+		}
+
+		if (eventdev_var[i].shw_device_xstats == 1) {
+			++count;
+			xstats_display(i, RTE_EVENT_DEV_XSTATS_DEVICE, 0);
+
+			if (eventdev_var[i].reset_xstats == 1)
+				xstats_reset(i, RTE_EVENT_DEV_XSTATS_DEVICE, 0);
+		}
+
+		if (eventdev_var[i].shw_all_ports == 1) {
+			++count;
+			for (j = 0; j < MAX_PORTS_QUEUES; j++) {
+				xstats_display(i, RTE_EVENT_DEV_XSTATS_PORT, j);
+
+				if (eventdev_var[i].reset_xstats == 1)
+					xstats_reset(i, RTE_EVENT_DEV_XSTATS_PORT, j);
+			}
+		} else {
+			if (eventdev_var[i].num_ports > 0)
+				++count;
+			for (j = 0; j < eventdev_var[i].num_ports; j++) {
+				xstats_display(i, RTE_EVENT_DEV_XSTATS_PORT,
+					eventdev_var[i].ports[j]);
+
+				if (eventdev_var[i].reset_xstats == 1)
+					xstats_reset(i, RTE_EVENT_DEV_XSTATS_PORT,
+							eventdev_var[i].ports[j]);
+			}
+		}
+
+		if (eventdev_var[i].shw_all_queues == 1) {
+			++count;
+			for (j = 0; j < MAX_PORTS_QUEUES; j++) {
+				xstats_display(i, RTE_EVENT_DEV_XSTATS_QUEUE, j);
+
+				if (eventdev_var[i].reset_xstats == 1)
+					xstats_reset(i, RTE_EVENT_DEV_XSTATS_QUEUE, j);
+			}
+		} else {
+			if (eventdev_var[i].num_queues > 0)
+				++count;
+			for (j = 0; j < eventdev_var[i].num_queues; j++) {
+				xstats_display(i, RTE_EVENT_DEV_XSTATS_QUEUE,
+						eventdev_var[i].queues[j]);
+
+				if (eventdev_var[i].reset_xstats == 1)
+					xstats_reset(i, RTE_EVENT_DEV_XSTATS_QUEUE,
+							eventdev_var[i].queues[j]);
+			}
+		}
+	}
+
+	return count;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1791,8 +2179,11 @@ main(int argc, char **argv)
 
 	if (mem_info) {
 		meminfo_display();
-		return 0;
+		goto cleanup;
 	}
+
+	if (eventdev_xstats() > 0)
+		goto cleanup;
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
@@ -1873,6 +2264,7 @@ main(int argc, char **argv)
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_close(i);
 
+cleanup:
 	ret = rte_eal_cleanup();
 	if (ret)
 		printf("Error from rte_eal_cleanup(), %d\n", ret);

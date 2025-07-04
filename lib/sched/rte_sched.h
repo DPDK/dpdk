@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_SCHED_H__
 #define __INCLUDE_RTE_SCHED_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Hierarchical Scheduler
@@ -53,16 +49,19 @@ extern "C" {
  *	    the same user;
  *           - Weighted Round Robin (WRR) is used to service the
  *	    queues within same pipe lowest priority traffic class (best-effort).
- *
  */
 
-#include <rte_compat.h>
+#include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_meter.h>
 
 /** Congestion Management */
 #include "rte_red.h"
 #include "rte_pie.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum number of queues per pipe.
  * Note that the multiple queues (power of 2) can only be assigned to
@@ -310,19 +309,9 @@ struct rte_sched_port_params {
 
 /*
  * Configuration
- *
- ***/
-
-/**
- * Hierarchical scheduler port configuration
- *
- * @param params
- *   Port scheduler configuration parameter structure
- * @return
- *   Handle to port scheduler instance upon success or NULL otherwise.
  */
-struct rte_sched_port *
-rte_sched_port_config(struct rte_sched_port_params *params);
+
+struct rte_sched_port;
 
 /**
  * Hierarchical scheduler port free
@@ -333,6 +322,18 @@ rte_sched_port_config(struct rte_sched_port_params *params);
  */
 void
 rte_sched_port_free(struct rte_sched_port *port);
+
+/**
+ * Hierarchical scheduler port configuration
+ *
+ * @param params
+ *   Port scheduler configuration parameter structure
+ * @return
+ *   Handle to port scheduler instance upon success or NULL otherwise.
+ */
+struct rte_sched_port *
+rte_sched_port_config(struct rte_sched_port_params *params)
+	__rte_malloc __rte_dealloc(rte_sched_port_free, 1);
 
 /**
  * Hierarchical scheduler pipe profile add
@@ -355,9 +356,6 @@ rte_sched_subport_pipe_profile_add(struct rte_sched_port *port,
 	uint32_t *pipe_profile_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Hierarchical scheduler subport bandwidth profile add
  * Note that this function is safe to use in runtime for adding new
  * subport bandwidth profile as it doesn't have any impact on hierarchical
@@ -371,7 +369,6 @@ rte_sched_subport_pipe_profile_add(struct rte_sched_port *port,
  * @return
  *   0 upon success, error code otherwise
  */
-__rte_experimental
 int
 rte_sched_port_subport_profile_add(struct rte_sched_port *port,
 	struct rte_sched_subport_profile_params *profile,
@@ -434,10 +431,10 @@ rte_sched_pipe_config(struct rte_sched_port *port,
 uint32_t
 rte_sched_port_get_memory_footprint(struct rte_sched_port_params *port_params,
 	struct rte_sched_subport_params **subport_params);
+
 /*
  * Statistics
- *
- ***/
+ */
 
 /**
  * Hierarchical scheduler subport statistics read
@@ -594,7 +591,6 @@ rte_sched_port_dequeue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
  * @return
  *   0 upon success, error code otherwise
  */
-__rte_experimental
 int
 rte_sched_subport_tc_ov_config(struct rte_sched_port *port, uint32_t subport_id, bool tc_ov_enable);
 

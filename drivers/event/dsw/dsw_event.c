@@ -33,7 +33,8 @@ dsw_port_acquire_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 	}
 
 	total_on_loan =
-		__atomic_load_n(&dsw->credits_on_loan, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&dsw->credits_on_loan,
+					 rte_memory_order_relaxed);
 	available = dsw->max_inflight - total_on_loan;
 	acquired_credits = RTE_MAX(missing_credits, DSW_PORT_MIN_CREDITS);
 
@@ -45,17 +46,20 @@ dsw_port_acquire_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 	 * allocation.
 	 */
 	new_total_on_loan =
-	    __atomic_add_fetch(&dsw->credits_on_loan, acquired_credits,
-			       __ATOMIC_RELAXED);
+	    rte_atomic_fetch_add_explicit(&dsw->credits_on_loan,
+					  acquired_credits,
+					  rte_memory_order_relaxed) +
+					  acquired_credits;
 
 	if (unlikely(new_total_on_loan > dsw->max_inflight)) {
 		/* Some other port took the last credits */
-		__atomic_sub_fetch(&dsw->credits_on_loan, acquired_credits,
-				   __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&dsw->credits_on_loan,
+					      acquired_credits,
+					      rte_memory_order_relaxed);
 		return false;
 	}
 
-	DSW_LOG_DP_PORT(DEBUG, port->id, "Acquired %d tokens from pool.\n",
+	DSW_LOG_DP_PORT_LINE(DEBUG, port->id, "Acquired %d tokens from pool.",
 			acquired_credits);
 
 	port->inflight_credits += acquired_credits;
@@ -77,11 +81,12 @@ dsw_port_return_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 
 		port->inflight_credits = leave_credits;
 
-		__atomic_sub_fetch(&dsw->credits_on_loan, return_credits,
-				   __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&dsw->credits_on_loan,
+					      return_credits,
+					      rte_memory_order_relaxed);
 
-		DSW_LOG_DP_PORT(DEBUG, port->id,
-				"Returned %d tokens to pool.\n",
+		DSW_LOG_DP_PORT_LINE(DEBUG, port->id,
+				"Returned %d tokens to pool.",
 				return_credits);
 	}
 }
@@ -156,19 +161,22 @@ dsw_port_load_update(struct dsw_port *port, uint64_t now)
 	int16_t period_load;
 	int16_t new_load;
 
-	old_load = __atomic_load_n(&port->load, __ATOMIC_RELAXED);
+	old_load = rte_atomic_load_explicit(&port->load,
+					    rte_memory_order_relaxed);
 
 	period_load = dsw_port_load_close_period(port, now);
 
 	new_load = (period_load + old_load*DSW_OLD_LOAD_WEIGHT) /
 		(DSW_OLD_LOAD_WEIGHT+1);
 
-	__atomic_store_n(&port->load, new_load, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&port->load, new_load,
+				  rte_memory_order_relaxed);
 
 	/* The load of the recently immigrated flows should hopefully
 	 * be reflected the load estimate by now.
 	 */
-	__atomic_store_n(&port->immigration_load, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&port->immigration_load, 0,
+				  rte_memory_order_relaxed);
 }
 
 static void
@@ -256,8 +264,8 @@ dsw_port_add_paused_flows(struct dsw_port *port, struct dsw_queue_flow *qfs,
 	for (i = 0; i < qfs_len; i++) {
 		struct dsw_queue_flow *qf = &qfs[i];
 
-		DSW_LOG_DP_PORT(DEBUG, port->id,
-				"Pausing queue_id %d flow_hash %d.\n",
+		DSW_LOG_DP_PORT_LINE(DEBUG, port->id,
+				"Pausing queue_id %d flow_hash %d.",
 				qf->queue_id, qf->flow_hash);
 
 		port->paused_flows[port->paused_flows_len] = *qf;
@@ -267,7 +275,7 @@ dsw_port_add_paused_flows(struct dsw_port *port, struct dsw_queue_flow *qfs,
 
 static void
 dsw_port_remove_paused_flow(struct dsw_port *port,
-			    struct dsw_queue_flow *target_qf)
+			    const struct dsw_queue_flow *target_qf)
 {
 	uint16_t i;
 
@@ -282,8 +290,8 @@ dsw_port_remove_paused_flow(struct dsw_port *port,
 					port->paused_flows[last_idx];
 			port->paused_flows_len--;
 
-			DSW_LOG_DP_PORT(DEBUG, port->id,
-					"Unpausing queue_id %d flow_hash %d.\n",
+			DSW_LOG_DP_PORT_LINE(DEBUG, port->id,
+					"Unpausing queue_id %d flow_hash %d.",
 					target_qf->queue_id,
 					target_qf->flow_hash);
 
@@ -291,9 +299,10 @@ dsw_port_remove_paused_flow(struct dsw_port *port,
 		}
 	}
 
-	DSW_LOG_DP_PORT(ERR, port->id,
-			"Failed to unpause queue_id %d flow_hash %d.\n",
+	DSW_LOG_DP_PORT_LINE(ERR, port->id,
+			"Failed to unpause queue_id %d flow_hash %d.",
 			target_qf->queue_id, target_qf->flow_hash);
+	RTE_VERIFY(0);
 }
 
 static void
@@ -390,10 +399,11 @@ dsw_retrieve_port_loads(struct dsw_evdev *dsw, int16_t *port_loads,
 
 	for (i = 0; i < dsw->num_ports; i++) {
 		int16_t measured_load =
-			__atomic_load_n(&dsw->ports[i].load, __ATOMIC_RELAXED);
+			rte_atomic_load_explicit(&dsw->ports[i].load,
+						 rte_memory_order_relaxed);
 		int32_t immigration_load =
-			__atomic_load_n(&dsw->ports[i].immigration_load,
-					__ATOMIC_RELAXED);
+			rte_atomic_load_explicit(&dsw->ports[i].immigration_load,
+					         rte_memory_order_relaxed);
 		int32_t load = measured_load + immigration_load;
 
 		load = RTE_MIN(load, DSW_MAX_LOAD);
@@ -447,13 +457,8 @@ static bool
 dsw_is_serving_port(struct dsw_evdev *dsw, uint8_t port_id, uint8_t queue_id)
 {
 	struct dsw_queue *queue = &dsw->queues[queue_id];
-	uint16_t i;
 
-	for (i = 0; i < queue->num_serving_ports; i++)
-		if (queue->serving_ports[i] == port_id)
-			return true;
-
-	return false;
+	return rte_bitset_test(queue->serving_ports, port_id);
 }
 
 static bool
@@ -513,9 +518,9 @@ dsw_select_emigration_target(struct dsw_evdev *dsw,
 	if (candidate_weight < 0)
 		return false;
 
-	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Selected queue_id %d "
+	DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Selected queue_id %d "
 			"flow_hash %d (with flow load %d) for migration "
-			"to port %d.\n", candidate_qf->queue_id,
+			"to port %d.", candidate_qf->queue_id,
 			candidate_qf->flow_hash,
 			DSW_LOAD_TO_PERCENT(candidate_flow_load),
 			candidate_port_id);
@@ -527,8 +532,10 @@ dsw_select_emigration_target(struct dsw_evdev *dsw,
 	target_qfs[*targets_len] = *candidate_qf;
 	(*targets_len)++;
 
-	__atomic_add_fetch(&dsw->ports[candidate_port_id].immigration_load,
-			   candidate_flow_load, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(
+				&dsw->ports[candidate_port_id].immigration_load,
+				      candidate_flow_load,
+				      rte_memory_order_relaxed);
 
 	return true;
 }
@@ -558,9 +565,9 @@ dsw_select_emigration_targets(struct dsw_evdev *dsw,
 	}
 
 	if (*targets_len == 0)
-		DSW_LOG_DP_PORT(DEBUG, source_port->id,
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id,
 				"For the %d flows considered, no target port "
-				"was found.\n", num_bursts);
+				"was found.", num_bursts);
 }
 
 static uint8_t
@@ -575,10 +582,12 @@ dsw_schedule(struct dsw_evdev *dsw, uint8_t queue_id, uint16_t flow_hash)
 		/* A single-link queue, or atomic/ordered/parallel but
 		 * with just a single serving port.
 		 */
-		port_id = queue->serving_ports[0];
+		port_id = (uint8_t)rte_bitset_find_first_set(
+			queue->serving_ports, DSW_MAX_PORTS
+		);
 
-	DSW_LOG_DP(DEBUG, "Event with queue_id %d flow_hash %d is scheduled "
-		   "to port %d.\n", queue_id, flow_hash, port_id);
+	DSW_LOG_DP_LINE(DEBUG, "Event with queue_id %d flow_hash %d is scheduled "
+		   "to port %d.", queue_id, flow_hash, port_id);
 
 	return port_id;
 }
@@ -590,21 +599,15 @@ dsw_port_transmit_buffered(struct dsw_evdev *dsw, struct dsw_port *source_port,
 	struct dsw_port *dest_port = &(dsw->ports[dest_port_id]);
 	uint16_t *buffer_len = &source_port->out_buffer_len[dest_port_id];
 	struct rte_event *buffer = source_port->out_buffer[dest_port_id];
-	uint16_t enqueued = 0;
 
 	if (*buffer_len == 0)
 		return;
 
 	/* The rings are dimensioned to fit all in-flight events (even
-	 * on a single ring), so looping will work.
+	 * on a single ring).
 	 */
-	do {
-		enqueued +=
-			rte_event_ring_enqueue_burst(dest_port->in_ring,
-						     buffer+enqueued,
-						     *buffer_len-enqueued,
-						     NULL);
-	} while (unlikely(enqueued != *buffer_len));
+	rte_event_ring_enqueue_bulk(dest_port->in_ring, buffer, *buffer_len,
+				    NULL);
 
 	(*buffer_len) = 0;
 }
@@ -772,8 +775,8 @@ dsw_port_end_emigration(struct dsw_evdev *dsw, struct dsw_port *port,
 			continue;
 		}
 
-		DSW_LOG_DP_PORT(DEBUG, port->id, "Migration completed for "
-				"queue_id %d flow_hash %d.\n", queue_id,
+		DSW_LOG_DP_PORT_LINE(DEBUG, port->id, "Migration completed for "
+				"queue_id %d flow_hash %d.", queue_id,
 				flow_hash);
 	}
 
@@ -790,6 +793,7 @@ dsw_port_end_emigration(struct dsw_evdev *dsw, struct dsw_port *port,
 
 	if (port->emigration_targets_len == 0) {
 		port->migration_state = DSW_MIGRATION_STATE_IDLE;
+		port->emigration_targets_len = 0;
 		port->seen_events_len = 0;
 	}
 }
@@ -841,29 +845,37 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	if (dsw->num_ports == 1)
 		return;
 
-	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Considering emigration.\n");
+	DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Considering emigration.");
 
-	if (seen_events_len < DSW_MAX_EVENTS_RECORDED) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id, "Not enough events "
-				"are recorded to allow for a migration.\n");
+	/* For simplicity, postpone migration if there are still
+	 * events to consume in the in_buffer (from the last
+	 * emigration).
+	 */
+	if (source_port->in_buffer_len > 0) {
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "There are still "
+				"events in the input buffer.");
 		return;
 	}
 
-	/* A flow migration cannot be initiated if there are paused
-	 * events, since some/all of those events may be have been
-	 * produced as a result of processing the flow(s) selected for
-	 * migration. Moving such a flow would potentially introduced
-	 * reordering, since processing the migrated flow on the
-	 * receiving flow may commence before the to-be-enqueued-to
+	if (source_port->migration_state != DSW_MIGRATION_STATE_IDLE) {
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id,
+				"Emigration already in progress.");
+		return;
+	}
 
-	 * flows are unpaused, leading to paused events on the second
-	 * port as well, destined for the same paused flow(s). When
-	 * those flows are unpaused, the resulting events are
-	 * delivered the owning port in an undefined order.
+	if (seen_events_len < DSW_MAX_EVENTS_RECORDED) {
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Not enough events "
+				"are recorded to allow for a migration.");
+		return;
+	}
+
+	/* Postpone migration considering in case paused events exists, since
+	 * such events may prevent the migration procedure from completing,
+	 * leading to wasted CPU cycles (e.g., sorting queue flows).
 	 */
 	if (source_port->paused_events_len > 0) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id, "There are "
-				"events in the paus buffer.\n");
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Paused events on "
+				"port. Postponing any migrations.");
 		return;
 	}
 
@@ -873,29 +885,14 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	 */
 	source_port->next_emigration = now +
 		source_port->migration_interval / 2 +
-		rte_rand() % source_port->migration_interval;
-
-	if (source_port->migration_state != DSW_MIGRATION_STATE_IDLE) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id,
-				"Emigration already in progress.\n");
-		return;
-	}
-
-	/* For simplicity, avoid migration in the unlikely case there
-	 * is still events to consume in the in_buffer (from the last
-	 * emigration).
-	 */
-	if (source_port->in_buffer_len > 0) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id, "There are still "
-				"events in the input buffer.\n");
-		return;
-	}
+		rte_rand_max(source_port->migration_interval);
 
 	source_port_load =
-		__atomic_load_n(&source_port->load, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&source_port->load,
+					 rte_memory_order_relaxed);
 	if (source_port_load < DSW_MIN_SOURCE_LOAD_FOR_MIGRATION) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id,
-		      "Load %d is below threshold level %d.\n",
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id,
+		      "Load %d is below threshold level %d.",
 		      DSW_LOAD_TO_PERCENT(source_port_load),
 		      DSW_LOAD_TO_PERCENT(DSW_MIN_SOURCE_LOAD_FOR_MIGRATION));
 		return;
@@ -908,9 +905,9 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 		dsw_retrieve_port_loads(dsw, port_loads,
 					DSW_MAX_TARGET_LOAD_FOR_MIGRATION);
 	if (!any_port_below_limit) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id,
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id,
 				"Candidate target ports are all too highly "
-				"loaded.\n");
+				"loaded.");
 		return;
 	}
 
@@ -921,8 +918,8 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	 * only (known) flow.
 	 */
 	if (num_bursts < 2) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id, "Only a single flow "
-				"queue_id %d flow_hash %d has been seen.\n",
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Only a single flow "
+				"queue_id %d flow_hash %d has been seen.",
 				bursts[0].queue_flow.queue_id,
 				bursts[0].queue_flow.flow_hash);
 		return;
@@ -934,7 +931,7 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	if (source_port->emigration_targets_len == 0)
 		return;
 
-	source_port->migration_state = DSW_MIGRATION_STATE_PAUSING;
+	source_port->migration_state = DSW_MIGRATION_STATE_FINISH_PENDING;
 	source_port->emigration_start = rte_get_timer_cycles();
 
 	/* No need to go through the whole pause procedure for
@@ -942,24 +939,73 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	 * be maintained.
 	 */
 	dsw_port_move_parallel_flows(dsw, source_port);
+}
 
-	/* All flows were on PARALLEL queues. */
-	if (source_port->migration_state == DSW_MIGRATION_STATE_IDLE)
-		return;
+static void
+dsw_port_abort_migration(struct dsw_port *source_port)
+{
+	RTE_ASSERT(source_port->in_buffer_start == 0);
+	RTE_ASSERT(source_port->in_buffer_len == 0);
 
-	/* There might be 'loopback' events already scheduled in the
-	 * output buffers.
+	/* Putting the stashed events in the in_buffer makes sure they
+	 * are processed before any events on the in_ring, to avoid
+	 * reordering.
 	 */
-	dsw_port_flush_out_buffers(dsw, source_port);
+	rte_memcpy(source_port->in_buffer, source_port->emigrating_events,
+		 source_port->emigrating_events_len * sizeof(struct rte_event));
+	source_port->in_buffer_len = source_port->emigrating_events_len;
+	source_port->emigrating_events_len = 0;
+
+	source_port->emigration_targets_len = 0;
+
+	source_port->migration_state = DSW_MIGRATION_STATE_IDLE;
+}
+
+static void
+dsw_port_continue_emigration(struct dsw_evdev *dsw,
+			     struct dsw_port *source_port)
+{
+	/* A flow migration cannot be completed if there are paused
+	 * events, since some/all of those events may be have been
+	 * produced as a result of processing the flow(s) selected for
+	 * migration. Moving such a flow would potentially introduced
+	 * reordering, since processing the migrated flow on the
+	 * receiving flow may commence before the to-be-enqueued-to
+	 * flows are unpaused, leading to paused events on the second
+	 * port as well, destined for the same paused flow(s). When
+	 * those flows are unpaused, the resulting events are
+	 * delivered the owning port in an undefined order.
+	 *
+	 * Waiting for the events to be unpaused could lead to a
+	 * deadlock, where two ports are both waiting for the other to
+	 * unpause.
+	 */
+	if (source_port->paused_events_len > 0) {
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "There are events in "
+				"the pause buffer. Aborting migration.");
+		dsw_port_abort_migration(source_port);
+		return;
+	}
 
 	dsw_port_add_paused_flows(source_port,
 				  source_port->emigration_target_qfs,
 				  source_port->emigration_targets_len);
 
-	dsw_port_ctl_broadcast(dsw, source_port, DSW_CTL_PAUS_REQ,
+	dsw_port_ctl_broadcast(dsw, source_port, DSW_CTL_PAUSE_REQ,
 			       source_port->emigration_target_qfs,
 			       source_port->emigration_targets_len);
 	source_port->cfm_cnt = 0;
+
+	source_port->migration_state = DSW_MIGRATION_STATE_PAUSING;
+}
+
+static void
+dsw_port_try_finish_pending(struct dsw_evdev *dsw, struct dsw_port *source_port)
+{
+	if (unlikely(source_port->migration_state ==
+		     DSW_MIGRATION_STATE_FINISH_PENDING &&
+		     source_port->pending_releases == 0))
+		dsw_port_continue_emigration(dsw, source_port);
 }
 
 static void
@@ -979,8 +1025,6 @@ dsw_port_handle_unpause_flows(struct dsw_evdev *dsw, struct dsw_port *port,
 	};
 
 	dsw_port_remove_paused_flows(port, paused_qfs, qfs_len);
-
-	rte_smp_rmb();
 
 	dsw_port_ctl_enqueue(&dsw->ports[originating_port_id], &cfm);
 
@@ -1003,6 +1047,78 @@ dsw_port_buffer_in_buffer(struct dsw_port *port,
 
 	port->in_buffer[port->in_buffer_len] = *event;
 	port->in_buffer_len++;
+}
+
+static void
+dsw_port_stash_migrating_event(struct dsw_port *port,
+			       const struct rte_event *event)
+{
+	port->emigrating_events[port->emigrating_events_len] = *event;
+	port->emigrating_events_len++;
+}
+
+static void
+dsw_port_stash_any_migrating_events(struct dsw_port *port,
+				    struct rte_event *events,
+				    uint16_t *num)
+{
+	uint16_t i;
+	uint16_t offset = 0;
+
+	for (i = 0; i < *num; i++) {
+		uint16_t flow_hash;
+		struct rte_event *in_event = &events[i];
+
+		flow_hash = dsw_flow_id_hash(in_event->flow_id);
+
+		if (unlikely(dsw_port_is_flow_migrating(port,
+							in_event->queue_id,
+							flow_hash))) {
+			dsw_port_stash_migrating_event(port, in_event);
+			offset++;
+		} else if (offset > 0) {
+			struct rte_event *out_event = &events[i - offset];
+			*out_event = *in_event;
+		}
+	}
+
+	*num -= offset;
+}
+
+#define DRAIN_DEQUEUE_BURST_SIZE (32)
+
+static void
+dsw_port_drain_in_ring(struct dsw_port *source_port)
+{
+	for (;;) {
+		struct rte_event events[DRAIN_DEQUEUE_BURST_SIZE];
+		uint16_t n;
+		uint16_t i;
+		uint16_t available;
+
+		n = rte_event_ring_dequeue_burst(source_port->in_ring,
+						 events,
+						 DRAIN_DEQUEUE_BURST_SIZE,
+						 &available);
+
+		if (n == 0 && available == 0)
+			break;
+
+		for (i = 0; i < n; i++) {
+			struct rte_event *event = &events[i];
+			uint16_t flow_hash;
+
+			flow_hash = dsw_flow_id_hash(event->flow_id);
+
+			if (unlikely(dsw_port_is_flow_migrating(source_port,
+								event->queue_id,
+								flow_hash)))
+				dsw_port_stash_migrating_event(source_port,
+							       event);
+			else
+				dsw_port_buffer_in_buffer(source_port, event);
+		}
+	}
 }
 
 static void
@@ -1040,59 +1156,6 @@ dsw_port_forward_emigrated_event(struct dsw_evdev *dsw,
 }
 
 static void
-dsw_port_stash_migrating_event(struct dsw_port *port,
-			       const struct rte_event *event)
-{
-	port->emigrating_events[port->emigrating_events_len] = *event;
-	port->emigrating_events_len++;
-}
-
-#define DRAIN_DEQUEUE_BURST_SIZE (32)
-
-static void
-dsw_port_drain_in_ring(struct dsw_port *source_port)
-{
-	uint16_t num_events;
-	uint16_t dequeued;
-
-	/* Control ring message should been seen before the ring count
-	 * is read on the port's in_ring.
-	 */
-	rte_smp_rmb();
-
-	num_events = rte_event_ring_count(source_port->in_ring);
-
-	for (dequeued = 0; dequeued < num_events; ) {
-		uint16_t burst_size = RTE_MIN(DRAIN_DEQUEUE_BURST_SIZE,
-					      num_events - dequeued);
-		struct rte_event events[burst_size];
-		uint16_t len;
-		uint16_t i;
-
-		len = rte_event_ring_dequeue_burst(source_port->in_ring,
-						   events, burst_size,
-						   NULL);
-
-		for (i = 0; i < len; i++) {
-			struct rte_event *event = &events[i];
-			uint16_t flow_hash;
-
-			flow_hash = dsw_flow_id_hash(event->flow_id);
-
-			if (unlikely(dsw_port_is_flow_migrating(source_port,
-								event->queue_id,
-								flow_hash)))
-				dsw_port_stash_migrating_event(source_port,
-							       event);
-			else
-				dsw_port_buffer_in_buffer(source_port, event);
-		}
-
-		dequeued += len;
-	}
-}
-
-static void
 dsw_port_forward_emigrated_flows(struct dsw_evdev *dsw,
 				 struct dsw_port *source_port)
 {
@@ -1112,6 +1175,9 @@ dsw_port_move_emigrating_flows(struct dsw_evdev *dsw,
 {
 	uint8_t i;
 
+	/* There may be events lingering in the output buffer from
+	 * prior to the pause took effect.
+	 */
 	dsw_port_flush_out_buffers(dsw, source_port);
 
 	for (i = 0; i < source_port->emigration_targets_len; i++) {
@@ -1135,12 +1201,21 @@ dsw_port_move_emigrating_flows(struct dsw_evdev *dsw,
 
 	dsw_port_flush_no_longer_paused_events(dsw, source_port);
 
+	/* Processing migrating flows during migration may have
+	 * produced events to paused flows, including the flows which
+	 * were being migrated. Flushing the output buffers before
+	 * unpausing the flows on other ports assures that such events
+	 * are seen *before* any events produced by processing the
+	 * migrating flows on the new port.
+	 */
+	dsw_port_flush_out_buffers(dsw, source_port);
+
 	/* Flow table update and migration destination port's enqueues
 	 * must be seen before the control message.
 	 */
 	rte_smp_wmb();
 
-	dsw_port_ctl_broadcast(dsw, source_port, DSW_CTL_UNPAUS_REQ,
+	dsw_port_ctl_broadcast(dsw, source_port, DSW_CTL_UNPAUSE_REQ,
 			       source_port->emigration_target_qfs,
 			       source_port->emigration_targets_len);
 	source_port->cfm_cnt = 0;
@@ -1152,7 +1227,7 @@ dsw_port_handle_confirm(struct dsw_evdev *dsw, struct dsw_port *port)
 {
 	port->cfm_cnt++;
 
-	if (port->cfm_cnt == (dsw->num_ports-1)) {
+	if (port->cfm_cnt == (dsw->num_ports - 1)) {
 		switch (port->migration_state) {
 		case DSW_MIGRATION_STATE_PAUSING:
 			dsw_port_move_emigrating_flows(dsw, port);
@@ -1162,7 +1237,7 @@ dsw_port_handle_confirm(struct dsw_evdev *dsw, struct dsw_port *port)
 						RTE_SCHED_TYPE_ATOMIC);
 			break;
 		default:
-			RTE_ASSERT(0);
+			RTE_VERIFY(0);
 			break;
 		}
 	}
@@ -1175,12 +1250,12 @@ dsw_port_ctl_process(struct dsw_evdev *dsw, struct dsw_port *port)
 
 	if (dsw_port_ctl_dequeue(port, &msg) == 0) {
 		switch (msg.type) {
-		case DSW_CTL_PAUS_REQ:
+		case DSW_CTL_PAUSE_REQ:
 			dsw_port_handle_pause_flows(dsw, port,
 						    msg.originating_port_id,
 						    msg.qfs, msg.qfs_len);
 			break;
-		case DSW_CTL_UNPAUS_REQ:
+		case DSW_CTL_UNPAUSE_REQ:
 			dsw_port_handle_unpause_flows(dsw, port,
 						      msg.originating_port_id,
 						      msg.qfs, msg.qfs_len);
@@ -1201,18 +1276,17 @@ dsw_port_note_op(struct dsw_port *port, uint16_t num_events)
 static void
 dsw_port_bg_process(struct dsw_evdev *dsw, struct dsw_port *port)
 {
-	/* For simplicity (in the migration logic), avoid all
-	 * background processing in case event processing is in
-	 * progress.
-	 */
-	if (port->pending_releases > 0)
-		return;
-
 	/* Polling the control ring is relatively inexpensive, and
 	 * polling it often helps bringing down migration latency, so
 	 * do this for every iteration.
 	 */
 	dsw_port_ctl_process(dsw, port);
+
+	/* Always check if a migration is waiting for pending releases
+	 * to arrive, to minimize the amount of time dequeuing events
+	 * from the port is disabled.
+	 */
+	dsw_port_try_finish_pending(dsw, port);
 
 	/* To avoid considering migration and flushing output buffers
 	 * on every dequeue/enqueue call, the scheduler only performs
@@ -1248,25 +1322,19 @@ dsw_port_flush_out_buffers(struct dsw_evdev *dsw, struct dsw_port *source_port)
 		dsw_port_transmit_buffered(dsw, source_port, dest_port_id);
 }
 
-uint16_t
-dsw_event_enqueue(void *port, const struct rte_event *ev)
-{
-	return dsw_event_enqueue_burst(port, ev, unlikely(ev == NULL) ? 0 : 1);
-}
-
 static __rte_always_inline uint16_t
 dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 				const struct rte_event events[],
 				uint16_t events_len, bool op_types_known,
-				uint16_t num_new, uint16_t num_release,
-				uint16_t num_non_release)
+				uint16_t num_new, uint16_t num_forward,
+				uint16_t num_release)
 {
 	struct dsw_evdev *dsw = source_port->dsw;
 	bool enough_credits;
 	uint16_t i;
 
-	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Attempting to enqueue %d "
-			"events.\n", events_len);
+	DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Attempting to enqueue %d "
+			"events.", events_len);
 
 	dsw_port_bg_process(dsw, source_port);
 
@@ -1293,14 +1361,14 @@ dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 	if (!op_types_known)
 		for (i = 0; i < events_len; i++) {
 			switch (events[i].op) {
-			case RTE_EVENT_OP_RELEASE:
-				num_release++;
-				break;
 			case RTE_EVENT_OP_NEW:
 				num_new++;
-				/* Falls through. */
-			default:
-				num_non_release++;
+				break;
+			case RTE_EVENT_OP_FORWARD:
+				num_forward++;
+				break;
+			case RTE_EVENT_OP_RELEASE:
+				num_release++;
 				break;
 			}
 		}
@@ -1311,19 +1379,25 @@ dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 	 * above the water mark.
 	 */
 	if (unlikely(num_new > 0 &&
-		     __atomic_load_n(&dsw->credits_on_loan, __ATOMIC_RELAXED) >
+		     rte_atomic_load_explicit(&dsw->credits_on_loan,
+					      rte_memory_order_relaxed) >
 		     source_port->new_event_threshold))
 		return 0;
 
-	enough_credits = dsw_port_acquire_credits(dsw, source_port,
-						  num_non_release);
+	enough_credits = dsw_port_acquire_credits(dsw, source_port, num_new);
 	if (unlikely(!enough_credits))
 		return 0;
 
-	source_port->pending_releases -= num_release;
+	dsw_port_return_credits(dsw, source_port, num_release);
 
-	dsw_port_enqueue_stats(source_port, num_new,
-			       num_non_release-num_new, num_release);
+	/* This may seem harsh, but it's important for an application
+	 * to get early feedback for cases where it fails to stick to
+	 * the API contract.
+	 */
+	RTE_VERIFY(num_forward + num_release <= source_port->pending_releases);
+	source_port->pending_releases -= (num_forward + num_release);
+
+	dsw_port_enqueue_stats(source_port, num_new, num_forward, num_release);
 
 	for (i = 0; i < events_len; i++) {
 		const struct rte_event *event = &events[i];
@@ -1334,10 +1408,10 @@ dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 		dsw_port_queue_enqueue_stats(source_port, event->queue_id);
 	}
 
-	DSW_LOG_DP_PORT(DEBUG, source_port->id, "%d non-release events "
-			"accepted.\n", num_non_release);
+	DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "%d non-release events "
+			"accepted.", num_new + num_forward);
 
-	return (num_non_release + num_release);
+	return (num_new + num_forward + num_release);
 }
 
 uint16_t
@@ -1364,7 +1438,7 @@ dsw_event_enqueue_new_burst(void *port, const struct rte_event events[],
 
 	return dsw_event_enqueue_burst_generic(source_port, events,
 					       events_len, true, events_len,
-					       0, events_len);
+					       0, 0);
 }
 
 uint16_t
@@ -1377,14 +1451,8 @@ dsw_event_enqueue_forward_burst(void *port, const struct rte_event events[],
 		events_len = source_port->enqueue_depth;
 
 	return dsw_event_enqueue_burst_generic(source_port, events,
-					       events_len, true, 0, 0,
-					       events_len);
-}
-
-uint16_t
-dsw_event_dequeue(void *port, struct rte_event *events, uint64_t wait)
-{
-	return dsw_event_dequeue_burst(port, events, 1, wait);
+					       events_len, true, 0,
+					       events_len, 0);
 }
 
 static void
@@ -1432,8 +1500,17 @@ static uint16_t
 dsw_port_dequeue_burst(struct dsw_port *port, struct rte_event *events,
 		       uint16_t num)
 {
-	if (unlikely(port->in_buffer_len > 0)) {
-		uint16_t dequeued = RTE_MIN(num, port->in_buffer_len);
+	enum dsw_migration_state state = port->migration_state;
+	uint16_t dequeued;
+
+	if (unlikely(state == DSW_MIGRATION_STATE_FINISH_PENDING))
+		/* Do not produce new items of work - only finish
+		 * outstanding (unreleased) events, to allow the
+		 * migration procedure to continue.
+		 */
+		dequeued = 0;
+	else if (unlikely(port->in_buffer_len > 0)) {
+		dequeued = RTE_MIN(num, port->in_buffer_len);
 
 		rte_memcpy(events, &port->in_buffer[port->in_buffer_start],
 			   dequeued * sizeof(struct rte_event));
@@ -1443,43 +1520,24 @@ dsw_port_dequeue_burst(struct dsw_port *port, struct rte_event *events,
 
 		if (port->in_buffer_len == 0)
 			port->in_buffer_start = 0;
+	} else {
+		dequeued = rte_event_ring_dequeue_burst(port->in_ring,
+							events, num, NULL);
 
-		return dequeued;
+		/* Stash incoming events belonging to migrating flows,
+		 * to avoid having to deal with forwarded events to
+		 * flows which are also in the process of being
+		 * migrated. A failure to do so leads to reordering,
+		 * since paused events on the source port may be
+		 * flushed after paused events on the migration
+		 * destination port.
+		 */
+		if (unlikely(state == DSW_MIGRATION_STATE_PAUSING))
+			dsw_port_stash_any_migrating_events(port, events,
+							    &dequeued);
 	}
 
-	return rte_event_ring_dequeue_burst(port->in_ring, events, num, NULL);
-}
-
-static void
-dsw_port_stash_migrating_events(struct dsw_port *port,
-				struct rte_event *events, uint16_t *num)
-{
-	uint16_t i;
-
-	/* The assumption here - performance-wise - is that events
-	 * belonging to migrating flows are relatively rare.
-	 */
-	for (i = 0; i < (*num); ) {
-		struct rte_event *event = &events[i];
-		uint16_t flow_hash;
-
-		flow_hash = dsw_flow_id_hash(event->flow_id);
-
-		if (unlikely(dsw_port_is_flow_migrating(port, event->queue_id,
-							flow_hash))) {
-			uint16_t left;
-
-			dsw_port_stash_migrating_event(port, event);
-
-			(*num)--;
-			left = *num - i;
-
-			if (left > 0)
-				memmove(event, event + 1,
-					left * sizeof(struct rte_event));
-		} else
-			i++;
-	}
+	return dequeued;
 }
 
 uint16_t
@@ -1490,7 +1548,12 @@ dsw_event_dequeue_burst(void *port, struct rte_event *events, uint16_t num,
 	struct dsw_evdev *dsw = source_port->dsw;
 	uint16_t dequeued;
 
-	source_port->pending_releases = 0;
+	if (source_port->implicit_release) {
+		dsw_port_return_credits(dsw, port,
+					source_port->pending_releases);
+
+		source_port->pending_releases = 0;
+	}
 
 	dsw_port_bg_process(dsw, source_port);
 
@@ -1499,22 +1562,15 @@ dsw_event_dequeue_burst(void *port, struct rte_event *events, uint16_t num,
 
 	dequeued = dsw_port_dequeue_burst(source_port, events, num);
 
-	if (unlikely(source_port->migration_state ==
-		     DSW_MIGRATION_STATE_PAUSING))
-		dsw_port_stash_migrating_events(source_port, events,
-						&dequeued);
-
-	source_port->pending_releases = dequeued;
+	source_port->pending_releases += dequeued;
 
 	dsw_port_load_record(source_port, dequeued);
 
 	dsw_port_note_op(source_port, dequeued);
 
 	if (dequeued > 0) {
-		DSW_LOG_DP_PORT(DEBUG, source_port->id, "Dequeued %d events.\n",
+		DSW_LOG_DP_PORT_LINE(DEBUG, source_port->id, "Dequeued %d events.",
 				dequeued);
-
-		dsw_port_return_credits(dsw, source_port, dequeued);
 
 		/* One potential optimization one might think of is to
 		 * add a migration state (prior to 'pausing'), and

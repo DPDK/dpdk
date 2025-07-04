@@ -141,6 +141,7 @@ l2fwd_get_free_event_port(struct l2fwd_event_resources *evt_rsrc)
 	rte_spinlock_lock(&evt_rsrc->evp.lock);
 	if (index >= evt_rsrc->evp.nb_ports) {
 		printf("No free event port is available\n");
+		rte_spinlock_unlock(&evt_rsrc->evp.lock);
 		return -1;
 	}
 
@@ -163,8 +164,8 @@ l2fwd_event_fwd(struct l2fwd_resources *rsrc, struct rte_event *ev,
 	dst_port = rsrc->dst_ports[mbuf->port];
 
 	if (timer_period > 0)
-		__atomic_fetch_add(&rsrc->port_stats[mbuf->port].rx,
-				1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&rsrc->port_stats[mbuf->port].rx,
+				1, rte_memory_order_relaxed);
 	mbuf->port = dst_port;
 
 	if (flags & L2FWD_EVENT_UPDT_MAC)
@@ -179,8 +180,8 @@ l2fwd_event_fwd(struct l2fwd_resources *rsrc, struct rte_event *ev,
 		rte_event_eth_tx_adapter_txq_set(mbuf, 0);
 
 	if (timer_period > 0)
-		__atomic_fetch_add(&rsrc->port_stats[mbuf->port].tx,
-				1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&rsrc->port_stats[mbuf->port].tx,
+				1, rte_memory_order_relaxed);
 }
 
 static __rte_always_inline void
@@ -367,8 +368,8 @@ l2fwd_event_vector_fwd(struct l2fwd_resources *rsrc,
 			vec->queue = 0;
 
 		if (timer_period > 0)
-			__atomic_fetch_add(&rsrc->port_stats[mbufs[0]->port].rx,
-					   vec->nb_elem, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rsrc->port_stats[mbufs[0]->port].rx,
+					   vec->nb_elem, rte_memory_order_relaxed);
 
 		for (i = 0, j = 1; i < vec->nb_elem; i++, j++) {
 			if (j < vec->nb_elem)
@@ -382,14 +383,14 @@ l2fwd_event_vector_fwd(struct l2fwd_resources *rsrc,
 		}
 
 		if (timer_period > 0)
-			__atomic_fetch_add(&rsrc->port_stats[vec->port].tx,
-					   vec->nb_elem, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rsrc->port_stats[vec->port].tx,
+					   vec->nb_elem, rte_memory_order_relaxed);
 	} else {
 		for (i = 0, j = 1; i < vec->nb_elem; i++, j++) {
 			if (timer_period > 0)
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					&rsrc->port_stats[mbufs[i]->port].rx, 1,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed);
 
 			if (j < vec->nb_elem)
 				rte_prefetch0(
@@ -406,9 +407,9 @@ l2fwd_event_vector_fwd(struct l2fwd_resources *rsrc,
 				rte_event_eth_tx_adapter_txq_set(mbufs[i], 0);
 
 			if (timer_period > 0)
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					&rsrc->port_stats[mbufs[i]->port].tx, 1,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed);
 		}
 	}
 }

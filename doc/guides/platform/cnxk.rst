@@ -78,6 +78,8 @@ DPDK subsystem.
    +---+-----+--------------------------------------------------------------+
    | 13| ML  | rte_mldev                                                    |
    +---+-----+--------------------------------------------------------------+
+   | 14| RVU | rte_rawdev                                                   |
+   +---+-----+--------------------------------------------------------------+
 
 PF0 is called the administrative / admin function (AF) and has exclusive
 privileges to provision RVU functional block's LFs to each of the PF/VF.
@@ -95,9 +97,11 @@ It is only a configuration driver used in control path.
 The :numref:`figure_cnxk_resource_virtualization` diagram also shows a
 resource provisioning example where,
 
-1. PFx and PFx-VF0 bound to Linux netdev driver.
-2. PFx-VF1 ethdev driver bound to the first DPDK application.
-3. PFy ethdev driver, PFy-VF0 ethdev driver, PFz eventdev driver, PFm-VF0 cryptodev driver bound to the second DPDK application.
+#. PFx and PFx-VF0 bound to Linux netdev driver.
+
+#. PFx-VF1 ethdev driver bound to the first DPDK application.
+
+#. PFy ethdev driver, PFy-VF0 ethdev driver, PFz eventdev driver, PFm-VF0 cryptodev driver bound to the second DPDK application.
 
 LBK HW Access
 -------------
@@ -113,7 +117,9 @@ where even VF bound to the first domain and odd VF bound to the second domain.
 Typical application usage models are,
 
 #. Communication between the Linux kernel and DPDK application.
+
 #. Exception path to Linux kernel from DPDK application as SW ``KNI`` replacement.
+
 #. Communication between two different DPDK applications.
 
 SDP interface
@@ -132,6 +138,7 @@ can bind PF or VF to use SDP interface and it will be enumerated as ethdev ports
 The primary use case for SDP is to enable the smart NIC use case. Typical usage models are,
 
 #. Communication channel between remote host and cnxk SoC over PCIe.
+
 #. Transfer packets received from network interface to remote host over PCIe and
    vice-versa.
 
@@ -170,13 +177,16 @@ This section lists dataplane H/W block(s) available in cnxk SoC.
 #. **ML Device Driver**
    See :doc:`../mldevs/cnxk` for Machine Learning device driver information.
 
+#. **RVU LF Driver**
+   See :doc:`../rawdevs/cnxk_rvu_lf` for RVU LF driver information.
+
 Procedure to Setup Platform
 ---------------------------
 
 There are three main prerequisites for setting up DPDK on cnxk
 compatible board:
 
-1. **RVU AF Linux kernel driver**
+#. **RVU AF Linux kernel driver**
 
    The dependent kernel drivers can be obtained from the
    `kernel.org <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/net/ethernet/marvell/octeontx2>`_.
@@ -185,7 +195,7 @@ compatible board:
 
    Linux kernel should be configured with the following features enabled:
 
-.. code-block:: console
+   .. code-block:: console
 
         # 64K pages enabled for better performance
         CONFIG_ARM64_64K_PAGES=y
@@ -215,7 +225,7 @@ compatible board:
         # Enable if OCTEONTX2 DMA PF driver required
         CONFIG_OCTEONTX2_DPI_PF=n
 
-2. **ARM64 Linux Tool Chain**
+#. **ARM64 Linux Tool Chain**
 
    For example, the *aarch64* Linaro Toolchain, which can be obtained from
    `here <https://releases.linaro.org/components/toolchain/binaries/7.4-2019.02/aarch64-linux-gnu/>`_.
@@ -223,7 +233,7 @@ compatible board:
    Alternatively, the Marvell SDK also provides GNU GCC toolchain, which is
    optimized for cnxk CPU.
 
-3. **Rootfile system**
+#. **Rootfile system**
 
    Any *aarch64* supporting filesystem may be used. For example,
    Ubuntu 15.10 (Wily) or 16.04 LTS (Xenial) userland which can be obtained
@@ -245,9 +255,9 @@ Debugging Options
    +---+------------+-------------------------------------------------------+
    | # | Component  | EAL log command                                       |
    +===+============+=======================================================+
-   | 1 | Common     | --log-level='pmd\.cnxk\.base,8'                       |
+   | 1 | Common     | --log-level='pmd\.common\.cnxk\.base,8'               |
    +---+------------+-------------------------------------------------------+
-   | 2 | Mailbox    | --log-level='pmd\.cnxk\.mbox,8'                       |
+   | 2 | Mailbox    | --log-level='pmd\.common\.cnxk\.mbox,8'               |
    +---+------------+-------------------------------------------------------+
 
 Debugfs support
@@ -258,11 +268,13 @@ context or stats using debugfs.
 
 Enable ``debugfs`` by:
 
-1. Compile kernel with debugfs enabled, i.e ``CONFIG_DEBUGFS=y``.
-2. Boot OCTEON CN9K/CN10K with debugfs supported kernel.
-3. Verify ``debugfs`` mounted by default "mount | grep -i debugfs" or mount it manually by using.
+#. Compile kernel with debugfs enabled, i.e ``CONFIG_DEBUG_FS=y``.
 
-.. code-block:: console
+#. Boot OCTEON CN9K/CN10K with debugfs supported kernel.
+
+#. Verify ``debugfs`` mounted by default "mount | grep -i debugfs" or mount it manually by using.
+
+   .. code-block:: console
 
        # mount -t debugfs none /sys/kernel/debug
 
@@ -580,8 +592,9 @@ Compile DPDK
 
 DPDK may be compiled either natively on OCTEON CN9K/CN10K platform or cross-compiled on
 an x86 based platform.
-Meson build option ``enable_iova_as_pa`` is disabled on CNXK platforms.
-So only PMDs supporting this option are enabled on CNXK platform builds.
+The Meson build option ``enable_iova_as_pa`` should be set to false
+because on CNXK platforms, IOVA is same as the virtual address.
+Disabling the iova field in the mbuf frees it up to be used as a dynamic field.
 
 Native Compilation
 ~~~~~~~~~~~~~~~~~~
@@ -592,14 +605,14 @@ CN9K:
 
 .. code-block:: console
 
-        meson setup -Dplatform=cn9k build
+        meson setup -Dplatform=cn9k -Denable_iova_as_pa=false build
         ninja -C build
 
 CN10K:
 
 .. code-block:: console
 
-        meson setup -Dplatform=cn10k build
+        meson setup -Dplatform=cn10k -Denable_iova_as_pa=false build
         ninja -C build
 
 Cross Compilation
@@ -611,14 +624,14 @@ CN9K:
 
 .. code-block:: console
 
-        meson setup build --cross-file config/arm/arm64_cn9k_linux_gcc
+        meson setup -Denable_iova_as_pa=false build --cross-file config/arm/arm64_cn9k_linux_gcc
         ninja -C build
 
 CN10K:
 
 .. code-block:: console
 
-        meson setup build --cross-file config/arm/arm64_cn10k_linux_gcc
+        meson setup -Denable_iova_as_pa=false build --cross-file config/arm/arm64_cn10k_linux_gcc
         ninja -C build
 
 .. note::

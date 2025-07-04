@@ -29,6 +29,8 @@ The public API headers are grouped by topics:
   [event_eth_tx_adapter](@ref rte_event_eth_tx_adapter.h),
   [event_timer_adapter](@ref rte_event_timer_adapter.h),
   [event_crypto_adapter](@ref rte_event_crypto_adapter.h),
+  [event_dma_adapter](@ref rte_event_dma_adapter.h),
+  [event_vector_adapter](@ref rte_event_vector_adapter.h),
   [rawdev](@ref rte_rawdev.h),
   [metrics](@ref rte_metrics.h),
   [bitrate](@ref rte_bitrate.h),
@@ -43,23 +45,27 @@ The public API headers are grouped by topics:
   [bond](@ref rte_eth_bond.h),
   [vhost](@ref rte_vhost.h),
   [vdpa](@ref rte_vdpa.h),
-  [KNI](@ref rte_kni.h),
   [ixgbe](@ref rte_pmd_ixgbe.h),
   [i40e](@ref rte_pmd_i40e.h),
   [iavf](@ref rte_pmd_iavf.h),
   [bnxt](@ref rte_pmd_bnxt.h),
   [cnxk](@ref rte_pmd_cnxk.h),
+  [cnxk_crypto](@ref rte_pmd_cnxk_crypto.h),
+  [cnxk_eventdev](@ref rte_pmd_cnxk_eventdev.h),
+  [cnxk_mempool](@ref rte_pmd_cnxk_mempool.h),
   [dpaa](@ref rte_pmd_dpaa.h),
   [dpaa2](@ref rte_pmd_dpaa2.h),
   [mlx5](@ref rte_pmd_mlx5.h),
   [dpaa2_mempool](@ref rte_dpaa2_mempool.h),
   [dpaa2_cmdif](@ref rte_pmd_dpaa2_cmdif.h),
-  [dpaa2_qdma](@ref rte_pmd_dpaa2_qdma.h),
+  [dpaax_qdma](@ref rte_pmd_dpaax_qdma.h),
   [crypto_scheduler](@ref rte_cryptodev_scheduler.h),
   [dlb2](@ref rte_pmd_dlb2.h),
   [ifpga](@ref rte_pmd_ifpga.h)
 
 - **memory**:
+  [per-lcore](@ref rte_per_lcore.h),
+  [lcore variables](@ref rte_lcore_var.h),
   [memseg](@ref rte_memory.h),
   [memzone](@ref rte_memzone.h),
   [mempool](@ref rte_mempool.h),
@@ -96,10 +102,10 @@ The public API headers are grouped by topics:
   [interrupts](@ref rte_interrupts.h),
   [launch](@ref rte_launch.h),
   [lcore](@ref rte_lcore.h),
-  [per-lcore](@ref rte_per_lcore.h),
   [service cores](@ref rte_service.h),
   [keepalive](@ref rte_keepalive.h),
-  [power/freq](@ref rte_power.h),
+  [power/freq](@ref rte_power_cpufreq.h),
+  [power/uncore](@ref rte_power_uncore.h),
   [PMD power](@ref rte_power_pmd_mgmt.h)
 
 - **layers**:
@@ -113,11 +119,14 @@ The public API headers are grouped by topics:
   [IPsec group](@ref rte_ipsec_group.h),
   [IPsec SA](@ref rte_ipsec_sa.h),
   [IPsec SAD](@ref rte_ipsec_sad.h),
-  [IP](@ref rte_ip.h),
+  [IPv4](@ref rte_ip4.h),
+  [IPv6](@ref rte_ip6.h),
   [frag/reass](@ref rte_ip_frag.h),
+  [UDP](@ref rte_udp.h),
   [SCTP](@ref rte_sctp.h),
   [TCP](@ref rte_tcp.h),
-  [UDP](@ref rte_udp.h),
+  [TLS](@ref rte_tls.h),
+  [DTLS](@ref rte_dtls.h),
   [GTP](@ref rte_gtp.h),
   [GRO](@ref rte_gro.h),
   [GSO](@ref rte_gso.h),
@@ -126,8 +135,11 @@ The public API headers are grouped by topics:
   [VXLAN](@ref rte_vxlan.h),
   [Geneve](@ref rte_geneve.h),
   [eCPRI](@ref rte_ecpri.h),
+  [PDCP hdr](@ref rte_pdcp_hdr.h),
+  [PDCP](@ref rte_pdcp.h),
   [L2TPv2](@ref rte_l2tpv2.h),
-  [PPP](@ref rte_ppp.h)
+  [PPP](@ref rte_ppp.h),
+  [IB](@ref rte_ib.h)
 
 - **QoS**:
   [metering](@ref rte_meter.h),
@@ -152,19 +164,21 @@ The public API headers are grouped by topics:
 
 - **classification**
   [reorder](@ref rte_reorder.h),
+  [dispatcher](@ref rte_dispatcher.h),
   [distributor](@ref rte_distributor.h),
   [EFD](@ref rte_efd.h),
   [ACL](@ref rte_acl.h),
   [member](@ref rte_member.h),
-  [flow classify](@ref rte_flow_classify.h),
   [BPF](@ref rte_bpf.h)
 
 - **containers**:
   [mbuf](@ref rte_mbuf.h),
   [mbuf pool ops](@ref rte_mbuf_pool_ops.h),
   [ring](@ref rte_ring.h),
+  [soring](@ref rte_soring.h),
   [stack](@ref rte_stack.h),
   [tailq](@ref rte_tailq.h),
+  [bitset](@ref rte_bitset.h),
   [bitmap](@ref rte_bitmap.h)
 
 - **packet framework**:
@@ -174,7 +188,6 @@ The public API headers are grouped by topics:
     [frag](@ref rte_port_frag.h),
     [reass](@ref rte_port_ras.h),
     [sched](@ref rte_port_sched.h),
-    [kni](@ref rte_port_kni.h),
     [src/sink](@ref rte_port_source_sink.h)
   * [table](@ref rte_table.h):
     [lpm IPv4](@ref rte_table_lpm.h),
@@ -201,23 +214,32 @@ The public API headers are grouped by topics:
     [table_em](@ref rte_swx_table_em.h)
     [table_wm](@ref rte_swx_table_wm.h)
   * [graph](@ref rte_graph.h):
-    [graph_worker](@ref rte_graph_worker.h)
+    [graph_worker](@ref rte_graph_worker.h),
+    [graph_feature_arc](@ref rte_graph_feature_arc.h),
+    [graph_feature_arc_worker](@ref rte_graph_feature_arc_worker.h)
   * graph_nodes:
     [eth_node](@ref rte_node_eth_api.h),
-    [ip4_node](@ref rte_node_ip4_api.h)
+    [ip4_node](@ref rte_node_ip4_api.h),
+    [ip6_node](@ref rte_node_ip6_api.h),
+    [udp4_input_node](@ref rte_node_udp4_input_api.h),
+    [mbuf_dynfield](@ref rte_node_mbuf_dynfield.h)
 
 - **basic**:
   [bitops](@ref rte_bitops.h),
   [approx fraction](@ref rte_approx.h),
   [random](@ref rte_random.h),
+  [checksum](@ref rte_cksum.h),
   [config file](@ref rte_cfgfile.h),
   [key/value args](@ref rte_kvargs.h),
+  [argument parsing](@ref rte_argparse.h),
+  [ptr_compress](@ref rte_ptr_compress.h),
   [string](@ref rte_string_fns.h),
   [thread](@ref rte_thread.h)
 
 - **debug**:
   [jobstats](@ref rte_jobstats.h),
   [telemetry](@ref rte_telemetry.h),
+  [PMU](@ref rte_pmu.h),
   [pcapng](@ref rte_pcapng.h),
   [pdump](@ref rte_pdump.h),
   [hexdump](@ref rte_hexdump.h),
@@ -231,5 +253,7 @@ The public API headers are grouped by topics:
   [EAL config](@ref rte_eal.h),
   [common](@ref rte_common.h),
   [experimental APIs](@ref rte_compat.h),
-  [ABI versioning](@ref rte_function_versioning.h),
   [version](@ref rte_version.h)
+
+- **tests**:
+  [**DTS**](@dts_api_main_page)

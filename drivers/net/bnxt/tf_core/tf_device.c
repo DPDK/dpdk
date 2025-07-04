@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -9,10 +9,8 @@
 #include "tfp.h"
 #include "tf_em.h"
 #include "tf_rm.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
 #include "tf_tbl_sram.h"
-#endif /* TF_TCAM_SHARED */
 
 struct tf;
 
@@ -67,9 +65,6 @@ tf_dev_reservation_check(uint16_t count,
  * [in] tfp
  *   Pointer to TF handle
  *
- * [in] shadow_copy
- *   Flag controlling shadow copy DB creation
- *
  * [in] resources
  *   Pointer to resource allocation information
  *
@@ -82,7 +77,6 @@ tf_dev_reservation_check(uint16_t count,
  */
 static int
 tf_dev_bind_p4(struct tf *tfp,
-	       bool shadow_copy,
 	       struct tf_session_resources *resources,
 	       struct tf_dev_info *dev_handle,
 	       enum tf_wc_num_slice wc_num_slices)
@@ -115,7 +109,6 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rsv_cnt) {
 		ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
 		ident_cfg.cfg = tf_ident_p4;
-		ident_cfg.shadow_copy = shadow_copy;
 		ident_cfg.resources = resources;
 		rc = tf_ident_bind(tfp, &ident_cfg);
 		if (rc) {
@@ -150,14 +143,9 @@ tf_dev_bind_p4(struct tf *tfp,
 	if (rsv_cnt) {
 		tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
 		tcam_cfg.cfg = tf_tcam_p4;
-		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
 		tcam_cfg.wc_num_slices = wc_num_slices;
-#ifdef TF_TCAM_SHARED
 		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
-#else /* !TF_TCAM_SHARED */
-		rc = tf_tcam_bind(tfp, &tcam_cfg);
-#endif
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "TCAM initialization failure\n");
@@ -165,28 +153,6 @@ tf_dev_bind_p4(struct tf *tfp,
 		}
 		no_rsv_flag = false;
 	}
-
-	/*
-	 * EEM
-	 */
-
-	em_cfg.cfg = tf_em_ext_p4;
-	rsv_cnt = tf_dev_reservation_check(TF_EM_TBL_TYPE_MAX,
-					   em_cfg.cfg,
-					   (uint16_t *)resources->em_cnt);
-	if (rsv_cnt) {
-		em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
-		em_cfg.resources = resources;
-		em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
-		rc = tf_em_ext_common_bind(tfp, &em_cfg);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "EEM initialization failure\n");
-			goto fail;
-		}
-		no_rsv_flag = false;
-	}
-
 	/*
 	 * EM
 	 */
@@ -223,7 +189,6 @@ tf_dev_bind_p4(struct tf *tfp,
 	 */
 	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
 	if_tbl_cfg.cfg = tf_if_tbl_p4;
-	if_tbl_cfg.shadow_copy = shadow_copy;
 	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -287,11 +252,7 @@ tf_dev_unbind_p4(struct tf *tfp)
 	 * In case of residuals TCAMs are cleaned up first as to
 	 * invalidate the pipeline in a clean manner.
 	 */
-#ifdef TF_TCAM_SHARED
 	rc = tf_tcam_shared_unbind(tfp);
-#else /* !TF_TCAM_SHARED */
-	rc = tf_tcam_unbind(tfp);
-#endif /* TF_TCAM_SHARED */
 	if (rc) {
 		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
@@ -311,14 +272,6 @@ tf_dev_unbind_p4(struct tf *tfp)
 			    "Device unbind failed, Table Type\n");
 		fail = true;
 	}
-
-	rc = tf_em_ext_common_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Device unbind failed, EEM\n");
-		fail = true;
-	}
-
 	rc = tf_em_int_unbind(tfp);
 	if (rc) {
 		TFP_DRV_LOG(INFO,
@@ -349,13 +302,10 @@ tf_dev_unbind_p4(struct tf *tfp)
 }
 
 /**
- * Device specific bind function, THOR
+ * Device specific bind function, P5
  *
  * [in] tfp
  *   Pointer to TF handle
- *
- * [in] shadow_copy
- *   Flag controlling shadow copy DB creation
  *
  * [in] resources
  *   Pointer to resource allocation information
@@ -369,7 +319,6 @@ tf_dev_unbind_p4(struct tf *tfp)
  */
 static int
 tf_dev_bind_p58(struct tf *tfp,
-		bool shadow_copy,
 		struct tf_session_resources *resources,
 		struct tf_dev_info *dev_handle,
 		enum tf_wc_num_slice wc_num_slices)
@@ -400,7 +349,6 @@ tf_dev_bind_p58(struct tf *tfp,
 	if (rsv_cnt) {
 		ident_cfg.num_elements = TF_IDENT_TYPE_MAX;
 		ident_cfg.cfg = tf_ident_p58;
-		ident_cfg.shadow_copy = shadow_copy;
 		ident_cfg.resources = resources;
 		rc = tf_ident_bind(tfp, &ident_cfg);
 		if (rc) {
@@ -443,14 +391,9 @@ tf_dev_bind_p58(struct tf *tfp,
 	if (rsv_cnt) {
 		tcam_cfg.num_elements = TF_TCAM_TBL_TYPE_MAX;
 		tcam_cfg.cfg = tf_tcam_p58;
-		tcam_cfg.shadow_copy = shadow_copy;
 		tcam_cfg.resources = resources;
 		tcam_cfg.wc_num_slices = wc_num_slices;
-#ifdef TF_TCAM_SHARED
 		rc = tf_tcam_shared_bind(tfp, &tcam_cfg);
-#else /* !TF_TCAM_SHARED */
-		rc = tf_tcam_bind(tfp, &tcam_cfg);
-#endif
 		if (rc) {
 			TFP_DRV_LOG(ERR,
 				    "TCAM initialization failure\n");
@@ -495,7 +438,6 @@ tf_dev_bind_p58(struct tf *tfp,
 	 */
 	if_tbl_cfg.num_elements = TF_IF_TBL_TYPE_MAX;
 	if_tbl_cfg.cfg = tf_if_tbl_p58;
-	if_tbl_cfg.shadow_copy = shadow_copy;
 	rc = tf_if_tbl_bind(tfp, &if_tbl_cfg);
 	if (rc) {
 		TFP_DRV_LOG(ERR,
@@ -532,7 +474,7 @@ tf_dev_bind_p58(struct tf *tfp,
 }
 
 /**
- * Device specific unbind function, THOR
+ * Device specific unbind function, P5
  *
  * [in] tfp
  *   Pointer to TF handle
@@ -560,11 +502,7 @@ tf_dev_unbind_p58(struct tf *tfp)
 	 * In case of residuals TCAMs are cleaned up first as to
 	 * invalidate the pipeline in a clean manner.
 	 */
-#ifdef TF_TCAM_SHARED
 	rc = tf_tcam_shared_unbind(tfp);
-#else /* !TF_TCAM_SHARED */
-	rc = tf_tcam_unbind(tfp);
-#endif /* TF_TCAM_SHARED */
 	if (rc) {
 		TFP_DRV_LOG(INFO,
 			    "Device unbind failed, TCAM\n");
@@ -629,24 +567,21 @@ tf_dev_unbind_p58(struct tf *tfp)
 int
 tf_dev_bind(struct tf *tfp __rte_unused,
 	    enum tf_device_type type,
-	    bool shadow_copy,
 	    struct tf_session_resources *resources,
 	    uint16_t wc_num_slices,
 	    struct tf_dev_info *dev_handle)
 {
 	switch (type) {
-	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_P4:
 	case TF_DEVICE_TYPE_SR:
 		dev_handle->type = type;
 		return tf_dev_bind_p4(tfp,
-				      shadow_copy,
 				      resources,
 				      dev_handle,
 				      wc_num_slices);
-	case TF_DEVICE_TYPE_THOR:
+	case TF_DEVICE_TYPE_P5:
 		dev_handle->type = type;
 		return tf_dev_bind_p58(tfp,
-				       shadow_copy,
 				       resources,
 				       dev_handle,
 				       wc_num_slices);
@@ -662,11 +597,11 @@ tf_dev_bind_ops(enum tf_device_type type,
 		struct tf_dev_info *dev_handle)
 {
 	switch (type) {
-	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_P4:
 	case TF_DEVICE_TYPE_SR:
 		dev_handle->ops = &tf_dev_ops_p4_init;
 		break;
-	case TF_DEVICE_TYPE_THOR:
+	case TF_DEVICE_TYPE_P5:
 		dev_handle->ops = &tf_dev_ops_p58_init;
 		break;
 	default:
@@ -683,10 +618,10 @@ tf_dev_unbind(struct tf *tfp,
 	      struct tf_dev_info *dev_handle)
 {
 	switch (dev_handle->type) {
-	case TF_DEVICE_TYPE_WH:
+	case TF_DEVICE_TYPE_P4:
 	case TF_DEVICE_TYPE_SR:
 		return tf_dev_unbind_p4(tfp);
-	case TF_DEVICE_TYPE_THOR:
+	case TF_DEVICE_TYPE_P5:
 		return tf_dev_unbind_p58(tfp);
 	default:
 		TFP_DRV_LOG(ERR,

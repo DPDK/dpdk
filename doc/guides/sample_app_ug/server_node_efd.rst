@@ -5,11 +5,10 @@ Server-Node EFD Sample Application
 ==================================
 
 This sample application demonstrates the use of EFD library as a flow-level
-load balancer, for more information about the EFD Library please refer to the
+load balancer. For more information about the EFD Library, please refer to the
 DPDK programmer's guide.
 
-This sample application is a variant of the
-:ref:`client-server sample application <multi_process_app>`
+This sample application is a variant of the :doc:`multi_process`
 where a specific target node is specified for every and each flow
 (not in a round-robin fashion as the original load balancing sample application).
 
@@ -56,12 +55,12 @@ then the pair of <key,target> is inserted into the flow distribution table.
 
 The main loop of the server process receives a burst of packets, then for
 each packet, a flow key (IP destination address) is extracted. The flow
-distributor table is looked up and the target node id is returned.  Packets are
+distributor table is looked up and the target node id is returned. Packets are
 then enqueued to the specified target node id.
 
-It should be noted that flow distributor table is not a membership test table.
-I.e. if the key has already been inserted the target node id will be correct,
-but for new keys the flow distributor table will return a value (which can be
+It should be noted that flow distributor table is not a membership test table,
+i.e. if the key has already been inserted the target node id will be correct.
+But for new keys, the flow distributor table will return a value (which can be
 valid).
 
 Backend Worker Nodes
@@ -81,7 +80,7 @@ that this is a new flow, which is dropped.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``server_node_efd`` sub-directory.
 
@@ -137,7 +136,7 @@ which is used to distribute packets to nodes, which the number of flows
 specified in the command line (1 million, by default).
 
 
-.. literalinclude:: ../../../examples/server_node_efd/server/init.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_server/init.c
     :language: c
     :start-after: Create EFD table. 8<
     :end-before: >8 End of creation EFD table.
@@ -146,7 +145,7 @@ After initialization, packets are received from the enabled ports, and the IPv4
 address from the packets is used as a key to look up in the EFD table,
 which tells the node where the packet has to be distributed.
 
-.. literalinclude:: ../../../examples/server_node_efd/server/main.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_server/main.c
     :language: c
     :start-after: Processing packets. 8<
     :end-before: >8 End of process_packets.
@@ -156,7 +155,7 @@ and enqueued in the shared ring between the server and the node.
 After this, a new burst of packets is received and this process is
 repeated infinitely.
 
-.. literalinclude:: ../../../examples/server_node_efd/server/main.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_server/main.c
     :language: c
     :start-after: Flush rx queue. 8<
     :end-before: >8 End of sending a burst of traffic to a node.
@@ -167,7 +166,7 @@ ring with the server and send them out, if they belong to the node.
 At initialization, it attaches to the server process memory, to have
 access to the shared ring, parameters and statistics.
 
-.. literalinclude:: ../../../examples/server_node_efd/node/node.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_node/node.c
     :language: c
     :start-after: Attaching to the server process memory. 8<
     :end-before: >8 End of attaching to the server process memory.
@@ -176,7 +175,7 @@ access to the shared ring, parameters and statistics.
 Then, the hash table that contains the flows that will be handled
 by the node is created and populated.
 
-.. literalinclude:: ../../../examples/server_node_efd/node/node.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_node/node.c
     :language: c
     :start-after: Creation of hash table. 8<
     :end-before: >8 End of creation of hash table.
@@ -188,7 +187,7 @@ If there is a hit, packet is stored in a buffer, to be eventually transmitted
 in one of the enabled ports. If key is not there, packet is dropped, since the
 flow is not handled by the node.
 
-.. literalinclude:: ../../../examples/server_node_efd/node/node.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_node/node.c
     :language: c
     :start-after: Packets dequeued from the shared ring. 8<
     :end-before: >8 End of packets dequeuing.
@@ -196,7 +195,7 @@ flow is not handled by the node.
 Finally, note that both processes updates statistics, such as transmitted, received
 and dropped packets, which are shown and refreshed by the server app.
 
-.. literalinclude:: ../../../examples/server_node_efd/server/main.c
+.. literalinclude:: ../../../examples/server_node_efd/efd_server/main.c
     :language: c
     :start-after: Display recorded statistics. 8<
     :end-before: >8 End of displaying the recorded statistics.

@@ -5,13 +5,11 @@
 #ifndef _VHOST_CRYPTO_H_
 #define _VHOST_CRYPTO_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-
-#include <rte_compat.h>
 
 /* pre-declare structs to avoid including full headers */
 struct rte_mempool;
@@ -40,7 +38,6 @@ enum rte_vhost_crypto_zero_copy {
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_crypto_driver_start(const char *path);
 

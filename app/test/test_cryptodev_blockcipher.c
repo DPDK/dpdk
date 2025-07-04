@@ -18,6 +18,7 @@
 #include "test_cryptodev_aes_test_vectors.h"
 #include "test_cryptodev_des_test_vectors.h"
 #include "test_cryptodev_hash_test_vectors.h"
+#include "test_cryptodev_sm4_test_vectors.h"
 
 static int
 verify_algo_support(const struct blockcipher_test_case *t,
@@ -84,8 +85,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	int status = TEST_SUCCESS;
 	const struct blockcipher_test_data *tdata = t->test_data;
-	uint8_t cipher_key[tdata->cipher_key.len];
-	uint8_t auth_key[tdata->auth_key.len];
+	uint8_t *cipher_key = alloca(tdata->cipher_key.len);
+	uint8_t *auth_key = alloca(tdata->auth_key.len);
 	uint32_t buf_len = tdata->ciphertext.len;
 	uint32_t digest_len = tdata->digest.len;
 	char *buf_p = NULL;
@@ -555,8 +556,16 @@ iterate:
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH)
 			is_auth = 1;
 
-		process_sym_raw_dp_op(dev_id, 0, op, is_cipher, is_auth, 0,
-				tdata->iv.len);
+		status = process_sym_raw_dp_op(dev_id, 0, op, is_cipher, is_auth,
+					       0, tdata->iv.len);
+		if (status != TEST_SUCCESS) {
+			if (status == TEST_SKIPPED)
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "SKIPPED");
+			else
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "FAILED");
+
+			goto error_exit;
+		}
 	} else {
 		if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
@@ -1119,6 +1128,75 @@ authonly_setup(void)
 	return 0;
 }
 
+static int
+sm4_chain_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_SM4_CTR,
+		RTE_CRYPTO_CIPHER_SM4_CBC,
+		RTE_CRYPTO_CIPHER_SM4_OFB,
+		RTE_CRYPTO_CIPHER_SM4_CFB
+	};
+	const enum rte_crypto_auth_algorithm auths[] = {
+		RTE_CRYPTO_AUTH_SM3,
+		RTE_CRYPTO_AUTH_SM3_HMAC,
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+	    (global_api_test_type == CRYPTODEV_RAW_API_TEST &&
+	    !(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag for SM4 Chain testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0 &&
+	    check_auth_capabilities_supported(auths, RTE_DIM(auths)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability for SM4 Chain testsuite not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
+static int
+sm4_cipheronly_setup(void)
+{
+	uint8_t dev_id = p_testsuite_params->valid_devs[0];
+	struct rte_cryptodev_info dev_info;
+	uint64_t feat_flags;
+	const enum rte_crypto_cipher_algorithm ciphers[] = {
+		RTE_CRYPTO_CIPHER_SM4_CBC,
+		RTE_CRYPTO_CIPHER_SM4_ECB,
+		RTE_CRYPTO_CIPHER_SM4_CTR,
+		RTE_CRYPTO_CIPHER_SM4_OFB,
+		RTE_CRYPTO_CIPHER_SM4_CFB,
+		RTE_CRYPTO_CIPHER_SM4_XTS
+	};
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ||
+	    (global_api_test_type == CRYPTODEV_RAW_API_TEST &&
+	    !(feat_flags & RTE_CRYPTODEV_FF_SYM_RAW_DP))) {
+		RTE_LOG(INFO, USER1, "Feature flag for SM4 Cipheronly not met\n");
+		return TEST_SKIPPED;
+	}
+
+	if (check_cipher_capabilities_supported(ciphers, RTE_DIM(ciphers)) != 0) {
+		RTE_LOG(INFO, USER1, "Capability for SM4 Cipheronly not met\n");
+		return TEST_SKIPPED;
+	}
+
+	return 0;
+}
+
 struct unit_test_suite *
 build_blockcipher_test_suite(enum blockcipher_test_type test_type)
 {
@@ -1171,6 +1249,18 @@ build_blockcipher_test_suite(enum blockcipher_test_type test_type)
 		blk_tcs = des_docsis_test_cases;
 		ts_name = "DES Docsis";
 		ts_setup = des_docsis_setup;
+		break;
+	case BLKCIPHER_SM4_CHAIN_TYPE:
+		n_test_cases = RTE_DIM(sm4_chain_test_cases);
+		blk_tcs = sm4_chain_test_cases;
+		ts_name = "SM4 Chain";
+		ts_setup = sm4_chain_setup;
+		break;
+	case BLKCIPHER_SM4_CIPHERONLY_TYPE:
+		n_test_cases = RTE_DIM(sm4_cipheronly_test_cases);
+		blk_tcs = sm4_cipheronly_test_cases;
+		ts_name = "SM4 Cipher Only";
+		ts_setup = sm4_cipheronly_setup;
 		break;
 	case BLKCIPHER_AUTHONLY_TYPE:
 		n_test_cases = RTE_DIM(hash_test_cases);

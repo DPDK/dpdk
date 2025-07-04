@@ -9,11 +9,11 @@
 /**< Null crypto PMD device name */
 
 extern int null_logtype_driver;
+#define RTE_LOGTYPE_NULL_DRIVER null_logtype_driver
 
-#define NULL_LOG(level, fmt, ...)  \
-	rte_log(RTE_LOG_ ## level, null_logtype_driver,  \
-			"%s() line %u: "fmt "\n", __func__, __LINE__,  \
-					## __VA_ARGS__)
+#define NULL_LOG(level, ...)  \
+	RTE_LOG_LINE_PREFIX(level, NULL_DRIVER, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 
 /** private data structure for each NULL crypto device */
@@ -22,7 +22,7 @@ struct null_crypto_private {
 };
 
 /** NULL crypto queue pair */
-struct null_crypto_qp {
+struct __rte_cache_aligned null_crypto_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -33,13 +33,13 @@ struct null_crypto_qp {
 	/**< Session Mempool */
 	struct rte_cryptodev_stats qp_stats;
 	/**< Queue pair statistics */
-} __rte_cache_aligned;
+};
 
 
 /** NULL crypto private session structure */
-struct null_crypto_session {
+struct __rte_cache_aligned null_crypto_session {
 	uint32_t reserved;
-} __rte_cache_aligned;
+};
 
 /** Set and validate NULL crypto session parameters */
 extern int

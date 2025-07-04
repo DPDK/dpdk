@@ -211,6 +211,7 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	int ret = 0;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE(sc);
 
@@ -244,6 +245,11 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 
 	bnx2x_print_device_info(sc);
 
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return ret;
 }
 
@@ -252,6 +258,7 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	int ret = 0;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE(sc);
 
@@ -276,6 +283,11 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(DEBUG, sc, "bnx2x_nic_unload failed (%d)", ret);
 		return ret;
 	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }

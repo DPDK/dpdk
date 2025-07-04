@@ -8,6 +8,7 @@
  */
 
 #include <string.h>
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_kvargs.h>
 #include <rte_devargs.h>
@@ -15,16 +16,13 @@
 #include "sfc_efx_log.h"
 #include "sfc_efx.h"
 
-uint32_t sfc_efx_logtype;
+int sfc_efx_logtype;
 
 static int
 sfc_efx_kvarg_dev_class_handler(__rte_unused const char *key,
 				const char *class_str, void *opaque)
 {
 	enum sfc_efx_dev_class *dev_class = opaque;
-
-	if (class_str == NULL)
-		return *dev_class;
 
 	if (strcmp(class_str, "vdpa") == 0) {
 		*dev_class = SFC_EFX_DEV_CLASS_VDPA;
@@ -38,6 +36,7 @@ sfc_efx_kvarg_dev_class_handler(__rte_unused const char *key,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(sfc_efx_dev_class_get)
 enum sfc_efx_dev_class
 sfc_efx_dev_class_get(struct rte_devargs *devargs)
 {
@@ -96,6 +95,7 @@ sfc_efx_pci_config_readd(efsys_pci_config_t *configp, uint32_t offset,
 	return (rc < 0 || rc != sizeof(*edp)) ? EIO : 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(sfc_efx_family)
 int
 sfc_efx_family(struct rte_pci_device *pci_dev,
 	       efx_bar_region_t *mem_ebrp, efx_family_t *family)
@@ -117,11 +117,4 @@ sfc_efx_family(struct rte_pci_device *pci_dev,
 	return rc;
 }
 
-RTE_INIT(sfc_efx_register_logtype)
-{
-	int ret;
-
-	ret = rte_log_register_type_and_pick_level("pmd.common.sfc_efx",
-						   RTE_LOG_NOTICE);
-	sfc_efx_logtype = (ret < 0) ? RTE_LOGTYPE_PMD : ret;
-}
+RTE_LOG_REGISTER_DEFAULT(sfc_efx_logtype, NOTICE);

@@ -3,6 +3,7 @@
  * Copyright(c) 2015 RehiveTech. All rights reserved.
  */
 
+#include <eal_export.h>
 #include "rte_cpuflags.h"
 
 #include <elf.h>
@@ -115,6 +116,7 @@ const struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SVEF32MM,	REG_HWCAP2,   10)
 	FEAT_DEF(SVEF64MM,	REG_HWCAP2,   11)
 	FEAT_DEF(SVEBF16,	REG_HWCAP2,   12)
+	FEAT_DEF(WFXT,		REG_HWCAP2,   31)
 	FEAT_DEF(AARCH64,	REG_PLATFORM,  0)
 };
 #endif /* RTE_ARCH */
@@ -134,13 +136,14 @@ rte_cpu_get_features(hwcap_registers_t out)
 /*
  * Checks if a particular flag is available on current machine.
  */
+RTE_EXPORT_SYMBOL(rte_cpu_get_flag_enabled)
 int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 {
 	const struct feature_entry *feat;
 	hwcap_registers_t regs = {0};
 
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		return -ENOENT;
 
 	feat = &rte_cpu_feature_table[feature];
@@ -151,19 +154,21 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 	return (regs[feat->reg] >> feat->bit) & 1;
 }
 
+RTE_EXPORT_SYMBOL(rte_cpu_get_flag_name)
 const char *
 rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
 {
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		return NULL;
 	return rte_cpu_feature_table[feature].name;
 }
 
+RTE_EXPORT_SYMBOL(rte_cpu_get_intrinsics_support)
 void
 rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
 {
 	memset(intrinsics, 0, sizeof(*intrinsics));
-#ifdef RTE_ARM_USE_WFE
+#ifdef RTE_ARCH_64
 	intrinsics->power_monitor = 1;
-#endif
+#endif /* RTE_ARCH_64 */
 }

@@ -2,12 +2,16 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_string_fns.h>
 #include <rte_acl.h>
 #include <rte_tailq.h>
 
 #include "acl.h"
+#include "acl_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(acl_logtype, INFO);
 
 TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
 
@@ -42,10 +46,9 @@ rte_acl_classify_avx512x32(__rte_unused const struct rte_acl_ctx *ctx,
 }
 #endif
 
-#ifndef CC_AVX2_SUPPORT
+#ifndef RTE_ARCH_X86
 /*
- * If the compiler doesn't support AVX2 instructions,
- * then the dummy one would be used instead for AVX2 classify method.
+ * If ISA doesn't have AVX2 or SSE, provide dummy fallbacks
  */
 int
 rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
@@ -56,9 +59,6 @@ rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
-#endif
-
-#ifndef RTE_ARCH_X86
 int
 rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
@@ -182,7 +182,7 @@ acl_check_alg_x86(enum rte_acl_classify_alg alg)
 	}
 
 	if (alg == RTE_ACL_CLASSIFY_AVX2) {
-#ifdef CC_AVX2_SUPPORT
+#ifdef RTE_ARCH_X86
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 			return 0;
@@ -264,6 +264,7 @@ acl_get_best_alg(void)
 	return alg[i];
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_set_ctx_classify)
 extern int
 rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
 {
@@ -286,6 +287,7 @@ rte_acl_set_ctx_classify(struct rte_acl_ctx *ctx, enum rte_acl_classify_alg alg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_classify_alg)
 int
 rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories,
@@ -298,6 +300,7 @@ rte_acl_classify_alg(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	return classify_fns[alg](ctx, data, results, num, categories);
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_classify)
 int
 rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	uint32_t *results, uint32_t num, uint32_t categories)
@@ -306,6 +309,7 @@ rte_acl_classify(const struct rte_acl_ctx *ctx, const uint8_t **data,
 		ctx->alg);
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_find_existing)
 struct rte_acl_ctx *
 rte_acl_find_existing(const char *name)
 {
@@ -330,6 +334,7 @@ rte_acl_find_existing(const char *name)
 	return ctx;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_free)
 void
 rte_acl_free(struct rte_acl_ctx *ctx)
 {
@@ -362,6 +367,7 @@ rte_acl_free(struct rte_acl_ctx *ctx)
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_create)
 struct rte_acl_ctx *
 rte_acl_create(const struct rte_acl_param *param)
 {
@@ -400,15 +406,15 @@ rte_acl_create(const struct rte_acl_param *param)
 		te = rte_zmalloc("ACL_TAILQ_ENTRY", sizeof(*te), 0);
 
 		if (te == NULL) {
-			RTE_LOG(ERR, ACL, "Cannot allocate tailq entry!\n");
+			ACL_LOG(ERR, "Cannot allocate tailq entry!");
 			goto exit;
 		}
 
 		ctx = rte_zmalloc_socket(name, sz, RTE_CACHE_LINE_SIZE, param->socket_id);
 
 		if (ctx == NULL) {
-			RTE_LOG(ERR, ACL,
-				"allocation of %zu bytes on socket %d for %s failed\n",
+			ACL_LOG(ERR,
+				"allocation of %zu bytes on socket %d for %s failed",
 				sz, param->socket_id, name);
 			rte_free(te);
 			goto exit;
@@ -458,6 +464,7 @@ acl_check_rule(const struct rte_acl_rule_data *rd)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_acl_add_rules)
 int
 rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
 	uint32_t num)
@@ -474,7 +481,7 @@ rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
 			((uintptr_t)rules + i * ctx->rule_sz);
 		rc = acl_check_rule(&rv->data);
 		if (rc != 0) {
-			RTE_LOG(ERR, ACL, "%s(%s): rule #%u is invalid\n",
+			ACL_LOG(ERR, "%s(%s): rule #%u is invalid",
 				__func__, ctx->name, i + 1);
 			return rc;
 		}
@@ -487,6 +494,7 @@ rte_acl_add_rules(struct rte_acl_ctx *ctx, const struct rte_acl_rule *rules,
  * Reset all rules.
  * Note that RT structures are not affected.
  */
+RTE_EXPORT_SYMBOL(rte_acl_reset_rules)
 void
 rte_acl_reset_rules(struct rte_acl_ctx *ctx)
 {
@@ -497,6 +505,7 @@ rte_acl_reset_rules(struct rte_acl_ctx *ctx)
 /*
  * Reset all rules and destroys RT structures.
  */
+RTE_EXPORT_SYMBOL(rte_acl_reset)
 void
 rte_acl_reset(struct rte_acl_ctx *ctx)
 {
@@ -509,6 +518,7 @@ rte_acl_reset(struct rte_acl_ctx *ctx)
 /*
  * Dump ACL context to the stdout.
  */
+RTE_EXPORT_SYMBOL(rte_acl_dump)
 void
 rte_acl_dump(const struct rte_acl_ctx *ctx)
 {
@@ -528,6 +538,7 @@ rte_acl_dump(const struct rte_acl_ctx *ctx)
 /*
  * Dump all ACL contexts to the stdout.
  */
+RTE_EXPORT_SYMBOL(rte_acl_list_dump)
 void
 rte_acl_list_dump(void)
 {

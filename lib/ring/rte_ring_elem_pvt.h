@@ -17,12 +17,14 @@
 #endif
 
 static __rte_always_inline void
-__rte_ring_enqueue_elems_32(struct rte_ring *r, const uint32_t size,
-		uint32_t idx, const void *obj_table, uint32_t n)
+__rte_ring_enqueue_elems_32(void *ring_table, const void *obj_table,
+	uint32_t size, uint32_t idx, uint32_t n)
 {
 	unsigned int i;
-	uint32_t *ring = (uint32_t *)&r[1];
+
+	uint32_t *ring = (uint32_t *)ring_table;
 	const uint32_t *obj = (const uint32_t *)obj_table;
+
 	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x7); i += 8, idx += 8) {
 			ring[idx] = obj[i];
@@ -60,14 +62,14 @@ __rte_ring_enqueue_elems_32(struct rte_ring *r, const uint32_t size,
 }
 
 static __rte_always_inline void
-__rte_ring_enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
-		const void *obj_table, uint32_t n)
+__rte_ring_enqueue_elems_64(void *ring_table, const void *obj_table,
+	uint32_t size, uint32_t idx, uint32_t n)
 {
 	unsigned int i;
-	const uint32_t size = r->size;
-	uint32_t idx = prod_head & r->mask;
-	uint64_t *ring = (uint64_t *)&r[1];
+
+	uint64_t *ring = (uint64_t *)ring_table;
 	const unaligned_uint64_t *obj = (const unaligned_uint64_t *)obj_table;
+
 	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {
 			ring[idx] = obj[i];
@@ -93,14 +95,14 @@ __rte_ring_enqueue_elems_64(struct rte_ring *r, uint32_t prod_head,
 }
 
 static __rte_always_inline void
-__rte_ring_enqueue_elems_128(struct rte_ring *r, uint32_t prod_head,
-		const void *obj_table, uint32_t n)
+__rte_ring_enqueue_elems_128(void *ring_table, const void *obj_table,
+	uint32_t size, uint32_t idx, uint32_t n)
 {
 	unsigned int i;
-	const uint32_t size = r->size;
-	uint32_t idx = prod_head & r->mask;
-	rte_int128_t *ring = (rte_int128_t *)&r[1];
+
+	rte_int128_t *ring = (rte_int128_t *)ring_table;
 	const rte_int128_t *obj = (const rte_int128_t *)obj_table;
+
 	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x1); i += 2, idx += 2)
 			memcpy((void *)(ring + idx),
@@ -126,37 +128,47 @@ __rte_ring_enqueue_elems_128(struct rte_ring *r, uint32_t prod_head,
  * single and multi producer enqueue functions.
  */
 static __rte_always_inline void
-__rte_ring_enqueue_elems(struct rte_ring *r, uint32_t prod_head,
-		const void *obj_table, uint32_t esize, uint32_t num)
+__rte_ring_do_enqueue_elems(void *ring_table, const void *obj_table,
+	uint32_t size, uint32_t idx, uint32_t esize, uint32_t num)
 {
 	/* 8B and 16B copies implemented individually to retain
 	 * the current performance.
 	 */
 	if (esize == 8)
-		__rte_ring_enqueue_elems_64(r, prod_head, obj_table, num);
+		__rte_ring_enqueue_elems_64(ring_table, obj_table, size,
+				idx, num);
 	else if (esize == 16)
-		__rte_ring_enqueue_elems_128(r, prod_head, obj_table, num);
+		__rte_ring_enqueue_elems_128(ring_table, obj_table, size,
+				idx, num);
 	else {
-		uint32_t idx, scale, nr_idx, nr_num, nr_size;
+		uint32_t scale, nr_idx, nr_num, nr_size;
 
 		/* Normalize to uint32_t */
 		scale = esize / sizeof(uint32_t);
 		nr_num = num * scale;
-		idx = prod_head & r->mask;
 		nr_idx = idx * scale;
-		nr_size = r->size * scale;
-		__rte_ring_enqueue_elems_32(r, nr_size, nr_idx,
-				obj_table, nr_num);
+		nr_size = size * scale;
+		__rte_ring_enqueue_elems_32(ring_table, obj_table, nr_size,
+				nr_idx, nr_num);
 	}
 }
 
 static __rte_always_inline void
-__rte_ring_dequeue_elems_32(struct rte_ring *r, const uint32_t size,
-		uint32_t idx, void *obj_table, uint32_t n)
+__rte_ring_enqueue_elems(struct rte_ring *r, uint32_t prod_head,
+		const void *obj_table, uint32_t esize, uint32_t num)
+{
+	__rte_ring_do_enqueue_elems(&r[1], obj_table, r->size,
+			prod_head & r->mask, esize, num);
+}
+
+static __rte_always_inline void
+__rte_ring_dequeue_elems_32(void *obj_table, const void *ring_table,
+	uint32_t size, uint32_t idx, uint32_t n)
 {
 	unsigned int i;
-	uint32_t *ring = (uint32_t *)&r[1];
 	uint32_t *obj = (uint32_t *)obj_table;
+	const uint32_t *ring = (const uint32_t *)ring_table;
+
 	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x7); i += 8, idx += 8) {
 			obj[i] = ring[idx];
@@ -194,14 +206,13 @@ __rte_ring_dequeue_elems_32(struct rte_ring *r, const uint32_t size,
 }
 
 static __rte_always_inline void
-__rte_ring_dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
-		void *obj_table, uint32_t n)
+__rte_ring_dequeue_elems_64(void *obj_table, const void *ring_table,
+	uint32_t size, uint32_t idx, uint32_t n)
 {
 	unsigned int i;
-	const uint32_t size = r->size;
-	uint32_t idx = prod_head & r->mask;
-	uint64_t *ring = (uint64_t *)&r[1];
 	unaligned_uint64_t *obj = (unaligned_uint64_t *)obj_table;
+	const uint64_t *ring = (const uint64_t *)ring_table;
+
 	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x3); i += 4, idx += 4) {
 			obj[i] = ring[idx];
@@ -227,27 +238,26 @@ __rte_ring_dequeue_elems_64(struct rte_ring *r, uint32_t prod_head,
 }
 
 static __rte_always_inline void
-__rte_ring_dequeue_elems_128(struct rte_ring *r, uint32_t prod_head,
-		void *obj_table, uint32_t n)
+__rte_ring_dequeue_elems_128(void *obj_table, const void *ring_table,
+	uint32_t size, uint32_t idx, uint32_t n)
 {
 	unsigned int i;
-	const uint32_t size = r->size;
-	uint32_t idx = prod_head & r->mask;
-	rte_int128_t *ring = (rte_int128_t *)&r[1];
 	rte_int128_t *obj = (rte_int128_t *)obj_table;
+	const rte_int128_t *ring = (const rte_int128_t *)ring_table;
+
 	if (likely(idx + n <= size)) {
 		for (i = 0; i < (n & ~0x1); i += 2, idx += 2)
-			memcpy((void *)(obj + i), (void *)(ring + idx), 32);
+			memcpy((obj + i), (const void *)(ring + idx), 32);
 		switch (n & 0x1) {
 		case 1:
-			memcpy((void *)(obj + i), (void *)(ring + idx), 16);
+			memcpy((obj + i), (const void *)(ring + idx), 16);
 		}
 	} else {
 		for (i = 0; idx < size; i++, idx++)
-			memcpy((void *)(obj + i), (void *)(ring + idx), 16);
+			memcpy((obj + i), (const void *)(ring + idx), 16);
 		/* Start at the beginning */
 		for (idx = 0; i < n; i++, idx++)
-			memcpy((void *)(obj + i), (void *)(ring + idx), 16);
+			memcpy((obj + i), (const void *)(ring + idx), 16);
 	}
 }
 
@@ -256,28 +266,37 @@ __rte_ring_dequeue_elems_128(struct rte_ring *r, uint32_t prod_head,
  * single and multi producer enqueue functions.
  */
 static __rte_always_inline void
-__rte_ring_dequeue_elems(struct rte_ring *r, uint32_t cons_head,
-		void *obj_table, uint32_t esize, uint32_t num)
+__rte_ring_do_dequeue_elems(void *obj_table, const void *ring_table,
+	uint32_t size, uint32_t idx, uint32_t esize, uint32_t num)
 {
 	/* 8B and 16B copies implemented individually to retain
 	 * the current performance.
 	 */
 	if (esize == 8)
-		__rte_ring_dequeue_elems_64(r, cons_head, obj_table, num);
+		__rte_ring_dequeue_elems_64(obj_table, ring_table, size,
+				idx, num);
 	else if (esize == 16)
-		__rte_ring_dequeue_elems_128(r, cons_head, obj_table, num);
+		__rte_ring_dequeue_elems_128(obj_table, ring_table, size,
+				idx, num);
 	else {
-		uint32_t idx, scale, nr_idx, nr_num, nr_size;
+		uint32_t scale, nr_idx, nr_num, nr_size;
 
 		/* Normalize to uint32_t */
 		scale = esize / sizeof(uint32_t);
 		nr_num = num * scale;
-		idx = cons_head & r->mask;
 		nr_idx = idx * scale;
-		nr_size = r->size * scale;
-		__rte_ring_dequeue_elems_32(r, nr_size, nr_idx,
-				obj_table, nr_num);
+		nr_size = size * scale;
+		__rte_ring_dequeue_elems_32(obj_table, ring_table, nr_size,
+				nr_idx, nr_num);
 	}
+}
+
+static __rte_always_inline void
+__rte_ring_dequeue_elems(struct rte_ring *r, uint32_t cons_head,
+		void *obj_table, uint32_t esize, uint32_t num)
+{
+	__rte_ring_do_dequeue_elems(obj_table, &r[1], r->size,
+			cons_head & r->mask, esize, num);
 }
 
 /* Between load and load. there might be cpu reorder in weak model
@@ -292,6 +311,72 @@ __rte_ring_dequeue_elems(struct rte_ring *r, uint32_t cons_head,
 #else
 #include "rte_ring_generic_pvt.h"
 #endif
+
+/**
+ * @internal This function updates the producer head for enqueue
+ *
+ * @param r
+ *   A pointer to the ring structure
+ * @param is_sp
+ *   Indicates whether multi-producer path is needed or not
+ * @param n
+ *   The number of elements we will want to enqueue, i.e. how far should the
+ *   head be moved
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Enqueue a fixed number of items from a ring
+ *   RTE_RING_QUEUE_VARIABLE: Enqueue as many items as possible from ring
+ * @param old_head
+ *   Returns head value as it was before the move, i.e. where enqueue starts
+ * @param new_head
+ *   Returns the current/new head value i.e. where enqueue finishes
+ * @param free_entries
+ *   Returns the amount of free space in the ring BEFORE head was moved
+ * @return
+ *   Actual number of objects enqueued.
+ *   If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
+ */
+static __rte_always_inline unsigned int
+__rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
+		unsigned int n, enum rte_ring_queue_behavior behavior,
+		uint32_t *old_head, uint32_t *new_head,
+		uint32_t *free_entries)
+{
+	return __rte_ring_headtail_move_head(&r->prod, &r->cons, r->capacity,
+			is_sp, n, behavior, old_head, new_head, free_entries);
+}
+
+/**
+ * @internal This function updates the consumer head for dequeue
+ *
+ * @param r
+ *   A pointer to the ring structure
+ * @param is_sc
+ *   Indicates whether multi-consumer path is needed or not
+ * @param n
+ *   The number of elements we will want to dequeue, i.e. how far should the
+ *   head be moved
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Dequeue a fixed number of items from a ring
+ *   RTE_RING_QUEUE_VARIABLE: Dequeue as many items as possible from ring
+ * @param old_head
+ *   Returns head value as it was before the move, i.e. where dequeue starts
+ * @param new_head
+ *   Returns the current/new head value i.e. where dequeue finishes
+ * @param entries
+ *   Returns the number of entries in the ring BEFORE head was moved
+ * @return
+ *   - Actual number of objects dequeued.
+ *     If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only.
+ */
+static __rte_always_inline unsigned int
+__rte_ring_move_cons_head(struct rte_ring *r, unsigned int is_sc,
+		unsigned int n, enum rte_ring_queue_behavior behavior,
+		uint32_t *old_head, uint32_t *new_head,
+		uint32_t *entries)
+{
+	return __rte_ring_headtail_move_head(&r->cons, &r->prod, 0,
+			is_sc, n, behavior, old_head, new_head, entries);
+}
 
 /**
  * @internal Enqueue several objects on the ring

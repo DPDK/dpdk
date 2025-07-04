@@ -53,7 +53,7 @@
      v:langID="1033"
      v:metric="true"
      v:viewMarkup="false"><v:userDefs><v:ud
-         v:nameU="msvSubprocessMaster"
+         v:nameU="msvSubprocessMain"
          v:prompt=""
          v:val="VT4(Rectangle)" /><v:ud
          v:nameU="msvNoAutoConnect"
@@ -243,7 +243,7 @@
          v:groupContext="shape"
          transform="translate(6.87402,-7.17304)"><title
            id="title4060">Rectangle.16</title><desc
-           id="desc4062">bonded ethdev</desc><v:userDefs><v:ud
+           id="desc4062">bonding ethdev</desc><v:userDefs><v:ud
              v:nameU="visVersion"
              v:val="VT0(15):26" /></v:userDefs><v:textBlock
            v:margins="rect(4,4,4,4)"
@@ -281,7 +281,7 @@
            v:langID="2057"
            id="text4069"
            style="fill:#feffff;font-family:Calibri"><v:paragraph
-   v:horizAlign="1" /><v:tabList />bonded ethdev</text>
+   v:horizAlign="1" /><v:tabList />bonding ethdev</text>
 </g><g
          id="shape43-19"
          v:mID="43"

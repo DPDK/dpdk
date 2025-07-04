@@ -780,4 +780,4 @@ test_member_perf(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(member_perf_autotest, test_member_perf);
+REGISTER_PERF_TEST(member_perf_autotest, test_member_perf);

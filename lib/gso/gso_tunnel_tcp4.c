@@ -23,13 +23,13 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 	tcp_offset = inner_ipv4_offset + pkt->l3_len;
 
 	/* Outer IPv4 header. */
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			outer_ipv4_offset);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   outer_ipv4_offset);
 	outer_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
 
 	/* Inner IPv4 header. */
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			inner_ipv4_offset);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   inner_ipv4_offset);
 	inner_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
 
 	tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
@@ -65,8 +65,8 @@ gso_tunnel_tcp4_segment(struct rte_mbuf *pkt,
 	int ret;
 
 	hdr_offset = pkt->outer_l2_len + pkt->outer_l3_len + pkt->l2_len;
-	inner_ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			hdr_offset);
+	inner_ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+						 hdr_offset);
 	/*
 	 * Don't process the packet whose MF bit or offset in the inner
 	 * IPv4 header are non-zero.

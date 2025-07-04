@@ -11,6 +11,7 @@
 #include <rte_ether.h>
 
 #include "cperf_options.h"
+#include "cperf_test_common.h"
 #include "cperf_test_vectors.h"
 
 #define AES_BLOCK_SIZE 16
@@ -36,9 +37,11 @@ usage(char *progname)
 		" --segment-sz N: set the size of the segment to use\n"
 		" --desc-nb N: set number of descriptors for each crypto device\n"
 		" --devtype TYPE: set crypto device type to use\n"
-		" --optype cipher-only / auth-only / cipher-then-auth /\n"
-		"           auth-then-cipher / aead : set operation type\n"
+		" --low-prio-qp-mask mask: set low priority for queues set in mask(hex)\n"
+		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
+		"        aead / pdcp / docsis / ipsec / modex / rsa / secp256r1 / eddsa / sm2 / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
+		" --shared-session: share 1 session across all queue pairs on crypto device\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
 		" --test-file NAME: set the test vector file path\n"
 		" --test-name NAME: set specific test name section in test file\n"
@@ -61,12 +64,17 @@ usage(char *progname)
 		" --csv-friendly: enable test result output CSV friendly\n"
 		" --modex-len N: modex length, supported lengths are "
 		"60, 128, 255, 448. Default: 128\n"
+		" --asym-op encrypt / decrypt / sign / verify : set asym operation type\n"
+		" --rsa-priv-keytype exp / qt : set RSA private key type\n"
+		" --rsa-modlen N: RSA modulus length, supported lengths are "
+		"1024, 2048, 4096, 8192. Default: 1024\n"
 #ifdef RTE_LIB_SECURITY
 		" --pdcp-sn-sz N: set PDCP SN size N <5/7/12/15/18>\n"
 		" --pdcp-domain DOMAIN: set PDCP domain <control/user>\n"
 		" --pdcp-ses-hfn-en: enable session based fixed HFN\n"
 		" --enable-sdap: enable sdap\n"
 		" --docsis-hdr-sz: set DOCSIS header size\n"
+		" --tls-version VER: set TLS VERSION <TLS1.2/TLS1.3/DTLS1.2>\n"
 #endif
 		" -h: prints this help\n",
 		progname);
@@ -329,6 +337,42 @@ parse_modex_len(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_rsa_priv_keytype(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map rsa_keytype_namemap[] = {
+		{
+			cperf_rsa_priv_keytype_strs[RTE_RSA_KEY_TYPE_EXP],
+			RTE_RSA_KEY_TYPE_EXP
+		},
+		{
+			cperf_rsa_priv_keytype_strs[RTE_RSA_KEY_TYPE_QT],
+			RTE_RSA_KEY_TYPE_QT
+		},
+	};
+
+	opts->rsa_keytype = get_str_key_id_mapping(rsa_keytype_namemap,
+			RTE_DIM(rsa_keytype_namemap), arg);
+
+	return 0;
+}
+
+static int
+parse_rsa_modlen(struct cperf_options *opts, const char *arg)
+{
+	uint16_t modlen = 0;
+	int ret;
+
+	ret =  parse_uint16_t(&modlen, arg);
+	if (ret) {
+		RTE_LOG(ERR, USER1, "failed to parse RSA modlen");
+		return ret;
+	}
+
+	opts->rsa_modlen = modlen;
+	return ret;
+}
+
+static int
 parse_burst_sz(struct cperf_options *opts, const char *arg)
 {
 	int ret;
@@ -480,7 +524,27 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_ASYM_MODEX],
 			CPERF_ASYM_MODEX
-		}
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_RSA],
+			CPERF_ASYM_RSA
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_SECP256R1],
+			CPERF_ASYM_SECP256R1
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_ED25519],
+			CPERF_ASYM_ED25519
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_SM2],
+			CPERF_ASYM_SM2
+		},
+		{
+			cperf_op_type_strs[CPERF_TLS],
+			CPERF_TLS
+		},
 	};
 
 	int id = get_str_key_id_mapping(optype_namemap,
@@ -504,6 +568,14 @@ parse_sessionless(struct cperf_options *opts,
 }
 
 static int
+parse_shared_session(struct cperf_options *opts,
+		const char *arg __rte_unused)
+{
+	opts->shared_session = 1;
+	return 0;
+}
+
+static int
 parse_out_of_place(struct cperf_options *opts,
 		const char *arg __rte_unused)
 {
@@ -516,6 +588,10 @@ parse_test_file(struct cperf_options *opts,
 		const char *arg)
 {
 	opts->test_file = strdup(arg);
+	if (opts->test_file == NULL) {
+		RTE_LOG(ERR, USER1, "Dup vector file failed!\n");
+		return -1;
+	}
 	if (access(opts->test_file, F_OK) != -1)
 		return 0;
 	RTE_LOG(ERR, USER1, "Test vector file doesn't exist\n");
@@ -732,6 +808,45 @@ parse_pdcp_domain(struct cperf_options *opts, const char *arg)
 	return 0;
 }
 
+const char *cperf_tls_version_strs[] = {
+	[RTE_SECURITY_VERSION_TLS_1_2] = "TLS1.2",
+	[RTE_SECURITY_VERSION_TLS_1_3] = "TLS1.3",
+	[RTE_SECURITY_VERSION_DTLS_1_2] = "DTLS1.2"
+};
+
+static int
+parse_tls_version(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map tls_version_namemap[] = {
+		{
+			cperf_tls_version_strs
+			[RTE_SECURITY_VERSION_TLS_1_2],
+			RTE_SECURITY_VERSION_TLS_1_2
+		},
+		{
+			cperf_tls_version_strs
+			[RTE_SECURITY_VERSION_TLS_1_3],
+			RTE_SECURITY_VERSION_TLS_1_3
+		},
+		{
+			cperf_tls_version_strs
+			[RTE_SECURITY_VERSION_DTLS_1_2],
+			RTE_SECURITY_VERSION_DTLS_1_2
+		},
+	};
+
+	int id = get_str_key_id_mapping(tls_version_namemap,
+			RTE_DIM(tls_version_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "invalid TLS version specified\n");
+		return -1;
+	}
+
+	opts->tls_version = (enum rte_security_tls_version)id;
+
+	return 0;
+}
+
 static int
 parse_pdcp_ses_hfn_en(struct cperf_options *opts, const char *arg __rte_unused)
 {
@@ -814,6 +929,45 @@ parse_aead_aad_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_asym_op(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map asym_op_namemap[] = {
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_ENCRYPT],
+			RTE_CRYPTO_ASYM_OP_ENCRYPT
+		},
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_DECRYPT],
+			RTE_CRYPTO_ASYM_OP_DECRYPT
+		},
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_SIGN],
+			RTE_CRYPTO_ASYM_OP_SIGN
+		},
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_VERIFY],
+			RTE_CRYPTO_ASYM_OP_VERIFY
+		}
+	};
+
+	int id = get_str_key_id_mapping(asym_op_namemap,
+			RTE_DIM(asym_op_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "invalid ASYM operation specified\n");
+		return -1;
+	}
+
+	opts->asym_op_type = (enum rte_crypto_asym_op_type)id;
+
+	return 0;
+}
+
+
+static int
 parse_csv_friendly(struct cperf_options *opts, const char *arg __rte_unused)
 {
 	opts->csv = 1;
@@ -835,6 +989,22 @@ parse_pmd_cyclecount_delay_ms(struct cperf_options *opts,
 	return 0;
 }
 
+static int
+parse_low_prio_qp_mask(struct cperf_options *opts, const char *arg)
+{
+	char *end = NULL;
+	unsigned long n;
+
+	/* parse hexadecimal string */
+	n = strtoul(arg, &end, 16);
+	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	opts->low_prio_qp_mask = n;
+
+	return 0;
+}
+
 typedef int (*option_parser_t)(struct cperf_options *opts,
 		const char *arg);
 
@@ -848,6 +1018,8 @@ static struct option lgopts[] = {
 
 	{ CPERF_PTEST_TYPE, required_argument, 0, 0 },
 	{ CPERF_MODEX_LEN, required_argument, 0, 0 },
+	{ CPERF_RSA_PRIV_KEYTYPE, required_argument, 0, 0 },
+	{ CPERF_RSA_MODLEN, required_argument, 0, 0 },
 
 	{ CPERF_POOL_SIZE, required_argument, 0, 0 },
 	{ CPERF_TOTAL_OPS, required_argument, 0, 0 },
@@ -856,12 +1028,15 @@ static struct option lgopts[] = {
 	{ CPERF_SEGMENT_SIZE, required_argument, 0, 0 },
 	{ CPERF_DESC_NB, required_argument, 0, 0 },
 
+	{ CPERF_LOW_PRIO_QP_MASK, required_argument, 0, 0 },
+
 	{ CPERF_IMIX, required_argument, 0, 0 },
 	{ CPERF_DEVTYPE, required_argument, 0, 0 },
 	{ CPERF_OPTYPE, required_argument, 0, 0 },
 
 	{ CPERF_SILENT, no_argument, 0, 0 },
 	{ CPERF_SESSIONLESS, no_argument, 0, 0 },
+	{ CPERF_SHARED_SESSION, no_argument, 0, 0 },
 	{ CPERF_OUT_OF_PLACE, no_argument, 0, 0 },
 	{ CPERF_TEST_FILE, required_argument, 0, 0 },
 	{ CPERF_TEST_NAME, required_argument, 0, 0 },
@@ -887,12 +1062,15 @@ static struct option lgopts[] = {
 
 	{ CPERF_DIGEST_SZ, required_argument, 0, 0 },
 
+	{ CPERF_ASYM_OP, required_argument, 0, 0 },
+
 #ifdef RTE_LIB_SECURITY
 	{ CPERF_PDCP_SN_SZ, required_argument, 0, 0 },
 	{ CPERF_PDCP_DOMAIN, required_argument, 0, 0 },
 	{ CPERF_PDCP_SES_HFN_EN, no_argument, 0, 0 },
 	{ CPERF_ENABLE_SDAP, no_argument, 0, 0 },
 	{ CPERF_DOCSIS_HDR_SZ, required_argument, 0, 0 },
+	{ CPERF_TLS_VERSION, required_argument, 0, 0 },
 #endif
 	{ CPERF_CSV, no_argument, 0, 0},
 
@@ -968,6 +1146,13 @@ cperf_options_default(struct cperf_options *opts)
 	opts->docsis_hdr_sz = 17;
 #endif
 	opts->modex_data = (struct cperf_modex_test_data *)&modex_perf_data[0];
+	opts->rsa_data = &rsa_pub_perf_data[0];
+	opts->rsa_keytype = UINT8_MAX;
+
+	opts->secp256r1_data = &secp256r1_perf_data;
+	opts->eddsa_data = &ed25519_perf_data;
+	opts->sm2_data = &sm2_perf_data;
+	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
 }
 
 static int
@@ -976,6 +1161,8 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 	struct long_opt_parser parsermap[] = {
 		{ CPERF_PTEST_TYPE,	parse_cperf_test_type },
 		{ CPERF_MODEX_LEN,	parse_modex_len },
+		{ CPERF_RSA_PRIV_KEYTYPE,	parse_rsa_priv_keytype },
+		{ CPERF_RSA_MODLEN,	parse_rsa_modlen },
 		{ CPERF_SILENT,		parse_silent },
 		{ CPERF_POOL_SIZE,	parse_pool_sz },
 		{ CPERF_TOTAL_OPS,	parse_total_ops },
@@ -983,9 +1170,11 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_BUFFER_SIZE,	parse_buffer_sz },
 		{ CPERF_SEGMENT_SIZE,	parse_segment_sz },
 		{ CPERF_DESC_NB,	parse_desc_nb },
+		{ CPERF_LOW_PRIO_QP_MASK,	parse_low_prio_qp_mask },
 		{ CPERF_DEVTYPE,	parse_device_type },
 		{ CPERF_OPTYPE,		parse_op_type },
 		{ CPERF_SESSIONLESS,	parse_sessionless },
+		{ CPERF_SHARED_SESSION,	parse_shared_session },
 		{ CPERF_OUT_OF_PLACE,	parse_out_of_place },
 		{ CPERF_IMIX,		parse_imix },
 		{ CPERF_TEST_FILE,	parse_test_file },
@@ -1004,12 +1193,14 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_AEAD_IV_SZ,	parse_aead_iv_sz },
 		{ CPERF_AEAD_AAD_SZ,	parse_aead_aad_sz },
 		{ CPERF_DIGEST_SZ,	parse_digest_sz },
+		{ CPERF_ASYM_OP,	parse_asym_op },
 #ifdef RTE_LIB_SECURITY
 		{ CPERF_PDCP_SN_SZ,	parse_pdcp_sn_sz },
 		{ CPERF_PDCP_DOMAIN,	parse_pdcp_domain },
 		{ CPERF_PDCP_SES_HFN_EN,	parse_pdcp_ses_hfn_en },
 		{ CPERF_ENABLE_SDAP,	parse_enable_sdap },
 		{ CPERF_DOCSIS_HDR_SZ,	parse_docsis_hdr_sz },
+		{ CPERF_TLS_VERSION,	parse_tls_version },
 #endif
 		{ CPERF_CSV,		parse_csv_friendly},
 		{ CPERF_PMDCC_DELAY_MS,	parse_pmd_cyclecount_delay_ms},
@@ -1065,6 +1256,10 @@ check_cipher_buffer_length(struct cperf_options *options)
 		else
 			buffer_size = options->buffer_size_list[0];
 
+		if ((options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) &&
+				(options->op_type == CPERF_AUTH_THEN_CIPHER))
+			buffer_size += options->digest_sz;
+
 		while (buffer_size <= options->max_buffer_size) {
 			if ((buffer_size % AES_BLOCK_SIZE) != 0) {
 				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
@@ -1090,6 +1285,10 @@ check_cipher_buffer_length(struct cperf_options *options)
 			buffer_size = options->min_buffer_size;
 		else
 			buffer_size = options->buffer_size_list[0];
+
+		if ((options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) &&
+				(options->op_type == CPERF_AUTH_THEN_CIPHER))
+			buffer_size += options->digest_sz;
 
 		while (buffer_size <= options->max_buffer_size) {
 			if ((buffer_size % DES_BLOCK_SIZE) != 0) {
@@ -1182,12 +1381,12 @@ cperf_options_check(struct cperf_options *options)
 	if (options->segment_sz == 0) {
 		options->segment_sz = options->max_buffer_size +
 				options->digest_sz;
-		/* In IPsec operation, packet length will be increased
+		/* In IPsec and TLS operation, packet length will be increased
 		 * by some bytes depend upon the algorithm, so increasing
 		 * the segment size by headroom to cover most of
 		 * the scenarios.
 		 */
-		if (options->op_type == CPERF_IPSEC)
+		if (options->op_type == CPERF_IPSEC || options->op_type == CPERF_TLS)
 			options->segment_sz += RTE_PKTMBUF_HEADROOM;
 	}
 
@@ -1283,6 +1482,14 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
+	if (options->test == CPERF_TEST_TYPE_THROUGHPUT &&
+	    (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT ||
+	     options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) &&
+	    !options->out_of_place) {
+		RTE_LOG(ERR, USER1, "Only out-of-place is allowed in throughput decryption.\n");
+		return -EINVAL;
+	}
+
 	if (options->op_type == CPERF_CIPHER_ONLY ||
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
 			options->op_type == CPERF_AUTH_THEN_CIPHER) {
@@ -1314,13 +1521,105 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
+	if (options->rsa_keytype != UINT8_MAX) {
+		if (options->op_type != CPERF_ASYM_RSA) {
+			RTE_LOG(ERR, USER1, "Option rsa-priv-keytype should be used only with "
+					" optype: rsa.\n");
+			return -EINVAL;
+		}
+
+		switch (options->rsa_keytype) {
+		case RTE_RSA_KEY_TYPE_QT:
+			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_SIGN &&
+			    options->asym_op_type != RTE_CRYPTO_ASYM_OP_DECRYPT) {
+				RTE_LOG(ERR, USER1, "QT private key to be used in sign and decrypt op\n");
+				return -EINVAL;
+			}
+			options->rsa_data = &rsa_qt_perf_data[0];
+			break;
+		case RTE_RSA_KEY_TYPE_EXP:
+			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT &&
+			    options->asym_op_type != RTE_CRYPTO_ASYM_OP_VERIFY) {
+				RTE_LOG(ERR, USER1, "Exponent private key to be used in encrypt and verify op\n");
+				return -EINVAL;
+			}
+			options->rsa_data = &rsa_exp_perf_data[0];
+			break;
+		default:
+			RTE_LOG(ERR, USER1, "Invalid RSA key type specified\n");
+			return -EINVAL;
+		}
+	} else {
+		if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			RTE_LOG(ERR, USER1, "Public key to be used in encrypt op\n");
+			return -EINVAL;
+		}
+	}
+
+	if (options->rsa_modlen) {
+		uint16_t modlen = options->rsa_modlen / 8;
+
+		if (options->op_type != CPERF_ASYM_RSA) {
+			RTE_LOG(ERR, USER1, "Option rsa-modlen should be used only with "
+					" optype: rsa.\n");
+			return -EINVAL;
+		}
+
+		if (options->rsa_keytype == RTE_RSA_KEY_TYPE_QT) {
+			for (i = 0; i < (int)RTE_DIM(rsa_qt_perf_data); i++) {
+				if (rsa_qt_perf_data[i].n.length == modlen) {
+					options->rsa_data =
+						(struct cperf_rsa_test_data *)&rsa_qt_perf_data[i];
+					break;
+				}
+			}
+
+			if (i == (int)RTE_DIM(rsa_qt_perf_data)) {
+				RTE_LOG(ERR, USER1,
+					"Option rsa_modlen: %d is not supported for QT private key\n",
+					options->rsa_modlen);
+					return -EINVAL;
+			}
+		} else if (options->rsa_keytype == RTE_RSA_KEY_TYPE_EXP) {
+			for (i = 0; i < (int)RTE_DIM(rsa_exp_perf_data); i++) {
+				if (rsa_exp_perf_data[i].n.length == modlen) {
+					options->rsa_data =
+						(struct cperf_rsa_test_data *)&rsa_exp_perf_data[i];
+					break;
+				}
+			}
+
+			if (i == (int)RTE_DIM(rsa_exp_perf_data)) {
+				RTE_LOG(ERR, USER1,
+					"Option rsa_modlen: %d is not supported for exponent private key\n",
+					options->rsa_modlen);
+					return -EINVAL;
+			}
+		} else {
+			for (i = 0; i < (int)RTE_DIM(rsa_pub_perf_data); i++) {
+				if (rsa_pub_perf_data[i].n.length == modlen) {
+					options->rsa_data =
+						(struct cperf_rsa_test_data *)&rsa_pub_perf_data[i];
+					break;
+				}
+			}
+
+			if (i == (int)RTE_DIM(rsa_pub_perf_data)) {
+				RTE_LOG(ERR, USER1,
+					"Option rsa_modlen: %d is not supported for public key\n",
+					options->rsa_modlen);
+					return -EINVAL;
+			}
+		}
+	}
+
 #ifdef RTE_LIB_SECURITY
 	if (options->op_type == CPERF_DOCSIS) {
 		if (check_docsis_buffer_length(options) < 0)
 			return -EINVAL;
 	}
 
-	if (options->op_type == CPERF_IPSEC) {
+	if (options->op_type == CPERF_IPSEC || options->op_type == CPERF_TLS) {
 		if (options->aead_algo) {
 			if (options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
 				options->is_outbound = 1;
@@ -1347,6 +1646,8 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("# Crypto Performance Application Options:\n");
 	printf("#\n");
 	printf("# cperf test: %s\n", cperf_test_type_strs[opts->test]);
+	printf("#\n");
+	printf("# cperf operation type: %s\n", cperf_op_type_strs[opts->op_type]);
 	printf("#\n");
 	printf("# size of crypto op / mbuf pool: %u\n", opts->pool_sz);
 	printf("# total number of ops: %u\n", opts->total_ops);
@@ -1378,7 +1679,15 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("#\n");
 	printf("# number of queue pairs per device: %u\n", opts->nb_qps);
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
+	if (cperf_is_asym_test(opts)) {
+		if (opts->op_type != CPERF_ASYM_MODEX)
+			printf("# asym operation type: %s\n",
+				   rte_crypto_asym_op_strings[opts->asym_op_type]);
+		if (opts->op_type == CPERF_ASYM_RSA)
+			printf("# rsa test name: %s\n", opts->rsa_data->name);
+	}
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
+	printf("# shared session: %s\n", opts->shared_session ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");
 	if (opts->test == CPERF_TEST_TYPE_PMDCC)
 		printf("# inter-burst delay: %u ms\n", opts->pmdcc_delay);

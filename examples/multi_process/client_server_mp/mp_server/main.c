@@ -157,12 +157,12 @@ static int
 sleep_lcore(__rte_unused void *dummy)
 {
 	/* Used to pick a display thread - static, so zero-initialised */
-	static uint32_t display_stats;
+	static RTE_ATOMIC(uint32_t) display_stats;
 
 	uint32_t status = 0;
 	/* Only one core should display stats */
-	if (__atomic_compare_exchange_n(&display_stats, &status, 1, 0,
-			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (rte_atomic_compare_exchange_strong_explicit(&display_stats, &status, 1,
+			rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		const unsigned sleeptime = 1;
 		printf("Core %u displaying statistics\n", rte_lcore_id());
 

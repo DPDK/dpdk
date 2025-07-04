@@ -29,7 +29,7 @@
  */
 
 #include <stdio.h>
-#include <rte_compat.h>
+
 #include <cmdline_cirbuf.h>
 #include <cmdline_vt100.h>
 
@@ -58,7 +58,6 @@ typedef int (rdline_complete_t)(struct rdline *rdl, const char *buf,
  *
  * \return New rdline object on success, NULL on failure.
  */
-__rte_experimental
 struct rdline *rdline_new(rdline_write_char_t *write_char,
 			  rdline_validate_t *validate,
 			  rdline_complete_t *complete,
@@ -70,7 +69,6 @@ struct rdline *rdline_new(rdline_write_char_t *write_char,
  * \param rdl A pointer to an initialized struct rdline.
  *            If NULL, this function is a no-op.
  */
-__rte_experimental
 void rdline_free(struct rdline *rdl);
 
 /**
@@ -163,13 +161,11 @@ char *rdline_get_history_item(struct rdline *rdl, unsigned int i);
 /**
  * Get maximum history buffer size.
  */
-__rte_experimental
 size_t rdline_get_history_buffer_size(struct rdline *rdl);
 
 /**
  * Get the opaque pointer supplied on struct rdline creation.
  */
-__rte_experimental
 void *rdline_get_opaque(struct rdline *rdl);
 
 #ifdef __cplusplus

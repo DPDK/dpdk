@@ -192,7 +192,7 @@ crypto_set_session_parameters(struct bcmfs_sym_session *sess,
 			rc = -EINVAL;
 		break;
 	default:
-		BCMFS_DP_LOG(ERR, "Invalid chain order\n");
+		BCMFS_DP_LOG(ERR, "Invalid chain order");
 		rc = -EINVAL;
 		break;
 	}

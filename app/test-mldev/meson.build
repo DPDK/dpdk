@@ -19,6 +19,7 @@ sources = files(
         'test_inference_common.c',
         'test_inference_ordered.c',
         'test_inference_interleave.c',
+        'test_stats.c',
 )
 
 deps += ['mldev', 'hash']

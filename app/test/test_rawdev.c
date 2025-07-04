@@ -67,4 +67,4 @@ test_rawdev_selftests(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(rawdev_autotest, test_rawdev_selftests);
+REGISTER_FAST_TEST(rawdev_autotest, true, true, test_rawdev_selftests);

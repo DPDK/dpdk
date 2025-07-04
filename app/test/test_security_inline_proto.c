@@ -12,6 +12,7 @@
 
 #include "test.h"
 #include "test_security_inline_proto_vectors.h"
+#include "test_security_proto.h"
 
 #ifdef RTE_EXEC_ENV_WINDOWS
 static int
@@ -136,7 +137,7 @@ static struct rte_flow *default_flow[RTE_MAX_ETHPORTS];
 /* Create Inline IPsec session */
 static int
 create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
-		void **sess, struct rte_security_ctx **ctx,
+		void **sess, void **ctx,
 		uint32_t *ol_flags, const struct ipsec_test_flags *flags,
 		struct rte_security_session_conf *sess_conf)
 {
@@ -149,7 +150,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 	struct rte_security_capability_idx sec_cap_idx;
 	const struct rte_security_capability *sec_cap;
 	enum rte_security_ipsec_sa_direction dir;
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	uint32_t verify;
 
 	sess_conf->action_type = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL;
@@ -221,7 +222,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 
 	sess_conf->userdata = (void *) sa;
 
-	sec_ctx = (struct rte_security_ctx *)rte_eth_dev_get_sec_ctx(portid);
+	sec_ctx = rte_eth_dev_get_sec_ctx(portid);
 	if (sec_ctx == NULL) {
 		printf("Ethernet device doesn't support security features.\n");
 		return TEST_SKIPPED;
@@ -248,8 +249,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 				sizeof(struct rte_crypto_sym_xform));
 		sess_conf->crypto_xform->aead.key.data = sa->key.data;
 		/* Verify crypto capabilities */
-		if (test_ipsec_crypto_caps_aead_verify(sec_cap,
-					sess_conf->crypto_xform) != 0) {
+		if (test_sec_crypto_caps_aead_verify(sec_cap, sess_conf->crypto_xform) != 0) {
 			RTE_LOG(INFO, USER1,
 				"Crypto capabilities not supported\n");
 			return TEST_SKIPPED;
@@ -268,14 +268,14 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 			sess_conf->crypto_xform->next->auth.key.data =
 							sa->auth_key.data;
 			/* Verify crypto capabilities */
-			if (test_ipsec_crypto_caps_cipher_verify(sec_cap,
+			if (test_sec_crypto_caps_cipher_verify(sec_cap,
 					sess_conf->crypto_xform) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Cipher crypto capabilities not supported\n");
 				return TEST_SKIPPED;
 			}
 
-			if (test_ipsec_crypto_caps_auth_verify(sec_cap,
+			if (test_sec_crypto_caps_auth_verify(sec_cap,
 					sess_conf->crypto_xform->next) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Auth crypto capabilities not supported\n");
@@ -294,14 +294,14 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 							sa->key.data;
 
 			/* Verify crypto capabilities */
-			if (test_ipsec_crypto_caps_cipher_verify(sec_cap,
+			if (test_sec_crypto_caps_cipher_verify(sec_cap,
 					sess_conf->crypto_xform->next) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Cipher crypto capabilities not supported\n");
 				return TEST_SKIPPED;
 			}
 
-			if (test_ipsec_crypto_caps_auth_verify(sec_cap,
+			if (test_sec_crypto_caps_auth_verify(sec_cap,
 					sess_conf->crypto_xform) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Auth crypto capabilities not supported\n");
@@ -503,7 +503,7 @@ error:
 static int
 init_mempools(unsigned int nb_mbuf)
 {
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	uint16_t nb_sess = 512;
 	uint32_t sess_sz;
 	char s[64];
@@ -678,6 +678,8 @@ free_mbuf(struct rte_mbuf *mbuf)
 					ip_reassembly_dynfield_offset,
 					rte_eth_ip_reassembly_dynfield_t *);
 			rte_pktmbuf_free(mbuf);
+			if (dynfield.nb_frags == 0)
+				break;
 			mbuf = dynfield.next_frag;
 		}
 	}
@@ -736,6 +738,314 @@ get_and_verify_incomplete_frags(struct rte_mbuf *mbuf,
 }
 
 static int
+event_tx_burst(struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_event ev;
+	int i, nb_sent = 0;
+
+	/* Convert packets to events */
+	memset(&ev, 0, sizeof(ev));
+	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
+	for (i = 0; i < nb_pkts; i++) {
+		ev.mbuf = tx_pkts[i];
+		ev.mbuf->port = port_id;
+		nb_sent += rte_event_eth_tx_adapter_enqueue(
+				eventdev_id, port_id, &ev, 1, 0);
+	}
+
+	return nb_sent;
+}
+
+static int
+event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
+{
+	int nb_ev, nb_rx = 0, j = 0;
+	const int ms_per_pkt = 5;
+	struct rte_event ev;
+
+	do {
+		nb_ev = rte_event_dequeue_burst(eventdev_id, port_id,
+				&ev, 1, 0);
+
+		if (nb_ev == 0) {
+			rte_delay_ms(1);
+			continue;
+		}
+
+		/* Get packet from event */
+		if (ev.event_type != RTE_EVENT_TYPE_ETHDEV) {
+			printf("Unsupported event type: %i\n",
+				ev.event_type);
+			continue;
+		}
+		rx_pkts[nb_rx++] = ev.mbuf;
+	} while (j++ < (nb_pkts_to_rx * ms_per_pkt) && nb_rx < nb_pkts_to_rx);
+
+	return nb_rx;
+}
+
+static int
+verify_inbound_oop(struct ipsec_test_data *td,
+		   bool silent, struct rte_mbuf *mbuf)
+{
+	int ret = TEST_SUCCESS, rc;
+	struct rte_mbuf *orig;
+	uint32_t len;
+	void *data;
+
+	orig = *rte_security_oop_dynfield(mbuf);
+	if (!orig) {
+		if (!silent)
+			printf("\nUnable to get orig buffer OOP session");
+		return TEST_FAILED;
+	}
+
+	/* Skip Ethernet header comparison */
+	rte_pktmbuf_adj(orig, RTE_ETHER_HDR_LEN);
+
+	len = td->input_text.len;
+	if (orig->pkt_len != len) {
+		if (!silent)
+			printf("\nOriginal packet length mismatch, expected %u, got %u ",
+			       len, orig->pkt_len);
+		ret = TEST_FAILED;
+	}
+
+	data = rte_pktmbuf_mtod(orig, void *);
+	rc = memcmp(data, td->input_text.data, len);
+	if (rc) {
+		ret = TEST_FAILED;
+		if (silent)
+			goto exit;
+
+		printf("TestCase %s line %d: %s\n", __func__, __LINE__,
+		       "output text not as expected\n");
+
+		rte_hexdump(stdout, "expected", td->input_text.data, len);
+		rte_hexdump(stdout, "actual", data, len);
+	}
+exit:
+	rte_pktmbuf_free(orig);
+	return ret;
+}
+
+static int
+test_ipsec_with_rx_inject(struct ip_pkt_vector *vector, const struct ipsec_test_flags *flags)
+{
+	struct rte_security_session_conf sess_conf_out = {0};
+	struct rte_security_session_conf sess_conf_in = {0};
+	uint32_t nb_tx, burst_sz, nb_sent = 0, nb_inj = 0;
+	struct rte_crypto_sym_xform cipher_out = {0};
+	struct rte_crypto_sym_xform cipher_in = {0};
+	struct rte_crypto_sym_xform auth_out = {0};
+	struct rte_crypto_sym_xform aead_out = {0};
+	struct rte_crypto_sym_xform auth_in = {0};
+	struct rte_crypto_sym_xform aead_in = {0};
+	void *out_ses[ENCAP_DECAP_BURST_SZ] = {0};
+	void *in_ses[ENCAP_DECAP_BURST_SZ] = {0};
+	uint32_t i, j, nb_rx = 0, nb_inj_rx = 0;
+	struct rte_mbuf **inj_pkts_burst;
+	struct ipsec_test_data sa_data;
+	uint32_t ol_flags;
+	bool outer_ipv4;
+	int ret = 0;
+	void *ctx;
+
+	inj_pkts_burst = calloc(MAX_TRAFFIC_BURST, sizeof(void *));
+	if (!inj_pkts_burst)
+		return TEST_FAILED;
+
+	burst_sz = vector->burst ? ENCAP_DECAP_BURST_SZ : 1;
+	nb_tx = burst_sz;
+
+	sa_data = *vector->sa_data;
+	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
+	outer_ipv4 = is_outer_ipv4(&sa_data);
+
+	for (i = 0; i < nb_tx; i++) {
+		tx_pkts_burst[i] = init_packet(mbufpool, vector->full_pkt->data,
+					       vector->full_pkt->len, outer_ipv4);
+		if (tx_pkts_burst[i] == NULL) {
+			ret = -1;
+			printf("\n packed init failed\n");
+			goto out;
+		}
+	}
+
+	for (i = 0; i < burst_sz; i++) {
+		sa_data = *vector->sa_data;
+		/* Update SPI for every new SA */
+		sa_data.ipsec_xform.spi += i;
+		sa_data.ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
+		if (sa_data.aead) {
+			sess_conf_out.crypto_xform = &aead_out;
+		} else {
+			sess_conf_out.crypto_xform = &cipher_out;
+			sess_conf_out.crypto_xform->next = &auth_out;
+		}
+
+		/* Create Inline IPsec outbound session. */
+		ret = create_inline_ipsec_session(&sa_data, port_id, &out_ses[i], &ctx, &ol_flags,
+						  flags, &sess_conf_out);
+		if (ret) {
+			printf("\nInline outbound session create failed\n");
+			goto out;
+		}
+	}
+
+	for (i = 0; i < nb_tx; i++) {
+		if (ol_flags & RTE_SECURITY_TX_OLOAD_NEED_MDATA)
+			rte_security_set_pkt_metadata(ctx,
+				out_ses[i], tx_pkts_burst[i], NULL);
+		tx_pkts_burst[i]->ol_flags |= RTE_MBUF_F_TX_SEC_OFFLOAD;
+	}
+
+	for (i = 0; i < burst_sz; i++) {
+		sa_data = *vector->sa_data;
+		/* Update SPI for every new SA */
+		sa_data.ipsec_xform.spi += i;
+		sa_data.ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
+
+		if (sa_data.aead) {
+			sess_conf_in.crypto_xform = &aead_in;
+		} else {
+			sess_conf_in.crypto_xform = &auth_in;
+			sess_conf_in.crypto_xform->next = &cipher_in;
+		}
+		/* Create Inline IPsec inbound session. */
+		ret = create_inline_ipsec_session(&sa_data, port_id, &in_ses[i], &ctx, &ol_flags,
+						  flags, &sess_conf_in);
+		if (ret) {
+			printf("\nInline inbound session create failed\n");
+			goto out;
+		}
+	}
+
+	rte_delay_ms(1);
+	/* Create and receive encrypted packets */
+	if (event_mode_enabled)
+		nb_sent = event_tx_burst(tx_pkts_burst, nb_tx);
+	else
+		nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_tx);
+	if (nb_sent != nb_tx) {
+		ret = -1;
+		printf("\nFailed to tx %u pkts", nb_tx);
+		goto out;
+	}
+
+	rte_delay_ms(1);
+
+	/* Retry few times before giving up */
+	nb_rx = 0;
+	j = 0;
+	if (event_mode_enabled)
+		nb_rx = event_rx_burst(rx_pkts_burst, nb_tx);
+	else
+		do {
+			nb_rx += rte_eth_rx_burst(port_id, 0, &rx_pkts_burst[nb_rx],
+						  nb_tx - nb_rx);
+			j++;
+			if (nb_rx >= nb_tx)
+				break;
+			rte_delay_ms(1);
+		} while (j < 5 || !nb_rx);
+
+	/* Check for minimum number of Rx packets expected */
+	if (nb_rx != nb_tx) {
+		printf("\nReceived less Rx pkts(%u)\n", nb_rx);
+		ret = TEST_FAILED;
+		goto out;
+	}
+
+	for (i = 0; i < nb_rx; i++) {
+		if (!(rx_pkts_burst[i]->packet_type & RTE_PTYPE_TUNNEL_ESP)) {
+			printf("\nNot received ESP packet, pytpe=%x\n",
+					rx_pkts_burst[i]->packet_type);
+			goto out;
+		}
+		rx_pkts_burst[i]->l2_len = RTE_ETHER_HDR_LEN;
+	}
+
+	/* Inject Packets */
+	if (flags->rx_inject)
+		nb_inj = rte_security_inb_pkt_rx_inject(ctx, rx_pkts_burst, in_ses, nb_rx);
+	else {
+		printf("\nInject flag disabled, Failed to Inject %u pkts", nb_rx);
+		goto out;
+	}
+	if (nb_inj != nb_rx) {
+		ret = -1;
+		printf("\nFailed to Inject %u pkts", nb_rx);
+		goto out;
+	}
+
+	rte_delay_ms(1);
+
+	/* Retry few times before giving up */
+	nb_inj_rx = 0;
+	j = 0;
+	if (event_mode_enabled)
+		nb_inj_rx = event_rx_burst(inj_pkts_burst, nb_inj);
+	else
+		do {
+			nb_inj_rx += rte_eth_rx_burst(port_id, 0, &inj_pkts_burst[nb_inj_rx],
+						      nb_inj - nb_inj_rx);
+			j++;
+			if (nb_inj_rx >= nb_inj)
+				break;
+			rte_delay_ms(1);
+		} while (j < 5 || !nb_inj_rx);
+
+	/* Check for minimum number of Rx packets expected */
+	if (nb_inj_rx != nb_inj) {
+		printf("\nReceived less Rx pkts(%u)\n", nb_inj_rx);
+		ret = TEST_FAILED;
+		goto out;
+	}
+
+	for (i = 0; i < nb_inj_rx; i++) {
+		if (inj_pkts_burst[i]->ol_flags &
+		    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED ||
+		    !(inj_pkts_burst[i]->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD)) {
+			printf("\nsecurity offload failed\n");
+			ret = TEST_FAILED;
+			break;
+		}
+
+		if (vector->full_pkt->len + RTE_ETHER_HDR_LEN !=
+		    inj_pkts_burst[i]->pkt_len) {
+			printf("\nreassembled/decrypted packet length mismatch\n");
+			ret = TEST_FAILED;
+			break;
+		}
+		rte_pktmbuf_adj(inj_pkts_burst[i], RTE_ETHER_HDR_LEN);
+		ret = compare_pkt_data(inj_pkts_burst[i], vector->full_pkt->data,
+				       vector->full_pkt->len);
+		if (ret != TEST_SUCCESS)
+			break;
+	}
+
+out:
+	/* Clear session data. */
+	for (i = 0; i < burst_sz; i++) {
+		if (out_ses[i])
+			rte_security_session_destroy(ctx, out_ses[i]);
+		if (in_ses[i])
+			rte_security_session_destroy(ctx, in_ses[i]);
+	}
+
+	for (i = nb_sent; i < nb_tx; i++)
+		free_mbuf(tx_pkts_burst[i]);
+	for (i = 0; i < nb_rx; i++)
+		free_mbuf(rx_pkts_burst[i]);
+	for (i = 0; i < nb_inj_rx; i++)
+		free_mbuf(inj_pkts_burst[i]);
+	free(inj_pkts_burst);
+
+	return ret;
+}
+
+static int
 test_ipsec_with_reassembly(struct reassembly_vector *vector,
 		const struct ipsec_test_flags *flags)
 {
@@ -752,7 +1062,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	struct rte_crypto_sym_xform auth_in = {0};
 	struct rte_crypto_sym_xform aead_in = {0};
 	struct ipsec_test_data sa_data;
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	unsigned int i, nb_rx = 0, j;
 	uint32_t ol_flags;
 	bool outer_ipv4;
@@ -761,31 +1071,14 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	burst_sz = vector->burst ? ENCAP_DECAP_BURST_SZ : 1;
 	nb_tx = vector->nb_frags * burst_sz;
 
-	rte_eth_dev_stop(port_id);
-	if (ret != 0) {
-		printf("rte_eth_dev_stop: err=%s, port=%u\n",
-			       rte_strerror(-ret), port_id);
-		return ret;
-	}
 	rte_eth_ip_reassembly_capability_get(port_id, &reass_capa);
 	if (reass_capa.max_frags < vector->nb_frags)
 		return TEST_SKIPPED;
-	if (reass_capa.timeout_ms > APP_REASS_TIMEOUT) {
-		reass_capa.timeout_ms = APP_REASS_TIMEOUT;
-		rte_eth_ip_reassembly_conf_set(port_id, &reass_capa);
-	}
-
-	ret = rte_eth_dev_start(port_id);
-	if (ret < 0) {
-		printf("rte_eth_dev_start: err=%d, port=%d\n",
-			ret, port_id);
-		return ret;
-	}
 
 	memset(tx_pkts_burst, 0, sizeof(tx_pkts_burst[0]) * nb_tx);
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * nb_tx);
 
-	memcpy(&sa_data, vector->sa_data, sizeof(struct ipsec_test_data));
+	sa_data = *vector->sa_data;
 	sa_data.ipsec_xform.direction =	RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
 	outer_ipv4 = is_outer_ipv4(&sa_data);
 
@@ -803,8 +1096,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data,
-				sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction =
@@ -839,8 +1131,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	}
 
 	for (i = 0; i < burst_sz; i++) {
-		memcpy(&sa_data, vector->sa_data,
-				sizeof(struct ipsec_test_data));
+		sa_data = *vector->sa_data;
 		/* Update SPI for every new SA */
 		sa_data.ipsec_xform.spi += i;
 		sa_data.ipsec_xform.direction =
@@ -871,7 +1162,10 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	if (ret)
 		goto out;
 
-	nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_tx);
+	if (event_mode_enabled)
+		nb_sent = event_tx_burst(tx_pkts_burst, nb_tx);
+	else
+		nb_sent = rte_eth_tx_burst(port_id, 0, tx_pkts_burst, nb_tx);
 	if (nb_sent != nb_tx) {
 		ret = -1;
 		printf("\nFailed to tx %u pkts", nb_tx);
@@ -883,14 +1177,17 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	/* Retry few times before giving up */
 	nb_rx = 0;
 	j = 0;
-	do {
-		nb_rx += rte_eth_rx_burst(port_id, 0, &rx_pkts_burst[nb_rx],
-					  nb_tx - nb_rx);
-		j++;
-		if (nb_rx >= nb_tx)
-			break;
-		rte_delay_ms(1);
-	} while (j < 5 || !nb_rx);
+	if (event_mode_enabled)
+		nb_rx = event_rx_burst(rx_pkts_burst, nb_tx);
+	else
+		do {
+			nb_rx += rte_eth_rx_burst(port_id, 0, &rx_pkts_burst[nb_rx],
+						  nb_tx - nb_rx);
+			j++;
+			if (nb_rx >= nb_tx)
+				break;
+			rte_delay_ms(1);
+		} while (j < 5 || !nb_rx);
 
 	/* Check for minimum number of Rx packets expected */
 	if ((vector->nb_frags == 1 && nb_rx != nb_tx) ||
@@ -948,52 +1245,6 @@ out:
 	for (i = 0; i < nb_rx; i++)
 		free_mbuf(rx_pkts_burst[i]);
 	return ret;
-}
-
-static int
-event_tx_burst(struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	struct rte_event ev;
-	int i, nb_sent = 0;
-
-	/* Convert packets to events */
-	memset(&ev, 0, sizeof(ev));
-	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
-	for (i = 0; i < nb_pkts; i++) {
-		ev.mbuf = tx_pkts[i];
-		nb_sent += rte_event_eth_tx_adapter_enqueue(
-				eventdev_id, port_id, &ev, 1, 0);
-	}
-
-	return nb_sent;
-}
-
-static int
-event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
-{
-	int nb_ev, nb_rx = 0, j = 0;
-	const int ms_per_pkt = 3;
-	struct rte_event ev;
-
-	do {
-		nb_ev = rte_event_dequeue_burst(eventdev_id, port_id,
-				&ev, 1, 0);
-
-		if (nb_ev == 0) {
-			rte_delay_ms(1);
-			continue;
-		}
-
-		/* Get packet from event */
-		if (ev.event_type != RTE_EVENT_TYPE_ETHDEV) {
-			printf("Unsupported event type: %i\n",
-				ev.event_type);
-			continue;
-		}
-		rx_pkts[nb_rx++] = ev.mbuf;
-	} while (j++ < (nb_pkts_to_rx * ms_per_pkt) && nb_rx < nb_pkts_to_rx);
-
-	return nb_rx;
 }
 
 static int
@@ -1076,7 +1327,7 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	struct rte_crypto_sym_xform auth = {0};
 	struct rte_crypto_sym_xform aead = {0};
 	struct sa_expiry_vector vector = {0};
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	int nb_rx = 0, nb_sent;
 	uint32_t ol_flags;
 	int i, j = 0, ret;
@@ -1114,6 +1365,12 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 					  &ol_flags, flags, &sess_conf);
 	if (ret)
 		return ret;
+
+	if (flags->inb_oop && rte_security_oop_dynfield_offset < 0) {
+		printf("\nDynamic field not available for inline inbound OOP");
+		ret = TEST_FAILED;
+		goto out;
+	}
 
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
 		ret = create_default_flow(port_id);
@@ -1190,12 +1447,27 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	for (i = 0; i < nb_rx; i++) {
 		rte_pktmbuf_adj(rx_pkts_burst[i], RTE_ETHER_HDR_LEN);
 
-		ret = test_ipsec_post_process(rx_pkts_burst[i], td,
-					      res_d, silent, flags);
-		if (ret != TEST_SUCCESS) {
-			for ( ; i < nb_rx; i++)
+		/* For tests with status as error for test success,
+		 * skip verification
+		 */
+		if (td->ipsec_xform.direction ==
+		    RTE_SECURITY_IPSEC_SA_DIR_INGRESS && (flags->icv_corrupt ||
+		    flags->sa_expiry_pkts_hard || flags->tunnel_hdr_verify ||
+		    td->ar_packet)) {
+			if (!(rx_pkts_burst[i]->ol_flags &
+			    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
 				rte_pktmbuf_free(rx_pkts_burst[i]);
-			goto out;
+				rx_pkts_burst[i] = NULL;
+				return TEST_FAILED;
+			}
+		} else {
+			ret = test_ipsec_post_process(rx_pkts_burst[i], td,
+						      res_d, silent, flags);
+			if (ret != TEST_SUCCESS) {
+				for ( ; i < nb_rx; i++)
+					rte_pktmbuf_free(rx_pkts_burst[i]);
+				goto out;
+			}
 		}
 
 		ret = test_ipsec_stats_verify(ctx, ses, flags,
@@ -1204,6 +1476,15 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 			for ( ; i < nb_rx; i++)
 				rte_pktmbuf_free(rx_pkts_burst[i]);
 			goto out;
+		}
+
+		if (flags->inb_oop) {
+			ret = verify_inbound_oop(td, silent, rx_pkts_burst[i]);
+			if (ret != TEST_SUCCESS) {
+				for ( ; i < nb_rx; i++)
+					rte_pktmbuf_free(rx_pkts_burst[i]);
+				goto out;
+			}
 		}
 
 		rte_pktmbuf_free(rx_pkts_burst[i]);
@@ -1243,11 +1524,11 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 			flags->sa_expiry_bytes_soft ||
 			flags->sa_expiry_bytes_hard ||
 			flags->sa_expiry_pkts_hard)
-		nb_pkts = IPSEC_TEST_PACKETS_MAX;
+		nb_pkts = TEST_SEC_PKTS_MAX;
 
-	for (i = 0; i < RTE_DIM(alg_list); i++) {
-		test_ipsec_td_prepare(alg_list[i].param1,
-				      alg_list[i].param2,
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_ipsec_td_prepare(sec_alg_list[i].param1,
+				      sec_alg_list[i].param2,
 				      flags, &td_outb, 1);
 
 		if (!td_outb.aead) {
@@ -1279,8 +1560,7 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 				(((td_outb.output_text.len + RTE_ETHER_HDR_LEN)
 				  * nb_pkts) >> 3) - 1;
 		if (flags->sa_expiry_pkts_hard)
-			td_outb.ipsec_xform.life.packets_hard_limit =
-					IPSEC_TEST_PACKETS_MAX - 1;
+			td_outb.ipsec_xform.life.packets_hard_limit = TEST_SEC_PKTS_MAX - 1;
 		if (flags->sa_expiry_bytes_hard)
 			td_outb.ipsec_xform.life.bytes_hard_limit =
 				(((td_outb.output_text.len + RTE_ETHER_HDR_LEN)
@@ -1293,8 +1573,7 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (ret == TEST_FAILED) {
 			printf("\n TEST FAILED");
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 			fail_cnt++;
 			continue;
 		}
@@ -1308,15 +1587,13 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (ret == TEST_FAILED) {
 			printf("\n TEST FAILED");
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 			fail_cnt++;
 			continue;
 		}
 
 		if (flags->display_alg)
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 
 		pass_cnt++;
 	}
@@ -1346,7 +1623,7 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 	struct rte_mbuf *tx_pkt = NULL;
 	int nb_rx, nb_sent;
 	void *ses;
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	uint32_t ol_flags;
 	bool outer_ipv4;
 	int i, ret;
@@ -1475,9 +1752,31 @@ out:
 }
 
 static int
-ut_setup_inline_ipsec(void)
+ut_setup_inline_ipsec_reassembly(void)
 {
+	struct rte_eth_ip_reassembly_params reass_capa = {0};
 	int ret;
+
+	rte_eth_ip_reassembly_capability_get(port_id, &reass_capa);
+	if (reass_capa.timeout_ms > APP_REASS_TIMEOUT) {
+		reass_capa.timeout_ms = APP_REASS_TIMEOUT;
+		rte_eth_ip_reassembly_conf_set(port_id, &reass_capa);
+	}
+
+	/* Start event devices */
+	if (event_mode_enabled) {
+		ret = rte_event_eth_rx_adapter_start(rx_adapter_id);
+		if (ret < 0) {
+			printf("Failed to start rx adapter %d\n", ret);
+			return ret;
+		}
+
+		ret = rte_event_dev_start(eventdev_id);
+		if (ret < 0) {
+			printf("Failed to start event device %d\n", ret);
+			return ret;
+		}
+	}
 
 	/* Start device */
 	ret = rte_eth_dev_start(port_id);
@@ -1500,11 +1799,15 @@ ut_setup_inline_ipsec(void)
 }
 
 static void
-ut_teardown_inline_ipsec(void)
+ut_teardown_inline_ipsec_reassembly(void)
 {
 	struct rte_eth_ip_reassembly_params reass_conf = {0};
 	uint16_t portid;
 	int ret;
+
+	/* Stop event devices */
+	if (event_mode_enabled)
+		rte_event_dev_stop(eventdev_id);
 
 	/* port tear down */
 	RTE_ETH_FOREACH_DEV(portid) {
@@ -1515,6 +1818,126 @@ ut_teardown_inline_ipsec(void)
 
 		/* Clear reassembly configuration */
 		rte_eth_ip_reassembly_conf_set(portid, &reass_conf);
+	}
+}
+static int
+ut_setup_inline_ipsec_rx_inj(void)
+{
+	void *sec_ctx;
+	int ret;
+
+	sec_ctx = rte_eth_dev_get_sec_ctx(port_id);
+	ret = rte_security_rx_inject_configure(sec_ctx, port_id, true);
+	if (ret) {
+		printf("Could not enable Rx inject\n");
+		return TEST_SKIPPED;
+	}
+
+	/* Start event devices */
+	if (event_mode_enabled) {
+		ret = rte_event_dev_start(eventdev_id);
+		if (ret < 0) {
+			printf("Failed to start event device %d\n", ret);
+			return ret;
+		}
+	}
+
+	/* Start device */
+	ret = rte_eth_dev_start(port_id);
+	if (ret < 0) {
+		printf("rte_eth_dev_start: err=%d, port=%d\n",
+			ret, port_id);
+		return ret;
+	}
+	/* always enable promiscuous */
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0) {
+		printf("rte_eth_promiscuous_enable: err=%s, port=%d\n",
+			rte_strerror(-ret), port_id);
+		return ret;
+	}
+
+	check_all_ports_link_status(1, RTE_PORT_ALL);
+
+	return 0;
+}
+
+static int
+ut_setup_inline_ipsec(void)
+{
+	int ret;
+
+	/* Start event devices */
+	if (event_mode_enabled) {
+		ret = rte_event_dev_start(eventdev_id);
+		if (ret < 0) {
+			printf("Failed to start event device %d\n", ret);
+			return ret;
+		}
+	}
+
+	/* Start device */
+	ret = rte_eth_dev_start(port_id);
+	if (ret < 0) {
+		printf("rte_eth_dev_start: err=%d, port=%d\n",
+			ret, port_id);
+		return ret;
+	}
+	/* always enable promiscuous */
+	ret = rte_eth_promiscuous_enable(port_id);
+	if (ret != 0) {
+		printf("rte_eth_promiscuous_enable: err=%s, port=%d\n",
+			rte_strerror(-ret), port_id);
+		return ret;
+	}
+
+	check_all_ports_link_status(1, RTE_PORT_ALL);
+
+	return 0;
+}
+
+static void
+ut_teardown_inline_ipsec_rx_inj(void)
+{
+	uint16_t portid;
+	void *sec_ctx;
+	int ret;
+
+	/* Stop event devices */
+	if (event_mode_enabled)
+		rte_event_dev_stop(eventdev_id);
+
+	/* port tear down */
+	RTE_ETH_FOREACH_DEV(portid) {
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%s, port=%u\n",
+			       rte_strerror(-ret), portid);
+
+		sec_ctx = rte_eth_dev_get_sec_ctx(portid);
+		ret = rte_security_rx_inject_configure(sec_ctx, portid, false);
+		if (ret)
+			printf("Could not disable Rx inject\n");
+
+	}
+}
+
+static void
+ut_teardown_inline_ipsec(void)
+{
+	uint16_t portid;
+	int ret;
+
+	/* Stop event devices */
+	if (event_mode_enabled)
+		rte_event_dev_stop(eventdev_id);
+
+	/* port tear down */
+	RTE_ETH_FOREACH_DEV(portid) {
+		ret = rte_eth_dev_stop(portid);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%s, port=%u\n",
+			       rte_strerror(-ret), portid);
 	}
 }
 
@@ -1615,7 +2038,8 @@ inline_ipsec_testsuite_setup(void)
 				ret, port_id);
 		return ret;
 	}
-	test_ipsec_alg_list_populate();
+
+	test_sec_alg_list_populate();
 
 	/* Change the plaintext size for tests without Known vectors */
 	if (sg_mode) {
@@ -1624,6 +2048,8 @@ inline_ipsec_testsuite_setup(void)
 		 * Without SG mode, default value is picked.
 		 */
 		plaintext_len = local_port_conf.rxmode.mtu - 256;
+	} else {
+		plaintext_len = 0;
 	}
 
 	return 0;
@@ -1874,7 +2300,8 @@ event_inline_ipsec_testsuite_setup(void)
 	}
 
 	event_mode_enabled = true;
-	test_ipsec_alg_list_populate();
+
+	test_sec_alg_list_populate();
 
 	return 0;
 }
@@ -1934,6 +2361,7 @@ test_inline_ip_reassembly(const void *testdata)
 	const struct reassembly_vector *td = testdata;
 	struct ip_reassembly_test_packet full_pkt;
 	struct ip_reassembly_test_packet frags[MAX_FRAGS];
+	uint16_t extra_data, extra_data_sum = 0;
 	struct ipsec_test_flags flags = {0};
 	int i = 0;
 
@@ -1941,18 +2369,24 @@ test_inline_ip_reassembly(const void *testdata)
 	reassembly_td.nb_frags = td->nb_frags;
 	reassembly_td.burst = td->burst;
 
-	memcpy(&full_pkt, td->full_pkt,
-			sizeof(struct ip_reassembly_test_packet));
+	full_pkt = *td->full_pkt;
 	reassembly_td.full_pkt = &full_pkt;
 
-	test_vector_payload_populate(reassembly_td.full_pkt, true);
 	for (; i < reassembly_td.nb_frags; i++) {
-		memcpy(&frags[i], td->frags[i],
-			sizeof(struct ip_reassembly_test_packet));
+		frags[i] = *td->frags[i];
 		reassembly_td.frags[i] = &frags[i];
+
+		/* Add extra data for multi-seg test on all fragments except last one */
+		extra_data = 0;
+		if (plaintext_len && reassembly_td.frags[i]->len < plaintext_len &&
+		    (i != reassembly_td.nb_frags - 1))
+			extra_data = ((plaintext_len - reassembly_td.frags[i]->len) & ~0x7ULL);
+
 		test_vector_payload_populate(reassembly_td.frags[i],
-				(i == 0) ? true : false);
+				(i == 0) ? true : false, extra_data, extra_data_sum);
+		extra_data_sum += extra_data;
 	}
+	test_vector_payload_populate(reassembly_td.full_pkt, true, extra_data_sum, 0);
 
 	return test_ipsec_with_reassembly(&reassembly_td, &flags);
 }
@@ -1995,7 +2429,53 @@ test_ipsec_inline_proto_known_vec_inb(const void *test_data)
 }
 
 static int
-test_ipsec_inline_proto_display_list(const void *data __rte_unused)
+test_ipsec_inline_proto_oop_inb(const void *test_data)
+{
+	const struct ipsec_test_data *td = test_data;
+	struct ipsec_test_flags flags;
+	struct ipsec_test_data td_inb;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.inb_oop = true;
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		test_ipsec_td_in_from_out(td, &td_inb);
+	else
+		memcpy(&td_inb, td, sizeof(td_inb));
+
+	td_inb.ipsec_xform.options.ingress_oop = true;
+
+	return test_ipsec_inline_proto_process(&td_inb, NULL, 1, false, &flags);
+}
+
+static int
+test_ipsec_inline_proto_rx_inj_inb(const void *test_data)
+{
+	const struct ip_pkt_vector *td = test_data;
+	struct ip_reassembly_test_packet full_pkt;
+	struct ipsec_test_flags flags = {0};
+	struct ip_pkt_vector out_td = {0};
+	uint16_t extra_data = 0;
+
+	flags.rx_inject = true;
+
+	out_td.sa_data = td->sa_data;
+	out_td.burst = td->burst;
+
+	full_pkt = *td->full_pkt;
+	out_td.full_pkt = &full_pkt;
+
+	/* Add extra data for multi-seg test */
+	if (plaintext_len && out_td.full_pkt->len < plaintext_len)
+		extra_data = ((plaintext_len - out_td.full_pkt->len) & ~0x7ULL);
+
+	test_vector_payload_populate(out_td.full_pkt, true, extra_data, 0);
+
+	return test_ipsec_with_rx_inject(&out_td, &flags);
+}
+
+static int
+test_ipsec_inline_proto_display_list(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2008,7 +2488,7 @@ test_ipsec_inline_proto_display_list(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_udp_encap(const void *data __rte_unused)
+test_ipsec_inline_proto_udp_encap(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2021,7 +2501,7 @@ test_ipsec_inline_proto_udp_encap(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_udp_ports_verify(const void *data __rte_unused)
+test_ipsec_inline_proto_udp_ports_verify(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2035,7 +2515,7 @@ test_ipsec_inline_proto_udp_ports_verify(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_err_icv_corrupt(const void *data __rte_unused)
+test_ipsec_inline_proto_err_icv_corrupt(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2048,7 +2528,7 @@ test_ipsec_inline_proto_err_icv_corrupt(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_tunnel_dst_addr_verify(const void *data __rte_unused)
+test_ipsec_inline_proto_tunnel_dst_addr_verify(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2061,7 +2541,7 @@ test_ipsec_inline_proto_tunnel_dst_addr_verify(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_tunnel_src_dst_addr_verify(const void *data __rte_unused)
+test_ipsec_inline_proto_tunnel_src_dst_addr_verify(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2074,7 +2554,7 @@ test_ipsec_inline_proto_tunnel_src_dst_addr_verify(const void *data __rte_unused
 }
 
 static int
-test_ipsec_inline_proto_inner_ip_csum(const void *data __rte_unused)
+test_ipsec_inline_proto_inner_ip_csum(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2087,7 +2567,7 @@ test_ipsec_inline_proto_inner_ip_csum(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_inner_l4_csum(const void *data __rte_unused)
+test_ipsec_inline_proto_inner_l4_csum(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2100,7 +2580,7 @@ test_ipsec_inline_proto_inner_l4_csum(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_tunnel_v4_in_v4(const void *data __rte_unused)
+test_ipsec_inline_proto_tunnel_v4_in_v4(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2114,7 +2594,7 @@ test_ipsec_inline_proto_tunnel_v4_in_v4(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_tunnel_v6_in_v6(const void *data __rte_unused)
+test_ipsec_inline_proto_tunnel_v6_in_v6(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2128,7 +2608,7 @@ test_ipsec_inline_proto_tunnel_v6_in_v6(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_tunnel_v4_in_v6(const void *data __rte_unused)
+test_ipsec_inline_proto_tunnel_v4_in_v6(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2142,7 +2622,7 @@ test_ipsec_inline_proto_tunnel_v4_in_v6(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_tunnel_v6_in_v4(const void *data __rte_unused)
+test_ipsec_inline_proto_tunnel_v6_in_v4(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2156,7 +2636,7 @@ test_ipsec_inline_proto_tunnel_v6_in_v4(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_transport_v4(const void *data __rte_unused)
+test_ipsec_inline_proto_transport_v4(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2170,7 +2650,7 @@ test_ipsec_inline_proto_transport_v4(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_transport_l4_csum(const void *data __rte_unused)
+test_ipsec_inline_proto_transport_l4_csum(void)
 {
 	struct ipsec_test_flags flags = {
 		.l4_csum = true,
@@ -2182,7 +2662,7 @@ test_ipsec_inline_proto_transport_l4_csum(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_stats(const void *data __rte_unused)
+test_ipsec_inline_proto_stats(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2195,7 +2675,7 @@ test_ipsec_inline_proto_stats(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_pkt_fragment(const void *data __rte_unused)
+test_ipsec_inline_proto_pkt_fragment(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2209,7 +2689,7 @@ test_ipsec_inline_proto_pkt_fragment(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_copy_df_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_copy_df_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2222,7 +2702,7 @@ test_ipsec_inline_proto_copy_df_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_copy_df_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_copy_df_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2235,7 +2715,7 @@ test_ipsec_inline_proto_copy_df_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_set_df_0_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_set_df_0_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2248,7 +2728,7 @@ test_ipsec_inline_proto_set_df_0_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_set_df_1_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_set_df_1_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2261,7 +2741,7 @@ test_ipsec_inline_proto_set_df_1_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv4_copy_dscp_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv4_copy_dscp_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2274,7 +2754,7 @@ test_ipsec_inline_proto_ipv4_copy_dscp_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv4_copy_dscp_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv4_copy_dscp_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2287,7 +2767,7 @@ test_ipsec_inline_proto_ipv4_copy_dscp_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv4_set_dscp_0_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv4_set_dscp_0_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2300,7 +2780,7 @@ test_ipsec_inline_proto_ipv4_set_dscp_0_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv4_set_dscp_1_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv4_set_dscp_1_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2313,7 +2793,7 @@ test_ipsec_inline_proto_ipv4_set_dscp_1_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_copy_dscp_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_copy_dscp_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2328,7 +2808,7 @@ test_ipsec_inline_proto_ipv6_copy_dscp_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_copy_dscp_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_copy_dscp_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2343,7 +2823,7 @@ test_ipsec_inline_proto_ipv6_copy_dscp_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_set_dscp_0_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_set_dscp_0_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2358,7 +2838,7 @@ test_ipsec_inline_proto_ipv6_set_dscp_0_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2373,7 +2853,7 @@ test_ipsec_inline_proto_ipv6_set_dscp_1_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_copy_flabel_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_copy_flabel_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2387,7 +2867,7 @@ test_ipsec_inline_proto_ipv6_copy_flabel_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_copy_flabel_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_copy_flabel_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2401,7 +2881,7 @@ test_ipsec_inline_proto_ipv6_copy_flabel_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_set_flabel_0_inner_1(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_set_flabel_0_inner_1(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2415,7 +2895,7 @@ test_ipsec_inline_proto_ipv6_set_flabel_0_inner_1(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_set_flabel_1_inner_0(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_set_flabel_1_inner_0(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2429,7 +2909,7 @@ test_ipsec_inline_proto_ipv6_set_flabel_1_inner_0(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv4_ttl_decrement(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv4_ttl_decrement(void)
 {
 	struct ipsec_test_flags flags = {
 		.dec_ttl_or_hop_limit = true,
@@ -2440,7 +2920,7 @@ test_ipsec_inline_proto_ipv4_ttl_decrement(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_ipv6_hop_limit_decrement(const void *data __rte_unused)
+test_ipsec_inline_proto_ipv6_hop_limit_decrement(void)
 {
 	struct ipsec_test_flags flags = {
 		.ipv6 = true,
@@ -2452,7 +2932,7 @@ test_ipsec_inline_proto_ipv6_hop_limit_decrement(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_iv_gen(const void *data __rte_unused)
+test_ipsec_inline_proto_iv_gen(void)
 {
 	struct ipsec_test_flags flags;
 
@@ -2465,7 +2945,7 @@ test_ipsec_inline_proto_iv_gen(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_sa_pkt_soft_expiry(const void *data __rte_unused)
+test_ipsec_inline_proto_sa_pkt_soft_expiry(void)
 {
 	struct ipsec_test_flags flags = {
 		.sa_expiry_pkts_soft = true,
@@ -2474,7 +2954,7 @@ test_ipsec_inline_proto_sa_pkt_soft_expiry(const void *data __rte_unused)
 	return test_ipsec_inline_proto_all(&flags);
 }
 static int
-test_ipsec_inline_proto_sa_byte_soft_expiry(const void *data __rte_unused)
+test_ipsec_inline_proto_sa_byte_soft_expiry(void)
 {
 	struct ipsec_test_flags flags = {
 		.sa_expiry_bytes_soft = true,
@@ -2484,7 +2964,7 @@ test_ipsec_inline_proto_sa_byte_soft_expiry(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_sa_pkt_hard_expiry(const void *data __rte_unused)
+test_ipsec_inline_proto_sa_pkt_hard_expiry(void)
 {
 	struct ipsec_test_flags flags = {
 		.sa_expiry_pkts_hard = true
@@ -2494,7 +2974,7 @@ test_ipsec_inline_proto_sa_pkt_hard_expiry(const void *data __rte_unused)
 }
 
 static int
-test_ipsec_inline_proto_sa_byte_hard_expiry(const void *data __rte_unused)
+test_ipsec_inline_proto_sa_byte_hard_expiry(void)
 {
 	struct ipsec_test_flags flags = {
 		.sa_expiry_bytes_hard = true
@@ -2527,8 +3007,8 @@ test_ipsec_inline_pkt_replay(const void *test_data, const uint64_t esn[],
 		      bool replayed_pkt[], uint32_t nb_pkts, bool esn_en,
 		      uint64_t winsz)
 {
-	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
-	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct ipsec_test_data td_inb[TEST_SEC_PKTS_MAX];
 	struct ipsec_test_flags flags;
 	uint32_t i, ret = 0;
 
@@ -2666,8 +3146,6 @@ test_ipsec_inline_proto_pkt_esn_antireplay4096(const void *test_data)
 {
 	return test_ipsec_inline_proto_pkt_esn_antireplay(test_data, 4096);
 }
-
-
 
 static struct unit_test_suite inline_ipsec_testsuite  = {
 	.suite_name = "Inline IPsec Ethernet Device Unit Test Suite",
@@ -3048,44 +3526,53 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 2 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_2frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv6 Reassembly with 2 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv6_2frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 4 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_4frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv6 Reassembly with 4 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv6_4frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with 5 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_5frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv6 Reassembly with 5 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv6_5frag_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with incomplete fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_incomplete_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with overlapping fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_overlap_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with out of order fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_out_of_order_vector),
 		TEST_CASE_NAMED_WITH_DATA(
 			"IPv4 Reassembly with burst of 4 fragments",
-			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_4frag_burst_vector),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound Out-Of-Place processing",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_oop_inb,
+			&pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound Rx Inject processing",
+			ut_setup_inline_ipsec_rx_inj, ut_teardown_inline_ipsec_rx_inj,
+			test_ipsec_inline_proto_rx_inj_inb, &ipv4_vector),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},

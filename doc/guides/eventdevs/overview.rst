@@ -32,9 +32,24 @@ Crypto device adapter supported features
 
 .. include:: overview_crypto_adptr_feature_table.txt
 
+DMA adapter supported features
+------------------------------
+
+.. _table_dma_adapter_features:
+
+.. include:: overview_dma_adptr_feature_table.txt
+
+
 Timer adapter supported features
 --------------------------------
 
 .. _table_timer_adapter_features:
 
 .. include:: overview_timer_adptr_feature_table.txt
+
+Event vector adapter supported features
+---------------------------------------
+
+.. _table_vector_adapter_features:
+
+.. include:: overview_vector_adptr_feature_table.txt

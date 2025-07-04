@@ -26,6 +26,9 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology D15xx``
 * ``Intel QuickAssist Technology C4xxx``
 * ``Intel QuickAssist Technology 4xxx``
+* ``Intel QuickAssist Technology 300xx``
+* ``Intel QuickAssist Technology 420xx``
+* ``Intel QuickAssist Technology apfxx``
 
 
 Features
@@ -76,6 +79,8 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_AES_GMAC``
 * ``RTE_CRYPTO_AUTH_ZUC_EIA3``
 * ``RTE_CRYPTO_AUTH_AES_CMAC``
+* ``RTE_CRYPTO_AUTH_SM3``
+* ``RTE_CRYPTO_AUTH_SM3_HMAC``
 
 Supported AEAD algorithms:
 
@@ -175,6 +180,8 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology C4xxx``
 * ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology 401xxx``
+* ``Intel QuickAssist Technology 300xx``
+* ``Intel QuickAssist Technology 420xx``
 
 The QAT ASYM PMD has support for:
 
@@ -184,6 +191,7 @@ The QAT ASYM PMD has support for:
 * ``RTE_CRYPTO_ASYM_XFORM_ECDSA``
 * ``RTE_CRYPTO_ASYM_XFORM_ECPM``
 * ``RTE_CRYPTO_ASYM_XFORM_ECDH``
+* ``RTE_CRYPTO_ASYM_XFORM_SM2``
 
 Limitations
 ~~~~~~~~~~~
@@ -234,6 +242,18 @@ These are the build configuration options affecting QAT, and their default value
 Both QAT SYM PMD and QAT ASYM PMD have an external dependency on libcrypto, so are not
 built by default.
 
+Ubuntu
+
+.. code-block:: console
+
+   apt install libssl-dev
+
+RHEL
+
+.. code-block:: console
+
+   dnf install openssl-devel
+
 The QAT compressdev PMD has no external dependencies, so is built by default.
 
 The number of VFs per PF varies - see table below. If multiple QAT packages are
@@ -272,6 +292,21 @@ allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes over
 	larger than the input size).
 
 
+Running QAT PMD with insecure crypto algorithms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A few insecure crypto algorithms are deprecated from QAT drivers.
+This needs to be reflected in DPDK QAT PMD.
+DPDK QAT PMD has by default disabled all the insecure crypto algorithms from Gen 1, 2, 3 and 4.
+A PMD devarg is used to enable the capability.
+
+- qat_legacy_capa
+
+To use this feature the user must set the devarg on process start as a device additional devarg::
+
+  -a b1:01.2,qat_legacy_capa=1
+
+
 Running QAT PMD with minimum threshold for burst size
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -294,18 +329,38 @@ by comma. When the same parameter is used more than once first occurrence of the
 is used.
 Maximum threshold that can be set is 32.
 
-Running QAT PMD with Intel IPSEC MB library for symmetric precomputes function
+
+Running QAT PMD with Cipher-CRC offload feature
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Support has been added to the QAT symmetric crypto PMD for combined Cipher-CRC offload,
+primarily for the Crypto-CRC DOCSIS security protocol, on GEN2/GEN3/GEN4 QAT devices.
+
+The following devarg enables a Cipher-CRC offload capability check to determine
+if the feature is supported on the QAT device.
+
+- qat_sym_cipher_crc_enable
+
+When enabled, a capability check for the combined Cipher-CRC offload feature is triggered
+to the QAT firmware during queue pair initialization. If supported by the firmware,
+any subsequent runtime Crypto-CRC DOCSIS security protocol requests handled by the QAT PMD
+are offloaded to the QAT device by setting up the content descriptor and request accordingly.
+If not supported, the CRC is calculated by the QAT PMD using the NET CRC API.
+
+To use this feature the user must set the devarg on process start as a device additional devarg::
+
+ -a 03:01.1,qat_sym_cipher_crc_enable=1
+
+
+Running QAT PMD with Intel IPsec MB library for symmetric precomputes function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The QAT PMD use Openssl library for partial hash calculation in symmetirc precomputes function by
-default, the following parameter is allow QAT PMD switch over to multi-buffer job API if Intel
-IPSEC MB library installed on system.
-
-- qat_ipsec_mb_lib
-
-To use this feature the user must set the parameter on process start as a device additional parameter::
-
-  -a 03:01.1,qat_ipsec_mb_lib=1
+The QAT PMD uses Intel IPsec MB library for partial hash calculation
+in symmetric precomputes function by default,
+the minimum required version of IPsec MB library is v1.4.
+If this version of IPsec is not met, it will fallback to use OpenSSL.
+ARM will always default to using OpenSSL
+as ARM IPsec MB does not support the necessary algorithms.
 
 
 Device and driver naming
@@ -334,6 +389,14 @@ The "rte_cryptodev_devices_get()" returns the devices exposed by either of these
 * Each qat compression device has a unique name, in format
   <pci bdf>_<service>, e.g. "0000:41:01.0_qat_comp".
   This name can be passed to rte_compressdev_get_dev_id() to get the device_id.
+
+
+Running QAT on Aarch64 based Ampere Altra platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Requires Linux kernel v6.0+.
+See also `this kernel patch <https://lkml.org/lkml/2022/6/17/328>`_.
+
 
 .. _qat_kernel:
 
@@ -404,9 +467,15 @@ to see the full table)
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 4   | 4xxx     | IDZ/ N/A      | qat_4xxx      | 4xxx       | 4940   | 4    | 4941   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | Yes | Yes | 4   | 401xxx   | linux/5.19+   | qat_401xxx    | 4xxx       | 4942   | 2    | 4943   | 16     |
+   | Yes | Yes | Yes | 4   | 401xxx   | linux/5.19+   | qat_4xxx      | 4xxx       | 4942   | 2    | 4943   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
-   | Yes | No  | No  | 4   | 401xxx   | IDZ/ N/A      | qat_401xxx    | 4xxx       | 4942   | 2    | 4943   | 16     |
+   | Yes | No  | No  | 4   | 401xxx   | IDZ/ N/A      | qat_4xxx      | 4xxx       | 4942   | 2    | 4943   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | Yes | Yes | 4   | 402xx    | linux/6.4+    | qat_4xxx      | 4xxx       | 4944   | 2    | 4945   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | No  | No  | 4   | 402xx    | IDZ/ N/A      | qat_4xxx      | 4xxx       | 4944   | 2    | 4945   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | Yes | Yes | 5   | 420xx    | linux/6.8+    | qat_420xx     | 420xx      | 4946   | 2    | 4947   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
 
 * Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with IDZ driver version 4.9.0+

@@ -62,7 +62,8 @@ add_mark(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_mark mark_actions[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct rte_flow_action_mark mark_actions[RTE_MAX_LCORE];
 	uint32_t counter = para.counter;
 
 	do {
@@ -79,7 +80,8 @@ add_queue(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_queue queue_actions[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct rte_flow_action_queue queue_actions[RTE_MAX_LCORE];
 
 	do {
 		queue_actions[para.core_idx].index = para.queue;
@@ -109,7 +111,7 @@ add_rss(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct action_rss_data *rss_data[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct action_rss_data *rss_data[RTE_MAX_LCORE];
 
 	uint16_t queue;
 
@@ -208,7 +210,7 @@ add_set_src_mac(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_mac set_macs[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_mac set_macs[RTE_MAX_LCORE];
 	uint32_t mac = para.counter;
 	uint16_t i;
 
@@ -231,7 +233,7 @@ add_set_dst_mac(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_mac set_macs[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_mac set_macs[RTE_MAX_LCORE];
 	uint32_t mac = para.counter;
 	uint16_t i;
 
@@ -254,7 +256,7 @@ add_set_src_ipv4(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_ipv4 set_ipv4[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_ipv4 set_ipv4[RTE_MAX_LCORE];
 	uint32_t ip = para.counter;
 
 	/* Fixed value */
@@ -273,7 +275,7 @@ add_set_dst_ipv4(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_ipv4 set_ipv4[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_ipv4 set_ipv4[RTE_MAX_LCORE];
 	uint32_t ip = para.counter;
 
 	/* Fixed value */
@@ -292,7 +294,7 @@ add_set_src_ipv6(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_ipv6 set_ipv6[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_ipv6 set_ipv6[RTE_MAX_LCORE];
 	uint32_t ipv6 = para.counter;
 	uint8_t i;
 
@@ -302,7 +304,7 @@ add_set_src_ipv6(struct rte_flow_action *actions,
 
 	/* IPv6 value to set is random each time */
 	for (i = 0; i < 16; i++) {
-		set_ipv6[para.core_idx].ipv6_addr[i] = ipv6 & 0xff;
+		set_ipv6[para.core_idx].ipv6_addr.a[i] = ipv6 & 0xff;
 		ipv6 = ipv6 >> 8;
 	}
 
@@ -315,7 +317,7 @@ add_set_dst_ipv6(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_ipv6 set_ipv6[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_ipv6 set_ipv6[RTE_MAX_LCORE];
 	uint32_t ipv6 = para.counter;
 	uint8_t i;
 
@@ -325,7 +327,7 @@ add_set_dst_ipv6(struct rte_flow_action *actions,
 
 	/* IPv6 value to set is random each time */
 	for (i = 0; i < 16; i++) {
-		set_ipv6[para.core_idx].ipv6_addr[i] = ipv6 & 0xff;
+		set_ipv6[para.core_idx].ipv6_addr.a[i] = ipv6 & 0xff;
 		ipv6 = ipv6 >> 8;
 	}
 
@@ -338,7 +340,7 @@ add_set_src_tp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_tp set_tp[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_tp set_tp[RTE_MAX_LCORE];
 	uint32_t tp = para.counter;
 
 	/* Fixed value */
@@ -359,7 +361,7 @@ add_set_dst_tp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_tp set_tp[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_tp set_tp[RTE_MAX_LCORE];
 	uint32_t tp = para.counter;
 
 	/* Fixed value */
@@ -381,7 +383,7 @@ add_inc_tcp_ack(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) rte_be32_t value[RTE_MAX_LCORE];
 	uint32_t ack_value = para.counter;
 
 	/* Fixed value */
@@ -399,7 +401,7 @@ add_dec_tcp_ack(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) rte_be32_t value[RTE_MAX_LCORE];
 	uint32_t ack_value = para.counter;
 
 	/* Fixed value */
@@ -417,7 +419,7 @@ add_inc_tcp_seq(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) rte_be32_t value[RTE_MAX_LCORE];
 	uint32_t seq_value = para.counter;
 
 	/* Fixed value */
@@ -435,7 +437,7 @@ add_dec_tcp_seq(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static rte_be32_t value[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) rte_be32_t value[RTE_MAX_LCORE];
 	uint32_t seq_value = para.counter;
 
 	/* Fixed value */
@@ -453,7 +455,7 @@ add_set_ttl(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_ttl set_ttl[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_ttl set_ttl[RTE_MAX_LCORE];
 	uint32_t ttl_value = para.counter;
 
 	/* Fixed value */
@@ -482,7 +484,7 @@ add_set_ipv4_dscp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_dscp set_dscp[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_dscp set_dscp[RTE_MAX_LCORE];
 	uint32_t dscp_value = para.counter;
 
 	/* Fixed value */
@@ -503,7 +505,7 @@ add_set_ipv6_dscp(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_action_set_dscp set_dscp[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_set_dscp set_dscp[RTE_MAX_LCORE];
 	uint32_t dscp_value = para.counter;
 
 	/* Fixed value */
@@ -770,7 +772,8 @@ add_raw_encap(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct action_raw_encap_data *action_encap_data[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct action_raw_encap_data *action_encap_data[RTE_MAX_LCORE];
 	uint64_t encap_data = para.encap_data;
 	uint8_t *header;
 	uint8_t i;
@@ -807,7 +810,8 @@ add_raw_decap(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	struct additional_para para)
 {
-	static struct action_raw_decap_data *action_decap_data[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct action_raw_decap_data *action_decap_data[RTE_MAX_LCORE];
 	uint64_t decap_data = para.decap_data;
 	uint8_t *header;
 	uint8_t i;
@@ -844,7 +848,8 @@ add_vxlan_encap(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_action_vxlan_encap vxlan_encap[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct rte_flow_action_vxlan_encap vxlan_encap[RTE_MAX_LCORE];
 	static struct rte_flow_item items[5];
 	static struct rte_flow_item_eth item_eth;
 	static struct rte_flow_item_ipv4 item_ipv4;
@@ -900,8 +905,8 @@ add_meter(struct rte_flow_action *actions,
 	uint8_t actions_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_action_meter
-		meters[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_action_meter
+		meters[RTE_MAX_LCORE];
 
 	meters[para.core_idx].mtr_id = para.counter;
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_METER;

@@ -16,11 +16,11 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
-#define trace_err(fmt, args...) \
-	RTE_LOG(ERR, EAL, "%s():%u " fmt "\n", __func__, __LINE__, ## args)
+#define trace_err(...) \
+	RTE_LOG_LINE_PREFIX(ERR, EAL, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define trace_crit(fmt, args...) \
-	RTE_LOG(CRIT, EAL, "%s():%u " fmt "\n", __func__, __LINE__, ## args)
+#define trace_crit(...) \
+	RTE_LOG_LINE_PREFIX(CRIT, EAL, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define TRACE_CTF_MAGIC 0xC1FC1FC1
 #define TRACE_MAX_ARGS	32
@@ -50,7 +50,7 @@ struct trace_arg {
 struct trace {
 	char *dir;
 	int register_errno;
-	uint32_t status;
+	RTE_ATOMIC(uint32_t) status;
 	enum rte_trace_mode mode;
 	rte_uuid_t uuid;
 	uint32_t buff_len;
@@ -65,7 +65,7 @@ struct trace {
 	uint32_t ctf_meta_offset_freq;
 	uint32_t ctf_meta_offset_freq_off_s;
 	uint32_t ctf_meta_offset_freq_off;
-	uint16_t ctf_fixup_done;
+	RTE_ATOMIC(uint16_t) ctf_fixup_done;
 	rte_spinlock_t lock;
 };
 

@@ -46,16 +46,16 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_table_hash.h>
 
 #include "rte_pipeline.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Input port actions. */
 enum rte_port_in_action_type {

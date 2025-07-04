@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_mempool.h>
 #include <rte_errno.h>
@@ -14,12 +15,14 @@
 #include "mempool_trace.h"
 
 /* indirect jump table to support external memory pools. */
+RTE_EXPORT_SYMBOL(rte_mempool_ops_table)
 struct rte_mempool_ops_table rte_mempool_ops_table = {
 	.sl =  RTE_SPINLOCK_INITIALIZER,
 	.num_ops = 0
 };
 
 /* add a new ops struct in rte_mempool_ops_table, return its index. */
+RTE_EXPORT_SYMBOL(rte_mempool_register_ops)
 int
 rte_mempool_register_ops(const struct rte_mempool_ops *h)
 {
@@ -31,22 +34,22 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	if (rte_mempool_ops_table.num_ops >=
 			RTE_MEMPOOL_MAX_OPS_IDX) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(ERR, MEMPOOL,
-			"Maximum number of mempool ops structs exceeded\n");
+		RTE_MEMPOOL_LOG(ERR,
+			"Maximum number of mempool ops structs exceeded");
 		return -ENOSPC;
 	}
 
 	if (h->alloc == NULL || h->enqueue == NULL ||
 			h->dequeue == NULL || h->get_count == NULL) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(ERR, MEMPOOL,
-			"Missing callback while registering mempool ops\n");
+		RTE_MEMPOOL_LOG(ERR,
+			"Missing callback while registering mempool ops");
 		return -EINVAL;
 	}
 
 	if (strlen(h->name) >= sizeof(ops->name) - 1) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(DEBUG, EAL, "%s(): mempool_ops <%s>: name too long\n",
+		RTE_MEMPOOL_LOG(DEBUG, "%s(): mempool_ops <%s>: name too long",
 				__func__, h->name);
 		rte_errno = EEXIST;
 		return -EEXIST;
@@ -146,6 +149,7 @@ rte_mempool_ops_populate(struct rte_mempool *mp, unsigned int max_objs,
 }
 
 /* wrapper to get additional mempool info */
+RTE_EXPORT_SYMBOL(rte_mempool_ops_get_info)
 int
 rte_mempool_ops_get_info(const struct rte_mempool *mp,
 			 struct rte_mempool_info *info)
@@ -161,6 +165,7 @@ rte_mempool_ops_get_info(const struct rte_mempool *mp,
 
 
 /* sets mempool ops previously registered by rte_mempool_register_ops. */
+RTE_EXPORT_SYMBOL(rte_mempool_set_ops_byname)
 int
 rte_mempool_set_ops_byname(struct rte_mempool *mp, const char *name,
 	void *pool_config)

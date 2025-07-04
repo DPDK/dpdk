@@ -49,7 +49,6 @@ enum hns3_tuple_field {
 	HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_S,
 	HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_D,
 	HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_S,
-	HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_VER,
 
 	/* IPV4 ENABLE FIELD */
 	HNS3_RSS_FIELD_IPV4_EN_NONFRAG_IP_D = 24,
@@ -74,7 +73,6 @@ enum hns3_tuple_field {
 	HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_S,
 	HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_D,
 	HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_S,
-	HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_VER,
 
 	/* IPV6 ENABLE FIELD */
 	HNS3_RSS_FIELD_IPV6_NONFRAG_IP_D = 56,
@@ -96,12 +94,12 @@ enum hns3_tuple_field {
 
 #define HNS3_RSS_TUPLE_IPV4_TCP_M	GENMASK(3, 0)
 #define HNS3_RSS_TUPLE_IPV4_UDP_M	GENMASK(11, 8)
-#define HNS3_RSS_TUPLE_IPV4_SCTP_M	GENMASK(20, 16)
+#define HNS3_RSS_TUPLE_IPV4_SCTP_M	GENMASK(19, 16)
 #define HNS3_RSS_TUPLE_IPV4_NONF_M	GENMASK(25, 24)
 #define HNS3_RSS_TUPLE_IPV4_FLAG_M	GENMASK(27, 26)
 #define HNS3_RSS_TUPLE_IPV6_TCP_M	GENMASK(35, 32)
 #define HNS3_RSS_TUPLE_IPV6_UDP_M	GENMASK(43, 40)
-#define HNS3_RSS_TUPLE_IPV6_SCTP_M	GENMASK(52, 48)
+#define HNS3_RSS_TUPLE_IPV6_SCTP_M	GENMASK(51, 48)
 #define HNS3_RSS_TUPLE_IPV6_NONF_M	GENMASK(57, 56)
 #define HNS3_RSS_TUPLE_IPV6_FLAG_M	GENMASK(59, 58)
 
@@ -190,10 +188,6 @@ bool hns3_check_rss_types_valid(struct hns3_hw *hw, uint64_t types);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf);
 int hns3_set_rss_tuple_field(struct hns3_hw *hw, uint64_t tuple_fields);
 int hns3_get_rss_tuple_field(struct hns3_hw *hw, uint64_t *tuple_fields);
-int hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
-			  const uint8_t *key, uint8_t key_len);
-int hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
-			  uint8_t *key, uint8_t key_len);
 uint64_t hns3_rss_calc_tuple_filed(uint64_t rss_hf);
 int hns3_update_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 			     uint8_t *key, uint8_t key_len);

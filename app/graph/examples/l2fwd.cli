@@ -1,0 +1,41 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2023 Marvell.
+
+;
+; Graph configuration for given usecase
+;
+graph l2fwd coremask 0xff bsz 32 tmo 10 model default pcap_enable 1 num_pcap_pkts 100000 pcap_file /tmp/output.pcap
+
+;
+; Mempools to be attached with ethdev
+;
+mempool mempool0 size 8192 buffers 4000 cache 256 numa 0
+
+;
+; DPDK devices and configuration.
+;
+; Note: Customize the parameters below to match your setup.
+;
+ethdev 0002:01:00.1 rxq 1 txq 8 mempool0
+ethdev 0002:01:00.4 rxq 1 txq 8 mempool0
+ethdev 0002:01:00.6 rxq 1 txq 8 mempool0
+ethdev 0002:02:00.0 rxq 1 txq 8 mempool0
+
+;
+; Rx/Tx port mapping
+;
+ethdev forward 0002:01:00.4 0002:02:00.0
+ethdev forward 0002:01:00.1 0002:01:00.6
+
+;
+; Port-Queue-Core mapping for ethdev_rx node
+;
+ethdev_rx map port 0002:02:00.0 queue 0 core 1
+ethdev_rx map port 0002:01:00.6 queue 0 core 2
+
+;
+; Graph start command to create graph.
+;
+; Note: No more command should come after this.
+;
+graph start

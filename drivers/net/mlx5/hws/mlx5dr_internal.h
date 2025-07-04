@@ -38,7 +38,10 @@
 #include "mlx5dr_matcher.h"
 #include "mlx5dr_debug.h"
 #include "mlx5dr_pat_arg.h"
+#include "mlx5dr_crc32.h"
+#include "mlx5dr_bwc.h"
 
+#define W_SIZE		2
 #define DW_SIZE		4
 #define BITS_IN_BYTE	8
 #define BITS_IN_DW	(BITS_IN_BYTE * DW_SIZE)
@@ -89,6 +92,11 @@ static inline bool is_mem_zero(const uint8_t *mem, size_t size)
 static inline uint64_t roundup_pow_of_two(uint64_t n)
 {
 	return n == 1 ? 1 : 1ULL << log2above(n);
+}
+
+static inline unsigned long align(unsigned long val, unsigned long align)
+{
+	return (val + align - 1) & ~(align - 1);
 }
 
 #endif /* MLX5DR_INTERNAL_H_ */

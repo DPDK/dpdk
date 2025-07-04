@@ -102,6 +102,7 @@ static void hn_remove_delayed(void *args)
 	uint16_t port_id = hv->vf_ctx.vf_port;
 	struct rte_device *dev = rte_eth_devices[port_id].device;
 	int ret;
+	bool all_eth_removed;
 
 	/* Tell VSP to switch data path to synthetic */
 	hn_vf_remove(hv);
@@ -138,7 +139,17 @@ static void hn_remove_delayed(void *args)
 		PMD_DRV_LOG(ERR, "rte_eth_dev_close failed port_id=%u ret=%d",
 			    port_id, ret);
 
-	ret = rte_dev_remove(dev);
+	/* Remove the rte device when all its eth devices are removed */
+	all_eth_removed = true;
+	RTE_ETH_FOREACH_DEV_OF(port_id, dev) {
+		if (rte_eth_devices[port_id].state != RTE_ETH_DEV_UNUSED) {
+			all_eth_removed = false;
+			break;
+		}
+	}
+	if (all_eth_removed)
+		ret = rte_dev_remove(dev);
+
 	hv->vf_ctx.vf_state = vf_removed;
 
 	rte_rwlock_write_unlock(&hv->vf_lock);
@@ -239,7 +250,7 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 
 	port = hv->vf_ctx.vf_port;
 
-	/* If the primary device has started, this is a VF host add.
+	/* If the primary device has started, this is a VF hot add.
 	 * Configure and start VF device.
 	 */
 	if (dev->data->dev_started) {
@@ -261,6 +272,12 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 			PMD_DRV_LOG(ERR,
 				    "Failed to configure VF queues port %d",
 				    port);
+			goto exit;
+		}
+
+		ret = rte_eth_dev_set_mtu(port, dev->data->mtu);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to set VF MTU");
 			goto exit;
 		}
 
@@ -299,8 +316,9 @@ static void hn_vf_remove(struct hn_data *hv)
 	} else {
 		/* Stop incoming packets from arriving on VF */
 		ret = hn_nvs_set_datapath(hv, NVS_DATAPATH_SYNTHETIC);
-		if (ret == 0)
-			hv->vf_ctx.vf_vsc_switched = false;
+		if (ret)
+			PMD_DRV_LOG(ERR, "Failed to switch to synthetic");
+		hv->vf_ctx.vf_vsc_switched = false;
 	}
 	rte_rwlock_write_unlock(&hv->vf_lock);
 }
@@ -460,7 +478,8 @@ int hn_vf_configure_locked(struct rte_eth_dev *dev,
 	return ret;
 }
 
-const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev)
+const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev,
+				       size_t *no_of_elements)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
@@ -469,7 +488,8 @@ const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev)
 	rte_rwlock_read_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
 	if (vf_dev && vf_dev->dev_ops->dev_supported_ptypes_get)
-		ptypes = (*vf_dev->dev_ops->dev_supported_ptypes_get)(vf_dev);
+		ptypes = (*vf_dev->dev_ops->dev_supported_ptypes_get)(vf_dev,
+							      no_of_elements);
 	rte_rwlock_read_unlock(&hv->vf_lock);
 
 	return ptypes;
@@ -533,11 +553,6 @@ int hn_vf_stop(struct rte_eth_dev *dev)
 		rte_rwlock_read_unlock(&hv->vf_lock);		\
 		return ret;					\
 	}
-
-void hn_vf_reset(struct rte_eth_dev *dev)
-{
-	VF_ETHDEV_FUNC(dev, rte_eth_dev_reset);
-}
 
 int hn_vf_close(struct rte_eth_dev *dev)
 {
@@ -779,6 +794,21 @@ int hn_vf_reta_hash_update(struct rte_eth_dev *dev,
 	if (vf_dev && vf_dev->dev_ops->reta_update)
 		ret = vf_dev->dev_ops->reta_update(vf_dev,
 						   reta_conf, reta_size);
+	rte_rwlock_read_unlock(&hv->vf_lock);
+
+	return ret;
+}
+
+int hn_vf_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_dev *vf_dev;
+	int ret = 0;
+
+	rte_rwlock_read_lock(&hv->vf_lock);
+	vf_dev = hn_get_vf_dev(hv);
+	if (hv->vf_ctx.vf_vsc_switched && vf_dev)
+		ret = rte_eth_dev_set_mtu(vf_dev->data->port_id, mtu);
 	rte_rwlock_read_unlock(&hv->vf_lock);
 
 	return ret;

@@ -13,7 +13,7 @@
  */
 
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_bpf.h>
 
 #ifdef __cplusplus
@@ -83,9 +83,6 @@ rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
 		void *filter);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Enables packet capturing on given port and queue with filtering.
  *
  * @param port_id
@@ -109,7 +106,6 @@ rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
-__rte_experimental
 int
 rte_pdump_enable_bpf(uint16_t port_id, uint16_t queue,
 		     uint32_t flags, uint32_t snaplen,
@@ -169,9 +165,6 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 				void *filter);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Enables packet capturing on given device id and queue with filtering.
  * device_id can be name or pci address of device.
  *
@@ -196,7 +189,6 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
  * @return
  *    0 on success, -1 on error, rte_errno is set accordingly.
  */
-__rte_experimental
 int
 rte_pdump_enable_bpf_by_deviceid(const char *device_id, uint16_t queue,
 				 uint32_t flags, uint32_t snaplen,
@@ -233,18 +225,15 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
  * The statistics are sum of both receive and transmit queues.
  */
 struct rte_pdump_stats {
-	uint64_t accepted; /**< Number of packets accepted by filter. */
-	uint64_t filtered; /**< Number of packets rejected by filter. */
-	uint64_t nombuf;   /**< Number of mbuf allocation failures. */
-	uint64_t ringfull; /**< Number of missed packets due to ring full. */
+	RTE_ATOMIC(uint64_t) accepted; /**< Number of packets accepted by filter. */
+	RTE_ATOMIC(uint64_t) filtered; /**< Number of packets rejected by filter. */
+	RTE_ATOMIC(uint64_t) nombuf;   /**< Number of mbuf allocation failures. */
+	RTE_ATOMIC(uint64_t) ringfull; /**< Number of missed packets due to ring full. */
 
 	uint64_t reserved[4]; /**< Reserved and pad to cache line */
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Retrieve the packet capture statistics for a queue.
  *
  * @param port_id
@@ -254,7 +243,6 @@ struct rte_pdump_stats {
  * @return
  *   Zero if successful. -1 on error and rte_errno is set.
  */
-__rte_experimental
 int
 rte_pdump_stats(uint16_t port_id, struct rte_pdump_stats *stats);
 

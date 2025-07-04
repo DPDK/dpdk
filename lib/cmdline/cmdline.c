@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 
 #include "cmdline_private.h"
@@ -39,6 +40,7 @@ cmdline_complete_buffer(struct rdline *rdl, const char *buf,
 	return cmdline_complete(cl, buf, state, dstbuf, dstsize);
 }
 
+RTE_EXPORT_SYMBOL(cmdline_write_char)
 int
 cmdline_write_char(struct rdline *rdl, char c)
 {
@@ -57,6 +59,7 @@ cmdline_write_char(struct rdline *rdl, char c)
 }
 
 
+RTE_EXPORT_SYMBOL(cmdline_set_prompt)
 void
 cmdline_set_prompt(struct cmdline *cl, const char *prompt)
 {
@@ -65,6 +68,7 @@ cmdline_set_prompt(struct cmdline *cl, const char *prompt)
 	strlcpy(cl->prompt, prompt, sizeof(cl->prompt));
 }
 
+RTE_EXPORT_SYMBOL(cmdline_new)
 struct cmdline *
 cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 {
@@ -95,12 +99,14 @@ cmdline_new(cmdline_parse_ctx_t *ctx, const char *prompt, int s_in, int s_out)
 	return cl;
 }
 
+RTE_EXPORT_SYMBOL(cmdline_get_rdline)
 struct rdline*
 cmdline_get_rdline(struct cmdline *cl)
 {
 	return &cl->rdl;
 }
 
+RTE_EXPORT_SYMBOL(cmdline_free)
 void
 cmdline_free(struct cmdline *cl)
 {
@@ -116,6 +122,7 @@ cmdline_free(struct cmdline *cl)
 	free(cl);
 }
 
+RTE_EXPORT_SYMBOL(cmdline_printf)
 void
 cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 {
@@ -131,6 +138,7 @@ cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 	va_end(ap);
 }
 
+RTE_EXPORT_SYMBOL(cmdline_in)
 int
 cmdline_in(struct cmdline *cl, const char *buf, int size)
 {
@@ -168,6 +176,7 @@ cmdline_in(struct cmdline *cl, const char *buf, int size)
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(cmdline_quit)
 void
 cmdline_quit(struct cmdline *cl)
 {
@@ -177,40 +186,7 @@ cmdline_quit(struct cmdline *cl)
 	rdline_quit(&cl->rdl);
 }
 
-int
-cmdline_poll(struct cmdline *cl)
-{
-	int status;
-	ssize_t read_status;
-	char c;
-
-	if (!cl)
-		return -EINVAL;
-	else if (cl->rdl.status == RDLINE_EXITED)
-		return RDLINE_EXITED;
-
-	status = cmdline_poll_char(cl);
-	if (status < 0)
-		return status;
-	else if (status > 0) {
-		c = -1;
-		read_status = cmdline_read_char(cl, &c);
-		if (read_status < 0)
-			return read_status;
-
-		if (read_status == 0) {
-			/* end of file is implicit quit */
-			cmdline_quit(cl);
-		} else {
-			status = cmdline_in(cl, &c, 1);
-			if (status < 0 && cl->rdl.status != RDLINE_EXITED)
-				return status;
-		}
-	}
-
-	return cl->rdl.status;
-}
-
+RTE_EXPORT_SYMBOL(cmdline_interact)
 void
 cmdline_interact(struct cmdline *cl)
 {

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_prefetch.h>
@@ -24,7 +25,32 @@
 #include <rte_tailq.h>
 
 #include "rte_hash.h"
+
+/* needs to be before rte_cuckoo_hash.h */
+RTE_LOG_REGISTER_DEFAULT(hash_logtype, INFO);
+#define RTE_LOGTYPE_HASH hash_logtype
+#define HASH_LOG(level, ...) \
+	RTE_LOG_LINE(level, HASH, "" __VA_ARGS__)
+
 #include "rte_cuckoo_hash.h"
+
+/* Enum used to select the implementation of the signature comparison function to use
+ * eg: a system supporting SVE might want to use a NEON or scalar implementation.
+ */
+enum rte_hash_sig_compare_function {
+	RTE_HASH_COMPARE_SCALAR = 0,
+	RTE_HASH_COMPARE_SSE,
+	RTE_HASH_COMPARE_NEON,
+	RTE_HASH_COMPARE_SVE,
+};
+
+#if defined(__ARM_NEON)
+#include "compare_signatures_arm.h"
+#elif defined(__SSE2__)
+#include "compare_signatures_x86.h"
+#else
+#include "compare_signatures_generic.h"
+#endif
 
 /* Mask of all flags supported by this version */
 #define RTE_HASH_EXTRA_FLAGS_MASK (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT | \
@@ -51,6 +77,7 @@ struct __rte_hash_rcu_dq_entry {
 	uint32_t ext_bkt_idx;
 };
 
+RTE_EXPORT_SYMBOL(rte_hash_find_existing)
 struct rte_hash *
 rte_hash_find_existing(const char *name)
 {
@@ -83,6 +110,7 @@ rte_hash_get_last_bkt(struct rte_hash_bucket *lst_bkt)
 	return lst_bkt;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_set_cmp_func)
 void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func)
 {
 	h->cmp_jump_table_idx = KEY_CUSTOM;
@@ -128,6 +156,7 @@ get_alt_bucket_index(const struct rte_hash *h,
 	return (cur_bkt_idx ^ sig) & h->bucket_bitmask;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_create)
 struct rte_hash *
 rte_hash_create(const struct rte_hash_parameters *params)
 {
@@ -149,7 +178,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	unsigned int writer_takes_lock = 0;
 	unsigned int no_free_on_del = 0;
 	uint32_t *ext_bkt_to_free = NULL;
-	uint32_t *tbl_chng_cnt = NULL;
+	RTE_ATOMIC(uint32_t) *tbl_chng_cnt = NULL;
 	struct lcore_cache *local_free_slots = NULL;
 	unsigned int readwrite_concur_lf_support = 0;
 	uint32_t i;
@@ -159,22 +188,37 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	if (params == NULL) {
-		RTE_LOG(ERR, HASH, "rte_hash_create has no parameters\n");
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s has no parameters", __func__);
 		return NULL;
 	}
 
 	/* Check for valid parameters */
 	if ((params->entries > RTE_HASH_ENTRIES_MAX) ||
-			(params->entries < RTE_HASH_BUCKET_ENTRIES) ||
-			(params->key_len == 0)) {
+			(params->entries < RTE_HASH_BUCKET_ENTRIES)) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, HASH, "rte_hash_create has invalid parameters\n");
+		HASH_LOG(ERR, "%s() entries (%u) must be in range [%d, %d] inclusive",
+			__func__, params->entries, RTE_HASH_BUCKET_ENTRIES,
+			RTE_HASH_ENTRIES_MAX);
+		return NULL;
+	}
+
+	if (params->key_len == 0) {
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s() key_len must be greater than 0", __func__);
 		return NULL;
 	}
 
 	if (params->extra_flag & ~RTE_HASH_EXTRA_FLAGS_MASK) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, HASH, "rte_hash_create: unsupported extra flags\n");
+		HASH_LOG(ERR, "%s: unsupported extra flags", __func__);
+		return NULL;
+	}
+
+	if (params->name == NULL) {
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s() has invalid parameters, name can't be NULL",
+			__func__);
 		return NULL;
 	}
 
@@ -182,8 +226,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	if ((params->extra_flag & RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY) &&
 	    (params->extra_flag & RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF)) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, HASH, "rte_hash_create: choose rw concurrency or "
-			"rw concurrency lock free\n");
+		HASH_LOG(ERR, "%s: choose rw concurrency or rw concurrency lock free",
+			__func__);
 		return NULL;
 	}
 
@@ -233,7 +277,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	r = rte_ring_create_elem(ring_name, sizeof(uint32_t),
 			rte_align32pow2(num_key_slots), params->socket_id, 0);
 	if (r == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err;
 	}
 
@@ -249,8 +293,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				params->socket_id, 0);
 
 		if (r_ext == NULL) {
-			RTE_LOG(ERR, HASH, "ext buckets memory allocation "
-								"failed\n");
+			HASH_LOG(ERR, "ext buckets memory allocation "
+								"failed");
 			goto err;
 		}
 	}
@@ -275,7 +319,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, HASH, "tailq entry allocation failed\n");
+		HASH_LOG(ERR, "tailq entry allocation failed");
 		goto err_unlock;
 	}
 
@@ -283,7 +327,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 					RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (h == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -292,7 +336,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (buckets == NULL) {
-		RTE_LOG(ERR, HASH, "buckets memory allocation failed\n");
+		HASH_LOG(ERR, "buckets memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -302,8 +346,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				num_buckets * sizeof(struct rte_hash_bucket),
 				RTE_CACHE_LINE_SIZE, params->socket_id);
 		if (buckets_ext == NULL) {
-			RTE_LOG(ERR, HASH, "ext buckets memory allocation "
-							"failed\n");
+			HASH_LOG(ERR, "ext buckets memory allocation "
+							"failed");
 			goto err_unlock;
 		}
 		/* Populate ext bkt ring. We reserve 0 similar to the
@@ -318,8 +362,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			ext_bkt_to_free = rte_zmalloc(NULL, sizeof(uint32_t) *
 								num_key_slots, 0);
 			if (ext_bkt_to_free == NULL) {
-				RTE_LOG(ERR, HASH, "ext bkt to free memory allocation "
-								"failed\n");
+				HASH_LOG(ERR, "ext bkt to free memory allocation "
+								"failed");
 				goto err_unlock;
 			}
 		}
@@ -334,7 +378,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (k == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -342,7 +386,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (tbl_chng_cnt == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -390,7 +434,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				sizeof(struct lcore_cache) * RTE_MAX_LCORE,
 				RTE_CACHE_LINE_SIZE, params->socket_id);
 		if (local_free_slots == NULL) {
-			RTE_LOG(ERR, HASH, "local free slots memory allocation failed\n");
+			HASH_LOG(ERR, "local free slots memory allocation failed");
 			goto err_unlock;
 		}
 	}
@@ -435,8 +479,13 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		h->sig_cmp_fn = RTE_HASH_COMPARE_SSE;
 	else
 #elif defined(RTE_ARCH_ARM64)
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
 		h->sig_cmp_fn = RTE_HASH_COMPARE_NEON;
+#if defined(RTE_HAS_SVE_ACLE)
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SVE))
+			h->sig_cmp_fn = RTE_HASH_COMPARE_SVE;
+#endif
+	}
 	else
 #endif
 		h->sig_cmp_fn = RTE_HASH_COMPARE_SCALAR;
@@ -474,11 +523,12 @@ err:
 	rte_free(buckets);
 	rte_free(buckets_ext);
 	rte_free(k);
-	rte_free(tbl_chng_cnt);
+	rte_free((void *)(uintptr_t)tbl_chng_cnt);
 	rte_free(ext_bkt_to_free);
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_free)
 void
 rte_hash_free(struct rte_hash *h)
 {
@@ -519,13 +569,14 @@ rte_hash_free(struct rte_hash *h)
 	rte_free(h->key_store);
 	rte_free(h->buckets);
 	rte_free(h->buckets_ext);
-	rte_free(h->tbl_chng_cnt);
+	rte_free((void *)(uintptr_t)h->tbl_chng_cnt);
 	rte_free(h->ext_bkt_to_free);
 	rte_free(h->hash_rcu_cfg);
 	rte_free(h);
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_hash)
 hash_sig_t
 rte_hash_hash(const struct rte_hash *h, const void *key)
 {
@@ -533,6 +584,7 @@ rte_hash_hash(const struct rte_hash *h, const void *key)
 	return h->hash_func(key, h->key_len, h->hash_func_init_val);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_max_key_id)
 int32_t
 rte_hash_max_key_id(const struct rte_hash *h)
 {
@@ -548,6 +600,7 @@ rte_hash_max_key_id(const struct rte_hash *h)
 		return h->entries;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_count)
 int32_t
 rte_hash_count(const struct rte_hash *h)
 {
@@ -575,6 +628,8 @@ rte_hash_count(const struct rte_hash *h)
 /* Read write locks implemented using rte_rwlock */
 static inline void
 __hash_rw_writer_lock(const struct rte_hash *h)
+	__rte_acquire_capability(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->writer_takes_lock && h->hw_trans_mem_support)
 		rte_rwlock_write_lock_tm(h->readwrite_lock);
@@ -584,6 +639,8 @@ __hash_rw_writer_lock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_reader_lock(const struct rte_hash *h)
+	__rte_acquire_shared_capability(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->readwrite_concur_support && h->hw_trans_mem_support)
 		rte_rwlock_read_lock_tm(h->readwrite_lock);
@@ -593,6 +650,8 @@ __hash_rw_reader_lock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_writer_unlock(const struct rte_hash *h)
+	__rte_release_capability(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->writer_takes_lock && h->hw_trans_mem_support)
 		rte_rwlock_write_unlock_tm(h->readwrite_lock);
@@ -602,6 +661,8 @@ __hash_rw_writer_unlock(const struct rte_hash *h)
 
 static inline void
 __hash_rw_reader_unlock(const struct rte_hash *h)
+	__rte_release_shared_capability(&h->readwrite_lock)
+	__rte_no_thread_safety_analysis
 {
 	if (h->readwrite_concur_support && h->hw_trans_mem_support)
 		rte_rwlock_read_unlock_tm(h->readwrite_lock);
@@ -609,6 +670,7 @@ __hash_rw_reader_unlock(const struct rte_hash *h)
 		rte_rwlock_read_unlock(h->readwrite_lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_reset)
 void
 rte_hash_reset(struct rte_hash *h)
 {
@@ -624,7 +686,7 @@ rte_hash_reset(struct rte_hash *h)
 		/* Reclaim all the resources */
 		rte_rcu_qsbr_dq_reclaim(h->dq, ~0, NULL, &pending, NULL);
 		if (pending != 0)
-			RTE_LOG(ERR, HASH, "RCU reclaim all resources failed\n");
+			HASH_LOG(ERR, "RCU reclaim all resources failed");
 	}
 
 	memset(h->buckets, 0, h->num_buckets * sizeof(struct rte_hash_bucket));
@@ -705,9 +767,9 @@ search_and_update(const struct rte_hash *h, void *data, const void *key,
 				 * variable. Release the application data
 				 * to the readers.
 				 */
-				__atomic_store_n(&k->pdata,
+				rte_atomic_store_explicit(&k->pdata,
 					data,
-					__ATOMIC_RELEASE);
+					rte_memory_order_release);
 				/*
 				 * Return index where key is stored,
 				 * subtracting the first dummy index
@@ -768,9 +830,9 @@ rte_hash_cuckoo_insert_mw(const struct rte_hash *h,
 			 * key_idx is the guard variable for signature
 			 * and key.
 			 */
-			__atomic_store_n(&prim_bkt->key_idx[i],
+			rte_atomic_store_explicit(&prim_bkt->key_idx[i],
 					 new_idx,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			break;
 		}
 	}
@@ -843,9 +905,9 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 		if (unlikely(&h->buckets[prev_alt_bkt_idx]
 				!= curr_bkt)) {
 			/* revert it to empty, otherwise duplicated keys */
-			__atomic_store_n(&curr_bkt->key_idx[curr_slot],
+			rte_atomic_store_explicit(&curr_bkt->key_idx[curr_slot],
 				EMPTY_SLOT,
-				__ATOMIC_RELEASE);
+				rte_memory_order_release);
 			__hash_rw_writer_unlock(h);
 			return -1;
 		}
@@ -857,13 +919,13 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 			 * Since there is one writer, load acquires on
 			 * tbl_chng_cnt are not required.
 			 */
-			__atomic_store_n(h->tbl_chng_cnt,
+			rte_atomic_store_explicit(h->tbl_chng_cnt,
 					 *h->tbl_chng_cnt + 1,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			/* The store to sig_current should not
 			 * move above the store to tbl_chng_cnt.
 			 */
-			__atomic_thread_fence(__ATOMIC_RELEASE);
+			rte_atomic_thread_fence(rte_memory_order_release);
 		}
 
 		/* Need to swap current/alt sig to allow later
@@ -873,9 +935,9 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 		curr_bkt->sig_current[curr_slot] =
 			prev_bkt->sig_current[prev_slot];
 		/* Release the updated bucket entry */
-		__atomic_store_n(&curr_bkt->key_idx[curr_slot],
+		rte_atomic_store_explicit(&curr_bkt->key_idx[curr_slot],
 			prev_bkt->key_idx[prev_slot],
-			__ATOMIC_RELEASE);
+			rte_memory_order_release);
 
 		curr_slot = prev_slot;
 		curr_node = prev_node;
@@ -889,20 +951,20 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 		 * Since there is one writer, load acquires on
 		 * tbl_chng_cnt are not required.
 		 */
-		__atomic_store_n(h->tbl_chng_cnt,
+		rte_atomic_store_explicit(h->tbl_chng_cnt,
 				 *h->tbl_chng_cnt + 1,
-				 __ATOMIC_RELEASE);
+				 rte_memory_order_release);
 		/* The store to sig_current should not
 		 * move above the store to tbl_chng_cnt.
 		 */
-		__atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 	}
 
 	curr_bkt->sig_current[curr_slot] = sig;
 	/* Release the new bucket entry */
-	__atomic_store_n(&curr_bkt->key_idx[curr_slot],
+	rte_atomic_store_explicit(&curr_bkt->key_idx[curr_slot],
 			 new_idx,
-			 __ATOMIC_RELEASE);
+			 rte_memory_order_release);
 
 	__hash_rw_writer_unlock(h);
 
@@ -1068,9 +1130,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	 * not leak after the store of pdata in the key store. i.e. pdata is
 	 * the guard variable. Release the application data to the readers.
 	 */
-	__atomic_store_n(&new_k->pdata,
+	rte_atomic_store_explicit(&new_k->pdata,
 		data,
-		__ATOMIC_RELEASE);
+		rte_memory_order_release);
 	/* Copy key */
 	memcpy(new_k->key, key, h->key_len);
 
@@ -1141,9 +1203,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				 * key_idx is the guard variable for signature
 				 * and key.
 				 */
-				__atomic_store_n(&cur_bkt->key_idx[i],
+				rte_atomic_store_explicit(&cur_bkt->key_idx[i],
 						 slot_id,
-						 __ATOMIC_RELEASE);
+						 rte_memory_order_release);
 				__hash_rw_writer_unlock(h);
 				return slot_id - 1;
 			}
@@ -1177,9 +1239,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	 * the store to key_idx. i.e. key_idx is the guard variable
 	 * for signature and key.
 	 */
-	__atomic_store_n(&(h->buckets_ext[ext_bkt_id - 1]).key_idx[0],
+	rte_atomic_store_explicit(&(h->buckets_ext[ext_bkt_id - 1]).key_idx[0],
 			 slot_id,
-			 __ATOMIC_RELEASE);
+			 rte_memory_order_release);
 	/* Link the new bucket to sec bucket linked list */
 	last = rte_hash_get_last_bkt(sec_bkt);
 	last->next = &h->buckets_ext[ext_bkt_id - 1];
@@ -1192,6 +1254,7 @@ failure:
 
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_with_hash)
 int32_t
 rte_hash_add_key_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1200,6 +1263,7 @@ rte_hash_add_key_with_hash(const struct rte_hash *h,
 	return __rte_hash_add_key_with_hash(h, key, sig, 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key)
 int32_t
 rte_hash_add_key(const struct rte_hash *h, const void *key)
 {
@@ -1207,6 +1271,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_add_key_with_hash(h, key, rte_hash_hash(h, key), 0);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_with_hash_data)
 int
 rte_hash_add_key_with_hash_data(const struct rte_hash *h,
 			const void *key, hash_sig_t sig, void *data)
@@ -1221,6 +1286,7 @@ rte_hash_add_key_with_hash_data(const struct rte_hash *h,
 		return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_add_key_data)
 int
 rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data)
 {
@@ -1282,17 +1348,17 @@ search_one_bucket_lf(const struct rte_hash *h, const void *key, uint16_t sig,
 		 * key comparison will ensure that the lookup fails.
 		 */
 		if (bkt->sig_current[i] == sig) {
-			key_idx = __atomic_load_n(&bkt->key_idx[i],
-					  __ATOMIC_ACQUIRE);
+			key_idx = rte_atomic_load_explicit(&bkt->key_idx[i],
+					  rte_memory_order_acquire);
 			if (key_idx != EMPTY_SLOT) {
 				k = (struct rte_hash_key *) ((char *)keys +
 						key_idx * h->key_entry_size);
 
 				if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 					if (data != NULL) {
-						*data = __atomic_load_n(
+						*data = rte_atomic_load_explicit(
 							&k->pdata,
-							__ATOMIC_ACQUIRE);
+							rte_memory_order_acquire);
 					}
 					/*
 					 * Return index where key is stored,
@@ -1366,8 +1432,8 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		 * starts. Acquire semantics will make sure that
 		 * loads in search_one_bucket are not hoisted.
 		 */
-		cnt_b = __atomic_load_n(h->tbl_chng_cnt,
-				__ATOMIC_ACQUIRE);
+		cnt_b = rte_atomic_load_explicit(h->tbl_chng_cnt,
+				rte_memory_order_acquire);
 
 		/* Check if key is in primary location */
 		bkt = &h->buckets[prim_bucket_idx];
@@ -1388,7 +1454,7 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		/* The loads of sig_current in search_one_bucket
 		 * should not move below the load from tbl_chng_cnt.
 		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* Re-read the table change counter to check if the
 		 * table has changed during search. If yes, re-do
 		 * the search.
@@ -1397,8 +1463,8 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		 * and key index in secondary bucket will make sure
 		 * that it does not get hoisted.
 		 */
-		cnt_a = __atomic_load_n(h->tbl_chng_cnt,
-					__ATOMIC_ACQUIRE);
+		cnt_a = rte_atomic_load_explicit(h->tbl_chng_cnt,
+					rte_memory_order_acquire);
 	} while (cnt_b != cnt_a);
 
 	return -ENOENT;
@@ -1414,6 +1480,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 		return __rte_hash_lookup_with_hash_l(h, key, sig, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash)
 int32_t
 rte_hash_lookup_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1422,6 +1489,7 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
 	return __rte_hash_lookup_with_hash(h, key, sig, NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup)
 int32_t
 rte_hash_lookup(const struct rte_hash *h, const void *key)
 {
@@ -1429,6 +1497,7 @@ rte_hash_lookup(const struct rte_hash *h, const void *key)
 	return __rte_hash_lookup_with_hash(h, key, rte_hash_hash(h, key), NULL);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_data)
 int
 rte_hash_lookup_with_hash_data(const struct rte_hash *h,
 			const void *key, hash_sig_t sig, void **data)
@@ -1437,6 +1506,7 @@ rte_hash_lookup_with_hash_data(const struct rte_hash *h,
 	return __rte_hash_lookup_with_hash(h, key, sig, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_data)
 int
 rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data)
 {
@@ -1498,12 +1568,13 @@ __hash_rcu_qsbr_free_resource(void *p, void *e, unsigned int n)
 	/* Return key indexes to free slot ring */
 	ret = free_slot(h, rcu_dq_entry.key_idx);
 	if (ret < 0) {
-		RTE_LOG(ERR, HASH,
-			"%s: could not enqueue free slots in global ring\n",
+		HASH_LOG(ERR,
+			"%s: could not enqueue free slots in global ring",
 				__func__);
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_rcu_qsbr_add)
 int
 rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 {
@@ -1527,7 +1598,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 
 	hash_rcu_cfg = rte_zmalloc(NULL, sizeof(struct rte_hash_rcu_config), 0);
 	if (hash_rcu_cfg == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		return 1;
 	}
 
@@ -1542,6 +1613,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 		if (params.size == 0)
 			params.size = total_entries;
 		params.trigger_reclaim_limit = cfg->trigger_reclaim_limit;
+		params.max_reclaim_size = cfg->max_reclaim_size;
 		if (params.max_reclaim_size == 0)
 			params.max_reclaim_size = RTE_HASH_RCU_DQ_RECLAIM_MAX;
 		params.esize = sizeof(struct __rte_hash_rcu_dq_entry);
@@ -1551,7 +1623,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 		h->dq = rte_rcu_qsbr_dq_create(&params);
 		if (h->dq == NULL) {
 			rte_free(hash_rcu_cfg);
-			RTE_LOG(ERR, HASH, "HASH defer queue creation failed\n");
+			HASH_LOG(ERR, "HASH defer queue creation failed");
 			return 1;
 		}
 	} else {
@@ -1573,6 +1645,28 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_hash_rcu_qsbr_dq_reclaim, 24.07)
+int rte_hash_rcu_qsbr_dq_reclaim(struct rte_hash *h, unsigned int *freed, unsigned int *pending,
+				 unsigned int *available)
+{
+	int ret;
+
+	if (h == NULL || h->hash_rcu_cfg == NULL) {
+		HASH_LOG(ERR, "Invalid input parameter");
+		rte_errno = EINVAL;
+		return 1;
+	}
+
+	ret = rte_rcu_qsbr_dq_reclaim(h->dq, h->hash_rcu_cfg->max_reclaim_size, freed, pending,
+				      available);
+	if (ret != 0) {
+		HASH_LOG(ERR, "%s: could not reclaim the defer queue in hash table", __func__);
+		return 1;
+	}
+
+	return 0;
+}
+
 static inline void
 remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt,
 		unsigned int i)
@@ -1580,8 +1674,8 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt,
 	int ret = free_slot(h, bkt->key_idx[i]);
 
 	if (ret < 0) {
-		RTE_LOG(ERR, HASH,
-			"%s: could not enqueue free slots in global ring\n",
+		HASH_LOG(ERR,
+			"%s: could not enqueue free slots in global ring",
 				__func__);
 	}
 }
@@ -1603,26 +1697,26 @@ __rte_hash_compact_ll(const struct rte_hash *h,
 	for (i = RTE_HASH_BUCKET_ENTRIES - 1; i >= 0; i--) {
 		if (last_bkt->key_idx[i] != EMPTY_SLOT) {
 			cur_bkt->sig_current[pos] = last_bkt->sig_current[i];
-			__atomic_store_n(&cur_bkt->key_idx[pos],
+			rte_atomic_store_explicit(&cur_bkt->key_idx[pos],
 					 last_bkt->key_idx[i],
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			if (h->readwrite_concur_lf_support) {
 				/* Inform the readers that the table has changed
 				 * Since there is one writer, load acquire on
 				 * tbl_chng_cnt is not required.
 				 */
-				__atomic_store_n(h->tbl_chng_cnt,
+				rte_atomic_store_explicit(h->tbl_chng_cnt,
 					 *h->tbl_chng_cnt + 1,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 				/* The store to sig_current should
 				 * not move above the store to tbl_chng_cnt.
 				 */
-				__atomic_thread_fence(__ATOMIC_RELEASE);
+				rte_atomic_thread_fence(rte_memory_order_release);
 			}
 			last_bkt->sig_current[i] = NULL_SIGNATURE;
-			__atomic_store_n(&last_bkt->key_idx[i],
+			rte_atomic_store_explicit(&last_bkt->key_idx[i],
 					 EMPTY_SLOT,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			return;
 		}
 	}
@@ -1642,8 +1736,8 @@ search_and_remove(const struct rte_hash *h, const void *key,
 
 	/* Check if key is in bucket */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		key_idx = __atomic_load_n(&bkt->key_idx[i],
-					  __ATOMIC_ACQUIRE);
+		key_idx = rte_atomic_load_explicit(&bkt->key_idx[i],
+					  rte_memory_order_acquire);
 		if (bkt->sig_current[i] == sig && key_idx != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					key_idx * h->key_entry_size);
@@ -1655,9 +1749,9 @@ search_and_remove(const struct rte_hash *h, const void *key,
 				if (!h->no_free_on_del)
 					remove_entry(h, bkt, i);
 
-				__atomic_store_n(&bkt->key_idx[i],
+				rte_atomic_store_explicit(&bkt->key_idx[i],
 						 EMPTY_SLOT,
-						 __ATOMIC_RELEASE);
+						 rte_memory_order_release);
 
 				*pos = i;
 				/*
@@ -1770,12 +1864,13 @@ return_key:
 		} else if (h->dq)
 			/* Push into QSBR FIFO if using RTE_HASH_QSBR_MODE_DQ */
 			if (rte_rcu_qsbr_dq_enqueue(h->dq, &rcu_dq_entry) != 0)
-				RTE_LOG(ERR, HASH, "Failed to push QSBR FIFO\n");
+				HASH_LOG(ERR, "Failed to push QSBR FIFO");
 	}
 	__hash_rw_writer_unlock(h);
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_del_key_with_hash)
 int32_t
 rte_hash_del_key_with_hash(const struct rte_hash *h,
 			const void *key, hash_sig_t sig)
@@ -1784,6 +1879,7 @@ rte_hash_del_key_with_hash(const struct rte_hash *h,
 	return __rte_hash_del_key_with_hash(h, key, sig);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_del_key)
 int32_t
 rte_hash_del_key(const struct rte_hash *h, const void *key)
 {
@@ -1791,6 +1887,7 @@ rte_hash_del_key(const struct rte_hash *h, const void *key)
 	return __rte_hash_del_key_with_hash(h, key, rte_hash_hash(h, key));
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_get_key_with_position)
 int
 rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 			       void **key)
@@ -1811,6 +1908,7 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_free_key_with_position)
 int
 rte_hash_free_key_with_position(const struct rte_hash *h,
 				const int32_t position)
@@ -1843,59 +1941,6 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
 }
 
 static inline void
-compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
-			const struct rte_hash_bucket *prim_bkt,
-			const struct rte_hash_bucket *sec_bkt,
-			uint16_t sig,
-			enum rte_hash_sig_compare_function sig_cmp_fn)
-{
-	unsigned int i;
-
-	/* For match mask the first bit of every two bits indicates the match */
-	switch (sig_cmp_fn) {
-#if defined(__SSE2__)
-	case RTE_HASH_COMPARE_SSE:
-		/* Compare all signatures in the bucket */
-		*prim_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
-				_mm_load_si128(
-					(__m128i const *)prim_bkt->sig_current),
-				_mm_set1_epi16(sig)));
-		/* Compare all signatures in the bucket */
-		*sec_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
-				_mm_load_si128(
-					(__m128i const *)sec_bkt->sig_current),
-				_mm_set1_epi16(sig)));
-		break;
-#elif defined(__ARM_NEON)
-	case RTE_HASH_COMPARE_NEON: {
-		uint16x8_t vmat, vsig, x;
-		int16x8_t shift = {-15, -13, -11, -9, -7, -5, -3, -1};
-
-		vsig = vld1q_dup_u16((uint16_t const *)&sig);
-		/* Compare all signatures in the primary bucket */
-		vmat = vceqq_u16(vsig,
-			vld1q_u16((uint16_t const *)prim_bkt->sig_current));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		*prim_hash_matches = (uint32_t)(vaddvq_u16(x));
-		/* Compare all signatures in the secondary bucket */
-		vmat = vceqq_u16(vsig,
-			vld1q_u16((uint16_t const *)sec_bkt->sig_current));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		*sec_hash_matches = (uint32_t)(vaddvq_u16(x));
-		}
-		break;
-#endif
-	default:
-		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-			*prim_hash_matches |=
-				((sig == prim_bkt->sig_current[i]) << (i << 1));
-			*sec_hash_matches |=
-				((sig == sec_bkt->sig_current[i]) << (i << 1));
-		}
-	}
-}
-
-static inline void
 __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 		const struct rte_hash_bucket **primary_bkt,
 		const struct rte_hash_bucket **secondary_bkt,
@@ -1905,22 +1950,41 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 	uint64_t hits = 0;
 	int32_t i;
 	int32_t ret;
-	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
-	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
 	struct rte_hash_bucket *cur_bkt, *next_bkt;
+
+#if DENSE_HASH_BULK_LOOKUP
+	const int hitmask_padding = 0;
+	uint16_t hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#else
+	const int hitmask_padding = 1;
+	uint32_t prim_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#endif
 
 	__hash_rw_reader_lock(h);
 
 	/* Compare signatures and prefetch key slot of first hit */
 	for (i = 0; i < num_keys; i++) {
-		compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+#if DENSE_HASH_BULK_LOOKUP
+		uint16_t *hitmask = &hitmask_buffer[i];
+		compare_signatures_dense(hitmask,
+			primary_bkt[i]->sig_current,
+			secondary_bkt[i]->sig_current,
+			sig[i], h->sig_cmp_fn);
+		const unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+		const unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+		compare_signatures_sparse(&prim_hitmask_buffer[i], &sec_hitmask_buffer[i],
 			primary_bkt[i], secondary_bkt[i],
 			sig[i], h->sig_cmp_fn);
+		const unsigned int prim_hitmask = prim_hitmask_buffer[i];
+		const unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
 
-		if (prim_hitmask[i]) {
+		if (prim_hitmask) {
 			uint32_t first_hit =
-					__builtin_ctzl(prim_hitmask[i])
-					>> 1;
+					rte_ctz32(prim_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[first_hit];
 			const struct rte_hash_key *key_slot =
@@ -1931,10 +1995,10 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			continue;
 		}
 
-		if (sec_hitmask[i]) {
+		if (sec_hitmask) {
 			uint32_t first_hit =
-					__builtin_ctzl(sec_hitmask[i])
-					>> 1;
+					rte_ctz32(sec_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[first_hit];
 			const struct rte_hash_key *key_slot =
@@ -1948,10 +2012,18 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 	/* Compare keys, first hits in primary first */
 	for (i = 0; i < num_keys; i++) {
 		positions[i] = -ENOENT;
-		while (prim_hitmask[i]) {
+#if DENSE_HASH_BULK_LOOKUP
+		uint16_t *hitmask = &hitmask_buffer[i];
+		unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+		unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+		unsigned int prim_hitmask = prim_hitmask_buffer[i];
+		unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
+		while (prim_hitmask) {
 			uint32_t hit_index =
-					__builtin_ctzl(prim_hitmask[i])
-					>> 1;
+					rte_ctz32(prim_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[hit_index];
 			const struct rte_hash_key *key_slot =
@@ -1973,13 +2045,13 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 				positions[i] = key_idx - 1;
 				goto next_key;
 			}
-			prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+			prim_hitmask &= ~(1 << (hit_index << hitmask_padding));
 		}
 
-		while (sec_hitmask[i]) {
+		while (sec_hitmask) {
 			uint32_t hit_index =
-					__builtin_ctzl(sec_hitmask[i])
-					>> 1;
+					rte_ctz32(sec_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[hit_index];
 			const struct rte_hash_key *key_slot =
@@ -2002,7 +2074,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 				positions[i] = key_idx - 1;
 				goto next_key;
 			}
-			sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+			sec_hitmask &= ~(1 << (hit_index << hitmask_padding));
 		}
 next_key:
 		continue;
@@ -2052,10 +2124,19 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 	uint64_t hits = 0;
 	int32_t i;
 	int32_t ret;
-	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
-	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
 	struct rte_hash_bucket *cur_bkt, *next_bkt;
 	uint32_t cnt_b, cnt_a;
+
+#if DENSE_HASH_BULK_LOOKUP
+	const int hitmask_padding = 0;
+	uint16_t hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	static_assert(sizeof(*hitmask_buffer)*8/2 == RTE_HASH_BUCKET_ENTRIES,
+	"The hitmask must be exactly wide enough to accept the whole hitmask chen it is dense");
+#else
+	const int hitmask_padding = 1;
+	uint32_t prim_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#endif
 
 	for (i = 0; i < num_keys; i++)
 		positions[i] = -ENOENT;
@@ -2065,19 +2146,31 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 		 * starts. Acquire semantics will make sure that
 		 * loads in compare_signatures are not hoisted.
 		 */
-		cnt_b = __atomic_load_n(h->tbl_chng_cnt,
-					__ATOMIC_ACQUIRE);
+		cnt_b = rte_atomic_load_explicit(h->tbl_chng_cnt,
+					rte_memory_order_acquire);
 
 		/* Compare signatures and prefetch key slot of first hit */
 		for (i = 0; i < num_keys; i++) {
-			compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+#if DENSE_HASH_BULK_LOOKUP
+			uint16_t *hitmask = &hitmask_buffer[i];
+			compare_signatures_dense(hitmask,
+				primary_bkt[i]->sig_current,
+				secondary_bkt[i]->sig_current,
+				sig[i], h->sig_cmp_fn);
+			const unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+			const unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+			compare_signatures_sparse(&prim_hitmask_buffer[i], &sec_hitmask_buffer[i],
 				primary_bkt[i], secondary_bkt[i],
 				sig[i], h->sig_cmp_fn);
+			const unsigned int prim_hitmask = prim_hitmask_buffer[i];
+			const unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
 
-			if (prim_hitmask[i]) {
+			if (prim_hitmask) {
 				uint32_t first_hit =
-						__builtin_ctzl(prim_hitmask[i])
-						>> 1;
+						rte_ctz32(prim_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 					primary_bkt[i]->key_idx[first_hit];
 				const struct rte_hash_key *key_slot =
@@ -2088,10 +2181,10 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				continue;
 			}
 
-			if (sec_hitmask[i]) {
+			if (sec_hitmask) {
 				uint32_t first_hit =
-						__builtin_ctzl(sec_hitmask[i])
-						>> 1;
+						rte_ctz32(sec_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 					secondary_bkt[i]->key_idx[first_hit];
 				const struct rte_hash_key *key_slot =
@@ -2104,14 +2197,22 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 		/* Compare keys, first hits in primary first */
 		for (i = 0; i < num_keys; i++) {
-			while (prim_hitmask[i]) {
+#if DENSE_HASH_BULK_LOOKUP
+			uint16_t *hitmask = &hitmask_buffer[i];
+			unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+			unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+			unsigned int prim_hitmask = prim_hitmask_buffer[i];
+			unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
+			while (prim_hitmask) {
 				uint32_t hit_index =
-						__builtin_ctzl(prim_hitmask[i])
-						>> 1;
+						rte_ctz32(prim_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&primary_bkt[i]->key_idx[hit_index],
-					__ATOMIC_ACQUIRE);
+					rte_memory_order_acquire);
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
@@ -2125,25 +2226,25 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					!rte_hash_cmp_eq(
 						key_slot->key, keys[i], h)) {
 					if (data != NULL)
-						data[i] = __atomic_load_n(
+						data[i] = rte_atomic_load_explicit(
 							&key_slot->pdata,
-							__ATOMIC_ACQUIRE);
+							rte_memory_order_acquire);
 
 					hits |= 1ULL << i;
 					positions[i] = key_idx - 1;
 					goto next_key;
 				}
-				prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+				prim_hitmask &= ~(1 << (hit_index << hitmask_padding));
 			}
 
-			while (sec_hitmask[i]) {
+			while (sec_hitmask) {
 				uint32_t hit_index =
-						__builtin_ctzl(sec_hitmask[i])
-						>> 1;
+						rte_ctz32(sec_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&secondary_bkt[i]->key_idx[hit_index],
-					__ATOMIC_ACQUIRE);
+					rte_memory_order_acquire);
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
@@ -2158,15 +2259,15 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					!rte_hash_cmp_eq(
 						key_slot->key, keys[i], h)) {
 					if (data != NULL)
-						data[i] = __atomic_load_n(
+						data[i] = rte_atomic_load_explicit(
 							&key_slot->pdata,
-							__ATOMIC_ACQUIRE);
+							rte_memory_order_acquire);
 
 					hits |= 1ULL << i;
 					positions[i] = key_idx - 1;
 					goto next_key;
 				}
-				sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+				sec_hitmask &= ~(1 << (hit_index << hitmask_padding));
 			}
 next_key:
 			continue;
@@ -2204,7 +2305,7 @@ next_key:
 		/* The loads of sig_current in compare_signatures
 		 * should not move below the load from tbl_chng_cnt.
 		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* Re-read the table change counter to check if the
 		 * table has changed during search. If yes, re-do
 		 * the search.
@@ -2213,8 +2314,8 @@ next_key:
 		 * key index will make sure that it does not get
 		 * hoisted.
 		 */
-		cnt_a = __atomic_load_n(h->tbl_chng_cnt,
-					__ATOMIC_ACQUIRE);
+		cnt_a = rte_atomic_load_explicit(h->tbl_chng_cnt,
+					rte_memory_order_acquire);
 	} while (cnt_b != cnt_a);
 
 	if (hit_mask != NULL)
@@ -2320,6 +2421,7 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 					 hit_mask, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_bulk)
 int
 rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, int32_t *positions)
@@ -2332,6 +2434,7 @@ rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_bulk_data)
 int
 rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 		      uint32_t num_keys, uint64_t *hit_mask, void *data[])
@@ -2340,12 +2443,12 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(hit_mask == NULL)), -EINVAL);
 
-	int32_t positions[num_keys];
+	int32_t positions[RTE_HASH_LOOKUP_BULK_MAX];
 
 	__rte_hash_lookup_bulk(h, keys, num_keys, positions, hit_mask, data);
 
 	/* Return number of hits */
-	return __builtin_popcountl(*hit_mask);
+	return rte_popcount64(*hit_mask);
 }
 
 
@@ -2432,6 +2535,7 @@ __rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 				num_keys, positions, hit_mask, data);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_bulk)
 int
 rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 		hash_sig_t *sig, uint32_t num_keys, int32_t *positions)
@@ -2446,6 +2550,7 @@ rte_hash_lookup_with_hash_bulk(const struct rte_hash *h, const void **keys,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_lookup_with_hash_bulk_data)
 int
 rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 		const void **keys, hash_sig_t *sig,
@@ -2456,15 +2561,16 @@ rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(hit_mask == NULL)), -EINVAL);
 
-	int32_t positions[num_keys];
+	int32_t positions[RTE_HASH_LOOKUP_BULK_MAX];
 
 	__rte_hash_lookup_with_hash_bulk(h, keys, sig, num_keys,
 			positions, hit_mask, data);
 
 	/* Return number of hits */
-	return __builtin_popcountl(*hit_mask);
+	return rte_popcount64(*hit_mask);
 }
 
+RTE_EXPORT_SYMBOL(rte_hash_iterate)
 int32_t
 rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32_t *next)
 {
@@ -2486,8 +2592,8 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 	idx = *next % RTE_HASH_BUCKET_ENTRIES;
 
 	/* If current position is empty, go to the next one */
-	while ((position = __atomic_load_n(&h->buckets[bucket_idx].key_idx[idx],
-					__ATOMIC_ACQUIRE)) == EMPTY_SLOT) {
+	while ((position = rte_atomic_load_explicit(&h->buckets[bucket_idx].key_idx[idx],
+					rte_memory_order_acquire)) == EMPTY_SLOT) {
 		(*next)++;
 		/* End of table */
 		if (*next == total_entries_main)

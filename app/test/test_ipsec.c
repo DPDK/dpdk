@@ -53,6 +53,7 @@ test_ipsec(void)
 #define BURST_SIZE		32
 #define REORDER_PKTS	1
 #define DEQUEUE_COUNT	1000
+#define SQN_START		255
 
 struct user_params {
 	enum rte_crypto_sym_xform_type auth;
@@ -82,6 +83,7 @@ struct ipsec_unitest_params {
 
 	struct rte_security_ipsec_xform ipsec_xform;
 
+	struct rte_ipsec_state ipsec_state;
 	struct rte_ipsec_sa_prm sa_prm;
 	struct rte_ipsec_session ss[MAX_NB_SAS];
 
@@ -91,6 +93,7 @@ struct ipsec_unitest_params {
 		*testbuf[BURST_SIZE];
 
 	uint16_t pkt_index;
+	bool is_stateless;
 };
 
 struct ipsec_test_cfg {
@@ -773,8 +776,13 @@ crypto_ipsec(uint16_t num_pkts)
 	struct rte_ipsec_group grp[1];
 
 	/* call crypto prepare */
-	k = rte_ipsec_pkt_crypto_prepare(&ut_params->ss[0], ut_params->ibuf,
-		ut_params->cop, num_pkts);
+	if (ut_params->is_stateless && (ut_params->ipsec_state.sqn != 0))
+		k = rte_ipsec_pkt_crypto_prepare_stateless(&ut_params->ss[0],
+			ut_params->ibuf, ut_params->cop, num_pkts, &ut_params->ipsec_state);
+	else
+		k = rte_ipsec_pkt_crypto_prepare(&ut_params->ss[0], ut_params->ibuf,
+			ut_params->cop, num_pkts);
+
 	if (k != num_pkts) {
 		RTE_LOG(ERR, USER1, "rte_ipsec_pkt_crypto_prepare fail\n");
 		return TEST_FAILED;
@@ -1322,23 +1330,35 @@ crypto_outb_burst_null_null_check(struct ipsec_unitest_params *ut_params,
 }
 
 static int
-test_ipsec_crypto_outb_burst_null_null(int i)
+test_ipsec_verify_sqn(struct ipsec_unitest_params *ut_params,
+		uint16_t num_pkts, uint32_t sqn_start)
+{
+	struct rte_esp_hdr esph;
+	uint8_t *obuf_data;
+	uint32_t sqn;
+	uint16_t j;
+
+	for (j = 0; j < num_pkts; j++) {
+		obuf_data = rte_pktmbuf_mtod(ut_params->obuf[j], void *);
+
+		memcpy(&esph, obuf_data + sizeof(ipv4_outer), sizeof(esph));
+		sqn = rte_be_to_cpu_32(esph.seq);
+		TEST_ASSERT_EQUAL(sqn, sqn_start + j,
+			"Invalid sequence number in packet %u\n", j);
+	}
+
+	return 0;
+}
+
+static int
+test_ipsec_crypto_outb_single_burst_null_null(int i, uint32_t sqn_start)
 {
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
 	struct ipsec_unitest_params *ut_params = &unittest_params;
 	uint16_t num_pkts = test_cfg[i].num_pkts;
 	uint16_t j;
-	int32_t rc;
+	int rc = 0;
 
-	/* create rte_ipsec_sa*/
-	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
-			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
-	if (rc != 0) {
-		RTE_LOG(ERR, USER1, "create_sa failed, cfg %d\n", i);
-		return rc;
-	}
-
-	/* Generate input mbuf data */
 	for (j = 0; j < num_pkts && rc == 0; j++) {
 		ut_params->ibuf[j] = setup_test_string(ts_params->mbuf_pool,
 			null_plain_data, sizeof(null_plain_data),
@@ -1351,7 +1371,7 @@ test_ipsec_crypto_outb_burst_null_null(int i)
 			ut_params->testbuf[j] = setup_test_string_tunneled(
 					ts_params->mbuf_pool,
 					null_plain_data, test_cfg[i].pkt_sz,
-					OUTBOUND_SPI, j + 1);
+					OUTBOUND_SPI, j + sqn_start);
 			if (ut_params->testbuf[j] == NULL)
 				rc = TEST_FAILED;
 		}
@@ -1374,7 +1394,70 @@ test_ipsec_crypto_outb_burst_null_null(int i)
 	if (rc == TEST_FAILED)
 		test_ipsec_dump_buffers(ut_params, i);
 
+	test_ipsec_verify_sqn(ut_params, num_pkts, sqn_start);
+
+	return rc;
+}
+
+static int
+test_ipsec_crypto_outb_burst_null_null(int i)
+{
+	struct ipsec_unitest_params *ut_params = &unittest_params;
+	uint32_t sqn_start;
+	int32_t rc;
+
+	/* create rte_ipsec_sa*/
+	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
+			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
+	if (rc != 0) {
+		RTE_LOG(ERR, USER1, "create_sa failed, cfg %d\n", i);
+		return rc;
+	}
+
+	/* Generate input mbuf data and test normal IPsec processing */
+	sqn_start = 1;
+	rc = test_ipsec_crypto_outb_single_burst_null_null(i, sqn_start);
+	if (rc != 0) {
+		RTE_LOG(ERR, USER1, "burst failed, cfg %d\n", i);
+		return rc;
+	}
+
+	if (ut_params->is_stateless) {
+
+		/* Generate input mbuf data for stateless IPsec processing. */
+		sqn_start = ut_params->ipsec_state.sqn = SQN_START;
+		rc = test_ipsec_crypto_outb_single_burst_null_null(i, sqn_start);
+		if (rc != 0) {
+			RTE_LOG(ERR, USER1, "stateless burst failed, cfg %d\n", i);
+			return rc;
+		}
+	}
+
 	destroy_sa(0);
+	return rc;
+}
+
+static int
+test_ipsec_crypto_outb_burst_stateless_null_null_wrapper(void)
+{
+	struct ipsec_unitest_params *ut_params = &unittest_params;
+	int rc = 0;
+	int i;
+
+	ut_params->ipsec_xform.spi = OUTBOUND_SPI;
+	ut_params->ipsec_xform.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS;
+	ut_params->ipsec_xform.proto = RTE_SECURITY_IPSEC_SA_PROTO_ESP;
+	ut_params->ipsec_xform.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
+	ut_params->ipsec_xform.tunnel.type = RTE_SECURITY_IPSEC_TUNNEL_IPV4;
+	ut_params->is_stateless = true;
+
+	for (i = 0; i < num_cfg && rc == 0; i++) {
+		ut_params->ipsec_xform.options.esn = test_cfg[i].esn;
+		ut_params->ipsec_state.sqn = 0;
+		rc = test_ipsec_crypto_outb_burst_null_null(i);
+
+	}
+
 	return rc;
 }
 
@@ -2497,6 +2580,8 @@ static struct unit_test_suite ipsec_testsuite  = {
 		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_crypto_outb_burst_null_null_wrapper),
 		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
+			test_ipsec_crypto_outb_burst_stateless_null_null_wrapper),
+		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_inline_crypto_inb_burst_null_null_wrapper),
 		TEST_CASE_ST(ut_setup_ipsec, ut_teardown_ipsec,
 			test_ipsec_inline_crypto_outb_burst_null_null_wrapper),
@@ -2532,4 +2617,4 @@ test_ipsec(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(ipsec_autotest, test_ipsec);
+REGISTER_FAST_TEST(ipsec_autotest, true, true, test_ipsec);

@@ -154,7 +154,7 @@ rte_acl_ipv4vlan_add_rules(struct rte_acl_ctx *ctx,
 	for (i = 0; i != num; i++) {
 		rc = acl_ipv4vlan_check_rule(rules + i);
 		if (rc != 0) {
-			RTE_LOG(ERR, ACL, "%s: rule #%u is invalid\n",
+			fprintf(stderr,  "%s: rule #%u is invalid\n",
 				__func__, i + 1);
 			return rc;
 		}
@@ -1223,8 +1223,7 @@ test_create_find_add(void)
 
 	/* create dummy acl */
 	for (i = 0; i < LEN; i++) {
-		memcpy(&rules[i], &acl_rule,
-			sizeof(struct rte_acl_ipv4vlan_rule));
+		rules[i] = acl_rule;
 		/* skip zero */
 		rules[i].data.userdata = i + 1;
 		/* one rule per category */
@@ -1286,7 +1285,7 @@ test_invalid_rules(void)
 	 * such rules.
 	 */
 	/* create dummy acl */
-	memcpy(&rule, &acl_rule, sizeof(struct rte_acl_ipv4vlan_rule));
+	rule = acl_rule;
 	rule.data.userdata = 1;
 	rule.dst_port_low = 0xfff0;
 	rule.dst_port_high = 0x0010;
@@ -1749,4 +1748,4 @@ test_acl(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(acl_autotest, test_acl);
+REGISTER_FAST_TEST(acl_autotest, true, true, test_acl);

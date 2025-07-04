@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 
+#include <eal_export.h>
 #include <rte_memcpy.h>
 
 #include "ip_frag_common.h"
@@ -13,7 +14,6 @@
  * IPv6 reassemble
  *
  * Implementation of IPv6 reassembly.
- *
  */
 
 static inline void
@@ -133,6 +133,7 @@ ipv6_frag_reassemble(struct ip_frag_pkt *fp)
  */
 #define MORE_FRAGS(x) (((x) & 0x100) >> 8)
 #define FRAG_OFFSET(x) (rte_cpu_to_be_16(x) >> 3)
+RTE_EXPORT_SYMBOL(rte_ipv6_frag_reassemble_packet)
 struct rte_mbuf *
 rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
@@ -144,8 +145,8 @@ rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	int32_t ip_len;
 	int32_t trim;
 
-	rte_memcpy(&key.src_dst[0], ip_hdr->src_addr, 16);
-	rte_memcpy(&key.src_dst[2], ip_hdr->dst_addr, 16);
+	rte_memcpy(&key.src_dst[0], &ip_hdr->src_addr, 16);
+	rte_memcpy(&key.src_dst[2], &ip_hdr->dst_addr, 16);
 
 	key.id = frag_hdr->id;
 	key.key_len = IPV6_KEYLEN;

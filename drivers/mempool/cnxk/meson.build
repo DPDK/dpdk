@@ -14,7 +14,9 @@ sources = files(
         'cnxk_mempool_telemetry.c',
         'cn9k_mempool_ops.c',
         'cn10k_mempool_ops.c',
+        'cn10k_hwpool_ops.c',
 )
 
+headers = files('rte_pmd_cnxk_mempool.h')
 deps += ['eal', 'mbuf', 'kvargs', 'bus_pci', 'common_cnxk', 'mempool']
 require_iova_in_mbuf = false

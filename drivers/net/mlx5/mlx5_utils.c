@@ -10,6 +10,34 @@
 
 /********************* Indexed pool **********************/
 
+#if defined(RTE_TOOLCHAIN_GCC) || defined(RTE_TOOLCHAIN_CLANG)
+#define pool_malloc(pool, flags, size, align, socket) (__extension__ ({ \
+	struct mlx5_indexed_pool *p = (struct mlx5_indexed_pool *)(pool); \
+	uint32_t f = (uint32_t)(flags); \
+	size_t s = (size_t)(size); \
+	uint32_t a = (uint32_t)(align); \
+	int so = (int)(socket); \
+	void *mem = p->cfg.malloc(f, s, a, so); \
+	if (mem == NULL && so != SOCKET_ID_ANY) { \
+		mem = p->cfg.malloc(f, s, a, SOCKET_ID_ANY); \
+		if (mem) { \
+			DRV_LOG(WARNING, \
+			"Allocated %p (size %zu socket %d) through NUMA tolerant fallback", \
+					mem, s, so); \
+		} \
+	} \
+	mem; \
+}))
+#else
+#define pool_malloc(pool, flags, size, align, socket)
+	(pool)->cfg.malloc((uint32_t)(flags) | NUMA_TOLERANT, (size), (align), (socket));
+#endif
+
+int mlx5_logtype_ipool;
+
+/* Initialize driver log type. */
+RTE_LOG_REGISTER_SUFFIX(mlx5_logtype_ipool, ipool, NOTICE)
+
 static inline void
 mlx5_ipool_lock(struct mlx5_indexed_pool *pool)
 {
@@ -84,7 +112,7 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	if (!cfg || (!cfg->malloc ^ !cfg->free) ||
 	    (cfg->per_core_cache && cfg->release_mem_en) ||
 	    (cfg->trunk_size && ((cfg->trunk_size & (cfg->trunk_size - 1)) ||
-	    ((__builtin_ffs(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
+	    ((rte_ffs32(cfg->trunk_size) + TRUNK_IDX_BITS) > 32))))
 		return NULL;
 	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool) + cfg->grow_trunk *
 			   sizeof(pool->grow_tbl[0]), RTE_CACHE_LINE_SIZE,
@@ -115,6 +143,12 @@ mlx5_ipool_create(struct mlx5_indexed_pool_config *cfg)
 	if (!cfg->per_core_cache)
 		pool->free_list = TRUNK_INVALID;
 	rte_spinlock_init(&pool->lcore_lock);
+
+#ifdef POOL_DEBUG
+	rte_spinlock_init(&pool->cache_validator.lock);
+#endif
+	DRV_LOG_IPOOL(INFO, "lcore id %d: pool %s: per core cache mode %s",
+		      rte_lcore_id(), pool->cfg.type, pool->cfg.per_core_cache != 0 ? "on" : "off");
 	return pool;
 }
 
@@ -138,7 +172,7 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 		int n_grow = pool->n_trunk_valid ? pool->n_trunk :
 			     RTE_CACHE_LINE_SIZE / sizeof(void *);
 
-		p = pool->cfg.malloc(0, (pool->n_trunk_valid + n_grow) *
+		p = pool_malloc(pool, MLX5_MEM_ZERO, (pool->n_trunk_valid + n_grow) *
 				     sizeof(struct mlx5_indexed_trunk *),
 				     RTE_CACHE_LINE_SIZE, rte_socket_id());
 		if (!p)
@@ -168,7 +202,7 @@ mlx5_ipool_grow(struct mlx5_indexed_pool *pool)
 	/* rte_bitmap requires memory cacheline aligned. */
 	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
 	trunk_size += bmp_size;
-	trunk = pool->cfg.malloc(0, trunk_size,
+	trunk = pool_malloc(pool, MLX5_MEM_ZERO, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!trunk)
 		return -ENOMEM;
@@ -203,7 +237,7 @@ mlx5_ipool_update_global_cache(struct mlx5_indexed_pool *pool, int cidx)
 	struct mlx5_indexed_cache *gc, *lc, *olc = NULL;
 
 	lc = pool->cache[cidx]->lc;
-	gc = __atomic_load_n(&pool->gc, __ATOMIC_RELAXED);
+	gc = rte_atomic_load_explicit(&pool->gc, rte_memory_order_relaxed);
 	if (gc && lc != gc) {
 		mlx5_ipool_lock(pool);
 		if (lc && !(--lc->ref_cnt))
@@ -214,9 +248,62 @@ mlx5_ipool_update_global_cache(struct mlx5_indexed_pool *pool, int cidx)
 		mlx5_ipool_unlock(pool);
 		if (olc)
 			pool->cfg.free(olc);
+		DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: updated lcache %d "
+			      "ref %d, new %p, old %p", rte_lcore_id(), pool->cfg.type,
+			      cidx, lc->ref_cnt, (void *)lc, (void *)olc);
 	}
 	return lc;
 }
+
+#ifdef POOL_DEBUG
+static void
+mlx5_ipool_grow_bmp(struct mlx5_indexed_pool *pool, uint32_t new_size)
+{
+	struct rte_bitmap *old_bmp = NULL;
+	void *old_bmp_mem = NULL;
+	uint32_t old_size = 0;
+	uint32_t i, bmp_mem_size;
+
+	if (pool->cache_validator.bmp_mem && pool->cache_validator.bmp) {
+		old_bmp = pool->cache_validator.bmp;
+		old_size = pool->cache_validator.bmp_size;
+		old_bmp_mem = pool->cache_validator.bmp_mem;
+	}
+
+	if (unlikely(new_size <= old_size))
+		return;
+
+	pool->cache_validator.bmp_size = new_size;
+	bmp_mem_size = rte_bitmap_get_memory_footprint(new_size);
+
+	pool->cache_validator.bmp_mem = pool_malloc(pool, MLX5_MEM_ZERO,
+							 bmp_mem_size,
+							 RTE_CACHE_LINE_SIZE,
+							 rte_socket_id());
+	if (unlikely(!pool->cache_validator.bmp_mem)) {
+		DRV_LOG_IPOOL(ERR, "Unable to allocate memory for a new bitmap");
+		return;
+	}
+
+	pool->cache_validator.bmp = rte_bitmap_init_with_all_set(pool->cache_validator.bmp_size,
+								pool->cache_validator.bmp_mem,
+								bmp_mem_size);
+	if (unlikely(!pool->cache_validator.bmp)) {
+		DRV_LOG(ERR, "Unable to allocate memory for a new bitmap");
+		pool->cfg.free(pool->cache_validator.bmp_mem);
+		return;
+	}
+
+	if (old_bmp && old_bmp_mem) {
+		for (i = 0; i < old_size; i++) {
+			if (rte_bitmap_get(old_bmp, i) == 0)
+				rte_bitmap_clear(pool->cache_validator.bmp, i);
+		}
+		rte_bitmap_free(old_bmp);
+		pool->cfg.free(old_bmp_mem);
+	}
+}
+#endif
 
 static uint32_t
 mlx5_ipool_allocate_from_global(struct mlx5_indexed_pool *pool, int cidx)
@@ -266,8 +353,8 @@ check_again:
 		pool->cache[cidx]->len = fetch_size - 1;
 		return pool->cache[cidx]->idx[pool->cache[cidx]->len];
 	}
-	trunk_idx = lc ? __atomic_load_n(&lc->n_trunk_valid,
-			 __ATOMIC_ACQUIRE) : 0;
+	trunk_idx = lc ? rte_atomic_load_explicit(&lc->n_trunk_valid,
+			 rte_memory_order_acquire) : 0;
 	trunk_n = lc ? lc->n_trunk : 0;
 	cur_max_idx = mlx5_trunk_idx_offset_get(pool, trunk_idx);
 	/* Check if index reach maximum. */
@@ -280,7 +367,7 @@ check_again:
 			     RTE_CACHE_LINE_SIZE / sizeof(void *);
 		cur_max_idx = mlx5_trunk_idx_offset_get(pool, trunk_n + n_grow);
 		/* Resize the trunk array. */
-		p = pool->cfg.malloc(0, ((trunk_idx + n_grow) *
+		p = pool_malloc(pool, MLX5_MEM_ZERO, ((trunk_idx + n_grow) *
 			sizeof(struct mlx5_indexed_trunk *)) +
 			(cur_max_idx * sizeof(uint32_t)) + sizeof(*p),
 			RTE_CACHE_LINE_SIZE, rte_socket_id());
@@ -302,7 +389,7 @@ check_again:
 	trunk_size = sizeof(*trunk);
 	data_size = mlx5_trunk_size_get(pool, trunk_idx);
 	trunk_size += RTE_CACHE_LINE_ROUNDUP(data_size * pool->cfg.size);
-	trunk = pool->cfg.malloc(0, trunk_size,
+	trunk = pool_malloc(pool, MLX5_MEM_ZERO, trunk_size,
 				 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (unlikely(!trunk)) {
 		pool->cfg.free(p);
@@ -332,11 +419,11 @@ check_again:
 		lc = p;
 		lc->ref_cnt = 1;
 		pool->cache[cidx]->lc = lc;
-		__atomic_store_n(&pool->gc, p, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&pool->gc, p, rte_memory_order_relaxed);
 	}
 	/* Add trunk to trunks array. */
 	lc->trunks[trunk_idx] = trunk;
-	__atomic_fetch_add(&lc->n_trunk_valid, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&lc->n_trunk_valid, 1, rte_memory_order_relaxed);
 	/* Enqueue half of the index to global. */
 	ts_idx = mlx5_trunk_idx_offset_get(pool, trunk_idx) + 1;
 	fetch_size = trunk->free >> 1;
@@ -366,7 +453,7 @@ _mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 
 	MLX5_ASSERT(idx);
 	if (unlikely(!pool->cache[cidx])) {
-		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+		pool->cache[cidx] = pool_malloc(pool, MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
 			(pool->cfg.per_core_cache * sizeof(uint32_t)),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
@@ -379,7 +466,8 @@ _mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 	idx -= 1;
 	trunk_idx = mlx5_trunk_idx_get(pool, idx);
 	trunk = lc->trunks[trunk_idx];
-	MLX5_ASSERT(trunk);
+	if (!trunk)
+		return NULL;
 	entry_idx = idx - mlx5_trunk_idx_offset_get(pool, trunk_idx);
 	return &trunk->data[entry_idx * pool->cfg.size];
 }
@@ -401,13 +489,57 @@ mlx5_ipool_get_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 	return entry;
 }
 
+#ifdef POOL_DEBUG
+static void
+mlx5_ipool_validate_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	rte_spinlock_lock(&pool->cache_validator.lock);
+	uint32_t entry_idx = idx - 1;
+	uint32_t allocated_size = pool->gc->n_trunk_valid *
+						mlx5_trunk_size_get(pool, pool->n_trunk_valid);
+
+	if (!pool->cache_validator.bmp)
+		mlx5_ipool_grow_bmp(pool, allocated_size);
+
+	if (pool->cache_validator.bmp_size < allocated_size)
+		mlx5_ipool_grow_bmp(pool, allocated_size);
+
+	if (rte_bitmap_get(pool->cache_validator.bmp, entry_idx) == 0) {
+		DRV_LOG_IPOOL(ERR, "lcore id %d: pool %s: detected double malloc idx: %d",
+			      rte_lcore_id(), pool->cfg.type, idx);
+		MLX5_ASSERT(0);
+	}
+	rte_bitmap_clear(pool->cache_validator.bmp, entry_idx);
+	rte_spinlock_unlock(&pool->cache_validator.lock);
+}
+
+static void
+mlx5_ipool_validate_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
+{
+	rte_spinlock_lock(&pool->cache_validator.lock);
+	uint32_t entry_idx = idx - 1;
+
+	if (!pool->gc || !pool->cache_validator.bmp) {
+		rte_spinlock_unlock(&pool->cache_validator.lock);
+		return;
+	}
+
+	if (rte_bitmap_get(pool->cache_validator.bmp, entry_idx) != 0) {
+		DRV_LOG_IPOOL(ERR, "lcore id %d: pool %s: detected double free of index %d",
+			      rte_lcore_id(), pool->cfg.type, idx);
+		MLX5_ASSERT(0);
+	}
+	rte_bitmap_set(pool->cache_validator.bmp, entry_idx);
+	rte_spinlock_unlock(&pool->cache_validator.lock);
+}
+#endif
 
 static void *
 _mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, int cidx,
 			 uint32_t *idx)
 {
 	if (unlikely(!pool->cache[cidx])) {
-		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+		pool->cache[cidx] = pool_malloc(pool, MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
 			(pool->cfg.per_core_cache * sizeof(uint32_t)),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
@@ -441,6 +573,13 @@ mlx5_ipool_malloc_cache(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	entry = _mlx5_ipool_malloc_cache(pool, cidx, idx);
 	if (unlikely(cidx == RTE_MAX_LCORE))
 		rte_spinlock_unlock(&pool->lcore_lock);
+#ifdef POOL_DEBUG
+	++pool->n_entry;
+	mlx5_ipool_validate_malloc_cache(pool, *idx);
+	DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: allocated entry %d lcore %d, "
+		      "current cache size %d, total allocated entries %d.", rte_lcore_id(),
+		      pool->cfg.type, *idx, cidx, pool->cache[cidx]->len, pool->n_entry);
+#endif
 	return entry;
 }
 
@@ -452,12 +591,17 @@ _mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 	uint32_t reclaim_num = 0;
 
 	MLX5_ASSERT(idx);
+
+#ifdef POOL_DEBUG
+	mlx5_ipool_validate_free_cache(pool, idx);
+#endif
+
 	/*
 	 * When index was allocated on core A but freed on core B. In this
 	 * case check if local cache on core B was allocated before.
 	 */
 	if (unlikely(!pool->cache[cidx])) {
-		pool->cache[cidx] = pool->cfg.malloc(MLX5_MEM_ZERO,
+		pool->cache[cidx] = pool_malloc(pool, MLX5_MEM_ZERO,
 			sizeof(struct mlx5_ipool_per_lcore) +
 			(pool->cfg.per_core_cache * sizeof(uint32_t)),
 			RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
@@ -470,6 +614,9 @@ _mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 	if (pool->cache[cidx]->len < pool->cfg.per_core_cache) {
 		pool->cache[cidx]->idx[pool->cache[cidx]->len] = idx;
 		pool->cache[cidx]->len++;
+		DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: freed entry %d "
+			      "back to lcache %d, lcache size %d.", rte_lcore_id(),
+			      pool->cfg.type, idx, cidx, pool->cache[cidx]->len);
 		return;
 	}
 	ilc = pool->cache[cidx];
@@ -492,6 +639,10 @@ _mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, int cidx, uint32_t idx)
 		pool->cfg.free(olc);
 	pool->cache[cidx]->idx[pool->cache[cidx]->len] = idx;
 	pool->cache[cidx]->len++;
+
+	DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: cache reclaim, lcache %d, "
+		      "reclaimed: %d, gcache size %d.", rte_lcore_id(), pool->cfg.type,
+		      cidx, reclaim_num, pool->cache[cidx]->len);
 }
 
 static void
@@ -507,6 +658,10 @@ mlx5_ipool_free_cache(struct mlx5_indexed_pool *pool, uint32_t idx)
 	_mlx5_ipool_free_cache(pool, cidx, idx);
 	if (unlikely(cidx == RTE_MAX_LCORE))
 		rte_spinlock_unlock(&pool->lcore_lock);
+
+#ifdef POOL_DEBUG
+	pool->n_entry--;
+#endif
 }
 
 void *
@@ -526,6 +681,8 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 			mlx5_ipool_unlock(pool);
 			return NULL;
 		}
+		DRV_LOG_IPOOL(INFO, "lcore id %d: pool %s: add trunk: new size = %d",
+			      rte_lcore_id(), pool->cfg.type, pool->n_trunk_valid);
 	}
 	MLX5_ASSERT(pool->free_list != TRUNK_INVALID);
 	trunk = pool->trunks[pool->free_list];
@@ -535,7 +692,7 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 		return NULL;
 	}
 	MLX5_ASSERT(slab);
-	iidx += __builtin_ctzll(slab);
+	iidx += rte_ctz64(slab);
 	MLX5_ASSERT(iidx != UINT32_MAX);
 	MLX5_ASSERT(iidx < mlx5_trunk_size_get(pool, trunk->idx));
 	rte_bitmap_clear(trunk->bmp, iidx);
@@ -549,7 +706,7 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	iidx += 1; /* non-zero index. */
 	trunk->free--;
 #ifdef POOL_DEBUG
-	pool->n_entry++;
+	++pool->n_entry;
 #endif
 	if (!trunk->free) {
 		/* Full trunk will be removed from free list in imalloc. */
@@ -566,6 +723,11 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 	}
 	*idx = iidx;
 	mlx5_ipool_unlock(pool);
+#ifdef POOL_DEBUG
+	DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: allocated entry %d trunk_id %d, "
+		      "number of trunks %d, total allocated entries %d", rte_lcore_id(),
+		      pool->cfg.type, *idx, pool->free_list, pool->n_trunk_valid, pool->n_entry);
+#endif
 	return p;
 }
 
@@ -643,6 +805,8 @@ mlx5_ipool_free(struct mlx5_indexed_pool *pool, uint32_t idx)
 #ifdef POOL_DEBUG
 	pool->n_entry--;
 #endif
+	DRV_LOG_IPOOL(DEBUG, "lcore id %d: pool %s: freed entry %d trunk_id %d",
+		      rte_lcore_id(), pool->cfg.type, entry_idx + 1, trunk_idx);
 out:
 	mlx5_ipool_unlock(pool);
 }
@@ -687,6 +851,8 @@ mlx5_ipool_destroy(struct mlx5_indexed_pool *pool)
 
 	MLX5_ASSERT(pool);
 	mlx5_ipool_lock(pool);
+	DRV_LOG_IPOOL(INFO, "lcore id %d: pool %s: destroy", rte_lcore_id(), pool->cfg.type);
+
 	if (pool->cfg.per_core_cache) {
 		for (i = 0; i <= RTE_MAX_LCORE; i++) {
 			/*
@@ -739,7 +905,7 @@ mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool)
 	/* Reset bmp. */
 	bmp_num = mlx5_trunk_idx_offset_get(pool, gc->n_trunk_valid);
 	mem_size = rte_bitmap_get_memory_footprint(bmp_num);
-	pool->bmp_mem = pool->cfg.malloc(MLX5_MEM_ZERO, mem_size,
+	pool->bmp_mem = pool_malloc(pool, MLX5_MEM_ZERO, mem_size,
 					 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!pool->bmp_mem) {
 		DRV_LOG(ERR, "Ipool bitmap mem allocate failed.\n");
@@ -756,6 +922,8 @@ mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool)
 	/* Clear global cache. */
 	for (i = 0; i < gc->len; i++)
 		rte_bitmap_clear(ibmp, gc->idx[i] - 1);
+	DRV_LOG_IPOOL(INFO, "lcore id %d: pool %s: flush gcache, gcache size = %d",
+		      rte_lcore_id(), pool->cfg.type, gc->len);
 	/* Clear core cache. */
 	for (i = 0; i < RTE_MAX_LCORE + 1; i++) {
 		struct mlx5_ipool_per_lcore *ilc = pool->cache[i];
@@ -764,6 +932,8 @@ mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool)
 			continue;
 		for (j = 0; j < ilc->len; j++)
 			rte_bitmap_clear(ibmp, ilc->idx[j] - 1);
+		DRV_LOG_IPOOL(INFO, "lcore id %d: pool %s: flush lcache %d",
+			      rte_lcore_id(), pool->cfg.type, i);
 	}
 }
 
@@ -783,7 +953,7 @@ mlx5_ipool_get_next_cache(struct mlx5_indexed_pool *pool, uint32_t *pos)
 		}
 		return NULL;
 	}
-	iidx += __builtin_ctzll(slab);
+	iidx += rte_ctz64(slab);
 	rte_bitmap_clear(ibmp, iidx);
 	iidx++;
 	*pos = iidx;
@@ -807,6 +977,34 @@ mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos)
 		idx++;
 	}
 	return NULL;
+}
+
+int
+mlx5_ipool_resize(struct mlx5_indexed_pool *pool, uint32_t num_entries,
+	struct rte_flow_error *error)
+{
+	if (num_entries == pool->cfg.max_idx)
+		return 0;
+	else if (num_entries < pool->cfg.max_idx)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot decrease pool size");
+	if (num_entries % pool->cfg.trunk_size)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "number of entries in pool must be trunk size multiplication");
+	if (num_entries >= mlx5_trunk_idx_offset_get(pool, TRUNK_MAX_IDX + 1))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "requested number of entries exceeds pool limit");
+	mlx5_ipool_lock(pool);
+	pool->cfg.max_idx = num_entries;
+	mlx5_ipool_unlock(pool);
+
+	DRV_LOG_IPOOL(INFO,
+		      "lcore id %d: pool %s:, resize pool, new entries limit %d",
+		      rte_lcore_id(), pool->cfg.type, pool->cfg.max_idx);
+	return 0;
 }
 
 void

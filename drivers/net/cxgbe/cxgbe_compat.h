@@ -135,12 +135,6 @@ typedef uint64_t  dma_addr_t;
  */
 #define cxgbe_roundup(_p, _s) (((unsigned long)(_p) + (_s - 1)) & ~(_s - 1))
 
-#ifndef container_of
-#define container_of(ptr, type, member) ({ \
-		typeof(((type *)0)->member)(*__mptr) = (ptr); \
-		(type *)((char *)__mptr - offsetof(type, member)); })
-#endif
-
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
 
 #define cpu_to_be16(o) rte_cpu_to_be_16(o)
@@ -198,7 +192,7 @@ static inline uint8_t hweight32(uint32_t word32)
  */
 static inline int cxgbe_fls(int x)
 {
-	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
+	return x ? sizeof(x) * 8 - rte_clz32(x) : 0;
 }
 
 static inline unsigned long ilog2(unsigned long n)

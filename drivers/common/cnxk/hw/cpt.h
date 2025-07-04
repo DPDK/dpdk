@@ -44,7 +44,8 @@
 #define CPT_LF_CTX_ENC_PKT_CNT	(0x540ull)
 #define CPT_LF_CTX_DEC_BYTE_CNT (0x550ull)
 #define CPT_LF_CTX_DEC_PKT_CNT	(0x560ull)
-#define CPT_LF_CTX_RELOAD	(0x570ull)
+#define CPT_LF_CTX_RELOAD	(0x570ull) /* [CN10k] */
+#define CPT_LF_CTX_INVAL	(0x570ull) /* [CN20k] */
 
 #define CPT_AF_LFX_CTL(a)  (0x27000ull | (uint64_t)(a) << 3)
 #define CPT_AF_LFX_CTL2(a) (0x29000ull | (uint64_t)(a) << 3)
@@ -73,10 +74,16 @@ union cpt_eng_caps {
 		uint64_t __io des : 1;
 		uint64_t __io crc : 1;
 		uint64_t __io mmul : 1;
-		uint64_t __io reserved_15_33 : 19;
-		uint64_t __io pdcp_chain : 1;
+		uint64_t __io reserved_15_20 : 6;
+		uint64_t __io sm3 : 1;
+		uint64_t __io sm4 : 1;
+		uint64_t __io reserved_23_34 : 12;
 		uint64_t __io sg_ver2 : 1;
-		uint64_t __io reserved_36_63 : 28;
+		uint64_t __io sm2 : 1;
+		uint64_t __io pdcp_chain_zuc256 : 1;
+		uint64_t __io tls : 1;
+		uint64_t __io eddsa : 1;
+		uint64_t __io reserved_40_63 : 24;
 	};
 };
 
@@ -113,6 +120,14 @@ union cpt_lf_ctx_err {
 };
 
 union cpt_lf_ctx_reload {
+	uint64_t u;
+	struct {
+		uint64_t cptr : 46;
+		uint64_t reserved_46_63 : 18;
+	} s;
+};
+
+union cpt_lf_ctx_inval {
 	uint64_t u;
 	struct {
 		uint64_t cptr : 46;
@@ -233,6 +248,15 @@ struct cpt_inst_s {
 			uint64_t doneint : 1;
 			uint64_t nixtx_addr : 60;
 		} s;
+		struct {
+			uint64_t nixtxl : 3;
+			uint64_t doneint : 1;
+			uint64_t chan : 12;
+			uint64_t l2_len : 8;
+			uint64_t et_offset : 8;
+			uint64_t match_id : 16;
+			uint64_t sso_pf_func : 16;
+		} hw_s;
 		uint64_t u64;
 	} w0;
 
@@ -274,6 +298,16 @@ struct cpt_inst_s {
 };
 
 union cpt_res_s {
+	struct cpt_cn20k_res_s {
+		uint64_t compcode : 7;
+		uint64_t doneint : 1;
+		uint64_t uc_compcode : 8;
+		uint64_t rlen : 16;
+		uint64_t spi : 32;
+
+		uint64_t esn;
+	} cn20k;
+
 	struct cpt_cn10k_res_s {
 		uint64_t compcode : 7;
 		uint64_t doneint : 1;
@@ -297,60 +331,126 @@ union cpt_res_s {
 };
 
 /* [CN10K, .) */
-struct cpt_parse_hdr_s {
-	/* WORD 0 */
-	union {
-		uint64_t u64;
-		struct {
-			uint8_t pad_len : 3;
-			uint8_t num_frags : 3;
-			uint8_t pkt_out : 2;
+union cpt_parse_hdr_u {
+	struct cpt_parse_hdr_s {
+		/* WORD 0 */
+		union {
+			uint64_t u64;
+			struct {
+				uint64_t cookie : 32;
+				uint64_t match_id : 16;
+				uint64_t err_sum : 1;
+				uint64_t reas_sts : 4;
+				uint64_t pad_len : 3;
+				uint64_t et_owr : 1;
+				uint64_t pkt_fmt : 1;
+				uint64_t num_frags : 4;
+				uint64_t pkt_out : 2;
+			};
+		} w0;
 
-			uint8_t err_sum : 1;
-			uint8_t reas_sts : 4;
-			uint8_t reserved_53 : 1;
-			uint8_t et_owr : 1;
-			uint8_t pkt_fmt : 1;
+		/* WORD 1 */
+		uint64_t wqe_ptr;
 
-			uint16_t match_id : 16;
+		/* WORD 2 */
+		union {
+			uint64_t u64;
+			struct {
+				uint64_t rsvd_134_128 : 7;
+				uint64_t pkt_inline : 1;
+				uint64_t rsvd_155_136 : 20;
+				uint64_t orig_pkt_aura : 20;
+				uint64_t il3_off : 8;
+				uint64_t ptr_pad : 5;
+				uint64_t ptr_offset : 3;
+			};
+		} w2;
 
-			uint32_t cookie : 32;
+		/* WORD 3 */
+		union {
+			uint64_t u64;
+			struct {
+				uint8_t hw_ccode;
+				uint8_t uc_ccode;
+				uint16_t frag_age;
+				uint16_t pf_func;
+				uint16_t rlen;
+			};
+		} w3;
+
+		/* WORD 4 */
+		union {
+			uint64_t u64;
+			struct {
+				uint32_t l4_chksum;
+				uint32_t l4_chksum_type : 2;
+				uint32_t rsvd_292_290 : 3;
+				uint32_t channel : 12;
+				uint32_t rsvd_308_305 : 4;
+				uint32_t sctr_size : 4;
+				uint32_t rsvd_314_313 : 2;
+				uint32_t gthr_size : 5;
+			};
+		} w4;
+	} s;
+
+	struct cpt_cn10k_parse_hdr_s {
+		/* WORD 0 */
+		union {
+			uint64_t u64;
+			struct {
+				uint8_t pad_len : 3;
+				uint8_t num_frags : 3;
+				uint8_t pkt_out : 2;
+
+				uint8_t err_sum : 1;
+				uint8_t reas_sts : 4;
+				uint8_t reserved_53 : 1;
+				uint8_t et_owr : 1;
+				uint8_t pkt_fmt : 1;
+
+				uint16_t match_id : 16;
+
+				uint32_t cookie : 32;
+			};
+		} w0;
+
+		/* WORD 1 */
+		uint64_t wqe_ptr;
+
+		/* WORD 2 */
+		union {
+			uint64_t u64;
+			struct {
+				uint8_t fi_pad : 3;
+				uint8_t fi_offset : 5;
+				uint8_t il3_off;
+				uint16_t orig_pf_func;
+				uint16_t reserved_145_160;
+				uint16_t frag_age;
+			};
+		} w2;
+
+		/* WORD 3 */
+		union {
+			uint64_t u64;
+			struct {
+				uint32_t spi;
+				uint16_t reserved_209_224;
+				uint8_t uc_ccode;
+				uint8_t hw_ccode;
+			};
+		} w3;
+
+		/* WORD 4 */
+		union {
+			uint64_t u64;
+			uint64_t esn;
+			uint64_t frag1_wqe_ptr;
 		};
-	} w0;
+	} cn10k;
 
-	/* WORD 1 */
-	uint64_t wqe_ptr;
-
-	/* WORD 2 */
-	union {
-		uint64_t u64;
-		struct {
-			uint8_t fi_pad : 3;
-			uint8_t fi_offset : 5;
-			uint8_t il3_off;
-			uint16_t orig_pf_func;
-			uint16_t reserved_145_160;
-			uint16_t frag_age;
-		};
-	} w2;
-
-	/* WORD 3 */
-	union {
-		uint64_t u64;
-		struct {
-			uint32_t spi;
-			uint16_t reserved_209_224;
-			uint8_t uc_ccode;
-			uint8_t hw_ccode;
-		};
-	} w3;
-
-	/* WORD 4 */
-	union {
-		uint64_t u64;
-		uint64_t esn;
-		uint64_t frag1_wqe_ptr;
-	};
+	uint64_t u64[5];
 };
 
 union cpt_frag_info {
@@ -386,6 +486,47 @@ struct cpt_frag_info_s {
 			uint16_t frag_size3;
 		};
 	} w1;
+};
+
+/* CPT rxc pointer info structure */
+struct cpt_rxc_ptr_info_s {
+	/* WORD 0 */
+	union {
+		uint64_t u64;
+		struct {
+			uint64_t rsvd_47_0 : 48;
+			uint64_t size : 16;
+		};
+	} w0;
+
+	/* WORD 1 */
+	uint64_t ptr;
+};
+
+/* CPT rxc scatter/gather subdescriptor structure */
+struct cpt_rxc_sg_s {
+	/* WORD 0 */
+	union {
+		uint64_t u64;
+		struct {
+			uint16_t seg1_size;
+			uint16_t seg2_size;
+			uint16_t seg3_size;
+			uint16_t segs : 2;
+			uint16_t nxt_fst_frag : 3;
+			uint16_t blk_sz : 4;
+			uint16_t rsvd_63_57 : 7;
+		};
+	} w0;
+
+	/* WORD 1 */
+	uint64_t seg1_ptr;
+
+	/* WORD 2 */
+	uint64_t seg2_ptr;
+
+	/* WORD 3 */
+	uint64_t seg3_ptr;
 };
 
 union cpt_fc_write_s {

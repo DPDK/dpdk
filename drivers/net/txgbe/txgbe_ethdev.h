@@ -31,6 +31,7 @@
 #define TXGBE_FLAG_NEED_LINK_CONFIG (uint32_t)(1 << 4)
 #define TXGBE_FLAG_NEED_AN_CONFIG   (uint32_t)(1 << 5)
 #define TXGBE_FLAG_OVERHEAT         (uint32_t)(1 << 6)
+#define TXGBE_FLAG_TX_DESC_ERR      (uint32_t)(1 << 7)
 
 /*
  * Defines that were not part of txgbe_type.h as they are not used by the
@@ -41,6 +42,7 @@
 /*Default value of Max Rx Queue*/
 #define TXGBE_MAX_RX_QUEUE_NUM	128
 #define TXGBE_VMDQ_DCB_NB_QUEUES     TXGBE_MAX_RX_QUEUE_NUM
+#define TXGBE_NONE_MODE_TX_NB_QUEUES 64
 
 #ifndef NBBY
 #define NBBY	8	/* number of bits in a byte */
@@ -55,7 +57,7 @@
 #define TXGBE_5TUPLE_MAX_PRI            7
 #define TXGBE_5TUPLE_MIN_PRI            1
 
-
+#define TXGBE_MAX_MTU			9414
 /* The overhead from MTU to max frame size. */
 #define TXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
@@ -363,6 +365,7 @@ struct txgbe_adapter {
 	struct txgbe_ipsec          ipsec;
 #endif
 	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
 	struct rte_timecounter      systime_tc;
 	struct rte_timecounter      rx_tstamp_tc;
 	struct rte_timecounter      tx_tstamp_tc;
@@ -370,6 +373,9 @@ struct txgbe_adapter {
 
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
+
+	RTE_ATOMIC(uint32_t) link_thread_running;
+	rte_thread_t link_thread_tid;
 };
 
 #define TXGBE_DEV_ADAPTER(dev) \
@@ -469,6 +475,8 @@ int txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
+void txgbe_tx_queue_clear_error(void *param);
+
 void txgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
 
@@ -561,6 +569,9 @@ void txgbe_configure_dcb(struct rte_eth_dev *dev);
 int
 txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		int wait_to_complete);
+int
+txgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev,
+		uint32_t timeout_ms);
 int txgbe_pf_host_init(struct rte_eth_dev *eth_dev);
 
 void txgbe_pf_host_uninit(struct rte_eth_dev *eth_dev);
@@ -697,7 +708,8 @@ struct rte_txgbe_xstats_name_off {
 	unsigned int offset;
 };
 
-const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					       size_t *no_of_elements);
 int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);

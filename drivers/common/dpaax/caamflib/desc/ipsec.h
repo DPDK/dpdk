@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016,2019-2020 NXP
+ * Copyright 2016,2019-2022 NXP
  *
  */
 
@@ -334,9 +334,7 @@ struct ipsec_encap_gcm {
  * @seq_num: IPsec sequence number
  * @spi: IPsec SPI (Security Parameters Index)
  * @ip_hdr_len: optional IP Header length (in bytes)
- *  reserved - 16b
- *  Opt. IP Hdr Len - 16b
- * @ip_hdr: optional IP Header content (only for IPsec legacy mode)
+ *  IP header must follow directly after ipsec_encap_pdb
  */
 struct ipsec_encap_pdb {
 	uint32_t options;
@@ -350,7 +348,6 @@ struct ipsec_encap_pdb {
 	};
 	uint32_t spi;
 	uint32_t ip_hdr_len;
-	uint8_t ip_hdr[0];
 };
 
 static inline unsigned int
@@ -710,6 +707,11 @@ static inline void __gen_auth_key(struct program *program,
 	case OP_PCL_IPSEC_HMAC_SHA2_512_256:
 		dkp_protid = OP_PCLID_DKP_SHA512;
 		break;
+	case OP_PCL_IPSEC_HMAC_SHA2_224_96:
+	case OP_PCL_IPSEC_HMAC_SHA2_224_112:
+	case OP_PCL_IPSEC_HMAC_SHA2_224_224:
+		dkp_protid = OP_PCLID_DKP_SHA224;
+		break;
 	default:
 		KEY(program, KEY2, authdata->key_enc_flags, authdata->key,
 		    authdata->keylen, INLINE_KEY(authdata));
@@ -724,6 +726,79 @@ static inline void __gen_auth_key(struct program *program,
 		DKP_PROTOCOL(program, dkp_protid, OP_PCL_DKP_SRC_IMM,
 			     OP_PCL_DKP_DST_IMM, (uint16_t)authdata->keylen,
 			     authdata->key, authdata->key_type);
+}
+
+/**
+ * rta_inline_ipsec_query() - Provide indications on which data items can be inlined
+ *                      and which shall be referenced in IPsec shared descriptor.
+ * @sd_base_len: Shared descriptor base length - bytes consumed by the commands,
+ *               excluding the data items to be inlined (or corresponding
+ *               pointer if an item is not inlined). Each cnstr_* function that
+ *               generates descriptors should have a define mentioning
+ *               corresponding length.
+ * @jd_len: Maximum length of the job descriptor(s) that will be used
+ *          together with the shared descriptor.
+ * @data_len: Array of lengths of the data items trying to be inlined
+ * @inl_mask: 32bit mask with bit x = 1 if data item x can be inlined, 0
+ *            otherwise.
+ * @count: Number of data items (size of @data_len array); must be <= 32
+ * @auth_algtype: Authentication algorithm type.
+ * @auth_index: Index value of data_len for authentication key length.
+ *		-1 if authentication key length is not present in data_len.
+ *
+ * Return: 0 if data can be inlined / referenced, negative value if not. If 0,
+ *         check @inl_mask for details.
+ */
+static inline int
+rta_inline_ipsec_query(unsigned int sd_base_len,
+		       unsigned int jd_len,
+		       unsigned int *data_len,
+		       uint32_t *inl_mask,
+		       unsigned int count,
+		       uint32_t auth_algtype,
+		       int32_t auth_index)
+{
+	uint32_t dkp_protid;
+
+	switch (auth_algtype & OP_PCL_IPSEC_AUTH_MASK) {
+	case OP_PCL_IPSEC_HMAC_MD5_96:
+	case OP_PCL_IPSEC_HMAC_MD5_128:
+		dkp_protid = OP_PCLID_DKP_MD5;
+		break;
+	case OP_PCL_IPSEC_HMAC_SHA1_96:
+	case OP_PCL_IPSEC_HMAC_SHA1_160:
+		dkp_protid = OP_PCLID_DKP_SHA1;
+		break;
+	case OP_PCL_IPSEC_HMAC_SHA2_256_128:
+		dkp_protid = OP_PCLID_DKP_SHA256;
+		break;
+	case OP_PCL_IPSEC_HMAC_SHA2_384_192:
+		dkp_protid = OP_PCLID_DKP_SHA384;
+		break;
+	case OP_PCL_IPSEC_HMAC_SHA2_512_256:
+		dkp_protid = OP_PCLID_DKP_SHA512;
+		break;
+	case OP_PCL_IPSEC_HMAC_SHA2_224_96:
+	case OP_PCL_IPSEC_HMAC_SHA2_224_112:
+	case OP_PCL_IPSEC_HMAC_SHA2_224_224:
+		dkp_protid = OP_PCLID_DKP_SHA224;
+		break;
+	default:
+		return rta_inline_query(sd_base_len,
+				       jd_len,
+				       data_len,
+				       inl_mask, count);
+	}
+
+	/* Updating the maximum supported inline key length */
+	if (auth_index != -1) {
+		if (split_key_len(dkp_protid) > data_len[auth_index])
+			data_len[auth_index] = split_key_len(dkp_protid);
+	}
+	return rta_inline_query(sd_base_len,
+			       jd_len,
+			       data_len,
+			       inl_mask, count);
 }
 
 /**
@@ -771,7 +846,12 @@ cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
 		PROGRAM_SET_36BIT_ADDR(p);
 	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
-	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
+
+	/* IP header if any follows the encap_pdb */
+	if (pdb->ip_hdr_len > 0) {
+		void *ip_hdr = pdb + 1;
+		COPY_DATA(p, ip_hdr, pdb->ip_hdr_len);
+	}
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
 	if (authdata->keylen)
@@ -908,7 +988,13 @@ cnstr_shdsc_ipsec_encap_des_aes_xcbc(uint32_t *descbuf,
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
-	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
+
+	/* IP header if any follows the encap_pdb */
+	if (pdb->ip_hdr_len > 0) {
+		void *ip_hdr = pdb + 1;
+		COPY_DATA(p, ip_hdr, pdb->ip_hdr_len);
+	}
+
 	SET_LABEL(p, hdr);
 	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF);
 	/*
@@ -1380,7 +1466,7 @@ cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
  * layers to determine whether keys can be inlined or not. To be used as first
  * parameter of rta_inline_query().
  */
-#define IPSEC_AUTH_VAR_BASE_DESC_LEN	(27 * CAAM_CMD_SZ)
+#define IPSEC_AUTH_VAR_BASE_DESC_LEN	(31 * CAAM_CMD_SZ)
 
 /**
  * IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN - IPsec AES decap shared descriptor

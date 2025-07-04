@@ -3,15 +3,19 @@
  */
 
 #include <stdarg.h>
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_windows.h>
+
+#include "eal_private.h"
 
 #include <dbghelp.h>
 
 #define BACKTRACE_SIZE 256
 
 /* dump the stack of the calling core */
+RTE_EXPORT_SYMBOL(rte_dump_stack)
 void
 rte_dump_stack(void)
 {
@@ -48,8 +52,8 @@ rte_dump_stack(void)
 			error_code = GetLastError();
 			if (error_code == ERROR_INVALID_ADDRESS) {
 				/* Missing symbols, print message */
-				rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
-				    "%d: [<missing_symbols>]\n", frame_num--);
+				EAL_LOG(ERR,
+				    "%d: [<missing_symbols>]", frame_num--);
 				continue;
 			} else {
 				RTE_LOG_WIN32_ERR("SymFromAddr()");
@@ -67,8 +71,8 @@ rte_dump_stack(void)
 			}
 		}
 
-		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_EAL,
-			"%d: [%s (%s+0x%0llx)[0x%0llX]]\n", frame_num,
+		EAL_LOG(ERR,
+			"%d: [%s (%s+0x%0llx)[0x%0llX]]", frame_num,
 			error_code ? "<unknown>" : line.FileName,
 			symbol_info->Name, sym_disp, symbol_info->Address);
 		frame_num--;

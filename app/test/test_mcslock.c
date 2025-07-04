@@ -36,13 +36,13 @@
  *   lock multiple times.
  */
 
-rte_mcslock_t *p_ml;
-rte_mcslock_t *p_ml_try;
-rte_mcslock_t *p_ml_perf;
+RTE_ATOMIC(rte_mcslock_t *) p_ml;
+RTE_ATOMIC(rte_mcslock_t *) p_ml_try;
+RTE_ATOMIC(rte_mcslock_t *) p_ml_perf;
 
 static unsigned int count;
 
-static uint32_t synchro;
+static RTE_ATOMIC(uint32_t) synchro;
 
 static int
 test_mcslock_per_core(__rte_unused void *arg)
@@ -75,7 +75,7 @@ load_loop_fn(void *func_param)
 	rte_mcslock_t ml_perf_me;
 
 	/* wait synchro */
-	rte_wait_until_equal_32(&synchro, 1, __ATOMIC_RELAXED);
+	rte_wait_until_equal_32((uint32_t *)(uintptr_t)&synchro, 1, rte_memory_order_relaxed);
 
 	begin = rte_get_timer_cycles();
 	while (lcount < MAX_LOOP) {
@@ -100,14 +100,14 @@ test_mcslock_perf(void)
 	const unsigned int lcore = rte_lcore_id();
 
 	printf("\nTest with no lock on single core...\n");
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	load_loop_fn(&lock);
 	printf("Core [%u] Cost Time = %"PRIu64" us\n",
 			lcore, time_count[lcore]);
 	memset(time_count, 0, sizeof(time_count));
 
 	printf("\nTest with lock on single core...\n");
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	lock = 1;
 	load_loop_fn(&lock);
 	printf("Core [%u] Cost Time = %"PRIu64" us\n",
@@ -116,11 +116,11 @@ test_mcslock_perf(void)
 
 	printf("\nTest with lock on %u cores...\n", (rte_lcore_count()));
 
-	__atomic_store_n(&synchro, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 0, rte_memory_order_relaxed);
 	rte_eal_mp_remote_launch(load_loop_fn, &lock, SKIP_MAIN);
 
 	/* start synchro and launch test on main */
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	load_loop_fn(&lock);
 
 	rte_eal_mp_wait_lcore();
@@ -241,4 +241,4 @@ test_mcslock(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(mcslock_autotest, test_mcslock);
+REGISTER_FAST_TEST(mcslock_autotest, false, true, test_mcslock);

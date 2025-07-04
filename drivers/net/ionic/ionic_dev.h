@@ -7,14 +7,14 @@
 
 #include <stdbool.h>
 
-#include "ionic_osdep.h"
+#include "ionic_common.h"
 #include "ionic_if.h"
 #include "ionic_regs.h"
 
 #define VLAN_TAG_SIZE			4
 
 #define IONIC_MIN_MTU			RTE_ETHER_MIN_MTU
-#define IONIC_MAX_MTU			9378
+#define IONIC_MAX_MTU			9750
 #define IONIC_ETH_OVERHEAD		(RTE_ETHER_HDR_LEN + VLAN_TAG_SIZE)
 
 #define IONIC_MAX_RING_DESC		32768
@@ -22,23 +22,7 @@
 #define IONIC_DEF_TXRX_DESC		4096
 #define IONIC_DEF_TXRX_BURST		32
 
-#define IONIC_DEVCMD_TIMEOUT		5	/* devcmd_timeout */
-#define IONIC_DEVCMD_CHECK_PERIOD_US	10	/* devcmd status chk period */
-#define IONIC_DEVCMD_RETRY_WAIT_US	20000
-
-#define IONIC_Q_WDOG_MS			10	/* 10ms */
-#define IONIC_Q_WDOG_MAX_MS		5000	/* 5s */
-#define IONIC_ADMINQ_WDOG_MS		500	/* 500ms */
-
-#define IONIC_ALIGN			4096
-
 struct ionic_adapter;
-
-struct ionic_dev_bar {
-	void __iomem *vaddr;
-	rte_iova_t bus_addr;
-	unsigned long len;
-};
 
 static inline void ionic_struct_size_checks(void)
 {
@@ -145,11 +129,13 @@ struct ionic_queue {
 	uint16_t num_descs;
 	uint16_t num_segs;
 	uint16_t head_idx;
+	uint16_t cmb_head_idx;
 	uint16_t tail_idx;
 	uint16_t size_mask;
 	uint8_t type;
 	uint8_t hw_type;
 	void *base;
+	void *cmb_base;
 	void *sg_base;
 	struct ionic_doorbell __iomem *db;
 	void **info;
@@ -158,14 +144,7 @@ struct ionic_queue {
 	uint32_t hw_index;
 	rte_iova_t base_pa;
 	rte_iova_t sg_base_pa;
-};
-
-#define IONIC_INTR_NONE		(-1)
-
-struct ionic_intr_info {
-	int index;
-	uint32_t vector;
-	struct ionic_intr __iomem *ctrl;
+	rte_iova_t cmb_base_pa;
 };
 
 struct ionic_cq {
@@ -192,6 +171,7 @@ struct ionic_dev_intf {
 			struct rte_eth_dev *eth_dev);
 	int  (*configure_intr)(struct ionic_adapter *adapter);
 	void (*unconfigure_intr)(struct ionic_adapter *adapter);
+	void (*poll)(struct ionic_adapter *adapter);
 	void (*unmap_bars)(struct ionic_adapter *adapter);
 };
 
@@ -244,7 +224,8 @@ uint32_t ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 
 int ionic_q_init(struct ionic_queue *q, uint32_t index, uint16_t num_descs);
 void ionic_q_reset(struct ionic_queue *q);
-void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
+void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa,
+				 void *cmb_base, rte_iova_t cmb_base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 
 static inline uint16_t
@@ -265,7 +246,23 @@ ionic_q_flush(struct ionic_queue *q)
 {
 	uint64_t val = IONIC_DBELL_QID(q->hw_index) | q->head_idx;
 
+#if defined(RTE_LIBRTE_IONIC_PMD_BARRIER_ERRATA)
+	/* On some devices the standard 'dmb' barrier is insufficient */
+	asm volatile("dsb st" : : : "memory");
+	rte_write64_relaxed(rte_cpu_to_le_64(val), q->db);
+#else
 	rte_write64(rte_cpu_to_le_64(val), q->db);
+#endif
+}
+
+static inline bool
+ionic_is_embedded(void)
+{
+#if defined(RTE_LIBRTE_IONIC_PMD_EMBEDDED)
+	return true;
+#else
+	return false;
+#endif
 }
 
 #endif /* _IONIC_DEV_H_ */

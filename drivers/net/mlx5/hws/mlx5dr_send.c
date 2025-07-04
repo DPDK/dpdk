@@ -50,6 +50,7 @@ void mlx5dr_send_all_dep_wqe(struct mlx5dr_send_engine *queue)
 		ste_attr.used_id_rtc_1 = &dep_wqe->rule->rtc_1;
 		ste_attr.wqe_ctrl = &dep_wqe->wqe_ctrl;
 		ste_attr.wqe_data = &dep_wqe->wqe_data;
+		ste_attr.direct_index = dep_wqe->direct_index;
 
 		mlx5dr_send_ste(queue, &ste_attr);
 
@@ -110,7 +111,7 @@ mlx5dr_send_wqe_set_tag(struct mlx5dr_wqe_gta_data_seg_ste *wqe_data,
 	if (is_jumbo) {
 		/* Clear previous possibly dirty control */
 		memset(wqe_data, 0, MLX5DR_STE_CTRL_SZ);
-		memcpy(wqe_data->action, tag->jumbo, MLX5DR_JUMBO_TAG_SZ);
+		memcpy(wqe_data->jumbo, tag->jumbo, MLX5DR_JUMBO_TAG_SZ);
 	} else {
 		/* Clear previous possibly dirty control and actions */
 		memset(wqe_data, 0, MLX5DR_STE_CTRL_SZ + MLX5DR_ACTIONS_SZ);
@@ -338,7 +339,7 @@ void mlx5dr_send_stes_fw(struct mlx5dr_send_engine *queue,
 	pdn = ctx->pd_num;
 
 	/* Writing through FW can't HW fence, therefore we drain the queue */
-	if (send_attr->fence)
+	if (send_attr->fence || send_attr->notify_hw)
 		mlx5dr_send_queue_action(ctx,
 					 queue_id,
 					 MLX5DR_SEND_QUEUE_ACTION_DRAIN_SYNC);
@@ -444,6 +445,46 @@ void mlx5dr_send_engine_flush_queue(struct mlx5dr_send_engine *queue)
 	mlx5dr_send_engine_post_ring(sq, queue->uar, wqe_ctrl);
 }
 
+static void
+mlx5dr_send_engine_update_rule_resize(struct mlx5dr_send_engine *queue,
+				      struct mlx5dr_send_ring_priv *priv,
+				      enum rte_flow_op_status *status)
+{
+	switch (priv->rule->resize_info->state) {
+	case MLX5DR_RULE_RESIZE_STATE_WRITING:
+		if (priv->rule->status == MLX5DR_RULE_STATUS_FAILING) {
+			/* Backup original RTCs */
+			uint32_t orig_rtc_0 = priv->rule->resize_info->rtc_0;
+			uint32_t orig_rtc_1 = priv->rule->resize_info->rtc_1;
+
+			/* Delete partially failed move rule using resize_info */
+			priv->rule->resize_info->rtc_0 = priv->rule->rtc_0;
+			priv->rule->resize_info->rtc_1 = priv->rule->rtc_1;
+
+			/* Move rule to original RTC for future delete */
+			priv->rule->rtc_0 = orig_rtc_0;
+			priv->rule->rtc_1 = orig_rtc_1;
+		}
+		/* Clean leftovers */
+		mlx5dr_rule_move_hws_remove(priv->rule, queue, priv->user_data);
+		break;
+
+	case MLX5DR_RULE_RESIZE_STATE_DELETING:
+		if (priv->rule->status == MLX5DR_RULE_STATUS_FAILING) {
+			*status = RTE_FLOW_OP_ERROR;
+		} else {
+			*status = RTE_FLOW_OP_SUCCESS;
+			priv->rule->matcher = priv->rule->matcher->resize_dst;
+		}
+		priv->rule->resize_info->state = MLX5DR_RULE_RESIZE_STATE_IDLE;
+		priv->rule->status = MLX5DR_RULE_STATUS_CREATED;
+		break;
+
+	default:
+		break;
+	}
+}
+
 static void mlx5dr_send_engine_update_rule(struct mlx5dr_send_engine *queue,
 					   struct mlx5dr_send_ring_priv *priv,
 					   uint16_t wqe_cnt,
@@ -465,6 +506,11 @@ static void mlx5dr_send_engine_update_rule(struct mlx5dr_send_engine *queue,
 
 	/* Update rule status for the last completion */
 	if (!priv->rule->pending_wqes) {
+		if (unlikely(mlx5dr_rule_move_in_progress(priv->rule))) {
+			mlx5dr_send_engine_update_rule_resize(queue, priv, status);
+			return;
+		}
+
 		if (unlikely(priv->rule->status == MLX5DR_RULE_STATUS_FAILING)) {
 			/* Rule completely failed and doesn't require cleanup */
 			if (!priv->rule->rtc_0 && !priv->rule->rtc_1)
@@ -477,9 +523,13 @@ static void mlx5dr_send_engine_update_rule(struct mlx5dr_send_engine *queue,
 			 */
 			priv->rule->status++;
 			*status = RTE_FLOW_OP_SUCCESS;
-			/* Rule was deleted now we can safely release action STEs */
-			if (priv->rule->status == MLX5DR_RULE_STATUS_DELETED)
+			/* Rule was deleted now we can safely release action STEs
+			 * and clear resize info
+			 */
+			if (priv->rule->status == MLX5DR_RULE_STATUS_DELETED) {
 				mlx5dr_rule_free_action_ste_idx(priv->rule);
+				mlx5dr_rule_clear_resize_info(priv->rule);
+			}
 		}
 	}
 }
@@ -548,8 +598,15 @@ static void mlx5dr_send_engine_poll_cq(struct mlx5dr_send_engine *queue,
 	    cqe_owner != sw_own)
 		return;
 
-	if (unlikely(mlx5dv_get_cqe_opcode(cqe) != MLX5_CQE_REQ))
+	if (unlikely(cqe_opcode != MLX5_CQE_REQ)) {
+		struct mlx5_error_cqe *err_cqe = (struct mlx5_error_cqe *)cqe;
+
+		DR_LOG(ERR, "CQE ERR:0x%x, Vendor_ERR:0x%x, OP:0x%x, QPN:0x%x, WQE_CNT:0x%x",
+			err_cqe->syndrome, err_cqe->vendor_err_synd, cqe_opcode,
+			(rte_be_to_cpu_32(err_cqe->s_wqe_opcode_qpn) & 0xffffff),
+			rte_be_to_cpu_16(err_cqe->wqe_counter));
 		queue->err = true;
+	}
 
 	rte_io_rmb();
 
@@ -565,6 +622,7 @@ static void mlx5dr_send_engine_poll_cq(struct mlx5dr_send_engine *queue,
 	cq->poll_wqe = (wqe_cnt + priv->num_wqebbs) & sq->buf_mask;
 	mlx5dr_send_engine_update(queue, cqe, priv, res, i, res_nb, wqe_cnt);
 	cq->cons_index++;
+	*cq->db = htobe32(cq->cons_index & 0xffffff);
 }
 
 static void mlx5dr_send_engine_poll_cqs(struct mlx5dr_send_engine *queue,
@@ -574,13 +632,9 @@ static void mlx5dr_send_engine_poll_cqs(struct mlx5dr_send_engine *queue,
 {
 	int j;
 
-	for (j = 0; j < MLX5DR_NUM_SEND_RINGS; j++) {
+	for (j = 0; j < MLX5DR_NUM_SEND_RINGS; j++)
 		mlx5dr_send_engine_poll_cq(queue, &queue->send_ring[j],
 					   res, polled, res_nb);
-
-		*queue->send_ring[j].send_cq.db =
-			htobe32(queue->send_ring[j].send_cq.cons_index & 0xffffff);
-	}
 }
 
 static void mlx5dr_send_engine_poll_list(struct mlx5dr_send_engine *queue,
@@ -668,11 +722,6 @@ free_sq:
 	return err;
 }
 
-static inline unsigned long align(unsigned long val, unsigned long align)
-{
-	return (val + align - 1) & ~(align - 1);
-}
-
 static int mlx5dr_send_ring_open_sq(struct mlx5dr_context *ctx,
 				    struct mlx5dr_send_engine *queue,
 				    struct mlx5dr_send_ring_sq *sq,
@@ -688,7 +737,6 @@ static int mlx5dr_send_ring_open_sq(struct mlx5dr_context *ctx,
 	buf_sz = queue->num_entries * MAX_WQES_PER_RULE;
 	sq_log_buf_sz = log2above(buf_sz);
 	sq_buf_sz = 1 << (sq_log_buf_sz + log2above(MLX5_SEND_WQE_BB));
-	sq->reg_addr = queue->uar->reg_addr;
 
 	page_size = sysconf(_SC_PAGESIZE);
 	buf_aligned = align(sq_buf_sz, page_size);
@@ -930,19 +978,46 @@ free_uar:
 
 static void __mlx5dr_send_queues_close(struct mlx5dr_context *ctx, uint16_t queues)
 {
-	struct mlx5dr_send_engine *queue;
+	while (queues--)
+		mlx5dr_send_queue_close(&ctx->send_queue[queues]);
+}
 
-	while (queues--) {
-		queue = &ctx->send_queue[queues];
+static int mlx5dr_bwc_send_queues_init(struct mlx5dr_context *ctx)
+{
+	int bwc_queues = ctx->queues - 1;
+	int i;
 
-		mlx5dr_send_queue_close(queue);
+	if (!mlx5dr_context_bwc_supported(ctx))
+		return 0;
+
+	ctx->queues += bwc_queues;
+
+	ctx->bwc_send_queue_locks = simple_calloc(bwc_queues,
+						  sizeof(*ctx->bwc_send_queue_locks));
+	if (!ctx->bwc_send_queue_locks) {
+		rte_errno = ENOMEM;
+		return rte_errno;
 	}
+
+	for (i = 0; i < bwc_queues; i++)
+		rte_spinlock_init(&ctx->bwc_send_queue_locks[i]);
+
+	return 0;
+}
+
+static void mlx5dr_send_queues_bwc_locks_destroy(struct mlx5dr_context *ctx)
+{
+	if (!mlx5dr_context_bwc_supported(ctx))
+		return;
+
+	simple_free(ctx->bwc_send_queue_locks);
 }
 
 void mlx5dr_send_queues_close(struct mlx5dr_context *ctx)
 {
 	__mlx5dr_send_queues_close(ctx, ctx->queues);
 	simple_free(ctx->send_queue);
+	mlx5dr_send_queues_bwc_locks_destroy(ctx);
 }
 
 int mlx5dr_send_queues_open(struct mlx5dr_context *ctx,
@@ -955,10 +1030,16 @@ int mlx5dr_send_queues_open(struct mlx5dr_context *ctx,
 	/* Open one extra queue for control path */
 	ctx->queues = queues + 1;
 
+	/* open a separate set of queues and locks for bwc API */
+	err = mlx5dr_bwc_send_queues_init(ctx);
+	if (err)
+		return err;
+
 	ctx->send_queue = simple_calloc(ctx->queues, sizeof(*ctx->send_queue));
 	if (!ctx->send_queue) {
 		rte_errno = ENOMEM;
-		return rte_errno;
+		err = rte_errno;
+		goto free_bwc_locks;
 	}
 
 	for (i = 0; i < ctx->queues; i++) {
@@ -973,6 +1054,9 @@ close_send_queues:
 	 __mlx5dr_send_queues_close(ctx, i);
 
 	simple_free(ctx->send_queue);
+
+free_bwc_locks:
+	mlx5dr_send_queues_bwc_locks_destroy(ctx);
 
 	return err;
 }

@@ -5,6 +5,8 @@
 #ifndef __MLX5_WIN_ETX_H__
 #define __MLX5_WIN_ETX_H__
 
+#include <pthread.h>
+
 #include "mlx5_prm.h"
 #include "mlx5devx.h"
 

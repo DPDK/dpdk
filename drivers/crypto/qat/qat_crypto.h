@@ -36,6 +36,7 @@ struct qat_cryptodev_private {
 	/* Shared memzone for storing capabilities */
 	uint16_t min_enq_burst_threshold;
 	uint32_t internal_capabilities; /* see flags QAT_SYM_CAP_xxx */
+	bool cipher_crc_offload_enable;
 	enum qat_service_type service_type;
 };
 
@@ -61,9 +62,7 @@ struct qat_crypto_gen_dev_ops {
 	struct rte_cryptodev_ops *cryptodev_ops;
 	set_session_t set_session;
 	set_raw_dp_ctx_t set_raw_dp_ctx;
-#ifdef RTE_LIB_SECURITY
 	create_security_ctx_t create_security_ctx;
-#endif
 };
 
 extern struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[];

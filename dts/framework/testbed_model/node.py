@@ -2,183 +2,203 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
+"""Common functionality for node management.
+
+A node is any host/server DTS connects to.
+
+The base class, :class:`Node`, provides features common to all nodes and is supposed
+to be extended by subclasses with features specific to each node type.
+The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
-A node is a generic host that DTS connects to and manages.
-"""
 
-from typing import Any, Callable
+from functools import cached_property
+from pathlib import PurePath
 
-from framework.config import (
-    BuildTargetConfiguration,
-    ExecutionConfiguration,
+from framework.config.node import (
+    OS,
     NodeConfiguration,
 )
-from framework.logger import DTSLOG, getLogger
-from framework.remote_session import OSSession, create_session
-from framework.settings import SETTINGS
+from framework.exception import ConfigurationError, InternalError
+from framework.logger import DTSLogger, get_dts_logger
 
-from .hw import (
-    LogicalCore,
-    LogicalCoreCount,
-    LogicalCoreList,
-    LogicalCoreListFilter,
-    lcore_filter,
-)
+from .cpu import Architecture, LogicalCore
+from .linux_session import LinuxSession
+from .os_session import OSSession, OSSessionInfo
+from .port import Port
 
 
-class Node(object):
-    """
-    Basic class for node management. This class implements methods that
-    manage a node, such as information gathering (of CPU/PCI/NIC) and
-    environment setup.
+class Node:
+    """The base class for node management.
+
+    It shouldn't be instantiated, but rather subclassed.
+    It implements common methods to manage any node:
+
+        * Connection to the node,
+        * Hugepages setup.
+
+    Attributes:
+        main_session: The primary OS-aware remote session used to communicate with the node.
+        config: The node configuration.
+        name: The name of the node.
+        lcores: The list of logical cores that DTS can use on the node.
+            It's derived from logical cores present on the node and the test run configuration.
+        ports: The ports of this node specified in the test run configuration.
     """
 
     main_session: OSSession
     config: NodeConfiguration
     name: str
+    arch: Architecture
     lcores: list[LogicalCore]
-    _logger: DTSLOG
+    ports: list[Port]
+    _logger: DTSLogger
     _other_sessions: list[OSSession]
+    _node_info: OSSessionInfo | None
+    _compiler_version: str | None
+    _setup: bool
 
     def __init__(self, node_config: NodeConfiguration):
+        """Connect to the node and gather info during initialization.
+
+        Extra gathered information:
+
+        * The list of available logical CPUs. This is then filtered by
+          the ``lcores`` configuration in the YAML test run configuration file,
+        * Information about ports from the YAML test run configuration file.
+
+        Args:
+            node_config: The node's test run configuration.
+        """
         self.config = node_config
         self.name = node_config.name
-        self._logger = getLogger(self.name)
+        self._logger = get_dts_logger(self.name)
         self.main_session = create_session(self.config, self.name, self._logger)
-
+        self.arch = Architecture(self.main_session.get_arch_info())
+        self._logger.info(f"Connected to node: {self.name}")
         self._get_remote_cpus()
-        # filter the node lcores according to user config
-        self.lcores = LogicalCoreListFilter(
-            self.lcores, LogicalCoreList(self.config.lcores)
-        ).filter()
-
         self._other_sessions = []
-
+        self._setup = False
+        self.ports = [Port(self, port_config) for port_config in self.config.ports]
         self._logger.info(f"Created node: {self.name}")
 
-    def set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
-        """
-        Perform the execution setup that will be done for each execution
-        this node is part of.
-        """
-        self._setup_hugepages()
-        self._set_up_execution(execution_config)
+    def setup(self) -> None:
+        """Node setup."""
+        if self._setup:
+            return
 
-    def _set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
-        """
-        This method exists to be optionally overwritten by derived classes and
-        is not decorated so that the derived class doesn't have to use the decorator.
-        """
+        self.tmp_dir = self.main_session.create_tmp_dir()
+        self._setup = True
 
-    def tear_down_execution(self) -> None:
-        """
-        Perform the execution teardown that will be done after each execution
-        this node is part of concludes.
-        """
-        self._tear_down_execution()
+    def teardown(self) -> None:
+        """Node teardown."""
+        if not self._setup:
+            return
 
-    def _tear_down_execution(self) -> None:
-        """
-        This method exists to be optionally overwritten by derived classes and
-        is not decorated so that the derived class doesn't have to use the decorator.
-        """
+        self.main_session.remove_remote_dir(self.tmp_dir)
+        del self.tmp_dir
+        self._setup = False
 
-    def set_up_build_target(
-        self, build_target_config: BuildTargetConfiguration
-    ) -> None:
-        """
-        Perform the build target setup that will be done for each build target
-        tested on this node.
-        """
-        self._set_up_build_target(build_target_config)
+    @cached_property
+    def tmp_dir(self) -> PurePath:
+        """Path to the temporary directory.
 
-    def _set_up_build_target(
-        self, build_target_config: BuildTargetConfiguration
-    ) -> None:
+        Raises:
+            InternalError: If called before the node has been setup.
         """
-        This method exists to be optionally overwritten by derived classes and
-        is not decorated so that the derived class doesn't have to use the decorator.
-        """
+        raise InternalError("Temporary directory requested before setup.")
 
-    def tear_down_build_target(self) -> None:
-        """
-        Perform the build target teardown that will be done after each build target
-        tested on this node.
-        """
-        self._tear_down_build_target()
-
-    def _tear_down_build_target(self) -> None:
-        """
-        This method exists to be optionally overwritten by derived classes and
-        is not decorated so that the derived class doesn't have to use the decorator.
-        """
+    @cached_property
+    def ports_by_name(self) -> dict[str, Port]:
+        """Ports mapped by the name assigned at configuration."""
+        return {port.name: port for port in self.ports}
 
     def create_session(self, name: str) -> OSSession:
-        """
-        Create and return a new OSSession tailored to the remote OS.
+        """Create and return a new OS-aware remote session.
+
+        The returned session won't be used by the node creating it. The session must be used by
+        the caller. The session will be maintained for the entire lifecycle of the node object,
+        at the end of which the session will be cleaned up automatically.
+
+        Note:
+            Any number of these supplementary sessions may be created.
+
+        Args:
+            name: The name of the session.
+
+        Returns:
+            A new OS-aware remote session.
         """
         session_name = f"{self.name} {name}"
         connection = create_session(
             self.config,
             session_name,
-            getLogger(session_name, node=self.name),
+            get_dts_logger(session_name),
         )
         self._other_sessions.append(connection)
         return connection
 
-    def filter_lcores(
-        self,
-        filter_specifier: LogicalCoreCount | LogicalCoreList,
-        ascending: bool = True,
-    ) -> list[LogicalCore]:
-        """
-        Filter the LogicalCores found on the Node according to
-        a LogicalCoreCount or a LogicalCoreList.
-
-        If ascending is True, use cores with the lowest numerical id first
-        and continue in ascending order. If False, start with the highest
-        id and continue in descending order. This ordering affects which
-        sockets to consider first as well.
-        """
-        self._logger.debug(f"Filtering {filter_specifier} from {self.lcores}.")
-        return lcore_filter(
-            self.lcores,
-            filter_specifier,
-            ascending,
-        ).filter()
-
     def _get_remote_cpus(self) -> None:
-        """
-        Scan CPUs in the remote OS and store a list of LogicalCores.
-        """
+        """Scan CPUs in the remote OS and store a list of LogicalCores."""
         self._logger.info("Getting CPU information.")
-        self.lcores = self.main_session.get_remote_cpus(self.config.use_first_core)
+        self.lcores = self.main_session.get_remote_cpus()
 
-    def _setup_hugepages(self):
+    @cached_property
+    def node_info(self) -> OSSessionInfo:
+        """Additional node information."""
+        return self.main_session.get_node_info()
+
+    @property
+    def compiler_version(self) -> str | None:
+        """The node's compiler version."""
+        if self._compiler_version is None:
+            self._logger.warning("The `compiler_version` is None because a pre-built DPDK is used.")
+
+        return self._compiler_version
+
+    @compiler_version.setter
+    def compiler_version(self, value: str) -> None:
+        """Set the `compiler_version` used on the SUT node.
+
+        Args:
+            value: The node's compiler version.
         """
-        Setup hugepages on the Node. Different architectures can supply different
-        amounts of memory for hugepages and numa-based hugepage allocation may need
-        to be considered.
+        self._compiler_version = value
+
+    def _setup_hugepages(self) -> None:
+        """Setup hugepages on the node.
+
+        Configure the hugepages only if they're specified in the node's test run configuration.
         """
         if self.config.hugepages:
             self.main_session.setup_hugepages(
-                self.config.hugepages.amount, self.config.hugepages.force_first_numa
+                self.config.hugepages.number_of,
+                self.main_session.hugepage_size,
+                self.config.hugepages.force_first_numa,
             )
 
     def close(self) -> None:
-        """
-        Close all connections and free other resources.
-        """
+        """Close all connections and free other resources."""
         if self.main_session:
             self.main_session.close()
         for session in self._other_sessions:
             session.close()
-        self._logger.logger_exit()
 
-    @staticmethod
-    def skip_setup(func: Callable[..., Any]) -> Callable[..., Any]:
-        if SETTINGS.skip_setup:
-            return lambda *args: None
-        else:
-            return func
+
+def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger) -> OSSession:
+    """Factory for OS-aware sessions.
+
+    Args:
+        node_config: The test run configuration of the node to connect to.
+        name: The name of the session.
+        logger: The logger instance this session will use.
+
+    Raises:
+        ConfigurationError: If the node's OS is unsupported.
+    """
+    match node_config.os:
+        case OS.linux:
+            return LinuxSession(node_config, name, logger)
+        case _:
+            raise ConfigurationError(f"Unsupported OS {node_config.os}")

@@ -10,6 +10,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_net.h>
+#include <rte_vect.h>
 
 #include "ngbe_logs.h"
 #include "base/ngbe.h"
@@ -112,6 +113,8 @@ tx4(volatile struct ngbe_tx_desc *txdp, struct rte_mbuf **pkts)
 	for (i = 0; i < 4; ++i, ++txdp, ++pkts) {
 		buf_dma_addr = rte_mbuf_data_iova(*pkts);
 		pkt_len = (*pkts)->data_len;
+		if (pkt_len < RTE_ETHER_HDR_LEN)
+			pkt_len = NGBE_FRAME_SIZE_DFT;
 
 		/* write data to descriptor */
 		txdp->qw0 = rte_cpu_to_le_64(buf_dma_addr);
@@ -132,6 +135,8 @@ tx1(volatile struct ngbe_tx_desc *txdp, struct rte_mbuf **pkts)
 
 	buf_dma_addr = rte_mbuf_data_iova(*pkts);
 	pkt_len = (*pkts)->data_len;
+	if (pkt_len < RTE_ETHER_HDR_LEN)
+		pkt_len = NGBE_FRAME_SIZE_DFT;
 
 	/* write data to descriptor */
 	txdp->qw0 = cpu_to_le64(buf_dma_addr);
@@ -261,6 +266,27 @@ ngbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_tx = (uint16_t)(nb_tx + ret);
 		nb_pkts = (uint16_t)(nb_pkts - ret);
 		if (ret < n)
+			break;
+	}
+
+	return nb_tx;
+}
+
+static uint16_t
+ngbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		   uint16_t nb_pkts)
+{
+	struct ngbe_tx_queue *txq = (struct ngbe_tx_queue *)tx_queue;
+	uint16_t nb_tx = 0;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_free_thresh);
+		ret = ngbe_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx], num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
 			break;
 	}
 
@@ -533,6 +559,30 @@ ngbe_xmit_cleanup(struct ngbe_tx_queue *txq)
 	return 0;
 }
 
+static inline bool
+ngbe_check_pkt_err(struct rte_mbuf *tx_pkt)
+{
+	uint32_t total_len = 0, nb_seg = 0;
+	struct rte_mbuf *mseg;
+
+	mseg = tx_pkt;
+	do {
+		if (mseg->data_len == 0)
+			return true;
+		total_len += mseg->data_len;
+		nb_seg++;
+		mseg = mseg->next;
+	} while (mseg != NULL);
+
+	if (tx_pkt->pkt_len != total_len || tx_pkt->pkt_len == 0)
+		return true;
+
+	if (tx_pkt->nb_segs != nb_seg || tx_pkt->nb_segs > 64)
+		return true;
+
+	return false;
+}
+
 uint16_t
 ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
@@ -577,6 +627,12 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		new_ctx = 0;
 		tx_pkt = *tx_pkts++;
+		if (ngbe_check_pkt_err(tx_pkt)) {
+			rte_pktmbuf_free(tx_pkt);
+			txq->desc_error++;
+			continue;
+		}
+
 		pkt_len = tx_pkt->pkt_len;
 
 		/*
@@ -872,7 +928,7 @@ ngbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 static inline uint64_t
 ngbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
 {
-	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
+	static alignas(RTE_CACHE_LINE_SIZE) uint64_t ip_rss_types_map[16] = {
 		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
 		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
 		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,
@@ -980,7 +1036,7 @@ ngbe_rx_scan_hw_ring(struct ngbe_rx_queue *rxq)
 		for (j = 0; j < LOOK_AHEAD; j++)
 			s[j] = rte_le_to_cpu_32(rxdp[j].qw1.lo.status);
 
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		/* Compute how many status bits were set */
 		for (nb_dd = 0; nb_dd < LOOK_AHEAD &&
@@ -1223,11 +1279,22 @@ ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * of accesses cannot be reordered by the compiler. If they were
 		 * not volatile, they could be reordered which could lead to
 		 * using invalid descriptor fields when read from rxd.
+		 *
+		 * Meanwhile, to prevent the CPU from executing out of order, we
+		 * need to use a proper memory barrier to ensure the memory
+		 * ordering below.
 		 */
 		rxdp = &rx_ring[rx_id];
 		staterr = rxdp->qw1.lo.status;
 		if (!(staterr & rte_cpu_to_le_32(NGBE_RXD_STAT_DD)))
 			break;
+
+		/*
+		 * Use acquire fence to ensure that status_error which includes
+		 * DD bit is loaded before loading of other descriptor words.
+		 */
+		rte_atomic_thread_fence(rte_memory_order_acquire);
+
 		rxd = *rxdp;
 
 		/*
@@ -1453,6 +1520,12 @@ next_desc:
 
 		if (!(staterr & NGBE_RXD_STAT_DD))
 			break;
+
+		/*
+		 * Use acquire fence to ensure that status_error which includes
+		 * DD bit is loaded before loading of other descriptor words.
+		 */
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		rxd = *rxdp;
 
@@ -1774,6 +1847,7 @@ ngbe_tx_queue_release(struct ngbe_tx_queue *txq)
 		if (txq->ops != NULL) {
 			txq->ops->release_mbufs(txq);
 			txq->ops->free_swring(txq);
+			rte_memzone_free(txq->mz);
 		}
 		rte_free(txq);
 	}
@@ -1841,8 +1915,16 @@ ngbe_set_tx_function(struct rte_eth_dev *dev, struct ngbe_tx_queue *txq)
 	if (txq->offloads == 0 &&
 			txq->tx_free_thresh >= RTE_PMD_NGBE_TX_MAX_BURST) {
 		PMD_INIT_LOG(DEBUG, "Using simple tx code path");
-		dev->tx_pkt_burst = ngbe_xmit_pkts_simple;
 		dev->tx_pkt_prepare = NULL;
+		if (txq->tx_free_thresh <= RTE_NGBE_TX_MAX_FREE_BUF_SZ &&
+				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128 &&
+				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
+					ngbe_txq_vec_setup(txq) == 0)) {
+			PMD_INIT_LOG(DEBUG, "Vector tx enabled.");
+			dev->tx_pkt_burst = ngbe_xmit_pkts_vec;
+		} else {
+			dev->tx_pkt_burst = ngbe_xmit_pkts_simple;
+		}
 	} else {
 		PMD_INIT_LOG(DEBUG, "Using full-featured tx code path");
 		PMD_INIT_LOG(DEBUG,
@@ -1863,6 +1945,11 @@ static const struct {
 } ngbe_tx_burst_infos[] = {
 	{ ngbe_xmit_pkts_simple,   "Scalar Simple"},
 	{ ngbe_xmit_pkts,          "Scalar"},
+#ifdef RTE_ARCH_X86
+	{ ngbe_xmit_pkts_vec,      "Vector SSE" },
+#elif defined(RTE_ARCH_ARM)
+	{ ngbe_xmit_pkts_vec,      "Vector Neon" },
+#endif
 };
 
 int
@@ -1978,6 +2065,7 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	txq->mz = tz;
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->pthresh = tx_conf->tx_thresh.pthresh;
@@ -2013,6 +2101,7 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	ngbe_set_tx_function(dev, txq);
 
 	txq->ops->reset(txq);
+	txq->desc_error = 0;
 
 	dev->data->tx_queues[queue_idx] = txq;
 
@@ -2049,6 +2138,12 @@ ngbe_rx_queue_release_mbufs(struct ngbe_rx_queue *rxq)
 {
 	unsigned int i;
 
+	/* SSE Vector driver has a different way of releasing mbufs. */
+	if (rxq->rx_using_sse) {
+		ngbe_rx_queue_release_mbufs_vec(rxq);
+		return;
+	}
+
 	if (rxq->sw_ring != NULL) {
 		for (i = 0; i < rxq->nb_rx_desc; i++) {
 			if (rxq->sw_ring[i].mbuf != NULL) {
@@ -2080,6 +2175,7 @@ ngbe_rx_queue_release(struct ngbe_rx_queue *rxq)
 		ngbe_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
 		rte_free(rxq->sw_sc_ring);
+		rte_memzone_free(rxq->mz);
 		rte_free(rxq);
 	}
 }
@@ -2170,8 +2266,14 @@ ngbe_reset_rx_queue(struct ngbe_adapter *adapter, struct ngbe_rx_queue *rxq)
 	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
+	rte_pktmbuf_free(rxq->pkt_first_seg);
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
+
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	rxq->rxrearm_start = 0;
+	rxq->rxrearm_nb = 0;
+#endif
 }
 
 uint64_t
@@ -2191,6 +2293,7 @@ ngbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
 		   RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
 		   RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		   RTE_ETH_RX_OFFLOAD_RSS_HASH    |
 		   RTE_ETH_RX_OFFLOAD_SCATTER;
 
 	if (hw->is_pf)
@@ -2259,6 +2362,7 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	rxq->mz = rz;
 	/*
 	 * Zero init all the descriptors in the ring.
 	 */
@@ -2321,6 +2425,16 @@ ngbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		     rxq->sw_ring, rxq->sw_sc_ring, rxq->rx_ring,
 		     rxq->rx_ring_phys_addr);
 
+	if (!rte_is_power_of_2(nb_desc)) {
+		PMD_INIT_LOG(DEBUG, "queue[%d] doesn't meet Vector Rx "
+				    "preconditions - canceling the feature for "
+				    "the whole port[%d]",
+			     rxq->queue_id, rxq->port_id);
+		adapter->rx_vec_allowed = false;
+	} else {
+		ngbe_rxq_vec_setup(rxq);
+	}
+
 	dev->data->rx_queues[queue_idx] = rxq;
 
 	ngbe_reset_rx_queue(adapter, rxq);
@@ -2361,7 +2475,12 @@ ngbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 	if (unlikely(offset >= rxq->nb_rx_desc))
 		return -EINVAL;
 
-	nb_hold = rxq->nb_rx_hold;
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	if (rxq->rx_using_sse)
+		nb_hold = rxq->rxrearm_nb;
+	else
+#endif
+		nb_hold = rxq->nb_rx_hold;
 	if (offset >= rxq->nb_rx_desc - nb_hold)
 		return RTE_ETH_RX_DESC_UNAVAIL;
 
@@ -2414,6 +2533,7 @@ ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (txq != NULL) {
 			txq->ops->release_mbufs(txq);
 			txq->ops->reset(txq);
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 
@@ -2423,6 +2543,7 @@ ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (rxq != NULL) {
 			ngbe_rx_queue_release_mbufs(rxq);
 			ngbe_reset_rx_queue(adapter, rxq);
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 }
@@ -2720,14 +2841,33 @@ ngbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 void
 ngbe_set_rx_function(struct rte_eth_dev *dev)
 {
+	uint16_t i, rx_using_sse;
 	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	/*
+	 * In order to allow Vector Rx there are a few configuration
+	 * conditions to be met and Rx Bulk Allocation should be allowed.
+	 */
+	if (ngbe_rx_vec_dev_conf_condition_check(dev) ||
+	    !adapter->rx_bulk_alloc_allowed ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128) {
+		PMD_INIT_LOG(DEBUG,
+			     "Port[%d] doesn't meet Vector Rx preconditions",
+			     dev->data->port_id);
+		adapter->rx_vec_allowed = false;
+	}
 
 	if (dev->data->scattered_rx) {
 		/*
 		 * Set the scattered callback: there are bulk and
 		 * single allocation versions.
 		 */
-		if (adapter->rx_bulk_alloc_allowed) {
+		if (adapter->rx_vec_allowed) {
+			PMD_INIT_LOG(DEBUG,
+				     "Using Vector Scattered Rx callback (port=%d).",
+				     dev->data->port_id);
+			dev->rx_pkt_burst = ngbe_recv_scattered_pkts_vec;
+		} else if (adapter->rx_bulk_alloc_allowed) {
 			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
 					   "allocation callback (port=%d).",
 				     dev->data->port_id);
@@ -2745,9 +2885,16 @@ ngbe_set_rx_function(struct rte_eth_dev *dev)
 	 * Below we set "simple" callbacks according to port/queues parameters.
 	 * If parameters allow we are going to choose between the following
 	 * callbacks:
+	 *    - Vector
 	 *    - Bulk Allocation
 	 *    - Single buffer allocation (the simplest one)
 	 */
+	} else if (adapter->rx_vec_allowed) {
+		PMD_INIT_LOG(DEBUG, "Vector rx enabled, please make sure Rx "
+				    "burst size no less than %d (port=%d).",
+			     RTE_NGBE_DESCS_PER_LOOP,
+			     dev->data->port_id);
+		dev->rx_pkt_burst = ngbe_recv_pkts_vec;
 	} else if (adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 				    "satisfied. Rx Burst Bulk Alloc function "
@@ -2763,6 +2910,15 @@ ngbe_set_rx_function(struct rte_eth_dev *dev)
 
 		dev->rx_pkt_burst = ngbe_recv_pkts;
 	}
+
+	rx_using_sse = (dev->rx_pkt_burst == ngbe_recv_scattered_pkts_vec ||
+			dev->rx_pkt_burst == ngbe_recv_pkts_vec);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct ngbe_rx_queue *rxq = dev->data->rx_queues[i];
+
+		rxq->rx_using_sse = rx_using_sse;
+	}
 }
 
 static const struct {
@@ -2773,6 +2929,13 @@ static const struct {
 	{ ngbe_recv_pkts_sc_bulk_alloc,      "Scalar Scattered Bulk Alloc"},
 	{ ngbe_recv_pkts_bulk_alloc,         "Scalar Bulk Alloc"},
 	{ ngbe_recv_pkts,                    "Scalar"},
+#ifdef RTE_ARCH_X86
+	{ ngbe_recv_scattered_pkts_vec,      "Vector SSE Scattered" },
+	{ ngbe_recv_pkts_vec,                "Vector SSE" },
+#elif defined(RTE_ARCH_ARM64)
+	{ ngbe_recv_scattered_pkts_vec,      "Vector Neon Scattered" },
+	{ ngbe_recv_pkts_vec,                "Vector Neon" },
+#endif
 };
 
 int
@@ -2820,7 +2983,10 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * Make sure receives are disabled while setting
 	 * up the Rx context (registers, descriptor rings, etc.).
 	 */
-	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+
 	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
 
 	/* Enable receipt of broadcasted frames */
@@ -3291,3 +3457,265 @@ ngbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.offloads = txq->offloads;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
+
+/*
+ * [VF] Initializes Receive Unit.
+ */
+int
+ngbevf_dev_rx_init(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw     *hw;
+	struct ngbe_rx_queue *rxq;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	uint64_t bus_addr;
+	uint32_t srrctl;
+	uint16_t buf_size;
+	uint16_t i;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	if (rte_is_power_of_2(dev->data->nb_rx_queues) == 0) {
+		PMD_INIT_LOG(ERR, "The number of Rx queue invalid, "
+			"it should be power of 2");
+		return -1;
+	}
+
+	if (dev->data->nb_rx_queues > hw->mac.max_rx_queues) {
+		PMD_INIT_LOG(ERR, "The number of Rx queue invalid, "
+			"it should be equal to or less than %d",
+			hw->mac.max_rx_queues);
+		return -1;
+	}
+
+	/*
+	 * When the VF driver issues a NGBE_VF_RESET request, the PF driver
+	 * disables the VF receipt of packets if the PF MTU is > 1500.
+	 * This is done to deal with limitations that imposes
+	 * the PF and all VFs to share the same MTU.
+	 * Then, the PF driver enables again the VF receipt of packet when
+	 * the VF driver issues a NGBE_VF_SET_LPE request.
+	 * In the meantime, the VF device cannot be used, even if the VF driver
+	 * and the Guest VM network stack are ready to accept packets with a
+	 * size up to the PF MTU.
+	 * As a work-around to this PF behaviour, force the call to
+	 * ngbevf_rlpml_set_vf even if jumbo frames are not used. This way,
+	 * VF packets received can work in all cases.
+	 */
+	if (ngbevf_rlpml_set_vf(hw,
+	    (uint16_t)dev->data->mtu + NGBE_ETH_OVERHEAD)) {
+		PMD_INIT_LOG(ERR, "Set max packet length to %d failed.",
+			     dev->data->mtu + NGBE_ETH_OVERHEAD);
+
+		return -EINVAL;
+	}
+
+	/*
+	 * Assume no header split and no VLAN strip support
+	 * on any Rx queue first .
+	 */
+	rxmode->offloads &= ~RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	/* Setup RX queues */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		/* Allocate buffers for descriptor rings */
+		ret = ngbe_alloc_rx_queue_mbufs(rxq);
+		if (ret)
+			return ret;
+
+		/* Setup the Base and Length of the Rx Descriptor Rings */
+		bus_addr = rxq->rx_ring_phys_addr;
+
+		wr32(hw, NGBE_RXBAL(i),
+				(uint32_t)(bus_addr & BIT_MASK32));
+		wr32(hw, NGBE_RXBAH(i),
+				(uint32_t)(bus_addr >> 32));
+		wr32(hw, NGBE_RXRP(i), 0);
+		wr32(hw, NGBE_RXWP(i), 0);
+
+		/* Configure the RXCFG register */
+		srrctl = NGBE_RXCFG_RNGLEN(rxq->nb_rx_desc);
+
+		/* Set if packets are dropped when no descriptors available */
+		if (rxq->drop_en)
+			srrctl |= NGBE_RXCFG_DROP;
+
+		/*
+		 * Configure the RX buffer size in the PKTLEN field of
+		 * the RXCFG register of the queue.
+		 * The value is in 1 KB resolution. Valid values can be from
+		 * 1 KB to 16 KB.
+		 */
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+			RTE_PKTMBUF_HEADROOM);
+		buf_size = ROUND_UP(buf_size, 1 << 10);
+		srrctl |= NGBE_RXCFG_PKTLEN(buf_size);
+
+		/*
+		 * VF modification to write virtual function RXCFG register
+		 */
+		wr32(hw, NGBE_RXCFG(i), srrctl);
+
+		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER ||
+		    /* It adds dual VLAN length for supporting dual VLAN */
+		    (dev->data->mtu + NGBE_ETH_OVERHEAD +
+				2 * RTE_VLAN_HLEN) > buf_size) {
+			if (!dev->data->scattered_rx)
+				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
+			dev->data->scattered_rx = 1;
+		}
+
+		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+			rxmode->offloads |= RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	}
+
+	ngbe_set_rx_function(dev);
+
+	return 0;
+}
+
+/*
+ * [VF] Initializes Transmit Unit.
+ */
+void
+ngbevf_dev_tx_init(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw     *hw;
+	struct ngbe_tx_queue *txq;
+	uint64_t bus_addr;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	/* Setup the Base and Length of the Tx Descriptor Rings */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		bus_addr = txq->tx_ring_phys_addr;
+		wr32(hw, NGBE_TXBAL(i),
+				(uint32_t)(bus_addr & BIT_MASK32));
+		wr32(hw, NGBE_TXBAH(i),
+				(uint32_t)(bus_addr >> 32));
+		wr32m(hw, NGBE_TXCFG(i), NGBE_TXCFG_BUFLEN_MASK,
+			NGBE_TXCFG_BUFLEN(txq->nb_tx_desc));
+		/* Setup the HW Tx Head and TX Tail descriptor pointers */
+		wr32(hw, NGBE_TXRP(i), 0);
+		wr32(hw, NGBE_TXWP(i), 0);
+	}
+}
+
+/*
+ * [VF] Start Transmit and Receive Units.
+ */
+void
+ngbevf_dev_rxtx_start(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw     *hw;
+	struct ngbe_tx_queue *txq;
+	struct ngbe_rx_queue *rxq;
+	uint32_t txdctl;
+	uint32_t rxdctl;
+	uint16_t i;
+	int poll_ms;
+
+	PMD_INIT_FUNC_TRACE();
+	hw = ngbe_dev_hw(dev);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		/* Setup Transmit Threshold Registers */
+		wr32m(hw, NGBE_TXCFG(txq->reg_idx),
+		      NGBE_TXCFG_HTHRESH_MASK |
+		      NGBE_TXCFG_WTHRESH_MASK,
+		      NGBE_TXCFG_HTHRESH(txq->hthresh) |
+		      NGBE_TXCFG_WTHRESH(txq->wthresh));
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		wr32m(hw, NGBE_TXCFG(i), NGBE_TXCFG_ENA, NGBE_TXCFG_ENA);
+
+		poll_ms = 10;
+		/* Wait until TX Enable ready */
+		do {
+			rte_delay_ms(1);
+			txdctl = rd32(hw, NGBE_TXCFG(i));
+		} while (--poll_ms && !(txdctl & NGBE_TXCFG_ENA));
+		if (!poll_ms)
+			PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d", i);
+		else
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		wr32m(hw, NGBE_RXCFG(i), NGBE_RXCFG_ENA, NGBE_RXCFG_ENA);
+
+		/* Wait until RX Enable ready */
+		poll_ms = 10;
+		do {
+			rte_delay_ms(1);
+			rxdctl = rd32(hw, NGBE_RXCFG(i));
+		} while (--poll_ms && !(rxdctl & NGBE_RXCFG_ENA));
+		if (!poll_ms)
+			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d", i);
+		else
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+		rte_wmb();
+		wr32(hw, NGBE_RXWP(i), rxq->nb_rx_desc - 1);
+	}
+}
+
+/* Stubs needed for linkage when RTE_ARCH_PPC_64, RTE_ARCH_RISCV or
+ * RTE_ARCH_LOONGARCH is set.
+ */
+#if defined(RTE_ARCH_PPC_64) || defined(RTE_ARCH_RISCV) || \
+	defined(RTE_ARCH_LOONGARCH)
+int
+ngbe_rx_vec_dev_conf_condition_check(__rte_unused struct rte_eth_dev *dev)
+{
+	return -1;
+}
+
+uint16_t
+ngbe_recv_pkts_vec(__rte_unused void *rx_queue,
+		   __rte_unused struct rte_mbuf **rx_pkts,
+		   __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+uint16_t
+ngbe_recv_scattered_pkts_vec(__rte_unused void *rx_queue,
+			     __rte_unused struct rte_mbuf **rx_pkts,
+			     __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+int
+ngbe_rxq_vec_setup(__rte_unused struct ngbe_rx_queue *rxq)
+{
+	return -1;
+}
+
+uint16_t
+ngbe_xmit_fixed_burst_vec(__rte_unused void *tx_queue,
+			  __rte_unused struct rte_mbuf **tx_pkts,
+			  __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+int
+ngbe_txq_vec_setup(__rte_unused struct ngbe_tx_queue *txq)
+{
+	return -1;
+}
+
+void
+ngbe_rx_queue_release_mbufs_vec(__rte_unused struct ngbe_rx_queue *rxq)
+{
+}
+#endif

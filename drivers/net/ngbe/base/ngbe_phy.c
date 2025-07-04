@@ -210,6 +210,9 @@ s32 ngbe_reset_phy(struct ngbe_hw *hw)
 	if (err != 0 || hw->phy.type == ngbe_phy_none)
 		return err;
 
+	if (hw->ncsi_enabled)
+		return err;
+
 	/* Don't reset PHY if it's shut down due to overtemp. */
 	if (hw->mac.check_overtemp(hw) == NGBE_ERR_OVERTEMP)
 		return err;
@@ -427,6 +430,9 @@ s32 ngbe_init_phy(struct ngbe_hw *hw)
 	default:
 		break;
 	}
+
+	if (hw->wol_enabled || hw->ncsi_enabled)
+		hw->phy.reset_disable = true;
 
 init_phy_ops_out:
 	return err;

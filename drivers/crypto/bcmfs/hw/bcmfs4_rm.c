@@ -473,7 +473,7 @@ bcmfs4_enqueue_single_request_qp(struct bcmfs_qp *qp, void *op)
 		return -ERANGE;
 	}
 
-	reqid = pos + __builtin_ctzll(slab);
+	reqid = pos + rte_ctz64(slab);
 	rte_bitmap_clear(qp->ctx_bmp, reqid);
 	qp->ctx_pool[reqid] = (unsigned long)msg;
 

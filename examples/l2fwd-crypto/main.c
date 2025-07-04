@@ -201,7 +201,7 @@ struct l2fwd_crypto_params {
 };
 
 /** lcore configuration */
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned nb_rx_ports;
 	uint16_t rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 
@@ -210,7 +210,7 @@ struct lcore_queue_conf {
 
 	struct op_buffer op_buf[RTE_CRYPTO_MAX_DEVS];
 	struct pkt_buffer pkt_buf[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
@@ -230,7 +230,7 @@ static struct {
 } session_pool_socket[RTE_MAX_NUMA_NODES];
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 
@@ -238,14 +238,14 @@ struct l2fwd_port_statistics {
 	uint64_t crypto_dequeued;
 
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 
-struct l2fwd_crypto_statistics {
+struct __rte_cache_aligned l2fwd_crypto_statistics {
 	uint64_t enqueued;
 	uint64_t dequeued;
 
 	uint64_t errors;
-} __rte_cache_aligned;
+};
 
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 struct l2fwd_crypto_statistics crypto_statistics[RTE_CRYPTO_MAX_DEVS];
@@ -410,8 +410,8 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 
 	ipdata_offset = sizeof(struct rte_ether_hdr);
 
-	ip_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(m, char *) +
-			ipdata_offset);
+	ip_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
+					 ipdata_offset);
 
 	ipdata_offset += (ip_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK)
 			* RTE_IPV4_IHL_MULTIPLIER;
@@ -479,8 +479,8 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 			op->sym->auth.digest.data = (uint8_t *)rte_pktmbuf_append(m,
 				cparams->digest_length);
 		} else {
-			op->sym->auth.digest.data = rte_pktmbuf_mtod(m,
-				uint8_t *) + ipdata_offset + data_len;
+			op->sym->auth.digest.data = rte_pktmbuf_mtod_offset(m,
+				uint8_t *, ipdata_offset + data_len);
 		}
 
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m,
@@ -540,8 +540,8 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 			op->sym->aead.digest.data = (uint8_t *)rte_pktmbuf_append(m,
 				cparams->digest_length);
 		} else {
-			op->sym->aead.digest.data = rte_pktmbuf_mtod(m,
-				uint8_t *) + ipdata_offset + data_len;
+			op->sym->aead.digest.data = rte_pktmbuf_mtod_offset(m,
+					uint8_t *, ipdata_offset + data_len);
 		}
 
 		op->sym->aead.digest.phys_addr = rte_pktmbuf_iova_offset(m,
@@ -631,7 +631,7 @@ l2fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 	struct rte_ipv4_hdr *ip_hdr;
 	uint32_t ipdata_offset = sizeof(struct rte_ether_hdr);
 
-	ip_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(m, char *) +
+	ip_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 					 ipdata_offset);
 	dst_port = l2fwd_dst_ports[portid];
 

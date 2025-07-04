@@ -29,9 +29,12 @@ struct bpf_reg_val {
 };
 
 struct bpf_eval_state {
+	SLIST_ENTRY(bpf_eval_state) next; /* for @safe list traversal */
 	struct bpf_reg_val rv[EBPF_REG_NUM];
 	struct bpf_reg_val sv[MAX_BPF_STACK_SIZE / sizeof(uint64_t)];
 };
+
+SLIST_HEAD(bpf_evst_head, bpf_eval_state);
 
 /* possible instruction node colour */
 enum {
@@ -52,6 +55,9 @@ enum {
 
 #define	MAX_EDGES	2
 
+/* max number of 'safe' evaluated states to track per node */
+#define NODE_EVST_MAX	32
+
 struct inst_node {
 	uint8_t colour;
 	uint8_t nb_edge:4;
@@ -59,7 +65,18 @@ struct inst_node {
 	uint8_t edge_type[MAX_EDGES];
 	uint32_t edge_dest[MAX_EDGES];
 	uint32_t prev_node;
-	struct bpf_eval_state *evst;
+	struct {
+		struct bpf_eval_state *cur;   /* save/restore for jcc targets */
+		struct bpf_eval_state *start;
+		struct bpf_evst_head safe;    /* safe states for track/prune */
+		uint32_t nb_safe;
+	} evst;
+};
+
+struct evst_pool {
+	uint32_t num;
+	uint32_t cur;
+	struct bpf_eval_state *ent;
 };
 
 struct bpf_verifier {
@@ -73,11 +90,8 @@ struct bpf_verifier {
 	uint32_t edge_type[MAX_EDGE_TYPE];
 	struct bpf_eval_state *evst;
 	struct inst_node *evin;
-	struct {
-		uint32_t num;
-		uint32_t cur;
-		struct bpf_eval_state *ent;
-	} evst_pool;
+	struct evst_pool evst_sr_pool; /* for evst save/restore */
+	struct evst_pool evst_tp_pool; /* for evst track/prune */
 };
 
 struct bpf_ins_check {
@@ -370,7 +384,7 @@ eval_umax_bits(uint64_t v, size_t opsz)
 	if (v == 0)
 		return 0;
 
-	v = __builtin_clzll(v);
+	v = rte_clz64(v);
 	return RTE_LEN2MASK(opsz - v, uint64_t);
 }
 
@@ -636,14 +650,14 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 {
 	uint64_t msk;
 	uint32_t op;
-	size_t opsz;
+	size_t opsz, sz;
 	const char *err;
 	struct bpf_eval_state *st;
 	struct bpf_reg_val *rd, rs;
 
-	opsz = (BPF_CLASS(ins->code) == BPF_ALU) ?
+	sz = (BPF_CLASS(ins->code) == BPF_ALU) ?
 		sizeof(uint32_t) : sizeof(uint64_t);
-	opsz = opsz * CHAR_BIT;
+	opsz = sz * CHAR_BIT;
 	msk = RTE_LEN2MASK(opsz, uint64_t);
 
 	st = bvf->evst;
@@ -652,8 +666,10 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 	if (BPF_SRC(ins->code) == BPF_X) {
 		rs = st->rv[ins->src_reg];
 		eval_apply_mask(&rs, msk);
-	} else
+	} else {
+		rs = (struct bpf_reg_val){.v = {.size = sz,},};
 		eval_fill_imm(&rs, msk, ins->imm);
+	}
 
 	eval_apply_mask(rd, msk);
 
@@ -1083,7 +1099,7 @@ eval_jcc(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 	struct bpf_reg_val rvf, rvt;
 
 	tst = bvf->evst;
-	fst = bvf->evin->evst;
+	fst = bvf->evin->evst.cur;
 
 	frd = fst->rv + ins->dst_reg;
 	trd = tst->rv + ins->dst_reg;
@@ -1812,15 +1828,15 @@ add_edge(struct bpf_verifier *bvf, struct inst_node *node, uint32_t nidx)
 	uint32_t ne;
 
 	if (nidx > bvf->prm->nb_ins) {
-		RTE_BPF_LOG(ERR, "%s: program boundary violation at pc: %u, "
-			"next pc: %u\n",
+		RTE_BPF_LOG_LINE(ERR,
+			"%s: program boundary violation at pc: %u, next pc: %u",
 			__func__, get_node_idx(bvf, node), nidx);
 		return -EINVAL;
 	}
 
 	ne = node->nb_edge;
 	if (ne >= RTE_DIM(node->edge_dest)) {
-		RTE_BPF_LOG(ERR, "%s: internal error at pc: %u\n",
+		RTE_BPF_LOG_LINE(ERR, "%s: internal error at pc: %u",
 			__func__, get_node_idx(bvf, node));
 		return -EINVAL;
 	}
@@ -1927,7 +1943,7 @@ log_unreachable(const struct bpf_verifier *bvf)
 
 		if (node->colour == WHITE &&
 				ins->code != (BPF_LD | BPF_IMM | EBPF_DW))
-			RTE_BPF_LOG(ERR, "unreachable code at pc: %u;\n", i);
+			RTE_BPF_LOG_LINE(ERR, "unreachable code at pc: %u;", i);
 	}
 }
 
@@ -1948,8 +1964,8 @@ log_loop(const struct bpf_verifier *bvf)
 
 		for (j = 0; j != node->nb_edge; j++) {
 			if (node->edge_type[j] == BACK_EDGE)
-				RTE_BPF_LOG(ERR,
-					"loop at pc:%u --> pc:%u;\n",
+				RTE_BPF_LOG_LINE(ERR,
+					"loop at pc:%u --> pc:%u;",
 					i, node->edge_dest[j]);
 		}
 	}
@@ -1979,7 +1995,7 @@ validate(struct bpf_verifier *bvf)
 
 		err = check_syntax(ins);
 		if (err != 0) {
-			RTE_BPF_LOG(ERR, "%s: %s at pc: %u\n",
+			RTE_BPF_LOG_LINE(ERR, "%s: %s at pc: %u",
 				__func__, err, i);
 			rc |= -EINVAL;
 		}
@@ -2048,7 +2064,7 @@ validate(struct bpf_verifier *bvf)
 
 	dfs(bvf);
 
-	RTE_BPF_LOG(DEBUG, "%s(%p) stats:\n"
+	RTE_LOG(DEBUG, BPF, "%s(%p) stats:\n"
 		"nb_nodes=%u;\n"
 		"nb_jcc_nodes=%u;\n"
 		"node_color={[WHITE]=%u, [GREY]=%u,, [BLACK]=%u};\n"
@@ -2062,7 +2078,7 @@ validate(struct bpf_verifier *bvf)
 		bvf->edge_type[BACK_EDGE], bvf->edge_type[CROSS_EDGE]);
 
 	if (bvf->node_colour[BLACK] != bvf->nb_nodes) {
-		RTE_BPF_LOG(ERR, "%s(%p) unreachable instructions;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) unreachable instructions;",
 			__func__, bvf);
 		log_unreachable(bvf);
 		return -EINVAL;
@@ -2070,13 +2086,13 @@ validate(struct bpf_verifier *bvf)
 
 	if (bvf->node_colour[GREY] != 0 || bvf->node_colour[WHITE] != 0 ||
 			bvf->edge_type[UNKNOWN_EDGE] != 0) {
-		RTE_BPF_LOG(ERR, "%s(%p) DFS internal error;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) DFS internal error;",
 			__func__, bvf);
 		return -EINVAL;
 	}
 
 	if (bvf->edge_type[BACK_EDGE] != 0) {
-		RTE_BPF_LOG(ERR, "%s(%p) loops detected;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) loops detected;",
 			__func__, bvf);
 		log_loop(bvf);
 		return -EINVAL;
@@ -2089,63 +2105,117 @@ validate(struct bpf_verifier *bvf)
  * helper functions get/free eval states.
  */
 static struct bpf_eval_state *
-pull_eval_state(struct bpf_verifier *bvf)
+pull_eval_state(struct evst_pool *pool)
 {
 	uint32_t n;
 
-	n = bvf->evst_pool.cur;
-	if (n == bvf->evst_pool.num)
+	n = pool->cur;
+	if (n == pool->num)
 		return NULL;
 
-	bvf->evst_pool.cur = n + 1;
-	return bvf->evst_pool.ent + n;
+	pool->cur = n + 1;
+	return pool->ent + n;
 }
 
 static void
-push_eval_state(struct bpf_verifier *bvf)
+push_eval_state(struct evst_pool *pool)
 {
-	bvf->evst_pool.cur--;
+	RTE_ASSERT(pool->cur != 0);
+	pool->cur--;
 }
 
 static void
 evst_pool_fini(struct bpf_verifier *bvf)
 {
 	bvf->evst = NULL;
-	free(bvf->evst_pool.ent);
-	memset(&bvf->evst_pool, 0, sizeof(bvf->evst_pool));
+	free(bvf->evst_sr_pool.ent);
+	memset(&bvf->evst_sr_pool, 0, sizeof(bvf->evst_sr_pool));
+	memset(&bvf->evst_tp_pool, 0, sizeof(bvf->evst_tp_pool));
 }
 
 static int
 evst_pool_init(struct bpf_verifier *bvf)
 {
-	uint32_t n;
+	uint32_t k, n;
 
-	n = bvf->nb_jcc_nodes + 1;
+	/*
+	 * We need nb_jcc_nodes + 1 for save_cur/restore_cur
+	 * remaining ones will be used for state tracking/pruning.
+	 */
+	k = bvf->nb_jcc_nodes + 1;
+	n = k * 3;
 
-	bvf->evst_pool.ent = calloc(n, sizeof(bvf->evst_pool.ent[0]));
-	if (bvf->evst_pool.ent == NULL)
+	bvf->evst_sr_pool.ent = calloc(n, sizeof(bvf->evst_sr_pool.ent[0]));
+	if (bvf->evst_sr_pool.ent == NULL)
 		return -ENOMEM;
 
-	bvf->evst_pool.num = n;
-	bvf->evst_pool.cur = 0;
+	bvf->evst_sr_pool.num = k;
+	bvf->evst_sr_pool.cur = 0;
 
-	bvf->evst = pull_eval_state(bvf);
+	bvf->evst_tp_pool.ent = bvf->evst_sr_pool.ent + k;
+	bvf->evst_tp_pool.num = n - k;
+	bvf->evst_tp_pool.cur = 0;
+
+	bvf->evst = pull_eval_state(&bvf->evst_sr_pool);
 	return 0;
+}
+
+/*
+ * try to allocate and initialise new eval state for given node.
+ * later if no errors will be encountered, this state will be accepted as
+ * one of the possible 'safe' states for that node.
+ */
+static void
+save_start_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
+{
+	RTE_ASSERT(node->evst.start == NULL);
+
+	/* limit number of states for one node with some reasonable value */
+	if (node->evst.nb_safe >= NODE_EVST_MAX)
+		return;
+
+	/* try to get new eval_state */
+	node->evst.start = pull_eval_state(&bvf->evst_tp_pool);
+
+	/* make a copy of current state */
+	if (node->evst.start != NULL) {
+		memcpy(node->evst.start, bvf->evst, sizeof(*node->evst.start));
+		SLIST_NEXT(node->evst.start, next) = NULL;
+	}
+}
+
+/*
+ * add @start state to the list of @safe states.
+ */
+static void
+save_safe_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
+{
+	if (node->evst.start == NULL)
+		return;
+
+	SLIST_INSERT_HEAD(&node->evst.safe, node->evst.start, next);
+	node->evst.nb_safe++;
+
+	RTE_BPF_LOG_LINE(DEBUG, "%s(bvf=%p,node=%u,state=%p): nb_safe=%u;",
+		__func__, bvf, get_node_idx(bvf, node), node->evst.start,
+		node->evst.nb_safe);
+
+	node->evst.start = NULL;
 }
 
 /*
  * Save current eval state.
  */
 static int
-save_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
+save_cur_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 {
 	struct bpf_eval_state *st;
 
 	/* get new eval_state for this node */
-	st = pull_eval_state(bvf);
+	st = pull_eval_state(&bvf->evst_sr_pool);
 	if (st == NULL) {
-		RTE_BPF_LOG(ERR,
-			"%s: internal error (out of space) at pc: %u\n",
+		RTE_BPF_LOG_LINE(ERR,
+			"%s: internal error (out of space) at pc: %u",
 			__func__, get_node_idx(bvf, node));
 		return -ENOMEM;
 	}
@@ -2154,11 +2224,13 @@ save_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 	memcpy(st, bvf->evst, sizeof(*st));
 
 	/* swap current state with new one */
-	node->evst = bvf->evst;
+	RTE_ASSERT(node->evst.cur == NULL);
+	node->evst.cur = bvf->evst;
 	bvf->evst = st;
 
-	RTE_BPF_LOG(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;\n",
-		__func__, bvf, get_node_idx(bvf, node), node->evst, bvf->evst);
+	RTE_BPF_LOG_LINE(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;",
+		__func__, bvf, get_node_idx(bvf, node), node->evst.cur,
+		bvf->evst);
 
 	return 0;
 }
@@ -2167,50 +2239,149 @@ save_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
  * Restore previous eval state and mark current eval state as free.
  */
 static void
-restore_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
+restore_cur_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 {
-	RTE_BPF_LOG(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;\n",
-		__func__, bvf, get_node_idx(bvf, node), bvf->evst, node->evst);
+	RTE_BPF_LOG_LINE(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;",
+		__func__, bvf, get_node_idx(bvf, node), bvf->evst,
+		node->evst.cur);
 
-	bvf->evst = node->evst;
-	node->evst = NULL;
-	push_eval_state(bvf);
+	bvf->evst = node->evst.cur;
+	node->evst.cur = NULL;
+	push_eval_state(&bvf->evst_sr_pool);
 }
 
 static void
-log_eval_state(const struct bpf_verifier *bvf, const struct ebpf_insn *ins,
-	uint32_t pc, int32_t loglvl)
+log_dbg_eval_state(const struct bpf_verifier *bvf, const struct ebpf_insn *ins,
+	uint32_t pc)
 {
 	const struct bpf_eval_state *st;
 	const struct bpf_reg_val *rv;
 
-	rte_log(loglvl, rte_bpf_logtype, "%s(pc=%u):\n", __func__, pc);
+	RTE_BPF_LOG_LINE(DEBUG, "%s(pc=%u):", __func__, pc);
 
 	st = bvf->evst;
 	rv = st->rv + ins->dst_reg;
 
-	rte_log(loglvl, rte_bpf_logtype,
+	RTE_LOG(DEBUG, BPF,
 		"r%u={\n"
-		"\tv={type=%u, size=%zu},\n"
+		"\tv={type=%u, size=%zu, buf_size=%zu},\n"
 		"\tmask=0x%" PRIx64 ",\n"
 		"\tu={min=0x%" PRIx64 ", max=0x%" PRIx64 "},\n"
 		"\ts={min=%" PRId64 ", max=%" PRId64 "},\n"
 		"};\n",
 		ins->dst_reg,
-		rv->v.type, rv->v.size,
+		rv->v.type, rv->v.size, rv->v.buf_size,
 		rv->mask,
 		rv->u.min, rv->u.max,
 		rv->s.min, rv->s.max);
 }
 
 /*
- * Do second pass through CFG and try to evaluate instructions
- * via each possible path.
- * Right now evaluation functionality is quite limited.
- * Still need to add extra checks for:
- * - use/return uninitialized registers.
- * - use uninitialized data from the stack.
- * - memory boundaries violation.
+ * compare two evaluation states.
+ * returns zero if @lv is more conservative (safer) then @rv.
+ * returns non-zero value otherwise.
+ */
+static int
+cmp_reg_val_within(const struct bpf_reg_val *lv, const struct bpf_reg_val *rv)
+{
+	/* expect @v and @mask to be identical */
+	if (memcmp(&lv->v, &rv->v, sizeof(lv->v)) != 0 || lv->mask != rv->mask)
+		return -1;
+
+	/* exact match only for mbuf and stack pointers */
+	if (lv->v.type == RTE_BPF_ARG_PTR_MBUF ||
+			lv->v.type == BPF_ARG_PTR_STACK)
+		return -1;
+
+	if (lv->u.min <= rv->u.min && lv->u.max >= rv->u.max &&
+			lv->s.min <= rv->s.min && lv->s.max >= rv->s.max)
+		return 0;
+
+	return -1;
+}
+
+/*
+ * compare two evaluation states.
+ * returns zero if they are identical.
+ * returns positive value if @lv is more conservative (safer) then @rv.
+ * returns negative value otherwise.
+ */
+static int
+cmp_eval_state(const struct bpf_eval_state *lv, const struct bpf_eval_state *rv)
+{
+	int32_t rc;
+	uint32_t i, k;
+
+	/* for stack expect identical values */
+	rc = memcmp(lv->sv, rv->sv, sizeof(lv->sv));
+	if (rc != 0)
+		return -(2 * EBPF_REG_NUM);
+
+	k = 0;
+	/* check register values */
+	for (i = 0; i != RTE_DIM(lv->rv); i++) {
+		rc = memcmp(&lv->rv[i], &rv->rv[i], sizeof(lv->rv[i]));
+		if (rc != 0 && cmp_reg_val_within(&lv->rv[i], &rv->rv[i]) != 0)
+			return -(i + 1);
+		k += (rc != 0);
+	}
+
+	return k;
+}
+
+/*
+ * check did we already evaluated that path and can it be pruned that time.
+ */
+static int
+prune_eval_state(struct bpf_verifier *bvf, const struct inst_node *node,
+	struct inst_node *next)
+{
+	int32_t rc;
+	struct bpf_eval_state *safe;
+
+	rc = INT32_MIN;
+	SLIST_FOREACH(safe, &next->evst.safe, next) {
+		rc = cmp_eval_state(safe, bvf->evst);
+		if (rc >= 0)
+			break;
+	}
+
+	rc = (rc >= 0) ? 0 : -1;
+
+	/*
+	 * current state doesn't match any safe states,
+	 * so no prunning is possible right now,
+	 * track current state for future references.
+	 */
+	if (rc != 0)
+		save_start_eval_state(bvf, next);
+
+	RTE_BPF_LOG_LINE(DEBUG, "%s(bvf=%p,node=%u,next=%u) returns %d, "
+		"next->evst.start=%p, next->evst.nb_safe=%u",
+		__func__, bvf, get_node_idx(bvf, node),
+		get_node_idx(bvf, next), rc,
+		next->evst.start, next->evst.nb_safe);
+	return rc;
+}
+
+/* Do second pass through CFG and try to evaluate instructions
+ * via each possible path. The verifier will try all paths, tracking types of
+ * registers used as input to instructions, and updating resulting type via
+ * register state values. Plus for each register and possible stack value it
+ * tries to estimate possible max/min value.
+ * For conditional jumps, a stack is used to save evaluation state, so one
+ * path is explored while the state for the other path is pushed onto the stack.
+ * Then later, we backtrack to the first pushed instruction and repeat the cycle
+ * until the stack is empty and we're done.
+ * For program with many conditional branches walking through all possible path
+ * could be very excessive. So to minimize number of evaluations we use
+ * heuristic similar to what Linux kernel does - state pruning:
+ * If from given instruction for given program state we explore all possible
+ * paths and for each of them reach _exit() without any complaints and a valid
+ * R0 value, then for that instruction, that program state can be marked as
+ * 'safe'. When we later arrive at the same instruction with a state
+ * equivalent to an earlier instruction's 'safe' state, we can prune the search.
+ * For now, only states for JCC  targets are saved/examined.
  */
 static int
 evaluate(struct bpf_verifier *bvf)
@@ -2220,6 +2391,13 @@ evaluate(struct bpf_verifier *bvf)
 	const char *err;
 	const struct ebpf_insn *ins;
 	struct inst_node *next, *node;
+
+	struct {
+		uint32_t nb_eval;
+		uint32_t nb_prune;
+		uint32_t nb_save;
+		uint32_t nb_restore;
+	} stats;
 
 	/* initial state of frame pointer */
 	static const struct bpf_reg_val rvfp = {
@@ -2244,6 +2422,8 @@ evaluate(struct bpf_verifier *bvf)
 	next = node;
 	rc = 0;
 
+	memset(&stats, 0, sizeof(stats));
+
 	while (node != NULL && rc == 0) {
 
 		/*
@@ -2257,39 +2437,58 @@ evaluate(struct bpf_verifier *bvf)
 			op = ins[idx].code;
 
 			/* for jcc node make a copy of evaluation state */
-			if (node->nb_edge > 1)
-				rc |= save_eval_state(bvf, node);
+			if (node->nb_edge > 1) {
+				rc |= save_cur_eval_state(bvf, node);
+				stats.nb_save++;
+			}
 
 			if (ins_chk[op].eval != NULL && rc == 0) {
 				err = ins_chk[op].eval(bvf, ins + idx);
+				stats.nb_eval++;
 				if (err != NULL) {
-					RTE_BPF_LOG(ERR, "%s: %s at pc: %u\n",
+					RTE_BPF_LOG_LINE(ERR, "%s: %s at pc: %u",
 						__func__, err, idx);
 					rc = -EINVAL;
 				}
 			}
 
-			log_eval_state(bvf, ins + idx, idx, RTE_LOG_DEBUG);
+			log_dbg_eval_state(bvf, ins + idx, idx);
 			bvf->evin = NULL;
 		}
 
 		/* proceed through CFG */
 		next = get_next_node(bvf, node);
+
 		if (next != NULL) {
 
 			/* proceed with next child */
 			if (node->cur_edge == node->nb_edge &&
-					node->evst != NULL)
-				restore_eval_state(bvf, node);
+					node->evst.cur != NULL) {
+				restore_cur_eval_state(bvf, node);
+				stats.nb_restore++;
+			}
 
-			next->prev_node = get_node_idx(bvf, node);
-			node = next;
+			/*
+			 * for jcc targets: check did we already evaluated
+			 * that path and can it's evaluation be skipped that
+			 * time.
+			 */
+			if (node->nb_edge > 1 && prune_eval_state(bvf, node,
+					next) == 0) {
+				next = NULL;
+				stats.nb_prune++;
+			} else {
+				next->prev_node = get_node_idx(bvf, node);
+				node = next;
+			}
 		} else {
 			/*
 			 * finished with current node and all it's kids,
-			 * proceed with parent
+			 * mark it's @start state as safe for future references,
+			 * and proceed with parent.
 			 */
 			node->cur_edge = 0;
+			save_safe_eval_state(bvf, node);
 			node = get_prev_node(bvf, node);
 
 			/* finished */
@@ -2297,6 +2496,14 @@ evaluate(struct bpf_verifier *bvf)
 				node = NULL;
 		}
 	}
+
+	RTE_LOG(DEBUG, BPF, "%s(%p) returns %d, stats:\n"
+		"node evaluations=%u;\n"
+		"state pruned=%u;\n"
+		"state saves=%u;\n"
+		"state restores=%u;\n",
+		__func__, bvf, rc,
+		stats.nb_eval, stats.nb_prune, stats.nb_save, stats.nb_restore);
 
 	return rc;
 }
@@ -2312,7 +2519,7 @@ __rte_bpf_validate(struct rte_bpf *bpf)
 			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR &&
 			(sizeof(uint64_t) != sizeof(uintptr_t) ||
 			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR_MBUF)) {
-		RTE_BPF_LOG(ERR, "%s: unsupported argument type\n", __func__);
+		RTE_BPF_LOG_LINE(ERR, "%s: unsupported argument type", __func__);
 		return -ENOTSUP;
 	}
 

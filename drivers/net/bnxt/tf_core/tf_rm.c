@@ -1,15 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
 #include <string.h>
-
 #include <rte_common.h>
 #include <rte_debug.h>
-
 #include <cfa_resource_types.h>
-
 #include "tf_rm.h"
 #include "tf_common.h"
 #include "tf_util.h"
@@ -17,9 +14,6 @@
 #include "tf_device.h"
 #include "tfp.h"
 #include "tf_msg.h"
-
-/* Logging defines */
-#define TF_RM_DEBUG  0
 
 /**
  * Generic RM Element data type that an RM DB is build upon.
@@ -211,45 +205,6 @@ tf_rm_adjust_index(struct tf_rm_element *db,
 }
 
 /**
- * Logs an array of found residual entries to the console.
- *
- * [in] dir
- *   Receive or transmit direction
- *
- * [in] module
- *   Type of Device Module
- *
- * [in] count
- *   Number of entries in the residual array
- *
- * [in] residuals
- *   Pointer to an array of residual entries. Array is index same as
- *   the DB in which this function is used. Each entry holds residual
- *   value for that entry.
- */
-#if (TF_RM_DEBUG == 1)
-static void
-tf_rm_log_residuals(enum tf_dir dir,
-		    enum tf_module_type module,
-		    uint16_t count,
-		    uint16_t *residuals)
-{
-	int i;
-
-	/* Walk the residual array and log the types that wasn't
-	 * cleaned up to the console.
-	 */
-	for (i = 0; i < count; i++) {
-		if (residuals[i] != 0)
-			TFP_DRV_LOG(INFO,
-				"%s, %s was not cleaned up, %d outstanding\n",
-				tf_dir_2_str(dir),
-				tf_module_subtype_2_str(module, i),
-				residuals[i]);
-	}
-}
-#endif /* TF_RM_DEBUG == 1 */
-/**
  * Performs a check of the passed in DB for any lingering elements. If
  * a resource type was found to not have been cleaned up by the caller
  * then its residual values are recorded, logged and passed back in an
@@ -364,12 +319,6 @@ tf_rm_check_residuals(struct tf_rm_new_db *rm_db,
 		*resv_size = found;
 	}
 
-#if (TF_RM_DEBUG == 1)
-	tf_rm_log_residuals(rm_db->dir,
-			    rm_db->module,
-			    rm_db->num_entries,
-			    residuals);
-#endif
 	tfp_free((void *)residuals);
 	*resv = local_resv;
 
@@ -416,10 +365,10 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				 uint16_t *alloc_cnt,
 				 uint16_t num_elements,
 				 uint16_t *req_cnt,
-				 bool shared_session)
+				 __rte_unused enum tf_dir dir)
 {
 	int parent, child;
-	const char *type_str;
+	const char *type_str = NULL;
 
 	/* Search through all the elements */
 	for (parent = 0; parent < num_elements; parent++) {
@@ -427,11 +376,7 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 
 		/* If I am a parent */
 		if (cfg[parent].cfg_type == TF_RM_ELEM_CFG_HCAPI_BA_PARENT) {
-			uint8_t p_slices = 1;
-
-			/* Shared session doesn't support slices */
-			if (!shared_session)
-				p_slices = cfg[parent].slices;
+			uint8_t p_slices = cfg[parent].slices;
 
 			RTE_ASSERT(p_slices);
 
@@ -444,11 +389,13 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				dev->ops->tf_dev_get_resource_str(tfp,
 							 cfg[parent].hcapi_type,
 							 &type_str);
-#if (TF_RM_DEBUG == 1)
-				printf("%s:%s cnt(%d) slices(%d)\n",
-				       type_str, tf_tbl_type_2_str(parent),
-				       alloc_cnt[parent], p_slices);
-#endif /* (TF_RM_DEBUG == 1) */
+#ifdef TF_FLOW_SCALE_QUERY
+				/* Initialize the usage buffer for SRAM tables */
+				tf_tbl_usage_init(tfp,
+						  dir,
+						  parent,
+						  alloc_cnt[parent]);
+#endif /* TF_FLOW_SCALE_QUERY */
 			}
 
 			/* Search again through all the elements */
@@ -458,24 +405,15 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				    TF_RM_ELEM_CFG_HCAPI_BA_CHILD &&
 				    cfg[child].parent_subtype == parent &&
 				    alloc_cnt[child]) {
-					uint8_t c_slices = 1;
+					uint8_t c_slices = cfg[child].slices;
 					uint16_t cnt = 0;
-
-					if (!shared_session)
-						c_slices = cfg[child].slices;
 
 					RTE_ASSERT(c_slices);
 
 					dev->ops->tf_dev_get_resource_str(tfp,
 							  cfg[child].hcapi_type,
 							   &type_str);
-#if (TF_RM_DEBUG == 1)
-					printf("%s:%s cnt(%d) slices(%d)\n",
-					       type_str,
-					       tf_tbl_type_2_str(child),
-					       alloc_cnt[child],
-					       c_slices);
-#endif /* (TF_RM_DEBUG == 1) */
+
 					/* Increment the parents combined count
 					 * with each child's count adjusted for
 					 * number of slices per RM alloc item.
@@ -488,14 +426,17 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 					combined_cnt += cnt;
 					/* Clear the requested child count */
 					req_cnt[child] = 0;
+#ifdef TF_FLOW_SCALE_QUERY
+					/* Initialize the usage buffer for SRAM tables */
+					tf_tbl_usage_init(tfp,
+							  dir,
+							  child,
+							  alloc_cnt[child]);
+#endif /* TF_FLOW_SCALE_QUERY */
 				}
 			}
 			/* Save the parent count to be requested */
-			req_cnt[parent] = combined_cnt;
-#if (TF_RM_DEBUG == 1)
-			printf("%s calculated total:%d\n\n",
-			       type_str, req_cnt[parent]);
-#endif /* (TF_RM_DEBUG == 1) */
+			req_cnt[parent] = combined_cnt * 2;
 		}
 	}
 	return 0;
@@ -518,7 +459,6 @@ tf_rm_create_db(struct tf *tfp,
 	struct tf_rm_new_db *rm_db;
 	struct tf_rm_element *db;
 	uint32_t pool_size;
-	bool shared_session = 0;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -571,15 +511,13 @@ tf_rm_create_db(struct tf *tfp,
 	tfp_memcpy(req_cnt, parms->alloc_cnt,
 		   parms->num_elements * sizeof(uint16_t));
 
-	shared_session = tf_session_is_shared_session(tfs);
-
 	/* Update the req_cnt based upon the element configuration
 	 */
 	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
 					 req_cnt,
-					 shared_session);
+					 parms->dir);
 
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
@@ -595,12 +533,6 @@ tf_rm_create_db(struct tf *tfp,
 				       &hcapi_items);
 
 	if (hcapi_items == 0) {
-#if (TF_RM_DEBUG == 1)
-		TFP_DRV_LOG(INFO,
-			"%s: module: %s Empty RM DB create request\n",
-			tf_dir_2_str(parms->dir),
-			tf_module_2_str(parms->module));
-#endif
 		parms->rm_db = NULL;
 		return -ENOMEM;
 	}
@@ -746,7 +678,7 @@ tf_rm_create_db(struct tf *tfp,
 
 				rc = ba_init(db[i].pool,
 					     resv[j].stride,
-					     !tf_session_is_shared_session(tfs));
+					     true);
 				if (rc) {
 					TFP_DRV_LOG(ERR,
 					  "%s: Pool init failed, type:%d:%s\n",
@@ -756,6 +688,22 @@ tf_rm_create_db(struct tf *tfp,
 				}
 			}
 			j++;
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* Initialize the usage buffer for Meter tables */
+			if (cfg->hcapi_type == CFA_RESOURCE_TYPE_P58_METER ||
+			    cfg->hcapi_type == CFA_RESOURCE_TYPE_P58_METER_PROF) {
+				uint32_t tbl_type;
+				if (cfg->hcapi_type == CFA_RESOURCE_TYPE_P58_METER)
+					tbl_type = TF_TBL_TYPE_METER_INST;
+				else
+					tbl_type = TF_TBL_TYPE_METER_PROF;
+				tf_tbl_usage_init(tfp,
+						  parms->dir,
+						  tbl_type,
+						  req_cnt[i]);
+			}
+#endif /* TF_FLOW_SCALE_QUERY */
 		} else {
 			/* Bail out as we want what we requested for
 			 * all elements, not any less.
@@ -772,13 +720,6 @@ tf_rm_create_db(struct tf *tfp,
 	rm_db->dir = parms->dir;
 	rm_db->module = parms->module;
 	*parms->rm_db = (void *)rm_db;
-
-#if (TF_RM_DEBUG == 1)
-
-	printf("%s: module:%s\n",
-	       tf_dir_2_str(parms->dir),
-	       tf_module_2_str(parms->module));
-#endif /* (TF_RM_DEBUG == 1) */
 
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
@@ -841,6 +782,14 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 	tfp_memcpy(req_cnt, parms->alloc_cnt,
 		   parms->num_elements * sizeof(uint16_t));
 
+	/* Update the req_cnt based upon the element configuration
+	 */
+	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
+					 parms->alloc_cnt,
+					 parms->num_elements,
+					 req_cnt,
+					 parms->dir);
+
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
 	 * req msg content by removing those out of the request yet
@@ -855,11 +804,6 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 				       &hcapi_items);
 
 	if (hcapi_items == 0) {
-		TFP_DRV_LOG(ERR,
-			"%s: module:%s Empty RM DB create request\n",
-			tf_dir_2_str(parms->dir),
-			tf_module_2_str(parms->module));
-
 		parms->rm_db = NULL;
 		return -ENOMEM;
 	}
@@ -938,6 +882,7 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 
 		db[i].cfg_type = cfg->cfg_type;
 		db[i].hcapi_type = cfg->hcapi_type;
+		db[i].slices = cfg->slices;
 
 		/* Save the parent subtype for later use to find the pool
 		 */
@@ -986,7 +931,7 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 
 				rc = ba_init(db[i].pool,
 					     resv[j].stride,
-					     !tf_session_is_shared_session(tfs));
+					     true);
 				if (rc) {
 					TFP_DRV_LOG(ERR,
 					  "%s: Pool init failed, type:%d:%s\n",
@@ -1013,13 +958,6 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 	rm_db->module = parms->module;
 	*parms->rm_db = (void *)rm_db;
 
-#if (TF_RM_DEBUG == 1)
-
-	printf("%s: module:%s\n",
-	       tf_dir_2_str(parms->dir),
-	       tf_module_2_str(parms->module));
-#endif /* (TF_RM_DEBUG == 1) */
-
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
 	tfp_free((void *)req_cnt);
@@ -1036,6 +974,7 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 
 	return -EINVAL;
 }
+
 int
 tf_rm_free_db(struct tf *tfp,
 	      struct tf_rm_free_db_parms *parms)
@@ -1110,6 +1049,7 @@ tf_rm_free_db(struct tf *tfp,
 
 	return rc;
 }
+
 /**
  * Get the bit allocator pool associated with the subtype and the db
  *
@@ -1325,9 +1265,7 @@ tf_rm_get_info(struct tf_rm_get_alloc_info_parms *parms)
 	if (cfg_type == TF_RM_ELEM_CFG_NULL)
 		return -ENOTSUP;
 
-	memcpy(parms->info,
-	       &rm_db->db[parms->subtype].alloc,
-	       sizeof(struct tf_rm_alloc_info));
+	*parms->info = rm_db->db[parms->subtype].alloc;
 
 	return 0;
 }
@@ -1359,9 +1297,7 @@ tf_rm_get_all_info(struct tf_rm_get_alloc_info_parms *parms, int size)
 			continue;
 		}
 
-		memcpy(info,
-		       &rm_db->db[i].alloc,
-		       sizeof(struct tf_rm_alloc_info));
+		*info = rm_db->db[i].alloc;
 		info++;
 	}
 
@@ -1388,6 +1324,7 @@ tf_rm_get_hcapi_type(struct tf_rm_get_hcapi_parms *parms)
 
 	return 0;
 }
+
 int
 tf_rm_get_slices(struct tf_rm_get_slices_parms *parms)
 {
@@ -1440,6 +1377,7 @@ tf_rm_get_inuse_count(struct tf_rm_get_inuse_count_parms *parms)
 
 	return rc;
 }
+
 /* Only used for table bulk get at this time
  */
 int

@@ -26,14 +26,14 @@ fm_port_vsp_alloc(t_handle h_fm_port,
 	t_device *p_dev = (t_device *)h_fm_port;
 	ioc_fm_port_vsp_alloc_params_t params;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 	memset(&params, 0, sizeof(ioc_fm_port_vsp_alloc_params_t));
 	memcpy(&params.params, p_params, sizeof(t_fm_port_vspalloc_params));
 
 	if (ioctl(p_dev->fd, FM_PORT_IOC_VSP_ALLOC, &params))
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 
-	_fml_dbg("Called.\n");
+	_fml_dbg("Called.");
 
 	return E_OK;
 }
@@ -47,7 +47,7 @@ fm_vsp_config(t_fm_vsp_params *p_fm_vsp_params)
 
 	p_dev = p_fm_vsp_params->h_fm;
 
-	_fml_dbg("Performing VSP Configuration...\n");
+	_fml_dbg("Performing VSP Configuration...");
 
 	memset(&param, 0, sizeof(ioc_fm_vsp_params_t));
 	memcpy(&param, p_fm_vsp_params, sizeof(t_fm_vsp_params));
@@ -55,13 +55,13 @@ fm_vsp_config(t_fm_vsp_params *p_fm_vsp_params)
 	param.id = NULL;
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_CONFIG, &param)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		return NULL;
 	}
 
 	p_vsp_dev = (t_device *)malloc(sizeof(t_device));
 	if (!p_vsp_dev) {
-		DPAA_PMD_ERR("FM VSP Params!\n");
+		DPAA_PMD_ERR("FM VSP Params!");
 		return NULL;
 	}
 	memset(p_vsp_dev, 0, sizeof(t_device));
@@ -69,7 +69,7 @@ fm_vsp_config(t_fm_vsp_params *p_fm_vsp_params)
 	p_dev->owners++;
 	p_vsp_dev->id = PTR_TO_UINT(param.id);
 
-	_fml_dbg("VSP Configuration completed\n");
+	_fml_dbg("VSP Configuration completed");
 
 	return (t_handle)p_vsp_dev;
 }
@@ -81,17 +81,17 @@ fm_vsp_init(t_handle h_fm_vsp)
 	t_device *p_vsp_dev = (t_device *)h_fm_vsp;
 	ioc_fm_obj_t id;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)p_vsp_dev->h_user_priv;
 	id.obj = UINT_TO_PTR(p_vsp_dev->id);
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_INIT, &id)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
 
-	_fml_dbg("Called.\n");
+	_fml_dbg("Called.");
 
 	return E_OK;
 }
@@ -103,20 +103,20 @@ fm_vsp_free(t_handle h_fm_vsp)
 	t_device *p_vsp_dev = (t_device *)h_fm_vsp;
 	ioc_fm_obj_t id;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)p_vsp_dev->h_user_priv;
 	id.obj = UINT_TO_PTR(p_vsp_dev->id);
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_FREE, &id)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
 
 	p_dev->owners--;
 	free(p_vsp_dev);
 
-	_fml_dbg("Called.\n");
+	_fml_dbg("Called.");
 
 	return E_OK;
 }
@@ -129,7 +129,7 @@ fm_vsp_config_buffer_prefix_content(t_handle h_fm_vsp,
 	t_device *p_vsp_dev = (t_device *)h_fm_vsp;
 	ioc_fm_buffer_prefix_content_params_t params;
 
-	_fml_dbg("Calling...\n");
+	_fml_dbg("Calling...");
 
 	p_dev = (t_device *)p_vsp_dev->h_user_priv;
 	params.p_fm_vsp = UINT_TO_PTR(p_vsp_dev->id);
@@ -138,11 +138,11 @@ fm_vsp_config_buffer_prefix_content(t_handle h_fm_vsp,
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_CONFIG_BUFFER_PREFIX_CONTENT,
 		  &params)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
 
-	_fml_dbg("Called.\n");
+	_fml_dbg("Called.");
 
 	return E_OK;
 }

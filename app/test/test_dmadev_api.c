@@ -9,85 +9,82 @@
 #include <rte_test.h>
 #include <rte_dmadev.h>
 
-extern int test_dma_api(uint16_t dev_id);
+#include "test.h"
+#include "test_dmadev_api.h"
 
-#define DMA_TEST_API_RUN(test) \
-	testsuite_run_test(test, #test)
+extern int test_dma_api(uint16_t dev_id);
 
 #define TEST_MEMCPY_SIZE	1024
 #define TEST_WAIT_US_VAL	50000
-
-#define TEST_SUCCESS 0
-#define TEST_FAILED  -1
+#define TEST_SG_MAX		64
 
 static int16_t test_dev_id;
 static int16_t invalid_dev_id;
 
 static char *src;
 static char *dst;
-
-static int total;
-static int passed;
-static int failed;
+static char *src_sg[TEST_SG_MAX];
+static char *dst_sg[TEST_SG_MAX];
 
 static int
-testsuite_setup(int16_t dev_id)
+testsuite_setup(void)
 {
-	test_dev_id = dev_id;
 	invalid_dev_id = -1;
+	int i, rc = 0;
 
-	src = rte_malloc("dmadev_test_src", TEST_MEMCPY_SIZE, 0);
-	if (src == NULL)
-		return -ENOMEM;
-	dst = rte_malloc("dmadev_test_dst", TEST_MEMCPY_SIZE, 0);
-	if (dst == NULL) {
-		rte_free(src);
-		src = NULL;
-		return -ENOMEM;
+	for (i = 0; i < TEST_SG_MAX; i++) {
+		src_sg[i] = rte_malloc("dmadev_test_src", TEST_MEMCPY_SIZE, 0);
+		if (src_sg[i] == NULL) {
+			rc = -ENOMEM;
+			goto exit;
+		}
+
+		dst_sg[i] = rte_malloc("dmadev_test_dst", TEST_MEMCPY_SIZE, 0);
+		if (dst_sg[i] == NULL) {
+			rte_free(src_sg[i]);
+			src_sg[i] = NULL;
+			rc = -ENOMEM;
+			goto exit;
+		}
 	}
 
-	total = 0;
-	passed = 0;
-	failed = 0;
+	src = src_sg[0];
+	dst = dst_sg[0];
 
 	/* Set dmadev log level to critical to suppress unnecessary output
 	 * during API tests.
 	 */
 	rte_log_set_level_pattern("lib.dmadev", RTE_LOG_CRIT);
 
-	return 0;
+	return rc;
+exit:
+	while (--i >= 0) {
+		rte_free(src_sg[i]);
+		rte_free(dst_sg[i]);
+	}
+
+	return rc;
 }
 
 static void
 testsuite_teardown(void)
 {
-	rte_free(src);
+	int i;
+
+	for (i = 0; i < TEST_SG_MAX; i++) {
+		rte_free(src_sg[i]);
+		src_sg[i] = NULL;
+		rte_free(dst_sg[i]);
+		dst_sg[i] = NULL;
+	}
+
 	src = NULL;
-	rte_free(dst);
 	dst = NULL;
 	/* Ensure the dmadev is stopped. */
 	rte_dma_stop(test_dev_id);
+	rte_dma_stats_reset(test_dev_id, RTE_DMA_ALL_VCHAN);
 
 	rte_log_set_level_pattern("lib.dmadev", RTE_LOG_INFO);
-}
-
-static void
-testsuite_run_test(int (*test)(void), const char *name)
-{
-	int ret = 0;
-
-	if (test) {
-		ret = test();
-		if (ret < 0) {
-			failed++;
-			printf("%s Failed\n", name);
-		} else {
-			passed++;
-			printf("%s Passed\n", name);
-		}
-	}
-
-	total++;
 }
 
 static int
@@ -292,7 +289,7 @@ test_dma_vchan_setup(void)
 }
 
 static int
-setup_one_vchan(void)
+setup_vchan(int nb_vchans)
 {
 	struct rte_dma_vchan_conf vchan_conf = { 0 };
 	struct rte_dma_info dev_info = { 0 };
@@ -301,13 +298,15 @@ setup_one_vchan(void)
 
 	ret = rte_dma_info_get(test_dev_id, &dev_info);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
-	dev_conf.nb_vchans = dev_info.max_vchans;
+	dev_conf.nb_vchans = nb_vchans;
 	ret = rte_dma_configure(test_dev_id, &dev_conf);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to configure, %d", ret);
 	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
 	vchan_conf.nb_desc = dev_info.min_desc;
-	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
-	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup vchan, %d", ret);
+	for (int i = 0; i < nb_vchans; i++) {
+		ret = rte_dma_vchan_setup(test_dev_id, i, &vchan_conf);
+		RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup vchan %d, %d", i, ret);
+	}
 
 	return TEST_SUCCESS;
 }
@@ -326,7 +325,7 @@ test_dma_start_stop(void)
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	ret = rte_dma_start(test_dev_id);
@@ -337,6 +336,50 @@ test_dma_start_stop(void)
 	RTE_TEST_ASSERT(ret == -EBUSY, "Failed to configure, %d", ret);
 	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
 	RTE_TEST_ASSERT(ret == -EBUSY, "Failed to setup vchan, %d", ret);
+
+	ret = rte_dma_stop(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_dma_reconfigure(void)
+{
+	struct rte_dma_conf dev_conf = { 0 };
+	struct rte_dma_info dev_info = { 0 };
+	uint16_t cfg_vchans;
+	int ret;
+
+	ret = rte_dma_info_get(test_dev_id, &dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
+
+	/* At least two vchans required for the test */
+	if (dev_info.max_vchans < 2)
+		return TEST_SKIPPED;
+
+	/* Setup one vchan for later test */
+	ret = setup_vchan(1);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
+
+	ret = rte_dma_start(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
+
+	ret = rte_dma_stop(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
+
+	/* Check reconfigure and vchan setup after device stopped */
+	cfg_vchans = dev_conf.nb_vchans = (dev_info.max_vchans - 1);
+
+	ret = setup_vchan(cfg_vchans);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
+
+	ret = rte_dma_start(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
+
+	ret = rte_dma_info_get(test_dev_id, &dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
+	RTE_TEST_ASSERT_EQUAL(dev_info.nb_vchans, cfg_vchans, "incorrect reconfiguration");
 
 	ret = rte_dma_stop(test_dev_id);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
@@ -360,7 +403,7 @@ test_dma_stats(void)
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	/* Check for invalid vchan */
@@ -423,6 +466,37 @@ verify_memory(void)
 	return 0;
 }
 
+static void
+sg_memory_setup(int n)
+{
+	int i, j;
+
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < TEST_MEMCPY_SIZE; j++)
+			src_sg[i][j] = (char)j;
+
+		memset(dst_sg[i], 0, TEST_MEMCPY_SIZE);
+	}
+}
+
+static int
+sg_memory_verify(int n)
+{
+	int i, j;
+
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < TEST_MEMCPY_SIZE; j++) {
+			if (src_sg[i][j] == dst_sg[i][j])
+				continue;
+
+			RTE_TEST_ASSERT_EQUAL(src_sg[i][j], dst_sg[i][j], "Failed to copy memory, %d %d",
+				src_sg[i][j], dst_sg[i][j]);
+		}
+	}
+
+	return 0;
+}
+
 static int
 test_dma_completed(void)
 {
@@ -432,7 +506,7 @@ test_dma_completed(void)
 	int ret;
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	ret = rte_dma_start(test_dev_id);
@@ -441,7 +515,9 @@ test_dma_completed(void)
 	setup_memory();
 
 	/* Check enqueue without submit */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, 0);
 	RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -463,7 +539,9 @@ test_dma_completed(void)
 	setup_memory();
 
 	/* Check for enqueue with submit */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, RTE_DMA_OP_FLAG_SUBMIT);
 	RTE_TEST_ASSERT_EQUAL(ret, 1, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -491,14 +569,16 @@ test_dma_completed_status(void)
 	int ret;
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	ret = rte_dma_start(test_dev_id);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
 
 	/* Check for enqueue with submit */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, RTE_DMA_OP_FLAG_SUBMIT);
 	RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -517,7 +597,9 @@ test_dma_completed_status(void)
 	RTE_TEST_ASSERT_EQUAL(cpl_ret, 0, "Failed to completed status");
 
 	/* Check for enqueue with submit again */
-	ret = rte_dma_copy(test_dev_id, 0, (rte_iova_t)src, (rte_iova_t)dst,
+	ret = rte_dma_copy(test_dev_id, 0,
+			   rte_malloc_virt2iova(src),
+			   rte_malloc_virt2iova(dst),
 			   TEST_MEMCPY_SIZE, RTE_DMA_OP_FLAG_SUBMIT);
 	RTE_TEST_ASSERT_EQUAL(ret, 1, "Failed to enqueue copy, %d", ret);
 	rte_delay_us_sleep(TEST_WAIT_US_VAL);
@@ -537,38 +619,117 @@ test_dma_completed_status(void)
 	return TEST_SUCCESS;
 }
 
+static int
+test_dma_sg(void)
+{
+	struct rte_dma_sge src_sge[TEST_SG_MAX], dst_sge[TEST_SG_MAX];
+	struct rte_dma_info dev_info = { 0 };
+	uint16_t last_idx = -1;
+	bool has_error = true;
+	int n_sge, i, ret;
+	uint16_t cpl_ret;
+
+	ret = rte_dma_info_get(test_dev_id, &dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
+
+	if ((dev_info.dev_capa & RTE_DMA_CAPA_OPS_COPY_SG) == 0)
+		return TEST_SKIPPED;
+
+	n_sge = RTE_MIN(dev_info.max_sges, TEST_SG_MAX);
+
+	ret = setup_vchan(1);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
+
+	ret = rte_dma_start(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
+
+	for (i = 0; i < n_sge; i++) {
+		src_sge[i].addr = rte_malloc_virt2iova(src_sg[i]);
+		src_sge[i].length = TEST_MEMCPY_SIZE;
+		dst_sge[i].addr = rte_malloc_virt2iova(dst_sg[i]);
+		dst_sge[i].length = TEST_MEMCPY_SIZE;
+	}
+
+	sg_memory_setup(n_sge);
+
+	/* Check enqueue without submit */
+	ret = rte_dma_copy_sg(test_dev_id, 0, src_sge, dst_sge, n_sge, n_sge, 0);
+	RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to enqueue copy, %d", ret);
+
+	rte_delay_us_sleep(TEST_WAIT_US_VAL);
+
+	cpl_ret = rte_dma_completed(test_dev_id, 0, 1, &last_idx, &has_error);
+	RTE_TEST_ASSERT_EQUAL(cpl_ret, 0, "Failed to get completed");
+
+	/* Check DMA submit */
+	ret = rte_dma_submit(test_dev_id, 0);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to submit, %d", ret);
+
+	rte_delay_us_sleep(TEST_WAIT_US_VAL);
+
+	cpl_ret = rte_dma_completed(test_dev_id, 0, 1, &last_idx, &has_error);
+	RTE_TEST_ASSERT_EQUAL(cpl_ret, 1, "Failed to get completed");
+	RTE_TEST_ASSERT_EQUAL(last_idx, 0, "Last idx should be zero, %u", last_idx);
+	RTE_TEST_ASSERT_EQUAL(has_error, false, "Should have no error");
+
+	ret = sg_memory_verify(n_sge);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to verify memory");
+
+	sg_memory_setup(n_sge);
+
+	/* Check for enqueue with submit */
+	ret = rte_dma_copy_sg(test_dev_id, 0, src_sge, dst_sge, n_sge, n_sge,
+			      RTE_DMA_OP_FLAG_SUBMIT);
+	RTE_TEST_ASSERT_EQUAL(ret, 1, "Failed to enqueue copy, %d", ret);
+
+	rte_delay_us_sleep(TEST_WAIT_US_VAL);
+
+	cpl_ret = rte_dma_completed(test_dev_id, 0, 1, &last_idx, &has_error);
+	RTE_TEST_ASSERT_EQUAL(cpl_ret, 1, "Failed to get completed");
+	RTE_TEST_ASSERT_EQUAL(last_idx, 1, "Last idx should be 1, %u", last_idx);
+	RTE_TEST_ASSERT_EQUAL(has_error, false, "Should have no error");
+
+	ret = sg_memory_verify(n_sge);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to verify memory");
+
+	/* Stop dmadev to make sure dmadev to a known state */
+	ret = rte_dma_stop(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
+
+	return TEST_SUCCESS;
+}
+
+static struct unit_test_suite dma_api_testsuite = {
+	.suite_name = "DMA API Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE(test_dma_get_dev_id_by_name),
+		TEST_CASE(test_dma_is_valid_dev),
+		TEST_CASE(test_dma_count),
+		TEST_CASE(test_dma_info_get),
+		TEST_CASE(test_dma_configure),
+		TEST_CASE(test_dma_vchan_setup),
+		TEST_CASE(test_dma_start_stop),
+		TEST_CASE(test_dma_reconfigure),
+		TEST_CASE(test_dma_stats),
+		TEST_CASE(test_dma_dump),
+		TEST_CASE(test_dma_completed),
+		TEST_CASE(test_dma_completed_status),
+		TEST_CASE(test_dma_sg),
+		TEST_CASES_END()
+	}
+};
+
 int
 test_dma_api(uint16_t dev_id)
 {
-	int ret = testsuite_setup(dev_id);
-	if (ret) {
-		printf("testsuite setup fail!\n");
-		return -1;
-	}
+	struct rte_dma_info dev_info;
 
-	/* If the testcase exit successfully, ensure that the test dmadev exist
-	 * and the dmadev is in the stopped state.
-	 */
-	DMA_TEST_API_RUN(test_dma_get_dev_id_by_name);
-	DMA_TEST_API_RUN(test_dma_is_valid_dev);
-	DMA_TEST_API_RUN(test_dma_count);
-	DMA_TEST_API_RUN(test_dma_info_get);
-	DMA_TEST_API_RUN(test_dma_configure);
-	DMA_TEST_API_RUN(test_dma_vchan_setup);
-	DMA_TEST_API_RUN(test_dma_start_stop);
-	DMA_TEST_API_RUN(test_dma_stats);
-	DMA_TEST_API_RUN(test_dma_dump);
-	DMA_TEST_API_RUN(test_dma_completed);
-	DMA_TEST_API_RUN(test_dma_completed_status);
+	if (rte_dma_info_get(dev_id, &dev_info) < 0)
+		return TEST_SKIPPED;
 
-	testsuite_teardown();
-
-	printf("Total tests   : %d\n", total);
-	printf("Passed        : %d\n", passed);
-	printf("Failed        : %d\n", failed);
-
-	if (failed)
-		return -1;
-
-	return 0;
+	printf("\n### Test dmadev infrastructure using %u [%s]\n", dev_id, dev_info.dev_name);
+	test_dev_id = dev_id;
+	return unit_test_suite_runner(&dma_api_testsuite);
 };

@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_debug.h>
@@ -30,6 +31,9 @@
 
 #include "mempool_trace.h"
 #include "rte_mempool.h"
+
+RTE_EXPORT_SYMBOL(rte_mempool_logtype)
+RTE_LOG_REGISTER_DEFAULT(rte_mempool_logtype, INFO);
 
 TAILQ_HEAD(rte_mempool_list, rte_tailq_entry);
 
@@ -48,14 +52,14 @@ static void
 mempool_event_callback_invoke(enum rte_mempool_event event,
 			      struct rte_mempool *mp);
 
-#define CACHE_FLUSHTHRESH_MULTIPLIER 1.5
-#define CALC_CACHE_FLUSHTHRESH(c)	\
-	((typeof(c))((c) * CACHE_FLUSHTHRESH_MULTIPLIER))
+/* Note: avoid using floating point since that compiler
+ * may not think that is constant.
+ */
+#define CALC_CACHE_FLUSHTHRESH(c) (((c) * 3) / 2)
 
 #if defined(RTE_ARCH_X86)
 /*
  * return the greatest common divisor between a and b (fast algorithm)
- *
  */
 static unsigned get_gcd(unsigned a, unsigned b)
 {
@@ -162,7 +166,6 @@ mempool_add_elem(struct rte_mempool *mp, __rte_unused void *opaque,
 		 void *obj, rte_iova_t iova)
 {
 	struct rte_mempool_objhdr *hdr;
-	struct rte_mempool_objtlr *tlr __rte_unused;
 
 	/* set mempool ptr in header */
 	hdr = RTE_PTR_SUB(obj, sizeof(*hdr));
@@ -173,12 +176,12 @@ mempool_add_elem(struct rte_mempool *mp, __rte_unused void *opaque,
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
-	tlr = rte_mempool_get_trailer(obj);
-	tlr->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
+	rte_mempool_get_trailer(obj)->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
 #endif
 }
 
 /* call obj_cb() for each mempool element */
+RTE_EXPORT_SYMBOL(rte_mempool_obj_iter)
 uint32_t
 rte_mempool_obj_iter(struct rte_mempool *mp,
 	rte_mempool_obj_cb_t *obj_cb, void *obj_cb_arg)
@@ -197,6 +200,7 @@ rte_mempool_obj_iter(struct rte_mempool *mp,
 }
 
 /* call mem_cb() for each mempool memory chunk */
+RTE_EXPORT_SYMBOL(rte_mempool_mem_iter)
 uint32_t
 rte_mempool_mem_iter(struct rte_mempool *mp,
 	rte_mempool_mem_cb_t *mem_cb, void *mem_cb_arg)
@@ -213,6 +217,7 @@ rte_mempool_mem_iter(struct rte_mempool *mp,
 }
 
 /* get the header, trailer and total size of a mempool element. */
+RTE_EXPORT_SYMBOL(rte_mempool_calc_obj_size)
 uint32_t
 rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	struct rte_mempool_objsz *sz)
@@ -313,6 +318,7 @@ mempool_ops_alloc_once(struct rte_mempool *mp)
  * zone. Return the number of objects added, or a negative value
  * on error.
  */
+RTE_EXPORT_SYMBOL(rte_mempool_populate_iova)
 int
 rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
@@ -398,6 +404,7 @@ get_iova(void *addr)
 /* Populate the mempool with a virtual area. Return the number of
  * objects added, or a negative value on error.
  */
+RTE_EXPORT_SYMBOL(rte_mempool_populate_virt)
 int
 rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 	size_t len, size_t pg_sz, rte_mempool_memchunk_free_cb_t *free_cb,
@@ -452,6 +459,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 }
 
 /* Get the minimal page size used in a mempool before populating it. */
+RTE_EXPORT_SYMBOL(rte_mempool_get_page_size)
 int
 rte_mempool_get_page_size(struct rte_mempool *mp, size_t *pg_sz)
 {
@@ -481,6 +489,7 @@ rte_mempool_get_page_size(struct rte_mempool *mp, size_t *pg_sz)
  * and populate them. Return the number of objects added, or a negative
  * value on error.
  */
+RTE_EXPORT_SYMBOL(rte_mempool_populate_default)
 int
 rte_mempool_populate_default(struct rte_mempool *mp)
 {
@@ -659,6 +668,7 @@ rte_mempool_memchunk_anon_free(struct rte_mempool_memhdr *memhdr,
 }
 
 /* populate the mempool with an anonymous mapping */
+RTE_EXPORT_SYMBOL(rte_mempool_populate_anon)
 int
 rte_mempool_populate_anon(struct rte_mempool *mp)
 {
@@ -713,6 +723,7 @@ rte_mempool_populate_anon(struct rte_mempool *mp)
 }
 
 /* free a mempool */
+RTE_EXPORT_SYMBOL(rte_mempool_free)
 void
 rte_mempool_free(struct rte_mempool *mp)
 {
@@ -761,6 +772,7 @@ mempool_cache_init(struct rte_mempool_cache *cache, uint32_t size)
  * returned to an underlying mempool. This structure is identical to the
  * local_cache[lcore_id] pointed to by the mempool structure.
  */
+RTE_EXPORT_SYMBOL(rte_mempool_cache_create)
 struct rte_mempool_cache *
 rte_mempool_cache_create(uint32_t size, int socket_id)
 {
@@ -774,7 +786,7 @@ rte_mempool_cache_create(uint32_t size, int socket_id)
 	cache = rte_zmalloc_socket("MEMPOOL_CACHE", sizeof(*cache),
 				  RTE_CACHE_LINE_SIZE, socket_id);
 	if (cache == NULL) {
-		RTE_LOG(ERR, MEMPOOL, "Cannot allocate mempool cache.\n");
+		RTE_MEMPOOL_LOG(ERR, "Cannot allocate mempool cache.");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -790,6 +802,7 @@ rte_mempool_cache_create(uint32_t size, int socket_id)
  * remaining objects in the cache are flushed to the corresponding
  * mempool.
  */
+RTE_EXPORT_SYMBOL(rte_mempool_cache_free)
 void
 rte_mempool_cache_free(struct rte_mempool_cache *cache)
 {
@@ -798,6 +811,7 @@ rte_mempool_cache_free(struct rte_mempool_cache *cache)
 }
 
 /* create an empty mempool */
+RTE_EXPORT_SYMBOL(rte_mempool_create_empty)
 struct rte_mempool *
 rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	unsigned cache_size, unsigned private_data_size,
@@ -876,7 +890,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	/* try to allocate tailq entry */
 	te = rte_zmalloc("MEMPOOL_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, MEMPOOL, "Cannot allocate tailq entry!\n");
+		RTE_MEMPOOL_LOG(ERR, "Cannot allocate tailq entry!");
 		goto exit_unlock;
 	}
 
@@ -916,6 +930,24 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	STAILQ_INIT(&mp->mem_list);
 
 	/*
+	 * Since we have 4 combinations of the SP/SC/MP/MC examine the flags to
+	 * set the correct index into the table of ops structs.
+	 */
+	if ((flags & RTE_MEMPOOL_F_SP_PUT) && (flags & RTE_MEMPOOL_F_SC_GET))
+		ret = rte_mempool_set_ops_byname(mp, "ring_sp_sc", NULL);
+	else if (flags & RTE_MEMPOOL_F_SP_PUT)
+		ret = rte_mempool_set_ops_byname(mp, "ring_sp_mc", NULL);
+	else if (flags & RTE_MEMPOOL_F_SC_GET)
+		ret = rte_mempool_set_ops_byname(mp, "ring_mp_sc", NULL);
+	else
+		ret = rte_mempool_set_ops_byname(mp, "ring_mp_mc", NULL);
+
+	if (ret) {
+		rte_errno = -ret;
+		goto exit_unlock;
+	}
+
+	/*
 	 * local_cache pointer is set even if cache_size is zero.
 	 * The local_cache points to just past the elt_pa[] array.
 	 */
@@ -948,6 +980,7 @@ exit_unlock:
 }
 
 /* create the mempool */
+RTE_EXPORT_SYMBOL(rte_mempool_create)
 struct rte_mempool *
 rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	unsigned cache_size, unsigned private_data_size,
@@ -955,29 +988,12 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 	int socket_id, unsigned flags)
 {
-	int ret;
 	struct rte_mempool *mp;
 
 	mp = rte_mempool_create_empty(name, n, elt_size, cache_size,
 		private_data_size, socket_id, flags);
 	if (mp == NULL)
 		return NULL;
-
-	/*
-	 * Since we have 4 combinations of the SP/SC/MP/MC examine the flags to
-	 * set the correct index into the table of ops structs.
-	 */
-	if ((flags & RTE_MEMPOOL_F_SP_PUT) && (flags & RTE_MEMPOOL_F_SC_GET))
-		ret = rte_mempool_set_ops_byname(mp, "ring_sp_sc", NULL);
-	else if (flags & RTE_MEMPOOL_F_SP_PUT)
-		ret = rte_mempool_set_ops_byname(mp, "ring_sp_mc", NULL);
-	else if (flags & RTE_MEMPOOL_F_SC_GET)
-		ret = rte_mempool_set_ops_byname(mp, "ring_mp_sc", NULL);
-	else
-		ret = rte_mempool_set_ops_byname(mp, "ring_mp_mc", NULL);
-
-	if (ret)
-		goto fail;
 
 	/* call the mempool priv initializer */
 	if (mp_init)
@@ -1001,6 +1017,7 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 }
 
 /* Return the number of entries in the mempool */
+RTE_EXPORT_SYMBOL(rte_mempool_avail_count)
 unsigned int
 rte_mempool_avail_count(const struct rte_mempool *mp)
 {
@@ -1025,6 +1042,7 @@ rte_mempool_avail_count(const struct rte_mempool *mp)
 }
 
 /* return the number of entries allocated from the mempool */
+RTE_EXPORT_SYMBOL(rte_mempool_in_use_count)
 unsigned int
 rte_mempool_in_use_count(const struct rte_mempool *mp)
 {
@@ -1055,11 +1073,8 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 	return count;
 }
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 /* check and update cookies or panic (internal) */
+RTE_EXPORT_SYMBOL(rte_mempool_check_cookies)
 void rte_mempool_check_cookies(const struct rte_mempool *mp,
 	void * const *obj_table_const, unsigned n, int free)
 {
@@ -1073,7 +1088,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 
 	/* Force to drop the "const" attribute. This is done only when
 	 * DEBUG is enabled */
-	tmp = (void *) obj_table_const;
+	tmp = (void *)(uintptr_t)obj_table_const;
 	obj_table = tmp;
 
 	while (n--) {
@@ -1088,16 +1103,16 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 
 		if (free == 0) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1) {
-				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+				RTE_MEMPOOL_LOG(CRIT,
+					"obj=%p, mempool=%p, cookie=%" PRIx64,
 					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (put)\n");
 			}
 			hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
 		} else if (free == 1) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
-				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+				RTE_MEMPOOL_LOG(CRIT,
+					"obj=%p, mempool=%p, cookie=%" PRIx64,
 					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (get)\n");
 			}
@@ -1105,8 +1120,8 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 		} else if (free == 2) {
 			if (cookie != RTE_MEMPOOL_HEADER_COOKIE1 &&
 			    cookie != RTE_MEMPOOL_HEADER_COOKIE2) {
-				RTE_LOG(CRIT, MEMPOOL,
-					"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+				RTE_MEMPOOL_LOG(CRIT,
+					"obj=%p, mempool=%p, cookie=%" PRIx64,
 					obj, (const void *) mp, cookie);
 				rte_panic("MEMPOOL: bad header cookie (audit)\n");
 			}
@@ -1114,8 +1129,8 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 		tlr = rte_mempool_get_trailer(obj);
 		cookie = tlr->cookie;
 		if (cookie != RTE_MEMPOOL_TRAILER_COOKIE) {
-			RTE_LOG(CRIT, MEMPOOL,
-				"obj=%p, mempool=%p, cookie=%" PRIx64 "\n",
+			RTE_MEMPOOL_LOG(CRIT,
+				"obj=%p, mempool=%p, cookie=%" PRIx64,
 				obj, (const void *) mp, cookie);
 			rte_panic("MEMPOOL: bad trailer cookie\n");
 		}
@@ -1128,6 +1143,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 #endif
 }
 
+RTE_EXPORT_SYMBOL(rte_mempool_contig_blocks_check_cookies)
 void
 rte_mempool_contig_blocks_check_cookies(const struct rte_mempool *mp,
 	void * const *first_obj_table_const, unsigned int n, int free)
@@ -1182,10 +1198,6 @@ mempool_audit_cookies(struct rte_mempool *mp)
 #define mempool_audit_cookies(mp) do {} while(0)
 #endif
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic error "-Wcast-qual"
-#endif
-
 /* check cookies before and after objects */
 static void
 mempool_audit_cache(const struct rte_mempool *mp)
@@ -1200,7 +1212,7 @@ mempool_audit_cache(const struct rte_mempool *mp)
 		const struct rte_mempool_cache *cache;
 		cache = &mp->local_cache[lcore_id];
 		if (cache->len > RTE_DIM(cache->objs)) {
-			RTE_LOG(CRIT, MEMPOOL, "badness on cache[%u]\n",
+			RTE_MEMPOOL_LOG(CRIT, "badness on cache[%u]",
 				lcore_id);
 			rte_panic("MEMPOOL: invalid cache len\n");
 		}
@@ -1208,6 +1220,7 @@ mempool_audit_cache(const struct rte_mempool *mp)
 }
 
 /* check the consistency of mempool (size, cookies, ...) */
+RTE_EXPORT_SYMBOL(rte_mempool_audit)
 void
 rte_mempool_audit(struct rte_mempool *mp)
 {
@@ -1219,6 +1232,7 @@ rte_mempool_audit(struct rte_mempool *mp)
 }
 
 /* dump the status of the mempool on the console */
+RTE_EXPORT_SYMBOL(rte_mempool_dump)
 void
 rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 {
@@ -1256,8 +1270,11 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	ops = rte_mempool_get_ops(mp->ops_index);
 	fprintf(f, "  ops_name: <%s>\n", (ops != NULL) ? ops->name : "NA");
 
-	STAILQ_FOREACH(memhdr, &mp->mem_list, next)
+	STAILQ_FOREACH(memhdr, &mp->mem_list, next) {
+		fprintf(f, "  memory chunk at %p, addr=%p, iova=0x%" PRIx64 ", len=%zu\n",
+				memhdr, memhdr->addr, memhdr->iova, memhdr->len);
 		mem_len += memhdr->len;
+	}
 	if (mem_len != 0) {
 		fprintf(f, "  avg bytes/object=%#Lf\n",
 			(long double)mem_len / mp->size);
@@ -1320,6 +1337,7 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 }
 
 /* dump the status of all mempools on the console */
+RTE_EXPORT_SYMBOL(rte_mempool_list_dump)
 void
 rte_mempool_list_dump(FILE *f)
 {
@@ -1340,6 +1358,7 @@ rte_mempool_list_dump(FILE *f)
 }
 
 /* search a mempool from its name */
+RTE_EXPORT_SYMBOL(rte_mempool_lookup)
 struct rte_mempool *
 rte_mempool_lookup(const char *name)
 {
@@ -1367,6 +1386,7 @@ rte_mempool_lookup(const char *name)
 	return mp;
 }
 
+RTE_EXPORT_SYMBOL(rte_mempool_walk)
 void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 		      void *arg)
 {
@@ -1383,6 +1403,53 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 	}
 
 	rte_mcfg_mempool_read_unlock();
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mempool_get_mem_range, 24.07)
+int rte_mempool_get_mem_range(const struct rte_mempool *mp,
+		struct rte_mempool_mem_range_info *mem_range)
+{
+	void *address_low = (void *)UINTPTR_MAX;
+	void *address_high = 0;
+	size_t address_diff = 0;
+	size_t total_size = 0;
+	struct rte_mempool_memhdr *hdr;
+
+	if (mp == NULL || mem_range == NULL)
+		return -EINVAL;
+
+	/* go through memory chunks and find the lowest and highest addresses */
+	STAILQ_FOREACH(hdr, &mp->mem_list, next) {
+		if (address_low > hdr->addr)
+			address_low = hdr->addr;
+		if (address_high < RTE_PTR_ADD(hdr->addr, hdr->len))
+			address_high = RTE_PTR_ADD(hdr->addr, hdr->len);
+		total_size += hdr->len;
+	}
+
+	/* check if mempool was not populated yet (no memory chunks) */
+	if (address_low == (void *)UINTPTR_MAX)
+		return -EINVAL;
+
+	address_diff = (size_t)RTE_PTR_DIFF(address_high, address_low);
+
+	mem_range->start = address_low;
+	mem_range->length = address_diff;
+	mem_range->is_contiguous = (total_size == address_diff) ? true : false;
+
+	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_mempool_get_obj_alignment, 24.07)
+size_t rte_mempool_get_obj_alignment(const struct rte_mempool *mp)
+{
+	if (mp == NULL)
+		return 0;
+
+	if (mp->flags & RTE_MEMPOOL_F_NO_CACHE_ALIGN)
+		return sizeof(uint64_t);
+	else
+		return RTE_MEMPOOL_ALIGN;
 }
 
 struct mempool_callback_data {
@@ -1407,6 +1474,7 @@ mempool_event_callback_invoke(enum rte_mempool_event event,
 	rte_mcfg_tailq_read_unlock();
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mempool_event_callback_register)
 int
 rte_mempool_event_callback_register(rte_mempool_event_callback *func,
 				    void *user_data)
@@ -1429,7 +1497,7 @@ rte_mempool_event_callback_register(rte_mempool_event_callback *func,
 
 	cb = calloc(1, sizeof(*cb));
 	if (cb == NULL) {
-		RTE_LOG(ERR, MEMPOOL, "Cannot allocate event callback!\n");
+		RTE_MEMPOOL_LOG(ERR, "Cannot allocate event callback!");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -1445,6 +1513,7 @@ exit:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mempool_event_callback_unregister)
 int
 rte_mempool_event_callback_unregister(rte_mempool_event_callback *func,
 				      void *user_data)

@@ -212,7 +212,7 @@ int
 nicvf_mbox_set_mac_addr(struct nicvf *nic,
 			const uint8_t mac[NICVF_MAC_ADDR_SIZE])
 {
-	struct nic_mbx mbx = { .msg = {0} };
+	struct nic_mbx mbx = { };
 	int i;
 
 	mbx.msg.msg = NIC_MBOX_MSG_SET_MAC;
@@ -226,7 +226,7 @@ nicvf_mbox_set_mac_addr(struct nicvf *nic,
 int
 nicvf_mbox_config_cpi(struct nicvf *nic, uint32_t qcnt)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_CPI_CFG;
 	mbx.cpi_cfg.vf_id = nic->vf_id;
@@ -239,7 +239,7 @@ nicvf_mbox_config_cpi(struct nicvf *nic, uint32_t qcnt)
 int
 nicvf_mbox_get_rss_size(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_RSS_SIZE;
 	mbx.rss_size.vf_id = nic->vf_id;
@@ -251,7 +251,7 @@ nicvf_mbox_get_rss_size(struct nicvf *nic)
 int
 nicvf_mbox_config_rss(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 	struct nicvf_rss_reta_info *rss = &nic->rss_info;
 	size_t tot_len = rss->rss_size;
 	size_t cur_len;
@@ -284,7 +284,7 @@ int
 nicvf_mbox_rq_config(struct nicvf *nic, uint16_t qidx,
 		     struct pf_rq_cfg *pf_rq_cfg)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_RQ_CFG;
 	mbx.rq.qs_num = nic->vf_id;
@@ -296,7 +296,7 @@ nicvf_mbox_rq_config(struct nicvf *nic, uint16_t qidx,
 int
 nicvf_mbox_sq_config(struct nicvf *nic, uint16_t qidx)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_SQ_CFG;
 	mbx.sq.qs_num = nic->vf_id;
@@ -309,7 +309,7 @@ nicvf_mbox_sq_config(struct nicvf *nic, uint16_t qidx)
 int
 nicvf_mbox_qset_config(struct nicvf *nic, struct pf_qs_cfg *qs_cfg)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 #if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	qs_cfg->be = 1;
@@ -325,7 +325,7 @@ nicvf_mbox_qset_config(struct nicvf *nic, struct pf_qs_cfg *qs_cfg)
 int
 nicvf_mbox_request_sqs(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 	size_t i;
 
 	assert_primary(nic);
@@ -346,7 +346,7 @@ nicvf_mbox_request_sqs(struct nicvf *nic)
 int
 nicvf_mbox_rq_drop_config(struct nicvf *nic, uint16_t qidx, bool enable)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 	struct pf_rq_drop_cfg *drop_cfg;
 
 	/* Enable CQ drop to reserve sufficient CQEs for all tx packets */
@@ -365,7 +365,7 @@ nicvf_mbox_rq_drop_config(struct nicvf *nic, uint16_t qidx, bool enable)
 int
 nicvf_mbox_update_hw_max_frs(struct nicvf *nic, uint16_t mtu)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_SET_MAX_FRS;
 	mbx.frs.max_frs = mtu;
@@ -376,7 +376,7 @@ nicvf_mbox_update_hw_max_frs(struct nicvf *nic, uint16_t mtu)
 int
 nicvf_mbox_rq_sync(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	/* Make sure all packets in the pipeline are written back into mem */
 	mbx.msg.msg = NIC_MBOX_MSG_RQ_SW_SYNC;
@@ -387,7 +387,7 @@ nicvf_mbox_rq_sync(struct nicvf *nic)
 int
 nicvf_mbox_rq_bp_config(struct nicvf *nic, uint16_t qidx, bool enable)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_RQ_BP_CFG;
 	mbx.rq.qs_num = nic->vf_id;
@@ -401,7 +401,7 @@ nicvf_mbox_rq_bp_config(struct nicvf *nic, uint16_t qidx, bool enable)
 int
 nicvf_mbox_loopback_config(struct nicvf *nic, bool enable)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.lbk.msg = NIC_MBOX_MSG_LOOPBACK;
 	mbx.lbk.vf_id = nic->vf_id;
@@ -414,7 +414,7 @@ nicvf_mbox_reset_stat_counters(struct nicvf *nic, uint16_t rx_stat_mask,
 			       uint8_t tx_stat_mask, uint16_t rq_stat_mask,
 			       uint16_t sq_stat_mask)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.reset_stat.msg = NIC_MBOX_MSG_RESET_STAT_COUNTER;
 	mbx.reset_stat.rx_stat_mask = rx_stat_mask;
@@ -427,7 +427,7 @@ nicvf_mbox_reset_stat_counters(struct nicvf *nic, uint16_t rx_stat_mask,
 int
 nicvf_mbox_set_link_up_down(struct nicvf *nic, bool enable)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.lbk.msg = NIC_MBOX_MSG_SET_LINK;
 	mbx.lbk.vf_id = nic->vf_id;
@@ -439,7 +439,7 @@ nicvf_mbox_set_link_up_down(struct nicvf *nic, bool enable)
 int
 nicvf_mbox_change_mode(struct nicvf *nic, struct change_link_mode *cfg)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.mode.msg = NIC_MBOX_MSG_CHANGE_MODE;
 	mbx.mode.vf_id = nic->vf_id;
@@ -453,7 +453,7 @@ nicvf_mbox_change_mode(struct nicvf *nic, struct change_link_mode *cfg)
 void
 nicvf_mbox_shutdown(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_SHUTDOWN;
 	nicvf_mbox_send_msg_to_pf(nic, &mbx);
@@ -462,7 +462,7 @@ nicvf_mbox_shutdown(struct nicvf *nic)
 void
 nicvf_mbox_cfg_done(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_CFG_DONE;
 	nicvf_mbox_send_async_msg_to_pf(nic, &mbx);
@@ -471,7 +471,7 @@ nicvf_mbox_cfg_done(struct nicvf *nic)
 void
 nicvf_mbox_link_change(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_BGX_LINK_CHANGE;
 	nicvf_mbox_send_async_msg_to_pf(nic, &mbx);
@@ -480,8 +480,20 @@ nicvf_mbox_link_change(struct nicvf *nic)
 void
 nicvf_mbox_reset_xcast(struct nicvf *nic)
 {
-	struct nic_mbx mbx = { .msg = { 0 } };
+	struct nic_mbx mbx = { };
 
 	mbx.msg.msg = NIC_MBOX_MSG_RESET_XCAST;
 	nicvf_mbox_send_msg_to_pf(nic, &mbx);
+}
+
+int
+nicvf_mbox_set_xcast(struct nicvf *nic, uint8_t  mode, uint64_t mac)
+{
+	struct nic_mbx mbx = { };
+
+	mbx.xcast.msg = NIC_MBOX_MSG_SET_XCAST;
+	mbx.xcast.mode = mode;
+	mbx.xcast.mac = mac;
+
+	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
 }

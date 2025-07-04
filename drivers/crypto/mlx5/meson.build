@@ -15,6 +15,8 @@ endif
 
 sources = files(
         'mlx5_crypto.c',
+        'mlx5_crypto_xts.c',
+        'mlx5_crypto_gcm.c',
         'mlx5_crypto_dek.c',
 )
 
@@ -30,3 +32,5 @@ foreach option:cflags_options
         cflags += option
     endif
 endforeach
+
+require_iova_in_mbuf = false

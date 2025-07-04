@@ -10,12 +10,10 @@
  * RTE VFIO. This library provides various VFIO related utility functions.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
+
+#include <rte_compat.h>
 
 /*
  * determine if VFIO is present on the system
@@ -30,6 +28,10 @@ extern "C" {
 #endif /* kernel version >= 4.0.0 */
 #endif /* RTE_EAL_VFIO */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef VFIO_PRESENT
 
 #include <linux/vfio.h>
@@ -38,7 +40,6 @@ extern "C" {
 #define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define VFIO_GROUP_FMT "/dev/vfio/%u"
 #define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
-#define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
 #define VFIO_GET_REGION_IDX(x) (x >> 40)
 #define VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
@@ -72,6 +73,33 @@ struct vfio_info_cap_header {
 #define RTE_VFIO_CAP_MSIX_MAPPABLE VFIO_REGION_INFO_CAP_MSIX_MAPPABLE
 #else
 #define RTE_VFIO_CAP_MSIX_MAPPABLE 3
+#endif
+
+/* VFIO_DEVICE_FEATURE is defined for kernel version 5.7 and newer. */
+#ifdef	VFIO_DEVICE_FEATURE
+#define	RTE_VFIO_DEVICE_FEATURE	VFIO_DEVICE_FEATURE
+#else
+#define	RTE_VFIO_DEVICE_FEATURE	_IO(VFIO_TYPE, VFIO_BASE + 17)
+struct vfio_device_feature {
+	__u32	argsz;
+	__u32	flags;
+#define	VFIO_DEVICE_FEATURE_MASK	(0xffff) /* 16-bit feature index */
+#define	VFIO_DEVICE_FEATURE_GET		(1 << 16) /* Get feature into data[] */
+#define	VFIO_DEVICE_FEATURE_SET		(1 << 17) /* Set feature from data[] */
+#define	VFIO_DEVICE_FEATURE_PROBE	(1 << 18) /* Probe feature support */
+	__u8	data[];
+};
+#endif
+
+#ifdef	VFIO_DEVICE_FEATURE_BUS_MASTER
+#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	VFIO_DEVICE_FEATURE_BUS_MASTER
+#else
+#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	10
+struct vfio_device_feature_bus_master {
+	__u32 op;
+#define	VFIO_DEVICE_FEATURE_CLEAR_MASTER	0	/* Clear Bus Master */
+#define	VFIO_DEVICE_FEATURE_SET_MASTER		1	/* Set Bus Master */
+};
 #endif
 
 #else /* not VFIO_PRESENT */
@@ -212,6 +240,32 @@ rte_vfio_clear_group(int vfio_group_fd);
 int
 rte_vfio_get_group_num(const char *sysfs_base,
 		      const char *dev_addr, int *iommu_group_num);
+
+/**
+ * Get device information
+ *
+ * This function is only relevant to Linux and will return an error on BSD.
+ *
+ * @param sysfs_base
+ *   sysfs path prefix.
+ *
+ * @param dev_addr
+ *   device location.
+ *
+ * @param vfio_dev_fd
+ *   VFIO fd.
+ *
+ * @param device_info
+ *   Device information.
+ *
+ * @return
+ *   0 on success.
+ *  <0 on failure.
+ */
+__rte_experimental
+int
+rte_vfio_get_device_info(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info);
 
 /**
  * Open a new VFIO container fd

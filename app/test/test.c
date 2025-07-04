@@ -11,13 +11,11 @@
 #include <ctype.h>
 #include <sys/queue.h>
 
-#ifdef RTE_LIB_CMDLINE
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
 extern cmdline_parse_ctx_t main_ctx[];
-#endif
 
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -106,12 +104,10 @@ int last_test_result;
 int
 main(int argc, char **argv)
 {
-#ifdef RTE_LIB_CMDLINE
 	struct cmdline *cl;
-	char *tests[argc]; /* store an array of tests to run */
+	char **tests = alloca(sizeof(char *) * argc); /* store an array of tests to run */
 	int test_count = 0;
 	int i;
-#endif
 	char *extra_args;
 	int ret;
 
@@ -183,7 +179,6 @@ main(int argc, char **argv)
 				"HPET is not enabled, using TSC as default timer\n");
 
 
-#ifdef RTE_LIB_CMDLINE
 	char *dpdk_test = getenv("DPDK_TEST");
 
 	if (dpdk_test && strlen(dpdk_test) > 0)
@@ -193,6 +188,25 @@ main(int argc, char **argv)
 
 	if (test_count > 0) {
 		char buf[1024];
+		char *dpdk_test_skip = getenv("DPDK_TEST_SKIP");
+		char *skip_tests[128] = {0};
+		size_t n_skip_tests = 0;
+
+		if (dpdk_test_skip != NULL && strlen(dpdk_test_skip) > 0) {
+			int split_ret;
+			char *dpdk_test_skip_cp = strdup(dpdk_test_skip);
+			if (dpdk_test_skip_cp == NULL) {
+				ret = -1;
+				goto out;
+			}
+			dpdk_test_skip = dpdk_test_skip_cp;
+			split_ret = rte_strsplit(dpdk_test_skip, strlen(dpdk_test_skip),
+					skip_tests, RTE_DIM(skip_tests), ',');
+			if (split_ret > 0)
+				n_skip_tests = split_ret;
+			else
+				free(dpdk_test_skip);
+		}
 
 		cl = cmdline_new(main_ctx, "RTE>>", 0, 1);
 		if (cl == NULL) {
@@ -201,6 +215,15 @@ main(int argc, char **argv)
 		}
 
 		for (i = 0; i < test_count; i++) {
+			/* check if test is to be skipped */
+			for (size_t j = 0; j < n_skip_tests; j++) {
+				if (strcmp(tests[i], skip_tests[j]) == 0) {
+					fprintf(stderr, "Skipping %s [DPDK_TEST_SKIP]\n", tests[i]);
+					ret = TEST_SKIPPED;
+					goto end_of_cmd;
+				}
+			}
+
 			snprintf(buf, sizeof(buf), "%s\n", tests[i]);
 			if (cmdline_parse_check(cl, buf) < 0) {
 				printf("Error: invalid test command: '%s'\n", tests[i]);
@@ -211,9 +234,13 @@ main(int argc, char **argv)
 			} else
 				ret = last_test_result;
 
-			if (ret != 0)
+end_of_cmd:
+			if (ret != 0 && ret != TEST_SKIPPED)
 				break;
 		}
+		if (n_skip_tests > 0)
+			free(dpdk_test_skip);
+
 		cmdline_free(cl);
 		goto out;
 	} else {
@@ -227,7 +254,6 @@ main(int argc, char **argv)
 		cmdline_interact(cl);
 		cmdline_stdin_exit(cl);
 	}
-#endif
 	ret = 0;
 
 out:
@@ -343,11 +369,13 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 			if (test_success == TEST_SUCCESS)
 				suite->succeeded++;
-			else if (test_success == TEST_SKIPPED)
+			else if (test_success == TEST_SKIPPED) {
 				suite->skipped++;
-			else if (test_success == -ENOTSUP)
+				suite->executed--;
+			} else if (test_success == -ENOTSUP) {
 				suite->unsupported++;
-			else
+				suite->executed--;
+			} else
 				suite->failed++;
 		} else if (test_success == -ENOTSUP) {
 			suite->unsupported++;

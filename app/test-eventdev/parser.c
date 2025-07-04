@@ -40,7 +40,7 @@ get_hex_val(char c)
 int
 parser_read_arg_bool(const char *p)
 {
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	int result = -EINVAL;
 
 	if (((p[0] == 'y') && (p[1] == 'e') && (p[2] == 's')) ||
@@ -67,7 +67,7 @@ parser_read_arg_bool(const char *p)
 		result = 0;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 
 	if (p[0] != '\0')
 		return -EINVAL;
@@ -81,7 +81,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -107,7 +107,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 		break;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (*p != '\0')
 		return -EINVAL;
 
@@ -121,7 +121,7 @@ parser_read_int32(int32_t *value, const char *p)
 	char *next;
 	int32_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -139,13 +139,13 @@ parser_read_uint64_hex(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 
 	val = strtoul(p, &next, 16);
 	if (p == next)
 		return -EINVAL;
 
-	p = skip_white_spaces(next);
+	p = rte_str_skip_leading_spaces(next);
 	if (*p != '\0')
 		return -EINVAL;
 

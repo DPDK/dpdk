@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause or GPL-2.0+
  * Copyright 2008-2013 Freescale Semiconductor, Inc.
- * Copyright 2019-2022 NXP
+ * Copyright 2019-2025 NXP
  */
 
 #ifndef __DESC_PDCP_H__
@@ -619,7 +619,7 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
-	if ((sn_size != PDCP_SN_SIZE_18 &&
+	if ((authdata && sn_size != PDCP_SN_SIZE_18 &&
 			!(rta_sec_era == RTA_SEC_ERA_8 &&
 				authdata->algtype == 0))
 			|| (rta_sec_era == RTA_SEC_ERA_10)) {
@@ -631,6 +631,7 @@ pdcp_insert_cplane_enc_only_op(struct program *p,
 				 (uint16_t)cipherdata->algtype << 8);
 		return 0;
 	}
+
 	/* Non-proto is supported only for 5bit cplane and 18bit uplane */
 	switch (sn_size) {
 	case PDCP_SN_SIZE_5:
@@ -1023,6 +1024,11 @@ pdcp_insert_uplane_aes_aes_op(struct program *p,
 		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
 		MOVEB(p, CONTEXT1, 0, MATH3, 0, 4, WAITCOMP | IMMED);
 
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
+
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
 		     CLRW_CLR_C1CTX |
@@ -1069,6 +1075,11 @@ pdcp_insert_uplane_aes_aes_op(struct program *p,
 		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
 
 		MOVEB(p, OFIFO, 0, MATH3, 0, 4, IMMED);
+
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
@@ -1209,6 +1220,11 @@ pdcp_insert_cplane_snow_aes_op(struct program *p,
 			      DIR_DEC);
 		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
 		MOVEB(p, CONTEXT1, 0, MATH3, 0, 4, WAITCOMP | IMMED);
+
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
@@ -1911,6 +1927,11 @@ pdcp_insert_cplane_zuc_aes_op(struct program *p,
 
 		MOVEB(p, OFIFO, 0, MATH3, 0, 4, IMMED);
 
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
+
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
 		     CLRW_CLR_C1CTX |
@@ -1961,17 +1982,16 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
-	if ((sn_size == PDCP_SN_SIZE_15) ||
-			(rta_sec_era >= RTA_SEC_ERA_10)) {
+	if (sn_size == PDCP_SN_SIZE_15) {
 		PROTOCOL(p, dir, OP_PCLID_LTE_PDCP_USER,
 			 (uint16_t)cipherdata->algtype);
 		return 0;
 	}
 
-	if (sn_size == PDCP_SN_SIZE_15) {
+	if (sn_size == PDCP_SN_SIZE_12) {
 		SEQLOAD(p, MATH0, 6, 2, 0);
-		sn_mask = (swap == false) ? PDCP_U_PLANE_15BIT_SN_MASK :
-					PDCP_U_PLANE_15BIT_SN_MASK_BE;
+		sn_mask = (swap == false) ? PDCP_12BIT_SN_MASK :
+			PDCP_12BIT_SN_MASK_BE;
 	} else { /* SN Size == PDCP_SN_SIZE_18 */
 		SEQLOAD(p, MATH0, 5, 3, 0);
 		sn_mask = (swap == false) ? PDCP_U_PLANE_18BIT_SN_MASK :
@@ -1980,7 +2000,7 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 	JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 	MATHB(p, MATH0, AND, sn_mask, MATH1, 8, IFB | IMMED2);
 
-	if (sn_size == PDCP_SN_SIZE_15)
+	if (sn_size == PDCP_SN_SIZE_12)
 		SEQSTORE(p, MATH0, 6, 2, 0);
 	else /* SN Size == PDCP_SN_SIZE_18 */
 		SEQSTORE(p, MATH0, 5, 3, 0);
@@ -2027,7 +2047,7 @@ pdcp_insert_uplane_no_int_op(struct program *p,
 
 	default:
 		pr_err("%s: Invalid encrypt algorithm selected: %d\n",
-		       "pdcp_insert_uplane_15bit_op", cipherdata->algtype);
+		       "pdcp_insert_uplane_no_int_op", cipherdata->algtype);
 		return -EINVAL;
 	}
 
@@ -2338,27 +2358,27 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 		desc_share[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID] = {
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
-			SHR_ALWAYS	/* ZUC-I */
+			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* AES CTR */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
-			SHR_ALWAYS,	/* NULL */
+			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
-			SHR_ALWAYS	/* ZUC-I */
+			SHR_WAIT	/* ZUC-I */
 		},
 	};
 	enum pdb_type_e pdb_type;
@@ -2478,27 +2498,27 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 		desc_share[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID] = {
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
-			SHR_ALWAYS	/* ZUC-I */
+			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* AES CTR */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
-			SHR_ALWAYS,	/* NULL */
+			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
-			SHR_ALWAYS	/* ZUC-I */
+			SHR_WAIT	/* ZUC-I */
 		},
 	};
 	enum pdb_type_e pdb_type;
@@ -2643,24 +2663,24 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 		desc_share[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID] = {
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
-			SHR_ALWAYS	/* ZUC-I */
+			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* AES CTR */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
-			SHR_ALWAYS,	/* NULL */
+			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
@@ -2677,7 +2697,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 	if (authdata)
 		SHR_HDR(p, desc_share[cipherdata->algtype][authdata->algtype], 0, 0);
 	else
-		SHR_HDR(p, SHR_ALWAYS, 0, 0);
+		SHR_HDR(p, SHR_WAIT, 0, 0);
 	pdb_type = cnstr_pdcp_u_plane_pdb(p, sn_size, hfn,
 					  bearer, direction, hfn_threshold,
 					  cipherdata, authdata);
@@ -2700,12 +2720,22 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 		case PDCP_CIPHER_TYPE_AES:
 		case PDCP_CIPHER_TYPE_SNOW:
 		case PDCP_CIPHER_TYPE_NULL:
-			if (rta_sec_era == RTA_SEC_ERA_8 &&
+			if (rta_sec_era >= RTA_SEC_ERA_8 &&
 					authdata && authdata->algtype == 0){
 				err = pdcp_insert_uplane_with_int_op(p, swap,
 						cipherdata, authdata,
 						sn_size,
 						OP_TYPE_ENCAP_PROTOCOL);
+				if (err)
+					return err;
+				break;
+			}
+			if (rta_sec_era >= RTA_SEC_ERA_8 &&
+					cipherdata->algtype == PDCP_CIPHER_TYPE_AES
+					&& !authdata
+					&& sn_size == PDCP_SN_SIZE_12) {
+				err = pdcp_insert_uplane_no_int_op(p, swap, cipherdata,
+						OP_TYPE_ENCAP_PROTOCOL, sn_size);
 				if (err)
 					return err;
 				break;
@@ -2727,6 +2757,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 			    (uint64_t)cipherdata->key, cipherdata->keylen,
 			    INLINE_KEY(cipherdata));
 
+			JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 			if (authdata)
 				PROTOCOL(p, OP_TYPE_ENCAP_PROTOCOL,
 					 OP_PCLID_LTE_PDCP_USER_RN,
@@ -2828,24 +2859,24 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 		desc_share[PDCP_CIPHER_TYPE_INVALID][PDCP_AUTH_TYPE_INVALID] = {
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
-			SHR_ALWAYS	/* ZUC-I */
+			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* AES CTR */
-			SHR_ALWAYS,	/* NULL */
-			SHR_ALWAYS,	/* SNOW f9 */
+			SHR_WAIT,	/* NULL */
+			SHR_WAIT,	/* SNOW f9 */
 			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
-			SHR_ALWAYS,	/* NULL */
+			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
 			SHR_WAIT,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
@@ -2862,7 +2893,7 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 	if (authdata)
 		SHR_HDR(p, desc_share[cipherdata->algtype][authdata->algtype], 0, 0);
 	else
-		SHR_HDR(p, SHR_ALWAYS, 0, 0);
+		SHR_HDR(p, SHR_WAIT, 0, 0);
 
 	pdb_type = cnstr_pdcp_u_plane_pdb(p, sn_size, hfn, bearer,
 					  direction, hfn_threshold,

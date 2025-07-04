@@ -33,7 +33,6 @@ struct ip_frag {
 struct ip_frag_key {
 	uint64_t src_dst[4];
 	/* src and dst address, only first 8 bytes used for IPv4 */
-	RTE_STD_C11
 	union {
 		uint64_t id_key_len; /* combined for easy fetch */
 		__extension__
@@ -48,7 +47,7 @@ struct ip_frag_key {
  * Fragmented packet to reassemble.
  * First two entries in the frags[] array are for the last and first fragments.
  */
-struct ip_frag_pkt {
+struct __rte_cache_aligned ip_frag_pkt {
 	RTE_TAILQ_ENTRY(ip_frag_pkt) lru;      /* LRU list */
 	struct ip_frag_key key;                /* fragmentation key */
 	uint64_t start;                        /* creation timestamp */
@@ -56,20 +55,20 @@ struct ip_frag_pkt {
 	uint32_t frag_size;                    /* size of fragments received */
 	uint32_t last_idx;                     /* index of next entry to fill */
 	struct ip_frag frags[IP_MAX_FRAG_NUM]; /* fragments */
-} __rte_cache_aligned;
+};
 
  /* fragments tailq */
 RTE_TAILQ_HEAD(ip_pkt_list, ip_frag_pkt);
 
 /* fragmentation table statistics */
-struct ip_frag_tbl_stat {
+struct __rte_cache_aligned ip_frag_tbl_stat {
 	uint64_t find_num;     /* total # of find/insert attempts. */
 	uint64_t add_num;      /* # of add ops. */
 	uint64_t del_num;      /* # of del ops. */
 	uint64_t reuse_num;    /* # of reuse (del/add) ops. */
 	uint64_t fail_total;   /* total # of add failures. */
 	uint64_t fail_nospace; /* # of 'no space' add failures. */
-} __rte_cache_aligned;
+};
 
 /* fragmentation table */
 struct rte_ip_frag_tbl {
@@ -83,7 +82,7 @@ struct rte_ip_frag_tbl {
 	struct ip_frag_pkt *last;     /* last used entry. */
 	struct ip_pkt_list lru;       /* LRU list for table entries. */
 	struct ip_frag_tbl_stat stat; /* statistics counters. */
-	__extension__ struct ip_frag_pkt pkt[]; /* hash table. */
+	struct ip_frag_pkt pkt[]; /* hash table. */
 };
 
 #endif /* _IP_REASSEMBLY_H_ */

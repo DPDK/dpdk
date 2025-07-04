@@ -11,8 +11,6 @@
 #include "hns3_intr.h"
 #include "hns3_rxtx.h"
 
-#define HNS3_CMD_CODE_OFFSET		2
-
 static const struct errno_respcode_map err_code_map[] = {
 	{0, 0},
 	{1, -EPERM},
@@ -25,6 +23,14 @@ static const struct errno_respcode_map err_code_map[] = {
 	{28, -ENOSPC},
 	{95, -EOPNOTSUPP},
 };
+
+void
+hns3vf_mbx_setup(struct hns3_vf_to_pf_msg *req, uint8_t code, uint8_t subcode)
+{
+	memset(req, 0, sizeof(struct hns3_vf_to_pf_msg));
+	req->code = code;
+	req->subcode = subcode;
+}
 
 static int
 hns3_resp_to_errno(uint16_t resp_code)
@@ -40,23 +46,6 @@ hns3_resp_to_errno(uint16_t resp_code)
 	return -EIO;
 }
 
-static void
-hns3_mbx_proc_timeout(struct hns3_hw *hw, uint16_t code, uint16_t subcode)
-{
-	if (hw->mbx_resp.matching_scheme ==
-	    HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL) {
-		hw->mbx_resp.lost++;
-		hns3_err(hw,
-			 "VF could not get mbx(%u,%u) head(%u) tail(%u) "
-			 "lost(%u) from PF",
-			 code, subcode, hw->mbx_resp.head, hw->mbx_resp.tail,
-			 hw->mbx_resp.lost);
-		return;
-	}
-
-	hns3_err(hw, "VF could not get mbx(%u,%u) from PF", code, subcode);
-}
-
 static int
 hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 		  uint8_t *resp_data, uint16_t resp_len)
@@ -67,7 +56,6 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_mbx_resp_status *mbx_resp;
 	uint32_t wait_time = 0;
-	bool received;
 
 	if (resp_len > HNS3_MBX_MAX_RESP_DATA_SIZE) {
 		hns3_err(hw, "VF mbx response len(=%u) exceeds maximum(=%d)",
@@ -77,7 +65,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 
 	mbx_time_limit = (uint32_t)hns->mbx_time_limit_ms * US_PER_MS;
 	while (wait_time < mbx_time_limit) {
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			hns3_err(hw, "Don't wait for mbx response because of "
 				 "disable_cmd");
 			return -EBUSY;
@@ -90,23 +78,17 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 			return -EIO;
 		}
 
-		hns3_dev_handle_mbx_msg(hw);
+		hns3vf_handle_mbx_msg(hw);
 		rte_delay_us(HNS3_WAIT_RESP_US);
 
-		if (hw->mbx_resp.matching_scheme ==
-		    HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL)
-			received = (hw->mbx_resp.head ==
-				    hw->mbx_resp.tail + hw->mbx_resp.lost);
-		else
-			received = hw->mbx_resp.received_match_resp;
-		if (received)
+		if (hw->mbx_resp.received_match_resp)
 			break;
 
 		wait_time += HNS3_WAIT_RESP_US;
 	}
 	hw->mbx_resp.req_msg_data = 0;
 	if (wait_time >= mbx_time_limit) {
-		hns3_mbx_proc_timeout(hw, code, subcode);
+		hns3_err(hw, "VF could not get mbx(%u,%u) from PF", code, subcode);
 		return -ETIME;
 	}
 	rte_io_rmb();
@@ -132,7 +114,6 @@ hns3_mbx_prepare_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode)
 	 * we get the exact scheme which is used.
 	 */
 	hw->mbx_resp.req_msg_data = (uint32_t)code << 16 | subcode;
-	hw->mbx_resp.head++;
 
 	/* Update match_id and ensure the value of match_id is not zero */
 	hw->mbx_resp.match_id++;
@@ -145,54 +126,34 @@ hns3_mbx_prepare_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode)
 }
 
 int
-hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
-		  const uint8_t *msg_data, uint8_t msg_len, bool need_resp,
-		  uint8_t *resp_data, uint16_t resp_len)
+hns3vf_mbx_send(struct hns3_hw *hw,
+		struct hns3_vf_to_pf_msg *req, bool need_resp,
+		uint8_t *resp_data, uint16_t resp_len)
 {
-	struct hns3_mbx_vf_to_pf_cmd *req;
+	struct hns3_mbx_vf_to_pf_cmd *cmd;
 	struct hns3_cmd_desc desc;
-	bool is_ring_vector_msg;
-	int offset;
 	int ret;
 
-	req = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
-
-	/* first two bytes are reserved for code & subcode */
-	if (msg_len > (HNS3_MBX_MAX_MSG_SIZE - HNS3_CMD_CODE_OFFSET)) {
-		hns3_err(hw,
-			 "VF send mbx msg fail, msg len %u exceeds max payload len %d",
-			 msg_len, HNS3_MBX_MAX_MSG_SIZE - HNS3_CMD_CODE_OFFSET);
-		return -EINVAL;
-	}
-
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
-	req->msg[0] = code;
-	is_ring_vector_msg = (code == HNS3_MBX_MAP_RING_TO_VECTOR) ||
-			     (code == HNS3_MBX_UNMAP_RING_TO_VECTOR) ||
-			     (code == HNS3_MBX_GET_RING_VECTOR_MAP);
-	if (!is_ring_vector_msg)
-		req->msg[1] = subcode;
-	if (msg_data) {
-		offset = is_ring_vector_msg ? 1 : HNS3_CMD_CODE_OFFSET;
-		memcpy(&req->msg[offset], msg_data, msg_len);
-	}
+	cmd = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
+	cmd->msg = *req;
 
 	/* synchronous send */
 	if (need_resp) {
-		req->mbx_need_resp |= HNS3_MBX_NEED_RESP_BIT;
+		cmd->mbx_need_resp |= HNS3_MBX_NEED_RESP_BIT;
 		rte_spinlock_lock(&hw->mbx_resp.lock);
-		hns3_mbx_prepare_resp(hw, code, subcode);
-		req->match_id = hw->mbx_resp.match_id;
+		hns3_mbx_prepare_resp(hw, req->code, req->subcode);
+		cmd->match_id = hw->mbx_resp.match_id;
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
-			hw->mbx_resp.head--;
 			rte_spinlock_unlock(&hw->mbx_resp.lock);
 			hns3_err(hw, "VF failed(=%d) to send mbx message to PF",
 				 ret);
 			return ret;
 		}
 
-		ret = hns3_get_mbx_resp(hw, code, subcode, resp_data, resp_len);
+		ret = hns3_get_mbx_resp(hw, req->code, req->subcode,
+					resp_data, resp_len);
 		rte_spinlock_unlock(&hw->mbx_resp.lock);
 	} else {
 		/* asynchronous send */
@@ -219,17 +180,17 @@ static void
 hns3vf_handle_link_change_event(struct hns3_hw *hw,
 				struct hns3_mbx_pf_to_vf_cmd *req)
 {
+	struct hns3_mbx_link_status *link_info =
+		(struct hns3_mbx_link_status *)req->msg.msg_data;
 	uint8_t link_status, link_duplex;
-	uint16_t *msg_q = req->msg;
 	uint8_t support_push_lsc;
 	uint32_t link_speed;
 
-	memcpy(&link_speed, &msg_q[2], sizeof(link_speed));
-	link_status = rte_le_to_cpu_16(msg_q[1]);
-	link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
-	hns3vf_update_link_status(hw, link_status, link_speed,
-				  link_duplex);
-	support_push_lsc = (*(uint8_t *)&msg_q[5]) & 1u;
+	link_status = (uint8_t)rte_le_to_cpu_16(link_info->link_status);
+	link_speed = rte_le_to_cpu_32(link_info->speed);
+	link_duplex = (uint8_t)rte_le_to_cpu_16(link_info->duplex);
+	hns3vf_update_link_status(hw, link_status, link_speed, link_duplex);
+	support_push_lsc = (link_info->flag) & 1u;
 	hns3vf_update_push_lsc_cap(hw, support_push_lsc);
 }
 
@@ -238,7 +199,6 @@ hns3_handle_asserting_reset(struct hns3_hw *hw,
 			    struct hns3_mbx_pf_to_vf_cmd *req)
 {
 	enum hns3_reset_level reset_level;
-	uint16_t *msg_q = req->msg;
 
 	/*
 	 * PF has asserted reset hence VF should go in pending
@@ -246,7 +206,7 @@ hns3_handle_asserting_reset(struct hns3_hw *hw,
 	 * has been completely reset. After this stack should
 	 * eventually be re-initialized.
 	 */
-	reset_level = rte_le_to_cpu_16(msg_q[1]);
+	reset_level = rte_le_to_cpu_16(req->msg.reset_level);
 	hns3_atomic_set_bit(reset_level, &hw->reset.pending);
 
 	hns3_warn(hw, "PF inform reset level %d", reset_level);
@@ -254,41 +214,10 @@ hns3_handle_asserting_reset(struct hns3_hw *hw,
 	hns3_schedule_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
 }
 
-/*
- * Case1: receive response after timeout, req_msg_data
- *        is 0, not equal resp_msg, do lost--
- * Case2: receive last response during new send_mbx_msg,
- *	  req_msg_data is different with resp_msg, let
- *	  lost--, continue to wait for response.
- */
-static void
-hns3_update_resp_position(struct hns3_hw *hw, uint32_t resp_msg)
-{
-	struct hns3_mbx_resp_status *resp = &hw->mbx_resp;
-	uint32_t tail = resp->tail + 1;
-
-	if (tail > resp->head)
-		tail = resp->head;
-	if (resp->req_msg_data != resp_msg) {
-		if (resp->lost)
-			resp->lost--;
-		hns3_warn(hw, "Received a mismatched response req_msg(%x) "
-			  "resp_msg(%x) head(%u) tail(%u) lost(%u)",
-			  resp->req_msg_data, resp_msg, resp->head, tail,
-			  resp->lost);
-	} else if (tail + resp->lost > resp->head) {
-		resp->lost--;
-		hns3_warn(hw, "Received a new response again resp_msg(%x) "
-			  "head(%u) tail(%u) lost(%u)", resp_msg,
-			  resp->head, tail, resp->lost);
-	}
-	rte_io_wmb();
-	resp->tail = tail;
-}
-
 static void
 hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
 {
+#define HNS3_MBX_RESP_CODE_OFFSET 16
 	struct hns3_mbx_resp_status *resp = &hw->mbx_resp;
 	uint32_t msg_data;
 
@@ -298,15 +227,10 @@ hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
 		 * match_id to its response. So VF could use the match_id
 		 * to match the request.
 		 */
-		if (resp->matching_scheme !=
-		    HNS3_MBX_RESP_MATCHING_SCHEME_OF_MATCH_ID) {
-			resp->matching_scheme =
-				HNS3_MBX_RESP_MATCHING_SCHEME_OF_MATCH_ID;
-			hns3_info(hw, "detect mailbox support match id!");
-		}
 		if (req->match_id == resp->match_id) {
-			resp->resp_status = hns3_resp_to_errno(req->msg[3]);
-			memcpy(resp->additional_info, &req->msg[4],
+			resp->resp_status =
+				hns3_resp_to_errno(req->msg.resp_status);
+			memcpy(resp->additional_info, &req->msg.resp_data,
 			       HNS3_MBX_MAX_RESP_DATA_SIZE);
 			rte_io_wmb();
 			resp->received_match_resp = true;
@@ -319,11 +243,20 @@ hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
 	 * support copy request's match_id to its response. So VF follows the
 	 * original scheme to process.
 	 */
-	resp->resp_status = hns3_resp_to_errno(req->msg[3]);
-	memcpy(resp->additional_info, &req->msg[4],
+	msg_data = (uint32_t)req->msg.vf_mbx_msg_code <<
+			HNS3_MBX_RESP_CODE_OFFSET | req->msg.vf_mbx_msg_subcode;
+	if (resp->req_msg_data != msg_data) {
+		hns3_warn(hw,
+			"received response tag (%u) is mismatched with requested tag (%u)",
+			msg_data, resp->req_msg_data);
+		return;
+	}
+
+	resp->resp_status = hns3_resp_to_errno(req->msg.resp_status);
+	memcpy(resp->additional_info, &req->msg.resp_data,
 	       HNS3_MBX_MAX_RESP_DATA_SIZE);
-	msg_data = (uint32_t)req->msg[1] << 16 | req->msg[2];
-	hns3_update_resp_position(hw, msg_data);
+	rte_io_wmb();
+	resp->received_match_resp = true;
 }
 
 static void
@@ -351,11 +284,8 @@ static void
 hns3pf_handle_link_change_event(struct hns3_hw *hw,
 				struct hns3_mbx_vf_to_pf_cmd *req)
 {
-#define LINK_STATUS_OFFSET     1
-#define LINK_FAIL_CODE_OFFSET  2
-
-	if (!req->msg[LINK_STATUS_OFFSET])
-		hns3_link_fail_parse(hw, req->msg[LINK_FAIL_CODE_OFFSET]);
+	if (!req->msg.link_status)
+		hns3_link_fail_parse(hw, req->msg.link_fail_code);
 
 	hns3_update_linkstatus_and_event(hw, true);
 }
@@ -364,8 +294,7 @@ static void
 hns3_update_port_base_vlan_info(struct hns3_hw *hw,
 				struct hns3_mbx_pf_to_vf_cmd *req)
 {
-#define PVID_STATE_OFFSET	1
-	uint16_t new_pvid_state = req->msg[PVID_STATE_OFFSET] ?
+	uint16_t new_pvid_state = req->msg.pvid_state ?
 		HNS3_PORT_BASE_VLAN_ENABLE : HNS3_PORT_BASE_VLAN_DISABLE;
 	/*
 	 * Currently, hardware doesn't support more than two layers VLAN offload
@@ -414,7 +343,7 @@ hns3_handle_mbx_msg_out_intr(struct hns3_hw *hw)
 	while (next_to_use != tail) {
 		desc = &crq->desc[next_to_use];
 		req = (struct hns3_mbx_pf_to_vf_cmd *)desc->data;
-		opcode = req->msg[0] & 0xff;
+		opcode = req->msg.code & 0xff;
 
 		flag = rte_le_to_cpu_16(crq->desc[next_to_use].flag);
 		if (!hns3_get_bit(flag, HNS3_CMDQ_RX_OUTVLD_B))
@@ -443,9 +372,57 @@ scan_next:
 }
 
 void
-hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
+hns3pf_handle_mbx_msg(struct hns3_hw *hw)
 {
-	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct hns3_cmq_ring *crq = &hw->cmq.crq;
+	struct hns3_mbx_vf_to_pf_cmd *req;
+	struct hns3_cmd_desc *desc;
+	uint16_t flag;
+
+	rte_spinlock_lock(&hw->cmq.crq.lock);
+
+	while (!hns3_cmd_crq_empty(hw)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
+			rte_spinlock_unlock(&hw->cmq.crq.lock);
+			return;
+		}
+		desc = &crq->desc[crq->next_to_use];
+		req = (struct hns3_mbx_vf_to_pf_cmd *)desc->data;
+
+		flag = rte_le_to_cpu_16(crq->desc[crq->next_to_use].flag);
+		if (unlikely(!hns3_get_bit(flag, HNS3_CMDQ_RX_OUTVLD_B))) {
+			hns3_warn(hw,
+				  "dropped invalid mailbox message, code = %u",
+				  req->msg.code);
+
+			/* dropping/not processing this invalid message */
+			crq->desc[crq->next_to_use].flag = 0;
+			hns3_mbx_ring_ptr_move_crq(crq);
+			continue;
+		}
+
+		switch (req->msg.code) {
+		case HNS3_MBX_PUSH_LINK_STATUS:
+			hns3pf_handle_link_change_event(hw, req);
+			break;
+		default:
+			hns3_err(hw, "received unsupported(%u) mbx msg",
+				 req->msg.code);
+			break;
+		}
+		crq->desc[crq->next_to_use].flag = 0;
+		hns3_mbx_ring_ptr_move_crq(crq);
+	}
+
+	/* Write back CMDQ_RQ header pointer, IMP need this pointer */
+	hns3_write_dev(hw, HNS3_CMDQ_RX_HEAD_REG, crq->next_to_use);
+
+	rte_spinlock_unlock(&hw->cmq.crq.lock);
+}
+
+void
+hns3vf_handle_mbx_msg(struct hns3_hw *hw)
+{
 	struct hns3_cmq_ring *crq = &hw->cmq.crq;
 	struct hns3_mbx_pf_to_vf_cmd *req;
 	struct hns3_cmd_desc *desc;
@@ -456,7 +433,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 	rte_spinlock_lock(&hw->cmq.crq.lock);
 
 	handle_out = (rte_eal_process_type() != RTE_PROC_PRIMARY ||
-		      !rte_thread_is_intr()) && hns->is_vf;
+		      !rte_thread_is_intr());
 	if (handle_out) {
 		/*
 		 * Currently, any threads in the primary and secondary processes
@@ -480,14 +457,14 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 	}
 
 	while (!hns3_cmd_crq_empty(hw)) {
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			rte_spinlock_unlock(&hw->cmq.crq.lock);
 			return;
 		}
 
 		desc = &crq->desc[crq->next_to_use];
 		req = (struct hns3_mbx_pf_to_vf_cmd *)desc->data;
-		opcode = req->msg[0] & 0xff;
+		opcode = req->msg.code & 0xff;
 
 		flag = rte_le_to_cpu_16(crq->desc[crq->next_to_use].flag);
 		if (unlikely(!hns3_get_bit(flag, HNS3_CMDQ_RX_OUTVLD_B))) {
@@ -501,8 +478,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			continue;
 		}
 
-		handle_out = hns->is_vf && desc->opcode == 0;
-		if (handle_out) {
+		if (desc->opcode == 0) {
 			/* Message already processed by other thread */
 			crq->desc[crq->next_to_use].flag = 0;
 			hns3_mbx_ring_ptr_move_crq(crq);
@@ -519,16 +495,6 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 		case HNS3_MBX_ASSERTING_RESET:
 			hns3_handle_asserting_reset(hw, req);
 			break;
-		case HNS3_MBX_PUSH_LINK_STATUS:
-			/*
-			 * This message is reported by the firmware and is
-			 * reported in 'struct hns3_mbx_vf_to_pf_cmd' format.
-			 * Therefore, we should cast the req variable to
-			 * 'struct hns3_mbx_vf_to_pf_cmd' and then process it.
-			 */
-			hns3pf_handle_link_change_event(hw,
-				(struct hns3_mbx_vf_to_pf_cmd *)req);
-			break;
 		case HNS3_MBX_PUSH_VLAN_INFO:
 			/*
 			 * When the PVID configuration status of VF device is
@@ -543,7 +509,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			 * hns3 PF kernel driver, VF driver will receive this
 			 * mailbox message from PF driver.
 			 */
-			hns3_handle_promisc_info(hw, req->msg[1]);
+			hns3_handle_promisc_info(hw, req->msg.promisc_en);
 			break;
 		default:
 			hns3_err(hw, "received unsupported(%u) mbx msg",

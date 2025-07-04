@@ -134,15 +134,10 @@ suffix added to the PCI ID: wwww:xx:yy.z_portn. For example, a PF with PCI ID
 PF multiprocess support
 -----------------------
 
-Due to how the driver needs to access the NFP through a CPP interface, which
-implies to use specific registers inside the chip, the number of secondary
-processes with PF ports is limited to only one.
-
-This limitation will be solved in future versions, but having basic
-multiprocess support is important for allowing development and debugging
-through the PF using a secondary process, which will create a CPP bridge
-for user space tools accessing the NFP.
-
+The NFP PMD supports the PF multiprocess.
+Having basic multiprocess support is important for allowing development
+and debugging through the PF using a secondary process,
+which will create a CPP bridge for user space tools accessing the NFP.
 
 System configuration
 --------------------
@@ -230,6 +225,36 @@ The ctrl vNIC service handles various control messages, for example, the
 creation and configuration of representor port, the pattern and action of flow
 rules, the statistics of flow rules, etc.
 
+NFP devargs
+-----------
+
+- ``force_reload_fw`` (default **0**)
+
+   The NFP PF PMD supports force reload the firmware
+   and ignore the firmware version.
+   For example, user can force a PF with PCI ID 0000:af:00.0 reload firmware by:
+
+   .. code-block:: console
+
+      -a af:00.0,force_reload_fw=1 -- -i
+
+   .. note::
+
+      This parameter can be ignored in some case.
+
+      For example: when using a 2-port NFP card and both with this reload
+      firmware option, only the first one will cause the firmware reload
+      and the second one will be ignored.
+
+- ``cpp_service_enable`` (default **0**)
+
+   The NFP PF PMD supports enable CPP service.
+   For example, user let a PF with PCI ID 0000:af:00.0 enable CPP service by:
+
+   .. code-block:: console
+
+      -a af:00.0,cpp_service_enable=1 -- -i
+
 Metadata Format
 ---------------
 
@@ -304,10 +329,6 @@ be wrote N times in the heads. It is the same with NFD3.
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                        Data for field 5                       |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                        Data for field 6                       |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                        Data for field 7                       |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          Packet Data                          |
    |                              ...                              |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -353,6 +374,18 @@ Metadata with L2 (1W/4B)
    The vlan[0] is the innermost VLAN
    The vlan[1] is the QinQ info
 
+NFP_NET_META_IPSEC
+The IPsec type requires 4 bit.
+The SA index value is 32 bit which need 1 data field.
+::
+
+   ----------------------------------------------------------------
+      3                   2                   1                   0
+    1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sa_idx                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 TX
 ~~
 
@@ -368,3 +401,22 @@ NFP_NET_META_VLAN
                                    ^                               ^
                              NOTE: |             TCI               |
                                    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+NFP_NET_META_IPSEC
+The IPsec type requires 12 bit, because it requires three data fields.
+::
+
+   ----------------------------------------------------------------
+      3                   2                   1                   0
+    1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                            sa_idx                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                     nfp_ipsec_force_seq_low                   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                     nfp_ipsec_force_seq_hi                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   The sa_idx is 32 bit which need 1 data field.
+   The nfp_ipsec_force_seq_low & nfp_ipsec_force_seq_hi is Anti-re-anti-count,
+   which is 64 bit need two data fields.

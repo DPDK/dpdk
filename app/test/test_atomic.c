@@ -20,6 +20,7 @@
 
 #include "test.h"
 
+#ifndef RTE_TOOLCHAIN_MSVC
 /*
  * Atomic Variables
  * ================
@@ -631,4 +632,5 @@ test_atomic(void)
 
 	return 0;
 }
-REGISTER_TEST_COMMAND(atomic_autotest, test_atomic);
+REGISTER_FAST_TEST(atomic_autotest, false, true, test_atomic);
+#endif /* RTE_TOOLCHAIN_MSVC */

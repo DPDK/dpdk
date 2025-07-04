@@ -81,25 +81,26 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	char buf[256];
 	struct rte_net_hdr_lens hdr_lens;
 	uint32_t sw_packet_type;
-	uint16_t udp_port;
 	uint32_t vx_vni;
 	const char *reason;
 	int dynf_index;
 	char print_buf[MAX_STRING_LEN];
 	size_t buf_size = MAX_STRING_LEN;
 	size_t cur_len = 0;
+	uint64_t restore_info_dynflag;
 
 	if (!nb_pkts)
 		return;
+	restore_info_dynflag = rte_flow_restore_info_dynflag();
 	MKDUMPSTR(print_buf, buf_size, cur_len,
 		  "port %u/queue %u: %s %u packets\n", port_id, queue,
 		  is_rx ? "received" : "sent", (unsigned int) nb_pkts);
 	for (i = 0; i < nb_pkts; i++) {
-		int ret;
 		struct rte_flow_error error;
 		struct rte_flow_restore_info info = { 0, };
 
 		mb = pkts[i];
+		ol_flags = mb->ol_flags;
 		if (rxq_share > 0)
 			MKDUMPSTR(print_buf, buf_size, cur_len, "port %u, ",
 				  mb->port);
@@ -107,8 +108,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		eth_type = RTE_BE_TO_CPU_16(eth_hdr->ether_type);
 		packet_type = mb->packet_type;
 		is_encapsulation = RTE_ETH_IS_TUNNEL_PKT(packet_type);
-		ret = rte_flow_get_restore_info(port_id, mb, &info, &error);
-		if (!ret) {
+		if ((ol_flags & restore_info_dynflag) != 0 &&
+				rte_flow_get_restore_info(port_id, mb, &info, &error) == 0) {
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  "restore info:");
 			if (info.flags & RTE_FLOW_RESTORE_INFO_TUNNEL) {
@@ -153,7 +154,6 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 			  " - pool=%s - type=0x%04x - length=%u - nb_segs=%d",
 			  mb->pool->name, eth_type, (unsigned int) mb->pkt_len,
 			  (int)mb->nb_segs);
-		ol_flags = mb->ol_flags;
 		if (ol_flags & RTE_MBUF_F_RX_RSS_HASH) {
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - RSS hash=0x%x",
@@ -179,11 +179,13 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (is_timestamp_enabled(mb))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - timestamp %"PRIu64" ", get_timestamp(mb));
-		if (ol_flags & RTE_MBUF_F_RX_QINQ)
+		if ((is_rx && (ol_flags & RTE_MBUF_F_RX_QINQ) != 0) ||
+				(!is_rx && (ol_flags & RTE_MBUF_F_TX_QINQ) != 0))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
 				  mb->vlan_tci, mb->vlan_tci_outer);
-		else if (ol_flags & RTE_MBUF_F_RX_VLAN)
+		else if ((is_rx && (ol_flags & RTE_MBUF_F_RX_VLAN) != 0) ||
+				(!is_rx && (ol_flags & RTE_MBUF_F_TX_VLAN) != 0))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - VLAN tci=0x%x", mb->vlan_tci);
 		if (!is_rx && (ol_flags & RTE_MBUF_DYNFLAG_TX_METADATA))
@@ -199,7 +201,7 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 				MKDUMPSTR(print_buf, buf_size, cur_len,
 					  " - dynf %s: %d",
 					  dynf_names[dynf_index],
-					  !!(ol_flags & (1UL << dynf_index)));
+					  !!(ol_flags & RTE_BIT64(dynf_index)));
 		}
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
@@ -231,49 +233,63 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (sw_packet_type & RTE_PTYPE_INNER_L4_MASK)
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - inner_l4_len=%d", hdr_lens.inner_l4_len);
-		if (is_encapsulation) {
-			struct rte_ipv4_hdr *ipv4_hdr;
-			struct rte_ipv6_hdr *ipv6_hdr;
-			struct rte_udp_hdr *udp_hdr;
-			uint8_t l2_len;
-			uint8_t l3_len;
-			uint8_t l4_len;
-			uint8_t l4_proto;
-			struct  rte_vxlan_hdr *vxlan_hdr;
 
-			l2_len  = sizeof(struct rte_ether_hdr);
+		struct rte_ipv4_hdr *ipv4_hdr;
+		struct rte_ipv6_hdr *ipv6_hdr;
+		struct rte_udp_hdr *udp_hdr;
+		struct rte_tcp_hdr *tcp_hdr;
+		uint8_t l2_len;
+		uint8_t l3_len;
+		uint8_t l4_len;
+		uint8_t l4_proto;
+		uint16_t l4_port;
+		struct  rte_vxlan_hdr *vxlan_hdr;
 
-			/* Do not support ipv4 option field */
-			if (RTE_ETH_IS_IPV4_HDR(packet_type)) {
-				l3_len = sizeof(struct rte_ipv4_hdr);
-				ipv4_hdr = rte_pktmbuf_mtod_offset(mb,
+		l2_len  = sizeof(struct rte_ether_hdr);
+
+		/* Do not support ipv4 option field */
+		if (RTE_ETH_IS_IPV4_HDR(packet_type)) {
+			l3_len = sizeof(struct rte_ipv4_hdr);
+			ipv4_hdr = rte_pktmbuf_mtod_offset(mb,
 				struct rte_ipv4_hdr *,
 				l2_len);
-				l4_proto = ipv4_hdr->next_proto_id;
-			} else {
-				l3_len = sizeof(struct rte_ipv6_hdr);
-				ipv6_hdr = rte_pktmbuf_mtod_offset(mb,
+			l4_proto = ipv4_hdr->next_proto_id;
+		} else {
+			l3_len = sizeof(struct rte_ipv6_hdr);
+			ipv6_hdr = rte_pktmbuf_mtod_offset(mb,
 				struct rte_ipv6_hdr *,
 				l2_len);
-				l4_proto = ipv6_hdr->proto;
-			}
-			if (l4_proto == IPPROTO_UDP) {
-				udp_hdr = rte_pktmbuf_mtod_offset(mb,
+			l4_proto = ipv6_hdr->proto;
+		}
+		if (l4_proto == IPPROTO_UDP) {
+			udp_hdr = rte_pktmbuf_mtod_offset(mb,
 				struct rte_udp_hdr *,
 				l2_len + l3_len);
+			l4_port = RTE_BE_TO_CPU_16(udp_hdr->dst_port);
+			if (is_encapsulation) {
 				l4_len = sizeof(struct rte_udp_hdr);
 				vxlan_hdr = rte_pktmbuf_mtod_offset(mb,
-				struct rte_vxlan_hdr *,
-				l2_len + l3_len + l4_len);
-				udp_port = RTE_BE_TO_CPU_16(udp_hdr->dst_port);
+					struct rte_vxlan_hdr *,
+					l2_len + l3_len + l4_len);
 				vx_vni = rte_be_to_cpu_32(vxlan_hdr->vx_vni);
 				MKDUMPSTR(print_buf, buf_size, cur_len,
 					  " - VXLAN packet: packet type =%d, "
 					  "Destination UDP port =%d, VNI = %d, "
 					  "last_rsvd = %d", packet_type,
-					  udp_port, vx_vni >> 8, vx_vni & 0xff);
+					  l4_port, vx_vni >> 8, vx_vni & 0xff);
+			} else {
+				MKDUMPSTR(print_buf, buf_size, cur_len,
+					" - Destination UDP port=%d", l4_port);
 			}
+		} else if (l4_proto == IPPROTO_TCP) {
+			tcp_hdr = rte_pktmbuf_mtod_offset(mb,
+				struct rte_tcp_hdr *,
+				l2_len + l3_len);
+			l4_port = RTE_BE_TO_CPU_16(tcp_hdr->dst_port);
+			MKDUMPSTR(print_buf, buf_size, cur_len,
+				" - Destination TCP port=%d", l4_port);
 		}
+
 		MKDUMPSTR(print_buf, buf_size, cur_len,
 			  " - %s queue=0x%x", is_rx ? "Receive" : "Send",
 			  (unsigned int) queue);

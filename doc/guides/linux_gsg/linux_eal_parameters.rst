@@ -60,20 +60,20 @@ Memory-related options
 
     Use legacy DPDK memory allocation mode.
 
-*   ``--socket-mem <amounts of memory per socket>``
+*   ``--numa-mem <amounts of memory per NUMA node>``
 
-    Preallocate specified amounts of memory per socket. The parameter is a
+    Preallocate specified amounts of memory per NUMA node. The parameter is a
     comma-separated list of values. For example::
 
-        --socket-mem 1024,2048
+        --numa-mem 1024,2048
 
-    This will allocate 1 gigabyte of memory on socket 0, and 2048 megabytes of
-    memory on socket 1.
+    This will allocate 1 gigabyte of memory on NUMA node 0, and 2048 megabytes of
+    memory on NUMA node 1.
 
-*   ``--socket-limit <amounts of memory per socket>``
+*   ``--numa-limit <amounts of memory per NUMA node>``
 
-    Place a per-socket upper limit on memory use (non-legacy memory mode only).
-    0 will disable the limit for a particular socket.
+    Place a per-NUMA node upper limit on memory use (non-legacy memory mode only).
+    0 will disable the limit for a particular NUMA node.
 
 *   ``--single-file-segments``
 

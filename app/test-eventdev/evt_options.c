@@ -27,7 +27,7 @@ evt_options_default(struct evt_options *opt)
 	opt->nb_flows = 1024;
 	opt->socket_id = SOCKET_ID_ANY;
 	opt->pool_sz = 16 * 1024;
-	opt->prod_enq_burst_sz = 1;
+	opt->prod_enq_burst_sz = 0;
 	opt->wkr_deq_dep = 16;
 	opt->nb_pkts = (1ULL << 26); /* do ~64M packets */
 	opt->nb_timers = 1E8;
@@ -131,6 +131,17 @@ evt_parse_tx_pkt_sz(struct evt_options *opt, const char *arg __rte_unused)
 }
 
 static int
+evt_parse_preschedule(struct evt_options *opt, const char *arg __rte_unused)
+{
+	int ret;
+
+	ret = parser_read_uint8(&(opt->preschedule), arg);
+	opt->preschedule_opted = 1;
+
+	return ret;
+}
+
+static int
 evt_parse_timer_prod_type(struct evt_options *opt, const char *arg __rte_unused)
 {
 	opt->prod_type = EVT_PROD_TYPE_EVENT_TIMER_ADPTR;
@@ -143,6 +154,43 @@ evt_parse_timer_prod_type_burst(struct evt_options *opt,
 {
 	opt->prod_type = EVT_PROD_TYPE_EVENT_TIMER_ADPTR;
 	opt->timdev_use_burst = 1;
+	return 0;
+}
+
+static int
+evt_parse_dma_prod_type(struct evt_options *opt,
+			   const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_DMA_ADPTR;
+
+	/* Only Forward mode is supported for DMA adapter. */
+	opt->dma_adptr_mode = RTE_EVENT_DMA_ADAPTER_OP_FORWARD;
+
+	return 0;
+}
+
+static int
+evt_parse_dma_adptr_mode(struct evt_options *opt, const char *arg)
+{
+	uint8_t mode;
+	int ret;
+
+	ret = parser_read_uint8(&mode, arg);
+	if (mode != RTE_EVENT_DMA_ADAPTER_OP_FORWARD) {
+		RTE_LOG(ERR, USER1, "DMA adapter is supported in forward mode only\n");
+		return -EINVAL;
+	}
+
+	opt->dma_adptr_mode = RTE_EVENT_DMA_ADAPTER_OP_FORWARD;
+
+	return ret;
+}
+
+static int
+evt_parse_vector_prod_type(struct evt_options *opt,
+			   const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_VECTOR_ADPTR;
 	return 0;
 }
 
@@ -446,17 +494,20 @@ usage(char *program)
 		"\t--queue_priority   : enable queue priority\n"
 		"\t--deq_tmo_nsec     : global dequeue timeout\n"
 		"\t--prod_type_ethdev : use ethernet device as producer.\n"
+		"\t--prod_type_dmadev : use dma device as producer.\n"
 		"\t--prod_type_cryptodev : use crypto device as producer.\n"
 		"\t--prod_type_timerdev : use event timer device as producer.\n"
 		"\t                     expiry_nsec would be the timeout\n"
 		"\t                     in ns.\n"
 		"\t--prod_type_timerdev_burst : use timer device as producer\n"
 		"\t                             burst mode.\n"
+		"\t--prod_type_vector : use vector adapter as producer.\n"
 		"\t--nb_timers        : number of timers to arm.\n"
 		"\t--nb_timer_adptrs  : number of timer adapters to use.\n"
 		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
 		"\t--max_tmo_nsec     : max timeout interval in ns.\n"
 		"\t--expiry_nsec      : event timer expiry ns.\n"
+		"\t--dma_adptr_mode   : 1 for OP_FORWARD mode (default).\n"
 		"\t--crypto_adptr_mode : 0 for OP_NEW mode (default) and\n"
 		"\t                      1 for OP_FORWARD mode.\n"
 		"\t--crypto_op_type   : 0 for SYM ops (default) and\n"
@@ -478,6 +529,10 @@ usage(char *program)
 		"                       across all the ethernet devices before\n"
 		"                       event workers start.\n"
 		"\t--tx_pkt_sz        : Packet size to use with Tx first."
+		"\t--preschedule      : Pre-schedule type to use.\n"
+		"                       0 - disable pre-schedule\n"
+		"                       1 - pre-schedule\n"
+		"                       2 - pre-schedule adaptive (Default)\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -540,9 +595,12 @@ static struct option lgopts[] = {
 	{ EVT_QUEUE_PRIORITY,      0, 0, 0 },
 	{ EVT_DEQ_TMO_NSEC,        1, 0, 0 },
 	{ EVT_PROD_ETHDEV,         0, 0, 0 },
+	{ EVT_PROD_DMADEV,         0, 0, 0 },
 	{ EVT_PROD_CRYPTODEV,      0, 0, 0 },
 	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
 	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
+	{ EVT_PROD_VECTOR,         0, 0, 0 },
+	{ EVT_DMA_ADPTR_MODE,      1, 0, 0 },
 	{ EVT_CRYPTO_ADPTR_MODE,   1, 0, 0 },
 	{ EVT_CRYPTO_OP_TYPE,	   1, 0, 0 },
 	{ EVT_CRYPTO_CIPHER_ALG,   1, 0, 0 },
@@ -564,6 +622,7 @@ static struct option lgopts[] = {
 	{ EVT_HELP,                0, 0, 0 },
 	{ EVT_TX_FIRST,            1, 0, 0 },
 	{ EVT_TX_PKT_SZ,           1, 0, 0 },
+	{ EVT_PRESCHEDULE,         1, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
 
@@ -589,8 +648,11 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_DEQ_TMO_NSEC, evt_parse_deq_tmo_nsec},
 		{ EVT_PROD_ETHDEV, evt_parse_eth_prod_type},
 		{ EVT_PROD_CRYPTODEV, evt_parse_crypto_prod_type},
+		{ EVT_PROD_DMADEV, evt_parse_dma_prod_type},
 		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
 		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
+		{ EVT_PROD_VECTOR, evt_parse_vector_prod_type },
+		{ EVT_DMA_ADPTR_MODE, evt_parse_dma_adptr_mode},
 		{ EVT_CRYPTO_ADPTR_MODE, evt_parse_crypto_adptr_mode},
 		{ EVT_CRYPTO_OP_TYPE, evt_parse_crypto_op_type},
 		{ EVT_CRYPTO_CIPHER_ALG, evt_parse_crypto_cipher_alg},
@@ -611,6 +673,7 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_PER_PORT_POOL, evt_parse_per_port_pool},
 		{ EVT_TX_FIRST, evt_parse_tx_first},
 		{ EVT_TX_PKT_SZ, evt_parse_tx_pkt_sz},
+		{ EVT_PRESCHEDULE, evt_parse_preschedule},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {
@@ -668,4 +731,8 @@ evt_options_dump(struct evt_options *opt)
 	evt_dump_end;
 	evt_dump_nb_flows(opt);
 	evt_dump_worker_dequeue_depth(opt);
+	if (opt->ena_vector || opt->prod_type == EVT_PROD_TYPE_EVENT_VECTOR_ADPTR) {
+		evt_dump("vector_sz", "%d", opt->vector_size);
+		evt_dump("vector_tmo_ns", "%"PRIu64, opt->vector_tmo_nsec);
+	}
 }

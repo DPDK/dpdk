@@ -4,19 +4,41 @@
 #ifndef _OTX_EP_COMMON_H_
 #define _OTX_EP_COMMON_H_
 
+#include <rte_bitops.h>
+#include <rte_spinlock.h>
+#include <unistd.h>
+#include <assert.h>
+#include <rte_eal.h>
+#include <rte_kvargs.h>
+#include <rte_mempool.h>
+#include <rte_mbuf.h>
+#include <rte_io.h>
+#include <rte_net.h>
+#include <ethdev_pci.h>
+
+#define OTX_EP_CN8XX  RTE_BIT32(0)
+#define OTX_EP_CN9XX  RTE_BIT32(1)
+#define OTX_EP_CN10XX RTE_BIT32(2)
 
 #define OTX_EP_NW_PKT_OP               0x1220
 #define OTX_EP_NW_CMD_OP               0x1221
 
 #define OTX_EP_MAX_RINGS_PER_VF        (8)
 #define OTX_EP_CFG_IO_QUEUES        OTX_EP_MAX_RINGS_PER_VF
+#define OTX_EP_32BYTE_INSTR         (32)
 #define OTX_EP_64BYTE_INSTR         (64)
-#define OTX_EP_MIN_IQ_DESCRIPTORS   (128)
-#define OTX_EP_MIN_OQ_DESCRIPTORS   (128)
+/*
+ * Backpressure for SDP is configured on Octeon, and the minimum queue sizes
+ * must be much larger than the backpressure watermark configured in the Octeon
+ * SDP driver.  IQ and OQ backpressure configurations are separate.
+ */
+#define OTX_EP_MIN_IQ_DESCRIPTORS   (2048)
+#define OTX_EP_MIN_OQ_DESCRIPTORS   (2048)
 #define OTX_EP_MAX_IQ_DESCRIPTORS   (8192)
 #define OTX_EP_MAX_OQ_DESCRIPTORS   (8192)
 #define OTX_EP_OQ_BUF_SIZE          (2048)
 #define OTX_EP_MIN_RX_BUF_SIZE      (64)
+#define OTX_EP_OQ_WMARK_MIN         (256)
 
 #define OTX_EP_OQ_INFOPTR_MODE      (0)
 #define OTX_EP_OQ_REFIL_THRESHOLD   (16)
@@ -30,6 +52,8 @@
 #define OTX_EP_NORESP_OHSM_SEND     (4)
 #define OTX_EP_NORESP_LAST          (4)
 #define OTX_EP_PCI_RING_ALIGN   65536
+#define OTX_EP_MAX_SG_LISTS 6
+#define OTX_EP_NUM_SG_PTRS 4
 #define SDP_PKIND 40
 #define SDP_OTX2_PKIND 57
 #define SDP_OTX2_PKIND_FS0 0
@@ -43,24 +67,24 @@
 #define OTX_EP_MAX_IOQS_PER_VF 8
 #define OTX_CUST_DATA_LEN 0
 
-#define otx_ep_info(fmt, args...)				\
-	rte_log(RTE_LOG_INFO, otx_net_ep_logtype,		\
-		"%s():%u " fmt "\n",				\
-		__func__, __LINE__, ##args)
+#define otx_ep_info(...) \
+	RTE_LOG_LINE_PREFIX(INFO, OTX_NET_EP, "%s():%u ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define otx_ep_err(fmt, args...)				\
-	rte_log(RTE_LOG_ERR, otx_net_ep_logtype,		\
-		"%s():%u " fmt "\n",				\
-		__func__, __LINE__, ##args)
+#define otx_ep_err(...) \
+	RTE_LOG_LINE_PREFIX(ERR, OTX_NET_EP, "%s():%u ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define otx_ep_dbg(fmt, args...)				\
-	rte_log(RTE_LOG_DEBUG, otx_net_ep_logtype,		\
-		"%s():%u " fmt "\n",				\
-		__func__, __LINE__, ##args)
+#define otx_ep_dbg(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, OTX_NET_EP, "%s():%u ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /* IO Access */
 #define oct_ep_read64(addr) rte_read64_relaxed((void *)(addr))
 #define oct_ep_write64(val, addr) rte_write64_relaxed((val), (void *)(addr))
+
+/* Mailbox maximum data size */
+#define MBOX_MAX_DATA_BUF_SIZE 320
 
 /* Input Request Header format */
 union otx_ep_instr_irh {
@@ -93,7 +117,7 @@ union otx_ep_instr_irh {
 	{\
 	typeof(value) val = (value); \
 	typeof(reg_off) off = (reg_off); \
-	otx_ep_dbg("octeon_write_csr64: reg: 0x%08lx val: 0x%016llx\n", \
+	otx_ep_dbg("octeon_write_csr64: reg: 0x%08lx val: 0x%016llx", \
 		   (unsigned long)off, (unsigned long long)val); \
 	rte_write64(val, ((base_addr) + off)); \
 	}
@@ -125,9 +149,40 @@ typedef union otx_ep_instr_ih {
 	} s;
 } otx_ep_instr_ih_t;
 
+struct otx_ep_sg_entry {
+	/** The first 64 bit gives the size of data in each dptr. */
+	union {
+		uint16_t size[OTX_EP_NUM_SG_PTRS];
+		uint64_t size64;
+	} u;
+
+	/** The 4 dptr pointers for this entry. */
+	uint64_t ptr[OTX_EP_NUM_SG_PTRS];
+};
+
+#define OTX_EP_SG_ENTRY_SIZE	(sizeof(struct otx_ep_sg_entry))
+
+/** Structure of a node in list of gather components maintained by
+ *  driver for each network device.
+ */
+struct otx_ep_gather {
+	/** number of gather entries. */
+	int num_sg;
+
+	/** Gather component that can accommodate max sized fragment list
+	 *  received from the IP layer.
+	 */
+	struct otx_ep_sg_entry *sg;
+};
+
+struct otx_ep_buf_free_info {
+	struct rte_mbuf *mbuf;
+	struct otx_ep_gather g;
+};
+
 /* OTX_EP IQ request list */
 struct otx_ep_instr_list {
-	void *buf;
+	struct otx_ep_buf_free_info finfo;
 	uint32_t reqtype;
 };
 #define OTX_EP_IQREQ_LIST_SIZE	(sizeof(struct otx_ep_instr_list))
@@ -159,6 +214,38 @@ struct otx_ep_iq_config {
  *  such structure to represent it.
  */
 struct otx_ep_instr_queue {
+	/* Location in memory updated by SDP ISM */
+	RTE_ATOMIC(uint32_t) *inst_cnt_ism;
+	struct rte_mbuf **mbuf_list;
+	/* Pointer to the Virtual Base addr of the input ring. */
+	uint8_t *base_addr;
+
+	/* track inst count locally to consolidate HW counter updates */
+	uint32_t inst_cnt_prev;
+
+	/* Input ring index, where the driver should write the next packet */
+	uint32_t host_write_index;
+
+	/* Input ring index, where the OCTEON 9 should read the next packet */
+	uint32_t otx_read_index;
+	/** This index aids in finding the window in the queue where OCTEON 9
+	 *  has read the commands.
+	 */
+	uint32_t flush_index;
+	/* This keeps track of the instructions pending in this queue. */
+	uint64_t instr_pending;
+
+	/* Memory zone */
+	const struct rte_memzone *iq_mz;
+	/* OTX_EP doorbell register for the ring. */
+	void *doorbell_reg;
+
+	/* OTX_EP instruction count register for this ring. */
+	void *inst_cnt_reg;
+
+	/* Number of instructions pending to be posted to OCTEON 9. */
+	uint32_t fill_cnt;
+
 	struct otx_ep_device *otx_ep_dev;
 
 	uint32_t q_no;
@@ -172,45 +259,27 @@ struct otx_ep_instr_queue {
 	/* Number of  descriptors in this ring. */
 	uint32_t nb_desc;
 
-	/* Input ring index, where the driver should write the next packet */
-	uint32_t host_write_index;
+	/* Use ISM memory */
+	uint8_t ism_ena;
 
-	/* Input ring index, where the OCTEON 9 should read the next packet */
-	uint32_t otx_read_index;
+	/* Size of the descriptor. */
+	uint8_t desc_size;
 
 	uint32_t reset_instr_cnt;
 
-	/** This index aids in finding the window in the queue where OCTEON 9
-	 *  has read the commands.
-	 */
-	uint32_t flush_index;
+	/* Free-running/wrapping instruction counter for IQ. */
+	uint32_t inst_cnt;
 
-	/* This keeps track of the instructions pending in this queue. */
-	uint64_t instr_pending;
-
-	/* Pointer to the Virtual Base addr of the input ring. */
-	uint8_t *base_addr;
+	uint64_t partial_ih;
 
 	/* This IQ request list */
 	struct otx_ep_instr_list *req_list;
-
-	/* OTX_EP doorbell register for the ring. */
-	void *doorbell_reg;
-
-	/* OTX_EP instruction count register for this ring. */
-	void *inst_cnt_reg;
-
-	/* Number of instructions pending to be posted to OCTEON 9. */
-	uint32_t fill_cnt;
 
 	/* Statistics for this input queue. */
 	struct otx_ep_iq_stats stats;
 
 	/* DMA mapped base address of the input descriptor ring. */
 	uint64_t base_addr_dma;
-
-	/* Memory zone */
-	const struct rte_memzone *iq_mz;
 };
 
 /** Descriptor format.
@@ -288,14 +357,20 @@ struct otx_ep_oq_config {
 
 /* The Descriptor Ring Output Queue(DROQ) structure. */
 struct otx_ep_droq {
-	struct otx_ep_device *otx_ep_dev;
 	/* The 8B aligned descriptor ring starts at this address. */
 	struct otx_ep_droq_desc *desc_ring;
 
-	uint32_t q_no;
-	uint64_t last_pkt_count;
+	/* The 8B aligned info ptrs begin from this address. */
+	struct otx_ep_droq_info *info_list;
 
-	struct rte_mempool *mpool;
+	/* receive buffer list contains mbuf ptr list */
+	struct rte_mbuf **recv_buf_list;
+
+	/* Packet re-arm data. */
+	uint64_t rearm_data;
+
+	/* Packets pending to be processed */
+	uint64_t pkts_pending;
 
 	/* Driver should read the next packet at this index */
 	uint32_t read_idx;
@@ -306,22 +381,17 @@ struct otx_ep_droq {
 	/* At this index, the driver will refill the descriptor's buffer */
 	uint32_t refill_idx;
 
-	/* Packets pending to be processed */
-	uint64_t pkts_pending;
+	/* The number of descriptors pending to refill. */
+	uint32_t refill_count;
 
 	/* Number of descriptors in this ring. */
 	uint32_t nb_desc;
 
-	/* The number of descriptors pending to refill. */
-	uint32_t refill_count;
-
 	uint32_t refill_threshold;
 
-	/* The 8B aligned info ptrs begin from this address. */
-	struct otx_ep_droq_info *info_list;
+	uint64_t last_pkt_count;
 
-	/* receive buffer list contains mbuf ptr list */
-	struct rte_mbuf **recv_buf_list;
+	struct rte_mempool *mpool;
 
 	/* The size of each buffer pointed by the buffer pointer. */
 	uint32_t buffer_size;
@@ -336,8 +406,27 @@ struct otx_ep_droq {
 	 */
 	void *pkts_sent_reg;
 
+	/* Use ISM memory */
+	uint8_t ism_ena;
+
+	/* Pointer to host memory copy of output packet count, set by ISM */
+	RTE_ATOMIC(uint32_t) *pkts_sent_ism;
+	uint32_t pkts_sent_prev;
+
 	/* Statistics for this DROQ. */
 	struct otx_ep_droq_stats stats;
+
+	/** Handle DMA incompletion during pkt reads.
+	 * This variable is used to initiate a sent_reg_read
+	 * that completes pending dma
+	 * this variable is used as lvalue so compiler cannot optimize
+	 * the reads.
+	 */
+	uint32_t sent_reg_val;
+
+	uint32_t q_no;
+
+	struct otx_ep_device *otx_ep_dev;
 
 	/* DMA mapped address of the DROQ descriptor ring. */
 	size_t desc_ring_dma;
@@ -394,11 +483,11 @@ struct otx_ep_sriov_info {
 
 /* Required functions for each VF device */
 struct otx_ep_fn_list {
-	void (*setup_iq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
+	int (*setup_iq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
 
-	void (*setup_oq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
+	int (*setup_oq_regs)(struct otx_ep_device *otx_ep, uint32_t q_no);
 
-	void (*setup_device_regs)(struct otx_ep_device *otx_ep);
+	int (*setup_device_regs)(struct otx_ep_device *otx_ep);
 
 	int (*enable_io_queues)(struct otx_ep_device *otx_ep);
 	void (*disable_io_queues)(struct otx_ep_device *otx_ep);
@@ -408,6 +497,9 @@ struct otx_ep_fn_list {
 
 	int (*enable_oq)(struct otx_ep_device *otx_ep, uint32_t q_no);
 	void (*disable_oq)(struct otx_ep_device *otx_ep, uint32_t q_no);
+
+	int (*enable_rxq_intr)(struct otx_ep_device *otx_epvf, uint16_t q_no);
+	int (*disable_rxq_intr)(struct otx_ep_device *otx_epvf, uint16_t q_no);
 };
 
 /* OTX_EP EP VF device data structure */
@@ -456,6 +548,30 @@ struct otx_ep_device {
 	uint64_t rx_offloads;
 
 	uint64_t tx_offloads;
+
+	/* DMA buffer for SDP ISM messages */
+	const struct rte_memzone *ism_buffer_mz;
+
+	/* Mailbox lock */
+	rte_spinlock_t mbox_lock;
+
+	/* Mailbox data */
+	uint8_t mbox_data_buf[MBOX_MAX_DATA_BUF_SIZE];
+
+	/* Mailbox data index */
+	int32_t mbox_data_index;
+
+	/* Mailbox receive message length */
+	int32_t mbox_rcv_message_len;
+
+	/* Negotiated Mbox version */
+	uint32_t mbox_neg_ver;
+
+	/* Generation */
+	uint32_t chip_gen;
+
+	/* Use ISM memory */
+	uint8_t ism_ena;
 };
 
 int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,
@@ -467,38 +583,7 @@ int otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
 		     unsigned int socket_id);
 int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
 
-struct otx_ep_sg_entry {
-	/** The first 64 bit gives the size of data in each dptr. */
-	union {
-		uint16_t size[4];
-		uint64_t size64;
-	} u;
-
-	/** The 4 dptr pointers for this entry. */
-	uint64_t ptr[4];
-};
-
-#define OTX_EP_SG_ENTRY_SIZE	(sizeof(struct otx_ep_sg_entry))
-
-/** Structure of a node in list of gather components maintained by
- *  driver for each network device.
- */
-struct otx_ep_gather {
-	/** number of gather entries. */
-	int num_sg;
-
-	/** Gather component that can accommodate max sized fragment list
-	 *  received from the IP layer.
-	 */
-	struct otx_ep_sg_entry *sg;
-};
-
-struct otx_ep_buf_free_info {
-	struct rte_mbuf *mbuf;
-	struct otx_ep_gather g;
-};
-
-#define OTX_EP_MAX_PKT_SZ 64000U
+#define OTX_EP_MAX_PKT_SZ 65498U
 #define OTX_EP_MAX_MAC_ADDRS 1
 #define OTX_EP_SG_ALIGN 8
 #define OTX_EP_CLEAR_ISIZE_BSIZE 0x7FFFFFULL
@@ -509,8 +594,20 @@ struct otx_ep_buf_free_info {
 #define OTX_EP_CLEAR_SLIST_DBELL 0xFFFFFFFF
 #define OTX_EP_CLEAR_SDP_OUT_PKT_CNT 0xFFFFFFFFF
 
+/* Max overhead includes
+ * - Ethernet hdr
+ * - CRC
+ * - nested VLANs
+ * - octeon rx info
+ */
+#define OTX_EP_ETH_OVERHEAD \
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
+	 (2 * RTE_VLAN_HLEN) + OTX_EP_DROQ_INFO_SIZE)
+
 /* PCI IDs */
 #define PCI_VENDOR_ID_CAVIUM			0x177D
 
 extern int otx_net_ep_logtype;
+#define RTE_LOGTYPE_OTX_NET_EP otx_net_ep_logtype
+
 #endif  /* _OTX_EP_COMMON_H_ */

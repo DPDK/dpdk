@@ -11,11 +11,11 @@
 #ifndef _RTE_ERRNO_H_
 #define _RTE_ERRNO_H_
 
+#include <rte_per_lcore.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_per_lcore.h>
 
 RTE_DECLARE_PER_LCORE(int, _rte_errno); /**< Per core error number. */
 

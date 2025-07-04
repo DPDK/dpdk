@@ -21,7 +21,7 @@ struct malloc_elem;
 /**
  * Structure to hold malloc heap
  */
-struct malloc_heap {
+struct __rte_cache_aligned malloc_heap {
 	rte_spinlock_t lock;
 	LIST_HEAD(, malloc_elem) free_head[RTE_HEAP_NUM_FREELISTS];
 	struct malloc_elem *volatile first;
@@ -31,15 +31,14 @@ struct malloc_heap {
 	unsigned int socket_id;
 	size_t total_size;
 	char name[RTE_HEAP_NAME_MAX_LEN];
-} __rte_cache_aligned;
+};
 
 void *
-malloc_heap_alloc(const char *type, size_t size, int socket, unsigned int flags,
-		size_t align, size_t bound, bool contig);
+malloc_heap_alloc(size_t size, int socket, unsigned int flags, size_t align,
+		  size_t bound, bool contig);
 
 void *
-malloc_heap_alloc_biggest(const char *type, int socket, unsigned int flags,
-		size_t align, bool contig);
+malloc_heap_alloc_biggest(int socket, unsigned int flags, size_t align, bool contig);
 
 int
 malloc_heap_create(struct malloc_heap *heap, const char *heap_name);
@@ -84,6 +83,9 @@ malloc_socket_to_heap_id(unsigned int socket_id);
 
 int
 rte_eal_malloc_heap_init(void);
+
+int
+rte_eal_malloc_heap_populate(void);
 
 void
 rte_eal_malloc_heap_cleanup(void);

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -17,6 +17,19 @@
  * Interrupts
  */
 
+static inline void bnxt_int_handler_rearm(struct bnxt *bp,
+					  struct bnxt_cp_ring_info *cpr,
+					  uint32_t raw_cons)
+{
+	cpr->cp_raw_cons = raw_cons;
+	if (BNXT_HAS_NQ(bp))
+		bnxt_db_nq_arm(cpr);
+	else
+		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+}
+
+/* ARM the default CQ/NQ at intervals of 1/8th of ring size */
+#define BNXT_DB_REARM_FACTOR		8
 void bnxt_int_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
@@ -24,6 +37,7 @@ void bnxt_int_handler(void *param)
 	uint32_t cons, raw_cons, cp_ring_size;
 	struct bnxt_cp_ring_info *cpr;
 	struct cmpl_base *cmp;
+	uint16_t cnt = 0;
 
 
 	if (bp == NULL)
@@ -54,13 +68,15 @@ void bnxt_int_handler(void *param)
 
 		bnxt_event_hwrm_resp_handler(bp, cmp);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
+		if (++cnt >= cp_ring_size / BNXT_DB_REARM_FACTOR) {
+			bnxt_int_handler_rearm(bp, cpr, raw_cons);
+			cnt = 0;
+		}
 	}
 
-	cpr->cp_raw_cons = raw_cons;
-	if (BNXT_HAS_NQ(bp))
-		bnxt_db_nq_arm(cpr);
-	else
-		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+	/* cnt = 0 means no work or we rearmed already */
+	if (cnt > 0)
+		bnxt_int_handler_rearm(bp, cpr, raw_cons);
 
 	pthread_mutex_unlock(&bp->def_cp_lock);
 }
@@ -94,7 +110,7 @@ int bnxt_free_int(struct bnxt *bp)
 		} while (count++ < 10);
 
 		if (rc < 0) {
-			PMD_DRV_LOG(ERR, "irq cb unregister failed rc: %d\n",
+			PMD_DRV_LOG_LINE(ERR, "irq cb unregister failed rc: %d",
 				    rc);
 			return rc;
 		}
@@ -161,7 +177,7 @@ int bnxt_setup_int(struct bnxt *bp)
 			bp->irq_tbl[i].handler = bnxt_int_handler;
 		}
 	} else {
-		PMD_DRV_LOG(ERR, "bnxt_irq_tbl setup failed\n");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_irq_tbl setup failed");
 		return -ENOMEM;
 	}
 

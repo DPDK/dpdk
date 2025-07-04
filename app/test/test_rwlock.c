@@ -35,14 +35,14 @@
 
 static rte_rwlock_t sl;
 static rte_rwlock_t sl_tab[RTE_MAX_LCORE];
-static uint32_t synchro;
+static RTE_ATOMIC(uint32_t) synchro;
 
 enum {
 	LC_TYPE_RDLOCK,
 	LC_TYPE_WRLOCK,
 };
 
-static struct {
+static alignas(RTE_CACHE_LINE_SIZE) struct {
 	rte_rwlock_t lock;
 	uint64_t tick;
 
@@ -50,9 +50,9 @@ static struct {
 		uint8_t u8[RTE_CACHE_LINE_SIZE];
 		uint64_t u64[RTE_CACHE_LINE_SIZE / sizeof(uint64_t)];
 	} data;
-} __rte_cache_aligned try_rwlock_data;
+} try_rwlock_data;
 
-struct try_rwlock_lcore {
+struct __rte_cache_aligned try_rwlock_lcore {
 	int32_t rc;
 	int32_t type;
 	struct {
@@ -60,7 +60,7 @@ struct try_rwlock_lcore {
 		uint64_t fail;
 		uint64_t success;
 	} stat;
-} __rte_cache_aligned;
+};
 
 static struct try_rwlock_lcore try_lcore_data[RTE_MAX_LCORE];
 
@@ -101,7 +101,8 @@ load_loop_fn(__rte_unused void *arg)
 
 	/* wait synchro for workers */
 	if (lcore != rte_get_main_lcore())
-		rte_wait_until_equal_32(&synchro, 1, __ATOMIC_RELAXED);
+		rte_wait_until_equal_32((uint32_t *)(uintptr_t)&synchro, 1,
+				rte_memory_order_relaxed);
 
 	begin = rte_rdtsc_precise();
 	while (lcount < MAX_LOOP) {
@@ -134,12 +135,12 @@ test_rwlock_perf(void)
 	printf("\nRwlock Perf Test on %u cores...\n", rte_lcore_count());
 
 	/* clear synchro and start workers */
-	__atomic_store_n(&synchro, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 0, rte_memory_order_relaxed);
 	if (rte_eal_mp_remote_launch(load_loop_fn, NULL, SKIP_MAIN) < 0)
 		return -1;
 
 	/* start synchro and launch test on main */
-	__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
 	load_loop_fn(NULL);
 
 	rte_eal_mp_wait_lcore();
@@ -506,7 +507,7 @@ try_rwlock_test_rde_wro(void)
 	return process_try_lcore_stats();
 }
 
-REGISTER_TEST_COMMAND(rwlock_test1_autotest, rwlock_test1);
-REGISTER_TEST_COMMAND(rwlock_rda_autotest, try_rwlock_test_rda);
-REGISTER_TEST_COMMAND(rwlock_rds_wrm_autotest, try_rwlock_test_rds_wrm);
-REGISTER_TEST_COMMAND(rwlock_rde_wro_autotest, try_rwlock_test_rde_wro);
+REGISTER_FAST_TEST(rwlock_test1_autotest, true, true, rwlock_test1);
+REGISTER_FAST_TEST(rwlock_rda_autotest, true, true, try_rwlock_test_rda);
+REGISTER_FAST_TEST(rwlock_rds_wrm_autotest, true, true, try_rwlock_test_rds_wrm);
+REGISTER_FAST_TEST(rwlock_rde_wro_autotest, true, true, try_rwlock_test_rde_wro);

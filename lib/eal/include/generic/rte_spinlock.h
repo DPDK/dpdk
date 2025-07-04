@@ -15,7 +15,6 @@
  * a loop repeatedly checking until the lock becomes available.
  *
  * All locks must be initialised before use, and only initialised once.
- *
  */
 
 #include <rte_lcore.h>
@@ -24,12 +23,17 @@
 #endif
 #include <rte_lock_annotations.h>
 #include <rte_pause.h>
+#include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The rte_spinlock_t type.
  */
-typedef struct __rte_lockable {
-	volatile int locked; /**< lock status 0 = unlocked, 1 = locked */
+typedef struct __rte_capability("spinlock") {
+	volatile RTE_ATOMIC(int) locked; /**< lock status 0 = unlocked, 1 = locked */
 } rte_spinlock_t;
 
 /**
@@ -57,7 +61,7 @@ rte_spinlock_init(rte_spinlock_t *sl)
  */
 static inline void
 rte_spinlock_lock(rte_spinlock_t *sl)
-	__rte_exclusive_lock_function(sl);
+	__rte_acquire_capability(sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline void
@@ -66,10 +70,10 @@ rte_spinlock_lock(rte_spinlock_t *sl)
 {
 	int exp = 0;
 
-	while (!__atomic_compare_exchange_n(&sl->locked, &exp, 1, 0,
-				__ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
-		rte_wait_until_equal_32((volatile uint32_t *)&sl->locked,
-			       0, __ATOMIC_RELAXED);
+	while (!rte_atomic_compare_exchange_strong_explicit(&sl->locked, &exp, 1,
+				rte_memory_order_acquire, rte_memory_order_relaxed)) {
+		rte_wait_until_equal_32((volatile uint32_t *)(uintptr_t)&sl->locked,
+			       0, rte_memory_order_relaxed);
 		exp = 0;
 	}
 }
@@ -83,14 +87,14 @@ rte_spinlock_lock(rte_spinlock_t *sl)
  */
 static inline void
 rte_spinlock_unlock(rte_spinlock_t *sl)
-	__rte_unlock_function(sl);
+	__rte_release_capability(sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline void
 rte_spinlock_unlock(rte_spinlock_t *sl)
 	__rte_no_thread_safety_analysis
 {
-	__atomic_store_n(&sl->locked, 0, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&sl->locked, 0, rte_memory_order_release);
 }
 #endif
 
@@ -105,7 +109,7 @@ rte_spinlock_unlock(rte_spinlock_t *sl)
 __rte_warn_unused_result
 static inline int
 rte_spinlock_trylock(rte_spinlock_t *sl)
-	__rte_exclusive_trylock_function(1, sl);
+	__rte_try_acquire_capability(true, sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline int
@@ -113,9 +117,8 @@ rte_spinlock_trylock(rte_spinlock_t *sl)
 	__rte_no_thread_safety_analysis
 {
 	int exp = 0;
-	return __atomic_compare_exchange_n(&sl->locked, &exp, 1,
-				0, /* disallow spurious failure */
-				__ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+	return rte_atomic_compare_exchange_strong_explicit(&sl->locked, &exp, 1,
+				rte_memory_order_acquire, rte_memory_order_relaxed);
 }
 #endif
 
@@ -129,7 +132,7 @@ rte_spinlock_trylock(rte_spinlock_t *sl)
  */
 static inline int rte_spinlock_is_locked (rte_spinlock_t *sl)
 {
-	return __atomic_load_n(&sl->locked, __ATOMIC_ACQUIRE);
+	return rte_atomic_load_explicit(&sl->locked, rte_memory_order_acquire);
 }
 
 /**
@@ -155,7 +158,7 @@ static inline int rte_tm_supported(void);
  */
 static inline void
 rte_spinlock_lock_tm(rte_spinlock_t *sl)
-	__rte_exclusive_lock_function(sl);
+	__rte_acquire_capability(sl);
 
 /**
  * Commit hardware memory transaction or release the spinlock if
@@ -166,7 +169,7 @@ rte_spinlock_lock_tm(rte_spinlock_t *sl)
  */
 static inline void
 rte_spinlock_unlock_tm(rte_spinlock_t *sl)
-	__rte_unlock_function(sl);
+	__rte_release_capability(sl);
 
 /**
  * Try to execute critical section in a hardware memory transaction,
@@ -187,7 +190,7 @@ rte_spinlock_unlock_tm(rte_spinlock_t *sl)
 __rte_warn_unused_result
 static inline int
 rte_spinlock_trylock_tm(rte_spinlock_t *sl)
-	__rte_exclusive_trylock_function(1, sl);
+	__rte_try_acquire_capability(true, sl);
 
 /**
  * The rte_spinlock_recursive_t type.
@@ -318,5 +321,9 @@ static inline void rte_spinlock_recursive_unlock_tm(
 __rte_warn_unused_result
 static inline int rte_spinlock_recursive_trylock_tm(
 	rte_spinlock_recursive_t *slr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_SPINLOCK_H_ */

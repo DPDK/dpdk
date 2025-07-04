@@ -146,28 +146,6 @@ has_sym_args = [
             'MLX5_OPCODE_WAIT' ],
         [ 'HAVE_MLX5_OPCODE_ACCESS_ASO', 'infiniband/mlx5dv.h',
             'MLX5_OPCODE_ACCESS_ASO' ],
-        [ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_40000baseKR4_Full' ],
-        [ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_40000baseCR4_Full' ],
-        [ 'HAVE_SUPPORTED_40000baseSR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_40000baseSR4_Full' ],
-        [ 'HAVE_SUPPORTED_40000baseLR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_40000baseLR4_Full' ],
-        [ 'HAVE_SUPPORTED_56000baseKR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_56000baseKR4_Full' ],
-        [ 'HAVE_SUPPORTED_56000baseCR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_56000baseCR4_Full' ],
-        [ 'HAVE_SUPPORTED_56000baseSR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_56000baseSR4_Full' ],
-        [ 'HAVE_SUPPORTED_56000baseLR4_Full', 'linux/ethtool.h',
-            'SUPPORTED_56000baseLR4_Full' ],
-        [ 'HAVE_ETHTOOL_LINK_MODE_25G', 'linux/ethtool.h',
-            'ETHTOOL_LINK_MODE_25000baseCR_Full_BIT' ],
-        [ 'HAVE_ETHTOOL_LINK_MODE_50G', 'linux/ethtool.h',
-            'ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT' ],
-        [ 'HAVE_ETHTOOL_LINK_MODE_100G', 'linux/ethtool.h',
-            'ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT' ],
         [ 'HAVE_IFLA_NUM_VF', 'linux/if_link.h',
             'IFLA_NUM_VF' ],
         [ 'HAVE_IFLA_EXT_MASK', 'linux/if_link.h',
@@ -192,6 +170,16 @@ has_sym_args = [
             'RDMA_NLDEV_ATTR_PORT_STATE' ],
         [ 'HAVE_RDMA_NLDEV_ATTR_NDEV_INDEX', 'rdma/rdma_netlink.h',
             'RDMA_NLDEV_ATTR_NDEV_INDEX' ],
+        [ 'HAVE_RDMA_NL_GROUP_NOTIFY', 'rdma/rdma_netlink.h',
+            'RDMA_NL_GROUP_NOTIFY' ],
+        [ 'HAVE_RDMA_NLDEV_CMD_SYS_GET', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_CMD_SYS_GET' ],
+        [ 'HAVE_RDMA_NLDEV_SYS_ATTR_MONITOR_MODE', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_SYS_ATTR_MONITOR_MODE' ],
+        [ 'HAVE_RDMA_NLDEV_ATTR_EVENT_TYPE', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_ATTR_EVENT_TYPE' ],
+        [ 'HAVE_RDMA_NLDEV_CMD_MONITOR', 'rdma/rdma_netlink.h',
+            'RDMA_NLDEV_CMD_MONITOR' ],
         [ 'HAVE_MLX5_DR_FLOW_DUMP', 'infiniband/mlx5dv.h',
             'mlx5dv_dump_dr_domain'],
         [ 'HAVE_MLX5_DR_CREATE_ACTION_FLOW_SAMPLE', 'infiniband/mlx5dv.h',
@@ -219,6 +207,12 @@ has_sym_args = [
             'ibv_import_device' ],
         [ 'HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE', 'infiniband/mlx5dv.h',
             'mlx5dv_dr_action_create_dest_root_table' ],
+        [ 'HAVE_MLX5DV_CREATE_STEERING_ANCHOR', 'infiniband/mlx5dv.h',
+            'mlx5dv_create_steering_anchor'],
+        [ 'HAVE_IBV_FORK_UNNEEDED', 'infiniband/verbs.h',
+            'ibv_is_fork_initialized'],
+        [ 'HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0', 'infiniband/mlx5dv.h',
+            'MLX5DV_CONTEXT_MASK_REG_C0' ],
 ]
 if  libmtcr_ul_found
     has_sym_args += [
@@ -227,11 +221,12 @@ if  libmtcr_ul_found
 endif
 
 foreach arg:has_sym_args
-    mlx5_config.set(arg[0], cc.has_header_symbol(arg[1], arg[2], dependencies: libs))
+    mlx5_config.set(arg[0], cc.has_header_symbol(arg[1], arg[2], dependencies: libs, args: cflags))
 endforeach
 foreach arg:has_member_args
     file_prefix = '#include <' + arg[1] + '>'
-    mlx5_config.set(arg[0], cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs))
+    mlx5_config.set(arg[0],
+            cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs, args: cflags))
 endforeach
 
 # Build Glue Library
@@ -242,7 +237,7 @@ if dlopen_ibverbs
     dlopen_sources = files('mlx5_glue.c')
     dlopen_install_dir = [ eal_pmd_path + '-glue' ]
     dlopen_includes = [global_inc]
-    dlopen_includes += include_directories('../../../../lib/eal/include/generic')
+    dlopen_includes += include_directories('../../../../lib/eal/common')
     dlopen_includes += include_directories('..')
     shared_lib = shared_library(
             dlopen_lib_name,

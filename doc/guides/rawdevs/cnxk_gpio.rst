@@ -6,50 +6,46 @@ Marvell CNXK GPIO Driver
 
 CNXK GPIO PMD configures and manages GPIOs available on the system using
 standard enqueue/dequeue mechanism offered by raw device abstraction. PMD relies
-both on standard sysfs GPIO interface provided by the Linux kernel and GPIO
-kernel driver custom interface allowing one to install userspace interrupt
-handlers.
+on standard kernel GPIO character device interface.
 
 Features
 --------
 
 Following features are available:
 
-- export/unexport a GPIO
-- read/write specific value from/to exported GPIO
+- read/write specific value from/to GPIO
 - set GPIO direction
 - set GPIO edge that triggers interrupt
 - set GPIO active low
 - register interrupt handler for specific GPIO
+- multiprocess aware
 
-Requirements
-------------
+Limitations
+-----------
 
-PMD relies on modified kernel GPIO driver which exposes ``ioctl()`` interface
-for installing interrupt handlers for low latency signal processing.
-
-Driver is shipped with Marvell SDK.
+In multiprocess mode, user-space application must ensure
+no GPIO sharing across processes takes place.
 
 Device Setup
 ------------
 
 CNXK GPIO PMD binds to virtual device which gets created by passing
 `--vdev=cnxk_gpio,gpiochip=<number>` command line to EAL. `gpiochip` parameter
-tells PMD which GPIO controller should be used. Available controllers are
-available under `/sys/class/gpio`. For further details on how Linux represents
-GPIOs in userspace please refer to
-`sysfs.txt <https://www.kernel.org/doc/Documentation/gpio/sysfs.txt>`_.
+tells PMD which GPIO controller should be used.
+Available controllers are ``/dev/gpiochipN`` character devices.
+For further details on how Linux represents GPIOs in userspace please refer to
+`gpio-cdev <https://www.kernel.org/doc/Documentation/ABI/testing/gpio-cdev>`_.
 
 If `gpiochip=<number>` was omitted then first gpiochip from the alphabetically
 sort list of available gpiochips is used.
 
 .. code-block:: console
 
-   $ ls /sys/class/gpio
-   export gpiochip448 unexport
+   $ ls /dev/gpiochip*
+   /dev/gpiochip0
 
 In above scenario only one GPIO controller is present hence
-`--vdev=cnxk_gpio,gpiochip=448` should be passed to EAL.
+``--vdev=cnxk_gpio,gpiochip=0`` should be passed to EAL.
 
 Before performing actual data transfer one needs to call
 ``rte_rawdev_queue_count()`` followed by ``rte_rawdev_queue_conf_get()``. The
@@ -58,7 +54,7 @@ being controllable or not. Thus it is user responsibility to pick the proper
 ones. The latter call simply returns queue capacity.
 
 In order to allow using only subset of available GPIOs `allowlist` PMD param may
-be used. For example passing `--vdev=cnxk_gpio,gpiochip=448,allowlist=[0,1,2,3]`
+be used. For example passing ``--vdev=cnxk_gpio,gpiochip=0,allowlist=[0,1,2,3]``
 to EAL will deny using all GPIOs except those specified explicitly in the
 `allowlist`.
 
@@ -172,12 +168,12 @@ Request interrupt
 
 Message is used to install custom interrupt handler.
 
-Message must have type set to ``CNXK_GPIO_MSG_TYPE_REGISTER_IRQ``.
+Message must have type set to ``CNXK_GPIO_MSG_TYPE_REGISTER_IRQ2``.
 
-Payload needs to be set to ``struct cnxk_gpio_irq`` which describes interrupt
+Payload needs to be set to ``struct cnxk_gpio_irq2`` which describes interrupt
 being requested.
 
-Consider using ``rte_pmd_gpio_register_gpio()`` wrapper.
+Consider using ``rte_pmd_gpio_register_irq2()`` wrapper.
 
 Free interrupt
 ~~~~~~~~~~~~~~
@@ -186,7 +182,7 @@ Message is used to remove installed interrupt handler.
 
 Message must have type set to ``CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ``.
 
-Consider using ``rte_pmd_gpio_unregister_gpio()`` wrapper.
+Consider using ``rte_pmd_gpio_unregister_irq()`` wrapper.
 
 Self test
 ---------

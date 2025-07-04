@@ -12,19 +12,18 @@
  * Implementation of IP packet fragmentation and reassembly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 
-#include <rte_compat.h>
 #include <rte_config.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_ip.h>
 #include <rte_byteorder.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_mbuf;
 
@@ -205,7 +204,6 @@ int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
  *   in the pkts_out array.
  *   Otherwise - (-1) * errno.
  */
-__rte_experimental
 int32_t
 rte_ipv4_fragment_copy_nonseg_packet(struct rte_mbuf *pkt_in,
 	struct rte_mbuf **pkts_out,
@@ -289,7 +287,6 @@ rte_ip_frag_table_statistics_dump(FILE * f, const struct rte_ip_frag_tbl *tbl);
  * @param tms
  *   Current timestamp
  */
-__rte_experimental
 void
 rte_ip_frag_table_del_expired_entries(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, uint64_t tms);

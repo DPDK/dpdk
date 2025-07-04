@@ -2,31 +2,40 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <eal_export.h>
 #include <rte_trace_point_register.h>
 
 #include "mempool_trace.h"
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_ops_dequeue_bulk, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_ops_dequeue_bulk,
 	lib.mempool.ops.deq.bulk)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_ops_dequeue_contig_blocks, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_ops_dequeue_contig_blocks,
 	lib.mempool.ops.deq.contig)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_ops_enqueue_bulk, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_ops_enqueue_bulk,
 	lib.mempool.ops.enq.bulk)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_generic_put, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_generic_put,
 	lib.mempool.generic.put)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_put_bulk, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_put_bulk,
 	lib.mempool.put.bulk)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_generic_get, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_generic_get,
 	lib.mempool.generic.get)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_get_bulk, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_get_bulk,
 	lib.mempool.get.bulk)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_get_contig_blocks, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_get_contig_blocks,
 	lib.mempool.get.blocks)
 
@@ -57,12 +66,14 @@ RTE_TRACE_POINT_REGISTER(rte_mempool_trace_cache_create,
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_cache_free,
 	lib.mempool.cache.free)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_default_cache, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_default_cache,
 	lib.mempool.default.cache)
 
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_get_page_size,
 	lib.mempool.get.page.size)
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_mempool_trace_cache_flush, 20.05)
 RTE_TRACE_POINT_REGISTER(rte_mempool_trace_cache_flush,
 	lib.mempool.cache.flush)
 

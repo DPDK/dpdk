@@ -1,14 +1,13 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _l2_fwd_app_real_and_virtual:
-
 L2 Forwarding Sample Application (in Real and Virtualized Environments)
 =======================================================================
 
-The L2 Forwarding sample application is a simple example of packet processing using
-the Data Plane Development Kit (DPDK) which
-also takes advantage of Single Root I/O Virtualization (SR-IOV) features in a virtualized environment.
+The L2 Forwarding sample application is an example of packet processing
+using the Data Plane Development Kit (DPDK).
+It also takes advantage of Single Root I/O Virtualization (SR-IOV) features
+in a virtualized environment.
 
 .. note::
 
@@ -20,10 +19,10 @@ Overview
 
 The L2 Forwarding sample application, which can operate in real and virtualized environments,
 performs L2 forwarding for each packet that is received on an RX_PORT.
-The destination port is the adjacent port from the enabled portmask, that is,
-if the first four ports are enabled (portmask 0xf),
+The destination port is the adjacent port from the enabled portmask
+if: the first four ports are enabled (portmask 0xf),
 ports 1 and 2 forward into each other, and ports 3 and 4 forward into each other.
-Also, if MAC addresses updating is enabled, the MAC addresses are affected as follows:
+Also, if MAC address updating is enabled, the MAC addresses are affected as follows:
 
 *   The source MAC address is replaced by the TX_PORT MAC address
 
@@ -75,12 +74,12 @@ This command enables two Virtual Functions on each of Physical Function of the N
 with two physical ports in the PCI configuration space.
 It is important to note that enabled Virtual Function 0 and 2 would belong to Physical Function 0
 and Virtual Function 1 and 3 would belong to Physical Function 1,
-in this case enabling a total of four Virtual Functions.
+in this case, enabling a total of four Virtual Functions.
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l2fwd`` sub-directory.
 
@@ -106,7 +105,7 @@ where,
     Without this option, only packets with the MAC destination address
     set to the Ethernet address of the port are accepted.
 
-*   q NQ: A number of queues (=ports) per lcore (default is 1)
+*   q NQ: Maximum number of queues per lcore (default is 1)
 
 *   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)
 
@@ -133,21 +132,21 @@ and the Environment Abstraction Layer (EAL) options.
 Explanation
 -----------
 
-The following sections provide some explanation of the code.
+The following sections provide explanation of the code.
 
 .. _l2_fwd_app_cmd_arguments:
 
 Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The L2 Forwarding sample application takes specific parameters,
-in addition to Environment Abstraction Layer (EAL) arguments.
-The preferred way to parse parameters is to use the getopt() function,
+The L2 Forwarding sample application takes specific parameters
+and Environment Abstraction Layer (EAL) arguments.
+The preferred way to parse parameters is to use the ``getopt()`` function
 since it is part of a well-defined and portable library.
 
-The parsing of arguments is done in the l2fwd_parse_args() function.
-The method of argument parsing is not described here.
-Refer to the *glibc getopt(3)* man page for details.
+The parsing of arguments is done in the ``l2fwd_parse_args()`` function.
+This method of argument parsing is not described here.
+Refer to the *glibc getopt(3)* main page for details.
 
 EAL arguments are parsed first, then application-specific arguments.
 This is done at the beginning of the main() function:
@@ -175,14 +174,14 @@ and the application to store network packet data:
 
 The rte_mempool is a generic structure used to handle pools of objects.
 In this case, it is necessary to create a pool that will be used by the driver.
-The number of allocated pkt mbufs is NB_MBUF, with a data room size of
-RTE_MBUF_DEFAULT_BUF_SIZE each.
+The number of allocated pkt mbufs is ``NB_MBUF``,
+with a data room size of ``RTE_MBUF_DEFAULT_BUF_SIZE`` each.
 A per-lcore cache of 32 mbufs is kept.
 The memory is allocated in NUMA socket 0,
 but it is possible to extend this code to allocate one mbuf pool per socket.
 
-The rte_pktmbuf_pool_create() function uses the default mbuf pool and mbuf
-initializers, respectively rte_pktmbuf_pool_init() and rte_pktmbuf_init().
+The ``rte_pktmbuf_pool_create()`` function uses the default mbuf pool
+and mbuf initializers, respectively ``rte_pktmbuf_pool_init()`` and ``rte_pktmbuf_init()``.
 An advanced application may want to use the mempool API to create the
 mbuf pool with more control.
 
@@ -191,8 +190,8 @@ mbuf pool with more control.
 Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~
 
-The main part of the code in the main() function relates to the initialization of the driver.
-To fully understand this code, it is recommended to study the chapters that related to the Poll Mode Driver
+The main part of the code in the ``main()`` function relates to the initialization of the driver.
+To fully understand this code, it is recommended to study the chapters related to the Poll Mode Driver
 in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
@@ -204,7 +203,7 @@ in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).
 The number of TX queues depends on the number of available lcores.
-The rte_eth_dev_configure() function is used to configure the number of queues for a port:
+The ``rte_eth_dev_configure()`` function is used to configure the number of queues for a port:
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
     :language: c
@@ -217,11 +216,12 @@ The rte_eth_dev_configure() function is used to configure the number of queues f
 RX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The application uses one lcore to poll one or several ports, depending on the -q option,
+The application uses one lcore to poll one or several ports depending on the ``-q`` option,
 which specifies the number of queues per lcore.
 
-For example, if the user specifies -q 4, the application is able to poll four ports with one lcore.
-If there are 16 ports on the target (and if the portmask argument is -p ffff ),
+For example, if the user specifies ``-q 4``,
+the application is able to poll four ports with one lcore.
+If there are 16 ports on the target (and if the portmask argument is ``-p ffff``),
 the application will need four lcores to poll all the ports.
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
@@ -237,7 +237,7 @@ The list of queues that must be polled for a given lcore is stored in a private 
     :start-after: List of queues to be polled for a given lcore. 8<
     :end-before: >8 End of list of queues to be polled for a given lcore.
 
-The values n_rx_port and rx_port_list[] are used in the main packet processing loop
+The values ``n_rx_port`` and ``rx_port_list[]`` are used in the main packet processing loop
 (see :ref:`l2_fwd_app_rx_tx_packets`).
 
 .. _l2_fwd_app_tx_init:
@@ -245,7 +245,8 @@ The values n_rx_port and rx_port_list[] are used in the main packet processing l
 TX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Each lcore should be able to transmit on any port. For every port, a single TX queue is initialized.
+Each lcore should be able to transmit on any port.
+For each port, a single TX queue is initialized.
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
     :language: c
@@ -258,7 +259,8 @@ Each lcore should be able to transmit on any port. For every port, a single TX q
 Receive, Process and Transmit Packets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the l2fwd_main_loop() function, the main task is to read ingress packets from the RX queues.
+In the ``l2fwd_main_loop()`` function,
+the main task is to read ingress packets from the RX queues.
 This is done using the following code:
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
@@ -267,20 +269,23 @@ This is done using the following code:
     :end-before: >8 End of read packet from RX queues.
     :dedent: 2
 
-Packets are read in a burst of size MAX_PKT_BURST.
-The rte_eth_rx_burst() function writes the mbuf pointers in a local table and returns the number of available mbufs in the table.
+Packets are read in a burst of size ``MAX_PKT_BURST``.
+The ``rte_eth_rx_burst()`` function writes the mbuf pointers
+in a local table and returns the number of available mbufs in the table.
 
-Then, each mbuf in the table is processed by the l2fwd_simple_forward() function.
-The processing is very simple: process the TX port from the RX port, then replace the source and destination MAC addresses if MAC
-addresses updating is enabled.
+Then, each mbuf in the table is processed by the ``l2fwd_simple_forward()`` function.
+The processing is very simple: process the TX port from the RX port,
+then replace the source and destination MAC addresses if MAC address updating is enabled.
 
 .. note::
 
     In the following code, one line for getting the output port requires some explanation.
 
-During the initialization process, a static array of destination ports (l2fwd_dst_ports[]) is filled such that for each source port,
+During the initialization process, a static array of destination ports (``l2fwd_dst_ports[]``)
+is filled such that for each source port,
 a destination port is assigned that is either the next or previous enabled port from the portmask.
-Naturally, the number of ports in the portmask must be even, otherwise, the application exits.
+Naturally, the number of ports in the portmask must be even.
+Otherwise, the application exits.
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
     :language: c
@@ -288,18 +293,21 @@ Naturally, the number of ports in the portmask must be even, otherwise, the appl
     :end-before: >8 End of simple forward.
 
 
-Then, the packet is sent using the l2fwd_send_packet (m, dst_port) function.
+At this point, the packet is sent using the ``l2fwd_send_packet(m, dst_port)`` function.
 For this test application, the processing is exactly the same for all packets arriving on the same RX port.
-Therefore, it would have been possible to call the l2fwd_send_burst() function directly from the main loop
+Therefore, it would have been possible to call the ``l2fwd_send_burst()`` function
+directly from the main loop
 to send all the received packets on the same TX port,
 using the burst-oriented send function, which is more efficient.
 
-However, in real-life applications (such as, L3 routing),
+However, in real-life applications (such as L3 routing),
 packet N is not necessarily forwarded on the same port as packet N-1.
-The application is implemented to illustrate that, so the same approach can be reused in a more complex application.
+The application is implemented to illustrate this
+so the same approach can be reused in a more complex application.
 
-The l2fwd_send_packet() function stores the packet in a per-lcore and per-txport table.
-If the table is full, the whole packets table is transmitted using the l2fwd_send_burst() function:
+The ``l2fwd_send_packet()`` function stores the packet in a per-lcore and per-txport table.
+If the table is full, the whole packets table is transmitted
+using the ``l2fwd_send_burst()`` function:
 
 .. literalinclude:: ../../../examples/l2fwd-crypto/main.c
     :language: c
@@ -307,8 +315,8 @@ If the table is full, the whole packets table is transmitted using the l2fwd_sen
     :end-before: >8 End of Enqueuing packets for TX.
 
 To ensure that no packets remain in the tables, each lcore does a draining of TX queue in its main loop.
-This technique introduces some latency when there are not many packets to send,
-however it improves performance:
+This technique introduces some latency when there are not many packets to send.
+However it improves performance:
 
 .. literalinclude:: ../../../examples/l2fwd/main.c
     :language: c

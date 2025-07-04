@@ -50,10 +50,10 @@ struct array_of_ptrs {
 	phys_addr_t pointer[0];
 };
 
-struct qat_inter_sgl {
+struct __rte_cache_aligned __rte_packed_begin qat_inter_sgl {
 	qat_sgl_hdr;
 	struct qat_flat_buf buffers[QAT_NUM_BUFS_IN_IM_SGL];
-} __rte_packed __rte_cache_aligned;
+} __rte_packed_end;
 
 
 struct qat_comp_op_cookie {
@@ -140,6 +140,9 @@ qat_comp_stream_create(struct rte_compressdev *dev,
 
 int
 qat_comp_stream_free(struct rte_compressdev *dev, void *stream);
+
+uint16_t
+qat_enqueue_comp_op_burst(void *qp, void **ops, uint16_t nb_ops);
 
 #endif
 #endif

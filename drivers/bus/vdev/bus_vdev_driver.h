@@ -5,14 +5,14 @@
 #ifndef BUS_VDEV_DRIVER_H
 #define BUS_VDEV_DRIVER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bus_vdev.h>
 #include <rte_compat.h>
 #include <dev_driver.h>
 #include <rte_devargs.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_vdev_device {
 	RTE_TAILQ_ENTRY(rte_vdev_device) next;      /**< Next attached vdev */
@@ -139,7 +139,7 @@ RTE_INIT(vdrvinitfn_ ##vdrv)\
 	(vdrv).driver.alias = vdrvinit_ ## nm ## _alias;\
 	rte_vdev_register(&vdrv);\
 } \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
+RTE_PMD_EXPORT_NAME(nm)
 
 #define RTE_PMD_REGISTER_ALIAS(nm, alias)\
 static const char *vdrvinit_ ## nm ## _alias = RTE_STR(alias)

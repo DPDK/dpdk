@@ -5,22 +5,43 @@
 #ifndef __INCLUDE_RTE_TABLE_HASH_FUNC_H__
 #define __INCLUDE_RTE_TABLE_HASH_FUNC_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_common.h>
 
-__rte_experimental
+#if defined(RTE_ARCH_X86_64)
+
+#include <x86intrin.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline uint64_t
-rte_crc32_u64_generic(uint64_t crc, uint64_t value)
+rte_crc32_u64(uint64_t crc, uint64_t v)
+{
+	return _mm_crc32_u64(crc, v);
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#elif defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_CRC32)
+#include "rte_table_hash_func_arm64.h"
+#else
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+static inline uint64_t
+rte_crc32_u64(uint64_t crc, uint64_t v)
 {
 	int i;
 
-	crc = (crc & 0xFFFFFFFFLLU) ^ value;
+	crc = (crc & 0xFFFFFFFFLLU) ^ v;
 	for (i = 63; i >= 0; i--) {
 		uint64_t mask;
 
@@ -31,26 +52,14 @@ rte_crc32_u64_generic(uint64_t crc, uint64_t value)
 	return crc;
 }
 
-#if defined(RTE_ARCH_X86_64)
-
-#include <x86intrin.h>
-
-static inline uint64_t
-rte_crc32_u64(uint64_t crc, uint64_t v)
-{
-	return _mm_crc32_u64(crc, v);
+#ifdef __cplusplus
 }
+#endif
 
-#elif defined(RTE_ARCH_ARM64) && defined(__ARM_FEATURE_CRC32)
-#include "rte_table_hash_func_arm64.h"
-#else
+#endif
 
-static inline uint64_t
-rte_crc32_u64(uint64_t crc, uint64_t v)
-{
-	return rte_crc32_u64_generic(crc, v);
-}
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 __rte_experimental

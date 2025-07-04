@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -112,5 +112,4 @@ int32_t
 ulp_mark_db_mark_del(struct bnxt_ulp_context *ctxt,
 		     uint32_t mark_flag,
 		     uint32_t gfid);
-
 #endif /* _ULP_MARK_MGR_H_ */

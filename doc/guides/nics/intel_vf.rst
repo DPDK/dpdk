@@ -1,6 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
+.. include:: <isonum.txt>
+
 Intel Virtual Function Driver
 =============================
 
@@ -66,8 +68,13 @@ and the Physical Function operates on the global resources on behalf of the Virt
 For this out-of-band communication, an SR-IOV enabled NIC provides a memory buffer for each Virtual Function,
 which is called a "Mailbox".
 
+
+Intel SR-IOV drivers
+--------------------
+
 Intel® Ethernet Adaptive Virtual Function
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Adaptive Virtual Function (IAVF) is a SR-IOV Virtual Function with the same device id (8086:1889) on different Intel Ethernet Controller.
 IAVF Driver is VF driver which supports for all future Intel devices without requiring a VM update. And since this happens to be an adaptive VF driver,
 every new drop of the VF driver would add more and more advanced features that can be turned on in the VM if the underlying HW device supports those
@@ -82,22 +89,64 @@ For more detail on SR-IOV, please refer to the following documents:
 
 *   `Intel® IAVF HAS <https://www.intel.com/content/dam/www/public/us/en/documents/product-specifications/ethernet-adaptive-virtual-function-hardware-spec.pdf>`_
 
-.. note::
+IAVF PMD parameters
+^^^^^^^^^^^^^^^^^^^
 
-    To use DPDK IAVF PMD on Intel® 700 Series Ethernet Controller, the device id (0x1889) need to specified during device
-    assignment in hypervisor. Take qemu for example, the device assignment should carry the IAVF device id (0x1889) like
-    ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
+``watchdog_period``
+    The reset watchdog is enabled when link state changes to down.
+    The default period is 2000us, defined by ``IAVF_DEV_WATCHDOG_PERIOD``.
+    Set ``devargs`` parameter ``watchdog_period`` to adjust the watchdog period in microseconds,
+    or set it to 0 to disable the watchdog,
+    for example, ``-a 18:01.0,watchdog_period=5000`` or ``-a 18:01.0,watchdog_period=0``.
 
-    When IAVF is backed by an Intel® E810 device, the "Protocol Extraction" feature which is supported by ice PMD is also
-    available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD, for detail please reference
-    the section ``Protocol extraction for per queue`` of ice.rst.
+``auto_reset``
+    Enable VF auto-reset by setting the devargs parameter,
+    for example ``-a 18:01.0,auto_reset=1``,
 
-    Quanta size configuration is also supported when IAVF is backed by an Intel® E810 device by setting ``devargs``
-    parameter ``quanta_size`` like ``-a 18:00.0,quanta_size=2048``. The default value is 1024, and quanta size should be
-    set as the product of 64 in legacy host interface mode.
+``no-poll-on-link-down``
+    Stop polling Rx/Tx hardware queue when link is down
+    by setting the ``devargs`` parameter like ``-a 18:01.0,no-poll-on-link-down=1``.
+
+``mbuf_check``
+    Set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.
+    For example, ``-a 18:01.0,mbuf_check=<case>`` or ``-a 18:01.0,mbuf_check=[<case1>,<case2>...]``.
+    Thereafter, ``rte_eth_xstats_get()`` can be used to get the error counts,
+    which are collected in ``tx_mbuf_error_packets`` xstats.
+    In testpmd these can be shown via: ``testpmd> show port xstats all``.
+    Supported values for the ``case`` parameter are:
+
+    * ``mbuf``: Check for corrupted mbuf.
+    * ``size``: Check min/max packet length according to HW spec.
+    * ``segment``: Check number of mbuf segments does not exceed HW limits.
+    * ``offload``: Check for use of an unsupported offload flag.
+
+
+HW-Specific Notes For IAVF
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Intel\ |reg| 700 Series Ethernet devices:
+
+* To use DPDK IAVF PMD the device id (0x1889) need to specified during device assignment in hypervisor.
+  For example, on qemu, the device assignment should carry the IAVF device id (0x1889) like
+  ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
+
+Intel\ |reg| E800 Series Ethernet devices:
+
+* the "Protocol Extraction" feature which is supported by ice PMD is also available for IAVF PMD. The same devargs with the same parameters can be applied to IAVF PMD.
+  for Detail please reference the section ``Protocol extraction for per queue`` of ice.rst.
+
+* Quanta size configuration is supported by setting ``devargs`` parameter ``quanta_size``,
+  for example: ``-a 18:00.0,quanta_size=2048``.
+  The default value is 1024, and quanta size should be set as the product of 64 in legacy host interface mode.
+
+* When using the Intel out-of-tree "ice" PF/kernel driver v1.13.7 or later,
+  to create VFs with >16 queues (aka. "large VFs"),
+  it is necessary to change the rss_lut_vf_addr setting in sysfs from the default of 64 to 512.
+  This can be done using the following command for the first VF on an interface:
+  ``echo 512 > /sys/class/net/<PF interface>/device/virtfn0/rss_lut_vf_attr``
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a virtualized environment, the programmer can enable a maximum of *64 Virtual Functions (VF)*
 globally per PCIE host-interface of the Intel Ethernet Switch FM10000 Series device.
@@ -128,7 +177,7 @@ However:
     The above is an important consideration to take into account when targeting specific packets to a selected port.
 
 Intel® X710/XL710 Gigabit Ethernet Controller VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a virtualized environment, the programmer can enable a maximum of *128 Virtual Functions (VF)*
 globally per Intel® X710/XL710 Gigabit Ethernet Controller NIC device.
@@ -145,16 +194,8 @@ For example,
         rmmod i40e (To remove the i40e module)
         insmod i40e.ko max_vfs=2,2 (To enable two Virtual Functions per port)
 
-*   Using the DPDK PMD PF i40e driver:
-
-    Kernel Params: iommu=pt, intel_iommu=on
-
-    .. code-block:: console
-
-        modprobe uio
-        insmod igb_uio
-        ./dpdk-devbind.py -b igb_uio bb:ss.f
-        echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific PCI device)
+*   Using the DPDK PMD PF i40e driver, bind the PF device to ``vfio_pci`` or ``igb_uio`` and
+    create VF devices. See :ref:`linux_gsg_binding_kernel`.
 
     Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
@@ -175,7 +216,7 @@ However:
     one transmit queue. The default number of queue pairs per VF is 4, and can be 16 in maximum.
 
 Intel® 82599 10 Gigabit Ethernet Controller VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The programmer can enable a maximum of *63 Virtual Functions* and there must be *one Physical Function* per Intel® 82599
 10 Gigabit Ethernet Controller NIC port.
@@ -195,22 +236,14 @@ For example,
         rmmod ixgbe (To remove the ixgbe module)
         insmod ixgbe max_vfs=2,2 (To enable two Virtual Functions per port)
 
-*   Using the DPDK PMD PF ixgbe driver:
-
-    Kernel Params: iommu=pt, intel_iommu=on
-
-    .. code-block:: console
-
-        modprobe uio
-        insmod igb_uio
-        ./dpdk-devbind.py -b igb_uio bb:ss.f
-        echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific PCI device)
+*   Using the DPDK PMD PF ixgbe driver, bind the PF device to ``vfio_pci`` or ``igb_uio`` and
+    create VF devices. See :ref:`linux_gsg_binding_kernel`.
 
     Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
 *   Using the DPDK PMD PF ixgbe driver to enable VF RSS:
 
-    Same steps as above to install the modules of uio, igb_uio, specify max_vfs for PCI device, and
+    Same steps as above to bind the PF device, create VF devices, and
     launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
     The available queue number (at most 4) per VF depends on the total number of pool, which is
@@ -258,7 +291,7 @@ However:
     The above is an important consideration to take into account when targeting specific packets to a selected port.
 
 Intel® 82576 Gigabit Ethernet Controller and Intel® Ethernet Controller I350 Family VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a virtualized environment, an Intel® 82576 Gigabit Ethernet Controller serves up to eight virtual machines (VMs).
 The controller has 16 TX and 16 RX queues.
@@ -281,15 +314,8 @@ For example,
         rmmod igb (To remove the igb module)
         insmod igb max_vfs=2,2 (To enable two Virtual Functions per port)
 
-*   Using DPDK PMD PF igb driver:
-
-    Kernel Params: iommu=pt, intel_iommu=on modprobe uio
-
-    .. code-block:: console
-
-        insmod igb_uio
-        ./dpdk-devbind.py -b igb_uio bb:ss.f
-        echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific pci device)
+*   Using the DPDK PMD PF igb driver, bind the PF device to ``vfio_pci`` or ``igb_uio`` and
+    create VF devices. See :ref:`linux_gsg_binding_kernel`.
 
     Launch DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
@@ -309,6 +335,10 @@ However:
 .. note::
 
     The above is an important consideration to take into account when targeting specific packets to a selected port.
+
+
+Hypervisor Use of VFs
+---------------------
 
 Validated Hypervisors
 ~~~~~~~~~~~~~~~~~~~~~
@@ -335,7 +365,7 @@ For supported kernel versions, refer to the *DPDK Release Notes*.
 .. _intel_vf_kvm:
 
 Setting Up a KVM Virtual Machine Monitor
-----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following describes a target environment:
 
@@ -404,22 +434,8 @@ The setup procedure is as follows:
         rmmod ixgbe
         modprobe ixgbe max_vfs=2,2
 
-    When using DPDK PMD PF driver, insert DPDK kernel module igb_uio and set the number of VF by sysfs max_vfs:
-
-    .. code-block:: console
-
-        modprobe uio
-        insmod igb_uio
-        ./dpdk-devbind.py -b igb_uio 02:00.0 02:00.1 0e:00.0 0e:00.1
-        echo 2 > /sys/bus/pci/devices/0000\:02\:00.0/max_vfs
-        echo 2 > /sys/bus/pci/devices/0000\:02\:00.1/max_vfs
-        echo 2 > /sys/bus/pci/devices/0000\:0e\:00.0/max_vfs
-        echo 2 > /sys/bus/pci/devices/0000\:0e\:00.1/max_vfs
-
-    .. note::
-
-        You need to explicitly specify number of vfs for each port, for example,
-        in the command above, it creates two vfs for the first two ixgbe ports.
+    When using DPDK PMD PF driver, bind the PF device to ``vfio_pci`` or ``igb_uio`` and
+    create VF devices. See :ref:`linux_gsg_binding_kernel`.
 
     Let say we have a machine with four physical ixgbe ports:
 
@@ -432,7 +448,7 @@ The setup procedure is as follows:
 
         0000:0e:00.1
 
-    The command above creates two vfs for device 0000:02:00.0:
+    The mentioned steps above should result in two vfs for device 0000:02:00.0:
 
     .. code-block:: console
 
@@ -649,6 +665,23 @@ Inline IPsec Support
     documentation.
 
 
+Diagnostic Utilities
+--------------------
+
+Register mbuf dynfield to test Tx LLDP
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register an mbuf dynfield ``IAVF_TX_LLDP_DYNFIELD`` on ``dev_start``
+to indicate the need to send LLDP packet.
+This dynfield needs to be set to 1 when preparing packet.
+
+For ``dpdk-testpmd`` application, it needs to stop and restart Tx port to take effect.
+
+Usage::
+
+    testpmd> set tx lldp on
+
+
 Limitations or Knowing issues
 -----------------------------
 
@@ -721,3 +754,13 @@ and has this issue.
 
 Set the parameter `--force-max-simd-bitwidth` as 64/128/256
 to avoid selecting AVX-512 Tx path.
+
+ice: VLAN tag length not included in MTU
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When configuring MTU for a VF, MTU must not include VLAN tag length.
+In practice, when kernel driver configures VLAN filtering for a VF,
+the VLAN header tag length will be automatically added to MTU when configuring queues.
+As a consequence, when attempting to configure a VF port with MTU that,
+together with a VLAN tag header, exceeds maximum supported MTU,
+port configuration will fail if kernel driver has configured VLAN filtering on that VF.

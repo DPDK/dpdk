@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
 #include <string.h>
-
 #include <rte_common.h>
-
 #include "tf_session.h"
 #include "tf_common.h"
 #include "tf_msg.h"
@@ -59,8 +57,9 @@ tf_session_create(struct tf *tfp,
 	union tf_session_id *session_id;
 	struct tf_dev_info dev;
 	bool shared_session_creator;
-	int name_len;
-	char *name;
+	char *shared_name;
+	char *tcam_session_name;
+	char *pool_session_name;
 
 	TF_CHECK_PARMS2(tfp, parms);
 
@@ -141,8 +140,6 @@ tf_session_create(struct tf *tfp,
 	/* Return the allocated session id */
 	session_id->id = session->session_id.id;
 
-	session->shadow_copy = parms->open_cfg->shadow_copy;
-
 	/* Init session client list */
 	ll_init(&session->client_ll);
 
@@ -182,25 +179,31 @@ tf_session_create(struct tf *tfp,
 	session->em_ext_db_handle = NULL;
 
 	/* Populate the request */
-	name_len = strnlen(parms->open_cfg->ctrl_chan_name,
-			   TF_SESSION_NAME_MAX);
-	name = &parms->open_cfg->ctrl_chan_name[name_len - strlen("tf_shared")];
-	if (!strncmp(name, "tf_shared", strlen("tf_shared")))
+	shared_name = strstr(parms->open_cfg->ctrl_chan_name, "tf_shared");
+	if (shared_name) {
 		session->shared_session = true;
-
-	name = &parms->open_cfg->ctrl_chan_name[name_len -
-		strlen("tf_shared-wc_tcam")];
-	if (!strncmp(name, "tf_shared-wc_tcam", strlen("tf_shared-wc_tcam")))
-		session->shared_session = true;
+		/*
+		 * "tf_shared-wc_tcam" is defined for tf_fw version 1.0.0.
+		 * "tf_shared-pool" is defined for version 1.0.1.
+		 */
+		tcam_session_name = strstr(parms->open_cfg->ctrl_chan_name, "tf_shared-wc_tcam");
+		pool_session_name = strstr(parms->open_cfg->ctrl_chan_name, "tf_shared-pool");
+		if (tcam_session_name || pool_session_name)
+			session->shared_session_hotup = true;
+	}
 
 	if (session->shared_session && shared_session_creator) {
 		session->shared_session_creator = true;
 		parms->open_cfg->shared_session_creator = true;
 	}
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Reset the resource usage buffer before binding a device */
+	tf_resc_usage_reset(tfp, parms->open_cfg->device_type);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	rc = tf_dev_bind(tfp,
 			 parms->open_cfg->device_type,
-			 session->shadow_copy,
 			 &parms->open_cfg->resources,
 			 parms->open_cfg->wc_num_slices,
 			 &session->dev);
@@ -217,6 +220,11 @@ tf_session_create(struct tf *tfp,
 	}
 
 	session->dev_init = true;
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Sync the initial resource usage with firmware */
+	tf_resc_usage_update_all(parms->open_cfg->bp);
+#endif /* TF_FLOW_SCALE_QUERY */
 
 	return 0;
 
@@ -345,7 +353,6 @@ tf_session_client_create(struct tf *tfp,
 	return rc;
 }
 
-
 /**
  * Destroys a Session Client on an existing Session.
  *
@@ -360,7 +367,7 @@ tf_session_client_create(struct tf *tfp,
  *   - (-EINVAL) on failure.
  *   - (-ENOTFOUND) error, client not owned by the session.
  *   - (-ENOTSUPP) error, unable to destroy client as its the last
- *                 client. Please use the tf_session_close().
+ *		 client. Please use the tf_session_close().
  */
 static int
 tf_session_client_destroy(struct tf *tfp,
@@ -444,7 +451,7 @@ tf_session_open_session(struct tf *tfp,
 
 		TFP_DRV_LOG(INFO,
 		       "Session created, session_client_id:%d,"
-		       "session_id:0x%08x, fw_session_id:%d\n",
+		       " session_id:0x%08x, fw_session_id:%d\n",
 		       parms->open_cfg->session_client_id.id,
 		       parms->open_cfg->session_id.id,
 		       parms->open_cfg->session_id.internal.fw_session_id);
@@ -465,7 +472,7 @@ tf_session_open_session(struct tf *tfp,
 		}
 
 		TFP_DRV_LOG(INFO,
-			"Session Client:%d registered on session:0x%8x\n",
+			"Session Client:%d registered on session:0x%08x\n",
 			scparms.session_client_id->internal.fw_session_client_id,
 			tfp->session->session_id.id);
 	}
@@ -538,6 +545,11 @@ tf_session_close_session(struct tf *tfp,
 		return rc;
 	}
 
+	/* Record the session we're closing so the caller knows the
+	 * details.
+	 */
+	*parms->session_id = tfs->session_id;
+
 	/* In case multiple clients we chose to close those first */
 	if (tfs->ref_count > 1) {
 		/* Linaro gcc can't static init this structure */
@@ -569,11 +581,6 @@ tf_session_close_session(struct tf *tfp,
 
 		return 0;
 	}
-
-	/* Record the session we're closing so the caller knows the
-	 * details.
-	 */
-	*parms->session_id = tfs->session_id;
 
 	rc = tf_session_get_device(tfs, &tfd);
 	if (rc) {
@@ -992,8 +999,6 @@ tf_session_set_db(struct tf *tfp,
 	return rc;
 }
 
-#ifdef TF_TCAM_SHARED
-
 int
 tf_session_get_tcam_shared_db(struct tf *tfp,
 			      void **tcam_shared_db_handle)
@@ -1070,8 +1075,6 @@ tf_session_set_sram_db(struct tf *tfp,
 	return rc;
 }
 
-#endif /* TF_TCAM_SHARED */
-
 int
 tf_session_get_global_db(struct tf *tfp,
 			 void **global_handle)
@@ -1145,5 +1148,73 @@ tf_session_set_if_tbl_db(struct tf *tfp,
 		return rc;
 
 	tfs->if_tbl_db_handle = if_tbl_handle;
+	return rc;
+}
+
+int
+tf_session_set_hotup_state(struct tf *tfp,
+			   struct tf_set_session_hotup_state_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs = NULL;
+
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Session lookup failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (!tf_session_is_shared_session(tfs)) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "Only shared session able to set state, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_msg_session_set_hotup_state(tfp, parms->state);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Set session hot upgrade state failed, rc:%s\n",
+			    strerror(-rc));
+	}
+
+	return rc;
+}
+
+int
+tf_session_get_hotup_state(struct tf *tfp,
+			   struct tf_get_session_hotup_state_parms *parms)
+{
+	int rc = 0;
+	struct tf_session *tfs = NULL;
+
+	rc = tf_session_get_session(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "Session lookup failed, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	if (!tf_session_is_shared_session(tfs)) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "Only shared session able to get state, rc:%s\n",
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_msg_session_get_hotup_state(tfp, &parms->state, &parms->ref_cnt);
+	if (rc) {
+		/* Log error */
+		TFP_DRV_LOG(ERR,
+			    "Get session hot upgrade state failed, rc:%s\n",
+			    strerror(-rc));
+	}
+
 	return rc;
 }

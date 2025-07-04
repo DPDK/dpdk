@@ -6,6 +6,7 @@
 import argparse
 import ctypes
 import json
+import re
 import sys
 import tempfile
 
@@ -66,11 +67,11 @@ class ELFImage:
                 return [symbol]
         return None
 
-    def find_by_prefix(self, prefix):
-        prefix = prefix.encode("utf-8") if self._legacy_elftools else prefix
+    def find_by_pattern(self, pattern):
+        pattern = pattern.encode("utf-8") if self._legacy_elftools else pattern
         for i in range(self._symtab.num_symbols()):
             symbol = self._symtab.get_symbol(i)
-            if symbol.name.startswith(prefix):
+            if re.match(pattern, symbol.name):
                 yield ELFSymbol(self._image, symbol)
 
 
@@ -86,7 +87,7 @@ class COFFSymbol:
     @property
     def string_value(self):
         value = self._symbol.get_value(0)
-        return coff.decode_asciiz(value) if value else ''
+        return coff.decode_asciiz(value) if value else ""
 
 
 class COFFImage:
@@ -97,9 +98,9 @@ class COFFImage:
     def is_big_endian(self):
         return False
 
-    def find_by_prefix(self, prefix):
+    def find_by_pattern(self, pattern):
         for symbol in self._image.symbols:
-            if symbol.name.startswith(prefix):
+            if re.match(pattern, symbol.name):
                 yield COFFSymbol(self._image, symbol)
 
     def find_by_name(self, name):
@@ -191,7 +192,7 @@ class Driver:
         dumped = json.dumps(self.__dict__)
         escaped = dumped.replace('"', '\\"')
         print(
-            'const char %s_pmd_info[] __attribute__((used)) = "PMD_INFO_STRING= %s";'
+            'RTE_PMD_EXPORT_SYMBOL(const char, %s_pmd_info)[] = "PMD_INFO_STRING= %s";'
             % (self.name, escaped),
             file=file,
         )
@@ -199,7 +200,7 @@ class Driver:
 
 def load_drivers(image):
     drivers = []
-    for symbol in image.find_by_prefix("this_pmd_name"):
+    for symbol in image.find_by_pattern("^this_pmd_name[0-9a-zA-Z_]+$"):
         drivers.append(Driver.load(image, symbol))
     return drivers
 
@@ -214,7 +215,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("format", help="object file format, 'elf' or 'coff'")
     parser.add_argument(
-        "input", nargs='+', help="input object file path or '-' for stdin"
+        "input", nargs="+", help="input object file path or '-' for stdin"
     )
     parser.add_argument("output", help="output C file path or '-' for stdout")
     return parser.parse_args()
@@ -251,13 +252,14 @@ def open_output(path):
 
 def write_header(output):
     output.write(
-        "static __attribute__((unused)) const char *generator = \"%s\";\n" % sys.argv[0]
+        "#include <dev_driver.h>\n"
+        'static __rte_unused const char *generator = "%s";\n' % sys.argv[0]
     )
 
 
 def main():
     args = parse_args()
-    if args.input.count('-') > 1:
+    if args.input.count("-") > 1:
         raise Exception("'-' input cannot be used multiple times")
     if args.format == "elf" and "ELFFile" not in globals():
         raise Exception("elftools module not found")

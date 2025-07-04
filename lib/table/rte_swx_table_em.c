@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_prefetch.h>
 #include <rte_jhash.h>
@@ -260,8 +261,8 @@ __table_create(struct table **table,
 	if (!params->hash_func)
 		t->params.hash_func = rte_hash_crc;
 
-	t->key_size_shl = __builtin_ctzl(key_size);
-	t->data_size_shl = __builtin_ctzl(key_data_size);
+	t->key_size_shl = rte_ctz32(key_size);
+	t->data_size_shl = rte_ctz32(key_data_size);
 	t->n_buckets = n_buckets;
 	t->n_buckets_ext = n_buckets_ext;
 	t->total_size = total_size;
@@ -489,7 +490,6 @@ table_mailbox_size_get(void)
  * match = 1111_1111_1111_1110 = 0xFFFE
  * match_many = 1111_1110_1110_1000 = 0xFEE8
  * match_pos = 0001_0010_0001_0011__0001_0010_0001_0000 = 0x12131210
- *
  */
 
 #define LUT_MATCH      0xFFFE
@@ -648,6 +648,7 @@ table_footprint(struct rte_swx_table_params *params,
 	return memory_footprint;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_exact_match_unoptimized_ops, 20.11)
 struct rte_swx_table_ops rte_swx_table_exact_match_unoptimized_ops = {
 	.footprint_get = table_footprint,
 	.mailbox_size_get = table_mailbox_size_get_unoptimized,
@@ -658,6 +659,7 @@ struct rte_swx_table_ops rte_swx_table_exact_match_unoptimized_ops = {
 	.free = table_free,
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_exact_match_ops, 20.11)
 struct rte_swx_table_ops rte_swx_table_exact_match_ops = {
 	.footprint_get = table_footprint,
 	.mailbox_size_get = table_mailbox_size_get,

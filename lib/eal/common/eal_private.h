@@ -12,6 +12,7 @@
 
 #include <dev_driver.h>
 #include <rte_lcore.h>
+#include <rte_log.h>
 #include <rte_memory.h>
 
 #include "eal_internal_cfg.h"
@@ -24,12 +25,12 @@ struct lcore_config {
 	int pipe_main2worker[2];   /**< communication pipe with main */
 	int pipe_worker2main[2];   /**< communication pipe with main */
 
-	lcore_function_t * volatile f; /**< function to call */
+	RTE_ATOMIC(lcore_function_t *) volatile f; /**< function to call */
 	void * volatile arg;       /**< argument of function */
 	volatile int ret;          /**< return value of function */
 
-	volatile enum rte_lcore_state_t state; /**< lcore state */
-	unsigned int socket_id;    /**< physical socket id for this lcore */
+	volatile RTE_ATOMIC(enum rte_lcore_state_t) state; /**< lcore state */
+	unsigned int numa_id;      /**< NUMA node ID for this lcore */
 	unsigned int core_id;      /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */
 	uint8_t core_role;         /**< role of core eg: OFF, RTE, SERVICE */
@@ -61,7 +62,7 @@ struct rte_config {
 	 * DPDK instances
 	 */
 	struct rte_mem_config *mem_config;
-} __rte_packed;
+};
 
 /**
  * Get the global configuration structure.
@@ -94,6 +95,13 @@ int rte_eal_memzone_init(void);
 int rte_eal_cpu_init(void);
 
 /**
+ * Check for architecture supported MMU.
+ *
+ * This function is private to EAL.
+ */
+bool eal_mmu_supported(void);
+
+/**
  * Create memseg lists
  *
  * This function is private to EAL.
@@ -115,7 +123,8 @@ int rte_eal_memseg_init(void);
  * @return
  *   0 on success, negative on error
  */
-int rte_eal_memory_init(void);
+int rte_eal_memory_init(void)
+	__rte_requires_shared_capability(rte_mcfg_mem_get_lock());
 
 /**
  * Configure timers
@@ -151,13 +160,6 @@ int rte_eal_tailqs_init(void);
  *  0 on success, negative on error
  */
 int rte_eal_intr_init(void);
-
-/**
- * Close the default log stream
- *
- * This function is private to EAL.
- */
-void rte_eal_log_cleanup(void);
 
 /**
  * Init alarm mechanism. This is to allow a callback be called after
@@ -209,7 +211,12 @@ enum eal_mem_reserve_flags {
 	 * @see RTE_MAP_FORCE_ADDRESS for description of possible consequences
 	 *      (although implementations are not required to use it).
 	 */
-	EAL_RESERVE_FORCE_ADDRESS = 1 << 1
+	EAL_RESERVE_FORCE_ADDRESS = 1 << 1,
+	/**
+	 * Force reserving memory at the requested address,
+	 * but fail if a preexisting mapping collides with the request.
+	 */
+	EAL_RESERVE_FORCE_ADDRESS_NOREPLACE = 1 << 2,
 };
 
 /**
@@ -372,7 +379,7 @@ void set_tsc_freq(void);
  *
  * This function is private to the EAL.
  */
-uint64_t get_tsc_freq(void);
+uint64_t get_tsc_freq(uint64_t arch_hz);
 
 /**
  * Get TSC frequency if the architecture supports.
@@ -533,28 +540,6 @@ int local_dev_remove(struct rte_device *dev);
  *	 1 no bus can handler the sigbus
  */
 int rte_bus_sigbus_handler(const void *failure_addr);
-
-/**
- * @internal
- * Register the sigbus handler.
- *
- * @return
- *   - On success, zero.
- *   - On failure, a negative value.
- */
-int
-dev_sigbus_handler_register(void);
-
-/**
- * @internal
- * Unregister the sigbus handler.
- *
- * @return
- *   - On success, zero.
- *   - On failure, a negative value.
- */
-int
-dev_sigbus_handler_unregister(void);
 
 /**
  * Get OS-specific EAL mapping base address.
@@ -723,6 +708,12 @@ rte_usage_hook_t
 eal_get_application_usage_hook(void);
 
 /**
+ * Initialise random subsystem.
+ */
+void
+eal_rand_init(void);
+
+/**
  * Instruct primary process that a secondary process wants to attach.
  */
 bool __rte_mp_enable(void);
@@ -752,5 +743,8 @@ int eal_asprintf(char **buffer, const char *format, ...);
 #define asprintf(buffer, format, ...) \
 		eal_asprintf(buffer, format, ##__VA_ARGS__)
 #endif
+
+#define EAL_LOG(level, ...) \
+	RTE_LOG_LINE(level, EAL, "" __VA_ARGS__)
 
 #endif /* _EAL_PRIVATE_H_ */

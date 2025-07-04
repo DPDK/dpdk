@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -11,6 +11,7 @@
 #define BNXT_PORT_DB_MAX_INTF_LIST		256
 #define BNXT_PORT_DB_MAX_FUNC			2048
 #define BNXT_ULP_FREE_PARIF_BASE		11
+#define BNXT_ULP_META_VF_FLAG			0x1000
 
 enum bnxt_ulp_svif_type {
 	BNXT_ULP_DRV_FUNC_SVIF = 0,
@@ -51,6 +52,8 @@ struct ulp_func_if_info {
 	uint8_t			func_parent_mac[RTE_ETHER_ADDR_LEN];
 	uint16_t		phy_port_id;
 	uint16_t		ifindex;
+	uint16_t		vf_meta_data;
+	uint8_t			table_scope;
 };
 
 /* Structure for the Port database resource information. */
@@ -58,6 +61,7 @@ struct ulp_interface_info {
 	enum bnxt_ulp_intf_type	type;
 	uint16_t		drv_func_id;
 	uint16_t		vf_func_id;
+	uint8_t			type_is_pf;
 };
 
 struct ulp_phy_port_info {
@@ -66,6 +70,7 @@ struct ulp_phy_port_info {
 	uint16_t	port_spif;
 	uint16_t	port_parif;
 	uint16_t	port_vport;
+	uint32_t	port_mirror_id;
 };
 
 /* Structure for the Port database */
@@ -109,8 +114,8 @@ int32_t	ulp_port_db_deinit(struct bnxt_ulp_context *ulp_ctxt);
  *
  * Returns 0 on success or negative number on failure.
  */
-int32_t	ulp_port_db_dev_port_intf_update(struct bnxt_ulp_context *ulp_ctxt,
-					 struct rte_eth_dev *eth_dev);
+int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
+				struct rte_eth_dev *eth_dev);
 
 /*
  * Api to get the ulp ifindex for a given device port.
@@ -166,7 +171,6 @@ ulp_port_db_svif_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_spif_get(struct bnxt_ulp_context *ulp_ctxt,
 		     uint32_t ifindex, uint32_t dir, uint16_t *spif);
-
 
 /*
  * Api to get the parif for a given ulp ifindex.
@@ -236,6 +240,20 @@ int32_t
 ulp_port_db_phy_port_svif_get(struct bnxt_ulp_context *ulp_ctxt,
 			      uint32_t phy_port,
 			      uint16_t *svif);
+
+/*
+ * Api to get the socket direct svif for a given device port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * svif [out] the socket direct svif of the given device index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_dev_port_socket_direct_svif_get(struct bnxt_ulp_context *ulp_ctxt,
+					    uint32_t port_id,
+					    uint16_t *svif);
 
 /*
  * Api to get the port type for a given ulp ifindex.
@@ -326,5 +344,67 @@ ulp_port_db_parent_vnic_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_phy_port_get(struct bnxt_ulp_context *ulp_ctxt,
 			 uint32_t port_id, uint16_t *phy_port);
+
+/*
+ * Api to get the port type for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * type [out] type if pf or not
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_is_pf_get(struct bnxt_ulp_context *ulp_ctxt,
+			   uint32_t port_id, uint8_t **type);
+
+/*
+ * Api to get the meta data for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * meta data [out] the meta data of the given port
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_meta_data_get(struct bnxt_ulp_context *ulp_ctxt,
+			       uint16_t port_id, uint8_t **meta_data);
+
+/* Api to get the function id for a given port id
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * fid_data [out] the function id of the given port
+ */
+int32_t
+ulp_port_db_port_vf_fid_get(struct bnxt_ulp_context *ulp_ctxt,
+			    uint16_t port_id, uint8_t **fid_data);
+
+/*
+ * Api to get the table scope for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * table_scope data [out] the table scope
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+
+int32_t
+ulp_port_db_port_table_scope_get(struct bnxt_ulp_context *ulp_ctxt,
+				 uint16_t port_id, uint8_t **tsid);
+
+/* Api to get the PF Mirror Id for a given port id
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * mirror id [in] mirror id
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_table_mirror_set(struct bnxt_ulp_context *ulp_ctxt,
+				  uint16_t port_id, uint32_t mirror_id);
 
 #endif /* _ULP_PORT_DB_H_ */

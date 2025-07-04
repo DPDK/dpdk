@@ -35,8 +35,11 @@
 #define EVT_DEQ_TMO_NSEC         ("deq_tmo_nsec")
 #define EVT_PROD_ETHDEV          ("prod_type_ethdev")
 #define EVT_PROD_CRYPTODEV	 ("prod_type_cryptodev")
+#define EVT_PROD_DMADEV          ("prod_type_dmadev")
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
+#define EVT_PROD_VECTOR          ("prod_type_vector")
+#define EVT_DMA_ADPTR_MODE       ("dma_adptr_mode")
 #define EVT_CRYPTO_ADPTR_MODE	 ("crypto_adptr_mode")
 #define EVT_CRYPTO_OP_TYPE	 ("crypto_op_type")
 #define EVT_CRYPTO_CIPHER_ALG	 ("crypto_cipher_alg")
@@ -57,6 +60,7 @@
 #define EVT_PER_PORT_POOL	 ("per_port_pool")
 #define EVT_TX_FIRST		 ("tx_first")
 #define EVT_TX_PKT_SZ		 ("tx_pkt_sz")
+#define EVT_PRESCHEDULE          ("preschedule")
 #define EVT_HELP                 ("help")
 
 void evt_options_default(struct evt_options *opt);
@@ -260,6 +264,8 @@ evt_prod_id_to_name(enum evt_prod_type prod_type)
 		return "Event timer adapter";
 	case EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR:
 		return "Event crypto adapter";
+	case EVT_PROD_TYPE_EVENT_DMA_ADPTR:
+		return "Event dma adapter";
 	}
 
 	return "";
@@ -316,6 +322,14 @@ evt_dump_producer_type(struct evt_options *opt)
 			evt_dump("cipher iv sz", "%u", opt->crypto_cipher_iv_sz);
 		}
 		break;
+	case EVT_PROD_TYPE_EVENT_DMA_ADPTR:
+		snprintf(name, EVT_PROD_MAX_NAME_LEN,
+			 "Event dma adapter producers");
+		evt_dump("dma adapter mode", "%s",
+			 opt->dma_adptr_mode ? "OP_FORWARD" : "OP_NEW");
+		evt_dump("nb_dmadev", "%u", rte_dma_count_avail());
+		break;
+
 	}
 	evt_dump("prod_type", "%s", name);
 }

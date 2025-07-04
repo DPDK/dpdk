@@ -47,22 +47,20 @@ enum algo_supported {
 };
 
 /** Map elements for cipher mapping.*/
-struct cipher_params_mapping {
+/* We want to squeeze in multiple maps into the cache line. */
+struct __rte_aligned(32) cipher_params_mapping {
 	enum algo_supported  supported;   /**< On/Off switch */
 	enum sam_cipher_alg  cipher_alg;  /**< Cipher algorithm */
 	enum sam_cipher_mode cipher_mode; /**< Cipher mode */
 	unsigned int max_key_len;         /**< Maximum key length (in bytes)*/
-}
-/* We want to squeeze in multiple maps into the cache line. */
-__rte_aligned(32);
+};
 
 /** Map elements for auth mapping.*/
-struct auth_params_mapping {
+/* We want to squeeze in multiple maps into the cache line. */
+struct __rte_aligned(32) auth_params_mapping {
 	enum algo_supported supported;  /**< On/off switch */
 	enum sam_auth_alg   auth_alg;   /**< Auth algorithm */
-}
-/* We want to squeeze in multiple maps into the cache line. */
-__rte_aligned(32);
+};
 
 /**
  * Map of supported cipher algorithms.

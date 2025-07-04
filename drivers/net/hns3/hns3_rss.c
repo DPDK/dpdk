@@ -153,8 +153,7 @@ static const struct {
 	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_S) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_IP_D) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_S) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_D) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_VER),
+	  BIT_ULL(HNS3_RSS_FIELD_IPV4_SCTP_EN_SCTP_D),
 	  HNS3_RSS_TUPLE_IPV4_SCTP_M },
 
 	/* IPV6-FRAG */
@@ -274,8 +273,7 @@ static const struct {
 	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_S) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_IP_D) |
 	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_D) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_S) |
-	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_VER),
+	  BIT_ULL(HNS3_RSS_FIELD_IPV6_SCTP_EN_SCTP_S),
 	  HNS3_RSS_TUPLE_IPV6_SCTP_M },
 };
 
@@ -283,7 +281,7 @@ static const struct {
  * rss_generic_config command function, opcode:0x0D01.
  * Used to set algorithm and hash key of RSS.
  */
-int
+static int
 hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 		      const uint8_t *key, uint8_t key_len)
 {
@@ -324,7 +322,7 @@ hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 	return 0;
 }
 
-int
+static int
 hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
 		      uint8_t *key, uint8_t key_len)
 {
@@ -646,14 +644,14 @@ hns3_dev_rss_hash_update(struct rte_eth_dev *dev,
 	if (ret)
 		goto set_tuple_fail;
 
-	if (key) {
-		ret = hns3_rss_set_algo_key(hw, hw->rss_info.hash_algo,
-					    key, hw->rss_key_size);
-		if (ret)
-			goto set_algo_key_fail;
-		/* Update the shadow RSS key with user specified */
+	ret = hns3_update_rss_algo_key(hw, rss_conf->algorithm, key, key_len);
+	if (ret != 0)
+		goto set_algo_key_fail;
+
+	if (rss_conf->algorithm != RTE_ETH_HASH_FUNCTION_DEFAULT)
+		hw->rss_info.hash_algo = hns3_hash_func_map[rss_conf->algorithm];
+	if (key != NULL)
 		memcpy(hw->rss_info.key, key, hw->rss_key_size);
-	}
 	hw->rss_info.rss_hf = rss_hf;
 	rte_spinlock_unlock(&hw->lock);
 
@@ -769,34 +767,41 @@ int
 hns3_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 			   struct rte_eth_rss_conf *rss_conf)
 {
+	const uint8_t hash_func_map[] = {
+		[HNS3_RSS_HASH_ALGO_TOEPLITZ] = RTE_ETH_HASH_FUNCTION_TOEPLITZ,
+		[HNS3_RSS_HASH_ALGO_SIMPLE] = RTE_ETH_HASH_FUNCTION_SIMPLE_XOR,
+		[HNS3_RSS_HASH_ALGO_SYMMETRIC_TOEP] = RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+	};
 	struct hns3_adapter *hns = dev->data->dev_private;
+	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t hash_algo;
+	uint8_t hash_algo = 0;
 	int ret;
 
 	rte_spinlock_lock(&hw->lock);
 	ret = hns3_rss_hash_get_rss_hf(hw, &rss_conf->rss_hf);
 	if (ret != 0) {
+		rte_spinlock_unlock(&hw->lock);
 		hns3_err(hw, "obtain hash tuples failed, ret = %d", ret);
-		goto out;
+		return ret;
 	}
 
-	/* Get the RSS Key required by the user */
-	if (rss_conf->rss_key && rss_conf->rss_key_len >= hw->rss_key_size) {
-		ret = hns3_rss_get_algo_key(hw, &hash_algo, rss_conf->rss_key,
-					    hw->rss_key_size);
-		if (ret != 0) {
-			hns3_err(hw, "obtain hash algo and key failed, ret = %d",
-				 ret);
-			goto out;
-		}
-		rss_conf->rss_key_len = hw->rss_key_size;
+	ret = hns3_rss_get_algo_key(hw, &hash_algo, rss_key, hw->rss_key_size);
+	if (ret != 0) {
+		rte_spinlock_unlock(&hw->lock);
+		hns3_err(hw, "obtain hash algo and key failed, ret = %d", ret);
+		return ret;
 	}
-
-out:
 	rte_spinlock_unlock(&hw->lock);
 
-	return ret;
+	/* Get the RSS Key if user required. */
+	if (rss_conf->rss_key && rss_conf->rss_key_len >= hw->rss_key_size) {
+		memcpy(rss_conf->rss_key, rss_key, hw->rss_key_size);
+		rss_conf->rss_key_len = hw->rss_key_size;
+	}
+	rss_conf->algorithm = hash_func_map[hash_algo];
+
+	return 0;
 }
 
 /*
@@ -993,7 +998,7 @@ hns3_update_rss_algo_key(struct hns3_hw *hw, uint8_t hash_func,
 {
 	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	bool modify_key, modify_algo;
-	uint8_t hash_algo;
+	uint8_t hash_algo = 0;
 	int ret;
 
 	modify_key = (key != NULL && key_len > 0);

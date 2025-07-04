@@ -30,21 +30,21 @@
 #endif
 
 #define roc_load_pair(val0, val1, addr)                                        \
-	({                                                                     \
+	__extension__ ({                                                                     \
 		asm volatile("ldp %x[x0], %x[x1], [%x[p1]]"                    \
 			     : [x0] "=r"(val0), [x1] "=r"(val1)                \
 			     : [p1] "r"(addr));                                \
 	})
 
 #define roc_store_pair(val0, val1, addr)                                       \
-	({                                                                     \
+	__extension__ ({                                                                     \
 		asm volatile(                                                  \
 			"stp %x[x0], %x[x1], [%x[p1], #0]!" ::[x0] "r"(val0),  \
 			[x1] "r"(val1), [p1] "r"(addr));                       \
 	})
 
 #define roc_prefetch_store_keep(ptr)                                           \
-	({ asm volatile("prfm pstl1keep, [%x0]\n" : : "r"(ptr)); })
+	__extension__ ({ asm volatile("prfm pstl1keep, [%x0]\n" : : "r"(ptr)); })
 
 #if defined(__clang__)
 static __plt_always_inline void

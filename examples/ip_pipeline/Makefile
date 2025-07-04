@@ -8,7 +8,6 @@ APP = ip_pipeline
 SRCS-y := action.c
 SRCS-y += cli.c
 SRCS-y += conn.c
-SRCS-y += kni.c
 SRCS-y += link.c
 SRCS-y += main.c
 SRCS-y += mempool.c
@@ -38,14 +37,6 @@ PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
-
-ifeq ($(MAKECMDGOALS),static)
-# check for broken pkg-config
-ifeq ($(shell echo $(LDFLAGS_STATIC) | grep 'whole-archive.*l:lib.*no-whole-archive'),)
-$(warning "pkg-config output list does not contain drivers between 'whole-archive'/'no-whole-archive' flags.")
-$(error "Cannot generate statically-linked binaries with this version of pkg-config")
-endif
-endif
 
 CFLAGS += -I. -DALLOW_EXPERIMENTAL_API -D_GNU_SOURCE
 

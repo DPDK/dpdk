@@ -23,6 +23,7 @@
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -38,11 +39,21 @@
 #include "dpaa2_hw_dpio.h"
 #include <mc/fsl_dpmng.h>
 
+#ifndef TAILQ_FOREACH_SAFE
+#define	TAILQ_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = TAILQ_FIRST((head));				\
+	    (var) && ((tvar) = TAILQ_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+#endif
+
 #define NUM_HOST_CPUS RTE_MAX_LCORE
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_io_portal)
 struct dpaa2_io_portal_t dpaa2_io_portal[RTE_MAX_LCORE];
+RTE_EXPORT_INTERNAL_SYMBOL(per_lcore__dpaa2_io)
 RTE_DEFINE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_global_active_dqs_list)
 struct swp_active_dqs rte_global_active_dqs_list[NUM_MAX_SWP];
 
 TAILQ_HEAD(dpio_dev_list, dpaa2_dpio_dev);
@@ -51,11 +62,14 @@ static struct dpio_dev_list dpio_dev_list
 static uint32_t io_space_count;
 
 /* Variable to store DPAA2 platform type */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_svr_family)
 uint32_t dpaa2_svr_family;
 
 /* Variable to store DPAA2 DQRR size */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_dqrr_size)
 uint8_t dpaa2_dqrr_size;
 /* Variable to store DPAA2 EQCR size */
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_eqcr_size)
 uint8_t dpaa2_eqcr_size;
 
 /* Variable to hold the portal_key, once created.*/
@@ -85,6 +99,19 @@ static int dpaa2_cluster_sz = 2;
  * Cluster 3 (ID = x06) : CPU12, CPU13;
  * Cluster 4 (ID = x07) : CPU14, CPU15;
  */
+
+static struct dpaa2_dpio_dev *get_dpio_dev_from_id(int32_t dpio_id)
+{
+	struct dpaa2_dpio_dev *dpio_dev = NULL;
+
+	/* Get DPIO dev handle from list using index */
+	TAILQ_FOREACH(dpio_dev, &dpio_dev_list, next) {
+		if (dpio_dev->hw_id == dpio_id)
+			break;
+	}
+
+	return dpio_dev;
+}
 
 static int
 dpaa2_get_core_id(void)
@@ -125,12 +152,12 @@ static void
 dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 {
 #define STRING_LEN	28
-#define COMMAND_LEN	50
+#define AFFINITY_LEN	128
 	uint32_t cpu_mask = 1;
-	int ret;
 	size_t len = 0;
 	char *temp = NULL, *token = NULL;
-	char string[STRING_LEN], command[COMMAND_LEN];
+	char string[STRING_LEN];
+	char smp_affinity[AFFINITY_LEN];
 	FILE *file;
 
 	snprintf(string, STRING_LEN, "dpio.%d", dpio_id);
@@ -155,16 +182,24 @@ dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 	}
 
 	cpu_mask = cpu_mask << cpu_id;
-	snprintf(command, COMMAND_LEN, "echo %X > /proc/irq/%s/smp_affinity",
-		 cpu_mask, token);
-	ret = system(command);
-	if (ret < 0)
-		DPAA2_BUS_DEBUG(
-			"Failed to affine interrupts on respective core");
-	else
-		DPAA2_BUS_DEBUG(" %s command is executed", command);
-
+	snprintf(smp_affinity, AFFINITY_LEN, "/proc/irq/%s/smp_affinity", token);
 	free(temp);
+	fclose(file);
+
+	file = fopen(smp_affinity, "w");
+	if (file == NULL) {
+		DPAA2_BUS_WARN("Failed to open %s", smp_affinity);
+		return;
+	}
+	fprintf(file, "%X\n", cpu_mask);
+	fflush(file);
+
+	if (ferror(file)) {
+		fclose(file);
+		DPAA2_BUS_WARN("Failed to write to %s", smp_affinity);
+		return;
+	}
+
 	fclose(file);
 }
 
@@ -304,6 +339,7 @@ static struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(void)
 	return dpio_dev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_affine_qbman_swp)
 int
 dpaa2_affine_qbman_swp(void)
 {
@@ -319,13 +355,13 @@ dpaa2_affine_qbman_swp(void)
 		}
 		RTE_PER_LCORE(_dpaa2_io).dpio_dev = dpio_dev;
 
-		DPAA2_BUS_INFO(
-			"DPAA Portal=%p (%d) is affined to thread %" PRIu64,
-			dpio_dev, dpio_dev->index, tid);
+		DPAA2_BUS_DEBUG("Portal[%d] is affined to thread %" PRIu64,
+			dpio_dev->index, tid);
 	}
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_affine_qbman_ethrx_swp)
 int
 dpaa2_affine_qbman_ethrx_swp(void)
 {
@@ -341,9 +377,8 @@ dpaa2_affine_qbman_ethrx_swp(void)
 		}
 		RTE_PER_LCORE(_dpaa2_io).ethrx_dpio_dev = dpio_dev;
 
-		DPAA2_BUS_INFO(
-			"DPAA Portal=%p (%d) is affined for eth rx to thread %"
-			PRIu64, dpio_dev, dpio_dev->index, tid);
+		DPAA2_BUS_DEBUG("Portal_eth_rx[%d] is affined to thread %" PRIu64,
+			dpio_dev->index, tid);
 	}
 	return 0;
 }
@@ -358,16 +393,37 @@ static void dpaa2_portal_finish(void *arg)
 	pthread_setspecific(dpaa2_portal_key, NULL);
 }
 
-static int
-dpaa2_create_dpio_device(int vdev_fd,
-			 struct vfio_device_info *obj_info,
-			 int object_id)
+static void
+dpaa2_close_dpio_device(int object_id)
 {
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
+
+	dpio_dev = get_dpio_dev_from_id((int32_t)object_id);
+
+	if (dpio_dev) {
+		if (dpio_dev->dpio) {
+			dpio_disable(dpio_dev->dpio, CMD_PRI_LOW,
+				     dpio_dev->token);
+			dpio_close(dpio_dev->dpio, CMD_PRI_LOW,
+				   dpio_dev->token);
+			rte_free(dpio_dev->dpio);
+		}
+		TAILQ_REMOVE(&dpio_dev_list, dpio_dev, next);
+		rte_free(dpio_dev);
+	}
+}
+
+static int
+dpaa2_create_dpio_device(int vdev_fd,
+	struct vfio_device_info *obj_info,
+	struct rte_dpaa2_device *obj)
+{
+	struct dpaa2_dpio_dev *dpio_dev = NULL;
+	struct dpaa2_dpio_dev *dpio_tmp;
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info)};
 	struct qbman_swp_desc p_des;
 	struct dpio_attr attr;
-	int ret;
+	int ret, object_id = obj->object_id;
 
 	if (obj_info->num_regions < NUM_DPIO_REGIONS) {
 		DPAA2_BUS_ERR("Not sufficient number of DPIO regions");
@@ -549,7 +605,7 @@ err:
 	rte_free(dpio_dev);
 
 	/* For each element in the list, cleanup */
-	TAILQ_FOREACH(dpio_dev, &dpio_dev_list, next) {
+	TAILQ_FOREACH_SAFE(dpio_dev, &dpio_dev_list, next, dpio_tmp) {
 		if (dpio_dev->dpio) {
 			dpio_disable(dpio_dev->dpio, CMD_PRI_LOW,
 				dpio_dev->token);
@@ -567,6 +623,7 @@ err:
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_free_dq_storage)
 void
 dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage)
 {
@@ -574,16 +631,18 @@ dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage)
 
 	for (i = 0; i < NUM_DQS_PER_QUEUE; i++) {
 		rte_free(q_storage->dq_storage[i]);
+		q_storage->dq_storage[i] = NULL;
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_alloc_dq_storage)
 int
 dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage)
 {
 	int i = 0;
 
 	for (i = 0; i < NUM_DQS_PER_QUEUE; i++) {
-		q_storage->dq_storage[i] = rte_malloc(NULL,
+		q_storage->dq_storage[i] = rte_zmalloc(NULL,
 			dpaa2_dqrr_size * sizeof(struct qbman_result),
 			RTE_CACHE_LINE_SIZE);
 		if (!q_storage->dq_storage[i])
@@ -591,12 +650,15 @@ dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage)
 	}
 	return 0;
 fail:
-	while (--i >= 0)
+	while (--i >= 0) {
 		rte_free(q_storage->dq_storage[i]);
+		q_storage->dq_storage[i] = NULL;
+	}
 
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa2_free_eq_descriptors)
 uint32_t
 dpaa2_free_eq_descriptors(void)
 {
@@ -635,6 +697,7 @@ dpaa2_free_eq_descriptors(void)
 static struct rte_dpaa2_object rte_dpaa2_dpio_obj = {
 	.dev_type = DPAA2_IO,
 	.create = dpaa2_create_dpio_device,
+	.close = dpaa2_close_dpio_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpio, rte_dpaa2_dpio_obj);

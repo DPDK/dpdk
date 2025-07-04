@@ -5,12 +5,12 @@
 #ifndef AFU_PMD_HE_MEM_H
 #define AFU_PMD_HE_MEM_H
 
+#include "afu_pmd_core.h"
+#include "rte_pmd_afu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "afu_pmd_core.h"
-#include "rte_pmd_afu.h"
 
 #define HE_MEM_TG_UUID_L  0xa3dc5b831f5cecbb
 #define HE_MEM_TG_UUID_H  0x4dadea342c7848cb

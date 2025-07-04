@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-/* Copyright(c) 2019-2021 Broadcom All rights reserved. */
+/* Copyright(c) 2019-2023 Broadcom All rights reserved. */
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -261,7 +261,7 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		valid = _mm_cvtsi128_si64(_mm256_extracti128_si256(info3_v, 1));
 		valid = (valid << CHAR_BIT) |
 			_mm_cvtsi128_si64(_mm256_castsi256_si128(info3_v));
-		num_valid = __builtin_popcountll(valid & desc_valid_mask);
+		num_valid = rte_popcount64(valid & desc_valid_mask);
 
 		if (num_valid == 0)
 			break;
@@ -361,25 +361,343 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	return nb_rx_pkts;
 }
 
+static uint16_t
+crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct bnxt_rx_queue *rxq = rx_queue;
+	const __m256i mbuf_init =
+		_mm256_set_epi64x(0, 0, 0, rxq->mbuf_initializer);
+	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
+	uint64_t valid, desc_valid_mask = ~0ULL;
+	const __m256i info3_v_mask = _mm256_set1_epi32(CMPL_BASE_V);
+	uint32_t raw_cons = cpr->cp_raw_cons;
+	uint32_t cons, mbcons;
+	int nb_rx_pkts = 0;
+	int i;
+	const __m256i valid_target =
+		_mm256_set1_epi32(!!(raw_cons & cp_ring_size));
+	const __m256i shuf_msk =
+		_mm256_set_epi8(15, 14, 13, 12,          /* rss */
+				7, 6,                    /* vlan_tci */
+				3, 2,                    /* data_len */
+				0xFF, 0xFF, 3, 2,        /* pkt_len */
+				0xFF, 0xFF, 0xFF, 0xFF,  /* pkt_type (zeroes) */
+				15, 14, 13, 12,          /* rss */
+				7, 6,                    /* vlan_tci */
+				3, 2,                    /* data_len */
+				0xFF, 0xFF, 3, 2,        /* pkt_len */
+				0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
+	const __m256i flags_type_mask =
+		_mm256_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_ITYPE_MASK);
+	const __m256i flags2_mask1 =
+		_mm256_set1_epi32(CMPL_FLAGS2_VLAN_TUN_MSK_CRX);
+	const __m256i flags2_mask2 =
+		_mm256_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_IP_TYPE);
+	const __m256i rss_mask =
+		_mm256_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_RSS_VALID);
+	__m256i t0, t1, flags_type, flags2, index, errors;
+	__m256i ptype_idx, ptypes, is_tunnel;
+	__m256i mbuf01, mbuf23, mbuf45, mbuf67;
+	__m256i rearm0, rearm1, rearm2, rearm3, rearm4, rearm5, rearm6, rearm7;
+	__m256i ol_flags, ol_flags_hi;
+	__m256i rss_flags;
+	__m256i errors_v2;
+	__m256i cs_err_v2;
+
+	/* Validate ptype table indexing at build time. */
+	bnxt_check_ptype_constants();
+
+	/* If Rx Q was stopped return */
+	if (unlikely(!rxq->rx_started))
+		return 0;
+
+	if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
+		bnxt_rxq_rearm(rxq, rxr);
+
+	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, BNXT_RX_DESCS_PER_LOOP_VEC256);
+
+	cons = raw_cons & (cp_ring_size - 1);
+	mbcons = raw_cons & (rx_ring_size - 1);
+
+	/* Return immediately if there is not at least one completed packet. */
+	if (!bnxt_cpr_cmp_valid(&cp_desc_ring[cons], raw_cons, cp_ring_size))
+		return 0;
+
+	/* Ensure that we do not go past the ends of the rings. */
+	nb_pkts = RTE_MIN(nb_pkts, RTE_MIN(rx_ring_size - mbcons,
+					   cp_ring_size - cons));
+	/*
+	 * If we are at the end of the ring, ensure that descriptors after the
+	 * last valid entry are not treated as valid. Otherwise, force the
+	 * maximum number of packets to receive to be a multiple of the per-
+	 * loop count.
+	 */
+	if (nb_pkts < BNXT_RX_DESCS_PER_LOOP_VEC256) {
+		desc_valid_mask >>=
+			CHAR_BIT * (BNXT_RX_DESCS_PER_LOOP_VEC256 - nb_pkts);
+	} else {
+		nb_pkts =
+			RTE_ALIGN_FLOOR(nb_pkts, BNXT_RX_DESCS_PER_LOOP_VEC256);
+	}
+
+	/* Handle RX burst request */
+	for (i = 0; i < nb_pkts; i += BNXT_RX_DESCS_PER_LOOP_VEC256,
+				  cons += BNXT_RX_DESCS_PER_LOOP_VEC256,
+				  mbcons += BNXT_RX_DESCS_PER_LOOP_VEC256) {
+		__m256i rxcmp0_1, rxcmp2_3, rxcmp4_5, rxcmp6_7, info3_v;
+		uint32_t num_valid;
+
+		/* Copy eight mbuf pointers to output array. */
+		t0 = _mm256_loadu_si256((void *)&rxr->rx_buf_ring[mbcons]);
+		_mm256_storeu_si256((void *)&rx_pkts[i], t0);
+#ifdef RTE_ARCH_X86_64
+		t0 = _mm256_loadu_si256((void *)&rxr->rx_buf_ring[mbcons + 4]);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 4], t0);
+#endif
+
+		/*
+		 * Load eight receive completion descriptors into 256-bit
+		 * registers. Loads are issued in reverse order in order to
+		 * ensure consistent state.
+		 */
+		rxcmp6_7 = _mm256_loadu_si256((void *)&cp_desc_ring[cons + 6]);
+		rte_compiler_barrier();
+		rxcmp4_5 = _mm256_loadu_si256((void *)&cp_desc_ring[cons + 4]);
+		rte_compiler_barrier();
+		rxcmp2_3 = _mm256_loadu_si256((void *)&cp_desc_ring[cons + 2]);
+		rte_compiler_barrier();
+		rxcmp0_1 = _mm256_loadu_si256((void *)&cp_desc_ring[cons + 0]);
+		rte_compiler_barrier();
+
+		/* Compute packet type table indices for eight packets. */
+		t0 = _mm256_unpacklo_epi32(rxcmp0_1, rxcmp2_3);
+		t1 = _mm256_unpacklo_epi32(rxcmp4_5, rxcmp6_7);
+		flags_type = _mm256_unpacklo_epi64(t0, t1);
+		ptype_idx = _mm256_and_si256(flags_type, flags_type_mask);
+		ptype_idx = _mm256_srli_epi32(ptype_idx,
+					      RX_PKT_COMPRESS_CMPL_FLAGS_ITYPE_SFT -
+					      BNXT_PTYPE_TBL_TYPE_SFT);
+
+		t0 = _mm256_unpackhi_epi32(rxcmp0_1, rxcmp2_3);
+		t1 = _mm256_unpackhi_epi32(rxcmp4_5, rxcmp6_7);
+		cs_err_v2 = _mm256_unpacklo_epi64(t0, t1);
+
+		t0 = _mm256_srli_epi32(_mm256_and_si256(cs_err_v2, flags2_mask1),
+				       RX_PKT_COMPRESS_CMPL_METADATA1_SFT -
+				       BNXT_PTYPE_TBL_VLAN_SFT);
+		ptype_idx = _mm256_or_si256(ptype_idx, t0);
+
+		t0 = _mm256_srli_epi32(_mm256_and_si256(cs_err_v2, flags2_mask2),
+				       RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT -
+				       BNXT_PTYPE_TBL_IP_VER_SFT);
+		ptype_idx = _mm256_or_si256(ptype_idx, t0);
+
+		/*
+		 * Load ptypes for eight packets using gather. Gather operations
+		 * have extremely high latency (~19 cycles), execution and use
+		 * of result should be separated as much as possible.
+		 */
+		ptypes = _mm256_i32gather_epi32((int *)bnxt_ptype_table,
+						ptype_idx, sizeof(uint32_t));
+		/*
+		 * Compute ol_flags and checksum error table indices for eight
+		 * packets.
+		 */
+		is_tunnel = _mm256_and_si256(cs_err_v2,
+					     _mm256_set1_epi32(BNXT_CRX_TUN_CS_CALC));
+		is_tunnel = _mm256_slli_epi32(is_tunnel, 3);
+
+		flags2 = _mm256_and_si256(cs_err_v2,
+					  _mm256_set1_epi32(BNXT_CRX_CQE_CSUM_CALC_MASK));
+		flags2 = _mm256_srli_epi64(flags2, 8);
+
+		/* Extract errors_v2 fields for eight packets. */
+		t0 = _mm256_unpackhi_epi32(rxcmp0_1, rxcmp2_3);
+		t1 = _mm256_unpackhi_epi32(rxcmp4_5, rxcmp6_7);
+		errors_v2 = _mm256_unpacklo_epi64(t0, t1);
+
+		/* Compute errors out of cs_err_v2 to index into flags table. */
+		errors = _mm256_and_si256(cs_err_v2, _mm256_set1_epi32(0xF0));
+		errors = _mm256_srli_epi32(errors, 4);
+		errors = _mm256_and_si256(errors, flags2);
+
+		index = _mm256_andnot_si256(errors, flags2);
+		errors = _mm256_or_si256(errors,
+					 _mm256_srli_epi32(is_tunnel, 1));
+		index = _mm256_or_si256(index, is_tunnel);
+
+		/*
+		 * Load ol_flags for eight packets using gather. Gather
+		 * operations have extremely high latency (~19 cycles),
+		 * execution and use of result should be separated as much
+		 * as possible.
+		 */
+		ol_flags = _mm256_i32gather_epi32((int *)rxr->ol_flags_table,
+						  index, sizeof(uint32_t));
+		errors = _mm256_i32gather_epi32((int *)rxr->ol_flags_err_table,
+						errors, sizeof(uint32_t));
+
+		/*
+		 * Pack the 128-bit array of valid descriptor flags into 64
+		 * bits and count the number of set bits in order to determine
+		 * the number of valid descriptors.
+		 */
+		const __m256i perm_msk =
+				_mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+		info3_v = _mm256_permutevar8x32_epi32(errors_v2, perm_msk);
+		info3_v = _mm256_and_si256(errors_v2, info3_v_mask);
+		info3_v = _mm256_xor_si256(info3_v, valid_target);
+
+		info3_v = _mm256_packs_epi32(info3_v, _mm256_setzero_si256());
+		valid = _mm_cvtsi128_si64(_mm256_extracti128_si256(info3_v, 1));
+		valid = (valid << CHAR_BIT) |
+			_mm_cvtsi128_si64(_mm256_castsi256_si128(info3_v));
+		num_valid = rte_popcount64(valid & desc_valid_mask);
+
+		if (num_valid == 0)
+			break;
+
+		/* Update mbuf rearm_data for eight packets. */
+		mbuf01 = _mm256_shuffle_epi8(rxcmp0_1, shuf_msk);
+		mbuf23 = _mm256_shuffle_epi8(rxcmp2_3, shuf_msk);
+		mbuf45 = _mm256_shuffle_epi8(rxcmp4_5, shuf_msk);
+		mbuf67 = _mm256_shuffle_epi8(rxcmp6_7, shuf_msk);
+
+		/* Blend in ptype field for two mbufs at a time. */
+		mbuf01 = _mm256_blend_epi32(mbuf01, ptypes, 0x11);
+		mbuf23 = _mm256_blend_epi32(mbuf23,
+					_mm256_srli_si256(ptypes, 4), 0x11);
+		mbuf45 = _mm256_blend_epi32(mbuf45,
+					_mm256_srli_si256(ptypes, 8), 0x11);
+		mbuf67 = _mm256_blend_epi32(mbuf67,
+					_mm256_srli_si256(ptypes, 12), 0x11);
+
+		/* Unpack rearm data, set fixed fields for first four mbufs. */
+		rearm0 = _mm256_permute2f128_si256(mbuf_init, mbuf01, 0x20);
+		rearm1 = _mm256_blend_epi32(mbuf_init, mbuf01, 0xF0);
+		rearm2 = _mm256_permute2f128_si256(mbuf_init, mbuf23, 0x20);
+		rearm3 = _mm256_blend_epi32(mbuf_init, mbuf23, 0xF0);
+
+		/* Compute final ol_flags values for eight packets. */
+		rss_flags = _mm256_and_si256(flags_type, rss_mask);
+		rss_flags = _mm256_srli_epi32(rss_flags, 9);
+		ol_flags = _mm256_or_si256(ol_flags, errors);
+		ol_flags = _mm256_or_si256(ol_flags, rss_flags);
+		ol_flags_hi = _mm256_permute2f128_si256(ol_flags,
+							ol_flags, 0x11);
+
+		/* Set ol_flags fields for first four packets. */
+		rearm0 = _mm256_blend_epi32(rearm0,
+					    _mm256_slli_si256(ol_flags, 8),
+					    0x04);
+		rearm1 = _mm256_blend_epi32(rearm1,
+					    _mm256_slli_si256(ol_flags_hi, 8),
+					    0x04);
+		rearm2 = _mm256_blend_epi32(rearm2,
+					    _mm256_slli_si256(ol_flags, 4),
+					    0x04);
+		rearm3 = _mm256_blend_epi32(rearm3,
+					    _mm256_slli_si256(ol_flags_hi, 4),
+					    0x04);
+
+		/* Store all mbuf fields for first four packets. */
+		_mm256_storeu_si256((void *)&rx_pkts[i + 0]->rearm_data,
+				    rearm0);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 1]->rearm_data,
+				    rearm1);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 2]->rearm_data,
+				    rearm2);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 3]->rearm_data,
+				    rearm3);
+
+		/* Unpack rearm data, set fixed fields for final four mbufs. */
+		rearm4 = _mm256_permute2f128_si256(mbuf_init, mbuf45, 0x20);
+		rearm5 = _mm256_blend_epi32(mbuf_init, mbuf45, 0xF0);
+		rearm6 = _mm256_permute2f128_si256(mbuf_init, mbuf67, 0x20);
+		rearm7 = _mm256_blend_epi32(mbuf_init, mbuf67, 0xF0);
+
+		/* Set ol_flags fields for final four packets. */
+		rearm4 = _mm256_blend_epi32(rearm4, ol_flags, 0x04);
+		rearm5 = _mm256_blend_epi32(rearm5, ol_flags_hi, 0x04);
+		rearm6 = _mm256_blend_epi32(rearm6,
+					    _mm256_srli_si256(ol_flags, 4),
+					    0x04);
+		rearm7 = _mm256_blend_epi32(rearm7,
+					    _mm256_srli_si256(ol_flags_hi, 4),
+					    0x04);
+
+		/* Store all mbuf fields for final four packets. */
+		_mm256_storeu_si256((void *)&rx_pkts[i + 4]->rearm_data,
+				    rearm4);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 5]->rearm_data,
+				    rearm5);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 6]->rearm_data,
+				    rearm6);
+		_mm256_storeu_si256((void *)&rx_pkts[i + 7]->rearm_data,
+				    rearm7);
+
+		nb_rx_pkts += num_valid;
+		if (num_valid < BNXT_RX_DESCS_PER_LOOP_VEC256)
+			break;
+	}
+
+	if (nb_rx_pkts) {
+		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, nb_rx_pkts);
+
+		rxq->rxrearm_nb += nb_rx_pkts;
+		cpr->cp_raw_cons += nb_rx_pkts;
+		bnxt_db_cq(cpr);
+	}
+
+	return nb_rx_pkts;
+}
+
 uint16_t
 bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
 	uint16_t cnt = 0;
 
-	while (nb_pkts > RTE_BNXT_MAX_RX_BURST) {
+	while (nb_pkts > brst) {
 		uint16_t burst;
 
-		burst = recv_burst_vec_avx2(rx_queue, rx_pkts + cnt,
-					     RTE_BNXT_MAX_RX_BURST);
+		burst = recv_burst_vec_avx2(rx_queue, rx_pkts + cnt, brst);
 
 		cnt += burst;
 		nb_pkts -= burst;
 
-		if (burst < RTE_BNXT_MAX_RX_BURST)
+		if (burst < brst)
 			return cnt;
 	}
 	return cnt + recv_burst_vec_avx2(rx_queue, rx_pkts + cnt, nb_pkts);
+}
+
+uint16_t
+bnxt_crx_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts)
+{
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
+	uint16_t cnt = 0;
+
+	while (nb_pkts > brst) {
+		uint16_t burst;
+
+		burst = crx_burst_vec_avx2(rx_queue, rx_pkts + cnt, brst);
+
+		cnt += burst;
+		nb_pkts -= burst;
+
+		if (burst < brst)
+			return cnt;
+	}
+	return cnt + crx_burst_vec_avx2(rx_queue, rx_pkts + cnt, nb_pkts);
 }
 
 static void
@@ -553,7 +871,7 @@ bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Tx queue was stopped; wait for it to be restarted */
 	if (unlikely(!txq->tx_started)) {
-		PMD_DRV_LOG(DEBUG, "Tx q stopped;return\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Tx q stopped;return");
 		return 0;
 	}
 

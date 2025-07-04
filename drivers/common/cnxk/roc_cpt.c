@@ -311,8 +311,7 @@ exit:
 }
 
 int
-roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
-			     uint16_t param2, uint16_t opcode)
+roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, struct roc_cpt_inline_ipsec_inb_cfg *cfg)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
 	struct cpt_rx_inline_lf_cfg_msg *req;
@@ -328,9 +327,12 @@ roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, uint16_t param1,
 	}
 
 	req->sso_pf_func = idev_sso_pffunc_get();
-	req->param1 = param1;
-	req->param2 = param2;
-	req->opcode = opcode;
+	req->param1 = cfg->param1;
+	req->param2 = cfg->param2;
+	req->opcode = cfg->opcode;
+	req->bpid = cfg->bpid;
+	req->ctx_ilen_valid = cfg->ctx_ilen_valid;
+	req->ctx_ilen = cfg->ctx_ilen;
 
 	rc = mbox_process(mbox);
 exit:
@@ -460,8 +462,8 @@ exit:
 }
 
 int
-cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr,
-	      bool inl_dev_sso)
+cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr, bool inl_dev_sso,
+	      bool ctx_ilen_valid, uint8_t ctx_ilen, bool rxc_ena, uint16_t rx_inject_qp)
 {
 	struct cpt_lf_alloc_req_msg *req;
 	struct mbox *mbox = mbox_get(dev->mbox);
@@ -485,6 +487,12 @@ cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr,
 		req->sso_pf_func = idev_sso_pffunc_get();
 	req->eng_grpmsk = eng_grpmsk;
 	req->blkaddr = blkaddr;
+	req->ctx_ilen_valid = ctx_ilen_valid;
+	req->ctx_ilen = ctx_ilen;
+	if (rxc_ena) {
+		req->rxc_ena = 1;
+		req->rxc_ena_lf_id = rx_inject_qp;
+	}
 
 	rc = mbox_process(mbox);
 exit:
@@ -582,11 +590,13 @@ cpt_iq_init(struct roc_cpt_lf *lf)
 }
 
 int
-roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf)
+roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf, bool rxc_ena, uint16_t rx_inject_qp)
 {
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
 	uint8_t blkaddr[ROC_CPT_MAX_BLKS];
 	struct msix_offset_rsp *rsp;
+	bool ctx_ilen_valid = false;
+	uint16_t ctx_ilen = 0;
 	uint8_t eng_grpmsk;
 	int blknum = 0;
 	int rc, i;
@@ -614,11 +624,22 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf)
 	for (i = 0; i < nb_lf; i++)
 		cpt->lf_blkaddr[i] = blkaddr[blknum];
 
-	eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
-		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]) |
-		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_IE]);
+	if (roc_cpt_has_ie_engines())
+		eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
+			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]) |
+			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_IE]);
+	else
+		eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
+			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]);
 
-	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr[blknum], false);
+	if (roc_errata_cpt_has_ctx_fetch_issue()) {
+		ctx_ilen_valid = true;
+		/* Inbound SA size is max context size */
+		ctx_ilen = (PLT_ALIGN(ROC_OT_IPSEC_SA_SZ_MAX, ROC_ALIGN) / 128) - 1;
+	}
+
+	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr[blknum], false, ctx_ilen_valid, ctx_ilen,
+			   rxc_ena, rx_inject_qp);
 	if (rc)
 		goto lfs_detach;
 
@@ -744,7 +765,7 @@ roc_cpt_dev_init(struct roc_cpt *roc_cpt)
 	rc = dev_init(dev, pci_dev);
 	if (rc) {
 		plt_err("Failed to init roc device");
-		goto fail;
+		return rc;
 	}
 
 	cpt->pci_dev = pci_dev;
@@ -776,6 +797,7 @@ roc_cpt_dev_init(struct roc_cpt *roc_cpt)
 	return 0;
 
 fail:
+	dev_fini(dev, pci_dev);
 	return rc;
 }
 
@@ -808,7 +830,7 @@ roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 
 	if (err.s.flush_st_flt) {
 		plt_err("CTX flush could not complete due to store fault");
-		abort();
+		return -EFAULT;
 	}
 
 	return 0;
@@ -908,10 +930,10 @@ roc_cpt_iq_reset(struct roc_cpt_lf *lf)
 		lf_ctl.s.ena = 1;
 		plt_write64(lf_ctl.u, lf->rbase + CPT_LF_CTL);
 
-		if (roc_model_is_cn10k())
-			cpt_10k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
+		if (roc_model_is_cn9k())
+			cpt_9k_lf_rst_lmtst(lf, ROC_LEGACY_CPT_DFLT_ENG_GRP_SE);
 		else
-			cpt_9k_lf_rst_lmtst(lf, ROC_CPT_DFLT_ENG_GRP_SE);
+			cpt_10k_lf_rst_lmtst(lf, ROC_LEGACY_CPT_DFLT_ENG_GRP_SE);
 
 		plt_read64(lf->rbase + CPT_LF_INPROG);
 		plt_delay_us(2);
@@ -933,6 +955,20 @@ cpt_lf_fini(struct roc_cpt_lf *lf)
 	/* Free memory */
 	plt_free(lf->iq_vaddr);
 	lf->iq_vaddr = NULL;
+}
+
+void
+roc_cpt_lf_reset(struct roc_cpt_lf *lf)
+{
+	if (lf == NULL)
+		return;
+
+	cpt_lf_misc_intr_enb_dis(lf, false);
+	cpt_lf_done_intr_enb_dis(lf, false);
+	roc_cpt_iq_disable(lf);
+	roc_cpt_iq_reset(lf);
+	cpt_lf_misc_intr_enb_dis(lf, true);
+	cpt_lf_done_intr_enb_dis(lf, true);
 }
 
 void
@@ -1089,8 +1125,13 @@ roc_cpt_iq_disable(struct roc_cpt_lf *lf)
 void
 roc_cpt_iq_enable(struct roc_cpt_lf *lf)
 {
+	union cpt_lf_q_size lf_q_size;
 	union cpt_lf_inprog lf_inprog;
 	union cpt_lf_ctl lf_ctl;
+
+	/* Reconfigure the QSIZE register to ensure NQ_PTR and DQ_PTR are reset */
+	lf_q_size.u = plt_read64(lf->rbase + CPT_LF_Q_SIZE);
+	plt_write64(lf_q_size.u, lf->rbase + CPT_LF_Q_SIZE);
 
 	/* Disable command queue */
 	roc_cpt_iq_disable(lf);
@@ -1108,12 +1149,17 @@ roc_cpt_iq_enable(struct roc_cpt_lf *lf)
 	lf_inprog.s.eena = 1;
 	plt_write64(lf_inprog.u, lf->rbase + CPT_LF_INPROG);
 
+	if (roc_errata_cpt_has_ctx_fetch_issue()) {
+		/* Enable flush on FLR */
+		plt_write64(1, lf->rbase + CPT_LF_CTX_CTL);
+	}
+
 	cpt_lf_dump(lf);
 }
 
 int
-roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
-		     int lf_id)
+roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline, int lf_id,
+		     bool is_dual)
 {
 	struct roc_cpt_lf *lf;
 
@@ -1122,12 +1168,19 @@ roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
 		return -ENOTSUP;
 
 	lmtline->io_addr = lf->io_addr;
-	if (roc_model_is_cn10k())
-		lmtline->io_addr |= ROC_CN10K_CPT_INST_DW_M1 << 4;
+	lmtline->fc_thresh = lf->nb_desc - CPT_LF_FC_MIN_THRESHOLD;
+
+	if (roc_model_is_cn10k()) {
+		if (is_dual) {
+			lmtline->io_addr |= ROC_CN10K_TWO_CPT_INST_DW_M1 << 4;
+			lmtline->fc_thresh = lf->nb_desc -  2 * CPT_LF_FC_MIN_THRESHOLD;
+		} else {
+			lmtline->io_addr |= ROC_CN10K_CPT_INST_DW_M1 << 4;
+		}
+	}
 
 	lmtline->fc_addr = lf->fc_addr;
 	lmtline->lmt_base = lf->lmt_base;
-	lmtline->fc_thresh = lf->nb_desc - CPT_LF_FC_MIN_THRESHOLD;
 
 	return 0;
 }
@@ -1136,13 +1189,38 @@ int
 roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 		  uint16_t sa_len)
 {
-	uintptr_t lmt_base = lf->lmt_base;
 	union cpt_res_s res, *hw_res;
 	uint64_t lmt_arg, io_addr;
 	struct cpt_inst_s *inst;
+	uintptr_t lmt_base;
 	uint16_t lmt_id;
 	uint64_t *dptr;
+	uint8_t egrp;
 	int i;
+
+	if (!plt_is_aligned(sa_cptr, 128)) {
+		plt_err("Context pointer should be 128B aligned");
+		return -EINVAL;
+	}
+
+	if (lf == NULL) {
+		plt_err("Invalid CPT LF");
+		return -EINVAL;
+	}
+
+	if (lf->roc_cpt == NULL) {
+		if (roc_cpt_has_ie_engines())
+			egrp = ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE;
+		else
+			egrp = ROC_CPT_DFLT_ENG_GRP_SE;
+	} else {
+		if (roc_cpt_has_ie_engines())
+			egrp = lf->roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
+		else
+			egrp = lf->roc_cpt->eng_grp[CPT_ENG_TYPE_SE];
+	}
+
+	lmt_base = lf->lmt_base;
 
 	/* Use this lcore's LMT line as no one else is using it */
 	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
@@ -1176,7 +1254,7 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	inst->w4.s.opcode_minor = ROC_IE_OT_MINOR_OP_WRITE_SA;
 	inst->w7.s.cptr = (uint64_t)sa_cptr;
 	inst->w7.s.ctx_val = 1;
-	inst->w7.s.egrp = ROC_CPT_DFLT_ENG_GRP_SE_IE;
+	inst->w7.s.egrp = egrp;
 
 	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
 	io_addr = lf->io_addr | ROC_CN10K_CPT_INST_DW_M1 << 4;
@@ -1226,4 +1304,13 @@ roc_cpt_int_misc_cb_unregister(roc_cpt_int_misc_cb_t cb, void *args)
 	int_cb.cb = NULL;
 	int_cb.cb_args = NULL;
 	return 0;
+}
+
+bool
+roc_cpt_has_ie_engines(void)
+{
+	if (roc_model_is_cn9k() || roc_model_is_cn10k())
+		return true;
+
+	return false;
 }

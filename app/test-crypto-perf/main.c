@@ -9,6 +9,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include <rte_cryptodev.h>
 #ifdef RTE_CRYPTO_SCHEDULER
 #include <rte_cryptodev_scheduler.h>
@@ -17,6 +18,7 @@
 #include "cperf.h"
 #include "cperf_options.h"
 #include "cperf_test_vector_parsing.h"
+#include "cperf_test_common.h"
 #include "cperf_test_throughput.h"
 #include "cperf_test_latency.h"
 #include "cperf_test_verify.h"
@@ -42,7 +44,17 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_PDCP] = "pdcp",
 	[CPERF_DOCSIS] = "docsis",
 	[CPERF_IPSEC] = "ipsec",
-	[CPERF_ASYM_MODEX] = "modex"
+	[CPERF_ASYM_MODEX] = "modex",
+	[CPERF_ASYM_RSA] = "rsa",
+	[CPERF_ASYM_SECP256R1] = "ecdsa_p256r1",
+	[CPERF_ASYM_ED25519] = "eddsa_25519",
+	[CPERF_ASYM_SM2] = "sm2",
+	[CPERF_TLS] = "tls-record"
+};
+
+const char *cperf_rsa_priv_keytype_strs[] = {
+	[RTE_RSA_KEY_TYPE_EXP] = "exp",
+	[RTE_RSA_KEY_TYPE_QT] = "qt",
 };
 
 const struct cperf_test cperf_testmap[] = {
@@ -193,16 +205,15 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 #endif
 
 		struct rte_cryptodev_info cdev_info;
-		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
-		/* range check the socket_id - negative values become big
-		 * positive ones due to use of unsigned value
-		 */
-		if (socket_id >= RTE_MAX_NUMA_NODES)
+		int socket_id = rte_cryptodev_socket_id(cdev_id);
+
+		/* Use the first socket if SOCKET_ID_ANY is returned. */
+		if (socket_id == SOCKET_ID_ANY)
 			socket_id = 0;
 
 		rte_cryptodev_info_get(cdev_id, &cdev_info);
 
-		if (opts->op_type == CPERF_ASYM_MODEX) {
+		if (cperf_is_asym_test(opts)) {
 			if ((cdev_info.feature_flags &
 			     RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) == 0)
 				continue;
@@ -222,6 +233,10 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		};
 
 		switch (opts->op_type) {
+		case CPERF_ASYM_SECP256R1:
+		case CPERF_ASYM_ED25519:
+		case CPERF_ASYM_SM2:
+		case CPERF_ASYM_RSA:
 		case CPERF_ASYM_MODEX:
 			conf.ff_disable |= (RTE_CRYPTODEV_FF_SECURITY |
 					    RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO);
@@ -236,13 +251,15 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		case CPERF_PDCP:
 		case CPERF_DOCSIS:
 		case CPERF_IPSEC:
+		case CPERF_TLS:
 			/* Fall through */
 		default:
 			conf.ff_disable |= RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
 		}
 
 		struct rte_cryptodev_qp_conf qp_conf = {
-			.nb_descriptors = opts->nb_descriptors
+			.nb_descriptors = opts->nb_descriptors,
+			.priority = RTE_CRYPTODEV_QP_PRIORITY_HIGHEST
 		};
 
 		/**
@@ -287,7 +304,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 			return -ENOTSUP;
 		}
 
-		if (opts->op_type == CPERF_ASYM_MODEX)
+		if (cperf_is_asym_test(opts))
 			ret = create_asym_op_pool_socket(socket_id,
 							 sessions_needed);
 		else
@@ -298,9 +315,8 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 
 		qp_conf.mp_session = session_pool_socket[socket_id].sess_mp;
 
-		if (opts->op_type == CPERF_ASYM_MODEX) {
+		if (cperf_is_asym_test(opts))
 			qp_conf.mp_session = NULL;
-		}
 
 		ret = rte_cryptodev_configure(cdev_id, &conf);
 		if (ret < 0) {
@@ -309,6 +325,9 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		}
 
 		for (j = 0; j < opts->nb_qps; j++) {
+			if ((1 << j) & opts->low_prio_qp_mask)
+				qp_conf.priority = RTE_CRYPTODEV_QP_PRIORITY_LOWEST;
+
 			ret = rte_cryptodev_queue_pair_setup(cdev_id, j,
 				&qp_conf, socket_id);
 			if (ret < 0) {
@@ -358,6 +377,104 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 			if (ret != 0)
 				return ret;
 
+		}
+
+		if (opts->op_type == CPERF_ASYM_RSA) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_RSA;
+			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			if (!rte_cryptodev_asym_xform_capability_check_optype(asym_capability,
+						opts->asym_op_type))
+				return -1;
+
+		}
+
+		if (opts->op_type == CPERF_ASYM_SECP256R1) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_ECDSA;
+			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			if (!rte_cryptodev_asym_xform_capability_check_optype(asym_capability,
+						opts->asym_op_type))
+				return -1;
+
+			if (asym_capability->internal_rng != 0) {
+				opts->secp256r1_data->k.data = NULL;
+				opts->secp256r1_data->k.length = 0;
+			}
+		}
+
+		if (opts->op_type == CPERF_ASYM_ED25519) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_EDDSA;
+			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			if (!rte_cryptodev_asym_xform_capability_check_optype(asym_capability,
+						opts->asym_op_type))
+				return -1;
+		}
+
+		if (opts->op_type == CPERF_ASYM_SM2) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_SM2;
+			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			if (!rte_cryptodev_asym_xform_capability_check_optype(asym_capability,
+						opts->asym_op_type))
+				return -1;
+
+			if (rte_cryptodev_asym_xform_capability_check_hash(asym_capability,
+						RTE_CRYPTO_AUTH_SM3)) {
+				opts->asym_hash_alg = RTE_CRYPTO_AUTH_SM3;
+				if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN ||
+						opts->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+					opts->sm2_data->message.data = sm2_perf_data.message.data;
+					opts->sm2_data->message.length =
+							sm2_perf_data.message.length;
+					opts->sm2_data->id.data = sm2_perf_data.id.data;
+					opts->sm2_data->id.length = sm2_perf_data.id.length;
+				}
+			} else {
+				opts->asym_hash_alg = RTE_CRYPTO_AUTH_NULL;
+				if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN ||
+						opts->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+					opts->sm2_data->message.data = sm2_perf_data.digest.data;
+					opts->sm2_data->message.length =
+							sm2_perf_data.digest.length;
+					opts->sm2_data->id.data = NULL;
+					opts->sm2_data->id.length = 0;
+				}
+			}
+			if (asym_capability->internal_rng != 0) {
+				opts->sm2_data->k.data = NULL;
+				opts->sm2_data->k.length = 0;
+			}
+			if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+				opts->sm2_data->message.data = sm2_perf_data.message.data;
+				opts->sm2_data->message.length = sm2_perf_data.message.length;
+				opts->sm2_data->cipher.data = sm2_perf_data.cipher.data;
+				opts->sm2_data->cipher.length = sm2_perf_data.cipher.length;
+			} else if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+				opts->sm2_data->cipher.data = sm2_perf_data.cipher.data;
+				opts->sm2_data->cipher.length = sm2_perf_data.cipher.length;
+				opts->sm2_data->message.data = sm2_perf_data.message.data;
+				opts->sm2_data->message.length = sm2_perf_data.message.length;
+			} else if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+				opts->sm2_data->sign_r.data = sm2_perf_data.sign_r.data;
+				opts->sm2_data->sign_r.length = sm2_perf_data.sign_r.length;
+				opts->sm2_data->sign_s.data = sm2_perf_data.sign_s.data;
+				opts->sm2_data->sign_s.length = sm2_perf_data.sign_s.length;
+			} else if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+				opts->sm2_data->sign_r.data = sm2_perf_data.sign_r.data;
+				opts->sm2_data->sign_r.length = sm2_perf_data.sign_r.length;
+				opts->sm2_data->sign_s.data = sm2_perf_data.sign_s.data;
+				opts->sm2_data->sign_s.length = sm2_perf_data.sign_s.length;
+			}
 		}
 
 		if (opts->op_type == CPERF_AUTH_ONLY ||
@@ -561,6 +678,7 @@ main(int argc, char **argv)
 
 	int ret;
 	uint32_t lcore_id;
+	bool cap_unsupported = false;
 
 	/* Initialise DPDK EAL */
 	ret = rte_eal_init(argc, argv);
@@ -601,6 +719,7 @@ main(int argc, char **argv)
 	if (ret) {
 		RTE_LOG(ERR, USER1, "Crypto device type does not support "
 				"capabilities requested\n");
+		cap_unsupported = true;
 		goto err;
 	}
 
@@ -643,6 +762,9 @@ main(int argc, char **argv)
 
 	i = 0;
 	uint8_t qp_id = 0, cdev_index = 0;
+
+	void *sess = NULL;
+
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 
 		if (i == total_nb_qps)
@@ -650,19 +772,39 @@ main(int argc, char **argv)
 
 		cdev_id = enabled_cdevs[cdev_index];
 
-		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+		int socket_id = rte_cryptodev_socket_id(cdev_id);
+
+		/* Use the first socket if SOCKET_ID_ANY is returned. */
+		if (socket_id == SOCKET_ID_ANY)
+			socket_id = 0;
 
 		ctx[i] = cperf_testmap[opts.test].constructor(
 				session_pool_socket[socket_id].sess_mp,
 				cdev_id, qp_id,
-				&opts, t_vec, &op_fns);
+				&opts, t_vec, &op_fns, &sess);
+
+		/*
+		 * If sess was NULL, the constructor will have set it to a newly
+		 * created session. This means future calls to constructors will
+		 * provide this session, sharing it across all qps. If session
+		 * sharing is not enabled, re-set sess to NULL, to prevent this.
+		 */
+		if (!opts.shared_session)
+			sess = NULL;
+
 		if (ctx[i] == NULL) {
 			RTE_LOG(ERR, USER1, "Test run constructor failed\n");
 			goto err;
 		}
+
 		qp_id = (qp_id + 1) % opts.nb_qps;
-		if (qp_id == 0)
+		if (qp_id == 0) {
 			cdev_index++;
+			/* If next qp is on a new cdev, don't share the session
+			 * - it shouldn't be shared across different cdevs.
+			 */
+			sess = NULL;
+		}
 		i++;
 	}
 
@@ -816,6 +958,10 @@ err:
 	rte_free(opts.imix_buffer_sizes);
 	free_test_vector(t_vec, &opts);
 
+	if (rte_errno == ENOTSUP || cap_unsupported) {
+		RTE_LOG(ERR, USER1, "Unsupported case: errno: %u\n", rte_errno);
+		return -ENOTSUP;
+	}
 	printf("\n");
 	return EXIT_FAILURE;
 }

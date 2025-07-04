@@ -10,6 +10,7 @@ drivers = [
         'cnxk',
         'dpaa_sec',
         'dpaa2_sec',
+        'ionic',
         'ipsec_mb',
         'mlx5',
         'mvsam',

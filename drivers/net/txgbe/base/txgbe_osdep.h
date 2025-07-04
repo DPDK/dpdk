@@ -19,6 +19,7 @@
 #include <rte_config.h>
 #include <rte_io.h>
 #include <rte_ether.h>
+#include <bus_pci_driver.h>
 
 #include "../txgbe_logs.h"
 
@@ -26,6 +27,14 @@
 #define TMZ_PADDR(mz)  ((mz)->iova)
 #define TMZ_VADDR(mz)  ((mz)->addr)
 #define TDEV_NAME(eth_dev)  ((eth_dev)->device->name)
+
+extern int txgbe_logtype_bp;
+#define RTE_LOGTYPE_TXGBE_BP txgbe_logtype_bp
+#define BP_LOG(fmt, ...) \
+	RTE_LOG(DEBUG, TXGBE_BP, \
+		"[%"PRIu64".%"PRIu64"]%s(%d): " fmt, \
+		usec_stamp() / 1000000, usec_stamp() % 1000000, \
+		__func__, __LINE__, ## __VA_ARGS__)
 
 #define ASSERT(x) do {			\
 	if (!(x))			\
@@ -51,7 +60,7 @@
 /* Bunch of defines for shared code bogosity */
 
 static inline void UNREFERENCED(const char *a __rte_unused, ...) {}
-#define UNREFERENCED_PARAMETER(args...) UNREFERENCED("", ##args)
+#define UNREFERENCED_PARAMETER(...) UNREFERENCED("", ##__VA_ARGS__)
 
 #define STATIC static
 
@@ -172,7 +181,7 @@ static inline u64 REVERT_BIT_MASK64(u64 mask)
 
 /* Check whether an address is broadcast. */
 #define TXGBE_IS_BROADCAST(address) \
-		({typeof(address)addr = (address); \
+		__extension__ ({typeof(address)addr = (address); \
 		(((u8 *)(addr))[0] == ((u8)0xff)) && \
 		(((u8 *)(addr))[1] == ((u8)0xff)); })
 

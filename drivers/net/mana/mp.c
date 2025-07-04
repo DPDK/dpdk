@@ -5,6 +5,7 @@
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_log.h>
+#include <stdlib.h>
 
 #include <infiniband/verbs.h>
 
@@ -28,8 +29,8 @@ mana_mp_mr_create(struct mana_priv *priv, uintptr_t addr, uint32_t len)
 	if (!ibv_mr)
 		return -errno;
 
-	DRV_LOG(DEBUG, "MR (2nd) lkey %u addr %p len %zu",
-		ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
+	DP_LOG(DEBUG, "MR (2nd) lkey %u addr %p len %zu",
+	       ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
 
 	mr = rte_calloc("MANA MR", 1, sizeof(*mr), 0);
 	if (!mr) {
@@ -305,7 +306,7 @@ mana_mp_req_on_rxtx(struct rte_eth_dev *dev, enum mana_mp_req_type type)
 		return;
 	}
 
-	if (!mana_shared_data->secondary_cnt)
+	if (rte_atomic_load_explicit(&mana_shared_data->secondary_cnt, rte_memory_order_relaxed) == 0)
 		return;
 
 	mp_init_msg(&mp_req, type, dev->data->port_id);

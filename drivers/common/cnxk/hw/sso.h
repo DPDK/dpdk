@@ -146,6 +146,7 @@
 #define SSO_LF_GGRP_OP_ADD_WORK0 (0x0ull)
 #define SSO_LF_GGRP_OP_ADD_WORK1 (0x8ull)
 #define SSO_LF_GGRP_QCTL	 (0x20ull)
+#define SSO_LF_GGRP_TAG_CFG	 (0x40ull)
 #define SSO_LF_GGRP_EXE_DIS	 (0x80ull)
 #define SSO_LF_GGRP_INT		 (0x100ull)
 #define SSO_LF_GGRP_INT_W1S	 (0x108ull)
@@ -157,6 +158,11 @@
 #define SSO_LF_GGRP_AQ_CNT	 (0x1c0ull)
 #define SSO_LF_GGRP_AQ_THR	 (0x1e0ull)
 #define SSO_LF_GGRP_MISC_CNT	 (0x200ull)
+#define SSO_LF_GGRP_OP_AW_LMTST	 (0x400ull)
+
+#define SSO_LF_GGRP_AGGR_CFG	    (0x300ull)
+#define SSO_LF_GGRP_AGGR_CTX_BASE   (0x308ull)
+#define SSO_LF_GGRP_AGGR_CTX_INSTOP (0x310ull)
 
 #define SSO_AF_IAQ_FREE_CNT_MASK      0x3FFFull
 #define SSO_AF_IAQ_RSVD_FREE_MASK     0x3FFFull
@@ -229,5 +235,33 @@
 #define SSO_TT_ATOMIC	(0x1ull)
 #define SSO_TT_UNTAGGED (0x2ull)
 #define SSO_TT_EMPTY	(0x3ull)
+#define SSO_TT_AGG	(0x3ull)
+
+#define SSO_LF_AGGR_INSTOP_FLUSH	(0x0ull)
+#define SSO_LF_AGGR_INSTOP_EVICT	(0x1ull)
+#define SSO_LF_AGGR_INSTOP_GLOBAL_FLUSH (0x2ull)
+#define SSO_LF_AGGR_INSTOP_GLOBAL_EVICT (0x3ull)
+
+#define SSO_AGGR_CTX_SZ	    16
+#define SSO_AGGR_NUM_CTX(a) (1 << (a + 6))
+#define SSO_AGGR_MIN_CTX    SSO_AGGR_NUM_CTX(0)
+#define SSO_AGGR_MAX_CTX    SSO_AGGR_NUM_CTX(10)
+#define SSO_AGGR_DEF_TMO    0x3Full
+
+struct sso_agq_ctx {
+	uint64_t ena : 1;
+	uint64_t rsvd_1_3 : 3;
+	uint64_t vwqe_aura : 17;
+	uint64_t rsvd_21_31 : 11;
+	uint64_t tag : 32;
+	uint64_t tt : 2;
+	uint64_t rsvd_66_67 : 2;
+	uint64_t swqe_tag : 12;
+	uint64_t max_vsize_exp : 4;
+	uint64_t vtimewait : 12;
+	uint64_t xqe_type : 4;
+	uint64_t cnt_ena : 1;
+	uint64_t rsvd_101_127 : 27;
+};
 
 #endif /* __SSO_HW_H__ */

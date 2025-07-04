@@ -165,7 +165,7 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 
 	rte_cryptodev_pmd_probing_finish(dev);
 
-	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s\n",
+	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s",
 		     imb_get_version_str());
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
@@ -176,7 +176,7 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 
 		if (retval)
 			IPSEC_MB_LOG(ERR,
-				"IPSec Multi-buffer register MP request failed.\n");
+				"IPSec Multi-buffer register MP request failed.");
 	}
 	return retval;
 }
@@ -205,10 +205,6 @@ ipsec_mb_remove(struct rte_vdev_device *vdev)
 		rte_free(cryptodev->security_ctx);
 		cryptodev->security_ctx = NULL;
 	}
-#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
-	rte_free(cryptodev->security_ctx);
-	cryptodev->security_ctx = NULL;
-#endif
 
 	for (qp_id = 0; qp_id < cryptodev->data->nb_queue_pairs; qp_id++)
 		ipsec_mb_qp_release(cryptodev, qp_id);

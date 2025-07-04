@@ -45,6 +45,10 @@
 #include "rhead_impl.h"
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+#include "medford4_impl.h"
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -79,6 +83,7 @@ typedef enum efx_mac_type_e {
 	EFX_MAC_MEDFORD,
 	EFX_MAC_MEDFORD2,
 	EFX_MAC_RIVERHEAD,
+	EFX_MAC_MEDFORD4,
 	EFX_MAC_NTYPES
 } efx_mac_type_t;
 
@@ -288,6 +293,7 @@ typedef struct efx_filter_ops_s {
 	efx_rc_t	(*efo_reconfigure)(efx_nic_t *, uint8_t const *, boolean_t,
 				   boolean_t, boolean_t, boolean_t,
 				   uint8_t const *, uint32_t);
+	efx_rc_t	(*efo_get_count)(efx_nic_t *, uint32_t *);
 } efx_filter_ops_t;
 
 LIBEFX_INTERNAL
@@ -301,6 +307,12 @@ efx_filter_reconfigure(
 	__in				boolean_t brdcst,
 	__in_ecount(6*count)		uint8_t const *addrs,
 	__in				uint32_t count);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp);
 
 #endif /* EFSYS_OPT_FILTER */
 
@@ -326,6 +338,14 @@ typedef struct efx_virtio_ops_s {
 				efx_virtio_device_type_t, uint64_t);
 } efx_virtio_ops_t;
 #endif /* EFSYS_OPT_VIRTIO */
+
+typedef uint32_t efx_np_handle_t;
+
+typedef struct efx_np_stat_s {
+	uint32_t	ens_hw_id;
+	uint16_t	ens_dma_fld;
+	boolean_t	ens_valid;
+} efx_np_stat_t;
 
 typedef struct efx_port_s {
 	efx_mac_type_t		ep_mac_type;
@@ -363,11 +383,21 @@ typedef struct efx_port_s {
 	uint32_t		ep_default_adv_cap_mask;
 	uint32_t		ep_phy_cap_mask;
 	boolean_t		ep_mac_drain;
+	boolean_t		ep_include_fcs;
+	boolean_t		ep_vlan_strip;
 #if EFSYS_OPT_BIST
 	efx_bist_type_t		ep_current_bist;
 #endif
 	const efx_mac_ops_t	*ep_emop;
 	const efx_phy_ops_t	*ep_epop;
+
+	efx_np_handle_t		ep_np_handle;
+	efx_qword_t		ep_np_loopback_cap_mask;
+	uint8_t			ep_np_cap_data_raw[MC_CMD_ETH_AN_FIELDS_LEN];
+	/* Lookup table providing DMA buffer field IDs by EFX statistic IDs. */
+	efx_np_stat_t		ep_np_mac_stat_lut[EFX_MAC_NSTATS];
+	/* Client-requested lane count for the physical link. */
+	efx_phy_lane_count_t	ep_np_lane_count_req;
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
@@ -841,7 +871,8 @@ typedef struct efx_mae_s {
 	/** Outer rule match field capabilities. */
 	efx_mae_field_cap_t		*em_outer_rule_field_caps;
 	size_t				em_outer_rule_field_caps_size;
-	uint32_t			em_max_ncounters;
+	uint32_t			em_max_n_action_counters;
+	uint32_t			em_max_n_conntrack_counters;
 } efx_mae_t;
 
 #endif /* EFSYS_OPT_MAE */
@@ -962,7 +993,8 @@ struct efx_nic_s {
 };
 
 #define	EFX_FAMILY_IS_EF10(_enp) \
-	((_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
+	((_enp)->en_family == EFX_FAMILY_MEDFORD4 || \
+	 (_enp)->en_family == EFX_FAMILY_MEDFORD2 || \
 	 (_enp)->en_family == EFX_FAMILY_MEDFORD || \
 	 (_enp)->en_family == EFX_FAMILY_HUNTINGTON)
 
@@ -1116,6 +1148,10 @@ struct efx_txq_s {
 									\
 		case EFX_FAMILY_RIVERHEAD:				\
 			rev = 'G';					\
+			break;						\
+									\
+		case EFX_FAMILY_MEDFORD4:				\
+			rev = 'H';					\
 			break;						\
 									\
 		default:						\
@@ -1761,6 +1797,7 @@ struct efx_mae_match_spec_s {
 		uint8_t			outer[MAE_ENC_FIELD_PAIRS_LEN];
 	} emms_mask_value_pairs;
 	uint8_t				emms_outer_rule_recirc_id;
+	boolean_t			emms_outer_rule_do_ct;
 };
 
 typedef enum efx_mae_action_e {
@@ -1770,6 +1807,7 @@ typedef enum efx_mae_action_e {
 	EFX_MAE_ACTION_SET_DST_MAC,
 	EFX_MAE_ACTION_SET_SRC_MAC,
 	EFX_MAE_ACTION_DECR_IP_TTL,
+	EFX_MAE_ACTION_NAT,
 	EFX_MAE_ACTION_VLAN_PUSH,
 	EFX_MAE_ACTION_COUNT,
 	EFX_MAE_ACTION_ENCAP,
@@ -1800,6 +1838,10 @@ typedef struct efx_mae_action_vlan_push_s {
 	uint16_t			emavp_tci_be;
 } efx_mae_action_vlan_push_t;
 
+/*
+ * Helper efx_mae_action_set_clear_fw_rsrc_ids() is responsible
+ * to initialise every field in this structure to INVALID value.
+ */
 typedef struct efx_mae_actions_rsrc_s {
 	efx_mae_mac_id_t		emar_dst_mac_id;
 	efx_mae_mac_id_t		emar_src_mac_id;
@@ -1857,6 +1899,93 @@ struct efx_virtio_vq_s {
 };
 
 #endif /* EFSYS_OPT_VIRTIO */
+
+LIBEFX_INTERNAL
+extern			boolean_t
+efx_np_supported(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_attach(
+	__in		efx_nic_t *enp);
+
+LIBEFX_INTERNAL
+extern		void
+efx_np_detach(
+	__in	efx_nic_t *enp);
+
+typedef struct efx_np_link_state_s {
+	uint32_t		enls_adv_cap_mask;
+	uint32_t		enls_lp_cap_mask;
+	efx_phy_lane_count_t	enls_lane_count;
+	efx_loopback_type_t	enls_loopback;
+	uint32_t		enls_speed;
+	uint8_t			enls_fec;
+
+	boolean_t		enls_an_supported;
+	boolean_t		enls_fd;
+	boolean_t		enls_up;
+} efx_np_link_state_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_link_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_link_state_t *lsp);
+
+typedef struct efx_np_mac_state_s {
+	uint32_t	enms_fcntl;
+	uint32_t	enms_pdu;
+	boolean_t	enms_up;
+} efx_np_mac_state_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_state(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__out		efx_np_mac_state_t *msp);
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_link_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const uint8_t *cap_mask_sup_raw,
+	__in		efx_link_mode_t loopback_link_mode,
+	__in		efx_loopback_type_t loopback_mode,
+	__in		efx_phy_lane_count_t lane_count,
+	__in		uint32_t cap_mask_sw,
+	__in		boolean_t fcntl_an);
+
+typedef struct efx_np_mac_ctrl_s {
+	boolean_t	enmc_set_pdu_only;
+
+	boolean_t	enmc_fcntl_autoneg;
+	boolean_t	enmc_include_fcs;
+	uint32_t	enmc_fcntl;
+	uint32_t	enmc_pdu;
+} efx_np_mac_ctrl_t;
+
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_ctrl(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		const efx_np_mac_ctrl_t *mc);
+
+#if EFSYS_OPT_MAC_STATS
+LIBEFX_INTERNAL
+extern	__checkReturn	efx_rc_t
+efx_np_mac_stats(
+	__in		efx_nic_t *enp,
+	__in		efx_np_handle_t nph,
+	__in		efx_stats_action_t action,
+	__in_opt	const efsys_mem_t *esmp,
+	__in		uint16_t period_ms);
+#endif /* EFSYS_OPT_MAC_STATS */
 
 #ifdef	__cplusplus
 }

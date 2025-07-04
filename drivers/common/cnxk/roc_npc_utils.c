@@ -4,6 +4,28 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+uint8_t
+npc_get_key_type(struct npc *npc, struct roc_npc_flow *flow)
+{
+	int i;
+
+	/* KEX is configured just for X2 */
+	if (npc->keyw[ROC_NPC_INTF_RX] == 1)
+		return NPC_CN20K_MCAM_KEY_X2;
+
+	/* KEX is configured just for X4 */
+	if (npc->keyw[ROC_NPC_INTF_RX] == 2)
+		return NPC_CN20K_MCAM_KEY_X4;
+
+	/* KEX is configured for both X2 and X4 */
+	/* Check mask for upper 256 bits. if mask is set, then it is X4 entry */
+	for (i = 4; i < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; i++) {
+		if (flow->mcam_mask[i] != 0)
+			return NPC_CN20K_MCAM_KEY_X4;
+	}
+	return NPC_CN20K_MCAM_KEY_X2;
+}
+
 static void
 npc_prep_mcam_ldata(uint8_t *ptr, const uint8_t *data, int len)
 {
@@ -67,8 +89,9 @@ npc_ipv6_hash_mask_get(struct npc_xtract_info *xinfo, struct npc_parse_item_info
 	memset(&hw_mask[offset], 0xFF, NPC_HASH_FIELD_LEN);
 }
 
-void
-npc_get_hw_supp_mask(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid, int lt)
+static void
+npc_get_hw_supp_mask_legacy(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
+			    int lt)
 {
 	struct npc_xtract_info *xinfo, *lfinfo;
 	char *hw_mask = info->hw_mask;
@@ -99,6 +122,40 @@ npc_get_hw_supp_mask(struct npc_parse_state *pst, struct npc_parse_item_info *in
 			}
 		}
 	}
+}
+
+static void
+npc_get_hw_supp_mask_o20k(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
+			  int lt)
+{
+	struct npc_xtract_info *xinfo;
+	union npc_kex_ldata_flags_cfg *lid_info;
+	char *hw_mask = info->hw_mask;
+	int ex;
+	int intf;
+
+	intf = pst->nix_intf;
+	memset(hw_mask, 0, info->len);
+	for (ex = 0; ex < NPC_MAX_EXTRACTTORS; ex++) {
+		lid_info = &pst->npc->lid_cfg[intf][ex];
+		if (lid_info->s.lid != lid)
+			continue;
+		xinfo = &pst->npc->prx_dxcfg_cn20k[intf][ex][lt].xtract;
+
+		if (pst->npc->hash_extract_cap && xinfo->use_hash)
+			npc_ipv6_hash_mask_get(xinfo, info);
+		else
+			npc_set_hw_mask(info, xinfo, hw_mask);
+	}
+}
+
+void
+npc_get_hw_supp_mask(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid, int lt)
+{
+	if (!roc_model_is_cn20k())
+		return npc_get_hw_supp_mask_legacy(pst, info, lid, lt);
+	else
+		return npc_get_hw_supp_mask_o20k(pst, info, lid, lt);
 }
 
 inline int
@@ -381,19 +438,17 @@ npc_hash_field_get(struct npc_xtract_info *xinfo, const struct roc_npc_flow_item
 	return 1;
 }
 
-int
-npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
-			    const struct roc_npc_flow_item_ipv6 *ipv6_mask,
-			    struct npc_parse_state *pst, uint8_t ltype)
+static int
+npc_process_ipv6_field_hash_legacy(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
+				   const struct roc_npc_flow_item_ipv6 *ipv6_mask,
+				   struct npc_parse_state *pst, uint8_t ltype)
 {
 	struct npc_lid_lt_xtract_info *lid_lt_xinfo;
 	uint8_t hash_field[ROC_IPV6_ADDR_LEN];
 	struct npc_xtract_info *xinfo;
-	struct roc_ipv6_hdr ipv6_buf;
 	uint32_t hash = 0, mask;
 	int intf, i, rc = 0;
 
-	memset(&ipv6_buf, 0, sizeof(ipv6_buf));
 	memset(hash_field, 0, sizeof(hash_field));
 
 	intf = pst->nix_intf;
@@ -421,9 +476,62 @@ npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 	return 0;
 }
 
+static int
+npc_process_ipv6_field_hash_o20k(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
+				 const struct roc_npc_flow_item_ipv6 *ipv6_mask,
+				 struct npc_parse_state *pst, uint8_t ltype)
+{
+	struct npc_lid_lt_xtract_info_cn20k *lid_lt_xinfo;
+	union npc_kex_ldata_flags_cfg *lid_cfg;
+	uint8_t hash_field[ROC_IPV6_ADDR_LEN];
+	struct npc_xtract_info *xinfo;
+	uint32_t hash = 0, mask;
+	int intf, i, rc = 0;
+
+	memset(hash_field, 0, sizeof(hash_field));
+
+	intf = pst->nix_intf;
+	for (i = 0; i < NPC_MAX_EXTRACTTORS; i++) {
+		lid_cfg = &pst->npc->lid_cfg[intf][i];
+		if (lid_cfg->s.lid != NPC_LID_LC)
+			continue;
+		lid_lt_xinfo = &pst->npc->prx_dxcfg_cn20k[intf][NPC_LID_LC][ltype];
+
+		xinfo = &lid_lt_xinfo->xtract;
+		if (!xinfo->use_hash)
+			continue;
+
+		rc = npc_hash_field_get(xinfo, ipv6_spec, ipv6_mask, hash_field);
+		if (rc == 0)
+			continue;
+
+		rc = npc_ipv6_field_hash_get(pst->npc, (const uint32_t *)hash_field, intf, i,
+					     &hash);
+		if (rc)
+			return rc;
+
+		mask = GENMASK(31, 0);
+		memcpy(pst->mcam_mask + xinfo->key_off, (uint8_t *)&mask, 4);
+		memcpy(pst->mcam_data + xinfo->key_off, (uint8_t *)&hash, 4);
+	}
+
+	return 0;
+}
+
 int
-npc_update_parse_state(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
-		       int lt, uint8_t flags)
+npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
+			    const struct roc_npc_flow_item_ipv6 *ipv6_mask,
+			    struct npc_parse_state *pst, uint8_t ltype)
+{
+	if (!roc_model_is_cn20k())
+		return npc_process_ipv6_field_hash_legacy(ipv6_spec, ipv6_mask, pst, ltype);
+	else
+		return npc_process_ipv6_field_hash_o20k(ipv6_spec, ipv6_mask, pst, ltype);
+}
+
+static int
+npc_update_parse_state_legacy(struct npc_parse_state *pst, struct npc_parse_item_info *info,
+			      int lid, int lt, uint8_t flags)
 {
 	struct npc_lid_lt_xtract_info *xinfo;
 	struct roc_npc_flow_dump_data *dump;
@@ -461,8 +569,7 @@ npc_update_parse_state(struct npc_parse_state *pst, struct npc_parse_item_info *
 		if (lf_cfg == lid) {
 			for (j = 0; j < NPC_MAX_LFL; j++) {
 				lfinfo = pst->npc->prx_fxcfg[intf][i][j].xtract;
-				rc = npc_update_extraction_data(pst, info,
-								&lfinfo[0]);
+				rc = npc_update_extraction_data(pst, info, &lfinfo[0]);
 				if (rc != 0)
 					return rc;
 
@@ -480,42 +587,127 @@ done:
 	return 0;
 }
 
+static int
+npc_update_parse_state_o20(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
+			   int lt, uint8_t flags)
+{
+	struct npc_lid_lt_xtract_info_cn20k *xinfo;
+	union npc_kex_ldata_flags_cfg *lid_cfg;
+	struct roc_npc_flow_dump_data *dump;
+	int intf;
+	int i, rc = 0;
+
+	pst->layer_mask |= lid;
+	pst->lt[lid] = lt;
+	pst->flags[lid] = flags;
+
+	intf = pst->nix_intf;
+	if (info->spec == NULL)
+		goto done;
+
+	for (i = 0; i < NPC_MAX_EXTRACTTORS; i++) {
+		lid_cfg = &pst->npc->lid_cfg[intf][i];
+		if (lid_cfg->s.lid != lid)
+			continue;
+		xinfo = &pst->npc->prx_dxcfg_cn20k[intf][i][lt];
+		if (xinfo->is_terminating)
+			pst->terminate = 1;
+
+		if (xinfo->xtract.use_hash)
+			continue;
+		rc = npc_update_extraction_data(pst, info, &xinfo->xtract);
+		if (rc != 0)
+			return rc;
+	}
+
+done:
+	dump = &pst->flow->dump_data[pst->flow->num_patterns++];
+	dump->lid = lid;
+	dump->ltype = lt;
+	pst->pattern++;
+	return 0;
+}
+
+int
+npc_update_parse_state(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
+		       int lt, uint8_t flags)
+{
+	if (roc_model_is_cn20k())
+		return npc_update_parse_state_o20(pst, info, lid, lt, flags);
+	else
+		return npc_update_parse_state_legacy(pst, info, lid, lt, flags);
+}
+
 int
 npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id)
 {
-	struct npc_mcam_write_entry_req *req;
-	struct npc_mcam_write_entry_rsq *rsp;
+	struct msg_rsp *rsp;
 	struct mbox *mbox = mbox_get(npc->mbox);
 	int rc = 0, idx;
 
-	req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
-	if (req == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
-	req->set_cntr = 0;
-	req->cntr = 0;
-	req->entry = mcam_id;
+	if (roc_model_is_cn20k()) {
+		struct npc_cn20k_mcam_write_entry_req *req;
 
-	req->intf = (flow->nix_intf == NIX_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
-	req->enable_entry = 1;
-	req->entry_data.action = flow->npc_action;
-	req->entry_data.vtag_action = flow->vtag_action;
+		req = mbox_alloc_msg_npc_cn20k_mcam_write_entry(mbox);
+		if (req == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		req->cntr = 0;
+		req->entry = mcam_id;
 
-	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
-		req->entry_data.kw[idx] = 0x0;
-		req->entry_data.kw_mask[idx] = 0x0;
-	}
+		req->intf = (flow->nix_intf == NIX_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
+		req->enable_entry = 1;
+		req->entry_data.action = flow->npc_action;
+		req->entry_data.vtag_action = flow->vtag_action;
 
-	if (flow->nix_intf == NIX_INTF_RX) {
-		req->entry_data.kw[0] |= (uint64_t)npc->channel;
-		req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
+		for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			req->entry_data.kw[idx] = 0x0;
+			req->entry_data.kw_mask[idx] = 0x0;
+		}
+
+		if (flow->nix_intf == NIX_INTF_RX) {
+			req->entry_data.kw[0] |= (uint64_t)npc->channel;
+			req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
+		} else {
+			uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+
+			pf_func = plt_cpu_to_be_16(pf_func);
+			req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
+			req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
+		}
 	} else {
-		uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+		struct npc_mcam_write_entry_req *req;
 
-		pf_func = plt_cpu_to_be_16(pf_func);
-		req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
-		req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
+		req = mbox_alloc_msg_npc_mcam_write_entry(mbox);
+		if (req == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+		req->set_cntr = 0;
+		req->cntr = 0;
+		req->entry = mcam_id;
+
+		req->intf = (flow->nix_intf == NIX_INTF_RX) ? NPC_MCAM_RX : NPC_MCAM_TX;
+		req->enable_entry = 1;
+		req->entry_data.action = flow->npc_action;
+		req->entry_data.vtag_action = flow->vtag_action;
+
+		for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			req->entry_data.kw[idx] = 0x0;
+			req->entry_data.kw_mask[idx] = 0x0;
+		}
+
+		if (flow->nix_intf == NIX_INTF_RX) {
+			req->entry_data.kw[0] |= (uint64_t)npc->channel;
+			req->entry_data.kw_mask[0] |= (BIT_ULL(12) - 1);
+		} else {
+			uint16_t pf_func = (flow->npc_action >> 4) & 0xffff;
+
+			pf_func = plt_cpu_to_be_16(pf_func);
+			req->entry_data.kw[0] |= ((uint64_t)pf_func << 32);
+			req->entry_data.kw_mask[0] |= ((uint64_t)0xffff << 32);
+		}
 	}
 
 	rc = mbox_process_msg(mbox, (void *)&rsp);
@@ -783,13 +975,12 @@ npc_insert_into_flow_list(struct npc *npc, struct npc_prio_flow_entry *entry)
 }
 
 static int
-npc_allocate_mcam_entry(struct mbox *mbox, int prio,
-			struct npc_mcam_alloc_entry_rsp *rsp_local,
-			int ref_entry)
+npc_allocate_mcam_entry(struct mbox *mbox, int prio, struct npc_mcam_alloc_entry_rsp *rsp_local,
+			int ref_entry, uint8_t kw_type)
 {
-	struct npc_mcam_alloc_entry_rsp *rsp_cmd;
-	struct npc_mcam_alloc_entry_req *req;
 	struct npc_mcam_alloc_entry_rsp *rsp;
+	struct npc_mcam_alloc_entry_req *req;
+
 	int rc = -ENOSPC;
 
 	req = mbox_alloc_msg_npc_mcam_alloc_entry(mbox_get(mbox));
@@ -797,20 +988,20 @@ npc_allocate_mcam_entry(struct mbox *mbox, int prio,
 		goto exit;
 	req->contig = 1;
 	req->count = 1;
-	req->priority = prio;
+	req->ref_priority = prio;
 	req->ref_entry = ref_entry;
+	req->kw_type = kw_type;
 
-	rc = mbox_process_msg(mbox, (void *)&rsp_cmd);
+	rc = mbox_process_msg(mbox, (void *)&rsp);
 	if (rc)
 		goto exit;
 
-	if (!rsp_cmd->count) {
+	if (!rsp->count) {
 		rc = -ENOSPC;
 		goto exit;
 	}
 
-	mbox_memcpy(rsp_local, rsp_cmd, sizeof(*rsp));
-
+	mbox_memcpy(rsp_local, rsp, sizeof(*rsp));
 	rc = 0;
 exit:
 	mbox_put(mbox);
@@ -854,8 +1045,7 @@ npc_find_mcam_ref_entry(struct roc_npc_flow *flow, struct npc *npc, int *prio,
 }
 
 static int
-npc_alloc_mcam_by_ref_entry(struct mbox *mbox, struct roc_npc_flow *flow,
-			    struct npc *npc,
+npc_alloc_mcam_by_ref_entry(struct mbox *mbox, struct roc_npc_flow *flow, struct npc *npc,
 			    struct npc_mcam_alloc_entry_rsp *rsp_local)
 {
 	int prio, ref_entry = 0, rc = 0, dir = NPC_MCAM_LOWER_PRIO;
@@ -863,7 +1053,7 @@ npc_alloc_mcam_by_ref_entry(struct mbox *mbox, struct roc_npc_flow *flow,
 
 retry:
 	npc_find_mcam_ref_entry(flow, npc, &prio, &ref_entry, dir);
-	rc = npc_allocate_mcam_entry(mbox, prio, rsp_local, ref_entry);
+	rc = npc_allocate_mcam_entry(mbox, prio, rsp_local, ref_entry, flow->key_type);
 	if (rc && !retry_done) {
 		plt_npc_dbg(
 			"npc: Failed to allocate lower priority entry. Retrying for higher priority");
@@ -879,32 +1069,42 @@ retry:
 }
 
 int
-npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow,
-			struct npc *npc)
+npc_get_free_mcam_entry(struct mbox *mbox, struct roc_npc_flow *flow, struct npc *npc)
 {
 	struct npc_mcam_alloc_entry_rsp rsp_local;
 	struct npc_prio_flow_entry *new_entry;
 	int rc = 0;
 
-	rc = npc_alloc_mcam_by_ref_entry(mbox, flow, npc, &rsp_local);
-
-	if (rc)
-		return rc;
-
 	new_entry = plt_zmalloc(sizeof(*new_entry), 0);
 	if (!new_entry)
 		return -ENOSPC;
 
-	new_entry->flow = flow;
+	if (roc_model_is_cn20k()) {
+		rc = npc_allocate_mcam_entry(mbox, NPC_MCAM_ANY_PRIO, &rsp_local, 0,
+					     flow->key_type);
+		if (rc) {
+			plt_npc_dbg("npc: failed to allocate MCAM entry.");
+			return rc;
+		}
 
-	plt_npc_dbg("kernel allocated MCAM entry %d", rsp_local.entry);
+		new_entry->flow = flow;
+	} else {
+		rc = npc_alloc_mcam_by_ref_entry(mbox, flow, npc, &rsp_local);
 
-	rc = npc_sort_mcams_by_user_prio_level(mbox, new_entry, npc,
-					       &rsp_local);
-	if (rc)
-		goto err;
+		if (rc)
+			return rc;
 
-	plt_npc_dbg("allocated MCAM entry after sorting %d", rsp_local.entry);
+		new_entry->flow = flow;
+
+		plt_npc_dbg("kernel allocated MCAM entry %d", rsp_local.entry);
+
+		rc = npc_sort_mcams_by_user_prio_level(mbox, new_entry, npc, &rsp_local);
+		if (rc)
+			goto err;
+
+		plt_npc_dbg("allocated MCAM entry after sorting %d", rsp_local.entry);
+	}
+
 	flow->mcam_id = rsp_local.entry;
 	npc_insert_into_flow_list(npc, new_entry);
 

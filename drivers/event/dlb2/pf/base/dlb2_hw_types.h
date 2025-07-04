@@ -139,6 +139,7 @@ struct dlb2_dir_pq_pair {
 	struct dlb2_list_entry func_list;
 	struct dlb2_resource_id id;
 	struct dlb2_resource_id domain_id;
+	struct process_local_port_data port_data;
 	u32 ref_cnt;
 	u8 init_tkn_cnt;
 	u8 queue_configured;
@@ -178,6 +179,7 @@ struct dlb2_ldb_port {
 	struct dlb2_resource_id domain_id;
 	/* The qid_map represents the hardware QID mapping state. */
 	struct dlb2_ldb_port_qid_map qid_map[DLB2_MAX_NUM_QIDS_PER_LDB_CQ];
+	struct process_local_port_data port_data;
 	u32 hist_list_entry_base;
 	u32 hist_list_entry_limit;
 	u32 ref_cnt;

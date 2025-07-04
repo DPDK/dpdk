@@ -5,7 +5,7 @@ Network Interface Controller Drivers
 ====================================
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 1
     :numbered:
 
     overview
@@ -43,8 +43,6 @@ Network Interface Controller Drivers
     ionic
     ipn3ke
     ixgbe
-    kni
-    liquidio
     mana
     memif
     mlx4
@@ -55,12 +53,15 @@ Network Interface Controller Drivers
     nfb
     nfp
     ngbe
+    ntnic
     null
     octeon_ep
     octeontx
     pcap_ring
     pfe
     qede
+    r8169
+    rnp
     sfc_efx
     softnic
     tap
@@ -70,3 +71,5 @@ Network Interface Controller Drivers
     vhost
     virtio
     vmxnet3
+    xsc
+    zxdh

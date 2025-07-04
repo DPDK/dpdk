@@ -147,10 +147,10 @@ struct mrvl_priv {
 	uint16_t bpool_init_size; /**< Configured BPool size  */
 
 	/** Mapping for DPDK rx queue->(TC, MRVL relative inq) */
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint8_t tc;  /**< Traffic Class */
 		uint8_t inq; /**< Relative in-queue number */
-	} rxq_map[MRVL_PP2_RXQ_MAX] __rte_cache_aligned;
+	} rxq_map[MRVL_PP2_RXQ_MAX];
 
 	/* Configuration data, used sporadically. */
 	uint8_t pp_id;
@@ -200,10 +200,10 @@ extern const struct rte_tm_ops mrvl_tm_ops;
 
 /** Current log type. */
 extern int mrvl_logtype;
+#define RTE_LOGTYPE_MRVL mrvl_logtype
 
-#define MRVL_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mrvl_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define MRVL_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MRVL, "%s(): ", __func__, __VA_ARGS__)
 
 extern struct pp2_bpool *dummy_pool[PP2_NUM_PKT_PROC];
 

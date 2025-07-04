@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_IPSEC_H__
 #define __INCLUDE_RTE_SWX_IPSEC_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Internet Protocol Security (IPsec)
@@ -52,6 +48,11 @@ extern "C" {
 
 #include <rte_compat.h>
 #include <rte_crypto_sym.h>
+#include <rte_ip6.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * IPsec Setup API
@@ -87,7 +88,6 @@ struct rte_swx_ipsec_burst_size {
 
 /**
  * IPsec instance configuration parameters
- *
  */
 struct rte_swx_ipsec_params {
 	/** Input packet queue. */
@@ -111,7 +111,6 @@ struct rte_swx_ipsec_params {
 
 /**
  * IPsec input packet meta-data
- *
  */
 struct rte_swx_ipsec_input_packet_metadata {
 	/* SA ID. */
@@ -250,10 +249,10 @@ struct rte_swx_ipsec_sa_encap_params {
 		/** IPv6 header. */
 		struct {
 			/** Source address. */
-			struct in6_addr src_addr;
+			struct rte_ipv6_addr src_addr;
 
 			/** Destination address. */
-			struct in6_addr dst_addr;
+			struct rte_ipv6_addr dst_addr;
 		} ipv6;
 	} tunnel;
 };
@@ -265,7 +264,6 @@ struct rte_swx_ipsec_sa_params {
 
 	/** Crypto operation parameters. */
 	struct {
-		RTE_STD_C11
 		union {
 			struct {
 				/** Crypto cipher operation parameters. */

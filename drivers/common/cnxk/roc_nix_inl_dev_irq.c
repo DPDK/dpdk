@@ -41,6 +41,7 @@ again:
 			goto again;
 	}
 
+	inl_dev->sso_work_cnt += cnt;
 	plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
 }
 

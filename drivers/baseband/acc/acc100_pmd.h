@@ -11,29 +11,26 @@
 #include "acc_common.h"
 
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, acc100_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, ACC100, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-#define rte_bbdev_log_debug(fmt, ...) \
-		rte_bbdev_log(DEBUG, "acc100_pmd: " fmt, \
-		##__VA_ARGS__)
+#define rte_bbdev_log_debug(...) \
+	rte_bbdev_log(DEBUG, __VA_ARGS__)
 #else
-#define rte_bbdev_log_debug(fmt, ...)
+#define rte_bbdev_log_debug(...)
 #endif
-
-#define ACC100_VARIANT 0
-#define ACC101_VARIANT 1
 
 /* ACC100 PF and VF driver names */
 #define ACC100PF_DRIVER_NAME           intel_acc100_pf
 #define ACC100VF_DRIVER_NAME           intel_acc100_vf
 
-/* ACC100 PCI vendor & device IDs */
+/* ACC PCI vendor & device IDs */
 #define ACC100_VENDOR_ID           (0x8086)
 #define ACC100_PF_DEVICE_ID        (0x0d5c)
 #define ACC100_VF_DEVICE_ID        (0x0d5d)
+#define VRB1_PF_DEVICE_ID          (0x57C0)
+#define VRB2_PF_DEVICE_ID          (0x57C2)
 
 /* Values used in writing to the registers */
 #define ACC100_REG_IRQ_EN_ALL          0x1FF83FF  /* Enable all interrupts */

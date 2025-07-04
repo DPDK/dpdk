@@ -9,6 +9,13 @@
 
 #define QAT_PMD_COMP_SGL_DEF_SEGMENTS 16
 
+#define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
+
+static const char *const arguments[] = {
+	COMP_ENQ_THRESHOLD_NAME,
+	NULL
+};
+
 struct qat_comp_gen_dev_ops qat_comp_gen_dev_ops[QAT_N_GENS];
 
 struct stream_create_info {
@@ -629,22 +636,24 @@ qat_comp_pmd_dequeue_first_op_burst(void *qp, struct rte_comp_op **ops,
 {
 	uint16_t ret = qat_comp_dequeue_burst(qp, ops, nb_ops);
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
+	struct qat_comp_dev_private *dev =
+		tmp_qp->qat_dev->pmd[QAT_SERVICE_COMPRESSION];
 
 	if (ret) {
 		if ((*ops)->debug_status ==
 				(uint64_t)ERR_CODE_QAT_COMP_WRONG_FW) {
-			tmp_qp->qat_dev->comp_dev->compressdev->enqueue_burst =
+			dev->compressdev->enqueue_burst =
 					qat_comp_pmd_enq_deq_dummy_op_burst;
-			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
+			dev->compressdev->dequeue_burst =
 					qat_comp_pmd_enq_deq_dummy_op_burst;
 
-			tmp_qp->qat_dev->comp_dev->compressdev->dev_ops =
+			dev->compressdev->dev_ops =
 					&compress_qat_dummy_ops;
 			QAT_LOG(ERR,
 					"This QAT hardware doesn't support compression operation");
 
 		} else {
-			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
+			dev->compressdev->dequeue_burst =
 					qat_comp_dequeue_burst;
 		}
 	}
@@ -662,11 +671,9 @@ static const struct rte_driver compdev_qat_driver = {
 	.alias = qat_comp_drv_name
 };
 
-int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param)
+static int
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 {
-	int i = 0;
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	struct rte_compressdev_pmd_init_params init_params = {
@@ -682,11 +689,19 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	const struct qat_comp_gen_dev_ops *qat_comp_gen_ops =
 			&qat_comp_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint64_t capa_size;
+	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
+	char *cmdline = NULL;
 
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "comp");
 	QAT_LOG(DEBUG, "Creating QAT COMP device %s", name);
 
+	if (qat_pci_dev->qat_dev_gen == QAT_VQAT &&
+		sub_id != ADF_VQAT_DC_PCI_SUBSYSTEM_ID) {
+		QAT_LOG(ERR, "Device (vqat instance) %s does not support compression",
+				name);
+		return -EFAULT;
+	}
 	if (qat_comp_gen_ops->compressdev_ops == NULL) {
 		QAT_LOG(DEBUG, "Device %s does not support compression", name);
 		return -ENOTSUP;
@@ -758,15 +773,15 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	memcpy(comp_dev->capa_mz->addr, capabilities, capa_size);
 	comp_dev->qat_dev_capabilities = comp_dev->capa_mz->addr;
 
-	while (1) {
-		if (qat_dev_cmd_param[i].name == NULL)
-			break;
-		if (!strcmp(qat_dev_cmd_param[i].name, COMP_ENQ_THRESHOLD_NAME))
-			comp_dev->min_enq_burst_threshold =
-					qat_dev_cmd_param[i].val;
-		i++;
+	cmdline = qat_dev_cmdline_get_val(qat_pci_dev,
+			COMP_ENQ_THRESHOLD_NAME);
+	if (cmdline) {
+		comp_dev->min_enq_burst_threshold =
+			atoi(cmdline) > MAX_QP_THRESHOLD_SIZE ?
+			MAX_QP_THRESHOLD_SIZE :
+			atoi(cmdline);
 	}
-	qat_pci_dev->comp_dev = comp_dev;
+	qat_pci_dev->pmd[QAT_SERVICE_COMPRESSION] = comp_dev;
 
 	QAT_LOG(DEBUG,
 		    "Created QAT COMP device %s as compressdev instance %d",
@@ -774,26 +789,33 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	return 0;
 }
 
-int
+static int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev)
 {
-	struct qat_comp_dev_private *comp_dev;
+	struct qat_comp_dev_private *dev;
 
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
 
-	comp_dev = qat_pci_dev->comp_dev;
-	if (comp_dev == NULL)
+	dev = qat_pci_dev->pmd[QAT_SERVICE_COMPRESSION];
+	if (dev == NULL)
 		return 0;
-
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_memzone_free(qat_pci_dev->comp_dev->capa_mz);
+		rte_memzone_free(dev->capa_mz);
 
 	/* clean up any resources used by the device */
-	qat_comp_dev_close(comp_dev->compressdev);
+	qat_comp_dev_close(dev->compressdev);
 
-	rte_compressdev_pmd_destroy(comp_dev->compressdev);
-	qat_pci_dev->comp_dev = NULL;
+	rte_compressdev_pmd_destroy(dev->compressdev);
+	qat_pci_dev->pmd[QAT_SERVICE_COMPRESSION] = NULL;
 
 	return 0;
+}
+
+RTE_INIT(qat_sym_init)
+{
+	qat_cmdline_defines[QAT_SERVICE_COMPRESSION] = arguments;
+	qat_service[QAT_SERVICE_COMPRESSION].name = "symmetric crypto";
+	qat_service[QAT_SERVICE_COMPRESSION].dev_create = qat_comp_dev_create;
+	qat_service[QAT_SERVICE_COMPRESSION].dev_destroy = qat_comp_dev_destroy;
 }

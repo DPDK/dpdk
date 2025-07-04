@@ -8,7 +8,9 @@ endif
 drivers = [
         'isal',
         'mlx5',
+        'nitrox',
         'octeontx',
+        'uadk',
         'zlib',
 ]
 

@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright 2017,2020 NXP
+    Copyright 2017,2020-2024 NXP
 
 
 DPAA Poll Mode Driver
@@ -136,6 +136,8 @@ RTE framework and DPAA internal components/drivers.
   The Ethernet driver is bound to a FMAN port and implements the interfaces
   needed to connect the DPAA network interface to the network stack.
   Each FMAN Port corresponds to a DPDK network interface.
+- PMD also support OH/ONIC mode, where the port works as a HW assisted virtual port
+  without actually connecting to a Physical MAC.
 
 
 Features
@@ -148,6 +150,10 @@ Features
   - Packet type information
   - Checksum offload
   - Promiscuous mode
+  - IEEE1588 PTP
+  - OH Port for inter application communication
+  - ONIC virtual port support
+
 
 DPAA Mempool Driver
 ~~~~~~~~~~~~~~~~~~~
@@ -226,6 +232,11 @@ state during application initialization:
   application want to use eventdev with DPAA device.
   Currently these queues are not used for LS1023/LS1043 platform by default.
 
+- ``DPAA_DISPLAY_FRAME_AND_PARSER_RESULT`` (default 0)
+
+  This defines the debug flag, whether to dump the detailed frame
+  and packet parsing result for the incoming packets.
+
 
 Driver compilation and testing
 ------------------------------
@@ -243,7 +254,7 @@ for details.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -c 0xff -n 1 \
+      ./<build_dir>/app/dpdk-testpmd -l 0-7 -n 1 \
         -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
 
       .....
@@ -263,6 +274,9 @@ for details.
       Port 1 Link Up - speed 10000 Mbps - full-duplex
       Done
       testpmd>
+
+* Use dev arg option ``drv_ieee1588=1`` to enable IEEE 1588 support
+  at driver level, e.g. ``dpaa:fm1-mac3,drv_ieee1588=1``.
 
 FMAN Config
 -----------
@@ -316,6 +330,60 @@ FMLIB
    The location for the fmd driver as used by FMLIB and FMC is as follows:
    `Kernel FMD Driver
    <https://source.codeaurora.org/external/qoriq/qoriq-components/linux/tree/drivers/net/ethernet/freescale/sdk_fman?h=linux-4.19-rt>`_.
+
+OH Port
+~~~~~~~
+   Offline(O/H) port is a type of hardware port
+   which is able to dequeue and enqueue from/to a QMan queue.
+   The FMan applies a Parse Classify Distribute (PCD) flow
+   and (if configured to do so) enqueues the frame back in a QMan queue.
+
+   The FMan is able to copy the frame into new buffers and enqueue back to the QMan.
+   This means these ports can be used to send and receive packets
+   between two applications as well.
+
+   An O/H port have two queues.
+   One to receive and one to send the packets.
+   It will loopback all the packets on Tx queue which are received on Rx queue.
+
+
+		--------      Tx Packets      ---------
+		| App  | - -  - - - - - - - > | O/H   |
+		|      | < - - - - - - - - -  | Port  |
+		--------      Rx Packets      ---------
+
+
+ONIC
+~~~~
+   To use OH port to communicate between two applications,
+   we can assign Rx port of an O/H port to Application 1
+   and Tx port to Application 2
+   so that Application 1 can send packets to Application 2.
+   Similarly, we can assign Tx port of another O/H port to Application 1
+   and Rx port to Application 2
+   so that Application 2 can send packets to Application 1.
+
+   ONIC is logically defined to achieve it.
+   Internally it will use one Rx queue of an O/H port
+   and one Tx queue of another O/H port.
+   For application, it will behave as single O/H port.
+
+   +------+         +------+        +------+        +------+        +------+
+   |      |   Tx    |      |   Rx   | O/H  |   Tx   |      |   Rx   |      |
+   |      | - - - > |      | -  - > | Port | -  - > |      | -  - > |      |
+   |      |         |      |        |  1   |        |      |        |      |
+   |      |         |      |        +------+        |      |        |      |
+   | App  |         | ONIC |                        | ONIC |        | App  |
+   |  1   |         | Port |                        | Port |        |  2   |
+   |      |         |  1   |        +------+        |  2   |        |      |
+   |      |   Rx    |      |   Tx   | O/H  |   Rx   |      |   Tx   |      |
+   |      | < - - - |      | < - - -| Port | < - - -|      | < - - -|      |
+   |      |         |      |        |  2   |        |      |        |      |
+   +------+         +------+        +------+        +------+        +------+
+
+   All the packets received by ONIC port 1 will be send to ONIC port 2 and vice versa.
+   These ports can be used by DPDK applications just like physical ports.
+
 
 VSP (Virtual Storage Profile)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

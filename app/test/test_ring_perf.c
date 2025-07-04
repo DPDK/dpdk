@@ -22,19 +22,19 @@
 
 #define RING_NAME "RING_PERF"
 #define RING_SIZE 4096
-#define MAX_BURST 32
+#define MAX_BURST 256
 
 /*
  * the sizes to enqueue and dequeue in testing
  * (marked volatile so they won't be seen as compile-time constants)
  */
-static const volatile unsigned bulk_sizes[] = { 8, 32 };
+static const volatile unsigned int bulk_sizes[] = { 8, 32, 64, 128, 256 };
 
 struct lcore_pair {
 	unsigned c1, c2;
 };
 
-static volatile unsigned lcore_count = 0;
+static RTE_ATOMIC(unsigned int) lcore_count;
 
 static void
 test_ring_print_test_string(unsigned int api_type, int esize,
@@ -43,26 +43,30 @@ test_ring_print_test_string(unsigned int api_type, int esize,
 	if (esize == -1)
 		printf("legacy APIs");
 	else
-		printf("elem APIs: element size %dB", esize);
+		printf("elem APIs (size:%2dB)", esize);
 
 	if (api_type == TEST_RING_IGNORE_API_TYPE)
 		return;
 
 	if ((api_type & TEST_RING_THREAD_DEF) == TEST_RING_THREAD_DEF)
-		printf(": default enqueue/dequeue: ");
+		printf(" - default enqueue/dequeue");
 	else if ((api_type & TEST_RING_THREAD_SPSC) == TEST_RING_THREAD_SPSC)
-		printf(": SP/SC: ");
+		printf(" - SP/SC");
 	else if ((api_type & TEST_RING_THREAD_MPMC) == TEST_RING_THREAD_MPMC)
-		printf(": MP/MC: ");
+		printf(" - MP/MC");
 
 	if ((api_type & TEST_RING_ELEM_SINGLE) == TEST_RING_ELEM_SINGLE)
-		printf("single: ");
+		printf(" - single - ");
 	else if ((api_type & TEST_RING_ELEM_BULK) == TEST_RING_ELEM_BULK)
-		printf("bulk (size: %u): ", bsz);
+		printf(" - bulk (n:%-3u) - ", bsz);
 	else if ((api_type & TEST_RING_ELEM_BURST) == TEST_RING_ELEM_BURST)
-		printf("burst (size: %u): ", bsz);
+		printf(" - burst (n:%-3u) - ", bsz);
+	else if ((api_type & (TEST_RING_ELEM_BURST_ZC |
+			TEST_RING_ELEM_BURST_ZC_COMPRESS_PTR_16 |
+			TEST_RING_ELEM_BURST_ZC_COMPRESS_PTR_32)) != 0)
+		printf(" - burst zero copy (n:%-3u) - ", bsz);
 
-	printf("%.2F\n", value);
+	printf("cycles per elem: %.3F\n", value);
 }
 
 /**** Functions to analyse our core mask to get cores for different tests ***/
@@ -144,28 +148,33 @@ static void
 test_empty_dequeue(struct rte_ring *r, const int esize,
 			const unsigned int api_type)
 {
-	const unsigned int iter_shift = 26;
+	const unsigned int iter_shift = 29;
 	const unsigned int iterations = 1 << iter_shift;
 	unsigned int i = 0;
 	void *burst[MAX_BURST];
 
+	const unsigned int bulk_iterations = iterations / bulk_sizes[0];
 	const uint64_t start = rte_rdtsc();
-	for (i = 0; i < iterations; i++)
+	for (i = 0; i < bulk_iterations; i++)
 		test_ring_dequeue(r, burst, esize, bulk_sizes[0], api_type);
 	const uint64_t end = rte_rdtsc();
 
 	test_ring_print_test_string(api_type, esize, bulk_sizes[0],
-					((double)(end - start)) / iterations);
+					((double)end - start) / iterations);
 }
 
-/*
- * for the separate enqueue and dequeue threads they take in one param
- * and return two. Input = burst size, output = cycle average for sp/sc & mp/mc
- */
-struct thread_params {
+/* describes the ring used by the enqueue and dequeue thread */
+struct ring_params {
 	struct rte_ring *r;
-	unsigned size;        /* input value, the burst size */
-	double spsc, mpmc;    /* output value, the single or multi timings */
+	unsigned int elem_size;
+	unsigned int bulk_sizes_i; /* index into bulk_size array */
+	unsigned int ring_flags; /* flags for test_ring_enqueue/dequeue */
+};
+
+/* Used to specify enqueue and dequeue ring operations and their results */
+struct thread_params {
+	struct ring_params *ring_params;
+	double *results; /* result array size must be equal to bulk_sizes */
 };
 
 /*
@@ -174,63 +183,53 @@ struct thread_params {
  * flag == 1 -> dequeue
  */
 static __rte_always_inline int
-enqueue_dequeue_bulk_helper(const unsigned int flag, const int esize,
-	struct thread_params *p)
+enqueue_dequeue_bulk_helper(const unsigned int flag, struct thread_params *p)
 {
 	int ret;
-	const unsigned int iter_shift = 15;
+	const unsigned int iter_shift = 22;
 	const unsigned int iterations = 1 << iter_shift;
-	struct rte_ring *r = p->r;
-	unsigned int bsize = p->size;
 	unsigned int i;
 	void *burst = NULL;
+	unsigned int n_remaining;
+	const unsigned int bulk_n = bulk_sizes[p->ring_params->bulk_sizes_i];
 
-#ifdef RTE_USE_C11_MEM_MODEL
-	if (__atomic_add_fetch(&lcore_count, 1, __ATOMIC_RELAXED) != 2)
-#else
-	if (__sync_add_and_fetch(&lcore_count, 1) != 2)
-#endif
-		while(lcore_count != 2)
+	if (rte_atomic_fetch_add_explicit(&lcore_count, 1, rte_memory_order_relaxed) + 1 != 2) {
+		while (rte_atomic_load_explicit(&lcore_count, rte_memory_order_relaxed) != 2)
 			rte_pause();
+	}
 
-	burst = test_ring_calloc(MAX_BURST, esize);
+	burst = test_ring_calloc(MAX_BURST, p->ring_params->elem_size);
 	if (burst == NULL)
 		return -1;
 
 	const uint64_t sp_start = rte_rdtsc();
-	for (i = 0; i < iterations; i++)
+	const unsigned int bulk_iterations = iterations / bulk_n;
+	for (i = 0; i < bulk_iterations; i++) {
+		n_remaining = bulk_n;
 		do {
 			if (flag == 0)
-				ret = test_ring_enqueue(r, burst, esize, bsize,
-						TEST_RING_THREAD_SPSC |
-						TEST_RING_ELEM_BULK);
+				ret = test_ring_enqueue(p->ring_params->r,
+						burst,
+						p->ring_params->elem_size,
+						n_remaining,
+						p->ring_params->ring_flags);
 			else if (flag == 1)
-				ret = test_ring_dequeue(r, burst, esize, bsize,
-						TEST_RING_THREAD_SPSC |
-						TEST_RING_ELEM_BULK);
+				ret = test_ring_dequeue(p->ring_params->r,
+						burst,
+						p->ring_params->elem_size,
+						n_remaining,
+						p->ring_params->ring_flags);
 			if (ret == 0)
 				rte_pause();
-		} while (!ret);
+			else
+				n_remaining -= ret;
+		} while (n_remaining > 0);
+	}
 	const uint64_t sp_end = rte_rdtsc();
 
-	const uint64_t mp_start = rte_rdtsc();
-	for (i = 0; i < iterations; i++)
-		do {
-			if (flag == 0)
-				ret = test_ring_enqueue(r, burst, esize, bsize,
-						TEST_RING_THREAD_MPMC |
-						TEST_RING_ELEM_BULK);
-			else if (flag == 1)
-				ret = test_ring_dequeue(r, burst, esize, bsize,
-						TEST_RING_THREAD_MPMC |
-						TEST_RING_ELEM_BULK);
-			if (ret == 0)
-				rte_pause();
-		} while (!ret);
-	const uint64_t mp_end = rte_rdtsc();
+	p->results[p->ring_params->bulk_sizes_i] =
+			((double)sp_end - sp_start) / iterations;
 
-	p->spsc = ((double)(sp_end - sp_start))/(iterations * bsize);
-	p->mpmc = ((double)(mp_end - mp_start))/(iterations * bsize);
 	return 0;
 }
 
@@ -243,15 +242,7 @@ enqueue_bulk(void *p)
 {
 	struct thread_params *params = p;
 
-	return enqueue_dequeue_bulk_helper(0, -1, params);
-}
-
-static int
-enqueue_bulk_16B(void *p)
-{
-	struct thread_params *params = p;
-
-	return enqueue_dequeue_bulk_helper(0, 16, params);
+	return enqueue_dequeue_bulk_helper(0, params);
 }
 
 /*
@@ -263,15 +254,7 @@ dequeue_bulk(void *p)
 {
 	struct thread_params *params = p;
 
-	return enqueue_dequeue_bulk_helper(1, -1, params);
-}
-
-static int
-dequeue_bulk_16B(void *p)
-{
-	struct thread_params *params = p;
-
-	return enqueue_dequeue_bulk_helper(1, 16, params);
+	return enqueue_dequeue_bulk_helper(1, params);
 }
 
 /*
@@ -279,48 +262,38 @@ dequeue_bulk_16B(void *p)
  * used to measure ring perf between hyperthreads, cores and sockets.
  */
 static int
-run_on_core_pair(struct lcore_pair *cores, struct rte_ring *r, const int esize)
+run_on_core_pair(struct lcore_pair *cores,
+		struct thread_params *param1, struct thread_params *param2)
 {
-	lcore_function_t *f1, *f2;
-	struct thread_params param1 = {0}, param2 = {0};
 	unsigned i;
-
-	if (esize == -1) {
-		f1 = enqueue_bulk;
-		f2 = dequeue_bulk;
-	} else {
-		f1 = enqueue_bulk_16B;
-		f2 = dequeue_bulk_16B;
-	}
+	struct ring_params *ring_params = param1->ring_params;
 
 	for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
-		lcore_count = 0;
-		param1.size = param2.size = bulk_sizes[i];
-		param1.r = param2.r = r;
+		rte_atomic_store_explicit(&lcore_count, 0, rte_memory_order_relaxed);
+		ring_params->bulk_sizes_i = i;
 		if (cores->c1 == rte_get_main_lcore()) {
-			rte_eal_remote_launch(f2, &param2, cores->c2);
-			f1(&param1);
+			rte_eal_remote_launch(dequeue_bulk, param2, cores->c2);
+			enqueue_bulk(param1);
 			rte_eal_wait_lcore(cores->c2);
 		} else {
-			rte_eal_remote_launch(f1, &param1, cores->c1);
-			rte_eal_remote_launch(f2, &param2, cores->c2);
+			rte_eal_remote_launch(enqueue_bulk, param1, cores->c1);
+			rte_eal_remote_launch(dequeue_bulk, param2, cores->c2);
 			if (rte_eal_wait_lcore(cores->c1) < 0)
 				return -1;
 			if (rte_eal_wait_lcore(cores->c2) < 0)
 				return -1;
 		}
 		test_ring_print_test_string(
-			TEST_RING_THREAD_SPSC | TEST_RING_ELEM_BULK,
-			esize, bulk_sizes[i], param1.spsc + param2.spsc);
-		test_ring_print_test_string(
-			TEST_RING_THREAD_MPMC | TEST_RING_ELEM_BULK,
-			esize, bulk_sizes[i], param1.mpmc + param2.mpmc);
+				ring_params->ring_flags,
+				ring_params->elem_size,
+				bulk_sizes[i],
+				param1->results[i] + param2->results[i]);
 	}
 
 	return 0;
 }
 
-static uint32_t synchro;
+static RTE_ATOMIC(uint32_t) synchro;
 static uint64_t queue_count[RTE_MAX_LCORE];
 
 #define TIME_MS 100
@@ -333,7 +306,7 @@ load_loop_fn_helper(struct thread_params *p, const int esize)
 	uint64_t hz = rte_get_timer_hz();
 	uint64_t lcount = 0;
 	const unsigned int lcore = rte_lcore_id();
-	struct thread_params *params = p;
+	struct ring_params *ring_params = p->ring_params;
 	void *burst = NULL;
 
 	burst = test_ring_calloc(MAX_BURST, esize);
@@ -342,13 +315,16 @@ load_loop_fn_helper(struct thread_params *p, const int esize)
 
 	/* wait synchro for workers */
 	if (lcore != rte_get_main_lcore())
-		rte_wait_until_equal_32(&synchro, 1, __ATOMIC_RELAXED);
+		rte_wait_until_equal_32((uint32_t *)(uintptr_t)&synchro, 1,
+				rte_memory_order_relaxed);
 
 	begin = rte_get_timer_cycles();
 	while (time_diff < hz * TIME_MS / 1000) {
-		test_ring_enqueue(params->r, burst, esize, params->size,
+		test_ring_enqueue(ring_params->r, burst, esize,
+				ring_params->elem_size,
 				TEST_RING_THREAD_MPMC | TEST_RING_ELEM_BULK);
-		test_ring_dequeue(params->r, burst, esize, params->size,
+		test_ring_dequeue(ring_params->r, burst, esize,
+				ring_params->elem_size,
 				TEST_RING_THREAD_MPMC | TEST_RING_ELEM_BULK);
 		lcount++;
 		time_diff = rte_get_timer_cycles() - begin;
@@ -380,7 +356,8 @@ static int
 run_on_all_cores(struct rte_ring *r, const int esize)
 {
 	uint64_t total;
-	struct thread_params param;
+	struct ring_params ring_params = {0};
+	struct thread_params params = { .ring_params = &ring_params };
 	lcore_function_t *lcore_f;
 	unsigned int i, c;
 
@@ -389,21 +366,20 @@ run_on_all_cores(struct rte_ring *r, const int esize)
 	else
 		lcore_f = load_loop_fn_16B;
 
-	memset(&param, 0, sizeof(struct thread_params));
 	for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
 		total = 0;
 		printf("\nBulk enq/dequeue count on size %u\n", bulk_sizes[i]);
-		param.size = bulk_sizes[i];
-		param.r = r;
+		params.ring_params->bulk_sizes_i = i;
+		params.ring_params->r = r;
 
 		/* clear synchro and start workers */
-		__atomic_store_n(&synchro, 0, __ATOMIC_RELAXED);
-		if (rte_eal_mp_remote_launch(lcore_f, &param, SKIP_MAIN) < 0)
+		rte_atomic_store_explicit(&synchro, 0, rte_memory_order_relaxed);
+		if (rte_eal_mp_remote_launch(lcore_f, &params, SKIP_MAIN) < 0)
 			return -1;
 
 		/* start synchro and launch test on main */
-		__atomic_store_n(&synchro, 1, __ATOMIC_RELAXED);
-		lcore_f(&param);
+		rte_atomic_store_explicit(&synchro, 1, rte_memory_order_relaxed);
+		lcore_f(&params);
 
 		rte_eal_mp_wait_lcore();
 
@@ -462,9 +438,9 @@ static int
 test_burst_bulk_enqueue_dequeue(struct rte_ring *r, const int esize,
 	const unsigned int api_type)
 {
-	const unsigned int iter_shift = 23;
+	const unsigned int iter_shift = 26;
 	const unsigned int iterations = 1 << iter_shift;
-	unsigned int sz, i = 0;
+	unsigned int sz, i;
 	void **burst = NULL;
 
 	burst = test_ring_calloc(MAX_BURST, esize);
@@ -472,17 +448,18 @@ test_burst_bulk_enqueue_dequeue(struct rte_ring *r, const int esize,
 		return -1;
 
 	for (sz = 0; sz < RTE_DIM(bulk_sizes); sz++) {
+		const unsigned int n = iterations / bulk_sizes[sz];
 		const uint64_t start = rte_rdtsc();
-		for (i = 0; i < iterations; i++) {
+		for (i = 0; i < n; i++) {
 			test_ring_enqueue(r, burst, esize, bulk_sizes[sz],
-						api_type);
+					api_type);
 			test_ring_dequeue(r, burst, esize, bulk_sizes[sz],
-						api_type);
+					api_type);
 		}
 		const uint64_t end = rte_rdtsc();
 
 		test_ring_print_test_string(api_type, esize, bulk_sizes[sz],
-					((double)(end - start)) / iterations);
+					((double)end - start) / iterations);
 	}
 
 	rte_free(burst);
@@ -490,12 +467,43 @@ test_burst_bulk_enqueue_dequeue(struct rte_ring *r, const int esize,
 	return 0;
 }
 
+static __rte_always_inline int
+test_ring_perf_esize_run_on_two_cores(
+		struct thread_params *param1, struct thread_params *param2)
+{
+	struct lcore_pair cores;
+
+	if (get_two_hyperthreads(&cores) == 0) {
+		printf("\n### Testing using two hyperthreads ###\n");
+		if (run_on_core_pair(&cores, param1, param2) < 0)
+			return -1;
+	}
+	if (get_two_cores(&cores) == 0) {
+		printf("\n### Testing using two physical cores ###\n");
+		if (run_on_core_pair(&cores, param1, param2) < 0)
+			return -1;
+	}
+	if (get_two_sockets(&cores) == 0) {
+		printf("\n### Testing using two NUMA nodes ###\n");
+		if (run_on_core_pair(&cores, param1, param2) < 0)
+			return -1;
+	}
+	return 0;
+}
+
 /* Run all tests for a given element size */
 static __rte_always_inline int
 test_ring_perf_esize(const int esize)
 {
-	struct lcore_pair cores;
 	struct rte_ring *r = NULL;
+	double results_enq[RTE_DIM(bulk_sizes)];
+	double results_deq[RTE_DIM(bulk_sizes)];
+	struct ring_params ring_params = {
+			.elem_size = esize, .ring_flags = TEST_RING_ELEM_BULK };
+	struct thread_params param1 = {
+			.ring_params = &ring_params, .results = results_enq };
+	struct thread_params param2 = {
+			.ring_params = &ring_params, .results = results_deq };
 
 	/*
 	 * Performance test for legacy/_elem APIs
@@ -535,22 +543,13 @@ test_ring_perf_esize(const int esize)
 	test_empty_dequeue(r, esize,
 			TEST_RING_THREAD_MPMC | TEST_RING_ELEM_BULK);
 
-	if (get_two_hyperthreads(&cores) == 0) {
-		printf("\n### Testing using two hyperthreads ###\n");
-		if (run_on_core_pair(&cores, r, esize) < 0)
-			goto test_fail;
-	}
+	ring_params.r = r;
 
-	if (get_two_cores(&cores) == 0) {
-		printf("\n### Testing using two physical cores ###\n");
-		if (run_on_core_pair(&cores, r, esize) < 0)
-			goto test_fail;
-	}
-	if (get_two_sockets(&cores) == 0) {
-		printf("\n### Testing using two NUMA nodes ###\n");
-		if (run_on_core_pair(&cores, r, esize) < 0)
-			goto test_fail;
-	}
+	ring_params.ring_flags = TEST_RING_THREAD_SPSC | TEST_RING_ELEM_BULK;
+	test_ring_perf_esize_run_on_two_cores(&param1, &param2);
+
+	ring_params.ring_flags = TEST_RING_THREAD_MPMC | TEST_RING_ELEM_BULK;
+	test_ring_perf_esize_run_on_two_cores(&param1, &param2);
 
 	printf("\n### Testing using all worker nodes ###\n");
 	if (run_on_all_cores(r, esize) < 0)
@@ -566,6 +565,109 @@ test_fail:
 	return -1;
 }
 
+
+static __rte_always_inline int
+test_ring_perf_compression(void)
+{
+	double results1[RTE_DIM(bulk_sizes)];
+	double results2[RTE_DIM(bulk_sizes)];
+	double results1_comp[2][RTE_DIM(bulk_sizes)];
+	double results2_comp[2][RTE_DIM(bulk_sizes)];
+
+	struct lcore_pair cores;
+	int ret = -1;
+	unsigned int i, j;
+	struct ring_params ring_params = { .elem_size = sizeof(void *) };
+	struct thread_params param1 = {
+			.ring_params = &ring_params, .results = results1 };
+	struct thread_params param2 = {
+			.ring_params = &ring_params, .results = results2 };
+
+	printf("\n### Testing compression gain ###");
+
+	ring_params.r = rte_ring_create_elem(
+			RING_NAME, sizeof(void *),
+			RING_SIZE, rte_socket_id(),
+			RING_F_SP_ENQ | RING_F_SC_DEQ);
+
+	if (ring_params.r == NULL)
+		return -1;
+
+	if (get_two_cores(&cores) == 0) {
+		printf("\n### Testing zero copy ###\n");
+		ring_params.ring_flags = TEST_RING_ELEM_BURST_ZC;
+		ret = run_on_core_pair(&cores, &param1, &param2);
+	}
+
+	rte_ring_free(ring_params.r);
+
+	if (ret != 0)
+		return ret;
+
+	/* rings allow only multiples of 4 as sizes,
+	 * we allocate size 4 despite only using 2 bytes
+	 * and use half of RING_SIZE as the number of elements
+	 */
+	ring_params.r = rte_ring_create_elem(
+			RING_NAME, sizeof(uint32_t),
+			RING_SIZE / 2, rte_socket_id(),
+			RING_F_SP_ENQ | RING_F_SC_DEQ);
+
+	if (ring_params.r == NULL)
+		return -1;
+
+	param1.results = results1_comp[0];
+	param2.results = results2_comp[0];
+
+	if (get_two_cores(&cores) == 0) {
+		printf("\n### Testing zero copy with compression (16b) ###\n");
+		ring_params.ring_flags =
+				TEST_RING_ELEM_BURST_ZC_COMPRESS_PTR_16;
+		ret = run_on_core_pair(&cores, &param1, &param2);
+	}
+
+	rte_ring_free(ring_params.r);
+
+	if (ret != 0)
+		return ret;
+
+	ring_params.r = rte_ring_create_elem(
+			RING_NAME, sizeof(uint32_t),
+			RING_SIZE, rte_socket_id(),
+			RING_F_SP_ENQ | RING_F_SC_DEQ);
+
+	if (ring_params.r == NULL)
+		return -1;
+
+	param1.results = results1_comp[1];
+	param2.results = results2_comp[1];
+
+	if (get_two_cores(&cores) == 0) {
+		printf("\n### Testing zero copy with compression (32b) ###\n");
+		ring_params.ring_flags =
+				TEST_RING_ELEM_BURST_ZC_COMPRESS_PTR_32;
+		ret = run_on_core_pair(&cores, &param1, &param2);
+	}
+
+	rte_ring_free(ring_params.r);
+
+	for (j = 0; j < 2; j++) {
+		printf("\n### Potential gain from compression (%d-bit offsets) "
+		"###\n", (j + 1) * 16);
+		for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
+			const double result = results1[i] + results2[i];
+			const double result_comp = results1_comp[j][i] +
+				results2_comp[j][i];
+			const double gain = 100 - (result_comp / result) * 100;
+
+			printf("Gain of %5.1F%% for burst of %-3u elems\n",
+					gain, bulk_sizes[i]);
+		}
+	}
+
+	return ret;
+}
+
 static int
 test_ring_perf(void)
 {
@@ -576,7 +678,11 @@ test_ring_perf(void)
 	if (test_ring_perf_esize(16) == -1)
 		return -1;
 
+	/* Test for performance gain of compression */
+	if (test_ring_perf_compression() == -1)
+		return -1;
+
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(ring_perf_autotest, test_ring_perf);
+REGISTER_PERF_TEST(ring_perf_autotest, test_ring_perf);

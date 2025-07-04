@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <rte_common.h>
 #include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus
@@ -126,6 +127,15 @@ struct rte_hash_rcu_config {
 struct rte_hash;
 
 /**
+ * De-allocate all memory used by hash table.
+ *
+ * @param h
+ *   Hash table to free, if NULL, the function does nothing.
+ */
+void
+rte_hash_free(struct rte_hash *h);
+
+/**
  * Create a new hash table.
  *
  * @param params
@@ -143,7 +153,8 @@ struct rte_hash;
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_hash *
-rte_hash_create(const struct rte_hash_parameters *params);
+rte_hash_create(const struct rte_hash_parameters *params)
+	__rte_malloc __rte_dealloc(rte_hash_free, 1);
 
 /**
  * Set a new hash compare function other than the default one.
@@ -170,16 +181,6 @@ void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func);
  */
 struct rte_hash *
 rte_hash_find_existing(const char *name);
-
-/**
- * De-allocate all memory used by hash table.
- *
- * @param h
- *   Hash table to free, if NULL, the function does nothing.
- *
- */
-void
-rte_hash_free(struct rte_hash *h);
 
 /**
  * Reset all hash structure, by zeroing all entries.
@@ -287,7 +288,7 @@ rte_hash_add_key_with_hash_data(const struct rte_hash *h, const void *key,
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key. This
  *     unique key id may be larger than the user specified entry count
  *     when RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD flag is set.
@@ -311,7 +312,7 @@ rte_hash_add_key(const struct rte_hash *h, const void *key);
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOSPC if there is no space in the hash for this key.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key. This
  *     unique key ID may be larger than the user specified entry count
  *     when RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD flag is set.
@@ -342,7 +343,7 @@ rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -374,7 +375,7 @@ rte_hash_del_key(const struct rte_hash *h, const void *key);
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -441,7 +442,7 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  *   - -EINVAL if the parameters are invalid.
@@ -466,7 +467,7 @@ rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data);
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  *   - -EINVAL if the parameters are invalid.
@@ -489,7 +490,7 @@ rte_hash_lookup_with_hash_data(const struct rte_hash *h, const void *key,
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -511,7 +512,7 @@ rte_hash_lookup(const struct rte_hash *h, const void *key);
  * @return
  *   - -EINVAL if the parameters are invalid.
  *   - -ENOENT if the key is not found.
- *   - A positive value that can be used by the caller as an offset into an
+ *   - A non-negative value that can be used by the caller as an offset into an
  *     array of user data. This value is unique for this key, and is the same
  *     value that was returned when the key was added.
  */
@@ -674,6 +675,30 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
  *   - ENOMEM - memory allocation failure
  */
 int rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg);
+
+/**
+ * Reclaim resources from the defer queue.
+ * This API reclaim the resources from the defer queue if rcu is enabled.
+ *
+ * @param h
+ *   The hash object to reclaim resources.
+ * @param freed
+ *   Number of resources that were freed.
+ * @param pending
+ *   Number of resources pending on the defer queue.
+ *   This number might not be accurate if multi-thread safety is configured.
+ * @param available
+ *   Number of resources that can be added to the defer queue.
+ *   This number might not be accurate if multi-thread safety is configured.
+ * @return
+ *   On success - 0
+ *   On error - 1 with error code set in rte_errno.
+ *   Possible rte_errno codes are:
+ *   - EINVAL - invalid pointer
+ */
+__rte_experimental
+int rte_hash_rcu_qsbr_dq_reclaim(struct rte_hash *h, unsigned int *freed,
+		unsigned int *pending, unsigned int *available);
 
 #ifdef __cplusplus
 }

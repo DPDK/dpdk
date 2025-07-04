@@ -5,10 +5,6 @@
 #ifndef AFU_PMD_CORE_H
 #define AFU_PMD_CORE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -19,6 +15,10 @@ extern "C" {
 #include <rte_rawdev.h>
 
 #include "ifpga_rawdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define AFU_RAWDEV_MAX_DRVS  32
 
@@ -66,7 +66,7 @@ afu_rawdev_get_priv(const struct rte_rawdev *rawdev)
 #define MHZ(f)  ((f) * 1000000)
 
 #define dsm_poll_timeout(addr, val, cond, invl, timeout) \
-({                                                       \
+__extension__ ({                                             \
 	uint64_t __wait = 0;                                 \
 	uint64_t __invl = (invl);                            \
 	uint64_t __timeout = (timeout);                      \

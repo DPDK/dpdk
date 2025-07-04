@@ -38,11 +38,155 @@ Fast-path Inference:
 * Error handling
 
 
+Compilation Prerequisites
+-------------------------
+
+This driver requires external libraries
+to optionally enable support for models compiled using Apache TVM framework.
+The following dependencies are not part of DPDK and must be installed separately:
+
+Jansson
+~~~~~~~
+
+This library enables support to parse and read JSON files.
+
+DLPack
+~~~~~~
+
+This library provides headers for open in-memory tensor structures.
+
+.. note::
+
+   DPDK CNXK ML driver requires DLPack version 0.7
+
+.. code-block:: console
+
+   git clone https://github.com/dmlc/dlpack.git
+   cd dlpack
+   git checkout v0.7 -b v0.7
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DBUILD_MOCK=OFF
+   make -C build
+   make -C build install
+
+When cross-compiling, compiler must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+DMLC
+~~~~
+
+  This is a common bricks library for building scalable
+  and portable distributed machine learning.
+
+.. code-block:: console
+
+   git clone https://github.com/dmlc/dmlc-core.git
+   cd dmlc-core
+   git checkout main
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DCMAKE_C_FLAGS="-fpermissive" \
+      -DCMAKE_CXX_FLAGS="-fpermissive" \
+      -DUSE_OPENMP=OFF
+    make -C build
+    make -C build install
+
+When cross-compiling, compiler must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+TVM
+~~~
+
+Apache TVM provides a runtime libraries used to execute models
+on CPU cores or hardware accelerators.
+
+.. note::
+
+   DPDK CNXK ML driver requires TVM version 0.10.0
+
+.. code-block:: console
+
+   git clone https://github.com/apache/tvm.git
+   cd tvm
+   git checkout v0.11.0 -b v0.11.0
+   git submodule update --init
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DBUILD_STATIC_RUNTIME=OFF
+   make -C build
+   make -C build install
+
+When cross-compiling, more options must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+   -DMACHINE_NAME=aarch64-linux-gnu \
+   -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+   -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
+
+TVMDP
+~~~~~
+
+  Marvell's `TVM Dataplane Library <https://github.com/MarvellEmbeddedProcessors/tvmdp>`_
+  works as an interface between TVM runtime and DPDK drivers.
+  TVMDP library provides a simplified C interface
+  for TVM's runtime based on C++.
+
+.. note::
+
+   TVMDP library is dependent on TVM, dlpack, jansson and dmlc-core libraries.
+
+.. code-block:: console
+
+   git clone https://github.com/MarvellEmbeddedProcessors/tvmdp.git
+   cd tvmdp
+   git checkout main
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DBUILD_SHARED_LIBS=ON
+   make -C build
+   make -C build install
+
+When cross-compiling, more options must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+   -DCMAKE_FIND_ROOT_PATH=<install_prefix>
+
+libarchive
+~~~~~~~~~~
+
+Apache TVM framework generates compiled models as tar archives.
+This library enables support to decompress and read archive files
+in tar, xz and other formats.
+
+
 Installation
 ------------
 
 The OCTEON cnxk ML PMD may be compiled natively on an OCTEON cnxk platform
 or cross-compiled on an x86 platform.
+
+In order for Meson to find the dependencies above during the configure stage,
+it is required to update environment variables as below:
+
+.. code-block:: console
+
+   CMAKE_PREFIX_PATH='<install_prefix>/lib/cmake/tvm:<install_prefix>/lib/cmake/dlpack:<install_prefix>/lib/cmake/dmlc'
+   PKG_CONFIG_PATH='<install_prefix>/lib/pkgconfig'
 
 Refer to :doc:`../platform/cnxk` for instructions to build your DPDK application.
 
@@ -71,6 +215,24 @@ Bind the ML PF device to the vfio_pci driver:
    usertools/dpdk-devbind.py -b vfio-pci 0000:00:10.0
 
 
+VDEV support
+------------
+
+On platforms which don't support ML hardware acceleration through PCI device,
+the Marvell ML CNXK PMD can execute inference operations on a vdev
+with the ML models compiled using Apache TVM framework.
+
+VDEV can be enabled by passing the EAL arguments
+
+.. code-block:: console
+
+   --vdev ml_mvtvm
+
+VDEV can also be used on platforms with ML HW accelerator.
+However to use vdev in this case, the PCI device has to be unbound.
+When PCI device is bound, creation of vdev is skipped.
+
+
 Runtime Config Options
 ----------------------
 
@@ -79,6 +241,8 @@ Runtime Config Options
   Path to the firmware binary to be loaded during device configuration.
   The parameter ``fw_path`` can be used by the user
   to load ML firmware from a custom path.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -94,6 +258,8 @@ Runtime Config Options
   by ML inference engine.
   When enabled, firmware would mask the DPE non-fatal hardware errors as warnings.
   The parameter ``enable_dpe_warnings`` is used fo this configuration.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -111,11 +277,19 @@ Runtime Config Options
   Caching of model data improves the inferencing throughput / latency for the model.
   The parameter ``cache_model_data`` is used to enable data caching.
 
+  This option is supported on PCI HW accelerator and vdev.
+
   For example::
 
      -a 0000:00:10.0,cache_model_data=0
 
-  With the above configuration, model data caching is disabled.
+  With the above configuration, model data caching is disabled on HW accelerator.
+
+  For example::
+
+     --vdev ml_mvtvm,cache_model_data=0
+
+  With the above configuration, model data caching is disabled on vdev.
 
 
 **OCM allocation mode** (default ``lowest``)
@@ -130,6 +304,8 @@ Runtime Config Options
     Search for the free slot is done starting from the lowest tile ID and lowest page ID.
   ``largest``
     Allocate OCM for the model from the slot with largest amount of free space.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -147,6 +323,8 @@ Runtime Config Options
 
   Supported page sizes by the driver are 1 KB, 2 KB, 4 KB, 8 KB and 16 KB.
   Default page size is 16 KB.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -172,6 +350,8 @@ Runtime Config Options
     Enabling spinlock version would disable restrictions on the number of queue-pairs
     that can be supported by the driver.
 
+  This option is supported only on PCI HW accelerator.
+
   For example::
 
      -a 0000:00:10.0,hw_queue_lock=1
@@ -179,21 +359,18 @@ Runtime Config Options
   With the above configuration, spinlock version of hardware enqueue function is used
   in the fast path enqueue burst operation.
 
+**Maximum queue pairs** (default ``1``)
 
-**Polling memory location** (default ``ddr``)
+  VDEV supports additional EAL arguments to configure the maximum number
+  of queue-pairs on the ML device through the option ``max_qps``.
 
-  ML cnxk driver provides the option to select the memory location to be used
-  for polling to check the inference request completion.
-  Driver supports using either the DDR address space (``ddr``)
-  or ML registers (``register``) as polling locations.
-  The parameter ``poll_mem`` is used to specify the poll location.
+  This option is supported only on vdev.
 
   For example::
 
-     -a 0000:00:10.0,poll_mem="register"
+     --vdev ml_mvtvm,max_qps=4
 
-  With the above configuration, ML cnxk driver is configured to use ML registers
-  for polling in fastpath requests.
+  With the above configuration, 4 queue-pairs are created on the vdev.
 
 
 Debugging Options
@@ -206,21 +383,39 @@ Debugging Options
    +---+------------+-------------------------------------------------------+
    | # | Component  | EAL log command                                       |
    +===+============+=======================================================+
-   | 1 | ML         | --log-level='pmd\.ml\.cnxk,8'                         |
+   | 1 | ML         | --log-level='pmd\.common\.cnxk\.ml,8'                 |
    +---+------------+-------------------------------------------------------+
 
 
 Extended stats
 --------------
 
-Marvell cnxk ML PMD supports reporting the inference latencies
-through extended statistics.
-The PMD supports the below list of 6 extended stats types per each model.
-Total number of extended stats would be equal to 6 x number of models loaded.
+Marvell cnxk ML PMD supports reporting the device and model extended statistics.
 
-.. _table_octeon_cnxk_ml_xstats_names:
+PMD supports the below list of 4 device extended stats.
 
-.. table:: OCTEON cnxk ML PMD xstats names
+.. _table_octeon_cnxk_ml_device_xstats_names:
+
+.. table:: OCTEON cnxk ML PMD device xstats names
+
+   +---+---------------------+----------------------------------------------+
+   | # | Type                | Description                                  |
+   +===+=====================+==============================================+
+   | 1 | nb_models_loaded    | Number of models loaded                      |
+   +---+---------------------+----------------------------------------------+
+   | 2 | nb_models_unloaded  | Number of models unloaded                    |
+   +---+---------------------+----------------------------------------------+
+   | 3 | nb_models_started   | Number of models started                     |
+   +---+---------------------+----------------------------------------------+
+   | 4 | nb_models_stopped   | Number of models stopped                     |
+   +---+---------------------+----------------------------------------------+
+
+
+PMD supports the below list of 6 extended stats types per each model.
+
+.. _table_octeon_cnxk_ml_model_xstats_names:
+
+.. table:: OCTEON cnxk ML PMD model xstats names
 
    +---+---------------------+----------------------------------------------+
    | # | Type                | Description                                  |
@@ -231,11 +426,11 @@ Total number of extended stats would be equal to 6 x number of models loaded.
    +---+---------------------+----------------------------------------------+
    | 3 | Max-HW-Latency      | Maximum hardware latency                     |
    +---+---------------------+----------------------------------------------+
-   | 4 | Avg-HW-Latency      | Average firmware latency                     |
+   | 4 | Avg-FW-Latency      | Average firmware latency                     |
    +---+---------------------+----------------------------------------------+
-   | 5 | Avg-HW-Latency      | Minimum firmware latency                     |
+   | 5 | Min-FW-Latency      | Minimum firmware latency                     |
    +---+---------------------+----------------------------------------------+
-   | 6 | Avg-HW-Latency      | Maximum firmware latency                     |
+   | 6 | Max-FW-Latency      | Maximum firmware latency                     |
    +---+---------------------+----------------------------------------------+
 
 Latency values reported by the PMD through xstats can have units,

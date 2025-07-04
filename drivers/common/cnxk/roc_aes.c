@@ -4,9 +4,10 @@
 
 #include "roc_api.h"
 
-#define KEY_WORD_LEN	 (ROC_CPT_AES_XCBC_KEY_LENGTH / sizeof(uint32_t))
-#define KEY_ROUNDS	 10			/* (Nr+1)*Nb */
-#define KEY_SCHEDULE_LEN ((KEY_ROUNDS + 1) * 4) /* (Nr+1)*Nb words */
+#define KEY128_ROUNDS		10		/* (Nr+1)*Nb */
+#define KEY256_ROUNDS		14		/* (Nr+1)*Nb */
+#define KEY_SCHEDULE_LEN(nr)	((nr + 1) * 4)	/* (Nr+1)*Nb words */
+#define AES_HASH_KEY_LEN	16
 
 /*
  * AES 128 implementation based on NIST FIPS 197 suitable for LittleEndian
@@ -93,22 +94,30 @@ GF8mul(uint8_t byte, uint32_t mp)
 }
 
 static void
-aes_key_expand(const uint8_t *key, uint32_t *ks)
+aes_key_expand(const uint8_t *key, uint32_t len, uint32_t *ks)
 {
-	unsigned int i = 4;
+	uint32_t len_words = len / sizeof(uint32_t);
+	unsigned int schedule_len;
+	unsigned int i = len_words;
 	uint32_t temp;
 
+	schedule_len = (len == ROC_CPT_AES128_KEY_LEN) ? KEY_SCHEDULE_LEN(KEY128_ROUNDS) :
+							 KEY_SCHEDULE_LEN(KEY256_ROUNDS);
 	/* Skip key in ks */
-	memcpy(ks, key, KEY_WORD_LEN * sizeof(uint32_t));
+	memcpy(ks, key, len);
 
-	while (i < KEY_SCHEDULE_LEN) {
+	while (i < schedule_len) {
 		temp = ks[i - 1];
-		if ((i & 0x3) == 0) {
+		if ((i & (len_words - 1)) == 0) {
 			temp = rot_word(temp);
 			temp = sub_word(temp);
-			temp ^= (uint32_t)GF8mul(1, 1 << ((i >> 2) - 1));
+			temp ^= (uint32_t)GF8mul(1, 1 << ((i / len_words) - 1));
 		}
-		ks[i] = ks[i - 4] ^ temp;
+		if (len == ROC_CPT_AES256_KEY_LEN) {
+			if ((i % len_words) == 4)
+				temp = sub_word(temp);
+		}
+		ks[i] = ks[i - len_words] ^ temp;
 		i++;
 	}
 }
@@ -145,64 +154,83 @@ mix_columns(uint8_t *sRc)
 }
 
 static void
-cipher(uint8_t *in, uint8_t *out, uint32_t *ks)
+cipher(uint8_t *in, uint8_t *out, uint32_t *ks, uint32_t key_rounds, uint8_t in_len)
 {
-	uint32_t state[KEY_WORD_LEN];
+	uint8_t data_word_len = in_len / sizeof(uint32_t);
+	uint32_t state[data_word_len];
 	unsigned int i, round;
 
 	memcpy(state, in, sizeof(state));
 
 	/* AddRoundKey(state, w[0, Nb-1]) // See Sec. 5.1.4 */
-	for (i = 0; i < KEY_WORD_LEN; i++)
+	for (i = 0; i < data_word_len; i++)
 		state[i] ^= ks[i];
 
-	for (round = 1; round < KEY_ROUNDS; round++) {
+	for (round = 1; round < key_rounds; round++) {
 		/* SubBytes(state) // See Sec. 5.1.1 */
-		for (i = 0; i < KEY_WORD_LEN; i++)
+		for (i = 0; i < data_word_len; i++)
 			state[i] = sub_word(state[i]);
 
 		/* ShiftRows(state) // See Sec. 5.1.2 */
-		for (i = 0; i < KEY_WORD_LEN; i++)
+		for (i = 0; i < data_word_len; i++)
 			shift_word((uint8_t *)state, i, i);
 
 		/* MixColumns(state) // See Sec. 5.1.3 */
-		for (i = 0; i < KEY_WORD_LEN; i++)
+		for (i = 0; i < data_word_len; i++)
 			mix_columns((uint8_t *)&state[i]);
 
 		/* AddRoundKey(state, w[round*Nb, (round+1)*Nb-1]) */
-		for (i = 0; i < KEY_WORD_LEN; i++)
-			state[i] ^= ks[round * 4 + i];
+		for (i = 0; i < data_word_len; i++)
+			state[i] ^= ks[round * data_word_len + i];
 	}
 
 	/* SubBytes(state) */
-	for (i = 0; i < KEY_WORD_LEN; i++)
+	for (i = 0; i < data_word_len; i++)
 		state[i] = sub_word(state[i]);
 
 	/* ShiftRows(state) */
-	for (i = 0; i < KEY_WORD_LEN; i++)
+	for (i = 0; i < data_word_len; i++)
 		shift_word((uint8_t *)state, i, i);
 
 	/* AddRoundKey(state, w[Nr*Nb, (Nr+1)*Nb-1]) */
-	for (i = 0; i < KEY_WORD_LEN; i++)
-		state[i] ^= ks[KEY_ROUNDS * 4 + i];
-	memcpy(out, state, KEY_WORD_LEN * sizeof(uint32_t));
+	for (i = 0; i < data_word_len; i++)
+		state[i] ^= ks[key_rounds * data_word_len + i];
+	memcpy(out, state, data_word_len * sizeof(uint32_t));
 }
 
 void
 roc_aes_xcbc_key_derive(const uint8_t *auth_key, uint8_t *derived_key)
 {
-	uint32_t aes_ks[KEY_SCHEDULE_LEN] = {0};
+	uint32_t aes_ks[KEY_SCHEDULE_LEN(KEY128_ROUNDS)] = {0};
 	uint8_t k1[16] = {[0 ... 15] = 0x01};
 	uint8_t k2[16] = {[0 ... 15] = 0x02};
 	uint8_t k3[16] = {[0 ... 15] = 0x03};
 
-	aes_key_expand(auth_key, aes_ks);
+	aes_key_expand(auth_key, ROC_CPT_AES_XCBC_KEY_LENGTH, aes_ks);
 
-	cipher(k1, derived_key, aes_ks);
+	cipher(k1, derived_key, aes_ks, KEY128_ROUNDS, sizeof(k1));
 	derived_key += sizeof(k1);
 
-	cipher(k2, derived_key, aes_ks);
+	cipher(k2, derived_key, aes_ks, KEY128_ROUNDS, sizeof(k2));
 	derived_key += sizeof(k2);
 
-	cipher(k3, derived_key, aes_ks);
+	cipher(k3, derived_key, aes_ks, KEY128_ROUNDS, sizeof(k3));
+}
+
+void
+roc_aes_hash_key_derive(const uint8_t *key, uint16_t len, uint8_t hash_key[])
+{
+	uint8_t data[AES_HASH_KEY_LEN] = {0x0};
+
+	if (len == ROC_CPT_AES128_KEY_LEN) {
+		uint32_t aes_ks[KEY_SCHEDULE_LEN(KEY128_ROUNDS)] = {0};
+
+		aes_key_expand(key, ROC_CPT_AES128_KEY_LEN, aes_ks);
+		cipher(data, hash_key, aes_ks, KEY128_ROUNDS, sizeof(data));
+	} else {
+		uint32_t aes_ks[KEY_SCHEDULE_LEN(KEY256_ROUNDS)] = {0};
+
+		aes_key_expand(key, ROC_CPT_AES256_KEY_LEN, aes_ks);
+		cipher(data, hash_key, aes_ks, KEY256_ROUNDS, sizeof(data));
+	}
 }

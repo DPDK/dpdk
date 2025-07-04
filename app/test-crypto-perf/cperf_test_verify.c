@@ -21,6 +21,7 @@ struct cperf_verify_ctx {
 	struct rte_mempool *pool;
 
 	void *sess;
+	uint8_t sess_owner;
 
 	cperf_populate_ops_t populate_ops;
 
@@ -41,15 +42,16 @@ cperf_verify_test_free(struct cperf_verify_ctx *ctx)
 	if (ctx == NULL)
 		return;
 
-	if (ctx->sess != NULL) {
-		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+	if (ctx->sess != NULL && ctx->sess_owner) {
+		if (cperf_is_asym_test(ctx->options))
 			rte_cryptodev_asym_session_free(ctx->dev_id, ctx->sess);
 #ifdef RTE_LIB_SECURITY
 		else if (ctx->options->op_type == CPERF_PDCP ||
 			 ctx->options->op_type == CPERF_DOCSIS ||
+			 ctx->options->op_type == CPERF_TLS ||
 			 ctx->options->op_type == CPERF_IPSEC) {
-			struct rte_security_ctx *sec_ctx =
-				rte_cryptodev_get_sec_ctx(ctx->dev_id);
+			void *sec_ctx = rte_cryptodev_get_sec_ctx(ctx->dev_id);
+
 			rte_security_session_destroy(sec_ctx, ctx->sess);
 		}
 #endif
@@ -66,7 +68,8 @@ cperf_verify_test_constructor(struct rte_mempool *sess_mp,
 		uint8_t dev_id, uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		const struct cperf_op_fns *op_fns)
+		const struct cperf_op_fns *op_fns,
+		void **sess)
 {
 	struct cperf_verify_ctx *ctx = NULL;
 
@@ -85,10 +88,17 @@ cperf_verify_test_constructor(struct rte_mempool *sess_mp,
 	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
 		sizeof(struct rte_crypto_sym_op);
 
-	ctx->sess = op_fns->sess_create(sess_mp, dev_id, options,
-			test_vector, iv_offset);
-	if (ctx->sess == NULL)
-		goto err;
+	if (*sess != NULL) {
+		ctx->sess = *sess;
+		ctx->sess_owner = false;
+	} else {
+		ctx->sess = op_fns->sess_create(sess_mp, dev_id, options,
+				test_vector, iv_offset);
+		if (ctx->sess == NULL)
+			goto err;
+		*sess = ctx->sess;
+		ctx->sess_owner = true;
+	}
 
 	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id, 0,
 			&ctx->src_buf_offset, &ctx->dst_buf_offset,
@@ -111,8 +121,10 @@ cperf_verify_op(struct rte_crypto_op *op,
 	uint32_t len;
 	uint16_t nb_segs;
 	uint8_t *data;
-	uint32_t cipher_offset, auth_offset;
-	uint8_t	cipher, auth;
+	uint32_t cipher_offset, auth_offset = 0;
+	bool cipher = false;
+	bool digest_verify = false;
+	bool is_encrypt = false;
 	int res = 0;
 
 	if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
@@ -150,57 +162,54 @@ cperf_verify_op(struct rte_crypto_op *op,
 
 	switch (options->op_type) {
 	case CPERF_CIPHER_ONLY:
-		cipher = 1;
+		cipher = true;
 		cipher_offset = 0;
-		auth = 0;
-		auth_offset = 0;
-		break;
-	case CPERF_CIPHER_THEN_AUTH:
-		cipher = 1;
-		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		is_encrypt = options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 		break;
 	case CPERF_AUTH_ONLY:
-		cipher = 0;
 		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) {
+			auth_offset = options->test_buffer_size;
+			digest_verify = true;
+		}
 		break;
+	case CPERF_CIPHER_THEN_AUTH:
 	case CPERF_AUTH_THEN_CIPHER:
-		cipher = 1;
+		cipher = true;
 		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			auth_offset = options->test_buffer_size;
+			digest_verify = true;
+			is_encrypt = true;
+		}
 		break;
 	case CPERF_AEAD:
-		cipher = 1;
+		cipher = true;
 		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		if (options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
+			auth_offset = options->test_buffer_size;
+			digest_verify = true;
+			is_encrypt = true;
+		}
 		break;
 	default:
 		res = 1;
 		goto out;
 	}
 
-	if (cipher == 1) {
-		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-			res += memcmp(data + cipher_offset,
+	if (cipher) {
+		if (is_encrypt)
+			res += !!memcmp(data + cipher_offset,
 					vector->ciphertext.data,
 					options->test_buffer_size);
 		else
-			res += memcmp(data + cipher_offset,
+			res += !!memcmp(data + cipher_offset,
 					vector->plaintext.data,
 					options->test_buffer_size);
 	}
 
-	if (auth == 1) {
-		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
-			res += memcmp(data + auth_offset,
-					vector->digest.data,
-					options->digest_sz);
-	}
+	if (digest_verify)
+		res += !!memcmp(data + auth_offset, vector->digest.data, options->digest_sz);
 
 out:
 	rte_free(data);
@@ -216,7 +225,7 @@ cperf_verify_test_runner(void *test_ctx)
 	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
 	uint64_t ops_failed = 0;
 
-	static uint16_t display_once;
+	static RTE_ATOMIC(uint16_t) display_once;
 
 	uint64_t i;
 	uint16_t ops_unused = 0;
@@ -276,7 +285,6 @@ cperf_verify_test_runner(void *test_ctx)
 				ops_needed, ctx->sess, ctx->options,
 				ctx->test_vector, iv_offset, &imix_idx, NULL);
 
-
 		/* Populate the mbuf with the test vector, for verification */
 		for (i = 0; i < ops_needed; i++)
 			cperf_mbuf_set(ops[i]->sym->m_src,
@@ -293,6 +301,17 @@ cperf_verify_test_runner(void *test_ctx)
 				rte_pktmbuf_linearize(ops[i]->sym->m_src);
 		}
 #endif /* CPERF_LINEARIZATION_ENABLE */
+
+		/**
+		 * When ops_needed is smaller than ops_enqd, the
+		 * unused ops need to be moved to the front for
+		 * next round use.
+		 */
+		if (unlikely(ops_enqd > ops_needed)) {
+			size_t nb_b_to_mov = ops_unused * sizeof(struct rte_crypto_op *);
+
+			memmove(&ops[ops_needed], &ops[ops_enqd], nb_b_to_mov);
+		}
 
 		/* Enqueue burst of ops on crypto device */
 		ops_enqd = rte_cryptodev_enqueue_burst(ctx->dev_id, ctx->qp_id,
@@ -360,8 +379,8 @@ cperf_verify_test_runner(void *test_ctx)
 
 	uint16_t exp = 0;
 	if (!ctx->options->csv) {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed))
 			printf("%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
 				"lcore id", "Buf Size", "Burst size",
 				"Enqueued", "Dequeued", "Failed Enq",
@@ -378,8 +397,8 @@ cperf_verify_test_runner(void *test_ctx)
 				ops_deqd_failed,
 				ops_failed);
 	} else {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed))
 			printf("\n# lcore id, Buffer Size(B), "
 				"Burst Size,Enqueued,Dequeued,Failed Enq,"
 				"Failed Deq,Failed Ops\n");

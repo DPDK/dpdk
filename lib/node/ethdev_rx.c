@@ -160,13 +160,13 @@ ethdev_ptype_setup(uint16_t port, uint16_t queue)
 
 	if (!l3_ipv4 || !l3_ipv6) {
 		node_info("ethdev_rx",
-			  "Enabling ptype callback for required ptypes on port %u\n",
+			  "Enabling ptype callback for required ptypes on port %u",
 			  port);
 
 		if (!rte_eth_add_rx_callback(port, queue, eth_pkt_parse_cb,
 					     NULL)) {
 			node_err("ethdev_rx",
-				 "Failed to add rx ptype cb: port=%d, queue=%d\n",
+				 "Failed to add rx ptype cb: port=%d, queue=%d",
 				 port, queue);
 			return -EINVAL;
 		}
@@ -186,15 +186,13 @@ ethdev_rx_node_init(const struct rte_graph *graph, struct rte_node *node)
 	while (elem) {
 		if (elem->nid == node->id) {
 			/* Update node specific context */
-			memcpy(ctx, &elem->ctx, sizeof(ethdev_rx_node_ctx_t));
+			*ctx = elem->ctx;
 			break;
 		}
 		elem = elem->next;
 	}
 
 	RTE_VERIFY(elem != NULL);
-
-	ctx->cls_next = ETHDEV_RX_NEXT_PKT_CLS;
 
 	/* Check and setup ptype */
 	return ethdev_ptype_setup(ctx->port_id, ctx->queue_id);
@@ -215,9 +213,9 @@ static struct rte_node_register ethdev_rx_node_base = {
 
 	.nb_edges = ETHDEV_RX_NEXT_MAX,
 	.next_nodes = {
-		/* Default pkt classification node */
 		[ETHDEV_RX_NEXT_PKT_CLS] = "pkt_cls",
 		[ETHDEV_RX_NEXT_IP4_LOOKUP] = "ip4_lookup",
+		[ETHDEV_RX_NEXT_IP4_REASSEMBLY] = "ip4_reassembly",
 	},
 };
 

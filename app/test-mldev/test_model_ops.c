@@ -9,6 +9,7 @@
 #include <rte_mldev.h>
 
 #include "test_model_ops.h"
+#include "test_stats.h"
 
 static bool
 test_model_ops_cap_check(struct ml_options *opt)
@@ -29,6 +30,12 @@ test_model_ops_opt_check(struct ml_options *opt)
 	ret = ml_test_opt_check(opt);
 	if (ret != 0)
 		return ret;
+
+	/* check for at least one model */
+	if (opt->nb_filelist == 0) {
+		ml_err("Models list empty, need at least one model to run the test\n");
+		return -EINVAL;
+	}
 
 	/* check model file availability */
 	for (i = 0; i < opt->nb_filelist; i++) {
@@ -383,6 +390,8 @@ test_model_ops_driver(struct ml_test *test, struct ml_options *opt)
 	}
 
 	printf("\n");
+
+	ml_stats_get(test, opt, RTE_ML_DEV_XSTATS_DEVICE, -1);
 
 	/* device destroy */
 	ret = test_model_ops_mldev_destroy(test, opt);

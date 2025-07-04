@@ -32,7 +32,6 @@ test_reciprocal(void)
 	struct rte_reciprocal reci_u32 = {0};
 	struct rte_reciprocal_u64 reci_u64 = {0};
 
-	rte_srand(rte_rdtsc());
 	printf("Validating unsigned 32bit division.\n");
 	for (i = 0; i < MAX_ITERATIONS; i++) {
 		/* Change divisor every DIVIDE_ITER iterations. */
@@ -164,4 +163,4 @@ test_reciprocal(void)
 	return result;
 }
 
-REGISTER_TEST_COMMAND(reciprocal_division, test_reciprocal);
+REGISTER_PERF_TEST(reciprocal_division, test_reciprocal);

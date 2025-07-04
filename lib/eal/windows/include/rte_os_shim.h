@@ -30,6 +30,8 @@
 #define write(fd, buf, n) _write(fd, buf, n)
 #define close(fd) _close(fd)
 #define unlink(path) _unlink(path)
+#define fileno(f) _fileno(f)
+#define isatty(fd) _isatty(fd)
 
 #define IPVERSION	4
 
@@ -109,5 +111,15 @@ rte_clock_gettime(clockid_t clock_id, struct timespec *tp)
 	}
 }
 #define clock_gettime(clock_id, tp) rte_clock_gettime(clock_id, tp)
+
+static inline struct tm *
+rte_localtime_r(const time_t *timep, struct tm *result)
+{
+	if (localtime_s(result, timep) == 0)
+		return result;
+	else
+		return NULL;
+}
+#define localtime_r(timep, result) rte_localtime_r(timep, result)
 
 #endif /* _RTE_OS_SHIM_ */

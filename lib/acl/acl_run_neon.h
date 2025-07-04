@@ -2,14 +2,16 @@
  * Copyright(c) 2015 Cavium, Inc
  */
 
+#include <stdalign.h>
+
 #include "acl_run.h"
 #include "acl_vect.h"
 
-struct _neon_acl_const {
+alignas(RTE_CACHE_LINE_SIZE) struct _neon_acl_const {
 	rte_xmm_t xmm_shuffle_input;
 	rte_xmm_t xmm_index_mask;
 	rte_xmm_t range_base;
-} neon_acl_const __rte_cache_aligned = {
+} neon_acl_const = {
 	{
 		.u32 = {0x00000000, 0x04040404, 0x08080808, 0x0c0c0c0c}
 	},
@@ -170,10 +172,8 @@ search_neon_8(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		     total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < 8; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < 8; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	 /* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows, &index_array[0]);
@@ -232,10 +232,8 @@ search_neon_4(const struct rte_acl_ctx *ctx, const uint8_t **data,
 	acl_set_flow(&flows, cmplt, RTE_DIM(cmplt), data, results,
 		     total_packets, categories, ctx->trans_table);
 
-	for (n = 0; n < 4; n++) {
-		cmplt[n].count = 0;
+	for (n = 0; n < 4; n++)
 		index_array[n] = acl_start_next_trie(&flows, parms, n, ctx);
-	}
 
 	/* Check for any matches. */
 	acl_match_check_x4(0, ctx, parms, &flows, index_array);

@@ -9,7 +9,7 @@
 /* Maximum length for digest (SHA-512 needs 64 bytes) */
 #define DIGEST_LENGTH_MAX 64
 
-struct uadk_qp {
+struct __rte_cache_aligned uadk_qp {
 	/* Ring for placing process packets */
 	struct rte_ring *processed_pkts;
 	/* Queue pair statistics */
@@ -23,7 +23,7 @@ struct uadk_qp {
 	 * by the user (using authentication verify operation)
 	 */
 	uint8_t temp_digest[DIGEST_LENGTH_MAX];
-} __rte_cache_aligned;
+};
 
 enum uadk_chain_order {
 	UADK_CHAIN_ONLY_CIPHER,
@@ -33,7 +33,7 @@ enum uadk_chain_order {
 	UADK_CHAIN_NOT_SUPPORTED
 };
 
-struct uadk_crypto_session {
+struct __rte_cache_aligned uadk_crypto_session {
 	handle_t handle_cipher;
 	handle_t handle_digest;
 	enum uadk_chain_order chain_order;
@@ -56,24 +56,25 @@ struct uadk_crypto_session {
 		enum rte_crypto_auth_operation operation;
 		uint16_t digest_length;
 	} auth;
-} __rte_cache_aligned;
+};
 
 enum uadk_crypto_version {
 	UADK_CRYPTO_V2,
 	UADK_CRYPTO_V3,
 };
 
-struct uadk_crypto_priv {
+struct __rte_cache_aligned uadk_crypto_priv {
 	bool env_cipher_init;
 	bool env_auth_init;
 	enum uadk_crypto_version version;
-} __rte_cache_aligned;
+	unsigned int max_nb_qpairs;
+};
 
 extern int uadk_crypto_logtype;
+#define RTE_LOGTYPE_UADK_CRYPTO uadk_crypto_logtype
 
-#define UADK_LOG(level, fmt, ...)  \
-	rte_log(RTE_LOG_ ## level, uadk_crypto_logtype,  \
-		"%s() line %u: " fmt "\n", __func__, __LINE__,  \
-		## __VA_ARGS__)
+#define UADK_LOG(level, ...)  \
+	RTE_LOG_LINE_PREFIX(level, UADK_CRYPTO, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #endif /* _UADK_CRYPTO_PMD_PRIVATE_H_ */

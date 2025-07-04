@@ -10,18 +10,6 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-#define RVU_AF_AFPF_MBOX0 (0x02000)
-#define RVU_AF_AFPF_MBOX1 (0x02008)
-
-#define RVU_PF_PFAF_MBOX0 (0xC00)
-#define RVU_PF_PFAF_MBOX1 (0xC08)
-
-#define RVU_PF_VFX_PFVF_MBOX0 (0x0000)
-#define RVU_PF_VFX_PFVF_MBOX1 (0x0008)
-
-#define RVU_VF_VFPF_MBOX0 (0x0000)
-#define RVU_VF_VFPF_MBOX1 (0x0008)
-
 /* RCLK, SCLK in MHz */
 uint16_t dev_rclk_freq;
 uint16_t dev_sclk_freq;
@@ -58,18 +46,52 @@ mbox_reset(struct mbox *mbox, int devid)
 	rx_hdr->num_msgs = 0;
 }
 
-int
-mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
-	  int direction, int ndevs, uint64_t intr_offset)
+static int
+cn20k_mbox_setup(struct mbox *mbox, int direction)
 {
-	struct mbox_dev *mdev;
-	char *var, *var_to;
-	int devid;
+	switch (direction) {
+	case MBOX_DIR_AFPF:
+		mbox->trigger = RVU_MBOX_AF_AFPFX_TRIGX(1);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_AFPF_UP:
+		mbox->trigger = RVU_MBOX_AF_AFPFX_TRIGX(0);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_PFAF:
+		mbox->trigger = RVU_MBOX_PF_PFAF_TRIGX(0);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_PFAF_UP:
+		mbox->trigger = RVU_MBOX_PF_PFAF_TRIGX(1);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_PFVF:
+		mbox->trigger = RVU_MBOX_PF_VFX_PFVF_TRIGX(1);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_PFVF_UP:
+		mbox->trigger = RVU_MBOX_PF_VFX_PFVF_TRIGX(0);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_VFPF:
+		mbox->trigger = RVU_MBOX_VF_VFPF_TRIGX(0);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_VFPF_UP:
+		mbox->trigger = RVU_MBOX_VF_VFPF_TRIGX(1);
+		mbox->tr_shift = 0;
+		break;
+	default:
+		return -ENODEV;
+	}
 
-	mbox->intr_offset = intr_offset;
-	mbox->reg_base = reg_base;
-	mbox->hwbase = hwbase;
+	return 0;
+}
 
+static int
+mbox_setup(struct mbox *mbox, uintptr_t reg_base, int direction, int ndevs, uint64_t intr_offset)
+{
 	switch (direction) {
 	case MBOX_DIR_AFPF:
 	case MBOX_DIR_PFVF:
@@ -103,6 +125,18 @@ mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
 		return -ENODEV;
 	}
 
+	mbox->intr_offset = intr_offset;
+	mbox->dev = plt_zmalloc(ndevs * sizeof(struct mbox_dev), ROC_ALIGN);
+	if (!mbox->dev) {
+		mbox_fini(mbox);
+		return -ENOMEM;
+	}
+	mbox->ndevs = ndevs;
+
+	mbox->reg_base = reg_base;
+	if (roc_model_is_cn20k())
+		return cn20k_mbox_setup(mbox, direction);
+
 	switch (direction) {
 	case MBOX_DIR_AFPF:
 	case MBOX_DIR_AFPF_UP:
@@ -128,12 +162,24 @@ mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base,
 		return -ENODEV;
 	}
 
-	mbox->dev = plt_zmalloc(ndevs * sizeof(struct mbox_dev), ROC_ALIGN);
-	if (!mbox->dev) {
-		mbox_fini(mbox);
-		return -ENOMEM;
+	return 0;
+}
+
+int
+mbox_init(struct mbox *mbox, uintptr_t hwbase, uintptr_t reg_base, int direction, int ndevs,
+	  uint64_t intr_offset)
+{
+	struct mbox_dev *mdev;
+	char *var, *var_to;
+	int devid, rc;
+
+	rc = mbox_setup(mbox, reg_base, direction, ndevs, intr_offset);
+	if (rc) {
+		plt_err("Failed to setup the mailbox");
+		return rc;
 	}
-	mbox->ndevs = ndevs;
+
+	mbox->hwbase = hwbase;
 	for (devid = 0; devid < ndevs; devid++) {
 		mdev = &mbox->dev[devid];
 		mdev->mbase = (void *)(mbox->hwbase + (devid * MBOX_SIZE));
@@ -194,16 +240,36 @@ exit:
 
 /**
  * @internal
- * Send a mailbox message
+ * Synchronization between UP and DOWN messages
  */
-void
-mbox_msg_send(struct mbox *mbox, int devid)
+bool
+mbox_wait_for_zero(struct mbox *mbox, int devid)
+{
+	uint64_t data;
+
+	data = plt_read64((volatile void *)(mbox->reg_base +
+				(mbox->trigger | (devid << mbox->tr_shift))));
+
+	/* If data is non-zero wait for ~1ms and return to caller
+	 * whether data has changed to zero or not after the wait.
+	 */
+	if (data)
+		usleep(1000);
+	else
+		return true;
+
+	data = plt_read64((volatile void *)(mbox->reg_base +
+				(mbox->trigger | (devid << mbox->tr_shift))));
+	return data == 0;
+}
+
+static void
+mbox_msg_send_data(struct mbox *mbox, int devid, uint8_t data)
 {
 	struct mbox_dev *mdev = &mbox->dev[devid];
-	struct mbox_hdr *tx_hdr =
-		(struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->tx_start);
-	struct mbox_hdr *rx_hdr =
-		(struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	struct mbox_hdr *tx_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->tx_start);
+	struct mbox_hdr *rx_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	uint64_t intr_val;
 
 	/* Reset header for next messages */
 	tx_hdr->msg_size = mdev->msg_size;
@@ -220,12 +286,36 @@ mbox_msg_send(struct mbox *mbox, int devid)
 	/* Sync mbox data into memory */
 	plt_wmb();
 
+	/* Check for any pending interrupt */
+	intr_val = plt_read64(
+		(volatile void *)(mbox->reg_base + (mbox->trigger | (devid << mbox->tr_shift))));
+
+	intr_val |= (uint64_t)data;
 	/* The interrupt should be fired after num_msgs is written
 	 * to the shared memory
 	 */
-	plt_write64(1, (volatile void *)(mbox->reg_base +
-					 (mbox->trigger |
-					  (devid << mbox->tr_shift))));
+	plt_write64(intr_val, (volatile void *)(mbox->reg_base +
+						(mbox->trigger | (devid << mbox->tr_shift))));
+}
+
+/**
+ * @internal
+ * Send a mailbox message
+ */
+void
+mbox_msg_send(struct mbox *mbox, int devid)
+{
+	mbox_msg_send_data(mbox, devid, MBOX_DOWN_MSG);
+}
+
+/**
+ * @internal
+ * Send an UP mailbox message
+ */
+void
+mbox_msg_send_up(struct mbox *mbox, int devid)
+{
+	mbox_msg_send_data(mbox, devid, MBOX_UP_MSG);
 }
 
 /**
@@ -322,6 +412,11 @@ mbox_wait(struct mbox *mbox, int devid, uint32_t rst_timo)
 	uint32_t timeout = 0, sleep = 1;
 
 	rst_timo = rst_timo * 1000; /* Milli seconds to micro seconds */
+
+	/* Waiting for mdev->msgs_acked tp become equal to mdev->num_msgs,
+	 * mdev->msgs_acked are incremented at process_msgs() in interrupt
+	 * thread context.
+	 */
 	while (mdev->num_msgs > mdev->msgs_acked) {
 		plt_delay_us(sleep);
 		timeout += sleep;
@@ -462,6 +557,7 @@ mbox_id2name(uint16_t id)
 		return #_name;
 		MBOX_MESSAGES
 		MBOX_UP_CGX_MESSAGES
+		MBOX_UP_REP_MESSAGES
 #undef M
 	}
 }
@@ -477,6 +573,7 @@ mbox_id2size(uint16_t id)
 		return sizeof(struct _req_type);
 		MBOX_MESSAGES
 		MBOX_UP_CGX_MESSAGES
+		MBOX_UP_REP_MESSAGES
 #undef M
 	}
 }

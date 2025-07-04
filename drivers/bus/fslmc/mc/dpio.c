@@ -1,13 +1,15 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
 #include <fsl_dpio.h>
 #include <fsl_dpio_cmd.h>
+
+#include <eal_export.h>
 
 /**
  * dpio_open() - Open a control session for the specified object
@@ -26,6 +28,7 @@
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_open)
 int dpio_open(struct fsl_mc_io *mc_io,
 	      uint32_t cmd_flags,
 	      int dpio_id,
@@ -61,6 +64,7 @@ int dpio_open(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_close)
 int dpio_close(struct fsl_mc_io *mc_io,
 	       uint32_t cmd_flags,
 	       uint16_t token)
@@ -173,6 +177,7 @@ int dpio_destroy(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_enable)
 int dpio_enable(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token)
@@ -196,6 +201,7 @@ int dpio_enable(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_disable)
 int dpio_disable(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token)
@@ -253,6 +259,7 @@ int dpio_is_enabled(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_reset)
 int dpio_reset(struct fsl_mc_io *mc_io,
 	       uint32_t cmd_flags,
 	       uint16_t token)
@@ -277,6 +284,7 @@ int dpio_reset(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_get_attributes)
 int dpio_get_attributes(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -322,6 +330,7 @@ int dpio_get_attributes(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_set_stashing_destination)
 int dpio_set_stashing_destination(struct fsl_mc_io *mc_io,
 				  uint32_t cmd_flags,
 				  uint16_t token,
@@ -350,6 +359,7 @@ int dpio_set_stashing_destination(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_get_stashing_destination)
 int dpio_get_stashing_destination(struct fsl_mc_io *mc_io,
 				  uint32_t cmd_flags,
 				  uint16_t token,
@@ -377,6 +387,101 @@ int dpio_get_stashing_destination(struct fsl_mc_io *mc_io,
 }
 
 /**
+ * dpio_set_stashing_destination_by_core_id() - Set the stashing destination source
+ * using the core id.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @core_id:	Core id stashing destination
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_set_stashing_destination_by_core_id)
+int dpio_set_stashing_destination_by_core_id(struct fsl_mc_io *mc_io,
+					uint32_t cmd_flags,
+					uint16_t token,
+					uint8_t core_id)
+{
+	struct dpio_stashing_dest_by_core_id *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_SET_STASHING_DEST_BY_CORE_ID,
+										cmd_flags,
+										token);
+	cmd_params = (struct dpio_stashing_dest_by_core_id  *)cmd.params;
+	cmd_params->core_id = core_id;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpio_set_stashing_destination_source() - Set the stashing destination source.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @ss:		Stashing destination source (0 manual/1 automatic)
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_set_stashing_destination_source)
+int dpio_set_stashing_destination_source(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t ss)
+{
+	struct dpio_stashing_dest_source *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_SET_STASHING_DEST_SOURCE,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpio_stashing_dest_source *)cmd.params;
+	cmd_params->ss = ss;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpio_get_stashing_destination_source() - Get the stashing destination source.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @ss:		Returns the stashing destination source (0 manual/1 automatic)
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_get_stashing_destination_source)
+int dpio_get_stashing_destination_source(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t *ss)
+{
+	struct dpio_stashing_dest_source *rsp_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_GET_STASHING_DEST_SOURCE,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpio_stashing_dest_source *)cmd.params;
+	*ss = rsp_params->ss;
+
+	return 0;
+}
+
+/**
  * dpio_add_static_dequeue_channel() - Add a static dequeue channel.
  * @mc_io:		Pointer to MC portal's I/O object
  * @cmd_flags:		Command flags; one or more of 'MC_CMD_FLAG_'
@@ -386,6 +491,7 @@ int dpio_get_stashing_destination(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_add_static_dequeue_channel)
 int dpio_add_static_dequeue_channel(struct fsl_mc_io *mc_io,
 				    uint32_t cmd_flags,
 				    uint16_t token,
@@ -425,6 +531,7 @@ int dpio_add_static_dequeue_channel(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpio_remove_static_dequeue_channel)
 int dpio_remove_static_dequeue_channel(struct fsl_mc_io *mc_io,
 				       uint32_t cmd_flags,
 				       uint16_t token,

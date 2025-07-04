@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017,2019 NXP
+ *   Copyright 2017,2019,2023 NXP
  *
  */
 
@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 
+#include <eal_export.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -32,12 +33,15 @@
  * is to optimize the PA_to_VA searches until a better mechanism (algo) is
  * available.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_memsegs)
 struct dpaa_memseg_list rte_dpaa_memsegs
 	= TAILQ_HEAD_INITIALIZER(rte_dpaa_memsegs);
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa_bpid_info)
 struct dpaa_bp_info *rte_dpaa_bpid_info;
 
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_mempool, NOTICE);
+#define RTE_LOGTYPE_DPAA_MEMPOOL dpaa_logtype_mempool
 
 static int
 dpaa_mbuf_create_pool(struct rte_mempool *mp)
@@ -50,6 +54,8 @@ dpaa_mbuf_create_pool(struct rte_mempool *mp)
 	struct bman_pool_params params = {
 		.flags = BMAN_POOL_FLAG_DYNAMIC_BPID
 	};
+	unsigned int lcore_id;
+	struct rte_mempool_cache *cache;
 
 	MEMPOOL_INIT_FUNC_TRACE();
 
@@ -117,6 +123,18 @@ dpaa_mbuf_create_pool(struct rte_mempool *mp)
 	rte_memcpy(bp_info, (void *)&rte_dpaa_bpid_info[bpid],
 		   sizeof(struct dpaa_bp_info));
 	mp->pool_data = (void *)bp_info;
+	/* Update per core mempool cache threshold to optimal value which is
+	 * number of buffers that can be released to HW buffer pool in
+	 * a single API call.
+	 */
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		cache = &mp->local_cache[lcore_id];
+		DPAA_MEMPOOL_DEBUG("lCore %d: cache->flushthresh %d -> %d",
+			lcore_id, cache->flushthresh,
+			(uint32_t)(cache->size + DPAA_MBUF_MAX_ACQ_REL));
+		if (cache->flushthresh)
+			cache->flushthresh = cache->size + DPAA_MBUF_MAX_ACQ_REL;
+	}
 
 	DPAA_MEMPOOL_INFO("BMAN pool created for bpid =%d", bpid);
 	return 0;
@@ -284,7 +302,7 @@ dpaa_mbuf_get_count(const struct rte_mempool *mp)
 	MEMPOOL_INIT_FUNC_TRACE();
 
 	if (!mp || !mp->pool_data) {
-		DPAA_MEMPOOL_ERR("Invalid mempool provided\n");
+		DPAA_MEMPOOL_ERR("Invalid mempool provided");
 		return 0;
 	}
 
@@ -302,7 +320,7 @@ dpaa_populate(struct rte_mempool *mp, unsigned int max_objs,
 	unsigned int total_elt_sz;
 
 	if (!mp || !mp->pool_data) {
-		DPAA_MEMPOOL_ERR("Invalid mempool provided\n");
+		DPAA_MEMPOOL_ERR("Invalid mempool provided");
 		return 0;
 	}
 

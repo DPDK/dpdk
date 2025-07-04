@@ -3,6 +3,7 @@
  */
 
 #include "bpf_impl.h"
+#include <eal_export.h>
 #include <rte_errno.h>
 
 /**
@@ -10,6 +11,7 @@
  */
 
 #ifndef RTE_LIBRTE_BPF_ELF
+RTE_EXPORT_SYMBOL(rte_bpf_elf_load)
 struct rte_bpf *
 rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	const char *sname)
@@ -19,8 +21,7 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 		return NULL;
 	}
 
-	RTE_BPF_LOG(ERR, "%s() is not supported with current config\n"
-		"rebuild with libelf installed\n",
+	RTE_BPF_LOG_LINE(ERR, "%s() is not supported, rebuild with libelf installed",
 		__func__);
 	rte_errno = ENOTSUP;
 	return NULL;
@@ -28,6 +29,7 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 #endif
 
 #ifndef RTE_HAS_LIBPCAP
+RTE_EXPORT_SYMBOL(rte_bpf_convert)
 struct rte_bpf_prm *
 rte_bpf_convert(const struct bpf_program *prog)
 {
@@ -36,8 +38,7 @@ rte_bpf_convert(const struct bpf_program *prog)
 		return NULL;
 	}
 
-	RTE_BPF_LOG(ERR, "%s() is not supported with current config\n"
-		"rebuild with libpcap installed\n",
+	RTE_BPF_LOG_LINE(ERR, "%s() is not supported, rebuild with libpcap installed",
 		__func__);
 	rte_errno = ENOTSUP;
 	return NULL;

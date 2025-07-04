@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <eal_export.h>
 #include <rte_mempool.h>
 #include <bus_pci_driver.h>
 #include <rte_malloc.h>
@@ -267,6 +268,38 @@ error:
 }
 
 /**
+ * API function to obtain a new MLX5 context for a given common device.
+ *
+ * This function provides a port-agnostic context for a physical device, enabling the
+ * device to create and manage resources that can be initialized when a port starts and
+ * released when another port stops.
+ *
+ * For Windows, it creates a new context for the device regardless to existing context.
+ *
+ * @param cdev
+ *   Pointer to the mlx5 device structure.
+ *
+ * @return
+ *   Pointer to an `ibv_context` on success, or NULL on failure, with `rte_errno` set.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_get_physical_device_ctx)
+void *
+mlx5_os_get_physical_device_ctx(struct mlx5_common_device *cdev)
+{
+	struct mlx5_common_device temp = {
+		.dev = cdev->dev,
+	};
+
+	if (mlx5_os_open_device(&temp, MLX5_CLASS_ETH) < 0) {
+		DRV_LOG(ERR, "Failed to duplicate DevX device \"%s\": %s",
+			mlx5_os_get_ctx_device_name(cdev->ctx),
+			rte_strerror(rte_errno));
+		return NULL;
+	}
+	return (void *)temp.ctx;
+}
+
+/**
  * Register umem.
  *
  * @param[in] ctx
@@ -281,6 +314,7 @@ error:
  * @return
  *   umem on successful registration, NULL and errno otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_umem_reg)
 void *
 mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access)
 {
@@ -311,6 +345,7 @@ mlx5_os_umem_reg(void *ctx, void *addr, size_t size, uint32_t access)
  * @return
  *   0 on successful release, negative number otherwise
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_umem_dereg)
 int
 mlx5_os_umem_dereg(void *pumem)
 {
@@ -411,6 +446,7 @@ mlx5_os_dereg_mr(struct mlx5_pmd_mr *pmd_mr)
  *   Pointer to dereg_mr func
  *
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_set_reg_mr_cb)
 void
 mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb)
 {
@@ -422,6 +458,7 @@ mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb)
  * In Windows, no need to wrap the MR, no known issue for it in kernel.
  * Use the regular function to create direct MR.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_wrapped_mkey_create)
 int
 mlx5_os_wrapped_mkey_create(void *ctx, void *pd, uint32_t pdn, void *addr,
 			    size_t length, struct mlx5_pmd_wrapped_mr *wpmd_mr)
@@ -441,6 +478,7 @@ mlx5_os_wrapped_mkey_create(void *ctx, void *pd, uint32_t pdn, void *addr,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_os_wrapped_mkey_destroy)
 void
 mlx5_os_wrapped_mkey_destroy(struct mlx5_pmd_wrapped_mr *wpmd_mr)
 {

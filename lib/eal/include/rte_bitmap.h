@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_BITMAP_H__
 #define __INCLUDE_RTE_BITMAP_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Bitmap
@@ -32,17 +28,20 @@ extern "C" {
  * serialization of the bit set/clear and bitmap scan operations needs to be
  * enforced by the caller, while the bit get operation does not require locking
  * the bitmap.
- *
- ***/
+ */
 
 #include <string.h>
-#include <rte_compat.h>
+
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_debug.h>
 #include <rte_memory.h>
 #include <rte_branch_prediction.h>
 #include <rte_prefetch.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Slab */
 #define RTE_BITMAP_SLAB_BIT_SIZE                 64
@@ -204,9 +203,6 @@ rte_bitmap_init(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Bitmap clear slab overhead bits.
  *
  * @param slabs
@@ -216,7 +212,6 @@ rte_bitmap_init(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
  * @param pos
  *   The start bit position in the slabs to be cleared.
  */
-__rte_experimental
 static inline void
 __rte_bitmap_clear_slab_overhead_bits(uint64_t *slabs, uint32_t slab_size,
 				      uint32_t pos)
@@ -236,9 +231,6 @@ __rte_bitmap_clear_slab_overhead_bits(uint64_t *slabs, uint32_t slab_size,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Bitmap initialization with all bits set
  *
  * @param n_bits
@@ -250,7 +242,6 @@ __rte_bitmap_clear_slab_overhead_bits(uint64_t *slabs, uint32_t slab_size,
  * @return
  *   Handle to bitmap instance.
  */
-__rte_experimental
 static inline struct rte_bitmap *
 rte_bitmap_init_with_all_set(uint32_t n_bits, uint8_t *mem, uint32_t mem_size)
 {

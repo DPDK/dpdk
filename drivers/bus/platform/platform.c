@@ -13,6 +13,7 @@
 
 #include <bus_driver.h>
 #include <bus_platform_driver.h>
+#include <eal_export.h>
 #include <eal_filesystem.h>
 #include <rte_bus.h>
 #include <rte_devargs.h>
@@ -28,12 +29,14 @@
 
 #define PLATFORM_BUS_DEVICES_PATH "/sys/bus/platform/devices"
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_platform_register)
 void
 rte_platform_register(struct rte_platform_driver *pdrv)
 {
 	TAILQ_INSERT_TAIL(&platform_bus.driver_list, pdrv, next);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_platform_unregister)
 void
 rte_platform_unregister(struct rte_platform_driver *pdrv)
 {
@@ -97,7 +100,7 @@ dev_add(const char *dev_name)
 
 	FOREACH_DEVICE_ON_PLATFORM_BUS(tmp) {
 		if (!strcmp(tmp->name, pdev->name)) {
-			PLATFORM_LOG(INFO, "device %s already added\n", pdev->name);
+			PLATFORM_LOG_LINE(INFO, "device %s already added", pdev->name);
 
 			if (tmp->device.devargs != pdev->device.devargs)
 				rte_devargs_remove(pdev->device.devargs);
@@ -109,7 +112,7 @@ dev_add(const char *dev_name)
 
 	TAILQ_INSERT_HEAD(&platform_bus.device_list, pdev, next);
 
-	PLATFORM_LOG(INFO, "adding device %s to the list\n", dev_name);
+	PLATFORM_LOG_LINE(INFO, "adding device %s to the list", dev_name);
 
 	return 0;
 }
@@ -161,7 +164,7 @@ platform_bus_scan(void)
 
 	dp = opendir(PLATFORM_BUS_DEVICES_PATH);
 	if (dp == NULL) {
-		PLATFORM_LOG(INFO, "failed to open %s\n", PLATFORM_BUS_DEVICES_PATH);
+		PLATFORM_LOG_LINE(INFO, "failed to open %s", PLATFORM_BUS_DEVICES_PATH);
 		return -errno;
 	}
 
@@ -195,7 +198,7 @@ device_map_resource_offset(struct rte_platform_device *pdev, struct rte_platform
 	if (res->mem.addr == MAP_FAILED)
 		return -errno;
 
-	PLATFORM_LOG(DEBUG, "adding resource va = %p len = %"PRIu64" name = %s\n", res->mem.addr,
+	PLATFORM_LOG_LINE(DEBUG, "adding resource va = %p len = %"PRIu64" name = %s", res->mem.addr,
 		     res->mem.len, res->name);
 
 	return 0;
@@ -271,7 +274,7 @@ device_map_resources(struct rte_platform_device *pdev, unsigned int num)
 	int ret;
 
 	if (num == 0) {
-		PLATFORM_LOG(WARNING, "device %s has no resources\n", pdev->name);
+		PLATFORM_LOG_LINE(WARNING, "device %s has no resources", pdev->name);
 		return 0;
 	}
 
@@ -287,7 +290,7 @@ device_map_resources(struct rte_platform_device *pdev, unsigned int num)
 
 		ret = ioctl(pdev->dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info);
 		if (ret) {
-			PLATFORM_LOG(ERR, "failed to get region info at %d\n", i);
+			PLATFORM_LOG_LINE(ERR, "failed to get region info at %d", i);
 			ret = -errno;
 			goto out;
 		}
@@ -297,7 +300,7 @@ device_map_resources(struct rte_platform_device *pdev, unsigned int num)
 		res->mem.len = reg_info.size;
 		ret = device_map_resource_offset(pdev, res, reg_info.offset);
 		if (ret) {
-			PLATFORM_LOG(ERR, "failed to ioremap resource at %d\n", i);
+			PLATFORM_LOG_LINE(ERR, "failed to ioremap resource at %d", i);
 			goto out;
 		}
 
@@ -327,7 +330,7 @@ device_setup(struct rte_platform_device *pdev)
 
 	ret = rte_vfio_setup_device(PLATFORM_BUS_DEVICES_PATH, name, &pdev->dev_fd, &dev_info);
 	if (ret) {
-		PLATFORM_LOG(ERR, "failed to setup %s\n", name);
+		PLATFORM_LOG_LINE(ERR, "failed to setup %s", name);
 		return -ENODEV;
 	}
 
@@ -342,7 +345,7 @@ device_setup(struct rte_platform_device *pdev)
 	 */
 #ifdef VFIO_DEVICE_FLAGS_PLATFORM
 	if (!(dev_info.flags & VFIO_DEVICE_FLAGS_PLATFORM)) {
-		PLATFORM_LOG(ERR, "device not backed by vfio-platform\n");
+		PLATFORM_LOG_LINE(ERR, "device not backed by vfio-platform");
 		ret = -ENOTSUP;
 		goto out;
 	}
@@ -350,7 +353,7 @@ device_setup(struct rte_platform_device *pdev)
 
 	ret = device_map_resources(pdev, dev_info.num_regions);
 	if (ret) {
-		PLATFORM_LOG(ERR, "failed to setup platform resources\n");
+		PLATFORM_LOG_LINE(ERR, "failed to setup platform resources");
 		goto out;
 	}
 
@@ -389,7 +392,7 @@ driver_probe_device(struct rte_platform_driver *pdrv, struct rte_platform_device
 
 	iova_mode = rte_eal_iova_mode();
 	if (pdrv->drv_flags & RTE_PLATFORM_DRV_NEED_IOVA_AS_VA && iova_mode != RTE_IOVA_VA) {
-		PLATFORM_LOG(ERR, "driver %s expects VA IOVA mode but current mode is PA\n",
+		PLATFORM_LOG_LINE(ERR, "driver %s expects VA IOVA mode but current mode is PA",
 			     pdrv->driver.name);
 		return -EINVAL;
 	}
@@ -462,11 +465,11 @@ platform_bus_probe(void)
 	FOREACH_DEVICE_ON_PLATFORM_BUS(pdev) {
 		ret = device_attach(pdev);
 		if (ret == -EBUSY) {
-			PLATFORM_LOG(DEBUG, "device %s already probed\n", pdev->name);
+			PLATFORM_LOG_LINE(DEBUG, "device %s already probed", pdev->name);
 			continue;
 		}
 		if (ret)
-			PLATFORM_LOG(ERR, "failed to probe %s\n", pdev->name);
+			PLATFORM_LOG_LINE(ERR, "failed to probe %s", pdev->name);
 	}
 
 	return 0;
@@ -517,7 +520,7 @@ device_release_driver(struct rte_platform_device *pdev)
 	if (pdrv != NULL && pdrv->remove != NULL) {
 		ret = pdrv->remove(pdev);
 		if (ret)
-			PLATFORM_LOG(WARNING, "failed to remove %s\n", pdev->name);
+			PLATFORM_LOG_LINE(WARNING, "failed to remove %s", pdev->name);
 	}
 
 	pdev->device.driver = NULL;
@@ -617,8 +620,8 @@ platform_bus_cleanup(void)
 	struct rte_platform_device *pdev, *tmp;
 
 	RTE_TAILQ_FOREACH_SAFE(pdev, &platform_bus.device_list, next, tmp) {
-		platform_bus_unplug(&pdev->device);
 		TAILQ_REMOVE(&platform_bus.device_list, pdev, next);
+		platform_bus_unplug(&pdev->device);
 	}
 
 	return 0;

@@ -94,7 +94,7 @@ struct rte_dma_dev_ops {
  *
  * @see struct rte_dma_dev::data
  */
-struct rte_dma_dev_data {
+struct __rte_cache_aligned rte_dma_dev_data {
 	char dev_name[RTE_DEV_NAME_MAX_LEN]; /**< Unique identifier name */
 	int16_t dev_id; /**< Device [external] identifier. */
 	int16_t numa_node; /**< Local NUMA memory ID. -1 if unknown. */
@@ -103,7 +103,7 @@ struct rte_dma_dev_data {
 	__extension__
 	uint8_t dev_started : 1; /**< Device state: STARTED(1)/STOPPED(0). */
 	uint64_t reserved[2]; /**< Reserved for future fields */
-} __rte_cache_aligned;
+};
 
 /**
  * Possible states of a DMA device.
@@ -122,7 +122,7 @@ enum rte_dma_dev_state {
  * @internal
  * The generic data structure associated with each DMA device.
  */
-struct rte_dma_dev {
+struct __rte_cache_aligned rte_dma_dev {
 	/** Device info which supplied during device initialization. */
 	struct rte_device *device;
 	struct rte_dma_dev_data *data; /**< Pointer to shared device data. */
@@ -132,7 +132,7 @@ struct rte_dma_dev {
 	const struct rte_dma_dev_ops *dev_ops;
 	enum rte_dma_dev_state state; /**< Flag indicating the device state. */
 	uint64_t reserved[2]; /**< Reserved for future fields. */
-} __rte_cache_aligned;
+};
 
 /**
  * @internal
@@ -166,6 +166,19 @@ struct rte_dma_dev *rte_dma_pmd_allocate(const char *name, int numa_node,
  */
 __rte_internal
 int rte_dma_pmd_release(const char *name);
+
+/**
+ * @internal
+ * Get the rte_dma_dev structure device pointer for the device ID.
+ *
+ * @param dev_id
+ *   DMA device index in dmadev library.
+ *
+ * @return
+ *   rte_dma_dev structure pointer on success, NULL otherwise.
+ */
+__rte_internal
+struct rte_dma_dev *rte_dma_pmd_get_dev_by_id(int16_t dev_id);
 
 #ifdef __cplusplus
 }

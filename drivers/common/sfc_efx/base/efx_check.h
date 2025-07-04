@@ -32,7 +32,8 @@
 
 /* Check family options for EF10 architecture controllers. */
 #define	EFX_OPTS_EF10()	\
-	(EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
+	(EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || \
+	EFSYS_OPT_MEDFORD4)
 
 #ifdef EFSYS_OPT_FALCON
 # error "FALCON is obsolete and is not supported."
@@ -197,8 +198,8 @@
 
 #if EFSYS_OPT_IMAGE_LAYOUT
 /* Support signed image layout handling */
-# if !(EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
-#  error "IMAGE_LAYOUT requires MEDFORD or MEDFORD2"
+# if !(EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4)
+#  error "IMAGE_LAYOUT requires MEDFORD or MEDFORD2 or MEDFORD4"
 # endif
 #endif /* EFSYS_OPT_IMAGE_LAYOUT */
 
@@ -338,8 +339,9 @@
 
 #if EFSYS_OPT_ALLOW_UNCONFIGURED_NIC
 /* Support adapters with missing static config (for factory use only) */
-# if !(EFSYS_OPT_RIVERHEAD || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
-#  error "ALLOW_UNCONFIGURED_NIC requires RIVERHEAD or MEDFORD or MEDFORD2"
+# if !(EFSYS_OPT_RIVERHEAD || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || \
+	EFSYS_OPT_MEDFORD4)
+#  error "ALLOW_UNCONFIGURED_NIC requires RIVERHEAD or MEDFORD or MEDFORD2 or MEDFORD4"
 # endif
 #endif /* EFSYS_OPT_ALLOW_UNCONFIGURED_NIC */
 
@@ -352,22 +354,23 @@
 
 #if EFSYS_OPT_RX_ES_SUPER_BUFFER
 /* Support equal stride super-buffer mode */
-# if !(EFSYS_OPT_MEDFORD2)
-#  error "ES_SUPER_BUFFER requires MEDFORD2"
+# if !(EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4)
+#  error "ES_SUPER_BUFFER requires MEDFORD2 or MEDFORD4"
 # endif
 #endif
 
 /* Support hardware assistance for tunnels */
 #if EFSYS_OPT_TUNNEL
-# if !(EFSYS_OPT_RIVERHEAD || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
-#  error "TUNNEL requires RIVERHEAD or MEDFORD or MEDFORD2"
+# if !(EFSYS_OPT_RIVERHEAD || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 || \
+	EFSYS_OPT_MEDFORD4)
+#  error "TUNNEL requires RIVERHEAD or MEDFORD or MEDFORD2 or MEDFORD4"
 # endif
 #endif /* EFSYS_OPT_TUNNEL */
 
 #if EFSYS_OPT_FW_SUBVARIANT_AWARE
 /* Advertise that the driver is firmware subvariant aware */
-# if !(EFSYS_OPT_MEDFORD2)
-#  error "FW_SUBVARIANT_AWARE requires MEDFORD2"
+# if !(EFSYS_OPT_MEDFORD2 || EFSYS_OPT_MEDFORD4)
+#  error "FW_SUBVARIANT_AWARE requires MEDFORD2 or MEDFORD4"
 # endif
 #endif
 

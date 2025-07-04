@@ -712,6 +712,8 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_MACRXFLT_CTL_PASS       LS(3, 6, 0x3)
 #define   NGBE_MACRXFLT_RXALL          MS(31, 0x1)
 
+#define NGBE_MAC_WDG_TIMEOUT           0x01100C
+
 /******************************************************************************
  * Statistic Registers
  ******************************************************************************/
@@ -1256,6 +1258,8 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_MDIOMODE_PRT2CL22	MS(2, 0x1)
 #define   NGBE_MDIOMODE_PRT1CL22	MS(1, 0x1)
 #define   NGBE_MDIOMODE_PRT0CL22	MS(0, 0x1)
+
+#define NGBE_LLDP_REG			0x0F1000
 
 #define NVM_OROM_OFFSET		0x17
 #define NVM_OROM_BLK_LOW	0x83

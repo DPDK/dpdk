@@ -9,6 +9,7 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_malloc.h>
 
 #ifdef RTE_EXEC_ENV_WINDOWS
 static int
@@ -230,7 +231,6 @@ testsuite_setup(void)
 	}
 
 	struct rte_event_dev_config config = {
-			.nb_event_queues = 1,
 			.nb_event_ports = 1,
 	};
 
@@ -242,6 +242,7 @@ testsuite_setup(void)
 			dev_info.max_event_port_enqueue_depth;
 	config.nb_events_limit =
 			dev_info.max_num_events;
+	config.nb_event_queues = dev_info.max_event_queues;
 	err = rte_event_dev_configure(TEST_DEV_ID, &config);
 	TEST_ASSERT(err == 0, "Event device initialization failed err %d\n",
 			err);
@@ -407,6 +408,12 @@ adapter_create(void)
 	return err;
 }
 
+static void
+adapter_free(void)
+{
+	rte_event_eth_rx_adapter_free(TEST_INST_ID);
+}
+
 static int
 adapter_create_with_params(void)
 {
@@ -427,6 +434,13 @@ adapter_create_with_params(void)
 	rxa_params.use_queue_event_buf = false;
 	rxa_params.event_buf_size = 0;
 
+	/* Pass rxa_params = NULL */
+	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
+				TEST_DEV_ID, &rx_p_conf, NULL);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	if (err == 0)
+		adapter_free();
+
 	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
 				TEST_DEV_ID, &rx_p_conf, &rxa_params);
 	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
@@ -439,6 +453,98 @@ adapter_create_with_params(void)
 
 	err = rte_event_eth_rx_adapter_create_with_params(TEST_INST_ID,
 				TEST_DEV_ID, &rx_p_conf, &rxa_params);
+	TEST_ASSERT(err == -EEXIST, "Expected -EEXIST got %d", err);
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_port_conf_cb(uint8_t id, uint8_t event_dev_id,
+		  struct rte_event_eth_rx_adapter_conf *conf,
+		  void *conf_arg)
+{
+	struct rte_event_port_conf *port_conf, def_port_conf = {0};
+	uint32_t started;
+	static int port_allocated;
+	static uint8_t port_id;
+	int ret;
+
+	if (port_allocated) {
+		conf->event_port_id = port_id;
+		conf->max_nb_rx = 128;
+		return 0;
+	}
+
+	RTE_SET_USED(id);
+
+	ret = rte_event_dev_attr_get(event_dev_id, RTE_EVENT_DEV_ATTR_STARTED,
+				     &started);
+	if (ret < 0)
+		return ret;
+
+	if (started)
+		rte_event_dev_stop(event_dev_id);
+
+	port_id = 1;
+
+	if (conf_arg != NULL)
+		port_conf = conf_arg;
+	else {
+		port_conf = &def_port_conf;
+		ret = rte_event_port_default_conf_get(event_dev_id, port_id,
+						      port_conf);
+		if (ret < 0)
+			return ret;
+	}
+
+	ret = rte_event_port_setup(event_dev_id, port_id, port_conf);
+	if (ret < 0)
+		return ret;
+
+	conf->event_port_id = port_id;
+	conf->max_nb_rx = 128;
+
+	if (started)
+		rte_event_dev_start(event_dev_id);
+
+	/* Reuse this port number next time this is called */
+	port_allocated = 1;
+
+	return 0;
+}
+
+static int
+adapter_create_ext_with_params(void)
+{
+	int err;
+	struct rte_event_dev_info dev_info;
+	struct rte_event_eth_rx_adapter_params rxa_params;
+
+	err = rte_event_dev_info_get(TEST_DEV_ID, &dev_info);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	rxa_params.use_queue_event_buf = false;
+	rxa_params.event_buf_size = 0;
+
+	/* Pass rxa_params = NULL */
+	err = rte_event_eth_rx_adapter_create_ext_with_params(TEST_INST_ID,
+			TEST_DEV_ID, test_port_conf_cb, NULL, NULL);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	if (err == 0)
+		adapter_free();
+
+	err = rte_event_eth_rx_adapter_create_ext_with_params(TEST_INST_ID,
+			TEST_DEV_ID, test_port_conf_cb, NULL, &rxa_params);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	rxa_params.event_buf_size = 128;
+
+	err = rte_event_eth_rx_adapter_create_ext_with_params(TEST_INST_ID,
+			TEST_DEV_ID, test_port_conf_cb, NULL, &rxa_params);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_create_ext_with_params(TEST_INST_ID,
+			TEST_DEV_ID, test_port_conf_cb, NULL, &rxa_params);
 	TEST_ASSERT(err == -EEXIST, "Expected -EEXIST got %d", err);
 
 	return TEST_SUCCESS;
@@ -547,12 +653,6 @@ adapter_queue_stats_test(void)
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	return TEST_SUCCESS;
-}
-
-static void
-adapter_free(void)
-{
-	rte_event_eth_rx_adapter_free(TEST_INST_ID);
 }
 
 static int
@@ -716,6 +816,89 @@ adapter_queue_add_del(void)
 
 	err = rte_event_eth_rx_adapter_queue_del(1, TEST_ETHDEV_ID, -1);
 	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	return TEST_SUCCESS;
+}
+
+static int
+adapter_queues_add_del(void)
+{
+	struct rte_event_eth_rx_adapter_queue_conf *queue_conf;
+	struct rte_event_dev_info event_dev_info;
+	struct rte_eth_dev_info dev_info;
+	uint16_t i, max_rx_queues;
+	int32_t *rx_queue_ids;
+	struct rte_event ev;
+	uint32_t cap;
+	int err;
+
+	err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID, TEST_ETHDEV_ID, &cap);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_eth_dev_info_get(TEST_ETHDEV_ID, &dev_info);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	max_rx_queues = RTE_MIN(dev_info.max_rx_queues, MAX_NUM_RX_QUEUE);
+
+	err = rte_event_dev_info_get(TEST_DEV_ID, &event_dev_info);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	queue_conf = rte_zmalloc(NULL, sizeof(*queue_conf) * max_rx_queues, 0);
+	TEST_ASSERT(queue_conf != NULL, "Failed to allocate memory");
+
+	rx_queue_ids = rte_zmalloc(NULL, sizeof(*rx_queue_ids) * max_rx_queues, 0);
+	TEST_ASSERT(rx_queue_ids != NULL, "Failed to allocate memory");
+
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	for (i = 0; i < max_rx_queues; i++) {
+		rx_queue_ids[i] = i;
+		ev.queue_id = i % event_dev_info.max_event_queues;
+		if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID) {
+			ev.flow_id = 1;
+			queue_conf[i].rx_queue_flags =
+				RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID;
+		}
+		queue_conf[i].ev = ev;
+		queue_conf[i].servicing_weight = 1;
+	}
+
+	err = rte_event_eth_rx_adapter_queues_add(TEST_INST_ID,
+						  rte_eth_dev_count_total(),
+						  rx_queue_ids, queue_conf, 0);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_rx_adapter_queues_add(TEST_INST_ID + 1, TEST_ETHDEV_ID,
+						  NULL, queue_conf, 0);
+	TEST_ASSERT(err == -EINVAL, "Expected -EINVAL got %d", err);
+
+	err = rte_event_eth_rx_adapter_queues_add(TEST_INST_ID, TEST_ETHDEV_ID,
+						  rx_queue_ids, queue_conf, 1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID, TEST_ETHDEV_ID, 0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) {
+		err = rte_event_eth_rx_adapter_queues_add(
+			TEST_INST_ID, TEST_ETHDEV_ID, rx_queue_ids, queue_conf,
+			max_rx_queues);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+		err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+							 TEST_ETHDEV_ID, -1);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	} else {
+		err = rte_event_eth_rx_adapter_queues_add(
+			TEST_INST_ID, TEST_ETHDEV_ID, NULL, queue_conf, 0);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+		err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+							 TEST_ETHDEV_ID, -1);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
+
+	rte_free(rx_queue_ids);
+	rte_free(queue_conf);
 
 	return TEST_SUCCESS;
 }
@@ -1201,7 +1384,7 @@ adapter_intrq_instance_get(void)
 static int
 adapter_get_set_params(void)
 {
-	int err;
+	int err, rc;
 	struct rte_event_eth_rx_adapter_runtime_params in_params;
 	struct rte_event_eth_rx_adapter_runtime_params out_params;
 	struct rte_event_eth_rx_adapter_queue_conf queue_config = {0};
@@ -1230,6 +1413,10 @@ adapter_get_set_params(void)
 	/* Case 1: Get the default value of mbufs processed by Rx adapter */
 	err = rte_event_eth_rx_adapter_runtime_params_get(TEST_INST_ID,
 							  &out_params);
+	if (err == -ENOTSUP) {
+		rc = TEST_SKIPPED;
+		goto skip;
+	}
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	/* Case 2: Set max_nb_rx = 32 (=BATCH_SEIZE) */
@@ -1302,11 +1489,13 @@ adapter_get_set_params(void)
 		    "Expected %u got %u",
 		    in_params.max_nb_rx, out_params.max_nb_rx);
 
+	rc = TEST_SUCCESS;
+skip:
 	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
 						TEST_ETHDEV_ID, 0);
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
-	return TEST_SUCCESS;
+	return rc;
 }
 
 static struct unit_test_suite event_eth_rx_tests = {
@@ -1318,6 +1507,8 @@ static struct unit_test_suite event_eth_rx_tests = {
 		TEST_CASE_ST(NULL, NULL, adapter_create_free_with_params),
 		TEST_CASE_ST(adapter_create, adapter_free,
 					adapter_queue_add_del),
+		TEST_CASE_ST(adapter_create, adapter_free,
+					adapter_queues_add_del),
 		TEST_CASE_ST(adapter_create, adapter_free,
 					adapter_multi_eth_add_del),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_start_stop),
@@ -1331,6 +1522,8 @@ static struct unit_test_suite event_eth_rx_tests = {
 			     adapter_pollq_instance_get),
 		TEST_CASE_ST(adapter_create, adapter_free,
 			     adapter_get_set_params),
+		TEST_CASE_ST(adapter_create_ext_with_params, adapter_free,
+			     adapter_start_stop),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

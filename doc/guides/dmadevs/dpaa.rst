@@ -42,6 +42,11 @@ Compilation
 For builds using ``meson`` and ``ninja``, the driver will be built when the
 target platform is dpaa-based. No additional compilation steps are necessary.
 
+``RTE_DMA_DPAA_ERRATA_ERR050757``
+  Enable software workaround for Errata-A050757
+``RTE_DMA_DPAA_ERRATA_ERR050265``
+  Enable software workaround for Errata-A050265
+
 Initialization
 --------------
 
@@ -66,3 +71,10 @@ Platform Requirement
 
 DPAA DMA driver for DPDK can only work on NXP SoCs
 as listed in the `Supported DPAA SoCs`_.
+
+Device Arguments
+----------------
+
+``dpaa_dma_err_check=1``
+  Check DMA errors at driver level.
+  Usage example: ``dpaa_bus:dpaa_qdma-1,dpaa_dma_err_check=1``

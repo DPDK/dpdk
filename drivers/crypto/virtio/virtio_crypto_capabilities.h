@@ -48,4 +48,23 @@
 		}, }							\
 	}
 
+#define VIRTIO_ASYM_CAPABILITIES					\
+	{       /* RSA */						\
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,			\
+		{.asym = {						\
+			.xform_capa = {					\
+			.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,	\
+			.op_types = ((1 << RTE_CRYPTO_ASYM_OP_SIGN) |	\
+					(1 << RTE_CRYPTO_ASYM_OP_VERIFY) |  \
+					(1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) | \
+					(1 << RTE_CRYPTO_ASYM_OP_DECRYPT)), \
+			{.modlen = {					\
+				.min = 1,				\
+				.max = 1024,				\
+				.increment = 1				\
+			}, }						\
+		}							\
+		 }, }							\
+	}
+
 #endif /* _VIRTIO_CRYPTO_CAPABILITIES_H_ */

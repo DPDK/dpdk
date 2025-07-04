@@ -320,7 +320,7 @@ static int
 test_fib_perf(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 
 	config.max_routes = 2000000;
 	config.rib_ext_sz = 0;
@@ -333,8 +333,6 @@ test_fib_perf(void)
 	uint32_t next_hop_add = 0xAA;
 	int status = 0;
 	int64_t count = 0;
-
-	rte_srand(rte_rdtsc());
 
 	generate_large_route_rule_table();
 
@@ -409,4 +407,4 @@ test_fib_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(fib_perf_autotest, test_fib_perf);
+REGISTER_PERF_TEST(fib_perf_autotest, test_fib_perf);

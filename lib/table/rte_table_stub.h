@@ -5,20 +5,18 @@
 #ifndef __INCLUDE_RTE_TABLE_STUB_H__
 #define __INCLUDE_RTE_TABLE_STUB_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table Stub
  *
  * The stub table lookup operation produces lookup miss for all input packets.
- *
- ***/
-
+ */
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Stub table parameters: NONE */
 

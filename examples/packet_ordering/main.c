@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <getopt.h>
+#include <stdbool.h>
 
 #include <rte_eal.h>
 #include <rte_common.h>
@@ -57,19 +58,19 @@ struct send_thread_args {
 };
 
 volatile struct app_stats {
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t rx_pkts;
 		uint64_t enqueue_pkts;
 		uint64_t enqueue_failed_pkts;
-	} rx __rte_cache_aligned;
+	} rx;
 
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t dequeue_pkts;
 		uint64_t enqueue_pkts;
 		uint64_t enqueue_failed_pkts;
-	} wkr __rte_cache_aligned;
+	} wkr;
 
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint64_t dequeue_pkts;
 		/* Too early pkts transmitted directly w/o reordering */
 		uint64_t early_pkts_txtd_woro;
@@ -77,15 +78,15 @@ volatile struct app_stats {
 		uint64_t early_pkts_tx_failed_woro;
 		uint64_t ro_tx_pkts;
 		uint64_t ro_tx_failed_pkts;
-	} tx __rte_cache_aligned;
+	} tx;
 } app_stats;
 
 /* per worker lcore stats */
-struct wkr_stats_per {
+struct __rte_cache_aligned wkr_stats_per {
 		uint64_t deq_pkts;
 		uint64_t enq_pkts;
 		uint64_t enq_failed_pkts;
-} __rte_cache_aligned;
+};
 
 static struct wkr_stats_per wkr_stats[RTE_MAX_LCORE] = { {0} };
 /**
@@ -427,8 +428,8 @@ int_handler(int sig_num)
  * The mbufs are then passed to the worker threads via the rx_to_workers
  * ring.
  */
-static int
-rx_thread(struct rte_ring *ring_out)
+static __rte_always_inline int
+rx_thread(struct rte_ring *ring_out, bool disable_reorder_flag)
 {
 	uint32_t seqn = 0;
 	uint16_t i, ret = 0;
@@ -454,9 +455,11 @@ rx_thread(struct rte_ring *ring_out)
 				}
 				app_stats.rx.rx_pkts += nb_rx_pkts;
 
-				/* mark sequence number */
-				for (i = 0; i < nb_rx_pkts; )
-					*rte_reorder_seqn(pkts[i++]) = seqn++;
+				/* mark sequence number if reorder is enabled */
+				if (!disable_reorder_flag) {
+					for (i = 0; i < nb_rx_pkts;)
+						*rte_reorder_seqn(pkts[i++]) = seqn++;
+				}
 
 				/* enqueue to rx_to_workers ring */
 				ret = rte_ring_enqueue_burst(ring_out,
@@ -471,6 +474,18 @@ rx_thread(struct rte_ring *ring_out)
 		}
 	}
 	return 0;
+}
+
+static __rte_noinline int
+rx_thread_reorder(struct rte_ring *ring_out)
+{
+	return rx_thread(ring_out, false);
+}
+
+static __rte_noinline int
+rx_thread_reorder_disabled(struct rte_ring *ring_out)
+{
+	return rx_thread(ring_out, true);
 }
 
 /**
@@ -772,8 +787,11 @@ main(int argc, char **argv)
 				(void *)&send_args, last_lcore_id);
 	}
 
-	/* Start rx_thread() on the main core */
-	rx_thread(rx_to_workers);
+	/* Start rx_thread_xxx() on the main core */
+	if (disable_reorder)
+		rx_thread_reorder_disabled(rx_to_workers);
+	else
+		rx_thread_reorder(rx_to_workers);
 
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)

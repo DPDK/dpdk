@@ -1,9 +1,0 @@
-DPDK_23 {
-	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_pmd_dlb2_set_token_pop_mode;
-};

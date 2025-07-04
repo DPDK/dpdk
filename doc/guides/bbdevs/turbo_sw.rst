@@ -67,10 +67,14 @@ FlexRAN SDK Download
 As an option it is possible to link this driver with FleXRAN SDK libraries
 which can enable real time signal processing using AVX instructions.
 
-These libraries are available through this `link <https://software.intel.com/en-us/articles/flexran-lte-and-5g-nr-fec-software-development-kit-modules>`_.
+These libraries are available through this `link
+<https://github.com/intel/FlexRAN-FEC-SDK-Modules/tree/Branch_FEC_SDK_23.07>`_.
 
 After download is complete, the user needs to unpack and compile on their
 system before building DPDK.
+
+To get the FlexRAN FEC SDK user manual, extract this `doxygen
+<https://github.com/intel/FlexRAN-FEC-SDK-Modules/blob/Branch_FEC_SDK_23.07/doc/doxygen/html.zip>`_.
 
 The following table maps DPDK versions with past FlexRAN SDK releases:
 
@@ -83,6 +87,7 @@ The following table maps DPDK versions with past FlexRAN SDK releases:
    =====================  ============================
    19.08 to 22.07         19.04
    22.11+                 22.11
+   23.11+                 FEC_SDK_23.07
    =====================  ============================
 
 FlexRAN SDK Installation
@@ -91,31 +96,34 @@ FlexRAN SDK Installation
 Note that the installation of these libraries is optional.
 
 The following are pre-requisites for building FlexRAN SDK Libraries:
- (a) An AVX2 or AVX512 supporting machine
- (b) CentOS Linux release 7.2.1511 (Core) operating system is advised
- (c) Intel ICC 18.0.1 20171018 compiler or more recent and related libraries
-     ICC is `available with a free community license <https://software.intel.com/en-us/system-studio/choose-download#technical>`_.
+ (a) An AVX512 supporting machine.
+ (b) Ubuntu Linux release 22.04 operating system is advised.
+ (c) Intel ICX 2023.0.0 compiler or more recent and related libraries.
+     ICX is available `here <https://docs.o-ran-sc.org/projects/o-ran-sc-o-du-phy/en/latest/build_prerequisite.html#download-and-install-oneapi>`_.
+ (d) `FlexRAN SDK Modules <https://github.com/intel/FlexRAN-FEC-SDK-Modules/tree/Branch_FEC_SDK_23.07>`_.
+ (e) CMake 3.9.2 (Minimum 2.8.12)
+ (f) Google Test 1.7.0 (Required to run the verification and compute performance tests)
+ (g) Math Kernel Library 18.0 (Required by some functions in SDK)
 
 The following instructions should be followed in this exact order:
+
+#. Clone the SDK (folder name needs to end in 'sdk')
+
+    .. code-block:: console
+
+        git clone -b Branch_FEC_SDK_23.07 https://github.com/intel/FlexRAN-FEC-SDK-Modules.git flexran_sdk
 
 #. Set the environment variables:
 
     .. code-block:: console
 
-        source <path-to-icc-compiler-install-folder>/linux/bin/compilervars.sh intel64 -platform linux
-
-#. Run the SDK extractor script and accept the license:
-
-    .. code-block:: console
-
-        cd <path-to-workspace>
-        ./FlexRAN-FEC-SDK-19-04.sh
+        source <path-to-workspace>/export_settings.sh -o -avx512
 
 #. Generate makefiles based on system configuration:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/
+        cd <path-to-workspace>
         ./create-makefiles-linux.sh
 
 #. A build folder is generated in this form ``build-<ISA>-<CC>``, enter that
@@ -123,11 +131,11 @@ The following instructions should be followed in this exact order:
 
     .. code-block:: console
 
-        cd build-avx512-icc/
-        make && make install
+        cd <path-to-workspace>/build-${WIRELESS_SDK_TARGET_ISA}-${WIRELESS_SDK_TOOLCHAIN}/
+        make -j$(nproc) && make install
 
-Initialization
---------------
+DPDK Initialization
+~~~~~~~~~~~~~~~~~~~
 
 In order to enable this virtual bbdev PMD, the user may:
 
@@ -144,9 +152,9 @@ Example:
 
 .. code-block:: console
 
-    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/build-avx2-icc/install
-    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-FEC-SDK-19-04/sdk/build-avx2-icc/
-    export PKG_CONFIG_PATH=$DIR_WIRELESS_SDK/pkgcfg:$PKG_CONFIG_PATH
+    export FLEXRAN_SDK=<path-to-workspace>/build-${WIRELESS_SDK_TARGET_ISA}-${WIRELESS_SDK_TOOLCHAIN}/install
+    export DIR_WIRELESS_SDK=<path-to-workspace>/build-${WIRELESS_SDK_TARGET_ISA}-${WIRELESS_SDK_TOOLCHAIN}
+    export PKG_CONFIG_PATH=${DIR_WIRELESS_SDK}/pkgcfg:${PKG_CONFIG_PATH}
     cd build
     meson configure
 
@@ -154,6 +162,8 @@ Example:
   For AVX2 machines it is possible to only enable the 4G libraries and the PMD capabilities will be limited to 4G FEC.
   If no library is present then the PMD will still build but its capabilities will be limited accordingly.
 
+SW Turbo PMD Usage
+~~~~~~~~~~~~~~~~~~
 
 To use the PMD in an application, user must:
 
@@ -169,7 +179,6 @@ The following parameters (all optional) can be provided in the previous two call
 * ``max_nb_queues``: Specify the maximum number of queues in the device (default is ``RTE_MAX_LCORE``).
 
 Example:
-~~~~~~~~
 
 .. code-block:: console
 

@@ -116,7 +116,7 @@ insert_new_item(struct gro_vxlan_tcp4_tbl *tbl,
 	tbl->items[item_idx].inner_item.start_time = start_time;
 	tbl->items[item_idx].inner_item.next_pkt_idx = INVALID_ARRAY_INDEX;
 	tbl->items[item_idx].inner_item.sent_seq = sent_seq;
-	tbl->items[item_idx].inner_item.ip_id = ip_id;
+	tbl->items[item_idx].inner_item.l3.ip_id = ip_id;
 	tbl->items[item_idx].inner_item.nb_merged = 1;
 	tbl->items[item_idx].inner_item.is_atomic = is_atomic;
 	tbl->items[item_idx].outer_ip_id = outer_ip_id;
@@ -163,15 +163,9 @@ insert_new_flow(struct gro_vxlan_tcp4_tbl *tbl,
 
 	dst = &(tbl->flows[flow_idx].key);
 
-	rte_ether_addr_copy(&(src->inner_key.eth_saddr),
-			&(dst->inner_key.eth_saddr));
-	rte_ether_addr_copy(&(src->inner_key.eth_daddr),
-			&(dst->inner_key.eth_daddr));
+	ASSIGN_COMMON_TCP_KEY((&(src->inner_key.cmn_key)), (&(dst->inner_key.cmn_key)));
 	dst->inner_key.ip_src_addr = src->inner_key.ip_src_addr;
 	dst->inner_key.ip_dst_addr = src->inner_key.ip_dst_addr;
-	dst->inner_key.recv_ack = src->inner_key.recv_ack;
-	dst->inner_key.src_port = src->inner_key.src_port;
-	dst->inner_key.dst_port = src->inner_key.dst_port;
 
 	dst->vxlan_hdr.vx_flags = src->vxlan_hdr.vx_flags;
 	dst->vxlan_hdr.vx_vni = src->vxlan_hdr.vx_vni;
@@ -245,10 +239,11 @@ merge_two_vxlan_tcp4_packets(struct gro_vxlan_tcp4_item *item,
 		struct rte_mbuf *pkt,
 		int cmp,
 		uint32_t sent_seq,
+		uint8_t tcp_flags,
 		uint16_t outer_ip_id,
 		uint16_t ip_id)
 {
-	if (merge_two_tcp4_packets(&item->inner_item, pkt, cmp, sent_seq,
+	if (merge_two_tcp_packets(&item->inner_item, pkt, cmp, sent_seq, tcp_flags,
 				ip_id, pkt->outer_l2_len +
 				pkt->outer_l3_len)) {
 		/* Update the outer IPv4 ID to the large value. */
@@ -269,8 +264,8 @@ update_vxlan_header(struct gro_vxlan_tcp4_item *item)
 
 	/* Update the outer IPv4 header. */
 	len = pkt->pkt_len - pkt->outer_l2_len;
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			pkt->outer_l2_len);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   pkt->outer_l2_len);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(len);
 
 	/* Update the outer UDP header. */
@@ -357,13 +352,13 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 
-	rte_ether_addr_copy(&(eth_hdr->src_addr), &(key.inner_key.eth_saddr));
-	rte_ether_addr_copy(&(eth_hdr->dst_addr), &(key.inner_key.eth_daddr));
+	rte_ether_addr_copy(&(eth_hdr->src_addr), &(key.inner_key.cmn_key.eth_saddr));
+	rte_ether_addr_copy(&(eth_hdr->dst_addr), &(key.inner_key.cmn_key.eth_daddr));
 	key.inner_key.ip_src_addr = ipv4_hdr->src_addr;
 	key.inner_key.ip_dst_addr = ipv4_hdr->dst_addr;
-	key.inner_key.recv_ack = tcp_hdr->recv_ack;
-	key.inner_key.src_port = tcp_hdr->src_port;
-	key.inner_key.dst_port = tcp_hdr->dst_port;
+	key.inner_key.cmn_key.recv_ack = tcp_hdr->recv_ack;
+	key.inner_key.cmn_key.src_port = tcp_hdr->src_port;
+	key.inner_key.cmn_key.dst_port = tcp_hdr->dst_port;
 
 	key.vxlan_hdr.vx_flags = vxlan_hdr->vx_flags;
 	key.vxlan_hdr.vx_vni = vxlan_hdr->vx_vni;
@@ -419,7 +414,7 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 				tcp_dl, outer_is_atomic, is_atomic);
 		if (cmp) {
 			if (merge_two_vxlan_tcp4_packets(&(tbl->items[cur_idx]),
-						pkt, cmp, sent_seq,
+						pkt, cmp, sent_seq, tcp_hdr->tcp_flags,
 						outer_ip_id, ip_id))
 				return 1;
 			/*

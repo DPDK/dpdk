@@ -166,7 +166,7 @@ hns3_tm_shaper_profile_search(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
-				   struct rte_tm_shaper_params *profile,
+				   const struct rte_tm_shaper_params *profile,
 				   struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -220,7 +220,7 @@ hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
 static int
 hns3_tm_shaper_profile_add(struct rte_eth_dev *dev,
 			   uint32_t shaper_profile_id,
-			   struct rte_tm_shaper_params *profile,
+			   const struct rte_tm_shaper_params *profile,
 			   struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -329,7 +329,7 @@ hns3_tm_node_search(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_nonleaf_node_param_check(struct rte_eth_dev *dev,
-				 struct rte_tm_node_params *params,
+				 const struct rte_tm_node_params *params,
 				 struct rte_tm_error *error)
 {
 	struct hns3_tm_shaper_profile *shaper_profile;
@@ -364,7 +364,7 @@ hns3_tm_nonleaf_node_param_check(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
-			      struct rte_tm_node_params *params,
+			      const struct rte_tm_node_params *params,
 			      struct rte_tm_error *error)
 
 {
@@ -408,7 +408,7 @@ hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
 static int
 hns3_tm_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 			 uint32_t priority, uint32_t weight,
-			 struct rte_tm_node_params *params,
+			 const struct rte_tm_node_params *params,
 			 struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -457,7 +457,7 @@ hns3_tm_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 
 static int
 hns3_tm_port_node_add(struct rte_eth_dev *dev, uint32_t node_id,
-		      uint32_t level_id, struct rte_tm_node_params *params,
+		      uint32_t level_id, const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -503,7 +503,7 @@ hns3_tm_port_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		    uint32_t level_id, struct hns3_tm_node *parent_node,
-		    struct rte_tm_node_params *params,
+		    const struct rte_tm_node_params *params,
 		    struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -554,7 +554,7 @@ hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 hns3_tm_queue_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		       uint32_t level_id, struct hns3_tm_node *parent_node,
-		       struct rte_tm_node_params *params,
+		       const struct rte_tm_node_params *params,
 		       struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -601,7 +601,7 @@ static int
 hns3_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		 uint32_t parent_node_id, uint32_t priority,
 		 uint32_t weight, uint32_t level_id,
-		 struct rte_tm_node_params *params,
+		 const struct rte_tm_node_params *params,
 		 struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -739,7 +739,7 @@ hns3_tm_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
 }
 
 static void
-hns3_tm_nonleaf_level_capsbilities_get(struct rte_eth_dev *dev,
+hns3_tm_nonleaf_level_capabilities_get(struct rte_eth_dev *dev,
 				       uint32_t level_id,
 				       struct rte_tm_level_capabilities *cap)
 {
@@ -818,7 +818,7 @@ hns3_tm_level_capabilities_get(struct rte_eth_dev *dev,
 	memset(cap, 0, sizeof(struct rte_tm_level_capabilities));
 
 	if (level_id != HNS3_TM_NODE_LEVEL_QUEUE)
-		hns3_tm_nonleaf_level_capsbilities_get(dev, level_id, cap);
+		hns3_tm_nonleaf_level_capabilities_get(dev, level_id, cap);
 	else
 		hns3_tm_leaf_level_capabilities_get(dev, cap);
 
@@ -1051,7 +1051,7 @@ hns3_tm_hierarchy_commit(struct rte_eth_dev *dev,
 	if (error == NULL)
 		return -EINVAL;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 		error->message = "device is resetting";
 		/* don't goto fail_clear, user may try later */
@@ -1079,21 +1079,6 @@ fail_clear:
 		hns3_tm_conf_init(dev);
 	}
 	return -EINVAL;
-}
-
-static int
-hns3_tm_hierarchy_commit_wrap(struct rte_eth_dev *dev,
-			      int clear_on_fail,
-			      struct rte_tm_error *error)
-{
-	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int ret;
-
-	rte_spinlock_lock(&hw->lock);
-	ret = hns3_tm_hierarchy_commit(dev, clear_on_fail, error);
-	rte_spinlock_unlock(&hw->lock);
-
-	return ret;
 }
 
 static int
@@ -1156,7 +1141,7 @@ hns3_tm_node_shaper_update(struct rte_eth_dev *dev,
 	if (error == NULL)
 		return -EINVAL;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 		error->message = "device is resetting";
 		return -EBUSY;
@@ -1196,6 +1181,148 @@ hns3_tm_node_shaper_update(struct rte_eth_dev *dev,
 }
 
 static int
+hns3_tm_capabilities_get_wrap(struct rte_eth_dev *dev,
+			      struct rte_tm_capabilities *cap,
+			      struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_capabilities_get(dev, cap, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_shaper_profile_add_wrap(struct rte_eth_dev *dev,
+				uint32_t shaper_profile_id,
+				const struct rte_tm_shaper_params *profile,
+				struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_shaper_profile_add(dev, shaper_profile_id, profile, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_shaper_profile_del_wrap(struct rte_eth_dev *dev,
+				uint32_t shaper_profile_id,
+				struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_shaper_profile_del(dev, shaper_profile_id, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_node_add_wrap(struct rte_eth_dev *dev, uint32_t node_id,
+		      uint32_t parent_node_id, uint32_t priority,
+		      uint32_t weight, uint32_t level_id,
+		      const struct rte_tm_node_params *params,
+		      struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_node_add(dev, node_id, parent_node_id, priority,
+			       weight, level_id, params, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_node_delete_wrap(struct rte_eth_dev *dev,
+			 uint32_t node_id,
+			 struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_node_delete(dev, node_id, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_node_type_get_wrap(struct rte_eth_dev *dev,
+			   uint32_t node_id,
+			   int *is_leaf,
+			   struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_node_type_get(dev, node_id, is_leaf, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_level_capabilities_get_wrap(struct rte_eth_dev *dev,
+				    uint32_t level_id,
+				    struct rte_tm_level_capabilities *cap,
+				    struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_level_capabilities_get(dev, level_id, cap, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_node_capabilities_get_wrap(struct rte_eth_dev *dev,
+				   uint32_t node_id,
+				   struct rte_tm_node_capabilities *cap,
+				   struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_node_capabilities_get(dev, node_id, cap, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
+hns3_tm_hierarchy_commit_wrap(struct rte_eth_dev *dev,
+			      int clear_on_fail,
+			      struct rte_tm_error *error)
+{
+	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	rte_spinlock_lock(&hw->lock);
+	ret = hns3_tm_hierarchy_commit(dev, clear_on_fail, error);
+	rte_spinlock_unlock(&hw->lock);
+
+	return ret;
+}
+
+static int
 hns3_tm_node_shaper_update_wrap(struct rte_eth_dev *dev,
 				uint32_t node_id,
 				uint32_t shaper_profile_id,
@@ -1213,14 +1340,14 @@ hns3_tm_node_shaper_update_wrap(struct rte_eth_dev *dev,
 }
 
 static const struct rte_tm_ops hns3_tm_ops = {
-	.capabilities_get       = hns3_tm_capabilities_get,
-	.shaper_profile_add     = hns3_tm_shaper_profile_add,
-	.shaper_profile_delete  = hns3_tm_shaper_profile_del,
-	.node_add               = hns3_tm_node_add,
-	.node_delete            = hns3_tm_node_delete,
-	.node_type_get          = hns3_tm_node_type_get,
-	.level_capabilities_get = hns3_tm_level_capabilities_get,
-	.node_capabilities_get  = hns3_tm_node_capabilities_get,
+	.capabilities_get       = hns3_tm_capabilities_get_wrap,
+	.shaper_profile_add     = hns3_tm_shaper_profile_add_wrap,
+	.shaper_profile_delete  = hns3_tm_shaper_profile_del_wrap,
+	.node_add               = hns3_tm_node_add_wrap,
+	.node_delete            = hns3_tm_node_delete_wrap,
+	.node_type_get          = hns3_tm_node_type_get_wrap,
+	.level_capabilities_get = hns3_tm_level_capabilities_get_wrap,
+	.node_capabilities_get  = hns3_tm_node_capabilities_get_wrap,
 	.hierarchy_commit       = hns3_tm_hierarchy_commit_wrap,
 	.node_shaper_update     = hns3_tm_node_shaper_update_wrap,
 };

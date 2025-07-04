@@ -16,14 +16,16 @@
 #define QAT_ATTACHED  (1)
 
 #define QAT_DEV_NAME_MAX_LEN	64
-
-#define QAT_IPSEC_MB_LIB "qat_ipsec_mb_lib"
-#define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
-#define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
-#define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
-#define QAT_CMD_SLICE_MAP "qat_cmd_slice_disable"
-#define QAT_CMD_SLICE_MAP_POS	4
 #define MAX_QP_THRESHOLD_SIZE	32
+#define QAT_LEGACY_CAPA "qat_legacy_capa"
+
+struct qat_service {
+	const char *name;
+	int (*dev_create)(struct qat_pci_device *qat_pci_dev);
+	int (*dev_destroy)(struct qat_pci_device *qat_pci_dev);
+};
+
+extern struct qat_service qat_service[];
 
 /**
  * Function prototypes for GENx specific device operations.
@@ -37,8 +39,10 @@ typedef int (*qat_dev_get_misc_bar_t)
 typedef int (*qat_dev_read_config_t)
 		(struct qat_pci_device *);
 typedef int (*qat_dev_get_extra_size_t)(void);
-typedef int (*qat_dev_get_slice_map_t)(uint16_t *map,
+typedef int (*qat_dev_get_slice_map_t)(uint32_t *map,
 		const struct rte_pci_device *pci_dev);
+
+char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev, const char *key);
 
 struct qat_dev_hw_spec_funcs {
 	qat_dev_reset_ring_pairs_t	qat_dev_reset_ring_pairs;
@@ -107,31 +111,22 @@ struct qat_pci_device {
 	/**< QAT device generation */
 	rte_spinlock_t arb_csr_lock;
 	/**< lock to protect accesses to the arbiter CSR */
-
 	struct qat_qp *qps_in_use[QAT_MAX_SERVICES][ADF_MAX_QPS_ON_ANY_SERVICE];
 	/**< links to qps set up for each service, index same as on API */
-
-	/* Data relating to symmetric crypto service */
-	struct qat_cryptodev_private *sym_dev;
-	/**< link back to cryptodev private data */
-
 	int qat_sym_driver_id;
 	/**< Symmetric driver id used by this device */
-
-	/* Data relating to asymmetric crypto service */
-	struct qat_cryptodev_private *asym_dev;
-	/**< link back to cryptodev private data */
-
 	int qat_asym_driver_id;
 	/**< Symmetric driver id used by this device */
-
-	/* Data relating to compression service */
-	struct qat_comp_dev_private *comp_dev;
-	/**< link back to compressdev private data */
 	void *misc_bar_io_addr;
 	/**< Address of misc bar */
 	void *dev_private;
 	/**< Per generation specific information */
+	char *command_line;
+	/**< Map of the crypto and compression slices */
+	void *pmd[QAT_MAX_SERVICES];
+	/**< link back to pmd private data */
+	struct qat_options options;
+	/**< qat device options */
 };
 
 struct qat_gen_hw_data {
@@ -150,34 +145,5 @@ struct qat_pf2vf_dev {
 };
 
 extern struct qat_gen_hw_data qat_gen_config[];
-
-struct qat_pci_device *
-qat_pci_device_allocate(struct rte_pci_device *pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
-
-struct qat_pci_device *
-qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev);
-
-/* declaration needed for weak functions */
-int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
-
-int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
-		const struct qat_dev_cmd_param *qat_dev_cmd_param);
-
-int
-qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
-
-int
-qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
-
-int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
-
-int
-qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
 
 #endif /* _QAT_DEVICE_H_ */

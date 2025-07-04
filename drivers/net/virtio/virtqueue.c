@@ -282,13 +282,13 @@ virtio_init_vring(struct virtqueue *vq)
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
 	if (virtio_with_packed_queue(vq->hw)) {
-		vring_init_packed(&vq->vq_packed.ring, ring_mem,
+		vring_init_packed(&vq->vq_packed.ring, ring_mem, vq->vq_ring_mem,
 				  VIRTIO_VRING_ALIGN, size);
 		vring_desc_init_packed(vq, size);
 	} else {
 		struct vring *vr = &vq->vq_split.ring;
 
-		vring_init_split(vr, ring_mem, VIRTIO_VRING_ALIGN, size);
+		vring_init_split(vr, ring_mem, vq->vq_ring_mem, VIRTIO_VRING_ALIGN, size);
 		vring_desc_init_split(vr->desc, size);
 	}
 	/*
@@ -469,9 +469,11 @@ virtqueue_alloc(struct virtio_hw *hw, uint16_t index, uint16_t num, int type,
 	if (hw->use_va) {
 		vq->vq_ring_mem = (uintptr_t)mz->addr;
 		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_addr);
+		vq->mbuf_addr_mask = UINTPTR_MAX;
 	} else {
 		vq->vq_ring_mem = mz->iova;
 		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_iova);
+		vq->mbuf_addr_mask = UINT64_MAX;
 	}
 
 	PMD_INIT_LOG(DEBUG, "vq->vq_ring_mem: 0x%" PRIx64, vq->vq_ring_mem);

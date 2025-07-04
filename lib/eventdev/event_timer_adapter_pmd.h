@@ -14,12 +14,7 @@
  * This file provides implementation helpers for internal use by PMDs.  They
  * are not intended to be exposed to applications and are not subject to ABI
  * versioning.
- *
  */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include "rte_event_timer_adapter.h"
 
@@ -87,7 +82,7 @@ struct event_timer_adapter_ops {
  * @internal Adapter data; structure to be placed in shared memory to be
  * accessible by various processes in a multi-process configuration.
  */
-struct rte_event_timer_adapter_data {
+struct __rte_cache_aligned rte_event_timer_adapter_data {
 	uint8_t id;
 	/**< Event timer adapter ID */
 	uint8_t event_dev_id;
@@ -109,13 +104,8 @@ struct rte_event_timer_adapter_data {
 	uint32_t service_id;
 	/**< Service ID*/
 
-	RTE_STD_C11
 	uint8_t started : 1;
 	/**< Flag to indicate adapter started. */
-} __rte_cache_aligned;
-
-#ifdef __cplusplus
-}
-#endif
+};
 
 #endif /* __EVENT_TIMER_ADAPTER_PMD_H__ */

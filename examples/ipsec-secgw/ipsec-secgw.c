@@ -99,10 +99,10 @@ uint32_t qp_desc_nb = 2048;
 #define MTU_TO_FRAMELEN(x)	((x) + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
 struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x7e, 0x94, 0x9a) },
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x22, 0xa1, 0xd9) },
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x08, 0x69, 0x26) },
-	{ 0, ETHADDR(0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd) }
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x7e, 0x94, 0x9a}} },
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x22, 0xa1, 0xd9}} },
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x08, 0x69, 0x26}} },
+	{ {{0}}, {{0x00, 0x16, 0x3e, 0x49, 0x9e, 0xdd}} }
 };
 
 struct offloads tx_offloads;
@@ -218,11 +218,11 @@ struct app_sa_prm app_sa_prm = {
 		};
 static const char *cfgfile;
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
-	uint8_t queue_id;
-	uint8_t lcore_id;
-} __rte_cache_aligned;
+	uint16_t queue_id;
+	uint32_t lcore_id;
+};
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 
@@ -568,7 +568,7 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 
 static inline void
 process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
-	     uint8_t nb_pkts, uint16_t portid, struct rte_security_ctx *ctx)
+	     uint16_t nb_pkts, uint16_t portid, void *ctx)
 {
 	struct ipsec_traffic traffic;
 
@@ -626,12 +626,13 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 	uint32_t n;
 	struct ipsec_traffic trf;
 	unsigned int lcoreid = rte_lcore_id();
+	const int nb_pkts = RTE_DIM(trf.ipsec.pkts);
 
 	if (app_sa_prm.enable == 0) {
 
 		/* dequeue packets from crypto-queue */
 		n = ipsec_inbound_cqp_dequeue(ctx, trf.ipsec.pkts,
-			RTE_DIM(trf.ipsec.pkts));
+			RTE_MIN(MAX_PKT_BURST, nb_pkts));
 
 		trf.ip4.num = 0;
 		trf.ip6.num = 0;
@@ -663,12 +664,13 @@ drain_outbound_crypto_queues(const struct lcore_conf *qconf,
 {
 	uint32_t n;
 	struct ipsec_traffic trf;
+	const int nb_pkts = RTE_DIM(trf.ipsec.pkts);
 
 	if (app_sa_prm.enable == 0) {
 
 		/* dequeue packets from crypto-queue */
 		n = ipsec_outbound_cqp_dequeue(ctx, trf.ipsec.pkts,
-			RTE_DIM(trf.ipsec.pkts));
+			RTE_MIN(MAX_PKT_BURST, nb_pkts));
 
 		trf.ip4.num = 0;
 		trf.ip6.num = 0;
@@ -695,9 +697,7 @@ ipsec_poll_mode_worker(void)
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	uint32_t lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
-	int32_t i, nb_rx;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t i, nb_rx, portid, queueid;
 	struct lcore_conf *qconf;
 	int32_t rc, socket_id;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1)
@@ -744,7 +744,7 @@ ipsec_poll_mode_worker(void)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -789,8 +789,7 @@ int
 check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid)
 {
 	uint16_t i;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		portid = lcore_params_array[i].port_id;
@@ -810,7 +809,7 @@ check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid)
 static int32_t
 check_poll_mode_params(struct eh_conf *eh_conf)
 {
-	uint8_t lcore;
+	uint32_t lcore;
 	uint16_t portid;
 	uint16_t i;
 	int32_t socket_id;
@@ -829,13 +828,13 @@ check_poll_mode_params(struct eh_conf *eh_conf)
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
 		if (!rte_lcore_is_enabled(lcore)) {
-			printf("error: lcore %hhu is not enabled in "
+			printf("error: lcore %u is not enabled in "
 				"lcore mask\n", lcore);
 			return -1;
 		}
 		socket_id = rte_lcore_to_socket_id(lcore);
 		if (socket_id != 0 && numa_on == 0) {
-			printf("warning: lcore %hhu is on socket %d "
+			printf("warning: lcore %u is on socket %d "
 				"with numa off\n",
 				lcore, socket_id);
 		}
@@ -852,7 +851,7 @@ check_poll_mode_params(struct eh_conf *eh_conf)
 	return 0;
 }
 
-static uint8_t
+static uint16_t
 get_port_nb_rx_queues(const uint16_t port)
 {
 	int32_t queue = -1;
@@ -863,14 +862,14 @@ get_port_nb_rx_queues(const uint16_t port)
 				lcore_params[i].queue_id > queue)
 			queue = lcore_params[i].queue_id;
 	}
-	return (uint8_t)(++queue);
+	return (uint16_t)(++queue);
 }
 
 static int32_t
 init_lcore_rx_queues(void)
 {
 	uint16_t i, nb_rx_queue;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -1051,6 +1050,11 @@ parse_config(const char *q_arg)
 	char *str_fld[_NUM_FLD];
 	int32_t i;
 	uint32_t size;
+	uint32_t max_fld[_NUM_FLD] = {
+		RTE_MAX_ETHPORTS,
+		RTE_MAX_QUEUES_PER_PORT,
+		RTE_MAX_LCORE
+	};
 
 	nb_lcore_params = 0;
 
@@ -1071,7 +1075,7 @@ parse_config(const char *q_arg)
 		for (i = 0; i < _NUM_FLD; i++) {
 			errno = 0;
 			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > max_fld[i])
 				return -1;
 		}
 		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
@@ -1080,11 +1084,11 @@ parse_config(const char *q_arg)
 			return -1;
 		}
 		lcore_params_array[nb_lcore_params].port_id =
-			(uint8_t)int_fld[FLD_PORT];
+			(uint16_t)int_fld[FLD_PORT];
 		lcore_params_array[nb_lcore_params].queue_id =
-			(uint8_t)int_fld[FLD_QUEUE];
+			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
-			(uint8_t)int_fld[FLD_LCORE];
+			(uint32_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
 	}
 	lcore_params = lcore_params_array;
@@ -1427,9 +1431,8 @@ add_dst_ethaddr(uint16_t port, const struct rte_ether_addr *addr)
 	if (port >= RTE_DIM(ethaddr_tbl))
 		return -EINVAL;
 
-	ethaddr_tbl[port].dst = ETHADDR_TO_UINT64(addr);
-	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[port].dst,
-			    (struct rte_ether_addr *)(val_eth + port));
+	rte_ether_addr_copy(addr, &ethaddr_tbl[port].dst);
+	rte_ether_addr_copy(addr, (struct rte_ether_addr *)(val_eth + port));
 	return 0;
 }
 
@@ -1556,6 +1559,8 @@ add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 	struct lcore_conf *qconf;
 	struct ipsec_ctx *ipsec_ctx;
 	const char *str;
+	void *sec_ctx;
+	const struct rte_security_capability *sec_cap;
 
 	qconf = &lcore_conf[params->lcore_id];
 
@@ -1570,8 +1575,8 @@ add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 	}
 
 	/* Required cryptodevs with operation chaining */
-	if (!(dev_info->feature_flags &
-				RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING))
+	if (!(dev_info->feature_flags & RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING) &&
+			!(dev_info->feature_flags & RTE_CRYPTODEV_FF_SECURITY))
 		return ret;
 
 	for (i = dev_info->capabilities;
@@ -1589,6 +1594,41 @@ add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 			continue;
 
 		for (j = dev_info->capabilities;
+				j->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; j++) {
+			if (j->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+				continue;
+
+			if (j->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH)
+				continue;
+
+			ret |= add_mapping(str, cdev_id, qp, params,
+						ipsec_ctx, i, j, NULL);
+		}
+	}
+
+	sec_ctx = rte_cryptodev_get_sec_ctx(cdev_id);
+	if (sec_ctx == NULL)
+		return ret;
+
+	sec_cap = rte_security_capabilities_get(sec_ctx);
+	if (sec_cap == NULL)
+		return ret;
+
+	for (i = sec_cap->crypto_capabilities;
+			i->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; i++) {
+		if (i->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+			continue;
+
+		if (i->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			ret |= add_mapping(str, cdev_id, qp, params,
+					ipsec_ctx, NULL, NULL, i);
+			continue;
+		}
+
+		if (i->sym.xform_type != RTE_CRYPTO_SYM_XFORM_CIPHER)
+			continue;
+
+		for (j = sec_cap->crypto_capabilities;
 				j->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; j++) {
 			if (j->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
 				continue;
@@ -1700,6 +1740,9 @@ cryptodevs_init(enum eh_pkt_transfer_mode mode)
 
 		total_nb_qps += qp;
 		dev_conf.socket_id = rte_cryptodev_socket_id(cdev_id);
+		/* Use the first socket if SOCKET_ID_ANY is returned. */
+		if (dev_conf.socket_id == SOCKET_ID_ANY)
+			dev_conf.socket_id = 0;
 		dev_conf.nb_queue_pairs = qp;
 		dev_conf.ff_disable = RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
 
@@ -1881,7 +1924,8 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
 	uint16_t nb_tx_queue, nb_rx_queue;
-	uint16_t tx_queueid, rx_queueid, queue, lcore_id;
+	uint16_t tx_queueid, rx_queueid, queue;
+	uint32_t lcore_id;
 	int32_t ret, socket_id;
 	struct lcore_conf *qconf;
 	struct rte_ether_addr ethaddr;
@@ -1907,11 +1951,12 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 			"Error getting MAC address (port %u): %s\n",
 			portid, rte_strerror(-ret));
 
-	ethaddr_tbl[portid].src = ETHADDR_TO_UINT64(&ethaddr);
+	rte_ether_addr_copy(&ethaddr, &ethaddr_tbl[portid].src);
 
-	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[portid].dst,
+	rte_ether_addr_copy(&ethaddr_tbl[portid].dst,
 			    (struct rte_ether_addr *)(val_eth + portid));
-	rte_ether_addr_copy((struct rte_ether_addr *)&ethaddr_tbl[portid].src,
+
+	rte_ether_addr_copy(&ethaddr_tbl[portid].src,
 			    (struct rte_ether_addr *)(val_eth + portid) + 1);
 
 	print_ethaddr("Address: ", &ethaddr);
@@ -2054,10 +2099,10 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 
 			/* Register Rx callback if ptypes are not supported */
 			if (!ptype_supported &&
-			    !rte_eth_add_rx_callback(portid, queue,
+			    !rte_eth_add_rx_callback(portid, rx_queueid,
 						     parse_ptype_cb, NULL)) {
 				printf("Failed to add rx callback: port=%d, "
-				       "queue=%d\n", portid, queue);
+				       "rx_queueid=%d\n", portid, rx_queueid);
 			}
 
 

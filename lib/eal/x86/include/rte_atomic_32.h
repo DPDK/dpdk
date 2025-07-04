@@ -25,7 +25,6 @@ static inline int
 rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 {
 	uint8_t res;
-	RTE_STD_C11
 	union {
 		struct {
 			uint32_t l32;

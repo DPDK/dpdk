@@ -5,21 +5,20 @@
 #ifndef __INCLUDE_RTE_TABLE_ARRAY_H__
 #define __INCLUDE_RTE_TABLE_ARRAY_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table Array
  *
  * Simple array indexing. Lookup key is the array entry index.
- *
- ***/
+ */
 
 #include <stdint.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Array table parameters */
 struct rte_table_array_params {

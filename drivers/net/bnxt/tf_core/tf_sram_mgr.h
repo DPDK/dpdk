@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -26,28 +26,28 @@
  */
 #define STATS_CLEAR_ON_READ_SUPPORT 0
 
-#define TF_SRAM_MGR_BLOCK_SZ_BYTES 64
+#define TF_SRAM_MGR_BLOCK_SZ_BYTES 128
 #define TF_SRAM_MGR_MIN_SLICE_BYTES 8
 
 /**
  * TF slice size.
  *
- * A slice is part of a 64B row
+ * A slice is part of a 128B row
  *
  * Each slice is a multiple of 8B
  */
 enum tf_sram_slice_size {
-	TF_SRAM_SLICE_SIZE_8B,	/**< 8 byte SRAM slice */
-	TF_SRAM_SLICE_SIZE_16B,	/**< 16 byte SRAM slice */
-	TF_SRAM_SLICE_SIZE_32B,	/**< 32 byte SRAM slice */
-	TF_SRAM_SLICE_SIZE_64B,	/**< 64 byte SRAM slice */
-	TF_SRAM_SLICE_SIZE_MAX  /**< slice limit */
+	TF_SRAM_SLICE_SIZE_8B,		/**< 8 byte SRAM slice */
+	TF_SRAM_SLICE_SIZE_16B,		/**< 16 byte SRAM slice */
+	TF_SRAM_SLICE_SIZE_32B,		/**< 32 byte SRAM slice */
+	TF_SRAM_SLICE_SIZE_64B,		/**< 64 byte SRAM slice */
+	TF_SRAM_SLICE_SIZE_128B,	/**< 128 byte SRAM slice */
+	TF_SRAM_SLICE_SIZE_MAX		/**< slice limit */
 };
-
 
 /** Initialize the SRAM slice manager
  *
- *  The SRAM slice manager manages slices within 64B rows. Slices are of size
+ *  The SRAM slice manager manages slices within 128B rows. Slices are of size
  *  tf_sram_slice_size.  This function provides a handle to the SRAM manager
  *  data.
  *
@@ -181,7 +181,7 @@ struct tf_sram_mgr_free_parms {
 /**
  * Free an SRAM Slice
  *
- * Free an SRAM slice to the indicated bank.  This may result in a 64B row
+ * Free an SRAM slice to the indicated bank.  This may result in a 128B row
  * being returned to the RM SRAM bank pool.
  *
  * [in] sram_handle
@@ -303,5 +303,4 @@ const char
  */
 const char
 *tf_sram_bank_2_str(enum tf_sram_bank_id bank_id);
-
 #endif /* _TF_SRAM_MGR_H_ */

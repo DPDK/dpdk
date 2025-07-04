@@ -9,3 +9,5 @@ if dpdk_conf.has('RTE_HAS_JANSSON')
 endif
 
 deps += ['ethdev', 'telemetry']
+
+cflags += no_wvla_cflag

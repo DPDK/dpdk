@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016,2019 NXP
+ *   Copyright 2016,2019-2023 NXP
  *
  */
 
@@ -20,26 +20,28 @@
 #define DPAA2_MC_DPBP_DEVID	10
 #define DPAA2_MC_DPCI_DEVID	11
 
-typedef struct fslmc_vfio_device {
+struct fslmc_vfio_device {
+	LIST_ENTRY(fslmc_vfio_device) next;
 	int fd; /* fslmc root container device ?? */
 	int index; /*index of child object */
+	char dev_name[64];
 	struct fslmc_vfio_device *child; /* Child object */
-} fslmc_vfio_device;
+};
 
-typedef struct fslmc_vfio_group {
+struct fslmc_vfio_group {
+	LIST_ENTRY(fslmc_vfio_group) next;
 	int fd; /* /dev/vfio/"groupid" */
 	int groupid;
-	struct fslmc_vfio_container *container;
-	int object_index;
-	struct fslmc_vfio_device *vfio_device;
-} fslmc_vfio_group;
+	int connected;
+	char group_name[64]; /* dprc.x*/
+	int iommu_type;
+	LIST_HEAD(, fslmc_vfio_device) vfio_devices;
+};
 
-typedef struct fslmc_vfio_container {
+struct fslmc_vfio_container {
 	int fd; /* /dev/vfio/vfio */
-	int used;
-	int index; /* index in group list */
-	struct fslmc_vfio_group *group;
-} fslmc_vfio_container;
+	LIST_HEAD(, fslmc_vfio_group) groups;
+};
 
 extern char *fslmc_container;
 
@@ -55,9 +57,8 @@ int rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
+int fslmc_vfio_close_group(void);
 char *fslmc_get_container(void);
-int fslmc_get_container_group(int *gropuid);
-int rte_fslmc_vfio_dmamap(void);
-int rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size);
-
+int fslmc_get_container_group(const char *group_name, int *gropuid);
+int fslmc_vfio_dmamap(void);
 #endif /* _FSLMC_VFIO_H_ */

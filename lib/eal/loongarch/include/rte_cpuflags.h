@@ -5,10 +5,6 @@
 #ifndef RTE_CPUFLAGS_LOONGARCH_H
 #define RTE_CPUFLAGS_LOONGARCH_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Enumeration of all CPU features supported
  */
@@ -26,14 +22,8 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_LBT_X86,
 	RTE_CPUFLAG_LBT_ARM,
 	RTE_CPUFLAG_LBT_MIPS,
-	/* The last item */
-	RTE_CPUFLAG_NUMFLAGS /**< This should always be the last! */
 };
 
 #include "generic/rte_cpuflags.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_CPUFLAGS_LOONGARCH_H */

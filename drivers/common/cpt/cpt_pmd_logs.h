@@ -15,34 +15,33 @@
  * otx*_cryptodev.h file would define the CPT_LOGTYPE macro for the
  * platform.
  */
-#define CPT_PMD_DRV_LOG_RAW(level, fmt, args...) \
-		rte_log(RTE_LOG_ ## level, CPT_LOGTYPE, \
-			"cpt: %s(): " fmt "\n", __func__, ##args)
+#define RTE_LOGTYPE_CPT CPT_LOGTYPE
 
-#define CPT_PMD_INIT_FUNC_TRACE() CPT_PMD_DRV_LOG_RAW(DEBUG, " >>")
+#define CPT_PMD_DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, CPT, "%s(): ", __func__, __VA_ARGS__)
 
-#define CPT_LOG_INFO(fmt, args...) \
-	CPT_PMD_DRV_LOG_RAW(INFO, fmt, ## args)
-#define CPT_LOG_WARN(fmt, args...) \
-	CPT_PMD_DRV_LOG_RAW(WARNING, fmt, ## args)
-#define CPT_LOG_ERR(fmt, args...) \
-	CPT_PMD_DRV_LOG_RAW(ERR, fmt, ## args)
+#define CPT_PMD_INIT_FUNC_TRACE() CPT_PMD_DRV_LOG(DEBUG, " >>")
+
+#define CPT_LOG_INFO(...) \
+	CPT_PMD_DRV_LOG(INFO, __VA_ARGS__)
+#define CPT_LOG_WARN(...) \
+	CPT_PMD_DRV_LOG(WARNING, __VA_ARGS__)
+#define CPT_LOG_ERR(...) \
+	CPT_PMD_DRV_LOG(ERR, __VA_ARGS__)
 
 /*
  * DP logs, toggled out at compile time if level lower than current level.
- * DP logs would be logged under 'PMD' type. So for dynamic logging, the
- * level of 'pmd' has to be used.
  */
-#define CPT_LOG_DP(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt "\n", ## args)
+#define CPT_LOG_DP(level, ...) \
+	RTE_LOG_DP_LINE(level, CPT, __VA_ARGS__)
 
-#define CPT_LOG_DP_DEBUG(fmt, args...) \
-	CPT_LOG_DP(DEBUG, fmt, ## args)
-#define CPT_LOG_DP_INFO(fmt, args...) \
-	CPT_LOG_DP(INFO, fmt, ## args)
-#define CPT_LOG_DP_WARN(fmt, args...) \
-	CPT_LOG_DP(WARNING, fmt, ## args)
-#define CPT_LOG_DP_ERR(fmt, args...) \
-	CPT_LOG_DP(ERR, fmt, ## args)
+#define CPT_LOG_DP_DEBUG(...) \
+	CPT_LOG_DP(DEBUG, __VA_ARGS__)
+#define CPT_LOG_DP_INFO(...) \
+	CPT_LOG_DP(INFO, __VA_ARGS__)
+#define CPT_LOG_DP_WARN(...) \
+	CPT_LOG_DP(WARNING, __VA_ARGS__)
+#define CPT_LOG_DP_ERR(...) \
+	CPT_LOG_DP(ERR, __VA_ARGS__)
 
 #endif /* _CPT_PMD_LOGS_H_ */

@@ -17,12 +17,14 @@ The application has a number of command line options:
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-proc-info -- -m | [-p PORTMASK] [--stats | --xstats |
+   ./<build_dir>/app/dpdk-proc-info -- -m | [-p PORTMASK] [--stats | --xstats[=hide_zero] |
    --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
    --show-ring[=name] | --show-mempool[=name] | --iter-mempool=name |
    --show-port-private | --version | --firmware-version | --show-rss-reta |
    --show-module-eeprom | --show-rx-descriptor queue_id:offset:num |
-   --show-tx-descriptor queue_id:offset:num ]
+   --show-tx-descriptor queue_id:offset:num | --show-edev-queue-xstats=queue_num:evdev_id |
+   --show-edev-port-xstats=port_num :evdev_id | --edev-dump-xstats=evdev_id |
+   --edev-reset-xstats=evdev_id | --show-edev-device-xstats=evdev_id]
 
 Parameters
 ~~~~~~~~~~
@@ -32,9 +34,10 @@ Parameters
 The stats parameter controls the printing of generic port statistics. If no
 port mask is specified stats are printed for all DPDK ports.
 
-**--xstats**
-The xstats parameter controls the printing of extended port statistics. If no
-port mask is specified xstats are printed for all DPDK ports.
+**--xstats[=hide_zero]**
+The xstats parameter controls the printing of extended port statistics.
+If no port mask is specified, xstats are printed for all DPDK ports.
+Specifying the ``hide_zero`` value will hide empty counters.
 
 **--stats-reset**
 The stats-reset parameter controls the resetting of generic port statistics. If
@@ -100,6 +103,28 @@ specified by queue_id, offset and num.
 queue_id: A Tx queue identifier on this port.
 offset: The offset of the descriptor starting from tail.
 num: The number of the descriptors to dump.
+
+**--show-edev-queue-xstats queue_num:evdev_id**
+The show-edev-queue-xstats parameter enables stats for specified queue or all queues.
+queue_num: The queue number to get queue xstats for this specified queue or * for all queues.
+evdev_id: Id of the eventdev device to display xstats.
+
+**--show-edev-port-xstats port_num:evdev_id**
+The show-edev-port-xstats parameter enables stats for specified port or all ports.
+port_num: The port number to get port xstats for this specified port or * for all ports.
+evdev_id: Id of the eventdev device to display xstats.
+
+**--edev-dump-xstats evdev_id**
+The edev-dump-xstats parameter dumps all eventdev stats.
+evdev_id: Id of the eventdev device to display xstats.
+
+**--edev-reset-xstats evdev_id**
+The edev-reset-xstats parameter resets eventdev xstats after reading.
+evdev_id: Id of the eventdev device to display xstats.
+
+**--show-edev-device-xstats evdev_id**
+The show-edev-device-xstats parameter displays eventdev device xstats.
+evdev_id: Id of the eventdev device to display xstats.
 
 Limitations
 -----------

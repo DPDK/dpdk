@@ -27,11 +27,11 @@ octeontx_fpavf_alloc(struct rte_mempool *mp)
 		goto _end;
 
 	if ((uint32_t)rc != object_size)
-		fpavf_log_err("buffer size mismatch: %d instead of %u\n",
+		fpavf_log_err("buffer size mismatch: %d instead of %u",
 				rc, object_size);
 
-	fpavf_log_info("Pool created %p with .. ", (void *)pool);
-	fpavf_log_info("obj_sz %d, cnt %d\n", object_size, memseg_count);
+	fpavf_log_info("Pool created %p with .. obj_sz %d, cnt %d",
+		(void *)pool, object_size, memseg_count);
 
 	/* assign pool handle to mempool */
 	mp->pool_id = (uint64_t)pool;

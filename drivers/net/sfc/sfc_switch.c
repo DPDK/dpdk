@@ -551,6 +551,7 @@ sfc_mae_find_switch_port_by_ethdev(uint16_t switch_domain_id,
 int
 sfc_mae_switch_get_ethdev_mport(uint16_t switch_domain_id,
 				uint16_t ethdev_port_id,
+				unsigned int allowed_mae_switch_port_types,
 				efx_mport_sel_t *mport_sel)
 {
 	struct sfc_mae_switch_port *port;
@@ -562,11 +563,7 @@ sfc_mae_switch_get_ethdev_mport(uint16_t switch_domain_id,
 	if (rc != 0)
 		goto unlock;
 
-	if (port->type != SFC_MAE_SWITCH_PORT_INDEPENDENT) {
-		/*
-		 * The ethdev is a "VF representor". It does not own
-		 * a dedicated m-port suitable for use in flow rules.
-		 */
+	if (((1U << port->type) & allowed_mae_switch_port_types) == 0) {
 		rc = ENOTSUP;
 		goto unlock;
 	}

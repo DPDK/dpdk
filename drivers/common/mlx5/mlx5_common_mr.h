@@ -49,36 +49,36 @@ struct mlx5_mr {
 };
 
 /* Cache entry for Memory Region. */
-struct mr_cache_entry {
+struct __rte_packed_begin mr_cache_entry {
 	uintptr_t start; /* Start address of MR. */
 	uintptr_t end; /* End address of MR. */
 	uint32_t lkey; /* rte_cpu_to_be_32(lkey). */
-} __rte_packed;
+} __rte_packed_end;
 
 /* MR Cache table for Binary search. */
-struct mlx5_mr_btree {
+struct __rte_packed_begin mlx5_mr_btree {
 	uint32_t len; /* Number of entries. */
 	uint32_t size; /* Total number of entries. */
 	struct mr_cache_entry (*table)[];
-} __rte_packed;
+} __rte_packed_end;
 
 struct mlx5_common_device;
 
 /* Per-queue MR control descriptor. */
-struct mlx5_mr_ctrl {
+struct __rte_packed_begin mlx5_mr_ctrl {
 	uint32_t *dev_gen_ptr; /* Generation number of device to poll. */
 	uint32_t cur_gen; /* Generation number saved to flush caches. */
 	uint16_t mru; /* Index of last hit entry in top-half cache. */
 	uint16_t head; /* Index of the oldest entry in top-half cache. */
 	struct mr_cache_entry cache[MLX5_MR_CACHE_N]; /* Cache for top-half. */
 	struct mlx5_mr_btree cache_bh; /* Cache for bottom-half. */
-} __rte_packed;
+} __rte_packed_end;
 
 LIST_HEAD(mlx5_mr_list, mlx5_mr);
 LIST_HEAD(mlx5_mempool_reg_list, mlx5_mempool_reg);
 
 /* Global per-device MR cache. */
-struct mlx5_mr_share_cache {
+struct __rte_packed_begin mlx5_mr_share_cache {
 	uint32_t dev_gen; /* Generation number to flush local caches. */
 	rte_rwlock_t rwlock; /* MR cache Lock. */
 	rte_rwlock_t mprwlock; /* Mempool Registration Lock. */
@@ -88,19 +88,19 @@ struct mlx5_mr_share_cache {
 	struct mlx5_mempool_reg_list mempool_reg_list; /* Mempool database. */
 	mlx5_reg_mr_t reg_mr_cb; /* Callback to reg_mr func */
 	mlx5_dereg_mr_t dereg_mr_cb; /* Callback to dereg_mr func */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Multi-Packet RQ buffer header. */
-struct mlx5_mprq_buf {
+struct __rte_cache_aligned mlx5_mprq_buf {
 	struct rte_mempool *mp;
-	uint16_t refcnt; /* Atomically accessed refcnt. */
+	RTE_ATOMIC(uint16_t) refcnt; /* Atomically accessed refcnt. */
 	struct rte_mbuf_ext_shared_info shinfos[];
 	/*
 	 * Shared information per stride.
 	 * More memory will be allocated for the first stride head-room and for
 	 * the strides data.
 	 */
-} __rte_cache_aligned;
+};
 
 __rte_internal
 void mlx5_mprq_buf_free_cb(void *addr, void *opaque);
@@ -240,6 +240,10 @@ mlx5_mr_create(struct mlx5_common_device *cdev,
 	       struct mlx5_mr_share_cache *share_cache,
 	       struct mr_cache_entry *entry, uintptr_t addr);
 
+__rte_internal
+uint32_t
+mlx5_mr_addr2mr_bh(struct mlx5_mr_ctrl *mr_ctrl, uintptr_t addr);
+
 /* mlx5_common_verbs.c */
 
 __rte_internal
@@ -250,6 +254,7 @@ __rte_internal
 void
 mlx5_common_verbs_dereg_mr(struct mlx5_pmd_mr *pmd_mr);
 
+__rte_internal
 void
 mlx5_os_set_reg_mr_cb(mlx5_reg_mr_t *reg_mr_cb, mlx5_dereg_mr_t *dereg_mr_cb);
 

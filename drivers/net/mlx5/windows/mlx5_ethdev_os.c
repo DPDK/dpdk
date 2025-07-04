@@ -178,20 +178,29 @@ mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return -ENOTSUP;
 }
 
-/**
+/*
  * Query the number of statistics provided by ETHTOOL.
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param bond_master
+ *   Indicate if the device is a bond master.
+ * @param n_stats
+ *   Pointer to number of stats to store.
+ * @param n_stats_sec
+ *   Pointer to number of stats to store for the 2nd port of the bond.
  *
  * @return
- *   Number of statistics on success, negative errno value otherwise and
- *   rte_errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_get_stats_n(struct rte_eth_dev *dev)
+mlx5_os_get_stats_n(struct rte_eth_dev *dev, bool bond_master,
+		    uint16_t *n_stats, uint16_t *n_stats_sec)
 {
 	RTE_SET_USED(dev);
+	RTE_SET_USED(bond_master);
+	RTE_SET_USED(n_stats);
+	RTE_SET_USED(n_stats_sec);
 	return -ENOTSUP;
 }
 
@@ -221,6 +230,8 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param bond_master
+ *   Indicate if the device is a bond master.
  * @param[out] stats
  *   Counters table output buffer.
  *
@@ -229,9 +240,10 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
  *   rte_errno is set.
  */
 int
-mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
+mlx5_os_read_dev_counters(struct rte_eth_dev *dev, bool bond_master, uint64_t *stats)
 {
 	RTE_SET_USED(dev);
+	RTE_SET_USED(bond_master);
 	RTE_SET_USED(stats);
 	return -ENOTSUP;
 }

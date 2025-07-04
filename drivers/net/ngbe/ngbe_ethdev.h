@@ -32,6 +32,7 @@
 
 #define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
+#define NGBE_MAX_MTU		9414
 /* The overhead from MTU to max frame size. */
 #define NGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
@@ -130,6 +131,7 @@ struct ngbe_adapter {
 	struct ngbe_vf_info        *vfdata;
 	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
+	bool                       rx_vec_allowed;
 	struct rte_timecounter     systime_tc;
 	struct rte_timecounter     rx_tstamp_tc;
 	struct rte_timecounter     tx_tstamp_tc;
@@ -239,6 +241,12 @@ int
 ngbe_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		      struct rte_eth_burst_mode *mode);
 
+int ngbevf_dev_rx_init(struct rte_eth_dev *dev);
+
+void ngbevf_dev_tx_init(struct rte_eth_dev *dev);
+
+void ngbevf_dev_rxtx_start(struct rte_eth_dev *dev);
+
 uint16_t ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
@@ -328,7 +336,8 @@ struct rte_ngbe_xstats_name_off {
 	unsigned int offset;
 };
 
-const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					      size_t *no_of_elements);
 int ngbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
@@ -342,7 +351,6 @@ void ngbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
 void ngbe_config_vlan_strip_on_all_queues(struct rte_eth_dev *dev,
 						  int mask);
-void ngbe_dev_setup_link_alarm_handler(void *param);
 void ngbe_read_stats_registers(struct ngbe_hw *hw,
 			   struct ngbe_hw_stats *hw_stats);
 

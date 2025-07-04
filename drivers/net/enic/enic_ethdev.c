@@ -21,6 +21,7 @@
 #include "vnic_rq.h"
 #include "vnic_enet.h"
 #include "enic.h"
+#include "enic_sriov.h"
 
 /*
  * The set of PCI devices this driver supports
@@ -28,7 +29,6 @@
 #define CISCO_PCI_VENDOR_ID 0x1137
 static const struct rte_pci_id pci_id_enic_map[] = {
 	{RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET)},
-	{RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)},
 	{RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET_SN)},
 	{.vendor_id = 0, /* sentinel */},
 };
@@ -62,6 +62,27 @@ static const struct vic_speed_capa {
 	{ 0x021a, RTE_ETH_LINK_SPEED_40G }, /* 1487 MLOM */
 	{ 0x024a, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G }, /* 1495 PCIe */
 	{ 0x024b, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G }, /* 1497 MLOM */
+	{ 0x02af, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G }, /* 1467 MLOM */
+	{ 0x02b0, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G }, /* 1477 MLOM */
+	{ 0x02cf, RTE_ETH_LINK_SPEED_25G }, /* 14425 MLOM */
+	{ 0x02d0, RTE_ETH_LINK_SPEED_25G }, /* 14825 Mezz */
+	{ 0x02db, RTE_ETH_LINK_SPEED_100G }, /* 15231 MLOM */
+	{ 0x02dc, RTE_ETH_LINK_SPEED_10G }, /* 15411 MLOM */
+	{ 0x02dd, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G |
+		  RTE_ETH_LINK_SPEED_50G }, /* 15428 MLOM */
+	{ 0x02de, RTE_ETH_LINK_SPEED_25G }, /* 15420 MLOM */
+	{ 0x02e8, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G |
+		  RTE_ETH_LINK_SPEED_200G}, /* 15238 MLOM */
+	{ 0x02e0, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G |
+		  RTE_ETH_LINK_SPEED_50G }, /* 15427 MLOM */
+	{ 0x02df, RTE_ETH_LINK_SPEED_50G | RTE_ETH_LINK_SPEED_100G }, /* 15230 MLOM */
+	{ 0x02e1, RTE_ETH_LINK_SPEED_25G | RTE_ETH_LINK_SPEED_50G }, /* 15422 Mezz */
+	{ 0x02e4, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G |
+		  RTE_ETH_LINK_SPEED_200G }, /* 15235 PCIe */
+	{ 0x02f2, RTE_ETH_LINK_SPEED_10G | RTE_ETH_LINK_SPEED_25G |
+		  RTE_ETH_LINK_SPEED_50G }, /* 15425 PCIe */
+	{ 0x02f3, RTE_ETH_LINK_SPEED_40G | RTE_ETH_LINK_SPEED_100G |
+		  RTE_ETH_LINK_SPEED_200G }, /* 15237 MLOM */
 	{ 0, 0 }, /* End marker */
 };
 
@@ -368,6 +389,7 @@ static int enicpmd_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_link link;
 	struct enic *enic = pmd_priv(eth_dev);
+	uint16_t i;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -377,6 +399,11 @@ static int enicpmd_dev_stop(struct rte_eth_dev *eth_dev)
 
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(eth_dev, &link);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -505,7 +532,8 @@ static int enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+							size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -516,7 +544,6 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_L4_NONFRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 	static const uint32_t ptypes_overlay[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -535,16 +562,18 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_UDP,
 		RTE_PTYPE_INNER_L4_FRAG,
 		RTE_PTYPE_INNER_L4_NONFRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst != rte_eth_pkt_burst_dummy &&
 	    dev->rx_pkt_burst != NULL) {
 		struct enic *enic = pmd_priv(dev);
-		if (enic->overlay_offload)
+		if (enic->overlay_offload) {
+			*no_of_elements = RTE_DIM(ptypes_overlay);
 			return ptypes_overlay;
-		else
+		} else {
+			*no_of_elements = RTE_DIM(ptypes);
 			return ptypes;
+		}
 	}
 	return NULL;
 }
@@ -664,7 +693,7 @@ static void debug_log_add_del_addr(struct rte_ether_addr *addr, bool add)
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 
 	rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, addr);
-	ENICPMD_LOG(DEBUG, " %s address %s\n",
+	ENICPMD_LOG(DEBUG, " %s address %s",
 		     add ? "add" : "remove", mac_str);
 }
 
@@ -687,7 +716,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		    rte_is_broadcast_ether_addr(addr)) {
 			rte_ether_format_addr(mac_str,
 					RTE_ETHER_ADDR_FMT_SIZE, addr);
-			ENICPMD_LOG(ERR, " invalid multicast address %s\n",
+			ENICPMD_LOG(ERR, " invalid multicast address %s",
 				     mac_str);
 			return -EINVAL;
 		}
@@ -695,11 +724,11 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 
 	/* Flush all if requested */
 	if (nb_mc_addr == 0 || mc_addr_set == NULL) {
-		ENICPMD_LOG(DEBUG, " flush multicast addresses\n");
+		ENICPMD_LOG(DEBUG, " flush multicast addresses");
 		for (i = 0; i < enic->mc_count; i++) {
 			addr = &enic->mc_addrs[i];
 			debug_log_add_del_addr(addr, false);
-			ret = vnic_dev_del_addr(enic->vdev, addr->addr_bytes);
+			ret = enic_dev_del_addr(enic, addr->addr_bytes);
 			if (ret)
 				return ret;
 		}
@@ -708,7 +737,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	}
 
 	if (nb_mc_addr > ENIC_MULTICAST_PERFECT_FILTERS) {
-		ENICPMD_LOG(ERR, " too many multicast addresses: max=%d\n",
+		ENICPMD_LOG(ERR, " too many multicast addresses: max=%d",
 			     ENIC_MULTICAST_PERFECT_FILTERS);
 		return -ENOSPC;
 	}
@@ -726,7 +755,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		if (j < nb_mc_addr)
 			continue;
 		debug_log_add_del_addr(addr, false);
-		ret = vnic_dev_del_addr(enic->vdev, addr->addr_bytes);
+		ret = enic_dev_del_addr(enic, addr->addr_bytes);
 		if (ret)
 			return ret;
 	}
@@ -740,7 +769,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		if (j < enic->mc_count)
 			continue;
 		debug_log_add_del_addr(addr, true);
-		ret = vnic_dev_add_addr(enic->vdev, addr->addr_bytes);
+		ret = enic_dev_add_addr(enic, addr->addr_bytes);
 		if (ret)
 			return ret;
 	}
@@ -974,7 +1003,7 @@ static int udp_tunnel_common_check(struct enic *enic,
 	    tnl->prot_type != RTE_ETH_TUNNEL_TYPE_GENEVE)
 		return -ENOTSUP;
 	if (!enic->overlay_offload) {
-		ENICPMD_LOG(DEBUG, " overlay offload is not supported\n");
+		ENICPMD_LOG(DEBUG, " overlay offload is not supported");
 		return -ENOTSUP;
 	}
 	return 0;
@@ -987,10 +1016,10 @@ static int update_tunnel_port(struct enic *enic, uint16_t port, bool vxlan)
 	cfg = vxlan ? OVERLAY_CFG_VXLAN_PORT_UPDATE :
 		OVERLAY_CFG_GENEVE_PORT_UPDATE;
 	if (vnic_dev_overlay_offload_cfg(enic->vdev, cfg, port)) {
-		ENICPMD_LOG(DEBUG, " failed to update tunnel port\n");
+		ENICPMD_LOG(DEBUG, " failed to update tunnel port");
 		return -EINVAL;
 	}
-	ENICPMD_LOG(DEBUG, " updated %s port to %u\n",
+	ENICPMD_LOG(DEBUG, " updated %s port to %u",
 		    vxlan ? "vxlan" : "geneve", port);
 	if (vxlan)
 		enic->vxlan_port = port;
@@ -1021,7 +1050,7 @@ static int enicpmd_dev_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 	 * "Adding" a new port number replaces it.
 	 */
 	if (tnl->udp_port == port || tnl->udp_port == 0) {
-		ENICPMD_LOG(DEBUG, " %u is already configured or invalid\n",
+		ENICPMD_LOG(DEBUG, " %u is already configured or invalid",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
@@ -1053,7 +1082,7 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	 * which is tied to inner RSS and TSO.
 	 */
 	if (tnl->udp_port != port) {
-		ENICPMD_LOG(DEBUG, " %u is not a configured tunnel port\n",
+		ENICPMD_LOG(DEBUG, " %u is not a configured tunnel port",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
@@ -1268,7 +1297,7 @@ static int eth_enic_dev_init(struct rte_eth_dev *eth_dev,
 	enic->pdev = pdev;
 	addr = &pdev->addr;
 
-	snprintf(enic->bdf_name, ENICPMD_BDF_LENGTH, "%04x:%02x:%02x.%x",
+	snprintf(enic->bdf_name, PCI_PRI_STR_SIZE, PCI_PRI_FMT,
 		addr->domain, addr->bus, addr->devid, addr->function);
 
 	err = enic_check_devargs(eth_dev);
@@ -1311,13 +1340,13 @@ static int eth_enic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ENICPMD_FUNC_TRACE();
 	if (pci_dev->device.devargs) {
 		retval = rte_eth_devargs_parse(pci_dev->device.devargs->args,
-				&eth_da);
-		if (retval)
+				&eth_da, 1);
+		if (retval < 0)
 			return retval;
 	}
 	if (eth_da.nb_representor_ports > 0 &&
 	    eth_da.type != RTE_ETH_REPRESENTOR_VF) {
-		ENICPMD_LOG(ERR, "unsupported representor type: %s\n",
+		ENICPMD_LOG(ERR, "unsupported representor type: %s",
 			    pci_dev->device.devargs->args);
 		return -ENOTSUP;
 	}
@@ -1378,7 +1407,7 @@ static int eth_enic_pci_remove(struct rte_pci_device *pci_dev)
 	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (!ethdev)
 		return -ENODEV;
-	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+	if (rte_eth_dev_is_repr(ethdev))
 		return rte_eth_dev_destroy(ethdev, enic_vf_representor_uninit);
 	else
 		return rte_eth_dev_destroy(ethdev, eth_enic_dev_uninit);

@@ -12,7 +12,7 @@ struct wireless_test_data {
 	} key;
 
 	struct {
-		uint8_t data[64] __rte_aligned(16);
+		alignas(16) uint8_t data[64];
 		unsigned len;
 	} cipher_iv;
 

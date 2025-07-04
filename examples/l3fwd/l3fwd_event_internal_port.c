@@ -2,6 +2,7 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#ifdef RTE_LIB_EVENTDEV
 #include <stdbool.h>
 
 #include "l3fwd.h"
@@ -71,6 +72,12 @@ l3fwd_event_device_setup_internal_port(void)
 	evt_rsrc->evq.nb_queues = event_d_conf.nb_event_queues;
 	evt_rsrc->has_burst = !!(dev_info.event_dev_cap &
 				    RTE_EVENT_DEV_CAP_BURST_MODE);
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)
+		event_d_conf.preschedule_type = RTE_EVENT_PRESCHEDULE;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+		event_d_conf.preschedule_type = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
 
 	ret = rte_event_dev_configure(event_d_id, &event_d_conf);
 	if (ret < 0)
@@ -311,3 +318,4 @@ l3fwd_event_set_internal_port_ops(struct l3fwd_event_setup_ops *ops)
 	ops->event_port_setup = l3fwd_event_port_setup_internal_port;
 	ops->adapter_setup = l3fwd_rx_tx_adapter_setup_internal_port;
 }
+#endif /* RTE_LIB_EVENTDEV */

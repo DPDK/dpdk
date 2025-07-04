@@ -10,12 +10,7 @@
  * @file rte_security.h
  *
  * RTE Security Common Definitions
- *
  */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <sys/types.h>
 
@@ -24,6 +19,10 @@ extern "C" {
 #include <rte_crypto.h>
 #include <rte_ip.h>
 #include <rte_mbuf_dyn.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** IPSec protocol mode */
 enum rte_security_ipsec_sa_mode {
@@ -57,30 +56,6 @@ enum rte_security_ipsec_tunnel_type {
 #define RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR     0x1
 #define RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR 0x2
 
-/**
- * Security context for crypto/eth devices
- *
- * Security instance for each driver to register security operations.
- * The application can get the security context from the crypto/eth device id
- * using the APIs rte_cryptodev_get_sec_ctx()/rte_eth_dev_get_sec_ctx()
- * This structure is used to identify the device(crypto/eth) for which the
- * security operations need to be performed.
- */
-struct rte_security_ctx {
-	void *device;
-	/**< Crypto/ethernet device attached */
-	const struct rte_security_ops *ops;
-	/**< Pointer to security ops for the device */
-	uint16_t sess_cnt;
-	/**< Number of sessions attached to this context */
-	uint16_t macsec_sc_cnt;
-	/**< Number of MACsec SC attached to this context */
-	uint16_t macsec_sa_cnt;
-	/**< Number of MACsec SA attached to this context */
-	uint32_t flags;
-	/**< Flags for security context */
-};
-
 #define RTE_SEC_CTX_F_FAST_SET_MDATA 0x00000001
 /**< Driver uses fast metadata update without using driver specific callback.
  * For fast mdata, mbuf dynamic field would be registered by driver
@@ -95,7 +70,6 @@ struct rte_security_ctx {
 struct rte_security_ipsec_tunnel_param {
 	enum rte_security_ipsec_tunnel_type type;
 	/**< Tunnel type: IPv4 or IPv6 */
-	RTE_STD_C11
 	union {
 		struct {
 			struct in_addr src_ip;
@@ -111,9 +85,9 @@ struct rte_security_ipsec_tunnel_param {
 		} ipv4;
 		/**< IPv4 header parameters */
 		struct {
-			struct in6_addr src_addr;
+			struct rte_ipv6_addr src_addr;
 			/**< IPv6 source address */
-			struct in6_addr dst_addr;
+			struct rte_ipv6_addr dst_addr;
 			/**< IPv6 destination address */
 			uint8_t dscp;
 			/**< IPv6 Differentiated Services Code Point */
@@ -275,14 +249,16 @@ struct rte_security_ipsec_sa_options {
 	 */
 	uint32_t ip_reassembly_en : 1;
 
-	/** Reserved bit fields for future extension
+	/** Enable out of place processing on inline inbound packets.
 	 *
-	 * User should ensure reserved_opts is cleared as it may change in
-	 * subsequent releases to support new options.
-	 *
-	 * Note: Reduce number of bits in reserved_opts for every new option.
+	 * * 1: Enable driver to perform Out-of-place(OOP) processing for this inline
+	 *      inbound SA if supported by driver. PMD need to register mbuf
+	 *      dynamic field using rte_security_oop_dynfield_register()
+	 *      and security session creation would fail if dynfield is not
+	 *      registered successfully.
+	 * * 0: Disable OOP processing for this session (default).
 	 */
-	uint32_t reserved_opts : 17;
+	uint32_t ingress_oop : 1;
 };
 
 /** IPSec security association direction */
@@ -399,6 +375,8 @@ struct rte_security_macsec_sa {
 struct rte_security_macsec_sc {
 	/** Direction of SC */
 	enum rte_security_macsec_direction dir;
+	/** Packet number threshold */
+	uint64_t pn_threshold;
 	union {
 		struct {
 			/** SAs for each association number */
@@ -407,8 +385,10 @@ struct rte_security_macsec_sc {
 			uint8_t sa_in_use[RTE_SECURITY_MACSEC_NUM_AN];
 			/** Channel is active */
 			uint8_t active : 1;
+			/** Extended packet number is enabled for SAs */
+			uint8_t is_xpn : 1;
 			/** Reserved bitfields for future */
-			uint8_t reserved : 7;
+			uint8_t reserved : 6;
 		} sc_rx;
 		struct {
 			uint16_t sa_id; /**< SA ID to be used for encryption */
@@ -416,8 +396,10 @@ struct rte_security_macsec_sc {
 			uint64_t sci; /**< SCI value to be used if send_sci is set */
 			uint8_t active : 1; /**< Channel is active */
 			uint8_t re_key_en : 1; /**< Enable Rekeying */
+			/** Extended packet number is enabled for SAs */
+			uint8_t is_xpn : 1;
 			/** Reserved bitfields for future */
-			uint8_t reserved : 6;
+			uint8_t reserved : 5;
 		} sc_tx;
 	};
 };
@@ -615,9 +597,137 @@ struct rte_security_docsis_xform {
 	/**< DOCSIS direction */
 };
 
+/** Implicit nonce length to be used with AEAD algos in TLS 1.2 */
+#define RTE_SECURITY_TLS_1_2_IMP_NONCE_LEN 4
+/** Implicit nonce length to be used with AEAD algos in TLS 1.3 */
+#define RTE_SECURITY_TLS_1_3_IMP_NONCE_LEN 12
+/** Implicit nonce length to be used with AEAD algos in DTLS 1.2 */
+#define RTE_SECURITY_DTLS_1_2_IMP_NONCE_LEN 4
+
+/** TLS version */
+enum rte_security_tls_version {
+	RTE_SECURITY_VERSION_TLS_1_2,	/**< TLS 1.2 */
+	RTE_SECURITY_VERSION_TLS_1_3,	/**< TLS 1.3 */
+	RTE_SECURITY_VERSION_DTLS_1_2,	/**< DTLS 1.2 */
+};
+
+/** TLS session type */
+enum rte_security_tls_sess_type {
+	/** Record read session
+	 * - Decrypt & digest verification.
+	 */
+	RTE_SECURITY_TLS_SESS_TYPE_READ,
+	/** Record write session
+	 * - Encrypt & digest generation.
+	 */
+	RTE_SECURITY_TLS_SESS_TYPE_WRITE,
+};
+
+/**
+ * TLS record session options
+ */
+struct rte_security_tls_record_sess_options {
+	/** Disable IV generation in PMD.
+	 *
+	 * * 1: Disable IV generation in PMD. When disabled, IV provided in rte_crypto_op will be
+	 *      used by the PMD.
+	 *
+	 * * 0: Enable IV generation in PMD. When enabled, PMD generated random value would be used
+	 *      and application is not required to provide IV.
+	 */
+	uint32_t iv_gen_disable : 1;
+	/** Enable extra padding
+	 *
+	 *  TLS allows user to pad the plain text to hide the actual size of the record.
+	 *  This is required to achieve traffic flow confidentiality in case of TLS/DTLS flows.
+	 *  This padding is in addition to the default padding performed by PMD
+	 *  (which ensures ciphertext is aligned to block size).
+	 *
+	 *  On supported devices, application may pass the required additional padding via
+	 *  ``rte_crypto_op.aux_flags`` field.
+	 *
+	 * 1 : Enable extra padding of the plain text provided. The extra padding value would be
+	 *     read from ``rte_crypto_op.aux_flags``.
+	 *
+	 * 0 : Disable extra padding
+	 */
+	uint32_t extra_padding_enable : 1;
+};
+
+/**
+ * Configure soft and hard lifetime of a TLS record session.
+ *
+ * Lifetime of a TLS record session would specify the maximum number of packets that can be
+ * processed. TLS record processing operations would start failing once hard limit is reached.
+ *
+ * Soft limits can be specified to generate notification when the TLS record session is approaching
+ * hard limits for lifetime. This would result in a warning returned in ``rte_crypto_op.aux_flags``.
+ */
+struct rte_security_tls_record_lifetime {
+	/** Soft expiry limit in number of packets */
+	uint64_t packets_soft_limit;
+	/** Hard expiry limit in number of packets */
+	uint64_t packets_hard_limit;
+};
+
+/**
+ * TLS record protocol session configuration.
+ *
+ * This structure contains data required to create a TLS record security session.
+ */
+struct rte_security_tls_record_xform {
+	/** TLS record version. */
+	enum rte_security_tls_version ver;
+	/** TLS record session type. */
+	enum rte_security_tls_sess_type type;
+	/** TLS record session options. */
+	struct rte_security_tls_record_sess_options options;
+	/** TLS record session lifetime. */
+	struct rte_security_tls_record_lifetime life;
+	union {
+		/** TLS 1.2 parameters. */
+		struct {
+			/** Starting sequence number. */
+			uint64_t seq_no;
+			/** Implicit nonce to be used for AEAD algos. */
+			uint8_t imp_nonce[RTE_SECURITY_TLS_1_2_IMP_NONCE_LEN];
+		} tls_1_2;
+
+		/** TLS 1.3 parameters. */
+		struct {
+			/** Starting sequence number. */
+			uint64_t seq_no;
+			/** Implicit nonce to be used for AEAD algos. */
+			uint8_t imp_nonce[RTE_SECURITY_TLS_1_3_IMP_NONCE_LEN];
+			/**
+			 * Minimum payload length (in case of write sessions).
+			 * For shorter inputs, the payload would be padded appropriately
+			 * before performing crypto transformations.
+			 */
+			uint32_t min_payload_len;
+		} tls_1_3;
+
+		/** DTLS 1.2 parameters */
+		struct {
+			/** Epoch value to be used. */
+			uint16_t epoch;
+			/** 6B starting sequence number to be used. */
+			uint64_t seq_no;
+			/** Implicit nonce to be used for AEAD algos. */
+			uint8_t imp_nonce[RTE_SECURITY_DTLS_1_2_IMP_NONCE_LEN];
+			/**
+			 * Anti replay window size to enable sequence replay attack handling.
+			 * Anti replay check is disabled if the window size is 0.
+			 */
+			uint32_t ar_win_sz;
+		} dtls_1_2;
+	};
+};
+
 /**
  * Security session action type.
  */
+/* Enumeration of rte_security_session_action_type 8<*/
 enum rte_security_session_action_type {
 	RTE_SECURITY_ACTION_TYPE_NONE,
 	/**< No security actions */
@@ -638,8 +748,10 @@ enum rte_security_session_action_type {
 	 * protocol is processed synchronously by a CPU.
 	 */
 };
+/* >8 End enumeration of rte_security_session_action_type. */
 
 /** Security session protocol definition */
+/* Enumeration of rte_security_session_protocol 8<*/
 enum rte_security_session_protocol {
 	RTE_SECURITY_PROTOCOL_IPSEC = 1,
 	/**< IPsec Protocol */
@@ -649,22 +761,26 @@ enum rte_security_session_protocol {
 	/**< PDCP Protocol */
 	RTE_SECURITY_PROTOCOL_DOCSIS,
 	/**< DOCSIS Protocol */
+	RTE_SECURITY_PROTOCOL_TLS_RECORD,
+	/**< TLS Record Protocol */
 };
+/* >8 End enumeration of rte_security_session_protocol. */
 
 /**
  * Security session configuration
  */
+/* Structure rte_security_session_conf 8< */
 struct rte_security_session_conf {
 	enum rte_security_session_action_type action_type;
 	/**< Type of action to be performed on the session */
 	enum rte_security_session_protocol protocol;
 	/**< Security protocol to be configured */
-	RTE_STD_C11
 	union {
 		struct rte_security_ipsec_xform ipsec;
 		struct rte_security_macsec_xform macsec;
 		struct rte_security_pdcp_xform pdcp;
 		struct rte_security_docsis_xform docsis;
+		struct rte_security_tls_record_xform tls_record;
 	};
 	/**< Configuration parameters for security session */
 	struct rte_crypto_sym_xform *crypto_xform;
@@ -672,6 +788,7 @@ struct rte_security_session_conf {
 	void *userdata;
 	/**< Application specific userdata to be saved with session */
 };
+/* >8 End of structure rte_security_session_conf. */
 
 /**
  * Create security session as specified by the session configuration
@@ -684,7 +801,7 @@ struct rte_security_session_conf {
  *  - On failure, NULL
  */
 void *
-rte_security_session_create(struct rte_security_ctx *instance,
+rte_security_session_create(void *instance,
 			    struct rte_security_session_conf *conf,
 			    struct rte_mempool *mp);
 
@@ -698,9 +815,8 @@ rte_security_session_create(struct rte_security_ctx *instance,
  *  - On success returns 0
  *  - On failure returns a negative errno value.
  */
-__rte_experimental
 int
-rte_security_session_update(struct rte_security_ctx *instance,
+rte_security_session_update(void *instance,
 			    void *sess,
 			    struct rte_security_session_conf *conf);
 
@@ -714,7 +830,7 @@ rte_security_session_update(struct rte_security_ctx *instance,
  *   - 0 if device is invalid or does not support the operation.
  */
 unsigned int
-rte_security_session_get_size(struct rte_security_ctx *instance);
+rte_security_session_get_size(void *instance);
 
 /**
  * Free security session header and the session private data and
@@ -731,12 +847,9 @@ rte_security_session_get_size(struct rte_security_ctx *instance);
  *  - other negative values in case of freeing private data errors.
  */
 int
-rte_security_session_destroy(struct rte_security_ctx *instance, void *sess);
+rte_security_session_destroy(void *instance, void *sess);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create MACsec security channel (SC).
  *
  * @param   instance	security instance
@@ -748,32 +861,26 @@ rte_security_session_destroy(struct rte_security_ctx *instance, void *sess);
  *  - -ENOMEM if PMD is not capable to create more SC.
  *  - other negative value for other errors.
  */
-__rte_experimental
 int
-rte_security_macsec_sc_create(struct rte_security_ctx *instance,
+rte_security_macsec_sc_create(void *instance,
 			      struct rte_security_macsec_sc *conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Destroy MACsec security channel (SC).
  *
  * @param   instance	security instance
  * @param   sc_id	SC ID to be destroyed
+ * @param   dir		direction of the SC
  * @return
  *  - 0 if successful.
  *  - -EINVAL if sc_id is invalid or instance is NULL.
  *  - -EBUSY if sc is being used by some session.
  */
-__rte_experimental
 int
-rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id);
+rte_security_macsec_sc_destroy(void *instance, uint16_t sc_id,
+			       enum rte_security_macsec_direction dir);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create MACsec security association (SA).
  *
  * @param   instance	security instance
@@ -785,37 +892,38 @@ rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id
  *  - -ENOMEM if PMD is not capable to create more SAs.
  *  - other negative value for other errors.
  */
-__rte_experimental
 int
-rte_security_macsec_sa_create(struct rte_security_ctx *instance,
+rte_security_macsec_sa_create(void *instance,
 			      struct rte_security_macsec_sa *conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Destroy MACsec security association (SA).
  *
  * @param   instance	security instance
  * @param   sa_id	SA ID to be destroyed
+ * @param   dir		direction of the SA
  * @return
  *  - 0 if successful.
  *  - -EINVAL if sa_id is invalid or instance is NULL.
  *  - -EBUSY if sa is being used by some session.
  */
-__rte_experimental
 int
-rte_security_macsec_sa_destroy(struct rte_security_ctx *instance, uint16_t sa_id);
+rte_security_macsec_sa_destroy(void *instance, uint16_t sa_id,
+			       enum rte_security_macsec_direction dir);
 
 /** Device-specific metadata field type */
 typedef uint64_t rte_security_dynfield_t;
 /** Dynamic mbuf field for device-specific metadata */
 extern int rte_security_dynfield_offset;
 
+/** Out-of-Place(OOP) processing field type */
+typedef struct rte_mbuf *rte_security_oop_dynfield_t;
+/** Dynamic mbuf field for pointer to original mbuf for
+ * OOP processing session.
+ */
+extern int rte_security_oop_dynfield_offset;
+
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get pointer to mbuf field for device-specific metadata.
  *
  * For performance reason, no check is done,
@@ -825,7 +933,6 @@ extern int rte_security_dynfield_offset;
  * @param	mbuf	packet to access
  * @return pointer to mbuf field
  */
-__rte_experimental
 static inline rte_security_dynfield_t *
 rte_security_dynfield(struct rte_mbuf *mbuf)
 {
@@ -838,14 +945,50 @@ rte_security_dynfield(struct rte_mbuf *mbuf)
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
+ * Get pointer to mbuf field for original mbuf pointer when
+ * Out-Of-Place(OOP) processing is enabled in security session.
+ *
+ * @param       mbuf    packet to access
+ * @return pointer to mbuf field
+ */
+__rte_experimental
+static inline rte_security_oop_dynfield_t *
+rte_security_oop_dynfield(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+			rte_security_oop_dynfield_offset,
+			rte_security_oop_dynfield_t *);
+}
+
+/**
  * Check whether the dynamic field is registered.
  *
  * @return true if rte_security_dynfield_register() has been called.
  */
-__rte_experimental
 static inline bool rte_security_dynfield_is_registered(void)
 {
 	return rte_security_dynfield_offset >= 0;
+}
+
+#define RTE_SECURITY_CTX_FLAGS_OFF		4
+/**
+ * Get security flags from security instance.
+ */
+static inline uint32_t
+rte_security_ctx_flags_get(void *ctx)
+{
+	return *((uint32_t *)ctx + RTE_SECURITY_CTX_FLAGS_OFF);
+}
+
+/**
+ * Set security flags in security instance.
+ */
+static inline void
+rte_security_ctx_flags_set(void *ctx, uint32_t flags)
+{
+	uint32_t *data;
+	data = (((uint32_t *)ctx) + RTE_SECURITY_CTX_FLAGS_OFF);
+	*data = flags;
 }
 
 #define RTE_SECURITY_SESS_OPAQUE_DATA_OFF	0
@@ -891,10 +1034,9 @@ rte_security_session_fast_mdata_set(void *sess, uint64_t fdata)
 }
 
 /** Function to call PMD specific function pointer set_pkt_metadata() */
-__rte_experimental
-extern int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
-					   void *sess,
-					   struct rte_mbuf *m, void *params);
+int __rte_security_set_pkt_metadata(void *instance,
+				    void *sess,
+				    struct rte_mbuf *m, void *params);
 
 /**
  *  Updates the buffer with device-specific defined metadata
@@ -910,12 +1052,12 @@ extern int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
  *  - On failure, a negative value.
  */
 static inline int
-rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
+rte_security_set_pkt_metadata(void *instance,
 			      void *sess,
 			      struct rte_mbuf *mb, void *params)
 {
 	/* Fast Path */
-	if (instance->flags & RTE_SEC_CTX_F_FAST_SET_MDATA) {
+	if (rte_security_ctx_flags_get(instance) & RTE_SEC_CTX_F_FAST_SET_MDATA) {
 		*rte_security_dynfield(mb) = (rte_security_dynfield_t)
 			rte_security_session_fast_mdata_get(sess);
 		return 0;
@@ -1041,7 +1183,6 @@ struct rte_security_stats {
 	enum rte_security_session_protocol protocol;
 	/**< Security protocol to be configured */
 
-	RTE_STD_C11
 	union {
 		struct rte_security_macsec_secy_stats macsec;
 		struct rte_security_ipsec_stats ipsec;
@@ -1063,48 +1204,41 @@ struct rte_security_stats {
  *  - On success, return 0
  *  - On failure, a negative value
  */
-__rte_experimental
 int
-rte_security_session_stats_get(struct rte_security_ctx *instance,
+rte_security_session_stats_get(void *instance,
 			       void *sess,
 			       struct rte_security_stats *stats);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get MACsec SA statistics.
  *
  * @param	instance	security instance
  * @param	sa_id		SA ID for which stats are needed
+ * @param	dir		direction of the SA
  * @param	stats		statistics
  * @return
  *  - On success, return 0.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
-rte_security_macsec_sa_stats_get(struct rte_security_ctx *instance,
-				 uint16_t sa_id,
+rte_security_macsec_sa_stats_get(void *instance,
+				 uint16_t sa_id, enum rte_security_macsec_direction dir,
 				 struct rte_security_macsec_sa_stats *stats);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get MACsec SC statistics.
  *
  * @param	instance	security instance
  * @param	sc_id		SC ID for which stats are needed
+ * @param	dir		direction of the SC
  * @param	stats		SC statistics
  * @return
  *  - On success, return 0.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
-rte_security_macsec_sc_stats_get(struct rte_security_ctx *instance,
-				 uint16_t sc_id,
+rte_security_macsec_sc_stats_get(void *instance,
+				 uint16_t sc_id, enum rte_security_macsec_direction dir,
 				 struct rte_security_macsec_sc_stats *stats);
 
 /**
@@ -1115,7 +1249,6 @@ struct rte_security_capability {
 	/**< Security action type*/
 	enum rte_security_session_protocol protocol;
 	/**< Security protocol */
-	RTE_STD_C11
 	union {
 		struct {
 			enum rte_security_ipsec_sa_protocol proto;
@@ -1179,6 +1312,17 @@ struct rte_security_capability {
 			/**< DOCSIS direction */
 		} docsis;
 		/**< DOCSIS capability */
+		struct {
+			enum rte_security_tls_version ver;
+			/**< TLS record version. */
+			enum rte_security_tls_sess_type type;
+			/**< TLS record session type. */
+			uint32_t ar_win_size;
+			/**< Maximum anti replay window size supported for DTLS 1.2 record read
+			 * operation. Value of 0 means anti replay check is not supported.
+			 */
+		} tls_record;
+		/**< TLS record capability */
 	};
 
 	const struct rte_cryptodev_capabilities *crypto_capabilities;
@@ -1226,7 +1370,6 @@ struct rte_security_capability_idx {
 	enum rte_security_session_action_type action;
 	enum rte_security_session_protocol protocol;
 
-	RTE_STD_C11
 	union {
 		struct {
 			enum rte_security_ipsec_sa_protocol proto;
@@ -1240,6 +1383,13 @@ struct rte_security_capability_idx {
 		struct {
 			enum rte_security_docsis_direction direction;
 		} docsis;
+		struct {
+			enum rte_security_macsec_alg alg;
+		} macsec;
+		struct {
+			enum rte_security_tls_version ver;
+			enum rte_security_tls_sess_type type;
+		} tls_record;
 	};
 };
 
@@ -1253,7 +1403,7 @@ struct rte_security_capability_idx {
  *   - Return NULL if no capabilities available.
  */
 const struct rte_security_capability *
-rte_security_capabilities_get(struct rte_security_ctx *instance);
+rte_security_capabilities_get(void *instance);
 
 /**
  * Query if a specific capability is available on security instance
@@ -1267,8 +1417,92 @@ rte_security_capabilities_get(struct rte_security_ctx *instance);
  *   - Return NULL if the capability not matched on security instance.
  */
 const struct rte_security_capability *
-rte_security_capability_get(struct rte_security_ctx *instance,
+rte_security_capability_get(void *instance,
 			    struct rte_security_capability_idx *idx);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Configure security device to inject packets to an ethdev port.
+ *
+ * This API must be called only when both security device and the ethdev is in
+ * stopped state. The security device need to be configured before any packets
+ * are submitted to ``rte_security_inb_pkt_rx_inject`` API.
+ *
+ * @param	ctx		Security ctx
+ * @param	port_id		Port identifier of the ethernet device to which
+ *				packets need to be injected.
+ * @param	enable		Flag to enable and disable connection between a
+ *				security device and an ethdev port.
+ * @return
+ *   - 0 if successful.
+ *   - -EINVAL if context NULL or port_id is invalid.
+ *   - -EBUSY if devices are not in stopped state.
+ *   - -ENOTSUP if security device does not support injecting to ethdev port.
+ *
+ * @see rte_security_inb_pkt_rx_inject
+ */
+__rte_experimental
+int
+rte_security_rx_inject_configure(void *ctx, uint16_t port_id, bool enable);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Perform security processing of packets and inject the processed packet to
+ * ethdev Rx.
+ *
+ * Rx inject would behave similarly to ethdev loopback but with the additional
+ * security processing. In case of ethdev loopback, application would be
+ * submitting packets to ethdev Tx queues and would be received as is from
+ * ethdev Rx queues. With Rx inject, packets would be received after security
+ * processing from ethdev Rx queues.
+ *
+ * With inline protocol offload capable ethdevs, Rx injection can be used to
+ * handle packets which failed the regular security Rx path. This can be due to
+ * cases such as outer fragmentation, in which case applications can reassemble
+ * the fragments and then subsequently submit for inbound processing and Rx
+ * injection, so that packets are received as regular security processed
+ * packets.
+ *
+ * With lookaside protocol offload capable cryptodevs, Rx injection can be used
+ * to perform packet parsing after security processing. This would allow for
+ * re-classification after security protocol processing is done (ie, inner
+ * packet parsing). The ethdev queue on which the packet would be received would
+ * be based on rte_flow rules matching the packet after security processing.
+ *
+ * The security device which is injecting packets to ethdev Rx need to be
+ * configured using ``rte_security_rx_inject_configure`` with enable flag set
+ * to `true` before any packets are submitted.
+ *
+ * If `hash.fdir.h` field is set in mbuf, it would be treated as the value for
+ * `MARK` pattern for the subsequent rte_flow parsing. The packet would appear
+ * as if it is received from `port` field in mbuf.
+ *
+ * Since the packet would be received back from ethdev Rx queues,
+ * it is expected that application retains/adds L2 header with the
+ * mbuf field 'l2_len' reflecting the size of L2 header in the packet.
+ *
+ * @param	ctx		Security ctx
+ * @param	pkts		The address of an array of *nb_pkts* pointers to
+ *				*rte_mbuf* structures which contain the packets.
+ * @param	sess		The address of an array of *nb_pkts* pointers to
+ *				security sessions corresponding to each packet.
+ * @param	nb_pkts		The maximum number of packets to process.
+ *
+ * @return
+ *   The number of packets successfully injected to ethdev Rx.
+ *   The return value can be less than the value of the *nb_pkts* parameter
+ *   when the PMD internal queues have been filled up.
+ *
+ * @see rte_security_rx_inject_configure
+ */
+__rte_experimental
+uint16_t
+rte_security_inb_pkt_rx_inject(void *ctx, struct rte_mbuf **pkts, void **sess,
+			       uint16_t nb_pkts);
 
 #ifdef __cplusplus
 }

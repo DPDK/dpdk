@@ -106,7 +106,7 @@ mlx4_init_shared_data(void)
 						 sizeof(*mlx4_shared_data),
 						 SOCKET_ID_ANY, 0);
 			if (mz == NULL) {
-				ERROR("Cannot allocate mlx4 shared data\n");
+				ERROR("Cannot allocate mlx4 shared data");
 				ret = -rte_errno;
 				goto error;
 			}
@@ -117,7 +117,7 @@ mlx4_init_shared_data(void)
 			/* Lookup allocated shared memory. */
 			mz = rte_memzone_lookup(MZ_MLX4_PMD_SHARED_DATA);
 			if (mz == NULL) {
-				ERROR("Cannot attach mlx4 shared data\n");
+				ERROR("Cannot attach mlx4 shared data");
 				ret = -rte_errno;
 				goto error;
 			}
@@ -292,6 +292,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
 	struct rte_flow_error error;
+	uint16_t i;
 	int ret;
 
 	if (priv->started)
@@ -327,6 +328,12 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = mlx4_rx_burst;
 	/* Enable datapath on secondary process. */
 	mlx4_mp_req_start_rxtx(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 err:
 	mlx4_dev_stop(dev);
@@ -345,6 +352,7 @@ static int
 mlx4_dev_stop(struct rte_eth_dev *dev)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
+	uint16_t i;
 
 	if (!priv->started)
 		return 0;
@@ -358,6 +366,11 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	mlx4_flow_sync(priv, NULL);
 	mlx4_rxq_intr_disable(priv);
 	mlx4_rss_deinit(priv);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -804,10 +817,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("checking device \"%s\"", list[i]->name);
 		if (mlx4_ibv_device_to_pci_addr(list[i], &pci_addr))
 			continue;
-		if ((pci_dev->addr.domain != pci_addr.domain) ||
-		    (pci_dev->addr.bus != pci_addr.bus) ||
-		    (pci_dev->addr.devid != pci_addr.devid) ||
-		    (pci_dev->addr.function != pci_addr.function))
+		if (rte_pci_addr_cmp(&pci_dev->addr, &pci_addr) != 0)
 			continue;
 		vf = (pci_dev->id.device_id ==
 		      PCI_DEVICE_ID_MELLANOX_CONNECTX3VF);
@@ -1048,7 +1058,7 @@ err_secondary:
 		priv->intr_handle =
 			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
 		if (priv->intr_handle == NULL) {
-			RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+			ERROR("can not allocate intr_handle");
 			goto port_error;
 		}
 
@@ -1375,7 +1385,7 @@ RTE_INIT(rte_mlx4_pmd_init)
 	rte_pci_register(&mlx4_driver);
 }
 
-RTE_PMD_EXPORT_NAME(net_mlx4, __COUNTER__);
+RTE_PMD_EXPORT_NAME(net_mlx4);
 RTE_PMD_REGISTER_PCI_TABLE(net_mlx4, mlx4_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_mlx4,
 	"* ib_uverbs & mlx4_en & mlx4_core & mlx4_ib");

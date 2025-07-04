@@ -26,10 +26,10 @@ Service Core Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are two methods to having service cores in a DPDK application, either by
-using the service coremask, or by dynamically adding cores using the API.
-The simpler of the two is to pass the `-s` coremask argument to EAL, which will
-take any cores available in the main DPDK coremask, and if the bits are also set
-in the service coremask the cores become service-cores instead of DPDK
+using the service corelist, or by dynamically adding cores using the API.
+The simpler of the two is to pass the `-S` corelist argument to EAL, which will
+take any cores available in the main DPDK corelist, and if also set
+in the service corelist the cores become service-cores instead of DPDK
 application lcores.
 
 Enabling Services on Cores
@@ -52,3 +52,16 @@ The service core library is capable of collecting runtime statistics like number
 of calls to a specific service, and number of cycles used by the service. The
 cycle count collection is dynamically configurable, allowing any application to
 profile the services running on the system at any time.
+
+Service Core Tracing
+~~~~~~~~~~~~~~~~~~~~
+
+The service core library is instrumented with tracepoints using the DPDK Trace
+Library. These tracepoints allow you to track the service and logical cores
+state. To activate tracing when launching a DPDK program it is necessary to use the
+``--trace`` option to specify a regular expression to select which tracepoints
+to enable. Here is an example if you want to only specify service core tracing::
+
+  ./dpdk/examples/service_cores/build/service_cores --trace="lib.eal.thread*" --trace="lib.eal.service*"
+
+See the :doc:`trace_lib` documentation for details.

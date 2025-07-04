@@ -92,7 +92,9 @@ err:
 int
 mlx5_vdpa_lm_log(struct mlx5_vdpa_priv *priv)
 {
-	uint32_t remaining_cnt = 0, err_cnt = 0, task_num = 0;
+	RTE_ATOMIC(uint32_t) remaining_cnt = 0;
+	RTE_ATOMIC(uint32_t) err_cnt = 0;
+	uint32_t task_num = 0;
 	uint32_t i, thrd_idx, data[1];
 	struct mlx5_vdpa_virtq *virtq;
 	uint64_t features;

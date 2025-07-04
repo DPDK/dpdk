@@ -23,21 +23,8 @@ static struct rte_afu_uuid afu_pmd_uuid_map[AFU_RAWDEV_MAX_DRVS+1];
 TAILQ_HEAD(afu_drv_list, afu_rawdev_drv);
 static struct afu_drv_list afu_pmd_list = TAILQ_HEAD_INITIALIZER(afu_pmd_list);
 
-static inline int afu_rawdev_trylock(struct afu_rawdev *dev)
-{
-	if (!dev || !dev->sd)
-		return 0;
-
-	return rte_spinlock_trylock(&dev->sd->lock);
-}
-
-static inline void afu_rawdev_unlock(struct afu_rawdev *dev)
-{
-	if (!dev || !dev->sd)
-		return;
-
-	rte_spinlock_unlock(&dev->sd->lock);
-}
+#define afu_rawdev_trylock(dev) rte_spinlock_trylock(&dev->sd->lock)
+#define afu_rawdev_unlock(dev) rte_spinlock_unlock(&dev->sd->lock)
 
 static int afu_rawdev_configure(const struct rte_rawdev *rawdev,
 	rte_rawdev_obj_t config, size_t config_size)
@@ -52,7 +39,7 @@ static int afu_rawdev_configure(const struct rte_rawdev *rawdev,
 		return -ENODEV;
 
 	if (dev->ops && dev->ops->config)
-		ret = (*dev->ops->config)(dev, config, config_size);
+		ret = dev->ops->config(dev, config, config_size);
 
 	return ret;
 }
@@ -75,7 +62,7 @@ static int afu_rawdev_start(struct rte_rawdev *rawdev)
 	}
 
 	if (dev->ops && dev->ops->start)
-		ret = (*dev->ops->start)(dev);
+		ret = dev->ops->start(dev);
 
 	afu_rawdev_unlock(dev);
 
@@ -100,7 +87,7 @@ static void afu_rawdev_stop(struct rte_rawdev *rawdev)
 	}
 
 	if (dev->ops && dev->ops->stop)
-		ret = (*dev->ops->stop)(dev);
+		ret = dev->ops->stop(dev);
 
 	afu_rawdev_unlock(dev);
 }
@@ -117,7 +104,7 @@ static int afu_rawdev_close(struct rte_rawdev *rawdev)
 		return -ENODEV;
 
 	if (dev->ops && dev->ops->close)
-		ret = (*dev->ops->close)(dev);
+		ret = dev->ops->close(dev);
 
 	return ret;
 }
@@ -140,7 +127,7 @@ static int afu_rawdev_reset(struct rte_rawdev *rawdev)
 	}
 
 	if (dev->ops && dev->ops->reset)
-		ret = (*dev->ops->reset)(dev);
+		ret = dev->ops->reset(dev);
 
 	afu_rawdev_unlock(dev);
 
@@ -168,7 +155,7 @@ static int afu_rawdev_selftest(uint16_t dev_id)
 	}
 
 	if (dev->ops && dev->ops->test)
-		ret = (*dev->ops->test)(dev);
+		ret = dev->ops->test(dev);
 
 	afu_rawdev_unlock(dev);
 
@@ -187,7 +174,7 @@ static int afu_rawdev_dump(struct rte_rawdev *rawdev, FILE *f)
 		return -ENODEV;
 
 	if (dev->ops && dev->ops->dump)
-		ret = (*dev->ops->dump)(dev, f);
+		ret = dev->ops->dump(dev, f);
 
 	return ret;
 }
@@ -339,7 +326,7 @@ static int afu_rawdev_create(struct rte_afu_device *afu_dev, int socket_id)
 	}
 
 	if (dev->ops->init) {
-		ret = (*dev->ops->init)(dev);
+		ret = dev->ops->init(dev);
 		if (ret) {
 			IFPGA_RAWDEV_PMD_ERR("Failed to init %s", name);
 			goto cleanup;

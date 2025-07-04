@@ -189,14 +189,11 @@ int
 roc_bphy_cgx_dev_init(struct roc_bphy_cgx *roc_cgx)
 {
 	uint64_t val;
-	int ret;
 
 	if (!roc_cgx || !roc_cgx->bar0_va || !roc_cgx->bar0_pa)
 		return -EINVAL;
 
-	ret = pthread_mutex_init(&roc_cgx->lock, NULL);
-	if (ret)
-		return ret;
+	pthread_mutex_init(&roc_cgx->lock, NULL);
 
 	val = roc_bphy_cgx_read(roc_cgx, 0, CGX_CMRX_RX_LMACS);
 	val = FIELD_GET(CGX_CMRX_RX_LMACS_LMACS, val);
@@ -311,7 +308,7 @@ roc_bphy_cgx_stop_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 
 int
 roc_bphy_cgx_set_link_state(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
-			    bool state)
+			    struct roc_bphy_cgx_link_state *state)
 {
 	uint64_t scr1, scr0;
 
@@ -321,8 +318,13 @@ roc_bphy_cgx_set_link_state(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
 		return -ENODEV;
 
-	scr1 = state ? FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_UP) :
-		       FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_DOWN);
+	if (!state)
+		return -EINVAL;
+
+	scr1 = (state->state ? FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_UP) :
+			       FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_DOWN)) |
+	       FIELD_PREP(SCR1_CGX_LINK_BRINGUP_ARGS_TIMEOUT, state->timeout) |
+	       FIELD_PREP(SCR1_CGX_LINK_BRINGUP_ARGS_RX_TX_DIS, state->rx_tx_dis);
 
 	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
 }
@@ -364,19 +366,19 @@ roc_bphy_cgx_set_link_mode(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 {
 	uint64_t scr1, scr0;
 
+	if (!mode)
+		return -EINVAL;
+
+	if (!roc_cgx)
+		return -EINVAL;
+
 	if (roc_model_is_cn9k() &&
 	    (mode->use_portm_idx || mode->portm_idx || mode->mode_group_idx)) {
 		return -ENOTSUP;
 	}
 
-	if (!roc_cgx)
-		return -EINVAL;
-
 	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
 		return -ENODEV;
-
-	if (!mode)
-		return -EINVAL;
 
 	scr1 = FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_MODE_CHANGE) |
 	       FIELD_PREP(SCR1_ETH_MODE_CHANGE_ARGS_SPEED, mode->speed) |

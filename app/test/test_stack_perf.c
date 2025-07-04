@@ -23,7 +23,7 @@
  */
 static volatile unsigned int bulk_sizes[] = {8, MAX_BURST};
 
-static uint32_t lcore_barrier;
+static RTE_ATOMIC(uint32_t) lcore_barrier;
 
 struct lcore_pair {
 	unsigned int c1;
@@ -143,8 +143,8 @@ bulk_push_pop(void *p)
 	s = args->s;
 	size = args->sz;
 
-	__atomic_fetch_sub(&lcore_barrier, 1, __ATOMIC_RELAXED);
-	rte_wait_until_equal_32(&lcore_barrier, 0, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&lcore_barrier, 1, rte_memory_order_relaxed);
+	rte_wait_until_equal_32((uint32_t *)(uintptr_t)&lcore_barrier, 0, rte_memory_order_relaxed);
 
 	uint64_t start = rte_rdtsc();
 
@@ -173,7 +173,7 @@ run_on_core_pair(struct lcore_pair *cores, struct rte_stack *s,
 	unsigned int i;
 
 	for (i = 0; i < RTE_DIM(bulk_sizes); i++) {
-		__atomic_store_n(&lcore_barrier, 2, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&lcore_barrier, 2, rte_memory_order_relaxed);
 
 		args[0].sz = args[1].sz = bulk_sizes[i];
 		args[0].s = args[1].s = s;
@@ -206,7 +206,7 @@ run_on_n_cores(struct rte_stack *s, lcore_function_t fn, int n)
 		int cnt = 0;
 		double avg;
 
-		__atomic_store_n(&lcore_barrier, n, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&lcore_barrier, n, rte_memory_order_relaxed);
 
 		RTE_LCORE_FOREACH_WORKER(lcore_id) {
 			if (++cnt >= n)
@@ -300,7 +300,7 @@ __test_stack_perf(uint32_t flags)
 	struct lcore_pair cores;
 	struct rte_stack *s;
 
-	__atomic_store_n(&lcore_barrier, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&lcore_barrier, 0, rte_memory_order_relaxed);
 
 	s = rte_stack_create(STACK_NAME, STACK_SIZE, rte_socket_id(), flags);
 	if (s == NULL) {
@@ -354,5 +354,5 @@ test_lf_stack_perf(void)
 #endif
 }
 
-REGISTER_TEST_COMMAND(stack_perf_autotest, test_stack_perf);
-REGISTER_TEST_COMMAND(stack_lf_perf_autotest, test_lf_stack_perf);
+REGISTER_PERF_TEST(stack_perf_autotest, test_stack_perf);
+REGISTER_PERF_TEST(stack_lf_perf_autotest, test_lf_stack_perf);

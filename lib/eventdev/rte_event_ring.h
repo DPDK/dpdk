@@ -14,16 +14,16 @@
 #ifndef _RTE_EVENT_RING_
 #define _RTE_EVENT_RING_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_common.h>
 #include <rte_ring.h>
 #include <rte_ring_elem.h>
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_TAILQ_EVENT_RING_NAME "RTE_EVENT_RING"
 
@@ -65,6 +65,80 @@ static __rte_always_inline unsigned int
 rte_event_ring_free_count(const struct rte_event_ring *r)
 {
 	return rte_ring_free_count(&r->r);
+}
+
+
+/**
+ * Enqueue several objects on a ring.
+ *
+ * This function calls the multi-producer or the single-producer
+ * version depending on the default behavior that was specified at
+ * ring creation time (see flags).
+ *
+ * @param r
+ *   pointer to the event ring
+ * @param events
+ *   pointer to an array of struct rte_event objects
+ * @param n
+ *   The number of events in the array to enqueue
+ * @param free_space
+ *   if non-NULL, returns the amount of space in the ring after the
+ *   enqueue operation has completed
+ * @return
+ *   the number of objects enqueued, either 0 or n
+ */
+static __rte_always_inline unsigned int
+rte_event_ring_enqueue_bulk(struct rte_event_ring *r,
+			    const struct rte_event *events,
+			    unsigned int n, uint16_t *free_space)
+{
+	unsigned int num;
+	uint32_t space;
+
+	num = rte_ring_enqueue_bulk_elem(&r->r, events,
+					 sizeof(struct rte_event), n,
+					 &space);
+
+	if (free_space != NULL)
+		*free_space = space;
+
+	return num;
+}
+
+/**
+ * Dequeue a set of events from a ring
+ *
+ * Note: this API does not work with pointers to events, rather it copies
+ * the events themselves to the destination ``events`` buffer.
+ *
+ * @param r
+ *   pointer to the event ring
+ * @param events
+ *   pointer to an array to hold the struct rte_event objects
+ * @param n
+ *   number of events that can be held in the ``events`` array
+ * @param available
+ *   if non-null, is updated to indicate the number of events remaining in
+ *   the ring once the dequeue has completed
+ * @return
+ *   the number of objects dequeued, either 0 or n
+ */
+static __rte_always_inline unsigned int
+rte_event_ring_dequeue_bulk(struct rte_event_ring *r,
+			     struct rte_event *events,
+			     unsigned int n, uint16_t *available)
+{
+	unsigned int num;
+	uint32_t remaining;
+
+	num = rte_ring_dequeue_bulk_elem(&r->r, events,
+					 sizeof(struct rte_event), n,
+					 &remaining);
+
+	if (available != NULL)
+		*available = remaining;
+
+	return num;
 }
 
 /**
@@ -173,7 +247,17 @@ int
 rte_event_ring_init(struct rte_event_ring *r, const char *name,
 	unsigned int count, unsigned int flags);
 
-/*
+/**
+ * De-allocate all memory used by the ring.
+ *
+ * @param r
+ *   Pointer to ring to created with rte_event_ring_create().
+ *   If r is NULL, no operation is performed.
+ */
+void
+rte_event_ring_free(struct rte_event_ring *r);
+
+/**
  * Create an event ring structure
  *
  * This function allocates memory and initializes an event ring inside that
@@ -214,8 +298,8 @@ rte_event_ring_init(struct rte_event_ring *r, const char *name,
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_event_ring *
-rte_event_ring_create(const char *name, unsigned int count, int socket_id,
-		unsigned int flags);
+rte_event_ring_create(const char *name, unsigned int count, int socket_id, unsigned int flags)
+	__rte_malloc __rte_dealloc(rte_event_ring_free, 1);
 
 /**
  * Search for an event ring based on its name
@@ -229,16 +313,6 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
  */
 struct rte_event_ring *
 rte_event_ring_lookup(const char *name);
-
-/**
- * De-allocate all memory used by the ring.
- *
- * @param r
- *   Pointer to ring to created with rte_event_ring_create().
- *   If r is NULL, no operation is performed.
- */
-void
-rte_event_ring_free(struct rte_event_ring *r);
 
 /**
  * Return the size of the event ring.

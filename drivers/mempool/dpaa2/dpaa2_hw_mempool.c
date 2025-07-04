@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2019 NXP
+ *   Copyright 2016-2019,2022-2025 NXP
  *
  */
 
@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
@@ -23,7 +24,7 @@
 #include <dev_driver.h>
 #include "rte_dpaa2_mempool.h"
 
-#include "fslmc_vfio.h"
+#include <bus_fslmc_driver.h>
 #include <fslmc_logs.h>
 #include <mc/fsl_dpbp.h>
 #include <portal/dpaa2_hw_pvt.h>
@@ -33,8 +34,17 @@
 
 #include <dpaax_iova_table.h>
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_bpid_info)
 struct dpaa2_bp_info *rte_dpaa2_bpid_info;
 static struct dpaa2_bp_list *h_bp_list;
+
+static int16_t s_dpaa2_pool_ops_idx = RTE_MEMPOOL_MAX_OPS_IDX;
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_mpool_get_ops_idx)
+int rte_dpaa2_mpool_get_ops_idx(void)
+{
+	return s_dpaa2_pool_ops_idx;
+}
 
 static int
 rte_hw_mbuf_create_pool(struct rte_mempool *mp)
@@ -44,6 +54,8 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	struct dpaa2_bp_info *bp_info;
 	struct dpbp_attr dpbp_attr;
 	uint32_t bpid;
+	unsigned int lcore_id;
+	struct rte_mempool_cache *cache;
 	int ret;
 
 	avail_dpbp = dpaa2_alloc_dpbp_dev();
@@ -67,7 +79,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_MEMPOOL_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			goto err1;
 		}
@@ -115,6 +127,14 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	bp_list->buf_pool.dpbp_node = avail_dpbp;
 	/* Identification for our offloaded pool_data structure */
 	bp_list->dpaa2_ops_index = mp->ops_index;
+	if (s_dpaa2_pool_ops_idx == RTE_MEMPOOL_MAX_OPS_IDX) {
+		s_dpaa2_pool_ops_idx = mp->ops_index;
+	} else if (s_dpaa2_pool_ops_idx != mp->ops_index) {
+		DPAA2_MEMPOOL_ERR("Only single ops index only");
+		ret = -EINVAL;
+		goto err4;
+	}
+
 	bp_list->next = h_bp_list;
 	bp_list->mp = mp;
 
@@ -132,7 +152,22 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	DPAA2_MEMPOOL_DEBUG("BP List created for bpid =%d", dpbp_attr.bpid);
 
 	h_bp_list = bp_list;
+	/* Update per core mempool cache threshold to optimal value which is
+	 * number of buffers that can be released to HW buffer pool in
+	 * a single API call.
+	 */
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		cache = &mp->local_cache[lcore_id];
+		DPAA2_MEMPOOL_DEBUG("lCore %d: cache->flushthresh %d -> %d",
+			lcore_id, cache->flushthresh,
+			(uint32_t)(cache->size + DPAA2_MBUF_MAX_ACQ_REL));
+		if (cache->flushthresh)
+			cache->flushthresh = cache->size + DPAA2_MBUF_MAX_ACQ_REL;
+	}
+
 	return 0;
+err4:
+	rte_free(bp_list);
 err3:
 	rte_free(bp_info);
 err2:
@@ -198,7 +233,7 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
 			DPAA2_MEMPOOL_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return;
 		}
@@ -263,6 +298,7 @@ aligned:
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_bpid_info_init)
 int rte_dpaa2_bpid_info_init(struct rte_mempool *mp)
 {
 	struct dpaa2_bp_info *bp_info = mempool_to_bpinfo(mp);
@@ -286,6 +322,7 @@ int rte_dpaa2_bpid_info_init(struct rte_mempool *mp)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dpaa2_mbuf_pool_bpid)
 uint16_t
 rte_dpaa2_mbuf_pool_bpid(struct rte_mempool *mp)
 {
@@ -293,13 +330,14 @@ rte_dpaa2_mbuf_pool_bpid(struct rte_mempool *mp)
 
 	bp_info = mempool_to_bpinfo(mp);
 	if (!(bp_info->bp_list)) {
-		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		DPAA2_MEMPOOL_ERR("DPAA2 buffer pool not configured");
 		return -ENOMEM;
 	}
 
 	return bp_info->bpid;
 }
 
+RTE_EXPORT_SYMBOL(rte_dpaa2_mbuf_from_buf_addr)
 struct rte_mbuf *
 rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
 {
@@ -307,7 +345,7 @@ rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
 
 	bp_info = mempool_to_bpinfo(mp);
 	if (!(bp_info->bp_list)) {
-		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		DPAA2_MEMPOOL_ERR("DPAA2 buffer pool not configured");
 		return NULL;
 	}
 
@@ -315,6 +353,7 @@ rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
 			bp_info->meta_data_size);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_mbuf_alloc_bulk)
 int
 rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 			  void **obj_table, unsigned int count)
@@ -342,7 +381,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
 			DPAA2_MEMPOOL_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return ret;
 		}
@@ -457,7 +496,7 @@ dpaa2_populate(struct rte_mempool *mp, unsigned int max_objs,
 	msl = rte_mem_virt2memseg_list(vaddr);
 
 	if (!msl) {
-		DPAA2_MEMPOOL_DEBUG("Memsegment is External.\n");
+		DPAA2_MEMPOOL_DEBUG("Memsegment is External.");
 		rte_fslmc_vfio_mem_dmamap((size_t)vaddr,
 				(size_t)paddr, (size_t)len);
 	}

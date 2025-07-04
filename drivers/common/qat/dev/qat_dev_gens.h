@@ -62,4 +62,58 @@ qat_dev_get_misc_bar_gen1(struct rte_mem_resource **mem_resource,
 int
 qat_dev_read_config_gen1(struct qat_pci_device *qat_dev);
 
+int
+qat_reset_ring_pairs_gen4(struct qat_pci_device *qat_pci_dev);
+
+const struct rte_mem_resource *
+qat_dev_get_transport_bar_gen4(struct rte_pci_device *pci_dev);
+
+int
+qat_dev_get_misc_bar_gen4(struct rte_mem_resource **mem_resource,
+		struct rte_pci_device *pci_dev);
+
+int
+qat_dev_read_config_gen4(struct qat_pci_device *qat_dev);
+
+int
+qat_dev_get_extra_size_gen4(void);
+
+int
+qat_dev_get_slice_map_gen4(uint32_t *map __rte_unused,
+	const struct rte_pci_device *pci_dev __rte_unused);
+
+int
+qat_qp_rings_per_service_gen4(struct qat_pci_device *qat_dev,
+		enum qat_service_type service);
+
+void
+qat_qp_build_ring_base_gen4(void *io_addr,
+			struct qat_queue *queue);
+
+void
+qat_qp_adf_arb_enable_gen4(const struct qat_queue *txq,
+			void *base_addr, rte_spinlock_t *lock);
+
+void
+qat_qp_adf_arb_disable_gen4(const struct qat_queue *txq,
+			void *base_addr, rte_spinlock_t *lock);
+
+void
+qat_qp_adf_configure_queues_gen4(struct qat_qp *qp);
+
+void
+qat_qp_csr_write_tail_gen4(struct qat_qp *qp, struct qat_queue *q);
+
+void
+qat_qp_csr_write_head_gen4(struct qat_qp *qp, struct qat_queue *q,
+			uint32_t new_head);
+
+void
+qat_qp_csr_setup_gen4(struct qat_pci_device *qat_dev,
+			void *io_addr, struct qat_qp *qp);
+
+const struct qat_qp_hw_data *
+qat_qp_get_hw_data_gen4(struct qat_pci_device *qat_dev,
+		enum qat_service_type service_type, uint16_t qp_id);
+
 #endif

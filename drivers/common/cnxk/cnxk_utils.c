@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2021 Marvell.
  */
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_tm_driver.h>
 
@@ -9,6 +10,7 @@
 
 #include "cnxk_utils.h"
 
+RTE_EXPORT_INTERNAL_SYMBOL(roc_nix_tm_err_to_rte_err)
 int
 roc_nix_tm_err_to_rte_err(int errorcode)
 {

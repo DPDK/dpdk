@@ -8,6 +8,7 @@
 #define _QEDE_LOGS_H_
 
 extern int qede_logtype_driver;
+#define RTE_LOGTYPE_QEDE_DRIVER qede_logtype_driver
 
 #define DP_ERR(p_dev, fmt, ...)				\
 	rte_log(RTE_LOG_ERR, qede_logtype_driver,	\
@@ -50,27 +51,27 @@ do { \
 	} while (0)
 
 extern int qede_logtype_init;
-#define PMD_INIT_LOG(level, edev, fmt, args...)		\
+#define PMD_INIT_LOG(level, edev, fmt, ...)		\
 	rte_log(RTE_LOG_ ## level, qede_logtype_init,	\
 		"[qede_pmd: %s] %s() " fmt "\n",	\
-		(edev)->name, __func__, ##args)
+		(edev)->name, __func__, ## __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE(edev) PMD_INIT_LOG(DEBUG, edev, " >>")
 
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
-#define PMD_TX_LOG(level, q, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): port=%u queue=%u " fmt "\n", \
-		__func__, q->port_id, q->queue_id, ## args)
+#define PMD_TX_LOG(level, q, fmt, ...) \
+	RTE_LOG(level, QEDE_DRIVER, "%s(): port=%u queue=%u " fmt "\n", \
+		__func__, (q)->port_id, (q)->queue_id, ## __VA_ARGS__)
 #else
-#define PMD_TX_LOG(level, fmt, args...) do { } while (0)
+#define PMD_TX_LOG(level, fmt, ...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_QEDE_DEBUG_RX
-#define PMD_RX_LOG(level, q, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): port=%u queue=%u " fmt "\n",	\
-		__func__, q->port_id, q->queue_id, ## args)
+#define PMD_RX_LOG(level, q, fmt, ...) \
+	RTE_LOG(level, QEDE_DRIVER, "%s(): port=%u queue=%u " fmt "\n",	\
+		__func__, (q)->port_id, (q)->queue_id, ## __VA_ARGS__)
 #else
-#define PMD_RX_LOG(level, q, fmt, args...) do { } while (0)
+#define PMD_RX_LOG(level, q, fmt, ...) do { } while (0)
 #endif
 
 #endif /* _QEDE_LOGS_H_ */

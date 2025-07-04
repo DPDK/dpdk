@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -20,5 +20,4 @@ void bnxt_enable_int(struct bnxt *bp);
 int bnxt_setup_int(struct bnxt *bp);
 int bnxt_request_int(struct bnxt *bp);
 void bnxt_int_handler(void *param);
-
 #endif

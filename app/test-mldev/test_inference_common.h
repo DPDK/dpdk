@@ -11,11 +11,16 @@
 
 #include "test_model_common.h"
 
+#define ML_TEST_MAX_IO_SIZE 32
+
 struct ml_request {
 	uint8_t *input;
 	uint8_t *output;
 	uint16_t fid;
 	uint64_t niters;
+
+	struct rte_ml_buff_seg *inp_buf_segs[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg *out_buf_segs[ML_TEST_MAX_IO_SIZE];
 };
 
 struct ml_core_args {
@@ -32,12 +37,13 @@ struct ml_core_args {
 	uint64_t end_cycles;
 };
 
-struct test_inference {
+struct __rte_cache_aligned test_inference {
 	/* common data */
 	struct test_common cmn;
 
 	/* test specific data */
 	struct ml_model model[ML_TEST_MAX_MODELS];
+	struct rte_mempool *buf_seg_pool;
 	struct rte_mempool *op_pool;
 
 	uint64_t nb_used;
@@ -53,7 +59,7 @@ struct test_inference {
 	struct rte_ml_dev_xstats_map *xstats_map;
 	uint64_t *xstats_values;
 	int xstats_size;
-} __rte_cache_aligned;
+};
 
 bool test_inference_cap_check(struct ml_options *opt);
 int test_inference_opt_check(struct ml_options *opt);
@@ -70,6 +76,5 @@ void ml_inference_mem_destroy(struct ml_test *test, struct ml_options *opt);
 int ml_inference_result(struct ml_test *test, struct ml_options *opt, uint16_t fid);
 int ml_inference_launch_cores(struct ml_test *test, struct ml_options *opt, uint16_t start_fid,
 			      uint16_t end_fid);
-int ml_inference_stats_get(struct ml_test *test, struct ml_options *opt);
 
 #endif /* TEST_INFERENCE_COMMON_H */

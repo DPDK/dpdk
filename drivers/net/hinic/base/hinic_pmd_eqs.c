@@ -471,7 +471,7 @@ int hinic_comm_aeqs_init(struct hinic_hwdev *hwdev)
 
 	num_aeqs = HINIC_HWIF_NUM_AEQS(hwdev->hwif);
 	if (num_aeqs < HINIC_MIN_AEQS) {
-		PMD_DRV_LOG(ERR, "PMD need %d AEQs, Chip has %d\n",
+		PMD_DRV_LOG(ERR, "PMD need %d AEQs, Chip has %d",
 				HINIC_MIN_AEQS, num_aeqs);
 		return -EINVAL;
 	}

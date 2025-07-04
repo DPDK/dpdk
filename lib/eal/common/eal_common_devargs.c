@@ -20,6 +20,7 @@
 #include <rte_log.h>
 #include <rte_tailq.h>
 #include <rte_string_fns.h>
+#include <eal_export.h>
 #include "eal_private.h"
 
 /** user device double-linked queue type definition */
@@ -39,12 +40,12 @@ devargs_bus_parse_default(struct rte_devargs *devargs,
 	/* Parse devargs name from bus key-value list. */
 	name = rte_kvargs_get(bus_args, "name");
 	if (name == NULL) {
-		RTE_LOG(DEBUG, EAL, "devargs name not found: %s\n",
+		EAL_LOG(DEBUG, "devargs name not found: %s",
 			devargs->data);
 		return 0;
 	}
 	if (rte_strscpy(devargs->name, name, sizeof(devargs->name)) < 0) {
-		RTE_LOG(ERR, EAL, "devargs name too long: %s\n",
+		EAL_LOG(ERR, "devargs name too long: %s",
 			devargs->data);
 		return -E2BIG;
 	}
@@ -79,7 +80,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 	if (devargs->data != devstr) {
 		devargs->data = strdup(devstr);
 		if (devargs->data == NULL) {
-			RTE_LOG(ERR, EAL, "OOM\n");
+			EAL_LOG(ERR, "OOM");
 			ret = -ENOMEM;
 			goto get_out;
 		}
@@ -88,7 +89,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 	s = devargs->data;
 
 	while (s != NULL) {
-		if (nblayer > RTE_DIM(layers)) {
+		if (nblayer >= RTE_DIM(layers)) {
 			ret = -E2BIG;
 			goto get_out;
 		}
@@ -133,7 +134,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 			devargs->bus_str = layers[i].str;
 			devargs->bus = rte_bus_find_by_name(kv->value);
 			if (devargs->bus == NULL) {
-				RTE_LOG(ERR, EAL, "Could not find bus \"%s\"\n",
+				EAL_LOG(ERR, "Could not find bus \"%s\"",
 					kv->value);
 				ret = -EFAULT;
 				goto get_out;
@@ -142,7 +143,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 			devargs->cls_str = layers[i].str;
 			devargs->cls = rte_class_find_by_name(kv->value);
 			if (devargs->cls == NULL) {
-				RTE_LOG(ERR, EAL, "Could not find class \"%s\"\n",
+				EAL_LOG(ERR, "Could not find class \"%s\"",
 					kv->value);
 				ret = -EFAULT;
 				goto get_out;
@@ -180,6 +181,7 @@ bus_name_cmp(const struct rte_bus *bus, const void *name)
 	return strncmp(bus->name, name, strlen(bus->name));
 }
 
+RTE_EXPORT_SYMBOL(rte_devargs_parse)
 int
 rte_devargs_parse(struct rte_devargs *da, const char *dev)
 {
@@ -217,7 +219,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 		da->name[i] = devname[i];
 		i++;
 		if (i == maxlen) {
-			RTE_LOG(WARNING, EAL, "Parsing \"%s\": device name should be shorter than %zu\n",
+			EAL_LOG(WARNING, "Parsing \"%s\": device name should be shorter than %zu",
 				dev, maxlen);
 			da->name[i - 1] = '\0';
 			return -EINVAL;
@@ -227,7 +229,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 	if (bus == NULL) {
 		bus = rte_bus_find_by_device_name(da->name);
 		if (bus == NULL) {
-			RTE_LOG(ERR, EAL, "failed to parse device \"%s\"\n",
+			EAL_LOG(ERR, "failed to parse device \"%s\"",
 				da->name);
 			return -EFAULT;
 		}
@@ -239,13 +241,14 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 	else
 		da->data = strdup("");
 	if (da->data == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory to parse arguments\n");
+		EAL_LOG(ERR, "not enough memory to parse arguments");
 		return -ENOMEM;
 	}
 	da->drv_str = da->data;
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_devargs_parsef)
 int
 rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 {
@@ -266,7 +269,7 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 	len += 1;
 	dev = calloc(1, (size_t)len);
 	if (dev == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory to parse device\n");
+		EAL_LOG(ERR, "not enough memory to parse device");
 		return -ENOMEM;
 	}
 
@@ -280,6 +283,7 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_devargs_reset)
 void
 rte_devargs_reset(struct rte_devargs *da)
 {
@@ -289,6 +293,7 @@ rte_devargs_reset(struct rte_devargs *da)
 	da->data = NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_devargs_insert)
 int
 rte_devargs_insert(struct rte_devargs **da)
 {
@@ -320,6 +325,7 @@ rte_devargs_insert(struct rte_devargs **da)
 }
 
 /* store in allowed list parameter for later parsing */
+RTE_EXPORT_SYMBOL(rte_devargs_add)
 int
 rte_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 {
@@ -356,6 +362,7 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_devargs_remove)
 int
 rte_devargs_remove(struct rte_devargs *devargs)
 {
@@ -378,6 +385,7 @@ rte_devargs_remove(struct rte_devargs *devargs)
 }
 
 /* count the number of devices of a specified type */
+RTE_EXPORT_SYMBOL(rte_devargs_type_count)
 unsigned int
 rte_devargs_type_count(enum rte_devtype devtype)
 {
@@ -393,6 +401,7 @@ rte_devargs_type_count(enum rte_devtype devtype)
 }
 
 /* dump the user devices on the console */
+RTE_EXPORT_SYMBOL(rte_devargs_dump)
 void
 rte_devargs_dump(FILE *f)
 {
@@ -407,6 +416,7 @@ rte_devargs_dump(FILE *f)
 }
 
 /* bus-aware rte_devargs iterator. */
+RTE_EXPORT_SYMBOL(rte_devargs_next)
 struct rte_devargs *
 rte_devargs_next(const char *busname, const struct rte_devargs *start)
 {

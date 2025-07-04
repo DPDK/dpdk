@@ -4,7 +4,7 @@
 Link Status Interrupt Sample Application
 ========================================
 
-The Link Status Interrupt sample application is a simple example of packet processing using
+The Link Status Interrupt sample application is an example of packet processing using
 the Data Plane Development Kit (DPDK) that
 demonstrates how network link status changes for a network port can be captured and
 used by a DPDK application.
@@ -14,6 +14,7 @@ Overview
 
 The Link Status Interrupt sample application registers a user space callback for the link status interrupt of each port
 and performs L2 forwarding for each packet that is received on an RX_PORT.
+
 The following operations are performed:
 
 *   RX_PORT and TX_PORT are paired with available ports one-by-one according to the core mask
@@ -28,7 +29,7 @@ and the behavior of L2 forwarding each time the link status changes.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``link_status_interrupt`` sub-directory.
 
@@ -45,7 +46,7 @@ where,
 
 *   -p PORTMASK: A hexadecimal bitmask of the ports to configure
 
-*   -q NQ: A number of queues (=ports) per lcore (default is 1)
+*   -q NQ: Maximum number of queues per lcore (default is 1)
 
 *   -T PERIOD: statistics will be refreshed each PERIOD seconds (0 to disable, 10 default)
 
@@ -67,8 +68,8 @@ The following sections provide some explanation of the code.
 Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The Link Status Interrupt sample application takes specific parameters,
-in addition to Environment Abstraction Layer (EAL) arguments (see Section `Running the Application`_).
+The Link Status Interrupt sample application takes specific parameters
+and Environment Abstraction Layer (EAL) arguments (see Section `Running the Application`_).
 
 Command line parsing is done in the same way as it is done in the L2 Forwarding Sample Application.
 See :ref:`l2_fwd_app_cmd_arguments` for more information.

@@ -64,7 +64,7 @@ static int enic_vf_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	/* Pass vf not pf because of cq index calculation. See enic_alloc_wq */
 	err = enic_alloc_wq(&vf->enic, queue_idx, socket_id, nb_desc);
 	if (err) {
-		ENICPMD_LOG(ERR, "error in allocating wq\n");
+		ENICPMD_LOG(ERR, "error in allocating wq");
 		return err;
 	}
 	return 0;
@@ -104,7 +104,7 @@ static int enic_vf_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	ret = enic_alloc_rq(&vf->enic, queue_idx, socket_id, mp, nb_desc,
 			    rx_conf->rx_free_thresh);
 	if (ret) {
-		ENICPMD_LOG(ERR, "error in allocating rq\n");
+		ENICPMD_LOG(ERR, "error in allocating rq");
 		return ret;
 	}
 	return 0;
@@ -230,14 +230,14 @@ static int enic_vf_dev_start(struct rte_eth_dev *eth_dev)
 	/* enic_enable */
 	ret = enic_alloc_rx_queue_mbufs(pf, &pf->rq[index]);
 	if (ret) {
-		ENICPMD_LOG(ERR, "Failed to alloc sop RX queue mbufs\n");
+		ENICPMD_LOG(ERR, "Failed to alloc sop RX queue mbufs");
 		return ret;
 	}
 	ret = enic_alloc_rx_queue_mbufs(pf, data_rq);
 	if (ret) {
 		/* Release the allocated mbufs for the sop rq*/
 		enic_rxmbuf_queue_release(pf, &pf->rq[index]);
-		ENICPMD_LOG(ERR, "Failed to alloc data RX queue mbufs\n");
+		ENICPMD_LOG(ERR, "Failed to alloc data RX queue mbufs");
 		return ret;
 	}
 	enic_start_rq(pf, vf->pf_rq_sop_idx);
@@ -430,7 +430,7 @@ static int enic_vf_stats_get(struct rte_eth_dev *eth_dev,
 	/* Get VF stats via PF */
 	err = vnic_dev_stats_dump(vf->enic.vdev, &vs);
 	if (err) {
-		ENICPMD_LOG(ERR, "error in getting stats\n");
+		ENICPMD_LOG(ERR, "error in getting stats");
 		return err;
 	}
 	stats->ipackets = vs->rx.rx_frames_ok;
@@ -453,7 +453,7 @@ static int enic_vf_stats_reset(struct rte_eth_dev *eth_dev)
 	/* Ask PF to clear VF stats */
 	err = vnic_dev_stats_clear(vf->enic.vdev);
 	if (err)
-		ENICPMD_LOG(ERR, "error in clearing stats\n");
+		ENICPMD_LOG(ERR, "error in clearing stats");
 	return err;
 }
 
@@ -581,7 +581,7 @@ static int get_vf_config(struct enic_vf_representor *vf)
 	/* VF MAC */
 	err = vnic_dev_get_mac_addr(vf->enic.vdev, vf->mac_addr.addr_bytes);
 	if (err) {
-		ENICPMD_LOG(ERR, "error in getting MAC address\n");
+		ENICPMD_LOG(ERR, "error in getting MAC address");
 		return err;
 	}
 	rte_ether_addr_copy(&vf->mac_addr, vf->eth_dev->data->mac_addrs);
@@ -591,7 +591,7 @@ static int get_vf_config(struct enic_vf_representor *vf)
 			    offsetof(struct vnic_enet_config, mtu),
 			    sizeof(c->mtu), &c->mtu);
 	if (err) {
-		ENICPMD_LOG(ERR, "error in getting MTU\n");
+		ENICPMD_LOG(ERR, "error in getting MTU");
 		return err;
 	}
 	/*
@@ -707,7 +707,7 @@ int enic_vf_representor_init(struct rte_eth_dev *eth_dev, void *init_params)
 	LIST_INIT(&vf_enic->memzone_list);
 	rte_spinlock_init(&vf_enic->memzone_list_lock);
 	addr = &vf->bdf;
-	snprintf(vf_enic->bdf_name, ENICPMD_BDF_LENGTH, "%04x:%02x:%02x.%x",
+	snprintf(vf_enic->bdf_name, PCI_PRI_STR_SIZE, PCI_PRI_FMT,
 		 addr->domain, addr->bus, addr->devid, addr->function);
 	return 0;
 }

@@ -13,6 +13,8 @@
 
 #define CPERF_PTEST_TYPE	("ptest")
 #define CPERF_MODEX_LEN		("modex-len")
+#define CPERF_RSA_PRIV_KEYTYPE	("rsa-priv-keytype")
+#define CPERF_RSA_MODLEN	("rsa-modlen")
 #define CPERF_SILENT		("silent")
 #define CPERF_ENABLE_SDAP	("enable-sdap")
 
@@ -27,9 +29,12 @@
 #define CPERF_DEVTYPE		("devtype")
 #define CPERF_OPTYPE		("optype")
 #define CPERF_SESSIONLESS	("sessionless")
+#define CPERF_SHARED_SESSION	("shared-session")
 #define CPERF_OUT_OF_PLACE	("out-of-place")
 #define CPERF_TEST_FILE		("test-file")
 #define CPERF_TEST_NAME		("test-name")
+
+#define CPERF_LOW_PRIO_QP_MASK	("low-prio-qp-mask")
 
 #define CPERF_CIPHER_ALGO	("cipher-algo")
 #define CPERF_CIPHER_OP		("cipher-op")
@@ -49,12 +54,15 @@
 
 #define CPERF_DIGEST_SZ		("digest-sz")
 
+#define CPERF_ASYM_OP		("asym-op")
+
 #ifdef RTE_LIB_SECURITY
 #define CPERF_PDCP_SN_SZ	("pdcp-sn-sz")
 #define CPERF_PDCP_DOMAIN	("pdcp-domain")
 #define CPERF_PDCP_SES_HFN_EN	("pdcp-ses-hfn-en")
 #define PDCP_DEFAULT_HFN	0x1
 #define CPERF_DOCSIS_HDR_SZ	("docsis-hdr-sz")
+#define CPERF_TLS_VERSION	("tls-version")
 #endif
 
 #define CPERF_CSV		("csv-friendly")
@@ -73,6 +81,7 @@ enum cperf_perf_test_type {
 
 
 extern const char *cperf_test_type_strs[];
+extern const char *cperf_rsa_priv_keytype_strs[];
 
 enum cperf_op_type {
 	CPERF_CIPHER_ONLY = 1,
@@ -83,7 +92,12 @@ enum cperf_op_type {
 	CPERF_PDCP,
 	CPERF_DOCSIS,
 	CPERF_IPSEC,
-	CPERF_ASYM_MODEX
+	CPERF_ASYM_MODEX,
+	CPERF_ASYM_RSA,
+	CPERF_ASYM_SECP256R1,
+	CPERF_ASYM_ED25519,
+	CPERF_ASYM_SM2,
+	CPERF_TLS,
 };
 
 extern const char *cperf_op_type_strs[];
@@ -100,8 +114,10 @@ struct cperf_options {
 	uint32_t *imix_buffer_sizes;
 	uint32_t nb_descriptors;
 	uint16_t nb_qps;
+	uint64_t low_prio_qp_mask;
 
 	uint32_t sessionless:1;
+	uint32_t shared_session:1;
 	uint32_t out_of_place:1;
 	uint32_t silent:1;
 	uint32_t csv:1;
@@ -134,6 +150,7 @@ struct cperf_options {
 	uint16_t pdcp_sdap;
 	enum rte_security_pdcp_domain pdcp_domain;
 	uint16_t docsis_hdr_sz;
+	enum rte_security_tls_version tls_version;
 #endif
 	char device_type[RTE_CRYPTODEV_NAME_MAX_LEN];
 	enum cperf_op_type op_type;
@@ -159,6 +176,14 @@ struct cperf_options {
 	uint8_t imix_distribution_count;
 	struct cperf_modex_test_data *modex_data;
 	uint16_t modex_len;
+	struct cperf_ecdsa_test_data *secp256r1_data;
+	struct cperf_eddsa_test_data *eddsa_data;
+	struct cperf_sm2_test_data *sm2_data;
+	enum rte_crypto_asym_op_type asym_op_type;
+	enum rte_crypto_auth_algorithm asym_hash_alg;
+	struct cperf_rsa_test_data *rsa_data;
+	uint16_t rsa_modlen;
+	uint8_t rsa_keytype;
 };
 
 void

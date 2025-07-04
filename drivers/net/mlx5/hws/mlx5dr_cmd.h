@@ -5,10 +5,36 @@
 #ifndef MLX5DR_CMD_H_
 #define MLX5DR_CMD_H_
 
+enum mlx5dr_cmd_ext_dest_flags {
+	MLX5DR_CMD_EXT_DEST_REFORMAT = 1 << 0,
+	MLX5DR_CMD_EXT_DEST_ESW_OWNER_VHCA_ID = 1 << 1,
+};
+
+struct mlx5dr_cmd_set_fte_dest {
+	uint8_t destination_type;
+	uint32_t destination_id;
+	enum mlx5dr_cmd_ext_dest_flags ext_flags;
+	struct mlx5dr_devx_obj *ext_reformat;
+	uint16_t esw_owner_vhca_id;
+};
+
+struct mlx5dr_cmd_set_fte_attr {
+	uint32_t action_flags;
+	uint8_t ignore_flow_level;
+	uint8_t flow_source;
+	uint8_t extended_dest;
+	uint8_t encrypt_decrypt_type;
+	uint32_t encrypt_decrypt_obj_id;
+	uint32_t packet_reformat_id;
+	uint32_t dests_num;
+	struct mlx5dr_cmd_set_fte_dest *dests;
+};
+
 struct mlx5dr_cmd_ft_create_attr {
 	uint8_t type;
 	uint8_t level;
 	bool rtc_valid;
+	uint8_t reformat_en;
 };
 
 #define ACCESS_KEY_LEN	32
@@ -20,6 +46,10 @@ struct mlx5dr_cmd_ft_modify_attr {
 	uint32_t table_miss_id;
 	uint8_t table_miss_action;
 	uint64_t modify_fs;
+};
+
+struct mlx5dr_cmd_ft_query_attr {
+	uint8_t type;
 };
 
 struct mlx5dr_cmd_fg_attr {
@@ -49,8 +79,10 @@ struct mlx5dr_cmd_rtc_create_attr {
 	uint8_t table_type;
 	uint8_t match_definer_0;
 	uint8_t match_definer_1;
+	uint8_t reparse_mode;
 	bool is_frst_jumbo;
 	bool is_scnd_range;
+	bool is_compare;
 };
 
 struct mlx5dr_cmd_alias_obj_create_attr {
@@ -68,6 +100,7 @@ struct mlx5dr_cmd_stc_create_attr {
 struct mlx5dr_cmd_stc_modify_attr {
 	uint32_t stc_offset;
 	uint8_t action_offset;
+	uint8_t reparse_mode;
 	enum mlx5_ifc_stc_action_type action_type;
 	union {
 		uint32_t id; /* TIRN, TAG, FT ID, STE ID */
@@ -90,6 +123,7 @@ struct mlx5dr_cmd_stc_modify_attr {
 			uint8_t encap;
 			uint16_t insert_anchor;
 			uint16_t insert_offset;
+			uint8_t push_esp;
 		} insert_header;
 		struct {
 			uint8_t aso_type;
@@ -99,6 +133,7 @@ struct mlx5dr_cmd_stc_modify_attr {
 		struct {
 			uint16_t vport_num;
 			uint16_t esw_owner_vhca_id;
+			uint8_t eswitch_owner_vhca_id_valid;
 		} vport;
 		struct {
 			struct mlx5dr_pool_chunk ste;
@@ -144,16 +179,22 @@ struct mlx5dr_cmd_allow_other_vhca_access_attr {
 	uint8_t access_key[ACCESS_KEY_LEN];
 };
 
+struct mlx5dr_cmd_packet_reformat_create_attr {
+	uint8_t type;
+	size_t data_sz;
+	void *data;
+	uint8_t reformat_param_0;
+};
+
 struct mlx5dr_cmd_query_ft_caps {
 	uint8_t max_level;
 	uint8_t reparse;
+	uint8_t ignore_flow_level_rtc_valid;
 };
 
 struct mlx5dr_cmd_query_vport_caps {
 	uint16_t vport_num;
 	uint16_t esw_owner_vhca_id;
-	uint32_t metadata_c;
-	uint32_t metadata_c_mask;
 };
 
 struct mlx5dr_cmd_generate_wqe_attr {
@@ -165,7 +206,6 @@ struct mlx5dr_cmd_generate_wqe_attr {
 };
 
 struct mlx5dr_cmd_query_caps {
-	uint32_t wire_regc;
 	uint32_t wire_regc_mask;
 	uint32_t flex_protocols;
 	uint8_t wqe_based_update;
@@ -179,10 +219,11 @@ struct mlx5dr_cmd_query_caps {
 	uint8_t rtc_log_depth_max;
 	uint8_t format_select_gtpu_dw_0;
 	uint8_t format_select_gtpu_dw_1;
+	uint8_t flow_table_hash_type;
 	uint8_t format_select_gtpu_dw_2;
 	uint8_t format_select_gtpu_ext_dw_0;
-	uint32_t linear_match_definer;
 	uint8_t access_index_mode;
+	uint32_t linear_match_definer;
 	bool full_dw_jumbo_support;
 	bool rtc_hash_split_table;
 	bool rtc_linear_lookup_table;
@@ -192,10 +233,12 @@ struct mlx5dr_cmd_query_caps {
 	struct mlx5dr_cmd_query_ft_caps nic_ft;
 	struct mlx5dr_cmd_query_ft_caps fdb_ft;
 	bool eswitch_manager;
+	uint8_t merged_eswitch;
 	uint32_t eswitch_manager_vport_number;
 	uint8_t log_header_modify_argument_granularity;
 	uint8_t log_header_modify_argument_max_alloc;
 	uint8_t sq_ts_format;
+	uint8_t fdb_tir_stc;
 	uint64_t definer_format_sup;
 	uint32_t trivial_match_definer;
 	uint32_t vhca_id;
@@ -203,6 +246,13 @@ struct mlx5dr_cmd_query_caps {
 	uint32_t shared_vhca_id;
 	char fw_ver[64];
 	bool ipsec_offload;
+	uint8_t encap_entropy_hash_type;
+	bool roce;
+	uint16_t roce_max_src_udp_port;
+	uint16_t roce_min_src_udp_port;
+	uint64_t stc_action_type_63_0;
+	uint64_t stc_action_type_127_64;
+	bool fdb_unified_en;
 };
 
 int mlx5dr_cmd_destroy_obj(struct mlx5dr_devx_obj *devx_obj);
@@ -214,6 +264,11 @@ mlx5dr_cmd_flow_table_create(struct ibv_context *ctx,
 int
 mlx5dr_cmd_flow_table_modify(struct mlx5dr_devx_obj *devx_obj,
 			     struct mlx5dr_cmd_ft_modify_attr *ft_attr);
+
+int
+mlx5dr_cmd_flow_table_query(struct mlx5dr_devx_obj *devx_obj,
+			    struct mlx5dr_cmd_ft_query_attr *ft_attr,
+			    uint64_t *icm_addr_0, uint64_t *icm_addr_1);
 
 struct mlx5dr_devx_obj *
 mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
@@ -255,6 +310,38 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 					uint8_t *actions);
 
 struct mlx5dr_devx_obj *
+mlx5dr_cmd_set_fte(struct ibv_context *ctx,
+		   uint32_t table_type,
+		   uint32_t table_id,
+		   uint32_t group_id,
+		   struct mlx5dr_cmd_set_fte_attr *fte_attr);
+
+struct mlx5dr_cmd_forward_tbl *
+mlx5dr_cmd_forward_tbl_create(struct ibv_context *ctx,
+			      struct mlx5dr_cmd_ft_create_attr *ft_attr,
+			      struct mlx5dr_cmd_set_fte_attr *fte_attr);
+
+void mlx5dr_cmd_forward_tbl_destroy(struct mlx5dr_cmd_forward_tbl *tbl);
+
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_packet_reformat_create(struct ibv_context *ctx,
+				  struct mlx5dr_cmd_packet_reformat_create_attr *attr);
+
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_set_fte(struct ibv_context *ctx,
+		   uint32_t table_type,
+		   uint32_t table_id,
+		   uint32_t group_id,
+		   struct mlx5dr_cmd_set_fte_attr *fte_attr);
+
+struct mlx5dr_cmd_forward_tbl *
+mlx5dr_cmd_forward_tbl_create(struct ibv_context *ctx,
+			      struct mlx5dr_cmd_ft_create_attr *ft_attr,
+			      struct mlx5dr_cmd_set_fte_attr *fte_attr);
+
+void mlx5dr_cmd_forward_tbl_destroy(struct mlx5dr_cmd_forward_tbl *tbl);
+
+struct mlx5dr_devx_obj *
 mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,
 			    struct mlx5dr_cmd_alias_obj_create_attr *alias_attr);
 
@@ -265,13 +352,6 @@ int mlx5dr_cmd_query_ib_port(struct ibv_context *ctx,
 			     uint32_t port_num);
 int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 			  struct mlx5dr_cmd_query_caps *caps);
-
-void mlx5dr_cmd_miss_ft_destroy(struct mlx5dr_cmd_forward_tbl *tbl);
-
-struct mlx5dr_cmd_forward_tbl *
-mlx5dr_cmd_miss_ft_create(struct ibv_context *ctx,
-			  struct mlx5dr_cmd_ft_create_attr *ft_attr,
-			  uint32_t vport);
 
 void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 					  uint32_t fw_ft_type,

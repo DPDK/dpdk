@@ -6,9 +6,12 @@ PROJECT_NUMBER          = @VERSION@
 USE_MDFILE_AS_MAINPAGE  = @TOPDIR@/doc/api/doxy-api-index.md
 INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/bus/vdev \
+                          @TOPDIR@/drivers/common/dpaax \
+                          @TOPDIR@/drivers/crypto/cnxk \
                           @TOPDIR@/drivers/crypto/scheduler \
-                          @TOPDIR@/drivers/dma/dpaa2 \
                           @TOPDIR@/drivers/event/dlb2 \
+                          @TOPDIR@/drivers/event/cnxk \
+                          @TOPDIR@/drivers/mempool/cnxk \
                           @TOPDIR@/drivers/mempool/dpaa2 \
                           @TOPDIR@/drivers/net/ark \
                           @TOPDIR@/drivers/net/bnxt \
@@ -16,9 +19,9 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/drivers/net/cnxk \
                           @TOPDIR@/drivers/net/dpaa \
                           @TOPDIR@/drivers/net/dpaa2 \
-                          @TOPDIR@/drivers/net/i40e \
-                          @TOPDIR@/drivers/net/iavf \
-                          @TOPDIR@/drivers/net/ixgbe \
+                          @TOPDIR@/drivers/net/intel/i40e \
+                          @TOPDIR@/drivers/net/intel/iavf \
+                          @TOPDIR@/drivers/net/intel/ixgbe \
                           @TOPDIR@/drivers/net/mlx5 \
                           @TOPDIR@/drivers/net/softnic \
                           @TOPDIR@/drivers/raw/dpaa2_cmdif \
@@ -26,6 +29,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/eal/include \
                           @TOPDIR@/lib/eal/include/generic \
                           @TOPDIR@/lib/acl \
+                          @TOPDIR@/lib/argparse \
                           @TOPDIR@/lib/bbdev \
                           @TOPDIR@/lib/bitratestats \
                           @TOPDIR@/lib/bpf \
@@ -33,13 +37,13 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/cmdline \
                           @TOPDIR@/lib/compressdev \
                           @TOPDIR@/lib/cryptodev \
+                          @TOPDIR@/lib/dispatcher \
                           @TOPDIR@/lib/distributor \
                           @TOPDIR@/lib/dmadev \
                           @TOPDIR@/lib/efd \
                           @TOPDIR@/lib/ethdev \
                           @TOPDIR@/lib/eventdev \
                           @TOPDIR@/lib/fib \
-                          @TOPDIR@/lib/flow_classify \
                           @TOPDIR@/lib/gpudev \
                           @TOPDIR@/lib/graph \
                           @TOPDIR@/lib/gro \
@@ -48,9 +52,9 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/ip_frag \
                           @TOPDIR@/lib/ipsec \
                           @TOPDIR@/lib/jobstats \
-                          @TOPDIR@/lib/kni \
                           @TOPDIR@/lib/kvargs \
                           @TOPDIR@/lib/latencystats \
+                          @TOPDIR@/lib/log \
                           @TOPDIR@/lib/lpm \
                           @TOPDIR@/lib/mbuf \
                           @TOPDIR@/lib/member \
@@ -62,10 +66,13 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/net \
                           @TOPDIR@/lib/pcapng \
                           @TOPDIR@/lib/pci \
+                          @TOPDIR@/lib/pdcp \
                           @TOPDIR@/lib/pdump \
                           @TOPDIR@/lib/pipeline \
+                          @TOPDIR@/lib/pmu \
                           @TOPDIR@/lib/port \
                           @TOPDIR@/lib/power \
+                          @TOPDIR@/lib/ptr_compress \
                           @TOPDIR@/lib/rawdev \
                           @TOPDIR@/lib/rcu \
                           @TOPDIR@/lib/regexdev \
@@ -83,6 +90,7 @@ INPUT                   += @API_EXAMPLES@
 FILE_PATTERNS           = rte_*.h \
                           cmdline.h
 PREDEFINED              = __DOXYGEN__ \
+                          RTE_ATOMIC \
                           RTE_HAS_CPUSET \
                           VFIO_PRESENT \
                           __rte_lockable= \
@@ -96,6 +104,18 @@ PREDEFINED              = __DOXYGEN__ \
                           __rte_shared_trylock_function(x)= \
                           __rte_assert_shared_lock(x)= \
                           __rte_unlock_function(x)= \
+                          __rte_capability(x)= \
+                          __rte_requires_capability(x)= \
+                          __rte_acquire_capability(x)= \
+                          __rte_try_acquire_capability(x)= \
+                          __rte_release_capability(x)= \
+                          __rte_assert_capability(x)= \
+                          __rte_requires_shared_capability(x)= \
+                          __rte_acquire_shared_capability(x)= \
+                          __rte_try_acquire_shared_capability(x)= \
+                          __rte_release_shared_capability(x)= \
+                          __rte_assert_shared_capability(x)= \
+                          __rte_exclude_capability(x)= \
                           __attribute__(x)=
 
 OPTIMIZE_OUTPUT_FOR_C   = YES
@@ -111,23 +131,26 @@ GENERATE_DEPRECATEDLIST = YES
 VERBATIM_HEADERS        = NO
 ALPHABETICAL_INDEX      = NO
 
-HTML_TIMESTAMP          = NO
 HTML_DYNAMIC_SECTIONS   = YES
 HTML_EXTRA_STYLESHEET   = @TOPDIR@/doc/api/custom.css
 SEARCHENGINE            = YES
 SORT_MEMBER_DOCS        = NO
 SOURCE_BROWSER          = YES
 
+ALIASES                 = "dts_api_main_page=@DTS_API_MAIN_PAGE@"
+
 EXAMPLE_PATH            = @TOPDIR@/examples
 EXAMPLE_PATTERNS        = *.c
 EXAMPLE_RECURSIVE       = YES
 
 OUTPUT_DIRECTORY        = @OUTPUT@
+FULL_PATH_NAMES         = @FULL_PATH_NAMES@
 STRIP_FROM_PATH         = @STRIP_FROM_PATH@
-GENERATE_HTML           = YES
-HTML_OUTPUT             = @HTML_OUTPUT@
+GENERATE_HTML           = @GENERATE_HTML@
+HTML_OUTPUT             = html
 GENERATE_LATEX          = NO
-GENERATE_MAN            = NO
+GENERATE_MAN            = @GENERATE_MAN@
+MAN_LINKS               = YES
 
 HAVE_DOT                = NO
 

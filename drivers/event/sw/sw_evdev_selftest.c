@@ -2,6 +2,7 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -28,7 +29,7 @@
 
 #define MAX_PORTS 16
 #define MAX_QIDS 16
-#define NUM_PACKETS (1<<18)
+#define NUM_PACKETS (1 << 17)
 #define DEQUEUE_DEPTH 128
 
 static int evdev;
@@ -2960,6 +2961,132 @@ err:
 }
 
 static int
+ordered_atomic_hist_completion(struct test *t)
+{
+	const int rx_enq = 0;
+	int err;
+
+	/* Create instance with 1 atomic QID going to 3 ports + 1 prod port */
+	if (init(t, 2, 2) < 0 ||
+			create_ports(t, 2) < 0 ||
+			create_ordered_qids(t, 1) < 0 ||
+			create_atomic_qids(t, 1) < 0)
+		return -1;
+
+	/* Helpers to identify queues */
+	const uint8_t qid_ordered = t->qid[0];
+	const uint8_t qid_atomic = t->qid[1];
+
+	/* CQ mapping to QID */
+	if (rte_event_port_link(evdev, t->port[1], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping port 1 qid\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_port_link(evdev, t->port[1], &t->qid[1], NULL, 1) != 1) {
+		printf("%d: error mapping port 1 qid\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	/* Enqueue 1x ordered event, to be RELEASE-ed by the worker
+	 * CPU, which may cause hist-list corruption (by not comleting)
+	 */
+	struct rte_event ord_ev = {
+		.op = RTE_EVENT_OP_NEW,
+		.queue_id = qid_ordered,
+		.event_type = RTE_EVENT_TYPE_CPU,
+		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+	};
+	err = rte_event_enqueue_burst(evdev, t->port[rx_enq], &ord_ev, 1);
+	if (err != 1) {
+		printf("%d: Failed to enqueue\n", __LINE__);
+		return -1;
+	}
+
+	/* call the scheduler. This schedules the above event as a single
+	 * event in an ORDERED queue, to the worker.
+	 */
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
+
+	/* Dequeue ORDERED event 0 from port 1, so that we can then drop */
+	struct rte_event ev;
+	if (!rte_event_dequeue_burst(evdev, t->port[1], &ev, 1, 0)) {
+		printf("%d: failed to dequeue\n", __LINE__);
+		return -1;
+	}
+
+	/* drop the ORDERED event. Here the history list should be completed,
+	 * but might not be if the hist-list bug exists. Call scheduler to make
+	 * it act on the RELEASE that was enqueued.
+	 */
+	rte_event_enqueue_burst(evdev, t->port[1], &release_ev, 1);
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
+
+	/* Enqueue 1x atomic event, to then FORWARD to trigger atomic hist-list
+	 * completion. If the bug exists, the ORDERED entry may be completed in
+	 * error (aka, using the ORDERED-ROB for the ATOMIC event). This is the
+	 * main focus of this unit test.
+	 */
+	{
+		struct rte_event ev = {
+			.op = RTE_EVENT_OP_NEW,
+			.queue_id = qid_atomic,
+			.event_type = RTE_EVENT_TYPE_CPU,
+			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+			.flow_id = 123,
+		};
+
+		err = rte_event_enqueue_burst(evdev, t->port[rx_enq], &ev, 1);
+		if (err != 1) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
+
+	/* Deq ATM event, then forward it for more than HIST_LIST_SIZE times,
+	 * to re-use the history list entry that may be corrupted previously.
+	 */
+	for (int i = 0; i < SW_PORT_HIST_LIST + 2; i++) {
+		if (!rte_event_dequeue_burst(evdev, t->port[1], &ev, 1, 0)) {
+			printf("%d: failed to dequeue, did corrupt ORD hist "
+				"list steal this ATM event?\n", __LINE__);
+			return -1;
+		}
+
+		/* Re-enqueue the ATM event as FWD, trigger hist-list. */
+		ev.op = RTE_EVENT_OP_FORWARD;
+		err = rte_event_enqueue_burst(evdev, t->port[1], &ev, 1);
+		if (err != 1) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+
+		rte_service_run_iter_on_app_lcore(t->service_id, 1);
+	}
+
+	/* If HIST-LIST + N count of dequeues succeed above, the hist list
+	 * has not been corrupted. If it is corrupted, the ATM event is pushed
+	 * into the ORDERED-ROB and will not dequeue.
+	 */
+
+	/* release the ATM event that's been forwarded HIST_LIST times */
+	err = rte_event_enqueue_burst(evdev, t->port[1], &release_ev, 1);
+	if (err != 1) {
+		printf("%d: Failed to enqueue\n", __LINE__);
+		return -1;
+	}
+
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
+
+	cleanup(t);
+	return 0;
+}
+
+static int
 worker_loopback_worker_fn(void *arg)
 {
 	struct test *t = arg;
@@ -3075,7 +3202,7 @@ worker_loopback(struct test *t, uint8_t disable_implicit_release)
 	static const struct rte_mbuf_dynfield counter_dynfield_desc = {
 		.name = "rte_event_sw_dynfield_selftest_counter",
 		.size = sizeof(counter_dynfield_t),
-		.align = __alignof__(counter_dynfield_t),
+		.align = alignof(counter_dynfield_t),
 	};
 	counter_dynfield_offset =
 		rte_mbuf_dynfield_register(&counter_dynfield_desc);
@@ -3386,6 +3513,12 @@ test_sw_eventdev(void)
 	ret = dev_stop_flush(t);
 	if (ret != 0) {
 		printf("ERROR - Stop Flush test FAILED.\n");
+		goto test_fail;
+	}
+	printf("*** Running Ordered & Atomic hist-list completion test...\n");
+	ret = ordered_atomic_hist_completion(t);
+	if (ret != 0) {
+		printf("ERROR - Ordered & Atomic hist-list test FAILED.\n");
 		goto test_fail;
 	}
 	if (rte_lcore_count() >= 3) {

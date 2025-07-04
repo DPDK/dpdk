@@ -25,8 +25,10 @@ main(int argc, char **argv)
 	argv += ret;
 
 	mldevs = rte_ml_dev_count();
-	if (!mldevs)
-		rte_panic("no mldev devices found\n");
+	if (!mldevs) {
+		ml_err("no mldev devices found\n");
+		goto error;
+	}
 
 	/* set default values for options */
 	ml_options_default(&opt);

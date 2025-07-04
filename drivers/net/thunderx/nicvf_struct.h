@@ -14,19 +14,19 @@
 #include <ethdev_driver.h>
 #include <rte_memory.h>
 
-struct nicvf_rbdr {
+struct __rte_cache_aligned nicvf_rbdr {
 	uintptr_t rbdr_status;
 	uintptr_t rbdr_door;
 	struct rbdr_entry_t *desc;
 	nicvf_iova_addr_t phys;
 	uint32_t buffsz;
-	uint32_t tail;
-	uint32_t next_tail;
+	RTE_ATOMIC(uint32_t) tail;
+	RTE_ATOMIC(uint32_t) next_tail;
 	uint32_t head;
 	uint32_t qlen_mask;
-} __rte_cache_aligned;
+};
 
-struct nicvf_txq {
+struct __rte_cache_aligned nicvf_txq {
 	union sq_entry_t *desc;
 	nicvf_iova_addr_t phys;
 	struct rte_mbuf **txbuffs;
@@ -42,7 +42,7 @@ struct nicvf_txq {
 	uint64_t offloads;
 	uint16_t queue_id;
 	uint16_t tx_free_thresh;
-} __rte_cache_aligned;
+};
 
 union mbuf_initializer {
 	struct {
@@ -54,7 +54,7 @@ union mbuf_initializer {
 	uint64_t value;
 };
 
-struct nicvf_rxq {
+struct __rte_cache_aligned nicvf_rxq {
 	RTE_MARKER rxq_fastpath_data_start;
 	uint8_t  rbptr_offset;
 	uint16_t rx_free_thresh;
@@ -76,9 +76,9 @@ struct nicvf_rxq {
 	uint16_t queue_id;
 	struct nicvf *nic;
 	nicvf_iova_addr_t phys;
-} __rte_cache_aligned;
+};
 
-struct nicvf {
+struct __rte_cache_aligned nicvf {
 	uint8_t vf_id;
 	uint8_t node;
 	uintptr_t reg_base;
@@ -111,7 +111,7 @@ struct nicvf {
 	uint8_t sqs_count;
 #define MAX_SQS_PER_VF 11
 	struct nicvf *snicvf[MAX_SQS_PER_VF];
-} __rte_cache_aligned;
+};
 
 struct change_link_mode {
 	bool	   enable;

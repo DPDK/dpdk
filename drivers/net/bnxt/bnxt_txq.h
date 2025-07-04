@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -26,6 +26,7 @@ struct bnxt_tx_queue {
 	int			index;
 	int			tx_wake_thresh;
 	uint32_t		vfr_tx_cfa_action;
+	pthread_mutex_t		txq_lock;
 	struct bnxt_tx_ring_info	*tx_ring;
 
 	unsigned int		cp_nr_rings;
@@ -33,6 +34,7 @@ struct bnxt_tx_queue {
 	const struct rte_memzone *mz;
 	struct rte_mbuf **free;
 	uint64_t offloads;
+	RTE_ATOMIC(uint64_t)	tx_mbuf_drop;
 };
 
 void bnxt_free_txq_stats(struct bnxt_tx_queue *txq);

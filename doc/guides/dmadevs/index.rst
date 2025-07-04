@@ -8,7 +8,7 @@ The following are a list of DMA device drivers, which can be used from
 an application through DMA API.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :numbered:
 
    cnxk
@@ -17,3 +17,4 @@ an application through DMA API.
    hisilicon
    idxd
    ioat
+   odm

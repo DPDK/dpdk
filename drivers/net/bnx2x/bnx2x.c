@@ -1623,16 +1623,12 @@ static int bnx2x_nic_unload_no_mcp(struct bnx2x_softc *sc)
 }
 
 /* request unload mode from the MCP: COMMON, PORT or FUNCTION */
-static uint32_t bnx2x_send_unload_req(struct bnx2x_softc *sc, int unload_mode)
+static uint32_t bnx2x_send_unload_req(struct bnx2x_softc *sc, int unload_mode __rte_unused)
 {
 	uint32_t reset_code = 0;
 
 	/* Select the UNLOAD request mode */
-	if (unload_mode == UNLOAD_NORMAL) {
-		reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
-	} else {
-		reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
-	}
+	reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
 
 	/* Send the request to the MCP */
 	if (!BNX2X_NOMCP(sc)) {
@@ -2389,7 +2385,7 @@ int bnx2x_alloc_ilt_mem(struct bnx2x_softc *sc)
 static int bnx2x_alloc_ilt_lines_mem(struct bnx2x_softc *sc)
 {
 	sc->ilt->lines = rte_calloc("",
-				    sizeof(struct ilt_line), ILT_MAX_LINES,
+				    ILT_MAX_LINES, sizeof(struct ilt_line),
 				    RTE_CACHE_LINE_SIZE);
 	return sc->ilt->lines == NULL;
 }
@@ -5843,17 +5839,15 @@ static int bnx2x_set_power_state(struct bnx2x_softc *sc, uint8_t state)
 		return 0;
 	}
 
-	pci_read(sc, (sc->devinfo.pcie_pm_cap_reg + PCIR_POWER_STATUS), &pmcsr,
+	pci_read(sc, (sc->devinfo.pcie_pm_cap_reg + RTE_PCI_PM_CTRL), &pmcsr,
 		 2);
 
 	switch (state) {
 	case PCI_PM_D0:
-		pci_write_word(sc,
-			       (sc->devinfo.pcie_pm_cap_reg +
-				PCIR_POWER_STATUS),
-			       ((pmcsr & ~PCIM_PSTAT_DMASK) | PCIM_PSTAT_PME));
+		pci_write_word(sc, (sc->devinfo.pcie_pm_cap_reg + RTE_PCI_PM_CTRL),
+			((pmcsr & ~RTE_PCI_PM_CTRL_STATE_MASK) | RTE_PCI_PM_CTRL_PME_STATUS));
 
-		if (pmcsr & PCIM_PSTAT_DMASK) {
+		if (pmcsr & RTE_PCI_PM_CTRL_STATE_MASK) {
 			/* delay required during transition out of D3hot */
 			DELAY(20000);
 		}
@@ -5866,16 +5860,17 @@ static int bnx2x_set_power_state(struct bnx2x_softc *sc, uint8_t state)
 			return 0;
 		}
 
-		pmcsr &= ~PCIM_PSTAT_DMASK;
-		pmcsr |= PCIM_PSTAT_D3;
+		pmcsr &= ~RTE_PCI_PM_CTRL_STATE_MASK;
+		/* D3 power state */
+		pmcsr |= 0x3;
 
 		if (sc->wol) {
-			pmcsr |= PCIM_PSTAT_PMEENABLE;
+			pmcsr |= RTE_PCI_PM_CTRL_PME_ENABLE;
 		}
 
 		pci_write_long(sc,
 			       (sc->devinfo.pcie_pm_cap_reg +
-				PCIR_POWER_STATUS), pmcsr);
+				RTE_PCI_PM_CTRL), pmcsr);
 
 		/*
 		 * No more memory access after this point until device is brought back
@@ -7613,7 +7608,7 @@ static uint32_t bnx2x_pcie_capability_read(struct bnx2x_softc *sc, int reg)
 	struct bnx2x_pci_cap *caps;
 
 	/* ensure PCIe capability is enabled */
-	caps = pci_find_cap(sc, PCIY_EXPRESS, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_EXP, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found PCIe capability: "
 			    "id=0x%04X type=0x%04X addr=0x%08X",
@@ -7629,8 +7624,8 @@ static uint32_t bnx2x_pcie_capability_read(struct bnx2x_softc *sc, int reg)
 
 static uint8_t bnx2x_is_pcie_pending(struct bnx2x_softc *sc)
 {
-	return bnx2x_pcie_capability_read(sc, PCIR_EXPRESS_DEVICE_STA) &
-		PCIM_EXP_STA_TRANSACTION_PND;
+	return bnx2x_pcie_capability_read(sc, RTE_PCI_EXP_TYPE_RC_EC) &
+		RTE_PCI_EXP_DEVSTA_TRPND;
 }
 
 /*
@@ -7647,7 +7642,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 	int reg = 0;
 
 	/* check if PCI Power Management is enabled */
-	caps = pci_find_cap(sc, PCIY_PMG, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_PM, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found PM capability: "
 			    "id=0x%04X type=0x%04X addr=0x%08X",
@@ -7657,11 +7652,11 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 		sc->devinfo.pcie_pm_cap_reg = caps->addr;
 	}
 
-	link_status = bnx2x_pcie_capability_read(sc, PCIR_EXPRESS_LINK_STA);
+	link_status = bnx2x_pcie_capability_read(sc, RTE_PCI_EXP_LNKSTA);
 
-	sc->devinfo.pcie_link_speed = (link_status & PCIM_LINK_STA_SPEED);
+	sc->devinfo.pcie_link_speed = (link_status & RTE_PCI_EXP_LNKSTA_CLS);
 	sc->devinfo.pcie_link_width =
-	    ((link_status & PCIM_LINK_STA_WIDTH) >> 4);
+	    ((link_status & RTE_PCI_EXP_LNKSTA_NLW) >> 4);
 
 	PMD_DRV_LOG(DEBUG, sc, "PCIe link speed=%d width=%d",
 		    sc->devinfo.pcie_link_speed, sc->devinfo.pcie_link_width);
@@ -7669,7 +7664,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 	sc->devinfo.pcie_cap_flags |= BNX2X_PCIE_CAPABLE_FLAG;
 
 	/* check if MSI capability is enabled */
-	caps = pci_find_cap(sc, PCIY_MSI, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_MSI, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found MSI capability at 0x%04x", reg);
 
@@ -7678,7 +7673,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 	}
 
 	/* check if MSI-X capability is enabled */
-	caps = pci_find_cap(sc, PCIY_MSIX, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_MSIX, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found MSI-X capability at 0x%04x", reg);
 
@@ -8125,7 +8120,7 @@ static int bnx2x_get_shmem_info(struct bnx2x_softc *sc)
 	val = sc->devinfo.bc_ver >> 8;
 	if (val < BNX2X_BC_VER) {
 		/* for now only warn later we might need to enforce this */
-		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC\n",
+		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC",
 			    BNX2X_BC_VER, val);
 	}
 	sc->link_params.feature_config_flags |=
@@ -9490,16 +9485,16 @@ static int bnx2x_prev_unload(struct bnx2x_softc *sc)
 	hw_lock_val = (REG_RD(sc, hw_lock_reg));
 	if (hw_lock_val) {
 		if (hw_lock_val & HW_LOCK_RESOURCE_NVRAM) {
-			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock\n");
+			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock");
 			REG_WR(sc, MCP_REG_MCPR_NVM_SW_ARB,
 			       (MCPR_NVM_SW_ARB_ARB_REQ_CLR1 << SC_PORT(sc)));
 		}
-		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock\n");
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock");
 		REG_WR(sc, hw_lock_reg, 0xffffffff);
 	}
 
 	if (MCPR_ACCESS_LOCK_LOCK & REG_RD(sc, MCP_REG_MCPR_ACCESS_LOCK)) {
-		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR\n");
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR");
 		REG_WR(sc, MCP_REG_MCPR_ACCESS_LOCK, 0);
 	}
 
@@ -9586,14 +9581,17 @@ static void bnx2x_init_multi_cos(struct bnx2x_softc *sc)
 	}
 }
 
+static uint8_t bnx2x_pci_capabilities[] = {
+	RTE_PCI_CAP_ID_EXP,
+	RTE_PCI_CAP_ID_PM,
+	RTE_PCI_CAP_ID_MSI,
+	RTE_PCI_CAP_ID_MSIX,
+};
+
 static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 {
-	struct {
-		uint8_t id;
-		uint8_t next;
-	} pci_cap;
-	uint16_t status;
 	struct bnx2x_pci_cap *cap;
+	unsigned int i;
 
 	cap = sc->pci_caps = rte_zmalloc("caps", sizeof(struct bnx2x_pci_cap),
 					 RTE_CACHE_LINE_SIZE);
@@ -9602,29 +9600,21 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 		return -ENOMEM;
 	}
 
-#ifndef RTE_EXEC_ENV_FREEBSD
-	pci_read(sc, PCI_STATUS, &status, 2);
-	if (!(status & PCI_STATUS_CAP_LIST)) {
-#else
-	pci_read(sc, PCIR_STATUS, &status, 2);
-	if (!(status & PCIM_STATUS_CAPPRESENT)) {
-#endif
+	if (!rte_pci_has_capability_list(sc->pci_dev)) {
 		PMD_DRV_LOG(NOTICE, sc, "PCIe capability reading failed");
 		return -1;
 	}
 
-#ifndef RTE_EXEC_ENV_FREEBSD
-	pci_read(sc, PCI_CAPABILITY_LIST, &pci_cap.next, 1);
-#else
-	pci_read(sc, PCIR_CAP_PTR, &pci_cap.next, 1);
-#endif
-	while (pci_cap.next) {
-		cap->addr = pci_cap.next & ~3;
-		pci_read(sc, pci_cap.next & ~3, &pci_cap, 2);
-		if (pci_cap.id == 0xff)
-			break;
-		cap->id = pci_cap.id;
+	for (i = 0; i < RTE_DIM(bnx2x_pci_capabilities); i++) {
+		off_t pos = rte_pci_find_capability(sc->pci_dev,
+			bnx2x_pci_capabilities[i]);
+
+		if (pos <= 0)
+			continue;
+
+		cap->id = bnx2x_pci_capabilities[i];
 		cap->type = BNX2X_PCI_CAP;
+		cap->addr = pos;
 		cap->next = rte_zmalloc("pci_cap",
 					sizeof(struct bnx2x_pci_cap),
 					RTE_CACHE_LINE_SIZE);
@@ -9771,9 +9761,9 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 	if (sc->devinfo.pcie_msix_cap_reg != 0) {
 		uint32_t val;
 		pci_read(sc,
-			 (sc->devinfo.pcie_msix_cap_reg + PCIR_MSIX_CTRL), &val,
+			 (sc->devinfo.pcie_msix_cap_reg + RTE_PCI_MSIX_FLAGS), &val,
 			 2);
-		sc->igu_sb_cnt = (val & PCIM_MSIXCTRL_TABLE_SIZE) + 1;
+		sc->igu_sb_cnt = (val & RTE_PCI_MSIX_FLAGS_QSIZE) + 1;
 	} else {
 		sc->igu_sb_cnt = 1;
 	}
@@ -9983,10 +9973,10 @@ static void bnx2x_init_pxp(struct bnx2x_softc *sc)
 	uint16_t devctl;
 	int r_order, w_order;
 
-	devctl = bnx2x_pcie_capability_read(sc, PCIR_EXPRESS_DEVICE_CTL);
+	devctl = bnx2x_pcie_capability_read(sc, RTE_PCI_EXP_DEVCTL);
 
-	w_order = ((devctl & PCIM_EXP_CTL_MAX_PAYLOAD) >> 5);
-	r_order = ((devctl & PCIM_EXP_CTL_MAX_READ_REQUEST) >> 12);
+	w_order = ((devctl & RTE_PCI_EXP_DEVCTL_PAYLOAD) >> 5);
+	r_order = ((devctl & RTE_PCI_EXP_DEVCTL_READRQ) >> 12);
 
 	ecore_init_pxp_arb(sc, r_order, w_order);
 }
@@ -10337,12 +10327,13 @@ static int bnx2x_init_hw_common(struct bnx2x_softc *sc)
 	REG_WR(sc, PXP2_REG_RD_DISABLE_INPUTS, 0);
 
 	if (!CHIP_IS_E1x(sc)) {
-		int factor = 0;
+		int factor = CHIP_REV_IS_EMUL(sc) ? 1000 :
+				(CHIP_REV_IS_FPGA(sc) ? 400 : 0);
 
 		ecore_init_block(sc, BLOCK_PGLUE_B, PHASE_COMMON);
 		ecore_init_block(sc, BLOCK_ATC, PHASE_COMMON);
 
-/* let the HW do it's magic... */
+		/* let the HW do it's magic... */
 		do {
 			DELAY(200000);
 			val = REG_RD(sc, ATC_REG_ATC_INIT_DONE);
@@ -11195,11 +11186,9 @@ static int bnx2x_init_hw_func(struct bnx2x_softc *sc)
 /* Turn on a single ISR mode in IGU if driver is going to use
  * INT#x or MSI
  */
-		if ((sc->interrupt_mode != INTR_MODE_MSIX)
-		    || (sc->interrupt_mode != INTR_MODE_SINGLE_MSIX)) {
+		if (sc->interrupt_mode == INTR_MODE_INTX ||
+		    sc->interrupt_mode == INTR_MODE_MSI)
 			pf_conf |= IGU_PF_CONF_SINGLE_ISR_EN;
-		}
-
 /*
  * Timers workaround bug: function init part.
  * Need to wait 20msec after initializing ILT,

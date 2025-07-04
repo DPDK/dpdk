@@ -10,3 +10,4 @@ sources = files(
 )
 deps += ['hash', 'bus_vdev']
 require_iova_in_mbuf = false
+cflags += no_wvla_cflag

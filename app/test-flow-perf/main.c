@@ -113,7 +113,7 @@ struct stream {
 	int rx_queue;
 };
 
-struct lcore_info {
+struct __rte_cache_aligned lcore_info {
 	int mode;
 	int streams_nb;
 	struct stream streams[MAX_STREAMS];
@@ -122,7 +122,7 @@ struct lcore_info {
 	uint64_t tx_drops;
 	uint64_t rx_pkts;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
-} __rte_cache_aligned;
+};
 
 static struct lcore_info lcore_infos[RTE_MAX_LCORE];
 
@@ -131,14 +131,14 @@ struct used_cpu_time {
 	double deletion[MAX_PORTS][RTE_MAX_LCORE];
 };
 
-struct multi_cores_pool {
+struct __rte_cache_aligned multi_cores_pool {
 	uint32_t cores_count;
 	uint32_t rules_count;
 	struct used_cpu_time meters_record;
 	struct used_cpu_time flows_record;
 	int64_t last_alloc[RTE_MAX_LCORE];
 	int64_t current_alloc[RTE_MAX_LCORE];
-} __rte_cache_aligned;
+};
 
 static struct multi_cores_pool mc_pool = {
 	.cores_count = 1,
@@ -1708,9 +1708,6 @@ static void
 signal_handler(int signum)
 {
 	if (signum == SIGINT || signum == SIGTERM) {
-		printf("\n\nSignal %d received, preparing to exit...\n",
-					signum);
-		printf("Error: Stats are wrong due to sudden signal!\n\n");
 		force_quit = true;
 	}
 }

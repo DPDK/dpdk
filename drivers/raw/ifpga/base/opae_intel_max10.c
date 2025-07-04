@@ -6,6 +6,13 @@
 #include <libfdt.h>
 #include "opae_osdep.h"
 
+#ifndef TAILQ_FOREACH_SAFE
+#define TAILQ_FOREACH_SAFE(var, head, field, tvar) \
+	for ((var) = TAILQ_FIRST((head)); \
+		(var) && ((tvar) = TAILQ_NEXT((var), field), 1); \
+	(var) = (tvar))
+#endif
+
 int max10_sys_read(struct intel_max10_device *dev,
 	unsigned int offset, unsigned int *val)
 {
@@ -746,9 +753,9 @@ static int fdt_get_named_reg(const void *fdt, int node, const char *name,
 
 static void max10_sensor_uinit(struct intel_max10_device *dev)
 {
-	struct opae_sensor_info *info;
+	struct opae_sensor_info *info, *next;
 
-	TAILQ_FOREACH(info, &dev->opae_sensor_list, node) {
+	TAILQ_FOREACH_SAFE(info, &dev->opae_sensor_list, node, next) {
 		TAILQ_REMOVE(&dev->opae_sensor_list, info, node);
 		opae_free(info);
 	}
@@ -1479,10 +1486,7 @@ intel_max10_device_init(struct intel_max10_device *dev)
 		if (ret)
 			return ret;
 
-		ret = pthread_mutex_init(&dev->bmc_ops.lock, NULL);
-		if (ret)
-			return ret;
-
+		pthread_mutex_init(&dev->bmc_ops.lock, NULL);
 		if (!dev->bmc_ops.mutex)
 			dev->bmc_ops.mutex = &dev->bmc_ops.lock;
 	}

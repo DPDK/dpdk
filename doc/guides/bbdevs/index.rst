@@ -5,7 +5,7 @@ Baseband Device Drivers
 =======================
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     overview
@@ -15,4 +15,5 @@ Baseband Device Drivers
     fpga_5gnr_fec
     acc100
     vrb1
+    vrb2
     la12xx

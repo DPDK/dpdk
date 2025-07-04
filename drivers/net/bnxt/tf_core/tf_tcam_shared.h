@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -129,7 +129,6 @@ int tf_tcam_shared_set(struct tf *tfp,
 int tf_tcam_shared_get(struct tf *tfp,
 		       struct tf_tcam_get_parms *parms);
 
-
 /**
  * Moves entries from the WC_TCAM_HI to the WC_TCAM_LO shared pools
  * for the P4 device.
@@ -179,5 +178,4 @@ int tf_tcam_shared_move_p58(struct tf *tfp,
  */
 int tf_tcam_shared_clear(struct tf *tfp,
 			 struct tf_clear_tcam_shared_entries_parms *parms);
-
 #endif /* _TF_TCAM_SHARED_H */

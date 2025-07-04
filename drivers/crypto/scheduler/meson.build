@@ -7,7 +7,7 @@ if is_windows
     subdir_done()
 endif
 
-deps += ['bus_vdev', 'reorder']
+deps += ['bus_vdev', 'reorder', 'security']
 sources = files(
         'rte_cryptodev_scheduler.c',
         'scheduler_failover.c',
@@ -22,3 +22,5 @@ headers = files(
         'rte_cryptodev_scheduler.h',
         'rte_cryptodev_scheduler_operations.h',
 )
+
+cflags += no_wvla_cflag

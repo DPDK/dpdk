@@ -30,55 +30,9 @@
 
 #include "elink.h"
 
-#ifndef RTE_EXEC_ENV_FREEBSD
-#include <linux/pci_regs.h>
-
-#define PCIY_PMG                       PCI_CAP_ID_PM
-#define PCIY_MSI                       PCI_CAP_ID_MSI
-#define PCIY_EXPRESS                   PCI_CAP_ID_EXP
-#define PCIY_MSIX                      PCI_CAP_ID_MSIX
-#define PCIR_EXPRESS_DEVICE_STA        PCI_EXP_TYPE_RC_EC
-#define PCIM_EXP_STA_TRANSACTION_PND   PCI_EXP_DEVSTA_TRPND
-#define PCIR_EXPRESS_LINK_STA          PCI_EXP_LNKSTA
-#define PCIM_LINK_STA_WIDTH            PCI_EXP_LNKSTA_NLW
-#define PCIM_LINK_STA_SPEED            PCI_EXP_LNKSTA_CLS
-#define PCIR_EXPRESS_DEVICE_CTL        PCI_EXP_DEVCTL
-#define PCIM_EXP_CTL_MAX_PAYLOAD       PCI_EXP_DEVCTL_PAYLOAD
-#define PCIM_EXP_CTL_MAX_READ_REQUEST  PCI_EXP_DEVCTL_READRQ
-#define PCIR_POWER_STATUS              PCI_PM_CTRL
-#define PCIM_PSTAT_DMASK               PCI_PM_CTRL_STATE_MASK
-#define PCIM_PSTAT_PME                 PCI_PM_CTRL_PME_STATUS
-#define PCIM_PSTAT_D3                  0x3
-#define PCIM_PSTAT_PMEENABLE           PCI_PM_CTRL_PME_ENABLE
-#define PCIR_MSIX_CTRL                 PCI_MSIX_FLAGS
-#define PCIM_MSIXCTRL_TABLE_SIZE       PCI_MSIX_FLAGS_QSIZE
-#else
-#include <dev/pci/pcireg.h>
-#endif
-
 #define IFM_10G_CX4                    20 /* 10GBase CX4 copper */
 #define IFM_10G_TWINAX                 22 /* 10GBase Twinax copper */
 #define IFM_10G_T                      26 /* 10GBase-T - RJ45 */
-
-#ifndef RTE_EXEC_ENV_FREEBSD
-#define PCIR_EXPRESS_DEVICE_STA        PCI_EXP_TYPE_RC_EC
-#define PCIM_EXP_STA_TRANSACTION_PND   PCI_EXP_DEVSTA_TRPND
-#define PCIR_EXPRESS_LINK_STA          PCI_EXP_LNKSTA
-#define PCIM_LINK_STA_WIDTH            PCI_EXP_LNKSTA_NLW
-#define PCIM_LINK_STA_SPEED            PCI_EXP_LNKSTA_CLS
-#define PCIR_EXPRESS_DEVICE_CTL        PCI_EXP_DEVCTL
-#define PCIM_EXP_CTL_MAX_PAYLOAD       PCI_EXP_DEVCTL_PAYLOAD
-#define PCIM_EXP_CTL_MAX_READ_REQUEST  PCI_EXP_DEVCTL_READRQ
-#else
-#define PCIR_EXPRESS_DEVICE_STA	PCIER_DEVICE_STA
-#define PCIM_EXP_STA_TRANSACTION_PND   PCIEM_STA_TRANSACTION_PND
-#define PCIR_EXPRESS_LINK_STA          PCIER_LINK_STA
-#define PCIM_LINK_STA_WIDTH            PCIEM_LINK_STA_WIDTH
-#define PCIM_LINK_STA_SPEED            PCIEM_LINK_STA_SPEED
-#define PCIR_EXPRESS_DEVICE_CTL        PCIER_DEVICE_CTL
-#define PCIM_EXP_CTL_MAX_PAYLOAD       PCIEM_CTL_MAX_PAYLOAD
-#define PCIM_EXP_CTL_MAX_READ_REQUEST  PCIEM_CTL_MAX_READ_REQUEST
-#endif
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) RTE_DIM(arr)

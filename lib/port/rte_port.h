@@ -5,18 +5,13 @@
 #ifndef __INCLUDE_RTE_PORT_H__
 #define __INCLUDE_RTE_PORT_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port
  *
  * This tool is part of the DPDK Packet Framework tool suite and provides
  * a standard interface to implement different types of packet ports.
- *
- ***/
+ */
 
 #include <stdint.h>
 #include <rte_mbuf.h>
@@ -46,7 +41,6 @@ extern "C" {
 
 /*
  * Port IN
- *
  */
 /** Maximum number of packets read from any input port in a single burst.
 Cannot be changed. */
@@ -125,7 +119,6 @@ struct rte_port_in_ops {
 
 /*
  * Port OUT
- *
  */
 /** Output port statistics */
 struct rte_port_out_stats {
@@ -226,9 +219,5 @@ struct rte_port_out_ops {
 	rte_port_out_op_flush f_flush;        /**< Flush */
 	rte_port_out_op_stats_read f_stats;   /**< Stats */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

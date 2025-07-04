@@ -31,7 +31,8 @@
 #ifdef RTE_NET_I40E
 #include <rte_pmd_i40e.h>
 #endif
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
+#include <rte_power_guest_channel.h>
 
 #include <libvirt/libvirt.h>
 #include "channel_monitor.h"
@@ -828,8 +829,9 @@ process_request(struct rte_power_channel_packet *pkt,
 		return -1;
 
 	uint32_t channel_connected = CHANNEL_MGR_CHANNEL_CONNECTED;
-	if (__atomic_compare_exchange_n(&(chan_info->status), &channel_connected,
-		CHANNEL_MGR_CHANNEL_PROCESSING, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED) == 0)
+	if (rte_atomic_compare_exchange_strong_explicit(&(chan_info->status), &channel_connected,
+			CHANNEL_MGR_CHANNEL_PROCESSING, rte_memory_order_relaxed,
+			rte_memory_order_relaxed) == 0)
 		return -1;
 
 	if (pkt->command == RTE_POWER_CPU_POWER) {
@@ -934,8 +936,8 @@ process_request(struct rte_power_channel_packet *pkt,
 	 * from management thread
 	 */
 	uint32_t channel_processing = CHANNEL_MGR_CHANNEL_PROCESSING;
-	__atomic_compare_exchange_n(&(chan_info->status), &channel_processing,
-		CHANNEL_MGR_CHANNEL_CONNECTED, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	rte_atomic_compare_exchange_strong_explicit(&(chan_info->status), &channel_processing,
+		CHANNEL_MGR_CHANNEL_CONNECTED, rte_memory_order_relaxed, rte_memory_order_relaxed);
 	return 0;
 
 }

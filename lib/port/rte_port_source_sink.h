@@ -5,20 +5,19 @@
 #ifndef __INCLUDE_RTE_PORT_SOURCE_SINK_H__
 #define __INCLUDE_RTE_PORT_SOURCE_SINK_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port Source/Sink
  *
  * source: input port that can be used to generate packets
  * sink: output port that drops all packets written to it
- *
- ***/
+ */
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** source port parameters */
 struct rte_port_source_params {

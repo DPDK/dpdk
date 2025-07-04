@@ -120,10 +120,10 @@ config () # <dir> <builddir> <meson options>
 		return
 	fi
 	options=
-	# deprecated libs may be disabled by default, so for complete builds ensure
-	# no libs are disabled
-	if ! echo $* | grep -q -- 'disable_libs' ; then
-		options="$options -Ddisable_libs="
+	# deprecated libs are disabled by default, so for complete builds
+	# enable them
+	if ! echo $* | grep -q -- 'enable_deprecated_libs' ; then
+		options="$options -Denable_deprecated_libs=*"
 	fi
 	if echo $* | grep -qw -- '--default-library=shared' ; then
 		options="$options -Dexamples=all"
@@ -158,8 +158,8 @@ compile () # <builddir>
 install_target () # <builddir> <installdir>
 {
 	rm -rf $2
-	echo "DESTDIR=$2 $ninja_cmd -C $1 install" >&$verbose
-	DESTDIR=$2 $ninja_cmd -C $1 install >&$veryverbose
+	echo "DESTDIR=$2 $MESON install -C $1" >&$verbose
+	DESTDIR=$2 $MESON install -C $1 >&$veryverbose
 }
 
 build () # <directory> <target cc | cross file> <ABI check> [meson options]
@@ -227,11 +227,13 @@ for c in gcc clang ; do
 	for s in static shared ; do
 		if [ $s = shared ] ; then
 			abicheck=ABI
+			stdatomic=-Denable_stdatomic=true
 		else
 			abicheck=skipABI # save time and disk space
+			stdatomic=-Denable_stdatomic=false
 		fi
 		export CC="$CCACHE $c"
-		build build-$c-$s $c $abicheck --default-library=$s
+		build build-$c-$s $c $abicheck $stdatomic --default-library=$s
 		unset CC
 	done
 done
@@ -251,21 +253,18 @@ build build-x86-generic cc skipABI -Dcheck_includes=true \
 
 # 32-bit with default compiler
 if check_cc_flags '-m32' ; then
+	target_override='i386-pc-linux-gnu'
 	if [ -d '/usr/lib/i386-linux-gnu' ] ; then
-		# 32-bit pkgconfig on Debian/Ubuntu
-		export PKG_CONFIG_LIBDIR='/usr/lib/i386-linux-gnu/pkgconfig'
+		# 32-bit pkgconfig on Debian/Ubuntu, use cross file
+		build build-32b $srcdir/config/x86/cross-32bit-debian.ini ABI
 	elif [ -d '/usr/lib32' ] ; then
 		# 32-bit pkgconfig on Arch
-		export PKG_CONFIG_LIBDIR='/usr/lib32/pkgconfig'
+		build build-32b $srcdir/config/x86/cross-32bit-arch.ini ABI
 	else
 		# 32-bit pkgconfig on RHEL/Fedora (lib vs lib64)
-		export PKG_CONFIG_LIBDIR='/usr/lib/pkgconfig'
+		build build-32b $srcdir/config/x86/cross-32bit-fedora.ini ABI
 	fi
-	target_override='i386-pc-linux-gnu'
-	build build-32b cc ABI -Dc_args='-m32' -Dc_link_args='-m32' \
-			-Dcpp_args='-m32' -Dcpp_link_args='-m32'
 	target_override=
-	unset PKG_CONFIG_LIBDIR
 fi
 
 # x86 MinGW
@@ -282,6 +281,9 @@ build build-loongarch64-generic-gcc $f ABI $use_shared
 
 # IBM POWER
 f=$srcdir/config/ppc/ppc64le-power8-linux-gcc
+if grep -q 'NAME="Ubuntu"' /etc/os-release ; then
+	f=$f-ubuntu
+fi
 build build-ppc64-power8-gcc $f ABI $use_shared
 
 # generic RISC-V
@@ -298,7 +300,24 @@ pc_file=$(find $DESTDIR -name libdpdk.pc)
 export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
 libdir=$(dirname $(find $DESTDIR -name librte_eal.so))
 export LD_LIBRARY_PATH=$libdir:$LD_LIBRARY_PATH
+export PATH=$(dirname $(find $DESTDIR -name dpdk-devbind.py)):$PATH
 examples=${DPDK_BUILD_TEST_EXAMPLES:-"cmdline helloworld l2fwd l3fwd skeleton timer"}
+if [ "$examples" = 'all' ]; then
+	examples=$(find $build_path/examples -maxdepth 1 -type f -name "dpdk-*" |
+	while read target; do
+		target=${target%%:*}
+		target=${target#$build_path/examples/dpdk-}
+		if [ -e $srcdir/examples/$target/Makefile ]; then
+			echo $target
+			continue
+		fi
+		# Some examples binaries are built from an example sub
+		# directory, discover the "top level" example name.
+		find $srcdir/examples -name Makefile |
+		sed -n "s,$srcdir/examples/\([^/]*\)\(/.*\|\)/$target/Makefile,\1,p"
+	done | sort -u |
+	tr '\n' ' ')
+fi
 # if pkg-config defines the necessary flags, test building some examples
 if pkg-config --define-prefix libdpdk >/dev/null 2>&1; then
 	export PKGCONF="pkg-config --define-prefix"

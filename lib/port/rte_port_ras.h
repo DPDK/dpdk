@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_PORT_RAS_H__
 #define __INCLUDE_RTE_PORT_RAS_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port for IPv4 Reassembly
@@ -25,13 +21,15 @@ extern "C" {
  * The complete IP datagrams written to the ring are not changed. The IP
  * fragments written to the ring are first reassembled and into complete IP
  * datagrams or dropped on error or IP reassembly time-out.
- *
- ***/
+ */
 
 #include <stdint.h>
 
-
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** ring_writer_ipv4_ras port parameters */
 struct rte_port_ring_writer_ras_params {

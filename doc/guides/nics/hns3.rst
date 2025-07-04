@@ -6,7 +6,7 @@ HNS3 Poll Mode Driver
 
 The hns3 PMD (**librte_net_hns3**) provides poll mode driver support
 for the inbuilt HiSilicon Network Subsystem(HNS) network engine
-found in the HiSilicon Kunpeng 920 SoC and Kunpeng 930 SoC .
+found in the HiSilicon Kunpeng 920 SoC (HIP08) and Kunpeng 930 SoC (HIP09/HIP10).
 
 Features
 --------
@@ -30,7 +30,6 @@ Features of the HNS3 PMD are:
 - DCB
 - Scattered and gather for TX and RX
 - Vector Poll mode driver
-- Dump register
 - SR-IOV VF
 - Multi-process
 - MAC/VLAN filter
@@ -38,6 +37,15 @@ Features of the HNS3 PMD are:
 - NUMA support
 - Generic flow API
 - IEEE1588/802.1AS timestamping
+- Basic stats
+- Extended stats
+- Traffic Management API
+- Speed capabilities
+- Link Auto-negotiation
+- Link flow control
+- Dump register
+- Dump private info from device
+- FW version
 
 Prerequisites
 -------------
@@ -54,7 +62,8 @@ Firmware 1.8.0.0 and later versions support reporting link changes to the PF.
 Therefore, to use the LSC for the PF driver, ensure that the firmware version
 also supports reporting link changes.
 If the VF driver needs to support LSC, special patch must be added:
-`<https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/commit/drivers/net/ethernet/hisilicon/hns3?h=next-20210428&id=18b6e31f8bf4ac7af7b057228f38a5a530378e4e>`_.
+`<https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=18b6e31f8bf4ac7af7b057228f38a5a530378e4e>`_.
+
 Note: The patch has been uploaded to 5.13 of the Linux kernel mainline.
 
 
@@ -68,7 +77,8 @@ The following options can be modified in the ``config/rte_config.h`` file.
 
 - ``RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF`` (default ``256``)
 
-  Number of MAX queues reserved for PF.
+  Number of MAX queues reserved for PF on HIP09 and HIP10.
+  The MAX queue number is also determined by the value the firmware report.
 
 Runtime Configuration
 ~~~~~~~~~~~~~~~~~~~~~
@@ -91,7 +101,8 @@ Runtime Configuration
   ``common``.
 
   For example::
-  -a 0000:7d:00.0,rx_func_hint=simple
+
+    -a 0000:7d:00.0,rx_func_hint=simple
 
 - ``tx_func_hint`` (default ``none``)
 
@@ -111,7 +122,8 @@ Runtime Configuration
   ``common``.
 
   For example::
-  -a 0000:7d:00.0,tx_func_hint=common
+
+    -a 0000:7d:00.0,tx_func_hint=common
 
 - ``dev_caps_mask`` (default ``0``)
 
@@ -123,23 +135,73 @@ Runtime Configuration
   Its main purpose is to debug and avoid problems.
 
   For example::
-  -a 0000:7d:00.0,dev_caps_mask=0xF
+
+    -a 0000:7d:00.0,dev_caps_mask=0xF
 
 - ``mbx_time_limit_ms`` (default ``500``)
-   Used to define the mailbox time limit by user.
-   Current, the max waiting time for MBX response is 500ms, but in
-   some scenarios, it is not enough. Since it depends on the response
-   of the kernel mode driver, and its response time is related to the
-   scheduling of the system. In this special scenario, most of the
-   cores are isolated, and only a few cores are used for system
-   scheduling. When a large number of services are started, the
-   scheduling of the system will be very busy, and the reply of the
-   mbx message will time out, which will cause our PMD initialization
-   to fail. So provide access to set mailbox time limit for user.
 
-   For example::
-   -a 0000:7d:00.0,mbx_time_limit_ms=600
+  Used to define the mailbox time limit by user.
+  Current, the max waiting time for MBX response is 500ms, but in
+  some scenarios, it is not enough. Since it depends on the response
+  of the kernel mode driver, and its response time is related to the
+  scheduling of the system. In this special scenario, most of the
+  cores are isolated, and only a few cores are used for system
+  scheduling. When a large number of services are started, the
+  scheduling of the system will be very busy, and the reply of the
+  mbx message will time out, which will cause our PMD initialization
+  to fail. So provide access to set mailbox time limit for user.
 
+  For example::
+
+    -a 0000:7d:00.0,mbx_time_limit_ms=600
+
+- ``fdir_vlan_match_mode`` (default ``strict``)
+
+  Used to select VLAN match mode. This runtime config can be ``strict``
+  or ``nostrict`` and is only valid for PF devices.
+  If driver works on ``strict`` mode (default mode), hardware does strictly
+  match the input flow base on VLAN number.
+
+  For the following scenarios with two rules:
+
+  .. code-block:: console
+
+     rule0:
+       pattern: eth type is 0x0806
+       actions: queue index 3
+     rule1:
+       pattern: eth type is 0x0806 / vlan vid is 20
+       actions: queue index 4
+
+  If application select ``strict`` mode, only the ARP packets with VLAN
+  20 are directed to queue 4, and the ARP packets with other VLAN ID
+  cannot be directed to the specified queue. If application want to all
+  ARP packets with or without VLAN to be directed to the specified queue,
+  application can select ``nostrict`` mode and just need to set rule0.
+
+  For example::
+
+    -a 0000:7d:00.0,fdir_vlan_match_mode=nostrict
+
+- ``fdir_tuple_config`` (default ``none``)
+
+  Used to customize the flow director tuples. Current supported options are follows:
+  ``+outvlan-insmac``: means disable inner src mac tuple, and enable outer vlan tuple.
+  ``+outvlan-indmac``: means disable inner dst mac tuple, and enable outer vlan tuple.
+  ``+outvlan-insip``: means disable inner src ip tuple, and enable outer vlan tuple.
+  ``+outvlan-indip``: means disable inner dst ip tuple, and enable outer vlan tuple.
+  ``+outvlan-sctptag``: means disable sctp tag tuple, and enable outer vlan tuple.
+  ``+outvlan-tunvni``: means disable tunnel vni tuple, and enable outer vlan tuple.
+
+- ``fdir_index_config`` (default ``hash``)
+
+  Used to select flow director index strategy,
+  the flow director index is the index position in the hardware flow director table.
+  Lower index denotes higher priority
+  (it means when a packet matches multiple indexes, the smaller index wins).
+  Current supported options are as follows:
+  ``hash``: The driver generates a flow index based on the hash of the rte_flow key.
+  ``priority``: the driver uses the rte_flow priority field as the flow director index.
 
 Driver compilation and testing
 ------------------------------
@@ -192,41 +254,126 @@ src_port=32, dst_port=32`` to queue 1:
             dst is 2.2.2.5 / udp src is 32 dst is 32 / end \
             actions mark id 1 / queue index 1 / end
 
+The flow rules::
+
+   rule-0: flow create 0 ingress pattern eth / end \
+            queue index 1 / end
+   rule-1: flow create 0 ingress pattern eth / vlan vid is 10 / end \
+            queue index 1 / end
+   rule-2: flow create 0 ingress pattern eth / vlan / vlan vid is 10 / end \
+            queue index 1 / end
+   rule-3: flow create 0 ingress pattern eth / vlan vid is 10 / vlan vid is 11 / end \
+            queue index 1 / end
+
+will match the following packet types with specific VLAN ID at the specified VLAN layer
+and any VLAN ID at the rest VLAN layer.
+
+      +--------+------------------+-------------------------------------------+
+      | rules  | ``strict``       | ``nostrict``                              |
+      +========+==================+===========================================+
+      | rule-0 | untagged         | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-1 | single-tagged    | single-tagged || multi-tagged             |
+      +--------+------------------+-------------------------------------------+
+      | rule-2 | double-tagged    | multi-tagged                              |
+      +--------+------------------+-------------------------------------------+
+      | rule-3 | double-tagged    | multi-tagged                              |
+      +--------+------------------+-------------------------------------------+
+
+The attributes ``has_vlan`` and ``has_more_vlan`` are supported.
+The usage is as follows::
+
+   rule-4: flow create 0 ingress pattern eth has_vlan is 1 / end \
+            queue index 1 / end
+   rule-5: flow create 0 ingress pattern eth has_vlan is 0 / end \
+            queue index 1 / end
+   rule-6: flow create 0 ingress pattern eth / vlan has_more_vlan is 1 / \
+            end queue index 1 / end
+   rule-7: flow create 0 ingress pattern eth / vlan has_more_vlan is 0 / \
+            end queue index 1 / end
+
+They will match the following packet types with any VLAN ID.
+
+      +--------+------------------+-------------------------------------------+
+      | rules  |  ``strict``      | ``nostrict``                              |
+      +========+==================+===========================================+
+      | rule-4 | single-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-5 | untagged         | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-6 | double-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-7 | single-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+
+These two fields may be used followed by VLAN item,
+and may partially overlap or conflict with the VLAN item.
+For examples, the rule-8 will be rejected by the driver
+and rule-9, rule-10 are repeated with rule-4.
+Similar usage for ``has_more_vlan``.
+
+::
+
+   rule-8: flow create 0 ingress pattern eth has_vlan is 0 / vlan / end \
+            queue index 1 / end
+   rule-9: flow create 0 ingress pattern eth has_vlan is 1 / vlan / end \
+            queue index 1 / end
+   rule-10: flow create 0 ingress pattern eth / vlan / end \
+            queue index 1 / end
+
+
 Generic flow API
 ~~~~~~~~~~~~~~~~
 
 - ``RSS Flow``
 
-  RSS Flow supports to set hash input set, hash function, enable hash
-  and configure queues.
-  For example:
-  Configure queues as queue 0, 1, 2, 3.
+  RSS Flow supports for creating rule base on input tuple, hash key, queues
+  and hash algorithm. But hash key, queues and hash algorithm are the global
+  configuration for hardware which will affect other rules.
+  The rule just setting input tuple is completely independent.
+
+  In addition, if the rule priority level is set, no error is reported,
+  but the rule priority level does not take effect.
+
+  Run ``testpmd``:
+
+  .. code-block:: console
+
+    dpdk-testpmd -a 0000:7d:00.0 -l 10-18 -- -i --rxq=8 --txq=8
+
+  All IP packets can be distributed to 8 queues.
+
+  Set IPv4-TCP packet is distributed to 8 queues based on L3/L4 SRC only.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end actions \
+             rss types ipv4-tcp l4-src-only l3-src-only end queues end / end
+
+  Disable IPv4 packet RSS hash.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / end actions rss \
+             types none end queues end / end
+
+  Set hash function as symmetric Toeplitz.
 
   .. code-block:: console
 
     testpmd> flow create 0 ingress pattern end actions rss types end \
-      queues 0 1 2 3 end / end
+             queues end func symmetric_toeplitz / end
 
-  Enable hash and set input set for IPv4-TCP.
+  In this case, all packets that enabled RSS are hashed using symmetric
+  Toeplitz algorithm.
 
-  .. code-block:: console
-
-    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
-      actions rss types ipv4-tcp l3-src-only end queues end / end
-
-  Set symmetric hash enable for flow type IPv4-TCP.
+  Flush all RSS rules
 
   .. code-block:: console
 
-    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
-      actions rss types ipv4-tcp end queues end func symmetric_toeplitz / end
+    testpmd> flow flush 0
 
-  Set hash function as simple xor.
-
-  .. code-block:: console
-
-    testpmd> flow create 0 ingress pattern end actions rss types end \
-      queues end func simple_xor / end
+  The RSS configurations of hardwre is back to the one ethdev ops set.
 
 Statistics
 ----------
@@ -283,6 +430,15 @@ be provided to avoid scheduling the CPU core used by DPDK application threads fo
 other tasks. Before starting the Linux OS, add the kernel isolation boot parameter.
 For example, "isolcpus=1-18 nohz_full=1-18 rcu_nocbs=1-18".
 
+Dump registers
+--------------
+
+HNS3 supports dumping registers values with their names,
+and supports filtering by module names.
+The available module names are ``bios``, ``ssu``, ``igu_egu``,
+``rpu``, ``ncsi``, ``rtc``, ``ppp``, ``rcb``, ``tqp``, ``rtc``, ``cmdq``,
+``common_pf``, ``common_vf``, ``ring``, ``tqp_intr``, ``32_bit_dfx``,
+``64_bit_dfx``.
 
 Limitations or Known issues
 ---------------------------
@@ -295,5 +451,4 @@ sve burst function. When enabling IEEE 1588, Rx/Tx burst mode should be
 simple or common. It is recommended that enable IEEE 1588 before ethdev
 start. In this way, the correct Rx/Tx burst function can be selected.
 
-Build with ICC is not supported yet.
 X86-32, Power8, ARMv7 and BSD are not supported yet.

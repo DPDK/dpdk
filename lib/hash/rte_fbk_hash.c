@@ -6,8 +6,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-
 #include <sys/queue.h>
+
+#include <eal_export.h>
+#include <rte_cpuflags.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
 #include <rte_common.h>
@@ -17,6 +19,11 @@
 #include <rte_tailq.h>
 
 #include "rte_fbk_hash.h"
+
+RTE_LOG_REGISTER_SUFFIX(fbk_hash_logtype, fbk, INFO);
+#define RTE_LOGTYPE_HASH fbk_hash_logtype
+#define HASH_LOG(level, ...) \
+	RTE_LOG_LINE(level, HASH, "" __VA_ARGS__)
 
 TAILQ_HEAD(rte_fbk_hash_list, rte_tailq_entry);
 
@@ -35,6 +42,7 @@ EAL_REGISTER_TAILQ(rte_fbk_hash_tailq)
  * @return
  *   pointer to hash table structure or NULL on error.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_find_existing)
 struct rte_fbk_hash_table *
 rte_fbk_hash_find_existing(const char *name)
 {
@@ -69,6 +77,7 @@ rte_fbk_hash_find_existing(const char *name)
  *   Pointer to hash table structure that is used in future hash table
  *   operations, or NULL on error.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_create)
 struct rte_fbk_hash_table *
 rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 {
@@ -114,7 +123,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 
 	te = rte_zmalloc("FBK_HASH_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, HASH, "Failed to allocate tailq entry\n");
+		HASH_LOG(ERR, "Failed to allocate tailq entry");
 		goto exit;
 	}
 
@@ -122,7 +131,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	ht = rte_zmalloc_socket(hash_name, mem_size,
 			0, params->socket_id);
 	if (ht == NULL) {
-		RTE_LOG(ERR, HASH, "Failed to allocate fbk hash table\n");
+		HASH_LOG(ERR, "Failed to allocate fbk hash table");
 		rte_free(te);
 		goto exit;
 	}
@@ -171,6 +180,7 @@ exit:
  * @param ht
  *   Hash table to deallocate.
  */
+RTE_EXPORT_SYMBOL(rte_fbk_hash_free)
 void
 rte_fbk_hash_free(struct rte_fbk_hash_table *ht)
 {

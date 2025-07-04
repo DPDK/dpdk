@@ -8,7 +8,11 @@
 #error "roc_api.h is included"
 #endif
 
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+
 #define T(name, sz, flags) NIX_TX_XMIT(cn10k_nix_xmit_pkts_##name, sz, flags)
 
 NIX_TX_FASTPATH_MODES_80_95
 #undef T
+
+#endif

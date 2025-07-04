@@ -13,10 +13,6 @@
  * any application.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <dev_driver.h>
@@ -26,20 +22,25 @@ extern "C" {
 
 #include "rte_rawdev.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int librawdev_logtype;
+#define RTE_LOGTYPE_RAWDEV librawdev_logtype
 
 /* Logging Macros */
-#define RTE_RDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, librawdev_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define RTE_RDEV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, RAWDEV, "%s(): ", __func__, __VA_ARGS__)
 
-#define RTE_RDEV_ERR(fmt, args...) \
-	RTE_RDEV_LOG(ERR, fmt, ## args)
-#define RTE_RDEV_DEBUG(fmt, args...) \
-	RTE_RDEV_LOG(DEBUG, fmt, ## args)
-#define RTE_RDEV_INFO(fmt, args...) \
-	RTE_RDEV_LOG(INFO, fmt, ## args)
+#define RTE_RDEV_ERR(...) \
+	RTE_RDEV_LOG(ERR, __VA_ARGS__)
 
+#define RTE_RDEV_DEBUG(...) \
+	RTE_RDEV_LOG(DEBUG, __VA_ARGS__)
+
+#define RTE_RDEV_INFO(...) \
+	RTE_RDEV_LOG(INFO, __VA_ARGS__)
 
 /* Macros to check for valid device */
 #define RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, retval) do { \
@@ -97,6 +98,30 @@ rte_rawdev_pmd_get_named_dev(const char *name)
 		   (strcmp(dev->name, name) == 0))
 			return dev;
 	}
+
+	return NULL;
+}
+
+/**
+ * Get the rte_rawdev structure device pointer for given device ID.
+ *
+ * @param dev_id
+ *   raw device index.
+ *
+ * @return
+ *   - The rte_rawdev structure pointer for the given device ID.
+ */
+static inline struct rte_rawdev *
+rte_rawdev_pmd_get_dev(uint8_t dev_id)
+{
+	struct rte_rawdev *dev;
+
+	if (dev_id >= RTE_RAWDEV_MAX_DEVS)
+		return NULL;
+
+	dev = &rte_rawdevs[dev_id];
+	if (dev->attached == RTE_RAWDEV_ATTACHED)
+		return dev;
 
 	return NULL;
 }
@@ -254,7 +279,6 @@ typedef int (*rawdev_queue_setup_t)(struct rte_rawdev *dev,
  *   Raw device pointer
  * @param queue_id
  *   Raw queue index
- *
  */
 typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
 				      uint16_t queue_id);
@@ -273,7 +297,6 @@ typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
  *   Raw device pointer
  * @return
  *   Number of queues; 0 is assumed to be a valid response.
- *
  */
 typedef uint16_t (*rawdev_queue_count_t)(struct rte_rawdev *dev);
 
@@ -339,7 +362,6 @@ typedef int (*rawdev_dequeue_bufs_t)(struct rte_rawdev *dev,
  * @return
  *   0 for success,
  *   !0 Error
- *
  */
 typedef int (*rawdev_dump_t)(struct rte_rawdev *dev, FILE *f);
 

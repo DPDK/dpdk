@@ -155,12 +155,12 @@ struct sge_eth_rx_stats {	/* Ethernet rx queue statistics */
 	u64 rx_drops;		/* # of packets dropped due to no mem */
 };
 
-struct sge_eth_rxq {                /* a SW Ethernet Rx queue */
+struct __rte_cache_aligned sge_eth_rxq {                /* a SW Ethernet Rx queue */
 	unsigned int flags;         /* flags for state of the queue */
 	struct sge_rspq rspq;
 	struct sge_fl fl;
 	struct sge_eth_rx_stats stats;
-} __rte_cache_aligned;
+};
 
 /*
  * Currently there are two types of coalesce WR. Type 0 needs 48 bytes per
@@ -252,7 +252,7 @@ struct sge_eth_tx_stats {	/* Ethernet tx queue statistics */
 	u64 coal_pkts;          /* # of coalesced packets */
 };
 
-struct sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
+struct __rte_cache_aligned sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
 	struct sge_txq q;
 	struct rte_eth_dev *eth_dev;   /* port that this queue belongs to */
 	struct rte_eth_dev_data *data;
@@ -260,21 +260,21 @@ struct sge_eth_txq {                   /* state for an SGE Ethernet Tx queue */
 	rte_spinlock_t txq_lock;
 
 	unsigned int flags;            /* flags for state of the queue */
-} __rte_cache_aligned;
+};
 
-struct sge_ctrl_txq {                /* State for an SGE control Tx queue */
+struct __rte_cache_aligned sge_ctrl_txq {                /* State for an SGE control Tx queue */
 	struct sge_txq q;            /* txq */
 	struct adapter *adapter;     /* adapter associated with this queue */
 	rte_spinlock_t ctrlq_lock;   /* control queue lock */
 	u8 full;                     /* the Tx ring is full */
 	u64 txp;                     /* number of transmits */
 	struct rte_mempool *mb_pool; /* mempool to generate ctrl pkts */
-} __rte_cache_aligned;
+};
 
 struct sge {
 	struct sge_eth_txq *ethtxq;
 	struct sge_eth_rxq *ethrxq;
-	struct sge_rspq fw_evtq __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct sge_rspq fw_evtq;
 	struct sge_ctrl_txq ctrlq[MAX_CTRL_QUEUES];
 
 	u16 max_ethqsets;           /* # of available Ethernet queue sets */
@@ -351,28 +351,19 @@ struct adapter {
  * t4_os_rwlock_init - initialize rwlock
  * @lock: the rwlock
  */
-static inline void t4_os_rwlock_init(rte_rwlock_t *lock)
-{
-	rte_rwlock_init(lock);
-}
+#define t4_os_rwlock_init(lock) rte_rwlock_init(lock)
 
 /**
  * t4_os_write_lock - get a write lock
  * @lock: the rwlock
  */
-static inline void t4_os_write_lock(rte_rwlock_t *lock)
-{
-	rte_rwlock_write_lock(lock);
-}
+#define t4_os_write_lock(lock) rte_rwlock_write_lock(lock)
 
 /**
  * t4_os_write_unlock - unlock a write lock
  * @lock: the rwlock
  */
-static inline void t4_os_write_unlock(rte_rwlock_t *lock)
-{
-	rte_rwlock_write_unlock(lock);
-}
+#define t4_os_write_unlock(lock) rte_rwlock_write_unlock(lock)
 
 /**
  * ethdev2pinfo - return the port_info structure associated with a rte_eth_dev
@@ -520,21 +511,16 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 	CXGBE_WRITE_REG64(adapter, reg_addr, val);
 }
 
-#define PCI_STATUS              0x06    /* 16 bits */
-#define PCI_STATUS_CAP_LIST     0x10    /* Support Capability List */
-#define PCI_CAPABILITY_LIST     0x34
-/* Offset of first capability list entry */
-#define PCI_CAP_ID_EXP          0x10    /* PCI Express */
-#define PCI_CAP_LIST_ID         0       /* Capability ID */
-#define PCI_CAP_LIST_NEXT       1       /* Next capability in the list */
-#define PCI_EXP_DEVCTL          0x0008  /* Device control */
-#define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
-#define PCI_EXP_DEVCTL_EXT_TAG  0x0100  /* Extended Tag Field Enable */
-#define PCI_EXP_DEVCTL_PAYLOAD  0x00E0  /* Max payload */
-#define PCI_CAP_ID_VPD          0x03    /* Vital Product Data */
-#define PCI_VPD_ADDR            2       /* Address to access (15 bits!) */
-#define PCI_VPD_ADDR_F          0x8000  /* Write 0, 1 indicates completion */
-#define PCI_VPD_DATA            4       /* 32-bits of data returned here */
+#define PCI_CAP_ID_EXP          RTE_PCI_CAP_ID_EXP
+#define PCI_EXP_DEVCTL          RTE_PCI_EXP_DEVCTL
+#define PCI_EXP_DEVCTL_EXT_TAG  RTE_PCI_EXP_DEVCTL_EXT_TAG
+#define PCI_EXP_DEVCTL_PAYLOAD  RTE_PCI_EXP_DEVCTL_PAYLOAD
+#define PCI_EXP_DEVCTL2         RTE_PCI_EXP_DEVCTL2
+
+#define PCI_CAP_ID_VPD          RTE_PCI_CAP_ID_VPD
+#define PCI_VPD_ADDR            RTE_PCI_VPD_ADDR
+#define PCI_VPD_ADDR_F          RTE_PCI_VPD_ADDR_F
+#define PCI_VPD_DATA            RTE_PCI_VPD_DATA
 
 /**
  * t4_os_pci_write_cfg4 - 32-bit write to PCI config space
@@ -629,31 +615,12 @@ static inline void t4_os_pci_read_cfg(struct adapter *adapter, size_t addr,
  */
 static inline int t4_os_find_pci_capability(struct adapter *adapter, int cap)
 {
-	u16 status;
-	int ttl = 48;
-	u8 pos = 0;
-	u8 id = 0;
-
-	t4_os_pci_read_cfg2(adapter, PCI_STATUS, &status);
-	if (!(status & PCI_STATUS_CAP_LIST)) {
+	if (!rte_pci_has_capability_list(adapter->pdev)) {
 		dev_err(adapter, "PCIe capability reading failed\n");
 		return -1;
 	}
 
-	t4_os_pci_read_cfg(adapter, PCI_CAPABILITY_LIST, &pos);
-	while (ttl-- && pos >= 0x40) {
-		pos &= ~3;
-		t4_os_pci_read_cfg(adapter, (pos + PCI_CAP_LIST_ID), &id);
-
-		if (id == 0xff)
-			break;
-
-		if (id == cap)
-			return (int)pos;
-
-		t4_os_pci_read_cfg(adapter, (pos + PCI_CAP_LIST_NEXT), &pos);
-	}
-	return 0;
+	return rte_pci_find_capability(adapter->pdev, cap);
 }
 
 /**
@@ -678,37 +645,25 @@ static inline void t4_os_set_hw_addr(struct adapter *adapter, int port_idx,
  * t4_os_lock_init - initialize spinlock
  * @lock: the spinlock
  */
-static inline void t4_os_lock_init(rte_spinlock_t *lock)
-{
-	rte_spinlock_init(lock);
-}
+#define t4_os_lock_init(lock) rte_spinlock_init(lock)
 
 /**
  * t4_os_lock - spin until lock is acquired
  * @lock: the spinlock
  */
-static inline void t4_os_lock(rte_spinlock_t *lock)
-{
-	rte_spinlock_lock(lock);
-}
+#define t4_os_lock(lock) rte_spinlock_lock(lock)
 
 /**
  * t4_os_unlock - unlock a spinlock
  * @lock: the spinlock
  */
-static inline void t4_os_unlock(rte_spinlock_t *lock)
-{
-	rte_spinlock_unlock(lock);
-}
+#define t4_os_unlock(lock) rte_spinlock_unlock(lock)
 
 /**
  * t4_os_trylock - try to get a lock
  * @lock: the spinlock
  */
-static inline int t4_os_trylock(rte_spinlock_t *lock)
-{
-	return rte_spinlock_trylock(lock);
-}
+#define t4_os_trylock(lock) rte_spinlock_trylock(lock)
 
 /**
  * t4_os_init_list_head - initialize

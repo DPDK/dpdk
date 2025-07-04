@@ -9,12 +9,15 @@
 #include <share.h>
 #include <sys/stat.h>
 
+#include <eal_export.h>
 #include <rte_debug.h>
 #include <rte_bus.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <eal_memcfg.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
+#include "eal_lcore_var.h"
 #include <eal_thread.h>
 #include <eal_internal_cfg.h>
 #include <eal_filesystem.h>
@@ -26,8 +29,8 @@
 #include "eal_firmware.h"
 #include "eal_hugepages.h"
 #include "eal_trace.h"
-#include "eal_log.h"
 #include "eal_windows.h"
+#include "log_internal.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -66,12 +69,13 @@ eal_proc_type_detect(void)
 			ptype = RTE_PROC_SECONDARY;
 	}
 
-	RTE_LOG(INFO, EAL, "Auto-detected process type: %s\n",
+	EAL_LOG(INFO, "Auto-detected process type: %s",
 		ptype == RTE_PROC_PRIMARY ? "PRIMARY" : "SECONDARY");
 
 	return ptype;
 }
 
+RTE_EXPORT_SYMBOL(rte_mp_disable)
 bool
 rte_mp_disable(void)
 {
@@ -93,41 +97,6 @@ eal_usage(const char *prgname)
 		printf("===== Application Usage =====\n\n");
 		(hook)(prgname);
 	}
-}
-
-/* Parse the arguments for --log-level only */
-static void
-eal_log_level_parse(int argc, char **argv)
-{
-	int opt;
-	char **argvopt;
-	int option_index;
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	argvopt = argv;
-
-	eal_reset_internal_config(internal_conf);
-
-	while ((opt = getopt_long(argc, argvopt, eal_short_options,
-		eal_long_options, &option_index)) != EOF) {
-
-		int ret;
-
-		/* getopt is not happy, stop right now */
-		if (opt == '?')
-			break;
-
-		ret = (opt == OPT_LOG_LEVEL_NUM) ?
-			eal_parse_common_option(opt, optarg,
-				internal_conf) : 0;
-
-		/* common parser is not happy */
-		if (ret < 0)
-			break;
-	}
-
-	optind = 0; /* reset getopt lib */
 }
 
 /* Parse the argument given in the command line of the application */
@@ -154,8 +123,8 @@ eal_parse_args(int argc, char **argv)
 			return -1;
 		}
 
-		/* eal_log_level_parse() already handled this option */
-		if (opt == OPT_LOG_LEVEL_NUM)
+		/* eal_parse_log_options() already handled this option */
+		if (eal_option_is_log(opt))
 			continue;
 
 		ret = eal_parse_common_option(opt, optarg, internal_conf);
@@ -169,21 +138,21 @@ eal_parse_args(int argc, char **argv)
 			continue;
 
 		switch (opt) {
-		case 'h':
+		case OPT_HELP_NUM:
 			eal_usage(prgname);
 			exit(EXIT_SUCCESS);
 		default:
 			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
-				RTE_LOG(ERR, EAL, "Option %c is not supported "
-					"on Windows\n", opt);
+				EAL_LOG(ERR, "Option %c is not supported "
+					"on Windows", opt);
 			} else if (opt >= OPT_LONG_MIN_NUM &&
 				opt < OPT_LONG_MAX_NUM) {
-				RTE_LOG(ERR, EAL, "Option %s is not supported "
-					"on Windows\n",
+				EAL_LOG(ERR, "Option %s is not supported "
+					"on Windows",
 					eal_long_options[option_index].name);
 			} else {
-				RTE_LOG(ERR, EAL, "Option %d is not supported "
-					"on Windows\n", opt);
+				EAL_LOG(ERR, "Option %d is not supported "
+					"on Windows", opt);
 			}
 			eal_usage(prgname);
 			return -1;
@@ -215,17 +184,19 @@ sync_func(void *arg __rte_unused)
 static void
 rte_eal_init_alert(const char *msg)
 {
-	fprintf(stderr, "EAL: FATAL: %s\n", msg);
-	RTE_LOG(ERR, EAL, "%s\n", msg);
+	EAL_LOG(ALERT, "%s", msg);
 }
 
 /* Stubs to enable EAL trace point compilation
  * until eal_common_trace.c can be compiled.
  */
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(per_lcore_trace_point_sz, 20.05)
 RTE_DEFINE_PER_LCORE(volatile int, trace_point_sz);
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(per_lcore_trace_mem, 20.05)
 RTE_DEFINE_PER_LCORE(void *, trace_mem);
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_mem_per_thread_alloc, 20.05)
 void
 __rte_trace_mem_per_thread_alloc(void)
 {
@@ -236,6 +207,7 @@ trace_mem_per_thread_free(void)
 {
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_point_emit_field, 20.05)
 void
 __rte_trace_point_emit_field(size_t sz, const char *field,
 	const char *type)
@@ -245,6 +217,7 @@ __rte_trace_point_emit_field(size_t sz, const char *field,
 	RTE_SET_USED(type);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(__rte_trace_point_register, 20.05)
 int
 __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 	void (*register_fn)(void))
@@ -255,6 +228,7 @@ __rte_trace_point_register(rte_trace_point_t *trace, const char *name,
 	return -ENOTSUP;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_cleanup)
 int
 rte_eal_cleanup(void)
 {
@@ -267,10 +241,12 @@ rte_eal_cleanup(void)
 	/* after this point, any DPDK pointers will become dangling */
 	rte_eal_memory_detach();
 	eal_cleanup_config(internal_conf);
+	eal_lcore_var_cleanup();
 	return 0;
 }
 
 /* Launch threads, called at application init(). */
+RTE_EXPORT_SYMBOL(rte_eal_init)
 int
 rte_eal_init(int argc, char **argv)
 {
@@ -282,15 +258,27 @@ rte_eal_init(int argc, char **argv)
 	enum rte_iova_mode iova_mode;
 	int ret;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	char thread_name[RTE_THREAD_NAME_SIZE];
 
-	eal_log_init(NULL, 0);
+	/* setup log as early as possible */
+	if (eal_parse_log_options(argc, argv) < 0) {
+		rte_eal_init_alert("invalid log arguments.");
+		rte_errno = EINVAL;
+		return -1;
+	}
 
-	eal_log_level_parse(argc, argv);
+	eal_log_init(NULL);
 
 	if (eal_create_cpu_map() < 0) {
 		rte_eal_init_alert("Cannot discover CPU and NUMA.");
 		/* rte_errno is set */
+		return -1;
+	}
+
+	/* verify if DPDK supported on architecture MMU */
+	if (!eal_mmu_supported()) {
+		rte_eal_init_alert("Unsupported MMU type.");
+		rte_errno = ENOTSUP;
 		return -1;
 	}
 
@@ -311,8 +299,8 @@ rte_eal_init(int argc, char **argv)
 
 	/* Prevent creation of shared memory files. */
 	if (internal_conf->in_memory == 0) {
-		RTE_LOG(WARNING, EAL, "Multi-process support is requested, "
-			"but not available.\n");
+		EAL_LOG(WARNING, "Multi-process support is requested, "
+			"but not available.");
 		internal_conf->in_memory = 1;
 		internal_conf->no_shconf = 1;
 	}
@@ -323,7 +311,7 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (internal_conf->memory == 0 && !internal_conf->force_sockets) {
+	if (internal_conf->memory == 0 && !internal_conf->force_numa) {
 		if (internal_conf->no_hugetlbfs)
 			internal_conf->memory = MEMSIZE_IF_NO_HUGE_PAGE;
 	}
@@ -355,29 +343,43 @@ rte_eal_init(int argc, char **argv)
 	has_phys_addr = true;
 	if (eal_mem_virt2iova_init() < 0) {
 		/* Non-fatal error if physical addresses are not required. */
-		RTE_LOG(DEBUG, EAL, "Cannot access virt2phys driver, "
-			"PA will not be available\n");
+		EAL_LOG(DEBUG, "Cannot access virt2phys driver, "
+			"PA will not be available");
 		has_phys_addr = false;
 	}
 
 	iova_mode = internal_conf->iova_mode;
+	if (iova_mode == RTE_IOVA_DC) {
+		EAL_LOG(DEBUG, "Specific IOVA mode is not requested, autodetecting");
+		if (has_phys_addr) {
+			EAL_LOG(DEBUG, "Selecting IOVA mode according to bus requests");
+			iova_mode = rte_bus_get_iommu_class();
+			if (iova_mode == RTE_IOVA_DC) {
+				if (!RTE_IOVA_IN_MBUF) {
+					iova_mode = RTE_IOVA_VA;
+					EAL_LOG(DEBUG, "IOVA as VA mode is forced by build option.");
+				} else	{
+					iova_mode = RTE_IOVA_PA;
+				}
+			}
+		} else {
+			iova_mode = RTE_IOVA_VA;
+		}
+	}
+
 	if (iova_mode == RTE_IOVA_PA && !has_phys_addr) {
 		rte_eal_init_alert("Cannot use IOVA as 'PA' since physical addresses are not available");
 		rte_errno = EINVAL;
 		return -1;
 	}
-	if (iova_mode == RTE_IOVA_DC) {
-		RTE_LOG(DEBUG, EAL, "Specific IOVA mode is not requested, autodetecting\n");
-		if (has_phys_addr) {
-			RTE_LOG(DEBUG, EAL, "Selecting IOVA mode according to bus requests\n");
-			iova_mode = rte_bus_get_iommu_class();
-			if (iova_mode == RTE_IOVA_DC)
-				iova_mode = RTE_IOVA_PA;
-		} else {
-			iova_mode = RTE_IOVA_VA;
-		}
+
+	if (iova_mode == RTE_IOVA_PA && !RTE_IOVA_IN_MBUF) {
+		rte_eal_init_alert("Cannot use IOVA as 'PA' as it is disabled during build");
+		rte_errno = EINVAL;
+		return -1;
 	}
-	RTE_LOG(DEBUG, EAL, "Selected IOVA mode '%s'\n",
+
+	EAL_LOG(DEBUG, "Selected IOVA mode '%s'",
 		iova_mode == RTE_IOVA_PA ? "PA" : "VA");
 	rte_eal_get_configuration()->iova_mode = iova_mode;
 
@@ -387,13 +389,25 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	rte_mcfg_mem_read_lock();
+
 	if (rte_eal_memory_init() < 0) {
+		rte_mcfg_mem_read_unlock();
 		rte_eal_init_alert("Cannot init memory");
 		rte_errno = ENOMEM;
 		return -1;
 	}
 
 	if (rte_eal_malloc_heap_init() < 0) {
+		rte_mcfg_mem_read_unlock();
+		rte_eal_init_alert("Cannot init malloc heap");
+		rte_errno = ENODEV;
+		return -1;
+	}
+
+	rte_mcfg_mem_read_unlock();
+
+	if (rte_eal_malloc_heap_populate() < 0) {
 		rte_eal_init_alert("Cannot init malloc heap");
 		rte_errno = ENODEV;
 		return -1;
@@ -405,6 +419,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	eal_rand_init();
+
 	if (rte_thread_set_affinity_by_id(rte_thread_self(),
 			&lcore_config[config->main_lcore].cpuset) != 0) {
 		rte_eal_init_alert("Cannot set affinity");
@@ -415,8 +431,8 @@ rte_eal_init(int argc, char **argv)
 		&lcore_config[config->main_lcore].cpuset);
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
-	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
-		config->main_lcore, (uintptr_t)pthread_self(), cpuset,
+	EAL_LOG(DEBUG, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])",
+		config->main_lcore, rte_thread_self().opaque_id, cpuset,
 		ret == 0 ? "" : "...");
 
 	RTE_LCORE_FOREACH_WORKER(i) {
@@ -441,13 +457,13 @@ rte_eal_init(int argc, char **argv)
 
 		/* Set thread name for aid in debugging. */
 		snprintf(thread_name, sizeof(thread_name),
-			"rte-worker-%d", i);
+			"dpdk-worker%d", i);
 		rte_thread_set_name(lcore_config[i].thread_id, thread_name);
 
 		ret = rte_thread_set_affinity_by_id(lcore_config[i].thread_id,
 			&lcore_config[i].cpuset);
 		if (ret != 0)
-			RTE_LOG(DEBUG, EAL, "Cannot set affinity\n");
+			EAL_LOG(DEBUG, "Cannot set affinity");
 	}
 
 	/* Initialize services so drivers can register services during probe. */
@@ -504,6 +520,7 @@ eal_asprintf(char **buffer, const char *format, ...)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_vfio_container_dma_map)
 int
 rte_vfio_container_dma_map(__rte_unused int container_fd,
 			__rte_unused uint64_t vaddr,
@@ -514,6 +531,7 @@ rte_vfio_container_dma_map(__rte_unused int container_fd,
 	return -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_vfio_container_dma_unmap)
 int
 rte_vfio_container_dma_unmap(__rte_unused int container_fd,
 			__rte_unused uint64_t vaddr,
@@ -524,6 +542,7 @@ rte_vfio_container_dma_unmap(__rte_unused int container_fd,
 	return -1;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_firmware_read)
 int
 rte_firmware_read(__rte_unused const char *name,
 			__rte_unused void **buf,

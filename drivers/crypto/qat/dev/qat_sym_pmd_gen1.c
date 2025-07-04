@@ -3,9 +3,7 @@
  */
 
 #include <rte_cryptodev.h>
-#ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
-#endif
 
 #include "adf_transport_access_macros.h"
 #include "icp_qat_fw.h"
@@ -16,10 +14,41 @@
 #include "qat_crypto.h"
 #include "qat_crypto_pmd_gens.h"
 
-static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen1[] = {
+static struct rte_cryptodev_capabilities qat_sym_crypto_legacy_caps_gen1[] = {
+	QAT_SYM_CIPHER_CAP(DES_CBC,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
+	QAT_SYM_CIPHER_CAP(3DES_CBC,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
+	QAT_SYM_CIPHER_CAP(3DES_CTR,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 16, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
 	QAT_SYM_PLAIN_AUTH_CAP(SHA1,
 		CAP_SET(block_size, 64),
 		CAP_RNG(digest_size, 1, 20, 1)),
+	QAT_SYM_AUTH_CAP(SHA224,
+		CAP_SET(block_size, 64),
+		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 28, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_AUTH_CAP(SHA1_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 20, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_AUTH_CAP(SHA224_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 28, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_AUTH_CAP(MD5_HMAC,
+		CAP_SET(block_size, 64),
+		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 16, 1),
+		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
+	QAT_SYM_CIPHER_CAP(DES_DOCSISBPI,
+		CAP_SET(block_size, 8),
+		CAP_RNG(key_size, 8, 8, 0), CAP_RNG(iv_size, 8, 8, 0)),
+};
+
+static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen1[] = {
 	QAT_SYM_AEAD_CAP(AES_GCM,
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 32, 8), CAP_RNG(digest_size, 8, 16, 4),
@@ -36,10 +65,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen1[] = {
 		CAP_SET(block_size, 16),
 		CAP_RNG(key_size, 16, 16, 0), CAP_RNG(digest_size, 4, 16, 4),
 			CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(SHA224,
-		CAP_SET(block_size, 64),
-		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 28, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_AUTH_CAP(SHA256,
 		CAP_SET(block_size, 64),
 		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 32, 1),
@@ -52,14 +77,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen1[] = {
 		CAP_SET(block_size, 128),
 		CAP_RNG_ZERO(key_size), CAP_RNG(digest_size, 1, 64, 1),
 		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(SHA1_HMAC,
-		CAP_SET(block_size, 64),
-		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 20, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(SHA224_HMAC,
-		CAP_SET(block_size, 64),
-		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 28, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_AUTH_CAP(SHA256_HMAC,
 		CAP_SET(block_size, 64),
 		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 32, 1),
@@ -71,10 +88,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen1[] = {
 	QAT_SYM_AUTH_CAP(SHA512_HMAC,
 		CAP_SET(block_size, 128),
 		CAP_RNG(key_size, 1, 128, 1), CAP_RNG(digest_size, 1, 64, 1),
-		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_AUTH_CAP(MD5_HMAC,
-		CAP_SET(block_size, 64),
-		CAP_RNG(key_size, 1, 64, 1), CAP_RNG(digest_size, 1, 16, 1),
 		CAP_RNG_ZERO(aad_size), CAP_RNG_ZERO(iv_size)),
 	QAT_SYM_AUTH_CAP(AES_XCBC_MAC,
 		CAP_SET(block_size, 16),
@@ -113,18 +126,6 @@ static struct rte_cryptodev_capabilities qat_sym_crypto_caps_gen1[] = {
 	QAT_SYM_CIPHER_CAP(NULL,
 		CAP_SET(block_size, 1),
 		CAP_RNG_ZERO(key_size), CAP_RNG_ZERO(iv_size)),
-	QAT_SYM_CIPHER_CAP(3DES_CBC,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
-	QAT_SYM_CIPHER_CAP(3DES_CTR,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 16, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
-	QAT_SYM_CIPHER_CAP(DES_CBC,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 8, 24, 8), CAP_RNG(iv_size, 8, 8, 0)),
-	QAT_SYM_CIPHER_CAP(DES_DOCSISBPI,
-		CAP_SET(block_size, 8),
-		CAP_RNG(key_size, 8, 8, 0), CAP_RNG(iv_size, 8, 8, 0)),
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -157,8 +158,14 @@ qat_sym_crypto_cap_get_gen1(struct qat_cryptodev_private *internals,
 			const char *capa_memz_name,
 			const uint16_t __rte_unused slice_map)
 {
-	const uint32_t size = sizeof(qat_sym_crypto_caps_gen1);
-	uint32_t i;
+
+	uint32_t legacy_capa_num;
+	uint32_t size = sizeof(qat_sym_crypto_caps_gen1);
+	uint32_t legacy_size = sizeof(qat_sym_crypto_legacy_caps_gen1);
+	legacy_capa_num = legacy_size/sizeof(struct rte_cryptodev_capabilities);
+
+	if (unlikely(internals->qat_dev->options.legacy_alg))
+		size = size + legacy_size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
 	if (internals->capa_mz == NULL) {
@@ -174,17 +181,16 @@ qat_sym_crypto_cap_get_gen1(struct qat_cryptodev_private *internals,
 	struct rte_cryptodev_capabilities *addr =
 			(struct rte_cryptodev_capabilities *)
 				internals->capa_mz->addr;
-	const struct rte_cryptodev_capabilities *capabilities =
-		qat_sym_crypto_caps_gen1;
-	const uint32_t capa_num =
-		size / sizeof(struct rte_cryptodev_capabilities);
-	uint32_t curr_capa = 0;
 
-	for (i = 0; i < capa_num; i++) {
-		memcpy(addr + curr_capa, capabilities + i,
-			sizeof(struct rte_cryptodev_capabilities));
-		curr_capa++;
+	struct rte_cryptodev_capabilities *capabilities;
+
+	if (unlikely(internals->qat_dev->options.legacy_alg)) {
+		capabilities = qat_sym_crypto_legacy_caps_gen1;
+		memcpy(addr, capabilities, legacy_size);
+		addr += legacy_capa_num;
 	}
+	capabilities = qat_sym_crypto_caps_gen1;
+	memcpy(addr, capabilities, sizeof(qat_sym_crypto_caps_gen1));
 	internals->qat_dev_capabilities = internals->capa_mz->addr;
 
 	return 0;
@@ -242,12 +248,10 @@ qat_sym_build_op_cipher_gen1(void *in_op, struct qat_sym_session *ctx,
 		return -EINVAL;
 	}
 
-	enqueue_one_cipher_job_gen1(ctx, req, &cipher_iv, ofs, total_len);
+	enqueue_one_cipher_job_gen1(ctx, req, &cipher_iv, ofs, total_len, op_cookie);
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
 			NULL, NULL, NULL);
-#endif
 
 	return 0;
 }
@@ -266,6 +270,8 @@ qat_sym_build_op_auth_gen1(void *in_op, struct qat_sym_session *ctx,
 	struct rte_crypto_va_iova_ptr digest;
 	union rte_crypto_sym_ofs ofs;
 	int32_t total_len;
+	struct rte_cryptodev *cdev;
+	struct qat_cryptodev_private *internals;
 
 	in_sgl.vec = in_vec;
 	out_sgl.vec = out_vec;
@@ -274,11 +280,18 @@ qat_sym_build_op_auth_gen1(void *in_op, struct qat_sym_session *ctx,
 	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 	ofs.raw = qat_sym_convert_op_to_vec_auth(op, ctx, &in_sgl, &out_sgl,
-			NULL, &auth_iv, &digest);
+			NULL, &auth_iv, &digest, op_cookie);
 	if (unlikely(ofs.raw == UINT64_MAX)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
 	}
+
+	cdev = rte_cryptodev_pmd_get_dev(ctx->dev_id);
+	internals = cdev->data->dev_private;
+
+	if (internals->qat_dev->options.has_wireless_slice && !ctx->is_gmac)
+		ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
+				req->comn_hdr.serv_specif_flags, 0);
 
 	total_len = qat_sym_build_req_set_data(req, in_op, cookie,
 			in_sgl.vec, in_sgl.num, out_sgl.vec, out_sgl.num);
@@ -290,10 +303,8 @@ qat_sym_build_op_auth_gen1(void *in_op, struct qat_sym_session *ctx,
 	enqueue_one_auth_job_gen1(ctx, req, &digest, &auth_iv, ofs,
 			total_len);
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, NULL,
 			&auth_iv, NULL, &digest);
-#endif
 
 	return 0;
 }
@@ -337,10 +348,8 @@ qat_sym_build_op_aead_gen1(void *in_op, struct qat_sym_session *ctx,
 	enqueue_one_aead_job_gen1(ctx, req, &cipher_iv, &digest, &aad, ofs,
 		total_len);
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
 			NULL, &aad, &digest);
-#endif
 
 	return 0;
 }
@@ -368,7 +377,7 @@ qat_sym_build_op_chain_gen1(void *in_op, struct qat_sym_session *ctx,
 	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 	ofs.raw = qat_sym_convert_op_to_vec_chain(op, ctx, &in_sgl, &out_sgl,
-			&cipher_iv, &auth_iv, &digest);
+			&cipher_iv, &auth_iv, &digest, cookie);
 	if (unlikely(ofs.raw == UINT64_MAX)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
@@ -383,17 +392,13 @@ qat_sym_build_op_chain_gen1(void *in_op, struct qat_sym_session *ctx,
 
 	enqueue_one_chain_job_gen1(ctx, req, in_sgl.vec, in_sgl.num,
 			out_sgl.vec, out_sgl.num, &cipher_iv, &digest, &auth_iv,
-			ofs, total_len);
+			ofs, total_len, cookie);
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
 			&auth_iv, NULL, &digest);
-#endif
 
 	return 0;
 }
-
-#ifdef RTE_LIB_SECURITY
 
 #define QAT_SECURITY_SYM_CAPABILITIES					\
 	{	/* AES DOCSIS BPI */					\
@@ -481,7 +486,6 @@ qat_sym_create_security_gen1(void *cryptodev)
 	return (void *)security_instance;
 }
 
-#endif
 int
 qat_sym_dp_enqueue_single_cipher_gen1(void *qp_data, uint8_t *drv_ctx,
 	struct rte_crypto_vec *data, uint16_t n_data_vecs,
@@ -512,12 +516,10 @@ qat_sym_dp_enqueue_single_cipher_gen1(void *qp_data, uint8_t *drv_ctx,
 	if (unlikely(data_len < 0))
 		return -1;
 
-	enqueue_one_cipher_job_gen1(ctx, req, iv, ofs, (uint32_t)data_len);
+	enqueue_one_cipher_job_gen1(ctx, req, iv, ofs, (uint32_t)data_len, cookie);
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, iv,
 			NULL, NULL, NULL);
-#endif
 
 	dp_ctx->tail = tail;
 	dp_ctx->cached_enqueue++;
@@ -551,16 +553,20 @@ qat_sym_dp_enqueue_cipher_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 	for (i = 0; i < n; i++) {
 		struct qat_sym_op_cookie *cookie =
 			qp->op_cookies[tail >> tx_queue->trailz];
+		struct qat_sym_req_mid_info info = { };
+		union rte_crypto_sym_ofs temp_ofs = ofs;
+		int error = 0;
 
+		temp_ofs.ofs.auth = temp_ofs.ofs.cipher;
 		req  = (struct icp_qat_fw_la_bulk_req *)(
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 		if (vec->dest_sgl) {
-			data_len = qat_sym_build_req_set_data(req,
-				user_data[i], cookie,
-				vec->src_sgl[i].vec, vec->src_sgl[i].num,
-				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+			info = qat_sym_req_mid_set(&error, req, cookie, user_data[i],
+				&vec->src_sgl[i], &vec->dest_sgl[i], temp_ofs);
+			data_len = info.data_len;
+			ofs = info.ofs;
 		} else {
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
@@ -568,17 +574,16 @@ qat_sym_dp_enqueue_cipher_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 				vec->src_sgl[i].num, NULL, 0);
 		}
 
-		if (unlikely(data_len < 0))
+		if (unlikely(data_len < 0 || error))
 			break;
+
 		enqueue_one_cipher_job_gen1(ctx, req, &vec->iv[i], ofs,
-			(uint32_t)data_len);
+			(uint32_t)data_len, cookie);
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		qat_sym_debug_log_dump(req, ctx, vec->src_sgl[i].vec,
 				vec->src_sgl[i].num, &vec->iv[i],
 				NULL, NULL, NULL);
-#endif
 	}
 
 	if (unlikely(i < n))
@@ -607,6 +612,8 @@ qat_sym_dp_enqueue_single_auth_gen1(void *qp_data, uint8_t *drv_ctx,
 	struct icp_qat_fw_la_bulk_req *req;
 	int32_t data_len;
 	uint32_t tail = dp_ctx->tail;
+	struct rte_crypto_va_iova_ptr null_digest;
+	struct rte_crypto_va_iova_ptr *job_digest = digest;
 
 	req = (struct icp_qat_fw_la_bulk_req *)(
 		(uint8_t *)tx_queue->base_addr + tail);
@@ -620,16 +627,20 @@ qat_sym_dp_enqueue_single_auth_gen1(void *qp_data, uint8_t *drv_ctx,
 	if (unlikely(data_len < 0))
 		return -1;
 
-	enqueue_one_auth_job_gen1(ctx, req, digest, auth_iv, ofs,
-			(uint32_t)data_len);
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+		null_digest.iova = cookie->digest_null_phys_addr;
+		job_digest = &null_digest;
+	}
+
+	enqueue_one_auth_job_gen1(ctx, req, job_digest, auth_iv, ofs,
+		(uint32_t)data_len);
 
 	dp_ctx->tail = tail;
 	dp_ctx->cached_enqueue++;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, NULL,
 			auth_iv, NULL, digest);
-#endif
+
 	return 0;
 }
 
@@ -646,6 +657,8 @@ qat_sym_dp_enqueue_auth_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 	uint32_t tail;
 	struct icp_qat_fw_la_bulk_req *req;
 	int32_t data_len;
+	struct rte_crypto_va_iova_ptr null_digest;
+	struct rte_crypto_va_iova_ptr *job_digest = NULL;
 
 	n = QAT_SYM_DP_GET_MAX_ENQ(qp, dp_ctx->cached_enqueue, vec->num);
 	if (unlikely(n == 0)) {
@@ -659,16 +672,20 @@ qat_sym_dp_enqueue_auth_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 	for (i = 0; i < n; i++) {
 		struct qat_sym_op_cookie *cookie =
 			qp->op_cookies[tail >> tx_queue->trailz];
+		struct qat_sym_req_mid_info info = { };
+		union rte_crypto_sym_ofs temp_ofs = ofs;
+		int error = 0;
 
+		temp_ofs.ofs.cipher = temp_ofs.ofs.auth;
 		req  = (struct icp_qat_fw_la_bulk_req *)(
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 		if (vec->dest_sgl) {
-			data_len = qat_sym_build_req_set_data(req,
-				user_data[i], cookie,
-				vec->src_sgl[i].vec, vec->src_sgl[i].num,
-				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+			info = qat_sym_req_mid_set(&error, req, cookie, user_data[i],
+				&vec->src_sgl[i], &vec->dest_sgl[i], temp_ofs);
+			data_len = info.data_len;
+			ofs = info.ofs;
 		} else {
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
@@ -676,17 +693,22 @@ qat_sym_dp_enqueue_auth_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 				vec->src_sgl[i].num, NULL, 0);
 		}
 
-		if (unlikely(data_len < 0))
+		if (unlikely(data_len < 0 || error))
 			break;
-		enqueue_one_auth_job_gen1(ctx, req, &vec->digest[i],
+
+		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+			null_digest.iova = cookie->digest_null_phys_addr;
+			job_digest = &null_digest;
+		} else
+			job_digest = &vec->digest[i];
+
+		enqueue_one_auth_job_gen1(ctx, req, job_digest,
 			&vec->auth_iv[i], ofs, (uint32_t)data_len);
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		qat_sym_debug_log_dump(req, ctx, vec->src_sgl[i].vec,
 				vec->src_sgl[i].num, NULL, &vec->auth_iv[i],
 				NULL, &vec->digest[i]);
-#endif
 	}
 
 	if (unlikely(i < n))
@@ -715,6 +737,8 @@ qat_sym_dp_enqueue_single_chain_gen1(void *qp_data, uint8_t *drv_ctx,
 	struct icp_qat_fw_la_bulk_req *req;
 	int32_t data_len;
 	uint32_t tail = dp_ctx->tail;
+	struct rte_crypto_va_iova_ptr null_digest;
+	struct rte_crypto_va_iova_ptr *job_digest = digest;
 
 	req = (struct icp_qat_fw_la_bulk_req *)(
 		(uint8_t *)tx_queue->base_addr + tail);
@@ -727,19 +751,23 @@ qat_sym_dp_enqueue_single_chain_gen1(void *qp_data, uint8_t *drv_ctx,
 	if (unlikely(data_len < 0))
 		return -1;
 
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+		null_digest.iova = cookie->digest_null_phys_addr;
+		job_digest = &null_digest;
+	}
+
 	if (unlikely(enqueue_one_chain_job_gen1(ctx, req, data, n_data_vecs,
-			NULL, 0, cipher_iv, digest, auth_iv, ofs,
-			(uint32_t)data_len)))
+			NULL, 0, cipher_iv, job_digest, auth_iv, ofs,
+			(uint32_t)data_len, cookie)))
 		return -1;
 
 	dp_ctx->tail = tail;
 	dp_ctx->cached_enqueue++;
 
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, cipher_iv,
 			auth_iv, NULL, digest);
-#endif
+
 	return 0;
 }
 
@@ -756,6 +784,8 @@ qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 	uint32_t tail;
 	struct icp_qat_fw_la_bulk_req *req;
 	int32_t data_len;
+	struct rte_crypto_va_iova_ptr null_digest;
+	struct rte_crypto_va_iova_ptr *job_digest;
 
 	n = QAT_SYM_DP_GET_MAX_ENQ(qp, dp_ctx->cached_enqueue, vec->num);
 	if (unlikely(n == 0)) {
@@ -769,16 +799,18 @@ qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 	for (i = 0; i < n; i++) {
 		struct qat_sym_op_cookie *cookie =
 			qp->op_cookies[tail >> tx_queue->trailz];
+		struct qat_sym_req_mid_info info = { };
+		int error = 0;
 
 		req  = (struct icp_qat_fw_la_bulk_req *)(
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 		if (vec->dest_sgl) {
-			data_len = qat_sym_build_req_set_data(req,
-				user_data[i], cookie,
-				vec->src_sgl[i].vec, vec->src_sgl[i].num,
-				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+			info = qat_sym_req_mid_set(&error, req, cookie, user_data[i],
+				&vec->src_sgl[i], &vec->dest_sgl[i], ofs);
+			data_len = info.data_len;
+			ofs = info.ofs;
 		} else {
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
@@ -786,24 +818,28 @@ qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 				vec->src_sgl[i].num, NULL, 0);
 		}
 
-		if (unlikely(data_len < 0))
+		if (unlikely(data_len < 0 || error))
 			break;
+
+		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+			null_digest.iova = cookie->digest_null_phys_addr;
+			job_digest = &null_digest;
+		} else
+			job_digest = &vec->digest[i];
 
 		if (unlikely(enqueue_one_chain_job_gen1(ctx, req,
 				vec->src_sgl[i].vec, vec->src_sgl[i].num,
 				NULL, 0,
-				&vec->iv[i], &vec->digest[i],
-				&vec->auth_iv[i], ofs, (uint32_t)data_len)))
+				&vec->iv[i], job_digest,
+				&vec->auth_iv[i], ofs, (uint32_t)data_len, cookie)))
 			break;
 
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		qat_sym_debug_log_dump(req, ctx, vec->src_sgl[i].vec,
 				vec->src_sgl[i].num, &vec->iv[i],
 				&vec->auth_iv[i],
 				NULL, &vec->digest[i]);
-#endif
 	}
 
 	if (unlikely(i < n))
@@ -851,10 +887,9 @@ qat_sym_dp_enqueue_single_aead_gen1(void *qp_data, uint8_t *drv_ctx,
 	dp_ctx->tail = tail;
 	dp_ctx->cached_enqueue++;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, iv,
 			NULL, aad, digest);
-#endif
+
 	return 0;
 }
 
@@ -884,16 +919,19 @@ qat_sym_dp_enqueue_aead_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 	for (i = 0; i < n; i++) {
 		struct qat_sym_op_cookie *cookie =
 			qp->op_cookies[tail >> tx_queue->trailz];
+		int error = 0;
 
 		req  = (struct icp_qat_fw_la_bulk_req *)(
 			(uint8_t *)tx_queue->base_addr + tail);
 		rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 
 		if (vec->dest_sgl) {
-			data_len = qat_sym_build_req_set_data(req,
-				user_data[i], cookie,
-				vec->src_sgl[i].vec, vec->src_sgl[i].num,
-				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+			data_len = qat_reqs_mid_set(&error, req, cookie, user_data[i],
+					&vec->src_sgl[i], &vec->dest_sgl[i], ofs);
+			/* In oop there is no offset, src/dst addresses are moved
+			 * to avoid overwriting the dst header
+			 */
+			ofs.ofs.cipher.head = 0;
 		} else {
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
@@ -901,7 +939,7 @@ qat_sym_dp_enqueue_aead_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 				vec->src_sgl[i].num, NULL, 0);
 		}
 
-		if (unlikely(data_len < 0))
+		if (unlikely(data_len < 0) || error)
 			break;
 
 		enqueue_one_aead_job_gen1(ctx, req, &vec->iv[i],
@@ -910,11 +948,9 @@ qat_sym_dp_enqueue_aead_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 
-#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 		qat_sym_debug_log_dump(req, ctx, vec->src_sgl[i].vec,
 				vec->src_sgl[i].num, &vec->iv[i], NULL,
 				&vec->aad[i], &vec->digest[i]);
-#endif
 	}
 
 	if (unlikely(i < n))
@@ -1205,6 +1241,10 @@ qat_sym_crypto_set_session_gen1(void *cryptodev __rte_unused, void *session)
 	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER) {
 		/* do_auth = 0; do_cipher = 1; */
 		build_request = qat_sym_build_op_cipher_gen1;
+	} else if (ctx->qat_cmd == ICP_QAT_FW_LA_CMD_CIPHER_CRC) {
+		/* do_auth = 1; do_cipher = 1; */
+		build_request = qat_sym_build_op_chain_gen1;
+		handle_mixed = 1;
 	}
 
 	if (build_request)
@@ -1248,8 +1288,6 @@ RTE_INIT(qat_sym_crypto_gen1_init)
 			qat_sym_configure_raw_dp_ctx_gen1;
 	qat_sym_gen_dev_ops[QAT_GEN1].get_feature_flags =
 			qat_sym_crypto_feature_flags_get_gen1;
-#ifdef RTE_LIB_SECURITY
 	qat_sym_gen_dev_ops[QAT_GEN1].create_security_ctx =
 			qat_sym_create_security_gen1;
-#endif
 }

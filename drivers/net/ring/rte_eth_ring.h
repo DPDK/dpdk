@@ -5,11 +5,11 @@
 #ifndef _RTE_ETH_RING_H_
 #define _RTE_ETH_RING_H_
 
+#include <rte_ring.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring.h>
 
 /**
  * Create a new ethdev port from a set of rings

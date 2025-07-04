@@ -70,6 +70,8 @@ Supported features of the GVE PMD are:
 - Link state information
 - Tx multi-segments (Scatter Tx)
 - Tx UDP/TCP/SCTP Checksum
+- RSS hash configuration
+- RSS redirection table query and update
 
 Currently, only GQI_QPL and GQI_RDA queue format are supported in PMD.
 Jumbo Frame is not supported in PMD for now.
@@ -77,10 +79,26 @@ It'll be added in a future DPDK release.
 Also, only GQI_QPL queue format is in use on GCP
 since GQI_RDA hasn't been released in production.
 
-Currently, setting MTU with value larger than 1460 is not supported.
+RSS
+^^^
 
-Currently, only "RSS hash" is force enabled
-so that the backend hardware device calculated hash values
-could be shared with applications.
-But for RSS, there is no such API to config RSS hash function or RETA table.
-So, limited RSS is supported only with default config/setting.
+GVE RSS can be enabled and configured using the standard interfaces.
+The driver does not support querying the initial RSS configuration.
+
+The RSS hash key must be exactly 40 bytes.
+Upon RSS hash configuration, a default redirection table will be set
+using a round-robin assignment of hash values to queues.
+The default GVE redirection table has 128 entries.
+
+Note that the initial configuration requires a hash key to be provided
+if one had not been provided before.
+Attempting to set hash types alone without the existence of a set key
+will result in a failed request.
+
+As stated above, the RSS redirection table has exactly 128 entries.
+The RSS hash must be configured before the redirection table can be updated
+using the standard interface.
+Because the initial RSS hash creates a default redirection table,
+the redirection table will be available for querying upon initial hash configuration.
+When performing redirection table updates,
+it is possible to update individual table entries.

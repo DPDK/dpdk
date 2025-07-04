@@ -9,6 +9,7 @@
 #include "ark_logs.h"
 #include "ark_mpu.h"
 #include "ark_udm.h"
+#include "ark_ext.h"
 
 #define ARK_RX_META_SIZE 32
 #define ARK_RX_META_OFFSET (RTE_PKTMBUF_HEADROOM - ARK_RX_META_SIZE)
@@ -27,7 +28,7 @@ static uint32_t eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 static inline int eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue);
 
 /* ************************************************************************* */
-struct ark_rx_queue {
+struct __rte_cache_aligned ark_rx_queue {
 	/* array of mbufs to populate */
 	struct rte_mbuf **reserve_q;
 	/* array of physical addresses of the mbuf data pointer */
@@ -59,16 +60,16 @@ struct ark_rx_queue {
 	uint32_t unused;
 
 	/* next cache line - fields written by device */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
 
 	volatile uint32_t prod_index;	/* step 2 filled by FPGA */
-} __rte_cache_aligned;
+};
 
 /* ************************************************************************* */
 static int
 eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
 		    struct ark_rx_queue *queue,
-		    uint16_t rx_queue_id __rte_unused, uint16_t rx_queue_idx)
+		    uint16_t rx_queue_idx)
 {
 	rte_iova_t queue_base;
 	rte_iova_t phys_addr_q_base;
@@ -124,7 +125,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint32_t i;
 	int status;
 
-	int qidx = queue_idx;
+	int qidx = ark->qbase + queue_idx;
 
 	/* We may already be setup, free memory prior to re-allocation */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
@@ -166,6 +167,13 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	queue->mb_pool = mb_pool;
 	queue->dataroom = rte_pktmbuf_data_room_size(mb_pool) -
 		RTE_PKTMBUF_HEADROOM;
+
+	/* Check pool's private data to confirm pool structure */
+	if (mb_pool->private_data_size != 0) {
+		struct rte_pmd_ark_lmbuf_mempool_priv *pool_priv = rte_mempool_get_priv(mb_pool);
+		if (strncmp(pool_priv->cookie, ARK_MEMPOOL_COOKIE, sizeof(pool_priv->cookie)) == 0)
+			queue->dataroom = pool_priv->dataroom;
+	}
 	queue->headroom = RTE_PKTMBUF_HEADROOM;
 	queue->phys_qid = qidx;
 	queue->queue_index = queue_idx;
@@ -215,7 +223,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	/* MPU Setup */
 	if (status == 0)
-		status = eth_ark_rx_hw_setup(dev, queue, qidx, queue_idx);
+		status = eth_ark_rx_hw_setup(dev, queue, queue_idx);
 
 	if (unlikely(status != 0)) {
 		struct rte_mbuf **mbuf;

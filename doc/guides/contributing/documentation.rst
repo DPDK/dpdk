@@ -95,7 +95,7 @@ added to by the developer.
 * **The Programmers Guide**
 
   The Programmers Guide explains how the API components of DPDK such as the EAL, Memzone, Rings and the Hash Library work.
-  It also explains how some higher level functionality such as Packet Distributor, Packet Framework and KNI work.
+  It also describes some of the higher level functionality such as Packet Distributor and Packet Framework.
   It also shows the build system and explains how to add applications.
 
   The Programmers Guide should be expanded when new functionality is added to DPDK.
@@ -132,6 +132,8 @@ added to by the developer.
 
 Building the Documentation
 --------------------------
+
+.. _doc_dependencies:
 
 Dependencies
 ~~~~~~~~~~~~
@@ -182,7 +184,17 @@ To build the documentation::
 
 See :doc:`../linux_gsg/build_dpdk` for more detail on compiling DPDK with meson.
 
-The output is generated in the directories ``build/doc/html/{api,guides}``.
+The output is generated in the directory ``build/doc/``, with:
+
+* HTML versions of the guide docs, e.g. Getting Started Guides, Programmers Guide, in ``build/doc/guides/html``
+* HTML version of the API documentation in ``build/doc/api/html``
+* Man-page version of the API documentation in ``build/doc/api/man``.
+  If not installing DPDK system-wise, these pages can be accessed by adding this directory to the ``MANPATH`` environment variable.
+  For example:
+
+.. code-block:: console
+
+   export MANPATH=:/path/to/build/doc/api/man
 
 .. Note::
 
@@ -224,12 +236,18 @@ The most common guidelines for writing RST text are detailed in the
 The additional guidelines below reiterate or expand upon those guidelines.
 
 
-Line Length
-~~~~~~~~~~~
+Line Length and Wrapping
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-* Lines in sentences should be less than 80 characters and wrapped at
-  words. Multiple sentences which are not separated by a blank line are joined
-  automatically into paragraphs.
+* Documentation lines should be less than 100 characters.
+
+* Each sentence should start on a new line.
+  Multiple sentences, which are not separated by a blank line,
+  are joined automatically into paragraphs.
+
+* Wrap sentences at punctuation points, for example, at a comma.
+  If no punctuation, put the newline at a logical point in the sentence,
+  for example, at the end of a clause before an "and" or "but".
 
 * Lines in literal blocks should be less than 80 characters
   since they are not wrapped by the document formatters.
@@ -698,7 +716,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
   .. code-block:: c
 
      /** Number of elements in the elt_pa array. */
-     uint32_t    pg_num __rte_cache_aligned;
+     alignas(RTE_CACHE_LINE_SIZE) uint32_t    pg_num;
      uint32_t    pg_shift;     /**< LOG2 of the physical pages. */
      uintptr_t   pg_mask;      /**< Physical page mask value. */
      uintptr_t   elt_va_start;
@@ -714,7 +732,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
   .. code-block:: c
 
      /** Number of elements in the elt_pa array. */
-     uint32_t    pg_num __rte_cache_aligned;
+     alignas(RTE_CACHE_LINE_SIZE) uint32_t    pg_num;
      /** LOG2 of the physical pages. */
      uint32_t    pg_shift;
      /** Physical page mask value. */

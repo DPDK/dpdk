@@ -1,8 +1,0 @@
-DPDK_23 {
-	global:
-
-	rte_eth_from_ring;
-	rte_eth_from_rings;
-
-	local: *;
-};

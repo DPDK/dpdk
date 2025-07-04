@@ -88,19 +88,36 @@ Windows Prerequisites
 - To load NetUIO driver, follow the steps mentioned in `dpdk-kmods repository
   <https://git.dpdk.org/dpdk-kmods/tree/windows/netuio/README.rst>`_.
 
-Recommended Matching List
--------------------------
+Kernel driver and Firmware Matching List
+----------------------------------------
 
-It is highly recommended to upgrade the i40e kernel driver and firmware to
-avoid the compatibility issues with i40e PMD. Here is the suggested matching
-list which has been tested and verified. The detailed information can refer
-to chapter Tested Platforms/Tested NICs in release notes.
+It is highly recommended to upgrade the i40e kernel driver and firmware
+to avoid the compatibility issues with i40e PMD.
+The table below shows a summary of the DPDK versions
+with corresponding out-of-tree Linux kernel drivers and firmware.
+The full list of in-tree and out-of-tree Linux kernel drivers from kernel.org
+and Linux distributions that were tested and verified
+are listed in the Tested Platforms section of the Release Notes for each release.
 
 For X710/XL710/XXV710,
 
    +--------------+-----------------------+------------------+
    | DPDK version | Kernel driver version | Firmware version |
    +==============+=======================+==================+
+   |    25.03     |         2.27.8        |       9.53       |
+   +--------------+-----------------------+------------------+
+   |    24.11     |         2.26.8        |       9.52       |
+   +--------------+-----------------------+------------------+
+   |    24.07     |         2.25.9        |       9.50       |
+   +--------------+-----------------------+------------------+
+   |    24.03     |         2.24.6        |       9.40       |
+   +--------------+-----------------------+------------------+
+   |    23.11     |         2.23.17       |       9.30       |
+   +--------------+-----------------------+------------------+
+   |    23.07     |         2.22.20       |       9.20       |
+   +--------------+-----------------------+------------------+
+   |    23.03     |         2.22.18       |       9.20       |
+   +--------------+-----------------------+------------------+
    |    22.11     |         2.20.12       |       9.01       |
    +--------------+-----------------------+------------------+
    |    22.07     |         2.19.3        |       8.70       |
@@ -160,6 +177,20 @@ For X722,
    +--------------+-----------------------+------------------+
    | DPDK version | Kernel driver version | Firmware version |
    +==============+=======================+==================+
+   |    25.03     |         2.27.8        |       6.50       |
+   +--------------+-----------------------+------------------+
+   |    24.11     |         2.26.8        |       6.50       |
+   +--------------+-----------------------+------------------+
+   |    24.07     |         2.25.9        |       6.50       |
+   +--------------+-----------------------+------------------+
+   |    24.03     |         2.24.6        |       6.20       |
+   +--------------+-----------------------+------------------+
+   |    23.11     |         2.23.17       |       6.20       |
+   +--------------+-----------------------+------------------+
+   |    23.07     |         2.22.20       |       6.20       |
+   +--------------+-----------------------+------------------+
+   |    23.03     |         2.22.18       |       6.20       |
+   +--------------+-----------------------+------------------+
    |    22.11     |         2.20.12       |       6.00       |
    +--------------+-----------------------+------------------+
    |    22.07     |         2.19.3        |       5.60       |
@@ -259,6 +290,20 @@ Runtime Configuration
   For example::
 
   -a 84:00.0,vf_msg_cfg=80@120:180
+
+- ``Support Tx diagnostics`` (default ``not enabled``)
+
+  Set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.
+  For example, ``-a 18:01.0,mbuf_check=<case>`` or ``-a 18:01.0,mbuf_check=[<case1>,<case2>...]``.
+  Also, ``xstats_get`` can be used to get the error counts,
+  which are collected in ``tx_mbuf_error_packets`` xstats.
+  For example, to show the statistics in testpmd, use: ``testpmd> show port xstats all``.
+  Supported values for the ``<case>`` parameter:
+
+  * ``mbuf``: Check for corrupted mbuf.
+  * ``size``: Check min/max packet length according to HW spec.
+  * ``segment``: Check number of mbuf segments not exceed hw limitation.
+  * ``offload``: Check any unsupported offload flag.
 
 Vector RX Pre-conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -916,7 +961,9 @@ Use 16 Bytes RX Descriptor Size
 As i40e PMD supports both 16 and 32 bytes RX descriptor sizes, and 16 bytes size can provide helps to high performance of small packets.
 In ``config/rte_config.h`` set the following to use 16 bytes size RX descriptors::
 
-   #define RTE_LIBRTE_I40E_16BYTE_RX_DESC 1
+   #define RTE_NET_INTEL_USE_16BYTE_DESC 1
+
+Note however that setting this up will make it so that all PMD's supporting this definition will also use 16-byte descriptors.
 
 Input set requirement of each pctype for FDIR
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -953,7 +1000,7 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
    Performance Test Setup
 
 
-1. Add two Intel Ethernet CNA XL710 to the platform, and use one port per card to get best performance.
+#. Add two Intel Ethernet CNA XL710 to the platform, and use one port per card to get best performance.
    The reason for using two NICs is to overcome a PCIe v3.0 limitation since it cannot provide 80GbE bandwidth
    for two 40GbE ports, but two different PCIe v3.0 x8 slot can.
    Refer to the sample NICs output above, then we can select ``82:00.0`` and ``85:00.0`` as test ports::
@@ -961,23 +1008,23 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
       82:00.0 Ethernet [0200]: Intel XL710 for 40GbE QSFP+ [8086:1583]
       85:00.0 Ethernet [0200]: Intel XL710 for 40GbE QSFP+ [8086:1583]
 
-2. Connect the ports to the traffic generator. For high speed testing, it's best to use a hardware traffic generator.
+#. Connect the ports to the traffic generator. For high speed testing, it's best to use a hardware traffic generator.
 
-3. Check the PCI devices numa node (socket id) and get the cores number on the exact socket id.
+#. Check the PCI devices numa node (socket id) and get the cores number on the exact socket id.
    In this case, ``82:00.0`` and ``85:00.0`` are both in socket 1, and the cores on socket 1 in the referenced platform
    are 18-35 and 54-71.
    Note: Don't use 2 logical cores on the same core (e.g core18 has 2 logical cores, core18 and core54), instead, use 2 logical
    cores from different cores (e.g core18 and core19).
 
-4. Bind these two ports to igb_uio.
+#. Bind these two ports to igb_uio.
 
-5. As to Intel Ethernet CNA XL710 40GbE port, we need at least two queue pairs to achieve best performance, then two queues per port
+#. As to Intel Ethernet CNA XL710 40GbE port, we need at least two queue pairs to achieve best performance, then two queues per port
    will be required, and each queue pair will need a dedicated CPU core for receiving/transmitting packets.
 
-6. The DPDK sample application ``l3fwd`` will be used for performance testing, with using two ports for bi-directional forwarding.
+#. The DPDK sample application ``l3fwd`` will be used for performance testing, with using two ports for bi-directional forwarding.
    Compile the ``l3fwd sample`` with the default lpm mode.
 
-7. The command line of running l3fwd would be something like the following::
+#. The command line of running l3fwd would be something like the following::
 
       ./dpdk-l3fwd -l 18-21 -n 4 -a 82:00.0 -a 85:00.0 \
               -- -p 0x3 --config '(0,0,18),(0,1,19),(1,0,20),(1,1,21)'
@@ -985,7 +1032,7 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
    This means that the application uses core 18 for port 0, queue pair 0 forwarding, core 19 for port 0, queue pair 1 forwarding,
    core 20 for port 1, queue pair 0 forwarding, and core 21 for port 1, queue pair 1 forwarding.
 
-8. Configure the traffic at a traffic generator.
+#. Configure the traffic at a traffic generator.
 
    * Start creating a stream on packet generator.
 

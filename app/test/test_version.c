@@ -25,4 +25,4 @@ test_version(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(version_autotest, test_version);
+REGISTER_FAST_TEST(version_autotest, true, true, test_version);

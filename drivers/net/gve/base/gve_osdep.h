@@ -21,21 +21,52 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
+#include <rte_version.h>
 
 #include "../gve_logs.h"
 
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
+#include <sys/utsname.h>
 
-typedef rte_be16_t __sum16;
+#ifndef u8
+#define u8 uint8_t
+#endif
+#ifndef u16
+#define u16 uint16_t
+#endif
+#ifndef u32
+#define u32 uint32_t
+#endif
+#ifndef u64
+#define u64 uint64_t
+#endif
 
-typedef rte_be16_t __be16;
-typedef rte_be32_t __be32;
-typedef rte_be64_t __be64;
+#ifndef __sum16
+#define __sum16 rte_be16_t
+#endif
 
-typedef rte_iova_t dma_addr_t;
+#ifndef __be16
+#define __be16 rte_be16_t
+#endif
+#ifndef __be32
+#define __be32 rte_be32_t
+#endif
+#ifndef __be64
+#define __be64 rte_be64_t
+#endif
+
+#ifndef __le16
+#define __le16 rte_le16_t
+#endif
+#ifndef __le32
+#define __le32 rte_le32_t
+#endif
+#ifndef __le64
+#define __le64 rte_le64_t
+#endif
+
+#ifndef dma_addr_t
+#define dma_addr_t rte_iova_t
+#endif
 
 #define ETH_MIN_MTU	RTE_ETHER_MIN_MTU
 #define ETH_ALEN	RTE_ETHER_ADDR_LEN
@@ -63,11 +94,17 @@ typedef rte_iova_t dma_addr_t;
 #define ____cacheline_aligned	__rte_cache_aligned
 #endif
 #ifndef __packed
-#define __packed		__rte_packed
+#define __packed		__attribute__((__packed__))
 #endif
 #define __iomem
 
 #define msleep(ms)		rte_delay_ms(ms)
+
+#define OS_VERSION_STRLEN 128
+struct os_version_string {
+	char os_version_str1[OS_VERSION_STRLEN];
+	char os_version_str2[OS_VERSION_STRLEN];
+};
 
 /* These macros are used to generate compilation errors if a struct/union
  * is not exactly the correct length. It gives a divide by zero error if
@@ -92,15 +129,33 @@ writeb(u8 value, volatile void *addr)
 }
 
 static __rte_always_inline void
+writew(u16 value, volatile void *addr)
+{
+	rte_write16(value, addr);
+}
+
+static __rte_always_inline void
 writel(u32 value, volatile void *addr)
 {
 	rte_write32(value, addr);
+}
+
+static __rte_always_inline u16
+ioread16be(const volatile void *addr)
+{
+	return rte_be_to_cpu_16(rte_read16(addr));
 }
 
 static __rte_always_inline u32
 ioread32be(const volatile void *addr)
 {
 	return rte_be_to_cpu_32(rte_read32(addr));
+}
+
+static __rte_always_inline void
+iowrite16be(u16 value, volatile void *addr)
+{
+	writew(rte_cpu_to_be_16(value), addr);
 }
 
 static __rte_always_inline void
@@ -120,7 +175,7 @@ struct gve_dma_mem {
 static inline void *
 gve_alloc_dma_mem(struct gve_dma_mem *mem, u64 size)
 {
-	static uint16_t gve_dma_memzone_id;
+	static RTE_ATOMIC(uint16_t) gve_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
@@ -128,7 +183,7 @@ gve_alloc_dma_mem(struct gve_dma_mem *mem, u64 size)
 		return NULL;
 
 	snprintf(z_name, sizeof(z_name), "gve_dma_%u",
-		 __atomic_fetch_add(&gve_dma_memzone_id, 1, __ATOMIC_RELAXED));
+		 rte_atomic_fetch_add_explicit(&gve_dma_memzone_id, 1, rte_memory_order_relaxed));
 	mz = rte_memzone_reserve_aligned(z_name, size, SOCKET_ID_ANY,
 					 RTE_MEMZONE_IOVA_CONTIG,
 					 PAGE_SIZE);
@@ -156,4 +211,17 @@ gve_free_dma_mem(struct gve_dma_mem *mem)
 	mem->pa = 0;
 }
 
+static inline void
+populate_driver_version_strings(char *str1, char *str2)
+{
+	struct utsname uts;
+	if (uname(&uts) >= 0) {
+		/* release */
+		rte_strscpy(str1, uts.release,
+			OS_VERSION_STRLEN);
+		/* version */
+		rte_strscpy(str2, uts.version,
+			OS_VERSION_STRLEN);
+	}
+}
 #endif /* _GVE_OSDEP_H_ */

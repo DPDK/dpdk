@@ -186,7 +186,7 @@ process_snow3g_cipher_op_bit(struct ipsec_mb_qp *qp,
 	src = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
 	if (op->sym->m_dst == NULL) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		IPSEC_MB_LOG(ERR, "bit-level in-place not supported\n");
+		IPSEC_MB_LOG(ERR, "bit-level in-place not supported");
 		return 0;
 	}
 	length_in_bits = op->sym->cipher.data.length;
@@ -248,8 +248,8 @@ process_snow3g_hash_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 
 		length_in_bits = ops[i]->sym->auth.data.length;
 
-		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				(ops[i]->sym->auth.data.offset >> 3);
+		src = rte_pktmbuf_mtod_offset(ops[i]->sym->m_src, uint8_t *,
+					      (ops[i]->sym->auth.data.offset >> 3));
 		iv = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
 				session->auth_iv_offset);
 
@@ -317,7 +317,7 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 			IPSEC_MB_LOG(ERR,
 				"PMD supports only contiguous mbufs, "
 				"op (%p) provides noncontiguous mbuf as "
-				"source/destination buffer.\n", ops[i]);
+				"source/destination buffer.", ops[i]);
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			return 0;
 		}
@@ -372,9 +372,10 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 /** Process a crypto op with length/offset in bits. */
 static int
 process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
-		struct ipsec_mb_qp *qp, uint16_t *accumulated_enqueued_ops)
+		struct ipsec_mb_qp *qp)
 {
-	uint32_t enqueued_op, processed_op;
+	unsigned int processed_op;
+	int ret;
 
 	switch (session->op) {
 	case IPSEC_MB_OP_ENCRYPT_ONLY:
@@ -421,9 +422,10 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 
 	if (unlikely(processed_op != 1))
 		return 0;
-	enqueued_op = rte_ring_enqueue(qp->ingress_queue, op);
-	qp->stats.enqueued_count += enqueued_op;
-	*accumulated_enqueued_ops += enqueued_op;
+
+	ret = rte_ring_enqueue(qp->ingress_queue, op);
+	if (ret != 0)
+		return ret;
 
 	return 1;
 }
@@ -439,7 +441,6 @@ snow3g_pmd_dequeue_burst(void *queue_pair,
 	struct snow3g_session *prev_sess = NULL, *curr_sess = NULL;
 	uint32_t i;
 	uint8_t burst_size = 0;
-	uint16_t enqueued_ops = 0;
 	uint8_t processed_ops;
 	uint32_t nb_dequeued;
 
@@ -479,8 +480,7 @@ snow3g_pmd_dequeue_burst(void *queue_pair,
 				prev_sess = NULL;
 			}
 
-			processed_ops = process_op_bit(curr_c_op, curr_sess,
-							qp, &enqueued_ops);
+			processed_ops = process_op_bit(curr_c_op, curr_sess, qp);
 			if (processed_ops != 1)
 				break;
 

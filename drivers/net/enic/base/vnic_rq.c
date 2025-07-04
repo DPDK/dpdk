@@ -27,6 +27,7 @@ int vnic_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq, unsigned int index,
 
 	rq->index = index;
 	rq->vdev = vdev;
+	rq->admin_chan = false;
 
 	rq->ctrl = vnic_dev_get_res(vdev, RES_TYPE_RQ, index);
 	if (!rq->ctrl) {
@@ -37,6 +38,32 @@ int vnic_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq, unsigned int index,
 	vnic_rq_disable(rq);
 
 	snprintf(res_name, sizeof(res_name), "%d-rq-%u", instance++, index);
+	rc = vnic_dev_alloc_desc_ring(vdev, &rq->ring, desc_count, desc_size,
+		rq->socket_id, res_name);
+	return rc;
+}
+
+int vnic_admin_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq,
+	unsigned int desc_count, unsigned int desc_size)
+{
+	int rc;
+	char res_name[RTE_MEMZONE_NAMESIZE];
+	static int instance;
+
+	rq->index = 0;
+	rq->vdev = vdev;
+	rq->admin_chan = true;
+	rq->socket_id = SOCKET_ID_ANY;
+
+	rq->ctrl = vnic_dev_get_res(vdev, RES_TYPE_ADMIN_RQ, 0);
+	if (!rq->ctrl) {
+		pr_err("Failed to get admin RQ resource\n");
+		return -EINVAL;
+	}
+
+	vnic_rq_disable(rq);
+
+	snprintf(res_name, sizeof(res_name), "%d-admin-rq", instance++);
 	rc = vnic_dev_alloc_desc_ring(vdev, &rq->ring, desc_count, desc_size,
 		rq->socket_id, res_name);
 	return rc;

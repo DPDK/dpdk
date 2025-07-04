@@ -144,6 +144,12 @@ struct roc_bphy_cgx_cpri_mode_misc {
 	int flags;
 };
 
+struct roc_bphy_cgx_link_state {
+	bool state;
+	int timeout;
+	bool rx_tx_dis;
+};
+
 __roc_api int roc_bphy_cgx_dev_init(struct roc_bphy_cgx *roc_cgx);
 __roc_api int roc_bphy_cgx_dev_fini(struct roc_bphy_cgx *roc_cgx);
 
@@ -152,7 +158,7 @@ __roc_api int roc_bphy_cgx_start_rxtx(struct roc_bphy_cgx *roc_cgx,
 __roc_api int roc_bphy_cgx_stop_rxtx(struct roc_bphy_cgx *roc_cgx,
 				     unsigned int lmac);
 __roc_api int roc_bphy_cgx_set_link_state(struct roc_bphy_cgx *roc_cgx,
-					  unsigned int lmac, bool state);
+					  unsigned int lmac, struct roc_bphy_cgx_link_state *state);
 __roc_api int roc_bphy_cgx_get_linkinfo(struct roc_bphy_cgx *roc_cgx,
 					unsigned int lmac,
 					struct roc_bphy_cgx_link_info *info);

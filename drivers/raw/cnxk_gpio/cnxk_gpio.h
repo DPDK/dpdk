@@ -5,20 +5,30 @@
 #ifndef _CNXK_GPIO_H_
 #define _CNXK_GPIO_H_
 
+extern int cnxk_logtype_gpio;
+#define RTE_LOGTYPE_CNXK_GPIO cnxk_logtype_gpio
+
+#define CNXK_GPIO_LOG(level, ...) \
+	RTE_LOG_LINE(level, CNXK_GPIO, __VA_ARGS__)
+
+struct gpio_v2_line_event;
 struct cnxk_gpiochip;
 
 struct cnxk_gpio {
 	struct cnxk_gpiochip *gpiochip;
+	struct {
+		struct rte_intr_handle *intr_handle;
+		void (*handler)(int gpio, void *data);
+		void (*handler2)(struct gpio_v2_line_event *event, void *data);
+		void *data;
+	} intr;
 	void *rsp;
 	int num;
-	void (*handler)(int gpio, void *data);
-	void *data;
-	int cpu;
+	int fd;
 };
 
 struct cnxk_gpiochip {
 	int num;
-	int base;
 	int num_gpios;
 	int num_queues;
 	struct cnxk_gpio **gpios;
@@ -26,10 +36,5 @@ struct cnxk_gpiochip {
 };
 
 int cnxk_gpio_selftest(uint16_t dev_id);
-
-int cnxk_gpio_irq_init(struct cnxk_gpiochip *gpiochip);
-void cnxk_gpio_irq_fini(void);
-int cnxk_gpio_irq_request(int gpio, int cpu);
-int cnxk_gpio_irq_free(int gpio);
 
 #endif /* _CNXK_GPIO_H_ */

@@ -9,6 +9,8 @@
 #include <fsl_dpbp.h>
 #include <fsl_dpbp_cmd.h>
 
+#include <eal_export.h>
+
 /**
  * dpbp_open() - Open a control session for the specified object.
  * @mc_io:	Pointer to MC portal's I/O object
@@ -26,6 +28,7 @@
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpbp_open)
 int dpbp_open(struct fsl_mc_io *mc_io,
 	      uint32_t cmd_flags,
 	      int dpbp_id,
@@ -157,6 +160,7 @@ int dpbp_destroy(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpbp_enable)
 int dpbp_enable(struct fsl_mc_io *mc_io,
 		uint32_t cmd_flags,
 		uint16_t token)
@@ -179,6 +183,7 @@ int dpbp_enable(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpbp_disable)
 int dpbp_disable(struct fsl_mc_io *mc_io,
 		 uint32_t cmd_flags,
 		 uint16_t token)
@@ -235,6 +240,7 @@ int dpbp_is_enabled(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpbp_reset)
 int dpbp_reset(struct fsl_mc_io *mc_io,
 	       uint32_t cmd_flags,
 	       uint16_t token)
@@ -258,6 +264,7 @@ int dpbp_reset(struct fsl_mc_io *mc_io,
  *
  * Return:	'0' on Success; Error code otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dpbp_get_attributes)
 int dpbp_get_attributes(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -329,6 +336,7 @@ int dpbp_get_api_version(struct fsl_mc_io *mc_io,
  * Return:  '0' on Success; Error code otherwise.
  */
 
+RTE_EXPORT_INTERNAL_SYMBOL(dpbp_get_num_free_bufs)
 int dpbp_get_num_free_bufs(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t token,

@@ -171,6 +171,7 @@ efx_mcdi_filter_op_add(
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_FILTER_OP_V3_IN_LEN,
 		MC_CMD_FILTER_OP_EXT_OUT_LEN);
 	efx_filter_match_flags_t match_flags;
+	efx_port_t *epp = &(enp->en_port);
 	uint32_t port_id;
 	efx_rc_t rc;
 
@@ -329,13 +330,18 @@ efx_mcdi_filter_op_add(
 		goto fail3;
 	}
 	if (spec->efs_flags & EFX_FILTER_FLAG_ACTION_MARK) {
-		MCDI_IN_SET_DWORD(req, FILTER_OP_V3_IN_MATCH_ACTION,
-		    MC_CMD_FILTER_OP_V3_IN_MATCH_ACTION_MARK);
+		MCDI_IN_SET_DWORD_FIELD(req, FILTER_OP_V3_IN_MATCH_ACTION_FLAGS,
+		    FILTER_OP_V3_IN_MATCH_SET_MARK, 1);
 		MCDI_IN_SET_DWORD(req, FILTER_OP_V3_IN_MATCH_MARK_VALUE,
 		    spec->efs_mark);
 	} else if (spec->efs_flags & EFX_FILTER_FLAG_ACTION_FLAG) {
-		MCDI_IN_SET_DWORD(req, FILTER_OP_V3_IN_MATCH_ACTION,
-		    MC_CMD_FILTER_OP_V3_IN_MATCH_ACTION_FLAG);
+		MCDI_IN_SET_DWORD_FIELD(req, FILTER_OP_V3_IN_MATCH_ACTION_FLAGS,
+		    FILTER_OP_V3_IN_MATCH_SET_FLAG, 1);
+	}
+
+	if (epp->ep_vlan_strip) {
+		MCDI_IN_SET_DWORD_FIELD(req, FILTER_OP_V3_IN_MATCH_ACTION_FLAGS,
+		    FILTER_OP_V3_IN_MATCH_STRIP_VLAN, 1);
 	}
 
 	efx_mcdi_execute(enp, &req);
@@ -2111,6 +2117,26 @@ fail1:
 	}
 
 	return (rc);
+}
+
+	__checkReturn	efx_rc_t
+ef10_filter_get_count(
+	__in	efx_nic_t *enp,
+	__out	uint32_t *countp)
+{
+	ef10_filter_table_t *table = enp->en_filter.ef_ef10_filter_table;
+	uint32_t filter_count;
+
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF100(enp) || EFX_FAMILY_IS_EF10(enp));
+	EFSYS_ASSERT(countp != NULL);
+
+	filter_count = table->eft_unicst_filter_count +
+			table->eft_mulcst_filter_count +
+			table->eft_encap_filter_count;
+
+	*countp = filter_count;
+
+	return (0);
 }
 
 		void

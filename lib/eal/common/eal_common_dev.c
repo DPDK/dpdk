@@ -17,45 +17,53 @@
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "hotplug_mp.h"
 
+RTE_EXPORT_SYMBOL(rte_driver_name)
 const char *
 rte_driver_name(const struct rte_driver *driver)
 {
 	return driver->name;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_bus)
 const struct rte_bus *
 rte_dev_bus(const struct rte_device *dev)
 {
 	return dev->bus;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_bus_info)
 const char *
 rte_dev_bus_info(const struct rte_device *dev)
 {
 	return dev->bus_info;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_devargs)
 const struct rte_devargs *
 rte_dev_devargs(const struct rte_device *dev)
 {
 	return dev->devargs;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_driver)
 const struct rte_driver *
 rte_dev_driver(const struct rte_device *dev)
 {
 	return dev->driver;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_name)
 const char *
 rte_dev_name(const struct rte_device *dev)
 {
 	return dev->name;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_numa_node)
 int
 rte_dev_numa_node(const struct rte_device *dev)
 {
@@ -114,6 +122,7 @@ static int cmp_dev_name(const struct rte_device *dev, const void *_name)
 	return strcmp(dev->name, name);
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_is_probed)
 int
 rte_dev_is_probed(const struct rte_device *dev)
 {
@@ -146,6 +155,7 @@ build_devargs(const char *busname, const char *devname,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_hotplug_add)
 int
 rte_eal_hotplug_add(const char *busname, const char *devname,
 		    const char *drvargs)
@@ -182,7 +192,7 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 		goto err_devarg;
 
 	if (da->bus->plug == NULL) {
-		RTE_LOG(ERR, EAL, "Function plug not supported by bus (%s)\n",
+		EAL_LOG(ERR, "Function plug not supported by bus (%s)",
 			da->bus->name);
 		ret = -ENOTSUP;
 		goto err_devarg;
@@ -199,7 +209,7 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 
 	dev = da->bus->find_device(NULL, cmp_dev_name, da->name);
 	if (dev == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot find device (%s)\n",
+		EAL_LOG(ERR, "Cannot find device (%s)",
 			da->name);
 		ret = -ENODEV;
 		goto err_devarg;
@@ -214,7 +224,7 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 		ret = -ENOTSUP;
 
 	if (ret && !rte_dev_is_probed(dev)) { /* if hasn't ever succeeded */
-		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
+		EAL_LOG(ERR, "Driver cannot attach the device (%s)",
 			dev->name);
 		return ret;
 	}
@@ -230,6 +240,7 @@ err_devarg:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_probe)
 int
 rte_dev_probe(const char *devargs)
 {
@@ -248,13 +259,13 @@ rte_dev_probe(const char *devargs)
 		 */
 		ret = eal_dev_hotplug_request_to_primary(&req);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL,
-				"Failed to send hotplug request to primary\n");
+			EAL_LOG(ERR,
+				"Failed to send hotplug request to primary");
 			return -ENOMSG;
 		}
 		if (req.result != 0)
-			RTE_LOG(ERR, EAL,
-				"Failed to hotplug add device\n");
+			EAL_LOG(ERR,
+				"Failed to hotplug add device");
 		return req.result;
 	}
 
@@ -264,8 +275,8 @@ rte_dev_probe(const char *devargs)
 	ret = local_dev_probe(devargs, &dev);
 
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL,
-			"Failed to attach device on primary process\n");
+		EAL_LOG(ERR,
+			"Failed to attach device on primary process");
 
 		/**
 		 * it is possible that secondary process failed to attached a
@@ -282,8 +293,8 @@ rte_dev_probe(const char *devargs)
 
 	/* if any communication error, we need to rollback. */
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL,
-			"Failed to send hotplug add request to secondary\n");
+		EAL_LOG(ERR,
+			"Failed to send hotplug add request to secondary");
 		ret = -ENOMSG;
 		goto rollback;
 	}
@@ -293,8 +304,8 @@ rte_dev_probe(const char *devargs)
 	 * is necessary.
 	 */
 	if (req.result != 0) {
-		RTE_LOG(ERR, EAL,
-			"Failed to attach device on secondary process\n");
+		EAL_LOG(ERR,
+			"Failed to attach device on secondary process");
 		ret = req.result;
 
 		/* for -EEXIST, we don't need to rollback. */
@@ -310,19 +321,20 @@ rollback:
 
 	/* primary send rollback request to secondary. */
 	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
-		RTE_LOG(WARNING, EAL,
+		EAL_LOG(WARNING,
 			"Failed to rollback device attach on secondary."
-			"Devices in secondary may not sync with primary\n");
+			"Devices in secondary may not sync with primary");
 
 	/* primary rollback itself. */
 	if (local_dev_remove(dev) != 0)
-		RTE_LOG(WARNING, EAL,
+		EAL_LOG(WARNING,
 			"Failed to rollback device attach on primary."
-			"Devices in secondary may not sync with primary\n");
+			"Devices in secondary may not sync with primary");
 
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_hotplug_remove)
 int
 rte_eal_hotplug_remove(const char *busname, const char *devname)
 {
@@ -331,13 +343,13 @@ rte_eal_hotplug_remove(const char *busname, const char *devname)
 
 	bus = rte_bus_find_by_name(busname);
 	if (bus == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", busname);
+		EAL_LOG(ERR, "Cannot find bus (%s)", busname);
 		return -ENOENT;
 	}
 
 	dev = bus->find_device(NULL, cmp_dev_name, devname);
 	if (dev == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", devname);
+		EAL_LOG(ERR, "Cannot find plugged device (%s)", devname);
 		return -EINVAL;
 	}
 
@@ -351,14 +363,14 @@ local_dev_remove(struct rte_device *dev)
 	int ret;
 
 	if (dev->bus->unplug == NULL) {
-		RTE_LOG(ERR, EAL, "Function unplug not supported by bus (%s)\n",
+		EAL_LOG(ERR, "Function unplug not supported by bus (%s)",
 			dev->bus->name);
 		return -ENOTSUP;
 	}
 
 	ret = dev->bus->unplug(dev);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
+		EAL_LOG(ERR, "Driver cannot detach the device (%s)",
 			dev->name);
 		return (ret < 0) ? ret : -ENOENT;
 	}
@@ -366,6 +378,7 @@ local_dev_remove(struct rte_device *dev)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_remove)
 int
 rte_dev_remove(struct rte_device *dev)
 {
@@ -374,7 +387,7 @@ rte_dev_remove(struct rte_device *dev)
 	int ret;
 
 	if (!rte_dev_is_probed(dev)) {
-		RTE_LOG(ERR, EAL, "Device is not probed\n");
+		EAL_LOG(ERR, "Device is not probed");
 		return -ENOENT;
 	}
 
@@ -394,13 +407,13 @@ rte_dev_remove(struct rte_device *dev)
 		 */
 		ret = eal_dev_hotplug_request_to_primary(&req);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL,
-				"Failed to send hotplug request to primary\n");
+			EAL_LOG(ERR,
+				"Failed to send hotplug request to primary");
 			return -ENOMSG;
 		}
 		if (req.result != 0)
-			RTE_LOG(ERR, EAL,
-				"Failed to hotplug remove device\n");
+			EAL_LOG(ERR,
+				"Failed to hotplug remove device");
 		return req.result;
 	}
 
@@ -414,8 +427,8 @@ rte_dev_remove(struct rte_device *dev)
 	 * part of the secondary processes still detached it successfully.
 	 */
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL,
-			"Failed to send device detach request to secondary\n");
+		EAL_LOG(ERR,
+			"Failed to send device detach request to secondary");
 		ret = -ENOMSG;
 		goto rollback;
 	}
@@ -425,8 +438,8 @@ rte_dev_remove(struct rte_device *dev)
 	 * is necessary.
 	 */
 	if (req.result != 0) {
-		RTE_LOG(ERR, EAL,
-			"Failed to detach device on secondary process\n");
+		EAL_LOG(ERR,
+			"Failed to detach device on secondary process");
 		ret = req.result;
 		/**
 		 * if -ENOENT, we don't need to rollback, since devices is
@@ -441,8 +454,8 @@ rte_dev_remove(struct rte_device *dev)
 
 	/* if primary failed, still need to consider if rollback is necessary */
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL,
-			"Failed to detach device on primary process\n");
+		EAL_LOG(ERR,
+			"Failed to detach device on primary process");
 		/* if -ENOENT, we don't need to rollback */
 		if (ret == -ENOENT)
 			return ret;
@@ -456,13 +469,14 @@ rollback:
 
 	/* primary send rollback request to secondary. */
 	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
-		RTE_LOG(WARNING, EAL,
+		EAL_LOG(WARNING,
 			"Failed to rollback device detach on secondary."
-			"Devices in secondary may not sync with primary\n");
+			"Devices in secondary may not sync with primary");
 
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_callback_register)
 int
 rte_dev_event_callback_register(const char *device_name,
 				rte_dev_event_cb_fn cb_fn,
@@ -508,16 +522,16 @@ rte_dev_event_callback_register(const char *device_name,
 			}
 			TAILQ_INSERT_TAIL(&dev_event_cbs, event_cb, next);
 		} else {
-			RTE_LOG(ERR, EAL,
+			EAL_LOG(ERR,
 				"Failed to allocate memory for device "
 				"event callback.");
 			ret = -ENOMEM;
 			goto error;
 		}
 	} else {
-		RTE_LOG(ERR, EAL,
+		EAL_LOG(ERR,
 			"The callback is already exist, no need "
-			"to register again.\n");
+			"to register again.");
 		event_cb = NULL;
 		ret = -EEXIST;
 		goto error;
@@ -531,6 +545,7 @@ error:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_callback_unregister)
 int
 rte_dev_event_callback_unregister(const char *device_name,
 				  rte_dev_event_cb_fn cb_fn,
@@ -550,15 +565,16 @@ rte_dev_event_callback_unregister(const char *device_name,
 		next = TAILQ_NEXT(event_cb, next);
 
 		if (device_name != NULL && event_cb->dev_name != NULL) {
-			if (!strcmp(event_cb->dev_name, device_name)) {
-				if (event_cb->cb_fn != cb_fn ||
-				    (cb_arg != (void *)-1 &&
-				    event_cb->cb_arg != cb_arg))
-					continue;
-			}
+			if (strcmp(event_cb->dev_name, device_name))
+				continue;
 		} else if (device_name != NULL) {
 			continue;
 		}
+
+		/* Remove only matching callback with arg */
+		if (event_cb->cb_fn != cb_fn ||
+		    (cb_arg != (void *)-1 && event_cb->cb_arg != cb_arg))
+			continue;
 
 		/*
 		 * if this callback is not executing right now,
@@ -583,6 +599,7 @@ rte_dev_event_callback_unregister(const char *device_name,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_event_callback_process)
 void
 rte_dev_event_callback_process(const char *device_name,
 			       enum rte_dev_event_type event)
@@ -609,6 +626,7 @@ rte_dev_event_callback_process(const char *device_name,
 	rte_spinlock_unlock(&dev_event_lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_iterator_init)
 int
 rte_dev_iterator_init(struct rte_dev_iterator *it,
 		      const char *dev_str)
@@ -635,17 +653,17 @@ rte_dev_iterator_init(struct rte_dev_iterator *it,
 	 * one layer specified.
 	 */
 	if (bus == NULL && cls == NULL) {
-		RTE_LOG(DEBUG, EAL, "Either bus or class must be specified.\n");
+		EAL_LOG(DEBUG, "Either bus or class must be specified.");
 		rte_errno = EINVAL;
 		goto get_out;
 	}
 	if (bus != NULL && bus->dev_iterate == NULL) {
-		RTE_LOG(DEBUG, EAL, "Bus %s not supported\n", bus->name);
+		EAL_LOG(DEBUG, "Bus %s not supported", bus->name);
 		rte_errno = ENOTSUP;
 		goto get_out;
 	}
 	if (cls != NULL && cls->dev_iterate == NULL) {
-		RTE_LOG(DEBUG, EAL, "Class %s not supported\n", cls->name);
+		EAL_LOG(DEBUG, "Class %s not supported", cls->name);
 		rte_errno = ENOTSUP;
 		goto get_out;
 	}
@@ -761,6 +779,7 @@ end:
 	it->device = dev;
 	return dev == NULL;
 }
+RTE_EXPORT_SYMBOL(rte_dev_iterator_next)
 struct rte_device *
 rte_dev_iterator_next(struct rte_dev_iterator *it)
 {
@@ -805,6 +824,7 @@ out:
 	return it->device;
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_dma_map)
 int
 rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova,
 		size_t len)
@@ -822,6 +842,7 @@ rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova,
 	return dev->bus->dma_map(dev, addr, iova, len);
 }
 
+RTE_EXPORT_SYMBOL(rte_dev_dma_unmap)
 int
 rte_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
 		  size_t len)

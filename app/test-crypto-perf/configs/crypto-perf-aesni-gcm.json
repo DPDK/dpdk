@@ -23,30 +23,10 @@
 			"optype": "aead",
 			"total-ops": "10000000"
 		},
-		"AES-GCM-128 aead-op decrypt": {
-			"aead-algo": "aes-gcm",
-			"aead-key-sz": "16",
-			"aead-op": "decrypt",
-			"aead-aad-sz": "16",
-			"aead-iv-sz": "12",
-			"digest-sz": "16",
-			"optype": "aead",
-			"total-ops": "10000000"
-		},
 		"AES-GCM-256 aead-op encrypt": {
 			"aead-algo": "aes-gcm",
 			"aead-key-sz": "32",
 			"aead-op": "encrypt",
-			"aead-aad-sz": "32",
-			"aead-iv-sz": "12",
-			"digest-sz": "16",
-			"optype": "aead",
-			"total-ops": "10000000"
-		},
-		"AES-GCM-256 aead-op decrypt": {
-			"aead-algo": "aes-gcm",
-			"aead-key-sz": "32",
-			"aead-op": "decrypt",
 			"aead-aad-sz": "32",
 			"aead-iv-sz": "12",
 			"digest-sz": "16",
@@ -76,15 +56,6 @@
 				"ptest": "latency",
 				"devtype": "crypto_aesni_gcm"
 			}
-		},
-		"AES-GCM-128 aead-op decrypt": {
-			"aead-algo": "aes-gcm",
-			"aead-key-sz": "16",
-			"aead-op": "decrypt",
-			"aead-aad-sz": "16",
-			"aead-iv-sz": "12",
-			"digest-sz": "16",
-			"optype": "aead"
 		},
 		"AES-GCM-256 aead-op encrypt latency": {
 			"aead-algo": "aes-gcm",

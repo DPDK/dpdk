@@ -6,10 +6,6 @@
 #ifndef __INCLUDE_RTE_METER_H__
 #define __INCLUDE_RTE_METER_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Traffic Metering
@@ -18,16 +14,17 @@ extern "C" {
  *    1. Single Rate Three Color Marker (srTCM): defined by IETF RFC 2697
  *    2. Two Rate Three Color Marker (trTCM): defined by IETF RFC 2698
  *    3. Two Rate Three Color Marker (trTCM): defined by IETF RFC 4115
- *
- ***/
+ */
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Application Programmer's Interface (API)
- *
- ***/
+ */
 
 /**
  * Color
@@ -127,9 +124,6 @@ int
 rte_meter_trtcm_profile_config(struct rte_meter_trtcm_profile *p,
 	struct rte_meter_trtcm_params *params);
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * trTCM RFC 4115 profile configuration
  *
  * @param p
@@ -173,9 +167,6 @@ rte_meter_trtcm_config(struct rte_meter_trtcm *m,
 	struct rte_meter_trtcm_profile *p);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * trTCM RFC 4115 configuration per metered traffic flow
  *
  * @param m
@@ -276,9 +267,6 @@ rte_meter_trtcm_color_aware_check(struct rte_meter_trtcm *m,
 	enum rte_color pkt_color);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * trTCM RFC4115 color blind traffic metering
  *
  * @param m
@@ -300,9 +288,6 @@ rte_meter_trtcm_rfc4115_color_blind_check(
 	uint32_t pkt_len);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * trTCM RFC4115 color aware traffic metering
  *
  * @param m
@@ -328,8 +313,7 @@ rte_meter_trtcm_rfc4115_color_aware_check(
 
 /*
  * Inline implementation of run-time methods
- *
- ***/
+ */
 
 struct rte_meter_srtcm_profile {
 	uint64_t cbs;

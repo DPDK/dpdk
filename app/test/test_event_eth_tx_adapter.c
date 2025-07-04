@@ -484,6 +484,10 @@ tx_adapter_service(void)
 	int internal_port;
 	uint32_t cap;
 
+	/* Initialize mbufs */
+	for (i = 0; i < RING_SIZE; i++)
+		rte_pktmbuf_reset(&bufs[i]);
+
 	memset(&dev_conf, 0, sizeof(dev_conf));
 	err = rte_event_eth_tx_adapter_caps_get(TEST_DEV_ID, TEST_ETHDEV_ID,
 						&cap);
@@ -800,13 +804,17 @@ tx_adapter_queue_start_stop(void)
 static int
 tx_adapter_set_get_params(void)
 {
-	int err;
+	int err, rc;
 	struct rte_event_eth_tx_adapter_runtime_params in_params;
 	struct rte_event_eth_tx_adapter_runtime_params out_params;
 
 	err = rte_event_eth_tx_adapter_queue_add(TEST_INST_ID,
 						 TEST_ETHDEV_ID,
 						 0);
+	if (err == -ENOTSUP) {
+		rc = TEST_SKIPPED;
+		goto skip;
+	}
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	err = rte_event_eth_tx_adapter_runtime_params_init(&in_params);
@@ -916,13 +924,14 @@ tx_adapter_set_get_params(void)
 	TEST_ASSERT(in_params.flush_threshold == out_params.flush_threshold,
 		    "Expected %u got %u",
 		    in_params.flush_threshold, out_params.flush_threshold);
-
+	rc = TEST_SUCCESS;
+skip:
 	err = rte_event_eth_tx_adapter_queue_del(TEST_INST_ID,
 						 TEST_ETHDEV_ID,
 						 0);
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
-	return TEST_SUCCESS;
+	return rc;
 }
 
 static int
@@ -1001,5 +1010,4 @@ test_event_eth_tx_adapter_common(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(event_eth_tx_adapter_autotest,
-		test_event_eth_tx_adapter_common);
+REGISTER_FAST_TEST(event_eth_tx_adapter_autotest, false, true, test_event_eth_tx_adapter_common);

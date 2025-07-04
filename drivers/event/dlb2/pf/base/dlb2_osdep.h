@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
@@ -41,14 +40,14 @@
 	DLB2_PCI_REG_WRITE(DLB2_FUNC_REG_ADDR((hw), (reg)), (value))
 
 /* Map to PMDs logging interface */
-#define DLB2_ERR(dev, fmt, args...) \
-	DLB2_LOG_ERR(fmt, ## args)
+#define DLB2_ERR(dev, fmt, ...) \
+	RTE_LOG(ERR, EVENTDEV_DLB2, "%s" fmt, __func__, ## __VA_ARGS__)
 
-#define DLB2_INFO(dev, fmt, args...) \
-	DLB2_LOG_INFO(fmt, ## args)
+#define DLB2_INFO(dev, fmt, ...) \
+	RTE_LOG(INFO, EVENTDEV_DLB2, "%s" fmt, __func__, ## __VA_ARGS__)
 
-#define DLB2_DEBUG(dev, fmt, args...) \
-	DLB2_LOG_DBG(fmt, ## args)
+#define DLB2_DEBUG(dev, fmt, ...) \
+	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt, ## __VA_ARGS__)
 
 /**
  * os_udelay() - busy-wait for a number of microseconds
@@ -141,6 +140,16 @@ static inline void os_fence_hcw(struct dlb2_hw *hw, u64 *pp_addr)
 } while (0)
 
 /**
+ * DLB2_HW_INFO() - log an error message
+ * @dlb2: dlb2_hw handle for a particular device.
+ * @...: variable string args.
+ */
+#define DLB2_HW_INFO(dlb2, ...) do {	\
+	RTE_SET_USED(dlb2);		\
+	DLB2_INFO(dlb2, __VA_ARGS__);	\
+} while (0)
+
+/**
  * DLB2_HW_DBG() - log an info message
  * @dlb2: dlb2_hw handle for a particular device.
  * @...: variable string args.
@@ -154,7 +163,7 @@ static inline void os_fence_hcw(struct dlb2_hw *hw, u64 *pp_addr)
  * map and unmap requests. To prevent deadlock, this function gives other
  * threads a chance to grab the resource mutex and configure hardware.
  */
-static void *dlb2_complete_queue_map_unmap(void *__args)
+static uint32_t dlb2_complete_queue_map_unmap(void *__args)
 {
 	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)__args;
 	int ret;
@@ -180,7 +189,7 @@ static void *dlb2_complete_queue_map_unmap(void *__args)
 
 	rte_spinlock_unlock(&dlb2_dev->resource_mutex);
 
-	return NULL;
+	return 0;
 }
 
 
@@ -194,16 +203,13 @@ static void *dlb2_complete_queue_map_unmap(void *__args)
 static inline void os_schedule_work(struct dlb2_hw *hw)
 {
 	struct dlb2_dev *dlb2_dev;
-	pthread_t complete_queue_map_unmap_thread;
+	rte_thread_t complete_queue_map_unmap_thread;
 	int ret;
 
 	dlb2_dev = container_of(hw, struct dlb2_dev, hw);
 
-	ret = rte_ctrl_thread_create(&complete_queue_map_unmap_thread,
-				     "dlb_queue_unmap_waiter",
-				     NULL,
-				     dlb2_complete_queue_map_unmap,
-				     dlb2_dev);
+	ret = rte_thread_create_internal_control(&complete_queue_map_unmap_thread,
+			"dlb-qunmap", dlb2_complete_queue_map_unmap, dlb2_dev);
 	if (ret)
 		DLB2_ERR(dlb2_dev,
 			 "Could not create queue complete map/unmap thread, err=%d\n",

@@ -2,12 +2,12 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <stdalign.h>
 
 #include <rte_common.h>
+#include <rte_vect.h>
 
 #include "net_crc.h"
-
-#include <x86intrin.h>
 
 /* VPCLMULQDQ CRC computation context structure */
 struct crc_vpclmulqdq_ctx {
@@ -20,8 +20,8 @@ struct crc_vpclmulqdq_ctx {
 	__m128i fold_1x128b;
 };
 
-static struct crc_vpclmulqdq_ctx crc32_eth __rte_aligned(64);
-static struct crc_vpclmulqdq_ctx crc16_ccitt __rte_aligned(64);
+static alignas(64) struct crc_vpclmulqdq_ctx crc32_eth;
+static alignas(64) struct crc_vpclmulqdq_ctx crc16_ccitt;
 
 static uint16_t byte_len_to_mask_table[] = {
 	0x0000, 0x0001, 0x0003, 0x0007,
@@ -30,18 +30,18 @@ static uint16_t byte_len_to_mask_table[] = {
 	0x0fff, 0x1fff, 0x3fff, 0x7fff,
 	0xffff};
 
-static const uint8_t shf_table[32] __rte_aligned(16) = {
+static const alignas(16) uint8_t shf_table[32] = {
 	0x00, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 	0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
 };
 
-static const uint32_t mask[4] __rte_aligned(16) = {
+static const alignas(16) uint32_t mask[4] = {
 	0xffffffff, 0xffffffff, 0x00000000, 0x00000000
 };
 
-static const uint32_t mask2[4] __rte_aligned(16) = {
+static const alignas(16) uint32_t mask2[4] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
 };
 
@@ -93,7 +93,7 @@ last_two_xmm(const uint8_t *data, uint32_t data_len, uint32_t n, __m128i res,
 	uint32_t offset;
 	__m128i res2, res3, res4, pshufb_shf;
 
-	const uint32_t mask3[4] __rte_aligned(16) = {
+	const alignas(16) uint32_t mask3[4] = {
 		   0x80808080, 0x80808080, 0x80808080, 0x80808080
 	};
 
@@ -330,13 +330,10 @@ crc32_load_init_constants(void)
 			c9, c10, c11);
 	crc32_eth.fold_3x128b = _mm512_setr_epi64(c12, c13, c14, c15,
 			c16, c17, 0, 0);
-	crc32_eth.fold_1x128b = _mm_setr_epi64(_mm_cvtsi64_m64(c16),
-			_mm_cvtsi64_m64(c17));
+	crc32_eth.fold_1x128b = _mm_set_epi64x(c17, c16);
 
-	crc32_eth.rk5_rk6 = _mm_setr_epi64(_mm_cvtsi64_m64(c18),
-			_mm_cvtsi64_m64(c19));
-	crc32_eth.rk7_rk8 = _mm_setr_epi64(_mm_cvtsi64_m64(c20),
-			_mm_cvtsi64_m64(c21));
+	crc32_eth.rk5_rk6 = _mm_set_epi64x(c19, c18);
+	crc32_eth.rk7_rk8 = _mm_set_epi64x(c21, c20);
 }
 
 static void
@@ -377,13 +374,10 @@ crc16_load_init_constants(void)
 			c9, c10, c11);
 	crc16_ccitt.fold_3x128b = _mm512_setr_epi64(c12, c13, c14, c15,
 			c16, c17, 0, 0);
-	crc16_ccitt.fold_1x128b = _mm_setr_epi64(_mm_cvtsi64_m64(c16),
-			_mm_cvtsi64_m64(c17));
+	crc16_ccitt.fold_1x128b = _mm_set_epi64x(c17, c16);
 
-	crc16_ccitt.rk5_rk6 = _mm_setr_epi64(_mm_cvtsi64_m64(c18),
-			_mm_cvtsi64_m64(c19));
-	crc16_ccitt.rk7_rk8 = _mm_setr_epi64(_mm_cvtsi64_m64(c20),
-			_mm_cvtsi64_m64(c21));
+	crc16_ccitt.rk5_rk6 = _mm_set_epi64x(c19, c18);
+	crc16_ccitt.rk7_rk8 = _mm_set_epi64x(c21, c20);
 }
 
 void
@@ -391,12 +385,6 @@ rte_net_crc_avx512_init(void)
 {
 	crc32_load_init_constants();
 	crc16_load_init_constants();
-
-	/*
-	 * Reset the register as following calculation may
-	 * use other data types such as float, double, etc.
-	 */
-	_mm_empty();
 }
 
 uint32_t

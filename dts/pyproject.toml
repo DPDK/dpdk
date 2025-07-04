@@ -1,46 +1,78 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 [tool.poetry]
+package-mode = false
 name = "dts"
 version = "0.1.0"
-description = ""
-authors = ["Owen Hilyard <ohilyard@iol.unh.edu>", "dts@dpdk.org"]
+description = "DPDK Test Suite."
+license = "BSD-3-Clause"
+authors = [
+    "Owen Hilyard <ohilyard@iol.unh.edu>",
+    "Juraj Linkeš <juraj.linkes@pantheon.tech>",
+    "Jeremy Spewock <jspewock@iol.unh.edu>"
+]
+maintainers = [
+    "Juraj Linkeš <juraj.linkes@pantheon.tech>"
+]
+documentation = "https://doc.dpdk.org/guides/tools/dts.html"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pexpect = "^4.8.0"
-warlock = "^2.0.1"
 PyYAML = "^6.0"
-types-PyYAML = "^6.0.8"
+fabric = "^3.2"
+scapy = "^2.6.1"
+typing-extensions = "^4.11.0"
+aenum = "^3.1.15"
+pydantic = "^2.9.2"
 
-[tool.poetry.dev-dependencies]
-mypy = "^0.961"
-black = "^22.6.0"
-isort = "^5.10.1"
-pylama = "^8.4.1"
-pyflakes = "2.5.0"
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.13.0"
 toml = "^0.10.2"
+ruff = "^0.8.1"
+types-paramiko = "^3.5.0.20240928"
+types-invoke = "^2.0.0.10"
+types-pyyaml = "^6.0.12.20240917"
 
-[tool.poetry.scripts]
-dts = "main:main"
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "<=7"
+sphinx-rtd-theme = ">=1.2.2"
+pyelftools = "^0.31"
+autodoc-pydantic = "^2.2.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.pylama]
-linters = "pep8,pylint,mccabe,mypy,pycodestyle,pyflakes"
-format = "pylint"
-max_line_length = 88 # https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes
+    "E", "W", # pycodestyle
+    "D",      # pydocstyle
+    "C90",    # mccabe
+    "I",      # isort
+    # pydoclint
+    "DOC202", "DOC402", "DOC403", "DOC501"
+]
+preview = true # enable to get early access to pydoclint rules
+explicit-preview-rules = true # enable ONLY the explicitly selected preview rules
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.mypy]
 python_version = "3.10"
-
-[tool.isort]
-profile = "black"
-
-[tool.black]
-target-version = ['py310']
-include = '\.pyi?$'
-line-length = 88 # https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
+enable_error_code = ["ignore-without-code"]
+show_error_codes = true
+warn_unused_ignores = true

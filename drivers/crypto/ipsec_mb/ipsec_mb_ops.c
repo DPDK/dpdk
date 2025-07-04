@@ -7,10 +7,9 @@
 
 #include <rte_common.h>
 #include <rte_malloc.h>
+#include <rte_log.h>
 
 #include "ipsec_mb_private.h"
-
-#define IMB_MP_REQ_VER_STR "1.1.0"
 
 /** Configure device */
 int
@@ -125,7 +124,7 @@ ipsec_mb_secondary_qp_op(int dev_id, int qp_id,
 	qp_req_msg.num_fds = 0;
 	ret = rte_mp_request_sync(&qp_req_msg, &qp_resp, &ts);
 	if (ret) {
-		RTE_LOG(ERR, USER1, "Create MR request to primary process failed.");
+		IPSEC_MB_LOG(ERR, "Create MR request to primary process failed.");
 		return -1;
 	}
 	qp_resp_msg = &qp_resp.msgs[0];
@@ -146,15 +145,10 @@ ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		rte_ring_free(rte_ring_lookup(qp->name));
 
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-		if (qp->mb_mgr)
-			free_mb_mgr(qp->mb_mgr);
-#else
 		if (qp->mb_mgr_mz) {
 			rte_memzone_free(qp->mb_mgr_mz);
 			qp->mb_mgr = NULL;
 		}
-#endif
 		rte_free(qp);
 		dev->data->queue_pairs[qp_id] = NULL;
 	} else { /* secondary process */
@@ -210,7 +204,6 @@ static struct rte_ring
 			       RING_F_SP_ENQ | RING_F_SC_DEQ);
 }
 
-#if IMB_VERSION(1, 1, 0) <= IMB_VERSION_NUM
 static IMB_MGR *
 ipsec_mb_alloc_mgr_from_memzone(const struct rte_memzone **mb_mgr_mz,
 		const char *mb_mgr_mz_name)
@@ -243,7 +236,6 @@ ipsec_mb_alloc_mgr_from_memzone(const struct rte_memzone **mb_mgr_mz,
 	}
 	return mb_mgr;
 }
-#endif
 
 /** Setup a queue pair */
 int
@@ -259,12 +251,6 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	int ret;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-		IPSEC_MB_LOG(ERR, "The intel-ipsec-mb version (%s) does not support multiprocess,"
-				"the minimum version required for this feature is %s.",
-				IMB_VERSION_STR, IMB_MP_REQ_VER_STR);
-		return -EINVAL;
-#endif
 		qp = dev->data->queue_pairs[qp_id];
 		if (qp == NULL) {
 			IPSEC_MB_LOG(DEBUG, "Secondary process setting up device qp.");
@@ -284,15 +270,11 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			return -ENOMEM;
 	}
 
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-	qp->mb_mgr = alloc_init_mb_mgr();
-#else
 	char mz_name[IPSEC_MB_MAX_MZ_NAME];
 	snprintf(mz_name, sizeof(mz_name), "IMB_MGR_DEV_%d_QP_%d",
 			dev->data->dev_id, qp_id);
 	qp->mb_mgr = ipsec_mb_alloc_mgr_from_memzone(&(qp->mb_mgr_mz),
 			mz_name);
-#endif
 	if (qp->mb_mgr == NULL) {
 		ret = -ENOMEM;
 		goto qp_setup_cleanup;
@@ -329,15 +311,9 @@ ipsec_mb_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return 0;
 
 qp_setup_cleanup:
-#if IMB_VERSION(1, 1, 0) > IMB_VERSION_NUM
-	if (qp->mb_mgr)
-		free_mb_mgr(qp->mb_mgr);
-#else
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return ret;
-	if (qp->mb_mgr_mz)
-		rte_memzone_free(qp->mb_mgr_mz);
-#endif
+	rte_memzone_free(qp->mb_mgr_mz);
 	rte_free(qp);
 	return ret;
 }
@@ -406,7 +382,7 @@ ipsec_mb_ipc_request(const struct rte_mp_msg *mp_msg, const void *peer)
 		resp_param->result = ipsec_mb_qp_release(dev, qp_id);
 		break;
 	default:
-		CDEV_LOG_ERR("invalid mp request type\n");
+		CDEV_LOG_ERR("invalid mp request type");
 	}
 
 out:
@@ -434,15 +410,22 @@ ipsec_mb_sym_session_configure(
 	struct ipsec_mb_dev_private *internals = dev->data->dev_private;
 	struct ipsec_mb_internals *pmd_data =
 		&ipsec_mb_pmds[internals->pmd_type];
-	IMB_MGR *mb_mgr = alloc_init_mb_mgr();
+	struct ipsec_mb_qp *qp = dev->data->queue_pairs[0];
+	IMB_MGR *mb_mgr;
 	int ret = 0;
+
+	if (qp != NULL)
+		mb_mgr = qp->mb_mgr;
+	else
+		mb_mgr = alloc_init_mb_mgr();
 
 	if (!mb_mgr)
 		return -ENOMEM;
 
 	if (unlikely(sess == NULL)) {
 		IPSEC_MB_LOG(ERR, "invalid session struct");
-		free_mb_mgr(mb_mgr);
+		if (qp == NULL)
+			free_mb_mgr(mb_mgr);
 		return -EINVAL;
 	}
 
@@ -452,11 +435,13 @@ ipsec_mb_sym_session_configure(
 		IPSEC_MB_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
-		free_mb_mgr(mb_mgr);
+		if (qp == NULL)
+			free_mb_mgr(mb_mgr);
 		return ret;
 	}
 
-	free_mb_mgr(mb_mgr);
+	if (qp == NULL)
+		free_mb_mgr(mb_mgr);
 	return 0;
 }
 

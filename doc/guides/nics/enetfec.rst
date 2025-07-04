@@ -102,28 +102,28 @@ Prerequisites
 There are three main pre-requisites for executing ENETFEC PMD on a i.MX 8M Mini
 compatible board:
 
-1. **ARM 64 Tool Chain**
+#. **ARM 64 Tool Chain**
 
    For example, the `*aarch64* Linaro Toolchain
    <https://releases.linaro.org/components/toolchain/binaries/7.4-2019.02/aarch64-linux-gnu/gcc-linaro-7.4.1-2019.02-x86_64_aarch64-linux-gnu.tar.xz>`_.
 
-2. **Linux Kernel**
+#. **Linux Kernel**
 
    It can be obtained from `NXP's Github hosting
    <https://source.codeaurora.org/external/qoriq/qoriq-components/linux>`_.
 
-.. note::
+   .. note::
 
-   Branch is 'lf-5.10.y'
+      Branch is 'lf-5.10.y'
 
-3. **Rootfile system**
+#. **Rootfile system**
 
    Any *aarch64* supporting filesystem can be used.
    For example, Ubuntu 18.04 LTS (Bionic) or 20.04 LTS(Focal) userland
    which can be obtained from `here
    <http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04.1-base-arm64.tar.gz>`_.
 
-4. The Ethernet device will be registered as virtual device,
+#. The Ethernet device will be registered as virtual device,
    so ENETFEC has dependency on **rte_bus_vdev** library
    and it is mandatory to use `--vdev` with value `net_enetfec`
    to run DPDK application.

@@ -7,12 +7,19 @@
 
 #define DEV_HWCAP_F_VF BIT_ULL(0) /* VF device */
 
+/* PF and VF bit encoding parameters in pcifunc */
+#define RVU_PFVF_PF_SHIFT_CN20K	  9
+#define RVU_PFVF_PF_MASK_CN20K	  0x7F
+#define RVU_PFVF_FUNC_SHIFT_CN20K 0
+#define RVU_PFVF_FUNC_MASK_CN20K  0x1FF
+
 #define RVU_PFVF_PF_SHIFT   10
 #define RVU_PFVF_PF_MASK    0x3F
 #define RVU_PFVF_FUNC_SHIFT 0
 #define RVU_PFVF_FUNC_MASK  0x3FF
-#define RVU_MAX_VF	    64 /* RVU_PF_VFPF_MBOX_INT(0..1) */
-#define RVU_MAX_INT_RETRY   3
+
+#define RVU_MAX_VF	  64 /* RVU_PF_VFPF_MBOX_INT(0..1) */
+#define RVU_MAX_INT_RETRY 3
 
 /* PF/VF message handling timer */
 #define VF_PF_MBOX_TIMER_MS (20 * 1000)
@@ -36,12 +43,21 @@ typedef void (*q_err_cb_t)(void *roc_nix, void *data);
 /* Link status get callback */
 typedef void (*link_status_get_t)(void *roc_nix,
 				  struct cgx_link_user_info *link);
+/* Representee notification callback */
+typedef int (*repte_notify_t)(void *roc_nix, void *notify_msg);
+
+/* RVU Message process callback */
+typedef int (*msg_process_cb_t)(uint16_t vf, uint16_t msg_id,
+				void *req, uint16_t req_len,
+				void **rsp, uint16_t *rsp_len);
 
 struct dev_ops {
 	link_info_t link_status_update;
 	ptp_info_t ptp_info_update;
 	link_status_get_t link_status_get;
 	q_err_cb_t q_err_cb;
+	msg_process_cb_t msg_process_cb;
+	repte_notify_t repte_notify;
 };
 
 #define dev_is_vf(dev) ((dev)->hwcap & DEV_HWCAP_F_VF)
@@ -49,26 +65,62 @@ struct dev_ops {
 static inline int
 dev_get_vf(uint16_t pf_func)
 {
-	return (((pf_func >> RVU_PFVF_FUNC_SHIFT) & RVU_PFVF_FUNC_MASK) - 1);
+	if (roc_model_is_cn20k())
+		return (((pf_func >> RVU_PFVF_FUNC_SHIFT_CN20K) & RVU_PFVF_FUNC_MASK_CN20K) - 1);
+	else
+		return (((pf_func >> RVU_PFVF_FUNC_SHIFT) & RVU_PFVF_FUNC_MASK) - 1);
 }
 
 static inline int
 dev_get_pf(uint16_t pf_func)
 {
-	return (pf_func >> RVU_PFVF_PF_SHIFT) & RVU_PFVF_PF_MASK;
+	if (roc_model_is_cn20k())
+		return (pf_func >> RVU_PFVF_PF_SHIFT_CN20K) & RVU_PFVF_PF_MASK_CN20K;
+	else
+		return (pf_func >> RVU_PFVF_PF_SHIFT) & RVU_PFVF_PF_MASK;
 }
 
 static inline int
 dev_pf_func(int pf, int vf)
 {
-	return (pf << RVU_PFVF_PF_SHIFT) | ((vf << RVU_PFVF_FUNC_SHIFT) + 1);
+	if (roc_model_is_cn20k())
+		return (pf << RVU_PFVF_PF_SHIFT_CN20K) | ((vf << RVU_PFVF_FUNC_SHIFT_CN20K) + 1);
+	else
+		return (pf << RVU_PFVF_PF_SHIFT) | ((vf << RVU_PFVF_FUNC_SHIFT) + 1);
 }
 
 static inline int
 dev_is_afvf(uint16_t pf_func)
 {
-	return !(pf_func & ~RVU_PFVF_FUNC_MASK);
+	if (roc_model_is_cn20k())
+		return !(pf_func & ~RVU_PFVF_FUNC_MASK_CN20K);
+	else
+		return !(pf_func & ~RVU_PFVF_FUNC_MASK);
 }
+
+struct mbox_sync {
+	bool start_thread;
+	uint8_t msg_avail;
+	plt_thread_t pfvf_msg_thread;
+	pthread_cond_t pfvf_msg_cond;
+	pthread_mutex_t mutex;
+};
+
+struct mbox_platform {
+	uint8_t pfaf_vec;
+	uint8_t pfvf_mbox0_vec;
+	uint8_t pfvf_mbox1_vec;
+	uint8_t pfvf1_mbox0_vec;
+	uint8_t pfvf1_mbox1_vec;
+	uint64_t pfvf_mbox_intx[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf_mbox_int_ena_w1s[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf_mbox_int_ena_w1c[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf1_mbox_intx[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf1_mbox_int_ena_w1s[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf1_mbox_int_ena_w1c[MAX_VFPF_DWORD_BITS];
+	uintptr_t mbox_reg_base;
+	uintptr_t mbox_region_base;
+};
 
 struct dev {
 	uint16_t pf;
@@ -85,7 +137,7 @@ struct dev {
 	struct mbox mbox_vfpf;
 	struct mbox mbox_vfpf_up;
 	dev_intr_t intr;
-	int timer_set; /* ~0 : no alarm handling */
+	dev_intr_t flr;
 	uint64_t hwcap;
 	struct npa_lf npa;
 	struct mbox *mbox;
@@ -95,8 +147,14 @@ struct dev {
 	void *roc_cpt;
 	void *roc_tim;
 	void *roc_ml;
+	void *roc_rvu_lf;
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
 	const struct plt_memzone *lmt_mz;
+	struct mbox_sync sync;
+	uintptr_t mbox_reg_base;
+	uintptr_t vf_mbox_base;
+	const struct plt_memzone *vf_mbox_mz;
+	struct mbox_platform *mbox_plat;
 } __plt_cache_aligned;
 
 struct npa {
@@ -119,6 +177,8 @@ int dev_irqs_disable(struct plt_intr_handle *intr_handle);
 int dev_irq_reconfigure(struct plt_intr_handle *intr_handle, uint16_t max_intr);
 
 int dev_mbox_register_irq(struct plt_pci_device *pci_dev, struct dev *dev);
+void dev_mbox_unregister_irq(struct plt_pci_device *pci_dev, struct dev *dev);
 int dev_vf_flr_register_irqs(struct plt_pci_device *pci_dev, struct dev *dev);
+void dev_vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev);
 
 #endif /* _ROC_DEV_PRIV_H */

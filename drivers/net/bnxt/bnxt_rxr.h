@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -17,7 +17,7 @@
 static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 					     struct rx_tpa_start_cmpl *cmp)
 {
-	if (BNXT_CHIP_P5(bp))
+	if (BNXT_CHIP_P5_P7(bp))
 		return BNXT_TPA_START_AGG_ID_TH(cmp);
 	else
 		return BNXT_TPA_START_AGG_ID_PRE_TH(cmp);
@@ -52,6 +52,52 @@ static inline uint16_t bnxt_tpa_start_agg_id(struct bnxt *bp,
 #define BNXT_OL_FLAGS_TBL_DIM	64
 #define BNXT_OL_FLAGS_ERR_TBL_DIM 32
 
+#define BNXT_CRX_CQE_OPAQUE_MASK		\
+	RX_PKT_COMPRESS_CMPL_ERRORS_AGG_BUFS_OPAQUE_OPAQUE_MASK
+#define BNXT_CRX_CQE_AGG_BUF_MASK		\
+	RX_PKT_COMPRESS_CMPL_ERRORS_AGG_BUFS_OPAQUE_AGG_BUFS_MASK
+#define BNXT_CRX_CQE_AGG_BUF_SFT		\
+	RX_PKT_COMPRESS_CMPL_ERRORS_AGG_BUFS_OPAQUE_AGG_BUFS_SFT
+#define BNXT_CRX_CQE_AGG_BUFS(cmp)		\
+	(((cmp)->errors_agg_bufs_opaque & BNXT_CRX_CQE_AGG_BUF_MASK) >> \
+	 BNXT_CRX_CQE_AGG_BUF_SFT)
+#define BNXT_CRX_CQE_CSUM_CALC_MASK		\
+	(RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_IP_CS_CALC | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_L4_CS_CALC | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_IP_CS_CALC | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_L4_CS_CALC)
+#define BNXT_CRX_CQE_CSUM_CALC_SFT	8
+#define BNXT_PKT_CMPL_T_IP_CS_CALC	0x4
+
+#define BNXT_CRX_TUN_CS_CALC                                  \
+	(!!(RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_IP_CS_CALC | \
+	    RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_L4_CS_CALC))
+
+# define BNXT_CRX_CQE_CSUM_ERROR_MASK		\
+	(RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_IP_CS_ERROR | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_L4_CS_ERROR | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_IP_CS_ERROR | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_L4_CS_ERROR)
+
+/* meta_format != 0 and bit3 is valid, the value in meta is VLAN.
+ * Use the bit as VLAN valid bit
+ */
+#define BNXT_RXC_METADATA1_VLAN_VALID		\
+	RX_PKT_COMPRESS_CMPL_METADATA1_VALID
+
+static inline void bnxt_set_vlan_crx(struct rx_pkt_compress_cmpl *rxcmp,
+				     struct rte_mbuf *mbuf)
+{
+	uint16_t metadata = rte_le_to_cpu_16(rxcmp->metadata1_cs_error_calc_v1);
+	uint16_t vlan_tci = rte_le_to_cpu_16(rxcmp->vlanc_tcid);
+
+	if (metadata & RX_PKT_COMPRESS_CMPL_METADATA1_VALID)
+		mbuf->vlan_tci =
+			vlan_tci & (RX_PKT_COMPRESS_CMPL_VLANC_TCID_VID_MASK |
+				    RX_PKT_COMPRESS_CMPL_VLANC_TCID_DE |
+				    RX_PKT_COMPRESS_CMPL_VLANC_TCID_PRI_MASK);
+}
+
 struct bnxt_tpa_info {
 	struct rte_mbuf			*mbuf;
 	uint16_t			len;
@@ -70,6 +116,7 @@ struct bnxt_tpa_info {
 struct bnxt_rx_ring_info {
 	uint16_t		rx_raw_prod;
 	uint16_t		ag_raw_prod;
+	uint16_t		ag_cons; /* Needed with compressed CQE */
 	uint16_t                rx_cons; /* Needed for representor */
 	uint16_t                rx_next_cons;
 	struct bnxt_db_info     rx_db;
@@ -109,12 +156,16 @@ int bnxt_flush_rx_cmp(struct bnxt_cp_ring_info *cpr);
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 uint16_t bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			    uint16_t nb_pkts);
+uint16_t bnxt_crx_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t nb_pkts);
 int bnxt_rxq_vec_setup(struct bnxt_rx_queue *rxq);
 #endif
 
-#if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
+#if defined(RTE_ARCH_X86)
 uint16_t bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 				 uint16_t nb_pkts);
+uint16_t bnxt_crx_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts);
 #endif
 void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 			   struct rx_pkt_cmpl_hi *rxcmp1,
@@ -160,6 +211,10 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 #define CMPL_FLAGS2_VLAN_TUN_MSK \
 	(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN | RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)
 
+#define CMPL_FLAGS2_VLAN_TUN_MSK_CRX \
+	(RX_PKT_COMPRESS_CMPL_METADATA1_VALID | \
+	 RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_T_IP_CS_CALC)
+
 #define BNXT_CMPL_ITYPE_TO_IDX(ft) \
 	(((ft) & RX_PKT_CMPL_FLAGS_ITYPE_MASK) >> \
 	  (RX_PKT_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT))
@@ -167,6 +222,10 @@ bnxt_cfa_code_dynfield(struct rte_mbuf *mbuf)
 #define BNXT_CMPL_VLAN_TUN_TO_IDX(f2) \
 	(((f2) & CMPL_FLAGS2_VLAN_TUN_MSK) >> \
 	 (RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT - BNXT_PTYPE_TBL_VLAN_SFT))
+
+#define BNXT_CMPL_VLAN_TUN_TO_IDX_CRX(md) \
+	(((md) & CMPL_FLAGS2_VLAN_TUN_MSK_CRX) >> \
+	 (RX_PKT_COMPRESS_CMPL_METADATA1_SFT - BNXT_PTYPE_TBL_VLAN_SFT))
 
 #define BNXT_CMPL_IP_VER_TO_IDX(f2) \
 	(((f2) & RX_PKT_CMPL_FLAGS2_IP_TYPE) >> \
@@ -387,4 +446,95 @@ bnxt_parse_pkt_type_v2(struct rte_mbuf *mbuf,
 	mbuf->packet_type = pkt_type;
 }
 
+/* Thor2 specific code for RX completion parsing */
+#define RX_PKT_V3_CMPL_FLAGS2_IP_TYPE_SFT	8
+#define RX_PKT_V3_CMPL_METADATA1_VALID_SFT	15
+
+#define BNXT_CMPL_V3_ITYPE_TO_IDX(ft) \
+	(((ft) & RX_PKT_V3_CMPL_FLAGS_ITYPE_MASK) >> \
+	 (RX_PKT_V3_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT))
+
+#define BNXT_CMPL_V3_VLAN_TO_IDX(meta) \
+	(((meta) & (1 << RX_PKT_V3_CMPL_METADATA1_VALID_SFT)) >> \
+	 (RX_PKT_V3_CMPL_METADATA1_VALID_SFT - BNXT_PTYPE_TBL_VLAN_SFT))
+
+#define BNXT_CMPL_V3_IP_VER_TO_IDX(f2) \
+	(((f2) & RX_PKT_V3_CMPL_HI_FLAGS2_IP_TYPE) >> \
+	 (RX_PKT_V3_CMPL_FLAGS2_IP_TYPE_SFT - BNXT_PTYPE_TBL_IP_VER_SFT))
+
+#define RX_CMP_V3_VLAN_VALID(rxcmp)        \
+	(((struct rx_pkt_v3_cmpl *)rxcmp)->metadata1_payload_offset &	\
+	 RX_PKT_V3_CMPL_METADATA1_VALID)
+
+#define RX_CMP_V3_METADATA0_VID(rxcmp1)				\
+	((((struct rx_pkt_v3_cmpl_hi *)rxcmp1)->metadata0) &	\
+	 (RX_PKT_V3_CMPL_HI_METADATA0_VID_MASK |		\
+	  RX_PKT_V3_CMPL_HI_METADATA0_DE  |			\
+	  RX_PKT_V3_CMPL_HI_METADATA0_PRI_MASK))
+
+static inline void bnxt_rx_vlan_v3(struct rte_mbuf *mbuf,
+	struct rx_pkt_cmpl *rxcmp,
+	struct rx_pkt_cmpl_hi *rxcmp1)
+{
+	if (RX_CMP_V3_VLAN_VALID(rxcmp)) {
+		mbuf->vlan_tci = RX_CMP_V3_METADATA0_VID(rxcmp1);
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+	}
+}
+
+#define RX_CMP_V3_L4_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR))
+#define RX_CMP_V3_L3_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR))
+#define RX_CMP_V3_T_IP_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR))
+#define RX_CMP_V3_T_L4_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR))
+#define RX_PKT_CMPL_CALC			\
+	(RX_PKT_CMPL_FLAGS2_IP_CS_CALC |	\
+	 RX_PKT_CMPL_FLAGS2_L4_CS_CALC |	\
+	 RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC |	\
+	 RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
+
+static inline uint64_t
+bnxt_parse_csum_fields_v3(uint32_t flags2, uint32_t error_v2)
+{
+	uint64_t ol_flags = 0;
+
+	if (flags2 & RX_PKT_CMPL_CALC) {
+		if (unlikely(RX_CMP_V3_L4_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+		else
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+		if (unlikely(RX_CMP_V3_L3_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+		if (unlikely(RX_CMP_V3_T_L4_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
+		else
+			ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
+		if (unlikely(RX_CMP_V3_T_IP_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+		if (!(ol_flags & (RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD)))
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+	} else {
+		/* Unknown is defined as 0 for all packets types hence using below for all */
+		ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
+	}
+	return ol_flags;
+}
+
+static inline void
+bnxt_parse_csum_v3(struct rte_mbuf *mbuf, struct rx_pkt_cmpl_hi *rxcmp1)
+{
+	struct rx_pkt_v3_cmpl_hi *v3_cmp =
+		(struct rx_pkt_v3_cmpl_hi *)(rxcmp1);
+	uint16_t error_v2 = rte_le_to_cpu_16(v3_cmp->errors_v2);
+	uint32_t flags2 = rte_le_to_cpu_32(v3_cmp->flags2);
+
+	mbuf->ol_flags = bnxt_parse_csum_fields_v3(flags2, error_v2);
+}
 #endif /*  _BNXT_RXR_H_ */

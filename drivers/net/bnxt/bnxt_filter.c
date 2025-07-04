@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -28,7 +28,7 @@ struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp)
 
 	filter = bnxt_get_unused_filter(bp);
 	if (!filter) {
-		PMD_DRV_LOG(ERR, "No more free filter resources\n");
+		PMD_DRV_LOG_LINE(ERR, "No more free filter resources");
 		return NULL;
 	}
 
@@ -49,7 +49,7 @@ struct bnxt_filter_info *bnxt_alloc_vf_filter(struct bnxt *bp, uint16_t vf)
 
 	filter = rte_zmalloc("bnxt_vf_filter_info", sizeof(*filter), 0);
 	if (!filter) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for VF %hu filters\n",
+		PMD_DRV_LOG_LINE(ERR, "Failed to alloc memory for VF %hu filters",
 			vf);
 		return NULL;
 	}
@@ -126,20 +126,20 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 			/* Call HWRM to try to free filter again */
 			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
 			if (rc)
-				PMD_DRV_LOG(ERR,
-					    "Cannot free ntuple filter: %d\n",
+				PMD_DRV_LOG_LINE(ERR,
+					    "Cannot free ntuple filter: %d",
 					    rc);
 		}
 		filter->fw_ntuple_filter_id = UINT64_MAX;
 
 		if (filter->fw_l2_filter_id != ((uint64_t)-1) &&
 		    filter->filter_type == HWRM_CFA_L2_FILTER) {
-			PMD_DRV_LOG(DEBUG, "L2 filter is not free\n");
+			PMD_DRV_LOG_LINE(DEBUG, "L2 filter is not free");
 			/* Call HWRM to try to free filter again */
 			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 			if (rc)
-				PMD_DRV_LOG(ERR,
-					    "Cannot free L2 filter: %d\n",
+				PMD_DRV_LOG_LINE(ERR,
+					    "Cannot free L2 filter: %d",
 					    rc);
 		}
 		filter->fw_l2_filter_id = UINT64_MAX;
@@ -170,7 +170,7 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 				 max_filters * sizeof(struct bnxt_filter_info),
 				 0);
 	if (filter_mem == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for %d filters",
+		PMD_DRV_LOG_LINE(ERR, "Failed to alloc memory for %d filters",
 			max_filters);
 		return -ENOMEM;
 	}
@@ -186,7 +186,7 @@ struct bnxt_filter_info *bnxt_get_unused_filter(struct bnxt *bp)
 	/* Find the 1st unused filter from the free_filter_list pool*/
 	filter = STAILQ_FIRST(&bp->free_filter_list);
 	if (!filter) {
-		PMD_DRV_LOG(ERR, "No more free filter resources\n");
+		PMD_DRV_LOG_LINE(ERR, "No more free filter resources");
 		return NULL;
 	}
 	STAILQ_REMOVE_HEAD(&bp->free_filter_list, next);

@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_errno.h>
 #include <rte_lcore.h>
@@ -22,15 +23,18 @@
 #include "eal_thread.h"
 #include "eal_trace.h"
 
+RTE_EXPORT_SYMBOL(per_lcore__lcore_id)
 RTE_DEFINE_PER_LCORE(unsigned int, _lcore_id) = LCORE_ID_ANY;
+RTE_EXPORT_SYMBOL(per_lcore__thread_id)
 RTE_DEFINE_PER_LCORE(int, _thread_id) = -1;
-static RTE_DEFINE_PER_LCORE(unsigned int, _socket_id) =
+static RTE_DEFINE_PER_LCORE(unsigned int, _numa_id) =
 	(unsigned int)SOCKET_ID_ANY;
 static RTE_DEFINE_PER_LCORE(rte_cpuset_t, _cpuset);
 
+RTE_EXPORT_SYMBOL(rte_socket_id)
 unsigned rte_socket_id(void)
 {
-	return RTE_PER_LCORE(_socket_id);
+	return RTE_PER_LCORE(_numa_id);
 }
 
 static int
@@ -66,8 +70,8 @@ thread_update_affinity(rte_cpuset_t *cpusetp)
 {
 	unsigned int lcore_id = rte_lcore_id();
 
-	/* store socket_id in TLS for quick access */
-	RTE_PER_LCORE(_socket_id) =
+	/* store numa_id in TLS for quick access */
+	RTE_PER_LCORE(_numa_id) =
 		eal_cpuset_socket_id(cpusetp);
 
 	/* store cpuset in TLS for quick access */
@@ -76,17 +80,18 @@ thread_update_affinity(rte_cpuset_t *cpusetp)
 
 	if (lcore_id != (unsigned)LCORE_ID_ANY) {
 		/* EAL thread will update lcore_config */
-		lcore_config[lcore_id].socket_id = RTE_PER_LCORE(_socket_id);
+		lcore_config[lcore_id].numa_id = RTE_PER_LCORE(_numa_id);
 		memmove(&lcore_config[lcore_id].cpuset, cpusetp,
 			sizeof(rte_cpuset_t));
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_set_affinity)
 int
 rte_thread_set_affinity(rte_cpuset_t *cpusetp)
 {
 	if (rte_thread_set_affinity_by_id(rte_thread_self(), cpusetp) != 0) {
-		RTE_LOG(ERR, EAL, "rte_thread_set_affinity_by_id failed\n");
+		EAL_LOG(ERR, "rte_thread_set_affinity_by_id failed");
 		return -1;
 	}
 
@@ -94,6 +99,7 @@ rte_thread_set_affinity(rte_cpuset_t *cpusetp)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_get_affinity)
 void
 rte_thread_get_affinity(rte_cpuset_t *cpusetp)
 {
@@ -175,8 +181,8 @@ eal_thread_loop(void *arg)
 	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
-	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
-		lcore_id, (uintptr_t)pthread_self(), cpuset,
+	EAL_LOG(DEBUG, "lcore %u is ready (tid=%zx;cpuset=[%s%s])",
+		lcore_id, rte_thread_self().opaque_id, cpuset,
 		ret == 0 ? "" : "...");
 
 	rte_eal_trace_thread_lcore_ready(lcore_id, cpuset);
@@ -191,8 +197,8 @@ eal_thread_loop(void *arg)
 		/* Set the state to 'RUNNING'. Use release order
 		 * since 'state' variable is used as the guard variable.
 		 */
-		__atomic_store_n(&lcore_config[lcore_id].state, RUNNING,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&lcore_config[lcore_id].state, RUNNING,
+			rte_memory_order_release);
 
 		eal_thread_ack_command();
 
@@ -201,9 +207,11 @@ eal_thread_loop(void *arg)
 		 * are accessed only after update to 'f' is visible.
 		 * Wait till the update to 'f' is visible to the worker.
 		 */
-		while ((f = __atomic_load_n(&lcore_config[lcore_id].f,
-				__ATOMIC_ACQUIRE)) == NULL)
+		while ((f = rte_atomic_load_explicit(&lcore_config[lcore_id].f,
+				rte_memory_order_acquire)) == NULL)
 			rte_pause();
+
+		rte_eal_trace_thread_lcore_running(lcore_id, f);
 
 		/* call the function and store the return value */
 		fct_arg = lcore_config[lcore_id].arg;
@@ -217,8 +225,10 @@ eal_thread_loop(void *arg)
 		 * are completed before the state is updated.
 		 * Use 'state' as the guard variable.
 		 */
-		__atomic_store_n(&lcore_config[lcore_id].state, WAIT,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&lcore_config[lcore_id].state, WAIT,
+			rte_memory_order_release);
+
+		rte_eal_trace_thread_lcore_stopped(lcore_id);
 	}
 
 	/* never reached */
@@ -231,120 +241,59 @@ enum __rte_ctrl_thread_status {
 	CTRL_THREAD_ERROR /* Control thread encountered an error */
 };
 
-struct rte_thread_ctrl_params {
-	union {
-		void *(*ctrl_start_routine)(void *arg);
-		rte_thread_func control_start_routine;
-	} u;
+struct control_thread_params {
+	rte_thread_func start_routine;
 	void *arg;
 	int ret;
 	/* Control thread status.
 	 * If the status is CTRL_THREAD_ERROR, 'ret' has the error code.
 	 */
-	enum __rte_ctrl_thread_status ctrl_thread_status;
+	RTE_ATOMIC(enum __rte_ctrl_thread_status) status;
 };
 
-static int ctrl_thread_init(void *arg)
+static int control_thread_init(void *arg)
 {
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
-	struct rte_thread_ctrl_params *params = arg;
+	struct control_thread_params *params = arg;
 
 	__rte_thread_init(rte_lcore_id(), cpuset);
+	/* Set control thread socket ID to SOCKET_ID_ANY
+	 * as control threads may be scheduled on any NUMA node.
+	 */
+	RTE_PER_LCORE(_numa_id) = SOCKET_ID_ANY;
 	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
-		__atomic_store_n(&params->ctrl_thread_status,
-			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&params->status,
+			CTRL_THREAD_ERROR, rte_memory_order_release);
 		return 1;
 	}
 
-	__atomic_store_n(&params->ctrl_thread_status,
-		CTRL_THREAD_RUNNING, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&params->status,
+		CTRL_THREAD_RUNNING, rte_memory_order_release);
 
 	return 0;
 }
 
-static void *ctrl_thread_start(void *arg)
-{
-	struct rte_thread_ctrl_params *params = arg;
-	void *start_arg = params->arg;
-	void *(*start_routine)(void *) = params->u.ctrl_start_routine;
-
-	if (ctrl_thread_init(arg) != 0)
-		return NULL;
-
-	return start_routine(start_arg);
-}
-
 static uint32_t control_thread_start(void *arg)
 {
-	struct rte_thread_ctrl_params *params = arg;
+	struct control_thread_params *params = arg;
 	void *start_arg = params->arg;
-	rte_thread_func start_routine = params->u.control_start_routine;
+	rte_thread_func start_routine = params->start_routine;
 
-	if (ctrl_thread_init(arg) != 0)
+	if (control_thread_init(arg) != 0)
 		return 0;
 
 	return start_routine(start_arg);
 }
 
-int
-rte_ctrl_thread_create(pthread_t *thread, const char *name,
-		const pthread_attr_t *attr,
-		void *(*start_routine)(void *), void *arg)
-{
-	struct rte_thread_ctrl_params *params;
-	enum __rte_ctrl_thread_status ctrl_thread_status;
-	int ret;
-
-	params = malloc(sizeof(*params));
-	if (!params)
-		return -ENOMEM;
-
-	params->u.ctrl_start_routine = start_routine;
-	params->arg = arg;
-	params->ret = 0;
-	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
-
-	ret = pthread_create(thread, attr, ctrl_thread_start, (void *)params);
-	if (ret != 0) {
-		free(params);
-		return -ret;
-	}
-
-	if (name != NULL)
-		rte_thread_set_name((rte_thread_t){(uintptr_t)*thread}, name);
-
-	/* Wait for the control thread to initialize successfully */
-	while ((ctrl_thread_status =
-			__atomic_load_n(&params->ctrl_thread_status,
-			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
-		/* Yield the CPU. Using sched_yield call requires maintaining
-		 * another implementation for Windows as sched_yield is not
-		 * supported on Windows.
-		 */
-		rte_delay_us_sleep(1);
-	}
-
-	/* Check if the control thread encountered an error */
-	if (ctrl_thread_status == CTRL_THREAD_ERROR) {
-		/* ctrl thread is exiting */
-		pthread_join(*thread, NULL);
-	}
-
-	ret = params->ret;
-	free(params);
-
-	return -ret;
-}
-
+RTE_EXPORT_SYMBOL(rte_thread_create_control)
 int
 rte_thread_create_control(rte_thread_t *thread, const char *name,
-	const rte_thread_attr_t *attr, rte_thread_func start_routine,
-	void *arg)
+		rte_thread_func start_routine, void *arg)
 {
-	struct rte_thread_ctrl_params *params;
+	struct control_thread_params *params;
 	enum __rte_ctrl_thread_status ctrl_thread_status;
 	int ret;
 
@@ -352,12 +301,12 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 	if (params == NULL)
 		return -ENOMEM;
 
-	params->u.control_start_routine = start_routine;
+	params->start_routine = start_routine;
 	params->arg = arg;
 	params->ret = 0;
-	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
+	params->status = CTRL_THREAD_LAUNCHING;
 
-	ret = rte_thread_create(thread, attr, control_thread_start, params);
+	ret = rte_thread_create(thread, NULL, control_thread_start, params);
 	if (ret != 0) {
 		free(params);
 		return -ret;
@@ -368,8 +317,8 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 
 	/* Wait for the control thread to initialize successfully */
 	while ((ctrl_thread_status =
-			__atomic_load_n(&params->ctrl_thread_status,
-			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
+			rte_atomic_load_explicit(&params->status,
+			rte_memory_order_acquire)) == CTRL_THREAD_LAUNCHING) {
 		rte_delay_us_sleep(1);
 	}
 
@@ -385,6 +334,42 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 	return ret;
 }
 
+static void
+add_internal_prefix(char *prefixed_name, const char *name, size_t size)
+{
+	size_t prefixlen;
+
+	/* Check RTE_THREAD_INTERNAL_NAME_SIZE definition. */
+	RTE_BUILD_BUG_ON(RTE_THREAD_INTERNAL_NAME_SIZE !=
+		RTE_THREAD_NAME_SIZE - sizeof(RTE_THREAD_INTERNAL_PREFIX) + 1);
+
+	prefixlen = strlen(RTE_THREAD_INTERNAL_PREFIX);
+	strlcpy(prefixed_name, RTE_THREAD_INTERNAL_PREFIX, size);
+	strlcpy(prefixed_name + prefixlen, name, size - prefixlen);
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_thread_create_internal_control)
+int
+rte_thread_create_internal_control(rte_thread_t *id, const char *name,
+		rte_thread_func func, void *arg)
+{
+	char prefixed_name[RTE_THREAD_NAME_SIZE];
+
+	add_internal_prefix(prefixed_name, name, sizeof(prefixed_name));
+	return rte_thread_create_control(id, prefixed_name, func, arg);
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_thread_set_prefixed_name)
+void
+rte_thread_set_prefixed_name(rte_thread_t id, const char *name)
+{
+	char prefixed_name[RTE_THREAD_NAME_SIZE];
+
+	add_internal_prefix(prefixed_name, name, sizeof(prefixed_name));
+	rte_thread_set_name(id, prefixed_name);
+}
+
+RTE_EXPORT_SYMBOL(rte_thread_register)
 int
 rte_thread_register(void)
 {
@@ -393,12 +378,12 @@ rte_thread_register(void)
 
 	/* EAL init flushes all lcores, we can't register before. */
 	if (eal_get_internal_configuration()->init_complete != 1) {
-		RTE_LOG(DEBUG, EAL, "Called %s before EAL init.\n", __func__);
+		EAL_LOG(DEBUG, "Called %s before EAL init.", __func__);
 		rte_errno = EINVAL;
 		return -1;
 	}
 	if (!rte_mp_disable()) {
-		RTE_LOG(ERR, EAL, "Multiprocess in use, registering non-EAL threads is not supported.\n");
+		EAL_LOG(ERR, "Multiprocess in use, registering non-EAL threads is not supported.");
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -412,11 +397,12 @@ rte_thread_register(void)
 		rte_errno = ENOMEM;
 		return -1;
 	}
-	RTE_LOG(DEBUG, EAL, "Registered non-EAL thread as lcore %u.\n",
+	EAL_LOG(DEBUG, "Registered non-EAL thread as lcore %u.",
 		lcore_id);
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_unregister)
 void
 rte_thread_unregister(void)
 {
@@ -426,10 +412,11 @@ rte_thread_unregister(void)
 		eal_lcore_non_eal_release(lcore_id);
 	__rte_thread_uninit();
 	if (lcore_id != LCORE_ID_ANY)
-		RTE_LOG(DEBUG, EAL, "Unregistered non-EAL thread (was lcore %u).\n",
+		EAL_LOG(DEBUG, "Unregistered non-EAL thread (was lcore %u).",
 			lcore_id);
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_init)
 int
 rte_thread_attr_init(rte_thread_attr_t *attr)
 {
@@ -442,6 +429,7 @@ rte_thread_attr_init(rte_thread_attr_t *attr)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_set_priority)
 int
 rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
 		enum rte_thread_priority priority)
@@ -454,6 +442,7 @@ rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_set_affinity)
 int
 rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
 		rte_cpuset_t *cpuset)
@@ -469,6 +458,7 @@ rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_attr_get_affinity)
 int
 rte_thread_attr_get_affinity(rte_thread_attr_t *thread_attr,
 		rte_cpuset_t *cpuset)

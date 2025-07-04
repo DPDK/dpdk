@@ -613,6 +613,11 @@ cnxk_nix_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 		while ((mtr->prev_cnt) + 1) {
 			mid_mtr =
 				nix_mtr_find(dev, mtr->prev_id[mtr->prev_cnt]);
+			if (mid_mtr == NULL) {
+				return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID, &mtr->prev_id[mtr->prev_cnt],
+					  "Mid meter id is invalid.");
+			}
 			rc = roc_nix_bpf_connect(nix, ROC_NIX_BPF_LEVEL_F_LEAF,
 						 mid_mtr->bpf_id,
 						 ROC_NIX_BPF_ID_INVALID);
@@ -628,6 +633,11 @@ cnxk_nix_mtr_destroy(struct rte_eth_dev *eth_dev, uint32_t mtr_id,
 		while (mtr->prev_cnt) {
 			top_mtr =
 				nix_mtr_find(dev, mtr->prev_id[mtr->prev_cnt]);
+			if (top_mtr == NULL) {
+				return -rte_mtr_error_set(error, ENOENT,
+					  RTE_MTR_ERROR_TYPE_MTR_ID, &mtr->prev_id[mtr->prev_cnt],
+					  "Top meter id is invalid.");
+			}
 			rc = roc_nix_bpf_connect(nix, ROC_NIX_BPF_LEVEL_F_MID,
 						 top_mtr->bpf_id,
 						 ROC_NIX_BPF_ID_INVALID);
@@ -1590,6 +1600,8 @@ nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 		switch (*tree_level) {
 		case 0:
 			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr == NULL)
+				return -EINVAL;
 			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
 				nix_mtr_level_update(eth_dev, cur_mtr_id, 0);
 				nix_mtr_chain_update(eth_dev, cur_mtr_id, -1,
@@ -1605,6 +1617,8 @@ nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 			break;
 		case 1:
 			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr == NULL)
+				return -EINVAL;
 			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
 				nix_mtr_level_update(eth_dev, cur_mtr_id, 1);
 				prev_mtr_id = id;
@@ -1635,6 +1649,8 @@ nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 		switch (*tree_level) {
 		case 0:
 			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr == NULL)
+				return -EINVAL;
 			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
 				nix_mtr_level_update(eth_dev, cur_mtr_id, 0);
 			} else {
@@ -1646,6 +1662,8 @@ nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 			break;
 		case 1:
 			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr == NULL)
+				return -EINVAL;
 			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
 				nix_mtr_level_update(eth_dev, cur_mtr_id, 1);
 				prev_mtr_id = id;
@@ -1666,6 +1684,8 @@ nix_mtr_color_action_validate(struct rte_eth_dev *eth_dev, uint32_t id,
 			break;
 		case 2:
 			mtr = nix_get_mtr(eth_dev, cur_mtr_id);
+			if (mtr == NULL)
+				return -EINVAL;
 			if (mtr->level == ROC_NIX_BPF_LEVEL_IDX_INVALID) {
 				nix_mtr_level_update(eth_dev, cur_mtr_id, 2);
 				prev_mtr_id = *prev_id;

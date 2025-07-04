@@ -558,6 +558,7 @@ Local Variables
 
 * Variables should be declared at the start of a block of code rather than in the middle.
   The exception to this is when the variable is ``const`` in which case the declaration must be at the point of first use/assignment.
+  Declaring variable inside a for loop is OK.
 * When declaring variables in functions, multiple variables per line are OK.
   However, if multiple declarations would cause the line to exceed a reasonable line length, begin a new set of declarations on the next line rather than using a line continuation.
 * Be careful to not obfuscate the code by initializing variables in the declarations, only the last variable on a line should be initialized.
@@ -794,6 +795,8 @@ Control Statements
                  /* NOTREACHED */
          }
 
+.. _dynamic_logging:
+
 Dynamic Logging
 ---------------
 
@@ -802,6 +805,29 @@ useful for enabling debug output without recompilation. To enable or disable
 logging of a particular topic, the ``--log-level`` parameter can be provided
 to EAL, which will change the log level. DPDK code can register topics,
 which allows the user to adjust the log verbosity for that specific topic.
+
+To register a library or driver for dynamic logging,
+using the standardized naming scheme described below,
+use ``RTE_LOG_REGISTER_DEFAULT`` macro
+to define a log-type variable inside your component's main C file.
+Thereafter, it is usual to define a macro or macros inside your component
+to make logging more convenient.
+
+For example, the ``rte_cfgfile`` library defines:
+
+.. literalinclude:: ../../../lib/cfgfile/rte_cfgfile.c
+   :language: c
+   :start-after: Setting up dynamic logging 8<
+   :end-before: >8 End of setting up dynamic logging
+
+.. note::
+
+   The statically-defined log types defined in ``rte_log.h`` are for legacy components,
+   and they will likely be removed in a future release.
+   Do not add new entries to this file.
+
+Dynamic Logging Naming Scheme
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, the naming scheme is as follows: ``type.section.name``
 
@@ -837,6 +863,8 @@ A specialization looks like this:
  * Initialization output: ``type.section.name.init``
  * PF/VF mailbox output: ``type.section.name.mbox``
 
+These specializations are created using the ``RTE_LOG_REGISTER_SUFFIX`` macro.
+
 A real world example is the i40e poll mode driver which exposes two
 specializations, one for initialization ``pmd.net.i40e.init`` and the other for
 the remaining driver logs ``pmd.net.i40e.driver``.
@@ -852,6 +880,7 @@ All Python code should be compliant with
 `PEP8 (Style Guide for Python Code) <https://www.python.org/dev/peps/pep-0008/>`_.
 
 The ``pep8`` tool can be used for testing compliance with the guidelines.
+Note that line lengths are acceptable up to 100 characters, which is in line with C recommendations.
 
 Integrating with the Build System
 ---------------------------------
@@ -956,7 +985,7 @@ ext_deps
 headers
 	**Default Value = []**.
 	Used to return the list of header files for the library that should be
-	installed to $PREFIX/include when ``ninja install`` is run. As with
+	installed to $PREFIX/include when ``meson install`` is run. As with
 	source files, these should be specified using the meson ``files()``
 	function.
 	When ``check_includes`` build option is set to ``true``, each header file
@@ -988,13 +1017,6 @@ name
 	since the convention is that for a library called ``librte_xyz.so``, the
 	sources are stored in a directory ``lib/xyz``, this value should
 	never be needed for new libraries.
-
-.. note::
-
-	The name value also provides the name used to find the function version
-	map file, as part of the build process, so if the directory name and
-	library names differ, the ``version.map`` file should be named
-	consistently with the library, not the directory
 
 objs
 	**Default Value = []**.

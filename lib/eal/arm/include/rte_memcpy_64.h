@@ -5,10 +5,6 @@
 #ifndef _RTE_MEMCPY_ARM64_H_
 #define _RTE_MEMCPY_ARM64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <string.h>
 
@@ -17,6 +13,10 @@ extern "C" {
 #ifdef RTE_ARCH_ARM64_MEMCPY
 #include <rte_common.h>
 #include <rte_branch_prediction.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * The memory copy performance differs on different AArch64 micro-architectures.
@@ -324,7 +324,16 @@ void *rte_memcpy(void *dst, const void *src, size_t n)
 }
 #endif /* RTE_CACHE_LINE_SIZE >= 128 */
 
-#else
+#ifdef __cplusplus
+}
+#endif
+
+#else /* RTE_ARCH_ARM64_MEMCPY */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)
 {
@@ -363,10 +372,10 @@ rte_mov256(uint8_t *dst, const uint8_t *src)
 
 #define rte_memcpy(d, s, n)	memcpy((d), (s), (n))
 
-#endif /* RTE_ARCH_ARM64_MEMCPY */
-
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* RTE_ARCH_ARM64_MEMCPY */
 
 #endif /* _RTE_MEMCPY_ARM_64_H_ */

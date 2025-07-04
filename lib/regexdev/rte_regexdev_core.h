@@ -14,7 +14,6 @@
  * in order to expose their ops to the class.
  *
  * Applications should not use these API directly.
- *
  */
 
 struct rte_regexdev;
@@ -145,13 +144,13 @@ enum rte_regexdev_state {
  * This structure is safe to place in shared memory to be common among different
  * processes in a multi-process configuration.
  */
-struct rte_regexdev_data {
+struct __rte_cache_aligned rte_regexdev_data {
 	void *dev_private; /**< PMD-specific private data. */
 	char dev_name[RTE_REGEXDEV_NAME_MAX_LEN]; /**< Unique identifier name */
 	uint16_t dev_id; /**< Device [external]  identifier. */
 	struct rte_regexdev_config dev_conf; /**< RegEx configuration. */
 	uint8_t dev_started : 1; /**< Device started to work. */
-} __rte_cache_aligned;
+};
 
 /**
  * @internal
@@ -163,7 +162,7 @@ struct rte_regexdev_data {
  * memory. This split allows the function pointer and driver data to be per-
  * process, while the actual configuration data for the device is shared.
  */
-struct rte_regexdev {
+struct __rte_cache_aligned rte_regexdev {
 	regexdev_enqueue_t enqueue;
 	regexdev_dequeue_t dequeue;
 	const struct rte_regexdev_ops *dev_ops;
@@ -171,7 +170,7 @@ struct rte_regexdev {
 	struct rte_device *device; /**< Backing device */
 	enum rte_regexdev_state state; /**< The device state. */
 	struct rte_regexdev_data *data;  /**< Pointer to device data. */
-} __rte_cache_aligned;
+};
 
 /**
  * @internal

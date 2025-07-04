@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/sysmacros.h>
-#include <linux/pci_regs.h>
 
 #if defined(RTE_ARCH_X86)
 #include <sys/io.h>
@@ -55,33 +54,26 @@ pci_uio_write_config(const struct rte_intr_handle *intr_handle,
 	return pwrite(uio_cfg_fd, buf, len, offset);
 }
 
-static int
-pci_uio_set_bus_master(int dev_fd)
+int
+pci_uio_mmio_read(const struct rte_pci_device *dev, int bar,
+		  void *buf, size_t len, off_t offset)
 {
-	uint16_t reg;
-	int ret;
-
-	ret = pread(dev_fd, &reg, sizeof(reg), PCI_COMMAND);
-	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL,
-			"Cannot read command from PCI config space!\n");
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
 		return -1;
-	}
+	memcpy(buf, (uint8_t *)dev->mem_resource[bar].addr + offset, len);
+	return len;
+}
 
-	/* return if bus mastering is already on */
-	if (reg & PCI_COMMAND_MASTER)
-		return 0;
-
-	reg |= PCI_COMMAND_MASTER;
-
-	ret = pwrite(dev_fd, &reg, sizeof(reg), PCI_COMMAND);
-	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL,
-			"Cannot write command to PCI config space!\n");
+int
+pci_uio_mmio_write(const struct rte_pci_device *dev, int bar,
+		   const void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
 		return -1;
-	}
-
-	return 0;
+	memcpy((uint8_t *)dev->mem_resource[bar].addr + offset, buf, len);
+	return len;
 }
 
 static int
@@ -99,15 +91,13 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 
 	f = fopen(filename, "r");
 	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open sysfs to get major:minor\n",
-			__func__);
+		PCI_LOG(ERR, "%s(): cannot open sysfs to get major:minor", __func__);
 		return -1;
 	}
 
 	ret = fscanf(f, "%u:%u", &major, &minor);
 	if (ret != 2) {
-		RTE_LOG(ERR, EAL, "%s(): cannot parse sysfs to get major:minor\n",
-			__func__);
+		PCI_LOG(ERR, "%s(): cannot parse sysfs to get major:minor", __func__);
 		fclose(f);
 		return -1;
 	}
@@ -118,8 +108,7 @@ pci_mknod_uio_dev(const char *sysfs_uio_path, unsigned uio_num)
 	dev = makedev(major, minor);
 	ret = mknod(filename, S_IFCHR | S_IRUSR | S_IWUSR, dev);
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL, "%s(): mknod() failed %s\n",
-			__func__, strerror(errno));
+		PCI_LOG(ERR, "%s(): mknod() failed %s", __func__, strerror(errno));
 		return -1;
 	}
 
@@ -158,7 +147,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 		dir = opendir(dirname);
 
 		if (dir == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot opendir %s\n", dirname);
+			PCI_LOG(ERR, "Cannot opendir %s", dirname);
 			return -1;
 		}
 	}
@@ -199,7 +188,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 	/* create uio device if we've been asked to */
 	if (rte_eal_create_uio_dev() && create &&
 			pci_mknod_uio_dev(dstbuf, uio_num) < 0)
-		RTE_LOG(WARNING, EAL, "Cannot create /dev/uio%u\n", uio_num);
+		PCI_LOG(WARNING, "Cannot create /dev/uio%u", uio_num);
 
 	return uio_num;
 }
@@ -239,17 +228,16 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	/* find uio resource */
 	uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 1);
 	if (uio_num < 0) {
-		RTE_LOG(WARNING, EAL, "  "PCI_PRI_FMT" not managed by UIO driver, "
-				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
+		PCI_LOG(WARNING, "  "PCI_PRI_FMT" not managed by UIO driver, skipping",
+			loc->domain, loc->bus, loc->devid, loc->function);
 		return 1;
 	}
 	snprintf(devname, sizeof(devname), "/dev/uio%u", uio_num);
 
-	/* save fd if in primary process */
+	/* save fd */
 	fd = open(devname, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-			devname, strerror(errno));
+		PCI_LOG(ERR, "Cannot open %s: %s", devname, strerror(errno));
 		goto error;
 	}
 
@@ -261,8 +249,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 
 	uio_cfg_fd = open(cfgname, O_RDWR);
 	if (uio_cfg_fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-			cfgname, strerror(errno));
+		PCI_LOG(ERR, "Cannot open %s: %s", cfgname, strerror(errno));
 		goto error;
 	}
 
@@ -277,17 +264,19 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 			goto error;
 
 		/* set bus master that is not done by uio_pci_generic */
-		if (pci_uio_set_bus_master(uio_cfg_fd)) {
-			RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
+		if (rte_pci_set_bus_master(dev, true)) {
+			PCI_LOG(ERR, "Cannot set up bus mastering!");
 			goto error;
 		}
 	}
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	/* allocate the mapping details for secondary processes*/
 	*uio_res = rte_zmalloc("UIO_RES", sizeof(**uio_res), 0);
 	if (*uio_res == NULL) {
-		RTE_LOG(ERR, EAL,
-			"%s(): cannot store uio mmap details\n", __func__);
+		PCI_LOG(ERR, "%s(): cannot store uio mmap details", __func__);
 		goto error;
 	}
 
@@ -321,8 +310,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	/* allocate memory to keep path */
 	maps[map_idx].path = rte_malloc(NULL, sizeof(devname), 0);
 	if (maps[map_idx].path == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for path: %s\n",
-				strerror(errno));
+		PCI_LOG(ERR, "Cannot allocate memory for path: %s", strerror(errno));
 		return -1;
 	}
 
@@ -339,8 +327,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 
 		fd = open(devname, O_RDWR);
 		if (fd < 0 && errno != ENOENT) {
-			RTE_LOG(INFO, EAL, "%s cannot be mapped. "
-				"Fall-back to non prefetchable mode.\n",
+			PCI_LOG(INFO, "%s cannot be mapped. Fall-back to non prefetchable mode.",
 				devname);
 		}
 	}
@@ -355,8 +342,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 		/* then try to map resource file */
 		fd = open(devname, O_RDWR);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-				devname, strerror(errno));
+			PCI_LOG(ERR, "Cannot open %s: %s", devname, strerror(errno));
 			goto error;
 		}
 	}
@@ -411,14 +397,13 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		dev->addr.devid, dev->addr.function);
 	f = fopen(filename, "r");
 	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot open sysfs resource: %s\n",
-			__func__, strerror(errno));
+		PCI_LOG(ERR, "%s(): Cannot open sysfs resource: %s", __func__, strerror(errno));
 		return -1;
 	}
 
 	for (i = 0; i < bar + 1; i++) {
 		if (fgets(buf, sizeof(buf), f) == NULL) {
-			RTE_LOG(ERR, EAL, "%s(): Cannot read sysfs resource\n", __func__);
+			PCI_LOG(ERR, "%s(): Cannot read sysfs resource", __func__);
 			goto error;
 		}
 	}
@@ -428,23 +413,23 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 
 	if (flags & IORESOURCE_IO) {
 		if (rte_eal_iopl_init()) {
-			RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
+			PCI_LOG(ERR, "%s(): insufficient ioport permissions for PCI device %s",
 				__func__, dev->name);
 			goto error;
 		}
 
 		base = (unsigned long)phys_addr;
 		if (base > PIO_MAX) {
-			RTE_LOG(ERR, EAL, "%s(): %08lx too large PIO resource\n", __func__, base);
+			PCI_LOG(ERR, "%s(): %08lx too large PIO resource", __func__, base);
 			goto error;
 		}
 
-		RTE_LOG(DEBUG, EAL, "%s(): PIO BAR %08lx detected\n", __func__, base);
+		PCI_LOG(DEBUG, "%s(): PIO BAR %08lx detected", __func__, base);
 	} else if (flags & IORESOURCE_MEM) {
 		base = (unsigned long)dev->mem_resource[bar].addr;
-		RTE_LOG(DEBUG, EAL, "%s(): MMIO BAR %08lx detected\n", __func__, base);
+		PCI_LOG(DEBUG, "%s(): MMIO BAR %08lx detected", __func__, base);
 	} else {
-		RTE_LOG(ERR, EAL, "%s(): unknown BAR type\n", __func__);
+		PCI_LOG(ERR, "%s(): unknown BAR type", __func__);
 		goto error;
 	}
 
@@ -453,16 +438,14 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 					RTE_INTR_HANDLE_UNKNOWN) {
 		int uio_num = pci_get_uio_dev(dev, dirname, sizeof(dirname), 0);
 		if (uio_num < 0) {
-			RTE_LOG(ERR, EAL, "cannot open %s: %s\n",
-				dirname, strerror(errno));
+			PCI_LOG(ERR, "cannot open %s: %s", dirname, strerror(errno));
 			goto error;
 		}
 
 		snprintf(filename, sizeof(filename), "/dev/uio%u", uio_num);
 		fd = open(filename, O_RDWR);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-				filename, strerror(errno));
+			PCI_LOG(ERR, "Cannot open %s: %s", filename, strerror(errno));
 			goto error;
 		}
 		if (rte_intr_fd_set(dev->intr_handle, fd))
@@ -472,7 +455,7 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 			goto error;
 	}
 
-	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%lx\n", base);
+	PCI_LOG(DEBUG, "PCI Port IO found start=0x%lx", base);
 
 	p->base = base;
 	p->len = 0;
@@ -501,13 +484,12 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		dev->addr.devid, dev->addr.function);
 	f = fopen(filename, "r");
 	if (f == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot open sysfs resource: %s\n",
-			strerror(errno));
+		PCI_LOG(ERR, "Cannot open sysfs resource: %s", strerror(errno));
 		return -1;
 	}
 	for (i = 0; i < bar + 1; i++) {
 		if (fgets(buf, sizeof(buf), f) == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot read sysfs resource\n");
+			PCI_LOG(ERR, "Cannot read sysfs resource");
 			goto error;
 		}
 	}
@@ -515,7 +497,7 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 			&end_addr, &flags) < 0)
 		goto error;
 	if ((flags & IORESOURCE_IO) == 0) {
-		RTE_LOG(ERR, EAL, "BAR %d is not an IO resource\n", bar);
+		PCI_LOG(ERR, "BAR %d is not an IO resource", bar);
 		goto error;
 	}
 	snprintf(filename, sizeof(filename), "%s/" PCI_PRI_FMT "/resource%d",
@@ -525,23 +507,21 @@ pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 	/* mmap the pci resource */
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n", filename,
-			strerror(errno));
+		PCI_LOG(ERR, "Cannot open %s: %s", filename, strerror(errno));
 		goto error;
 	}
 	addr = mmap(NULL, end_addr + 1, PROT_READ | PROT_WRITE,
 		MAP_SHARED, fd, 0);
 	close(fd);
 	if (addr == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "Cannot mmap IO port resource: %s\n",
-			strerror(errno));
+		PCI_LOG(ERR, "Cannot mmap IO port resource: %s", strerror(errno));
 		goto error;
 	}
 
 	/* strangely, the base address is mmap addr + phys_addr */
 	p->base = (uintptr_t)addr + phys_addr;
 	p->len = end_addr + 1;
-	RTE_LOG(DEBUG, EAL, "PCI Port IO found start=0x%"PRIx64"\n", p->base);
+	PCI_LOG(DEBUG, "PCI Port IO found start=0x%"PRIx64, p->base);
 	fclose(f);
 
 	return 0;

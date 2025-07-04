@@ -8,7 +8,6 @@ if is_windows
 endif
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'hinic_pmd_ethdev.c',
@@ -18,3 +17,7 @@ sources = files(
 )
 
 includes += include_directories('base')
+
+if is_freebsd
+    annotate_locks = false
+endif

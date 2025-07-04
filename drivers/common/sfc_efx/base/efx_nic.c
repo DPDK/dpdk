@@ -79,6 +79,21 @@ efx_family(
 			return (0);
 #endif /* EFSYS_OPT_MEDFORD2 */
 
+#if EFSYS_OPT_MEDFORD4
+		case EFX_PCI_DEVID_MEDFORD4_PF_UNINIT:
+			/*
+			 * Hardware default for PF0 of uninitialised Medford4.
+			 * manftest must be able to cope with this device id.
+			 */
+		case EFX_PCI_DEVID_MEDFORD4:
+		case EFX_PCI_DEVID_MEDFORD4_VF:
+		case EFX_PCI_DEVID_MEDFORD4_NO_LL:
+		case EFX_PCI_DEVID_MEDFORD4_NO_LL_VF:
+			*efp = EFX_FAMILY_MEDFORD4;
+			*membarp = EFX_MEM_BAR_MEDFORD4;
+			return (0);
+#endif /* EFSYS_OPT_MEDFORD4 */
+
 		case EFX_PCI_DEVID_FALCON:	/* Obsolete, not supported */
 		default:
 			break;
@@ -251,6 +266,27 @@ static const efx_nic_ops_t	__efx_nic_riverhead_ops = {
 
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+
+static const efx_nic_ops_t	__efx_nic_medford4_ops = {
+	ef10_nic_probe,			/* eno_probe */
+	medford2_board_cfg,		/* eno_board_cfg */
+	ef10_nic_set_drv_limits,	/* eno_set_drv_limits */
+	ef10_nic_reset,			/* eno_reset */
+	ef10_nic_init,			/* eno_init */
+	ef10_nic_get_vi_pool,		/* eno_get_vi_pool */
+	ef10_nic_get_bar_region,	/* eno_get_bar_region */
+	ef10_nic_hw_unavailable,	/* eno_hw_unavailable */
+	ef10_nic_set_hw_unavailable,	/* eno_set_hw_unavailable */
+#if EFSYS_OPT_DIAG
+	ef10_nic_register_test,		/* eno_register_test */
+#endif	/* EFSYS_OPT_DIAG */
+	ef10_nic_fini,			/* eno_fini */
+	ef10_nic_unprobe,		/* eno_unprobe */
+};
+
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 
 	__checkReturn	efx_rc_t
 efx_nic_create(
@@ -363,6 +399,22 @@ efx_nic_create(
 		break;
 #endif	/* EFSYS_OPT_RIVERHEAD */
 
+#if EFSYS_OPT_MEDFORD4
+	case EFX_FAMILY_MEDFORD4:
+		enp->en_enop = &__efx_nic_medford4_ops;
+		enp->en_features =
+		    EFX_FEATURE_IPV6 |
+		    EFX_FEATURE_LINK_EVENTS |
+		    EFX_FEATURE_PERIODIC_MAC_STATS |
+		    EFX_FEATURE_MCDI |
+		    EFX_FEATURE_MAC_HEADER_FILTERS |
+		    EFX_FEATURE_MCDI_DMA |
+		    EFX_FEATURE_FW_ASSISTED_TSO_V2 |
+		    EFX_FEATURE_PACKED_STREAM |
+		    EFX_FEATURE_TXQ_CKSUM_OP_DESC;
+		break;
+#endif	/* EFSYS_OPT_MEDFORD4 */
+
 	default:
 		rc = ENOTSUP;
 		goto fail2;
@@ -438,6 +490,14 @@ efx_nic_probe(
 		goto fail1;
 
 	encp->enc_features = enp->en_features;
+
+	encp->enc_mac_pdu_max = efx_mac_pdu_from_sdu(enp, EFX_MAC_SDU_MAX);
+	encp->enc_mac_pdu_min = EFX_MAC_PDU_MIN;
+
+	if (efx_np_supported(enp) == B_FALSE)
+		encp->enc_link_ev_need_poll = B_FALSE;
+	else
+		encp->enc_link_ev_need_poll = B_TRUE;
 
 	if ((rc = efx_phy_probe(enp)) != 0)
 		goto fail2;

@@ -4,6 +4,7 @@
 
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_windows.h>
 #include <rte_errno.h>
 #include <rte_log.h>
@@ -36,6 +37,7 @@ DEFINE_DEVPROPKEY(DEVPKEY_Device_Numa_Node, 0x540b947e, 0x8b40, 0x45bc,
  */
 
 /* Map pci device */
+RTE_EXPORT_SYMBOL(rte_pci_map_device)
 int
 rte_pci_map_device(struct rte_pci_device *dev)
 {
@@ -50,6 +52,7 @@ rte_pci_map_device(struct rte_pci_device *dev)
 }
 
 /* Unmap pci device */
+RTE_EXPORT_SYMBOL(rte_pci_unmap_device)
 void
 rte_pci_unmap_device(struct rte_pci_device *dev __rte_unused)
 {
@@ -61,6 +64,7 @@ rte_pci_unmap_device(struct rte_pci_device *dev __rte_unused)
 }
 
 /* Read PCI config space. */
+RTE_EXPORT_SYMBOL(rte_pci_read_config)
 int
 rte_pci_read_config(const struct rte_pci_device *dev __rte_unused,
 	void *buf __rte_unused, size_t len __rte_unused,
@@ -75,6 +79,7 @@ rte_pci_read_config(const struct rte_pci_device *dev __rte_unused,
 }
 
 /* Write PCI config space. */
+RTE_EXPORT_SYMBOL(rte_pci_write_config)
 int
 rte_pci_write_config(const struct rte_pci_device *dev __rte_unused,
 	const void *buf __rte_unused, size_t len __rte_unused,
@@ -86,6 +91,32 @@ rte_pci_write_config(const struct rte_pci_device *dev __rte_unused,
 	 * in the rte_pci_driver flags.
 	 */
 	return 0;
+}
+
+/* Read PCI MMIO space. */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_mmio_read, 23.07)
+int
+rte_pci_mmio_read(const struct rte_pci_device *dev, int bar,
+		      void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
+		return -1;
+	memcpy(buf, (uint8_t *)dev->mem_resource[bar].addr + offset, len);
+	return len;
+}
+
+/* Write PCI MMIO space. */
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pci_mmio_write, 23.07)
+int
+rte_pci_mmio_write(const struct rte_pci_device *dev, int bar,
+		       const void *buf, size_t len, off_t offset)
+{
+	if (bar >= PCI_MAX_RESOURCE || dev->mem_resource[bar].addr == NULL ||
+			(uint64_t)offset + len > dev->mem_resource[bar].len)
+		return -1;
+	memcpy((uint8_t *)dev->mem_resource[bar].addr + offset, buf, len);
+	return len;
 }
 
 enum rte_iova_mode
@@ -100,6 +131,7 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv __rte_unused,
 	return RTE_IOVA_DC;
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_map)
 int
 rte_pci_ioport_map(struct rte_pci_device *dev __rte_unused,
 	int bar __rte_unused, struct rte_pci_ioport *p __rte_unused)
@@ -113,6 +145,7 @@ rte_pci_ioport_map(struct rte_pci_device *dev __rte_unused,
 }
 
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_read)
 void
 rte_pci_ioport_read(struct rte_pci_ioport *p __rte_unused,
 	void *data __rte_unused, size_t len __rte_unused,
@@ -125,6 +158,7 @@ rte_pci_ioport_read(struct rte_pci_ioport *p __rte_unused,
 	 */
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_unmap)
 int
 rte_pci_ioport_unmap(struct rte_pci_ioport *p __rte_unused)
 {
@@ -147,6 +181,7 @@ pci_device_iommu_support_va(const struct rte_pci_device *dev __rte_unused)
 	return false;
 }
 
+RTE_EXPORT_SYMBOL(rte_pci_ioport_write)
 void
 rte_pci_ioport_write(struct rte_pci_ioport *p __rte_unused,
 		const void *data __rte_unused, size_t len __rte_unused,
@@ -222,8 +257,7 @@ get_device_resource_info(HDEVINFO dev_info,
 		/* get device info from NetUIO kernel driver */
 		ret = get_netuio_device_info(dev_info, dev_info_data, dev);
 		if (ret != 0) {
-			RTE_LOG(DEBUG, EAL,
-				"Could not retrieve device info for PCI device "
+			PCI_LOG(DEBUG, "Could not retrieve device info for PCI device "
 				PCI_PRI_FMT,
 				dev->addr.domain, dev->addr.bus,
 				dev->addr.devid, dev->addr.function);
@@ -232,9 +266,7 @@ get_device_resource_info(HDEVINFO dev_info,
 		break;
 	default:
 		/* kernel driver type is unsupported */
-		RTE_LOG(DEBUG, EAL,
-			"Kernel driver type for PCI device " PCI_PRI_FMT ","
-			" is unsupported",
+		PCI_LOG(DEBUG, "Kernel driver type for PCI device " PCI_PRI_FMT ", is unsupported",
 			dev->addr.domain, dev->addr.bus,
 			dev->addr.devid, dev->addr.function);
 		return -1;
@@ -336,6 +368,7 @@ set_kernel_driver_type(PSP_DEVINFO_DATA device_info_data,
 static int
 pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 {
+	struct rte_pci_device_internal *pdev = NULL;
 	struct rte_pci_device *dev = NULL;
 	int ret = -1;
 	char  pci_device_info[REGSTR_VAL_MAX_HCID_LEN];
@@ -370,11 +403,14 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 		goto end;
 	}
 
-	dev = malloc(sizeof(*dev));
-	if (dev == NULL)
+	pdev = malloc(sizeof(*pdev));
+	if (pdev == NULL) {
+		PCI_LOG(ERR, "Cannot allocate memory for internal pci device");
 		goto end;
+	}
 
-	memset(dev, 0, sizeof(*dev));
+	memset(pdev, 0, sizeof(*pdev));
+	dev = &pdev->device;
 
 	dev->device.bus = &rte_pci_bus.bus;
 	dev->addr = addr;
@@ -409,7 +445,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 				dev2->max_vfs = dev->max_vfs;
 				memmove(dev2->mem_resource, dev->mem_resource,
 					sizeof(dev->mem_resource));
-				pci_free(dev);
+				pci_free(pdev);
 			}
 			return 0;
 		}
@@ -418,7 +454,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 
 	return 0;
 end:
-	pci_free(dev);
+	pci_free(pdev);
 	return ret;
 }
 
@@ -442,7 +478,7 @@ rte_pci_scan(void)
 		DIGCF_PRESENT | DIGCF_ALLCLASSES);
 	if (dev_info == INVALID_HANDLE_VALUE) {
 		RTE_LOG_WIN32_ERR("SetupDiGetClassDevs(pci_scan)");
-		RTE_LOG(ERR, EAL, "Unable to enumerate PCI devices.\n");
+		PCI_LOG(ERR, "Unable to enumerate PCI devices.");
 		goto end;
 	}
 
@@ -467,7 +503,7 @@ rte_pci_scan(void)
 		device_info_data.cbSize = sizeof(SP_DEVINFO_DATA);
 	}
 
-	RTE_LOG(DEBUG, EAL, "PCI scan found %lu devices\n", found_device);
+	PCI_LOG(DEBUG, "PCI scan found %lu devices", found_device);
 	ret = 0;
 end:
 	if (dev_info != INVALID_HANDLE_VALUE)

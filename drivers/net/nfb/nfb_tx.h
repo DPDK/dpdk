@@ -140,7 +140,7 @@ nfb_eth_ndp_tx(void *queue,
 		return 0;
 
 	if (unlikely(ndp->queue == NULL)) {
-		RTE_LOG(ERR, PMD, "TX invalid arguments!\n");
+		NFB_LOG(ERR, "TX invalid arguments");
 		return 0;
 	}
 

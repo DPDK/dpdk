@@ -10,8 +10,11 @@
 #include "nitrox_sym_reqmgr.h"
 #include "nitrox_logs.h"
 
-#define MAX_SGBUF_CNT 16
-#define MAX_SGCOMP_CNT 5
+#define MAX_SUPPORTED_MBUF_SEGS 16
+/* IV + AAD + ORH + CC + DIGEST */
+#define ADDITIONAL_SGBUF_CNT 5
+#define MAX_SGBUF_CNT (MAX_SUPPORTED_MBUF_SEGS + ADDITIONAL_SGBUF_CNT)
+#define MAX_SGCOMP_CNT (RTE_ALIGN_MUL_CEIL(MAX_SGBUF_CNT, 4) / 4)
 /* SLC_STORE_INFO */
 #define MIN_UDD_LEN 16
 /* PKT_IN_HDR + SLC_STORE_INFO */
@@ -20,6 +23,8 @@
 #define SOLICIT_BASE_DPORT 256
 #define PENDING_SIG 0xFFFFFFFFFFFFFFFFUL
 #define CMD_TIMEOUT 2
+/* For AES_CCM actual AAD will be copied 18 bytes after the AAD pointer, according to the API */
+#define DPDK_AES_CCM_ADD_OFFSET 18
 
 struct gphdr {
 	uint16_t param0;
@@ -303,7 +308,7 @@ create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl, struct rte_mbuf *mbuf,
 		datalen -= mlen;
 	}
 
-	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	RTE_ASSERT(cnt <= MAX_SGBUF_CNT);
 	sgtbl->map_bufs_cnt = cnt;
 	return 0;
 }
@@ -375,7 +380,7 @@ create_cipher_outbuf(struct nitrox_softreq *sr)
 	sr->out.sglist[cnt].virt = &sr->resp.completion;
 	cnt++;
 
-	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	RTE_ASSERT(cnt <= MAX_SGBUF_CNT);
 	sr->out.map_bufs_cnt = cnt;
 
 	create_sgcomp(&sr->out);
@@ -461,7 +466,7 @@ create_cipher_auth_sglist(struct nitrox_softreq *sr,
 	if (unlikely(
 		op->sym->cipher.data.offset + op->sym->cipher.data.length !=
 		op->sym->auth.data.offset + op->sym->auth.data.length)) {
-		NITROX_LOG(ERR, "Auth only data after cipher data not supported\n");
+		NITROX_LOG_LINE(ERR, "Auth only data after cipher data not supported");
 		return -ENOTSUP;
 	}
 
@@ -483,10 +488,15 @@ create_combined_sglist(struct nitrox_softreq *sr, struct nitrox_sgtable *sgtbl,
 		       struct rte_mbuf *mbuf)
 {
 	struct rte_crypto_op *op = sr->op;
+	uint32_t aad_offset = 0;
+
+	if (sr->ctx->aead_algo == RTE_CRYPTO_AEAD_AES_CCM)
+		aad_offset = DPDK_AES_CCM_ADD_OFFSET;
 
 	fill_sglist(sgtbl, sr->iv.len, sr->iv.iova, sr->iv.virt);
-	fill_sglist(sgtbl, sr->ctx->aad_length, op->sym->aead.aad.phys_addr,
-		    op->sym->aead.aad.data);
+	fill_sglist(sgtbl, sr->ctx->aad_length,
+		    op->sym->aead.aad.phys_addr + aad_offset,
+		    op->sym->aead.aad.data + aad_offset);
 	return create_sglist_from_mbuf(sgtbl, mbuf, op->sym->cipher.data.offset,
 				       op->sym->cipher.data.length);
 }
@@ -600,7 +610,7 @@ create_aead_outbuf(struct nitrox_softreq *sr, struct nitrox_sglist *digest)
 						     resp.completion);
 	sr->out.sglist[cnt].virt = &sr->resp.completion;
 	cnt++;
-	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	RTE_ASSERT(cnt <= MAX_SGBUF_CNT);
 	sr->out.map_bufs_cnt = cnt;
 
 	create_sgcomp(&sr->out);
@@ -669,7 +679,7 @@ softreq_copy_salt(struct nitrox_softreq *sr)
 	uint8_t *addr;
 
 	if (unlikely(ctx->iv.length < AES_GCM_SALT_SIZE)) {
-		NITROX_LOG(ERR, "Invalid IV length %d\n", ctx->iv.length);
+		NITROX_LOG_LINE(ERR, "Invalid IV length %d", ctx->iv.length);
 		return -EINVAL;
 	}
 
@@ -718,11 +728,53 @@ process_combined_data(struct nitrox_softreq *sr)
 	struct nitrox_sglist digest;
 	struct rte_crypto_op *op = sr->op;
 
-	err = softreq_copy_salt(sr);
-	if (unlikely(err))
-		return err;
+	if (sr->ctx->aead_algo == RTE_CRYPTO_AEAD_AES_GCM) {
+		err = softreq_copy_salt(sr);
+		if (unlikely(err))
+			return err;
 
-	softreq_copy_iv(sr, AES_GCM_SALT_SIZE);
+		softreq_copy_iv(sr, AES_GCM_SALT_SIZE);
+	} else if (sr->ctx->aead_algo == RTE_CRYPTO_AEAD_AES_CCM) {
+		union {
+			uint8_t value;
+			struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+				uint8_t rsvd: 1;
+				uint8_t adata: 1;
+				uint8_t mstar: 3;
+				uint8_t lstar: 3;
+#else
+				uint8_t lstar: 3;
+				uint8_t mstar: 3;
+				uint8_t adata: 1;
+				uint8_t rsvd: 1;
+#endif
+			};
+		} flags;
+		uint8_t L;
+		uint8_t *iv_addr;
+
+		flags.value = 0;
+		flags.rsvd = 0;
+		flags.adata = (sr->ctx->aad_length > 0) ? 1 : 0;
+		flags.mstar = (sr->ctx->digest_length - 2) / 2;
+		L = 15 - sr->ctx->iv.length;
+		flags.lstar = L - 1;
+		iv_addr = rte_crypto_op_ctod_offset(sr->op, uint8_t *,
+						    sr->ctx->iv.offset);
+		/* initialize IV flags */
+		iv_addr[0] = flags.value;
+		/* initialize IV counter to 0 */
+		memset(&iv_addr[1] + sr->ctx->iv.length, 0, L);
+		sr->iv.virt = rte_crypto_op_ctod_offset(sr->op, uint8_t *,
+							sr->ctx->iv.offset);
+		sr->iv.iova = rte_crypto_op_ctophys_offset(sr->op,
+							   sr->ctx->iv.offset);
+		sr->iv.len = 16;
+	} else {
+		return -EINVAL;
+	}
+
 	err = extract_combined_digest(sr, &digest);
 	if (unlikely(err))
 		return err;
@@ -774,6 +826,14 @@ nitrox_process_se_req(uint16_t qno, struct rte_crypto_op *op,
 {
 	int err;
 
+	if (unlikely(op->sym->m_src->nb_segs > MAX_SUPPORTED_MBUF_SEGS ||
+		     (op->sym->m_dst &&
+		      op->sym->m_dst->nb_segs > MAX_SUPPORTED_MBUF_SEGS))) {
+		NITROX_LOG_LINE(ERR, "Mbuf segments not supported. "
+			   "Max supported %d", MAX_SUPPORTED_MBUF_SEGS);
+		return -ENOTSUP;
+	}
+
 	softreq_init(sr, sr->iova);
 	sr->ctx = ctx;
 	sr->op = op;
@@ -805,7 +865,7 @@ nitrox_check_se_req(struct nitrox_softreq *sr, struct rte_crypto_op **op)
 		return -EAGAIN;
 
 	if (unlikely(err))
-		NITROX_LOG(ERR, "Request err 0x%x, orh 0x%"PRIx64"\n", err,
+		NITROX_LOG_LINE(ERR, "Request err 0x%x, orh 0x%"PRIx64, err,
 			   sr->resp.orh);
 
 	*op = sr->op;
@@ -841,7 +901,7 @@ nitrox_sym_req_pool_create(struct rte_cryptodev *cdev, uint32_t nobjs,
 				64, 0, NULL, NULL, req_pool_obj_init, NULL,
 				socket_id, 0);
 	if (unlikely(!mp))
-		NITROX_LOG(ERR, "Failed to create req pool, qid %d, err %d\n",
+		NITROX_LOG_LINE(ERR, "Failed to create req pool, qid %d, err %d",
 			   qp_id, rte_errno);
 
 	return mp;

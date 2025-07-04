@@ -4,6 +4,12 @@
 
 #include "mlx5dr_internal.h"
 
+static uint32_t mlx5dr_cmd_get_syndrome(uint32_t *out)
+{
+	/* Assumption: syndrome is always the second u32 */
+	return be32toh(out[1]);
+}
+
 int mlx5dr_cmd_destroy_obj(struct mlx5dr_devx_obj *devx_obj)
 {
 	int ret;
@@ -36,10 +42,12 @@ mlx5dr_cmd_flow_table_create(struct ibv_context *ctx,
 	ft_ctx = MLX5_ADDR_OF(create_flow_table_in, in, flow_table_context);
 	MLX5_SET(flow_table_context, ft_ctx, level, ft_attr->level);
 	MLX5_SET(flow_table_context, ft_ctx, rtc_valid, ft_attr->rtc_valid);
+	MLX5_SET(flow_table_context, ft_ctx, reformat_en, ft_attr->reformat_en);
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create FT");
+		DR_LOG(ERR, "Failed to create FT (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -73,9 +81,39 @@ mlx5dr_cmd_flow_table_modify(struct mlx5dr_devx_obj *devx_obj,
 
 	ret = mlx5_glue->devx_obj_modify(devx_obj->obj, in, sizeof(in), out, sizeof(out));
 	if (ret) {
-		DR_LOG(ERR, "Failed to modify FT");
+		DR_LOG(ERR, "Failed to modify FT (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		rte_errno = errno;
 	}
+
+	return ret;
+}
+
+int
+mlx5dr_cmd_flow_table_query(struct mlx5dr_devx_obj *devx_obj,
+			    struct mlx5dr_cmd_ft_query_attr *ft_attr,
+			    uint64_t *icm_addr_0, uint64_t *icm_addr_1)
+{
+	uint32_t out[MLX5_ST_SZ_DW(query_flow_table_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(query_flow_table_in)] = {0};
+	void *ft_ctx;
+	int ret;
+
+	MLX5_SET(query_flow_table_in, in, opcode, MLX5_CMD_OP_QUERY_FLOW_TABLE);
+	MLX5_SET(query_flow_table_in, in, table_type, ft_attr->type);
+	MLX5_SET(query_flow_table_in, in, table_id, devx_obj->id);
+
+	ret = mlx5_glue->devx_obj_query(devx_obj->obj, in, sizeof(in), out, sizeof(out));
+	if (ret) {
+		DR_LOG(ERR, "Failed to query FT (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
+		rte_errno = errno;
+		return ret;
+	}
+
+	ft_ctx = MLX5_ADDR_OF(query_flow_table_out, out, flow_table_context);
+	*icm_addr_0 = MLX5_GET64(flow_table_context, ft_ctx, sw_owner_icm_root_0);
+	*icm_addr_1 = MLX5_GET64(flow_table_context, ft_ctx, sw_owner_icm_root_1);
 
 	return ret;
 }
@@ -101,7 +139,8 @@ mlx5dr_cmd_flow_group_create(struct ibv_context *ctx,
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create Flow group");
+		DR_LOG(ERR, "Failed to create Flow group(syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -112,24 +151,40 @@ mlx5dr_cmd_flow_group_create(struct ibv_context *ctx,
 	return devx_obj;
 }
 
-static struct mlx5dr_devx_obj *
-mlx5dr_cmd_set_vport_fte(struct ibv_context *ctx,
-			 uint32_t table_type,
-			 uint32_t table_id,
-			 uint32_t group_id,
-			 uint32_t vport_id)
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_set_fte(struct ibv_context *ctx,
+		   uint32_t table_type,
+		   uint32_t table_id,
+		   uint32_t group_id,
+		   struct mlx5dr_cmd_set_fte_attr *fte_attr)
 {
-	uint32_t in[MLX5_ST_SZ_DW(set_fte_in) + MLX5_ST_SZ_DW(dest_format)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(set_fte_out)] = {0};
 	struct mlx5dr_devx_obj *devx_obj;
+	uint32_t dest_entry_sz;
+	uint32_t total_dest_sz;
 	void *in_flow_context;
-	void *in_dests;
+	uint32_t action_flags;
+	uint8_t *in_dests;
+	uint32_t inlen;
+	uint32_t *in;
+	uint32_t i;
+
+	dest_entry_sz = fte_attr->extended_dest ?
+			MLX5_ST_SZ_BYTES(extended_dest_format) :
+			MLX5_ST_SZ_BYTES(dest_format);
+	total_dest_sz = dest_entry_sz * fte_attr->dests_num;
+	inlen = align((MLX5_ST_SZ_BYTES(set_fte_in) + total_dest_sz), DW_SIZE);
+	in = simple_calloc(1, inlen);
+	if (!in) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
 
 	devx_obj = simple_malloc(sizeof(*devx_obj));
 	if (!devx_obj) {
 		DR_LOG(ERR, "Failed to allocate memory for fte object");
 		rte_errno = ENOMEM;
-		return NULL;
+		goto free_in;
 	}
 
 	MLX5_SET(set_fte_in, in, opcode, MLX5_CMD_OP_SET_FLOW_TABLE_ENTRY);
@@ -138,50 +193,102 @@ mlx5dr_cmd_set_vport_fte(struct ibv_context *ctx,
 
 	in_flow_context = MLX5_ADDR_OF(set_fte_in, in, flow_context);
 	MLX5_SET(flow_context, in_flow_context, group_id, group_id);
-	MLX5_SET(flow_context, in_flow_context, destination_list_size, 1);
-	MLX5_SET(flow_context, in_flow_context, action, MLX5_FLOW_CONTEXT_ACTION_FWD_DEST);
+	MLX5_SET(flow_context, in_flow_context, flow_source, fte_attr->flow_source);
+	MLX5_SET(flow_context, in_flow_context, extended_destination, fte_attr->extended_dest);
+	MLX5_SET(set_fte_in, in, ignore_flow_level, fte_attr->ignore_flow_level);
 
-	in_dests = MLX5_ADDR_OF(flow_context, in_flow_context, destination);
-	MLX5_SET(dest_format, in_dests, destination_type,
-		 MLX5_FLOW_DESTINATION_TYPE_VPORT);
-	MLX5_SET(dest_format, in_dests, destination_id, vport_id);
+	action_flags = fte_attr->action_flags;
+	MLX5_SET(flow_context, in_flow_context, action, action_flags);
 
-	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
-	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create FTE");
-		simple_free(devx_obj);
-		rte_errno = errno;
-		return NULL;
+	if (action_flags & MLX5_FLOW_CONTEXT_ACTION_REFORMAT)
+		MLX5_SET(flow_context, in_flow_context,
+			 packet_reformat_id, fte_attr->packet_reformat_id);
+
+	if (action_flags & (MLX5_FLOW_CONTEXT_ACTION_DECRYPT | MLX5_FLOW_CONTEXT_ACTION_ENCRYPT)) {
+		MLX5_SET(flow_context, in_flow_context,
+			 encrypt_decrypt_type, fte_attr->encrypt_decrypt_type);
+		MLX5_SET(flow_context, in_flow_context,
+			 encrypt_decrypt_obj_id, fte_attr->encrypt_decrypt_obj_id);
 	}
 
-	return devx_obj;
-}
+	if (action_flags & MLX5_FLOW_CONTEXT_ACTION_FWD_DEST) {
+		in_dests = (uint8_t *)MLX5_ADDR_OF(flow_context, in_flow_context, destination);
 
-void mlx5dr_cmd_miss_ft_destroy(struct mlx5dr_cmd_forward_tbl *tbl)
-{
-	mlx5dr_cmd_destroy_obj(tbl->fte);
-	mlx5dr_cmd_destroy_obj(tbl->fg);
-	mlx5dr_cmd_destroy_obj(tbl->ft);
+		for (i = 0; i < fte_attr->dests_num; i++) {
+			struct mlx5dr_cmd_set_fte_dest *dest = &fte_attr->dests[i];
+
+			switch (dest->destination_type) {
+			case MLX5_FLOW_DESTINATION_TYPE_VPORT:
+				if (dest->ext_flags & MLX5DR_CMD_EXT_DEST_ESW_OWNER_VHCA_ID) {
+					MLX5_SET(dest_format, in_dests,
+						 destination_eswitch_owner_vhca_id_valid, 1);
+					MLX5_SET(dest_format, in_dests,
+						 destination_eswitch_owner_vhca_id,
+						 dest->esw_owner_vhca_id);
+				}
+				/* Fall through */
+			case MLX5_FLOW_DESTINATION_TYPE_TIR:
+			case MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE:
+				MLX5_SET(dest_format, in_dests, destination_type,
+					 dest->destination_type);
+				MLX5_SET(dest_format, in_dests, destination_id,
+					 dest->destination_id);
+				if (dest->ext_flags & MLX5DR_CMD_EXT_DEST_REFORMAT) {
+					MLX5_SET(dest_format, in_dests, packet_reformat, 1);
+					MLX5_SET(extended_dest_format, in_dests, packet_reformat_id,
+						 dest->ext_reformat->id);
+				}
+				break;
+			case MLX5_FLOW_DESTINATION_TYPE_NOP:
+				MLX5_SET(dest_format, in_dests, destination_type,
+					 dest->destination_type);
+				break;
+			default:
+				rte_errno = EOPNOTSUPP;
+				goto free_devx;
+			}
+
+			in_dests = in_dests + dest_entry_sz;
+		}
+		MLX5_SET(flow_context, in_flow_context, destination_list_size, fte_attr->dests_num);
+	}
+
+	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, inlen, out, sizeof(out));
+	if (!devx_obj->obj) {
+		DR_LOG(ERR, "Failed to create FTE (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
+		rte_errno = errno;
+		goto free_devx;
+	}
+
+	simple_free(in);
+	return devx_obj;
+
+free_devx:
+	simple_free(devx_obj);
+free_in:
+	simple_free(in);
+	return NULL;
 }
 
 struct mlx5dr_cmd_forward_tbl *
-mlx5dr_cmd_miss_ft_create(struct ibv_context *ctx,
-			  struct mlx5dr_cmd_ft_create_attr *ft_attr,
-			  uint32_t vport)
+mlx5dr_cmd_forward_tbl_create(struct ibv_context *ctx,
+			      struct mlx5dr_cmd_ft_create_attr *ft_attr,
+			      struct mlx5dr_cmd_set_fte_attr *fte_attr)
 {
 	struct mlx5dr_cmd_fg_attr fg_attr = {0};
 	struct mlx5dr_cmd_forward_tbl *tbl;
 
 	tbl = simple_calloc(1, sizeof(*tbl));
 	if (!tbl) {
-		DR_LOG(ERR, "Failed to allocate memory for forward default");
+		DR_LOG(ERR, "Failed to allocate memory");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
 
 	tbl->ft = mlx5dr_cmd_flow_table_create(ctx, ft_attr);
 	if (!tbl->ft) {
-		DR_LOG(ERR, "Failed to create FT for miss-table");
+		DR_LOG(ERR, "Failed to create FT");
 		goto free_tbl;
 	}
 
@@ -190,13 +297,13 @@ mlx5dr_cmd_miss_ft_create(struct ibv_context *ctx,
 
 	tbl->fg = mlx5dr_cmd_flow_group_create(ctx, &fg_attr);
 	if (!tbl->fg) {
-		DR_LOG(ERR, "Failed to create FG for miss-table");
+		DR_LOG(ERR, "Failed to create FG");
 		goto free_ft;
 	}
 
-	tbl->fte = mlx5dr_cmd_set_vport_fte(ctx, ft_attr->type, tbl->ft->id, tbl->fg->id, vport);
+	tbl->fte = mlx5dr_cmd_set_fte(ctx, ft_attr->type, tbl->ft->id, tbl->fg->id, fte_attr);
 	if (!tbl->fte) {
-		DR_LOG(ERR, "Failed to create FTE for miss-table");
+		DR_LOG(ERR, "Failed to create FTE");
 		goto free_fg;
 	}
 	return tbl;
@@ -210,6 +317,14 @@ free_tbl:
 	return NULL;
 }
 
+void mlx5dr_cmd_forward_tbl_destroy(struct mlx5dr_cmd_forward_tbl *tbl)
+{
+	mlx5dr_cmd_destroy_obj(tbl->fte);
+	mlx5dr_cmd_destroy_obj(tbl->fg);
+	mlx5dr_cmd_destroy_obj(tbl->ft);
+	simple_free(tbl);
+}
+
 void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 					  uint32_t fw_ft_type,
 					  enum mlx5dr_table_type type,
@@ -217,14 +332,14 @@ void mlx5dr_cmd_set_attr_connect_miss_tbl(struct mlx5dr_context *ctx,
 {
 	struct mlx5dr_devx_obj *default_miss_tbl;
 
-	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
+	if (!mlx5dr_table_is_fdb_any(type) && !mlx5dr_context_shared_gvmi_used(ctx))
 		return;
 
 	ft_attr->modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION;
 	ft_attr->type = fw_ft_type;
 	ft_attr->table_miss_action = MLX5_IFC_MODIFY_FLOW_TABLE_MISS_ACTION_GOTO_TBL;
 
-	if (type == MLX5DR_TABLE_TYPE_FDB) {
+	if (mlx5dr_table_is_fdb_any(type)) {
 		default_miss_tbl = ctx->common_res[type].default_miss->ft;
 		if (!default_miss_tbl) {
 			assert(false);
@@ -259,9 +374,12 @@ mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
 		 attr, obj_type, MLX5_GENERAL_OBJ_TYPE_RTC);
 
 	attr = MLX5_ADDR_OF(create_rtc_in, in, rtc);
-	MLX5_SET(rtc, attr, ste_format_0, rtc_attr->is_frst_jumbo ?
-		MLX5_IFC_RTC_STE_FORMAT_11DW :
-		MLX5_IFC_RTC_STE_FORMAT_8DW);
+	if (rtc_attr->is_compare) {
+		MLX5_SET(rtc, attr, ste_format_0, MLX5_IFC_RTC_STE_FORMAT_4DW_RANGE);
+	} else {
+		MLX5_SET(rtc, attr, ste_format_0, rtc_attr->is_frst_jumbo ?
+			 MLX5_IFC_RTC_STE_FORMAT_11DW : MLX5_IFC_RTC_STE_FORMAT_8DW);
+	}
 
 	if (rtc_attr->is_scnd_range) {
 		MLX5_SET(rtc, attr, ste_format_1, MLX5_IFC_RTC_STE_FORMAT_RANGE);
@@ -283,11 +401,12 @@ mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
 	MLX5_SET(rtc, attr, ste_table_base_id, rtc_attr->ste_base);
 	MLX5_SET(rtc, attr, ste_table_offset, rtc_attr->ste_offset);
 	MLX5_SET(rtc, attr, miss_flow_table_id, rtc_attr->miss_ft_id);
-	MLX5_SET(rtc, attr, reparse_mode, MLX5_IFC_RTC_REPARSE_ALWAYS);
+	MLX5_SET(rtc, attr, reparse_mode, rtc_attr->reparse_mode);
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create RTC");
+		DR_LOG(ERR, "Failed to create RTC (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -327,7 +446,8 @@ mlx5dr_cmd_stc_create(struct ibv_context *ctx,
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create STC");
+		DR_LOG(ERR, "Failed to create STC (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -340,63 +460,68 @@ mlx5dr_cmd_stc_create(struct ibv_context *ctx,
 
 static int
 mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
-				    void *stc_parm)
+				    void *stc_param)
 {
 	switch (stc_attr->action_type) {
 	case MLX5_IFC_STC_ACTION_TYPE_COUNTER:
-		MLX5_SET(stc_ste_param_flow_counter, stc_parm, flow_counter_id, stc_attr->id);
+		MLX5_SET(stc_ste_param_flow_counter, stc_param, flow_counter_id, stc_attr->id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_TIR:
-		MLX5_SET(stc_ste_param_tir, stc_parm, tirn, stc_attr->dest_tir_num);
+		MLX5_SET(stc_ste_param_tir, stc_param, tirn, stc_attr->dest_tir_num);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT:
-		MLX5_SET(stc_ste_param_table, stc_parm, table_id, stc_attr->dest_table_id);
+	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FLOW_TABLE_FDB_RX:
+		MLX5_SET(stc_ste_param_table, stc_param, table_id, stc_attr->dest_table_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_ACC_MODIFY_LIST:
-		MLX5_SET(stc_ste_param_header_modify_list, stc_parm,
+		MLX5_SET(stc_ste_param_header_modify_list, stc_param,
 			 header_modify_pattern_id, stc_attr->modify_header.pattern_id);
-		MLX5_SET(stc_ste_param_header_modify_list, stc_parm,
+		MLX5_SET(stc_ste_param_header_modify_list, stc_param,
 			 header_modify_argument_id, stc_attr->modify_header.arg_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_HEADER_REMOVE:
-		MLX5_SET(stc_ste_param_remove, stc_parm, action_type,
+		MLX5_SET(stc_ste_param_remove, stc_param, action_type,
 			 MLX5_MODIFICATION_TYPE_REMOVE);
-		MLX5_SET(stc_ste_param_remove, stc_parm, decap,
+		MLX5_SET(stc_ste_param_remove, stc_param, decap,
 			 stc_attr->remove_header.decap);
-		MLX5_SET(stc_ste_param_remove, stc_parm, remove_start_anchor,
+		MLX5_SET(stc_ste_param_remove, stc_param, remove_start_anchor,
 			 stc_attr->remove_header.start_anchor);
-		MLX5_SET(stc_ste_param_remove, stc_parm, remove_end_anchor,
+		MLX5_SET(stc_ste_param_remove, stc_param, remove_end_anchor,
 			 stc_attr->remove_header.end_anchor);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT:
-		MLX5_SET(stc_ste_param_insert, stc_parm, action_type,
+		MLX5_SET(stc_ste_param_insert, stc_param, action_type,
 			 MLX5_MODIFICATION_TYPE_INSERT);
-		MLX5_SET(stc_ste_param_insert, stc_parm, encap,
+		MLX5_SET(stc_ste_param_insert, stc_param, encap,
 			 stc_attr->insert_header.encap);
-		MLX5_SET(stc_ste_param_insert, stc_parm, inline_data,
+		MLX5_SET(stc_ste_param_insert, stc_param, push_esp,
+			 stc_attr->insert_header.push_esp);
+		MLX5_SET(stc_ste_param_insert, stc_param, inline_data,
 			 stc_attr->insert_header.is_inline);
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_anchor,
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_anchor,
 			 stc_attr->insert_header.insert_anchor);
 		/* HW gets the next 2 sizes in words */
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_size,
-			 stc_attr->insert_header.header_size / 2);
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_offset,
-			 stc_attr->insert_header.insert_offset / 2);
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_argument,
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_size,
+			 stc_attr->insert_header.header_size / W_SIZE);
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_offset,
+			 stc_attr->insert_header.insert_offset / W_SIZE);
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_argument,
 			 stc_attr->insert_header.arg_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_COPY:
 	case MLX5_IFC_STC_ACTION_TYPE_SET:
 	case MLX5_IFC_STC_ACTION_TYPE_ADD:
-		*(__be64 *)stc_parm = stc_attr->modify_action.data;
+	case MLX5_IFC_STC_ACTION_TYPE_ADD_FIELD:
+		*(__be64 *)stc_param = stc_attr->modify_action.data;
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT:
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_UPLINK:
-		MLX5_SET(stc_ste_param_vport, stc_parm, vport_number,
+		MLX5_SET(stc_ste_param_vport, stc_param, vport_number,
 			 stc_attr->vport.vport_num);
-		MLX5_SET(stc_ste_param_vport, stc_parm, eswitch_owner_vhca_id,
+		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id,
 			 stc_attr->vport.esw_owner_vhca_id);
-		MLX5_SET(stc_ste_param_vport, stc_parm, eswitch_owner_vhca_id_valid, 1);
+		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id_valid,
+			 stc_attr->vport.eswitch_owner_vhca_id_valid);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_DROP:
 	case MLX5_IFC_STC_ACTION_TYPE_NOP:
@@ -404,27 +529,27 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 	case MLX5_IFC_STC_ACTION_TYPE_ALLOW:
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_ASO:
-		MLX5_SET(stc_ste_param_execute_aso, stc_parm, aso_object_id,
+		MLX5_SET(stc_ste_param_execute_aso, stc_param, aso_object_id,
 			 stc_attr->aso.devx_obj_id);
-		MLX5_SET(stc_ste_param_execute_aso, stc_parm, return_reg_id,
+		MLX5_SET(stc_ste_param_execute_aso, stc_param, return_reg_id,
 			 stc_attr->aso.return_reg_id);
-		MLX5_SET(stc_ste_param_execute_aso, stc_parm, aso_type,
+		MLX5_SET(stc_ste_param_execute_aso, stc_param, aso_type,
 			 stc_attr->aso.aso_type);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE:
-		MLX5_SET(stc_ste_param_ste_table, stc_parm, ste_obj_id,
+		MLX5_SET(stc_ste_param_ste_table, stc_param, ste_obj_id,
 			 stc_attr->ste_table.ste_obj_id);
-		MLX5_SET(stc_ste_param_ste_table, stc_parm, match_definer_id,
+		MLX5_SET(stc_ste_param_ste_table, stc_param, match_definer_id,
 			 stc_attr->ste_table.match_definer_id);
-		MLX5_SET(stc_ste_param_ste_table, stc_parm, log_hash_size,
+		MLX5_SET(stc_ste_param_ste_table, stc_param, log_hash_size,
 			 stc_attr->ste_table.log_hash_size);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS:
-		MLX5_SET(stc_ste_param_remove_words, stc_parm, action_type,
+		MLX5_SET(stc_ste_param_remove_words, stc_param, action_type,
 			 MLX5_MODIFICATION_TYPE_REMOVE_WORDS);
-		MLX5_SET(stc_ste_param_remove_words, stc_parm, remove_start_anchor,
+		MLX5_SET(stc_ste_param_remove_words, stc_param, remove_start_anchor,
 			 stc_attr->remove_words.start_anchor);
-		MLX5_SET(stc_ste_param_remove_words, stc_parm,
+		MLX5_SET(stc_ste_param_remove_words, stc_param,
 			 remove_size, stc_attr->remove_words.num_of_words);
 		break;
 	default:
@@ -441,7 +566,7 @@ mlx5dr_cmd_stc_modify(struct mlx5dr_devx_obj *devx_obj,
 {
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
 	uint32_t in[MLX5_ST_SZ_DW(create_stc_in)] = {0};
-	void *stc_parm;
+	void *stc_param;
 	void *attr;
 	int ret;
 
@@ -456,18 +581,20 @@ mlx5dr_cmd_stc_modify(struct mlx5dr_devx_obj *devx_obj,
 	attr = MLX5_ADDR_OF(create_stc_in, in, stc);
 	MLX5_SET(stc, attr, ste_action_offset, stc_attr->action_offset);
 	MLX5_SET(stc, attr, action_type, stc_attr->action_type);
+	MLX5_SET(stc, attr, reparse_mode, stc_attr->reparse_mode);
 	MLX5_SET64(stc, attr, modify_field_select,
 		   MLX5_IFC_MODIFY_STC_FIELD_SELECT_NEW_STC);
 
 	/* Set destination TIRN, TAG, FT ID, STE ID */
-	stc_parm = MLX5_ADDR_OF(stc, attr, stc_param);
-	ret = mlx5dr_cmd_stc_modify_set_stc_param(stc_attr, stc_parm);
+	stc_param = MLX5_ADDR_OF(stc, attr, stc_param);
+	ret = mlx5dr_cmd_stc_modify_set_stc_param(stc_attr, stc_param);
 	if (ret)
 		return ret;
 
 	ret = mlx5_glue->devx_obj_modify(devx_obj->obj, in, sizeof(in), out, sizeof(out));
 	if (ret) {
-		DR_LOG(ERR, "Failed to modify STC FW action_type %d", stc_attr->action_type);
+		DR_LOG(ERR, "Failed to modify STC FW action_type %d (syndrome: %#x)",
+		       stc_attr->action_type, mlx5dr_cmd_get_syndrome(out));
 		rte_errno = errno;
 	}
 
@@ -504,7 +631,8 @@ mlx5dr_cmd_arg_create(struct ibv_context *ctx,
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create ARG");
+		DR_LOG(ERR, "Failed to create ARG (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -542,7 +670,6 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-
 	attr = MLX5_ADDR_OF(create_header_modify_pattern_in, in, hdr);
 	MLX5_SET(general_obj_in_cmd_hdr,
 		 attr, opcode, MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
@@ -561,14 +688,16 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 		int type;
 
 		type = MLX5_GET(set_action_in, &pattern_data[i], action_type);
-		if (type != MLX5_MODIFICATION_TYPE_COPY)
+		if (type != MLX5_MODIFICATION_TYPE_COPY &&
+		    type != MLX5_MODIFICATION_TYPE_ADD_FIELD)
 			/* Action typ-copy use all bytes for control */
 			MLX5_SET(set_action_in, &pattern_data[i], data, 0);
 	}
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create header_modify_pattern");
+		DR_LOG(ERR, "Failed to create header_modify_pattern (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		rte_errno = errno;
 		goto free_obj;
 	}
@@ -611,7 +740,8 @@ mlx5dr_cmd_ste_create(struct ibv_context *ctx,
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create STE");
+		DR_LOG(ERR, "Failed to create STE (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -670,7 +800,8 @@ mlx5dr_cmd_definer_create(struct ibv_context *ctx,
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create Definer");
+		DR_LOG(ERR, "Failed to create Definer (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -723,6 +854,66 @@ mlx5dr_cmd_sq_create(struct ibv_context *ctx,
 	return devx_obj;
 }
 
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_packet_reformat_create(struct ibv_context *ctx,
+				  struct mlx5dr_cmd_packet_reformat_create_attr *attr)
+{
+	uint32_t out[MLX5_ST_SZ_DW(alloc_packet_reformat_out)] = {0};
+	size_t insz, cmd_data_sz, cmd_total_sz;
+	struct mlx5dr_devx_obj *devx_obj;
+	void *prctx;
+	void *pdata;
+	void *in;
+
+	cmd_total_sz = MLX5_ST_SZ_BYTES(alloc_packet_reformat_context_in);
+	cmd_total_sz += MLX5_ST_SZ_BYTES(packet_reformat_context_in);
+	cmd_data_sz = MLX5_FLD_SZ_BYTES(packet_reformat_context_in, reformat_data);
+	insz = align(cmd_total_sz + attr->data_sz - cmd_data_sz, DW_SIZE);
+	in = simple_calloc(1, insz);
+	if (!in) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	MLX5_SET(alloc_packet_reformat_context_in, in, opcode,
+		 MLX5_CMD_OP_ALLOC_PACKET_REFORMAT_CONTEXT);
+
+	prctx = MLX5_ADDR_OF(alloc_packet_reformat_context_in, in,
+			     packet_reformat_context);
+	pdata = MLX5_ADDR_OF(packet_reformat_context_in, prctx, reformat_data);
+
+	MLX5_SET(packet_reformat_context_in, prctx, reformat_type, attr->type);
+	MLX5_SET(packet_reformat_context_in, prctx, reformat_param_0, attr->reformat_param_0);
+	MLX5_SET(packet_reformat_context_in, prctx, reformat_data_size, attr->data_sz);
+	memcpy(pdata, attr->data, attr->data_sz);
+
+	devx_obj = simple_malloc(sizeof(*devx_obj));
+	if (!devx_obj) {
+		DR_LOG(ERR, "Failed to allocate memory for packet reformat object");
+		rte_errno = ENOMEM;
+		goto out_free_in;
+	}
+
+	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, insz, out, sizeof(out));
+	if (!devx_obj->obj) {
+		DR_LOG(ERR, "Failed to create packet reformat");
+		rte_errno = errno;
+		goto out_free_devx;
+	}
+
+	devx_obj->id = MLX5_GET(alloc_packet_reformat_out, out, packet_reformat_id);
+
+	simple_free(in);
+
+	return devx_obj;
+
+out_free_devx:
+	simple_free(devx_obj);
+out_free_in:
+	simple_free(in);
+	return NULL;
+}
+
 int mlx5dr_cmd_sq_modify_rdy(struct mlx5dr_devx_obj *devx_obj)
 {
 	uint32_t out[MLX5_ST_SZ_DW(modify_sq_out)] = {0};
@@ -737,7 +928,8 @@ int mlx5dr_cmd_sq_modify_rdy(struct mlx5dr_devx_obj *devx_obj)
 
 	ret = mlx5_glue->devx_obj_modify(devx_obj->obj, in, sizeof(in), out, sizeof(out));
 	if (ret) {
-		DR_LOG(ERR, "Failed to modify SQ");
+		DR_LOG(ERR, "Failed to modify SQ (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		rte_errno = errno;
 	}
 
@@ -805,7 +997,8 @@ mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
-		DR_LOG(ERR, "Failed to create ALIAS OBJ");
+		DR_LOG(ERR, "Failed to create ALIAS OBJ (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		simple_free(devx_obj);
 		rte_errno = errno;
 		return NULL;
@@ -845,7 +1038,8 @@ int mlx5dr_cmd_generate_wqe(struct ibv_context *ctx,
 
 	ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 	if (ret) {
-		DR_LOG(ERR, "Failed to write GTA WQE using FW");
+		DR_LOG(ERR, "Failed to write GTA WQE using FW (syndrome: %#x)",
+		       mlx5dr_cmd_get_syndrome(out));
 		rte_errno = errno;
 		return rte_errno;
 	}
@@ -921,6 +1115,8 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	caps->ipsec_offload = MLX5_GET(query_hca_cap_out, out,
 				      capability.cmd_hca_cap.ipsec_offload);
 
+	caps->roce = MLX5_GET(query_hca_cap_out, out, capability.cmd_hca_cap.roce);
+
 	MLX5_SET(query_hca_cap_in, in, op_mod,
 		 MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);
@@ -973,6 +1169,12 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 				      (res & MLX5_CROSS_VHCA_ALLOWED_OBJS_FT) &&
 				      (res & MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC);
 
+	caps->flow_table_hash_type = MLX5_GET(query_hca_cap_out, out,
+					      capability.cmd_hca_cap_2.flow_table_hash_type);
+
+	caps->encap_entropy_hash_type = MLX5_GET(query_hca_cap_out, out,
+						 capability.cmd_hca_cap_2.encap_entropy_hash_type);
+
 	MLX5_SET(query_hca_cap_in, in, op_mod,
 		 MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);
@@ -991,6 +1193,12 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	caps->nic_ft.reparse = MLX5_GET(query_hca_cap_out, out,
 					capability.flow_table_nic_cap.
 					flow_table_properties_nic_receive.reparse);
+
+	caps->nic_ft.ignore_flow_level_rtc_valid =
+		MLX5_GET(query_hca_cap_out,
+			 out,
+			 capability.flow_table_nic_cap.
+			 flow_table_properties_nic_receive.ignore_flow_level_rtc_valid);
 
 	/* check cross-VHCA support in flow table properties */
 	res =
@@ -1069,6 +1277,22 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 		caps->supp_ste_format_gen_wqe = MLX5_GET(query_hca_cap_out, out,
 							 capability.wqe_based_flow_table_cap.
 							 ste_format_gen_wqe);
+
+		caps->fdb_tir_stc = MLX5_GET(query_hca_cap_out, out,
+					     capability.wqe_based_flow_table_cap.
+					     fdb_jump_to_tir_stc);
+
+		caps->fdb_unified_en = MLX5_GET(query_hca_cap_out, out,
+						capability.wqe_based_flow_table_cap.
+						fdb_unified_en);
+
+		caps->stc_action_type_63_0 = MLX5_GET64(query_hca_cap_out,
+							out,
+					capability.wqe_based_flow_table_cap.stc_action_type_63_0);
+
+		caps->stc_action_type_127_64 = MLX5_GET64(query_hca_cap_out,
+							  out,
+					capability.wqe_based_flow_table_cap.stc_action_type_127_64);
 	}
 
 	if (caps->eswitch_manager) {
@@ -1096,7 +1320,7 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 
 		ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
 		if (ret) {
-			DR_LOG(ERR, "Query eswitch capabilities failed %d\n", ret);
+			DR_LOG(ERR, "Query eswitch capabilities failed %d", ret);
 			rte_errno = errno;
 			return rte_errno;
 		}
@@ -1106,6 +1330,27 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 			caps->eswitch_manager_vport_number =
 			MLX5_GET(query_hca_cap_out, out,
 				 capability.esw_cap.esw_manager_vport_number);
+
+		caps->merged_eswitch = MLX5_GET(query_hca_cap_out, out,
+						capability.esw_cap.merged_eswitch);
+	}
+
+	if (caps->roce) {
+		MLX5_SET(query_hca_cap_in, in, op_mod,
+			 MLX5_GET_HCA_CAP_OP_MOD_ROCE |
+			 MLX5_HCA_CAP_OPMOD_GET_CUR);
+
+		ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+		if (ret) {
+			DR_LOG(ERR, "Failed to query roce caps");
+			rte_errno = errno;
+			return rte_errno;
+		}
+
+		caps->roce_max_src_udp_port = MLX5_GET(query_hca_cap_out, out,
+						capability.roce_caps.r_roce_max_src_udp_port);
+		caps->roce_min_src_udp_port = MLX5_GET(query_hca_cap_out, out,
+						capability.roce_caps.r_roce_min_src_udp_port);
 	}
 
 	ret = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
@@ -1118,12 +1363,10 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	strlcpy(caps->fw_ver, attr_ex.orig_attr.fw_ver, sizeof(caps->fw_ver));
 
 	port_info = flow_hw_get_wire_port(ctx);
-	if (port_info) {
-		caps->wire_regc = port_info->regc_value;
+	if (port_info)
 		caps->wire_regc_mask = port_info->regc_mask;
-	} else {
+	else
 		DR_LOG(INFO, "Failed to query wire port regc value");
-	}
 
 	return ret;
 }
@@ -1147,11 +1390,6 @@ int mlx5dr_cmd_query_ib_port(struct ibv_context *ctx,
 
 	vport_caps->vport_num = port_info.vport_id;
 	vport_caps->esw_owner_vhca_id = port_info.esw_owner_vhca_id;
-
-	if (port_info.query_flags & MLX5_PORT_QUERY_REG_C0) {
-		vport_caps->metadata_c = port_info.vport_meta_tag;
-		vport_caps->metadata_c_mask = port_info.vport_meta_mask;
-	}
 
 	return 0;
 }

@@ -16,6 +16,10 @@
 #include <rte_debug.h>
 #include <rte_atomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MS_PER_S 1000
 #define US_PER_S 1000000
 #define NS_PER_S 1000000000
@@ -38,7 +42,7 @@ rte_get_tsc_hz(void);
 /**
  * Return the number of TSC cycles since boot
  *
-  * @return
+ * @return
  *   the number of cycles
  */
 static inline uint64_t
@@ -174,5 +178,9 @@ void rte_delay_us_sleep(unsigned int us);
  *   builtin block delay function.
  */
 void rte_delay_us_callback_register(void(*userfunc)(unsigned int));
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_CYCLES_H_ */

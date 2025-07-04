@@ -16,10 +16,6 @@
  * RTE Ring with user defined element size
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_ring_core.h>
 #include <rte_ring_elem_pvt.h>
 
@@ -698,9 +694,5 @@ rte_ring_dequeue_burst_elem(struct rte_ring *r, void *obj_table,
 #include <rte_ring_peek_zc.h>
 
 #include <rte_ring.h>
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_RING_ELEM_H_ */

@@ -23,10 +23,11 @@
 #define RX_DESC_DEFAULT 1024
 #define TX_DESC_DEFAULT 1024
 
-#define MAX_PKT_BURST     32
+#define DEFAULT_PKT_BURST 32
+#define MAX_PKT_BURST 512
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 
-#define MEMPOOL_CACHE_SIZE 256
+#define MEMPOOL_CACHE_SIZE RTE_MEMPOOL_CACHE_MAX_SIZE
 #define MAX_RX_QUEUE_PER_LCORE 16
 
 #define VECTOR_SIZE_DEFAULT   MAX_PKT_BURST
@@ -72,12 +73,12 @@ struct mbuf_table {
 	struct rte_mbuf *m_table[MAX_PKT_BURST];
 };
 
-struct lcore_rx_queue {
+struct __rte_cache_aligned lcore_rx_queue {
 	uint16_t port_id;
-	uint8_t queue_id;
-} __rte_cache_aligned;
+	uint16_t queue_id;
+};
 
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t n_tx_port;
@@ -86,7 +87,7 @@ struct lcore_conf {
 	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
 	void *ipv4_lookup_struct;
 	void *ipv6_lookup_struct;
-} __rte_cache_aligned;
+};
 
 extern volatile bool force_quit;
 
@@ -114,6 +115,9 @@ extern struct parm_cfg parm_config;
 extern struct acl_algorithms acl_alg[];
 
 extern uint32_t max_pkt_len;
+
+extern uint32_t nb_pkt_per_burst;
+extern uint32_t mb_mempool_cache_size;
 
 /* Send burst of packets on an output interface */
 static inline int
@@ -159,7 +163,7 @@ send_single_packet(struct lcore_conf *qconf,
 
 #ifdef DO_RFC_1812_CHECKS
 static inline int
-is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
+is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len, uint64_t ol_flags)
 {
 	/* From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2 */
 	/*
@@ -170,7 +174,15 @@ is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
 		return -1;
 
 	/* 2. The IP checksum must be correct. */
-	/* this is checked in H/W */
+	/* if this is not checked in H/W, check it. */
+	if ((ol_flags & RTE_MBUF_F_RX_IP_CKSUM_MASK) == RTE_MBUF_F_RX_IP_CKSUM_NONE) {
+		uint16_t actual_cksum, expected_cksum;
+		actual_cksum = pkt->hdr_checksum;
+		pkt->hdr_checksum = 0;
+		expected_cksum = rte_ipv4_cksum(pkt);
+		if (actual_cksum != expected_cksum)
+			return -2;
+	}
 
 	/*
 	 * 3. The IP version number must be 4. If the version number is not 4

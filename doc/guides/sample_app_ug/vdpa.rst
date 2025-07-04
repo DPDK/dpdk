@@ -38,20 +38,23 @@ where
 * --iface specifies the path prefix of the UNIX domain socket file, e.g.
   /tmp/vhost-user-, then the socket files will be named as /tmp/vhost-user-<n>
   (n starts from 0).
-* --interactive means run the vdpa sample in interactive mode, currently 4
-  internal cmds are supported:
+* --interactive means run the vDPA sample in interactive mode:
 
-  1. help: show help message
-  2. list: list all available vdpa devices
-  3. create: create a new vdpa port with socket file and vdpa device address
-  4. stats: show statistics of virtio queues
-  5. quit: unregister vhost driver and exit the application
+  #. help: show help message
+
+  #. list: list all available vDPA devices
+
+  #. create: create a new vDPA port with socket file and vDPA device address
+
+  #. stats: show statistics of virtio queues
+
+  #. quit: unregister vhost driver and exit the application
 
 Take IFCVF driver for example:
 
 .. code-block:: console
 
-        ./dpdk-vdpa -c 0x2 -n 4 --socket-mem 1024,1024 \
+        ./dpdk-vdpa -l 1 -n 4 --numa-mem 1024,1024 \
                 -a 0000:06:00.3,vdpa=1 -a 0000:06:00.4,vdpa=1 \
                 -- --interactive
 
@@ -101,21 +104,21 @@ vDPA supports cross-backend live migration, user can migrate SW vhost backend
 VM to vDPA backend VM and vice versa. Here are the detailed steps. Assume A is
 the source host with SW vhost VM and B is the destination host with vDPA.
 
-1. Start vdpa sample and launch a VM with exact same parameters as the VM on A,
+#. Start vdpa sample and launch a VM with exact same parameters as the VM on A,
    in migration-listen mode:
 
-.. code-block:: console
+   .. code-block:: console
 
         B: <qemu-command-line> -incoming tcp:0:4444 (or other PORT))
 
-2. Start the migration (on source host):
+#. Start the migration (on source host):
 
-.. code-block:: console
+   .. code-block:: console
 
         A: (qemu) migrate -d tcp:<B ip>:4444 (or other PORT)
 
-3. Check the status (on source host):
+#. Check the status (on source host):
 
-.. code-block:: console
+   .. code-block:: console
 
         A: (qemu) info migrate

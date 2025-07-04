@@ -5,22 +5,20 @@
 #ifndef __RTE_RED_H_INCLUDED__
 #define __RTE_RED_H_INCLUDED__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Random Early Detection (RED)
- *
- *
- ***/
+ */
 
 #include <stdint.h>
 #include <limits.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_branch_prediction.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_RED_SCALING                     10         /**< Fraction size for fixed-point */
 #define RTE_RED_S                           (1 << 22)  /**< Packet size multiplied by number of leaf queues */
@@ -35,7 +33,6 @@ extern "C" {
 
 /**
  * Externs
- *
  */
 extern uint32_t rte_red_rand_val;
 extern uint32_t rte_red_rand_seed;
@@ -44,7 +41,6 @@ extern uint16_t rte_red_pow2_frac_inv[16];
 
 /**
  * RED configuration parameters passed by user
- *
  */
 struct rte_red_params {
 	uint16_t min_th;   /**< Minimum threshold for queue (max_th) */

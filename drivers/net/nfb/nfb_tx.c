@@ -4,8 +4,8 @@
  * All rights reserved.
  */
 
-#include "nfb_tx.h"
 #include "nfb.h"
+#include "nfb_tx.h"
 
 int
 nfb_eth_tx_queue_start(struct rte_eth_dev *dev, uint16_t txq_id)
@@ -14,7 +14,7 @@ nfb_eth_tx_queue_start(struct rte_eth_dev *dev, uint16_t txq_id)
 	int ret;
 
 	if (txq->queue == NULL) {
-		RTE_LOG(ERR, PMD, "RX NDP queue is NULL!\n");
+		NFB_LOG(ERR, "RX NDP queue is NULL");
 		return -EINVAL;
 	}
 
@@ -35,7 +35,7 @@ nfb_eth_tx_queue_stop(struct rte_eth_dev *dev, uint16_t txq_id)
 	int ret;
 
 	if (txq->queue == NULL) {
-		RTE_LOG(ERR, PMD, "TX NDP queue is NULL!\n");
+		NFB_LOG(ERR, "TX NDP queue is NULL");
 		return -EINVAL;
 	}
 
@@ -62,8 +62,8 @@ nfb_eth_tx_queue_setup(struct rte_eth_dev *dev,
 		RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (txq == NULL) {
-		RTE_LOG(ERR, PMD, "rte_zmalloc_socket() failed for tx queue id "
-			"%" PRIu16 "!\n", tx_queue_id);
+		NFB_LOG(ERR, "rte_zmalloc_socket() failed for tx queue id %" PRIu16,
+			tx_queue_id);
 		return -ENOMEM;
 	}
 
@@ -108,7 +108,7 @@ nfb_eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (txq->queue != NULL) {
 		ndp_close_tx_queue(txq->queue);
-		rte_free(txq);
 		txq->queue = NULL;
+		rte_free(txq);
 	}
 }

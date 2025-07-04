@@ -4,6 +4,7 @@
 
 #include <errno.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_launch.h>
 #include <rte_pause.h>
@@ -15,11 +16,12 @@
 /*
  * Wait until a lcore finished its job.
  */
+RTE_EXPORT_SYMBOL(rte_eal_wait_lcore)
 int
 rte_eal_wait_lcore(unsigned worker_id)
 {
-	while (__atomic_load_n(&lcore_config[worker_id].state,
-			__ATOMIC_ACQUIRE) != WAIT)
+	while (rte_atomic_load_explicit(&lcore_config[worker_id].state,
+			rte_memory_order_acquire) != WAIT)
 		rte_pause();
 
 	return lcore_config[worker_id].ret;
@@ -30,6 +32,7 @@ rte_eal_wait_lcore(unsigned worker_id)
  * function f with argument arg. Once the execution is done, the
  * remote lcore switches to WAIT state.
  */
+RTE_EXPORT_SYMBOL(rte_eal_remote_launch)
 int
 rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 {
@@ -38,8 +41,8 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 	/* Check if the worker is in 'WAIT' state. Use acquire order
 	 * since 'state' variable is used as the guard variable.
 	 */
-	if (__atomic_load_n(&lcore_config[worker_id].state,
-			__ATOMIC_ACQUIRE) != WAIT)
+	if (rte_atomic_load_explicit(&lcore_config[worker_id].state,
+			rte_memory_order_acquire) != WAIT)
 		goto finish;
 
 	lcore_config[worker_id].arg = arg;
@@ -47,7 +50,7 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 	 * before the worker thread starts running the function.
 	 * Use worker thread function as the guard variable.
 	 */
-	__atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&lcore_config[worker_id].f, f, rte_memory_order_release);
 
 	rc = eal_thread_wake_worker(worker_id);
 
@@ -61,6 +64,7 @@ finish:
  * rte_eal_remote_launch() for all of them. If call_main is true
  * (set to CALL_MAIN), also call the function on the main lcore.
  */
+RTE_EXPORT_SYMBOL(rte_eal_mp_remote_launch)
 int
 rte_eal_mp_remote_launch(int (*f)(void *), void *arg,
 			 enum rte_rmt_call_main_t call_main)
@@ -90,6 +94,7 @@ rte_eal_mp_remote_launch(int (*f)(void *), void *arg,
 /*
  * Return the state of the lcore identified by worker_id.
  */
+RTE_EXPORT_SYMBOL(rte_eal_get_lcore_state)
 enum rte_lcore_state_t
 rte_eal_get_lcore_state(unsigned lcore_id)
 {
@@ -100,6 +105,7 @@ rte_eal_get_lcore_state(unsigned lcore_id)
  * Do a rte_eal_wait_lcore() for every lcore. The return values are
  * ignored.
  */
+RTE_EXPORT_SYMBOL(rte_eal_mp_wait_lcore)
 void
 rte_eal_mp_wait_lcore(void)
 {

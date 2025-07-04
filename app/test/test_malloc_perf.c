@@ -165,10 +165,10 @@ test_malloc_perf(void)
 		return -1;
 
 	if (test_alloc_perf("rte_memzone_reserve", memzone_alloc, memzone_free,
-			NULL, memset_us_gb, RTE_MAX_MEMZONE - 1) < 0)
+			NULL, memset_us_gb, rte_memzone_max_get() - 1) < 0)
 		return -1;
 
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(malloc_perf_autotest, test_malloc_perf);
+REGISTER_PERF_TEST(malloc_perf_autotest, test_malloc_perf);

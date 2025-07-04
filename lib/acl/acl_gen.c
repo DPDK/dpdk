@@ -4,6 +4,7 @@
 
 #include <rte_acl.h>
 #include "acl.h"
+#include "acl_log.h"
 
 #define	QRANGE_MIN	((uint8_t)INT8_MIN)
 
@@ -148,11 +149,11 @@ acl_node_fill_dfa(const struct rte_acl_node *node,
 }
 
 /*
-*  Counts the number of groups of sequential bits that are
-*  either 0 or 1, as specified by the zero_one parameter. This is used to
-*  calculate the number of ranges in a node to see if it fits in a quad range
-*  node.
-*/
+ * Count the number of groups of sequential bits that are either 0 or 1,
+ * as specified by the zero_one parameter.
+ * This is used to calculate the number of ranges in a node
+ * to see if it fits in a quad range node.
+ */
 static int
 acl_count_sequential_groups(struct rte_acl_bitset *bits, int zero_one)
 {
@@ -470,9 +471,9 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 		XMM_SIZE;
 
 	if (total_size > max_size) {
-		RTE_LOG(DEBUG, ACL,
+		ACL_LOG(DEBUG,
 			"Gen phase for ACL ctx \"%s\" exceeds max_size limit, "
-			"bytes required: %zu, allowed: %zu\n",
+			"bytes required: %zu, allowed: %zu",
 			ctx->name, total_size, max_size);
 		return -ERANGE;
 	}
@@ -480,8 +481,8 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	mem = rte_zmalloc_socket(ctx->name, total_size, RTE_CACHE_LINE_SIZE,
 			ctx->socket_id);
 	if (mem == NULL) {
-		RTE_LOG(ERR, ACL,
-			"allocation of %zu bytes on socket %d for %s failed\n",
+		ACL_LOG(ERR,
+			"allocation of %zu bytes on socket %d for %s failed",
 			total_size, ctx->socket_id, ctx->name);
 		return -ENOMEM;
 	}

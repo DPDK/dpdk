@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -93,5 +93,4 @@ const char *tf_module_subtype_2_str(enum tf_module_type module,
  *   Pointer to a char string holding the string for the EM type
  */
 const char *tf_module_2_str(enum tf_module_type module);
-
 #endif /* _TF_UTIL_H_ */

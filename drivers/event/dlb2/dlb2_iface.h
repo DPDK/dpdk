@@ -11,7 +11,7 @@
  * If PCI (PF PMD),  these will be implemented locally in user mode.
  */
 
-extern void (*dlb2_iface_low_level_io_init)(void);
+extern void (*dlb2_iface_low_level_io_init)(struct dlb2_hw_dev *handle);
 
 extern int (*dlb2_iface_open)(struct dlb2_hw_dev *handle, const char *name);
 
@@ -72,9 +72,11 @@ extern int (*dlb2_iface_get_ldb_queue_depth)(struct dlb2_hw_dev *handle,
 extern int (*dlb2_iface_get_dir_queue_depth)(struct dlb2_hw_dev *handle,
 				struct dlb2_get_dir_queue_depth_args *args);
 
-
 extern int (*dlb2_iface_enable_cq_weight)(struct dlb2_hw_dev *handle,
 					  struct dlb2_enable_cq_weight_args *args);
+
+extern int (*dlb2_iface_set_cq_inflight_ctrl)(struct dlb2_hw_dev *handle,
+				struct dlb2_cq_inflight_ctrl_args *args);
 
 extern int (*dlb2_iface_set_cos_bw)(struct dlb2_hw_dev *handle,
 				    struct dlb2_set_cos_bw_args *args);

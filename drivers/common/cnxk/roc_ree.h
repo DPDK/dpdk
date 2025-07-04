@@ -68,7 +68,7 @@ struct roc_ree_qp {
 	/**< Base address where BAR is mapped */
 	struct roc_ree_pending_queue pend_q;
 	/**< Pending queue */
-	rte_iova_t iq_dma_addr;
+	plt_iova_t iq_dma_addr;
 	/**< Instruction queue address */
 	uint32_t roc_regexdev_jobid;
 	/**< Job ID */

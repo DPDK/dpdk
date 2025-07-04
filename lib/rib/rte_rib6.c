@@ -7,8 +7,10 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
+#include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
 #include <rte_string_fns.h>
@@ -16,8 +18,9 @@
 
 #include <rte_rib6.h>
 
+#include "rib_log.h"
+
 #define RTE_RIB_VALID_NODE	1
-#define RIB6_MAXDEPTH		128
 /* Maximum length of a RIB6 name. */
 #define RTE_RIB6_NAMESIZE	64
 
@@ -32,10 +35,10 @@ struct rte_rib6_node {
 	struct rte_rib6_node	*right;
 	struct rte_rib6_node	*parent;
 	uint64_t		nh;
-	uint8_t			ip[RTE_RIB6_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr	ip;
 	uint8_t			depth;
 	uint8_t			flag;
-	__extension__ uint64_t ext[];
+	uint64_t ext[];
 };
 
 struct rte_rib6 {
@@ -59,24 +62,8 @@ is_right_node(const struct rte_rib6_node *node)
 	return node->parent->right == node;
 }
 
-/*
- * Check if ip1 is covered by ip2/depth prefix
- */
-static inline bool
-is_covered(const uint8_t ip1[RTE_RIB6_IPV6_ADDR_SIZE],
-		const uint8_t ip2[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
-{
-	int i;
-
-	for (i = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++)
-		if ((ip1[i] ^ ip2[i]) & get_msk_part(depth, i))
-			return false;
-
-	return true;
-}
-
 static inline int
-get_dir(const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
+get_dir(const struct rte_ipv6_addr *ip, uint8_t depth)
 {
 	uint8_t index, msk;
 
@@ -95,14 +82,14 @@ get_dir(const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
 	 */
 	msk = 1 << (7 - (depth & 7));
 
-	return (ip[index] & msk) != 0;
+	return (ip->a[index] & msk) != 0;
 }
 
 static inline struct rte_rib6_node *
 get_nxt_node(struct rte_rib6_node *node,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE])
+	const struct rte_ipv6_addr *ip)
 {
-	if (node->depth == RIB6_MAXDEPTH)
+	if (node->depth == RTE_IPV6_MAX_DEPTH)
 		return NULL;
 
 	return (get_dir(ip, node->depth)) ? node->right : node->left;
@@ -128,9 +115,10 @@ node_free(struct rte_rib6 *rib, struct rte_rib6_node *ent)
 	rte_mempool_put(rib->node_pool, ent);
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_lookup)
 struct rte_rib6_node *
 rte_rib6_lookup(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE])
+	const struct rte_ipv6_addr *ip)
 {
 	struct rte_rib6_node *cur;
 	struct rte_rib6_node *prev = NULL;
@@ -141,7 +129,7 @@ rte_rib6_lookup(struct rte_rib6 *rib,
 	}
 	cur = rib->tree;
 
-	while ((cur != NULL) && is_covered(ip, cur->ip, cur->depth)) {
+	while ((cur != NULL) && rte_ipv6_addr_eq_prefix(ip, &cur->ip, cur->depth)) {
 		if (is_valid_node(cur))
 			prev = cur;
 		cur = get_nxt_node(cur, ip);
@@ -149,6 +137,7 @@ rte_rib6_lookup(struct rte_rib6 *rib,
 	return prev;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_lookup_parent)
 struct rte_rib6_node *
 rte_rib6_lookup_parent(struct rte_rib6_node *ent)
 {
@@ -164,34 +153,34 @@ rte_rib6_lookup_parent(struct rte_rib6_node *ent)
 	return tmp;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_lookup_exact)
 struct rte_rib6_node *
 rte_rib6_lookup_exact(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
+	const struct rte_ipv6_addr *ip, uint8_t depth)
 {
 	struct rte_rib6_node *cur;
-	uint8_t tmp_ip[RTE_RIB6_IPV6_ADDR_SIZE];
-	int i;
+	struct rte_ipv6_addr tmp_ip;
 
-	if (unlikely(rib == NULL || ip == NULL || depth > RIB6_MAXDEPTH)) {
+	if (unlikely(rib == NULL || ip == NULL || depth > RTE_IPV6_MAX_DEPTH)) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
 	cur = rib->tree;
 
-	for (i = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++)
-		tmp_ip[i] = ip[i] & get_msk_part(depth, i);
+	tmp_ip = *ip;
+	rte_ipv6_addr_mask(&tmp_ip, depth);
 
 	while (cur != NULL) {
-		if (rte_rib6_is_equal(cur->ip, tmp_ip) &&
+		if (rte_ipv6_addr_eq(&cur->ip, &tmp_ip) &&
 				(cur->depth == depth) &&
 				is_valid_node(cur))
 			return cur;
 
-		if (!(is_covered(tmp_ip, cur->ip, cur->depth)) ||
+		if (!rte_ipv6_addr_eq_prefix(&tmp_ip, &cur->ip, cur->depth) ||
 				(cur->depth >= depth))
 			break;
 
-		cur = get_nxt_node(cur, tmp_ip);
+		cur = get_nxt_node(cur, &tmp_ip);
 	}
 
 	return NULL;
@@ -202,34 +191,34 @@ rte_rib6_lookup_exact(struct rte_rib6 *rib,
  *  for a given in args ip/depth prefix
  *  last = NULL means the first invocation
  */
+RTE_EXPORT_SYMBOL(rte_rib6_get_nxt)
 struct rte_rib6_node *
 rte_rib6_get_nxt(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ip,
 	uint8_t depth, struct rte_rib6_node *last, int flag)
 {
 	struct rte_rib6_node *tmp, *prev = NULL;
-	uint8_t tmp_ip[RTE_RIB6_IPV6_ADDR_SIZE];
-	int i;
+	struct rte_ipv6_addr tmp_ip;
 
-	if (unlikely(rib == NULL || ip == NULL || depth > RIB6_MAXDEPTH)) {
+	if (unlikely(rib == NULL || ip == NULL || depth > RTE_IPV6_MAX_DEPTH)) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
 
-	for (i = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++)
-		tmp_ip[i] = ip[i] & get_msk_part(depth, i);
+	tmp_ip = *ip;
+	rte_ipv6_addr_mask(&tmp_ip, depth);
 
 	if (last == NULL) {
 		tmp = rib->tree;
 		while ((tmp) && (tmp->depth < depth))
-			tmp = get_nxt_node(tmp, tmp_ip);
+			tmp = get_nxt_node(tmp, &tmp_ip);
 	} else {
 		tmp = last;
 		while ((tmp->parent != NULL) && (is_right_node(tmp) ||
 				(tmp->parent->right == NULL))) {
 			tmp = tmp->parent;
 			if (is_valid_node(tmp) &&
-					(is_covered(tmp->ip, tmp_ip, depth) &&
+					(rte_ipv6_addr_eq_prefix(&tmp->ip, &tmp_ip, depth) &&
 					(tmp->depth > depth)))
 				return tmp;
 		}
@@ -237,7 +226,7 @@ rte_rib6_get_nxt(struct rte_rib6 *rib,
 	}
 	while (tmp) {
 		if (is_valid_node(tmp) &&
-				(is_covered(tmp->ip, tmp_ip, depth) &&
+				(rte_ipv6_addr_eq_prefix(&tmp->ip, &tmp_ip, depth) &&
 				(tmp->depth > depth))) {
 			prev = tmp;
 			if (flag == RTE_RIB6_GET_NXT_COVER)
@@ -248,9 +237,10 @@ rte_rib6_get_nxt(struct rte_rib6 *rib,
 	return prev;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_remove)
 void
 rte_rib6_remove(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
+	const struct rte_ipv6_addr *ip, uint8_t depth)
 {
 	struct rte_rib6_node *cur, *prev, *child;
 
@@ -281,30 +271,31 @@ rte_rib6_remove(struct rte_rib6 *rib,
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_insert)
 struct rte_rib6_node *
 rte_rib6_insert(struct rte_rib6 *rib,
-	const uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE], uint8_t depth)
+	const struct rte_ipv6_addr *ip, uint8_t depth)
 {
 	struct rte_rib6_node **tmp;
 	struct rte_rib6_node *prev = NULL;
 	struct rte_rib6_node *new_node = NULL;
 	struct rte_rib6_node *common_node = NULL;
-	uint8_t common_prefix[RTE_RIB6_IPV6_ADDR_SIZE];
-	uint8_t tmp_ip[RTE_RIB6_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr common_prefix;
+	struct rte_ipv6_addr tmp_ip;
 	int i, d;
 	uint8_t common_depth, ip_xor;
 
-	if (unlikely((rib == NULL || ip == NULL || depth > RIB6_MAXDEPTH))) {
+	if (unlikely((rib == NULL || ip == NULL || depth > RTE_IPV6_MAX_DEPTH))) {
 		rte_errno = EINVAL;
 		return NULL;
 	}
 
 	tmp = &rib->tree;
 
-	for (i = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++)
-		tmp_ip[i] = ip[i] & get_msk_part(depth, i);
+	tmp_ip = *ip;
+	rte_ipv6_addr_mask(&tmp_ip, depth);
 
-	new_node = rte_rib6_lookup_exact(rib, tmp_ip, depth);
+	new_node = rte_rib6_lookup_exact(rib, &tmp_ip, depth);
 	if (new_node != NULL) {
 		rte_errno = EEXIST;
 		return NULL;
@@ -318,7 +309,7 @@ rte_rib6_insert(struct rte_rib6 *rib,
 	new_node->left = NULL;
 	new_node->right = NULL;
 	new_node->parent = NULL;
-	rte_rib6_copy_addr(new_node->ip, tmp_ip);
+	new_node->ip = tmp_ip;
 	new_node->depth = depth;
 	new_node->flag = RTE_RIB_VALID_NODE;
 
@@ -337,45 +328,44 @@ rte_rib6_insert(struct rte_rib6 *rib,
 		 * but node with proper search criteria is found.
 		 * Validate intermediate node and return.
 		 */
-		if (rte_rib6_is_equal(tmp_ip, (*tmp)->ip) &&
-				(depth == (*tmp)->depth)) {
+		if (rte_ipv6_addr_eq(&tmp_ip, &(*tmp)->ip) && (depth == (*tmp)->depth)) {
 			node_free(rib, new_node);
 			(*tmp)->flag |= RTE_RIB_VALID_NODE;
 			++rib->cur_routes;
 			return *tmp;
 		}
 
-		if (!is_covered(tmp_ip, (*tmp)->ip, (*tmp)->depth) ||
+		if (!rte_ipv6_addr_eq_prefix(&tmp_ip, &(*tmp)->ip, (*tmp)->depth) ||
 				((*tmp)->depth >= depth)) {
 			break;
 		}
 		prev = *tmp;
 
-		tmp = (get_dir(tmp_ip, (*tmp)->depth)) ? &(*tmp)->right :
+		tmp = (get_dir(&tmp_ip, (*tmp)->depth)) ? &(*tmp)->right :
 				&(*tmp)->left;
 	}
 
 	/* closest node found, new_node should be inserted in the middle */
 	common_depth = RTE_MIN(depth, (*tmp)->depth);
-	for (i = 0, d = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++) {
-		ip_xor = tmp_ip[i] ^ (*tmp)->ip[i];
+	for (i = 0, d = 0; i < RTE_IPV6_ADDR_SIZE; i++) {
+		ip_xor = tmp_ip.a[i] ^ (*tmp)->ip.a[i];
 		if (ip_xor == 0)
 			d += 8;
 		else {
-			d += __builtin_clz(ip_xor << 24);
+			d += rte_clz32(ip_xor << 24);
 			break;
 		}
 	}
 
 	common_depth = RTE_MIN(d, common_depth);
 
-	for (i = 0; i < RTE_RIB6_IPV6_ADDR_SIZE; i++)
-		common_prefix[i] = tmp_ip[i] & get_msk_part(common_depth, i);
+	common_prefix = tmp_ip;
+	rte_ipv6_addr_mask(&common_prefix, common_depth);
 
-	if (rte_rib6_is_equal(common_prefix, tmp_ip) &&
+	if (rte_ipv6_addr_eq(&common_prefix, &tmp_ip) &&
 			(common_depth == depth)) {
 		/* insert as a parent */
-		if (get_dir((*tmp)->ip, depth))
+		if (get_dir(&(*tmp)->ip, depth))
 			new_node->right = *tmp;
 		else
 			new_node->left = *tmp;
@@ -390,13 +380,13 @@ rte_rib6_insert(struct rte_rib6 *rib,
 			rte_errno = ENOMEM;
 			return NULL;
 		}
-		rte_rib6_copy_addr(common_node->ip, common_prefix);
+		common_node->ip = common_prefix;
 		common_node->depth = common_depth;
 		common_node->flag = 0;
 		common_node->parent = (*tmp)->parent;
 		new_node->parent = common_node;
 		(*tmp)->parent = common_node;
-		if (get_dir((*tmp)->ip, common_depth) == 1) {
+		if (get_dir(&(*tmp)->ip, common_depth) == 1) {
 			common_node->left = new_node;
 			common_node->right = *tmp;
 		} else {
@@ -409,18 +399,20 @@ rte_rib6_insert(struct rte_rib6 *rib,
 	return new_node;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_get_ip)
 int
 rte_rib6_get_ip(const struct rte_rib6_node *node,
-		uint8_t ip[RTE_RIB6_IPV6_ADDR_SIZE])
+		struct rte_ipv6_addr *ip)
 {
 	if (unlikely(node == NULL || ip == NULL)) {
 		rte_errno = EINVAL;
 		return -1;
 	}
-	rte_rib6_copy_addr(ip, node->ip);
+	*ip = node->ip;
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_get_depth)
 int
 rte_rib6_get_depth(const struct rte_rib6_node *node, uint8_t *depth)
 {
@@ -432,12 +424,14 @@ rte_rib6_get_depth(const struct rte_rib6_node *node, uint8_t *depth)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_get_ext)
 void *
 rte_rib6_get_ext(struct rte_rib6_node *node)
 {
 	return (node == NULL) ? NULL : &node->ext[0];
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_get_nh)
 int
 rte_rib6_get_nh(const struct rte_rib6_node *node, uint64_t *nh)
 {
@@ -449,6 +443,7 @@ rte_rib6_get_nh(const struct rte_rib6_node *node, uint64_t *nh)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_set_nh)
 int
 rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh)
 {
@@ -460,6 +455,7 @@ rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_create)
 struct rte_rib6 *
 rte_rib6_create(const char *name, int socket_id,
 		const struct rte_rib6_conf *conf)
@@ -482,8 +478,8 @@ rte_rib6_create(const char *name, int socket_id,
 		NULL, NULL, NULL, NULL, socket_id, 0);
 
 	if (node_pool == NULL) {
-		RTE_LOG(ERR, LPM,
-			"Can not allocate mempool for RIB6 %s\n", name);
+		RIB_LOG(ERR,
+			"Can not allocate mempool for RIB6 %s", name);
 		return NULL;
 	}
 
@@ -507,8 +503,8 @@ rte_rib6_create(const char *name, int socket_id,
 	/* allocate tailq entry */
 	te = rte_zmalloc("RIB6_TAILQ_ENTRY", sizeof(*te), 0);
 	if (unlikely(te == NULL)) {
-		RTE_LOG(ERR, LPM,
-			"Can not allocate tailq entry for RIB6 %s\n", name);
+		RIB_LOG(ERR,
+			"Can not allocate tailq entry for RIB6 %s", name);
 		rte_errno = ENOMEM;
 		goto exit;
 	}
@@ -517,7 +513,7 @@ rte_rib6_create(const char *name, int socket_id,
 	rib = rte_zmalloc_socket(mem_name,
 		sizeof(struct rte_rib6), RTE_CACHE_LINE_SIZE, socket_id);
 	if (unlikely(rib == NULL)) {
-		RTE_LOG(ERR, LPM, "RIB6 %s memory allocation failed\n", name);
+		RIB_LOG(ERR, "RIB6 %s memory allocation failed", name);
 		rte_errno = ENOMEM;
 		goto free_te;
 	}
@@ -543,6 +539,7 @@ exit:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_find_existing)
 struct rte_rib6 *
 rte_rib6_find_existing(const char *name)
 {
@@ -573,6 +570,7 @@ rte_rib6_find_existing(const char *name)
 	return rib;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib6_free)
 void
 rte_rib6_free(struct rte_rib6 *rib)
 {
@@ -601,7 +599,7 @@ rte_rib6_free(struct rte_rib6 *rib)
 
 	while ((tmp = rte_rib6_get_nxt(rib, 0, 0, tmp,
 			RTE_RIB6_GET_NXT_ALL)) != NULL)
-		rte_rib6_remove(rib, tmp->ip, tmp->depth);
+		rte_rib6_remove(rib, &tmp->ip, tmp->depth);
 
 	rte_mempool_free(rib->node_pool);
 

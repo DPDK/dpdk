@@ -9,6 +9,7 @@
 
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
@@ -23,9 +24,9 @@
  * information about installed BPF rx/tx callback
  */
 
-struct bpf_eth_cbi {
+struct __rte_cache_aligned bpf_eth_cbi {
 	/* used by both data & control path */
-	uint32_t use;    /*usage counter */
+	RTE_ATOMIC(uint32_t) use;    /*usage counter */
 	const struct rte_eth_rxtx_callback *cb;  /* callback handle */
 	struct rte_bpf *bpf;
 	struct rte_bpf_jit jit;
@@ -33,7 +34,7 @@ struct bpf_eth_cbi {
 	LIST_ENTRY(bpf_eth_cbi) link;
 	uint16_t port;
 	uint16_t queue;
-} __rte_cache_aligned;
+};
 
 /*
  * Odd number means that callback is used by datapath.
@@ -110,8 +111,8 @@ bpf_eth_cbi_wait(const struct bpf_eth_cbi *cbi)
 
 	/* in use, busy wait till current RX/TX iteration is finished */
 	if ((puse & BPF_ETH_CBI_INUSE) != 0) {
-		RTE_WAIT_UNTIL_MASKED((uint32_t *)(uintptr_t)&cbi->use,
-			UINT32_MAX, !=, puse, __ATOMIC_RELAXED);
+		RTE_WAIT_UNTIL_MASKED((__rte_atomic uint32_t *)(uintptr_t)&cbi->use,
+			UINT32_MAX, !=, puse, rte_memory_order_relaxed);
 	}
 }
 
@@ -465,6 +466,7 @@ bpf_eth_unload(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_rx_unload)
 void
 rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue)
 {
@@ -476,6 +478,7 @@ rte_bpf_eth_rx_unload(uint16_t port, uint16_t queue)
 	rte_spinlock_unlock(&cbh->lock);
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_tx_unload)
 void
 rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue)
 {
@@ -512,7 +515,7 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 		ftx = select_tx_callback(prm->prog_arg.type, flags);
 
 	if (frx == NULL && ftx == NULL) {
-		RTE_BPF_LOG(ERR, "%s(%u, %u): no callback selected;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%u, %u): no callback selected;",
 			__func__, port, queue);
 		return -EINVAL;
 	}
@@ -524,7 +527,7 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 	rte_bpf_get_jit(bpf, &jit);
 
 	if ((flags & RTE_BPF_ETH_F_JIT) != 0 && jit.func == NULL) {
-		RTE_BPF_LOG(ERR, "%s(%u, %u): no JIT generated;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%u, %u): no JIT generated;",
 			__func__, port, queue);
 		rte_bpf_destroy(bpf);
 		return -ENOTSUP;
@@ -557,6 +560,7 @@ bpf_eth_elf_load(struct bpf_eth_cbh *cbh, uint16_t port, uint16_t queue,
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_rx_elf_load)
 int
 rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,
@@ -573,6 +577,7 @@ rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_eth_tx_elf_load)
 int
 rte_bpf_eth_tx_elf_load(uint16_t port, uint16_t queue,
 	const struct rte_bpf_prm *prm, const char *fname, const char *sname,

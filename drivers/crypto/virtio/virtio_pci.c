@@ -15,15 +15,6 @@
 #include "virtqueue.h"
 
 /*
- * Following macros are derived from linux/pci_regs.h, however,
- * we can't simply include that header here, as there is no such
- * file for non-Linux platform.
- */
-#define PCI_CAPABILITY_LIST	0x34
-#define PCI_CAP_ID_VNDR		0x09
-#define PCI_CAP_ID_MSIX		0x11
-
-/*
  * The remaining space is defined by each driver as the per-driver
  * configuration space.
  */
@@ -338,13 +329,12 @@ get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
 	return base + offset;
 }
 
-#define PCI_MSIX_ENABLE 0x8000
-
 static int
 virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 {
-	uint8_t pos;
 	struct virtio_pci_cap cap;
+	uint16_t flags;
+	off_t pos;
 	int ret;
 
 	if (rte_pci_map_device(dev)) {
@@ -352,44 +342,28 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 		return -1;
 	}
 
-	ret = rte_pci_read_config(dev, &pos, 1, PCI_CAPABILITY_LIST);
-	if (ret < 0) {
-		VIRTIO_CRYPTO_INIT_LOG_DBG("failed to read pci capability list");
-		return -1;
+	/*
+	 * Transitional devices would also have this capability,
+	 * that's why we also check if msix is enabled.
+	 */
+	pos = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_MSIX);
+	if (pos > 0 && rte_pci_read_config(dev, &flags, sizeof(flags),
+			pos + RTE_PCI_MSIX_FLAGS) == sizeof(flags)) {
+		if (flags & RTE_PCI_MSIX_FLAGS_ENABLE)
+			hw->use_msix = VIRTIO_MSIX_ENABLED;
+		else
+			hw->use_msix = VIRTIO_MSIX_DISABLED;
+	} else {
+		hw->use_msix = VIRTIO_MSIX_NONE;
 	}
 
-	while (pos) {
-		ret = rte_pci_read_config(dev, &cap, sizeof(cap), pos);
-		if (ret < 0) {
-			VIRTIO_CRYPTO_INIT_LOG_ERR(
-				"failed to read pci cap at pos: %x", pos);
+	pos = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_VNDR);
+	while (pos > 0) {
+		if (rte_pci_read_config(dev, &cap, sizeof(cap), pos) != sizeof(cap))
 			break;
-		}
-
-		if (cap.cap_vndr == PCI_CAP_ID_MSIX) {
-			/* Transitional devices would also have this capability,
-			 * that's why we also check if msix is enabled.
-			 * 1st byte is cap ID; 2nd byte is the position of next
-			 * cap; next two bytes are the flags.
-			 */
-			uint16_t flags = ((uint16_t *)&cap)[1];
-
-			if (flags & PCI_MSIX_ENABLE)
-				hw->use_msix = VIRTIO_MSIX_ENABLED;
-			else
-				hw->use_msix = VIRTIO_MSIX_DISABLED;
-		}
-
-		if (cap.cap_vndr != PCI_CAP_ID_VNDR) {
-			VIRTIO_CRYPTO_INIT_LOG_DBG(
-				"[%2x] skipping non VNDR cap id: %02x",
-				pos, cap.cap_vndr);
-			goto next;
-		}
-
 		VIRTIO_CRYPTO_INIT_LOG_DBG(
 			"[%2x] cfg type: %u, bar: %u, offset: %04x, len: %u",
-			pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
+			(unsigned int)pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
 
 		switch (cap.cfg_type) {
 		case VIRTIO_PCI_CAP_COMMON_CFG:
@@ -412,8 +386,7 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 			break;
 		}
 
-next:
-		pos = cap.cap_next;
+		pos = rte_pci_find_next_capability(dev, RTE_PCI_CAP_ID_VNDR, pos);
 	}
 
 	if (hw->common_cfg == NULL || hw->notify_base == NULL ||

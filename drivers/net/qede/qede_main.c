@@ -72,6 +72,12 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	hw_prepare_params.allow_mdump = false;
 	hw_prepare_params.b_en_pacing = false;
 	hw_prepare_params.epoch = OSAL_GET_EPOCH(ECORE_LEADING_HWFN(edev));
+	rc = ecore_mz_mapping_alloc();
+	if (rc) {
+		DP_ERR(edev, "mem zones array allocation failed\n");
+		return rc;
+	}
+
 	rc = ecore_hw_prepare(edev, &hw_prepare_params);
 	if (rc) {
 		DP_ERR(edev, "hw prepare failed\n");
@@ -722,6 +728,7 @@ static void qed_remove(struct ecore_dev *edev)
 		return;
 
 	ecore_hw_remove(edev);
+	ecore_mz_mapping_free();
 }
 
 static int qed_send_drv_state(struct ecore_dev *edev, bool active)

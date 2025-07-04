@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_HASH_H__
 #define __INCLUDE_RTE_TABLE_HASH_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table Hash
@@ -46,11 +42,15 @@ extern "C" {
  * 2. Key size:
  *     a. Configurable key size
  *     b. Single key size (8-byte, 16-byte or 32-byte key size)
- *
- ***/
+ */
+
 #include <stdint.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Hash function */
 typedef uint64_t (*rte_table_hash_op_hash)(

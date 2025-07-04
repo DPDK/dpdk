@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_ACL_H__
 #define __INCLUDE_RTE_TABLE_ACL_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table ACL
@@ -17,14 +13,17 @@ extern "C" {
  * associate data to lookup keys.
  *
  * Use-cases: Firewall rule database, etc.
- *
- ***/
+ */
 
 #include <stdint.h>
 
 #include "rte_acl.h"
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** ACL table parameters */
 struct rte_table_acl_params {

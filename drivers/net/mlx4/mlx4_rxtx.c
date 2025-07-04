@@ -62,7 +62,7 @@ struct tso_info {
 };
 
 /** A table to translate Rx completion flags to packet type. */
-uint32_t mlx4_ptype_table[0x100] __rte_cache_aligned = {
+alignas(RTE_CACHE_LINE_SIZE) uint32_t mlx4_ptype_table[0x100] = {
 	/*
 	 * The index to the array should have:
 	 *  bit[7] - MLX4_CQE_L2_TUNNEL

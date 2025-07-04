@@ -10,6 +10,8 @@
 #include <rte_security_driver.h>
 #include <rte_udp.h>
 
+#include "cn10k_cryptodev_ops.h"
+#include "cn10k_cryptodev_sec.h"
 #include "cn10k_ipsec.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
@@ -17,20 +19,6 @@
 #include "cnxk_security.h"
 
 #include "roc_api.h"
-
-static uint64_t
-ipsec_cpt_inst_w7_get(struct roc_cpt *roc_cpt, void *sa)
-{
-	union cpt_inst_w7 w7;
-
-	w7.u64 = 0;
-	w7.s.egrp = roc_cpt->eng_grp[CPT_ENG_TYPE_IE];
-	w7.s.ctx_val = 1;
-	w7.s.cptr = (uint64_t)sa;
-	rte_mb();
-
-	return w7.u64;
-}
 
 static int
 cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
@@ -63,7 +51,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	sec_sess->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, out_sa);
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, out_sa);
 
 #ifdef LA_IPSEC_DEBUG
 	/* Use IV from application in debug mode */
@@ -88,7 +76,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 #endif
 
-	sec_sess->is_outbound = true;
+	sec_sess->ipsec.is_outbound = 1;
 
 	/* Get Rlen calculation data */
 	ret = cnxk_ipsec_outb_rlens_get(&rlens, ipsec_xfrm, crypto_xfrm);
@@ -129,6 +117,8 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		/* Enable mib counters */
 		sa_dptr->w0.s.count_mib_bytes = 1;
 		sa_dptr->w0.s.count_mib_pkts = 1;
+		sa_dptr->w0.s.count_glb_pkts = 1;
+		sa_dptr->w0.s.count_glb_octets = 1;
 	}
 
 	memset(out_sa, 0, sizeof(struct roc_ot_ipsec_outb_sa));
@@ -147,8 +137,13 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, out_sa, false);
+	ret = roc_cpt_lf_ctx_flush(lf, out_sa, false);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush outbound session");
+		goto sa_dptr_free;
+	}
 
+	sec_sess->proto = RTE_SECURITY_PROTOCOL_IPSEC;
 	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 sa_dptr_free:
@@ -181,15 +176,17 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Translate security parameters to SA */
-	ret = cnxk_ot_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm,
-					false);
+	ret = cnxk_ot_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm);
 	if (ret) {
 		plt_err("Could not fill inbound session parameters");
 		goto sa_dptr_free;
 	}
 
-	sec_sess->is_outbound = false;
-	sec_sess->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, in_sa);
+	sec_sess->ipsec.is_outbound = 0;
+	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, in_sa);
+
+	/* Save index/SPI in cookie, specific required for Rx Inject */
+	sa_dptr->w1.s.cookie = 0xFFFFFFFF;
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
@@ -205,7 +202,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	 */
 	if (ipsec_xfrm->options.ip_csum_enable) {
 		param1.s.ip_csum_disable = ROC_IE_OT_SA_INNER_PKT_IP_CSUM_ENABLE;
-		sec_sess->ip_csum = RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+		sec_sess->ipsec.ip_csum = RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	}
 
 	/* Disable L4 checksum verification by default */
@@ -226,6 +223,8 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		/* Enable mib counters */
 		sa_dptr->w0.s.count_mib_bytes = 1;
 		sa_dptr->w0.s.count_mib_pkts = 1;
+		sa_dptr->w0.s.count_glb_pkts = 1;
+		sa_dptr->w0.s.count_glb_octets = 1;
 	}
 
 	memset(in_sa, 0, sizeof(struct roc_ot_ipsec_inb_sa));
@@ -244,8 +243,13 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, in_sa, true);
+	ret = roc_cpt_lf_ctx_flush(lf, in_sa, true);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush inbound session");
+		goto sa_dptr_free;
+	}
 
+	sec_sess->proto = RTE_SECURITY_PROTOCOL_IPSEC;
 	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
 
 sa_dptr_free:
@@ -254,29 +258,19 @@ sa_dptr_free:
 	return ret;
 }
 
-static int
-cn10k_ipsec_session_create(void *dev,
+int
+cn10k_ipsec_session_create(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 			   struct rte_security_ipsec_xform *ipsec_xfrm,
 			   struct rte_crypto_sym_xform *crypto_xfrm,
 			   struct rte_security_session *sess)
 {
-	struct rte_cryptodev *crypto_dev = dev;
 	struct roc_cpt *roc_cpt;
-	struct cnxk_cpt_vf *vf;
-	struct cnxk_cpt_qp *qp;
 	int ret;
-
-	qp = crypto_dev->data->queue_pairs[0];
-	if (qp == NULL) {
-		plt_err("Setup cpt queue pair before creating security session");
-		return -EPERM;
-	}
 
 	ret = cnxk_ipsec_xform_verify(ipsec_xfrm, crypto_xfrm);
 	if (ret)
 		return ret;
 
-	vf = crypto_dev->data->dev_private;
 	roc_cpt = &vf->cpt;
 
 	if (ipsec_xfrm->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
@@ -287,40 +281,14 @@ cn10k_ipsec_session_create(void *dev,
 						  (struct cn10k_sec_session *)sess);
 }
 
-static int
-cn10k_sec_session_create(void *device, struct rte_security_session_conf *conf,
-			 struct rte_security_session *sess)
+int
+cn10k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn10k_sec_session *sess)
 {
-	if (conf->action_type != RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL)
-		return -EINVAL;
-
-	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
-		return -ENOTSUP;
-
-	return cn10k_ipsec_session_create(device, &conf->ipsec,
-					 conf->crypto_xform, sess);
-}
-
-static int
-cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
-{
-	struct rte_cryptodev *crypto_dev = dev;
 	union roc_ot_ipsec_sa_word2 *w2;
-	struct cn10k_sec_session *sess;
 	struct cn10k_ipsec_sa *sa;
-	struct cnxk_cpt_qp *qp;
 	struct roc_cpt_lf *lf;
 	void *sa_dptr = NULL;
 	int ret;
-
-	if (unlikely(sec_sess == NULL))
-		return -EINVAL;
-
-	sess = (struct cn10k_sec_session *)sec_sess;
-
-	qp = crypto_dev->data->queue_pairs[0];
-	if (unlikely(qp == NULL))
-		return -ENOTSUP;
 
 	lf = &qp->lf;
 
@@ -331,7 +299,7 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 
 	ret = -1;
 
-	if (sess->is_outbound) {
+	if (sess->ipsec.is_outbound) {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_outb_sa), 8);
 		if (sa_dptr != NULL) {
 			roc_ot_ipsec_outb_sa_init(sa_dptr);
@@ -343,7 +311,7 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 	} else {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ot_ipsec_inb_sa), 8);
 		if (sa_dptr != NULL) {
-			roc_ot_ipsec_inb_sa_init(sa_dptr, false);
+			roc_ot_ipsec_inb_sa_init(sa_dptr);
 
 			ret = roc_cpt_ctx_write(
 				lf, sa_dptr, &sa->in_sa,
@@ -371,45 +339,25 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 	return 0;
 }
 
-static unsigned int
-cn10k_sec_session_get_size(void *device __rte_unused)
+int
+cn10k_ipsec_stats_get(struct cnxk_cpt_qp *qp, struct cn10k_sec_session *sess,
+		      struct rte_security_stats *stats)
 {
-	return sizeof(struct cn10k_sec_session) - sizeof(struct rte_security_session);
-}
-
-static int
-cn10k_sec_session_stats_get(void *device, struct rte_security_session *sess,
-			    struct rte_security_stats *stats)
-{
-	struct rte_cryptodev *crypto_dev = device;
 	struct roc_ot_ipsec_outb_sa *out_sa;
 	struct roc_ot_ipsec_inb_sa *in_sa;
-	struct cn10k_sec_session *priv;
 	struct cn10k_ipsec_sa *sa;
-	struct cnxk_cpt_qp *qp;
-
-	if (unlikely(sess == NULL))
-		return -EINVAL;
-
-	priv = (struct cn10k_sec_session *)sess;
-
-	qp = crypto_dev->data->queue_pairs[0];
-	if (qp == NULL)
-		return -EINVAL;
 
 	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
-	sa = &priv->sa;
+	sa = &sess->sa;
 
-	if (priv->is_outbound) {
+	if (sess->ipsec.is_outbound) {
 		out_sa = &sa->out_sa;
 		roc_cpt_lf_ctx_flush(&qp->lf, out_sa, false);
-		rte_delay_ms(1);
 		stats->ipsec.opackets = out_sa->ctx.mib_pkts;
 		stats->ipsec.obytes = out_sa->ctx.mib_octs;
 	} else {
 		in_sa = &sa->in_sa;
 		roc_cpt_lf_ctx_flush(&qp->lf, in_sa, false);
-		rte_delay_ms(1);
 		stats->ipsec.ipackets = in_sa->ctx.mib_pkts;
 		stats->ipsec.ibytes = in_sa->ctx.mib_octs;
 	}
@@ -417,22 +365,12 @@ cn10k_sec_session_stats_get(void *device, struct rte_security_session *sess,
 	return 0;
 }
 
-static int
-cn10k_sec_session_update(void *device, struct rte_security_session *sess,
-			 struct rte_security_session_conf *conf)
+int
+cn10k_ipsec_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
+			   struct cn10k_sec_session *sess, struct rte_security_session_conf *conf)
 {
-	struct rte_cryptodev *crypto_dev = device;
 	struct roc_cpt *roc_cpt;
-	struct cnxk_cpt_qp *qp;
-	struct cnxk_cpt_vf *vf;
 	int ret;
-
-	if (sess == NULL)
-		return -EINVAL;
-
-	qp = crypto_dev->data->queue_pairs[0];
-	if (qp == NULL)
-		return -EINVAL;
 
 	if (conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
 		return -ENOTSUP;
@@ -441,21 +379,8 @@ cn10k_sec_session_update(void *device, struct rte_security_session *sess,
 	if (ret)
 		return ret;
 
-	vf = crypto_dev->data->dev_private;
 	roc_cpt = &vf->cpt;
 
 	return cn10k_ipsec_outb_sa_create(roc_cpt, &qp->lf, &conf->ipsec, conf->crypto_xform,
 					  (struct cn10k_sec_session *)sess);
-}
-
-/* Update platform specific security ops */
-void
-cn10k_sec_ops_override(void)
-{
-	/* Update platform specific ops */
-	cnxk_sec_ops.session_create = cn10k_sec_session_create;
-	cnxk_sec_ops.session_destroy = cn10k_sec_session_destroy;
-	cnxk_sec_ops.session_get_size = cn10k_sec_session_get_size;
-	cnxk_sec_ops.session_stats_get = cn10k_sec_session_stats_get;
-	cnxk_sec_ops.session_update = cn10k_sec_session_update;
 }

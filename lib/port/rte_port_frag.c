@@ -3,9 +3,12 @@
  */
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_ip_frag.h>
 
 #include "rte_port_frag.h"
+
+#include "port_log.h"
 
 /* Max number of fragments per packet allowed */
 #define	RTE_PORT_FRAG_MAX_FRAGS_PER_PACKET 0x80
@@ -32,7 +35,7 @@ typedef int32_t
 			struct rte_mempool *pool_direct,
 			struct rte_mempool *pool_indirect);
 
-struct rte_port_ring_reader_frag {
+struct __rte_cache_aligned rte_port_ring_reader_frag {
 	struct rte_port_in_stats stats;
 
 	/* Input parameters */
@@ -51,7 +54,7 @@ struct rte_port_ring_reader_frag {
 	uint32_t pos_frags;
 
 	frag_op f_frag;
-} __rte_cache_aligned;
+};
 
 static void *
 rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)
@@ -62,24 +65,24 @@ rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)
 
 	/* Check input parameters */
 	if (conf == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter conf is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter conf is NULL", __func__);
 		return NULL;
 	}
 	if (conf->ring == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter ring is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter ring is NULL", __func__);
 		return NULL;
 	}
 	if (conf->mtu == 0) {
-		RTE_LOG(ERR, PORT, "%s: Parameter mtu is invalid\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter mtu is invalid", __func__);
 		return NULL;
 	}
 	if (conf->pool_direct == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter pool_direct is NULL\n",
+		PORT_LOG(ERR, "%s: Parameter pool_direct is NULL",
 			__func__);
 		return NULL;
 	}
 	if (conf->pool_indirect == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter pool_indirect is NULL\n",
+		PORT_LOG(ERR, "%s: Parameter pool_indirect is NULL",
 			__func__);
 		return NULL;
 	}
@@ -88,7 +91,7 @@ rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)
 	port = rte_zmalloc_socket("PORT", sizeof(*port), RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (port == NULL) {
-		RTE_LOG(ERR, PORT, "%s: port is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: port is NULL", __func__);
 		return NULL;
 	}
 
@@ -232,7 +235,7 @@ static int
 rte_port_ring_reader_frag_free(void *port)
 {
 	if (port == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter port is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter port is NULL", __func__);
 		return -1;
 	}
 
@@ -260,6 +263,7 @@ rte_port_frag_reader_stats_read(void *port,
 /*
  * Summary of port operations
  */
+RTE_EXPORT_SYMBOL(rte_port_ring_reader_ipv4_frag_ops)
 struct rte_port_in_ops rte_port_ring_reader_ipv4_frag_ops = {
 	.f_create = rte_port_ring_reader_ipv4_frag_create,
 	.f_free = rte_port_ring_reader_frag_free,
@@ -267,6 +271,7 @@ struct rte_port_in_ops rte_port_ring_reader_ipv4_frag_ops = {
 	.f_stats = rte_port_frag_reader_stats_read,
 };
 
+RTE_EXPORT_SYMBOL(rte_port_ring_reader_ipv6_frag_ops)
 struct rte_port_in_ops rte_port_ring_reader_ipv6_frag_ops = {
 	.f_create = rte_port_ring_reader_ipv6_frag_create,
 	.f_free = rte_port_ring_reader_frag_free,

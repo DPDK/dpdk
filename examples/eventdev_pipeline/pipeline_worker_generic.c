@@ -38,10 +38,12 @@ worker_generic(void *arg)
 		}
 		received++;
 
-		/* The first worker stage does classification */
-		if (ev.queue_id == cdata.qid[0])
+		/* The first worker stage does classification and sets txq. */
+		if (ev.queue_id == cdata.qid[0]) {
 			ev.flow_id = ev.mbuf->hash.rss
 						% cdata.num_fids;
+			rte_event_eth_tx_adapter_txq_set(ev.mbuf, 0);
+		}
 
 		ev.queue_id = cdata.next_qid[ev.queue_id];
 		ev.op = RTE_EVENT_OP_FORWARD;
@@ -96,10 +98,12 @@ worker_generic_burst(void *arg)
 
 		for (i = 0; i < nb_rx; i++) {
 
-			/* The first worker stage does classification */
-			if (events[i].queue_id == cdata.qid[0])
+			/* The first worker stage does classification and sets txq. */
+			if (events[i].queue_id == cdata.qid[0]) {
 				events[i].flow_id = events[i].mbuf->hash.rss
 							% cdata.num_fids;
+				rte_event_eth_tx_adapter_txq_set(events[i].mbuf, 0);
+			}
 
 			events[i].queue_id = cdata.next_qid[events[i].queue_id];
 			events[i].op = RTE_EVENT_OP_FORWARD;
@@ -187,6 +191,12 @@ setup_eventdev_generic(struct worker_data *worker_data)
 			config.nb_event_port_enqueue_depth)
 		config.nb_event_port_enqueue_depth =
 				dev_info.max_event_port_enqueue_depth;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)
+		config.preschedule_type = RTE_EVENT_PRESCHEDULE;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+		config.preschedule_type = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
 
 	ret = rte_event_dev_configure(dev_id, &config);
 	if (ret < 0) {

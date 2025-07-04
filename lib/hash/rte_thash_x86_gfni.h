@@ -12,6 +12,7 @@
  * using Galois Fields New Instructions.
  */
 
+#include <rte_bitops.h>
 #include <rte_compat.h>
 #include <rte_vect.h>
 
@@ -110,7 +111,7 @@ __rte_thash_gfni(const uint64_t *mtrx, const uint8_t *tuple,
 				secondary_tuple);
 		}
 
-		chunk_len = __builtin_popcountll(load_mask);
+		chunk_len = rte_popcount64(load_mask);
 		for (i = 0; i < ((chunk_len + prepend) / 8); i++, mtrx += 8) {
 			perm_bytes = _mm512_mask_permutexvar_epi8(perm_bytes,
 				permute_mask, permute_idx, tuple_bytes);
@@ -161,9 +162,6 @@ __rte_thash_gfni(const uint64_t *mtrx, const uint8_t *tuple,
 /**
  * Calculate Toeplitz hash.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * @param m
  *  Pointer to the matrices generated from the corresponding
  *  RSS hash key using rte_thash_complete_matrix().
@@ -175,7 +173,6 @@ __rte_thash_gfni(const uint64_t *mtrx, const uint8_t *tuple,
  * @return
  *  Calculated Toeplitz hash value.
  */
-__rte_experimental
 static inline uint32_t
 rte_thash_gfni(const uint64_t *m, const uint8_t *tuple, int len)
 {
@@ -189,9 +186,6 @@ rte_thash_gfni(const uint64_t *m, const uint8_t *tuple, int len)
 
 /**
  * Bulk implementation for Toeplitz hash.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
  *
  * @param m
  *  Pointer to the matrices generated from the corresponding
@@ -207,7 +201,6 @@ rte_thash_gfni(const uint64_t *m, const uint8_t *tuple, int len)
  * @param num
  *  Number of tuples to hash.
  */
-__rte_experimental
 static inline void
 rte_thash_gfni_bulk(const uint64_t *mtrx, int len, uint8_t *tuple[],
 	uint32_t val[], uint32_t num)

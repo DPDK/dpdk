@@ -24,6 +24,10 @@
 #include <rte_common.h>
 #include <rte_config.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Compile-time endianness detection
  */
@@ -44,6 +48,8 @@
 #elif defined __BIG_ENDIAN__
 #define RTE_BYTE_ORDER RTE_BIG_ENDIAN
 #elif defined __LITTLE_ENDIAN__
+#define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
+#elif defined RTE_TOOLCHAIN_MSVC
 #define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
 #endif
 #if !defined(RTE_BYTE_ORDER)
@@ -234,14 +240,23 @@ static uint64_t rte_be_to_cpu_64(rte_be64_t x);
 #endif /* __DOXYGEN__ */
 
 #ifdef RTE_FORCE_INTRINSICS
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
+#ifndef RTE_TOOLCHAIN_MSVC
 #define rte_bswap16(x) __builtin_bswap16(x)
-#endif
 
 #define rte_bswap32(x) __builtin_bswap32(x)
 
 #define rte_bswap64(x) __builtin_bswap64(x)
+#else
+#define rte_bswap16(x) _byteswap_ushort(x)
 
+#define rte_bswap32(x) _byteswap_ulong(x)
+
+#define rte_bswap64(x) _byteswap_uint64(x)
+#endif
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* _RTE_BYTEORDER_H_ */

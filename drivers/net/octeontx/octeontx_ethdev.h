@@ -105,7 +105,7 @@ struct octeontx_fc_info {
 };
 
 /* Octeontx ethdev nic */
-struct octeontx_nic {
+struct __rte_cache_aligned octeontx_nic {
 	struct rte_eth_dev *dev;
 	int node;
 	int port_id;
@@ -145,15 +145,15 @@ struct octeontx_nic {
 	int print_flag;
 	struct octeontx_fc_info fc;
 	bool reconfigure;
-} __rte_cache_aligned;
+};
 
-struct octeontx_txq {
+struct __rte_cache_aligned octeontx_txq {
 	uint16_t queue_id;
 	octeontx_dq_t dq;
 	struct rte_eth_dev *eth_dev;
-} __rte_cache_aligned;
+};
 
-struct octeontx_rxq {
+struct __rte_cache_aligned octeontx_rxq {
 	uint16_t queue_id;
 	uint16_t port_id;
 	uint8_t evdev;
@@ -161,7 +161,7 @@ struct octeontx_rxq {
 	uint16_t ev_queues;
 	uint16_t ev_ports;
 	struct rte_mempool *pool;
-} __rte_cache_aligned;
+};
 
 void
 octeontx_set_tx_function(struct rte_eth_dev *dev);

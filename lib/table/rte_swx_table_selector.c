@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 
 #include "rte_swx_table_selector.h"
@@ -170,6 +171,7 @@ struct table {
 	uint32_t n_members_per_group_max_log2;
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_selector_footprint_get, 21.08)
 uint64_t
 rte_swx_table_selector_footprint_get(uint32_t n_groups_max, uint32_t n_members_per_group_max)
 {
@@ -182,6 +184,7 @@ rte_swx_table_selector_footprint_get(uint32_t n_groups_max, uint32_t n_members_p
 	return sizeof(struct table) + group_table_size + members_size;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_selector_free, 21.08)
 void
 rte_swx_table_selector_free(void *table)
 {
@@ -225,7 +228,7 @@ table_params_copy(struct table *t, struct rte_swx_table_selector_params *params)
 	if (selector_size < 8)
 		selector_size = 8;
 
-	memcpy(&t->params, params, sizeof(struct rte_swx_table_selector_params));
+	t->params = *params;
 	t->params.selector_size = selector_size;
 	t->params.selector_mask = NULL;
 	t->params.n_groups_max = rte_align32pow2(params->n_groups_max);
@@ -259,6 +262,7 @@ group_set(struct table *t,
 	  uint32_t group_id,
 	  struct rte_swx_table_selector_group *group);
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_selector_create, 21.08)
 void *
 rte_swx_table_selector_create(struct rte_swx_table_selector_params *params,
 			      struct rte_swx_table_selector_group **groups,
@@ -528,6 +532,7 @@ group_set(struct table *t,
 	return 0;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_selector_group_set, 21.08)
 int
 rte_swx_table_selector_group_set(void *table,
 				 uint32_t group_id,
@@ -542,12 +547,14 @@ struct mailbox {
 
 };
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_selector_mailbox_size_get, 21.08)
 uint64_t
 rte_swx_table_selector_mailbox_size_get(void)
 {
 	return sizeof(struct mailbox);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_swx_table_selector_select, 21.08)
 int
 rte_swx_table_selector_select(void *table,
 			      void *mailbox __rte_unused,

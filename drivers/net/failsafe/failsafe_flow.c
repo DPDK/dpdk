@@ -72,7 +72,9 @@ fs_flow_validate(struct rte_eth_dev *dev,
 	uint8_t i;
 	int ret;
 
-	fs_lock(dev, 0);
+	ret = fs_lock(dev, 0);
+	if (ret != 0)
+		return ret;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		DEBUG("Calling rte_flow_validate on sub_device %d", i);
 		ret = rte_flow_validate(PORT_ID(sdev),
@@ -99,7 +101,8 @@ fs_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow;
 	uint8_t i;
 
-	fs_lock(dev, 0);
+	if (fs_lock(dev, 0) != 0)
+		return NULL;
 	flow = fs_flow_allocate(attr, patterns, actions);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		flow->flows[i] = rte_flow_create(PORT_ID(sdev),
@@ -137,8 +140,9 @@ fs_flow_destroy(struct rte_eth_dev *dev,
 		ERROR("Invalid flow");
 		return -EINVAL;
 	}
-	ret = 0;
-	fs_lock(dev, 0);
+	ret = fs_lock(dev, 0);
+	if (ret != 0)
+		return ret;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		int local_ret;
 
@@ -169,7 +173,9 @@ fs_flow_flush(struct rte_eth_dev *dev,
 	uint8_t i;
 	int ret;
 
-	fs_lock(dev, 0);
+	ret = fs_lock(dev, 0);
+	if (ret != 0)
+		return ret;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		DEBUG("Calling rte_flow_flush on sub_device %d", i);
 		ret = rte_flow_flush(PORT_ID(sdev), error);
@@ -197,7 +203,8 @@ fs_flow_query(struct rte_eth_dev *dev,
 {
 	struct sub_device *sdev;
 
-	fs_lock(dev, 0);
+	if (fs_lock(dev, 0) != 0)
+		return -1;
 	sdev = TX_SUBDEV(dev);
 	if (sdev != NULL) {
 		int ret = rte_flow_query(PORT_ID(sdev),
@@ -223,7 +230,9 @@ fs_flow_isolate(struct rte_eth_dev *dev,
 	uint8_t i;
 	int ret;
 
-	fs_lock(dev, 0);
+	ret = fs_lock(dev, 0);
+	if (ret != 0)
+		return ret;
 	FOREACH_SUBDEV(sdev, i, dev) {
 		if (sdev->state < DEV_PROBED)
 			continue;

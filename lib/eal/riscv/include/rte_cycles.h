@@ -8,11 +8,11 @@
 #ifndef RTE_CYCLES_RISCV_H
 #define RTE_CYCLES_RISCV_H
 
+#include "generic/rte_cycles.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_cycles.h"
 
 #ifndef RTE_RISCV_RDTSC_USE_HPM
 #define RTE_RISCV_RDTSC_USE_HPM 0

@@ -6,25 +6,28 @@
 #define __MANA_H__
 
 #define	PCI_VENDOR_ID_MICROSOFT		0x1414
+#define PCI_DEVICE_ID_MICROSOFT_MANA_PF	0x00b9
 #define PCI_DEVICE_ID_MICROSOFT_MANA	0x00ba
 
-/* Shared data between primary/secondary processes */
 struct mana_shared_data {
-	rte_spinlock_t lock;
-	int init_done;
-	unsigned int primary_cnt;
-	unsigned int secondary_cnt;
+	RTE_ATOMIC(uint32_t) secondary_cnt;
 };
 
+/* vendor_part_id returned from ibv_query_device */
+#define GDMA_DEVICE_MANA	2
+#define GDMA_DEVICE_MANA_IB	3
+
+#define MANA_MAX_MTU	9000
 #define MIN_RX_BUF_SIZE	1024
-#define MAX_FRAME_SIZE	RTE_ETHER_MAX_LEN
 #define MANA_MAX_MAC_ADDR 1
 
 #define MANA_DEV_RX_OFFLOAD_SUPPORT ( \
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP | \
 		RTE_ETH_RX_OFFLOAD_CHECKSUM | \
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
 #define MANA_DEV_TX_OFFLOAD_SUPPORT ( \
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT | \
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS | \
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM | \
@@ -49,6 +52,21 @@ struct mana_shared_data {
 #define COMP_ENTRY_SIZE 64
 #define MAX_TX_WQE_SIZE 512
 #define MAX_RX_WQE_SIZE 256
+
+/* For 32 bit only */
+#ifdef RTE_ARCH_32
+#define	GDMA_SHORT_DB_INC_MASK 0xffff
+#define	GDMA_SHORT_DB_QID_MASK 0xfff
+
+#define GDMA_SHORT_DB_MAX_WQE	(0x10000 / GDMA_WQE_ALIGNMENT_UNIT_SIZE)
+
+#define TX_WQE_SHORT_DB_THRESHOLD			\
+	(GDMA_SHORT_DB_MAX_WQE -			\
+	(MAX_TX_WQE_SIZE / GDMA_WQE_ALIGNMENT_UNIT_SIZE))
+#define RX_WQE_SHORT_DB_THRESHOLD			\
+	(GDMA_SHORT_DB_MAX_WQE -			\
+	(MAX_RX_WQE_SIZE / GDMA_WQE_ALIGNMENT_UNIT_SIZE))
+#endif
 
 /* Values from the GDMA specification document, WQE format description */
 #define INLINE_OOB_SMALL_SIZE_IN_BYTES 8
@@ -141,19 +159,6 @@ struct gdma_header {
 
 #define COMPLETION_QUEUE_OWNER_MASK \
 	((1 << (COMPLETION_QUEUE_ENTRY_OWNER_BITS_SIZE)) - 1)
-
-struct gdma_comp {
-	struct gdma_header gdma_header;
-
-	/* Filled by GDMA core */
-	uint32_t completion_data[GDMA_COMP_DATA_SIZE_IN_UINT32];
-
-	/* Filled by GDMA core */
-	uint32_t work_queue_number;
-
-	/* Filled by GDMA core */
-	bool send_work_queue;
-};
 
 struct gdma_hardware_completion_entry {
 	char dma_client_data[GDMA_COMP_DATA_SIZE];
@@ -343,6 +348,8 @@ struct mana_priv {
 	/* IB device port */
 	uint8_t dev_port;
 
+	uint8_t vlan_strip;
+
 	struct ibv_context *ib_ctx;
 	struct ibv_pd *ib_pd;
 	struct ibv_pd *ib_parent_pd;
@@ -366,6 +373,7 @@ struct mana_priv {
 struct mana_txq_desc {
 	struct rte_mbuf *pkt;
 	uint32_t wqe_size_in_bu;
+	bool suppress_tx_cqe;
 };
 
 struct mana_rxq_desc {
@@ -391,6 +399,11 @@ struct mana_gdma_queue {
 
 #define MANA_MR_BTREE_PER_QUEUE_N	64
 
+struct gdma_comp {
+	/* Filled by GDMA core */
+	char *cqe_data;
+};
+
 struct mana_txq {
 	struct mana_priv *priv;
 	uint32_t num_desc;
@@ -399,6 +412,7 @@ struct mana_txq {
 
 	struct mana_gdma_queue gdma_sq;
 	struct mana_gdma_queue gdma_cq;
+	struct gdma_comp *gdma_comp_buf;
 
 	uint32_t tx_vp_offset;
 
@@ -408,7 +422,7 @@ struct mana_txq {
 	/* desc_ring_head is where we put pending requests to ring,
 	 * completion pull off desc_ring_tail
 	 */
-	uint32_t desc_ring_head, desc_ring_tail;
+	uint32_t desc_ring_head, desc_ring_tail, desc_ring_len;
 
 	struct mana_mr_btree mr_btree;
 	struct mana_stats stats;
@@ -431,8 +445,18 @@ struct mana_rxq {
 	 */
 	uint32_t desc_ring_head, desc_ring_tail;
 
+#ifdef RTE_ARCH_32
+	/* For storing wqe increment count btw each short doorbell ring */
+	uint32_t wqe_cnt_to_short_db;
+#endif
+
 	struct mana_gdma_queue gdma_rq;
 	struct mana_gdma_queue gdma_cq;
+	struct gdma_comp *gdma_comp_buf;
+
+	uint32_t comp_buf_len;
+	uint32_t comp_buf_idx;
+	uint32_t backlog_idx;
 
 	struct mana_stats stats;
 	struct mana_mr_btree mr_btree;
@@ -441,25 +465,34 @@ struct mana_rxq {
 };
 
 extern int mana_logtype_driver;
+#define RTE_LOGTYPE_MANA_DRIVER mana_logtype_driver
 extern int mana_logtype_init;
+#define RTE_LOGTYPE_MANA_INIT mana_logtype_init
 
-#define DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mana_logtype_driver, "%s(): " fmt "\n", \
-		__func__, ## args)
+#define DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MANA_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
-#define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mana_logtype_init, "%s(): " fmt "\n",\
-		__func__, ## args)
+#define DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, MANA_DRIVER, __VA_ARGS__)
+
+#define PMD_INIT_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MANA_INIT, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
+#ifdef RTE_ARCH_32
+int mana_ring_short_doorbell(void *db_page, enum gdma_queue_types queue_type,
+			     uint32_t queue_id, uint32_t tail_incr,
+			     uint8_t arm);
+#else
 int mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 		       uint32_t queue_id, uint32_t tail, uint8_t arm);
-int mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm);
+#endif
+int mana_rq_ring_doorbell(struct mana_rxq *rxq);
 
 int gdma_post_work_request(struct mana_gdma_queue *queue,
 			   struct gdma_work_request *work_req,
-			   struct gdma_posted_wqe_info *wqe_info);
+			   uint32_t *wqe_size_in_bu);
 uint8_t *gdma_get_wqe_pointer(struct mana_gdma_queue *queue);
 
 uint16_t mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **rx_pkts,
@@ -473,8 +506,9 @@ uint16_t mana_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 uint16_t mana_tx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 			       uint16_t pkts_n);
 
-int gdma_poll_completion_queue(struct mana_gdma_queue *cq,
-			       struct gdma_comp *comp);
+uint32_t gdma_poll_completion_queue(struct mana_gdma_queue *cq,
+				    struct gdma_comp *gdma_comp,
+				    uint32_t max_comp);
 
 int mana_start_rx_queues(struct rte_eth_dev *dev);
 int mana_start_tx_queues(struct rte_eth_dev *dev);
@@ -482,9 +516,9 @@ int mana_start_tx_queues(struct rte_eth_dev *dev);
 int mana_stop_rx_queues(struct rte_eth_dev *dev);
 int mana_stop_tx_queues(struct rte_eth_dev *dev);
 
-struct mana_mr_cache *mana_find_pmd_mr(struct mana_mr_btree *local_tree,
-				       struct mana_priv *priv,
-				       struct rte_mbuf *mbuf);
+struct mana_mr_cache *mana_alloc_pmd_mr(struct mana_mr_btree *local_tree,
+					struct mana_priv *priv,
+					struct rte_mbuf *mbuf);
 int mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 		    struct rte_mempool *pool);
 void mana_remove_all_mr(struct mana_priv *priv);
@@ -493,9 +527,9 @@ void mana_del_pmd_mr(struct mana_mr_cache *mr);
 void mana_mempool_chunk_cb(struct rte_mempool *mp, void *opaque,
 			   struct rte_mempool_memhdr *memhdr, unsigned int idx);
 
-struct mana_mr_cache *mana_mr_btree_lookup(struct mana_mr_btree *bt,
-					   uint16_t *idx,
-					   uintptr_t addr, size_t len);
+int mana_mr_btree_lookup(struct mana_mr_btree *bt, uint16_t *idx,
+			 uintptr_t addr, size_t len,
+			 struct mana_mr_cache **cache);
 int mana_mr_btree_insert(struct mana_mr_btree *bt, struct mana_mr_cache *entry);
 int mana_mr_btree_init(struct mana_mr_btree *bt, int n, int socket);
 void mana_mr_btree_free(struct mana_mr_btree *bt);

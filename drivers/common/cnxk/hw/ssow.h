@@ -37,6 +37,7 @@
 #define SSOW_LF_GWS_PRF_WQE1	     (0x448ull) /* [CN10K, .) */
 #define SSOW_LF_GWS_OP_GET_WORK0     (0x600ull)
 #define SSOW_LF_GWS_OP_GET_WORK1     (0x608ull) /* [CN10K, .) */
+#define SSOW_LF_GWS_OP_PRF_GETWORK   (0x610ull) /* [CN20K, .) */
 #define SSOW_LF_GWS_OP_SWTAG_FLUSH   (0x800ull)
 #define SSOW_LF_GWS_OP_SWTAG_UNTAG   (0x810ull)
 #define SSOW_LF_GWS_OP_SWTP_CLR	     (0x820ull)
@@ -54,6 +55,8 @@
 #define SSOW_LF_GWS_OP_SWTAG_FULL1   (0xc28ull)
 #define SSOW_LF_GWS_OP_GWC_INVAL     (0xe00ull)
 
+#define SSOW_LF_GWS_MAX_NW_TIM_US (0x400) /* [CN9K, CN10K) */
+
 /* Enum offsets */
 
 #define SSOW_LF_INT_VEC_IOP (0x0ull)
@@ -65,6 +68,8 @@
 #define SSOW_LF_GWS_TAG_PEND_GET_WORK_BIT 63
 #define SSOW_LF_GWS_TAG_PEND_SWITCH_BIT	  62
 #define SSOW_LF_GWS_TAG_PEND_DESCHED_BIT  58
+#define SSOW_LF_GWS_TAG_PEND_FLUSH	  56
+#define SSOW_LF_GWS_TAG_PEND_SWUNT	  54
 #define SSOW_LF_GWS_TAG_HEAD_BIT	  35
 
 #endif /* __SSOW_HW_H__ */

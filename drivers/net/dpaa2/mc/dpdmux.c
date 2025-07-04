@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2023 NXP
  *
  */
 #include <fsl_mc_sys.h>
@@ -287,15 +287,19 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
  * @token:	Token of DPDMUX object
  * @skip_reset_flags:	By default all are 0.
  *			By setting 1 will deactivate the reset.
- *	The flags are:
- *			DPDMUX_SKIP_DEFAULT_INTERFACE  0x01
- *			DPDMUX_SKIP_UNICAST_RULES      0x02
- *			DPDMUX_SKIP_MULTICAST_RULES    0x04
+ * The flags are:
+ *			DPDMUX_SKIP_MODIFY_DEFAULT_INTERFACE  0x01
+ *			DPDMUX_SKIP_UNICAST_RULES             0x02
+ *			DPDMUX_SKIP_MULTICAST_RULES           0x04
+ *			DPDMUX_SKIP_RESET_DEFAULT_INTERFACE   0x08
  *
  * For example, by default, through DPDMUX_RESET the default
  * interface will be restored with the one from create.
- * By setting DPDMUX_SKIP_DEFAULT_INTERFACE flag,
- * through DPDMUX_RESET the default interface will not be modified.
+ * By setting DPDMUX_SKIP_MODIFY_DEFAULT_INTERFACE flag,
+ * through DPDMUX_RESET the default interface will not be modified after reset.
+ * By setting DPDMUX_SKIP_RESET_DEFAULT_INTERFACE flag,
+ * through DPDMUX_RESET the default interface will not be reset
+ * and will continue to be functional during reset procedure.
  *
  * Return:	'0' on Success; Error code otherwise.
  */
@@ -327,10 +331,11 @@ int dpdmux_set_resetable(struct fsl_mc_io *mc_io,
  * @token:	Token of DPDMUX object
  * @skip_reset_flags:	Get the reset flags.
  *
- *	The flags are:
- *			DPDMUX_SKIP_DEFAULT_INTERFACE  0x01
- *			DPDMUX_SKIP_UNICAST_RULES      0x02
- *			DPDMUX_SKIP_MULTICAST_RULES    0x04
+ * The flags are:
+ *			DPDMUX_SKIP_MODIFY_DEFAULT_INTERFACE  0x01
+ *			DPDMUX_SKIP_UNICAST_RULES             0x02
+ *			DPDMUX_SKIP_MULTICAST_RULES           0x04
+ *			DPDMUX_SKIP_RESET_DEFAULT_INTERFACE   0x08
  *
  * Return:	'0' on Success; Error code otherwise.
  */
@@ -1065,6 +1070,127 @@ int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
 }
 
 /**
+ * dpdmux_if_set_taildrop() - enable taildrop for egress interface queues.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPDMUX object
+ * @if_id:	Interface Identifier
+ * @cfg: Taildrop configuration
+ */
+int dpdmux_if_set_taildrop(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+			      uint16_t if_id, struct dpdmux_taildrop_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+	struct dpdmux_cmd_set_taildrop *cmd_params;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_IF_SET_TAILDROP,
+			cmd_flags,
+			token);
+	cmd_params = (struct dpdmux_cmd_set_taildrop *)cmd.params;
+	cmd_params->if_id		= cpu_to_le16(if_id);
+	cmd_params->units		= cfg->units;
+	cmd_params->threshold	= cpu_to_le32(cfg->threshold);
+	dpdmux_set_field(cmd_params->oal_en, ENABLE, (!!cfg->enable));
+
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpdmux_if_get_taildrop() - get current taildrop configuration.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPDMUX object
+ * @if_id:	Interface Identifier
+ * @cfg: Taildrop configuration
+ */
+int dpdmux_if_get_taildrop(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+			      uint16_t if_id, struct dpdmux_taildrop_cfg *cfg)
+{
+	struct mc_command cmd = {0};
+	struct dpdmux_cmd_get_taildrop *cmd_params;
+	struct dpdmux_rsp_get_taildrop *rsp_params;
+	int err = 0;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_IF_GET_TAILDROP,
+			cmd_flags,
+			token);
+	cmd_params = (struct dpdmux_cmd_get_taildrop *)cmd.params;
+	cmd_params->if_id	= cpu_to_le16(if_id);
+
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpdmux_rsp_get_taildrop *)cmd.params;
+	cfg->threshold = le32_to_cpu(rsp_params->threshold);
+	cfg->units = rsp_params->units;
+	cfg->enable = dpdmux_get_field(rsp_params->oal_en, ENABLE);
+
+	return err;
+}
+
+/**
+ * dpdmux_dump_table() - Dump the content of table_type table into memory.
+ * @mc_io: Pointer to MC portal's I/O object
+ * @cmd_flags: Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token: Token of DPSW object
+ * @table_type: The type of the table to dump
+ *	- DPDMUX_DMAT_TABLE
+ *	- DPDMUX_MISS_TABLE
+ *	- DPDMUX_PRUNE_TABLE
+ * @table_index: The index of the table to dump in case of more than one table
+ *	if table_type == DPDMUX_DMAT_TABLE
+ *		- DPDMUX_HMAP_UNICAST
+ *		- DPDMUX_HMAP_MULTICAST
+ *	else 0
+ * @iova_addr: The snapshot will be stored in this variable as an header of struct dump_table_header
+ *             followed by an array of struct dump_table_entry
+ * @iova_size: Memory size allocated for iova_addr
+ * @num_entries: Number of entries written in iova_addr
+ *
+ * Return: Completion status. '0' on Success; Error code otherwise.
+ *
+ * The memory allocated at iova_addr must be zeroed before command execution.
+ * If the table content exceeds the memory size provided the dump will be truncated.
+ */
+int dpdmux_dump_table(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint16_t table_type,
+			 uint16_t table_index,
+			 uint64_t iova_addr,
+			 uint32_t iova_size,
+			 uint16_t *num_entries)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+	struct dpdmux_cmd_dump_table *cmd_params;
+	struct dpdmux_rsp_dump_table *rsp_params;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_DUMP_TABLE, cmd_flags, token);
+	cmd_params = (struct dpdmux_cmd_dump_table *)cmd.params;
+	cmd_params->table_type = cpu_to_le16(table_type);
+	cmd_params->table_index = cpu_to_le16(table_index);
+	cmd_params->iova_addr = cpu_to_le64(iova_addr);
+	cmd_params->iova_size = cpu_to_le32(iova_size);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	rsp_params = (struct dpdmux_rsp_dump_table *)cmd.params;
+	*num_entries = le16_to_cpu(rsp_params->num_entries);
+
+	return 0;
+}
+
+
+/**
  * dpdmux_if_set_errors_behavior() - Set errors behavior
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
  * @token:	Token of DPSW object
@@ -1098,5 +1224,62 @@ int dpdmux_if_set_errors_behavior(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 	cmd_params->if_id = cpu_to_le16(if_id);
 
 	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/* Sets up a Soft Parser Profile on this DPDMUX
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPDMUX object
+ * @sp_profile: Soft Parser Profile name (must a valid name for a defined profile)
+ *			Maximum allowed length for this string is 8 characters long
+ *			If this parameter is empty string (all zeros)
+ *			then the Default SP Profile is set on this dpdmux
+ * @type: one of the SP Profile types defined above: Ingress or Egress (or both using bitwise OR)
+ */
+int dpdmux_set_sp_profile(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+		uint8_t sp_profile[], uint8_t type)
+{
+	struct dpdmux_cmd_set_sp_profile *cmd_params;
+	struct mc_command cmd = { 0 };
+	int i;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_SET_SP_PROFILE,
+			cmd_flags, token);
+
+	cmd_params = (struct dpdmux_cmd_set_sp_profile *)cmd.params;
+	for (i = 0; i < MAX_SP_PROFILE_ID_SIZE && sp_profile[i]; i++)
+		cmd_params->sp_profile[i] = sp_profile[i];
+	cmd_params->type = type;
+
+	/* send command to MC */
+	return mc_send_command(mc_io, &cmd);
+}
+
+/* Enable/Disable Soft Parser on this DPDMUX interface
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPDMUX object
+ * @if_id: interface id
+ * @type: one of the SP Profile types defined above: Ingress or Egress (or both using bitwise OR)
+ * @en: 1 to enable or 0 to disable
+ */
+int dpdmux_sp_enable(struct fsl_mc_io *mc_io, uint32_t cmd_flags, uint16_t token,
+		uint16_t if_id, uint8_t type, uint8_t en)
+{
+	struct dpdmux_cmd_sp_enable *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPDMUX_CMDID_SP_ENABLE,
+			cmd_flags, token);
+
+	cmd_params = (struct dpdmux_cmd_sp_enable *)cmd.params;
+	cmd_params->if_id = if_id;
+	cmd_params->type = type;
+	cmd_params->en = en;
+
+	/* send command to MC */
 	return mc_send_command(mc_io, &cmd);
 }

@@ -5,6 +5,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -622,6 +623,71 @@ vhost_vdpa_get_intr_fd(struct virtio_user_dev *dev __rte_unused)
 	return -1;
 }
 
+static int
+vhost_vdpa_get_nr_vrings(struct virtio_user_dev *dev)
+{
+	int nr_vrings = dev->max_queue_pairs * 2;
+
+	if (dev->device_features & (1ull << VIRTIO_NET_F_CTRL_VQ))
+		nr_vrings += 1;
+
+	return nr_vrings;
+}
+
+static int
+vhost_vdpa_unmap_notification_area(struct virtio_user_dev *dev)
+{
+	int i, nr_vrings;
+
+	nr_vrings = vhost_vdpa_get_nr_vrings(dev);
+
+	for (i = 0; i < nr_vrings; i++) {
+		if (dev->notify_area[i])
+			munmap(dev->notify_area[i], getpagesize());
+	}
+	free(dev->notify_area);
+	dev->notify_area = NULL;
+
+	return 0;
+}
+
+static int
+vhost_vdpa_map_notification_area(struct virtio_user_dev *dev)
+{
+	struct vhost_vdpa_data *data = dev->backend_data;
+	int nr_vrings, i, page_size = getpagesize();
+	uint16_t **notify_area;
+
+	nr_vrings = vhost_vdpa_get_nr_vrings(dev);
+
+	notify_area = malloc(nr_vrings * sizeof(*notify_area));
+	if (!notify_area) {
+		PMD_DRV_LOG(ERR, "(%s) Failed to allocate notify area array", dev->path);
+		return -1;
+	}
+
+	for (i = 0; i < nr_vrings; i++) {
+		notify_area[i] = mmap(NULL, page_size, PROT_WRITE, MAP_SHARED | MAP_FILE,
+				      data->vhostfd, i * page_size);
+		if (notify_area[i] == MAP_FAILED) {
+			PMD_DRV_LOG(ERR, "(%s) Map failed for notify address of queue %d",
+				    dev->path, i);
+			i--;
+			goto map_err;
+		}
+	}
+	dev->notify_area = notify_area;
+
+	return 0;
+
+map_err:
+	for (; i >= 0; i--)
+		munmap(notify_area[i], page_size);
+	free(notify_area);
+
+	return -1;
+}
+
 struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.setup = vhost_vdpa_setup,
 	.destroy = vhost_vdpa_destroy,
@@ -646,4 +712,6 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,
 	.update_link_state = vhost_vdpa_update_link_state,
 	.get_intr_fd = vhost_vdpa_get_intr_fd,
+	.map_notification_area = vhost_vdpa_map_notification_area,
+	.unmap_notification_area = vhost_vdpa_unmap_notification_area,
 };

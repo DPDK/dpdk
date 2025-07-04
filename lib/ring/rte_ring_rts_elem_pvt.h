@@ -31,18 +31,19 @@ __rte_ring_rts_update_tail(struct rte_ring_rts_headtail *ht)
 	 * might preceded us, then don't update tail with new value.
 	 */
 
-	ot.raw = __atomic_load_n(&ht->tail.raw, __ATOMIC_ACQUIRE);
+	ot.raw = rte_atomic_load_explicit(&ht->tail.raw, rte_memory_order_acquire);
 
 	do {
 		/* on 32-bit systems we have to do atomic read here */
-		h.raw = __atomic_load_n(&ht->head.raw, __ATOMIC_RELAXED);
+		h.raw = rte_atomic_load_explicit(&ht->head.raw, rte_memory_order_relaxed);
 
 		nt.raw = ot.raw;
 		if (++nt.val.cnt == h.val.cnt)
 			nt.val.pos = h.val.pos;
 
-	} while (__atomic_compare_exchange_n(&ht->tail.raw, &ot.raw, nt.raw,
-			0, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&ht->tail.raw,
+			(uint64_t *)(uintptr_t)&ot.raw, nt.raw,
+			rte_memory_order_release, rte_memory_order_acquire) == 0);
 }
 
 /**
@@ -59,24 +60,45 @@ __rte_ring_rts_head_wait(const struct rte_ring_rts_headtail *ht,
 
 	while (h->val.pos - ht->tail.val.pos > max) {
 		rte_pause();
-		h->raw = __atomic_load_n(&ht->head.raw, __ATOMIC_ACQUIRE);
+		h->raw = rte_atomic_load_explicit(&ht->head.raw, rte_memory_order_acquire);
 	}
 }
 
 /**
- * @internal This function updates the producer head for enqueue.
+ * @internal This is a helper function that moves the producer/consumer head
+ *
+ * @param d
+ *   A pointer to the headtail structure with head value to be moved
+ * @param s
+ *   A pointer to the counter-part headtail structure. Note that this
+ *   function only reads tail value from it
+ * @param capacity
+ *   Either ring capacity value (for producer), or zero (for consumer)
+ *   Indicates whether multi-thread safe path is needed or not
+ * @param num
+ *   The number of elements we want to move head value on
+ * @param behavior
+ *   RTE_RING_QUEUE_FIXED:    Move on a fixed number of items
+ *   RTE_RING_QUEUE_VARIABLE: Move on as many items as possible
+ * @param old_head
+ *   Returns head value as it was before the move
+ * @param entries
+ *   Returns the number of ring entries available BEFORE head was moved
+ * @return
+ *   Actual number of objects the head was moved on
+ *   If behavior == RTE_RING_QUEUE_FIXED, this will be 0 or n only
  */
 static __rte_always_inline uint32_t
-__rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
+__rte_ring_rts_move_head(struct rte_ring_rts_headtail *d,
+	const struct rte_ring_headtail *s, uint32_t capacity, uint32_t num,
 	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
-	uint32_t *free_entries)
+	uint32_t *entries)
 {
 	uint32_t n;
 	union __rte_ring_rts_poscnt nh, oh;
 
-	const uint32_t capacity = r->capacity;
-
-	oh.raw = __atomic_load_n(&r->rts_prod.head.raw, __ATOMIC_ACQUIRE);
+	oh.raw = rte_atomic_load_explicit(&d->head.raw,
+			rte_memory_order_acquire);
 
 	do {
 		/* Reset n to the initial burst count */
@@ -87,20 +109,20 @@ __rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
 		 * make sure that we read prod head *before*
 		 * reading cons tail.
 		 */
-		__rte_ring_rts_head_wait(&r->rts_prod, &oh);
+		__rte_ring_rts_head_wait(d, &oh);
 
 		/*
 		 *  The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
-		 * *old_head > cons_tail). So 'free_entries' is always between 0
+		 * *old_head > cons_tail). So 'entries' is always between 0
 		 * and capacity (which is < size).
 		 */
-		*free_entries = capacity + r->cons.tail - oh.val.pos;
+		*entries = capacity + s->tail - oh.val.pos;
 
 		/* check that we have enough room in ring */
-		if (unlikely(n > *free_entries))
+		if (unlikely(n > *entries))
 			n = (behavior == RTE_RING_QUEUE_FIXED) ?
-					0 : *free_entries;
+					0 : *entries;
 
 		if (n == 0)
 			break;
@@ -113,12 +135,25 @@ __rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
 	 *  - OOO reads of cons tail value
 	 *  - OOO copy of elems to the ring
 	 */
-	} while (__atomic_compare_exchange_n(&r->rts_prod.head.raw,
-			&oh.raw, nh.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&d->head.raw,
+			(uint64_t *)(uintptr_t)&oh.raw, nh.raw,
+			rte_memory_order_acquire,
+			rte_memory_order_acquire) == 0);
 
 	*old_head = oh.val.pos;
 	return n;
+}
+
+/**
+ * @internal This function updates the producer head for enqueue.
+ */
+static __rte_always_inline uint32_t
+__rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
+	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
+	uint32_t *free_entries)
+{
+	return __rte_ring_rts_move_head(&r->rts_prod, &r->cons,
+			r->capacity, num, behavior, old_head, free_entries);
 }
 
 /**
@@ -129,51 +164,8 @@ __rte_ring_rts_move_cons_head(struct rte_ring *r, uint32_t num,
 	enum rte_ring_queue_behavior behavior, uint32_t *old_head,
 	uint32_t *entries)
 {
-	uint32_t n;
-	union __rte_ring_rts_poscnt nh, oh;
-
-	oh.raw = __atomic_load_n(&r->rts_cons.head.raw, __ATOMIC_ACQUIRE);
-
-	/* move cons.head atomically */
-	do {
-		/* Restore n as it may change every loop */
-		n = num;
-
-		/*
-		 * wait for cons head/tail distance,
-		 * make sure that we read cons head *before*
-		 * reading prod tail.
-		 */
-		__rte_ring_rts_head_wait(&r->rts_cons, &oh);
-
-		/* The subtraction is done between two unsigned 32bits value
-		 * (the result is always modulo 32 bits even if we have
-		 * cons_head > prod_tail). So 'entries' is always between 0
-		 * and size(ring)-1.
-		 */
-		*entries = r->prod.tail - oh.val.pos;
-
-		/* Set the actual entries for dequeue */
-		if (n > *entries)
-			n = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : *entries;
-
-		if (unlikely(n == 0))
-			break;
-
-		nh.val.pos = oh.val.pos + n;
-		nh.val.cnt = oh.val.cnt + 1;
-
-	/*
-	 * this CAS(ACQUIRE, ACQUIRE) serves as a hoist barrier to prevent:
-	 *  - OOO reads of prod tail value
-	 *  - OOO copy of elems from the ring
-	 */
-	} while (__atomic_compare_exchange_n(&r->rts_cons.head.raw,
-			&oh.raw, nh.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
-
-	*old_head = oh.val.pos;
-	return n;
+	return __rte_ring_rts_move_head(&r->rts_cons, &r->prod,
+			0, num, behavior, old_head, entries);
 }
 
 /**

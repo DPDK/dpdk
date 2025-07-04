@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -14,7 +14,6 @@ struct tf;
 /**
  * The Table module provides processing of Internal TF table types.
  */
-
 
 /**
  * Table configuration parameters
@@ -327,5 +326,4 @@ int tf_tbl_bulk_get(struct tf *tfp,
 int
 tf_tbl_get_resc_info(struct tf *tfp,
 		     struct tf_tbl_resource_info *tbl);
-
 #endif /* TF_TBL_TYPE_H */

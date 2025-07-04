@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -24,6 +24,7 @@ struct bnxt_tx_ring_info {
 
 	rte_iova_t		tx_desc_mapping;
 
+	unsigned short          *nr_bds;
 	struct bnxt_ring	*tx_ring_struct;
 };
 
@@ -46,12 +47,14 @@ void bnxt_free_tx_rings(struct bnxt *bp);
 int bnxt_init_one_tx_ring(struct bnxt_tx_queue *txq);
 int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id);
 uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
-			       uint16_t nb_pkts);
+			uint16_t nb_pkts);
+uint16_t _bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts);
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 uint16_t bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			    uint16_t nb_pkts);
 #endif
-#if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
+#if defined(RTE_ARCH_X86)
 uint16_t bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts);
 #endif
@@ -90,5 +93,4 @@ int bnxt_flush_tx_cmp(struct bnxt_cp_ring_info *cpr);
 					TX_BD_LONG_LFLAGS_IP_CHKSUM)
 #define TX_BD_FLG_TIP_TCP_UDP_CHKSUM	(TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM | \
 					TX_BD_LONG_LFLAGS_T_IP_CHKSUM)
-
 #endif

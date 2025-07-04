@@ -11,16 +11,16 @@
  * API for ethdev trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_trace_point.h>
 
 #include "rte_eventdev.h"
 #include "rte_event_crypto_adapter.h"
 #include "rte_event_eth_rx_adapter.h"
 #include "rte_event_timer_adapter.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_TRACE_POINT(
 	rte_eventdev_trace_configure,
@@ -77,12 +77,34 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_eventdev_trace_port_profile_links_set,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id,
+		uint16_t nb_links, uint8_t profile_id, int rc),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_u16(nb_links);
+	rte_trace_point_emit_u8(profile_id);
+	rte_trace_point_emit_int(rc);
+)
+
+RTE_TRACE_POINT(
 	rte_eventdev_trace_port_unlink,
 	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id,
 		uint16_t nb_unlinks, int rc),
 	rte_trace_point_emit_u8(dev_id);
 	rte_trace_point_emit_u8(port_id);
 	rte_trace_point_emit_u16(nb_unlinks);
+	rte_trace_point_emit_int(rc);
+)
+
+RTE_TRACE_POINT(
+	rte_eventdev_trace_port_profile_unlink,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id,
+		uint16_t nb_unlinks, uint8_t profile_id, int rc),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_u16(nb_unlinks);
+	rte_trace_point_emit_u8(profile_id);
 	rte_trace_point_emit_int(rc);
 )
 
@@ -134,6 +156,20 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u16(queue_conf->servicing_weight);
 	rte_trace_point_emit_u8(queue_conf->ev.queue_id);
 	rte_trace_point_emit_u8(queue_conf->ev.priority);
+	rte_trace_point_emit_int(rc);
+)
+
+RTE_TRACE_POINT(
+	rte_eventdev_trace_eth_rx_adapter_queues_add,
+	RTE_TRACE_POINT_ARGS(uint8_t adptr_id, uint16_t eth_dev_id,
+		uint16_t nb_rx_queues, void *rx_queue_id,
+		const void *queue_conf,
+		int rc),
+	rte_trace_point_emit_u8(adptr_id);
+	rte_trace_point_emit_u16(eth_dev_id);
+	rte_trace_point_emit_u16(nb_rx_queues);
+	rte_trace_point_emit_ptr(rx_queue_id);
+	rte_trace_point_emit_ptr(queue_conf);
 	rte_trace_point_emit_int(rc);
 )
 
@@ -484,6 +520,16 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id, int count),
 	rte_trace_point_emit_u8(dev_id);
 	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_int(count);
+)
+
+RTE_TRACE_POINT(
+	rte_eventdev_trace_port_profile_links_get,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id, uint8_t profile_id,
+		int count),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_u8(profile_id);
 	rte_trace_point_emit_int(count);
 )
 

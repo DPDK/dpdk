@@ -110,30 +110,18 @@ hn_update_packet_stats(struct hn_stats *stats, const struct rte_mbuf *m)
 	uint32_t s = m->pkt_len;
 	const struct rte_ether_addr *ea;
 
-	if (s == 64) {
-		stats->size_bins[1]++;
-	} else if (s > 64 && s < 1024) {
-		uint32_t bin;
-
-		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
-		stats->size_bins[bin]++;
-	} else {
-		if (s < 64)
-			stats->size_bins[0]++;
-		else if (s < 1519)
-			stats->size_bins[6]++;
-		else
-			stats->size_bins[7]++;
-	}
+	if (s >= 1024)
+		stats->size_bins[6 + (s > 1518)]++;
+	else if (s <= 64)
+		stats->size_bins[s >> 6]++;
+	else
+		stats->size_bins[32UL - rte_clz32(s) - 5]++;
 
 	ea = rte_pktmbuf_mtod(m, const struct rte_ether_addr *);
-	if (rte_is_multicast_ether_addr(ea)) {
-		if (rte_is_broadcast_ether_addr(ea))
-			stats->broadcast++;
-		else
-			stats->multicast++;
-	}
+	RTE_BUILD_BUG_ON(offsetof(struct hn_stats, broadcast) !=
+			offsetof(struct hn_stats, multicast) + sizeof(uint64_t));
+	if (unlikely(rte_is_multicast_ether_addr(ea)))
+		(&stats->multicast)[rte_is_broadcast_ether_addr(ea)]++;
 }
 
 static inline unsigned int hn_rndis_pktlen(const struct rndis_packet_msg *pkt)
@@ -234,6 +222,17 @@ static void hn_reset_txagg(struct hn_tx_queue *txq)
 	txq->agg_prevpkt = NULL;
 }
 
+static void
+hn_rx_queue_free_common(struct hn_rx_queue *rxq)
+{
+	if (!rxq)
+		return;
+
+	rte_free(rxq->rxbuf_info);
+	rte_free(rxq->event_buf);
+	rte_free(rxq);
+}
+
 int
 hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		      uint16_t queue_idx, uint16_t nb_desc,
@@ -243,6 +242,7 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct hn_tx_queue *txq;
+	struct hn_rx_queue *rxq = NULL;
 	char name[RTE_MEMPOOL_NAMESIZE];
 	uint32_t tx_free_thresh;
 	int err = -ENOMEM;
@@ -257,7 +257,7 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_free_thresh + 3 >= nb_desc) {
 		PMD_INIT_LOG(ERR,
 			     "tx_free_thresh must be less than the number of TX entries minus 3(%u)."
-			     " (tx_free_thresh=%u port=%u queue=%u)\n",
+			     " (tx_free_thresh=%u port=%u queue=%u)",
 			     nb_desc - 3,
 			     tx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;
@@ -301,6 +301,27 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		goto error;
 	}
 
+	/*
+	 * If there are more Tx queues than Rx queues, allocate rx_queues
+	 * with event buffer so that Tx completion messages can still be
+	 * received
+	 */
+	if (queue_idx >= dev->data->nb_rx_queues) {
+		rxq = hn_rx_queue_alloc(hv, queue_idx, socket_id);
+
+		if (!rxq) {
+			err = -ENOMEM;
+			goto error;
+		}
+
+		/*
+		 * Don't allocate mbuf pool or rx ring.  RSS is always configured
+		 * to ensure packets aren't received by this Rx queue.
+		 */
+		rxq->mb_pool = NULL;
+		rxq->rx_ring = NULL;
+	}
+
 	txq->agg_szmax  = RTE_MIN(hv->chim_szmax, hv->rndis_agg_size);
 	txq->agg_pktmax = hv->rndis_agg_pkts;
 	txq->agg_align  = hv->rndis_agg_align;
@@ -311,12 +332,15 @@ hn_dev_tx_queue_setup(struct rte_eth_dev *dev,
 				     socket_id, tx_conf);
 	if (err == 0) {
 		dev->data->tx_queues[queue_idx] = txq;
+		if (rxq != NULL)
+			dev->data->rx_queues[queue_idx] = rxq;
 		return 0;
 	}
 
 error:
 	rte_mempool_free(txq->txdesc_pool);
 	rte_memzone_free(txq->tx_rndis_mz);
+	hn_rx_queue_free_common(rxq);
 	rte_free(txq);
 	return err;
 }
@@ -363,6 +387,12 @@ hn_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (!txq)
 		return;
+	/*
+	 * Free any Rx queues allocated for a Tx queue without a corresponding
+	 * Rx queue
+	 */
+	if (qid >= dev->data->nb_rx_queues)
+		hn_rx_queue_free_common(dev->data->rx_queues[qid]);
 
 	rte_mempool_free(txq->txdesc_pool);
 
@@ -552,10 +582,12 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		     const struct hn_rxinfo *info)
 {
 	struct hn_data *hv = rxq->hv;
-	struct rte_mbuf *m;
+	struct rte_mbuf *m = NULL;
 	bool use_extbuf = false;
 
-	m = rte_pktmbuf_alloc(rxq->mb_pool);
+	if (likely(rxq->mb_pool != NULL))
+		m = rte_pktmbuf_alloc(rxq->mb_pool);
+
 	if (unlikely(!m)) {
 		struct rte_eth_dev *dev =
 			&rte_eth_devices[rxq->port_id];
@@ -612,7 +644,9 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 					   RTE_PTYPE_L4_MASK);
 
 	if (info->vlan_info != HN_NDIS_VLAN_INFO_INVALID) {
-		m->vlan_tci = info->vlan_info;
+		m->vlan_tci = RTE_VLAN_TCI_MAKE(NDIS_VLAN_INFO_ID(info->vlan_info),
+						NDIS_VLAN_INFO_PRI(info->vlan_info),
+						NDIS_VLAN_INFO_CFI(info->vlan_info));
 		m->ol_flags |= RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_VLAN;
 
 		/* NDIS always strips tag, put it back if necessary */
@@ -900,7 +934,7 @@ struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 
 		if (!rxq->rxbuf_info) {
 			PMD_DRV_LOG(ERR,
-				"Could not allocate rxbuf info for queue %d\n",
+				"Could not allocate rxbuf info for queue %d",
 				queue_id);
 			rte_free(rxq->event_buf);
 			rte_free(rxq);
@@ -940,7 +974,15 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (queue_idx == 0) {
 		rxq = hv->primary;
 	} else {
-		rxq = hn_rx_queue_alloc(hv, queue_idx, socket_id);
+		/*
+		 * If the number of Tx queues was previously greater than the
+		 * number of Rx queues, we may already have allocated an rxq.
+		 */
+		if (!dev->data->rx_queues[queue_idx])
+			rxq = hn_rx_queue_alloc(hv, queue_idx, socket_id);
+		else
+			rxq = dev->data->rx_queues[queue_idx];
+
 		if (!rxq)
 			return -ENOMEM;
 	}
@@ -973,9 +1015,10 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 fail:
 	rte_ring_free(rxq->rx_ring);
-	rte_free(rxq->rxbuf_info);
-	rte_free(rxq->event_buf);
-	rte_free(rxq);
+	/* Only free rxq if it was created in this function. */
+	if (!dev->data->rx_queues[queue_idx])
+		hn_rx_queue_free_common(rxq);
+
 	return error;
 }
 
@@ -996,9 +1039,7 @@ hn_rx_queue_free(struct hn_rx_queue *rxq, bool keep_primary)
 	if (keep_primary && rxq == rxq->hv->primary)
 		return;
 
-	rte_free(rxq->rxbuf_info);
-	rte_free(rxq->event_buf);
-	rte_free(rxq);
+	hn_rx_queue_free_common(rxq);
 }
 
 void
@@ -1332,7 +1373,9 @@ static void hn_encap(struct rndis_packet_msg *pkt,
 	if (m->ol_flags & RTE_MBUF_F_TX_VLAN) {
 		pi_data = hn_rndis_pktinfo_append(pkt, NDIS_VLAN_INFO_SIZE,
 						  NDIS_PKTINFO_TYPE_VLAN);
-		*pi_data = m->vlan_tci;
+		*pi_data = NDIS_VLAN_INFO_MAKE(RTE_VLAN_TCI_ID(m->vlan_tci),
+					       RTE_VLAN_TCI_PRI(m->vlan_tci),
+					       RTE_VLAN_TCI_DEI(m->vlan_tci));
 	}
 
 	if (m->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
@@ -1388,10 +1431,10 @@ static unsigned int hn_get_slots(const struct rte_mbuf *m)
 
 	while (m) {
 		unsigned int size = rte_pktmbuf_data_len(m);
-		unsigned int offs = rte_mbuf_data_iova(m) & PAGE_MASK;
+		unsigned int offs = rte_mbuf_data_iova(m) & HYPERV_PAGE_MASK;
 
-		slots += (offs + size + rte_mem_page_size() - 1) /
-				rte_mem_page_size();
+		slots += (offs + size + HYPERV_PAGE_SIZE - 1) /
+				HYPERV_PAGE_SIZE;
 		m = m->next;
 	}
 
@@ -1406,13 +1449,13 @@ static unsigned int hn_fill_sg(struct vmbus_gpa *sg,
 
 	while (m) {
 		rte_iova_t addr = rte_mbuf_data_iova(m);
-		unsigned int page = addr / rte_mem_page_size();
-		unsigned int offset = addr & PAGE_MASK;
+		unsigned int page = addr / HYPERV_PAGE_SIZE;
+		unsigned int offset = addr & HYPERV_PAGE_MASK;
 		unsigned int len = rte_pktmbuf_data_len(m);
 
 		while (len > 0) {
 			unsigned int bytes = RTE_MIN(len,
-					rte_mem_page_size() - offset);
+					HYPERV_PAGE_SIZE - offset);
 
 			sg[segs].page = page;
 			sg[segs].ofs = offset;
@@ -1455,8 +1498,8 @@ static int hn_xmit_sg(struct hn_tx_queue *txq,
 	addr = txq->tx_rndis_iova +
 		((char *)txd->rndis_pkt - (char *)txq->tx_rndis);
 
-	sg[0].page = addr / rte_mem_page_size();
-	sg[0].ofs = addr & PAGE_MASK;
+	sg[0].page = addr / HYPERV_PAGE_SIZE;
+	sg[0].ofs = addr & HYPERV_PAGE_MASK;
 	sg[0].len = RNDIS_PACKET_MSG_OFFSET_ABS(hn_rndis_pktlen(txd->rndis_pkt));
 	segs = 1;
 
@@ -1514,13 +1557,31 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *m = tx_pkts[nb_tx];
-		uint32_t pkt_size = m->pkt_len + HN_RNDIS_PKT_LEN;
 		struct rndis_packet_msg *pkt;
 		struct hn_txdesc *txd;
+		uint32_t pkt_size;
 
 		txd = hn_txd_get(txq);
 		if (txd == NULL)
 			break;
+
+		if (!(m->ol_flags & RTE_MBUF_F_TX_VLAN)) {
+			struct rte_ether_hdr *eh =
+				rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+			struct rte_vlan_hdr *vh;
+
+			/* Force TX vlan offloading for 801.2Q packet */
+			if (eh->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
+				vh = (struct rte_vlan_hdr *)(eh + 1);
+				m->ol_flags |= RTE_MBUF_F_TX_VLAN;
+				m->vlan_tci = rte_be_to_cpu_16(vh->vlan_tci);
+
+				/* Copy ether header over */
+				memmove(rte_pktmbuf_adj(m, sizeof(struct rte_vlan_hdr)),
+					eh, 2 * RTE_ETHER_ADDR_LEN);
+			}
+		}
+		pkt_size = m->pkt_len + HN_RNDIS_PKT_LEN;
 
 		/* For small packets aggregate them in chimney buffer */
 		if (m->pkt_len <= hv->tx_copybreak &&

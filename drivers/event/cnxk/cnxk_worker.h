@@ -33,7 +33,8 @@ cnxk_sso_hws_swtag_desched(uint32_t tag, uint8_t new_tt, uint16_t grp,
 	uint64_t val;
 
 	val = tag | ((uint64_t)(new_tt & 0x3) << 32) | ((uint64_t)grp << 34);
-	__atomic_store_n((uint64_t *)swtag_desched_op, val, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit((uint64_t __rte_atomic *)swtag_desched_op, val,
+				  rte_memory_order_release);
 }
 
 static __rte_always_inline void
@@ -54,12 +55,6 @@ cnxk_sso_hws_swtag_untag(uintptr_t swtag_untag_op)
 static __rte_always_inline void
 cnxk_sso_hws_swtag_flush(uint64_t base)
 {
-	/* Ensure that there is no previous flush is pending. */
-	while (plt_read64(base + SSOW_LF_GWS_PENDSTATE) & BIT_ULL(56))
-		;
-	if (CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_TAG)) ==
-	    SSO_TT_EMPTY)
-		return;
 	plt_write64(0, base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 }
 
@@ -71,12 +66,12 @@ cnxk_sso_hws_swtag_wait(uintptr_t tag_op)
 
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
 		     "		ldr %[swtb], [%[swtp_loc]]	\n"
-		     "		tbz %[swtb], 62, done%=		\n"
+		     "		tbz %[swtb], 62, .Ldone%=	\n"
 		     "		sevl				\n"
-		     "rty%=:	wfe				\n"
+		     ".Lrty%=:	wfe				\n"
 		     "		ldr %[swtb], [%[swtp_loc]]	\n"
-		     "		tbnz %[swtb], 62, rty%=		\n"
-		     "done%=:					\n"
+		     "		tbnz %[swtb], 62, .Lrty%=	\n"
+		     ".Ldone%=:					\n"
 		     : [swtb] "=&r"(swtp)
 		     : [swtp_loc] "r"(tag_op));
 #else

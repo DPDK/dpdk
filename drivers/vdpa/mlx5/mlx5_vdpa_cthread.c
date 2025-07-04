@@ -48,7 +48,7 @@ bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
 		enum mlx5_vdpa_task_type task_type,
-		uint32_t *remaining_cnt, uint32_t *err_cnt,
+		RTE_ATOMIC(uint32_t) *remaining_cnt, RTE_ATOMIC(uint32_t) *err_cnt,
 		void **task_data, uint32_t num)
 {
 	struct rte_ring *rng = conf_thread_mng.cthrd[thrd_idx].rng;
@@ -70,8 +70,8 @@ mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		return -1;
 	for (i = 0 ; i < num; i++)
 		if (task[i].remaining_cnt)
-			__atomic_fetch_add(task[i].remaining_cnt, 1,
-				__ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(task[i].remaining_cnt, 1,
+				rte_memory_order_relaxed);
 	/* wake up conf thread. */
 	pthread_mutex_lock(&conf_thread_mng.cthrd_lock);
 	pthread_cond_signal(&conf_thread_mng.cthrd[thrd_idx].c_cond);
@@ -80,27 +80,26 @@ mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 }
 
 bool
-mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
-		uint32_t *err_cnt, uint32_t sleep_time)
+mlx5_vdpa_c_thread_wait_bulk_tasks_done(RTE_ATOMIC(uint32_t) *remaining_cnt,
+		RTE_ATOMIC(uint32_t) *err_cnt, uint32_t sleep_time)
 {
 	/* Check and wait all tasks done. */
-	while (__atomic_load_n(remaining_cnt,
-		__ATOMIC_RELAXED) != 0) {
+	while (rte_atomic_load_explicit(remaining_cnt,
+		rte_memory_order_relaxed) != 0) {
 		rte_delay_us_sleep(sleep_time);
 	}
-	if (__atomic_load_n(err_cnt,
-		__ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(err_cnt,
+		rte_memory_order_relaxed)) {
 		DRV_LOG(ERR, "Tasks done with error.");
 		return true;
 	}
 	return false;
 }
 
-static void *
+static uint32_t
 mlx5_vdpa_c_thread_handle(void *arg)
 {
 	struct mlx5_vdpa_conf_thread_mng *multhrd = arg;
-	pthread_t thread_id = pthread_self();
 	struct mlx5_vdpa_virtq *virtq;
 	struct mlx5_vdpa_priv *priv;
 	struct mlx5_vdpa_task task;
@@ -112,10 +111,10 @@ mlx5_vdpa_c_thread_handle(void *arg)
 
 	for (thrd_idx = 0; thrd_idx < multhrd->max_thrds;
 		thrd_idx++)
-		if (multhrd->cthrd[thrd_idx].tid == thread_id)
+		if (rte_thread_equal(multhrd->cthrd[thrd_idx].tid, rte_thread_self()))
 			break;
 	if (thrd_idx >= multhrd->max_thrds)
-		return NULL;
+		return 1;
 	rng = multhrd->cthrd[thrd_idx].rng;
 	while (1) {
 		task_num = mlx5_vdpa_c_thrd_ring_dequeue_bulk(rng,
@@ -138,8 +137,8 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			if (ret) {
 				DRV_LOG(ERR,
 				"Failed to register mr %d.", task.idx);
-				__atomic_fetch_add(task.err_cnt, 1,
-				__ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(task.err_cnt, 1,
+				rte_memory_order_relaxed);
 			}
 			break;
 		case MLX5_VDPA_TASK_SETUP_VIRTQ:
@@ -150,8 +149,8 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			if (ret) {
 				DRV_LOG(ERR,
 					"Failed to setup virtq %d.", task.idx);
-				__atomic_fetch_add(
-					task.err_cnt, 1, __ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(
+					task.err_cnt, 1, rte_memory_order_relaxed);
 			}
 			virtq->enable = 1;
 			pthread_mutex_unlock(&virtq->virtq_lock);
@@ -165,9 +164,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				DRV_LOG(ERR,
 				"Failed to stop virtq %d.",
 				task.idx);
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					task.err_cnt, 1,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed);
 				pthread_mutex_unlock(&virtq->virtq_lock);
 				break;
 			}
@@ -177,9 +176,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				DRV_LOG(ERR,
 		"Failed to get negotiated features virtq %d.",
 				task.idx);
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					task.err_cnt, 1,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed);
 				pthread_mutex_unlock(&virtq->virtq_lock);
 				break;
 			}
@@ -190,7 +189,6 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			pthread_mutex_unlock(&virtq->virtq_lock);
 			break;
 		case MLX5_VDPA_TASK_DEV_CLOSE_NOWAIT:
-			mlx5_vdpa_virtq_unreg_intr_handle_all(priv);
 			pthread_mutex_lock(&priv->steer_update_lock);
 			mlx5_vdpa_steer_unset(priv);
 			pthread_mutex_unlock(&priv->steer_update_lock);
@@ -202,9 +200,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			if (!priv->connected)
 				mlx5_vdpa_dev_cache_clean(priv);
 			priv->vid = 0;
-			__atomic_store_n(
+			rte_atomic_store_explicit(
 				&priv->dev_close_progress, 0,
-				__ATOMIC_RELAXED);
+				rte_memory_order_relaxed);
 			break;
 		case MLX5_VDPA_TASK_PREPARE_VIRTQ:
 			ret = mlx5_vdpa_virtq_single_resource_prepare(
@@ -213,9 +211,9 @@ mlx5_vdpa_c_thread_handle(void *arg)
 				DRV_LOG(ERR,
 				"Failed to prepare virtq %d.",
 				task.idx);
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 				task.err_cnt, 1,
-				__ATOMIC_RELAXED);
+				rte_memory_order_relaxed);
 			}
 			break;
 		default:
@@ -224,19 +222,20 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			break;
 		}
 		if (task.remaining_cnt)
-			__atomic_fetch_sub(task.remaining_cnt,
-			1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(task.remaining_cnt,
+			1, rte_memory_order_relaxed);
 	}
-	return NULL;
+	return 0;
 }
 
 static void
 mlx5_vdpa_c_thread_destroy(uint32_t thrd_idx, bool need_unlock)
 {
-	if (conf_thread_mng.cthrd[thrd_idx].tid) {
-		pthread_cancel(conf_thread_mng.cthrd[thrd_idx].tid);
-		pthread_join(conf_thread_mng.cthrd[thrd_idx].tid, NULL);
-		conf_thread_mng.cthrd[thrd_idx].tid = 0;
+	pthread_t *tid = (pthread_t *)&conf_thread_mng.cthrd[thrd_idx].tid.opaque_id;
+	if (*tid != 0) {
+		pthread_cancel(*tid);
+		rte_thread_join(conf_thread_mng.cthrd[thrd_idx].tid, NULL);
+		*tid = 0;
 		if (need_unlock)
 			pthread_mutex_init(&conf_thread_mng.cthrd_lock, NULL);
 	}
@@ -247,30 +246,14 @@ mlx5_vdpa_c_thread_destroy(uint32_t thrd_idx, bool need_unlock)
 }
 
 static int
-mlx5_vdpa_c_thread_create(int cpu_core)
+mlx5_vdpa_c_thread_create(void)
 {
-	const struct sched_param sp = {
-		.sched_priority = sched_get_priority_max(SCHED_RR),
-	};
-	rte_cpuset_t cpuset;
-	pthread_attr_t attr;
 	uint32_t thrd_idx;
 	uint32_t ring_num;
-	char name[32];
+	char name[RTE_RING_NAMESIZE];
 	int ret;
 
 	pthread_mutex_lock(&conf_thread_mng.cthrd_lock);
-	pthread_attr_init(&attr);
-	ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to set thread sched policy = RR.");
-		goto c_thread_err;
-	}
-	ret = pthread_attr_setschedparam(&attr, &sp);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to set thread priority.");
-		goto c_thread_err;
-	}
 	ring_num = MLX5_VDPA_MAX_TASKS_PER_THRD / conf_thread_mng.max_thrds;
 	if (!ring_num) {
 		DRV_LOG(ERR, "Invalid ring number for thread.");
@@ -291,35 +274,15 @@ mlx5_vdpa_c_thread_create(int cpu_core)
 			thrd_idx);
 			goto c_thread_err;
 		}
-		ret = pthread_create(&conf_thread_mng.cthrd[thrd_idx].tid,
-				&attr, mlx5_vdpa_c_thread_handle,
-				(void *)&conf_thread_mng);
+		snprintf(name, RTE_THREAD_INTERNAL_NAME_SIZE, "vmlx5-c%d", thrd_idx);
+		ret = rte_thread_create_internal_control(&conf_thread_mng.cthrd[thrd_idx].tid,
+				name,
+				mlx5_vdpa_c_thread_handle, &conf_thread_mng);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to create vdpa multi-threads %d.",
 					thrd_idx);
 			goto c_thread_err;
 		}
-		CPU_ZERO(&cpuset);
-		if (cpu_core != -1)
-			CPU_SET(cpu_core, &cpuset);
-		else
-			cpuset = rte_lcore_cpuset(rte_get_main_lcore());
-		ret = pthread_setaffinity_np(
-				conf_thread_mng.cthrd[thrd_idx].tid,
-				sizeof(cpuset), &cpuset);
-		if (ret) {
-			DRV_LOG(ERR, "Failed to set thread affinity for "
-			"vdpa multi-threads %d.", thrd_idx);
-			goto c_thread_err;
-		}
-		snprintf(name, sizeof(name), "vDPA-mthread-%d", thrd_idx);
-		ret = pthread_setname_np(
-				conf_thread_mng.cthrd[thrd_idx].tid, name);
-		if (ret)
-			DRV_LOG(ERR, "Failed to set vdpa multi-threads name %s.",
-					name);
-		else
-			DRV_LOG(DEBUG, "Thread name: %s.", name);
 		pthread_cond_init(&conf_thread_mng.cthrd[thrd_idx].c_cond,
 			NULL);
 	}
@@ -334,10 +297,10 @@ c_thread_err:
 }
 
 int
-mlx5_vdpa_mult_threads_create(int cpu_core)
+mlx5_vdpa_mult_threads_create(void)
 {
 	pthread_mutex_init(&conf_thread_mng.cthrd_lock, NULL);
-	if (mlx5_vdpa_c_thread_create(cpu_core)) {
+	if (mlx5_vdpa_c_thread_create()) {
 		DRV_LOG(ERR, "Cannot create vDPA configuration threads.");
 		mlx5_vdpa_mult_threads_destroy(false);
 		return -1;

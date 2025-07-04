@@ -6,7 +6,6 @@
 #define _IFCVF_OSDEP_H_
 
 #include <stdint.h>
-#include <linux/pci_regs.h>
 
 #include <rte_cycles.h>
 #include <rte_pci.h>
@@ -14,8 +13,11 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#define WARNINGOUT(S, args...)  RTE_LOG(WARNING, PMD, S, ##args)
-#define DEBUGOUT(S, args...)    RTE_LOG(DEBUG, PMD, S, ##args)
+extern int ifcvf_vdpa_logtype;
+#define RTE_LOGTYPE_IFCVF_VDPA ifcvf_vdpa_logtype
+
+#define WARNINGOUT(S, ...)      RTE_LOG(WARNING, IFCVF_VDPA, S, ##__VA_ARGS__)
+#define DEBUGOUT(S, ...)        RTE_LOG(DEBUG, IFCVF_VDPA, S, ##__VA_ARGS__)
 #define STATIC                  static
 
 #define msec_delay(x)	rte_delay_us_sleep(1000 * (x))
@@ -34,6 +36,9 @@ typedef struct rte_pci_device PCI_DEV;
 
 #define PCI_READ_CONFIG_DWORD(dev, val, where) \
 	rte_pci_read_config(dev, val, 4, where)
+
+#define PCI_CAPABILITY_LIST RTE_PCI_CAPABILITY_LIST
+#define PCI_CAP_ID_VNDR RTE_PCI_CAP_ID_VNDR
 
 typedef uint8_t    u8;
 typedef int8_t     s8;

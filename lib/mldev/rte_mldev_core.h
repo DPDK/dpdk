@@ -16,10 +16,6 @@
  * These APIs are for MLDEV PMDs and library only.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <dev_driver.h>
@@ -243,6 +239,10 @@ typedef void (*mldev_stats_reset_t)(struct rte_ml_dev *dev);
  *
  * @param dev
  *	ML device pointer.
+ * @param mode
+ *	Mode of stats to retrieve.
+ * @param model_id
+ *	Used to specify model id in model mode. Ignored in device mode.
  * @param xstats_map
  *	Array to insert id and names into.
  * @param size
@@ -253,8 +253,9 @@ typedef void (*mldev_stats_reset_t)(struct rte_ml_dev *dev);
  *	- > size, error. Returns the size of xstats_map array required.
  *	- < 0, error code on failure.
  */
-typedef int (*mldev_xstats_names_get_t)(struct rte_ml_dev *dev,
-					struct rte_ml_dev_xstats_map *xstats_map, uint32_t size);
+typedef int (*mldev_xstats_names_get_t)(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+					int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
+					uint32_t size);
 
 /**
  * @internal
@@ -271,7 +272,7 @@ typedef int (*mldev_xstats_names_get_t)(struct rte_ml_dev *dev,
  *	Value of the stat to be returned.
  *
  * @return
- *	- >= 0 stat value.
+ *	- = 0 success.
  *	- < 0, error code on failure.
  */
 typedef int (*mldev_xstats_by_name_get_t)(struct rte_ml_dev *dev, const char *name,
@@ -284,6 +285,10 @@ typedef int (*mldev_xstats_by_name_get_t)(struct rte_ml_dev *dev, const char *na
  *
  * @param dev
  *	ML device pointer.
+ * @param mode
+ *	Mode of stats to retrieve.
+ * @param model_id
+ *	Used to specify model id in model mode. Ignored in device mode.
  * @param stat_ids
  *	Array of ID numbers of the stats to be retrieved.
  * @param values
@@ -295,8 +300,9 @@ typedef int (*mldev_xstats_by_name_get_t)(struct rte_ml_dev *dev, const char *na
  *	- >= 0, number of entries filled into the values array.
  *	- < 0, error code on failure.
  */
-typedef int (*mldev_xstats_get_t)(struct rte_ml_dev *dev, const uint16_t *stat_ids,
-				  uint64_t *values, uint16_t nb_ids);
+typedef int (*mldev_xstats_get_t)(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+				  int32_t model_id, const uint16_t stat_ids[], uint64_t values[],
+				  uint16_t nb_ids);
 
 /**
  * @internal
@@ -305,6 +311,10 @@ typedef int (*mldev_xstats_get_t)(struct rte_ml_dev *dev, const uint16_t *stat_i
  *
  * @param dev
  *	ML device pointer.
+ * @param mode
+ *	Mode of stats to retrieve.
+ * @param model_id
+ *	Used to specify model id in model mode. Ignored in device mode.
  * @param stat_ids
  *	Array of stats IDs to be reset.
  * @param nb_ids
@@ -314,8 +324,8 @@ typedef int (*mldev_xstats_get_t)(struct rte_ml_dev *dev, const uint16_t *stat_i
  *	- 0 on success.
  *	- < 0, error code on failure.
  */
-typedef int (*mldev_xstats_reset_t)(struct rte_ml_dev *dev, const uint16_t *stat_ids,
-				    uint16_t nb_ids);
+typedef int (*mldev_xstats_reset_t)(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+				    int32_t model_id, const uint16_t stat_ids[], uint16_t nb_ids);
 
 /**
  * @internal
@@ -455,50 +465,24 @@ typedef int (*mldev_model_params_update_t)(struct rte_ml_dev *dev, uint16_t mode
 /**
  * @internal
  *
- * Get size of input buffers.
+ * Quantize model data.
  *
  * @param dev
  *	ML device pointer.
  * @param model_id
  *	Model ID to use.
- * @param nb_batches
- *	Number of batches.
- * @param input_qsize
- *	Size of quantized input.
- * @param input_dsize
- *	Size of dequantized input.
+ * @param dbuffer
+ *	Pointer t de-quantized data buffer.
+ * @param qbuffer
+ *	Pointer t de-quantized data buffer.
  *
  * @return
  *	- 0 on success.
  *	- <0, error on failure.
  */
-typedef int (*mldev_io_input_size_get_t)(struct rte_ml_dev *dev, uint16_t model_id,
-					 uint32_t nb_batches, uint64_t *input_qsize,
-					 uint64_t *input_dsize);
-
-/**
- * @internal
- *
- * Get size of output buffers.
- *
- * @param dev
- *	ML device pointer.
- * @param model_id
- *	Model ID to use.
- * @param nb_batches
- *	Number of batches.
- * @param output_qsize
- *	Size of quantized output.
- * @param output_dsize
- *	Size of dequantized output.
- *
- * @return
- *	- 0 on success.
- *	- <0, error on failure.
- */
-typedef int (*mldev_io_output_size_get_t)(struct rte_ml_dev *dev, uint16_t model_id,
-					  uint32_t nb_batches, uint64_t *output_qsize,
-					  uint64_t *output_dsize);
+typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id,
+				   struct rte_ml_buff_seg **dbuffer,
+				   struct rte_ml_buff_seg **qbuffer);
 
 /**
  * @internal
@@ -509,31 +493,6 @@ typedef int (*mldev_io_output_size_get_t)(struct rte_ml_dev *dev, uint16_t model
  *	ML device pointer.
  * @param model_id
  *	Model ID to use.
- * @param nb_batches
- *	Number of batches.
- * @param dbuffer
- *	Pointer t de-quantized data buffer.
- * @param qbuffer
- *	Pointer t de-quantized data buffer.
- *
- * @return
- *	- 0 on success.
- *	- <0, error on failure.
- */
-typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
-				   void *dbuffer, void *qbuffer);
-
-/**
- * @internal
- *
- * Quantize model data.
- *
- * @param dev
- *	ML device pointer.
- * @param model_id
- *	Model ID to use.
- * @param nb_batches
- *	Number of batches.
  * @param qbuffer
  *	Pointer t de-quantized data buffer.
  * @param dbuffer
@@ -543,8 +502,9 @@ typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id, ui
  *	- 0 on success.
  *	- <0, error on failure.
  */
-typedef int (*mldev_io_dequantize_t)(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
-				     void *qbuffer, void *dbuffer);
+typedef int (*mldev_io_dequantize_t)(struct rte_ml_dev *dev, uint16_t model_id,
+				     struct rte_ml_buff_seg **qbuffer,
+				     struct rte_ml_buff_seg **dbuffer);
 
 /**
  * @internal
@@ -615,12 +575,6 @@ struct rte_ml_dev_ops {
 	/** Update model params. */
 	mldev_model_params_update_t model_params_update;
 
-	/** Get input buffer size. */
-	mldev_io_input_size_get_t io_input_size_get;
-
-	/** Get output buffer size. */
-	mldev_io_output_size_get_t io_output_size_get;
-
 	/** Quantize data */
 	mldev_io_quantize_t io_quantize;
 
@@ -668,7 +622,7 @@ struct rte_ml_dev_data {
  *
  * The data structure associated with each ML device.
  */
-struct rte_ml_dev {
+struct __rte_cache_aligned rte_ml_dev {
 	/** Pointer to PMD enqueue function. */
 	mldev_enqueue_t enqueue_burst;
 
@@ -689,7 +643,7 @@ struct rte_ml_dev {
 
 	/** Flag indicating the device is attached. */
 	__extension__ uint8_t attached : 1;
-} __rte_cache_aligned;
+};
 
 /**
  * @internal
@@ -709,9 +663,5 @@ struct rte_ml_dev_global {
 	/** Maximum number of devices. */
 	uint8_t max_devs;
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_MLDEV_INTERNAL_H */

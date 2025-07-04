@@ -19,6 +19,7 @@
 #endif
 #include <rte_spinlock.h>
 #include <rte_interrupts.h>
+#include <rte_thread.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -89,24 +90,24 @@ enum mlx5_vdpa_task_type {
 };
 
 /* Generic task information and size must be multiple of 4B. */
-struct mlx5_vdpa_task {
+struct __rte_aligned(4) __rte_packed_begin mlx5_vdpa_task {
 	struct mlx5_vdpa_priv *priv;
 	enum mlx5_vdpa_task_type type;
-	uint32_t *remaining_cnt;
-	uint32_t *err_cnt;
+	RTE_ATOMIC(uint32_t) *remaining_cnt;
+	RTE_ATOMIC(uint32_t) *err_cnt;
 	uint32_t idx;
-} __rte_packed __rte_aligned(4);
+} __rte_packed_end;
 
 /* Generic mlx5_vdpa_c_thread information. */
 struct mlx5_vdpa_c_thread {
-	pthread_t tid;
+	rte_thread_t tid;
 	struct rte_ring *rng;
 	pthread_cond_t c_cond;
 };
 
 struct mlx5_vdpa_conf_thread_mng {
 	void *initializer_priv;
-	uint32_t refcnt;
+	RTE_ATOMIC(uint32_t) refcnt;
 	uint32_t max_thrds;
 	pthread_mutex_t cthrd_lock;
 	struct mlx5_vdpa_c_thread cthrd[MLX5_VDPA_MAX_C_THRD];
@@ -182,7 +183,7 @@ struct mlx5_vdpa_priv {
 	rte_spinlock_t db_lock;
 	pthread_mutex_t steer_update_lock;
 	uint64_t no_traffic_counter;
-	pthread_t timer_tid;
+	rte_thread_t timer_tid;
 	int event_mode;
 	int event_core; /* Event thread cpu affinity core. */
 	uint32_t event_us;
@@ -211,7 +212,7 @@ struct mlx5_vdpa_priv {
 	uint64_t features; /* Negotiated features. */
 	uint16_t log_max_rqt_size;
 	uint16_t last_c_thrd_idx;
-	uint16_t dev_close_progress;
+	RTE_ATOMIC(uint16_t) dev_close_progress;
 	uint16_t num_mrs; /* Number of memory regions. */
 	struct mlx5_vdpa_steer steer;
 	struct mlx5dv_var *var;
@@ -563,14 +564,11 @@ mlx5_vdpa_is_modify_virtq_supported(struct mlx5_vdpa_priv *priv);
 /**
  * Create configuration multi-threads resource
  *
- * @param[in] cpu_core
- *   CPU core number to set configuration threads affinity to.
- *
  * @return
  *   0 on success, a negative value otherwise.
  */
 int
-mlx5_vdpa_mult_threads_create(int cpu_core);
+mlx5_vdpa_mult_threads_create(void);
 
 /**
  * Destroy configuration multi-threads resource
@@ -583,13 +581,13 @@ bool
 mlx5_vdpa_task_add(struct mlx5_vdpa_priv *priv,
 		uint32_t thrd_idx,
 		enum mlx5_vdpa_task_type task_type,
-		uint32_t *remaining_cnt, uint32_t *err_cnt,
+		RTE_ATOMIC(uint32_t) *remaining_cnt, RTE_ATOMIC(uint32_t) *err_cnt,
 		void **task_data, uint32_t num);
 int
 mlx5_vdpa_register_mr(struct mlx5_vdpa_priv *priv, uint32_t idx);
 bool
-mlx5_vdpa_c_thread_wait_bulk_tasks_done(uint32_t *remaining_cnt,
-		uint32_t *err_cnt, uint32_t sleep_time);
+mlx5_vdpa_c_thread_wait_bulk_tasks_done(RTE_ATOMIC(uint32_t) *remaining_cnt,
+		RTE_ATOMIC(uint32_t) *err_cnt, uint32_t sleep_time);
 int
 mlx5_vdpa_virtq_setup(struct mlx5_vdpa_priv *priv, int index, bool reg_kick);
 void

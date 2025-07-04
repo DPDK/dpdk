@@ -83,36 +83,10 @@ Test Application
 ----------------
 
 BBDEV provides a test application, ``test-bbdev.py`` and range of test data for testing
-the functionality of LA12xx for FEC encode and decode, depending on the device
-capabilities. The test application is located under app->test-bbdev folder and has the
-following options:
+the functionality of the device, depending on the device's capabilities.
 
-.. code-block:: console
-
-  "-p", "--testapp-path": specifies path to the bbdev test app.
-  "-e", "--eal-params"	: EAL arguments which are passed to the test app.
-  "-t", "--timeout"	: Timeout in seconds (default=300).
-  "-c", "--test-cases"	: Defines test cases to run. Run all if not specified.
-  "-v", "--test-vector"	: Test vector path (default=dpdk_path+/app/test-bbdev/test_vectors/bbdev_null.data).
-  "-n", "--num-ops"	: Number of operations to process on device (default=32).
-  "-b", "--burst-size"	: Operations enqueue/dequeue burst size (default=32).
-  "-s", "--snr"		: SNR in dB used when generating LLRs for bler tests.
-  "-s", "--iter_max"	: Number of iterations for LDPC decoder.
-  "-l", "--num-lcores"	: Number of lcores to run (default=16).
-  "-i", "--init-device" : Initialise PF device with default values.
-
-
-To execute the test application tool using simple decode or encode data,
-type one of the following:
-
-.. code-block:: console
-
-  ./test-bbdev.py -e="--vdev=baseband_la12xx,socket_id=0,max_nb_queues=8" -c validation -n 64 -b 1 -v ./ldpc_dec_default.data
-  ./test-bbdev.py -e="--vdev=baseband_la12xx,socket_id=0,max_nb_queues=8" -c validation -n 64 -b 1 -v ./ldpc_enc_default.data
-
-The test application ``test-bbdev.py``, supports the ability to configure the PF device with
-a default set of values, if the "-i" or "- -init-device" option is included. The default values
-are defined in test_bbdev_perf.c.
+For more details on how to use the test application,
+see :ref:`test_bbdev_application`.
 
 
 Test Vectors

@@ -16,11 +16,14 @@ roc_error_msg_get(int errorcode)
 	case NPA_ERR_PARAM:
 	case NPC_ERR_PARAM:
 	case SSO_ERR_PARAM:
+	case MCS_ERR_PARAM:
+	case RVU_ERR_PARAM:
 	case UTIL_ERR_PARAM:
 		err_msg = "Invalid parameter";
 		break;
 	case NIX_ERR_NO_MEM:
 	case NPC_ERR_NO_MEM:
+	case RVU_ERR_NO_MEM:
 		err_msg = "Out of memory";
 		break;
 	case NIX_ERR_INVALID_RANGE:
@@ -35,6 +38,7 @@ roc_error_msg_get(int errorcode)
 		err_msg = "Operation not supported";
 		break;
 	case NIX_ERR_HW_NOTSUP:
+	case MCS_ERR_HW_NOTSUP:
 		err_msg = "Hardware does not support";
 		break;
 	case NIX_ERR_QUEUE_INVALID_RANGE:
@@ -222,6 +226,9 @@ roc_error_msg_get(int errorcode)
 		break;
 	case SSO_ERR_DEVICE_NOT_BOUNDED:
 		err_msg = "SSO pf/vf not found";
+		break;
+	case MCS_ERR_DEVICE_NOT_FOUND:
+		err_msg = "MCS device not found";
 		break;
 	case UTIL_ERR_FS:
 		err_msg = "file operation failed";

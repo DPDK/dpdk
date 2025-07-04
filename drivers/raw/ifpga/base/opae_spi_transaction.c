@@ -24,7 +24,7 @@
 #define SPI_REG_BYTES 4
 
 #define INIT_SPI_TRAN_HEADER(trans_type, size, address) \
-({ \
+__extension__ ({ \
 	header.trans_type = trans_type; \
 	header.reserve = 0; \
 	header.size = cpu_to_be16(size); \
@@ -494,7 +494,6 @@ struct spi_transaction_dev *spi_transaction_init(struct altera_spi_device *dev,
 		int chipselect)
 {
 	struct spi_transaction_dev *spi_tran_dev;
-	int ret;
 
 	spi_tran_dev = opae_malloc(sizeof(struct spi_transaction_dev));
 	if (!spi_tran_dev)
@@ -507,11 +506,7 @@ struct spi_transaction_dev *spi_transaction_init(struct altera_spi_device *dev,
 	if (!spi_tran_dev->buffer)
 		goto err;
 
-	ret = pthread_mutex_init(&spi_tran_dev->lock, NULL);
-	if (ret) {
-		dev_err(spi_tran_dev, "fail to init mutex lock\n");
-		goto err;
-	}
+	pthread_mutex_init(&spi_tran_dev->lock, NULL);
 	if (dev->mutex) {
 		dev_info(NULL, "use multi-process mutex in spi\n");
 		spi_tran_dev->mutex = dev->mutex;

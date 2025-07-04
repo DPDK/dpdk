@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_memcpy.h>
 
 #include "ip_frag_common.h"
@@ -14,7 +15,6 @@
  * RTE IPv6 Fragmentation
  *
  * Implementation of IPv6 fragmentation.
- *
  */
 
 static inline void
@@ -64,6 +64,7 @@ __free_fragments(struct rte_mbuf *mb[], uint32_t num)
  *   in the pkts_out array.
  *   Otherwise - (-1) * <errno>.
  */
+RTE_EXPORT_SYMBOL(rte_ipv6_fragment_packet)
 int32_t
 rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 	struct rte_mbuf **pkts_out,

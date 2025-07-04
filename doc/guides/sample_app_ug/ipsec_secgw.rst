@@ -270,7 +270,7 @@ The mapping of lcores to port/queues is similar to other l3fwd applications.
 
 For example, given the following command line to run application in poll mode::
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --numa-mem 0,2048       \
            --vdev "crypto_null" -- -p 0xf -P -u 0x3             \
            --config="(0,0,20),(1,0,20),(2,0,21),(3,0,21)"       \
            -f /path/to/config_file --transfer-mode poll         \
@@ -281,7 +281,7 @@ where each option means:
 
 *   The ``-n`` option sets memory 4 channels.
 
-*   The ``--socket-mem`` to use 2GB on socket 1.
+*   The ``--numa-mem`` to use 2GB on socket 1.
 
 *   The ``--vdev "crypto_null"`` option creates virtual NULL cryptodev PMD.
 
@@ -322,14 +322,14 @@ where each option means:
 Similarly for example, given the following command line to run application in
 event app mode::
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -c 0x3 -- -P -p 0x3 -u 0x1       \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 0,1 -- -P -p 0x3 -u 0x1       \
            -f /path/to/config_file --transfer-mode event \
            --event-schedule-type parallel --event-vector --vector-size 32    \
            --vector-tmo 102400                           \
 
 where each option means:
 
-*   The ``-c`` option selects cores 0 and 1 to run on.
+*   The ``-l`` option selects cores 0 and 1 to run on.
 
 *   The ``-P`` option enables promiscuous mode.
 
@@ -368,7 +368,7 @@ For example, something like the following command line:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048 \
+    ./<build_dir>/examples/dpdk-ipsec-secgw -l 20,21 -n 4 --numa-mem 0,2048 \
             -a 81:00.0 -a 81:00.1 -a 81:00.2 -a 81:00.3 \
             --vdev "crypto_aesni_mb" --vdev "crypto_null" \
 	    -- \
@@ -765,6 +765,7 @@ where each options means:
  ``<mss>``
 
  * Maximum segment size for TSO offload, available for egress SAs only.
+   Currently only supports TCP/IP.
 
  * Optional: Yes, TSO offload not set by default
 

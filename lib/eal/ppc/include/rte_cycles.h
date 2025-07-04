@@ -6,10 +6,6 @@
 #ifndef _RTE_CYCLES_PPC_64_H_
 #define _RTE_CYCLES_PPC_64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <features.h>
 #ifdef __GLIBC__
 #include <sys/platform/ppc.h>
@@ -19,6 +15,10 @@ extern "C" {
 
 #include <rte_byteorder.h>
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Read the time base register.

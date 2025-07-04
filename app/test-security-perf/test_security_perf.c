@@ -16,6 +16,7 @@
 #include <app/test/test_cryptodev.h>
 #include <app/test/test_cryptodev_security_ipsec.h>
 #include <app/test/test_cryptodev_security_ipsec_test_vectors.h>
+#include <app/test/test_security_proto.h>
 
 #define NB_DESC 4096
 #define DEF_NB_SESSIONS (16 * 10 * 1024) /* 16 * 10K tunnels */
@@ -258,9 +259,7 @@ sec_conf_init(struct lcore_conf *conf,
 		conf->aead_xform.aead.iv.offset = IV_OFFSET;
 
 		/* Verify crypto capabilities */
-		if (test_ipsec_crypto_caps_aead_verify(
-				sec_cap,
-				&conf->aead_xform) != 0) {
+		if (test_sec_crypto_caps_aead_verify(sec_cap, &conf->aead_xform) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Crypto capabilities not supported\n");
 			return -1;
@@ -270,9 +269,7 @@ sec_conf_init(struct lcore_conf *conf,
 		       sizeof(conf->auth_xform));
 		conf->auth_xform.auth.key.data = td[0].auth_key.data;
 
-		if (test_ipsec_crypto_caps_auth_verify(
-				sec_cap,
-				&conf->auth_xform) != 0) {
+		if (test_sec_crypto_caps_auth_verify(sec_cap, &conf->auth_xform) != 0) {
 			RTE_LOG(INFO, USER1,
 				"Auth crypto capabilities not supported\n");
 			return -1;
@@ -288,17 +285,13 @@ sec_conf_init(struct lcore_conf *conf,
 
 		/* Verify crypto capabilities */
 
-		if (test_ipsec_crypto_caps_cipher_verify(
-				sec_cap,
-				&conf->cipher_xform) != 0) {
+		if (test_sec_crypto_caps_cipher_verify(sec_cap, &conf->cipher_xform) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Cipher crypto capabilities not supported\n");
 			return -1;
 		}
 
-		if (test_ipsec_crypto_caps_auth_verify(
-				sec_cap,
-				&conf->auth_xform) != 0) {
+		if (test_sec_crypto_caps_auth_verify(sec_cap, &conf->auth_xform) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Auth crypto capabilities not supported\n");
 			return -1;
@@ -344,7 +337,7 @@ test_security_session_perf(void *arg)
 	struct rte_security_session_conf sess_conf;
 	int i, ret, nb_sessions, nb_sess_total;
 	struct rte_security_session **sess;
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	double setup_rate, destroy_rate;
 	uint64_t setup_ms, destroy_ms;
 	struct lcore_conf *conf = arg;
@@ -481,8 +474,8 @@ args_parse(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-	struct ipsec_test_data td_outb[RTE_DIM(alg_list)];
-	struct ipsec_test_data td_inb[RTE_DIM(alg_list)];
+	struct ipsec_test_data td_outb[RTE_DIM(sec_alg_list)];
+	struct ipsec_test_data td_inb[RTE_DIM(sec_alg_list)];
 	struct ipsec_test_flags flags;
 	uint32_t lcore_id;
 	uint8_t nb_lcores;
@@ -520,11 +513,11 @@ main(int argc, char **argv)
 	if (ret)
 		goto cryptodev_fini;
 
-	test_ipsec_alg_list_populate();
+	test_sec_alg_list_populate();
 
-	for (i = 0; i < RTE_DIM(alg_list); i++) {
-		test_ipsec_td_prepare(alg_list[i].param1,
-				      alg_list[i].param2,
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_ipsec_td_prepare(sec_alg_list[i].param1,
+				      sec_alg_list[i].param2,
 				      &flags,
 				      &td_outb[i],
 				      1);
@@ -536,11 +529,11 @@ main(int argc, char **argv)
 	if (ctx.is_inbound)
 		ctx.td = td_inb;
 
-	for (ctx.td_idx = 0; ctx.td_idx < RTE_DIM(alg_list); ctx.td_idx++) {
+	for (ctx.td_idx = 0; ctx.td_idx < RTE_DIM(sec_alg_list); ctx.td_idx++) {
 
 		printf("\n\n    Algorithm combination:");
-		test_ipsec_display_alg(alg_list[ctx.td_idx].param1,
-				       alg_list[ctx.td_idx].param2);
+		test_sec_alg_display(sec_alg_list[ctx.td_idx].param1,
+				     sec_alg_list[ctx.td_idx].param2);
 		printf("    ----------------------");
 
 		printf("\n%20s%20s%20s%20s%20s%20s\n\n",

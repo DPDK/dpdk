@@ -27,9 +27,6 @@ extern "C" {
 
 #define RTE_MAGIC 19820526 /**< Magic number written by the main partition when ready. */
 
-/* Maximum thread_name length. */
-#define RTE_MAX_THREAD_NAME_LEN 16
-
 /**
  * The type of process in a linux, multi-process setup
  */
@@ -74,6 +71,8 @@ int rte_eal_iopl_init(void);
  * @param argv
  *   An array of strings.  The contents of the array, as well as the strings
  *   which are pointed to by the array, may be modified by this function.
+ *   The program name pointer argv[0] is copied into the last parsed argv
+ *   so that argv[0] is still the same after deducing the parsed arguments.
  * @return
  *   - On success, the number of parsed arguments, which is greater or
  *     equal to zero. After the call to rte_eal_init(),
@@ -156,7 +155,7 @@ int rte_eal_primary_proc_alive(const char *config_file_path);
  */
 bool rte_mp_disable(void);
 
-#define RTE_MP_MAX_FD_NUM	8    /* The max amount of fds */
+#define RTE_MP_MAX_FD_NUM	253  /* The max amount of fds (see SCM_MAX_FD) */
 #define RTE_MP_MAX_NAME_LEN	64   /* The max length of action name */
 #define RTE_MP_MAX_PARAM_LEN	256  /* The max length of param */
 struct rte_mp_msg {
@@ -240,7 +239,6 @@ rte_mp_action_register(const char *name, rte_mp_t action);
  *
  * @param name
  *   The name argument plays as the nonredundant key to find the action.
- *
  */
 void
 rte_mp_action_unregister(const char *name);
@@ -411,16 +409,12 @@ int rte_eal_create_uio_dev(void);
 enum rte_intr_mode rte_eal_vfio_intr_mode(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Copy the user-configured vfio VF token.
  *
  * @param vf_token
  *   vfio VF token configured with the command line is copied
  *   into this parameter, zero uuid by default.
  */
-__rte_experimental
 void rte_eal_vfio_get_vf_token(rte_uuid_t vf_token);
 
 /**
@@ -463,7 +457,6 @@ uint64_t rte_eal_get_baseaddr(void);
  * IOVA mapping mode is iommu programming mode of a device.
  * That device (for example: IOMMU backed DMA device) based
  * on rte_iova_mode will generate physical or virtual address.
- *
  */
 enum rte_iova_mode {
 	RTE_IOVA_DC = 0,	/* Don't care mode */

@@ -33,9 +33,9 @@
 #define MIN(v1, v2)	((v1) < (v2) ? (v1) : (v2))
 
 RTE_LOG_REGISTER(ifcvf_vdpa_logtype, pmd.vdpa.ifcvf, NOTICE);
-#define DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ifcvf_vdpa_logtype, \
-		"IFCVF %s(): " fmt "\n", __func__, ##args)
+#define RTE_LOGTYPE_IFCVF_VDPA ifcvf_vdpa_logtype
+#define DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IFCVF_VDPA, "%s(): ", __func__, __VA_ARGS__)
 
 #define IFCVF_USED_RING_LEN(size) \
 	((size) * sizeof(struct vring_used_elem) + sizeof(uint16_t) * 3)
@@ -58,8 +58,8 @@ struct ifcvf_internal {
 	int vfio_container_fd;
 	int vfio_group_fd;
 	int vfio_dev_fd;
-	pthread_t tid;	/* thread for notify relay */
-	pthread_t intr_tid; /* thread for config space change interrupt relay */
+	rte_thread_t tid; /* thread for notify relay */
+	rte_thread_t intr_tid; /* thread for config space change interrupt relay */
 	int epfd;
 	int csc_epfd;
 	int vid;
@@ -496,7 +496,7 @@ vdpa_disable_vfio_intr(struct ifcvf_internal *internal)
 	return 0;
 }
 
-static void *
+static uint32_t
 notify_relay(void *arg)
 {
 	int i, kickfd, epfd, nfds = 0;
@@ -514,7 +514,7 @@ notify_relay(void *arg)
 	epfd = epoll_create(IFCVF_MAX_QUEUES * 2);
 	if (epfd < 0) {
 		DRV_LOG(ERR, "failed to create epoll instance.");
-		return NULL;
+		return 1;
 	}
 	internal->epfd = epfd;
 
@@ -527,7 +527,7 @@ notify_relay(void *arg)
 		ev.data.u64 = qid | (uint64_t)vring.kickfd << 32;
 		if (epoll_ctl(epfd, EPOLL_CTL_ADD, vring.kickfd, &ev) < 0) {
 			DRV_LOG(ERR, "epoll add error: %s", strerror(errno));
-			return NULL;
+			return 1;
 		}
 	}
 
@@ -536,8 +536,8 @@ notify_relay(void *arg)
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
-			DRV_LOG(ERR, "epoll_wait return fail\n");
-			return NULL;
+			DRV_LOG(ERR, "epoll_wait return fail");
+			return 1;
 		}
 
 		for (i = 0; i < nfds; i++) {
@@ -561,18 +561,18 @@ notify_relay(void *arg)
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
 setup_notify_relay(struct ifcvf_internal *internal)
 {
-	char name[THREAD_NAME_LEN];
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
 	int ret;
 
-	snprintf(name, sizeof(name), "ifc-notify-%d", internal->vid);
-	ret = rte_ctrl_thread_create(&internal->tid, name, NULL, notify_relay,
-				     (void *)internal);
+	snprintf(name, sizeof(name), "ifc-noti%d", internal->vid);
+	ret = rte_thread_create_internal_control(&internal->tid, name,
+			notify_relay, internal);
 	if (ret != 0) {
 		DRV_LOG(ERR, "failed to create notify relay pthread.");
 		return -1;
@@ -584,13 +584,11 @@ setup_notify_relay(struct ifcvf_internal *internal)
 static int
 unset_notify_relay(struct ifcvf_internal *internal)
 {
-	void *status;
-
-	if (internal->tid) {
-		pthread_cancel(internal->tid);
-		pthread_join(internal->tid, &status);
+	if (internal->tid.opaque_id != 0) {
+		pthread_cancel((pthread_t)internal->tid.opaque_id);
+		rte_thread_join(internal->tid, NULL);
 	}
-	internal->tid = 0;
+	internal->tid.opaque_id = 0;
 
 	if (internal->epfd >= 0)
 		close(internal->epfd);
@@ -610,7 +608,7 @@ virtio_interrupt_handler(struct ifcvf_internal *internal)
 		DRV_LOG(ERR, "failed to notify the guest about configuration space change.");
 }
 
-static void *
+static uint32_t
 intr_relay(void *arg)
 {
 	struct ifcvf_internal *internal = (struct ifcvf_internal *)arg;
@@ -623,7 +621,7 @@ intr_relay(void *arg)
 	csc_epfd = epoll_create(1);
 	if (csc_epfd < 0) {
 		DRV_LOG(ERR, "failed to create epoll for config space change.");
-		return NULL;
+		return 1;
 	}
 
 	ev.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP | EPOLLHUP;
@@ -653,12 +651,12 @@ intr_relay(void *arg)
 				    errno == EWOULDBLOCK ||
 				    errno == EAGAIN)
 					continue;
-				DRV_LOG(ERR, "Error reading from file descriptor %d: %s\n",
+				DRV_LOG(ERR, "Error reading from file descriptor %d: %s",
 					csc_event.data.fd,
 					strerror(errno));
 				goto out;
 			} else if (nbytes == 0) {
-				DRV_LOG(ERR, "Read nothing from file descriptor %d\n",
+				DRV_LOG(ERR, "Read nothing from file descriptor %d",
 					csc_event.data.fd);
 				continue;
 			} else {
@@ -672,18 +670,18 @@ out:
 		close(csc_epfd);
 	internal->csc_epfd = -1;
 
-	return NULL;
+	return 0;
 }
 
 static int
 setup_intr_relay(struct ifcvf_internal *internal)
 {
-	char name[THREAD_NAME_LEN];
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
 	int ret;
 
-	snprintf(name, sizeof(name), "ifc-intr-%d", internal->vid);
-	ret = rte_ctrl_thread_create(&internal->intr_tid, name, NULL,
-				     intr_relay, (void *)internal);
+	snprintf(name, sizeof(name), "ifc-int%d", internal->vid);
+	ret = rte_thread_create_internal_control(&internal->intr_tid, name,
+			intr_relay, (void *)internal);
 	if (ret) {
 		DRV_LOG(ERR, "failed to create notify relay pthread.");
 		return -1;
@@ -694,13 +692,11 @@ setup_intr_relay(struct ifcvf_internal *internal)
 static void
 unset_intr_relay(struct ifcvf_internal *internal)
 {
-	void *status;
-
-	if (internal->intr_tid) {
-		pthread_cancel(internal->intr_tid);
-		pthread_join(internal->intr_tid, &status);
+	if (internal->intr_tid.opaque_id != 0) {
+		pthread_cancel((pthread_t)internal->intr_tid.opaque_id);
+		rte_thread_join(internal->intr_tid, NULL);
 	}
-	internal->intr_tid = 0;
+	internal->intr_tid.opaque_id = 0;
 
 	if (internal->csc_epfd >= 0)
 		close(internal->csc_epfd);
@@ -922,7 +918,7 @@ update_used_ring(struct ifcvf_internal *internal, uint16_t qid)
 	rte_vhost_vring_call(internal->vid, qid);
 }
 
-static void *
+static uint32_t
 vring_relay(void *arg)
 {
 	int i, vid, epfd, fd, nfds;
@@ -941,7 +937,7 @@ vring_relay(void *arg)
 	epfd = epoll_create(IFCVF_MAX_QUEUES * 2);
 	if (epfd < 0) {
 		DRV_LOG(ERR, "failed to create epoll instance.");
-		return NULL;
+		return 1;
 	}
 	internal->epfd = epfd;
 
@@ -952,7 +948,7 @@ vring_relay(void *arg)
 		ev.data.u64 = qid << 1 | (uint64_t)vring.kickfd << 32;
 		if (epoll_ctl(epfd, EPOLL_CTL_ADD, vring.kickfd, &ev) < 0) {
 			DRV_LOG(ERR, "epoll add error: %s", strerror(errno));
-			return NULL;
+			return 1;
 		}
 	}
 
@@ -966,7 +962,7 @@ vring_relay(void *arg)
 		if (epoll_ctl(epfd, EPOLL_CTL_ADD, internal->intr_fd[qid], &ev)
 				< 0) {
 			DRV_LOG(ERR, "epoll add error: %s", strerror(errno));
-			return NULL;
+			return 1;
 		}
 		update_used_ring(internal, qid);
 	}
@@ -982,7 +978,7 @@ vring_relay(void *arg)
 			if (errno == EINTR)
 				continue;
 			DRV_LOG(ERR, "epoll_wait return fail.");
-			return NULL;
+			return 1;
 		}
 
 		for (i = 0; i < nfds; i++) {
@@ -1010,18 +1006,18 @@ vring_relay(void *arg)
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
 setup_vring_relay(struct ifcvf_internal *internal)
 {
-	char name[THREAD_NAME_LEN];
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
 	int ret;
 
-	snprintf(name, sizeof(name), "ifc-vring-%d", internal->vid);
-	ret = rte_ctrl_thread_create(&internal->tid, name, NULL, vring_relay,
-				     (void *)internal);
+	snprintf(name, sizeof(name), "ifc-ring%d", internal->vid);
+	ret = rte_thread_create_internal_control(&internal->tid, name,
+			vring_relay, internal);
 	if (ret != 0) {
 		DRV_LOG(ERR, "failed to create ring relay pthread.");
 		return -1;
@@ -1033,13 +1029,11 @@ setup_vring_relay(struct ifcvf_internal *internal)
 static int
 unset_vring_relay(struct ifcvf_internal *internal)
 {
-	void *status;
-
-	if (internal->tid) {
-		pthread_cancel(internal->tid);
-		pthread_join(internal->tid, &status);
+	if (internal->tid.opaque_id != 0) {
+		pthread_cancel((pthread_t)internal->tid.opaque_id);
+		rte_thread_join(internal->tid, NULL);
 	}
-	internal->tid = 0;
+	internal->tid.opaque_id = 0;
 
 	if (internal->epfd >= 0)
 		close(internal->epfd);
@@ -1506,7 +1500,7 @@ ifcvf_pci_get_device_type(struct rte_pci_device *pci_dev)
 	uint16_t device_id;
 
 	if (pci_device_id < 0x1000 || pci_device_id > 0x107f) {
-		DRV_LOG(ERR, "Probe device is not a virtio device\n");
+		DRV_LOG(ERR, "Probe device is not a virtio device");
 		return -1;
 	}
 
@@ -1583,7 +1577,7 @@ ifcvf_blk_get_config(int vid, uint8_t *config, uint32_t size)
 	DRV_LOG(DEBUG, "      sectors  : %u", dev_cfg->geometry.sectors);
 	DRV_LOG(DEBUG, "num_queues: 0x%08x", dev_cfg->num_queues);
 
-	DRV_LOG(DEBUG, "config: [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
+	DRV_LOG(DEBUG, "config: [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]",
 		config[0], config[1], config[2], config[3], config[4],
 		config[5], config[6], config[7]);
 	return 0;

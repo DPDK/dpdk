@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-/* Copyright(c) 2019-2021 Broadcom All rights reserved. */
+/* Copyright(c) 2019-2023 Broadcom All rights reserved. */
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -54,15 +54,9 @@
 
 static inline void
 descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
-	       __m128i mbuf_init, struct rte_mbuf **mbuf,
-	       struct bnxt_rx_ring_info *rxr)
+	       __m128i mbuf_init, const __m128i shuf_msk,
+	       struct rte_mbuf **mbuf, struct bnxt_rx_ring_info *rxr)
 {
-	const __m128i shuf_msk =
-		_mm_set_epi8(15, 14, 13, 12,          /* rss */
-			     0xFF, 0xFF,              /* vlan_tci (zeroes) */
-			     3, 2,                    /* data_len */
-			     0xFF, 0xFF, 3, 2,        /* pkt_len */
-			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
 	const __m128i flags_type_mask =
 		_mm_set1_epi32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
 	const __m128i flags2_mask1 =
@@ -135,6 +129,109 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	_mm_store_si128((void *)&mbuf[3]->rearm_data,
 			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
 
+	/* Update mbuf rx_descriptor_fields1 for four packets. */
+	GET_DESC_FIELDS(mm_rxcmp[0], mm_rxcmp1[0], shuf_msk, ptype_idx, 0, t0);
+	_mm_store_si128((void *)&mbuf[0]->rx_descriptor_fields1, t0);
+
+	GET_DESC_FIELDS(mm_rxcmp[1], mm_rxcmp1[1], shuf_msk, ptype_idx, 1, t0);
+	_mm_store_si128((void *)&mbuf[1]->rx_descriptor_fields1, t0);
+
+	GET_DESC_FIELDS(mm_rxcmp[2], mm_rxcmp1[2], shuf_msk, ptype_idx, 2, t0);
+	_mm_store_si128((void *)&mbuf[2]->rx_descriptor_fields1, t0);
+
+	GET_DESC_FIELDS(mm_rxcmp[3], mm_rxcmp1[3], shuf_msk, ptype_idx, 3, t0);
+	_mm_store_si128((void *)&mbuf[3]->rx_descriptor_fields1, t0);
+}
+
+static inline void
+crx_descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
+		   __m128i mbuf_init, const __m128i shuf_msk,
+		   struct rte_mbuf **mbuf, struct bnxt_rx_ring_info *rxr)
+{
+	const __m128i flags_type_mask =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_ITYPE_MASK);
+	const __m128i flags2_mask1 =
+		_mm_set1_epi32(CMPL_FLAGS2_VLAN_TUN_MSK_CRX);
+	const __m128i flags2_mask2 =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_IP_TYPE);
+	const __m128i rss_mask =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_RSS_VALID);
+	const __m128i cs_err_mask =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_MASK |
+			       BNXT_RXC_METADATA1_VLAN_VALID);
+	const __m128i crx_flags_mask =
+		_mm_set1_epi32(BNXT_CRX_CQE_CSUM_CALC_MASK);
+	const __m128i crx_tun_cs =
+		_mm_set1_epi32(BNXT_CRX_TUN_CS_CALC);
+	__m128i t0, t1, flags_type, flags, index, errors, rss_flags;
+	__m128i ptype_idx, is_tunnel;
+	uint32_t ol_flags;
+	__m128i cs_err;
+	__m128i t3, t4;
+
+	/* Validate ptype table indexing at build time. */
+	bnxt_check_ptype_constants();
+
+	/* Compute packet type table indexes for four packets */
+	t0 = _mm_unpacklo_epi32(mm_rxcmp[0], mm_rxcmp[1]);
+	t3 = _mm_unpackhi_epi32(mm_rxcmp[0], mm_rxcmp[1]);
+	t1 = _mm_unpacklo_epi32(mm_rxcmp[2], mm_rxcmp[3]);
+	t4 = _mm_unpackhi_epi32(mm_rxcmp[2], mm_rxcmp[3]);
+	flags_type = _mm_unpacklo_epi64(t0, t1);
+	ptype_idx = _mm_srli_epi32(_mm_and_si128(flags_type, flags_type_mask),
+			RX_PKT_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT);
+
+	flags = _mm_unpacklo_epi64(t0, t1);
+
+	ptype_idx = _mm_or_si128(ptype_idx,
+			_mm_srli_epi32(_mm_and_si128(flags, flags2_mask1),
+				       RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT -
+				       BNXT_PTYPE_TBL_VLAN_SFT));
+	ptype_idx = _mm_or_si128(ptype_idx,
+			_mm_srli_epi32(_mm_and_si128(flags, flags2_mask2),
+				       RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT -
+				       BNXT_PTYPE_TBL_IP_VER_SFT));
+
+	/* Extract RSS valid flags for four packets. */
+	rss_flags = _mm_srli_epi32(_mm_and_si128(flags, rss_mask), 9);
+
+	/* Extract cs_err fields for four packets. */
+	cs_err = _mm_unpacklo_epi64(t3, t4);
+	cs_err = _mm_and_si128(cs_err, cs_err_mask);
+	flags = _mm_and_si128(cs_err, crx_flags_mask);
+
+	/* Compute ol_flags and checksum error indexes for four packets. */
+	is_tunnel = _mm_and_si128(flags, crx_tun_cs);
+	is_tunnel = _mm_slli_epi32(is_tunnel, 0x20);
+	flags = _mm_or_si128(flags, is_tunnel);
+
+	flags = _mm_srli_si128(flags, 1);
+
+	errors = _mm_and_si128(cs_err, _mm_set1_epi32(0xF0));
+	errors = _mm_and_si128(_mm_srli_epi32(errors, 4), flags);
+
+	index = _mm_andnot_si128(errors, flags);
+	/* reuse is_tunnel - just shift right one bit to index correctly. */
+	errors = _mm_or_si128(errors, _mm_srli_epi32(is_tunnel, 1));
+	index = _mm_or_si128(index, is_tunnel);
+
+	/* Update mbuf rearm_data for four packets. */
+	GET_OL_FLAGS(rss_flags, index, errors, 0, ol_flags);
+	_mm_store_si128((void *)&mbuf[0]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
+	GET_OL_FLAGS(rss_flags, index, errors, 1, ol_flags);
+	_mm_store_si128((void *)&mbuf[1]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
+	GET_OL_FLAGS(rss_flags, index, errors, 2, ol_flags);
+	_mm_store_si128((void *)&mbuf[2]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
+	GET_OL_FLAGS(rss_flags, index, errors, 3, ol_flags);
+	_mm_store_si128((void *)&mbuf[3]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
 	/* Update mbuf rx_descriptor_fields1 for four packes. */
 	GET_DESC_FIELDS(mm_rxcmp[0], mm_rxcmp1[0], shuf_msk, ptype_idx, 0, t0);
 	_mm_store_si128((void *)&mbuf[0]->rx_descriptor_fields1, t0);
@@ -166,6 +263,12 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	int nb_rx_pkts = 0;
 	const __m128i valid_target =
 		_mm_set1_epi32(!!(raw_cons & cp_ring_size));
+	const __m128i shuf_msk =
+		_mm_set_epi8(15, 14, 13, 12,          /* rss */
+			     0xFF, 0xFF,              /* vlan_tci (zeroes) */
+			     3, 2,                    /* data_len */
+			     0xFF, 0xFF, 3, 2,        /* pkt_len */
+			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
 	int i;
 
 	/* If Rx Q was stopped return */
@@ -259,12 +362,12 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * the number of valid descriptors.
 		 */
 		valid = _mm_cvtsi128_si64(_mm_packs_epi32(info3_v, info3_v));
-		num_valid = __builtin_popcountll(valid & desc_valid_mask);
+		num_valid = rte_popcount64(valid & desc_valid_mask);
 
 		if (num_valid == 0)
 			break;
 
-		descs_to_mbufs(rxcmp, rxcmp1, mbuf_init, &rx_pkts[nb_rx_pkts],
+		descs_to_mbufs(rxcmp, rxcmp1, mbuf_init, shuf_msk, &rx_pkts[nb_rx_pkts],
 			       rxr);
 		nb_rx_pkts += num_valid;
 
@@ -283,25 +386,176 @@ recv_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	return nb_rx_pkts;
 }
 
+static uint16_t
+crx_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct bnxt_rx_queue *rxq = rx_queue;
+	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
+	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
+	uint64_t valid, desc_valid_mask = ~0ULL;
+	const __m128i info3_v_mask = _mm_set1_epi32(CMPL_BASE_V);
+	uint32_t raw_cons = cpr->cp_raw_cons;
+	uint32_t cons, mbcons;
+	int nb_rx_pkts = 0;
+	const __m128i valid_target =
+		_mm_set1_epi32(!!(raw_cons & cp_ring_size));
+	const __m128i shuf_msk =
+		_mm_set_epi8(7, 6, 5, 4,          /* rss */
+			     0xFF, 0xFF,              /* vlan_tci (zeroes) */
+			     3, 2,                    /* data_len */
+			     0xFF, 0xFF, 3, 2,        /* pkt_len */
+			     0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
+	int i;
+
+	/* If Rx Q was stopped return */
+	if (unlikely(!rxq->rx_started))
+		return 0;
+
+	if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
+		bnxt_rxq_rearm(rxq, rxr);
+
+	cons = raw_cons & (cp_ring_size - 1);
+	mbcons = raw_cons & (rx_ring_size - 1);
+
+	/* Prefetch first four descriptor pairs. */
+	rte_prefetch0(&cp_desc_ring[cons]);
+
+	/* Ensure that we do not go past the ends of the rings. */
+	nb_pkts = RTE_MIN(nb_pkts, RTE_MIN(rx_ring_size - mbcons,
+					   cp_ring_size - cons));
+	/*
+	 * If we are at the end of the ring, ensure that descriptors after the
+	 * last valid entry are not treated as valid. Otherwise, force the
+	 * maximum number of packets to receive to be a multiple of the per-
+	 * loop count.
+	 */
+	if (nb_pkts < BNXT_RX_DESCS_PER_LOOP_VEC128) {
+		desc_valid_mask >>=
+			16 * (BNXT_RX_DESCS_PER_LOOP_VEC128 - nb_pkts);
+	} else {
+		nb_pkts =
+			RTE_ALIGN_FLOOR(nb_pkts, BNXT_RX_DESCS_PER_LOOP_VEC128);
+	}
+
+	/* Handle RX burst request */
+	for (i = 0; i < nb_pkts; i += BNXT_RX_DESCS_PER_LOOP_VEC128,
+				  cons += BNXT_RX_DESCS_PER_LOOP_VEC128,
+				  mbcons += BNXT_RX_DESCS_PER_LOOP_VEC128) {
+		__m128i rxcmp1[BNXT_RX_DESCS_PER_LOOP_VEC128];
+		__m128i rxcmp[BNXT_RX_DESCS_PER_LOOP_VEC128];
+		__m128i tmp0, tmp1, info3_v;
+		uint32_t num_valid;
+
+		/* Copy four mbuf pointers to output array. */
+		tmp0 = _mm_loadu_si128((void *)&rxr->rx_buf_ring[mbcons]);
+#ifdef RTE_ARCH_X86_64
+		tmp1 = _mm_loadu_si128((void *)&rxr->rx_buf_ring[mbcons + 2]);
+#endif
+		_mm_storeu_si128((void *)&rx_pkts[i], tmp0);
+#ifdef RTE_ARCH_X86_64
+		_mm_storeu_si128((void *)&rx_pkts[i + 2], tmp1);
+#endif
+
+		/* Prefetch four descriptor pairs for next iteration. */
+		if (i + BNXT_RX_DESCS_PER_LOOP_VEC128 < nb_pkts)
+			rte_prefetch0(&cp_desc_ring[cons + 4]);
+
+		/*
+		 * Load the four current descriptors into SSE registers in
+		 * reverse order to ensure consistent state.
+		 */
+		rxcmp[3] = _mm_load_si128((void *)&cp_desc_ring[cons + 3]);
+		rte_compiler_barrier();
+		rxcmp[2] = _mm_load_si128((void *)&cp_desc_ring[cons + 2]);
+		rte_compiler_barrier();
+		rxcmp[1] = _mm_load_si128((void *)&cp_desc_ring[cons + 1]);
+		rte_compiler_barrier();
+		rxcmp[0] = _mm_load_si128((void *)&cp_desc_ring[cons + 0]);
+
+		tmp1 = _mm_unpackhi_epi32(rxcmp[2], rxcmp[3]);
+		tmp0 = _mm_unpackhi_epi32(rxcmp[0], rxcmp[1]);
+
+		/* Isolate descriptor valid flags. */
+		info3_v = _mm_and_si128(_mm_unpacklo_epi64(tmp0, tmp1),
+					info3_v_mask);
+		info3_v = _mm_xor_si128(info3_v, valid_target);
+
+		/*
+		 * Pack the 128-bit array of valid descriptor flags into 64
+		 * bits and count the number of set bits in order to determine
+		 * the number of valid descriptors.
+		 */
+		valid = _mm_cvtsi128_si64(_mm_packs_epi32(info3_v, info3_v));
+		num_valid = rte_popcount64(valid & desc_valid_mask);
+
+		if (num_valid == 0)
+			break;
+
+		crx_descs_to_mbufs(rxcmp, rxcmp1, mbuf_init, shuf_msk,
+				   &rx_pkts[nb_rx_pkts], rxr);
+		nb_rx_pkts += num_valid;
+
+		if (num_valid < BNXT_RX_DESCS_PER_LOOP_VEC128)
+			break;
+	}
+
+	if (nb_rx_pkts) {
+		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, nb_rx_pkts);
+
+		rxq->rxrearm_nb += nb_rx_pkts;
+		cpr->cp_raw_cons += nb_rx_pkts;
+		bnxt_db_cq(cpr);
+	}
+
+	return nb_rx_pkts;
+}
+
 uint16_t
 bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
 	uint16_t cnt = 0;
 
-	while (nb_pkts > RTE_BNXT_MAX_RX_BURST) {
+	while (nb_pkts > brst) {
 		uint16_t burst;
 
-		burst = recv_burst_vec_sse(rx_queue, rx_pkts + cnt,
-					   RTE_BNXT_MAX_RX_BURST);
+		burst = recv_burst_vec_sse(rx_queue, rx_pkts + cnt, brst);
 
 		cnt += burst;
 		nb_pkts -= burst;
 
-		if (burst < RTE_BNXT_MAX_RX_BURST)
+		if (burst < brst)
 			return cnt;
 	}
 
 	return cnt + recv_burst_vec_sse(rx_queue, rx_pkts + cnt, nb_pkts);
+}
+
+uint16_t
+bnxt_crx_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct bnxt_rx_queue *rxq = rx_queue;
+	uint32_t brst = rxq->rx_free_thresh;
+	uint16_t cnt = 0;
+
+	while (nb_pkts > brst) {
+		uint16_t burst;
+
+		burst = crx_burst_vec_sse(rx_queue, rx_pkts + cnt, brst);
+
+		cnt += burst;
+		nb_pkts -= burst;
+
+		if (burst < brst)
+			return cnt;
+	}
+
+	return cnt + crx_burst_vec_sse(rx_queue, rx_pkts + cnt, nb_pkts);
 }
 
 static void
@@ -326,8 +580,8 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 		if (likely(CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2))
 			nb_tx_pkts += txcmp->opaque;
 		else
-			RTE_LOG_DP(ERR, PMD,
-				   "Unhandled CMP type %02x\n",
+			RTE_LOG_DP_LINE(ERR, BNXT,
+				   "Unhandled CMP type %02x",
 				   CMP_TYPE(txcmp));
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	} while (nb_tx_pkts < ring_mask);
@@ -427,7 +681,7 @@ bnxt_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Tx queue was stopped; wait for it to be restarted */
 	if (unlikely(!txq->tx_started)) {
-		PMD_DRV_LOG(DEBUG, "Tx q stopped;return\n");
+		PMD_DRV_LOG_LINE(DEBUG, "Tx q stopped;return");
 		return 0;
 	}
 

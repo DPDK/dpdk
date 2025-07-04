@@ -7,6 +7,7 @@
 
 #include "ml_common.h"
 #include "test_inference_common.h"
+#include "test_stats.h"
 
 static int
 test_inference_ordered_driver(struct ml_test *test, struct ml_options *opt)
@@ -54,7 +55,8 @@ next_model:
 		goto error;
 
 	ml_inference_iomem_destroy(test, opt, fid);
-	ml_inference_stats_get(test, opt);
+	ml_stats_get(test, opt, RTE_ML_DEV_XSTATS_MODEL, fid);
+	ml_throughput_get(test, opt);
 
 	/* stop model */
 	ret = ml_model_stop(test, opt, &t->model[fid], fid);
@@ -70,6 +72,7 @@ next_model:
 	if (fid < opt->nb_filelist)
 		goto next_model;
 
+	ml_stats_get(test, opt, RTE_ML_DEV_XSTATS_DEVICE, -1);
 	ml_inference_mem_destroy(test, opt);
 
 	ret = ml_inference_mldev_destroy(test, opt);

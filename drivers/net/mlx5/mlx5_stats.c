@@ -20,6 +20,107 @@
 #include "mlx5_tx.h"
 #include "mlx5_malloc.h"
 
+
+static const struct mlx5_xstats_name_off mlx5_rxq_stats_strings[] = {
+	{"out_of_buffer", offsetof(struct mlx5_rq_stats, q_oobs)},
+};
+
+#define NB_RXQ_STATS RTE_DIM(mlx5_rxq_stats_strings)
+
+/**
+ * Retrieve extended device statistics
+ * for Rx queues. It appends the specific statistics
+ * before the parts filled by preceding modules (eth stats, etc.)
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] stats
+ *   Pointer to an array to store the retrieved statistics.
+ * @return
+ *   Number of extended stats is filled,
+ *   negative on error and rte_errno is set.
+ */
+static int
+mlx5_rq_xstats_get(struct rte_eth_dev *dev,
+					struct rte_eth_xstat *stats)
+{
+	uint16_t n_stats_rq = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	int cnt_used_entries = 0;
+
+	for (unsigned int idx = 0; idx < n_stats_rq; idx++) {
+		struct mlx5_rxq_data *rxq_data = mlx5_rxq_data_get(dev, idx);
+		struct mlx5_rxq_priv *rxq_priv = mlx5_rxq_get(dev, idx);
+
+		if (rxq_data == NULL)
+			continue;
+
+		struct mlx5_rxq_stat *rxq_stat = &rxq_data->stats.oobs;
+		if (rxq_stat == NULL)
+			continue;
+
+		/* Handle initial stats setup - Flag uninitialized stat */
+		rxq_stat->id = -1;
+
+		/* Handle hairpin statistics */
+		if (rxq_priv && rxq_priv->ctrl->is_hairpin) {
+			if (stats) {
+				mlx5_read_queue_counter(rxq_priv->q_counter, "hairpin_out_of_buffer",
+					&rxq_stat->count);
+
+				stats[cnt_used_entries].id = cnt_used_entries;
+				stats[cnt_used_entries].value = rxq_stat->count -
+					rxq_data->stats_reset.oobs.count;
+			}
+			rxq_stat->ctrl.enable = mlx5_enable_per_queue_hairpin_counter;
+			rxq_stat->ctrl.disable = mlx5_disable_per_queue_hairpin_counter;
+			rxq_stat->id = cnt_used_entries;
+			cnt_used_entries++;
+		}
+	}
+	return cnt_used_entries;
+}
+
+/**
+ * Retrieve names of extended device statistics
+ * for Rx queues. It appends the specific stats names
+ * before the parts filled by preceding modules (eth stats, etc.)
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] xstats_names
+ *   Buffer to insert names into.
+ *
+ * @return
+ *   Number of xstats names.
+ */
+static int
+mlx5_rq_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
+			       struct rte_eth_xstat_name *xstats_names)
+{
+	struct mlx5_rxq_priv *rxq;
+	unsigned int i;
+	int cnt_used_entries = 0;
+
+	uint16_t n_stats_rq = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	for (i = 0; (i != n_stats_rq); ++i) {
+		rxq = mlx5_rxq_get(dev, i);
+
+		if (rxq == NULL)
+			continue;
+
+		if (rxq->ctrl->is_hairpin) {
+			if (xstats_names)
+				snprintf(xstats_names[cnt_used_entries].name,
+					sizeof(xstats_names[0].name),
+					"hairpin_%s_rxq%u",
+					mlx5_rxq_stats_strings[0].name, i);
+			cnt_used_entries++;
+		}
+	}
+	return cnt_used_entries;
+}
+
 /**
  * DPDK callback to get extended device statistics.
  *
@@ -39,45 +140,58 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 		unsigned int n)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int i;
-	uint64_t counters[n];
+	uint64_t counters[MLX5_MAX_XSTATS];
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	unsigned int i;
+	uint16_t stats_n = 0;
+	uint16_t stats_n_2nd = 0;
 	uint16_t mlx5_stats_n = xstats_ctrl->mlx5_stats_n;
+	bool bond_master = (priv->master && priv->pf_bond >= 0);
+	int n_used = mlx5_rq_xstats_get(dev, stats);
 
 	if (n >= mlx5_stats_n && stats) {
-		int stats_n;
 		int ret;
 
-		stats_n = mlx5_os_get_stats_n(dev);
-		if (stats_n < 0)
-			return stats_n;
-		if (xstats_ctrl->stats_n != stats_n)
-			mlx5_os_stats_init(dev);
-		ret = mlx5_os_read_dev_counters(dev, counters);
-		if (ret)
+		ret = mlx5_os_get_stats_n(dev, bond_master, &stats_n, &stats_n_2nd);
+		if (ret < 0)
 			return ret;
-		for (i = 0; i != mlx5_stats_n; ++i) {
-			stats[i].id = i;
+		/*
+		 * The number of statistics fetched via "ETH_SS_STATS" may vary because
+		 * of the port configuration each time. This is also true between 2
+		 * ports. There might be a case that the numbers are the same even if
+		 * configurations are different.
+		 * It is not recommended to change the configuration without using
+		 * RTE API. The port(traffic) restart may trigger another initialization
+		 * to make sure the map are correct.
+		 */
+		if (xstats_ctrl->stats_n != stats_n ||
+		    (bond_master && xstats_ctrl->stats_n_2nd != stats_n_2nd))
+			mlx5_os_stats_init(dev);
+		ret = mlx5_os_read_dev_counters(dev, bond_master, counters);
+		if (ret < 0)
+			return ret;
+		for (i = 0; i != mlx5_stats_n; i++) {
+			stats[i + n_used].id = i + n_used;
 			if (xstats_ctrl->info[i].dev) {
 				uint64_t wrap_n;
 				uint64_t hw_stat = xstats_ctrl->hw_stats[i];
 
-				stats[i].value = (counters[i] -
+				stats[i + n_used].value = (counters[i] -
 						  xstats_ctrl->base[i]) &
 						  (uint64_t)UINT32_MAX;
 				wrap_n = hw_stat >> 32;
-				if (stats[i].value <
+				if (stats[i + n_used].value <
 					    (hw_stat & (uint64_t)UINT32_MAX))
 					wrap_n++;
-				stats[i].value |= (wrap_n) << 32;
-				xstats_ctrl->hw_stats[i] = stats[i].value;
+				stats[i + n_used].value |= (wrap_n) << 32;
+				xstats_ctrl->hw_stats[i] = stats[i + n_used].value;
 			} else {
-				stats[i].value =
+				stats[i + n_used].value =
 					(counters[i] - xstats_ctrl->base[i]);
 			}
 		}
 	}
-	mlx5_stats_n = mlx5_txpp_xstats_get(dev, stats, n, mlx5_stats_n);
+	mlx5_stats_n = mlx5_txpp_xstats_get(dev, stats, n, mlx5_stats_n + n_used);
 	return mlx5_stats_n;
 }
 
@@ -225,30 +339,32 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
-	int stats_n;
 	unsigned int i;
 	uint64_t *counters;
 	int ret;
+	uint16_t stats_n = 0;
+	uint16_t stats_n_2nd = 0;
+	bool bond_master = (priv->master && priv->pf_bond >= 0);
 
-	stats_n = mlx5_os_get_stats_n(dev);
-	if (stats_n < 0) {
+	ret = mlx5_os_get_stats_n(dev, bond_master, &stats_n, &stats_n_2nd);
+	if (ret < 0) {
 		DRV_LOG(ERR, "port %u cannot get stats: %s", dev->data->port_id,
-			strerror(-stats_n));
-		return stats_n;
+			strerror(-ret));
+		return ret;
 	}
-	if (xstats_ctrl->stats_n != stats_n)
+	if (xstats_ctrl->stats_n != stats_n ||
+	    (bond_master && xstats_ctrl->stats_n_2nd != stats_n_2nd))
 		mlx5_os_stats_init(dev);
-	counters =  mlx5_malloc(MLX5_MEM_SYS, sizeof(*counters) *
-			xstats_ctrl->mlx5_stats_n, 0,
-			SOCKET_ID_ANY);
+	/* Considering to use stack directly. */
+	counters = mlx5_malloc(MLX5_MEM_SYS, sizeof(*counters) * xstats_ctrl->mlx5_stats_n,
+			       0, SOCKET_ID_ANY);
 	if (!counters) {
-		DRV_LOG(WARNING, "port %u unable to allocate memory for xstats "
-				"counters",
+		DRV_LOG(WARNING, "port %u unable to allocate memory for xstats counters",
 		     dev->data->port_id);
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
-	ret = mlx5_os_read_dev_counters(dev, counters);
+	ret = mlx5_os_read_dev_counters(dev, bond_master, counters);
 	if (ret) {
 		DRV_LOG(ERR, "port %u cannot read device counters: %s",
 			dev->data->port_id, strerror(rte_errno));
@@ -259,9 +375,56 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 		xstats_ctrl->base[i] = counters[i];
 		xstats_ctrl->hw_stats[i] = 0;
 	}
+	mlx5_reset_xstats_rq(dev);
 	mlx5_txpp_xstats_reset(dev);
 	mlx5_free(counters);
 	return 0;
+}
+
+void
+mlx5_reset_xstats_by_name(struct mlx5_priv *priv, const char *ctr_name)
+{
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	unsigned int mlx5_xstats_n = xstats_ctrl->mlx5_stats_n;
+	unsigned int i;
+
+	for (i = 0; i != mlx5_xstats_n; ++i) {
+		if (strcmp(xstats_ctrl->info[i].ctr_name, ctr_name) == 0) {
+			xstats_ctrl->base[i] = 0;
+			xstats_ctrl->hw_stats[i] = 0;
+			xstats_ctrl->xstats[i] = 0;
+			return;
+		}
+	}
+}
+
+/**
+ * Clear device extended statistics for each Rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void
+mlx5_reset_xstats_rq(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_priv *rxq;
+	struct mlx5_rxq_data *rxq_data;
+	unsigned int i;
+
+	for (i = 0; (i != priv->rxqs_n); ++i) {
+		rxq = mlx5_rxq_get(dev, i);
+		rxq_data = mlx5_rxq_data_get(dev, i);
+
+		if (rxq == NULL || rxq_data == NULL || rxq->q_counter == NULL)
+			continue;
+		if (rxq->ctrl->is_hairpin)
+			mlx5_read_queue_counter(rxq->q_counter,
+				"hairpin_out_of_buffer", &rxq_data->stats_reset.oobs.count);
+		else
+			mlx5_read_queue_counter(rxq->q_counter,
+				"out_of_buffer", &rxq_data->stats_reset.oobs.count);
+	}
 }
 
 /**
@@ -285,15 +448,140 @@ mlx5_xstats_get_names(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	unsigned int mlx5_xstats_n = xstats_ctrl->mlx5_stats_n;
+	unsigned int n_used = mlx5_rq_xstats_get_names(dev, xstats_names);
 
 	if (n >= mlx5_xstats_n && xstats_names) {
 		for (i = 0; i != mlx5_xstats_n; ++i) {
-			strlcpy(xstats_names[i].name,
+			rte_strscpy(xstats_names[i + n_used].name,
 				xstats_ctrl->info[i].dpdk_name,
 				RTE_ETH_XSTATS_NAME_SIZE);
+			xstats_names[i + n_used].name[RTE_ETH_XSTATS_NAME_SIZE - 1] = 0;
 		}
 	}
 	mlx5_xstats_n = mlx5_txpp_xstats_get_names(dev, xstats_names,
-						   n, mlx5_xstats_n);
+						   n, mlx5_xstats_n + n_used);
 	return mlx5_xstats_n;
+}
+
+static struct mlx5_stat_counter_ctrl*
+mlx5_rxq_get_counter_by_id(struct rte_eth_dev *dev, uint64_t id, uint64_t *rq_id)
+{
+	uint16_t n_stats_rq = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);
+
+	for (int i = 0; (i != n_stats_rq); i++) {
+		struct mlx5_rxq_data *rxq_data = mlx5_rxq_data_get(dev, i);
+		if (rxq_data == NULL || rxq_data->stats.oobs.id == -1)
+			continue;
+
+		if ((uint64_t)rxq_data->stats.oobs.id == id) {
+			*rq_id = rxq_data->idx;
+			return &rxq_data->stats.oobs.ctrl;
+		}
+	}
+
+	return NULL;
+}
+
+/**
+ * Callback to enable an xstat counter of the given id.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param id
+ *   The ID of the counter to enable
+ *
+ * @return
+ *   1 xstat is enabled, 0 if xstat is disabled,
+ *   -ENOTSUP if enabling/disabling is not implemented and -EINVAL if xstat id is invalid.
+ */
+int
+mlx5_xstats_enable(struct rte_eth_dev *dev, uint64_t id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct mlx5_stat_counter_ctrl *counter_ctrl = NULL;
+	uint16_t n_stats_rq = mlx5_rq_xstats_get(dev, NULL);
+
+	if (id < n_stats_rq)
+		counter_ctrl = mlx5_rxq_get_counter_by_id(dev, id, &id);
+	else
+		counter_ctrl = &xstats_ctrl->info[id - n_stats_rq].ctrl;
+
+	if (counter_ctrl == NULL)
+		return -EINVAL;
+
+	if (counter_ctrl->enable == NULL)
+		return -ENOTSUP;
+
+	counter_ctrl->enabled = counter_ctrl->enable(dev, id) == 0 ? 1 : 0;
+	return counter_ctrl->enabled;
+}
+
+/**
+ * Callback to disable an xstat counter of the given id.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param id
+ *   The ID of the counter to enable
+ *
+ * @return
+ *   1 if xstat is disabled, 0 xstat is enabled,
+ *   -ENOTSUP if enabling/disabling is not implemented and -EINVAL if xstat id is invalid.
+ */
+int
+mlx5_xstats_disable(struct rte_eth_dev *dev, uint64_t id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct mlx5_stat_counter_ctrl *counter_ctrl = NULL;
+
+	uint16_t n_stats_rq = mlx5_rq_xstats_get(dev, NULL);
+	if (id < n_stats_rq)
+		counter_ctrl = mlx5_rxq_get_counter_by_id(dev, id, &id);
+	else
+		counter_ctrl = &xstats_ctrl->info[id - n_stats_rq].ctrl;
+
+	if (counter_ctrl == NULL)
+		return -EINVAL;
+
+	if (counter_ctrl->disable == NULL)
+		return -ENOTSUP;
+
+	counter_ctrl->enabled = counter_ctrl->disable(dev, id) == 0 ? 0 : 1;
+	return counter_ctrl->enabled;
+}
+
+/**
+ * Query the state of the xstat counter.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param id
+ *   The ID of the counter to enable
+ *
+ * @return
+ *   1 if xstat is disabled, 0 xstat is enabled,
+ *   -ENOTSUP if enabling/disabling is not implemented and -EINVAL if xstat id is invalid.
+ */
+int
+mlx5_xstats_query_state(struct rte_eth_dev *dev, uint64_t id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct mlx5_stat_counter_ctrl *counter_ctrl = NULL;
+
+	uint16_t n_stats_rq = mlx5_rq_xstats_get(dev, NULL);
+	if (id < n_stats_rq)
+		counter_ctrl = mlx5_rxq_get_counter_by_id(dev, id, &id);
+	else
+		counter_ctrl = &xstats_ctrl->info[id - n_stats_rq].ctrl;
+
+	if (counter_ctrl == NULL)
+		return -EINVAL;
+
+	if (counter_ctrl->disable == NULL)
+		return -ENOTSUP;
+
+	return counter_ctrl->enabled;
 }

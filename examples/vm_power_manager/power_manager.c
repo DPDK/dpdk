@@ -15,7 +15,7 @@
 #include <sys/types.h>
 
 #include <rte_log.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 #include <rte_spinlock.h>
 
 #include "channel_manager.h"
@@ -32,11 +32,11 @@
 	rte_spinlock_unlock(&global_core_freq_info[core_num].power_sl); \
 } while (0)
 
-struct freq_info {
+struct __rte_cache_aligned freq_info {
 	rte_spinlock_t power_sl;
 	uint32_t freqs[RTE_MAX_LCORE_FREQS];
 	unsigned num_freqs;
-} __rte_cache_aligned;
+};
 
 static struct freq_info global_core_freq_info[RTE_MAX_LCORE];
 

@@ -18,7 +18,6 @@ sources = files(
         'cli.c',
         'conn.c',
         'cryptodev.c',
-        'kni.c',
         'link.c',
         'main.c',
         'mempool.c',

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include "rte_bpf.h"
 
 #define BPF_OP_INDEX(x) (BPF_OP(x) >> 4)
@@ -43,6 +44,7 @@ static const char *const jump_tbl[16] = {
 	[EBPF_CALL >> 4] = "call", [EBPF_EXIT >> 4] = "exit",
 };
 
+RTE_EXPORT_SYMBOL(rte_bpf_dump)
 void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
 {
 	uint32_t i;

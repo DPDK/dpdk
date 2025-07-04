@@ -498,8 +498,8 @@ cperf_cyclecount_test_runner(void *test_ctx)
 	/*
 	 * printing information about current compression thread
 	 */
-	if (__atomic_compare_exchange_n(&ctx->ver.mem.print_info_once, &exp,
-				1, 0, __ATOMIC_RELAXED,  __ATOMIC_RELAXED))
+	if (rte_atomic_compare_exchange_strong_explicit(&ctx->ver.mem.print_info_once, &exp,
+				1, rte_memory_order_relaxed,  rte_memory_order_relaxed))
 		printf("    lcore: %u,"
 				" driver name: %s,"
 				" device name: %s,"

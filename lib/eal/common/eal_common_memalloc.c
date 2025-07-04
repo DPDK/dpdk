@@ -186,7 +186,7 @@ eal_memalloc_mem_event_callback_register(const char *name,
 
 	ret = 0;
 
-	RTE_LOG(DEBUG, EAL, "Mem event callback '%s:%p' registered\n",
+	EAL_LOG(DEBUG, "Mem event callback '%s:%p' registered",
 			name, arg);
 
 unlock:
@@ -225,7 +225,7 @@ eal_memalloc_mem_event_callback_unregister(const char *name, void *arg)
 
 	ret = 0;
 
-	RTE_LOG(DEBUG, EAL, "Mem event callback '%s:%p' unregistered\n",
+	EAL_LOG(DEBUG, "Mem event callback '%s:%p' unregistered",
 			name, arg);
 
 unlock:
@@ -242,7 +242,7 @@ eal_memalloc_mem_event_notify(enum rte_mem_event event, const void *start,
 	rte_rwlock_read_lock(&mem_event_rwlock);
 
 	TAILQ_FOREACH(entry, &mem_event_callback_list, next) {
-		RTE_LOG(DEBUG, EAL, "Calling mem event callback '%s:%p'\n",
+		EAL_LOG(DEBUG, "Calling mem event callback '%s:%p'",
 			entry->name, entry->arg);
 		entry->clb(event, start, len, entry->arg);
 	}
@@ -293,7 +293,7 @@ eal_memalloc_mem_alloc_validator_register(const char *name,
 
 	ret = 0;
 
-	RTE_LOG(DEBUG, EAL, "Mem alloc validator '%s' on socket %i with limit %zu registered\n",
+	EAL_LOG(DEBUG, "Mem alloc validator '%s' on socket %i with limit %zu registered",
 		name, socket_id, limit);
 
 unlock:
@@ -332,7 +332,7 @@ eal_memalloc_mem_alloc_validator_unregister(const char *name, int socket_id)
 
 	ret = 0;
 
-	RTE_LOG(DEBUG, EAL, "Mem alloc validator '%s' on socket %i unregistered\n",
+	EAL_LOG(DEBUG, "Mem alloc validator '%s' on socket %i unregistered",
 		name, socket_id);
 
 unlock:
@@ -351,7 +351,7 @@ eal_memalloc_mem_alloc_validate(int socket_id, size_t new_len)
 	TAILQ_FOREACH(entry, &mem_alloc_validator_list, next) {
 		if (entry->socket_id != socket_id || entry->limit > new_len)
 			continue;
-		RTE_LOG(DEBUG, EAL, "Calling mem alloc validator '%s' on socket %i\n",
+		EAL_LOG(DEBUG, "Calling mem alloc validator '%s' on socket %i",
 			entry->name, entry->socket_id);
 		if (entry->clb(socket_id, entry->limit, new_len) < 0)
 			ret = -1;

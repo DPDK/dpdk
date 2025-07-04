@@ -4,11 +4,11 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <unistd.h>
 
+#include <rte_argparse.h>
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_dmadev.h>
@@ -18,16 +18,8 @@
 #define MAX_PKT_BURST 32
 #define MEMPOOL_CACHE_SIZE 512
 #define MIN_POOL_SIZE 65536U
-#define CMD_LINE_OPT_MAC_UPDATING "mac-updating"
-#define CMD_LINE_OPT_NO_MAC_UPDATING "no-mac-updating"
-#define CMD_LINE_OPT_PORTMASK "portmask"
-#define CMD_LINE_OPT_NB_QUEUE "nb-queue"
-#define CMD_LINE_OPT_COPY_TYPE "copy-type"
-#define CMD_LINE_OPT_RING_SIZE "ring-size"
-#define CMD_LINE_OPT_BATCH_SIZE "dma-batch-size"
-#define CMD_LINE_OPT_FRAME_SIZE "max-frame-size"
-#define CMD_LINE_OPT_FORCE_COPY_SIZE "force-min-copy-size"
-#define CMD_LINE_OPT_STATS_INTERVAL "stats-interval"
+#define CMD_LINE_OPT_PORTMASK_INDEX 1
+#define CMD_LINE_OPT_COPY_TYPE_INDEX 2
 
 /* configurable number of RX/TX ring descriptors */
 #define RX_DEFAULT_RINGSIZE 1024
@@ -95,10 +87,10 @@ static copy_mode_t copy_mode = COPY_MODE_DMA_NUM;
 /* size of descriptor ring for hardware copy mode or
  * rte_ring for software copy mode
  */
-static unsigned short ring_size = 2048;
+static uint16_t ring_size = 2048;
 
 /* interval, in seconds, between stats prints */
-static unsigned short stats_interval = 1;
+static uint16_t stats_interval = 1;
 /* global mbuf arrays for tracking DMA bufs */
 #define MBUF_RING_SIZE	2048
 #define MBUF_RING_MASK	(MBUF_RING_SIZE - 1)
@@ -583,26 +575,6 @@ static void start_forwarding_cores(void)
 }
 /* >8 End of starting to process for each lcore. */
 
-/* Display usage */
-static void
-dma_usage(const char *prgname)
-{
-	printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
-		"  -b --dma-batch-size: number of requests per DMA batch\n"
-		"  -f --max-frame-size: max frame size\n"
-		"  -m --force-min-copy-size: force a minimum copy length, even for smaller packets\n"
-		"  -p --portmask: hexadecimal bitmask of ports to configure\n"
-		"  -q NQ: number of RX queues per port (default is 1)\n"
-		"  --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)\n"
-		"      When enabled:\n"
-		"       - The source MAC address is replaced by the TX port MAC address\n"
-		"       - The destination MAC address is replaced by 02:00:00:00:00:TX_PORT_ID\n"
-		"  -c --copy-type CT: type of copy: sw|hw\n"
-		"  -s --ring-size RS: size of dmadev descriptor ring for hardware copy mode or rte_ring for software copy mode\n"
-		"  -i --stats-interval SI: interval, in seconds, between stats prints (default is 1)\n",
-			prgname);
-}
-
 static int
 dma_parse_portmask(const char *portmask)
 {
@@ -628,142 +600,133 @@ dma_parse_copy_mode(const char *copy_mode)
 	return COPY_MODE_INVALID_NUM;
 }
 
+static int
+dma_parse_args_cb(uint32_t index, const char *value, void *opaque)
+{
+	int port_mask;
+
+	RTE_SET_USED(opaque);
+
+	if (index == CMD_LINE_OPT_PORTMASK_INDEX) {
+		port_mask = dma_parse_portmask(value);
+		if (port_mask & ~dma_enabled_port_mask || port_mask <= 0) {
+			printf("Invalid portmask, %s, suggest 0x%x\n",
+					value, dma_enabled_port_mask);
+			return -1;
+		}
+		dma_enabled_port_mask = port_mask;
+	} else if (index == CMD_LINE_OPT_COPY_TYPE_INDEX) {
+		copy_mode = dma_parse_copy_mode(value);
+		if (copy_mode == COPY_MODE_INVALID_NUM) {
+			printf("Invalid copy type. Use: sw, hw\n");
+			return -1;
+		}
+	} else {
+		printf("Invalid index %u\n", index);
+		return -1;
+	}
+
+	return 0;
+}
+
 /* Parse the argument given in the command line of the application */
 static int
 dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 {
-	static const char short_options[] =
-		"b:"  /* dma batch size */
-		"c:"  /* copy type (sw|hw) */
-		"f:"  /* max frame size */
-		"m:"  /* force min copy size */
-		"p:"  /* portmask */
-		"q:"  /* number of RX queues per port */
-		"s:"  /* ring size */
-		"i:"  /* interval, in seconds, between stats prints */
-		;
-
-	static const struct option lgopts[] = {
-		{CMD_LINE_OPT_MAC_UPDATING, no_argument, &mac_updating, 1},
-		{CMD_LINE_OPT_NO_MAC_UPDATING, no_argument, &mac_updating, 0},
-		{CMD_LINE_OPT_PORTMASK, required_argument, NULL, 'p'},
-		{CMD_LINE_OPT_NB_QUEUE, required_argument, NULL, 'q'},
-		{CMD_LINE_OPT_COPY_TYPE, required_argument, NULL, 'c'},
-		{CMD_LINE_OPT_RING_SIZE, required_argument, NULL, 's'},
-		{CMD_LINE_OPT_BATCH_SIZE, required_argument, NULL, 'b'},
-		{CMD_LINE_OPT_FRAME_SIZE, required_argument, NULL, 'f'},
-		{CMD_LINE_OPT_FORCE_COPY_SIZE, required_argument, NULL, 'm'},
-		{CMD_LINE_OPT_STATS_INTERVAL, required_argument, NULL, 'i'},
-		{NULL, 0, 0, 0}
+	static struct rte_argparse obj = {
+		.prog_name = "dma",
+		.usage = "[EAL options] -- [optional parameters]",
+		.descriptor = NULL,
+		.epilog = NULL,
+		.exit_on_error = false,
+		.callback = dma_parse_args_cb,
+		.opaque = NULL,
+		.args = {
+			{ "--mac-updating", NULL, "Enable MAC addresses updating",
+			  &mac_updating, (void *)1,
+			  RTE_ARGPARSE_VALUE_NONE, RTE_ARGPARSE_VALUE_TYPE_INT,
+			},
+			{ "--no-mac-updating", NULL, "Disable MAC addresses updating",
+			  &mac_updating, (void *)0,
+			  RTE_ARGPARSE_VALUE_NONE, RTE_ARGPARSE_VALUE_TYPE_INT,
+			},
+			{ "--portmask", "-p", "hexadecimal bitmask of ports to configure",
+			  NULL, (void *)CMD_LINE_OPT_PORTMASK_INDEX,
+			  RTE_ARGPARSE_VALUE_REQUIRED,
+			},
+			{ "--nb-queue", "-q", "number of RX queues per port (default is 1)",
+			  &nb_queues, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_U16,
+			},
+			{ "--copy-type", "-c", "type of copy: sw|hw",
+			  NULL, (void *)CMD_LINE_OPT_COPY_TYPE_INDEX,
+			  RTE_ARGPARSE_VALUE_REQUIRED,
+			},
+			{ "--ring-size", "-s", "size of dmadev descriptor ring for hardware copy mode or rte_ring for software copy mode",
+			  &ring_size, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_U16,
+			},
+			{ "--dma-batch-size", "-b", "number of requests per DMA batch",
+			  &dma_batch_sz, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_U32,
+			},
+			{ "--max-frame-size", "-f", "max frame size",
+			  &max_frame_size, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_U32,
+			},
+			{ "--force-min-copy-size", "-m", "force a minimum copy length, even for smaller packets",
+			  &force_min_copy_size, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_U32,
+			},
+			{ "--stats-interval", "-i", "interval, in seconds, between stats prints (default is 1)",
+			  &stats_interval, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_U16,
+			},
+			ARGPARSE_ARG_END(),
+		},
 	};
 
 	const unsigned int default_port_mask = (1 << nb_ports) - 1;
-	int opt, ret;
-	char **argvopt;
-	int option_index;
-	char *prgname = argv[0];
+	int ret;
 
 	dma_enabled_port_mask = default_port_mask;
-	argvopt = argv;
+	ret = rte_argparse_parse(&obj, argc, argv);
+	if (ret != 0)
+		return ret;
 
-	while ((opt = getopt_long(argc, argvopt, short_options,
-			lgopts, &option_index)) != EOF) {
-
-		switch (opt) {
-		case 'b':
-			dma_batch_sz = atoi(optarg);
-			if (dma_batch_sz > MAX_PKT_BURST) {
-				printf("Invalid dma batch size, %s.\n", optarg);
-				dma_usage(prgname);
-				return -1;
-			}
-			break;
-		case 'f':
-			max_frame_size = atoi(optarg);
-			if (max_frame_size > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
-				printf("Invalid max frame size, %s.\n", optarg);
-				dma_usage(prgname);
-				return -1;
-			}
-			break;
-
-		case 'm':
-			force_min_copy_size = atoi(optarg);
-			break;
-
-		/* portmask */
-		case 'p':
-			dma_enabled_port_mask = dma_parse_portmask(optarg);
-			if (dma_enabled_port_mask & ~default_port_mask ||
-					dma_enabled_port_mask <= 0) {
-				printf("Invalid portmask, %s, suggest 0x%x\n",
-						optarg, default_port_mask);
-				dma_usage(prgname);
-				return -1;
-			}
-			break;
-
-		case 'q':
-			nb_queues = atoi(optarg);
-			if (nb_queues == 0 || nb_queues > MAX_RX_QUEUES_COUNT) {
-				printf("Invalid RX queues number %s. Max %u\n",
-					optarg, MAX_RX_QUEUES_COUNT);
-				dma_usage(prgname);
-				return -1;
-			}
-			break;
-
-		case 'c':
-			copy_mode = dma_parse_copy_mode(optarg);
-			if (copy_mode == COPY_MODE_INVALID_NUM) {
-				printf("Invalid copy type. Use: sw, hw\n");
-				dma_usage(prgname);
-				return -1;
-			}
-			break;
-
-		case 's':
-			ring_size = atoi(optarg);
-			if (ring_size == 0) {
-				printf("Invalid ring size, %s.\n", optarg);
-				dma_usage(prgname);
-				return -1;
-			}
-			/* ring_size must be less-than or equal to MBUF_RING_SIZE
-			 * to avoid overwriting bufs
-			 */
-			if (ring_size > MBUF_RING_SIZE) {
-				printf("Max ring_size is %d, setting ring_size to max",
-						MBUF_RING_SIZE);
-				ring_size = MBUF_RING_SIZE;
-			}
-			break;
-
-		case 'i':
-			stats_interval = atoi(optarg);
-			if (stats_interval == 0) {
-				printf("Invalid stats interval, setting to 1\n");
-				stats_interval = 1;	/* set to default */
-			}
-			break;
-
-		/* long options */
-		case 0:
-			break;
-
-		default:
-			dma_usage(prgname);
-			return -1;
-		}
+	/* check argument's value which parsing by autosave. */
+	if (dma_batch_sz == 0 || dma_batch_sz > MAX_PKT_BURST) {
+		printf("Invalid dma batch size, %d.\n", dma_batch_sz);
+		return -1;
 	}
 
-	printf("MAC updating %s\n", mac_updating ? "enabled" : "disabled");
-	if (optind >= 0)
-		argv[optind - 1] = prgname;
+	if (max_frame_size > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
+		printf("Invalid max frame size, %d.\n", max_frame_size);
+		return -1;
+	}
 
-	ret = optind - 1;
-	optind = 1; /* reset getopt lib */
-	return ret;
+	if (nb_queues == 0 || nb_queues > MAX_RX_QUEUES_COUNT) {
+		printf("Invalid RX queues number %d. Max %u\n",
+			nb_queues, MAX_RX_QUEUES_COUNT);
+		return -1;
+	}
+
+	if (ring_size == 0) {
+		printf("Invalid ring size, %d.\n", ring_size);
+		return -1;
+	}
+	if (ring_size > MBUF_RING_SIZE) {
+		printf("Max ring_size is %d, setting ring_size to max",
+				MBUF_RING_SIZE);
+		ring_size = MBUF_RING_SIZE;
+	}
+
+	if (stats_interval == 0) {
+		printf("Invalid stats interval, setting to 1\n");
+		stats_interval = 1;	/* set to default */
+	}
+
+	return 0;
 }
 
 /* check link status, return true if at least one port is up */

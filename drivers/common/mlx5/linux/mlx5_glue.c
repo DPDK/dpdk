@@ -16,9 +16,15 @@
 
 #include "mlx5_glue.h"
 
+#include <eal_export.h>
+
 static int
 mlx5_glue_fork_init(void)
 {
+#ifdef HAVE_IBV_FORK_UNNEEDED
+	if (ibv_is_fork_initialized() == IBV_FORK_UNNEEDED)
+		return 0; /* ibv_fork_init() not needed */
+#endif
 	return ibv_fork_init();
 }
 
@@ -1548,7 +1554,34 @@ mlx5_glue_dr_create_flow_action_send_to_kernel(void *tbl, uint16_t priority)
 #endif
 }
 
-__rte_cache_aligned
+static struct mlx5dv_steering_anchor *
+mlx5_glue_dv_create_steering_anchor(struct ibv_context *context,
+				    struct mlx5dv_steering_anchor_attr *attr)
+{
+#ifdef HAVE_MLX5DV_CREATE_STEERING_ANCHOR
+	return mlx5dv_create_steering_anchor(context, attr);
+#else
+	(void)context;
+	(void)attr;
+	errno = ENOTSUP;
+	return NULL;
+#endif
+}
+
+static int
+mlx5_glue_dv_destroy_steering_anchor(struct mlx5dv_steering_anchor *sa)
+{
+#ifdef HAVE_MLX5DV_CREATE_STEERING_ANCHOR
+	return mlx5dv_destroy_steering_anchor(sa);
+#else
+	(void)sa;
+	errno = ENOTSUP;
+	return -ENOTSUP;
+#endif
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_glue)
+alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.version = MLX5_GLUE_VERSION,
 	.fork_init = mlx5_glue_fork_init,
@@ -1685,4 +1718,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dv_free_pp = mlx5_glue_dv_free_pp,
 	.dr_create_flow_action_send_to_kernel =
 		mlx5_glue_dr_create_flow_action_send_to_kernel,
+	.create_steering_anchor = mlx5_glue_dv_create_steering_anchor,
+	.destroy_steering_anchor = mlx5_glue_dv_destroy_steering_anchor,
 };

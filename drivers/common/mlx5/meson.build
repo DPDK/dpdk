@@ -24,6 +24,8 @@ sources += files(
         'mlx5_common_utils.c',
 )
 
+cflags += no_wvla_cflag
+
 cflags_options = [
         '-std=c11',
         '-Wno-strict-prototypes',
@@ -42,6 +44,10 @@ else
     cflags += [ '-UPEDANTIC' ]
 endif
 
+require_iova_in_mbuf = false
+
 mlx5_config = configuration_data()
 subdir(exec_env)
 configure_file(output: 'mlx5_autoconf.h', configuration: mlx5_config)
+
+annotate_locks = false

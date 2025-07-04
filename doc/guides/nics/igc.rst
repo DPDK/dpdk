@@ -4,7 +4,7 @@
 IGC Poll Mode Driver
 ======================
 
-The IGC PMD (**librte_net_igc**) provides poll mode driver support for Foxville
+The IGC PMD (**librte_net_e1000**) provides poll mode driver support for Foxville
 I225 and I226 Series Network Adapters.
 
 - For information about I225, please refer to: `Intel® Ethernet Controller I225 Series
@@ -104,3 +104,8 @@ Add a rule to enable ipv4-udp RSS:
 .. code-block:: console
 
    testpmd> flow create 0 ingress pattern end actions rss types ipv4-udp end / end
+
+Secondary Process Support
+-------------------------
+
+Control plane operations are currently not supported in secondary processes.

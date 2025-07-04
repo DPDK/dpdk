@@ -194,8 +194,7 @@ cryptodev_ccp_remove(struct rte_pci_device *pci_dev)
 
 	ccp_pmd_init_done = 0;
 
-	RTE_LOG(INFO, PMD, "Closing ccp device %s on numa socket %u\n",
-			name, rte_socket_id());
+	CCP_LOG_INFO("Closing ccp device %s on numa socket %u", name, rte_socket_id());
 
 	return rte_cryptodev_pmd_destroy(dev);
 }
@@ -228,7 +227,7 @@ cryptodev_ccp_create(const char *name,
 	}
 	cryptodev_cnt++;
 
-	CCP_LOG_DBG("CCP : Crypto device count = %d\n", cryptodev_cnt);
+	CCP_LOG_DBG("CCP : Crypto device count = %d", cryptodev_cnt);
 	dev->device = &pci_dev->device;
 	dev->device->driver = &pci_drv->driver;
 	dev->driver_id = ccp_cryptodev_driver_id;
@@ -279,7 +278,7 @@ cryptodev_ccp_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	};
 
 	if (ccp_pmd_init_done) {
-		RTE_LOG(INFO, PMD, "CCP PMD already initialized\n");
+		CCP_LOG_INFO("CCP PMD already initialized");
 		return -EFAULT;
 	}
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
@@ -288,11 +287,11 @@ cryptodev_ccp_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	init_params.def_p.max_nb_queue_pairs = CCP_PMD_MAX_QUEUE_PAIRS;
 
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
+	CCP_LOG_INFO("Initialising %s on NUMA node %d", name,
 		init_params.def_p.socket_id);
-	RTE_LOG(INFO, PMD, "Max number of queue pairs = %d\n",
+	CCP_LOG_INFO("Max number of queue pairs = %d",
 		init_params.def_p.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "Authentication offload to %s\n",
+	CCP_LOG_INFO("Authentication offload to %s",
 		((init_params.auth_opt == 0) ? "CCP" : "CPU"));
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
@@ -321,3 +320,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_CCP_PMD,
 	"ccp_auth_opt=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(ccp_crypto_drv, cryptodev_ccp_pmd_drv.driver,
 			       ccp_cryptodev_driver_id);
+RTE_LOG_REGISTER_DEFAULT(crypto_ccp_logtype, NOTICE);

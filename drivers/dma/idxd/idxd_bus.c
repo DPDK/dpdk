@@ -261,9 +261,15 @@ static int
 is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 {
 	char *runtime_dir = strdup(rte_eal_get_runtime_dir());
-	char *prefix = basename(runtime_dir);
-	int prefixlen = strlen(prefix);
 	int retval = 0;
+	int prefixlen;
+	char *prefix;
+
+	if (runtime_dir == NULL)
+		return retval;
+
+	prefix = basename(runtime_dir);
+	prefixlen = strlen(prefix);
 
 	if (strncmp(name, "dpdk_", 5) == 0)
 		retval = 1;

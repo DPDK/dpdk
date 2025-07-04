@@ -29,6 +29,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_string_fns.h>
 #include <rte_pmd_i40e.h>
+#include <bus_driver.h>
 
 #include "base/opae_hw_api.h"
 #include "base/opae_ifpga_hw_api.h"
@@ -72,8 +73,8 @@ static const struct rte_pci_id pci_ifpga_map[] = {
 
 static struct ifpga_rawdev ifpga_rawdevices[IFPGA_RAWDEV_NUM];
 
-static int ifpga_monitor_refcnt;
-static pthread_t ifpga_monitor_start_thread;
+static RTE_ATOMIC(int) ifpga_monitor_refcnt;
+static rte_thread_t ifpga_monitor_start_thread;
 
 static struct ifpga_rawdev *
 ifpga_rawdev_allocate(struct rte_rawdev *rawdev);
@@ -382,7 +383,7 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 			goto fail;
 
 		if (value == 0xdeadbeef) {
-			IFPGA_RAWDEV_PMD_DEBUG("dev_id %d sensor %s value %x\n",
+			IFPGA_RAWDEV_PMD_DEBUG("dev_id %d sensor %s value %x",
 					raw_dev->dev_id, sensor->name, value);
 			continue;
 		}
@@ -390,13 +391,13 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 		/* monitor temperature sensors */
 		if (!strcmp(sensor->name, "Board Temperature") ||
 				!strcmp(sensor->name, "FPGA Die Temperature")) {
-			IFPGA_RAWDEV_PMD_DEBUG("read sensor %s %d %d %d\n",
+			IFPGA_RAWDEV_PMD_DEBUG("read sensor %s %d %d %d",
 					sensor->name, value, sensor->high_warn,
 					sensor->high_fatal);
 
 			if (HIGH_WARN(sensor, value) ||
 				LOW_WARN(sensor, value)) {
-				IFPGA_RAWDEV_PMD_INFO("%s reach threshold %d\n",
+				IFPGA_RAWDEV_PMD_INFO("%s reach threshold %d",
 					sensor->name, value);
 				*gsd_start = true;
 				break;
@@ -407,7 +408,7 @@ ifpga_monitor_sensor(struct rte_rawdev *raw_dev,
 		if (!strcmp(sensor->name, "12V AUX Voltage")) {
 			if (value < AUX_VOLTAGE_WARN) {
 				IFPGA_RAWDEV_PMD_INFO(
-					"%s reach threshold %d mV\n",
+					"%s reach threshold %d mV",
 					sensor->name, value);
 				*gsd_start = true;
 				break;
@@ -443,7 +444,7 @@ static int set_surprise_link_check_aer(
 	if (ifpga_monitor_sensor(rdev, &enable))
 		return -EFAULT;
 	if (enable || force_disable) {
-		IFPGA_RAWDEV_PMD_ERR("Set AER, pls graceful shutdown\n");
+		IFPGA_RAWDEV_PMD_ERR("Set AER, pls graceful shutdown");
 		ifpga_rdev->aer_enable = 1;
 		/* get bridge fd */
 		strlcpy(path, "/sys/bus/pci/devices/", sizeof(path));
@@ -503,7 +504,7 @@ end:
 	return -EFAULT;
 }
 
-static void *
+static uint32_t
 ifpga_rawdev_gsd_handle(__rte_unused void *param)
 {
 	struct ifpga_rawdev *ifpga_rdev;
@@ -511,7 +512,7 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 	int gsd_enable, ret;
 #define MS 1000
 
-	while (__atomic_load_n(&ifpga_monitor_refcnt, __ATOMIC_RELAXED)) {
+	while (rte_atomic_load_explicit(&ifpga_monitor_refcnt, rte_memory_order_relaxed)) {
 		gsd_enable = 0;
 		for (i = 0; i < IFPGA_RAWDEV_NUM; i++) {
 			ifpga_rdev = &ifpga_rawdevices[i];
@@ -531,7 +532,7 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 		rte_delay_us(100 * MS);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -548,12 +549,11 @@ ifpga_monitor_start_func(struct ifpga_rawdev *dev)
 
 	dev->poll_enabled = 1;
 
-	if (!__atomic_fetch_add(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED)) {
-		ret = rte_ctrl_thread_create(&ifpga_monitor_start_thread,
-					     "ifpga-monitor", NULL,
-					     ifpga_rawdev_gsd_handle, NULL);
+	if (!rte_atomic_fetch_add_explicit(&ifpga_monitor_refcnt, 1, rte_memory_order_relaxed)) {
+		ret = rte_thread_create_internal_control(&ifpga_monitor_start_thread,
+				"ifpga-mon", ifpga_rawdev_gsd_handle, NULL);
 		if (ret != 0) {
-			ifpga_monitor_start_thread = 0;
+			ifpga_monitor_start_thread.opaque_id = 0;
 			IFPGA_RAWDEV_PMD_ERR(
 				"Fail to create ifpga monitor thread");
 			return -1;
@@ -573,13 +573,14 @@ ifpga_monitor_stop_func(struct ifpga_rawdev *dev)
 
 	dev->poll_enabled = 0;
 
-	if (!__atomic_sub_fetch(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED) &&
-		ifpga_monitor_start_thread) {
-		ret = pthread_cancel(ifpga_monitor_start_thread);
+	if (!(rte_atomic_fetch_sub_explicit(&ifpga_monitor_refcnt, 1,
+			rte_memory_order_relaxed) - 1) &&
+		ifpga_monitor_start_thread.opaque_id != 0) {
+		ret = pthread_cancel((pthread_t)ifpga_monitor_start_thread.opaque_id);
 		if (ret)
 			IFPGA_RAWDEV_PMD_ERR("Can't cancel the thread");
 
-		ret = pthread_join(ifpga_monitor_start_thread, NULL);
+		ret = rte_thread_join(ifpga_monitor_start_thread, NULL);
 		if (ret)
 			IFPGA_RAWDEV_PMD_ERR("Can't join the thread");
 
@@ -660,7 +661,7 @@ ifpga_rawdev_info_get(struct rte_rawdev *dev,
 			continue;
 
 		if (ifpga_fill_afu_dev(acc, afu_dev)) {
-			IFPGA_RAWDEV_PMD_ERR("cannot get info\n");
+			IFPGA_RAWDEV_PMD_ERR("cannot get info");
 			return -ENOENT;
 		}
 	}
@@ -815,13 +816,13 @@ fpga_pr(struct rte_rawdev *raw_dev, u32 port_id, const char *buffer, u32 size,
 
 	ret = opae_manager_flash(mgr, port_id, buffer, size, status);
 	if (ret) {
-		IFPGA_RAWDEV_PMD_ERR("%s pr error %d\n", __func__, ret);
+		IFPGA_RAWDEV_PMD_ERR("%s pr error %d", __func__, ret);
 		return ret;
 	}
 
 	ret = opae_bridge_reset(br);
 	if (ret) {
-		IFPGA_RAWDEV_PMD_ERR("%s reset port:%d error %d\n",
+		IFPGA_RAWDEV_PMD_ERR("%s reset port:%d error %d",
 				__func__, port_id, ret);
 		return ret;
 	}
@@ -845,14 +846,14 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 
 	file_fd = open(file_name, O_RDONLY);
 	if (file_fd < 0) {
-		IFPGA_RAWDEV_PMD_ERR("%s: open file error: %s\n",
+		IFPGA_RAWDEV_PMD_ERR("%s: open file error: %s",
 				__func__, file_name);
-		IFPGA_RAWDEV_PMD_ERR("Message : %s\n", strerror(errno));
+		IFPGA_RAWDEV_PMD_ERR("Message : %s", strerror(errno));
 		return -EINVAL;
 	}
 	ret = stat(file_name, &file_stat);
 	if (ret) {
-		IFPGA_RAWDEV_PMD_ERR("stat on bitstream file failed: %s\n",
+		IFPGA_RAWDEV_PMD_ERR("stat on bitstream file failed: %s",
 				file_name);
 		ret = -EINVAL;
 		goto close_fd;
@@ -863,7 +864,7 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 		goto close_fd;
 	}
 
-	IFPGA_RAWDEV_PMD_INFO("bitstream file size: %zu\n", buffer_size);
+	IFPGA_RAWDEV_PMD_INFO("bitstream file size: %zu", buffer_size);
 	buffer = rte_malloc(NULL, buffer_size, 0);
 	if (!buffer) {
 		ret = -ENOMEM;
@@ -879,7 +880,7 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 
 	/*do PR now*/
 	ret = fpga_pr(rawdev, port_id, buffer, buffer_size, &pr_error);
-	IFPGA_RAWDEV_PMD_INFO("downloading to device port %d....%s.\n", port_id,
+	IFPGA_RAWDEV_PMD_INFO("downloading to device port %d....%s.", port_id,
 		ret ? "failed" : "success");
 	if (ret) {
 		ret = -EINVAL;
@@ -922,7 +923,7 @@ ifpga_rawdev_pr(struct rte_rawdev *dev,
 				afu_pr_conf->afu_id.port,
 				afu_pr_conf->bs_path);
 		if (ret) {
-			IFPGA_RAWDEV_PMD_ERR("do pr error %d\n", ret);
+			IFPGA_RAWDEV_PMD_ERR("do pr error %d", ret);
 			return ret;
 		}
 	}
@@ -953,7 +954,7 @@ ifpga_rawdev_pr(struct rte_rawdev *dev,
 		rte_memcpy(&afu_pr_conf->afu_id.uuid.uuid_high, uuid.b + 8,
 			sizeof(u64));
 
-		IFPGA_RAWDEV_PMD_INFO("%s: uuid_l=0x%lx, uuid_h=0x%lx\n",
+		IFPGA_RAWDEV_PMD_INFO("%s: uuid_l=0x%lx, uuid_h=0x%lx",
 			__func__,
 			(unsigned long)afu_pr_conf->afu_id.uuid.uuid_low,
 			(unsigned long)afu_pr_conf->afu_id.uuid.uuid_high);
@@ -1229,13 +1230,13 @@ fme_err_read_seu_emr(struct opae_manager *mgr)
 	if (ret)
 		return -EINVAL;
 
-	IFPGA_RAWDEV_PMD_INFO("seu emr low: 0x%" PRIx64 "\n", val);
+	IFPGA_RAWDEV_PMD_INFO("seu emr low: 0x%" PRIx64, val);
 
 	ret = ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_SEU_EMR_HIGH, &val);
 	if (ret)
 		return -EINVAL;
 
-	IFPGA_RAWDEV_PMD_INFO("seu emr high: 0x%" PRIx64 "\n", val);
+	IFPGA_RAWDEV_PMD_INFO("seu emr high: 0x%" PRIx64, val);
 
 	return 0;
 }
@@ -1250,7 +1251,7 @@ static int fme_clear_warning_intr(struct opae_manager *mgr)
 	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_NONFATAL_ERRORS, &val))
 		return -EINVAL;
 	if ((val & 0x40) != 0)
-		IFPGA_RAWDEV_PMD_INFO("clean not done\n");
+		IFPGA_RAWDEV_PMD_INFO("clean not done");
 
 	return 0;
 }
@@ -1262,14 +1263,14 @@ static int fme_clean_fme_error(struct opae_manager *mgr)
 	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, &val))
 		return -EINVAL;
 
-	IFPGA_RAWDEV_PMD_DEBUG("before clean 0x%" PRIx64 "\n", val);
+	IFPGA_RAWDEV_PMD_DEBUG("before clean 0x%" PRIx64, val);
 
 	ifpga_set_fme_error_prop(mgr, FME_ERR_PROP_CLEAR, val);
 
 	if (ifpga_get_fme_error_prop(mgr, FME_ERR_PROP_ERRORS, &val))
 		return -EINVAL;
 
-	IFPGA_RAWDEV_PMD_DEBUG("after clean 0x%" PRIx64 "\n", val);
+	IFPGA_RAWDEV_PMD_DEBUG("after clean 0x%" PRIx64, val);
 
 	return 0;
 }
@@ -1289,15 +1290,15 @@ fme_err_handle_error0(struct opae_manager *mgr)
 	fme_error0.csr = val;
 
 	if (fme_error0.fabric_err)
-		IFPGA_RAWDEV_PMD_ERR("Fabric error\n");
+		IFPGA_RAWDEV_PMD_ERR("Fabric error");
 	else if (fme_error0.fabfifo_overflow)
-		IFPGA_RAWDEV_PMD_ERR("Fabric fifo under/overflow error\n");
+		IFPGA_RAWDEV_PMD_ERR("Fabric fifo under/overflow error");
 	else if (fme_error0.afu_acc_mode_err)
-		IFPGA_RAWDEV_PMD_ERR("AFU PF/VF access mismatch detected\n");
+		IFPGA_RAWDEV_PMD_ERR("AFU PF/VF access mismatch detected");
 	else if (fme_error0.pcie0cdc_parity_err)
-		IFPGA_RAWDEV_PMD_ERR("PCIe0 CDC Parity Error\n");
+		IFPGA_RAWDEV_PMD_ERR("PCIe0 CDC Parity Error");
 	else if (fme_error0.cvlcdc_parity_err)
-		IFPGA_RAWDEV_PMD_ERR("CVL CDC Parity Error\n");
+		IFPGA_RAWDEV_PMD_ERR("CVL CDC Parity Error");
 	else if (fme_error0.fpgaseuerr)
 		fme_err_read_seu_emr(mgr);
 
@@ -1320,17 +1321,17 @@ fme_err_handle_catfatal_error(struct opae_manager *mgr)
 	fme_catfatal.csr = val;
 
 	if (fme_catfatal.cci_fatal_err)
-		IFPGA_RAWDEV_PMD_ERR("CCI error detected\n");
+		IFPGA_RAWDEV_PMD_ERR("CCI error detected");
 	else if (fme_catfatal.fabric_fatal_err)
-		IFPGA_RAWDEV_PMD_ERR("Fabric fatal error detected\n");
+		IFPGA_RAWDEV_PMD_ERR("Fabric fatal error detected");
 	else if (fme_catfatal.pcie_poison_err)
-		IFPGA_RAWDEV_PMD_ERR("Poison error from PCIe ports\n");
+		IFPGA_RAWDEV_PMD_ERR("Poison error from PCIe ports");
 	else if (fme_catfatal.inject_fata_err)
-		IFPGA_RAWDEV_PMD_ERR("Injected Fatal Error\n");
+		IFPGA_RAWDEV_PMD_ERR("Injected Fatal Error");
 	else if (fme_catfatal.crc_catast_err)
-		IFPGA_RAWDEV_PMD_ERR("a catastrophic EDCRC error\n");
+		IFPGA_RAWDEV_PMD_ERR("a catastrophic EDCRC error");
 	else if (fme_catfatal.injected_catast_err)
-		IFPGA_RAWDEV_PMD_ERR("Injected Catastrophic Error\n");
+		IFPGA_RAWDEV_PMD_ERR("Injected Catastrophic Error");
 	else if (fme_catfatal.bmc_seu_catast_err)
 		fme_err_read_seu_emr(mgr);
 
@@ -1349,28 +1350,28 @@ fme_err_handle_nonfaterror(struct opae_manager *mgr)
 	nonfaterr.csr = val;
 
 	if (nonfaterr.temp_thresh_ap1)
-		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP1\n");
+		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP1");
 	else if (nonfaterr.temp_thresh_ap2)
-		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP2\n");
+		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP2");
 	else if (nonfaterr.pcie_error)
-		IFPGA_RAWDEV_PMD_INFO("an error has occurred in pcie\n");
+		IFPGA_RAWDEV_PMD_INFO("an error has occurred in pcie");
 	else if (nonfaterr.portfatal_error)
-		IFPGA_RAWDEV_PMD_INFO("fatal error occurred in AFU port.\n");
+		IFPGA_RAWDEV_PMD_INFO("fatal error occurred in AFU port.");
 	else if (nonfaterr.proc_hot)
-		IFPGA_RAWDEV_PMD_INFO("a ProcHot event\n");
+		IFPGA_RAWDEV_PMD_INFO("a ProcHot event");
 	else if (nonfaterr.afu_acc_mode_err)
-		IFPGA_RAWDEV_PMD_INFO("an AFU PF/VF access mismatch\n");
+		IFPGA_RAWDEV_PMD_INFO("an AFU PF/VF access mismatch");
 	else if (nonfaterr.injected_nonfata_err) {
-		IFPGA_RAWDEV_PMD_INFO("Injected Warning Error\n");
+		IFPGA_RAWDEV_PMD_INFO("Injected Warning Error");
 		fme_clear_warning_intr(mgr);
 	} else if (nonfaterr.temp_thresh_AP6)
-		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP6\n");
+		IFPGA_RAWDEV_PMD_INFO("Temperature threshold triggered AP6");
 	else if (nonfaterr.power_thresh_AP1)
-		IFPGA_RAWDEV_PMD_INFO("Power threshold triggered AP1\n");
+		IFPGA_RAWDEV_PMD_INFO("Power threshold triggered AP1");
 	else if (nonfaterr.power_thresh_AP2)
-		IFPGA_RAWDEV_PMD_INFO("Power threshold triggered AP2\n");
+		IFPGA_RAWDEV_PMD_INFO("Power threshold triggered AP2");
 	else if (nonfaterr.mbp_err)
-		IFPGA_RAWDEV_PMD_INFO("an MBP event\n");
+		IFPGA_RAWDEV_PMD_INFO("an MBP event");
 
 	return 0;
 }
@@ -1380,7 +1381,7 @@ fme_interrupt_handler(void *param)
 {
 	struct opae_manager *mgr = (struct opae_manager *)param;
 
-	IFPGA_RAWDEV_PMD_INFO("%s interrupt occurred\n", __func__);
+	IFPGA_RAWDEV_PMD_INFO("%s interrupt occurred", __func__);
 
 	fme_err_handle_error0(mgr);
 	fme_err_handle_nonfaterror(mgr);
@@ -1406,7 +1407,7 @@ ifpga_unregister_msix_irq(struct ifpga_rawdev *dev, enum ifpga_irq_type type,
 		return -EINVAL;
 
 	if ((*intr_handle) == NULL) {
-		IFPGA_RAWDEV_PMD_ERR("%s interrupt %d not registered\n",
+		IFPGA_RAWDEV_PMD_ERR("%s interrupt %d not registered",
 			type == IFPGA_FME_IRQ ? "FME" : "AFU",
 			type == IFPGA_FME_IRQ ? 0 : vec_start);
 		return -ENOENT;
@@ -1416,7 +1417,7 @@ ifpga_unregister_msix_irq(struct ifpga_rawdev *dev, enum ifpga_irq_type type,
 
 	rc = rte_intr_callback_unregister(*intr_handle, handler, arg);
 	if (rc < 0) {
-		IFPGA_RAWDEV_PMD_ERR("Failed to unregister %s interrupt %d\n",
+		IFPGA_RAWDEV_PMD_ERR("Failed to unregister %s interrupt %d",
 			type == IFPGA_FME_IRQ ? "FME" : "AFU",
 			type == IFPGA_FME_IRQ ? 0 : vec_start);
 	} else {
@@ -1479,7 +1480,7 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 			rte_intr_efds_index_get(*intr_handle, 0)))
 		return -rte_errno;
 
-	IFPGA_RAWDEV_PMD_DEBUG("register %s irq, vfio_fd=%d, fd=%d\n",
+	IFPGA_RAWDEV_PMD_DEBUG("register %s irq, vfio_fd=%d, fd=%d",
 			name, rte_intr_dev_fd_get(*intr_handle),
 			rte_intr_fd_get(*intr_handle));
 
@@ -1498,7 +1499,7 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 
 		nb_intr = rte_intr_nb_intr_get(*intr_handle);
 
-		intr_efds = calloc(nb_intr, sizeof(int));
+		intr_efds = rte_calloc("ifpga_efds", nb_intr, sizeof(int), 0);
 		if (!intr_efds)
 			return -ENOMEM;
 
@@ -1507,7 +1508,7 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 
 		ret = opae_acc_set_irq(acc, vec_start, count, intr_efds);
 		if (ret) {
-			free(intr_efds);
+			rte_free(intr_efds);
 			return -EINVAL;
 		}
 	}
@@ -1516,13 +1517,13 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 	ret = rte_intr_callback_register(*intr_handle,
 			handler, (void *)arg);
 	if (ret) {
-		free(intr_efds);
+		rte_free(intr_efds);
 		return -EINVAL;
 	}
 
-	IFPGA_RAWDEV_PMD_INFO("success register %s interrupt\n", name);
+	IFPGA_RAWDEV_PMD_INFO("success register %s interrupt", name);
 
-	free(intr_efds);
+	rte_free(intr_efds);
 	return 0;
 }
 
@@ -1832,12 +1833,19 @@ ifpga_cfg_probe(struct rte_vdev_device *vdev)
 	return ret;
 }
 
+static int cmp_dev_name(const struct rte_device *dev, const void *_name)
+{
+	const char *name = _name;
+	return strcmp(dev->name, name);
+}
+
 static int
 ifpga_cfg_remove(struct rte_vdev_device *vdev)
 {
 	struct rte_rawdev *rawdev = NULL;
 	struct ifpga_rawdev *ifpga_dev;
 	struct ifpga_vdev_args args;
+	struct rte_bus *bus;
 	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
 	const char *vdev_name = NULL;
 	char *tmp_vdev = NULL;
@@ -1864,7 +1872,13 @@ ifpga_cfg_remove(struct rte_vdev_device *vdev)
 
 	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",
 		args.port, args.bdf);
-	ret = rte_eal_hotplug_remove(RTE_STR(IFPGA_BUS_NAME), dev_name);
+	bus = rte_bus_find_by_name(RTE_STR(IFPGA_BUS_NAME));
+	if (bus) {
+		if (bus->find_device(NULL, cmp_dev_name, dev_name)) {
+			ret = rte_eal_hotplug_remove(RTE_STR(IFPGA_BUS_NAME),
+				dev_name);
+		}
+	}
 
 	for (i = 0; i < IFPGA_MAX_VDEV; i++) {
 		tmp_vdev = ifpga_dev->vdev_name[i];

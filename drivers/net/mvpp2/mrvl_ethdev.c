@@ -193,7 +193,7 @@ static struct {
 static inline int
 mrvl_reserve_bit(int *bitmap, int max)
 {
-	int n = sizeof(*bitmap) * 8 - __builtin_clz(*bitmap);
+	int n = sizeof(*bitmap) * 8 - rte_clz32(*bitmap);
 
 	if (n >= max)
 		return -1;
@@ -215,7 +215,7 @@ mrvl_pp2_fixup_init(void)
 		dummy_pool_id[i] = mrvl_reserve_bit(&used_bpools[i],
 					     PP2_BPOOL_NUM_POOLS);
 		if (dummy_pool_id[i] < 0) {
-			MRVL_LOG(ERR, "Can't find free pool\n");
+			MRVL_LOG(ERR, "Can't find free pool");
 			return -1;
 		}
 
@@ -227,7 +227,7 @@ mrvl_pp2_fixup_init(void)
 		bpool_params.dummy_short_pool = 1;
 		err = pp2_bpool_init(&bpool_params, &dummy_pool[i]);
 		if (err != 0 || !dummy_pool[i]) {
-			MRVL_LOG(ERR, "BPool init failed!\n");
+			MRVL_LOG(ERR, "BPool init failed!");
 			used_bpools[i] &= ~(1 << dummy_pool_id[i]);
 			return -1;
 		}
@@ -415,10 +415,10 @@ mrvl_set_tx_function(struct rte_eth_dev *dev)
 
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (priv->multiseg) {
-		RTE_LOG(INFO, PMD, "Using multi-segment tx callback\n");
+		MRVL_LOG(INFO, "Using multi-segment tx callback");
 		dev->tx_pkt_burst = mrvl_tx_sg_pkt_burst;
 	} else {
-		RTE_LOG(INFO, PMD, "Using single-segment tx callback\n");
+		MRVL_LOG(INFO, "Using single-segment tx callback");
 		dev->tx_pkt_burst = mrvl_tx_pkt_burst;
 	}
 }
@@ -491,7 +491,7 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.mtu > priv->max_mtu) {
-		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u\n",
+		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u",
 			 dev->data->dev_conf.rxmode.mtu,
 			 priv->max_mtu);
 		return -EINVAL;
@@ -770,7 +770,7 @@ static int mrvl_populate_vlan_table(struct rte_eth_dev *dev, int on)
 				vbit >>= 1;
 			ret = mrvl_vlan_filter_set(dev, vlan, on);
 			if (ret) {
-				MRVL_LOG(ERR, "Failed to setup VLAN filter\n");
+				MRVL_LOG(ERR, "Failed to setup VLAN filter");
 				return ret;
 			}
 		}
@@ -951,6 +951,9 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 			goto out;
 	}
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	mrvl_flow_init(dev);
 	mrvl_mtr_init(dev);
 	mrvl_set_tx_function(dev);
@@ -1076,6 +1079,13 @@ mrvl_flush_bpool(struct rte_eth_dev *dev)
 static int
 mrvl_dev_stop(struct rte_eth_dev *dev)
 {
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
 	return mrvl_dev_set_link_down(dev);
 }
 
@@ -1754,7 +1764,8 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev,
  *   Const pointer to the table with supported packet types.
  */
 static const uint32_t *
-mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			      size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -1767,9 +1778,10 @@ mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L3_IPV6_EXT,
 		RTE_PTYPE_L2_ETHER_ARP,
 		RTE_PTYPE_L4_TCP,
-		RTE_PTYPE_L4_UDP
+		RTE_PTYPE_L4_UDP,
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 
@@ -1863,7 +1875,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	int ret;
 
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
-		MRVL_LOG(ERR, "VLAN stripping is not supported\n");
+		MRVL_LOG(ERR, "VLAN stripping is not supported");
 		return -ENOTSUP;
 	}
 
@@ -1878,7 +1890,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
-		MRVL_LOG(ERR, "Extend VLAN not supported\n");
+		MRVL_LOG(ERR, "Extend VLAN not supported");
 		return -ENOTSUP;
 	}
 
@@ -1929,7 +1941,7 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 			!= cookie_addr_high) {
 			MRVL_LOG(ERR,
 				"mbuf virtual addr high is out of range "
-				"0x%x instead of 0x%x\n",
+				"0x%x instead of 0x%x",
 				(uint32_t)((uint64_t)mbufs[i] >> 32),
 				(uint32_t)(cookie_addr_high >> 32));
 			goto out;
@@ -2966,8 +2978,7 @@ mrvl_tx_sg_pkt_burst(void *txq, struct rte_mbuf **tx_pkts,
 		 */
 		if (nb_segs > PP2_PPIO_DESC_NUM_FRAGS) {
 			total_descs -= nb_segs;
-			RTE_LOG(ERR, PMD,
-				"Too many segments. Packet won't be sent.\n");
+			MRVL_LOG(ERR, "Too many segments. Packet won't be sent.");
 			break;
 		}
 

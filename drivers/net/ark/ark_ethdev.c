@@ -17,7 +17,6 @@
 #include "ark_mpu.h"
 #include "ark_ddm.h"
 #include "ark_udm.h"
-#include "ark_rqp.h"
 #include "ark_pktdir.h"
 #include "ark_pktgen.h"
 #include "ark_pktchkr.h"
@@ -100,6 +99,9 @@ static const struct rte_pci_id pci_id_ark_map[] = {
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101e)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x101f)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1022)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1024)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1025)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1026)},
 	{.vendor_id = 0, /* sentinel */ },
 };
 
@@ -107,36 +109,32 @@ static const struct rte_pci_id pci_id_ark_map[] = {
  * This structure is used to statically define the capabilities
  * of supported devices.
  * Capabilities:
- *  rqpacing -
- * Some HW variants require that PCIe read-requests be correctly throttled.
- * This is called "rqpacing" and has to do with credit and flow control
- * on certain Arkville implementations.
+ *    isvf -- defined for function id that are virtual
  */
 struct ark_caps {
-	bool rqpacing;
 	bool isvf;
 };
 struct ark_dev_caps {
 	uint32_t  device_id;
 	struct ark_caps  caps;
 };
-#define SET_DEV_CAPS(id, rqp, vf)			\
-	{id, {.rqpacing = rqp, .isvf = vf} }
+#define SET_DEV_CAPS(id, vf)			\
+	{id, {.isvf = vf} }
 
 static const struct ark_dev_caps
 ark_device_caps[] = {
-		     SET_DEV_CAPS(0x100d, true, false),
-		     SET_DEV_CAPS(0x100e, true, false),
-		     SET_DEV_CAPS(0x100f, true, false),
-		     SET_DEV_CAPS(0x1010, false, false),
-		     SET_DEV_CAPS(0x1017, true, false),
-		     SET_DEV_CAPS(0x1018, true, false),
-		     SET_DEV_CAPS(0x1019, true, false),
-		     SET_DEV_CAPS(0x101a, true, false),
-		     SET_DEV_CAPS(0x101b, true, false),
-		     SET_DEV_CAPS(0x101c, true, true),
-		     SET_DEV_CAPS(0x101e, false, false),
-		     SET_DEV_CAPS(0x101f, false, false),
+		     SET_DEV_CAPS(0x100d, false),
+		     SET_DEV_CAPS(0x100e, false),
+		     SET_DEV_CAPS(0x100f, false),
+		     SET_DEV_CAPS(0x1010, false),
+		     SET_DEV_CAPS(0x1017, false),
+		     SET_DEV_CAPS(0x1018, false),
+		     SET_DEV_CAPS(0x1019, false),
+		     SET_DEV_CAPS(0x101a, false),
+		     SET_DEV_CAPS(0x101b, false),
+		     SET_DEV_CAPS(0x101c, true),
+		     SET_DEV_CAPS(0x101e, false),
+		     SET_DEV_CAPS(0x101f, false),
 		     {.device_id = 0,}
 };
 
@@ -300,7 +298,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	int ret;
 	int port_count = 1;
 	int p;
-	bool rqpacing = false;
+	uint16_t num_queues;
 
 	ark->eth_dev = dev;
 
@@ -318,7 +316,6 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	p = 0;
 	while (ark_device_caps[p].device_id != 0) {
 		if (pci_dev->id.device_id == ark_device_caps[p].device_id) {
-			rqpacing = ark_device_caps[p].caps.rqpacing;
 			ark->isvf = ark_device_caps[p].caps.isvf;
 			break;
 		}
@@ -343,12 +340,6 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	ark->pktgen.v  = (void *)&ark->bar0[ARK_PKTGEN_BASE];
 	ark->pktchkr.v  = (void *)&ark->bar0[ARK_PKTCHKR_BASE];
 
-	if (rqpacing) {
-		ark->rqpacing =
-			(struct ark_rqpace_t *)(ark->bar0 + ARK_RCPACING_BASE);
-	} else {
-		ark->rqpacing = NULL;
-	}
 	ark->started = 0;
 	ark->pkt_dir_v = ARK_PKT_DIR_INIT_VAL;
 
@@ -366,17 +357,6 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 			    0xcafef00d,
 			    ark->sysctrl.t32[4], __func__);
 		return -1;
-	}
-	if (ark->sysctrl.t32[3] != 0) {
-		if (ark->rqpacing) {
-			if (ark_rqp_lasped(ark->rqpacing)) {
-				ARK_PMD_LOG(ERR, "Arkville Evaluation System - "
-					    "Timer has Expired\n");
-				return -1;
-			}
-			ARK_PMD_LOG(WARNING, "Arkville Evaluation System - "
-				    "Timer is Running\n");
-		}
 	}
 
 	ARK_PMD_LOG(DEBUG,
@@ -427,6 +407,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 			ark->user_ext.dev_get_port_count(dev,
 				 ark->user_data[dev->data->port_id]);
 	ark->num_ports = port_count;
+	num_queues = ark_api_num_queues_per_port(ark->mpurx.v, port_count);
 
 	for (p = 0; p < port_count; p++) {
 		struct rte_eth_dev *eth_dev;
@@ -452,7 +433,18 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		}
 
 		eth_dev->device = &pci_dev->device;
-		eth_dev->data->dev_private = ark;
+		/* Device requires new dev_private data */
+		eth_dev->data->dev_private =
+			rte_zmalloc_socket(name,
+					   sizeof(struct ark_adapter),
+					   RTE_CACHE_LINE_SIZE,
+					   rte_socket_id());
+
+		memcpy(eth_dev->data->dev_private, ark,
+		       sizeof(struct ark_adapter));
+		ark = eth_dev->data->dev_private;
+		ark->qbase = p * num_queues;
+
 		eth_dev->dev_ops = ark->eth_dev->dev_ops;
 		eth_dev->tx_pkt_burst = ark->eth_dev->tx_pkt_burst;
 		eth_dev->rx_pkt_burst = ark->eth_dev->rx_pkt_burst;
@@ -537,9 +529,6 @@ ark_config_device(struct rte_eth_dev *dev)
 		mpu = RTE_PTR_ADD(mpu, ARK_MPU_QOFFSET);
 	}
 
-	if (!ark->isvf && ark->rqpacing)
-		ark_rqp_stats_reset(ark->rqpacing);
-
 	return 0;
 }
 
@@ -598,17 +587,16 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 		ark_pktchkr_run(ark->pc);
 
 	if (!ark->isvf && ark->start_pg && !ark->pg_running) {
-		pthread_t thread;
+		rte_thread_t thread;
 
-		/* Delay packet generatpr start allow the hardware to be ready
+		/* Delay packet generator start allow the hardware to be ready
 		 * This is only used for sanity checking with internal generator
 		 */
-		char tname[32];
-		snprintf(tname, sizeof(tname), "ark-delay-pg-%d",
-			 dev->data->port_id);
+		char tname[RTE_THREAD_INTERNAL_NAME_SIZE];
+		snprintf(tname, sizeof(tname), "ark-pg%d", dev->data->port_id);
 
-		if (rte_ctrl_thread_create(&thread, tname, NULL,
-					   ark_pktgen_delay_start, ark->pg)) {
+		if (rte_thread_create_internal_control(&thread, tname,
+					ark_pktgen_delay_start, ark->pg)) {
 			ARK_PMD_LOG(ERR, "Could not create pktgen "
 				    "starter thread\n");
 			return -1;
@@ -697,9 +685,6 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 	/*
 	 * This should only be called once for the device during shutdown
 	 */
-	if (ark->rqpacing)
-		ark_rqp_dump(ark->rqpacing);
-
 	/* return to power-on state */
 	if (ark->pd)
 		ark_pktdir_setup(ark->pd, ARK_PKT_DIR_INIT_VAL);

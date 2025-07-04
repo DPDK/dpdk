@@ -58,6 +58,10 @@ RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_driver, driver, NOTICE);
 #define NICVF_QLM_MODE_SGMII  7
 #define NICVF_QLM_MODE_XFI   12
 
+#define BCAST_ACCEPT      0x01
+#define CAM_ACCEPT        (1 << 3)
+#define BGX_MCAST_MODE(x) ((x) << 1)
+
 enum nicvf_link_speed {
 	NICVF_LINK_SPEED_SGMII,
 	NICVF_LINK_SPEED_XAUI,
@@ -379,7 +383,7 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 }
 
 static const uint32_t *
-nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	size_t copied;
 	static uint32_t ptypes[32];
@@ -399,7 +403,6 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_TUNNEL_VXLAN,
 		RTE_PTYPE_TUNNEL_NVGRE,
 	};
-	static const uint32_t ptypes_end = RTE_PTYPE_UNKNOWN;
 
 	copied = sizeof(ptypes_common);
 	memcpy(ptypes, ptypes_common, copied);
@@ -409,9 +412,9 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		copied += sizeof(ptypes_tunnel);
 	}
 
-	memcpy((char *)ptypes + copied, &ptypes_end, sizeof(ptypes_end));
 
 	/* All Ptypes are supported in all Rx functions. */
+	*no_of_elements = copied / sizeof(ptypes[0]);
 	return ptypes;
 }
 
@@ -1811,7 +1814,7 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	/* Apply new link configurations if changed */
 	ret = nicvf_apply_link_speed(dev);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to set link configuration\n");
+		PMD_INIT_LOG(ERR, "Failed to set link configuration");
 		return ret;
 	}
 
@@ -2183,9 +2186,22 @@ nicvf_eth_dev_uninit(struct rte_eth_dev *dev)
 	nicvf_dev_close(dev);
 	return 0;
 }
+
+static inline uint64_t ether_addr_to_u64(uint8_t *addr)
+{
+	uint64_t u = 0;
+	int i;
+
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+		u = u << 8 | addr[i];
+
+	return u;
+}
+
 static int
 nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
+	uint8_t dmac_ctrl_reg = 0;
 	int ret;
 	struct rte_pci_device *pci_dev;
 	struct nicvf *nic = nicvf_pmd_priv(eth_dev);
@@ -2218,7 +2234,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nic->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	nic->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
-	PMD_INIT_LOG(DEBUG, "nicvf: device (%x:%x) %u:%u:%u:%u",
+	PMD_INIT_LOG(DEBUG, "nicvf: device (%x:%x) " PCI_PRI_FMT,
 			pci_dev->id.vendor_id, pci_dev->id.device_id,
 			pci_dev->addr.domain, pci_dev->addr.bus,
 			pci_dev->addr.devid, pci_dev->addr.function);
@@ -2304,6 +2320,15 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 			&eth_dev->data->mac_addrs[0]);
 
 	ret = nicvf_mbox_set_mac_addr(nic, nic->mac_addr);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to set mac addr");
+		goto malloc_fail;
+	}
+
+	/* set DMAC CTRL reg to allow MAC */
+	dmac_ctrl_reg = BCAST_ACCEPT | BGX_MCAST_MODE(2) | CAM_ACCEPT;
+	ret = nicvf_mbox_set_xcast(nic, dmac_ctrl_reg,
+			ether_addr_to_u64(nic->mac_addr));
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to set mac addr");
 		goto malloc_fail;

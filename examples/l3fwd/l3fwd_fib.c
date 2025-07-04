@@ -46,7 +46,7 @@ static struct rte_fib6 *ipv6_l3fwd_fib_lookup_struct[NB_SOCKETS];
 static inline void
 fib_parse_packet(struct rte_mbuf *mbuf,
 		uint32_t *ipv4, uint32_t *ipv4_cnt,
-		uint8_t ipv6[RTE_FIB6_IPV6_ADDR_SIZE],
+		struct rte_ipv6_addr *ipv6,
 		uint32_t *ipv6_cnt, uint8_t *ip_type)
 {
 	struct rte_ether_hdr *eth_hdr;
@@ -65,7 +65,7 @@ fib_parse_packet(struct rte_mbuf *mbuf,
 	/* IPv6 */
 	else {
 		ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
-		rte_mov16(ipv6, (const uint8_t *)ipv6_hdr->dst_addr);
+		*ipv6 = ipv6_hdr->dst_addr;
 		*ip_type = 0;
 		(*ipv6_cnt)++;
 	}
@@ -120,8 +120,8 @@ fib_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		uint16_t portid, struct lcore_conf *qconf)
 {
 	uint32_t ipv4_arr[nb_rx];
-	uint8_t ipv6_arr[nb_rx][RTE_FIB6_IPV6_ADDR_SIZE];
-	uint16_t hops[nb_rx];
+	struct rte_ipv6_addr ipv6_arr[nb_rx];
+	uint16_t hops[SENDM_PORT_OVERHEAD(nb_rx)];
 	uint64_t hopsv4[nb_rx], hopsv6[nb_rx];
 	uint8_t type_arr[nb_rx];
 	uint32_t ipv4_cnt = 0, ipv6_cnt = 0;
@@ -140,7 +140,7 @@ fib_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 				i + FIB_PREFETCH_OFFSET], void *));
 		fib_parse_packet(pkts_burst[i],
 				&ipv4_arr[ipv4_cnt], &ipv4_cnt,
-				ipv6_arr[ipv6_cnt], &ipv6_cnt,
+				&ipv6_arr[ipv6_cnt], &ipv6_cnt,
 				&type_arr[i]);
 	}
 
@@ -148,7 +148,7 @@ fib_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	for (; i < nb_rx; i++)
 		fib_parse_packet(pkts_burst[i],
 				&ipv4_arr[ipv4_cnt], &ipv4_cnt,
-				ipv6_arr[ipv6_cnt], &ipv6_cnt,
+				&ipv6_arr[ipv6_cnt], &ipv6_cnt,
 				&type_arr[i]);
 
 	/* Lookup IPv4 hops if IPv4 packets are present. */
@@ -186,7 +186,7 @@ fib_main_loop(__rte_unused void *dummy)
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
 	uint16_t portid;
-	uint8_t queueid;
+	uint16_t queueid;
 	struct lcore_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 			US_PER_S * BURST_TX_DRAIN_US;
@@ -208,7 +208,7 @@ fib_main_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-				" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+				" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 				lcore_id, portid, queueid);
 	}
 
@@ -239,7 +239,7 @@ fib_main_loop(__rte_unused void *dummy)
 			portid = qconf->rx_queue_list[i].port_id;
 			queueid = qconf->rx_queue_list[i].queue_id;
 			nb_rx = rte_eth_rx_burst(portid, queueid, pkts_burst,
-					MAX_PKT_BURST);
+					nb_pkt_per_burst);
 			if (nb_rx == 0)
 				continue;
 
@@ -253,6 +253,7 @@ fib_main_loop(__rte_unused void *dummy)
 	return 0;
 }
 
+#ifdef RTE_LIB_EVENTDEV
 /* One eventdev loop for single and burst using fib. */
 static __rte_always_inline void
 fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
@@ -269,7 +270,7 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 	unsigned int lcore_id;
 
 	uint32_t ipv4_arr[MAX_PKT_BURST];
-	uint8_t ipv6_arr[MAX_PKT_BURST][RTE_FIB6_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr ipv6_arr[MAX_PKT_BURST];
 	uint64_t hopsv4[MAX_PKT_BURST], hopsv6[MAX_PKT_BURST];
 	uint16_t nh, hops[MAX_PKT_BURST];
 	uint8_t type_arr[MAX_PKT_BURST];
@@ -322,7 +323,7 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 
 			fib_parse_packet(events[i].mbuf,
 					&ipv4_arr[ipv4_cnt], &ipv4_cnt,
-					ipv6_arr[ipv6_cnt], &ipv6_cnt,
+					&ipv6_arr[ipv6_cnt], &ipv6_cnt,
 					&type_arr[i]);
 		}
 
@@ -339,7 +340,7 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 
 			fib_parse_packet(events[i].mbuf,
 					&ipv4_arr[ipv4_cnt], &ipv4_cnt,
-					ipv6_arr[ipv6_cnt], &ipv6_cnt,
+					&ipv6_arr[ipv6_cnt], &ipv6_cnt,
 					&type_arr[i]);
 		}
 
@@ -359,10 +360,10 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 				nh = (uint16_t)hopsv4[ipv4_arr_assem++];
 			else
 				nh = (uint16_t)hopsv6[ipv6_arr_assem++];
-			if (nh != FIB_DEFAULT_HOP)
-				hops[i] = nh != FIB_DEFAULT_HOP ?
-						  nh :
-						  events[i].mbuf->port;
+
+			hops[i] = nh != FIB_DEFAULT_HOP ?
+				  nh :
+				  events[i].mbuf->port;
 			process_packet(events[i].mbuf, &hops[i]);
 			events[i].mbuf->port = hops[i] != BAD_PORT ?
 						       hops[i] :
@@ -435,7 +436,7 @@ fib_event_main_loop_tx_q_burst(__rte_unused void *dummy)
 
 static __rte_always_inline void
 fib_process_event_vector(struct rte_event_vector *vec, uint8_t *type_arr,
-			 uint8_t **ipv6_arr, uint64_t *hopsv4, uint64_t *hopsv6,
+			 struct rte_ipv6_addr *ipv6_arr, uint64_t *hopsv4, uint64_t *hopsv6,
 			 uint32_t *ipv4_arr, uint16_t *hops)
 {
 	uint32_t ipv4_arr_assem, ipv6_arr_assem;
@@ -462,13 +463,13 @@ fib_process_event_vector(struct rte_event_vector *vec, uint8_t *type_arr,
 		rte_prefetch0(rte_pktmbuf_mtod(mbufs[i + FIB_PREFETCH_OFFSET],
 					       void *));
 		fib_parse_packet(mbufs[i], &ipv4_arr[ipv4_cnt], &ipv4_cnt,
-				 ipv6_arr[ipv6_cnt], &ipv6_cnt, &type_arr[i]);
+				 &ipv6_arr[ipv6_cnt], &ipv6_cnt, &type_arr[i]);
 	}
 
 	/* Parse remaining packet info. */
 	for (; i < vec->nb_elem; i++)
 		fib_parse_packet(mbufs[i], &ipv4_arr[ipv4_cnt], &ipv4_cnt,
-				 ipv6_arr[ipv6_cnt], &ipv6_cnt, &type_arr[i]);
+				 &ipv6_arr[ipv6_cnt], &ipv6_cnt, &type_arr[i]);
 
 	/* Lookup IPv4 hops if IPv4 packets are present. */
 	if (likely(ipv4_cnt > 0))
@@ -479,7 +480,7 @@ fib_process_event_vector(struct rte_event_vector *vec, uint8_t *type_arr,
 	if (ipv6_cnt > 0)
 		rte_fib6_lookup_bulk(
 			lconf->ipv6_lookup_struct,
-			(uint8_t(*)[RTE_FIB6_IPV6_ADDR_SIZE])ipv6_arr, hopsv6,
+			ipv6_arr, hopsv6,
 			ipv6_cnt);
 
 	/* Assign ports looked up in fib depending on IPv4 or IPv6 */
@@ -521,7 +522,8 @@ fib_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 	const uint8_t event_d_id = evt_rsrc->event_d_id;
 	const uint16_t deq_len = evt_rsrc->deq_depth;
 	struct rte_event events[MAX_PKT_BURST];
-	uint8_t *type_arr, **ipv6_arr, *ptr;
+	uint8_t *type_arr;
+	struct rte_ipv6_addr *ipv6_arr;
 	int nb_enq = 0, nb_deq = 0, i;
 	uint64_t *hopsv4, *hopsv6;
 	uint32_t *ipv4_arr;
@@ -532,7 +534,7 @@ fib_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 		"vector_fib",
 		(sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint64_t) +
 		 sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint8_t *) +
-		 (sizeof(uint8_t) * RTE_FIB6_IPV6_ADDR_SIZE)) *
+		 sizeof(struct rte_ipv6_addr)) *
 			evt_rsrc->vector_size,
 		RTE_CACHE_LINE_SIZE);
 	if (mem == 0)
@@ -542,11 +544,7 @@ fib_event_loop_vector(struct l3fwd_event_resources *evt_rsrc,
 	hopsv4 = (uint64_t *)&type_arr[evt_rsrc->vector_size];
 	hopsv6 = (uint64_t *)&hopsv4[evt_rsrc->vector_size];
 	hops = (uint16_t *)&hopsv6[evt_rsrc->vector_size];
-	ipv6_arr = (uint8_t **)&hops[evt_rsrc->vector_size];
-
-	ptr = (uint8_t *)&ipv6_arr[evt_rsrc->vector_size];
-	for (i = 0; i < evt_rsrc->vector_size; i++)
-		ipv6_arr[i] = &ptr[RTE_FIB6_IPV6_ADDR_SIZE + i];
+	ipv6_arr = (struct rte_ipv6_addr *)&hops[evt_rsrc->vector_size];
 
 	if (event_p_id < 0) {
 		rte_free((void *)mem);
@@ -635,6 +633,7 @@ fib_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy)
 	fib_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
 	return 0;
 }
+#endif
 
 /* Function to setup fib. 8< */
 void
@@ -642,7 +641,7 @@ setup_fib(const int socketid)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_fib6_conf config;
-	struct rte_fib_conf config_ipv4;
+	struct rte_fib_conf config_ipv4 = { 0 };
 	int i;
 	int ret;
 	char s[64];
@@ -673,8 +672,12 @@ setup_fib(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(route_base_v4[i].if_out,
-				     &dev_info);
+		ret = rte_eth_dev_info_get(route_base_v4[i].if_out, &dev_info);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to get device info for port %u\n",
+				 route_base_v4[i].if_out);
+
 		ret = rte_fib_add(ipv4_l3fwd_fib_lookup_struct[socketid],
 			route_base_v4[i].ip,
 			route_base_v4[i].depth,
@@ -727,10 +730,14 @@ setup_fib(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(route_base_v6[i].if_out,
-				     &dev_info);
+		ret = rte_eth_dev_info_get(route_base_v6[i].if_out, &dev_info);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Unable to get device info for port %u\n",
+				 route_base_v6[i].if_out);
+
 		ret = rte_fib6_add(ipv6_l3fwd_fib_lookup_struct[socketid],
-			route_base_v6[i].ip_8,
+			&route_base_v6[i].ip6,
 			route_base_v6[i].depth,
 			route_base_v6[i].if_out);
 
@@ -742,7 +749,7 @@ setup_fib(const int socketid)
 					i, socketid);
 		}
 
-		if (inet_ntop(AF_INET6, route_base_v6[i].ip_8,
+		if (inet_ntop(AF_INET6, &route_base_v6[i].ip6,
 				abuf, sizeof(abuf)) != NULL) {
 			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
 			       route_base_v6[i].depth,

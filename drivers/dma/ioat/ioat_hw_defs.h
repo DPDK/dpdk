@@ -5,11 +5,11 @@
 #ifndef IOAT_HW_DEFS_H
 #define IOAT_HW_DEFS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 #define IOAT_PCI_CHANERR_INT_OFFSET	0x180
 
@@ -52,7 +52,7 @@ extern "C" {
 #define	IOAT_DMACAP_PQ		(1 << 9)
 #define	IOAT_DMACAP_DMA_DIF	(1 << 10)
 
-struct ioat_registers {
+struct __rte_packed_begin ioat_registers {
 	uint8_t		chancnt;
 	uint8_t		xfercap;
 	uint8_t		genctrl;
@@ -75,7 +75,7 @@ struct ioat_registers {
 	uint8_t		reserved2[0x8];	/* 0xA0 */
 	uint32_t	chanerr;	/* 0xA8 */
 	uint32_t	chanerrmask;	/* 0xAC */
-} __rte_packed;
+} __rte_packed_end;
 
 #define IOAT_CHANCMD_RESET	0x20
 #define IOAT_CHANCMD_SUSPEND	0x04

@@ -4,7 +4,9 @@ cpp = ['ccache', 'aarch64-linux-gnu-g++']
 ar = 'aarch64-linux-gnu-gcc-ar'
 strip = 'aarch64-linux-gnu-strip'
 pkgconfig = 'aarch64-linux-gnu-pkg-config'
+pkg-config = 'aarch64-linux-gnu-pkg-config'
 pcap-config = ''
+cmake = 'cmake'
 
 [host_machine]
 system = 'linux'

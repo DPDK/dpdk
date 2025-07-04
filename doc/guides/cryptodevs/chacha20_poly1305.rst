@@ -31,8 +31,8 @@ Installation
 To build DPDK with the Chacha20-poly1305 PMD the user is required to download
 the multi-buffer library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.3, which
-can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.3.zip>`_.
+The latest version of the library supported by this PMD is v1.5, which
+can be downloaded from `<https://github.com/01org/intel-ipsec-mb/archive/v1.5.zip>`_.
 
 After downloading the library, the user needs to unpack and compile it
 on their system before building DPDK:
@@ -56,12 +56,6 @@ Once it is downloaded, extract it and follow these steps:
     make
     make install
 
-.. note::
-
-   Compilation of the Multi-Buffer library is broken when GCC < 5.0, if library <= v0.53.
-   If a lower GCC version than 5.0, the workaround proposed by the following link
-   should be used: `<https://github.com/intel/intel-ipsec-mb/issues/40>`_.
-
 As a reference, the following table shows a mapping between the past DPDK versions
 and the external crypto libraries supported by them:
 
@@ -72,10 +66,9 @@ and the external crypto libraries supported by them:
    =============  ================================
    DPDK version   Crypto library version
    =============  ================================
-   21.11+         Multi-buffer library 1.0-1.3*
+   21.11 - 24.07  Multi-buffer library 1.0  - 1.5
+   24.11+         Multi-buffer library 1.4  - 1.5
    =============  ================================
-
-\* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
 
 Initialization
 --------------

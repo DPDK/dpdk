@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <rte_alarm.h>
 #include <rte_malloc.h>
 #include <rte_errno.h>
@@ -16,11 +17,10 @@
 static void bond_mode_8023ad_ext_periodic_cb(void *arg);
 #ifdef RTE_LIBRTE_BOND_DEBUG_8023AD
 
-#define MODE4_DEBUG(fmt, ...)				\
-	rte_log(RTE_LOG_DEBUG, bond_logtype,		\
-		"%6u [Port %u: %s] " fmt,		\
-		bond_dbg_get_time_diff_ms(), slave_id,	\
-		__func__, ##__VA_ARGS__)
+#define MODE4_DEBUG_LOG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, BOND, "%6u [Port %u: %s] ", \
+		bond_dbg_get_time_diff_ms() RTE_LOG_COMMA member_id RTE_LOG_COMMA __func__, \
+		__VA_ARGS__)
 
 static uint64_t start_time;
 
@@ -79,41 +79,40 @@ bond_print_lacp(struct lacpdu *l)
 	if (p_len && p_state[p_len-1] == ' ')
 		p_state[p_len-1] = '\0';
 
-	RTE_BOND_LOG(DEBUG,
-		     "LACP: {\n"
-		     "  subtype= %02X\n"
-		     "  ver_num=%02X\n"
-		     "  actor={ tlv=%02X, len=%02X\n"
-		     "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"
-		     "       state={ %s }\n"
-		     "  }\n"
-		     "  partner={ tlv=%02X, len=%02X\n"
-		     "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"
-		     "       state={ %s }\n"
-		     "  }\n"
-		     "  collector={info=%02X, length=%02X, max_delay=%04X\n, "
-		     "type_term=%02X, terminator_length = %02X }",
-		     l->subtype,
-		     l->version_number,
+	RTE_BOND_LOG(DEBUG, "LACP: {");
+	RTE_BOND_LOG(DEBUG, "  subtype= %02X",
+		     l->subtype);
+	RTE_BOND_LOG(DEBUG, "  ver_num=%02X",
+		     l->version_number);
+	RTE_BOND_LOG(DEBUG, "  actor={ tlv=%02X, len=%02X",
 		     l->actor.tlv_type_info,
-		     l->actor.info_length,
+		     l->actor.info_length);
+	RTE_BOND_LOG(DEBUG, "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X",
 		     l->actor.port_params.system_priority,
 		     a_address,
 		     l->actor.port_params.key,
 		     l->actor.port_params.port_priority,
-		     l->actor.port_params.port_number,
-		     a_state,
+		     l->actor.port_params.port_number);
+	RTE_BOND_LOG(DEBUG, "       state={ %s }",
+		     a_state);
+	RTE_BOND_LOG(DEBUG, "  }");
+	RTE_BOND_LOG(DEBUG, "  partner={ tlv=%02X, len=%02X",
 		     l->partner.tlv_type_info,
-		     l->partner.info_length,
+		     l->partner.info_length);
+	RTE_BOND_LOG(DEBUG, "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X",
 		     l->partner.port_params.system_priority,
 		     p_address,
 		     l->partner.port_params.key,
 		     l->partner.port_params.port_priority,
-		     l->partner.port_params.port_number,
-		     p_state,
+		     l->partner.port_params.port_number);
+	RTE_BOND_LOG(DEBUG, "       state={ %s }",
+		     p_state);
+	RTE_BOND_LOG(DEBUG, "  }");
+	RTE_BOND_LOG(DEBUG, "  collector={info=%02X, length=%02X, max_delay=%04X, ",
 		     l->tlv_type_collector_info,
 		     l->collector_info_length,
-		     l->collector_max_delay,
+		     l->collector_max_delay);
+	RTE_BOND_LOG(DEBUG, "type_term=%02X, terminator_length = %02X }",
 		     l->tlv_type_terminator,
 		     l->terminator_length);
 
@@ -122,7 +121,7 @@ bond_print_lacp(struct lacpdu *l)
 #define BOND_PRINT_LACP(lacpdu) bond_print_lacp(lacpdu)
 #else
 #define BOND_PRINT_LACP(lacpdu) do { } while (0)
-#define MODE4_DEBUG(fmt, ...) do { } while (0)
+#define MODE4_DEBUG_LOG(...) do { } while (0)
 #endif
 
 static const struct rte_ether_addr lacp_mac_addr = {
@@ -184,9 +183,9 @@ set_warning_flags(struct port *port, uint16_t flags)
 }
 
 static void
-show_warnings(uint16_t slave_id)
+show_warnings(uint16_t member_id)
 {
-	struct port *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *port = &bond_mode_8023ad_ports[member_id];
 	uint8_t warnings;
 
 	do {
@@ -205,36 +204,38 @@ show_warnings(uint16_t slave_id)
 
 	if (warnings & WRN_RX_QUEUE_FULL) {
 		RTE_BOND_LOG(DEBUG,
-			     "Slave %u: failed to enqueue LACP packet into RX ring.\n"
-			     "Receive and transmit functions must be invoked on bonded"
-			     "interface at least 10 times per second or LACP will notwork correctly",
-			     slave_id);
+			     "Member %u: failed to enqueue LACP packet into RX ring.",
+			     member_id);
+		RTE_BOND_LOG(DEBUG,
+			     "Receive and transmit functions must be invoked on bonding "
+			     "interface at least 10 times per second or LACP will notwork correctly");
 	}
 
 	if (warnings & WRN_TX_QUEUE_FULL) {
 		RTE_BOND_LOG(DEBUG,
-			     "Slave %u: failed to enqueue LACP packet into TX ring.\n"
-			     "Receive and transmit functions must be invoked on bonded"
-			     "interface at least 10 times per second or LACP will not work correctly",
-			     slave_id);
+			     "Member %u: failed to enqueue LACP packet into TX ring.",
+			     member_id);
+		RTE_BOND_LOG(DEBUG,
+			     "Receive and transmit functions must be invoked on bonding "
+			     "interface at least 10 times per second or LACP will not work correctly");
 	}
 
 	if (warnings & WRN_RX_MARKER_TO_FAST)
-		RTE_BOND_LOG(INFO, "Slave %u: marker to early - ignoring.",
-			     slave_id);
+		RTE_BOND_LOG(INFO, "Member %u: marker to early - ignoring.",
+			     member_id);
 
 	if (warnings & WRN_UNKNOWN_SLOW_TYPE) {
 		RTE_BOND_LOG(INFO,
-			"Slave %u: ignoring unknown slow protocol frame type",
-			     slave_id);
+			"Member %u: ignoring unknown slow protocol frame type",
+			     member_id);
 	}
 
 	if (warnings & WRN_UNKNOWN_MARKER_TYPE)
-		RTE_BOND_LOG(INFO, "Slave %u: ignoring unknown marker type",
-			     slave_id);
+		RTE_BOND_LOG(INFO, "Member %u: ignoring unknown marker type",
+			     member_id);
 
 	if (warnings & WRN_NOT_LACP_CAPABLE)
-		MODE4_DEBUG("Port %u is not LACP capable!\n", slave_id);
+		MODE4_DEBUG_LOG("Port %u is not LACP capable!", member_id);
 }
 
 static void
@@ -256,15 +257,15 @@ record_default(struct port *port)
  * @param port			Port on which LACPDU was received.
  */
 static void
-rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
+rx_machine(struct bond_dev_private *internals, uint16_t member_id,
 		struct lacpdu *lacp)
 {
-	struct port *agg, *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *agg, *port = &bond_mode_8023ad_ports[member_id];
 	uint64_t timeout;
 
 	if (SM_FLAG(port, BEGIN)) {
 		/* Initialize stuff */
-		MODE4_DEBUG("-> INITIALIZE\n");
+		MODE4_DEBUG_LOG("-> INITIALIZE");
 		SM_FLAG_CLR(port, MOVED);
 		port->selected = UNSELECTED;
 
@@ -296,7 +297,7 @@ rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
 	}
 
 	if (lacp) {
-		MODE4_DEBUG("LACP -> CURRENT\n");
+		MODE4_DEBUG_LOG("LACP -> CURRENT");
 		BOND_PRINT_LACP(lacp);
 		/* Update selected flag. If partner parameters are defaulted assume they
 		 * are match. If not defaulted  compare LACP actor with ports partner
@@ -305,7 +306,7 @@ rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
 			(ACTOR_STATE(port, AGGREGATION) != PARTNER_STATE(port, AGGREGATION)
 			|| memcmp(&port->partner, &lacp->actor.port_params,
 				sizeof(port->partner)) != 0)) {
-			MODE4_DEBUG("selected <- UNSELECTED\n");
+			MODE4_DEBUG_LOG("selected <- UNSELECTED");
 			port->selected = UNSELECTED;
 		}
 
@@ -389,9 +390,9 @@ rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
  * @param port			Port to handle state machine.
  */
 static void
-periodic_machine(struct bond_dev_private *internals, uint16_t slave_id)
+periodic_machine(struct bond_dev_private *internals, uint16_t member_id)
 {
-	struct port *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *port = &bond_mode_8023ad_ports[member_id];
 	/* Calculate if either site is LACP enabled */
 	uint64_t timeout;
 	uint8_t active = ACTOR_STATE(port, LACP_ACTIVE) ||
@@ -404,7 +405,7 @@ periodic_machine(struct bond_dev_private *internals, uint16_t slave_id)
 		timer_force_expired(&port->tx_machine_timer);
 		SM_FLAG_CLR(port, PARTNER_SHORT_TIMEOUT);
 
-		MODE4_DEBUG("-> NO_PERIODIC ( %s%s%s)\n",
+		MODE4_DEBUG_LOG("-> NO_PERIODIC ( %s%s%s)",
 			SM_FLAG(port, BEGIN) ? "begin " : "",
 			SM_FLAG(port, LACP_ENABLED) ? "" : "LACP disabled ",
 			active ? "LACP active " : "LACP passive ");
@@ -451,9 +452,9 @@ periodic_machine(struct bond_dev_private *internals, uint16_t slave_id)
  * @param port			Port to handle state machine.
  */
 static void
-mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
+mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 {
-	struct port *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *port = &bond_mode_8023ad_ports[member_id];
 
 	/* Save current state for later use */
 	const uint8_t state_mask = STATE_SYNCHRONIZATION | STATE_DISTRIBUTING |
@@ -471,7 +472,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 		if (SM_FLAG(port, BEGIN) ||
 				!timer_is_stopped(&port->wait_while_timer)) {
 			SM_FLAG_SET(port, NTT);
-			MODE4_DEBUG("-> DETACHED\n");
+			MODE4_DEBUG_LOG("-> DETACHED");
 		}
 		timer_cancel(&port->wait_while_timer);
 	}
@@ -481,7 +482,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 			timer_set(&port->wait_while_timer,
 				internals->mode4.aggregate_wait_timeout);
 
-			MODE4_DEBUG("DETACHED -> WAITING\n");
+			MODE4_DEBUG_LOG("DETACHED -> WAITING");
 		}
 		/* Waiting state entered */
 		return;
@@ -499,7 +500,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 		ACTOR_STATE_CLR(port, COLLECTING);
 		/* Clear actor sync to activate transit ATTACHED in condition bellow */
 		ACTOR_STATE_CLR(port, SYNCHRONIZATION);
-		MODE4_DEBUG("Out of sync -> ATTACHED\n");
+		MODE4_DEBUG_LOG("Out of sync -> ATTACHED");
 	}
 
 	if (!ACTOR_STATE(port, SYNCHRONIZATION)) {
@@ -509,11 +510,11 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 
 		ACTOR_STATE_SET(port, SYNCHRONIZATION);
 		SM_FLAG_SET(port, NTT);
-		MODE4_DEBUG("ATTACHED Entered\n");
+		MODE4_DEBUG_LOG("ATTACHED Entered");
 	} else if (!ACTOR_STATE(port, COLLECTING)) {
 		/* Start collecting if in sync */
 		if (PARTNER_STATE(port, SYNCHRONIZATION)) {
-			MODE4_DEBUG("ATTACHED -> COLLECTING\n");
+			MODE4_DEBUG_LOG("ATTACHED -> COLLECTING");
 			ACTOR_STATE_SET(port, COLLECTING);
 			SM_FLAG_SET(port, NTT);
 		}
@@ -525,10 +526,10 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 				/* Enable  DISTRIBUTING if partner is collecting */
 				ACTOR_STATE_SET(port, DISTRIBUTING);
 				SM_FLAG_SET(port, NTT);
-				MODE4_DEBUG("COLLECTING -> DISTRIBUTING\n");
+				MODE4_DEBUG_LOG("COLLECTING -> DISTRIBUTING");
 				RTE_BOND_LOG(INFO,
-					"Bond %u: slave id %u distributing started.",
-					internals->port_id, slave_id);
+					"Bond %u: member id %u distributing started.",
+					internals->port_id, member_id);
 			}
 		} else {
 			if (!PARTNER_STATE(port, COLLECTING)) {
@@ -536,10 +537,10 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 				 * is not collecting */
 				ACTOR_STATE_CLR(port, DISTRIBUTING);
 				SM_FLAG_SET(port, NTT);
-				MODE4_DEBUG("DISTRIBUTING -> COLLECTING\n");
+				MODE4_DEBUG_LOG("DISTRIBUTING -> COLLECTING");
 				RTE_BOND_LOG(INFO,
-					"Bond %u: slave id %u distributing stopped.",
-					internals->port_id, slave_id);
+					"Bond %u: member id %u distributing stopped.",
+					internals->port_id, member_id);
 			}
 		}
 	}
@@ -554,9 +555,9 @@ mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
  * @param port
  */
 static void
-tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
+tx_machine(struct bond_dev_private *internals, uint16_t member_id)
 {
-	struct port *agg, *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *agg, *port = &bond_mode_8023ad_ports[member_id];
 
 	struct rte_mbuf *lacp_pkt = NULL;
 	struct lacpdu_header *hdr;
@@ -587,7 +588,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 
 	/* Source and destination MAC */
 	rte_ether_addr_copy(&lacp_mac_addr, &hdr->eth_hdr.dst_addr);
-	rte_eth_macaddr_get(slave_id, &hdr->eth_hdr.src_addr);
+	rte_eth_macaddr_get(member_id, &hdr->eth_hdr.src_addr);
 	hdr->eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_SLOW);
 
 	lacpdu = &hdr->lacpdu;
@@ -622,7 +623,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 	lacpdu->tlv_type_terminator = TLV_TYPE_TERMINATOR_INFORMATION;
 	lacpdu->terminator_length = 0;
 
-	MODE4_DEBUG("Sending LACP frame\n");
+	MODE4_DEBUG_LOG("Sending LACP frame");
 	BOND_PRINT_LACP(lacpdu);
 
 	if (internals->mode4.dedicated_queues.enabled == 0) {
@@ -635,10 +636,10 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 			return;
 		}
 	} else {
-		uint16_t pkts_sent = rte_eth_tx_prepare(slave_id,
+		uint16_t pkts_sent = rte_eth_tx_prepare(member_id,
 				internals->mode4.dedicated_queues.tx_qid,
 				&lacp_pkt, 1);
-		pkts_sent = rte_eth_tx_burst(slave_id,
+		pkts_sent = rte_eth_tx_burst(member_id,
 				internals->mode4.dedicated_queues.tx_qid,
 				&lacp_pkt, pkts_sent);
 		if (pkts_sent != 1) {
@@ -654,12 +655,9 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 }
 
 static uint16_t
-max_index(uint64_t *a, int n)
+max_index(uint64_t *a, uint16_t n)
 {
-	if (n <= 0)
-		return -1;
-
-	int i, max_i = 0;
+	uint16_t i, max_i = 0;
 	uint64_t max = a[0];
 
 	for (i = 1; i < n; ++i) {
@@ -679,40 +677,40 @@ max_index(uint64_t *a, int n)
  * @param port_pos			Port to assign.
  */
 static void
-selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
+selection_logic(struct bond_dev_private *internals, uint16_t member_id)
 {
 	struct port *agg, *port;
-	uint16_t slaves_count, new_agg_id, i, j = 0;
-	uint16_t *slaves;
+	uint16_t members_count, new_agg_id, i, j = 0;
+	uint16_t *members;
 	uint64_t agg_bandwidth[RTE_MAX_ETHPORTS] = {0};
 	uint64_t agg_count[RTE_MAX_ETHPORTS] = {0};
-	uint16_t default_slave = 0;
+	uint16_t default_member = 0;
 	struct rte_eth_link link_info;
 	uint16_t agg_new_idx = 0;
 	int ret;
 
-	slaves = internals->active_slaves;
-	slaves_count = internals->active_slave_count;
-	port = &bond_mode_8023ad_ports[slave_id];
+	members = internals->active_members;
+	members_count = internals->active_member_count;
+	port = &bond_mode_8023ad_ports[member_id];
 
 	/* Search for aggregator suitable for this port */
-	for (i = 0; i < slaves_count; ++i) {
-		agg = &bond_mode_8023ad_ports[slaves[i]];
+	for (i = 0; i < members_count; ++i) {
+		agg = &bond_mode_8023ad_ports[members[i]];
 		/* Skip ports that are not aggregators */
-		if (agg->aggregator_port_id != slaves[i])
+		if (agg->aggregator_port_id != members[i])
 			continue;
 
-		ret = rte_eth_link_get_nowait(slaves[i], &link_info);
+		ret = rte_eth_link_get_nowait(members[i], &link_info);
 		if (ret < 0) {
 			RTE_BOND_LOG(ERR,
-				"Slave (port %u) link get failed: %s\n",
-				slaves[i], rte_strerror(-ret));
+				"Member (port %u) link get failed: %s",
+				members[i], rte_strerror(-ret));
 			continue;
 		}
 		agg_count[i] += 1;
 		agg_bandwidth[i] += link_info.link_speed;
 
-		/* Actors system ID is not checked since all slave device have the same
+		/* Actors system ID is not checked since all member device have the same
 		 * ID (MAC address). */
 		if ((agg->actor.key == port->actor.key &&
 			agg->partner.system_priority == port->partner.system_priority &&
@@ -724,41 +722,41 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 				rte_cpu_to_be_16(BOND_LINK_FULL_DUPLEX_KEY)) != 0) {
 
 			if (j == 0)
-				default_slave = i;
+				default_member = i;
 			j++;
 		}
 	}
 
 	switch (internals->mode4.agg_selection) {
 	case AGG_COUNT:
-		agg_new_idx = max_index(agg_count, slaves_count);
-		new_agg_id = slaves[agg_new_idx];
+		agg_new_idx = max_index(agg_count, members_count);
+		new_agg_id = members[agg_new_idx];
 		break;
 	case AGG_BANDWIDTH:
-		agg_new_idx = max_index(agg_bandwidth, slaves_count);
-		new_agg_id = slaves[agg_new_idx];
+		agg_new_idx = max_index(agg_bandwidth, members_count);
+		new_agg_id = members[agg_new_idx];
 		break;
 	case AGG_STABLE:
-		if (default_slave == slaves_count)
-			new_agg_id = slaves[slave_id];
+		if (default_member == members_count)
+			new_agg_id = members[member_id];
 		else
-			new_agg_id = slaves[default_slave];
+			new_agg_id = members[default_member];
 		break;
 	default:
-		if (default_slave == slaves_count)
-			new_agg_id = slaves[slave_id];
+		if (default_member == members_count)
+			new_agg_id = members[member_id];
 		else
-			new_agg_id = slaves[default_slave];
+			new_agg_id = members[default_member];
 		break;
 	}
 
 	if (new_agg_id != port->aggregator_port_id) {
 		port->aggregator_port_id = new_agg_id;
 
-		MODE4_DEBUG("-> SELECTED: ID=%3u\n"
-			"\t%s aggregator ID=%3u\n",
-			port->aggregator_port_id,
-			port->aggregator_port_id == slave_id ?
+		MODE4_DEBUG_LOG("-> SELECTED: ID=%3u",
+			port->aggregator_port_id);
+		MODE4_DEBUG_LOG("\t%s aggregator ID=%3u",
+			port->aggregator_port_id == member_id ?
 				"aggregator not found, using default" : "aggregator found",
 			port->aggregator_port_id);
 	}
@@ -802,7 +800,7 @@ link_speed_key(uint16_t speed) {
 }
 
 static void
-rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
+rx_machine_update(struct bond_dev_private *internals, uint16_t member_id,
 		struct rte_mbuf *lacp_pkt) {
 	struct lacpdu_header *lacp;
 	struct lacpdu_actor_partner_params *partner;
@@ -813,7 +811,7 @@ rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
 		RTE_ASSERT(lacp->lacpdu.subtype == SLOW_SUBTYPE_LACP);
 
 		partner = &lacp->lacpdu.partner;
-		port = &bond_mode_8023ad_ports[slave_id];
+		port = &bond_mode_8023ad_ports[member_id];
 		agg = &bond_mode_8023ad_ports[port->aggregator_port_id];
 
 		if (rte_is_zero_ether_addr(&partner->port_params.system) ||
@@ -822,7 +820,7 @@ rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
 			/* This LACP frame is sending to the bonding port
 			 * so pass it to rx_machine.
 			 */
-			rx_machine(internals, slave_id, &lacp->lacpdu);
+			rx_machine(internals, member_id, &lacp->lacpdu);
 		} else {
 			char preferred_system_name[RTE_ETHER_ADDR_FMT_SIZE];
 			char self_system_name[RTE_ETHER_ADDR_FMT_SIZE];
@@ -831,22 +829,22 @@ rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
 				RTE_ETHER_ADDR_FMT_SIZE, &partner->port_params.system);
 			rte_ether_format_addr(self_system_name,
 				RTE_ETHER_ADDR_FMT_SIZE, &agg->actor.system);
-			MODE4_DEBUG("preferred partner system %s "
-				"is not equal with self system: %s\n",
+			MODE4_DEBUG_LOG("preferred partner system %s "
+				"is not equal with self system: %s",
 				preferred_system_name, self_system_name);
 		}
 		rte_pktmbuf_free(lacp_pkt);
 	} else
-		rx_machine(internals, slave_id, NULL);
+		rx_machine(internals, member_id, NULL);
 }
 
 static void
 bond_mode_8023ad_dedicated_rxq_process(struct bond_dev_private *internals,
-			uint16_t slave_id)
+			uint16_t member_id)
 {
 #define DEDICATED_QUEUE_BURST_SIZE 32
 	struct rte_mbuf *lacp_pkt[DEDICATED_QUEUE_BURST_SIZE];
-	uint16_t rx_count = rte_eth_rx_burst(slave_id,
+	uint16_t rx_count = rte_eth_rx_burst(member_id,
 				internals->mode4.dedicated_queues.rx_qid,
 				lacp_pkt, DEDICATED_QUEUE_BURST_SIZE);
 
@@ -854,10 +852,10 @@ bond_mode_8023ad_dedicated_rxq_process(struct bond_dev_private *internals,
 		uint16_t i;
 
 		for (i = 0; i < rx_count; i++)
-			bond_mode_8023ad_handle_slow_pkt(internals, slave_id,
+			bond_mode_8023ad_handle_slow_pkt(internals, member_id,
 					lacp_pkt[i]);
 	} else {
-		rx_machine_update(internals, slave_id, NULL);
+		rx_machine_update(internals, member_id, NULL);
 	}
 }
 
@@ -868,23 +866,22 @@ bond_mode_8023ad_periodic_cb(void *arg)
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct port *port;
 	struct rte_eth_link link_info;
-	struct rte_ether_addr slave_addr;
 	struct rte_mbuf *lacp_pkt = NULL;
-	uint16_t slave_id;
+	uint16_t member_id;
 	uint16_t i;
 
 
 	/* Update link status on each port */
-	for (i = 0; i < internals->active_slave_count; i++) {
+	for (i = 0; i < internals->active_member_count; i++) {
 		uint16_t key;
 		int ret;
 
-		slave_id = internals->active_slaves[i];
-		ret = rte_eth_link_get_nowait(slave_id, &link_info);
+		member_id = internals->active_members[i];
+		ret = rte_eth_link_get_nowait(member_id, &link_info);
 		if (ret < 0) {
 			RTE_BOND_LOG(ERR,
-				"Slave (port %u) link get failed: %s\n",
-				slave_id, rte_strerror(-ret));
+				"Member (port %u) link get failed: %s",
+				member_id, rte_strerror(-ret));
 		}
 
 		if (ret >= 0 && link_info.link_status != 0) {
@@ -895,8 +892,7 @@ bond_mode_8023ad_periodic_cb(void *arg)
 			key = 0;
 		}
 
-		rte_eth_macaddr_get(slave_id, &slave_addr);
-		port = &bond_mode_8023ad_ports[slave_id];
+		port = &bond_mode_8023ad_ports[member_id];
 
 		key = rte_cpu_to_be_16(key);
 		if (key != port->actor.key) {
@@ -907,16 +903,16 @@ bond_mode_8023ad_periodic_cb(void *arg)
 			SM_FLAG_SET(port, NTT);
 		}
 
-		if (!rte_is_same_ether_addr(&port->actor.system, &slave_addr)) {
-			rte_ether_addr_copy(&slave_addr, &port->actor.system);
-			if (port->aggregator_port_id == slave_id)
+		if (!rte_is_same_ether_addr(&internals->mode4.mac_addr, &port->actor.system)) {
+			rte_ether_addr_copy(&internals->mode4.mac_addr, &port->actor.system);
+			if (port->aggregator_port_id == member_id)
 				SM_FLAG_SET(port, NTT);
 		}
 	}
 
-	for (i = 0; i < internals->active_slave_count; i++) {
-		slave_id = internals->active_slaves[i];
-		port = &bond_mode_8023ad_ports[slave_id];
+	for (i = 0; i < internals->active_member_count; i++) {
+		member_id = internals->active_members[i];
+		port = &bond_mode_8023ad_ports[member_id];
 
 		if ((port->actor.key &
 				rte_cpu_to_be_16(BOND_LINK_FULL_DUPLEX_KEY)) == 0) {
@@ -947,19 +943,19 @@ bond_mode_8023ad_periodic_cb(void *arg)
 			if (retval != 0)
 				lacp_pkt = NULL;
 
-			rx_machine_update(internals, slave_id, lacp_pkt);
+			rx_machine_update(internals, member_id, lacp_pkt);
 		} else {
 			bond_mode_8023ad_dedicated_rxq_process(internals,
-					slave_id);
+					member_id);
 		}
 
-		periodic_machine(internals, slave_id);
-		mux_machine(internals, slave_id);
-		tx_machine(internals, slave_id);
-		selection_logic(internals, slave_id);
+		periodic_machine(internals, member_id);
+		mux_machine(internals, member_id);
+		tx_machine(internals, member_id);
+		selection_logic(internals, member_id);
 
 		SM_FLAG_CLR(port, BEGIN);
-		show_warnings(slave_id);
+		show_warnings(member_id);
 	}
 
 	rte_eal_alarm_set(internals->mode4.update_timeout_us,
@@ -967,34 +963,34 @@ bond_mode_8023ad_periodic_cb(void *arg)
 }
 
 static int
-bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
+bond_mode_8023ad_register_lacp_mac(uint16_t member_id)
 {
 	int ret;
 
-	ret = rte_eth_allmulticast_enable(slave_id);
+	ret = rte_eth_allmulticast_enable(member_id);
 	if (ret != 0) {
 		RTE_BOND_LOG(ERR,
 			"failed to enable allmulti mode for port %u: %s",
-			slave_id, rte_strerror(-ret));
+			member_id, rte_strerror(-ret));
 	}
-	if (rte_eth_allmulticast_get(slave_id)) {
+	if (rte_eth_allmulticast_get(member_id)) {
 		RTE_BOND_LOG(DEBUG, "forced allmulti for port %u",
-			     slave_id);
-		bond_mode_8023ad_ports[slave_id].forced_rx_flags =
+			     member_id);
+		bond_mode_8023ad_ports[member_id].forced_rx_flags =
 				BOND_8023AD_FORCED_ALLMULTI;
 		return 0;
 	}
 
-	ret = rte_eth_promiscuous_enable(slave_id);
+	ret = rte_eth_promiscuous_enable(member_id);
 	if (ret != 0) {
 		RTE_BOND_LOG(ERR,
 			"failed to enable promiscuous mode for port %u: %s",
-			slave_id, rte_strerror(-ret));
+			member_id, rte_strerror(-ret));
 	}
-	if (rte_eth_promiscuous_get(slave_id)) {
+	if (rte_eth_promiscuous_get(member_id)) {
 		RTE_BOND_LOG(DEBUG, "forced promiscuous for port %u",
-			     slave_id);
-		bond_mode_8023ad_ports[slave_id].forced_rx_flags =
+			     member_id);
+		bond_mode_8023ad_ports[member_id].forced_rx_flags =
 				BOND_8023AD_FORCED_PROMISC;
 		return 0;
 	}
@@ -1003,27 +999,27 @@ bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
 }
 
 static void
-bond_mode_8023ad_unregister_lacp_mac(uint16_t slave_id)
+bond_mode_8023ad_unregister_lacp_mac(uint16_t member_id)
 {
 	int ret;
 
-	switch (bond_mode_8023ad_ports[slave_id].forced_rx_flags) {
+	switch (bond_mode_8023ad_ports[member_id].forced_rx_flags) {
 	case BOND_8023AD_FORCED_ALLMULTI:
-		RTE_BOND_LOG(DEBUG, "unset allmulti for port %u", slave_id);
-		ret = rte_eth_allmulticast_disable(slave_id);
+		RTE_BOND_LOG(DEBUG, "unset allmulti for port %u", member_id);
+		ret = rte_eth_allmulticast_disable(member_id);
 		if (ret != 0)
 			RTE_BOND_LOG(ERR,
 				"failed to disable allmulti mode for port %u: %s",
-				slave_id, rte_strerror(-ret));
+				member_id, rte_strerror(-ret));
 		break;
 
 	case BOND_8023AD_FORCED_PROMISC:
-		RTE_BOND_LOG(DEBUG, "unset promisc for port %u", slave_id);
-		ret = rte_eth_promiscuous_disable(slave_id);
+		RTE_BOND_LOG(DEBUG, "unset promisc for port %u", member_id);
+		ret = rte_eth_promiscuous_disable(member_id);
 		if (ret != 0)
 			RTE_BOND_LOG(ERR,
 				"failed to disable promiscuous mode for port %u: %s",
-				slave_id, rte_strerror(-ret));
+				member_id, rte_strerror(-ret));
 		break;
 
 	default:
@@ -1032,12 +1028,12 @@ bond_mode_8023ad_unregister_lacp_mac(uint16_t slave_id)
 }
 
 void
-bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
-				uint16_t slave_id)
+bond_mode_8023ad_activate_member(struct rte_eth_dev *bond_dev,
+				uint16_t member_id)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 
-	struct port *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *port = &bond_mode_8023ad_ports[member_id];
 	struct port_params initial = {
 			.system = { { 0 } },
 			.system_priority = rte_cpu_to_be_16(0xFFFF),
@@ -1053,15 +1049,15 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 	struct bond_tx_queue *bd_tx_q;
 	uint16_t q_id;
 
-	/* Given slave mus not be in active list */
-	RTE_ASSERT(find_slave_by_id(internals->active_slaves,
-	internals->active_slave_count, slave_id) == internals->active_slave_count);
+	/* Given member mus not be in active list */
+	RTE_ASSERT(find_member_by_id(internals->active_members,
+	internals->active_member_count, member_id) == internals->active_member_count);
 	RTE_SET_USED(internals); /* used only for assert when enabled */
 
 	memcpy(&port->actor, &initial, sizeof(struct port_params));
 	/* Standard requires that port ID must be grater than 0.
 	 * Add 1 do get corresponding port_number */
-	port->actor.port_number = rte_cpu_to_be_16(slave_id + 1);
+	port->actor.port_number = rte_cpu_to_be_16(member_id + 1);
 
 	memcpy(&port->partner, &initial, sizeof(struct port_params));
 	memcpy(&port->partner_admin, &initial, sizeof(struct port_params));
@@ -1072,11 +1068,11 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 	port->sm_flags = SM_FLAGS_BEGIN;
 
 	/* use this port as aggregator */
-	port->aggregator_port_id = slave_id;
+	port->aggregator_port_id = member_id;
 
-	if (bond_mode_8023ad_register_lacp_mac(slave_id) < 0) {
-		RTE_BOND_LOG(WARNING, "slave %u is most likely broken and won't receive LACP packets",
-			     slave_id);
+	if (bond_mode_8023ad_register_lacp_mac(member_id) < 0) {
+		RTE_BOND_LOG(WARNING, "member %u is most likely broken and won't receive LACP packets",
+			     member_id);
 	}
 
 	timer_cancel(&port->warning_timer);
@@ -1087,22 +1083,24 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 	RTE_ASSERT(port->rx_ring == NULL);
 	RTE_ASSERT(port->tx_ring == NULL);
 
-	socket_id = rte_eth_dev_socket_id(slave_id);
+	socket_id = rte_eth_dev_socket_id(member_id);
 	if (socket_id == -1)
 		socket_id = rte_socket_id();
 
 	element_size = sizeof(struct slow_protocol_frame) +
 				RTE_PKTMBUF_HEADROOM;
 
-	/* The size of the mempool should be at least:
-	 * the sum of the TX descriptors + BOND_MODE_8023AX_SLAVE_TX_PKTS */
-	total_tx_desc = BOND_MODE_8023AX_SLAVE_TX_PKTS;
+	/*
+	 * The size of the mempool should be at least:
+	 * the sum of the TX descriptors + BOND_MODE_8023AX_MEMBER_TX_PKTS.
+	 */
+	total_tx_desc = BOND_MODE_8023AX_MEMBER_TX_PKTS;
 	for (q_id = 0; q_id < bond_dev->data->nb_tx_queues; q_id++) {
 		bd_tx_q = (struct bond_tx_queue*)bond_dev->data->tx_queues[q_id];
 		total_tx_desc += bd_tx_q->nb_tx_desc;
 	}
 
-	snprintf(mem_name, RTE_DIM(mem_name), "slave_port%u_pool", slave_id);
+	snprintf(mem_name, RTE_DIM(mem_name), "member_port%u_pool", member_id);
 	port->mbuf_pool = rte_pktmbuf_pool_create(mem_name, total_tx_desc,
 		RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ?
 			32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
@@ -1111,39 +1109,39 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 	/* Any memory allocation failure in initialization is critical because
 	 * resources can't be free, so reinitialization is impossible. */
 	if (port->mbuf_pool == NULL) {
-		rte_panic("Slave %u: Failed to create memory pool '%s': %s\n",
-			slave_id, mem_name, rte_strerror(rte_errno));
+		rte_panic("Member %u: Failed to create memory pool '%s': %s\n",
+			member_id, mem_name, rte_strerror(rte_errno));
 	}
 
-	snprintf(mem_name, RTE_DIM(mem_name), "slave_%u_rx", slave_id);
+	snprintf(mem_name, RTE_DIM(mem_name), "member_%u_rx", member_id);
 	port->rx_ring = rte_ring_create(mem_name,
-			rte_align32pow2(BOND_MODE_8023AX_SLAVE_RX_PKTS), socket_id, 0);
+			rte_align32pow2(BOND_MODE_8023AX_MEMBER_RX_PKTS), socket_id, 0);
 
 	if (port->rx_ring == NULL) {
-		rte_panic("Slave %u: Failed to create rx ring '%s': %s\n", slave_id,
+		rte_panic("Member %u: Failed to create rx ring '%s': %s\n", member_id,
 			mem_name, rte_strerror(rte_errno));
 	}
 
 	/* TX ring is at least one pkt longer to make room for marker packet. */
-	snprintf(mem_name, RTE_DIM(mem_name), "slave_%u_tx", slave_id);
+	snprintf(mem_name, RTE_DIM(mem_name), "member_%u_tx", member_id);
 	port->tx_ring = rte_ring_create(mem_name,
-			rte_align32pow2(BOND_MODE_8023AX_SLAVE_TX_PKTS + 1), socket_id, 0);
+			rte_align32pow2(BOND_MODE_8023AX_MEMBER_TX_PKTS + 1), socket_id, 0);
 
 	if (port->tx_ring == NULL) {
-		rte_panic("Slave %u: Failed to create tx ring '%s': %s\n", slave_id,
+		rte_panic("Member %u: Failed to create tx ring '%s': %s\n", member_id,
 			mem_name, rte_strerror(rte_errno));
 	}
 }
 
 int
-bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev __rte_unused,
-		uint16_t slave_id)
+bond_mode_8023ad_deactivate_member(struct rte_eth_dev *bond_dev __rte_unused,
+		uint16_t member_id)
 {
 	void *pkt = NULL;
 	struct port *port = NULL;
 	uint8_t old_partner_state;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 
 	ACTOR_STATE_CLR(port, AGGREGATION);
 	port->selected = UNSELECTED;
@@ -1151,7 +1149,7 @@ bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev __rte_unused,
 	old_partner_state = port->partner_state;
 	record_default(port);
 
-	bond_mode_8023ad_unregister_lacp_mac(slave_id);
+	bond_mode_8023ad_unregister_lacp_mac(member_id);
 
 	/* If partner timeout state changes then disable timer */
 	if (!((old_partner_state ^ port->partner_state) &
@@ -1174,30 +1172,29 @@ void
 bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
-	struct rte_ether_addr slave_addr;
-	struct port *slave, *agg_slave;
-	uint16_t slave_id, i, j;
+	struct port *member, *agg_member;
+	uint16_t member_id, i, j;
 
 	bond_mode_8023ad_stop(bond_dev);
 
-	for (i = 0; i < internals->active_slave_count; i++) {
-		slave_id = internals->active_slaves[i];
-		slave = &bond_mode_8023ad_ports[slave_id];
-		rte_eth_macaddr_get(slave_id, &slave_addr);
+	rte_eth_macaddr_get(internals->port_id, &internals->mode4.mac_addr);
+	for (i = 0; i < internals->active_member_count; i++) {
+		member_id = internals->active_members[i];
+		member = &bond_mode_8023ad_ports[member_id];
 
-		if (rte_is_same_ether_addr(&slave_addr, &slave->actor.system))
+		if (rte_is_same_ether_addr(&internals->mode4.mac_addr, &member->actor.system))
 			continue;
 
-		rte_ether_addr_copy(&slave_addr, &slave->actor.system);
+		rte_ether_addr_copy(&internals->mode4.mac_addr, &member->actor.system);
 		/* Do nothing if this port is not an aggregator. In other case
 		 * Set NTT flag on every port that use this aggregator. */
-		if (slave->aggregator_port_id != slave_id)
+		if (member->aggregator_port_id != member_id)
 			continue;
 
-		for (j = 0; j < internals->active_slave_count; j++) {
-			agg_slave = &bond_mode_8023ad_ports[internals->active_slaves[j]];
-			if (agg_slave->aggregator_port_id == slave_id)
-				SM_FLAG_SET(agg_slave, NTT);
+		for (j = 0; j < internals->active_member_count; j++) {
+			agg_member = &bond_mode_8023ad_ports[internals->active_members[j]];
+			if (agg_member->aggregator_port_id == member_id)
+				SM_FLAG_SET(agg_member, NTT);
 		}
 	}
 
@@ -1288,9 +1285,9 @@ bond_mode_8023ad_enable(struct rte_eth_dev *bond_dev)
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	uint16_t i;
 
-	for (i = 0; i < internals->active_slave_count; i++)
-		bond_mode_8023ad_activate_slave(bond_dev,
-				internals->active_slaves[i]);
+	for (i = 0; i < internals->active_member_count; i++)
+		bond_mode_8023ad_activate_member(bond_dev,
+				internals->active_members[i]);
 
 	return 0;
 }
@@ -1326,10 +1323,10 @@ bond_mode_8023ad_stop(struct rte_eth_dev *bond_dev)
 
 void
 bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
-				  uint16_t slave_id, struct rte_mbuf *pkt)
+				  uint16_t member_id, struct rte_mbuf *pkt)
 {
 	struct mode8023ad_private *mode4 = &internals->mode4;
-	struct port *port = &bond_mode_8023ad_ports[slave_id];
+	struct port *port = &bond_mode_8023ad_ports[member_id];
 	struct marker_header *m_hdr;
 	uint64_t marker_timer, old_marker_timer;
 	int retval;
@@ -1362,7 +1359,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 		} while (unlikely(retval == 0));
 
 		m_hdr->marker.tlv_type_marker = MARKER_TLV_TYPE_RESP;
-		rte_eth_macaddr_get(slave_id, &m_hdr->eth_hdr.src_addr);
+		rte_eth_macaddr_get(member_id, &m_hdr->eth_hdr.src_addr);
 
 		if (internals->mode4.dedicated_queues.enabled == 0) {
 			if (rte_ring_enqueue(port->tx_ring, pkt) != 0) {
@@ -1373,10 +1370,10 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 			}
 		} else {
 			/* Send packet directly to the slow queue */
-			uint16_t tx_count = rte_eth_tx_prepare(slave_id,
+			uint16_t tx_count = rte_eth_tx_prepare(member_id,
 					internals->mode4.dedicated_queues.tx_qid,
 					&pkt, 1);
-			tx_count = rte_eth_tx_burst(slave_id,
+			tx_count = rte_eth_tx_burst(member_id,
 					internals->mode4.dedicated_queues.tx_qid,
 					&pkt, tx_count);
 			if (tx_count != 1) {
@@ -1394,7 +1391,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 				goto free_out;
 			}
 		} else
-			rx_machine_update(internals, slave_id, pkt);
+			rx_machine_update(internals, member_id, pkt);
 	} else {
 		wrn = WRN_UNKNOWN_SLOW_TYPE;
 		goto free_out;
@@ -1407,13 +1404,14 @@ free_out:
 	rte_pktmbuf_free(pkt);
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_conf_get)
 int
 rte_eth_bond_8023ad_conf_get(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
 
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	if (conf == NULL)
@@ -1424,6 +1422,7 @@ rte_eth_bond_8023ad_conf_get(uint16_t port_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_agg_selection_set)
 int
 rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 		enum rte_bond_8023ad_agg_selection agg_selection)
@@ -1432,7 +1431,7 @@ rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 	struct bond_dev_private *internals;
 	struct mode8023ad_private *mode4;
 
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	bond_dev = &rte_eth_devices[port_id];
@@ -1448,13 +1447,14 @@ rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_agg_selection_get)
 int rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id)
 {
 	struct rte_eth_dev *bond_dev;
 	struct bond_dev_private *internals;
 	struct mode8023ad_private *mode4;
 
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	bond_dev = &rte_eth_devices[port_id];
@@ -1473,7 +1473,7 @@ static int
 bond_8023ad_setup_validate(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	if (conf != NULL) {
@@ -1495,6 +1495,7 @@ bond_8023ad_setup_validate(uint16_t port_id,
 }
 
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_setup)
 int
 rte_eth_bond_8023ad_setup(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
@@ -1516,27 +1517,28 @@ rte_eth_bond_8023ad_setup(uint16_t port_id,
 
 
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_member_info)
 int
-rte_eth_bond_8023ad_slave_info(uint16_t port_id, uint16_t slave_id,
-		struct rte_eth_bond_8023ad_slave_info *info)
+rte_eth_bond_8023ad_member_info(uint16_t port_id, uint16_t member_id,
+		struct rte_eth_bond_8023ad_member_info *info)
 {
 	struct rte_eth_dev *bond_dev;
 	struct bond_dev_private *internals;
 	struct port *port;
 
-	if (info == NULL || valid_bonded_port_id(port_id) != 0 ||
+	if (info == NULL || valid_bonding_port_id(port_id) != 0 ||
 			rte_eth_bond_mode_get(port_id) != BONDING_MODE_8023AD)
 		return -EINVAL;
 
 	bond_dev = &rte_eth_devices[port_id];
 
 	internals = bond_dev->data->dev_private;
-	if (find_slave_by_id(internals->active_slaves,
-			internals->active_slave_count, slave_id) ==
-				internals->active_slave_count)
+	if (find_member_by_id(internals->active_members,
+			internals->active_member_count, member_id) ==
+				internals->active_member_count)
 		return -EINVAL;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 	info->selected = port->selected;
 
 	info->actor_state = port->actor_state;
@@ -1550,7 +1552,7 @@ rte_eth_bond_8023ad_slave_info(uint16_t port_id, uint16_t slave_id,
 }
 
 static int
-bond_8023ad_ext_validate(uint16_t port_id, uint16_t slave_id)
+bond_8023ad_ext_validate(uint16_t port_id, uint16_t member_id)
 {
 	struct rte_eth_dev *bond_dev;
 	struct bond_dev_private *internals;
@@ -1565,9 +1567,9 @@ bond_8023ad_ext_validate(uint16_t port_id, uint16_t slave_id)
 		return -EINVAL;
 
 	internals = bond_dev->data->dev_private;
-	if (find_slave_by_id(internals->active_slaves,
-			internals->active_slave_count, slave_id) ==
-				internals->active_slave_count)
+	if (find_member_by_id(internals->active_members,
+			internals->active_member_count, member_id) ==
+				internals->active_member_count)
 		return -EINVAL;
 
 	mode4 = &internals->mode4;
@@ -1577,18 +1579,19 @@ bond_8023ad_ext_validate(uint16_t port_id, uint16_t slave_id)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_ext_collect)
 int
-rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t slave_id,
+rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t member_id,
 				int enabled)
 {
 	struct port *port;
 	int res;
 
-	res = bond_8023ad_ext_validate(port_id, slave_id);
+	res = bond_8023ad_ext_validate(port_id, member_id);
 	if (res != 0)
 		return res;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 
 	if (enabled)
 		ACTOR_STATE_SET(port, COLLECTING);
@@ -1598,18 +1601,19 @@ rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t slave_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_ext_distrib)
 int
-rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t slave_id,
+rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t member_id,
 				int enabled)
 {
 	struct port *port;
 	int res;
 
-	res = bond_8023ad_ext_validate(port_id, slave_id);
+	res = bond_8023ad_ext_validate(port_id, member_id);
 	if (res != 0)
 		return res;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 
 	if (enabled)
 		ACTOR_STATE_SET(port, DISTRIBUTING);
@@ -1619,46 +1623,49 @@ rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t slave_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_ext_distrib_get)
 int
-rte_eth_bond_8023ad_ext_distrib_get(uint16_t port_id, uint16_t slave_id)
+rte_eth_bond_8023ad_ext_distrib_get(uint16_t port_id, uint16_t member_id)
 {
 	struct port *port;
 	int err;
 
-	err = bond_8023ad_ext_validate(port_id, slave_id);
+	err = bond_8023ad_ext_validate(port_id, member_id);
 	if (err != 0)
 		return err;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 	return ACTOR_STATE(port, DISTRIBUTING);
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_ext_collect_get)
 int
-rte_eth_bond_8023ad_ext_collect_get(uint16_t port_id, uint16_t slave_id)
+rte_eth_bond_8023ad_ext_collect_get(uint16_t port_id, uint16_t member_id)
 {
 	struct port *port;
 	int err;
 
-	err = bond_8023ad_ext_validate(port_id, slave_id);
+	err = bond_8023ad_ext_validate(port_id, member_id);
 	if (err != 0)
 		return err;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 	return ACTOR_STATE(port, COLLECTING);
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_ext_slowtx)
 int
-rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t slave_id,
+rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t member_id,
 		struct rte_mbuf *lacp_pkt)
 {
 	struct port *port;
 	int res;
 
-	res = bond_8023ad_ext_validate(port_id, slave_id);
+	res = bond_8023ad_ext_validate(port_id, member_id);
 	if (res != 0)
 		return res;
 
-	port = &bond_mode_8023ad_ports[slave_id];
+	port = &bond_mode_8023ad_ports[member_id];
 
 	if (rte_pktmbuf_pkt_len(lacp_pkt) < sizeof(struct lacpdu_header))
 		return -EINVAL;
@@ -1670,7 +1677,7 @@ rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t slave_id,
 	if (lacp->lacpdu.subtype != SLOW_SUBTYPE_LACP)
 		return -EINVAL;
 
-	MODE4_DEBUG("sending LACP frame\n");
+	MODE4_DEBUG_LOG("sending LACP frame");
 
 	return rte_ring_enqueue(port->tx_ring, lacp_pkt);
 }
@@ -1683,11 +1690,11 @@ bond_mode_8023ad_ext_periodic_cb(void *arg)
 	struct mode8023ad_private *mode4 = &internals->mode4;
 	struct port *port;
 	void *pkt = NULL;
-	uint16_t i, slave_id;
+	uint16_t i, member_id;
 
-	for (i = 0; i < internals->active_slave_count; i++) {
-		slave_id = internals->active_slaves[i];
-		port = &bond_mode_8023ad_ports[slave_id];
+	for (i = 0; i < internals->active_member_count; i++) {
+		member_id = internals->active_members[i];
+		port = &bond_mode_8023ad_ports[member_id];
 
 		if (rte_ring_dequeue(port->rx_ring, &pkt) == 0) {
 			struct rte_mbuf *lacp_pkt = pkt;
@@ -1700,7 +1707,7 @@ bond_mode_8023ad_ext_periodic_cb(void *arg)
 			/* This is LACP frame so pass it to rx callback.
 			 * Callback is responsible for freeing mbuf.
 			 */
-			mode4->slowrx_cb(slave_id, lacp_pkt);
+			mode4->slowrx_cb(member_id, lacp_pkt);
 		}
 	}
 
@@ -1708,6 +1715,7 @@ bond_mode_8023ad_ext_periodic_cb(void *arg)
 			bond_mode_8023ad_ext_periodic_cb, arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_dedicated_queues_enable)
 int
 rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 {
@@ -1715,7 +1723,7 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 	struct rte_eth_dev *dev;
 	struct bond_dev_private *internals;
 
-	if (valid_bonded_port_id(port) != 0)
+	if (valid_bonding_port_id(port) != 0)
 		return -EINVAL;
 
 	dev = &rte_eth_devices[port];
@@ -1734,6 +1742,7 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 	return retval;
 }
 
+RTE_EXPORT_SYMBOL(rte_eth_bond_8023ad_dedicated_queues_disable)
 int
 rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 {
@@ -1741,7 +1750,7 @@ rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 	struct rte_eth_dev *dev;
 	struct bond_dev_private *internals;
 
-	if (valid_bonded_port_id(port) != 0)
+	if (valid_bonding_port_id(port) != 0)
 		return -EINVAL;
 
 	dev = &rte_eth_devices[port];

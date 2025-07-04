@@ -4,9 +4,12 @@
 
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_malloc.h>
 
 #include "rte_table_stub.h"
+
+#include "table_log.h"
 
 #ifdef RTE_TABLE_STATS_COLLECT
 
@@ -38,8 +41,8 @@ rte_table_stub_create(__rte_unused void *params,
 	stub = rte_zmalloc_socket("TABLE", size, RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (stub == NULL) {
-		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for stub table\n",
+		TABLE_LOG(ERR,
+			"%s: Cannot allocate %u bytes for stub table",
 			__func__, size);
 		return NULL;
 	}
@@ -56,7 +59,7 @@ rte_table_stub_lookup(
 	__rte_unused void **entries)
 {
 	__rte_unused struct rte_table_stub *stub = (struct rte_table_stub *) table;
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 
 	RTE_TABLE_LPM_STATS_PKTS_IN_ADD(stub, n_pkts_in);
 	*lookup_hit_mask = 0;
@@ -79,6 +82,7 @@ rte_table_stub_stats_read(void *table, struct rte_table_stats *stats, int clear)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_stub_ops)
 struct rte_table_ops rte_table_stub_ops = {
 	.f_create = rte_table_stub_create,
 	.f_free = NULL,

@@ -173,13 +173,48 @@ test_rte_strlcat(void)
 }
 
 static int
+test_rte_str_skip_leading_spaces(void)
+{
+	static const char empty[] = "";
+	static const char nowhitespace[] = "Thereisreallynowhitespace";
+	static const char somewhitespaces[] = " \f\n\r\t\vThere are some whitespaces";
+	const char *p;
+
+	LOG("Checking '%s'\n", empty);
+	p = rte_str_skip_leading_spaces(empty);
+	if (p != empty) {
+		LOG("Returned address '%s' does not match expected result\n", p);
+		return -1;
+	}
+	LOG("Got expected '%s'\n", p);
+	LOG("Checking '%s'\n", nowhitespace);
+	p = rte_str_skip_leading_spaces(nowhitespace);
+	if (p != nowhitespace) {
+		LOG("Returned address '%s' does not match expected result\n", p);
+		return -1;
+	}
+	LOG("Got expected '%s'\n", p);
+	LOG("Checking '%s'\n", somewhitespaces);
+	p = rte_str_skip_leading_spaces(somewhitespaces);
+	if (p != strchr(somewhitespaces, 'T')) {
+		LOG("Returned address '%s' does not match expected result\n", p);
+		return -1;
+	}
+	LOG("Got expected '%s'\n", p);
+
+	return 0;
+}
+
+static int
 test_string_fns(void)
 {
 	if (test_rte_strsplit() < 0)
 		return -1;
 	if (test_rte_strlcat() < 0)
 		return -1;
+	if (test_rte_str_skip_leading_spaces() < 0)
+		return -1;
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(string_autotest, test_string_fns);
+REGISTER_FAST_TEST(string_autotest, true, true, test_string_fns);

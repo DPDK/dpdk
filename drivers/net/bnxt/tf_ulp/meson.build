@@ -1,28 +1,38 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
-# Copyright(c) 2021 Broadcom
+# Copyright(c) 2023 Broadcom
 
 #Include the folder for headers
 includes += include_directories('.')
+cflags += '-DBNXT_TF_APP_ID=0'
 
 #Add the source files
 sources += files(
+        'bnxt_tf_pmd_shim.c',
         'bnxt_ulp.c',
-        'ulp_mark_mgr.c',
-        'ulp_flow_db.c',
-        'ulp_utils.c',
-        'ulp_mapper.c',
-        'ulp_matcher.c',
-        'ulp_rte_parser.c',
         'bnxt_ulp_flow.c',
-        'ulp_port_db.c',
+        'bnxt_ulp_meter.c',
         'ulp_def_rules.c',
         'ulp_fc_mgr.c',
-        'ulp_tun.c',
-        'bnxt_tf_pmd_shim.c',
-        'ulp_gen_tbl.c',
+        'ulp_flow_db.c',
         'ulp_gen_hash.c',
+        'ulp_gen_tbl.c',
         'ulp_ha_mgr.c',
-        'ulp_rte_handler_tbl.c')
+        'ulp_mapper.c',
+        'ulp_mark_mgr.c',
+        'ulp_matcher.c',
+        'ulp_port_db.c',
+        'ulp_rte_handler_tbl.c',
+        'ulp_rte_parser.c',
+        'ulp_tun.c',
+        'ulp_mapper_tf.c',
+        'ulp_mapper_tfc.c',
+        'bnxt_ulp_tf.c',
+        'bnxt_ulp_tfc.c',
+        'ulp_fc_mgr_tfc.c',
+        'ulp_fc_mgr_tf.c',
+        'ulp_alloc_tbl.c',
+        'ulp_sc_mgr.c',
+        'ulp_sc_mgr_tfc.c')
 
 subdir('generic_templates')

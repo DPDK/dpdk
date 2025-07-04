@@ -150,6 +150,8 @@ medford_board_cfg(
 	encp->enc_required_pcie_bandwidth_mbps = bandwidth;
 	encp->enc_max_pcie_link_gen = EFX_PCIE_LINK_SPEED_GEN3;
 
+	encp->enc_table_api_supported = B_FALSE;
+
 	return (0);
 
 fail4:

@@ -32,6 +32,7 @@ struct sfc_repr_shared {
 	uint16_t		repr_id;
 	uint16_t		switch_domain_id;
 	uint16_t		switch_port_id;
+	unsigned int		max_pdu;
 };
 
 struct sfc_repr_queue_stats {
@@ -112,39 +113,11 @@ sfc_repr_by_eth_dev(struct rte_eth_dev *eth_dev)
  * change the lock in one place.
  */
 
-static inline void
-sfc_repr_lock_init(struct sfc_repr *sr)
-{
-	rte_spinlock_init(&sr->lock);
-}
-
-#if defined(RTE_LIBRTE_SFC_EFX_DEBUG) || defined(RTE_ENABLE_ASSERT)
-
-static inline int
-sfc_repr_lock_is_locked(struct sfc_repr *sr)
-{
-	return rte_spinlock_is_locked(&sr->lock);
-}
-
-#endif
-
-static inline void
-sfc_repr_lock(struct sfc_repr *sr)
-{
-	rte_spinlock_lock(&sr->lock);
-}
-
-static inline void
-sfc_repr_unlock(struct sfc_repr *sr)
-{
-	rte_spinlock_unlock(&sr->lock);
-}
-
-static inline void
-sfc_repr_lock_fini(__rte_unused struct sfc_repr *sr)
-{
-	/* Just for symmetry of the API */
-}
+#define sfc_repr_lock_init(sr) rte_spinlock_init(&(sr)->lock)
+#define sfc_repr_lock_is_locked(sr) rte_spinlock_is_locked(&(sr)->lock)
+#define sfc_repr_lock(sr) rte_spinlock_lock(&(sr)->lock)
+#define sfc_repr_unlock(sr) rte_spinlock_unlock(&(sr)->lock)
+#define sfc_repr_lock_fini(sr) RTE_SET_USED(sr)
 
 static void
 sfc_repr_rx_queue_stop(void *queue)
@@ -291,6 +264,7 @@ static int
 sfc_repr_dev_start(struct rte_eth_dev *dev)
 {
 	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	uint16_t i;
 	int ret;
 
 	sfcr_info(sr, "entry");
@@ -301,6 +275,11 @@ sfc_repr_dev_start(struct rte_eth_dev *dev)
 
 	if (ret != 0)
 		goto fail_start;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	sfcr_info(sr, "done");
 
@@ -366,6 +345,7 @@ static int
 sfc_repr_dev_stop(struct rte_eth_dev *dev)
 {
 	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	uint16_t i;
 	int ret;
 
 	sfcr_info(sr, "entry");
@@ -379,6 +359,11 @@ sfc_repr_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	sfc_repr_unlock(sr);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	sfcr_info(sr, "done");
 
@@ -530,6 +515,7 @@ sfc_repr_dev_infos_get(struct rte_eth_dev *dev,
 
 	dev_info->device = dev->device;
 
+	dev_info->max_rx_pktlen = srs->max_pdu;
 	dev_info->max_rx_queues = SFC_REPR_RXQ_MAX;
 	dev_info->max_tx_queues = SFC_REPR_TXQ_MAX;
 	dev_info->default_rxconf.rx_drop_en = 1;
@@ -784,11 +770,7 @@ static void
 sfc_repr_close(struct sfc_repr *sr)
 {
 	SFC_ASSERT(sfc_repr_lock_is_locked(sr));
-
 	SFC_ASSERT(sr->state == SFC_ETHDEV_CONFIGURED);
-	sr->state = SFC_ETHDEV_CLOSING;
-
-	/* Put representor close actions here */
 
 	sr->state = SFC_ETHDEV_INITIALIZED;
 }
@@ -939,6 +921,7 @@ struct sfc_repr_init_data {
 	efx_pcie_interface_t	intf;
 	uint16_t		pf;
 	uint16_t		vf;
+	unsigned int		max_pdu;
 };
 
 static int
@@ -961,15 +944,26 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	struct sfc_repr_shared *srs = sfc_repr_shared_by_eth_dev(dev);
 	struct sfc_mae_switch_port_request switch_port_request;
 	efx_mport_sel_t ethdev_mport_sel;
+	efx_mport_id_t proxy_mport_id;
 	struct sfc_repr *sr;
 	int ret;
 
 	/*
-	 * Currently there is no mport we can use for representor's
-	 * ethdev. Use an invalid one for now. This way representors
-	 * can be instantiated.
+	 * For each representor, a driver-internal flow has to be installed
+	 * in order to direct traffic coming from the represented entity to
+	 * the "representor proxy". Such internal flows need to find ethdev
+	 * mport by ethdev ID of the representors in question to specify in
+	 * delivery action. So set the representor ethdev's mport to that
+	 * of the "representor proxy" in below switch port request.
 	 */
-	efx_mae_mport_invalid(&ethdev_mport_sel);
+	sfc_repr_proxy_mport_alias_get(repr_data->pf_port_id, &proxy_mport_id);
+
+	ret = efx_mae_mport_by_id(&proxy_mport_id, &ethdev_mport_sel);
+	if (ret != 0) {
+		SFC_GENERIC_LOG(ERR,
+			"%s() failed to get repr proxy mport by ID", __func__);
+		goto fail_get_selector;
+	}
 
 	memset(&switch_port_request, 0, sizeof(switch_port_request));
 	switch_port_request.type = SFC_MAE_SWITCH_PORT_REPRESENTOR;
@@ -1020,6 +1014,7 @@ sfc_repr_eth_dev_init(struct rte_eth_dev *dev, void *init_params)
 	srs->pf_port_id = repr_data->pf_port_id;
 	srs->repr_id = srs->switch_port_id;
 	srs->switch_domain_id = repr_data->switch_domain_id;
+	srs->max_pdu = repr_data->max_pdu;
 
 	dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 	dev->data->representor_id = srs->repr_id;
@@ -1061,6 +1056,7 @@ fail_alloc_sr:
 
 fail_create_port:
 fail_mae_assign_switch_port:
+fail_get_selector:
 	SFC_GENERIC_LOG(ERR, "%s() failed: %s", __func__, rte_strerror(-ret));
 	return ret;
 }
@@ -1069,6 +1065,7 @@ int
 sfc_repr_create(struct rte_eth_dev *parent,
 		struct sfc_repr_entity_info *entity,
 		uint16_t switch_domain_id,
+		unsigned int max_pdu,
 		const efx_mport_sel_t *mport_sel)
 {
 	struct sfc_repr_init_data repr_data;
@@ -1115,6 +1112,7 @@ sfc_repr_create(struct rte_eth_dev *parent,
 		repr_data.intf = entity->intf;
 		repr_data.pf = entity->pf;
 		repr_data.vf = entity->vf;
+		repr_data.max_pdu = max_pdu;
 
 		ret = rte_eth_dev_create(parent->device, name,
 					 sizeof(struct sfc_repr_shared),

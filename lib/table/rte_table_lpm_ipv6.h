@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_LPM_IPV6_H__
 #define __INCLUDE_RTE_TABLE_LPM_IPV6_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table LPM for IPv6
@@ -39,14 +35,20 @@ extern "C" {
  * has to carefully manage the format of the LPM table entry (i.e.  the next
  * hop information) so that any next hop data that changes value during
  * run-time (e.g. counters) is placed outside of this area.
- *
- ***/
+ */
 
 #include <stdint.h>
 
+#include <rte_common.h>
+#include <rte_ip6.h>
+
 #include "rte_table.h"
 
-#define RTE_LPM_IPV6_ADDR_SIZE 16
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define RTE_LPM_IPV6_ADDR_SIZE (RTE_DEPRECATED(RTE_LPM_IPV6_ADDR_SIZE) RTE_IPV6_ADDR_SIZE)
 
 /** LPM table parameters */
 struct rte_table_lpm_ipv6_params {
@@ -74,7 +76,7 @@ each rule covering for a multitude of lookup keys (destination IP addresses)
 that share the same data (next hop). */
 struct rte_table_lpm_ipv6_key {
 	/** IP address */
-	uint8_t ip[RTE_LPM_IPV6_ADDR_SIZE];
+	struct rte_ipv6_addr ip;
 
 	/** IP address depth. The most significant "depth" bits of the IP
 	address specify the network part of the IP address, while the rest of

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <sys/queue.h>
 #include <unistd.h>
 #include <string.h>
@@ -16,9 +15,11 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include <eal_export.h>
 #include <eal_trace_internal.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
+#include <rte_thread.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
@@ -33,6 +34,8 @@
 
 #define EAL_INTR_EPOLL_WAIT_FOREVER (-1)
 #define NB_OTHER_INTR               1
+
+#define MAX_ITER_EVNUM	RTE_EVENT_ETH_INTR_RING_SIZE
 
 static RTE_DEFINE_PER_LCORE(int, _epfd) = -1; /**< epoll fd per thread */
 
@@ -89,7 +92,7 @@ static union intr_pipefds intr_pipe;
 static struct rte_intr_source_list intr_sources;
 
 /* interrupt handling thread */
-static pthread_t intr_thread;
+static rte_thread_t intr_thread;
 
 /* VFIO interrupts */
 #ifdef VFIO_PRESENT
@@ -123,7 +126,7 @@ vfio_enable_intx(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error enabling INTx interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error enabling INTx interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -140,7 +143,7 @@ vfio_enable_intx(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error unmasking INTx interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error unmasking INTx interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -168,7 +171,7 @@ vfio_disable_intx(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error masking INTx interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error masking INTx interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -184,7 +187,7 @@ vfio_disable_intx(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error disabling INTx interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error disabling INTx interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -208,7 +211,7 @@ vfio_ack_intx(const struct rte_intr_handle *intr_handle)
 
 	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
 	if (ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, &irq_set)) {
-		RTE_LOG(ERR, EAL, "Error unmasking INTx interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error unmasking INTx interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -238,7 +241,7 @@ vfio_enable_msi(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error enabling MSI interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error enabling MSI interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -264,7 +267,7 @@ vfio_disable_msi(const struct rte_intr_handle *intr_handle) {
 	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (ret)
-		RTE_LOG(ERR, EAL, "Error disabling MSI interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error disabling MSI interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 
 	return ret;
@@ -303,7 +306,7 @@ vfio_enable_msix(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error enabling MSI-X interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error enabling MSI-X interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -331,7 +334,7 @@ vfio_disable_msix(const struct rte_intr_handle *intr_handle) {
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret)
-		RTE_LOG(ERR, EAL, "Error disabling MSI-X interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error disabling MSI-X interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 
 	return ret;
@@ -363,7 +366,7 @@ vfio_enable_req(const struct rte_intr_handle *intr_handle)
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Error enabling req interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error enabling req interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -392,7 +395,7 @@ vfio_disable_req(const struct rte_intr_handle *intr_handle)
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 
 	if (ret)
-		RTE_LOG(ERR, EAL, "Error disabling req interrupts for fd %d\n",
+		EAL_LOG(ERR, "Error disabling req interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 
 	return ret;
@@ -409,16 +412,16 @@ uio_intx_intr_disable(const struct rte_intr_handle *intr_handle)
 	/* use UIO config file descriptor for uio_pci_generic */
 	uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
 	if (uio_cfg_fd < 0 || pread(uio_cfg_fd, &command_high, 1, 5) != 1) {
-		RTE_LOG(ERR, EAL,
-			"Error reading interrupts status for fd %d\n",
+		EAL_LOG(ERR,
+			"Error reading interrupts status for fd %d",
 			uio_cfg_fd);
 		return -1;
 	}
 	/* disable interrupts */
 	command_high |= 0x4;
 	if (pwrite(uio_cfg_fd, &command_high, 1, 5) != 1) {
-		RTE_LOG(ERR, EAL,
-			"Error disabling interrupts for fd %d\n",
+		EAL_LOG(ERR,
+			"Error disabling interrupts for fd %d",
 			uio_cfg_fd);
 		return -1;
 	}
@@ -435,16 +438,16 @@ uio_intx_intr_enable(const struct rte_intr_handle *intr_handle)
 	/* use UIO config file descriptor for uio_pci_generic */
 	uio_cfg_fd = rte_intr_dev_fd_get(intr_handle);
 	if (uio_cfg_fd < 0 || pread(uio_cfg_fd, &command_high, 1, 5) != 1) {
-		RTE_LOG(ERR, EAL,
-			"Error reading interrupts status for fd %d\n",
+		EAL_LOG(ERR,
+			"Error reading interrupts status for fd %d",
 			uio_cfg_fd);
 		return -1;
 	}
 	/* enable interrupts */
 	command_high &= ~0x4;
 	if (pwrite(uio_cfg_fd, &command_high, 1, 5) != 1) {
-		RTE_LOG(ERR, EAL,
-			"Error enabling interrupts for fd %d\n",
+		EAL_LOG(ERR,
+			"Error enabling interrupts for fd %d",
 			uio_cfg_fd);
 		return -1;
 	}
@@ -459,7 +462,7 @@ uio_intr_disable(const struct rte_intr_handle *intr_handle)
 
 	if (rte_intr_fd_get(intr_handle) < 0 ||
 	    write(rte_intr_fd_get(intr_handle), &value, sizeof(value)) < 0) {
-		RTE_LOG(ERR, EAL, "Error disabling interrupts for fd %d (%s)\n",
+		EAL_LOG(ERR, "Error disabling interrupts for fd %d (%s)",
 			rte_intr_fd_get(intr_handle), strerror(errno));
 		return -1;
 	}
@@ -473,13 +476,14 @@ uio_intr_enable(const struct rte_intr_handle *intr_handle)
 
 	if (rte_intr_fd_get(intr_handle) < 0 ||
 	    write(rte_intr_fd_get(intr_handle), &value, sizeof(value)) < 0) {
-		RTE_LOG(ERR, EAL, "Error enabling interrupts for fd %d (%s)\n",
+		EAL_LOG(ERR, "Error enabling interrupts for fd %d (%s)",
 			rte_intr_fd_get(intr_handle), strerror(errno));
 		return -1;
 	}
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_register)
 int
 rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb, void *cb_arg)
@@ -492,14 +496,14 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 
 	/* first do parameter checking */
 	if (rte_intr_fd_get(intr_handle) < 0 || cb == NULL) {
-		RTE_LOG(ERR, EAL, "Registering with invalid input parameter\n");
+		EAL_LOG(ERR, "Registering with invalid input parameter");
 		return -EINVAL;
 	}
 
 	/* allocate a new interrupt callback entity */
 	callback = calloc(1, sizeof(*callback));
 	if (callback == NULL) {
-		RTE_LOG(ERR, EAL, "Can not allocate memory\n");
+		EAL_LOG(ERR, "Can not allocate memory");
 		return -ENOMEM;
 	}
 	callback->cb_fn = cb;
@@ -526,14 +530,14 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	if (src == NULL) {
 		src = calloc(1, sizeof(*src));
 		if (src == NULL) {
-			RTE_LOG(ERR, EAL, "Can not allocate memory\n");
+			EAL_LOG(ERR, "Can not allocate memory");
 			ret = -ENOMEM;
 			free(callback);
 			callback = NULL;
 		} else {
 			src->intr_handle = rte_intr_instance_dup(intr_handle);
 			if (src->intr_handle == NULL) {
-				RTE_LOG(ERR, EAL, "Can not create intr instance\n");
+				EAL_LOG(ERR, "Can not create intr instance");
 				ret = -ENOMEM;
 				free(callback);
 				callback = NULL;
@@ -564,6 +568,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_pending)
 int
 rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 				rte_intr_callback_fn cb_fn, void *cb_arg,
@@ -575,7 +580,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 
 	/* do parameter checking first */
 	if (rte_intr_fd_get(intr_handle) < 0) {
-		RTE_LOG(ERR, EAL, "Unregistering with invalid input parameter\n");
+		EAL_LOG(ERR, "Unregistering with invalid input parameter");
 		return -EINVAL;
 	}
 
@@ -615,6 +620,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister)
 int
 rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb_fn, void *cb_arg)
@@ -625,7 +631,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 
 	/* do parameter checking first */
 	if (rte_intr_fd_get(intr_handle) < 0) {
-		RTE_LOG(ERR, EAL, "Unregistering with invalid input parameter\n");
+		EAL_LOG(ERR, "Unregistering with invalid input parameter");
 		return -EINVAL;
 	}
 
@@ -681,6 +687,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_callback_unregister_sync)
 int
 rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
 			rte_intr_callback_fn cb_fn, void *cb_arg)
@@ -693,6 +700,7 @@ rte_intr_callback_unregister_sync(const struct rte_intr_handle *intr_handle,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_enable)
 int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
@@ -752,7 +760,7 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 		break;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+		EAL_LOG(ERR, "Unknown handle type of fd %d",
 			rte_intr_fd_get(intr_handle));
 		rc = -1;
 		break;
@@ -773,6 +781,7 @@ out:
  * auto-masked. In fact, for interrupt handle types VFIO_MSIX and VFIO_MSI,
  * this function is no-op.
  */
+RTE_EXPORT_SYMBOL(rte_intr_ack)
 int
 rte_intr_ack(const struct rte_intr_handle *intr_handle)
 {
@@ -817,7 +826,7 @@ rte_intr_ack(const struct rte_intr_handle *intr_handle)
 		return -1;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+		EAL_LOG(ERR, "Unknown handle type of fd %d",
 			rte_intr_fd_get(intr_handle));
 		return -1;
 	}
@@ -825,6 +834,7 @@ rte_intr_ack(const struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_intr_disable)
 int
 rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
@@ -884,7 +894,7 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 		break;
 	/* unknown handle type */
 	default:
-		RTE_LOG(ERR, EAL, "Unknown handle type of fd %d\n",
+		EAL_LOG(ERR, "Unknown handle type of fd %d",
 			rte_intr_fd_get(intr_handle));
 		rc = -1;
 		break;
@@ -972,8 +982,8 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 				if (errno == EINTR || errno == EWOULDBLOCK)
 					continue;
 
-				RTE_LOG(ERR, EAL, "Error reading from file "
-					"descriptor %d: %s\n",
+				EAL_LOG(ERR, "Error reading from file "
+					"descriptor %d: %s",
 					events[n].data.fd,
 					strerror(errno));
 				/*
@@ -995,8 +1005,8 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 				free(src);
 				return -1;
 			} else if (bytes_read == 0)
-				RTE_LOG(ERR, EAL, "Read nothing from file "
-					"descriptor %d\n", events[n].data.fd);
+				EAL_LOG(ERR, "Read nothing from file "
+					"descriptor %d", events[n].data.fd);
 			else
 				call = true;
 		}
@@ -1070,7 +1080,7 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 static void
 eal_intr_handle_interrupts(int pfd, unsigned totalfds)
 {
-	struct epoll_event events[totalfds];
+	struct epoll_event *events = alloca(sizeof(struct epoll_event) * totalfds);
 	int nfds = 0;
 
 	for(;;) {
@@ -1080,8 +1090,8 @@ eal_intr_handle_interrupts(int pfd, unsigned totalfds)
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
-			RTE_LOG(ERR, EAL,
-				"epoll_wait returns with fail\n");
+			EAL_LOG(ERR,
+				"epoll_wait returns with fail");
 			return;
 		}
 		/* epoll_wait timeout, will never happens here */
@@ -1103,7 +1113,7 @@ eal_intr_handle_interrupts(int pfd, unsigned totalfds)
  * @return
  *  never return;
  */
-static __rte_noreturn void *
+static __rte_noreturn uint32_t
 eal_intr_thread_main(__rte_unused void *arg)
 {
 	/* host thread, never break out */
@@ -1188,12 +1198,12 @@ rte_eal_intr_init(void)
 	}
 
 	/* create the host thread to wait/handle the interrupt */
-	ret = rte_ctrl_thread_create(&intr_thread, "eal-intr-thread", NULL,
+	ret = rte_thread_create_internal_control(&intr_thread, "intr",
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;
-		RTE_LOG(ERR, EAL,
-			"Failed to create thread for interrupt handling\n");
+		EAL_LOG(ERR,
+			"Failed to create thread for interrupt handling");
 	}
 
 	return ret;
@@ -1226,7 +1236,7 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 		return;
 	default:
 		bytes_read = 1;
-		RTE_LOG(INFO, EAL, "unexpected intr type\n");
+		EAL_LOG(INFO, "unexpected intr type");
 		break;
 	}
 
@@ -1242,11 +1252,11 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 			if (errno == EINTR || errno == EWOULDBLOCK ||
 			    errno == EAGAIN)
 				continue;
-			RTE_LOG(ERR, EAL,
-				"Error reading from fd %d: %s\n",
+			EAL_LOG(ERR,
+				"Error reading from fd %d: %s",
 				fd, strerror(errno));
 		} else if (nbytes == 0)
-			RTE_LOG(ERR, EAL, "Read nothing from fd %d\n", fd);
+			EAL_LOG(ERR, "Read nothing from fd %d", fd);
 		return;
 	} while (1);
 }
@@ -1266,9 +1276,9 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 		 * ordering below acting as a lock to synchronize
 		 * the event data updating.
 		 */
-		if (!rev || !__atomic_compare_exchange_n(&rev->status,
-				    &valid_status, RTE_EPOLL_EXEC, 0,
-				    __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+		if (!rev || !rte_atomic_compare_exchange_strong_explicit(&rev->status,
+				    &valid_status, RTE_EPOLL_EXEC,
+				    rte_memory_order_acquire, rte_memory_order_relaxed))
 			continue;
 
 		events[count].status        = RTE_EPOLL_VALID;
@@ -1283,8 +1293,8 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 		/* the status update should be observed after
 		 * the other fields change.
 		 */
-		__atomic_store_n(&rev->status, RTE_EPOLL_VALID,
-				__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&rev->status, RTE_EPOLL_VALID,
+				rte_memory_order_release);
 		count++;
 	}
 	return count;
@@ -1296,13 +1306,14 @@ eal_init_tls_epfd(void)
 	int pfd = epoll_create(255);
 
 	if (pfd < 0) {
-		RTE_LOG(ERR, EAL,
-			"Cannot create epoll instance\n");
+		EAL_LOG(ERR,
+			"Cannot create epoll instance");
 		return -1;
 	}
 	return pfd;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_tls_epfd)
 int
 rte_intr_tls_epfd(void)
 {
@@ -1316,11 +1327,12 @@ static int
 eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 	       int maxevents, int timeout, bool interruptible)
 {
-	struct epoll_event evs[maxevents];
 	int rc;
+	uint32_t i, k, n, num;
+	struct epoll_event evs[MAX_ITER_EVNUM];
 
 	if (!events) {
-		RTE_LOG(ERR, EAL, "rte_epoll_event can't be NULL\n");
+		EAL_LOG(ERR, "rte_epoll_event can't be NULL");
 		return -1;
 	}
 
@@ -1328,12 +1340,31 @@ eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 	if (epfd == RTE_EPOLL_PER_THREAD)
 		epfd = rte_intr_tls_epfd();
 
+	num = maxevents;
+	n = RTE_MIN(RTE_DIM(evs), num);
+
+	/* Process events in chunks of MAX_ITER_EVNUM */
+
 	while (1) {
-		rc = epoll_wait(epfd, evs, maxevents, timeout);
+		rc = epoll_wait(epfd, evs, n, timeout);
 		if (likely(rc > 0)) {
+
 			/* epoll_wait has at least one fd ready to read */
-			rc = eal_epoll_process_event(evs, rc, events);
-			break;
+			for (i = 0, k = 0; rc > 0;) {
+				k += rc;
+				rc = eal_epoll_process_event(evs, rc,
+						events + i);
+				i += rc;
+
+				/*
+				 * try to read more events that are already
+				 * available (up to maxevents in total).
+				 */
+				n = RTE_MIN(RTE_DIM(evs), num - k);
+				rc = (n == 0) ? 0 : epoll_wait(epfd, evs, n, 0);
+			}
+			return i;
+
 		} else if (rc < 0) {
 			if (errno == EINTR) {
 				if (interruptible)
@@ -1342,7 +1373,7 @@ eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 					continue;
 			}
 			/* epoll_wait fail */
-			RTE_LOG(ERR, EAL, "epoll_wait returns with fail %s\n",
+			EAL_LOG(ERR, "epoll_wait returns with fail %s",
 				strerror(errno));
 			rc = -1;
 			break;
@@ -1355,6 +1386,7 @@ eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 	return rc;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait)
 int
 rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	       int maxevents, int timeout)
@@ -1362,6 +1394,7 @@ rte_epoll_wait(int epfd, struct rte_epoll_event *events,
 	return eal_epoll_wait(epfd, events, maxevents, timeout, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_wait_interruptible)
 int
 rte_epoll_wait_interruptible(int epfd, struct rte_epoll_event *events,
 			     int maxevents, int timeout)
@@ -1374,10 +1407,10 @@ eal_epoll_data_safe_free(struct rte_epoll_event *ev)
 {
 	uint32_t valid_status = RTE_EPOLL_VALID;
 
-	while (!__atomic_compare_exchange_n(&ev->status, &valid_status,
-		    RTE_EPOLL_INVALID, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
-		while (__atomic_load_n(&ev->status,
-				__ATOMIC_RELAXED) != RTE_EPOLL_VALID)
+	while (!rte_atomic_compare_exchange_strong_explicit(&ev->status, &valid_status,
+		    RTE_EPOLL_INVALID, rte_memory_order_acquire, rte_memory_order_relaxed)) {
+		while (rte_atomic_load_explicit(&ev->status,
+				rte_memory_order_relaxed) != RTE_EPOLL_VALID)
 			rte_pause();
 		valid_status = RTE_EPOLL_VALID;
 	}
@@ -1386,6 +1419,7 @@ eal_epoll_data_safe_free(struct rte_epoll_event *ev)
 	ev->epfd = -1;
 }
 
+RTE_EXPORT_SYMBOL(rte_epoll_ctl)
 int
 rte_epoll_ctl(int epfd, int op, int fd,
 	      struct rte_epoll_event *event)
@@ -1393,7 +1427,7 @@ rte_epoll_ctl(int epfd, int op, int fd,
 	struct epoll_event ev;
 
 	if (!event) {
-		RTE_LOG(ERR, EAL, "rte_epoll_event can't be NULL\n");
+		EAL_LOG(ERR, "rte_epoll_event can't be NULL");
 		return -1;
 	}
 
@@ -1402,8 +1436,8 @@ rte_epoll_ctl(int epfd, int op, int fd,
 		epfd = rte_intr_tls_epfd();
 
 	if (op == EPOLL_CTL_ADD) {
-		__atomic_store_n(&event->status, RTE_EPOLL_VALID,
-				__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&event->status, RTE_EPOLL_VALID,
+				rte_memory_order_relaxed);
 		event->fd = fd;  /* ignore fd in event */
 		event->epfd = epfd;
 		ev.data.ptr = (void *)event;
@@ -1411,22 +1445,23 @@ rte_epoll_ctl(int epfd, int op, int fd,
 
 	ev.events = event->epdata.event;
 	if (epoll_ctl(epfd, op, fd, &ev) < 0) {
-		RTE_LOG(ERR, EAL, "Error op %d fd %d epoll_ctl, %s\n",
+		EAL_LOG(ERR, "Error op %d fd %d epoll_ctl, %s",
 			op, fd, strerror(errno));
 		if (op == EPOLL_CTL_ADD)
 			/* rollback status when CTL_ADD fail */
-			__atomic_store_n(&event->status, RTE_EPOLL_INVALID,
-					__ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&event->status, RTE_EPOLL_INVALID,
+					rte_memory_order_relaxed);
 		return -1;
 	}
 
-	if (op == EPOLL_CTL_DEL && __atomic_load_n(&event->status,
-			__ATOMIC_RELAXED) != RTE_EPOLL_INVALID)
+	if (op == EPOLL_CTL_DEL && rte_atomic_load_explicit(&event->status,
+			rte_memory_order_relaxed) != RTE_EPOLL_INVALID)
 		eal_epoll_data_safe_free(event);
 
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_rx_ctl)
 int
 rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 		int op, unsigned int vec, void *data)
@@ -1442,7 +1477,7 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 
 	if (intr_handle == NULL || rte_intr_nb_efd_get(intr_handle) == 0 ||
 			efd_idx >= (unsigned int)rte_intr_nb_efd_get(intr_handle)) {
-		RTE_LOG(ERR, EAL, "Wrong intr vector number.\n");
+		EAL_LOG(ERR, "Wrong intr vector number.");
 		return -EPERM;
 	}
 
@@ -1450,9 +1485,9 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	case RTE_INTR_EVENT_ADD:
 		epfd_op = EPOLL_CTL_ADD;
 		rev = rte_intr_elist_index_get(intr_handle, efd_idx);
-		if (__atomic_load_n(&rev->status,
-				__ATOMIC_RELAXED) != RTE_EPOLL_INVALID) {
-			RTE_LOG(INFO, EAL, "Event already been added.\n");
+		if (rte_atomic_load_explicit(&rev->status,
+				rte_memory_order_relaxed) != RTE_EPOLL_INVALID) {
+			EAL_LOG(INFO, "Event already been added.");
 			return -EEXIST;
 		}
 
@@ -1465,18 +1500,18 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 		rc = rte_epoll_ctl(epfd, epfd_op,
 			rte_intr_efds_index_get(intr_handle, efd_idx), rev);
 		if (!rc)
-			RTE_LOG(DEBUG, EAL,
-				"efd %d associated with vec %d added on epfd %d"
-				"\n", rev->fd, vec, epfd);
+			EAL_LOG(DEBUG,
+				"efd %d associated with vec %d added on epfd %d",
+				rev->fd, vec, epfd);
 		else
 			rc = -EPERM;
 		break;
 	case RTE_INTR_EVENT_DEL:
 		epfd_op = EPOLL_CTL_DEL;
 		rev = rte_intr_elist_index_get(intr_handle, efd_idx);
-		if (__atomic_load_n(&rev->status,
-				__ATOMIC_RELAXED) == RTE_EPOLL_INVALID) {
-			RTE_LOG(INFO, EAL, "Event does not exist.\n");
+		if (rte_atomic_load_explicit(&rev->status,
+				rte_memory_order_relaxed) == RTE_EPOLL_INVALID) {
+			EAL_LOG(INFO, "Event does not exist.");
 			return -EPERM;
 		}
 
@@ -1485,13 +1520,14 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 			rc = -EPERM;
 		break;
 	default:
-		RTE_LOG(ERR, EAL, "event op type mismatch\n");
+		EAL_LOG(ERR, "event op type mismatch");
 		rc = -EPERM;
 	}
 
 	return rc;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_free_epoll_fd)
 void
 rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 {
@@ -1500,8 +1536,8 @@ rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 
 	for (i = 0; i < (uint32_t)rte_intr_nb_efd_get(intr_handle); i++) {
 		rev = rte_intr_elist_index_get(intr_handle, i);
-		if (__atomic_load_n(&rev->status,
-				__ATOMIC_RELAXED) == RTE_EPOLL_INVALID)
+		if (rte_atomic_load_explicit(&rev->status,
+				rte_memory_order_relaxed) == RTE_EPOLL_INVALID)
 			continue;
 		if (rte_epoll_ctl(rev->epfd, EPOLL_CTL_DEL, rev->fd, rev)) {
 			/* force free if the entry valid */
@@ -1510,6 +1546,7 @@ rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 	}
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_enable)
 int
 rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 {
@@ -1523,8 +1560,8 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 		for (i = 0; i < n; i++) {
 			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 			if (fd < 0) {
-				RTE_LOG(ERR, EAL,
-					"can't setup eventfd, error %i (%s)\n",
+				EAL_LOG(ERR,
+					"can't setup eventfd, error %i (%s)",
 					errno, strerror(errno));
 				return -errno;
 			}
@@ -1542,7 +1579,7 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 		/* only check, initialization would be done in vdev driver.*/
 		if ((uint64_t)rte_intr_efd_counter_size_get(intr_handle) >
 		    sizeof(union rte_intr_read_buffer)) {
-			RTE_LOG(ERR, EAL, "the efd_counter_size is oversized");
+			EAL_LOG(ERR, "the efd_counter_size is oversized");
 			return -EINVAL;
 		}
 	} else {
@@ -1557,6 +1594,7 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_disable)
 void
 rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 {
@@ -1571,12 +1609,14 @@ rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 	rte_intr_max_intr_set(intr_handle, 0);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dp_is_en)
 int
 rte_intr_dp_is_en(struct rte_intr_handle *intr_handle)
 {
 	return !(!rte_intr_nb_efd_get(intr_handle));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_allow_others)
 int
 rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 {
@@ -1587,6 +1627,7 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle)
 				rte_intr_nb_efd_get(intr_handle));
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_cap_multiple)
 int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 {
@@ -1599,7 +1640,8 @@ rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_thread_is_intr)
 int rte_thread_is_intr(void)
 {
-	return pthread_equal(intr_thread, pthread_self());
+	return rte_thread_equal(intr_thread, rte_thread_self());
 }

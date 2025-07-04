@@ -38,7 +38,6 @@ struct mlx5_mp_arg_queue_id {
 
 struct mlx5_mp_arg_mr_manage {
 	struct mlx5_common_device *cdev;
-	RTE_STD_C11
 	union {
 		struct {
 			struct rte_mempool *mempool;
@@ -53,7 +52,6 @@ struct mlx5_mp_param {
 	enum mlx5_mp_req_type type;
 	int port_id;
 	int result;
-	RTE_STD_C11
 	union {
 		struct mlx5_mp_arg_mr_manage mr_manage;
 		/* MLX5_MP_REQ_MEMPOOL_(UN)REGISTER, MLX5_MP_REQ_CREATE_MR */

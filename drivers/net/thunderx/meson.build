@@ -8,7 +8,6 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 subdir('base')
-objs = [base_objs]
 
 sources = files(
         'nicvf_ethdev.c',
@@ -23,5 +22,3 @@ endif
 if cc.has_argument('-Wno-maybe-uninitialized')
     cflags += '-Wno-maybe-uninitialized'
 endif
-
-includes += include_directories('base')

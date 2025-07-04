@@ -39,7 +39,7 @@ struct prod_data {
 	struct test_order *t;
 };
 
-struct test_order {
+struct __rte_cache_aligned test_order {
 	/* Don't change the offset of "err". Signal handler use this memory
 	 * to terminate all lcores work.
 	 */
@@ -48,7 +48,7 @@ struct test_order {
 	 * The atomic_* is an expensive operation,Since it is a functional test,
 	 * We are using the atomic_ operation to reduce the code complexity.
 	 */
-	uint64_t outstand_pkts;
+	RTE_ATOMIC(uint64_t) outstand_pkts;
 	enum evt_test_result result;
 	uint32_t nb_flows;
 	uint64_t nb_pkts;
@@ -60,7 +60,7 @@ struct test_order {
 	uint32_t *producer_flow_seq;
 	uint32_t *expected_flow_seq;
 	struct evt_options *opt;
-} __rte_cache_aligned;
+};
 
 static inline void
 order_flow_id_copy_from_mbuf(struct test_order *t, struct rte_event *event)
@@ -95,7 +95,7 @@ static __rte_always_inline void
 order_process_stage_1(struct test_order *const t,
 		struct rte_event *const ev, const uint32_t nb_flows,
 		uint32_t *const expected_flow_seq,
-		uint64_t *const outstand_pkts)
+		RTE_ATOMIC(uint64_t) *const outstand_pkts)
 {
 	const uint32_t flow = (uintptr_t)ev->mbuf % nb_flows;
 	/* compare the seqn against expected value */
@@ -113,7 +113,7 @@ order_process_stage_1(struct test_order *const t,
 	 */
 	expected_flow_seq[flow]++;
 	rte_pktmbuf_free(ev->mbuf);
-	__atomic_sub_fetch(outstand_pkts, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(outstand_pkts, 1, rte_memory_order_relaxed);
 }
 
 static __rte_always_inline void
@@ -132,7 +132,7 @@ order_process_stage_invalid(struct test_order *const t,
 	const uint8_t port = w->port_id;\
 	const uint32_t nb_flows = t->nb_flows;\
 	uint32_t *expected_flow_seq = t->expected_flow_seq;\
-	uint64_t *outstand_pkts = &t->outstand_pkts;\
+	RTE_ATOMIC(uint64_t) *outstand_pkts = &t->outstand_pkts;\
 	if (opt->verbose_level > 1)\
 		printf("%s(): lcore %d dev_id %d port=%d\n",\
 			__func__, rte_lcore_id(), dev_id, port)

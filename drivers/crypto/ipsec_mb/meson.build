@@ -7,7 +7,9 @@ if is_windows
     subdir_done()
 endif
 
-IMB_required_ver = '1.0.0'
+cflags += no_wvla_cflag
+
+IMB_required_ver = '1.4.0'
 IMB_header = '#include<intel-ipsec-mb.h>'
 if arch_subdir == 'arm'
     IMB_header = '#include<ipsec-mb.h>'
@@ -16,6 +18,11 @@ lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()
     build = false
     reason = 'missing dependency, "libIPSec_MB"'
+# if the lib is found, check it's the right format
+elif not cc.links(
+        'int main(void) {return 0;}', dependencies: lib)
+    build = false
+    reason = 'incompatible dependency, "libIPSec_MB"'
 else
     ext_deps += lib
 

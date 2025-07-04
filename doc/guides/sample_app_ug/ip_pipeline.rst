@@ -71,7 +71,7 @@ The following is an example command to run ip pipeline application configured fo
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-ip_pipeline -c 0x3 -- -s examples/route_ecmp.cli
+    $ ./<build_dir>/examples/dpdk-ip_pipeline -l 0,1 -- -s examples/route_ecmp.cli
 
 The application should start successfully and display as follows:
 
@@ -127,9 +127,9 @@ The main thread is creating and managing all the application objects based on CL
 Each data plane thread runs one or several pipelines previously assigned to it in round-robin order. Each data plane thread
 executes two tasks in time-sharing mode:
 
-1. *Packet processing task*: Process bursts of input packets read from the pipeline input ports.
+#. *Packet processing task*: Process bursts of input packets read from the pipeline input ports.
 
-2. *Message handling task*: Periodically, the data plane thread pauses the packet processing task and polls for request
+#. *Message handling task*: Periodically, the data plane thread pauses the packet processing task and polls for request
    messages send by the main thread. Examples: add/remove pipeline to/from current data plane thread, add/delete rules
    to/from given table of a specific pipeline owned by the current data plane thread, read statistics, etc.
 
@@ -163,15 +163,6 @@ Examples
    |                       |                      |                | 7. Pipeline enable                 |
    |                       |                      |                | 8. Pipeline table rule add default |
    |                       |                      |                | 9. Pipeline table rule add         |
-   +-----------------------+----------------------+----------------+------------------------------------+
-   | KNI                   | Stub                 | Forward        | 1. Mempool create                  |
-   |                       |                      |                | 2. Link create                     |
-   |                       |                      |                | 3. Pipeline create                 |
-   |                       |                      |                | 4. Pipeline port in/out            |
-   |                       |                      |                | 5. Pipeline table                  |
-   |                       |                      |                | 6. Pipeline port in table          |
-   |                       |                      |                | 7. Pipeline enable                 |
-   |                       |                      |                | 8. Pipeline table rule add         |
    +-----------------------+----------------------+----------------+------------------------------------+
    | Firewall              | ACL                  | Allow/Drop     | 1. Mempool create                  |
    |                       |                      |                | 2. Link create                     |
@@ -297,17 +288,6 @@ Tap
   tap <name>
 
 
-Kni
-~~~
-
-  Create kni port ::
-
-   kni <kni_name>
-    link <link_name>
-    mempool <mempool_name>
-    [thread <thread_id>]
-
-
 Cryptodev
 ~~~~~~~~~
 
@@ -366,7 +346,6 @@ Create pipeline input port ::
    | swq <swq_name>
    | tmgr <tmgr_name>
    | tap <tap_name> mempool <mempool_name> mtu <mtu>
-   | kni <kni_name>
    | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>
    [action <port_in_action_profile_name>]
    [disabled]
@@ -379,7 +358,6 @@ Create pipeline output port ::
    | swq <swq_name>
    | tmgr <tmgr_name>
    | tap <tap_name>
-   | kni <kni_name>
    | sink [file <file_name> pkts <max_n_pkts>]
 
 Create pipeline table ::

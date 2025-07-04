@@ -68,7 +68,7 @@ static struct qat_qp_hw_spec_funcs qat_qp_hw_spec_gen3 = {
 };
 
 static int
-qat_dev_get_slice_map_gen3(uint16_t *map,
+qat_dev_get_slice_map_gen3(uint32_t *map,
 	const struct rte_pci_device *pci_dev)
 {
 	if (rte_pci_read_config(pci_dev, map,

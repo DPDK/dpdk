@@ -17,10 +17,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Simplified GTP protocol header.
  * Contains 8-bit header info, 8-bit message type,
@@ -28,7 +24,7 @@ extern "C" {
  * No optional fields and next extension header.
  */
 __extension__
-struct rte_gtp_hdr {
+struct __rte_packed_begin rte_gtp_hdr {
 	union {
 		uint8_t gtp_hdr_info; /**< GTP header info */
 		struct {
@@ -52,21 +48,21 @@ struct rte_gtp_hdr {
 	uint8_t msg_type;     /**< GTP message type */
 	rte_be16_t plen;      /**< Total payload length */
 	rte_be32_t teid;      /**< Tunnel endpoint ID */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Optional word of GTP header, present if any of E, S, PN is set. */
-struct rte_gtp_hdr_ext_word {
+struct __rte_packed_begin rte_gtp_hdr_ext_word {
 	rte_be16_t sqn;	      /**< Sequence Number. */
 	uint8_t npdu;	      /**< N-PDU number. */
 	uint8_t next_ext;     /**< Next Extension Header Type. */
-}  __rte_packed;
+} __rte_packed_end;
 
 /**
  * Optional extension for GTP with next_ext set to 0x85
  * defined based on RFC 38415-g30.
  */
 __extension__
-struct rte_gtp_psc_generic_hdr {
+struct __rte_packed_begin rte_gtp_psc_generic_hdr {
 	uint8_t ext_hdr_len;	/**< PDU ext hdr len in multiples of 4 bytes */
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 	uint8_t type:4;		/**< PDU type */
@@ -82,14 +78,14 @@ struct rte_gtp_psc_generic_hdr {
 	uint8_t spare:2;	/**< type specific spare bits */
 #endif
 	uint8_t data[0];	/**< variable length data fields */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Optional extension for GTP with next_ext set to 0x85
  * type0 defined based on RFC 38415-g30
  */
 __extension__
-struct rte_gtp_psc_type0_hdr {
+struct __rte_packed_begin rte_gtp_psc_type0_hdr {
 	uint8_t ext_hdr_len;	/**< PDU ext hdr len in multiples of 4 bytes */
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 	uint8_t type:4;		/**< PDU type */
@@ -109,14 +105,14 @@ struct rte_gtp_psc_type0_hdr {
 	uint8_t ppp:1;		/**< Paging policy presence */
 #endif
 	uint8_t data[0];	/**< variable length data fields */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Optional extension for GTP with next_ext set to 0x85
  * type1 defined based on RFC 38415-g30
  */
 __extension__
-struct rte_gtp_psc_type1_hdr {
+struct __rte_packed_begin rte_gtp_psc_type1_hdr {
 	uint8_t ext_hdr_len;	/**< PDU ext hdr len in multiples of 4 bytes */
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 	uint8_t type:4;		/**< PDU type */
@@ -138,7 +134,7 @@ struct rte_gtp_psc_type1_hdr {
 	uint8_t n_delay_ind:1;	/**< N3/N9 delay result presence */
 #endif
 	uint8_t data[0];	/**< variable length data fields */
-} __rte_packed;
+} __rte_packed_end;
 
 /** GTP header length */
 #define RTE_ETHER_GTP_HLEN \
@@ -149,9 +145,5 @@ struct rte_gtp_psc_type1_hdr {
 /* GTP destination port number */
 #define RTE_GTPC_UDP_PORT 2123 /**< GTP-C UDP destination port */
 #define RTE_GTPU_UDP_PORT 2152 /**< GTP-U UDP destination port */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_GTP_H_ */

@@ -7,6 +7,41 @@ Profile Your Application
 The following sections describe methods of profiling DPDK applications on
 different architectures.
 
+Performance counter based profiling
+-----------------------------------
+
+Modern CPU architectures are equipped with Performance Monitoring Units (PMUs),
+which provide programmable counters to monitor specific hardware events,
+such as cache hits, instruction counts, and branch predictions.
+
+Tools like Linux perf utilize PMUs to gather performance data.
+However, in scenarios where CPU cores are isolated,
+running dedicated tasks and performance of some specific regions of code
+must be analyzed, extra overhead may be undesirable.
+In such cases, applications can directly access PMU data
+using the ``rte_pmu_read()`` function.
+
+Access requirements
+~~~~~~~~~~~~~~~~~~~
+
+Only Linux is supported.
+
+Userspace applications may be restricted, due to various reasons, from accessing PMU internals.
+To enable access, ``/proc/sys/kernel/perf_event_paranoid`` should be set to ``2``
+and application should have ``CAP_PERFMON`` capability assigned.
+
+For comprehensive information on security implications and configuration, refer to
+`Linux documentation <https://www.kernel.org/doc/html/latest/admin-guide/perf-security.html>`_.
+
+Limitations
+~~~~~~~~~~~
+
+Current implementation imposes certain limitations:
+
+* Only EAL lcores are supported.
+* EAL lcores must not share a CPU.
+* Each EAL lcore measures the same group of events.
+
 
 Profiling on x86
 ----------------
@@ -59,7 +94,7 @@ addition to the standard events, ``perf`` can be used to profile arm64
 specific PMU (Performance Monitor Unit) events through raw events (``-e``
 ``-rXX``).
 
-For more derails refer to the
+For more details refer to the
 `ARM64 specific PMU events enumeration <http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.100095_0002_04_en/way1382543438508.html>`_.
 
 

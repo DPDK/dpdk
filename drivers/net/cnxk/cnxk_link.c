@@ -13,7 +13,8 @@ cnxk_nix_toggle_flag_link_cfg(struct cnxk_eth_dev *dev, bool set)
 		dev->flags &= ~CNXK_LINK_CFG_IN_PROGRESS_F;
 
 	/* Update link info for LBK */
-	if (!set && (roc_nix_is_lbk(&dev->nix) || roc_nix_is_sdp(&dev->nix))) {
+	if (!set &&
+	    (roc_nix_is_lbk(&dev->nix) || roc_nix_is_sdp(&dev->nix) || roc_nix_is_esw(&dev->nix))) {
 		struct rte_eth_link link;
 
 		link.link_status = RTE_ETH_LINK_UP;

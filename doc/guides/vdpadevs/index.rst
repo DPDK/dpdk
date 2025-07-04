@@ -8,10 +8,11 @@ The following are a list of vDPA (vHost Data Path Acceleration) device drivers,
 which can be used from an application through vhost API.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :numbered:
 
     features_overview
     ifc
     mlx5
+    nfp
     sfc

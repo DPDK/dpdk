@@ -44,13 +44,13 @@ int cmdline_get_help_string(cmdline_parse_token_hdr_t *tk, char *dstbuf,
 			    unsigned int size);
 
 /**
-* Token marked as TOKEN_STRING_MULTI takes entire parsing string
-* until “#” sign appear. Everything after “#” sign is treated as a comment.
-*
-* Note:
-* In this case second parameter of TOKEN_STRING_INITIALIZER must be a type of
-* cmdline_multi_string_t.
-*/
+ * Token marked as TOKEN_STRING_MULTI takes entire parsing string
+ * until “#” sign appear. Everything after “#” sign is treated as a comment.
+ *
+ * Note:
+ * In this case second parameter of TOKEN_STRING_INITIALIZER
+ * must be a type of cmdline_multi_string_t.
+ */
 #define TOKEN_STRING_MULTI ""
 
 #define TOKEN_STRING_INITIALIZER(structure, field, string)  \

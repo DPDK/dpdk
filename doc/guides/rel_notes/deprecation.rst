@@ -5,11 +5,24 @@ ABI and API Deprecation
 =======================
 
 See the guidelines document for details of the :doc:`ABI policy
-<../contributing/abi_policy>`. API and ABI deprecation notices are to be posted
-here.
+<../contributing/abi_policy>`.
+
+With DPDK 23.11, there will be a new major ABI version: 24.
+This means that during the development of 23.11,
+new items may be added to structs or enums,
+even if those additions involve an ABI compatibility breakage.
+
+Other API and ABI deprecation notices are to be posted below.
 
 Deprecation Notices
 -------------------
+
+* build: The ``enable_kmods`` option is deprecated and will be removed in a future release.
+  Setting/clearing the option has no impact on the build.
+  Instead, kernel modules will be always built for OS's where out-of-tree kernel modules
+  are required for DPDK operation.
+  Currently, this means that modules will only be built for FreeBSD.
+  No modules are shipped with DPDK for either Linux or Windows.
 
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
@@ -19,14 +32,15 @@ Deprecation Notices
   are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
   As such, the old function names are deprecated and will be removed in a future release.
 
-* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
-  in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
-  to update their code.
+* eal: The ``-c <coremask>`` commandline parameter is deprecated
+  and will be removed in a future release.
+  Use the ``-l <corelist>`` or ``--lcores=<corelist>`` parameters instead
+  to specify the cores to be used when running a DPDK application.
 
-* eal: The functions ``rte_thread_setname`` and ``rte_ctrl_thread_create``
-  are planned to be deprecated starting with the 23.07 release, subject to
-  the replacement API rte_thread_set_name and rte_thread_create_control being
-  marked as stable, and planned to be removed by the 23.11 release.
+* eal: The ``-s <service-coremask>`` commandline parameter is deprecated
+  and will be removed in a future release.
+  Use the ``-S <service-corelist>`` parameter instead
+  to specify the cores to be used for background services in DPDK.
 
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
@@ -43,13 +57,6 @@ Deprecation Notices
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
 
-* kni: The KNI kernel module and library are not recommended for use by new
-  applications - other technologies such as virtio-user are recommended instead.
-  Following the DPDK technical board
-  `decision <https://mails.dpdk.org/archives/dev/2021-January/197077.html>`_
-  and `refinement <https://mails.dpdk.org/archives/dev/2022-June/243596.html>`_,
-  the KNI kernel module, library and PMD will be removed from the DPDK 23.11 release.
-
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
   used by iterators, and arrays holding these values are sized with this
@@ -63,6 +70,15 @@ Deprecation Notices
   Need to identify this kind of usages and fix in 20.11, otherwise this blocks
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
+
+* net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
+  is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
+  The struct ``rte_flow_item_vxlan_gpe`` and its mask ``rte_flow_item_vxlan_gpe_mask``
+  are replaced with ``rte_flow_item_vxlan`` and ``rte_flow_item_vxlan_mask``.
+  The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``,
+  the structs ``rte_flow_item_vxlan_gpe``, ``rte_flow_item_vxlan_gpe_mask``,
+  and the header struct ``rte_vxlan_gpe_hdr`` with the macro ``RTE_ETHER_VXLAN_GPE_HLEN``
+  will be removed in DPDK 25.11.
 
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header structure from lib/net/.
@@ -118,20 +134,21 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
-  to have another parameter ``qp_id`` to return the queue pair ID
-  which got error interrupt to the application,
-  so that application can reset that particular queue pair.
+* pipeline: The pipeline library legacy API (functions rte_pipeline_*)
+  will be deprecated and subsequently removed in DPDK 24.11 release.
+  Before this, the new pipeline library API (functions rte_swx_pipeline_*)
+  will gradually transition from experimental to stable status.
 
-* cryptodev: The arrays of algorithm strings ``rte_crypto_cipher_algorithm_strings``,
-  ``rte_crypto_auth_algorithm_strings``, ``rte_crypto_aead_algorithm_strings`` and
-  ``rte_crypto_asym_xform_strings`` are deprecated and will be removed in DPDK 23.11.
-  Application can use the new APIs ``rte_cryptodev_get_cipher_algo_string``,
-  ``rte_cryptodev_get_auth_algo_string``, ``rte_cryptodev_get_aead_algo_string`` and
-  ``rte_cryptodev_asym_get_xform_string`` respectively.
+* table: The table library legacy API (functions rte_table_*)
+  will be deprecated and subsequently removed in DPDK 24.11 release.
+  Before this, the new table library API (functions rte_swx_table_*)
+  will gradually transition from experimental to stable status.
 
-* flow_classify: The flow_classify library and example have no maintainer.
-  The library is experimental and, as such, it could be removed from DPDK.
-  Its removal has been postponed to let potential users report interest
-  in maintaining it.
-  In the absence of such interest, this library will be removed in DPDK 23.11.
+* port: The port library legacy API (functions rte_port_*)
+  will be deprecated and subsequently removed in DPDK 24.11 release.
+  Before this, the new port library API (functions rte_swx_port_*)
+  will gradually transition from experimental to stable status.
+
+* bus/vmbus: Starting DPDK 25.11, all the vmbus API defined in
+  ``drivers/bus/vmbus/rte_bus_vmbus.h`` will become internal to DPDK.
+  Those API functions are used internally by DPDK core and netvsc PMD.

@@ -4,15 +4,17 @@
 L3 Forwarding Graph Sample Application
 ======================================
 
-The L3 Forwarding Graph application is a simple example of packet processing
-using the DPDK Graph framework. The application performs L3 forwarding using
-Graph framework and nodes written for graph framework.
+The L3 forwarding graph application is an example of packet processing
+using the DPDK Graph framework.
+The application performs L3 forwarding using graph framework,
+and nodes written for graph framework.
 
 Overview
 --------
 
 The application demonstrates the use of the graph framework and graph nodes
-``ethdev_rx``, ``ip4_lookup``, ``ip4_rewrite``, ``ethdev_tx`` and ``pkt_drop`` in DPDK to
+``ethdev_rx``, ``pkt_cls``, ``ip4_lookup``/``ip6_lookup``,
+``ip4_rewrite``/``ip6_rewrite``, ``ethdev_tx`` and ``pkt_drop`` in DPDK to
 implement packet forwarding.
 
 The initialization is very similar to those of the :doc:`l3_forward`.
@@ -21,21 +23,23 @@ and configuration per lcore.
 Run-time path is main thing that differs from L3 forwarding sample application.
 Difference is that forwarding logic starting from Rx, followed by LPM lookup,
 TTL update and finally Tx is implemented inside graph nodes. These nodes are
-interconnected in graph framework. Application main loop needs to walk over
+interconnected in graph framework. The application main loop needs to walk over
 graph using ``rte_graph_walk()`` with graph objects created one per worker lcore.
 
-The lookup method is as per implementation of ``ip4_lookup`` graph node.
+The lookup method is as per implementation of ``ip4_lookup``/``ip6_lookup`` graph node.
 The ID of the output interface for the input packet is the next hop returned by
 the LPM lookup. The set of LPM rules used by the application is statically
-configured and provided to ``ip4_lookup`` graph node and ``ip4_rewrite`` graph node
-using node control API ``rte_node_ip4_route_add()`` and ``rte_node_ip4_rewrite_add()``.
+configured and provided to ``ip4_lookup``/``ip6_lookup`` graph node and
+``ip4_rewrite``/``ip6_rewrite`` graph node using node control API
+``rte_node_ip4_route_add()``/``rte_node_ip6_route_add`` and
+``rte_node_ip4_rewrite_add()``/``rte_node_ip6_rewrite_add``.
 
-In the sample application, only IPv4 forwarding is supported as of now.
+In the sample application, IPv4 and IPv6 forwarding is supported.
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l3fwd-graph`` sub-directory.
 
@@ -54,6 +58,7 @@ The application has a number of command line options similar to l3fwd::
                                    [--pcap-enable]
                                    [--pcap-num-cap]
                                    [--pcap-file-name]
+                                   [--model]
 
 Where,
 
@@ -77,6 +82,8 @@ Where,
 * ``--pcap-num-cap:`` Optional, Number of packets to be captured per core.
 
 * ``--pcap-file-name:`` Optional, Pcap filename to capture packets in.
+
+* ``--model:`` Optional, select graph walking model.
 
 For example, consider a dual processor socket platform with 8 physical cores, where cores 0-7 and 16-23 appear on socket 0,
 while cores 8-15 and 24-31 appear on socket 1.
@@ -122,6 +129,19 @@ In this command:
 
 *   The --pcap-file-name option enables user to give filename in which packets are to be captured.
 
+To enable mcore dispatch model, the application need change RTE_GRAPH_MODEL_SELECT to ``#define RTE_GRAPH_MODEL_SELECT RTE_GRAPH_MODEL_MCORE_DISPATCH``
+before including rte_graph_worker.h. Recompile and use following command:
+
+.. code-block:: console
+
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2,3,4 -n 4 -- -p 0x1 --config="(0,0,1)" -P --model="dispatch"
+
+To enable graph walking model selection in run-time, remove the define of ``RTE_GRAPH_MODEL_SELECT``. Recompile and use the same command.
+
+In this command:
+
+*   The --model option enables user to select ``rtc`` or ``dispatch`` model.
+
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
@@ -149,8 +169,8 @@ lead to the clone of ``ethdev_rx`` and ``ethdev_tx`` nodes as ``ethdev_rx-X-Y`` 
 In case of ``ethdev_tx-X`` nodes, tx queue id assigned per instance of the node
 is same as graph id.
 
-These cloned nodes along with existing static nodes such as ``ip4_lookup`` and
-``ip4_rewrite`` will be used in graph creation to associate node's to lcore
+These cloned nodes along with existing static nodes such as ``ip4_lookup``/``ip6_lookup``
+and ``ip4_rewrite``/``ip6_rewrite`` will be used in graph creation to associate node's to lcore
 specific graph object.
 
 .. literalinclude:: ../../../examples/l3fwd-graph/main.c
@@ -162,7 +182,7 @@ specific graph object.
 Graph Initialization
 ~~~~~~~~~~~~~~~~~~~~
 
-Now a graph needs to be created with a specific set of nodes for every lcore.
+Now, a graph needs to be created with a specific set of nodes for every lcore.
 A graph object returned after graph creation is a per lcore object and
 cannot be shared between lcores. Since ``ethdev_tx-X`` node is per port node,
 it can be associated with all the graphs created as all the lcores should have
@@ -186,28 +206,29 @@ Forwarding data(Route, Next-Hop) addition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once graph objects are created, node specific info like routes and rewrite
-headers will be provided run-time using ``rte_node_ip4_route_add()`` and
-``rte_node_ip4_rewrite_add()`` API.
+headers will be provided run-time using ``rte_node_ip4_route_add()``/
+``rte_node_ip6_route_add`` and ``rte_node_ip4_rewrite_add()``/``rte_node_ip6_rewrite_add``
+API.
 
 .. note::
 
-    Since currently ``ip4_lookup`` and ``ip4_rewrite`` nodes don't support
-    lock-less mechanisms(RCU, etc) to add run-time forwarding data like route and
-    rewrite data, forwarding data is added before packet processing loop is
-    launched on worker lcore.
+    Since currently ``ip4_lookup``/``ip6_lookup`` and ``ip4_rewrite``/``ip6_rewrite``
+    nodes don't support lock-less mechanisms(RCU, etc) to add run-time forwarding
+    data like route and rewrite data, forwarding data is added before packet
+    processing loop is launched on worker lcore.
 
 .. literalinclude:: ../../../examples/l3fwd-graph/main.c
     :language: c
-    :start-after: Add route to ip4 graph infra. 8<
-    :end-before: >8 End of adding route to ip4 graph infa.
+    :start-after: Add routes and rewrite data to graph infra. 8<
+    :end-before: >8 End of adding routes and rewrite data to graph infa.
     :dedent: 1
 
 Packet Forwarding using Graph Walk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now that all the device configurations are done, graph creations are done and
-forwarding data is updated with nodes, worker lcores will be launched with graph
-main loop. Graph main loop is very simple in the sense that it needs to
+forwarding data is updated with nodes, worker lcores will be launched with the graph
+main loop.The graph main loop is very simple in the sense that it needs to
 continuously call a non-blocking API ``rte_graph_walk()`` with it's lcore
 specific graph object that was already created.
 
@@ -215,8 +236,10 @@ specific graph object that was already created.
 
     rte_graph_walk() will walk over all the sources nodes i.e ``ethdev_rx-X-Y``
     associated with a given graph and Rx the available packets and enqueue them
-    to the following node ``ip4_lookup`` which then will enqueue them to ``ip4_rewrite``
-    node if LPM lookup succeeds. ``ip4_rewrite`` node then will update Ethernet header
+    to the following node ``pkt_cls`` which based on the packet type will enqueue
+    them to ``ip4_lookup``/``ip6_lookup`` which then will enqueue them to
+    ``ip4_rewrite``/``ip6_rewrite`` node if LPM lookup succeeds.
+    ``ip4_rewrite``/``ip6_rewrite`` node then will update Ethernet header
     as per next-hop data and transmit the packet via port 'Z' by enqueuing
     to ``ethdev_tx-Z`` node instance in its graph object.
 

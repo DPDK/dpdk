@@ -87,7 +87,7 @@ cnxk_bphy_intr_unregister(uint16_t dev_id, int irq_num)
 	if (bphy_dev->irq_chip)
 		roc_bphy_intr_clear(bphy_dev->irq_chip, irq_num);
 	else
-		plt_err("Missing irq chip");
+		CNXK_BPHY_LOG(ERR, "Missing irq chip");
 }
 
 struct cnxk_bphy_mem *

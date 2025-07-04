@@ -337,6 +337,7 @@ cmd_softnic_pipeline_libbuild(struct pmd_internals *softnic __rte_unused,
 		 "-I %s/lib/eal/include "
 		 "-I %s/lib/eal/x86/include "
 		 "-I %s/lib/eal/include/generic "
+		 "-I %s/lib/log "
 		 "-I %s/lib/meter "
 		 "-I %s/lib/port "
 		 "-I %s/lib/table "
@@ -350,6 +351,7 @@ cmd_softnic_pipeline_libbuild(struct pmd_internals *softnic __rte_unused,
 		 ">>%s 2>&1",
 		 obj_file,
 		 code_file,
+		 install_dir,
 		 install_dir,
 		 install_dir,
 		 install_dir,

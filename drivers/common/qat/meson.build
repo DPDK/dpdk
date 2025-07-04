@@ -17,49 +17,58 @@ qat_compress_relpath = '../../' + qat_compress_path
 if disable_drivers.contains(qat_crypto_path)
     qat_crypto = false
     dpdk_drvs_disabled += qat_crypto_path
-    set_variable(qat_crypto_path.underscorify() + '_disable_reason',
+    set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
             'Explicitly disabled via build config')
 endif
 if disable_drivers.contains(qat_compress_path)
     qat_compress = false
     dpdk_drvs_disabled += qat_compress_path
-    set_variable(qat_compress_path.underscorify() + '_disable_reason',
+    set_variable('drv_' + qat_compress_path.underscorify() + '_disable_reason',
             'Explicitly disabled via build config')
 endif
 
 libcrypto = dependency('libcrypto', required: false, method: 'pkg-config')
-if qat_crypto and not libcrypto.found()
-    qat_crypto = false
-    dpdk_drvs_disabled += qat_crypto_path
-    set_variable(qat_crypto_path.underscorify() + '_disable_reason',
-            'missing dependency, libcrypto')
-endif
 
-IMB_required_ver = '1.2.0'
-IMB_header = '#include<intel-ipsec-mb.h>'
 if arch_subdir == 'arm'
-    IMB_header = '#include<ipsec-mb.h>'
-endif
-libipsecmb = cc.find_library('IPSec_MB', required: false)
-libcrypto_3 = dependency('libcrypto', required: false,
-    method: 'pkg-config', version : '>=3.0.0')
-if libipsecmb.found() and libcrypto_3.found()
-    # version comes with quotes, so we split based on " and take the middle
-    imb_ver = cc.get_define('IMB_VERSION_STR',
-        prefix : IMB_header).split('"')[1]
-
-    if (imb_ver.version_compare('>=' + IMB_required_ver))
-        ext_deps += libipsecmb
-        dpdk_conf.set('RTE_QAT_LIBIPSECMB', true)
+    if libcrypto.found()
+        ext_deps += libcrypto
+        dpdk_conf.set('RTE_QAT_OPENSSL', true)
+    else
+        qat_crypto = false
+        dpdk_drvs_disabled += qat_crypto_path
+        set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
+        'missing dependency for Arm, libcrypto')
     endif
-endif
+else
+    IMB_required_ver = '1.4.0'
+    IMB_header = '#include<intel-ipsec-mb.h>'
+    libipsecmb = cc.find_library('IPSec_MB', required: false)
+    if libipsecmb.found() and cc.links(
+            'int main(void) {return 0;}', dependencies: libipsecmb)
+        # version comes with quotes, so we split based on " and take the middle
+        imb_ver = cc.get_define('IMB_VERSION_STR',
+            prefix : IMB_header).split('"')[1]
 
-# The driver should not build if both compression and crypto are disabled
-#FIXME common code depends on compression files so check only compress!
-if not qat_compress # and not qat_crypto
-    build = false
-    reason = '' # rely on reason for compress/crypto above
-    subdir_done()
+        if (imb_ver.version_compare('>=' + IMB_required_ver))
+            ext_deps += libipsecmb
+        elif libcrypto.found()
+            ext_deps += libcrypto
+            dpdk_conf.set('RTE_QAT_OPENSSL', true)
+        else
+            qat_crypto = false
+            dpdk_drvs_disabled += qat_crypto_path
+            set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
+                'missing dependency, libipsecmb or libcrypto')
+        endif
+    elif libcrypto.found()
+        ext_deps += libcrypto
+        dpdk_conf.set('RTE_QAT_OPENSSL', true)
+    else
+        qat_crypto = false
+        dpdk_drvs_disabled += qat_crypto_path
+        set_variable('drv_' + qat_crypto_path.underscorify() + '_disable_reason',
+            'missing dependency, libipsecmb or libcrypto')
+    endif
 endif
 
 deps += ['bus_pci', 'cryptodev', 'net', 'compressdev']
@@ -73,6 +82,8 @@ sources += files(
         'dev/qat_dev_gen2.c',
         'dev/qat_dev_gen3.c',
         'dev/qat_dev_gen4.c',
+        'dev/qat_dev_gen5.c',
+        'dev/qat_dev_gen_lce.c',
 )
 includes += include_directories(
         'qat_adf',
@@ -86,10 +97,13 @@ if qat_compress
             'dev/qat_comp_pmd_gen2.c',
             'dev/qat_comp_pmd_gen3.c',
             'dev/qat_comp_pmd_gen4.c',
+            'dev/qat_comp_pmd_gen5.c',
         ]
         sources += files(join_paths(qat_compress_relpath, f))
     endforeach
 endif
+
+cflags += no_wvla_cflag
 
 if qat_crypto
     foreach f: ['qat_sym.c', 'qat_sym_session.c',
@@ -99,10 +113,11 @@ if qat_crypto
             'dev/qat_crypto_pmd_gen2.c',
             'dev/qat_crypto_pmd_gen3.c',
             'dev/qat_crypto_pmd_gen4.c',
+            'dev/qat_crypto_pmd_gen5.c',
+            'dev/qat_crypto_pmd_gen_lce.c',
         ]
         sources += files(join_paths(qat_crypto_relpath, f))
     endforeach
     deps += ['security']
-    ext_deps += libcrypto
     cflags += ['-DBUILD_QAT_SYM', '-DBUILD_QAT_ASYM']
 endif

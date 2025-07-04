@@ -8,10 +8,6 @@
 #ifndef RTE_CPUFLAGS_RISCV_H
 #define RTE_CPUFLAGS_RISCV_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Enumeration of all CPU features supported
  */
@@ -42,14 +38,8 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_RISCV_ISA_X, /* Non-standard extension present */
 	RTE_CPUFLAG_RISCV_ISA_Y, /* Reserved */
 	RTE_CPUFLAG_RISCV_ISA_Z, /* Reserved */
-	/* The last item */
-	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
 
 #include "generic/rte_cpuflags.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_CPUFLAGS_RISCV_H */

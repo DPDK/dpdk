@@ -20,6 +20,8 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 
+#include "dpaax_logs.h"
+
 #ifndef __BYTE_ORDER__
 #error "Undefined endianness"
 #endif
@@ -44,7 +46,7 @@
 #define pr_msg(l, fmt, ...) do { } while (0)
 #else
 #define pr_msg(l, fmt, ...) \
-	RTE_LOG(l, PMD, "%s(): " fmt "\n", __func__, ##__VA_ARGS__)
+	RTE_LOG(l, DPAAX_LOGGER, "%s(): " fmt "\n", __func__, ##__VA_ARGS__)
 #endif
 
 #if !defined(pr_debug)

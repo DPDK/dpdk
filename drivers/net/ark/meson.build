@@ -16,6 +16,5 @@ sources = files(
         'ark_pktchkr.c',
         'ark_pktdir.c',
         'ark_pktgen.c',
-        'ark_rqp.c',
         'ark_udm.c',
 )

@@ -172,4 +172,4 @@ test_timer_racecond(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(timer_racecond_autotest, test_timer_racecond);
+REGISTER_PERF_TEST(timer_racecond_autotest, test_timer_racecond);

@@ -42,7 +42,7 @@
 
 #define ENETFEC_MAX_Q		1
 
-#define writel(v, p) ({*(volatile unsigned int *)(p) = (v); })
+#define writel(v, p) __extension__ ({*(volatile unsigned int *)(p) = (v); })
 #define readl(p) rte_read32(p)
 
 struct bufdesc {
@@ -123,12 +123,6 @@ bufdesc *enet_get_nextdesc(struct bufdesc *bdp, struct bufdesc_prop *bd)
 {
 	return (bdp >= bd->last) ? bd->base
 		: (struct bufdesc *)(((uintptr_t)bdp) + bd->d_size);
-}
-
-static inline int
-fls64(unsigned long word)
-{
-	return (64 - __builtin_clzl(word)) - 1;
 }
 
 static inline struct

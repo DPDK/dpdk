@@ -4,11 +4,19 @@
 
 #include <rte_string_fns.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
 /* early configuration structure, when memory config is not mmapped */
-static struct rte_mem_config early_mem_config;
+static struct rte_mem_config early_mem_config = {
+	.mlock = RTE_RWLOCK_INITIALIZER,
+	.qlock = RTE_RWLOCK_INITIALIZER,
+	.mplock = RTE_RWLOCK_INITIALIZER,
+	.tlock = RTE_SPINLOCK_INITIALIZER,
+	.ethdev_lock = RTE_SPINLOCK_INITIALIZER,
+	.memory_hotplug_lock = RTE_RWLOCK_INITIALIZER,
+};
 
 /* Address of global and public configuration */
 static struct rte_config rte_config = {
@@ -21,6 +29,7 @@ static char runtime_dir[PATH_MAX];
 /* internal configuration */
 static struct internal_config internal_config;
 
+RTE_EXPORT_SYMBOL(rte_eal_get_runtime_dir)
 const char *
 rte_eal_get_runtime_dir(void)
 {
@@ -31,7 +40,7 @@ int
 eal_set_runtime_dir(const char *run_dir)
 {
 	if (strlcpy(runtime_dir, run_dir, PATH_MAX) >= PATH_MAX) {
-		RTE_LOG(ERR, EAL, "Runtime directory string too long\n");
+		EAL_LOG(ERR, "Runtime directory string too long");
 		return -1;
 	}
 
@@ -52,6 +61,7 @@ eal_get_internal_configuration(void)
 	return &internal_config;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_iova_mode)
 enum rte_iova_mode
 rte_eal_iova_mode(void)
 {
@@ -59,6 +69,7 @@ rte_eal_iova_mode(void)
 }
 
 /* Get the EAL base address */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_get_baseaddr)
 uint64_t
 rte_eal_get_baseaddr(void)
 {
@@ -67,6 +78,7 @@ rte_eal_get_baseaddr(void)
 		       eal_get_baseaddr();
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_process_type)
 enum rte_proc_type_t
 rte_eal_process_type(void)
 {
@@ -74,6 +86,7 @@ rte_eal_process_type(void)
 }
 
 /* Return user provided mbuf pool ops name */
+RTE_EXPORT_SYMBOL(rte_eal_mbuf_user_pool_ops)
 const char *
 rte_eal_mbuf_user_pool_ops(void)
 {
@@ -81,12 +94,14 @@ rte_eal_mbuf_user_pool_ops(void)
 }
 
 /* return non-zero if hugepages are enabled. */
+RTE_EXPORT_SYMBOL(rte_eal_has_hugepages)
 int
 rte_eal_has_hugepages(void)
 {
 	return !internal_config.no_hugetlbfs;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_has_pci)
 int
 rte_eal_has_pci(void)
 {

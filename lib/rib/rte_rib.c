@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -15,6 +16,10 @@
 #include <rte_tailq.h>
 
 #include <rte_rib.h>
+
+#include "rib_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(rib_logtype, INFO);
 
 TAILQ_HEAD(rte_rib_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_rib_tailq = {
@@ -36,7 +41,7 @@ struct rte_rib_node {
 	uint8_t		depth;
 	uint8_t		flag;
 	uint64_t	nh;
-	__extension__ uint64_t ext[];
+	uint64_t ext[];
 };
 
 struct rte_rib {
@@ -97,6 +102,7 @@ node_free(struct rte_rib *rib, struct rte_rib_node *ent)
 	rte_mempool_put(rib->node_pool, ent);
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_lookup)
 struct rte_rib_node *
 rte_rib_lookup(struct rte_rib *rib, uint32_t ip)
 {
@@ -116,6 +122,7 @@ rte_rib_lookup(struct rte_rib *rib, uint32_t ip)
 	return prev;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_lookup_parent)
 struct rte_rib_node *
 rte_rib_lookup_parent(struct rte_rib_node *ent)
 {
@@ -147,6 +154,7 @@ __rib_lookup_exact(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_lookup_exact)
 struct rte_rib_node *
 rte_rib_lookup_exact(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 {
@@ -164,6 +172,7 @@ rte_rib_lookup_exact(struct rte_rib *rib, uint32_t ip, uint8_t depth)
  *  for a given in args ip/depth prefix
  *  last = NULL means the first invocation
  */
+RTE_EXPORT_SYMBOL(rte_rib_get_nxt)
 struct rte_rib_node *
 rte_rib_get_nxt(struct rte_rib *rib, uint32_t ip,
 	uint8_t depth, struct rte_rib_node *last, int flag)
@@ -204,6 +213,7 @@ rte_rib_get_nxt(struct rte_rib *rib, uint32_t ip,
 	return prev;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_remove)
 void
 rte_rib_remove(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 {
@@ -236,6 +246,7 @@ rte_rib_remove(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_insert)
 struct rte_rib_node *
 rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 {
@@ -302,7 +313,7 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 	/* closest node found, new_node should be inserted in the middle */
 	common_depth = RTE_MIN(depth, (*tmp)->depth);
 	common_prefix = ip ^ (*tmp)->ip;
-	d = (common_prefix == 0) ? 32 : __builtin_clz(common_prefix);
+	d = (common_prefix == 0) ? 32 : rte_clz32(common_prefix);
 
 	common_depth = RTE_MIN(d, common_depth);
 	common_prefix = ip & rte_rib_depth_to_mask(common_depth);
@@ -342,6 +353,7 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 	return new_node;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_get_ip)
 int
 rte_rib_get_ip(const struct rte_rib_node *node, uint32_t *ip)
 {
@@ -353,6 +365,7 @@ rte_rib_get_ip(const struct rte_rib_node *node, uint32_t *ip)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_get_depth)
 int
 rte_rib_get_depth(const struct rte_rib_node *node, uint8_t *depth)
 {
@@ -364,12 +377,14 @@ rte_rib_get_depth(const struct rte_rib_node *node, uint8_t *depth)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_get_ext)
 void *
 rte_rib_get_ext(struct rte_rib_node *node)
 {
 	return (node == NULL) ? NULL : &node->ext[0];
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_get_nh)
 int
 rte_rib_get_nh(const struct rte_rib_node *node, uint64_t *nh)
 {
@@ -381,6 +396,7 @@ rte_rib_get_nh(const struct rte_rib_node *node, uint64_t *nh)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_set_nh)
 int
 rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh)
 {
@@ -392,6 +408,7 @@ rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_create)
 struct rte_rib *
 rte_rib_create(const char *name, int socket_id, const struct rte_rib_conf *conf)
 {
@@ -413,8 +430,8 @@ rte_rib_create(const char *name, int socket_id, const struct rte_rib_conf *conf)
 		NULL, NULL, NULL, NULL, socket_id, 0);
 
 	if (node_pool == NULL) {
-		RTE_LOG(ERR, LPM,
-			"Can not allocate mempool for RIB %s\n", name);
+		RIB_LOG(ERR,
+			"Can not allocate mempool for RIB %s", name);
 		return NULL;
 	}
 
@@ -438,8 +455,8 @@ rte_rib_create(const char *name, int socket_id, const struct rte_rib_conf *conf)
 	/* allocate tailq entry */
 	te = rte_zmalloc("RIB_TAILQ_ENTRY", sizeof(*te), 0);
 	if (unlikely(te == NULL)) {
-		RTE_LOG(ERR, LPM,
-			"Can not allocate tailq entry for RIB %s\n", name);
+		RIB_LOG(ERR,
+			"Can not allocate tailq entry for RIB %s", name);
 		rte_errno = ENOMEM;
 		goto exit;
 	}
@@ -448,7 +465,7 @@ rte_rib_create(const char *name, int socket_id, const struct rte_rib_conf *conf)
 	rib = rte_zmalloc_socket(mem_name,
 		sizeof(struct rte_rib),	RTE_CACHE_LINE_SIZE, socket_id);
 	if (unlikely(rib == NULL)) {
-		RTE_LOG(ERR, LPM, "RIB %s memory allocation failed\n", name);
+		RIB_LOG(ERR, "RIB %s memory allocation failed", name);
 		rte_errno = ENOMEM;
 		goto free_te;
 	}
@@ -473,6 +490,7 @@ exit:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_find_existing)
 struct rte_rib *
 rte_rib_find_existing(const char *name)
 {
@@ -498,6 +516,7 @@ rte_rib_find_existing(const char *name)
 	return rib;
 }
 
+RTE_EXPORT_SYMBOL(rte_rib_free)
 void
 rte_rib_free(struct rte_rib *rib)
 {

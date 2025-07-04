@@ -18,29 +18,26 @@
 #include "hisi_dmadev.h"
 
 RTE_LOG_REGISTER_DEFAULT(hisi_dma_logtype, INFO);
-#define HISI_DMA_LOG(level, fmt, args...) \
-		rte_log(RTE_LOG_ ## level, hisi_dma_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
-#define HISI_DMA_LOG_RAW(hw, level, fmt, args...) \
-		rte_log(RTE_LOG_ ## level, hisi_dma_logtype, \
-		"%s %s(): " fmt "\n", (hw)->data->dev_name, \
-		__func__, ##args)
-#define HISI_DMA_DEBUG(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, DEBUG, fmt, ## args)
-#define HISI_DMA_INFO(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, INFO, fmt, ## args)
-#define HISI_DMA_WARN(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, WARNING, fmt, ## args)
-#define HISI_DMA_ERR(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, ERR, fmt, ## args)
+#define RTE_LOGTYPE_HISI_DMA hisi_dma_logtype
+#define HISI_DMA_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, HISI_DMA, "%s(): ", __func__, __VA_ARGS__)
+#define HISI_DMA_DEV_LOG(hw, level, ...) \
+	RTE_LOG_LINE_PREFIX(level, HISI_DMA, "%s %s(): ", \
+		(hw)->data->dev_name RTE_LOG_COMMA __func__, __VA_ARGS__)
+#define HISI_DMA_DEBUG(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, DEBUG, __VA_ARGS__)
+#define HISI_DMA_INFO(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, INFO, __VA_ARGS__)
+#define HISI_DMA_WARN(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, WARNING, __VA_ARGS__)
+#define HISI_DMA_ERR(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, ERR, __VA_ARGS__)
 
 static uint32_t
 hisi_dma_queue_base(struct hisi_dma_dev *hw)
 {
 	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP08)
 		return HISI_DMA_HIP08_QUEUE_BASE;
-	else if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09)
-		return HISI_DMA_HIP09_QUEUE_BASE;
 	else
 		return 0;
 }
@@ -124,7 +121,7 @@ hisi_dma_update_queue_mbit(struct hisi_dma_dev *hw, uint32_t qoff,
 	hisi_dma_write_queue(hw, qoff, tmp);
 }
 
-#define hisi_dma_poll_hw_state(hw, val, cond, sleep_us, timeout_us) ({ \
+#define hisi_dma_poll_hw_state(hw, val, cond, sleep_us, timeout_us) __extension__ ({ \
 	uint32_t timeout = 0; \
 	while (timeout++ <= (timeout_us)) { \
 		(val) = hisi_dma_read_queue(hw, HISI_DMA_QUEUE_FSM_REG); \
@@ -216,25 +213,6 @@ hisi_dma_init_hw(struct hisi_dma_dev *hw)
 				HISI_DMA_HIP08_QUEUE_INT_MASK_M, true);
 		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_MASK_REG,
 				HISI_DMA_HIP08_QUEUE_INT_MASK_M, true);
-	} else if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09) {
-		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_CTRL0_REG,
-				HISI_DMA_HIP09_QUEUE_CTRL0_ERR_ABORT_M, false);
-		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_STATUS_REG,
-				HISI_DMA_HIP09_QUEUE_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_MASK_REG,
-				HISI_DMA_HIP09_QUEUE_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_STATUS_REG,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_REG,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M, true);
-		hisi_dma_update_queue_bit(hw, HISI_DMA_QUEUE_CTRL1_REG,
-				HISI_DMA_HIP09_QUEUE_CTRL1_VA_ENABLE_B, true);
-		hisi_dma_update_bit(hw,
-				HISI_DMA_HIP09_QUEUE_CFG_REG(hw->queue_id),
-				HISI_DMA_HIP09_QUEUE_CFG_LINK_DOWN_MASK_B,
-				true);
 	}
 }
 
@@ -256,8 +234,6 @@ hisi_dma_reg_layout(uint8_t revision)
 {
 	if (revision == HISI_DMA_REVISION_HIP08B)
 		return HISI_DMA_REG_LAYOUT_HIP08;
-	else if (revision >= HISI_DMA_REVISION_HIP09A)
-		return HISI_DMA_REG_LAYOUT_HIP09;
 	else
 		return HISI_DMA_REG_LAYOUT_INVALID;
 }
@@ -310,8 +286,7 @@ hisi_dma_alloc_iomem(struct hisi_dma_dev *hw, uint16_t ring_size,
 static void
 hisi_dma_free_iomem(struct hisi_dma_dev *hw)
 {
-	if (hw->iomz != NULL)
-		rte_memzone_free(hw->iomz);
+	rte_memzone_free(hw->iomz);
 
 	hw->iomz = NULL;
 	hw->sqe = NULL;
@@ -328,14 +303,11 @@ hisi_dma_info_get(const struct rte_dma_dev *dev,
 		  struct rte_dma_info *dev_info,
 		  uint32_t info_sz)
 {
-	struct hisi_dma_dev *hw = dev->data->dev_private;
+	RTE_SET_USED(dev);
 	RTE_SET_USED(info_sz);
 
 	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
 			     RTE_DMA_CAPA_OPS_COPY;
-	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09)
-		dev_info->dev_capa |= RTE_DMA_CAPA_HANDLES_ERRORS;
-
 	dev_info->max_vchans = 1;
 	dev_info->max_desc = HISI_DMA_MAX_DESC_NUM;
 	dev_info->min_desc = HISI_DMA_MIN_DESC_NUM;
@@ -384,7 +356,7 @@ hisi_dma_start(struct rte_dma_dev *dev)
 	struct hisi_dma_dev *hw = dev->data->dev_private;
 
 	if (hw->iomz == NULL) {
-		HISI_DMA_ERR(hw, "Vchan was not setup, start fail!\n");
+		HISI_DMA_ERR(hw, "Vchan was not setup, start fail!");
 		return -EINVAL;
 	}
 
@@ -514,18 +486,6 @@ hisi_dma_dump_common(struct hisi_dma_dev *hw, FILE *f)
 		{ HISI_DMA_REG_LAYOUT_HIP08,
 		  HISI_DMA_HIP08_DUMP_START_REG,
 		  HISI_DMA_HIP08_DUMP_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_A_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_A_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_B_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_B_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_C_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_C_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_D_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_D_END_REG },
 	};
 	uint32_t i;
 
@@ -669,7 +629,7 @@ hisi_dma_scan_cq(struct hisi_dma_dev *hw)
 			 * status array indexed by csq_head. Only error logs
 			 * are used for prompting.
 			 */
-			HISI_DMA_ERR(hw, "invalid csq_head:%u!\n", csq_head);
+			HISI_DMA_ERR(hw, "invalid csq_head:%u!", csq_head);
 			count = 0;
 			break;
 		}
@@ -923,8 +883,7 @@ hisi_dma_check_revision(struct rte_pci_device *pci_dev, const char *name,
 	uint8_t revision;
 	int ret;
 
-	ret = rte_pci_read_config(pci_dev, &revision, 1,
-				  HISI_DMA_PCI_REVISION_ID_REG);
+	ret = rte_pci_read_config(pci_dev, &revision, 1, RTE_PCI_REVISION_ID);
 	if (ret != 1) {
 		HISI_DMA_LOG(ERR, "%s read PCI revision failed!", name);
 		return -EINVAL;
@@ -951,7 +910,7 @@ hisi_dma_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 
 	if (pci_dev->mem_resource[2].addr == NULL) {
-		HISI_DMA_LOG(ERR, "%s BAR2 is NULL!\n", name);
+		HISI_DMA_LOG(ERR, "%s BAR2 is NULL!", name);
 		return -ENODEV;
 	}
 

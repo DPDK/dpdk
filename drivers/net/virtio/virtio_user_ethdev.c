@@ -18,6 +18,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
+#include <rte_io.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_logs.h"
@@ -51,6 +52,9 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 
 	if (offset == offsetof(struct virtio_net_config, max_virtqueue_pairs))
 		*(uint16_t *)dst = dev->max_queue_pairs;
+
+	if (offset >= offsetof(struct virtio_net_config, rss_max_key_size))
+		virtio_user_dev_get_rss_config(dev, dst, offset, length);
 }
 
 static void
@@ -194,11 +198,13 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 			   sizeof(struct vring_packed_desc_event),
 			   VIRTIO_VRING_ALIGN);
 	vring->num = vq->vq_nentries;
+	vring->desc_iova = vq->vq_ring_mem;
 	vring->desc = (void *)(uintptr_t)desc_addr;
 	vring->driver = (void *)(uintptr_t)avail_addr;
 	vring->device = (void *)(uintptr_t)used_addr;
 	dev->packed_queues[queue_idx].avail_wrap_counter = true;
 	dev->packed_queues[queue_idx].used_wrap_counter = true;
+	dev->packed_queues[queue_idx].used_idx = 0;
 
 	for (i = 0; i < vring->num; i++)
 		vring->desc[i].flags = 0;
@@ -217,6 +223,7 @@ virtio_user_setup_queue_split(struct virtqueue *vq, struct virtio_user_dev *dev)
 				   VIRTIO_VRING_ALIGN);
 
 	dev->vrings.split[queue_idx].num = vq->vq_nentries;
+	dev->vrings.split[queue_idx].desc_iova = vq->vq_ring_mem;
 	dev->vrings.split[queue_idx].desc = (void *)(uintptr_t)desc_addr;
 	dev->vrings.split[queue_idx].avail = (void *)(uintptr_t)avail_addr;
 	dev->vrings.split[queue_idx].used = (void *)(uintptr_t)used_addr;
@@ -231,6 +238,9 @@ virtio_user_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 		virtio_user_setup_queue_packed(vq, dev);
 	else
 		virtio_user_setup_queue_split(vq, dev);
+
+	if (dev->notify_area)
+		vq->notify_addr = dev->notify_area[vq->vq_queue_index];
 
 	if (dev->hw_cvq && hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq))
 		return virtio_user_dev_create_shadow_cvq(dev, vq);
@@ -262,8 +272,8 @@ virtio_user_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 static void
 virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
-	uint64_t buf = 1;
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
+	uint64_t notify_data = 1;
 
 	if (hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq)) {
 		virtio_user_handle_cq(dev, vq->vq_queue_index);
@@ -271,9 +281,34 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 		return;
 	}
 
-	if (write(dev->kickfds[vq->vq_queue_index], &buf, sizeof(buf)) < 0)
-		PMD_DRV_LOG(ERR, "failed to kick backend: %s",
-			    strerror(errno));
+	if (!dev->notify_area) {
+		if (write(dev->kickfds[vq->vq_queue_index], &notify_data,
+			  sizeof(notify_data)) < 0)
+			PMD_DRV_LOG(ERR, "failed to kick backend: %s",
+				    strerror(errno));
+		return;
+	} else if (!virtio_with_feature(hw, VIRTIO_F_NOTIFICATION_DATA)) {
+		rte_write16(vq->vq_queue_index, vq->notify_addr);
+		return;
+	}
+
+	if (virtio_with_packed_queue(hw)) {
+		/* Bit[0:15]: vq queue index
+		 * Bit[16:30]: avail index
+		 * Bit[31]: avail wrap counter
+		 */
+		notify_data = ((uint32_t)(!!(vq->vq_packed.cached_flags &
+				VRING_PACKED_DESC_F_AVAIL)) << 31) |
+				((uint32_t)vq->vq_avail_idx << 16) |
+				vq->vq_queue_index;
+	} else {
+		/* Bit[0:15]: vq queue index
+		 * Bit[16:31]: avail index
+		 */
+		notify_data = ((uint32_t)vq->vq_avail_idx << 16) |
+				vq->vq_queue_index;
+	}
+	rte_write32(notify_data, vq->notify_addr);
 }
 
 static int
@@ -657,7 +692,13 @@ virtio_user_pmd_probe(struct rte_vdev_device *vdev)
 	 * Virtio-user requires using virtual addresses for the descriptors
 	 * buffers, whatever other devices require
 	 */
-	hw->use_va = true;
+	if (backend_type == VIRTIO_USER_BACKEND_VHOST_VDPA)
+		/* vDPA backend requires using IOVA for the buffers
+		 * to make it work in IOVA as PA mode also.
+		 */
+		hw->use_va = false;
+	else
+		hw->use_va = true;
 
 	/* previously called by pci probing for physical dev */
 	if (eth_virtio_dev_init(eth_dev) < 0) {

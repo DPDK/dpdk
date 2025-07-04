@@ -5,24 +5,23 @@
 #ifndef __INCLUDE_RTE_PORT_SYM_CRYPTO_H__
 #define __INCLUDE_RTE_PORT_SYM_CRYPTO_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port sym crypto Interface
  *
  * crypto_reader: input port built on top of pre-initialized crypto interface
  * crypto_writer: output port built on top of pre-initialized crypto interface
- *
- **/
+ */
 
 #include <stdint.h>
 
 #include <rte_cryptodev.h>
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Function prototype for reader post action. */
 typedef void (*rte_port_sym_crypto_reader_callback_fn)(struct rte_mbuf **pkts,

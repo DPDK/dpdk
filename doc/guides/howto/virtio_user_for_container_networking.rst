@@ -77,7 +77,7 @@ some minor changes.
 
     .. code-block:: console
 
-        $(testpmd) -l 0-1 -n 4 --socket-mem 1024,1024 \
+        $(testpmd) -l 0-1 -n 4 --numa-mem 1024,1024 \
             --vdev 'eth_vhost0,iface=/tmp/sock0' \
             --file-prefix=host --no-pci -- -i
 

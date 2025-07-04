@@ -8,26 +8,24 @@
 #include <rte_cryptodev.h>
 #include "ccp_crypto.h"
 
-#define CRYPTODEV_NAME_CCP_PMD crypto_ccp
+extern int crypto_ccp_logtype;
+#define RTE_LOGTYPE_CRYPTO_CCP crypto_ccp_logtype
 
-#define CCP_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD), \
-			__func__, __LINE__, ## args)
+#define CCP_LOG_ERR(...) \
+	RTE_LOG_LINE_PREFIX(ERR, CRYPTO_CCP, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_CCP_DEBUG
-#define CCP_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD), \
-			__func__, __LINE__, ## args)
+#define CCP_LOG_INFO(...) \
+	RTE_LOG_LINE_PREFIX(INFO, CRYPTO_CCP, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define CCP_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD), \
-			__func__, __LINE__, ## args)
+#define CCP_LOG_DBG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, CRYPTO_CCP, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 #else
-#define CCP_LOG_INFO(fmt, args...)
-#define CCP_LOG_DBG(fmt, args...)
+#define CCP_LOG_INFO(...)
+#define CCP_LOG_DBG(...)
 #endif
 
 /**< Maximum queue pairs supported by CCP PMD */
@@ -46,7 +44,7 @@ struct ccp_private {
 };
 
 /* CCP batch info */
-struct ccp_batch_info {
+struct __rte_cache_aligned ccp_batch_info {
 	struct rte_crypto_op *op[CCP_MAX_BURST];
 	/**< optable populated at enque time from app*/
 	int op_idx;
@@ -66,10 +64,10 @@ struct ccp_batch_info {
 	int lsb_buf_idx;
 	uint16_t auth_ctr;
 	/**< auth only ops batch for CPU based auth */
-} __rte_cache_aligned;
+};
 
 /**< CCP crypto queue pair */
-struct ccp_qp {
+struct __rte_cache_aligned ccp_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -91,7 +89,7 @@ struct ccp_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-} __rte_cache_aligned;
+};
 
 
 /**< device specific operations function pointer structure */

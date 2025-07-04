@@ -57,4 +57,16 @@ static inline int verify_ecpm(uint8_t *result_x, uint8_t *result_y,
 
 	return 0;
 }
+
+static inline int verify_ecdh_secret(uint8_t *result_x, uint8_t *result_y,
+			      struct rte_crypto_op *result_op)
+{
+	if (memcmp(result_x, result_op->asym->ecdh.shared_secret.x.data,
+		   result_op->asym->ecdh.shared_secret.x.length) ||
+		   memcmp(result_y, result_op->asym->ecdh.shared_secret.y.data,
+		   result_op->asym->ecdh.shared_secret.y.length))
+		return -1;
+
+	return 0;
+}
 #endif /* TEST_CRYPTODEV_ASYM_TEST_UTIL_H__ */

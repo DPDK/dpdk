@@ -17,6 +17,7 @@ enetc_dev_start(struct rte_eth_dev *dev)
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t val;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 	if (hw->device_id == ENETC_DEV_ID_VF)
@@ -45,6 +46,11 @@ enetc_dev_start(struct rte_eth_dev *dev)
 			      ENETC_PM0_IFM_XGMII);
 	}
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -55,6 +61,7 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t val;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 	dev->data->dev_started = 0;
@@ -69,11 +76,17 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 	enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG,
 		      val & (~(ENETC_PM0_TX_EN | ENETC_PM0_RX_EN)));
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
 	return 0;
 }
 
 static const uint32_t *
-enetc_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+enetc_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			   size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -83,9 +96,9 @@ enetc_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_L4_ICMP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 
@@ -138,7 +151,7 @@ print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 
 	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
-	ENETC_PMD_NOTICE("%s%s\n", name, buf);
+	ENETC_PMD_NOTICE("%s%s", name, buf);
 }
 
 static int
@@ -185,7 +198,7 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 		char *first_byte;
 
 		ENETC_PMD_NOTICE("MAC is not available for this SI, "
-				"set random MAC\n");
+				"set random MAC");
 		mac = (uint32_t *)hw->mac.addr;
 		*mac = (uint32_t)rte_rand();
 		first_byte = (char *)mac;

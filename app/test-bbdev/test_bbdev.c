@@ -366,7 +366,8 @@ test_bbdev_configure_stop_queue(void)
 	 * - queue should be started if deferred_start ==
 	 */
 	ts_params->qconf.deferred_start = 0;
-	rte_bbdev_queue_configure(dev_id, queue_id, &ts_params->qconf);
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_configure(dev_id, queue_id, &ts_params->qconf),
+			"Failed test for rte_bbdev_queue_configure");
 	rte_bbdev_start(dev_id);
 
 	TEST_ASSERT_SUCCESS(return_value = rte_bbdev_queue_info_get(dev_id,
@@ -1238,7 +1239,6 @@ test_bbdev_invalid_driver(void)
 	TEST_ASSERT_SUCCESS(rte_bbdev_callback_unregister(dev_id,
 			RTE_BBDEV_EVENT_UNKNOWN, event_callback, NULL),
 			"Failed to unregister RTE_BBDEV_EVENT_ERROR ");
-	dev2->dev_ops = dev1.dev_ops;
 
 	/* Tests for rte_bbdev_stats_reset */
 	dev2->dev_ops = NULL;

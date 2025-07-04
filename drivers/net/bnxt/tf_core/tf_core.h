@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -21,9 +21,15 @@
 
 /********** BEGIN Truflow Core DEFINITIONS **********/
 
+/**
+ * \cond DO_NOT_DOCUMENT
+ */
 #define TF_KILOBYTE  1024
 #define TF_MEGABYTE  (1024 * 1024)
 
+/**
+ * \endcond
+ */
 /**
  * direction
  */
@@ -93,15 +99,19 @@ enum tf_sram_bank_id {
  *
  * Convert absolute offset to action record pointer in EEM record entry
  * Convert action record pointer in EEM record entry to absolute offset
+ * \cond DO_NOT_DOCUMENT
  */
 #define TF_ACT_REC_OFFSET_2_PTR(offset) ((offset) >> 4)
 #define TF_ACT_REC_PTR_2_OFFSET(offset) ((offset) << 4)
 
-/*
+/**
  * Helper Macros
  */
 #define TF_BITS_2_BYTES(num_bits) (((num_bits) + 7) / 8)
 
+/**
+ * \endcond
+ */
 /********** BEGIN API FUNCTION PROTOTYPES/PARAMETERS **********/
 
 /**
@@ -112,6 +122,10 @@ enum tf_sram_bank_id {
  * @ref tf_attach_session
  *
  * @ref tf_close_session
+ *
+ * @ref tf_get_session_info
+ *
+ * @ref tf_get_session_info
  */
 
 /**
@@ -143,6 +157,8 @@ enum tf_sram_bank_id {
  * TruFlow session. Session ID is constructed from the passed in
  * ctrl_chan_name in tf_open_session() together with an allocated
  * fw_session_id. Done by TruFlow on tf_open_session().
+ *
+ * \cond DO_NOT_DOCUMENT
  */
 union tf_session_id {
 	uint32_t id;
@@ -168,6 +184,10 @@ union tf_session_client_id {
 		uint8_t fw_session_client_id;
 	} internal;
 };
+/**
+ * \endcond
+ */
+
 
 /**
  * Session Version
@@ -177,21 +197,26 @@ union tf_session_client_id {
  * versions can be supported.
  *
  * Please see the TF_VER_MAJOR/MINOR and UPDATE defines.
+ *
+ * \cond DO_NOT_DOCUMENT
  */
 struct tf_session_version {
 	uint8_t major;
 	uint8_t minor;
 	uint8_t update;
 };
+/**
+ * \endcond
+ */
 
 /**
  * Session supported device types
  */
 enum tf_device_type {
-	TF_DEVICE_TYPE_WH = 0, /**< Whitney+  */
-	TF_DEVICE_TYPE_SR,     /**< Stingray  */
-	TF_DEVICE_TYPE_THOR,   /**< Thor      */
-	TF_DEVICE_TYPE_MAX     /**< Maximum   */
+	TF_DEVICE_TYPE_P4 = 0,
+	TF_DEVICE_TYPE_SR,
+	TF_DEVICE_TYPE_P5,
+	TF_DEVICE_TYPE_MAX
 };
 
 /**
@@ -286,6 +311,8 @@ enum tf_tbl_type {
 	TF_TBL_TYPE_ACT_ENCAP_32B,
 	/** Wh+/SR/TH Action Encap 64 Bytes */
 	TF_TBL_TYPE_ACT_ENCAP_64B,
+	/* TH Action Encap 128 Bytes */
+	TF_TBL_TYPE_ACT_ENCAP_128B,
 	/** WH+/SR/TH Action Source Properties SMAC */
 	TF_TBL_TYPE_ACT_SP_SMAC,
 	/** Wh+/SR/TH Action Source Properties SMAC IPv4 */
@@ -331,46 +358,11 @@ enum tf_tbl_type {
 	 * External table type - initially 1 poolsize entries.
 	 * All External table types are associated with a table
 	 * scope. Internal types are not.  Currently this is
-	 * a pool of 64B entries.
+	 * a pool of 128B entries.
 	 */
 	TF_TBL_TYPE_EXT,
 	TF_TBL_TYPE_MAX
 };
-
-/** Enable Shared TCAM Management
- *
- *  This feature allows for management of high and low pools within
- *  the WC TCAM.  These pools are only valid when this feature is enabled.
- *
- *  For normal OVS-DPDK operation, this feature is not required and can
- *  be disabled by commenting out TF_TCAM_SHARED in this header file.
- *
- *  Operation:
- *
- *  When a shared session is created with WC TCAM entries allocated during
- *  tf_open_session(), the TF_TCAM_TBL_TYPE_WC_TCAM pool entries will be divided
- *  into 2 equal pools - TF_TCAM_TBL_TYPE_WC_TCAM_HIGH and
- *  TF_TCAM_TBL_TYPE_WC_TCAM_LOW.
- *
- *  The user will allocate and free entries from either of these pools to obtain
- *  WC_TCAM entry offsets.  For the WC_TCAM_HI/LO management, alloc/free is done
- *  using the tf_alloc_tcam_entry()/tf_free_tcam_entry() APIs for the shared
- *  session.
- *
- *  The use case for this feature is so that applications can have a shared
- *  session and use the TF core to allocate/set/free entries within a given
- *  region of the WC_TCAM within the shared session.  Application A only writes
- *  to the LOW region for example and Application B only writes to the HIGH
- *  region during normal operation.  After Application A goes down, Application
- *  B may decide to overwrite the LOW region with the HIGH region's entries
- *  and switch to the low region.
- *
- *  For other TCAM types in the  shared session, no alloc/free operations are
- *  permitted. Only set should be used for other TCAM table types after getting
- *  the range as provided by the tf_get_resource_info() API.
- *
- */
-#define TF_TCAM_SHARED 1
 
 /**
  * TCAM table type
@@ -390,12 +382,10 @@ enum tf_tcam_tbl_type {
 	TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
 	/** Virtual Edge Bridge TCAM */
 	TF_TCAM_TBL_TYPE_VEB_TCAM,
-#ifdef TF_TCAM_SHARED
 	/** Wildcard TCAM HI Priority */
 	TF_TCAM_TBL_TYPE_WC_TCAM_HIGH,
 	/** Wildcard TCAM Low Priority */
 	TF_TCAM_TBL_TYPE_WC_TCAM_LOW,
-#endif /* TF_TCAM_SHARED */
 	TF_TCAM_TBL_TYPE_MAX
 };
 
@@ -516,6 +506,7 @@ struct tf_session_info {
  *
  * NOTE: This struct must be within the BNXT PMD struct bnxt
  *       (bp). This allows use of container_of() to get access to the PMD.
+ * \cond DO_NOT_DOCUMENT
  */
 struct tf {
 	struct tf_session_info *session;
@@ -524,6 +515,9 @@ struct tf {
 	 */
 	void *bp;
 };
+/**
+ * \endcond
+ */
 
 /**
  * Identifier resource definition
@@ -626,20 +620,6 @@ struct tf_open_session_parms {
 	 * 0000:02:00.0. The name for shared session is 0000:02:00.0-tf_shared.
 	 */
 	char ctrl_chan_name[TF_SESSION_NAME_MAX];
-	/**
-	 * [in] shadow_copy
-	 *
-	 * Boolean controlling the use and availability of shadow
-	 * copy. Shadow copy will allow the TruFlow to keep track of
-	 * resource content on the firmware side without having to
-	 * query firmware. Additional private session core_data will
-	 * be allocated if this boolean is set to 'true', default
-	 * 'false'.
-	 *
-	 * Size of memory depends on the NVM Resource settings for the
-	 * control channel.
-	 */
-	bool shadow_copy;
 	/**
 	 * [in/out] session_id
 	 *
@@ -761,12 +741,15 @@ int tf_open_session(struct tf *tfp,
 
 /**
  * General internal resource info
- *
+ * \cond DO_NOT_DOCUMENT
  */
 struct tf_resource_info {
 	uint16_t start;
 	uint16_t stride;
 };
+/**
+ * \endcond
+ */
 
 /**
  * Identifier resource definition
@@ -966,6 +949,71 @@ int tf_attach_session(struct tf *tfp,
 int tf_close_session(struct tf *tfp);
 
 /**
+ * tf_set_session_hotup_state parameter definition.
+ */
+struct tf_set_session_hotup_state_parms {
+	/**
+	 * [in] the structure is used to set the state of
+	 * the hotup shared session.
+	 *
+	 */
+	uint16_t state;
+};
+
+/**
+ * set hot upgrade shared session state
+ *
+ * This API is used to set the state of the shared session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to set hotup state parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_set_session_hotup_state(struct tf *tfp,
+			       struct tf_set_session_hotup_state_parms *parms);
+
+/**
+ * tf_get_session_hotup_state parameter definition.
+ */
+struct tf_get_session_hotup_state_parms {
+	/**
+	 * [out] the structure is used to get the state of
+	 * the hotup shared session.
+	 *
+	 */
+	uint16_t state;
+	/**
+	 * [out] get the ref_cnt of the hotup shared session.
+	 *
+	 */
+	uint16_t ref_cnt;
+};
+
+/**
+ * get hot upgrade shared session state
+ *
+ * This API is used to set the state of the shared session.
+ *
+ * [in] tfp
+ *   Pointer to TF handle
+ *
+ * [in] parms
+ *   Pointer to get hotup state parameters
+ *
+ * Returns
+ *   - (0) if successful.
+ *   - (-EINVAL) on failure.
+ */
+int tf_get_session_hotup_state(struct tf *tfp,
+			       struct tf_get_session_hotup_state_parms *parms);
+
+/**
  * @page  ident Identity Management
  *
  * @ref tf_alloc_identifier
@@ -1045,9 +1093,6 @@ struct tf_search_identifier_parms {
  * TruFlow core will allocate a free id from the per identifier resource type
  * pool reserved for the session during tf_open().  No firmware is involved.
  *
- * If shadow copy is enabled, the internal ref_cnt is set to 1 in the
- * shadow table for a newly allocated resource.
- *
  * Returns success or failure code.
  */
 int tf_alloc_identifier(struct tf *tfp,
@@ -1061,8 +1106,7 @@ int tf_alloc_identifier(struct tf *tfp,
  * complete pool is returned to the firmware.
  *
  * additional operation (experimental)
- * Decrement reference count.  Only release resource once refcnt goes to 0 if
- * shadow copy is enabled.
+ * Decrement reference count.
  *
  * Returns success or failure code.
  */
@@ -1071,19 +1115,6 @@ int tf_free_identifier(struct tf *tfp,
 
 /**
  * Search identifier resource (experimental)
- *
- * If the shadow copy is enabled search_id is used to search for a matching
- * entry in the shadow table.  The shadow table consists of an array of
- * reference counts indexed by identifier.  If a matching entry is found hit is
- * set to TRUE, refcnt is increased by 1 and returned.  Otherwise, hit is
- * set to false and refcnt is set to 0.
- *
- * TODO: we may need a per table internal shadow copy enable flag to stage
- * the shadow table implementation.  We do not need the shadow table for other
- * tables at this time so we may only want to enable the identifier shadow.
- *
- * TODO: remove this pseudocode below added to show that if search fails
- * we shouldn't allocate a new entry but return.
  *
  * identifier alloc (search_en=1)
  * if (ident is allocated and ref_cnt >=1)
@@ -1260,13 +1291,9 @@ int tf_free_tbl_scope(struct tf *tfp,
  *
  * @ref tf_get_tcam_entry
  *
- * @ref tf_free_tcam_entry
- *
-#ifdef TF_TCAM_SHARED
  * @ref tf_move_tcam_shared_entries
  *
  * @ref tf_clear_tcam_shared_entries
-#endif
  */
 
 /**
@@ -1328,18 +1355,13 @@ struct tf_search_tcam_entry_parms {
 };
 
 /**
- * search TCAM entry (experimental)
+ * search TCAM entry
  *
  * Search for a TCAM entry
  *
- * This function searches the shadow copy of the TCAM table for a matching
- * entry.  Key and mask must match for hit to be set.  Only TruFlow core data
- * is accessed.  If shadow_copy is not enabled, an error is returned.
- *
  * Implementation:
  *
- * A hash is performed on the key/mask data and mapped to a shadow copy entry
- * where the full key/mask is populated.  If the full key/mask matches the
+ * If the full key/mask matches the
  * entry, hit is set, ref_cnt is incremented, and search_status indicates what
  * action the caller can take regarding setting the entry.
  *
@@ -1416,8 +1438,7 @@ struct tf_alloc_tcam_entry_parms {
  *
  * This function allocates a TCAM table record.	 This function
  * will attempt to allocate a TCAM table entry from the session
- * owned TCAM entries or search a shadow copy of the TCAM table for a
- * matching entry if search is enabled.	 Key, mask and result must match for
+ * owned TCAM entries.  Key, mask and result must match for
  * hit to be set.  Only TruFlow core data is accessed.
  * A hash table to entry mapping is maintained for search purposes.  If
  * search is not enabled, the first available free entry is returned based
@@ -1568,7 +1589,6 @@ struct tf_free_tcam_entry_parms {
 int tf_free_tcam_entry(struct tf *tfp,
 		       struct tf_free_tcam_entry_parms *parms);
 
-#ifdef TF_TCAM_SHARED
 /**
  * tf_move_tcam_shared_entries parameter definition
  */
@@ -1633,7 +1653,6 @@ struct tf_clear_tcam_shared_entries_parms {
 int tf_clear_tcam_shared_entries(struct tf *tfp,
 			      struct tf_clear_tcam_shared_entries_parms *parms);
 
-#endif /* TF_TCAM_SHARED */
 /**
  * @page table Table Access
  *
@@ -1810,7 +1829,7 @@ struct tf_get_shared_tbl_increment_parms {
  * tf_get_shared_tbl_increment
  *
  * This API is currently only required for use in the shared
- * session for Thor (p58) actions.  An increment count is returned per
+ * session for P5 actions.  An increment count is returned per
  * type to indicate how much to increment the start by for each
  * entry (see tf_resource_info)
  *
@@ -1853,9 +1872,6 @@ struct tf_get_tbl_entry_parms {
  * get index table entry
  *
  * Used to retrieve a previous set index table entry.
- *
- * Reads and compares with the shadow table copy (if enabled) (only
- * for internal objects).
  *
  * Returns success or failure code. Failure will be returned if the
  * provided data buffer is too small for the data type requested.
@@ -1979,6 +1995,7 @@ struct tf_insert_em_entry_parms {
 	 */
 	uint64_t flow_id;
 };
+
 /**
  * tf_delete_em_entry parameter definition
  */
@@ -2008,6 +2025,7 @@ struct tf_delete_em_entry_parms {
 	 */
 	uint64_t flow_handle;
 };
+
 /**
  * tf_move_em_entry parameter definition
  */
@@ -2050,6 +2068,7 @@ struct tf_move_em_entry_parms {
 	 */
 	uint64_t flow_handle;
 };
+
 /**
  * tf_search_em_entry parameter definition (Future)
  */
@@ -2165,9 +2184,7 @@ int tf_delete_em_entry(struct tf *tfp,
  * succeeds, a pointer to the matching entry and the result record associated
  * with the matching entry will be provided.
  *
- * If flow_handle is set, search shadow copy.
- *
- * Otherwise, query the fw with key to get result.
+ * Query the fw with key to get result.
  *
  * External:
  *
@@ -2191,6 +2208,7 @@ int tf_search_em_entry(struct tf *tfp,
  *
  * @ref tf_get_global_cfg
  */
+
 /**
  * Tunnel Encapsulation Offsets
  */
@@ -2204,6 +2222,7 @@ enum tf_tunnel_encap_offsets {
 	TF_TUNNEL_ENCAP_GRE,
 	TF_TUNNEL_ENCAP_FULL_GENERIC
 };
+
 /**
  * Global Configuration Table Types
  */
@@ -2276,9 +2295,8 @@ int tf_set_global_cfg(struct tf *tfp,
  * @ref tf_set_if_tbl_entry
  *
  * @ref tf_get_if_tbl_entry
- *
- * @ref tf_restore_if_tbl_entry
  */
+
 /**
  * Enumeration of TruFlow interface table types.
  */
@@ -2396,6 +2414,7 @@ struct tf_get_version_parms {
 	/* [out] major
 	 *
 	 * Version Major number.
+	 * \cond DO_NOT_DOCUMENT
 	 */
 	uint8_t	major;
 
@@ -2412,6 +2431,7 @@ struct tf_get_version_parms {
 	uint8_t	update;
 
 	/**
+	 * \endcond
 	 * [out] dev_ident_caps
 	 *
 	 * fw available identifier resource list
@@ -2565,4 +2585,55 @@ struct tf_get_sram_policy_parms {
 int tf_get_sram_policy(struct tf *tfp,
 		       struct tf_get_sram_policy_parms *parms);
 
+#ifdef TF_FLOW_SCALE_QUERY
+enum tf_flow_resc_type {
+	TF_FLOW_RESC_TYPE_WCTCAM,
+	TF_FLOW_RESC_TYPE_EM,
+	TF_FLOW_RESC_TYPE_METER,
+	TF_FLOW_RESC_TYPE_COUNTER,
+	TF_FLOW_RESC_TYPE_ACTION,
+	TF_FLOW_RESC_TYPE_ACT_MOD_ENCAP,
+	TF_FLOW_RESC_TYPE_SP_SMAC,
+	TF_FLOW_RESC_TYPE_ALL,
+};
+
+/**
+ * Update TF resource usage state with firmware
+ *
+ * Returns success or failure code.
+ */
+int tf_update_resc_usage(struct tf *tfp,
+			 enum tf_dir dir,
+			 enum tf_flow_resc_type flow_resc_type);
+
+/**
+ * tf_query_resc_usage parameter definition
+ */
+struct	tf_query_resc_usage_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] RESC type
+	 */
+	enum tf_flow_resc_type flow_resc_type;
+	/**
+	 * [in] received buffer size
+	 */
+	uint32_t size;
+	/**
+	 * [out] buffer for query data
+	 */
+	uint8_t data[96];
+};
+/**
+ * Get TF resource usage state from firmware
+ *
+ * Returns success or failure code.
+ */
+int tf_query_resc_usage(struct tf *tfp,
+			struct tf_query_resc_usage_parms *parms);
+
+#endif /* TF_FLOW_SCALE_QUERY */
 #endif /* _TF_CORE_H_ */

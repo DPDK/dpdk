@@ -192,7 +192,7 @@ _F_(start_flow)(struct acl_flow_avx512 *flow, uint32_t num, uint32_t msk,
 	m[1] = msk >> _SIMD_PTR_NUM_;
 
 	/* calculate masks for new flows */
-	n = __builtin_popcount(m[0]);
+	n = rte_popcount32(m[0]);
 	nm[0] = (1 << n) - 1;
 	nm[1] = (1 << (num - n)) - 1;
 

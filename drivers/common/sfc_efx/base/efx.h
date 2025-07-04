@@ -7,6 +7,8 @@
 #ifndef	_SYS_EFX_H
 #define	_SYS_EFX_H
 
+#include <assert.h>
+
 #include "efx_annote.h"
 #include "efsys.h"
 #include "efx_types.h"
@@ -17,14 +19,20 @@
 extern "C" {
 #endif
 
-#define	EFX_STATIC_ASSERT(_cond)		\
-	((void)sizeof (char[(_cond) ? 1 : -1]))
+/*
+ * Triggers an error at compilation time if the condition is false.
+ *
+ * The  { } exists to workaround a bug in clang (#55821)
+ * where it would not handle _Static_assert in a switch case.
+ */
+#define	EFX_STATIC_ASSERT(_cond) \
+	{ static_assert((_cond), #_cond); }
 
 #define	EFX_ARRAY_SIZE(_array)			\
 	(sizeof (_array) / sizeof ((_array)[0]))
 
 #define	EFX_FIELD_OFFSET(_type, _field)		\
-	((size_t)&(((_type *)0)->_field))
+	offsetof(_type, _field)
 
 /* The macro expands divider twice */
 #define	EFX_DIV_ROUND_UP(_n, _d)		(((_n) + (_d) - 1) / (_d))
@@ -56,6 +64,7 @@ typedef enum efx_family_e {
 	EFX_FAMILY_MEDFORD,
 	EFX_FAMILY_MEDFORD2,
 	EFX_FAMILY_RIVERHEAD,
+	EFX_FAMILY_MEDFORD4,
 	EFX_FAMILY_NTYPES
 } efx_family_t;
 
@@ -164,6 +173,16 @@ efx_family_probe_bar(
 #define	EFX_PCI_DEVID_RIVERHEAD			0x0100
 #define	EFX_PCI_DEVID_RIVERHEAD_VF		0x1100
 
+/*
+ * Medford4 has low latency (LL) and full feature (FF) datapath engines.
+ * Some Medford4 functions have FF and LL datapath, others only have FF.
+ */
+#define	EFX_PCI_DEVID_MEDFORD4_PF_UNINIT	0x0C13
+#define	EFX_PCI_DEVID_MEDFORD4			0x0C03	/* X4 PF, FF+LL */
+#define	EFX_PCI_DEVID_MEDFORD4_VF		0x1C03	/* X4 VF, FF+LL */
+#define	EFX_PCI_DEVID_MEDFORD4_NO_LL		0x2C03	/* X4 PF, FF only */
+#define	EFX_PCI_DEVID_MEDFORD4_NO_LL_VF		0x3C03	/* X4 VF, FF only */
+
 #define	EFX_MEM_BAR_SIENA			2
 
 #define	EFX_MEM_BAR_HUNTINGTON_PF		2
@@ -177,6 +196,7 @@ efx_family_probe_bar(
 /* FIXME Fix it when memory bar is fixed in FPGA image. It must be 0. */
 #define	EFX_MEM_BAR_RIVERHEAD			2
 
+#define	EFX_MEM_BAR_MEDFORD4			2
 
 /* Error codes */
 
@@ -310,6 +330,12 @@ efx_nic_check_pcie_link_speed(
 	__in		uint32_t pcie_link_width,
 	__in		uint32_t pcie_link_gen,
 	__out		efx_pcie_link_performance_t *resultp);
+
+typedef enum efx_port_usage_e {
+	EFX_PORT_USAGE_UNKNOWN = 0,
+	EFX_PORT_USAGE_EXCLUSIVE,	/* Port only used by this PF */
+	EFX_PORT_USAGE_SHARED,		/* Port shared with other PFs */
+} efx_port_usage_t;
 
 #define	EFX_MAC_ADDR_LEN 6
 
@@ -629,6 +655,7 @@ typedef enum efx_link_mode_e {
 	EFX_LINK_25000FDX,
 	EFX_LINK_50000FDX,
 	EFX_LINK_100000FDX,
+	EFX_LINK_200000FDX,
 	EFX_LINK_NMODES
 } efx_link_mode_t;
 
@@ -641,23 +668,44 @@ typedef enum efx_link_mode_e {
 
 #define	EFX_MAC_SDU_MAX	9202
 
+/*
+ * NOTE: the PDU macros implement an obsolete workaround that is needed for
+ * MC_CMD_SET_MAC; do not use the PDU macros for the netport MCDI commands,
+ * which do not use the workaround.
+ */
+
 #define	EFX_MAC_PDU_ADJUSTMENT					\
 	(/* EtherII */ 14					\
 	    + /* VLAN */ 4					\
 	    + /* CRC */ 4					\
 	    + /* bug16011 */ 16)				\
 
+/* NOTE: this macro is deprecated; use efx_mac_pdu_from_sdu(). */
 #define	EFX_MAC_PDU(_sdu)					\
 	EFX_P2ROUNDUP(size_t, (_sdu) + EFX_MAC_PDU_ADJUSTMENT, 8)
 
 /*
  * Due to the EFX_P2ROUNDUP in EFX_MAC_PDU(), EFX_MAC_SDU_FROM_PDU() may give
  * the SDU rounded up slightly.
+ *
+ * NOTE: do not use this macro in new code as it is
+ * incorrect for the netport MCDI commands.
  */
 #define	EFX_MAC_SDU_FROM_PDU(_pdu)	((_pdu) - EFX_MAC_PDU_ADJUSTMENT)
 
 #define	EFX_MAC_PDU_MIN	60
+
+/* NOTE: this macro is deprecated; use encp->enc_mac_pdu_max. */
 #define	EFX_MAC_PDU_MAX	EFX_MAC_PDU(EFX_MAC_SDU_MAX)
+
+/*
+ * For use with efx_mac_pdu_set(), convert the given SDU value to its PDU form.
+ */
+LIBEFX_API
+extern			size_t
+efx_mac_pdu_from_sdu(
+	__in		efx_nic_t *enp,
+	__in		size_t sdu);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -741,6 +789,11 @@ efx_mac_fcntl_get(
 	__out		unsigned int *fcntl_wantedp,
 	__out		unsigned int *fcntl_linkp);
 
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_mac_include_fcs_set(
+	__in efx_nic_t *enp,
+	__in boolean_t enabled);
 
 #if EFSYS_OPT_MAC_STATS
 
@@ -1148,6 +1201,12 @@ efx_port_poll(
 	__out_opt	efx_link_mode_t	*link_modep);
 
 LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_port_vlan_strip_set(
+	__in		efx_nic_t *enp,
+	__in		boolean_t enabled);
+
+LIBEFX_API
 extern		void
 efx_port_fini(
 	__in	efx_nic_t *enp);
@@ -1175,6 +1234,11 @@ typedef enum efx_phy_cap_type_e {
 	EFX_PHY_CAP_RS_FEC_REQUESTED,
 	EFX_PHY_CAP_25G_BASER_FEC,
 	EFX_PHY_CAP_25G_BASER_FEC_REQUESTED,
+	EFX_PHY_CAP_200000FDX,
+	EFX_PHY_CAP_IEEE_RS_INT_FEC,
+	EFX_PHY_CAP_IEEE_RS_INT_FEC_REQUESTED,
+	EFX_PHY_CAP_ETCS_RS_LL_FEC,
+	EFX_PHY_CAP_ETCS_RS_LL_FEC_REQUESTED,
 	EFX_PHY_CAP_NTYPES
 } efx_phy_cap_type_t;
 
@@ -1201,6 +1265,28 @@ extern			void
 efx_phy_lp_cap_get(
 	__in		efx_nic_t *enp,
 	__out		uint32_t *maskp);
+
+typedef enum efx_phy_lane_count_e {
+	EFX_PHY_LANE_COUNT_DEFAULT = 0,
+	EFX_PHY_LANE_COUNT_1 = 1,
+	EFX_PHY_LANE_COUNT_2 = 2,
+	EFX_PHY_LANE_COUNT_4 = 4,
+	EFX_PHY_LANE_COUNT_10 = 10,
+	EFX_PHY_LANE_COUNT_NTYPES,
+} efx_phy_lane_count_t;
+
+/*
+ * Instruct the port to use the specified lane count. For this to work, the
+ * active subset of advertised link modes must include at least one mode that
+ * supports this value. This API works only on netport MCDI capable adaptors.
+ *
+ * To query the current lane count, use efx_phy_link_state_get().
+ */
+LIBEFX_API
+extern	__checkReturn	efx_rc_t
+efx_phy_lane_count_set(
+	__in		efx_nic_t *enp,
+	__in		efx_phy_lane_count_t lane_count);
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -1616,6 +1702,7 @@ typedef struct efx_nic_cfg_s {
 	/* Number of TSO contexts on the NIC (FATSOv2) */
 	uint32_t		enc_fw_assisted_tso_v2_n_contexts;
 	boolean_t		enc_hw_tx_insert_vlan_enabled;
+	boolean_t		enc_rx_vlan_stripping_supported;
 	/* Number of PFs on the NIC */
 	uint32_t		enc_hw_pf_count;
 	/* Datapath firmware vadapter/vport/vswitch support */
@@ -1623,6 +1710,7 @@ typedef struct efx_nic_cfg_s {
 	/* Datapath firmware vport reconfigure support */
 	boolean_t		enc_vport_reconfigure_supported;
 	boolean_t		enc_rx_disable_scatter_supported;
+	boolean_t		enc_rx_include_fcs_supported;
 	/* Maximum number of Rx scatter segments supported by HW */
 	uint32_t		enc_rx_scatter_max;
 	boolean_t		enc_allow_set_mac_with_installed_filters;
@@ -1672,6 +1760,8 @@ typedef struct efx_nic_cfg_s {
 	boolean_t		enc_mae_admin;
 	/* NIC support for MAE action set v2 features. */
 	boolean_t		enc_mae_aset_v2_supported;
+	/* NIC support for MCDI Table Access API. */
+	boolean_t		enc_table_api_supported;
 	/* Firmware support for "FLAG" and "MARK" filter actions */
 	boolean_t		enc_filter_action_flag_supported;
 	boolean_t		enc_filter_action_mark_supported;
@@ -1680,6 +1770,24 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_assigned_port;
 	/* NIC DMA mapping type */
 	efx_nic_dma_mapping_t	enc_dma_mapping;
+	/* Physical ports shared by PFs */
+	efx_port_usage_t	enc_port_usage;
+	/* Minimum MAC PDU value to use with efx_mac_pdu_set() */
+	uint32_t		enc_mac_pdu_min;
+	/* Maximum MAC PDU value to use with efx_mac_pdu_set() */
+	uint32_t		enc_mac_pdu_max;
+	/*
+	 * When true, the link mode value passed from eec_link_change() is
+	 * either UNKNOWN (merely saying the link is up) or DOWN. In order
+	 * to have exact speed/duplex, efx_port_poll() needs to be invoked.
+	 */
+	boolean_t		enc_link_ev_need_poll;
+	/*
+	 * An array of masks to tell which link mode supports which lane counts.
+	 * For bit definitions, see 'efx_phy_lane_count_t'. It is only filled in
+	 * on netport MCDI capable adaptors.
+	 */
+	efx_dword_t		enc_phy_lane_counts[EFX_LINK_NMODES];
 } efx_nic_cfg_t;
 
 #define	EFX_PCI_VF_INVALID 0xffff
@@ -3100,6 +3208,12 @@ typedef enum efx_rxq_type_e {
  * Request user flag field in the Rx prefix of a queue.
  */
 #define	EFX_RXQ_FLAG_USER_FLAG		0x20
+/*
+ * Request VLAN TCI field in the Rx prefix. The flag just
+ * controls delivery of the stripped VLAN TCI if VLAN stripping
+ * is enabled and done.
+ */
+#define	EFX_RXQ_FLAG_VLAN_STRIPPED_TCI		0x40
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -3955,8 +4069,23 @@ efx_nic_set_fw_subvariant(
 typedef enum efx_phy_fec_type_e {
 	EFX_PHY_FEC_NONE = 0,
 	EFX_PHY_FEC_BASER,
-	EFX_PHY_FEC_RS
+	EFX_PHY_FEC_RS,
+	EFX_PHY_FEC_IEEE_RS_INT,
+	EFX_PHY_FEC_ETCS_RS_LL,
 } efx_phy_fec_type_t;
+
+#define EFX_PHY_CAP_FEC_BIT(_fec_bit) (1U << EFX_PHY_CAP_##_fec_bit)
+#define EFX_PHY_CAP_FEC_MASK \
+	(EFX_PHY_CAP_FEC_BIT(BASER_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(BASER_FEC_REQUESTED) |		\
+	 EFX_PHY_CAP_FEC_BIT(25G_BASER_FEC_REQUESTED) |		\
+	 EFX_PHY_CAP_FEC_BIT(RS_FEC) |				\
+	 EFX_PHY_CAP_FEC_BIT(RS_FEC_REQUESTED) |		\
+	 EFX_PHY_CAP_FEC_BIT(IEEE_RS_INT_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(IEEE_RS_INT_FEC_REQUESTED) |	\
+	 EFX_PHY_CAP_FEC_BIT(ETCS_RS_LL_FEC) |			\
+	 EFX_PHY_CAP_FEC_BIT(ETCS_RS_LL_FEC_REQUESTED))
 
 LIBEFX_API
 extern	__checkReturn	efx_rc_t
@@ -3971,6 +4100,7 @@ typedef struct efx_phy_link_state_s {
 	unsigned int		epls_fcntl;
 	efx_phy_fec_type_t	epls_fec;
 	efx_link_mode_t		epls_link_mode;
+	efx_phy_lane_count_t	epls_lane_count;
 } efx_phy_link_state_t;
 
 LIBEFX_API
@@ -4189,7 +4319,11 @@ typedef struct efx_mae_limits_s {
 	uint32_t			eml_max_n_outer_prios;
 	uint32_t			eml_encap_types_supported;
 	uint32_t			eml_encap_header_size_limit;
-	uint32_t			eml_max_n_counters;
+	union {
+		uint32_t		eml_max_n_counters;
+		uint32_t		eml_max_n_action_counters;
+	};
+	uint32_t			eml_max_n_conntrack_counters;
 } efx_mae_limits_t;
 
 LIBEFX_API
@@ -4274,6 +4408,11 @@ typedef enum efx_mae_field_id_e {
 	 * or by using dedicated field-specific helper APIs.
 	 */
 	EFX_MAE_FIELD_RECIRC_ID,
+	EFX_MAE_FIELD_CT_MARK,
+
+	/* Single bits which can be set by efx_mae_match_spec_bit_set(). */
+	EFX_MAE_FIELD_IS_IP_FRAG,
+	EFX_MAE_FIELD_IP_FIRST_FRAG,
 	EFX_MAE_FIELD_NIDS
 } efx_mae_field_id_t;
 
@@ -4428,6 +4567,16 @@ efx_mae_match_spec_field_set(
 	__in				size_t mask_size,
 	__in_bcount(mask_size)		const uint8_t *mask);
 
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_field_get(
+	__in				const efx_mae_match_spec_t *spec,
+	__in				efx_mae_field_id_t field_id,
+	__in				size_t value_size,
+	__out_bcount_opt(value_size)	uint8_t *value,
+	__in				size_t mask_size,
+	__out_bcount_opt(mask_size)	uint8_t *mask);
+
 /* The corresponding mask will be set to B_TRUE. */
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
@@ -4449,6 +4598,19 @@ extern	__checkReturn			efx_rc_t
 efx_mae_match_spec_recirc_id_set(
 	__in				efx_mae_match_spec_t *spec,
 	__in				uint8_t recirc_id);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_ct_mark_set(
+	__in				efx_mae_match_spec_t *spec,
+	__in				uint32_t ct_mark);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_match_spec_clone(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_match_spec_t *orig,
+	__out				efx_mae_match_spec_t **clonep);
 
 LIBEFX_API
 extern	__checkReturn			boolean_t
@@ -4532,6 +4694,19 @@ efx_mae_action_set_populate_set_src_mac(
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_action_set_populate_decr_ip_ttl(
+	__in				efx_mae_actions_t *spec);
+
+/*
+ * This only requests NAT action. The replacement IP address and
+ * L4 port number, as well as the edit direction (DST/SRC), come
+ * from the response to a hit in the conntrack assistance table.
+ *
+ * The action amends the outermost frame. In the case of prior
+ * decapsulation, that maps to the (originally) inner frame.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_action_set_populate_nat(
 	__in				efx_mae_actions_t *spec);
 
 LIBEFX_API
@@ -4653,6 +4828,15 @@ efx_mae_outer_rule_recirc_id_set(
 	__in				efx_mae_match_spec_t *spec,
 	__in				uint8_t recirc_id);
 
+/*
+ * Request that packets hitting this rule be submitted
+ * for a lookup in the conntrack assistance table.
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_outer_rule_do_ct_set(
+	__in				efx_mae_match_spec_t *spec);
+
 LIBEFX_API
 extern	__checkReturn		efx_rc_t
 efx_mae_outer_rule_insert(
@@ -4721,6 +4905,15 @@ efx_mae_encap_header_alloc(
 
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
+efx_mae_encap_header_update(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_eh_id_t *eh_idp,
+	__in				efx_tunnel_protocol_t encap_type,
+	__in_bcount(header_size)	const uint8_t *header_data,
+	__in				size_t header_size);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
 efx_mae_encap_header_free(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_eh_id_t *eh_idp);
@@ -4731,6 +4924,15 @@ extern	__checkReturn			efx_rc_t
 efx_mae_action_set_fill_in_eh_id(
 	__in				efx_mae_actions_t *spec,
 	__in				const efx_mae_eh_id_t *eh_idp);
+
+/*
+ * Counter types that may be supported by the match-action engine.
+ * Each counter type maintains its own counter ID namespace in FW.
+ */
+typedef enum efx_counter_type_e {
+	EFX_COUNTER_TYPE_ACTION = 0,
+	EFX_COUNTER_TYPE_CONNTRACK,
+} efx_counter_type_t;
 
 typedef struct efx_counter_s {
 	uint32_t id;
@@ -4748,6 +4950,20 @@ efx_mae_action_set_fill_in_counter_id(
 	__in				efx_mae_actions_t *spec,
 	__in				const efx_counter_t *counter_idp);
 
+/*
+ * Clears dangling FW object IDs (counter ID, for instance) in
+ * the action set specification. Useful for adapter restarts,
+ * when all MAE objects need to be reallocated by the driver.
+ *
+ * This method only clears the IDs in the specification.
+ * The driver is still responsible for keeping the IDs
+ * separately and freeing them when stopping the port.
+ */
+LIBEFX_API
+extern					void
+efx_mae_action_set_clear_fw_rsrc_ids(
+	__in				efx_mae_actions_t *spec);
+
 /* Action set ID */
 typedef struct efx_mae_aset_id_s {
 	uint32_t id;
@@ -4761,6 +4977,8 @@ efx_mae_action_set_alloc(
 	__out				efx_mae_aset_id_t *aset_idp);
 
 /*
+ * Allocates MAE counter(s) of type EFX_COUNTER_TYPE_ACTION.
+ *
  * Generation count has two purposes:
  *
  * 1) Distinguish between counter packets that belong to freed counter
@@ -4784,10 +5002,34 @@ efx_mae_counters_alloc(
 	__out_ecount(n_counters)	efx_counter_t *countersp,
 	__out_opt			uint32_t *gen_countp);
 
+/*
+ * Allocates MAE counter(s) of the specified type. Other
+ * than that, behaves like efx_mae_counters_alloc().
+ */
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_alloc_type(
+	__in				efx_nic_t *enp,
+	__in				efx_counter_type_t type,
+	__in				uint32_t n_counters,
+	__out				uint32_t *n_allocatedp,
+	__out_ecount(n_counters)	efx_counter_t *countersp,
+	__out_opt			uint32_t *gen_countp);
+
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
 efx_mae_counters_free(
 	__in				efx_nic_t *enp,
+	__in				uint32_t n_counters,
+	__out				uint32_t *n_freedp,
+	__in_ecount(n_counters)		const efx_counter_t *countersp,
+	__out_opt			uint32_t *gen_countp);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_mae_counters_free_type(
+	__in				efx_nic_t *enp,
+	__in				efx_counter_type_t type,
 	__in				uint32_t n_counters,
 	__out				uint32_t *n_freedp,
 	__in_ecount(n_counters)		const efx_counter_t *countersp,
@@ -5067,6 +5309,147 @@ efx_nic_dma_map(
 	__in		efsys_dma_addr_t tgt_addr,
 	__in		size_t len,
 	__out		efsys_dma_addr_t *nic_addrp);
+
+/* Unique IDs for HW tables */
+typedef enum efx_table_id_e {
+	EFX_TABLE_ID_CONNTRACK = 0x10300,
+} efx_table_id_t;
+
+LIBEFX_API
+extern	__checkReturn				efx_rc_t
+efx_table_list(
+	__in					efx_nic_t *enp,
+	__in					uint32_t entry_ofst,
+	__out_opt				unsigned int *total_n_tablesp,
+	__out_ecount_opt(n_table_ids)		efx_table_id_t *table_ids,
+	__in					unsigned int n_table_ids,
+	__out_opt				unsigned int *n_table_ids_writtenp);
+
+LIBEFX_API
+extern	__checkReturn		size_t
+efx_table_supported_num_get(
+	__in			void);
+
+LIBEFX_API
+extern	__checkReturn		boolean_t
+efx_table_is_supported(
+	__in			efx_table_id_t table_id);
+
+/* Unique IDs for table fields */
+typedef enum efx_table_field_id_e {
+	EFX_TABLE_FIELD_ID_UNUSED = 0x0,
+	EFX_TABLE_FIELD_ID_COUNTER_ID = 0xa,
+	EFX_TABLE_FIELD_ID_ETHER_TYPE = 0x1c,
+	EFX_TABLE_FIELD_ID_SRC_IP = 0x1d,
+	EFX_TABLE_FIELD_ID_DST_IP = 0x1e,
+	EFX_TABLE_FIELD_ID_IP_PROTO = 0x20,
+	EFX_TABLE_FIELD_ID_SRC_PORT = 0x21,
+	EFX_TABLE_FIELD_ID_DST_PORT = 0x22,
+	EFX_TABLE_FIELD_ID_NAT_PORT = 0x7a,
+	EFX_TABLE_FIELD_ID_NAT_IP = 0x7b,
+	EFX_TABLE_FIELD_ID_NAT_DIR = 0x7c,
+	EFX_TABLE_FIELD_ID_CT_MARK = 0x7d,
+} efx_table_field_id_t;
+
+/* Table fields mask types */
+typedef enum efx_table_field_mask_type_e {
+	EFX_TABLE_FIELD_MASK_NEVER = 0x0,
+	EFX_TABLE_FIELD_MASK_EXACT = 0x1,
+} efx_table_field_mask_type_t;
+
+typedef struct efx_table_field_desc_s {
+	efx_table_field_id_t		field_id;
+	uint16_t			lbn;
+	uint16_t			width;
+	efx_table_field_mask_type_t	mask_type;
+	uint8_t				scheme;
+} efx_table_field_descriptor_t;
+
+/* Types of HW tables */
+typedef enum efx_table_type_e {
+	/* Exact match to all key fields of table entry. */
+	EFX_TABLE_TYPE_BCAM = 0x2,
+} efx_table_type_t;
+
+typedef struct efx_table_descriptor_s {
+	efx_table_type_t	type;
+	uint16_t		key_width;
+	uint16_t		resp_width;
+	/* Number of key's fields to match data */
+	uint16_t		n_key_fields;
+	/* Number of fields in match response */
+	uint16_t		n_resp_fields;
+} efx_table_descriptor_t;
+
+LIBEFX_API
+extern	__checkReturn				efx_rc_t
+efx_table_describe(
+	__in					efx_nic_t *enp,
+	__in					efx_table_id_t table_id,
+	__in					uint32_t field_offset,
+	__out_opt				efx_table_descriptor_t *table_descp,
+	__out_ecount_opt(n_field_descs)		efx_table_field_descriptor_t *fields_descs,
+	__in					unsigned int n_field_descs,
+	__out_opt				unsigned int *n_field_descs_writtenp);
+
+/* Maximum possible size of data for manipulation of the tables */
+#define EFX_TABLE_ENTRY_LENGTH_MAX	1008
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_table_entry_insert(
+	__in				efx_nic_t *enp,
+	__in				efx_table_id_t table_id,
+	__in				uint16_t priority,
+	__in				uint16_t mask_id,
+	__in				uint16_t key_width,
+	__in				uint16_t mask_width,
+	__in				uint16_t resp_width,
+	__in_bcount(data_size)		uint8_t *entry_datap,
+	__in				unsigned int data_size);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
+efx_table_entry_delete(
+	__in				efx_nic_t *enp,
+	__in				efx_table_id_t table_id,
+	__in				uint16_t mask_id,
+	__in				uint16_t key_width,
+	__in				uint16_t mask_width,
+	__in_bcount(data_size)		uint8_t *entry_datap,
+	__in				unsigned int data_size);
+
+/*
+ * Clone the given MAE action set specification
+ * and drop actions COUNT and DELIVER from it.
+ */
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_action_set_replay(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_actions_t *spec_orig,
+	__out			efx_mae_actions_t **spec_clonep);
+
+/*
+ * The actual limit may be lower than this.
+ * This define merely limits the number of
+ * entries in a single allocation request.
+ */
+#define EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES	254
+
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_action_set_list_alloc(
+	__in			efx_nic_t *enp,
+	__in			unsigned int n_asets,
+	__in_ecount(n_asets)	const efx_mae_aset_id_t *aset_ids,
+	__out			efx_mae_aset_list_id_t *aset_list_idp);
+
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_action_set_list_free(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_aset_list_id_t *aset_list_idp);
 
 #ifdef	__cplusplus
 }

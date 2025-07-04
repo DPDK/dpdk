@@ -10,10 +10,6 @@
 #ifndef _RTE_BRANCH_PREDICTION_H_
 #define _RTE_BRANCH_PREDICTION_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Check if a branch is likely to be taken.
  *
@@ -22,10 +18,13 @@ extern "C" {
  *
  *   if (likely(x > 1))
  *      do_stuff();
- *
  */
 #ifndef likely
+#ifdef RTE_TOOLCHAIN_MSVC
+#define likely(x)	(!!(x))
+#else
 #define likely(x)	__builtin_expect(!!(x), 1)
+#endif
 #endif /* likely */
 
 /**
@@ -36,14 +35,13 @@ extern "C" {
  *
  *   if (unlikely(x < 1))
  *      do_stuff();
- *
  */
 #ifndef unlikely
+#ifdef RTE_TOOLCHAIN_MSVC
+#define unlikely(x)	(!!(x))
+#else
 #define unlikely(x)	__builtin_expect(!!(x), 0)
-#endif /* unlikely */
-
-#ifdef __cplusplus
-}
 #endif
+#endif /* unlikely */
 
 #endif /* _RTE_BRANCH_PREDICTION_H_ */

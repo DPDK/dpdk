@@ -267,7 +267,7 @@ cnxk_nix_tm_node_capa_get(struct rte_eth_dev *eth_dev, uint32_t node_id,
 
 static int
 cnxk_nix_tm_shaper_profile_add(struct rte_eth_dev *eth_dev, uint32_t id,
-			       struct rte_tm_shaper_params *params,
+			       const struct rte_tm_shaper_params *params,
 			       struct rte_tm_error *error)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -336,7 +336,7 @@ static int
 cnxk_nix_tm_node_add(struct rte_eth_dev *eth_dev, uint32_t node_id,
 		     uint32_t parent_node_id, uint32_t priority,
 		     uint32_t weight, uint32_t lvl,
-		     struct rte_tm_node_params *params,
+		     const struct rte_tm_node_params *params,
 		     struct rte_tm_error *error)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -764,6 +764,9 @@ cnxk_nix_tm_set_queue_rate_limit(struct rte_eth_dev *eth_dev,
 
 	if (queue_idx >= eth_dev->data->nb_tx_queues)
 		goto exit;
+
+	if (roc_nix_tm_tree_type_get(nix) == ROC_NIX_TM_PFC)
+		return roc_nix_tm_pfc_rlimit_sq(nix, queue_idx, tx_rate);
 
 	if ((roc_nix_tm_tree_type_get(nix) != ROC_NIX_TM_RLIMIT) &&
 	    eth_dev->data->nb_tx_queues > 1) {

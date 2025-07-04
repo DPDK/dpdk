@@ -8,13 +8,13 @@
 #ifndef RTE_BYTEORDER_RISCV_H
 #define RTE_BYTEORDER_RISCV_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include "generic/rte_byteorder.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_BYTE_ORDER
 #define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN

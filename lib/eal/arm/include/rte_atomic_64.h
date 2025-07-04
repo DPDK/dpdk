@@ -10,14 +10,13 @@
 #  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
+#include "generic/rte_atomic.h"
+#include <rte_branch_prediction.h>
+#include <rte_debug.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_atomic.h"
-#include <rte_branch_prediction.h>
-#include <rte_compat.h>
-#include <rte_debug.h>
 
 #define rte_mb() asm volatile("dmb osh" : : : "memory")
 
@@ -38,9 +37,9 @@ extern "C" {
 #define rte_io_rmb() rte_rmb()
 
 static __rte_always_inline void
-rte_atomic_thread_fence(int memorder)
+rte_atomic_thread_fence(rte_memory_order memorder)
 {
-	__atomic_thread_fence(memorder);
+	__rte_atomic_thread_fence(memorder);
 }
 
 /*------------------------ 128 bit atomic operations -------------------------*/
@@ -94,7 +93,6 @@ __ATOMIC128_CAS_OP(__cas_128_acq_rel, "caspal")
 
 #endif
 
-__rte_experimental
 static inline int
 rte_atomic128_cmp_exchange(rte_int128_t *dst, rte_int128_t *exp,
 		const rte_int128_t *src, unsigned int weak, int success,
@@ -107,33 +105,33 @@ rte_atomic128_cmp_exchange(rte_int128_t *dst, rte_int128_t *exp,
 	 */
 	RTE_SET_USED(failure);
 	/* Find invalid memory order */
-	RTE_ASSERT(success == __ATOMIC_RELAXED ||
-		success == __ATOMIC_ACQUIRE ||
-		success == __ATOMIC_RELEASE ||
-		success == __ATOMIC_ACQ_REL ||
-		success == __ATOMIC_SEQ_CST);
+	RTE_ASSERT(success == rte_memory_order_relaxed ||
+		success == rte_memory_order_acquire ||
+		success == rte_memory_order_release ||
+		success == rte_memory_order_acq_rel ||
+		success == rte_memory_order_seq_cst);
 
 	rte_int128_t expected = *exp;
 	rte_int128_t desired = *src;
 	rte_int128_t old;
 
 #if defined(__ARM_FEATURE_ATOMICS) || defined(RTE_ARM_FEATURE_ATOMICS)
-	if (success == __ATOMIC_RELAXED)
+	if (success == rte_memory_order_relaxed)
 		__cas_128_relaxed(dst, exp, desired);
-	else if (success == __ATOMIC_ACQUIRE)
+	else if (success == rte_memory_order_acquire)
 		__cas_128_acquire(dst, exp, desired);
-	else if (success == __ATOMIC_RELEASE)
+	else if (success == rte_memory_order_release)
 		__cas_128_release(dst, exp, desired);
 	else
 		__cas_128_acq_rel(dst, exp, desired);
 	old = *exp;
 #else
-#define __HAS_ACQ(mo) ((mo) != __ATOMIC_RELAXED && (mo) != __ATOMIC_RELEASE)
-#define __HAS_RLS(mo) ((mo) == __ATOMIC_RELEASE || (mo) == __ATOMIC_ACQ_REL || \
-		(mo) == __ATOMIC_SEQ_CST)
+#define __HAS_ACQ(mo) ((mo) != rte_memory_order_relaxed && (mo) != rte_memory_order_release)
+#define __HAS_RLS(mo) ((mo) == rte_memory_order_release || (mo) == rte_memory_order_acq_rel || \
+		(mo) == rte_memory_order_seq_cst)
 
-	int ldx_mo = __HAS_ACQ(success) ? __ATOMIC_ACQUIRE : __ATOMIC_RELAXED;
-	int stx_mo = __HAS_RLS(success) ? __ATOMIC_RELEASE : __ATOMIC_RELAXED;
+	int ldx_mo = __HAS_ACQ(success) ? rte_memory_order_acquire : rte_memory_order_relaxed;
+	int stx_mo = __HAS_RLS(success) ? rte_memory_order_release : rte_memory_order_relaxed;
 
 #undef __HAS_ACQ
 #undef __HAS_RLS
@@ -153,7 +151,7 @@ rte_atomic128_cmp_exchange(rte_int128_t *dst, rte_int128_t *exp,
 		: "Q" (src->val[0])       \
 		: "memory"); }
 
-		if (ldx_mo == __ATOMIC_RELAXED)
+		if (ldx_mo == rte_memory_order_relaxed)
 			__LOAD_128("ldxp", dst, old)
 		else
 			__LOAD_128("ldaxp", dst, old)
@@ -170,7 +168,7 @@ rte_atomic128_cmp_exchange(rte_int128_t *dst, rte_int128_t *exp,
 		: "memory"); }
 
 		if (likely(old.int128 == expected.int128)) {
-			if (stx_mo == __ATOMIC_RELAXED)
+			if (stx_mo == rte_memory_order_relaxed)
 				__STORE_128("stxp", dst, desired, ret)
 			else
 				__STORE_128("stlxp", dst, desired, ret)
@@ -181,7 +179,7 @@ rte_atomic128_cmp_exchange(rte_int128_t *dst, rte_int128_t *exp,
 			 * needs to be stored back to ensure it was read
 			 * atomically.
 			 */
-			if (stx_mo == __ATOMIC_RELAXED)
+			if (stx_mo == rte_memory_order_relaxed)
 				__STORE_128("stxp", dst, old, ret)
 			else
 				__STORE_128("stlxp", dst, old, ret)

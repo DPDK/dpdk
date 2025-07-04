@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -27,11 +28,13 @@ struct rte_cfgfile {
 	struct rte_cfgfile_section *sections;
 };
 
+/* Setting up dynamic logging 8< */
 RTE_LOG_REGISTER_DEFAULT(cfgfile_logtype, INFO);
+#define RTE_LOGTYPE_CFGFILE cfgfile_logtype
 
-#define CFG_LOG(level, fmt, args...)					\
-	rte_log(RTE_LOG_ ## level, cfgfile_logtype, "%s(): " fmt "\n",	\
-		__func__, ## args)
+#define CFG_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, CFGFILE, "%s(): ", __func__, __VA_ARGS__)
+/* >8 End of setting up dynamic logging */
 
 /** when we resize a file structure, how many extra entries
  * for new sections do we add in */
@@ -135,7 +138,7 @@ rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
 	unsigned int i;
 
 	if (!params) {
-		CFG_LOG(ERR, "missing cfgfile parameters\n");
+		CFG_LOG(ERR, "missing cfgfile parameters");
 		return -EINVAL;
 	}
 
@@ -148,7 +151,7 @@ rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
 	}
 
 	if (valid_comment == 0)	{
-		CFG_LOG(ERR, "invalid comment characters %c\n",
+		CFG_LOG(ERR, "invalid comment characters %c",
 		       params->comment_character);
 		return -ENOTSUP;
 	}
@@ -156,6 +159,7 @@ rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_load)
 struct rte_cfgfile *
 rte_cfgfile_load(const char *filename, int flags)
 {
@@ -163,6 +167,7 @@ rte_cfgfile_load(const char *filename, int flags)
 					    &default_cfgfile_params);
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_load_with_params)
 struct rte_cfgfile *
 rte_cfgfile_load_with_params(const char *filename, int flags,
 			     const struct rte_cfgfile_parameters *params)
@@ -186,7 +191,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 		lineno++;
 		if ((len >= sizeof(buffer) - 1) && (buffer[len-1] != '\n')) {
 			CFG_LOG(ERR, " line %d - no \\n found on string. "
-					"Check if line too long\n", lineno);
+					"Check if line too long", lineno);
 			goto error1;
 		}
 		/* skip parsing if comment character found */
@@ -207,7 +212,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 			char *end = memchr(buffer, ']', len);
 			if (end == NULL) {
 				CFG_LOG(ERR,
-					"line %d - no terminating ']' character found\n",
+					"line %d - no terminating ']' character found",
 					lineno);
 				goto error1;
 			}
@@ -223,7 +228,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 			split[1] = memchr(buffer, '=', len);
 			if (split[1] == NULL) {
 				CFG_LOG(ERR,
-					"line %d - no '=' character found\n",
+					"line %d - no '=' character found",
 					lineno);
 				goto error1;
 			}
@@ -247,7 +252,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 			if (!(flags & CFG_FLAG_EMPTY_VALUES) &&
 					(*split[1] == '\0')) {
 				CFG_LOG(ERR,
-					"line %d - cannot use empty values\n",
+					"line %d - cannot use empty values",
 					lineno);
 				goto error1;
 			}
@@ -267,6 +272,7 @@ error1:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_create)
 struct rte_cfgfile *
 rte_cfgfile_create(int flags)
 {
@@ -323,6 +329,7 @@ error1:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_add_section)
 int
 rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
@@ -364,6 +371,7 @@ rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_add_entry)
 int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
 		const char *sectionname, const char *entryname,
 		const char *entryvalue)
@@ -388,6 +396,7 @@ int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_set_entry)
 int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname, const char *entryvalue)
 {
@@ -412,10 +421,11 @@ int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 			return 0;
 		}
 
-	CFG_LOG(ERR, "entry name doesn't exist\n");
+	CFG_LOG(ERR, "entry name doesn't exist");
 	return -EINVAL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_save)
 int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
 {
 	int i, j;
@@ -440,6 +450,7 @@ int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
 	return fclose(f);
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_close)
 int rte_cfgfile_close(struct rte_cfgfile *cfg)
 {
 	int i;
@@ -463,6 +474,7 @@ int rte_cfgfile_close(struct rte_cfgfile *cfg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_num_sections)
 int
 rte_cfgfile_num_sections(struct rte_cfgfile *cfg, const char *sectionname,
 size_t length)
@@ -476,6 +488,7 @@ size_t length)
 	return num_sections;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_sections)
 int
 rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	int max_sections)
@@ -488,12 +501,14 @@ rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_has_section)
 int
 rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname)
 {
 	return _get_section(cfg, sectionname) != NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_num_entries)
 int
 rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname)
@@ -504,6 +519,7 @@ rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	return s->num_entries;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_num_entries_by_index)
 int
 rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	char *sectionname, int index)
@@ -516,6 +532,7 @@ rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	strlcpy(sectionname, sect->name, CFG_NAME_LEN);
 	return sect->num_entries;
 }
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_entries)
 int
 rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 		struct rte_cfgfile_entry *entries, int max_entries)
@@ -529,6 +546,7 @@ rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_section_entries_by_index)
 int
 rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 		char *sectionname,
@@ -546,6 +564,7 @@ rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg, int index,
 	return i;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_get_entry)
 const char *
 rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)
@@ -561,6 +580,7 @@ rte_cfgfile_get_entry(struct rte_cfgfile *cfg, const char *sectionname,
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_cfgfile_has_entry)
 int
 rte_cfgfile_has_entry(struct rte_cfgfile *cfg, const char *sectionname,
 		const char *entryname)

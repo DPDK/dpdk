@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2016-2017 Intel Corporation.
 
-.. _Efd_Library:
-
-Elastic Flow Distributor Library
-================================
+Elastic Flow Distributor (EFD) Library
+======================================
 
 Introduction
 ------------

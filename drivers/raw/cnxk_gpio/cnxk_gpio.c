@@ -3,11 +3,19 @@
  */
 
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/gpio.h>
+#include <regex.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <bus_vdev_driver.h>
 #include <rte_eal.h>
+#include <rte_errno.h>
+#include <rte_interrupts.h>
 #include <rte_kvargs.h>
 #include <rte_lcore.h>
 #include <rte_rawdev_pmd.h>
@@ -17,8 +25,17 @@
 #include "cnxk_gpio.h"
 #include "rte_pmd_cnxk_gpio.h"
 
-#define CNXK_GPIO_BUFSZ 128
-#define CNXK_GPIO_CLASS_PATH "/sys/class/gpio"
+#define CNXK_GPIO_PARAMS_MZ_NAME "cnxk_gpio_params_mz"
+#define CNXK_GPIO_INVALID_FD (-1)
+
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_gpio, gpio, INFO);
+
+#ifdef CNXK_GPIO_V2_PRESENT
+
+struct cnxk_gpio_params {
+	unsigned int num;
+	char allowlist[];
+};
 
 static const char *const cnxk_gpio_args[] = {
 #define CNXK_GPIO_ARG_GPIOCHIP "gpiochip"
@@ -28,12 +45,35 @@ static const char *const cnxk_gpio_args[] = {
 	NULL
 };
 
-static char *allowlist;
-
 static void
 cnxk_gpio_format_name(char *name, size_t len)
 {
 	snprintf(name, len, "cnxk_gpio");
+}
+
+static int
+cnxk_gpio_ioctl(struct cnxk_gpio *gpio, unsigned long cmd, void *arg)
+{
+	return ioctl(gpio->fd, cmd, arg) ? -errno : 0;
+}
+
+static int
+cnxk_gpio_gpiochip_ioctl(struct cnxk_gpiochip *gpiochip, unsigned long cmd, void *arg)
+{
+	char path[PATH_MAX];
+	int ret = 0, fd;
+
+	snprintf(path, sizeof(path), "/dev/gpiochip%d", gpiochip->num);
+	fd = open(path, O_RDONLY);
+	if (fd == -1)
+		return -errno;
+
+	if (ioctl(fd, cmd, arg))
+		ret = -errno;
+
+	close(fd);
+
+	return ret;
 }
 
 static int
@@ -44,86 +84,168 @@ cnxk_gpio_filter_gpiochip(const struct dirent *dirent)
 	return !strncmp(dirent->d_name, pattern, strlen(pattern));
 }
 
-static void
-cnxk_gpio_set_defaults(struct cnxk_gpiochip *gpiochip)
+static int
+cnxk_gpio_set_defaults(struct cnxk_gpio_params *params)
 {
 	struct dirent **namelist;
-	int n;
+	int ret = 0, n;
 
-	n = scandir(CNXK_GPIO_CLASS_PATH, &namelist, cnxk_gpio_filter_gpiochip,
-		    alphasort);
+	n = scandir("/dev", &namelist, cnxk_gpio_filter_gpiochip, alphasort);
 	if (n < 0 || n == 0)
-		return;
+		return -ENODEV;
 
-	sscanf(namelist[0]->d_name, "gpiochip%d", &gpiochip->num);
+	if (sscanf(namelist[0]->d_name, "gpiochip%d", &params->num) != 1)
+		ret = -EINVAL;
+
 	while (n--)
 		free(namelist[n]);
 	free(namelist);
+
+	return ret;
 }
 
 static int
 cnxk_gpio_parse_arg_gpiochip(const char *key __rte_unused, const char *value,
 			     void *extra_args)
 {
-	long val;
+	unsigned long val;
 
 	errno = 0;
-	val = strtol(value, NULL, 10);
+	val = strtoul(value, NULL, 10);
 	if (errno)
 		return -errno;
 
-	*(int *)extra_args = (int)val;
+	*(unsigned int *)extra_args = val;
 
 	return 0;
 }
 
 static int
-cnxk_gpio_parse_arg_allowlist(const char *key __rte_unused, const char *value,
-			      void *extra_args __rte_unused)
+cnxk_gpio_parse_arg_allowlist(const char *key __rte_unused, const char *value, void *extra_args)
 {
-	allowlist = strdup(value);
-	if (!allowlist)
-		return -ENOMEM;
+	*(const char **)extra_args = value;
 
 	return 0;
 }
 
 static int
-cnxk_gpio_parse_args(struct cnxk_gpiochip *gpiochip, const char *args)
+cnxk_gpio_params_restore(struct cnxk_gpio_params **params)
 {
+	const struct rte_memzone *mz;
+
+	mz = rte_memzone_lookup(CNXK_GPIO_PARAMS_MZ_NAME);
+	if (!mz)
+		return -ENODEV;
+
+	*params = mz->addr;
+
+	return 0;
+}
+
+static struct cnxk_gpio_params *
+cnxk_gpio_params_reserve(size_t len)
+{
+	const struct rte_memzone *mz;
+
+	mz = rte_memzone_reserve(CNXK_GPIO_PARAMS_MZ_NAME, len, rte_socket_id(), 0);
+	if (!mz)
+		return NULL;
+
+	return mz->addr;
+}
+
+static void
+cnxk_gpio_params_release(void)
+{
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_memzone_free(rte_memzone_lookup(CNXK_GPIO_PARAMS_MZ_NAME));
+}
+
+static int
+cnxk_gpio_parse_arg(struct rte_kvargs *kvlist, const char *arg, arg_handler_t handler, void *data)
+{
+	int ret;
+
+	ret = rte_kvargs_count(kvlist, arg);
+	if (ret == 0)
+		return 0;
+	if (ret > 1)
+		return -EINVAL;
+
+	return rte_kvargs_process(kvlist, arg, handler, data) ? -EIO : 1;
+}
+
+static int
+cnxk_gpio_parse_store_args(struct cnxk_gpio_params **params, const char *args)
+{
+	size_t len = sizeof(**params) + 1;
+	const char *allowlist = NULL;
 	struct rte_kvargs *kvlist;
 	int ret;
 
 	kvlist = rte_kvargs_parse(args, cnxk_gpio_args);
-	if (!kvlist)
+	if (!kvlist) {
+		*params = cnxk_gpio_params_reserve(len);
+		if (!*params)
+			return -ENOMEM;
+
+		ret = cnxk_gpio_set_defaults(*params);
+		if (ret)
+			goto out;
+
 		return 0;
-
-	ret = rte_kvargs_count(kvlist, CNXK_GPIO_ARG_GPIOCHIP);
-	if (ret == 1) {
-		ret = rte_kvargs_process(kvlist, CNXK_GPIO_ARG_GPIOCHIP,
-					 cnxk_gpio_parse_arg_gpiochip,
-					 &gpiochip->num);
-		if (ret)
-			goto out;
 	}
 
-	ret = rte_kvargs_count(kvlist, CNXK_GPIO_ARG_ALLOWLIST);
-	if (ret == 1) {
-		ret = rte_kvargs_process(kvlist, CNXK_GPIO_ARG_ALLOWLIST,
-					 cnxk_gpio_parse_arg_allowlist, NULL);
-		if (ret)
-			goto out;
+	ret = cnxk_gpio_parse_arg(kvlist, CNXK_GPIO_ARG_ALLOWLIST, cnxk_gpio_parse_arg_allowlist,
+				  &allowlist);
+	if (ret < 0) {
+		ret = -EINVAL;
+		goto out;
 	}
 
-	ret = 0;
+	if (allowlist)
+		len += strlen(allowlist);
+
+	*params = cnxk_gpio_params_reserve(len);
+	if (!(*params)) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (allowlist)
+		strlcpy((*params)->allowlist, allowlist, strlen(allowlist) + 1);
+
+	ret = cnxk_gpio_parse_arg(kvlist, CNXK_GPIO_ARG_GPIOCHIP, cnxk_gpio_parse_arg_gpiochip,
+				  &(*params)->num);
+	if (ret == 0)
+		ret = cnxk_gpio_set_defaults(*params);
+
 out:
 	rte_kvargs_free(kvlist);
 
 	return ret;
 }
 
+static bool
+cnxk_gpio_allowlist_valid(const char *allowlist)
+{
+	bool ret = false;
+	regex_t regex;
+
+	/* [gpio0<,gpio1,...,gpioN>], where '<...>' is optional part */
+	if (regcomp(&regex, "^\\[[0-9]+(,[0-9]+)*\\]$", REG_EXTENDED))
+		return ret;
+
+	if (!regexec(&regex, allowlist, 0, NULL, 0))
+		ret = true;
+
+	regfree(&regex);
+
+	return ret;
+}
+
 static int
-cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip)
+cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip, char *allowlist)
 {
 	int i, ret, val, queue = 0;
 	char *token;
@@ -132,6 +254,23 @@ cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip)
 	list = rte_calloc(NULL, gpiochip->num_gpios, sizeof(*list), 0);
 	if (!list)
 		return -ENOMEM;
+
+	/* no gpios provided so allow all */
+	if (!*allowlist) {
+		for (i = 0; i < gpiochip->num_gpios; i++)
+			list[queue++] = i;
+
+		goto out_done;
+	}
+
+	if (!cnxk_gpio_allowlist_valid(allowlist))
+		return -EINVAL;
+
+	allowlist = strdup(allowlist);
+	if (!allowlist) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	/* replace brackets with something meaningless for strtol() */
 	allowlist[0] = ' ';
@@ -143,13 +282,13 @@ cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip)
 		errno = 0;
 		val = strtol(token, NULL, 10);
 		if (errno) {
-			RTE_LOG(ERR, PMD, "failed to parse %s\n", token);
+			CNXK_GPIO_LOG(ERR, "failed to parse %s", token);
 			ret = -errno;
 			goto out;
 		}
 
 		if (val < 0 || val >= gpiochip->num_gpios) {
-			RTE_LOG(ERR, PMD, "gpio%d out of 0-%d range\n", val,
+			CNXK_GPIO_LOG(ERR, "gpio%d out of 0-%d range", val,
 				gpiochip->num_gpios - 1);
 			ret = -EINVAL;
 			goto out;
@@ -159,103 +298,24 @@ cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip)
 			if (list[i] != val)
 				continue;
 
-			RTE_LOG(WARNING, PMD, "gpio%d already allowed\n", val);
+			CNXK_GPIO_LOG(WARNING, "gpio%d already allowed", val);
 			break;
 		}
 		if (i == queue)
 			list[queue++] = val;
 	} while ((token = strtok(NULL, ",")));
 
+	free(allowlist);
+out_done:
 	gpiochip->allowlist = list;
 	gpiochip->num_queues = queue;
 
 	return 0;
 out:
+	free(allowlist);
 	rte_free(list);
 
 	return ret;
-}
-
-static int
-cnxk_gpio_read_attr(char *attr, char *val)
-{
-	int ret, ret2;
-	FILE *fp;
-
-	fp = fopen(attr, "r");
-	if (!fp)
-		return -errno;
-
-	ret = fscanf(fp, "%s", val);
-	if (ret < 0) {
-		ret = -errno;
-		goto out;
-	}
-	if (ret != 1) {
-		ret = -EIO;
-		goto out;
-	}
-
-	ret = 0;
-out:
-	ret2 = fclose(fp);
-	if (!ret)
-		ret = ret2;
-
-	return ret;
-}
-
-static int
-cnxk_gpio_read_attr_int(char *attr, int *val)
-{
-	char buf[CNXK_GPIO_BUFSZ];
-	int ret;
-
-	ret = cnxk_gpio_read_attr(attr, buf);
-	if (ret)
-		return ret;
-
-	ret = sscanf(buf, "%d", val);
-	if (ret < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int
-cnxk_gpio_write_attr(const char *attr, const char *val)
-{
-	FILE *fp;
-	int ret;
-
-	if (!val)
-		return -EINVAL;
-
-	fp = fopen(attr, "w");
-	if (!fp)
-		return -errno;
-
-	ret = fprintf(fp, "%s", val);
-	if (ret < 0) {
-		fclose(fp);
-		return ret;
-	}
-
-	ret = fclose(fp);
-	if (ret)
-		return -errno;
-
-	return 0;
-}
-
-static int
-cnxk_gpio_write_attr_int(const char *attr, int val)
-{
-	char buf[CNXK_GPIO_BUFSZ];
-
-	snprintf(buf, sizeof(buf), "%d", val);
-
-	return cnxk_gpio_write_attr(attr, buf);
 }
 
 static bool
@@ -279,14 +339,16 @@ cnxk_gpio_lookup(struct cnxk_gpiochip *gpiochip, uint16_t queue)
 }
 
 static bool
-cnxk_gpio_exists(int num)
+cnxk_gpio_available(struct cnxk_gpio *gpio)
 {
-	char buf[CNXK_GPIO_BUFSZ];
-	struct stat st;
+	struct gpio_v2_line_info info = { .offset = gpio->num };
+	int ret;
 
-	snprintf(buf, sizeof(buf), "%s/gpio%d", CNXK_GPIO_CLASS_PATH, num);
+	ret = cnxk_gpio_gpiochip_ioctl(gpio->gpiochip, GPIO_V2_GET_LINEINFO_IOCTL, &info);
+	if (ret)
+		return false;
 
-	return !stat(buf, &st);
+	return !(info.flags & GPIO_V2_LINE_FLAG_USED);
 }
 
 static int
@@ -294,9 +356,9 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 		      rte_rawdev_obj_t queue_conf, size_t queue_conf_size)
 {
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
-	char buf[CNXK_GPIO_BUFSZ];
+	struct gpio_v2_line_request req = {0};
 	struct cnxk_gpio *gpio;
-	int num, ret;
+	int ret;
 
 	RTE_SET_USED(queue_conf);
 	RTE_SET_USED(queue_conf_size);
@@ -312,33 +374,87 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 	if (!gpio)
 		return -ENOMEM;
 
-	num = cnxk_queue_to_gpio(gpiochip, queue_id);
-	gpio->num = num + gpiochip->base;
+	gpio->num = cnxk_queue_to_gpio(gpiochip, queue_id);
+	gpio->fd = CNXK_GPIO_INVALID_FD;
 	gpio->gpiochip = gpiochip;
 
-	if (!cnxk_gpio_exists(gpio->num)) {
-		snprintf(buf, sizeof(buf), "%s/export", CNXK_GPIO_CLASS_PATH);
-		ret = cnxk_gpio_write_attr_int(buf, gpio->num);
-		if (ret) {
-			rte_free(gpio);
-			return ret;
-		}
-	} else {
-		RTE_LOG(WARNING, PMD, "using existing gpio%d\n", gpio->num);
+	if (!cnxk_gpio_available(gpio)) {
+		rte_free(gpio);
+		return -EBUSY;
 	}
 
-	gpiochip->gpios[num] = gpio;
+	cnxk_gpio_format_name(req.consumer, sizeof(req.consumer));
+	req.offsets[req.num_lines] = gpio->num;
+	req.num_lines = 1;
+
+	ret = cnxk_gpio_gpiochip_ioctl(gpio->gpiochip, GPIO_V2_GET_LINE_IOCTL, &req);
+	if (ret) {
+		rte_free(gpio);
+		return ret;
+	}
+
+	gpio->fd = req.fd;
+	gpiochip->gpios[gpio->num] = gpio;
 
 	return 0;
 }
+
+static void
+cnxk_gpio_intr_handler(void *data)
+{
+	struct gpio_v2_line_event event;
+	struct cnxk_gpio *gpio = data;
+	int ret;
+
+	ret = read(gpio->fd, &event, sizeof(event));
+	if (ret != sizeof(event)) {
+		CNXK_GPIO_LOG(ERR, "failed to read gpio%d event data", gpio->num);
+		goto out;
+	}
+	if ((unsigned int)gpio->num != event.offset) {
+		CNXK_GPIO_LOG(ERR, "expected event from gpio%d, received from gpio%d",
+			      gpio->num, event.offset);
+		goto out;
+	}
+
+	if (gpio->intr.handler2)
+		(gpio->intr.handler2)(&event, gpio->intr.data);
+	else if (gpio->intr.handler)
+		(gpio->intr.handler)(gpio->num, gpio->intr.data);
+out:
+	rte_intr_ack(gpio->intr.intr_handle);
+}
+
+static int
+cnxk_gpio_unregister_irq(struct cnxk_gpio *gpio)
+{
+	int ret;
+
+	if (!gpio->intr.intr_handle)
+		return 0;
+
+	ret = rte_intr_disable(gpio->intr.intr_handle);
+	if (ret)
+		return ret;
+
+	ret = rte_intr_callback_unregister_sync(gpio->intr.intr_handle, cnxk_gpio_intr_handler,
+						(void *)-1);
+	if (ret)
+		return ret;
+
+	rte_intr_instance_free(gpio->intr.intr_handle);
+	gpio->intr.intr_handle = NULL;
+
+	return 0;
+}
+
 
 static int
 cnxk_gpio_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
 {
 	struct cnxk_gpiochip *gpiochip = dev->dev_private;
-	char buf[CNXK_GPIO_BUFSZ];
 	struct cnxk_gpio *gpio;
-	int num, ret;
+	int num;
 
 	if (!cnxk_gpio_queue_valid(gpiochip, queue_id))
 		return -EINVAL;
@@ -347,10 +463,11 @@ cnxk_gpio_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
 	if (!gpio)
 		return -ENODEV;
 
-	snprintf(buf, sizeof(buf), "%s/unexport", CNXK_GPIO_CLASS_PATH);
-	ret = cnxk_gpio_write_attr_int(buf, gpio->num);
-	if (ret)
-		return ret;
+	if (gpio->intr.intr_handle)
+		cnxk_gpio_unregister_irq(gpio);
+
+	if (gpio->fd != CNXK_GPIO_INVALID_FD)
+		close(gpio->fd);
 
 	num = cnxk_queue_to_gpio(gpiochip, queue_id);
 	gpiochip->gpios[num] = NULL;
@@ -388,134 +505,232 @@ cnxk_gpio_queue_count(struct rte_rawdev *dev)
 
 static const struct {
 	enum cnxk_gpio_pin_edge edge;
-	const char *name;
-} cnxk_gpio_edge_name[] = {
-	{ CNXK_GPIO_PIN_EDGE_NONE, "none" },
-	{ CNXK_GPIO_PIN_EDGE_FALLING, "falling" },
-	{ CNXK_GPIO_PIN_EDGE_RISING, "rising" },
-	{ CNXK_GPIO_PIN_EDGE_BOTH, "both" },
+	enum gpio_v2_line_flag flag;
+} cnxk_gpio_edge_flag[] = {
+	{ CNXK_GPIO_PIN_EDGE_NONE, 0 },
+	{ CNXK_GPIO_PIN_EDGE_FALLING, GPIO_V2_LINE_FLAG_EDGE_FALLING },
+	{ CNXK_GPIO_PIN_EDGE_RISING, GPIO_V2_LINE_FLAG_EDGE_RISING },
+	{ CNXK_GPIO_PIN_EDGE_BOTH, GPIO_V2_LINE_FLAG_EDGE_FALLING | GPIO_V2_LINE_FLAG_EDGE_RISING },
 };
 
-static const char *
-cnxk_gpio_edge_to_name(enum cnxk_gpio_pin_edge edge)
+static int
+cnxk_gpio_edge_to_flag(enum cnxk_gpio_pin_edge edge)
 {
 	unsigned int i;
 
-	for (i = 0; i < RTE_DIM(cnxk_gpio_edge_name); i++) {
-		if (cnxk_gpio_edge_name[i].edge == edge)
-			return cnxk_gpio_edge_name[i].name;
-	}
-
-	return NULL;
-}
-
-static enum cnxk_gpio_pin_edge
-cnxk_gpio_name_to_edge(const char *name)
-{
-	unsigned int i;
-
-	for (i = 0; i < RTE_DIM(cnxk_gpio_edge_name); i++) {
-		if (!strcmp(cnxk_gpio_edge_name[i].name, name))
+	for (i = 0; i < RTE_DIM(cnxk_gpio_edge_flag); i++) {
+		if (cnxk_gpio_edge_flag[i].edge == edge)
 			break;
 	}
+	if (i == RTE_DIM(cnxk_gpio_edge_flag))
+		return -EINVAL;
 
-	return cnxk_gpio_edge_name[i].edge;
+	return cnxk_gpio_edge_flag[i].flag;
+}
+
+static int
+cnxk_gpio_flag_to_edge(enum gpio_v2_line_flag flag)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cnxk_gpio_edge_flag); i++) {
+		if ((cnxk_gpio_edge_flag[i].flag & flag) == cnxk_gpio_edge_flag[i].flag)
+			break;
+	}
+	if (i == RTE_DIM(cnxk_gpio_edge_flag))
+		return -EINVAL;
+
+	return cnxk_gpio_edge_flag[i].edge;
 }
 
 static const struct {
 	enum cnxk_gpio_pin_dir dir;
-	const char *name;
-} cnxk_gpio_dir_name[] = {
-	{ CNXK_GPIO_PIN_DIR_IN, "in" },
-	{ CNXK_GPIO_PIN_DIR_OUT, "out" },
-	{ CNXK_GPIO_PIN_DIR_HIGH, "high" },
-	{ CNXK_GPIO_PIN_DIR_LOW, "low" },
+	enum gpio_v2_line_flag flag;
+} cnxk_gpio_dir_flag[] = {
+	{ CNXK_GPIO_PIN_DIR_IN, GPIO_V2_LINE_FLAG_INPUT },
+	{ CNXK_GPIO_PIN_DIR_OUT, GPIO_V2_LINE_FLAG_OUTPUT },
+	{ CNXK_GPIO_PIN_DIR_HIGH, GPIO_V2_LINE_FLAG_OUTPUT },
+	{ CNXK_GPIO_PIN_DIR_LOW, GPIO_V2_LINE_FLAG_OUTPUT },
 };
 
-static const char *
-cnxk_gpio_dir_to_name(enum cnxk_gpio_pin_dir dir)
+static int
+cnxk_gpio_dir_to_flag(enum cnxk_gpio_pin_dir dir)
 {
 	unsigned int i;
 
-	for (i = 0; i < RTE_DIM(cnxk_gpio_dir_name); i++) {
-		if (cnxk_gpio_dir_name[i].dir == dir)
-			return cnxk_gpio_dir_name[i].name;
-	}
-
-	return NULL;
-}
-
-static enum cnxk_gpio_pin_dir
-cnxk_gpio_name_to_dir(const char *name)
-{
-	unsigned int i;
-
-	for (i = 0; i < RTE_DIM(cnxk_gpio_dir_name); i++) {
-		if (!strcmp(cnxk_gpio_dir_name[i].name, name))
+	for (i = 0; i < RTE_DIM(cnxk_gpio_dir_flag); i++) {
+		if (cnxk_gpio_dir_flag[i].dir == dir)
 			break;
 	}
+	if (i == RTE_DIM(cnxk_gpio_dir_flag))
+		return -EINVAL;
 
-	return cnxk_gpio_dir_name[i].dir;
+	return cnxk_gpio_dir_flag[i].flag;
+}
+
+static int
+cnxk_gpio_flag_to_dir(enum gpio_v2_line_flag flag)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cnxk_gpio_dir_flag); i++) {
+		if ((cnxk_gpio_dir_flag[i].flag & flag) == cnxk_gpio_dir_flag[i].flag)
+			break;
+	}
+	if (i == RTE_DIM(cnxk_gpio_dir_flag))
+		return -EINVAL;
+
+	return cnxk_gpio_dir_flag[i].dir;
+}
+
+static int
+cnxk_gpio_register_irq_compat(struct cnxk_gpio *gpio, struct cnxk_gpio_irq *irq,
+			      struct cnxk_gpio_irq2 *irq2)
+{
+	struct rte_intr_handle *intr_handle;
+	int ret;
+
+	if (!irq && !irq2)
+		return -EINVAL;
+
+	if ((irq && !irq->handler) || (irq2 && !irq2->handler))
+		return -EINVAL;
+
+	if (gpio->intr.intr_handle)
+		return -EEXIST;
+
+	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (!intr_handle)
+		return -ENOMEM;
+
+	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_VDEV)) {
+		ret = -rte_errno;
+		goto out;
+	}
+
+	if (rte_intr_fd_set(intr_handle, gpio->fd)) {
+		ret = -rte_errno;
+		goto out;
+	}
+
+	if (rte_intr_callback_register(intr_handle, cnxk_gpio_intr_handler, gpio)) {
+		ret = -rte_errno;
+		goto out;
+	}
+
+	gpio->intr.intr_handle = intr_handle;
+
+	if (irq) {
+		gpio->intr.data = irq->data;
+		gpio->intr.handler = irq->handler;
+	} else {
+		gpio->intr.data = irq2->data;
+		gpio->intr.handler2 = irq2->handler;
+	}
+
+	if (rte_intr_enable(gpio->intr.intr_handle)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	return 0;
+out:
+	rte_intr_instance_free(intr_handle);
+
+	return ret;
 }
 
 static int
 cnxk_gpio_register_irq(struct cnxk_gpio *gpio, struct cnxk_gpio_irq *irq)
 {
-	int ret;
+	CNXK_GPIO_LOG(WARNING, "using deprecated interrupt registration api");
 
-	ret = cnxk_gpio_irq_request(gpio->num - gpio->gpiochip->base, irq->cpu);
-	if (ret)
-		return ret;
-
-	gpio->handler = irq->handler;
-	gpio->data = irq->data;
-	gpio->cpu = irq->cpu;
-
-	return 0;
+	return cnxk_gpio_register_irq_compat(gpio, irq, NULL);
 }
 
 static int
-cnxk_gpio_unregister_irq(struct cnxk_gpio *gpio)
+cnxk_gpio_register_irq2(struct cnxk_gpio *gpio, struct cnxk_gpio_irq2 *irq)
 {
-	return cnxk_gpio_irq_free(gpio->num - gpio->gpiochip->base);
+	return cnxk_gpio_register_irq_compat(gpio, NULL, irq);
 }
 
 static int
 cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 {
 	struct cnxk_gpio_msg *msg = rbuf->buf_addr;
+	struct gpio_v2_line_values values = {0};
+	struct gpio_v2_line_config config = {0};
+	struct gpio_v2_line_info info = {0};
 	enum cnxk_gpio_pin_edge edge;
 	enum cnxk_gpio_pin_dir dir;
-	char buf[CNXK_GPIO_BUFSZ];
 	void *rsp = NULL;
-	int ret, val, n;
+	int ret;
 
-	n = snprintf(buf, sizeof(buf), "%s/gpio%d", CNXK_GPIO_CLASS_PATH,
-		     gpio->num);
+	info.offset = gpio->num;
+	ret = cnxk_gpio_gpiochip_ioctl(gpio->gpiochip, GPIO_V2_GET_LINEINFO_IOCTL, &info);
+	if (ret)
+		return ret;
+
+	info.flags &= ~GPIO_V2_LINE_FLAG_USED;
 
 	switch (msg->type) {
 	case CNXK_GPIO_MSG_TYPE_SET_PIN_VALUE:
-		snprintf(buf + n, sizeof(buf) - n, "/value");
-		ret = cnxk_gpio_write_attr_int(buf, !!*(int *)msg->data);
+		values.bits = *(int *)msg->data ?  RTE_BIT64(gpio->num) : 0;
+		values.mask = RTE_BIT64(gpio->num);
+
+		ret = cnxk_gpio_ioctl(gpio, GPIO_V2_LINE_SET_VALUES_IOCTL, &values);
 		break;
 	case CNXK_GPIO_MSG_TYPE_SET_PIN_EDGE:
-		snprintf(buf + n, sizeof(buf) - n, "/edge");
 		edge = *(enum cnxk_gpio_pin_edge *)msg->data;
-		ret = cnxk_gpio_write_attr(buf, cnxk_gpio_edge_to_name(edge));
+		info.flags &= ~(GPIO_V2_LINE_FLAG_EDGE_RISING | GPIO_V2_LINE_FLAG_EDGE_FALLING);
+		ret = cnxk_gpio_edge_to_flag(edge);
+		if (ret < 0)
+			break;
+		info.flags |= ret;
+
+		config.attrs[config.num_attrs].attr.id = GPIO_V2_LINE_ATTR_ID_FLAGS;
+		config.attrs[config.num_attrs].attr.flags = info.flags;
+		config.attrs[config.num_attrs].mask = RTE_BIT64(gpio->num);
+		config.num_attrs++;
+
+		ret = cnxk_gpio_ioctl(gpio, GPIO_V2_LINE_SET_CONFIG_IOCTL, &config);
 		break;
 	case CNXK_GPIO_MSG_TYPE_SET_PIN_DIR:
-		snprintf(buf + n, sizeof(buf) - n, "/direction");
 		dir = *(enum cnxk_gpio_pin_dir *)msg->data;
-		ret = cnxk_gpio_write_attr(buf, cnxk_gpio_dir_to_name(dir));
+		config.attrs[config.num_attrs].attr.id = GPIO_V2_LINE_ATTR_ID_FLAGS;
+		ret = cnxk_gpio_dir_to_flag(dir);
+		if (ret < 0)
+			break;
+		config.attrs[config.num_attrs].attr.flags = ret;
+		config.attrs[config.num_attrs].mask = RTE_BIT64(gpio->num);
+		config.num_attrs++;
+
+		if (dir == CNXK_GPIO_PIN_DIR_HIGH || dir == CNXK_GPIO_PIN_DIR_LOW) {
+			config.attrs[config.num_attrs].attr.id = GPIO_V2_LINE_ATTR_ID_OUTPUT_VALUES;
+			config.attrs[config.num_attrs].attr.values = dir == CNXK_GPIO_PIN_DIR_HIGH ?
+								     RTE_BIT64(gpio->num) : 0;
+			config.attrs[config.num_attrs].mask = RTE_BIT64(gpio->num);
+			config.num_attrs++;
+		}
+
+		ret = cnxk_gpio_ioctl(gpio, GPIO_V2_LINE_SET_CONFIG_IOCTL, &config);
 		break;
 	case CNXK_GPIO_MSG_TYPE_SET_PIN_ACTIVE_LOW:
-		snprintf(buf + n, sizeof(buf) - n, "/active_low");
-		val = *(int *)msg->data;
-		ret = cnxk_gpio_write_attr_int(buf, val);
+		if (*(int *)msg->data)
+			info.flags |= GPIO_V2_LINE_FLAG_ACTIVE_LOW;
+		else
+			info.flags &= ~GPIO_V2_LINE_FLAG_ACTIVE_LOW;
+
+		config.attrs[config.num_attrs].attr.id = GPIO_V2_LINE_ATTR_ID_FLAGS;
+		config.attrs[config.num_attrs].attr.flags = info.flags;
+		config.attrs[config.num_attrs].mask = RTE_BIT64(gpio->num);
+		config.num_attrs++;
+
+		ret = cnxk_gpio_ioctl(gpio, GPIO_V2_LINE_SET_CONFIG_IOCTL, &config);
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_VALUE:
-		snprintf(buf + n, sizeof(buf) - n, "/value");
-		ret = cnxk_gpio_read_attr_int(buf, &val);
+		values.mask = RTE_BIT64(gpio->num);
+		ret = cnxk_gpio_ioctl(gpio, GPIO_V2_LINE_GET_VALUES_IOCTL, &values);
 		if (ret)
 			break;
 
@@ -523,47 +738,42 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 		if (!rsp)
 			return -ENOMEM;
 
-		*(int *)rsp = val;
+		*(int *)rsp = !!(values.bits & RTE_BIT64(gpio->num));
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_EDGE:
-		snprintf(buf + n, sizeof(buf) - n, "/edge");
-		ret = cnxk_gpio_read_attr(buf, buf);
-		if (ret)
-			break;
+		ret = cnxk_gpio_flag_to_edge(info.flags);
+		if (ret < 0)
+			return ret;
 
 		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_edge), 0);
 		if (!rsp)
 			return -ENOMEM;
 
-		*(enum cnxk_gpio_pin_edge *)rsp = cnxk_gpio_name_to_edge(buf);
+		*(enum cnxk_gpio_pin_edge *)rsp = ret;
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_DIR:
-		snprintf(buf + n, sizeof(buf) - n, "/direction");
-		ret = cnxk_gpio_read_attr(buf, buf);
-		if (ret)
-			break;
+		ret = cnxk_gpio_flag_to_dir(info.flags);
+		if (ret < 0)
+			return ret;
 
-		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_dir), 0);
+		rsp = rte_zmalloc(NULL, sizeof(enum cnxk_gpio_pin_edge), 0);
 		if (!rsp)
 			return -ENOMEM;
 
-		*(enum cnxk_gpio_pin_dir *)rsp = cnxk_gpio_name_to_dir(buf);
+		*(enum cnxk_gpio_pin_dir *)rsp = ret;
 		break;
 	case CNXK_GPIO_MSG_TYPE_GET_PIN_ACTIVE_LOW:
-		snprintf(buf + n, sizeof(buf) - n, "/active_low");
-		ret = cnxk_gpio_read_attr_int(buf, &val);
-		if (ret)
-			break;
-
 		rsp = rte_zmalloc(NULL, sizeof(int), 0);
 		if (!rsp)
 			return -ENOMEM;
 
-		*(int *)rsp = val;
+		*(int *)rsp = !!(info.flags & GPIO_V2_LINE_FLAG_ACTIVE_LOW);
 		break;
 	case CNXK_GPIO_MSG_TYPE_REGISTER_IRQ:
-		ret = cnxk_gpio_register_irq(gpio,
-					     (struct cnxk_gpio_irq *)msg->data);
+		ret = cnxk_gpio_register_irq(gpio, (struct cnxk_gpio_irq *)msg->data);
+		break;
+	case CNXK_GPIO_MSG_TYPE_REGISTER_IRQ2:
+		ret = cnxk_gpio_register_irq2(gpio, (struct cnxk_gpio_irq2 *)msg->data);
 		break;
 	case CNXK_GPIO_MSG_TYPE_UNREGISTER_IRQ:
 		ret = cnxk_gpio_unregister_irq(gpio);
@@ -574,7 +784,7 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 
 	/* get rid of last response if any */
 	if (gpio->rsp) {
-		RTE_LOG(WARNING, PMD, "previous response got overwritten\n");
+		CNXK_GPIO_LOG(WARNING, "previous response got overwritten");
 		rte_free(gpio->rsp);
 	}
 	gpio->rsp = rsp;
@@ -658,78 +868,64 @@ static const struct rte_rawdev_ops cnxk_gpio_rawdev_ops = {
 static int
 cnxk_gpio_probe(struct rte_vdev_device *dev)
 {
+	struct gpiochip_info gpiochip_info;
 	char name[RTE_RAWDEV_NAME_MAX_LEN];
+	struct cnxk_gpio_params *params;
 	struct cnxk_gpiochip *gpiochip;
 	struct rte_rawdev *rawdev;
-	char buf[CNXK_GPIO_BUFSZ];
 	int ret;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
 	cnxk_gpio_format_name(name, sizeof(name));
-	rawdev = rte_rawdev_pmd_allocate(name, sizeof(*gpiochip),
-					 rte_socket_id());
+	rawdev = rte_rawdev_pmd_allocate(name, sizeof(*gpiochip), rte_socket_id());
 	if (!rawdev) {
-		RTE_LOG(ERR, PMD, "failed to allocate %s rawdev", name);
+		CNXK_GPIO_LOG(ERR, "failed to allocate %s rawdev", name);
 		return -ENOMEM;
 	}
 
 	rawdev->dev_ops = &cnxk_gpio_rawdev_ops;
 	rawdev->device = &dev->device;
 	rawdev->driver_name = dev->device.name;
-
 	gpiochip = rawdev->dev_private;
-	cnxk_gpio_set_defaults(gpiochip);
 
-	/* defaults may be overwritten by this call */
-	ret = cnxk_gpio_parse_args(gpiochip, rte_vdev_device_args(dev));
-	if (ret)
-		goto out;
-
-	ret = cnxk_gpio_irq_init(gpiochip);
-	if (ret)
-		goto out;
-
-	/* read gpio base */
-	snprintf(buf, sizeof(buf), "%s/gpiochip%d/base", CNXK_GPIO_CLASS_PATH,
-		 gpiochip->num);
-	ret = cnxk_gpio_read_attr_int(buf, &gpiochip->base);
-	if (ret) {
-		RTE_LOG(ERR, PMD, "failed to read %s", buf);
-		goto out;
-	}
-
-	/* read number of available gpios */
-	snprintf(buf, sizeof(buf), "%s/gpiochip%d/ngpio", CNXK_GPIO_CLASS_PATH,
-		 gpiochip->num);
-	ret = cnxk_gpio_read_attr_int(buf, &gpiochip->num_gpios);
-	if (ret) {
-		RTE_LOG(ERR, PMD, "failed to read %s", buf);
-		goto out;
-	}
-	gpiochip->num_queues = gpiochip->num_gpios;
-
-	if (allowlist) {
-		ret = cnxk_gpio_parse_allowlist(gpiochip);
-		free(allowlist);
-		allowlist = NULL;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = cnxk_gpio_parse_store_args(&params, rte_vdev_device_args(dev));
+		if (ret < 0)
+			goto out;
+	} else {
+		ret = cnxk_gpio_params_restore(&params);
 		if (ret)
 			goto out;
 	}
 
-	gpiochip->gpios = rte_calloc(NULL, gpiochip->num_gpios,
-				     sizeof(struct cnxk_gpio *), 0);
+	gpiochip->num = params->num;
+
+	/* read number of available gpios */
+	ret = cnxk_gpio_gpiochip_ioctl(gpiochip, GPIO_GET_CHIPINFO_IOCTL, &gpiochip_info);
+	if (ret) {
+		CNXK_GPIO_LOG(ERR, "failed to read /dev/gpiochip%d info", gpiochip->num);
+		goto out;
+	}
+
+	gpiochip->num_gpios = gpiochip_info.lines;
+	gpiochip->num_queues = gpiochip->num_gpios;
+
+	ret = cnxk_gpio_parse_allowlist(gpiochip, params->allowlist);
+	if (ret) {
+		CNXK_GPIO_LOG(ERR, "failed to parse allowed gpios");
+		goto out;
+	}
+
+	gpiochip->gpios = rte_calloc(NULL, gpiochip->num_gpios, sizeof(struct cnxk_gpio *), 0);
 	if (!gpiochip->gpios) {
-		RTE_LOG(ERR, PMD, "failed to allocate gpios memory");
+		CNXK_GPIO_LOG(ERR, "failed to allocate gpios memory");
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	return 0;
 out:
-	free(allowlist);
 	rte_free(gpiochip->allowlist);
+	cnxk_gpio_params_release();
 	rte_rawdev_pmd_release(rawdev);
 
 	return ret;
@@ -746,9 +942,6 @@ cnxk_gpio_remove(struct rte_vdev_device *dev)
 
 	RTE_SET_USED(dev);
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
 	cnxk_gpio_format_name(name, sizeof(name));
 	rawdev = rte_rawdev_pmd_get_named_dev(name);
 	if (!rawdev)
@@ -760,15 +953,12 @@ cnxk_gpio_remove(struct rte_vdev_device *dev)
 		if (!gpio)
 			continue;
 
-		if (gpio->handler)
-			cnxk_gpio_unregister_irq(gpio);
-
 		cnxk_gpio_queue_release(rawdev, gpio->num);
 	}
 
 	rte_free(gpiochip->allowlist);
 	rte_free(gpiochip->gpios);
-	cnxk_gpio_irq_fini();
+	cnxk_gpio_params_release();
 	rte_rawdev_pmd_release(rawdev);
 
 	return 0;
@@ -783,3 +973,5 @@ RTE_PMD_REGISTER_VDEV(cnxk_gpio, cnxk_gpio_drv);
 RTE_PMD_REGISTER_PARAM_STRING(cnxk_gpio,
 		"gpiochip=<int> "
 		"allowlist=<list>");
+
+#endif /* CNXK_GPIO_V2_PRESENT */

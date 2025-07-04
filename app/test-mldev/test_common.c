@@ -5,11 +5,68 @@
 #include <errno.h>
 
 #include <rte_common.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_mldev.h>
 
 #include "ml_common.h"
 #include "test_common.h"
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int
+ml_read_file(char *file, size_t *size, char **buffer)
+{
+	char *file_buffer = NULL;
+	struct stat file_stat;
+	char *file_map;
+	int ret;
+	int fd;
+
+	fd = open(file, O_RDONLY);
+	if (fd == -1) {
+		ml_err("Failed to open file: %s\n", file);
+		return -errno;
+	}
+
+	if (fstat(fd, &file_stat) != 0) {
+		ml_err("fstat failed for file: %s\n", file);
+		close(fd);
+		return -errno;
+	}
+
+	file_buffer = malloc(file_stat.st_size);
+	if (file_buffer == NULL) {
+		ml_err("Failed to allocate memory: %s\n", file);
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	file_map = mmap(0, file_stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (file_map == MAP_FAILED) {
+		ml_err("Failed to map file: %s\n", file);
+		ret = -errno;
+		goto error;
+	}
+
+	rte_memcpy(file_buffer, file_map, file_stat.st_size);
+	munmap(file_map, file_stat.st_size);
+	close(fd);
+
+	*size = file_stat.st_size;
+	*buffer = file_buffer;
+
+	return 0;
+
+error:
+	free(file_buffer);
+	close(fd);
+
+	return ret;
+}
 
 bool
 ml_test_cap_check(struct ml_options *opt)
@@ -39,14 +96,24 @@ ml_test_opt_check(struct ml_options *opt)
 		return -ENODEV;
 	}
 
-	if (opt->dev_id >= dev_count) {
-		ml_err("Invalid option dev_id = %d", opt->dev_id);
+	if ((opt->dev_id >= dev_count) || (opt->dev_id < 0)) {
+		ml_err("Invalid option, dev_id = %d", opt->dev_id);
 		return -EINVAL;
 	}
 
 	socket_id = rte_ml_dev_socket_id(opt->dev_id);
-	if (!((opt->socket_id != SOCKET_ID_ANY) || (opt->socket_id != socket_id))) {
+	if ((opt->socket_id != SOCKET_ID_ANY) && (opt->socket_id != socket_id)) {
 		ml_err("Invalid option, socket_id = %d\n", opt->socket_id);
+		return -EINVAL;
+	}
+
+	if (opt->queue_pairs == 0) {
+		ml_err("Invalid option, queue_pairs = %d", opt->queue_pairs);
+		return -EINVAL;
+	}
+
+	if (opt->queue_size == 0) {
+		ml_err("Invalid option, queue_size = %d", opt->queue_size);
 		return -EINVAL;
 	}
 

@@ -40,11 +40,6 @@ test_red_all(void)
 
 #include <rte_red.h>
 
-#ifdef __INTEL_COMPILER
-#pragma warning(disable:2259)       /* conversion may lose significant bits */
-#pragma warning(disable:181)        /* Arg incompatible with format string */
-#endif
-
 #define TEST_HZ_PER_KHZ 1000
 #define TEST_NSEC_MARGIN 500        /**< nanosecond margin when calculating clk freq */
 
@@ -85,7 +80,7 @@ struct test_var {                   /**< Test variables used for testing RTE_RED
 	uint32_t *enqueued;             /**< Test operations enqueued */
 };
 
-struct test_config {                /**< Master test structure for RTE_RED */
+struct test_config {                /**< Test structure for RTE_RED */
 	const char *ifname;             /**< Interface name */
 	const char *msg;                /**< Test message for display */
 	const char *htxt;               /**< Header txt display for result output */
@@ -1878,5 +1873,5 @@ test_red_all(void)
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 REGISTER_TEST_COMMAND(red_autotest, test_red);
-REGISTER_TEST_COMMAND(red_perf, test_red_perf);
-REGISTER_TEST_COMMAND(red_all, test_red_all);
+REGISTER_PERF_TEST(red_perf, test_red_perf);
+REGISTER_PERF_TEST(red_all, test_red_all);

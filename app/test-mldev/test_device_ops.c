@@ -102,15 +102,17 @@ test_device_reconfigure(struct ml_test *test, struct ml_options *opt)
 	if (ret != 0)
 		return ret;
 
-	/* setup one queue pair with nb_desc = 1 */
-	qp_conf.nb_desc = 1;
-	qp_conf.cb = NULL;
+	/* setup queue pairs with nb_user options */
+	for (qp_id = 0; qp_id < opt->queue_pairs; qp_id++) {
+		qp_conf.nb_desc = opt->queue_size;
+		qp_conf.cb = NULL;
 
-	ret = rte_ml_dev_queue_pair_setup(opt->dev_id, qp_id, &qp_conf, opt->socket_id);
-	if (ret != 0) {
-		ml_err("Failed to setup ML device queue-pair, dev_id = %d, qp_id = %u\n",
-		       opt->dev_id, qp_id);
-		goto error;
+		ret = rte_ml_dev_queue_pair_setup(opt->dev_id, qp_id, &qp_conf, opt->socket_id);
+		if (ret != 0) {
+			ml_err("Failed to setup ML device queue-pair, dev_id = %d, qp_id = %u\n",
+			       opt->dev_id, qp_id);
+			goto error;
+		}
 	}
 
 	/* start device */

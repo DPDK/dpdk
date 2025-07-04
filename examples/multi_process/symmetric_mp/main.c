@@ -61,11 +61,11 @@ struct lcore_ports{
 
 /* structure to record the rx and tx packets. Put two per cache line as ports
  * used in pairs */
-struct port_stats{
+struct __rte_aligned(RTE_CACHE_LINE_SIZE / 2) port_stats{
 	unsigned rx;
 	unsigned tx;
 	unsigned drop;
-} __rte_aligned(RTE_CACHE_LINE_SIZE / 2);
+};
 
 static int proc_id = -1;
 static unsigned num_procs = 0;

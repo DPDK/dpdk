@@ -37,6 +37,43 @@ uint32_t mlx5dr_arg_get_arg_size(uint16_t num_of_actions)
 	return BIT(mlx5dr_arg_get_arg_log_size(num_of_actions));
 }
 
+bool mlx5dr_pat_require_reparse(__be64 *actions, uint16_t num_of_actions)
+{
+	uint16_t i, field;
+	uint8_t action_id;
+
+	for (i = 0; i < num_of_actions; i++) {
+		action_id = MLX5_GET(set_action_in, &actions[i], action_type);
+
+		switch (action_id) {
+		case MLX5_MODIFICATION_TYPE_NOP:
+			field = MLX5_MODI_OUT_NONE;
+			break;
+
+		case MLX5_MODIFICATION_TYPE_SET:
+		case MLX5_MODIFICATION_TYPE_ADD:
+			field = MLX5_GET(set_action_in, &actions[i], field);
+			break;
+
+		case MLX5_MODIFICATION_TYPE_COPY:
+		case MLX5_MODIFICATION_TYPE_ADD_FIELD:
+			field = MLX5_GET(copy_action_in, &actions[i], dst_field);
+			break;
+
+		default:
+			/* Insert/Remove/Unknown actions require reparse */
+			return true;
+		}
+
+		/* Below fields can change packet structure require a reparse */
+		if (field == MLX5_MODI_OUT_ETHERTYPE ||
+		    field == MLX5_MODI_OUT_IP_PROTOCOL)
+			return true;
+	}
+
+	return false;
+}
+
 /* Cache and cache element handling */
 int mlx5dr_pat_init_pattern_cache(struct mlx5dr_pattern_cache **cache)
 {
@@ -60,27 +97,22 @@ void mlx5dr_pat_uninit_pattern_cache(struct mlx5dr_pattern_cache *cache)
 	simple_free(cache);
 }
 
-static bool mlx5dr_pat_compare_pattern(enum mlx5dr_action_type cur_type,
-				       int cur_num_of_actions,
+static bool mlx5dr_pat_compare_pattern(int cur_num_of_actions,
 				       __be64 cur_actions[],
-				       enum mlx5dr_action_type type,
 				       int num_of_actions,
 				       __be64 actions[])
 {
 	int i;
 
-	if (cur_num_of_actions != num_of_actions || cur_type != type)
+	if (cur_num_of_actions != num_of_actions)
 		return false;
-
-	 /* All decap-l3 look the same, only change is the num of actions */
-	if (type == MLX5DR_ACTION_TYP_TNL_L3_TO_L2)
-		return true;
 
 	for (i = 0; i < num_of_actions; i++) {
 		u8 action_id =
 			MLX5_GET(set_action_in, &actions[i], action_type);
 
-		if (action_id == MLX5_MODIFICATION_TYPE_COPY) {
+		if (action_id == MLX5_MODIFICATION_TYPE_COPY ||
+		    action_id == MLX5_MODIFICATION_TYPE_ADD_FIELD) {
 			if (actions[i] != cur_actions[i])
 				return false;
 		} else {
@@ -96,17 +128,14 @@ static bool mlx5dr_pat_compare_pattern(enum mlx5dr_action_type cur_type,
 
 static struct mlx5dr_pattern_cache_item *
 mlx5dr_pat_find_cached_pattern(struct mlx5dr_pattern_cache *cache,
-			       struct mlx5dr_action *action,
 			       uint16_t num_of_actions,
 			       __be64 *actions)
 {
 	struct mlx5dr_pattern_cache_item *cached_pat;
 
 	LIST_FOREACH(cached_pat, &cache->head, next) {
-		if (mlx5dr_pat_compare_pattern(cached_pat->type,
-					       cached_pat->mh_data.num_of_actions,
+		if (mlx5dr_pat_compare_pattern(cached_pat->mh_data.num_of_actions,
 					       (__be64 *)cached_pat->mh_data.data,
-					       action->type,
 					       num_of_actions,
 					       actions))
 			return cached_pat;
@@ -117,13 +146,12 @@ mlx5dr_pat_find_cached_pattern(struct mlx5dr_pattern_cache *cache,
 
 static struct mlx5dr_pattern_cache_item *
 mlx5dr_pat_get_existing_cached_pattern(struct mlx5dr_pattern_cache *cache,
-				       struct mlx5dr_action *action,
 				       uint16_t num_of_actions,
 				       __be64 *actions)
 {
 	struct mlx5dr_pattern_cache_item *cached_pattern;
 
-	cached_pattern = mlx5dr_pat_find_cached_pattern(cache, action, num_of_actions, actions);
+	cached_pattern = mlx5dr_pat_find_cached_pattern(cache, num_of_actions, actions);
 	if (cached_pattern) {
 		/* LRU: move it to be first in the list */
 		LIST_REMOVE(cached_pattern, next);
@@ -135,23 +163,8 @@ mlx5dr_pat_get_existing_cached_pattern(struct mlx5dr_pattern_cache *cache,
 }
 
 static struct mlx5dr_pattern_cache_item *
-mlx5dr_pat_get_cached_pattern_by_action(struct mlx5dr_pattern_cache *cache,
-					struct mlx5dr_action *action)
-{
-	struct mlx5dr_pattern_cache_item *cached_pattern;
-
-	LIST_FOREACH(cached_pattern, &cache->head, next) {
-		if (cached_pattern->mh_data.pattern_obj->id == action->modify_header.pattern_obj->id)
-			return cached_pattern;
-	}
-
-	return NULL;
-}
-
-static struct mlx5dr_pattern_cache_item *
 mlx5dr_pat_add_pattern_to_cache(struct mlx5dr_pattern_cache *cache,
 				struct mlx5dr_devx_obj *pattern_obj,
-				enum mlx5dr_action_type type,
 				uint16_t num_of_actions,
 				__be64 *actions)
 {
@@ -164,7 +177,6 @@ mlx5dr_pat_add_pattern_to_cache(struct mlx5dr_pattern_cache *cache,
 		return NULL;
 	}
 
-	cached_pattern->type = type;
 	cached_pattern->mh_data.num_of_actions = num_of_actions;
 	cached_pattern->mh_data.pattern_obj = pattern_obj;
 	cached_pattern->mh_data.data =
@@ -188,6 +200,20 @@ free_cached_obj:
 	return NULL;
 }
 
+static struct mlx5dr_pattern_cache_item *
+mlx5dr_pat_find_cached_pattern_by_obj(struct mlx5dr_pattern_cache *cache,
+				      struct mlx5dr_devx_obj *pat_obj)
+{
+	struct mlx5dr_pattern_cache_item *cached_pattern;
+
+	LIST_FOREACH(cached_pattern, &cache->head, next) {
+		if (cached_pattern->mh_data.pattern_obj->id == pat_obj->id)
+			return cached_pattern;
+	}
+
+	return NULL;
+}
+
 static void
 mlx5dr_pat_remove_pattern(struct mlx5dr_pattern_cache_item *cached_pattern)
 {
@@ -196,14 +222,14 @@ mlx5dr_pat_remove_pattern(struct mlx5dr_pattern_cache_item *cached_pattern)
 	simple_free(cached_pattern);
 }
 
-static void
-mlx5dr_pat_put_pattern(struct mlx5dr_pattern_cache *cache,
-		       struct mlx5dr_action *action)
+void mlx5dr_pat_put_pattern(struct mlx5dr_context *ctx,
+			    struct mlx5dr_devx_obj *pat_obj)
 {
+	struct mlx5dr_pattern_cache *cache = ctx->pattern_cache;
 	struct mlx5dr_pattern_cache_item *cached_pattern;
 
 	pthread_spin_lock(&cache->lock);
-	cached_pattern = mlx5dr_pat_get_cached_pattern_by_action(cache, action);
+	cached_pattern = mlx5dr_pat_find_cached_pattern_by_obj(cache, pat_obj);
 	if (!cached_pattern) {
 		DR_LOG(ERR, "Failed to find pattern according to action with pt");
 		assert(false);
@@ -214,62 +240,56 @@ mlx5dr_pat_put_pattern(struct mlx5dr_pattern_cache *cache,
 		goto out;
 
 	mlx5dr_pat_remove_pattern(cached_pattern);
+	mlx5dr_cmd_destroy_obj(pat_obj);
 
 out:
 	pthread_spin_unlock(&cache->lock);
 }
 
-static int mlx5dr_pat_get_pattern(struct mlx5dr_context *ctx,
-				  struct mlx5dr_action *action,
-				  uint16_t num_of_actions,
-				  size_t pattern_sz,
-				  __be64 *pattern)
+struct mlx5dr_devx_obj *
+mlx5dr_pat_get_pattern(struct mlx5dr_context *ctx,
+		       __be64 *pattern, size_t pattern_sz)
 {
+	uint16_t num_of_actions = pattern_sz / MLX5DR_MODIFY_ACTION_SIZE;
 	struct mlx5dr_pattern_cache_item *cached_pattern;
-	int ret = 0;
+	struct mlx5dr_devx_obj *pat_obj = NULL;
 
 	pthread_spin_lock(&ctx->pattern_cache->lock);
 
 	cached_pattern = mlx5dr_pat_get_existing_cached_pattern(ctx->pattern_cache,
-								action,
 								num_of_actions,
 								pattern);
 	if (cached_pattern) {
-		action->modify_header.pattern_obj = cached_pattern->mh_data.pattern_obj;
+		pat_obj = cached_pattern->mh_data.pattern_obj;
 		goto out_unlock;
 	}
 
-	action->modify_header.pattern_obj =
-		mlx5dr_cmd_header_modify_pattern_create(ctx->ibv_ctx,
-							pattern_sz,
-							(uint8_t *)pattern);
-	if (!action->modify_header.pattern_obj) {
+	pat_obj = mlx5dr_cmd_header_modify_pattern_create(ctx->ibv_ctx,
+							  pattern_sz,
+							  (uint8_t *)pattern);
+	if (!pat_obj) {
 		DR_LOG(ERR, "Failed to create pattern FW object");
-
-		ret = rte_errno;
 		goto out_unlock;
 	}
 
-	cached_pattern =
-		mlx5dr_pat_add_pattern_to_cache(ctx->pattern_cache,
-						action->modify_header.pattern_obj,
-						action->type,
-						num_of_actions,
-						pattern);
+	cached_pattern = mlx5dr_pat_add_pattern_to_cache(ctx->pattern_cache,
+							 pat_obj,
+							 num_of_actions,
+							 pattern);
 	if (!cached_pattern) {
 		DR_LOG(ERR, "Failed to add pattern to cache");
-		ret = rte_errno;
 		goto clean_pattern;
 	}
 
-out_unlock:
 	pthread_spin_unlock(&ctx->pattern_cache->lock);
-	return ret;
+	return pat_obj;
 
 clean_pattern:
-	mlx5dr_cmd_destroy_obj(action->modify_header.pattern_obj);
+	mlx5dr_cmd_destroy_obj(pat_obj);
+	pat_obj = NULL;
+out_unlock:
 	pthread_spin_unlock(&ctx->pattern_cache->lock);
-	return ret;
+	return pat_obj;
 }
 
 static void
@@ -388,119 +408,87 @@ bool mlx5dr_arg_is_valid_arg_request_size(struct mlx5dr_context *ctx,
 	return true;
 }
 
-static int
-mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
-				    struct mlx5dr_action *action,
-				    uint16_t num_of_actions,
-				    __be64 *pattern,
-				    uint32_t bulk_size)
+struct mlx5dr_devx_obj *
+mlx5dr_arg_create(struct mlx5dr_context *ctx,
+		  uint8_t *data,
+		  size_t data_sz,
+		  uint32_t log_bulk_sz,
+		  bool write_data)
 {
-	uint32_t flags = action->flags;
-	uint16_t args_log_size;
-	int ret = 0;
+	struct mlx5dr_devx_obj *arg_obj;
+	uint16_t single_arg_log_sz;
+	uint16_t multi_arg_log_sz;
+	int ret;
+
+	single_arg_log_sz = mlx5dr_arg_data_size_to_arg_log_size(data_sz);
+	multi_arg_log_sz = single_arg_log_sz + log_bulk_sz;
+
+	if (single_arg_log_sz >= MLX5DR_ARG_CHUNK_SIZE_MAX) {
+		DR_LOG(ERR, "Requested single arg %u not supported", single_arg_log_sz);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (!mlx5dr_arg_is_valid_arg_request_size(ctx, multi_arg_log_sz)) {
+		DR_LOG(ERR, "Argument log size %d not supported by FW", multi_arg_log_sz);
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
 
 	/* Alloc bulk of args */
-	args_log_size = mlx5dr_arg_get_arg_log_size(num_of_actions);
-	if (args_log_size >= MLX5DR_ARG_CHUNK_SIZE_MAX) {
-		DR_LOG(ERR, "Exceed number of allowed actions %u",
-			num_of_actions);
-		rte_errno = EINVAL;
-		return rte_errno;
+	arg_obj = mlx5dr_cmd_arg_create(ctx->ibv_ctx, multi_arg_log_sz, ctx->pd_num);
+	if (!arg_obj) {
+		DR_LOG(ERR, "Failed allocating arg in order: %d", multi_arg_log_sz);
+		return NULL;
 	}
 
-	if (!mlx5dr_arg_is_valid_arg_request_size(ctx, args_log_size + bulk_size)) {
-		DR_LOG(ERR, "Arg size %d does not fit FW capability",
-		       args_log_size + bulk_size);
-		rte_errno = EINVAL;
-		return rte_errno;
-	}
-
-	action->modify_header.arg_obj =
-		mlx5dr_cmd_arg_create(ctx->ibv_ctx, args_log_size + bulk_size,
-				      ctx->pd_num);
-	if (!action->modify_header.arg_obj) {
-		DR_LOG(ERR, "Failed allocating arg in order: %d",
-			args_log_size + bulk_size);
-		return rte_errno;
-	}
-
-	/* When INLINE need to write the arg data */
-	if (flags & MLX5DR_ACTION_FLAG_SHARED)
+	if (write_data) {
 		ret = mlx5dr_arg_write_inline_arg_data(ctx,
-						       action->modify_header.arg_obj->id,
-						       (uint8_t *)pattern,
-						       num_of_actions *
-						       MLX5DR_MODIFY_ACTION_SIZE);
-	if (ret) {
-		DR_LOG(ERR, "Failed writing INLINE arg in order: %d",
-			args_log_size + bulk_size);
-		mlx5dr_cmd_destroy_obj(action->modify_header.arg_obj);
-		return rte_errno;
+						       arg_obj->id,
+						       data, data_sz);
+		if (ret) {
+			DR_LOG(ERR, "Failed writing arg data");
+			mlx5dr_cmd_destroy_obj(arg_obj);
+			return NULL;
+		}
 	}
 
-	return 0;
+	return arg_obj;
 }
 
-bool mlx5dr_pat_arg_verify_actions(__be64 pattern[], uint16_t num_of_actions)
+struct mlx5dr_devx_obj *
+mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
+				    __be64 *data,
+				    uint8_t num_of_actions,
+				    uint32_t log_bulk_sz,
+				    bool write_data)
 {
-	int i;
+	size_t data_sz = num_of_actions * MLX5DR_MODIFY_ACTION_SIZE;
+	struct mlx5dr_devx_obj *arg_obj;
 
-	for (i = 0; i < num_of_actions; i++) {
+	arg_obj = mlx5dr_arg_create(ctx,
+				    (uint8_t *)data,
+				    data_sz,
+				    log_bulk_sz,
+				    write_data);
+	if (!arg_obj)
+		DR_LOG(ERR, "Failed creating modify header arg");
+
+	return arg_obj;
+}
+
+bool mlx5dr_pat_verify_actions(__be64 pattern[], size_t sz)
+{
+	size_t i;
+
+	for (i = 0; i < sz / MLX5DR_MODIFY_ACTION_SIZE; i++) {
 		u8 action_id =
 			MLX5_GET(set_action_in, &pattern[i], action_type);
 		if (action_id >= MLX5_MODIFICATION_TYPE_MAX) {
-			DR_LOG(ERR, "Invalid action %u\n", action_id);
+			DR_LOG(ERR, "Invalid action %u", action_id);
 			return false;
 		}
 	}
 
 	return true;
-}
-
-int mlx5dr_pat_arg_create_modify_header(struct mlx5dr_context *ctx,
-					struct mlx5dr_action *action,
-					size_t pattern_sz,
-					__be64 pattern[],
-					uint32_t bulk_size)
-{
-	uint16_t num_of_actions;
-	int ret;
-
-	num_of_actions = pattern_sz / MLX5DR_MODIFY_ACTION_SIZE;
-	if (num_of_actions == 0) {
-		DR_LOG(ERR, "Invalid number of actions %u\n", num_of_actions);
-		rte_errno = EINVAL;
-		return rte_errno;
-	}
-
-	action->modify_header.num_of_actions = num_of_actions;
-
-	ret = mlx5dr_arg_create_modify_header_arg(ctx, action,
-						  num_of_actions,
-						  pattern,
-						  bulk_size);
-	if (ret) {
-		DR_LOG(ERR, "Failed to allocate arg");
-		return ret;
-	}
-
-	ret = mlx5dr_pat_get_pattern(ctx, action, num_of_actions, pattern_sz,
-				     pattern);
-	if (ret) {
-		DR_LOG(ERR, "Failed to allocate pattern");
-		goto free_arg;
-	}
-
-	return 0;
-
-free_arg:
-	mlx5dr_cmd_destroy_obj(action->modify_header.arg_obj);
-	return rte_errno;
-}
-
-void mlx5dr_pat_arg_destroy_modify_header(struct mlx5dr_context *ctx,
-					  struct mlx5dr_action *action)
-{
-	mlx5dr_cmd_destroy_obj(action->modify_header.arg_obj);
-	mlx5dr_pat_put_pattern(ctx->pattern_cache, action);
 }

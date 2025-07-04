@@ -59,7 +59,7 @@ struct vring_used_elem {
 
 struct vring_used {
 	uint16_t flags;
-	uint16_t idx;
+	RTE_ATOMIC(uint16_t) idx;
 	struct vring_used_elem ring[];
 };
 
@@ -70,7 +70,7 @@ struct vring_packed_desc {
 	uint64_t addr;
 	uint32_t len;
 	uint16_t id;
-	uint16_t flags;
+	RTE_ATOMIC(uint16_t) flags;
 };
 
 #define RING_EVENT_FLAGS_ENABLE 0x0
@@ -83,6 +83,7 @@ struct vring_packed_desc_event {
 
 struct vring_packed {
 	unsigned int num;
+	rte_iova_t desc_iova;
 	struct vring_packed_desc *desc;
 	struct vring_packed_desc_event *driver;
 	struct vring_packed_desc_event *device;
@@ -90,6 +91,7 @@ struct vring_packed {
 
 struct vring {
 	unsigned int num;
+	rte_iova_t desc_iova;
 	struct vring_desc  *desc;
 	struct vring_avail *avail;
 	struct vring_used  *used;
@@ -149,11 +151,12 @@ vring_size(struct virtio_hw *hw, unsigned int num, unsigned long align)
 	return size;
 }
 static inline void
-vring_init_split(struct vring *vr, uint8_t *p, unsigned long align,
-	 unsigned int num)
+vring_init_split(struct vring *vr, uint8_t *p, rte_iova_t iova,
+		 unsigned long align, unsigned int num)
 {
 	vr->num = num;
 	vr->desc = (struct vring_desc *) p;
+	vr->desc_iova = iova;
 	vr->avail = (struct vring_avail *) (p +
 		num * sizeof(struct vring_desc));
 	vr->used = (void *)
@@ -161,11 +164,12 @@ vring_init_split(struct vring *vr, uint8_t *p, unsigned long align,
 }
 
 static inline void
-vring_init_packed(struct vring_packed *vr, uint8_t *p, unsigned long align,
-		 unsigned int num)
+vring_init_packed(struct vring_packed *vr, uint8_t *p, rte_iova_t iova,
+		  unsigned long align, unsigned int num)
 {
 	vr->num = num;
 	vr->desc = (struct vring_packed_desc *)p;
+	vr->desc_iova = iova;
 	vr->driver = (struct vring_packed_desc_event *)(p +
 			vr->num * sizeof(struct vring_packed_desc));
 	vr->device = (struct vring_packed_desc_event *)

@@ -32,7 +32,7 @@ test_event_crypto_adapter(void)
 #define NUM_MBUFS                 (8191)
 #define MBUF_CACHE_SIZE           (256)
 #define MAXIMUM_IV_LENGTH         (16)
-#define DEFAULT_NUM_OPS_INFLIGHT  (128)
+#define DEFAULT_NUM_OPS_INFLIGHT   1024
 #define MAX_NB_SESSIONS            4
 #define TEST_APP_PORT_ID           0
 #define TEST_APP_EV_QUEUE_ID       0
@@ -275,7 +275,7 @@ test_crypto_adapter_stats(void)
 static int
 test_crypto_adapter_params(void)
 {
-	int err;
+	int err, rc;
 	struct rte_event_crypto_adapter_runtime_params in_params;
 	struct rte_event_crypto_adapter_runtime_params out_params;
 	uint32_t cap;
@@ -284,6 +284,9 @@ test_crypto_adapter_params(void)
 	};
 
 	err = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (err == -ENOTSUP)
+		return TEST_SKIPPED;
+
 	TEST_ASSERT_SUCCESS(err, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
@@ -303,6 +306,10 @@ test_crypto_adapter_params(void)
 	/* Case 1: Get the default value of mbufs processed by adapter */
 	err = rte_event_crypto_adapter_runtime_params_get(TEST_ADAPTER_ID,
 							  &out_params);
+	if (err == -ENOTSUP) {
+		rc = TEST_SKIPPED;
+		goto queue_pair_del;
+	}
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
 	/* Case 2: Set max_nb = 32 (=BATCH_SEIZE) */
@@ -370,11 +377,13 @@ test_crypto_adapter_params(void)
 	TEST_ASSERT(in_params.max_nb == out_params.max_nb, "Expected %u got %u",
 		    in_params.max_nb, out_params.max_nb);
 
+	rc = TEST_SUCCESS;
+queue_pair_del:
 	err = rte_event_crypto_adapter_queue_pair_del(TEST_ADAPTER_ID,
 					TEST_CDEV_ID, TEST_CDEV_QP_ID);
 	TEST_ASSERT_SUCCESS(err, "Failed to delete add queue pair\n");
 
-	return TEST_SUCCESS;
+	return rc;
 }
 
 static int
@@ -1063,11 +1072,10 @@ configure_cryptodev(void)
 		return TEST_FAILED;
 	}
 
-	/* Create a NULL crypto device */
-	nb_devs = rte_cryptodev_device_count_by_driver(
-			rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD)));
+
+	nb_devs = rte_cryptodev_count();
 	if (!nb_devs) {
+		/* Create a NULL crypto device */
 		ret = rte_vdev_init(
 			RTE_STR(CRYPTODEV_NAME_NULL_PMD), NULL);
 
@@ -1146,21 +1154,17 @@ configure_cryptodev(void)
 
 static inline void
 evdev_set_conf_values(struct rte_event_dev_config *dev_conf,
-			struct rte_event_dev_info *info)
+		      const struct rte_event_dev_info *info)
 {
-	memset(dev_conf, 0, sizeof(struct rte_event_dev_config));
-	dev_conf->dequeue_timeout_ns = info->min_dequeue_timeout_ns;
-	dev_conf->nb_event_ports = NB_TEST_PORTS;
-	dev_conf->nb_event_queues = NB_TEST_QUEUES;
-	dev_conf->nb_event_queue_flows = info->max_event_queue_flows;
-	dev_conf->nb_event_port_dequeue_depth =
-			info->max_event_port_dequeue_depth;
-	dev_conf->nb_event_port_enqueue_depth =
-			info->max_event_port_enqueue_depth;
-	dev_conf->nb_event_port_enqueue_depth =
-			info->max_event_port_enqueue_depth;
-	dev_conf->nb_events_limit =
-			info->max_num_events;
+	*dev_conf = (struct rte_event_dev_config) {
+		.dequeue_timeout_ns = info->min_dequeue_timeout_ns,
+		.nb_event_ports = NB_TEST_PORTS,
+		.nb_event_queues = NB_TEST_QUEUES,
+		.nb_event_queue_flows = info->max_event_queue_flows,
+		.nb_event_port_dequeue_depth = info->max_event_port_dequeue_depth,
+		.nb_event_port_enqueue_depth = info->max_event_port_enqueue_depth,
+		.nb_events_limit = info->max_num_events,
+	};
 }
 
 static int
@@ -1246,7 +1250,12 @@ test_crypto_adapter_create(void)
 		.enqueue_depth = 8,
 		.new_event_threshold = 1200,
 	};
+	uint32_t cap;
 	int ret;
+
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (ret == -ENOTSUP)
+		return ret;
 
 	/* Create adapter with default port creation callback */
 	ret = rte_event_crypto_adapter_create(TEST_ADAPTER_ID,
@@ -1268,6 +1277,9 @@ test_crypto_adapter_qp_add_del(void)
 	int ret;
 
 	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (ret == -ENOTSUP)
+		return TEST_SKIPPED;
+
 	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
@@ -1303,6 +1315,9 @@ configure_event_crypto_adapter(enum rte_event_crypto_adapter_mode mode)
 	int ret;
 
 	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (ret == -ENOTSUP)
+		return ret;
+
 	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 	/* Skip mode and capability mismatch check for SW eventdev */
@@ -1468,6 +1483,9 @@ static void
 crypto_adapter_teardown(void)
 {
 	int ret;
+
+	if (!crypto_adapter_setup_done)
+		return;
 
 	ret = rte_event_crypto_adapter_stop(TEST_ADAPTER_ID);
 	if (ret < 0)

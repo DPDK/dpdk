@@ -249,11 +249,18 @@ PMD does not work with --no-huge EAL command line parameter
 -----------------------------------------------------------
 
 **Description**:
-   Currently, the DPDK does not store any information about memory allocated by ``malloc()` (for example, NUMA node,
-   physical address), hence PMDs do not work when the ``--no-huge`` command line parameter is supplied to EAL.
+   Currently, the DPDK does not store any information about memory allocated by ``malloc()``
+   (for example, NUMA node, physical address),
+   hence PMDs do not work when the ``--no-huge`` command line parameter is supplied to EAL.
+   This happens when using non-IOMMU based UIO drivers (i.e. ``igb_uio`` or ``uio_pci_generic``)
+   or when IOVA mode is explicitly set to use physical addresses
+   (via the ``--iova-mode=pa`` EAL parameter).
 
 **Implication**:
    Sending and receiving data with PMD will not work.
+   Unit tests checking ``--no-huge`` operation will fail if there is a device bound to the PMD
+   (``eal_flags_n_opt_autotest``, ``eal_flags_no_huge_autotest``,
+   ``eal_flags_vdev_opt_autotest``, ``eal_flags_misc_autotest``).
 
 **Resolution/Workaround**:
    Use huge page memory or use VFIO to map devices.
@@ -414,46 +421,6 @@ Differences in how different Intel NICs handle maximum packet length for jumbo f
 **Driver/Module**:
    Poll Mode Driver (PMD).
 
-
-Binding PCI devices to igb_uio fails on Linux kernel 3.9 when more than one device is used
-------------------------------------------------------------------------------------------
-
-**Description**:
-   A known bug in the UIO driver included in Linux kernel version 3.9 prevents more than one PCI device to be
-   bound to the igb_uio driver.
-
-**Implication**:
-   The Poll Mode Driver (PMD) will crash on initialization.
-
-**Resolution/Workaround**:
-   Use earlier or later kernel versions, or apply the following
-   `patch  <https://github.com/torvalds/linux/commit/5ed0505c713805f89473cdc0bbfb5110dfd840cb>`_.
-
-**Affected Environment/Platform**:
-   Linux systems with kernel version 3.9
-
-**Driver/Module**:
-   igb_uio module
-
-
-GCC might generate Intel® AVX instructions for processors without Intel® AVX support
-------------------------------------------------------------------------------------
-
-**Description**:
-   When compiling DPDK (and any DPDK app), gcc may generate Intel® AVX instructions, even when the
-   processor does not support Intel® AVX.
-
-**Implication**:
-   Any DPDK app might crash while starting up.
-
-**Resolution/Workaround**:
-   Either compile using icc or set ``EXTRA_CFLAGS='-O3'`` prior to compilation.
-
-**Affected Environment/Platform**:
-   Platforms which processor does not support Intel® AVX.
-
-**Driver/Module**:
-   Environment Abstraction Layer (EAL).
 
 Ethertype filter could receive other packets (non-assigned) in Niantic
 ----------------------------------------------------------------------

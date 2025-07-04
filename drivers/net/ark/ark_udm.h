@@ -18,11 +18,12 @@
 /* Meta data structure passed from FPGA, must match layout in FPGA
  * -- 32 bytes
  */
-struct ark_rx_meta {
+struct __rte_packed_begin ark_rx_meta {
 	uint32_t user_meta[5];	/* user defined based on fpga code */
-	uint8_t  reserved[10];
+	uint32_t pkt_len32;
+	uint8_t  reserved[6];
 	uint16_t pkt_len;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * UDM hardware structures
@@ -33,7 +34,7 @@ struct ark_rx_meta {
 #define ARK_RX_WRITE_TIME_NS 2500
 #define ARK_UDM_SETUP 0
 #define ARK_UDM_MODID 0x4d445500
-#define ARK_UDM_MODVER 0x37313232
+#define ARK_UDM_MODVER 0x37333332
 
 struct ark_udm_setup_t {
 	union {

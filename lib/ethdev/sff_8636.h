@@ -17,7 +17,6 @@
  *
  * Lower Memory Page 00h
  * Measurement, Diagnostic and Control Functions
- *
  */
 /* Identifier - 0 */
 /* Values are defined under SFF_8024_ID_OFFSET */
@@ -221,7 +220,6 @@
  *
  * Upper Memory Page 00h
  * Serial ID - Base ID, Extended ID and Vendor Specific ID fields
- *
  */
 /* Identifier - 128 */
 /* Identifier values same as Lower Memory Page 00h */

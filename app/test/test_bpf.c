@@ -39,8 +39,8 @@ test_bpf(void)
  */
 
 struct dummy_offset {
-	uint64_t u64;
-	uint32_t u32;
+	RTE_ATOMIC(uint64_t) u64;
+	RTE_ATOMIC(uint32_t) u32;
 	uint16_t u16;
 	uint8_t  u8;
 };
@@ -1581,32 +1581,46 @@ test_xadd1_check(uint64_t rc, const void *arg)
 	memset(&dfe, 0, sizeof(dfe));
 
 	rv = 1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = -1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = (int32_t)TEST_FILL_1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_MUL_1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_MUL_2;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_JCC_2;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_JCC_3;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	return cmp_res(__func__, 1, rc, &dfe, dft, sizeof(dfe));
 }
@@ -3262,7 +3276,7 @@ test_bpf(void)
 
 #endif /* !RTE_LIB_BPF */
 
-REGISTER_TEST_COMMAND(bpf_autotest, test_bpf);
+REGISTER_FAST_TEST(bpf_autotest, true, true, test_bpf);
 
 #ifndef RTE_HAS_LIBPCAP
 
@@ -3341,12 +3355,13 @@ test_bpf_filter_sanity(pcap_t *pcap)
 		struct rte_ipv4_hdr ip_hdr;
 	} *hdr;
 
+	memset(&mb, 0, sizeof(mb));
 	dummy_mbuf_prep(&mb, tbuf, sizeof(tbuf), plen);
 	m = &mb;
 
 	hdr = rte_pktmbuf_mtod(m, typeof(hdr));
 	hdr->eth_hdr = (struct rte_ether_hdr) {
-		.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 		.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4),
 	};
 	hdr->ip_hdr = (struct rte_ipv4_hdr) {
@@ -3408,6 +3423,9 @@ static const char * const sample_filters[] = {
 	" and ((ip[2:2] - 4 * (ip[0] & 0x0F) - 4 * ((tcp[12] & 0xF0) >> 4) > 69))",
 	/* Other */
 	"len = 128",
+	"host 1::1 or host 1::1 or host 1::1 or host 1::1 or host 1::1 or host 1::1",
+	("host 1::1 or host 1::2 or host 1::3 or host 1::4 or host 1::5 "
+	"or host 192.0.2.1 or host 192.0.2.100 or host 192.0.2.200"),
 };
 
 static int
@@ -3429,6 +3447,9 @@ test_bpf_filter(pcap_t *pcap, const char *s)
 		       __func__, __LINE__, s, rte_errno, strerror(rte_errno));
 		goto error;
 	}
+
+	printf("bpf convert for \"%s\" produced:\n", s);
+	rte_bpf_dump(stdout, prm->ins, prm->nb_ins);
 
 	bpf = rte_bpf_load(prm);
 	if (bpf == NULL) {
@@ -3473,4 +3494,4 @@ test_bpf_convert(void)
 
 #endif /* RTE_HAS_LIBPCAP */
 
-REGISTER_TEST_COMMAND(bpf_convert_autotest, test_bpf_convert);
+REGISTER_FAST_TEST(bpf_convert_autotest, true, true, test_bpf_convert);

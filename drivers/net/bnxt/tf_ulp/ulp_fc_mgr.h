@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -7,9 +7,11 @@
 #define _ULP_FC_MGR_H_
 
 #include "bnxt_ulp.h"
-#include "tf_core.h"
+#include "ulp_flow_db.h"
 
 #define ULP_FLAG_FC_THREAD			BIT(0)
+#define ULP_FLAG_FC_SW_AGG_EN			BIT(1)
+#define ULP_FLAG_FC_PARENT_AGG_EN		BIT(2)
 #define ULP_FC_TIMER	1/* Timer freq in Sec Flow Counters */
 
 /* Macros to extract packet/byte counters from a 64-bit flow counter. */
@@ -23,12 +25,26 @@
 
 #define FLOW_CNTR_PC_FLOW_VALID	0x1000000
 
+struct bnxt_ulp_fc_core_ops {
+	int32_t
+	(*ulp_flow_stat_get)(struct bnxt_ulp_context *ctxt,
+			     uint8_t direction,
+			     uint32_t session_type,
+			     uint64_t handle,
+			     struct rte_flow_query_count *count);
+	int32_t
+	(*ulp_flow_stats_accum_update)(struct bnxt_ulp_context *ctxt,
+				       struct bnxt_ulp_fc_info *ulp_fc_info,
+				       struct bnxt_ulp_device_params *dparms);
+};
+
 struct sw_acc_counter {
 	uint64_t pkt_count;
 	uint64_t byte_count;
 	bool	valid;
 	uint32_t hw_cntr_id;
 	uint32_t pc_flow_idx;
+	enum bnxt_ulp_session_type session_type;
 };
 
 struct hw_fc_mem_info {
@@ -51,6 +67,7 @@ struct bnxt_ulp_fc_info {
 	uint32_t		num_entries;
 	pthread_mutex_t		fc_lock;
 	uint32_t		num_counters;
+	const struct bnxt_ulp_fc_core_ops *fc_ops;
 };
 
 int32_t
@@ -101,7 +118,7 @@ void ulp_fc_mgr_thread_cancel(struct bnxt_ulp_context *ctxt);
  * start_idx [in] The HW flow counter ID
  *
  */
-int ulp_fc_mgr_start_idx_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
+int ulp_fc_mgr_start_idx_set(struct bnxt_ulp_context *ctxt, uint8_t dir,
 			     uint32_t start_idx);
 
 /*
@@ -118,7 +135,9 @@ int ulp_fc_mgr_start_idx_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
  *
  */
 int ulp_fc_mgr_cntr_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
-			uint32_t hw_cntr_id);
+			uint32_t hw_cntr_id,
+			enum bnxt_ulp_session_type session_type);
+
 /*
  * Reset the corresponding SW accumulator table entry based on
  * the difference between this counter ID and the starting
@@ -131,7 +150,7 @@ int ulp_fc_mgr_cntr_set(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
  * hw_cntr_id [in] The HW flow counter ID
  *
  */
-int ulp_fc_mgr_cntr_reset(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
+int ulp_fc_mgr_cntr_reset(struct bnxt_ulp_context *ctxt, uint8_t dir,
 			  uint32_t hw_cntr_id);
 /*
  * Check if the starting HW counter ID value is set in the
@@ -142,7 +161,7 @@ int ulp_fc_mgr_cntr_reset(struct bnxt_ulp_context *ctxt, enum tf_dir dir,
  * dir [in] The direction of the flow
  *
  */
-bool ulp_fc_mgr_start_idx_isset(struct bnxt_ulp_context *ctxt, enum tf_dir dir);
+bool ulp_fc_mgr_start_idx_isset(struct bnxt_ulp_context *ctxt, uint8_t dir);
 
 /*
  * Check if the alarm thread that walks through the flows is started
@@ -181,8 +200,11 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ulp_ctx,
  *
  */
 int32_t ulp_fc_mgr_cntr_parent_flow_set(struct bnxt_ulp_context *ctxt,
-					enum tf_dir dir,
+					uint8_t dir,
 					uint32_t hw_cntr_id,
 					uint32_t pc_idx);
+
+extern const struct bnxt_ulp_fc_core_ops ulp_fc_tf_core_ops;
+extern const struct bnxt_ulp_fc_core_ops ulp_fc_tfc_core_ops;
 
 #endif /* _ULP_FC_MGR_H_ */

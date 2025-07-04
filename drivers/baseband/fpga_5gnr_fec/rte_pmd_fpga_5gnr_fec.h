@@ -13,9 +13,8 @@
 /**
  * @file rte_pmd_fpga_5gnr_fec.h
  *
- * Interface for Intel(R) FGPA 5GNR FEC device configuration at the host level,
- * directly accessible by the application.
- * Configuration related to 5GNR functionality is done through
+ * Functions for configuring VC 5GNR and AGX100 HW, exposed directly to applications.
+ * Configuration related to encoding/decoding is done through the
  * librte_bbdev library.
  *
  * @warning
@@ -26,11 +25,11 @@
 extern "C" {
 #endif
 
-/** Number of Virtual Functions FGPA 4G FEC supports */
+/** Number of Virtual Functions FPGA 5GNR FEC supports */
 #define FPGA_5GNR_FEC_NUM_VFS 8
 
 /**
- * Structure to pass FPGA 4G FEC configuration.
+ * Structure to pass FPGA 5GNR FEC configuration.
  */
 struct rte_fpga_5gnr_fec_conf {
 	/** 1 if PF is used for dataplane, 0 for VFs */
@@ -39,9 +38,9 @@ struct rte_fpga_5gnr_fec_conf {
 	uint8_t vf_ul_queues_number[FPGA_5GNR_FEC_NUM_VFS];
 	/** Number of DL queues per VF */
 	uint8_t vf_dl_queues_number[FPGA_5GNR_FEC_NUM_VFS];
-	/** UL bandwidth. Needed for schedule algorithm */
+	/** UL bandwidth. Needed only for VC schedule algorithm */
 	uint8_t ul_bandwidth;
-	/** DL bandwidth. Needed for schedule algorithm */
+	/** DL bandwidth. Needed only for VC schedule algorithm */
 	uint8_t dl_bandwidth;
 	/** UL Load Balance */
 	uint8_t ul_load_balance;
@@ -50,14 +49,14 @@ struct rte_fpga_5gnr_fec_conf {
 };
 
 /**
- * Configure Intel(R) FPGA 5GNR FEC device
+ * Configure a FPGA 5GNR device in PF mode notably for bbdev-test
  *
  * @param dev_name
  *   The name of the device. This is the short form of PCI BDF, e.g. 00:01.0.
  *   It can also be retrieved for a bbdev device from the dev_name field in the
  *   rte_bbdev_info structure returned by rte_bbdev_info_get().
  * @param conf
- *   Configuration to apply to FPGA 4G FEC.
+ *   Configuration to apply to FPGA 5GNR FEC.
  *
  * @return
  *   Zero on success, negative value on failure.

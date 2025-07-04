@@ -5,35 +5,34 @@ if not is_linux
     build = false
     reason = 'only supported on Linux'
 endif
+
 sources = files(
         'rte_eth_tap.c',
-        'tap_bpf_api.c',
-        'tap_flow.c',
         'tap_intr.c',
         'tap_netlink.c',
-        'tap_tcmsgs.c',
 )
 
 deps = ['bus_vdev', 'gso', 'hash']
 
-cflags += '-DTAP_MAX_QUEUES=16'
-
-# input array for meson symbol search:
-# [ "MACRO to define if found", "header for the search",
-#   "enum/define", "symbol to search" ]
-#
-args = [
-        [ 'HAVE_TC_FLOWER', 'linux/pkt_cls.h', 'TCA_FLOWER_UNSPEC' ],
-        [ 'HAVE_TC_VLAN_ID', 'linux/pkt_cls.h', 'TCA_FLOWER_KEY_VLAN_PRIO' ],
-        [ 'HAVE_TC_BPF', 'linux/pkt_cls.h', 'TCA_BPF_UNSPEC' ],
-        [ 'HAVE_TC_BPF_FD', 'linux/pkt_cls.h', 'TCA_BPF_FD' ],
-        [ 'HAVE_TC_ACT_BPF', 'linux/tc_act/tc_bpf.h', 'TCA_ACT_BPF_UNSPEC' ],
-        [ 'HAVE_TC_ACT_BPF_FD', 'linux/tc_act/tc_bpf.h', 'TCA_ACT_BPF_FD' ],
-]
-config = configuration_data()
-foreach arg:args
-    config.set(arg[0], cc.has_header_symbol(arg[1], arg[2]))
-endforeach
-configure_file(output : 'tap_autoconf.h', configuration : config)
+max_queues = '-DTAP_MAX_QUEUES=64'
+cflags += max_queues
+cflags += no_wvla_cflag
 
 require_iova_in_mbuf = false
+
+if cc.has_header_symbol('linux/pkt_cls.h', 'TCA_FLOWER_ACT')
+    cflags += '-DHAVE_TCA_FLOWER'
+    sources += files(
+            'tap_flow.c',
+            'tap_tcmsgs.c',
+    )
+
+    enable_tap_rss = false
+
+    subdir('bpf')
+    if enable_tap_rss
+        cflags += '-DHAVE_BPF_RSS'
+        ext_deps += libbpf
+        sources += tap_rss_skel_h
+    endif
+endif

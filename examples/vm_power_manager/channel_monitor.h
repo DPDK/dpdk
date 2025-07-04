@@ -5,7 +5,8 @@
 #ifndef CHANNEL_MONITOR_H_
 #define CHANNEL_MONITOR_H_
 
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
+#include <rte_power_guest_channel.h>
 
 #include "channel_manager.h"
 

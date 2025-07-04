@@ -5,11 +5,11 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include <rte_sched.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_sched.h>
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
@@ -63,7 +63,7 @@ struct thread_stat
 };
 
 
-struct thread_conf
+struct __rte_cache_aligned thread_conf
 {
 	uint16_t rx_port;
 	uint16_t tx_port;
@@ -76,7 +76,7 @@ struct thread_conf
 #if APP_COLLECT_STAT
 	struct thread_stat stat;
 #endif
-} __rte_cache_aligned;
+};
 
 
 struct flow_conf

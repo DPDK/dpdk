@@ -176,6 +176,15 @@ rhead_board_cfg(
 	encp->enc_required_pcie_bandwidth_mbps = bandwidth;
 	encp->enc_max_pcie_link_gen = EFX_PCIE_LINK_SPEED_GEN3;
 
+	/*
+	 * FIXME: MCDI table API support depends on an EF100 firmware build
+	 * and an EF100 platform. It should be discovered by using a capability
+	 * flag from MCDI that is not implemented yet.
+	 * Right now we can safely rely on the return code from the libefx
+	 * MCDI Table API.
+	 */
+	encp->enc_table_api_supported = B_TRUE;
+
 	return (0);
 
 fail3:

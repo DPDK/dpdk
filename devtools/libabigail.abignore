@@ -23,20 +23,27 @@
 ; This is not a libabigail rule (see check-abi.sh).
 ; This is used for driver removal and other special cases like mlx glue libs.
 ;
+; SKIP_LIBRARY=librte_common_iavf
+; SKIP_LIBRARY=librte_common_idpf
 ; SKIP_LIBRARY=librte_common_mlx5_glue
 ; SKIP_LIBRARY=librte_net_mlx4_glue
+; SKIP_LIBRARY=librte_net_igc
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Experimental APIs exceptions ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Ignore changes to asymmetric crypto API which is experimental
-[suppress_type]
-        name = rte_crypto_asym_op
-[suppress_type]
-        type_kind = enum
-        changed_enumerators = RTE_CRYPTO_ASYM_XFORM_ECPM, RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[suppress_type]
+        name = rte_dma_port_param
+        type_kind = struct
+        has_size_change = no
+        has_data_member = {pcie}
+
+[suppress_type]
+        name = rte_node
+        has_size_change = no
+        has_data_member_inserted_between = {offset_after(original_process), offset_of(xstat_off)}

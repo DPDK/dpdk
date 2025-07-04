@@ -14,6 +14,9 @@ struct test_common {
 	struct ml_options *opt;
 	enum ml_test_result result;
 	struct rte_ml_dev_info dev_info;
+	struct rte_ml_dev_xstats_map *xstats_map;
+	uint64_t *xstats_values;
+	int xstats_size;
 };
 
 bool ml_test_cap_check(struct ml_options *opt);
@@ -23,5 +26,7 @@ int ml_test_device_configure(struct ml_test *test, struct ml_options *opt);
 int ml_test_device_close(struct ml_test *test, struct ml_options *opt);
 int ml_test_device_start(struct ml_test *test, struct ml_options *opt);
 int ml_test_device_stop(struct ml_test *test, struct ml_options *opt);
+
+int ml_read_file(char *file, size_t *size, char **buffer);
 
 #endif /* TEST_COMMON_H */

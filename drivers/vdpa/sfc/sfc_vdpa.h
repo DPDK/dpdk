@@ -122,40 +122,11 @@ sfc_vdpa_adapter_by_dev_handle(void *dev_handle)
  * Add wrapper functions to acquire/release lock to be able to remove or
  * change the lock in one place.
  */
-static inline void
-sfc_vdpa_adapter_lock_init(struct sfc_vdpa_adapter *sva)
-{
-	rte_spinlock_init(&sva->lock);
-}
-
-static inline int
-sfc_vdpa_adapter_is_locked(struct sfc_vdpa_adapter *sva)
-{
-	return rte_spinlock_is_locked(&sva->lock);
-}
-
-static inline void
-sfc_vdpa_adapter_lock(struct sfc_vdpa_adapter *sva)
-{
-	rte_spinlock_lock(&sva->lock);
-}
-
-static inline int
-sfc_vdpa_adapter_trylock(struct sfc_vdpa_adapter *sva)
-{
-	return rte_spinlock_trylock(&sva->lock);
-}
-
-static inline void
-sfc_vdpa_adapter_unlock(struct sfc_vdpa_adapter *sva)
-{
-	rte_spinlock_unlock(&sva->lock);
-}
-
-static inline void
-sfc_vdpa_adapter_lock_fini(__rte_unused struct sfc_vdpa_adapter *sva)
-{
-	/* Just for symmetry of the API */
-}
+#define sfc_vdpa_adapter_lock_init(sva) rte_spinlock_init(&(sva)->lock)
+#define sfc_vdpa_adapter_is_locked(sva) rte_spinlock_is_locked(&(sva)->lock)
+#define sfc_vdpa_adapter_lock(sva) rte_spinlock_lock(&(sva)->lock)
+#define sfc_vdpa_adapter_trylock(sva) rte_spinlock_trylock(&(sva)->lock)
+#define sfc_vdpa_adapter_unlock(sva) rte_spinlock_unlock(&(sva)->lock)
+#define sfc_vdpa_adapter_lock_fini(sva) RTE_SET_USED(sva)
 
 #endif  /* _SFC_VDPA_H */

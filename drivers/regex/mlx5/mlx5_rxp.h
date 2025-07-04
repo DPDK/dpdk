@@ -42,14 +42,14 @@
 #define MLX5_RXP_RESP_STATUS_PMI_EOJ (1 << 14)
 
 /* This describes the header the RXP expects for any search data. */
-struct mlx5_rxp_job_desc {
+struct __rte_packed_begin mlx5_rxp_job_desc {
 	uint32_t job_id;
 	uint16_t ctrl;
 	uint16_t len;
 	uint16_t subset[4];
-} __rte_packed;
+} __rte_packed_end;
 
-struct mlx5_rxp_response_desc {
+struct __rte_packed_begin mlx5_rxp_response_desc {
 	uint32_t job_id;
 	uint16_t status;
 	uint8_t	detected_match_count;
@@ -58,13 +58,13 @@ struct mlx5_rxp_response_desc {
 	uint16_t instruction_count;
 	uint16_t latency_count;
 	uint16_t pmi_min_byte_ptr;
-} __rte_packed;
+} __rte_packed_end;
 
-struct mlx5_rxp_match_tuple {
+struct __rte_packed_begin mlx5_rxp_match_tuple {
 	uint32_t rule_id;
 	uint16_t start_ptr;
 	uint16_t length;
-} __rte_packed;
+} __rte_packed_end;
 
 struct mlx5_rxp_response {
 	struct mlx5_rxp_response_desc header;
@@ -115,11 +115,11 @@ struct mlx5_rxp_rof {
 	struct mlx5_rxp_rof_entry *rof_entries;
 };
 
-struct mlx5_rxp_ctl_rules_pgm {
+struct __rte_packed_begin mlx5_rxp_ctl_rules_pgm {
 	struct mlx5_rxp_ctl_hdr hdr;
 	uint32_t count;
 	struct mlx5_rxp_rof_entry rules[];
-} __rte_packed;
+} __rte_packed_end;
 
 /* RXP programming mode setting. */
 enum mlx5_rxp_program_mode {

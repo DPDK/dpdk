@@ -22,7 +22,7 @@ the system when DPDK is installed, and so can be built using GNU make.
    on the FreeBSD system.
 
 The following shows how to compile the helloworld example app, following
-the installation of DPDK using `ninja install` as described previously::
+the installation of DPDK using `meson install` as described previously::
 
         $ export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
@@ -31,7 +31,7 @@ the installation of DPDK using `ninja install` as described previously::
         $ gmake
         cc -O3 -I/usr/local/include -include rte_config.h -march=native
         -D__BSD_VISIBLE  main.c -o build/helloworld-shared
-        -L/usr/local/lib -lrte_telemetry -lrte_bpf -lrte_flow_classify
+        -L/usr/local/lib -lrte_telemetry -lrte_bpf
         -lrte_pipeline -lrte_table -lrte_port -lrte_fib -lrte_ipsec
         -lrte_stack -lrte_security -lrte_sched -lrte_reorder -lrte_rib
         -lrte_rcu -lrte_rawdev -lrte_pdump -lrte_member -lrte_lpm
@@ -61,10 +61,10 @@ A large number of options can be given to the EAL when running an
 application. A full list of options can be got by passing `--help` to a
 DPDK application. Some of the EAL options for FreeBSD are as follows:
 
-*   ``-c COREMASK`` or ``-l CORELIST``:
-    A hexadecimal bit mask of the cores to run on.  Note that core numbering
-    can change between platforms and should be determined beforehand. The corelist
-    is a list of cores to use instead of a core mask.
+*   ``-l CORELIST``:
+    A comma-separated list of the cores, or ranges of cores to run on.
+    For example, ``-l 0,1,4-6`` will run on cores 0, 1, 4, 5 and 6.
+    Note that core numbering can change between platforms and should be determined beforehand.
 
 *   ``-b <domain:bus:devid.func>``:
     Blocklisting of ports; prevent EAL from using specified PCI device
@@ -93,8 +93,6 @@ Other options, specific to Linux and are not supported under FreeBSD are as foll
 
 *   ``--file-prefix``:
     The prefix text used for hugepage filenames.
-
-The ``-c`` or ``-l`` option is mandatory; the others are optional.
 
 .. _running_non_root:
 

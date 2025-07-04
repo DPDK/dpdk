@@ -12,13 +12,12 @@ extern "C" {
 #endif
 
 /**
-* @file
-* RTE Configuration File
-*
-* This library allows reading application defined parameters from standard
-* format configuration file.
-*
-***/
+ * @file
+ * Configuration File management.
+ *
+ * This library allows reading application defined parameters
+ * from standard format configuration file.
+ */
 
 #ifndef CFG_NAME_LEN
 #define CFG_NAME_LEN 64
@@ -64,15 +63,15 @@ enum {
 #define CFG_DEFAULT_COMMENT_CHARACTER ';'
 
 /**
-* Open config file
-*
-* @param filename
-*   Config file name
-* @param flags
-*   Config file flags
-* @return
-*   Handle to configuration file on success, NULL otherwise
-*/
+ * Open config file.
+ *
+ * @param filename
+ *   Config file name.
+ * @param flags
+ *   Config file flags.
+ * @return
+ *   Handle to configuration file on success, NULL otherwise.
+ */
 struct rte_cfgfile *rte_cfgfile_load(const char *filename, int flags);
 
 /**
@@ -168,133 +167,133 @@ int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
 int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename);
 
 /**
-* Get number of sections in config file
-*
-* @param cfg
-*   Config file
-* @param sec_name
-*   Section name
-* @param length
-*   Maximum section name length
-* @return
-*   Number of sections
-*/
+ * Get number of sections in config file.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sec_name
+ *   Section name.
+ * @param length
+ *   Maximum section name length.
+ * @return
+ *   Number of sections.
+ */
 int rte_cfgfile_num_sections(struct rte_cfgfile *cfg, const char *sec_name,
 	size_t length);
 
 /**
-* Get name of all config file sections.
-*
-* Fills in the array sections with the name of all the sections in the file
-* (up to the number of max_sections sections).
-*
-* @param cfg
-*   Config file
-* @param sections
-*   Array containing section names after successful invocation. Each element
-*   of this array should be preallocated by the user with at least
-*   CFG_NAME_LEN characters.
-* @param max_sections
-*   Maximum number of section names to be stored in sections array
-* @return
-*   Number of populated sections names
-*/
+ * Get name of all config file sections.
+ *
+ * Fills in the array sections with the name of all the sections in the file
+ * (up to the number of max_sections sections).
+ *
+ * @param cfg
+ *   Config file.
+ * @param sections
+ *   Array containing section names after successful invocation.
+ *   Each element of this array should be preallocated by the user
+ *   with at least CFG_NAME_LEN characters.
+ * @param max_sections
+ *   Maximum number of section names to be stored in sections array.
+ * @return
+ *   Number of populated sections names.
+ */
 int rte_cfgfile_sections(struct rte_cfgfile *cfg, char *sections[],
 	int max_sections);
 
 /**
-* Check if given section exists in config file
-*
-* @param cfg
-*   Config file
-* @param sectionname
-*   Section name
-* @return
-*   TRUE (value different than 0) if section exists, FALSE (value 0) otherwise
-*/
+ * Check if given section exists in config file.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sectionname
+ *   Section name.
+ * @return
+ *   TRUE (value different than 0) if section exists, FALSE (value 0) otherwise.
+ */
 int rte_cfgfile_has_section(struct rte_cfgfile *cfg, const char *sectionname);
 
 /**
-* Get number of entries in given config file section
-*
-* If multiple sections have the given name this function operates on the
-* first one.
-*
-* @param cfg
-*   Config file
-* @param sectionname
-*   Section name
-* @return
-*   Number of entries in section on success, -1 otherwise
-*/
+ * Get number of entries in given config file section.
+ *
+ * If multiple sections have the given name,
+ * this function operates on the first one.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sectionname
+ *   Section name.
+ * @return
+ *   Number of entries in section on success, -1 otherwise.
+ */
 int rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname);
 
 /**
-* Get number of entries in given config file section
-*
-* The index of a section is the same as the index of its name in the
-* result of rte_cfgfile_sections. This API can be used when there are
-* multiple sections with the same name.
-*
-* @param cfg
-*   Config file
-* @param sectionname
-*   Section name
-* @param index
-*   Section index
-* @return
-*   Number of entries in section on success, -1 otherwise
-*/
+ * Get number of entries in given config file section.
+ *
+ * The index of a section is the same as the index of its name
+ * in the result of rte_cfgfile_sections.
+ * This API can be used when there are multiple sections with the same name.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sectionname
+ *   Section name.
+ * @param index
+ *   Section index.
+ * @return
+ *   Number of entries in section on success, -1 otherwise.
+ */
 int rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
 	char *sectionname,
 	int index);
 
 /**
-* Get section entries as key-value pairs
-*
-* If multiple sections have the given name this function operates on the
-* first one.
-*
-* @param cfg
-*   Config file
-* @param sectionname
-*   Section name
-* @param entries
-*   Pre-allocated array of at least max_entries entries where the section
-*   entries are stored as key-value pair after successful invocation
-* @param max_entries
-*   Maximum number of section entries to be stored in entries array
-* @return
-*   Number of entries populated on success, -1 otherwise
-*/
+ * Get section entries as key-value pairs.
+ *
+ * If multiple sections have the given name,
+ * this function operates on the first one.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sectionname
+ *   Section name.
+ * @param entries
+ *   Pre-allocated array of at least max_entries entries where the section
+ *   entries are stored as key-value pair after successful invocation.
+ * @param max_entries
+ *   Maximum number of section entries to be stored in entries array.
+ * @return
+ *   Number of entries populated on success, -1 otherwise.
+ */
 int rte_cfgfile_section_entries(struct rte_cfgfile *cfg,
 	const char *sectionname,
 	struct rte_cfgfile_entry *entries,
 	int max_entries);
 
 /**
-* Get section entries as key-value pairs
-*
-* The index of a section is the same as the index of its name in the
-* result of rte_cfgfile_sections. This API can be used when there are
-* multiple sections with the same name.
-*
-* @param cfg
-*   Config file
-* @param index
-*   Section index
-* @param sectionname
-*   Pre-allocated string of at least CFG_NAME_LEN characters where the
-*   section name is stored after successful invocation.
-* @param entries
-*   Pre-allocated array of at least max_entries entries where the section
-*   entries are stored as key-value pair after successful invocation
-* @param max_entries
-*   Maximum number of section entries to be stored in entries array
-* @return
-*   Number of entries populated on success, -1 otherwise
-*/
+ * Get section entries as key-value pairs.
+ *
+ * The index of a section is the same as the index of its name
+ * in the result of rte_cfgfile_sections.
+ * This API can be used when there are multiple sections with the same name.
+ *
+ * @param cfg
+ *   Config file.
+ * @param index
+ *   Section index.
+ * @param sectionname
+ *   Pre-allocated string of at least CFG_NAME_LEN characters
+ *   where the section name is stored after successful invocation.
+ * @param entries
+ *   Pre-allocated array of at least max_entries entries where the section
+ *   entries are stored as key-value pair after successful invocation.
+ * @param max_entries
+ *   Maximum number of section entries to be stored in entries array.
+ * @return
+ *   Number of entries populated on success, -1 otherwise.
+ */
 int rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg,
 	int index,
 	char *sectionname,
@@ -302,50 +301,50 @@ int rte_cfgfile_section_entries_by_index(struct rte_cfgfile *cfg,
 	int max_entries);
 
 /**
-* Get value of the named entry in named config file section
-*
-* If multiple sections have the given name this function operates on the
-* first one.
-*
-* @param cfg
-*   Config file
-* @param sectionname
-*   Section name
-* @param entryname
-*   Entry name
-* @return
-*   Entry value on success, NULL otherwise
-*/
+ * Get value of the named entry in named config file section.
+ *
+ * If multiple sections have the given name,
+ * this function operates on the first one.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sectionname
+ *   Section name.
+ * @param entryname
+ *   Entry name.
+ * @return
+ *   Entry value on success, NULL otherwise.
+ */
 const char *rte_cfgfile_get_entry(struct rte_cfgfile *cfg,
 	const char *sectionname,
 	const char *entryname);
 
 /**
-* Check if given entry exists in named config file section
-*
-* If multiple sections have the given name this function operates on the
-* first one.
-*
-* @param cfg
-*   Config file
-* @param sectionname
-*   Section name
-* @param entryname
-*   Entry name
-* @return
-*   TRUE (value different than 0) if entry exists, FALSE (value 0) otherwise
-*/
+ * Check if given entry exists in named config file section.
+ *
+ * If multiple sections have the given name,
+ * this function operates on the first one.
+ *
+ * @param cfg
+ *   Config file.
+ * @param sectionname
+ *   Section name.
+ * @param entryname
+ *   Entry name.
+ * @return
+ *   TRUE (value different than 0) if entry exists, FALSE (value 0) otherwise.
+ */
 int rte_cfgfile_has_entry(struct rte_cfgfile *cfg, const char *sectionname,
 	const char *entryname);
 
 /**
-* Close config file
-*
-* @param cfg
-*   Config file
-* @return
-*   0 on success, -1 otherwise
-*/
+ * Close config file.
+ *
+ * @param cfg
+ *   Config file.
+ * @return
+ *   0 on success, -1 otherwise.
+ */
 int rte_cfgfile_close(struct rte_cfgfile *cfg);
 
 #ifdef __cplusplus

@@ -423,9 +423,9 @@ static const char cb_port_delim[] = ":";
 
 static char line[LINE_MAX];
 
-#define	dump_verbose(lvl, fh, fmt, args...)	do { \
+#define	dump_verbose(lvl, fh, fmt, ...)	do { \
 	if ((lvl) <= (int32_t)config.verbose)        \
-		fprintf(fh, fmt, ##args);            \
+		fprintf(fh, fmt, ##__VA_ARGS__);         \
 } while (0)
 
 

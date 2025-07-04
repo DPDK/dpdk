@@ -15,9 +15,7 @@
 #ifndef _RTE_STACK_H_
 #define _RTE_STACK_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdalign.h>
 
 #include <rte_debug.h>
 #include <rte_errno.h>
@@ -42,9 +40,9 @@ struct rte_stack_lf_head {
 
 struct rte_stack_lf_list {
 	/** List head */
-	struct rte_stack_lf_head head __rte_aligned(16);
+	alignas(16) struct rte_stack_lf_head head;
 	/** List len */
-	uint64_t len;
+	RTE_ATOMIC(uint64_t) len;
 };
 
 /* Structure containing two lock-free LIFO lists: the stack itself and a list
@@ -52,11 +50,11 @@ struct rte_stack_lf_list {
  */
 struct rte_stack_lf {
 	/** LIFO list of elements */
-	struct rte_stack_lf_list used __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list used;
 	/** LIFO list of free elements */
-	struct rte_stack_lf_list free __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list free;
 	/** LIFO elements */
-	struct rte_stack_lf_elem elems[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_elem elems[];
 };
 
 /* Structure containing the LIFO, its current length, and a lock for mutual
@@ -71,19 +69,18 @@ struct rte_stack_std {
 /* The RTE stack structure contains the LIFO structure itself, plus metadata
  * such as its name and memzone pointer.
  */
-struct rte_stack {
+struct __rte_cache_aligned rte_stack {
 	/** Name of the stack. */
-	char name[RTE_STACK_NAMESIZE] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) char name[RTE_STACK_NAMESIZE];
 	/** Memzone containing the rte_stack structure. */
 	const struct rte_memzone *memzone;
 	uint32_t capacity; /**< Usable size of the stack. */
 	uint32_t flags; /**< Flags supplied at creation. */
-	RTE_STD_C11
 	union {
 		struct rte_stack_lf stack_lf; /**< Lock-free LIFO structure. */
 		struct rte_stack_std stack_std;	/**< LIFO structure. */
 	};
-} __rte_cache_aligned;
+};
 
 /**
  * The stack uses lock-free push and pop functions. This flag is only
@@ -93,6 +90,10 @@ struct rte_stack {
 
 #include "rte_stack_std.h"
 #include "rte_stack_lf.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Push several objects on the stack (MT-safe).

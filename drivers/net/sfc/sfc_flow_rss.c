@@ -303,9 +303,9 @@ sfc_flow_rss_ctx_del(struct sfc_adapter *sa, struct sfc_flow_rss_ctx *ctx)
 
 	TAILQ_REMOVE(&flow_rss->ctx_list, ctx, entries);
 	rte_free(ctx->qid_offsets);
-	rte_free(ctx);
-
 	sfc_dbg(sa, "flow-rss: deleted ctx=%p", ctx);
+
+	rte_free(ctx);
 }
 
 static int

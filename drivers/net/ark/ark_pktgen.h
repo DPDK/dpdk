@@ -22,7 +22,7 @@ typedef void *ark_pkt_gen_t;
  * This is an overlay structure to a memory mapped FPGA device.  These
  * structs will never be instantiated in ram memory
  */
-struct ark_pkt_gen_regs {
+struct __rte_packed_begin ark_pkt_gen_regs {
 	uint32_t r0;
 	volatile uint32_t pkt_start_stop;
 	volatile uint32_t pkt_ctrl;
@@ -41,7 +41,7 @@ struct ark_pkt_gen_regs {
 	uint32_t hdr_dw[7];
 	uint32_t start_offset;
 	uint32_t bytes_per_cycle;
-} __rte_packed;
+} __rte_packed_end;
 
 struct ark_pkt_gen_inst {
 	struct rte_eth_dev_info *dev_info;
@@ -75,6 +75,6 @@ void ark_pktgen_set_hdr_dW(ark_pkt_gen_t handle, uint32_t *hdr);
 void ark_pktgen_set_start_offset(ark_pkt_gen_t handle, uint32_t x);
 void ark_pktgen_parse(char *argv);
 void ark_pktgen_setup(ark_pkt_gen_t handle);
-void *ark_pktgen_delay_start(void *arg);
+uint32_t ark_pktgen_delay_start(void *arg);
 
 #endif

@@ -11,6 +11,7 @@
 #include <rte_pause.h>
 #include <rte_eal.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_memcfg.h"
 
@@ -18,8 +19,10 @@
 static uint64_t eal_tsc_resolution_hz;
 
 /* Pointer to user delay function */
+RTE_EXPORT_SYMBOL(rte_delay_us)
 void (*rte_delay_us)(unsigned int) = NULL;
 
+RTE_EXPORT_SYMBOL(rte_delay_us_block)
 void
 rte_delay_us_block(unsigned int us)
 {
@@ -29,6 +32,7 @@ rte_delay_us_block(unsigned int us)
 		rte_pause();
 }
 
+RTE_EXPORT_SYMBOL(rte_get_tsc_hz)
 uint64_t
 rte_get_tsc_hz(void)
 {
@@ -39,8 +43,8 @@ static uint64_t
 estimate_tsc_freq(void)
 {
 #define CYC_PER_10MHZ 1E7
-	RTE_LOG(WARNING, EAL, "WARNING: TSC frequency estimated roughly"
-		" - clock timings may be less accurate.\n");
+	EAL_LOG(WARNING, "WARNING: TSC frequency estimated roughly"
+		" - clock timings may be less accurate.");
 	/* assume that the rte_delay_us_sleep() will sleep for 1 second */
 	uint64_t start = rte_rdtsc();
 	rte_delay_us_sleep(US_PER_S);
@@ -66,16 +70,16 @@ set_tsc_freq(void)
 	}
 
 	freq = get_tsc_freq_arch();
-	if (!freq)
-		freq = get_tsc_freq();
+	freq = get_tsc_freq(freq);
 	if (!freq)
 		freq = estimate_tsc_freq();
 
-	RTE_LOG(DEBUG, EAL, "TSC frequency is ~%" PRIu64 " KHz\n", freq / 1000);
+	EAL_LOG(DEBUG, "TSC frequency is ~%" PRIu64 " KHz", freq / 1000);
 	eal_tsc_resolution_hz = freq;
 	mcfg->tsc_hz = freq;
 }
 
+RTE_EXPORT_SYMBOL(rte_delay_us_callback_register)
 void rte_delay_us_callback_register(void (*userfunc)(unsigned int))
 {
 	rte_delay_us = userfunc;

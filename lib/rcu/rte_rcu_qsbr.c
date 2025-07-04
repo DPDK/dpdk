@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -19,16 +20,18 @@
 #include "rte_rcu_qsbr.h"
 #include "rcu_qsbr_pvt.h"
 
+#define RCU_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, RCU, "%s(): ", __func__, __VA_ARGS__)
+
 /* Get the memory size of QSBR variable */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_get_memsize)
 size_t
 rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 {
 	size_t sz;
 
 	if (max_threads == 0) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid max_threads %u\n",
-			__func__, max_threads);
+		RCU_LOG(ERR, "Invalid max_threads %u", max_threads);
 		rte_errno = EINVAL;
 
 		return 1;
@@ -46,14 +49,14 @@ rte_rcu_qsbr_get_memsize(uint32_t max_threads)
 }
 
 /* Initialize a quiescent state variable */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_init)
 int
 rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 {
 	size_t sz;
 
 	if (v == NULL) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return 1;
@@ -78,51 +81,35 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 /* Register a reader thread to report its quiescent state
  * on a QS variable.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_thread_register)
 int
 rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
-	unsigned int i, id, success;
-	uint64_t old_bmap, new_bmap;
+	unsigned int i, id;
+	uint64_t old_bmap;
 
 	if (v == NULL || thread_id >= v->max_threads) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return 1;
 	}
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	id = thread_id & __RTE_QSBR_THRID_MASK;
 	i = thread_id >> __RTE_QSBR_THRID_INDEX_SHIFT;
 
-	/* Make sure that the counter for registered threads does not
-	 * go out of sync. Hence, additional checks are required.
+	/* Add the thread to the bitmap of registered threads */
+	old_bmap = rte_atomic_fetch_or_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+						RTE_BIT64(id), rte_memory_order_release);
+
+	/* Increment the number of threads registered only if the thread was not already
+	 * registered
 	 */
-	/* Check if the thread is already registered */
-	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_RELAXED);
-	if (old_bmap & 1UL << id)
-		return 0;
-
-	do {
-		new_bmap = old_bmap | (1UL << id);
-		success = __atomic_compare_exchange(
-					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, &new_bmap, 0,
-					__ATOMIC_RELEASE, __ATOMIC_RELAXED);
-
-		if (success)
-			__atomic_fetch_add(&v->num_threads,
-						1, __ATOMIC_RELAXED);
-		else if (old_bmap & (1UL << id))
-			/* Someone else registered this thread.
-			 * Counter should not be incremented.
-			 */
-			return 0;
-	} while (success == 0);
+	if (!(old_bmap & RTE_BIT64(id)))
+		rte_atomic_fetch_add_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
@@ -130,60 +117,44 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 /* Remove a reader thread, from the list of threads reporting their
  * quiescent state on a QS variable.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_thread_unregister)
 int
 rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
-	unsigned int i, id, success;
-	uint64_t old_bmap, new_bmap;
+	unsigned int i, id;
+	uint64_t old_bmap;
 
 	if (v == NULL || thread_id >= v->max_threads) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return 1;
 	}
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	id = thread_id & __RTE_QSBR_THRID_MASK;
 	i = thread_id >> __RTE_QSBR_THRID_INDEX_SHIFT;
 
-	/* Make sure that the counter for registered threads does not
-	 * go out of sync. Hence, additional checks are required.
+	/* Make sure any loads of the shared data structure are
+	 * completed before removal of the thread from the bitmap of
+	 * reporting threads.
 	 */
-	/* Check if the thread is already unregistered */
-	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_RELAXED);
-	if (!(old_bmap & (1UL << id)))
-		return 0;
+	old_bmap = rte_atomic_fetch_and_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+						 ~RTE_BIT64(id), rte_memory_order_release);
 
-	do {
-		new_bmap = old_bmap & ~(1UL << id);
-		/* Make sure any loads of the shared data structure are
-		 * completed before removal of the thread from the list of
-		 * reporting threads.
-		 */
-		success = __atomic_compare_exchange(
-					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, &new_bmap, 0,
-					__ATOMIC_RELEASE, __ATOMIC_RELAXED);
-
-		if (success)
-			__atomic_fetch_sub(&v->num_threads,
-						1, __ATOMIC_RELAXED);
-		else if (!(old_bmap & (1UL << id)))
-			/* Someone else unregistered this thread.
-			 * Counter should not be incremented.
-			 */
-			return 0;
-	} while (success == 0);
+	/* Decrement the number of threads unregistered only if the thread was not already
+	 * unregistered
+	 */
+	if (old_bmap & RTE_BIT64(id))
+		rte_atomic_fetch_sub_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
 
 /* Wait till the reader threads have entered quiescent state. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_synchronize)
 void
 rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
@@ -204,6 +175,7 @@ rte_rcu_qsbr_synchronize(struct rte_rcu_qsbr *v, unsigned int thread_id)
 }
 
 /* Dump the details of a single quiescent state variable to a file. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dump)
 int
 rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 {
@@ -211,8 +183,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 	uint32_t i, t, id;
 
 	if (v == NULL || f == NULL) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return 1;
@@ -227,41 +198,41 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 
 	fprintf(f, "  Registered thread IDs = ");
 	for (i = 0; i < v->num_elems; i++) {
-		bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_ACQUIRE);
+		bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+					rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
-			t = __builtin_ctzl(bmap);
+			t = rte_ctz64(bmap);
 			fprintf(f, "%u ", id + t);
 
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
 	fprintf(f, "\n");
 
 	fprintf(f, "  Token = %" PRIu64 "\n",
-			__atomic_load_n(&v->token, __ATOMIC_ACQUIRE));
+			rte_atomic_load_explicit(&v->token, rte_memory_order_acquire));
 
 	fprintf(f, "  Least Acknowledged Token = %" PRIu64 "\n",
-			__atomic_load_n(&v->acked_token, __ATOMIC_ACQUIRE));
+			rte_atomic_load_explicit(&v->acked_token, rte_memory_order_acquire));
 
 	fprintf(f, "Quiescent State Counts for readers:\n");
 	for (i = 0; i < v->num_elems; i++) {
-		bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_ACQUIRE);
+		bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+					rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
-			t = __builtin_ctzl(bmap);
+			t = rte_ctz64(bmap);
 			fprintf(f, "thread ID = %u, count = %" PRIu64 ", lock count = %u\n",
 				id + t,
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].cnt,
-					__ATOMIC_RELAXED),
-				__atomic_load_n(
+					rte_memory_order_relaxed),
+				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].lock_cnt,
-					__ATOMIC_RELAXED));
-			bmap &= ~(1UL << t);
+					rte_memory_order_relaxed));
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
@@ -271,6 +242,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 /* Create a queue used to store the data structure elements that can
  * be freed later. This queue is referred to as 'defer queue'.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_create)
 struct rte_rcu_qsbr_dq *
 rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 {
@@ -282,8 +254,7 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 		params->v == NULL || params->name == NULL ||
 		params->size == 0 || params->esize == 0 ||
 		(params->esize % 4 != 0)) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return NULL;
@@ -293,9 +264,10 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 	 */
 	if ((params->trigger_reclaim_limit <= params->size) &&
 	    (params->max_reclaim_size == 0)) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter, size = %u, trigger_reclaim_limit = %u, max_reclaim_size = %u\n",
-			__func__, params->size, params->trigger_reclaim_limit,
+		RCU_LOG(ERR,
+			"Invalid input parameter, size = %u, trigger_reclaim_limit = %u, "
+			"max_reclaim_size = %u",
+			params->size, params->trigger_reclaim_limit,
 			params->max_reclaim_size);
 		rte_errno = EINVAL;
 
@@ -328,8 +300,7 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 			__RTE_QSBR_TOKEN_SIZE + params->esize,
 			qs_fifo_size, SOCKET_ID_ANY, flags);
 	if (dq->r == NULL) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): defer queue create failed\n", __func__);
+		RCU_LOG(ERR, "defer queue create failed");
 		rte_free(dq);
 		return NULL;
 	}
@@ -348,20 +319,20 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params)
 /* Enqueue one resource to the defer queue to free after the grace
  * period is over.
  */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_enqueue)
 int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 {
 	__rte_rcu_qsbr_dq_elem_t *dq_elem;
 	uint32_t cur_size;
 
 	if (dq == NULL || e == NULL) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return 1;
 	}
 
-	char data[dq->esize];
+	char *data = alloca(dq->esize);
 	dq_elem = (__rte_rcu_qsbr_dq_elem_t *)data;
 	/* Start the grace period */
 	dq_elem->token = rte_rcu_qsbr_start(dq->v);
@@ -372,8 +343,7 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 	 */
 	cur_size = rte_ring_count(dq->r);
 	if (cur_size > dq->trigger_reclaim_limit) {
-		rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-			"%s(): Triggering reclamation\n", __func__);
+		RCU_LOG(INFO, "Triggering reclamation");
 		rte_rcu_qsbr_dq_reclaim(dq, dq->max_reclaim_size,
 						NULL, NULL, NULL);
 	}
@@ -391,28 +361,24 @@ int rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e)
 	 * Enqueue uses the configured flags when the DQ was created.
 	 */
 	if (rte_ring_enqueue_elem(dq->r, data, dq->esize) != 0) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Enqueue failed\n", __func__);
+		RCU_LOG(ERR, "Enqueue failed");
 		/* Note that the token generated above is not used.
 		 * Other than wasting tokens, it should not cause any
 		 * other issues.
 		 */
-		rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-			"%s(): Skipped enqueuing token = %" PRIu64 "\n",
-			__func__, dq_elem->token);
+		RCU_LOG(INFO, "Skipped enqueuing token = %" PRIu64, dq_elem->token);
 
 		rte_errno = ENOSPC;
 		return 1;
 	}
 
-	rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-		"%s(): Enqueued token = %" PRIu64 "\n",
-		__func__, dq_elem->token);
+	RCU_LOG(INFO, "Enqueued token = %" PRIu64, dq_elem->token);
 
 	return 0;
 }
 
 /* Reclaim resources from the defer queue. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_reclaim)
 int
 rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 			unsigned int *freed, unsigned int *pending,
@@ -422,8 +388,7 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 	__rte_rcu_qsbr_dq_elem_t *dq_elem;
 
 	if (dq == NULL || n == 0) {
-		rte_log(RTE_LOG_ERR, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(ERR, "Invalid input parameter");
 		rte_errno = EINVAL;
 
 		return 1;
@@ -431,10 +396,10 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 
 	cnt = 0;
 
-	char data[dq->esize];
+	char *data = alloca(dq->esize);
 	/* Check reader threads quiescent state and reclaim resources */
 	while (cnt < n &&
-		rte_ring_dequeue_bulk_elem_start(dq->r, &data,
+		rte_ring_dequeue_bulk_elem_start(dq->r, data,
 					dq->esize, 1, available) != 0) {
 		dq_elem = (__rte_rcu_qsbr_dq_elem_t *)data;
 
@@ -445,17 +410,14 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 		}
 		rte_ring_dequeue_elem_finish(dq->r, 1);
 
-		rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-			"%s(): Reclaimed token = %" PRIu64 "\n",
-			__func__, dq_elem->token);
+		RCU_LOG(INFO, "Reclaimed token = %" PRIu64, dq_elem->token);
 
 		dq->free_fn(dq->p, dq_elem->elem, 1);
 
 		cnt++;
 	}
 
-	rte_log(RTE_LOG_INFO, rte_rcu_log_type,
-		"%s(): Reclaimed %u resources\n", __func__, cnt);
+	RCU_LOG(INFO, "Reclaimed %u resources", cnt);
 
 	if (freed != NULL)
 		*freed = cnt;
@@ -466,14 +428,14 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 }
 
 /* Delete a defer queue. */
+RTE_EXPORT_SYMBOL(rte_rcu_qsbr_dq_delete)
 int
 rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 {
 	unsigned int pending;
 
 	if (dq == NULL) {
-		rte_log(RTE_LOG_DEBUG, rte_rcu_log_type,
-			"%s(): Invalid input parameter\n", __func__);
+		RCU_LOG(DEBUG, "Invalid input parameter");
 
 		return 0;
 	}
@@ -492,4 +454,5 @@ rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_rcu_log_type)
 RTE_LOG_REGISTER_DEFAULT(rte_rcu_log_type, ERR);

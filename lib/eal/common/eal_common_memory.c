@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -16,15 +17,19 @@
 #include <rte_eal_paging.h>
 #include <rte_errno.h>
 #include <rte_log.h>
-#ifndef RTE_EXEC_ENV_WINDOWS
+#ifdef RTE_EXEC_ENV_WINDOWS
+#include <rte_windows.h>
+#else
 #include <rte_telemetry.h>
 #endif
 
+#include <eal_export.h>
 #include "eal_memalloc.h"
 #include "eal_private.h"
 #include "eal_internal_cfg.h"
 #include "eal_memcfg.h"
 #include "eal_options.h"
+#include "malloc_elem.h"
 #include "malloc_heap.h"
 
 /*
@@ -55,7 +60,7 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	if (system_page_sz == 0)
 		system_page_sz = rte_mem_page_size();
 
-	RTE_LOG(DEBUG, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
+	EAL_LOG(DEBUG, "Ask a virtual area of 0x%zx bytes", *size);
 
 	addr_is_hint = (flags & EAL_VIRTUAL_AREA_ADDR_IS_HINT) > 0;
 	allow_shrink = (flags & EAL_VIRTUAL_AREA_ALLOW_SHRINK) > 0;
@@ -92,15 +97,19 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	do {
 		map_sz = no_align ? *size : *size + page_sz;
 		if (map_sz > SIZE_MAX) {
-			RTE_LOG(ERR, EAL, "Map size too big\n");
+			EAL_LOG(ERR, "Map size too big");
 			rte_errno = E2BIG;
 			return NULL;
 		}
 
 		mapped_addr = eal_mem_reserve(
 			requested_addr, (size_t)map_sz, reserve_flags);
-		if ((mapped_addr == NULL) && allow_shrink)
-			*size -= page_sz;
+		if (mapped_addr == NULL) {
+			if (allow_shrink)
+				*size -= page_sz;
+			else
+				break;
+		}
 
 		if ((mapped_addr != NULL) && addr_is_hint &&
 				(mapped_addr != requested_addr)) {
@@ -123,16 +132,16 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 			RTE_PTR_ALIGN(mapped_addr, page_sz);
 
 	if (*size == 0) {
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area of any size: %s\n",
+		EAL_LOG(ERR, "Cannot get a virtual area of any size: %s",
 			rte_strerror(rte_errno));
 		return NULL;
 	} else if (mapped_addr == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area: %s\n",
+		EAL_LOG(ERR, "Cannot get a virtual area: %s",
 			rte_strerror(rte_errno));
 		return NULL;
 	} else if (requested_addr != NULL && !addr_is_hint &&
 			aligned_addr != requested_addr) {
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area at requested address: %p (got %p)\n",
+		EAL_LOG(ERR, "Cannot get a virtual area at requested address: %p (got %p)",
 			requested_addr, aligned_addr);
 		eal_mem_free(mapped_addr, map_sz);
 		rte_errno = EADDRNOTAVAIL;
@@ -144,19 +153,19 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 		 * a base virtual address.
 		 */
 		if (internal_conf->base_virtaddr != 0) {
-			RTE_LOG(WARNING, EAL, "WARNING! Base virtual address hint (%p != %p) not respected!\n",
+			EAL_LOG(WARNING, "WARNING! Base virtual address hint (%p != %p) not respected!",
 				requested_addr, aligned_addr);
-			RTE_LOG(WARNING, EAL, "   This may cause issues with mapping memory into secondary processes\n");
+			EAL_LOG(WARNING, "   This may cause issues with mapping memory into secondary processes");
 		} else {
-			RTE_LOG(DEBUG, EAL, "WARNING! Base virtual address hint (%p != %p) not respected!\n",
+			EAL_LOG(DEBUG, "WARNING! Base virtual address hint (%p != %p) not respected!",
 				requested_addr, aligned_addr);
-			RTE_LOG(DEBUG, EAL, "   This may cause issues with mapping memory into secondary processes\n");
+			EAL_LOG(DEBUG, "   This may cause issues with mapping memory into secondary processes");
 		}
 	} else if (next_baseaddr != NULL) {
 		next_baseaddr = RTE_PTR_ADD(aligned_addr, *size);
 	}
 
-	RTE_LOG(DEBUG, EAL, "Virtual area found at %p (size = 0x%zx)\n",
+	EAL_LOG(DEBUG, "Virtual area found at %p (size = 0x%zx)",
 		aligned_addr, *size);
 
 	if (unmap) {
@@ -200,7 +209,7 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
 {
 	if (rte_fbarray_init(&msl->memseg_arr, name, n_segs,
 			sizeof(struct rte_memseg))) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memseg list: %s\n",
+		EAL_LOG(ERR, "Cannot allocate memseg list: %s",
 			rte_strerror(rte_errno));
 		return -1;
 	}
@@ -210,8 +219,8 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
 	msl->base_va = NULL;
 	msl->heap = heap;
 
-	RTE_LOG(DEBUG, EAL,
-		"Memseg list allocated at socket %i, page size 0x%"PRIx64"kB\n",
+	EAL_LOG(DEBUG,
+		"Memseg list allocated at socket %i, page size 0x%"PRIx64"kB",
 		socket_id, page_sz >> 10);
 
 	return 0;
@@ -249,8 +258,8 @@ eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
 		 * including common code, so don't duplicate the message.
 		 */
 		if (rte_errno == EADDRNOTAVAIL)
-			RTE_LOG(ERR, EAL, "Cannot reserve %llu bytes at [%p] - "
-				"please use '--" OPT_BASE_VIRTADDR "' option\n",
+			EAL_LOG(ERR, "Cannot reserve %llu bytes at [%p] - "
+				"please use '--" OPT_BASE_VIRTADDR "' option",
 				(unsigned long long)mem_sz, msl->base_va);
 #endif
 		return -1;
@@ -258,7 +267,7 @@ eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
 	msl->base_va = addr;
 	msl->len = mem_sz;
 
-	RTE_LOG(DEBUG, EAL, "VA reserved for memseg list at %p, size %zx\n",
+	EAL_LOG(DEBUG, "VA reserved for memseg list at %p, size %zx",
 			addr, mem_sz);
 
 	return 0;
@@ -334,6 +343,7 @@ virt2memseg_list(const void *addr)
 	return msl;
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_virt2memseg_list)
 struct rte_memseg_list *
 rte_mem_virt2memseg_list(const void *addr)
 {
@@ -371,6 +381,7 @@ find_virt_legacy(const struct rte_memseg_list *msl __rte_unused,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_iova2virt)
 void *
 rte_mem_iova2virt(rte_iova_t iova)
 {
@@ -392,6 +403,7 @@ rte_mem_iova2virt(rte_iova_t iova)
 	return vi.virt;
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_virt2memseg)
 struct rte_memseg *
 rte_mem_virt2memseg(const void *addr, const struct rte_memseg_list *msl)
 {
@@ -413,6 +425,7 @@ physmem_size(const struct rte_memseg_list *msl, void *arg)
 }
 
 /* get the total size of memory */
+RTE_EXPORT_SYMBOL(rte_eal_get_physmem_size)
 uint64_t
 rte_eal_get_physmem_size(void)
 {
@@ -461,6 +474,7 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
  * Defining here because declared in rte_memory.h, but the actual implementation
  * is in eal_common_memalloc.c, like all other memalloc internals.
  */
+RTE_EXPORT_SYMBOL(rte_mem_event_callback_register)
 int
 rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
 		void *arg)
@@ -470,13 +484,14 @@ rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem event callbacks not supported\n");
+		EAL_LOG(DEBUG, "Registering mem event callbacks not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
 	return eal_memalloc_mem_event_callback_register(name, clb, arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_event_callback_unregister)
 int
 rte_mem_event_callback_unregister(const char *name, void *arg)
 {
@@ -485,13 +500,14 @@ rte_mem_event_callback_unregister(const char *name, void *arg)
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem event callbacks not supported\n");
+		EAL_LOG(DEBUG, "Registering mem event callbacks not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
 	return eal_memalloc_mem_event_callback_unregister(name, arg);
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_alloc_validator_register)
 int
 rte_mem_alloc_validator_register(const char *name,
 		rte_mem_alloc_validator_t clb, int socket_id, size_t limit)
@@ -501,7 +517,7 @@ rte_mem_alloc_validator_register(const char *name,
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem alloc validators not supported\n");
+		EAL_LOG(DEBUG, "Registering mem alloc validators not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -509,6 +525,7 @@ rte_mem_alloc_validator_register(const char *name,
 			limit);
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_alloc_validator_unregister)
 int
 rte_mem_alloc_validator_unregister(const char *name, int socket_id)
 {
@@ -517,7 +534,7 @@ rte_mem_alloc_validator_unregister(const char *name, int socket_id)
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem alloc validators not supported\n");
+		EAL_LOG(DEBUG, "Registering mem alloc validators not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -525,10 +542,13 @@ rte_mem_alloc_validator_unregister(const char *name, int socket_id)
 }
 
 /* Dump the physical memory layout on console */
+RTE_EXPORT_SYMBOL(rte_dump_physmem_layout)
 void
 rte_dump_physmem_layout(FILE *f)
 {
 	rte_memseg_walk(dump_memseg, f);
+	fprintf(f, "Total Memory Segments size = %"PRIu64"M\n",
+		rte_eal_get_physmem_size() / (1024 * 1024));
 }
 
 static int
@@ -543,10 +563,10 @@ check_iova(const struct rte_memseg_list *msl __rte_unused,
 	if (!(iova & *mask))
 		return 0;
 
-	RTE_LOG(DEBUG, EAL, "memseg iova %"PRIx64", len %zx, out of range\n",
+	EAL_LOG(DEBUG, "memseg iova %"PRIx64", len %zx, out of range",
 			    ms->iova, ms->len);
 
-	RTE_LOG(DEBUG, EAL, "\tusing dma mask %"PRIx64"\n", *mask);
+	EAL_LOG(DEBUG, "\tusing dma mask %"PRIx64, *mask);
 	return 1;
 }
 
@@ -563,7 +583,7 @@ check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 	/* Sanity check. We only check width can be managed with 64 bits
 	 * variables. Indeed any higher value is likely wrong. */
 	if (maskbits > MAX_DMA_MASK_BITS) {
-		RTE_LOG(ERR, EAL, "wrong dma mask size %u (Max: %u)\n",
+		EAL_LOG(ERR, "wrong dma mask size %u (Max: %u)",
 				   maskbits, MAX_DMA_MASK_BITS);
 		return -1;
 	}
@@ -594,12 +614,14 @@ check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_check_dma_mask)
 int
 rte_mem_check_dma_mask(uint8_t maskbits)
 {
 	return check_dma_mask(maskbits, false);
 }
 
+RTE_EXPORT_SYMBOL(rte_mem_check_dma_mask_thread_unsafe)
 int
 rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits)
 {
@@ -613,6 +635,7 @@ rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits)
  * initialization. PMDs should use rte_mem_check_dma_mask if addressing
  * limitations by the device.
  */
+RTE_EXPORT_SYMBOL(rte_mem_set_dma_mask)
 void
 rte_mem_set_dma_mask(uint8_t maskbits)
 {
@@ -623,12 +646,14 @@ rte_mem_set_dma_mask(uint8_t maskbits)
 }
 
 /* return the number of memory channels */
+RTE_EXPORT_SYMBOL(rte_memory_get_nchannel)
 unsigned rte_memory_get_nchannel(void)
 {
 	return rte_eal_get_configuration()->mem_config->nchannel;
 }
 
 /* return the number of memory rank */
+RTE_EXPORT_SYMBOL(rte_memory_get_nrank)
 unsigned rte_memory_get_nrank(void)
 {
 	return rte_eal_get_configuration()->mem_config->nrank;
@@ -652,6 +677,7 @@ rte_eal_memdevice_init(void)
 }
 
 /* Lock page in physical memory and prevent from swapping. */
+RTE_EXPORT_SYMBOL(rte_mem_lock_page)
 int
 rte_mem_lock_page(const void *virt)
 {
@@ -661,6 +687,7 @@ rte_mem_lock_page(const void *virt)
 	return rte_mem_lock((void *)aligned, page_size);
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_contig_walk_thread_unsafe)
 int
 rte_memseg_contig_walk_thread_unsafe(rte_memseg_contig_walk_t func, void *arg)
 {
@@ -700,6 +727,7 @@ rte_memseg_contig_walk_thread_unsafe(rte_memseg_contig_walk_t func, void *arg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_contig_walk)
 int
 rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 {
@@ -713,6 +741,7 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_walk_thread_unsafe)
 int
 rte_memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
 {
@@ -741,6 +770,7 @@ rte_memseg_walk_thread_unsafe(rte_memseg_walk_t func, void *arg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_walk)
 int
 rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 {
@@ -754,6 +784,7 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_list_walk_thread_unsafe)
 int
 rte_memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg)
 {
@@ -773,6 +804,7 @@ rte_memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_list_walk)
 int
 rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 {
@@ -786,6 +818,7 @@ rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_get_fd_thread_unsafe)
 int
 rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
 {
@@ -828,6 +861,7 @@ rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_get_fd)
 int
 rte_memseg_get_fd(const struct rte_memseg *ms)
 {
@@ -840,6 +874,7 @@ rte_memseg_get_fd(const struct rte_memseg *ms)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_get_fd_offset_thread_unsafe)
 int
 rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 		size_t *offset)
@@ -883,6 +918,7 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_memseg_get_fd_offset)
 int
 rte_memseg_get_fd_offset(const struct rte_memseg *ms, size_t *offset)
 {
@@ -895,6 +931,7 @@ rte_memseg_get_fd_offset(const struct rte_memseg *ms, size_t *offset)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_extmem_register)
 int
 rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 		unsigned int n_pages, size_t page_sz)
@@ -923,7 +960,7 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 	/* get next available socket ID */
 	socket_id = mcfg->next_socket_id;
 	if (socket_id > INT32_MAX) {
-		RTE_LOG(ERR, EAL, "Cannot assign new socket ID's\n");
+		EAL_LOG(ERR, "Cannot assign new socket ID's");
 		rte_errno = ENOSPC;
 		ret = -1;
 		goto unlock;
@@ -944,6 +981,7 @@ unlock:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_extmem_unregister)
 int
 rte_extmem_unregister(void *va_addr, size_t len)
 {
@@ -999,12 +1037,14 @@ unlock:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_extmem_attach)
 int
 rte_extmem_attach(void *va_addr, size_t len)
 {
 	return sync_memory(va_addr, len, true);
 }
 
+RTE_EXPORT_SYMBOL(rte_extmem_detach)
 int
 rte_extmem_detach(void *va_addr, size_t len)
 {
@@ -1028,7 +1068,7 @@ rte_eal_memory_detach(void)
 
 	/* detach internal memory subsystem data first */
 	if (eal_memalloc_cleanup())
-		RTE_LOG(ERR, EAL, "Could not release memory subsystem data\n");
+		EAL_LOG(ERR, "Could not release memory subsystem data");
 
 	for (i = 0; i < RTE_DIM(mcfg->memsegs); i++) {
 		struct rte_memseg_list *msl = &mcfg->memsegs[i];
@@ -1045,7 +1085,7 @@ rte_eal_memory_detach(void)
 		 */
 		if (!msl->external)
 			if (rte_mem_unmap(msl->base_va, msl->len) != 0)
-				RTE_LOG(ERR, EAL, "Could not unmap memory: %s\n",
+				EAL_LOG(ERR, "Could not unmap memory: %s",
 						rte_strerror(rte_errno));
 
 		/*
@@ -1054,7 +1094,7 @@ rte_eal_memory_detach(void)
 		 * have no way of knowing if they still do.
 		 */
 		if (rte_fbarray_detach(&msl->memseg_arr))
-			RTE_LOG(ERR, EAL, "Could not detach fbarray: %s\n",
+			EAL_LOG(ERR, "Could not detach fbarray: %s",
 					rte_strerror(rte_errno));
 	}
 	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
@@ -1066,7 +1106,7 @@ rte_eal_memory_detach(void)
 	 */
 	if (internal_conf->no_shconf == 0 && mcfg->mem_cfg_addr != 0) {
 		if (rte_mem_unmap(mcfg, RTE_ALIGN(sizeof(*mcfg), page_sz)) != 0)
-			RTE_LOG(ERR, EAL, "Could not unmap shared memory config: %s\n",
+			EAL_LOG(ERR, "Could not unmap shared memory config: %s",
 					rte_strerror(rte_errno));
 	}
 	rte_eal_get_configuration()->mem_config = NULL;
@@ -1078,18 +1118,11 @@ rte_eal_memory_detach(void)
 int
 rte_eal_memory_init(void)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
-
 	int retval;
-	RTE_LOG(DEBUG, EAL, "Setting up physically contiguous memory...\n");
 
-	if (!mcfg)
-		return -1;
-
-	/* lock mem hotplug here, to prevent races while we init */
-	rte_mcfg_mem_read_lock();
+	EAL_LOG(DEBUG, "Setting up physically contiguous memory...");
 
 	if (rte_eal_memseg_init() < 0)
 		goto fail;
@@ -1108,16 +1141,21 @@ rte_eal_memory_init(void)
 
 	return 0;
 fail:
-	rte_mcfg_mem_read_unlock();
 	return -1;
 }
 
 #ifndef RTE_EXEC_ENV_WINDOWS
-#define EAL_MEMZONE_LIST_REQ	"/eal/memzone_list"
-#define EAL_MEMZONE_INFO_REQ	"/eal/memzone_info"
-#define EAL_HEAP_LIST_REQ	"/eal/heap_list"
-#define EAL_HEAP_INFO_REQ	"/eal/heap_info"
-#define ADDR_STR		15
+#define EAL_MEMZONE_LIST_REQ		"/eal/memzone_list"
+#define EAL_MEMZONE_INFO_REQ		"/eal/memzone_info"
+#define EAL_HEAP_LIST_REQ		"/eal/heap_list"
+#define EAL_HEAP_INFO_REQ		"/eal/heap_info"
+#define EAL_MEMSEG_LISTS_REQ		"/eal/memseg_lists"
+#define EAL_MEMSEG_LIST_INFO_REQ	"/eal/memseg_list_info"
+#define EAL_MEMSEG_INFO_REQ		"/eal/memseg_info"
+#define EAL_ELEMENT_LIST_REQ		"/eal/mem_element_list"
+#define EAL_ELEMENT_INFO_REQ		"/eal/mem_element_info"
+#define ADDR_STR			15
+
 
 /* Telemetry callback handler to return heap stats for requested heap id. */
 static int
@@ -1213,7 +1251,7 @@ handle_eal_memzone_info_request(const char *cmd __rte_unused,
 	/* go through each page occupied by this memzone */
 	msl = rte_mem_virt2memseg_list(mz->addr);
 	if (!msl) {
-		RTE_LOG(DEBUG, EAL, "Skipping bad memzone\n");
+		EAL_LOG(DEBUG, "Skipping bad memzone");
 		return -1;
 	}
 	page_sz = (size_t)mz->hugepage_sz;
@@ -1266,6 +1304,369 @@ handle_eal_memzone_list_request(const char *cmd __rte_unused,
 	return 0;
 }
 
+/* n_vals is the number of params to be parsed. */
+static int
+parse_params(const char *params, uint32_t *vals, size_t n_vals)
+{
+	char dlim[2] = ",";
+	char *params_args;
+	size_t count = 0;
+	char *token;
+
+	if (vals == NULL || params == NULL || strlen(params) == 0)
+		return -1;
+
+	/* strtok expects char * and param is const char *. Hence on using
+	 * params as "const char *" compiler throws warning.
+	 */
+	params_args = strdup(params);
+	if (params_args == NULL)
+		return -1;
+
+	token = strtok(params_args, dlim);
+	while (token && isdigit(*token) && count < n_vals) {
+		vals[count++] = strtoul(token, NULL, 10);
+		token = strtok(NULL, dlim);
+	}
+
+	free(params_args);
+
+	if (count < n_vals)
+		return -1;
+
+	return 0;
+}
+
+static int
+handle_eal_memseg_lists_request(const char *cmd __rte_unused,
+				const char *params __rte_unused,
+				struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	int i;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+
+	rte_mcfg_mem_read_lock();
+	mcfg = rte_eal_get_configuration()->mem_config;
+
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *msl = &mcfg->memsegs[i];
+		if (msl->memseg_arr.count == 0)
+			continue;
+
+		rte_tel_data_add_array_int(d, i);
+	}
+	rte_mcfg_mem_read_unlock();
+
+	return 0;
+}
+
+static int
+handle_eal_memseg_list_info_request(const char *cmd __rte_unused,
+				    const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	struct rte_memseg_list *msl;
+	struct rte_fbarray *arr;
+	uint32_t ms_list_idx;
+	int ms_idx;
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[1] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	ms_list_idx = vals[0];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	rte_tel_data_start_array(d, RTE_TEL_INT_VAL);
+
+	rte_mcfg_mem_read_lock();
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	if (msl->memseg_arr.count == 0)
+		goto done;
+
+	arr = &msl->memseg_arr;
+
+	ms_idx = rte_fbarray_find_next_used(arr, 0);
+	while (ms_idx >= 0) {
+		rte_tel_data_add_array_int(d, ms_idx);
+		ms_idx = rte_fbarray_find_next_used(arr, ms_idx + 1);
+	}
+
+done:
+	rte_mcfg_mem_read_unlock();
+
+	return 0;
+}
+
+static int
+handle_eal_memseg_info_request(const char *cmd __rte_unused,
+			       const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	uint64_t ms_start_addr, ms_end_addr, ms_size, hugepage_size, ms_iova;
+	struct rte_memseg_list *msl;
+	const struct rte_memseg *ms;
+	struct rte_fbarray *arr;
+	char addr[ADDR_STR];
+	uint32_t ms_list_idx = 0;
+	uint32_t ms_idx = 0;
+	int32_t ms_socket_id;
+	uint32_t ms_flags;
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[2] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	ms_list_idx = vals[0];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	ms_idx = vals[1];
+
+	rte_mcfg_mem_read_lock();
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	if (msl->memseg_arr.count == 0) {
+		rte_mcfg_mem_read_unlock();
+		return -1;
+	}
+
+	arr = &msl->memseg_arr;
+	ms = rte_fbarray_get(arr, ms_idx);
+	if (ms == NULL) {
+		rte_mcfg_mem_read_unlock();
+		EAL_LOG(DEBUG, "Error fetching requested memseg.");
+		return -1;
+	}
+
+	ms_iova = ms->iova;
+	ms_start_addr = ms->addr_64;
+	ms_end_addr = (uint64_t)RTE_PTR_ADD(ms_start_addr, ms->len);
+	ms_size = ms->len;
+	hugepage_size = ms->hugepage_sz;
+	ms_socket_id = ms->socket_id;
+	ms_flags = ms->flags;
+
+	rte_mcfg_mem_read_unlock();
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_int(d, "Memseg_list_index", ms_list_idx);
+	rte_tel_data_add_dict_int(d, "Memseg_index", ms_idx);
+	if (ms_iova == RTE_BAD_IOVA)
+		snprintf(addr, ADDR_STR, "Bad IOVA");
+	else
+		snprintf(addr, ADDR_STR, "0x%"PRIx64, ms_iova);
+
+	rte_tel_data_add_dict_string(d, "IOVA_addr", addr);
+	snprintf(addr, ADDR_STR, "0x%"PRIx64, ms_start_addr);
+	rte_tel_data_add_dict_string(d, "Start_addr", addr);
+	snprintf(addr, ADDR_STR, "0x%"PRIx64, ms_end_addr);
+	rte_tel_data_add_dict_string(d, "End_addr", addr);
+	rte_tel_data_add_dict_uint(d, "Size", ms_size);
+	rte_tel_data_add_dict_uint(d, "Hugepage_size", hugepage_size);
+	rte_tel_data_add_dict_int(d, "Socket_id", ms_socket_id);
+	rte_tel_data_add_dict_int(d, "flags", ms_flags);
+
+	return 0;
+}
+
+static int
+handle_eal_element_list_request(const char *cmd __rte_unused,
+				const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	struct rte_memseg_list *msl;
+	const struct rte_memseg *ms;
+	struct malloc_elem *elem;
+	struct malloc_heap *heap;
+	uint64_t ms_start_addr, ms_end_addr;
+	uint64_t elem_start_addr, elem_end_addr;
+	uint32_t ms_list_idx = 0;
+	uint32_t heap_id = 0;
+	uint32_t ms_idx = 0;
+	int elem_count = 0;
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[3] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	heap_id = vals[0];
+	if (heap_id >= RTE_MAX_HEAPS)
+		return -1;
+
+	ms_list_idx = vals[1];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	ms_idx = vals[2];
+
+	rte_mcfg_mem_read_lock();
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
+	if (ms == NULL) {
+		rte_mcfg_mem_read_unlock();
+		EAL_LOG(DEBUG, "Error fetching requested memseg.");
+		return -1;
+	}
+
+	ms_start_addr = ms->addr_64;
+	ms_end_addr = (uint64_t)RTE_PTR_ADD(ms_start_addr, ms->len);
+	rte_mcfg_mem_read_unlock();
+
+	rte_tel_data_start_dict(d);
+
+	heap = &mcfg->malloc_heaps[heap_id];
+	rte_spinlock_lock(&heap->lock);
+
+	elem = heap->first;
+	while (elem) {
+		elem_start_addr = (uint64_t)elem;
+		elem_end_addr =
+			(uint64_t)RTE_PTR_ADD(elem_start_addr, elem->size);
+
+		if ((uint64_t)elem_start_addr >= ms_start_addr &&
+		    (uint64_t)elem_end_addr <= ms_end_addr)
+			elem_count++;
+		elem = elem->next;
+	}
+
+	rte_spinlock_unlock(&heap->lock);
+
+	rte_tel_data_add_dict_int(d, "Element_count", elem_count);
+
+	return 0;
+}
+
+static int
+handle_eal_element_info_request(const char *cmd __rte_unused,
+				const char *params, struct rte_tel_data *d)
+{
+	struct rte_mem_config *mcfg;
+	struct rte_memseg_list *msl;
+	const struct rte_memseg *ms;
+	struct malloc_elem *elem;
+	struct malloc_heap *heap;
+	struct rte_tel_data *c;
+	uint64_t ms_start_addr, ms_end_addr;
+	uint64_t elem_start_addr, elem_end_addr;
+	uint32_t ms_list_idx = 0;
+	uint32_t heap_id = 0;
+	uint32_t ms_idx = 0;
+	uint32_t start_elem = 0, end_elem = 0;
+	uint32_t count = 0, elem_count = 0;
+	char str[ADDR_STR];
+	/* size of an array == num params to be parsed. */
+	uint32_t vals[5] = {0};
+
+	if (parse_params(params, vals, RTE_DIM(vals)) < 0)
+		return -1;
+
+	heap_id = vals[0];
+	if (heap_id >= RTE_MAX_HEAPS)
+		return -1;
+
+	ms_list_idx = vals[1];
+	if (ms_list_idx >= RTE_MAX_MEMSEG_LISTS)
+		return -1;
+
+	ms_idx = vals[2];
+	start_elem = vals[3];
+	end_elem = vals[4];
+
+	if (end_elem < start_elem)
+		return -1;
+
+	rte_mcfg_mem_read_lock();
+
+	mcfg = rte_eal_get_configuration()->mem_config;
+	msl = &mcfg->memsegs[ms_list_idx];
+	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
+	if (ms == NULL) {
+		rte_mcfg_mem_read_unlock();
+		EAL_LOG(DEBUG, "Error fetching requested memseg.");
+		return -1;
+	}
+
+	ms_start_addr = ms->addr_64;
+	ms_end_addr = (uint64_t)RTE_PTR_ADD(ms_start_addr, ms->len);
+
+	rte_mcfg_mem_read_unlock();
+
+	rte_tel_data_start_dict(d);
+
+	heap = &mcfg->malloc_heaps[heap_id];
+	rte_spinlock_lock(&heap->lock);
+
+	elem = heap->first;
+	while (elem) {
+		elem_start_addr = (uint64_t)elem;
+		elem_end_addr =
+			(uint64_t)RTE_PTR_ADD(elem_start_addr, elem->size);
+
+		if (elem_start_addr < ms_start_addr ||
+				elem_end_addr > ms_end_addr) {
+			elem = elem->next;
+			continue;
+		}
+
+		if (count < start_elem) {
+			elem = elem->next;
+			count++;
+			continue;
+		}
+
+		c = rte_tel_data_alloc();
+		if (c == NULL)
+			break;
+
+		rte_tel_data_start_dict(c);
+		rte_tel_data_add_dict_int(c, "msl_id", ms_list_idx);
+		rte_tel_data_add_dict_int(c, "ms_id", ms_idx);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, ms_start_addr);
+		rte_tel_data_add_dict_string(c, "memseg_start_addr", str);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, ms_end_addr);
+		rte_tel_data_add_dict_string(c, "memseg_end_addr", str);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, elem_start_addr);
+		rte_tel_data_add_dict_string(c, "element_start_addr", str);
+		snprintf(str, ADDR_STR, "0x%"PRIx64, elem_end_addr);
+		rte_tel_data_add_dict_string(c, "element_end_addr", str);
+		rte_tel_data_add_dict_int(c, "element_size", elem->size);
+		snprintf(str, ADDR_STR, "%s", elem->state == 0 ? "Free" :
+			 elem->state == 1 ? "Busy" : elem->state == 2 ?
+			 "Pad" : "Error");
+		rte_tel_data_add_dict_string(c, "element_state", str);
+
+		snprintf(str, ADDR_STR, "%s_%u", "element", count);
+		if (rte_tel_data_add_dict_container(d, str, c, 0) != 0) {
+			rte_tel_data_free(c);
+			break;
+		}
+
+		elem_count++;
+		count++;
+		if (count > end_elem)
+			break;
+
+		elem = elem->next;
+	}
+
+	rte_spinlock_unlock(&heap->lock);
+
+	rte_tel_data_add_dict_int(d, "Element_count", elem_count);
+
+	return 0;
+}
+
 RTE_INIT(memory_telemetry)
 {
 	rte_telemetry_register_cmd(
@@ -1280,5 +1681,34 @@ RTE_INIT(memory_telemetry)
 	rte_telemetry_register_cmd(
 			EAL_HEAP_INFO_REQ, handle_eal_heap_info_request,
 			"Returns malloc heap stats. Parameters: int heap_id");
+	rte_telemetry_register_cmd(
+			EAL_MEMSEG_LISTS_REQ,
+			handle_eal_memseg_lists_request,
+			"Returns array of memseg list IDs. Takes no parameters");
+	rte_telemetry_register_cmd(
+			EAL_MEMSEG_LIST_INFO_REQ,
+			handle_eal_memseg_list_info_request,
+			"Returns memseg list info. Parameters: int memseg_list_id");
+	rte_telemetry_register_cmd(
+			EAL_MEMSEG_INFO_REQ, handle_eal_memseg_info_request,
+			"Returns memseg info. Parameter: int memseg_list_id,int memseg_id");
+	rte_telemetry_register_cmd(EAL_ELEMENT_LIST_REQ,
+			handle_eal_element_list_request,
+			"Returns array of heap element IDs. Parameters: int heap_id, int memseg_list_id, int memseg_id");
+	rte_telemetry_register_cmd(EAL_ELEMENT_INFO_REQ,
+			handle_eal_element_info_request,
+			"Returns element info. Parameters: int heap_id, int memseg_list_id, int memseg_id, int start_elem_id, int end_elem_id");
 }
+
+#endif /* telemetry !RTE_EXEC_ENV_WINDOWS */
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_memzero_explicit, 25.07)
+void
+rte_memzero_explicit(void *dst, size_t sz)
+{
+#ifdef RTE_EXEC_ENV_WINDOWS
+	SecureZeroMemory(dst, sz);
+#else
+	explicit_bzero(dst, sz);
 #endif
+}

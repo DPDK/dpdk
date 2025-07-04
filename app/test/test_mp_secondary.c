@@ -223,4 +223,4 @@ test_mp_secondary(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(multiprocess_autotest, test_mp_secondary);
+REGISTER_FAST_TEST(multiprocess_autotest, false, false, test_mp_secondary);

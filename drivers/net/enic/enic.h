@@ -32,7 +32,6 @@
 
 #define ENICPMD_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
 
-#define ENICPMD_BDF_LENGTH      13   /* 0000:00:00.0'\0' */
 #define ENIC_CALC_IP_CKSUM      1
 #define ENIC_CALC_TCP_UDP_CKSUM 2
 #define ENIC_MAX_MTU            9000
@@ -44,7 +43,6 @@
 /*#define ENIC_DESC_COUNT_MAKE_ODD (x) do{if ((~(x)) & 1) { (x)--; } }while(0)*/
 
 #define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
-#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
 /* enet SRIOV Standalone vNic VF */
 #define PCI_DEVICE_ID_CISCO_VIC_ENET_SN      0x02B7
 
@@ -52,7 +50,7 @@
 #define ENIC_MAGIC_FILTER_ID 0xffff
 
 /*
- * Interrupt 0: LSC and errors
+ * Interrupt 0: LSC and errors / VF admin channel RQ
  * Interrupt 1: rx queue 0
  * Interrupt 2: rx queue 1
  * ...
@@ -101,7 +99,7 @@ struct enic {
 	bool overlay_offload;
 	struct rte_eth_dev *rte_dev;
 	struct rte_eth_dev_data *dev_data;
-	char bdf_name[ENICPMD_BDF_LENGTH];
+	char bdf_name[PCI_PRI_STR_SIZE];
 	int dev_fd;
 	int iommu_group_fd;
 	int iommu_groupid;
@@ -155,11 +153,26 @@ struct enic {
 	/* software counters */
 	struct enic_soft_stats soft_stats;
 
+	struct vnic_wq admin_wq;
+	struct vnic_rq admin_rq;
+	struct vnic_cq admin_cq[2];
+
 	/* configured resources on vic */
 	unsigned int conf_rq_count;
 	unsigned int conf_wq_count;
 	unsigned int conf_cq_count;
 	unsigned int conf_intr_count;
+	/* SR-IOV VF has queues for admin channel to PF */
+	unsigned int conf_admin_rq_count;
+	unsigned int conf_admin_wq_count;
+	unsigned int conf_admin_cq_count;
+	uint64_t admin_chan_msg_num;
+	int admin_chan_vf_id;
+	uint32_t admin_pf_cap_version;
+	bool admin_chan_enabled;
+	bool sriov_vf_soft_rx_stats;
+	bool sriov_vf_compat_mode;
+	pthread_mutex_t admin_chan_lock;
 
 	/* linked list storing memory allocations */
 	LIST_HEAD(enic_memzone_list, enic_memzone_entry) memzone_list;
@@ -231,13 +244,18 @@ struct enic_vf_representor {
 	struct rte_flow *rep2vf_flow[2];
 };
 
+#define ENIC_ADMIN_WQ_CQ 0
+#define ENIC_ADMIN_RQ_CQ 1
+#define ENIC_ADMIN_BUF_SIZE 1024
+
+static inline bool enic_is_vf(struct enic *enic)
+{
+	return enic->pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_SN &&
+		!enic->sriov_vf_compat_mode;
+}
+
 #define VF_ENIC_TO_VF_REP(vf_enic) \
 	container_of(vf_enic, struct enic_vf_representor, enic)
-
-static inline int enic_is_vf_rep(struct enic *enic)
-{
-	return !!(enic->rte_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR);
-}
 
 /* Compute ethdev's max packet size from MTU */
 static inline uint32_t enic_mtu_to_max_rx_pktlen(uint32_t mtu)

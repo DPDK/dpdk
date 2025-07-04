@@ -22,9 +22,6 @@
 
 #include "mlx5_defs.h"
 
-/* Convert a bit number to the corresponding 64-bit mask */
-#define MLX5_BITSHIFT(v) (UINT64_C(1) << (v))
-
 /* Save and restore errno around argument evaluation. */
 #define ERRNO_SAFE(x) ((errno = (int []){ errno, ((x), 0) }[0]))
 
@@ -118,44 +115,44 @@ struct mlx5_l3t_level_tbl {
 };
 
 /* L3 word entry table data structure. */
-struct mlx5_l3t_entry_word {
+struct __rte_packed_begin mlx5_l3t_entry_word {
 	uint32_t idx; /* Table index. */
 	uint64_t ref_cnt; /* Table ref_cnt. */
 	struct {
 		uint16_t data;
 		uint32_t ref_cnt;
 	} entry[MLX5_L3T_ET_SIZE]; /* Entry array */
-} __rte_packed;
+} __rte_packed_end;
 
 /* L3 double word entry table data structure. */
-struct mlx5_l3t_entry_dword {
+struct __rte_packed_begin mlx5_l3t_entry_dword {
 	uint32_t idx; /* Table index. */
 	uint64_t ref_cnt; /* Table ref_cnt. */
 	struct {
 		uint32_t data;
 		int32_t ref_cnt;
 	} entry[MLX5_L3T_ET_SIZE]; /* Entry array */
-} __rte_packed;
+} __rte_packed_end;
 
 /* L3 quad word entry table data structure. */
-struct mlx5_l3t_entry_qword {
+struct __rte_packed_begin mlx5_l3t_entry_qword {
 	uint32_t idx; /* Table index. */
 	uint64_t ref_cnt; /* Table ref_cnt. */
 	struct {
 		uint64_t data;
 		uint32_t ref_cnt;
 	} entry[MLX5_L3T_ET_SIZE]; /* Entry array */
-} __rte_packed;
+} __rte_packed_end;
 
 /* L3 pointer entry table data structure. */
-struct mlx5_l3t_entry_ptr {
+struct __rte_packed_begin mlx5_l3t_entry_ptr {
 	uint32_t idx; /* Table index. */
 	uint64_t ref_cnt; /* Table ref_cnt. */
 	struct {
 		void *data;
 		uint32_t ref_cnt;
 	} entry[MLX5_L3T_ET_SIZE]; /* Entry array */
-} __rte_packed;
+} __rte_packed_end;
 
 /* L3 table data structure. */
 struct mlx5_l3t_tbl {
@@ -192,6 +189,15 @@ typedef int32_t (*mlx5_l3t_alloc_callback_fn)(void *ctx,
 #ifdef RTE_LIBRTE_MLX5_DEBUG
 #define POOL_DEBUG 1
 #endif
+
+extern int mlx5_logtype_ipool;
+#define MLX5_NET_LOG_PREFIX_IPOOL "mlx5_ipool"
+
+/* Generic printf()-like logging macro with automatic line feed. */
+#define DRV_LOG_IPOOL(level, ...) \
+	PMD_DRV_LOG_(level, mlx5_logtype_ipool, MLX5_NET_LOG_PREFIX_IPOOL, \
+		__VA_ARGS__ PMD_DRV_LOG_STRIP PMD_DRV_LOG_OPAREN, \
+		PMD_DRV_LOG_CPAREN)
 
 struct mlx5_indexed_pool_config {
 	uint32_t size; /* Pool entry size. */
@@ -235,12 +241,12 @@ struct mlx5_indexed_trunk {
 	uint32_t next; /* Next free trunk in free list. */
 	uint32_t free; /* Free entries available */
 	struct rte_bitmap *bmp;
-	uint8_t data[] __rte_cache_aligned; /* Entry data start. */
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t data[]; /* Entry data start. */
 };
 
 struct mlx5_indexed_cache {
 	struct mlx5_indexed_trunk **trunks;
-	volatile uint32_t n_trunk_valid; /* Trunks allocated. */
+	volatile RTE_ATOMIC(uint32_t) n_trunk_valid; /* Trunks allocated. */
 	uint32_t n_trunk; /* Trunk pointer array size. */
 	uint32_t ref_cnt;
 	uint32_t len;
@@ -252,6 +258,15 @@ struct mlx5_ipool_per_lcore {
 	uint32_t len; /**< Current cache count. */
 	uint32_t idx[]; /**< Cache objects. */
 };
+
+#ifdef POOL_DEBUG
+struct mlx5_ipool_cache_validation {
+	rte_spinlock_t lock;
+	uint32_t bmp_size;
+	struct rte_bitmap *bmp;
+	void *bmp_mem;
+};
+#endif
 
 struct mlx5_indexed_pool {
 	struct mlx5_indexed_pool_config cfg; /* Indexed pool configuration. */
@@ -266,13 +281,16 @@ struct mlx5_indexed_pool {
 			uint32_t free_list; /* Index to first free trunk. */
 		};
 		struct {
-			struct mlx5_indexed_cache *gc;
+			RTE_ATOMIC(struct mlx5_indexed_cache *) gc;
 			/* Global cache. */
 			struct mlx5_ipool_per_lcore *cache[RTE_MAX_LCORE + 1];
 			/* Local cache. */
 			struct rte_bitmap *ibmp;
 			void *bmp_mem;
 			/* Allocate objects bitmap. Use during flush. */
+#ifdef POOL_DEBUG
+			struct mlx5_ipool_cache_validation cache_validator;
+#endif
 		};
 	};
 #ifdef POOL_DEBUG
@@ -426,6 +444,23 @@ void mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool);
  *
  */
 void *mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos);
+
+/**
+ * This function resize the ipool.
+ *
+ * @param pool
+ *   Pointer to the index memory pool handler.
+ * @param num_entries
+ *   Number of entries to be added to the pool.
+ *   This number should be divisible by trunk_size.
+ *
+ * @return
+ *   - non-zero value on error.
+ *   - 0 on success.
+ *
+ */
+int mlx5_ipool_resize(struct mlx5_indexed_pool *pool, uint32_t num_entries,
+		      struct rte_flow_error *error);
 
 /**
  * This function allocates new empty Three-level table.

@@ -32,12 +32,12 @@ extern "C" {
 #define DPAA2_FD_CTRL_PTV1	0x00400000
 
 /* Frame annotation status */
-struct dpaa2_fas {
+struct __rte_packed_begin dpaa2_fas {
 	uint8_t reserved;
 	uint8_t ppid;
 	__le16 ifpid;
 	__le32 status;
-}  __rte_packed;
+} __rte_packed_end;
 
 /**
  * HW Packet Annotation  Register structures
@@ -253,6 +253,9 @@ struct dpaa2_annot_hdr {
 #define PARSE_ERROR_CODE(var)		((uint64_t)(var) & 0xFF00000000000000)
 #define SOFT_PARSING_CONTEXT(var)	((uint64_t)(var) & 0x00FFFFFFFFFFFFFF)
 
+#define DPAA2_RX_MIN_FD_OFFSET \
+	(DPAA2_FD_PTA_SIZE + sizeof(struct dpaa2_annot_hdr))
+
 /*FAEAD offset in anmotation area*/
 #define DPAA2_FD_HW_ANNOT_FAEAD_OFFSET	0x58
 
@@ -260,6 +263,9 @@ struct dpaa2_faead {
 	uint32_t fqid;
 	uint32_t ctrl;
 };
+
+#define DPAA2_DYN_TX_MIN_FD_OFFSET \
+	(DPAA2_FD_HW_ANNOT_FAEAD_OFFSET + sizeof(struct dpaa2_faead))
 
 /*FAEAD bits */
 /*A2 OMB contains valid data*/

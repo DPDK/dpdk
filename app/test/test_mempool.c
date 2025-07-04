@@ -515,19 +515,20 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 #undef RTE_TEST_TRACE_FAILURE
 #define RTE_TEST_TRACE_FAILURE(...) do { goto fail; } while (0)
 
-	static const size_t callback_num = 3;
-	static const size_t mempool_num = 2;
+#define CALLBACK_NUM 3u
+#define MEMPOOL_NUM 2u
+
 	static const unsigned int mempool_elt_size = 64;
 	static const unsigned int mempool_size = 64;
 
-	struct test_mempool_events_data data[callback_num];
-	struct rte_mempool *mp[mempool_num], *freed;
+	struct test_mempool_events_data data[CALLBACK_NUM];
+	struct rte_mempool *mp[MEMPOOL_NUM], *freed;
 	char name[RTE_MEMPOOL_NAMESIZE];
 	size_t i, j;
 	int ret;
 
 	memset(mp, 0, sizeof(mp));
-	for (i = 0; i < callback_num; i++) {
+	for (i = 0; i < CALLBACK_NUM; i++) {
 		ret = rte_mempool_event_callback_register
 				(test_mempool_events_cb, &data[i]);
 		RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to register the callback %zu: %s",
@@ -548,7 +549,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 					 SOCKET_ID_ANY, 0);
 	RTE_TEST_ASSERT_NOT_NULL(mp[0], "Cannot create mempool %s: %s",
 				 name, rte_strerror(rte_errno));
-	for (j = 0; j < callback_num; j++)
+	for (j = 0; j < CALLBACK_NUM; j++)
 		RTE_TEST_ASSERT_EQUAL(data[j].invoked, false,
 				      "Callback %zu invoked on %s mempool creation",
 				      j, name);
@@ -557,7 +558,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 	ret = populate(mp[0]);
 	RTE_TEST_ASSERT_EQUAL(ret, (int)mp[0]->size, "Failed to populate mempool %s: %s",
 			      name, rte_strerror(-ret));
-	for (j = 0; j < callback_num; j++) {
+	for (j = 0; j < CALLBACK_NUM; j++) {
 		RTE_TEST_ASSERT_EQUAL(data[j].invoked, true,
 					"Callback %zu not invoked on mempool %s population",
 					j, name);
@@ -589,7 +590,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 			      "Unregistered callback 0 invoked on %s mempool populaton",
 			      name);
 
-	for (i = 0; i < mempool_num; i++) {
+	for (i = 0; i < MEMPOOL_NUM; i++) {
 		memset(&data, 0, sizeof(data));
 		sprintf(name, "empty%zu", i);
 		rte_mempool_free(mp[i]);
@@ -599,7 +600,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 		 */
 		freed = mp[i];
 		mp[i] = NULL;
-		for (j = 1; j < callback_num; j++) {
+		for (j = 1; j < CALLBACK_NUM; j++) {
 			RTE_TEST_ASSERT_EQUAL(data[j].invoked, true,
 					      "Callback %zu not invoked on mempool %s destruction",
 					      j, name);
@@ -615,7 +616,7 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 				      name);
 	}
 
-	for (j = 1; j < callback_num; j++) {
+	for (j = 1; j < CALLBACK_NUM; j++) {
 		ret = rte_mempool_event_callback_unregister
 					(test_mempool_events_cb, &data[j]);
 		RTE_TEST_ASSERT_EQUAL(ret, 0, "Failed to unregister the callback %zu: %s",
@@ -624,10 +625,10 @@ test_mempool_events(int (*populate)(struct rte_mempool *mp))
 	return TEST_SUCCESS;
 
 fail:
-	for (j = 0; j < callback_num; j++)
+	for (j = 0; j < CALLBACK_NUM; j++)
 		rte_mempool_event_callback_unregister
 					(test_mempool_events_cb, &data[j]);
-	for (i = 0; i < mempool_num; i++)
+	for (i = 0; i < MEMPOOL_NUM; i++)
 		rte_mempool_free(mp[i]);
 	return TEST_FAILED;
 
@@ -843,16 +844,19 @@ test_mempool(void)
 	int ret = -1;
 	uint32_t nb_objs = 0;
 	uint32_t nb_mem_chunks = 0;
+	size_t alignment = 0;
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *mp_stack_anon = NULL;
 	struct rte_mempool *mp_stack_mempool_iter = NULL;
 	struct rte_mempool *mp_stack = NULL;
 	struct rte_mempool *default_pool = NULL;
+	struct rte_mempool *mp_alignment = NULL;
 	struct mp_data cb_arg = {
 		.ret = -1
 	};
 	const char *default_pool_ops = rte_mbuf_best_mempool_ops();
+	struct rte_mempool_mem_range_info mem_range = { 0 };
 
 	/* create a mempool (without cache) */
 	mp_nocache = rte_mempool_create("test_nocache", MEMPOOL_SIZE,
@@ -967,6 +971,72 @@ test_mempool(void)
 	}
 	rte_mempool_obj_iter(default_pool, my_obj_init, NULL);
 
+	if (rte_mempool_get_mem_range(default_pool, &mem_range)) {
+		printf("cannot get mem range from default mempool\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (rte_mempool_get_mem_range(NULL, NULL) != -EINVAL) {
+		printf("rte_mempool_get_mem_range failed to return -EINVAL "
+				"when passed invalid arguments\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (mem_range.start == NULL || mem_range.length <
+			(MEMPOOL_SIZE * MEMPOOL_ELT_SIZE)) {
+		printf("mem range of default mempool is invalid\n");
+		GOTO_ERR(ret, err);
+	}
+
+	/* by default mempool objects are aligned by RTE_MEMPOOL_ALIGN */
+	alignment = rte_mempool_get_obj_alignment(default_pool);
+	if (alignment != RTE_MEMPOOL_ALIGN) {
+		printf("rte_mempool_get_obj_alignment returned wrong value, "
+				"expected %zu, returned %zu\n",
+				(size_t)RTE_MEMPOOL_ALIGN, alignment);
+		GOTO_ERR(ret, err);
+	}
+
+	/* create a mempool with a RTE_MEMPOOL_F_NO_CACHE_ALIGN flag */
+	mp_alignment = rte_mempool_create("test_alignment",
+		1, 8, /* the small size guarantees single memory chunk */
+		0, 0, NULL, NULL, my_obj_init, NULL,
+		SOCKET_ID_ANY, RTE_MEMPOOL_F_NO_CACHE_ALIGN);
+
+	if (mp_alignment == NULL) {
+		printf("cannot allocate mempool with "
+				"RTE_MEMPOOL_F_NO_CACHE_ALIGN flag\n");
+		GOTO_ERR(ret, err);
+	}
+
+	/* mempool was created with RTE_MEMPOOL_F_NO_CACHE_ALIGN
+	 * and minimum alignment is expected which is sizeof(uint64_t)
+	 */
+	alignment = rte_mempool_get_obj_alignment(mp_alignment);
+	if (alignment != sizeof(uint64_t)) {
+		printf("rte_mempool_get_obj_alignment returned wrong value, "
+				"expected %zu, returned %zu\n",
+				(size_t)sizeof(uint64_t), alignment);
+		GOTO_ERR(ret, err);
+	}
+
+	alignment = rte_mempool_get_obj_alignment(NULL);
+	if (alignment != 0) {
+		printf("rte_mempool_get_obj_alignment failed to return 0 for "
+				" an invalid mempool\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (rte_mempool_get_mem_range(mp_alignment, &mem_range)) {
+		printf("cannot get mem range from mempool\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (!mem_range.is_contiguous) {
+		printf("mempool not contiguous\n");
+		GOTO_ERR(ret, err);
+	}
+
 	/* retrieve the mempool from its name */
 	if (rte_mempool_lookup("test_nocache") != mp_nocache) {
 		printf("Cannot lookup mempool from its name\n");
@@ -1039,8 +1109,9 @@ err:
 	rte_mempool_free(mp_stack_mempool_iter);
 	rte_mempool_free(mp_stack);
 	rte_mempool_free(default_pool);
+	rte_mempool_free(mp_alignment);
 
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(mempool_autotest, test_mempool);
+REGISTER_FAST_TEST(mempool_autotest, false, true, test_mempool);

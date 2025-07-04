@@ -16,7 +16,7 @@ fs_ethdev_portid_get(const char *name, uint16_t *port_id)
 	size_t len;
 
 	if (name == NULL) {
-		DEBUG("Null pointer is specified\n");
+		DEBUG("Null pointer is specified");
 		return -EINVAL;
 	}
 	len = strlen(name);

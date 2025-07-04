@@ -41,7 +41,7 @@ struct bm_mc_result;	/* MC result */
  * pool id specific to this buffer is needed (BM_RCR_VERB_CMD_BPID_MULTI,
  * BM_MCC_VERB_ACQUIRE), the 'bpid' field is used.
  */
-struct bm_buffer {
+struct __rte_aligned(8) bm_buffer {
 	union {
 		struct {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -67,7 +67,7 @@ struct bm_buffer {
 		};
 		u64 opaque;
 	};
-} __rte_aligned(8);
+};
 static inline u64 bm_buffer_get64(const struct bm_buffer *buf)
 {
 	return buf->addr;
@@ -86,7 +86,7 @@ static inline dma_addr_t bm_buf_addr(const struct bm_buffer *buf)
 	} while (0)
 
 /* See 1.5.3.5.4: "Release Command" */
-struct bm_rcr_entry {
+struct __rte_packed_begin bm_rcr_entry {
 	union {
 		struct {
 			u8 __dont_write_directly__verb;
@@ -95,7 +95,7 @@ struct bm_rcr_entry {
 		};
 		struct bm_buffer bufs[8];
 	};
-} __packed;
+} __rte_packed_end;
 #define BM_RCR_VERB_VBIT		0x80
 #define BM_RCR_VERB_CMD_MASK		0x70	/* one of two values; */
 #define BM_RCR_VERB_CMD_BPID_SINGLE	0x20
@@ -104,20 +104,20 @@ struct bm_rcr_entry {
 
 /* See 1.5.3.1: "Acquire Command" */
 /* See 1.5.3.2: "Query Command" */
-struct bm_mcc_acquire {
+struct __rte_packed_begin bm_mcc_acquire {
 	u8 bpid;
 	u8 __reserved1[62];
-} __packed;
-struct bm_mcc_query {
+} __rte_packed_end;
+struct __rte_packed_begin bm_mcc_query {
 	u8 __reserved2[63];
-} __packed;
-struct bm_mc_command {
+} __rte_packed_end;
+struct __rte_packed_begin bm_mc_command {
 	u8 __dont_write_directly__verb;
 	union {
 		struct bm_mcc_acquire acquire;
 		struct bm_mcc_query query;
 	};
-} __packed;
+} __rte_packed_end;
 #define BM_MCC_VERB_VBIT		0x80
 #define BM_MCC_VERB_CMD_MASK		0x70	/* where the verb contains; */
 #define BM_MCC_VERB_CMD_ACQUIRE		0x10
@@ -136,7 +136,7 @@ struct bm_pool_state {
 	} as, ds;
 };
 
-struct bm_mc_result {
+struct __rte_packed_begin bm_mc_result {
 	union {
 		struct {
 			u8 verb;
@@ -152,7 +152,7 @@ struct bm_mc_result {
 		} acquire;
 		struct bm_pool_state query;
 	};
-} __packed;
+} __rte_packed_end;
 #define BM_MCR_VERB_VBIT		0x80
 #define BM_MCR_VERB_CMD_MASK		BM_MCC_VERB_CMD_MASK
 #define BM_MCR_VERB_CMD_ACQUIRE		BM_MCC_VERB_CMD_ACQUIRE

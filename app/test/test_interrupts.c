@@ -594,4 +594,4 @@ out:
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(interrupt_autotest, test_interrupt);
+REGISTER_FAST_TEST(interrupt_autotest, true, true, test_interrupt);

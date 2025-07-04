@@ -81,21 +81,21 @@ bphy_rawdev_selftest(uint16_t dev_id)
 		goto err_desc;
 	if (descs != 1) {
 		ret = -ENODEV;
-		plt_err("Wrong number of descs reported\n");
+		CNXK_BPHY_LOG(ERR, "Wrong number of descs reported");
 		goto err_desc;
 	}
 
 	ret = rte_pmd_bphy_npa_pf_func_get(dev_id, &pf_func);
 	if (ret || pf_func == 0)
-		plt_warn("NPA pf_func is invalid");
+		CNXK_BPHY_LOG(WARNING, "NPA pf_func is invalid");
 
 	ret = rte_pmd_bphy_sso_pf_func_get(dev_id, &pf_func);
 	if (ret || pf_func == 0)
-		plt_warn("SSO pf_func is invalid");
+		CNXK_BPHY_LOG(WARNING, "SSO pf_func is invalid");
 
 	ret = rte_pmd_bphy_intr_init(dev_id);
 	if (ret) {
-		plt_err("intr init failed");
+		CNXK_BPHY_LOG(ERR, "intr init failed");
 		return ret;
 	}
 
@@ -103,7 +103,7 @@ bphy_rawdev_selftest(uint16_t dev_id)
 
 	test = rte_zmalloc("BPHY", max_irq * sizeof(*test), 0);
 	if (test == NULL) {
-		plt_err("intr alloc failed");
+		CNXK_BPHY_LOG(ERR, "intr alloc failed");
 		goto err_alloc;
 	}
 
@@ -132,7 +132,7 @@ bphy_rawdev_selftest(uint16_t dev_id)
 		}
 
 		if (ret) {
-			plt_err("intr register failed at irq %d", i);
+			CNXK_BPHY_LOG(ERR, "intr register failed at irq %d", i);
 			goto err_register;
 		}
 	}
@@ -142,12 +142,12 @@ bphy_rawdev_selftest(uint16_t dev_id)
 
 	for (i = 0; i < max_irq; i++) {
 		if (!test[i].handled_intr) {
-			plt_err("intr %u not handled", i);
+			CNXK_BPHY_LOG(ERR, "intr %u not handled", i);
 			ret = -1;
 			break;
 		}
 		if (test[i].handled_data != test[i].test_data) {
-			plt_err("intr %u has wrong handler", i);
+			CNXK_BPHY_LOG(ERR, "intr %u has wrong handler", i);
 			ret = -1;
 			break;
 		}
@@ -251,7 +251,7 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 
 	/* get rid of last response if any */
 	if (qp->rsp) {
-		RTE_LOG(WARNING, PMD, "Previous response got overwritten\n");
+		CNXK_BPHY_LOG(WARNING, "Previous response got overwritten");
 		rte_free(qp->rsp);
 	}
 	qp->rsp = rsp;
@@ -332,9 +332,8 @@ bphy_rawdev_probe(struct rte_pci_driver *pci_drv,
 		return 0;
 
 	if (!pci_dev->mem_resource[0].addr) {
-		plt_err("BARs have invalid values: BAR0 %p\n BAR2 %p",
-			pci_dev->mem_resource[0].addr,
-			pci_dev->mem_resource[2].addr);
+		CNXK_BPHY_LOG(ERR, "BARs have invalid values: BAR0 %p BAR2 %p",
+			      pci_dev->mem_resource[0].addr, pci_dev->mem_resource[2].addr);
 		return -ENODEV;
 	}
 
@@ -346,7 +345,7 @@ bphy_rawdev_probe(struct rte_pci_driver *pci_drv,
 	bphy_rawdev = rte_rawdev_pmd_allocate(name, sizeof(*bphy_dev),
 					      rte_socket_id());
 	if (bphy_rawdev == NULL) {
-		plt_err("Failed to allocate rawdev");
+		CNXK_BPHY_LOG(ERR, "Failed to allocate rawdev");
 		return -ENOMEM;
 	}
 
@@ -359,10 +358,12 @@ bphy_rawdev_probe(struct rte_pci_driver *pci_drv,
 	bphy_dev->mem.res2 = pci_dev->mem_resource[2];
 	bphy_dev->bphy.pci_dev = pci_dev;
 
-	ret = roc_bphy_dev_init(&bphy_dev->bphy);
-	if (ret) {
-		rte_rawdev_pmd_release(bphy_rawdev);
-		return ret;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = roc_bphy_dev_init(&bphy_dev->bphy);
+		if (ret) {
+			rte_rawdev_pmd_release(bphy_rawdev);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -379,19 +380,21 @@ bphy_rawdev_remove(struct rte_pci_device *pci_dev)
 		return 0;
 
 	if (pci_dev == NULL) {
-		plt_err("invalid pci_dev");
+		CNXK_BPHY_LOG(ERR, "invalid pci_dev");
 		return -EINVAL;
 	}
 
 	bphy_rawdev_get_name(name, pci_dev);
 	rawdev = rte_rawdev_pmd_get_named_dev(name);
 	if (rawdev == NULL) {
-		plt_err("invalid device name (%s)", name);
+		CNXK_BPHY_LOG(ERR, "invalid device name (%s)", name);
 		return -EINVAL;
 	}
 
-	bphy_dev = (struct bphy_device *)rawdev->dev_private;
-	roc_bphy_dev_fini(&bphy_dev->bphy);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		bphy_dev = (struct bphy_device *)rawdev->dev_private;
+		roc_bphy_dev_fini(&bphy_dev->bphy);
+	}
 
 	return rte_rawdev_pmd_release(rawdev);
 }
@@ -406,3 +409,4 @@ static struct rte_pci_driver cnxk_bphy_rawdev_pmd = {
 RTE_PMD_REGISTER_PCI(bphy_rawdev_pci_driver, cnxk_bphy_rawdev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(bphy_rawdev_pci_driver, pci_bphy_map);
 RTE_PMD_REGISTER_KMOD_DEP(bphy_rawdev_pci_driver, "vfio-pci");
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_bphy, bphy, INFO);

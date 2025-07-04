@@ -1,9 +1,0 @@
-DPDK_23 {
-	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_acc_configure;
-};

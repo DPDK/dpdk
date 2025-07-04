@@ -15,7 +15,16 @@ sources = files(
         'graph_stats.c',
         'graph_populate.c',
         'graph_pcap.c',
+        'rte_graph_worker.c',
+        'rte_graph_model_mcore_dispatch.c',
+        'graph_feature_arc.c',
 )
 headers = files('rte_graph.h', 'rte_graph_worker.h')
+headers += files('rte_graph_feature_arc.h', 'rte_graph_feature_arc_worker.h')
+indirect_headers += files(
+        'rte_graph_model_mcore_dispatch.h',
+        'rte_graph_model_rtc.h',
+        'rte_graph_worker_common.h',
+)
 
-deps += ['eal', 'pcapng']
+deps += ['eal', 'pcapng', 'mempool', 'ring', 'rcu']

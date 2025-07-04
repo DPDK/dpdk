@@ -8,6 +8,7 @@ if is_windows
 endif
 
 sources = files(
+        'port_log.c',
         'rte_port_ethdev.c',
         'rte_port_fd.c',
         'rte_port_frag.c',
@@ -44,10 +45,4 @@ deps += ['ethdev', 'sched', 'ip_frag', 'cryptodev', 'eventdev']
 if dpdk_conf.has('RTE_HAS_LIBPCAP')
     dpdk_conf.set('RTE_PORT_PCAP', 1)
     ext_deps += pcap_dep # dependency provided in config/meson.build
-endif
-
-if dpdk_conf.has('RTE_LIB_KNI')
-    sources += files('rte_port_kni.c')
-    headers += files('rte_port_kni.h')
-    deps += 'kni'
 endif

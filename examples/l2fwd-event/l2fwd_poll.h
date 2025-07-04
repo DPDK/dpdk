@@ -9,10 +9,10 @@
 
 typedef void (*poll_main_loop_cb)(struct l2fwd_resources *rsrc);
 
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	uint32_t rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 	uint32_t n_rx_port;
-} __rte_cache_aligned;
+};
 
 struct l2fwd_poll_resources {
 	poll_main_loop_cb poll_main_loop;

@@ -4,6 +4,7 @@
 
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_ethdev.h>
 
@@ -24,6 +25,7 @@
 		RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO)) == 0) || \
 		(ctx)->gso_size < RTE_GSO_SEG_SIZE_MIN)
 
+RTE_EXPORT_SYMBOL(rte_gso_segment)
 int
 rte_gso_segment(struct rte_mbuf *pkt,
 		const struct rte_gso_ctx *gso_ctx,
@@ -80,9 +82,7 @@ rte_gso_segment(struct rte_mbuf *pkt,
 		ret = gso_udp4_segment(pkt, gso_size, direct_pool,
 				indirect_pool, pkts_out, nb_pkts_out);
 	} else {
-		/* unsupported packet, skip */
-		RTE_LOG(DEBUG, GSO, "Unsupported packet type\n");
-		ret = 0;
+		ret = -ENOTSUP;	/* only UDP or TCP allowed */
 	}
 
 	if (ret < 0) {

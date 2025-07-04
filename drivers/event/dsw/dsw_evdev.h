@@ -7,6 +7,7 @@
 
 #include <eventdev_pmd.h>
 
+#include <rte_bitset.h>
 #include <rte_event_ring.h>
 #include <rte_eventdev.h>
 
@@ -127,11 +128,12 @@ struct dsw_queue_flow {
 
 enum dsw_migration_state {
 	DSW_MIGRATION_STATE_IDLE,
+	DSW_MIGRATION_STATE_FINISH_PENDING,
 	DSW_MIGRATION_STATE_PAUSING,
 	DSW_MIGRATION_STATE_UNPAUSING
 };
 
-struct dsw_port {
+struct __rte_cache_aligned dsw_port {
 	uint16_t id;
 
 	/* Keeping a pointer here to avoid container_of() calls, which
@@ -147,6 +149,8 @@ struct dsw_port {
 	int32_t inflight_credits;
 
 	int32_t new_event_threshold;
+
+	bool implicit_release;
 
 	uint16_t pending_releases;
 
@@ -222,23 +226,26 @@ struct dsw_port {
 	 */
 	struct rte_event in_buffer[DSW_MAX_EVENTS];
 
-	struct rte_event_ring *in_ring __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event_ring *in_ring;
 
-	struct rte_ring *ctl_in_ring __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_ring *ctl_in_ring;
 
 	/* Estimate of current port load. */
-	int16_t load __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int16_t) load;
 	/* Estimate of flows currently migrating to this port. */
-	int32_t immigration_load __rte_cache_aligned;
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int32_t) immigration_load;
+};
 
 struct dsw_queue {
 	uint8_t schedule_type;
-	uint8_t serving_ports[DSW_MAX_PORTS];
+	RTE_BITSET_DECLARE(serving_ports, DSW_MAX_PORTS);
 	uint16_t num_serving_ports;
 
-	uint8_t flow_to_port_map[DSW_MAX_FLOWS] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t flow_to_port_map[DSW_MAX_FLOWS];
 };
+
+/* Limited by the size of the 'serving_ports' bitmask */
+static_assert(DSW_MAX_PORTS <= 64, "Max compile-time port count exceeded");
 
 struct dsw_evdev {
 	struct rte_eventdev_data *data;
@@ -249,21 +256,20 @@ struct dsw_evdev {
 	uint8_t num_queues;
 	int32_t max_inflight;
 
-	int32_t credits_on_loan __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int32_t) credits_on_loan;
 };
 
-#define DSW_CTL_PAUS_REQ (0)
-#define DSW_CTL_UNPAUS_REQ (1)
+#define DSW_CTL_PAUSE_REQ (0)
+#define DSW_CTL_UNPAUSE_REQ (1)
 #define DSW_CTL_CFM (2)
 
-struct dsw_ctl_msg {
+struct __rte_aligned(4) dsw_ctl_msg {
 	uint8_t type;
 	uint8_t originating_port_id;
 	uint8_t qfs_len;
 	struct dsw_queue_flow qfs[DSW_MAX_FLOWS_PER_MIGRATION];
-} __rte_aligned(4);
+};
 
-uint16_t dsw_event_enqueue(void *port, const struct rte_event *event);
 uint16_t dsw_event_enqueue_burst(void *port,
 				 const struct rte_event events[],
 				 uint16_t events_len);
@@ -274,7 +280,6 @@ uint16_t dsw_event_enqueue_forward_burst(void *port,
 					 const struct rte_event events[],
 					 uint16_t events_len);
 
-uint16_t dsw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t dsw_event_dequeue_burst(void *port, struct rte_event *events,
 				 uint16_t num, uint64_t wait);
 void dsw_event_maintain(void *port, int op);
@@ -296,12 +301,13 @@ dsw_pmd_priv(const struct rte_eventdev *eventdev)
 	return eventdev->data->dev_private;
 }
 
-#define DSW_LOG_DP(level, fmt, args...)					\
-	RTE_LOG_DP(level, EVENTDEV, "[%s] %s() line %u: " fmt,		\
-		   DSW_PMD_NAME,					\
-		   __func__, __LINE__, ## args)
+extern int event_dsw_logtype;
+#define RTE_LOGTYPE_EVENT_DSW event_dsw_logtype
+#define DSW_LOG_DP_LINE(level, fmt, ...)				\
+	RTE_LOG_DP_LINE(level, EVENT_DSW, "%s() line %u: " fmt,		\
+		   __func__, __LINE__, ## __VA_ARGS__)
 
-#define DSW_LOG_DP_PORT(level, port_id, fmt, args...)		\
-	DSW_LOG_DP(level, "<Port %d> " fmt, port_id, ## args)
+#define DSW_LOG_DP_PORT_LINE(level, port_id, fmt, ...)			\
+	DSW_LOG_DP_LINE(level, "<Port %d> " fmt, port_id, ## __VA_ARGS__)
 
 #endif

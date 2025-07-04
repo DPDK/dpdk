@@ -202,7 +202,7 @@ timer_stress_main_loop(__rte_unused void *arg)
 
 /* Need to synchronize worker lcores through multiple steps. */
 enum { WORKER_WAITING = 1, WORKER_RUN_SIGNAL, WORKER_RUNNING, WORKER_FINISHED };
-static uint16_t lcore_state[RTE_MAX_LCORE];
+static RTE_ATOMIC(uint16_t) lcore_state[RTE_MAX_LCORE];
 
 static void
 main_init_workers(void)
@@ -210,7 +210,8 @@ main_init_workers(void)
 	unsigned i;
 
 	RTE_LCORE_FOREACH_WORKER(i) {
-		__atomic_store_n(&lcore_state[i], WORKER_WAITING, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&lcore_state[i], WORKER_WAITING,
+				rte_memory_order_relaxed);
 	}
 }
 
@@ -220,10 +221,12 @@ main_start_workers(void)
 	unsigned i;
 
 	RTE_LCORE_FOREACH_WORKER(i) {
-		__atomic_store_n(&lcore_state[i], WORKER_RUN_SIGNAL, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&lcore_state[i], WORKER_RUN_SIGNAL,
+				rte_memory_order_release);
 	}
 	RTE_LCORE_FOREACH_WORKER(i) {
-		rte_wait_until_equal_16(&lcore_state[i], WORKER_RUNNING, __ATOMIC_ACQUIRE);
+		rte_wait_until_equal_16((uint16_t *)(uintptr_t)&lcore_state[i], WORKER_RUNNING,
+				rte_memory_order_acquire);
 	}
 }
 
@@ -233,7 +236,8 @@ main_wait_for_workers(void)
 	unsigned i;
 
 	RTE_LCORE_FOREACH_WORKER(i) {
-		rte_wait_until_equal_16(&lcore_state[i], WORKER_FINISHED, __ATOMIC_ACQUIRE);
+		rte_wait_until_equal_16((uint16_t *)(uintptr_t)&lcore_state[i], WORKER_FINISHED,
+				rte_memory_order_acquire);
 	}
 }
 
@@ -242,8 +246,10 @@ worker_wait_to_start(void)
 {
 	unsigned lcore_id = rte_lcore_id();
 
-	rte_wait_until_equal_16(&lcore_state[lcore_id], WORKER_RUN_SIGNAL, __ATOMIC_ACQUIRE);
-	__atomic_store_n(&lcore_state[lcore_id], WORKER_RUNNING, __ATOMIC_RELEASE);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&lcore_state[lcore_id], WORKER_RUN_SIGNAL,
+			rte_memory_order_acquire);
+	rte_atomic_store_explicit(&lcore_state[lcore_id], WORKER_RUNNING,
+			rte_memory_order_release);
 }
 
 static void
@@ -251,7 +257,8 @@ worker_finish(void)
 {
 	unsigned lcore_id = rte_lcore_id();
 
-	__atomic_store_n(&lcore_state[lcore_id], WORKER_FINISHED, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&lcore_state[lcore_id], WORKER_FINISHED,
+			rte_memory_order_release);
 }
 
 
@@ -277,12 +284,12 @@ timer_stress2_main_loop(__rte_unused void *arg)
 	unsigned int lcore_id = rte_lcore_id();
 	unsigned int main_lcore = rte_get_main_lcore();
 	int32_t my_collisions = 0;
-	static uint32_t collisions;
+	static RTE_ATOMIC(uint32_t) collisions;
 
 	if (lcore_id == main_lcore) {
 		cb_count = 0;
 		test_failed = 0;
-		__atomic_store_n(&collisions, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&collisions, 0, rte_memory_order_relaxed);
 		timers = rte_malloc(NULL, sizeof(*timers) * NB_STRESS2_TIMERS, 0);
 		if (timers == NULL) {
 			printf("Test Failed\n");
@@ -310,7 +317,7 @@ timer_stress2_main_loop(__rte_unused void *arg)
 			my_collisions++;
 	}
 	if (my_collisions != 0)
-		__atomic_fetch_add(&collisions, my_collisions, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&collisions, my_collisions, rte_memory_order_relaxed);
 
 	/* wait long enough for timers to expire */
 	rte_delay_ms(100);
@@ -324,7 +331,7 @@ timer_stress2_main_loop(__rte_unused void *arg)
 
 	/* now check that we get the right number of callbacks */
 	if (lcore_id == main_lcore) {
-		my_collisions = __atomic_load_n(&collisions, __ATOMIC_RELAXED);
+		my_collisions = rte_atomic_load_explicit(&collisions, rte_memory_order_relaxed);
 		if (my_collisions != 0)
 			printf("- %d timer reset collisions (OK)\n", my_collisions);
 		rte_timer_manage();
@@ -594,4 +601,4 @@ test_timer(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(timer_autotest, test_timer);
+REGISTER_FAST_TEST(timer_autotest, false, true, test_timer);

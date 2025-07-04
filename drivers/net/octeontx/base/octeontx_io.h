@@ -19,17 +19,17 @@
 
 /* ARM64 specific functions */
 #if defined(RTE_ARCH_ARM64)
-#define octeontx_prefetch_store_keep(_ptr) ({\
+#define octeontx_prefetch_store_keep(_ptr) __extension__ ({\
 	asm volatile("prfm pstl1keep, %a0\n" : : "p" (_ptr)); })
 
-#define octeontx_load_pair(val0, val1, addr) ({		\
+#define octeontx_load_pair(val0, val1, addr) __extension__ ({		\
 			asm volatile(			\
 			"ldp %x[x0], %x[x1], [%x[p1]]"	\
 			:[x0]"=r"(val0), [x1]"=r"(val1) \
 			:[p1]"r"(addr)			\
 			); })
 
-#define octeontx_store_pair(val0, val1, addr) ({		\
+#define octeontx_store_pair(val0, val1, addr) __extension__ ({		\
 			asm volatile(			\
 			"stp %x[x0], %x[x1], [%x[p1]]"	\
 			::[x0]"r"(val0), [x1]"r"(val1), [p1]"r"(addr) \

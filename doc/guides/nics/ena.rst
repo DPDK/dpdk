@@ -107,11 +107,18 @@ Configuration
 Runtime Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-   * **large_llq_hdr** (default 0)
+   * **llq_policy** (default 1)
 
-     Enables or disables usage of large LLQ headers. This option will have
-     effect only if the device also supports large LLQ headers. Otherwise, the
-     default value will be used.
+     Controls whether use device recommended header policy or override it:
+
+     0 - Disable LLQ (Use with extreme caution as it leads to a huge performance
+     degradation on AWS instances built with Nitro v4 onwards).
+
+     1 - Accept device recommended LLQ policy (Default).
+
+     2 - Enforce normal LLQ policy.
+
+     3 - Enforce large LLQ policy.
 
    * **miss_txc_to** (default 5)
 
@@ -122,14 +129,18 @@ Runtime Configuration
      timer service. Setting this parameter to 0 disables this feature. Maximum
      allowed value is 60 seconds.
 
-   * **enable_llq** (default 1)
+   * **control_poll_interval** (default 0)
 
-     Determines whenever the driver should use the LLQ (if it's available) or
-     not.
+     Enable polling-based functionality of the admin queues,
+     eliminating the need for interrupts in the control-path:
 
-     **NOTE: On the 6th generation AWS instances disabling LLQ may lead to a
-     huge performance degradation. In general disabling LLQ is highly not
-     recommended!**
+     0 - Disable (Admin queue will work in interrupt mode).
+
+     [1..1000] - Number of milliseconds to wait between periodic inspection of the admin queues.
+
+     **A non-zero value for this devarg is mandatory for control path functionality
+     when binding ports to uio_pci_generic kernel module which lacks interrupt support.**
+
 
 ENA Configuration Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,23 +180,23 @@ Prerequisites
 #. Prepare the system as recommended by DPDK suite.  This includes environment
    variables, hugepages configuration, tool-chains and configuration.
 
-#. ENA PMD can operate with ``vfio-pci``(*) or ``igb_uio`` driver.
+#. ENA PMD can operate with ``vfio-pci`` (*), ``igb_uio``, or ``uio_pci_generic`` driver.
 
    (*) ENAv2 hardware supports Low Latency Queue v2 (LLQv2). This feature
    reduces the latency of the packets by pushing the header directly through
    the PCI to the device, before the DMA is even triggered. For proper work
-   kernel PCI driver must support write combining (WC).
+   kernel PCI driver must support write-combining (WC).
    In DPDK ``igb_uio`` it must be enabled by loading module with
    ``wc_activate=1`` flag (example below). However, mainline's vfio-pci
-   driver in kernel doesn't have WC support yet (planed to be added).
+   driver in kernel doesn't have WC support yet (planned to be added).
    If vfio-pci is used user should follow `AWS ENA PMD documentation
    <https://github.com/amzn/amzn-drivers/tree/master/userspace/dpdk/README.md>`_.
 
-#. Insert ``vfio-pci`` or ``igb_uio`` kernel module using the command
-   ``modprobe vfio-pci`` or ``modprobe uio; insmod igb_uio.ko wc_activate=1``
-   respectively.
+#. For ``igb_uio``:
+   Insert ``igb_uio`` kernel module using the command ``modprobe uio; insmod igb_uio.ko wc_activate=1``
 
-#. For ``vfio-pci`` users only:
+#. For ``vfio-pci``:
+   Insert ``vfio-pci`` kernel module using the command ``modprobe vfio-pci``
    Please make sure that ``IOMMU`` is enabled in your system,
    or use ``vfio`` driver in ``noiommu`` mode::
 
@@ -194,7 +205,19 @@ Prerequisites
    To use ``noiommu`` mode, the ``vfio-pci`` must be built with flag
    ``CONFIG_VFIO_NOIOMMU``.
 
-#. Bind the intended ENA device to ``vfio-pci`` or ``igb_uio`` module.
+#. For ``uio_pci_generic``:
+   Insert ``uio_pci_generic`` kernel module using the command ``modprobe uio_pci_generic``.
+   Make sure that the IOMMU is disabled or is in passthrough mode.
+   For example: ``modprobe uio_pci_generic intel_iommu=off``.
+
+   Note that when launching the application,
+   the ``control_poll_interval`` devarg must be used with a non-zero value (1000 is recommended)
+   as ``uio_pci_generic`` lacks interrupt support.
+   The control-path (admin queues) of the ENA requires poll-mode
+   to process command completion and asynchronous notification from the device.
+   For example: ``dpdk-app -a "00:06.0,control_path_poll_interval=1000"``.
+
+#. Bind the intended ENA device to ``vfio-pci``, ``igb_uio``, or ``uio_pci_generic`` module.
 
 At this point the system should be ready to run DPDK applications. Once the
 application runs to completion, the ENA can be detached from attached module if
@@ -202,9 +225,9 @@ necessary.
 
 **Rx interrupts support**
 
-ENA PMD supports Rx interrupts, which can be used to wake up lcores waiting for
-input. Please note that it won't work with ``igb_uio``, so to use this feature,
-the ``vfio-pci`` should be used.
+ENA PMD supports Rx interrupts, which can be used to wake up lcores waiting for input.
+Please note that it won't work with ``igb_uio`` and ``uio_pci_generic``
+so to use this feature, the ``vfio-pci`` should be used.
 
 ENA handles admin interrupts and AENQ notifications on separate interrupt.
 There is possibility that there won't be enough event file descriptors to
@@ -213,8 +236,8 @@ will fail.
 
 **Note about usage on \*.metal instances**
 
-On AWS, the metal instances are supporting IOMMU for both arm64 and x86_64
-hosts.
+On AWS, the metal instances are supporting IOMMU for both arm64 and x86_64 hosts.
+Note that ``uio_pci_generic`` lacks IOMMU support and cannot be used for metal instances.
 
 * x86_64 (e.g. c5.metal, i3.metal):
    IOMMU should be disabled by default. In that situation, the ``igb_uio`` can

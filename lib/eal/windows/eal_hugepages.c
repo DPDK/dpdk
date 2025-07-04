@@ -89,8 +89,8 @@ hugepage_info_init(void)
 		}
 
 		hpi->num_pages[socket_id] = bytes / hpi->hugepage_sz;
-		RTE_LOG(DEBUG, EAL,
-			"Found %u hugepages of %zu bytes on socket %u\n",
+		EAL_LOG(DEBUG,
+			"Found %u hugepages of %zu bytes on socket %u",
 			hpi->num_pages[socket_id], hpi->hugepage_sz, socket_id);
 	}
 
@@ -105,13 +105,13 @@ int
 eal_hugepage_info_init(void)
 {
 	if (hugepage_claim_privilege() < 0) {
-		RTE_LOG(ERR, EAL, "Cannot claim hugepage privilege\n"
-		"Verify that large-page support privilege is assigned to the current user\n");
+		EAL_LOG(ERR,
+			"Cannot claim hugepage privilege, check large-page support privilege");
 		return -1;
 	}
 
 	if (hugepage_info_init() < 0) {
-		RTE_LOG(ERR, EAL, "Cannot discover available hugepages\n");
+		EAL_LOG(ERR, "Cannot discover available hugepages");
 		return -1;
 	}
 

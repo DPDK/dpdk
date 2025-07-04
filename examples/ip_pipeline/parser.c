@@ -42,7 +42,7 @@ get_hex_val(char c)
 int
 parser_read_arg_bool(const char *p)
 {
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	int result = -EINVAL;
 
 	if (((p[0] == 'y') && (p[1] == 'e') && (p[2] == 's')) ||
@@ -69,7 +69,7 @@ parser_read_arg_bool(const char *p)
 		result = 0;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 
 	if (p[0] != '\0')
 		return -EINVAL;
@@ -83,7 +83,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -109,7 +109,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 		break;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (*p != '\0')
 		return -EINVAL;
 
@@ -123,13 +123,13 @@ parser_read_uint64_hex(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 
 	val = strtoul(p, &next, 16);
 	if (p == next)
 		return -EINVAL;
 
-	p = skip_white_spaces(next);
+	p = rte_str_skip_leading_spaces(next);
 	if (*p != '\0')
 		return -EINVAL;
 
@@ -387,7 +387,7 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4)
 }
 
 int
-parse_ipv6_addr(const char *token, struct in6_addr *ipv6)
+parse_ipv6_addr(const char *token, struct rte_ipv6_addr *ipv6)
 {
 	if (strlen(token) >= INET6_ADDRSTRLEN)
 		return -EINVAL;
@@ -407,7 +407,7 @@ parse_mac_addr(const char *token, struct rte_ether_addr *addr)
 	if (tmp == NULL)
 		return -1;
 
-	memcpy(addr, tmp, sizeof(struct rte_ether_addr));
+	*addr = *tmp;
 	return 0;
 }
 
@@ -420,7 +420,7 @@ parse_cpu_core(const char *entry,
 
 	uint32_t s = 0, c = 0, h = 0, val;
 	uint8_t s_parsed = 0, c_parsed = 0, h_parsed = 0;
-	const char *next = skip_white_spaces(entry);
+	const char *next = rte_str_skip_leading_spaces(entry);
 	char type;
 
 	if (p == NULL)

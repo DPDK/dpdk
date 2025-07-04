@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #include <rte_common.h>
 #include <rte_vect.h>
@@ -53,8 +54,11 @@
 
 #define MAX_LCORE_PARAMS 1024
 
+static_assert(MEMPOOL_CACHE_SIZE >= MAX_PKT_BURST, "MAX_PKT_BURST should be at most MEMPOOL_CACHE_SIZE");
 uint16_t nb_rxd = RX_DESC_DEFAULT;
 uint16_t nb_txd = TX_DESC_DEFAULT;
+uint32_t nb_pkt_per_burst = DEFAULT_PKT_BURST;
+uint32_t mb_mempool_cache_size = MEMPOOL_CACHE_SIZE;
 
 /**< Ports set in promiscuous mode off by default. */
 static int promiscuous_on;
@@ -73,6 +77,8 @@ static enum L3FWD_LOOKUP_MODE lookup_mode;
 static int numa_on = 1; /**< NUMA is enabled by default. */
 static int parse_ptype; /**< Parse packet type using rx callback, and */
 			/**< disabled by default */
+static int disable_rss; /**< Disable RSS mode */
+static int relax_rx_offload; /**< Relax Rx offload mode, disabled by default */
 static int per_port_pool; /**< Use separate buffer pools per port; disabled */
 			  /**< by default */
 
@@ -94,11 +100,11 @@ struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 struct parm_cfg parm_config;
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
-	uint8_t queue_id;
-	uint8_t lcore_id;
-} __rte_cache_aligned;
+	uint16_t queue_id;
+	uint32_t lcore_id;
+};
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 static struct lcore_params lcore_params_array_default[] = {
@@ -135,8 +141,10 @@ static struct rte_eth_conf port_conf = {
 
 uint32_t max_pkt_len;
 
-static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
+#ifdef RTE_LIB_EVENTDEV
 static struct rte_mempool *vector_pool[RTE_MAX_ETHPORTS];
+#endif
+static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
 static uint8_t lkp_per_socket[NB_SOCKETS];
 
 struct l3fwd_lkp_mode {
@@ -224,22 +232,22 @@ const struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
  * 2001:200:0:{0-f}::/64 = Port {0-15}
  */
 const struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
-	{{32, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 0},
-	{{32, 1, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 1},
-	{{32, 1, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 2},
-	{{32, 1, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 3},
-	{{32, 1, 2, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 4},
-	{{32, 1, 2, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 5},
-	{{32, 1, 2, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 6},
-	{{32, 1, 2, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 7},
-	{{32, 1, 2, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 8},
-	{{32, 1, 2, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 9},
-	{{32, 1, 2, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 10},
-	{{32, 1, 2, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 11},
-	{{32, 1, 2, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 12},
-	{{32, 1, 2, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 13},
-	{{32, 1, 2, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 14},
-	{{32, 1, 2, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0}, 64, 15},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x0, 0, 0, 0, 0), 64, 0},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x1, 0, 0, 0, 0), 64, 1},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x2, 0, 0, 0, 0), 64, 2},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x3, 0, 0, 0, 0), 64, 3},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x4, 0, 0, 0, 0), 64, 4},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x5, 0, 0, 0, 0), 64, 5},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x6, 0, 0, 0, 0), 64, 6},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x7, 0, 0, 0, 0), 64, 7},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x8, 0, 0, 0, 0), 64, 8},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0x9, 0, 0, 0, 0), 64, 9},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0xa, 0, 0, 0, 0), 64, 10},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0xb, 0, 0, 0, 0), 64, 11},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0xc, 0, 0, 0, 0), 64, 12},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0xd, 0, 0, 0, 0), 64, 13},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0xe, 0, 0, 0, 0), 64, 14},
+	{RTE_IPV6(0x2001, 0x0200, 0, 0xf, 0, 0, 0, 0), 64, 15},
 };
 
 /*
@@ -288,24 +296,25 @@ setup_l3fwd_lookup_tables(void)
 static int
 check_lcore_params(void)
 {
-	uint8_t queue, lcore;
-	uint16_t i;
+	uint16_t queue, i;
+	uint32_t lcore;
 	int socketid;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		queue = lcore_params[i].queue_id;
 		if (queue >= MAX_RX_QUEUE_PER_PORT) {
-			printf("invalid queue number: %hhu\n", queue);
+			printf("invalid queue number: %" PRIu16 "\n", queue);
 			return -1;
 		}
 		lcore = lcore_params[i].lcore_id;
 		if (!rte_lcore_is_enabled(lcore)) {
-			printf("error: lcore %hhu is not enabled in lcore mask\n", lcore);
+			printf("error: lcore %u is not enabled in lcore mask\n", lcore);
 			return -1;
 		}
-		if ((socketid = rte_lcore_to_socket_id(lcore) != 0) &&
-			(numa_on == 0)) {
-			printf("warning: lcore %hhu is on socket %d with numa off \n",
+
+		socketid = rte_lcore_to_socket_id(lcore);
+		if (socketid != 0 && numa_on == 0) {
+			printf("warning: lcore %u is on socket %d with numa off\n",
 				lcore, socketid);
 		}
 	}
@@ -332,7 +341,7 @@ check_port_config(void)
 	return 0;
 }
 
-static uint8_t
+static uint16_t
 get_port_n_rx_queues(const uint16_t port)
 {
 	int queue = -1;
@@ -348,21 +357,21 @@ get_port_n_rx_queues(const uint16_t port)
 						lcore_params[i].port_id);
 		}
 	}
-	return (uint8_t)(++queue);
+	return (uint16_t)(++queue);
 }
 
 static int
 init_lcore_rx_queues(void)
 {
 	uint16_t i, nb_rx_queue;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
 		nb_rx_queue = lcore_conf[lcore].n_rx_queue;
 		if (nb_rx_queue >= MAX_RX_QUEUE_PER_LCORE) {
 			printf("error: too many queues (%u) for lcore: %u\n",
-				(unsigned)nb_rx_queue + 1, (unsigned)lcore);
+				(unsigned int)nb_rx_queue + 1, lcore);
 			return -1;
 		} else {
 			lcore_conf[lcore].rx_queue_list[nb_rx_queue].port_id =
@@ -391,6 +400,8 @@ print_usage(const char *prgname)
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
 		" [--rx-queue-size NPKTS]"
 		" [--tx-queue-size NPKTS]"
+		" [--burst NPKTS]"
+		" [--mbcache CACHESZ]"
 		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
 		" [--max-pkt-len PKTLEN]"
 		" [--no-numa]"
@@ -398,8 +409,10 @@ print_usage(const char *prgname)
 		" [--parse-ptype]"
 		" [--per-port-pool]"
 		" [--mode]"
+#ifdef RTE_LIB_EVENTDEV
 		" [--eventq-sched]"
 		" [--event-vector [--event-vector-size SIZE] [--event-vector-tmo NS]]"
+#endif
 		" [-E]"
 		" [-L]\n\n"
 
@@ -414,6 +427,10 @@ print_usage(const char *prgname)
 		"            Default: %d\n"
 		"  --tx-queue-size NPKTS: Tx queue size in decimal\n"
 		"            Default: %d\n"
+		"  --burst NPKTS: Burst size in decimal\n"
+		"            Default: %d\n"
+		"  --mbcache CACHESZ: Mbuf cache size in decimal\n"
+		"            Default: %d\n"
 		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: Ethernet destination for port X\n"
 		"  --max-pkt-len PKTLEN: maximum packet length in decimal (64-9600)\n"
 		"  --no-numa: Disable numa awareness\n"
@@ -422,6 +439,7 @@ print_usage(const char *prgname)
 		"  --per-port-pool: Use separate buffer pool per port\n"
 		"  --mode: Packet transfer mode for I/O, poll or eventdev\n"
 		"          Default mode = poll\n"
+#ifdef RTE_LIB_EVENTDEV
 		"  --eventq-sched: Event queue synchronization method\n"
 		"                  ordered, atomic or parallel.\n"
 		"                  Default: atomic\n"
@@ -432,6 +450,7 @@ print_usage(const char *prgname)
 		"  --event-vector:  Enable event vectorization.\n"
 		"  --event-vector-size: Max vector size if event vectorization is enabled.\n"
 		"  --event-vector-tmo: Max timeout to form vector in nanoseconds if event vectorization is enabled\n"
+#endif
 		"  -E : Enable exact match, legacy flag please use --lookup=em instead\n"
 		"  -L : Enable longest prefix match, legacy flag please use --lookup=lpm instead\n"
 		"  --rule_ipv4=FILE: Specify the ipv4 rules entries file.\n"
@@ -441,7 +460,7 @@ print_usage(const char *prgname)
 		"                    another is route entry at while line leads with character '%c'.\n"
 		"  --rule_ipv6=FILE: Specify the ipv6 rules entries file.\n"
 		"  --alg: ACL classify method to use, one of: %s.\n\n",
-		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT,
+		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT, DEFAULT_PKT_BURST, MEMPOOL_CACHE_SIZE,
 		ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
 }
 
@@ -492,6 +511,11 @@ parse_config(const char *q_arg)
 	char *str_fld[_NUM_FLD];
 	int i;
 	unsigned size;
+	uint16_t max_fld[_NUM_FLD] = {
+		RTE_MAX_ETHPORTS,
+		RTE_MAX_QUEUES_PER_PORT,
+		RTE_MAX_LCORE
+	};
 
 	nb_lcore_params = 0;
 
@@ -510,7 +534,7 @@ parse_config(const char *q_arg)
 		for (i = 0; i < _NUM_FLD; i++){
 			errno = 0;
 			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > max_fld[i])
 				return -1;
 		}
 		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
@@ -519,11 +543,11 @@ parse_config(const char *q_arg)
 			return -1;
 		}
 		lcore_params_array[nb_lcore_params].port_id =
-			(uint8_t)int_fld[FLD_PORT];
+			(uint16_t)int_fld[FLD_PORT];
 		lcore_params_array[nb_lcore_params].queue_id =
-			(uint8_t)int_fld[FLD_QUEUE];
+			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
-			(uint8_t)int_fld[FLD_LCORE];
+			(uint32_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
 	}
 	lcore_params = lcore_params_array;
@@ -559,14 +583,16 @@ parse_eth_dest(const char *optarg)
 }
 
 static void
-parse_mode(const char *optarg)
+parse_mode(const char *optarg __rte_unused)
 {
+#ifdef RTE_LIB_EVENTDEV
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 
 	if (!strcmp(optarg, "poll"))
 		evt_rsrc->enabled = false;
 	else if (!strcmp(optarg, "eventdev"))
 		evt_rsrc->enabled = true;
+#endif
 }
 
 static void
@@ -601,6 +627,7 @@ parse_queue_size(const char *queue_size_arg, uint16_t *queue_size, int rx)
 	*queue_size = value;
 }
 
+#ifdef RTE_LIB_EVENTDEV
 static void
 parse_eventq_sched(const char *optarg)
 {
@@ -619,7 +646,7 @@ parse_event_eth_rx_queues(const char *eth_rx_queues)
 {
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
 	char *end = NULL;
-	uint8_t num_eth_rx_queues;
+	uint16_t num_eth_rx_queues;
 
 	/* parse decimal string */
 	num_eth_rx_queues = strtoul(eth_rx_queues, &end, 10);
@@ -631,6 +658,7 @@ parse_event_eth_rx_queues(const char *eth_rx_queues)
 
 	evt_rsrc->eth_rx_queues = num_eth_rx_queues;
 }
+#endif
 
 static int
 parse_lookup(const char *optarg)
@@ -648,6 +676,65 @@ parse_lookup(const char *optarg)
 		return -1;
 	}
 	return 0;
+}
+
+static void
+parse_mbcache_size(const char *optarg)
+{
+	unsigned long mb_cache_size;
+	char *end = NULL;
+
+	mb_cache_size = strtoul(optarg, &end, 10);
+	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return;
+	if (mb_cache_size <= RTE_MEMPOOL_CACHE_MAX_SIZE)
+		mb_mempool_cache_size = (uint32_t)mb_cache_size;
+	else
+		rte_exit(EXIT_FAILURE, "mbcache must be >= 0 and <= %d\n",
+			 RTE_MEMPOOL_CACHE_MAX_SIZE);
+}
+
+static void
+parse_pkt_burst(const char *optarg)
+{
+	struct rte_eth_dev_info dev_info;
+	unsigned long pkt_burst;
+	uint16_t burst_size;
+	char *end = NULL;
+	int ret;
+
+	/* parse decimal string */
+	pkt_burst = strtoul(optarg, &end, 10);
+	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return;
+
+	if (pkt_burst > MAX_PKT_BURST) {
+		RTE_LOG(INFO, L3FWD, "User provided burst must be <= %d. Using default value %d\n",
+			MAX_PKT_BURST, nb_pkt_per_burst);
+		return;
+	} else if (pkt_burst > 0) {
+		nb_pkt_per_burst = (uint32_t)pkt_burst;
+		return;
+	}
+
+	/* If user gives a value of zero, query the PMD for its recommended Rx burst size. */
+	ret = rte_eth_dev_info_get(0, &dev_info);
+	if (ret != 0)
+		return;
+	burst_size = dev_info.default_rxportconf.burst_size;
+	if (burst_size == 0) {
+		RTE_LOG(INFO, L3FWD, "PMD does not recommend a burst size. Using default value %d. "
+			"User provided value must be in [1, %d]\n",
+			nb_pkt_per_burst, MAX_PKT_BURST);
+		return;
+	} else if (burst_size > MAX_PKT_BURST) {
+		RTE_LOG(INFO, L3FWD, "PMD recommended burst size %d exceeds maximum value %d. "
+			"Using default value %d\n",
+			burst_size, MAX_PKT_BURST, nb_pkt_per_burst);
+		return;
+	}
+	nb_pkt_per_burst = burst_size;
+	RTE_LOG(INFO, L3FWD, "Using PMD-provided burst value %d\n", burst_size);
 }
 
 #define MAX_JUMBO_PKT_LEN  9600
@@ -668,6 +755,8 @@ static const char short_options[] =
 #define CMD_LINE_OPT_MAX_PKT_LEN "max-pkt-len"
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
+#define CMD_LINE_OPT_DISABLE_RSS "disable-rss"
+#define CMD_LINE_OPT_RELAX_RX_OFFLOAD "relax-rx-offload"
 #define CMD_LINE_OPT_PER_PORT_POOL "per-port-pool"
 #define CMD_LINE_OPT_MODE "mode"
 #define CMD_LINE_OPT_EVENTQ_SYNC "eventq-sched"
@@ -679,6 +768,8 @@ static const char short_options[] =
 #define CMD_LINE_OPT_RULE_IPV4 "rule_ipv4"
 #define CMD_LINE_OPT_RULE_IPV6 "rule_ipv6"
 #define CMD_LINE_OPT_ALG "alg"
+#define CMD_LINE_OPT_PKT_BURST "burst"
+#define CMD_LINE_OPT_MB_CACHE_SIZE "mbcache"
 
 enum {
 	/* long options mapped to a short option */
@@ -695,6 +786,8 @@ enum {
 	CMD_LINE_OPT_MAX_PKT_LEN_NUM,
 	CMD_LINE_OPT_HASH_ENTRY_NUM_NUM,
 	CMD_LINE_OPT_PARSE_PTYPE_NUM,
+	CMD_LINE_OPT_DISABLE_RSS_NUM,
+	CMD_LINE_OPT_RELAX_RX_OFFLOAD_NUM,
 	CMD_LINE_OPT_RULE_IPV4_NUM,
 	CMD_LINE_OPT_RULE_IPV6_NUM,
 	CMD_LINE_OPT_ALG_NUM,
@@ -705,7 +798,9 @@ enum {
 	CMD_LINE_OPT_LOOKUP_NUM,
 	CMD_LINE_OPT_ENABLE_VECTOR_NUM,
 	CMD_LINE_OPT_VECTOR_SIZE_NUM,
-	CMD_LINE_OPT_VECTOR_TMO_NS_NUM
+	CMD_LINE_OPT_VECTOR_TMO_NS_NUM,
+	CMD_LINE_OPT_PKT_BURST_NUM,
+	CMD_LINE_OPT_MB_CACHE_SIZE_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -718,6 +813,8 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_MAX_PKT_LEN, 1, 0, CMD_LINE_OPT_MAX_PKT_LEN_NUM},
 	{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, CMD_LINE_OPT_HASH_ENTRY_NUM_NUM},
 	{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, CMD_LINE_OPT_PARSE_PTYPE_NUM},
+	{CMD_LINE_OPT_RELAX_RX_OFFLOAD, 0, 0, CMD_LINE_OPT_RELAX_RX_OFFLOAD_NUM},
+	{CMD_LINE_OPT_DISABLE_RSS, 0, 0, CMD_LINE_OPT_DISABLE_RSS_NUM},
 	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PARSE_PER_PORT_POOL},
 	{CMD_LINE_OPT_MODE, 1, 0, CMD_LINE_OPT_MODE_NUM},
 	{CMD_LINE_OPT_EVENTQ_SYNC, 1, 0, CMD_LINE_OPT_EVENTQ_SYNC_NUM},
@@ -730,6 +827,8 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_RULE_IPV4,   1, 0, CMD_LINE_OPT_RULE_IPV4_NUM},
 	{CMD_LINE_OPT_RULE_IPV6,   1, 0, CMD_LINE_OPT_RULE_IPV6_NUM},
 	{CMD_LINE_OPT_ALG,   1, 0, CMD_LINE_OPT_ALG_NUM},
+	{CMD_LINE_OPT_PKT_BURST,   1, 0, CMD_LINE_OPT_PKT_BURST_NUM},
+	{CMD_LINE_OPT_MB_CACHE_SIZE,   1, 0, CMD_LINE_OPT_MB_CACHE_SIZE_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -756,9 +855,11 @@ parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	uint8_t lcore_params = 0;
+#ifdef RTE_LIB_EVENTDEV
 	uint8_t eventq_sched = 0;
 	uint8_t eth_rx_q = 0;
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+#endif
 
 	argvopt = argv;
 
@@ -816,6 +917,14 @@ parse_args(int argc, char **argv)
 			parse_queue_size(optarg, &nb_txd, 0);
 			break;
 
+		case CMD_LINE_OPT_PKT_BURST_NUM:
+			parse_pkt_burst(optarg);
+			break;
+
+		case CMD_LINE_OPT_MB_CACHE_SIZE_NUM:
+			parse_mbcache_size(optarg);
+			break;
+
 		case CMD_LINE_OPT_ETH_DEST_NUM:
 			parse_eth_dest(optarg);
 			break;
@@ -841,6 +950,16 @@ parse_args(int argc, char **argv)
 			parse_ptype = 1;
 			break;
 
+		case CMD_LINE_OPT_RELAX_RX_OFFLOAD_NUM:
+			printf("Rx offload is relaxed\n");
+			relax_rx_offload = 1;
+			break;
+
+		case CMD_LINE_OPT_DISABLE_RSS_NUM:
+			printf("RSS is disabled\n");
+			disable_rss = 1;
+			break;
+
 		case CMD_LINE_OPT_PARSE_PER_PORT_POOL:
 			printf("per port buffer pool is enabled\n");
 			per_port_pool = 1;
@@ -850,6 +969,7 @@ parse_args(int argc, char **argv)
 			parse_mode(optarg);
 			break;
 
+#ifdef RTE_LIB_EVENTDEV
 		case CMD_LINE_OPT_EVENTQ_SYNC_NUM:
 			parse_eventq_sched(optarg);
 			eventq_sched = 1;
@@ -859,6 +979,20 @@ parse_args(int argc, char **argv)
 			parse_event_eth_rx_queues(optarg);
 			eth_rx_q = 1;
 			break;
+
+		case CMD_LINE_OPT_ENABLE_VECTOR_NUM:
+			printf("event vectorization is enabled\n");
+			evt_rsrc->vector_enabled = 1;
+			break;
+
+		case CMD_LINE_OPT_VECTOR_SIZE_NUM:
+			evt_rsrc->vector_size = strtol(optarg, NULL, 10);
+			break;
+
+		case CMD_LINE_OPT_VECTOR_TMO_NS_NUM:
+			evt_rsrc->vector_tmo_ns = strtoull(optarg, NULL, 10);
+			break;
+#endif
 
 		case CMD_LINE_OPT_LOOKUP_NUM:
 			if (lookup_mode != L3FWD_LOOKUP_DEFAULT) {
@@ -875,16 +1009,6 @@ parse_args(int argc, char **argv)
 				return -1;
 			break;
 
-		case CMD_LINE_OPT_ENABLE_VECTOR_NUM:
-			printf("event vectorization is enabled\n");
-			evt_rsrc->vector_enabled = 1;
-			break;
-		case CMD_LINE_OPT_VECTOR_SIZE_NUM:
-			evt_rsrc->vector_size = strtol(optarg, NULL, 10);
-			break;
-		case CMD_LINE_OPT_VECTOR_TMO_NS_NUM:
-			evt_rsrc->vector_tmo_ns = strtoull(optarg, NULL, 10);
-			break;
 		case CMD_LINE_OPT_RULE_IPV4_NUM:
 			l3fwd_set_rule_ipv4_name(optarg);
 			break;
@@ -900,6 +1024,8 @@ parse_args(int argc, char **argv)
 		}
 	}
 
+	RTE_SET_USED(lcore_params); /* needed if no eventdev block */
+#ifdef RTE_LIB_EVENTDEV
 	if (evt_rsrc->enabled && lcore_params) {
 		fprintf(stderr, "lcore config is not valid when event mode is selected\n");
 		return -1;
@@ -927,6 +1053,7 @@ parse_args(int argc, char **argv)
 			"vector timeout set to default (%" PRIu64 " ns)\n",
 			evt_rsrc->vector_tmo_ns);
 	}
+#endif
 
 	/*
 	 * Nothing is selected, pick longest-prefix match
@@ -962,7 +1089,9 @@ print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 int
 init_mem(uint16_t portid, unsigned int nb_mbuf)
 {
+#ifdef RTE_LIB_EVENTDEV
 	struct l3fwd_event_resources *evt_rsrc = l3fwd_get_eventdev_rsrc();
+#endif
 	struct lcore_conf *qconf;
 	int socketid;
 	unsigned lcore_id;
@@ -988,7 +1117,7 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 				 portid, socketid);
 			pktmbuf_pool[portid][socketid] =
 				rte_pktmbuf_pool_create(s, nb_mbuf,
-					MEMPOOL_CACHE_SIZE, 0,
+					mb_mempool_cache_size, 0,
 					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
 			if (pktmbuf_pool[portid][socketid] == NULL)
 				rte_exit(EXIT_FAILURE,
@@ -1007,6 +1136,7 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 			}
 		}
 
+#ifdef RTE_LIB_EVENTDEV
 		if (evt_rsrc->vector_enabled && vector_pool[portid] == NULL) {
 			unsigned int nb_vec;
 
@@ -1025,6 +1155,7 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 				printf("Allocated vector pool for port %d\n",
 				       portid);
 		}
+#endif
 
 		qconf = &lcore_conf[lcore_id];
 		qconf->ipv4_lookup_struct =
@@ -1169,7 +1300,8 @@ config_port_max_pkt_len(struct rte_eth_conf *conf,
 static void
 l3fwd_poll_resource_setup(void)
 {
-	uint8_t nb_rx_queue, queue, socketid;
+	uint8_t socketid;
+	uint16_t nb_rx_queue, queue;
 	struct rte_eth_dev_info dev_info;
 	uint32_t n_tx_queue, nb_lcores;
 	struct rte_eth_txconf *txconf;
@@ -1233,7 +1365,7 @@ l3fwd_poll_resource_setup(void)
 		local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 			dev_info.flow_type_rss_offloads;
 
-		if (dev_info.max_rx_queues == 1)
+		if (disable_rss == 1 || dev_info.max_rx_queues == 1)
 			local_port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 
 		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
@@ -1243,6 +1375,21 @@ l3fwd_poll_resource_setup(void)
 				portid,
 				port_conf.rx_adv_conf.rss_conf.rss_hf,
 				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
+		}
+
+		/* Relax Rx offload requirement */
+		if ((local_port_conf.rxmode.offloads & dev_info.rx_offload_capa) !=
+			local_port_conf.rxmode.offloads) {
+			printf("Port %u requested Rx offloads 0x%"PRIx64
+				" does not match Rx offloads capabilities 0x%"PRIx64"\n",
+				portid, local_port_conf.rxmode.offloads,
+				dev_info.rx_offload_capa);
+			if (relax_rx_offload) {
+				local_port_conf.rxmode.offloads &= dev_info.rx_offload_capa;
+				printf("Warning: modified Rx offload to 0x%"PRIx64
+						" based on device capability\n",
+						local_port_conf.rxmode.offloads);
+			}
 		}
 
 		ret = rte_eth_dev_configure(portid, nb_rx_queue,
@@ -1331,6 +1478,7 @@ l3fwd_poll_resource_setup(void)
 		fflush(stdout);
 		/* init RX queues */
 		for(queue = 0; queue < qconf->n_rx_queue; ++queue) {
+			struct rte_eth_conf local_conf;
 			struct rte_eth_rxconf rxq_conf;
 
 			portid = qconf->rx_queue_list[queue].port_id;
@@ -1351,8 +1499,14 @@ l3fwd_poll_resource_setup(void)
 					"Error during getting device (port %u) info: %s\n",
 					portid, strerror(-ret));
 
+			ret = rte_eth_dev_conf_get(portid, &local_conf);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE,
+					"Error during getting device (port %u) configuration: %s\n",
+					portid, strerror(-ret));
+
 			rxq_conf = dev_info.default_rxconf;
-			rxq_conf.offloads = port_conf.rxmode.offloads;
+			rxq_conf.offloads = local_conf.rxmode.offloads;
 			if (!per_port_pool)
 				ret = rte_eth_rx_queue_setup(portid, queueid,
 						nb_rxd, socketid,
@@ -1406,6 +1560,7 @@ l3fwd_service_enable(uint32_t service_id)
 	return 0;
 }
 
+#ifdef RTE_LIB_EVENTDEV
 static void
 l3fwd_event_service_setup(void)
 {
@@ -1458,16 +1613,20 @@ l3fwd_event_service_setup(void)
 		l3fwd_service_enable(service_id);
 	}
 }
+#endif
 
 int
 main(int argc, char **argv)
 {
+#ifdef RTE_LIB_EVENTDEV
 	struct l3fwd_event_resources *evt_rsrc;
+	int i;
+#endif
 	struct lcore_conf *qconf;
 	uint16_t queueid, portid;
 	unsigned int lcore_id;
-	uint8_t queue;
-	int i, ret;
+	uint16_t queue;
+	int ret;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1487,7 +1646,9 @@ main(int argc, char **argv)
 		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
 	}
 
+#ifdef RTE_LIB_EVENTDEV
 	evt_rsrc = l3fwd_get_eventdev_rsrc();
+#endif
 	/* parse application arguments (after the EAL ones) */
 	ret = parse_args(argc, argv);
 	if (ret < 0)
@@ -1499,6 +1660,7 @@ main(int argc, char **argv)
 	/* Add the config file rules */
 	l3fwd_lkp.read_config_files();
 
+#ifdef RTE_LIB_EVENTDEV
 	evt_rsrc->per_port_pool = per_port_pool;
 	evt_rsrc->pkt_pool = pktmbuf_pool;
 	evt_rsrc->vec_pool = vector_pool;
@@ -1512,8 +1674,8 @@ main(int argc, char **argv)
 			l3fwd_lkp.main_loop = evt_rsrc->ops.fib_event_loop;
 		else
 			l3fwd_lkp.main_loop = evt_rsrc->ops.lpm_event_loop;
-		l3fwd_event_service_setup();
 	} else
+#endif
 		l3fwd_poll_resource_setup();
 
 	/* start ports */
@@ -1543,6 +1705,11 @@ main(int argc, char **argv)
 		}
 	}
 
+#ifdef RTE_LIB_EVENTDEV
+	if (evt_rsrc->enabled)
+		l3fwd_event_service_setup();
+#endif
+
 	printf("\n");
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
@@ -1562,6 +1729,8 @@ main(int argc, char **argv)
 	ret = 0;
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(l3fwd_lkp.main_loop, NULL, CALL_MAIN);
+
+#ifdef RTE_LIB_EVENTDEV
 	if (evt_rsrc->enabled) {
 		for (i = 0; i < evt_rsrc->rx_adptr.nb_rx_adptr; i++)
 			rte_event_eth_rx_adapter_stop(
@@ -1589,7 +1758,9 @@ main(int argc, char **argv)
 		rte_event_dev_stop(evt_rsrc->event_d_id);
 		rte_event_dev_close(evt_rsrc->event_d_id);
 
-	} else {
+	} else
+#endif
+	{
 		rte_eal_mp_wait_lcore();
 
 		RTE_ETH_FOREACH_DEV(portid) {

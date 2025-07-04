@@ -23,16 +23,15 @@
  * application has access to the remaining lcores as normal.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include<stdio.h>
 #include <stdint.h>
 
-#include <rte_compat.h>
 #include <rte_config.h>
 #include <rte_lcore.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_SERVICE_NAME_MAX 32
 
@@ -275,7 +274,6 @@ int32_t rte_service_lcore_stop(uint32_t lcore_id);
  * @retval 1 Service thread is in the service core polling loop.
  * @retval -EINVAL Invalid *lcore_id* provided.
  */
-__rte_experimental
 int32_t rte_service_lcore_may_be_active(uint32_t lcore_id);
 
 /**
@@ -376,14 +374,31 @@ int32_t rte_service_lcore_count_services(uint32_t lcore);
 int32_t rte_service_dump(FILE *f, uint32_t id);
 
 /**
- * Returns the number of cycles that this service has consumed
+ * Returns the number of cycles that this service has consumed. Only
+ * cycles spent in non-idle calls (i.e., calls not returning -EAGAIN)
+ * count.
  */
 #define RTE_SERVICE_ATTR_CYCLES 0
 
 /**
- * Returns the count of invocations of this service function
+ * Returns the total number of invocations of this service function
+ * (regardless of return value).
  */
 #define RTE_SERVICE_ATTR_CALL_COUNT 1
+
+/**
+ * Returns the number of invocations of this service function where the
+ * service reported having not performed any useful work (i.e.,
+ * returned -EAGAIN).
+ */
+#define RTE_SERVICE_ATTR_IDLE_CALL_COUNT 2
+
+/**
+ * Returns the number of invocations of this service function where the
+ * service reported an error (i.e., the return value was neither 0 nor
+ * -EAGAIN).
+ */
+#define RTE_SERVICE_ATTR_ERROR_CALL_COUNT 3
 
 /**
  * Get an attribute from a service.
@@ -410,7 +425,8 @@ int32_t rte_service_attr_reset_all(uint32_t id);
 
 /**
  * Returns the total number of cycles that the lcore has spent on
- * running services.
+ * running services. Only non-idle calls (i.e., calls not returning
+ * -EAGAIN) count toward this total.
  */
 #define RTE_SERVICE_LCORE_ATTR_CYCLES 1
 

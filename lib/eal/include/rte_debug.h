@@ -46,8 +46,17 @@ void rte_dump_stack(void);
 #ifdef RTE_ENABLE_ASSERT
 #define RTE_ASSERT(exp)	RTE_VERIFY(exp)
 #else
-#define RTE_ASSERT(exp) do {} while (0)
+/*
+ * If RTE_ENABLE_ASSERT is not set, the exp is not checked
+ * but not evaluated because of the use of sizeof().
+ * The ternary operator is to allow function pointers and bit fields,
+ * and to suppress the evaluation of any variable length arrays.
+ */
+#define RTE_ASSERT(exp)	do { \
+	(void)sizeof((exp) ? 1 : 0); \
+} while (0)
 #endif
+
 #define	RTE_VERIFY(exp)	do {                                                  \
 	if (unlikely(!(exp)))                                                           \
 		rte_panic("line %d\tassert \"%s\" failed\n", __LINE__, #exp); \
@@ -60,11 +69,7 @@ void rte_dump_stack(void);
  * documentation.
  */
 void __rte_panic(const char *funcname , const char *format, ...)
-#ifdef __GNUC__
-#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 2))
 	__rte_cold
-#endif
-#endif
 	__rte_noreturn
 	__rte_format_printf(2, 3);
 

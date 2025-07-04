@@ -22,6 +22,12 @@
 #include "mlx5_glue.h"
 #include "mlx5_malloc.h"
 
+/* verb enumerations translations to local enums. */
+enum {
+	MLX5_FS_NAME_MAX = IBV_SYSFS_NAME_MAX + 1,
+	MLX5_FS_PATH_MAX = IBV_SYSFS_PATH_MAX + 1
+};
+
 /**
  * Get device name. Given an ibv_device pointer - return a
  * pointer to the corresponding device name.

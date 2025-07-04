@@ -4,9 +4,8 @@
 L3 Forwarding Sample Application
 ================================
 
-The L3 Forwarding application is a simple example of packet processing using
-DPDK to demonstrate usage of poll and event mode packet I/O mechanism.
-The application performs L3 forwarding.
+The L3 forwarding application is an example of packet processing
+using DPDK to demonstrate the usage of poll and event mode packet I/O mechanism.
 
 Overview
 --------
@@ -15,9 +14,9 @@ The application demonstrates the use of the hash, LPM, FIB and ACL libraries in 
 to implement packet forwarding using poll or event mode PMDs for packet I/O.
 The initialization and run-time paths are very similar to those of the
 :doc:`l2_forward_real_virtual` and :doc:`l2_forward_event`.
-The main difference from the L2 Forwarding sample application is that optionally
-packet can be Rx/Tx from/to eventdev instead of port directly and forwarding
-decision is made based on information read from the input packet.
+The main difference from the L2 forwarding sample application
+is that optionally the packet can be Rx/Tx from/to eventdev instead of to port directly.
+The forwarding decision is made based on information read from the input packet.
 
 Eventdev can optionally use S/W or H/W (if supported by platform) scheduler
 implementation for packet I/O based on run time parameters.
@@ -58,12 +57,12 @@ a source port, a destination port and a protocol identifier.
 
 In the sample application, hash-based, LPM-based, FIB-based and ACL-based forwarding supports
 both IPv4 and IPv6.
-During the initialization phase route rules for IPv4 and IPv6 are read from rule files.
+During the initialization, phase route rules for IPv4 and IPv6 are read from rule files.
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l3fwd`` sub-directory.
 
@@ -184,8 +183,8 @@ In this command:
 
 *   The -rule_ipv6 option specifies the reading of IPv6 rules sets from the rule_ipv6.cfg file.
 
-To use eventdev mode with sync method **ordered** on above mentioned environment,
-Following is the sample command:
+To use eventdev mode with sync method **ordered** on the above environment,
+the following is the sample command:
 
 .. code-block:: console
 
@@ -213,16 +212,16 @@ If application uses S/W scheduler, it uses following DPDK services:
 *   Rx adapter service function
 *   Tx adapter service function
 
-Application needs service cores to run above mentioned services. Service cores
+The application needs service cores to run the above mentioned services. Service cores
 must be provided as EAL parameters along with the --vdev=event_sw0 to enable S/W
-scheduler. Following is the sample command:
+scheduler. The following is the sample command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -s 0xf0000 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -S 16-19 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In case of eventdev mode, *--config* option is not used for ethernet port
-configuration. Instead each ethernet port will be configured with mentioned
+configuration. Instead, each ethernet port will be configured with this
 setup:
 
 *   Single Rx/Tx queue
@@ -239,7 +238,7 @@ the Environment Abstraction Layer (EAL) options.
 Explanation
 -----------
 
-The following sections provide some explanation of the sample application code. As mentioned in the overview section,
+The following sections provide explanation of the sample application code. As mentioned in the overview section,
 the initialization and run-time paths are very similar to those of the :doc:`l2_forward_real_virtual` and :doc:`l2_forward_event`.
 The following sections describe aspects that are specific to the L3 Forwarding sample application.
 
@@ -293,12 +292,12 @@ IPv4 addresses are specified in CIDR format as specified in RFC 4632.
 For LPM/FIB/ACL they consist of the dot notation for the address
 and a prefix length separated by '/'.
 For example, 192.168.0.34/32, where the address is 192.168.0.34 and the prefix length is 32.
-For EM they consist of just the dot notation for the address and no prefix length.
+For EM, they consist of just the dot notation for the address and no prefix length.
 For example, 192.168.0.34, where the Address is 192.168.0.34.
 EM also includes ports which are specified as a single number which represents a single port.
 
 The application parses the rules from the file,
-it ignores empty and comment lines,
+it ignores empty and comment lines
 and parses and validates the rules it reads.
 If errors are detected, the application exits
 with messages to identify the errors encountered.
@@ -476,5 +475,6 @@ can be found in the sample app code.
 
 Eventdev Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Eventdev driver initialization is same as L2 forwarding eventdev application.
+
+Eventdev driver initialization is the same as L2 forwarding eventdev application.
 Refer :doc:`l2_forward_event` for more details.

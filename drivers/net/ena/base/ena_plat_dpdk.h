@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2015-2020 Amazon.com, Inc. or its affiliates.
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) Amazon.com, Inc. or its affiliates.
  * All rights reserved.
  */
 
@@ -26,7 +26,6 @@
 #include <rte_spinlock.h>
 
 #include <sys/time.h>
-#include <rte_memcpy.h>
 
 typedef uint64_t u64;
 typedef uint32_t u32;
@@ -57,24 +56,18 @@ typedef uint64_t dma_addr_t;
 #define ENA_COM_TRY_AGAIN	-EAGAIN
 #define ENA_COM_UNSUPPORTED    -EOPNOTSUPP
 #define ENA_COM_EIO    -EIO
+#define ENA_COM_DEVICE_BUSY	-EBUSY
 
 #define ____cacheline_aligned __rte_cache_aligned
 
-#define ENA_ABORT() abort()
+#define ENA_CDESC_RING_SIZE_ALIGNMENT  (1 << 12) /* 4K */
 
 #define ENA_MSLEEP(x) rte_delay_us_sleep(x * 1000)
 #define ENA_USLEEP(x) rte_delay_us_sleep(x)
 #define ENA_UDELAY(x) rte_delay_us_block(x)
 
 #define ENA_TOUCH(x) ((void)(x))
-/* Redefine memcpy with caution: rte_memcpy can be simply aliased to memcpy, so
- * make the redefinition only if it's safe (and beneficial) to do so.
- */
-#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64_MEMCPY) || \
-	defined(RTE_ARCH_ARM_NEON_MEMCPY)
-#undef memcpy
-#define memcpy rte_memcpy
-#endif
+
 #define wmb rte_wmb
 #define rmb rte_rmb
 #define mb rte_mb
@@ -106,31 +99,35 @@ extern int ena_logtype_com;
 
 #define BITS_PER_LONG_LONG (__SIZEOF_LONG_LONG__ * 8)
 #define U64_C(x) x ## ULL
-#define BIT(nr)         (1UL << (nr))
+#define BIT(nr)	RTE_BIT32(nr)
+#define BIT64(nr)	RTE_BIT64(nr)
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
 #define GENMASK(h, l)	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
 #define GENMASK_ULL(h, l) (((~0ULL) - (1ULL << (l)) + 1) &		       \
 			  (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
 
-#define ena_trc_log(dev, level, fmt, arg...)				       \
+#define ena_trc_log(dev, level, fmt, ...)				       \
 	(								       \
 		ENA_TOUCH(dev),						       \
 		rte_log(RTE_LOG_ ## level, ena_logtype_com,		       \
-			"[ENA_COM: %s]" fmt, __func__, ##arg)		       \
+			"[ENA_COM: %s]" fmt, __func__, ##__VA_ARGS__)	       \
 	)
 
-#define ena_trc_dbg(dev, format, arg...) ena_trc_log(dev, DEBUG, format, ##arg)
-#define ena_trc_info(dev, format, arg...) ena_trc_log(dev, INFO, format, ##arg)
-#define ena_trc_warn(dev, format, arg...)				       \
-	ena_trc_log(dev, WARNING, format, ##arg)
-#define ena_trc_err(dev, format, arg...) ena_trc_log(dev, ERR, format, ##arg)
+#if (defined RTE_ETHDEV_DEBUG_TX) || (defined RTE_ETHDEV_DEBUG_RX)
+#define ena_trc_dbg(dev, format, ...) ena_trc_log(dev, DEBUG, format, ##__VA_ARGS__)
+#else
+#define ena_trc_dbg(dev, format, ...)
+#endif
+#define ena_trc_info(dev, format, ...) ena_trc_log(dev, INFO, format, ##__VA_ARGS__)
+#define ena_trc_warn(dev, format, ...) ena_trc_log(dev, WARNING, format, ##__VA_ARGS__)
+#define ena_trc_err(dev, format, ...) ena_trc_log(dev, ERR, format, ##__VA_ARGS__)
 
-#define ENA_WARN(cond, dev, format, arg...)				       \
+#define ENA_WARN(cond, dev, format, ...)				       \
 	do {								       \
 		if (unlikely(cond)) {					       \
 			ena_trc_err(dev,				       \
 				"Warn failed on %s:%s:%d:" format,	       \
-				__FILE__, __func__, __LINE__, ##arg);	       \
+				__FILE__, __func__, __LINE__, ##__VA_ARGS__);  \
 		}							       \
 	} while (0)
 
@@ -138,9 +135,9 @@ extern int ena_logtype_com;
 #define ena_spinlock_t rte_spinlock_t
 #define ENA_SPINLOCK_INIT(spinlock) rte_spinlock_init(&(spinlock))
 #define ENA_SPINLOCK_LOCK(spinlock, flags)				       \
-	({(void)flags; rte_spinlock_lock(&(spinlock)); })
+	__extension__ ({(void)(flags); rte_spinlock_lock(&(spinlock)); })
 #define ENA_SPINLOCK_UNLOCK(spinlock, flags)				       \
-	({(void)flags; rte_spinlock_unlock(&(spinlock)); })
+	__extension__ ({(void)(flags); rte_spinlock_unlock(&(spinlock)); })
 #define ENA_SPINLOCK_DESTROY(spinlock) ((void)(spinlock))
 
 typedef struct {
@@ -199,9 +196,21 @@ typedef struct {
 #define ENA_MIGHT_SLEEP()
 
 #define ena_time_t uint64_t
-#define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
-#define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				       \
+#define ena_time_high_res_t uint64_t
+
+/* Note that high resolution timers are not used by the ENA PMD for now.
+ * Although these macro definitions compile, it shall fail the
+ * compilation in case the unimplemented API is called prematurely.
+ */
+#define ENA_TIME_EXPIRE(timeout)  ((timeout) < rte_get_timer_cycles())
+#define ENA_TIME_EXPIRE_HIGH_RES(timeout) (RTE_SET_USED(timeout), 0)
+#define ENA_TIME_INIT_HIGH_RES() 0
+#define ENA_TIME_COMPARE_HIGH_RES(time1, time2) (RTE_SET_USED(time1), RTE_SET_USED(time2), 0)
+#define ENA_GET_SYSTEM_TIMEOUT(timeout_us) \
 	((timeout_us) * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
+#define ENA_GET_SYSTEM_TIMEOUT_HIGH_RES(current_time, timeout_us) \
+	(RTE_SET_USED(current_time), RTE_SET_USED(timeout_us), 0)
+#define ENA_GET_SYSTEM_TIME_HIGH_RES() 0
 
 const struct rte_memzone *
 ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
@@ -222,42 +231,41 @@ ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
 		ENA_MEM_ALLOC_COHERENT_ALIGNED(dmadev, size, virt, phys,       \
 			mem_handle, RTE_CACHE_LINE_SIZE)
 #define ENA_MEM_FREE_COHERENT(dmadev, size, virt, phys, mem_handle)	       \
-		({ ENA_TOUCH(size); ENA_TOUCH(phys); ENA_TOUCH(dmadev);	       \
+		__extension__ ({ ENA_TOUCH(size); ENA_TOUCH(phys); ENA_TOUCH(dmadev);	       \
 		   rte_memzone_free(mem_handle); })
 
 #define ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(				       \
-	dmadev, size, virt, phys, mem_handle, node, dev_node, alignment)       \
+	dmadev, size, virt, phys, mem_handle, node, alignment)			\
 	do {								       \
 		void *virt_addr;					       \
 		dma_addr_t phys_addr;					       \
-		ENA_TOUCH(dev_node);					       \
 		(mem_handle) = ena_mem_alloc_coherent((dmadev), (size),	       \
 			(node), (alignment), &virt_addr, &phys_addr);      \
 		(virt) = virt_addr;					       \
 		(phys) = phys_addr;					       \
 	} while (0)
 #define ENA_MEM_ALLOC_COHERENT_NODE(					       \
-	dmadev, size, virt, phys, mem_handle, node, dev_node)		       \
+	dmadev, size, virt, phys, mem_handle, node)				\
 		ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(dmadev, size, virt,	phys,  \
-			mem_handle, node, dev_node, RTE_CACHE_LINE_SIZE)
-#define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node)		       \
+			mem_handle, node, RTE_CACHE_LINE_SIZE)
+#define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node)				\
 	do {								       \
-		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			       \
+		ENA_TOUCH(dmadev);						\
 		virt = rte_zmalloc_socket(NULL, size, 0, node);		       \
 	} while (0)
 
 #define ENA_MEM_ALLOC(dmadev, size) rte_zmalloc(NULL, size, 1)
 #define ENA_MEM_FREE(dmadev, ptr, size)					       \
-	({ ENA_TOUCH(dmadev); ENA_TOUCH(size); rte_free(ptr); })
+	__extension__ ({ ENA_TOUCH(dmadev); ENA_TOUCH(size); rte_free(ptr); })
 
 #define ENA_DB_SYNC(mem_handle) ((void)mem_handle)
 
 #define ENA_REG_WRITE32(bus, value, reg)				       \
-	({ (void)(bus); rte_write32((value), (reg)); })
+	__extension__ ({ (void)(bus); rte_write32((value), (reg)); })
 #define ENA_REG_WRITE32_RELAXED(bus, value, reg)			       \
-	({ (void)(bus); rte_write32_relaxed((value), (reg)); })
+	__extension__ ({ (void)(bus); rte_write32_relaxed((value), (reg)); })
 #define ENA_REG_READ32(bus, reg)					       \
-	({ (void)(bus); rte_read32_relaxed((reg)); })
+	__extension__ ({ (void)(bus); rte_read32_relaxed((reg)); })
 
 #define ATOMIC32_INC(i32_ptr) rte_atomic32_inc(i32_ptr)
 #define ATOMIC32_DEC(i32_ptr) rte_atomic32_dec(i32_ptr)
@@ -281,7 +289,6 @@ ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
 
-#define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				       \
 	((timeout_us) * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
 #define ENA_WAIT_EVENTS_DESTROY(admin_queue) ((void)(admin_queue))
@@ -306,6 +313,29 @@ void ena_rss_key_fill(void *key, size_t size);
 #define ENA_RSS_FILL_KEY(key, size) ena_rss_key_fill(key, size)
 
 #define ENA_INTR_INITIAL_TX_INTERVAL_USECS_PLAT 0
+#define ENA_INTR_INITIAL_RX_INTERVAL_USECS_PLAT 0
 
 #include "ena_includes.h"
+
+#define ENA_BITS_PER_U64(bitmap) (ena_bits_per_u64(bitmap))
+
+#define ENA_FIELD_GET(value, mask, offset) (((value) & (mask)) >> (offset))
+#define ENA_FIELD_PREP(value, mask, offset) (((value) << (offset)) & (mask))
+
+#define ENA_ZERO_SHIFT 0
+
+static __rte_always_inline int ena_bits_per_u64(uint64_t bitmap)
+{
+	int count = 0;
+
+	while (bitmap) {
+		bitmap &= (bitmap - 1);
+		count++;
+	}
+
+	return count;
+}
+
+#define ENA_ADMIN_OS_DPDK 3
+
 #endif /* DPDK_ENA_COM_ENA_PLAT_DPDK_H_ */

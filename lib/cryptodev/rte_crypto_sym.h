@@ -14,10 +14,6 @@
  * as supported symmetric crypto operation combinations.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_compat.h>
@@ -25,6 +21,10 @@ extern "C" {
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Crypto IO Vector (in analogy with struct iovec)
@@ -172,14 +172,15 @@ enum rte_crypto_cipher_algorithm {
 	/**< ShangMi 4 (SM4) algorithm in ECB mode */
 	RTE_CRYPTO_CIPHER_SM4_CBC,
 	/**< ShangMi 4 (SM4) algorithm in CBC mode */
-	RTE_CRYPTO_CIPHER_SM4_CTR
+	RTE_CRYPTO_CIPHER_SM4_CTR,
 	/**< ShangMi 4 (SM4) algorithm in CTR mode */
+	RTE_CRYPTO_CIPHER_SM4_OFB,
+	/**< ShangMi 4 (SM4) algorithm in OFB mode */
+	RTE_CRYPTO_CIPHER_SM4_CFB,
+	/**< ShangMi 4 (SM4) algorithm in CFB mode */
+	RTE_CRYPTO_CIPHER_SM4_XTS
+	/**< ShangMi 4 (SM4) algorithm in XTS mode */
 };
-
-/** Cipher algorithm name strings */
-__rte_deprecated
-extern const char *
-rte_crypto_cipher_algorithm_strings[];
 
 /** Symmetric Cipher Direction */
 enum rte_crypto_cipher_operation {
@@ -242,7 +243,7 @@ struct rte_crypto_cipher_xform {
 	 *    (key1 || key2).
 	 *  - Each key can be either 128 bits (16 bytes) or 256 bits (32 bytes).
 	 *  - Both keys must have the same size.
-	 **/
+	 */
 	struct {
 		uint16_t offset;
 		/**< Starting point for Initialisation Vector or Counter,
@@ -280,7 +281,7 @@ struct rte_crypto_cipher_xform {
 		 *
 		 * - For block ciphers in CTR mode, this is the length
 		 * of the counter (which must be the same as the block
-		 * length of the cipher).
+		 * length of the cipher) or a 12-byte nonce (AES only)
 		 *
 		 * - For CCM mode, this is the length of the nonce,
 		 * which can be in the range 7 to 13 inclusive.
@@ -381,12 +382,9 @@ enum rte_crypto_auth_algorithm {
 	/**< 128 bit SHAKE algorithm. */
 	RTE_CRYPTO_AUTH_SHAKE_256,
 	/**< 256 bit SHAKE algorithm. */
+	RTE_CRYPTO_AUTH_SM3_HMAC,
+	/** < HMAC using ShangMi 3 (SM3) algorithm */
 };
-
-/** Authentication algorithm name strings */
-__rte_deprecated
-extern const char *
-rte_crypto_auth_algorithm_strings[];
 
 /** Symmetric Authentication / Hash Operations */
 enum rte_crypto_auth_operation {
@@ -484,14 +482,11 @@ enum rte_crypto_aead_algorithm {
 	/**< AES algorithm in CCM mode. */
 	RTE_CRYPTO_AEAD_AES_GCM,
 	/**< AES algorithm in GCM mode. */
-	RTE_CRYPTO_AEAD_CHACHA20_POLY1305
+	RTE_CRYPTO_AEAD_CHACHA20_POLY1305,
 	/**< Chacha20 cipher with poly1305 authenticator */
+	RTE_CRYPTO_AEAD_SM4_GCM,
+	/**< SM4 cipher in GCM mode */
 };
-
-/** AEAD algorithm name strings */
-__rte_deprecated
-extern const char *
-rte_crypto_aead_algorithm_strings[];
 
 /** Symmetric AEAD Operations */
 enum rte_crypto_aead_operation {
@@ -588,7 +583,6 @@ struct rte_crypto_sym_xform {
 	/**< next xform in chain */
 	enum rte_crypto_sym_xform_type type
 	; /**< xform type */
-	RTE_STD_C11
 	union {
 		struct rte_crypto_auth_xform auth;
 		/**< Authentication / hash xform */
@@ -635,7 +629,6 @@ struct rte_crypto_sym_op {
 	struct rte_mbuf *m_src;	/**< source mbuf */
 	struct rte_mbuf *m_dst;	/**< destination mbuf */
 
-	RTE_STD_C11
 	union {
 		void *session;
 		/**< Handle for the initialised crypto/security session context */
@@ -643,7 +636,6 @@ struct rte_crypto_sym_op {
 		/**< Session-less API crypto operation parameters */
 	};
 
-	RTE_STD_C11
 	union {
 		struct {
 			struct {
@@ -655,7 +647,7 @@ struct rte_crypto_sym_op {
 				uint32_t length;
 				 /**< The message length, in bytes, of the source buffer
 				  * on which the cryptographic operation will be
-				  * computed. This must be a multiple of the block size
+				  * computed.
 				  */
 			} data; /**< Data offsets and length for AEAD */
 			struct {
@@ -697,21 +689,11 @@ struct rte_crypto_sym_op {
 				 * and the length encoding in the first two bytes of the
 				 * second block.
 				 *
-				 * - the array should be big enough to hold the above
-				 * fields, plus any padding to round this up to the
-				 * nearest multiple of the block size (16 bytes).
-				 * Padding will be added by the implementation.
-				 *
 				 * - Note that PMDs may modify the memory reserved
 				 * (first 18 bytes and the final padding).
 				 *
 				 * Finally, for GCM (@ref RTE_CRYPTO_AEAD_AES_GCM), the
 				 * caller should setup this field as follows:
-				 *
-				 * - the AAD is written in starting at byte 0
-				 * - the array must be big enough to hold the AAD, plus
-				 * any space to round this up to the nearest multiple
-				 * of the block size (16 bytes).
 				 *
 				 */
 				rte_iova_t phys_addr;	/**< physical address */
@@ -743,8 +725,9 @@ struct rte_crypto_sym_op {
 					  * source buffer on which the cryptographic
 					  * operation will be computed.
 					  * This is also the same as the result length.
-					  * This must be a multiple of the block size
-					  * or a multiple of data-unit length
+					  * For block ciphers, this must be a
+					  * multiple of the block size,
+					  * or for the AES-XTS a multiple of the data-unit length
 					  * as described in xform.
 					  *
 					  * @note

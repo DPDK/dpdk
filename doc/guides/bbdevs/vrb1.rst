@@ -33,7 +33,6 @@ These hardware blocks provide the following features exposed by the PMD:
 - FFT processing
 - Single Root I/O Virtualization (SR-IOV) with 16 Virtual Functions (VFs) per Physical Function (PF)
 - Maximum of 256 queues per VF
-- Message Signaled Interrupts (MSIs)
 
 The Intel vRAN Boost v1.0 PMD supports the following bbdev capabilities:
 
@@ -57,25 +56,19 @@ The Intel vRAN Boost v1.0 PMD supports the following bbdev capabilities:
 * For the turbo encode operation:
    - ``RTE_BBDEV_TURBO_CRC_24B_ATTACH``: set to attach CRC24B to CB(s).
    - ``RTE_BBDEV_TURBO_RATE_MATCH``: if set then do not do Rate Match bypass.
-   - ``RTE_BBDEV_TURBO_ENC_INTERRUPTS``: set for encoder dequeue interrupts.
    - ``RTE_BBDEV_TURBO_RV_INDEX_BYPASS``: set to bypass RV index.
    - ``RTE_BBDEV_TURBO_ENC_SCATTER_GATHER``: supports scatter-gather for input/output data.
 
 * For the turbo decode operation:
    - ``RTE_BBDEV_TURBO_CRC_TYPE_24B``: check CRC24B from CB(s).
    - ``RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE``: perform subblock de-interleave.
-   - ``RTE_BBDEV_TURBO_DEC_INTERRUPTS``: set for decoder dequeue interrupts.
    - ``RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN``: set if negative LLR input is supported.
    - ``RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP``: keep CRC24B bits appended while decoding.
    - ``RTE_BBDEV_TURBO_DEC_CRC_24B_DROP``: option to drop the code block CRC after decoding.
    - ``RTE_BBDEV_TURBO_EARLY_TERMINATION``: set early termination feature.
    - ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER``: supports scatter-gather for input/output data.
    - ``RTE_BBDEV_TURBO_HALF_ITERATION_EVEN``: set half iteration granularity.
-   - ``RTE_BBDEV_TURBO_SOFT_OUTPUT``: set the APP LLR soft output.
-   - ``RTE_BBDEV_TURBO_EQUALIZER``: set the turbo equalizer feature.
-   - ``RTE_BBDEV_TURBO_SOFT_OUT_SATURATE``: set the soft output saturation.
    - ``RTE_BBDEV_TURBO_CONTINUE_CRC_MATCH``: set to run an extra odd iteration after CRC match.
-   - ``RTE_BBDEV_TURBO_NEG_LLR_1_BIT_SOFT_OUT``: set if negative APP LLR output supported.
    - ``RTE_BBDEV_TURBO_MAP_DEC``: supports flexible parallel MAP engine decoding.
 
 * For the FFT operation:
@@ -111,72 +104,12 @@ can be listed through these commands for Intel vRAN Boost v1:
    sudo lspci -vd8086:57c0
 
 The physical and virtual functions are compatible with Linux UIO drivers:
-``vfio`` and ``igb_uio``.
+``vfio_pci`` and ``igb_uio``.
 However, in order to work the 5G/4G FEC device first needs to be bound
 to one of these Linux drivers through DPDK.
 
-
-Bind PF UIO driver(s)
-~~~~~~~~~~~~~~~~~~~~~
-
-Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
-``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
-
-The igb_uio driver may be bound to the PF PCI device using one of two methods
-for Intel vRAN Boost v1:
-
-#. PCI functions (physical or virtual, depending on the use case) can be bound
-to the UIO driver by repeating this command for every function.
-
-.. code-block:: console
-
-   cd <dpdk-top-level-directory>
-   insmod build/kmod/igb_uio.ko
-   echo "8086 57c0" > /sys/bus/pci/drivers/igb_uio/new_id
-   lspci -vd8086:57c0
-
-#. Another way to bind PF with DPDK UIO driver is by using the ``dpdk-devbind.py`` tool
-
-.. code-block:: console
-
-   cd <dpdk-top-level-directory>
-   usertools/dpdk-devbind.py -b igb_uio 0000:f7:00.0
-
-where the PCI device ID (example: 0000:f7:00.0) is obtained using ``lspci -vd8086:57c0``.
-
-In a similar way the PF may be bound with vfio-pci as any PCIe device.
-
-
-Enable Virtual Functions
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Now, it should be visible in the printouts that PCI PF is under igb_uio control
-"``Kernel driver in use: igb_uio``"
-
-To show the number of available VFs on the device, read ``sriov_totalvfs`` file.
-
-.. code-block:: console
-
-   cat /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_totalvfs
-
-where ``0000\:<b>\:<d>.<f>`` is the PCI device ID
-
-To enable VFs via igb_uio, echo the number of virtual functions intended
-to enable to ``max_vfs`` file.
-
-.. code-block:: console
-
-   echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/max_vfs
-
-Afterwards, all VFs must be bound to appropriate UIO drivers as required,
-same way it was done with the physical function previously.
-
-Enabling SR-IOV via VFIO driver is pretty much the same,
-except that the file name is different:
-
-.. code-block:: console
-
-   echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_numvfs
+For more details on how to bind the PF device and create VF devices, see
+:ref:`linux_gsg_binding_kernel`.
 
 
 Configure the VFs through PF
@@ -196,39 +129,11 @@ which sets up the parameters defined in the compatible ``acc200_conf`` structure
 Test Application
 ----------------
 
-The bbdev class is provided with a test application, ``test-bbdev.py``
-and range of test data for testing the functionality of the device,
-depending on the device's capabilities.
-The test application is located under app/test-bbdev folder
-and has the following options:
+BBDEV provides a test application, ``test-bbdev.py`` and range of test data for testing
+the functionality of the device, depending on the device's capabilities.
 
-.. code-block:: console
-
-   "-p", "--testapp-path": specifies path to the bbdev test app.
-   "-e", "--eal-params": EAL arguments which are passed to the test app.
-   "-t", "--timeout": Timeout in seconds (default=300).
-   "-c", "--test-cases": Defines test cases to run. Run all if not specified.
-   "-v", "--test-vector": Test vector path.
-   "-n", "--num-ops": Number of operations to process on device (default=32).
-   "-b", "--burst-size": Operations enqueue/dequeue burst size (default=32).
-   "-s", "--snr": SNR in dB used when generating LLRs for bler tests.
-   "-s", "--iter_max": Number of iterations for LDPC decoder.
-   "-l", "--num-lcores": Number of lcores to run (default=16).
-   "-i", "--init-device": Initialise PF device with default values.
-
-
-To execute the test application tool using simple decode or encode data,
-type one of the following:
-
-.. code-block:: console
-
-  ./test-bbdev.py -c validation -n 64 -b 1 -v ./ldpc_dec_default.data
-  ./test-bbdev.py -c validation -n 64 -b 1 -v ./ldpc_enc_default.data
-
-
-The test application ``test-bbdev.py``, supports the ability to configure the
-PF device with a default set of values, if the "-i" or "- -init-device" option
-is included. The default values are defined in test_bbdev_perf.c.
+For more details on how to use the test application,
+see :ref:`test_bbdev_application`.
 
 
 Test Vectors
@@ -258,4 +163,4 @@ Specifically for the bbdev Intel vRAN Boost v1 PMD, the command below can be use
 .. code-block:: console
 
    pf_bb_config ACC200 -c ./acc200/acc200_config_vf_5g.cfg
-   test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data
+   test-bbdev.py -e="-l 4-11 -a${VF_PCI_ADDR}" -c validation -n 64 -b 64 -l 1 -v ./ldpc_dec_default.data

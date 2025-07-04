@@ -10,11 +10,11 @@
 
 #include "rte_common.h"
 
+#include "generic/rte_memcpy.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_memcpy.h"
 
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)

@@ -275,8 +275,8 @@ typedef enum sec_job_ring_state_e {
 
 /* code or cmd block to caam */
 struct sec_cdb {
-	struct {
-		union {
+	struct __rte_packed_begin {
+		union __rte_packed_begin {
 			uint32_t word;
 			struct {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -289,9 +289,9 @@ struct sec_cdb {
 				uint16_t rsvd63_48;
 #endif
 			} field;
-		} __rte_packed hi;
+		} __rte_packed_end hi;
 
-		union {
+		union __rte_packed_begin {
 			uint32_t word;
 			struct {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -314,8 +314,8 @@ struct sec_cdb {
 				unsigned int rsvd31_30:2;
 #endif
 			} field;
-		} __rte_packed lo;
-	} __rte_packed sh_hdr;
+		} __rte_packed_end lo;
+	} __rte_packed_end sh_hdr;
 
 	uint32_t sh_desc[SEC_JOB_DESCRIPTOR_SIZE];
 };
@@ -390,54 +390,54 @@ struct sec_job_ring_t {
 /* Union describing the possible error codes that
  * can be set in the descriptor status word
  */
-union hw_error_code {
+union __rte_packed_begin hw_error_code {
 	uint32_t error;
-	union {
-		struct {
+	union __rte_packed_begin {
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t ssed_val:28;
-		} __rte_packed value;
-		struct {
+		} __rte_packed_end value;
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t res:28;
-		} __rte_packed no_status_src;
-		struct {
+		} __rte_packed_end no_status_src;
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t jmp:1;
 			uint32_t res:11;
 			uint32_t desc_idx:8;
 			uint32_t cha_id:4;
 			uint32_t err_id:4;
-		} __rte_packed ccb_status_src;
-		struct {
+		} __rte_packed_end ccb_status_src;
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t jmp:1;
 			uint32_t res:11;
 			uint32_t desc_idx:8;
 			uint32_t offset:8;
-		} __rte_packed jmp_halt_user_src;
-		struct {
+		} __rte_packed_end jmp_halt_user_src;
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t jmp:1;
 			uint32_t res:11;
 			uint32_t desc_idx:8;
 			uint32_t desc_err:8;
-		} __rte_packed deco_src;
-		struct {
+		} __rte_packed_end deco_src;
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t res:17;
 			uint32_t naddr:3;
 			uint32_t desc_err:8;
-		} __rte_packed jr_src;
-		struct {
+		} __rte_packed_end jr_src;
+		struct __rte_packed_begin {
 			uint32_t ssrc:4;
 			uint32_t jmp:1;
 			uint32_t res:11;
 			uint32_t desc_idx:8;
 			uint32_t cond:8;
-		} __rte_packed jmp_halt_cond_src;
-	} __rte_packed error_desc;
-} __rte_packed;
+		} __rte_packed_end jmp_halt_cond_src;
+	} __rte_packed_end error_desc;
+} __rte_packed_end;
 
 /* @brief Initialize a job ring/channel in SEC device.
  * Write configuration register/s to properly initialize a job ring.

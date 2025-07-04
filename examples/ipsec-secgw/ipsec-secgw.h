@@ -54,13 +54,13 @@
 #define IPSEC_NAT_T_PORT 4500
 #define MBUF_PTYPE_TUNNEL_ESP_IN_UDP (RTE_PTYPE_TUNNEL_ESP | RTE_PTYPE_L4_UDP)
 
-struct traffic_type {
+struct __rte_cache_aligned traffic_type {
 	uint32_t num;
 	struct rte_mbuf *pkts[MAX_PKTS];
 	const uint8_t *data[MAX_PKTS];
 	void *saptr[MAX_PKTS];
 	uint32_t res[MAX_PKTS];
-} __rte_cache_aligned;
+};
 
 struct ipsec_traffic {
 	struct traffic_type ipsec;
@@ -84,7 +84,7 @@ struct ipsec_traffic_nb {
 
 /* port/source ethernet addr and destination ethernet addr */
 struct ethaddr_info {
-	uint64_t src, dst;
+	struct rte_ether_addr src, dst;
 };
 
 struct ipsec_spd_stats {
@@ -98,7 +98,7 @@ struct ipsec_sa_stats {
 	uint64_t miss;
 };
 
-struct ipsec_core_statistics {
+struct __rte_cache_aligned ipsec_core_statistics {
 	uint64_t tx;
 	uint64_t rx;
 	uint64_t rx_call;
@@ -126,7 +126,7 @@ struct ipsec_core_statistics {
 	struct {
 		uint64_t miss;
 	} lpm6;
-} __rte_cache_aligned;
+};
 
 extern struct ipsec_core_statistics core_statistics[RTE_MAX_LCORE];
 
@@ -229,14 +229,10 @@ free_reassembly_fail_pkt(struct rte_mbuf *mb)
 }
 
 /* helper routine to free bulk of packets */
-static inline void
-free_pkts(struct rte_mbuf *mb[], uint32_t n)
+static __rte_always_inline void
+free_pkts(struct rte_mbuf *mb[], const uint32_t n)
 {
-	uint32_t i;
-
-	for (i = 0; i != n; i++)
-		rte_pktmbuf_free(mb[i]);
-
+	n == 1 ? rte_pktmbuf_free(mb[0]) : rte_pktmbuf_free_bulk(mb, n);
 	core_stats_update_drop(n);
 }
 

@@ -37,11 +37,11 @@
 #define DRIVER_NAME baseband_turbo_sw
 
 RTE_LOG_REGISTER_DEFAULT(bbdev_turbo_sw_logtype, NOTICE);
+#define RTE_LOGTYPE_BBDEV_TURBO_SW bbdev_turbo_sw_logtype
 
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, bbdev_turbo_sw_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, BBDEV_TURBO_SW, __VA_ARGS__)
 
 #define rte_bbdev_log_debug(fmt, ...) \
 	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \
@@ -72,7 +72,7 @@ static const char * const turbo_sw_valid_params[] = {
 };
 
 /* queue */
-struct turbo_sw_queue {
+struct __rte_cache_aligned turbo_sw_queue {
 	/* Ring for processed (encoded/decoded) operations which are ready to
 	 * be dequeued.
 	 */
@@ -95,7 +95,7 @@ struct turbo_sw_queue {
 	uint8_t *adapter_output;
 	/* Operation type of this queue */
 	enum rte_bbdev_op_type type;
-} __rte_cache_aligned;
+};
 
 
 #ifdef RTE_BBDEV_SDK_AVX2
@@ -269,7 +269,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 			dev_info->num_queues[op_cap->type] = num_queue_per_type;
 	}
 
-	rte_bbdev_log_debug("got device info from %u\n", dev->data->dev_id);
+	rte_bbdev_log_debug("got device info from %u", dev->data->dev_id);
 }
 
 /* Release queue */
@@ -1951,7 +1951,7 @@ turbo_sw_bbdev_probe(struct rte_vdev_device *vdev)
 	parse_turbo_sw_params(&init_params, input_args);
 
 	rte_bbdev_log_debug(
-			"Initialising %s on NUMA node %d with max queues: %d\n",
+			"Initialising %s on NUMA node %d with max queues: %d",
 			name, init_params.socket_id, init_params.queues_num);
 
 	return turbo_sw_bbdev_create(vdev, &init_params);

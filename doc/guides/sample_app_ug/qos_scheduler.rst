@@ -194,7 +194,7 @@ Another example with 2 packet flow configurations using different ports but shar
 Note that independent cores for the packet flow configurations for each of the RX, WT and TX thread are also supported,
 providing flexibility to balance the work.
 
-The EAL coremask/corelist is constrained to contain the default main core 1 and the RX, WT and TX cores only.
+The EAL corelist is constrained to contain the default main core 1 and the RX, WT and TX cores only.
 
 Explanation
 -----------

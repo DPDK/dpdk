@@ -86,6 +86,12 @@ l2fwd_event_device_setup_generic(struct l2fwd_resources *rsrc)
 	evt_rsrc->has_burst = !!(dev_info.event_dev_cap &
 				    RTE_EVENT_DEV_CAP_BURST_MODE);
 
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)
+		event_d_conf.preschedule_type = RTE_EVENT_PRESCHEDULE;
+
+	if (dev_info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+		event_d_conf.preschedule_type = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
+
 	ret = rte_event_dev_configure(event_d_id, &event_d_conf);
 	if (ret < 0)
 		rte_panic("Error in configuring event device\n");

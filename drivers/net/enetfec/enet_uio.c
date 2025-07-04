@@ -177,7 +177,7 @@ config_enetfec_uio(struct enetfec_private *fep)
 
 	/* Mapping is done only one time */
 	if (enetfec_count > 0) {
-		ENETFEC_PMD_INFO("Mapped!\n");
+		ENETFEC_PMD_INFO("Mapped!");
 		return 0;
 	}
 
@@ -191,7 +191,7 @@ config_enetfec_uio(struct enetfec_private *fep)
 	/* Open device file */
 	uio_job->uio_fd = open(uio_device_file_name, O_RDWR);
 	if (uio_job->uio_fd < 0) {
-		ENETFEC_PMD_WARN("Unable to open ENETFEC_UIO file\n");
+		ENETFEC_PMD_WARN("Unable to open ENETFEC_UIO file");
 		return -1;
 	}
 
@@ -230,7 +230,7 @@ enetfec_configure(void)
 
 	d = opendir(FEC_UIO_DEVICE_SYS_ATTR_PATH);
 	if (d == NULL) {
-		ENETFEC_PMD_ERR("\nError opening directory '%s': %s\n",
+		ENETFEC_PMD_ERR("Error opening directory '%s': %s",
 			FEC_UIO_DEVICE_SYS_ATTR_PATH, strerror(errno));
 		return -1;
 	}
@@ -249,7 +249,7 @@ enetfec_configure(void)
 			ret = sscanf(dir->d_name + strlen("uio"), "%d",
 							&uio_minor_number);
 			if (ret < 0)
-				ENETFEC_PMD_ERR("Error: not find minor number\n");
+				ENETFEC_PMD_ERR("Error: not find minor number");
 			/*
 			 * Open file uioX/name and read first line which
 			 * contains the name for the device. Based on the
@@ -259,7 +259,7 @@ enetfec_configure(void)
 			ret = file_read_first_line(FEC_UIO_DEVICE_SYS_ATTR_PATH,
 					dir->d_name, "name", uio_name);
 			if (ret != 0) {
-				ENETFEC_PMD_INFO("file_read_first_line failed\n");
+				ENETFEC_PMD_INFO("file_read_first_line failed");
 				closedir(d);
 				return -1;
 			}

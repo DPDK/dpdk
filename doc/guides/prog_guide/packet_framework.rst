@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-Packet Framework
-================
+Packet Framework Library
+========================
 
 Design Objectives
 -----------------
@@ -87,18 +87,15 @@ Port Types
    |   |                  | management and hierarchical scheduling according to pre-defined SLAs.                 |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
-   | 6 | KNI              | Send/receive packets to/from Linux kernel space.                                      |
-   |   |                  |                                                                                       |
-   +---+------------------+---------------------------------------------------------------------------------------+
-   | 7 | Source           | Input port used as packet generator. Similar to Linux kernel /dev/zero character      |
+   | 6 | Source           | Input port used as packet generator. Similar to Linux kernel /dev/zero character      |
    |   |                  | device.                                                                               |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
-   | 8 | Sink             | Output port used to drop all input packets. Similar to Linux kernel /dev/null         |
+   | 7 | Sink             | Output port used to drop all input packets. Similar to Linux kernel /dev/null         |
    |   |                  | character device.                                                                     |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
-   | 9 | Sym_crypto       | Output port used to extract DPDK Cryptodev operations from a fixed offset of the      |
+   | 8 | Sym_crypto       | Output port used to extract DPDK Cryptodev operations from a fixed offset of the      |
    |   |                  | packet and then enqueue to the Cryptodev PMD. Input port used to dequeue the          |
    |   |                  | Cryptodev operations from the Cryptodev PMD and then retrieve the packets from them.  |
    +---+------------------+---------------------------------------------------------------------------------------+
@@ -512,7 +509,7 @@ the number of L2 or L3 cache memory misses is greatly reduced, hence one of the 
 This is because the cost of L2/L3 cache memory miss on memory read accesses is high, as usually due to data dependency between instructions,
 the CPU execution units have to stall until the read operation is completed from L3 cache memory or external DRAM memory.
 By using prefetch instructions, the latency of memory read accesses is hidden,
-provided that it is preformed early enough before the respective data structure is actually used.
+provided that it is performed early enough before the respective data structure is actually used.
 
 By splitting the processing into several stages that are executed on different packets (the packets from the input burst are interlaced),
 enough work is created to allow the prefetch instructions to complete successfully (before the prefetched data structures are actually accessed) and

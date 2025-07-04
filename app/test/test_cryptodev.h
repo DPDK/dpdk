@@ -4,24 +4,21 @@
 #ifndef TEST_CRYPTODEV_H_
 #define TEST_CRYPTODEV_H_
 
-#define HEX_DUMP 0
-
-#define FALSE                           0
-#define TRUE                            1
+#include <rte_cryptodev.h>
 
 #define MAX_NUM_OPS_INFLIGHT            (4096)
 #define MIN_NUM_OPS_INFLIGHT            (128)
 #define DEFAULT_NUM_OPS_INFLIGHT        (128)
+#define TEST_STATS_RETRIES              (100)
 
-#define MAX_NUM_QPS_PER_QAT_DEVICE      (2)
-#define DEFAULT_NUM_QPS_PER_QAT_DEVICE  (2)
-#define DEFAULT_BURST_SIZE              (64)
 #define DEFAULT_NUM_XFORMS              (2)
 #define NUM_MBUFS                       (8191)
 #define MBUF_CACHE_SIZE                 (256)
 #define MBUF_DATAPAYLOAD_SIZE		(4096 + DIGEST_BYTE_LENGTH_SHA512)
 #define MBUF_SIZE			(sizeof(struct rte_mbuf) + \
 		RTE_PKTMBUF_HEADROOM + MBUF_DATAPAYLOAD_SIZE)
+#define LARGE_MBUF_DATAPAYLOAD_SIZE	(UINT16_MAX - RTE_PKTMBUF_HEADROOM)
+#define LARGE_MBUF_SIZE			(RTE_PKTMBUF_HEADROOM + LARGE_MBUF_DATAPAYLOAD_SIZE)
 
 #define BYTE_LENGTH(x)				(x/8)
 /* HASH DIGEST LENGTHS */
@@ -43,7 +40,11 @@
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA384		(24)
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA512		(32)
 
-#define MAXIMUM_IV_LENGTH				(16)
+/*
+ * maximum IV length need to include both the
+ * auth IV length (16 bytes) and the cipher IV length (16 bytes)
+ */
+#define MAXIMUM_IV_LENGTH				(32)
 #define AES_GCM_J0_LENGTH				(16)
 
 #define IV_OFFSET			(sizeof(struct rte_crypto_op) + \
@@ -67,6 +68,7 @@
 #define CRYPTODEV_NAME_MVSAM_PMD		crypto_mvsam
 #define CRYPTODEV_NAME_CCP_PMD		crypto_ccp
 #define CRYPTODEV_NAME_VIRTIO_PMD	crypto_virtio
+#define CRYPTODEV_NAME_VIRTIO_USER_PMD	crypto_virtio_user
 #define CRYPTODEV_NAME_OCTEONTX_SYM_PMD	crypto_octeontx
 #define CRYPTODEV_NAME_CAAM_JR_PMD	crypto_caam_jr
 #define CRYPTODEV_NAME_NITROX_PMD	crypto_nitrox_sym
@@ -75,6 +77,7 @@
 #define CRYPTODEV_NAME_CN10K_PMD	crypto_cn10k
 #define CRYPTODEV_NAME_MLX5_PMD		crypto_mlx5
 #define CRYPTODEV_NAME_UADK_PMD		crypto_uadk
+#define CRYPTODEV_NAME_ZSDA_SYM_PMD	crypto_zsda
 
 
 enum cryptodev_api_test_type {
@@ -90,7 +93,6 @@ struct crypto_testsuite_params {
 	struct rte_mempool *large_mbuf_pool;
 	struct rte_mempool *op_mpool;
 	struct rte_mempool *session_mpool;
-	struct rte_mempool *session_priv_mpool;
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 
@@ -148,7 +150,8 @@ pktmbuf_write(struct rte_mbuf *mbuf, int offset, int len, const uint8_t *buffer)
 }
 
 static inline uint8_t *
-pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset) {
+pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset)
+{
 	struct rte_mbuf *m;
 
 	for (m = mbuf; (m != NULL) && (offset > m->data_len); m = m->next)
@@ -162,7 +165,8 @@ pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset) {
 }
 
 static inline rte_iova_t
-pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset) {
+pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset)
+{
 	struct rte_mbuf *m;
 
 	for (m = mbuf; (m != NULL) && (offset > m->data_len); m = m->next)
@@ -177,18 +181,11 @@ pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset) {
 
 static inline struct rte_mbuf *
 create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
-		int nb_segs, uint8_t pattern) {
-
+		int nb_segs, uint8_t pattern)
+{
 	struct rte_mbuf *m = NULL, *mbuf = NULL;
+	int size, t_len, data_len = 0;
 	uint8_t *dst;
-	int data_len = 0;
-	int i, size;
-	int t_len;
-
-	if (pkt_len < 1) {
-		printf("Packet size must be 1 or more (is %d)\n", pkt_len);
-		return NULL;
-	}
 
 	if (nb_segs < 1) {
 		printf("Number of segments must be 1 or more (is %d)\n",
@@ -200,16 +197,16 @@ create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 	size = pkt_len;
 
 	/* Create chained mbuf_src and fill it generated data */
-	for (i = 0; size > 0; i++) {
+	do {
 
 		m = rte_pktmbuf_alloc(mbuf_pool);
-		if (i == 0)
-			mbuf = m;
-
 		if (m == NULL) {
 			printf("Cannot create segment for source mbuf");
 			goto fail;
 		}
+
+		if (mbuf == NULL)
+			mbuf = m;
 
 		/* Make sure if tailroom is zeroed */
 		memset(m->buf_addr, pattern, m->buf_len);
@@ -227,7 +224,8 @@ create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 
 		size -= data_len;
 
-	}
+	} while (size > 0);
+
 	return mbuf;
 
 fail:
@@ -235,7 +233,45 @@ fail:
 	return NULL;
 }
 
-void
+static inline struct rte_mbuf *
+create_segmented_mbuf_multi_pool(struct rte_mempool *mbuf_pool_small,
+		struct rte_mempool *mbuf_pool_large, int pkt_len, int nb_segs, uint8_t pattern)
+{
+	struct rte_mempool *mbuf_pool;
+	int max_seg_len, seg_len;
+
+	if (nb_segs < 1) {
+		printf("Number of segments must be 1 or more (is %d)\n", nb_segs);
+		return NULL;
+	}
+
+	if (pkt_len >= nb_segs)
+		seg_len = pkt_len / nb_segs;
+	else
+		seg_len = 1;
+
+	/* Determine max segment length */
+	max_seg_len = seg_len + pkt_len % nb_segs;
+
+	if (max_seg_len > LARGE_MBUF_DATAPAYLOAD_SIZE) {
+		printf("Segment size %d is too big\n", max_seg_len);
+		return NULL;
+	}
+
+	if (max_seg_len > MBUF_DATAPAYLOAD_SIZE)
+		mbuf_pool = mbuf_pool_large;
+	else
+		mbuf_pool = mbuf_pool_small;
+
+	if (mbuf_pool == NULL) {
+		printf("Invalid mbuf pool\n");
+		return NULL;
+	}
+
+	return create_segmented_mbuf(mbuf_pool, pkt_len, nb_segs, pattern);
+}
+
+int
 process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		struct rte_crypto_op *op, uint8_t is_cipher, uint8_t is_auth,
 		uint8_t len_in_bits, uint8_t cipher_iv_len);

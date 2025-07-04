@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Multi-process_Support:
-
 Multi-process Support
 =====================
 
@@ -107,15 +105,19 @@ Running Multiple Independent DPDK Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In addition to the above scenarios involving multiple DPDK processes working together,
-it is possible to run multiple DPDK processes side-by-side,
+it is possible to run multiple DPDK processes concurrently,
 where those processes are all working independently.
 Support for this usage scenario is provided using the ``--file-prefix`` parameter to the EAL.
 
-By default, the EAL creates hugepage files on each hugetlbfs filesystem using the rtemap_X filename,
+The EAL puts shared runtime files in a directory based on standard conventions.
+If ``$RUNTIME_DIRECTORY`` is defined in the environment,
+it is used (as ``$RUNTIME_DIRECTORY/dpdk``).
+Otherwise, if DPDK is run as root user, it uses ``/var/run/dpdk``
+or if run as non-root user then the ``/tmp/dpdk`` (or ``$XDG_RUNTIME_DIRECTORY/dpdk``) is used.
+Hugepage files on each hugetlbfs filesystem use the ``rtemap_X`` filename,
 where X is in the range 0 to the maximum number of hugepages -1.
-Similarly, it creates shared configuration files, memory mapped in each process, using the /var/run/.rte_config filename,
-when run as root (or $HOME/.rte_config when run as a non-root user;
-if filesystem and device permissions are set up to allow this).
+Similarly, it creates shared configuration files, memory mapped in each process,
+using the ``.rte_config`` filename.
 The rte part of the filenames of each of the above is configurable using the file-prefix parameter.
 
 In addition to specifying the file-prefix parameter,
@@ -125,7 +127,7 @@ allocate more memory than they need. However if ``--legacy-mem`` is used, DPDK
 will attempt to preallocate all memory it can get to, and memory use must be
 explicitly limited. This is done by passing the ``-m`` flag to each process to
 specify how much hugepage memory, in megabytes, each process can use (or passing
-``--socket-mem`` to specify how much hugepage memory on each socket each process
+``--numa-mem`` to specify how much hugepage memory on each socket each process
 can use).
 
 .. note::
@@ -164,7 +166,7 @@ Some of these are documented below:
     so it is recommended that it be disabled only when absolutely necessary,
     and only when the implications of this change have been understood.
 
-*   All DPDK processes running as a single application and using shared memory must have distinct coremask/corelist arguments.
+*   All DPDK processes running as a single application and using shared memory must have distinct corelist arguments.
     It is not possible to have a primary and secondary instance, or two secondary instances,
     using any of the same logical cores.
     Attempting to do so can cause corruption of memory pool caches, among other issues.

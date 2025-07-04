@@ -134,12 +134,18 @@
 #define HNS3_TXD_L4LEN_S			24
 #define HNS3_TXD_L4LEN_M			(0xffUL << HNS3_TXD_L4LEN_S)
 
+#define HNS3_TXD_L4_START_S			8
+#define HNS3_TXD_L4_START_M			(0xffff << HNS3_TXD_L4_START_S)
+
 #define HNS3_TXD_OL3T_S				0
 #define HNS3_TXD_OL3T_M				(0x3 << HNS3_TXD_OL3T_S)
 #define HNS3_TXD_OVLAN_B			2
 #define HNS3_TXD_MACSEC_B			3
 #define HNS3_TXD_TUNTYPE_S			4
 #define HNS3_TXD_TUNTYPE_M			(0xf << HNS3_TXD_TUNTYPE_S)
+
+#define HNS3_TXD_L4_CKS_OFFSET_S		8
+#define HNS3_TXD_L4_CKS_OFFSET_M	(0xffff << HNS3_TXD_L4_CKS_OFFSET_S)
 
 #define HNS3_TXD_BDTYPE_S			0
 #define HNS3_TXD_BDTYPE_M			(0xf << HNS3_TXD_BDTYPE_S)
@@ -157,10 +163,13 @@
 #define HNS3_TXD_MSS_S				0
 #define HNS3_TXD_MSS_M				(0x3fff << HNS3_TXD_MSS_S)
 
+#define HNS3_TXD_CKST_B				14
+
 #define HNS3_TXD_OL4CS_B			22
 #define HNS3_L2_LEN_UNIT			1UL
 #define HNS3_L3_LEN_UNIT			2UL
 #define HNS3_L4_LEN_UNIT			2UL
+#define HNS3_SIMPLE_BD_UNIT			1UL
 
 #define HNS3_TXD_DEFAULT_BDTYPE		0
 #define HNS3_TXD_VLD_CMD		(0x1 << HNS3_TXD_VLD_B)
@@ -168,6 +177,8 @@
 #define HNS3_TXD_DEFAULT_VLD_FE_BDTYPE		\
 		(HNS3_TXD_VLD_CMD | HNS3_TXD_FE_CMD | HNS3_TXD_DEFAULT_BDTYPE)
 #define HNS3_TXD_SEND_SIZE_SHIFT	16
+
+#define HNS3_KEEP_CRC_OK_MIN_PKT_LEN	60
 
 enum hns3_pkt_l2t_type {
 	HNS3_L2_TYPE_UNICAST,
@@ -205,7 +216,7 @@ enum hns3_pkt_tun_type {
 };
 
 /* hardware spec ring buffer format */
-struct hns3_desc {
+struct __rte_packed_begin hns3_desc {
 	union {
 		uint64_t addr;
 		uint64_t timestamp;
@@ -247,7 +258,7 @@ struct hns3_desc {
 
 			uint32_t paylen_fd_dop_ol4cs;
 			uint16_t tp_fe_sc_vld_ra_ri;
-			uint16_t mss;
+			uint16_t ckst_mss;
 		} tx;
 
 		struct {
@@ -273,7 +284,7 @@ struct hns3_desc {
 			};
 		} rx;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 struct hns3_entry {
 	struct rte_mbuf *mbuf;
@@ -332,6 +343,7 @@ struct hns3_rx_queue {
 	 */
 	uint8_t pvid_sw_discard_en:1;
 	uint8_t ptype_en:1;          /* indicate if the ptype field enabled */
+	uint8_t keep_crc_fail_ptype:2;
 
 	uint64_t mbuf_initializer; /* value to init mbufs used with vector rx */
 	/* offset_table: used for vector, to solve execute re-order problem */
@@ -353,11 +365,14 @@ struct hns3_rx_queue {
 
 	struct rte_mbuf fake_mbuf; /* fake mbuf used with vector rx */
 
+	/* The CRC context, which is used by software to calculate CRC data. */
+	struct rte_net_crc *crc_ctx;
+
 	/*
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
 	 */
-	void *io_base __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *io_base;
 	struct hns3_adapter *hns;
 	uint64_t rx_ring_phys_addr; /* RX ring DMA address */
 	const struct rte_memzone *mz;
@@ -488,6 +503,7 @@ struct hns3_tx_queue {
 	 */
 	uint16_t udp_cksum_mode:1;
 
+	/* check whether the simple BD mode is supported */
 	uint16_t simple_bd_enable:1;
 	uint16_t tx_push_enable:1;    /* check whether the tx push is enabled */
 	/*
@@ -530,7 +546,7 @@ struct hns3_tx_queue {
 	 * The following fields are not accessed in the I/O path, so they are
 	 * placed at the end.
 	 */
-	void *io_base __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *io_base;
 	struct hns3_adapter *hns;
 	uint64_t tx_ring_phys_addr; /* TX ring DMA address */
 	const struct rte_memzone *mz;
@@ -542,6 +558,35 @@ struct hns3_tx_queue {
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool enabled;           /* indicate if Tx queue has been enabled */
 };
+
+#define RX_BD_LOG(hw, level, rxdp) \
+	PMD_RX_LOG(hw, level, "Rx descriptor: " \
+		"l234_info=%#x pkt_len=%u size=%u rss_hash=%#x fd_id=%u vlan_tag=%u " \
+		"o_dm_vlan_id_fb=%#x ot_vlan_tag=%u bd_base_info=%#x", \
+		rte_le_to_cpu_32((rxdp)->rx.l234_info), \
+		rte_le_to_cpu_16((rxdp)->rx.pkt_len), \
+		rte_le_to_cpu_16((rxdp)->rx.size), \
+		rte_le_to_cpu_32((rxdp)->rx.rss_hash), \
+		rte_le_to_cpu_16((rxdp)->rx.fd_id), \
+		rte_le_to_cpu_16((rxdp)->rx.vlan_tag), \
+		rte_le_to_cpu_16((rxdp)->rx.o_dm_vlan_id_fb), \
+		rte_le_to_cpu_16((rxdp)->rx.ot_vlan_tag), \
+		rte_le_to_cpu_32((rxdp)->rx.bd_base_info))
+
+#define TX_BD_LOG(hw, level, txdp) \
+	PMD_TX_LOG(hw, level, "Tx descriptor: " \
+		"vlan_tag=%u send_size=%u type_cs_vlan_tso_len=%#x outer_vlan_tag=%u " \
+		"tv=%#x ol_type_vlan_len_msec=%#x paylen_fd_dop_ol4cs=%#x " \
+		"tp_fe_sc_vld_ra_ri=%#x ckst_mss=%u", \
+		rte_le_to_cpu_16((txdp)->tx.vlan_tag), \
+		rte_le_to_cpu_16((txdp)->tx.send_size), \
+		rte_le_to_cpu_32((txdp)->tx.type_cs_vlan_tso_len), \
+		rte_le_to_cpu_16((txdp)->tx.outer_vlan_tag), \
+		rte_le_to_cpu_16((txdp)->tx.tv), \
+		rte_le_to_cpu_32((txdp)->tx.ol_type_vlan_len_msec), \
+		rte_le_to_cpu_32((txdp)->tx.paylen_fd_dop_ol4cs), \
+		rte_le_to_cpu_16((txdp)->tx.tp_fe_sc_vld_ra_ri), \
+		rte_le_to_cpu_16((txdp)->tx.ckst_mss))
 
 #define HNS3_GET_TX_QUEUE_PEND_BD_NUM(txq) \
 		((txq)->nb_tx_desc - 1 - (txq)->tx_bd_ready)
@@ -737,7 +782,8 @@ uint16_t hns3_xmit_pkts_vec_sve(void *tx_queue, struct rte_mbuf **tx_pkts,
 int hns3_tx_burst_mode_get(struct rte_eth_dev *dev,
 			   __rte_unused uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
-const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					      size_t *no_of_elements);
 void hns3_init_rx_ptype_tble(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
 uint32_t hns3_get_tqp_intr_reg_offset(uint16_t tqp_intr_id);
@@ -775,5 +821,6 @@ void hns3_stop_tx_datapath(struct rte_eth_dev *dev);
 void hns3_start_tx_datapath(struct rte_eth_dev *dev);
 void hns3_stop_rxtx_datapath(struct rte_eth_dev *dev);
 void hns3_start_rxtx_datapath(struct rte_eth_dev *dev);
+int hns3_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 
 #endif /* HNS3_RXTX_H */

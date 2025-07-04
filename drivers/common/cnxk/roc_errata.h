@@ -6,7 +6,7 @@
 
 #include "roc_model.h"
 
-/* Errata IPBUNIXRX-40129 */
+/* Errata IPBUNIXRX-40129, IPBUNIXRX-40179 */
 static inline bool
 roc_errata_nix_has_no_drop_re(void)
 {
@@ -25,7 +25,8 @@ roc_errata_nix_has_cq_min_size_4k(void)
 static inline bool
 roc_errata_npa_has_no_fc_stype_ststp(void)
 {
-	return roc_model_is_cn10ka_a0() ? true : false;
+	return roc_model_is_cn10ka_a0() || roc_model_is_cn10ka_a1() || roc_model_is_cnf10ka_a0() ||
+	       roc_model_is_cnf10kb_a0();
 }
 
 /* Errata IPBUNIXTX-39337 */
@@ -40,19 +41,13 @@ static inline bool
 roc_errata_nix_has_no_vwqe_flush_op(void)
 {
 	return (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
-		roc_model_is_cnf10kb_a0());
+		roc_model_is_cnf10kb_a0() || roc_model_is_cn10ka_a1() || roc_model_is_cn10ka_b0() ||
+		roc_model_is_cn10kb_a0());
 }
 
 /* Errata IPBURVUM-38481 */
 static inline bool
 roc_errata_ruvm_has_no_interrupt_with_msixen(void)
-{
-	return true;
-}
-
-/* Errata IPBUNIXTX-39300 */
-static inline bool
-roc_errata_nix_has_assign_incorrect_qintidx(void)
 {
 	return true;
 }
@@ -68,21 +63,30 @@ roc_errata_cpt_has_use_incorrect_ldwb(void)
 static inline bool
 roc_errata_nix_has_overwrite_incorrect_sq_intr(void)
 {
-	return true;
+	return (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
+		roc_model_is_cnf10kb_a0() || roc_model_is_cn10ka_a1());
 }
 
 /* Errata IPBUNIXTX-39248 */
 static inline bool
 roc_errata_nix_has_perf_issue_on_stats_update(void)
 {
-	return true;
+	return (roc_model_is_cn10ka_a0() || roc_model_is_cnf10ka_a0() ||
+		roc_model_is_cnf10kb_a0() || roc_model_is_cn10ka_a1());
 }
 
-/* Errata IPBUCPT-38726, IPBUCPT-38727 */
+/* Errata IPBUCPT-38736, IPBUCPT-38737 */
 static inline bool
 roc_errata_cpt_hang_on_x2p_bp(void)
 {
 	return roc_model_is_cn10ka_a0() || roc_model_is_cn10ka_a1();
+}
+
+/* Errata IPBUCPT-38756 */
+static inline bool
+roc_errata_cpt_has_ctx_fetch_issue(void)
+{
+	return roc_model_is_cn10kb();
 }
 
 /* IPBUNIXRX-40400 */

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2021 Broadcom
+ * Copyright(c) 2019-2023 Broadcom
  * All rights reserved.
  */
 
@@ -10,13 +10,12 @@
 #include "tf_identifier.h"
 #include "tf_tbl.h"
 #include "tf_tcam.h"
-#ifdef TF_TCAM_SHARED
 #include "tf_tcam_shared.h"
-#endif /* TF_TCAM_SHARED */
 #include "tf_em.h"
 #include "tf_if_tbl.h"
 #include "tfp.h"
 #include "tf_msg_common.h"
+#include "tf_util.h"
 
 #define TF_DEV_P4_PARIF_MAX 16
 #define TF_DEV_P4_PF_MASK 0xfUL
@@ -298,11 +297,15 @@ tf_dev_p4_get_tcam_slice_info(struct tf *tfp,
 		return rc;
 
 /* Single slice support */
-#define CFA_P4_WC_TCAM_SLICE_SIZE     12
-
+#define CFA_P4_WC_TCAM_SLICE_SIZE   (12)
 	if (type == TF_TCAM_TBL_TYPE_WC_TCAM) {
-		*num_slices_per_row = tfs->wc_num_slices_per_row;
-		if (key_sz > *num_slices_per_row * CFA_P4_WC_TCAM_SLICE_SIZE)
+		if (key_sz <= 1 * CFA_P4_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_1_SLICE_PER_ROW;
+		else if (key_sz <= 2 * CFA_P4_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_2_SLICE_PER_ROW;
+		else if (key_sz <= 4 * CFA_P4_WC_TCAM_SLICE_SIZE)
+			*num_slices_per_row = TF_WC_TCAM_4_SLICE_PER_ROW;
+		else
 			return -ENOTSUP;
 	} else { /* for other type of tcam */
 		*num_slices_per_row = 1;
@@ -509,6 +512,11 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_get_sram_resources = NULL,
 	.tf_dev_set_sram_policy = NULL,
 	.tf_dev_get_sram_policy = NULL,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = NULL,
+	.tf_dev_query_resc_usage = NULL,
+	.tf_dev_update_tbl_usage_buffer = NULL,
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**
@@ -526,13 +534,13 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_tbl_info = NULL,
 	.tf_dev_is_sram_managed = tf_dev_p4_is_sram_managed,
 	.tf_dev_alloc_tbl = tf_tbl_alloc,
-	.tf_dev_alloc_ext_tbl = tf_tbl_ext_alloc,
+	.tf_dev_alloc_ext_tbl = NULL,
 	.tf_dev_alloc_sram_tbl = tf_tbl_alloc,
 	.tf_dev_free_tbl = tf_tbl_free,
-	.tf_dev_free_ext_tbl = tf_tbl_ext_free,
+	.tf_dev_free_ext_tbl = NULL,
 	.tf_dev_free_sram_tbl = tf_tbl_free,
 	.tf_dev_set_tbl = tf_tbl_set,
-	.tf_dev_set_ext_tbl = tf_tbl_ext_common_set,
+	.tf_dev_set_ext_tbl = NULL,
 	.tf_dev_set_sram_tbl = NULL,
 	.tf_dev_get_tbl = tf_tbl_get,
 	.tf_dev_get_sram_tbl = NULL,
@@ -540,30 +548,22 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_bulk_sram_tbl = NULL,
 	.tf_dev_get_shared_tbl_increment = tf_dev_p4_get_shared_tbl_increment,
 	.tf_dev_get_tbl_resc_info = tf_tbl_get_resc_info,
-#ifdef TF_TCAM_SHARED
 	.tf_dev_alloc_tcam = tf_tcam_shared_alloc,
 	.tf_dev_free_tcam = tf_tcam_shared_free,
 	.tf_dev_set_tcam = tf_tcam_shared_set,
 	.tf_dev_get_tcam = tf_tcam_shared_get,
 	.tf_dev_move_tcam = tf_tcam_shared_move_p4,
 	.tf_dev_clear_tcam = tf_tcam_shared_clear,
-#else /* !TF_TCAM_SHARED */
-	.tf_dev_alloc_tcam = tf_tcam_alloc,
-	.tf_dev_free_tcam = tf_tcam_free,
-	.tf_dev_set_tcam = tf_tcam_set,
-	.tf_dev_get_tcam = tf_tcam_get,
-#endif
-	.tf_dev_alloc_search_tcam = tf_tcam_alloc_search,
 	.tf_dev_get_tcam_resc_info = tf_tcam_get_resc_info,
 	.tf_dev_insert_int_em_entry = tf_em_insert_int_entry,
 	.tf_dev_delete_int_em_entry = tf_em_delete_int_entry,
-	.tf_dev_insert_ext_em_entry = tf_em_insert_ext_entry,
-	.tf_dev_delete_ext_em_entry = tf_em_delete_ext_entry,
+	.tf_dev_insert_ext_em_entry = NULL,
+	.tf_dev_delete_ext_em_entry = NULL,
 	.tf_dev_get_em_resc_info = tf_em_get_resc_info,
-	.tf_dev_alloc_tbl_scope = tf_em_ext_common_alloc,
-	.tf_dev_map_tbl_scope = tf_em_ext_map_tbl_scope,
+	.tf_dev_alloc_tbl_scope = NULL,
+	.tf_dev_map_tbl_scope = NULL,
 	.tf_dev_map_parif = tf_dev_p4_map_parif,
-	.tf_dev_free_tbl_scope = tf_em_ext_common_free,
+	.tf_dev_free_tbl_scope = NULL,
 	.tf_dev_set_if_tbl = tf_if_tbl_set,
 	.tf_dev_get_if_tbl = tf_if_tbl_get,
 	.tf_dev_set_global_cfg = tf_global_cfg_set,
@@ -575,4 +575,9 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_sram_resources = NULL,
 	.tf_dev_set_sram_policy = NULL,
 	.tf_dev_get_sram_policy = NULL,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = NULL,
+	.tf_dev_query_resc_usage = NULL,
+	.tf_dev_update_tbl_usage_buffer = NULL,
+#endif /* TF_FLOW_SCALE_QUERY */
 };

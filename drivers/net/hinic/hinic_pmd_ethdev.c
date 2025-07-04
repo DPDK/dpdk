@@ -980,6 +980,7 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 	int rc;
 	char *name;
 	struct hinic_nic_dev *nic_dev;
+	uint16_t i;
 
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	name = dev->data->name;
@@ -1046,6 +1047,11 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 		(void)hinic_link_update(dev, 0);
 
 	rte_bit_relaxed_set32(HINIC_DEV_START, &nic_dev->dev_status);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 
@@ -1169,6 +1175,7 @@ static int hinic_dev_stop(struct rte_eth_dev *dev)
 	uint16_t port_id;
 	struct hinic_nic_dev *nic_dev;
 	struct rte_eth_link link;
+	uint16_t i;
 
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	name = dev->data->name;
@@ -1214,6 +1221,11 @@ static int hinic_dev_stop(struct rte_eth_dev *dev)
 	/* free mbuf */
 	hinic_free_all_rx_mbuf(dev);
 	hinic_free_all_tx_mbuf(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -1902,7 +1914,7 @@ static int hinic_flow_ctrl_set(struct rte_eth_dev *dev,
 	nic_dev->nic_pause.rx_pause = nic_pause.rx_pause;
 	nic_dev->nic_pause.tx_pause = nic_pause.tx_pause;
 
-	PMD_DRV_LOG(INFO, "Set pause options, tx: %s, rx: %s, auto: %s\n",
+	PMD_DRV_LOG(INFO, "Set pause options, tx: %s, rx: %s, auto: %s",
 		nic_pause.tx_pause ? "on" : "off",
 		nic_pause.rx_pause ? "on" : "off",
 		nic_pause.auto_neg ? "on" : "off");
@@ -2547,7 +2559,7 @@ static int hinic_pf_get_default_cos(struct hinic_hwdev *hwdev, u8 *cos_id)
 
 	valid_cos_bitmap = hwdev->cfg_mgmt->svc_cap.valid_cos_bitmap;
 	if (!valid_cos_bitmap) {
-		PMD_DRV_LOG(ERR, "PF has none cos to support\n");
+		PMD_DRV_LOG(ERR, "PF has none cos to support");
 		return -EFAULT;
 	}
 
@@ -3074,7 +3086,7 @@ static int hinic_func_init(struct rte_eth_dev *eth_dev)
 
 	snprintf(nic_dev->proc_dev_name,
 		 sizeof(nic_dev->proc_dev_name),
-		 "hinic-%.4x:%.2x:%.2x.%x",
+		 "hinic-" PCI_PRI_FMT,
 		 pci_dev->addr.domain, pci_dev->addr.bus,
 		 pci_dev->addr.devid, pci_dev->addr.function);
 
@@ -3190,7 +3202,7 @@ static int hinic_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
-	PMD_DRV_LOG(INFO, "Initializing pf hinic-%.4x:%.2x:%.2x.%x in %s process",
+	PMD_DRV_LOG(INFO, "Initializing pf hinic-" PCI_PRI_FMT " in %s process",
 		    pci_dev->addr.domain, pci_dev->addr.bus,
 		    pci_dev->addr.devid, pci_dev->addr.function,
 		    (rte_eal_process_type() == RTE_PROC_PRIMARY) ?

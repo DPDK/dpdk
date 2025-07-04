@@ -54,7 +54,7 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		MLX5_ASSERT(priv->vlan_filter_n != 0);
 		/* Enabling an existing VLAN filter has no effect. */
 		if (on)
-			goto out;
+			goto no_effect;
 		/* Remove VLAN filter from list. */
 		--priv->vlan_filter_n;
 		memmove(&priv->vlan_filter[i],
@@ -66,14 +66,13 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		MLX5_ASSERT(i == priv->vlan_filter_n);
 		/* Disabling an unknown VLAN filter has no effect. */
 		if (!on)
-			goto out;
+			goto no_effect;
 		/* Add new VLAN filter. */
 		priv->vlan_filter[priv->vlan_filter_n] = vlan_id;
 		++priv->vlan_filter_n;
 	}
-out:
-	if (dev->data->dev_started)
-		return mlx5_traffic_restart(dev);
+	return on ? mlx5_traffic_vlan_add(dev, vlan_id) : mlx5_traffic_vlan_remove(dev, vlan_id);
+no_effect:
 	return 0;
 }
 
@@ -108,7 +107,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 			dev->data->port_id, queue);
 		return;
 	}
-	DRV_LOG(DEBUG, "port %u set VLAN stripping offloads %d for port %uqueue %d",
+	DRV_LOG(DEBUG, "port %u set VLAN stripping offloads %d for port %u queue %d",
 		dev->data->port_id, on, rxq_data->port_id, queue);
 	if (rxq->ctrl->obj == NULL) {
 		/* Update related bits in RX queue. */

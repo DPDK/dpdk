@@ -68,6 +68,7 @@ struct sfc_ef100_rxq {
 #define SFC_EF100_RXQ_INGRESS_MPORT	0x80
 #define SFC_EF100_RXQ_USER_FLAG		0x100
 #define SFC_EF100_RXQ_NIC_DMA_MAP	0x200
+#define SFC_EF100_RXQ_VLAN_STRIPPED_TCI	0x400
 	unsigned int			ptr_mask;
 	unsigned int			evq_phase_bit_shift;
 	unsigned int			ready_pkts;
@@ -392,6 +393,7 @@ static const efx_rx_prefix_layout_t sfc_ef100_rx_prefix_layout = {
 		SFC_EF100_RX_PREFIX_FIELD(RSS_HASH, B_FALSE),
 		SFC_EF100_RX_PREFIX_FIELD(USER_FLAG, B_FALSE),
 		SFC_EF100_RX_PREFIX_FIELD(USER_MARK, B_FALSE),
+		SFC_EF100_RX_PREFIX_FIELD(VLAN_STRIP_TCI, B_FALSE),
 
 #undef	SFC_EF100_RX_PREFIX_FIELD
 	}
@@ -470,6 +472,14 @@ sfc_ef100_rx_prefix_to_offloads(const struct sfc_ef100_rxq *rxq,
 			typeof(&((efx_mport_id_t *)0)->id)) =
 				EFX_XWORD_FIELD(rx_prefix[0],
 						ESF_GZ_RX_PREFIX_INGRESS_MPORT);
+	}
+
+	if (rxq->flags & SFC_EF100_RXQ_VLAN_STRIPPED_TCI &&
+	    EFX_TEST_XWORD_BIT(rx_prefix[0],
+				   ESF_GZ_RX_PREFIX_VLAN_STRIPPED_LBN)) {
+		ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		m->vlan_tci = EFX_XWORD_FIELD(rx_prefix[0],
+						ESF_GZ_RX_PREFIX_VLAN_STRIP_TCI);
 	}
 
 	m->ol_flags = ol_flags;
@@ -655,7 +665,8 @@ done:
 }
 
 static const uint32_t *
-sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
+sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps,
+			       size_t *no_of_elements)
 {
 	static const uint32_t ef100_native_ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -674,9 +685,9 @@ sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
 		RTE_PTYPE_INNER_L4_FRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ef100_native_ptypes);
 	return ef100_native_ptypes;
 }
 
@@ -810,6 +821,12 @@ sfc_ef100_rx_qcreate(uint16_t port_id, uint16_t queue_id,
 	if (rxq->nic_dma_info->nb_regions > 0)
 		rxq->flags |= SFC_EF100_RXQ_NIC_DMA_MAP;
 
+	if (info->flags & SFC_RXQ_FLAG_INGRESS_MPORT)
+		rxq->flags |= SFC_EF100_RXQ_INGRESS_MPORT;
+
+	if (info->flags & SFC_RXQ_FLAG_VLAN_STRIPPED_TCI)
+		rxq->flags |= SFC_EF100_RXQ_VLAN_STRIPPED_TCI;
+
 	sfc_ef100_rx_debug(rxq, "RxQ doorbell is %p", rxq->doorbell);
 
 	*dp_rxqp = &rxq->dp;
@@ -876,11 +893,18 @@ sfc_ef100_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr,
 	else
 		rxq->flags &= ~SFC_EF100_RXQ_USER_MARK;
 
+
+	/*
+	 * At the moment, this feature is used only
+	 * by the representor proxy Rx queue and is
+	 * essential for representor support, so if
+	 * it has been requested but is unsupported,
+	 * point this inconsistency out to the user.
+	 */
 	if ((unsup_rx_prefix_fields &
-	     (1U << EFX_RX_PREFIX_FIELD_INGRESS_MPORT)) == 0)
-		rxq->flags |= SFC_EF100_RXQ_INGRESS_MPORT;
-	else
-		rxq->flags &= ~SFC_EF100_RXQ_INGRESS_MPORT;
+	     (1U << EFX_RX_PREFIX_FIELD_INGRESS_MPORT)) &&
+	    (rxq->flags & SFC_EF100_RXQ_INGRESS_MPORT))
+		return ENOTSUP;
 
 	rxq->prefix_size = pinfo->erpl_length;
 	rxq->rearm_data = sfc_ef100_mk_mbuf_rearm_data(rxq->dp.dpq.port_id,
@@ -994,7 +1018,8 @@ struct sfc_dp_rx sfc_ef100_rx = {
 				  SFC_DP_RX_FEAT_FLOW_MARK |
 				  SFC_DP_RX_FEAT_INTR |
 				  SFC_DP_RX_FEAT_STATS,
-	.dev_offload_capa	= 0,
+	.dev_offload_capa	= RTE_ETH_RX_OFFLOAD_KEEP_CRC |
+				  RTE_ETH_RX_OFFLOAD_VLAN_STRIP,
 	.queue_offload_capa	= RTE_ETH_RX_OFFLOAD_CHECKSUM |
 				  RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |
 				  RTE_ETH_RX_OFFLOAD_OUTER_UDP_CKSUM |

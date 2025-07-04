@@ -47,6 +47,8 @@ struct vnic_dev {
 	dma_addr_t linkstatus_pa;
 	struct vnic_stats *stats;
 	dma_addr_t stats_pa;
+	struct vnic_sriov_stats *sriov_stats;
+	dma_addr_t sriov_stats_pa;
 	struct vnic_devcmd_fw_info *fw_info;
 	dma_addr_t fw_info_pa;
 	struct fm_info *flowman_info;
@@ -164,6 +166,9 @@ static int vnic_dev_discover_res(struct vnic_dev *vdev,
 		case RES_TYPE_RQ:
 		case RES_TYPE_CQ:
 		case RES_TYPE_INTR_CTRL:
+		case RES_TYPE_ADMIN_WQ:
+		case RES_TYPE_ADMIN_RQ:
+		case RES_TYPE_ADMIN_CQ:
 			/* each count is stride bytes long */
 			len = count * VNIC_RES_STRIDE;
 			if (len + bar_offset > bar[bar_num].len) {
@@ -210,6 +215,9 @@ void __iomem *vnic_dev_get_res(struct vnic_dev *vdev, enum vnic_res_type type,
 	case RES_TYPE_RQ:
 	case RES_TYPE_CQ:
 	case RES_TYPE_INTR_CTRL:
+	case RES_TYPE_ADMIN_WQ:
+	case RES_TYPE_ADMIN_RQ:
+	case RES_TYPE_ADMIN_CQ:
 		return (char __iomem *)vdev->res[type].vaddr +
 			index * VNIC_RES_STRIDE;
 	default:
@@ -1143,6 +1151,18 @@ int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev)
 	return vdev->stats == NULL ? -ENOMEM : 0;
 }
 
+int vnic_dev_alloc_sriov_stats_mem(struct vnic_dev *vdev)
+{
+	char name[RTE_MEMZONE_NAMESIZE];
+	static uint32_t instance;
+
+	snprintf((char *)name, sizeof(name), "vnic_sriov_stats-%u", instance++);
+	vdev->sriov_stats = vdev->alloc_consistent(vdev->priv,
+					     sizeof(struct vnic_sriov_stats),
+					     &vdev->sriov_stats_pa, (uint8_t *)name);
+	return vdev->sriov_stats == NULL ? -ENOMEM : 0;
+}
+
 void vnic_dev_unregister(struct vnic_dev *vdev)
 {
 	if (vdev) {
@@ -1155,6 +1175,10 @@ void vnic_dev_unregister(struct vnic_dev *vdev)
 			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_stats),
 				vdev->stats, vdev->stats_pa);
+		if (vdev->sriov_stats)
+			vdev->free_consistent(vdev->priv,
+				sizeof(struct vnic_sriov_stats),
+				vdev->sriov_stats, vdev->sriov_stats_pa);
 		if (vdev->flowman_info)
 			vdev->free_consistent(vdev->priv,
 				sizeof(struct fm_info),
@@ -1354,4 +1378,28 @@ int vnic_dev_set_cq_entry_size(struct vnic_dev *vdev, uint32_t rq_idx,
 	int wait = 1000;
 
 	return vnic_dev_cmd(vdev, CMD_CQ_ENTRY_SIZE_SET, &a0, &a1, wait);
+}
+
+int vnic_dev_enable_admin_qp(struct vnic_dev *vdev, uint32_t enable)
+{
+	uint64_t a0, a1;
+	int wait = 1000;
+
+	a0 = QP_TYPE_ADMIN;
+	a1 = enable;
+	return vnic_dev_cmd(vdev, CMD_QP_TYPE_SET, &a0, &a1, wait);
+}
+
+int vnic_dev_sriov_stats(struct vnic_dev *vdev, struct vnic_sriov_stats **stats)
+{
+	uint64_t a0, a1;
+	int wait = 1000;
+	int err;
+
+	a0 = vdev->sriov_stats_pa;
+	a1 = sizeof(struct vnic_sriov_stats);
+	err = vnic_dev_cmd(vdev, CMD_SRIOV_STATS_GET, &a0, &a1, wait);
+	if (!err)
+		*stats = vdev->sriov_stats;
+	return err;
 }

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <ethdev_driver.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
@@ -201,6 +202,106 @@ test_invalid_devargs(void)
 	return fail;
 }
 
+struct devargs_parse_case {
+	const char *devargs;
+	uint8_t devargs_count;
+};
+
+static int
+test_valid_devargs_parsing(void)
+{
+	static const struct devargs_parse_case list[] = {
+		/* Single representors patterns */
+		{"representor=1", 1},
+		{"representor=[1,2,3]", 1},
+		{"representor=[0-3,5,7]", 1},
+		{"representor=vf[0-1]", 1},
+		{"representor=sf[0-1]", 1},
+		{"representor=pf1vf[0-1]", 1},
+		{"representor=pf[0-1]vf[1-2]", 1},
+		{"representor=pf[0-1]sf[1-2]", 1},
+		{"representor=c0pf[0-1]", 1},
+		{"representor=sf[1,2]vf[2]", 1},  /* Only SF ports will be represented */
+		{"representor=vf2sf[1-2]", 1},    /* Only VF ports will be represented */
+		{"representor=c[0-1]pf[0-1]vf[1-2]", 1},
+		/* Single devarg inside multiple representor pattern */
+		{"representor=[c[0-1]pf[0-1]vf[1-2]]", 1},
+		/* Multiple representors patterns */
+		{"representor=[vf0,3]", 2},
+		{"representor=[vf0,vf1]", 2},
+		{"representor=[vf[0],vf[1]]", 2},
+		{"representor=[vf[0,1],3]", 2},
+		{"representor=[vf[0,1],[3]]", 2},
+		{"representor=[pf1vf[0-1],3]", 2},
+		{"representor=[pf1vf[0-1],pf[0-1]]", 2},
+		{"representor=[pf1,pf3,pf1vf[0-1],vf[0],vf[1],vf0,vf1,vf2]", 8},
+		{"representor=[1,3,5,pf1,pf2,pf3,pf1vf[0-1],vf[0],vf[1],vf0,vf1,vf2]", 12},
+		{"representor=[[1,3,5],pf1,pf2,pf3,pf1vf[0-1],vf[0],vf[1],vf0,vf1,vf2]", 10},
+		{"representor=[c[0,2-4]pf[1,6]vf[0-1],vf[0],vf4,[3-5,7],pf1vf[0-1,6],pf[2,4,6]]", 6}
+	};
+	struct rte_eth_devargs eth_da[RTE_MAX_ETHPORTS];
+	uint32_t i;
+	int ret;
+	int fail = 0;
+
+	for (i = 0; i < RTE_DIM(list); i++) {
+		memset(eth_da, 0, RTE_MAX_ETHPORTS * sizeof(*eth_da));
+		ret = rte_eth_devargs_parse(list[i].devargs, eth_da, RTE_MAX_ETHPORTS);
+		if (ret <= 0) {
+			printf("rte_devargs_parse(%s) returned %d (but should not)\n",
+			       list[i].devargs, ret);
+			fail = ret;
+			break;
+		}
+
+		/* Check the return value, count should be equivalent to no of devargs. */
+		if (ret != list[i].devargs_count) {
+			printf("Devargs returned count %d != expected count %d\n", ret,
+			       list[i].devargs_count);
+			fail = -1;
+			break;
+		}
+	}
+	return fail;
+}
+
+static int
+test_invalid_devargs_parsing(void)
+{
+	static const char * const list[] = {
+		"representor=1,2,3,4",			/* Out [] missing */
+		"representor=[1 2 3]",			/* , missing */
+		"representor=c[1,2]",			/* Only controller no valid */
+		"representor=c0vf[0-1]",		/* Controller with vf alone not valid */
+		"representor=c0sf[0-1]",		/* Controller with sf alone not valid */
+		"representor=vf[0-1],vf3",		/* Out [] missing */
+		"representor=[[vf0,3]]",		/* Double [] is invalid */
+		"representor=pfvf[1-2]",		/* No PF index provided */
+		"representor=pf1[vf[1-2]]",		/* Additional [] across vf */
+		"representor=c0[pf1vf[1-2]]",		/* Additional [] across pfvf */
+		"representor=c0[pf1[vf[1-2]]]",		/* Additional [] across pfvf */
+		"representor=[pf1vf[0-1], pf[0-1]]",	/* Space between two devargs is invalid */
+		"representor=[pf1vf[0-1], 3]",		/* Space between two devargs is invalid */
+		"representor=pf1vf[1-2],representor=1", /* Multiple representor keys */
+	};
+	struct rte_eth_devargs eth_da[RTE_MAX_ETHPORTS];
+	uint32_t i;
+	int ret;
+	int fail = 0;
+
+	for (i = 0; i < RTE_DIM(list); i++) {
+		memset(eth_da, 0, RTE_MAX_ETHPORTS * sizeof(*eth_da));
+		ret = rte_eth_devargs_parse(list[i], eth_da, RTE_MAX_ETHPORTS);
+		if (ret > 0) {
+			printf("rte_devargs_parse(%s) returned %d (but should not)\n",
+			       list[i], ret);
+			fail = ret;
+			break;
+		}
+	}
+	return fail;
+}
+
 static int
 test_devargs(void)
 {
@@ -210,7 +311,13 @@ test_devargs(void)
 	printf("== test invalid case ==\n");
 	if (test_invalid_devargs() < 0)
 		return -1;
+	printf("== test devargs parsing valid case ==\n");
+	if (test_valid_devargs_parsing() < 0)
+		return -1;
+	printf("== test devargs parsing invalid case ==\n");
+	if (test_invalid_devargs_parsing() < 0)
+		return -1;
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(devargs_autotest, test_devargs);
+REGISTER_FAST_TEST(devargs_autotest, true, true, test_devargs);

@@ -172,10 +172,10 @@ during RX from user meta data coming from FPGA hardware.
    };
 
    /* RX tuser field based on user's hardware */
-   struct user_rx_meta {
+   struct __rte_packed_begin user_rx_meta {
       uint64_t timestamp;
       uint32_t rss;
-   } __rte_packed;
+   } __rte_packed_end;
 
    /* Create ark_user_extension object for use in other hook functions */
    void *rte_pmd_ark_dev_init(struct rte_eth_dev * dev,
@@ -307,6 +307,9 @@ ARK PMD supports the following Arkville RTL PCIe instances including:
 * ``1d6c:101e`` - AR-ARKA-FX1 [Arkville 64B DPDK Data Mover for Agilex R-Tile]
 * ``1d6c:101f`` - AR-TK242 [2x100GbE Packet Capture Device]
 * ``1d6c:1022`` - AR-ARKA-FX2 [Arkville 128B DPDK Data Mover for Agilex]
+* ``1d6c:1024`` - AR-TK242 [2x100GbE Packet Capture Device]
+* ``1d6c:1025`` - AR-TK242-FX2 [2x100GbE Gen5 Packet Capture Device]
+* ``1d6c:1026`` - AR-TK242-FX2 [1x200GbE Gen5 Packet Capture Device]
 
 Arkville RTL Core Configurations
 --------------------------------
@@ -334,6 +337,7 @@ with Arkville releases 21.05, 21.08 and 21.11. LTS versions of DPDK remain
 compatible with the corresponding Arkville version.  If other combinations
 are required, please contact Atomic Rules support.
 
+* DPDK 23.11 requires Arkville 23.11.
 * DPDK 22.07 requires Arkville 22.07.
 * DPDK 22.03 requires Arkville 22.03.
 * DPDK 21.05 requires Arkville 21.05.
@@ -353,7 +357,7 @@ Supported Features
 
 * Dynamic ARK PMD extensions
 * Dynamic per-queue MBUF (re)sizing up to 32KB
-* SR-IOV, VF-based queue-segregation
+* SR-IOV, VF-based queue-separation
 * Multiple receive and transmit queues
 * Jumbo frames up to 9K
 * Hardware Statistics

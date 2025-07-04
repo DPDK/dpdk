@@ -203,6 +203,8 @@ struct ngbe_tx_desc {
 #define RTE_PMD_NGBE_RX_MAX_BURST 32
 #define RTE_NGBE_TX_MAX_FREE_BUF_SZ 64
 
+#define RTE_NGBE_DESCS_PER_LOOP    4
+
 #define RX_RING_SZ ((NGBE_RING_DESC_MAX + RTE_PMD_NGBE_RX_MAX_BURST) * \
 		    sizeof(struct ngbe_rx_desc))
 
@@ -238,6 +240,13 @@ struct ngbe_tx_entry {
 };
 
 /**
+ * Structure associated with each descriptor of the Tx ring of a Tx queue.
+ */
+struct ngbe_tx_entry_v {
+	struct rte_mbuf *mbuf; /**< mbuf associated with Tx desc, if any. */
+};
+
+/**
  * Structure associated with each Rx queue.
  */
 struct ngbe_rx_queue {
@@ -254,6 +263,7 @@ struct ngbe_rx_queue {
 
 	struct rte_mbuf *pkt_first_seg; /**< First segment of current packet */
 	struct rte_mbuf *pkt_last_seg; /**< Last segment of current packet */
+	uint64_t        mbuf_initializer; /**< value to init mbufs */
 	uint16_t        nb_rx_desc; /**< number of Rx descriptors */
 	uint16_t        rx_tail;  /**< current value of RDT register */
 	uint16_t        nb_rx_hold; /**< number of held free Rx desc */
@@ -262,6 +272,11 @@ struct ngbe_rx_queue {
 	uint16_t rx_next_avail; /**< idx of next staged pkt to ret to app */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
 
+	uint8_t         rx_using_sse;   /**< indicates that vector Rx is in use */
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	uint16_t        rxrearm_nb;     /**< number of remaining to be re-armed */
+	uint16_t        rxrearm_start;  /**< the idx we start the re-arming from */
+#endif
 	uint16_t        rx_free_thresh; /**< max free Rx desc to hold */
 	uint16_t        queue_id; /**< RX queue index */
 	uint16_t        reg_idx;  /**< RX queue register index */
@@ -276,6 +291,7 @@ struct ngbe_rx_queue {
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_NGBE_RX_MAX_BURST * 2];
+	const struct rte_memzone *mz;
 };
 
 /**
@@ -325,7 +341,12 @@ struct ngbe_tx_queue {
 	volatile struct ngbe_tx_desc *tx_ring;
 
 	uint64_t             tx_ring_phys_addr; /**< Tx ring DMA address */
-	struct ngbe_tx_entry *sw_ring; /**< address of SW ring for scalar PMD */
+	union {
+		/**< address of SW ring for scalar PMD. */
+		struct ngbe_tx_entry *sw_ring;
+		/**< address of SW ring for vector PMD */
+		struct ngbe_tx_entry_v *sw_ring_v;
+	};
 	volatile uint32_t    *tdt_reg_addr; /**< Address of TDT register */
 	volatile uint32_t    *tdc_reg_addr; /**< Address of TDC register */
 	uint16_t             nb_tx_desc;    /**< number of Tx descriptors */
@@ -353,6 +374,8 @@ struct ngbe_tx_queue {
 	uint8_t              tx_deferred_start; /**< not in global dev start */
 
 	const struct ngbe_txq_ops *ops;       /**< txq ops */
+	const struct rte_memzone *mz;
+	uint64_t            desc_error;
 };
 
 struct ngbe_txq_ops {
@@ -368,6 +391,16 @@ struct ngbe_txq_ops {
 void ngbe_set_tx_function(struct rte_eth_dev *dev, struct ngbe_tx_queue *txq);
 
 void ngbe_set_rx_function(struct rte_eth_dev *dev);
+uint16_t ngbe_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			    uint16_t nb_pkts);
+uint16_t ngbe_recv_scattered_pkts_vec(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+int ngbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
+int ngbe_rxq_vec_setup(struct ngbe_rx_queue *rxq);
+void ngbe_rx_queue_release_mbufs_vec(struct ngbe_rx_queue *rxq);
+uint16_t ngbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
+int ngbe_txq_vec_setup(struct ngbe_tx_queue *txq);
 int ngbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt);
 
 uint64_t ngbe_get_tx_port_offloads(struct rte_eth_dev *dev);

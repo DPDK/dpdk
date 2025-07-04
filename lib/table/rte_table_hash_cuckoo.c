@@ -1,14 +1,19 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2017 Intel Corporation
  */
-#include <string.h>
-#include <stdio.h>
 
+#include <stdalign.h>
+#include <stdio.h>
+#include <string.h>
+
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
 
 #include "rte_table_hash_cuckoo.h"
+
+#include "table_log.h"
 
 #ifdef RTE_TABLE_STATS_COLLECT
 
@@ -40,34 +45,34 @@ struct rte_table_hash {
 	struct rte_hash *h_table;
 
 	/* Lookup table */
-	uint8_t memory[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 static int
 check_params_create_hash_cuckoo(struct rte_table_hash_cuckoo_params *params)
 {
 	if (params == NULL) {
-		RTE_LOG(ERR, TABLE, "NULL Input Parameters.\n");
+		TABLE_LOG(ERR, "NULL Input Parameters.");
 		return -EINVAL;
 	}
 
 	if (params->name == NULL) {
-		RTE_LOG(ERR, TABLE, "Table name is NULL.\n");
+		TABLE_LOG(ERR, "Table name is NULL.");
 		return -EINVAL;
 	}
 
 	if (params->key_size == 0) {
-		RTE_LOG(ERR, TABLE, "Invalid key_size.\n");
+		TABLE_LOG(ERR, "Invalid key_size.");
 		return -EINVAL;
 	}
 
 	if (params->n_keys == 0) {
-		RTE_LOG(ERR, TABLE, "Invalid n_keys.\n");
+		TABLE_LOG(ERR, "Invalid n_keys.");
 		return -EINVAL;
 	}
 
 	if (params->f_hash == NULL) {
-		RTE_LOG(ERR, TABLE, "f_hash is NULL.\n");
+		TABLE_LOG(ERR, "f_hash is NULL.");
 		return -EINVAL;
 	}
 
@@ -94,8 +99,8 @@ rte_table_hash_cuckoo_create(void *params,
 
 	t = rte_zmalloc_socket(p->name, total_size, RTE_CACHE_LINE_SIZE, socket_id);
 	if (t == NULL) {
-		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for cuckoo hash table %s\n",
+		TABLE_LOG(ERR,
+			"%s: Cannot allocate %u bytes for cuckoo hash table %s",
 			__func__, total_size, p->name);
 		return NULL;
 	}
@@ -114,8 +119,8 @@ rte_table_hash_cuckoo_create(void *params,
 	if (h_table == NULL) {
 		h_table = rte_hash_create(&hash_cuckoo_params);
 		if (h_table == NULL) {
-			RTE_LOG(ERR, TABLE,
-				"%s: failed to create cuckoo hash table %s\n",
+			TABLE_LOG(ERR,
+				"%s: failed to create cuckoo hash table %s",
 				__func__, p->name);
 			rte_free(t);
 			return NULL;
@@ -131,8 +136,8 @@ rte_table_hash_cuckoo_create(void *params,
 	t->key_offset = p->key_offset;
 	t->h_table = h_table;
 
-	RTE_LOG(INFO, TABLE,
-		"%s: Cuckoo hash table %s memory footprint is %u bytes\n",
+	TABLE_LOG(INFO,
+		"%s: Cuckoo hash table %s memory footprint is %u bytes",
 		__func__, p->name, total_size);
 	return t;
 }
@@ -237,7 +242,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 	uint64_t pkts_mask_out = 0;
 	uint32_t i;
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 
 	RTE_TABLE_HASH_CUCKOO_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
@@ -268,7 +273,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 		}
 	} else
 		for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX
-					- __builtin_clzll(pkts_mask)); i++) {
+					- rte_clz64(pkts_mask)); i++) {
 			uint64_t pkt_mask = 1LLU << i;
 
 			if (pkt_mask & pkts_mask) {
@@ -288,7 +293,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 
 	*lookup_hit_mask = pkts_mask_out;
 	RTE_TABLE_HASH_CUCKOO_STATS_PKTS_LOOKUP_MISS(t,
-			n_pkts_in - __builtin_popcountll(pkts_mask_out));
+			n_pkts_in - rte_popcount64(pkts_mask_out));
 
 	return 0;
 
@@ -309,6 +314,7 @@ rte_table_hash_cuckoo_stats_read(void *table, struct rte_table_stats *stats,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_table_hash_cuckoo_ops)
 struct rte_table_ops rte_table_hash_cuckoo_ops = {
 	.f_create = rte_table_hash_cuckoo_create,
 	.f_free = rte_table_hash_cuckoo_free,

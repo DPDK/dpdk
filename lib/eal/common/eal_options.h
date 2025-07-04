@@ -17,6 +17,8 @@ enum {
 	OPT_DEV_ALLOW_NUM       = 'a',
 #define OPT_DEV_BLOCK         "block"
 	OPT_DEV_BLOCK_NUM      = 'b',
+#define OPT_LCORES            "lcores"
+	OPT_LCORES_NUM         = 'l',
 
 	/* first long only option value must be >= 256, so that we won't
 	 * conflict with short options */
@@ -31,10 +33,12 @@ enum {
 	OPT_HUGE_DIR_NUM,
 #define OPT_HUGE_UNLINK       "huge-unlink"
 	OPT_HUGE_UNLINK_NUM,
-#define OPT_LCORES            "lcores"
-	OPT_LCORES_NUM,
+#define OPT_LOG_COLOR	      "log-color"
+	OPT_LOG_COLOR_NUM,
 #define OPT_LOG_LEVEL         "log-level"
 	OPT_LOG_LEVEL_NUM,
+#define OPT_LOG_TIMESTAMP     "log-timestamp"
+	OPT_LOG_TIMESTAMP_NUM,
 #define OPT_TRACE             "trace"
 	OPT_TRACE_NUM,
 #define OPT_TRACE_DIR         "trace-dir"
@@ -60,9 +64,11 @@ enum {
 #define OPT_IN_MEMORY         "in-memory"
 	OPT_IN_MEMORY_NUM,
 #define OPT_SOCKET_MEM        "socket-mem"
-	OPT_SOCKET_MEM_NUM,
-#define OPT_SOCKET_LIMIT        "socket-limit"
-	OPT_SOCKET_LIMIT_NUM,
+#define OPT_NUMA_MEM          "numa-mem"
+	OPT_NUMA_MEM_NUM,
+#define OPT_SOCKET_LIMIT      "socket-limit"
+#define OPT_NUMA_LIMIT        "numa-limit"
+	OPT_NUMA_LIMIT_NUM,
 #define OPT_SYSLOG            "syslog"
 	OPT_SYSLOG_NUM,
 #define OPT_VDEV              "vdev"
@@ -96,6 +102,8 @@ enum {
 extern const char eal_short_options[];
 extern const struct option eal_long_options[];
 
+bool eal_option_is_log(int opt);
+int eal_parse_log_options(int argc, char * const argv[]);
 int eal_parse_common_option(int opt, const char *argv,
 			    struct internal_config *conf);
 int eal_option_device_parse(void);

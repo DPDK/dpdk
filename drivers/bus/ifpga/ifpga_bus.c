@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <bus_driver.h>
 #include <rte_per_lcore.h>
@@ -44,6 +45,7 @@ static TAILQ_HEAD(, rte_afu_driver) ifpga_afu_drv_list =
 
 
 /* register a ifpga bus based driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ifpga_driver_register)
 void rte_ifpga_driver_register(struct rte_afu_driver *driver)
 {
 	RTE_VERIFY(driver);
@@ -52,6 +54,7 @@ void rte_ifpga_driver_register(struct rte_afu_driver *driver)
 }
 
 /* un-register a fpga bus based driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ifpga_driver_unregister)
 void rte_ifpga_driver_unregister(struct rte_afu_driver *driver)
 {
 	TAILQ_REMOVE(&ifpga_afu_drv_list, driver, next);
@@ -71,6 +74,7 @@ ifpga_find_afu_dev(const struct rte_rawdev *rdev,
 	return NULL;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_ifpga_find_afu_by_name)
 struct rte_afu_device *
 rte_ifpga_find_afu_by_name(const char *name)
 {
@@ -180,7 +184,7 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 		rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
 				&afu_pr_conf)){
-		IFPGA_BUS_ERR("firmware load error %d\n", ret);
+		IFPGA_BUS_ERR("firmware load error %d", ret);
 		goto end;
 	}
 	afu_dev->id.uuid.uuid_low  = afu_pr_conf.afu_id.uuid.uuid_low;
@@ -316,7 +320,7 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 
 	/* Check if a driver is already loaded */
 	if (rte_dev_is_probed(&afu_dev->device)) {
-		IFPGA_BUS_DEBUG("Device %s is already probed\n",
+		IFPGA_BUS_DEBUG("Device %s is already probed",
 				rte_ifpga_device_name(afu_dev));
 		return -EEXIST;
 	}
@@ -353,7 +357,7 @@ ifpga_probe(void)
 		if (ret == -EEXIST)
 			continue;
 		if (ret < 0)
-			IFPGA_BUS_ERR("failed to initialize %s device\n",
+			IFPGA_BUS_ERR("failed to initialize %s device",
 				rte_ifpga_device_name(afu_dev));
 	}
 
@@ -408,7 +412,7 @@ ifpga_remove_driver(struct rte_afu_device *afu_dev)
 
 	name = rte_ifpga_device_name(afu_dev);
 	if (afu_dev->driver == NULL) {
-		IFPGA_BUS_DEBUG("no driver attach to device %s\n", name);
+		IFPGA_BUS_DEBUG("no driver attach to device %s", name);
 		return 1;
 	}
 

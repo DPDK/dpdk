@@ -49,7 +49,6 @@ fill_multi_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 {
 	uint16_t mbuf_hdr_size = sizeof(struct rte_mbuf);
 	uint16_t remaining_segments = segments_nb;
-	struct rte_mbuf *next_mbuf;
 	rte_iova_t next_seg_phys_addr = rte_mempool_virt2iova(obj) +
 			 mbuf_offset + mbuf_hdr_size;
 
@@ -70,15 +69,15 @@ fill_multi_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 		m->nb_segs = segments_nb;
 		m->port = 0xff;
 		rte_mbuf_refcnt_set(m, 1);
-		next_mbuf = (struct rte_mbuf *) ((uint8_t *) m +
-					mbuf_hdr_size + segment_sz);
-		m->next = next_mbuf;
-		m = next_mbuf;
+
 		remaining_segments--;
-
+		if (remaining_segments > 0) {
+			m->next = (struct rte_mbuf *)((uint8_t *) m + mbuf_hdr_size + segment_sz);
+			m = m->next;
+		} else {
+			m->next = NULL;
+		}
 	} while (remaining_segments > 0);
-
-	m->next = NULL;
 }
 
 static void
@@ -150,11 +149,11 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	int ret;
 
 	/* Calculate the object size */
-	uint16_t crypto_op_size = sizeof(struct rte_crypto_op) +
-		sizeof(struct rte_crypto_sym_op);
+	uint16_t crypto_op_size = sizeof(struct rte_crypto_op);
 	uint16_t crypto_op_private_size;
 
-	if (options->op_type == CPERF_ASYM_MODEX) {
+	if (cperf_is_asym_test(options)) {
+		crypto_op_size += sizeof(struct rte_crypto_asym_op);
 		snprintf(pool_name, RTE_MEMPOOL_NAMESIZE, "perf_asym_op_pool%u",
 			 rte_socket_id());
 		*pool = rte_crypto_op_pool_create(
@@ -170,6 +169,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 		rte_mempool_obj_iter(*pool, mempool_asym_obj_init, NULL);
 		return 0;
 	}
+
+	crypto_op_size += sizeof(struct rte_crypto_sym_op);
 
 	/*
 	 * If doing AES-CCM, IV field needs to be 16 bytes long,
@@ -227,7 +228,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 				(mbuf_size * segments_nb);
 		params.dst_buf_offset = *dst_buf_offset;
 		/* Destination buffer will be one segment only */
-		obj_size += max_size + sizeof(struct rte_mbuf);
+		obj_size += max_size + sizeof(struct rte_mbuf) +
+			options->headroom_sz + options->tailroom_sz;
 	}
 
 	*pool = rte_mempool_create_empty(pool_name,
@@ -269,7 +271,7 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector)
 {
-	uint32_t segment_sz = options->segment_sz;
+	uint32_t segment_sz = options->segment_sz - options->headroom_sz - options->tailroom_sz;
 	uint8_t *mbuf_data;
 	uint8_t *test_data;
 	uint32_t remaining_bytes = options->max_buffer_size;
@@ -298,4 +300,17 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 		test_data += segment_sz;
 		mbuf = mbuf->next;
 	}
+}
+
+bool
+cperf_is_asym_test(const struct cperf_options *options)
+{
+	if (options->op_type == CPERF_ASYM_MODEX ||
+	    options->op_type == CPERF_ASYM_RSA ||
+	    options->op_type == CPERF_ASYM_SECP256R1 ||
+	    options->op_type == CPERF_ASYM_ED25519 ||
+	    options->op_type == CPERF_ASYM_SM2)
+		return true;
+
+	return false;
 }

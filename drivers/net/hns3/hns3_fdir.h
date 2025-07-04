@@ -97,6 +97,8 @@ struct hns3_fd_rule_tuples {
 	uint32_t sctp_tag;
 	uint16_t outer_src_port;
 	uint16_t tunnel_type;
+	uint16_t outer_vlan_tag1;
+	uint16_t outer_vlan_tag2;
 	uint16_t outer_ether_type;
 	uint8_t outer_proto;
 	uint8_t outer_tun_vni[VNI_OR_TNI_LEN];
@@ -160,6 +162,10 @@ struct hns3_fdir_rule {
 	uint16_t nb_queues;
 	uint16_t location;
 	struct rte_flow_action_count act_cnt;
+	bool has_vlan_m;
+	bool has_vlan_v;
+	bool has_more_vlan_m;
+	bool has_more_vlan_v;
 };
 
 /* FDIR filter list structure */
@@ -171,6 +177,66 @@ struct hns3_fdir_rule_ele {
 TAILQ_HEAD(hns3_fdir_rule_list, hns3_fdir_rule_ele);
 
 /*
+ * On 'strict' mode, hardware bases on VLAN number to exactly match the
+ * input flow.
+ */
+#define HNS3_FDIR_VLAN_STRICT_MATCH	1
+#define HNS3_FDIR_VLAN_NOSTRICT_MATCH	0
+
+/*
+ * The hardware supports many tuples match (see @enum HNS3_FD_TUPLE),
+ * however, the width of hardware entries is limited, therefore, only part
+ * of tuples are enabled (see as @hns3_init_fd_config).
+ *
+ * We should replace the existing tuples if we want to enable other tuples
+ * because the width capacity is insufficient.
+ */
+enum hns3_fdir_tuple_config {
+	/* Default tuple config (see as @hns3_init_fd_config). */
+	HNS3_FDIR_TUPLE_CONFIG_DEFAULT,
+	/*
+	 * Based on the default tuple config, disable the inner src-mac tuple,
+	 * and enable the outer VLAN tuple.
+	 */
+	HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSMAC,
+	/*
+	 * Based on the default tuple config, disable the inner dst-mac tuple,
+	 * and enable the outer VLAN tuple.
+	 */
+	HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDMAC,
+	/*
+	 * Based on the default tuple config, disable the inner src-ip tuple,
+	 * and enable the outer VLAN tuple.
+	 */
+	HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSIP,
+	/*
+	 * Based on the default tuple config, disable the inner dst-ip tuple,
+	 * and enable the outer VLAN tuple.
+	 */
+	HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDIP,
+	/*
+	 * Based on the default tuple config, disable the sctp-tag tuple,
+	 * and enable the outer VLAN tuple.
+	 */
+	HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_SCTPTAG,
+	/*
+	 * Based on the default tuple config, disable the tunnel vni tuple,
+	 * and enable the outer VLAN tuple.
+	 */
+	HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_TUNVNI,
+
+	HNS3_FDIR_TUPLE_CONFIG_BUTT
+};
+
+enum hns3_fdir_index_config {
+	/* Generate the hardware flow director index based on rte_hash (Default) */
+	HNS3_FDIR_INDEX_CONFIG_HASH,
+
+	/* Use the rte_flow priority field as the hardware flow director index. */
+	HNS3_FDIR_INDEX_CONFIG_PRIORITY
+};
+
+/*
  *  A structure used to define fields of a FDIR related info.
  */
 struct hns3_fdir_info {
@@ -178,6 +244,9 @@ struct hns3_fdir_info {
 	struct hns3_fdir_rule_ele **hash_map;
 	struct rte_hash *hash_handle;
 	struct hns3_fd_cfg fd_cfg;
+	uint8_t vlan_match_mode;
+	enum hns3_fdir_tuple_config tuple_cfg;
+	enum hns3_fdir_index_config index_cfg;
 };
 
 struct hns3_adapter;
@@ -191,5 +260,9 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 int hns3_clear_all_fdir_filter(struct hns3_adapter *hns);
 int hns3_fd_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value);
 int hns3_restore_all_fdir_filter(struct hns3_adapter *hns);
+
+enum hns3_fdir_tuple_config hns3_parse_tuple_config(const char *name);
+const char *hns3_tuple_config_name(enum hns3_fdir_tuple_config tuple_cfg);
+const char *hns3_fdir_index_config_name(enum hns3_fdir_index_config cfg);
 
 #endif /* HNS3_FDIR_H */

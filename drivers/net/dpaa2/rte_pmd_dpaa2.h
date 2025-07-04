@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2024 NXP
  */
 
 #ifndef _RTE_PMD_DPAA2_H
@@ -26,12 +26,36 @@
  *    Associated actions.
  *
  * @return
- *    A valid handle in case of success, NULL otherwise.
+ *    0 in case of success,  otherwise failure.
  */
-struct rte_flow *
+int
 rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
-			      struct rte_flow_item *pattern[],
-			      struct rte_flow_action *actions[]);
+	struct rte_flow_item pattern[],
+	struct rte_flow_action actions[]);
+int
+rte_pmd_dpaa2_mux_flow_destroy(uint32_t dpdmux_id,
+	uint16_t entry_index);
+int
+rte_pmd_dpaa2_mux_flow_l2(uint32_t dpdmux_id,
+	uint8_t mac_addr[6], uint16_t vlan_id, int dest_if);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Dump demultiplex ethernet traffic counters
+ *
+ * @param f
+ *    output stream
+ * @param dpdmux_id
+ *    ID of the DPDMUX MC object.
+ * @param num_if
+ *    number of interface in dpdmux object
+ *
+ */
+__rte_experimental
+void
+rte_pmd_dpaa2_mux_dump_counter(FILE *f, uint32_t dpdmux_id, int num_if);
 
 /**
  * @warning
@@ -102,4 +126,21 @@ rte_pmd_dpaa2_thread_init(void);
 __rte_experimental
 uint32_t
 rte_pmd_dpaa2_get_tlu_hash(uint8_t *key, int size);
+
+__rte_experimental
+int
+rte_pmd_dpaa2_dev_is_dpaa2(uint32_t eth_id);
+__rte_experimental
+const char *
+rte_pmd_dpaa2_ep_name(uint32_t eth_id);
+
+#if defined(RTE_LIBRTE_IEEE1588)
+__rte_experimental
+int
+rte_pmd_dpaa2_set_one_step_ts(uint16_t port_id, uint16_t offset, uint8_t ch_update);
+
+__rte_experimental
+int
+rte_pmd_dpaa2_get_one_step_ts(uint16_t port_id, bool mc_query);
+#endif
 #endif /* _RTE_PMD_DPAA2_H */

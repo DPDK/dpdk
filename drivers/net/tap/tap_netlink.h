@@ -16,7 +16,7 @@
 
 #define NLMSG_BUF 512
 
-struct nlmsg {
+struct tap_nlmsg {
 	struct nlmsghdr nh;
 	struct tcmsg t;
 	char buf[NLMSG_BUF];
@@ -36,7 +36,7 @@ void tap_nlattr_add(struct nlmsghdr *nh, unsigned short type,
 void tap_nlattr_add8(struct nlmsghdr *nh, unsigned short type, uint8_t data);
 void tap_nlattr_add16(struct nlmsghdr *nh, unsigned short type, uint16_t data);
 void tap_nlattr_add32(struct nlmsghdr *nh, unsigned short type, uint32_t data);
-int tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type);
-void tap_nlattr_nested_finish(struct nlmsg *msg);
+int tap_nlattr_nested_start(struct tap_nlmsg *msg, uint16_t type);
+void tap_nlattr_nested_finish(struct tap_nlmsg *msg);
 
 #endif /* _TAP_NETLINK_H_ */

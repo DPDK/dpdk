@@ -37,6 +37,11 @@ int pci_uio_read_config(const struct rte_intr_handle *intr_handle,
 int pci_uio_write_config(const struct rte_intr_handle *intr_handle,
 			 const void *buf, size_t len, off_t offs);
 
+int pci_uio_mmio_read(const struct rte_pci_device *dev, int bar,
+			void *buf, size_t len, off_t offset);
+int pci_uio_mmio_write(const struct rte_pci_device *dev, int bar,
+			const void *buf, size_t len, off_t offset);
+
 int pci_uio_ioport_map(struct rte_pci_device *dev, int bar,
 		       struct rte_pci_ioport *p);
 void pci_uio_ioport_read(struct rte_pci_ioport *p,
@@ -47,29 +52,16 @@ int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
 #ifdef VFIO_PRESENT
 
-#ifdef PCI_MSIX_TABLE_BIR
-#define RTE_PCI_MSIX_TABLE_BIR    PCI_MSIX_TABLE_BIR
-#else
-#define RTE_PCI_MSIX_TABLE_BIR    0x7
-#endif
-
-#ifdef PCI_MSIX_TABLE_OFFSET
-#define RTE_PCI_MSIX_TABLE_OFFSET PCI_MSIX_TABLE_OFFSET
-#else
-#define RTE_PCI_MSIX_TABLE_OFFSET 0xfffffff8
-#endif
-
-#ifdef PCI_MSIX_FLAGS_QSIZE
-#define RTE_PCI_MSIX_FLAGS_QSIZE  PCI_MSIX_FLAGS_QSIZE
-#else
-#define RTE_PCI_MSIX_FLAGS_QSIZE  0x07ff
-#endif
-
 /* access config space */
-int pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
+int pci_vfio_read_config(const struct rte_pci_device *dev,
 			 void *buf, size_t len, off_t offs);
-int pci_vfio_write_config(const struct rte_intr_handle *intr_handle,
+int pci_vfio_write_config(const struct rte_pci_device *dev,
 			  const void *buf, size_t len, off_t offs);
+
+int pci_vfio_mmio_read(const struct rte_pci_device *dev, int bar,
+			void *buf, size_t len, off_t offset);
+int pci_vfio_mmio_write(const struct rte_pci_device *dev, int bar,
+			const void *buf, size_t len, off_t offset);
 
 int pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,
 		        struct rte_pci_ioport *p);

@@ -15,14 +15,15 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_config.h>
+#include <rte_eal_memconfig.h>
 #include <rte_fbarray.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_PGSIZE_4K   (1ULL << 12)
 #define RTE_PGSIZE_64K  (1ULL << 16)
@@ -45,9 +46,8 @@ extern "C" {
 /**
  * Physical memory segment descriptor.
  */
-struct rte_memseg {
+struct __rte_packed_begin rte_memseg {
 	rte_iova_t iova;            /**< Start IO address. */
-	RTE_STD_C11
 	union {
 		void *addr;         /**< Start virtual address. */
 		uint64_t addr_64;   /**< Makes sure addr is always 64 bits */
@@ -58,14 +58,13 @@ struct rte_memseg {
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */
 	uint32_t flags;             /**< Memseg-specific flags */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * memseg list is a special case as we need to store a bunch of other data
  * together with the array itself.
  */
 struct rte_memseg_list {
-	RTE_STD_C11
 	union {
 		void *base_va;
 		/**< Base virtual address for this memseg list. */
@@ -252,7 +251,8 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg);
  *   -1 if user function reported error
  */
 int
-rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg);
+rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
+	__rte_locks_excluded(rte_mcfg_mem_get_lock());
 
 /**
  * Walk list of all memsegs without performing any locking.
@@ -727,6 +727,24 @@ rte_mem_alloc_validator_register(const char *name,
  */
 int
 rte_mem_alloc_validator_unregister(const char *name, int socket_id);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Fill memory with zero's (e.g. sensitive keys).
+ * Normally using memset() is fine, but in cases where clearing out local data
+ * before going out of scope is required, use rte_memzero_explicit() instead
+ * to prevent the compiler from optimizing away the zeroing operation.
+ *
+ * @param dst
+ *   Target buffer.
+ * @param sz
+ *   Number of bytes to fill.
+ */
+__rte_experimental
+void
+rte_memzero_explicit(void *dst, size_t sz);
 
 #ifdef __cplusplus
 }

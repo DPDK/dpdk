@@ -1535,14 +1535,14 @@ vf_egress_port_id_action(struct enic_flowman *fm,
 	ENICPMD_FUNC_TRACE();
 	src_enic = fm->user_enic;
 	dst_enic = pmd_priv(dst_dev);
-	if (!(src_enic->rte_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)) {
+	if (!rte_eth_dev_is_repr(src_enic->rte_dev)) {
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ACTION,
 			NULL, "source port is not VF representor");
 	}
 
 	/* VF -> PF uplink. dst is not VF representor */
-	if (!(dst_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)) {
+	if (!rte_eth_dev_is_repr(dst_dev)) {
 		/* PF is the VF's PF? Then nothing to do */
 		vf = VF_ENIC_TO_VF_REP(src_enic);
 		if (vf->pf == dst_enic) {
@@ -1954,7 +1954,7 @@ enic_fm_copy_action(struct enic_flowman *fm,
 	if (!(overlap & (FATE | PASSTHRU | COUNT | PORT_ID)))
 		goto unsupported;
 	/* Egress from VF: need implicit WQ match */
-	if (enic_is_vf_rep(enic) && !ingress) {
+	if (rte_eth_dev_is_repr(enic->rte_dev) && !ingress) {
 		fmt->ftm_data.fk_wq_id = 0;
 		fmt->ftm_mask.fk_wq_id = 0xffff;
 		fmt->ftm_data.fk_wq_vnic = enic->fm_vnic_handle;
@@ -2590,7 +2590,7 @@ enic_action_handle_get(struct enic_flowman *fm, struct fm_action *action_in,
 			return rte_flow_error_set(error, ENOMEM,
 					   RTE_FLOW_ERROR_TYPE_HANDLE,
 					   NULL, "enic: calloc(fm-action)");
-		memcpy(&ah->key, action_in, sizeof(struct fm_action));
+		ah->key = *action_in;
 		args[0] = FM_ACTION_ALLOC;
 		args[1] = fm->cmd.pa;
 		ret = flowman_cmd(fm, args, 2);
@@ -3226,7 +3226,7 @@ enic_fm_init(struct enic *enic)
 		return 0;
 	ENICPMD_FUNC_TRACE();
 	/* Get vnic handle and save for port-id action */
-	if (enic_is_vf_rep(enic))
+	if (rte_eth_dev_is_repr(enic->rte_dev))
 		addr = &VF_ENIC_TO_VF_REP(enic)->bdf;
 	else
 		addr = &RTE_ETH_DEV_TO_PCI(enic->rte_dev)->addr;
@@ -3240,7 +3240,7 @@ enic_fm_init(struct enic *enic)
 	enic->fm_vnic_uif = vnic_dev_uif(enic->vdev);
 	ENICPMD_LOG(DEBUG, "uif %u", enic->fm_vnic_uif);
 	/* Nothing else to do for representor. It will share the PF flowman */
-	if (enic_is_vf_rep(enic))
+	if (rte_eth_dev_is_repr(enic->rte_dev))
 		return 0;
 	fm = calloc(1, sizeof(*fm));
 	if (fm == NULL) {
@@ -3321,7 +3321,7 @@ enic_fm_destroy(struct enic *enic)
 	struct enic_fm_fet *fet;
 
 	ENICPMD_FUNC_TRACE();
-	if (enic_is_vf_rep(enic)) {
+	if (rte_eth_dev_is_repr(enic->rte_dev)) {
 		delete_rep_flows(enic);
 		return;
 	}
@@ -3358,7 +3358,7 @@ enic_fm_allocate_switch_domain(struct enic *pf)
 	int ret;
 
 	ENICPMD_FUNC_TRACE();
-	if (enic_is_vf_rep(pf))
+	if (rte_eth_dev_is_repr(pf->rte_dev))
 		return -EINVAL;
 	cur = pf;
 	cur_a = &RTE_ETH_DEV_TO_PCI(cur->rte_dev)->addr;
@@ -3367,7 +3367,7 @@ enic_fm_allocate_switch_domain(struct enic *pf)
 		dev = &rte_eth_devices[pid];
 		if (!dev_is_enic(dev))
 			continue;
-		if (dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+		if (rte_eth_dev_is_repr(dev))
 			continue;
 		if (dev == cur->rte_dev)
 			continue;
@@ -3597,7 +3597,7 @@ delete_rep_flows(struct enic *enic)
 	struct rte_eth_dev *dev;
 	uint32_t i;
 
-	RTE_ASSERT(enic_is_vf_rep(enic));
+	RTE_ASSERT(rte_eth_dev_is_repr(enic->rte_dev));
 	vf = VF_ENIC_TO_VF_REP(enic);
 	dev = vf->pf->rte_dev;
 	for (i = 0; i < ARRAY_SIZE(vf->vf2rep_flow); i++) {
@@ -3617,7 +3617,7 @@ begin_fm(struct enic *enic)
 	struct enic_flowman *fm;
 
 	/* Representor uses PF flowman */
-	if (enic_is_vf_rep(enic)) {
+	if (rte_eth_dev_is_repr(enic->rte_dev)) {
 		vf = VF_ENIC_TO_VF_REP(enic);
 		fm = vf->pf->fm;
 	} else {

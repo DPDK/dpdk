@@ -1,20 +1,20 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
- * Copyright 2019 NXP
+ * Copyright 2019-2022 NXP
  *
  */
 
 #ifndef __FSL_QMAN_H
 #define __FSL_QMAN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <dpaa_rbtree.h>
 #include <rte_compat.h>
 #include <rte_eventdev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* FQ lookups (turn this on for 64bit user-space) */
 #ifdef RTE_ARCH_64
@@ -124,7 +124,7 @@ enum qm_fd_format {
 #define QM_FD_COMPOUND	QM_FD_FORMAT_COMPOUND
 
 /* "Frame Descriptor (FD)" */
-struct qm_fd {
+struct __rte_aligned(8) qm_fd {
 	union {
 		struct {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -200,7 +200,7 @@ struct qm_fd {
 		u32 cmd;
 		u32 status;
 	};
-} __rte_aligned(8);
+};
 #define QM_FD_DD_NULL		0x00
 #define QM_FD_PID_MASK		0x3f
 static inline u64 qm_fd_addr_get64(const struct qm_fd *fd)
@@ -221,7 +221,7 @@ static inline dma_addr_t qm_fd_addr(const struct qm_fd *fd)
 	} while (0)
 
 /* Scatter/Gather table entry */
-struct qm_sg_entry {
+struct __rte_packed_begin qm_sg_entry {
 	union {
 		struct {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -273,7 +273,7 @@ struct qm_sg_entry {
 		};
 		u16 val_off;
 	};
-} __packed;
+} __rte_packed_end;
 static inline u64 qm_sg_entry_get64(const struct qm_sg_entry *sg)
 {
 	return sg->addr;
@@ -292,7 +292,7 @@ static inline dma_addr_t qm_sg_addr(const struct qm_sg_entry *sg)
 	} while (0)
 
 /* See 1.5.8.1: "Enqueue Command" */
-struct __rte_aligned(8) qm_eqcr_entry {
+struct __rte_aligned(8) __rte_packed_begin qm_eqcr_entry {
 	u8 __dont_write_directly__verb;
 	u8 dca;
 	u16 seqnum;
@@ -301,7 +301,7 @@ struct __rte_aligned(8) qm_eqcr_entry {
 	u32 tag;
 	struct qm_fd fd; /* this has alignment 8 */
 	u8 __reserved3[32];
-} __packed;
+} __rte_packed_end;
 
 
 /* "Frame Dequeue Response" */
@@ -330,9 +330,9 @@ struct __rte_aligned(8) qm_dqrr_entry {
 
 /* "ERN Message Response" */
 /* "FQ State Change Notification" */
-struct qm_mr_entry {
+struct __rte_aligned(8) __rte_packed_begin qm_mr_entry {
 	union {
-		struct {
+		alignas(8) struct __rte_packed_begin {
 			u8 verb;
 			u8 dca;
 			u16 seqnum;
@@ -341,8 +341,8 @@ struct qm_mr_entry {
 			u32 fqid;	/* 24-bit */
 			u32 tag;
 			struct qm_fd fd; /* this has alignment 8 */
-		} __packed __rte_aligned(8) ern;
-		struct {
+		} __rte_packed_end ern;
+		alignas(8) struct __rte_packed_begin {
 			u8 verb;
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u8 colour:2;	/* See QM_MR_DCERN_COLOUR_* */
@@ -359,18 +359,18 @@ struct qm_mr_entry {
 			u32 fqid;	/* 24-bit */
 			u32 tag;
 			struct qm_fd fd; /* this has alignment 8 */
-		} __packed __rte_aligned(8) dcern;
-		struct {
+		} __rte_packed_end dcern;
+		alignas(8) struct __rte_packed_begin {
 			u8 verb;
 			u8 fqs;		/* Frame Queue Status */
 			u8 __reserved1[6];
 			u32 fqid;	/* 24-bit */
 			u32 contextB;
 			u8 __reserved2[16];
-		} __packed __rte_aligned(8) fq;	/* FQRN/FQRNI/FQRL/FQPN */
+		} __rte_packed_end fq;	/* FQRN/FQRNI/FQRL/FQPN */
 	};
 	u8 __reserved2[32];
-} __packed __rte_aligned(8);
+} __rte_packed_end;
 #define QM_MR_VERB_VBIT			0x80
 /*
  * ERNs originating from direct-connect portals ("dcern") use 0x20 as a verb
@@ -405,7 +405,7 @@ struct qm_mr_entry {
  * latter has two inlines to assist with converting to/from the mant+exp
  * representation.
  */
-struct qm_fqd_stashing {
+struct __rte_packed_begin qm_fqd_stashing {
 	/* See QM_STASHING_EXCL_<...> */
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	u8 exclusive;
@@ -421,8 +421,8 @@ struct qm_fqd_stashing {
 	u8 __reserved1:2;
 	u8 exclusive;
 #endif
-} __packed;
-struct qm_fqd_taildrop {
+} __rte_packed_end;
+struct __rte_packed_begin qm_fqd_taildrop {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	u16 __reserved1:3;
 	u16 mant:8;
@@ -432,8 +432,8 @@ struct qm_fqd_taildrop {
 	u16 mant:8;
 	u16 __reserved1:3;
 #endif
-} __packed;
-struct qm_fqd_oac {
+} __rte_packed_end;
+struct __rte_packed_begin qm_fqd_oac {
 	/* "Overhead Accounting Control", see QM_OAC_<...> */
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	u8 oac:2; /* "Overhead Accounting Control" */
@@ -444,11 +444,11 @@ struct qm_fqd_oac {
 #endif
 	/* Two's-complement value (-128 to +127) */
 	signed char oal; /* "Overhead Accounting Length" */
-} __packed;
-struct qm_fqd {
+} __rte_packed_end;
+struct __rte_packed_begin qm_fqd {
 	union {
 		u8 orpc;
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u8 __reserved1:2;
 			u8 orprws:3;
@@ -460,13 +460,13 @@ struct qm_fqd {
 			u8 orprws:3;
 			u8 __reserved1:2;
 #endif
-		} __packed;
+		} __rte_packed_end;
 	};
 	u8 cgid;
 	u16 fq_ctrl;	/* See QM_FQCTRL_<...> */
 	union {
 		u16 dest_wq;
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u16 channel:13; /* qm_channel */
 			u16 wq:3;
@@ -474,7 +474,7 @@ struct qm_fqd {
 			u16 wq:3;
 			u16 channel:13; /* qm_channel */
 #endif
-		} __packed dest;
+		} __rte_packed_end dest;
 	};
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 	u16 __reserved2:1;
@@ -509,7 +509,7 @@ struct qm_fqd {
 		};
 		/* Treat it as s/w portal stashing config */
 		/* see "FQD Context_A field used for [...]" */
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			struct qm_fqd_stashing stashing;
 			/*
@@ -523,10 +523,10 @@ struct qm_fqd {
 			u16 context_hi;
 			struct qm_fqd_stashing stashing;
 #endif
-		} __packed;
+		} __rte_packed_end;
 	} context_a;
 	struct qm_fqd_oac oac_query;
-} __packed;
+} __rte_packed_end;
 /* 64-bit converters for context_hi/lo */
 static inline u64 qm_fqd_stashing_get64(const struct qm_fqd *fqd)
 {
@@ -618,10 +618,10 @@ static inline u32 qm_fqd_taildrop_get(const struct qm_fqd_taildrop *td)
  *   Slope = SA / (2 ^ Sn)
  *    MaxP = 4 * (Pn + 1)
  */
-struct qm_cgr_wr_parm {
+struct __rte_packed_begin qm_cgr_wr_parm {
 	union {
 		u32 word;
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u32 MA:8;
 			u32 Mn:5;
@@ -635,9 +635,9 @@ struct qm_cgr_wr_parm {
 			u32 Mn:5;
 			u32 MA:8;
 #endif
-		} __packed;
+		} __rte_packed_end;
 	};
-} __packed;
+} __rte_packed_end;
 /*
  * This struct represents the 13-bit "CS_THRES" CGR field. In the corresponding
  * management commands, this is padded to a 16-bit structure field, so that's
@@ -645,10 +645,10 @@ struct qm_cgr_wr_parm {
  * these fields as follows;
  *   CS threshold = TA * (2 ^ Tn)
  */
-struct qm_cgr_cs_thres {
+struct __rte_packed_begin qm_cgr_cs_thres {
 	union {
 		u16 hword;
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u16 __reserved:3;
 			u16 TA:8;
@@ -658,15 +658,15 @@ struct qm_cgr_cs_thres {
 			u16 TA:8;
 			u16 __reserved:3;
 #endif
-		} __packed;
+		} __rte_packed_end;
 	};
-} __packed;
+} __rte_packed_end;
 /*
  * This identical structure of CGR fields is present in the "Init/Modify CGR"
  * commands and the "Query CGR" result. It's suctioned out here into its own
  * struct.
  */
-struct __qm_mc_cgr {
+struct __rte_packed_begin __qm_mc_cgr {
 	struct qm_cgr_wr_parm wr_parm_g;
 	struct qm_cgr_wr_parm wr_parm_y;
 	struct qm_cgr_wr_parm wr_parm_r;
@@ -694,7 +694,7 @@ struct __qm_mc_cgr {
 		u16 __cs_thres;
 	};
 	u8 mode;	/* QMAN_CGR_MODE_FRAME not supported in rev1.0 */
-} __packed;
+} __rte_packed_end;
 #define QM_CGR_EN		0x01 /* For wr_en_*, cscn_en, cstd_en */
 #define QM_CGR_TARG_UDP_CTRL_WRITE_BIT	0x8000 /* value written to portal bit*/
 #define QM_CGR_TARG_UDP_CTRL_DCP	0x4000 /* 0: SWP, 1: DCP */
@@ -733,25 +733,25 @@ static inline int qm_cgr_cs_thres_set64(struct qm_cgr_cs_thres *th, u64 val,
 /* See 1.5.8.6.2: "CGR Test Write" */
 /* See 1.5.8.6.3: "Query CGR" */
 /* See 1.5.8.6.4: "Query Congestion Group State" */
-struct qm_mcc_initfq {
+struct __rte_packed_begin qm_mcc_initfq {
 	u8 __reserved1;
 	u16 we_mask;	/* Write Enable Mask */
 	u32 fqid;	/* 24-bit */
 	u16 count;	/* Initialises 'count+1' FQDs */
 	struct qm_fqd fqd; /* the FQD fields go here */
 	u8 __reserved3[30];
-} __packed;
-struct qm_mcc_queryfq {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_queryfq {
 	u8 __reserved1[3];
 	u32 fqid;	/* 24-bit */
 	u8 __reserved2[56];
-} __packed;
-struct qm_mcc_queryfq_np {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_queryfq_np {
 	u8 __reserved1[3];
 	u32 fqid;	/* 24-bit */
 	u8 __reserved2[56];
-} __packed;
-struct qm_mcc_alterfq {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_alterfq {
 	u8 __reserved1[3];
 	u32 fqid;	/* 24-bit */
 	u8 __reserved2;
@@ -759,37 +759,37 @@ struct qm_mcc_alterfq {
 	u8 __reserved3[10];
 	u32 context_b;	/* frame queue context b */
 	u8 __reserved4[40];
-} __packed;
-struct qm_mcc_initcgr {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_initcgr {
 	u8 __reserved1;
 	u16 we_mask;	/* Write Enable Mask */
 	struct __qm_mc_cgr cgr;	/* CGR fields */
 	u8 __reserved2[2];
 	u8 cgid;
 	u8 __reserved4[32];
-} __packed;
-struct qm_mcc_cgrtestwrite {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_cgrtestwrite {
 	u8 __reserved1[2];
 	u8 i_bcnt_hi:8;/* high 8-bits of 40-bit "Instant" */
 	u32 i_bcnt_lo;	/* low 32-bits of 40-bit */
 	u8 __reserved2[23];
 	u8 cgid;
 	u8 __reserved3[32];
-} __packed;
-struct qm_mcc_querycgr {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_querycgr {
 	u8 __reserved1[30];
 	u8 cgid;
 	u8 __reserved2[32];
-} __packed;
-struct qm_mcc_querycongestion {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_querycongestion {
 	u8 __reserved[63];
-} __packed;
-struct qm_mcc_querywq {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcc_querywq {
 	u8 __reserved;
 	/* select channel if verb != QUERYWQ_DEDICATED */
 	union {
 		u16 channel_wq; /* ignores wq (3 lsbits) */
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u16 id:13; /* qm_channel */
 			u16 __reserved1:3;
@@ -797,12 +797,12 @@ struct qm_mcc_querywq {
 			u16 __reserved1:3;
 			u16 id:13; /* qm_channel */
 #endif
-		} __packed channel;
+		} __rte_packed_end channel;
 	};
 	u8 __reserved2[60];
-} __packed;
+} __rte_packed_end;
 
-struct qm_mc_command {
+struct __rte_packed_begin qm_mc_command {
 	u8 __dont_write_directly__verb;
 	union {
 		struct qm_mcc_initfq initfq;
@@ -815,7 +815,7 @@ struct qm_mc_command {
 		struct qm_mcc_querycongestion querycongestion;
 		struct qm_mcc_querywq querywq;
 	};
-} __packed;
+} __rte_packed_end;
 
 /* INITFQ-specific flags */
 #define QM_INITFQ_WE_MASK		0x01ff	/* 'Write Enable' flags; */
@@ -842,15 +842,15 @@ struct qm_mc_command {
 #define QM_CGR_WE_CS_THRES		0x0002
 #define QM_CGR_WE_MODE			0x0001
 
-struct qm_mcr_initfq {
+struct __rte_packed_begin qm_mcr_initfq {
 	u8 __reserved1[62];
-} __packed;
-struct qm_mcr_queryfq {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcr_queryfq {
 	u8 __reserved1[8];
 	struct qm_fqd fqd;	/* the FQD fields are here */
 	u8 __reserved2[30];
-} __packed;
-struct qm_mcr_queryfq_np {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcr_queryfq_np {
 	u8 __reserved1;
 	u8 state;	/* QM_MCR_NP_STATE_*** */
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -929,16 +929,16 @@ struct qm_mcr_queryfq_np {
 	u16 od2_sfdr;	/* QM_MCR_NP_OD2_*** */
 	u16 od3_sfdr;	/* QM_MCR_NP_OD3_*** */
 #endif
-} __packed;
+} __rte_packed_end;
 
-struct qm_mcr_alterfq {
+struct __rte_packed_begin qm_mcr_alterfq {
 	u8 fqs;		/* Frame Queue Status */
 	u8 __reserved1[61];
-} __packed;
-struct qm_mcr_initcgr {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcr_initcgr {
 	u8 __reserved1[62];
-} __packed;
-struct qm_mcr_cgrtestwrite {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcr_cgrtestwrite {
 	u16 __reserved1;
 	struct __qm_mc_cgr cgr; /* CGR fields */
 	u8 __reserved2[3];
@@ -953,8 +953,8 @@ struct qm_mcr_cgrtestwrite {
 	u16 wr_prob_y;
 	u16 wr_prob_r;
 	u8 __reserved5[8];
-} __packed;
-struct qm_mcr_querycgr {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcr_querycgr {
 	u16 __reserved1;
 	struct __qm_mc_cgr cgr; /* CGR fields */
 	u8 __reserved2[3];
@@ -990,21 +990,21 @@ struct qm_mcr_querycgr {
 		u32 cscn_targ_swp[4];
 		u8 __reserved5[16];
 	};
-} __packed;
+} __rte_packed_end;
 
 struct __qm_mcr_querycongestion {
 	u32 state[8];
 };
 
-struct qm_mcr_querycongestion {
+struct __rte_packed_begin qm_mcr_querycongestion {
 	u8 __reserved[30];
 	/* Access this struct using QM_MCR_QUERYCONGESTION() */
 	struct __qm_mcr_querycongestion state;
-} __packed;
-struct qm_mcr_querywq {
+} __rte_packed_end;
+struct __rte_packed_begin qm_mcr_querywq {
 	union {
 		u16 channel_wq; /* ignores wq (3 lsbits) */
-		struct {
+		struct __rte_packed_begin {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u16 id:13; /* qm_channel */
 			u16 __reserved:3;
@@ -1012,13 +1012,13 @@ struct qm_mcr_querywq {
 			u16 __reserved:3;
 			u16 id:13; /* qm_channel */
 #endif
-		} __packed channel;
+		} __rte_packed_end channel;
 	};
 	u8 __reserved[28];
 	u32 wq_len[8];
-} __packed;
+} __rte_packed_end;
 
-struct qm_mc_result {
+struct __rte_packed_begin qm_mc_result {
 	u8 verb;
 	u8 result;
 	union {
@@ -1032,7 +1032,7 @@ struct qm_mc_result {
 		struct qm_mcr_querycongestion querycongestion;
 		struct qm_mcr_querywq querywq;
 	};
-} __packed;
+} __rte_packed_end;
 
 #define QM_MCR_VERB_RRID		0x80
 #define QM_MCR_VERB_MASK		QM_MCC_VERB_MASK
@@ -1237,6 +1237,8 @@ struct qman_fq {
 
 	/* DPDK Interface */
 	void *dpaa_intf;
+	/*to store tx_conf_queue corresponding to tx_queue*/
+	struct qman_fq *tx_conf_queue;
 
 	struct rte_event ev;
 	/* affined portal in case of static queue */
@@ -1428,37 +1430,6 @@ struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq);
 __rte_internal
 void qman_dqrr_consume(struct qman_fq *fq,
 		       struct qm_dqrr_entry *dq);
-
-/**
- * qman_poll_dqrr - process DQRR (fast-path) entries
- * @limit: the maximum number of DQRR entries to process
- *
- * Use of this function requires that DQRR processing not be interrupt-driven.
- * Ie. the value returned by qman_irqsource_get() should not include
- * QM_PIRQ_DQRI. If the current CPU is sharing a portal hosted on another CPU,
- * this function will return -EINVAL, otherwise the return value is >=0 and
- * represents the number of DQRR entries processed.
- */
-__rte_internal
-int qman_poll_dqrr(unsigned int limit);
-
-/**
- * qman_poll
- *
- * Dispatcher logic on a cpu can use this to trigger any maintenance of the
- * affine portal. There are two classes of portal processing in question;
- * fast-path (which involves demuxing dequeue ring (DQRR) entries and tracking
- * enqueue ring (EQCR) consumption), and slow-path (which involves EQCR
- * thresholds, congestion state changes, etc). This function does whatever
- * processing is not triggered by interrupts.
- *
- * Note, if DQRR and some slow-path processing are poll-driven (rather than
- * interrupt-driven) then this function uses a heuristic to determine how often
- * to run slow-path processing - as slow-path processing introduces at least a
- * minimum latency each time it is run, whereas fast-path (DQRR) processing is
- * close to zero-cost if there is no work to be done.
- */
-void qman_poll(void);
 
 /**
  * qman_stop_dequeues - Stop h/w dequeuing to the s/w portal

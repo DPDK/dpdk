@@ -15,10 +15,10 @@
 #include "rte_eth_bond_8023ad.h"
 
 #define BOND_MODE_8023AX_UPDATE_TIMEOUT_MS  100
-/** Maximum number of packets to one slave queued in TX ring. */
-#define BOND_MODE_8023AX_SLAVE_RX_PKTS        3
-/** Maximum number of LACP packets from one slave queued in TX ring. */
-#define BOND_MODE_8023AX_SLAVE_TX_PKTS        1
+/** Maximum number of packets to one member queued in TX ring. */
+#define BOND_MODE_8023AX_MEMBER_RX_PKTS        3
+/** Maximum number of LACP packets from one member queued in TX ring. */
+#define BOND_MODE_8023AX_MEMBER_TX_PKTS        1
 /**
  * Timeouts definitions (5.4.4 in 802.1AX documentation).
  */
@@ -113,7 +113,7 @@ struct port {
 	enum rte_bond_8023ad_selection selected;
 
 	/** Indicates if either allmulti or promisc has been enforced on the
-	 * slave so that we can receive lacp packets
+	 * member so that we can receive lacp packets
 	 */
 #define BOND_8023AD_FORCED_ALLMULTI (1 << 0)
 #define BOND_8023AD_FORCED_PROMISC (1 << 1)
@@ -162,8 +162,8 @@ struct mode8023ad_private {
 	uint8_t external_sm;
 	struct rte_ether_addr mac_addr;
 
-	struct rte_eth_link slave_link;
-	/***< slave link properties */
+	struct rte_eth_link member_link;
+	/***< member link properties */
 
 	/**
 	 * Configuration of dedicated hardware queues for control plane
@@ -194,11 +194,11 @@ struct bond_dev_private;
 /**
  * @internal
  *
- * Set mode 4 configuration of bonded interface.
+ * Set mode 4 configuration of bonding interface.
  *
- * @pre Bonded interface must be stopped.
+ * @pre Bonding interface must be stopped.
  *
- * @param dev Bonded interface
+ * @param dev Bonding interface
  * @param conf new configuration. If NULL set default configuration.
  */
 void
@@ -208,9 +208,9 @@ bond_mode_8023ad_setup(struct rte_eth_dev *dev,
 /**
  * @internal
  *
- * Enables 802.1AX mode and all active slaves on bonded interface.
+ * Enables 802.1AX mode and all active members on bonding interface.
  *
- * @param dev Bonded interface
+ * @param dev Bonding interface
  * @return
  *  0 on success, negative value otherwise.
  */
@@ -220,9 +220,9 @@ bond_mode_8023ad_enable(struct rte_eth_dev *dev);
 /**
  * @internal
  *
- * Disables 802.1AX mode of the bonded interface and slaves.
+ * Disables 802.1AX mode of the bonding interface and members.
  *
- * @param dev Bonded interface
+ * @param dev Bonding interface
  * @return
  *   0 on success, negative value otherwise.
  */
@@ -232,7 +232,7 @@ int bond_mode_8023ad_disable(struct rte_eth_dev *dev);
  * @internal
  *
  * Starts 802.3AX state machines management logic.
- * @param dev Bonded interface
+ * @param dev Bonding interface
  * @return
  *   0 if machines was started, 1 if machines was already running,
  *   negative value otherwise.
@@ -244,7 +244,7 @@ bond_mode_8023ad_start(struct rte_eth_dev *dev);
  * @internal
  *
  * Stops 802.3AX state machines management logic.
- * @param dev Bonded interface
+ * @param dev Bonding interface
  * @return
  *   0 if this call stopped state machines, -ENOENT if alarm was not set.
  */
@@ -255,55 +255,55 @@ bond_mode_8023ad_stop(struct rte_eth_dev *dev);
  * @internal
  *
  * Passes given slow packet to state machines management logic.
- * @param internals Bonded device private data.
- * @param slave_id Slave port id.
+ * @param internals Bonding device private data.
+ * @param member_id Member port id.
  * @param slot_pkt Slow packet.
  */
 void
 bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
-				 uint16_t slave_id, struct rte_mbuf *pkt);
+				 uint16_t member_id, struct rte_mbuf *pkt);
 
 /**
  * @internal
  *
- * Appends given slave used slave
+ * Appends given member used member
  *
- * @param dev       Bonded interface.
- * @param port_id   Slave port ID to be added
+ * @param dev       Bonding interface.
+ * @param port_id   Member port ID to be added
  *
  * @return
  *  0 on success, negative value otherwise.
  */
 void
-bond_mode_8023ad_activate_slave(struct rte_eth_dev *dev, uint16_t port_id);
+bond_mode_8023ad_activate_member(struct rte_eth_dev *dev, uint16_t port_id);
 
 /**
  * @internal
  *
- * Denitializes and removes given slave from 802.1AX mode.
+ * Denitializes and removes given member from 802.1AX mode.
  *
- * @param dev       Bonded interface.
- * @param slave_num Position of slave in active_slaves array
+ * @param dev       Bonding interface.
+ * @param member_num Position of member in active_members array
  *
  * @return
  *  0 on success, negative value otherwise.
  */
 int
-bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *dev, uint16_t slave_pos);
+bond_mode_8023ad_deactivate_member(struct rte_eth_dev *dev, uint16_t member_pos);
 
 /**
- * Updates state when MAC was changed on bonded device or one of its slaves.
- * @param bond_dev Bonded device
+ * Updates state when MAC was changed on bonding device or one of its members.
+ * @param bond_dev Bonding device
  */
 void
 bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev);
 
 int
 bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
-		uint16_t slave_port);
+		uint16_t member_port);
 
 int
-bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t slave_port);
+bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t member_port);
 
 int
 bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id);

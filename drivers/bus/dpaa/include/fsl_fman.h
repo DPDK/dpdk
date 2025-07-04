@@ -12,7 +12,7 @@
 /* Status field in FD is updated on Rx side by FMAN with following information.
  * Refer to field description in FM BG.
  */
-struct fm_status_t {
+struct __rte_packed_begin fm_status_t {
 	unsigned int reserved0:3;
 	unsigned int dcl4c:1; /* Don't Check L4 Checksum */
 	unsigned int reserved1:1;
@@ -38,7 +38,7 @@ struct fm_status_t {
 	unsigned int phe:1; /* Header Error during parsing */
 	unsigned int frdr:1; /* Frame Dropped by disabled port */
 	unsigned int reserved5:4;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Set MAC address for a particular interface */
 __rte_internal
@@ -59,6 +59,18 @@ void fman_if_stats_reset(struct fman_if *p);
 /* Get all of the FMAN statistics */
 __rte_internal
 void fman_if_stats_get_all(struct fman_if *p, uint64_t *value, int n);
+
+__rte_internal
+void fman_if_bmi_stats_enable(struct fman_if *p);
+
+__rte_internal
+void fman_if_bmi_stats_disable(struct fman_if *p);
+
+__rte_internal
+void fman_if_bmi_stats_get_all(struct fman_if *p, uint64_t *value);
+
+__rte_internal
+void fman_if_bmi_stats_reset(struct fman_if *p);
 
 /* Set ignore pause option for a specific interface */
 void fman_if_set_rx_ignore_pause_frames(struct fman_if *p, bool enable);

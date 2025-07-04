@@ -123,8 +123,8 @@ app_main_loop_worker_pipeline_lpm(void) {
 		};
 
 		struct rte_table_lpm_key key = {
-			.ip = i << (24 - __builtin_popcount(app.n_ports - 1)),
-			.depth = 8 + __builtin_popcount(app.n_ports - 1),
+			.ip = i << (24 - rte_popcount32(app.n_ports - 1)),
+			.depth = 8 + rte_popcount32(app.n_ports - 1),
 		};
 
 		struct rte_pipeline_table_entry *entry_ptr;
@@ -160,14 +160,16 @@ app_main_loop_worker_pipeline_lpm(void) {
 
 	/* Run-time */
 #if APP_FLUSH == 0
-	for ( ; ; )
+	while (!force_quit)
 		rte_pipeline_run(p);
 #else
-	for (i = 0; ; i++) {
+	i = 0;
+	while (!force_quit) {
 		rte_pipeline_run(p);
 
 		if ((i & APP_FLUSH) == 0)
 			rte_pipeline_flush(p);
+		i++;
 	}
 #endif
 }

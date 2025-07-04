@@ -5,6 +5,8 @@
 #include "gve_ethdev.h"
 #include "base/gve_adminq.h"
 
+#define GVE_PKT_CONT_BIT_IS_SET(x) (GVE_RXF_PKT_CONT & (x))
+
 static inline void
 gve_rx_refill(struct gve_rx_queue *rxq)
 {
@@ -87,43 +89,72 @@ gve_rx_refill(struct gve_rx_queue *rxq)
 	}
 }
 
-uint16_t
-gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+/*
+ * This method processes a single rte_mbuf and handles packet segmentation
+ * In QPL mode it copies data from the mbuf to the gve_rx_queue.
+ */
+static void
+gve_rx_mbuf(struct gve_rx_queue *rxq, struct rte_mbuf *rxe, uint16_t len,
+	    uint16_t rx_id)
 {
-	volatile struct gve_rx_desc *rxr, *rxd;
-	struct gve_rx_queue *rxq = rx_queue;
-	uint16_t rx_id = rxq->rx_tail;
-	struct rte_mbuf *rxe;
-	uint16_t nb_rx, len;
-	uint64_t bytes = 0;
+	uint16_t padding = 0;
 	uint64_t addr;
-	uint16_t i;
 
-	rxr = rxq->rx_desc_ring;
-	nb_rx = 0;
-
-	for (i = 0; i < nb_pkts; i++) {
-		rxd = &rxr[rx_id];
-		if (GVE_SEQNO(rxd->flags_seq) != rxq->expected_seqno)
-			break;
-
-		if (rxd->flags_seq & GVE_RXF_ERR) {
-			rxq->stats.errors++;
-			continue;
-		}
-
-		len = rte_be_to_cpu_16(rxd->len) - GVE_RX_PAD;
-		rxe = rxq->sw_ring[rx_id];
-		if (rxq->is_gqi_qpl) {
-			addr = (uint64_t)(rxq->qpl->mz->addr) + rx_id * PAGE_SIZE + GVE_RX_PAD;
-			rte_memcpy((void *)((size_t)rxe->buf_addr + rxe->data_off),
-				   (void *)(size_t)addr, len);
-		}
+	rxe->data_len = len;
+	if (!rxq->ctx.mbuf_head) {
+		rxq->ctx.mbuf_head = rxe;
+		rxq->ctx.mbuf_tail = rxe;
+		rxe->nb_segs = 1;
 		rxe->pkt_len = len;
 		rxe->data_len = len;
 		rxe->port = rxq->port_id;
 		rxe->ol_flags = 0;
+		padding = GVE_RX_PAD;
+	} else {
+		rxq->ctx.mbuf_head->pkt_len += len;
+		rxq->ctx.mbuf_head->nb_segs += 1;
+		rxq->ctx.mbuf_tail->next = rxe;
+		rxq->ctx.mbuf_tail = rxe;
+	}
+	if (rxq->is_gqi_qpl) {
+		addr = (uint64_t)rxq->qpl->qpl_bufs[rx_id] + padding;
+		rte_memcpy((void *)((size_t)rxe->buf_addr + rxe->data_off),
+				    (void *)(size_t)addr, len);
+	}
+}
 
+/*
+ * This method processes a single packet fragment associated with the
+ * passed packet descriptor.
+ * This methods returns whether the fragment is the last fragment
+ * of a packet.
+ */
+static bool
+gve_rx(struct gve_rx_queue *rxq, volatile struct gve_rx_desc *rxd, uint16_t rx_id)
+{
+	bool is_last_frag = !GVE_PKT_CONT_BIT_IS_SET(rxd->flags_seq);
+	uint16_t frag_size = rte_be_to_cpu_16(rxd->len);
+	struct gve_rx_ctx *ctx = &rxq->ctx;
+	bool is_first_frag = ctx->total_frags == 0;
+	struct rte_mbuf *rxe;
+
+	if (ctx->drop_pkt)
+		goto finish_frag;
+
+	if (rxd->flags_seq & GVE_RXF_ERR) {
+		ctx->drop_pkt = true;
+		rxq->stats.errors++;
+		goto finish_frag;
+	}
+
+	if (is_first_frag)
+		frag_size -= GVE_RX_PAD;
+
+	rxe = rxq->sw_ring[rx_id];
+	gve_rx_mbuf(rxq, rxe, frag_size, rx_id);
+	rxq->stats.bytes += frag_size;
+
+	if (is_first_frag) {
 		if (rxd->flags_seq & GVE_RXF_TCP)
 			rxe->packet_type |= RTE_PTYPE_L4_TCP;
 		if (rxd->flags_seq & GVE_RXF_UDP)
@@ -137,28 +168,60 @@ gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			rxe->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 			rxe->hash.rss = rte_be_to_cpu_32(rxd->rss_hash);
 		}
+	}
 
-		rxq->expected_seqno = gve_next_seqno(rxq->expected_seqno);
+finish_frag:
+	ctx->total_frags++;
+	return is_last_frag;
+}
+
+static void
+gve_rx_ctx_clear(struct gve_rx_ctx *ctx)
+{
+	ctx->mbuf_head = NULL;
+	ctx->mbuf_tail = NULL;
+	ctx->drop_pkt = false;
+	ctx->total_frags = 0;
+}
+
+uint16_t
+gve_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	volatile struct gve_rx_desc *rxr, *rxd;
+	struct gve_rx_queue *rxq = rx_queue;
+	struct gve_rx_ctx *ctx = &rxq->ctx;
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx;
+
+	rxr = rxq->rx_desc_ring;
+	nb_rx = 0;
+
+	while (nb_rx < nb_pkts) {
+		rxd = &rxr[rx_id];
+		if (GVE_SEQNO(rxd->flags_seq) != rxq->expected_seqno)
+			break;
+
+		if (gve_rx(rxq, rxd, rx_id)) {
+			if (!ctx->drop_pkt)
+				rx_pkts[nb_rx++] = ctx->mbuf_head;
+			rxq->nb_avail += ctx->total_frags;
+			gve_rx_ctx_clear(ctx);
+		}
 
 		rx_id++;
 		if (rx_id == rxq->nb_rx_desc)
 			rx_id = 0;
 
-		rx_pkts[nb_rx] = rxe;
-		bytes += len;
-		nb_rx++;
+		rxq->expected_seqno = gve_next_seqno(rxq->expected_seqno);
 	}
 
-	rxq->nb_avail += nb_rx;
 	rxq->rx_tail = rx_id;
 
 	if (rxq->nb_avail > rxq->free_thresh)
 		gve_rx_refill(rxq);
 
-	if (nb_rx) {
+	if (nb_rx)
 		rxq->stats.packets += nb_rx;
-		rxq->stats.bytes += bytes;
-	}
 
 	return nb_rx;
 }
@@ -216,7 +279,7 @@ gve_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (q->is_gqi_qpl) {
-		gve_adminq_unregister_page_list(q->hw, q->qpl->id);
+		gve_teardown_queue_page_list(q->hw, q->qpl);
 		q->qpl = NULL;
 	}
 
@@ -238,13 +301,15 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	const struct rte_memzone *mz;
 	struct gve_rx_queue *rxq;
 	uint16_t free_thresh;
+	uint32_t mbuf_len;
 	int err = 0;
 
-	if (nb_desc != hw->rx_desc_cnt) {
-		PMD_DRV_LOG(WARNING, "gve doesn't support nb_desc config, use hw nb_desc %u.",
-			    hw->rx_desc_cnt);
+	/* Ring size is required to be a power of two. */
+	if (!rte_is_power_of_2(nb_desc)) {
+		PMD_DRV_LOG(ERR, "Invalid ring size %u. GVE ring size must be a power of 2.",
+			    nb_desc);
+		return -EINVAL;
 	}
-	nb_desc = hw->rx_desc_cnt;
 
 	/* Free memory if needed. */
 	if (dev->data->rx_queues[queue_id]) {
@@ -281,7 +346,11 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	rxq->hw = hw;
 	rxq->ntfy_addr = &hw->db_bar2[rte_be_to_cpu_32(hw->irq_dbs[rxq->ntfy_id].id)];
 
-	rxq->rx_buf_len = rte_pktmbuf_data_room_size(rxq->mpool) - RTE_PKTMBUF_HEADROOM;
+	mbuf_len =
+		rte_pktmbuf_data_room_size(rxq->mpool) - RTE_PKTMBUF_HEADROOM;
+	rxq->rx_buf_len =
+		RTE_MIN((uint16_t)GVE_RX_MAX_BUF_SIZE_GQI,
+			RTE_ALIGN_FLOOR(mbuf_len, GVE_RX_BUF_ALIGN_GQI));
 
 	/* Allocate software ring */
 	rxq->sw_ring = rte_zmalloc_socket("gve rx sw ring", sizeof(struct rte_mbuf *) * nb_desc,
@@ -314,11 +383,16 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	}
 	rxq->rx_data_ring = (union gve_rx_data_slot *)mz->addr;
 	rxq->data_mz = mz;
+
+	/* Allocate and register QPL for the queue. */
 	if (rxq->is_gqi_qpl) {
-		rxq->qpl = &hw->qpl[rxq->ntfy_id];
-		err = gve_adminq_register_page_list(hw, rxq->qpl);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Failed to register qpl %u", queue_id);
+		rxq->qpl = gve_setup_queue_page_list(hw, queue_id, true,
+						     nb_desc);
+		if (!rxq->qpl) {
+			err = -ENOMEM;
+			PMD_DRV_LOG(ERR,
+				    "Failed to alloc rx qpl for queue %hu.",
+				    queue_id);
 			goto err_data_ring;
 		}
 	}
@@ -329,7 +403,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	if (mz == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for RX resource");
 		err = -ENOMEM;
-		goto err_data_ring;
+		goto err_qpl;
 	}
 	rxq->qres = (struct gve_queue_resources *)mz->addr;
 	rxq->qres_mz = mz;
@@ -339,7 +413,11 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	dev->data->rx_queues[queue_id] = rxq;
 
 	return 0;
-
+err_qpl:
+	if (rxq->is_gqi_qpl) {
+		gve_teardown_queue_page_list(hw, rxq->qpl);
+		rxq->qpl = NULL;
+	}
 err_data_ring:
 	rte_memzone_free(rxq->data_mz);
 err_rx_ring:
@@ -351,21 +429,108 @@ err_rxq:
 	return err;
 }
 
+static int
+gve_rxq_mbufs_alloc(struct gve_rx_queue *rxq)
+{
+	struct rte_mbuf *nmb;
+	uint16_t i;
+	int diag;
+
+	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
+	if (diag < 0) {
+		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
+			nmb = rte_pktmbuf_alloc(rxq->mpool);
+			if (!nmb)
+				break;
+			rxq->sw_ring[i] = nmb;
+		}
+		if (i < rxq->nb_rx_desc - 1)
+			return -ENOMEM;
+	}
+	rxq->nb_avail = 0;
+	rxq->next_avail = rxq->nb_rx_desc - 1;
+
+	for (i = 0; i < rxq->nb_rx_desc; i++) {
+		if (rxq->is_gqi_qpl) {
+			rxq->rx_data_ring[i].addr = rte_cpu_to_be_64(i * PAGE_SIZE);
+		} else {
+			if (i == rxq->nb_rx_desc - 1)
+				break;
+			nmb = rxq->sw_ring[i];
+			rxq->rx_data_ring[i].addr = rte_cpu_to_be_64(rte_mbuf_data_iova(nmb));
+		}
+	}
+
+	rte_write32(rte_cpu_to_be_32(rxq->next_avail), rxq->qrx_tail);
+
+	return 0;
+}
+
+int
+gve_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct gve_priv *hw = dev->data->dev_private;
+	struct gve_rx_queue *rxq;
+	int ret;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	rxq->qrx_tail = &hw->db_bar2[rte_be_to_cpu_32(rxq->qres->db_index)];
+
+	rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), rxq->ntfy_addr);
+
+	ret = gve_rxq_mbufs_alloc(rxq);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to alloc Rx queue mbuf");
+		return ret;
+	}
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+int
+gve_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct gve_rx_queue *rxq;
+
+	if (rx_queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	gve_release_rxq_mbufs(rxq);
+	gve_reset_rxq(rxq);
+
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
 void
 gve_stop_rx_queues(struct rte_eth_dev *dev)
 {
 	struct gve_priv *hw = dev->data->dev_private;
-	struct gve_rx_queue *rxq;
 	uint16_t i;
 	int err;
+
+	if (!gve_is_gqi(hw))
+		return gve_stop_rx_queues_dqo(dev);
 
 	err = gve_adminq_destroy_rx_queues(hw, dev->data->nb_rx_queues);
 	if (err != 0)
 		PMD_DRV_LOG(WARNING, "failed to destroy rxqs");
 
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rxq = dev->data->rx_queues[i];
-		gve_release_rxq_mbufs(rxq);
-		gve_reset_rxq(rxq);
-	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		if (gve_rx_queue_stop(dev, i) != 0)
+			PMD_DRV_LOG(WARNING, "Fail to stop Rx queue %d", i);
+}
+
+void
+gve_set_rx_function(struct rte_eth_dev *dev)
+{
+	dev->rx_pkt_burst = gve_rx_burst;
 }

@@ -14,11 +14,11 @@
  *
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 #define IFPGA_MAX_PORT_NUM   4
 

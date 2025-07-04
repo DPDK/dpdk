@@ -8,12 +8,12 @@
 #ifndef _RTE_BYTEORDER_PPC_64_H_
 #define _RTE_BYTEORDER_PPC_64_H_
 
+#include <stdint.h>
+#include "generic/rte_byteorder.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include "generic/rte_byteorder.h"
 
 /*
  * An architecture-optimized byte swap for a 16-bit value.
@@ -39,7 +39,7 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 /*
  * An architecture-optimized byte swap for a 64-bit value.
  *
-  * Do not use this function directly. The preferred function is rte_bswap64().
+ * Do not use this function directly. The preferred function is rte_bswap64().
  */
 /* 64-bit mode */
 static inline uint64_t rte_arch_bswap64(uint64_t _x)
@@ -62,15 +62,6 @@ static inline uint64_t rte_arch_bswap64(uint64_t _x)
 #define rte_bswap64(x) ((uint64_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap64(x) :		\
 				   rte_arch_bswap64(x)))
-#else
-/*
- * __builtin_bswap16 is only available gcc 4.8 and upwards
- */
-#if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8)
-#define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
-				   rte_constant_bswap16(x) :		\
-				   rte_arch_bswap16(x)))
-#endif
 #endif
 
 /* Power 8 have both little endian and big endian mode

@@ -1,0 +1,69 @@
+/*
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2024 Napatech A/S
+ */
+
+/*
+ * nthw_fpga_reg_defs_rac.h
+ *
+ * Auto-generated file - do *NOT* edit
+ *
+ */
+
+#ifndef _NTHW_FPGA_REG_DEFS_RAC_
+#define _NTHW_FPGA_REG_DEFS_RAC_
+
+/* RAC */
+#define NTHW_MOD_RAC (0xae830b42UL)
+#define RAC_DBG_CTRL (0x587273e2UL)
+#define RAC_DBG_CTRL_C (0x4fe263UL)
+#define RAC_DBG_DATA (0xf7a3f1fbUL)
+#define RAC_DBG_DATA_D (0x69d9305UL)
+#define RAC_DUMMY0 (0xd8e9ed5bUL)
+#define RAC_DUMMY1 (0xafeeddcdUL)
+#define RAC_DUMMY2 (0x36e78c77UL)
+#define RAC_NDM_REGISTER (0x36b9e7d0UL)
+#define RAC_NDM_REGISTER_NDM (0xf791ef23UL)
+#define RAC_NMB_DATA (0xc0e60c69UL)
+#define RAC_NMB_DATA_NMB_DATA (0x21f71466UL)
+#define RAC_NMB_RD_ADR (0x274e1df2UL)
+#define RAC_NMB_RD_ADR_ADR (0xf2e063d0UL)
+#define RAC_NMB_RD_ADR_RES (0x829c7f2eUL)
+#define RAC_NMB_STATUS (0x2070b64UL)
+#define RAC_NMB_STATUS_BUS_TIMEOUT (0x7b220848UL)
+#define RAC_NMB_STATUS_NMB_READY (0xe67a182bUL)
+#define RAC_NMB_WR_ADR (0x9823ee63UL)
+#define RAC_NMB_WR_ADR_ADR (0xcb13936fUL)
+#define RAC_NMB_WR_ADR_RES (0xbb6f8f91UL)
+#define RAC_RAB_BUF_FREE (0x60f7f2d8UL)
+#define RAC_RAB_BUF_FREE_IB_FREE (0x4ddd870fUL)
+#define RAC_RAB_BUF_FREE_IB_OVF (0x92388832UL)
+#define RAC_RAB_BUF_FREE_OB_FREE (0x2e0db235UL)
+#define RAC_RAB_BUF_FREE_OB_OVF (0x44616b2fUL)
+#define RAC_RAB_BUF_FREE_TIMEOUT (0x1d0ae34eUL)
+#define RAC_RAB_BUF_USED (0x549e5008UL)
+#define RAC_RAB_BUF_USED_FLUSH (0xeb99f9baUL)
+#define RAC_RAB_BUF_USED_IB_USED (0xd4c7d150UL)
+#define RAC_RAB_BUF_USED_OB_USED (0xb717e46aUL)
+#define RAC_RAB_DMA_IB_HI (0x3adf4e92UL)
+#define RAC_RAB_DMA_IB_HI_PHYADDR (0x482070e9UL)
+#define RAC_RAB_DMA_IB_LO (0xb7d02ea3UL)
+#define RAC_RAB_DMA_IB_LO_PHYADDR (0x32d1a919UL)
+#define RAC_RAB_DMA_IB_RD (0xf443c8f4UL)
+#define RAC_RAB_DMA_IB_RD_PTR (0xa19bede2UL)
+#define RAC_RAB_DMA_IB_WR (0x7de089e0UL)
+#define RAC_RAB_DMA_IB_WR_PTR (0x1ef61e73UL)
+#define RAC_RAB_DMA_OB_HI (0xb59fbb32UL)
+#define RAC_RAB_DMA_OB_HI_PHYADDR (0xe8c5af34UL)
+#define RAC_RAB_DMA_OB_LO (0x3890db03UL)
+#define RAC_RAB_DMA_OB_LO_PHYADDR (0x923476c4UL)
+#define RAC_RAB_DMA_OB_WR (0xf2a07c40UL)
+#define RAC_RAB_DMA_OB_WR_PTR (0x6dec67f9UL)
+#define RAC_RAB_IB_DATA (0xea524b52UL)
+#define RAC_RAB_IB_DATA_D (0x52ecd3c6UL)
+#define RAC_RAB_INIT (0x47d5556eUL)
+#define RAC_RAB_INIT_RAB (0xda582a35UL)
+#define RAC_RAB_OB_DATA (0x89827e68UL)
+#define RAC_RAB_OB_DATA_D (0x21f6aa4cUL)
+
+#endif	/* _NTHW_FPGA_REG_DEFS_RAC_ */

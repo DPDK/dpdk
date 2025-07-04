@@ -5,6 +5,8 @@
 #ifndef _DIST_PRIV_H_
 #define _DIST_PRIV_H_
 
+#include <stdalign.h>
+
 /**
  * @file
  * RTE distributor
@@ -51,10 +53,10 @@
  * the next cache line to worker 0, we pad this out to three cache lines.
  * Only 64-bits of the memory is actually used though.
  */
-union rte_distributor_buffer_single {
-	volatile int64_t bufptr64;
+union __rte_cache_aligned rte_distributor_buffer_single {
+	volatile RTE_ATOMIC(int64_t) bufptr64;
 	char pad[RTE_CACHE_LINE_SIZE*3];
-} __rte_cache_aligned;
+};
 
 /*
  * Transfer up to 8 mbufs at a time to/from workers, and
@@ -62,12 +64,12 @@ union rte_distributor_buffer_single {
  */
 #define RTE_DIST_BURST_SIZE 8
 
-struct rte_distributor_backlog {
+struct __rte_cache_aligned rte_distributor_backlog {
 	unsigned int start;
 	unsigned int count;
-	int64_t pkts[RTE_DIST_BURST_SIZE] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) int64_t pkts[RTE_DIST_BURST_SIZE];
 	uint16_t *tags; /* will point to second cacheline of inflights */
-} __rte_cache_aligned;
+};
 
 
 struct rte_distributor_returned_pkts {
@@ -113,17 +115,17 @@ enum rte_distributor_match_function {
  * There is a separate cacheline for returns in the burst API.
  */
 struct rte_distributor_buffer {
-	volatile int64_t bufptr64[RTE_DIST_BURST_SIZE]
-		__rte_cache_aligned; /* <= outgoing to worker */
+	volatile alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int64_t) bufptr64[RTE_DIST_BURST_SIZE];
+		/* <= outgoing to worker */
 
-	int64_t pad1 __rte_cache_aligned;    /* <= one cache line  */
+	alignas(RTE_CACHE_LINE_SIZE) int64_t pad1;    /* <= one cache line  */
 
-	volatile int64_t retptr64[RTE_DIST_BURST_SIZE]
-		__rte_cache_aligned; /* <= incoming from worker */
+	volatile alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int64_t) retptr64[RTE_DIST_BURST_SIZE];
+		/* <= incoming from worker */
 
-	int64_t pad2 __rte_cache_aligned;    /* <= one cache line  */
+	alignas(RTE_CACHE_LINE_SIZE) int64_t pad2;    /* <= one cache line  */
 
-	int count __rte_cache_aligned;       /* <= number of current mbufs */
+	alignas(RTE_CACHE_LINE_SIZE) int count;       /* <= number of current mbufs */
 };
 
 struct rte_distributor {
@@ -138,11 +140,11 @@ struct rte_distributor {
 	 * on the worker core. Second cache line are the backlog
 	 * that are going to go to the worker core.
 	 */
-	uint16_t in_flight_tags[RTE_DISTRIB_MAX_WORKERS][RTE_DIST_BURST_SIZE*2]
-			__rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t
+		in_flight_tags[RTE_DISTRIB_MAX_WORKERS][RTE_DIST_BURST_SIZE*2];
 
-	struct rte_distributor_backlog backlog[RTE_DISTRIB_MAX_WORKERS]
-			__rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_distributor_backlog
+		backlog[RTE_DISTRIB_MAX_WORKERS];
 
 	struct rte_distributor_buffer bufs[RTE_DISTRIB_MAX_WORKERS];
 

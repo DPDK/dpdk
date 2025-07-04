@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2021 Broadcom
+ * Copyright(c) 2014-2023 Broadcom
  * All rights reserved.
  */
 
@@ -11,9 +11,14 @@
 #include "bnxt_ulp.h"
 #include "ulp_template_db_enum.h"
 
-#define BNXT_TF_DBG(lvl, fmt, args...)	PMD_DRV_LOG(lvl, fmt, ## args)
+#define BNXT_DRV_DBG(lvl, fmt, ...) \
+	RTE_LOG(lvl, BNXT, "%s(): " fmt, __func__, ## __VA_ARGS__)
 
-#define BNXT_TF_INF(fmt, args...)
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#define BNXT_DRV_INF(fmt, ...)	RTE_LOG(INFO, fmt, ## __VA_ARGS__)
+#else
+#define BNXT_DRV_INF(fmt, ...)
+#endif
 
 #define BNXT_ULP_EM_FLOWS			8192
 #define BNXT_ULP_1M_FLOWS			1000000
@@ -61,12 +66,5 @@ enum bnxt_ulp_intf_type {
 	BNXT_ULP_INTF_TYPE_PHY_PORT,
 	BNXT_ULP_INTF_TYPE_LAST
 };
-
-struct bnxt_ulp_mark_tbl *
-bnxt_ulp_cntxt_ptr2_mark_db_get(struct bnxt_ulp_context *ulp_ctx);
-
-int32_t
-bnxt_ulp_cntxt_ptr2_mark_db_set(struct bnxt_ulp_context *ulp_ctx,
-				struct bnxt_ulp_mark_tbl *mark_tbl);
 
 #endif /* _BNXT_TF_COMMON_H_ */

@@ -962,7 +962,7 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 
 		/* check ipv6 src addr mask, ipv6 src addr is 16 bytes */
 		for (i = 0; i < 16; i++) {
-			if (ipv6_mask->hdr.src_addr[i] == UINT8_MAX) {
+			if (ipv6_mask->hdr.src_addr.a[i] == UINT8_MAX) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
 					"Not supported by fdir filter, do not support src ipv6");
@@ -978,13 +978,13 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 		}
 
 		for (i = 0; i < 16; i++) {
-			if (ipv6_mask->hdr.dst_addr[i] == UINT8_MAX)
+			if (ipv6_mask->hdr.dst_addr.a[i] == UINT8_MAX)
 				rule->mask.dst_ipv6_mask |= 1 << i;
 		}
 
 		ipv6_spec = (const struct rte_flow_item_ipv6 *)item->spec;
 		rte_memcpy(rule->hinic_fdir.dst_ipv6,
-			   ipv6_spec->hdr.dst_addr, 16);
+			   &ipv6_spec->hdr.dst_addr, 16);
 
 		/*
 		 * Check if the next not void item is TCP or UDP or ICMP.
@@ -1979,8 +1979,8 @@ static int hinic_lookup_new_filter(struct hinic_5tuple_filter *filter,
 		return -EINVAL;
 	}
 
-	if (!(filter_info->type_mask & (1 << type_id))) {
-		filter_info->type_mask |= 1 << type_id;
+	if (!(filter_info->type_mask & (UINT64_C(1) << type_id))) {
+		filter_info->type_mask |= UINT64_C(1) << type_id;
 		filter->index = type_id;
 		filter_info->pkt_filters[type_id].enable = true;
 		filter_info->pkt_filters[type_id].pkt_proto =
@@ -2138,7 +2138,7 @@ static void hinic_remove_5tuple_filter(struct rte_eth_dev *dev,
 	filter_info->pkt_type = 0;
 	filter_info->qid = 0;
 	filter_info->pkt_filters[filter->index].qid = 0;
-	filter_info->type_mask &= ~(1 <<  (filter->index));
+	filter_info->type_mask &= ~(UINT64_C(1) << filter->index);
 	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
 
 	rte_free(filter);
@@ -2268,8 +2268,8 @@ hinic_ethertype_filter_insert(struct hinic_filter_info *filter_info,
 	if (id < 0)
 		return -EINVAL;
 
-	if (!(filter_info->type_mask & (1 << id))) {
-		filter_info->type_mask |= 1 << id;
+	if (!(filter_info->type_mask & (UINT64_C(1) << id))) {
+		filter_info->type_mask |= UINT64_C(1) << id;
 		filter_info->pkt_filters[id].pkt_proto =
 			ethertype_filter->pkt_proto;
 		filter_info->pkt_filters[id].enable = ethertype_filter->enable;
@@ -2289,7 +2289,7 @@ hinic_ethertype_filter_remove(struct hinic_filter_info *filter_info,
 		return;
 
 	filter_info->pkt_type = 0;
-	filter_info->type_mask &= ~(1 << idx);
+	filter_info->type_mask &= ~(UINT64_C(1) << idx);
 	filter_info->pkt_filters[idx].pkt_proto = (uint16_t)0;
 	filter_info->pkt_filters[idx].enable = FALSE;
 	filter_info->pkt_filters[idx].qid = 0;
@@ -2355,7 +2355,7 @@ hinic_add_del_ethertype_filter(struct rte_eth_dev *dev,
 		if (i < 0)
 			return -EINVAL;
 
-		if ((filter_info->type_mask & (1 << i))) {
+		if ((filter_info->type_mask & (UINT64_C(1) << i))) {
 			filter_info->pkt_filters[i].enable = FALSE;
 			(void)hinic_set_fdir_filter(nic_dev->hwdev,
 					filter_info->pkt_type,

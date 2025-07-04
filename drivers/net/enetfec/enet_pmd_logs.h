@@ -8,26 +8,26 @@
 #include <rte_log.h>
 
 extern int enetfec_logtype_pmd;
+#define RTE_LOGTYPE_ENETFEC_NET enetfec_logtype_pmd
 
 /* PMD related logs */
-#define ENETFEC_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, enetfec_logtype_pmd, "\nfec_net: %s()" \
-		fmt "\n", __func__, ##args)
+#define ENETFEC_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, ENETFEC_NET, "%s()", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() ENET_PMD_LOG(DEBUG, " >>")
 
-#define ENETFEC_PMD_DEBUG(fmt, args...) \
-	ENETFEC_PMD_LOG(DEBUG, fmt, ## args)
-#define ENETFEC_PMD_ERR(fmt, args...) \
-	ENETFEC_PMD_LOG(ERR, fmt, ## args)
-#define ENETFEC_PMD_INFO(fmt, args...) \
-	ENETFEC_PMD_LOG(INFO, fmt, ## args)
+#define ENETFEC_PMD_DEBUG(fmt, ...) \
+	ENETFEC_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define ENETFEC_PMD_ERR(fmt, ...) \
+	ENETFEC_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define ENETFEC_PMD_INFO(fmt, ...) \
+	ENETFEC_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
 
-#define ENETFEC_PMD_WARN(fmt, args...) \
-	ENETFEC_PMD_LOG(WARNING, fmt, ## args)
+#define ENETFEC_PMD_WARN(fmt, ...) \
+	ENETFEC_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define ENETFEC_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+#define ENETFEC_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, ENETFEC_NET, __VA_ARGS__)
 
 #endif /* _ENETFEC_LOGS_H_ */

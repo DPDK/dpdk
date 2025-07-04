@@ -198,7 +198,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 		struct rte_udp_hdr *udph = (struct rte_udp_hdr *)
 			(ph + sa->hdr_len - sizeof(struct rte_udp_hdr));
 		udph->dgram_len = rte_cpu_to_be_16(mb->pkt_len - sqh_len -
-				sa->hdr_l3_off - sa->hdr_len);
+				sa->hdr_len + sizeof(struct rte_udp_hdr));
 	}
 
 	/* update original and new ip header fields */
@@ -288,27 +288,21 @@ outb_pkt_xprepare(const struct rte_ipsec_sa *sa, rte_be64_t sqc,
 /*
  * setup/update packets and crypto ops for ESP outbound tunnel case.
  */
-uint16_t
-esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
-	struct rte_crypto_op *cop[], uint16_t num)
+static inline uint16_t
+esp_outb_tun_prepare_helper(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t n, uint64_t sqn)
 {
 	int32_t rc;
-	uint32_t i, k, n;
-	uint64_t sqn;
+	uint32_t i, k;
 	rte_be64_t sqc;
 	struct rte_ipsec_sa *sa;
 	struct rte_cryptodev_sym_session *cs;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
-	uint32_t dr[num];
+	uint32_t dr[n];
 
 	sa = ss->sa;
 	cs = ss->crypto.ses;
-
-	n = num;
-	sqn = esn_outb_update_sqn(sa, &n);
-	if (n != num)
-		rte_errno = EOVERFLOW;
 
 	k = 0;
 	for (i = 0; i != n; i++) {
@@ -337,6 +331,30 @@ esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 		move_bad_mbufs(mb, dr, n, n - k);
 
 	return k;
+}
+
+uint16_t
+esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t num)
+{
+	uint64_t sqn;
+	uint32_t n;
+
+	n = num;
+	sqn = esn_outb_update_sqn(ss->sa, &n);
+	if (n != num)
+		rte_errno = EOVERFLOW;
+
+	return esp_outb_tun_prepare_helper(ss, mb, cop, n, sqn);
+}
+
+uint16_t
+esp_outb_tun_prepare_stateless(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t num, struct rte_ipsec_state *state)
+{
+	uint64_t sqn = state->sqn;
+
+	return esp_outb_tun_prepare_helper(ss, mb, cop, num, sqn);
 }
 
 /*
@@ -529,32 +547,26 @@ outb_cpu_crypto_prepare(const struct rte_ipsec_sa *sa, uint32_t *pofs,
 	return clen;
 }
 
-static uint16_t
-cpu_outb_pkt_prepare(const struct rte_ipsec_session *ss,
-		struct rte_mbuf *mb[], uint16_t num,
-		esp_outb_prepare_t prepare, uint32_t cofs_mask)
+static inline uint16_t
+cpu_outb_pkt_prepare_helper(const struct rte_ipsec_session *ss,
+		struct rte_mbuf *mb[], uint16_t n, esp_outb_prepare_t prepare,
+		uint32_t cofs_mask,	uint64_t sqn)
 {
 	int32_t rc;
-	uint64_t sqn;
 	rte_be64_t sqc;
 	struct rte_ipsec_sa *sa;
-	uint32_t i, k, n;
+	uint32_t i, k;
 	uint32_t l2, l3;
 	union sym_op_data icv;
-	struct rte_crypto_va_iova_ptr iv[num];
-	struct rte_crypto_va_iova_ptr aad[num];
-	struct rte_crypto_va_iova_ptr dgst[num];
-	uint32_t dr[num];
-	uint32_t l4ofs[num];
-	uint32_t clen[num];
-	uint64_t ivbuf[num][IPSEC_MAX_IV_QWORD];
+	struct rte_crypto_va_iova_ptr iv[n];
+	struct rte_crypto_va_iova_ptr aad[n];
+	struct rte_crypto_va_iova_ptr dgst[n];
+	uint32_t dr[n];
+	uint32_t l4ofs[n];
+	uint32_t clen[n];
+	uint64_t ivbuf[n][IPSEC_MAX_IV_QWORD];
 
 	sa = ss->sa;
-
-	n = num;
-	sqn = esn_outb_update_sqn(sa, &n);
-	if (n != num)
-		rte_errno = EOVERFLOW;
 
 	for (i = 0, k = 0; i != n; i++) {
 
@@ -604,15 +616,40 @@ uint16_t
 cpu_outb_tun_pkt_prepare(const struct rte_ipsec_session *ss,
 		struct rte_mbuf *mb[], uint16_t num)
 {
-	return cpu_outb_pkt_prepare(ss, mb, num, outb_tun_pkt_prepare, 0);
+	uint64_t sqn;
+	uint32_t n;
+
+	n = num;
+	sqn = esn_outb_update_sqn(ss->sa, &n);
+	if (n != num)
+		rte_errno = EOVERFLOW;
+
+	return cpu_outb_pkt_prepare_helper(ss, mb, n, outb_tun_pkt_prepare, 0, sqn);
+}
+
+uint16_t
+cpu_outb_tun_pkt_prepare_stateless(const struct rte_ipsec_session *ss,
+		struct rte_mbuf *mb[], uint16_t num, struct rte_ipsec_state *state)
+{
+	uint64_t sqn = state->sqn;
+
+	return cpu_outb_pkt_prepare_helper(ss, mb, num, outb_tun_pkt_prepare, 0, sqn);
 }
 
 uint16_t
 cpu_outb_trs_pkt_prepare(const struct rte_ipsec_session *ss,
 		struct rte_mbuf *mb[], uint16_t num)
 {
-	return cpu_outb_pkt_prepare(ss, mb, num, outb_trs_pkt_prepare,
-		UINT32_MAX);
+	uint64_t sqn;
+	uint32_t n;
+
+	n = num;
+	sqn = esn_outb_update_sqn(ss->sa, &n);
+	if (n != num)
+		rte_errno = EOVERFLOW;
+
+	return cpu_outb_pkt_prepare_helper(ss, mb, n, outb_trs_pkt_prepare,
+		UINT32_MAX, sqn);
 }
 
 /*

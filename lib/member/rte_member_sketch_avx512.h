@@ -5,13 +5,13 @@
 #ifndef RTE_MEMBER_SKETCH_AVX512_H
 #define RTE_MEMBER_SKETCH_AVX512_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_vect.h>
 #include "rte_member.h"
 #include "rte_member_sketch.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define NUM_ROW_VEC 8
 

@@ -15,3 +15,5 @@ sources = files(
         'hn_rxtx.c',
         'hn_vf.c',
 )
+
+cflags += no_wvla_cflag

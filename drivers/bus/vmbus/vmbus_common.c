@@ -10,6 +10,7 @@
 #include <sys/queue.h>
 #include <sys/mman.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_eal.h>
 #include <rte_tailq.h>
@@ -39,6 +40,9 @@ vmbus_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
 			  "mmap(%d, %p, %zu, %ld) failed: %s",
 			  fd, requested_addr, size, (long)offset,
 			  strerror(errno));
+	} else {
+		VMBUS_LOG(DEBUG, "  VMBUS memory mapped at %p",
+			  mapaddr);
 	}
 	return mapaddr;
 }
@@ -55,9 +59,10 @@ vmbus_unmap_resource(void *requested_addr, size_t size)
 		VMBUS_LOG(ERR, "munmap(%p, 0x%lx) failed: %s",
 			requested_addr, (unsigned long)size,
 			strerror(errno));
-	} else
+	} else {
 		VMBUS_LOG(DEBUG, "  VMBUS memory unmapped at %p",
 			  requested_addr);
+	}
 }
 
 /**
@@ -101,7 +106,12 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 	VMBUS_LOG(INFO, "VMBUS device %s on NUMA socket %i",
 		  guid, dev->device.numa_node);
 
-	/* TODO add block/allow logic */
+	/* no initialization when marked as blocked, return without error */
+	if (dev->device.devargs != NULL &&
+		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+		VMBUS_LOG(INFO, "  Device is blocked, not initializing");
+		return 1;
+	}
 
 	/* map resources for device */
 	ret = rte_vmbus_map_device(dev);
@@ -158,11 +168,31 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
 	return 1;
 }
 
+static bool
+vmbus_ignore_device(struct rte_vmbus_device *dev)
+{
+	struct rte_devargs *devargs = vmbus_devargs_lookup(dev);
+
+	switch (rte_vmbus_bus.bus.conf.scan_mode) {
+	case RTE_BUS_SCAN_ALLOWLIST:
+		if (devargs && devargs->policy == RTE_DEV_ALLOWED)
+			return false;
+		break;
+	case RTE_BUS_SCAN_UNDEFINED:
+	case RTE_BUS_SCAN_BLOCKLIST:
+		if (devargs == NULL || devargs->policy != RTE_DEV_BLOCKED)
+			return false;
+		break;
+	}
+	return true;
+}
+
 /*
  * Scan the vmbus, and call the devinit() function for
  * all registered drivers that have a matching entry in its id_table
  * for discovered devices.
  */
+RTE_EXPORT_SYMBOL(rte_vmbus_probe)
 int
 rte_vmbus_probe(void)
 {
@@ -175,7 +205,8 @@ rte_vmbus_probe(void)
 
 		rte_uuid_unparse(dev->device_id, ubuf, sizeof(ubuf));
 
-		/* TODO: add allowlist/blocklist */
+		if (vmbus_ignore_device(dev))
+			continue;
 
 		if (vmbus_probe_all_drivers(dev) < 0) {
 			VMBUS_LOG(NOTICE,
@@ -186,6 +217,34 @@ rte_vmbus_probe(void)
 	}
 
 	return (probed && probed == failed) ? -1 : 0;
+}
+
+static int
+rte_vmbus_cleanup(void)
+{
+	struct rte_vmbus_device *dev, *tmp_dev;
+	int error = 0;
+
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_vmbus_bus.device_list, next, tmp_dev) {
+		const struct rte_vmbus_driver *drv = dev->driver;
+		int ret;
+
+		if (drv == NULL || drv->remove == NULL)
+			continue;
+
+		ret = drv->remove(dev);
+		if (ret < 0)
+			error = -1;
+
+		rte_vmbus_unmap_device(dev);
+
+		dev->driver = NULL;
+		dev->device.driver = NULL;
+		TAILQ_REMOVE(&rte_vmbus_bus.device_list, dev, next);
+		free(dev);
+	}
+
+	return error;
 }
 
 static int
@@ -223,6 +282,7 @@ vmbus_devargs_lookup(struct rte_vmbus_device *dev)
 }
 
 /* register vmbus driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vmbus_register)
 void
 rte_vmbus_register(struct rte_vmbus_driver *driver)
 {
@@ -233,6 +293,7 @@ rte_vmbus_register(struct rte_vmbus_driver *driver)
 }
 
 /* unregister vmbus driver */
+RTE_EXPORT_INTERNAL_SYMBOL(rte_vmbus_unregister)
 void
 rte_vmbus_unregister(struct rte_vmbus_driver *driver)
 {
@@ -285,6 +346,7 @@ struct rte_vmbus_bus rte_vmbus_bus = {
 	.bus = {
 		.scan = rte_vmbus_scan,
 		.probe = rte_vmbus_probe,
+		.cleanup = rte_vmbus_cleanup,
 		.find_device = vmbus_find_device,
 		.parse = vmbus_parse,
 	},

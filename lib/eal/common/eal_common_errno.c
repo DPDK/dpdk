@@ -4,10 +4,12 @@
 
 /* Use XSI-compliant portable version of strerror_r() */
 #undef _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
 #include <string.h>
 
+#include <eal_export.h>
 #include <rte_per_lcore.h>
 #include <rte_errno.h>
 
@@ -15,8 +17,10 @@
 #define strerror_r(errnum, buf, buflen) strerror_s(buf, buflen, errnum)
 #endif
 
+RTE_EXPORT_SYMBOL(per_lcore__rte_errno)
 RTE_DEFINE_PER_LCORE(int, _rte_errno);
 
+RTE_EXPORT_SYMBOL(rte_strerror)
 const char *
 rte_strerror(int errnum)
 {
@@ -27,7 +31,7 @@ rte_strerror(int errnum)
 	static const char *sep = "";
 #endif
 #define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
+	static RTE_DEFINE_PER_LCORE(char, retval[RETVAL_SZ]);
 	char *ret = RTE_PER_LCORE(retval);
 
 	/* since some implementations of strerror_r throw an error

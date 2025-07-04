@@ -49,6 +49,13 @@ struct npa_aura_lim {
 
 struct npa_aura_attr {
 	int buf_type[ROC_NPA_BUF_TYPE_END];
+	uint16_t ref_count;
+	uint64_t nix0_bpid;
+	uint64_t nix1_bpid;
+	uint64_t shift;
+	uint64_t limit;
+	uint8_t bp_ena;
+	uint8_t bp;
 };
 
 struct dev;

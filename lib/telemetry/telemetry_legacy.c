@@ -12,6 +12,7 @@
 
 /* we won't link against libbsd, so just always use DPDKs-specific strlcpy */
 #undef RTE_USE_LIBBSD
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_spinlock.h>
@@ -52,6 +53,7 @@ struct json_command callbacks[TELEMETRY_LEGACY_MAX_CALLBACKS] = {
 int num_legacy_callbacks = 1;
 static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_telemetry_legacy_register)
 int
 rte_telemetry_legacy_register(const char *cmd,
 		enum rte_telemetry_legacy_data_req data_req,
@@ -94,7 +96,7 @@ register_client(const char *cmd __rte_unused, const char *params,
 	}
 #ifndef RTE_EXEC_ENV_WINDOWS
 	strlcpy(data, strchr(params, ':'), sizeof(data));
-	memcpy(data, &data[strlen(":\"")], strlen(data));
+	memmove(data, &data[strlen(":\"")], strlen(data));
 	if (!strchr(data, '\"')) {
 		fprintf(stderr, "Invalid client data\n");
 		return -1;
