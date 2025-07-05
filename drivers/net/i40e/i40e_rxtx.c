@@ -3715,6 +3715,8 @@ i40e_set_default_pctype_table(struct rte_eth_dev *dev)
 	ad->flow_types_mask = 0ULL;
 	ad->pctypes_mask = 0ULL;
 
+	ad->pctypes_tbl[RTE_ETH_FLOW_IPV4] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER);
 	ad->pctypes_tbl[RTE_ETH_FLOW_FRAG_IPV4] =
 				(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4);
 	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] =
