@@ -163,6 +163,8 @@ rte_auxiliary_driver_remove_dev(struct rte_auxiliary_device *dev)
 		return -EINVAL;
 
 	drv = dev->driver;
+	if (drv == NULL)
+		return 0;
 
 	AUXILIARY_LOG(DEBUG, "Driver %s remove auxiliary device %s on NUMA node %i",
 		      drv->driver.name, dev->name, dev->device.numa_node);
