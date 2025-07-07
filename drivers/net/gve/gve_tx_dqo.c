@@ -159,6 +159,8 @@ static inline void
 gve_tx_fill_seg_desc_dqo(volatile union gve_tx_desc_dqo *desc, struct rte_mbuf *tx_pkt)
 {
 	uint32_t hlen = tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len;
+
+	desc->tso_ctx = (struct gve_tx_tso_context_desc_dqo) {};
 	desc->tso_ctx.cmd_dtype.dtype = GVE_TX_TSO_CTX_DESC_DTYPE_DQO;
 	desc->tso_ctx.cmd_dtype.tso = 1;
 	desc->tso_ctx.mss = (uint16_t)tx_pkt->tso_segsz;
@@ -257,6 +259,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					mbuf_offset;
 
 				txd = &txr[tx_id];
+				txd->pkt = (struct gve_tx_pkt_desc_dqo) {};
 				txd->pkt.buf_addr = rte_cpu_to_le_64(buf_addr);
 				txd->pkt.compl_tag = rte_cpu_to_le_16(first_sw_id);
 				txd->pkt.dtype = GVE_TX_PKT_DESC_DTYPE_DQO;
