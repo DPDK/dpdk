@@ -113,13 +113,14 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct rte_mbuf **sw_ring;
 	struct rte_mbuf *tx_pkt;
 	uint16_t mask, sw_mask;
+	uint16_t first_sw_id;
+	const char *reason;
 	uint16_t nb_tx = 0;
 	uint64_t ol_flags;
 	uint16_t nb_descs;
 	uint16_t tx_id;
 	uint16_t sw_id;
 	uint64_t bytes;
-	uint16_t first_sw_id;
 	uint8_t tso;
 	uint8_t csum;
 
@@ -138,6 +139,12 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (txq->nb_free <= txq->free_thresh)
 			gve_tx_clean_descs_dqo(txq, DQO_TX_MULTIPLIER *
 					       txq->rs_thresh);
+
+
+		if (rte_mbuf_check(tx_pkt, true, &reason)) {
+			PMD_DRV_LOG(DEBUG, "Invalid mbuf: %s", reason);
+			break;
+		}
 
 		ol_flags = tx_pkt->ol_flags;
 		first_sw_id = sw_id;
