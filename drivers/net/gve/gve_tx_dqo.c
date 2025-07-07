@@ -80,6 +80,68 @@ gve_tx_clean_descs_dqo(struct gve_tx_queue *txq, uint16_t nb_descs) {
 		gve_tx_clean_dqo(txq);
 }
 
+/* GVE expects at most 10 data descriptors per mtu-sized segment. Beyond this,
+ * the hardware will assume the driver is malicious and stop transmitting
+ * packets altogether. Validate that a packet can be sent to avoid sending
+ * posting descriptors for an invalid packet.
+ */
+static inline bool
+gve_tx_validate_descs(struct rte_mbuf *tx_pkt, uint16_t nb_descs, bool is_tso)
+{
+	if (!is_tso)
+		return nb_descs <= GVE_TX_MAX_DATA_DESCS;
+
+	int tso_segsz = tx_pkt->tso_segsz;
+	int num_descs, seg_offset, mbuf_len;
+	int headlen = tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len;
+
+	/* Headers will be split into their own buffer. */
+	num_descs = 1;
+	seg_offset = 0;
+	mbuf_len = tx_pkt->data_len - headlen;
+
+	while (tx_pkt) {
+		if (!mbuf_len)
+			goto next_mbuf;
+
+		int seg_remain = tso_segsz - seg_offset;
+		if (num_descs == GVE_TX_MAX_DATA_DESCS && seg_remain)
+			return false;
+
+		if (seg_remain < mbuf_len) {
+			seg_offset = mbuf_len % tso_segsz;
+			/* The MSS is bound from above by 9728B, so a
+			 * single TSO segment in the middle of an mbuf
+			 * will be part of at most two descriptors, and
+			 * is not at risk of defying this limitation.
+			 * Thus, such segments are ignored.
+			 */
+			int mbuf_remain = tx_pkt->data_len % GVE_TX_MAX_BUF_SIZE_DQO;
+
+			/* For each TSO segment, HW will prepend
+			 * headers. The remaining bytes of this mbuf
+			 * will be the start of the payload of the next
+			 * TSO segment. In addition, if the final
+			 * segment in this mbuf is divided between two
+			 * descriptors, both must be counted.
+			 */
+			num_descs = 1 + !!(seg_offset) +
+				(mbuf_remain < seg_offset && mbuf_remain);
+		} else {
+			seg_offset += mbuf_len;
+			num_descs++;
+		}
+
+next_mbuf:
+		tx_pkt = tx_pkt->next;
+		if (tx_pkt)
+			mbuf_len = tx_pkt->data_len;
+	}
+
+
+	return true;
+}
+
 static uint16_t
 gve_tx_pkt_nb_data_descs(struct rte_mbuf *tx_pkt)
 {
@@ -166,7 +228,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Drop packet if it doesn't adhere to hardware limits. */
-		if (!tso && nb_descs > GVE_TX_MAX_DATA_DESCS) {
+		if (!gve_tx_validate_descs(tx_pkt, nb_descs, tso)) {
 			txq->stats.too_many_descs++;
 			break;
 		}

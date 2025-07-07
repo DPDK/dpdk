@@ -603,7 +603,7 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_max = priv->max_tx_desc_cnt,
 		.nb_min = priv->min_tx_desc_cnt,
 		.nb_align = 1,
-		.nb_mtu_seg_max = GVE_TX_MAX_DATA_DESCS,
+		.nb_mtu_seg_max = GVE_TX_MAX_DATA_DESCS - 1,
 	};
 
 	dev_info->flow_type_rss_offloads = GVE_RTE_RSS_OFFLOAD_ALL;
