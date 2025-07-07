@@ -165,6 +165,12 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				break;
 		}
 
+		/* Drop packet if it doesn't adhere to hardware limits. */
+		if (!tso && nb_descs > GVE_TX_MAX_DATA_DESCS) {
+			txq->stats.too_many_descs++;
+			break;
+		}
+
 		if (tso) {
 			txd = &txr[tx_id];
 			gve_tx_fill_seg_desc_dqo(txd, tx_pkt);
