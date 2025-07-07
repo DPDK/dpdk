@@ -124,6 +124,10 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (sw_ring[sw_id] != NULL)
 				PMD_DRV_LOG(DEBUG, "Overwriting an entry in sw_ring");
 
+			/* Skip writing descriptor if mbuf has no data. */
+			if (!tx_pkt->data_len)
+				goto finish_mbuf;
+
 			txd = &txr[tx_id];
 			sw_ring[sw_id] = tx_pkt;
 
@@ -137,13 +141,15 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			/* size of desc_ring and sw_ring could be different */
 			tx_id = (tx_id + 1) & mask;
+finish_mbuf:
 			sw_id = (sw_id + 1) & sw_mask;
 
 			bytes += tx_pkt->data_len;
 			tx_pkt = tx_pkt->next;
 		} while (tx_pkt);
 
-		/* fill the last descriptor with End of Packet (EOP) bit */
+		/* fill the last written descriptor with End of Packet (EOP) bit */
+		txd = &txr[(tx_id - 1) & mask];
 		txd->pkt.end_of_packet = 1;
 
 		txq->nb_free -= nb_used;
