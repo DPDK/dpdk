@@ -32,7 +32,7 @@ static_assert(MLX5_CQE_STATUS_HW_OWN < 0, "Must be negative value");
 static_assert(MLX5_CQE_STATUS_SW_OWN < 0, "Must be negative value");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
-		 sizeof(rte_v128u32_t)),
+		MLX5_SIZE_MOV16),
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
@@ -41,7 +41,7 @@ static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
-		 sizeof(rte_v128u32_t)),
+		MLX5_SIZE_MOV16),
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
@@ -50,7 +50,7 @@ static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +
-		 sizeof(rte_v128u32_t)),
+		MLX5_SIZE_MOV16),
 		"invalid Ethernet Segment data size");
 static_assert(MLX5_ESEG_MIN_INLINE_SIZE ==
 		(sizeof(uint16_t) +

@@ -196,4 +196,6 @@
 
 #define MLX5_CNT_SVC_CYCLE_TIME_DEFAULT 500
 
+#define MLX5_SIZE_MOV16 16
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */
