@@ -641,6 +641,7 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	};
 
 	if (dev->rx_pkt_burst == mlx5_rx_burst ||
+	    dev->rx_pkt_burst == mlx5_rx_burst_out_of_order ||
 	    dev->rx_pkt_burst == mlx5_rx_burst_mprq ||
 	    dev->rx_pkt_burst == mlx5_rx_burst_vec ||
 	    dev->rx_pkt_burst == mlx5_rx_burst_mprq_vec)
@@ -709,7 +710,12 @@ mlx5_select_rx_function(struct rte_eth_dev *dev)
 	eth_rx_burst_t rx_pkt_burst = mlx5_rx_burst;
 
 	MLX5_ASSERT(dev != NULL);
-	if (mlx5_check_vec_rx_support(dev) > 0) {
+	if (mlx5_shared_rq_enabled(dev)) {
+		rx_pkt_burst = mlx5_rx_burst_out_of_order;
+		DRV_LOG(DEBUG, "port %u forced to use SPRQ"
+			" Rx function with Out-of-Order completions",
+			dev->data->port_id);
+	} else if (mlx5_check_vec_rx_support(dev) > 0) {
 		if (mlx5_mprq_enabled(dev)) {
 			rx_pkt_burst = mlx5_rx_burst_mprq_vec;
 			DRV_LOG(DEBUG, "port %u selected vectorized"
