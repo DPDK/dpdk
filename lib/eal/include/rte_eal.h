@@ -11,6 +11,7 @@
  * EAL Configuration API
  */
 
+#include <stdalign.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -162,7 +163,7 @@ struct rte_mp_msg {
 	char name[RTE_MP_MAX_NAME_LEN];
 	int len_param;
 	int num_fds;
-	uint8_t param[RTE_MP_MAX_PARAM_LEN];
+	alignas(8) uint8_t param[RTE_MP_MAX_PARAM_LEN];
 	int fds[RTE_MP_MAX_FD_NUM];
 };
 
