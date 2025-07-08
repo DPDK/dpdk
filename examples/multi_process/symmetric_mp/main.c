@@ -92,6 +92,25 @@ smp_usage(const char *prgname, const char *errmsg)
 	exit(1);
 }
 
+static void
+exit_cleanup(void)
+{
+	unsigned int i;
+
+	RTE_LOG(INFO, APP, "Close ports.\n");
+	for (i = 0; i < num_ports; i++) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			if (rte_eth_dev_stop(ports[i]))
+				rte_exit(EXIT_FAILURE, "Error stopping ports\n");
+			if (rte_eth_dev_close(ports[i]))
+				rte_exit(EXIT_FAILURE, "Error closing ports\n");
+		}
+	}
+
+	/* clean up the EAL */
+	rte_eal_cleanup();
+	exit(0);
+}
 
 /* signal handler configured for SIGTERM and SIGINT to print stats on exit */
 static void
@@ -104,8 +123,9 @@ print_stats(int signum)
 		printf("Port %u: RX - %u, TX - %u, Drop - %u\n", (unsigned)p_num,
 				pstats[p_num].rx, pstats[p_num].tx, pstats[p_num].drop);
 	}
-	exit(0);
+	exit_cleanup();
 }
+
 
 /* Parse the argument given in the command line of the application */
 static int
@@ -486,8 +506,5 @@ main(int argc, char **argv)
 
 	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MAIN);
 
-	/* clean up the EAL */
-	rte_eal_cleanup();
-
-	return 0;
+	exit_cleanup();
 }
