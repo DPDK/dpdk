@@ -397,7 +397,13 @@ mlx5_rxq_ibv_obj_new(struct mlx5_rxq_priv *rxq)
 	rxq_data->wqes = rwq.buf;
 	rxq_data->rq_db = rwq.dbrec;
 	rxq_data->cq_arm_sn = 0;
-	mlx5_rxq_initialize(rxq_data);
+	ret = mlx5_rxq_initialize(rxq_data);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u Rx queue %u RQ initialization failure.",
+			priv->dev_data->port_id, rxq->idx);
+		rte_errno = ENOMEM;
+		goto error;
+	}
 	rxq_data->cq_ci = 0;
 	priv->dev_data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	rxq_ctrl->wqn = ((struct ibv_wq *)(tmpl->wq))->wq_num;

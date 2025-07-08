@@ -22,6 +22,7 @@
 
 /* Support tunnel matching. */
 #define MLX5_FLOW_TUNNEL 10
+#define MLX5_WINOOO_BITS  (sizeof(uint32_t) * CHAR_BIT)
 
 #define RXQ_PORT(rxq_ctrl) LIST_FIRST(&(rxq_ctrl)->owners)->priv
 #define RXQ_DEV(rxq_ctrl) ETH_DEV(RXQ_PORT(rxq_ctrl))
@@ -64,6 +65,7 @@ struct rxq_zip {
 	uint32_t ca; /* Current array index. */
 	uint32_t na; /* Next array index. */
 	uint32_t cq_ci; /* The next CQE. */
+	uint16_t wqe_idx; /* WQE index */
 };
 
 /* Get pointer to the first stride. */
@@ -124,6 +126,7 @@ struct __rte_cache_aligned mlx5_rxq_data {
 	volatile uint32_t *cq_db;
 	uint32_t elts_ci;
 	uint32_t rq_ci;
+	uint32_t rq_ci_ooo;
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint32_t rq_pi;
 	uint32_t cq_ci:24;
@@ -164,6 +167,10 @@ struct __rte_cache_aligned mlx5_rxq_data {
 	uint32_t rxseg_n; /* Number of split segment descriptions. */
 	struct mlx5_eth_rxseg rxseg[MLX5_MAX_RXQ_NSEG];
 	/* Buffer split segment descriptions - sizes, offsets, pools. */
+	uint16_t rq_win_cnt; /* Number of packets in the sliding window data. */
+	uint16_t rq_win_idx_mask; /* Sliding window index wrapping mask. */
+	uint16_t rq_win_idx; /* Index of the first element in sliding window. */
+	uint32_t *rq_win_data; /* Out-of-Order completions sliding window. */
 };
 
 /* RX queue control descriptor. */
@@ -305,7 +312,8 @@ int mlx5_hrxq_modify(struct rte_eth_dev *dev, uint32_t hxrq_idx,
 /* mlx5_rx.c */
 
 uint16_t mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
-void mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
+uint16_t mlx5_rx_burst_out_of_order(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
+int mlx5_rxq_initialize(struct mlx5_rxq_data *rxq);
 __rte_noinline int mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
 				      uint16_t err_n, uint16_t *skip_cnt);
 void mlx5_mprq_buf_free(struct mlx5_mprq_buf *buf);
@@ -331,6 +339,7 @@ uint16_t mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts,
 			   uint16_t pkts_n);
 uint16_t mlx5_rx_burst_mprq_vec(void *dpdk_rxq, struct rte_mbuf **pkts,
 				uint16_t pkts_n);
+void rxq_sync_cq(struct mlx5_rxq_data *rxq);
 
 static int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
 
@@ -659,6 +668,23 @@ mlx5_mprq_enabled(struct rte_eth_dev *dev)
 	/* Multi-Packet RQ can't be partially configured. */
 	MLX5_ASSERT(n == 0 || n == n_ibv);
 	return n == n_ibv;
+}
+
+/**
+ * Check whether Shared RQ is enabled for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   0 if disabled, otherwise enabled.
+ */
+static __rte_always_inline int
+mlx5_shared_rq_enabled(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	return !LIST_EMPTY(&priv->sh->shared_rxqs);
 }
 
 /**
