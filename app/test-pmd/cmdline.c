@@ -3906,7 +3906,7 @@ parse_item_list(const char *str, const char *item_name, unsigned int max_items,
 	value = 0;
 	nb_item = 0;
 	value_ok = 0;
-	for (i = 0; i < strnlen(str, STR_TOKEN_SIZE); i++) {
+	for (i = 0; i < strnlen(str, STR_MULTI_TOKEN_SIZE); i++) {
 		c = str[i];
 		if ((c >= '0') && (c <= '9')) {
 			value = (unsigned int) (value * 10 + (c - '0'));
@@ -3957,7 +3957,7 @@ parse_item_list(const char *str, const char *item_name, unsigned int max_items,
 struct cmd_set_list_result {
 	cmdline_fixed_string_t cmd_keyword;
 	cmdline_fixed_string_t list_name;
-	cmdline_fixed_string_t list_of_items;
+	cmdline_multi_string_t list_of_items;
 };
 
 static void cmd_set_list_parsed(void *parsed_result,
@@ -4006,7 +4006,7 @@ static cmdline_parse_token_string_t cmd_set_list_name =
 				 "corelist#portlist");
 static cmdline_parse_token_string_t cmd_set_list_of_items =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_list_result, list_of_items,
-				 NULL);
+				 TOKEN_STRING_MULTI);
 
 static cmdline_parse_inst_t cmd_set_fwd_list = {
 	.f = cmd_set_list_parsed,
