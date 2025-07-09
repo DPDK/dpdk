@@ -57,6 +57,10 @@ Deprecation Notices
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
 
+* lib: Multiple issues relating to unaligned accesses have been detected using the UBSan checker.
+  As part of resolving those issues, alignment in some structures will be updated in 25.11,
+  namely (but not exhaustively): ``struct rte_stack_lf_head`` and ``struct rte_mp_msg``.
+
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
   used by iterators, and arrays holding these values are sized with this
