@@ -8,6 +8,7 @@
 
 /* Maximum length for digest (SHA-512 needs 64 bytes) */
 #define DIGEST_LENGTH_MAX 64
+#define BURST_MAX 64
 
 struct __rte_cache_aligned uadk_qp {
 	/* Ring for placing process packets */
@@ -22,7 +23,7 @@ struct __rte_cache_aligned uadk_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-	uint8_t temp_digest[DIGEST_LENGTH_MAX];
+	uint8_t temp_digest[BURST_MAX][DIGEST_LENGTH_MAX];
 };
 
 enum uadk_chain_order {
@@ -64,10 +65,11 @@ enum uadk_crypto_version {
 };
 
 struct __rte_cache_aligned uadk_crypto_priv {
-	bool env_cipher_init;
-	bool env_auth_init;
+	bool cipher_init;
+	bool auth_init;
 	enum uadk_crypto_version version;
 	unsigned int max_nb_qpairs;
+	unsigned int nb_qpairs;
 };
 
 extern int uadk_crypto_logtype;
