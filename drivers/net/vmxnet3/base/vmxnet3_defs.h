@@ -575,6 +575,9 @@ enum vmxnet3_intr_type {
 /* addition 1 for events */
 #define VMXNET3_MAX_INTRS      25
 
+/* Max number of queues that can request memreg, for both RX and TX. */
+#define VMXNET3_MAX_MEMREG_QUEUES  16
+
 /* Version 6 and later will use below macros */
 #define VMXNET3_EXT_MAX_TX_QUEUES  32
 #define VMXNET3_EXT_MAX_RX_QUEUES  32
