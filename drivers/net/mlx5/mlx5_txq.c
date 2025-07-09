@@ -695,22 +695,39 @@ mlx5_txq_obj_verify(struct rte_eth_dev *dev)
  *
  * @param txq_ctrl
  *   Pointer to Tx queue control structure.
+ * @param devx
+ *   If the calculation is used for Devx queue.
  *
  * @return
  *   The number of WQEBB.
  */
 static int
-txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
+txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl, bool devx)
 {
 	unsigned int wqe_size;
 	const unsigned int desc = 1 << txq_ctrl->txq.elts_n;
 
-	wqe_size = MLX5_WQE_CSEG_SIZE +
-		   MLX5_WQE_ESEG_SIZE +
-		   MLX5_WSEG_SIZE -
-		   MLX5_ESEG_MIN_INLINE_SIZE +
-		   txq_ctrl->max_inline_data;
-	wqe_size = RTE_MAX(wqe_size, MLX5_WQE_SIZE);
+	if (devx) {
+		wqe_size = txq_ctrl->txq.tso_en ?
+			   RTE_ALIGN(txq_ctrl->max_tso_header, MLX5_WSEG_SIZE) : 0;
+		wqe_size += MLX5_WQE_CSEG_SIZE +
+			    MLX5_WQE_ESEG_SIZE +
+			    MLX5_WQE_DSEG_SIZE;
+		if (txq_ctrl->txq.inlen_send)
+			wqe_size = RTE_MAX(wqe_size, sizeof(struct mlx5_wqe_cseg) +
+						     sizeof(struct mlx5_wqe_eseg) +
+						     RTE_ALIGN(txq_ctrl->txq.inlen_send +
+							       sizeof(uint32_t),
+							       MLX5_WSEG_SIZE));
+		wqe_size = RTE_ALIGN(wqe_size, MLX5_WQE_SIZE);
+	} else {
+		wqe_size = MLX5_WQE_CSEG_SIZE +
+			   MLX5_WQE_ESEG_SIZE +
+			   MLX5_WSEG_SIZE -
+			   MLX5_ESEG_MIN_INLINE_SIZE +
+			   txq_ctrl->max_inline_data;
+		wqe_size = RTE_MAX(wqe_size, MLX5_WQE_SIZE);
+	}
 	return rte_align32pow2(wqe_size * desc) / MLX5_WQE_SIZE;
 }
 
@@ -1154,7 +1171,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
 	txq_adjust_params(tmpl);
-	wqebb_cnt = txq_calc_wqebb_cnt(tmpl);
+	wqebb_cnt = txq_calc_wqebb_cnt(tmpl, !!mlx5_devx_obj_ops_en(priv->sh));
 	max_wqe = mlx5_dev_get_max_wq_size(priv->sh);
 	if (wqebb_cnt > max_wqe) {
 		DRV_LOG(ERR,

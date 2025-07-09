@@ -96,6 +96,7 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	uint32_t num_of_cqes = RTE_BIT32(log_desc_n);
 	int ret;
 	uint32_t umem_offset, umem_id;
+	uint16_t act_log_size = log_desc_n;
 
 	if (page_size == (size_t)-1 || alignment == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get page_size.");
@@ -133,15 +134,18 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 		umem_id = mlx5_os_get_umem_id(umem_obj);
 	} else {
 		if (umem_size != attr->q_len) {
-			DRV_LOG(ERR, "Mismatch between saved length and calc length of CQ %u-%u",
+			DRV_LOG(ERR, "Mismatch between saved length and calc length"
+				" of CQ %u-%u, using saved length.",
 				umem_size, attr->q_len);
-			rte_errno = EINVAL;
-			return -rte_errno;
+			/* saved length is a power of 2. */
+			act_log_size =
+				(uint16_t)rte_log2_u32(attr->q_len / sizeof(struct mlx5_cqe));
 		}
 		umem_buf = attr->umem;
 		umem_offset = attr->q_off;
 		umem_dbrec = attr->db_off;
 		umem_id = mlx5_os_get_umem_id(attr->umem_obj);
+
 	}
 	/* Fill attributes for CQ object creation. */
 	attr->q_umem_valid = 1;
@@ -151,7 +155,7 @@ mlx5_devx_cq_create(void *ctx, struct mlx5_devx_cq *cq_obj, uint16_t log_desc_n,
 	attr->db_umem_id = umem_id;
 	attr->db_umem_offset = umem_dbrec;
 	attr->eqn = eqn;
-	attr->log_cq_size = log_desc_n;
+	attr->log_cq_size = act_log_size;
 	attr->log_page_size = rte_log2_u32(page_size);
 	/* Create completion queue object with DevX. */
 	cq = mlx5_devx_cmd_create_cq(ctx, attr);
@@ -251,6 +255,7 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 	uint32_t num_of_wqbbs = RTE_BIT32(log_wqbb_n);
 	int ret;
 	uint32_t umem_offset, umem_id;
+	uint16_t act_log_size = log_wqbb_n;
 
 	if (alignment == (size_t)-1) {
 		DRV_LOG(ERR, "Failed to get WQE buf alignment.");
@@ -281,15 +286,17 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 		umem_id = mlx5_os_get_umem_id(umem_obj);
 	} else {
 		if (umem_size != attr->q_len) {
-			DRV_LOG(ERR, "Mismatch between saved length and calc length of WQ %u-%u",
+			DRV_LOG(WARNING, "Mismatch between saved length and calc length"
+				" of WQ %u-%u, using saved length.",
 				umem_size, attr->q_len);
-			rte_errno = EINVAL;
-			return -rte_errno;
+			/* saved length is a power of 2. */
+			act_log_size = (uint16_t)rte_log2_u32(attr->q_len / MLX5_WQE_SIZE);
 		}
 		umem_buf = attr->umem;
 		umem_offset = attr->q_off;
 		umem_dbrec = attr->db_off;
 		umem_id = mlx5_os_get_umem_id(attr->umem_obj);
+
 	}
 	/* Fill attributes for SQ object creation. */
 	attr->wq_attr.wq_type = MLX5_WQ_TYPE_CYCLIC;
@@ -300,7 +307,7 @@ mlx5_devx_sq_create(void *ctx, struct mlx5_devx_sq *sq_obj, uint16_t log_wqbb_n,
 	attr->wq_attr.dbr_umem_id = umem_id;
 	attr->wq_attr.dbr_addr = umem_dbrec;
 	attr->wq_attr.log_wq_stride = rte_log2_u32(MLX5_WQE_SIZE);
-	attr->wq_attr.log_wq_sz = log_wqbb_n;
+	attr->wq_attr.log_wq_sz = act_log_size;
 	attr->wq_attr.log_wq_pg_sz = MLX5_LOG_PAGE_SIZE;
 	/* Create send queue object with DevX. */
 	sq = mlx5_devx_cmd_create_sq(ctx, attr);
