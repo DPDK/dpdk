@@ -2,8 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
-#include "../common/rx_vec_x86.h"
 #include "iavf_rxtx_vec_common.h"
+#include "../common/rx_vec_x86.h"
 
 #include <rte_vect.h>
 
