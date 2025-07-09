@@ -2961,16 +2961,7 @@ main(int32_t argc, char **argv)
 
 	sess_sz = max_session_size();
 
-	/*
-	 * In event mode request minimum number of crypto queues
-	 * to be reserved equal to number of ports.
-	 */
-	if (eh_conf->mode == EH_PKT_TRANSFER_MODE_EVENT)
-		nb_crypto_qp = rte_eth_dev_count_avail();
-	else
-		nb_crypto_qp = 0;
-
-	nb_crypto_qp = cryptodevs_init(nb_crypto_qp);
+	nb_crypto_qp = cryptodevs_init(eh_conf->mode);
 
 	if (nb_bufs_in_pool == 0) {
 		RTE_ETH_FOREACH_DEV(portid) {
