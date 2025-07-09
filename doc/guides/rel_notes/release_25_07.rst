@@ -128,6 +128,11 @@ New Features
   * Added support for CN20K SoC in cnxk CPT driver.
   * Added support for session-less asymmetric operations.
 
+* **Updated UADK compress driver.**
+
+  * Updated to init2 interface which requires v2.9.1 of the UADK library.
+  * Updated to asynchronous mode for better performance.
+
 * **Added eventdev vector adapter.**
 
   Added the event vector adapter library.

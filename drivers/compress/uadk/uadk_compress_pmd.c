@@ -12,6 +12,9 @@
 
 #include "uadk_compress_pmd_private.h"
 
+#define UADK_COMP_DEF_CTXS    2
+static char alg_name[8] = "deflate";
+
 static const struct
 rte_compressdev_capabilities uadk_compress_pmd_capabilities[] = {
 	{   /* Deflate */
@@ -29,14 +32,34 @@ uadk_compress_pmd_config(struct rte_compressdev *dev,
 			 struct rte_compressdev_config *config __rte_unused)
 {
 	struct uadk_compress_priv *priv = dev->data->dev_private;
+	struct wd_ctx_params cparams = {0};
+	struct wd_ctx_nums *ctx_set_num;
 	int ret;
 
-	if (!priv->env_init) {
-		ret = wd_comp_env_init(NULL);
-		if (ret < 0)
-			return -EINVAL;
-		priv->env_init = true;
+	if (priv->init)
+		return 0;
+
+	ctx_set_num = calloc(WD_DIR_MAX, sizeof(*ctx_set_num));
+	if (!ctx_set_num) {
+		UADK_LOG(ERR, "failed to alloc ctx_set_size!");
+		return -WD_ENOMEM;
 	}
+
+	cparams.op_type_num = WD_DIR_MAX;
+	cparams.ctx_set_num = ctx_set_num;
+
+	for (int i = 0; i < WD_DIR_MAX; i++)
+		ctx_set_num[i].async_ctx_num = UADK_COMP_DEF_CTXS;
+
+	ret = wd_comp_init2_(alg_name, SCHED_POLICY_RR, TASK_MIX, &cparams);
+	free(ctx_set_num);
+
+	if (ret) {
+		UADK_LOG(ERR, "failed to do comp init2!");
+		return ret;
+	}
+
+	priv->init = true;
 
 	return 0;
 }
@@ -57,9 +80,9 @@ uadk_compress_pmd_close(struct rte_compressdev *dev)
 {
 	struct uadk_compress_priv *priv = dev->data->dev_private;
 
-	if (priv->env_init) {
-		wd_comp_env_uninit();
-		priv->env_init = false;
+	if (priv->init) {
+		wd_comp_uninit2();
+		priv->init = false;
 	}
 
 	return 0;
@@ -291,9 +314,25 @@ static struct rte_compressdev_ops uadk_compress_pmd_ops = {
 		.private_xform_free	= uadk_compress_pmd_xform_free,
 };
 
+static void *uadk_compress_pmd_async_cb(struct wd_comp_req *req,
+					void *data __rte_unused)
+{
+	struct rte_comp_op *op = req->cb_param;
+	uint16_t dst_len = rte_pktmbuf_data_len(op->m_dst);
+
+	if (req->dst_len <= dst_len) {
+		op->produced += req->dst_len;
+		op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	} else  {
+		op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+	}
+
+	return NULL;
+}
+
 static uint16_t
-uadk_compress_pmd_enqueue_burst_sync(void *queue_pair,
-				     struct rte_comp_op **ops, uint16_t nb_ops)
+uadk_compress_pmd_enqueue_burst_async(void *queue_pair,
+				      struct rte_comp_op **ops, uint16_t nb_ops)
 {
 	struct uadk_compress_qp *qp = queue_pair;
 	struct uadk_compress_xform *xform;
@@ -318,20 +357,14 @@ uadk_compress_pmd_enqueue_burst_sync(void *queue_pair,
 				req.dst = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
 				req.dst_len = dst_len;
 				req.op_type = (enum wd_comp_op_type)xform->type;
-				req.cb = NULL;
+				req.cb = uadk_compress_pmd_async_cb;
+				req.cb_param = op;
 				req.data_fmt = WD_FLAT_BUF;
 				do {
-					ret = wd_do_comp_sync(xform->handle, &req);
+					ret = wd_do_comp_async(xform->handle, &req);
 				} while (ret == -WD_EBUSY);
 
 				op->consumed += req.src_len;
-
-				if (req.dst_len <= dst_len) {
-					op->produced += req.dst_len;
-					op->status = RTE_COMP_OP_STATUS_SUCCESS;
-				} else  {
-					op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
-				}
 
 				if (ret) {
 					op->status = RTE_COMP_OP_STATUS_ERROR;
@@ -361,18 +394,27 @@ uadk_compress_pmd_enqueue_burst_sync(void *queue_pair,
 }
 
 static uint16_t
-uadk_compress_pmd_dequeue_burst_sync(void *queue_pair,
-				     struct rte_comp_op **ops,
-				     uint16_t nb_ops)
+uadk_compress_pmd_dequeue_burst_async(void *queue_pair,
+				      struct rte_comp_op **ops,
+				      uint16_t nb_ops)
 {
 	struct uadk_compress_qp *qp = queue_pair;
 	unsigned int nb_dequeued = 0;
+	unsigned int recv = 0;
+	int ret;
 
 	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
 			(void **)ops, nb_ops, NULL);
+	if (nb_dequeued == 0)
+		return 0;
+
+	do {
+		ret = wd_comp_poll(nb_dequeued, &recv);
+	} while (ret == -WD_EAGAIN);
+
 	qp->qp_stats.dequeued_count += nb_dequeued;
 
-	return nb_dequeued;
+	return recv;
 }
 
 static int
@@ -386,7 +428,7 @@ uadk_compress_probe(struct rte_vdev_device *vdev)
 	struct uacce_dev *udev;
 	const char *name;
 
-	udev = wd_get_accel_dev("deflate");
+	udev = wd_get_accel_dev(alg_name);
 	if (!udev)
 		return -ENODEV;
 
@@ -402,8 +444,8 @@ uadk_compress_probe(struct rte_vdev_device *vdev)
 	}
 
 	compressdev->dev_ops = &uadk_compress_pmd_ops;
-	compressdev->dequeue_burst = uadk_compress_pmd_dequeue_burst_sync;
-	compressdev->enqueue_burst = uadk_compress_pmd_enqueue_burst_sync;
+	compressdev->dequeue_burst = uadk_compress_pmd_dequeue_burst_async;
+	compressdev->enqueue_burst = uadk_compress_pmd_enqueue_burst_async;
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 
 	return 0;

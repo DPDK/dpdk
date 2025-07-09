@@ -7,7 +7,7 @@
 #define _UADK_COMPRESS_PMD_PRIVATE_H_
 
 struct uadk_compress_priv {
-	bool env_init;
+	bool init;
 };
 
 struct __rte_cache_aligned uadk_compress_qp {
