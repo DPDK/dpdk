@@ -1170,7 +1170,7 @@ zxdh_rss_hf_to_hw(uint64_t hf)
 }
 
 static uint64_t
-zxdh_rss_hf_to_eth(uint32_t hw_hf)
+zxdh_rss_hf_to_eth(uint64_t hw_hf)
 {
 	uint64_t hf = 0;
 
@@ -1208,7 +1208,7 @@ zxdh_rss_hash_update(struct rte_eth_dev *dev,
 	hw_hf_new = zxdh_rss_hf_to_hw(rss_conf->rss_hf);
 	hw_hf_old = zxdh_rss_hf_to_hw(old_rss_conf->rss_hf);
 
-	if ((hw_hf_new != hw_hf_old || !!rss_conf->rss_hf))
+	if (hw_hf_new != hw_hf_old || hw->rss_enable != !!rss_conf->rss_hf)
 		need_update_hf = 1;
 
 	if (need_update_hf) {
@@ -1231,6 +1231,9 @@ zxdh_rss_hash_update(struct rte_eth_dev *dev,
 			}
 		}
 		if (hw->is_pf) {
+			hw->rss_enable = !!rss_conf->rss_hf;
+			if (rss_conf->rss_hf == 0)
+				return 0;
 			ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
 			port_attr.rss_hash_factor = hw_hf_new;
 			ret = zxdh_set_port_attr(hw, hw->vport.vport, &port_attr);
@@ -1257,15 +1260,16 @@ zxdh_rss_hash_update(struct rte_eth_dev *dev,
 int
 zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
 {
-	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
+	struct zxdh_hw *hw = dev->data->dev_private;
 	struct rte_eth_rss_conf *old_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
 	struct zxdh_msg_info msg = {0};
 	uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
 	void *reply_body_addr = ZXDH_ADDR_OF(msg_reply_info, zxdh_msg_reply_info, reply_body);
 	void *rss_hf_msg_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body_addr, rss_hf_msg);
 	struct zxdh_port_attr_table port_attr = {0};
-	uint32_t rss_hf;
-	uint32_t hw_hf;
+	uint64_t rss_hf = 0;
+	uint64_t hw_hf = 0;
+	uint8_t need_update_hf = 0;
 	int ret;
 
 	if (rss_conf == NULL) {
@@ -1273,27 +1277,40 @@ zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_con
 		return -ENOMEM;
 	}
 
-	hw_hf = zxdh_rss_hf_to_hw(old_rss_conf->rss_hf);
-	rss_conf->rss_hf = zxdh_rss_hf_to_eth(hw_hf);
-
-	zxdh_msg_head_build(hw, ZXDH_RSS_HF_GET, &msg);
-	if (hw->is_pf) {
-		ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "rss hash factor set failed");
-			return -EINVAL;
-		}
-		ZXDH_SET(rss_hf, rss_hf_msg_addr, rss_hf, port_attr.rss_hash_factor);
-	} else {
-		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info),
-				zxdh_msg_reply_info, ZXDH_ST_SZ_BYTES(msg_reply_info));
-		if (ret) {
-			PMD_DRV_LOG(ERR, "rss hash factor set failed");
-			return -EINVAL;
-		}
+	if (hw->rss_enable == 0) {
+		rss_conf->rss_hf = 0;
+		return 0;
 	}
-	rss_hf = ZXDH_GET(rss_hf, rss_hf_msg_addr, rss_hf);
-	rss_conf->rss_hf = zxdh_rss_hf_to_eth(rss_hf);
+
+	if (old_rss_conf->rss_hf == 0)
+		need_update_hf = 1;
+
+	if (!need_update_hf) {
+		hw_hf = zxdh_rss_hf_to_hw(old_rss_conf->rss_hf);
+		rss_conf->rss_hf = zxdh_rss_hf_to_eth(hw_hf);
+	}
+
+	if (need_update_hf) {
+		zxdh_msg_head_build(hw, ZXDH_RSS_HF_GET, &msg);
+		if (hw->is_pf) {
+			ret = zxdh_get_port_attr(hw, hw->vport.vport, &port_attr);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss hash factor set failed");
+				return -EINVAL;
+			}
+			ZXDH_SET(rss_hf, rss_hf_msg_addr, rss_hf, port_attr.rss_hash_factor);
+		} else {
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info),
+					zxdh_msg_reply_info, ZXDH_ST_SZ_BYTES(msg_reply_info));
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss hash factor set failed");
+				return -EINVAL;
+			}
+		}
+		rss_hf = ZXDH_GET(rss_hf, rss_hf_msg_addr, rss_hf);
+		rss_conf->rss_hf = zxdh_rss_hf_to_eth(rss_hf);
+		old_rss_conf->rss_hf = zxdh_rss_hf_to_eth(hw_hf);
+	}
 
 	return 0;
 }
@@ -1352,7 +1369,6 @@ zxdh_rss_configure(struct rte_eth_dev *dev)
 
 	if (curr_rss_enable && hw->rss_init == 0) {
 		/* config hash factor */
-		dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf = ZXDH_HF_F5_ETH;
 		hw_hf = zxdh_rss_hf_to_hw(dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
 		memset(&msg, 0, sizeof(msg));
 		if (hw->is_pf) {

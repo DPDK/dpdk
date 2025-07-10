@@ -54,6 +54,7 @@
 #define ZXDH_SLOT_MAX             256
 #define ZXDH_MAX_VF               256
 #define ZXDH_HASHIDX_MAX          6
+#define ZXDH_RSS_HASH_KEY_LEN     40U
 
 union zxdh_virport_num {
 	uint16_t vport;
