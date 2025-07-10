@@ -895,7 +895,7 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 					return -EAGAIN;
 				}
 			} else {
-				msg.data.vlan_filter_set_msg.enable = true;
+				msg.data.vlan_filter_set_msg.enable = false;
 				zxdh_msg_head_build(hw, ZXDH_VLAN_FILTER_SET, &msg);
 				ret = zxdh_vf_send_msg_to_pf(hw->eth_dev, &msg,
 						sizeof(struct zxdh_msg_info), NULL, 0);
