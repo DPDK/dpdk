@@ -229,6 +229,7 @@ enum zxdh_msg_type {
 	ZXDH_VLAN_FILTER_ADD = 18,
 	ZXDH_VLAN_FILTER_DEL = 19,
 	ZXDH_VLAN_OFFLOAD = 21,
+	ZXDH_VLAN_SET_TPID = 23,
 
 	ZXDH_PORT_ATTRS_SET = 25,
 	ZXDH_PORT_PROMISC_SET = 26,
@@ -535,6 +536,10 @@ struct zxdh_plcr_profile_free {
 	uint16_t profile_id;
 };
 
+struct zxdh_vlan_tpid {
+	uint16_t tpid;
+};
+
 struct zxdh_msg_info {
 	union {
 		uint8_t head_len[ZXDH_MSG_HEAD_LEN];
@@ -551,6 +556,7 @@ struct zxdh_msg_info {
 		struct zxdh_vlan_filter vlan_filter_msg;
 		struct zxdh_vlan_filter_set vlan_filter_set_msg;
 		struct zxdh_vlan_offload vlan_offload_msg;
+		struct zxdh_vlan_tpid zxdh_vlan_tpid;
 		struct zxdh_rss_reta rss_reta;
 		struct zxdh_rss_enable rss_enable;
 		struct zxdh_rss_hf rss_hf;
