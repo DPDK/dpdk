@@ -1265,6 +1265,7 @@ static int
 zxdh_mac_config(struct rte_eth_dev *eth_dev)
 {
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
 	int ret = 0;
 
 	if (hw->is_pf) {
@@ -1274,6 +1275,18 @@ zxdh_mac_config(struct rte_eth_dev *eth_dev)
 			PMD_DRV_LOG(ERR, "Failed to add mac: port 0x%x", hw->vport.vport);
 			return ret;
 		}
+		hw->uc_num++;
+	} else {
+		struct zxdh_mac_filter *mac_filter = &msg_info.data.mac_filter_msg;
+		mac_filter->filter_flag = 0xff;
+		mac_filter->mac = eth_dev->data->mac_addrs[0];
+		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
+		ret = zxdh_vf_send_msg_to_pf(eth_dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to send msg: msg type %d", ZXDH_MAC_ADD);
+			return ret;
+		}
+		hw->uc_num++;
 	}
 	return ret;
 }
