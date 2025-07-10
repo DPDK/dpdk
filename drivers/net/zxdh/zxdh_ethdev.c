@@ -1424,6 +1424,7 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.promiscuous_disable	 = zxdh_dev_promiscuous_disable,
 	.allmulticast_enable	 = zxdh_dev_allmulticast_enable,
 	.allmulticast_disable	 = zxdh_dev_allmulticast_disable,
+	.vlan_tpid_set			 = zxdh_vlan_tpid_set,
 	.vlan_filter_set		 = zxdh_dev_vlan_filter_set,
 	.vlan_offload_set		 = zxdh_dev_vlan_offload_set,
 	.reta_update			 = zxdh_dev_rss_reta_update,
