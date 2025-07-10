@@ -420,6 +420,8 @@ zxdh_get_pci_dev_config(struct zxdh_hw *hw)
 	uint64_t nego_features = 0;
 
 	hw->host_features = ZXDH_PMD_DEFAULT_HOST_FEATURES;
+	if (hw->switchoffload)
+		hw->host_features = zxdh_pci_get_features(hw);
 
 	guest_features = (uint64_t)ZXDH_PMD_DEFAULT_GUEST_FEATURES;
 	nego_features = guest_features & hw->host_features;

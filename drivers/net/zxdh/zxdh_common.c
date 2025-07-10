@@ -179,7 +179,7 @@ zxdh_fill_res_para(struct rte_eth_dev *dev, struct zxdh_res_para *param)
 
 	param->pcie_id   = hw->pcie_id;
 	param->virt_addr = hw->bar_addr[0] + ZXDH_CTRLCH_OFFSET;
-	param->src_type  = ZXDH_BAR_MODULE_TBL;
+	param->src_type  = hw->is_pf ? ZXDH_MSG_CHAN_END_PF : ZXDH_MSG_CHAN_END_VF;
 }
 
 static int

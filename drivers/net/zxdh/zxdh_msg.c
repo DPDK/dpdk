@@ -1216,6 +1216,50 @@ zxdh_bar_chan_msg_recv_register(uint8_t module_id, zxdh_bar_chan_msg_recv_callba
 }
 
 static int
+zxdh_msg_inic_with_vcb(struct zxdh_hw *hw, void *in_payload,
+		uint16_t in_len, struct zxdh_inic_recv_msg *out)
+{
+	struct zxdh_pci_bar_msg in = {
+		.virt_addr = hw->bar_addr[0] + ZXDH_CTRLCH_OFFSET,
+		.payload_addr = in_payload,
+		.payload_len = in_len,
+		.emec = 0,
+		.src = ZXDH_MSG_CHAN_END_PF,
+		.dst = ZXDH_MSG_CHAN_END_RISC,
+		.module_id = ZXDH_BAR_EVENT_OVS_WITH_VCB,
+		.src_pcieid = hw->pcie_id,
+		.dst_pcieid = 0,
+		.usr = 0,
+	};
+	struct zxdh_msg_recviver_mem result = {
+		.recv_buffer = (void *)out,
+		.buffer_len = sizeof(struct zxdh_inic_recv_msg),
+	};
+	int ret = zxdh_bar_chan_sync_msg_send(&in, &result);
+
+	if (ret != ZXDH_BAR_MSG_OK)
+		return -ret;
+	return ZXDH_BAR_MSG_OK;
+}
+
+int
+zxdh_inic_pf_get_qp_from_vcb(struct zxdh_hw *hw, uint16_t vqm_vfid, uint16_t *qid, uint16_t *qp)
+{
+	struct inic_to_vcb in = {.vqm_vfid = vqm_vfid, .opcode = 0, .cmd = 4,};
+	struct zxdh_inic_recv_msg out;
+	int ret = zxdh_msg_inic_with_vcb(hw, &in, (uint16_t)sizeof(in), &out);
+
+	if (ret == 0) {
+		*qid = out.vqm_queue.start_qid;
+		*qp  = out.vqm_queue.qp_num;
+	} else {
+		PMD_MSG_LOG(ERR, "vqm_vfid:%u get qp fail", vqm_vfid);
+	}
+
+	return ret;
+}
+
+static int
 zxdh_vf_promisc_init(struct zxdh_hw *hw, union zxdh_virport_num vport)
 {
 	int16_t ret;

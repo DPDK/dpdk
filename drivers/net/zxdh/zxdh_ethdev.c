@@ -6,6 +6,7 @@
 #include <bus_pci_driver.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
+#include <rte_io.h>
 
 #include "zxdh_ethdev.h"
 #include "zxdh_logs.h"
@@ -780,6 +781,27 @@ fail_q_alloc:
 	return ret;
 }
 
+static int
+zxdh_inic_pf_init_qid(struct zxdh_hw *hw)
+{
+	uint16_t start_qid, enabled_qp;
+	int ret = zxdh_inic_pf_get_qp_from_vcb(hw, hw->vfid, &start_qid, &enabled_qp);
+
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "vqm_vfid %u, get_qp_from_vcb fail", hw->vfid);
+		return ret;
+	}
+
+	uint16_t i, num_queues = rte_read16(&hw->common_cfg->num_queues);
+	PMD_DRV_LOG(INFO, "vqm_vfid:%u, get num_queues:%u (%s CQ)",
+		hw->vfid, num_queues, (num_queues & 0x1) ? "with" : "without");
+	for (i = 0; i < (num_queues & 0xfffe); ++i) {
+		hw->channel_context[i].ph_chno = start_qid + i;
+		hw->channel_context[i].valid = 1;
+	}
+	return 0;
+}
+
 static int32_t
 zxdh_alloc_queues(struct rte_eth_dev *dev)
 {
@@ -794,6 +816,28 @@ zxdh_alloc_queues(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Failed to allocate %d vqs", nr_vq);
 		return -ENOMEM;
 	}
+
+	if (hw->switchoffload && !(hw->host_features & (1ULL << ZXDH_F_RING_PACKED))) {
+		if (zxdh_inic_pf_init_qid(hw) != 0)
+			goto free;
+
+		for (i = 0 ; i < rxq_num; i++) {
+			lch = i * 2;
+			if (zxdh_init_queue(dev, lch) < 0) {
+				PMD_DRV_LOG(ERR, "Failed to alloc virtio queue");
+				goto free;
+			}
+		}
+		for (i = 0 ; i < txq_num; i++) {
+			lch = i * 2 + 1;
+			if (zxdh_init_queue(dev, lch) < 0) {
+				PMD_DRV_LOG(ERR, "Failed to alloc virtio queue");
+				goto free;
+			}
+		}
+		return 0;
+	}
+
 	for (i = 0 ; i < rxq_num; i++) {
 		lch = i * 2;
 		if (zxdh_acquire_channel(dev, lch) < 0) {
@@ -1327,7 +1371,8 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 		zxdh_queue_notify(vq);
 	}
 
-	zxdh_dev_set_link_up(dev);
+	hw->admin_status = RTE_ETH_LINK_UP;
+	zxdh_dev_link_update(dev, 0);
 
 	ret = zxdh_mac_config(hw->eth_dev);
 	if (ret)
@@ -1496,6 +1541,10 @@ zxdh_agent_comm(struct rte_eth_dev *eth_dev, struct zxdh_hw *hw)
 		PMD_DRV_LOG(ERR, "Failed to get panel_id");
 		return -1;
 	}
+
+	if (hw->switchoffload)
+		hw->phyport = 9;
+
 	PMD_DRV_LOG(DEBUG, "Get panel id success: 0x%x", hw->panel_id);
 
 	return 0;
@@ -1888,11 +1937,13 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 			PMD_DRV_LOG(ERR, "dpp apt init failed, code:%d ", ret);
 			return -ret;
 		}
-		if (hw->hash_search_index >= ZXDH_HASHIDX_MAX) {
-			PMD_DRV_LOG(ERR, "invalid hash idx %d", hw->hash_search_index);
-			return -1;
+		if (!hw->switchoffload) {
+			if (hw->hash_search_index >= ZXDH_HASHIDX_MAX) {
+				PMD_DRV_LOG(ERR, "invalid hash idx %d", hw->hash_search_index);
+				return -1;
+			}
+			zxdh_tbl_entry_offline_destroy(hw);
 		}
-		zxdh_tbl_entry_offline_destroy(hw);
 	}
 
 	if (zxdh_shared_data != NULL)
@@ -1948,6 +1999,7 @@ zxdh_queue_res_get(struct rte_eth_dev *eth_dev)
 	uint32_t value = 0;
 	uint16_t offset = 0;
 
+	offset = hw->vport.epid * 8 + hw->vport.pfid;
 	if (hw->is_pf) {
 		hw->max_queue_pairs = *(volatile uint8_t *)(hw->bar_addr[0] +
 		ZXDH_PF_QUEUE_PAIRS_ADDR);
@@ -2011,7 +2063,20 @@ is_pf(uint16_t device_id)
 			device_id == ZXDH_E312S_PF_DEVICEID ||
 			device_id == ZXDH_E316_PF_DEVICEID ||
 			device_id == ZXDH_E310_RDMA_PF_DEVICEID ||
-			device_id == ZXDH_E312_RDMA_PF_DEVICEID);
+			device_id == ZXDH_E312_RDMA_PF_DEVICEID ||
+			device_id == ZXDH_I510_OVS_PF_DEVICEID ||
+			device_id == ZXDH_I510_BOND_PF_DEVICEID ||
+			device_id == ZXDH_I511_OVS_PF_DEVICEID ||
+			device_id == ZXDH_I511_BOND_PF_DEVICEID);
+}
+
+static uint8_t
+is_inic_pf(uint16_t device_id)
+{
+	return (device_id == ZXDH_I510_OVS_PF_DEVICEID ||
+			device_id == ZXDH_I510_BOND_PF_DEVICEID ||
+			device_id == ZXDH_I511_OVS_PF_DEVICEID ||
+			device_id == ZXDH_I511_BOND_PF_DEVICEID);
 }
 
 static int
@@ -2047,8 +2112,11 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	hw->slot_id = ZXDH_INVALID_SLOT_IDX;
 	hw->is_pf = 0;
 
-	if (is_pf(pci_dev->id.device_id))
+	if (is_pf(pci_dev->id.device_id)) {
 		hw->is_pf = 1;
+		if (is_inic_pf(pci_dev->id.device_id))
+			hw->switchoffload = 1;
+	}
 
 	ret = zxdh_init_once(eth_dev);
 	if (ret != 0)
@@ -2152,6 +2220,10 @@ static const struct rte_pci_id pci_id_zxdh_map[] = {
 	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E310_RDMA_VF_DEVICEID)},
 	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312_RDMA_PF_DEVICEID)},
 	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_E312_RDMA_VF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_I510_OVS_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_I510_BOND_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_I511_OVS_PF_DEVICEID)},
+	{RTE_PCI_DEVICE(ZXDH_PCI_VENDOR_ID, ZXDH_I511_BOND_PF_DEVICEID)},
 	{.vendor_id = 0, /* sentinel */ },
 };
 static struct rte_pci_driver zxdh_pmd = {

@@ -28,6 +28,10 @@
 #define ZXDH_E310_RDMA_VF_DEVICEID     0x8085
 #define ZXDH_E312_RDMA_PF_DEVICEID     0x8049
 #define ZXDH_E312_RDMA_VF_DEVICEID     0x8060
+#define ZXDH_I510_BOND_PF_DEVICEID     0x8063
+#define ZXDH_I510_OVS_PF_DEVICEID      0x8064
+#define ZXDH_I511_BOND_PF_DEVICEID     0x8066
+#define ZXDH_I511_OVS_PF_DEVICEID      0x8067
 
 #define ZXDH_MAX_UC_MAC_ADDRS     32
 #define ZXDH_MAX_MC_MAC_ADDRS     32
@@ -128,7 +132,7 @@ struct zxdh_hw {
 	uint8_t use_msix;
 	uint8_t duplex;
 	uint8_t is_pf         : 1,
-			rsv : 1,
+			switchoffload : 1,
 			i_mtr_en      : 1,
 			e_mtr_en      : 1;
 	uint8_t msg_chan_init;
