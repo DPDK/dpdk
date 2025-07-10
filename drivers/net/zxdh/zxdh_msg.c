@@ -1349,11 +1349,11 @@ zxdh_add_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 	union zxdh_virport_num port = {0};
 	struct zxdh_mac_filter *mac_filter = (struct zxdh_mac_filter *)cfg_data;
 	struct rte_ether_addr *addr = &mac_filter->mac;
-	int i = 0, ret = 0;
-	uint16_t vf_id = port.vfid;
-	port.vport = vport;
 	void *reply_data_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body, reply_data);
 	void *mac_reply_msg_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body, mac_reply_msg);
+	port.vport = vport;
+	uint16_t vf_id = port.vfid;
+	int i = 0, ret = 0;
 
 	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++)
 		if (rte_is_same_ether_addr(&hw->vfinfo[vf_id].vf_mac[i], addr))
@@ -1396,12 +1396,12 @@ static int
 zxdh_del_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 	void *res_info, uint16_t *res_len)
 {
-	int ret, i = 0;
 	struct zxdh_mac_filter *mac_filter = (struct zxdh_mac_filter *)cfg_data;
 	union zxdh_virport_num  port = (union zxdh_virport_num)vport;
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "del mac";
-	uint16_t  vf_id = port.vfid;
 	void *reply_data_addr = ZXDH_ADDR_OF(msg_reply_body, res_info, reply_data);
+	uint16_t vf_id = port.vfid;
+	int ret, i = 0;
 
 	PMD_DRV_LOG(DEBUG, "[PF GET MSG FROM VF]--vf mac to del.");
 	ret = zxdh_del_mac_table(hw, vport, &mac_filter->mac, hw->hash_search_index, 0, 0);

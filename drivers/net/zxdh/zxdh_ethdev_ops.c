@@ -413,7 +413,10 @@ zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
 	struct rte_ether_addr *old_addr = &dev->data->mac_addrs[0];
 	struct zxdh_msg_info msg_info = {0};
-	uint16_t ret = 0;
+	uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
+	void *reply_body_addr = ZXDH_ADDR_OF(msg_reply_info, zxdh_msg_reply_info, reply_body);
+	void *mac_reply_msg_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body_addr, mac_reply_msg);
+	int ret = 0;
 
 	if (!rte_is_valid_assigned_ether_addr(addr)) {
 		PMD_DRV_LOG(ERR, "mac address is invalid!");
@@ -425,7 +428,7 @@ zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 	if (hw->is_pf) {
 		ret = zxdh_add_mac_table(hw, hw->vport.vport, addr, hw->hash_search_index, 0, 0);
 		if (ret) {
-			if (ret == ZXDH_EEXIST_MAC_FLAG) {
+			if (ret == -EADDRINUSE) {
 				PMD_DRV_LOG(ERR, "pf mac add failed! mac is in used, code:%d", ret);
 				return -EADDRINUSE;
 			}
@@ -446,9 +449,11 @@ zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 		mac_filter->filter_flag = ZXDH_MAC_UNFILTER;
 		mac_filter->mac = *addr;
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
-		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info),
+				zxdh_msg_reply_info, ZXDH_ST_SZ_BYTES(msg_reply_info));
 		if (ret) {
-			if (ret == ZXDH_EEXIST_MAC_FLAG) {
+			uint8_t flag = ZXDH_GET(mac_reply_msg, mac_reply_msg_addr, mac_flag);
+			if (flag == ZXDH_EEXIST_MAC_FLAG) {
 				PMD_DRV_LOG(ERR, "pf mac add failed! mac is in used, code:%d", ret);
 				return -EADDRINUSE;
 			}
@@ -482,7 +487,11 @@ zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_msg_info msg_info = {0};
-	uint16_t i, ret;
+	uint8_t zxdh_msg_reply_info[ZXDH_ST_SZ_BYTES(msg_reply_info)] = {0};
+	void *reply_body_addr = ZXDH_ADDR_OF(msg_reply_info, zxdh_msg_reply_info, reply_body);
+	void *mac_reply_msg_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body_addr, mac_reply_msg);
+	uint16_t i;
+	int ret;
 
 	if (index >= ZXDH_MAX_MAC_ADDRS) {
 		PMD_DRV_LOG(ERR, "Add mac index (%u) is out of range", index);
@@ -503,6 +512,10 @@ zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 				ret = zxdh_add_mac_table(hw, hw->vport.vport,
 							mac_addr, hw->hash_search_index, 0, 0);
 				if (ret) {
+					if (ret == -EADDRINUSE) {
+						PMD_DRV_LOG(ERR, "pf mac add failed mac is in used");
+						return -EADDRINUSE;
+					}
 					PMD_DRV_LOG(ERR, "mac_addr_add failed, code:%d", ret);
 					return ret;
 				}
@@ -536,9 +549,16 @@ zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
 		if (rte_is_unicast_ether_addr(mac_addr)) {
 			if (hw->uc_num < ZXDH_MAX_UC_MAC_ADDRS) {
-				ret = zxdh_vf_send_msg_to_pf(dev, &msg_info,
-							sizeof(msg_info), NULL, 0);
+				ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info),
+						zxdh_msg_reply_info,
+						ZXDH_ST_SZ_BYTES(msg_reply_info));
 				if (ret) {
+					uint8_t flag = ZXDH_GET(mac_reply_msg,
+						mac_reply_msg_addr, mac_flag);
+					if (flag == ZXDH_EEXIST_MAC_FLAG) {
+						PMD_DRV_LOG(ERR, "pf mac add failed mac is in used");
+						return -EADDRINUSE;
+					}
 					PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
 							hw->vport.vport, ZXDH_MAC_ADD);
 					return ret;
