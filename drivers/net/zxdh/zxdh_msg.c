@@ -1713,12 +1713,15 @@ zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_u
 	if (ret)
 		sprintf(str, "set rss reta tbl failed, code:%d", ret);
 
-	*res_len = strlen(str) + sizeof(uint8_t);
-	if (ret == 0)
+	if (ret == 0) {
+		*res_len = ZXDH_ST_SZ_BYTES(rss_reta) + sizeof(uint8_t);
 		ZXDH_SET(msg_reply_body, reply, flag, ZXDH_REPS_SUCC);
-	else
+	} else {
+		*res_len = strlen(str) + sizeof(uint8_t);
 		ZXDH_SET(msg_reply_body, reply, flag, ZXDH_REPS_FAIL);
-	memcpy(reply_data_addr, str, strlen(str) + 1);
+		memcpy(reply_data_addr, str, strlen(str) + 1);
+	}
+
 	return ret;
 }
 
