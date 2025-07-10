@@ -699,10 +699,11 @@ zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 }
 
 int
-zxdh_vlan_filter_table_init(struct rte_eth_dev *dev)
+zxdh_vlan_filter_table_init(struct zxdh_hw *hw, uint16_t vport)
 {
-	struct zxdh_hw *hw = dev->data->dev_private;
 	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	uint16_t vfid = zxdh_vport_to_vfid(vport_num);
 	struct zxdh_vlan_filter_table vlan_table = {0};
 	int16_t ret = 0;
 
@@ -717,7 +718,7 @@ zxdh_vlan_filter_table_init(struct rte_eth_dev *dev)
 		} else {
 			vlan_table.vlans[0] = 0;
 		}
-		uint32_t index = (vlan_group << 11) | hw->vport.vfid;
+		uint32_t index = (vlan_group << 11) | vfid;
 		ZXDH_DTB_ERAM_ENTRY_INFO_T entry_data = {
 			.index = index,
 			.p_data = (uint32_t *)&vlan_table
@@ -749,7 +750,7 @@ zxdh_vlan_filter_table_set(struct zxdh_hw *hw, uint16_t vport, uint16_t vlan_id,
 	memset(&vlan_table, 0, sizeof(struct zxdh_vlan_filter_table));
 	int table_num = vlan_id / ZXDH_VLAN_FILTER_VLANID_STEP;
 	uint32_t index = (table_num << 11) | vfid;
-	uint16_t group = (vlan_id - table_num * ZXDH_VLAN_FILTER_VLANID_STEP) / 8 + 1;
+	uint16_t group = (vlan_id % ZXDH_VLAN_FILTER_VLANID_STEP) / 8 + 1;
 
 	uint8_t val = sizeof(struct zxdh_vlan_filter_table) / sizeof(uint32_t);
 	uint8_t vlan_tbl_index = group / val;
@@ -950,7 +951,7 @@ zxdh_vlan_relate_vport(struct rte_eth_dev *dev, uint16_t vport,
 	return 0;
 }
 
-static int
+int
 zxdh_set_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
 		struct zxdh_port_vlan_table *port_vlan)
 {
@@ -973,7 +974,7 @@ zxdh_set_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
 	return ret;
 }
 
-static int
+int
 zxdh_get_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
 		struct zxdh_port_vlan_table *port_vlan)
 {
@@ -1044,4 +1045,19 @@ int zxdh_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, uint8_t enable)
 int zxdh_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, uint8_t type, uint8_t enable)
 {
 	return set_vlan_config(hw, vport, type, enable);
+}
+
+int zxdh_port_vlan_table_init(struct zxdh_hw *hw, uint16_t vport)
+{
+	struct zxdh_port_vlan_table port_vlan = {0};
+	int ret = 0;
+
+	if (!hw->is_pf)
+		return 0;
+
+	ret = zxdh_set_port_vlan_attr(hw, vport, &port_vlan);
+	if (ret)
+		PMD_DRV_LOG(ERR, "port vlan table init failed");
+
+	return ret;
 }
