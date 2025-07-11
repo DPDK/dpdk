@@ -1185,7 +1185,6 @@ efx_np_cap_sw_mask_to_hw_enum(
 	__out_opt			uint16_t *enum_hwp)
 {
 	unsigned int sw_nflags_req = 0;
-	unsigned int sw_nflags_sup = 0;
 	uint32_t sw_check_mask = 0;
 	unsigned int i;
 
@@ -1288,7 +1287,6 @@ efx_np_link_ctrl(
 	uint16_t cap_enum_hw;
 	boolean_t supported;
 	efx_mcdi_req_t req;
-	boolean_t phy_an;
 	efx_rc_t rc;
 	uint8_t fec;
 
@@ -1385,7 +1383,7 @@ efx_np_link_ctrl(
 	}
 
 	EFSYS_ASSERT(cap_enum_hw <= UINT8_MAX);
-	fec = cap_enum_hw;
+	fec = (uint8_t)cap_enum_hw;
 
 	MCDI_IN_SET_WORD(req, LINK_CTRL_IN_LINK_TECHNOLOGY, link_tech);
 	MCDI_IN_SET_DWORD(req, LINK_CTRL_IN_CONTROL_FLAGS, flags);
