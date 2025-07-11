@@ -750,7 +750,7 @@ efx_np_stat_describe(
 	return;
 
 found:
-	if (sw_id >= lut_nentries) {
+	if ((unsigned int)sw_id >= lut_nentries) {
 		/*
 		 * Static mapping size and the size of lookup
 		 * table are out-of-sync. Should never happen.
@@ -782,7 +782,6 @@ efx_np_stats_describe(
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_IN_LEN,
 	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMAX_MCDI2);
-	efx_port_t *epp = &(enp->en_port);
 	uint32_t nprocessed;
 	efx_mcdi_req_t req;
 	uint8_t *entries;
