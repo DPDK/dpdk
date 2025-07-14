@@ -307,3 +307,43 @@ cn9k_ep_recv_pkts_mseg(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 
 	return new_pkts;
 }
+
+void
+cnxk_ep_drain_rx_pkts(void *rx_queue)
+{
+	struct otx_ep_droq *droq = (struct otx_ep_droq *)rx_queue;
+	struct rte_mbuf *rx_pkt, *next_seg, *seg;
+	uint16_t i, j, nb_pkts;
+
+	if (droq->read_idx == 0 && droq->pkts_pending == 0 && droq->refill_count)
+		return;
+
+	/* Check for pending packets */
+	nb_pkts = cnxk_ep_rx_pkts_to_process(droq, droq->nb_desc);
+
+	/* Drain the pending packets */
+	for (i = 0; i < nb_pkts; i++) {
+		rx_pkt = NULL;
+		cnxk_ep_process_pkts_scalar_mseg(&rx_pkt, droq, 1);
+		if (rx_pkt) {
+			seg = rx_pkt->next;
+			for (j = 1; j < rx_pkt->nb_segs; j++) {
+				next_seg = seg->next;
+				rte_mempool_put(droq->mpool, seg);
+				seg = next_seg;
+			}
+			rx_pkt->nb_segs = 1;
+			rte_mempool_put(droq->mpool, rx_pkt);
+		}
+	}
+
+	cnxk_ep_rx_refill(droq);
+
+	/* Reset the indexes */
+	droq->read_idx  = 0;
+	droq->write_idx = 0;
+	droq->refill_idx = 0;
+	droq->refill_count = 0;
+	droq->last_pkt_count = 0;
+	droq->pkts_pending = 0;
+}

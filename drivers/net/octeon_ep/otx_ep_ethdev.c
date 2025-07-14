@@ -177,6 +177,12 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	otx_epvf = (struct otx_ep_device *)OTX_EP_DEV(eth_dev);
+
+	for (q = 0; q < otx_epvf->nb_rx_queues; q++) {
+		cnxk_ep_drain_rx_pkts(otx_epvf->droq[q]);
+		otx_epvf->fn_list.setup_oq_regs(otx_epvf, q);
+	}
+
 	/* Enable IQ/OQ for this device */
 	ret = otx_epvf->fn_list.enable_io_queues(otx_epvf);
 	if (ret) {
