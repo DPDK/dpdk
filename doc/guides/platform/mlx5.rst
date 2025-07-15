@@ -261,14 +261,33 @@ configured by the ``ibverbs_link`` build option:
 Compilation on Windows
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The DevX SDK location must be set through CFLAGS/LDFLAGS,
-either::
+The DevX SDK location must be set through CFLAGS/LDFLAGS.
+When compiling with MSVC, use either::
 
-   meson.exe setup "-Dc_args=-I\"%DEVX_INC_PATH%\"" "-Dc_link_args=-L\"%DEVX_LIB_PATH%\"" ...
+   meson.exe setup ^
+       "-Dc_args=-I\"%DEVX_INC_PATH%\"" ^
+       "-Dc_link_args=-LIBPATH:\"%DEVX_LIB_PATH%\"" ^
+       -Denable_stdatomic=true ^
+       ...
 
 or::
 
-   set CFLAGS=-I"%DEVX_INC_PATH%" && set LDFLAGS=-L"%DEVX_LIB_PATH%" && meson.exe setup ...
+   set CFLAGS=-I"%DEVX_INC_PATH%"
+   set LDFLAGS=-LIBPATH:"%DEVX_LIB_PATH%"
+   meson.exe setup -Denable_stdatomic=true ...
+
+When compiling with Clang, use either::
+
+   meson.exe setup ^
+       "-Dc_args=-I\"%DEVX_INC_PATH%\"" ^
+       "-Dc_link_args=-Wl,-LIBPATH:\"%DEVX_LIB_PATH%\"" ^
+       ...
+
+or::
+
+   set CFLAGS=-I"%DEVX_INC_PATH%"
+   set LDFLAGS=-Wl,-LIBPATH:"%DEVX_LIB_PATH%"
+   meson.exe setup ...
 
 
 .. _mlx5_common_env:
