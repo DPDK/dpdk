@@ -2743,6 +2743,7 @@ hns3_get_capability(struct hns3_hw *hw)
 		hw->udp_cksum_mode = HNS3_SPECIAL_PORT_SW_CKSUM_MODE;
 		pf->support_multi_tc_pause = false;
 		hw->rx_dma_addr_align = HNS3_RX_DMA_ADDR_ALIGN_64;
+		hw->strip_crc_ptype = HNS3_STRIP_CRC_PTYPE_TCP;
 		return 0;
 	}
 
@@ -2764,6 +2765,7 @@ hns3_get_capability(struct hns3_hw *hw)
 	hw->udp_cksum_mode = HNS3_SPECIAL_PORT_HW_CKSUM_MODE;
 	pf->support_multi_tc_pause = true;
 	hw->rx_dma_addr_align = HNS3_RX_DMA_ADDR_ALIGN_128;
+	hw->strip_crc_ptype = HNS3_STRIP_CRC_PTYPE_IP;
 
 	return 0;
 }

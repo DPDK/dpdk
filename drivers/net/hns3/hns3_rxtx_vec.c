@@ -187,8 +187,8 @@ hns3_rx_check_vec_support(struct rte_eth_dev *dev)
 				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
 				 RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
 				 RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
-				 RTE_ETH_RX_OFFLOAD_TIMESTAMP;
-
+				 RTE_ETH_RX_OFFLOAD_TIMESTAMP |
+				 RTE_ETH_RX_OFFLOAD_KEEP_CRC;
 
 	if (dev->data->scattered_rx)
 		return -ENOTSUP;
