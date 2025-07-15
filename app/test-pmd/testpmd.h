@@ -576,6 +576,7 @@ extern struct rte_eth_rxmode rx_mode;
 extern struct rte_eth_txmode tx_mode;
 
 extern uint64_t rss_hf;
+extern bool force_rss;
 
 extern queueid_t nb_hairpinq;
 extern queueid_t nb_rxq;
