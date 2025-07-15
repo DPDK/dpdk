@@ -65,7 +65,7 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ptpclient -l 1 -n 4 -- -p 0x1 -T 0
+    ./<build_dir>/examples/dpdk-ptpclient -l 1 -- -p 0x1 -T 0
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.

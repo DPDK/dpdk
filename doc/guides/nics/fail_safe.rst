@@ -116,7 +116,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-7 -n 4 \
+      ./<build_dir>/app/dpdk-testpmd -l 0-7 \
          --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)' \
          -b 84:00.0 -b 00:04.0 -- -i
 
@@ -130,7 +130,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-7 -n 4 \
+      ./<build_dir>/app/dpdk-testpmd -l 0-7 \
          --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)' \
          -a 81:00.0 -- -i
 
@@ -138,7 +138,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-7 -n 4 -a ff:ff.f \
+      ./<build_dir>/app/dpdk-testpmd -l 0-7 -a ff:ff.f \
          --vdev='net_failsafe0,exec(echo 84:00.0)' -- -i
 
 #. Start testpmd, automatically probing the device 84:00.0 and using it with
@@ -146,7 +146,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-7 -n 4 \
+      ./<build_dir>/app/dpdk-testpmd -l 0-7 \
          --vdev 'net_failsafe0,dev(0000:84:00.0),dev(net_ring0)' -- -i
 
 

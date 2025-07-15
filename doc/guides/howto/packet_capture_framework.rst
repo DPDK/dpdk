@@ -89,7 +89,7 @@ inspect them using ``tcpdump``.
 
 #. Launch testpmd as the primary application::
 
-     sudo <build_dir>/app/dpdk-testpmd -l 4-7 -n 4 -- -i --port-topology=chained
+     sudo <build_dir>/app/dpdk-testpmd -l 4-7 -- -i --port-topology=chained
 
 #. Launch the dpdk-dumpcap as follows::
 

@@ -38,7 +38,7 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-rxtx_callbacks -l 1 -n 4 -- [-t]
+    ./<build_dir>/examples/dpdk-rxtx_callbacks -l 1 -- [-t]
 
 Use -t to enable hardware timestamping. If not supported by the NIC, an error
 will be displayed.

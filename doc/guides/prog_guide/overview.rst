@@ -22,15 +22,16 @@ Other libraries, outside of EAL, including the Hash,
 Longest Prefix Match (LPM) and rings libraries are also provided.
 Sample applications are provided to help show the user how to use various features of the DPDK.
 
-The DPDK implements a run to completion model for packet processing,
-where all resources must be allocated prior to calling Data Plane applications,
-running as execution units on logical processing cores.
-The model does not support a scheduler and all devices are accessed by polling.
-The primary reason for not using interrupts is the performance overhead imposed by interrupt processing.
+The DPDK supports multiple programming models for packet processing.
+Mos of the sample applications use a polling mode for performance but
+some of the samples use interrupt driven model is useful for saving power
+but has additional performance overhead. If available, it is possible
+to use the DPDK with event based hardware support.
 
 In addition to the run-to-completion model,
 a pipeline model may also be used by passing packets or messages between cores via the rings.
 This allows work to be performed in stages and may allow more efficient use of code on cores.
+
 
 Development Environment
 -----------------------

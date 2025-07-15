@@ -93,7 +93,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)"
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2 -- -p 0x3 --config="(0,0,1),(1,0,2)"
 
 In this command:
 
@@ -119,7 +119,7 @@ To enable pcap trace on each graph, use following command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --pcap-enable --pcap-num-cap=<number of packets> --pcap-file-name "</path/to/file>"
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2 -- -p 0x3 --config="(0,0,1),(1,0,2)" --pcap-enable --pcap-num-cap=<number of packets> --pcap-file-name "</path/to/file>"
 
 In this command:
 
@@ -134,7 +134,7 @@ before including rte_graph_worker.h. Recompile and use following command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2,3,4 -n 4 -- -p 0x1 --config="(0,0,1)" -P --model="dispatch"
+    ./<build_dir>/examples/dpdk-l3fwd-graph -l 1,2,3,4 -- -p 0x1 --config="(0,0,1)" -P --model="dispatch"
 
 To enable graph walking model selection in run-time, remove the define of ``RTE_GRAPH_MODEL_SELECT``. Recompile and use the same command.
 

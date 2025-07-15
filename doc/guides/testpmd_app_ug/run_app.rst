@@ -20,7 +20,7 @@ They must be separated from the EAL options, shown in the previous section, with
 
 .. code-block:: console
 
-    sudo ./dpdk-testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
+    sudo ./dpdk-testpmd -l 0-3 -- -i --portmask=0x1 --nb-cores=2
 
 The command line options are:
 

@@ -545,7 +545,7 @@ The setup procedure is as follows:
 
     .. code-block:: console
 
-        ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 -- -i
+        ./<build_dir>/app/dpdk-testpmd -l 0-3 -- -i
 
 #.  Finally, access the Guest OS using vncviewer with the localhost:5900 port and check the lspci command output in the Guest OS.
     The virtual functions will be listed as available for use.

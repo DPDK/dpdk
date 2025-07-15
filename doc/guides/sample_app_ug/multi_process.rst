@@ -40,7 +40,7 @@ passing at least two cores in the corelist:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-simple_mp -l 0-1 -n 4 --proc-type=primary
+    ./<build_dir>/examples/dpdk-simple_mp -l 0-1 --proc-type=primary
 
 For the first DPDK process run, the proc-type flag can be omitted or set to auto,
 since all DPDK processes will default to being a primary instance,
@@ -49,7 +49,7 @@ The process should start successfully and display a command prompt as follows:
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-simple_mp -l 0-1 -n 4 --proc-type=primary
+    $ ./<build_dir>/examples/dpdk-simple_mp -l 0-1 --proc-type=primary
     ...
     EAL: Requesting 2 pages of size 1073741824
     EAL: Requesting 768 pages of size 2097152
@@ -69,7 +69,7 @@ again run the same binary setting at least two cores in the corelist:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-simple_mp -l 2-3 -n 4 --proc-type=secondary
+    ./<build_dir>/examples/dpdk-simple_mp -l 2-3 --proc-type=secondary
 
 When running a secondary process such as above,
 the ``proc-type`` parameter can be specified as auto.
@@ -163,10 +163,10 @@ Example:
 
 .. code-block:: console
 
-    # ./<build_dir>/examples/dpdk-symmetric_mp -l 1 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=0
-    # ./<build_dir>/examples/dpdk-symmetric_mp -l 2 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=1
-    # ./<build_dir>/examples/dpdk-symmetric_mp -l 3 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=2
-    # ./<build_dir>/examples/dpdk-symmetric_mp -l 4 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=3
+    # ./<build_dir>/examples/dpdk-symmetric_mp -l 1 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=0
+    # ./<build_dir>/examples/dpdk-symmetric_mp -l 2 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=1
+    # ./<build_dir>/examples/dpdk-symmetric_mp -l 3 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=2
+    # ./<build_dir>/examples/dpdk-symmetric_mp -l 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=3
 
 .. note::
 
@@ -243,9 +243,9 @@ the commands are:
 
 .. code-block:: console
 
-    # ./<build_dir>/examples/dpdk-mp_server -l 1-2 -n 4 -- -p 3 -n 2
-    # ./<build_dir>/examples/dpdk-mp_client -l 3 -n 4 --proc-type=auto -- -n 0
-    # ./<build_dir>/examples/dpdk-mp_client -l 4 -n 4 --proc-type=auto -- -n 1
+    # ./<build_dir>/examples/dpdk-mp_server -l 1-2 -- -p 3 -n 2
+    # ./<build_dir>/examples/dpdk-mp_client -l 3 --proc-type=auto -- -n 0
+    # ./<build_dir>/examples/dpdk-mp_client -l 4 --proc-type=auto -- -n 1
 
 .. note::
 

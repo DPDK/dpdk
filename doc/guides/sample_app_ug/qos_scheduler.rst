@@ -180,7 +180,7 @@ The following is an example command with a single packet flow configuration:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-qos_sched -l 1,5,7 -n 4 -- --pfc "3,2,5,7" --cfg ./profile.cfg
+    ./<build_dir>/examples/dpdk-qos_sched -l 1,5,7 -- --pfc "3,2,5,7" --cfg ./profile.cfg
 
 This example uses a single packet flow configuration which creates one RX thread on lcore 5 reading
 from port 3 and a worker thread on lcore 7 writing to port 2.
@@ -189,7 +189,7 @@ Another example with 2 packet flow configurations using different ports but shar
 
 .. code-block:: console
 
-   ./<build_dir>/examples/dpdk-qos_sched -l 1,2,6,7 -n 4 -- --pfc "3,2,2,6,7" --pfc "1,0,2,6,7" --cfg ./profile.cfg
+   ./<build_dir>/examples/dpdk-qos_sched -l 1,2,6,7 -- --pfc "3,2,2,6,7" --pfc "1,0,2,6,7" --cfg ./profile.cfg
 
 Note that independent cores for the packet flow configurations for each of the RX, WT and TX thread are also supported,
 providing flexibility to balance the work.

@@ -157,7 +157,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 1,2 -n 4 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
+    ./<build_dir>/examples/dpdk-l3fwd -l 1,2 -- -p 0x3 --config="(0,0,1),(1,0,2)" --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In this command:
 
@@ -188,13 +188,13 @@ the following is the sample command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -a <event device> -- -p 0x3 --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -a <event device> -- -p 0x3 --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 or
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -n 4 -a <event device> \
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-3 -a <event device> \
 		-- -p 0x03 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In this command:
@@ -218,7 +218,7 @@ scheduler. The following is the sample command:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -S 16-19 -n 4 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
+    ./<build_dir>/examples/dpdk-l3fwd -l 0-7 -S 16-19 --vdev event_sw0 -- -p 0x3 --mode=eventdev --eventq-sched=ordered --rule_ipv4="rule_ipv4.cfg" --rule_ipv6="rule_ipv6.cfg"
 
 In case of eventdev mode, *--config* option is not used for ethernet port
 configuration. Instead, each ethernet port will be configured with this

@@ -413,7 +413,7 @@ To start ``testpmd``, and add vlan 10 to port 0:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --forward-mode=mac
+    ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --forward-mode=mac
     ...
 
     testpmd> set promisc 0 off
@@ -448,7 +448,7 @@ Start ``testpmd`` with ``--disable-rss`` and ``--pkt-filter-mode=perfect``:
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --disable-rss \
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --disable-rss \
                  --pkt-filter-mode=perfect --rxq=8 --txq=8 --nb-cores=8 \
                  --nb-ports=1
 
@@ -1026,7 +1026,7 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
 
 #. The command line of running l3fwd would be something like the following::
 
-      ./dpdk-l3fwd -l 18-21 -n 4 -a 82:00.0 -a 85:00.0 \
+      ./dpdk-l3fwd -l 18-21 -a 82:00.0 -a 85:00.0 \
               -- -p 0x3 --config '(0,0,18),(0,1,19),(1,0,20),(1,1,21)'
 
    This means that the application uses core 18 for port 0, queue pair 0 forwarding, core 19 for port 0, queue pair 1 forwarding,

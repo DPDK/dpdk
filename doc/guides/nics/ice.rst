@@ -429,7 +429,7 @@ For example:
 
 .. code-block:: console
 
-   dpdk-testpmd -a 0000:31:00.0 -l 0-3 -n 4 -- -i --tx-offloads=0x200000
+   dpdk-testpmd -a 0000:31:00.0 -l 0-3 -- -i --tx-offloads=0x200000
    set fwd txonly
    set txtimes <inter_burst>,<intra_burst>
    start
@@ -541,7 +541,7 @@ Additional Options
 
 #. Bind the VF0, and run testpmd with 'cap=dcf' with port representor for VF 1 and 2::
 
-      dpdk-testpmd -l 22-25 -n 4 -a 18:01.0,cap=dcf,representor=vf[1-2] -- -i
+      dpdk-testpmd -l 22-25 -a 18:01.0,cap=dcf,representor=vf[1-2] -- -i
 
 #. Monitor the VF2 interface network traffic::
 
@@ -570,7 +570,7 @@ To start ``testpmd``, and add vlan 10 to port 0:
 
 .. code-block:: console
 
-    ./app/dpdk-testpmd -l 0-15 -n 4 -- -i
+    ./app/dpdk-testpmd -l 0-15 -- -i
     ...
 
     testpmd> rx_vlan add 10 0

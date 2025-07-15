@@ -55,7 +55,7 @@ To run the application in a Linux environment, issue the following command:
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-cmdline -l 0-3 -n 4
+    $ ./<build_dir>/examples/dpdk-cmdline -l 0-3
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.

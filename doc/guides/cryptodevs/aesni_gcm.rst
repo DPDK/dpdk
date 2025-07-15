@@ -104,5 +104,5 @@ Example:
 
 .. code-block:: console
 
-    ./dpdk-l2fwd-crypto -l 1 -n 4 --vdev="crypto_aesni_gcm,socket_id=0,max_nb_sessions=128" \
+    ./dpdk-l2fwd-crypto -l 1 --vdev="crypto_aesni_gcm,socket_id=0,max_nb_sessions=128" \
     -- -p 1 --cdev SW --chain AEAD --aead_algo "aes-gcm"

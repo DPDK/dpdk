@@ -614,7 +614,7 @@ Run testpmd in the Virtual Machine.
    # use for bonding of virtio and vf tests in VM
 
    /root/dpdk/<build_dir>/app/dpdk-testpmd \
-   -l 0-3 -n 4 --numa-mem 350 --  --i --port-topology=chained
+   -l 0-3 --numa-mem 350 --  --i --port-topology=chained
 
 .. _lm_bond_virtio_sriov_switch_conf:
 

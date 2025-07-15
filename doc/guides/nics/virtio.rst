@@ -186,7 +186,7 @@ There is no vector callbacks for packed virtqueue for now.
 Example of using the vector version of the virtio poll mode driver in
 ``testpmd``::
 
-   dpdk-testpmd -l 0-2 -n 4 -- -i --rxq=1 --txq=1 --nb-cores=1
+   dpdk-testpmd -l 0-2 -- -i --rxq=1 --txq=1 --nb-cores=1
 
 In-order callbacks only work on simulated virtio user vdev.
 

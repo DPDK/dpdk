@@ -74,13 +74,13 @@ To run the example in a ``linux`` environment and enable CAT on cpus 0-2:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -n 4 -- --l3ca="0x3@(0-2)"
+    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -- --l3ca="0x3@(0-2)"
 
 Or to enable CAT and CDP on cpus 1,3:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -n 4 -- --l3ca="(0x00C00,0x00300)@(1,3)"
+    ./<build_dir>/examples/dpdk-l2fwd-cat -l 1 -- --l3ca="(0x00C00,0x00300)@(1,3)"
 
 If CDP is not supported, it will fail with following error message:
 

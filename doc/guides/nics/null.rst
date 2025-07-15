@@ -14,7 +14,7 @@ Usage
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev net_null0 --vdev net_null1 -- -i
+   ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev net_null0 --vdev net_null1 -- -i
 
 
 Runtime Configuration
@@ -26,7 +26,7 @@ Runtime Configuration
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev "net_null0,copy=1" -- -i
+   ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev "net_null0,copy=1" -- -i
 
 - ``size`` [optional, default=64 bytes]
 
@@ -35,7 +35,7 @@ Runtime Configuration
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev "net_null0,size=256" -- -i
+   ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev "net_null0,size=256" -- -i
 
 - ``no-rx`` [optional, default disabled]
 

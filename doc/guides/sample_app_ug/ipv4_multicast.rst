@@ -74,13 +74,11 @@ Typically, to run the IPv4 Multicast sample application, issue the following com
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ipv4_multicast -l 0-3 -n 3 -- -p 0x3 -q 1
+    ./<build_dir>/examples/dpdk-ipv4_multicast -l 0-3 -- -p 0x3 -q 1
 
 In this command:
 
 *   The -l option enables cores 0, 1, 2 and 3
-
-*   The -n option specifies 3 memory channels
 
 *   The -p option enables ports 0 and 1
 

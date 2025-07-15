@@ -4160,7 +4160,7 @@ This section demonstrates how to launch **testpmd** with NVIDIA devices managed 
 
 #. Start testpmd with basic parameters::
 
-      dpdk-testpmd -l 8-15 -n 4 -a 05:00.0 -a 05:00.1 -a 06:00.0 -a 06:00.1 -- --rxq=2 --txq=2 -i
+      dpdk-testpmd -l 8-15 -a 05:00.0 -a 05:00.1 -a 06:00.0 -a 06:00.1 -- --rxq=2 --txq=2 -i
 
    Example output::
 

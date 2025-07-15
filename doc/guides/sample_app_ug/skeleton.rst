@@ -27,7 +27,7 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-skeleton -l 1 -n 4
+    ./<build_dir>/examples/dpdk-skeleton -l 1
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and Environment Abstraction Layer (EAL) options.

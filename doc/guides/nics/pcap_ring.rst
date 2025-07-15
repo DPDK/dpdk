@@ -40,7 +40,7 @@ Device name and stream options must be separated by commas as shown below:
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+   ./<build_dir>/app/dpdk-testpmd -l 0-3 \
        --vdev 'net_pcap0,stream_opt0=..,stream_opt1=..' \
        --vdev='net_pcap1,stream_opt0=..'
 
@@ -139,7 +139,7 @@ Read packets from one pcap file and write them to another:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained
 
@@ -147,7 +147,7 @@ Read packets from a network interface and write them to a pcap file:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,rx_iface=eth0,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained
 
@@ -155,7 +155,7 @@ Read packets from a pcap file and write them to a network interface:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_iface=eth1' \
         -- --port-topology=chained
 
@@ -163,14 +163,14 @@ Forward packets through two network interfaces:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,iface=eth0' --vdev='net_pcap1,iface=eth1'
 
 Enable 2 tx queues on a network interface:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,rx_iface=eth1,tx_iface=eth1,tx_iface=eth1' \
         -- --txq 2
 
@@ -178,7 +178,7 @@ Read only incoming packets from a network interface and write them back to the s
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,rx_iface_in=eth1,tx_iface=eth1'
 
 Using libpcap-based PMD with the testpmd Application
@@ -203,7 +203,7 @@ Otherwise, the first 512 packets from the input pcap file will be discarded by t
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 \
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained --no-flush-rx
 
@@ -223,7 +223,7 @@ Multiple devices may be specified, separated by commas.
 
 .. code-block:: console
 
-    ./dpdk-testpmd -l 1-3 -n 4 --vdev=net_ring0 --vdev=net_ring1 -- -i
+    ./dpdk-testpmd -l 1-3 --vdev=net_ring0 --vdev=net_ring1 -- -i
     ...
     Interactive-mode selected
     Configuring Port 0 (socket 0)

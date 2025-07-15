@@ -749,7 +749,7 @@ devices managed by librte_net_cxgbe in FreeBSD operating system.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 -a 0000:02:00.4 -- -i
+      ./<build_dir>/app/dpdk-testpmd -l 0-3 -a 0000:02:00.4 -- -i
 
    Example output:
 

@@ -50,12 +50,12 @@ where,
 
 *   -T PERIOD: statistics will be refreshed each PERIOD seconds (0 to disable, 10 default)
 
-To run the application in a linux environment with 4 lcores, 4 memory channels, 16 ports and 8 RX queues per lcore,
+To run the application in a linux environment with 4 lcores, 16 ports and 8 RX queues per lcore,
 issue the command:
 
 .. code-block:: console
 
-    $ ./<build_dir>/examples/dpdk-link_status_interrupt -l 0-3 -n 4-- -q 8 -p ffff
+    $ ./<build_dir>/examples/dpdk-link_status_interrupt -l 0-3 -- -q 8 -p ffff
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.

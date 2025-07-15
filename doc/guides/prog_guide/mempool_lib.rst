@@ -45,9 +45,6 @@ The physical layout of the DRAM chips on the DIMM itself does not necessarily re
 
 When running an application, the EAL command line options provide the ability to add the number of memory channels and ranks.
 
-.. note::
-
-    The command line must always have the number of memory channels specified for the processor.
 
 Examples of alignment for different DIMM architectures are shown in
 :numref:`figure_memory-management` and :numref:`figure_memory-management2`.

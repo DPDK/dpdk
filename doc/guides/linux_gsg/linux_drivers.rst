@@ -252,14 +252,14 @@ The token will be used for all PF and VF ports within the application.
 
    .. code-block:: console
 
-      <build_dir>/app/dpdk-testpmd -l 22-25 -n 4 -a 86:00.0 \
+      <build_dir>/app/dpdk-testpmd -l 22-25 -a 86:00.0 \
       --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=pf -- -i
 
 #. Start the DPDK application that will manage the VF device
 
    .. code-block:: console
 
-      <build_dir>/app/dpdk-testpmd -l 26-29 -n 4 -a 86:02.0 \
+      <build_dir>/app/dpdk-testpmd -l 26-29 -a 86:02.0 \
       --vfio-vf-token=14d63f20-8445-11ea-8900-1f9ce7d5650d --file-prefix=vf0 -- -i
 
 .. note::

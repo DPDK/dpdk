@@ -420,7 +420,7 @@ devices managed by librte_net_mlx4.
 
 #. Start testpmd with basic parameters::
 
-      dpdk-testpmd -l 8-15 -n 4 -a 0000:83:00.0 -a 0000:84:00.0 -- --rxq=2 --txq=2 -i
+      dpdk-testpmd -l 8-15 -a 0000:83:00.0 -a 0000:84:00.0 -- --rxq=2 --txq=2 -i
 
    Example output::
 

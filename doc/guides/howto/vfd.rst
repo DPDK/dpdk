@@ -83,7 +83,7 @@ The typical procedure to achieve this is as follows:
 
 #. Run a DPDK application on the PF in the host::
 
-      dpdk-testpmd -l 0-7 -n 4 -- -i --txqflags=0
+      dpdk-testpmd -l 0-7 -- -i --txqflags=0
 
 #. Bind the VF port to ``igb_uio`` in the VM::
 
@@ -91,7 +91,7 @@ The typical procedure to achieve this is as follows:
 
 #. Run a DPDK application on the VF in the VM::
 
-      dpdk-testpmd -l 0-7 -n 4 -- -i --txqflags=0
+      dpdk-testpmd -l 0-7 -- -i --txqflags=0
 
 
 Common functions of IXGBE and I40E

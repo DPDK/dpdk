@@ -378,7 +378,7 @@ Device names and bonding options must be separated by commas as shown below:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,bond_opt0=..,bond opt1=..'--vdev 'net_bonding1,bond _opt0=..,bond_opt1=..'
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev 'net_bonding0,bond_opt0=..,bond opt1=..'--vdev 'net_bonding1,bond _opt0=..,bond_opt1=..'
 
 Link Bonding EAL Options
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -478,25 +478,25 @@ Create a bonding device in round robin mode with two members specified by their 
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,member=0000:0a:00.01,member=0000:04:00.00' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev 'net_bonding0,mode=0,member=0000:0a:00.01,member=0000:04:00.00' -- --port-topology=chained
 
 Create a bonding device in round robin mode with two members specified by their PCI address and an overriding MAC address:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=0,member=0000:0a:00.01,member=0000:04:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev 'net_bonding0,mode=0,member=0000:0a:00.01,member=0000:04:00.00,mac=00:1e:67:1d:fd:1d' -- --port-topology=chained
 
 Create a bonding device in active backup mode with two members specified, and a primary member specified by their PCI addresses:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=1,member=0000:0a:00.01,member=0000:04:00.00,primary=0000:0a:00.01' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev 'net_bonding0,mode=1,member=0000:0a:00.01,member=0000:04:00.00,primary=0000:0a:00.01' -- --port-topology=chained
 
 Create a bonding device in balance mode with two members specified by their PCI addresses, and a transmission policy of layer 3 + 4 forwarding:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 --vdev 'net_bonding0,mode=2,member=0000:0a:00.01,member=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained
+    ./<build_dir>/app/dpdk-testpmd -l 0-3 --vdev 'net_bonding0,mode=2,member=0000:0a:00.01,member=0000:04:00.00,xmit_policy=l34' -- --port-topology=chained
 
 .. _bonding_testpmd_commands:
 

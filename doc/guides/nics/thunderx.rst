@@ -157,7 +157,7 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
    .. code-block:: console
 
-      ./<build_dir>/app/dpdk-testpmd -l 0-3 -n 4 -a 0002:01:00.2 \
+      ./<build_dir>/app/dpdk-testpmd -l 0-3 -a 0002:01:00.2 \
         -- -i --no-flush-rx \
         --port-topology=loop
 

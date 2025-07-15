@@ -119,5 +119,5 @@ Example:
 
 .. code-block:: console
 
-    ./dpdk-l2fwd-crypto -l 1 -n 4 --vdev="crypto_snow3g,socket_id=0,max_nb_sessions=128" \
+    ./dpdk-l2fwd-crypto -l 1 --vdev="crypto_snow3g,socket_id=0,max_nb_sessions=128" \
     -- -p 1 --cdev SW --chain CIPHER_ONLY --cipher_algo "snow3g-uea2"

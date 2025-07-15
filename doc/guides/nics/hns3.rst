@@ -221,7 +221,7 @@ To start ``testpmd``, and add VLAN 10 to port 0:
 
 .. code-block:: console
 
-    ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --forward-mode=mac
+    ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --forward-mode=mac
     ...
 
     testpmd> set promisc 0 off
@@ -242,7 +242,7 @@ Start ``testpmd``:
 
 .. code-block:: console
 
-   ./<build_dir>/app/dpdk-testpmd -l 0-15 -n 4 -- -i --rxq=8 --txq=8 \
+   ./<build_dir>/app/dpdk-testpmd -l 0-15 -- -i --rxq=8 --txq=8 \
 				  --nb-cores=8 --nb-ports=1
 
 Add a rule to direct ``ipv4-udp`` packet whose ``dst_ip=2.2.2.5, src_ip=2.2.2.3,
