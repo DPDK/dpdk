@@ -131,6 +131,11 @@ from running on those cores, it is possible to use
 the Linux kernel parameters ``isolcpus``, ``nohz_full``, ``irqaffinity``
 to isolate them from the general Linux scheduler tasks.
 
+.. note::
+
+   It is not recommended to use CPU core 0 for DPDK polling applications
+   because it can not be truly isolated from other system and kernel activity.
+
 For example, if a given CPU has 0-7 cores
 and DPDK applications are to run on logical cores 2, 4 and 6,
 the following should be added to the kernel parameter list:
