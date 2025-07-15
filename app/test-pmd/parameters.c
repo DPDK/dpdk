@@ -121,6 +121,8 @@ enum {
 	TESTPMD_OPT_ENABLE_DROP_EN_NUM,
 #define TESTPMD_OPT_DISABLE_RSS "disable-rss"
 	TESTPMD_OPT_DISABLE_RSS_NUM,
+#define TESTPMD_OPT_ENABLE_RSS "enable-rss"
+	TESTPMD_OPT_ENABLE_RSS_NUM,
 #define TESTPMD_OPT_PORT_TOPOLOGY "port-topology"
 	TESTPMD_OPT_PORT_TOPOLOGY_NUM,
 #define TESTPMD_OPT_FORWARD_MODE "forward-mode"
@@ -310,6 +312,7 @@ static const struct option long_options[] = {
 	NO_ARG(TESTPMD_OPT_ENABLE_HW_QINQ_STRIP),
 	NO_ARG(TESTPMD_OPT_ENABLE_DROP_EN),
 	NO_ARG(TESTPMD_OPT_DISABLE_RSS),
+	NO_ARG(TESTPMD_OPT_ENABLE_RSS),
 	REQUIRED_ARG(TESTPMD_OPT_PORT_TOPOLOGY),
 	REQUIRED_ARG(TESTPMD_OPT_FORWARD_MODE),
 	NO_ARG(TESTPMD_OPT_RSS_IP),
@@ -454,6 +457,7 @@ usage(char* progname)
 	printf("  --enable-hw-qinq-strip: enable hardware qinq strip.\n");
 	printf("  --enable-drop-en: enable per queue packet drop.\n");
 	printf("  --disable-rss: disable rss.\n");
+	printf("  --enable-rss: Force rss even for single-queue operation.\n");
 	printf("  --port-topology=<paired|chained|loop>: set port topology (paired "
 	       "is default).\n");
 	printf("  --forward-mode=N: set forwarding mode (N: %s).\n",
@@ -1244,7 +1248,16 @@ launch_args_parse(int argc, char** argv)
 			rx_drop_en = 1;
 			break;
 		case TESTPMD_OPT_DISABLE_RSS_NUM:
+			if (force_rss)
+				rte_exit(EXIT_FAILURE, "Invalid option combination, %s and %s\n",
+						TESTPMD_OPT_DISABLE_RSS, TESTPMD_OPT_ENABLE_RSS);
 			rss_hf = 0;
+			break;
+		case TESTPMD_OPT_ENABLE_RSS_NUM:
+			if (rss_hf == 0)
+				rte_exit(EXIT_FAILURE, "Invalid option combination, %s and %s\n",
+						TESTPMD_OPT_DISABLE_RSS, TESTPMD_OPT_ENABLE_RSS);
+			force_rss = true;
 			break;
 		case TESTPMD_OPT_PORT_TOPOLOGY_NUM:
 			if (!strcmp(optarg, "paired"))
