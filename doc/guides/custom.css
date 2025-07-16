@@ -22,3 +22,8 @@
 .section li > .first {
 	margin-top: 18px;
 }
+
+/* Table head row more visible */
+th.head {
+	background-color: #ccc;
+}
