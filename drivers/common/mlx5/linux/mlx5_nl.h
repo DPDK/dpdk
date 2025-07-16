@@ -117,4 +117,7 @@ void mlx5_nl_rdma_monitor_info_get(struct nlmsghdr *hdr, struct mlx5_nl_port_inf
 __rte_internal
 int mlx5_nl_rdma_monitor_cap_get(int nl, uint8_t *cap);
 
+__rte_internal
+int mlx5_nl_get_mtu_bounds(int nl, unsigned int ifindex, uint16_t *min_mtu, uint16_t *max_mtu);
+
 #endif /* RTE_PMD_MLX5_NL_H_ */

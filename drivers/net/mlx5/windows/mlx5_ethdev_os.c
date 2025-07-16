@@ -72,6 +72,34 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 }
 
 /**
+ * Get device minimum and maximum allowed MTU.
+ *
+ * Windows API does not expose minimum and maximum allowed MTU.
+ * In this case, this just returns (-ENOTSUP) to allow platform-independent code
+ * to fallback to default values.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] min_mtu
+ *   Minimum MTU value output buffer.
+ * @param[out] max_mtu
+ *   Maximum MTU value output buffer.
+ *
+ * @return
+ *   (-ENOTSUP) - not supported on Windows
+ */
+int
+mlx5_os_get_mtu_bounds(struct rte_eth_dev *dev, uint16_t *min_mtu, uint16_t *max_mtu)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(min_mtu);
+	RTE_SET_USED(max_mtu);
+
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
+/**
  * Get device MTU.
  *
  * @param dev
