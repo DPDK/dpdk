@@ -6,13 +6,6 @@
 NVIDIA MLX5 vDPA Driver
 =======================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 The mlx5 vDPA (vhost data path acceleration) driver library
 (**librte_vdpa_mlx5**) provides support for **NVIDIA ConnectX-6**,
 **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**, **NVIDIA ConnectX7**,

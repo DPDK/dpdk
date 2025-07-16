@@ -6,13 +6,6 @@
 NVIDIA MLX5 Compress Driver
 ===========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 The mlx5 compress driver library
 (**librte_compress_mlx5**) provides support for **NVIDIA BlueField-2**,
 and **NVIDIA BlueField-3** families of 25/50/100/200/400 Gb/s adapters.

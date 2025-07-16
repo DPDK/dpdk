@@ -7,13 +7,6 @@
 NVIDIA MLX5 Common Driver
 =========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 The mlx5 common driver library (**librte_common_mlx5**) provides support for
 **NVIDIA ConnectX-4**, **NVIDIA ConnectX-4 Lx**, **NVIDIA ConnectX-5**,
 **NVIDIA ConnectX-6**, **NVIDIA ConnectX-6 Dx**, **NVIDIA ConnectX-6 Lx**,

@@ -4,13 +4,6 @@
 NVIDIA BlueField Board Support Package
 ======================================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 This document has information about steps to setup NVIDIA BlueField platform
 and common offload HW drivers of **NVIDIA BlueField** family SoC.
 

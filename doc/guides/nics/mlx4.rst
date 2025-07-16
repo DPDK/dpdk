@@ -5,13 +5,6 @@
 NVIDIA MLX4 Ethernet Driver
 ===========================
 
-.. note::
-
-   NVIDIA acquired Mellanox Technologies in 2020.
-   The DPDK documentation and code might still include instances
-   of or references to Mellanox trademarks (like BlueField and ConnectX)
-   that are now NVIDIA trademarks.
-
 The MLX4 poll mode driver library (**librte_net_mlx4**) implements support
 for **NVIDIA ConnectX-3** and **NVIDIA ConnectX-3 Pro** 10/40 Gbps adapters
 as well as their virtual functions (VF) in SR-IOV context.
