@@ -758,6 +758,10 @@ for an additional list of options shared with other mlx5 drivers.
     item added. Flow rules based on this pattern template will match
     the vport associated with port on which rule is created.
 
+  .. note::
+
+     This parameter is deprecated and will be removed in future releases.
+
 - ``max_dump_files_num`` parameter [int]
 
   The maximum number of files per PMD entity that may be created for debug information.
