@@ -243,6 +243,36 @@ mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
 }
 
 /**
+ * Get device minimum and maximum allowed MTU values.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] min_mtu
+ *   Minimum MTU value output buffer.
+ * @param[out] max_mtu
+ *   Maximum MTU value output buffer.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_os_get_mtu_bounds(struct rte_eth_dev *dev, uint16_t *min_mtu, uint16_t *max_mtu)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int nl_route;
+	int ret;
+
+	nl_route = mlx5_nl_init(NETLINK_ROUTE, 0);
+	if  (nl_route < 0)
+		return nl_route;
+
+	ret = mlx5_nl_get_mtu_bounds(nl_route, priv->if_index, min_mtu, max_mtu);
+
+	close(nl_route);
+	return ret;
+}
+
+/**
  * Get device MTU.
  *
  * @param dev

@@ -82,4 +82,7 @@ int mlx5_nl_read_events(int nlsk_fd, mlx5_nl_event_cb *cb, void *cb_arg);
 __rte_internal
 int mlx5_nl_parse_link_status_update(struct nlmsghdr *hdr, uint32_t *ifindex);
 
+__rte_internal
+int mlx5_nl_get_mtu_bounds(int nl, unsigned int ifindex, uint16_t *min_mtu, uint16_t *max_mtu);
+
 #endif /* RTE_PMD_MLX5_NL_H_ */

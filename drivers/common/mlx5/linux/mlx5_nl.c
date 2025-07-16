@@ -1962,3 +1962,111 @@ mlx5_nl_read_events(int nlsk_fd, mlx5_nl_event_cb *cb, void *cb_arg)
 	}
 	return 0;
 }
+
+struct mlx5_mtu {
+	uint32_t min_mtu;
+	bool min_mtu_set;
+	uint32_t max_mtu;
+	bool max_mtu_set;
+};
+
+static int
+mlx5_nl_get_mtu_bounds_cb(struct nlmsghdr *nh, void *arg)
+{
+	size_t off = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	struct mlx5_mtu *out = arg;
+
+	while (off < nh->nlmsg_len) {
+		struct rtattr *ra = RTE_PTR_ADD(nh, off);
+		uint32_t *payload;
+
+		switch (ra->rta_type) {
+		case IFLA_MIN_MTU:
+			payload = RTA_DATA(ra);
+			out->min_mtu = *payload;
+			out->min_mtu_set = true;
+			break;
+		case IFLA_MAX_MTU:
+			payload = RTA_DATA(ra);
+			out->max_mtu = *payload;
+			out->max_mtu_set = true;
+			break;
+		default:
+			/* Nothing to do for other attributes. */
+			break;
+		}
+		off += RTA_ALIGN(ra->rta_len);
+	}
+
+	return 0;
+}
+
+/**
+ * Query minimum and maximum allowed MTU values for given Linux network interface.
+ *
+ * This function queries the following interface attributes exposed in netlink since Linux 4.18:
+ *
+ * - IFLA_MIN_MTU - minimum allowed MTU
+ * - IFLA_MAX_MTU - maximum allowed MTU
+ *
+ * @param[in] nl
+ *   Netlink socket of the ROUTE kind (NETLINK_ROUTE).
+ * @param[in] ifindex
+ *   Linux network device index.
+ * @param[out] min_mtu
+ *   Pointer to minimum allowed MTU. Populated only if both minimum and maximum MTU was queried.
+ * @param[out] max_mtu
+ *   Pointer to maximum allowed MTU. Populated only if both minimum and maximum MTU was queried.
+ *
+ * @return
+ *   0 on success, negative on error and rte_errno is set.
+ *
+ *   Known errors:
+ *
+ *   - (-EINVAL) - either @p min_mtu or @p max_mtu is NULL.
+ *   - (-ENOENT) - either minimum or maximum allowed MTU was not found in interface attributes.
+ */
+int
+mlx5_nl_get_mtu_bounds(int nl, unsigned int ifindex, uint16_t *min_mtu, uint16_t *max_mtu)
+{
+	struct mlx5_mtu out = { 0 };
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg info;
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(req.info)),
+			.nlmsg_type = RTM_GETLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.info = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+
+	if (min_mtu == NULL || max_mtu == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	ret = mlx5_nl_send(nl, &req.nh, sn);
+	if (ret < 0)
+		return ret;
+
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_get_mtu_bounds_cb, &out);
+	if (ret < 0)
+		return ret;
+
+	if (!out.min_mtu_set || !out.max_mtu_set) {
+		rte_errno = ENOENT;
+		return -rte_errno;
+	}
+
+	*min_mtu = out.min_mtu;
+	*max_mtu = out.max_mtu;
+
+	return ret;
+}

@@ -123,6 +123,7 @@ INTERNAL {
 	mlx5_mr_mb2mr_bh;
 
 	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
+	mlx5_nl_get_mtu_bounds; # WINDOWS_NO_EXPORT
 	mlx5_nl_ifindex; # WINDOWS_NO_EXPORT
 	mlx5_nl_init; # WINDOWS_NO_EXPORT
 	mlx5_nl_mac_addr_add; # WINDOWS_NO_EXPORT
