@@ -55,7 +55,7 @@ struct rte_dpaa_bus {
 };
 
 static struct rte_dpaa_bus rte_dpaa_bus;
-struct netcfg_info *dpaa_netcfg;
+static struct netcfg_info *dpaa_netcfg;
 
 /* define a variable to hold the portal_key, once created.*/
 static pthread_key_t dpaa_portal_key;
@@ -204,22 +204,23 @@ dpaa_create_device_list(void)
 		fman_intf = cfg->fman_if;
 
 		/* Device identifiers */
-		dev->id.fman_id = fman_intf->fman_idx + 1;
+		dev->id.fman_id = fman_intf->fman->idx + 1;
 		dev->id.mac_id = fman_intf->mac_idx;
 		dev->device_type = FSL_DPAA_ETH;
 		dev->id.dev_id = i;
 
 		/* Create device name */
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
-		if (fman_intf->mac_type == fman_offline_internal)
-			sprintf(dev->name, "fm%d-oh%d",
-				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
-		else if (fman_intf->mac_type == fman_onic)
-			sprintf(dev->name, "fm%d-onic%d",
-				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
-		else
-			sprintf(dev->name, "fm%d-mac%d",
-				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
+		if (fman_intf->mac_type == fman_offline_internal) {
+			snprintf(dev->name, RTE_ETH_NAME_MAX_LEN, "fm%d-oh%d",
+				(fman_intf->fman->idx + 1), fman_intf->mac_idx);
+		} else if (fman_intf->mac_type == fman_onic) {
+			snprintf(dev->name, RTE_ETH_NAME_MAX_LEN, "fm%d-onic%d",
+				(fman_intf->fman->idx + 1), fman_intf->mac_idx);
+		} else {
+			snprintf(dev->name, RTE_ETH_NAME_MAX_LEN, "fm%d-mac%d",
+				(fman_intf->fman->idx + 1), fman_intf->mac_idx);
+		}
 		dev->device.name = dev->name;
 		dev->device.devargs = dpaa_devargs_lookup(dev);
 

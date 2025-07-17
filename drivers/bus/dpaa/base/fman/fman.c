@@ -16,24 +16,15 @@
 #include <rte_dpaa_logs.h>
 #include <rte_string_fns.h>
 
-#define QMI_PORT_REGS_OFFSET		0x400
-
-/* CCSR map address to access ccsr based register */
-void *fman_ccsr_map;
-/* fman version info */
-u16 fman_ip_rev;
-static int get_once;
-u32 fman_dealloc_bufs_mask_hi;
-u32 fman_dealloc_bufs_mask_lo;
-
 int fman_ccsr_map_fd = -1;
 static COMPAT_LIST_HEAD(__ifs);
-void *rtc_map;
+static COMPAT_LIST_HEAD(__fmans);
 
 /* This is the (const) global variable that callers have read-only access to.
  * Internally, we have read-write access directly to __ifs.
  */
 const struct list_head *fman_if_list = &__ifs;
+const struct list_head *fman_list = &__fmans;
 
 static void
 if_destructor(struct __fman_if *__if)
@@ -55,40 +46,99 @@ cleanup:
 }
 
 static int
-fman_get_ip_rev(const struct device_node *fman_node)
+_fman_init(const struct device_node *fman_node, int fd)
 {
-	const uint32_t *fman_addr;
-	uint64_t phys_addr;
-	uint64_t regs_size;
+	const struct device_node *ptp_node;
+	const uint32_t *fman_addr, *ptp_addr, *cell_idx;
+	uint64_t phys_addr, regs_size, lenp;
+	void *vir_addr;
 	uint32_t ip_rev_1;
-	int _errno;
+	int _errno = 0;
+	struct __fman *fman;
+
+	fman = rte_zmalloc(NULL, sizeof(struct __fman), 0);
+	if (!fman) {
+		FMAN_ERR(-ENOMEM, "malloc fman");
+		return -ENOMEM;
+	}
+
+	cell_idx = of_get_property(fman_node, "cell-index", &lenp);
+	if (!cell_idx) {
+		FMAN_ERR(-ENXIO, "%s: no cell-index", fman_node->full_name);
+		return -ENXIO;
+	}
+	assert(lenp == sizeof(*cell_idx));
+	fman->idx = of_read_number(cell_idx, lenp / sizeof(phandle));
 
 	fman_addr = of_get_address(fman_node, 0, &regs_size, NULL);
 	if (!fman_addr) {
-		pr_err("of_get_address cannot return fman address\n");
+		FMAN_ERR(-EINVAL, "Get fman's CCSR failed");
 		return -EINVAL;
 	}
 	phys_addr = of_translate_address(fman_node, fman_addr);
 	if (!phys_addr) {
-		pr_err("of_translate_address failed\n");
+		FMAN_ERR(-EINVAL, "Translate fman's CCSR failed");
 		return -EINVAL;
 	}
-	fman_ccsr_map = mmap(NULL, regs_size, PROT_READ | PROT_WRITE,
-			     MAP_SHARED, fman_ccsr_map_fd, phys_addr);
-	if (fman_ccsr_map == MAP_FAILED) {
-		pr_err("Can not map FMan ccsr base");
+	vir_addr = mmap(NULL, regs_size, PROT_READ | PROT_WRITE,
+		MAP_SHARED, fd, phys_addr);
+	if (vir_addr == MAP_FAILED) {
+		FMAN_ERR(-EINVAL, "Map fman's CCSR failed");
+		return -EINVAL;
+	}
+	fman->ccsr_phy = phys_addr;
+	fman->ccsr_size = regs_size;
+	fman->ccsr_vir = vir_addr;
+
+	fman->time_phy = 0;
+	for_each_compatible_node(ptp_node, NULL, "fsl,fman-ptp-timer") {
+		ptp_addr = of_get_address(ptp_node, 0, &regs_size, NULL);
+		if (!ptp_addr)
+			continue;
+		phys_addr = of_translate_address(ptp_node, ptp_addr);
+		if (phys_addr != (fman->ccsr_phy + fman->ccsr_size))
+			continue;
+		vir_addr = mmap(NULL, regs_size, PROT_READ | PROT_WRITE,
+			MAP_SHARED, fd, phys_addr);
+		if (vir_addr == MAP_FAILED) {
+			FMAN_ERR(-EINVAL, "Map fman's IEEE 1588 failed");
+			return -EINVAL;
+		}
+		fman->time_phy = phys_addr;
+		fman->time_size = regs_size;
+		fman->time_vir = vir_addr;
+		break;
+	}
+
+	if (!fman->time_phy) {
+		FMAN_ERR(-EINVAL, "Map fman's IEEE 1588 failed");
 		return -EINVAL;
 	}
 
-	ip_rev_1 = in_be32(fman_ccsr_map + FMAN_IP_REV_1);
-	fman_ip_rev = (ip_rev_1 & FMAN_IP_REV_1_MAJOR_MASK) >>
-			FMAN_IP_REV_1_MAJOR_SHIFT;
+	ip_rev_1 = in_be32((uint8_t *)fman->ccsr_vir + FMAN_IP_REV_1);
+	fman->ip_rev = ip_rev_1 >> FMAN_IP_REV_1_MAJOR_SHIFT;
+	fman->ip_rev &=	FMAN_IP_REV_1_MAJOR_MASK;
+	DPAA_BUS_LOG(NOTICE, "FMan version is 0x%02x", fman->ip_rev);
 
-	_errno = munmap(fman_ccsr_map, regs_size);
-	if (_errno)
-		pr_err("munmap() of FMan ccsr failed");
+	if (fman->ip_rev >= FMAN_V3) {
+		/*
+		 * Set A2V, OVOM, EBD bits in contextA to allow external
+		 * buffer deallocation by fman.
+		 */
+		fman->dealloc_bufs_mask_hi =
+			DPAA_FQD_CTX_A_A2_FIELD_VALID |
+			DPAA_FQD_CTX_A_OVERRIDE_OMB;
+		fman->dealloc_bufs_mask_lo = DPAA_FQD_CTX_A2_EBD_BIT;
+	} else {
+		fman->dealloc_bufs_mask_hi = 0;
+		fman->dealloc_bufs_mask_lo = 0;
+	}
 
-	return 0;
+	fman->fman_node = fman_node;
+
+	list_add_tail(&fman->node, &__fmans);
+
+	return _errno;
 }
 
 static int
@@ -227,7 +277,7 @@ static void fman_if_vsp_init(struct __fman_if *__if)
 }
 
 static int
-fman_if_init(const struct device_node *dpa_node)
+fman_if_init(const struct device_node *dpa_node, int fd)
 {
 	const char *rprop, *mprop;
 	uint64_t phys_addr;
@@ -251,12 +301,13 @@ fman_if_init(const struct device_node *dpa_node)
 	const struct device_node *rx_node = NULL, *tx_node = NULL;
 	const struct device_node *oh_node = NULL;
 	const uint32_t *regs_addr = NULL;
-	const char *mname, *fname;
+	const char *mname;
 	const char *dname = dpa_node->full_name;
 	size_t lenp;
-	int _errno, is_shared = 0, is_offline = 0;
+	int _errno, is_shared = 0, is_offline = 0, find_fman = false;
 	const char *char_prop;
 	uint32_t na;
+	struct __fman *fman, *tmp_fman;
 
 	if (of_device_is_available(dpa_node) == false)
 		return 0;
@@ -414,8 +465,7 @@ fman_if_init(const struct device_node *dpa_node)
 		goto err;
 	}
 	__if->ccsr_map = mmap(NULL, __if->regs_size,
-			      PROT_READ | PROT_WRITE, MAP_SHARED,
-			      fman_ccsr_map_fd, phys_addr);
+		PROT_READ | PROT_WRITE, MAP_SHARED, fd, phys_addr);
 	if (__if->ccsr_map == MAP_FAILED) {
 		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 		goto err;
@@ -426,51 +476,24 @@ fman_if_init(const struct device_node *dpa_node)
 
 	/* Get the index of the Fman this i/f belongs to */
 	fman_node = of_get_parent(mac_node);
-	na = of_n_addr_cells(mac_node);
-	if (!fman_node) {
-		FMAN_ERR(-ENXIO, "of_get_parent(%s)", mname);
-		goto err;
-	}
-	fname = fman_node->full_name;
-	cell_idx = of_get_property(fman_node, "cell-index", &lenp);
-	if (!cell_idx) {
-		FMAN_ERR(-ENXIO, "%s: no cell-index)", fname);
-		goto err;
-	}
-	assert(lenp == sizeof(*cell_idx));
-	cell_idx_host = of_read_number(cell_idx, lenp / sizeof(phandle));
-	__if->__if.fman_idx = cell_idx_host;
-	if (!get_once) {
-		_errno = fman_get_ip_rev(fman_node);
-		if (_errno) {
-			FMAN_ERR(-ENXIO, "%s: ip_rev is not available",
-				 fname);
-			goto err;
+	list_for_each_entry_safe(fman, tmp_fman, &__fmans, node) {
+		if (fman_node == fman->fman_node) {
+			find_fman = true;
+			break;
 		}
 	}
-
-	if (fman_ip_rev >= FMAN_V3) {
-		/*
-		 * Set A2V, OVOM, EBD bits in contextA to allow external
-		 * buffer deallocation by fman.
-		 */
-		fman_dealloc_bufs_mask_hi = DPAA_FQD_CTX_A_A2_FIELD_VALID |
-					    DPAA_FQD_CTX_A_OVERRIDE_OMB;
-		fman_dealloc_bufs_mask_lo = DPAA_FQD_CTX_A2_EBD_BIT;
-	} else {
-		fman_dealloc_bufs_mask_hi = 0;
-		fman_dealloc_bufs_mask_lo = 0;
+	if (!find_fman) {
+		FMAN_ERR(-ENXIO, "Failed to get parent of %s", mname);
+		goto err;
 	}
+	__if->__if.fman = fman;
+
 	/* Is the MAC node 1G, 2.5G, 10G or offline? */
 	__if->__if.is_memac = 0;
 
-	if (is_offline)
+	if (is_offline) {
 		__if->__if.mac_type = fman_offline_internal;
-	else if (of_device_is_compatible(mac_node, "fsl,fman-1g-mac"))
-		__if->__if.mac_type = fman_mac_1g;
-	else if (of_device_is_compatible(mac_node, "fsl,fman-10g-mac"))
-		__if->__if.mac_type = fman_mac_10g;
-	else if (of_device_is_compatible(mac_node, "fsl,fman-memac")) {
+	} else if (of_device_is_compatible(mac_node, "fsl,fman-memac")) {
 		__if->__if.is_memac = 1;
 		char_prop = of_get_property(mac_node, "phy-connection-type",
 					    NULL);
@@ -490,7 +513,7 @@ fman_if_init(const struct device_node *dpa_node)
 				__if->__if.mac_type = fman_mac_10g;
 		}
 	} else {
-		FMAN_ERR(-EINVAL, "%s: unknown MAC type", mname);
+		FMAN_ERR(-ENOTSUP, "%s: Unsupported MAC type", mname);
 		goto err;
 	}
 
@@ -574,9 +597,9 @@ fman_if_init(const struct device_node *dpa_node)
 			 mname, regs_addr);
 		goto err;
 	}
+
 	__if->bmi_map = mmap(NULL, __if->regs_size,
-				 PROT_READ | PROT_WRITE, MAP_SHARED,
-				 fman_ccsr_map_fd, phys_addr);
+		PROT_READ | PROT_WRITE, MAP_SHARED, fd, phys_addr);
 	if (__if->bmi_map == MAP_FAILED) {
 		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 		goto err;
@@ -597,26 +620,11 @@ fman_if_init(const struct device_node *dpa_node)
 		}
 
 		__if->tx_bmi_map = mmap(NULL, __if->regs_size,
-					PROT_READ | PROT_WRITE, MAP_SHARED,
-					fman_ccsr_map_fd, phys_addr);
+			PROT_READ | PROT_WRITE, MAP_SHARED, fd, phys_addr);
 		if (__if->tx_bmi_map == MAP_FAILED) {
 			FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 			goto err;
 		}
-	}
-
-	if (!rtc_map) {
-		__if->rtc_map = mmap(NULL, FMAN_IEEE_1588_SIZE,
-				PROT_READ | PROT_WRITE, MAP_SHARED,
-				fman_ccsr_map_fd, FMAN_IEEE_1588_OFFSET);
-		if (__if->rtc_map == MAP_FAILED) {
-			pr_err("Can not map FMan RTC regs base\n");
-			_errno = -EINVAL;
-			goto err;
-		}
-		rtc_map = __if->rtc_map;
-	} else {
-		__if->rtc_map = rtc_map;
 	}
 
 	/* Extract the Rx FQIDs. (Note, the device representation is silly,
@@ -788,7 +796,7 @@ oh_init_done:
 	/* Parsing of the network interface is complete, add it to the list */
 	DPAA_BUS_LOG(DEBUG, "Found %s, Tx Channel = %x, FMAN = %x,"
 		    "Port ID = %x",
-		    dname, __if->__if.tx_channel_id, __if->__if.fman_idx,
+		    dname, __if->__if.tx_channel_id, __if->__if.fman->idx,
 		    __if->__if.mac_idx);
 
 	/* Don't add OH port to the port list since they will be used by ONIC
@@ -823,6 +831,8 @@ static int fman_if_init_onic(const struct device_node *dpa_node)
 	uint32_t na = OF_DEFAULT_NA;
 	uint64_t rx_phandle_host[4] = {0};
 	uint64_t cell_idx_host = 0;
+	struct __fman *fman, *tmp_fman;
+	int find_fman = false;
 
 	if (of_device_is_available(dpa_node) == false)
 		return 0;
@@ -950,15 +960,18 @@ static int fman_if_init_onic(const struct device_node *dpa_node)
 	__if->__if.mac_idx = cell_idx_host;
 
 	fman_node = of_get_parent(fman_tx_oh_node);
-	cell_idx = of_get_property(fman_node, "cell-index", &lenp);
-	if (!cell_idx) {
-		FMAN_ERR(-ENXIO, "%s: no cell-index)", tx_oh_node->full_name);
+	list_for_each_entry_safe(fman, tmp_fman, &__fmans, node) {
+		if (fman_node == fman->fman_node) {
+			find_fman = true;
+			break;
+		}
+	}
+	if (!find_fman) {
+		FMAN_ERR(-ENXIO, "Failed to get parent of %s",
+			fman_tx_oh_node->full_name);
 		goto err;
 	}
-	assert(lenp == sizeof(*cell_idx));
-
-	cell_idx_host = of_read_number(cell_idx, lenp / sizeof(phandle));
-	__if->__if.fman_idx = cell_idx_host;
+	__if->__if.fman = fman;
 
 	rx_phandle = of_get_property(tx_oh_node, "fsl,qman-frame-queues-oh",
 				     &lenp);
@@ -1075,7 +1088,7 @@ static int fman_if_init_onic(const struct device_node *dpa_node)
 	/* Parsing of the network interface is complete, add it to the list. */
 	DPAA_BUS_DEBUG("Found %s, Tx Channel = %x, FMAN = %x, Port ID = %x",
 		       dpa_node->full_name, __if->__if.tx_channel_id,
-		       __if->__if.fman_idx, __if->__if.mac_idx);
+		       __if->__if.fman->idx, __if->__if.mac_idx);
 
 	list_add_tail(&__if->__if.node, &__ifs);
 	return 0;
@@ -1087,20 +1100,18 @@ err:
 int
 fman_init(void)
 {
-	const struct device_node *dpa_node, *parent_node;
-	int _errno;
+	const struct device_node *dpa_node, *parent_node, *fman_node;
+	int _errno, fd, ret;
 
-	/* If multiple dependencies try to initialise the Fman driver, don't
-	 * panic.
-	 */
-	if (fman_ccsr_map_fd != -1)
+	if (fman_ccsr_map_fd >= 0)
 		return 0;
 
-	fman_ccsr_map_fd = open(FMAN_DEVICE_PATH, O_RDWR);
-	if (unlikely(fman_ccsr_map_fd < 0)) {
-		DPAA_BUS_LOG(ERR, "Unable to open (/dev/mem)");
-		return fman_ccsr_map_fd;
+	fd = open(FMAN_DEVICE_PATH, O_RDWR);
+	if (unlikely(fd < 0)) {
+		DPAA_BUS_LOG(ERR, "Unable to open %s: %s", FMAN_DEVICE_PATH, strerror(errno));
+		return fd;
 	}
+	fman_ccsr_map_fd = fd;
 
 	parent_node = of_find_compatible_node(NULL, NULL, "fsl,dpaa");
 	if (!parent_node) {
@@ -1108,11 +1119,17 @@ fman_init(void)
 		return -ENODEV;
 	}
 
+	for_each_compatible_node(fman_node, NULL, "fsl,fman") {
+		ret = _fman_init(fman_node, fd);
+		if (ret)
+			return ret;
+	}
+
 	for_each_child_node(parent_node, dpa_node) {
-		_errno = fman_if_init(dpa_node);
+		_errno = fman_if_init(dpa_node, fd);
 		if (_errno) {
 			FMAN_ERR(_errno, "if_init(%s)", dpa_node->full_name);
-			goto err;
+			return _errno;
 		}
 	}
 
@@ -1124,33 +1141,36 @@ fman_init(void)
 	}
 
 	return 0;
-err:
-	fman_finish();
-	return _errno;
 }
 
 void
 fman_finish(void)
 {
 	struct __fman_if *__if, *tmpif;
+	struct __fman *fman, *tmpfman;
+	int _errno;
+	struct memac_regs *regs;
+	uint32_t cfg;
 
 	assert(fman_ccsr_map_fd != -1);
 
 	list_for_each_entry_safe(__if, tmpif, &__ifs, __if.node) {
-		int _errno;
-
 		/* No need to disable Offline port */
 		if (__if->__if.mac_type == fman_offline_internal)
 			continue;
 
+		if (!__if->__if.is_memac) {
+			DPAA_BUS_ERR("FM%d-MAC%d's MAC is not memac!",
+				__if->__if.fman->idx, __if->__if.mac_idx);
+			continue;
+		}
+
 		/* disable Rx and Tx */
-		if ((__if->__if.mac_type == fman_mac_1g) &&
-		    (!__if->__if.is_memac))
-			out_be32(__if->ccsr_map + 0x100,
-				 in_be32(__if->ccsr_map + 0x100) & ~(u32)0x5);
-		else
-			out_be32(__if->ccsr_map + 8,
-				 in_be32(__if->ccsr_map + 8) & ~(u32)3);
+		regs = __if->ccsr_map;
+		cfg = in_be32(&regs->command_config);
+		out_be32(&regs->command_config,
+			cfg & (~(MEMAC_RX_ENABLE | MEMAC_TX_ENABLE)));
+
 		/* release the mapping */
 		_errno = munmap(__if->ccsr_map, __if->regs_size);
 		if (unlikely(_errno < 0))
@@ -1158,6 +1178,18 @@ fman_finish(void)
 		DPAA_BUS_INFO("Tearing down %s", __if->node_path);
 		list_del(&__if->__if.node);
 		rte_free(__if);
+	}
+
+	list_for_each_entry_safe(fman, tmpfman, &__fmans, node) {
+		/* release the mapping */
+		_errno = munmap(fman->ccsr_vir, fman->ccsr_size);
+		if (unlikely(_errno < 0))
+			FMAN_ERR(_errno, "munmap() = (%s)", strerror(errno));
+		_errno = munmap(fman->time_vir, fman->time_size);
+		if (unlikely(_errno < 0))
+			FMAN_ERR(_errno, "munmap() = (%s)", strerror(errno));
+		list_del(&fman->node);
+		rte_free(fman);
 	}
 
 	close(fman_ccsr_map_fd);
