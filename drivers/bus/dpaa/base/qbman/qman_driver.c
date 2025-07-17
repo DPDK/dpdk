@@ -228,8 +228,6 @@ int fsl_qman_fq_portal_destroy(struct qman_portal *qp)
 	if (ret)
 		pr_err("qman_free_global_portal() (%d)\n", ret);
 
-	kfree(qp);
-
 	process_portal_irq_unmap(cfg->irq);
 
 	addr.cena = cfg->addr_virt[DPAA_PORTAL_CE];
