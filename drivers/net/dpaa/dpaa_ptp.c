@@ -33,15 +33,13 @@ dpaa_timesync_read_time(struct rte_eth_dev *dev,
 					struct timespec *timestamp)
 {
 	uint32_t *tmr_cnt_h, *tmr_cnt_l;
-	struct __fman_if *__fif;
 	struct fman_if *fif;
 	uint64_t time;
 
 	fif = dev->process_private;
-	__fif = container_of(fif, struct __fman_if, __if);
 
-	tmr_cnt_h = &((struct rtc_regs *)__fif->rtc_map)->tmr_cnt_h;
-	tmr_cnt_l = &((struct rtc_regs *)__fif->rtc_map)->tmr_cnt_l;
+	tmr_cnt_h = &((struct rtc_regs *)fif->fman->time_vir)->tmr_cnt_h;
+	tmr_cnt_l = &((struct rtc_regs *)fif->fman->time_vir)->tmr_cnt_l;
 
 	time = (uint64_t)in_be32(tmr_cnt_l);
 	time |= ((uint64_t)in_be32(tmr_cnt_h) << 32);
@@ -55,15 +53,13 @@ dpaa_timesync_write_time(struct rte_eth_dev *dev,
 					const struct timespec *ts)
 {
 	uint32_t *tmr_cnt_h, *tmr_cnt_l;
-	struct __fman_if *__fif;
 	struct fman_if *fif;
 	uint64_t time;
 
 	fif = dev->process_private;
-	__fif = container_of(fif, struct __fman_if, __if);
 
-	tmr_cnt_h = &((struct rtc_regs *)__fif->rtc_map)->tmr_cnt_h;
-	tmr_cnt_l = &((struct rtc_regs *)__fif->rtc_map)->tmr_cnt_l;
+	tmr_cnt_h = &((struct rtc_regs *)fif->fman->time_vir)->tmr_cnt_h;
+	tmr_cnt_l = &((struct rtc_regs *)fif->fman->time_vir)->tmr_cnt_l;
 
 	time = rte_timespec_to_ns(ts);
 

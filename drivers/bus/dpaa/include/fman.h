@@ -2,7 +2,7 @@
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * All rights reserved.
- * Copyright 2019-2023 NXP
+ * Copyright 2019-2024 NXP
  *
  */
 
@@ -67,14 +67,6 @@
 #define FMAN_RTC_MAX_NUM_OF_ALARMS		3
 #define FMAN_RTC_MAX_NUM_OF_PERIODIC_PULSES	4
 #define FMAN_RTC_MAX_NUM_OF_EXT_TRIGGERS	3
-#define FMAN_IEEE_1588_OFFSET			0X1AFE000
-#define FMAN_IEEE_1588_SIZE			4096
-
-/* Pre definitions of FMAN interface and Bpool structures */
-struct __fman_if;
-struct fman_if_bpool;
-/* Lists of fman interfaces and bpools */
-TAILQ_HEAD(rte_fman_if_list, __fman_if);
 
 /* Represents the different flavour of network interface */
 enum fman_mac_type {
@@ -90,6 +82,8 @@ struct mac_addr {
 	uint32_t   mac_addr_u;	/**< Upper 16 bits of 48-bit MAC address */
 };
 
+#define MEMAC_RX_ENABLE ((uint32_t)0x2)
+#define MEMAC_TX_ENABLE ((uint32_t)0x1)
 struct memac_regs {
 	/* General Control and Status */
 	uint32_t res0000[2];
@@ -381,7 +375,7 @@ struct onic_port_cfg {
  */
 struct fman_if {
 	/* Which Fman this interface belongs to */
-	uint8_t fman_idx;
+	struct __fman *fman;
 	/* The type/speed of the interface */
 	enum fman_mac_type mac_type;
 	/* Boolean, set when mac type is memac */
@@ -441,6 +435,24 @@ struct fman_if_ic_params {
 	uint16_t icsz;
 };
 
+#define FMAN_ADDRESS_NUM 2
+struct __fman {
+	const struct device_node *fman_node;
+	uint64_t ccsr_phy;
+	uint64_t ccsr_size;
+	void *ccsr_vir;
+
+	uint64_t time_phy;
+	uint64_t time_size;
+	void *time_vir;
+
+	uint8_t idx;
+	uint32_t ip_rev;
+	uint32_t dealloc_bufs_mask_hi;
+	uint32_t dealloc_bufs_mask_lo;
+	struct list_head node;
+};
+
 /* The exported "struct fman_if" type contains the subset of fields we want
  * exposed. This struct is embedded in a larger "struct __fman_if" which
  * contains the extra bits we *don't* want exposed.
@@ -453,9 +465,7 @@ struct __fman_if {
 	void *ccsr_map;
 	void *bmi_map;
 	void *tx_bmi_map;
-	void *rtc_map;
 	void *qmi_map;
-	struct list_head node;
 };
 
 /* And this is the base list node that the interfaces are added to. (See
@@ -484,7 +494,7 @@ extern int fman_ccsr_map_fd;
 	} while (0)
 
 #define FMAN_IP_REV_1	0xC30C4
-#define FMAN_IP_REV_1_MAJOR_MASK 0x0000FF00
+#define FMAN_IP_REV_1_MAJOR_MASK 0xff
 #define FMAN_IP_REV_1_MAJOR_SHIFT 8
 #define FMAN_V3	0x06
 
@@ -510,10 +520,6 @@ extern int fman_ccsr_map_fd;
 #define DPAA_FQD_CTX_A2_NENQ_BIT	(0x04 << DPAA_FQD_CTX_A_SHIFT_BITS)
 #define DPAA_FQD_CTX_A2_RESERVED_BIT	(0x02 << DPAA_FQD_CTX_A_SHIFT_BITS)
 #define DPAA_FQD_CTX_A2_VSPE_BIT	(0x01 << DPAA_FQD_CTX_A_SHIFT_BITS)
-
-extern u16 fman_ip_rev;
-extern u32 fman_dealloc_bufs_mask_hi;
-extern u32 fman_dealloc_bufs_mask_lo;
 
 /**
  * Initialize the FMAN driver
