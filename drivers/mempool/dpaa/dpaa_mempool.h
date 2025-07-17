@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017,2019 NXP
+ *   Copyright 2017,2019,2024 -2025 NXP
  *
  */
 #ifndef __DPAA_MEMPOOL_H__
@@ -30,6 +30,15 @@
 
 /* Buffers are allocated from single mem segment i.e. phys contiguous */
 #define DPAA_MPOOL_SINGLE_SEGMENT  0x01
+
+#define FMAN_ERRATA_4K_SPAN_ADDR_ALIGN 256
+#define FMAN_ERRATA_4K_SPAN_ADDR_MASK \
+	(FMAN_ERRATA_4K_SPAN_ADDR_ALIGN - 1)
+
+#define FMAN_ERRATA_BUF_START_ALIGN 16
+#define FMAN_ERRATA_BUF_START_MASK (FMAN_ERRATA_BUF_START_ALIGN - 1)
+#define FMAN_ERRATA_SG_LEN_ALIGN 16
+#define FMAN_ERRATA_SG_LEN_MASK (FMAN_ERRATA_SG_LEN_ALIGN - 1)
 
 struct dpaa_bp_info {
 	struct rte_mempool *mp;
