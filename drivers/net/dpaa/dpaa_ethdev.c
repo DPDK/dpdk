@@ -52,9 +52,10 @@
 #include <process.h>
 #include <fmlib/fm_ext.h>
 
-#define DRIVER_IEEE1588        "drv_ieee1588"
-#define CHECK_INTERVAL         100  /* 100ms */
-#define MAX_REPEAT_TIME        90   /* 9s (90 * 100ms) in total */
+#define DRIVER_IEEE1588         "drv_ieee1588"
+#define CHECK_INTERVAL          100  /* 100ms */
+#define MAX_REPEAT_TIME         90   /* 9s (90 * 100ms) in total */
+#define DRIVER_RECV_ERR_PKTS      "recv_err_pkts"
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -87,6 +88,8 @@ static int is_global_init;
 static int fmc_q = 1;	/* Indicates the use of static fmc for distribution */
 static int default_q;	/* use default queue - FMC is not executed*/
 int dpaa_ieee_1588;	/* use to indicate if IEEE 1588 is enabled for the driver */
+bool dpaa_enable_recv_err_pkts; /* Enable main queue to receive error packets */
+
 /* At present we only allow up to 4 push mode queues as default - as each of
  * this queue need dedicated portal and we are short of portals.
  */
@@ -1273,10 +1276,12 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		}
 	}
 
-	/* Enable main queue to receive error packets also by default */
+	/* Enable main queue to receive error packets */
 	if (fif->mac_type != fman_offline_internal &&
-	    fif->mac_type != fman_onic)
+			fif->mac_type != fman_onic &&
+			dpaa_enable_recv_err_pkts && !fif->is_shared_mac) {
 		fman_if_set_err_fqid(fif, rxq->fqid);
+	}
 
 	return 0;
 }
@@ -2191,6 +2196,9 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	if (dpaa_get_devargs(dev->devargs, DRIVER_IEEE1588))
 		dpaa_ieee_1588 = 1;
 
+	if (dpaa_get_devargs(dev->devargs, DRIVER_RECV_ERR_PKTS))
+		dpaa_enable_recv_err_pkts = 1;
+
 	memset((char *)dev_rx_fqids, 0,
 		sizeof(uint32_t) * DPAA_MAX_NUM_PCD_QUEUES);
 
@@ -2418,8 +2426,12 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	    fman_intf->mac_type != fman_offline_internal &&
 	    fman_intf->mac_type != fman_onic) {
 		/* Configure error packet handling */
-		fman_if_receive_rx_errors(fman_intf,
-					  FM_FD_RX_STATUS_ERR_MASK);
+#ifndef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+			if (dpaa_enable_recv_err_pkts)
+#endif
+				fman_if_receive_rx_errors(fman_intf,
+						FM_FD_RX_STATUS_ERR_MASK);
+
 		/* Disable RX mode */
 		fman_if_disable_rx(fman_intf);
 		/* Disable promiscuous mode */
@@ -2619,5 +2631,6 @@ static struct rte_dpaa_driver rte_dpaa_pmd = {
 
 RTE_PMD_REGISTER_DPAA(net_dpaa, rte_dpaa_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(net_dpaa,
-		DRIVER_IEEE1588 "=<int>");
+		DRIVER_IEEE1588 "=<int>"
+		DRIVER_RECV_ERR_PKTS "=<int>");
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_pmd, NOTICE);
