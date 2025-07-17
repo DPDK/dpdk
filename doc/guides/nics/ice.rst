@@ -5,8 +5,14 @@ ICE Poll Mode Driver
 ======================
 
 The ice PMD (**librte_net_ice**) provides poll mode driver support for
-10/25/50/100 Gbps Intel® Ethernet 800 Series Network Adapters based on
-the Intel Ethernet Controller E810 and Intel Ethernet Connection E822/E823.
+10/25/50/100/200 Gbps Intel® Ethernet 800 Series Network Adapters based on
+the following controllers,
+
+- Intel Ethernet Controller E810
+- Intel Ethernet Connection E822
+- Intel Ethernet Connection E823
+- Intel Ethernet Connection E825
+- Intel Ethernet Controller E830
 
 Linux Prerequisites
 -------------------
@@ -52,6 +58,8 @@ The full list of in-tree and out-of-tree Linux kernel drivers from kernel.org
 and Linux distributions that were tested and verified
 are listed in the Tested Platforms section of the Release Notes for each release.
 
+For E810,
+
    +-----------+---------------+-----------------+-----------+--------------+-----------+
    |    DPDK   | Kernel Driver | OS Default DDP  | COMMS DDP | Wireless DDP | Firmware  |
    +===========+===============+=================+===========+==============+===========+
@@ -85,6 +93,17 @@ are listed in the Tested Platforms section of the Release Notes for each release
    +-----------+---------------+-----------------+-----------+--------------+-----------+
    |    25.03  |     1.16.3    |      1.3.39     |  1.3.53   |    1.3.14    |    4.7    |
    +-----------+---------------+-----------------+-----------+--------------+-----------+
+   |    25.07  |     2.2.8     |      1.3.43     |  1.3.55   |    1.3.23    |    4.8    |
+   +-----------+---------------+-----------------+-----------+--------------+-----------+
+
+For E830,
+
+   +-----------+---------------+-----------------+-----------+--------------+-----------+
+   |    DPDK   | Kernel Driver | OS Default DDP  | COMMS DDP | Wireless DDP | Firmware  |
+   +===========+===============+=================+===========+==============+===========+
+   |    25.07  |     2.2.8     |      1.3.43     |  1.3.55   |    1.3.23    |    1.0    |
+   +-----------+---------------+-----------------+-----------+--------------+-----------+
+
 
 Dynamic Device Personalization (DDP) package loading
 ----------------------------------------------------
