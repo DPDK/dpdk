@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
+ * Copyright 2024 NXP
  *
  */
 
@@ -68,6 +69,14 @@ struct __rte_aligned(8) bm_buffer {
 		u64 opaque;
 	};
 };
+
+struct __rte_packed_begin bm_hw_buf_desc {
+	uint8_t rsv;
+	uint8_t bpid;
+	rte_be16_t hi_addr; /* High 16-bits of 48-bit address */
+	rte_be32_t lo_addr; /* Low 32-bits of 48-bit address */
+} __rte_packed_end;
+
 static inline u64 bm_buffer_get64(const struct bm_buffer *buf)
 {
 	return buf->addr;
@@ -85,6 +94,8 @@ static inline dma_addr_t bm_buf_addr(const struct bm_buffer *buf)
 		__buf931->lo = lower_32_bits(v); \
 	} while (0)
 
+#define FSL_BM_BURST_MAX 8
+
 /* See 1.5.3.5.4: "Release Command" */
 struct __rte_packed_begin bm_rcr_entry {
 	union {
@@ -93,7 +104,7 @@ struct __rte_packed_begin bm_rcr_entry {
 			u8 bpid; /* used with BM_RCR_VERB_CMD_BPID_SINGLE */
 			u8 __reserved1[62];
 		};
-		struct bm_buffer bufs[8];
+		struct bm_buffer bufs[FSL_BM_BURST_MAX];
 	};
 } __rte_packed_end;
 #define BM_RCR_VERB_VBIT		0x80
@@ -148,7 +159,7 @@ struct __rte_packed_begin bm_mc_result {
 				u8 bpid;
 				u8 __reserved2[62];
 			};
-			struct bm_buffer bufs[8];
+			struct bm_buffer bufs[FSL_BM_BURST_MAX];
 		} acquire;
 		struct bm_pool_state query;
 	};
@@ -297,6 +308,9 @@ const struct bman_pool_params *bman_get_params(const struct bman_pool *pool);
 __rte_internal
 int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 		 u32 flags);
+__rte_internal
+int bman_release_fast(struct bman_pool *pool, const uint64_t *bufs,
+	uint8_t num);
 
 /**
  * bman_acquire - Acquire buffer(s) from a buffer pool
@@ -311,6 +325,8 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 __rte_internal
 int bman_acquire(struct bman_pool *pool, struct bm_buffer *bufs, u8 num,
 		 u32 flags);
+__rte_internal
+int bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num);
 
 /**
  * bman_query_pools - Query all buffer pool states
