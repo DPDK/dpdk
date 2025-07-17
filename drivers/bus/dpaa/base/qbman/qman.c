@@ -1466,7 +1466,7 @@ int qman_create_fq(u32 fqid, u32 flags, struct qman_fq *fq)
 	}
 	spin_lock_init(&fq->fqlock);
 	fq->fqid = fqid;
-	fq->fqid_le = cpu_to_be32(fqid);
+	fq->fqid_be = cpu_to_be32(fqid);
 	fq->flags = flags;
 	fq->state = qman_fq_state_oos;
 	fq->cgr_groupid = 0;
@@ -2291,7 +2291,7 @@ int qman_enqueue_multi(struct qman_fq *fq,
 	struct qm_portal *portal = &p->p;
 
 	register struct qm_eqcr *eqcr = &portal->eqcr;
-	struct qm_eqcr_entry *eq = eqcr->cursor, *prev_eq;
+	struct qm_eqcr_entry *eq = eqcr->cursor;
 
 	u8 i = 0, diff, old_ci, sent = 0;
 
@@ -2307,7 +2307,7 @@ int qman_enqueue_multi(struct qman_fq *fq,
 
 	/* try to send as many frames as possible */
 	while (eqcr->available && frames_to_send--) {
-		eq->fqid = fq->fqid_le;
+		eq->fqid = fq->fqid_be;
 		eq->fd.opaque_addr = fd->opaque_addr;
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);
@@ -2317,8 +2317,9 @@ int qman_enqueue_multi(struct qman_fq *fq,
 				((flags[i] >> 8) & QM_EQCR_DCA_IDXMASK);
 		}
 		i++;
-		eq = (void *)((unsigned long)(eq + 1) &
-			(~(unsigned long)(QM_EQCR_SIZE << 6)));
+		eq++;
+		if (unlikely(eq >= (eqcr->ring + QM_EQCR_SIZE)))
+			eq = eqcr->ring;
 		eqcr->available--;
 		sent++;
 		fd++;
@@ -2332,11 +2333,11 @@ int qman_enqueue_multi(struct qman_fq *fq,
 	for (i = 0; i < sent; i++) {
 		eq->__dont_write_directly__verb =
 			QM_EQCR_VERB_CMD_ENQUEUE | eqcr->vbit;
-		prev_eq = eq;
-		eq = (void *)((unsigned long)(eq + 1) &
-			(~(unsigned long)(QM_EQCR_SIZE << 6)));
-		if (unlikely((prev_eq + 1) != eq))
+		eq++;
+		if (unlikely(eq >= (eqcr->ring + QM_EQCR_SIZE))) {
 			eqcr->vbit ^= QM_EQCR_VERB_VBIT;
+			eq = eqcr->ring;
+		}
 	}
 
 	/* We need  to flush all the lines but without load/store operations
@@ -2361,7 +2362,7 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 	struct qm_portal *portal = &p->p;
 
 	register struct qm_eqcr *eqcr = &portal->eqcr;
-	struct qm_eqcr_entry *eq = eqcr->cursor, *prev_eq;
+	struct qm_eqcr_entry *eq = eqcr->cursor;
 
 	u8 i = 0, diff, old_ci, sent = 0;
 
@@ -2377,7 +2378,7 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 
 	/* try to send as many frames as possible */
 	while (eqcr->available && frames_to_send--) {
-		eq->fqid = fq[sent]->fqid_le;
+		eq->fqid = fq[sent]->fqid_be;
 		eq->fd.opaque_addr = fd->opaque_addr;
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);
@@ -2388,8 +2389,9 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 		}
 		i++;
 
-		eq = (void *)((unsigned long)(eq + 1) &
-			(~(unsigned long)(QM_EQCR_SIZE << 6)));
+		eq++;
+		if (unlikely(eq >= (eqcr->ring + QM_EQCR_SIZE)))
+			eq = eqcr->ring;
 		eqcr->available--;
 		sent++;
 		fd++;
@@ -2403,11 +2405,11 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 	for (i = 0; i < sent; i++) {
 		eq->__dont_write_directly__verb =
 			QM_EQCR_VERB_CMD_ENQUEUE | eqcr->vbit;
-		prev_eq = eq;
-		eq = (void *)((unsigned long)(eq + 1) &
-			(~(unsigned long)(QM_EQCR_SIZE << 6)));
-		if (unlikely((prev_eq + 1) != eq))
+		eq++;
+		if (unlikely(eq >= (eqcr->ring + QM_EQCR_SIZE))) {
 			eqcr->vbit ^= QM_EQCR_VERB_VBIT;
+			eq = eqcr->ring;
+		}
 	}
 
 	/* We need  to flush all the lines but without load/store operations
@@ -2416,8 +2418,9 @@ qman_enqueue_multi_fq(struct qman_fq *fq[], const struct qm_fd *fd,
 	eq = eqcr->cursor;
 	for (i = 0; i < sent; i++) {
 		dcbf(eq);
-		eq = (void *)((unsigned long)(eq + 1) &
-			(~(unsigned long)(QM_EQCR_SIZE << 6)));
+		eq++;
+		if (unlikely(eq >= (eqcr->ring + QM_EQCR_SIZE)))
+			eq = eqcr->ring;
 	}
 	/* Update cursor for the next call */
 	eqcr->cursor = eq;

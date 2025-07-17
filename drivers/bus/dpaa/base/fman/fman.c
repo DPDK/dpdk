@@ -50,11 +50,12 @@ _fman_init(const struct device_node *fman_node, int fd)
 {
 	const struct device_node *ptp_node;
 	const uint32_t *fman_addr, *ptp_addr, *cell_idx;
-	uint64_t phys_addr, regs_size, lenp;
+	uint64_t phys_addr, regs_size;
 	void *vir_addr;
 	uint32_t ip_rev_1;
 	int _errno = 0;
 	struct __fman *fman;
+	size_t lenp;
 
 	fman = rte_zmalloc(NULL, sizeof(struct __fman), 0);
 	if (!fman) {

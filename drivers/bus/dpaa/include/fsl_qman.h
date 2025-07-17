@@ -1225,7 +1225,7 @@ struct qman_fq {
 	/* Caller of qman_create_fq() provides these demux callbacks */
 	struct qman_fq_cb cb;
 
-	u32 fqid_le;
+	rte_be32_t fqid_be;
 	u32 fqid;
 
 	int q_fd;
