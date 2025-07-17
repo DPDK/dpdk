@@ -70,10 +70,6 @@ DPDK application. Some of the EAL options for FreeBSD are as follows:
     Blocklisting of ports; prevent EAL from using specified PCI device
     (multiple ``-b`` options are allowed).
 
-*   ``--use-device``:
-    Use the specified Ethernet device(s) only.  Use comma-separate
-    ``[domain:]bus:devid.func`` values. Cannot be used with ``-b`` option.
-
 *   ``-v``:
     Display version information on startup.
 
