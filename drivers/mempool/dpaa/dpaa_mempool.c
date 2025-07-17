@@ -157,61 +157,46 @@ dpaa_mbuf_free_pool(struct rte_mempool *mp)
 	}
 }
 
-static void
-dpaa_buf_free(struct dpaa_bp_info *bp_info, uint64_t addr)
-{
-	struct bm_buffer buf;
-	int ret;
-
-	DPAA_MEMPOOL_DPDEBUG("Free 0x%" PRIx64 " to bpid: %d",
-			   addr, bp_info->bpid);
-
-	bm_buffer_set64(&buf, addr);
-retry:
-	ret = bman_release(bp_info->bp, &buf, 1, 0);
-	if (ret) {
-		DPAA_MEMPOOL_DEBUG("BMAN busy. Retrying...");
-		cpu_spin(CPU_SPIN_BACKOFF_CYCLES);
-		goto retry;
-	}
-}
-
 static int
 dpaa_mbuf_free_bulk(struct rte_mempool *pool,
 		    void *const *obj_table,
-		    unsigned int n)
+		    unsigned int count)
 {
 	struct dpaa_bp_info *bp_info = DPAA_MEMPOOL_TO_POOL_INFO(pool);
 	int ret;
-	unsigned int i = 0;
+	uint32_t n = 0, i, left;
+	uint64_t phys[DPAA_MBUF_MAX_ACQ_REL];
 
 	DPAA_MEMPOOL_DPDEBUG("Request to free %d buffers in bpid = %d",
-			     n, bp_info->bpid);
+			     count, bp_info->bpid);
 
 	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
 		if (ret) {
 			DPAA_MEMPOOL_ERR("rte_dpaa_portal_init failed with ret: %d",
 					 ret);
-			return 0;
+			return ret;
 		}
 	}
 
-	while (i < n) {
-		uint64_t phy = rte_mempool_virt2iova(obj_table[i]);
+	while (n < count) {
+		/* Acquire is all-or-nothing, so we drain in 7s,
+		 * then the remainder.
+		 */
+		if ((count - n) > DPAA_MBUF_MAX_ACQ_REL)
+			left = DPAA_MBUF_MAX_ACQ_REL;
+		else
+			left = count - n;
 
-		if (unlikely(!bp_info->ptov_off)) {
-			/* buffers are from single mem segment */
-			if (bp_info->flags & DPAA_MPOOL_SINGLE_SEGMENT) {
-				bp_info->ptov_off = (size_t)obj_table[i] - phy;
-				rte_dpaa_bpid_info[bp_info->bpid].ptov_off
-						= bp_info->ptov_off;
-			}
+		for (i = 0; i < left; i++) {
+			phys[i] = rte_mempool_virt2iova(obj_table[n]);
+			phys[i] += bp_info->meta_data_size;
+			n++;
 		}
-
-		dpaa_buf_free(bp_info,
-			      (uint64_t)phy + bp_info->meta_data_size);
-		i = i + 1;
+release_again:
+		ret = bman_release_fast(bp_info->bp, phys, left);
+		if (unlikely(ret))
+			goto release_again;
 	}
 
 	DPAA_MEMPOOL_DPDEBUG("freed %d buffers in bpid =%d",
@@ -226,9 +211,9 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 		     unsigned int count)
 {
 	struct rte_mbuf **m = (struct rte_mbuf **)obj_table;
-	struct bm_buffer bufs[DPAA_MBUF_MAX_ACQ_REL];
+	uint64_t bufs[DPAA_MBUF_MAX_ACQ_REL];
 	struct dpaa_bp_info *bp_info;
-	void *bufaddr;
+	uint8_t *bufaddr;
 	int i, ret;
 	unsigned int n = 0;
 
@@ -240,7 +225,7 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 	if (unlikely(count >= (RTE_MEMPOOL_CACHE_MAX_SIZE * 2))) {
 		DPAA_MEMPOOL_ERR("Unable to allocate requested (%u) buffers",
 				 count);
-		return -1;
+		return -EINVAL;
 	}
 
 	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
@@ -248,7 +233,7 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 		if (ret) {
 			DPAA_MEMPOOL_ERR("rte_dpaa_portal_init failed with ret: %d",
 					 ret);
-			return -1;
+			return ret;
 		}
 	}
 
@@ -257,10 +242,11 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 		 * then the remainder.
 		 */
 		if ((count - n) > DPAA_MBUF_MAX_ACQ_REL) {
-			ret = bman_acquire(bp_info->bp, bufs,
-					   DPAA_MBUF_MAX_ACQ_REL, 0);
+			ret = bman_acquire_fast(bp_info->bp, bufs,
+				DPAA_MBUF_MAX_ACQ_REL);
 		} else {
-			ret = bman_acquire(bp_info->bp, bufs, count - n, 0);
+			ret = bman_acquire_fast(bp_info->bp, bufs,
+				count - n);
 		}
 		/* In case of less than requested number of buffers available
 		 * in pool, qbman_swp_acquire returns 0
@@ -275,16 +261,15 @@ dpaa_mbuf_alloc_bulk(struct rte_mempool *pool,
 			return -ENOBUFS;
 		}
 		/* assigning mbuf from the acquired objects */
-		for (i = 0; (i < ret) && bufs[i].addr; i++) {
+		for (i = 0; (i < ret) && bufs[i]; i++) {
 			/* TODO-errata - observed that bufs may be null
 			 * i.e. first buffer is valid, remaining 6 buffers
 			 * may be null.
 			 */
-			bufaddr = DPAA_MEMPOOL_PTOV(bp_info, bufs[i].addr);
-			m[n] = (struct rte_mbuf *)((char *)bufaddr
-						- bp_info->meta_data_size);
-			DPAA_MEMPOOL_DPDEBUG("Paddr (%p), FD (%p) from BMAN",
-					     (void *)bufaddr, (void *)m[n]);
+			bufaddr = DPAA_MEMPOOL_PTOV(bp_info, bufs[i]);
+			m[n] = (void *)(bufaddr - bp_info->meta_data_size);
+			DPAA_MEMPOOL_DPDEBUG("Vaddr(%p), mbuf(%p) from BMAN",
+				bufaddr, m[n]);
 			n++;
 		}
 	}

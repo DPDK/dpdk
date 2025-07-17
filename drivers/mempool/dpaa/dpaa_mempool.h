@@ -26,7 +26,7 @@
 #define DPAA_MAX_BPOOLS	256
 
 /* Maximum release/acquire from BMAN */
-#define DPAA_MBUF_MAX_ACQ_REL  8
+#define DPAA_MBUF_MAX_ACQ_REL  FSL_BM_BURST_MAX
 
 /* Buffers are allocated from single mem segment i.e. phys contiguous */
 #define DPAA_MPOOL_SINGLE_SEGMENT  0x01
