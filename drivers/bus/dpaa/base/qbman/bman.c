@@ -1,17 +1,35 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017, 2024 NXP
  *
  */
+#include <rte_memcpy.h>
+#include <rte_branch_prediction.h>
+#include <eal_export.h>
+#include <stdint.h>
+#include <limits.h>
 
 #include "bman.h"
-#include <rte_branch_prediction.h>
 
 /* Compilation constants */
 #define RCR_THRESH	2	/* reread h/w CI when running out of space */
 #define IRQNAME		"BMan portal %d"
 #define MAX_IRQNAME	16	/* big enough for "BMan portal %d" */
+
+
+#define MAX_U16 UINT16_MAX
+#define MAX_U32 UINT32_MAX
+#ifndef BIT_SIZE
+#define BIT_SIZE(t) (sizeof(t) * 8)
+#endif
+#define MAX_U48 \
+	((((uint64_t)MAX_U16) << BIT_SIZE(uint32_t)) | MAX_U32)
+#define HI16_OF_U48(x) \
+	(((x) >> BIT_SIZE(rte_be32_t)) & MAX_U16)
+#define LO32_OF_U48(x) ((x) & MAX_U32)
+#define U48_BY_HI16_LO32(hi, lo) \
+	(((hi) << BIT_SIZE(uint32_t)) | (lo))
 
 struct bman_portal {
 	struct bm_portal p;
@@ -246,7 +264,52 @@ static void update_rcr_ci(struct bman_portal *p, int avail)
 		bm_rcr_cce_update(&p->p);
 }
 
-#define BMAN_BUF_MASK 0x0000fffffffffffful
+RTE_EXPORT_INTERNAL_SYMBOL(bman_release_fast)
+int
+bman_release_fast(struct bman_pool *pool, const uint64_t *bufs,
+	uint8_t num)
+{
+	struct bman_portal *p;
+	struct bm_rcr_entry *r;
+	uint8_t i, avail;
+	uint64_t bpid = pool->params.bpid;
+	struct bm_hw_buf_desc bm_bufs[FSL_BM_BURST_MAX];
+
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
+	if (!num || (num > FSL_BM_BURST_MAX))
+		return -EINVAL;
+	if (pool->params.flags & BMAN_POOL_FLAG_NO_RELEASE)
+		return -EINVAL;
+#endif
+
+	p = get_affine_portal();
+	avail = bm_rcr_get_avail(&p->p);
+	if (avail < 2)
+		update_rcr_ci(p, avail);
+	r = bm_rcr_start(&p->p);
+	if (unlikely(!r))
+		return -EBUSY;
+
+	/*
+	 * we can copy all but the first entry, as this can trigger badness
+	 * with the valid-bit
+	 */
+	bm_bufs[0].bpid = bpid;
+	bm_bufs[0].hi_addr = cpu_to_be16(HI16_OF_U48(bufs[0]));
+	bm_bufs[0].lo_addr = cpu_to_be32(LO32_OF_U48(bufs[0]));
+	for (i = 1; i < num; i++) {
+		bm_bufs[i].hi_addr = cpu_to_be16(HI16_OF_U48(bufs[i]));
+		bm_bufs[i].lo_addr = cpu_to_be32(LO32_OF_U48(bufs[i]));
+	}
+
+	memcpy(r->bufs, bm_bufs, sizeof(struct bm_buffer) * num);
+
+	bm_rcr_pvb_commit(&p->p, BM_RCR_VERB_CMD_BPID_SINGLE |
+		(num & BM_RCR_VERB_BUFCOUNT_MASK));
+
+	return 0;
+}
+
 int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 		 u32 flags __maybe_unused)
 {
@@ -256,7 +319,7 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 	u8 avail;
 
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
-	if (!num || (num > 8))
+	if (!num || (num > FSL_BM_BURST_MAX))
 		return -EINVAL;
 	if (pool->params.flags & BMAN_POOL_FLAG_NO_RELEASE)
 		return -EINVAL;
@@ -276,11 +339,11 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 	 */
 	r->bufs[0].opaque =
 		cpu_to_be64(((u64)pool->params.bpid << 48) |
-			    (bufs[0].opaque & BMAN_BUF_MASK));
+			    (bufs[0].opaque & MAX_U48));
 	if (i) {
 		for (i = 1; i < num; i++)
 			r->bufs[i].opaque =
-				cpu_to_be64(bufs[i].opaque & BMAN_BUF_MASK);
+				cpu_to_be64(bufs[i].opaque & MAX_U48);
 	}
 
 	bm_rcr_pvb_commit(&p->p, BM_RCR_VERB_CMD_BPID_SINGLE |
@@ -289,16 +352,70 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 	return 0;
 }
 
+static inline uint64_t
+bman_extract_addr(struct bm_buffer *buf)
+{
+	buf->opaque = be64_to_cpu(buf->opaque);
+
+	return buf->addr;
+}
+
+static inline uint64_t
+bman_hw_extract_addr(struct bm_hw_buf_desc *buf)
+{
+	uint64_t hi, lo;
+
+	hi = be16_to_cpu(buf->hi_addr);
+	lo = be32_to_cpu(buf->lo_addr);
+	return U48_BY_HI16_LO32(hi, lo);
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(bman_acquire_fast)
+int
+bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num)
+{
+	struct bman_portal *p = get_affine_portal();
+	struct bm_mc_command *mcc;
+	struct bm_mc_result *mcr;
+	uint8_t i, rst;
+	struct bm_hw_buf_desc bm_bufs[FSL_BM_BURST_MAX];
+
+#ifdef RTE_LIBRTE_DPAA_HWDEBUG
+	if (!num || (num > FSL_BM_BURST_MAX))
+		return -EINVAL;
+	if (pool->params.flags & BMAN_POOL_FLAG_ONLY_RELEASE)
+		return -EINVAL;
+#endif
+
+	mcc = bm_mc_start(&p->p);
+	mcc->acquire.bpid = pool->params.bpid;
+	bm_mc_commit(&p->p, BM_MCC_VERB_CMD_ACQUIRE |
+			(num & BM_MCC_VERB_ACQUIRE_BUFCOUNT));
+	while (!(mcr = bm_mc_result(&p->p)))
+		;
+	rst = mcr->verb & BM_MCR_VERB_ACQUIRE_BUFCOUNT;
+	if (unlikely(!rst))
+		return 0;
+
+	rte_memcpy(bm_bufs, mcr->acquire.bufs,
+		sizeof(struct bm_buffer) * rst);
+
+	for (i = 0; i < rst; i++)
+		bufs[i] = bman_hw_extract_addr(&bm_bufs[i]);
+
+	return rst;
+}
+
 int bman_acquire(struct bman_pool *pool, struct bm_buffer *bufs, u8 num,
 		 u32 flags __maybe_unused)
 {
 	struct bman_portal *p = get_affine_portal();
 	struct bm_mc_command *mcc;
 	struct bm_mc_result *mcr;
-	int ret, i;
+	uint8_t rst, i;
 
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
-	if (!num || (num > 8))
+	if (!num || (num > FSL_BM_BURST_MAX))
 		return -EINVAL;
 	if (pool->params.flags & BMAN_POOL_FLAG_ONLY_RELEASE)
 		return -EINVAL;
@@ -310,15 +427,11 @@ int bman_acquire(struct bman_pool *pool, struct bm_buffer *bufs, u8 num,
 			(num & BM_MCC_VERB_ACQUIRE_BUFCOUNT));
 	while (!(mcr = bm_mc_result(&p->p)))
 		cpu_relax();
-	ret = mcr->verb & BM_MCR_VERB_ACQUIRE_BUFCOUNT;
-	if (bufs) {
-		for (i = 0; i < num; i++)
-			bufs[i].opaque =
-				be64_to_cpu(mcr->acquire.bufs[i].opaque);
-	}
-	if (ret != num)
-		ret = -ENOMEM;
-	return ret;
+	rst = mcr->verb & BM_MCR_VERB_ACQUIRE_BUFCOUNT;
+	for (i = 0; i < rst; i++)
+		bufs[i].opaque = be64_to_cpu(mcr->acquire.bufs[i].opaque);
+
+	return rst;
 }
 
 int bman_query_pools(struct bm_pool_state *state)
