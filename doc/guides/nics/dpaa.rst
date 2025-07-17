@@ -278,6 +278,10 @@ for details.
 * Use dev arg option ``drv_ieee1588=1`` to enable IEEE 1588 support
   at driver level, e.g. ``dpaa:fm1-mac3,drv_ieee1588=1``.
 
+* Use dev arg option ``recv_err_pkts=1`` to receive all packets including error packets
+  and thus disabling hardware based packet handling at driver level,
+  e.g. ``dpaa:fm1-mac3,recv_err_pkts=1``.
+
 FMAN Config
 -----------
 
