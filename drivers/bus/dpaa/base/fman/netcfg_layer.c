@@ -43,10 +43,10 @@ dump_netcfg(struct netcfg_info *cfg_ptr, FILE *f)
 		struct fman_if *__if = p_cfg->fman_if;
 
 		fprintf(f, "\n+ Fman %d, MAC %d (%s);\n",
-		       __if->fman_idx, __if->mac_idx,
-		       (__if->mac_type == fman_offline_internal) ? "OFFLINE" :
-		       (__if->mac_type == fman_mac_1g) ? "1G" :
-		       (__if->mac_type == fman_mac_2_5g) ? "2.5G" : "10G");
+			__if->fman->idx, __if->mac_idx,
+			(__if->mac_type == fman_offline_internal) ? "OFFLINE" :
+			(__if->mac_type == fman_mac_1g) ? "1G" :
+			(__if->mac_type == fman_mac_2_5g) ? "2.5G" : "10G");
 
 		fprintf(f, "\tmac_addr: " RTE_ETHER_ADDR_PRT_FMT "\n",
 		       RTE_ETHER_ADDR_BYTES(&__if->mac_addr));

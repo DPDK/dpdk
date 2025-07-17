@@ -593,10 +593,11 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
-dpaa_fw_version_get(struct rte_eth_dev *dev __rte_unused,
+dpaa_fw_version_get(struct rte_eth_dev *dev,
 		     char *fw_version,
 		     size_t fw_size)
 {
+	struct fman_if *fif = dev->process_private;
 	int ret;
 	FILE *svr_file = NULL;
 	unsigned int svr_ver = 0;
@@ -616,7 +617,7 @@ dpaa_fw_version_get(struct rte_eth_dev *dev __rte_unused,
 	fclose(svr_file);
 
 	ret = snprintf(fw_version, fw_size, "SVR:%x-fman-v%x",
-		       svr_ver, fman_ip_rev);
+		       svr_ver, fif->fman->ip_rev);
 	if (ret < 0)
 		return -EINVAL;
 
@@ -1954,15 +1955,18 @@ static int dpaa_tx_queue_init(struct qman_fq *fq,
 	opts.fqd.context_b = 0;
 	if (dpaa_ieee_1588) {
 		opts.fqd.context_a.lo = 0;
-		opts.fqd.context_a.hi = fman_dealloc_bufs_mask_hi;
+		opts.fqd.context_a.hi =
+			fman_intf->fman->dealloc_bufs_mask_hi;
 	} else {
 		/* no tx-confirmation */
-		opts.fqd.context_a.lo = fman_dealloc_bufs_mask_lo;
-		opts.fqd.context_a.hi = DPAA_FQD_CTX_A_OVERRIDE_FQ |
-					fman_dealloc_bufs_mask_hi;
+		opts.fqd.context_a.lo =
+			fman_intf->fman->dealloc_bufs_mask_lo;
+		opts.fqd.context_a.hi =
+			DPAA_FQD_CTX_A_OVERRIDE_FQ |
+			fman_intf->fman->dealloc_bufs_mask_hi;
 	}
 
-	if (fman_ip_rev >= FMAN_V3)
+	if (fman_intf->fman->ip_rev >= FMAN_V3)
 		/* Set B0V bit in contextA to set ASPID to 0 */
 		opts.fqd.context_a.hi |= DPAA_FQD_CTX_A_B0_FIELD_VALID;
 
