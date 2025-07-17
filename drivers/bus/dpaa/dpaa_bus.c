@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017-2020 NXP
+ * Copyright 2017-2025 NXP
  *
  */
 /* System headers */
@@ -46,12 +46,16 @@
 #include <netcfg.h>
 #include <fman.h>
 
+#define DPAA_SOC_ID_FILE	"/sys/devices/soc0/soc_id"
+#define DPAA_SVR_MASK 0xffff0000
+
 struct rte_dpaa_bus {
 	struct rte_bus bus;
 	TAILQ_HEAD(, rte_dpaa_device) device_list;
 	TAILQ_HEAD(, rte_dpaa_driver) driver_list;
 	int device_count;
 	int detected;
+	uint32_t svr_ver;
 };
 
 static struct rte_dpaa_bus rte_dpaa_bus;
@@ -59,9 +63,6 @@ static struct netcfg_info *dpaa_netcfg;
 
 /* define a variable to hold the portal_key, once created.*/
 static pthread_key_t dpaa_portal_key;
-
-RTE_EXPORT_INTERNAL_SYMBOL(dpaa_svr_family)
-unsigned int dpaa_svr_family;
 
 #define FSL_DPAA_BUS_NAME	dpaa_bus
 
@@ -73,6 +74,13 @@ RTE_EXPORT_INTERNAL_SYMBOL(dpaa_seqn_dynfield_offset)
 int dpaa_seqn_dynfield_offset = -1;
 
 RTE_EXPORT_INTERNAL_SYMBOL(dpaa_get_eth_port_cfg)
+
+RTE_EXPORT_INTERNAL_SYMBOL(dpaa_soc_ver)
+uint32_t dpaa_soc_ver(void)
+{
+	return rte_dpaa_bus.svr_ver;
+}
+
 struct fm_eth_port_cfg *
 dpaa_get_eth_port_cfg(int dev_id)
 {
@@ -663,13 +671,36 @@ rte_dpaa_bus_probe(void)
 	struct rte_dpaa_device *dev;
 	struct rte_dpaa_driver *drv;
 	FILE *svr_file = NULL;
-	unsigned int svr_ver;
+	uint32_t svr_ver;
 	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST;
 	static int process_once;
 
 	/* If DPAA bus is not present nothing needs to be done */
 	if (!rte_dpaa_bus.detected)
 		return 0;
+
+	if (rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST)
+		probe_all = true;
+
+	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
+	if (svr_file) {
+		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
+			rte_dpaa_bus.svr_ver = svr_ver & DPAA_SVR_MASK;
+		else
+			rte_dpaa_bus.svr_ver = 0;
+		fclose(svr_file);
+	} else {
+		rte_dpaa_bus.svr_ver = 0;
+	}
+	if (rte_dpaa_bus.svr_ver == SVR_LS1046A_FAMILY) {
+		DPAA_BUS_LOG(INFO, "This is LS1046A family SoC.");
+	} else if (rte_dpaa_bus.svr_ver == SVR_LS1043A_FAMILY) {
+		DPAA_BUS_LOG(INFO, "This is LS1043A family SoC.");
+	} else {
+		DPAA_BUS_LOG(WARNING,
+			"This is Unknown(%08x) DPAA1 family SoC.",
+			rte_dpaa_bus.svr_ver);
+	}
 
 	/* Device list creation is only done once */
 	if (!process_once) {
@@ -698,13 +729,6 @@ rte_dpaa_bus_probe(void)
 	 * been detected.
 	 */
 	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
-
-	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
-	if (svr_file) {
-		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
-			dpaa_svr_family = svr_ver & SVR_MASK;
-		fclose(svr_file);
-	}
 
 	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {
 		if (dev->device_type == FSL_DPAA_ETH) {

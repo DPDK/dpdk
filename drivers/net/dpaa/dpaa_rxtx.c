@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017,2019-2024 NXP
+ *   Copyright 2017,2019-2025 NXP
  *
  */
 
@@ -1268,7 +1268,7 @@ dpaa_eth_ls1043a_mbuf_realloc(struct rte_mbuf *mbuf)
 {
 	uint64_t len, offset;
 
-	if (dpaa_svr_family != SVR_LS1043A_FAMILY)
+	if (dpaa_soc_ver() != SVR_LS1043A_FAMILY)
 		return 0;
 
 	while (mbuf) {
