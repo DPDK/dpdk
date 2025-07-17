@@ -51,10 +51,6 @@ The EAL options are as follows:
   Blocklisting of ports; prevent EAL from using specified PCI device
   (multiple ``-b`` options are allowed).
 
-* ``--use-device``:
-  use the specified Ethernet device(s) only. Use comma-separate
-  ``[domain:]bus:devid.func`` values. Cannot be used with ``-b`` option.
-
 * ``--socket-mem``:
   Memory to allocate from hugepages on specific sockets. In dynamic memory mode,
   this memory will also be pinned (i.e. not released back to the system until
