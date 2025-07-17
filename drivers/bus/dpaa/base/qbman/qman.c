@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017,2019-2024 NXP
+ * Copyright 2017,2019-2025 NXP
  *
  */
 
@@ -520,11 +520,12 @@ qman_init_portal(struct qman_portal *portal,
 	if (!c)
 		c = portal->config;
 
-	if (dpaa_svr_family == SVR_LS1043A_FAMILY)
+	if (dpaa_soc_ver() == SVR_LS1043A_FAMILY) {
 		portal->use_eqcr_ci_stashing = 3;
-	else
+	} else {
 		portal->use_eqcr_ci_stashing =
-					((qman_ip_rev >= QMAN_REV30) ? 1 : 0);
+			(qman_ip_rev >= QMAN_REV30 ? 1 : 0);
+	}
 
 	/*
 	 * prep the low-level portal struct with the mapped addresses from the
