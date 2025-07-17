@@ -353,7 +353,7 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 }
 
 static inline uint64_t
-bman_extract_addr(struct bm_buffer *buf)
+__rte_unused bman_extract_addr(struct bm_buffer *buf)
 {
 	buf->opaque = be64_to_cpu(buf->opaque);
 
@@ -394,8 +394,8 @@ bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num)
 	while (!(mcr = bm_mc_result(&p->p)))
 		;
 	rst = mcr->verb & BM_MCR_VERB_ACQUIRE_BUFCOUNT;
-	if (unlikely(!rst))
-		return 0;
+	if (unlikely(rst < 1 || rst > FSL_BM_BURST_MAX))
+		return -EINVAL;
 
 	rte_memcpy(bm_bufs, mcr->acquire.bufs,
 		sizeof(struct bm_buffer) * rst);
