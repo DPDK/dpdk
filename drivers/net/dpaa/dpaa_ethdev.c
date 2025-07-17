@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2020,2022-2024 NXP
+ *   Copyright 2017-2020,2022-2025 NXP
  *
  */
 /* System headers */
@@ -173,7 +173,7 @@ dpaa_poll_queue_default_config(struct qm_mcc_initfq *opts)
 	opts->fqd.fq_ctrl = QM_FQCTRL_AVOIDBLOCK | QM_FQCTRL_CTXASTASHING |
 			   QM_FQCTRL_PREFERINCACHE;
 	opts->fqd.context_a.stashing.exclusive = 0;
-	if (dpaa_svr_family != SVR_LS1046A_FAMILY)
+	if (dpaa_soc_ver() != SVR_LS1046A_FAMILY)
 		opts->fqd.context_a.stashing.annotation_cl =
 						DPAA_IF_RX_ANNOTATION_STASH;
 	opts->fqd.context_a.stashing.data_cl = DPAA_IF_RX_DATA_STASH;
@@ -594,30 +594,15 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 
 static int
 dpaa_fw_version_get(struct rte_eth_dev *dev,
-		     char *fw_version,
-		     size_t fw_size)
+	char *fw_version, size_t fw_size)
 {
 	struct fman_if *fif = dev->process_private;
 	int ret;
-	FILE *svr_file = NULL;
-	unsigned int svr_ver = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
-	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
-	if (!svr_file) {
-		DPAA_PMD_ERR("Unable to open SoC device");
-		return -ENOTSUP; /* Not supported on this infra */
-	}
-	if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
-		dpaa_svr_family = svr_ver & SVR_MASK;
-	else
-		DPAA_PMD_ERR("Unable to read SoC device");
-
-	fclose(svr_file);
-
 	ret = snprintf(fw_version, fw_size, "SVR:%x-fman-v%x",
-		       svr_ver, fif->fman->ip_rev);
+			dpaa_soc_ver(), fif->fman->ip_rev);
 	if (ret < 0)
 		return -EINVAL;
 
@@ -1190,7 +1175,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		/* In multicore scenario stashing becomes a bottleneck on LS1046.
 		 * So do not enable stashing in this case
 		 */
-		if (dpaa_svr_family != SVR_LS1046A_FAMILY)
+		if (dpaa_soc_ver() != SVR_LS1046A_FAMILY)
 			opts.fqd.context_a.stashing.annotation_cl =
 						DPAA_IF_RX_ANNOTATION_STASH;
 		opts.fqd.context_a.stashing.data_cl = DPAA_IF_RX_DATA_STASH;
@@ -1218,7 +1203,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 				"ret:%d(%s)", rxq->fqid, ret, strerror(ret));
 			return ret;
 		}
-		if (dpaa_svr_family == SVR_LS1043A_FAMILY) {
+		if (dpaa_soc_ver() == SVR_LS1043A_FAMILY) {
 			rxq->cb.dqrr_dpdk_pull_cb = dpaa_rx_cb_no_prefetch;
 		} else {
 			rxq->cb.dqrr_dpdk_pull_cb = dpaa_rx_cb;
@@ -2520,7 +2505,7 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 		}
 
 		/* disabling the default push mode for LS1043 */
-		if (dpaa_svr_family == SVR_LS1043A_FAMILY)
+		if (dpaa_soc_ver() == SVR_LS1043A_FAMILY)
 			dpaa_push_mode_max_queue = 0;
 
 		/* if push mode queues to be enabled. Currently we are allowing
