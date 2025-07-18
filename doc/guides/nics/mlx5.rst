@@ -3363,6 +3363,14 @@ Limitations
 
 #. IP-in-IP is not supported with :ref:`HW steering <mlx5_hws>`.
 
+#. Matching on packet headers appearing after an IP header is not supported
+   if that packet is an IP fragment.
+   Example:
+
+   - If a flow rule with pattern matching on L4 header contents is created,
+     and the first IP fragment is received,
+     then this IP fragment will miss on that flow rule.
+
 
 .. _mlx5_nat64:
 
