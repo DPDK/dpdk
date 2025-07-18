@@ -2111,10 +2111,11 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			return -rte_errno;
 		}
 
-		/* only x550 family only support sctp port */
+		/* only some mac types support sctp port */
 		if (hw->mac.type == ixgbe_mac_X550 ||
 		    hw->mac.type == ixgbe_mac_X550EM_x ||
-		    hw->mac.type == ixgbe_mac_X550EM_a) {
+		    hw->mac.type == ixgbe_mac_X550EM_a ||
+		    hw->mac.type == ixgbe_mac_E610) {
 			/**
 			 * Only care about src & dst ports,
 			 * others should be masked.
