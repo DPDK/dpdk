@@ -244,8 +244,6 @@ void gve_adminq_release(struct gve_priv *priv)
 		i++;
 		msleep(GVE_ADMINQ_SLEEP_LEN);
 	}
-	gve_clear_device_rings_ok(priv);
-	gve_clear_device_resources_ok(priv);
 	gve_clear_admin_queue_ok(priv);
 }
 
