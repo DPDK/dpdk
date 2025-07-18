@@ -128,9 +128,13 @@ i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ci_rx_desc *rxdp)
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
 	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
 		(1 << I40E_RX_DESC_EXT_STATUS_L2TAG2P_SHIFT)) {
-		mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ |
-			RTE_MBUF_F_RX_VLAN_STRIPPED | RTE_MBUF_F_RX_VLAN;
-		mb->vlan_tci_outer = mb->vlan_tci;
+		if ((mb->ol_flags & RTE_MBUF_F_RX_VLAN_STRIPPED) == 0) {
+			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+		} else {
+			/* if two tags, move Tag1 to outer tag field */
+			mb->ol_flags |= RTE_MBUF_F_RX_QINQ_STRIPPED | RTE_MBUF_F_RX_QINQ;
+			mb->vlan_tci_outer = mb->vlan_tci;
+		}
 		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2);
 		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
 			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_1),
