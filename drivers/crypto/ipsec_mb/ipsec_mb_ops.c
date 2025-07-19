@@ -138,6 +138,7 @@ int
 ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
 	struct ipsec_mb_qp *qp = dev->data->queue_pairs[qp_id];
+	uint16_t process_id = (uint16_t)getpid();
 
 	if (!qp)
 		return 0;
@@ -152,8 +153,10 @@ ipsec_mb_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 		rte_free(qp);
 		dev->data->queue_pairs[qp_id] = NULL;
 	} else { /* secondary process */
-		return ipsec_mb_secondary_qp_op(dev->data->dev_id, qp_id,
-					NULL, 0, RTE_IPSEC_MB_MP_REQ_QP_FREE);
+		if (qp->qp_used_by_pid == process_id)
+			return ipsec_mb_secondary_qp_op(dev->data->dev_id,
+						qp_id, NULL, 0,
+						RTE_IPSEC_MB_MP_REQ_QP_FREE);
 	}
 	return 0;
 }
