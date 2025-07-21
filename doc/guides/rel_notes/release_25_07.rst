@@ -6,56 +6,10 @@
 DPDK Release 25.07
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_25_07.html
-
-
 New Features
 ------------
 
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
-
-* **Enhanced EAL ``-l`` corelist argument.**
+* **Enhanced EAL -l corelist argument.**
 
   Added support to the EAL ``-l`` argument for the full range of core-to-cpu mapping
   options supported by the ``--lcores`` EAL argument.
@@ -106,15 +60,15 @@ New Features
 
 * **Updated NVIDIA mlx5 driver.**
 
-  * Support matching on IPv6 frag extension header with async flow template API.
+  Added matching on IPv6 frag extension header with async flow template API.
 
 * **Updated Solarflare network driver.**
 
-  * Added support for AMD Solarflare X45xx adapters.
+  Added support for AMD Solarflare X45xx adapters.
 
 * **Updated virtio driver.**
 
-  * Added support for Rx and Tx burst mode query.
+  Added support for Rx and Tx burst mode query.
 
 * **Added ZTE Storage Data Accelerator (ZSDA) crypto driver.**
 
@@ -159,7 +113,7 @@ New Features
 
   See section ``Graph feature arc`` in :doc:`../prog_guide/graph_lib` for more details.
 
-  * Added ``ip4 output`` feature arc processing in ``ip4_rewrite`` node.
+  Added ``ip4 output`` feature arc processing in ``ip4_rewrite`` node.
 
 * **Added support for string and boolean types to the argparse library.**
 
@@ -178,15 +132,6 @@ New Features
 Removed Items
 -------------
 
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * eal: Removed the ``rte_function_versioning.h`` header from the exported headers.
 
 * crypto/qat: Removed ZUC-256 algorithms from Intel QuickAssist Technology PMD.
@@ -198,18 +143,6 @@ Removed Items
 
 API Changes
 -----------
-
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * memory: Added secure functions to force zeroing some memory,
   bypassing compiler optimizations:
@@ -223,18 +156,6 @@ API Changes
 
 ABI Changes
 -----------
-
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * No ABI change that would break compatibility with 24.11.
 
@@ -285,39 +206,8 @@ ABI Changes
         (Allows the argument to be specified multiple times.)
 
 
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
