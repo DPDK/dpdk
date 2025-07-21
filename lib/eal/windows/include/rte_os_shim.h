@@ -7,6 +7,7 @@
 
 #include <rte_os.h>
 #include <rte_windows.h>
+#include <getline.h>
 
 /**
  * @file
