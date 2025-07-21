@@ -548,9 +548,9 @@ test_bbdev_op_pool(void)
 static int
 test_bbdev_op_type(void)
 {
+#define OPS_COUNT 32
 	struct rte_mempool *mp_dec;
 
-	const unsigned int OPS_COUNT = 32;
 	struct rte_bbdev_dec_op *dec_ops_arr[OPS_COUNT];
 	struct rte_bbdev_enc_op *enc_ops_arr[OPS_COUNT];
 
@@ -576,14 +576,15 @@ test_bbdev_op_type(void)
 	rte_mempool_free(mp_dec);
 
 	return TEST_SUCCESS;
+#undef OPS_COUNT
 }
 
 static int
 test_bbdev_op_pool_size(void)
 {
+#define OPS_COUNT 128
 	struct rte_mempool *mp_none;
 
-	const unsigned int OPS_COUNT = 128;
 	struct rte_bbdev_enc_op *ops_enc_arr[OPS_COUNT];
 	struct rte_bbdev_enc_op *ops_ext_arr[OPS_COUNT];
 	struct rte_bbdev_enc_op *ops_ext2_arr[OPS_COUNT];
@@ -627,6 +628,7 @@ test_bbdev_op_pool_size(void)
 	rte_mempool_free(mp_none);
 
 	return TEST_SUCCESS;
+#undef OPS_COUNT
 }
 
 static int
@@ -815,7 +817,7 @@ test_bbdev_driver_init(void)
 
 	TEST_ASSERT(dev1->data->dev_id < RTE_BBDEV_MAX_DEVS,
 			"Failed test rte_bbdev_allocate: "
-			"invalid dev_id %" PRIu8 ", max number of devices %d ",
+			"invalid dev_id %" PRIu16 ", max number of devices %d ",
 			dev1->data->dev_id, RTE_BBDEV_MAX_DEVS);
 
 	TEST_ASSERT(dev1->state == RTE_BBDEV_INITIALIZED,

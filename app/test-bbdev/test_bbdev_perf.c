@@ -1570,12 +1570,13 @@ maxstar(double A, double B)
 static void
 gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 {
-	int qm = 8;
-	int qam = 256;
+#define QM 8
+#define QAM 256
+
 	int m, k;
-	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	double I, Q, p0, p1, llr_, b[QM], log_syml_prob[QAM];
 	/* 5.1.4 of TS38.211 */
-	const double symbols_I[256] = {
+	const double symbols_I[QAM] = {
 			5, 5, 7, 7, 5, 5, 7, 7, 3, 3, 1, 1, 3, 3, 1, 1, 5,
 			5, 7, 7, 5, 5, 7, 7, 3, 3, 1, 1, 3, 3, 1, 1, 11,
 			11, 9, 9, 11, 11, 9, 9, 13, 13, 15, 15, 13, 13,
@@ -1596,7 +1597,7 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			-9, -9, -11, -11, -9, -9, -13, -13, -15, -15, -13,
 			-13, -15, -15, -11, -11, -9, -9, -11, -11, -9, -9,
 			-13, -13, -15, -15, -13, -13, -15, -15};
-	const double symbols_Q[256] = {
+	const double symbols_Q[QAM] = {
 			5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 11,
 			9, 11, 9, 13, 15, 13, 15, 11, 9, 11, 9, 13, 15, 13,
 			15, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1,
@@ -1619,8 +1620,8 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			-13, -15, -11, -9, -11, -9, -13, -15, -13, -15};
 	/* Average constellation point energy */
 	N0 *= 170.0;
-	for (k = 0; k < qm; k++)
-		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	for (k = 0; k < QM; k++)
+		b[k] = llrs[QM * i + k] < 0 ? 1.0 : 0.0;
 	/* 5.1.4 of TS38.211 */
 	I = (1 - 2 * b[0]) * (8 - (1 - 2 * b[2]) *
 			(4 - (1 - 2 * b[4]) * (2 - (1 - 2 * b[6]))));
@@ -1633,16 +1634,16 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 	 * Calculate the log of the probability that each of
 	 * the constellation points was transmitted
 	 */
-	for (m = 0; m < qam; m++)
+	for (m = 0; m < QAM; m++)
 		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
 				+ pow(Q - symbols_Q[m], 2.0)) / N0;
 	/* Calculate an LLR for each of the k_64QAM bits in the set */
-	for (k = 0; k < qm; k++) {
+	for (k = 0; k < QM; k++) {
 		p0 = -999999;
 		p1 = -999999;
 		/* For each constellation point */
-		for (m = 0; m < qam; m++) {
-			if ((m >> (qm - k - 1)) & 1)
+		for (m = 0; m < QAM; m++) {
+			if ((m >> (QM - k - 1)) & 1)
 				p1 = maxstar(p1, log_syml_prob[m]);
 			else
 				p0 = maxstar(p0, log_syml_prob[m]);
@@ -1655,8 +1656,10 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			llr_ = llr_max;
 		if (llr_ < -llr_max)
 			llr_ = -llr_max;
-		llrs[qm * i + k] = (int8_t) llr_;
+		llrs[QM * i + k] = (int8_t) llr_;
 	}
+#undef QM
+#undef QAM
 }
 
 
@@ -1667,18 +1670,19 @@ gen_qm8_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 static void
 gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 {
-	int qm = 6;
-	int qam = 64;
+#define QM 6
+#define QAM 64
+
 	int m, k;
-	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	double I, Q, p0, p1, llr_, b[QM], log_syml_prob[QAM];
 	/* 5.1.4 of TS38.211 */
-	const double symbols_I[64] = {
+	const double symbols_I[QAM] = {
 			3, 3, 1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7,
 			3, 3, 1, 1, 3, 3, 1, 1, 5, 5, 7, 7, 5, 5, 7, 7,
 			-3, -3, -1, -1, -3, -3, -1, -1, -5, -5, -7, -7,
 			-5, -5, -7, -7, -3, -3, -1, -1, -3, -3, -1, -1,
 			-5, -5, -7, -7, -5, -5, -7, -7};
-	const double symbols_Q[64] = {
+	const double symbols_Q[QAM] = {
 			3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1, 5, 7, 5, 7,
 			-3, -1, -3, -1, -5, -7, -5, -7, -3, -1, -3, -1,
 			-5, -7, -5, -7, 3, 1, 3, 1, 5, 7, 5, 7, 3, 1, 3, 1,
@@ -1686,8 +1690,8 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			-3, -1, -3, -1, -5, -7, -5, -7};
 	/* Average constellation point energy */
 	N0 *= 42.0;
-	for (k = 0; k < qm; k++)
-		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	for (k = 0; k < QM; k++)
+		b[k] = llrs[QM * i + k] < 0 ? 1.0 : 0.0;
 	/* 5.1.4 of TS38.211 */
 	I = (1 - 2 * b[0])*(4 - (1 - 2 * b[2]) * (2 - (1 - 2 * b[4])));
 	Q = (1 - 2 * b[1])*(4 - (1 - 2 * b[3]) * (2 - (1 - 2 * b[5])));
@@ -1698,16 +1702,16 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 	 * Calculate the log of the probability that each of
 	 * the constellation points was transmitted
 	 */
-	for (m = 0; m < qam; m++)
+	for (m = 0; m < QAM; m++)
 		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
 				+ pow(Q - symbols_Q[m], 2.0)) / N0;
 	/* Calculate an LLR for each of the k_64QAM bits in the set */
-	for (k = 0; k < qm; k++) {
+	for (k = 0; k < QM; k++) {
 		p0 = -999999;
 		p1 = -999999;
 		/* For each constellation point */
-		for (m = 0; m < qam; m++) {
-			if ((m >> (qm - k - 1)) & 1)
+		for (m = 0; m < QAM; m++) {
+			if ((m >> (QM - k - 1)) & 1)
 				p1 = maxstar(p1, log_syml_prob[m]);
 			else
 				p0 = maxstar(p0, log_syml_prob[m]);
@@ -1720,8 +1724,10 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			llr_ = llr_max;
 		if (llr_ < -llr_max)
 			llr_ = -llr_max;
-		llrs[qm * i + k] = (int8_t) llr_;
+		llrs[QM * i + k] = (int8_t) llr_;
 	}
+#undef QM
+#undef QAM
 }
 
 /*
@@ -1731,19 +1737,20 @@ gen_qm6_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 static void
 gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 {
-	int qm = 4;
-	int qam = 16;
+#define QM 4
+#define QAM 16
+
 	int m, k;
-	double I, Q, p0, p1, llr_, b[qm], log_syml_prob[qam];
+	double I, Q, p0, p1, llr_, b[QM], log_syml_prob[QAM];
 	/* 5.1.4 of TS38.211 */
-	const double symbols_I[16] = {1, 1, 3, 3, 1, 1, 3, 3,
+	const double symbols_I[QAM] = {1, 1, 3, 3, 1, 1, 3, 3,
 			-1, -1, -3, -3, -1, -1, -3, -3};
-	const double symbols_Q[16] = {1, 3, 1, 3, -1, -3, -1, -3,
+	const double symbols_Q[QAM] = {1, 3, 1, 3, -1, -3, -1, -3,
 			1, 3, 1, 3, -1, -3, -1, -3};
 	/* Average constellation point energy */
 	N0 *= 10.0;
-	for (k = 0; k < qm; k++)
-		b[k] = llrs[qm * i + k] < 0 ? 1.0 : 0.0;
+	for (k = 0; k < QM; k++)
+		b[k] = llrs[QM * i + k] < 0 ? 1.0 : 0.0;
 	/* 5.1.4 of TS38.211 */
 	I = (1 - 2 * b[0]) * (2 - (1 - 2 * b[2]));
 	Q = (1 - 2 * b[1]) * (2 - (1 - 2 * b[3]));
@@ -1754,16 +1761,16 @@ gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 	 * Calculate the log of the probability that each of
 	 * the constellation points was transmitted
 	 */
-	for (m = 0; m < qam; m++)
+	for (m = 0; m < QAM; m++)
 		log_syml_prob[m] = -(pow(I - symbols_I[m], 2.0)
 				+ pow(Q - symbols_Q[m], 2.0)) / N0;
 	/* Calculate an LLR for each of the k_64QAM bits in the set */
-	for (k = 0; k < qm; k++) {
+	for (k = 0; k < QM; k++) {
 		p0 = -999999;
 		p1 = -999999;
 		/* For each constellation point */
-		for (m = 0; m < qam; m++) {
-			if ((m >> (qm - k - 1)) & 1)
+		for (m = 0; m < QAM; m++) {
+			if ((m >> (QM - k - 1)) & 1)
 				p1 = maxstar(p1, log_syml_prob[m]);
 			else
 				p0 = maxstar(p0, log_syml_prob[m]);
@@ -1776,8 +1783,10 @@ gen_qm4_llr(int8_t *llrs, uint32_t i, double N0, double llr_max)
 			llr_ = llr_max;
 		if (llr_ < -llr_max)
 			llr_ = -llr_max;
-		llrs[qm * i + k] = (int8_t) llr_;
+		llrs[QM * i + k] = (int8_t) llr_;
 	}
+#undef QM
+#undef QAM
 }
 
 static void
@@ -3441,7 +3450,7 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops[num_to_process];
+	struct rte_bbdev_dec_op **ops = alloca(sizeof(struct rte_bbdev_dec_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3550,7 +3559,7 @@ throughput_intr_lcore_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops[num_to_process];
+	struct rte_bbdev_dec_op **ops = alloca(sizeof(struct rte_bbdev_dec_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
@@ -3648,7 +3657,7 @@ throughput_intr_lcore_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops[num_to_process];
+	struct rte_bbdev_enc_op **ops = alloca(sizeof(struct rte_bbdev_enc_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3742,7 +3751,7 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops[num_to_process];
+	struct rte_bbdev_enc_op **ops = alloca(sizeof(struct rte_bbdev_enc_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3838,7 +3847,7 @@ throughput_intr_lcore_fft(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_fft_op *ops[num_to_process];
+	struct rte_bbdev_fft_op **ops = alloca(sizeof(struct rte_bbdev_fft_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -3932,7 +3941,8 @@ throughput_intr_lcore_mldts(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
-	struct rte_bbdev_mldts_op *ops[num_to_process];
+	struct rte_bbdev_mldts_op **ops =
+			alloca(sizeof(struct rte_bbdev_mldts_op *) * num_to_process);
 	struct test_buffers *bufs = NULL;
 	struct rte_bbdev_info info;
 	int ret, i, j;
@@ -4022,8 +4032,8 @@ throughput_pmd_lcore_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4135,8 +4145,8 @@ bler_pmd_lcore_ldpc_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4278,8 +4288,8 @@ bler_pmd_lcore_turbo_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4397,8 +4407,8 @@ throughput_pmd_lcore_ldpc_dec(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_dec_op *ops_enq[num_ops];
-	struct rte_bbdev_dec_op *ops_deq[num_ops];
+	struct rte_bbdev_dec_op **ops_enq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
+	struct rte_bbdev_dec_op **ops_deq = alloca(sizeof(struct rte_bbdev_dec_op *) * num_ops);
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4535,8 +4545,8 @@ throughput_pmd_lcore_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops_enq[num_ops];
-	struct rte_bbdev_enc_op *ops_deq[num_ops];
+	struct rte_bbdev_enc_op **ops_enq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
+	struct rte_bbdev_enc_op **ops_deq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
 	struct rte_bbdev_enc_op *ref_op = tp->op_params->ref_enc_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4637,8 +4647,8 @@ throughput_pmd_lcore_ldpc_enc(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_enc_op *ops_enq[num_ops];
-	struct rte_bbdev_enc_op *ops_deq[num_ops];
+	struct rte_bbdev_enc_op **ops_enq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
+	struct rte_bbdev_enc_op **ops_deq = alloca(sizeof(struct rte_bbdev_enc_op *) * num_ops);
 	struct rte_bbdev_enc_op *ref_op = tp->op_params->ref_enc_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4739,8 +4749,8 @@ throughput_pmd_lcore_fft(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_fft_op *ops_enq[num_ops];
-	struct rte_bbdev_fft_op *ops_deq[num_ops];
+	struct rte_bbdev_fft_op **ops_enq = alloca(sizeof(struct rte_bbdev_fft_op *) * num_ops);
+	struct rte_bbdev_fft_op **ops_deq = alloca(sizeof(struct rte_bbdev_fft_op *) * num_ops);
 	struct rte_bbdev_fft_op *ref_op = tp->op_params->ref_fft_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
@@ -4839,8 +4849,8 @@ throughput_pmd_lcore_mldts(void *arg)
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_ops = tp->op_params->num_to_process;
-	struct rte_bbdev_mldts_op *ops_enq[num_ops];
-	struct rte_bbdev_mldts_op *ops_deq[num_ops];
+	struct rte_bbdev_mldts_op **ops_enq = alloca(sizeof(struct rte_bbdev_mldts_op *) * num_ops);
+	struct rte_bbdev_mldts_op **ops_deq = alloca(sizeof(struct rte_bbdev_mldts_op *) * num_ops);
 	struct rte_bbdev_mldts_op *ref_op = tp->op_params->ref_mldts_op;
 	struct test_buffers *bufs = NULL;
 	int i, j, ret;
