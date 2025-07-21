@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <rte_malloc.h>
+#include <rte_os_shim.h>
 
 #include "test_bbdev_vector.h"
 

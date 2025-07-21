@@ -14,6 +14,7 @@
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
 #include <rte_lcore.h>
+#include <rte_os_shim.h>
 
 #include "main.h"
 
