@@ -150,14 +150,6 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		8, 9, 10, 11,	         /* rx.rss_hash to rte_mbuf.hash.rss */
 	};
 
-	uint16x8_t crc_adjust = {
-		0, 0,         /* ignore pkt_type field */
-		rxq->crc_len, /* sub crc on pkt_len */
-		0,            /* ignore high-16bits of pkt_len */
-		rxq->crc_len, /* sub crc on data_len */
-		0, 0, 0,      /* ignore non-length fields */
-	};
-
 	/* compile-time verifies the shuffle mask */
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
 			 offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
@@ -173,7 +165,6 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		uint8x16_t pkt_mb1, pkt_mb2, pkt_mb3, pkt_mb4;
 		uint64x2_t mbp1, mbp2;
 		uint16x4_t bd_vld = {0};
-		uint16x8_t tmp;
 		uint64_t stat;
 
 		/* calc how many bd valid */
@@ -226,16 +217,6 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		pkt_mb2 = vqtbl2q_u8(pkt_mbuf2, shuf_desc_fields_msk);
 		pkt_mb3 = vqtbl2q_u8(pkt_mbuf3, shuf_desc_fields_msk);
 		pkt_mb4 = vqtbl2q_u8(pkt_mbuf4, shuf_desc_fields_msk);
-
-		/* 4 packets remove crc */
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb1), crc_adjust);
-		pkt_mb1 = vreinterpretq_u8_u16(tmp);
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb2), crc_adjust);
-		pkt_mb2 = vreinterpretq_u8_u16(tmp);
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb3), crc_adjust);
-		pkt_mb3 = vreinterpretq_u8_u16(tmp);
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
-		pkt_mb4 = vreinterpretq_u8_u16(tmp);
 
 		/* save packet info to rx_pkts mbuf */
 		vst1q_u8((void *)&sw_ring[pos + 0].mbuf->rx_descriptor_fields1,
