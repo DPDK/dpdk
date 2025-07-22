@@ -39,8 +39,6 @@ sources = files(
 )
 deps += ['mbuf']
 
-use_function_versioning = true
-
 if dpdk_conf.has('RTE_ARCH_X86_64')
     sources += files('net_crc_sse.c')
     cflags_options = ['-mpclmul', '-maes']
