@@ -1234,7 +1234,7 @@ rte_is_power_of_2(uint32_t n)
  *   The integer value to align
  *
  * @return
- *   Input parameter aligned to the next power of 2
+ *   The smallest power of 2 which is greater than or equal to @c x.
  */
 static inline uint32_t
 rte_align32pow2(uint32_t x)
@@ -1252,7 +1252,7 @@ rte_align32pow2(uint32_t x)
  *   The integer value to align
  *
  * @return
- *   Input parameter aligned to the previous power of 2
+ *   The greatest power of 2 which is smaller than or equal to @c x.
  */
 static inline uint32_t
 rte_align32prevpow2(uint32_t x)
@@ -1269,7 +1269,7 @@ rte_align32prevpow2(uint32_t x)
  *   The 64b value to align
  *
  * @return
- *   Input parameter aligned to the next power of 2
+ *   The smallest power of 2 which is greater than or equal to @c v.
  */
 static inline uint64_t
 rte_align64pow2(uint64_t v)
@@ -1287,7 +1287,7 @@ rte_align64pow2(uint64_t v)
  *   The 64b value to align
  *
  * @return
- *   Input parameter aligned to the previous power of 2
+ *   The greatest power of 2 which is smaller than or equal to @c v.
  */
 static inline uint64_t
 rte_align64prevpow2(uint64_t v)
