@@ -481,6 +481,7 @@ l3:
 
 		pkt_type |= ptype_tunnel_without_udp(&proto, m, &off);
 		hdr_lens->tunnel_len = off - prev_off;
+		hdr_lens->inner_l2_len = off - prev_off;
 	}
 
 	/* same job for inner header: we need to duplicate the code
