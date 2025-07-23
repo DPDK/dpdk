@@ -286,6 +286,22 @@ implementer_ionic = {
     }
 }
 
+implementer_microsoft = {
+    'description': 'Microsoft Corporation',
+    'flags': [],
+    'part_number_config': {
+        '0xd49': {
+            'mcpu': 'mcpu_cobalt100',
+            'flags': [
+                ['RTE_MACHINE', '"neoverse-n2"'],
+                ['RTE_ARM_FEATURE_ATOMICS', true],
+                ['RTE_MAX_LCORE', 128],
+                ['RTE_MAX_NUMA_NODES', 2]
+            ]
+        },
+    }
+}
+
 implementer_phytium = {
     'description': 'Phytium',
     'flags': [
@@ -342,6 +358,7 @@ implementers = {
     '0x48': implementer_hisilicon,
     '0x50': implementer_ampere,
     '0x51': implementer_qualcomm,
+    '0x6d': implementer_microsoft,
     '0x70': implementer_phytium,
     '0x75': implementer_ionic,
     '0xc0': implementer_ampere,
@@ -460,6 +477,13 @@ soc_cn10k = {
     'extra_march_features': ['crypto'],
     'numa': false,
     'sve_acle': false
+}
+
+soc_cobalt100 = {
+    'description' : 'Microsoft Azure Cobalt 100',
+    'implementer' : '0x6d',
+    'part_number': '0xd49',
+    'numa': true
 }
 
 soc_dpaa = {
@@ -651,6 +675,10 @@ mcpu_defs = {
         'march': 'armv8-a',
         'march_extensions': ['crc']
     },
+    'mcpu_cobalt100': {
+        'march': 'armv9-a',
+        'march_extensions': ['crypto', 'sve', 'sve2']
+    },
     'mcpu_cortex-a78ae': {
         'march': 'armv8.4-a',
         'march_extensions': ['crypto']
@@ -708,6 +736,7 @@ cdx:             AMD CDX
 centriq2400:     Qualcomm Centriq 2400
 cn9k:            Marvell OCTEON 9
 cn10k:           Marvell OCTEON 10
+cobalt100:       Microsoft Azure Cobalt 100
 dpaa:            NXP DPAA
 elba:            AMD Pensando Elba
 emag:            Ampere eMAG
@@ -749,6 +778,7 @@ socs = {
     'centriq2400': soc_centriq2400,
     'cn9k': soc_cn9k,
     'cn10k' : soc_cn10k,
+    'cobalt100' : soc_cobalt100,
     'dpaa': soc_dpaa,
     'elba': soc_elba,
     'emag': soc_emag,
