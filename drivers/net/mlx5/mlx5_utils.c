@@ -884,6 +884,10 @@ mlx5_ipool_destroy(struct mlx5_indexed_pool *pool)
 		pool->cfg.free(trunks);
 	if (gc)
 		pool->cfg.free(gc);
+#ifdef POOL_DEBUG
+	if (pool->cache_validator.bmp_mem)
+		pool->cfg.free(pool->cache_validator.bmp_mem);
+#endif
 	mlx5_ipool_unlock(pool);
 	mlx5_free(pool);
 	return 0;
