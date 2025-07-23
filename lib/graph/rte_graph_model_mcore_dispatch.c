@@ -102,6 +102,8 @@ submit_again:
 	if (node->idx > 0)
 		goto submit_again;
 
+	if (graph->dispatch.notify_cb)
+		graph->dispatch.notify_cb(graph, graph->dispatch.cb_priv);
 	return true;
 
 fallback:

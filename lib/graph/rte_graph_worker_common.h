@@ -68,6 +68,8 @@ struct __rte_cache_aligned rte_graph {
 			unsigned int lcore_id;  /**< The graph running Lcore. */
 			struct rte_ring *wq;    /**< The work-queue for pending streams. */
 			struct rte_mempool *mp; /**< The mempool for scheduling streams. */
+			packets_enqueued_cb notify_cb; /**< Callback when packet crosses lcores. */
+			uint64_t cb_priv;       /**< Opaque parameter for notify_cb. */
 		} dispatch; /** Only used by dispatch model */
 	};
 	SLIST_ENTRY(rte_graph) next;   /* The next for rte_graph list */

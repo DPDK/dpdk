@@ -600,9 +600,13 @@ graph_clone(struct graph *parent_graph, const char *name, struct rte_graph_param
 	graph->graph->model = parent_graph->graph->model;
 
 	/* Create the graph schedule work queue */
-	if (rte_graph_worker_model_get(graph->graph) == RTE_GRAPH_MODEL_MCORE_DISPATCH &&
-	    graph_sched_wq_create(graph, parent_graph, prm))
-		goto graph_mem_destroy;
+	if (rte_graph_worker_model_get(graph->graph) == RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+		if (graph_sched_wq_create(graph, parent_graph, prm))
+			goto graph_mem_destroy;
+
+		graph->graph->dispatch.notify_cb = prm->dispatch.notify_cb;
+		graph->graph->dispatch.cb_priv = prm->dispatch.cb_priv;
+	}
 
 	/* Call init() of the all the nodes in the graph */
 	if (graph_node_init(graph))
