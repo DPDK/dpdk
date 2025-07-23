@@ -340,17 +340,22 @@ rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
 {
 	struct graph *graph;
 
-	if (graph_from_id(id) == NULL)
+	if (graph_from_id(id) == NULL) {
+		rte_errno = ENOENT;
 		goto fail;
-	if (!rte_lcore_is_enabled(lcore))
-		SET_ERR_JMP(ENOLINK, fail, "lcore %d not enabled", lcore);
+	}
+
+	if (rte_lcore_has_role(lcore, ROLE_OFF))
+		SET_ERR_JMP(ENOLINK, fail, "lcore %d is invalid", lcore);
 
 	STAILQ_FOREACH(graph, &graph_list, next)
 		if (graph->id == id)
 			break;
 
-	if (graph->graph->model != RTE_GRAPH_MODEL_MCORE_DISPATCH)
+	if (graph->graph->model != RTE_GRAPH_MODEL_MCORE_DISPATCH) {
+		rte_errno = EPERM;
 		goto fail;
+	}
 
 	graph->lcore_id = lcore;
 	graph->graph->dispatch.lcore_id = graph->lcore_id;
