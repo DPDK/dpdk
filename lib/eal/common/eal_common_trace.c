@@ -363,8 +363,11 @@ __rte_trace_mem_per_thread_alloc(void)
 		goto found;
 	}
 
-	/* Second attempt from heap */
-	header = malloc(trace_mem_sz(trace->buff_len));
+	/* Second attempt from heap with proper alignment */
+	size_t mem_size = trace_mem_sz(trace->buff_len);
+	void *aligned_ptr = NULL;
+	int ret = posix_memalign(&aligned_ptr, 8, mem_size);
+	header = (ret == 0) ? aligned_ptr : NULL;
 	if (header == NULL) {
 		trace_crit("trace mem malloc attempt failed");
 		header = NULL;
