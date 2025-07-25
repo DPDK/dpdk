@@ -11,17 +11,18 @@
 #include <rte_memory.h>
 #include <rte_bus_pci.h>
 
-#include "private.h"
-#include "pci_netuio.h"
-
+/* DEVPKEY_Device_Numa_Node should be defined in devpkey.h */
 #include <devpkey.h>
-#include <regstr.h>
-
 #if defined RTE_TOOLCHAIN_GCC && (__MINGW64_VERSION_MAJOR < 8)
 #include <devpropdef.h>
 DEFINE_DEVPROPKEY(DEVPKEY_Device_Numa_Node, 0x540b947e, 0x8b40, 0x45bc,
 	0xa8, 0xa2, 0x6a, 0x0b, 0x89, 0x4c, 0xbd, 0xa2, 3);
 #endif
+
+#include <regstr.h>
+
+#include "private.h"
+#include "pci_netuio.h"
 
 /*
  * This code is used to simulate a PCI probe by parsing information in
