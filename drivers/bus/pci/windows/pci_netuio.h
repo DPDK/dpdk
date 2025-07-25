@@ -5,12 +5,12 @@
 #ifndef _PCI_NETUIO_H_
 #define _PCI_NETUIO_H_
 
-#if !defined(NTDDI_WIN10_FE) || NTDDI_VERSION < NTDDI_WIN10_FE
-/* GUID definition for device class netUIO */
+#if !defined(NTDDI_WIN10_FE) || NTDDI_VERSION < NTDDI_WIN10_FE ||  defined(__MINGW64__)
+/* GUID_DEVCLASS_NETUIO should be defined in devguid.h */
 DEFINE_GUID(GUID_DEVCLASS_NETUIO, 0x78912bc1, 0xcb8e, 0x4b28,
 	0xa3, 0x29, 0xf3, 0x22, 0xeb, 0xad, 0xbe, 0x0f);
 
-/* GUID definition for the netuio device interface */
+/* GUID_DEVINTERFACE_NETUIO should be defined in ndisguid.h */
 DEFINE_GUID(GUID_DEVINTERFACE_NETUIO, 0x08336f60, 0x0679, 0x4c6c,
 	0x85, 0xd2, 0xae, 0x7c, 0xed, 0x65, 0xff, 0xf7);
 #endif
