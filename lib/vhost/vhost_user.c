@@ -36,10 +36,7 @@
 #ifdef RTE_LIBRTE_VHOST_POSTCOPY
 #include <linux/userfaultfd.h>
 #endif
-#ifdef F_ADD_SEALS /* if file sealing is supported, so is memfd */
 #include <linux/memfd.h>
-#define MEMFD_SUPPORTED
-#endif
 
 #include <eal_export.h>
 #include <rte_common.h>
@@ -1627,11 +1624,7 @@ inflight_mem_alloc(struct virtio_net *dev, const char *name, size_t size, int *f
 	char fname[20] = "/tmp/memfd-XXXXXX";
 
 	*fd = -1;
-#ifdef MEMFD_SUPPORTED
 	mfd = memfd_create(name, MFD_CLOEXEC);
-#else
-	RTE_SET_USED(name);
-#endif
 	if (mfd == -1) {
 		mfd = mkstemp(fname);
 		if (mfd == -1) {
