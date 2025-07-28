@@ -20,9 +20,6 @@
 #include <limits.h>
 #include <signal.h>
 #include <setjmp.h>
-#ifdef F_ADD_SEALS /* if file sealing is supported, so is memfd */
-#define MEMFD_SUPPORTED
-#endif
 #ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
 #include <numa.h>
 #include <numaif.h>
@@ -1161,9 +1158,7 @@ eal_legacy_hugepage_init(void)
 		size_t mem_sz;
 		struct rte_memseg_list *msl;
 		int n_segs, fd, flags;
-#ifdef MEMFD_SUPPORTED
 		int memfd;
-#endif
 		uint64_t page_sz;
 
 		/* nohuge mode is legacy mode */
@@ -1188,7 +1183,6 @@ eal_legacy_hugepage_init(void)
 		fd = -1;
 		flags = MAP_PRIVATE | MAP_ANONYMOUS;
 
-#ifdef MEMFD_SUPPORTED
 		/* create a memfd and store it in the segment fd table */
 		memfd = memfd_create("nohuge", 0);
 		if (memfd < 0) {
@@ -1213,7 +1207,6 @@ eal_legacy_hugepage_init(void)
 				flags = MAP_SHARED;
 			}
 		}
-#endif
 		/* preallocate address space for the memory, so that it can be
 		 * fit into the DMA mask.
 		 */
