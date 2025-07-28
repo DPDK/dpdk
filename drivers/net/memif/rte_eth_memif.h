@@ -169,53 +169,12 @@ int memif_init_regions_and_queues(struct rte_eth_dev *dev);
  */
 const char *memif_version(void);
 
-#ifndef MFD_HUGETLB
-#ifndef __NR_memfd_create
-
-#if defined __x86_64__
-#define __NR_memfd_create 319
-#elif defined __x86_32__
-#define __NR_memfd_create 1073742143
-#elif defined __arm__
-#define __NR_memfd_create 385
-#elif defined __aarch64__
-#define __NR_memfd_create 279
-#elif defined __powerpc__
-#define __NR_memfd_create 360
-#elif defined __i386__
-#define __NR_memfd_create 356
-#elif defined __riscv
-#define __NR_memfd_create 279
-#elif defined __loongarch__
-#define __NR_memfd_create 279
-#else
-#error "__NR_memfd_create unknown for this architecture"
-#endif
-
-#endif				/* __NR_memfd_create */
-
-static inline int memfd_create(const char *name, unsigned int flags)
-{
-	return syscall(__NR_memfd_create, name, flags);
-}
-#endif				/* MFD_HUGETLB */
-
 #ifndef F_LINUX_SPECIFIC_BASE
 #define F_LINUX_SPECIFIC_BASE 1024
 #endif
 
 #ifndef MFD_ALLOW_SEALING
 #define MFD_ALLOW_SEALING       0x0002U
-#endif
-
-#ifndef F_ADD_SEALS
-#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
-#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
-
-#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
-#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
-#define F_SEAL_GROW     0x0004	/* prevent file from growing */
-#define F_SEAL_WRITE    0x0008	/* prevent writes */
 #endif
 
 #endif				/* RTE_ETH_MEMIF_H */
