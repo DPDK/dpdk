@@ -454,7 +454,7 @@ l2fwd_flush_job(__rte_unused struct rte_timer *timer, __rte_unused void *arg)
 	for (i = 0; i < qconf->n_rx_port; i++) {
 		portid = l2fwd_dst_ports[qconf->rx_port_list[i]];
 
-		if (qconf->next_flush_time[portid] <= now)
+		if (qconf->next_flush_time[portid] > now)
 			continue;
 
 		buffer = tx_buffer[portid];
