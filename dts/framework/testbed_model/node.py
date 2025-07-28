@@ -88,6 +88,7 @@ class Node:
         if self._setup:
             return
 
+        self._setup_hugepages()
         self.tmp_dir = self.main_session.create_tmp_dir()
         self._setup = True
 
