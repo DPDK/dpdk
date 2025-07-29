@@ -1522,11 +1522,26 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
-	if (options->test == CPERF_TEST_TYPE_THROUGHPUT &&
+	if ((options->test == CPERF_TEST_TYPE_THROUGHPUT ||
+	    options->test == CPERF_TEST_TYPE_LATENCY) &&
 	    (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT ||
 	     options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) &&
 	    !options->out_of_place) {
-		RTE_LOG(ERR, USER1, "Only out-of-place is allowed in throughput decryption.\n");
+		RTE_LOG(ERR, USER1, "Only out-of-place is allowed in throughput and"
+			    " latency decryption.\n");
+		return -EINVAL;
+	}
+
+	if ((options->test == CPERF_TEST_TYPE_THROUGHPUT ||
+		 options->test == CPERF_TEST_TYPE_LATENCY) &&
+	    (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT ||
+	     options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) &&
+		 options->test_name == NULL &&
+		 options->test_file == NULL) {
+		RTE_LOG(ERR, USER1, "Define path to the file with test"
+				" vectors.\n");
+		RTE_LOG(ERR, USER1, "Define test name to get the correct digest"
+				" from the test vectors.\n");
 		return -EINVAL;
 	}
 
