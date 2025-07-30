@@ -27,7 +27,7 @@
 static void *vmbus_map_addr;
 
 /* Control interrupts */
-void vmbus_uio_irq_control(struct rte_vmbus_device *dev, int32_t onoff)
+void vmbus_uio_irq_control(const struct rte_vmbus_device *dev, int32_t onoff)
 {
 	if ((rte_intr_fd_get(dev->intr_handle) < 0) ||
 	    write(rte_intr_fd_get(dev->intr_handle), &onoff,

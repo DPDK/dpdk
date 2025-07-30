@@ -214,7 +214,8 @@ struct __rte_packed_begin hn_nvs_rndis_ack {
 
 int	hn_nvs_attach(struct hn_data *hv, unsigned int mtu);
 void	hn_nvs_detach(struct hn_data *hv);
-void	hn_nvs_ack_rxbuf(struct vmbus_channel *chan, uint64_t tid);
+void	hn_nvs_ack_rxbuf(struct hn_data *hv,
+			 struct vmbus_channel *chan, uint64_t tid);
 int	hn_nvs_alloc_subchans(struct hn_data *hv, uint32_t *nsubch);
 int	hn_nvs_set_datapath(struct hn_data *hv, uint32_t path);
 void	hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
@@ -224,21 +225,21 @@ void	hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 struct rte_vmbus_device *get_vmbus_device(struct hn_data *hv);
 
 static inline int
-hn_nvs_send(struct vmbus_channel *chan, uint16_t flags,
-	    void *nvs_msg, int nvs_msglen, uintptr_t sndc,
+hn_nvs_send(struct hn_data *hv, struct vmbus_channel *chan,
+	    uint16_t flags, void *nvs_msg, int nvs_msglen, uintptr_t sndc,
 	    bool *need_sig)
 {
-	return rte_vmbus_chan_send(chan, VMBUS_CHANPKT_TYPE_INBAND,
+	return rte_vmbus_chan_send(get_vmbus_device(hv), chan, VMBUS_CHANPKT_TYPE_INBAND,
 				   nvs_msg, nvs_msglen, (uint64_t)sndc,
 				   flags, need_sig);
 }
 
 static inline int
-hn_nvs_send_sglist(struct vmbus_channel *chan,
+hn_nvs_send_sglist(struct hn_data *hv, struct vmbus_channel *chan,
 		   struct vmbus_gpa sg[], unsigned int sglen,
 		   void *nvs_msg, int nvs_msglen,
 		   uintptr_t sndc, bool *need_sig)
 {
-	return rte_vmbus_chan_send_sglist(chan, sg, sglen, nvs_msg, nvs_msglen,
-					  (uint64_t)sndc, need_sig);
+	return rte_vmbus_chan_send_sglist(get_vmbus_device(hv), chan, sg, sglen, nvs_msg,
+					  nvs_msglen, (uint64_t)sndc, need_sig);
 }
