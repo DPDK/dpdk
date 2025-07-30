@@ -8217,8 +8217,18 @@ mlx5_flow_start_default(struct rte_eth_dev *dev)
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->sh->config.dv_flow_en == 2)
-		return mlx5_flow_nta_add_default_copy_action(dev, &error);
+	if (priv->sh->config.dv_flow_en == 2) {
+		/*
+		 * Ignore this failure, if the proxy port is not started, other
+		 * default jump actions are not created and this rule will not
+		 * be hit.
+		 */
+		if (mlx5_flow_nta_add_default_copy_action(dev, &error)) {
+			DRV_LOG(DEBUG, "port %u failed to start default copy action: %s",
+				dev->data->port_id, strerror(rte_errno));
+			return 0;
+		}
+	}
 #endif
 	/* Make sure default copy action (reg_c[0] -> reg_b) is created. */
 	return flow_mreg_add_default_copy_action(dev, &error);
