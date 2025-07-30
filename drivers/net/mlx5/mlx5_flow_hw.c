@@ -3934,10 +3934,14 @@ flow_hw_async_flow_create_generic(struct rte_eth_dev *dev,
 				      flow->table, actions,
 				      rule_acts, queue, &sub_error))
 		goto error;
-	rule_items = flow_hw_get_rule_items(dev, table, items,
-					    pattern_template_index, &priv->hw_q[queue].pp);
-	if (!rule_items)
-		goto error;
+	if (insertion_type == RTE_FLOW_TABLE_INSERTION_TYPE_INDEX) {
+		rule_items = items;
+	} else {
+		rule_items = flow_hw_get_rule_items(dev, table, items,
+						    pattern_template_index, &priv->hw_q[queue].pp);
+		if (!rule_items)
+			goto error;
+	}
 	if (likely(!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))) {
 		ret = mlx5dr_rule_create(table->matcher_info[0].matcher,
 					 pattern_template_index, rule_items,
