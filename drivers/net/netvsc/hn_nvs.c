@@ -62,7 +62,7 @@ struct rte_vmbus_device *get_vmbus_device(struct hn_data *hv)
 static int hn_nvs_req_send(struct hn_data *hv,
 			   void *req, uint32_t reqlen)
 {
-	return rte_vmbus_chan_send(hn_primary_chan(hv),
+	return rte_vmbus_chan_send(get_vmbus_device(hv), hn_primary_chan(hv),
 				   VMBUS_CHANPKT_TYPE_INBAND,
 				   req, reqlen, 0,
 				   VMBUS_CHANPKT_FLAG_NONE, NULL);
@@ -82,8 +82,8 @@ __hn_nvs_execute(struct hn_data *hv,
 	int ret;
 
 	/* Send request to ring buffer */
-	ret = rte_vmbus_chan_send(chan, VMBUS_CHANPKT_TYPE_INBAND,
-				  req, reqlen, 0,
+	ret = rte_vmbus_chan_send(get_vmbus_device(hv), chan,
+				  VMBUS_CHANPKT_TYPE_INBAND, req, reqlen, 0,
 				  VMBUS_CHANPKT_FLAG_RC, NULL);
 
 	if (ret) {
@@ -93,7 +93,7 @@ __hn_nvs_execute(struct hn_data *hv,
 
  retry:
 	len = sizeof(buffer);
-	ret = rte_vmbus_chan_recv(chan, buffer, &len, &xactid);
+	ret = rte_vmbus_chan_recv(get_vmbus_device(hv), chan, buffer, &len, &xactid);
 	if (ret == -EAGAIN) {
 		rte_delay_us(HN_CHAN_INTERVAL_US);
 		goto retry;
@@ -114,7 +114,7 @@ __hn_nvs_execute(struct hn_data *hv,
 	/* Silently drop received packets while waiting for response */
 	switch (hdr->type) {
 	case NVS_TYPE_RNDIS:
-		hn_nvs_ack_rxbuf(chan, xactid);
+		hn_nvs_ack_rxbuf(hv, chan, xactid);
 		/* fallthrough */
 
 	case NVS_TYPE_TXTBL_NOTE:
@@ -518,7 +518,7 @@ hn_nvs_detach(struct hn_data *hv __rte_unused)
  * so that this RXBUF can be recycled by the hypervisor.
  */
 void
-hn_nvs_ack_rxbuf(struct vmbus_channel *chan, uint64_t tid)
+hn_nvs_ack_rxbuf(struct hn_data *hv, struct vmbus_channel *chan, uint64_t tid)
 {
 	unsigned int retries = 0;
 	struct hn_nvs_rndis_ack ack = {
@@ -530,9 +530,9 @@ hn_nvs_ack_rxbuf(struct vmbus_channel *chan, uint64_t tid)
 	PMD_RX_LOG(DEBUG, "ack RX id %" PRIu64, tid);
 
  again:
-	error = rte_vmbus_chan_send(chan, VMBUS_CHANPKT_TYPE_COMP,
-				    &ack, sizeof(ack), tid,
-				    VMBUS_CHANPKT_FLAG_NONE, NULL);
+	error = rte_vmbus_chan_send(get_vmbus_device(hv), chan,
+				    VMBUS_CHANPKT_TYPE_COMP, &ack, sizeof(ack),
+				    tid, VMBUS_CHANPKT_FLAG_NONE, NULL);
 
 	if (error == 0)
 		return;
