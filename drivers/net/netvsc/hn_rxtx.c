@@ -556,9 +556,10 @@ static void hn_rx_buf_free_cb(void *buf __rte_unused, void *opaque)
 {
 	struct hn_rx_bufinfo *rxb = opaque;
 	struct hn_rx_queue *rxq = rxb->rxq;
+	struct hn_data *hv = rxq->hv;
 
 	rte_atomic32_dec(&rxq->rxbuf_outstanding);
-	hn_nvs_ack_rxbuf(rxb->chan, rxb->xactid);
+	hn_nvs_ack_rxbuf(hv, rxb->chan, rxb->xactid);
 }
 
 static struct hn_rx_bufinfo *hn_rx_buf_init(struct hn_rx_queue *rxq,
@@ -869,7 +870,7 @@ hn_nvs_handle_rxbuf(struct rte_eth_dev *dev,
 
 	/* Send ACK now if external mbuf not used */
 	if (rte_mbuf_ext_refcnt_update(&rxb->shinfo, -1) == 0)
-		hn_nvs_ack_rxbuf(rxb->chan, rxb->xactid);
+		hn_nvs_ack_rxbuf(hv, rxb->chan, rxb->xactid);
 }
 
 /*
@@ -1175,7 +1176,7 @@ retry:
 	}
 
 	if (bytes_read > 0)
-		rte_vmbus_chan_signal_read(rxq->chan, bytes_read);
+		rte_vmbus_chan_signal_read(get_vmbus_device(hv), rxq->chan, bytes_read);
 
 	rte_spinlock_unlock(&rxq->ring_lock);
 
@@ -1232,7 +1233,7 @@ static int hn_flush_txagg(struct hn_tx_queue *txq, bool *need_sig)
 	PMD_TX_LOG(DEBUG, "port %u:%u tx %u size %u",
 		   txq->port_id, txq->queue_id, txd->chim_index, txd->chim_size);
 
-	ret = hn_nvs_send(txq->chan, VMBUS_CHANPKT_FLAG_RC,
+	ret = hn_nvs_send(txq->hv, txq->chan, VMBUS_CHANPKT_FLAG_RC,
 			  &rndis, sizeof(rndis), (uintptr_t)txd, need_sig);
 
 	if (likely(ret == 0))
@@ -1511,9 +1512,8 @@ static int hn_xmit_sg(struct hn_tx_queue *txq,
 		   txq->port_id, txq->queue_id, txd->chim_index,
 		   segs, nvs_rndis.chim_sz);
 
-	return hn_nvs_send_sglist(txq->chan, sg, segs,
-				  &nvs_rndis, sizeof(nvs_rndis),
-				  (uintptr_t)txd, need_sig);
+	return hn_nvs_send_sglist(txq->hv, txq->chan, sg, segs, &nvs_rndis,
+				  sizeof(nvs_rndis), (uintptr_t)txd, need_sig);
 }
 
 uint16_t
@@ -1641,7 +1641,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 fail:
 	if (need_sig)
-		rte_vmbus_chan_signal_tx(txq->chan);
+		rte_vmbus_chan_signal_tx(get_vmbus_device(hv), txq->chan);
 
 	return nb_tx;
 }
