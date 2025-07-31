@@ -1751,10 +1751,16 @@ flow_rxq_mark_flag_set(struct rte_eth_dev *dev)
 			LIST_FOREACH(rxq_ctrl, &opriv->rxqsctrl, next) {
 				rxq_ctrl->rxq.mark = 1;
 			}
+			LIST_FOREACH(rxq_ctrl, &opriv->sh->shared_rxqs, next) {
+				rxq_ctrl->rxq.mark = 1;
+			}
 			opriv->mark_enabled = 1;
 		}
 	} else {
 		LIST_FOREACH(rxq_ctrl, &priv->rxqsctrl, next) {
+			rxq_ctrl->rxq.mark = 1;
+		}
+		LIST_FOREACH(rxq_ctrl, &priv->sh->shared_rxqs, next) {
 			rxq_ctrl->rxq.mark = 1;
 		}
 		priv->mark_enabled = 1;
