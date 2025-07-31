@@ -1797,12 +1797,7 @@ txgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev __rte_unused,
 		rule->input.flow_type = TXGBE_ATR_FLOW_TYPE_IPV6;
 		rule->mask.pkt_type_mask &= ~TXGBE_ATR_TYPE_MASK_L3P;
 
-		/**
-		 * 1. must signature match
-		 * 2. not support last
-		 */
-		if (rule->mode != RTE_FDIR_MODE_SIGNATURE ||
-		    item->last) {
+		if (item->last) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
