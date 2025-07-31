@@ -4580,7 +4580,7 @@ main(int argc, char** argv)
 			"Could not initialise cmdline context.\n");
 
 	if (strlen(cmdline_filename) != 0)
-		cmdline_read_from_file(cmdline_filename);
+		cmdline_read_from_file(cmdline_filename, echo_cmdline_file);
 
 	if (interactive == 1) {
 		if (auto_start) {
