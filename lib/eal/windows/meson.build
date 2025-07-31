@@ -19,6 +19,7 @@ sources += files(
         'eal_timer.c',
         'getline.c',
         'getopt.c',
+        'rte_basename.c',
         'rte_thread.c',
 )
 

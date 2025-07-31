@@ -149,6 +149,38 @@ rte_str_skip_leading_spaces(const char *src)
 	return p;
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Provides the final component of a path, similar to POSIX basename function.
+ *
+ * This API provides the similar behaviour on all platforms, Linux, BSD, Windows,
+ * hiding the implementation differences.
+ * - It does not modify the input path.
+ * - The output buffer is passed as an argument, and the result is copied into it.
+ * - Expected output is the last component of the path, or the path itself if
+ *   it does not contain a directory separator.
+ * - If the final component is too long to fit in the output buffer, it will be truncated.
+ * - For empty or NULL input paths, output buffer will contain the string ".".
+ * - Supports up to PATH_MAX (BSD/Linux) or _MAX_PATH (Windows) characters in the input path.
+ *
+ * @param path
+ *   The input path string. Not modified by this function.
+ * @param buf
+ *   The buffer to hold the resultant basename.
+ *   Must be large enough to hold the result, otherwise basename will be truncated.
+ * @param buflen
+ *   The size of the buffer in bytes.
+ * @return
+ *   The number of bytes that were written to buf (excluding the terminating '\0').
+ *   If the return value is >= buflen, truncation occurred.
+ *   Return (size_t)-1 on error (Windows only)
+ */
+__rte_experimental
+size_t
+rte_basename(const char *path, char *buf, size_t buflen);
+
 #ifdef __cplusplus
 }
 #endif

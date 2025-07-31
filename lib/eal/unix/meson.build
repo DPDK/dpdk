@@ -9,6 +9,7 @@ sources += files(
         'eal_unix_memory.c',
         'eal_unix_thread.c',
         'eal_unix_timer.c',
+        'rte_basename.c',
         'rte_thread.c',
 )
 
