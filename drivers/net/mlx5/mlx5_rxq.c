@@ -1978,8 +1978,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->share_group = conf->share_group;
 		tmpl->share_qid = conf->share_qid;
 		LIST_INSERT_HEAD(&priv->sh->shared_rxqs, tmpl, share_entry);
+	} else {
+		LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	}
-	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	rte_atomic_store_explicit(&tmpl->ctrl_ref, 1, rte_memory_order_relaxed);
 	return tmpl;
 error:
@@ -2310,7 +2311,8 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 					(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 			if (rxq_ctrl->rxq.shared)
 				LIST_REMOVE(rxq_ctrl, share_entry);
-			LIST_REMOVE(rxq_ctrl, next);
+			else
+				LIST_REMOVE(rxq_ctrl, next);
 			mlx5_free(rxq_ctrl->rxq.rq_win_data);
 			mlx5_free(rxq_ctrl);
 		}
