@@ -41,8 +41,9 @@ The command line options are:
 
 *   ``--cmdline-file=filename, --cmdline-file-noecho=filename``
 
-    Read and execute commands from a file.
+    At startup, read and execute commands from a file.
     The file should contain the same commands that can be entered interactively.
+    This option can be specified multiple times to process several files in sequence.
     When using ``cmdline-file``, each command is printed as it is executed.
     When using ``cmdline-file-noecho``, the commands are executed silently.
 
