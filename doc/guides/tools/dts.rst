@@ -491,11 +491,6 @@ Building DTS API docs
 The documentation is built using the standard DPDK build system.
 See :doc:`../linux_gsg/build_dpdk` for more details on compiling DPDK with meson.
 
-.. code-block:: console
-
-   poetry install --only docs
-   poetry install --with docs  # an alternative that will also install DTS dependencies
-
 After executing the meson command, build the documentation with:
 
 .. code-block:: console
