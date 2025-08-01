@@ -65,13 +65,6 @@ if environ.get('DTS_DOC_BUILD'):
         graphviz_output_format = "svg"
         tags.add("graphviz")
 
-    # Pydantic models require autodoc_pydantic for the right formatting. Add if installed.
-    try:
-        import sphinxcontrib.autodoc_pydantic
-        extensions.append("sphinxcontrib.autodoc_pydantic")
-    except ImportError:
-        pass
-
     # Napoleon enables the Google format of Python doscstrings.
     napoleon_numpy_docstring = False
     napoleon_attr_annotations = True
