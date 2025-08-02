@@ -750,7 +750,7 @@ efx_np_stat_describe(
 	return;
 
 found:
-	if (sw_id >= lut_nentries) {
+	if ((unsigned int)sw_id >= lut_nentries) {
 		/*
 		 * Static mapping size and the size of lookup
 		 * table are out-of-sync. Should never happen.
@@ -1383,7 +1383,7 @@ efx_np_link_ctrl(
 	}
 
 	EFSYS_ASSERT(cap_enum_hw <= UINT8_MAX);
-	fec = cap_enum_hw;
+	fec = (uint8_t)cap_enum_hw;
 
 	MCDI_IN_SET_WORD(req, LINK_CTRL_IN_LINK_TECHNOLOGY, link_tech);
 	MCDI_IN_SET_DWORD(req, LINK_CTRL_IN_CONTROL_FLAGS, flags);
