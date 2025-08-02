@@ -782,7 +782,6 @@ efx_np_stats_describe(
 	EFX_MCDI_DECLARE_BUF(payload,
 	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_IN_LEN,
 	    MC_CMD_MAC_STATISTICS_DESCRIPTOR_OUT_LENMAX_MCDI2);
-	efx_port_t *epp = &(enp->en_port);
 	uint32_t nprocessed;
 	efx_mcdi_req_t req;
 	uint8_t *entries;
@@ -1186,7 +1185,6 @@ efx_np_cap_sw_mask_to_hw_enum(
 	__out_opt			uint16_t *enum_hwp)
 {
 	unsigned int sw_nflags_req = 0;
-	unsigned int sw_nflags_sup = 0;
 	uint32_t sw_check_mask = 0;
 	unsigned int i;
 
@@ -1289,7 +1287,6 @@ efx_np_link_ctrl(
 	uint16_t cap_enum_hw;
 	boolean_t supported;
 	efx_mcdi_req_t req;
-	boolean_t phy_an;
 	efx_rc_t rc;
 	uint8_t fec;
 
