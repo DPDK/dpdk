@@ -1531,6 +1531,18 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		goto rollback;
 	}
 
+	/* MBUF_FAST_FREE preconditions conflict with MULTI_SEGS support. */
+	if ((dev_conf->txmode.offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
+	    (dev_conf->txmode.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)) {
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"id=%d offload clash, %s vs %s",
+			port_id,
+			rte_eth_dev_tx_offload_name(RTE_ETH_TX_OFFLOAD_MULTI_SEGS),
+			rte_eth_dev_tx_offload_name(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE));
+		ret = -EINVAL;
+		goto rollback;
+	}
+
 	dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
 		rte_eth_rss_hf_refine(dev_conf->rx_adv_conf.rss_conf.rss_hf);
 
@@ -2708,6 +2720,31 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 			__func__);
 		return -EINVAL;
 	}
+
+	/*
+	 * If the driver uses a Tx function with MBUF_FAST_FREE preconditions,
+	 * per-queue MULTI_SEGS support is not possible.
+	 */
+	if ((dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) &&
+			(local_conf.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)) {
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"id=%d txq=%d offload clash, per-queue %s vs per-port %s",
+			port_id, tx_queue_id,
+			rte_eth_dev_tx_offload_name(RTE_ETH_TX_OFFLOAD_MULTI_SEGS),
+			rte_eth_dev_tx_offload_name(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE));
+		return -EINVAL;
+	}
+	/*
+	 * If the driver uses a Tx function with MULTI_SEGS support,
+	 * runtime support for per-queue MBUF_FAST_FREE optimization depends on the driver.
+	 */
+	if ((dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) &&
+			(local_conf.offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE))
+		RTE_ETHDEV_LOG_LINE(DEBUG,
+			"id=%d txq=%d potential offload clash, per-queue %s vs per-port %s: PMD to decide",
+			port_id, tx_queue_id,
+			rte_eth_dev_tx_offload_name(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE),
+			rte_eth_dev_tx_offload_name(RTE_ETH_TX_OFFLOAD_MULTI_SEGS));
 
 	rte_ethdev_trace_txq_setup(port_id, tx_queue_id, nb_tx_desc, tx_conf);
 	return eth_err(port_id, dev->dev_ops->tx_queue_setup(dev,
