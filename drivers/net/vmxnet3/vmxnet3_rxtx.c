@@ -1055,7 +1055,7 @@ rcd_done:
 	return nb_rx;
 }
 
-uint32_t
+int
 vmxnet3_dev_rx_queue_count(void *rx_queue)
 {
 	const vmxnet3_rx_queue_t *rxq;

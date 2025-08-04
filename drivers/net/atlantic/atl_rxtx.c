@@ -688,7 +688,7 @@ atl_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 /* Return Rx queue avail count */
 
-uint32_t
+int
 atl_rx_queue_count(void *rx_queue)
 {
 	struct atl_rx_queue *rxq;

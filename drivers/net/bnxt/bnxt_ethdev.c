@@ -3407,7 +3407,7 @@ bnxt_dev_led_off_op(struct rte_eth_dev *dev)
 	return bnxt_hwrm_port_led_cfg(bp, false);
 }
 
-static uint32_t
+static int
 bnxt_rx_queue_count_op(void *rx_queue)
 {
 	struct bnxt *bp;

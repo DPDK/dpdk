@@ -6404,7 +6404,7 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 
 	if (p->rx_queue_count == NULL)
 		return -ENOTSUP;
-	return (int)p->rx_queue_count(qd);
+	return p->rx_queue_count(qd);
 }
 
 /**@{@name Rx hardware descriptor states

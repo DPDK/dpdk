@@ -17,7 +17,7 @@ int eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			       unsigned int socket_id,
 			       const struct rte_eth_rxconf *rx_conf,
 			       struct rte_mempool *mp);
-uint32_t eth_ark_dev_rx_queue_count(void *rx_queue);
+int eth_ark_dev_rx_queue_count(void *rx_queue);
 int eth_ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id);
 int eth_ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id);
 uint16_t eth_ark_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,

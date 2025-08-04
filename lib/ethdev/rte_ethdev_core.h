@@ -45,7 +45,7 @@ typedef uint16_t (*eth_tx_prep_t)(void *txq,
 
 
 /** @internal Get number of used descriptors on a receive queue. */
-typedef uint32_t (*eth_rx_queue_count_t)(void *rxq);
+typedef int (*eth_rx_queue_count_t)(void *rxq);
 
 /** @internal Check the status of a Rx descriptor */
 typedef int (*eth_rx_descriptor_status_t)(void *rxq, uint16_t offset);

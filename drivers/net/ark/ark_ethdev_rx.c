@@ -396,7 +396,7 @@ eth_ark_rx_queue_drain(struct ark_rx_queue *queue)
 	}
 }
 
-uint32_t
+int
 eth_ark_dev_rx_queue_count(void *rx_queue)
 {
 	struct ark_rx_queue *queue;
