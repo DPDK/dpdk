@@ -1505,7 +1505,7 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t ethdev_qid,
  * The function is used by the secondary process as well. It must not
  * use any process-local pointers from the adapter data.
  */
-static uint32_t
+static int
 sfc_rx_queue_count(void *rx_queue)
 {
 	struct sfc_dp_rxq *dp_rxq = rx_queue;

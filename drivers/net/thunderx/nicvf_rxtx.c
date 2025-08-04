@@ -649,7 +649,7 @@ nicvf_recv_pkts_multiseg_cksum_vlan_strip(void *rx_queue,
 			NICVF_RX_OFFLOAD_CKSUM | NICVF_RX_OFFLOAD_VLAN_STRIP);
 }
 
-uint32_t
+int
 nicvf_dev_rx_queue_count(void *rx_queue)
 {
 	struct nicvf_rxq *rxq;

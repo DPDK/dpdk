@@ -2255,7 +2255,7 @@ i40e_rx_queue_release(void *rxq)
 	rte_free(q);
 }
 
-uint32_t
+int
 i40e_dev_rx_queue_count(void *rx_queue)
 {
 #define I40E_RXQ_SCAN_INTERVAL 4

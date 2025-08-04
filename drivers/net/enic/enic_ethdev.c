@@ -258,7 +258,7 @@ static void enicpmd_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	enic_free_rq(rxq);
 }
 
-static uint32_t enicpmd_dev_rx_queue_count(void *rx_queue)
+static int enicpmd_dev_rx_queue_count(void *rx_queue)
 {
 	struct enic *enic;
 	struct vnic_rq *sop_rq;
