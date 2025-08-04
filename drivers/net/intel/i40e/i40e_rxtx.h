@@ -126,7 +126,7 @@ int i40e_tx_done_cleanup(void *txq, uint32_t free_cnt);
 int i40e_alloc_rx_queue_mbufs(struct ci_rx_queue *rxq);
 void i40e_rx_queue_release_mbufs(struct ci_rx_queue *rxq);
 
-uint32_t i40e_dev_rx_queue_count(void *rx_queue);
+int i40e_dev_rx_queue_count(void *rx_queue);
 int i40e_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int i40e_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
 

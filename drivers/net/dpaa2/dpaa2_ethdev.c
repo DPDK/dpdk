@@ -1047,7 +1047,7 @@ dpaa2_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 }
 
-static uint32_t
+static int
 dpaa2_dev_rx_queue_count(void *rx_queue)
 {
 	int32_t ret;

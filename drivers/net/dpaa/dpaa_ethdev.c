@@ -1454,7 +1454,7 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	return 0;
 }
 
-static uint32_t
+static int
 dpaa_dev_rx_queue_count(void *rx_queue)
 {
 	struct qman_fq *rxq = rx_queue;
