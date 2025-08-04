@@ -1875,6 +1875,77 @@ rte_eth_pkt_burst_dummy(void *queue __rte_unused,
 		uint16_t nb_pkts __rte_unused);
 
 /**
+ * @internal
+ * Dummy DPDK callback for Tx packet prepare.
+ *
+ * @param queue
+ *  Pointer to Tx queue
+ * @param pkts
+ *  Packet array
+ * @param nb_pkts
+ *  Number of packets in packet array
+ */
+__rte_internal
+uint16_t
+rte_eth_tx_pkt_prepare_dummy(void *queue __rte_unused,
+		struct rte_mbuf **pkts __rte_unused,
+		uint16_t nb_pkts __rte_unused);
+
+/**
+ * @internal
+ * Dummy DPDK callback for queue count.
+ *
+ * @param queue
+ *  Pointer to Rx/Tx queue
+ */
+__rte_internal
+int
+rte_eth_queue_count_dummy(void *queue __rte_unused);
+
+/**
+ * @internal
+ * Dummy DPDK callback for descriptor status.
+ *
+ * @param queue
+ *  Pointer to Rx/Tx queue
+ * @param offset
+ *  The offset of the descriptor starting from tail (0 is the next
+ *  packet to be received by the driver).
+ */
+__rte_internal
+int
+rte_eth_descriptor_status_dummy(void *queue __rte_unused,
+		uint16_t offset __rte_unused);
+
+/**
+ * @internal
+ * Dummy DPDK callback for recycle Tx mbufs reuse.
+ *
+ * @param queue
+ *  Pointer to Tx queue
+ * @param recycle_rxq_info
+ *  Pointer to recycle Rx queue info
+ */
+__rte_internal
+uint16_t
+rte_eth_recycle_tx_mbufs_reuse_dummy(void *queue __rte_unused,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info __rte_unused);
+
+/**
+ * @internal
+ * Dummy DPDK callback Rx descriptor refill.
+ *
+ * @param queue
+ *  Pointer Rx queue
+ * @param offset
+ *  number of descriptors to refill
+ */
+__rte_internal
+void
+rte_eth_recycle_rx_descriptors_refill_dummy(void *queue __rte_unused,
+		uint16_t nb __rte_unused);
+
+/**
  * Allocate an unique switch domain identifier.
  *
  * A pool of switch domain identifiers which can be allocated on request. This
