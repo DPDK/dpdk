@@ -408,7 +408,9 @@ gve_tx_queue_start_dqo(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	txq->qtx_head =
 		&hw->cnt_array[rte_be_to_cpu_32(txq->qres->counter_index)];
 
-	rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), txq->ntfy_addr);
+	rte_write32(rte_cpu_to_le_32(GVE_NO_INT_MODE_DQO |
+				     GVE_ITR_NO_UPDATE_DQO),
+		    txq->ntfy_addr);
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 

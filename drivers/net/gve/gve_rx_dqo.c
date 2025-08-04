@@ -355,7 +355,9 @@ gve_rx_queue_start_dqo(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	rxq->qrx_tail = &hw->db_bar2[rte_be_to_cpu_32(rxq->qres->db_index)];
 
-	rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), rxq->ntfy_addr);
+	rte_write32(rte_cpu_to_le_32(GVE_NO_INT_MODE_DQO |
+				     GVE_ITR_NO_UPDATE_DQO),
+		    rxq->ntfy_addr);
 
 	ret = gve_rxq_mbufs_alloc_dqo(rxq);
 	if (ret != 0) {
