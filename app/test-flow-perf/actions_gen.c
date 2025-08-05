@@ -15,6 +15,7 @@
 #include <rte_gtp.h>
 #include <rte_gre.h>
 #include <rte_geneve.h>
+#include <rte_os_shim.h>
 
 #include "actions_gen.h"
 #include "flow_gen.h"
@@ -921,9 +922,18 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 {
 	struct additional_para additional_para_data;
 	uint8_t actions_counter = 0;
-	uint16_t hairpin_queues[hairpinq];
-	uint16_t queues[rx_queues_count];
+	uint16_t *hairpin_queues;
+	uint16_t *queues;
 	uint16_t i, j;
+
+	hairpin_queues = calloc(hairpinq, sizeof(uint16_t));
+	if (hairpin_queues == NULL)
+		rte_exit(EXIT_FAILURE, "No Memory available!");
+	queues = calloc(rx_queues_count, sizeof(uint16_t));
+	if (queues == NULL) {
+		free(hairpin_queues);
+		rte_exit(EXIT_FAILURE, "No Memory available!");
+	}
 
 	for (i = 0; i < rx_queues_count; i++)
 		queues[i] = i;
@@ -1151,4 +1161,7 @@ fill_actions(struct rte_flow_action *actions, uint64_t *flow_actions,
 		}
 	}
 	actions[actions_counter].type = RTE_FLOW_ACTION_TYPE_END;
+
+	free(queues);
+	free(hairpin_queues);
 }
