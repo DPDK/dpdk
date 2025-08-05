@@ -460,7 +460,7 @@ static __rte_noinline void
 mlx5_crypto_cqe_err_handle(struct mlx5_crypto_qp *qp, struct rte_crypto_op *op)
 {
 	const uint32_t idx = qp->ci & (qp->entries_n - 1);
-	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
+	volatile struct mlx5_error_cqe *cqe = (volatile struct mlx5_error_cqe *)
 							&qp->cq_obj.cqes[idx];
 
 	op->status = RTE_CRYPTO_OP_STATUS_ERROR;
