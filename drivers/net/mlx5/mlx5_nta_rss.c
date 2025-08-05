@@ -319,6 +319,9 @@ mlx5_hw_rss_ptype_create_base_flow(struct rte_eth_dev *dev,
 	struct rte_flow_hw *flow = NULL;
 	struct rte_flow_action actions[MLX5_HW_MAX_ACTS];
 	enum mlx5_indirect_type indirect_type;
+	const struct rte_flow_action_jump jump_conf = {
+		.group = ptype_group
+	};
 
 	do {
 		switch (orig_actions[i].type) {
@@ -333,9 +336,7 @@ mlx5_hw_rss_ptype_create_base_flow(struct rte_eth_dev *dev,
 			/* Fall through */
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			actions[i].type = RTE_FLOW_ACTION_TYPE_JUMP;
-			actions[i].conf = &(const struct rte_flow_action_jump) {
-				.group = ptype_group
-			};
+			actions[i].conf = &jump_conf;
 			break;
 		default:
 			actions[i] = orig_actions[i];
