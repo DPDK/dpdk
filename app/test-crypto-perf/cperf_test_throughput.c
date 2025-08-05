@@ -374,7 +374,7 @@ cperf_throughput_test_runner(void *test_ctx)
 					"Cycles/Buf");
 
 			printf("%12u%12u%12u%12"PRIu64"%12"PRIu64"%12"PRIu64
-					"%12"PRIu64"%12.4f%12.4f%12.2f\n",
+					"%12"PRIu64"%12.6f%12.6f%12.2f\n",
 					ctx->lcore_id,
 					ctx->options->test_buffer_size,
 					test_burst_size,
@@ -394,7 +394,7 @@ cperf_throughput_test_runner(void *test_ctx)
 					"Cycles/Buf\n\n");
 
 			printf("%u,%u,%u,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64","
-					"%.3f,%.3f,%.3f\n",
+					"%.6f,%.6f,%.3f\n",
 					ctx->lcore_id,
 					ctx->options->test_buffer_size,
 					test_burst_size,
