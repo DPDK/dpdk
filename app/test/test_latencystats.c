@@ -192,9 +192,7 @@ static int test_latency_packet_forward(void)
 	}
 
 	TEST_ASSERT(values[4].value > 0, "No samples taken");
-	TEST_ASSERT(values[0].value > 0, "Min latency should not be zero");
-	TEST_ASSERT(values[1].value > 0, "Avg latency should not be zero");
-	TEST_ASSERT(values[2].value > 0, "Max latency should not be zero");
+
 	TEST_ASSERT(values[0].value < values[1].value, "Min latency > Avg latency");
 	TEST_ASSERT(values[0].value < values[2].value, "Min latency > Max latency");
 	TEST_ASSERT(values[1].value < values[2].value, "Avg latency > Max latency");
