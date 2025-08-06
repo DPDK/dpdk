@@ -260,16 +260,13 @@ static int search_devargs(const char *name)
 static int
 is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 {
-	char *runtime_dir = strdup(rte_eal_get_runtime_dir());
+	char prefix[256];
 	int retval = 0;
-	int prefixlen;
-	char *prefix;
+	size_t prefixlen;
 
-	if (runtime_dir == NULL)
+	prefixlen = rte_basename(rte_eal_get_runtime_dir(), prefix, sizeof(prefix));
+	if (prefixlen >= sizeof(prefix) || strcmp(prefix, ".") == 0)
 		return retval;
-
-	prefix = basename(runtime_dir);
-	prefixlen = strlen(prefix);
 
 	if (strncmp(name, "dpdk_", 5) == 0)
 		retval = 1;
@@ -283,7 +280,6 @@ is_for_this_process_use(struct rte_dsa_device *dev, const char *name)
 			retval = !search_devargs(dev->device.name);
 	}
 
-	free(runtime_dir);
 	return retval;
 }
 
