@@ -422,7 +422,7 @@ qat_sym_build_op_aead_gen3(void *in_op, struct qat_sym_session *ctx,
 	}
 
 	total_len = qat_sym_build_req_set_data(req, in_op, cookie,
-			in_sgl.vec, in_sgl.num, out_sgl.vec, out_sgl.num);
+			in_sgl.vec, in_sgl.num, out_sgl.vec, out_sgl.num, &ofs, op);
 	if (unlikely(total_len < 0)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
@@ -466,7 +466,7 @@ qat_sym_build_op_auth_gen3(void *in_op, struct qat_sym_session *ctx,
 	}
 
 	total_len = qat_sym_build_req_set_data(req, in_op, cookie,
-			in_sgl.vec, in_sgl.num, out_sgl.vec, out_sgl.num);
+			in_sgl.vec, in_sgl.num, out_sgl.vec, out_sgl.num, &ofs, op);
 	if (unlikely(total_len < 0)) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
@@ -564,7 +564,7 @@ qat_sym_dp_enqueue_single_aead_gen3(void *qp_data, uint8_t *drv_ctx,
 	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
 	data_len = qat_sym_build_req_set_data(req, user_data, cookie,
-			data, n_data_vecs, NULL, 0);
+			data, n_data_vecs, NULL, 0, NULL, NULL);
 	if (unlikely(data_len < 0))
 		return -1;
 
@@ -623,7 +623,7 @@ qat_sym_dp_enqueue_aead_jobs_gen3(void *qp_data, uint8_t *drv_ctx,
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
 				vec->src_sgl[i].vec,
-				vec->src_sgl[i].num, NULL, 0);
+				vec->src_sgl[i].num, NULL, 0, NULL, NULL);
 		}
 
 		if (unlikely(data_len < 0) || error)
@@ -677,7 +677,7 @@ qat_sym_dp_enqueue_single_auth_gen3(void *qp_data, uint8_t *drv_ctx,
 	rte_mov128((uint8_t *)req, (const uint8_t *)&(ctx->fw_req));
 	rte_prefetch0((uint8_t *)tx_queue->base_addr + tail);
 	data_len = qat_sym_build_req_set_data(req, user_data, cookie,
-			data, n_data_vecs, NULL, 0);
+			data, n_data_vecs, NULL, 0, NULL, NULL);
 	if (unlikely(data_len < 0))
 		return -1;
 
@@ -732,12 +732,12 @@ qat_sym_dp_enqueue_auth_jobs_gen3(void *qp_data, uint8_t *drv_ctx,
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
 				vec->src_sgl[i].vec, vec->src_sgl[i].num,
-				vec->dest_sgl[i].vec, vec->dest_sgl[i].num);
+				vec->dest_sgl[i].vec, vec->dest_sgl[i].num, NULL, NULL);
 		} else {
 			data_len = qat_sym_build_req_set_data(req,
 				user_data[i], cookie,
 				vec->src_sgl[i].vec,
-				vec->src_sgl[i].num, NULL, 0);
+				vec->src_sgl[i].num, NULL, 0, NULL, NULL);
 		}
 
 		if (unlikely(data_len < 0))
