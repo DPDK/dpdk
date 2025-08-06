@@ -558,13 +558,13 @@ main(int argc, char *argv[])
 		return -1;
 	}
 	if (rst_path_ptr == NULL) {
-		strlcpy(rst_path, cfg_path_ptr, PATH_MAX);
-		char *token = strtok(basename(rst_path), ".");
+		rte_basename(cfg_path_ptr, rst_path, sizeof(rst_path));
+		char *token = strtok(rst_path, ".");
 		if (token == NULL) {
 			printf("Config file error.\n");
 			return -1;
 		}
-		strcat(token, "_result.csv");
+		strlcat(token, "_result.csv", sizeof(rst_path));
 		rst_path_ptr = rst_path;
 	}
 
