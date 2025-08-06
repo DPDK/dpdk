@@ -625,10 +625,7 @@ rte_mp_channel_init(void)
 
 	/* create filter path */
 	create_socket_path("*", path, sizeof(path));
-	strlcpy(mp_filter, basename(path), sizeof(mp_filter));
-
-	/* path may have been modified, so recreate it */
-	create_socket_path("*", path, sizeof(path));
+	rte_basename(path, mp_filter, sizeof(mp_filter));
 	strlcpy(mp_dir_path, dirname(path), sizeof(mp_dir_path));
 
 	/* lock the directory */
