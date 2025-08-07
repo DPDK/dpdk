@@ -1381,8 +1381,6 @@ Limitations
    - ``-EAGAIN`` for ``rte_eth_dev_start()``.
    - ``-EBUSY`` for ``rte_eth_dev_stop()``.
 
-#. Partial match with item template is not supported.
-
 #. The supported actions order is as below::
 
       MARK (a)
@@ -3324,7 +3322,13 @@ See :ref:`mlx5_firmware_config` for more details about the flex parser profile.
 Limitations
 ^^^^^^^^^^^
 
-#. IPv6 5-tuple matching is not supported with :ref:`HW steering <mlx5_hws>`.
+#. IPv6 5-tuple matching is supported with :ref:`HW steering <mlx5_hws>`
+   from ConnectX-8/BlueField-3.
+   Previous devices support matching on either IPv6 `src` or `dst` in a rule.
+   In general, the matching limitation is related to the number of dwords:
+   older hardware supports up to 5 dwords for matching,
+   while newer hardware (ConnectX-8/BlueField-3 and up)
+   supports up to 11 dwords for matching.
 
 #. IPv6 multicast messages are not supported on VM,
    while promiscuous mode and allmulticast mode are both set to off.
