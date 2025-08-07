@@ -36,7 +36,7 @@ from framework.testbed_model.capability import NicCapability, TopologyType, requ
 class TestChecksumOffload(TestSuite):
     """Checksum offload test suite.
 
-    This suite consists of 6 test cases:
+    This suite consists of 7 test cases:
     1. Insert checksum on transmit packet
     2. Do not insert checksum on transmit packet
     3. Hardware checksum check L4 Rx
