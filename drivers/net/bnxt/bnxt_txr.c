@@ -24,6 +24,9 @@ void bnxt_free_tx_rings(struct bnxt *bp)
 {
 	int i;
 
+	if (!bp->tx_queues || !bp->eth_dev->data->tx_queues)
+		return;
+
 	for (i = 0; i < (int)bp->tx_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 

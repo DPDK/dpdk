@@ -547,15 +547,20 @@ void bnxt_free_stats(struct bnxt *bp)
 {
 	int i;
 
-	for (i = 0; i < (int)bp->tx_cp_nr_rings; i++) {
-		struct bnxt_tx_queue *txq = bp->tx_queues[i];
+	if (bp->tx_queues && bp->eth_dev->data->tx_queues) {
+		for (i = 0; i < (int)bp->tx_cp_nr_rings; i++) {
+			struct bnxt_tx_queue *txq = bp->tx_queues[i];
 
-		bnxt_free_txq_stats(txq);
+			bnxt_free_txq_stats(txq);
+		}
 	}
-	for (i = 0; i < (int)bp->rx_cp_nr_rings; i++) {
-		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 
-		bnxt_free_rxq_stats(rxq);
+	if (bp->rx_queues && bp->eth_dev->data->rx_queues) {
+		for (i = 0; i < (int)bp->rx_cp_nr_rings; i++) {
+			struct bnxt_rx_queue *rxq = bp->rx_queues[i];
+
+			bnxt_free_rxq_stats(rxq);
+		}
 	}
 }
 
