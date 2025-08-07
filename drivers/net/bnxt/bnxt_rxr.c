@@ -1491,7 +1491,7 @@ void bnxt_free_rx_rings(struct bnxt *bp)
 	int i;
 	struct bnxt_rx_queue *rxq;
 
-	if (!bp->rx_queues)
+	if (!bp->rx_queues || !bp->eth_dev->data->rx_queues)
 		return;
 
 	for (i = 0; i < (int)bp->rx_nr_rings; i++) {
