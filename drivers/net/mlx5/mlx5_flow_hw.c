@@ -13833,11 +13833,6 @@ error:
 		mlx5_free(hw_act.push_remove);
 	if (hw_act.mhdr)
 		mlx5_free(hw_act.mhdr);
-	if (ret) {
-		/* release after actual error */
-		if ((*flow)->nt2hws && (*flow)->nt2hws->matcher)
-			flow_hw_unregister_matcher(dev, (*flow)->nt2hws->matcher);
-	}
 	return ret;
 }
 #endif
@@ -13855,6 +13850,7 @@ flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
 		ret = mlx5dr_bwc_rule_destroy(flow->nt2hws->nt_rule);
 		if (ret)
 			DRV_LOG(ERR, "bwc rule destroy failed");
+		flow->nt2hws->nt_rule = NULL;
 	}
 	flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_DESTROY;
 	/* Notice this function does not handle shared/static actions. */
@@ -13869,18 +13865,24 @@ flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
 	  * Notice matcher destroy will take place when matcher's list is destroyed
 	  * , same as for DV.
 	  */
-	if (flow->nt2hws->flow_aux)
+	if (flow->nt2hws->flow_aux) {
 		mlx5_free(flow->nt2hws->flow_aux);
-
-	if (flow->nt2hws->rix_encap_decap)
+		flow->nt2hws->flow_aux = NULL;
+	}
+	if (flow->nt2hws->rix_encap_decap) {
 		flow_encap_decap_resource_release(dev, flow->nt2hws->rix_encap_decap);
+		flow->nt2hws->rix_encap_decap = 0;
+	}
 	if (flow->nt2hws->modify_hdr) {
 		MLX5_ASSERT(flow->nt2hws->modify_hdr->action);
 		mlx5_hlist_unregister(priv->sh->modify_cmds,
 				      &flow->nt2hws->modify_hdr->entry);
+		flow->nt2hws->modify_hdr = NULL;
 	}
-	if (flow->nt2hws->matcher)
+	if (flow->nt2hws->matcher) {
 		flow_hw_unregister_matcher(dev, flow->nt2hws->matcher);
+		flow->nt2hws->matcher = NULL;
+	}
 }
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
