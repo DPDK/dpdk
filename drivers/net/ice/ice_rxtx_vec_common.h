@@ -268,7 +268,8 @@ ice_rxq_vec_setup_default(struct ice_rx_queue *rxq)
 #define ICE_RX_VECTOR_OFFLOAD (				\
 		RTE_ETH_RX_OFFLOAD_CHECKSUM |		\
 		RTE_ETH_RX_OFFLOAD_SCTP_CKSUM |		\
-		RTE_ETH_RX_OFFLOAD_VLAN |			\
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |		\
+		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |	\
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
 #define ICE_VECTOR_PATH		0
