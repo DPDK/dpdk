@@ -1666,6 +1666,10 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			DRV_LOG(ERR, "RTE_FLOW_ACTION_TYPE_PORT_ID action is not supported. "
+				"Use RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT instead.");
+			goto err;
 		default:
 			break;
 		}
@@ -4274,6 +4278,10 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 			at->actions_off[i] = curr_off;
 			action_types[curr_off++] = MLX5DR_ACTION_TYP_MISS;
 			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			DRV_LOG(ERR, "RTE_FLOW_ACTION_TYPE_PORT_ID action is not supported. "
+				"Use RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT instead.\n");
+			return NULL;
 		default:
 			type = mlx5_hw_dr_action_types[at->actions[i].type];
 			at->actions_off[i] = curr_off;
