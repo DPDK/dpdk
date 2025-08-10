@@ -170,10 +170,13 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 			break;
 		case HWS_AGE_FREE:
 			/*
-			 * AGE parameter with state "FREE" couldn't be pointed
-			 * by any counter since counter is destroyed first.
-			 * Fall-through.
+			 * Since this check is async, we may reach a race condition
+			 * where the age and counter are used in the same rule,
+			 * using the same counter index,
+			 * age was freed first, and counter was not freed yet.
+			 * Aging check can be safely ignored in that case.
 			 */
+			continue;
 		default:
 			MLX5_ASSERT(0);
 			continue;
