@@ -1349,6 +1349,7 @@ efx_np_link_ctrl(
 			    NULL, NULL, cap_mask_hw_pausep);
 		}
 
+		flags |= 1U << MC_CMD_LINK_FLAGS_PARALLEL_DETECT_EN;
 		flags |= 1U << MC_CMD_LINK_FLAGS_AUTONEG_EN;
 		link_tech = MC_CMD_ETH_TECH_AUTO;
 	} else {
