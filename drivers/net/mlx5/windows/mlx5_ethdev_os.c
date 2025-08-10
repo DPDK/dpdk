@@ -56,7 +56,7 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
+mlx5_get_ifname(const struct rte_eth_dev *dev, char ifname[MLX5_NAMESIZE])
 {
 	struct mlx5_priv *priv;
 	mlx5_context_st *context_obj;
@@ -67,7 +67,7 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 	}
 	priv = dev->data->dev_private;
 	context_obj = (mlx5_context_st *)priv->sh->cdev->ctx;
-	strncpy(*ifname, context_obj->mlx5_dev.name, MLX5_NAMESIZE);
+	strncpy(ifname, context_obj->mlx5_dev.name, MLX5_NAMESIZE);
 	return 0;
 }
 

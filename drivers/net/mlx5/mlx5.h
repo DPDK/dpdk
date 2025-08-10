@@ -2289,8 +2289,7 @@ uint64_t mlx5_get_restore_flags(struct rte_eth_dev *dev,
 
 /* mlx5_ethdev_os.c */
 
-int mlx5_get_ifname(const struct rte_eth_dev *dev,
-			char (*ifname)[MLX5_NAMESIZE]);
+int mlx5_get_ifname(const struct rte_eth_dev *dev, char ifname[MLX5_NAMESIZE]);
 unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
 int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);

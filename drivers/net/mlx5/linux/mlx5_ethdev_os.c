@@ -72,7 +72,7 @@ mlx5_auxiliary_get_ifindex(const char *sf_name)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
+mlx5_get_ifname(const struct rte_eth_dev *dev, char ifname[MLX5_NAMESIZE])
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int ifindex;
@@ -86,12 +86,11 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[MLX5_NAMESIZE])
 	ifindex = mlx5_ifindex(dev);
 	if (!ifindex) {
 		if (!priv->representor)
-			return mlx5_get_ifname_sysfs(priv->sh->ibdev_path,
-						     *ifname);
+			return mlx5_get_ifname_sysfs(priv->sh->ibdev_path, ifname);
 		rte_errno = ENXIO;
 		return -rte_errno;
 	}
-	if (if_indextoname(ifindex, &(*ifname)[0]))
+	if (if_indextoname(ifindex, ifname))
 		return 0;
 	rte_errno = errno;
 	return -rte_errno;
@@ -149,10 +148,10 @@ error:
 static int
 mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr)
 {
-	char ifname[sizeof(ifr->ifr_name)];
+	char ifname[MLX5_NAMESIZE];
 	int ret;
 
-	ret = mlx5_get_ifname(dev, &ifname);
+	ret = mlx5_get_ifname(dev, ifname);
 	if (ret)
 		return -rte_errno;
 	return mlx5_ifreq_by_ifname(ifname, req, ifr);
