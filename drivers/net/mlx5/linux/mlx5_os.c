@@ -1546,7 +1546,7 @@ err_secondary:
 	{
 		char ifname[MLX5_NAMESIZE];
 
-		if (mlx5_get_ifname(eth_dev, &ifname) == 0)
+		if (mlx5_get_ifname(eth_dev, ifname) == 0)
 			DRV_LOG(DEBUG, "port %u ifname is \"%s\"",
 				eth_dev->data->port_id, ifname);
 		else
