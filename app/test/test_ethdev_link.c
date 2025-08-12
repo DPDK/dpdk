@@ -54,7 +54,7 @@ test_link_status_up_default(void)
 		"string with HDX");
 
 	/* test max str len */
-	link_status.link_speed = RTE_ETH_SPEED_NUM_400G;
+	link_status.link_speed = RTE_ETH_SPEED_NUM_800G;
 	link_status.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	link_status.link_autoneg = RTE_ETH_LINK_AUTONEG;
 	ret = rte_eth_link_to_str(text, sizeof(text), &link_status);
@@ -131,6 +131,7 @@ test_link_speed_all_values(void)
 		{ "100 Gbps", RTE_ETH_SPEED_NUM_100G },
 		{ "200 Gbps", RTE_ETH_SPEED_NUM_200G },
 		{ "400 Gbps", RTE_ETH_SPEED_NUM_400G },
+		{ "800 Gbps", RTE_ETH_SPEED_NUM_800G },
 		{ "Unknown",  RTE_ETH_SPEED_NUM_UNKNOWN },
 		{ "Invalid",   50505 }
 	};
