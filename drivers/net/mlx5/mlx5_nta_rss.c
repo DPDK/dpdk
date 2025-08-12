@@ -67,7 +67,7 @@ mlx5_nta_ptype_rss_flow_create(struct mlx5_nta_rss_ctx *ctx,
 				  ctx->pattern, ctx->actions,
 				  MLX5_FLOW_ITEM_PTYPE, MLX5_FLOW_ACTION_RSS,
 				  ctx->external, &flow, ctx->error);
-	if (flow) {
+	if (ret == 0) {
 		SLIST_INSERT_HEAD(ctx->head, flow, nt2hws->next);
 		if (dbg_log) {
 			DRV_LOG(NOTICE,
@@ -276,6 +276,7 @@ mlx5_hw_rss_ptype_create_miss_flow(struct rte_eth_dev *dev,
 				   uint32_t ptype_group, bool external,
 				   struct rte_flow_error *error)
 {
+	int ret;
 	struct rte_flow_hw *flow = NULL;
 	const struct rte_flow_attr miss_attr = {
 		.ingress = 1,
@@ -300,10 +301,10 @@ mlx5_hw_rss_ptype_create_miss_flow(struct rte_eth_dev *dev,
 		[MLX5_RSS_PTYPE_ACTION_INDEX + 1] = { .type = RTE_FLOW_ACTION_TYPE_END }
 	};
 
-	flow_hw_create_flow(dev, MLX5_FLOW_TYPE_GEN, &miss_attr,
-			    miss_pattern, miss_actions, 0, MLX5_FLOW_ACTION_RSS,
-			    external, &flow, error);
-	return flow;
+	ret = flow_hw_create_flow(dev, MLX5_FLOW_TYPE_GEN, &miss_attr,
+				  miss_pattern, miss_actions, 0,
+				  MLX5_FLOW_ACTION_RSS, external, &flow, error);
+	return ret == 0 ? flow : NULL;
 }
 
 static struct rte_flow_hw *
@@ -316,7 +317,7 @@ mlx5_hw_rss_ptype_create_base_flow(struct rte_eth_dev *dev,
 				   enum mlx5_flow_type flow_type,
 				   struct rte_flow_error *error)
 {
-	int i = 0;
+	int ret, i = 0;
 	struct rte_flow_hw *flow = NULL;
 	struct rte_flow_action actions[MLX5_HW_MAX_ACTS];
 	enum mlx5_indirect_type indirect_type;
@@ -346,9 +347,9 @@ mlx5_hw_rss_ptype_create_base_flow(struct rte_eth_dev *dev,
 	} while (actions[i++].type != RTE_FLOW_ACTION_TYPE_END);
 	action_flags &= ~MLX5_FLOW_ACTION_RSS;
 	action_flags |= MLX5_FLOW_ACTION_JUMP;
-	flow_hw_create_flow(dev, flow_type, attr, pattern, actions,
-			    item_flags, action_flags, external, &flow, error);
-	return flow;
+	ret = flow_hw_create_flow(dev, flow_type, attr, pattern, actions,
+				  item_flags, action_flags, external, &flow, error);
+	return ret == 0 ? flow : NULL;
 }
 
 const struct rte_flow_action_rss *
@@ -426,6 +427,7 @@ flow_nta_create_single(struct rte_eth_dev *dev,
 		       enum mlx5_flow_type flow_type,
 		       struct rte_flow_error *error)
 {
+	int ret;
 	struct rte_flow_hw *flow = NULL;
 	struct rte_flow_action copy[MLX5_HW_MAX_ACTS];
 	const struct rte_flow_action *_actions;
@@ -457,10 +459,9 @@ flow_nta_create_single(struct rte_eth_dev *dev,
 		_actions = actions;
 	}
 end:
-	flow_hw_create_flow(dev, flow_type, attr, items,
-			    _actions, item_flags, action_flags,
-			    external, &flow, error);
-	return flow;
+	ret = flow_hw_create_flow(dev, flow_type, attr, items, _actions,
+				  item_flags, action_flags, external, &flow, error);
+	return ret == 0 ? flow : NULL;
 }
 
 /*
