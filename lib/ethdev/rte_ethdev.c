@@ -1078,6 +1078,9 @@ rte_eth_speed_bitflag(uint32_t speed, int duplex)
 	case RTE_ETH_SPEED_NUM_400G:
 		ret = RTE_ETH_LINK_SPEED_400G;
 		break;
+	case RTE_ETH_SPEED_NUM_800G:
+		ret = RTE_ETH_LINK_SPEED_800G;
+		break;
 	default:
 		ret = 0;
 	}
@@ -3286,6 +3289,9 @@ rte_eth_link_speed_to_str(uint32_t link_speed)
 		break;
 	case RTE_ETH_SPEED_NUM_400G:
 		ret = "400 Gbps";
+		break;
+	case RTE_ETH_SPEED_NUM_800G:
+		ret = "800 Gbps";
 		break;
 	case RTE_ETH_SPEED_NUM_UNKNOWN:
 		ret = "Unknown";
