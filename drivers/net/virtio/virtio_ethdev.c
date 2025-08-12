@@ -2104,6 +2104,8 @@ virtio_dev_speed_capa_get(uint32_t speed)
 		return RTE_ETH_LINK_SPEED_200G;
 	case RTE_ETH_SPEED_NUM_400G:
 		return RTE_ETH_LINK_SPEED_400G;
+	case RTE_ETH_SPEED_NUM_800G:
+		return RTE_ETH_LINK_SPEED_800G;
 	default:
 		return 0;
 	}

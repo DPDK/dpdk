@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added speed 800G.**
+
+  Added Ethernet link speed for 800 Gb/s as it is well standardized in IEEE,
+  and some devices already support this speed.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Enabled software taildrop for ordered queues.
