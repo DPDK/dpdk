@@ -2001,6 +2001,7 @@ port_action_handle_query(portid_t port_id, uint32_t id)
 	switch (pia->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
 	case RTE_FLOW_ACTION_TYPE_COUNT:
+	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		break;
 	default:
 		fprintf(stderr,
