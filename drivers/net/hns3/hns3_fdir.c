@@ -1145,17 +1145,6 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 	if (hns->is_vf)
 		return 0;
 
-	/*
-	 * This API is called in the reset recovery process, the parent function
-	 * must hold hw->lock.
-	 * There maybe deadlock if acquire hw->flows_lock directly because rte
-	 * flow driver ops first acquire hw->flows_lock and then may acquire
-	 * hw->lock.
-	 * So here first release the hw->lock and then acquire the
-	 * hw->flows_lock to avoid deadlock.
-	 */
-	rte_spinlock_unlock(&hw->lock);
-	pthread_mutex_lock(&hw->flows_lock);
 	TAILQ_FOREACH(fdir_filter, &fdir_info->fdir_list, entries) {
 		ret = hns3_config_action(hw, &fdir_filter->fdir_conf);
 		if (!ret)
@@ -1166,8 +1155,6 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns)
 				break;
 		}
 	}
-	pthread_mutex_unlock(&hw->flows_lock);
-	rte_spinlock_lock(&hw->lock);
 
 	if (err) {
 		hns3_err(hw, "Fail to restore FDIR filter, ret = %d", ret);
