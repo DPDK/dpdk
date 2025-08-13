@@ -1000,7 +1000,11 @@ efx_mac_select(
 
 #if EFSYS_OPT_MEDFORD4
 	case EFX_FAMILY_MEDFORD4:
-		emop = &__efx_mac_medford4_ops;
+		if (efx_np_supported(enp) != B_FALSE)
+			emop = &__efx_mac_medford4_ops;
+		else
+			emop = &__efx_mac_ef10_ops;
+
 		type = EFX_MAC_MEDFORD4;
 		break;
 #endif /* EFSYS_OPT_MEDFORD4 */

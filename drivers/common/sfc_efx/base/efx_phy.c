@@ -136,7 +136,10 @@ efx_phy_probe(
 
 #if EFSYS_OPT_MEDFORD4
 	case EFX_FAMILY_MEDFORD4:
-		epop = &__efx_phy_medford4_ops;
+		if (efx_np_supported(enp) != B_FALSE)
+			epop = &__efx_phy_medford4_ops;
+		else
+			epop = &__efx_phy_ef10_ops;
 	break;
 #endif	/* EFSYS_OPT_MEDFORD4 */
 
