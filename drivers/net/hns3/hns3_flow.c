@@ -2210,18 +2210,6 @@ hns3_reconfig_all_rss_filter(struct hns3_hw *hw)
 	return 0;
 }
 
-static int
-hns3_restore_rss_filter(struct hns3_hw *hw)
-{
-	int ret;
-
-	pthread_mutex_lock(&hw->flows_lock);
-	ret = hns3_reconfig_all_rss_filter(hw);
-	pthread_mutex_unlock(&hw->flows_lock);
-
-	return ret;
-}
-
 int
 hns3_restore_filter(struct hns3_adapter *hns)
 {
@@ -2232,7 +2220,7 @@ hns3_restore_filter(struct hns3_adapter *hns)
 	if (ret != 0)
 		return ret;
 
-	return hns3_restore_rss_filter(hw);
+	return hns3_reconfig_all_rss_filter(hw);
 }
 
 static int
@@ -2624,10 +2612,10 @@ hns3_flow_validate_wrap(struct rte_eth_dev *dev,
 	struct hns3_filter_info filter_info = {0};
 	int ret;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_flow_validate(dev, attr, pattern, actions, error,
 				 &filter_info);
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -2641,9 +2629,9 @@ hns3_flow_create_wrap(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_flow *flow;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 	flow = hns3_flow_create(dev, attr, pattern, actions, error);
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 
 	return flow;
 }
@@ -2655,9 +2643,9 @@ hns3_flow_destroy_wrap(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_flow_destroy(dev, flow, error);
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -2668,9 +2656,9 @@ hns3_flow_flush_wrap(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_flow_flush(dev, error);
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -2683,9 +2671,9 @@ hns3_flow_query_wrap(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int ret;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 	ret = hns3_flow_query(dev, flow, actions, data, error);
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 
 	return ret;
 }
@@ -2733,7 +2721,7 @@ hns3_flow_action_create(struct rte_eth_dev *dev,
 	if (hns3_check_indir_action(conf, action, error))
 		return NULL;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 
 	act_count = (const struct rte_flow_action_count *)action->conf;
 	if (act_count->id >= pf->fdir.fd_cfg.cnt_num[HNS3_FD_STAGE_1]) {
@@ -2758,11 +2746,11 @@ hns3_flow_action_create(struct rte_eth_dev *dev,
 	handle.indirect_type = HNS3_INDIRECT_ACTION_TYPE_COUNT;
 	handle.counter_id = counter->id;
 
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 	return (struct rte_flow_action_handle *)handle.val64;
 
 err_exit:
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 	return NULL;
 }
 
@@ -2775,11 +2763,11 @@ hns3_flow_action_destroy(struct rte_eth_dev *dev,
 	struct rte_flow_action_handle indir;
 	struct hns3_flow_counter *counter;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 
 	indir.val64 = (uint64_t)handle;
 	if (indir.indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
-		pthread_mutex_unlock(&hw->flows_lock);
+		rte_spinlock_unlock(&hw->lock);
 		return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					handle, "Invalid indirect type");
@@ -2787,14 +2775,14 @@ hns3_flow_action_destroy(struct rte_eth_dev *dev,
 
 	counter = hns3_counter_lookup(dev, indir.counter_id);
 	if (counter == NULL) {
-		pthread_mutex_unlock(&hw->flows_lock);
+		rte_spinlock_unlock(&hw->lock);
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				handle, "Counter id not exist");
 	}
 
 	if (counter->ref_cnt > 1) {
-		pthread_mutex_unlock(&hw->flows_lock);
+		rte_spinlock_unlock(&hw->lock);
 		return rte_flow_error_set(error, EBUSY,
 				RTE_FLOW_ERROR_TYPE_HANDLE,
 				handle, "Counter id in use");
@@ -2802,7 +2790,7 @@ hns3_flow_action_destroy(struct rte_eth_dev *dev,
 
 	(void)hns3_counter_release(dev, indir.counter_id);
 
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 	return 0;
 }
 
@@ -2817,11 +2805,11 @@ hns3_flow_action_query(struct rte_eth_dev *dev,
 	struct rte_flow flow;
 	int ret;
 
-	pthread_mutex_lock(&hw->flows_lock);
+	rte_spinlock_lock(&hw->lock);
 
 	indir.val64 = (uint64_t)handle;
 	if (indir.indirect_type != HNS3_INDIRECT_ACTION_TYPE_COUNT) {
-		pthread_mutex_unlock(&hw->flows_lock);
+		rte_spinlock_unlock(&hw->lock);
 		return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					handle, "Invalid indirect type");
@@ -2831,7 +2819,7 @@ hns3_flow_action_query(struct rte_eth_dev *dev,
 	flow.counter_id = indir.counter_id;
 	ret = hns3_counter_query(dev, &flow,
 				 (struct rte_flow_query_count *)data, error);
-	pthread_mutex_unlock(&hw->flows_lock);
+	rte_spinlock_unlock(&hw->lock);
 	return ret;
 }
 
@@ -2865,14 +2853,10 @@ void
 hns3_flow_init(struct rte_eth_dev *dev)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pthread_mutexattr_t attr;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-	pthread_mutex_init(&hw->flows_lock, &attr);
 	dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 
 	TAILQ_INIT(&hw->flow_fdir_list);
