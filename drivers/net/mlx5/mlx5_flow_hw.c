@@ -16683,6 +16683,7 @@ flow_hw_validate_rule_pattern(struct rte_eth_dev *dev,
 		switch (items->type) {
 		const struct rte_flow_item_ethdev *ethdev;
 		const struct rte_flow_item_tx_queue *tx_queue;
+		const struct rte_flow_item_conntrack *spec;
 		struct mlx5_txq_ctrl *txq;
 
 		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
@@ -16703,6 +16704,15 @@ flow_hw_validate_rule_pattern(struct rte_eth_dev *dev,
 							  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, items,
 							  "Invalid Tx queue");
 			mlx5_txq_release(dev, tx_queue->tx_queue);
+			break;
+		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
+			spec = items->spec;
+			if (spec->flags & ~MLX5_FLOW_CONNTRACK_PKT_STATE_ALL)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						NULL,
+						"Invalid CT item flags");
+			break;
 		default:
 			break;
 		}
