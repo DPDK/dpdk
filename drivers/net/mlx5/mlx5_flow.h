@@ -100,6 +100,11 @@ enum mlx5_indirect_type {
 #define MLX5_INDIRECT_ACT_CT_GET_IDX(index) \
 	((index) & ((1 << MLX5_INDIRECT_ACT_CT_OWNER_SHIFT) - 1))
 
+#define MLX5_FLOW_CONNTRACK_PKT_STATE_ALL \
+	(RTE_FLOW_CONNTRACK_PKT_STATE_VALID | RTE_FLOW_CONNTRACK_PKT_STATE_CHANGED | \
+	 RTE_FLOW_CONNTRACK_PKT_STATE_INVALID | RTE_FLOW_CONNTRACK_PKT_STATE_DISABLED | \
+	 RTE_FLOW_CONNTRACK_PKT_STATE_BAD)
+
 /*
  * When HW steering flow engine is used, the CT action handles are encoded in a following way:
  * - bits 31:29 - type
