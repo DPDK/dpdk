@@ -327,6 +327,7 @@ struct mlx5_hca_attr {
 	uint32_t wqe_based_flow_table_sup:1;
 	uint32_t fdb_unified_en:1;
 	uint32_t jump_fdb_rx_en:1;
+	uint32_t fdb_rx_set_flow_tag_stc:1;
 	uint8_t max_header_modify_pattern_length;
 	uint64_t system_image_guid;
 	uint32_t log_max_conn_track_offload:5;

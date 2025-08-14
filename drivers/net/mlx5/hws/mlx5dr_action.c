@@ -81,6 +81,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_CTR),
+		BIT(MLX5DR_ACTION_TYP_TAG),
 		BIT(MLX5DR_ACTION_TYP_ASO_METER),
 		BIT(MLX5DR_ACTION_TYP_ASO_CT),
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
@@ -876,6 +877,15 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 		*fixup_stc_attr = *stc_attr;
 		fixup_stc_attr->ste_table.ste_obj_id = devx_obj->id;
 		use_fixup = true;
+		break;
+
+	case MLX5_IFC_STC_ACTION_TYPE_TAG:
+		if (fw_tbl_type == FS_FT_FDB_TX) {
+			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_NOP;
+			fixup_stc_attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
+			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
+			use_fixup = true;
+		}
 		break;
 
 	case MLX5_IFC_STC_ACTION_TYPE_ALLOW:

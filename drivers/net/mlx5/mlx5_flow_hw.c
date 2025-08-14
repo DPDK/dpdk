@@ -6906,6 +6906,12 @@ mlx5_hw_validate_action_mark(struct rte_eth_dev *dev,
 		.transfer = template_attr->transfer
 	};
 
+	if (template_attr->transfer &&
+	    !MLX5_SH(dev)->cdev->config.hca_attr.fdb_rx_set_flow_tag_stc)
+		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "mark action not supported for transfer");
+
 	return mlx5_flow_validate_action_mark(dev, action, action_flags,
 					      &attr, error);
 }
@@ -12073,21 +12079,21 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		uint32_t act_flags = 0;
 		uint32_t tag_flags = mlx5_hw_act_flag[i][0];
+		bool tag_fdb_rx = !!priv->sh->cdev->config.hca_attr.fdb_rx_set_flow_tag_stc;
 
 		act_flags = mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_NIC_RX] |
 			    mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_NIC_TX];
 		if (is_proxy) {
-			/* Tag action is valid only in FDB_Rx domain. */
 			if (unified_fdb) {
 				act_flags |=
 					(mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX] |
 					 mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_TX] |
 					 mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_UNIFIED]);
-				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT)
+				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT && tag_fdb_rx)
 					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB_RX];
 			} else {
 				act_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
-				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT)
+				if (i == MLX5_HW_ACTION_FLAG_NONE_ROOT && tag_fdb_rx)
 					tag_flags |= mlx5_hw_act_flag[i][MLX5DR_TABLE_TYPE_FDB];
 			}
 		}

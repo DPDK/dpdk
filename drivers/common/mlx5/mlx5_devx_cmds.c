@@ -1366,6 +1366,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->fdb_unified_en = MLX5_GET(wqe_based_flow_table_cap,
 						hcattr,
 						fdb_unified_en);
+		attr->fdb_rx_set_flow_tag_stc = MLX5_GET(wqe_based_flow_table_cap,
+						hcattr,
+						fdb_rx_set_flow_tag_stc);
 		stc_action_type_127_64 = MLX5_GET64(wqe_based_flow_table_cap,
 						    hcattr,
 						    stc_action_type_127_64);
