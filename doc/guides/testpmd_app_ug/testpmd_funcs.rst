@@ -5392,6 +5392,10 @@ rules like above for the peer port.
 
  testpmd> flow indirect_action 0 update 0 action conntrack_update dir / end
 
+Inspect the conntrack action state through the following command::
+
+   testpmd> flow indirect_action 0 query <action ID>
+
 Sample meter with policy rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
