@@ -3719,70 +3719,96 @@ static uint16_t
 iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
 
-static const struct {
-	eth_rx_burst_t pkt_burst;
-	const char *info;
-} iavf_rx_pkt_burst_ops[] = {
-	[IAVF_RX_DISABLED] = {iavf_recv_pkts_no_poll, "Disabled"},
-	[IAVF_RX_DEFAULT] = {iavf_recv_pkts, "Scalar"},
-	[IAVF_RX_FLEX_RXD] = {iavf_recv_pkts_flex_rxd, "Scalar Flex"},
-	[IAVF_RX_BULK_ALLOC] = {iavf_recv_pkts_bulk_alloc,
-		"Scalar Bulk Alloc"},
-	[IAVF_RX_SCATTERED] = {iavf_recv_scattered_pkts,
-		"Scalar Scattered"},
-	[IAVF_RX_SCATTERED_FLEX_RXD] = {iavf_recv_scattered_pkts_flex_rxd,
-		"Scalar Scattered Flex"},
+static const struct ci_rx_path_info iavf_rx_path_infos[] = {
+	[IAVF_RX_DISABLED] = {iavf_recv_pkts_no_poll, "Disabled",
+		{IAVF_RX_NO_OFFLOADS, RTE_VECT_SIMD_DISABLED, {.disabled = true}}},
+	[IAVF_RX_DEFAULT] = {iavf_recv_pkts, "Scalar",
+		{IAVF_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_DISABLED}},
+	[IAVF_RX_SCATTERED] = {iavf_recv_scattered_pkts, "Scalar Scattered",
+		{IAVF_RX_SCALAR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_DISABLED,
+			{.scattered = true}}},
+	[IAVF_RX_FLEX_RXD] = {iavf_recv_pkts_flex_rxd, "Scalar Flex",
+		{IAVF_RX_SCALAR_FLEX_OFFLOADS, RTE_VECT_SIMD_DISABLED, {.flex_desc = true}}},
+	[IAVF_RX_SCATTERED_FLEX_RXD] = {iavf_recv_scattered_pkts_flex_rxd, "Scalar Scattered Flex",
+		{IAVF_RX_SCALAR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_DISABLED,
+				{.scattered = true, .flex_desc = true}}},
+	[IAVF_RX_BULK_ALLOC] = {iavf_recv_pkts_bulk_alloc, "Scalar Bulk Alloc",
+		{IAVF_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_DISABLED, {.bulk_alloc = true}}},
 #ifdef RTE_ARCH_X86
-	[IAVF_RX_SSE] = {iavf_recv_pkts_vec, "Vector SSE"},
-	[IAVF_RX_AVX2] = {iavf_recv_pkts_vec_avx2, "Vector AVX2"},
-	[IAVF_RX_AVX2_OFFLOAD] = {iavf_recv_pkts_vec_avx2_offload,
-		"Vector AVX2 Offload"},
-	[IAVF_RX_SSE_FLEX_RXD] = {iavf_recv_pkts_vec_flex_rxd,
-		"Vector Flex SSE"},
-	[IAVF_RX_AVX2_FLEX_RXD] = {iavf_recv_pkts_vec_avx2_flex_rxd,
-		"Vector AVX2 Flex"},
-	[IAVF_RX_AVX2_FLEX_RXD_OFFLOAD] = {
-		iavf_recv_pkts_vec_avx2_flex_rxd_offload,
-			"Vector AVX2 Flex Offload"},
-	[IAVF_RX_SSE_SCATTERED] = {iavf_recv_scattered_pkts_vec,
-		"Vector Scattered SSE"},
-	[IAVF_RX_AVX2_SCATTERED] = {iavf_recv_scattered_pkts_vec_avx2,
-		"Vector Scattered AVX2"},
-	[IAVF_RX_AVX2_SCATTERED_OFFLOAD] = {
-		iavf_recv_scattered_pkts_vec_avx2_offload,
-		"Vector Scattered AVX2 offload"},
+	[IAVF_RX_SSE] = {iavf_recv_pkts_vec, "Vector SSE",
+		{IAVF_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_128, {.bulk_alloc = true}}},
+	[IAVF_RX_SSE_SCATTERED] = {iavf_recv_scattered_pkts_vec, "Vector Scattered SSE",
+		{IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_128,
+			{.scattered = true, .bulk_alloc = true}}},
+	[IAVF_RX_SSE_FLEX_RXD] = {iavf_recv_pkts_vec_flex_rxd, "Vector Flex SSE",
+		{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS, RTE_VECT_SIMD_128,
+			{.flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_SSE_SCATTERED_FLEX_RXD] = {
-		iavf_recv_scattered_pkts_vec_flex_rxd,
-		"Vector Scattered SSE Flex"},
+		iavf_recv_scattered_pkts_vec_flex_rxd, "Vector Scattered SSE Flex",
+		{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
+			RTE_VECT_SIMD_128,
+			{.scattered = true, .flex_desc = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX2] = {iavf_recv_pkts_vec_avx2, "Vector AVX2",
+		{IAVF_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_256, {.bulk_alloc = true}}},
+	[IAVF_RX_AVX2_SCATTERED] = {iavf_recv_scattered_pkts_vec_avx2, "Vector Scattered AVX2",
+		{IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_256,
+			{.scattered = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX2_OFFLOAD] = {iavf_recv_pkts_vec_avx2_offload, "Vector AVX2 Offload",
+		{IAVF_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_256, {.bulk_alloc = true}}},
+	[IAVF_RX_AVX2_SCATTERED_OFFLOAD] = {
+		iavf_recv_scattered_pkts_vec_avx2_offload, "Vector Scattered AVX2 offload",
+		{IAVF_RX_VECTOR_OFFLOAD_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_256,
+			{.scattered = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX2_FLEX_RXD] = {iavf_recv_pkts_vec_avx2_flex_rxd, "Vector AVX2 Flex",
+		{IAVF_RX_VECTOR_FLEX_OFFLOADS, RTE_VECT_SIMD_256,
+			{.flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_AVX2_SCATTERED_FLEX_RXD] = {
-		iavf_recv_scattered_pkts_vec_avx2_flex_rxd,
-		"Vector Scattered AVX2 Flex"},
+		iavf_recv_scattered_pkts_vec_avx2_flex_rxd, "Vector Scattered AVX2 Flex",
+		{IAVF_RX_VECTOR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_256,
+			{.scattered = true, .flex_desc = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX2_FLEX_RXD_OFFLOAD] = {
+		iavf_recv_pkts_vec_avx2_flex_rxd_offload, "Vector AVX2 Flex Offload",
+			{IAVF_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_256,
+				{.flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_AVX2_SCATTERED_FLEX_RXD_OFFLOAD] = {
 		iavf_recv_scattered_pkts_vec_avx2_flex_rxd_offload,
-		"Vector Scattered AVX2 Flex Offload"},
+		"Vector Scattered AVX2 Flex Offload",
+		{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
+			RTE_VECT_SIMD_256, {.flex_desc = true, .bulk_alloc = true}}},
 #ifdef CC_AVX512_SUPPORT
-	[IAVF_RX_AVX512] = {iavf_recv_pkts_vec_avx512, "Vector AVX512"},
-	[IAVF_RX_AVX512_OFFLOAD] = {iavf_recv_pkts_vec_avx512_offload,
-		"Vector AVX512 Offload"},
-	[IAVF_RX_AVX512_FLEX_RXD] = {iavf_recv_pkts_vec_avx512_flex_rxd,
-		"Vector AVX512 Flex"},
-	[IAVF_RX_AVX512_FLEX_RXD_OFFLOAD] = {
-		iavf_recv_pkts_vec_avx512_flex_rxd_offload,
-		"Vector AVX512 Flex Offload"},
-	[IAVF_RX_AVX512_SCATTERED] = {iavf_recv_scattered_pkts_vec_avx512,
-		"Vector Scattered AVX512"},
+	[IAVF_RX_AVX512] = {iavf_recv_pkts_vec_avx512, "Vector AVX512",
+		{IAVF_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_512, {.bulk_alloc = true}}},
+	[IAVF_RX_AVX512_SCATTERED] = {
+		iavf_recv_scattered_pkts_vec_avx512, "Vector Scattered AVX512",
+		{IAVF_RX_VECTOR_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_512,
+			{.scattered = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX512_OFFLOAD] = {iavf_recv_pkts_vec_avx512_offload, "Vector AVX512 Offload",
+		{IAVF_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_512, {.bulk_alloc = true}}},
 	[IAVF_RX_AVX512_SCATTERED_OFFLOAD] = {
-		iavf_recv_scattered_pkts_vec_avx512_offload,
-		"Vector Scattered AVX512 offload"},
+		iavf_recv_scattered_pkts_vec_avx512_offload, "Vector Scattered AVX512 offload",
+		{IAVF_RX_VECTOR_OFFLOAD_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_512,
+			{.scattered = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX512_FLEX_RXD] = {iavf_recv_pkts_vec_avx512_flex_rxd, "Vector AVX512 Flex",
+		{IAVF_RX_VECTOR_FLEX_OFFLOADS, RTE_VECT_SIMD_512,
+			{.flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_AVX512_SCATTERED_FLEX_RXD] = {
-		iavf_recv_scattered_pkts_vec_avx512_flex_rxd,
-		"Vector Scattered AVX512 Flex"},
+		iavf_recv_scattered_pkts_vec_avx512_flex_rxd, "Vector Scattered AVX512 Flex",
+		{IAVF_RX_VECTOR_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER, RTE_VECT_SIMD_512,
+			{.scattered = true, .flex_desc = true, .bulk_alloc = true}}},
+	[IAVF_RX_AVX512_FLEX_RXD_OFFLOAD] = {
+		iavf_recv_pkts_vec_avx512_flex_rxd_offload, "Vector AVX512 Flex Offload",
+		{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS, RTE_VECT_SIMD_512,
+			{.flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_AVX512_SCATTERED_FLEX_RXD_OFFLOAD] = {
 		iavf_recv_scattered_pkts_vec_avx512_flex_rxd_offload,
-		"Vector Scattered AVX512 Flex offload"},
+		"Vector Scattered AVX512 Flex offload",
+		{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
+			RTE_VECT_SIMD_512,
+			{.scattered = true, .flex_desc = true, .bulk_alloc = true}}},
 #endif
 #elif defined RTE_ARCH_ARM
-	[IAVF_RX_SSE] = {iavf_recv_pkts_vec, "Vector Neon"},
+	[IAVF_RX_SSE] = {iavf_recv_pkts_vec, "Vector Neon",
+		{IAVF_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_128, {.bulk_alloc = true}}},
 #endif
 };
 
@@ -3794,10 +3820,10 @@ iavf_rx_burst_mode_get(struct rte_eth_dev *dev,
 	eth_rx_burst_t pkt_burst = dev->rx_pkt_burst;
 	size_t i;
 
-	for (i = 0; i < RTE_DIM(iavf_rx_pkt_burst_ops); i++) {
-		if (pkt_burst == iavf_rx_pkt_burst_ops[i].pkt_burst) {
+	for (i = 0; i < RTE_DIM(iavf_rx_path_infos); i++) {
+		if (pkt_burst == iavf_rx_path_infos[i].pkt_burst) {
 			snprintf(mode->info, sizeof(mode->info), "%s",
-				 iavf_rx_pkt_burst_ops[i].info);
+				 iavf_rx_path_infos[i].info);
 			return 0;
 		}
 	}
@@ -3860,7 +3886,7 @@ iavf_recv_pkts_no_poll(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	rx_func_type = rxq->iavf_vsi->adapter->rx_func_type;
 
-	return iavf_rx_pkt_burst_ops[rx_func_type].pkt_burst(rx_queue,
+	return iavf_rx_path_infos[rx_func_type].pkt_burst(rx_queue,
 								rx_pkts, nb_pkts);
 }
 
@@ -3971,10 +3997,15 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	enum iavf_rx_func_type default_path = IAVF_RX_DEFAULT;
 	int no_poll_on_link_down = adapter->devargs.no_poll_on_link_down;
 	int i;
 	struct ci_rx_queue *rxq;
 	bool use_flex = true;
+	struct ci_rx_path_features req_features = {
+		.rx_offloads = dev->data->dev_conf.rxmode.offloads,
+		.simd_width = RTE_VECT_SIMD_DISABLED,
+	};
 
 	/* The primary process selects the rx path for all processes. */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -3993,143 +4024,32 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 		}
 	}
 
-#ifdef RTE_ARCH_X86
-	int check_ret;
-	bool use_avx2 = false;
-	bool use_avx512 = false;
-	enum rte_vect_max_simd rx_simd_path = iavf_get_max_simd_bitwidth();
-
-	check_ret = iavf_rx_vec_dev_check(dev);
-	if (check_ret >= 0 &&
-	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		use_avx2 = rx_simd_path == RTE_VECT_SIMD_256;
-		use_avx512 = rx_simd_path == RTE_VECT_SIMD_512;
-
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			rxq = dev->data->rx_queues[i];
-			(void)iavf_rxq_vec_setup(rxq);
-		}
-
-		if (dev->data->scattered_rx) {
-			if (use_flex) {
-				adapter->rx_func_type = IAVF_RX_SSE_SCATTERED_FLEX_RXD;
-				if (use_avx2) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type =
-							IAVF_RX_AVX2_SCATTERED_FLEX_RXD;
-					else
-						adapter->rx_func_type =
-							IAVF_RX_AVX2_SCATTERED_FLEX_RXD_OFFLOAD;
-				}
-#ifdef CC_AVX512_SUPPORT
-				if (use_avx512) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type =
-							IAVF_RX_AVX512_SCATTERED_FLEX_RXD;
-					else
-						adapter->rx_func_type =
-							IAVF_RX_AVX512_SCATTERED_FLEX_RXD_OFFLOAD;
-				}
+	if (use_flex)
+		req_features.extra.flex_desc = true;
+	if (dev->data->scattered_rx)
+		req_features.extra.scattered = true;
+	if (adapter->rx_bulk_alloc_allowed) {
+		req_features.extra.bulk_alloc = true;
+		default_path = IAVF_RX_BULK_ALLOC;
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+		if (iavf_rx_vec_dev_check(dev) != -1)
+			req_features.simd_width = iavf_get_max_simd_bitwidth();
 #endif
-			} else {
-				adapter->rx_func_type = IAVF_RX_SSE_SCATTERED;
-				if (use_avx2) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type =
-							IAVF_RX_AVX2_SCATTERED;
-					else
-						adapter->rx_func_type =
-							IAVF_RX_AVX2_SCATTERED_OFFLOAD;
-				}
-#ifdef CC_AVX512_SUPPORT
-				if (use_avx512) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type =
-							IAVF_RX_AVX512_SCATTERED;
-					else
-						adapter->rx_func_type =
-							IAVF_RX_AVX512_SCATTERED_OFFLOAD;
-				}
-#endif
-			}
-		} else {
-			if (use_flex) {
-				adapter->rx_func_type = IAVF_RX_SSE_FLEX_RXD;
-				if (use_avx2) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type = IAVF_RX_AVX2_FLEX_RXD;
-					else
-						adapter->rx_func_type =
-							IAVF_RX_AVX2_FLEX_RXD_OFFLOAD;
-				}
-#ifdef CC_AVX512_SUPPORT
-				if (use_avx512) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type = IAVF_RX_AVX512_FLEX_RXD;
-					else
-						adapter->rx_func_type =
-							IAVF_RX_AVX512_FLEX_RXD_OFFLOAD;
-				}
-#endif
-			} else {
-				adapter->rx_func_type = IAVF_RX_SSE;
-				if (use_avx2) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type = IAVF_RX_AVX2;
-					else
-						adapter->rx_func_type = IAVF_RX_AVX2_OFFLOAD;
-				}
-#ifdef CC_AVX512_SUPPORT
-				if (use_avx512) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						adapter->rx_func_type = IAVF_RX_AVX512;
-					else
-						adapter->rx_func_type = IAVF_RX_AVX512_OFFLOAD;
-				}
-#endif
-			}
-		}
-		goto out;
 	}
-#elif defined RTE_ARCH_ARM
-	int check_ret;
 
-	check_ret = iavf_rx_vec_dev_check(dev);
-	if (check_ret >= 0 &&
-	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
-		PMD_DRV_LOG(DEBUG, "Using a Vector Rx callback (port=%d).",
-			    dev->data->port_id);
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			rxq = dev->data->rx_queues[i];
-			(void)iavf_rxq_vec_setup(rxq);
-		}
-		adapter->rx_func_type = IAVF_RX_SSE;
-
-		goto out;
-	}
-#endif
-	if (dev->data->scattered_rx) {
-		if (use_flex)
-			adapter->rx_func_type = IAVF_RX_SCATTERED_FLEX_RXD;
-		else
-			adapter->rx_func_type = IAVF_RX_SCATTERED;
-	} else if (adapter->rx_bulk_alloc_allowed) {
-		adapter->rx_func_type = IAVF_RX_BULK_ALLOC;
-	} else {
-		if (use_flex)
-			adapter->rx_func_type = IAVF_RX_FLEX_RXD;
-		else
-			adapter->rx_func_type = IAVF_RX_DEFAULT;
-	}
+	adapter->rx_func_type = ci_rx_path_select(req_features,
+						&iavf_rx_path_infos[0],
+						RTE_DIM(iavf_rx_path_infos),
+						default_path);
 
 out:
 	if (no_poll_on_link_down)
 		dev->rx_pkt_burst = iavf_recv_pkts_no_poll;
 	else
-		dev->rx_pkt_burst = iavf_rx_pkt_burst_ops[adapter->rx_func_type].pkt_burst;
+		dev->rx_pkt_burst = iavf_rx_path_infos[adapter->rx_func_type].pkt_burst;
 
-	PMD_DRV_LOG(NOTICE, "Using %s Rx burst function (port %d).",
-		iavf_rx_pkt_burst_ops[adapter->rx_func_type].info, dev->data->port_id);
+	PMD_DRV_LOG(NOTICE, "Using %s (port %d).",
+		iavf_rx_path_infos[adapter->rx_func_type].info, dev->data->port_id);
 }
 
 /* choose tx function*/
