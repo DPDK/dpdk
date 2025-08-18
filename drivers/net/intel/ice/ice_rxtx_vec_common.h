@@ -69,12 +69,6 @@ _ice_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		\
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
 
-#define ICE_RX_VECTOR_OFFLOAD (				\
-		RTE_ETH_RX_OFFLOAD_CHECKSUM |		\
-		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |		\
-		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |	\
-		RTE_ETH_RX_OFFLOAD_RSS_HASH)
-
 #define ICE_VECTOR_PATH		0
 #define ICE_VECTOR_OFFLOAD_PATH	1
 
@@ -90,10 +84,7 @@ ice_rx_vec_queue_default(struct ci_rx_queue *rxq)
 	if (rxq->proto_xtr != PROTO_XTR_NONE)
 		return -1;
 
-	if (rxq->offloads & ICE_RX_VECTOR_OFFLOAD)
-		return ICE_VECTOR_OFFLOAD_PATH;
-
-	return ICE_VECTOR_PATH;
+	return 0;
 }
 
 static inline int
@@ -121,18 +112,15 @@ ice_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 	int i;
 	struct ci_rx_queue *rxq;
 	int ret = 0;
-	int result = 0;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 		ret = (ice_rx_vec_queue_default(rxq));
 		if (ret < 0)
-			return -1;
-		if (ret == ICE_VECTOR_OFFLOAD_PATH)
-			result = ret;
+			break;
 	}
 
-	return result;
+	return ret;
 }
 
 static inline int
