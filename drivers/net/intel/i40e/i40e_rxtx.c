@@ -3315,6 +3315,31 @@ get_avx_supported(bool request_avx512)
 }
 #endif /* RTE_ARCH_X86 */
 
+static const struct {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+} i40e_rx_burst_infos[] = {
+	[I40E_RX_DEFAULT] = { i40e_recv_pkts, "Scalar" },
+	[I40E_RX_SCATTERED] = { i40e_recv_scattered_pkts, "Scalar Scattered" },
+	[I40E_RX_BULK_ALLOC] = { i40e_recv_pkts_bulk_alloc, "Scalar Bulk Alloc" },
+#ifdef RTE_ARCH_X86
+	[I40E_RX_SSE] = { i40e_recv_pkts_vec, "Vector SSE" },
+	[I40E_RX_SSE_SCATTERED] = { i40e_recv_scattered_pkts_vec, "Vector SSE Scattered" },
+	[I40E_RX_AVX2] = { i40e_recv_pkts_vec_avx2, "Vector AVX2" },
+	[I40E_RX_AVX2_SCATTERED] = { i40e_recv_scattered_pkts_vec_avx2, "Vector AVX2 Scattered" },
+#ifdef CC_AVX512_SUPPORT
+	[I40E_RX_AVX512] = { i40e_recv_pkts_vec_avx512, "Vector AVX512" },
+	[I40E_RX_AVX512_SCATTERED] = {
+		i40e_recv_scattered_pkts_vec_avx512, "Vector AVX512 Scattered" },
+#endif
+#elif defined(RTE_ARCH_ARM64)
+	[I40E_RX_NEON] = { i40e_recv_pkts_vec, "Vector Neon" },
+	[I40E_RX_NEON_SCATTERED] = { i40e_recv_scattered_pkts_vec, "Vector Neon Scattered" },
+#elif defined(RTE_ARCH_PPC_64)
+	[I40E_RX_ALTIVEC] = { i40e_recv_pkts_vec, "Vector AltiVec" },
+	[I40E_RX_ALTIVEC_SCATTERED] = { i40e_recv_scattered_pkts_vec, "Vector AltiVec Scattered" },
+#endif
+};
 
 void __rte_cold
 i40e_set_rx_function(struct rte_eth_dev *dev)
@@ -3322,109 +3347,86 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint16_t vector_rx, i;
+
+	/* The primary process selects the rx path for all processes. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto out;
+
 	/* In order to allow Vector Rx there are a few configuration
 	 * conditions to be met and Rx Bulk Allocation should be allowed.
 	 */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 #ifdef RTE_ARCH_X86
-		ad->rx_use_avx512 = false;
-		ad->rx_use_avx2 = false;
+	bool rx_use_avx512 = false, rx_use_avx2 = false;
 #endif
-		if (i40e_rx_vec_dev_conf_condition_check(dev) ||
-		    !ad->rx_bulk_alloc_allowed) {
-			PMD_INIT_LOG(DEBUG, "Port[%d] doesn't meet"
-				     " Vector Rx preconditions",
-				     dev->data->port_id);
+	if (i40e_rx_vec_dev_conf_condition_check(dev) || !ad->rx_bulk_alloc_allowed) {
+		PMD_INIT_LOG(DEBUG, "Port[%d] doesn't meet"
+				" Vector Rx preconditions",
+				dev->data->port_id);
 
-			ad->rx_vec_allowed = false;
-		}
-		if (ad->rx_vec_allowed) {
-			for (i = 0; i < dev->data->nb_rx_queues; i++) {
-				struct ci_rx_queue *rxq =
-					dev->data->rx_queues[i];
+		ad->rx_vec_allowed = false;
+	}
+	if (ad->rx_vec_allowed) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			struct ci_rx_queue *rxq =
+				dev->data->rx_queues[i];
 
-				if (rxq && i40e_rxq_vec_setup(rxq)) {
-					ad->rx_vec_allowed = false;
-					break;
-				}
+			if (rxq && i40e_rxq_vec_setup(rxq)) {
+				ad->rx_vec_allowed = false;
+				break;
 			}
-#ifdef RTE_ARCH_X86
-			ad->rx_use_avx512 = get_avx_supported(1);
-
-			if (!ad->rx_use_avx512)
-				ad->rx_use_avx2 = get_avx_supported(0);
-#endif
 		}
+#ifdef RTE_ARCH_X86
+		rx_use_avx512 = get_avx_supported(1);
+
+		if (!rx_use_avx512)
+			rx_use_avx2 = get_avx_supported(0);
+#endif
 	}
 
-	if (ad->rx_vec_allowed  &&
-	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+	if (ad->rx_vec_allowed && rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 #ifdef RTE_ARCH_X86
 		if (dev->data->scattered_rx) {
-			if (ad->rx_use_avx512) {
+			if (rx_use_avx512) {
 #ifdef CC_AVX512_SUPPORT
-				PMD_DRV_LOG(NOTICE,
-					"Using AVX512 Vector Scattered Rx (port %d).",
-					dev->data->port_id);
-				dev->rx_pkt_burst =
-					i40e_recv_scattered_pkts_vec_avx512;
+				ad->rx_func_type = I40E_RX_AVX512_SCATTERED;
 #endif
 			} else {
-				PMD_INIT_LOG(DEBUG,
-					"Using %sVector Scattered Rx (port %d).",
-					ad->rx_use_avx2 ? "avx2 " : "",
-					dev->data->port_id);
-				dev->rx_pkt_burst = ad->rx_use_avx2 ?
-					i40e_recv_scattered_pkts_vec_avx2 :
-					i40e_recv_scattered_pkts_vec;
+				ad->rx_func_type = rx_use_avx2 ?
+					I40E_RX_AVX2_SCATTERED :
+					I40E_RX_SCATTERED;
 				dev->recycle_rx_descriptors_refill =
 					i40e_recycle_rx_descriptors_refill_vec;
 			}
 		} else {
-			if (ad->rx_use_avx512) {
+			if (rx_use_avx512) {
 #ifdef CC_AVX512_SUPPORT
-				PMD_DRV_LOG(NOTICE,
-					"Using AVX512 Vector Rx (port %d).",
-					dev->data->port_id);
-				dev->rx_pkt_burst =
-					i40e_recv_pkts_vec_avx512;
+				ad->rx_func_type = I40E_RX_AVX512;
 #endif
 			} else {
-				PMD_INIT_LOG(DEBUG,
-					"Using %sVector Rx (port %d).",
-					ad->rx_use_avx2 ? "avx2 " : "",
-					dev->data->port_id);
-				dev->rx_pkt_burst = ad->rx_use_avx2 ?
-					i40e_recv_pkts_vec_avx2 :
-					i40e_recv_pkts_vec;
+				ad->rx_func_type = rx_use_avx2 ?
+					I40E_RX_AVX2 :
+					I40E_RX_SSE;
 				dev->recycle_rx_descriptors_refill =
 					i40e_recycle_rx_descriptors_refill_vec;
 			}
 		}
-#else /* RTE_ARCH_X86 */
+#elif defined(RTE_ARCH_ARM64)
 		dev->recycle_rx_descriptors_refill = i40e_recycle_rx_descriptors_refill_vec;
-		if (dev->data->scattered_rx) {
-			PMD_INIT_LOG(DEBUG,
-				     "Using Vector Scattered Rx (port %d).",
-				     dev->data->port_id);
-			dev->rx_pkt_burst = i40e_recv_scattered_pkts_vec;
-		} else {
-			PMD_INIT_LOG(DEBUG, "Using Vector Rx (port %d).",
-				     dev->data->port_id);
-			dev->rx_pkt_burst = i40e_recv_pkts_vec;
-		}
+		if (dev->data->scattered_rx)
+			ad->rx_func_type = I40E_RX_NEON_SCATTERED;
+		else
+			ad->rx_func_type = I40E_RX_NEON;
+#elif defined(RTE_ARCH_PPC_64)
+		dev->recycle_rx_descriptors_refill = i40e_recycle_rx_descriptors_refill_vec;
+		if (dev->data->scattered_rx)
+			ad->rx_func_type = I40E_RX_ALTIVEC_SCATTERED;
+		else
+			ad->rx_func_type = I40E_RX_ALTIVEC;
 #endif /* RTE_ARCH_X86 */
 	} else if (!dev->data->scattered_rx && ad->rx_bulk_alloc_allowed) {
-		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
-				    "satisfied. Rx Burst Bulk Alloc function "
-				    "will be used on port=%d.",
-			     dev->data->port_id);
-
 		dev->rx_pkt_burst = i40e_recv_pkts_bulk_alloc;
 	} else {
 		/* Simple Rx Path. */
-		PMD_INIT_LOG(DEBUG, "Simple Rx path will be used on port=%d.",
-			     dev->data->port_id);
 		dev->rx_pkt_burst = dev->data->scattered_rx ?
 					i40e_recv_scattered_pkts :
 					i40e_recv_pkts;
@@ -3449,32 +3451,12 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 				rxq->vector_rx = vector_rx;
 		}
 	}
-}
 
-static const struct {
-	eth_rx_burst_t pkt_burst;
-	const char *info;
-} i40e_rx_burst_infos[] = {
-	{ i40e_recv_scattered_pkts,          "Scalar Scattered" },
-	{ i40e_recv_pkts_bulk_alloc,         "Scalar Bulk Alloc" },
-	{ i40e_recv_pkts,                    "Scalar" },
-#ifdef RTE_ARCH_X86
-#ifdef CC_AVX512_SUPPORT
-	{ i40e_recv_scattered_pkts_vec_avx512, "Vector AVX512 Scattered" },
-	{ i40e_recv_pkts_vec_avx512,           "Vector AVX512" },
-#endif
-	{ i40e_recv_scattered_pkts_vec_avx2, "Vector AVX2 Scattered" },
-	{ i40e_recv_pkts_vec_avx2,           "Vector AVX2" },
-	{ i40e_recv_scattered_pkts_vec,      "Vector SSE Scattered" },
-	{ i40e_recv_pkts_vec,                "Vector SSE" },
-#elif defined(RTE_ARCH_ARM64)
-	{ i40e_recv_scattered_pkts_vec,      "Vector Neon Scattered" },
-	{ i40e_recv_pkts_vec,                "Vector Neon" },
-#elif defined(RTE_ARCH_PPC_64)
-	{ i40e_recv_scattered_pkts_vec,      "Vector AltiVec Scattered" },
-	{ i40e_recv_pkts_vec,                "Vector AltiVec" },
-#endif
-};
+out:
+	dev->rx_pkt_burst = i40e_rx_burst_infos[ad->rx_func_type].pkt_burst;
+	PMD_DRV_LOG(NOTICE, "Using %s Rx burst function (port %d).",
+		i40e_rx_burst_infos[ad->rx_func_type].info, dev->data->port_id);
+}
 
 int
 i40e_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
