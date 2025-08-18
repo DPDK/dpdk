@@ -668,7 +668,6 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the
 	 * vector Rx/Tx preconditions, it will be reset.
 	 */
-	ad->rx_vec_allowed = true;
 	ad->tx_vec_allowed = true;
 
 	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
