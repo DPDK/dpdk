@@ -191,6 +191,22 @@ enum pps_type {
 	PPS_MAX,
 };
 
+enum ice_rx_func_type {
+	ICE_RX_DEFAULT,
+	ICE_RX_SCATTERED,
+	ICE_RX_BULK_ALLOC,
+	ICE_RX_SSE,
+	ICE_RX_SSE_SCATTERED,
+	ICE_RX_AVX2,
+	ICE_RX_AVX2_SCATTERED,
+	ICE_RX_AVX2_OFFLOAD,
+	ICE_RX_AVX2_SCATTERED_OFFLOAD,
+	ICE_RX_AVX512,
+	ICE_RX_AVX512_SCATTERED,
+	ICE_RX_AVX512_OFFLOAD,
+	ICE_RX_AVX512_SCATTERED_OFFLOAD,
+};
+
 struct ice_adapter;
 
 /**
@@ -637,6 +653,7 @@ struct ice_adapter {
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
 	bool tx_simple_allowed;
+	enum ice_rx_func_type rx_func_type;
 	/* ptype mapping table */
 	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[ICE_MAX_PKT_TYPE];
 	bool is_safe_mode;
@@ -658,8 +675,6 @@ struct ice_adapter {
 	unsigned long disabled_engine_mask;
 	struct ice_parser *psr;
 	/* used only on X86, zero on other Archs */
-	bool rx_use_avx2;
-	bool rx_use_avx512;
 	bool tx_use_avx2;
 	bool tx_use_avx512;
 	bool rx_vec_offload_support;
