@@ -167,6 +167,7 @@ uint16_t i40e_recv_scattered_pkts_vec_avx512(void *rx_queue,
 uint16_t i40e_xmit_pkts_vec_avx512(void *tx_queue,
 				   struct rte_mbuf **tx_pkts,
 				   uint16_t nb_pkts);
+enum rte_vect_max_simd i40e_get_max_simd_bitwidth(void);
 
 /* For each value it means, datasheet of hardware can tell more details
  *

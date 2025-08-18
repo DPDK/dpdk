@@ -15,6 +15,7 @@
 #include <rte_flow_driver.h>
 #include <rte_tm_driver.h>
 #include "rte_pmd_i40e.h"
+#include <rte_vect.h>
 
 #include "base/i40e_register.h"
 #include "base/i40e_type.h"
@@ -1279,9 +1280,7 @@ struct i40e_adapter {
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
 
-	/* used only on x86, zero on other architectures */
-	bool tx_use_avx2;
-	bool tx_use_avx512;
+	enum rte_vect_max_simd tx_simd_width;
 };
 
 /**
