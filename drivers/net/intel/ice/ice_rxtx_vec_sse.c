@@ -735,3 +735,9 @@ ice_tx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return ice_tx_vec_dev_check_default(dev);
 }
+
+enum rte_vect_max_simd
+ice_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
