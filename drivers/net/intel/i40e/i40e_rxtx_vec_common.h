@@ -54,27 +54,16 @@ static inline int
 i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
-	struct i40e_adapter *ad =
-		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-
-	/* no QinQ support */
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_EXTEND)
-		return -1;
-
 	/**
 	 * Vector mode is allowed only when number of Rx queue
 	 * descriptor is power of 2.
 	 */
-	ad->rx_vec_allowed = true;
 	for (uint16_t i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
-		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads)) {
-			ad->rx_vec_allowed = false;
-			break;
-		}
+		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
+			return -1;
 	}
 
 	return 0;
