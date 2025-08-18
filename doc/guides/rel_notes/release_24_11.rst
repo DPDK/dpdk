@@ -1054,3 +1054,288 @@ Tested Platforms
 * DPDK 24.11.2 contains fixes from DPDK 25.03 and 8364a0f276eb ("net/ixgbe: fix VF registers for E610")
 * Issues identified/fixed in DPDK main branch after DPDK 25.03 may be present in DPDK 24.11.2
 * There is a report that https://bugs.dpdk.org/show_bug.cgi?id=1606 is still present despite the fix being backported. This needs further investigation for DPDK 24.11.3.
+
+24.11.3 Release Notes
+---------------------
+
+
+24.11.3 Fixes
+~~~~~~~~~~~~~
+
+* acl: fix build with GCC 15 on aarch64
+* app/crypto-perf: fix AAD offset alignment
+* app/eventdev: fix number of releases sent during cleanup
+* app/testpmd: fix flow random item token
+* app/testpmd: fix RSS hash key update
+* app/testpmd: relax number of TCs in DCB command
+* buildtools/test: scan muti-line registrations
+* bus/auxiliary: fix crash in cleanup
+* bus: cleanup device lists
+* bus/fslmc: fix use after free
+* bus/pci/bsd: fix device existence check
+* bus/vmbus: align ring buffer data to page boundary
+* bus/vmbus: use Hyper-V page size
+* common/cnxk: fix AES-CTR salt handling
+* common/cnxk: fix aura offset
+* common/cnxk: fix CQ tail drop
+* common/cnxk: fix E-tag pattern parsing
+* common/cnxk: fix qsize in CPT iq enable
+* common/dpaax: fix PDCP AES only 12-bit SN
+* common/dpaax: fix PDCP key command race condition
+* common/mlx5: fix dependency detection on Windows
+* common/mlx5: fix extraction of auxiliary device name
+* crypto/cnxk: fix includes
+* crypto/cnxk: fix out-of-bounds access in SM2
+* crypto/cnxk: fix QP stats
+* crypto/cnxk: fix uninitialized variable
+* crypto/cnxk: update SG list population
+* crypto/dpaa2_sec: fix uninitialized variable
+* crypto/openssl: include private exponent in RSA session
+* crypto/qat: fix out-of-place chain/cipher/auth headers
+* crypto/qat: fix out-of-place chain/cipher/auth headers
+* crypto/qat: fix out-of-place header bytes in AEAD raw API
+* crypto/qat: fix size calculation for memset
+* crypto/virtio: add request check on request side
+* crypto/virtio: fix cipher data source length
+* crypto/virtio: fix driver cleanup
+* doc: add kernel options required for mlx5
+* doc: fix missing feature matrix for event device
+* doc: remove reference to deprecated --use-device option
+* dts: fix deterministic doc
+* eal: add description of service corelist in usage
+* eal: fix return value of lcore role
+* eal/freebsd: unregister alarm callback before free
+* eal/linux: improve ASLR check
+* eal/linux: unregister alarm callback before free
+* eal/unix: fix log message for madvise failure
+* eal: warn if no lcore is available
+* eal/x86: fix C++ build
+* ethdev: fix error struct in flow configure
+* ethdev: keep promiscuous/allmulti value before disabling
+* event/cnxk: fix missing HW state checks
+* eventdev: fix flag types consistency
+* event/dlb2: fix default credits based on HW version
+* event/dlb2: fix dequeue with CQ depth <= 16
+* event/dlb2: fix num single link ports for DLB2.5
+* event/dlb2: fix public symbol namespace
+* event/dlb2: fix QID depth xstat
+* event/dlb2: fix validaton of LDB port COS ID arguments
+* examples/flow_filtering: fix make clean
+* examples/ipsec-secgw: fix crash in event vector mode
+* examples/ipsec-secgw: fix crash with IPv6
+* examples/ipsec-secgw: fix number of queue pairs
+* examples/ntb: check more heap allocations
+* mem: fix lockup on address space shortage
+* net/af_xdp: fix use after free in zero-copy Tx
+* net/bonding: avoid RSS RETA update in flow isolation mode
+* net/cnxk: fix descriptor count update on reconfig
+* net/cnxk: fix lock for security session operations
+* net/e1000: fix EEPROM dump
+* net/e1000: fix igb Tx queue offloads capability
+* net/e1000: fix xstats name
+* net/ena: fix aenq timeout with low poll interval
+* net/ena: fix control path interrupt mode
+* net: fix IPv6 check for IPv4 compat
+* net/fm10k/base: fix compilation warnings
+* net/hns3: allow Tx vector when fast free not enabled
+* net/hns3: check requirement for hardware GRO
+* net/hns3: fix CRC data segment
+* net/hns3: fix divide by zero
+* net/hns3: fix extra wait for link up
+* net/hns3: fix integer overflow in interrupt unmap
+* net/hns3: fix interrupt rollback
+* net/hns3: fix memory leak for indirect flow action
+* net/hns3: fix memory leak on failure
+* net/hns3: fix queue TC configuration on VF
+* net/hns3: fix resources release on reset
+* net/hns3: fix Rx packet without CRC data
+* net/i40e/base: fix compiler warnings
+* net/i40e/base: fix unused value warnings
+* net/i40e: fix RSS on plain IPv4
+* net/iavf: fix VLAN strip disabling for ADQ v2 capability
+* net/iavf: fix VLAN strip setting after enabling filter
+* net/ice/base: fix integer overflow
+* net/ice/base: fix media type check
+* net/ice/base: fix type conversion
+* net/ice/base: fix typo in device ID description
+* net/ice: fix flow creation failure
+* net/ice: fix handling empty DCF RSS hash
+* net/ice: fix querying RSS hash for DCF
+* net/ice: fix support for 3 scheduler levels
+* net/idpf: fix truncation of constant value
+* net/ixgbe/base: correct definition of endianness macro
+* net/ixgbe/base: fix compilation warnings
+* net/ixgbe/base: fix link status for E610
+* net/ixgbe/base: fix lock checker errors
+* net/ixgbe: enable ethertype filter for E610
+* net/ixgbe: fix indentation
+* net/ixgbe: fix port mask default value in filter
+* net/ixgbe: remove VLAs
+* net/ixgbe: skip MACsec stats for E610
+* net/mana: check vendor ID when probing RDMA device
+* net/mlx5: align PF and VF/SF MAC address handling
+* net/mlx5: avoid setting kernel MTU if not needed
+* net/mlx5: fix access to auxiliary flow data
+* net/mlx5: fix counter pool init error propagation
+* net/mlx5: fix counter service cleanup on init failure
+* net/mlx5: fix crash in HWS counter pool destroy
+* net/mlx5: fix crash on age query with indirect conntrack
+* net/mlx5: fix error notification for large flow patterns
+* net/mlx5: fix flex tunnel flow validation
+* net/mlx5: fix GRE flow item validation
+* net/mlx5: fix header modify action on group 0
+* net/mlx5: fix hypervisor detection in VLAN workaround
+* net/mlx5: fix link on Windows
+* net/mlx5: fix mark action with shared Rx queue
+* net/mlx5: fix masked indirect age action validation
+* net/mlx5: fix maximal queue size query
+* net/mlx5: fix out-of-order completions in ordinary Rx burst
+* net/mlx5: fix template flow rule identification
+* net/mlx5: fix validation for GENEVE options
+* net/mlx5: fix VLAN stripping on hairpin queue
+* net/mlx5: fix WQE size calculation for Tx queue
+* net/mlx5/hws: fix send queue drain on FW WQE destroy
+* net/mlx5: remove unsupported flow meter action in HWS
+* net/mlx5: validate GTP PSC QFI width
+* net/netvsc: add stats counters from VF
+* net/netvsc: use Hyper-V page size
+* net/nfp: fix control message overflow
+* net/nfp: fix crash with null RSS hash key
+* net/nfp: fix flow rule freeing
+* net/nfp: fix hash key length logic
+* net/nfp: standardize NFD3 Tx descriptor endianness
+* net/nfp: standardize NFDk Tx descriptor endianness
+* net/nfp: standardize Rx descriptor endianness
+* net/ngbe: fix device statistics
+* net/ngbe: fix MAC control frame forwarding
+* net/ntnic: avoid divide by zero
+* net/ntnic: fix ring queue operation
+* net/ntnic: remove unused code
+* net/ntnic: unmap DMA during queue release
+* net/null: fix packet copy
+* net/octeon_ep: fix buffer refill
+* net/octeon_ep: increase mailbox timeout
+* net/qede: fix use after free
+* net/sfc: fix action order on start failure
+* net/tap: fix qdisc add failure handling
+* net/txgbe: add LRO flag in mbuf when enabled
+* net/txgbe: fix device statistics
+* net/txgbe: fix FDIR perfect mode for IPv6
+* net/txgbe: fix MAC control frame forwarding
+* net/txgbe: fix ntuple filter parsing
+* net/txgbe: fix packet type for FDIR filter
+* net/txgbe: fix raw pattern match for FDIR rule
+* net/txgbe: fix reserved extra FDIR headroom
+* net/txgbe: fix to create FDIR filter for SCTP packet
+* net/txgbe: fix to create FDIR filter for tunnel packet
+* net/txgbe: restrict VLAN strip configuration on VF
+* pcapng: fix null dereference in close
+* power/intel_uncore: fix crash closing uninitialized driver
+* test/crypto: fix auth and cipher case IV length
+* test/crypto: fix EdDSA vector description
+* test/crypto: fix RSA decrypt validation
+* test/crypto: fix RSA vector as per RFC 8017
+* test/crypto: set to null after freeing operation
+* test/lcore: fix race in per-lcore test
+* test/malloc: improve resiliency
+* trace: fix overflow in per-lcore trace buffer
+* version: 24.11.3-rc1
+* vhost/crypto: fix cipher data length
+* vhost: fix net control virtqueue used length
+* vhost: fix wrapping on control virtqueue rings
+* vhost: search virtqueues driver data in read-only area
+
+24.11.3 Validation
+~~~~~~~~~~~~~~~~~~
+
+* `Red Hat(R) Testing <https://mails.dpdk.org/archives/stable/2025-July/053454.html>`__
+
+   * Platform
+
+      * RHEL 9
+      * Kernel 5.14
+      * Qemu 9.1.0
+      * X540-AT2 NIC(ixgbe, 10G)
+
+   * Functionality
+
+      * Guest with device assignment(PF) throughput testing(1G hugepage size)
+      * Guest with device assignment(PF) throughput testing(2M hugepage size)
+      * Guest with device assignment(VF) throughput testing
+      * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+      * PVP vhost-user 2Q throughput testing
+      * PVP vhost-user 1Q cross numa node  throughput testing
+      * Guest with vhost-user 2 queues throughput testing
+      * vhost-user reconnect with dpdk-client, qemu-server: qemu reconnect
+      * vhost-user reconnect with dpdk-client, qemu-server: ovs reconnect
+      * PVP 1Q live migration testing
+      * PVP 1Q cross numa node live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+      * Guest with ovs+dpdk+vhost-user 2Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 4Q live migration testing
+      * Host PF + DPDK testing
+      * Host VF + DPDK testing
+
+
+* `Nvidia(R) Testing <https://mails.dpdk.org/archives/stable/2025-August/053692.html>`__
+
+   * Basic functionality with testpmd
+
+      * Tx/Rx
+      * xstats
+      * Timestamps
+      * Link status
+      * RTE flow
+      * RSS
+      * VLAN filtering, stripping and insertion
+      * Checksum/TSO
+      * ptype
+      * link_status_interrupt example application
+      * l3fwd-power example application
+      * Multi-process example applications
+      * Hardware LRO tests
+      * Regex application
+      * Buffer Split
+      * Tx scheduling
+
+   * Build tests
+   * ConnectX-6 Dx
+   * ConnectX-7
+   * BlueField-2
+
+
+* `Intel(R) Testing <https://mails.dpdk.org/archives/stable/2025-August/053672.html>`__
+
+   * Compile testing
+
+   * Functional testing
+
+      * PF (i40e, ixgbe)
+      * VF (i40e, ixgbe)
+      * PF/VF (ice)
+      * IPsec
+      * Virtio
+      * Cryptodev
+      * DLB
+
+   * Performance testing
+
+      * Throughput performance
+      * Cryptodev latency
+      * PF/VF NIC single core/NIC performance
+      * XXV710/E810 NIC Performance
+
+24.11.3 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* DPDK 24.11.3 contains fixes from DPDK 25.07
+* Issues identified/fixed in DPDK main branch after DPDK 25.07 may be present in DPDK 24.11.3
+* `Bug 1606 - flow_filtering/flow_filtering_mismatch_rule: Some mismatch rule packets match the rule. <https://bugs.dpdk.org/show_bug.cgi?id=1606>`__ reported by Intel validation team, despite listed fix being present.
+
+24.11.3 Fixes skipped and status unresolved
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* 9843181aa5  crypto/virtio: fix driver ID
+* 25e35296b5  net/cnxk: fix reconfiguring MAC address
+* 98cf04bb90  test/graph: fix second run
