@@ -651,7 +651,6 @@ struct ice_adapter {
 	struct ice_hw hw;
 	struct ice_pf pf;
 	bool rx_bulk_alloc_allowed;
-	bool rx_vec_allowed;
 	bool tx_vec_allowed;
 	bool tx_simple_allowed;
 	enum ice_rx_func_type rx_func_type;
