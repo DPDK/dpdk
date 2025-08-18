@@ -3289,32 +3289,6 @@ i40e_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	}
 }
 
-#ifdef RTE_ARCH_X86
-static inline bool
-get_avx_supported(bool request_avx512)
-{
-	if (request_avx512) {
-		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512 &&
-		rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
-		rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
-#ifdef CC_AVX512_SUPPORT
-			return true;
-#else
-		PMD_DRV_LOG(NOTICE,
-			"AVX512 is not supported in build env");
-		return false;
-#endif
-	} else {
-		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256 &&
-				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 &&
-				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
-			return true;
-	}
-
-	return false;
-}
-#endif /* RTE_ARCH_X86 */
-
 static const struct {
 	eth_rx_burst_t pkt_burst;
 	const char *info;
@@ -3356,7 +3330,7 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 	 * conditions to be met and Rx Bulk Allocation should be allowed.
 	 */
 #ifdef RTE_ARCH_X86
-	bool rx_use_avx512 = false, rx_use_avx2 = false;
+	enum rte_vect_max_simd rx_simd_width = i40e_get_max_simd_bitwidth();
 #endif
 	if (i40e_rx_vec_dev_conf_condition_check(dev) || !ad->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Port[%d] doesn't meet"
@@ -3375,35 +3349,25 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 				break;
 			}
 		}
-#ifdef RTE_ARCH_X86
-		rx_use_avx512 = get_avx_supported(1);
-
-		if (!rx_use_avx512)
-			rx_use_avx2 = get_avx_supported(0);
-#endif
 	}
 
 	if (ad->rx_vec_allowed && rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 #ifdef RTE_ARCH_X86
 		if (dev->data->scattered_rx) {
-			if (rx_use_avx512) {
-#ifdef CC_AVX512_SUPPORT
+			if (rx_simd_width == RTE_VECT_SIMD_512) {
 				ad->rx_func_type = I40E_RX_AVX512_SCATTERED;
-#endif
 			} else {
-				ad->rx_func_type = rx_use_avx2 ?
+				ad->rx_func_type = (rx_simd_width == RTE_VECT_SIMD_256) ?
 					I40E_RX_AVX2_SCATTERED :
 					I40E_RX_SCATTERED;
 				dev->recycle_rx_descriptors_refill =
 					i40e_recycle_rx_descriptors_refill_vec;
 			}
 		} else {
-			if (rx_use_avx512) {
-#ifdef CC_AVX512_SUPPORT
+			if (rx_simd_width == RTE_VECT_SIMD_512) {
 				ad->rx_func_type = I40E_RX_AVX512;
-#endif
 			} else {
-				ad->rx_func_type = rx_use_avx2 ?
+				ad->rx_func_type = (rx_simd_width == RTE_VECT_SIMD_256) ?
 					I40E_RX_AVX2 :
 					I40E_RX_SSE;
 				dev->recycle_rx_descriptors_refill =
@@ -3514,8 +3478,7 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 #ifdef RTE_ARCH_X86
-		ad->tx_use_avx2 = false;
-		ad->tx_use_avx512 = false;
+		ad->tx_simd_width = i40e_get_max_simd_bitwidth();
 #endif
 		if (ad->tx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -3527,12 +3490,6 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 					break;
 				}
 			}
-#ifdef RTE_ARCH_X86
-			ad->tx_use_avx512 = get_avx_supported(1);
-
-			if (!ad->tx_use_avx512)
-				ad->tx_use_avx2 = get_avx_supported(0);
-#endif
 		}
 	}
 
@@ -3542,17 +3499,22 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 	if (ad->tx_simple_allowed) {
 		if (ad->tx_vec_allowed) {
 #ifdef RTE_ARCH_X86
-			if (ad->tx_use_avx512) {
+			if (ad->tx_simd_width == RTE_VECT_SIMD_512) {
 #ifdef CC_AVX512_SUPPORT
 				PMD_DRV_LOG(NOTICE, "Using AVX512 Vector Tx (port %d).",
 					    dev->data->port_id);
 				dev->tx_pkt_burst = i40e_xmit_pkts_vec_avx512;
+#else
+				PMD_DRV_LOG(ERR, "Invalid Tx SIMD width reported, defaulting to "
+						"using scalar Tx (port %d).",
+						dev->data->port_id);
+				dev->tx_pkt_burst = i40e_xmit_pkts;
 #endif
 			} else {
 				PMD_INIT_LOG(DEBUG, "Using %sVector Tx (port %d).",
-					     ad->tx_use_avx2 ? "avx2 " : "",
+					     ad->tx_simd_width == RTE_VECT_SIMD_256 ? "avx2 " : "",
 					     dev->data->port_id);
-				dev->tx_pkt_burst = ad->tx_use_avx2 ?
+				dev->tx_pkt_burst = ad->tx_simd_width == RTE_VECT_SIMD_256 ?
 						    i40e_xmit_pkts_vec_avx2 :
 						    i40e_xmit_pkts_vec;
 				dev->recycle_tx_mbufs_reuse = i40e_recycle_tx_mbufs_reuse_vec;
