@@ -11,6 +11,7 @@
 
 #include <ethdev_driver.h>
 #include <rte_tm_driver.h>
+#include <rte_vect.h>
 
 #include "base/ice_common.h"
 #include "base/ice_adminq_cmd.h"
@@ -674,9 +675,7 @@ struct ice_adapter {
 	/* Set bit if the engine is disabled */
 	unsigned long disabled_engine_mask;
 	struct ice_parser *psr;
-	/* used only on X86, zero on other Archs */
-	bool tx_use_avx2;
-	bool tx_use_avx512;
+	enum rte_vect_max_simd tx_simd_width;
 	bool rx_vec_offload_support;
 };
 
