@@ -3973,11 +3973,14 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	enum iavf_rx_func_type rx_func_type;
 	int no_poll_on_link_down = adapter->devargs.no_poll_on_link_down;
 	int i;
 	struct ci_rx_queue *rxq;
 	bool use_flex = true;
+
+	/* The primary process selects the rx path for all processes. */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto out;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
@@ -4018,140 +4021,85 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 		}
 
 		if (dev->data->scattered_rx) {
-			if (!use_avx2 && !use_avx512) {
-				PMD_DRV_LOG(DEBUG,
-					    "Using Vector Scattered Rx (port %d).",
-					    dev->data->port_id);
-			} else {
-				if (use_avx2) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX2 Vector Scattered Rx (port %d).",
-							    dev->data->port_id);
-					else
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX2 OFFLOAD Vector Scattered Rx (port %d).",
-							    dev->data->port_id);
-				} else {
-					if (check_ret == IAVF_VECTOR_PATH)
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX512 Vector Scattered Rx (port %d).",
-							    dev->data->port_id);
-					else
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX512 OFFLOAD Vector Scattered Rx (port %d).",
-							    dev->data->port_id);
-				}
-			}
 			if (use_flex) {
-				rx_func_type = IAVF_RX_SSE_SCATTERED_FLEX_RXD;
+				adapter->rx_func_type = IAVF_RX_SSE_SCATTERED_FLEX_RXD;
 				if (use_avx2) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX2_SCATTERED_FLEX_RXD;
 					else
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX2_SCATTERED_FLEX_RXD_OFFLOAD;
 				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX512_SCATTERED_FLEX_RXD;
 					else
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX512_SCATTERED_FLEX_RXD_OFFLOAD;
 				}
 #endif
 			} else {
-				rx_func_type = IAVF_RX_SSE_SCATTERED;
+				adapter->rx_func_type = IAVF_RX_SSE_SCATTERED;
 				if (use_avx2) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX2_SCATTERED;
 					else
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX2_SCATTERED_OFFLOAD;
 				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX512_SCATTERED;
 					else
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX512_SCATTERED_OFFLOAD;
 				}
 #endif
 			}
 		} else {
-			if (!use_avx2 && !use_avx512) {
-				PMD_DRV_LOG(DEBUG, "Using Vector Rx (port %d).",
-					    dev->data->port_id);
-			} else {
-				if (use_avx2) {
-					if (check_ret == IAVF_VECTOR_PATH)
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX2 Vector Rx (port %d).",
-							    dev->data->port_id);
-					else
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX2 OFFLOAD Vector Rx (port %d).",
-							    dev->data->port_id);
-				} else {
-					if (check_ret == IAVF_VECTOR_PATH)
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX512 Vector Rx (port %d).",
-							    dev->data->port_id);
-					else
-						PMD_DRV_LOG(DEBUG,
-							    "Using AVX512 OFFLOAD Vector Rx (port %d).",
-							    dev->data->port_id);
-				}
-			}
 			if (use_flex) {
-				rx_func_type = IAVF_RX_SSE_FLEX_RXD;
+				adapter->rx_func_type = IAVF_RX_SSE_FLEX_RXD;
 				if (use_avx2) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type = IAVF_RX_AVX2_FLEX_RXD;
+						adapter->rx_func_type = IAVF_RX_AVX2_FLEX_RXD;
 					else
-						rx_func_type = IAVF_RX_AVX2_FLEX_RXD_OFFLOAD;
+						adapter->rx_func_type =
+							IAVF_RX_AVX2_FLEX_RXD_OFFLOAD;
 				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type = IAVF_RX_AVX512_FLEX_RXD;
+						adapter->rx_func_type = IAVF_RX_AVX512_FLEX_RXD;
 					else
-						rx_func_type =
+						adapter->rx_func_type =
 							IAVF_RX_AVX512_FLEX_RXD_OFFLOAD;
 				}
 #endif
 			} else {
-				rx_func_type = IAVF_RX_SSE;
+				adapter->rx_func_type = IAVF_RX_SSE;
 				if (use_avx2) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type = IAVF_RX_AVX2;
+						adapter->rx_func_type = IAVF_RX_AVX2;
 					else
-						rx_func_type = IAVF_RX_AVX2_OFFLOAD;
+						adapter->rx_func_type = IAVF_RX_AVX2_OFFLOAD;
 				}
 #ifdef CC_AVX512_SUPPORT
 				if (use_avx512) {
 					if (check_ret == IAVF_VECTOR_PATH)
-						rx_func_type = IAVF_RX_AVX512;
+						adapter->rx_func_type = IAVF_RX_AVX512;
 					else
-						rx_func_type = IAVF_RX_AVX512_OFFLOAD;
+						adapter->rx_func_type = IAVF_RX_AVX512_OFFLOAD;
 				}
 #endif
 			}
 		}
-
-		if (no_poll_on_link_down) {
-			adapter->rx_func_type = rx_func_type;
-			dev->rx_pkt_burst = iavf_recv_pkts_no_poll;
-		} else {
-			dev->rx_pkt_burst = iavf_rx_pkt_burst_ops[rx_func_type].pkt_burst;
-		}
-		return;
+		goto out;
 	}
 #elif defined RTE_ARCH_ARM
 	int check_ret;
@@ -4165,43 +4113,33 @@ iavf_set_rx_function(struct rte_eth_dev *dev)
 			rxq = dev->data->rx_queues[i];
 			(void)iavf_rxq_vec_setup(rxq);
 		}
-		rx_func_type = IAVF_RX_SSE;
+		adapter->rx_func_type = IAVF_RX_SSE;
 
-		if (no_poll_on_link_down) {
-			adapter->rx_func_type = rx_func_type;
-			dev->rx_pkt_burst = iavf_recv_pkts_no_poll;
-		} else {
-			dev->rx_pkt_burst = iavf_rx_pkt_burst_ops[rx_func_type].pkt_burst;
-		}
-		return;
+		goto out;
 	}
 #endif
 	if (dev->data->scattered_rx) {
-		PMD_DRV_LOG(DEBUG, "Using a Scattered Rx callback (port=%d).",
-			    dev->data->port_id);
 		if (use_flex)
-			rx_func_type = IAVF_RX_SCATTERED_FLEX_RXD;
+			adapter->rx_func_type = IAVF_RX_SCATTERED_FLEX_RXD;
 		else
-			rx_func_type = IAVF_RX_SCATTERED;
+			adapter->rx_func_type = IAVF_RX_SCATTERED;
 	} else if (adapter->rx_bulk_alloc_allowed) {
-		PMD_DRV_LOG(DEBUG, "Using bulk Rx callback (port=%d).",
-			    dev->data->port_id);
-		rx_func_type = IAVF_RX_BULK_ALLOC;
+		adapter->rx_func_type = IAVF_RX_BULK_ALLOC;
 	} else {
-		PMD_DRV_LOG(DEBUG, "Using Basic Rx callback (port=%d).",
-			    dev->data->port_id);
 		if (use_flex)
-			rx_func_type = IAVF_RX_FLEX_RXD;
+			adapter->rx_func_type = IAVF_RX_FLEX_RXD;
 		else
-			rx_func_type = IAVF_RX_DEFAULT;
+			adapter->rx_func_type = IAVF_RX_DEFAULT;
 	}
 
-	if (no_poll_on_link_down) {
-		adapter->rx_func_type = rx_func_type;
+out:
+	if (no_poll_on_link_down)
 		dev->rx_pkt_burst = iavf_recv_pkts_no_poll;
-	} else {
-		dev->rx_pkt_burst = iavf_rx_pkt_burst_ops[rx_func_type].pkt_burst;
-	}
+	else
+		dev->rx_pkt_burst = iavf_rx_pkt_burst_ops[adapter->rx_func_type].pkt_burst;
+
+	PMD_DRV_LOG(NOTICE, "Using %s Rx burst function (port %d).",
+		iavf_rx_pkt_burst_ops[adapter->rx_func_type].info, dev->data->port_id);
 }
 
 /* choose tx function*/
