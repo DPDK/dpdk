@@ -375,7 +375,6 @@ struct iavf_adapter {
 
 	bool rx_bulk_alloc_allowed;
 	/* For vector PMD */
-	bool rx_vec_allowed;
 	bool tx_vec_allowed;
 	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE];
 	bool stopped;
