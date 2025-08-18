@@ -360,3 +360,9 @@ iavf_rx_vec_dev_check(struct rte_eth_dev *dev)
 {
 	return iavf_rx_vec_dev_check_default(dev);
 }
+
+enum rte_vect_max_simd
+iavf_get_max_simd_bitwidth(void)
+{
+	return RTE_MIN(128, rte_vect_get_max_simd_bitwidth());
+}
