@@ -3707,7 +3707,7 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 	struct ci_rx_queue *rxq;
 	int i;
 	int rx_check_ret = -1;
-	bool rx_use_avx512 = false, rx_use_avx2 = false;
+	enum rte_vect_max_simd rx_simd_width = RTE_VECT_SIMD_DISABLED;
 
 	rx_check_ret = ice_rx_vec_dev_check(dev);
 	if (ad->ptp_ena)
@@ -3724,35 +3724,20 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 				break;
 			}
 		}
+		rx_simd_width = ice_get_max_simd_bitwidth();
 
-		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512 &&
-				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
-				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
-#ifdef CC_AVX512_SUPPORT
-			rx_use_avx512 = true;
-#else
-		PMD_DRV_LOG(NOTICE,
-			"AVX512 is not supported in build env");
-#endif
-		if (!rx_use_avx512 &&
-				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
-				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-			rx_use_avx2 = true;
 	} else {
 		ad->rx_vec_allowed = false;
 	}
 
 	if (ad->rx_vec_allowed) {
 		if (dev->data->scattered_rx) {
-			if (rx_use_avx512) {
-#ifdef CC_AVX512_SUPPORT
+			if (rx_simd_width == RTE_VECT_SIMD_512) {
 				if (ad->rx_vec_offload_support)
 					ad->rx_func_type = ICE_RX_AVX512_SCATTERED_OFFLOAD;
 				else
 					ad->rx_func_type = ICE_RX_AVX512_SCATTERED;
-#endif
-			} else if (rx_use_avx2) {
+			} else if (rx_simd_width >= RTE_VECT_SIMD_256) {
 				if (ad->rx_vec_offload_support)
 					ad->rx_func_type = ICE_RX_AVX2_SCATTERED_OFFLOAD;
 				else
@@ -3761,14 +3746,12 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 				ad->rx_func_type = ICE_RX_SSE_SCATTERED;
 			}
 		} else {
-			if (rx_use_avx512) {
-#ifdef CC_AVX512_SUPPORT
+			if (rx_simd_width == RTE_VECT_SIMD_512) {
 				if (ad->rx_vec_offload_support)
 					ad->rx_func_type = ICE_RX_AVX512_OFFLOAD;
 				else
 					ad->rx_func_type = ICE_RX_AVX512;
-#endif
-			} else if (rx_use_avx2) {
+			} else if (rx_simd_width >= RTE_VECT_SIMD_256) {
 				if (ad->rx_vec_offload_support)
 					ad->rx_func_type = ICE_RX_AVX2_OFFLOAD;
 				else
@@ -4036,29 +4019,14 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 	int tx_check_ret = -1;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		ad->tx_use_avx2 = false;
-		ad->tx_use_avx512 = false;
+		ad->tx_simd_width = RTE_VECT_SIMD_DISABLED;
 		tx_check_ret = ice_tx_vec_dev_check(dev);
+		ad->tx_simd_width = ice_get_max_simd_bitwidth();
 		if (tx_check_ret >= 0 &&
 		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 			ad->tx_vec_allowed = true;
 
-			if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512 &&
-			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
-			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
-#ifdef CC_AVX512_SUPPORT
-				ad->tx_use_avx512 = true;
-#else
-			PMD_DRV_LOG(NOTICE,
-				"AVX512 is not supported in build env");
-#endif
-			if (!ad->tx_use_avx512 &&
-				(rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
-				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1) &&
-				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
-				ad->tx_use_avx2 = true;
-
-			if (!ad->tx_use_avx2 && !ad->tx_use_avx512 &&
+			if (ad->tx_simd_width < RTE_VECT_SIMD_256 &&
 				tx_check_ret == ICE_VECTOR_OFFLOAD_PATH)
 				ad->tx_vec_allowed = false;
 
@@ -4078,7 +4046,7 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 
 	if (ad->tx_vec_allowed) {
 		dev->tx_pkt_prepare = NULL;
-		if (ad->tx_use_avx512) {
+		if (ad->tx_simd_width == RTE_VECT_SIMD_512) {
 #ifdef CC_AVX512_SUPPORT
 			if (tx_check_ret == ICE_VECTOR_OFFLOAD_PATH) {
 				PMD_DRV_LOG(NOTICE,
@@ -4104,9 +4072,9 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 				dev->tx_pkt_prepare = ice_prep_pkts;
 			} else {
 				PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
-					    ad->tx_use_avx2 ? "avx2 " : "",
+					    ad->tx_simd_width == RTE_VECT_SIMD_256 ? "avx2 " : "",
 					    dev->data->port_id);
-				dev->tx_pkt_burst = ad->tx_use_avx2 ?
+				dev->tx_pkt_burst = ad->tx_simd_width == RTE_VECT_SIMD_256 ?
 						    ice_xmit_pkts_vec_avx2 :
 						    ice_xmit_pkts_vec;
 			}
