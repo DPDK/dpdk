@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_vect.h>
 
 #include "desc.h"
 
@@ -125,6 +126,25 @@ struct ci_rx_queue {
 	};
 };
 
+struct ci_rx_path_features_extra {
+	bool scattered;
+	bool flex_desc;
+	bool bulk_alloc;
+	bool disabled;
+};
+
+struct ci_rx_path_features {
+	uint32_t rx_offloads;
+	enum rte_vect_max_simd simd_width;
+	struct ci_rx_path_features_extra extra;
+};
+
+struct ci_rx_path_info {
+	eth_rx_burst_t pkt_burst;
+	const char *info;
+	struct ci_rx_path_features features;
+};
+
 static inline uint16_t
 ci_rx_reassemble_packets(struct rte_mbuf **rx_bufs, uint16_t nb_bufs, uint8_t *split_flags,
 		struct rte_mbuf **pkt_first_seg, struct rte_mbuf **pkt_last_seg,
@@ -220,6 +240,84 @@ ci_rxq_vec_capable(uint16_t nb_desc, uint16_t rx_free_thresh, uint64_t offloads)
 		return false;
 
 	return true;
+}
+
+/**
+ * Select the best matching Rx path based on features
+ *
+ * @param req_features
+ *   The requested features for the Rx path
+ * @param infos
+ *   Array of information about the available Rx paths
+ * @param num_paths
+ *   Number of available paths in the infos array
+ * @param default_path
+ *   Index of the default path to use if no suitable path is found
+ *
+ * @return
+ *   The packet burst function index that best matches the requested features,
+ *   or default_path if no suitable path is found
+ */
+static inline int
+ci_rx_path_select(struct ci_rx_path_features req_features,
+			const struct ci_rx_path_info *infos,
+			int num_paths,
+			int default_path)
+{
+	int i, idx = default_path;
+	const struct ci_rx_path_features *current_features = NULL;
+
+	for (i = 0; i < num_paths; i++) {
+		const struct ci_rx_path_features *path_features = &infos[i].features;
+
+		/* Do not select a disabled rx path. */
+		if (path_features->extra.disabled)
+			continue;
+
+		/* If requested, ensure the path uses the flexible descriptor. */
+		if (path_features->extra.flex_desc != req_features.extra.flex_desc)
+			continue;
+
+		/* If requested, ensure the path supports scattered RX. */
+		if (path_features->extra.scattered != req_features.extra.scattered)
+			continue;
+
+		/* Do not use a bulk alloc path if not requested. */
+		if (path_features->extra.bulk_alloc && !req_features.extra.bulk_alloc)
+			continue;
+
+		/* Ensure the path supports the requested RX offloads. */
+		if ((path_features->rx_offloads & req_features.rx_offloads) !=
+				req_features.rx_offloads)
+			continue;
+
+		/* Ensure the path's SIMD width is compatible with the requested width. */
+		if (path_features->simd_width > req_features.simd_width)
+			continue;
+
+		/* Do not select the path if it is less suitable than the current path. */
+		if (current_features != NULL) {
+			/* Do not select paths with lower SIMD width than the current path. */
+			if (path_features->simd_width < current_features->simd_width)
+				continue;
+			/* Do not select paths with more offloads enabled than the current path. */
+			if (rte_popcount32(path_features->rx_offloads) >
+					rte_popcount32(current_features->rx_offloads))
+				continue;
+			/* Do not select paths without bulk alloc support if requested and the
+			 * current path already meets this requirement.
+			 */
+			if (!path_features->extra.bulk_alloc && req_features.extra.bulk_alloc &&
+					current_features->extra.bulk_alloc)
+				continue;
+		}
+
+		/* Finally, select the path since it has met all the requirements. */
+		idx = i;
+		current_features = &infos[idx].features;
+	}
+
+	return idx;
 }
 
 #endif /* _COMMON_INTEL_RX_H_ */
