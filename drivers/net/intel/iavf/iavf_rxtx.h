@@ -605,6 +605,7 @@ void iavf_tx_queue_release_mbufs_avx512(struct ci_tx_queue *txq);
 void iavf_rx_queue_release_mbufs_sse(struct ci_rx_queue *rxq);
 void iavf_tx_queue_release_mbufs_sse(struct ci_tx_queue *txq);
 void iavf_rx_queue_release_mbufs_neon(struct ci_rx_queue *rxq);
+enum rte_vect_max_simd iavf_get_max_simd_bitwidth(void);
 
 static inline
 void iavf_dump_rx_descriptor(struct ci_rx_queue *rxq,
