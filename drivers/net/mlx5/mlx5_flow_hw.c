@@ -1886,6 +1886,7 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 	uint32_t idx = act_idx &
 		       ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
 	uint64_t item_flags;
+	uint32_t *cnt_queue;
 	cnt_id_t age_cnt;
 
 	memset(&act_data, 0, sizeof(act_data));
@@ -1931,9 +1932,8 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 		if (param == NULL)
 			return -1;
 		if (action_flags & MLX5_FLOW_ACTION_COUNT) {
-			if (mlx5_hws_cnt_pool_get(priv->hws_cpool,
-						  &param->queue_id, &age_cnt,
-						  idx) < 0)
+			cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
+			if (mlx5_hws_cnt_pool_get(priv->hws_cpool, cnt_queue, &age_cnt, idx) < 0)
 				return -1;
 			flow->cnt_id = age_cnt;
 			param->nb_cnts++;
@@ -8469,6 +8469,14 @@ flow_hw_action_create(struct rte_eth_dev *dev,
 		       const struct rte_flow_action *action,
 		       struct rte_flow_error *err)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_AGE && priv->hws_strict_queue) {
+		rte_flow_error_set(err, EINVAL, RTE_FLOW_ERROR_TYPE_STATE, NULL,
+				   "Cannot create age action synchronously with strict queueing");
+		return NULL;
+	}
+
 	return flow_hw_action_handle_create(dev, MLX5_HW_INV_QUEUE,
 					    NULL, conf, action, NULL, err);
 }
@@ -8640,6 +8648,8 @@ flow_hw_get_q_aged_flows(struct rte_eth_dev *dev, uint32_t queue_id,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "No aging initialized");
 	if (priv->hws_strict_queue) {
+		/* Queue is invalid in sync query. Sync query and strict queueing is disallowed. */
+		MLX5_ASSERT(queue_id != MLX5_HW_INV_QUEUE);
 		if (queue_id >= age_info->hw_q_age->nb_rings)
 			return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8693,10 +8703,10 @@ flow_hw_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (priv->hws_strict_queue)
-		DRV_LOG(WARNING,
-			"port %u get aged flows called in strict queue mode.",
-			dev->data->port_id);
-	return flow_hw_get_q_aged_flows(dev, 0, contexts, nb_contexts, error);
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_STATE, NULL,
+				"Cannot get aged flows synchronously with strict queueing");
+
+	return flow_hw_get_q_aged_flows(dev, MLX5_HW_INV_QUEUE, contexts, nb_contexts, error);
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
