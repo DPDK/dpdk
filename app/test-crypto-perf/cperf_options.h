@@ -95,6 +95,7 @@ enum cperf_op_type {
 	CPERF_ASYM_MODEX,
 	CPERF_ASYM_RSA,
 	CPERF_ASYM_SECP256R1,
+	CPERF_ASYM_SECP384R1,
 	CPERF_ASYM_ED25519,
 	CPERF_ASYM_SM2,
 	CPERF_TLS,
@@ -177,6 +178,7 @@ struct cperf_options {
 	struct cperf_modex_test_data *modex_data;
 	uint16_t modex_len;
 	struct cperf_ecdsa_test_data *secp256r1_data;
+	struct cperf_ecdsa_test_data *secp384r1_data;
 	struct cperf_eddsa_test_data *eddsa_data;
 	struct cperf_sm2_test_data *sm2_data;
 	enum rte_crypto_asym_op_type asym_op_type;

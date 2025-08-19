@@ -308,6 +308,7 @@ cperf_is_asym_test(const struct cperf_options *options)
 	if (options->op_type == CPERF_ASYM_MODEX ||
 	    options->op_type == CPERF_ASYM_RSA ||
 	    options->op_type == CPERF_ASYM_SECP256R1 ||
+	    options->op_type == CPERF_ASYM_SECP384R1 ||
 	    options->op_type == CPERF_ASYM_ED25519 ||
 	    options->op_type == CPERF_ASYM_SM2)
 		return true;
