@@ -615,6 +615,11 @@ Limitations
         in addition to flow rules using only age (without count action).
       - ``nb_aging_objects`` is the number of flow rules containing age action.
 
+#. With strict queueing enabled
+   (``RTE_FLOW_PORT_FLAG_STRICT_QUEUE`` passed to ``rte_flow_configure()``),
+   indirect age actions can be created only through asynchronous flow API.
+
+
 - IPv6 header item 'proto' field, indicating the next header protocol, should
   not be set as extension header.
   In case the next header is an extension header, it should not be specified in
