@@ -2222,6 +2222,10 @@ applications are allowed to:
 
    This option is supported only for Tx hairpin queues.
 
+#. With strict queueing enabled
+   (``RTE_FLOW_PORT_FLAG_STRICT_QUEUE`` passed to ``rte_flow_configure()``),
+   indirect age actions can be created only through asynchronous flow API.
+
 
 Notes for testpmd
 -----------------
