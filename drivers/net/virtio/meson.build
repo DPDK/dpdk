@@ -29,11 +29,6 @@ if arch_subdir == 'x86'
     if cc_has_avx512
         cflags += ['-DVIRTIO_RXTX_PACKED_VEC']
         sources_avx512 += files('virtio_rxtx_packed.c')
-        if toolchain == 'gcc'
-            cflags += '-DVIRTIO_GCC_UNROLL_PRAGMA'
-        elif toolchain == 'clang'
-            cflags += '-DVIRTIO_CLANG_UNROLL_PRAGMA'
-        endif
     endif
     cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_sse.c')

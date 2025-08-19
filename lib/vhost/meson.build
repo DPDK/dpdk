@@ -8,11 +8,6 @@ endif
 if has_libnuma
     dpdk_conf.set10('RTE_LIBRTE_VHOST_NUMA', true)
 endif
-if toolchain == 'gcc'
-    cflags += '-DVHOST_GCC_UNROLL_PRAGMA'
-elif toolchain == 'clang'
-    cflags += '-DVHOST_CLANG_UNROLL_PRAGMA'
-endif
 dpdk_conf.set('RTE_LIBRTE_VHOST_POSTCOPY', cc.has_header('linux/userfaultfd.h'))
 
 cflags += no_wvla_cflag

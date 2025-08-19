@@ -67,19 +67,15 @@
 #endif
 #define PACKED_BATCH_MASK (PACKED_BATCH_SIZE - 1)
 
-#ifdef VIRTIO_GCC_UNROLL_PRAGMA
-#define virtio_for_each_try_unroll(iter, val, size) _Pragma("GCC unroll 4") \
-	for (iter = val; iter < size; iter++)
-#endif
-
-#ifdef VIRTIO_CLANG_UNROLL_PRAGMA
+#if defined __clang__
 #define virtio_for_each_try_unroll(iter, val, size) _Pragma("unroll 4") \
 	for (iter = val; iter < size; iter++)
-#endif
-
-#ifndef virtio_for_each_try_unroll
-#define virtio_for_each_try_unroll(iter, val, size) \
+#elif defined __GNUC__
+#define virtio_for_each_try_unroll(iter, val, size) _Pragma("GCC unroll 4") \
 	for (iter = val; iter < size; iter++)
+#else
+#define virtio_for_each_try_unroll(iter, val, num) \
+	for (iter = val; iter < num; iter++)
 #endif
 
 static inline void
