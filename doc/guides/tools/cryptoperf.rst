@@ -176,6 +176,7 @@ The following are the application command-line options:
            docsis
            modex
            ecdsa_p256r1
+           ecdsa_p384r1
            eddsa_25519
            rsa
            sm2
