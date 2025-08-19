@@ -2740,6 +2740,10 @@ With :ref:`HW steering <mlx5_hws>`,
      in addition to flow rules using only age (without count action).
    - ``nb_aging_objects`` is the number of flow rules containing age action.
 
+#. With strict queueing enabled
+   (``RTE_FLOW_PORT_FLAG_STRICT_QUEUE`` passed to ``rte_flow_configure()``),
+   indirect age actions can be created only through asynchronous flow API.
+
 
 .. _mlx5_quota:
 
