@@ -13,7 +13,6 @@ flags_common = [
         #    ['RTE_ARM64_MEMCPY_UNALIGNED_THRESHOLD', 512],
         # Leave below RTE_ARM64_MEMCPY_xxx options commented out,
         # unless there are strong reasons.
-        #    ['RTE_ARM64_MEMCPY_SKIP_GCC_VER_CHECK', false],
         #    ['RTE_ARM64_MEMCPY_ALIGN_MASK', 0xF],
         #    ['RTE_ARM64_MEMCPY_STRICT_ALIGN', false],
 

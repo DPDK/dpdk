@@ -6,7 +6,6 @@
 #ifndef _RTE_ALTIVEC_H_
 #define _RTE_ALTIVEC_H_
 
-/* To include altivec.h, GCC version must be >= 4.8 */
 #include <altivec.h>
 
 /*

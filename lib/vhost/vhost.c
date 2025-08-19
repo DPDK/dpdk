@@ -128,16 +128,8 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 static __rte_always_inline void
 vhost_set_bit(unsigned int nr, volatile uint8_t *addr)
 {
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70100)
-	/*
-	 * __sync_ built-ins are deprecated, but rte_atomic_ ones
-	 * are sub-optimized in older GCC versions.
-	 */
-	__sync_fetch_and_or_1(addr, (1U << nr));
-#else
 	rte_atomic_fetch_or_explicit((volatile uint8_t __rte_atomic *)addr, (1U << nr),
 		rte_memory_order_relaxed);
-#endif
 }
 
 static __rte_always_inline void
@@ -207,17 +199,9 @@ __vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	for (i = 0; i < vq->log_cache_nb_elem; i++) {
 		struct log_cache_entry *elem = vq->log_cache + i;
 
-#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70100)
-		/*
-		 * '__sync' builtins are deprecated, but 'rte_atomic' ones
-		 * are sub-optimized in older GCC versions.
-		 */
-		__sync_fetch_and_or(log_base + elem->offset, elem->val);
-#else
 		rte_atomic_fetch_or_explicit(
 			(unsigned long __rte_atomic *)(log_base + elem->offset),
 			elem->val, rte_memory_order_relaxed);
-#endif
 	}
 
 	rte_atomic_thread_fence(rte_memory_order_release);

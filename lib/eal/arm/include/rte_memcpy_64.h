@@ -89,14 +89,6 @@ n <= (size_t)RTE_ARM64_MEMCPY_UNALIGNED_THRESHOLD)
  **************************************/
 
 
-#if RTE_CC_IS_GNU && !defined RTE_ARM64_MEMCPY_SKIP_GCC_VER_CHECK
-#if (GCC_VERSION < 50400)
-#warning "The GCC version is quite old, which may result in sub-optimal \
-performance of the compiled code. It is suggested that at least GCC 5.4.0 \
-be used."
-#endif
-#endif
-
 static __rte_always_inline
 void rte_mov16(uint8_t *dst, const uint8_t *src)
 {

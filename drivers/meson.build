@@ -237,7 +237,7 @@ foreach subpath:subdirs
         enabled_drivers += name
         lib_name = '_'.join(['rte', class, name])
         cflags += '-DRTE_LOG_DEFAULT_LOGTYPE=' + '.'.join([log_prefix, name])
-        if annotate_locks and cc.get_id() == 'clang' and cc.version().version_compare('>=3.5.0')
+        if annotate_locks and cc.get_id() == 'clang'
             cflags += '-DRTE_ANNOTATE_LOCKS'
             cflags += '-Wthread-safety'
         endif
