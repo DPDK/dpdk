@@ -118,7 +118,7 @@ class TestVlan(TestSuite):
         testpmd.rx_vlan(vlan=filtered_id, port=port_id, add=True)
 
     @func_test
-    def test_vlan_receipt_no_stripping(self) -> None:
+    def vlan_receipt_no_stripping(self) -> None:
         """Verify packets are received with their VLAN IDs when stripping is disabled.
 
         Test:
@@ -131,7 +131,7 @@ class TestVlan(TestSuite):
 
     @requires(NicCapability.RX_OFFLOAD_VLAN_STRIP)
     @func_test
-    def test_vlan_receipt_stripping(self) -> None:
+    def vlan_receipt_stripping(self) -> None:
         """Ensure VLAN packet received with no tag when receipts and header stripping are enabled.
 
         Test:
@@ -144,7 +144,7 @@ class TestVlan(TestSuite):
             self.send_vlan_packet_and_verify(should_receive=True, strip=True, vlan_id=1)
 
     @func_test
-    def test_vlan_no_receipt(self) -> None:
+    def vlan_no_receipt(self) -> None:
         """Ensure VLAN packet dropped when filter is on and sent tag not in the filter list.
 
         Test:
@@ -156,7 +156,7 @@ class TestVlan(TestSuite):
             self.send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
 
     @func_test
-    def test_vlan_header_insertion(self) -> None:
+    def vlan_header_insertion(self) -> None:
         """Ensure that VLAN packet is received with the correct inserted VLAN tag.
 
         Test:

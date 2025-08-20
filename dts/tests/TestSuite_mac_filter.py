@@ -85,7 +85,7 @@ class TestMacFilter(TestSuite):
             )
 
     @func_test
-    def test_add_remove_mac_addresses(self) -> None:
+    def add_remove_mac_addresses(self) -> None:
         """Assess basic mac addressing filtering functionalities.
 
         This test case validates for proper behavior of mac address filtering with both
@@ -120,7 +120,7 @@ class TestMacFilter(TestSuite):
             self.send_packet_and_verify(mac_address=fake_address, should_receive=False)
 
     @func_test
-    def test_invalid_address(self) -> None:
+    def invalid_address(self) -> None:
         """Assess the behavior of a NIC mac address pool while bound to the PMD.
 
         An assessment of a NIC's behavior when mounted to a PMD as it relates to mac addresses
@@ -179,7 +179,7 @@ class TestMacFilter(TestSuite):
 
     @requires(NicCapability.MCAST_FILTERING)
     @func_test
-    def test_multicast_filter(self) -> None:
+    def multicast_filter(self) -> None:
         """Assess basic multicast address filtering functionalities.
 
         Ensure that multicast filtering performs as intended when a given device is bound
