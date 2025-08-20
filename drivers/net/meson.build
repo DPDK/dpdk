@@ -35,6 +35,7 @@ drivers = [
         'intel/ixgbe',
         'intel/cpfl',  # depends on idpf, so must come after it
         'ionic',
+        'macb',
         'mana',
         'memif',
         'mlx4',
