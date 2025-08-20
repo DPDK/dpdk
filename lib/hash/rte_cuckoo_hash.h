@@ -131,7 +131,7 @@ struct rte_hash_key {
 		RTE_ATOMIC(void *) pdata;
 	};
 	/* Variable key size */
-	char key[0];
+	char key[];
 };
 
 /** Bucket structure */
