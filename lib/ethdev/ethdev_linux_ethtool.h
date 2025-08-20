@@ -15,12 +15,6 @@ extern "C" {
 #endif
 
 /*
- * Convert bit from ETHTOOL_LINK_MODE_* to RTE_ETH_LINK_SPEED_*
- */
-__rte_internal
-uint32_t rte_eth_link_speed_ethtool(enum ethtool_link_mode_bit_indices bit);
-
-/*
  * Convert bitmap from ETHTOOL_GLINKSETTINGS ethtool_link_settings::link_mode_masks
  * to bitmap RTE_ETH_LINK_SPEED_*
  */
