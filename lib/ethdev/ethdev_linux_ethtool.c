@@ -133,9 +133,8 @@ static const uint32_t link_modes[] = {
 	[120] =  800000, /* ETHTOOL_LINK_MODE_800000baseVR4_Full_BIT */
 };
 
-RTE_EXPORT_INTERNAL_SYMBOL(rte_eth_link_speed_ethtool)
-uint32_t
-rte_eth_link_speed_ethtool(enum ethtool_link_mode_bit_indices bit)
+static uint32_t
+eth_link_speed_ethtool(enum ethtool_link_mode_bit_indices bit)
 {
 	uint32_t speed;
 	int duplex;
@@ -171,7 +170,7 @@ rte_eth_link_speed_glink(const uint32_t *bitmap, int8_t nwords)
 		for (bit = 0; bit < 32; bit++) {
 			if ((bitmap[word] & RTE_BIT32(bit)) == 0)
 				continue;
-			ethdev_bitmap |= rte_eth_link_speed_ethtool(word * 32 + bit);
+			ethdev_bitmap |= eth_link_speed_ethtool(word * 32 + bit);
 		}
 	}
 
