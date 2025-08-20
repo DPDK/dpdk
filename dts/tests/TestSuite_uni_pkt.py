@@ -71,7 +71,7 @@ class TestUniPkt(TestSuite):
             )
 
     @func_test
-    def test_l2_packet_detect(self) -> None:
+    def l2_packet_detect(self) -> None:
         """Ensure the correct flags are shown in verbose output when sending L2 packets.
 
         Steps:
@@ -90,7 +90,7 @@ class TestUniPkt(TestSuite):
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
-    def test_l3_l4_packet_detect(self) -> None:
+    def l3_l4_packet_detect(self) -> None:
         """Ensure correct flags are shown in the verbose output when sending IP/L4 packets.
 
         Steps:
@@ -123,7 +123,7 @@ class TestUniPkt(TestSuite):
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
-    def test_ipv6_l4_packet_detect(self) -> None:
+    def ipv6_l4_packet_detect(self) -> None:
         """Ensure correct flags are shown in the verbose output when sending IPv6/L4 packets.
 
         Steps:
@@ -152,7 +152,7 @@ class TestUniPkt(TestSuite):
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
-    def test_l3_tunnel_packet_detect(self) -> None:
+    def l3_tunnel_packet_detect(self) -> None:
         """Ensure correct flags are shown in the verbose output when sending IPv6/L4 packets.
 
         Steps:
@@ -187,7 +187,7 @@ class TestUniPkt(TestSuite):
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
-    def test_gre_tunnel_packet_detect(self) -> None:
+    def gre_tunnel_packet_detect(self) -> None:
         """Ensure the correct flags are shown in the verbose output when sending GRE packets.
 
         Steps:
@@ -220,7 +220,7 @@ class TestUniPkt(TestSuite):
             self.setup_session(testpmd=testpmd, expected_flags=flag_list, packet_list=packet_list)
 
     @func_test
-    def test_nsh_packet_detect(self) -> None:
+    def nsh_packet_detect(self) -> None:
         """Verify the correct flags are shown in the verbose output when sending NSH packets.
 
         Steps:
@@ -261,7 +261,7 @@ class TestUniPkt(TestSuite):
 
     @requires(NicCapability.PHYSICAL_FUNCTION)
     @func_test
-    def test_vxlan_tunnel_packet_detect(self) -> None:
+    def vxlan_tunnel_packet_detect(self) -> None:
         """Ensure the correct flags are shown in the verbose output when sending VXLAN packets.
 
         Steps:

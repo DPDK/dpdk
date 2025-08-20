@@ -217,7 +217,7 @@ class TestRteFlow(TestSuite):
             self.verify(received, f"Expected packet was not received on queue {test_queue}")
 
     @func_test
-    def test_queue_action_ETH(self) -> None:
+    def queue_action_ETH(self) -> None:
         """Validate flow rules with queue actions and ethernet patterns.
 
         Steps:
@@ -259,7 +259,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_queue_action_IP(self) -> None:
+    def queue_action_IP(self) -> None:
         """Validate flow rules with queue actions and IPv4/IPv6 patterns.
 
         Steps:
@@ -318,7 +318,7 @@ class TestRteFlow(TestSuite):
 
     @requires(NicCapability.PHYSICAL_FUNCTION)
     @func_test
-    def test_queue_action_L4(self) -> None:
+    def queue_action_L4(self) -> None:
         """Validate flow rules with queue actions and TCP/UDP patterns.
 
         Steps:
@@ -374,7 +374,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_queue_action_VLAN(self) -> None:
+    def queue_action_VLAN(self) -> None:
         """Validate flow rules with queue actions and VLAN patterns.
 
         Steps:
@@ -401,7 +401,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_drop_action_ETH(self) -> None:
+    def drop_action_ETH(self) -> None:
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
@@ -446,7 +446,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_drop_action_IP(self) -> None:
+    def drop_action_IP(self) -> None:
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
@@ -501,7 +501,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_drop_action_L4(self) -> None:
+    def drop_action_L4(self) -> None:
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
@@ -552,7 +552,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_drop_action_VLAN(self) -> None:
+    def drop_action_VLAN(self) -> None:
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
@@ -591,7 +591,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_modify_actions(self) -> None:
+    def modify_actions(self) -> None:
         """Validate flow rules with actions that modify that packet during transmission.
 
         Steps:
@@ -636,7 +636,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_egress_rules(self) -> None:
+    def egress_rules(self) -> None:
         """Validate flow rules with egress directions.
 
         Steps:
@@ -681,7 +681,7 @@ class TestRteFlow(TestSuite):
         )
 
     @func_test
-    def test_jump_action(self) -> None:
+    def jump_action(self) -> None:
         """Validate flow rules with different group levels and jump actions.
 
         Steps:
@@ -736,7 +736,7 @@ class TestRteFlow(TestSuite):
             )
 
     @func_test
-    def test_priority_attribute(self) -> None:
+    def priority_attribute(self) -> None:
         """Validate flow rules with queue actions and ethernet patterns.
 
         Steps:

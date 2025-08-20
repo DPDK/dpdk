@@ -52,7 +52,7 @@ class TestPortControl(TestSuite):
         )
 
     @func_test
-    def test_start_ports(self) -> None:
+    def start_ports(self) -> None:
         """Start all ports and send a small number of packets.
 
         Steps:
@@ -69,7 +69,7 @@ class TestPortControl(TestSuite):
             self.send_packets_and_verify()
 
     @func_test
-    def test_stop_ports(self) -> None:
+    def stop_ports(self) -> None:
         """Stop all ports, then start all ports, amd then send a small number of packets.
 
         Steps:
@@ -92,7 +92,7 @@ class TestPortControl(TestSuite):
             self.send_packets_and_verify()
 
     @func_test
-    def test_close_ports(self) -> None:
+    def close_ports(self) -> None:
         """Close all the ports via testpmd.
 
         Steps:

@@ -152,7 +152,7 @@ class TestPacketCapture(TestSuite):
         return received_packets
 
     @func_test
-    def test_dumpcap(self) -> None:
+    def dumpcap(self) -> None:
         """Test dumpcap on Rx and Tx interfaces.
 
         Steps:
@@ -182,7 +182,7 @@ class TestPacketCapture(TestSuite):
             )
 
     @func_test
-    def test_dumpcap_filter(self) -> None:
+    def dumpcap_filter(self) -> None:
         """Test the dumpcap filtering feature.
 
         Steps:

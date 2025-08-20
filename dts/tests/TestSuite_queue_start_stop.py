@@ -53,7 +53,7 @@ class TestQueueStartStop(TestSuite):
         )
 
     @func_test
-    def test_rx_queue_start_stop(self) -> None:
+    def rx_queue_start_stop(self) -> None:
         """Rx queue start stop test.
 
         Steps:
@@ -74,7 +74,7 @@ class TestQueueStartStop(TestSuite):
             self.send_packet_and_verify(should_receive=True)
 
     @func_test
-    def test_tx_queue_start_stop(self) -> None:
+    def tx_queue_start_stop(self) -> None:
         """Tx queue start stop test.
 
         Steps:
@@ -95,7 +95,7 @@ class TestQueueStartStop(TestSuite):
             self.send_packet_and_verify(should_receive=True)
 
     @func_test
-    def test_rx_queue_deferred_start(self) -> None:
+    def rx_queue_deferred_start(self) -> None:
         """Rx queue deferred start stop test.
 
         Steps:
@@ -120,7 +120,7 @@ class TestQueueStartStop(TestSuite):
             self.send_packet_and_verify(should_receive=True)
 
     @func_test
-    def test_tx_queue_deferred_start(self) -> None:
+    def tx_queue_deferred_start(self) -> None:
         """Tx queue start stop test.
 
         Steps:

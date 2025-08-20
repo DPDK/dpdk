@@ -24,7 +24,7 @@ class TestPromiscSupport(TestSuite):
     ALTERNATIVE_MAC_ADDRESS: str = "02:00:00:00:00:00"
 
     @func_test
-    def test_promisc_packets(self) -> None:
+    def promisc_packets(self) -> None:
         """Verify that promiscuous mode works.
 
         Steps:

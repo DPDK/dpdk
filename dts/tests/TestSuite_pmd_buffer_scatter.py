@@ -131,13 +131,13 @@ class TestPmdBufferScatter(TestSuite):
 
     @requires(NicCapability.SCATTERED_RX_ENABLED)
     @func_test
-    def test_scatter_mbuf_2048(self) -> None:
+    def scatter_mbuf_2048(self) -> None:
         """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048."""
         self.pmd_scatter(mb_size=2048)
 
     @requires(NicCapability.RX_OFFLOAD_SCATTER)
     @func_test
-    def test_scatter_mbuf_2048_with_offload(self) -> None:
+    def scatter_mbuf_2048_with_offload(self) -> None:
         """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload."""
         self.pmd_scatter(mb_size=2048, enable_offload=True)
 

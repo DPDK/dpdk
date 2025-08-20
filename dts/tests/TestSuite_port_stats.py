@@ -117,7 +117,7 @@ class TestPortStats(TestSuite):
         return recv_noise_bytes, recv_noise_packets, sent_noise_bytes, num_sent_packets
 
     @func_test
-    def test_stats_updates(self) -> None:
+    def stats_updates(self) -> None:
         """Send a packet with a fixed length and verify port stats updated properly.
 
         Send a packet with a total length of `self.total_packet_len` and verify that the rx port
