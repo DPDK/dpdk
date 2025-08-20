@@ -50,7 +50,7 @@ class TestSmokeTests(TestSuite):
         self.nics_in_node = [p.config for p in self.topology.sut_ports]
 
     @func_test
-    def test_unit_tests(self) -> None:
+    def unit_tests(self) -> None:
         """DPDK meson ``fast-tests`` unit tests.
 
         Test that all unit test from the ``fast-tests`` suite pass.
@@ -67,7 +67,7 @@ class TestSmokeTests(TestSuite):
         )
 
     @func_test
-    def test_driver_tests(self) -> None:
+    def driver_tests(self) -> None:
         """DPDK meson ``driver-tests`` unit tests.
 
         Test that all unit test from the ``driver-tests`` suite pass.
@@ -96,7 +96,7 @@ class TestSmokeTests(TestSuite):
         )
 
     @func_test
-    def test_devices_listed_in_testpmd(self) -> None:
+    def devices_listed_in_testpmd(self) -> None:
         """Testpmd device discovery.
 
         Test that the devices configured in the test run configuration are found in testpmd.
@@ -114,7 +114,7 @@ class TestSmokeTests(TestSuite):
             )
 
     @func_test
-    def test_device_bound_to_driver(self) -> None:
+    def device_bound_to_driver(self) -> None:
         """Device driver in OS.
 
         Test that the devices configured in the test run configuration are bound to

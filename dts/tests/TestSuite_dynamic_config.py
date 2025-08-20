@@ -82,7 +82,7 @@ class TestDynamicConfig(TestSuite):
         return testpmd
 
     @func_test
-    def test_default_mode(self) -> None:
+    def default_mode(self) -> None:
         """Tests default configuration.
 
         Creates a testpmd shell, verifies that promiscuous mode is enabled by default,
@@ -100,7 +100,7 @@ class TestDynamicConfig(TestSuite):
             self.send_packet_and_verify(should_receive=True, mac_address="00:00:00:00:00:01")
 
     @func_test
-    def test_disable_promisc(self) -> None:
+    def disable_promisc(self) -> None:
         """Tests disabled promiscuous mode configuration.
 
         Creates an interactive testpmd shell, disables promiscuous mode,
@@ -114,7 +114,7 @@ class TestDynamicConfig(TestSuite):
             self.send_packet_and_verify(should_receive=False, mac_address="00:00:00:00:00:01")
 
     @func_test
-    def test_disable_promisc_broadcast(self) -> None:
+    def disable_promisc_broadcast(self) -> None:
         """Tests broadcast reception with disabled promisc mode config.
 
         Creates an interactive testpmd shell, disables promiscuous mode,
@@ -128,7 +128,7 @@ class TestDynamicConfig(TestSuite):
             self.send_packet_and_verify(should_receive=True, mac_address="ff:ff:ff:ff:ff:ff")
 
     @func_test
-    def test_disable_promisc_multicast(self) -> None:
+    def disable_promisc_multicast(self) -> None:
         """Tests allmulticast mode with disabled promisc config.
 
         Creates an interactive testpmd shell, disables promiscuous mode,

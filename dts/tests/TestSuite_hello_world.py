@@ -25,7 +25,7 @@ class TestHelloWorld(TestSuite):
     config: Config
 
     @func_test
-    def test_hello_world(self) -> None:
+    def hello_world(self) -> None:
         """EAL confidence test.
 
         Steps:

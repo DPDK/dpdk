@@ -124,7 +124,7 @@ class TestMtu(TestSuite):
             self.send_packet_and_verify(pkt_size=larger_frame_size, should_receive=False)
 
     @func_test
-    def test_runtime_mtu_updating_and_forwarding(self) -> None:
+    def runtime_mtu_updating_and_forwarding(self) -> None:
         """Verify runtime MTU adjustments and assess packet forwarding behavior.
 
         Test:
@@ -183,7 +183,7 @@ class TestMtu(TestSuite):
             testpmd.stop()
 
     @func_test
-    def test_cli_mtu_forwarding_for_std_packets(self) -> None:
+    def cli_mtu_forwarding_for_std_packets(self) -> None:
         """Assesses packet forwarding of standard MTU packets after pre-runtime MTU adjustments.
 
         Test:
@@ -213,7 +213,7 @@ class TestMtu(TestSuite):
             )
 
     @func_test
-    def test_cli_jumbo_forwarding_for_jumbo_mtu(self) -> None:
+    def cli_jumbo_forwarding_for_jumbo_mtu(self) -> None:
         """Assess packet forwarding of packets within the bounds of a pre-runtime MTU adjustment.
 
         Test:
@@ -239,7 +239,7 @@ class TestMtu(TestSuite):
             self.send_packet_and_verify(STANDARD_MTU + VENDOR_AGNOSTIC_PADDING, should_receive=True)
 
     @func_test
-    def test_cli_mtu_std_packets_for_jumbo_mtu(self) -> None:
+    def cli_mtu_std_packets_for_jumbo_mtu(self) -> None:
         """Assess boundary of jumbo MTU value set pre-runtime.
 
         Test:
