@@ -27,7 +27,6 @@
 #include <rte_memzone.h>
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
-#include <rte_spinlock.h>
 #include <rte_log.h>
 #include <rte_random.h>
 #include <rte_io.h>

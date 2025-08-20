@@ -15,4 +15,8 @@ sources = files(
         'macb_rxtx.c',
 )
 
+if host_machine.cpu_family() == 'aarch64'
+    sources += files('macb_rxtx_vec_neon.c')
+endif
+
 includes += include_directories('base')

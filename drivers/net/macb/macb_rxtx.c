@@ -1366,6 +1366,8 @@ int __rte_cold macb_eth_rx_init(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* Stubs needed for linkage when RTE_ARCH_ARM64 is not set. */
+#if !defined(RTE_ARCH_ARM64)
 uint16_t
 macb_eth_recv_pkts_vec(void *rx_queue __rte_unused,
 		       struct rte_mbuf **rx_pkts __rte_unused,
@@ -1389,3 +1391,4 @@ macb_eth_xmit_pkts_vec(void *tx_queue __rte_unused,
 {
 	return 0;
 }
+#endif
