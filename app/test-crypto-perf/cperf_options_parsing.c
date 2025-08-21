@@ -1361,6 +1361,7 @@ is_valid_chained_op(struct cperf_options *options)
 int
 cperf_options_check(struct cperf_options *options)
 {
+	uint16_t modlen;
 	int i;
 
 	if (options->op_type == CPERF_CIPHER_ONLY ||
@@ -1557,8 +1558,6 @@ cperf_options_check(struct cperf_options *options)
 	}
 
 	if (options->rsa_modlen) {
-		uint16_t modlen = options->rsa_modlen / 8;
-
 		if (options->op_type != CPERF_ASYM_RSA) {
 			RTE_LOG(ERR, USER1, "Option rsa-modlen should be used only with "
 					" optype: rsa.\n");
@@ -1567,7 +1566,8 @@ cperf_options_check(struct cperf_options *options)
 
 		if (options->rsa_keytype == RTE_RSA_KEY_TYPE_QT) {
 			for (i = 0; i < (int)RTE_DIM(rsa_qt_perf_data); i++) {
-				if (rsa_qt_perf_data[i].n.length == modlen) {
+				modlen = rsa_qt_perf_data[i].n.length * 8;
+				if (options->rsa_modlen == modlen) {
 					options->rsa_data =
 						(struct cperf_rsa_test_data *)&rsa_qt_perf_data[i];
 					break;
@@ -1582,7 +1582,8 @@ cperf_options_check(struct cperf_options *options)
 			}
 		} else if (options->rsa_keytype == RTE_RSA_KEY_TYPE_EXP) {
 			for (i = 0; i < (int)RTE_DIM(rsa_exp_perf_data); i++) {
-				if (rsa_exp_perf_data[i].n.length == modlen) {
+				modlen = rsa_exp_perf_data[i].n.length * 8;
+				if (options->rsa_modlen == modlen) {
 					options->rsa_data =
 						(struct cperf_rsa_test_data *)&rsa_exp_perf_data[i];
 					break;
@@ -1597,7 +1598,8 @@ cperf_options_check(struct cperf_options *options)
 			}
 		} else {
 			for (i = 0; i < (int)RTE_DIM(rsa_pub_perf_data); i++) {
-				if (rsa_pub_perf_data[i].n.length == modlen) {
+				modlen = rsa_pub_perf_data[i].n.length * 8;
+				if (options->rsa_modlen == modlen) {
 					options->rsa_data =
 						(struct cperf_rsa_test_data *)&rsa_pub_perf_data[i];
 					break;
