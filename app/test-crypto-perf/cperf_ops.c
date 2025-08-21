@@ -69,9 +69,7 @@ cperf_set_ops_asym_rsa(struct rte_crypto_op **ops,
 			asym_op->rsa.message.data = crypto_buf;
 			asym_op->rsa.message.length = options->rsa_data->n.length;
 		} else if (options->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
-			memcpy(crypto_buf, options->rsa_data->sign.data,
-				options->rsa_data->sign.length);
-			asym_op->rsa.sign.data = crypto_buf;
+			asym_op->rsa.sign.data = options->rsa_data->sign.data;
 			asym_op->rsa.sign.length = options->rsa_data->sign.length;
 			asym_op->rsa.message.data = rsa_plaintext.data;
 			asym_op->rsa.message.length = rsa_plaintext.len;
