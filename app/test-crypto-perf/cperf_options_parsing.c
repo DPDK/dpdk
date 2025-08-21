@@ -1358,6 +1358,40 @@ is_valid_chained_op(struct cperf_options *options)
 	return false;
 }
 
+static int
+cperf_rsa_options_check(struct cperf_options *options)
+{
+	if (options->rsa_keytype != UINT8_MAX) {
+		switch (options->rsa_keytype) {
+		case RTE_RSA_KEY_TYPE_QT:
+			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_SIGN &&
+				options->asym_op_type != RTE_CRYPTO_ASYM_OP_DECRYPT) {
+				RTE_LOG(ERR, USER1, "QT private key to be used in sign and decrypt op\n");
+				return -EINVAL;
+			}
+			options->rsa_data = &rsa_qt_perf_data[0];
+			break;
+		case RTE_RSA_KEY_TYPE_EXP:
+			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT &&
+				options->asym_op_type != RTE_CRYPTO_ASYM_OP_VERIFY) {
+				RTE_LOG(ERR, USER1, "Exponent private key to be used in encrypt and verify op\n");
+				return -EINVAL;
+			}
+			options->rsa_data = &rsa_exp_perf_data[0];
+			break;
+		default:
+			RTE_LOG(ERR, USER1, "Invalid RSA key type specified\n");
+			return -EINVAL;
+		}
+	} else {
+		if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			RTE_LOG(ERR, USER1, "Public key to be used in encrypt op\n");
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 int
 cperf_options_check(struct cperf_options *options)
 {
@@ -1522,95 +1556,65 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
-	if (options->rsa_keytype != UINT8_MAX) {
-		if (options->op_type != CPERF_ASYM_RSA) {
-			RTE_LOG(ERR, USER1, "Option rsa-priv-keytype should be used only with "
-					" optype: rsa.\n");
+
+	if (options->op_type == CPERF_ASYM_RSA) {
+		if (cperf_rsa_options_check(options) < 0) {
+			RTE_LOG(ERR, USER1, "Invalid RSA options\n");
 			return -EINVAL;
 		}
 
-		switch (options->rsa_keytype) {
-		case RTE_RSA_KEY_TYPE_QT:
-			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_SIGN &&
-			    options->asym_op_type != RTE_CRYPTO_ASYM_OP_DECRYPT) {
-				RTE_LOG(ERR, USER1, "QT private key to be used in sign and decrypt op\n");
-				return -EINVAL;
-			}
-			options->rsa_data = &rsa_qt_perf_data[0];
-			break;
-		case RTE_RSA_KEY_TYPE_EXP:
-			if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT &&
-			    options->asym_op_type != RTE_CRYPTO_ASYM_OP_VERIFY) {
-				RTE_LOG(ERR, USER1, "Exponent private key to be used in encrypt and verify op\n");
-				return -EINVAL;
-			}
-			options->rsa_data = &rsa_exp_perf_data[0];
-			break;
-		default:
-			RTE_LOG(ERR, USER1, "Invalid RSA key type specified\n");
-			return -EINVAL;
-		}
-	} else {
-		if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT) {
-			RTE_LOG(ERR, USER1, "Public key to be used in encrypt op\n");
-			return -EINVAL;
-		}
-	}
-
-	if (options->rsa_modlen) {
-		if (options->op_type != CPERF_ASYM_RSA) {
-			RTE_LOG(ERR, USER1, "Option rsa-modlen should be used only with "
-					" optype: rsa.\n");
-			return -EINVAL;
-		}
-
-		if (options->rsa_keytype == RTE_RSA_KEY_TYPE_QT) {
-			for (i = 0; i < (int)RTE_DIM(rsa_qt_perf_data); i++) {
-				modlen = rsa_qt_perf_data[i].n.length * 8;
-				if (options->rsa_modlen == modlen) {
-					options->rsa_data =
-						(struct cperf_rsa_test_data *)&rsa_qt_perf_data[i];
-					break;
+		if (options->rsa_modlen) {
+			if (options->rsa_keytype == RTE_RSA_KEY_TYPE_QT) {
+				for (i = 0; i < (int)RTE_DIM(rsa_qt_perf_data); i++) {
+					modlen = rsa_qt_perf_data[i].n.length * 8;
+					if (options->rsa_modlen == modlen) {
+						options->rsa_data =
+							(struct cperf_rsa_test_data *)
+							&rsa_qt_perf_data[i];
+						break;
+					}
 				}
-			}
 
-			if (i == (int)RTE_DIM(rsa_qt_perf_data)) {
-				RTE_LOG(ERR, USER1,
-					"Option rsa_modlen: %d is not supported for QT private key\n",
-					options->rsa_modlen);
+				if (i == (int)RTE_DIM(rsa_qt_perf_data)) {
+					RTE_LOG(ERR, USER1,
+						"Option rsa_modlen: %d is not supported for QT private key\n",
+						options->rsa_modlen);
 					return -EINVAL;
-			}
-		} else if (options->rsa_keytype == RTE_RSA_KEY_TYPE_EXP) {
-			for (i = 0; i < (int)RTE_DIM(rsa_exp_perf_data); i++) {
-				modlen = rsa_exp_perf_data[i].n.length * 8;
-				if (options->rsa_modlen == modlen) {
-					options->rsa_data =
-						(struct cperf_rsa_test_data *)&rsa_exp_perf_data[i];
-					break;
 				}
-			}
-
-			if (i == (int)RTE_DIM(rsa_exp_perf_data)) {
-				RTE_LOG(ERR, USER1,
-					"Option rsa_modlen: %d is not supported for exponent private key\n",
-					options->rsa_modlen);
-					return -EINVAL;
-			}
-		} else {
-			for (i = 0; i < (int)RTE_DIM(rsa_pub_perf_data); i++) {
-				modlen = rsa_pub_perf_data[i].n.length * 8;
-				if (options->rsa_modlen == modlen) {
-					options->rsa_data =
-						(struct cperf_rsa_test_data *)&rsa_pub_perf_data[i];
-					break;
+			} else if (options->rsa_keytype == RTE_RSA_KEY_TYPE_EXP) {
+				for (i = 0; i < (int)RTE_DIM(rsa_exp_perf_data); i++) {
+					modlen = rsa_exp_perf_data[i].n.length * 8;
+					if (options->rsa_modlen == modlen) {
+						options->rsa_data =
+							(struct cperf_rsa_test_data *)
+							&rsa_exp_perf_data[i];
+						break;
+					}
 				}
-			}
 
-			if (i == (int)RTE_DIM(rsa_pub_perf_data)) {
-				RTE_LOG(ERR, USER1,
-					"Option rsa_modlen: %d is not supported for public key\n",
-					options->rsa_modlen);
+				if (i == (int)RTE_DIM(rsa_exp_perf_data)) {
+					RTE_LOG(ERR, USER1,
+						"Option rsa_modlen: %d is not supported for exponent private key\n",
+						options->rsa_modlen);
 					return -EINVAL;
+				}
+			} else {
+				for (i = 0; i < (int)RTE_DIM(rsa_pub_perf_data); i++) {
+					modlen = rsa_pub_perf_data[i].n.length * 8;
+					if (options->rsa_modlen == modlen) {
+						options->rsa_data =
+							(struct cperf_rsa_test_data *)
+							&rsa_pub_perf_data[i];
+						break;
+					}
+				}
+
+				if (i == (int)RTE_DIM(rsa_pub_perf_data)) {
+					RTE_LOG(ERR, USER1,
+						"Option rsa_modlen: %d is not supported for public key\n",
+						options->rsa_modlen);
+					return -EINVAL;
+				}
 			}
 		}
 	}
