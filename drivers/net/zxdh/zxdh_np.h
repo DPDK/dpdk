@@ -1058,7 +1058,7 @@ typedef struct zxdh_acl_etcamid_cfg_t {
 typedef struct zxdh_acl_key_info_t {
 	uint32_t handle;
 	uint32_t pri;
-	uint8_t   key[0];
+	uint8_t key[];
 } ZXDH_ACL_KEY_INFO_T;
 
 typedef uint32_t (*ZXDH_ACL_TBL_AS_DDR_WR_FUN)(uint32_t dev_id, uint32_t tbl_type,
