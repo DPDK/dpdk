@@ -76,6 +76,10 @@ New Features
   * Added multi-process per port.
   * Optimized code.
 
+* **Updated the QuickAssist Technology (QAT) crypto PMD.**
+
+  * Added SM2 encryption and decryption algorithms.
+
 
 Removed Items
 -------------
