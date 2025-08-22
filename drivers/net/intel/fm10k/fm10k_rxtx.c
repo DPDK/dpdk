@@ -164,8 +164,8 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	q->next_dd = next_dd;
 
 	if ((q->next_dd > q->next_trigger) || (alloc == 1)) {
-		ret = rte_mempool_get_bulk(q->mp,
-					(void **)&q->sw_ring[q->next_alloc],
+		ret = rte_mbuf_raw_alloc_bulk(q->mp,
+					(void *)&q->sw_ring[q->next_alloc],
 					q->alloc_thresh);
 
 		if (unlikely(ret != 0)) {
@@ -322,8 +322,8 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	q->next_dd = next_dd;
 
 	if ((q->next_dd > q->next_trigger) || (alloc == 1)) {
-		ret = rte_mempool_get_bulk(q->mp,
-					(void **)&q->sw_ring[q->next_alloc],
+		ret = rte_mbuf_raw_alloc_bulk(q->mp,
+					(void *)&q->sw_ring[q->next_alloc],
 					q->alloc_thresh);
 
 		if (unlikely(ret != 0)) {
