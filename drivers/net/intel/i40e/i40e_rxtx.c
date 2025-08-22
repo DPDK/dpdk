@@ -1360,7 +1360,7 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 					free[i] = txep->mbuf;
 					txep->mbuf = NULL;
 				}
-				rte_mempool_put_bulk(free[0]->pool, (void **)free,
+				rte_mbuf_raw_free_bulk(free[0]->pool, free,
 						I40E_TX_MAX_FREE_BUF_SZ);
 			}
 		}
@@ -1370,7 +1370,7 @@ i40e_tx_free_bufs(struct ci_tx_queue *txq)
 				free[i] = txep->mbuf;
 				txep->mbuf = NULL;
 			}
-			rte_mempool_put_bulk(free[0]->pool, (void **)free, m);
+			rte_mbuf_raw_free_bulk(free[0]->pool, free, m);
 		}
 	} else {
 		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {

@@ -495,15 +495,14 @@ static inline void tx_free_bulk_mbuf(struct rte_mbuf **txep, int num)
 				if (likely(m->pool == free[0]->pool))
 					free[nb_free++] = m;
 				else {
-					rte_mempool_put_bulk(free[0]->pool,
-							(void *)free, nb_free);
+					rte_mbuf_raw_free_bulk(free[0]->pool, free, nb_free);
 					free[0] = m;
 					nb_free = 1;
 				}
 			}
 			txep[i] = NULL;
 		}
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+		rte_mbuf_raw_free_bulk(free[0]->pool, free, nb_free);
 	} else {
 		for (i = 1; i < num; i++) {
 			m = rte_pktmbuf_prefree_seg(txep[i]);

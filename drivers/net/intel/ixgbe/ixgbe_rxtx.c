@@ -141,8 +141,7 @@ ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 
 		if (nb_free >= IXGBE_TX_MAX_FREE_BUF_SZ ||
 		    (nb_free > 0 && m->pool != free[0]->pool)) {
-			rte_mempool_put_bulk(free[0]->pool,
-					     (void **)free, nb_free);
+			rte_mbuf_raw_free_bulk(free[0]->pool, free, nb_free);
 			nb_free = 0;
 		}
 
@@ -150,7 +149,7 @@ ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 	}
 
 	if (nb_free > 0)
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+		rte_mbuf_raw_free_bulk(free[0]->pool, free, nb_free);
 
 	/* buffers were freed, update counters */
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);

@@ -212,8 +212,7 @@ rx_queue_reset(struct fm10k_rx_queue *q)
 	for (i = 0; i < q->nb_desc; ++i) {
 		fm10k_pktmbuf_reset(q->sw_ring[i], q->port_id);
 		if (!fm10k_addr_alignment_valid(q->sw_ring[i])) {
-			rte_mempool_put_bulk(q->mp, (void **)q->sw_ring,
-						q->nb_desc);
+			rte_mbuf_raw_free_bulk(q->mp, q->sw_ring, q->nb_desc);
 			return -EINVAL;
 		}
 		dma_addr = MBUF_DMA_ADDR_DEFAULT(q->sw_ring[i]);
