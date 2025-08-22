@@ -109,8 +109,12 @@ hns3_rxq_rearm_mbuf(struct hns3_rx_queue *rxq)
 		/*
 		 * Clear VLD bit for the first descriptor rearmed in case
 		 * of going to receive packets later.
+		 * And also point mbufs to fake_mbuf to prevent modification
+		 * of the mbuf field during vector packet receiving.
 		 */
 		rxdp[0].rx.bd_base_info = 0;
+		for (i = 0; i < HNS3_VECTOR_RX_OFFSET_TABLE_LEN; i++)
+			rxep[i].mbuf = &rxq->fake_mbuf;
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 		return;
 	}
