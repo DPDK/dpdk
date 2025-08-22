@@ -55,14 +55,13 @@ ixgbe_tx_free_bufs_vec(struct ci_tx_queue *txq)
 				if (likely(m->pool == free[0]->pool))
 					free[nb_free++] = m;
 				else {
-					rte_mempool_put_bulk(free[0]->pool,
-							(void *)free, nb_free);
+					rte_mbuf_raw_free_bulk(free[0]->pool, free, nb_free);
 					free[0] = m;
 					nb_free = 1;
 				}
 			}
 		}
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+		rte_mbuf_raw_free_bulk(free[0]->pool, free, nb_free);
 	} else {
 		for (i = 1; i < n; i++) {
 			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);

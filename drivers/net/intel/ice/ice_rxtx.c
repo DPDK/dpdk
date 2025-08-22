@@ -2054,7 +2054,7 @@ ice_rx_alloc_bufs(struct ci_rx_queue *rxq)
 		diag_pay = rte_mbuf_raw_alloc_bulk(rxq->rxseg[1].mp,
 				(void *)rxq->sw_split_buf, rxq->rx_free_thresh);
 		if (unlikely(diag_pay != 0)) {
-			rte_mempool_put_bulk(rxq->mp, (void *)rxep,
+			rte_mbuf_raw_free_bulk(rxq->mp, (void *)rxep,
 				    rxq->rx_free_thresh);
 			PMD_RX_LOG(ERR, "Failed to get payload mbufs in bulk");
 			return -ENOMEM;
