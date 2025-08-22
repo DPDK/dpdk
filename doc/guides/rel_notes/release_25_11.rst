@@ -138,6 +138,10 @@ ABI Changes
 * stack: The structure ``rte_stack_lf_head`` alignment has been updated to 16 bytes
   to avoid unaligned accesses.
 
+* cryptodev: The ``rte_crypto_sm2_op_param`` struct member ``cipher`` to hold ciphertext
+  is changed to union data type. This change is required to support partial SM2 calculation
+  which is driven by ``RTE_CRYPTO_SM2_PARTIAL`` capability flag.
+
 
 Known Issues
 ------------
