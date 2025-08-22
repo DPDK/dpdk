@@ -35,8 +35,6 @@ sources = files(
 
 require_iova_in_mbuf = false
 
-annotate_locks = false
-
 deps += ['hash']
 
 cflags += no_wvla_cflag
