@@ -4366,25 +4366,25 @@ hns3_init_hardware(struct hns3_adapter *hns)
 	ret = hns3_dcb_init(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init dcb: %d", ret);
-		goto err_mac_init;
+		goto rm_vlan_table;
 	}
 
 	ret = hns3_init_fd_config(hns);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init flow director: %d", ret);
-		goto err_mac_init;
+		goto rm_vlan_table;
 	}
 
 	ret = hns3_config_tso(hw, HNS3_TSO_MSS_MIN, HNS3_TSO_MSS_MAX);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to config tso: %d", ret);
-		goto err_mac_init;
+		goto rm_vlan_table;
 	}
 
 	ret = hns3_config_gro(hw, false);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to config gro: %d", ret);
-		goto err_mac_init;
+		goto rm_vlan_table;
 	}
 
 	/*
@@ -4396,20 +4396,31 @@ hns3_init_hardware(struct hns3_adapter *hns)
 	ret = hns3_init_ring_with_vector(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init ring intr vector: %d", ret);
-		goto err_mac_init;
+		goto rm_vlan_table;
 	}
 
 	ret = hns3_ptp_init(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init PTP, ret = %d", ret);
-		goto err_mac_init;
+		goto rm_vlan_table;
 	}
 
 	return 0;
-
+rm_vlan_table:
+	hns3_rm_all_vlan_table(hns, true);
 err_mac_init:
 	hns3_uninit_umv_space(hw);
 	return ret;
+}
+
+static void
+hns3_uninit_hardware(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+
+	(void)hns3_uninit_umv_space(hw);
+	hns3_ptp_uninit(hw);
+	hns3_rm_all_vlan_table(hns, true);
 }
 
 static int
@@ -4623,8 +4634,7 @@ err_supported_speed:
 err_enable_intr:
 	hns3_fdir_filter_uninit(hns);
 err_fdir:
-	hns3_uninit_umv_space(hw);
-	hns3_ptp_uninit(hw);
+	hns3_uninit_hardware(hw);
 err_init_hw:
 	hns3_stats_uninit(hw);
 err_get_config:
@@ -4659,8 +4669,7 @@ hns3_uninit_pf(struct rte_eth_dev *eth_dev)
 	hns3_promisc_uninit(hw);
 	hns3_flow_uninit(eth_dev);
 	hns3_fdir_filter_uninit(hns);
-	hns3_uninit_umv_space(hw);
-	hns3_ptp_uninit(hw);
+	hns3_uninit_hardware(hw);
 	hns3_stats_uninit(hw);
 	hns3_config_mac_tnl_int(hw, false);
 	hns3_pf_disable_irq0(hw);
