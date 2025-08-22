@@ -259,7 +259,7 @@ fm10k_rxq_rearm(struct fm10k_rx_queue *rxq)
 	rxdp = rxq->hw_ring + rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
-	if (rte_mempool_get_bulk(rxq->mp,
+	if (rte_mbuf_raw_alloc_bulk(rxq->mp,
 				 (void *)mb_alloc,
 				 RTE_FM10K_RXQ_REARM_THRESH) < 0) {
 		dma_addr0 = _mm_setzero_si128();

@@ -20,7 +20,7 @@ idpf_singleq_rx_rearm(struct idpf_rx_queue *rxq)
 	rxdp += rxq->rxrearm_start;
 
 	/* Pull 'n' more MBUFs into the software ring */
-	if (rte_mempool_get_bulk(rxq->mp,
+	if (rte_mbuf_raw_alloc_bulk(rxq->mp,
 				 (void *)rxep,
 				 IDPF_RXQ_REARM_THRESH) < 0) {
 		if (rxq->rxrearm_nb + IDPF_RXQ_REARM_THRESH >=

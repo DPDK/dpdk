@@ -2043,7 +2043,7 @@ ice_rx_alloc_bufs(struct ci_rx_queue *rxq)
 	alloc_idx = (uint16_t)(rxq->rx_free_trigger -
 			       (rxq->rx_free_thresh - 1));
 	rxep = &rxq->sw_ring[alloc_idx];
-	diag = rte_mempool_get_bulk(rxq->mp, (void *)rxep,
+	diag = rte_mbuf_raw_alloc_bulk(rxq->mp, (void *)rxep,
 				    rxq->rx_free_thresh);
 	if (unlikely(diag != 0)) {
 		PMD_RX_LOG(ERR, "Failed to get mbufs in bulk");
@@ -2051,7 +2051,7 @@ ice_rx_alloc_bufs(struct ci_rx_queue *rxq)
 	}
 
 	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) {
-		diag_pay = rte_mempool_get_bulk(rxq->rxseg[1].mp,
+		diag_pay = rte_mbuf_raw_alloc_bulk(rxq->rxseg[1].mp,
 				(void *)rxq->sw_split_buf, rxq->rx_free_thresh);
 		if (unlikely(diag_pay != 0)) {
 			rte_mempool_put_bulk(rxq->mp, (void *)rxep,

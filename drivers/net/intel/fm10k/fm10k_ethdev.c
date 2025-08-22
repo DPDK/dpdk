@@ -205,7 +205,7 @@ rx_queue_reset(struct fm10k_rx_queue *q)
 	int i, diag;
 	PMD_INIT_FUNC_TRACE();
 
-	diag = rte_mempool_get_bulk(q->mp, (void **)q->sw_ring, q->nb_desc);
+	diag = rte_mbuf_raw_alloc_bulk(q->mp, (void *)q->sw_ring, q->nb_desc);
 	if (diag != 0)
 		return -ENOMEM;
 
