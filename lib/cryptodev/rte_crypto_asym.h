@@ -654,6 +654,8 @@ enum rte_crypto_sm2_op_capa {
 	/**< Random number generator supported in SM2 ops. */
 	RTE_CRYPTO_SM2_PH,
 	/**< Prehash message before crypto op. */
+	RTE_CRYPTO_SM2_PARTIAL,
+	/**< Calculate elliptic curve points only. */
 };
 
 /**
@@ -681,20 +683,46 @@ struct rte_crypto_sm2_op_param {
 	 * will be overwritten by the PMD with the decrypted length.
 	 */
 
-	rte_crypto_param cipher;
-	/**<
-	 * Pointer to input data
-	 * - to be decrypted for SM2 private decrypt.
-	 *
-	 * Pointer to output data
-	 * - for SM2 public encrypt.
-	 * In this case the underlying array should have been allocated
-	 * with enough memory to hold ciphertext output (at least X bytes
-	 * for prime field curve of N bytes and for message M bytes,
-	 * where X = (C1 || C2 || C3) and computed based on SM2 RFC as
-	 * C1 (1 + N + N), C2 = M, C3 = N. The cipher.length field will
-	 * be overwritten by the PMD with the encrypted length.
-	 */
+	union {
+		rte_crypto_param cipher;
+		/**<
+		 * Pointer to input data
+		 * - to be decrypted for SM2 private decrypt.
+		 *
+		 * Pointer to output data
+		 * - for SM2 public encrypt.
+		 * In this case the underlying array should have been allocated
+		 * with enough memory to hold ciphertext output (at least X bytes
+		 * for prime field curve of N bytes and for message M bytes,
+		 * where X = (C1 || C2 || C3) and computed based on SM2 RFC as
+		 * C1 (1 + N + N), C2 = M, C3 = N. The cipher.length field will
+		 * be overwritten by the PMD with the encrypted length.
+		 */
+		struct {
+			struct rte_crypto_ec_point c1;
+			/**<
+			 * This field is used only when PMD does not support the full
+			 * process of the SM2 encryption/decryption, but the elliptic
+			 * curve part only.
+			 *
+			 * In the case of encryption, it is an output - point C1 = (x1,y1).
+			 * In the case of decryption, if is an input - point C1 = (x1,y1).
+			 *
+			 * Must be used along with the RTE_CRYPTO_SM2_PARTIAL flag.
+			 */
+			struct rte_crypto_ec_point kp;
+			/**<
+			 * This field is used only when PMD does not support the full
+			 * process of the SM2 encryption/decryption, but the elliptic
+			 * curve part only.
+			 *
+			 * It is an output in the encryption case, it is a point
+			 * [k]P = (x2,y2).
+			 *
+			 * Must be used along with the RTE_CRYPTO_SM2_PARTIAL flag.
+			 */
+		};
+	};
 
 	rte_crypto_uint id;
 	/**< The SM2 id used by signer and verifier. */

@@ -232,6 +232,10 @@ ABI Changes
 * ethdev: Added ``link_connector`` field to ``rte_eth_link`` structure
   to report type of link connector for a port.
 
+* cryptodev: The ``rte_crypto_sm2_op_param`` struct member ``cipher`` to hold ciphertext
+  is changed to union data type. This change is required to support partial SM2 calculation
+  which is driven by ``RTE_CRYPTO_SM2_PARTIAL`` capability flag.
+
 
 Known Issues
 ------------
