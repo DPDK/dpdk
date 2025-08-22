@@ -932,6 +932,15 @@ sm2_ecdsa_sign_set_input(struct icp_qat_fw_pke_request *qat_req,
 	qat_req->input_param_count = 3;
 	qat_req->output_param_count = 2;
 
+	HEXDUMP("SM2 K test", asym_op->sm2.k.data,
+		cookie->alg_bytesize);
+	HEXDUMP("SM2 K", cookie->input_array[0],
+		cookie->alg_bytesize);
+	HEXDUMP("SM2 msg", cookie->input_array[1],
+		cookie->alg_bytesize);
+	HEXDUMP("SM2 pkey", cookie->input_array[2],
+		cookie->alg_bytesize);
+
 	return RTE_CRYPTO_OP_STATUS_SUCCESS;
 }
 
@@ -983,6 +992,114 @@ sm2_ecdsa_sign_collect(struct rte_crypto_asym_op *asym_op,
 }
 
 static int
+sm2_encryption_set_input(struct icp_qat_fw_pke_request *qat_req,
+	struct qat_asym_op_cookie *cookie,
+	const struct rte_crypto_asym_op *asym_op,
+	const struct rte_crypto_asym_xform *xform)
+{
+	const struct qat_asym_function qat_function =
+		get_sm2_encryption_function();
+	const uint32_t qat_func_alignsize =
+		qat_function.bytesize;
+
+	SET_PKE_LN(asym_op->sm2.k, qat_func_alignsize, 0);
+	SET_PKE_LN(xform->ec.q.x, qat_func_alignsize, 1);
+	SET_PKE_LN(xform->ec.q.y, qat_func_alignsize, 2);
+
+	cookie->alg_bytesize = qat_function.bytesize;
+	cookie->qat_func_alignsize = qat_function.bytesize;
+	qat_req->pke_hdr.cd_pars.func_id = qat_function.func_id;
+	qat_req->input_param_count = 3;
+	qat_req->output_param_count = 4;
+
+	HEXDUMP("SM2 K", cookie->input_array[0],
+		qat_func_alignsize);
+	HEXDUMP("SM2 Q.x", cookie->input_array[1],
+		qat_func_alignsize);
+	HEXDUMP("SM2 Q.y", cookie->input_array[2],
+		qat_func_alignsize);
+
+	return RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+static uint8_t
+sm2_encryption_collect(struct rte_crypto_asym_op *asym_op,
+		const struct qat_asym_op_cookie *cookie)
+{
+	uint32_t alg_bytesize = cookie->alg_bytesize;
+
+	rte_memcpy(asym_op->sm2.c1.x.data, cookie->output_array[0], alg_bytesize);
+	rte_memcpy(asym_op->sm2.c1.y.data, cookie->output_array[1], alg_bytesize);
+	rte_memcpy(asym_op->sm2.kp.x.data, cookie->output_array[2], alg_bytesize);
+	rte_memcpy(asym_op->sm2.kp.y.data, cookie->output_array[3], alg_bytesize);
+	asym_op->sm2.c1.x.length = alg_bytesize;
+	asym_op->sm2.c1.y.length = alg_bytesize;
+	asym_op->sm2.kp.x.length = alg_bytesize;
+	asym_op->sm2.kp.y.length = alg_bytesize;
+
+	HEXDUMP("c1[x1]", cookie->output_array[0],
+		alg_bytesize);
+	HEXDUMP("c1[y]", cookie->output_array[1],
+		alg_bytesize);
+	HEXDUMP("kp[x]", cookie->output_array[2],
+		alg_bytesize);
+	HEXDUMP("kp[y]", cookie->output_array[3],
+		alg_bytesize);
+	return RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+
+static int
+sm2_decryption_set_input(struct icp_qat_fw_pke_request *qat_req,
+	struct qat_asym_op_cookie *cookie,
+	const struct rte_crypto_asym_op *asym_op,
+	const struct rte_crypto_asym_xform *xform)
+{
+	const struct qat_asym_function qat_function =
+		get_sm2_decryption_function();
+	const uint32_t qat_func_alignsize =
+		qat_function.bytesize;
+
+	SET_PKE_LN(xform->ec.pkey, qat_func_alignsize, 0);
+	SET_PKE_LN(asym_op->sm2.c1.x, qat_func_alignsize, 1);
+	SET_PKE_LN(asym_op->sm2.c1.y, qat_func_alignsize, 2);
+
+	cookie->alg_bytesize = qat_function.bytesize;
+	cookie->qat_func_alignsize = qat_function.bytesize;
+	qat_req->pke_hdr.cd_pars.func_id = qat_function.func_id;
+	qat_req->input_param_count = 3;
+	qat_req->output_param_count = 2;
+
+	HEXDUMP("d", cookie->input_array[0],
+		qat_func_alignsize);
+	HEXDUMP("c1[x]", cookie->input_array[1],
+		qat_func_alignsize);
+	HEXDUMP("c1[y]", cookie->input_array[2],
+		qat_func_alignsize);
+
+	return RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+
+static uint8_t
+sm2_decryption_collect(struct rte_crypto_asym_op *asym_op,
+		const struct qat_asym_op_cookie *cookie)
+{
+	uint32_t alg_bytesize = cookie->alg_bytesize;
+
+	rte_memcpy(asym_op->sm2.kp.x.data, cookie->output_array[0], alg_bytesize);
+	rte_memcpy(asym_op->sm2.kp.y.data, cookie->output_array[1], alg_bytesize);
+	asym_op->sm2.kp.x.length = alg_bytesize;
+	asym_op->sm2.kp.y.length = alg_bytesize;
+
+	HEXDUMP("kp[x]", cookie->output_array[0],
+		alg_bytesize);
+	HEXDUMP("kp[y]", cookie->output_array[1],
+		alg_bytesize);
+	return RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
+static int
 asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 		struct qat_asym_op_cookie *cookie,
 		const struct rte_crypto_asym_op *asym_op,
@@ -1014,14 +1131,20 @@ asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 				asym_op, xform);
 		}
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
-		if (asym_op->sm2.op_type ==
-			RTE_CRYPTO_ASYM_OP_VERIFY) {
+		if (asym_op->sm2.op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+			return sm2_encryption_set_input(qat_req, cookie,
+				asym_op, xform);
+		} else if (asym_op->sm2.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+			return sm2_decryption_set_input(qat_req, cookie,
+				asym_op, xform);
+		} else if (asym_op->sm2.op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
 			return sm2_ecdsa_verify_set_input(qat_req, cookie,
 						asym_op, xform);
-		} else {
+		} else if (asym_op->sm2.op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
 			return sm2_ecdsa_sign_set_input(qat_req, cookie,
 					asym_op, xform);
 		}
+		break;
 	default:
 		QAT_LOG(ERR, "Invalid/unsupported asymmetric crypto xform");
 		return -EINVAL;
@@ -1113,7 +1236,13 @@ qat_asym_collect_response(struct rte_crypto_op *op,
 	case RTE_CRYPTO_ASYM_XFORM_ECDH:
 		return ecdh_collect(asym_op, cookie);
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
-		return sm2_ecdsa_sign_collect(asym_op, cookie);
+		if (asym_op->sm2.op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT)
+			return sm2_encryption_collect(asym_op, cookie);
+		else if (asym_op->sm2.op_type == RTE_CRYPTO_ASYM_OP_DECRYPT)
+			return sm2_decryption_collect(asym_op, cookie);
+		else
+			return sm2_ecdsa_sign_collect(asym_op, cookie);
+
 	default:
 		QAT_LOG(ERR, "Not supported xform type");
 		return  RTE_CRYPTO_OP_STATUS_ERROR;
@@ -1422,9 +1551,8 @@ qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 	case RTE_CRYPTO_ASYM_XFORM_ECDH:
-		ret = session_set_ec(qat_session, xform);
-		break;
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
+		ret = session_set_ec(qat_session, xform);
 		break;
 	default:
 		ret = -ENOTSUP;

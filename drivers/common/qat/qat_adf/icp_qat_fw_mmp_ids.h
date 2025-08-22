@@ -1542,6 +1542,9 @@ icp_qat_fw_mmp_ecdsa_verify_gfp_521_input::in in @endlink
  * @li no output parameters
  */
 
+#define PKE_ECSM2_ENCRYPTION 0x25221720
+#define PKE_ECSM2_DECRYPTION 0x201716e6
+
 #define PKE_LIVENESS 0x00000001
 /**< Functionality ID for PKE_LIVENESS
  * @li 0 input parameter(s)

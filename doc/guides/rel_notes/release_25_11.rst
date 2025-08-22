@@ -147,6 +147,10 @@ New Features
   * Added multi-process per port.
   * Optimized code.
 
+* **Updated Intel QuickAssist Technology (QAT) crypto driver.**
+
+  * Added SM2 encryption and decryption algorithms.
+
 * **Allow overriding the automatic usage/help generation in argparse library.**
 
   The argparse library now supports overriding the automatic help text generation,
