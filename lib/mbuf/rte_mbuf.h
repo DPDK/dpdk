@@ -960,6 +960,50 @@ static inline void rte_pktmbuf_reset_headroom(struct rte_mbuf *m)
 }
 
 /**
+ * Reset the fields of a bulk of packet mbufs to their default values.
+ *
+ * The caller must ensure that the mbufs come from the specified mempool,
+ * are direct and properly reinitialized (refcnt=1, next=NULL, nb_segs=1),
+ * as done by rte_pktmbuf_prefree_seg().
+ *
+ * This function should be used with care, when optimization is required.
+ * For standard needs, prefer rte_pktmbuf_reset().
+ *
+ * @param mp
+ *   The mempool to which the mbuf belongs.
+ * @param mbufs
+ *   Array of pointers to packet mbufs.
+ *   The array must not contain NULL pointers.
+ * @param count
+ *   Array size.
+ */
+static inline void
+rte_mbuf_raw_reset_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
+{
+	uint64_t ol_flags = (rte_pktmbuf_priv_flags(mp) & RTE_PKTMBUF_POOL_F_PINNED_EXT_BUF) ?
+			RTE_MBUF_F_EXTERNAL : 0;
+	uint16_t data_off = RTE_MIN_T(RTE_PKTMBUF_HEADROOM, rte_pktmbuf_data_room_size(mp),
+			uint16_t);
+
+	for (unsigned int idx = 0; idx < count; idx++) {
+		struct rte_mbuf *m = mbufs[idx];
+
+		m->pkt_len = 0;
+		m->tx_offload = 0;
+		m->vlan_tci = 0;
+		m->vlan_tci_outer = 0;
+		m->port = RTE_MBUF_PORT_INVALID;
+
+		m->ol_flags = ol_flags;
+		m->packet_type = 0;
+		m->data_off = data_off;
+
+		m->data_len = 0;
+		__rte_mbuf_sanity_check(m, 1);
+	}
+}
+
+/**
  * Reset the fields of a packet mbuf to their default values.
  *
  * The given mbuf must have only one segment.
@@ -1002,7 +1046,7 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 {
 	struct rte_mbuf *m;
 	if ((m = rte_mbuf_raw_alloc(mp)) != NULL)
-		rte_pktmbuf_reset(m);
+		rte_mbuf_raw_reset_bulk(mp, &m, 1);
 	return m;
 }
 
@@ -1023,7 +1067,6 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
 static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	 struct rte_mbuf **mbufs, unsigned count)
 {
-	unsigned idx = 0;
 	int rc;
 
 	rc = rte_mbuf_raw_alloc_bulk(pool, mbufs, count);
@@ -1032,31 +1075,8 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 
 	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_ALLOC);
 
-	/* To understand duff's device on loop unwinding optimization, see
-	 * https://en.wikipedia.org/wiki/Duff's_device.
-	 * Here while() loop is used rather than do() while{} to avoid extra
-	 * check if count is zero.
-	 */
-	switch (count % 4) {
-	case 0:
-		while (idx != count) {
-			rte_pktmbuf_reset(mbufs[idx]);
-			idx++;
-			/* fall-through */
-	case 3:
-			rte_pktmbuf_reset(mbufs[idx]);
-			idx++;
-			/* fall-through */
-	case 2:
-			rte_pktmbuf_reset(mbufs[idx]);
-			idx++;
-			/* fall-through */
-	case 1:
-			rte_pktmbuf_reset(mbufs[idx]);
-			idx++;
-			/* fall-through */
-		}
-	}
+	rte_mbuf_raw_reset_bulk(pool, mbufs, count);
+
 	return 0;
 }
 
