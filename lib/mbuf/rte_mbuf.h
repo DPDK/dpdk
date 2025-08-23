@@ -635,9 +635,6 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: This API may change, or be removed, without prior notice.
- *
  * Allocate a bulk of uninitialized mbufs from mempool *mp*.
  *
  * This function can be used by PMDs (especially in Rx functions)
@@ -661,7 +658,6 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
  *   - 0: Success.
  *   - -ENOENT: Not enough entries in the mempool; no mbufs are retrieved.
  */
-__rte_experimental
 static __rte_always_inline int
 rte_mbuf_raw_alloc_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
 {
@@ -699,9 +695,6 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: This API may change, or be removed, without prior notice.
- *
  * Put a bulk of mbufs allocated from the same mempool back into the mempool.
  *
  * The caller must ensure that the mbufs come from the specified mempool,
@@ -721,7 +714,6 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
  * @param count
  *   Array size.
  */
-__rte_experimental
 static __rte_always_inline void
 rte_mbuf_raw_free_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
 {
@@ -1034,7 +1026,7 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	unsigned idx = 0;
 	int rc;
 
-	rc = rte_mempool_get_bulk(pool, (void **)mbufs, count);
+	rc = rte_mbuf_raw_alloc_bulk(pool, mbufs, count);
 	if (unlikely(rc))
 		return rc;
 
@@ -1048,22 +1040,18 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	switch (count % 4) {
 	case 0:
 		while (idx != count) {
-			__rte_mbuf_raw_sanity_check_mp(mbufs[idx], pool);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 3:
-			__rte_mbuf_raw_sanity_check_mp(mbufs[idx], pool);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 2:
-			__rte_mbuf_raw_sanity_check_mp(mbufs[idx], pool);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 1:
-			__rte_mbuf_raw_sanity_check_mp(mbufs[idx], pool);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
