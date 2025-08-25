@@ -308,12 +308,19 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 	if (strstr(key_token, "plaintext")) {
 		rte_free(vector->plaintext.data);
 		vector->plaintext.data = data;
+
+		if (opts->test == CPERF_TEST_TYPE_VERIFY && data_length > opts->max_buffer_size) {
+			printf("Global plaintext (%u) larger than buffer_sz (%u)\n",
+				data_length, opts->max_buffer_size);
+			return -1;
+		}
+
 		if (tc_found)
 			vector->plaintext.length = data_length;
 		else {
 			if (opts->max_buffer_size > data_length) {
-				printf("Global plaintext shorter than "
-					"buffer_sz\n");
+				printf("Global plaintext (%u) shorter than "
+					"buffer_sz (%u)\n", data_length, opts->max_buffer_size);
 				return -1;
 			}
 			vector->plaintext.length = opts->max_buffer_size;
@@ -326,8 +333,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->cipher_key.length = data_length;
 		else {
 			if (opts->cipher_key_sz > data_length) {
-				printf("Global cipher_key shorter than "
-					"cipher_key_sz\n");
+				printf("Global cipher_key (%u) shorter than "
+					"cipher_key_sz (%u)\n", data_length, opts->cipher_key_sz);
 				return -1;
 			}
 			vector->cipher_key.length = opts->cipher_key_sz;
@@ -340,8 +347,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->auth_key.length = data_length;
 		else {
 			if (opts->auth_key_sz > data_length) {
-				printf("Global auth_key shorter than "
-					"auth_key_sz\n");
+				printf("Global auth_key (%u) shorter than "
+					"auth_key_sz (%u)\n", data_length, opts->auth_key_sz);
 				return -1;
 			}
 			vector->auth_key.length = opts->auth_key_sz;
@@ -354,8 +361,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->aead_key.length = data_length;
 		else {
 			if (opts->aead_key_sz > data_length) {
-				printf("Global aead_key shorter than "
-					"aead_key_sz\n");
+				printf("Global aead_key (%u) shorter than "
+					"aead_key_sz (%u)\n", data_length, opts->aead_key_sz);
 				return -1;
 			}
 			vector->aead_key.length = opts->aead_key_sz;
@@ -368,8 +375,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->cipher_iv.length = data_length;
 		else {
 			if (opts->cipher_iv_sz > data_length) {
-				printf("Global cipher iv shorter than "
-					"cipher_iv_sz\n");
+				printf("Global cipher iv (%u) shorter than "
+					"cipher_iv_sz (%u)\n", data_length, opts->cipher_iv_sz);
 				return -1;
 			}
 			vector->cipher_iv.length = opts->cipher_iv_sz;
@@ -382,8 +389,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->auth_iv.length = data_length;
 		else {
 			if (opts->auth_iv_sz > data_length) {
-				printf("Global auth iv shorter than "
-					"auth_iv_sz\n");
+				printf("Global auth iv (%u) shorter than "
+					"auth_iv_sz (%u)\n", data_length, opts->auth_iv_sz);
 				return -1;
 			}
 			vector->auth_iv.length = opts->auth_iv_sz;
@@ -396,8 +403,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->aead_iv.length = data_length;
 		else {
 			if (opts->aead_iv_sz > data_length) {
-				printf("Global aead iv shorter than "
-					"aead_iv_sz\n");
+				printf("Global aead iv (%u) shorter than "
+					"aead_iv_sz (%u)\n", data_length, opts->aead_iv_sz);
 				return -1;
 			}
 			vector->aead_iv.length = opts->aead_iv_sz;
@@ -410,8 +417,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->ciphertext.length = data_length;
 		else {
 			if (opts->max_buffer_size > data_length) {
-				printf("Global ciphertext shorter than "
-					"buffer_sz\n");
+				printf("Global ciphertext (%u) shorter than "
+					"buffer_sz (%u)\n", data_length, opts->max_buffer_size);
 				return -1;
 			}
 			vector->ciphertext.length = opts->max_buffer_size;
@@ -425,8 +432,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->aad.length = data_length;
 		else {
 			if (opts->aead_aad_sz > data_length) {
-				printf("Global aad shorter than "
-					"aead_aad_sz\n");
+				printf("Global aad (%u) shorter than "
+					"aead_aad_sz (%u)\n", data_length, opts->aead_aad_sz);
 				return -1;
 			}
 			vector->aad.length = opts->aead_aad_sz;
@@ -441,8 +448,8 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->digest.length = data_length;
 		else {
 			if (opts->digest_sz > data_length) {
-				printf("Global digest shorter than "
-					"digest_sz\n");
+				printf("Global digest (%u) shorter than "
+					"digest_sz (%u)\n", data_length, opts->digest_sz);
 				return -1;
 			}
 			vector->digest.length = opts->digest_sz;
