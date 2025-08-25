@@ -30,7 +30,7 @@ download_header()
 	local header=$1
 	local path=$2
 
-	local url="${base_url}${header}?h=${version}"
+	local url="$base_url$header?h=$version"
 
 	if ! curl -s -f --create-dirs -o $path $url; then
 		echo "Failed to download $url"
@@ -61,12 +61,12 @@ import_header()
 	local import
 	local header=$1
 
-	local path="${base_path}${header}"
+	local path="$base_path$header"
 
 	download_header $header $path || return 1
 
 	for include in $(sed -ne 's/^#include <\(.*\)>$/\1/p' $path); do
-		if [ ! -f "${base_path}${include}" ]; then
+		if [ ! -f "$base_path$include" ]; then
 			read -p "Import $include (y/n): " import && [ "$import" = 'y' ] || continue
 			echo "Importing $include for $path"
 			import_header "$include" || return 1
@@ -85,8 +85,8 @@ fixup_includes()
 
 	# Prepend include path with "uapi/" if the header is imported
 	for include in $(sed -ne 's/^#include <\(.*\)>$/\1/p' $path); do
-		if [ -f "${base_path}${include}" ]; then
-			sed -i "s|${include}|uapi/${include}|g" $path
+		if [ -f "$base_path$include" ]; then
+			sed -i "s|$include|uapi/$include|g" $path
 		fi
 	done
 }
@@ -106,7 +106,7 @@ check_header() {
 }
 
 while getopts i:u:ch opt ; do
-	case ${opt} in
+	case $opt in
 		i ) file=$OPTARG ;;
 		u ) version=$OPTARG ;;
 		c ) check_headers=1 ;;
@@ -123,9 +123,9 @@ fi
 
 cd $(dirname $0)/..
 
-current_version=$(< ${base_path}/version)
+current_version=$(< $base_path/version)
 
-if [ -n "${version}" ]; then
+if [ -n "$version" ]; then
 	if version_older_than "$version" "$current_version"; then
 		echo "Headers already up to date ($current_version >= $version)"
 		version=$current_version
@@ -137,7 +137,7 @@ else
 	version=$current_version
 fi
 
-if [ -n "${file}" ]; then
+if [ -n "$file" ]; then
 	import_header $file || exit 1
 fi
 
@@ -145,7 +145,7 @@ for filename in $(find $base_path -name "*.h" -type f); do
 	fixup_includes $filename || exit 1
 done
 
-echo $version > ${base_path}/version
+echo $version > $base_path/version
 
 if [ $check_headers -eq 0 ]; then
 	exit 0
@@ -154,7 +154,7 @@ fi
 tmpheader="$(mktemp -t dpdk.checkuapi.XXXXXX)"
 trap "rm -f '$tmpheader'" INT
 
-echo "Checking imported headers for version ${version}"
+echo "Checking imported headers for version $version"
 
 for filename in $(find $base_path -name "*.h" -type f); do
 	header=${filename#$base_path}
