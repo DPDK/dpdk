@@ -20,7 +20,8 @@ snippet_init_re_route_to_kernel(void)
 }
 
 void
-snippet_re_route_to_kernel_create_actions(struct rte_flow_action *action)
+snippet_re_route_to_kernel_create_actions(__rte_unused uint16_t port_id,
+					struct rte_flow_action *action)
 {
 	action[0].type = RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL;
 	action[1].type = RTE_FLOW_ACTION_TYPE_END;

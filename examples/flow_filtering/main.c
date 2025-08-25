@@ -40,7 +40,6 @@ static int use_template_api = 1;
 
 static volatile bool force_quit;
 static uint16_t port_id;
-static uint16_t nr_queues = 5;
 struct rte_mempool *mbuf_pool;
 struct rte_flow *flow;
 
@@ -67,7 +66,7 @@ main_loop(void)
 
 	/* Reading the packets from all queues. */
 	while (!force_quit) {
-		for (i = 0; i < nr_queues; i++) {
+		for (i = 0; i < NR_QUEUES; i++) {
 			nb_rx = rte_eth_rx_burst(port_id,
 						i, mbufs, 32);
 			if (nb_rx) {
@@ -179,7 +178,7 @@ init_port(void)
 	port_conf.txmode.offloads &= dev_info.tx_offload_capa;
 	printf(":: initializing port: %d\n", port_id);
 	ret = rte_eth_dev_configure(port_id,
-				nr_queues, nr_queues, &port_conf);
+				NR_QUEUES, NR_QUEUES, &port_conf);
 	if (ret < 0) {
 		rte_exit(EXIT_FAILURE,
 			":: cannot configure device: err=%d, port=%u\n",
@@ -190,7 +189,7 @@ init_port(void)
 	rxq_conf.offloads = port_conf.rxmode.offloads;
 
 	/* Configuring number of RX and TX queues connected to single port. */
-	for (i = 0; i < nr_queues; i++) {
+	for (i = 0; i < NR_QUEUES; i++) {
 		ret = rte_eth_rx_queue_setup(port_id, i, 512,
 					 rte_eth_dev_socket_id(port_id),
 					 &rxq_conf,
@@ -205,7 +204,7 @@ init_port(void)
 	txq_conf = dev_info.default_txconf;
 	txq_conf.offloads = port_conf.txmode.offloads;
 
-	for (i = 0; i < nr_queues; i++) {
+	for (i = 0; i < NR_QUEUES; i++) {
 		ret = rte_eth_tx_queue_setup(port_id, i, 512,
 				rte_eth_dev_socket_id(port_id),
 				&txq_conf);

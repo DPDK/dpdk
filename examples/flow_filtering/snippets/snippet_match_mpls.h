@@ -19,7 +19,7 @@ snippet_init_mpls(void);
 #define snippet_init snippet_init_mpls
 
 static void
-snippet_mpls_create_actions(struct rte_flow_action *actions);
+snippet_mpls_create_actions(uint16_t port_id, struct rte_flow_action *actions);
 #define snippet_skeleton_flow_create_actions snippet_mpls_create_actions
 
 static void

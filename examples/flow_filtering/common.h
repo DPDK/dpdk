@@ -5,6 +5,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define NR_QUEUES 4
+
 extern bool enable_promiscuous_mode;
 extern bool enable_flow_isolation;
 extern struct rte_flow_attr flow_attr;

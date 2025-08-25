@@ -7,8 +7,8 @@
 #include <rte_errno.h>
 #include <rte_flow.h>
 
-#include "snippet_match_ipv4.h"
 #include "../common.h"
+#include "snippet_match_ipv4.h"
 
 void
 snippet_init_ipv4(void)
@@ -17,7 +17,7 @@ snippet_init_ipv4(void)
 }
 
 void
-snippet_ipv4_flow_create_actions(struct rte_flow_action *action)
+snippet_ipv4_flow_create_actions(__rte_unused uint16_t port_id, struct rte_flow_action *action)
 {
 	/*
 	 * create the action sequence.

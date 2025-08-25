@@ -19,7 +19,7 @@ snippet_init_gre(void);
 #define snippet_init snippet_init_gre
 
 static void
-snippet_match_gre_create_actions(struct rte_flow_action *action);
+snippet_match_gre_create_actions(uint16_t port_id, struct rte_flow_action *action);
 #define snippet_skeleton_flow_create_actions snippet_match_gre_create_actions
 
 static void

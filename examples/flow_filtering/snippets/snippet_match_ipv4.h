@@ -17,7 +17,7 @@ snippet_init_ipv4(void);
 #define snippet_init snippet_init_ipv4
 
 void
-snippet_ipv4_flow_create_actions(struct rte_flow_action *action);
+snippet_ipv4_flow_create_actions(uint16_t port_id, struct rte_flow_action *action);
 #define snippet_skeleton_flow_create_actions snippet_ipv4_flow_create_actions
 
 void

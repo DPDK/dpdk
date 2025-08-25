@@ -59,7 +59,7 @@ generate_flow_skeleton(uint16_t port_id, struct rte_flow_error *error, int use_t
 	struct rte_flow_action actions[MAX_ACTION_NUM] = {0};
 	struct rte_flow_item patterns[MAX_PATTERN_NUM] = {0};
 
-	snippet_skeleton_flow_create_actions(actions);
+	snippet_skeleton_flow_create_actions(port_id, actions);
 
 	snippet_skeleton_flow_create_patterns(patterns);
 	/* >8 End of setting the common action and pattern structures. */

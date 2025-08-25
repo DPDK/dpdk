@@ -19,7 +19,7 @@ snippet_init_mpls(void)
 }
 
 static void
-snippet_mpls_create_actions(struct rte_flow_action *actions)
+snippet_mpls_create_actions(__rte_unused uint16_t port_id, struct rte_flow_action *actions)
 {
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue;

@@ -17,7 +17,7 @@ snippet_init_gre(void)
 }
 
 static void
-snippet_match_gre_create_actions(struct rte_flow_action *action)
+snippet_match_gre_create_actions(__rte_unused uint16_t port_id, struct rte_flow_action *action)
 {
 	/* Create one action that moves the packet to the selected queue. */
 	struct rte_flow_action_queue *queue = calloc(1, sizeof(struct rte_flow_action_queue));

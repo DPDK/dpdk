@@ -20,7 +20,7 @@ snippet_init_re_route_to_kernel(void);
 #define snippet_init snippet_init_re_route_to_kernel
 
 static void
-snippet_re_route_to_kernel_create_actions(struct rte_flow_action *action);
+snippet_re_route_to_kernel_create_actions(uint16_t port_id, struct rte_flow_action *action);
 #define snippet_skeleton_flow_create_actions snippet_re_route_to_kernel_create_actions
 
 static void
