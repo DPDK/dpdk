@@ -12,11 +12,15 @@ deps += ['argparse']
 sources = files(
         'main.c',
         'flow_skeleton.c',
+        'jump_flow.c',
         'snippets/snippet_match_ipv4.c',
         'snippets/snippet_match_gre.c',
         'snippets/snippet_match_mpls.c',
+        'snippets/snippet_match_nsh.c',
         'snippets/snippet_match_port_affinity.c',
+        'snippets/snippet_match_roce_ib_bth.c',
         'snippets/snippet_re_route_to_kernel.c',
+        'snippets/snippet_switch_granularity.c',
 )
 
 # The code snippets are not utilized.
