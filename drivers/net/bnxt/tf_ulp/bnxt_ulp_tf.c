@@ -1613,9 +1613,7 @@ ulp_tf_mtr_cap_get(struct bnxt *bp,
 		return -EINVAL;
 	}
 
-#if (RTE_VERSION_NUM(21, 05, 0, 0) <= RTE_VERSION)
 	cap->srtcm_rfc2697_byte_mode_supported = 1;
-#endif
 	cap->n_shared_max = cap->n_max;
 	/* No meter is identical */
 	cap->identical = 1;

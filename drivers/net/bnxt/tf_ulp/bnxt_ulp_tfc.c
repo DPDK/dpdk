@@ -1087,9 +1087,7 @@ static int
 ulp_tfc_mtr_cap_get(struct bnxt *bp __rte_unused,
 		    struct rte_mtr_capabilities *cap)
 {
-#if (RTE_VERSION_NUM(21, 05, 0, 0) <= RTE_VERSION)
 	cap->srtcm_rfc2697_byte_mode_supported = 1;
-#endif
 	cap->n_max = MAX_NUM_METER;
 	cap->n_shared_max = cap->n_max;
 	/* No meter is identical */

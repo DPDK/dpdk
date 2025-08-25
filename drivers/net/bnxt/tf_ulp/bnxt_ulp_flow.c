@@ -75,10 +75,8 @@ bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 		params->dir_attr |= BNXT_ULP_FLOW_ATTR_EGRESS;
 	if (attr->ingress)
 		params->dir_attr |= BNXT_ULP_FLOW_ATTR_INGRESS;
-#if RTE_VERSION_NUM(17, 11, 10, 16) < RTE_VERSION
 	if (attr->transfer)
 		params->dir_attr |= BNXT_ULP_FLOW_ATTR_TRANSFER;
-#endif
 	if (attr->group) {
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_GROUP_ID,
 				    rte_cpu_to_le_32(attr->group));

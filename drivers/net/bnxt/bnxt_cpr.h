@@ -119,9 +119,7 @@ bool bnxt_is_recovery_enabled(struct bnxt *bp);
 bool bnxt_is_primary_func(struct bnxt *bp);
 
 void bnxt_stop_rxtx(struct rte_eth_dev *eth_dev);
-#if (RTE_VERSION_NUM(21, 8, 0, 0) < RTE_VERSION)
 void bnxt_start_rxtx(struct rte_eth_dev *eth_dev);
-#endif
 
 /**
  * Check validity of a completion ring entry. If the entry is valid, include a

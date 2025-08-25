@@ -4309,7 +4309,6 @@ static int bnxt_get_module_eeprom(struct rte_eth_dev *dev,
 	return length ? -EINVAL : 0;
 }
 
-#if (RTE_VERSION_NUM(22, 11, 0, 0) <= RTE_VERSION)
 static int bnxt_speed_lanes_set(struct rte_eth_dev *dev, uint32_t speed_lanes)
 {
 	struct bnxt *bp = dev->data->dev_private;
@@ -4406,8 +4405,6 @@ static int bnxt_speed_lanes_get(struct rte_eth_dev *dev, uint32_t *lanes)
 	return 0;
 }
 
-#endif
-
 /*
  * Initialization
  */
@@ -4479,11 +4476,9 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.timesync_read_rx_timestamp = bnxt_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
 	.mtr_ops_get = bnxt_flow_meter_ops_get,
-#if (RTE_VERSION_NUM(22, 11, 0, 0) <= RTE_VERSION)
 	.speed_lanes_get = bnxt_speed_lanes_get,
 	.speed_lanes_set = bnxt_speed_lanes_set,
 	.speed_lanes_get_capa = bnxt_speed_lanes_get_capa,
-#endif
 };
 
 static uint32_t bnxt_map_reset_regs(struct bnxt *bp, uint32_t reg)

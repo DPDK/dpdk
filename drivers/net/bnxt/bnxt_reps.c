@@ -766,13 +766,8 @@ int bnxt_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	return 0;
 
 out:
-	if (rxq) {
- #if (RTE_VERSION_NUM(21, 8, 0, 0) < RTE_VERSION)
+	if (rxq)
 		bnxt_rep_rx_queue_release_op(eth_dev, queue_idx);
- #else
-		bnxt_rx_queue_release_op(rxq);
- #endif
-	}
 
 	return rc;
 }

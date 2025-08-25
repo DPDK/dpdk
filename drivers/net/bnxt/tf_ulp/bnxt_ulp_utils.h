@@ -814,35 +814,6 @@ bnxt_ulp_cntxt_release_fdb_lock(struct bnxt_ulp_context	*ulp_ctx)
 	pthread_mutex_unlock(&ulp_ctx->cfg_data->flow_db_lock);
 }
 
-#if (RTE_VERSION_NUM(21, 05, 0, 0) > RTE_VERSION)
-
-/* Function to extract the action type from the shared action handle. */
-static inline uint32_t
-bnxt_get_shared_action_type(const struct rte_flow_shared_action *handle)
-{
-	return (uint32_t)(((uint64_t)handle >> 32) & 0xffffffff);
-}
-
-/* Function to extract the direction from the shared action handle. */
-static inline uint32_t
-bnxt_get_shared_action_direction(const struct rte_flow_shared_action *handle)
-{
-	uint32_t shared_type;
-
-	shared_type = bnxt_get_shared_action_type(handle);
-	return shared_type & 0x1 ? BNXT_ULP_FLOW_ATTR_EGRESS :
-		BNXT_ULP_FLOW_ATTR_INGRESS;
-}
-
-/* Function to extract the action index from the shared action handle. */
-static inline uint32_t
-bnxt_get_shared_action_index(const struct rte_flow_shared_action *handle)
-{
-	return (uint32_t)((uint64_t)handle & 0xffffffff);
-}
-
-#else /* (RTE_VERSION >= RTE_VERSION_NUM(21,05,0,0)) */
-
 /* Function to extract the action type from the shared action handle. */
 static inline int32_t
 bnxt_get_action_handle_type(const struct rte_flow_action_handle *handle,
@@ -881,8 +852,6 @@ bnxt_get_action_handle_index(const struct rte_flow_action_handle *handle)
 {
 	return (uint32_t)((uint64_t)handle & 0xffffffff);
 }
-
-#endif	/* RTE_VERSION < RTE_VERSION_NUM(21,05,0,0) */
 
 /* Function to set the ha info into the context */
 static inline int32_t
