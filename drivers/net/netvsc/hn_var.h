@@ -180,7 +180,6 @@ struct hn_data {
 
 	rte_spinlock_t	hotadd_lock;
 	LIST_HEAD(hotadd_list, hv_hotadd_context) hotadd_list;
-	char		*vf_devargs;
 };
 
 static inline struct vmbus_channel *
