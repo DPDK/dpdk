@@ -119,16 +119,25 @@ struct gve_xstats_name_offset {
 	unsigned int offset;
 };
 
+struct gve_tx_pkt {
+	struct rte_mbuf *mbuf;
+	int16_t next_avail_pkt; /* Entry in software ring for next free packet slot */
+};
+
 struct gve_tx_queue {
 	volatile union gve_tx_desc *tx_desc_ring;
 	const struct rte_memzone *mz;
 	uint64_t tx_ring_phys_addr;
-	struct rte_mbuf **sw_ring;
+	union {
+		struct rte_mbuf **sw_ring;
+		struct gve_tx_pkt *pkt_ring_dqo;
+	};
 	volatile rte_be32_t *qtx_tail;
 	volatile rte_be32_t *qtx_head;
 
 	uint32_t tx_tail;
 	uint16_t nb_tx_desc;
+	uint16_t nb_complq_desc;
 	uint16_t nb_free;
 	uint16_t nb_used;
 	uint32_t next_to_clean;
@@ -162,6 +171,11 @@ struct gve_tx_queue {
 	/* newly added for DQO */
 	volatile union gve_tx_desc_dqo *tx_ring;
 	struct gve_tx_compl_desc *compl_ring;
+
+	/* List of free completion tags that map into sw_ring. */
+	int16_t free_compl_tags_head;
+	uint16_t num_free_compl_tags;
+
 	const struct rte_memzone *compl_ring_mz;
 	uint64_t compl_ring_phys_addr;
 	uint32_t complq_tail;
