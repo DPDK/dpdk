@@ -27,8 +27,9 @@ gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 		rxq->stats.no_mbufs += nb_refill;
 		dev = &rte_eth_devices[rxq->port_id];
 		dev->data->rx_mbuf_alloc_failed += nb_refill;
-		PMD_DRV_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
-			    rxq->port_id, rxq->queue_id);
+		PMD_DRV_DP_LOG(DEBUG,
+			       "RX mbuf alloc failed port_id=%u queue_id=%u",
+			       rxq->port_id, rxq->queue_id);
 		return;
 	}
 
