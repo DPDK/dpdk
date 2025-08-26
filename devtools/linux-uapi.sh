@@ -10,7 +10,7 @@ base_url="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/pla
 base_path="kernel/linux/uapi/"
 version=""
 file=""
-check_headers=0
+check_headers=false
 
 print_usage()
 {
@@ -90,8 +90,6 @@ fixup_includes()
 
 update_all()
 {
-	local current_version=$(< $base_path/version)
-
 	if [ -n "$version" ]; then
 		if version_older_than "$version" "$current_version"; then
 			echo "Headers already up to date ($current_version >= $version)"
@@ -156,7 +154,7 @@ while getopts i:u:ch opt ; do
 	case $opt in
 		i ) file=$OPTARG ;;
 		u ) version=$OPTARG ;;
-		c ) check_headers=1 ;;
+		c ) check_headers=true ;;
 		h ) print_usage ; exit 0 ;;
 		? ) print_usage ; exit 1 ;;
 	esac
@@ -167,13 +165,17 @@ if [ $# -ne 0 ]; then
 	print_usage
 	exit 1
 fi
-
-cd $(dirname $0)/..
-
-update_all
-
-if [ $check_headers -eq 0 ]; then
-	exit 0
+if $check_headers && [ -n "$file" -o -n "$version" ]; then
+	echo "The option -c is incompatible with -i and -u"
+	exit 1
 fi
 
-check_all
+cd $(dirname $0)/..
+current_version=$(cat $base_path/version)
+
+if $check_headers; then
+	version=$current_version
+	check_all
+else
+	update_all
+fi
