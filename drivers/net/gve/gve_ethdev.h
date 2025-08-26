@@ -242,6 +242,10 @@ struct gve_rx_queue {
 	uint8_t cur_gen_bit;
 	uint16_t bufq_tail;
 
+	/* List of buffers which are known to be completed by the hardware. */
+	int16_t *completed_buf_list;
+	int16_t completed_buf_list_head;
+
 	/* Only valid for DQO_RDA queue format */
 	struct gve_rx_queue *bufq;
 
