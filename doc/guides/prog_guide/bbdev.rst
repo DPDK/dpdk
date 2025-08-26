@@ -297,7 +297,11 @@ Capabilities details for FFT function
 The total number of distinct time windows supported
 for the post-FFT point-wise multiplication is exposed as ``fft_windows_num``.
 The ``window_index`` provided for each cyclic shift
-in each ``rte_bbdev_op_fft`` operation is expected to be limited to that size.
+in each ``rte_bbdev_op_fft`` operation
+is expected to be within the range (0 to ``fft_windows_num`` - 1).
+These indexes for up to 12 cyclic shifts are mapped consecutively into an array of 6 bytes
+(ie. the first index is the first 4 most significant bits of the first byte, etc...):
+``uint8_t window_index[RTE_BBDEV_MAX_CS_2]``.
 
 The information related to the width of each of these pre-configured window
 is also exposed using the ``fft_window_width`` array.
