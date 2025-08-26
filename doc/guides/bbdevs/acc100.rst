@@ -17,6 +17,7 @@ ACC100 5G/4G FEC PMDs support the following features:
 - LDPC Decode in the UL (5GNR)
 - Turbo Encode in the DL (4G)
 - Turbo Decode in the UL (4G)
+- Support for code block level processing
 - 16 VFs per PF (physical device)
 - Maximum of 128 queues per VF
 - PCIe Gen-3 x16 Interface

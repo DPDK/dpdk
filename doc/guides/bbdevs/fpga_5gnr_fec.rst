@@ -16,6 +16,7 @@ FPGA 5GNR FEC PMD supports the following BBDEV capabilities:
 
 - LDPC Encode in the DL
 - LDPC Decode in the UL
+- Support for code block level processing
 - 8 VFs per PF (physical device)
 - Maximum of 32 UL queues per VF
 - Maximum of 32 DL queues per VF

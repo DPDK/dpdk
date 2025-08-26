@@ -15,6 +15,7 @@ FPGA LTE FEC PMD supports the following features:
 
 - Turbo Encode in the DL with total throughput of 4.5 Gbits/s
 - Turbo Decode in the UL with total throughput of 1.5 Gbits/s assuming 8 decoder iterations
+- Support for code block level processing
 - 8 VFs per PF (physical device)
 - Maximum of 32 UL queues per VF
 - Maximum of 32 DL queues per VF
