@@ -11,7 +11,6 @@ base_path="kernel/linux/uapi/"
 version=""
 file=""
 check_headers=0
-errors=0
 
 print_usage()
 {
@@ -91,7 +90,35 @@ fixup_includes()
 	done
 }
 
-check_header() {
+update_all()
+{
+	local current_version=$(< $base_path/version)
+
+	if [ -n "$version" ]; then
+		if version_older_than "$version" "$current_version"; then
+			echo "Headers already up to date ($current_version >= $version)"
+			version=$current_version
+		else
+			update_headers
+		fi
+	else
+		echo "Version not specified, using current version ($current_version)"
+		version=$current_version
+	fi
+
+	if [ -n "$file" ]; then
+		import_header $file
+	fi
+
+	for filename in $(find $base_path -name "*.h" -type f); do
+		fixup_includes $filename
+	done
+
+	echo $version > $base_path/version
+}
+
+check_header()
+{
 	echo -n "Checking $1... "
 
 	if ! diff -q $1 $2 >/dev/null; then
@@ -103,6 +130,28 @@ check_header() {
 	fi
 
 	return 0
+}
+
+check_all()
+{
+	local errors=0
+
+	tmpheader="$(mktemp -t dpdk.checkuapi.XXXXXX)"
+	trap "rm -f '$tmpheader'" INT
+
+	echo "Checking imported headers for version $version"
+	for filename in $(find $base_path -name "*.h" -type f); do
+		header=${filename#$base_path}
+		download_header $header $tmpheader
+		fixup_includes $tmpheader
+		check_header $filename $tmpheader || errors=$((errors+1))
+	done
+	echo "$errors error(s) found"
+
+	rm -f $tmpheader
+	trap - INT
+
+	return $errors
 }
 
 while getopts i:u:ch opt ; do
@@ -123,49 +172,10 @@ fi
 
 cd $(dirname $0)/..
 
-current_version=$(< $base_path/version)
-
-if [ -n "$version" ]; then
-	if version_older_than "$version" "$current_version"; then
-		echo "Headers already up to date ($current_version >= $version)"
-		version=$current_version
-	else
-		update_headers
-	fi
-else
-	echo "Version not specified, using current version ($current_version)"
-	version=$current_version
-fi
-
-if [ -n "$file" ]; then
-	import_header $file
-fi
-
-for filename in $(find $base_path -name "*.h" -type f); do
-	fixup_includes $filename
-done
-
-echo $version > $base_path/version
+update_all
 
 if [ $check_headers -eq 0 ]; then
 	exit 0
 fi
 
-tmpheader="$(mktemp -t dpdk.checkuapi.XXXXXX)"
-trap "rm -f '$tmpheader'" INT
-
-echo "Checking imported headers for version $version"
-
-for filename in $(find $base_path -name "*.h" -type f); do
-	header=${filename#$base_path}
-	download_header $header $tmpheader
-	fixup_includes $tmpheader
-	check_header $filename $tmpheader || errors=$((errors+1))
-done
-
-echo "$errors error(s) found"
-
-rm -f $tmpheader
-trap - INT
-
-exit $errors
+check_all
