@@ -42,8 +42,6 @@ download_header()
 update_headers()
 {
 	local header
-	local url
-	local path
 
 	echo "Updating to $version"
 	for filename in $(find $base_path -name "*.h" -type f); do
