@@ -49,7 +49,7 @@ update_headers()
 	echo "Updating to $version"
 	for filename in $(find $base_path -name "*.h" -type f); do
 		header=${filename#$base_path}
-		download_header $header $filename || return 1
+		download_header $header $filename
 	done
 
 	return 0
@@ -63,13 +63,13 @@ import_header()
 
 	local path="$base_path$header"
 
-	download_header $header $path || return 1
+	download_header $header $path
 
 	for include in $(sed -ne 's/^#include <\(.*\)>$/\1/p' $path); do
 		if [ ! -f "$base_path$include" ]; then
 			read -p "Import $include (y/n): " import && [ "$import" = 'y' ] || continue
 			echo "Importing $include for $path"
-			import_header "$include" || return 1
+			import_header "$include"
 		fi
 	done
 
@@ -130,7 +130,7 @@ if [ -n "$version" ]; then
 		echo "Headers already up to date ($current_version >= $version)"
 		version=$current_version
 	else
-		update_headers || exit 1
+		update_headers
 	fi
 else
 	echo "Version not specified, using current version ($current_version)"
@@ -138,11 +138,11 @@ else
 fi
 
 if [ -n "$file" ]; then
-	import_header $file || exit 1
+	import_header $file
 fi
 
 for filename in $(find $base_path -name "*.h" -type f); do
-	fixup_includes $filename || exit 1
+	fixup_includes $filename
 done
 
 echo $version > $base_path/version
@@ -158,8 +158,8 @@ echo "Checking imported headers for version $version"
 
 for filename in $(find $base_path -name "*.h" -type f); do
 	header=${filename#$base_path}
-	download_header $header $tmpheader || exit 1
-	fixup_includes $tmpheader || exit 1
+	download_header $header $tmpheader
+	fixup_includes $tmpheader
 	check_header $filename $tmpheader || errors=$((errors+1))
 done
 
