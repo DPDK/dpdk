@@ -42,7 +42,7 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 		aim_txq->last_desc_cleaned = compl_tag;
 		break;
 	case GVE_COMPL_TYPE_DQO_REINJECTION:
-		PMD_DRV_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_REINJECTION !!!");
+		PMD_DRV_DP_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_REINJECTION !!!");
 		/* FALLTHROUGH */
 	case GVE_COMPL_TYPE_DQO_PKT:
 		/* free all segments. */
@@ -58,10 +58,10 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 		break;
 	case GVE_COMPL_TYPE_DQO_MISS:
 		rte_delay_us_sleep(1);
-		PMD_DRV_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_MISS ignored !!!");
+		PMD_DRV_DP_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_MISS ignored !!!");
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unknown completion type.");
+		PMD_DRV_DP_LOG(ERR, "unknown completion type.");
 		return;
 	}
 
@@ -206,7 +206,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 
 		if (rte_mbuf_check(tx_pkt, true, &reason)) {
-			PMD_DRV_LOG(DEBUG, "Invalid mbuf: %s", reason);
+			PMD_DRV_DP_LOG(DEBUG, "Invalid mbuf: %s", reason);
 			break;
 		}
 
@@ -243,7 +243,8 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		do {
 			if (sw_ring[sw_id] != NULL)
-				PMD_DRV_LOG(DEBUG, "Overwriting an entry in sw_ring");
+				PMD_DRV_DP_LOG(DEBUG,
+					       "Overwriting an entry in sw_ring");
 
 			/* Skip writing descriptor if mbuf has no data. */
 			if (!tx_pkt->data_len)
