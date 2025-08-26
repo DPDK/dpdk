@@ -376,13 +376,12 @@ gve_rxq_mbufs_alloc_dqo(struct gve_rx_queue *rxq)
 		rxq->stats.no_mbufs_bulk++;
 		for (i = 0; i < rx_mask; i++) {
 			nmb = rte_pktmbuf_alloc(rxq->mpool);
-			if (!nmb)
-				break;
+			if (!nmb) {
+				rxq->stats.no_mbufs++;
+				gve_release_rxq_mbufs_dqo(rxq);
+				return -ENOMEM;
+			}
 			rxq->sw_ring[i] = nmb;
-		}
-		if (i < rxq->nb_rx_desc - 1) {
-			rxq->stats.no_mbufs += rx_mask - i;
-			return -ENOMEM;
 		}
 	}
 
