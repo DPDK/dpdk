@@ -21,6 +21,8 @@ extern "C" {
 struct vmbus_channel;
 struct vmbus_mon_page;
 
+#define NETVSC_ARG_NUMA_AWARE "numa_aware"
+
 /** Maximum number of VMBUS resources. */
 enum hv_uio_map {
 	HV_TXRX_RING_MAP = 0,
