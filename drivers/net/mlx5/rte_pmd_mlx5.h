@@ -552,6 +552,62 @@ __rte_experimental
 int
 rte_pmd_mlx5_driver_event_cb_unregister(rte_pmd_mlx5_driver_event_callback_t cb);
 
+/**
+ * Disable flow steering for all mlx5 ports.
+ *
+ * In mlx5 PMD, HW flow rules are generally used in 2 ways:
+ *
+ * - "internal" - to connect HW objects created by mlx5 PMD (e.g. Rx queues)
+ *   to datapath, so traffic can be received in user space by DPDK application,
+ *   bypassing the kernel driver. Such rules are created implicitly by mlx5 PMD.
+ * - "external" - flow rules created by application explicitly through flow API.
+ *
+ * In mlx5 PMD language, configuring flow rules is known as configuring flow steering.
+ *
+ * If an application wants to use any other library compatible with NVIDIA hardware
+ * to configure flow steering or delegate flow steering to another process,
+ * the application can call this function to disable flow steering globally for all mlx5 ports.
+ *
+ * Information required to configure flow steering in such a way that externally created
+ * flow rules would forward/match traffic to DPDK-managed Rx/Tx queues can be extracted
+ * through #rte_pmd_mlx5_driver_event_cb_register API.
+ *
+ * This function can be called:
+ *
+ * - before or after #rte_eal_init.
+ * - before or after any mlx5 port is probed.
+ *
+ * If this function is called when mlx5 ports (at least one) exist,
+ * then steering will be disabled for all existing mlx5 port.
+ * This will invalidate *ALL* handles to objects return from flow API for these ports
+ * (for example handles to flow rules, indirect actions, template tables).
+ *
+ * This function is lock-free and it is assumed that it won't be called concurrently
+ * with other functions from ethdev API used to configure any of the mlx5 ports.
+ * It is the responsibility of the application to enforce this.
+ */
+__rte_experimental
+void
+rte_pmd_mlx5_disable_steering(void);
+
+/**
+ * Enable flow steering for mlx5 ports.
+ *
+ * This function reverses the effects of #rte_pmd_mlx5_disable_steering.
+ *
+ * It can be called if and only if there are no mlx5 ports known by DPDK,
+ * so in case if #rte_pmd_mlx5_disable_steering was previously called
+ * the application has to remove mlx5 devices, call this function and
+ * re-probe the mlx5 devices.
+ *
+ * @return
+ *   - 0 - Flow steering was successfully enabled or it flow steering was never disabled.
+ *   - (-EBUSY) - There are mlx5 ports probed and re-enabling steering cannot be done safely.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_enable_steering(void);
+
 #ifdef __cplusplus
 }
 #endif

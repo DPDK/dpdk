@@ -1253,6 +1253,14 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	if (priv->sh->config.dv_flow_en == 2) {
 		struct rte_flow_error error = { 0, };
 
+		/*
+		 * If steering is disabled, then:
+		 * - There are no limitations regarding port start ordering,
+		 *   since no flow rules need to be created as part of port start.
+		 * - Non template API initialization will be skipped.
+		 */
+		if (mlx5_flow_is_steering_disabled())
+			goto continue_dev_start;
 		/*If previous configuration does not exist. */
 		if (!(priv->dr_ctx)) {
 			ret = flow_hw_init(dev, &error);
@@ -1420,6 +1428,8 @@ continue_dev_start:
 			dev->data->port_id, rte_strerror(rte_errno));
 		goto error;
 	}
+	if (mlx5_flow_is_steering_disabled())
+		mlx5_flow_rxq_mark_flag_set(dev);
 	rte_wmb();
 	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
@@ -1530,6 +1540,13 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
+		/*
+		 * If steering is disabled,
+		 * then there are no limitations regarding port stop ordering,
+		 * since no flow rules need to be destroyed as part of port stop.
+		 */
+		if (mlx5_flow_is_steering_disabled())
+			goto continue_dev_stop;
 		/* If there is no E-Switch, then there are no start/stop order limitations. */
 		if (!priv->sh->config.dv_esw_en)
 			goto continue_dev_stop;
@@ -1552,6 +1569,8 @@ continue_dev_stop:
 	mlx5_mp_os_req_stop_rxtx(dev);
 	rte_delay_us_sleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
+	if (mlx5_flow_is_steering_disabled())
+		mlx5_flow_rxq_flags_clear(dev);
 	mlx5_flow_stop_default(dev);
 	/* Control flows for default traffic can be removed firstly. */
 	mlx5_traffic_disable(dev);
@@ -1691,6 +1710,9 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	unsigned int i;
 	unsigned int j;
 	int ret;
+
+	if (mlx5_flow_is_steering_disabled())
+		return 0;
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2)
@@ -1878,6 +1900,9 @@ mlx5_traffic_disable_legacy(struct rte_eth_dev *dev)
 void
 mlx5_traffic_disable(struct rte_eth_dev *dev)
 {
+	if (mlx5_flow_is_steering_disabled())
+		return;
+
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -1900,6 +1925,9 @@ mlx5_traffic_disable(struct rte_eth_dev *dev)
 int
 mlx5_traffic_restart(struct rte_eth_dev *dev)
 {
+	if (mlx5_flow_is_steering_disabled())
+		return 0;
+
 	if (dev->data->dev_started) {
 		mlx5_traffic_disable(dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
@@ -1915,6 +1943,8 @@ mac_flows_update_needed(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (mlx5_flow_is_steering_disabled())
+		return false;
 	if (!dev->data->dev_started)
 		return false;
 	if (dev->data->promiscuous)
