@@ -1751,6 +1751,15 @@ typedef enum zxdh_profile_type {
 	CAR_MAX
 } ZXDH_PROFILE_TYPE;
 
+typedef enum zxdh_msg_acl_index_oper_e {
+	ZXDH_ACL_INDEX_REQUEST    = 0,
+	ZXDH_ACL_INDEX_RELEASE    = 1,
+	ZXDH_ACL_INDEX_VPORT_REL  = 2,
+	ZXDH_ACL_INDEX_ALL_REL    = 3,
+	ZXDH_ACL_INDEX_STAT_CLR   = 4,
+	ZXDH_ACL_INDEX_MAX
+} ZXDH_MSG_ACL_INDEX_OPER_E;
+
 typedef struct __rte_aligned(2) zxdh_version_compatible_reg_t {
 	uint8_t version_compatible_item;
 	uint8_t major;
@@ -1915,6 +1924,18 @@ typedef struct zxdh_dtb_dump_index_t {
 	uint32_t index_type;
 } ZXDH_DTB_DUMP_INDEX_T;
 
+typedef struct __rte_aligned(2) zxdh_agent_channel_acl_msg_t {
+	uint8_t dev_id;
+	uint8_t type;
+	uint8_t oper;
+	uint8_t rsv;
+	uint32_t sdt_no;
+	uint32_t vport;
+	uint32_t index;
+	uint32_t counter_id;
+	uint32_t rd_mode;
+} ZXDH_AGENT_CHANNEL_ACL_MSG_T;
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 int zxdh_np_dtb_table_entry_write(uint32_t dev_id, uint32_t queue_id,
@@ -1958,5 +1979,14 @@ uint32_t zxdh_np_dtb_hash_offline_delete(uint32_t dev_id,
 						uint32_t queue_id,
 						uint32_t sdt_no,
 						__rte_unused uint32_t flush_mode);
+uint32_t zxdh_np_dtb_acl_index_request(uint32_t dev_id,
+	uint32_t sdt_no, uint32_t vport, uint32_t *p_index);
+
+uint32_t zxdh_np_dtb_acl_index_release(uint32_t dev_id,
+	uint32_t sdt_no, uint32_t vport, uint32_t index);
+uint32_t zxdh_np_dtb_acl_table_dump_by_vport(uint32_t dev_id, uint32_t queue_id,
+	uint32_t sdt_no, uint32_t vport, uint32_t *entry_num, uint8_t *p_dump_data);
+uint32_t zxdh_np_dtb_acl_offline_delete(uint32_t dev_id, uint32_t queue_id,
+	uint32_t sdt_no, uint32_t vport, uint32_t counter_id, uint32_t rd_mode);
 
 #endif /* ZXDH_NP_H */
