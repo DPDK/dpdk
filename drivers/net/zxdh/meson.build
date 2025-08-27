@@ -24,4 +24,5 @@ sources = files(
         'zxdh_rxtx.c',
         'zxdh_ethdev_ops.c',
         'zxdh_mtr.c',
+        'zxdh_flow.c',
 )

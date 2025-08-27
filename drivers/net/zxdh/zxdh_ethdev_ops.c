@@ -1120,7 +1120,7 @@ zxdh_dev_rss_reta_update(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static uint16_t
+uint16_t
 zxdh_hw_qid_to_logic_qid(struct rte_eth_dev *dev, uint16_t qid)
 {
 	struct zxdh_hw *priv = (struct zxdh_hw *)dev->data->dev_private;

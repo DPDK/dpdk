@@ -19,6 +19,7 @@
 #include "zxdh_tables.h"
 #include "zxdh_np.h"
 #include "zxdh_common.h"
+#include "zxdh_flow.h"
 
 #define ZXDH_REPS_INFO_FLAG_USABLE  0x00
 #define ZXDH_BAR_SEQID_NUM_MAX      256
@@ -1296,7 +1297,8 @@ zxdh_vf_vlan_table_init(struct zxdh_hw *hw, uint16_t vport)
 }
 
 static int
-zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
+zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data,
 		void *res_info, uint16_t *res_len)
 {
 	struct zxdh_port_attr_table port_attr = {0};
@@ -1314,7 +1316,8 @@ zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 	port_attr.pf_vfid = pf_hw->vfid;
 	port_attr.hash_search_index = pf_hw->hash_search_index;
 	port_attr.port_base_qid = vf_init_msg->base_qid;
-
+	int vf_index = VF_IDX(pcieid);
+	pf_hw->vfinfo[vf_index].vport = vport;
 	ret = zxdh_set_port_attr(pf_hw, vport, &port_attr);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "set vport attr failed, code:%d", ret);
@@ -1333,6 +1336,11 @@ zxdh_vf_port_init(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 		goto proc_end;
 	}
 
+	ret = zxdh_np_dtb_acl_offline_delete(pf_hw->dev_id, pf_hw->dev_sd->dtb_sd.queueid,
+				ZXDH_SDT_FD_TABLE, vport, ZXDH_FLOW_STATS_INGRESS_BASE, 1);
+	if (ret)
+		PMD_DRV_LOG(ERR, "flow table delete failed. code:%d", ret);
+
 	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_SUCC);
 	*res_len = sizeof(uint8_t);
 
@@ -1344,30 +1352,30 @@ proc_end:
 }
 
 static int
-zxdh_mac_clear(struct zxdh_hw *hw, union zxdh_virport_num vport)
+zxdh_mac_clear(struct zxdh_hw *hw, union zxdh_virport_num vport, uint16_t pcieid)
 {
-	uint16_t vf_id = vport.vfid;
+	uint16_t vf_index = VF_IDX(pcieid);
 	int i;
 	int ret = 0;
 
 	for (i = 0; (i != ZXDH_MAX_MAC_ADDRS); ++i) {
-		if (!rte_is_zero_ether_addr(&hw->vfinfo[vf_id].vf_mac[i])) {
+		if (!rte_is_zero_ether_addr(&hw->vfinfo[vf_index].vf_mac[i])) {
 			ret = zxdh_del_mac_table(hw, vport.vport,
-					&hw->vfinfo[vf_id].vf_mac[i],
+					&hw->vfinfo[vf_index].vf_mac[i],
 					hw->hash_search_index, 0, 0);
 			if (ret) {
 				PMD_DRV_LOG(ERR, "vf_del_mac_failed. code:%d", ret);
 				return ret;
 			}
-			memset(&hw->vfinfo[vf_id].vf_mac[i], 0, sizeof(struct rte_ether_addr));
+			memset(&hw->vfinfo[vf_index].vf_mac[i], 0, sizeof(struct rte_ether_addr));
 		}
 	}
 	return ret;
 }
 
 static int
-zxdh_vf_port_uninit(struct zxdh_hw *pf_hw,
-		uint16_t vport, void *cfg_data __rte_unused,
+zxdh_vf_port_uninit(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data __rte_unused,
 		void *res_info, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "uninit";
@@ -1385,7 +1393,7 @@ zxdh_vf_port_uninit(struct zxdh_hw *pf_hw,
 		goto proc_end;
 	}
 
-	ret = zxdh_mac_clear(pf_hw, vport_num);
+	ret = zxdh_mac_clear(pf_hw, vport_num, pcieid);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "zxdh_mac_clear failed, code:%d", ret);
 		goto proc_end;
@@ -1410,7 +1418,8 @@ proc_end:
 }
 
 static int
-zxdh_add_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_add_vf_mac_table(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data,
 		void *reply_body, uint16_t *reply_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "add mac";
@@ -1419,12 +1428,12 @@ zxdh_add_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 	struct rte_ether_addr *addr = &mac_filter->mac;
 	void *reply_data_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body, reply_data);
 	void *mac_reply_msg_addr = ZXDH_ADDR_OF(msg_reply_body, reply_body, mac_reply_msg);
+	uint16_t vf_index = VF_IDX(pcieid);
 	port.vport = vport;
-	uint16_t vf_id = port.vfid;
 	int i = 0, ret = 0;
 
 	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++)
-		if (rte_is_same_ether_addr(&hw->vfinfo[vf_id].vf_mac[i], addr))
+		if (rte_is_same_ether_addr(&hw->vfinfo[vf_index].vf_mac[i], addr))
 			goto success;
 
 	ret = zxdh_add_mac_table(hw, vport, addr, hw->hash_search_index, 0, 0);
@@ -1440,8 +1449,8 @@ zxdh_add_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 		goto failure;
 	}
 	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++) {
-		if (rte_is_zero_ether_addr(&hw->vfinfo[vf_id].vf_mac[i])) {
-			memcpy(&hw->vfinfo[vf_id].vf_mac[i], addr, 6);
+		if (rte_is_zero_ether_addr(&hw->vfinfo[vf_index].vf_mac[i])) {
+			memcpy(&hw->vfinfo[vf_index].vf_mac[i], addr, 6);
 			break;
 		}
 	}
@@ -1461,14 +1470,15 @@ failure:
 }
 
 static int
-zxdh_del_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
-	void *res_info, uint16_t *res_len)
+zxdh_del_vf_mac_table(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	struct zxdh_mac_filter *mac_filter = (struct zxdh_mac_filter *)cfg_data;
 	union zxdh_virport_num  port = (union zxdh_virport_num)vport;
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "del mac";
 	void *reply_data_addr = ZXDH_ADDR_OF(msg_reply_body, res_info, reply_data);
-	uint16_t vf_id = port.vfid;
+	uint16_t vf_index = VF_IDX(pcieid);
 	int ret, i = 0;
 
 	PMD_DRV_LOG(DEBUG, "[PF GET MSG FROM VF]--vf mac to del.");
@@ -1483,8 +1493,8 @@ zxdh_del_vf_mac_table(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 	}
 
 	for (i = 0; i < ZXDH_MAX_MAC_ADDRS; i++) {
-		if (rte_is_same_ether_addr(&hw->vfinfo[vf_id].vf_mac[i], &mac_filter->mac))
-			memset(&hw->vfinfo[vf_id].vf_mac[i], 0, sizeof(struct rte_ether_addr));
+		if (rte_is_same_ether_addr(&hw->vfinfo[vf_index].vf_mac[i], &mac_filter->mac))
+			memset(&hw->vfinfo[vf_index].vf_mac[i], 0, sizeof(struct rte_ether_addr));
 	}
 
 	sprintf(str, "vport 0x%x del mac ret 0x%x\n", port.vport, ret);
@@ -1500,7 +1510,8 @@ proc_end:
 }
 
 static int
-zxdh_vf_promisc_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_promisc_set(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
 		void *reply, uint16_t *res_len)
 {
 	struct zxdh_port_promisc_msg *promisc_msg = (struct zxdh_port_promisc_msg *)cfg_data;
@@ -1531,7 +1542,8 @@ proc_end:
 }
 
 static int
-zxdh_vf_vlan_filter_table_process(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_vlan_filter_table_process(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
 		void *res_info, uint16_t *res_len, uint8_t enable)
 {
 	struct zxdh_vlan_filter *vlan_filter = cfg_data;
@@ -1556,21 +1568,24 @@ zxdh_vf_vlan_filter_table_process(struct zxdh_hw *hw, uint16_t vport, void *cfg_
 }
 
 static int
-zxdh_vf_vlan_filter_table_add(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_vlan_filter_table_add(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data,
 		void *res_info, uint16_t *res_len)
 {
-	return zxdh_vf_vlan_filter_table_process(hw, vport, cfg_data, res_info, res_len, 1);
+	return zxdh_vf_vlan_filter_table_process(hw, vport, pcieid, cfg_data, res_info, res_len, 1);
 }
 
 static int
-zxdh_vf_vlan_filter_table_del(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_vlan_filter_table_del(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data,
 		void *res_info, uint16_t *res_len)
 {
-	return zxdh_vf_vlan_filter_table_process(hw, vport, cfg_data, res_info, res_len, 0);
+	return zxdh_vf_vlan_filter_table_process(hw, vport, pcieid, cfg_data, res_info, res_len, 0);
 }
 
 static int
-zxdh_vf_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
 		void *reply, uint16_t *res_len)
 {
 	struct zxdh_vlan_filter_set *vlan_filter = cfg_data;
@@ -1594,7 +1609,8 @@ zxdh_vf_set_vlan_filter(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 }
 
 static int
-zxdh_vf_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
 		void *reply, uint16_t *res_len)
 {
 	struct zxdh_vlan_offload *vlan_offload = cfg_data;
@@ -1621,8 +1637,9 @@ zxdh_vf_set_vlan_offload(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 }
 
 static int
-zxdh_vf_rss_hf_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_unused,
-			void *reply, uint16_t *res_len)
+zxdh_vf_rss_hf_get(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data __rte_unused,
+		void *reply, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_hf";
 	struct zxdh_port_attr_table vport_att = {0};
@@ -1650,8 +1667,9 @@ proc_end:
 }
 
 static int
-zxdh_vf_rss_hf_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
-			void *reply, uint16_t *res_len)
+zxdh_vf_rss_hf_set(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *reply, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_hf";
 	struct zxdh_rss_hf *rss_hf = cfg_data;
@@ -1686,8 +1704,9 @@ proc_end:
 }
 
 static int
-zxdh_vf_rss_enable(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
-			void *reply, uint16_t *res_len)
+zxdh_vf_rss_enable(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *reply, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_enable";
 	struct zxdh_rss_enable *rss_enable = cfg_data;
@@ -1722,7 +1741,8 @@ proc_end:
 }
 
 static int
-zxdh_vf_rss_table_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
+zxdh_vf_rss_table_set(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
 		void *reply, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_table";
@@ -1744,7 +1764,8 @@ zxdh_vf_rss_table_set(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
 }
 
 static int
-zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_unused,
+zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data __rte_unused,
 		void *reply, uint16_t *res_len)
 {
 	char str[ZXDH_MSG_REPLY_BODY_MAX_LEN] = "rss_table";
@@ -1770,8 +1791,9 @@ zxdh_vf_rss_table_get(struct zxdh_hw *hw, uint16_t vport, void *cfg_data __rte_u
 }
 
 static int
-zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
-	void *res_info, uint16_t *res_len)
+zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	RTE_ASSERT(!cfg_data || !pf_hw);
 	if (res_info)
@@ -1833,8 +1855,8 @@ zxdh_vf_port_attr_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
 
 static int
 zxdh_vf_np_stats_update(struct zxdh_hw *pf_hw, uint16_t vport,
-		void *cfg_data, void *res_info,
-		uint16_t *res_len)
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	struct zxdh_np_stats_updata_msg *np_stats_query =
 			 (struct zxdh_np_stats_updata_msg  *)cfg_data;
@@ -2015,10 +2037,9 @@ zxdh_vf_np_stats_update(struct zxdh_hw *pf_hw, uint16_t vport,
 }
 
 static int
-zxdh_vf_mtr_hw_stats_get(struct zxdh_hw *pf_hw,
-	uint16_t vport, void *cfg_data,
-	void *res_info,
-	uint16_t *res_len)
+zxdh_vf_mtr_hw_stats_get(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	struct zxdh_mtr_stats_query  *zxdh_mtr_stats_query =
 			(struct zxdh_mtr_stats_query  *)cfg_data;
@@ -2048,11 +2069,9 @@ zxdh_vf_mtr_hw_stats_get(struct zxdh_hw *pf_hw,
 }
 
 static int
-zxdh_vf_mtr_hw_profile_add(struct zxdh_hw *pf_hw,
-	uint16_t vport,
-	void *cfg_data,
-	void *res_info,
-	uint16_t *res_len)
+zxdh_vf_mtr_hw_profile_add(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	if (!cfg_data || !res_len || !res_info) {
 		PMD_DRV_LOG(ERR, " get profileid invalid inparams");
@@ -2088,11 +2107,9 @@ zxdh_vf_mtr_hw_profile_add(struct zxdh_hw *pf_hw,
 }
 
 static int
-zxdh_vf_mtr_hw_profile_del(struct zxdh_hw *pf_hw,
-	uint16_t vport,
-	void *cfg_data,
-	void *res_info,
-	uint16_t *res_len)
+zxdh_vf_mtr_hw_profile_del(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	if (!cfg_data || !res_len || !res_info) {
 		PMD_DRV_LOG(ERR, " del profileid  invalid inparams");
@@ -2130,11 +2147,9 @@ zxdh_vf_mtr_hw_profile_del(struct zxdh_hw *pf_hw,
 }
 
 static int
-zxdh_vf_mtr_hw_plcrflow_cfg(struct zxdh_hw *pf_hw,
-	uint16_t vport,
-	void *cfg_data,
-	void *res_info,
-	uint16_t *res_len)
+zxdh_vf_mtr_hw_plcrflow_cfg(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	int ret = 0;
 
@@ -2169,11 +2184,9 @@ zxdh_vf_mtr_hw_plcrflow_cfg(struct zxdh_hw *pf_hw,
 }
 
 static int
-zxdh_vf_mtr_hw_profile_cfg(struct zxdh_hw *pf_hw __rte_unused,
-	uint16_t vport,
-	void *cfg_data,
-	void *res_info,
-	uint16_t *res_len)
+zxdh_vf_mtr_hw_profile_cfg(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
 {
 	int ret = 0;
 
@@ -2203,7 +2216,8 @@ zxdh_vf_mtr_hw_profile_cfg(struct zxdh_hw *pf_hw __rte_unused,
 }
 
 static int
-zxdh_vf_vlan_tpid_set(struct zxdh_hw *pf_hw, uint16_t vport, void *cfg_data,
+zxdh_vf_vlan_tpid_set(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
 		void *res_info, uint16_t *res_len)
 {
 	struct zxdh_vlan_tpid *vlan_tpid = (struct zxdh_vlan_tpid *)cfg_data;
@@ -2231,6 +2245,120 @@ proc_end:
 	return ret;
 }
 
+static int
+zxdh_vf_flow_hw_add(struct zxdh_hw *pf_hw, uint16_t vport,
+		 uint16_t pcieid, void *cfg_data,
+		 void *res_info, uint16_t *res_len)
+{
+	if (!cfg_data || !res_len || !res_info) {
+		PMD_DRV_LOG(ERR, "invalid inparams");
+		return -1;
+	}
+	struct rte_flow_error error = {0};
+	int ret = 0;
+	struct zxdh_flow_op_msg  *flow_entry = (struct zxdh_flow_op_msg *)cfg_data;
+	struct zxdh_flow  *dh_flow;
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_FAIL);
+	*res_len = sizeof(struct zxdh_flow_op_rsp) - 4;
+
+	ret = pf_fd_hw_apply(pf_hw->eth_dev, &flow_entry->dh_flow, &error, vport, pcieid);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "pf 0x%x for vf 0x%x flow add failed ret :%d",
+			pf_hw->vport.vport, vport, ret);
+		return -1;
+	}
+	void *flow_rsp_addr = ZXDH_ADDR_OF(msg_reply_body, res_info, flow_rsp);
+	dh_flow = flow_rsp_addr;
+	dh_flow->flowentry.hw_idx = flow_entry->dh_flow.flowentry.hw_idx;
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_SUCC);
+	return 0;
+}
+
+static int
+zxdh_vf_flow_hw_del(struct zxdh_hw *pf_hw, uint16_t vport,
+			uint16_t pcieid, void *cfg_data,
+			void *res_info, uint16_t *res_len)
+{
+	if (!cfg_data || !res_len || !res_info) {
+		PMD_DRV_LOG(ERR, "invalid inparams");
+		return -1;
+	}
+	struct rte_flow_error error = {0};
+	int ret = 0;
+	struct zxdh_flow_op_msg  *flow_entry = (struct zxdh_flow_op_msg *)cfg_data;
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_FAIL);
+	*res_len = sizeof(struct zxdh_flow_op_rsp) - 4;
+
+	ret = pf_fd_hw_destroy(pf_hw->eth_dev, &flow_entry->dh_flow, &error, vport, pcieid);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "pf 0x%x for vf 0x%x flow del failed ret :%d",
+			pf_hw->vport.vport, vport, ret);
+		return -1;
+	}
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_SUCC);
+	return 0;
+}
+
+static int
+zxdh_vf_flow_hw_get(struct zxdh_hw *pf_hw, uint16_t vport,
+		uint16_t pcieid __rte_unused, void *cfg_data,
+		void *res_info, uint16_t *res_len)
+{
+	if (!cfg_data || !res_len || !res_info) {
+		PMD_DRV_LOG(ERR, "invalid inparams");
+		return -1;
+	}
+
+	void *flow_rsp_addr = ZXDH_ADDR_OF(msg_reply_body, res_info, flow_rsp);
+	void *count_addr = (uint8_t *)flow_rsp_addr + sizeof(struct zxdh_flow);
+	struct rte_flow_error error = {0};
+	int ret = 0;
+	struct zxdh_flow_op_msg  *flow_entry = (struct zxdh_flow_op_msg *)cfg_data;
+	struct zxdh_flow  *dh_flow;
+
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_FAIL);
+	*res_len = sizeof(struct zxdh_flow_op_rsp) - 4;
+
+	PMD_DRV_LOG(INFO, "handle %d", flow_entry->dh_flow.flowentry.hw_idx);
+	ret = pf_fd_hw_query_count(pf_hw->eth_dev, &flow_entry->dh_flow, count_addr, &error);
+	if (ret) {
+		PMD_DRV_LOG(DEBUG, "pf 0x%x for vf 0x%x flow get failed ret :%d",
+			pf_hw->vport.vport, vport, ret);
+		return -1;
+	}
+	PMD_DRV_LOG(INFO, " res len :%d", *res_len);
+	dh_flow = flow_rsp_addr;
+	rte_memcpy(&dh_flow->flowentry, &flow_entry->dh_flow.flowentry, sizeof(dh_flow->flowentry));
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_SUCC);
+	return 0;
+}
+
+static int
+zxdh_vf_flow_hw_flush(struct zxdh_hw *pf_hw, uint16_t vport,
+			uint16_t pcieid __rte_unused, void *cfg_data,
+			void *res_info, uint16_t *res_len)
+{
+	if (!cfg_data || !res_len || !res_info) {
+		PMD_DRV_LOG(ERR, "invalid inparams");
+		return -1;
+	}
+	int ret = 0;
+	uint16_t queue_id = pf_hw->dev_sd->dtb_sd.queueid;
+
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_FAIL);
+	*res_len = sizeof(struct zxdh_flow_op_rsp) - 4;
+
+	ret = zxdh_np_dtb_acl_offline_delete(pf_hw->dev_id, queue_id, ZXDH_SDT_FD_TABLE,
+				vport, ZXDH_FLOW_STATS_INGRESS_BASE, 1);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "flow flush failed. code:%d", ret);
+		return -1;
+	}
+
+	ZXDH_SET(msg_reply_body, res_info, flag, ZXDH_REPS_SUCC);
+	return 0;
+}
+
 static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_NULL] = NULL,
 	[ZXDH_VF_PORT_INIT] = zxdh_vf_port_init,
@@ -2255,6 +2383,10 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_PLCR_CAR_PROFILE_ID_DELETE] =  zxdh_vf_mtr_hw_profile_del,
 	[ZXDH_PLCR_CAR_QUEUE_CFG_SET] = zxdh_vf_mtr_hw_plcrflow_cfg,
 	[ZXDH_PLCR_CAR_PROFILE_CFG_SET] = zxdh_vf_mtr_hw_profile_cfg,
+	[ZXDH_FLOW_HW_ADD] = zxdh_vf_flow_hw_add,
+	[ZXDH_FLOW_HW_DEL] = zxdh_vf_flow_hw_del,
+	[ZXDH_FLOW_HW_GET] = zxdh_vf_flow_hw_get,
+	[ZXDH_FLOW_HW_FLUSH] = zxdh_vf_flow_hw_flush,
 };
 
 static inline int
@@ -2269,7 +2401,7 @@ zxdh_config_process_callback(struct zxdh_hw *hw, struct zxdh_msg_info *msg_info,
 		return -1;
 	}
 	if (zxdh_proc_cb[msghead->msg_type]) {
-		ret = zxdh_proc_cb[msghead->msg_type](hw, msghead->vport,
+		ret = zxdh_proc_cb[msghead->msg_type](hw, msghead->vport, msghead->pcieid,
 					(void *)&msg_info->data, res, res_len);
 		if (!ret)
 			ZXDH_SET(msg_reply_body, res, flag, ZXDH_REPS_SUCC);
