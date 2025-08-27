@@ -20,6 +20,7 @@
 
 #include "mlx5.h"
 #include "mlx5_common_os.h"
+#include "mlx5_driver_event.h"
 #include "mlx5_tx.h"
 #include "mlx5_rx.h"
 #include "mlx5_utils.h"
@@ -239,6 +240,12 @@ mlx5_rxq_devx_obj_release(struct mlx5_rxq_priv *rxq)
 
 	if (rxq_obj == NULL)
 		return;
+	/*
+	 * Notify external users that Rx queue will be destroyed.
+	 * Skip notification for not started queues and internal drop queue.
+	 */
+	if (rxq->ctrl->started && rxq != rxq->priv->drop_queue.rxq)
+		mlx5_driver_event_notify_rxq_destroy(rxq);
 	if (rxq_obj->rxq_ctrl->is_hairpin) {
 		if (rxq_obj->rq == NULL)
 			return;
@@ -612,6 +619,8 @@ create_rq_unlocked:
 		return -rte_errno;
 	}
 create_rq_set_state:
+	/* Notify external users that Rx queue was created. */
+	mlx5_driver_event_notify_rxq_create(rxq);
 	priv->dev_data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_HAIRPIN;
 	return 0;
 }
@@ -691,6 +700,8 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 		}
 		rxq_ctrl->wqn = rxq->devx_rq.rq->id;
 	}
+	/* Notify external users that Rx queue was created. */
+	mlx5_driver_event_notify_rxq_create(rxq);
 	priv->dev_data->rx_queue_state[rxq->idx] = RTE_ETH_QUEUE_STATE_STARTED;
 	return 0;
 error:
@@ -1440,6 +1451,8 @@ create_sq_on_device:
 		rte_errno = errno;
 		return -rte_errno;
 	}
+	/* Notify external users that Tx queue was created. */
+	mlx5_driver_event_notify_txq_create(txq_ctrl);
 	return 0;
 }
 
@@ -1670,6 +1683,8 @@ mlx5_txq_devx_obj_new(struct rte_eth_dev *dev, uint16_t idx)
 		priv->consec_tx_mem.cq_cur_off += txq_data->cq_mem_len;
 	ppriv->uar_table[txq_data->idx] = sh->tx_uar.bf_db;
 	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
+	/* Notify external users that Tx queue was created. */
+	mlx5_driver_event_notify_txq_create(txq_ctrl);
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
@@ -1689,6 +1704,8 @@ void
 mlx5_txq_devx_obj_release(struct mlx5_txq_obj *txq_obj)
 {
 	MLX5_ASSERT(txq_obj);
+	/* Notify external users that Tx queue will be destroyed. */
+	mlx5_driver_event_notify_txq_destroy(txq_obj->txq_ctrl);
 	if (txq_obj->txq_ctrl->is_hairpin) {
 		if (txq_obj->sq) {
 			claim_zero(mlx5_devx_cmd_destroy(txq_obj->sq));
