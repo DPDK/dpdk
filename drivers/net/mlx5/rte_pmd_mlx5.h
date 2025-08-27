@@ -9,6 +9,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_compat.h>
+#include <rte_per_lcore.h>
 
 /**
  * @file
@@ -417,6 +418,139 @@ rte_pmd_mlx5_rxq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *
 __rte_experimental
 int
 rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename);
+
+/** Type of mlx5 driver event for which custom callback is called. */
+enum rte_pmd_mlx5_driver_event_cb_type {
+	/** Called after HW Rx queue is created. */
+	RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_RXQ_CREATE,
+	/** Called before HW Rx queue will be destroyed. */
+	RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_RXQ_DESTROY,
+	/** Called after HW Tx queue is created. */
+	RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_TXQ_CREATE,
+	/** Called before HW Tx queue will be destroyed. */
+	RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_TXQ_DESTROY,
+};
+
+/** Information about the queue for which driver event is being called. */
+struct rte_pmd_mlx5_driver_event_cb_queue_info {
+	/** DPDK queue index. */
+	uint16_t dpdk_queue_id;
+	/** HW queue identifier (DevX object ID). */
+	uint32_t hw_queue_id;
+	/**
+	 * Low-level HW configuration of the port related to the queue.
+	 * This configuration is presented as a string
+	 * with "key=value" pairs, separated by commas.
+	 * This string is owned by mlx5 PMD and should not be freed by the user,
+	 * and should be copied to the memory owned by the user.
+	 *
+	 * For RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_RXQ_CREATE this will contain:
+	 *
+	 * - lro_timeout - Configured timeout of LRO session in microseconds.
+	 *   Set to 0 if LRO is not configured.
+	 * - max_lro_msg_size - Maximum size of a single LRO message.
+	 *   Provided in granularity of 256 bytes.
+	 *   Set to 0 if LRO is not configured.
+	 * - td - Identifier of transport domain allocated from HW (DevX object ID).
+	 * - lbpk - Set to 1 if loopback is enabled on the given queue
+	 *
+	 * For all other events, this field will be set to NULL.
+	 */
+	const char *queue_info;
+};
+
+/** Information related to a driver event. */
+struct rte_pmd_mlx5_driver_event_cb_info {
+	/** Type of the driver event for which the callback is called. */
+	enum rte_pmd_mlx5_driver_event_cb_type event;
+	union {
+		/**
+		 * Information about the queue for which driver event is being called.
+		 *
+		 * This union variant is valid for the following events:
+		 *
+		 * - RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_RXQ_CREATE
+		 * - RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_RXQ_DESTROY
+		 * - RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_TXQ_CREATE
+		 * - RTE_PMD_MLX5_DRIVER_EVENT_CB_TYPE_TXQ_DESTROY
+		 */
+		struct rte_pmd_mlx5_driver_event_cb_queue_info queue;
+	};
+};
+
+/** Prototype of the callback called on mlx5 driver events. */
+typedef void (*rte_pmd_mlx5_driver_event_callback_t)(uint16_t port_id,
+		const struct rte_pmd_mlx5_driver_event_cb_info *info,
+		const void *opaque);
+
+
+/**
+ * Register mlx5 driver event callback.
+ *
+ * mlx5 PMD configures HW through interfaces exposed by rdma-core and mlx5 kernel driver.
+ * Any HW object created this way may be used by other libraries or applications.
+ * This function allows application to register a custom callback which will be called
+ * whenever mlx5 PMD performs some operation (driver event) on a managed HW objects.
+ * #rte_pmd_mlx5_driver_event_cb_type defines exposed driver events.
+ *
+ * This function can be called multiple times with different callbacks.
+ * mlx5 PMD will register all of them and all of them will be called for triggered driver events.
+ *
+ * This function can be called:
+ *
+ * - before or after #rte_eal_init (potentially in a constructor function as well),
+ * - before or after any mlx5 port is probed.
+ *
+ * If this function is called when mlx5 ports (at least one) exist,
+ * then provided callback will be immediately called for all applicable driver events,
+ * for all existing mlx5 ports.
+ *
+ * This function is lock-free and it is assumed that it won't be called concurrently
+ * with other functions from ethdev API used to configure any of the mlx5 ports.
+ * It is the responsibility of the application to enforce this.
+ *
+ * Registered callbacks might be called during control path configuration triggered
+ * by DPDK API. It is the user's responsibility to prevent
+ * calling more configurations by the DPDK API from the callback itself.
+ *
+ * mlx5 PMD registers a destructor (through #RTE_FINI)
+ * which will unregister all known callbacks.
+ *
+ * @param[in] cb
+ *   Pointer to callback.
+ * @param[in] opaque
+ *   Opaque pointer which will be passed as an argument to @p cb on each event.
+ *
+ * @return
+ *   - 0 if callback was successfully registered.
+ *   - (-EINVAL) if @p cb is NULL.
+ *   - (-EEXIST) if @p cb was already registered.
+ *   - (-ENOMEM) if failed to allocate memory for callback entry.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_driver_event_cb_register(rte_pmd_mlx5_driver_event_callback_t cb, void *opaque);
+
+/**
+ * Unregister driver event callback.
+ *
+ * Unregisters a mlx5 driver event callback which was previously registered
+ * through #rte_pmd_mlx5_driver_event_cb_unregister.
+ *
+ * This function is lock-free and it is assumed that it won't be called concurrently
+ * with other functions from ethdev API used to configure any of the mlx5 ports.
+ * It is the responsibility of the application to enforce this.
+ *
+ * @param[in] cb
+ *   Pointer to callback.
+ *
+ * @return
+ *   - 0 if callback was successfully unregistered or if no such callback was registered.
+ *   - (-EINVAL) if @p cb is NULL.
+ */
+__rte_experimental
+int
+rte_pmd_mlx5_driver_event_cb_unregister(rte_pmd_mlx5_driver_event_callback_t cb);
 
 #ifdef __cplusplus
 }
