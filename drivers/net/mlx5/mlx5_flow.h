@@ -3597,6 +3597,8 @@ int mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 			   enum rte_flow_field_id field, int inherit,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error);
+void mlx5_flow_rxq_mark_flag_set(struct rte_eth_dev *dev);
+void mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev);
 uintptr_t flow_legacy_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 				const struct rte_flow_attr *attr,
 				const struct rte_flow_item items[],
@@ -3773,5 +3775,5 @@ mlx5_flow_hw_action_flags_get(const struct rte_flow_action actions[],
 
 #include "mlx5_nta_sample.h"
 
-#endif
+#endif /* HAVE_MLX5_HWS_SUPPORT */
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

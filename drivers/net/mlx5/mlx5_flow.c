@@ -1630,8 +1630,8 @@ flow_drv_rxq_flags_set(struct rte_eth_dev *dev,
 	}
 }
 
-static void
-flow_rxq_mark_flag_set(struct rte_eth_dev *dev)
+void
+mlx5_flow_rxq_mark_flag_set(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
@@ -1687,7 +1687,7 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	MLX5_ASSERT(wks);
 	if (wks->mark)
-		flow_rxq_mark_flag_set(dev);
+		mlx5_flow_rxq_mark_flag_set(dev);
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dev_handle, next)
 		flow_drv_rxq_flags_set(dev, dev_handle);
@@ -1784,8 +1784,8 @@ flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
  * @param dev
  *   Pointer to Ethernet device.
  */
-static void
-flow_rxq_flags_clear(struct rte_eth_dev *dev)
+void
+mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
@@ -8177,7 +8177,7 @@ mlx5_flow_stop_default(struct rte_eth_dev *dev)
 	}
 #endif
 	flow_mreg_del_default_copy_action(dev);
-	flow_rxq_flags_clear(dev);
+	mlx5_flow_rxq_flags_clear(dev);
 }
 
 /**
