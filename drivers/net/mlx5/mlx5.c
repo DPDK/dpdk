@@ -1045,24 +1045,6 @@ error:
 }
 
 /*
- * Destroy the flex parser node, including the parser itself, input / output
- * arcs and DW samples. Resources could be reused then.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- */
-static void
-mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_ecpri_parser_profile *prf = &priv->sh->ecpri_parser;
-
-	if (prf->obj)
-		mlx5_devx_cmd_destroy(prf->obj);
-	prf->obj = NULL;
-}
-
-/*
  * Allocation of a flex parser for srh. Once refcnt is zero, the resources held
  * by this parser will be freed.
  * @param dev
