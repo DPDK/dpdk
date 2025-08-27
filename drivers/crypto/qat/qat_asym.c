@@ -798,13 +798,13 @@ ecdh_set_input(struct icp_qat_fw_pke_request *qat_req,
 	qat_func_alignsize = RTE_ALIGN_CEIL(qat_function.bytesize, 8);
 
 	if (asym_op->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
-		SET_PKE_LN(asym_op->ecdh.priv_key, qat_func_alignsize, 0);
+		SET_PKE_LN(xform->ec.pkey, qat_func_alignsize, 0);
 		SET_PKE_LN_EC(curve[curve_id], x, 1);
 		SET_PKE_LN_EC(curve[curve_id], y, 2);
 	} else if (asym_op->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
-		SET_PKE_LN(asym_op->ecdh.priv_key, qat_func_alignsize, 0);
-		SET_PKE_LN(asym_op->ecdh.pub_key.x, qat_func_alignsize, 1);
-		SET_PKE_LN(asym_op->ecdh.pub_key.y, qat_func_alignsize, 2);
+		SET_PKE_LN(xform->ec.pkey, qat_func_alignsize, 0);
+		SET_PKE_LN(xform->ec.q.x, qat_func_alignsize, 1);
+		SET_PKE_LN(xform->ec.q.y, qat_func_alignsize, 2);
 	} else {
 		return -EINVAL;
 	}
