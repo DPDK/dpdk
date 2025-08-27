@@ -1272,6 +1272,11 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 		return -1;
 	}
 
+	if (zxdh_shared_data != NULL) {
+		zxdh_mtr_release(dev);
+		zxdh_flow_release(dev);
+	}
+
 	zxdh_intr_release(dev);
 	zxdh_np_uninit(dev);
 	zxdh_pci_reset(hw);
@@ -1487,6 +1492,7 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.get_module_eeprom		 = zxdh_dev_get_module_eeprom,
 	.dev_supported_ptypes_get = zxdh_dev_supported_ptypes_get,
 	.mtr_ops_get			 = zxdh_meter_ops_get,
+	.flow_ops_get			 = zxdh_flow_ops_get,
 };
 
 static int32_t
@@ -1567,6 +1573,8 @@ zxdh_dtb_dump_res_init(struct zxdh_hw *hw, ZXDH_DEV_INIT_CTRL_T *dpp_ctrl)
 		{"sdt_mc_table1",       5 * 1024 * 1024, ZXDH_SDT_MC_TABLE1, NULL},
 		{"sdt_mc_table2",       5 * 1024 * 1024, ZXDH_SDT_MC_TABLE2, NULL},
 		{"sdt_mc_table3",       5 * 1024 * 1024, ZXDH_SDT_MC_TABLE3, NULL},
+		{"sdt_acl_index_mng",   4 * 1024 * 1024, 30, NULL},
+		{"sdt_fd_table",        4 * 1024 * 1024, ZXDH_SDT_FD_TABLE, NULL},
 	};
 
 	struct zxdh_dev_shared_data *dev_sd = hw->dev_sd;
@@ -1786,6 +1794,7 @@ zxdh_free_sh_res(void)
 		rte_spinlock_lock(&zxdh_shared_data_lock);
 		if (zxdh_shared_data != NULL && zxdh_shared_data->init_done &&
 			(--zxdh_shared_data->dev_refcnt == 0)) {
+			rte_mempool_free(zxdh_shared_data->flow_mp);
 			rte_mempool_free(zxdh_shared_data->mtr_mp);
 			rte_mempool_free(zxdh_shared_data->mtr_profile_mp);
 			rte_mempool_free(zxdh_shared_data->mtr_policy_mp);
@@ -1797,6 +1806,7 @@ zxdh_free_sh_res(void)
 static int
 zxdh_init_sh_res(struct zxdh_shared_data *sd)
 {
+	const char *MZ_ZXDH_FLOW_MP        = "zxdh_flow_mempool";
 	const char *MZ_ZXDH_MTR_MP         = "zxdh_mtr_mempool";
 	const char *MZ_ZXDH_MTR_PROFILE_MP = "zxdh_mtr_profile_mempool";
 	const char *MZ_ZXDH_MTR_POLICY_MP = "zxdh_mtr_policy_mempool";
@@ -1806,6 +1816,13 @@ zxdh_init_sh_res(struct zxdh_shared_data *sd)
 	struct rte_mempool *mtr_policy_mp = NULL;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		flow_mp = rte_mempool_create(MZ_ZXDH_FLOW_MP, ZXDH_MAX_FLOW_NUM,
+			sizeof(struct zxdh_flow), 64, 0,
+			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
+		if (flow_mp == NULL) {
+			PMD_DRV_LOG(ERR, "Cannot allocate zxdh flow mempool");
+			goto error;
+		}
 		mtr_mp = rte_mempool_create(MZ_ZXDH_MTR_MP, ZXDH_MAX_MTR_NUM,
 			sizeof(struct zxdh_mtr_object), 64, 0,
 			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
@@ -1828,6 +1845,7 @@ zxdh_init_sh_res(struct zxdh_shared_data *sd)
 			PMD_DRV_LOG(ERR, "Cannot allocate zxdh mtr profile mempool");
 			goto error;
 		}
+		sd->flow_mp = flow_mp;
 		sd->mtr_mp = mtr_mp;
 		sd->mtr_profile_mp = mtr_profile_mp;
 		sd->mtr_policy_mp = mtr_policy_mp;
@@ -1877,6 +1895,7 @@ zxdh_init_once(struct rte_eth_dev *eth_dev)
 		ret = zxdh_init_sh_res(sd);
 		if (ret != 0)
 			goto out;
+		zxdh_flow_global_init();
 		rte_spinlock_init(&g_mtr_res.hw_plcr_res_lock);
 		memset(&g_mtr_res, 0, sizeof(g_mtr_res));
 		sd->init_done = true;
@@ -1904,6 +1923,12 @@ zxdh_tbl_entry_offline_destroy(struct zxdh_hw *hw)
 		ret = zxdh_np_dtb_hash_offline_delete(hw->dev_id, dtb_data->queueid, sdt_no, 0);
 		if (ret)
 			PMD_DRV_LOG(ERR, "sdt_no %d delete failed. code:%d ", sdt_no, ret);
+
+		ret = zxdh_np_dtb_acl_offline_delete(hw->dev_id, dtb_data->queueid,
+					ZXDH_SDT_FD_TABLE, hw->vport.vport,
+					ZXDH_FLOW_STATS_INGRESS_BASE, 1);
+		if (ret)
+			PMD_DRV_LOG(ERR, "flow offline delete failed. code:%d", ret);
 	}
 	return ret;
 }
@@ -2153,6 +2178,7 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (ret)
 		goto err_zxdh_init;
 
+	zxdh_flow_init(eth_dev);
 	zxdh_queue_res_get(eth_dev);
 	zxdh_msg_cb_reg(hw);
 	if (zxdh_priv_res_init(hw) != 0)

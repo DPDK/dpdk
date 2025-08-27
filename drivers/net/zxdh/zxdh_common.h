@@ -14,6 +14,7 @@
 #define ZXDH_VF_LOCK_REG               0x90
 #define ZXDH_VF_LOCK_ENABLE_MASK       0x1
 #define ZXDH_ACQUIRE_CHANNEL_NUM_MAX   10
+#define VF_IDX(pcie_id)     ((pcie_id) & 0xff)
 
 struct zxdh_res_para {
 	uint64_t virt_addr;

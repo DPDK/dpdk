@@ -241,6 +241,11 @@ enum zxdh_msg_type {
 	ZXDH_PLCR_CAR_QUEUE_CFG_SET = 40,
 	ZXDH_PORT_METER_STAT_GET = 42,
 
+	ZXDH_FLOW_HW_ADD = 46,
+	ZXDH_FLOW_HW_DEL = 47,
+	ZXDH_FLOW_HW_GET = 48,
+	ZXDH_FLOW_HW_FLUSH = 49,
+
 	ZXDH_MSG_TYPE_END,
 };
 
@@ -419,6 +424,21 @@ struct zxdh_ifc_mtr_profile_info_bits {
 	uint8_t profile_id[0x40];
 };
 
+struct err_reason {
+	uint8_t err_type;
+	uint8_t rsv[3];
+	char reason[512];
+};
+
+struct zxdh_flow_op_rsp {
+	struct zxdh_flow  dh_flow;
+	uint8_t rev[4];
+	union {
+		struct rte_flow_query_count count;
+		struct err_reason error;
+	};
+};
+
 struct zxdh_ifc_msg_reply_body_bits {
 	uint8_t flag[0x8];
 	union {
@@ -433,6 +453,7 @@ struct zxdh_ifc_msg_reply_body_bits {
 		struct zxdh_ifc_agent_mac_module_eeprom_msg_bits module_eeprom_msg;
 		struct zxdh_ifc_mtr_profile_info_bits  mtr_profile_info;
 		struct zxdh_ifc_mtr_stats_bits hw_mtr_stats;
+		struct zxdh_flow_op_rsp  flow_rsp;
 	};
 };
 
@@ -540,6 +561,10 @@ struct zxdh_vlan_tpid {
 	uint16_t tpid;
 };
 
+struct zxdh_flow_op_msg {
+	struct zxdh_flow dh_flow;
+};
+
 struct zxdh_msg_info {
 	union {
 		uint8_t head_len[ZXDH_MSG_HEAD_LEN];
@@ -567,6 +592,7 @@ struct zxdh_msg_info {
 		struct zxdh_plcr_profile_cfg zxdh_plcr_profile_cfg;
 		struct zxdh_plcr_flow_cfg  zxdh_plcr_flow_cfg;
 		struct zxdh_mtr_stats_query  zxdh_mtr_stats_query;
+		struct zxdh_flow_op_msg flow_msg;
 	} data;
 };
 
@@ -594,8 +620,9 @@ struct zxdh_inic_recv_msg {
 
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 		void *reps_buffer, uint16_t *reps_len, void *dev);
-typedef int (*zxdh_msg_process_callback)(struct zxdh_hw *hw, uint16_t vport, void *cfg_data,
-	void *res_info, uint16_t *res_len);
+typedef int (*zxdh_msg_process_callback)(struct zxdh_hw *hw, uint16_t vport,
+		uint16_t pcieid, void *cfg_data,
+		void *res_info, uint16_t *res_len);
 
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 			void *reps_buffer, uint16_t *reps_len, void *dev);

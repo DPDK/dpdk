@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <zxdh_msg.h>
+
 /* eram */
 #define ZXDH_SDT_VPORT_ATT_TABLE          1
 #define ZXDH_SDT_PANEL_ATT_TABLE          2
@@ -16,6 +18,8 @@
 #define ZXDH_SDT_UNICAST_ATT_TABLE        10
 #define ZXDH_SDT_MULTICAST_ATT_TABLE      11
 #define ZXDH_SDT_PORT_VLAN_ATT_TABLE      16
+#define ZXDH_SDT_TUNNEL_ENCAP0_TABLE      28
+#define ZXDH_SDT_TUNNEL_ENCAP1_TABLE      29
 /* hash */
 #define ZXDH_SDT_L2_ENTRY_TABLE0          64
 #define ZXDH_SDT_L2_ENTRY_TABLE1          65
@@ -27,12 +31,14 @@
 #define ZXDH_SDT_MC_TABLE2                78
 #define ZXDH_SDT_MC_TABLE3                79
 
+#define ZXDH_SDT_FD_TABLE                 130
+
 #define ZXDH_PORT_VHCA_FLAG                       1
 #define ZXDH_PORT_RSS_HASH_FACTOR_FLAG            3
 #define ZXDH_PORT_HASH_ALG_FLAG                   4
 #define ZXDH_PORT_PHY_PORT_FLAG                   5
 #define ZXDH_PORT_LAG_ID_FLAG                     6
-
+#define ZXDH_PORT_VXLAN_OFFLOAD_EN_OFF            7
 #define ZXDH_PORT_PF_VQM_VFID_FLAG                8
 
 #define ZXDH_PORT_MTU_FLAG                        10
@@ -169,7 +175,7 @@ struct zxdh_port_attr_table {
 	uint8_t phy_port: 4;
 
 	uint16_t lag_id : 3;
-	uint16_t rsv81 : 1;
+	uint16_t fd_vxlan_offload_en : 1;
 	uint16_t pf_vfid : 11;
 	uint16_t rsv82 : 1;
 
