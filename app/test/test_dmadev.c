@@ -46,7 +46,7 @@ runtest(const char *printable, int (*test_fn)(int16_t dev_id, uint16_t vchan), i
 	printf("DMA Dev %d: Running %s Tests %s\n", dev_id, printable,
 			check_err_stats ? " " : "(errors expected)");
 	for (i = 0; i < iterations; i++) {
-		if (test_fn(dev_id, vchan) < 0)
+		if (test_fn(dev_id, vchan) != 0)
 			return -1;
 
 		rte_dma_stats_get(dev_id, 0, &stats);
