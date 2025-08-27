@@ -801,11 +801,14 @@ ecdh_set_input(struct icp_qat_fw_pke_request *qat_req,
 		SET_PKE_LN(asym_op->ecdh.priv_key, qat_func_alignsize, 0);
 		SET_PKE_LN_EC(curve[curve_id], x, 1);
 		SET_PKE_LN_EC(curve[curve_id], y, 2);
-	} else {
+	} else if (asym_op->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
 		SET_PKE_LN(asym_op->ecdh.priv_key, qat_func_alignsize, 0);
 		SET_PKE_LN(asym_op->ecdh.pub_key.x, qat_func_alignsize, 1);
 		SET_PKE_LN(asym_op->ecdh.pub_key.y, qat_func_alignsize, 2);
+	} else {
+		return -EINVAL;
 	}
+
 	SET_PKE_LN_EC(curve[curve_id], a, 3);
 	SET_PKE_LN_EC(curve[curve_id], b, 4);
 	SET_PKE_LN_EC(curve[curve_id], p, 5);
@@ -894,11 +897,13 @@ ecdh_collect(struct rte_crypto_asym_op *asym_op,
 		asym_op->ecdh.pub_key.y.length = alg_bytesize;
 		x = asym_op->ecdh.pub_key.x.data;
 		y = asym_op->ecdh.pub_key.y.data;
-	} else {
+	} else if (asym_op->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE) {
 		asym_op->ecdh.shared_secret.x.length = alg_bytesize;
 		asym_op->ecdh.shared_secret.y.length = alg_bytesize;
 		x = asym_op->ecdh.shared_secret.x.data;
 		y = asym_op->ecdh.shared_secret.y.data;
+	} else {
+		return -EINVAL;
 	}
 
 	rte_memcpy(x, &cookie->output_array[0][ltrim], alg_bytesize);
