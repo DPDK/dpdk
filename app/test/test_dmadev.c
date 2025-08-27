@@ -1290,7 +1290,7 @@ test_dmadev_setup(void)
 	int16_t dev_id = test_dev_id;
 	struct rte_dma_stats stats;
 	const struct rte_dma_conf conf = { .nb_vchans = 1};
-	const struct rte_dma_vchan_conf qconf = {
+	struct rte_dma_vchan_conf qconf = {
 			.direction = RTE_DMA_DIR_MEM_TO_MEM,
 			.nb_desc = TEST_RINGSIZE,
 	};
@@ -1306,6 +1306,10 @@ test_dmadev_setup(void)
 	if (rte_dma_configure(dev_id, &conf) != 0)
 		ERR_RETURN("Error with rte_dma_configure()\n");
 
+	if (qconf.nb_desc < info.min_desc)
+		qconf.nb_desc = info.min_desc;
+	if (qconf.nb_desc > info.max_desc)
+		qconf.nb_desc = info.max_desc;
 	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
 		ERR_RETURN("Error with queue configuration\n");
 
