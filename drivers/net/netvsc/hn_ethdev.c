@@ -194,6 +194,7 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
 		NETVSC_ARG_RXBREAK,
 		NETVSC_ARG_TXBREAK,
 		NETVSC_ARG_RX_EXTMBUF_ENABLE,
+		NETVSC_ARG_NUMA_AWARE,
 		NULL
 	};
 	struct rte_kvargs *kvlist;

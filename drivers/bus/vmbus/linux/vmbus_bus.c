@@ -18,6 +18,7 @@
 #include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_bus_vmbus.h>
+#include <rte_kvargs.h>
 
 #include <eal_export.h>
 #include "eal_filesystem.h"
@@ -231,6 +232,48 @@ rte_vmbus_unmap_device(struct rte_vmbus_device *dev)
 	vmbus_uio_unmap_resource(dev);
 }
 
+/* Check in dev args if NUMA should be used by checking for "numa_aware" in the
+ * device arguments.
+ * By default returning false, meaning this vmbus device is not NUMA aware.
+ */
+static bool vmbus_use_numa(struct rte_vmbus_device *dev)
+{
+	struct rte_devargs *devargs = dev->device.devargs;
+	struct rte_kvargs *kvlist;
+	const struct rte_kvargs_pair *pair;
+	unsigned long v;
+	unsigned int i;
+	char *endp = NULL;
+	bool ret = false;
+
+	if (!devargs)
+		return ret;
+
+	VMBUS_LOG(DEBUG, "device args %s %s", devargs->name, devargs->args);
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist) {
+		VMBUS_LOG(ERR, "invalid parameters");
+		return ret;
+	}
+
+	for (i = 0; i < kvlist->count; i++) {
+		pair = &kvlist->pairs[i];
+		if (!strcmp(pair->key, NETVSC_ARG_NUMA_AWARE)) {
+			v = strtoul(pair->value, &endp, 0);
+			if (*pair->value == '\0' || *endp != '\0') {
+				VMBUS_LOG(ERR, "invalid parameter %s=%s",
+					  pair->key, pair->value);
+			}
+			ret = v ? true : false;
+		}
+	}
+
+	rte_kvargs_free(kvlist);
+
+	return ret;
+}
+
 /* Scan one vmbus sysfs entry, and fill the devices list from it. */
 static int
 vmbus_scan_one(const char *name)
@@ -290,19 +333,20 @@ vmbus_scan_one(const char *name)
 		dev->monitor_id = UINT8_MAX;
 	}
 
-	/* get numa node (if present) */
-	snprintf(filename, sizeof(filename), "%s/numa_node",
-		 dirname);
-
-	if (access(filename, R_OK) == 0) {
-		if (eal_parse_sysfs_value(filename, &tmp) < 0)
-			goto error;
-		dev->device.numa_node = tmp;
-	} else {
-		dev->device.numa_node = SOCKET_ID_ANY;
-	}
-
 	dev->device.devargs = vmbus_devargs_lookup(dev);
+
+	dev->device.numa_node = SOCKET_ID_ANY;
+	if (vmbus_use_numa(dev)) {
+		/* get numa node (if present) */
+		snprintf(filename, sizeof(filename), "%s/numa_node",
+			 dirname);
+
+		if (access(filename, R_OK) == 0) {
+			if (eal_parse_sysfs_value(filename, &tmp) < 0)
+				goto error;
+			dev->device.numa_node = tmp;
+		}
+	}
 
 	/* Allocate interrupt handle instance */
 	dev->intr_handle =
