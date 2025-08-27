@@ -1501,6 +1501,7 @@ print_usage(const char *prgname)
 		"  -U: set min/max frequency for uncore to maximum value\n"
 		"  -i (frequency index): set min/max frequency for uncore to specified frequency index\n"
 		"  --config (port,queue,lcore): rx queues configuration\n"
+		"  --eth-link-speed: force link speed\n"
 		"  --cpu-resume-latency LATENCY: set CPU resume latency to control C-state selection,"
 		" 0 : just allow to enter C0-state\n"
 		"  --high-perf-cores CORELIST: list of high performance cores\n"
@@ -1742,12 +1743,14 @@ parse_pmd_mgmt_config(const char *name)
 #define CMD_LINE_OPT_SCALE_FREQ_MIN "scale-freq-min"
 #define CMD_LINE_OPT_SCALE_FREQ_MAX "scale-freq-max"
 #define CMD_LINE_OPT_CPU_RESUME_LATENCY "cpu-resume-latency"
+#define CMD_LINK_OPT_ETH_LINK_SPEED "eth-link-speed"
 
 /* Parse the argument given in the command line of the application */
 static int
 parse_args(int argc, char **argv)
 {
 	int opt, ret;
+	int speed_num;
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
@@ -1767,6 +1770,7 @@ parse_args(int argc, char **argv)
 		{CMD_LINE_OPT_PAUSE_DURATION, 1, 0, 0},
 		{CMD_LINE_OPT_SCALE_FREQ_MIN, 1, 0, 0},
 		{CMD_LINE_OPT_SCALE_FREQ_MAX, 1, 0, 0},
+		{CMD_LINK_OPT_ETH_LINK_SPEED, 1, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -1949,6 +1953,20 @@ parse_args(int argc, char **argv)
 						(uint32_t *)&cpu_resume_latency) != 0)
 					return -1;
 				printf("PM QoS configured\n");
+			}
+
+			if (!strncmp(lgopts[option_index].name,
+					CMD_LINK_OPT_ETH_LINK_SPEED,
+					sizeof(CMD_LINK_OPT_ETH_LINK_SPEED))) {
+				speed_num = atoi(optarg);
+				if ((speed_num == RTE_ETH_SPEED_NUM_10M) ||
+				(speed_num == RTE_ETH_SPEED_NUM_100M)) {
+					fprintf(stderr, "Unsupported fixed speed\n");
+					print_usage(prgname);
+					return -1;
+				}
+				if (speed_num >= 0 && rte_eth_speed_bitflag(speed_num, 0) > 0)
+					port_conf.link_speeds = rte_eth_speed_bitflag(speed_num, 0);
 			}
 
 			break;
