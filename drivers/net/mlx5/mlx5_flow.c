@@ -8165,9 +8165,12 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 void
 mlx5_flow_stop_default(struct rte_eth_dev *dev)
 {
-#ifdef HAVE_MLX5_HWS_SUPPORT
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (mlx5_flow_is_steering_disabled())
+		return;
+
+#ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
 		mlx5_flow_nta_del_default_copy_action(dev);
 		if (!rte_atomic_load_explicit(&priv->hws_mark_refcnt,
@@ -8175,6 +8178,8 @@ mlx5_flow_stop_default(struct rte_eth_dev *dev)
 			flow_hw_rxq_flag_set(dev, false);
 		return;
 	}
+#else
+	RTE_SET_USED(priv);
 #endif
 	flow_mreg_del_default_copy_action(dev);
 	mlx5_flow_rxq_flags_clear(dev);
@@ -8220,10 +8225,12 @@ int
 mlx5_flow_start_default(struct rte_eth_dev *dev)
 {
 	struct rte_flow_error error;
-#ifdef HAVE_MLX5_HWS_SUPPORT
-	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (priv->sh->config.dv_flow_en == 2) {
+	if (mlx5_flow_is_steering_disabled())
+		return 0;
+
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (MLX5_SH(dev)->config.dv_flow_en == 2) {
 		/*
 		 * Ignore this failure, if the proxy port is not started, other
 		 * default jump actions are not created and this rule will not
@@ -8879,6 +8886,13 @@ int
 mlx5_flow_ops_get(struct rte_eth_dev *dev __rte_unused,
 		  const struct rte_flow_ops **ops)
 {
+	if (mlx5_flow_is_steering_disabled()) {
+		DRV_LOG(WARNING, "port %u flow API is not supported since steering was disabled",
+			dev->data->port_id);
+		*ops = NULL;
+		return 0;
+	}
+
 	*ops = &mlx5_flow_ops;
 	return 0;
 }
@@ -12346,4 +12360,169 @@ mlx5_ctrl_flow_uc_dmac_vlan_exists(struct rte_eth_dev *dev,
 		}
 	}
 	return exists;
+}
+
+static bool mlx5_steering_disabled;
+
+bool
+mlx5_flow_is_steering_disabled(void)
+{
+	return mlx5_steering_disabled;
+}
+
+static void
+flow_disable_steering_flush(struct rte_eth_dev *dev)
+{
+	/*
+	 * This repeats the steps done in mlx5_dev_stop(), with a small difference:
+	 * - mlx5_flow_hw_cleanup_ctrl_rx_templates() and mlx5_action_handle_detach()
+	 * They are rearranged to make it work with different dev->data->dev_started.
+	 * Please see a TODO note in mlx5_dev_stop().
+	 */
+
+	mlx5_flow_stop_default(dev);
+	mlx5_traffic_disable(dev);
+	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_GEN, true);
+	mlx5_flow_meter_rxq_flush(dev);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	mlx5_flow_hw_cleanup_ctrl_rx_templates(dev);
+#endif
+	mlx5_action_handle_detach(dev);
+}
+
+static void
+flow_disable_steering_cleanup(struct rte_eth_dev *dev)
+{
+	/*
+	 * See mlx5_dev_close(). Only steps not done on mlx5_dev_stop() are executed here.
+	 * Necessary steps are copied as is because steering resource cleanup in mlx5_dev_close()
+	 * is interleaved with other steps.
+	 * TODO: Rework steering resource cleanup in mlx5_dev_close() to allow code reuse.
+	 */
+
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	mlx5_action_handle_flush(dev);
+	mlx5_flow_meter_flush(dev, NULL);
+	mlx5_flex_parser_ecpri_release(dev);
+	mlx5_flex_item_port_cleanup(dev);
+	mlx5_indirect_list_handles_release(dev);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	flow_hw_destroy_vport_action(dev);
+	flow_hw_resource_release(dev);
+	flow_hw_clear_port_info(dev);
+	if (priv->tlv_options != NULL) {
+		/* Free the GENEVE TLV parser resource. */
+		claim_zero(mlx5_geneve_tlv_options_destroy(priv->tlv_options, priv->sh->phdev));
+		priv->tlv_options = NULL;
+	}
+	if (priv->ptype_rss_groups) {
+		mlx5_ipool_destroy(priv->ptype_rss_groups);
+		priv->ptype_rss_groups = NULL;
+	}
+	if (priv->dr_ctx) {
+		claim_zero(mlx5dr_context_close(priv->dr_ctx));
+		priv->dr_ctx = NULL;
+	}
+#else
+	RTE_SET_USED(priv);
+#endif
+}
+
+typedef void (*run_on_related_cb_t)(struct rte_eth_dev *dev);
+
+static void
+flow_disable_steering_run_on_related(struct rte_eth_dev *dev,
+				     run_on_related_cb_t cb)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint16_t other_port_id;
+	uint16_t proxy_port_id;
+	uint16_t port_id;
+	int ret __rte_unused;
+
+	if (priv->sh->config.dv_esw_en) {
+		ret = mlx5_flow_pick_transfer_proxy(dev, &proxy_port_id, NULL);
+		if (ret != 0) {
+			/*
+			 * This case should not happen because E-Switch is enabled.
+			 * However, in any case, release resources on the given port
+			 * and log the misconfigured port.
+			 */
+			DRV_LOG(ERR, "port %u unable to find transfer proxy port ret=%d",
+				priv->dev_data->port_id, ret);
+			cb(dev);
+			return;
+		}
+
+		/* Run callback on representors. */
+		MLX5_ETH_FOREACH_DEV(other_port_id, dev->device) {
+			struct rte_eth_dev *other_dev = &rte_eth_devices[other_port_id];
+
+			if (other_port_id != proxy_port_id)
+				cb(other_dev);
+		}
+
+		/* Run callback on proxy port. */
+		cb(&rte_eth_devices[proxy_port_id]);
+	} else if (rte_atomic_load_explicit(&priv->shared_refcnt, rte_memory_order_relaxed) > 0) {
+		/* Run callback on guest ports. */
+		MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+			struct rte_eth_dev *other_dev = &rte_eth_devices[port_id];
+			struct mlx5_priv *other_priv = other_dev->data->dev_private;
+
+			if (other_priv->shared_host == dev)
+				cb(other_dev);
+		}
+
+		/* Run callback on host port. */
+		cb(dev);
+	} else {
+		cb(dev);
+	}
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_disable_steering, 25.11)
+void
+rte_pmd_mlx5_disable_steering(void)
+{
+	uint16_t port_id;
+
+	if (mlx5_steering_disabled)
+		return;
+
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+		if (mlx5_hws_active(dev)) {
+			flow_disable_steering_run_on_related(dev, flow_disable_steering_flush);
+			flow_disable_steering_run_on_related(dev, flow_disable_steering_cleanup);
+		} else {
+			flow_disable_steering_flush(dev);
+			flow_disable_steering_cleanup(dev);
+		}
+
+		mlx5_flow_rxq_mark_flag_set(dev);
+	}
+
+	mlx5_steering_disabled = true;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_mlx5_enable_steering, 25.11)
+int
+rte_pmd_mlx5_enable_steering(void)
+{
+	uint16_t port_id;
+
+	if (!mlx5_steering_disabled)
+		return 0;
+
+	/* If any mlx5 port is probed, disallow enabling steering. */
+	port_id = mlx5_eth_find_next(0, NULL);
+	if (port_id != RTE_MAX_ETHPORTS)
+		return -EBUSY;
+
+	mlx5_steering_disabled = false;
+
+	return 0;
 }
