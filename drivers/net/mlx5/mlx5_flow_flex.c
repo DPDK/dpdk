@@ -1557,3 +1557,21 @@ mlx5_flex_parser_clone_free_cb(void *list_ctx, struct mlx5_list_entry *entry)
 	RTE_SET_USED(list_ctx);
 	mlx5_free(fp);
 }
+
+/*
+ * Destroy the flex parser node, including the parser itself, input / output
+ * arcs and DW samples. Resources could be reused then.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+void
+mlx5_flex_parser_ecpri_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ecpri_parser_profile *prf = &priv->sh->ecpri_parser;
+
+	if (prf->obj)
+		mlx5_devx_cmd_destroy(prf->obj);
+	prf->obj = NULL;
+}
