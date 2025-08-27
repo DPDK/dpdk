@@ -1716,6 +1716,29 @@ test_ecdsa_sign_verify_all_curve(void)
 }
 
 static int
+test_ecdsa_sign_verify_qat_curves(void)
+{
+	int status, overall_status = TEST_SUCCESS;
+	enum curve curve_id;
+	int test_index = 0;
+	const char *msg;
+
+	for (curve_id = SECP256R1; curve_id <= SECP521R1; curve_id++) {
+
+		status = test_ecdsa_sign_verify(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase Sign/Veriy Curve %s  %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+	return overall_status;
+}
+
+static int
 test_ecpm(enum curve curve_id)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
@@ -1868,6 +1891,28 @@ test_ecpm_all_curve(void)
 		    curve_id == ED25519 || curve_id == ED448)
 			continue;
 
+		status = test_ecpm(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase EC Point Mul Curve %s  %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+	return overall_status;
+}
+
+static int
+test_ecpm_qat_curves(void)
+{
+	int status, overall_status = TEST_SUCCESS;
+	enum curve curve_id;
+	int test_index = 0;
+	const char *msg;
+
+	for (curve_id = SECP256R1; curve_id <= SECP521R1; curve_id++) {
 		status = test_ecpm(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
@@ -2673,6 +2718,56 @@ test_ecdh_all_curve(void)
 
 	return overall_status;
 }
+
+static int
+test_ecdh_qat_curves(void)
+{
+	int status, overall_status = TEST_SUCCESS;
+	enum curve curve_id;
+	int test_index = 0;
+	const char *msg;
+
+	for (curve_id = SECP256R1; curve_id <= SECP521R1; curve_id++) {
+		status = test_ecdh_pub_key_generate(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else if (status == TEST_SKIPPED) {
+			msg = "skipped";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH public key generation for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	for (curve_id = SECP256R1; curve_id <= SECP521R1; curve_id++) {
+		status = test_ecdh_pub_key_verify(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH public key verification for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	for (curve_id = SECP256R1; curve_id <= SECP521R1; curve_id++) {
+		status = test_ecdh_shared_secret(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH shared secret compute for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	return overall_status;
+}
+
 
 static int
 test_sm2_sign(void)
@@ -4113,6 +4208,7 @@ static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 			ut_setup_asym, ut_teardown_asym,
 			modular_exponentiation, &modex_group_test_cases[7]),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_eddsa_sign_verify_all_curve),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -4157,6 +4253,19 @@ static struct unit_test_suite cryptodev_qat_asym_testsuite  = {
 			"RSA Decryption (n=128, pt=20, e=3) CRT, Padding: NONE",
 			ut_setup_asym, ut_teardown_asym,
 			kat_rsa_decrypt_crt, &rsa_vector_128_20_3_none),
+		TEST_CASE_NAMED_ST(
+			"ECDH Elliptic Curve tests",
+			ut_setup_asym, ut_teardown_asym,
+			test_ecdh_qat_curves),
+		TEST_CASE_NAMED_ST(
+			"ECPM Elliptic Curve tests",
+			ut_setup_asym, ut_teardown_asym,
+			test_ecpm_qat_curves),
+		TEST_CASE_NAMED_ST(
+			"ECDSA Elliptic Curve tests",
+			ut_setup_asym, ut_teardown_asym,
+			test_ecdsa_sign_verify_qat_curves),
+
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
