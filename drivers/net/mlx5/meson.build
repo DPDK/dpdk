@@ -18,6 +18,7 @@ headers = files('rte_pmd_mlx5.h')
 sources = files(
         'mlx5.c',
         'mlx5_devx.c',
+        'mlx5_driver_event.c',
         'mlx5_ethdev.c',
         'mlx5_flow.c',
         'mlx5_flow_aso.c',
