@@ -427,6 +427,21 @@ and performance test cases should use ``@perf_test``.
 A test suite may include any number of functional and/or performance test cases.
 Each suite should focus on testing a single feature (one feature = one test suite).
 
+Test case docstrings must include a Steps and Verify section.
+For example::
+
+   @func_test
+   def test_basic_link(self):
+   """Tests basic link status.
+
+      Steps:
+         * Launch testpmd.
+         * Check port info.
+
+      Verify:
+         * Port info shows link status is up.
+   """
+
 Setup and Teardown Hooks
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
