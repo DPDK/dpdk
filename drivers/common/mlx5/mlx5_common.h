@@ -185,6 +185,7 @@ struct mlx5_dev_info {
 	uint32_t ibindex;
 	char ibname[MLX5_FS_NAME_MAX];
 	uint8_t probe_opt;
+	uint8_t async_mon_ready;
 	struct mlx5_port_nl_info *port_info;
 };
 

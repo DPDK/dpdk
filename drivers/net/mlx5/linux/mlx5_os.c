@@ -3051,7 +3051,7 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 		DRV_LOG(ERR, "Failed to allocate intr_handle.");
 		return;
 	}
-	if (sh->cdev->config.probe_opt &&
+	if (sh->cdev->dev_info.probe_opt &&
 	    sh->cdev->dev_info.port_num > 1 &&
 	    !sh->rdma_monitor_supp) {
 		nlsk_fd = mlx5_nl_rdma_monitor_init();
@@ -3076,8 +3076,15 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 				close(nlsk_fd);
 				return;
 			}
+			sh->cdev->dev_info.async_mon_ready = 1;
 		} else {
 			close(nlsk_fd);
+			if (sh->cdev->dev_info.probe_opt) {
+				DRV_LOG(INFO, "Failed to create rdma link monitor, disable probe optimization");
+				sh->cdev->dev_info.probe_opt = 0;
+				mlx5_free(sh->cdev->dev_info.port_info);
+				sh->cdev->dev_info.port_info = NULL;
+			}
 		}
 	}
 	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);

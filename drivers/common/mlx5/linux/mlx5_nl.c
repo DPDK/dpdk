@@ -1171,8 +1171,12 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info 
 			data.ibindex = dev_info->ibindex;
 	}
 
+	/* Update should be done via monitor thread to avoid race condition */
+	if (dev_info->async_mon_ready) {
+		rte_errno = ENODEV;
+		return 0;
+	}
 	ret = mlx5_nl_port_info(nl, pindex, &data);
-
 	if (dev_info->probe_opt && !strcmp(dev_info->ibname, name)) {
 		if ((!ret || ret == -ENODEV) && dev_info->port_info &&
 		    pindex <= dev_info->port_num) {
@@ -1182,7 +1186,6 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info 
 			dev_info->port_info[pindex].valid = 1;
 		}
 	}
-
 	return ret ? 0 : data.ifindex;
 }
 
