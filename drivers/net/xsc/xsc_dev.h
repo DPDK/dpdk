@@ -72,6 +72,13 @@ enum xsc_module_id {
 	XSC_MODULE_ID_QSFP_PLUS_CMIS	= 0x1E,
 };
 
+enum xsc_intr_event_type {
+	XSC_EVENT_TYPE_NONE			= 0x0,
+	XSC_EVENT_TYPE_CHANGE_LINK		= 0x0001,
+	XSC_EVENT_TYPE_TEMP_WARN		= 0x0002,
+	XSC_EVENT_TYPE_OVER_TEMP_PROTECTION	= 0x0004,
+};
+
 struct xsc_hwinfo {
 	uint32_t pcie_no; /* pcie number , 0 or 1 */
 	uint32_t func_id; /* pf glb func id */
@@ -93,6 +100,8 @@ struct xsc_hwinfo {
 	uint16_t pcie1_pf_funcid_top;
 	uint16_t lag_port_start;
 	uint16_t raw_tpe_qp_num;
+	uint16_t msix_base;
+	uint16_t msix_num;
 	uint8_t send_seg_num;
 	uint8_t recv_seg_num;
 	uint8_t valid; /* 1: current phy info is valid, 0 : invalid */
@@ -160,6 +169,8 @@ struct xsc_dev {
 	void *jumbo_buffer_va;
 	uint64_t bar_len;
 	int ctrl_fd;
+	rte_intr_callback_fn intr_cb;
+	void *intr_cb_arg;
 };
 
 struct xsc_module_eeprom_query_params {
@@ -215,6 +226,10 @@ struct xsc_dev_ops {
 			    struct xsc_tx_qp_info *qp_info);
 	int (*mailbox_exec)(struct xsc_dev *xdev, void *data_in,
 			    int in_len, void *data_out, int out_len);
+	int (*intr_event_get)(struct xsc_dev *xdev);
+	int (*intr_handler_install)(struct xsc_dev *xdev, rte_intr_callback_fn cb,
+				    void *cb_arg);
+	int (*intr_handler_uninstall)(struct xsc_dev *xdev);
 };
 
 int xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
@@ -244,5 +259,8 @@ int xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac);
 int xsc_dev_fw_version_get(struct xsc_dev *xdev, char *fw_version, size_t fw_size);
 int xsc_dev_query_module_eeprom(struct xsc_dev *xdev, uint16_t offset,
 				uint16_t size, uint8_t *data);
+int xsc_dev_intr_event_get(struct xsc_dev *xdev);
+int xsc_dev_intr_handler_install(struct xsc_dev *xdev, rte_intr_callback_fn cb, void *cb_arg);
+int xsc_dev_intr_handler_uninstall(struct xsc_dev *xdev);
 
 #endif /* _XSC_DEV_H_ */

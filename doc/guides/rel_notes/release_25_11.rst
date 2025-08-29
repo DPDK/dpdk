@@ -71,6 +71,7 @@ New Features
   * Added module EEPROM dump.
   * Added promiscuous mode.
   * Added link status.
+  * Added link event.
 
 
 Removed Items

@@ -6,11 +6,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <linux/vfio.h>
+#include <sys/eventfd.h>
+#include <sys/ioctl.h>
 
 #include <rte_pci.h>
 #include <ethdev_pci.h>
 #include <rte_bus_pci.h>
 #include <rte_bitops.h>
+#include <rte_interrupts.h>
 
 #include "xsc_defs.h"
 #include "xsc_vfio_mbox.h"
@@ -22,9 +26,20 @@
 #define XSC_FEATURE_PCT_EXP_MASK	RTE_BIT32(19)
 #define XSC_HOST_PCIE_NO_DEFAULT	0
 #define XSC_SOC_PCIE_NO_DEFAULT		1
+#define XSC_MSIX_CPU_NUM_DEFAULT	2
 
 #define XSC_SW2HW_MTU(mtu)		((mtu) + 14 + 4)
 #define XSC_SW2HW_RX_PKT_LEN(mtu)	((mtu) + 14 + 256)
+
+#define XSC_MAX_INTR_VEC_ID		RTE_MAX_RXTX_INTR_VEC_ID
+#define XSC_MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
+				  sizeof(int) * (XSC_MAX_INTR_VEC_ID))
+
+enum xsc_vector {
+	XSC_VEC_CMD		= 0,
+	XSC_VEC_CMD_EVENT	= 1,
+	XSC_EQ_VEC_COMP_BASE,
+};
 
 enum xsc_cq_type {
 	XSC_CQ_TYPE_NORMAL = 0,
@@ -133,6 +148,7 @@ xsc_vfio_hwinfo_init(struct xsc_dev *xdev)
 	memset(in, 0, cmd_len);
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_QUERY_HCA_CAP);
 	in->hdr.ver = rte_cpu_to_be_16(XSC_CMD_QUERY_HCA_CAP_V1);
+	in->cpu_num =  rte_cpu_to_be_16(XSC_MSIX_CPU_NUM_DEFAULT);
 	out = cmd_buf;
 
 	ret = xsc_vfio_mbox_exec(xdev, in, in_len, out, out_len);
@@ -171,6 +187,8 @@ xsc_vfio_hwinfo_init(struct xsc_dev *xdev)
 	xdev->hwinfo.chip_version = rte_be_to_cpu_32(hca_cap->chip_ver_l);
 	xdev->hwinfo.hca_core_clock = rte_be_to_cpu_32(hca_cap->hca_core_clock);
 	xdev->hwinfo.mac_bit = hca_cap->mac_bit;
+	xdev->hwinfo.msix_base = rte_be_to_cpu_16(hca_cap->msix_base);
+	xdev->hwinfo.msix_num = rte_be_to_cpu_16(hca_cap->msix_num);
 	xsc_vfio_pcie_no_init(&xdev->hwinfo);
 	xsc_vfio_fw_version_init(xdev->hwinfo.fw_ver, &hca_cap->fw_ver);
 
@@ -858,6 +876,232 @@ open_fail:
 	return -1;
 }
 
+static int
+xsc_vfio_irq_info_get(struct rte_intr_handle *intr_handle)
+{
+	struct vfio_irq_info irq = { .argsz = sizeof(irq) };
+	int rc, vfio_dev_fd;
+
+	irq.index = VFIO_PCI_MSIX_IRQ_INDEX;
+
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	rc = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_IRQ_INFO, &irq);
+	if (rc < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get IRQ info rc=%d errno=%d", rc, errno);
+		return rc;
+	}
+
+	PMD_DRV_LOG(INFO, "Flags=0x%x index=0x%x count=0x%x max_intr_vec_id=0x%x",
+		    irq.flags, irq.index, irq.count, XSC_MAX_INTR_VEC_ID);
+
+	if (rte_intr_max_intr_set(intr_handle, irq.count))
+		return -1;
+
+	return 0;
+}
+
+static int
+xsc_vfio_irq_init(struct rte_intr_handle *intr_handle)
+{
+	char irq_set_buf[XSC_MSIX_IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int len, rc, vfio_dev_fd;
+	int32_t *fd_ptr;
+	uint32_t i;
+
+	if (rte_intr_max_intr_get(intr_handle) > XSC_MAX_INTR_VEC_ID) {
+		PMD_DRV_LOG(ERR, "Max_intr=%d greater than XSC_MAX_INTR_VEC_ID=%d",
+			    rte_intr_max_intr_get(intr_handle),
+			    XSC_MAX_INTR_VEC_ID);
+		return -ERANGE;
+	}
+
+	len = sizeof(struct vfio_irq_set) +
+	      sizeof(int32_t) * rte_intr_max_intr_get(intr_handle);
+
+	irq_set = (struct vfio_irq_set *)irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->start = 0;
+	irq_set->count = 10;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+
+	fd_ptr = (int32_t *)&irq_set->data[0];
+	for (i = 0; i < irq_set->count; i++)
+		fd_ptr[i] = -1;
+
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	rc = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	if (rc)
+		PMD_DRV_LOG(ERR, "Failed to set irqs vector rc=%d", rc);
+
+	return rc;
+}
+
+static int
+xsc_vfio_irq_config(struct rte_intr_handle *intr_handle, unsigned int vec)
+{
+	char irq_set_buf[XSC_MSIX_IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int len, rc, vfio_dev_fd;
+	int32_t *fd_ptr;
+
+	if (vec > (uint32_t)rte_intr_max_intr_get(intr_handle)) {
+		PMD_DRV_LOG(INFO, "Vector=%d greater than max_intr=%d", vec,
+			    rte_intr_max_intr_get(intr_handle));
+		return -EINVAL;
+	}
+
+	len = sizeof(struct vfio_irq_set) + sizeof(int32_t);
+
+	irq_set = (struct vfio_irq_set *)irq_set_buf;
+	irq_set->argsz = len;
+
+	irq_set->start = vec;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+
+	/* Use vec fd to set interrupt vectors */
+	fd_ptr = (int32_t *)&irq_set->data[0];
+	fd_ptr[0] = rte_intr_efds_index_get(intr_handle, vec);
+
+	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
+	rc = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	if (rc)
+		PMD_DRV_LOG(INFO, "Failed to set_irqs vector=0x%x rc=%d", vec, rc);
+
+	return rc;
+}
+
+static int
+xsc_vfio_irq_register(struct rte_intr_handle *intr_handle,
+		  rte_intr_callback_fn cb, void *data, unsigned int vec)
+{
+	struct rte_intr_handle *tmp_handle;
+	uint32_t nb_efd, tmp_nb_efd;
+	int rc, fd;
+
+	if (rte_intr_max_intr_get(intr_handle) == 0) {
+		xsc_vfio_irq_info_get(intr_handle);
+		xsc_vfio_irq_init(intr_handle);
+	}
+
+	if (vec > (uint32_t)rte_intr_max_intr_get(intr_handle)) {
+		PMD_DRV_LOG(INFO, "Vector=%d greater than max_intr=%d", vec,
+			    rte_intr_max_intr_get(intr_handle));
+		return -EINVAL;
+	}
+
+	tmp_handle = intr_handle;
+	/* Create new eventfd for interrupt vector */
+	fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (fd == -1)
+		return -ENODEV;
+
+	if (rte_intr_fd_set(tmp_handle, fd))
+		return errno;
+
+	/* Register vector interrupt callback */
+	rc = rte_intr_callback_register(tmp_handle, cb, data);
+	if (rc) {
+		PMD_DRV_LOG(INFO, "Failed to register vector:0x%x irq callback.", vec);
+		return rc;
+	}
+
+	rte_intr_efds_index_set(intr_handle, vec, fd);
+	nb_efd = (vec > (uint32_t)rte_intr_nb_efd_get(intr_handle)) ?
+		 vec : (uint32_t)rte_intr_nb_efd_get(intr_handle);
+	rte_intr_nb_efd_set(intr_handle, nb_efd);
+
+	tmp_nb_efd = rte_intr_nb_efd_get(intr_handle) + 1;
+	if (tmp_nb_efd > (uint32_t)rte_intr_max_intr_get(intr_handle))
+		rte_intr_max_intr_set(intr_handle, tmp_nb_efd);
+
+	PMD_DRV_LOG(INFO, "Enable vector:0x%x for vfio (efds: %d, max:%d)",
+		    vec,
+		    rte_intr_nb_efd_get(intr_handle),
+		    rte_intr_max_intr_get(intr_handle));
+
+	/* Enable MSIX vectors to VFIO */
+	return xsc_vfio_irq_config(intr_handle, vec);
+}
+
+static int
+xsc_vfio_msix_enable(struct xsc_dev *xdev)
+{
+	struct xsc_cmd_msix_table_info_mbox_in in = { };
+	struct xsc_cmd_msix_table_info_mbox_out out = { };
+	int ret;
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_ENABLE_MSIX);
+	ret = xsc_vfio_mbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR, "Failed to enable msix, ret=%d, stats=%d",
+			    ret, out.hdr.status);
+		return ret;
+	}
+
+	rte_write32(xdev->hwinfo.msix_base,
+		    (uint8_t *)xdev->bar_addr + XSC_HIF_CMDQM_VECTOR_ID_MEM_ADDR);
+
+	return 0;
+}
+
+static int
+xsc_vfio_event_get(struct xsc_dev *xdev)
+{
+	int ret;
+	struct xsc_cmd_event_query_type_mbox_in in = { };
+	struct xsc_cmd_event_query_type_mbox_out out = { };
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_QUERY_EVENT_TYPE);
+	ret = xsc_vfio_mbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR, "Failed to query event type, ret=%d, stats=%d",
+			    ret, out.hdr.status);
+		return -1;
+	}
+
+	return out.ctx.event_type;
+}
+
+static int
+xsc_vfio_intr_handler_install(struct xsc_dev *xdev, rte_intr_callback_fn cb, void *cb_arg)
+{
+	int ret;
+	struct rte_intr_handle *intr_handle = xdev->pci_dev->intr_handle;
+
+	ret = xsc_vfio_irq_register(intr_handle, cb, cb_arg, XSC_VEC_CMD_EVENT);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to register vfio irq, ret=%d", ret);
+		return ret;
+	}
+
+	xdev->intr_cb = cb;
+	xdev->intr_cb_arg = cb_arg;
+
+	ret = xsc_vfio_msix_enable(xdev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to enable vfio msix, ret=%d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+xsc_vfio_intr_handler_uninstall(struct xsc_dev *xdev)
+{
+	if (rte_intr_fd_get(xdev->pci_dev->intr_handle) >= 0)
+		rte_intr_callback_unregister(xdev->pci_dev->intr_handle,
+					     xdev->intr_cb, xdev->intr_cb_arg);
+
+	rte_intr_instance_free(xdev->intr_handle);
+
+	return 0;
+}
+
 static struct xsc_dev_ops *xsc_vfio_ops = &(struct xsc_dev_ops) {
 	.kdrv = RTE_PCI_KDRV_VFIO,
 	.dev_init = xsc_vfio_dev_init,
@@ -874,6 +1118,9 @@ static struct xsc_dev_ops *xsc_vfio_ops = &(struct xsc_dev_ops) {
 	.tx_cq_create = xsc_vfio_tx_cq_create,
 	.tx_qp_create = xsc_vfio_tx_qp_create,
 	.mailbox_exec = xsc_vfio_mbox_exec,
+	.intr_event_get = xsc_vfio_event_get,
+	.intr_handler_install = xsc_vfio_intr_handler_install,
+	.intr_handler_uninstall = xsc_vfio_intr_handler_uninstall,
 };
 
 RTE_INIT(xsc_vfio_ops_reg)
