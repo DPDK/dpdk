@@ -144,6 +144,7 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 	struct xsc_txq_data *txq;
 	struct xsc_repr_port *repr;
 	struct xsc_repr_info *repr_info;
+	uint8_t mac_filter_en = !dev->data->promiscuous;
 
 	if (priv->funcid_type != XSC_PHYPORT_MAC_FUNCID)
 		return -ENODEV;
@@ -180,7 +181,8 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 		xsc_dev_create_vfos_baselp(priv->xdev);
 		xsc_dev_create_epat(priv->xdev, local_dstinfo, pcie_logic_port,
 				    rx_qpn - hwinfo->raw_rss_qp_id_base,
-				    priv->num_rq, &priv->rss_conf);
+				    priv->num_rq, &priv->rss_conf,
+				    mac_filter_en, priv->mac[0].addr_bytes);
 		xsc_dev_create_pct(priv->xdev, repr_id, logical_port, peer_dstinfo);
 		xsc_dev_create_pct(priv->xdev, repr_id, peer_logicalport, local_dstinfo);
 	} else {
@@ -189,7 +191,8 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 			xsc_dev_create_ipat(priv->xdev, logical_port, peer_dstinfo);
 		xsc_dev_vf_modify_epat(priv->xdev, local_dstinfo,
 				       rx_qpn - hwinfo->raw_rss_qp_id_base,
-				       priv->num_rq, &priv->rss_conf);
+				       priv->num_rq, &priv->rss_conf,
+				       mac_filter_en, priv->mac[0].addr_bytes);
 	}
 
 	return 0;
@@ -675,6 +678,55 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 }
 
 static int
+xsc_set_promiscuous(struct rte_eth_dev *dev, uint8_t mac_filter_en)
+{
+	int repr_id;
+	struct xsc_repr_port *repr;
+	struct xsc_repr_info *repr_info;
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	repr_id = priv->representor_id;
+	repr = &priv->xdev->repr_ports[repr_id];
+	repr_info = &repr->info;
+
+	return xsc_dev_modify_epat_mac_filter(priv->xdev,
+					      repr_info->local_dstinfo,
+					      mac_filter_en);
+}
+
+static int
+xsc_ethdev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = xsc_set_promiscuous(dev, 0);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Enable port %u promiscuous failure",
+			    dev->data->port_id);
+		return ret;
+	}
+
+	dev->data->promiscuous = 1;
+	return 0;
+}
+
+static int
+xsc_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = xsc_set_promiscuous(dev, 1);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Disable port %u promiscuous failure",
+			    dev->data->port_id);
+		return ret;
+	}
+
+	dev->data->promiscuous = 0;
+	return 0;
+}
+
+static int
 xsc_ethdev_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 {
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
@@ -794,6 +846,8 @@ const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_set_link_down = xsc_ethdev_set_link_down,
 	.dev_close = xsc_ethdev_close,
 	.link_update = xsc_ethdev_link_update,
+	.promiscuous_enable = xsc_ethdev_promiscuous_enable,
+	.promiscuous_disable = xsc_ethdev_promiscuous_disable,
 	.stats_get = xsc_ethdev_stats_get,
 	.stats_reset = xsc_ethdev_stats_reset,
 	.dev_infos_get = xsc_ethdev_infos_get,

@@ -35,13 +35,15 @@ struct __rte_packed_begin xsc_epat_key {
 } __rte_packed_end;
 
 struct __rte_packed_begin xsc_epat_action {
-	uint8_t rsv0[14];
-	uint8_t rsv1:4;
-	uint8_t dst_port:4;
-	uint8_t rss_hash_func:2;
-	uint8_t rss_hash_template:5;
-	uint8_t rss_en:1;
-	uint8_t qp_num;
+	uint8_t rsv0[3];
+	uint8_t mac_addr[6];
+	uint64_t mac_filter_en:1;
+	uint64_t rsv1:43;
+	uint64_t dst_port:4;
+	uint64_t rss_hash_func:2;
+	uint64_t rss_hash_template:5;
+	uint64_t rss_en:1;
+	uint64_t qp_num:8;
 	uint16_t rx_qp_id_ofst:12;
 	uint16_t rsv3:4;
 	uint8_t rsv4:7;
@@ -136,9 +138,13 @@ int xsc_dev_create_ipat(struct xsc_dev *xdev, uint16_t logic_in_port, uint16_t d
 int xsc_dev_get_ipat_vld(struct xsc_dev *xdev, uint16_t logic_in_port);
 int xsc_dev_destroy_ipat(struct xsc_dev *xdev, uint16_t logic_in_port);
 int xsc_dev_create_epat(struct xsc_dev *xdev, uint16_t dst_info, uint8_t dst_port,
-			uint16_t qpn_ofst, uint8_t qp_num, struct rte_eth_rss_conf *rss_conf);
+			uint16_t qpn_ofst, uint8_t qp_num, struct rte_eth_rss_conf *rss_conf,
+			uint8_t mac_filter_en, uint8_t *mac);
 int xsc_dev_vf_modify_epat(struct xsc_dev *xdev, uint16_t dst_info, uint16_t qpn_ofst,
-			   uint8_t qp_num, struct rte_eth_rss_conf *rss_conf);
+			   uint8_t qp_num, struct rte_eth_rss_conf *rss_conf,
+			   uint8_t mac_filter_en, uint8_t *mac);
+int xsc_dev_modify_epat_mac_filter(struct xsc_dev *xdev, uint16_t dst_info,
+				   uint8_t mac_filter_en);
 int xsc_dev_destroy_epat(struct xsc_dev *xdev, uint16_t dst_info);
 int xsc_dev_set_qpsetid(struct xsc_dev *xdev, uint32_t txqpn, uint16_t qp_set_id);
 int xsc_dev_create_vfos_baselp(struct xsc_dev *xdev);
