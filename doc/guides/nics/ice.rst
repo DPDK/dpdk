@@ -322,6 +322,19 @@ Runtime Configuration
 
     -a af:00.0,pps_out='[pin:0]'
 
+- ``Link state on close`` (default ``down``)
+
+  The user can request that the link be set to up or down
+  or restored to its original state when the device is closed::
+
+    -a af:00.0,link_state_on_close=<state>
+
+  Supported values for the ``<state>`` parameter:
+
+  * ``down``: Leave the link in the down state.
+  * ``up``: Leave the link in the up state.
+  * ``initial``: Restore the link to the state it was in when the device started.
+
 - ``Low Rx latency`` (default ``0``)
 
   vRAN workloads require low latency DPDK interface for the front haul

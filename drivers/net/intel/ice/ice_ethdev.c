@@ -41,6 +41,7 @@
 #define ICE_DDP_FILENAME_ARG      "ddp_pkg_file"
 #define ICE_DDP_LOAD_SCHED_ARG    "ddp_load_sched_topo"
 #define ICE_TM_LEVELS_ARG         "tm_sched_levels"
+#define ICE_LINK_STATE_ON_CLOSE   "link_state_on_close"
 
 #define ICE_CYCLECOUNTER_MASK  0xffffffffffffffffULL
 
@@ -57,6 +58,7 @@ static const char * const ice_valid_args[] = {
 	ICE_DDP_FILENAME_ARG,
 	ICE_DDP_LOAD_SCHED_ARG,
 	ICE_TM_LEVELS_ARG,
+	ICE_LINK_STATE_ON_CLOSE,
 	NULL
 };
 
@@ -85,6 +87,12 @@ static struct proto_xtr_ol_flag ice_proto_xtr_ol_flag_params[] = {
 		.param = { .name = "intel_pmd_dynflag_proto_xtr_tcp" }},
 	[PROTO_XTR_IP_OFFSET] = {
 		.param = { .name = "intel_pmd_dynflag_proto_xtr_ip_offset" }}
+};
+
+enum ice_link_state_on_close {
+	ICE_LINK_DOWN,
+	ICE_LINK_UP,
+	ICE_LINK_INITIAL,
 };
 
 #define ICE_OS_DEFAULT_PKG_NAME		"ICE OS Default Package"
@@ -2118,6 +2126,29 @@ parse_tx_sched_levels(const char *key, const char *value, void *args)
 }
 
 static int
+parse_link_state_on_close(const char *key, const char *value, void *args)
+{
+	int *state = args, ret = 0;
+
+	if (value == NULL || state == NULL)
+		return -EINVAL;
+
+	if (strcmp(value, "down") == 0) {
+		*state = ICE_LINK_DOWN;
+	} else if (strcmp(value, "up") == 0) {
+		*state = ICE_LINK_UP;
+	} else if (strcmp(value, "initial") == 0) {
+		*state = ICE_LINK_INITIAL;
+	} else {
+		ret = -EINVAL;
+		PMD_DRV_LOG(WARNING, "%s: Invalid value \"%s\", "
+				"should be \"down\" \"up\" or \"initial\"", key, value);
+	}
+
+	return ret;
+}
+
+static int
 lookup_pps_type(const char *pps_name)
 {
 	static struct {
@@ -2368,6 +2399,9 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 				 &parse_tx_sched_levels, &ad->devargs.tm_exposed_levels);
 	if (ret)
 		goto bail;
+
+	ret = rte_kvargs_process(kvlist, ICE_LINK_STATE_ON_CLOSE,
+				 &parse_link_state_on_close, &ad->devargs.link_state_on_close);
 
 bail:
 	rte_kvargs_free(kvlist);
@@ -2812,7 +2846,9 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	/* disable all queue interrupts */
 	ice_vsi_disable_queues_intr(main_vsi);
 
-	if (pf->init_link_up)
+	if (pf->adapter->devargs.link_state_on_close == ICE_LINK_UP ||
+			(pf->adapter->devargs.link_state_on_close == ICE_LINK_INITIAL &&
+				pf->init_link_up))
 		ice_dev_set_link_up(dev);
 	else
 		ice_dev_set_link_down(dev);
@@ -7255,7 +7291,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_DDP_FILENAME_ARG "=</path/to/file>"
 			      ICE_DDP_LOAD_SCHED_ARG "=<0|1>"
 			      ICE_TM_LEVELS_ARG "=<N>"
-			      ICE_RX_LOW_LATENCY_ARG "=<0|1>");
+			      ICE_RX_LOW_LATENCY_ARG "=<0|1>"
+			      ICE_LINK_STATE_ON_CLOSE "=<down|up|initial>");
 
 RTE_LOG_REGISTER_SUFFIX(ice_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(ice_logtype_driver, driver, NOTICE);
