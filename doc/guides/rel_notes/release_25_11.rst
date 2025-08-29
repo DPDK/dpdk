@@ -73,6 +73,7 @@ New Features
   * Added link status.
   * Added link event.
   * Added FEC get and set.
+  * Added multi-process per port.
   * Optimized code.
 
 

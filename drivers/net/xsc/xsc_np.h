@@ -148,13 +148,13 @@ int xsc_dev_modify_epat_mac_filter(struct xsc_dev *xdev, uint16_t dst_info,
 int xsc_dev_destroy_epat(struct xsc_dev *xdev, uint16_t dst_info);
 int xsc_dev_set_qpsetid(struct xsc_dev *xdev, uint32_t txqpn, uint16_t qp_set_id);
 int xsc_dev_create_vfos_baselp(struct xsc_dev *xdev);
-void xsc_dev_pct_uninit(void);
-int xsc_dev_pct_init(void);
-uint32_t xsc_dev_pct_idx_alloc(void);
-void xsc_dev_pct_idx_free(uint32_t pct_idx);
+void xsc_dev_pct_uninit(struct xsc_dev *xdev);
+int xsc_dev_pct_init(struct xsc_dev *xdev);
+uint32_t xsc_dev_pct_idx_alloc(struct xsc_dev *xdev);
+void xsc_dev_pct_idx_free(struct xsc_dev *xdev, uint32_t pct_idx);
 int xsc_dev_pct_entry_insert(struct xsc_dev_pct_list *pct_list,
 			     uint32_t logic_port, uint32_t pct_idx);
 struct xsc_dev_pct_entry *xsc_dev_pct_first_get(struct xsc_dev_pct_list *pct_list);
-int xsc_dev_pct_entry_remove(struct xsc_dev_pct_entry *pct_entry);
+int xsc_dev_pct_entry_remove(struct xsc_dev *xdev, struct xsc_dev_pct_entry *pct_entry);
 
 #endif /* _XSC_NP_H_ */

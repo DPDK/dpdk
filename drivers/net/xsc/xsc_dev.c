@@ -324,7 +324,7 @@ void
 xsc_dev_uninit(struct xsc_dev *xdev)
 {
 	PMD_INIT_FUNC_TRACE();
-	xsc_dev_pct_uninit();
+	xsc_dev_pct_uninit(xdev);
 	xsc_dev_close(xdev, XSC_DEV_REPR_ID_INVALID);
 	rte_free(xdev);
 }
@@ -363,7 +363,11 @@ xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **xdev)
 		goto hwinfo_init_fail;
 	}
 
-	ret = xsc_dev_pct_init();
+	ret = xsc_dev_mac_port_init(d);
+	if (ret)
+		goto hwinfo_init_fail;
+
+	ret = xsc_dev_pct_init(d);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to init xsc pct");
 		ret = -EINVAL;
@@ -687,5 +691,37 @@ xsc_dev_fec_set(struct xsc_dev *xdev, uint32_t mode)
 		return -rte_errno;
 	}
 
+	return 0;
+}
+
+int
+xsc_dev_mac_port_init(struct xsc_dev *xdev)
+{
+	uint32_t i;
+	uint8_t num = 0;
+	uint32_t mac_port = xdev->hwinfo.mac_phy_port;
+	uint8_t mac_bit = xdev->hwinfo.mac_bit;
+	uint8_t *mac_idx = &xdev->hwinfo.mac_port_idx;
+	uint8_t *mac_num = &xdev->hwinfo.mac_port_num;
+	uint8_t bit_sz = sizeof(mac_bit) * 8;
+
+	*mac_idx = 0xff;
+	for (i = 0; i < bit_sz; i++) {
+		if (mac_bit & (1U << i)) {
+			if (i == mac_port)
+				*mac_idx = num;
+			num++;
+		}
+	}
+	*mac_num = num;
+
+	if (*mac_num == 0 || *mac_idx == 0xff) {
+		PMD_DRV_LOG(ERR, "Failed to parse mac port %u index, mac bit 0x%x",
+			    mac_port, mac_bit);
+		return -1;
+	}
+
+	PMD_DRV_LOG(DEBUG, "Mac port num %u, mac port %u, mac index %u",
+		    *mac_num, mac_port, *mac_idx);
 	return 0;
 }

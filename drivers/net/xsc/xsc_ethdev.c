@@ -1091,7 +1091,7 @@ xsc_ethdev_uninit(struct rte_eth_dev *eth_dev)
 	}
 
 	ret |= xsc_ethdev_close(eth_dev);
-	xsc_dev_pct_uninit();
+	xsc_dev_pct_uninit(priv->xdev);
 	rte_free(priv->xdev);
 
 	return ret == 0 ? 0 : -EIO;

@@ -15,10 +15,8 @@
 #define XSC_LOGIC_PORT_MASK		0x07FF
 
 #define XSC_DEV_DEF_PCT_IDX_MIN		128
-#define XSC_DEV_DEF_PCT_IDX_MAX		138
-
-/* Each board has a PCT manager*/
-static struct xsc_dev_pct_mgr xsc_pct_mgr;
+#define XSC_DEV_DEF_PCT_IDX_MAX		191
+#define XSC_DEV_DEF_PCT_NUM		(XSC_DEV_DEF_PCT_IDX_MAX - XSC_DEV_DEF_PCT_IDX_MIN + 1)
 
 enum xsc_np_type {
 	XSC_NP_IPAT		= 0,
@@ -207,13 +205,13 @@ xsc_dev_create_pct(struct xsc_dev *xdev, int repr_id,
 	add.key.logical_in_port = logical_in_port & XSC_LOGIC_PORT_MASK;
 	add.mask.logical_in_port = XSC_LOGIC_PORT_MASK;
 	add.action.dst_info = dst_info;
-	add.pct_idx = xsc_dev_pct_idx_alloc();
+	add.pct_idx = xsc_dev_pct_idx_alloc(xdev);
 	if (add.pct_idx == XSC_DEV_PCT_IDX_INVALID)
 		return -1;
 
 	ret = xsc_dev_np_exec(xdev, &add, sizeof(add), XSC_NP_PCT_V4, XSC_NP_OP_ADD);
 	if (unlikely(ret != 0)) {
-		xsc_dev_pct_idx_free(add.pct_idx);
+		xsc_dev_pct_idx_free(xdev, add.pct_idx);
 		return -1;
 	}
 
@@ -248,7 +246,7 @@ xsc_dev_clear_pct(struct xsc_dev *xdev, int repr_id)
 
 	while ((pct_entry = xsc_dev_pct_first_get(pct_list)) != NULL) {
 		xsc_dev_destroy_pct(xdev, pct_entry->logic_port, pct_entry->pct_idx);
-		xsc_dev_pct_entry_remove(pct_entry);
+		xsc_dev_pct_entry_remove(xdev, pct_entry);
 	}
 }
 
@@ -404,23 +402,23 @@ xsc_dev_create_vfos_baselp(struct xsc_dev *xdev)
 }
 
 void
-xsc_dev_pct_uninit(void)
+xsc_dev_pct_uninit(struct xsc_dev *xdev)
 {
-	rte_free(xsc_pct_mgr.bmp_mem);
-	xsc_pct_mgr.bmp_mem = NULL;
+	rte_free(xdev->pct_mgr.bmp_mem);
+	xdev->pct_mgr.bmp_mem = NULL;
 }
 
 int
-xsc_dev_pct_init(void)
+xsc_dev_pct_init(struct xsc_dev *xdev)
 {
 	int ret;
 	uint8_t *bmp_mem;
 	uint32_t pos, pct_sz, bmp_sz;
 
-	if (xsc_pct_mgr.bmp_mem != NULL)
+	if (xdev->pct_mgr.bmp_mem != NULL)
 		return 0;
 
-	pct_sz = XSC_DEV_DEF_PCT_IDX_MAX - XSC_DEV_DEF_PCT_IDX_MIN + 1;
+	pct_sz = XSC_DEV_DEF_PCT_NUM / xdev->hwinfo.mac_port_num;
 	bmp_sz = rte_bitmap_get_memory_footprint(pct_sz);
 	bmp_mem = rte_zmalloc(NULL, bmp_sz, RTE_CACHE_LINE_SIZE);
 	if (bmp_mem == NULL) {
@@ -429,9 +427,9 @@ xsc_dev_pct_init(void)
 		goto pct_init_fail;
 	}
 
-	xsc_pct_mgr.bmp_mem = bmp_mem;
-	xsc_pct_mgr.bmp_pct = rte_bitmap_init(pct_sz, bmp_mem, bmp_sz);
-	if (xsc_pct_mgr.bmp_pct == NULL) {
+	xdev->pct_mgr.bmp_mem = bmp_mem;
+	xdev->pct_mgr.bmp_pct = rte_bitmap_init(pct_sz, bmp_mem, bmp_sz);
+	if (xdev->pct_mgr.bmp_pct == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to init pct bitmap");
 		ret = -EINVAL;
 		goto pct_init_fail;
@@ -439,27 +437,32 @@ xsc_dev_pct_init(void)
 
 	/* Mark all pct bitmap available */
 	for (pos = 0; pos < pct_sz; pos++)
-		rte_bitmap_set(xsc_pct_mgr.bmp_pct, pos);
+		rte_bitmap_set(xdev->pct_mgr.bmp_pct, pos);
 
 	return 0;
 
 pct_init_fail:
-	xsc_dev_pct_uninit();
+	xsc_dev_pct_uninit(xdev);
 	return ret;
 }
 
 uint32_t
-xsc_dev_pct_idx_alloc(void)
+xsc_dev_pct_idx_alloc(struct xsc_dev *xdev)
 {
 	int ret;
 	uint64_t slab = 0;
 	uint32_t pos = 0;
+	uint8_t mac_num = xdev->hwinfo.mac_port_num;
+	uint8_t mac_idx = xdev->hwinfo.mac_port_idx;
+	struct rte_bitmap *bmp_pct = xdev->pct_mgr.bmp_pct;
+	uint32_t pct_range = XSC_DEV_DEF_PCT_NUM / mac_num;
+	uint32_t pct_base = XSC_DEV_DEF_PCT_IDX_MIN + mac_idx * pct_range;
 
-	ret = rte_bitmap_scan(xsc_pct_mgr.bmp_pct, &pos, &slab);
+	ret = rte_bitmap_scan(bmp_pct, &pos, &slab);
 	if (ret != 0) {
 		pos += rte_bsf64(slab);
-		rte_bitmap_clear(xsc_pct_mgr.bmp_pct, pos);
-		return (pos + XSC_DEV_DEF_PCT_IDX_MIN);
+		rte_bitmap_clear(bmp_pct, pos);
+		return (pos + pct_base);
 	}
 
 	PMD_DRV_LOG(ERR, "Failed to alloc xsc pct idx");
@@ -467,9 +470,15 @@ xsc_dev_pct_idx_alloc(void)
 }
 
 void
-xsc_dev_pct_idx_free(uint32_t pct_idx)
+xsc_dev_pct_idx_free(struct xsc_dev *xdev, uint32_t pct_idx)
 {
-	rte_bitmap_set(xsc_pct_mgr.bmp_pct, pct_idx - XSC_DEV_DEF_PCT_IDX_MIN);
+	uint8_t mac_num = xdev->hwinfo.mac_port_num;
+	uint8_t mac_idx = xdev->hwinfo.mac_port_idx;
+	struct rte_bitmap *bmp_pct = xdev->pct_mgr.bmp_pct;
+	uint32_t pct_range = XSC_DEV_DEF_PCT_NUM / mac_num;
+	uint32_t pct_base = XSC_DEV_DEF_PCT_IDX_MIN + mac_idx * pct_range;
+
+	rte_bitmap_set(bmp_pct, pct_idx - pct_base);
 }
 
 int
@@ -501,12 +510,12 @@ xsc_dev_pct_first_get(struct xsc_dev_pct_list *pct_list)
 }
 
 int
-xsc_dev_pct_entry_remove(struct xsc_dev_pct_entry *pct_entry)
+xsc_dev_pct_entry_remove(struct xsc_dev *xdev, struct xsc_dev_pct_entry *pct_entry)
 {
 	if (pct_entry == NULL)
 		return -1;
 
-	xsc_dev_pct_idx_free(pct_entry->pct_idx);
+	xsc_dev_pct_idx_free(xdev, pct_entry->pct_idx);
 	LIST_REMOVE(pct_entry, next);
 	rte_free(pct_entry);
 
