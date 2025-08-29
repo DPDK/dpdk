@@ -845,6 +845,22 @@ exit:
 	return 0;
 }
 
+static int
+xsc_ethdev_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	return xsc_dev_fec_get(priv->xdev, fec_capa);
+}
+
+static int
+xsc_ethdev_fec_set(struct rte_eth_dev *dev, uint32_t mode)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	return xsc_dev_fec_set(priv->xdev, mode);
+}
+
 const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
 	.dev_start = xsc_ethdev_start,
@@ -868,6 +884,8 @@ const struct eth_dev_ops xsc_eth_dev_ops = {
 	.fw_version_get = xsc_ethdev_fw_version_get,
 	.get_module_info = xsc_ethdev_get_module_info,
 	.get_module_eeprom = xsc_ethdev_get_module_eeprom,
+	.fec_get = xsc_ethdev_fec_get,
+	.fec_set = xsc_ethdev_fec_set,
 };
 
 static int

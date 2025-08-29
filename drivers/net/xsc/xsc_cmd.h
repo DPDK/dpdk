@@ -28,6 +28,8 @@ enum xsc_cmd_opcode {
 	XSC_CMD_OP_MODIFY_RAW_QP		= 0x81f,
 	XSC_CMD_OP_QUERY_EVENT_TYPE		= 0x831,
 	XSC_CMD_OP_QUERY_LINK_INFO		= 0x832,
+	XSC_CMD_OP_QUERY_FEC_PARAM		= 0x835,
+	XSC_CMD_OP_MODIFY_FEC_PARAM		= 0x836,
 	XSC_CMD_OP_ENABLE_MSIX			= 0x850,
 	XSC_CMD_OP_EXEC_NP			= 0x900,
 	XSC_CMD_OP_SET_MTU			= 0x1100,
@@ -471,6 +473,28 @@ struct xsc_cmd_msix_table_info_mbox_out {
 	uint32_t addr_lo;
 	uint32_t addr_hi;
 	uint32_t data;
+};
+
+struct xsc_cmd_query_fecparam_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	uint8_t rsvd[2];
+};
+
+struct xsc_cmd_query_fecparam_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	uint32_t active_fec;
+	uint32_t fec_cfg;
+	uint32_t status;
+};
+
+struct xsc_cmd_modify_fecparam_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	uint32_t fec;
+};
+
+struct xsc_cmd_modify_fecparam_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	uint32_t status;
 };
 
 #endif /* _XSC_CMD_H_ */

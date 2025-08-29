@@ -614,3 +614,78 @@ xsc_dev_intr_handler_uninstall(struct xsc_dev *xdev)
 
 	return xdev->dev_ops->intr_handler_uninstall(xdev);
 }
+
+int
+xsc_dev_fec_get(struct xsc_dev *xdev, uint32_t *fec_capa)
+{
+	struct xsc_cmd_query_fecparam_mbox_in in = { };
+	struct xsc_cmd_query_fecparam_mbox_out out = { };
+	int ret = 0, fec;
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_QUERY_FEC_PARAM);
+	ret = xsc_dev_mailbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR, "Failed to get fec, ret=%d, status=%u",
+			    ret, out.hdr.status);
+		rte_errno = ENOEXEC;
+		return -rte_errno;
+	}
+
+	fec = rte_be_to_cpu_32(out.active_fec);
+	switch (fec) {
+	case XSC_DEV_FEC_OFF:
+		fec = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+		break;
+	case XSC_DEV_FEC_BASER:
+		fec = RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+		break;
+	case XSC_DEV_FEC_RS:
+		fec = RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		break;
+	default:
+		fec = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+		break;
+	}
+
+	*fec_capa = fec;
+
+	return 0;
+}
+
+int
+xsc_dev_fec_set(struct xsc_dev *xdev, uint32_t mode)
+{
+	struct xsc_cmd_modify_fecparam_mbox_in in = { };
+	struct xsc_cmd_modify_fecparam_mbox_out out = { };
+	int ret = 0;
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_MODIFY_FEC_PARAM);
+	switch (mode) {
+	case RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC):
+		mode = XSC_DEV_FEC_OFF;
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(AUTO):
+		mode = XSC_DEV_FEC_AUTO;
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(BASER):
+		mode = XSC_DEV_FEC_BASER;
+		break;
+	case RTE_ETH_FEC_MODE_CAPA_MASK(RS):
+		mode = XSC_DEV_FEC_RS;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Failed to set fec, fec mode %u not support", mode);
+		return 0;
+	}
+
+	in.fec = rte_cpu_to_be_32(mode);
+	ret = xsc_dev_mailbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR, "Failed to set fec param, ret=%d, status=%u",
+			    ret, out.hdr.status);
+		rte_errno = ENOEXEC;
+		return -rte_errno;
+	}
+
+	return 0;
+}
