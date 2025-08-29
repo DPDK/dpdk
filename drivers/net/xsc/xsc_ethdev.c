@@ -674,6 +674,14 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 	return 0;
 }
 
+static int
+xsc_ethdev_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	return xsc_dev_fw_version_get(priv->xdev, fw_version, fw_size);
+}
+
 const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
 	.dev_start = xsc_ethdev_start,
@@ -692,6 +700,7 @@ const struct eth_dev_ops xsc_eth_dev_ops = {
 	.mtu_set = xsc_ethdev_set_mtu,
 	.rss_hash_update = xsc_ethdev_rss_hash_update,
 	.rss_hash_conf_get = xsc_ethdev_rss_hash_conf_get,
+	.fw_version_get = xsc_ethdev_fw_version_get,
 };
 
 static int

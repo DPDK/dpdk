@@ -15,6 +15,7 @@
 #include <rte_kvargs.h>
 #include <rte_eal_paging.h>
 #include <rte_bitops.h>
+#include <rte_string_fns.h>
 
 #include "xsc_log.h"
 #include "xsc_defs.h"
@@ -397,4 +398,16 @@ xsc_dev_is_vf(struct xsc_dev *xdev)
 		return true;
 
 	return false;
+}
+
+int
+xsc_dev_fw_version_get(struct xsc_dev *xdev, char *fw_version, size_t fw_size)
+{
+	size_t size = strnlen(xdev->hwinfo.fw_ver, sizeof(xdev->hwinfo.fw_ver)) + 1;
+
+	if (fw_size < size)
+		return size;
+	rte_strlcpy(fw_version, xdev->hwinfo.fw_ver, fw_size);
+
+	return 0;
 }

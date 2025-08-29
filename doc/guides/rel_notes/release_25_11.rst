@@ -64,6 +64,10 @@ New Features
 
   * Enabled software taildrop for ordered queues.
 
+* **Updated Yunsilicon xsc ethernet driver.**
+
+  * Added FW version query.
+
 
 Removed Items
 -------------

@@ -27,6 +27,8 @@
 #define XSC_DEV_PCT_IDX_INVALID	0xFFFFFFFF
 #define XSC_DEV_REPR_ID_INVALID	0x7FFFFFFF
 
+#define XSC_FW_VERS_LEN			64
+
 enum xsc_queue_type {
 	XSC_QUEUE_TYPE_RDMA_RC		= 0,
 	XSC_QUEUE_TYPE_RDMA_MAD		= 1,
@@ -68,6 +70,7 @@ struct xsc_hwinfo {
 	uint8_t pct_compress_vld;
 	uint8_t mac_bit;
 	uint8_t esw_mode;
+	char fw_ver[XSC_FW_VERS_LEN];
 };
 
 struct xsc_devargs {
@@ -180,5 +183,6 @@ bool xsc_dev_is_vf(struct xsc_dev *xdev);
 int xsc_dev_qp_set_id_get(struct xsc_dev *xdev, int repr_id);
 int xsc_dev_set_mtu(struct xsc_dev *xdev, uint16_t mtu);
 int xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac);
+int xsc_dev_fw_version_get(struct xsc_dev *xdev, char *fw_version, size_t fw_size);
 
 #endif /* _XSC_DEV_H_ */
