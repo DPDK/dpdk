@@ -4,6 +4,7 @@
 
 #include <rte_dev_info.h>
 #include <ethdev_pci.h>
+#include <rte_interrupts.h>
 
 #include "xsc_log.h"
 #include "xsc_defs.h"
@@ -378,6 +379,8 @@ xsc_ethdev_close(struct rte_eth_dev *dev)
 	xsc_rxq_stop(dev);
 
 	rte_free(priv->rss_conf.rss_key);
+	if (!xsc_dev_is_vf(priv->xdev))
+		xsc_dev_intr_handler_uninstall(priv->xdev);
 	xsc_dev_close(priv->xdev, priv->representor_id);
 	dev->data->mac_addrs = NULL;
 	return 0;
@@ -1007,6 +1010,25 @@ destroy_reprs:
 	return ret;
 }
 
+static void
+xsc_ethdev_intr_handler(void *param)
+{
+	struct rte_eth_dev *eth_dev = param;
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(eth_dev);
+	int event_type;
+
+	event_type = xsc_dev_intr_event_get(priv->xdev);
+	switch (event_type) {
+	case XSC_EVENT_TYPE_CHANGE_LINK:
+		PMD_DRV_LOG(DEBUG, "Get intr event type=%04x", event_type);
+		xsc_ethdev_link_update(eth_dev, 0);
+		rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+		break;
+	default:
+		break;
+	}
+}
+
 static int
 xsc_ethdev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1029,6 +1051,14 @@ xsc_ethdev_init(struct rte_eth_dev *eth_dev)
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to initialize representors");
 		goto uninit_xsc_dev;
+	}
+
+	if (!xsc_dev_is_vf(priv->xdev)) {
+		ret = xsc_dev_intr_handler_install(priv->xdev, xsc_ethdev_intr_handler, eth_dev);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to install intr handler");
+			goto uninit_xsc_dev;
+		}
 	}
 
 	return 0;

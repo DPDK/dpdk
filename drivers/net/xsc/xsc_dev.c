@@ -587,3 +587,30 @@ xsc_dev_query_module_eeprom(struct xsc_dev *xdev, uint16_t offset,
 
 	return xsc_dev_query_mcia(xdev, &query, data);
 }
+
+int
+xsc_dev_intr_event_get(struct xsc_dev *xdev)
+{
+	if (xdev->dev_ops->intr_event_get == NULL)
+		return -ENOTSUP;
+
+	return xdev->dev_ops->intr_event_get(xdev);
+}
+
+int
+xsc_dev_intr_handler_install(struct xsc_dev *xdev, rte_intr_callback_fn cb, void *cb_arg)
+{
+	if (xdev->dev_ops->intr_handler_install == NULL)
+		return -ENOTSUP;
+
+	return xdev->dev_ops->intr_handler_install(xdev, cb, cb_arg);
+}
+
+int
+xsc_dev_intr_handler_uninstall(struct xsc_dev *xdev)
+{
+	if (xdev->dev_ops->intr_handler_uninstall == NULL)
+		return -ENOTSUP;
+
+	return xdev->dev_ops->intr_handler_uninstall(xdev);
+}

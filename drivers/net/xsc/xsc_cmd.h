@@ -26,7 +26,9 @@ enum xsc_cmd_opcode {
 	XSC_CMD_OP_ACCESS_REG			= 0x805,
 	XSC_CMD_OP_MODIFY_NIC_HCA		= 0x812,
 	XSC_CMD_OP_MODIFY_RAW_QP		= 0x81f,
+	XSC_CMD_OP_QUERY_EVENT_TYPE		= 0x831,
 	XSC_CMD_OP_QUERY_LINK_INFO		= 0x832,
+	XSC_CMD_OP_ENABLE_MSIX			= 0x850,
 	XSC_CMD_OP_EXEC_NP			= 0x900,
 	XSC_CMD_OP_SET_MTU			= 0x1100,
 	XSC_CMD_OP_QUERY_ETH_MAC		= 0X1101,
@@ -442,6 +444,33 @@ struct xsc_cmd_modify_linkinfo_mbox_in {
 struct xsc_cmd_modify_linkinfo_mbox_out {
 	struct xsc_cmd_outbox_hdr hdr;
 	uint32_t status;
+};
+
+struct xsc_cmd_event_resp {
+	uint8_t event_type;
+};
+
+struct xsc_cmd_event_query_type_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	uint8_t rsvd[2];
+};
+
+struct xsc_cmd_event_query_type_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	struct xsc_cmd_event_resp ctx;
+};
+
+struct xsc_cmd_msix_table_info_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	uint16_t index;
+	uint8_t rsvd[6];
+};
+
+struct xsc_cmd_msix_table_info_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	uint32_t addr_lo;
+	uint32_t addr_hi;
+	uint32_t data;
 };
 
 #endif /* _XSC_CMD_H_ */
