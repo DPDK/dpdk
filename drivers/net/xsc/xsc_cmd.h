@@ -15,20 +15,22 @@
 #define XSC_CMD_QUERY_HCA_CAP_V1	1
 
 enum xsc_cmd_opcode {
-	XSC_CMD_OP_QUERY_HCA_CAP	= 0x100,
-	XSC_CMD_OP_CREATE_CQ		= 0x400,
-	XSC_CMD_OP_DESTROY_CQ		= 0x401,
-	XSC_CMD_OP_CREATE_QP		= 0x500,
-	XSC_CMD_OP_DESTROY_QP		= 0x501,
-	XSC_CMD_OP_RTR2RTS_QP		= 0x504,
-	XSC_CMD_OP_QP_2RST		= 0x50A,
-	XSC_CMD_OP_CREATE_MULTI_QP	= 0x515,
-	XSC_CMD_OP_ACCESS_REG		= 0x805,
-	XSC_CMD_OP_MODIFY_NIC_HCA	= 0x812,
-	XSC_CMD_OP_MODIFY_RAW_QP	= 0x81f,
-	XSC_CMD_OP_EXEC_NP		= 0x900,
-	XSC_CMD_OP_SET_MTU		= 0x1100,
-	XSC_CMD_OP_QUERY_ETH_MAC	= 0X1101,
+	XSC_CMD_OP_QUERY_HCA_CAP		= 0x100,
+	XSC_CMD_OP_CREATE_CQ			= 0x400,
+	XSC_CMD_OP_DESTROY_CQ			= 0x401,
+	XSC_CMD_OP_CREATE_QP			= 0x500,
+	XSC_CMD_OP_DESTROY_QP			= 0x501,
+	XSC_CMD_OP_RTR2RTS_QP			= 0x504,
+	XSC_CMD_OP_QP_2RST			= 0x50A,
+	XSC_CMD_OP_CREATE_MULTI_QP		= 0x515,
+	XSC_CMD_OP_ACCESS_REG			= 0x805,
+	XSC_CMD_OP_MODIFY_NIC_HCA		= 0x812,
+	XSC_CMD_OP_MODIFY_RAW_QP		= 0x81f,
+	XSC_CMD_OP_QUERY_LINK_INFO		= 0x832,
+	XSC_CMD_OP_EXEC_NP			= 0x900,
+	XSC_CMD_OP_SET_MTU			= 0x1100,
+	XSC_CMD_OP_QUERY_ETH_MAC		= 0X1101,
+	XSC_CMD_OP_SET_PORT_ADMIN_STATUS	= 0x1801,
 	XSC_CMD_OP_MAX
 };
 
@@ -397,6 +399,49 @@ struct xsc_cmd_access_reg_mbox_out {
 	struct xsc_cmd_outbox_hdr hdr;
 	uint8_t rsvd[8];
 	rte_be32_t data[];
+};
+
+struct xsc_cmd_set_port_admin_status_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	uint16_t admin_status;
+};
+
+struct xsc_cmd_set_port_admin_status_mbox_out {
+	struct xsc_cmd_outbox_hdr  hdr;
+	uint32_t status;
+};
+
+struct xsc_cmd_query_linkinfo_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+};
+
+struct xsc_cmd_linkinfo {
+	uint8_t status; /*link status: 0-down, 1-up */
+	uint8_t port;
+	uint8_t duplex;
+	uint8_t autoneg;
+	rte_be32_t linkspeed;
+	rte_be64_t supported;
+	rte_be64_t advertising;
+	rte_be64_t supported_fec;
+	rte_be64_t advertised_fec;
+	rte_be64_t supported_speed[2];
+	rte_be64_t advertising_speed[2];
+};
+
+struct xsc_cmd_query_linkinfo_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	struct xsc_cmd_linkinfo ctx;
+};
+
+struct xsc_cmd_modify_linkinfo_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	struct xsc_cmd_linkinfo ctx;
+};
+
+struct xsc_cmd_modify_linkinfo_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	uint32_t status;
 };
 
 #endif /* _XSC_CMD_H_ */

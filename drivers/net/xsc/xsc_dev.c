@@ -64,30 +64,21 @@ xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
 }
 
 int
-xsc_dev_set_link_up(struct xsc_dev *xdev)
+xsc_dev_link_status_set(struct xsc_dev *xdev, uint16_t status)
 {
-	if (xdev->dev_ops->set_link_up == NULL)
+	if (xdev->dev_ops->link_status_set == NULL)
 		return -ENOTSUP;
 
-	return xdev->dev_ops->set_link_up(xdev);
+	return xdev->dev_ops->link_status_set(xdev, status);
 }
 
 int
-xsc_dev_set_link_down(struct xsc_dev *xdev)
+xsc_dev_link_get(struct xsc_dev *xdev, struct rte_eth_link *link)
 {
-	if (xdev->dev_ops->set_link_down == NULL)
+	if (xdev->dev_ops->link_get == NULL)
 		return -ENOTSUP;
 
-	return xdev->dev_ops->set_link_down(xdev);
-}
-
-int
-xsc_dev_link_update(struct xsc_dev *xdev, uint8_t funcid_type, int wait_to_complete)
-{
-	if (xdev->dev_ops->link_update == NULL)
-		return -ENOTSUP;
-
-	return xdev->dev_ops->link_update(xdev, funcid_type, wait_to_complete);
+	return xdev->dev_ops->link_get(xdev, link);
 }
 
 int
