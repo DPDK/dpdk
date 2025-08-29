@@ -886,7 +886,7 @@ xsc_ethdev_init_one_representor(struct rte_eth_dev *eth_dev, void *init_params)
 	struct xsc_repr_port *repr_port = (struct xsc_repr_port *)init_params;
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(eth_dev);
 	struct xsc_dev_config *config = &priv->config;
-	struct rte_ether_addr mac;
+	struct rte_ether_addr mac = priv->mac[0];
 
 	priv->repr_port = repr_port;
 	repr_port->drv_data = eth_dev;
