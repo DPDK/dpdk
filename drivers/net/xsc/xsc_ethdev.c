@@ -389,7 +389,9 @@ xsc_ethdev_set_link_up(struct rte_eth_dev *dev)
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
 	struct xsc_dev *xdev = priv->xdev;
 
-	return xsc_dev_set_link_up(xdev);
+	if (xsc_dev_is_vf(xdev))
+		return -ENOTSUP;
+	return xsc_dev_link_status_set(xdev, RTE_ETH_LINK_UP);
 }
 
 static int
@@ -398,24 +400,26 @@ xsc_ethdev_set_link_down(struct rte_eth_dev *dev)
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
 	struct xsc_dev *xdev = priv->xdev;
 
-	return xsc_dev_set_link_down(xdev);
+	if (xsc_dev_is_vf(xdev))
+		return -ENOTSUP;
+	return xsc_dev_link_status_set(xdev, RTE_ETH_LINK_DOWN);
 }
 
 static int
-xsc_ethdev_link_update(struct rte_eth_dev *dev,
-		       int wait_to_complete)
+xsc_ethdev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
 	struct xsc_dev *xdev = priv->xdev;
+	struct rte_eth_link link = { };
 	int ret = 0;
 
-	ret = xsc_dev_link_update(xdev, priv->funcid_type, wait_to_complete);
-	if (ret == 0) {
-		dev->data->dev_link = xdev->pf_dev_link;
-		dev->data->dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
-				  RTE_ETH_LINK_SPEED_FIXED);
-	}
-	return ret;
+	RTE_SET_USED(wait_to_complete);
+	ret = xsc_dev_link_get(xdev, &link);
+	if (ret != 0)
+		return ret;
+	rte_eth_linkstatus_set(dev, &link);
+
+	return 0;
 }
 
 static uint64_t
@@ -976,6 +980,14 @@ xsc_ethdev_init_representors(struct rte_eth_dev *eth_dev)
 					 repr_port);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Failed to create representor: %d", i);
+			goto destroy_reprs;
+		}
+	}
+
+	if (!xsc_dev_is_vf(priv->xdev)) {
+		ret = xsc_ethdev_set_link_up(eth_dev);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to set port %u link up", eth_dev->data->port_id);
 			goto destroy_reprs;
 		}
 	}

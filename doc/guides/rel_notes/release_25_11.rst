@@ -70,6 +70,7 @@ New Features
   * Added TSO support.
   * Added module EEPROM dump.
   * Added promiscuous mode.
+  * Added link status.
 
 
 Removed Items

@@ -31,6 +31,21 @@ enum xsc_cq_type {
 	XSC_CQ_TYPE_VIRTIO = 1,
 };
 
+enum xsc_speed_mode {
+	XSC_MODULE_SPEED_UNKNOWN,
+	XSC_MODULE_SPEED_10G,
+	XSC_MODULE_SPEED_25G,
+	XSC_MODULE_SPEED_40G_R4,
+	XSC_MODULE_SPEED_50G_R,
+	XSC_MODULE_SPEED_50G_R2,
+	XSC_MODULE_SPEED_100G_R2,
+	XSC_MODULE_SPEED_100G_R4,
+	XSC_MODULE_SPEED_200G_R4,
+	XSC_MODULE_SPEED_200G_R8,
+	XSC_MODULE_SPEED_400G_R8,
+	XSC_MODULE_SPEED_MAX,
+};
+
 struct xsc_vfio_cq {
 	const struct rte_memzone *mz;
 	struct xsc_dev *xdev;
@@ -41,6 +56,20 @@ struct xsc_vfio_qp {
 	const struct rte_memzone *mz;
 	struct xsc_dev *xdev;
 	uint32_t	qpn;
+};
+
+static const uint32_t xsc_link_speed[] = {
+	[XSC_MODULE_SPEED_UNKNOWN]  = RTE_ETH_SPEED_NUM_UNKNOWN,
+	[XSC_MODULE_SPEED_10G]      = RTE_ETH_SPEED_NUM_10G,
+	[XSC_MODULE_SPEED_25G]      = RTE_ETH_SPEED_NUM_25G,
+	[XSC_MODULE_SPEED_40G_R4]   = RTE_ETH_SPEED_NUM_40G,
+	[XSC_MODULE_SPEED_50G_R]    = RTE_ETH_SPEED_NUM_50G,
+	[XSC_MODULE_SPEED_50G_R2]   = RTE_ETH_SPEED_NUM_50G,
+	[XSC_MODULE_SPEED_100G_R2]  = RTE_ETH_SPEED_NUM_100G,
+	[XSC_MODULE_SPEED_100G_R4]  = RTE_ETH_SPEED_NUM_100G,
+	[XSC_MODULE_SPEED_200G_R4]  = RTE_ETH_SPEED_NUM_200G,
+	[XSC_MODULE_SPEED_200G_R8]  = RTE_ETH_SPEED_NUM_200G,
+	[XSC_MODULE_SPEED_400G_R8]  = RTE_ETH_SPEED_NUM_400G,
 };
 
 static void
@@ -332,6 +361,71 @@ xsc_vfio_get_mac(struct xsc_dev *xdev, uint8_t *mac)
 
 	return 0;
 }
+
+static int
+xsc_vfio_modify_link_status(struct xsc_dev *xdev, uint16_t status)
+{
+	struct xsc_cmd_set_port_admin_status_mbox_in in = { };
+	struct xsc_cmd_set_port_admin_status_mbox_out out = { };
+	int ret = 0;
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_SET_PORT_ADMIN_STATUS);
+	in.admin_status = rte_cpu_to_be_16(status);
+
+	ret = xsc_vfio_mbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR, "Failed to set link status, ret=%d, status=%d",
+			    ret, out.hdr.status);
+		return -ENOEXEC;
+	}
+
+	return ret;
+}
+
+static int
+xsc_vfio_link_status_set(struct xsc_dev *xdev, uint16_t status)
+{
+	if (status != RTE_ETH_LINK_UP && status != RTE_ETH_LINK_DOWN)
+		return -EINVAL;
+
+	return xsc_vfio_modify_link_status(xdev, status);
+}
+
+static uint32_t
+xsc_vfio_link_speed_translate(uint32_t mode)
+{
+	if (mode >= XSC_MODULE_SPEED_MAX)
+		return RTE_ETH_SPEED_NUM_NONE;
+
+	return xsc_link_speed[mode];
+}
+
+static int
+xsc_vfio_link_get(struct xsc_dev *xdev, struct rte_eth_link *link)
+{
+	struct xsc_cmd_query_linkinfo_mbox_in in = { };
+	struct xsc_cmd_query_linkinfo_mbox_out out = { };
+	struct xsc_cmd_linkinfo linkinfo;
+	int  ret;
+	uint32_t speed_mode;
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_QUERY_LINK_INFO);
+	ret = xsc_vfio_mbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR, "Failed to get link info, ret=%d, status=%d",
+			    ret, out.hdr.status);
+		return -ENOEXEC;
+	}
+
+	linkinfo = out.ctx;
+	link->link_status = linkinfo.status ? RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
+	speed_mode = rte_be_to_cpu_32(linkinfo.linkspeed);
+	link->link_speed = xsc_vfio_link_speed_translate(speed_mode);
+	link->link_duplex = linkinfo.duplex;
+	link->link_autoneg =  linkinfo.autoneg;
+
+	return 0;
+};
 
 static int
 xsc_vfio_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcode)
@@ -770,6 +864,8 @@ static struct xsc_dev_ops *xsc_vfio_ops = &(struct xsc_dev_ops) {
 	.dev_close = xsc_vfio_dev_close,
 	.set_mtu = xsc_vfio_set_mtu,
 	.get_mac = xsc_vfio_get_mac,
+	.link_status_set = xsc_vfio_link_status_set,
+	.link_get = xsc_vfio_link_get,
 	.destroy_qp = xsc_vfio_destroy_qp,
 	.destroy_cq = xsc_vfio_destroy_cq,
 	.modify_qp_status = xsc_vfio_modify_qp_status,
