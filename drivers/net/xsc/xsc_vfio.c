@@ -562,7 +562,7 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 		PMD_DRV_LOG(WARNING, "Port %u rxq %u: cq numa_node=%u, device numa_node=%u",
 			    port_id, idx, cq_params->socket_id, numa_node);
 
-	cqe_n = cq_params->wqe_s;
+	cqe_n = cq_params->wqe_s * 2;
 	log_cq_sz = rte_log2_u32(cqe_n);
 	cqe_total_sz = cqe_n * sizeof(struct xsc_cqe);
 	pa_num = (cqe_total_sz + XSC_PAGE_SIZE - 1) / XSC_PAGE_SIZE;

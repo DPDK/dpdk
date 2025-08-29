@@ -83,6 +83,16 @@ xsc_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	int cqe_msg_len = 0;
 	volatile struct xsc_cqe_u64 *cqe_u64 = NULL;
 	struct rte_mbuf *rep;
+	uint16_t cq_pi;
+	uint16_t cqe_pkts_n = 0;
+
+	if (rxq->cq_pi != NULL) {
+		cq_pi = (*(volatile uint32_t *)(rxq->cq_pi)) & 0xFFFF;
+		if (cq_pi == rxq->cq_ci)
+			return 0;
+		cqe_pkts_n = (uint16_t)((cq_pi - rxq->cq_ci) & 0xFFFF);
+		pkts_n = pkts_n < cqe_pkts_n ? pkts_n : cqe_pkts_n;
+	}
 
 	while (pkts_n) {
 		uint32_t idx = rq_ci & wqe_m;
@@ -463,12 +473,16 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 		}
 
 		rxq_data->wqes = rxq_data->rq_pas->addr;
-		if (!xsc_dev_is_vf(xdev))
+		if (!xsc_dev_is_vf(xdev)) {
 			rxq_data->rq_db = (uint32_t *)((uint8_t *)xdev->bar_addr +
 					  XSC_PF_RX_DB_ADDR);
-		else
+			rxq_data->cq_pi = (uint32_t *)((uint8_t *)xdev->bar_addr +
+					  XSC_PF_CQ_PID_START_ADDR + rxq_data->cqn * 4);
+		} else {
 			rxq_data->rq_db = (uint32_t *)((uint8_t *)xdev->bar_addr +
 					  XSC_VF_RX_DB_ADDR);
+			rxq_data->cq_pi = NULL;
+		}
 
 		rxq_data->qpn = rqn_base + i;
 		xsc_dev_modify_qp_status(xdev, rxq_data->qpn, 1, XSC_CMD_OP_RTR2RTS_QP);
