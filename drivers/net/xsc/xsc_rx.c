@@ -383,12 +383,17 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	struct xsc_cmd_create_qp_request *req, *info;
 	struct xsc_hwinfo *hwinfo = &xdev->hwinfo;
 	char name[RTE_ETH_NAME_MAX_LEN] = { 0 };
+	uint32_t numa_node = priv->eth_dev->device->numa_node;
 
 	rxq_data = xsc_rxq_get(priv, 0);
 	if (rxq_data == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
+
+	if (numa_node != rxq_data->socket)
+		PMD_DRV_LOG(WARNING, "Port %u: rxq numa_node=%u, device numa_node=%u",
+			    port_id, rxq_data->socket, numa_node);
 
 	log_ele = rte_log2_u32(sizeof(struct xsc_wqe_data_seg));
 	wqe_n = rxq_data->wqe_s;
@@ -429,8 +434,9 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 		snprintf(name, sizeof(name), "wqe_mem_rx_%d_%d", port_id, i);
 		rxq_data->rq_pas = rte_memzone_reserve_aligned(name,
 							       (XSC_PAGE_SIZE * pa_num),
-							       SOCKET_ID_ANY,
-							       0, XSC_PAGE_SIZE);
+							       rxq_data->socket,
+							       RTE_MEMZONE_IOVA_CONTIG,
+							       XSC_PAGE_SIZE);
 		if (rxq_data->rq_pas == NULL) {
 			rte_errno = ENOMEM;
 			PMD_DRV_LOG(ERR, "Failed to alloc rxq pas memory");
@@ -519,6 +525,7 @@ xsc_rxq_rss_obj_new(struct xsc_ethdev_priv *priv, uint16_t port_id)
 		cq_params.port_id = rxq_data->port_id;
 		cq_params.qp_id = rxq_data->idx;
 		cq_params.wqe_s = rxq_data->wqe_s;
+		cq_params.socket_id = rxq_data->socket;
 
 		ret = xsc_dev_rx_cq_create(xdev, &cq_params, &cq_info);
 		if (ret) {

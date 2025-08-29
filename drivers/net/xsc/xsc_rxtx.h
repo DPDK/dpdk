@@ -124,6 +124,7 @@ struct xsc_tx_cq_params {
 	uint16_t port_id;
 	uint16_t qp_id;
 	uint16_t elts_n;
+	int socket_id;
 };
 
 struct xsc_tx_cq_info {
@@ -141,6 +142,7 @@ struct xsc_tx_qp_params {
 	uint16_t port_id;
 	uint16_t qp_id;
 	uint16_t elts_n;
+	int socket_id;
 };
 
 struct xsc_tx_qp_info {
@@ -165,6 +167,7 @@ struct xsc_rx_cq_params {
 	uint16_t port_id;
 	uint16_t qp_id;
 	uint16_t wqe_s;
+	int socket_id;
 };
 
 struct xsc_rx_cq_info {
