@@ -2,6 +2,7 @@
  * Copyright 2025 Yunsilicon Technology Co., Ltd.
  */
 
+#include <rte_dev_info.h>
 #include <ethdev_pci.h>
 
 #include "xsc_log.h"
@@ -681,6 +682,110 @@ xsc_ethdev_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_s
 	return xsc_dev_fw_version_get(priv->xdev, fw_version, fw_size);
 }
 
+static int
+xsc_ethdev_get_module_info(struct rte_eth_dev *dev,
+			   struct rte_eth_dev_module_info *modinfo)
+{
+	int size_read = 0;
+	uint8_t data[4] = { 0 };
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	size_read = xsc_dev_query_module_eeprom(priv->xdev, 0, 3, data);
+	if (size_read < 3)
+		return -1;
+
+	/* data[0] = identifier byte */
+	switch (data[0]) {
+	case XSC_MODULE_ID_QSFP:
+		modinfo->type       = RTE_ETH_MODULE_SFF_8436;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_MAX_LEN;
+		break;
+	case XSC_MODULE_ID_QSFP_PLUS:
+	case XSC_MODULE_ID_QSFP28:
+		/* data[1] = revision id */
+		if (data[0] == XSC_MODULE_ID_QSFP28 || data[1] >= 0x3) {
+			modinfo->type       = RTE_ETH_MODULE_SFF_8636;
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_MAX_LEN;
+		} else {
+			modinfo->type       = RTE_ETH_MODULE_SFF_8436;
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8436_MAX_LEN;
+		}
+		break;
+	case XSC_MODULE_ID_SFP:
+		modinfo->type       = RTE_ETH_MODULE_SFF_8472;
+		modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+		break;
+	case XSC_MODULE_ID_QSFP_DD:
+	case XSC_MODULE_ID_DSFP:
+	case XSC_MODULE_ID_QSFP_PLUS_CMIS:
+		modinfo->type       = RTE_ETH_MODULE_SFF_8636;
+		/* Verify if module EEPROM is a flat memory. In case of flat
+		 * memory only page 00h (0-255 bytes) can be read. Otherwise
+		 * upper pages 01h and 02h can also be read. Upper pages 10h
+		 * and 11h are currently not supported by the driver.
+		 */
+		if (data[2] & 0x80)
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8636_LEN;
+		else
+			modinfo->eeprom_len = RTE_ETH_MODULE_SFF_8472_LEN;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Cable type 0x%x not recognized",
+			    data[0]);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+xsc_ethdev_get_module_eeprom(struct rte_eth_dev *dev,
+			     struct rte_dev_eeprom_info *info)
+{
+	uint32_t i = 0;
+	uint8_t *data;
+	int size_read;
+	uint32_t offset = info->offset;
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	if (info->length == 0) {
+		PMD_DRV_LOG(ERR, "Failed to get module eeprom, eeprom length is 0");
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	data = malloc(info->length);
+	if (data == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to get module eeprom, cannot allocate memory");
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	memset(data, 0, info->length);
+
+	while (i < info->length) {
+		size_read = xsc_dev_query_module_eeprom(priv->xdev, offset,
+							info->length - i, data + i);
+		if (!size_read)
+			/* Done reading */
+			goto exit;
+
+		if (size_read < 0) {
+			PMD_DRV_LOG(ERR, "Failed to get module eeprom, size read=%d",
+				    size_read);
+			goto exit;
+		}
+
+		i += size_read;
+		offset += size_read;
+	}
+
+	memcpy(info->data, data, info->length);
+
+exit:
+	free(data);
+	return 0;
+}
+
 const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
 	.dev_start = xsc_ethdev_start,
@@ -700,6 +805,8 @@ const struct eth_dev_ops xsc_eth_dev_ops = {
 	.rss_hash_update = xsc_ethdev_rss_hash_update,
 	.rss_hash_conf_get = xsc_ethdev_rss_hash_conf_get,
 	.fw_version_get = xsc_ethdev_fw_version_get,
+	.get_module_info = xsc_ethdev_get_module_info,
+	.get_module_eeprom = xsc_ethdev_get_module_eeprom,
 };
 
 static int

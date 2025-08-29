@@ -23,6 +23,7 @@ enum xsc_cmd_opcode {
 	XSC_CMD_OP_RTR2RTS_QP		= 0x504,
 	XSC_CMD_OP_QP_2RST		= 0x50A,
 	XSC_CMD_OP_CREATE_MULTI_QP	= 0x515,
+	XSC_CMD_OP_ACCESS_REG		= 0x805,
 	XSC_CMD_OP_MODIFY_NIC_HCA	= 0x812,
 	XSC_CMD_OP_MODIFY_RAW_QP	= 0x81f,
 	XSC_CMD_OP_EXEC_NP		= 0x900,
@@ -382,6 +383,20 @@ struct xsc_cmd_modify_nic_hca_mbox_in {
 struct xsc_cmd_modify_nic_hca_mbox_out {
 	struct xsc_cmd_outbox_hdr hdr;
 	uint8_t rsvd[4];
+};
+
+struct xsc_cmd_access_reg_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	uint8_t rsvd0[2];
+	rte_be16_t register_id;
+	rte_be32_t arg;
+	rte_be32_t data[];
+};
+
+struct xsc_cmd_access_reg_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	uint8_t rsvd[8];
+	rte_be32_t data[];
 };
 
 #endif /* _XSC_CMD_H_ */
