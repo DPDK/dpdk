@@ -31,6 +31,7 @@ struct __rte_cache_aligned xsc_rxq_data {
 	uint16_t rsv0:4;
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
+	volatile uint32_t *cq_pi;
 	uint32_t rq_ci;
 	uint32_t rq_pi;
 	uint16_t cq_ci;

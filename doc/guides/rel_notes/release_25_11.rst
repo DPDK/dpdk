@@ -73,6 +73,7 @@ New Features
   * Added link status.
   * Added link event.
   * Added FEC get and set.
+  * Optimized code.
 
 
 Removed Items
