@@ -721,8 +721,6 @@ error:
  *   Netlink socket file descriptor.
  * @param[in] iface_idx
  *   Net device interface index.
- * @param mac_own
- *   BITFIELD_DECLARE array to store the mac.
  * @param mac
  *   MAC address to register.
  * @param index
@@ -734,8 +732,7 @@ error:
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_add)
 int
 mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
-		     uint64_t *mac_own, struct rte_ether_addr *mac,
-		     uint32_t index)
+		     struct rte_ether_addr *mac, uint32_t index)
 {
 	int ret;
 
@@ -744,8 +741,6 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
 		MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
 		if (index >= MLX5_MAX_MAC_ADDRESSES)
 			return -EINVAL;
-
-		BITFIELD_SET(mac_own, index);
 	}
 	if (ret == -EEXIST)
 		return 0;
@@ -759,8 +754,6 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
  *   Netlink socket file descriptor.
  * @param[in] iface_idx
  *   Net device interface index.
- * @param mac_own
- *   BITFIELD_DECLARE array to store the mac.
  * @param mac
  *   MAC address to remove.
  * @param index
@@ -771,14 +764,13 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
  */
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_remove)
 int
-mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx, uint64_t *mac_own,
+mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx,
 			struct rte_ether_addr *mac, uint32_t index)
 {
 	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
 	if (index >= MLX5_MAX_MAC_ADDRESSES)
 		return -EINVAL;
 
-	BITFIELD_RESET(mac_own, index);
 	return mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 0);
 }
 
@@ -850,12 +842,14 @@ mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
  *   @p mac_addrs array size.
  * @param mac_own
  *   BITFIELD_DECLARE array to store the mac.
+ * @param vf
+ *   Flag for a VF device.
  */
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_flush)
 void
 mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
 		       struct rte_ether_addr *mac_addrs, int n,
-		       uint64_t *mac_own)
+		       uint64_t *mac_own, bool vf)
 {
 	int i;
 
@@ -865,9 +859,13 @@ mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
 	for (i = n - 1; i >= 0; --i) {
 		struct rte_ether_addr *m = &mac_addrs[i];
 
-		if (BITFIELD_ISSET(mac_own, i))
-			mlx5_nl_mac_addr_remove(nlsk_fd, iface_idx, mac_own, m,
-						i);
+		if (BITFIELD_ISSET(mac_own, i)) {
+			if (vf)
+				mlx5_nl_mac_addr_remove(nlsk_fd,
+							iface_idx,
+							m, i);
+			BITFIELD_RESET(mac_own, i);
+		}
 	}
 }
 
