@@ -649,6 +649,7 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	uint64_t iova;
 	char name[RTE_ETH_NAME_MAX_LEN] = {0};
 	void *cmd_buf = NULL;
+	bool tso_en = !!(qp_params->tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO);
 
 	qp = rte_zmalloc(NULL, sizeof(struct xsc_vfio_qp), 0);
 	if (qp == NULL) {
@@ -689,7 +690,7 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_CREATE_QP);
 	in->req.input_qpn = 0;
 	in->req.pa_num = rte_cpu_to_be_16(pa_num);
-	in->req.qp_type = XSC_QUEUE_TYPE_RAW_TX;
+	in->req.qp_type = tso_en ? XSC_QUEUE_TYPE_RAW_TSO : XSC_QUEUE_TYPE_RAW_TX;
 	in->req.log_sq_sz = log_sq_sz;
 	in->req.log_rq_sz = log_rq_sz;
 	in->req.dma_direct = 0;
@@ -717,6 +718,7 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	qp_info->qpn = qp->qpn;
 	qp_info->wqes = (struct xsc_wqe *)qp->mz->addr;
 	qp_info->wqe_n = rte_log2_u32(wqe_s);
+	qp_info->tso_en = tso_en ? 1 : 0;
 
 	if (xsc_dev_is_vf(xdev))
 		qp_info->qp_db = (uint32_t *)((uint8_t *)xdev->bar_addr + XSC_VF_TX_DB_ADDR);

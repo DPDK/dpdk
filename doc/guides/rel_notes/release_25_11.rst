@@ -67,6 +67,7 @@ New Features
 * **Updated Yunsilicon xsc ethernet driver.**
 
   * Added FW version query.
+  * Added TSO support.
 
 
 Removed Items
