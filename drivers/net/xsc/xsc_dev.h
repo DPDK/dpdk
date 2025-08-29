@@ -28,6 +28,12 @@
 #define XSC_DEV_REPR_ID_INVALID	0x7FFFFFFF
 
 #define XSC_FW_VERS_LEN			64
+#define XSC_DWORD_LEN			0x20
+#define XSC_I2C_ADDR_LOW		0x50
+#define XSC_I2C_ADDR_HIGH		0x51
+#define XSC_EEPROM_PAGE_LENGTH		256
+#define XSC_EEPROM_HIGH_PAGE_LENGTH	128
+#define XSC_EEPROM_MAX_BYTES		32
 
 enum xsc_queue_type {
 	XSC_QUEUE_TYPE_RDMA_RC		= 0,
@@ -39,6 +45,31 @@ enum xsc_queue_type {
 	XSC_QUEUE_TYPE_RAW_TSO		= 6,
 	XSC_QUEUE_TYPE_RAW_TX		= 7,
 	XSC_QUEUE_TYPE_INVALID		= 0xFF,
+};
+
+enum xsc_reg_type {
+	XSC_REG_PMLP			= 0x0,
+	XSC_REG_PCAP			= 0x5001,
+	XSC_REG_PMTU			= 0x5003,
+	XSC_REG_PTYS			= 0x5004,
+	XSC_REG_PAOS			= 0x5006,
+	XSC_REG_PMAOS			= 0x5012,
+	XSC_REG_PUDE			= 0x5009,
+	XSC_REG_PMPE			= 0x5010,
+	XSC_REG_PELC			= 0x500e,
+	XSC_REG_NODE_DESC		= 0x6001,
+	XSC_REG_HOST_ENDIANNESS		= 0x7004,
+	XSC_REG_MCIA			= 0x9014,
+};
+
+enum xsc_module_id {
+	XSC_MODULE_ID_SFP		= 0x3,
+	XSC_MODULE_ID_QSFP		= 0xC,
+	XSC_MODULE_ID_QSFP_PLUS		= 0xD,
+	XSC_MODULE_ID_QSFP28		= 0x11,
+	XSC_MODULE_ID_QSFP_DD		= 0x18,
+	XSC_MODULE_ID_DSFP		= 0x1B,
+	XSC_MODULE_ID_QSFP_PLUS_CMIS	= 0x1E,
 };
 
 struct xsc_hwinfo {
@@ -132,6 +163,36 @@ struct xsc_dev {
 	int ctrl_fd;
 };
 
+struct xsc_module_eeprom_query_params {
+	uint16_t size;
+	uint16_t offset;
+	uint16_t i2c_address;
+	uint32_t page;
+	uint32_t bank;
+	uint32_t module_number;
+};
+
+struct xsc_dev_reg_mcia {
+	uint8_t module;
+	uint8_t status;
+	uint8_t i2c_device_address;
+	uint8_t page_number;
+	uint8_t device_address;
+	uint8_t size;
+	uint8_t dword_0[XSC_DWORD_LEN];
+	uint8_t dword_1[XSC_DWORD_LEN];
+	uint8_t dword_2[XSC_DWORD_LEN];
+	uint8_t dword_3[XSC_DWORD_LEN];
+	uint8_t dword_4[XSC_DWORD_LEN];
+	uint8_t dword_5[XSC_DWORD_LEN];
+	uint8_t dword_6[XSC_DWORD_LEN];
+	uint8_t dword_7[XSC_DWORD_LEN];
+	uint8_t dword_8[XSC_DWORD_LEN];
+	uint8_t dword_9[XSC_DWORD_LEN];
+	uint8_t dword_10[XSC_DWORD_LEN];
+	uint8_t dword_11[XSC_DWORD_LEN];
+};
+
 struct xsc_dev_ops {
 	TAILQ_ENTRY(xsc_dev_ops) entry;
 	enum rte_pci_kernel_driver kdrv;
@@ -184,5 +245,7 @@ int xsc_dev_qp_set_id_get(struct xsc_dev *xdev, int repr_id);
 int xsc_dev_set_mtu(struct xsc_dev *xdev, uint16_t mtu);
 int xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac);
 int xsc_dev_fw_version_get(struct xsc_dev *xdev, char *fw_version, size_t fw_size);
+int xsc_dev_query_module_eeprom(struct xsc_dev *xdev, uint16_t offset,
+				uint16_t size, uint8_t *data);
 
 #endif /* _XSC_DEV_H_ */

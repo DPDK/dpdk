@@ -411,3 +411,188 @@ xsc_dev_fw_version_get(struct xsc_dev *xdev, char *fw_version, size_t fw_size)
 
 	return 0;
 }
+
+static int
+xsc_dev_access_reg(struct xsc_dev *xdev, void *data_in, int size_in,
+		   void *data_out, int size_out, uint16_t reg_num)
+{
+	struct xsc_cmd_access_reg_mbox_in *in;
+	struct xsc_cmd_access_reg_mbox_out *out;
+	int ret = -1;
+
+	in = malloc(sizeof(*in) + size_in);
+	if (in == NULL) {
+		rte_errno = ENOMEM;
+		PMD_DRV_LOG(ERR, "Failed to malloc access reg mbox in memory");
+		return -rte_errno;
+	}
+	memset(in, 0, sizeof(*in) + size_in);
+
+	out = malloc(sizeof(*out) + size_out);
+	if (out == NULL) {
+		rte_errno = ENOMEM;
+		PMD_DRV_LOG(ERR, "Failed to malloc access reg mbox out memory");
+		goto alloc_out_fail;
+	}
+	memset(out, 0, sizeof(*out) + size_out);
+
+	memcpy(in->data, data_in, size_in);
+	in->hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_ACCESS_REG);
+	in->arg = 0;
+	in->register_id = rte_cpu_to_be_16(reg_num);
+
+	ret = xsc_dev_mailbox_exec(xdev, in, sizeof(*in) + size_in, out,
+				   sizeof(*out) + size_out);
+	if (ret != 0 || out->hdr.status != 0) {
+		rte_errno = ENOEXEC;
+		PMD_DRV_LOG(ERR, "Failed to access reg");
+		goto exit;
+	}
+
+	memcpy(data_out, out->data, size_out);
+
+exit:
+	free(out);
+
+alloc_out_fail:
+	free(in);
+	return ret;
+}
+
+static int
+xsc_dev_query_mcia(struct xsc_dev *xdev,
+		   struct xsc_module_eeprom_query_params *params,
+		   uint8_t *data)
+{
+	struct xsc_dev_reg_mcia in = { };
+	struct xsc_dev_reg_mcia out = { };
+	int ret;
+	void *ptr;
+	uint16_t size;
+
+	size = RTE_MIN(params->size, XSC_EEPROM_MAX_BYTES);
+	in.i2c_device_address = params->i2c_address;
+	in.module = params->module_number & 0x000000FF;
+	in.device_address = params->offset;
+	in.page_number = params->page;
+	in.size = size;
+
+	ret = xsc_dev_access_reg(xdev, &in, sizeof(in), &out, sizeof(out), XSC_REG_MCIA);
+	if (ret != 0)
+		return ret;
+
+	ptr = out.dword_0;
+	memcpy(data, ptr, size);
+
+	return size;
+}
+
+static void
+xsc_dev_sfp_eeprom_params_set(uint16_t *i2c_addr, uint32_t *page_num, uint16_t *offset)
+{
+	*i2c_addr = XSC_I2C_ADDR_LOW;
+	*page_num = 0;
+
+	if (*offset < XSC_EEPROM_PAGE_LENGTH)
+		return;
+
+	*i2c_addr = XSC_I2C_ADDR_HIGH;
+	*offset -= XSC_EEPROM_PAGE_LENGTH;
+}
+
+static int
+xsc_dev_qsfp_eeprom_page(uint16_t offset)
+{
+	if (offset < XSC_EEPROM_PAGE_LENGTH)
+		/* Addresses between 0-255 - page 00 */
+		return 0;
+
+	/*
+	 * Addresses between 256 - 639 belongs to pages 01, 02 and 03
+	 * For example, offset = 400 belongs to page 02:
+	 * 1 + ((400 - 256)/128) = 2
+	 */
+	return 1 + ((offset - XSC_EEPROM_PAGE_LENGTH) / XSC_EEPROM_HIGH_PAGE_LENGTH);
+}
+
+static int
+xsc_dev_qsfp_eeprom_high_page_offset(int page_num)
+{
+	/* Page 0 always start from low page */
+	if (!page_num)
+		return 0;
+
+	/* High page */
+	return page_num * XSC_EEPROM_HIGH_PAGE_LENGTH;
+}
+
+static void
+xsc_dev_qsfp_eeprom_params_set(uint16_t *i2c_addr, uint32_t *page_num, uint16_t *offset)
+{
+	*i2c_addr = XSC_I2C_ADDR_LOW;
+	*page_num = xsc_dev_qsfp_eeprom_page(*offset);
+	*offset -=  xsc_dev_qsfp_eeprom_high_page_offset(*page_num);
+}
+
+static int
+xsc_dev_query_module_id(struct xsc_dev *xdev, uint32_t module_num, uint8_t *module_id)
+{
+	struct xsc_dev_reg_mcia in = { 0 };
+	struct xsc_dev_reg_mcia out = { 0 };
+	int ret;
+	uint8_t *ptr;
+
+	in.i2c_device_address = XSC_I2C_ADDR_LOW;
+	in.module = module_num & 0x000000FF;
+	in.device_address = 0;
+	in.page_number = 0;
+	in.size = 1;
+
+	ret = xsc_dev_access_reg(xdev, &in, sizeof(in), &out, sizeof(out), XSC_REG_MCIA);
+	if (ret != 0)
+		return ret;
+
+	ptr = out.dword_0;
+	*module_id = ptr[0];
+	return 0;
+}
+
+int
+xsc_dev_query_module_eeprom(struct xsc_dev *xdev, uint16_t offset,
+			    uint16_t size, uint8_t *data)
+{
+	struct xsc_module_eeprom_query_params query = { 0 };
+	uint8_t module_id;
+	int ret;
+
+	query.module_number = xdev->hwinfo.mac_phy_port;
+	ret = xsc_dev_query_module_id(xdev, query.module_number, &module_id);
+	if (ret != 0)
+		return ret;
+
+	switch (module_id) {
+	case XSC_MODULE_ID_SFP:
+		xsc_dev_sfp_eeprom_params_set(&query.i2c_address, &query.page, &offset);
+		break;
+	case XSC_MODULE_ID_QSFP:
+	case XSC_MODULE_ID_QSFP_PLUS:
+	case XSC_MODULE_ID_QSFP28:
+	case XSC_MODULE_ID_QSFP_DD:
+	case XSC_MODULE_ID_DSFP:
+	case XSC_MODULE_ID_QSFP_PLUS_CMIS:
+		xsc_dev_qsfp_eeprom_params_set(&query.i2c_address, &query.page, &offset);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Module ID not recognized: 0x%x", module_id);
+		return -EINVAL;
+	}
+
+	if (offset + size > XSC_EEPROM_PAGE_LENGTH)
+		/* Cross pages read, read until offset 256 in low page */
+		size = XSC_EEPROM_PAGE_LENGTH - offset;
+
+	query.size = size;
+	query.offset = offset;
+
+	return xsc_dev_query_mcia(xdev, &query, data);
+}
