@@ -35,6 +35,20 @@
 #define XSC_EEPROM_HIGH_PAGE_LENGTH	128
 #define XSC_EEPROM_MAX_BYTES		32
 
+enum xsc_dev_fec_config_bits {
+	XSC_DEV_FEC_NONE_BIT,
+	XSC_DEV_FEC_AUTO_BIT,
+	XSC_DEV_FEC_OFF_BIT,
+	XSC_DEV_FEC_RS_BIT,
+	XSC_DEV_FEC_BASER_BIT,
+};
+
+#define XSC_DEV_FEC_NONE	(1 << XSC_DEV_FEC_NONE_BIT)
+#define XSC_DEV_FEC_AUTO	(1 << XSC_DEV_FEC_AUTO_BIT)
+#define XSC_DEV_FEC_OFF		(1 << XSC_DEV_FEC_OFF_BIT)
+#define XSC_DEV_FEC_RS		(1 << XSC_DEV_FEC_RS_BIT)
+#define XSC_DEV_FEC_BASER	(1 << XSC_DEV_FEC_BASER_BIT)
+
 enum xsc_queue_type {
 	XSC_QUEUE_TYPE_RDMA_RC		= 0,
 	XSC_QUEUE_TYPE_RDMA_MAD		= 1,
@@ -262,5 +276,7 @@ int xsc_dev_query_module_eeprom(struct xsc_dev *xdev, uint16_t offset,
 int xsc_dev_intr_event_get(struct xsc_dev *xdev);
 int xsc_dev_intr_handler_install(struct xsc_dev *xdev, rte_intr_callback_fn cb, void *cb_arg);
 int xsc_dev_intr_handler_uninstall(struct xsc_dev *xdev);
+int xsc_dev_fec_get(struct xsc_dev *xdev, uint32_t *fec_capa);
+int xsc_dev_fec_set(struct xsc_dev *xdev, uint32_t mode);
 
 #endif /* _XSC_DEV_H_ */

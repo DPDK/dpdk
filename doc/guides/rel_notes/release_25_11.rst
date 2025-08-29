@@ -72,6 +72,7 @@ New Features
   * Added promiscuous mode.
   * Added link status.
   * Added link event.
+  * Added FEC get and set.
 
 
 Removed Items
