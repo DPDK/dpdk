@@ -56,19 +56,19 @@ struct mlx5_nl_port_info {
 __rte_internal
 int mlx5_nl_init(int protocol, int groups);
 __rte_internal
-int mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx, uint64_t *mac_own,
+int mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
 			 struct rte_ether_addr *mac, uint32_t index);
 __rte_internal
 int mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx,
-			    uint64_t *mac_own, struct rte_ether_addr *mac,
-			    uint32_t index);
+			    struct rte_ether_addr *mac, uint32_t index);
 __rte_internal
 void mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 			   struct rte_ether_addr *mac_addrs, int n);
 __rte_internal
 void mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
 			    struct rte_ether_addr *mac_addrs, int n,
-			    uint64_t *mac_own);
+			    uint64_t *mac_own,
+			    bool vf);
 __rte_internal
 int mlx5_nl_promisc(int nlsk_fd, unsigned int iface_idx, int enable);
 __rte_internal
