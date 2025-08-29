@@ -64,6 +64,19 @@ New Features
 
   * Enabled software taildrop for ordered queues.
 
+* **Updated Yunsilicon xsc ethernet driver.**
+
+  * Add FW version get
+  * Add TSO support
+  * Add module EEPROM dump
+  * Promiscuous mode support
+  * Link status support
+  * Link event support
+  * Add FEC get and set
+  * support per port for multi-process
+  * Code optimizations
+  * Coverity issue fix
+
 Removed Items
 -------------
 
