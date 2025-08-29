@@ -26,8 +26,7 @@ xsc_txq_elts_alloc(struct xsc_txq_data *txq_data)
 }
 
 int
-xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
-		uint64_t offloads, uint16_t idx)
+xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data, uint16_t idx)
 {
 	int ret = 0;
 	struct xsc_tx_cq_params cq_params = {0};
@@ -57,7 +56,7 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
 		    txq_data->cq_db, txq_data->cqn);
 
 	qp_params.cq = txq_data->cq;
-	qp_params.tx_offloads = offloads;
+	qp_params.tx_offloads = txq_data->offloads;
 	qp_params.port_id = txq_data->port_id;
 	qp_params.qp_id = idx;
 	qp_params.elts_n = txq_data->elts_n;
@@ -76,6 +75,7 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
 	txq_data->wqe_m = txq_data->wqe_s - 1;
 	txq_data->wqe_ds_n = rte_log2_u32(xdev->hwinfo.send_seg_num);
 	txq_data->qp_db =  qp_info.qp_db;
+	txq_data->tso_en = qp_info.tso_en ? 1 : 0;
 
 	txq_data->cq_ci = 0;
 	txq_data->cq_pi = 0;
@@ -83,9 +83,11 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
 	txq_data->wqe_pi = 0;
 	txq_data->wqe_comp = 0;
 
-	PMD_DRV_LOG(INFO, "Create tx qp, wqe_s:%d, wqe_n:%d, qp_db=%p, qpn:%u",
+	PMD_DRV_LOG(INFO, "Create tx qp, wqe_s:%d, wqe_n:%d, qp_db=%p, qpn:%u, %s",
 		    txq_data->wqe_s, txq_data->wqe_n,
-		    txq_data->qp_db, txq_data->qpn);
+		    txq_data->qp_db, txq_data->qpn,
+		    txq_data->tso_en ? "tso" : "non-tso");
+
 	return 0;
 
 error:

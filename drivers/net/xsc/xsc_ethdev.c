@@ -223,7 +223,6 @@ xsc_txq_start(struct xsc_ethdev_priv *priv)
 {
 	struct xsc_txq_data *txq_data;
 	struct rte_eth_dev *dev = priv->eth_dev;
-	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 	uint16_t i;
 	int ret;
 	size_t size;
@@ -239,7 +238,7 @@ xsc_txq_start(struct xsc_ethdev_priv *priv)
 		if (txq_data == NULL)
 			goto error;
 		xsc_txq_elts_alloc(txq_data);
-		ret = xsc_txq_obj_new(priv->xdev, txq_data, offloads, i);
+		ret = xsc_txq_obj_new(priv->xdev, txq_data, i);
 		if (ret < 0)
 			goto error;
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
