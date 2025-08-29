@@ -61,6 +61,23 @@ xsc_vfio_pcie_no_init(struct xsc_hwinfo *hwinfo)
 		hwinfo->pcie_no = XSC_SOC_PCIE_NO_DEFAULT;
 }
 
+static void
+xsc_vfio_fw_version_init(char *hw_fw_ver, struct xsc_cmd_fw_version *cmd_fw_ver)
+{
+	uint16_t patch = rte_be_to_cpu_16(cmd_fw_ver->patch);
+	uint32_t tweak = rte_be_to_cpu_32(cmd_fw_ver->tweak);
+
+	if (tweak == 0) {
+		snprintf(hw_fw_ver, XSC_FW_VERS_LEN, "v%hhu.%hhu.%hu",
+			 cmd_fw_ver->major, cmd_fw_ver->minor,
+			 patch);
+	} else {
+		snprintf(hw_fw_ver, XSC_FW_VERS_LEN, "v%hhu.%hhu.%hu+%u",
+			 cmd_fw_ver->major, cmd_fw_ver->minor,
+			 patch, tweak);
+	}
+}
+
 static int
 xsc_vfio_hwinfo_init(struct xsc_dev *xdev)
 {
@@ -126,6 +143,7 @@ xsc_vfio_hwinfo_init(struct xsc_dev *xdev)
 	xdev->hwinfo.hca_core_clock = rte_be_to_cpu_32(hca_cap->hca_core_clock);
 	xdev->hwinfo.mac_bit = hca_cap->mac_bit;
 	xsc_vfio_pcie_no_init(&xdev->hwinfo);
+	xsc_vfio_fw_version_init(xdev->hwinfo.fw_ver, &hca_cap->fw_ver);
 
 exit:
 	free(cmd_buf);
