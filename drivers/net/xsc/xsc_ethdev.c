@@ -296,6 +296,9 @@ xsc_rxq_start(struct xsc_ethdev_priv *priv)
 	if (ret != 0)
 		goto error;
 
+	for (i = 0; i != priv->num_rq; ++i)
+		priv->dev_data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	priv->flags |= XSC_FLAG_RX_QUEUE_INIT;
 	return 0;
 error:
