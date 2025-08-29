@@ -124,6 +124,8 @@ struct xsc_hwinfo {
 	uint8_t pct_compress_vld;
 	uint8_t mac_bit;
 	uint8_t esw_mode;
+	uint8_t mac_port_idx;
+	uint8_t mac_port_num;
 	char fw_ver[XSC_FW_VERS_LEN];
 };
 
@@ -185,6 +187,7 @@ struct xsc_dev {
 	int ctrl_fd;
 	rte_intr_callback_fn intr_cb;
 	void *intr_cb_arg;
+	struct xsc_dev_pct_mgr pct_mgr;
 };
 
 struct xsc_module_eeprom_query_params {
@@ -278,5 +281,6 @@ int xsc_dev_intr_handler_install(struct xsc_dev *xdev, rte_intr_callback_fn cb, 
 int xsc_dev_intr_handler_uninstall(struct xsc_dev *xdev);
 int xsc_dev_fec_get(struct xsc_dev *xdev, uint32_t *fec_capa);
 int xsc_dev_fec_set(struct xsc_dev *xdev, uint32_t mode);
+int xsc_dev_mac_port_init(struct xsc_dev *xdev);
 
 #endif /* _XSC_DEV_H_ */
