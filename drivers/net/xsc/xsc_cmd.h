@@ -23,6 +23,10 @@ enum xsc_cmd_opcode {
 	XSC_CMD_OP_RTR2RTS_QP			= 0x504,
 	XSC_CMD_OP_QP_2RST			= 0x50A,
 	XSC_CMD_OP_CREATE_MULTI_QP		= 0x515,
+	XSC_CMD_OP_ALLOC_QPN			= 0x519,
+	XSC_CMD_OP_FREE_QPN			= 0x520,
+	XSC_CMD_OP_SET_QP_INFO			= 0x521,
+	XSC_CMD_QP_UNSET_QP_INFO		= 0x522,
 	XSC_CMD_OP_ACCESS_REG			= 0x805,
 	XSC_CMD_OP_MODIFY_NIC_HCA		= 0x812,
 	XSC_CMD_OP_MODIFY_RAW_QP		= 0x81f,
@@ -495,6 +499,49 @@ struct xsc_cmd_modify_fecparam_mbox_in {
 struct xsc_cmd_modify_fecparam_mbox_out {
 	struct xsc_cmd_outbox_hdr hdr;
 	uint32_t status;
+};
+
+struct xsc_cmd_alloc_qpn_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	rte_be16_t qp_cnt;
+	uint8_t qp_type;
+	uint8_t rsvd[5];
+};
+
+struct xsc_cmd_alloc_qpn_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+	rte_be16_t qpn_base;
+};
+
+struct xsc_cmd_free_qpn_mbox_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	rte_be16_t qpn_base;
+	rte_be16_t qp_cnt;
+	uint8_t qp_type;
+	uint8_t rsvd[3];
+};
+
+struct xsc_cmd_free_qpn_mbox_out {
+	struct xsc_cmd_outbox_hdr hdr;
+};
+
+struct xsc_cmd_set_qp_info_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	struct xsc_cmd_create_qp_request qp_info;
+};
+
+struct xsc_cmd_set_qp_info_out {
+	struct xsc_cmd_outbox_hdr hdr;
+};
+
+struct xsc_cmd_unset_qp_info_in {
+	struct xsc_cmd_inbox_hdr hdr;
+	rte_be16_t qpn;
+	uint8_t rsvd[6];
+};
+
+struct xsc_cmd_unset_qp_info_out {
+	struct xsc_cmd_outbox_hdr hdr;
 };
 
 #endif /* _XSC_CMD_H_ */
