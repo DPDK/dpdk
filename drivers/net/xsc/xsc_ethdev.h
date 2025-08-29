@@ -7,9 +7,6 @@
 
 #include "xsc_dev.h"
 
-#define XSC_FLAG_RX_QUEUE_INIT		0x1
-#define XSC_FLAG_TX_QUEUE_INIT		0x2
-
 struct xsc_ethdev_priv {
 	struct rte_eth_dev *eth_dev;
 	struct rte_pci_device *pci_dev;
@@ -37,7 +34,6 @@ struct xsc_ethdev_priv {
 	uint16_t num_sq;
 	uint16_t num_rq;
 
-	uint16_t flags;
 	struct xsc_txq_data *(*txqs)[];
 	struct xsc_rxq_data *(*rxqs)[];
 };
