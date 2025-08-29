@@ -556,6 +556,11 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	struct xsc_cmd_create_cq_mbox_in *in = NULL;
 	struct xsc_cmd_create_cq_mbox_out *out = NULL;
 	void *cmd_buf;
+	int numa_node = xdev->pci_dev->device.numa_node;
+
+	if (numa_node != cq_params->socket_id)
+		PMD_DRV_LOG(WARNING, "Port %u rxq %u: cq numa_node=%u, device numa_node=%u",
+			    port_id, idx, cq_params->socket_id, numa_node);
 
 	cqe_n = cq_params->wqe_s;
 	log_cq_sz = rte_log2_u32(cqe_n);
@@ -592,8 +597,9 @@ xsc_vfio_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
 	snprintf(name, sizeof(name), "mz_cqe_mem_rx_%u_%u", port_id, idx);
 	cq_pas = rte_memzone_reserve_aligned(name,
 					     (XSC_PAGE_SIZE * pa_num),
-					     SOCKET_ID_ANY,
-					     0, XSC_PAGE_SIZE);
+					     cq_params->socket_id,
+					     RTE_MEMZONE_IOVA_CONTIG,
+					     XSC_PAGE_SIZE);
 	if (cq_pas == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc rx cq pas memory");
@@ -658,6 +664,12 @@ xsc_vfio_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
 	uint64_t iova;
 	int i;
 	void *cmd_buf = NULL;
+	int numa_node = xdev->pci_dev->device.numa_node;
+
+	if (numa_node != cq_params->socket_id)
+		PMD_DRV_LOG(WARNING, "Port %u txq %u: cq numa_node=%u, device numa_node=%u",
+			    cq_params->port_id, cq_params->qp_id,
+			    cq_params->socket_id, numa_node);
 
 	cq = rte_zmalloc(NULL, sizeof(struct xsc_vfio_cq), 0);
 	if (cq == NULL) {
@@ -672,8 +684,9 @@ xsc_vfio_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
 	snprintf(name, sizeof(name), "mz_cqe_mem_tx_%u_%u", cq_params->port_id, cq_params->qp_id);
 	cq_pas = rte_memzone_reserve_aligned(name,
 					     (XSC_PAGE_SIZE * pa_num),
-					     SOCKET_ID_ANY,
-					     0, XSC_PAGE_SIZE);
+					     cq_params->socket_id,
+					     RTE_MEMZONE_IOVA_CONTIG,
+					     XSC_PAGE_SIZE);
 	if (cq_pas == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc tx cq pas memory");
@@ -762,6 +775,12 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	char name[RTE_ETH_NAME_MAX_LEN] = {0};
 	void *cmd_buf = NULL;
 	bool tso_en = !!(qp_params->tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO);
+	int numa_node = xdev->pci_dev->device.numa_node;
+
+	if (numa_node != qp_params->socket_id)
+		PMD_DRV_LOG(WARNING, "Port %u: txq %u numa_node=%u, device numa_node=%u",
+			    qp_params->port_id, qp_params->qp_id,
+			    qp_params->socket_id, numa_node);
 
 	qp = rte_zmalloc(NULL, sizeof(struct xsc_vfio_qp), 0);
 	if (qp == NULL) {
@@ -777,8 +796,9 @@ xsc_vfio_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
 	snprintf(name, sizeof(name), "mz_wqe_mem_tx_%u_%u", qp_params->port_id, qp_params->qp_id);
 	qp_pas = rte_memzone_reserve_aligned(name,
 					     (XSC_PAGE_SIZE * pa_num),
-					     SOCKET_ID_ANY,
-					     0, XSC_PAGE_SIZE);
+					     qp_params->socket_id,
+					     RTE_MEMZONE_IOVA_CONTIG,
+					     XSC_PAGE_SIZE);
 	if (qp_pas == NULL) {
 		rte_errno = ENOMEM;
 		PMD_DRV_LOG(ERR, "Failed to alloc tx qp pas memory");

@@ -37,6 +37,7 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data, uint16_t id
 	cq_params.port_id = txq_data->port_id;
 	cq_params.qp_id = txq_data->idx;
 	cq_params.elts_n = txq_data->elts_n;
+	cq_params.socket_id = txq_data->socket;
 	ret = xsc_dev_tx_cq_create(xdev, &cq_params, &cq_info);
 	if (ret) {
 		rte_errno = errno;
@@ -60,6 +61,7 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data, uint16_t id
 	qp_params.port_id = txq_data->port_id;
 	qp_params.qp_id = idx;
 	qp_params.elts_n = txq_data->elts_n;
+	qp_params.socket_id = txq_data->socket;
 	ret = xsc_dev_tx_qp_create(xdev, &qp_params, &qp_info);
 
 	if (ret != 0) {
