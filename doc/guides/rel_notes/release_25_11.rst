@@ -69,6 +69,7 @@ New Features
   * Added FW version query.
   * Added TSO support.
   * Added module EEPROM dump.
+  * Added promiscuous mode.
 
 
 Removed Items

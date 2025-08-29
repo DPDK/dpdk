@@ -292,8 +292,11 @@ xsc_dev_destroy_ipat(struct xsc_dev *xdev, uint16_t logic_in_port)
 
 int
 xsc_dev_create_epat(struct xsc_dev *xdev, uint16_t dst_info, uint8_t dst_port,
-		    uint16_t qpn_ofst, uint8_t qp_num, struct rte_eth_rss_conf *rss_conf)
+		    uint16_t qpn_ofst, uint8_t qp_num,
+		    struct rte_eth_rss_conf *rss_conf,
+		    uint8_t mac_filter_en, uint8_t *mac)
 {
+	int i;
 	struct xsc_np_epat_add add;
 
 	memset(&add, 0, sizeof(add));
@@ -305,14 +308,19 @@ xsc_dev_create_epat(struct xsc_dev *xdev, uint16_t dst_info, uint8_t dst_port,
 	add.action.rss_en = 1;
 	add.action.rss_hash_func = XSC_RSS_HASH_FUNC_TOPELIZ;
 	add.action.rss_hash_template = xsc_rss_hash_template_get(rss_conf);
+	add.action.mac_filter_en = mac_filter_en;
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+		add.action.mac_addr[i] = mac[RTE_ETHER_ADDR_LEN - i - 1];
 
 	return xsc_dev_np_exec(xdev, &add, sizeof(add), XSC_NP_EPAT, XSC_NP_OP_ADD);
 }
 
 int
 xsc_dev_vf_modify_epat(struct xsc_dev *xdev, uint16_t dst_info, uint16_t qpn_ofst,
-		       uint8_t qp_num, struct rte_eth_rss_conf *rss_conf)
+		       uint8_t qp_num, struct rte_eth_rss_conf *rss_conf,
+		       uint8_t mac_filter_en, uint8_t *mac)
 {
+	int i;
 	struct xsc_np_epat_mod mod;
 
 	memset(&mod, 0, sizeof(mod));
@@ -328,6 +336,22 @@ xsc_dev_vf_modify_epat(struct xsc_dev *xdev, uint16_t dst_info, uint16_t qpn_ofs
 	mod.action.rss_en = 1;
 	mod.action.rss_hash_func = XSC_RSS_HASH_FUNC_TOPELIZ;
 	mod.action.rss_hash_template = xsc_rss_hash_template_get(rss_conf);
+	mod.action.mac_filter_en = mac_filter_en;
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+		mod.action.mac_addr[i] = mac[RTE_ETHER_ADDR_LEN - i - 1];
+
+	return xsc_dev_np_exec(xdev, &mod, sizeof(mod), XSC_NP_EPAT, XSC_NP_OP_MOD);
+}
+
+int
+xsc_dev_modify_epat_mac_filter(struct xsc_dev *xdev, uint16_t dst_info, uint8_t mac_filter_en)
+{
+	struct xsc_np_epat_mod mod;
+
+	memset(&mod, 0, sizeof(mod));
+	mod.flags |= XSC_EPAT_MAC_FILTER_EN_FLAG;
+	mod.key.dst_info = dst_info;
+	mod.action.mac_filter_en = mac_filter_en;
 
 	return xsc_dev_np_exec(xdev, &mod, sizeof(mod), XSC_NP_EPAT, XSC_NP_OP_MOD);
 }
