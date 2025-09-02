@@ -7925,6 +7925,20 @@ ice_add_special_words(struct ice_adv_rule_info *rinfo,
 	u16 mask;
 	u16 off;
 
+	/*
+	 * Failing to add direction metadata is not considered an error, because
+	 * the kinds of rules which would trigger this error are already so
+	 * highly specific that they're unlikely to match both Rx and Tx traffic
+	 * at the same time.
+	 */
+	if (lkup_exts->n_val_words < ICE_MAX_CHAIN_WORDS) {
+		u8 word = lkup_exts->n_val_words++;
+
+		lkup_exts->fv_words[word].prot_id = ICE_META_DATA_ID_HW;
+		lkup_exts->fv_words[word].off = ICE_TUN_FLAG_MDID_OFF(0);
+		lkup_exts->field_mask[word] = ICE_FROM_NETWORK_FLAG_MASK;
+	}
+
 	/* If this is a tunneled packet, then add recipe index to match the
 	 * tunnel bit in the packet metadata flags. If this is a tun_and_non_tun
 	 * packet, then add recipe index to match the direction bit in the flag.
