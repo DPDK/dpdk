@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2020-2024 Intel Corporation
+ * Copyright(c) 2020-2025 Intel Corporation
  */
 
 Intel® ICE driver
 ==================
 
 This directory contains source code of ice base driver generated on
-2025-05-23 released by the team which develops
+2025-09-01 released by the team which develops
 basic drivers for any ice NIC. The directory of base/ contains the
 original source package.
 This driver is valid for the product(s) listed below
