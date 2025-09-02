@@ -2627,10 +2627,6 @@ ice_flow_set_hw_prof(struct ice_hw *hw, u16 dest_vsi_handle,
 
 	status = ice_flow_assoc_hw_prof(hw, blk, dest_vsi_handle,
 					fdir_vsi_handle, id);
-	if (status)
-		goto free_params;
-
-	return 0;
 
 free_params:
 	ice_free(hw, params);
