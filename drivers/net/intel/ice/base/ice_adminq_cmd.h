@@ -2385,6 +2385,20 @@ struct ice_aqc_get_set_rss_keys {
 	u8 extended_hash_key[ICE_AQC_GET_SET_RSS_KEY_DATA_HASH_KEY_SIZE];
 };
 
+enum ice_lut_type {
+	ICE_LUT_VSI = 0,
+	ICE_LUT_PF = 1,
+	ICE_LUT_GLOBAL = 2,
+	ICE_LUT_TYPE_MASK = 3
+};
+
+enum ice_lut_size {
+	ICE_LUT_SIZE_64 = 64,
+	ICE_LUT_SIZE_128 = 128,
+	ICE_LUT_SIZE_512 = 512,
+	ICE_LUT_SIZE_2048 = 2048,
+};
+
 /* Get/Set RSS LUT (indirect 0x0B05/0x0B03) */
 struct ice_aqc_get_set_rss_lut {
 #define ICE_AQC_GSET_RSS_LUT_VSI_VALID	BIT(15)
@@ -2393,7 +2407,7 @@ struct ice_aqc_get_set_rss_lut {
 	__le16 vsi_id;
 #define ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_S	0
 #define ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_M	\
-				(0x3 << ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_S)
+		(ICE_LUT_TYPE_MASK << ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_S)
 
 #define ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_VSI	 0
 #define ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF	 1
@@ -2401,7 +2415,7 @@ struct ice_aqc_get_set_rss_lut {
 
 #define ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S	 2
 #define ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_M	 \
-				(0x3 << ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S)
+		(ICE_LUT_TYPE_MASK << ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_S)
 
 #define ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_128	 128
 #define ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_128_FLAG 0
