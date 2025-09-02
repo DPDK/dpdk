@@ -2209,6 +2209,7 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 		    bool *refresh_required)
 {
 	ice_declare_bitmap(result_bm, ICE_MAX_FV_WORDS);
+	struct ice_recp_grp_entry *rg, *tmprg_entry;
 	struct ice_aqc_recipe_data_elem *tmp;
 	u16 num_recps = ICE_MAX_NUM_RECIPES;
 	struct ice_prot_lkup_ext *lkup_exts;
@@ -2249,6 +2250,15 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	 * database.
 	 */
 	lkup_exts = &recps[rid].lkup_exts;
+
+	/* Remove duplicate entries */
+	LIST_FOR_EACH_ENTRY_SAFE(rg, tmprg_entry, &recps[rid].rg_list,
+	                         ice_recp_grp_entry, l_entry) {
+		if (rg->rid == rid) {
+			LIST_DEL(&rg->l_entry);
+			ice_free(hw, rg);
+		}
+	}
 
 	for (sub_recps = 0; sub_recps < num_recps; sub_recps++) {
 		struct ice_aqc_recipe_data_elem root_bufs = tmp[sub_recps];
