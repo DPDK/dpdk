@@ -4113,7 +4113,11 @@ ice_fill_sw_rule(struct ice_hw *hw, struct ice_fltr_info *f_info,
 		CPU_TO_LE16(ICE_AQC_SW_RULES_T_LKUP_TX);
 
 	/* Recipe set depending on lookup type */
-	s_rule->recipe_id = CPU_TO_LE16(f_info->lkup_type);
+	if (f_info->rid_override) {
+		s_rule->recipe_id = CPU_TO_LE16(f_info->rid);
+	} else {
+		s_rule->recipe_id = CPU_TO_LE16(f_info->lkup_type);
+	}
 	s_rule->src = CPU_TO_LE16(f_info->src);
 	s_rule->act = CPU_TO_LE32(act);
 

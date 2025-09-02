@@ -195,6 +195,10 @@ struct ice_fltr_info {
 	u8 lb_en;	/* Indicate if packet can be looped back */
 	u8 lan_en;	/* Indicate if packet can be forwarded to the uplink */
 	u8 fltVeb_en;   /* Indicate if VSI is connected to floating VEB */
+
+	/* Override default Recipe ID */
+	u16 rid;
+	bool rid_override;
 };
 
 struct ice_update_recipe_lkup_idx_params {
