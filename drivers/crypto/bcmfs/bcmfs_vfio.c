@@ -7,13 +7,11 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 
+#include <rte_vfio.h>
+
 #include "bcmfs_device.h"
 #include "bcmfs_logs.h"
 #include "bcmfs_vfio.h"
-
-#ifdef RTE_EAL_VFIO
-
-#include <rte_vfio.h>
 
 static int
 vfio_map_dev_obj(const char *path, const char *dev_obj,
@@ -94,15 +92,3 @@ bcmfs_release_vfio(struct bcmfs_device *dev)
 		return;
 	}
 }
-#else /* ! RTE_EAL_VFIO */
-int
-bcmfs_attach_vfio(struct bcmfs_device *dev __rte_unused)
-{
-	return -1;
-}
-
-void
-bcmfs_release_vfio(struct bcmfs_device *dev __rte_unused)
-{
-}
-#endif /* RTE_EAL_VFIO */

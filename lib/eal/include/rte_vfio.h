@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-#ifdef RTE_EAL_VFIO
+#ifdef RTE_EXEC_ENV_LINUX
 
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
@@ -94,12 +94,12 @@ struct vfio_device_feature_bus_master {
 };
 #endif
 
-#else /* ! RTE_EAL_VFIO */
+#else /* ! RTE_EXEC_ENV_LINUX */
 
 /* we don't need an actual definition, only pointer is used */
 struct vfio_device_info;
 
-#endif /* RTE_EAL_VFIO */
+#endif /* RTE_EXEC_ENV_LINUX */
 
 #define RTE_VFIO_DEFAULT_CONTAINER_FD (-1)
 
