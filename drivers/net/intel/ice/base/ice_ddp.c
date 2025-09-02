@@ -2370,7 +2370,7 @@ int ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 	struct ice_buf_hdr *section;
 	struct ice_pkg_hdr *pkg_hdr;
 	enum ice_ddp_state state;
-	u16 i, size = 0, offset;
+	u16 size = 0, offset;
 	u32 reg = 0;
 	int status;
 	u8 flags;
@@ -2457,25 +2457,35 @@ int ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 	/* check reset was triggered already or not */
 	reg = rd32(hw, GLGEN_RSTAT);
 	if (reg & GLGEN_RSTAT_DEVSTATE_M) {
-		/* Reset is in progress, re-init the hw again */
 		ice_debug(hw, ICE_DBG_INIT, "Reset is in progress. layer topology might be applied already\n");
 		ice_check_reset(hw);
-		return 0;
+		/* Reset is in progress, re-init the hw again */
+		goto reinit_hw;
 	}
 
 	/* set new topology */
 	status = ice_get_set_tx_topo(hw, new_topo, size, NULL, NULL, true);
 	if (status) {
-		ice_debug(hw, ICE_DBG_INIT, "Set tx topology is failed\n");
-		return status;
+		ice_debug(hw, ICE_DBG_INIT, "Failed setting Tx topology, status %d\n",
+			  status);
+		status = ICE_ERR_CFG;
 	}
 
-	/* new topology is updated, delay 1 second before issuing the CORRER */
-	for (i = 0; i < 10; i++)
-		ice_msec_delay(100, true);
-	ice_reset(hw, ICE_RESET_CORER);
-	/* CORER will clear the global lock, so no explicit call
-	 * required for release
+	/* Even if Tx topology config failed, we need to CORE reset here to
+	 * clear the global configuration lock. Delay 1 second to allow
+	 * hardware to settle then issue a CORER
 	 */
-	return 0;
+	ice_msec_delay(1000, true);
+	ice_reset(hw, ICE_RESET_CORER);
+	ice_check_reset(hw);
+
+reinit_hw:
+	/* Since we triggered a CORER, re-initialize hardware */
+	ice_deinit_hw(hw);
+	if (ice_init_hw(hw)) {
+		ice_debug(hw, ICE_DBG_INIT, "Failed to re-init hardware after setting Tx topology\n");
+		return ICE_ERR_RESET_FAILED;
+	}
+
+	return status;
 }
