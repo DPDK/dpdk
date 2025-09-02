@@ -3356,17 +3356,6 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 
 		rx_simd_width = RTE_VECT_SIMD_DISABLED;
 	}
-	if (rx_simd_width != RTE_VECT_SIMD_DISABLED) {
-		for (i = 0; i < dev->data->nb_rx_queues; i++) {
-			struct ci_rx_queue *rxq =
-				dev->data->rx_queues[i];
-
-			if (rxq && i40e_rxq_vec_setup(rxq)) {
-				rx_simd_width = RTE_VECT_SIMD_DISABLED;
-				break;
-			}
-		}
-	}
 
 	req_features.simd_width = rx_simd_width;
 	if (dev->data->scattered_rx)
