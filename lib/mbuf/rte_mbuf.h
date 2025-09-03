@@ -40,6 +40,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_mbuf_ptype.h>
 #include <rte_mbuf_core.h>
+#include <rte_mbuf_history.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -607,6 +608,9 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &ret.ptr) < 0)
 		return NULL;
 	__rte_mbuf_raw_sanity_check(ret.m);
+
+	rte_mbuf_history_mark(ret.m, RTE_MBUF_HISTORY_OP_LIB_ALLOC);
+
 	return ret.m;
 }
 
@@ -642,9 +646,13 @@ static __rte_always_inline int
 rte_mbuf_raw_alloc_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned int count)
 {
 	int rc = rte_mempool_get_bulk(mp, (void **)mbufs, count);
-	if (likely(rc == 0))
+	if (likely(rc == 0)) {
 		for (unsigned int idx = 0; idx < count; idx++)
 			__rte_mbuf_raw_sanity_check(mbufs[idx]);
+	}
+
+	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_ALLOC);
+
 	return rc;
 }
 
@@ -666,6 +674,7 @@ static __rte_always_inline void
 rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 	__rte_mbuf_raw_sanity_check(m);
+	rte_mbuf_history_mark(m, RTE_MBUF_HISTORY_OP_LIB_FREE);
 	rte_mempool_put(m->pool, m);
 }
 
@@ -702,6 +711,8 @@ rte_mbuf_raw_free_bulk(struct rte_mempool *mp, struct rte_mbuf **mbufs, unsigned
 		RTE_ASSERT(m->pool == mp);
 		__rte_mbuf_raw_sanity_check(m);
 	}
+
+	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_FREE);
 
 	rte_mempool_put_bulk(mp, (void **)mbufs, count);
 }
@@ -1012,6 +1023,8 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	rc = rte_mempool_get_bulk(pool, (void **)mbufs, count);
 	if (unlikely(rc))
 		return rc;
+
+	rte_mbuf_history_mark_bulk(mbufs, count, RTE_MBUF_HISTORY_OP_LIB_ALLOC);
 
 	/* To understand duff's device on loop unwinding optimization, see
 	 * https://en.wikipedia.org/wiki/Duff's_device.

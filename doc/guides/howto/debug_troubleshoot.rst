@@ -217,6 +217,12 @@ Memory objects close to NUMA :numref:`dtg_mempool`.
      desired value and frequently uses ``rte_pktmbuf_prefree_seg`` and does
      not release MBUF back to mempool.
 
+   The mbuf lifecycle can be tracked
+   by defining the compilation flag ``RTE_MBUF_HISTORY_DEBUG``.
+   Then the libraries will mark the mbufs,
+   and more marks can be added in the application.
+   Some dump functions must be used to collect the history.
+
 #. Lower performance between the pipeline processing stages can be
 
    * The NUMA instance for packets or objects from NIC, mempool, and ring

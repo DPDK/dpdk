@@ -64,6 +64,7 @@
 
 /* mbuf defines */
 #define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"
+/* RTE_MBUF_HISTORY_DEBUG is not set */
 
 /* ether defines */
 #define RTE_MAX_QUEUES_PER_PORT 1024

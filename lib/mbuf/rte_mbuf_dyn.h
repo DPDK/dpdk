@@ -69,6 +69,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <rte_stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -239,6 +240,23 @@ void rte_mbuf_dyn_dump(FILE *out);
  * This is centralizing point to gather all field names
  * and parameters together.
  */
+
+/**
+ * The mbuf history dynamic field provides lifecycle tracking
+ * for mbuf objects through the system.
+ * It records a fixed set of predefined operations for debugging.
+ */
+#define RTE_MBUF_DYNFIELD_HISTORY_NAME "rte_mbuf_dynfield_history"
+
+/**
+ * Type for mbuf history dynamic field.
+ *
+ * Use atomic operations to support cloned mbufs
+ * accessed simultaneously by multiple lcores.
+ *
+ * The size is 64-bit for better performance on modern systems.
+ */
+typedef RTE_ATOMIC(uint64_t) rte_mbuf_history_t;
 
 /*
  * The metadata dynamic field provides some extra packet information

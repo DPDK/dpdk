@@ -273,6 +273,13 @@ perform sanity checks (such as buffer corruption, bad type, and so on).
 When ``RTE_ENABLE_ASSERT`` is enabled,
 more basic checks are done in many functions.
 
+When ``RTE_MBUF_HISTORY_DEBUG`` is enabled,
+the mbuf lifecycle is tracked.
+More marks can be added by the application
+by calling functions like ``rte_mbuf_history_mark_bulk()``.
+Then the history can be stored in a file
+by calling functions like ``rte_mbuf_history_dump_all()``.
+
 
 Use Cases
 ---------

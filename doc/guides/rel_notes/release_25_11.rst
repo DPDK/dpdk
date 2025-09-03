@@ -71,6 +71,12 @@ New Features
   Added Ethernet link speed for 800 Gb/s as it is well standardized in IEEE,
   and some devices already support this speed.
 
+* **Added mbuf tracking for debug.**
+
+  Added history dynamic field in mbuf (disabled by default)
+  to store successive states of the mbuf lifecycle.
+  Some functions were added to dump statistics.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Enabled software taildrop for ordered queues.
