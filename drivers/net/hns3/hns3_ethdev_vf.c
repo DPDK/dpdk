@@ -5,7 +5,6 @@
 #include <rte_alarm.h>
 #include <ethdev_pci.h>
 #include <rte_io.h>
-#include <rte_vfio.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_common.h"
