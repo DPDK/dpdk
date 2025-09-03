@@ -429,6 +429,7 @@ F: app/test/test_stack*
 F: doc/guides/prog_guide/stack_lib.rst
 
 Packet buffer
+M: Morten Brørup <mb@smartsharesystems.com>
 F: lib/mbuf/
 F: doc/guides/prog_guide/mbuf_lib.rst
 F: app/test/test_mbuf.c
