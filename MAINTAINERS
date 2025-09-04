@@ -254,7 +254,6 @@ F: examples/multi_process/
 F: doc/guides/sample_app_ug/multi_process.rst
 
 Service Cores
-M: Harry van Haaren <harry.van.haaren@intel.com>
 F: lib/eal/include/rte_service.h
 F: lib/eal/include/rte_service_component.h
 F: lib/eal/common/rte_service.c
@@ -1487,7 +1486,6 @@ F: drivers/event/dpaa2/
 F: doc/guides/eventdevs/dpaa2.rst
 
 Software Eventdev PMD
-M: Harry van Haaren <harry.van.haaren@intel.com>
 F: drivers/event/sw/
 F: doc/guides/eventdevs/sw.rst
 F: examples/eventdev_pipeline/
