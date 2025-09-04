@@ -406,6 +406,7 @@ class TestRunExecution(State):
                 return self
 
             test_run.ctx.local.reset()
+            test_run.ctx.local.current_test_suite = test_suite
             return TestSuiteSetup(test_run, test_suite, test_suite_result)
         except IndexError:
             # No more test suites. We are done here.
@@ -529,6 +530,7 @@ class TestSuiteExecution(TestSuiteState):
                 test_case_result.mark_result_as(Result.SKIP, e)
                 return self
 
+            self.test_run.ctx.local.current_test_case = test_case
             return TestCaseSetup(
                 self.test_run,
                 self.test_suite,
