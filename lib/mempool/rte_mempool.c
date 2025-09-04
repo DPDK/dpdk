@@ -1057,7 +1057,7 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 	unsigned count = 0;
 	unsigned cache_count;
 
-	fprintf(f, "  internal cache infos:\n");
+	fprintf(f, "  internal cache infos (hide zero value items):\n");
 	fprintf(f, "    cache_size=%"PRIu32"\n", mp->cache_size);
 
 	if (mp->cache_size == 0)
@@ -1065,6 +1065,8 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		cache_count = mp->local_cache[lcore_id].len;
+		if (cache_count == 0)
+			continue;
 		fprintf(f, "    cache_count[%u]=%"PRIu32"\n",
 			lcore_id, cache_count);
 		count += cache_count;
