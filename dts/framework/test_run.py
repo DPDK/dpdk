@@ -103,7 +103,6 @@ from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
-from pathlib import Path
 from types import MethodType
 from typing import ClassVar, Protocol, Union
 
@@ -115,7 +114,6 @@ from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvir
 from framework.settings import SETTINGS
 from framework.test_result import Result, ResultNode, TestRunResult
 from framework.test_suite import BaseConfig, TestCase, TestSuite
-from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.capability import (
     Capability,
     get_supported_capabilities,
@@ -259,11 +257,11 @@ class State(Protocol):
     test_run: TestRun
     result: TestRunResult | ResultNode
 
-    def before(self):
+    def before(self) -> None:
         """Hook before the state is processed."""
-        self.logger.set_stage(self.logger_name, self.log_file_path)
+        self.logger.set_stage(self.logger_name)
 
-    def after(self):
+    def after(self) -> None:
         """Hook after the state is processed."""
         return
 
@@ -275,17 +273,6 @@ class State(Protocol):
     def logger(self) -> DTSLogger:
         """A reference to the root logger."""
         return get_dts_logger()
-
-    def get_log_file_name(self) -> str | None:
-        """Name of the log file for this state."""
-        return None
-
-    @property
-    def log_file_path(self) -> Path | None:
-        """Path to the log file for this state."""
-        if file_name := self.get_log_file_name():
-            return Path(SETTINGS.output_dir, file_name)
-        return None
 
     def next(self) -> Union["State", None]:
         """Next state."""
@@ -463,16 +450,17 @@ class TestSuiteState(State):
     test_suite: TestSuite
     result: ResultNode
 
-    def get_log_file_name(self) -> str | None:
-        """Get the log file name."""
-        return self.test_suite.name
-
 
 @dataclass
 class TestSuiteSetup(TestSuiteState):
     """Test suite setup."""
 
     logger_name: ClassVar[str] = "test_suite_setup"
+
+    def before(self) -> None:
+        """Hook before the state is processed."""
+        super().before()
+        self.logger.set_custom_log_file(self.test_suite.name)
 
     @property
     def description(self) -> str:
@@ -591,6 +579,7 @@ class TestSuiteTeardown(TestSuiteState):
                 "The remaining test suites will be skipped."
             )
             self.test_run.blocked = True
+        self.logger.set_custom_log_file(None)
 
 
 @dataclass
@@ -601,10 +590,6 @@ class TestCaseState(State):
     test_suite: TestSuite
     test_case: type[TestCase]
     result: ResultNode
-
-    def get_log_file_name(self) -> str | None:
-        """Get the log file name."""
-        return self.test_suite.name
 
 
 @dataclass
