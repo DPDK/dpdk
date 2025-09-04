@@ -12,12 +12,12 @@ from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, NamedTuple
+from typing import NamedTuple
 
 from typing_extensions import Self
 
 from framework.exception import ConfigurationError, InternalError
-from framework.testbed_model.node import Node
+from framework.testbed_model.node import Node, NodeIdentifier
 
 from .port import DriverKind, Port, PortConfig
 
@@ -45,10 +45,6 @@ class PortLink(NamedTuple):
     sut_port: Port
     #: The port on the TG node connected to `sut_port`.
     tg_port: Port
-
-
-NodeIdentifier = Literal["sut", "tg"]
-"""The node identifier."""
 
 
 @dataclass(frozen=True)
