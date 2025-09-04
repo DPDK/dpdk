@@ -39,7 +39,10 @@ struct gve_queue_page_list {
 	uint32_t id; /* unique id */
 	uint32_t num_entries;
 	dma_addr_t *page_buses; /* the dma addrs of the pages */
-	const struct rte_memzone *mz;
+	union {
+		const struct rte_memzone *mz; /* memzone allocated for TX queue */
+		void **qpl_bufs; /* RX qpl-buffer list allocated using malloc*/
+	};
 };
 
 /* A TX desc ring entry */
