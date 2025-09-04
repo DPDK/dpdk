@@ -2,24 +2,34 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2025 Arm Limited
 
 """DTS logger module.
 
 The module provides several additional features:
 
     * The storage of DTS execution stages,
-    * Logging to console, a human-readable log file and a machine-readable log file,
-    * Optional log files for specific stages.
+    * Logging to console, a human-readable log artifact and a machine-readable log artifact,
+    * Optional log artifacts for specific stages.
 """
 
 import logging
-from logging import FileHandler, StreamHandler
-from pathlib import Path
-from typing import ClassVar
+from logging import StreamHandler
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
+
+if TYPE_CHECKING:
+    from framework.testbed_model.artifact import Artifact
 
 date_fmt = "%Y/%m/%d %H:%M:%S"
 stream_fmt = "%(asctime)s - %(stage)s - %(name)s - %(levelname)s - %(message)s"
 dts_root_logger_name = "dts"
+
+
+class ArtifactHandler(NamedTuple):
+    """A logger handler with an associated artifact."""
+
+    artifact: "Artifact"
+    handler: StreamHandler
 
 
 class DTSLogger(logging.Logger):
@@ -28,17 +38,18 @@ class DTSLogger(logging.Logger):
     The class extends the :class:`~logging.Logger` class to add the DTS execution stage information
     to log records. The stage is common to all loggers, so it's stored in a class variable.
 
-    Any time we switch to a new stage, we have the ability to log to an additional log file along
-    with a supplementary log file with machine-readable format. These two log files are used until
-    a new stage switch occurs. This is useful mainly for logging per test suite.
+    Any time we switch to a new stage, we have the ability to log to an additional log artifact
+    along with a supplementary log artifact with machine-readable format. These two log artifacts
+    are used until a new stage switch occurs. This is useful mainly for logging per test suite.
     """
 
     _stage: ClassVar[str] = "pre_run"
-    _extra_file_handlers: list[FileHandler] = []
+    _root_artifact_handlers: list[ArtifactHandler] = []
+    _extra_artifact_handlers: list[ArtifactHandler] = []
 
     def __init__(self, *args, **kwargs):
-        """Extend the constructor with extra file handlers."""
-        self._extra_file_handlers = []
+        """Extend the constructor with extra artifact handlers."""
+        self._extra_artifact_handlers = []
         super().__init__(*args, **kwargs)
 
     def makeRecord(self, *args, **kwargs) -> logging.LogRecord:
@@ -56,7 +67,7 @@ class DTSLogger(logging.Logger):
         record.stage = DTSLogger._stage
         return record
 
-    def add_dts_root_logger_handlers(self, verbose: bool, output_dir: str) -> None:
+    def add_dts_root_logger_handlers(self, verbose: bool) -> None:
         """Add logger handlers to the DTS root logger.
 
         This method should be called only on the DTS root logger.
@@ -65,18 +76,16 @@ class DTSLogger(logging.Logger):
         Three handlers are added:
 
             * A console handler,
-            * A file handler,
-            * A supplementary file handler with machine-readable logs
+            * An artifact handler,
+            * A supplementary artifact handler with machine-readable logs
               containing more debug information.
 
-        All log messages will be logged to files. The log level of the console handler
+        All log messages will be logged to artifacts. The log level of the console handler
         is configurable with `verbose`.
 
         Args:
             verbose: If :data:`True`, log all messages to the console.
                 If :data:`False`, log to console with the :data:`logging.INFO` level.
-            output_dir: The directory where the log files will be located.
-                The names of the log files correspond to the name of the logger instance.
         """
         self.setLevel(1)
 
@@ -86,70 +95,81 @@ class DTSLogger(logging.Logger):
             sh.setLevel(logging.INFO)
         self.addHandler(sh)
 
-        self._add_file_handlers(Path(output_dir, self.name))
+        self._root_artifact_handlers = self._add_artifact_handlers(self.name)
 
-    def set_stage(self, stage: str, log_file_path: Path | None = None) -> None:
-        """Set the DTS execution stage and optionally log to files.
-
-        Set the DTS execution stage of the DTSLog class and optionally add
-        file handlers to the instance if the log file name is provided.
-
-        The file handlers log all messages. One is a regular human-readable log file and
-        the other one is a machine-readable log file with extra debug information.
+    def set_stage(self, stage: str) -> None:
+        """Set the DTS execution stage.
 
         Args:
             stage: The DTS stage to set.
-            log_file_path: An optional path of the log file to use. This should be a full path
-                (either relative or absolute) without suffix (which will be appended).
         """
-        self._remove_extra_file_handlers()
-
         if DTSLogger._stage != stage:
             self.info(f"Moving from stage '{DTSLogger._stage}' to stage '{stage}'.")
             DTSLogger._stage = stage
 
-        if log_file_path:
-            self._extra_file_handlers.extend(self._add_file_handlers(log_file_path))
+    def set_custom_log_file(self, log_file_name: str | None) -> None:
+        """Set a custom log file.
 
-    def _add_file_handlers(self, log_file_path: Path) -> list[FileHandler]:
-        """Add file handlers to the DTS root logger.
+        Add artifact handlers to the instance if the log artifact file name is provided. Otherwise,
+        stop logging to any custom log file.
 
-        Add two type of file handlers:
+        The artifact handlers log all messages. One is a regular human-readable log artifact and
+        the other one is a machine-readable log artifact with extra debug information.
 
-            * A regular file handler with suffix ".log",
-            * A machine-readable file handler with suffix ".verbose.log".
+        Args:
+            log_file_name: An optional name of the log artifact file to use. This should be without
+                suffix (which will be appended).
+        """
+        self._remove_extra_artifact_handlers()
+
+        if log_file_name:
+            self._extra_artifact_handlers.extend(self._add_artifact_handlers(log_file_name))
+
+    def _add_artifact_handlers(self, log_file_name: str) -> list[ArtifactHandler]:
+        """Add artifact handlers to the DTS root logger.
+
+        Add two type of artifact handlers:
+
+            * A regular artifact handler with suffix ".log",
+            * A machine-readable artifact handler with suffix ".verbose.log".
               This format provides extensive information for debugging and detailed analysis.
 
         Args:
-            log_file_path: The full path to the log file without suffix.
+            log_file_name: The name of the artifact log file without suffix.
 
         Returns:
-            The newly created file handlers.
-
+            The newly created artifact handlers.
         """
-        fh = FileHandler(f"{log_file_path}.log")
-        fh.setFormatter(logging.Formatter(stream_fmt, date_fmt))
-        self.addHandler(fh)
+        from framework.testbed_model.artifact import Artifact
 
-        verbose_fh = FileHandler(f"{log_file_path}.verbose.log")
-        verbose_fh.setFormatter(
+        log_artifact = Artifact("local", f"{log_file_name}.log")
+        handler = StreamHandler(log_artifact.open("w"))
+        handler.setFormatter(logging.Formatter(stream_fmt, date_fmt))
+        self.addHandler(handler)
+
+        verbose_log_artifact = Artifact("local", f"{log_file_name}.verbose.log")
+        verbose_handler = StreamHandler(verbose_log_artifact.open("w"))
+        verbose_handler.setFormatter(
             logging.Formatter(
                 "%(asctime)s|%(stage)s|%(name)s|%(levelname)s|%(pathname)s|%(lineno)d|"
                 "%(funcName)s|%(process)d|%(thread)d|%(threadName)s|%(message)s",
                 datefmt=date_fmt,
             )
         )
-        self.addHandler(verbose_fh)
+        self.addHandler(verbose_handler)
 
-        return [fh, verbose_fh]
+        return [
+            ArtifactHandler(log_artifact, handler),
+            ArtifactHandler(verbose_log_artifact, verbose_handler),
+        ]
 
-    def _remove_extra_file_handlers(self) -> None:
-        """Remove any extra file handlers that have been added to the logger."""
-        if self._extra_file_handlers:
-            for extra_file_handler in self._extra_file_handlers:
-                self.removeHandler(extra_file_handler)
+    def _remove_extra_artifact_handlers(self) -> None:
+        """Remove any extra artifact handlers that have been added to the logger."""
+        if self._extra_artifact_handlers:
+            for extra_artifact_handler in self._extra_artifact_handlers:
+                self.removeHandler(extra_artifact_handler.handler)
 
-            self._extra_file_handlers = []
+            self._extra_artifact_handlers = []
 
 
 def get_dts_logger(name: str | None = None) -> DTSLogger:

@@ -9,7 +9,6 @@
 The module is responsible for preparing DTS and running the test run.
 """
 
-import os
 import sys
 import textwrap
 
@@ -45,9 +44,7 @@ class DTSRunner:
             sys.exit(e.severity)
 
         self._logger = get_dts_logger()
-        if not os.path.exists(SETTINGS.output_dir):
-            os.makedirs(SETTINGS.output_dir)
-        self._logger.add_dts_root_logger_handlers(SETTINGS.verbose, SETTINGS.output_dir)
+        self._logger.add_dts_root_logger_handlers(SETTINGS.verbose)
 
         test_suites_result = ResultNode(label="test_suites")
         self._result = TestRunResult(test_suites=test_suites_result)
