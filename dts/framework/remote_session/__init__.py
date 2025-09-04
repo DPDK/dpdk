@@ -17,7 +17,6 @@ from framework.logger import DTSLogger
 
 from .interactive_remote_session import InteractiveRemoteSession
 from .remote_session import RemoteSession
-from .ssh_session import SSHSession
 
 
 def create_remote_session(
@@ -36,7 +35,7 @@ def create_remote_session(
     Returns:
         The SSH remote session.
     """
-    return SSHSession(node_config, name, logger)
+    return RemoteSession(node_config, name, logger)
 
 
 def create_interactive_session(
