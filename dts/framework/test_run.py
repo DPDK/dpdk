@@ -115,6 +115,7 @@ from framework.remote_session.dpdk import DPDKBuildEnvironment, DPDKRuntimeEnvir
 from framework.settings import SETTINGS
 from framework.test_result import Result, ResultNode, TestRunResult
 from framework.test_suite import BaseConfig, TestCase, TestSuite
+from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.capability import (
     Capability,
     get_supported_capabilities,
@@ -579,7 +580,7 @@ class TestSuiteTeardown(TestSuiteState):
         self.result.mark_step_as("teardown", Result.ERROR, ex)
         return TestRunExecution(self.test_run, self.test_run.result)
 
-    def after(self):
+    def after(self) -> None:
         """Hook after state is processed."""
         if (
             self.result.get_overall_result() in [Result.FAIL, Result.ERROR]

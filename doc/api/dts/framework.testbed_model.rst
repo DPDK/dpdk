@@ -17,6 +17,7 @@ testbed\_model - Testbed Modelling Package
    :hidden:
    :maxdepth: 1
 
+   framework.testbed_model.artifact
    framework.testbed_model.os_session
    framework.testbed_model.linux_session
    framework.testbed_model.posix_session
