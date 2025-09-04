@@ -15,6 +15,7 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 
 from functools import cached_property
 from pathlib import PurePath
+from typing import Literal, TypeAlias
 
 from framework.config.node import (
     OS,
@@ -203,3 +204,40 @@ def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger)
             return LinuxSession(node_config, name, logger)
         case _:
             raise ConfigurationError(f"Unsupported OS {node_config.os}")
+
+
+LocalNodeIdentifier: TypeAlias = Literal["local"]
+"""Local node identifier for testbed model."""
+
+RemoteNodeIdentifier: TypeAlias = Literal["sut", "tg"]
+"""Remote node identifiers for testbed model."""
+
+NodeIdentifier: TypeAlias = Literal["local", "sut", "tg"]
+"""Node identifiers for testbed model."""
+
+
+def get_node(node_identifier: NodeIdentifier) -> Node | None:
+    """Get the node based on the identifier.
+
+    Args:
+        node_identifier: The identifier of the node.
+
+    Returns:
+        The node object corresponding to the identifier, or :data:`None` if the identifier is
+            "local".
+
+    Raises:
+        InternalError: If the node identifier is unknown.
+    """
+    if node_identifier == "local":
+        return None
+
+    from framework.context import get_ctx
+
+    ctx = get_ctx()
+    if node_identifier == "sut":
+        return ctx.sut_node
+    elif node_identifier == "tg":
+        return ctx.tg_node
+    else:
+        raise InternalError(f"Unknown node identifier: {node_identifier}")
