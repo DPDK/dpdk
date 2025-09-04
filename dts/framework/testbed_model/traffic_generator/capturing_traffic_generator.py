@@ -16,7 +16,7 @@ from dataclasses import dataclass
 import scapy.utils
 from scapy.packet import Packet
 
-from framework.settings import SETTINGS
+from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.port import Port
 from framework.utils import get_packet_summaries
 
@@ -131,6 +131,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
         """
 
     def _write_capture_from_packets(self, capture_name: str, packets: list[Packet]) -> None:
-        file_name = f"{SETTINGS.output_dir}/{capture_name}.pcap"
-        self._logger.debug(f"Writing packets to {file_name}.")
-        scapy.utils.wrpcap(file_name, packets)
+        artifact = Artifact("local", f"{capture_name}.pcap")
+        self._logger.debug(f"Writing packets to {artifact.local_path}.")
+        with artifact.open("wb") as file:
+            scapy.utils.wrpcap(file, packets)
