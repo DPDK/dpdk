@@ -6,11 +6,10 @@
 Create a softnic virtual device and verify it successfully forwards packets.
 """
 
-from pathlib import Path, PurePath
-
 from framework.params.testpmd import EthPeer
 from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.capability import requires
 from framework.testbed_model.topology import TopologyType
 from framework.testbed_model.virtual_device import VirtualDevice
@@ -35,62 +34,44 @@ class TestSoftnic(TestSuite):
         """
         self.sut_node = self._ctx.sut_node  # FIXME: accessing the context should be forbidden
         self.packets = generate_random_packets(self.NUMBER_OF_PACKETS_TO_SEND, self.PAYLOAD_SIZE)
-        self.cli_file = self.prepare_softnic_files()
 
-    def prepare_softnic_files(self) -> PurePath:
-        """Creates the config files that are required for the creation of the softnic.
+        self.cli_file = Artifact("sut", "rx_tx.cli")
+        self.spec_file = Artifact("sut", "rx_tx.spec")
+        self.rx_tx_1_file = Artifact("sut", "rx_tx_1.io")
+        self.rx_tx_2_file = Artifact("sut", "rx_tx_2.io")
+        self.firmware_c_file = Artifact("sut", "firmware.c")
+        self.firmware_so_file = Artifact("sut", "firmware.so")
 
-        The config files are created at runtime to accommodate paths and device addresses.
-        """
-        # paths of files needed by softnic
-        cli_file = Path("rx_tx.cli")
-        spec_file = Path("rx_tx.spec")
-        rx_tx_1_file = Path("rx_tx_1.io")
-        rx_tx_2_file = Path("rx_tx_2.io")
-        path_sut = self._ctx.sut_node.tmp_dir
-        cli_file_sut = self.sut_node.main_session.join_remote_path(path_sut, cli_file)
-        spec_file_sut = self.sut_node.main_session.join_remote_path(path_sut, spec_file)
-        rx_tx_1_file_sut = self.sut_node.main_session.join_remote_path(path_sut, rx_tx_1_file)
-        rx_tx_2_file_sut = self.sut_node.main_session.join_remote_path(path_sut, rx_tx_2_file)
-        firmware_c_file_sut = self.sut_node.main_session.join_remote_path(path_sut, "firmware.c")
-        firmware_so_file_sut = self.sut_node.main_session.join_remote_path(path_sut, "firmware.so")
-
-        # write correct remote paths to local files
-        with open(cli_file, "w+") as fh:
-            fh.write(f"pipeline codegen {spec_file_sut} {firmware_c_file_sut}\n")
-            fh.write(f"pipeline libbuild {firmware_c_file_sut} {firmware_so_file_sut}\n")
-            fh.write(f"pipeline RX build lib {firmware_so_file_sut} io {rx_tx_1_file_sut} numa 0\n")
-            fh.write(f"pipeline TX build lib {firmware_so_file_sut} io {rx_tx_2_file_sut} numa 0\n")
-            fh.write("thread 2 pipeline RX enable\n")
-            fh.write("thread 2 pipeline TX enable\n")
-        with open(spec_file, "w+") as fh:
-            fh.write("struct metadata_t {{\n")
-            fh.write("	bit<32> port\n")
-            fh.write("}}\n")
-            fh.write("metadata instanceof metadata_t\n")
-            fh.write("apply {{\n")
-            fh.write("	rx m.port\n")
-            fh.write("	tx m.port\n")
-            fh.write("}}\n")
-        with open(rx_tx_1_file, "w+") as fh:
-            fh.write(f"port in 0 ethdev {self.sut_node.config.ports[0].pci} rxq 0 bsz 32\n")
-            fh.write("port out 0 ring RXQ0 bsz 32\n")
-        with open(rx_tx_2_file, "w+") as fh:
-            fh.write("port in 0 ring TXQ0 bsz 32\n")
-            fh.write(f"port out 1 ethdev {self.sut_node.config.ports[1].pci} txq 0 bsz 32\n")
-
-        # copy files over to SUT
-        self.sut_node.main_session.copy_to(cli_file, cli_file_sut)
-        self.sut_node.main_session.copy_to(spec_file, spec_file_sut)
-        self.sut_node.main_session.copy_to(rx_tx_1_file, rx_tx_1_file_sut)
-        self.sut_node.main_session.copy_to(rx_tx_2_file, rx_tx_2_file_sut)
-        # and cleanup local files
-        cli_file.unlink()
-        spec_file.unlink()
-        rx_tx_1_file.unlink()
-        rx_tx_2_file.unlink()
-
-        return cli_file_sut
+        with self.cli_file.open("w+") as fh:
+            fh.write(
+                f"pipeline codegen {self.spec_file} {self.firmware_c_file}\n"
+                f"pipeline libbuild {self.firmware_c_file} {self.firmware_so_file}\n"
+                f"pipeline RX build lib {self.firmware_so_file} io {self.rx_tx_1_file} numa 0\n"
+                f"pipeline TX build lib {self.firmware_so_file} io {self.rx_tx_2_file} numa 0\n"
+                "thread 2 pipeline RX enable\n"
+                "thread 2 pipeline TX enable\n"
+            )
+        with self.spec_file.open("w+") as fh:
+            fh.write(
+                "struct metadata_t {\n"
+                "	bit<32> port\n"
+                "}\n"
+                "metadata instanceof metadata_t\n"
+                "apply {\n"
+                "	rx m.port\n"
+                "	tx m.port\n"
+                "}\n"
+            )
+        with self.rx_tx_1_file.open("w+") as fh:
+            fh.write(
+                f"port in 0 ethdev {self.sut_node.config.ports[0].pci} rxq 0 bsz 32\n"
+                "port out 0 ring RXQ0 bsz 32\n"
+            )
+        with self.rx_tx_2_file.open("w+") as fh:
+            fh.write(
+                "port in 0 ring TXQ0 bsz 32\n"
+                f"port out 1 ethdev {self.sut_node.config.ports[1].pci} txq 0 bsz 32\n"
+            )
 
     @func_test
     def softnic(self) -> None:
