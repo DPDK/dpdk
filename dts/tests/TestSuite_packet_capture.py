@@ -7,7 +7,7 @@ Test the DPDK packet capturing framework through the combined use of testpmd and
 """
 
 from dataclasses import dataclass, field
-from pathlib import Path, PurePath
+from pathlib import PurePath
 
 from scapy.contrib.lldp import (
     LLDPDUChassisID,
@@ -29,11 +29,10 @@ from framework.params import Params
 from framework.remote_session.blocking_app import BlockingApp
 from framework.remote_session.dpdk_shell import compute_eal_params
 from framework.remote_session.testpmd_shell import TestPmdShell
-from framework.settings import SETTINGS
 from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.artifact import Artifact
 from framework.testbed_model.capability import requires
 from framework.testbed_model.cpu import LogicalCoreList
-from framework.testbed_model.os_session import FilePermissions
 from framework.testbed_model.topology import TopologyType
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
@@ -65,13 +64,13 @@ class TestPacketCapture(TestSuite):
 
     Attributes:
         packets: List of packets to send for testing dumpcap.
-        rx_pcap_path: The remote path where to create the Rx packets pcap with dumpcap.
-        tx_pcap_path: The remote path where to create the Tx packets pcap with dumpcap.
+        rx_pcap: The artifact associated with the Rx packets pcap created by dumpcap.
+        tx_pcap: The artifact associated with the Tx packets pcap created by dumpcap.
     """
 
     packets: list[Packet]
-    rx_pcap_path: PurePath
-    tx_pcap_path: PurePath
+    rx_pcap: Artifact
+    tx_pcap: Artifact
 
     def _run_dumpcap(self, params: DumpcapParams) -> BlockingApp:
         eal_params = compute_eal_params()
@@ -108,29 +107,32 @@ class TestPacketCapture(TestSuite):
             / LLDPDUSystemCapabilities()
             / LLDPDUEndOfLLDPDU(),
         ]
-        self.tx_pcap_path = self._ctx.sut_node.tmp_dir.joinpath("tx.pcapng")
-        self.rx_pcap_path = self._ctx.sut_node.tmp_dir.joinpath("rx.pcapng")
 
-    def _load_pcap_packets(self, remote_pcap_path: PurePath) -> list[Packet]:
-        local_pcap_path = Path(SETTINGS.output_dir).joinpath(remote_pcap_path.name)
-        self._ctx.sut_node.main_session.copy_from(remote_pcap_path, local_pcap_path)
-        return list(rdpcap(str(local_pcap_path)))
+    def set_up_test_case(self):
+        """Test case setup.
+
+        Prepare the artifacts for the Rx and Tx pcap files.
+        """
+        self.tx_pcap = Artifact("sut", "tx.pcapng")
+        self.rx_pcap = Artifact("sut", "rx.pcapng")
 
     def _send_and_dump(
         self, packet_filter: str | None = None, rx_only: bool = False
     ) -> list[Packet]:
+        self.rx_pcap.touch()
         dumpcap_rx = self._run_dumpcap(
             DumpcapParams(
                 interface=self.topology.sut_port_ingress.pci,
-                output_pcap_path=self.rx_pcap_path,
+                output_pcap_path=self.rx_pcap.path,
                 packet_filter=packet_filter,
             )
         )
         if not rx_only:
+            self.tx_pcap.touch()
             dumpcap_tx = self._run_dumpcap(
                 DumpcapParams(
                     interface=self.topology.sut_port_egress.pci,
-                    output_pcap_path=self.tx_pcap_path,
+                    output_pcap_path=self.tx_pcap.path,
                     packet_filter=packet_filter,
                 )
             )
@@ -140,14 +142,8 @@ class TestPacketCapture(TestSuite):
         )
 
         dumpcap_rx.close()
-        self._ctx.sut_node.main_session.change_permissions(
-            self.rx_pcap_path, FilePermissions(0o644)
-        )
         if not rx_only:
             dumpcap_tx.close()
-            self._ctx.sut_node.main_session.change_permissions(
-                self.tx_pcap_path, FilePermissions(0o644)
-            )
 
         return received_packets
 
@@ -169,17 +165,19 @@ class TestPacketCapture(TestSuite):
             received_packets = self._send_and_dump()
 
             expected_packets = self.get_expected_packets(self.packets, sent_from_tg=True)
-            rx_pcap_packets = self._load_pcap_packets(self.rx_pcap_path)
-            self.verify(
-                self.match_all_packets(expected_packets, rx_pcap_packets, verify=False),
-                "Rx packets from dumpcap weren't the same as the expected packets.",
-            )
+            with self.rx_pcap.open() as fd:
+                rx_pcap_packets = list(rdpcap(fd))
+                self.verify(
+                    self.match_all_packets(expected_packets, rx_pcap_packets, verify=False),
+                    "Rx packets from dumpcap weren't the same as the expected packets.",
+                )
 
-            tx_pcap_packets = self._load_pcap_packets(self.tx_pcap_path)
-            self.verify(
-                self.match_all_packets(tx_pcap_packets, received_packets, verify=False),
-                "Tx packets from dumpcap weren't the same as the packets received by Scapy.",
-            )
+            with self.tx_pcap.open() as fd:
+                tx_pcap_packets = list(rdpcap(fd))
+                self.verify(
+                    self.match_all_packets(tx_pcap_packets, received_packets, verify=False),
+                    "Tx packets from dumpcap weren't the same as the packets received by Scapy.",
+                )
 
     @func_test
     def dumpcap_filter(self) -> None:
@@ -202,9 +200,10 @@ class TestPacketCapture(TestSuite):
                 if not p.haslayer(TCP)
             ]
 
-            rx_pcap_packets = [raw(p) for p in self._load_pcap_packets(self.rx_pcap_path)]
-            for filtered_packet in filtered_packets:
-                self.verify(
-                    filtered_packet not in rx_pcap_packets,
-                    "Found a packet in the pcap that was meant to be filtered out.",
-                )
+            with self.rx_pcap.open() as fd:
+                rx_pcap_packets = [raw(p) for p in rdpcap(fd)]
+                for filtered_packet in filtered_packets:
+                    self.verify(
+                        filtered_packet not in rx_pcap_packets,
+                        "Found a packet in the pcap that was meant to be filtered out.",
+                    )
