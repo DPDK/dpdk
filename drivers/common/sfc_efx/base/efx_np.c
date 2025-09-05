@@ -1022,6 +1022,9 @@ efx_np_attach(
 
 	epp->ep_mac_pdu = ms.enms_pdu;
 
+	/* For faster link up, use autoneg. flow control by default. */
+	epp->ep_fcntl_autoneg = B_TRUE;
+
 	/* Subscribe to link change events. */
 	rc = efx_np_set_event_mask(enp, epp->ep_np_handle, B_TRUE);
 	if (rc != 0)
