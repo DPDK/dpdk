@@ -49,7 +49,7 @@ class Port:
     config: Final[PortConfig]
     _original_driver: str | None
 
-    def __init__(self, node: "Node", config: PortConfig):
+    def __init__(self, node: "Node", config: PortConfig) -> None:
         """Initialize the port from `node` and `config`.
 
         Args:
@@ -128,7 +128,7 @@ class Port:
         """Is the port bound to the driver for DPDK?"""
         return self.current_driver == self.config.os_driver_for_dpdk
 
-    def configure_mtu(self, mtu: int):
+    def configure_mtu(self, mtu: int) -> None:
         """Configure the port's MTU value.
 
         Args:

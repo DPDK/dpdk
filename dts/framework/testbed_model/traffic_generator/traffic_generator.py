@@ -9,6 +9,7 @@ only count the number of received packets.
 """
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 from scapy.packet import Packet
 
@@ -34,7 +35,7 @@ class TrafficGenerator(ABC):
     _tg_node: Node
     _logger: DTSLogger
 
-    def __init__(self, tg_node: Node, config: TrafficGeneratorConfig, **kwargs):
+    def __init__(self, tg_node: Node, config: TrafficGeneratorConfig, **kwargs: Any) -> None:
         """Initialize the traffic generator.
 
         Additional keyword arguments can be passed through `kwargs` if needed for fulfilling other
@@ -49,10 +50,10 @@ class TrafficGenerator(ABC):
         self._tg_node = tg_node
         self._logger = get_dts_logger(f"{self._tg_node.name} {self._config.type}")
 
-    def setup(self, topology: Topology):
+    def setup(self, topology: Topology) -> None:
         """Setup the traffic generator."""
 
-    def teardown(self):
+    def teardown(self) -> None:
         """Teardown the traffic generator."""
         self.close()
 

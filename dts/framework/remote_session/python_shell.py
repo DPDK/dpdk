@@ -33,6 +33,6 @@ class PythonShell(InteractiveShell):
         return PurePath("python3")
 
     @only_active
-    def close(self):
+    def close(self) -> None:
         """Close Python shell."""
         return super().close()

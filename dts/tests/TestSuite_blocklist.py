@@ -16,7 +16,7 @@ from framework.testbed_model.port import Port
 class TestBlocklist(TestSuite):
     """DPDK device blocklisting test suite."""
 
-    def verify_blocklisted_ports(self, ports_to_block: list[Port]):
+    def verify_blocklisted_ports(self, ports_to_block: list[Port]) -> None:
         """Runs testpmd with the given ports blocklisted and verifies the ports."""
         with TestPmdShell(allowed_ports=[], blocked_ports=ports_to_block) as testpmd:
             allowlisted_ports = {port.device_name for port in testpmd.show_port_info_all()}
@@ -30,7 +30,7 @@ class TestBlocklist(TestSuite):
             self.verify(blocked, "At least one port was not blocklisted")
 
     @func_test
-    def no_blocklisted(self):
+    def no_blocklisted(self) -> None:
         """Run testpmd with no blocklisted device.
 
         Steps:
@@ -41,7 +41,7 @@ class TestBlocklist(TestSuite):
         self.verify_blocklisted_ports([])
 
     @func_test
-    def one_port_blocklisted(self):
+    def one_port_blocklisted(self) -> None:
         """Run testpmd with one blocklisted port.
 
         Steps:
@@ -52,7 +52,7 @@ class TestBlocklist(TestSuite):
         self.verify_blocklisted_ports(self.topology.sut_ports[:1])
 
     @func_test
-    def all_but_one_port_blocklisted(self):
+    def all_but_one_port_blocklisted(self) -> None:
         """Run testpmd with all but one blocklisted port.
 
         Steps:

@@ -77,13 +77,13 @@ class ResultLeaf(BaseModel):
     result: Result
     reason: DTSError | None = None
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         """Compare another instance of the same class by :attr:`~ResultLeaf.result`."""
         if isinstance(other, ResultLeaf):
             return self.result < other.result
         return True
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Compare equality with compatible classes by :attr:`~ResultLeaf.result`."""
         match other:
             case ResultLeaf(result=result):
@@ -128,7 +128,7 @@ class ResultNode(BaseModel):
         self.children.append(child)
         return child
 
-    def mark_result_as(self, result: Result, ex: Exception | None = None) -> None:
+    def mark_result_as(self, result: Result, ex: BaseException | None = None) -> None:
         """Mark result for the current step.
 
         Args:
@@ -149,7 +149,7 @@ class ResultNode(BaseModel):
             self.children.append(ResultLeaf(result=result, reason=reason))
 
     def mark_step_as(
-        self, step: ExecutionStep, result: Result, ex: Exception | None = None
+        self, step: ExecutionStep, result: Result, ex: BaseException | None = None
     ) -> None:
         """Mark an execution step with the given result.
 
@@ -264,7 +264,7 @@ class TestRunResult(BaseModel):
         """Serialize errors as plain text."""
         return [str(err) for err in execution_errors]
 
-    def add_error(self, ex: Exception) -> None:
+    def add_error(self, ex: BaseException) -> None:
         """Add an execution error to the test run result."""
         if isinstance(ex, DTSError):
             self.execution_errors.append(ex)

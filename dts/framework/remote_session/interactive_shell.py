@@ -24,7 +24,7 @@ environment variable configure the timeout of getting the output from command ex
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import PurePath
-from typing import ClassVar, Concatenate, ParamSpec, TypeAlias, TypeVar
+from typing import Any, ClassVar, Concatenate, ParamSpec, TypeAlias, TypeVar
 
 from paramiko import Channel, channel
 from typing_extensions import Self
@@ -126,7 +126,7 @@ class InteractiveShell(ABC):
         self._privileged = privileged
         self._timeout = SETTINGS.timeout
 
-    def _setup_ssh_channel(self):
+    def _setup_ssh_channel(self) -> None:
         self._ssh_channel = self._node.main_session.interactive_session.session.invoke_shell()
         self._stdin = self._ssh_channel.makefile_stdin("w")
         self._stdout = self._ssh_channel.makefile("r")
@@ -277,7 +277,7 @@ class InteractiveShell(ABC):
         self.start_application()
         return self
 
-    def __exit__(self, *_) -> None:
+    def __exit__(self, *_: Any) -> None:
         """Exit the context block.
 
         Upon exiting a context block with this class, we want to ensure that the instance of the
