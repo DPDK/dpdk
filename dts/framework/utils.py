@@ -147,14 +147,14 @@ class TarCompressionFormat(StrEnum):
     zstd = "zst"
 
     @property
-    def extension(self):
+    def extension(self) -> str:
         """Return the extension associated with the compression format.
 
         If the compression format is 'none', the extension will be in the format 'tar'.
         For other compression formats, the extension will be in the format
         'tar.{compression format}'.
         """
-        return f"{self.value}" if self == self.none else f"{self.none.value}.{self.value}"
+        return f"{self.value}" if self == self.none else f"{type(self).none.value}.{self.value}"
 
 
 def convert_to_list_of_string(value: Any | list[Any]) -> list[str]:
@@ -213,7 +213,7 @@ def create_tarball(
     return target_tarball_path
 
 
-def extract_tarball(tar_path: str | Path):
+def extract_tarball(tar_path: str | Path) -> None:
     """Extract the contents of a tarball.
 
     The tarball will be extracted in the same path as `tar_path` parent path.

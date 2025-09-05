@@ -16,7 +16,7 @@ class VirtualDevice:
 
     name: str
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         """Initialize the virtual device.
 
         Args:

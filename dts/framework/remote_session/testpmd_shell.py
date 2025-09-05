@@ -64,7 +64,7 @@ class TestPmdDevice:
 
     pci_address: str
 
-    def __init__(self, pci_address_line: str):
+    def __init__(self, pci_address_line: str) -> None:
         """Initialize the device from the testpmd output line string.
 
         Args:
@@ -90,7 +90,7 @@ class VLANOffloadFlag(Flag):
     QINQ_STRIP = auto()
 
     @classmethod
-    def from_str_dict(cls, d):
+    def from_str_dict(cls, d: dict[str, str]) -> Self:
         """Makes an instance from a dict containing the flag member names with an "on" value.
 
         Args:
@@ -405,7 +405,7 @@ def make_device_private_info_parser() -> ParserFn:
             function that parses the device private info from the TestPmd port info output.
     """
 
-    def _validate(info: str):
+    def _validate(info: str) -> str | None:
         info = info.strip()
         if info == "none" or info.startswith("Invalid file") or info.startswith("Failed to dump"):
             return None
@@ -1449,7 +1449,7 @@ def requires_stopped_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
     """
 
     @functools.wraps(func)
-    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs) -> Any:
         if self.ports_started:
             self._logger.debug("Ports need to be stopped to continue.")
             self.stop_all_ports()
@@ -1470,7 +1470,7 @@ def requires_started_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
     """
 
     @functools.wraps(func)
-    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs) -> Any:
         if not self.ports_started:
             self._logger.debug("Ports need to be started to continue.")
             self.start_all_ports()
@@ -1492,7 +1492,7 @@ def add_remove_mtu(mtu: int = 1500) -> Callable[[TestPmdShellMethod], TestPmdShe
 
     def decorator(func: TestPmdShellMethod) -> TestPmdShellMethod:
         @functools.wraps(func)
-        def wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+        def wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs) -> Any:
             original_mtu = self.ports[0].mtu
             self.set_port_mtu_all(mtu=mtu, verify=False)
             retval = func(self, *args, **kwargs)
@@ -1644,7 +1644,7 @@ class TestPmdShell(DPDKShell):
             self._logger.error(f"The link for port {port_id} did not come up in the given timeout.")
         return "Link status: up" in port_info
 
-    def set_forward_mode(self, mode: SimpleForwardingModes, verify: bool = True):
+    def set_forward_mode(self, mode: SimpleForwardingModes, verify: bool = True) -> None:
         """Set packet forwarding mode.
 
         Args:

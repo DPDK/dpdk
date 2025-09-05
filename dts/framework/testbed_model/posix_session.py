@@ -183,7 +183,7 @@ class PosixSession(OSSession):
     ) -> PurePosixPath:
         """Overrides :meth:`~.os_session.OSSession.create_remote_tarball`."""
 
-        def generate_tar_exclude_args(exclude_patterns) -> str:
+        def generate_tar_exclude_args(exclude_patterns: str | list[str] | None) -> str:
             """Generate args to exclude patterns when creating a tarball.
 
             Args:
