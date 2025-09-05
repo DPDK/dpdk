@@ -30,7 +30,7 @@ class DTSRunner:
     _logger: DTSLogger
     _result: TestRunResult
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the instance with configuration, logger, result and string constants."""
         try:
             self._configuration = load_config(ValidationContext(settings=SETTINGS))

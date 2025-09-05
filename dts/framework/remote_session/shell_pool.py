@@ -32,7 +32,7 @@ class ShellPool:
     _logger: DTSLogger
     _pools: list[set["InteractiveShell"]]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Shell pool constructor."""
         self._logger = get_dts_logger("shell_pool")
         self._pools = [set()]
@@ -50,12 +50,12 @@ class ShellPool:
         """The pool in use for the current scope."""
         return self._pools[-1]
 
-    def register_shell(self, shell: "InteractiveShell"):
+    def register_shell(self, shell: "InteractiveShell") -> None:
         """Register a new shell to the current pool."""
         self._logger.debug(f"Registering shell {shell} to pool level {self.pool_level}.")
         self._current_pool.add(shell)
 
-    def unregister_shell(self, shell: "InteractiveShell"):
+    def unregister_shell(self, shell: "InteractiveShell") -> None:
         """Unregister a shell from any pool."""
         for level, pool in enumerate(self._pools):
             try:
@@ -72,12 +72,12 @@ class ShellPool:
             except KeyError:
                 pass
 
-    def start_new_pool(self):
+    def start_new_pool(self) -> None:
         """Start a new shell pool."""
         self._logger.debug(f"Starting new shell pool and advancing to level {self.pool_level+1}.")
         self._pools.append(set())
 
-    def terminate_current_pool(self):
+    def terminate_current_pool(self) -> None:
         """Terminate all the shells in the current pool, and restore the previous pool if any.
 
         If any failure occurs while closing any shell, this is tolerated allowing the termination

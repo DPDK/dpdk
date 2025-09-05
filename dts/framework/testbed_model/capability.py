@@ -50,7 +50,7 @@ import inspect
 from abc import ABC, abstractmethod
 from collections.abc import MutableSet
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, ClassVar, Protocol
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Protocol
 
 from typing_extensions import Self
 
@@ -374,7 +374,7 @@ class TopologyCapability(Capability):
         else:
             self.add_to_required(test_case_or_suite)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
         """Compare the :attr:`~TopologyCapability.topology_type`s.
 
         Args:
@@ -385,7 +385,7 @@ class TopologyCapability(Capability):
         """
         return self.topology_type == other.topology_type
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: Any) -> bool:
         """Compare the :attr:`~TopologyCapability.topology_type`s.
 
         Args:
@@ -396,7 +396,7 @@ class TopologyCapability(Capability):
         """
         return self.topology_type < other.topology_type
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: Any) -> bool:
         """Compare the :attr:`~TopologyCapability.topology_type`s.
 
         Args:
@@ -407,7 +407,7 @@ class TopologyCapability(Capability):
         """
         return other < self
 
-    def __le__(self, other) -> bool:
+    def __le__(self, other: Any) -> bool:
         """Compare the :attr:`~TopologyCapability.topology_type`s.
 
         Args:

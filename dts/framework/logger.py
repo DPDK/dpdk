@@ -15,7 +15,7 @@ The module provides several additional features:
 
 import logging
 from logging import StreamHandler
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 if TYPE_CHECKING:
     from framework.testbed_model.artifact import Artifact
@@ -47,12 +47,12 @@ class DTSLogger(logging.Logger):
     _root_artifact_handlers: list[ArtifactHandler] = []
     _extra_artifact_handlers: list[ArtifactHandler] = []
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Extend the constructor with extra artifact handlers."""
         self._extra_artifact_handlers = []
         super().__init__(*args, **kwargs)
 
-    def makeRecord(self, *args, **kwargs) -> logging.LogRecord:
+    def makeRecord(self, *args: Any, **kwargs: Any) -> logging.LogRecord:
         """Generates a record with additional stage information.
 
         This is the default method for the :class:`~logging.Logger` class. We extend it

@@ -78,7 +78,7 @@ class DPDKShell(InteractiveShell, ABC):
     def path(self) -> PurePath:
         """Relative path to the shell executable from the build folder."""
 
-    def _make_real_path(self):
+    def _make_real_path(self) -> PurePath:
         """Overrides :meth:`~.interactive_shell.InteractiveShell._make_real_path`.
 
         Adds the remote DPDK build directory to the path.

@@ -161,7 +161,7 @@ class TestRun:
     config: TestRunConfiguration
     logger: DTSLogger
 
-    state: "State"
+    state: Union["State", None]
     ctx: Context
     result: TestRunResult
     selected_tests: list[TestScenario]
@@ -177,7 +177,7 @@ class TestRun:
         tests_config: dict[str, BaseConfig],
         nodes: Iterable[Node],
         result: TestRunResult,
-    ):
+    ) -> None:
         """Test run constructor.
 
         Args:
@@ -225,7 +225,7 @@ class TestRun:
 
         return caps
 
-    def spin(self):
+    def spin(self) -> None:
         """Spin the internal state machine that executes the test run."""
         self.logger.info(f"Running test run with SUT '{self.ctx.sut_node.name}'.")
 
@@ -277,12 +277,12 @@ class State(Protocol):
     def next(self) -> Union["State", None]:
         """Next state."""
 
-    def on_error(self, ex: Exception) -> Union["State", None]:
+    def on_error(self, ex: BaseException) -> Union["State", None]:
         """Next state on error."""
 
-    def handle_exception(self, ex: Exception) -> Union["State", None]:
+    def handle_exception(self, ex: BaseException) -> Union["State", None]:
         """Handles an exception raised by `next`."""
-        next_state = self.on_error(ex)
+        next_state = self.on_error(Exception(ex))
 
         match ex:
             case InternalError():
@@ -350,7 +350,7 @@ class TestRunSetup(State):
         )
         return TestRunExecution(test_run, self.result)
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.test_run.result.add_error(ex)
         return TestRunTeardown(self.test_run, self.result)
@@ -400,7 +400,7 @@ class TestRunExecution(State):
             # No more test suites. We are done here.
             return TestRunTeardown(test_run, self.result)
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.test_run.result.add_error(ex)
         return TestRunTeardown(self.test_run, self.result)
@@ -432,7 +432,7 @@ class TestRunTeardown(State):
         self.test_run.ctx.sut_node.teardown()
         return None
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.test_run.result.add_error(ex)
         self.logger.warning(
@@ -481,7 +481,7 @@ class TestSuiteSetup(TestSuiteState):
             result=self.result,
         )
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.result.mark_step_as("setup", Result.ERROR, ex)
         return TestSuiteTeardown(self.test_run, self.test_suite, self.result)
@@ -534,7 +534,7 @@ class TestSuiteExecution(TestSuiteState):
                 # No more test cases. We are done here.
                 return TestSuiteTeardown(self.test_run, self.test_suite, self.result)
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.test_run.result.add_error(ex)
         return TestSuiteTeardown(self.test_run, self.test_suite, self.result)
@@ -559,7 +559,7 @@ class TestSuiteTeardown(TestSuiteState):
         self.result.mark_step_as("teardown", Result.PASS)
         return TestRunExecution(self.test_run, self.test_run.result)
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.logger.warning(
             "The environment may have not been cleaned up correctly. "
@@ -621,7 +621,7 @@ class TestCaseSetup(TestCaseState):
             SETTINGS.re_run,
         )
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.result.mark_step_as("setup", Result.ERROR, ex)
         self.result.mark_result_as(Result.BLOCK)
@@ -674,7 +674,7 @@ class TestCaseExecution(TestCaseState):
             self.result,
         )
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.result.mark_result_as(Result.ERROR, ex)
         return TestCaseTeardown(
@@ -708,7 +708,7 @@ class TestCaseTeardown(TestCaseState):
             result=self.result.parent,
         )
 
-    def on_error(self, ex: Exception) -> State | None:
+    def on_error(self, ex: BaseException) -> State | None:
         """Next state on error."""
         self.logger.warning(
             "The environment may have not been cleaned up correctly. "

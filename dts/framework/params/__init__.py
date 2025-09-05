@@ -25,7 +25,7 @@ from typing_extensions import Self
 T = TypeVar("T")
 
 #: Type for a function taking one argument.
-FnPtr = Callable[[Any], Any]
+FnPtr = Callable[[T], T]
 #: Type for a switch parameter.
 Switch = Literal[True, None]
 #: Type for a yes/no switch parameter.
@@ -44,7 +44,7 @@ def _reduce_functions(funcs: Iterable[FnPtr]) -> FnPtr:
         FnPtr: A function that calls the given functions from left to right.
     """
 
-    def reduced_fn(value):
+    def reduced_fn(value: T) -> T:
         for fn in funcs:
             value = fn(value)
         return value
@@ -75,8 +75,8 @@ def modify_str(*funcs: FnPtr) -> Callable[[T], T]:
         will allow ``BitMask`` to render as a hexadecimal value.
     """
 
-    def _class_decorator(original_class):
-        original_class.__str__ = _reduce_functions(funcs)
+    def _class_decorator(original_class: T) -> T:
+        setattr(original_class, "__str__", _reduce_functions(funcs))
         return original_class
 
     return _class_decorator

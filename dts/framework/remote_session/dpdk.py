@@ -62,7 +62,7 @@ class DPDKBuildEnvironment:
 
     compiler_version: str | None
 
-    def __init__(self, config: DPDKBuildConfiguration, node: Node):
+    def __init__(self, config: DPDKBuildConfiguration, node: Node) -> None:
         """DPDK build environment class constructor."""
         self.config = config
         self._node = node
@@ -74,7 +74,7 @@ class DPDKBuildEnvironment:
 
         self.compiler_version = None
 
-    def setup(self):
+    def setup(self) -> None:
         """Set up the DPDK build on the target node.
 
         DPDK setup includes setting all internals needed for the build, the copying of DPDK
@@ -118,7 +118,7 @@ class DPDKBuildEnvironment:
                 )
                 self._node.main_session.remove_remote_file(tarball_path)
 
-    def _set_remote_dpdk_tree_path(self, dpdk_tree: PurePath):
+    def _set_remote_dpdk_tree_path(self, dpdk_tree: PurePath) -> None:
         """Set the path to the remote DPDK source tree based on the provided DPDK location.
 
         Verify DPDK source tree existence on the SUT node, if exists sets the
@@ -205,7 +205,7 @@ class DPDKBuildEnvironment:
             strip_root_dir=True,
         )
 
-    def _set_remote_dpdk_build_dir(self, build_dir: str):
+    def _set_remote_dpdk_build_dir(self, build_dir: str) -> None:
         """Set the `remote_dpdk_build_dir` on the SUT.
 
         Check existence on the SUT node and sets the
@@ -277,7 +277,7 @@ class DPDKBuildEnvironment:
         return self._node.tmp_dir.joinpath(self._remote_tmp_dpdk_tree_dir)
 
     @property
-    def remote_dpdk_build_dir(self) -> str | PurePath:
+    def remote_dpdk_build_dir(self) -> PurePath:
         """The remote DPDK build dir path."""
         if self._remote_dpdk_build_dir:
             return self._remote_dpdk_build_dir
@@ -286,7 +286,7 @@ class DPDKBuildEnvironment:
             "Failed to get remote dpdk build dir because we don't know the "
             "location on the SUT node."
         )
-        return ""
+        return PurePath("")
 
     @cached_property
     def dpdk_version(self) -> str | None:
@@ -323,7 +323,7 @@ class DPDKRuntimeEnvironment:
         config: DPDKRuntimeConfiguration,
         node: Node,
         build_env: DPDKBuildEnvironment | None = None,
-    ):
+    ) -> None:
         """DPDK environment constructor.
 
         Args:
@@ -354,7 +354,7 @@ class DPDKRuntimeEnvironment:
         self._ports_bound_to_dpdk = False
         self._kill_session = None
 
-    def setup(self):
+    def setup(self) -> None:
         """Set up the DPDK runtime on the target node."""
         if self.build:
             self.build.setup()

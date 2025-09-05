@@ -92,7 +92,7 @@ class TestSuite(TestProtocol):
     _tg_ip_address_ingress: Union[IPv4Interface, IPv6Interface]
     _tg_ip_address_egress: Union[IPv4Interface, IPv6Interface]
 
-    def __init__(self, config: BaseConfig):
+    def __init__(self, config: BaseConfig) -> None:
         """Initialize the test suite testbed information and basic configuration.
 
         Args:
@@ -681,7 +681,7 @@ class TestSuiteSpec:
             InternalError: If the test suite class is missing from the module.
         """
 
-        def is_test_suite(obj) -> bool:
+        def is_test_suite(obj: type) -> bool:
             """Check whether `obj` is a :class:`TestSuite`.
 
             The `obj` is a subclass of :class:`TestSuite`, but not :class:`TestSuite` itself.

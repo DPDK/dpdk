@@ -59,7 +59,7 @@ class SSHConnectionError(DTSError):
     _host: str
     _errors: list[str]
 
-    def __init__(self, host: str, errors: list[str] | None = None):
+    def __init__(self, host: str, errors: list[str] | None = None) -> None:
         """Define the meaning of the first two arguments.
 
         Args:
@@ -88,7 +88,7 @@ class _SSHTimeoutError(DTSError):
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
     _command: str
 
-    def __init__(self, command: str):
+    def __init__(self, command: str) -> None:
         """Define the meaning of the first argument.
 
         Args:
@@ -119,7 +119,7 @@ class _SSHSessionDeadError(DTSError):
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
     _host: str
 
-    def __init__(self, host: str):
+    def __init__(self, host: str) -> None:
         """Define the meaning of the first argument.
 
         Args:
@@ -157,7 +157,7 @@ class RemoteCommandExecutionError(DTSError):
     _command_stderr: str
     _command_return_code: int
 
-    def __init__(self, command: str, command_stderr: str, command_return_code: int):
+    def __init__(self, command: str, command_stderr: str, command_return_code: int) -> None:
         """Define the meaning of the first two arguments.
 
         Args:

@@ -21,7 +21,7 @@ ALTERNATIVE_MAC_ADDRESS: str = "42:A6:B7:9E:B4:81"
 class TestPortRestartConfigPersistency(TestSuite):
     """Port config persistency test suite."""
 
-    def restart_port_and_verify(self, id, testpmd, changed_value) -> None:
+    def restart_port_and_verify(self, id: int, testpmd: TestPmdShell, changed_value: str) -> None:
         """Fetch port config, restart and verify persistency."""
         testpmd.start_all_ports()
         testpmd.wait_link_status_up(port_id=id, timeout=10)
