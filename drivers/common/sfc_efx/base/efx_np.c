@@ -1366,8 +1366,10 @@ efx_np_link_ctrl(
 		}
 	}
 
-	/* The software mask may have no requested FEC bits. Default is NONE. */
-	cap_enum_hw = MC_CMD_FEC_NONE;
+	if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) == 0)
+		cap_enum_hw = MC_CMD_FEC_NONE;
+	else
+		cap_enum_hw = MC_CMD_FEC_AUTO;
 
 	/*
 	 * Compared to older EF10 interface, in netport MCDI, FEC mode is a
