@@ -27,6 +27,7 @@ efx_port_init(
 	enp->en_mod_flags |= EFX_MOD_PORT;
 
 	epp->ep_np_lane_count_req = EFX_PHY_LANE_COUNT_DEFAULT;
+	epp->ep_np_keep_prev_fec_ctrl = B_TRUE;
 	epp->ep_mac_type = EFX_MAC_INVALID;
 	epp->ep_link_mode = EFX_LINK_UNKNOWN;
 	epp->ep_mac_drain = B_TRUE;

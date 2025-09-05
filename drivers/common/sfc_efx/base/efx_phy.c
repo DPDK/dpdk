@@ -254,6 +254,7 @@ efx_phy_adv_cap_set(
 {
 	efx_port_t *epp = &(enp->en_port);
 	const efx_phy_ops_t *epop = epp->ep_epop;
+	boolean_t old_np_keep_prev_fec_ctrl;
 	uint32_t old_mask;
 	efx_rc_t rc;
 
@@ -274,6 +275,8 @@ efx_phy_adv_cap_set(
 	if (epp->ep_adv_cap_mask == mask)
 		goto done;
 
+	old_np_keep_prev_fec_ctrl = epp->ep_np_keep_prev_fec_ctrl;
+	epp->ep_np_keep_prev_fec_ctrl = B_FALSE;
 	old_mask = epp->ep_adv_cap_mask;
 	epp->ep_adv_cap_mask = mask;
 
@@ -286,6 +289,7 @@ done:
 fail3:
 	EFSYS_PROBE(fail3);
 
+	epp->ep_np_keep_prev_fec_ctrl = old_np_keep_prev_fec_ctrl;
 	epp->ep_adv_cap_mask = old_mask;
 	/* Reconfigure for robustness */
 	if (epop->epo_reconfigure(enp) != 0) {

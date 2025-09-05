@@ -398,6 +398,10 @@ typedef struct efx_port_s {
 	efx_np_stat_t		ep_np_mac_stat_lut[EFX_MAC_NSTATS];
 	/* Client-requested lane count for the physical link. */
 	efx_phy_lane_count_t	ep_np_lane_count_req;
+	/* If 'B_TRUE', the client has not invoked 'efx_phy_adv_cap_set' yet. */
+	boolean_t		ep_np_keep_prev_fec_ctrl;
+	/* It's 'AUTO' on driver attach. Updated on each 'LINK_CTRL' call. */
+	uint8_t			ep_np_prev_fec_ctrl;
 } efx_port_t;
 
 typedef struct efx_mon_ops_s {
@@ -1957,6 +1961,8 @@ efx_np_link_ctrl(
 	__in		efx_link_mode_t loopback_link_mode,
 	__in		efx_loopback_type_t loopback_mode,
 	__in		efx_phy_lane_count_t lane_count,
+	__in		boolean_t keep_prev_fec_ctrl,
+	__inout		uint8_t *prev_fec_ctrlp,
 	__in		uint32_t cap_mask_sw,
 	__in		boolean_t fcntl_an);
 

@@ -1025,6 +1025,12 @@ efx_np_attach(
 	/* For faster link up, use autoneg. flow control by default. */
 	epp->ep_fcntl_autoneg = B_TRUE;
 
+	/*
+	 * We have no way of knowing which 'FEC_MODE' choice the previous
+	 * client driver passed via 'LINK_CTRL'. Assume 'AUTO' by default.
+	 */
+	epp->ep_np_prev_fec_ctrl = MC_CMD_FEC_AUTO;
+
 	/* Subscribe to link change events. */
 	rc = efx_np_set_event_mask(enp, epp->ep_np_handle, B_TRUE);
 	if (rc != 0)
@@ -1275,6 +1281,8 @@ efx_np_link_ctrl(
 	__in		efx_link_mode_t loopback_link_mode,
 	__in		efx_loopback_type_t loopback_mode,
 	__in		efx_phy_lane_count_t lane_count,
+	__in		boolean_t keep_prev_fec_ctrl,
+	__inout		uint8_t *prev_fec_ctrlp,
 	__in		uint32_t cap_mask_sw,
 	__in		boolean_t fcntl_an)
 {
@@ -1378,13 +1386,34 @@ efx_np_link_ctrl(
 	 *
 	 * No requested FEC bits in the original mask gives supported=TRUE.
 	 */
-	EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_fec_req,
-	    ETH_AN_FIELDS_FEC_REQ, cap_data_raw, cap_mask_sw,
-	    NULL, NULL, &supported, &cap_enum_hw);
+	if (keep_prev_fec_ctrl == B_FALSE) {
+		/*
+		 * Enforce what the user has asked for. If the mask has got
+		 * no 'FEC_REQUESTED' bits, use 'NONE' or 'AUTO' from above.
+		 */
+		EFX_NP_CAP_SW_MASK_TO_HW_ENUM(efx_np_cap_map_fec_req,
+		    ETH_AN_FIELDS_FEC_REQ, cap_data_raw, cap_mask_sw,
+		    NULL, NULL, &supported, &cap_enum_hw);
 
-	if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) != 0 && supported == B_FALSE) {
-		rc = ENOTSUP;
-		goto fail5;
+		if ((cap_mask_sw & EFX_PHY_CAP_FEC_MASK) != 0
+		    && supported == B_FALSE) {
+			rc = ENOTSUP;
+			goto fail5;
+		}
+	} else {
+		/*
+		 * At this stage, the FEC mask does not draw any input from
+		 * the client driver. If the active link was autonegotiated,
+		 * it might contain 'FEC_REQUESTED' bits translated earlier
+		 * from 'ADVERTISED_ABILITIES_FEC_REQ' of 'LINK_STATE' MCDI.
+		 * If the link is fixed, it does not have any of these bits.
+		 *
+		 * Either way, translating it into a fixed enum will result
+		 * in a fixed FEC choice. If that does not match the choice
+		 * of the previous user, a lengthy link renegotiation might
+		 * follow. Pass previous choice to avoid long link-up times.
+		 */
+		cap_enum_hw = *prev_fec_ctrlp;
 	}
 
 	EFSYS_ASSERT(cap_enum_hw <= UINT8_MAX);
@@ -1402,6 +1431,7 @@ efx_np_link_ctrl(
 		goto fail6;
 	}
 
+	*prev_fec_ctrlp = fec;
 	return (0);
 
 fail6:

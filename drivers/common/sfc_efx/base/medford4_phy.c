@@ -116,6 +116,7 @@ medford4_phy_reconfigure(
 
 	rc = efx_np_link_ctrl(enp, epp->ep_np_handle, epp->ep_np_cap_data_raw,
 		    loopback_link_mode, loopback, epp->ep_np_lane_count_req,
+		    epp->ep_np_keep_prev_fec_ctrl, &epp->ep_np_prev_fec_ctrl,
 		    epp->ep_adv_cap_mask, epp->ep_fcntl_autoneg);
 	if (rc != 0)
 		goto fail2;
