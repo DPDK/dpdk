@@ -15,7 +15,6 @@ typedef struct ntdrv_4ga_s {
 	char *p_drv_name;
 
 	volatile bool b_shutdown;
-	rte_thread_t flm_thread;
 	rte_spinlock_t stat_lck;
 	rte_thread_t stat_thread;
 	rte_thread_t port_event_thread;
