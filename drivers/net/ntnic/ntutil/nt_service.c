@@ -12,8 +12,8 @@
 #define NT_SERVICE_UNKNOWN_ID (-1)
 
 static struct nt_service g_nt_services[RTE_NTNIC_SERVICE_MAX] = {
-	[0] = {
-		.tag = RTE_NTNIC_SERVICE_MAX,
+	[RTE_NTNIC_SERVICE_FLM_UPDATE] = {
+		.tag = RTE_NTNIC_SERVICE_FLM_UPDATE,
 		.id = NT_SERVICE_UNKNOWN_ID,
 		.lcore = RTE_MAX_LCORE,
 		.initialized = false,
