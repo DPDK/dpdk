@@ -16,7 +16,7 @@
 
 static struct nt_util_vfio_impl vfio_cb;
 
-/* uses usleep which schedules out the calling thread */
+/* uses usleep which schedules out the calling service */
 void nt_os_wait_usec(int val)
 {
 	rte_delay_us_sleep(val);
