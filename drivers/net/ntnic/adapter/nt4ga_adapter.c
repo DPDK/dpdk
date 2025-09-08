@@ -5,6 +5,7 @@
 
 #include <rte_thread.h>
 
+#include "nt_service.h"
 #include "ntlog.h"
 #include "nthw_fpga.h"
 #include "ntnic_mod_reg.h"
@@ -12,28 +13,6 @@
 /*
  * Global variables shared by NT adapter types
  */
-rte_thread_t monitor_tasks[NUM_ADAPTER_MAX];
-volatile int monitor_task_is_running[NUM_ADAPTER_MAX];
-
-/*
- * Signal-handler to stop all monitor threads
- */
-static void stop_monitor_tasks(int signum)
-{
-	const size_t N = ARRAY_SIZE(monitor_task_is_running);
-	size_t i;
-
-	/* Stop all monitor tasks */
-	for (i = 0; i < N; i++) {
-		const int is_running = monitor_task_is_running[i];
-		monitor_task_is_running[i] = 0;
-
-		if (signum == -1 && is_running != 0) {
-			rte_thread_join(monitor_tasks[i], NULL);
-			memset(&monitor_tasks[i], 0, sizeof(monitor_tasks[0]));
-		}
-	}
-}
 
 static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *pfh)
 {
@@ -255,7 +234,7 @@ static int nt4ga_adapter_deinit(struct adapter_info_s *p_adapter_info)
 	int i;
 	int res = -1;
 
-	stop_monitor_tasks(-1);
+	nthw_service_del(RTE_NTNIC_SERVICE_ADAPTER_MON);
 
 	/* Nt4ga Deinit Filter */
 	nt4ga_filter_t *p_filter = &p_adapter_info->nt4ga_filter;
