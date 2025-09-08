@@ -3,8 +3,6 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
-#include <rte_thread.h>
-
 #include "nt_service.h"
 #include "ntlog.h"
 #include "nthw_fpga.h"
