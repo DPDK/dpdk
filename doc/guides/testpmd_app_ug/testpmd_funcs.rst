@@ -634,6 +634,19 @@ Dumps the log level for all the dpdk modules::
 
    testpmd> dump log_types
 
+dump mbuf history
+~~~~~~~~~~~~~~~~~
+
+The mbuf history is tracked
+if enabled at compilation with ``RTE_MBUF_HISTORY_DEBUG``.
+
+This tracking can be displayed or saved to a file
+for all mbufs or specific ones selected by pointer or mempool name::
+
+   testpmd> dump mbuf history all [file]
+   testpmd> dump mbuf history <mbuf_addr> [file]
+   testpmd> dump mbuf pool history <mp_name> [file]
+
 show (raw_encap|raw_decap)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
