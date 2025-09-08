@@ -21,7 +21,7 @@
 #define NUM_MULTICAST_ADDRS_PER_PORT (16U)
 
 #define NUM_ADAPTER_MAX (8)
-#define NUM_ADAPTER_PORTS_MAX (128)
+#define NUM_ADAPTER_PORTS_MAX (2)
 
 
 /* Max RSS queues */
