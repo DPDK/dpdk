@@ -118,8 +118,8 @@ void mlx5_free(void *addr);
 		mem; \
 	}))
 #else
-#define mlx5_malloc_numa_tolerant(flags, size, align, socket)
-	(mlx5_malloc((flags) | MLX5_NUMA_TOLERANT, (size), (align), (socket)));
+#define mlx5_malloc_numa_tolerant(flags, size, align, socket) \
+	mlx5_malloc((flags) | MLX5_NUMA_TOLERANT, (size), (align), (socket))
 #endif
 #ifdef __cplusplus
 }

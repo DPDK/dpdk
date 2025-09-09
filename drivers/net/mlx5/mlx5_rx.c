@@ -1093,7 +1093,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				break;
 			}
 			pkt = seg;
-			MLX5_ASSERT(len >= (rxq->crc_present << 2));
+			MLX5_ASSERT(len >= (int)(rxq->crc_present << 2));
 			pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
 			if (rxq->cqe_comp_layout && mcqe)
 				cqe = &rxq->title_cqe;
@@ -1273,7 +1273,7 @@ mlx5_rx_burst_out_of_order(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts
 		}
 		if (!pkt) {
 			pkt = seg;
-			MLX5_ASSERT(len >= (rxq->crc_present << 2));
+			MLX5_ASSERT(len >= (int)(rxq->crc_present << 2));
 			pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
 			if (rxq->cqe_comp_layout && mcqe)
 				cqe = &rxq->title_cqe;
