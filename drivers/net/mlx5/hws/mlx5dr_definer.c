@@ -2962,6 +2962,32 @@ mlx5dr_definer_conv_item_esp(struct mlx5dr_definer_conv_data *cd,
 	const struct rte_flow_item_esp *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
 
+	/* To match on ESP we must match on ip_protocol and optionally on l4_dport */
+	if (!cd->relaxed) {
+		bool over_udp;
+
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
+		over_udp = fc->tag_set == &mlx5dr_definer_udp_protocol_set;
+
+		if (over_udp) {
+			fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
+			if (!fc->tag_set) {
+				fc->item_idx = item_idx;
+				fc->tag_mask_set = &mlx5dr_definer_ones_set;
+				fc->tag_set = &mlx5dr_definer_ipsec_udp_port_set;
+				DR_CALC_SET(fc, eth_l4, destination_port, false);
+			}
+		} else {
+			fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
+			if (!fc->tag_set) {
+				fc->item_idx = item_idx;
+				fc->tag_set = &mlx5dr_definer_ipsec_protocol_set;
+				fc->tag_mask_set = &mlx5dr_definer_ones_set;
+				DR_CALC_SET(fc, eth_l3, protocol_next_header, false);
+			}
+		}
+	}
+
 	if (!m)
 		return 0;
 	if (m->hdr.spi) {
