@@ -9713,29 +9713,35 @@ flow_dv_translate_item_tcp(void *key, const struct rte_flow_item *item,
  */
 static void
 flow_dv_translate_item_esp(void *key, const struct rte_flow_item *item,
-			   int inner, uint32_t key_type)
+			   int inner, uint32_t key_type, uint64_t item_flags)
 {
 	const struct rte_flow_item_esp *esp_m;
 	const struct rte_flow_item_esp *esp_v;
 	void *headers_v;
 	char *spi_v;
+	bool over_udp = item_flags & (inner ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					      MLX5_FLOW_LAYER_OUTER_L4_UDP);
 
 	headers_v = inner ? MLX5_ADDR_OF(fte_match_param, key, inner_headers) :
-		MLX5_ADDR_OF(fte_match_param, key, outer_headers);
-	if (key_type & MLX5_SET_MATCHER_M)
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-			 ip_protocol, 0xff);
-	else
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v,
-			 ip_protocol, IPPROTO_ESP);
+			    MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+	if (key_type & MLX5_SET_MATCHER_M) {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, 0xff);
+		if (over_udp && !MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport))
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, 0xFFFF);
+	} else {
+		if (!over_udp)
+			MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_ESP);
+		else
+			if (!MLX5_GET16(fte_match_set_lyr_2_4, headers_v, udp_dport))
+				MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+					 MLX5_UDP_PORT_ESP);
+	}
 	if (MLX5_ITEM_VALID(item, key_type))
 		return;
-	MLX5_ITEM_UPDATE(item, key_type, esp_v, esp_m,
-			 &rte_flow_item_esp_mask);
+	MLX5_ITEM_UPDATE(item, key_type, esp_v, esp_m, &rte_flow_item_esp_mask);
 	headers_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-	spi_v = inner ? MLX5_ADDR_OF(fte_match_set_misc, headers_v,
-				inner_esp_spi) : MLX5_ADDR_OF(fte_match_set_misc
-				, headers_v, outer_esp_spi);
+	spi_v = inner ? MLX5_ADDR_OF(fte_match_set_misc, headers_v, inner_esp_spi) :
+			MLX5_ADDR_OF(fte_match_set_misc, headers_v, outer_esp_spi);
 	*(uint32_t *)spi_v = esp_m->hdr.spi & esp_v->hdr.spi;
 }
 
@@ -14224,7 +14230,7 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 
 	switch (item_type) {
 	case RTE_FLOW_ITEM_TYPE_ESP:
-		flow_dv_translate_item_esp(key, items, tunnel, key_type);
+		flow_dv_translate_item_esp(key, items, tunnel, key_type, wks->item_flags);
 		wks->priority = MLX5_PRIORITY_MAP_L4;
 		last_item = MLX5_FLOW_ITEM_ESP;
 		break;
