@@ -502,10 +502,8 @@ set_qp_fail:
 	for (i = 0; i < set_last_no; i++) {
 		xsc_unset_qp_info(xdev, rqn_base + i);
 		rxq_data = xsc_rxq_get(priv, i);
-		if (rxq_data == NULL) {
-			rte_errno = EINVAL;
-			goto set_qp_fail;
-		}
+		if (rxq_data == NULL)
+			continue;
 		rte_memzone_free(rxq_data->rq_pas);
 		rxq_data->rq_pas = NULL;
 	}
