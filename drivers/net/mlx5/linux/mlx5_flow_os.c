@@ -18,6 +18,7 @@ mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
 			       const struct rte_flow_item *item,
 			       uint64_t item_flags,
 			       uint8_t target_protocol,
+			       bool allow_seq,
 			       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_esp *mask = item->mask;
@@ -26,6 +27,12 @@ mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
 				      MLX5_FLOW_LAYER_OUTER_L3;
 	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
 				      MLX5_FLOW_LAYER_OUTER_L4;
+	static const struct rte_flow_item_esp mlx5_flow_item_esp_mask = {
+		.hdr = {
+			.spi = RTE_BE32(0xffffffff),
+			.seq = RTE_BE32(0xffffffff),
+		},
+	};
 	int ret;
 
 	if (!mlx5_hws_active(dev)) {
@@ -47,7 +54,8 @@ mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
 		mask = &rte_flow_item_esp_mask;
 	ret = mlx5_flow_item_acceptable
 		(dev, item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_esp_mask,
+		 allow_seq ? (const uint8_t *)&mlx5_flow_item_esp_mask :
+			     (const uint8_t *)&rte_flow_item_esp_mask,
 		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);
 	if (ret < 0)
