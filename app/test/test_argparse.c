@@ -72,7 +72,7 @@ test_argparse_callback(uint32_t index, const char *value, void *opaque)
 }
 
 /* valid templater, must contain at least two args. */
-#define argparse_templater() { \
+#define ARGPARSE_TEMPLATE { \
 	.prog_name = "test_argparse", \
 	.usage = "-a xx -b yy", \
 	.descriptor = NULL, \
@@ -88,25 +88,24 @@ test_argparse_callback(uint32_t index, const char *value, void *opaque)
 	}, \
 }
 
-static void
-test_argparse_copy(struct rte_argparse *dst, struct rte_argparse *src)
-{
-	uint32_t i;
-	memcpy(dst, src, sizeof(*src));
-	for (i = 0; /* NULL */; i++) {
-		memcpy(&dst->args[i], &src->args[i], sizeof(src->args[i]));
-		if (src->args[i].name_long == NULL)
-			break;
-	}
-}
 
 static struct rte_argparse *
 test_argparse_init_obj(void)
 {
-	static struct rte_argparse backup = argparse_templater();
-	static struct rte_argparse obj = argparse_templater();
-	/* Because obj may be overwritten, do a deep copy. */
-	test_argparse_copy(&obj, &backup);
+	/* Note: initialization of structure with flexible array
+	 * increases the size of the variable to match.
+	 */
+	static const struct rte_argparse backup = ARGPARSE_TEMPLATE;
+	static struct rte_argparse obj = ARGPARSE_TEMPLATE;
+	unsigned int i;
+
+	obj = backup;
+	for (i = 0; ; i++) {
+		obj.args[i] = backup.args[i];
+		if (backup.args[i].name_long == NULL)
+			break;
+	}
+
 	return &obj;
 }
 
