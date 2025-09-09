@@ -8818,9 +8818,8 @@ __flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_ITEM_QUOTA;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ESP:
-			ret = mlx5_flow_os_validate_item_esp(dev, item,
-							     *item_flags, 0xff,
-							     error);
+			ret = mlx5_flow_os_validate_item_esp(dev, item, *item_flags,
+							     0xff, true, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_ESP;
