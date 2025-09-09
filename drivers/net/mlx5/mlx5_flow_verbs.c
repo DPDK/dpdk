@@ -1332,10 +1332,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		switch (items->type) {
 #ifdef HAVE_IBV_FLOW_SPEC_ESP
 		case RTE_FLOW_ITEM_TYPE_ESP:
-			ret = mlx5_flow_os_validate_item_esp(dev, items,
-							     item_flags,
-							     next_protocol,
-							     error);
+			ret = mlx5_flow_os_validate_item_esp(dev, items, item_flags,
+							     next_protocol, false, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_ESP;
