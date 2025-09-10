@@ -22,7 +22,7 @@ from framework.exception import (
     InternalError,
     RemoteCommandExecutionError,
 )
-from framework.testbed_model.os_session import PortInfo
+from framework.testbed_model.port import PortInfo
 from framework.utils import expand_range
 
 from .cpu import LogicalCore

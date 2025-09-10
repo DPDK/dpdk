@@ -1,7 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2024 Arm Limited
 
-"""Module containing all the TestPmd-related parameter classes."""
+"""Module containing all classes needed to configure :class:`TestPmd`.
+
+This module defines the :class:`TestPmdParams` class which is used to configure the
+TestPmd shell. It also includes various data classes and enums that are used
+to represent different configurations and settings.
+"""
 
 from dataclasses import dataclass, field
 from enum import EnumMeta, Flag, auto, unique
@@ -146,7 +151,7 @@ class RSSSetting(EnumMeta):
 
 
 class SimpleForwardingModes(StrEnum):
-    r"""The supported packet forwarding modes for :class:`~TestPmdShell`\s."""
+    r"""The supported packet forwarding modes for :class:`~TestPmd`\s."""
 
     #:
     io = auto()
