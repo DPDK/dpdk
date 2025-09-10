@@ -51,7 +51,7 @@ class TestDynamicConfig(TestSuite):
        that multicast packets are received and forwarded.
     """
 
-    def send_packet_and_verify(self, should_receive: bool, mac_address: str) -> None:
+    def _send_packet_and_verify(self, should_receive: bool, mac_address: str) -> None:
         """Generate, send and verify packets.
 
         Generate a packet and send to the DUT, verify that packet is forwarded from DUT to
@@ -71,7 +71,7 @@ class TestDynamicConfig(TestSuite):
             f"Packet was {'dropped' if should_receive else 'received'}",
         )
 
-    def disable_promisc_setup(self, testpmd: TestPmd, port_id: int) -> TestPmd:
+    def _disable_promisc_setup(self, testpmd: TestPmd, port_id: int) -> TestPmd:
         """Sets up testpmd shell config for cases where promisc mode is disabled.
 
         Args:
@@ -90,9 +90,13 @@ class TestDynamicConfig(TestSuite):
     def default_mode(self) -> None:
         """Tests default configuration.
 
-        Creates a testpmd shell, verifies that promiscuous mode is enabled by default,
-        and sends two packets; one matching source MAC address and one unknown.
-        Verifies that both are received.
+        Steps:
+            * Start testpmd.
+            * Sends two packets, one matching source MAC address and one unknown.
+
+        Verify:
+            * Promiscuous mode is enabled by default.
+            * Both packets are received.
         """
         with TestPmd() as testpmd:
             is_promisc = testpmd.show_port_info(0).is_promiscuous_mode_enabled
@@ -100,50 +104,63 @@ class TestDynamicConfig(TestSuite):
             testpmd.start()
             mac = testpmd.show_port_info(0).mac_address
             # send a packet with Rx port mac address
-            self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
+            self._send_packet_and_verify(should_receive=True, mac_address=str(mac))
             # send a packet with mismatched mac address
-            self.send_packet_and_verify(should_receive=True, mac_address="00:00:00:00:00:01")
+            self._send_packet_and_verify(should_receive=True, mac_address="00:00:00:00:00:01")
 
     @func_test
     def disable_promisc(self) -> None:
         """Tests disabled promiscuous mode configuration.
 
-        Creates an interactive testpmd shell, disables promiscuous mode,
-        and sends two packets; one matching source MAC address and one unknown.
-        Verifies that only the matching address packet is received.
+        Steps:
+            * Start testpmd.
+            * Disables promiscuous mode.
+            * Sends two packets, one matching source MAC address and one unknown.
+
+        Verify:
+            * Only the matching address packet are received.
         """
         with TestPmd() as testpmd:
-            testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
+            testpmd = self._disable_promisc_setup(testpmd=testpmd, port_id=0)
             mac = testpmd.show_port_info(0).mac_address
-            self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
-            self.send_packet_and_verify(should_receive=False, mac_address="00:00:00:00:00:01")
+            self._send_packet_and_verify(should_receive=True, mac_address=str(mac))
+            self._send_packet_and_verify(should_receive=False, mac_address="00:00:00:00:00:01")
 
     @func_test
     def disable_promisc_broadcast(self) -> None:
         """Tests broadcast reception with disabled promisc mode config.
 
-        Creates an interactive testpmd shell, disables promiscuous mode,
-        and sends two packets; one matching source MAC address and one broadcast.
-        Verifies that both packets are received.
+        Steps:
+            * Start testpmd.
+            * Disable promiscuous mode.
+            * Send two packets, one matching source MAC address and one broadcast.
+
+        Verify:
+            * Both packets are received.
+
         """
         with TestPmd() as testpmd:
-            testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
+            testpmd = self._disable_promisc_setup(testpmd=testpmd, port_id=0)
             mac = testpmd.show_port_info(0).mac_address
-            self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
-            self.send_packet_and_verify(should_receive=True, mac_address="ff:ff:ff:ff:ff:ff")
+            self._send_packet_and_verify(should_receive=True, mac_address=str(mac))
+            self._send_packet_and_verify(should_receive=True, mac_address="ff:ff:ff:ff:ff:ff")
 
     @func_test
     def disable_promisc_multicast(self) -> None:
         """Tests allmulticast mode with disabled promisc config.
 
-        Creates an interactive testpmd shell, disables promiscuous mode,
-        and sends two packets; one matching source MAC address and one multicast.
-        Verifies that the multicast packet is only received once allmulticast mode is enabled.
+        Steps:
+            * Start testpmd.
+            * Disable promiscuous mode.
+            * Send two packets, one matching source MAC address and one multicast.
+
+        Verify:
+            * Multicast packets are only received when receiving multicast frames is enabled.
         """
         with TestPmd() as testpmd:
-            testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
+            testpmd = self._disable_promisc_setup(testpmd=testpmd, port_id=0)
             testpmd.set_multicast_all(on=False)
             # 01:00:5E:00:00:01 is the first of the multicast MAC range of addresses
-            self.send_packet_and_verify(should_receive=False, mac_address="01:00:5E:00:00:01")
+            self._send_packet_and_verify(should_receive=False, mac_address="01:00:5E:00:00:01")
             testpmd.set_multicast_all(on=True)
-            self.send_packet_and_verify(should_receive=True, mac_address="01:00:05E:00:00:01")
+            self._send_packet_and_verify(should_receive=True, mac_address="01:00:05E:00:00:01")

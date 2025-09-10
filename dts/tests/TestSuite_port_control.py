@@ -28,7 +28,7 @@ from framework.test_suite import TestSuite, func_test
 class TestPortControl(TestSuite):
     """DPDK Port Control Testing Suite."""
 
-    def send_packets_and_verify(self) -> None:
+    def _send_packets_and_verify(self) -> None:
         """Send 100 packets and verify that all packets were forwarded back.
 
         Packets sent are identical and are all ethernet frames with a payload of 30 "X" characters.
@@ -61,31 +61,31 @@ class TestPortControl(TestSuite):
         """Start all ports and send a small number of packets.
 
         Steps:
-            Start all ports
-            Start forwarding in MAC mode
-            Send 100 generic packets to the SUT
+            * Start all ports
+            * Start forwarding in MAC mode
+            * Send 100 generic packets to be captured by the SUT
 
         Verify:
-            Check that all the packets sent are sniffed on the TG receive port.
+            * Packets sent are sniffed on the TG receive port.
         """
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start_all_ports()
             testpmd.start()
-            self.send_packets_and_verify()
+            self._send_packets_and_verify()
 
     @func_test
     def stop_ports(self) -> None:
         """Stop all ports, then start all ports, amd then send a small number of packets.
 
         Steps:
-            Stop all ports
-            Start all ports
-            Start forwarding in MAC mode
-            Send 100 generic packets to the SUT
+            * Stop all ports
+            * Start all ports
+            * Start forwarding in MAC mode
+            * Send 100 generic packets to be captured by the SUT
 
         Verify:
-            Check that stopping the testpmd ports brings down their links
-            Check that all the packets sent are sniffed on the TG receive port.
+            * Stopping the testpmd ports brings down their links
+            * Packets sent are sniffed on the TG receive port.
         """
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.stop_all_ports()
@@ -94,17 +94,17 @@ class TestPortControl(TestSuite):
                 "Failed to stop all ports.",
             )
             testpmd.start()
-            self.send_packets_and_verify()
+            self._send_packets_and_verify()
 
     @func_test
     def close_ports(self) -> None:
         """Close all the ports via testpmd.
 
         Steps:
-            Close all the testpmd ports
+            * Close all the testpmd ports
 
         Verify:
-            Check that testpmd no longer reports having any ports
+            * Testpmd no longer reports having any ports
         """
         with TestPmd() as testpmd:
             testpmd.close_all_ports()

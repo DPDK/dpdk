@@ -56,7 +56,7 @@ class TestPortStats(TestSuite):
     total_packet_len: ClassVar[int] = 100
 
     @property
-    def send_pkt(self) -> Packet:
+    def _send_pkt(self) -> Packet:
         """Packet to send during testing."""
         return (
             Ether()
@@ -64,7 +64,7 @@ class TestPortStats(TestSuite):
             / Raw(b"X" * (self.total_packet_len - self.ip_header_len - self.ether_header_len))
         )
 
-    def extract_noise_information(
+    def _extract_noise_information(
         self, verbose_out: list[TestPmdVerbosePacket]
     ) -> Tuple[int, int, int, int]:
         """Extract information about packets that were not sent by the framework in `verbose_out`.
@@ -131,23 +131,23 @@ class TestPortStats(TestSuite):
         testpmd command `show port info all`.
 
         Steps:
-            Start testpmd in MAC forwarding mode and set verbose mode to 3 (Rx and Tx).
-            Start packet forwarding and then clear all port statistics.
-            Send a packet, then stop packet forwarding and collect the port stats.
+            * Start testpmd in MAC forwarding mode and set verbose mode to 3 (Rx and Tx).
+            * Start packet forwarding and then clear all port statistics.
+            * Send a packet, then stop packet forwarding and collect the port stats.
 
         Verify:
-            Parse verbose info from stopping packet forwarding and verify values in port stats.
+            * Port stats showing number of packets received match what we sent.
         """
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.set_verbose(3)
             testpmd.start()
             testpmd.clear_port_stats_all()
-            self.send_packet_and_capture(self.send_pkt)
+            self.send_packet_and_capture(self._send_pkt)
             port_stats_all, forwarding_info = testpmd.show_port_stats_all()
             verbose_information = TestPmd.extract_verbose_output(forwarding_info)
 
         # Gather information from irrelevant packets sent/ received on the same port.
-        rx_irr_bytes, rx_irr_pakts, tx_irr_bytes, tx_irr_pakts = self.extract_noise_information(
+        rx_irr_bytes, rx_irr_pakts, tx_irr_bytes, tx_irr_pakts = self._extract_noise_information(
             verbose_information
         )
         recv_relevant_packets = port_stats_all[self.recv_port].rx_packets - rx_irr_pakts

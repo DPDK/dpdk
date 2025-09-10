@@ -44,10 +44,12 @@ class TestL2fwd(TestSuite):
     def l2fwd_integrity(self) -> None:
         """Test the L2 forwarding integrity.
 
-        Test:
-            Configure a testpmd shell with a different numbers of queues (1, 2, 4 and 8) per run.
-            Start up L2 forwarding, send random packets from the TG and verify they were all
-            received back.
+        Steps:
+            * Configure testpmd with a different numbers of queues (1, 2, 4 and 8) per run.
+            * Start up L2 forwarding, send random packets from the TG.
+
+        Verify:
+            * All packets are received.
         """
         queues = [1, 2, 4, 8]
 

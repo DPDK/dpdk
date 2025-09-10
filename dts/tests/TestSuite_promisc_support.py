@@ -31,15 +31,15 @@ class TestPromiscSupport(TestSuite):
         """Verify that promiscuous mode works.
 
         Steps:
-            Create a packet with a different mac address to the destination.
-            Enable promiscuous mode.
-            Send and receive packet.
-            Disable promiscuous mode.
-            Send and receive packet.
-        Verify:
-            Packet sent with the wrong address is received in promiscuous mode and filtered out
-            otherwise.
+            * Create a packet with a different mac address to the destination.
+            * Enable promiscuous mode.
+            * Send and receive packet.
+            * Disable promiscuous mode.
+            * Send and receive packet.
 
+        Verify:
+            * Packet sent with the wrong address is received in promiscuous mode and filtered out
+              otherwise.
         """
         packet = [Ether(dst=self.ALTERNATIVE_MAC_ADDRESS) / IP() / Raw(load=b"\x00" * 64)]
 

@@ -49,7 +49,7 @@ class TestRteFlow(TestSuite):
 
     """
 
-    def runner(
+    def _runner(
         self,
         verification_method: Callable[..., Any],
         flows: list[FlowRule],
@@ -99,20 +99,20 @@ class TestRteFlow(TestSuite):
                     self.log("Flow rule validation passed, but flow creation failed.")
                     self.verify(False, "Failed flow creation")
 
-                if verification_method == self.send_packet_and_verify:
+                if verification_method == self._send_packet_and_verify:
                     verification_method(packet=packet, *args, **kwargs)
 
-                elif verification_method == self.send_packet_and_verify_queue:
+                elif verification_method == self._send_packet_and_verify_queue:
                     verification_method(
                         packet=packet, test_queue=kwargs["test_queue"], testpmd=testpmd
                     )
 
-                elif verification_method == self.send_packet_and_verify_modification:
+                elif verification_method == self._send_packet_and_verify_modification:
                     verification_method(packet=packet, expected_packet=expected_packet)
 
                 testpmd.flow_delete(flow_id, port_id=port_id)
 
-    def send_packet_and_verify(self, packet: Packet, should_receive: bool = True) -> None:
+    def _send_packet_and_verify(self, packet: Packet, should_receive: bool = True) -> None:
         """Generate a packet, send to the DUT, and verify it is forwarded back.
 
         Args:
@@ -128,7 +128,7 @@ class TestRteFlow(TestSuite):
             f"Packet was {'dropped' if should_receive else 'received'}",
         )
 
-    def send_packet_and_verify_queue(
+    def _send_packet_and_verify_queue(
         self, packet: Packet, test_queue: int, testpmd: TestPmd
     ) -> None:
         """Send packet and verify queue stats show packet was received.
@@ -148,7 +148,7 @@ class TestRteFlow(TestSuite):
                 received = True
         self.verify(received, f"Expected packet was not received on queue {test_queue}")
 
-    def send_packet_and_verify_modification(self, packet: Packet, expected_packet: Packet) -> None:
+    def _send_packet_and_verify_modification(self, packet: Packet, expected_packet: Packet) -> None:
         """Send packet and verify the expected modifications are present upon reception.
 
         Args:
@@ -184,7 +184,7 @@ class TestRteFlow(TestSuite):
                 f"MAC dst mismatch: expected {expected_mac_dst}, got {received_mac_dst}",
             )
 
-    def send_packet_and_verify_jump(
+    def _send_packet_and_verify_jump(
         self,
         packets: list[Packet],
         flow_rules: list[FlowRule],
@@ -225,14 +225,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with queue actions and ethernet patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is received on the appropriate queue.
+            * Each packet is received on the appropriate queue.
         """
         packet_list = [
             Ether(src="02:00:00:00:00:00"),
@@ -254,8 +254,8 @@ class TestRteFlow(TestSuite):
                 direction="ingress", pattern=["eth type is 0x0800"], actions=["queue index 2"]
             ),
         ]
-        self.runner(
-            verification_method=self.send_packet_and_verify_queue,
+        self._runner(
+            verification_method=self._send_packet_and_verify_queue,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -267,14 +267,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with queue actions and IPv4/IPv6 patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is received on the appropriate queue.
+            * Each packet is received on the appropriate queue.
         """
         packet_list = [
             Ether() / IP(src="192.168.1.1"),
@@ -312,8 +312,8 @@ class TestRteFlow(TestSuite):
                 direction="ingress", pattern=["eth / ipv6 proto is 17"], actions=["queue index 2"]
             ),
         ]
-        self.runner(
-            verification_method=self.send_packet_and_verify_queue,
+        self._runner(
+            verification_method=self._send_packet_and_verify_queue,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -326,14 +326,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with queue actions and TCP/UDP patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is received on the appropriate queue.
+            * Each packet is received on the appropriate queue.
         """
         packet_list = [
             Ether() / IP() / TCP(sport=1234),
@@ -369,8 +369,8 @@ class TestRteFlow(TestSuite):
                 actions=["queue index 2"],
             ),
         ]
-        self.runner(
-            verification_method=self.send_packet_and_verify_queue,
+        self._runner(
+            verification_method=self._send_packet_and_verify_queue,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -382,22 +382,22 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with queue actions and VLAN patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is received on the appropriate queue.
+            * Each packet is received on the appropriate queue.
         """
         packet_list = [Ether() / Dot1Q(vlan=100), Ether() / Dot1Q(type=0x0800)]
         flow_list = [
             FlowRule(direction="ingress", pattern=["eth / vlan"], actions=["queue index 2"]),
             FlowRule(direction="ingress", pattern=["eth / vlan"], actions=["queue index 2"]),
         ]
-        self.runner(
-            verification_method=self.send_packet_and_verify_queue,
+        self._runner(
+            verification_method=self._send_packet_and_verify_queue,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -409,14 +409,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is dropped.
+            * Packet is dropped.
 
         One packet will be sent as a confidence check, to ensure packets are being
         received under normal circumstances.
@@ -441,8 +441,8 @@ class TestRteFlow(TestSuite):
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
-        self.runner(
-            verification_method=self.send_packet_and_verify,
+        self._runner(
+            verification_method=self._send_packet_and_verify,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -454,14 +454,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is dropped.
+            * Packet is dropped.
 
         One packet will be sent as a confidence check, to ensure packets are being
         received under normal circumstances.
@@ -496,8 +496,8 @@ class TestRteFlow(TestSuite):
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
-        self.runner(
-            verification_method=self.send_packet_and_verify,
+        self._runner(
+            verification_method=self._send_packet_and_verify,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -509,14 +509,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is dropped.
+            * Packet is dropped.
 
         One packet will be sent as a confidence check, to ensure packets are being
         received under normal circumstances.
@@ -547,8 +547,8 @@ class TestRteFlow(TestSuite):
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
-        self.runner(
-            verification_method=self.send_packet_and_verify,
+        self._runner(
+            verification_method=self._send_packet_and_verify,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -560,14 +560,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with drop actions and ethernet patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is dropped.
+            * Packet is dropped.
 
         One packet will be sent as a confidence check, to ensure packets are being
         received under normal circumstances.
@@ -586,8 +586,8 @@ class TestRteFlow(TestSuite):
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
-        self.runner(
-            verification_method=self.send_packet_and_verify,
+        self._runner(
+            verification_method=self._send_packet_and_verify,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -599,14 +599,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with actions that modify that packet during transmission.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Verify packet is received with the new attributes.
+            * Verify packet is received with the new attributes.
         """
         packet_list = [Ether() / IP(src="192.68.1.1"), Ether(src="02:00:00:00:00:00")]
         flow_list = [
@@ -631,8 +631,8 @@ class TestRteFlow(TestSuite):
             ),
         ]
         expected_packet_list = [Ether() / IP(dst="192.68.1.1"), Ether(dst="02:00:00:00:00:00")]
-        self.runner(
-            verification_method=self.send_packet_and_verify_modification,
+        self._runner(
+            verification_method=self._send_packet_and_verify_modification,
             flows=flow_list,
             packets=packet_list,
             port_id=0,
@@ -644,14 +644,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with egress directions.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is dropped.
+            * Packet is dropped.
 
         One packet will be sent as a confidence check, to ensure packets are being
         received under normal circumstances.
@@ -676,8 +676,8 @@ class TestRteFlow(TestSuite):
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
-        self.runner(
-            verification_method=self.send_packet_and_verify,
+        self._runner(
+            verification_method=self._send_packet_and_verify,
             flows=flow_list,
             packets=packet_list,
             port_id=1,
@@ -689,13 +689,13 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with different group levels and jump actions.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd with the necessary configuration.
-            Create each flow rule in testpmd.
-            Send each packet in the list, check Rx queue ID.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd with the necessary configuration.
+            * Create each flow rule in testpmd.
+            * Send each packet in the list, check Rx queue ID.
 
         Verify:
-            Check that each packet is received on the appropriate Rx queue.
+            * Check that each packet is received on the appropriate Rx queue.
         """
         packet_list = [Ether() / IP(), Ether() / IP() / TCP(), Ether() / IP() / UDP()]
         flow_list = [
@@ -732,7 +732,7 @@ class TestRteFlow(TestSuite):
         ]
         expected_queue_list = [1, 2, 3]
         with TestPmd(rx_queues=4, tx_queues=4) as testpmd:
-            self.send_packet_and_verify_jump(
+            self._send_packet_and_verify_jump(
                 packets=packet_list,
                 flow_rules=flow_list,
                 test_queues=expected_queue_list,
@@ -744,14 +744,14 @@ class TestRteFlow(TestSuite):
         """Validate flow rules with queue actions and ethernet patterns.
 
         Steps:
-            Create a list of packets to test, with a corresponding flow list.
-            Launch testpmd.
-            Create first flow rule in flow list.
-            Send first packet in packet list, capture verbose output.
-            Delete flow rule, repeat for all flows/packets.
+            * Create a list of packets to test, with a corresponding flow list.
+            * Launch testpmd.
+            * Create first flow rule in flow list.
+            * Send first packet in packet list, capture verbose output.
+            * Delete flow rule, repeat for all flows/packets.
 
         Verify:
-            Check that each packet is received on the appropriate queue.
+            * Each packet is received on the appropriate queue.
         """
         test_packet = Ether() / IP() / Raw()
         flow_list = [

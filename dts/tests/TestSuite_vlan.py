@@ -44,7 +44,7 @@ class TestVlan(TestSuite):
     tag when insertion is enabled.
     """
 
-    def send_vlan_packet_and_verify(self, should_receive: bool, strip: bool, vlan_id: int) -> None:
+    def _send_vlan_packet_and_verify(self, should_receive: bool, strip: bool, vlan_id: int) -> None:
         """Generate a VLAN packet, send and verify packet with same payload is received on the dut.
 
         Args:
@@ -83,7 +83,7 @@ class TestVlan(TestSuite):
                 "Packet was received when it should have been dropped",
             )
 
-    def send_packet_and_verify_insertion(self, expected_id: int) -> None:
+    def _send_packet_and_verify_insertion(self, expected_id: int) -> None:
         """Generate a packet with no VLAN tag, send and verify on the dut.
 
         Args:
@@ -110,7 +110,7 @@ class TestVlan(TestSuite):
                 "The received tag did not match the expected tag",
             )
 
-    def vlan_setup(self, testpmd: TestPmd, port_id: int, filtered_id: int) -> None:
+    def _vlan_setup(self, testpmd: TestPmd, port_id: int, filtered_id: int) -> None:
         """Setup method for all test cases.
 
         Args:
@@ -127,46 +127,68 @@ class TestVlan(TestSuite):
     def vlan_receipt_no_stripping(self) -> None:
         """Verify packets are received with their VLAN IDs when stripping is disabled.
 
-        Test:
-            Create an interactive testpmd shell and verify a VLAN packet.
+        Steps:
+            * Start testpmd.
+            * Set up VLAN.
+            * Send and capture VLAN packet.
+
+        Verify:
+            * Packets are received with their VLAN IDS.
         """
         with TestPmd() as testpmd:
-            self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
+            self._vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
-            self.send_vlan_packet_and_verify(True, strip=False, vlan_id=1)
+            self._send_vlan_packet_and_verify(should_receive=True, strip=False, vlan_id=1)
 
     @requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN_STRIP)
     @func_test
     def vlan_receipt_stripping(self) -> None:
         """Ensure VLAN packet received with no tag when receipts and header stripping are enabled.
 
-        Test:
-            Create an interactive testpmd shell and verify a VLAN packet.
+        Steps:
+            * Start testpmd.
+            * Set up VLAN.
+            * Send and capture VLAN packet with the packet header stripped.
+
+        Verify:
+            * Packets are received with no tag when receipts and header stripping are enabled.
         """
         with TestPmd() as testpmd:
-            self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
+            self._vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.set_vlan_strip(port=0, enable=True)
             testpmd.start()
-            self.send_vlan_packet_and_verify(should_receive=True, strip=True, vlan_id=1)
+            self._send_vlan_packet_and_verify(should_receive=True, strip=True, vlan_id=1)
 
     @func_test
     def vlan_no_receipt(self) -> None:
         """Ensure VLAN packet dropped when filter is on and sent tag not in the filter list.
 
-        Test:
-            Create an interactive testpmd shell and verify a VLAN packet.
+        Steps:
+            * Start testpmd.
+            * Set up VLAN.
+            * Send VLAN packets.
+
+        Verify:
+            * VLAN packets are dropped.
         """
         with TestPmd() as testpmd:
-            self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
+            self._vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
-            self.send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
+            self._send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
 
     @func_test
     def vlan_header_insertion(self) -> None:
         """Ensure that VLAN packet is received with the correct inserted VLAN tag.
 
-        Test:
-            Create an interactive testpmd shell and verify a non-VLAN packet.
+        Steps:
+            * Start testpmd.
+            * Set forwarding mode to MAC.
+            * Disable promiscuous mode.
+            * Enable Tx VLAN and set the VLAN tag.
+            * Send and capture VLAN packets.
+
+        Verify:
+            * VLAN packets are received with the correct inserted VLAN tag.
         """
         with TestPmd() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
@@ -175,4 +197,4 @@ class TestVlan(TestSuite):
             testpmd.tx_vlan_set(port=1, enable=True, vlan=51)
             testpmd.start_all_ports()
             testpmd.start()
-            self.send_packet_and_verify_insertion(expected_id=51)
+            self._send_packet_and_verify_insertion(expected_id=51)

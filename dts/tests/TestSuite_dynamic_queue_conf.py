@@ -66,7 +66,7 @@ def setup_and_teardown_test(
         queues and validates they can still handle traffic.
     """
 
-    def wrap(self: "TestDynamicQueueConf", is_rx_testing: bool) -> None:
+    def _wrap(self: "TestDynamicQueueConf", is_rx_testing: bool) -> None:
         """Setup environment, run test function, then cleanup.
 
         Start a testpmd shell and stop ports for testing, then call the decorated function that
@@ -106,16 +106,16 @@ def setup_and_teardown_test(
                 testpmd.start_port_queue(port_id, queue_id, is_rx_testing)
 
             testpmd.start()
-            self.send_packets_with_different_addresses(self.number_of_packets_to_send)
+            self._send_packets_with_different_addresses(self.number_of_packets_to_send)
             forwarding_stats = testpmd.stop()
             for queue_id in queues_to_config:
                 self.verify(
-                    self.port_queue_in_stats(port_id, is_rx_testing, queue_id, forwarding_stats),
+                    self._port_queue_in_stats(port_id, is_rx_testing, queue_id, forwarding_stats),
                     f"Modified queue {queue_id} on port {port_id} failed to receive traffic after"
                     "being started again.",
                 )
 
-    return wrap
+    return _wrap
 
 
 @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
@@ -154,7 +154,7 @@ class TestDynamicQueueConf(TestSuite):
     #: therefore 1024 will be more than enough.
     number_of_packets_to_send: ClassVar[int] = 1024
 
-    def send_packets_with_different_addresses(self, number_of_packets: int) -> None:
+    def _send_packets_with_different_addresses(self, number_of_packets: int) -> None:
         """Send a set number of packets each with different dst addresses.
 
         Different destination addresses are required to ensure that each queue is used. If every
@@ -174,7 +174,7 @@ class TestDynamicQueueConf(TestSuite):
         ]
         self.send_packets(packets_to_send)
 
-    def port_queue_in_stats(
+    def _port_queue_in_stats(
         self, port_id: int, is_rx_queue: bool, queue_id: int, stats: str
     ) -> bool:
         """Verify if stats for a queue are in the provided output.
@@ -193,7 +193,7 @@ class TestDynamicQueueConf(TestSuite):
         return f"{type_of_queue} Port= {port_id}/Queue={queue_id:2d}" in stats
 
     @setup_and_teardown_test
-    def modify_ring_size(
+    def _modify_ring_size(
         self,
         port_id: int,
         queues_to_modify: MutableSet[int],
@@ -233,7 +233,7 @@ class TestDynamicQueueConf(TestSuite):
                 )
 
     @setup_and_teardown_test
-    def stop_queues(
+    def _stop_queues(
         self,
         port_id: int,
         queues_to_modify: MutableSet[int],
@@ -255,7 +255,7 @@ class TestDynamicQueueConf(TestSuite):
                 queues will be modified.
         """
         testpmd.start()
-        self.send_packets_with_different_addresses(self.number_of_packets_to_send)
+        self._send_packets_with_different_addresses(self.number_of_packets_to_send)
         forwarding_stats = testpmd.stop()
 
         # Checking that all unmodified queues handled some packets is important because this
@@ -265,12 +265,12 @@ class TestDynamicQueueConf(TestSuite):
         # therefore, a false positive result.
         for unchanged_q_id in unchanged_queues:
             self.verify(
-                self.port_queue_in_stats(port_id, is_rx_testing, unchanged_q_id, forwarding_stats),
+                self._port_queue_in_stats(port_id, is_rx_testing, unchanged_q_id, forwarding_stats),
                 f"Queue {unchanged_q_id} failed to receive traffic.",
             )
         for stopped_q_id in queues_to_modify:
             self.verify(
-                not self.port_queue_in_stats(
+                not self._port_queue_in_stats(
                     port_id, is_rx_testing, stopped_q_id, forwarding_stats
                 ),
                 f"Queue {stopped_q_id} should be stopped but still received traffic.",
@@ -279,23 +279,59 @@ class TestDynamicQueueConf(TestSuite):
     @requires_nic_capability(NicCapability.RUNTIME_RX_QUEUE_SETUP)
     @func_test
     def rx_queue_stop(self) -> None:
-        """Run method for stopping queues with flag for Rx testing set to :data:`True`."""
-        self.stop_queues(True)
+        """Test Rx stopping queues when flag is set to :data:`True`.
+
+        Steps:
+            * Start testpmd.
+            * Set forward mode.
+            * Send packets with different addresses and capture.
+
+        Verify
+            * Stopped queues don't handle traffic and doesn't block traffic on other queues.
+        """
+        self._stop_queues(True)
 
     @requires_nic_capability(NicCapability.RUNTIME_RX_QUEUE_SETUP)
     @func_test
     def rx_queue_configuration(self) -> None:
-        """Run method for configuring queues with flag for Rx testing set to :data:`True`."""
-        self.modify_ring_size(True)
+        """Test Rx queue configuration when testing is set to :data:`True`.
+
+        Steps:
+            * Start testpmd.
+            * Set forward mode.
+            * Send packets with different addresses and capture.
+
+        Verify
+            * Ring size of port queues can be configured at runtime.
+        """
+        self._modify_ring_size(True)
 
     @requires_nic_capability(NicCapability.RUNTIME_TX_QUEUE_SETUP)
     @func_test
     def tx_queue_stop(self) -> None:
-        """Run method for stopping queues with flag for Rx testing set to :data:`False`."""
-        self.stop_queues(False)
+        """Test Rx stopping queues when flag is set to :data:`False`.
+
+        Steps:
+            * Start testpmd.
+            * Set forward mode.
+            * Send packets with different addresses and capture.
+
+        Verify
+            * Stopped queues don't handle traffic and doesn't block traffic on other queues.
+        """
+        self._stop_queues(False)
 
     @requires_nic_capability(NicCapability.RUNTIME_TX_QUEUE_SETUP)
     @func_test
     def tx_queue_configuration(self) -> None:
-        """Run method for configuring queues with flag for Rx testing set to :data:`False`."""
-        self.modify_ring_size(False)
+        """Test Rx queue configuration when testing is set to :data:`False`.
+
+        Steps:
+            * Start testpmd.
+            * Set forward mode.
+            * Send packets with different addresses and capture.
+
+        Verify
+            * Ring size of port queues can be configured at runtime.
+        """
+        self._modify_ring_size(False)

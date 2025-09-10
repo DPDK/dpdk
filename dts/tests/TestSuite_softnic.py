@@ -82,14 +82,13 @@ class TestSoftnic(TestSuite):
         """Softnic test.
 
         Steps:
-            Start Testpmd with a softnic vdev using the provided config files.
-            Testpmd forwarding is disabled, instead configure softnic to forward packets
-            from port 0 to port 1 of the physical device.
-            Send generated packets from the TG.
+            * Start Testpmd with a softnic vdev using the provided config files.
+            * Testpmd forwarding is disabled, instead configure softnic to forward packets
+            * from port 0 to port 1 of the physical device.
+            * Send generated packets from the TG.
 
         Verify:
-            The packets that are received are the same as the packets sent.
-
+            * The packets that are received are the same as the packets sent.
         """
         with TestPmd(
             vdevs=[VirtualDevice(f"net_softnic0,firmware={self.cli_file},cpu_id=1,conn_port=8086")],
