@@ -84,7 +84,6 @@ struct ci_tx_queue {
 		};
 		struct { /* iavf driver specific values */
 			uint16_t ipsec_crypto_pkt_md_offset;
-			uint8_t rel_mbufs_type;
 #define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1 BIT(0)
 #define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 BIT(1)
 			uint8_t vlan_flag;
