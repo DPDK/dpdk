@@ -15,13 +15,19 @@ VLAN ID should have a specified ID inserted and then be forwarded.
 from scapy.layers.l2 import Dot1Q, Ether
 from scapy.packet import Raw
 
-from framework.remote_session.testpmd_shell import SimpleForwardingModes, TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import NicCapability, TopologyType, requires
 
 
-@requires(NicCapability.RX_OFFLOAD_VLAN_FILTER)
-@requires(topology_type=TopologyType.two_links)
+@requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN_FILTER)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestVlan(TestSuite):
     """DPDK VLAN test suite.
 
@@ -104,7 +110,7 @@ class TestVlan(TestSuite):
                 "The received tag did not match the expected tag",
             )
 
-    def vlan_setup(self, testpmd: TestPmdShell, port_id: int, filtered_id: int) -> None:
+    def vlan_setup(self, testpmd: TestPmd, port_id: int, filtered_id: int) -> None:
         """Setup method for all test cases.
 
         Args:
@@ -124,12 +130,12 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a VLAN packet.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
             self.send_vlan_packet_and_verify(True, strip=False, vlan_id=1)
 
-    @requires(NicCapability.RX_OFFLOAD_VLAN_STRIP)
+    @requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN_STRIP)
     @func_test
     def vlan_receipt_stripping(self) -> None:
         """Ensure VLAN packet received with no tag when receipts and header stripping are enabled.
@@ -137,7 +143,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a VLAN packet.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.set_vlan_strip(port=0, enable=True)
             testpmd.start()
@@ -150,7 +156,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a VLAN packet.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
             self.send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
@@ -162,7 +168,7 @@ class TestVlan(TestSuite):
         Test:
             Create an interactive testpmd shell and verify a non-VLAN packet.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
             testpmd.set_promisc(port=0, enable=False)
             testpmd.stop_all_ports()

@@ -17,19 +17,20 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Packet, Raw
 
-from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import (
+from api.capabilities import (
+    LinkTopology,
     NicCapability,
-    RtePTypes,
-    TestPmdShell,
-    TestPmdVerbosePacket,
+    requires_link_topology,
+    requires_nic_capability,
 )
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
+from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import TopologyType, requires
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
-@requires(topology_type=TopologyType.two_links)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestPortStats(TestSuite):
     """DPDK Port statistics testing suite.
 
@@ -137,13 +138,13 @@ class TestPortStats(TestSuite):
         Verify:
             Parse verbose info from stopping packet forwarding and verify values in port stats.
         """
-        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.set_verbose(3)
             testpmd.start()
             testpmd.clear_port_stats_all()
             self.send_packet_and_capture(self.send_pkt)
             port_stats_all, forwarding_info = testpmd.show_port_stats_all()
-            verbose_information = TestPmdShell.extract_verbose_output(forwarding_info)
+            verbose_information = TestPmd.extract_verbose_output(forwarding_info)
 
         # Gather information from irrelevant packets sent/ received on the same port.
         rx_irr_bytes, rx_irr_pakts, tx_irr_bytes, tx_irr_pakts = self.extract_noise_information(

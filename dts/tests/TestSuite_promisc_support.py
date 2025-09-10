@@ -11,12 +11,15 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import requires
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
 class TestPromiscSupport(TestSuite):
     """Promiscuous mode support test suite."""
 
@@ -40,7 +43,7 @@ class TestPromiscSupport(TestSuite):
         """
         packet = [Ether(dst=self.ALTERNATIVE_MAC_ADDRESS) / IP() / Raw(load=b"\x00" * 64)]
 
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             for port_id, _ in enumerate(self.topology.sut_ports):
                 testpmd.set_promisc(port=port_id, enable=True, verify=True)
             testpmd.start()

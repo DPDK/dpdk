@@ -19,20 +19,22 @@ from scapy.layers.l2 import Dot1Q, Ether
 from scapy.layers.sctp import SCTP
 from scapy.packet import Packet, Raw
 
-from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import (
-    ChecksumOffloadOptions,
-    PacketOffloadFlag,
-    TestPmdShell,
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
 )
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
+from api.testpmd.types import ChecksumOffloadOptions, PacketOffloadFlag
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import NicCapability, TopologyType, requires
 
 
-@requires(topology_type=TopologyType.two_links)
-@requires(NicCapability.RX_OFFLOAD_IPV4_CKSUM)
-@requires(NicCapability.RX_OFFLOAD_UDP_CKSUM)
-@requires(NicCapability.RX_OFFLOAD_TCP_CKSUM)
+@requires_link_topology(LinkTopology.TWO_LINKS)
+@requires_nic_capability(NicCapability.RX_OFFLOAD_IPV4_CKSUM)
+@requires_nic_capability(NicCapability.RX_OFFLOAD_UDP_CKSUM)
+@requires_nic_capability(NicCapability.RX_OFFLOAD_TCP_CKSUM)
 class TestChecksumOffload(TestSuite):
     """Checksum offload test suite.
 
@@ -69,7 +71,7 @@ class TestChecksumOffload(TestSuite):
             )
 
     def send_packet_and_verify_checksum(
-        self, packet: Packet, good_L4: bool, good_IP: bool, testpmd: TestPmdShell, id: int
+        self, packet: Packet, good_L4: bool, good_IP: bool, testpmd: TestPmd, id: int
     ) -> None:
         """Send packet and verify verbose output matches expected output.
 
@@ -97,7 +99,7 @@ class TestChecksumOffload(TestSuite):
         self.verify(is_L4 == good_L4, "Layer 4 checksum flag did not match expected checksum flag.")
         self.verify(is_IP == good_IP, "IP checksum flag did not match expected checksum flag.")
 
-    def setup_hw_offload(self, testpmd: TestPmdShell) -> None:
+    def setup_hw_offload(self, testpmd: TestPmd) -> None:
         """Sets IP, UDP, and TCP layers to hardware offload.
 
         Args:
@@ -132,7 +134,7 @@ class TestChecksumOffload(TestSuite):
             Ether() / IPv6(src="::1") / UDP(dport=dport_id) / Raw(payload),
             Ether() / IPv6(src="::1") / TCP(dport=dport_id) / Raw(payload),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -164,7 +166,7 @@ class TestChecksumOffload(TestSuite):
             Ether() / IPv6(src="::1") / UDP(dport=dport_id) / Raw(payload),
             Ether() / IPv6(src="::1") / TCP(dport=dport_id) / Raw(payload),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             testpmd.start()
@@ -194,7 +196,7 @@ class TestChecksumOffload(TestSuite):
             Ether() / IP() / UDP(chksum=0xF, dport=dport_id),
             Ether() / IP() / TCP(chksum=0xF, dport=dport_id),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -227,7 +229,7 @@ class TestChecksumOffload(TestSuite):
             Ether() / IP(chksum=0xF) / UDP(dport=dport_id),
             Ether() / IP(chksum=0xF) / TCP(dport=dport_id),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -264,7 +266,7 @@ class TestChecksumOffload(TestSuite):
             Ether() / IPv6(src="::1") / UDP(chksum=0xF, dport=dport_id),
             Ether() / IPv6(src="::1") / TCP(chksum=0xF, dport=dport_id),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -285,7 +287,7 @@ class TestChecksumOffload(TestSuite):
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
-    @requires(NicCapability.RX_OFFLOAD_VLAN)
+    @requires_nic_capability(NicCapability.RX_OFFLOAD_VLAN)
     @func_test
     def vlan_checksum(self) -> None:
         """Test VLAN Rx checksum hardware offload and verify packet reception.
@@ -323,7 +325,7 @@ class TestChecksumOffload(TestSuite):
             / TCP(chksum=0xF, dport=dport_id)
             / Raw(payload),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             self.setup_hw_offload(testpmd=testpmd)
@@ -342,7 +344,7 @@ class TestChecksumOffload(TestSuite):
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
-    @requires(NicCapability.RX_OFFLOAD_SCTP_CKSUM)
+    @requires_nic_capability(NicCapability.RX_OFFLOAD_SCTP_CKSUM)
     @func_test
     def validate_sctp_checksum(self) -> None:
         """Test SCTP Rx checksum hardware offload and verify packet reception.
@@ -361,7 +363,7 @@ class TestChecksumOffload(TestSuite):
             Ether() / IP() / UDP(dport=dport_id) / SCTP(),
             Ether() / IP() / UDP(dport=dport_id) / SCTP(chksum=0xF),
         ]
-        with TestPmdShell(enable_rx_cksum=True) as testpmd:
+        with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             testpmd.csum_set_hw(layers=ChecksumOffloadOptions.sctp)

@@ -25,15 +25,17 @@ from scapy.layers.sctp import SCTP
 from scapy.packet import Packet, Raw, raw
 from scapy.utils import rdpcap
 
+from api.capabilities import (
+    LinkTopology,
+    requires_link_topology,
+)
+from api.testpmd import TestPmd
 from framework.params import Params
 from framework.remote_session.blocking_app import BlockingApp
 from framework.remote_session.dpdk_shell import compute_eal_params
-from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.artifact import Artifact
-from framework.testbed_model.capability import requires
 from framework.testbed_model.cpu import LogicalCoreList
-from framework.testbed_model.topology import TopologyType
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
@@ -58,7 +60,7 @@ class DumpcapParams(Params):
     packet_filter: str | None = field(default=None, metadata=Params.short("f"))
 
 
-@requires(topology_type=TopologyType.two_links)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestPacketCapture(TestSuite):
     """Packet Capture TestSuite.
 
@@ -160,7 +162,7 @@ class TestPacketCapture(TestSuite):
             * The expected packets are the same as the Rx packets.
             * The Tx packets are the same as the packets received from Scapy.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             received_packets = self._send_and_dump()
 
@@ -191,7 +193,7 @@ class TestPacketCapture(TestSuite):
         Verify:
             * The dumped packets did not contain any of the packets meant for filtering.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             self._send_and_dump("tcp", rx_only=True)
             filtered_packets = [

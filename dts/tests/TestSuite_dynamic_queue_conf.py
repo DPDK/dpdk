@@ -31,17 +31,18 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import PortTopology, SimpleForwardingModes
 from framework.exception import InteractiveCommandExecutionError
-from framework.params.testpmd import PortTopology, SimpleForwardingModes
-from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import NicCapability, requires
 
 
 def setup_and_teardown_test(
-    test_meth: Callable[
-        ["TestDynamicQueueConf", int, MutableSet, MutableSet, TestPmdShell, bool], None
-    ],
+    test_meth: Callable[["TestDynamicQueueConf", int, MutableSet, MutableSet, TestPmd, bool], None],
 ) -> Callable[["TestDynamicQueueConf", bool], None]:
     """Decorator that provides a setup and teardown for testing methods.
 
@@ -83,7 +84,7 @@ def setup_and_teardown_test(
         while len(queues_to_config) < self.num_ports_to_modify:
             queues_to_config.add(random.randint(1, self.number_of_queues - 1))
         unchanged_queues = set(range(self.number_of_queues)) - queues_to_config
-        with TestPmdShell(
+        with TestPmd(
             port_topology=PortTopology.chained,
             rx_queues=self.number_of_queues,
             tx_queues=self.number_of_queues,
@@ -117,7 +118,7 @@ def setup_and_teardown_test(
     return wrap
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
 class TestDynamicQueueConf(TestSuite):
     """DPDK dynamic queue configuration test suite.
 
@@ -197,7 +198,7 @@ class TestDynamicQueueConf(TestSuite):
         port_id: int,
         queues_to_modify: MutableSet[int],
         unchanged_queues: MutableSet[int],
-        testpmd: TestPmdShell,
+        testpmd: TestPmd,
         is_rx_testing: bool,
     ) -> None:
         """Verify ring size of port queues can be configured at runtime.
@@ -237,7 +238,7 @@ class TestDynamicQueueConf(TestSuite):
         port_id: int,
         queues_to_modify: MutableSet[int],
         unchanged_queues: MutableSet[int],
-        testpmd: TestPmdShell,
+        testpmd: TestPmd,
         is_rx_testing: bool,
     ) -> None:
         """Verify stopped queues do not handle traffic and do not block traffic on other queues.
@@ -275,25 +276,25 @@ class TestDynamicQueueConf(TestSuite):
                 f"Queue {stopped_q_id} should be stopped but still received traffic.",
             )
 
-    @requires(NicCapability.RUNTIME_RX_QUEUE_SETUP)
+    @requires_nic_capability(NicCapability.RUNTIME_RX_QUEUE_SETUP)
     @func_test
     def rx_queue_stop(self) -> None:
         """Run method for stopping queues with flag for Rx testing set to :data:`True`."""
         self.stop_queues(True)
 
-    @requires(NicCapability.RUNTIME_RX_QUEUE_SETUP)
+    @requires_nic_capability(NicCapability.RUNTIME_RX_QUEUE_SETUP)
     @func_test
     def rx_queue_configuration(self) -> None:
         """Run method for configuring queues with flag for Rx testing set to :data:`True`."""
         self.modify_ring_size(True)
 
-    @requires(NicCapability.RUNTIME_TX_QUEUE_SETUP)
+    @requires_nic_capability(NicCapability.RUNTIME_TX_QUEUE_SETUP)
     @func_test
     def tx_queue_stop(self) -> None:
         """Run method for stopping queues with flag for Rx testing set to :data:`False`."""
         self.stop_queues(False)
 
-    @requires(NicCapability.RUNTIME_TX_QUEUE_SETUP)
+    @requires_nic_capability(NicCapability.RUNTIME_TX_QUEUE_SETUP)
     @func_test
     def tx_queue_configuration(self) -> None:
         """Run method for configuring queues with flag for Rx testing set to :data:`False`."""
