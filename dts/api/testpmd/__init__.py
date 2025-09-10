@@ -37,6 +37,7 @@ from api.testpmd.types import (
     ChecksumOffloadOptions,
     DeviceCapabilitiesFlag,
     FlowRule,
+    RSSOffloadTypesFlag,
     RxOffloadCapabilities,
     RxOffloadCapability,
     RxOffloadConfiguration,
@@ -369,6 +370,82 @@ class TestPmd(DPDKShell):
             if not all(f"Port {p_id} is closed" in port_close_output for p_id in range(num_ports)):
                 raise InteractiveCommandExecutionError("Ports were not closed successfully.")
 
+    def port_config_rss_reta(
+        self, port_id: int, hash_index: int, queue_id: int, verify: bool = True
+    ) -> None:
+        """Configure a port's RSS redirection table.
+
+        Args:
+            port_id: The port where the redirection table will be configured.
+            hash_index: The index into the redirection table associated with the destination queue.
+            queue_id: The destination queue of the packet.
+            verify: If :data:`True`, verifies if a port's redirection table
+                was correctly configured.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True`
+                Testpmd failed to config RSS reta.
+        """
+        out = self.send_command(f"port config {port_id} rss reta ({hash_index},{queue_id})")
+        if verify:
+            if f"The reta size of port {port_id} is" not in out:
+                self._logger.debug(f"Failed to config RSS reta: \n{out}")
+                raise InteractiveCommandExecutionError("Testpmd failed to config RSS reta.")
+
+    def port_config_all_rss_offload_type(
+        self, flag: RSSOffloadTypesFlag, verify: bool = True
+    ) -> None:
+        """Set the RSS mode on all ports.
+
+        Args:
+            flag: The RSS iptype all ports will be configured to.
+            verify: If :data:`True`, it verifies if all ports RSS offload type
+                was correctly configured.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True`
+                Testpmd failed to config the RSS mode on all ports.
+        """
+        out = self.send_command(f"port config all rss {flag.name}")
+        if verify:
+            if "error" in out:
+                self._logger.debug(f"Failed to config the RSS mode on all ports: \n{out}")
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to change RSS mode to {flag.name}"
+                )
+
+    def port_config_rss_hash_key(
+        self,
+        port_id: int,
+        offload_type: RSSOffloadTypesFlag,
+        hex_str: str,
+        verify: bool = True,
+    ) -> str:
+        """Sets the RSS hash key for the specified port.
+
+        Args:
+            port_id: The port that will have the hash key applied to.
+            offload_type: The offload type the hash key will be applied to.
+            hex_str: The hash key to set.
+            verify: If :data:`True`, verify that RSS has the key.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True`
+                Testpmd failed to set the RSS hash key.
+        """
+        output = self.send_command(
+            f"port config {port_id} rss-hash-key {offload_type} {hex_str}",
+            skip_first_line=True,
+        )
+
+        if verify:
+            if output.strip():
+                self._logger.debug(f"Failed to set rss hash key: \n{output}")
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to set {hex_str} on {port_id} with a flag of {offload_type}."
+                )
+        return output
+
     def show_port_info_all(self) -> list[TestPmdPort]:
         """Returns the information of all the ports.
 
@@ -587,7 +664,7 @@ class TestPmd(DPDKShell):
                                                            {port_id}:\n{csum_output}"""
                     )
 
-    def flow_create(self, flow_rule: FlowRule, port_id: int) -> int:
+    def flow_create(self, flow_rule: FlowRule, port_id: int, verify: bool = True) -> int:
         """Creates a flow rule in the testpmd session.
 
         This command is implicitly verified as needed to return the created flow rule id.
@@ -595,14 +672,22 @@ class TestPmd(DPDKShell):
         Args:
             flow_rule: :class:`FlowRule` object used for creating testpmd flow rule.
             port_id: Integer representing the port to use.
+            verify: If :data:`True`, the output of the command is scanned
+                to ensure the flow rule was created successfully.
 
         Raises:
             InteractiveCommandExecutionError: If flow rule is invalid.
 
         Returns:
-            Id of created flow rule.
+            Id of created flow rule as an integer.
         """
         flow_output = self.send_command(f"flow create {port_id} {flow_rule}")
+        if verify:
+            if "created" not in flow_output:
+                self._logger.debug(f"Failed to create flow rule:\n{flow_output}")
+                raise InteractiveCommandExecutionError(
+                    f"Failed to create flow rule:\n{flow_output}"
+                )
         match = re.search(r"#(\d+)", flow_output)
         if match is not None:
             match_str = match.group(1)
@@ -631,7 +716,7 @@ class TestPmd(DPDKShell):
         """Deletes the specified flow rule from the testpmd session.
 
         Args:
-            flow_id: ID of the flow to remove.
+            flow_id: :class:`FlowRule` id used for deleting testpmd flow rule.
             port_id: Integer representing the port to use.
             verify: If :data:`True`, the output of the command is scanned
                 to ensure the flow rule was deleted successfully.

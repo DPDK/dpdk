@@ -309,6 +309,12 @@ class RSSOffloadTypesFlag(Flag):
             RSSOffloadTypesFlag.from_list_string,
         )
 
+    def __str__(self):
+        """Replaces underscores with hyphens to produce valid testpmd value."""
+        if self.name is None:
+            return ""
+        return self.name.replace("_", "-")
+
 
 class DeviceCapabilitiesFlag(Flag):
     """Flag representing the device capabilities."""
@@ -614,11 +620,13 @@ class TestPmdPort(TextParser):
     )
     #: Maximum number of VFs
     max_vfs_num: int | None = field(
-        default=None, metadata=TextParser.find_int(r"Maximum number of VFs: (\d+)")
+        default=None,
+        metadata=TextParser.find_int(r"Maximum number of VFs: (\d+)"),
     )
     #: Maximum number of VMDq pools
     max_vmdq_pools_num: int | None = field(
-        default=None, metadata=TextParser.find_int(r"Maximum number of VMDq pools: (\d+)")
+        default=None,
+        metadata=TextParser.find_int(r"Maximum number of VMDq pools: (\d+)"),
     )
 
     #:
