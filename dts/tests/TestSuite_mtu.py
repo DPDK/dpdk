@@ -17,9 +17,12 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import requires
 
 STANDARD_FRAME = 1518  # --max-pkt-len will subtract l2 information at a minimum of 18 bytes.
 JUMBO_FRAME = 9018
@@ -31,7 +34,7 @@ IP_HEADER_LEN = 20
 VENDOR_AGNOSTIC_PADDING = 9  # Used as a work around for varying MTU definitions between vendors.
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
 class TestMtu(TestSuite):
     """DPDK PMD jumbo frames and MTU update test suite.
 
@@ -83,7 +86,7 @@ class TestMtu(TestSuite):
         else:
             self.verify(not found, "Received packet.")
 
-    def assess_mtu_boundary(self, testpmd_shell: TestPmdShell, mtu: int) -> None:
+    def assess_mtu_boundary(self, testpmd_shell: TestPmd, mtu: int) -> None:
         """Sets the new MTU and verifies packets at the set boundary.
 
         Ensure that packets smaller than or equal to a set MTU will be received and packets larger
@@ -158,7 +161,7 @@ class TestMtu(TestSuite):
             * Verify that standard MTU packets forward, in addition to packets within the limits of
               an MTU size set during runtime.
         """
-        with TestPmdShell(tx_offloads=0x8000, mbuf_size=[JUMBO_MTU + 200]) as testpmd:
+        with TestPmd(tx_offloads=0x8000, mbuf_size=[JUMBO_MTU + 200]) as testpmd:
             testpmd.set_port_mtu_all(1500, verify=True)
             testpmd.start()
             self.assess_mtu_boundary(testpmd, 1500)
@@ -198,7 +201,7 @@ class TestMtu(TestSuite):
             * Verify the first two packets are forwarded and the last is dropped after pre-runtime
               MTU modification.
         """
-        with TestPmdShell(
+        with TestPmd(
             tx_offloads=0x8000,
             mbuf_size=[JUMBO_MTU + 200],
             mbcache=200,
@@ -226,7 +229,7 @@ class TestMtu(TestSuite):
 
             * Verify that all packets are forwarded after pre-runtime MTU modification.
         """
-        with TestPmdShell(
+        with TestPmd(
             tx_offloads=0x8000,
             mbuf_size=[JUMBO_MTU + 200],
             mbcache=200,
@@ -254,7 +257,7 @@ class TestMtu(TestSuite):
             * Verify the first two packets are forwarded and the last is dropped after pre-runtime
               MTU modification.
         """
-        with TestPmdShell(
+        with TestPmd(
             tx_offloads=0x8000,
             mbuf_size=[JUMBO_MTU + 200],
             mbcache=200,

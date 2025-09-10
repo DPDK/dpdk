@@ -6,18 +6,22 @@
 Create a softnic virtual device and verify it successfully forwards packets.
 """
 
-from framework.params.testpmd import EthPeer
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import EthPeer
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.artifact import Artifact
-from framework.testbed_model.capability import requires
-from framework.testbed_model.topology import TopologyType
 from framework.testbed_model.virtual_device import VirtualDevice
 from framework.utils import generate_random_packets
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
-@requires(topology_type=TopologyType.two_links)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestSoftnic(TestSuite):
     """Softnic test suite."""
 
@@ -87,7 +91,7 @@ class TestSoftnic(TestSuite):
             The packets that are received are the same as the packets sent.
 
         """
-        with TestPmdShell(
+        with TestPmd(
             vdevs=[VirtualDevice(f"net_softnic0,firmware={self.cli_file},cpu_id=1,conn_port=8086")],
             eth_peer=[EthPeer(1, self.topology.tg_port_ingress.mac_address)],
             port_topology=None,

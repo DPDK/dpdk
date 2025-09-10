@@ -19,14 +19,19 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import TopologyType, requires
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
-@requires(topology_type=TopologyType.two_links)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestDynamicConfig(TestSuite):
     """Dynamic config suite.
 
@@ -66,7 +71,7 @@ class TestDynamicConfig(TestSuite):
             f"Packet was {'dropped' if should_receive else 'received'}",
         )
 
-    def disable_promisc_setup(self, testpmd: TestPmdShell, port_id: int) -> TestPmdShell:
+    def disable_promisc_setup(self, testpmd: TestPmd, port_id: int) -> TestPmd:
         """Sets up testpmd shell config for cases where promisc mode is disabled.
 
         Args:
@@ -74,7 +79,7 @@ class TestDynamicConfig(TestSuite):
             port_id: Port number to disable promisc mode on.
 
         Returns:
-            TestPmdShell: interactive testpmd shell object.
+            TestPmd: interactive testpmd shell object.
         """
         testpmd.start()
         testpmd.set_promisc(port=port_id, enable=False)
@@ -89,7 +94,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one unknown.
         Verifies that both are received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             is_promisc = testpmd.show_port_info(0).is_promiscuous_mode_enabled
             self.verify(is_promisc, "Promiscuous mode was not enabled by default.")
             testpmd.start()
@@ -107,7 +112,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one unknown.
         Verifies that only the matching address packet is received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
             mac = testpmd.show_port_info(0).mac_address
             self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
@@ -121,7 +126,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one broadcast.
         Verifies that both packets are received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
             mac = testpmd.show_port_info(0).mac_address
             self.send_packet_and_verify(should_receive=True, mac_address=str(mac))
@@ -135,7 +140,7 @@ class TestDynamicConfig(TestSuite):
         and sends two packets; one matching source MAC address and one multicast.
         Verifies that the multicast packet is only received once allmulticast mode is enabled.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd = self.disable_promisc_setup(testpmd=testpmd, port_id=0)
             testpmd.set_multicast_all(on=False)
             # 01:00:5E:00:00:01 is the first of the multicast MAC range of addresses
