@@ -49,7 +49,7 @@ class TestChecksumOffload(TestSuite):
 
     """
 
-    def send_packets_and_verify(
+    def _send_packets_and_verify(
         self, packet_list: List[Packet], load: bytes, should_receive: bool
     ) -> None:
         """Iterates through a list of packets and verifies they are received.
@@ -70,7 +70,7 @@ class TestChecksumOffload(TestSuite):
                 f"Packet was {'dropped' if should_receive else 'received'}",
             )
 
-    def send_packet_and_verify_checksum(
+    def _send_packet_and_verify_checksum(
         self, packet: Packet, good_L4: bool, good_IP: bool, testpmd: TestPmd, id: int
     ) -> None:
         """Send packet and verify verbose output matches expected output.
@@ -99,7 +99,7 @@ class TestChecksumOffload(TestSuite):
         self.verify(is_L4 == good_L4, "Layer 4 checksum flag did not match expected checksum flag.")
         self.verify(is_IP == good_IP, "IP checksum flag did not match expected checksum flag.")
 
-    def setup_hw_offload(self, testpmd: TestPmd) -> None:
+    def _setup_hw_offload(self, testpmd: TestPmd) -> None:
         """Sets IP, UDP, and TCP layers to hardware offload.
 
         Args:
@@ -117,14 +117,14 @@ class TestChecksumOffload(TestSuite):
         """Enable checksum offload insertion and verify packet reception.
 
         Steps:
-            Create a list of packets to send.
-            Launch testpmd with the necessary configuration.
-            Enable checksum hardware offload.
-            Send list of packets.
+            * Create a list of packets to send.
+            * Launch testpmd with the necessary configuration.
+            * Enable checksum hardware offload.
+            * Send list of packets.
 
         Verify:
-            Verify packets are received.
-            Verify packet checksums match the expected flags.
+            * Packets are received.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         payload = b"xxxxx"
@@ -137,11 +137,13 @@ class TestChecksumOffload(TestSuite):
         with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
-            self.setup_hw_offload(testpmd=testpmd)
+            self._setup_hw_offload(testpmd=testpmd)
             testpmd.start()
-            self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
+            self._send_packets_and_verify(
+                packet_list=packet_list, load=payload, should_receive=True
+            )
             for i in range(0, len(packet_list)):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
@@ -150,13 +152,13 @@ class TestChecksumOffload(TestSuite):
         """Disable checksum offload insertion and verify packet reception.
 
         Steps:
-            Create a list of packets to send.
-            Launch testpmd with the necessary configuration.
-            Send list of packets.
+            * Create a list of packets to send.
+            * Launch testpmd with the necessary configuration.
+            * Send list of packets.
 
         Verify:
-            Verify packets are received.
-            Verify packet checksums match the expected flags.
+            * Packets are received.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         payload = b"xxxxx"
@@ -170,9 +172,11 @@ class TestChecksumOffload(TestSuite):
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
             testpmd.start()
-            self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
+            self._send_packets_and_verify(
+                packet_list=packet_list, load=payload, should_receive=True
+            )
             for i in range(0, len(packet_list)):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
@@ -181,13 +185,13 @@ class TestChecksumOffload(TestSuite):
         """Tests L4 Rx checksum in a variety of scenarios.
 
         Steps:
-            Create a list of packets to send with UDP/TCP fields.
-            Launch testpmd with the necessary configuration.
-            Enable checksum hardware offload.
-            Send list of packets.
+            * Create a list of packets to send with UDP/TCP fields.
+            * Launch testpmd with the necessary configuration.
+            * Enable checksum hardware offload.
+            * Send list of packets.
 
         Verify:
-            Verify packet checksums match the expected flags.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         packet_list = [
@@ -199,13 +203,13 @@ class TestChecksumOffload(TestSuite):
         with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
-            self.setup_hw_offload(testpmd=testpmd)
+            self._setup_hw_offload(testpmd=testpmd)
             for i in range(0, 2):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
             for i in range(2, 4):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
@@ -214,13 +218,13 @@ class TestChecksumOffload(TestSuite):
         """Tests L3 Rx checksum hardware offload.
 
         Steps:
-            Create a list of packets to send with IP fields.
-            Launch testpmd with the necessary configuration.
-            Enable checksum hardware offload.
-            Send list of packets.
+            * Create a list of packets to send with IP fields.
+            * Launch testpmd with the necessary configuration.
+            * Enable checksum hardware offload.
+            * Send list of packets.
 
         Verify:
-            Verify packet checksums match the expected flags.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         packet_list = [
@@ -232,13 +236,13 @@ class TestChecksumOffload(TestSuite):
         with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
-            self.setup_hw_offload(testpmd=testpmd)
+            self._setup_hw_offload(testpmd=testpmd)
             for i in range(0, 2):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
             for i in range(2, 4):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=True, good_IP=False, testpmd=testpmd, id=dport_id
                 )
 
@@ -247,13 +251,13 @@ class TestChecksumOffload(TestSuite):
         """Verify verbose output of Rx packets matches expected behavior.
 
         Steps:
-            Create a list of packets to send.
-            Launch testpmd with the necessary configuration.
-            Enable checksum hardware offload.
-            Send list of packets.
+            * Create a list of packets to send.
+            * Launch testpmd with the necessary configuration.
+            * Enable checksum hardware offload.
+            * Send list of packets.
 
         Verify:
-            Verify packet checksums match the expected flags.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         packet_list = [
@@ -269,13 +273,13 @@ class TestChecksumOffload(TestSuite):
         with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
-            self.setup_hw_offload(testpmd=testpmd)
+            self._setup_hw_offload(testpmd=testpmd)
             for i in range(0, 4):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
                 )
             for i in range(4, 6):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i],
                     good_L4=False,
                     good_IP=False,
@@ -283,7 +287,7 @@ class TestChecksumOffload(TestSuite):
                     id=dport_id,
                 )
             for i in range(6, 8):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
@@ -293,13 +297,13 @@ class TestChecksumOffload(TestSuite):
         """Test VLAN Rx checksum hardware offload and verify packet reception.
 
         Steps:
-            Create a list of packets to send with VLAN fields.
-            Launch testpmd with the necessary configuration.
-            Enable checksum hardware offload.
-            Send list of packets.
+            * Create a list of packets to send with VLAN fields.
+            * Launch testpmd with the necessary configuration.
+            * Enable checksum hardware offload.
+            * Send list of packets.
 
         Verify:
-            Verify packet checksums match the expected flags.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         payload = b"xxxxx"
@@ -328,11 +332,13 @@ class TestChecksumOffload(TestSuite):
         with TestPmd(enable_rx_cksum=True) as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.csum)
             testpmd.set_verbose(level=1)
-            self.setup_hw_offload(testpmd=testpmd)
+            self._setup_hw_offload(testpmd=testpmd)
             testpmd.start()
-            self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
+            self._send_packets_and_verify(
+                packet_list=packet_list, load=payload, should_receive=True
+            )
             for i in range(0, 2):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i],
                     good_L4=False,
                     good_IP=False,
@@ -340,7 +346,7 @@ class TestChecksumOffload(TestSuite):
                     id=dport_id,
                 )
             for i in range(2, 4):
-                self.send_packet_and_verify_checksum(
+                self._send_packet_and_verify_checksum(
                     packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
                 )
 
@@ -350,13 +356,13 @@ class TestChecksumOffload(TestSuite):
         """Test SCTP Rx checksum hardware offload and verify packet reception.
 
         Steps:
-            Create a list of packets to send with SCTP fields.
-            Launch testpmd with the necessary configuration.
-            Enable checksum hardware offload.
-            Send list of packets.
+            * Create a list of packets to send with SCTP fields.
+            * Launch testpmd with the necessary configuration.
+            * Enable checksum hardware offload.
+            * Send list of packets.
 
         Verify:
-            Verify packet checksums match the expected flags.
+            * Packet checksums match the expected flags.
         """
         dport_id = 50000
         packet_list = [
@@ -368,9 +374,9 @@ class TestChecksumOffload(TestSuite):
             testpmd.set_verbose(level=1)
             testpmd.csum_set_hw(layers=ChecksumOffloadOptions.sctp)
             testpmd.start()
-            self.send_packet_and_verify_checksum(
+            self._send_packet_and_verify_checksum(
                 packet=packet_list[0], good_L4=True, good_IP=True, testpmd=testpmd, id=dport_id
             )
-            self.send_packet_and_verify_checksum(
+            self._send_packet_and_verify_checksum(
                 packet=packet_list[1], good_L4=False, good_IP=True, testpmd=testpmd, id=dport_id
             )

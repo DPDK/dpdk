@@ -65,7 +65,7 @@ class TestPmdBufferScatter(TestSuite):
         self.topology.tg_port_egress.configure_mtu(9000)
         self.topology.tg_port_ingress.configure_mtu(9000)
 
-    def scatter_pktgen_send_packet(self, pkt_size: int) -> list[Packet]:
+    def _scatter_pktgen_send_packet(self, pkt_size: int) -> list[Packet]:
         """Generate and send a packet to the SUT then capture what is forwarded back.
 
         Generate an IP packet of a specific length and send it to the SUT,
@@ -99,7 +99,7 @@ class TestPmdBufferScatter(TestSuite):
 
         return received_packets
 
-    def pmd_scatter(self, mb_size: int, enable_offload: bool = False) -> None:
+    def _pmd_scatter(self, mb_size: int, enable_offload: bool = False) -> None:
         """Testpmd support of receiving and sending scattered multi-segment packets.
 
         Support for scattered packets is shown by sending 5 packets of differing length
@@ -124,7 +124,7 @@ class TestPmdBufferScatter(TestSuite):
             testpmd.start()
 
             for offset in [-1, 0, 1, 4, 5]:
-                recv_packets = self.scatter_pktgen_send_packet(mb_size + offset)
+                recv_packets = self._scatter_pktgen_send_packet(mb_size + offset)
                 self._logger.debug(f"Relevant captured packets: \n{recv_packets}")
                 self.verify(
                     any(" ".join(["58"] * 8) in hexstr(pkt, onlyhex=1) for pkt in recv_packets),
@@ -135,14 +135,30 @@ class TestPmdBufferScatter(TestSuite):
     @requires_nic_capability(NicCapability.SCATTERED_RX_ENABLED)
     @func_test
     def scatter_mbuf_2048(self) -> None:
-        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048."""
-        self.pmd_scatter(mb_size=2048)
+        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048.
+
+        Steps:
+            * Start testpmd.
+            * Send and capture packets with a `mb_size` of 2048.
+
+        Verify:
+            * Payload of the scattered packets match the expected payload offset.
+        """
+        self._pmd_scatter(mb_size=2048)
 
     @requires_nic_capability(NicCapability.RX_OFFLOAD_SCATTER)
     @func_test
     def scatter_mbuf_2048_with_offload(self) -> None:
-        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload."""
-        self.pmd_scatter(mb_size=2048, enable_offload=True)
+        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload.
+
+        Steps:
+            * Start testpmd with offload true.
+            * Send and capture packets with a `mb_size` of 2048 and rx_scatter offload enabled.
+
+        Verify:
+            * Payload of the scattered packets match the expected payload offset.
+        """
+        self._pmd_scatter(mb_size=2048, enable_offload=True)
 
     def tear_down_suite(self) -> None:
         """Tear down the test suite.

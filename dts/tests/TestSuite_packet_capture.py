@@ -154,13 +154,13 @@ class TestPacketCapture(TestSuite):
         """Test dumpcap on Rx and Tx interfaces.
 
         Steps:
-            * Start up testpmd shell.
+            * Start testpmd.
             * Start up dpdk-dumpcap with the default values.
             * Send packets.
 
         Verify:
-            * The expected packets are the same as the Rx packets.
-            * The Tx packets are the same as the packets received from Scapy.
+            * Expected packets are the same as the Rx packets.
+            * Tx packets are the same as the packets received from Scapy.
         """
         with TestPmd() as testpmd:
             testpmd.start()
@@ -186,12 +186,12 @@ class TestPacketCapture(TestSuite):
         """Test the dumpcap filtering feature.
 
         Steps:
-            * Start up testpmd shell.
+            * Start testpmd.
             * Start up dpdk-dumpcap listening for TCP packets on the Rx interface.
             * Send packets.
 
         Verify:
-            * The dumped packets did not contain any of the packets meant for filtering.
+            * Dumped packets did not contain any of the packets meant for filtering.
         """
         with TestPmd() as testpmd:
             testpmd.start()
