@@ -614,7 +614,12 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 				(uint32_t *)(uintptr_t)tmpl->devx_rmp.wq.db_rec;
 	}
 	if (!rxq_ctrl->started) {
-		mlx5_rxq_initialize(rxq_data);
+		if (mlx5_rxq_initialize(rxq_data)) {
+			DRV_LOG(ERR, "Port %u Rx queue %u RQ initialization failure.",
+			priv->dev_data->port_id, rxq->idx);
+			rte_errno = ENOMEM;
+			goto error;
+		}
 		rxq_ctrl->wqn = rxq->devx_rq.rq->id;
 	}
 	priv->dev_data->rx_queue_state[rxq->idx] = RTE_ETH_QUEUE_STATE_STARTED;

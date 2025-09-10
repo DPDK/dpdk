@@ -420,7 +420,7 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
-static void
+void
 rxq_sync_cq(struct mlx5_rxq_data *rxq)
 {
 	const uint16_t cqe_n = 1 << rxq->cqe_n;
@@ -589,7 +589,13 @@ mlx5_rx_queue_start_primary(struct rte_eth_dev *dev, uint16_t idx)
 		return ret;
 	}
 	/* Reinitialize RQ - set WQEs. */
-	mlx5_rxq_initialize(rxq_data);
+	ret = mlx5_rxq_initialize(rxq_data);
+	if (ret) {
+		DRV_LOG(ERR, "Port %u Rx queue %u RQ initialization failure.",
+			priv->dev_data->port_id, rxq->idx);
+		rte_errno = ENOMEM;
+		return ret;
+	}
 	rxq_data->err_state = MLX5_RXQ_ERR_STATE_NO_ERROR;
 	/* Set actual queue state. */
 	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -2299,6 +2305,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 					(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 			if (rxq_ctrl->rxq.shared)
 				LIST_REMOVE(rxq_ctrl, share_entry);
+			mlx5_free(rxq_ctrl->rxq.rq_win_data);
 			mlx5_free(rxq_ctrl);
 		}
 		dev->data->rx_queues[idx] = NULL;
