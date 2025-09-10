@@ -15,8 +15,7 @@ Example:
 from pathlib import PurePath
 from typing import TypedDict
 
-from framework.params import Switch, YesNoSwitch
-from framework.params.testpmd import (
+from api.testpmd.config import (
     AnonMempoolAllocationMode,
     EthPeer,
     Event,
@@ -37,6 +36,7 @@ from framework.params.testpmd import (
     TXRingParams,
     TxUDPPortPair,
 )
+from framework.params import Switch, YesNoSwitch
 from framework.testbed_model.cpu import LogicalCoreList
 from framework.testbed_model.port import Port
 from framework.testbed_model.virtual_device import VirtualDevice

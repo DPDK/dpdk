@@ -31,13 +31,8 @@ from pathlib import Path, PurePath, PurePosixPath
 
 from framework.config.node import NodeConfiguration
 from framework.logger import DTSLogger
-from framework.remote_session import (
-    InteractiveRemoteSession,
-    RemoteSession,
-    create_interactive_session,
-    create_remote_session,
-)
-from framework.remote_session.remote_session import CommandResult
+from framework.remote_session.interactive_remote_session import InteractiveRemoteSession
+from framework.remote_session.remote_session import CommandResult, RemoteSession
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs, TarCompressionFormat
 
@@ -129,8 +124,8 @@ class OSSession(ABC):
         self._config = node_config
         self.name = name
         self._logger = logger
-        self.remote_session = create_remote_session(node_config, name, logger)
-        self.interactive_session = create_interactive_session(node_config, logger)
+        self.remote_session = RemoteSession(node_config, name, logger)
+        self.interactive_session = InteractiveRemoteSession(node_config, logger)
 
     def is_alive(self) -> bool:
         """Check whether the underlying remote session is still responding."""

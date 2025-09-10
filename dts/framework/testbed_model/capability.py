@@ -26,9 +26,9 @@ Examples:
     .. code:: python
 
         from framework.test_suite import TestSuite, func_test
-        from framework.testbed_model.capability import TopologyType, requires
+        from framework.testbed_model.capability import LinkTopology, requires
         # The whole test suite (each test case within) doesn't require any links.
-        @requires(topology_type=TopologyType.no_link)
+        @requires_link_topology(LinkTopology.NO_LINK)
         @func_test
         class TestHelloWorld(TestSuite):
             def hello_world_single_core(self):
@@ -41,7 +41,7 @@ Examples:
         class TestPmdBufferScatter(TestSuite):
             # only the test case requires the SCATTERED_RX_ENABLED capability
             # other test cases may not require it
-            @requires(NicCapability.SCATTERED_RX_ENABLED)
+            @requires_nic_capability(NicCapability.SCATTERED_RX_ENABLED)
             @func_test
             def test_scatter_mbuf_2048(self):
 """
@@ -50,26 +50,37 @@ import inspect
 from abc import ABC, abstractmethod
 from collections.abc import MutableSet
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Protocol
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Concatenate,
+    ParamSpec,
+    Protocol,
+    TypeAlias,
+)
 
 from typing_extensions import Self
 
+from api.capabilities import LinkTopology, NicCapability
 from framework.exception import ConfigurationError, InternalError, SkippedTestException
 from framework.logger import get_dts_logger
-from framework.remote_session.testpmd_shell import (
-    NicCapability,
-    TestPmdShell,
-    TestPmdShellCapabilityMethod,
-    TestPmdShellDecorator,
-    TestPmdShellMethod,
-)
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import DriverKind
-
-from .topology import Topology, TopologyType
+from framework.testbed_model.topology import Topology
 
 if TYPE_CHECKING:
+    from api.testpmd import TestPmd
     from framework.test_suite import TestCase
+
+P = ParamSpec("P")
+TestPmdMethod = Callable[Concatenate["TestPmd", P], Any]
+TestPmdCapabilityMethod: TypeAlias = Callable[
+    ["TestPmd", MutableSet["NicCapability"], MutableSet["NicCapability"]], None
+]
+TestPmdDecorator: TypeAlias = Callable[[TestPmdMethod], TestPmdMethod]
+TestPmdNicCapability = tuple[TestPmdCapabilityMethod, TestPmdDecorator | None]
 
 
 class Capability(ABC):
@@ -150,10 +161,21 @@ class Capability(ABC):
     def __hash__(self) -> int:
         """The subclasses must be hashable so that they can be stored in sets."""
 
+    def is_comparable_with(self, other: Any) -> bool:
+        """Check if the other object is of the same type for comparison.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the other object is of the same type, False otherwise.
+        """
+        return isinstance(other, type(self))
+
 
 @dataclass
 class DecoratedNicCapability(Capability):
-    """A wrapper around :class:`~framework.remote_session.testpmd_shell.NicCapability`.
+    """A wrapper around :class:`~api.testpmd.NicCapability`.
 
     New instances should be created with the :meth:`create_unique` class method to ensure
     there are no duplicate instances.
@@ -166,9 +188,83 @@ class DecoratedNicCapability(Capability):
     """
 
     nic_capability: NicCapability
-    capability_fn: TestPmdShellCapabilityMethod
-    capability_decorator: TestPmdShellDecorator | None
+    capability_fn: TestPmdCapabilityMethod
+    capability_decorator: TestPmdDecorator | None
     _unique_capabilities: ClassVar[dict[NicCapability, Self]] = {}
+
+    @classmethod
+    def _get_nic_capability_check(cls) -> list[TestPmdNicCapability]:
+        """A mapping between capability names and the associated :class:`TestPmd` methods.
+
+        The :class:`TestPmd` capability checking method executes the command that checks
+        whether the capability is supported.
+        A decorator may optionally be added to the method that will add and remove configuration
+        that's necessary to retrieve the capability support status.
+        The Enum members may be assigned the method itself or a tuple of
+        (capability_checking_method, decorator_function).
+
+        The signature of each :class:`TestPmd` capability checking method must be::
+
+            fn(self, supported_capabilities: MutableSet, unsupported_capabilities: MutableSet)
+
+        The capability checking method must get whether a capability is supported or not
+        from a testpmd command. If multiple capabilities can be obtained from a testpmd command,
+        each should be obtained in the method. These capabilities should then
+        be added to `supported_capabilities` or `unsupported_capabilities` based on their support.
+
+        The two dictionaries are shared across all capability discovery function calls in a given
+        test run so that we don't call the same function multiple times. For example, when we find
+        :attr:`SCATTERED_RX_ENABLED` in :meth:`TestPmd.get_capabilities_rxq_info`,
+        we don't go looking for it again if a different test case also needs it.
+        """
+        from api.testpmd import TestPmd, _add_remove_mtu
+
+        # In order to guard against creating new NicCapability enum members without adding
+        # the evaluation code below we use a case statement that will trigger the linter
+        # enforcing that all cases are handled.
+        def mapping(cap: NicCapability) -> TestPmdNicCapability:
+            match cap:
+                case NicCapability.SCATTERED_RX_ENABLED:
+                    return (TestPmd.get_capabilities_rxq_info, _add_remove_mtu(9000))
+                case (
+                    NicCapability.RX_OFFLOAD_VLAN_STRIP
+                    | NicCapability.RX_OFFLOAD_IPV4_CKSUM
+                    | NicCapability.RX_OFFLOAD_UDP_CKSUM
+                    | NicCapability.RX_OFFLOAD_TCP_CKSUM
+                    | NicCapability.RX_OFFLOAD_TCP_LRO
+                    | NicCapability.RX_OFFLOAD_QINQ_STRIP
+                    | NicCapability.RX_OFFLOAD_OUTER_IPV4_CKSUM
+                    | NicCapability.RX_OFFLOAD_MACSEC_STRIP
+                    | NicCapability.RX_OFFLOAD_VLAN_FILTER
+                    | NicCapability.RX_OFFLOAD_VLAN_EXTEND
+                    | NicCapability.RX_OFFLOAD_SCATTER
+                    | NicCapability.RX_OFFLOAD_TIMESTAMP
+                    | NicCapability.RX_OFFLOAD_SECURITY
+                    | NicCapability.RX_OFFLOAD_KEEP_CRC
+                    | NicCapability.RX_OFFLOAD_SCTP_CKSUM
+                    | NicCapability.RX_OFFLOAD_OUTER_UDP_CKSUM
+                    | NicCapability.RX_OFFLOAD_RSS_HASH
+                    | NicCapability.RX_OFFLOAD_BUFFER_SPLIT
+                    | NicCapability.RX_OFFLOAD_CHECKSUM
+                    | NicCapability.RX_OFFLOAD_VLAN
+                ):
+                    return (TestPmd.get_capabilities_rx_offload, None)
+                case (
+                    NicCapability.RUNTIME_RX_QUEUE_SETUP
+                    | NicCapability.RUNTIME_TX_QUEUE_SETUP
+                    | NicCapability.RXQ_SHARE
+                    | NicCapability.FLOW_RULE_KEEP
+                    | NicCapability.FLOW_SHARED_OBJECT_KEEP
+                ):
+                    return (TestPmd.get_capabilities_show_port_info, None)
+                case NicCapability.MCAST_FILTERING:
+                    return (TestPmd.get_capabilities_mcast_filtering, None)
+                case NicCapability.FLOW_CTRL:
+                    return (TestPmd.get_capabilities_flow_ctrl, None)
+                case NicCapability.PHYSICAL_FUNCTION:
+                    return (TestPmd.get_capabilities_physical_function, None)
+
+        return [mapping(cap) for cap in NicCapability]
 
     @classmethod
     def get_unique(cls, nic_capability: NicCapability) -> Self:
@@ -188,7 +284,7 @@ class DecoratedNicCapability(Capability):
         Returns:
             The capability uniquely identified by `nic_capability`.
         """
-        capability_fn, decorator_fn = nic_capability.value
+        capability_fn, decorator_fn = cls._get_nic_capability_check()[nic_capability.value]
 
         if nic_capability not in cls._unique_capabilities:
             cls._unique_capabilities[nic_capability] = cls(
@@ -207,9 +303,11 @@ class DecoratedNicCapability(Capability):
         Each capability is first checked whether it's supported/unsupported
         before executing its `capability_fn` so that each capability is retrieved only once.
         """
+        from api.testpmd import TestPmd
+
         supported_conditional_capabilities: set["DecoratedNicCapability"] = set()
         logger = get_dts_logger(f"{node.name}.{cls.__name__}")
-        if topology.type is topology.type.no_link:
+        if topology.type is topology.type.NO_LINK:
             logger.debug(
                 "No links available in the current topology, not getting NIC capabilities."
             )
@@ -219,7 +317,7 @@ class DecoratedNicCapability(Capability):
         )
         if cls.capabilities_to_check:
             capabilities_to_check_map = cls._get_decorated_capabilities_map()
-            with TestPmdShell() as testpmd_shell:
+            with TestPmd() as testpmd:
                 for (
                     conditional_capability_fn,
                     capabilities,
@@ -231,7 +329,7 @@ class DecoratedNicCapability(Capability):
                     )
                     if conditional_capability_fn:
                         capability_fn = conditional_capability_fn(capability_fn)
-                    capability_fn(testpmd_shell)
+                    capability_fn(testpmd)
                     for capability in capabilities:
                         if capability.nic_capability in supported_capabilities:
                             supported_conditional_capabilities.add(capability)
@@ -242,8 +340,8 @@ class DecoratedNicCapability(Capability):
     @classmethod
     def _get_decorated_capabilities_map(
         cls,
-    ) -> dict[TestPmdShellDecorator | None, set["DecoratedNicCapability"]]:
-        capabilities_map: dict[TestPmdShellDecorator | None, set["DecoratedNicCapability"]] = {}
+    ) -> dict[TestPmdDecorator | None, set["DecoratedNicCapability"]]:
+        capabilities_map: dict[TestPmdDecorator | None, set["DecoratedNicCapability"]] = {}
         for capability in cls.capabilities_to_check:
             if capability.capability_decorator not in capabilities_map:
                 capabilities_map[capability.capability_decorator] = set()
@@ -257,12 +355,12 @@ class DecoratedNicCapability(Capability):
         capabilities: set["DecoratedNicCapability"],
         supported_capabilities: MutableSet,
         unsupported_capabilities: MutableSet,
-    ) -> TestPmdShellMethod:
-        def reduced_fn(testpmd_shell: TestPmdShell) -> None:
+    ) -> TestPmdMethod:
+        def reduced_fn(testpmd: "TestPmd") -> None:
             for capability in capabilities:
                 if capability not in supported_capabilities | unsupported_capabilities:
                     capability.capability_fn(
-                        testpmd_shell, supported_capabilities, unsupported_capabilities
+                        testpmd, supported_capabilities, unsupported_capabilities
                     )
 
         return reduced_fn
@@ -278,11 +376,11 @@ class DecoratedNicCapability(Capability):
 
 @dataclass
 class TopologyCapability(Capability):
-    """A wrapper around :class:`~.topology.TopologyType`.
+    """A wrapper around :class:`~.topology.LinkTopology`.
 
     Each test case must be assigned a topology. It could be done explicitly;
-    the implicit default is given by :meth:`~.topology.TopologyType.default`, which this class
-    returns :attr:`~.topology.TopologyType.two_links`.
+    the implicit default is given by :meth:`~.topology.LinkTopology.default`, which this class
+    returns :attr:`~.topology.LinkTopology.TWO_LINKS`.
 
     Test case topology may be set by setting the topology for the whole suite.
     The priority in which topology is set is as follows:
@@ -301,7 +399,7 @@ class TopologyCapability(Capability):
         topology_type: The topology type that defines each instance.
     """
 
-    topology_type: TopologyType
+    topology_type: LinkTopology
 
     _unique_capabilities: ClassVar[dict[str, Self]] = {}
 
@@ -310,7 +408,7 @@ class TopologyCapability(Capability):
         test_case_or_suite.topology_type = self
 
     @classmethod
-    def get_unique(cls, topology_type: TopologyType) -> Self:
+    def get_unique(cls, topology_type: LinkTopology) -> Self:
         """Get the capability uniquely identified by `topology_type`.
 
         This is a factory method that implements a quasi-enum pattern.
@@ -338,7 +436,7 @@ class TopologyCapability(Capability):
         """Overrides :meth:`~Capability.get_supported_capabilities`."""
         supported_capabilities = set()
         topology_capability = cls.get_unique(topology.type)
-        for topology_type in TopologyType:
+        for topology_type in LinkTopology:
             candidate_topology_type = cls.get_unique(topology_type)
             if candidate_topology_type <= topology_capability:
                 supported_capabilities.add(candidate_topology_type)
@@ -351,17 +449,17 @@ class TopologyCapability(Capability):
         This means we have to modify test case topologies when processing the test suite topologies.
         At that point, the test case topologies have been set by the :func:`requires` decorator.
         The test suite topology only affects the test case topologies
-        if not :attr:`~.topology.TopologyType.default`.
+        if not :attr:`~.topology.LinkTopology.default`.
 
         Raises:
             ConfigurationError: If the topology type requested by the test case is more complex than
                 the test suite's.
         """
         if inspect.isclass(test_case_or_suite):
-            if self.topology_type is not TopologyType.default():
+            if self.topology_type is not LinkTopology.default():
                 self.add_to_required(test_case_or_suite)
                 for test_case in test_case_or_suite.get_test_cases():
-                    if test_case.topology_type.topology_type is TopologyType.default():
+                    if test_case.topology_type.topology_type is LinkTopology.default():
                         # test case topology has not been set, use the one set by the test suite
                         self.add_to_required(test_case)
                     elif test_case.topology_type > test_case_or_suite.topology_type:
@@ -383,6 +481,8 @@ class TopologyCapability(Capability):
         Returns:
             :data:`True` if the topology types are the same.
         """
+        if not self.is_comparable_with(other):
+            return False
         return self.topology_type == other.topology_type
 
     def __lt__(self, other: Any) -> bool:
@@ -394,6 +494,8 @@ class TopologyCapability(Capability):
         Returns:
             :data:`True` if the instance's topology type is less complex than the compared object's.
         """
+        if not self.is_comparable_with(other):
+            return False
         return self.topology_type < other.topology_type
 
     def __gt__(self, other: Any) -> bool:
@@ -440,7 +542,7 @@ class TestProtocol(Protocol):
     #: The reason for skipping the test case or suite.
     skip_reason: ClassVar[str] = ""
     #: The topology type of the test case or suite.
-    topology_type: ClassVar[TopologyCapability] = TopologyCapability(TopologyType.default())
+    topology_type: ClassVar[TopologyCapability] = TopologyCapability(LinkTopology.default())
     #: The capabilities the test case or suite requires in order to be executed.
     required_capabilities: ClassVar[set[Capability]] = set()
     #: The SUT ports topology configuration of the test case or suite.
@@ -481,7 +583,7 @@ def configure_ports(
 
 def requires(
     *nic_capabilities: NicCapability,
-    topology_type: TopologyType = TopologyType.default(),
+    topology_type: LinkTopology = LinkTopology.default(),
 ) -> Callable[[type[TestProtocol]], type[TestProtocol]]:
     """A decorator that adds the required capabilities to a test case or test suite.
 

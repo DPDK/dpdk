@@ -1,9 +1,9 @@
 .. SPDX-License-Identifier: BSD-3-Clause
 
-params - Command Line Parameters Modelling
+testpmd - Testpmd Interactive Remote Shell
 ==========================================
 
-.. automodule:: framework.params
+.. automodule:: api.testpmd
    :members:
    :show-inheritance:
 
@@ -11,5 +11,5 @@ params - Command Line Parameters Modelling
    :hidden:
    :maxdepth: 1
 
-   framework.params.eal
-   framework.params.types
+   api.testpmd.types
+   api.testpmd.config
