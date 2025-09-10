@@ -11,12 +11,14 @@ The link information then implies what type of topology is available.
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from typing import NamedTuple
 
 from typing_extensions import Self
 
 from api.capabilities import LinkTopology
 from framework.exception import ConfigurationError, InternalError
+from framework.testbed_model.linux_session import LinuxSession
 from framework.testbed_model.node import Node, NodeIdentifier
 
 from .port import DriverKind, Port, PortConfig
@@ -108,6 +110,7 @@ class Topology:
 
         Binds all the ports to the right kernel driver to retrieve MAC addresses and logical names.
         """
+        self._prepare_devbind_script()
         self._setup_ports("sut")
         self._setup_ports("tg")
 
@@ -212,7 +215,7 @@ class Topology:
 
         self._bind_ports_to_drivers(node, ports, drivers)
 
-        ports_to_bring_up = [p for p in ports if not (p.bound_for_dpdk or p.is_link_up)]
+        ports_to_bring_up = [p for p in ports if p.bound_for_kernel and not p.is_link_up]
         if ports_to_bring_up:
             node.main_session.bring_up_link(ports_to_bring_up)
 
@@ -229,6 +232,40 @@ class Topology:
 
         for driver_name, ports in driver_to_ports.items():
             node.main_session.bind_ports_to_driver(ports, driver_name)
+
+    def _prepare_devbind_script(self) -> None:
+        """Prepare the devbind script.
+
+        Copy devbind script from local repository.
+
+        This script is only available for Linux, if the detected session is not Linux then do
+        nothing.
+
+        Raises:
+            InternalError: If dpdk-devbind.py could not be found.
+        """
+        from framework.context import get_ctx
+
+        local_script_path = Path("..", "usertools", "dpdk-devbind.py").resolve()
+        valid_script_path = local_script_path.exists()
+
+        def prepare_node(node: Node) -> None:
+            if not isinstance(node.main_session, LinuxSession):
+                return
+
+            if not valid_script_path:
+                raise InternalError("Could not find dpdk-devbind.py locally.")
+
+            devbind_script_path = node.main_session.join_remote_path(
+                node.tmp_dir, local_script_path.name
+            )
+
+            node.main_session.copy_to(local_script_path, devbind_script_path)
+            node.main_session.devbind_script_path = devbind_script_path
+
+        ctx = get_ctx()
+        prepare_node(ctx.tg_node)
+        prepare_node(ctx.sut_node)
 
     @property
     def sut_dpdk_ports(self) -> list[Port]:
