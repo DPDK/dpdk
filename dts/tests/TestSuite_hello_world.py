@@ -29,9 +29,10 @@ class TestHelloWorld(TestSuite):
         """EAL confidence test.
 
         Steps:
-            Start testpmd session and check status.
+            * Start testpmd session and check status.
+
         Verify:
-            The testpmd session throws no errors.
+            * Testpmd session throws no errors.
         """
         with TestPmd() as testpmd:
             testpmd.start()

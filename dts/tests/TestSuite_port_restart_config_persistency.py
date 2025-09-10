@@ -25,7 +25,7 @@ ALTERNATIVE_MAC_ADDRESS: str = "42:A6:B7:9E:B4:81"
 class TestPortRestartConfigPersistency(TestSuite):
     """Port config persistency test suite."""
 
-    def restart_port_and_verify(self, id: int, testpmd: TestPmd, changed_value: str) -> None:
+    def _restart_port_and_verify(self, id: int, testpmd: TestPmd, changed_value: str) -> None:
         """Fetch port config, restart and verify persistency."""
         testpmd.start_all_ports()
         testpmd.wait_link_status_up(port_id=id, timeout=10)
@@ -60,29 +60,30 @@ class TestPortRestartConfigPersistency(TestSuite):
         """Port restart configuration persistency test.
 
         Steps:
-            For each port set the port MTU, VLAN filter, mac address, and promiscuous mode.
+            * For each port set the port MTU, VLAN filter, mac address, and promiscuous mode.
+            * Save port config and restart port.
 
         Verify:
-            The configuration persists after the port is restarted.
+            * The configuration persists after the port is restarted.
         """
         with TestPmd(disable_device_start=True) as testpmd:
             for port_id, _ in enumerate(self.topology.sut_ports):
                 testpmd.set_port_mtu(port_id=port_id, mtu=STANDARD_MTU, verify=True)
-                self.restart_port_and_verify(port_id, testpmd, "MTU")
+                self._restart_port_and_verify(port_id, testpmd, "MTU")
 
                 testpmd.set_port_mtu(port_id=port_id, mtu=ALTERNATIVE_MTU, verify=True)
-                self.restart_port_and_verify(port_id, testpmd, "MTU")
+                self._restart_port_and_verify(port_id, testpmd, "MTU")
 
                 testpmd.set_vlan_filter(port=port_id, enable=True, verify=True)
-                self.restart_port_and_verify(port_id, testpmd, "VLAN filter")
+                self._restart_port_and_verify(port_id, testpmd, "VLAN filter")
 
                 testpmd.set_mac_address(
                     port=port_id, mac_address=ALTERNATIVE_MAC_ADDRESS, verify=True
                 )
-                self.restart_port_and_verify(port_id, testpmd, "MAC address")
+                self._restart_port_and_verify(port_id, testpmd, "MAC address")
 
                 testpmd.set_promisc(port=port_id, enable=True, verify=True)
-                self.restart_port_and_verify(port_id, testpmd, "promiscuous mode")
+                self._restart_port_and_verify(port_id, testpmd, "promiscuous mode")
 
     @requires_nic_capability(NicCapability.FLOW_CTRL)
     @func_test
@@ -90,16 +91,17 @@ class TestPortRestartConfigPersistency(TestSuite):
         """Flow control port configuration persistency test.
 
         Steps:
-            For each port enable flow control for RX and TX individually.
+            * For each port enable flow control for RX and TX individually.
+
         Verify:
-            The configuration persists after the port is restarted.
+            * The configuration persists after the port is restarted.
         """
         with TestPmd(disable_device_start=True) as testpmd:
             for port_id, _ in enumerate(self.topology.sut_ports):
                 flow_ctrl = TestPmdPortFlowCtrl(rx=True)
                 testpmd.set_flow_control(port=port_id, flow_ctrl=flow_ctrl)
-                self.restart_port_and_verify(port_id, testpmd, "flow_ctrl")
+                self._restart_port_and_verify(port_id, testpmd, "flow_ctrl")
 
                 flow_ctrl = TestPmdPortFlowCtrl(tx=True)
                 testpmd.set_flow_control(port=port_id, flow_ctrl=flow_ctrl)
-                self.restart_port_and_verify(port_id, testpmd, "flow_ctrl")
+                self._restart_port_and_verify(port_id, testpmd, "flow_ctrl")

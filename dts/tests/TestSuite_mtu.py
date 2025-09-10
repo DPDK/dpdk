@@ -42,7 +42,7 @@ class TestMtu(TestSuite):
     size in a DPDK application.
 
     Verify the behavior of both runtime MTU and pre-runtime MTU adjustments within DPDK
-    applications. (TestPMD's CLI and runtime MTU adjustment options leverage different logical
+    applications. (Testpmd's CLI and runtime MTU adjustment options leverage different logical
     in components within ethdev to set a value).
 
     Test cases will verify that any frame greater than an assigned MTU are dropped and packets
@@ -58,7 +58,7 @@ class TestMtu(TestSuite):
         self.topology.tg_port_egress.configure_mtu(JUMBO_MTU + 200)
         self.topology.tg_port_ingress.configure_mtu(JUMBO_MTU + 200)
 
-    def send_packet_and_verify(self, pkt_size: int, should_receive: bool) -> None:
+    def _send_packet_and_verify(self, pkt_size: int, should_receive: bool) -> None:
         """Generate, send a packet, and assess its behavior based on a given packet size.
 
         Generates a packet based on a specified size and sends it to the SUT. The desired packet's
@@ -86,7 +86,7 @@ class TestMtu(TestSuite):
         else:
             self.verify(not found, "Received packet.")
 
-    def assess_mtu_boundary(self, testpmd_shell: TestPmd, mtu: int) -> None:
+    def _assess_mtu_boundary(self, testpmd_shell: TestPmd, mtu: int) -> None:
         """Sets the new MTU and verifies packets at the set boundary.
 
         Ensure that packets smaller than or equal to a set MTU will be received and packets larger
@@ -114,92 +114,88 @@ class TestMtu(TestSuite):
         equal_frame_size: int = mtu
         larger_frame_size: int = mtu + VENDOR_AGNOSTIC_PADDING
 
-        self.send_packet_and_verify(pkt_size=smaller_frame_size, should_receive=True)
-        self.send_packet_and_verify(pkt_size=equal_frame_size, should_receive=True)
+        self._send_packet_and_verify(pkt_size=smaller_frame_size, should_receive=True)
+        self._send_packet_and_verify(pkt_size=equal_frame_size, should_receive=True)
 
         current_mtu = testpmd_shell.show_port_info(0).mtu
         self.verify(current_mtu is not None, "Error grabbing testpmd MTU value.")
         if current_mtu and (
             current_mtu >= STANDARD_MTU + VENDOR_AGNOSTIC_PADDING and mtu == STANDARD_MTU
         ):
-            self.send_packet_and_verify(pkt_size=larger_frame_size, should_receive=True)
+            self._send_packet_and_verify(pkt_size=larger_frame_size, should_receive=True)
         else:
-            self.send_packet_and_verify(pkt_size=larger_frame_size, should_receive=False)
+            self._send_packet_and_verify(pkt_size=larger_frame_size, should_receive=False)
 
     @func_test
     def runtime_mtu_updating_and_forwarding(self) -> None:
         """Verify runtime MTU adjustments and assess packet forwarding behavior.
 
-        Test:
-            * Start TestPMD in a paired topology.
+        Steps:
+            * Start testpmd in a paired topology.
             * Set port MTU to 1500.
             * Send packets of 1491, 1500 and 1509 bytes.
                 * Verify the first two packets are forwarded and the last is dropped.
-
             * Set port MTU to 2400.
             * Send packets of 1491, 1500 and 1509 bytes.
                 * Verify all three packets are forwarded.
             * Send packets of 2391, 2400 and 2409 bytes.
                 * Verify the first two packets are forwarded and the last is dropped.
-
             * Set port MTU to 4800.
             * Send packets of 1491, 1500 and 1509 bytes.
                 * Verify all three packets are forwarded.
             * Send packets of 4791, 4800 and 4809 bytes.
                 * Verify the first two packets are forwarded and the last is dropped.
-
             * Set port MTU to 9000.
             * Send packets of 1491, 1500 and 1509 bytes.
                 * Verify all three packets are forwarded.
             * Send packets of 8991, 9000 and 9009 bytes.
                 * Verify the first two packets are forwarded and the last is dropped.
+
         Verify:
-            * Verifies the successful forwarding of packets via a search for an inserted payload.
+            * Successful forwarding of packets via a search for an inserted payload.
               If the payload is found, the packet was transmitted successfully. Otherwise, the
               packet is considered dropped.
-
-            * Verify that standard MTU packets forward, in addition to packets within the limits of
+            * Standard MTU packets forward, in addition to packets within the limits of
               an MTU size set during runtime.
         """
         with TestPmd(tx_offloads=0x8000, mbuf_size=[JUMBO_MTU + 200]) as testpmd:
             testpmd.set_port_mtu_all(1500, verify=True)
             testpmd.start()
-            self.assess_mtu_boundary(testpmd, 1500)
+            self._assess_mtu_boundary(testpmd, 1500)
             testpmd.stop()
 
             testpmd.set_port_mtu_all(2400, verify=True)
             testpmd.start()
-            self.assess_mtu_boundary(testpmd, 1500)
-            self.assess_mtu_boundary(testpmd, 2400)
+            self._assess_mtu_boundary(testpmd, 1500)
+            self._assess_mtu_boundary(testpmd, 2400)
             testpmd.stop()
 
             testpmd.set_port_mtu_all(4800, verify=True)
             testpmd.start()
-            self.assess_mtu_boundary(testpmd, 1500)
-            self.assess_mtu_boundary(testpmd, 4800)
+            self._assess_mtu_boundary(testpmd, 1500)
+            self._assess_mtu_boundary(testpmd, 4800)
             testpmd.stop()
 
             testpmd.set_port_mtu_all(9000, verify=True)
             testpmd.start()
-            self.assess_mtu_boundary(testpmd, 1500)
-            self.assess_mtu_boundary(testpmd, 9000)
+            self._assess_mtu_boundary(testpmd, 1500)
+            self._assess_mtu_boundary(testpmd, 9000)
             testpmd.stop()
 
     @func_test
     def cli_mtu_forwarding_for_std_packets(self) -> None:
         """Assesses packet forwarding of standard MTU packets after pre-runtime MTU adjustments.
 
-        Test:
-            * Start TestPMD with MTU size of 1518 bytes, set pre-runtime.
+        Steps:
+            * Start testpmd with MTU size of 1518 bytes, set pre-runtime.
             * Send packets of size 1491, 1500 and 1509 bytes.
-            * Verify the first two packets are forwarded and the last is dropped.
+
         Verify:
-            * Verifies the successful forwarding of packets via a search for an inserted payload.
+            * First two packets are forwarded and the last is dropped.
+            * Successful forwarding of packets via a search for an inserted payload.
               If the payload is found, the packet was transmitted successfully. Otherwise, the
               packet is considered dropped.
-
-            * Verify the first two packets are forwarded and the last is dropped after pre-runtime
-              MTU modification.
+            * All packets are forwarded and the last is dropped after pre-runtime MTU modification.
         """
         with TestPmd(
             tx_offloads=0x8000,
@@ -209,9 +205,11 @@ class TestMtu(TestSuite):
         ) as testpmd:
             testpmd.start()
 
-            self.send_packet_and_verify(STANDARD_MTU - VENDOR_AGNOSTIC_PADDING, should_receive=True)
-            self.send_packet_and_verify(STANDARD_MTU, should_receive=True)
-            self.send_packet_and_verify(
+            self._send_packet_and_verify(
+                STANDARD_MTU - VENDOR_AGNOSTIC_PADDING, should_receive=True
+            )
+            self._send_packet_and_verify(STANDARD_MTU, should_receive=True)
+            self._send_packet_and_verify(
                 STANDARD_MTU + VENDOR_AGNOSTIC_PADDING, should_receive=False
             )
 
@@ -219,15 +217,15 @@ class TestMtu(TestSuite):
     def cli_jumbo_forwarding_for_jumbo_mtu(self) -> None:
         """Assess packet forwarding of packets within the bounds of a pre-runtime MTU adjustment.
 
-        Test:
-            * Start TestPMD with MTU size of 9018 bytes, set pre-runtime.
+        Steps:
+            * Start testpmd with MTU size of 9018 bytes, set pre-runtime.
             * Send packets of size 8991, 9000 and 1509 bytes.
+
         Verify:
-            * Verifies the successful forwarding of packets via a search for an inserted payload.
+            * Successful forwarding of packets via a search for an inserted payload.
               If the payload is found, the packet was transmitted successfully. Otherwise, the
               packet is considered dropped.
-
-            * Verify that all packets are forwarded after pre-runtime MTU modification.
+            * All packets are forwarded after pre-runtime MTU modification.
         """
         with TestPmd(
             tx_offloads=0x8000,
@@ -237,24 +235,26 @@ class TestMtu(TestSuite):
         ) as testpmd:
             testpmd.start()
 
-            self.send_packet_and_verify(JUMBO_MTU - VENDOR_AGNOSTIC_PADDING, should_receive=True)
-            self.send_packet_and_verify(JUMBO_MTU, should_receive=True)
-            self.send_packet_and_verify(STANDARD_MTU + VENDOR_AGNOSTIC_PADDING, should_receive=True)
+            self._send_packet_and_verify(JUMBO_MTU - VENDOR_AGNOSTIC_PADDING, should_receive=True)
+            self._send_packet_and_verify(JUMBO_MTU, should_receive=True)
+            self._send_packet_and_verify(
+                STANDARD_MTU + VENDOR_AGNOSTIC_PADDING, should_receive=True
+            )
 
     @func_test
     def cli_mtu_std_packets_for_jumbo_mtu(self) -> None:
         """Assess boundary of jumbo MTU value set pre-runtime.
 
-        Test:
-            * Start TestPMD with MTU size of 9018 bytes, set pre-runtime.
+        Steps:
+            * Start testpmd with MTU size of 9018 bytes, set pre-runtime.
             * Send a packets of size 8991, 9000 and 9009 bytes.
-            * Verify the first two packets are forwarded and the last is dropped.
+
         Verify:
-            * Verifies the successful forwarding of packets via a search for an inserted payload.
+            * First two packets are forwarded and the last is dropped.
+            * Successful forwarding of packets via a search for an inserted payload.
               If the payload is found, the packet was transmitted successfully. Otherwise, the
               packet is considered dropped.
-
-            * Verify the first two packets are forwarded and the last is dropped after pre-runtime
+            * Packets are forwarded and the last is dropped after pre-runtime
               MTU modification.
         """
         with TestPmd(
@@ -265,9 +265,9 @@ class TestMtu(TestSuite):
         ) as testpmd:
             testpmd.start()
 
-            self.send_packet_and_verify(JUMBO_MTU - VENDOR_AGNOSTIC_PADDING, should_receive=True)
-            self.send_packet_and_verify(JUMBO_MTU, should_receive=True)
-            self.send_packet_and_verify(JUMBO_MTU + VENDOR_AGNOSTIC_PADDING, should_receive=False)
+            self._send_packet_and_verify(JUMBO_MTU - VENDOR_AGNOSTIC_PADDING, should_receive=True)
+            self._send_packet_and_verify(JUMBO_MTU, should_receive=True)
+            self._send_packet_and_verify(JUMBO_MTU + VENDOR_AGNOSTIC_PADDING, should_receive=False)
 
     def tear_down_suite(self) -> None:
         """Tear down the test suite.

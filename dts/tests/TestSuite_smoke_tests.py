@@ -59,8 +59,11 @@ class TestSmokeTests(TestSuite):
         Test that all unit test from the ``fast-tests`` suite pass.
         The suite is a subset with only the most basic tests.
 
-        Test:
-            Run the ``fast-tests`` unit test suite through meson.
+        Steps:
+            * Run the ``fast-tests`` unit test suite through meson.
+
+        Verify:
+            * That driver unit tests are executed through meson.
         """
         self.sut_node.main_session.send_command(
             f"meson test -C {self.dpdk_build_dir_path} --suite fast-tests -t 120",
@@ -77,8 +80,11 @@ class TestSmokeTests(TestSuite):
         The suite is a subset with driver tests. This suite may be run with virtual devices
         configured in the test run configuration.
 
-        Test:
-            Run the ``driver-tests`` unit test suite through meson.
+        Steps:
+            * Run the ``driver-tests`` unit test suite through meson.
+
+        Verify:
+            * Driver unit tests are executed successfully.
         """
         vdev_args = ""
         for dev in self._ctx.dpdk.get_virtual_devices():
@@ -104,8 +110,11 @@ class TestSmokeTests(TestSuite):
 
         Test that the devices configured in the test run configuration are found in testpmd.
 
-        Test:
-            List all devices found in testpmd and verify the configured devices are among them.
+        Steps:
+            * List all devices found in testpmd.
+
+        Verify:
+            * The configured devices are among them.
         """
         with TestPmd() as testpmd:
             dev_list = [str(x) for x in testpmd.get_devices()]
@@ -123,9 +132,11 @@ class TestSmokeTests(TestSuite):
         Test that the devices configured in the test run configuration are bound to
         the proper driver. This test case runs on Linux only.
 
-        Test:
-            List all devices with the ``dpdk-devbind.py`` script and verify that
-            the configured devices are bound to the proper driver.
+        Steps:
+            * List all devices with the ``dpdk-devbind.py`` script.
+
+        Verify:
+            * The configured devices are bound to the proper driver.
         """
         if not isinstance(self._ctx.sut_node.main_session, LinuxSession):
             return
