@@ -22,14 +22,17 @@ from scapy.layers.l2 import Ether
 from scapy.packet import Packet, Raw
 from scapy.utils import hexstr
 
-from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import TestPmdShell
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import NicCapability, requires
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
-@requires(NicCapability.RX_OFFLOAD_SCATTER)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_nic_capability(NicCapability.RX_OFFLOAD_SCATTER)
 class TestPmdBufferScatter(TestSuite):
     """DPDK PMD packet scattering test suite.
 
@@ -110,7 +113,7 @@ class TestPmdBufferScatter(TestSuite):
         Test:
             Start testpmd and run functional test with preset `mb_size`.
         """
-        with TestPmdShell(
+        with TestPmd(
             forward_mode=SimpleForwardingModes.mac,
             mbcache=200,
             mbuf_size=[mb_size],
@@ -129,13 +132,13 @@ class TestPmdBufferScatter(TestSuite):
                     f"{offset}.",
                 )
 
-    @requires(NicCapability.SCATTERED_RX_ENABLED)
+    @requires_nic_capability(NicCapability.SCATTERED_RX_ENABLED)
     @func_test
     def scatter_mbuf_2048(self) -> None:
         """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048."""
         self.pmd_scatter(mb_size=2048)
 
-    @requires(NicCapability.RX_OFFLOAD_SCATTER)
+    @requires_nic_capability(NicCapability.RX_OFFLOAD_SCATTER)
     @func_test
     def scatter_mbuf_2048_with_offload(self) -> None:
         """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload."""

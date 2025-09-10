@@ -19,13 +19,16 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
 from framework.exception import InteractiveCommandExecutionError
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import requires
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
 class TestMacFilter(TestSuite):
     """Mac address allowlist filtering test suite.
 
@@ -102,7 +105,7 @@ class TestMacFilter(TestSuite):
             * Remove the fake mac address from the PMD's address pool.
             * Send a packet with the fake mac address to the PMD. (Should not receive)
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.set_promisc(0, enable=False)
             testpmd.start()
             mac_address = self.topology.sut_port_ingress.mac_address
@@ -138,7 +141,7 @@ class TestMacFilter(TestSuite):
             * Determine the device's mac address pool size, and fill the pool with fake addresses.
             * Attempt to add another fake mac address, overloading the address pool. (Should fail)
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             mac_address = self.topology.sut_port_ingress.mac_address
             try:
@@ -177,7 +180,7 @@ class TestMacFilter(TestSuite):
             except InteractiveCommandExecutionError:
                 pass
 
-    @requires(NicCapability.MCAST_FILTERING)
+    @requires_nic_capability(NicCapability.MCAST_FILTERING)
     @func_test
     def multicast_filter(self) -> None:
         """Assess basic multicast address filtering functionalities.
@@ -192,7 +195,7 @@ class TestMacFilter(TestSuite):
             * Remove the fake multicast address from the PMDs multicast address filter.
             * Send a packet with the fake multicast address to the PMD. (Should not receive)
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             testpmd.set_promisc(0, enable=False)
             multicast_address = "01:00:5E:00:00:00"

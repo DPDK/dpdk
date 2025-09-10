@@ -12,14 +12,19 @@ large amount of packets (100 are sent in the test cases).
 from scapy.layers.l2 import Ether
 from scapy.packet import Packet, Raw
 
-from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import TopologyType, requires
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
-@requires(topology_type=TopologyType.two_links)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestPortControl(TestSuite):
     """DPDK Port Control Testing Suite."""
 
@@ -63,7 +68,7 @@ class TestPortControl(TestSuite):
         Verify:
             Check that all the packets sent are sniffed on the TG receive port.
         """
-        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start_all_ports()
             testpmd.start()
             self.send_packets_and_verify()
@@ -82,7 +87,7 @@ class TestPortControl(TestSuite):
             Check that stopping the testpmd ports brings down their links
             Check that all the packets sent are sniffed on the TG receive port.
         """
-        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.stop_all_ports()
             self.verify(
                 all(not p.is_link_up for p in testpmd.show_port_info_all()),
@@ -101,7 +106,7 @@ class TestPortControl(TestSuite):
         Verify:
             Check that testpmd no longer reports having any ports
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.close_all_ports()
             self.verify(
                 len(testpmd.show_port_info_all()) == 0, "Failed to close all ports in testpmd."

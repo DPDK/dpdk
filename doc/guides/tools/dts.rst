@@ -470,8 +470,8 @@ instead of directly importing the DTS traffic generator class
 and using that class in one's testsuite implementation.
 It is also acceptable to import and instantiate classes for various DPDK applications.
 For instance, writing a testsuite for a simple packet forwarding operation
-would involve importing the DTS ``TestPmdShell`` class,
-instantiating ``TestPmdShell``, calling ``TestPmdShell``'s ``start()`` method,
+would involve importing the DTS ``TestPmd`` class,
+instantiating ``TestPmd``, calling ``TestPmd``'s ``start()`` method,
 and then sending traffic via one of the traffic transmitting functions
 exposed in the ``Testsuite`` class.
 

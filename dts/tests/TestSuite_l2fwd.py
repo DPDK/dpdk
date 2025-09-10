@@ -7,18 +7,22 @@ This testing suites runs basic L2 forwarding on testpmd across multiple differen
 The forwarding test is performed with several packets being sent at once.
 """
 
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import EthPeer, SimpleForwardingModes
 from framework.context import filter_cores
-from framework.params.testpmd import EthPeer, SimpleForwardingModes
-from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import requires
 from framework.testbed_model.cpu import LogicalCoreCount
-from framework.testbed_model.topology import TopologyType
 from framework.utils import generate_random_packets
 
 
-@requires(NicCapability.PHYSICAL_FUNCTION)
-@requires(topology_type=TopologyType.two_links)
+@requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestL2fwd(TestSuite):
     """L2 forwarding test suite."""
 
@@ -50,7 +54,7 @@ class TestL2fwd(TestSuite):
         self.topology.sut_ports[0]
         self.topology.tg_ports[0]
 
-        with TestPmdShell(
+        with TestPmd(
             forward_mode=SimpleForwardingModes.mac,
             eth_peer=[EthPeer(1, self.topology.tg_port_ingress.mac_address)],
             disable_device_start=True,

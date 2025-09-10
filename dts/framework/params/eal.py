@@ -4,15 +4,17 @@
 """Module representing the DPDK EAL-related parameters."""
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from framework.params import Params, Switch
 from framework.testbed_model.cpu import LogicalCoreList
-from framework.testbed_model.port import Port
 from framework.testbed_model.virtual_device import VirtualDevice
 
+if TYPE_CHECKING:
+    from framework.testbed_model.port import Port
 
-def _port_to_pci(port: Port) -> str:
+
+def _port_to_pci(port: "Port") -> str:
     return port.pci
 
 
@@ -42,11 +44,11 @@ class EalParams(Params):
     vdevs: list[VirtualDevice] | None = field(
         default=None, metadata=Params.multiple() | Params.long("vdev")
     )
-    allowed_ports: list[Port] | None = field(
+    allowed_ports: list["Port"] | None = field(
         default=None,
         metadata=Params.convert_value(_port_to_pci) | Params.multiple() | Params.short("a"),
     )
-    blocked_ports: list[Port] | None = field(
+    blocked_ports: list["Port"] | None = field(
         default=None,
         metadata=Params.convert_value(_port_to_pci) | Params.multiple() | Params.short("b"),
     )

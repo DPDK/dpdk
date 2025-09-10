@@ -28,7 +28,6 @@ Nearly all of them are frozen:
       and makes it thread safe should we ever want to move in that direction.
 """
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar, cast
 
@@ -43,7 +42,7 @@ from .node import NodeConfiguration
 from .test_run import TestRunConfiguration, create_test_suites_config_model
 
 # Import only if type checking or building docs, to prevent circular imports.
-if TYPE_CHECKING or os.environ.get("DTS_DOC_BUILD"):
+if TYPE_CHECKING:
     from framework.test_suite import BaseConfig
 
 NodesConfig = Annotated[list[NodeConfiguration], Field(min_length=1)]

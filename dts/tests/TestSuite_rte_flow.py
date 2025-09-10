@@ -19,13 +19,17 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Dot1Q, Ether
 from scapy.packet import Packet, Raw
 
+from api.capabilities import (
+    NicCapability,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.types import FlowRule
 from framework.exception import InteractiveCommandExecutionError
-from framework.remote_session.testpmd_shell import FlowRule, TestPmdShell
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import NicCapability, requires
 
 
-@requires(NicCapability.FLOW_CTRL)
+@requires_nic_capability(NicCapability.FLOW_CTRL)
 class TestRteFlow(TestSuite):
     """RTE Flow test suite.
 
@@ -84,7 +88,7 @@ class TestRteFlow(TestSuite):
                 zip_longest(rules, packets1, packets2 or [], fillvalue=None),
             )
 
-        with TestPmdShell(rx_queues=4, tx_queues=4) as testpmd:
+        with TestPmd(rx_queues=4, tx_queues=4) as testpmd:
             for flow, packet, expected_packet in zip_lists(flows, packets, expected_packets):
                 is_valid = testpmd.flow_validate(flow_rule=flow, port_id=port_id)
                 self.verify_else_skip(is_valid, "flow rule failed validation.")
@@ -125,14 +129,14 @@ class TestRteFlow(TestSuite):
         )
 
     def send_packet_and_verify_queue(
-        self, packet: Packet, test_queue: int, testpmd: TestPmdShell
+        self, packet: Packet, test_queue: int, testpmd: TestPmd
     ) -> None:
         """Send packet and verify queue stats show packet was received.
 
         Args:
             packet: Scapy packet to send to the SUT.
             test_queue: Represents the queue the test packet is being sent to.
-            testpmd: TestPmdShell instance being used to send test packet.
+            testpmd: TestPmd instance being used to send test packet.
         """
         testpmd.set_verbose(level=8)
         testpmd.start()
@@ -185,7 +189,7 @@ class TestRteFlow(TestSuite):
         packets: list[Packet],
         flow_rules: list[FlowRule],
         test_queues: list[int],
-        testpmd: TestPmdShell,
+        testpmd: TestPmd,
     ) -> None:
         """Create a testpmd session with every rule in the given list, verify jump behavior.
 
@@ -193,7 +197,7 @@ class TestRteFlow(TestSuite):
             packets: List of packets to send.
             flow_rules: List of flow rules to create in the same session.
             test_queues: List of Rx queue IDs each packet should be received on.
-            testpmd: TestPmdShell instance to create flows on.
+            testpmd: TestPmd instance to create flows on.
         """
         testpmd.set_verbose(level=8)
         for flow in flow_rules:
@@ -316,7 +320,7 @@ class TestRteFlow(TestSuite):
             test_queue=2,
         )
 
-    @requires(NicCapability.PHYSICAL_FUNCTION)
+    @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
     @func_test
     def queue_action_L4(self) -> None:
         """Validate flow rules with queue actions and TCP/UDP patterns.
@@ -433,7 +437,7 @@ class TestRteFlow(TestSuite):
         ]
         # verify reception with test packet
         packet = Ether() / IP() / Raw(load="xxxxx")
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
@@ -488,7 +492,7 @@ class TestRteFlow(TestSuite):
         ]
         # verify reception with test packet
         packet = Ether() / IP() / Raw(load="xxxxx")
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
@@ -539,7 +543,7 @@ class TestRteFlow(TestSuite):
         ]
         # verify reception with test packet
         packet = Ether() / IP() / Raw(load="xxxxx")
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
@@ -578,7 +582,7 @@ class TestRteFlow(TestSuite):
         ]
         # verify reception with test packet
         packet = Ether() / IP() / Raw(load="xxxxx")
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
@@ -668,7 +672,7 @@ class TestRteFlow(TestSuite):
         ]
         # verify reception with test packet
         packet = Ether() / IP() / Raw(load="xxxxx")
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.start()
             received = self.send_packet_and_capture(packet)
             self.verify(received != [], "Test packet was never received.")
@@ -727,7 +731,7 @@ class TestRteFlow(TestSuite):
             ),
         ]
         expected_queue_list = [1, 2, 3]
-        with TestPmdShell(rx_queues=4, tx_queues=4) as testpmd:
+        with TestPmd(rx_queues=4, tx_queues=4) as testpmd:
             self.send_packet_and_verify_jump(
                 packets=packet_list,
                 flow_rules=flow_list,
@@ -771,7 +775,7 @@ class TestRteFlow(TestSuite):
             ),
         ]
         expected_queue_list = [1, 2, 3]
-        with TestPmdShell(rx_queues=4, tx_queues=4) as testpmd:
+        with TestPmd(rx_queues=4, tx_queues=4) as testpmd:
             testpmd.set_verbose(level=8)
             for flow, expected_queue in zip(flow_list, expected_queue_list):
                 is_valid = testpmd.flow_validate(flow_rule=flow, port_id=0)

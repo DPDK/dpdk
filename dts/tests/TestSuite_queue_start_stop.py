@@ -16,14 +16,20 @@ from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 
-from framework.remote_session.testpmd_shell import SimpleForwardingModes, TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    NicCapability,
+    requires_link_topology,
+    requires_nic_capability,
+)
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import NicCapability, TopologyType, requires
 
 
-@requires(topology_type=TopologyType.two_links)
-@requires(NicCapability.RUNTIME_RX_QUEUE_SETUP)
-@requires(NicCapability.RUNTIME_TX_QUEUE_SETUP)
+@requires_link_topology(LinkTopology.TWO_LINKS)
+@requires_nic_capability(NicCapability.RUNTIME_RX_QUEUE_SETUP)
+@requires_nic_capability(NicCapability.RUNTIME_TX_QUEUE_SETUP)
 class TestQueueStartStop(TestSuite):
     """DPDK Queue start/stop test suite.
 
@@ -63,7 +69,7 @@ class TestQueueStartStop(TestSuite):
             Send a packet on port 0 after Rx queue is stopped, ensure it is not received.
             Send a packet on port 0 after Rx queue is started, ensure it is received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
             testpmd.stop_port_queue(0, 0, True)
             testpmd.start()
@@ -84,7 +90,7 @@ class TestQueueStartStop(TestSuite):
             Send a packet on port 0 after Tx queue is stopped, ensure it is not received.
             Send a packet on port 0 after Tx queue is started, ensure it is received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
             testpmd.stop_port_queue(1, 0, False)
             testpmd.start()
@@ -107,7 +113,7 @@ class TestQueueStartStop(TestSuite):
             Send a packet on port 0 after deferred start is set, ensure it is not received.
             Send a packet on port 0 after Rx queue 0 is started, ensure it is received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
             testpmd.stop_all_ports()
             testpmd.set_queue_deferred_start(0, 0, True, True)
@@ -132,7 +138,7 @@ class TestQueueStartStop(TestSuite):
             Send a packet on port 1 after deferred start is set, ensure it is not received.
             Send a packet on port 1 after Tx queue 0 is started, ensure it is received.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             testpmd.set_forward_mode(SimpleForwardingModes.mac)
             testpmd.stop_all_ports()
             testpmd.set_queue_deferred_start(1, 0, False, True)

@@ -6,19 +6,22 @@
 This testing suite ensures tests the port blocklisting functionality of testpmd.
 """
 
-from framework.remote_session.testpmd_shell import TestPmdShell
+from api.capabilities import (
+    LinkTopology,
+    requires_link_topology,
+)
+from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import TopologyType, requires
 from framework.testbed_model.port import Port
 
 
-@requires(topology_type=TopologyType.two_links)
+@requires_link_topology(LinkTopology.TWO_LINKS)
 class TestBlocklist(TestSuite):
     """DPDK device blocklisting test suite."""
 
     def verify_blocklisted_ports(self, ports_to_block: list[Port]) -> None:
         """Runs testpmd with the given ports blocklisted and verifies the ports."""
-        with TestPmdShell(allowed_ports=[], blocked_ports=ports_to_block) as testpmd:
+        with TestPmd(allowed_ports=[], blocked_ports=ports_to_block) as testpmd:
             allowlisted_ports = {port.device_name for port in testpmd.show_port_info_all()}
             blocklisted_ports = {port.pci for port in ports_to_block}
 

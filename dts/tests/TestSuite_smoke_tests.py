@@ -14,16 +14,19 @@ in the infrastructure (a faulty link between NICs or a misconfiguration).
 
 import re
 
+from api.capabilities import (
+    LinkTopology,
+    requires_link_topology,
+)
+from api.testpmd import TestPmd
 from framework.config.node import PortConfig
-from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
 from framework.test_suite import TestSuite, func_test
-from framework.testbed_model.capability import TopologyType, requires
 from framework.testbed_model.linux_session import LinuxSession
 from framework.utils import REGEX_FOR_PCI_ADDRESS
 
 
-@requires(topology_type=TopologyType.no_link)
+@requires_link_topology(LinkTopology.NO_LINK)
 class TestSmokeTests(TestSuite):
     """DPDK and infrastructure smoke test suite.
 
@@ -104,7 +107,7 @@ class TestSmokeTests(TestSuite):
         Test:
             List all devices found in testpmd and verify the configured devices are among them.
         """
-        with TestPmdShell() as testpmd:
+        with TestPmd() as testpmd:
             dev_list = [str(x) for x in testpmd.get_devices()]
         for nic in self.nics_in_node:
             self.verify(

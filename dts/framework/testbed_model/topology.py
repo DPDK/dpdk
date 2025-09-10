@@ -11,31 +11,15 @@ The link information then implies what type of topology is available.
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
-from enum import Enum
 from typing import NamedTuple
 
 from typing_extensions import Self
 
+from api.capabilities import LinkTopology
 from framework.exception import ConfigurationError, InternalError
 from framework.testbed_model.node import Node, NodeIdentifier
 
 from .port import DriverKind, Port, PortConfig
-
-
-class TopologyType(int, Enum):
-    """Supported topology types."""
-
-    #: A topology with no Traffic Generator.
-    no_link = 0
-    #: A topology with one physical link between the SUT node and the TG node.
-    one_link = 1
-    #: A topology with two physical links between the Sut node and the TG node.
-    two_links = 2
-
-    @classmethod
-    def default(cls) -> "TopologyType":
-        """The default topology required by test cases if not specified otherwise."""
-        return cls.two_links
 
 
 class PortLink(NamedTuple):
@@ -67,7 +51,7 @@ class Topology:
         tg_ports: The TG ports.
     """
 
-    type: TopologyType
+    type: LinkTopology
     sut_ports: list[Port]
     tg_ports: list[Port]
     pf_ports: list[Port]
@@ -83,15 +67,15 @@ class Topology:
         Raises:
             ConfigurationError: If an unsupported link topology is supplied.
         """
-        type = TopologyType.no_link
+        type = LinkTopology.NO_LINK
 
         if port_link := next(port_links, None):
-            type = TopologyType.one_link
+            type = LinkTopology.ONE_LINK
             sut_ports = [port_link.sut_port]
             tg_ports = [port_link.tg_port]
 
             if port_link := next(port_links, None):
-                type = TopologyType.two_links
+                type = LinkTopology.TWO_LINKS
                 sut_ports.append(port_link.sut_port)
                 tg_ports.append(port_link.tg_port)
 
@@ -264,9 +248,9 @@ class Topology:
     @property
     def sut_port_egress(self) -> Port:
         """The egress port of the SUT node."""
-        return self.sut_ports[1 if self.type is TopologyType.two_links else 0]
+        return self.sut_ports[1 if self.type is LinkTopology.TWO_LINKS else 0]
 
     @property
     def tg_port_ingress(self) -> Port:
         """The ingress port of the TG node."""
-        return self.tg_ports[1 if self.type is TopologyType.two_links else 0]
+        return self.tg_ports[1 if self.type is LinkTopology.TWO_LINKS else 0]

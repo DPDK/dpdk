@@ -18,8 +18,8 @@ from typing import ClassVar
 from scapy.layers.l2 import Dot1Q, Ether
 from scapy.packet import Packet, Raw
 
-from framework.params.testpmd import SimpleForwardingModes
-from framework.remote_session.testpmd_shell import TestPmdShell
+from api.testpmd import TestPmd
+from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
 
 
@@ -153,7 +153,7 @@ class TestDualVlan(TestSuite):
                 f"{expected_layers} with options {options}.",
             )
 
-    def configure_testpmd(self, shell: TestPmdShell, options: TestCaseOptions, add: bool) -> None:
+    def configure_testpmd(self, shell: TestPmd, options: TestCaseOptions, add: bool) -> None:
         """Configure VLAN functions in testpmd based on `options`.
 
         Args:
@@ -193,7 +193,7 @@ class TestDualVlan(TestSuite):
             Packets are received.
             Packet contains two VLAN tags.
         """
-        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.tx_vlan_set(port=self.tx_port, enable=True, vlan=self.vlan_insert_tag)
             testpmd.start()
             recv = self.send_packet_and_capture(
@@ -229,7 +229,7 @@ class TestDualVlan(TestSuite):
             / Dot1Q(vlan=self.inner_vlan_tag)
             / Raw(b"X" * 20)
         )
-        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start()
             recv = self.send_packet_and_capture(send_pkt)
             self.verify(len(recv) > 0, "Unmodified packet was not received.")
@@ -269,7 +269,7 @@ class TestDualVlan(TestSuite):
             / Dot1Q(vlan=self.inner_vlan_tag, prio=2)
             / Raw(b"X" * 20)
         )
-        with TestPmdShell(forward_mode=SimpleForwardingModes.mac) as testpmd:
+        with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start()
             recv = self.send_packet_and_capture(pkt)
             self.verify(len(recv) > 0, "Did not receive any packets when testing VLAN priority.")
