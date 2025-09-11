@@ -3330,16 +3330,57 @@ rte_eth_link_to_str(char *str, size_t len, const struct rte_eth_link *eth_link)
 	if (eth_link->link_status == RTE_ETH_LINK_DOWN)
 		ret = snprintf(str, len, "Link down");
 	else
-		ret = snprintf(str, len, "Link up at %s %s %s",
+		ret = snprintf(str, len, "Link up at %s %s %s %s",
 			rte_eth_link_speed_to_str(eth_link->link_speed),
 			(eth_link->link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 			"FDX" : "HDX",
 			(eth_link->link_autoneg == RTE_ETH_LINK_AUTONEG) ?
-			"Autoneg" : "Fixed");
+			"Autoneg" : "Fixed",
+			rte_eth_link_connector_to_str(eth_link->link_connector));
 
 	rte_eth_trace_link_to_str(len, eth_link, str, ret);
 
 	return ret;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_eth_link_connector_to_str, 25.11)
+const char *
+rte_eth_link_connector_to_str(enum rte_eth_link_connector link_connector)
+{
+	static const char * const link_connector_str[] = {
+		[RTE_ETH_LINK_CONNECTOR_NONE] = "None",
+		[RTE_ETH_LINK_CONNECTOR_TP] = "Twisted Pair",
+		[RTE_ETH_LINK_CONNECTOR_AUI] = "Attachment Unit Interface",
+		[RTE_ETH_LINK_CONNECTOR_MII] = "Media Independent Interface",
+		[RTE_ETH_LINK_CONNECTOR_FIBER] = "Fiber",
+		[RTE_ETH_LINK_CONNECTOR_BNC] = "BNC",
+		[RTE_ETH_LINK_CONNECTOR_DAC] = "Direct Attach Copper",
+		[RTE_ETH_LINK_CONNECTOR_SGMII] = "SGMII",
+		[RTE_ETH_LINK_CONNECTOR_QSGMII] = "QSGMII",
+		[RTE_ETH_LINK_CONNECTOR_XFI] = "XFI",
+		[RTE_ETH_LINK_CONNECTOR_SFI] = "SFI",
+		[RTE_ETH_LINK_CONNECTOR_XLAUI] = "XLAUI",
+		[RTE_ETH_LINK_CONNECTOR_GAUI] = "GAUI",
+		[RTE_ETH_LINK_CONNECTOR_XAUI] = "XAUI",
+		[RTE_ETH_LINK_CONNECTOR_CAUI] = "CAUI",
+		[RTE_ETH_LINK_CONNECTOR_LAUI] = "LAUI",
+		[RTE_ETH_LINK_CONNECTOR_SFP] = "SFP",
+		[RTE_ETH_LINK_CONNECTOR_SFP_DD] = "SFP-DD",
+		[RTE_ETH_LINK_CONNECTOR_SFP_PLUS] = "SFP+",
+		[RTE_ETH_LINK_CONNECTOR_SFP28] = "SFP28",
+		[RTE_ETH_LINK_CONNECTOR_QSFP] = "QSFP",
+		[RTE_ETH_LINK_CONNECTOR_QSFP_PLUS] = "QSFP+",
+		[RTE_ETH_LINK_CONNECTOR_QSFP28] = "QSFP28",
+		[RTE_ETH_LINK_CONNECTOR_QSFP56] = "QSFP56",
+		[RTE_ETH_LINK_CONNECTOR_QSFP_DD] = "QSFP-DD",
+		[RTE_ETH_LINK_CONNECTOR_OTHER] = "Other",
+	};
+	const char *str = NULL;
+
+	if (link_connector < ((enum rte_eth_link_connector)RTE_DIM(link_connector_str)))
+		str = link_connector_str[link_connector];
+
+	return str;
 }
 
 RTE_EXPORT_SYMBOL(rte_eth_stats_get)
