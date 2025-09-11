@@ -5,6 +5,7 @@
 #define TEST_CRYPTODEV_H_
 
 #include <rte_cryptodev.h>
+#include <rte_security.h>
 
 #define MAX_NUM_OPS_INFLIGHT            (4096)
 #define MIN_NUM_OPS_INFLIGHT            (128)
@@ -85,6 +86,7 @@ enum cryptodev_api_test_type {
 	CRYPTODEV_RAW_API_TEST
 };
 
+extern enum rte_security_session_action_type gbl_action_type;
 extern enum cryptodev_api_test_type global_api_test_type;
 
 extern struct crypto_testsuite_params *p_testsuite_params;
