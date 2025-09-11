@@ -289,7 +289,7 @@ process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 	struct rte_crypto_vec data_vec[UINT8_MAX], dest_data_vec[UINT8_MAX];
 	struct rte_crypto_va_iova_ptr cipher_iv, digest, aad_auth_iv;
 	union rte_crypto_sym_ofs ofs;
-	struct rte_crypto_sym_vec vec;
+	struct rte_crypto_sym_vec vec = {0};
 	struct rte_crypto_sgl sgl, dest_sgl;
 	uint32_t max_len;
 	union rte_cryptodev_session_ctx sess;
@@ -526,7 +526,7 @@ process_cpu_aead_op(uint8_t dev_id, struct rte_crypto_op *op)
 	struct rte_crypto_sym_op *sop;
 	union rte_crypto_sym_ofs ofs;
 	struct rte_crypto_sgl sgl;
-	struct rte_crypto_sym_vec symvec;
+	struct rte_crypto_sym_vec symvec = {0};
 	struct rte_crypto_va_iova_ptr iv_ptr, aad_ptr, digest_ptr;
 	struct rte_crypto_vec vec[UINT8_MAX];
 
@@ -572,7 +572,7 @@ process_cpu_crypt_auth_op(uint8_t dev_id, struct rte_crypto_op *op)
 	struct rte_crypto_sym_op *sop;
 	union rte_crypto_sym_ofs ofs;
 	struct rte_crypto_sgl sgl;
-	struct rte_crypto_sym_vec symvec;
+	struct rte_crypto_sym_vec symvec = {0};
 	struct rte_crypto_va_iova_ptr iv_ptr, digest_ptr;
 	struct rte_crypto_vec vec[UINT8_MAX];
 
