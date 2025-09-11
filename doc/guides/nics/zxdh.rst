@@ -54,4 +54,4 @@ for details.
 Limitations or Known issues
 ---------------------------
 
-X86-32, Power8, ARMv7, RISC-V, Windows and BSD are not supported yet.
+X86-32, Power8, ARMv7, RISC-V-32, Windows and BSD are not supported yet.
