@@ -1095,7 +1095,7 @@ F: drivers/net/avp/
 F: doc/guides/nics/avp.rst
 F: doc/guides/nics/features/avp.ini
 
-ZTE zxdh - EXPERIMENTAL
+ZTE zxdh
 M: Junlong Wang <wang.junlong1@zte.com.cn>
 M: Lijie Shan <shan.lijie@zte.com.cn>
 F: drivers/net/zxdh/

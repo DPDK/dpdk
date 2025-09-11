@@ -1,15 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2024 ZTE Corporation
 
-if not is_linux
+if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     build = false
-    reason = 'only supported on Linux'
-    subdir_done()
-endif
-
-if arch_subdir != 'x86' and arch_subdir != 'arm' or not dpdk_conf.get('RTE_ARCH_64')
-    build = false
-    reason = 'only supported on x86_64 and aarch64'
+    reason = 'only supported on 64-bit Linux'
     subdir_done()
 endif
 
