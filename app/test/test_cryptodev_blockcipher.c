@@ -567,25 +567,95 @@ iterate:
 			goto error_exit;
 		}
 	} else {
-		if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
-			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-				"line %u FAILED: %s",
-				__LINE__, "Error sending packet for encryption");
-			status = TEST_FAILED;
-			goto error_exit;
-		}
+		if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO) {
+			int32_t n_src, n_dst, st, n;
+			struct rte_crypto_sym_op *sop;
+			union rte_crypto_sym_ofs ofs;
+			struct rte_crypto_sgl sgl_src, sgl_dst;
+			struct rte_crypto_sym_vec symvec = {0};
+			struct rte_crypto_va_iova_ptr iv_ptr, digest_ptr;
+			struct rte_crypto_vec vec_src[UINT8_MAX];
+			struct rte_crypto_vec vec_dst[UINT8_MAX];
+			uint32_t cipher_offset, cipher_len, auth_offset, auth_len, max_len;
+			bool is_oop = op->sym->m_dst != NULL;
 
-		op = NULL;
+			if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS) {
+				status = TEST_SKIPPED;
+				goto error_exit;
+			}
 
-		while (rte_cryptodev_dequeue_burst(dev_id, 0, &op, 1) == 0)
-			rte_pause();
+			sop = op->sym;
+			cipher_offset = sop->cipher.data.offset;
+			cipher_len = sop->cipher.data.length;
+			auth_offset = sop->auth.data.offset;
+			auth_len = sop->auth.data.length;
+			max_len = RTE_MAX(cipher_offset + cipher_len, auth_offset + auth_len);
 
-		if (!op) {
-			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
-				"line %u FAILED: %s",
-				__LINE__, "Failed to process sym crypto op");
-			status = TEST_FAILED;
-			goto error_exit;
+			n_src = rte_crypto_mbuf_to_vec(sop->m_src, 0, max_len,
+				vec_src, RTE_DIM(vec_src));
+			if (n_src < 0 || n_src != sop->m_src->nb_segs) {
+				op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+				status = TEST_FAILED;
+				goto error_exit;
+			}
+			sgl_src.vec = vec_src;
+			sgl_src.num = n_src;
+			symvec.src_sgl = &sgl_src;
+			if (is_oop) {
+				n_dst = rte_crypto_mbuf_to_vec(sop->m_dst, 0, max_len,
+					vec_dst, RTE_DIM(vec_dst));
+				sgl_dst.vec = vec_dst;
+				sgl_dst.num = n_dst;
+				symvec.dest_sgl = &sgl_dst;
+			} else {
+				symvec.dest_sgl = NULL;
+			}
+
+			symvec.iv = &iv_ptr;
+			symvec.digest = &digest_ptr;
+			symvec.status = &st;
+			symvec.num = 1;
+			iv_ptr.va = rte_crypto_op_ctod_offset(op, void *, IV_OFFSET);
+			digest_ptr.va = (void *)sop->auth.digest.data;
+			ofs.ofs.cipher.head = cipher_offset;
+			ofs.ofs.cipher.tail = max_len - cipher_offset - cipher_len;
+			ofs.ofs.auth.head = auth_offset;
+			ofs.ofs.auth.tail = max_len - auth_offset - auth_len;
+
+			n = rte_cryptodev_sym_cpu_crypto_process(dev_id, sop->session, ofs,
+				&symvec);
+			if (st == -ENOTSUP) {
+				status = TEST_SKIPPED;
+				goto error_exit;
+			}
+			if (n != 1) {
+				status = TEST_FAILED;
+				op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+				goto error_exit;
+			} else {
+				op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+			}
+		} else {
+			if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+					"line %u FAILED: %s",
+					__LINE__, "Error sending packet for encryption");
+				status = TEST_FAILED;
+				goto error_exit;
+			}
+
+			op = NULL;
+
+			while (rte_cryptodev_dequeue_burst(dev_id, 0, &op, 1) == 0)
+				rte_pause();
+
+			if (!op) {
+				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
+					"line %u FAILED: %s",
+					__LINE__, "Failed to process sym crypto op");
+				status = TEST_FAILED;
+				goto error_exit;
+			}
 		}
 	}
 
@@ -649,7 +719,6 @@ iterate:
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_GEN) {
 			uint8_t *auth_res = pktmbuf_mtod_offset(iobuf,
 						tdata->ciphertext.len);
-
 			if (memcmp(auth_res, tdata->digest.data, digest_len)) {
 				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 					"FAILED: %s", __LINE__, "Generated "
