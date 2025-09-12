@@ -489,7 +489,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 		rte_free(internals->rx_queue[q].rd);
 		rte_free(internals->tx_queue[q].rd);
 	}
-	free(internals->if_name);
+	rte_free(internals->if_name);
 	rte_free(internals->rx_queue);
 	rte_free(internals->tx_queue);
 
@@ -793,9 +793,10 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		PMD_LOG_ERRNO(ERR, "%s: ioctl failed (SIOCGIFINDEX)", name);
 		goto free_internals;
 	}
-	(*internals)->if_name = strdup(pair->value);
+	(*internals)->if_name = rte_malloc_socket(name, ifnamelen + 1, 0, numa_node);
 	if ((*internals)->if_name == NULL)
 		goto free_internals;
+	strlcpy((*internals)->if_name, pair->value, ifnamelen + 1);
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
@@ -982,7 +983,7 @@ error:
 free_internals:
 	rte_free((*internals)->rx_queue);
 	rte_free((*internals)->tx_queue);
-	free((*internals)->if_name);
+	rte_free((*internals)->if_name);
 	rte_free(*internals);
 	return -1;
 }
