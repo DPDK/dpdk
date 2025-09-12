@@ -1775,6 +1775,27 @@ launch_args_parse(int argc, char** argv)
 			TESTPMD_OPT_PROC_ID, proc_id,
 			TESTPMD_OPT_NUM_PROCS, num_procs);
 
+	/* check for multiple segments without scattered flag enabled */
+	if (mbuf_data_size_n > 1 && (rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) == 0)
+		TESTPMD_LOG(WARNING, "Warning: multiple mbuf sizes specified but scattered Rx not enabled\n");
+
+	/* check for max packet size greater than mbuf size, without scatter or multi-seg flags */
+	if (max_rx_pkt_len > mbuf_data_size[0]) {
+		if ((rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) == 0)
+			TESTPMD_LOG(WARNING, "Warning: max-pkt-len (%u) is greater than mbuf size (%u) without scattered Rx enabled\n",
+					max_rx_pkt_len, mbuf_data_size[0]);
+		if ((tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) == 0)
+			TESTPMD_LOG(WARNING, "Warning: max-pkt-len (%u) is greater than mbuf size (%u) without multi-segment Tx enabled\n",
+					max_rx_pkt_len, mbuf_data_size[0]);
+	}
+
+	/* check for scattered Rx enabled without also having multi-segment Tx */
+	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) != 0 &&
+			(tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) == 0) {
+		TESTPMD_LOG(WARNING, "Warning: Scattered RX offload enabled, but TX multi-segment support not enabled.\n");
+		TESTPMD_LOG(WARNING, "         Multi-segment packets can be received but not transmitted.\n");
+	}
+
 	/* Set offload configuration from command line parameters. */
 	rx_mode.offloads = rx_offloads;
 	tx_mode.offloads = tx_offloads;
