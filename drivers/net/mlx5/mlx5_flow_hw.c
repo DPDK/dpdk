@@ -15096,6 +15096,8 @@ flow_hw_calc_encap_hash(struct rte_eth_dev *dev,
 				((const struct rte_flow_item_ipv4 *)(pattern->spec))->hdr.dst_addr;
 			data.src.ipv4_addr =
 				((const struct rte_flow_item_ipv4 *)(pattern->spec))->hdr.src_addr;
+			data.next_protocol = ((const struct rte_flow_item_ipv4 *)
+				(pattern->spec))->hdr.next_proto_id;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			memcpy(data.dst.ipv6_addr,
@@ -15104,6 +15106,8 @@ flow_hw_calc_encap_hash(struct rte_eth_dev *dev,
 			memcpy(data.src.ipv6_addr,
 			       &((const struct rte_flow_item_ipv6 *)(pattern->spec))->hdr.src_addr,
 			       sizeof(data.src.ipv6_addr));
+			data.next_protocol = ((const struct rte_flow_item_ipv6 *)
+			       (pattern->spec))->hdr.proto;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			data.next_protocol = IPPROTO_UDP;
