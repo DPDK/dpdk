@@ -767,7 +767,8 @@ F: doc/guides/nics/gve.rst
 F: doc/guides/nics/features/gve.ini
 
 Hisilicon hns3
-M: Dengdui Huang <huangdengdui@huawei.com>
+M: Xingui Yang <yangxingui@huawei.com>
+M: Chengwen Feng <fengchengwen@huawei.com>
 F: drivers/net/hns3/
 F: doc/guides/nics/hns3.rst
 F: doc/guides/nics/features/hns3.ini
