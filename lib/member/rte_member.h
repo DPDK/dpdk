@@ -87,15 +87,6 @@ typedef uint16_t member_set_t;
 /** For sketch, use the flag if to count packet size instead of packet count */
 #define RTE_MEMBER_SKETCH_COUNT_BYTE 0x02
 
-/** @internal Hash function used by membership library. */
-#if defined(RTE_ARCH_X86) || defined(__ARM_FEATURE_CRC32)
-#include <rte_hash_crc.h>
-#define MEMBER_HASH_FUNC       rte_hash_crc
-#else
-#include <rte_jhash.h>
-#define MEMBER_HASH_FUNC       rte_jhash
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
