@@ -28,6 +28,28 @@ static CUresult CUDAAPI (*sym_cuGetProcAddress)(const char *symbol,
 		void **pfn, int cudaVersion, uint64_t flags);
 
 /* CUDA Driver functions loaded with cuGetProcAddress for versioning */
+#if CUDA_VERSION >= 13000
+static PFN_cuGetErrorString_v6000 pfn_cuGetErrorString;
+static PFN_cuGetErrorName_v6000 pfn_cuGetErrorName;
+static PFN_cuPointerSetAttribute_v6000 pfn_cuPointerSetAttribute;
+static PFN_cuDeviceGetAttribute_v2000 pfn_cuDeviceGetAttribute;
+static PFN_cuDeviceGetByPCIBusId_v4010 pfn_cuDeviceGetByPCIBusId;
+static PFN_cuDevicePrimaryCtxRetain_v7000 pfn_cuDevicePrimaryCtxRetain;
+static PFN_cuDevicePrimaryCtxRelease_v11000 pfn_cuDevicePrimaryCtxRelease;
+static PFN_cuDeviceTotalMem_v3020 pfn_cuDeviceTotalMem;
+static PFN_cuDeviceGetName_v2000 pfn_cuDeviceGetName;
+static PFN_cuCtxGetApiVersion_v3020 pfn_cuCtxGetApiVersion;
+static PFN_cuCtxSetCurrent_v4000 pfn_cuCtxSetCurrent;
+static PFN_cuCtxGetCurrent_v4000 pfn_cuCtxGetCurrent;
+static PFN_cuCtxGetDevice_v2000 pfn_cuCtxGetDevice;
+static PFN_cuCtxGetExecAffinity_v11040 pfn_cuCtxGetExecAffinity;
+static PFN_cuMemAlloc_v3020 pfn_cuMemAlloc;
+static PFN_cuMemFree_v3020 pfn_cuMemFree;
+static PFN_cuMemHostRegister_v6050 pfn_cuMemHostRegister;
+static PFN_cuMemHostUnregister_v4000 pfn_cuMemHostUnregister;
+static PFN_cuMemHostGetDevicePointer_v3020 pfn_cuMemHostGetDevicePointer;
+static PFN_cuFlushGPUDirectRDMAWrites_v11030 pfn_cuFlushGPUDirectRDMAWrites;
+#else
 static PFN_cuGetErrorString pfn_cuGetErrorString;
 static PFN_cuGetErrorName pfn_cuGetErrorName;
 static PFN_cuPointerSetAttribute pfn_cuPointerSetAttribute;
@@ -48,6 +70,7 @@ static PFN_cuMemHostRegister pfn_cuMemHostRegister;
 static PFN_cuMemHostUnregister pfn_cuMemHostUnregister;
 static PFN_cuMemHostGetDevicePointer pfn_cuMemHostGetDevicePointer;
 static PFN_cuFlushGPUDirectRDMAWrites pfn_cuFlushGPUDirectRDMAWrites;
+#endif
 
 static void *cudalib;
 static unsigned int cuda_api_version;
