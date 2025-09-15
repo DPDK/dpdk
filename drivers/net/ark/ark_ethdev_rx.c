@@ -538,7 +538,6 @@ void
 eth_ark_dev_rx_queue_release(void *vqueue)
 {
 	struct ark_rx_queue *queue;
-	uint32_t i;
 
 	queue = (struct ark_rx_queue *)vqueue;
 	if (queue == 0)
@@ -550,9 +549,6 @@ eth_ark_dev_rx_queue_release(void *vqueue)
 
 	/* Need to clear out mbufs here, dropping packets along the way */
 	eth_ark_rx_queue_drain(queue);
-
-	for (i = 0; i < queue->queue_size; ++i)
-		rte_pktmbuf_free(queue->reserve_q[i]);
 
 	rte_free(queue->reserve_q);
 	rte_free(queue->paddress_q);
