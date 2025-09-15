@@ -102,6 +102,12 @@ static const struct rte_pci_id pci_id_ark_map[] = {
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1024)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1025)},
 	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x1026)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x102a)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x102b)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x102c)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x102d)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x102e)},
+	{RTE_PCI_DEVICE(AR_VENDOR_ID, 0x102f)},
 	{.vendor_id = 0, /* sentinel */ },
 };
 
@@ -733,7 +739,9 @@ eth_ark_dev_info_get(struct rte_eth_dev *dev,
 				RTE_ETH_LINK_SPEED_25G |
 				RTE_ETH_LINK_SPEED_40G |
 				RTE_ETH_LINK_SPEED_50G |
-				RTE_ETH_LINK_SPEED_100G);
+				RTE_ETH_LINK_SPEED_100G |
+				RTE_ETH_LINK_SPEED_200G |
+				RTE_ETH_LINK_SPEED_400G);
 
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
