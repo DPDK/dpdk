@@ -34,6 +34,7 @@
 #define XSC_EEPROM_PAGE_LENGTH		256
 #define XSC_EEPROM_HIGH_PAGE_LENGTH	128
 #define XSC_EEPROM_MAX_BYTES		32
+#define XSC_DEV_BAR_LEN_256M		0x10000000
 
 enum xsc_dev_fec_config_bits {
 	XSC_DEV_FEC_NONE_BIT,
@@ -164,6 +165,13 @@ struct xsc_dev_config {
 	uint32_t tso_max_payload_sz;
 };
 
+struct xsc_dev_reg_addr {
+	uint32_t *rxq_db_addr;
+	uint32_t *txq_db_addr;
+	uint32_t *cq_db_addr;
+	uint32_t cq_pi_start;
+};
+
 struct xsc_dev {
 	struct rte_pci_device *pci_dev;
 	const struct xsc_dev_ops *dev_ops;
@@ -188,6 +196,7 @@ struct xsc_dev {
 	rte_intr_callback_fn intr_cb;
 	void *intr_cb_arg;
 	struct xsc_dev_pct_mgr pct_mgr;
+	struct xsc_dev_reg_addr reg_addr;
 };
 
 struct xsc_module_eeprom_query_params {
