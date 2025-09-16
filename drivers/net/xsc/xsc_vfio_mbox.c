@@ -73,10 +73,10 @@ static struct xsc_cmdq_config xsc_vf_config = {
 static void
 xsc_cmdq_config_init(struct xsc_dev *xdev, struct xsc_cmd_queue *cmdq)
 {
-	if (!xsc_dev_is_vf(xdev))
-		cmdq->config = &xsc_pf_config;
-	else
+	if (xsc_dev_is_vf(xdev) || xdev->bar_len != XSC_DEV_BAR_LEN_256M)
 		cmdq->config = &xsc_vf_config;
+	else
+		cmdq->config = &xsc_pf_config;
 }
 
 static void
