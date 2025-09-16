@@ -141,7 +141,7 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index, bool reconnect)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[index];
 	struct vhost_vring_addr *ra = &vq->ring_addrs;
-	struct vduse_vq_info vq_info;
+	struct vduse_vq_info vq_info = { 0 };
 	struct vduse_vq_eventfd vq_efd;
 	int ret;
 
