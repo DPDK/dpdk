@@ -320,6 +320,25 @@ xsc_dev_repr_ports_probe(struct xsc_dev *xdev, int nb_repr_ports, int max_eth_po
 	return 0;
 }
 
+static void
+xsc_dev_reg_addr_init(struct xsc_dev *xdev)
+{
+	struct xsc_dev_reg_addr *reg = &xdev->reg_addr;
+	uint8_t *bar_addr = xdev->bar_addr;
+
+	if (xsc_dev_is_vf(xdev) || xdev->bar_len != XSC_DEV_BAR_LEN_256M) {
+		reg->rxq_db_addr = (uint32_t *)(bar_addr + XSC_VF_RX_DB_ADDR);
+		reg->txq_db_addr = (uint32_t *)(bar_addr + XSC_VF_TX_DB_ADDR);
+		reg->cq_db_addr = (uint32_t *)(bar_addr + XSC_VF_CQ_DB_ADDR);
+		reg->cq_pi_start = XSC_VF_CQ_PID_START_ADDR;
+	} else {
+		reg->rxq_db_addr = (uint32_t *)(bar_addr + XSC_PF_RX_DB_ADDR);
+		reg->txq_db_addr = (uint32_t *)(bar_addr + XSC_PF_TX_DB_ADDR);
+		reg->cq_db_addr = (uint32_t *)(bar_addr + XSC_PF_CQ_DB_ADDR);
+		reg->cq_pi_start = XSC_PF_CQ_PID_START_ADDR;
+	}
+}
+
 void
 xsc_dev_uninit(struct xsc_dev *xdev)
 {
@@ -354,6 +373,7 @@ xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **xdev)
 	if (d->dev_ops->dev_init)
 		d->dev_ops->dev_init(d);
 
+	xsc_dev_reg_addr_init(d);
 	xsc_dev_args_parse(d, pci_dev->device.devargs);
 
 	ret = xsc_dev_alloc_vfos_info(d);

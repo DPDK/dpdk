@@ -382,6 +382,7 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 	int wqe_n;
 	int entry_total_len, entry_len;
 	uint32_t wqe_total_len;
+	uint32_t cq_pi_start;
 	uint16_t rqn_base, pa_num;
 	uint16_t i, j;
 	uint16_t set_last_no = 0;
@@ -465,6 +466,7 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 		set_last_no++;
 	}
 
+	cq_pi_start = xdev->reg_addr.cq_pi_start;
 	for (i = 0; i < priv->num_rq; i++) {
 		rxq_data = xsc_rxq_get(priv, i);
 		if (rxq_data == NULL) {
@@ -473,16 +475,12 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 		}
 
 		rxq_data->wqes = rxq_data->rq_pas->addr;
-		if (!xsc_dev_is_vf(xdev)) {
-			rxq_data->rq_db = (uint32_t *)((uint8_t *)xdev->bar_addr +
-					  XSC_PF_RX_DB_ADDR);
+		rxq_data->rq_db = xdev->reg_addr.rxq_db_addr;
+		if (!xsc_dev_is_vf(xdev))
 			rxq_data->cq_pi = (uint32_t *)((uint8_t *)xdev->bar_addr +
-					  XSC_PF_CQ_PID_START_ADDR + rxq_data->cqn * 4);
-		} else {
-			rxq_data->rq_db = (uint32_t *)((uint8_t *)xdev->bar_addr +
-					  XSC_VF_RX_DB_ADDR);
+					cq_pi_start + rxq_data->cqn * 4);
+		else
 			rxq_data->cq_pi = NULL;
-		}
 
 		rxq_data->qpn = rqn_base + i;
 		xsc_dev_modify_qp_status(xdev, rxq_data->qpn, 1, XSC_CMD_OP_RTR2RTS_QP);
