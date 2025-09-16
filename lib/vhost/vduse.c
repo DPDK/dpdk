@@ -279,6 +279,55 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 	vq->last_avail_idx = 0;
 }
 
+/*
+ * Tests show that virtqueues get ready at the first retry at worst,
+ * but let's be on the safe side and allow more retries.
+ */
+#define VDUSE_VQ_READY_POLL_MAX_RETRIES 100
+
+static int
+vduse_wait_for_virtqueues_ready(struct virtio_net *dev)
+{
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < dev->nr_vring; i++) {
+		int retry_count = 0;
+
+		while (retry_count < VDUSE_VQ_READY_POLL_MAX_RETRIES) {
+			struct vduse_vq_info vq_info = { 0 };
+
+			vq_info.index = i;
+			ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_GET_INFO, &vq_info);
+			if (ret) {
+				VHOST_LOG_CONFIG(dev->ifname, ERR,
+					"Failed to get VQ %u info while polling ready state: %s",
+					i, strerror(errno));
+				return -1;
+			}
+
+			if (vq_info.ready) {
+				VHOST_LOG_CONFIG(dev->ifname, DEBUG,
+					"VQ %u is ready after %u retries", i, retry_count);
+				break;
+			}
+
+			retry_count++;
+			usleep(1000);
+		}
+
+		if (retry_count >= VDUSE_VQ_READY_POLL_MAX_RETRIES) {
+			VHOST_LOG_CONFIG(dev->ifname, ERR,
+				"VQ %u ready state polling timeout after %u retries",
+				i, VDUSE_VQ_READY_POLL_MAX_RETRIES);
+			return -1;
+		}
+	}
+
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "All virtqueues are ready after polling");
+	return 0;
+}
+
 static void
 vduse_device_start(struct virtio_net *dev)
 {
@@ -411,10 +460,18 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 	}
 
 	if ((old_status ^ dev->status) & VIRTIO_DEVICE_STATUS_DRIVER_OK) {
-		if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)
+		if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK) {
+			/* Poll virtqueues ready states before starting device */
+			ret = vduse_wait_for_virtqueues_ready(dev);
+			if (ret < 0) {
+				VHOST_LOG_CONFIG(dev->ifname, ERR,
+					"Failed to wait for virtqueues ready, aborting device start");
+				return;
+			}
 			vduse_device_start(dev);
-		else
+		} else {
 			vduse_device_stop(dev);
+		}
 	}
 
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "Request %s (%u) handled successfully\n",
