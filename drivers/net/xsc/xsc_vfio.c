@@ -1114,11 +1114,11 @@ xsc_vfio_intr_handler_install(struct xsc_dev *xdev, rte_intr_callback_fn cb, voi
 static int
 xsc_vfio_intr_handler_uninstall(struct xsc_dev *xdev)
 {
-	if (rte_intr_fd_get(xdev->pci_dev->intr_handle) >= 0)
-		rte_intr_callback_unregister(xdev->pci_dev->intr_handle,
-					     xdev->intr_cb, xdev->intr_cb_arg);
-
-	rte_intr_instance_free(xdev->intr_handle);
+	if (rte_intr_fd_get(xdev->pci_dev->intr_handle) >= 0) {
+		rte_intr_disable(xdev->pci_dev->intr_handle);
+		rte_intr_callback_unregister_sync(xdev->pci_dev->intr_handle,
+						  xdev->intr_cb, xdev->intr_cb_arg);
+	}
 
 	return 0;
 }
