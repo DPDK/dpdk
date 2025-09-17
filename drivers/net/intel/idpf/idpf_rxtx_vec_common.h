@@ -11,6 +11,9 @@
 #include "idpf_ethdev.h"
 #include "idpf_rxtx.h"
 #include "../common/rx.h"
+#ifdef RTE_ARCH_X86
+#include "../common/rx_vec_x86.h"
+#endif
 
 #define IDPF_SCALAR_PATH		0
 #define IDPF_VECTOR_PATH		1
@@ -128,5 +131,13 @@ idpf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 
 	return IDPF_VECTOR_PATH;
 }
+
+#ifdef RTE_ARCH_X86
+static inline enum rte_vect_max_simd
+idpf_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
+#endif
 
 #endif /*_IDPF_RXTX_VEC_COMMON_H_*/
