@@ -11,6 +11,10 @@
 #include "cpfl_ethdev.h"
 #include "cpfl_rxtx.h"
 
+#ifdef RTE_ARCH_X86
+#include "../common/rx_vec_x86.h"
+#endif
+
 #define CPFL_SCALAR_PATH		0
 #define CPFL_VECTOR_PATH		1
 #define CPFL_RX_NO_VECTOR_FLAGS (		\
@@ -120,5 +124,13 @@ cpfl_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 
 	return CPFL_VECTOR_PATH;
 }
+
+#ifdef RTE_ARCH_X86
+static inline enum rte_vect_max_simd
+cpfl_get_max_simd_bitwidth(void)
+{
+	return ci_get_x86_max_simd_bitwidth();
+}
+#endif
 
 #endif /*_CPFL_RXTX_VEC_COMMON_H_*/
