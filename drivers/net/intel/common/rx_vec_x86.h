@@ -359,7 +359,8 @@ ci_get_x86_max_simd_bitwidth(void)
 	int simd = X86_MAX_SIMD_BITWIDTH;
 
 	if (simd >= 512 && rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1 &&
-			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1)
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) == 1 &&
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ) == 1)
 		ret = RTE_VECT_SIMD_512;
 	else if (simd >= 256 && (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1))
 		ret = RTE_VECT_SIMD_256;
