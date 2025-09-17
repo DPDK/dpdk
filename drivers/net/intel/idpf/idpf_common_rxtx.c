@@ -7,6 +7,8 @@
 #include <rte_errno.h>
 
 #include "idpf_common_rxtx.h"
+#include "idpf_common_device.h"
+#include "../common/rx.h"
 
 int idpf_timestamp_dynfield_offset = -1;
 uint64_t idpf_timestamp_dynflag;
@@ -1622,3 +1624,52 @@ idpf_qc_splitq_rx_vec_setup(struct idpf_rx_queue *rxq)
 	rxq->bufq2->idpf_ops = &def_rx_ops_vec;
 	return idpf_rxq_vec_setup_default(rxq->bufq2);
 }
+
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_rx_path_infos)
+const struct ci_rx_path_info idpf_rx_path_infos[] = {
+	[IDPF_RX_DEFAULT] = {
+		.pkt_burst = idpf_dp_splitq_recv_pkts,
+		.info = "Split Scalar",
+		.features = {
+			.rx_offloads = IDPF_RX_SCALAR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_DISABLED}},
+	[IDPF_RX_SINGLEQ] = {
+		.pkt_burst = idpf_dp_singleq_recv_pkts,
+		.info = "Single Scalar",
+		.features = {
+			.rx_offloads = IDPF_RX_SCALAR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_DISABLED,
+			.extra.single_queue = true}},
+	[IDPF_RX_SINGLEQ_SCATTERED] = {
+		.pkt_burst = idpf_dp_singleq_recv_scatter_pkts,
+		.info = "Single Scalar Scattered",
+		.features = {
+			.rx_offloads = IDPF_RX_SCALAR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_DISABLED,
+			.extra.scattered = true,
+			.extra.single_queue = true}},
+#ifdef RTE_ARCH_X86
+	[IDPF_RX_SINGLEQ_AVX2] = {
+		.pkt_burst = idpf_dp_singleq_recv_pkts_avx2,
+		.info = "Single AVX2 Vector",
+		.features = {
+			.rx_offloads = IDPF_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.extra.single_queue = true}},
+#ifdef CC_AVX512_SUPPORT
+	[IDPF_RX_AVX512] = {
+		.pkt_burst = idpf_dp_splitq_recv_pkts_avx512,
+		.info = "Split AVX512 Vector",
+		.features = {
+			.rx_offloads = IDPF_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512}},
+	[IDPF_RX_SINGLQ_AVX512] = {
+		.pkt_burst = idpf_dp_singleq_recv_pkts_avx512,
+		.info = "Single AVX512 Vector",
+		.features = {
+			.rx_offloads = IDPF_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.extra.single_queue = true}},
+#endif /* CC_AVX512_SUPPORT */
+#endif /* RTE_ARCH_X86 */
+};
