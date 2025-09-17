@@ -131,6 +131,7 @@ struct ci_rx_path_features_extra {
 	bool flex_desc;
 	bool bulk_alloc;
 	bool disabled;
+	bool single_queue;
 };
 
 struct ci_rx_path_features {
@@ -276,6 +277,10 @@ ci_rx_path_select(struct ci_rx_path_features req_features,
 
 		/* If requested, ensure the path uses the flexible descriptor. */
 		if (path_features->extra.flex_desc != req_features.extra.flex_desc)
+			continue;
+
+		/* If requested, ensure the path supports single queue RX. */
+		if (path_features->extra.single_queue != req_features.extra.single_queue)
 			continue;
 
 		/* If requested, ensure the path supports scattered RX. */

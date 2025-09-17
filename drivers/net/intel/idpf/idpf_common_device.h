@@ -44,6 +44,16 @@
 	(sizeof(struct virtchnl2_ptype) +				\
 	 (((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
 
+enum idpf_rx_func_type {
+	IDPF_RX_DEFAULT,
+	IDPF_RX_SINGLEQ,
+	IDPF_RX_SINGLEQ_SCATTERED,
+	IDPF_RX_SINGLEQ_AVX2,
+	IDPF_RX_AVX512,
+	IDPF_RX_SINGLQ_AVX512,
+	IDPF_RX_MAX
+};
+
 struct idpf_adapter {
 	struct idpf_hw hw;
 	struct virtchnl2_version_info virtchnl_version;
@@ -59,6 +69,8 @@ struct idpf_adapter {
 
 	/* For timestamp */
 	uint64_t time_hw;
+
+	enum idpf_rx_func_type rx_func_type;
 };
 
 struct idpf_chunks_info {

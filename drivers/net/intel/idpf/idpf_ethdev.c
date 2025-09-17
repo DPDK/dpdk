@@ -694,6 +694,8 @@ idpf_dev_configure(struct rte_eth_dev *dev)
 		(dev->data->mtu == 0) ? IDPF_DEFAULT_MTU : dev->data->mtu +
 		IDPF_ETH_OVERHEAD;
 
+	vport->adapter->rx_func_type = IDPF_RX_DEFAULT;
+
 	return 0;
 }
 

@@ -11,6 +11,7 @@
 
 #include "idpf_common_device.h"
 #include "../common/tx.h"
+#include "../common/rx.h"
 
 #define IDPF_RX_MAX_BURST		32
 
@@ -95,6 +96,15 @@
 
 #define IDPF_RX_SPLIT_BUFQ1_ID	1
 #define IDPF_RX_SPLIT_BUFQ2_ID	2
+
+#define IDPF_RX_SCALAR_OFFLOADS (			\
+		RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_UDP_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_TCP_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP | \
+		RTE_ETH_RX_OFFLOAD_SCATTER)
+#define IDPF_RX_VECTOR_OFFLOADS 0
 
 struct idpf_rx_stats {
 	RTE_ATOMIC(uint64_t) mbuf_alloc_failed;
@@ -252,5 +262,7 @@ __rte_internal
 uint16_t idpf_dp_singleq_xmit_pkts_avx2(void *tx_queue,
 					struct rte_mbuf **tx_pkts,
 					uint16_t nb_pkts);
+
+extern const struct ci_rx_path_info idpf_rx_path_infos[IDPF_RX_MAX];
 
 #endif /* _IDPF_COMMON_RXTX_H_ */
