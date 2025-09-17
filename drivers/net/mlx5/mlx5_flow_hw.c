@@ -14959,6 +14959,7 @@ flow_hw_async_action_list_handle_destroy
 						    legacy->handle,
 						    user_data, error);
 		mlx5_indirect_list_remove_entry(&legacy->indirect);
+		mlx5_free(legacy);
 		goto end;
 	}
 	if (attr) {
