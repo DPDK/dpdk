@@ -3277,3 +3277,17 @@ Tested Platforms
       * Ubuntu 22.04
       * Driver MLNX_OFED_LINUX-24.10-2.1.8.0
       * fw 22.43.2566
+
+22.11.10 Release Notes
+----------------------
+
+
+22.11.10 Fixes
+~~~~~~~~~~~~~~
+
+* net/mlx5: fix out-of-order completions in ordinary Rx burst (CVE-2025-23259)
+
+22.11.10 Validation
+~~~~~~~~~~~~~~~~~~~
+
+* Validated by Nvidia(R)
