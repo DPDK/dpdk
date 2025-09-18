@@ -2,9 +2,8 @@
  * Copyright(c) 2020 Dmitry Kozlyuk
  */
 
-#include <stdint.h>
-
-#include <rte_compat.h>
+#ifndef RTE_EAL_PAGING_H
+#define RTE_EAL_PAGING_H
 
 /**
  * @file
@@ -12,6 +11,10 @@
  *
  * Wrappers for OS facilities related to memory paging, used across DPDK.
  */
+
+#include <stdint.h>
+
+#include <rte_compat.h>
 
 /** Memory protection flags. */
 enum rte_mem_prot {
@@ -101,3 +104,5 @@ rte_mem_page_size(void);
 __rte_internal
 int
 rte_mem_lock(const void *virt, size_t size);
+
+#endif /* RTE_EAL_PAGING_H */
