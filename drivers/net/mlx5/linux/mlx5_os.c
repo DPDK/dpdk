@@ -1601,6 +1601,7 @@ err_secondary:
 		err = rte_errno;
 		goto error;
 	}
+	eth_dev->data->mtu = priv->mtu;
 	DRV_LOG(DEBUG, "port %u MTU is %u", eth_dev->data->port_id,
 		priv->mtu);
 	/* Initialize burst functions to prevent crashes before link-up. */
