@@ -514,6 +514,65 @@ test_enqueue_sg_copies(int16_t dev_id, uint16_t vchan)
 	return 0;
 }
 
+static int
+test_single_sva_copy(int16_t dev_id, uint16_t vchan, const char *mem_src,
+		     char *src, char *dst, uint32_t len)
+{
+	uint16_t i, id;
+	int ret;
+
+	for (i = 0; i < len; i++)
+		src[i] = rte_rand() & 0xFF;
+
+	ret = rte_dma_copy(dev_id, vchan, (rte_iova_t)src, (rte_iova_t)dst,
+			len, RTE_DMA_OP_FLAG_SUBMIT);
+	if (ret != id_count)
+		ERR_RETURN("Error with %s rte_dma_copy, got %d expected %u\n",
+			mem_src, ret, id_count);
+
+	await_hw(dev_id, vchan);
+
+	id = ~id_count;
+	if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 1)
+		ERR_RETURN("Error with %s rte_dma_completed\n", mem_src);
+	if (id != id_count)
+		ERR_RETURN("Error with %s rte_dma_completed: incorrect job id received, %u [expected %u]\n",
+			mem_src, id, id_count);
+	id_count++;
+
+	for (i = 0; i < len; i++)
+		if (dst[i] != src[i])
+			ERR_RETURN("Error with %s data mismatch at char %u [Got %02x not %02x]\n",
+				mem_src, i, dst[i], src[i]);
+
+	return 0;
+}
+
+static int
+test_enqueue_sva_copies(int16_t dev_id, uint16_t vchan)
+{
+	char src[COPY_LEN], dst[COPY_LEN];
+	char *src_data, *dst_data;
+	int ret;
+
+	/* test copy between buffer which malloced by libc. */
+	src_data = malloc(COPY_LEN);
+	dst_data = malloc(COPY_LEN);
+	if (src_data == NULL || dst_data == NULL) {
+		free(src_data);
+		free(dst_data);
+		ERR_RETURN("Error with malloc copy buffer!\n");
+	}
+	ret = test_single_sva_copy(dev_id, vchan, "libc", src_data, dst_data, COPY_LEN);
+	free(src_data);
+	free(dst_data);
+	if (ret != 0)
+		return ret;
+
+	/* test copy between buffer which belong stack. */
+	return test_single_sva_copy(dev_id, vchan, "stack", src, dst, COPY_LEN);
+}
+
 /* Failure handling test cases - global macros and variables for those tests*/
 #define COMP_BURST_SZ	16
 #define OPT_FENCE(idx) ((fence && idx == 8) ? RTE_DMA_OP_FLAG_FENCE : 0)
@@ -1205,6 +1264,21 @@ test_dmadev_sg_copy_setup(void)
 }
 
 static int
+test_dmadev_sva_setup(void)
+{
+	int ret = TEST_SUCCESS;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_SVA) == 0) {
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: device does not support SVA, skipping SVA tests\n",
+			test_dev_id);
+		ret = TEST_SKIPPED;
+	}
+
+	return ret;
+}
+
+static int
 test_dmadev_burst_setup(void)
 {
 	if (rte_dma_burst_capacity(test_dev_id, vchan) < 64) {
@@ -1364,6 +1438,7 @@ test_dmadev_instance(int16_t dev_id)
 	enum {
 		  TEST_COPY = 0,
 		  TEST_COPY_SG,
+		  TEST_SVA_COPY,
 		  TEST_START,
 		  TEST_BURST,
 		  TEST_ERR,
@@ -1376,6 +1451,7 @@ test_dmadev_instance(int16_t dev_id)
 	static struct runtest_param param[] = {
 		{"copy", test_enqueue_copies, 640},
 		{"sg_copy", test_enqueue_sg_copies, 1},
+		{"sva_copy", test_enqueue_sva_copies, 1},
 		{"stop_start", test_stop_start, 1},
 		{"burst_capacity", test_burst_capacity, 1},
 		{"error_handling", test_completion_handling, 1},
@@ -1395,6 +1471,9 @@ test_dmadev_instance(int16_t dev_id)
 			TEST_CASE_NAMED_WITH_DATA("sg_copy",
 				test_dmadev_sg_copy_setup, NULL,
 				runtest, &param[TEST_COPY_SG]),
+			TEST_CASE_NAMED_WITH_DATA("sva_copy",
+				test_dmadev_sva_setup, NULL,
+				runtest, &param[TEST_SVA_COPY]),
 			TEST_CASE_NAMED_WITH_DATA("stop_start",
 				NULL, NULL,
 				runtest, &param[TEST_START]),
