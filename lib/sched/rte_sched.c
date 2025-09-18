@@ -67,7 +67,7 @@ struct rte_sched_pipe {
 	uint64_t tc_credits[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 
 	/* Weighted Round Robin (WRR) */
-	uint8_t wrr_tokens[RTE_SCHED_BE_QUEUES_PER_PIPE];
+	uint16_t wrr_tokens[RTE_SCHED_BE_QUEUES_PER_PIPE];
 
 	/* TC oversubscription */
 	uint64_t tc_ov_credits;
