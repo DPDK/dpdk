@@ -693,12 +693,16 @@ rte_eal_init(int argc, char **argv)
 	 * with a message describing the cause.
 	 */
 	has_phys_addr = internal_conf->no_hugetlbfs == 0;
+
+	/* Always call rte_bus_get_iommu_class() to trigger DMA mask detection and validation */
+	enum rte_iova_mode bus_iova_mode = rte_bus_get_iommu_class();
+
 	iova_mode = internal_conf->iova_mode;
 	if (iova_mode == RTE_IOVA_DC) {
 		RTE_LOG(DEBUG, EAL, "Specific IOVA mode is not requested, autodetecting\n");
 		if (has_phys_addr) {
 			RTE_LOG(DEBUG, EAL, "Selecting IOVA mode according to bus requests\n");
-			iova_mode = rte_bus_get_iommu_class();
+			iova_mode = bus_iova_mode;
 			if (iova_mode == RTE_IOVA_DC) {
 				if (!RTE_IOVA_IN_MBUF) {
 					iova_mode = RTE_IOVA_VA;
