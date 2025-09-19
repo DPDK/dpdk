@@ -81,6 +81,9 @@ fixup_includes()
 
 	sed -i "s|^#include <linux/compiler.h>||g" $path
 	sed -i "s|\<__user[[:space:]]||" $path
+	sed -i 's|#\(ifndef\)[[:space:]]*_UAPI|#\1 |' $path
+	sed -i 's|#\(define\)[[:space:]]*_UAPI|#\1 |' $path
+	sed -i 's|#\(endif[[:space:]]*/[*]\)[[:space:]]*_UAPI|#\1 |' $path
 
 	# Prepend include path with "uapi/" if the header is imported
 	for include in $(sed -ne 's/^#include <\(.*\)>$/\1/p' $path); do

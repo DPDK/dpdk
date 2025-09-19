@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause) */
-#ifndef _UAPI_VDUSE_H_
-#define _UAPI_VDUSE_H_
+#ifndef _VDUSE_H_
+#define _VDUSE_H_
 
 #include <linux/types.h>
 
@@ -350,4 +350,4 @@ struct vduse_dev_response {
 	};
 };
 
-#endif /* _UAPI_VDUSE_H_ */
+#endif /* _VDUSE_H_ */

@@ -2,13 +2,13 @@
  * Copyright (c) 2023 Red Hat, Inc.
  */
 
+#include <uapi/linux/vduse.h>
+
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-
-#include <uapi/linux/vduse.h>
 #include <linux/virtio_net.h>
 
 #include <sys/ioctl.h>

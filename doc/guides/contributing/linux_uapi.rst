@@ -62,9 +62,15 @@ Header inclusion into library or driver
 
 The library or driver willing to make use of imported uAPI headers needs to
 explicitly include the header file with ``uapi/`` prefix in C files.
+
+This inclusion must be done before any header external to DPDK is included,
+to prevent inclusion of this system uAPI header in any of those external headers.
+
 For example to include VDUSE uAPI:
 
 .. code-block:: c
 
    #include <uapi/linux/vduse.h>
 
+   #include <stdint.h>
+   ...
