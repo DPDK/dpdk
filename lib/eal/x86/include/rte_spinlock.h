@@ -7,7 +7,6 @@
 
 #include "generic/rte_spinlock.h"
 #include "rte_rtm.h"
-#include "rte_cpuflags.h"
 #include "rte_branch_prediction.h"
 #include "rte_common.h"
 #include "rte_pause.h"

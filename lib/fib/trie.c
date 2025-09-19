@@ -8,6 +8,7 @@
 
 #include <rte_debug.h>
 #include <rte_malloc.h>
+#include <rte_cpuflags.h>
 #include <rte_errno.h>
 
 #include <rte_rib6.h>

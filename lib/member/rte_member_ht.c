@@ -8,6 +8,7 @@
 #include <rte_random.h>
 #include <rte_log.h>
 #include <rte_vect.h>
+#include <rte_cpuflags.h>
 
 #include "member.h"
 #include "rte_member.h"

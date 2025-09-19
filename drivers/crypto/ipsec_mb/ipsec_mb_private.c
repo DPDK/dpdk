@@ -5,6 +5,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_common.h>
 #include <rte_cryptodev.h>
+#include <rte_cpuflags.h>
 #include <rte_errno.h>
 
 #include "ipsec_mb_private.h"

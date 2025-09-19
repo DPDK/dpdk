@@ -10,6 +10,7 @@
 #include <rte_lcore_var.h>
 #include <rte_rtm.h>
 #include <rte_spinlock.h>
+#include <rte_cpuflags.h>
 
 #include "rte_power_intrinsics.h"
 
