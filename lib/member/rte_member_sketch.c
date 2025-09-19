@@ -12,6 +12,7 @@
 #include <rte_log.h>
 #include <rte_random.h>
 #include <rte_prefetch.h>
+#include <rte_cpuflags.h>
 #include <rte_ring_elem.h>
 
 #include "member.h"
