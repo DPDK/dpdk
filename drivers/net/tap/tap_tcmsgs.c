@@ -123,8 +123,8 @@ qdisc_add_multiq(int nlsk_fd, unsigned int ifindex)
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg.t.tcm_handle = TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 	msg.t.tcm_parent = TC_H_ROOT;
-	tap_nlattr_add(&msg.nh, TCA_KIND, sizeof("multiq"), "multiq");
-	tap_nlattr_add(&msg.nh, TCA_OPTIONS, sizeof(opt), &opt);
+	tap_nlattr_add(&msg, TCA_KIND, sizeof("multiq"), "multiq");
+	tap_nlattr_add(&msg, TCA_OPTIONS, sizeof(opt), &opt);
 	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
 	if (tap_nl_recv_ack(nlsk_fd) < 0)
@@ -152,7 +152,7 @@ qdisc_add_ingress(int nlsk_fd, unsigned int ifindex)
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg.t.tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	msg.t.tcm_parent = TC_H_INGRESS;
-	tap_nlattr_add(&msg.nh, TCA_KIND, sizeof("ingress"), "ingress");
+	tap_nlattr_add(&msg, TCA_KIND, sizeof("ingress"), "ingress");
 	if (tap_nl_send(nlsk_fd, &msg.nh) < 0)
 		return -1;
 	if (tap_nl_recv_ack(nlsk_fd) < 0)
