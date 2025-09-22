@@ -293,18 +293,18 @@ retry:
  *   The data to append.
  */
 void
-tap_nlattr_add(struct nlmsghdr *nh, unsigned short type,
+tap_nlattr_add(struct tap_nlmsg *msg, unsigned short type,
 	   unsigned int data_len, const void *data)
 {
 	/* see man 3 rtnetlink */
 	struct rtattr *rta;
 
-	rta = (struct rtattr *)NLMSG_TAIL(nh);
+	rta = (struct rtattr *)NLMSG_TAIL(msg);
 	rta->rta_len = RTA_LENGTH(data_len);
 	rta->rta_type = type;
 	if (data_len > 0)
 		memcpy(RTA_DATA(rta), data, data_len);
-	nh->nlmsg_len = NLMSG_ALIGN(nh->nlmsg_len) + RTA_ALIGN(rta->rta_len);
+	msg->nh.nlmsg_len = NLMSG_ALIGN(msg->nh.nlmsg_len) + RTA_ALIGN(rta->rta_len);
 }
 
 /**
@@ -318,9 +318,9 @@ tap_nlattr_add(struct nlmsghdr *nh, unsigned short type,
  *   The data to append.
  */
 void
-tap_nlattr_add8(struct nlmsghdr *nh, unsigned short type, uint8_t data)
+tap_nlattr_add8(struct tap_nlmsg *msg, unsigned short type, uint8_t data)
 {
-	tap_nlattr_add(nh, type, sizeof(uint8_t), &data);
+	tap_nlattr_add(msg, type, sizeof(uint8_t), &data);
 }
 
 /**
@@ -334,9 +334,9 @@ tap_nlattr_add8(struct nlmsghdr *nh, unsigned short type, uint8_t data)
  *   The data to append.
  */
 void
-tap_nlattr_add16(struct nlmsghdr *nh, unsigned short type, uint16_t data)
+tap_nlattr_add16(struct tap_nlmsg *msg, unsigned short type, uint16_t data)
 {
-	tap_nlattr_add(nh, type, sizeof(uint16_t), &data);
+	tap_nlattr_add(msg, type, sizeof(uint16_t), &data);
 }
 
 /**
@@ -350,9 +350,9 @@ tap_nlattr_add16(struct nlmsghdr *nh, unsigned short type, uint16_t data)
  *   The data to append.
  */
 void
-tap_nlattr_add32(struct nlmsghdr *nh, unsigned short type, uint32_t data)
+tap_nlattr_add32(struct tap_nlmsg *msg, unsigned short type, uint32_t data)
 {
-	tap_nlattr_add(nh, type, sizeof(uint32_t), &data);
+	tap_nlattr_add(msg, type, sizeof(uint32_t), &data);
 }
 
 /**
@@ -379,9 +379,9 @@ tap_nlattr_nested_start(struct tap_nlmsg *msg, uint16_t type)
 		return -1;
 	}
 
-	tail->tail = (struct rtattr *)NLMSG_TAIL(&msg->nh);
+	tail->tail = (struct rtattr *)NLMSG_TAIL(msg);
 
-	tap_nlattr_add(&msg->nh, type, 0, NULL);
+	tap_nlattr_add(msg, type, 0, NULL);
 
 	tail->prev = msg->nested_tails;
 
@@ -404,7 +404,7 @@ tap_nlattr_nested_finish(struct tap_nlmsg *msg)
 {
 	struct nested_tail *tail = msg->nested_tails;
 
-	tail->tail->rta_len = (char *)NLMSG_TAIL(&msg->nh) - (char *)tail->tail;
+	tail->tail->rta_len = (char *)NLMSG_TAIL(msg) - (char *)tail->tail;
 
 	if (tail->prev)
 		msg->nested_tails = tail->prev;
