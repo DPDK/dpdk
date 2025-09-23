@@ -6,6 +6,13 @@ if not get_option('check_includes')
     subdir_done()
 endif
 
+includes = [config_inc]
+deps = []
+includes_drivers = []
+deps_drivers = []
+
+subdir('staging')
+
 gen_c_file_for_header = find_program('gen_c_file_for_header.py')
 gen_c_files = generator(gen_c_file_for_header,
         output: '@BASENAME@.c',
@@ -18,18 +25,7 @@ endif
 cflags += no_wvla_cflag
 
 sources = files('main.c')
-sources += gen_c_files.process(dpdk_arch_headers + dpdk_headers + dpdk_drivers_headers)
-
-# some driver SDK headers depend on these two buses, which are mandatory in build
-# so we always include them in deps list
-deps = [get_variable('shared_rte_bus_vdev'), get_variable('shared_rte_bus_pci')]
-if dpdk_conf.has('RTE_BUS_VMBUS')
-    deps += get_variable('shared_rte_bus_vmbus')
-endif
-# add the rest of the libs to the dependencies
-foreach l:dpdk_libs_enabled
-    deps += get_variable('shared_rte_' + l)
-endforeach
+sources += gen_c_files.process(dpdk_arch_headers + dpdk_headers)
 
 executable('chkincs', sources,
         c_args: cflags,
@@ -49,6 +45,27 @@ executable('chkincs-all', sources,
         dependencies: deps,
         install: false)
 
+sources_drivers = files('main.c')
+sources_drivers += gen_c_files.process(dpdk_drivers_headers)
+
+executable('chkincs-drv', sources_drivers,
+        c_args: cflags,
+        include_directories: includes + includes_drivers,
+        dependencies: deps + deps_drivers,
+        install: false)
+
+executable('chkincs-drv-exp', sources_drivers,
+        c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
+        include_directories: includes + includes_drivers,
+        dependencies: deps + deps_drivers,
+        install: false)
+
+executable('chkincs-drv-all', sources_drivers,
+        c_args: [cflags, '-DALLOW_EXPERIMENTAL_API', '-DALLOW_INTERNAL_API'],
+        include_directories: includes + includes_drivers,
+        dependencies: deps + deps_drivers,
+        install: false)
+
 # run tests for c++ builds also
 if not add_languages('cpp', required: false)
     subdir_done()
@@ -59,7 +76,7 @@ gen_cpp_files = generator(gen_c_file_for_header,
         arguments: ['@INPUT@', '@OUTPUT@'])
 
 cpp_sources = files('main.cpp')
-cpp_sources += gen_cpp_files.process(dpdk_arch_headers + dpdk_headers + dpdk_drivers_headers)
+cpp_sources += gen_cpp_files.process(dpdk_arch_headers + dpdk_headers)
 
 executable('chkincs-cpp', cpp_sources,
         cpp_args: ['-include', 'rte_config.h', cflags],
@@ -78,4 +95,26 @@ executable('chkincs-cpp-all', cpp_sources,
                    '-DALLOW_INTERNAL_API'],
         include_directories: includes,
         dependencies: deps,
+        install: false)
+
+cpp_sources_drivers = files('main.cpp')
+cpp_sources_drivers += gen_cpp_files.process(dpdk_drivers_headers)
+
+executable('chkincs-drv-cpp', cpp_sources_drivers,
+        cpp_args: ['-include', 'rte_config.h', cflags],
+        include_directories: includes + includes_drivers,
+        dependencies: deps + deps_drivers,
+        install: false)
+
+executable('chkincs-drv-cpp-exp', cpp_sources_drivers,
+        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_EXPERIMENTAL_API'],
+        include_directories: includes + includes_drivers,
+        dependencies: deps + deps_drivers,
+        install: false)
+
+executable('chkincs-drv-cpp-all', cpp_sources_drivers,
+        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_EXPERIMENTAL_API',
+                   '-DALLOW_INTERNAL_API'],
+        include_directories: includes + includes_drivers,
+        dependencies: deps + deps_drivers,
         install: false)

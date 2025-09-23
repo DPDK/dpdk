@@ -72,9 +72,9 @@ elif host_machine.cpu_family().startswith('riscv')
 endif
 
 # configure the build, and make sure configs here and in config folder are
-# able to be included in any file. We also store a global array of include dirs
-# for passing to pmdinfogen scripts
-global_inc = [include_directories('.', 'config',
+# able to be included in any file
+config_inc = [include_directories('.', 'config')]
+global_inc = [config_inc, include_directories(
     'lib/eal/include',
     'lib/eal/@0@/include'.format(host_machine.system()),
     'lib/eal/@0@/include'.format(arch_subdir),
