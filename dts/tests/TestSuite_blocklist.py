@@ -10,6 +10,7 @@ from api.capabilities import (
     LinkTopology,
     requires_link_topology,
 )
+from api.test import verify
 from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
 from framework.testbed_model.port import Port
@@ -27,10 +28,10 @@ class TestBlocklist(TestSuite):
 
             # sanity check
             allowed_len = len(allowlisted_ports - blocklisted_ports)
-            self.verify(allowed_len > 0, "At least one port should have been allowed")
+            verify(allowed_len > 0, "At least one port should have been allowed")
 
             blocked = not allowlisted_ports & blocklisted_ports
-            self.verify(blocked, "At least one port was not blocklisted")
+            verify(blocked, "At least one port was not blocklisted")
 
     @func_test
     def no_blocklisted(self) -> None:

@@ -18,6 +18,8 @@ from typing import ClassVar
 from scapy.layers.l2 import Dot1Q, Ether
 from scapy.packet import Packet, Raw
 
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
@@ -111,7 +113,7 @@ class TestDualVlan(TestSuite):
             send_packet: Packet to send for testing.
             options: Flag which defines the currents configured settings in testpmd.
         """
-        recv = self.send_packet_and_capture(send_packet)
+        recv = send_packet_and_capture(send_packet)
         recv = list(filter(self._is_relevant_packet, recv))
         expected_layers: list[Packet] = []
 
@@ -119,13 +121,13 @@ class TestDualVlan(TestSuite):
             expected_layers.append(Dot1Q(vlan=self.outer_vlan_tag))
         expected_layers.append(Dot1Q(vlan=self.inner_vlan_tag))
 
-        self.verify(
+        verify(
             len(recv) > 0,
             f"Expected to receive packet with the payload {expected_layers} but got nothing.",
         )
 
         for pkt in recv:
-            self.verify(
+            verify(
                 self._pkt_payload_contains_layers(pkt, *expected_layers),
                 f"Received packet ({pkt.summary()}) did not match the expected sequence of layers "
                 f"{expected_layers} with options {options}.",
@@ -175,11 +177,11 @@ class TestDualVlan(TestSuite):
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.tx_vlan_set(port=self.tx_port, enable=True, vlan=self.vlan_insert_tag)
             testpmd.start()
-            recv = self.send_packet_and_capture(
+            recv = send_packet_and_capture(
                 Ether() / Dot1Q(vlan=self.outer_vlan_tag) / Raw(b"X" * 20)
             )
-            self.verify(len(recv) > 0, "Did not receive any packets when testing VLAN insertion.")
-            self.verify(
+            verify(len(recv) > 0, "Did not receive any packets when testing VLAN insertion.")
+            verify(
                 any(
                     self._is_relevant_packet(p)
                     and self._pkt_payload_contains_layers(
@@ -211,9 +213,9 @@ class TestDualVlan(TestSuite):
         )
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start()
-            recv = self.send_packet_and_capture(send_pkt)
-            self.verify(len(recv) > 0, "Unmodified packet was not received.")
-            self.verify(
+            recv = send_packet_and_capture(send_pkt)
+            verify(len(recv) > 0, "Unmodified packet was not received.")
+            verify(
                 any(
                     self._is_relevant_packet(p)
                     and self._pkt_payload_contains_layers(
@@ -252,9 +254,9 @@ class TestDualVlan(TestSuite):
         )
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.start()
-            recv = self.send_packet_and_capture(pkt)
-            self.verify(len(recv) > 0, "Did not receive any packets when testing VLAN priority.")
-            self.verify(
+            recv = send_packet_and_capture(pkt)
+            verify(len(recv) > 0, "Did not receive any packets when testing VLAN priority.")
+            verify(
                 any(
                     self._is_relevant_packet(p)
                     and self._pkt_payload_contains_layers(

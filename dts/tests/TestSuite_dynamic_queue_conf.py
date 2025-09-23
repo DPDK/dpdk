@@ -35,6 +35,8 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.packet import send_packets
+from api.test import fail, verify
 from api.testpmd import TestPmd
 from api.testpmd.config import PortTopology, SimpleForwardingModes
 from framework.exception import InteractiveCommandExecutionError
@@ -109,7 +111,7 @@ def setup_and_teardown_test(
             self._send_packets_with_different_addresses(self.number_of_packets_to_send)
             forwarding_stats = testpmd.stop()
             for queue_id in queues_to_config:
-                self.verify(
+                verify(
                     self._port_queue_in_stats(port_id, is_rx_testing, queue_id, forwarding_stats),
                     f"Modified queue {queue_id} on port {port_id} failed to receive traffic after"
                     "being started again.",
@@ -172,7 +174,7 @@ class TestDynamicQueueConf(TestSuite):
             / Raw()
             for i in range(number_of_packets)
         ]
-        self.send_packets(packets_to_send)
+        send_packets(packets_to_send)
 
     def _port_queue_in_stats(
         self, port_id: int, is_rx_queue: bool, queue_id: int, stats: str
@@ -226,8 +228,7 @@ class TestDynamicQueueConf(TestSuite):
             # The testpmd method verifies that the modification worked, so we catch that error
             # and just re-raise it as a test case failure
             except InteractiveCommandExecutionError:
-                self.verify(
-                    False,
+                fail(
                     f"Failed to update the ring size of queue {queue_id} on port "
                     f"{port_id} at runtime",
                 )
@@ -264,12 +265,12 @@ class TestDynamicQueueConf(TestSuite):
         # it means there could be another reason for the packets not transmitting and,
         # therefore, a false positive result.
         for unchanged_q_id in unchanged_queues:
-            self.verify(
+            verify(
                 self._port_queue_in_stats(port_id, is_rx_testing, unchanged_q_id, forwarding_stats),
                 f"Queue {unchanged_q_id} failed to receive traffic.",
             )
         for stopped_q_id in queues_to_modify:
-            self.verify(
+            verify(
                 not self._port_queue_in_stats(
                     port_id, is_rx_testing, stopped_q_id, forwarding_stats
                 ),

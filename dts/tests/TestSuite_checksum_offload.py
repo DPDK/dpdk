@@ -25,6 +25,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from api.testpmd.types import ChecksumOffloadOptions, PacketOffloadFlag
@@ -61,11 +63,11 @@ class TestChecksumOffload(TestSuite):
                 by the traffic generator.
         """
         for i in range(0, len(packet_list)):
-            received_packets = self.send_packet_and_capture(packet=packet_list[i])
+            received_packets = send_packet_and_capture(packet=packet_list[i])
             received = any(
                 packet.haslayer(Raw) and load in packet.load for packet in received_packets
             )
-            self.verify(
+            verify(
                 received == should_receive,
                 f"Packet was {'dropped' if should_receive else 'received'}",
             )
@@ -85,19 +87,19 @@ class TestChecksumOffload(TestSuite):
             id: The destination port that matches the sent packet in verbose output.
         """
         testpmd.start()
-        self.send_packet_and_capture(packet=packet)
+        send_packet_and_capture(packet=packet)
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
         is_IP = is_L4 = None
         for testpmd_packet in verbose_output:
             if testpmd_packet.l4_dport == id:
                 is_IP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in testpmd_packet.ol_flags
                 is_L4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in testpmd_packet.ol_flags
-        self.verify(
+        verify(
             is_IP is not None and is_L4 is not None,
             "Test packet was dropped when it should have been received.",
         )
-        self.verify(is_L4 == good_L4, "Layer 4 checksum flag did not match expected checksum flag.")
-        self.verify(is_IP == good_IP, "IP checksum flag did not match expected checksum flag.")
+        verify(is_L4 == good_L4, "Layer 4 checksum flag did not match expected checksum flag.")
+        verify(is_IP == good_IP, "IP checksum flag did not match expected checksum flag.")
 
     def _setup_hw_offload(self, testpmd: TestPmd) -> None:
         """Sets IP, UDP, and TCP layers to hardware offload.

@@ -18,6 +18,7 @@ from api.capabilities import (
     LinkTopology,
     requires_link_topology,
 )
+from api.test import verify
 from api.testpmd import TestPmd
 from framework.config.node import PortConfig
 from framework.settings import SETTINGS
@@ -119,7 +120,7 @@ class TestSmokeTests(TestSuite):
         with TestPmd() as testpmd:
             dev_list = [str(x) for x in testpmd.get_devices()]
         for nic in self.nics_in_node:
-            self.verify(
+            verify(
                 nic.pci in dev_list,
                 f"Device {nic.pci} was not listed in testpmd's available devices, "
                 "please check your configuration",
@@ -156,13 +157,13 @@ class TestSmokeTests(TestSuite):
                 rf"{nic.pci}.*drv=(\S+) [^\\n]*",
                 all_nics_in_dpdk_devbind,
             )
-            self.verify(
+            verify(
                 devbind_info_for_nic is not None,
                 f"Failed to find configured device ({nic.pci}) using dpdk-devbind.py",
             )
             # We know this isn't None, but mypy doesn't
             assert devbind_info_for_nic is not None
-            self.verify(
+            verify(
                 devbind_info_for_nic.group(1) == nic.os_driver_for_dpdk,
                 f"Driver for device {nic.pci} does not match driver listed in "
                 f"configuration (bound to {devbind_info_for_nic.group(1)})",

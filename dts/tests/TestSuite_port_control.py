@@ -18,6 +18,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import send_packets_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
@@ -40,8 +42,8 @@ class TestPortControl(TestSuite):
         send_p = Ether() / Raw(payload.encode("utf-8"))
         recv_pakts: list[Packet] = []
         for _ in range(int(num_pakts / 25)):
-            recv_pakts += self.send_packets_and_capture([send_p] * 25)
-        recv_pakts += self.send_packets_and_capture([send_p] * (num_pakts % 25))
+            recv_pakts += send_packets_and_capture([send_p] * 25)
+        recv_pakts += send_packets_and_capture([send_p] * (num_pakts % 25))
         recv_pakts = [
             p
             for p in recv_pakts
@@ -51,7 +53,7 @@ class TestPortControl(TestSuite):
                 hasattr(p, "load") and p.load.decode("utf-8").replace("\x00", "") == payload
             )
         ]
-        self.verify(
+        verify(
             len(recv_pakts) == num_pakts,
             f"Received {len(recv_pakts)} packets when {num_pakts} were expected.",
         )
@@ -89,7 +91,7 @@ class TestPortControl(TestSuite):
         """
         with TestPmd(forward_mode=SimpleForwardingModes.mac) as testpmd:
             testpmd.stop_all_ports()
-            self.verify(
+            verify(
                 all(not p.is_link_up for p in testpmd.show_port_info_all()),
                 "Failed to stop all ports.",
             )
@@ -108,6 +110,4 @@ class TestPortControl(TestSuite):
         """
         with TestPmd() as testpmd:
             testpmd.close_all_ports()
-            self.verify(
-                len(testpmd.show_port_info_all()) == 0, "Failed to close all ports in testpmd."
-            )
+            verify(len(testpmd.show_port_info_all()) == 0, "Failed to close all ports in testpmd.")
