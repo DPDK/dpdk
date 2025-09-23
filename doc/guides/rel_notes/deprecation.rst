@@ -20,11 +20,6 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
-* telemetry: The functions ``rte_tel_data_add_array_u64`` and ``rte_tel_data_add_dict_u64``,
-  used by telemetry callbacks for adding unsigned integer values to be returned to the user,
-  are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
-  As such, the old function names are deprecated and will be removed in a future release.
-
 * eal: The ``-c <coremask>`` commandline parameter is deprecated
   and will be removed in a future release.
   Use the ``-l <corelist>`` or ``--lcores=<corelist>`` parameters instead

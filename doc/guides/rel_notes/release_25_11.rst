@@ -96,6 +96,10 @@ Removed Items
   Currently, this means that modules will only be built for FreeBSD.
   No modules are shipped with DPDK for either Linux or Windows.
 
+* telemetry: As previously announced in the deprecation notices,
+  the functions ``rte_tel_data_add_array_u64`` and ``rte_tel_data_add_dict_u64`` are removed.
+  They are replaced by ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
+
 
 API Changes
 -----------

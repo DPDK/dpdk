@@ -91,13 +91,6 @@ rte_tel_data_add_array_uint(struct rte_tel_data *d, uint64_t x)
 	return 0;
 }
 
-RTE_EXPORT_SYMBOL(rte_tel_data_add_array_u64)
-int
-rte_tel_data_add_array_u64(struct rte_tel_data *d, uint64_t x)
-{
-	return rte_tel_data_add_array_uint(d, x);
-}
-
 RTE_EXPORT_SYMBOL(rte_tel_data_add_array_container)
 int
 rte_tel_data_add_array_container(struct rte_tel_data *d,
@@ -227,13 +220,6 @@ rte_tel_data_add_dict_uint(struct rte_tel_data *d,
 	e->value.uval = val;
 	const size_t bytes = strlcpy(e->name, name, RTE_TEL_MAX_STRING_LEN);
 	return bytes < RTE_TEL_MAX_STRING_LEN ? 0 : E2BIG;
-}
-
-RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_u64)
-int
-rte_tel_data_add_dict_u64(struct rte_tel_data *d, const char *name, uint64_t val)
-{
-	return rte_tel_data_add_dict_uint(d, name, val);
 }
 
 RTE_EXPORT_SYMBOL(rte_tel_data_add_dict_container)
