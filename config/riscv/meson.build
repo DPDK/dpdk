@@ -43,7 +43,8 @@ vendor_generic = {
         ['RTE_MAX_NUMA_NODES', 2]
     ],
     'arch_config': {
-        'generic': {'machine_args': ['-march=rv64gc']}
+        'generic': {'machine_args': ['-march=rv64gc']},
+        'rv64gcv': {'machine_args': ['-march=rv64gcv']},
     }
 }
 
