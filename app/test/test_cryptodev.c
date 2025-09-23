@@ -3488,6 +3488,8 @@ create_wireless_algo_auth_cipher_operation(
 		uint16_t remaining_off = (auth_offset >> 3) + (auth_len >> 3);
 		struct rte_mbuf *sgl_buf = (op_mode == IN_PLACE ?
 				sym_op->m_src : sym_op->m_dst);
+		struct rte_mbuf *sgl_buf_head = sgl_buf;
+
 		while (remaining_off >= rte_pktmbuf_data_len(sgl_buf)) {
 			remaining_off -= rte_pktmbuf_data_len(sgl_buf);
 			sgl_buf = sgl_buf->next;
@@ -3495,11 +3497,18 @@ create_wireless_algo_auth_cipher_operation(
 
 		/* The last segment should be large enough to hold full digest */
 		if (sgl_buf->data_len < auth_tag_len) {
-			rte_pktmbuf_free(sgl_buf->next);
-			sgl_buf->next = NULL;
-			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(sgl_buf,
-					auth_tag_len - sgl_buf->data_len),
-					"No room to append auth tag");
+			uint16_t next_data_len = 0;
+			if (sgl_buf->next != NULL) {
+				next_data_len = sgl_buf->next->data_len;
+
+				rte_pktmbuf_free(sgl_buf->next);
+				sgl_buf->next = NULL;
+				sgl_buf_head->nb_segs -= 1;
+				sgl_buf_head->pkt_len -= next_data_len;
+			}
+			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(
+						sgl_buf_head, auth_tag_len - sgl_buf->data_len),
+						"No room to append auth tag");
 		}
 
 		sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(sgl_buf,
@@ -9795,11 +9804,13 @@ test_pdcp_proto_SGL(int i, int oop,
 			buf_oop = buf_oop->next;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
-			rte_pktmbuf_append(buf_oop, to_trn);
+			TEST_ASSERT_NOT_NULL(ut_params->obuf, "Output buffer not initialized");
+			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->obuf, to_trn), "Failed to append to mbuf");
 		}
 
-		plaintext = (uint8_t *)rte_pktmbuf_append(buf,
+		plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 				to_trn);
+		TEST_ASSERT_NOT_NULL(plaintext, "Failed to append plaintext");
 
 		memcpy(plaintext, input_vec + trn_data, to_trn);
 		trn_data += to_trn;
@@ -9828,7 +9839,7 @@ test_pdcp_proto_SGL(int i, int oop,
 			buf_oop = buf_oop->next;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
-			rte_pktmbuf_append(buf_oop, to_trn);
+			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->obuf, to_trn), "Failed to append to mbuf");
 
 			trn_data += to_trn;
 		}
@@ -15916,15 +15927,18 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
 				rte_pktmbuf_tailroom(buf));
 
-		plaintext = (uint8_t *)rte_pktmbuf_append(buf,
+		plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 				to_trn);
+		TEST_ASSERT_NOT_NULL(plaintext, "Failed to append plaintext");
 
 		memcpy(plaintext, tdata->plaintext.data + trn_data,
 				to_trn);
 		trn_data += to_trn;
-		if (trn_data  == tdata->plaintext.len)
-			digest_mem = (uint8_t *)rte_pktmbuf_append(buf,
+		if (trn_data  == tdata->plaintext.len) {
+			digest_mem = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 					tdata->gmac_tag.len);
+			TEST_ASSERT_NOT_NULL(digest_mem, "Failed to append digest data");
+		}
 	}
 	ut_params->ibuf->nb_segs = segs;
 
@@ -17223,23 +17237,28 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 			buf_oop = buf_oop->next;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
-			rte_pktmbuf_append(buf_oop, to_trn);
+			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->obuf, to_trn), "Failed to append to mbuf");
 		}
 
-		plaintext = (uint8_t *)rte_pktmbuf_append(buf,
+		plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 				to_trn);
+		TEST_ASSERT_NOT_NULL(plaintext, "Failed to append plaintext");
 
 		memcpy(plaintext, tdata->plaintext.data + trn_data,
 				to_trn);
 		trn_data += to_trn;
 		if (trn_data  == tdata->plaintext.len) {
 			if (oop) {
-				if (!fragsz_oop)
-					digest_mem = rte_pktmbuf_append(buf_oop,
+				if (!fragsz_oop) {
+					digest_mem = rte_pktmbuf_append(ut_params->obuf,
 						tdata->auth_tag.len);
-			} else
-				digest_mem = (uint8_t *)rte_pktmbuf_append(buf,
+					TEST_ASSERT_NOT_NULL(digest_mem, "Failed to append auth tag");
+				}
+			} else {
+				digest_mem = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
 					tdata->auth_tag.len);
+				TEST_ASSERT_NOT_NULL(digest_mem, "Failed to append auth tag");
+			}
 		}
 	}
 
@@ -17274,16 +17293,18 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 
 			buf_last_oop = buf_oop->next =
 					rte_pktmbuf_alloc(ts_params->mbuf_pool);
+			TEST_ASSERT_NOT_NULL(buf_oop->next, "Unexpected end of chain");
 			buf_oop = buf_oop->next;
 			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
 					0, rte_pktmbuf_tailroom(buf_oop));
-			rte_pktmbuf_append(buf_oop, to_trn);
+			TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->obuf, to_trn), "Failed to append to mbuf");
 
 			trn_data += to_trn;
 
 			if (trn_data  == tdata->plaintext.len) {
-				digest_mem = rte_pktmbuf_append(buf_oop,
+				digest_mem = rte_pktmbuf_append(ut_params->obuf,
 					tdata->auth_tag.len);
+				TEST_ASSERT_NOT_NULL(digest_mem, "Failed to append auth tag");
 			}
 		}
 
