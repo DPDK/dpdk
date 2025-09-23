@@ -26,6 +26,8 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
@@ -87,14 +89,14 @@ class TestPmdBufferScatter(TestSuite):
         # pack the payload
         for X_in_hex in payload:
             packet.load += struct.pack("=B", int("%s%s" % (X_in_hex[0], X_in_hex[1]), 16))
-        received_packets = self.send_packet_and_capture(packet)
+        received_packets = send_packet_and_capture(packet)
         # filter down the list to packets that have the appropriate structure
         received_packets = [p for p in received_packets if Ether in p and IP in p and Raw in p]
 
-        self.verify(len(received_packets) > 0, "Did not receive any packets.")
+        verify(len(received_packets) > 0, "Did not receive any packets.")
 
         layer2 = received_packets[0].getlayer(2)
-        self.verify(layer2 is not None, "The received packet is invalid.")
+        verify(layer2 is not None, "The received packet is invalid.")
         assert layer2 is not None
 
         return received_packets
@@ -126,7 +128,7 @@ class TestPmdBufferScatter(TestSuite):
             for offset in [-1, 0, 1, 4, 5]:
                 recv_packets = self._scatter_pktgen_send_packet(mb_size + offset)
                 self._logger.debug(f"Relevant captured packets: \n{recv_packets}")
-                self.verify(
+                verify(
                     any(" ".join(["58"] * 8) in hexstr(pkt, onlyhex=1) for pkt in recv_packets),
                     "Payload of scattered packet did not match expected payload with offset "
                     f"{offset}.",

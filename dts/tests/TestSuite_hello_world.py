@@ -8,6 +8,7 @@ Starts and stops a testpmd session to verify EAL parameters
 are properly configured.
 """
 
+from api.test import log
 from api.testpmd import TestPmd
 from framework.test_suite import BaseConfig, TestSuite, func_test
 
@@ -36,4 +37,4 @@ class TestHelloWorld(TestSuite):
         """
         with TestPmd() as testpmd:
             testpmd.start()
-        self.log(self.config.msg)
+        log(self.config.msg)

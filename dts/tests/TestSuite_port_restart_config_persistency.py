@@ -13,6 +13,7 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.types import TestPmdPortFlowCtrl
 from framework.test_suite import TestSuite, func_test
@@ -49,7 +50,7 @@ class TestPortRestartConfigPersistency(TestSuite):
         if flow_info_after:
             all_info_after.update(asdict(flow_info_after))
 
-        self.verify(
+        verify(
             all_info_before == all_info_after,
             f"Port configuration for {changed_value} was not retained through port restart.",
         )

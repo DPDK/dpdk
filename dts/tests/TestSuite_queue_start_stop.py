@@ -22,6 +22,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
@@ -49,11 +51,11 @@ class TestQueueStartStop(TestSuite):
             should_receive: Indicate whether the packet should be received.
         """
         packet = Ether() / IP() / Raw(load="xxxxx")
-        received = self.send_packet_and_capture(packet)
+        received = send_packet_and_capture(packet)
         contains_packet = any(
             packet.haslayer(Raw) and b"xxxxx" in packet.load for packet in received
         )
-        self.verify(
+        verify(
             should_receive == contains_packet,
             f"Packet was {'dropped' if should_receive else 'received'}",
         )

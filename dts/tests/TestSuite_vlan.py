@@ -21,6 +21,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from framework.test_suite import TestSuite, func_test
@@ -55,30 +57,30 @@ class TestVlan(TestSuite):
             vlan_id: Expected VLAN ID.
         """
         packet = Ether() / Dot1Q(vlan=vlan_id) / Raw(load="xxxxx")
-        received_packets = self.send_packet_and_capture(packet)
+        received_packets = send_packet_and_capture(packet)
         test_packet = None
         for packet in received_packets:
             if hasattr(packet, "load") and b"xxxxx" in packet.load:
                 test_packet = packet
                 break
         if should_receive:
-            self.verify(
+            verify(
                 test_packet is not None,
                 "Packet was dropped when it should have been received",
             )
             if test_packet is not None:
                 if strip:
-                    self.verify(
+                    verify(
                         not test_packet.haslayer(Dot1Q),
                         "VLAN tag was not stripped successfully",
                     )
                 else:
-                    self.verify(
+                    verify(
                         test_packet.vlan == vlan_id,
                         "The received tag did not match the expected tag",
                     )
         else:
-            self.verify(
+            verify(
                 test_packet is None,
                 "Packet was received when it should have been dropped",
             )
@@ -90,22 +92,22 @@ class TestVlan(TestSuite):
             expected_id: The VLAN id that is being inserted through tx_offload configuration.
         """
         packet = Ether() / Raw(load="xxxxx")
-        received_packets = self.send_packet_and_capture(packet)
+        received_packets = send_packet_and_capture(packet)
         test_packet = None
         for packet in received_packets:
             if hasattr(packet, "load") and b"xxxxx" in packet.load:
                 test_packet = packet
                 break
-        self.verify(
+        verify(
             test_packet is not None,
             "Packet was dropped when it should have been received",
         )
         if test_packet is not None:
-            self.verify(
+            verify(
                 test_packet.haslayer(Dot1Q) == 1,
                 "The received packet did not have a VLAN tag",
             )
-            self.verify(
+            verify(
                 test_packet.vlan == expected_id,
                 "The received tag did not match the expected tag",
             )

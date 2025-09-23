@@ -23,6 +23,8 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import fail, verify
 from api.testpmd import TestPmd
 from framework.exception import InteractiveCommandExecutionError
 from framework.test_suite import TestSuite, func_test
@@ -73,16 +75,16 @@ class TestMacFilter(TestSuite):
         packet.dst = mac_address
         received_packets = [
             packets
-            for packets in self.send_packet_and_capture(packet)
+            for packets in send_packet_and_capture(packet)
             if hasattr(packets, "load") and "X" * 22 in str(packets.load)
         ]
         if should_receive:
-            self.verify(
+            verify(
                 len(received_packets) == 1,
                 "Packet sent by test case should be forwarded and received.",
             )
         else:
-            self.verify(
+            verify(
                 len(received_packets) == 0,
                 "Packet sent by test case should not be forwarded and received.",
             )
@@ -160,12 +162,12 @@ class TestMacFilter(TestSuite):
             mac_address = self.topology.sut_port_ingress.mac_address
             try:
                 testpmd.set_mac_addr(0, "00:00:00:00:00:00", add=True)
-                self.verify(False, "Invalid mac address added.")
+                fail("Invalid mac address added.")
             except InteractiveCommandExecutionError:
                 pass
             try:
                 testpmd.set_mac_addr(0, mac_address, add=False)
-                self.verify(False, "Default mac address removed.")
+                fail("Default mac address removed.")
             except InteractiveCommandExecutionError:
                 pass
             # Should be no errors adding this twice
@@ -174,7 +176,7 @@ class TestMacFilter(TestSuite):
             # Double check to see if default mac address can be removed
             try:
                 testpmd.set_mac_addr(0, mac_address, add=False)
-                self.verify(False, "Default mac address removed.")
+                fail("Default mac address removed.")
             except InteractiveCommandExecutionError:
                 pass
 
@@ -190,7 +192,7 @@ class TestMacFilter(TestSuite):
                 testpmd.set_mac_addr(0, "E" + mac_address[1:], add=True)
                 # We add an extra address to compensate for mac address pool inconsistencies.
                 testpmd.set_mac_addr(0, "F" + mac_address[1:], add=True)
-                self.verify(False, "Mac address limit exceeded.")
+                fail("Mac address limit exceeded.")
             except InteractiveCommandExecutionError:
                 pass
 

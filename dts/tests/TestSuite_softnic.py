@@ -12,6 +12,11 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import (
+    get_expected_packets,
+    match_all_packets,
+    send_packets_and_capture,
+)
 from api.testpmd import TestPmd
 from api.testpmd.config import EthPeer
 from framework.test_suite import TestSuite, func_test
@@ -96,9 +101,9 @@ class TestSoftnic(TestSuite):
             port_topology=None,
         ) as shell:
             shell.start()
-            received_packets = self.send_packets_and_capture(self.packets)
+            received_packets = send_packets_and_capture(self.packets)
             # packets are being forwarded without addresses being amended so
             # we get the address as it would be expected to come from TG
-            expected_packets = self.get_expected_packets(self.packets, sent_from_tg=True)
+            expected_packets = get_expected_packets(self.packets, sent_from_tg=True)
 
-            self.match_all_packets(expected_packets, received_packets)
+            match_all_packets(expected_packets, received_packets)

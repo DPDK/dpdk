@@ -480,7 +480,7 @@ Test Case Verification
 
 Use the verify method to assert conditions and record test results.
 This should typically be called at the end of each test case.
-Example: ``self.verify(link_up, "Link should be up after configuration.")``
+Example: ``verify(link_up, "Link should be up after configuration.")``
 
 Other Methods
 ~~~~~~~~~~~~~

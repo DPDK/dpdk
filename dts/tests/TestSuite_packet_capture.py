@@ -29,6 +29,12 @@ from api.capabilities import (
     LinkTopology,
     requires_link_topology,
 )
+from api.packet import (
+    get_expected_packets,
+    match_all_packets,
+    send_packets_and_capture,
+)
+from api.test import verify
 from api.testpmd import TestPmd
 from framework.params import Params
 from framework.remote_session.blocking_app import BlockingApp
@@ -139,7 +145,7 @@ class TestPacketCapture(TestSuite):
                 )
             )
 
-        received_packets = self.send_packets_and_capture(
+        received_packets = send_packets_and_capture(
             self.packets, PacketFilteringConfig(no_lldp=False)
         )
 
@@ -166,18 +172,18 @@ class TestPacketCapture(TestSuite):
             testpmd.start()
             received_packets = self._send_and_dump()
 
-            expected_packets = self.get_expected_packets(self.packets, sent_from_tg=True)
+            expected_packets = get_expected_packets(self.packets, sent_from_tg=True)
             with self.rx_pcap.open() as fd:
                 rx_pcap_packets = list(rdpcap(fd))
-                self.verify(
-                    self.match_all_packets(expected_packets, rx_pcap_packets, verify=False),
+                verify(
+                    match_all_packets(expected_packets, rx_pcap_packets, verify=False),
                     "Rx packets from dumpcap weren't the same as the expected packets.",
                 )
 
             with self.tx_pcap.open() as fd:
                 tx_pcap_packets = list(rdpcap(fd))
-                self.verify(
-                    self.match_all_packets(tx_pcap_packets, received_packets, verify=False),
+                verify(
+                    match_all_packets(tx_pcap_packets, received_packets, verify=False),
                     "Tx packets from dumpcap weren't the same as the packets received by Scapy.",
                 )
 
@@ -198,14 +204,14 @@ class TestPacketCapture(TestSuite):
             self._send_and_dump("tcp", rx_only=True)
             filtered_packets = [
                 raw(p)
-                for p in self.get_expected_packets(self.packets, sent_from_tg=True)
+                for p in get_expected_packets(self.packets, sent_from_tg=True)
                 if not p.haslayer(TCP)
             ]
 
             with self.rx_pcap.open() as fd:
                 rx_pcap_packets = [raw(p) for p in rdpcap(fd)]
                 for filtered_packet in filtered_packets:
-                    self.verify(
+                    verify(
                         filtered_packet not in rx_pcap_packets,
                         "Found a packet in the pcap that was meant to be filtered out.",
                     )

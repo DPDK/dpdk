@@ -13,6 +13,11 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import (
+    get_expected_packets,
+    match_all_packets,
+    send_packets_and_capture,
+)
 from api.testpmd import TestPmd
 from api.testpmd.config import EthPeer, SimpleForwardingModes
 from framework.context import filter_cores
@@ -66,8 +71,8 @@ class TestL2fwd(TestSuite):
                 shell.set_ports_queues(queues_num)
                 shell.start()
 
-                received_packets = self.send_packets_and_capture(self.packets)
-                expected_packets = self.get_expected_packets(self.packets)
-                self.match_all_packets(expected_packets, received_packets)
+                received_packets = send_packets_and_capture(self.packets)
+                expected_packets = get_expected_packets(self.packets)
+                match_all_packets(expected_packets, received_packets)
 
                 shell.stop()

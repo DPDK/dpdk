@@ -25,6 +25,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
@@ -55,10 +57,10 @@ class TestUniPkt(TestSuite):
         self, expected_flag: RtePTypes, packet: Packet, testpmd: TestPmd
     ) -> None:
         """Sends a packet to the DUT and verifies the verbose ptype flags."""
-        self.send_packet_and_capture(packet=packet)
+        send_packet_and_capture(packet=packet)
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
         valid = self._check_for_matching_packet(output=verbose_output, flags=expected_flag)
-        self.verify(valid, f"Packet type flag did not match the expected flag: {expected_flag}.")
+        verify(valid, f"Packet type flag did not match the expected flag: {expected_flag}.")
 
     def _setup_session(
         self, testpmd: TestPmd, expected_flags: list[RtePTypes], packet_list=list[Packet]

@@ -23,6 +23,8 @@ from api.capabilities import (
     requires_link_topology,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
@@ -142,7 +144,7 @@ class TestPortStats(TestSuite):
             testpmd.set_verbose(3)
             testpmd.start()
             testpmd.clear_port_stats_all()
-            self.send_packet_and_capture(self._send_pkt)
+            send_packet_and_capture(self._send_pkt)
             port_stats_all, forwarding_info = testpmd.show_port_stats_all()
             verbose_information = TestPmd.extract_verbose_output(forwarding_info)
 
@@ -155,21 +157,21 @@ class TestPortStats(TestSuite):
         recv_relevant_bytes = port_stats_all[self.recv_port].rx_bytes - rx_irr_bytes
         sent_relevant_bytes = port_stats_all[self.send_port].tx_bytes - tx_irr_bytes
 
-        self.verify(
+        verify(
             recv_relevant_packets == 1,
             f"Port {self.recv_port} received {recv_relevant_packets} packets but expected to only "
             "receive 1.",
         )
-        self.verify(
+        verify(
             recv_relevant_bytes == self.total_packet_len,
             f"Number of bytes received by port {self.recv_port} did not match the amount sent.",
         )
-        self.verify(
+        verify(
             sent_relevant_packets == 1,
             f"Number was packets sent by port {self.send_port} was not equal to the number "
             f"received by port {self.recv_port}.",
         )
-        self.verify(
+        verify(
             sent_relevant_bytes == self.total_packet_len,
             f"Number of bytes sent by port {self.send_port} did not match the number of bytes "
             f"received by port {self.recv_port}.",

@@ -15,6 +15,12 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.packet import (
+    get_expected_packets,
+    match_all_packets,
+    send_packets_and_capture,
+)
+from api.test import verify
 from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
 
@@ -48,9 +54,9 @@ class TestPromiscSupport(TestSuite):
                 testpmd.set_promisc(port=port_id, enable=True, verify=True)
             testpmd.start()
 
-            received_packets = self.send_packets_and_capture(packet)
-            expected_packets = self.get_expected_packets(packet, sent_from_tg=True)
-            self.match_all_packets(expected_packets, received_packets)
+            received_packets = send_packets_and_capture(packet)
+            expected_packets = get_expected_packets(packet, sent_from_tg=True)
+            match_all_packets(expected_packets, received_packets)
 
             testpmd.stop()
 
@@ -58,9 +64,9 @@ class TestPromiscSupport(TestSuite):
                 testpmd.set_promisc(port=port_id, enable=False, verify=True)
             testpmd.start()
 
-            received_packets = self.send_packets_and_capture(packet)
-            expected_packets = self.get_expected_packets(packet, sent_from_tg=True)
-            self.verify(
-                not self.match_all_packets(expected_packets, received_packets, verify=False),
+            received_packets = send_packets_and_capture(packet)
+            expected_packets = get_expected_packets(packet, sent_from_tg=True)
+            verify(
+                not match_all_packets(expected_packets, received_packets, verify=False),
                 "Invalid packet wasn't filtered out.",
             )

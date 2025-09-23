@@ -23,6 +23,8 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import fail, log, verify, verify_else_skip
 from api.testpmd import TestPmd
 from api.testpmd.types import FlowRule
 from framework.exception import InteractiveCommandExecutionError
@@ -91,13 +93,13 @@ class TestRteFlow(TestSuite):
         with TestPmd(rx_queues=4, tx_queues=4) as testpmd:
             for flow, packet, expected_packet in zip_lists(flows, packets, expected_packets):
                 is_valid = testpmd.flow_validate(flow_rule=flow, port_id=port_id)
-                self.verify_else_skip(is_valid, "flow rule failed validation.")
+                verify_else_skip(is_valid, "flow rule failed validation.")
 
                 try:
                     flow_id = testpmd.flow_create(flow_rule=flow, port_id=port_id)
                 except InteractiveCommandExecutionError:
-                    self.log("Flow rule validation passed, but flow creation failed.")
-                    self.verify(False, "Failed flow creation")
+                    log("Flow rule validation passed, but flow creation failed.")
+                    fail("Failed flow creation")
 
                 if verification_method == self._send_packet_and_verify:
                     verification_method(packet=packet, *args, **kwargs)
@@ -119,11 +121,11 @@ class TestRteFlow(TestSuite):
             packet: Scapy packet to send and verify.
             should_receive: Indicate whether the packet should be received.
         """
-        received = self.send_packet_and_capture(packet)
+        received = send_packet_and_capture(packet)
         contains_packet = any(
             packet.haslayer(Raw) and b"xxxxx" in packet.load for packet in received
         )
-        self.verify(
+        verify(
             should_receive == contains_packet,
             f"Packet was {'dropped' if should_receive else 'received'}",
         )
@@ -140,13 +142,13 @@ class TestRteFlow(TestSuite):
         """
         testpmd.set_verbose(level=8)
         testpmd.start()
-        self.send_packet_and_capture(packet=packet)
+        send_packet_and_capture(packet=packet)
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
         received = False
         for testpmd_packet in verbose_output:
             if testpmd_packet.queue_id == test_queue:
                 received = True
-        self.verify(received, f"Expected packet was not received on queue {test_queue}")
+        verify(received, f"Expected packet was not received on queue {test_queue}")
 
     def _send_packet_and_verify_modification(self, packet: Packet, expected_packet: Packet) -> None:
         """Send packet and verify the expected modifications are present upon reception.
@@ -155,15 +157,15 @@ class TestRteFlow(TestSuite):
             packet: Scapy packet to send to the SUT.
             expected_packet: Scapy packet that should match the received packet.
         """
-        received = self.send_packet_and_capture(packet)
+        received = send_packet_and_capture(packet)
 
         # verify reception
-        self.verify(received != [], "Packet was never received.")
+        verify(received != [], "Packet was never received.")
 
-        self.log(f"SENT PACKET:     {packet.summary()}")
-        self.log(f"EXPECTED PACKET: {expected_packet.summary()}")
+        log(f"SENT PACKET:     {packet.summary()}")
+        log(f"EXPECTED PACKET: {expected_packet.summary()}")
         for packet in received:
-            self.log(f"RECEIVED PACKET: {packet.summary()}")
+            log(f"RECEIVED PACKET: {packet.summary()}")
 
         expected_ip_dst = expected_packet[IP].dst if IP in expected_packet else None
         received_ip_dst = received[IP].dst if IP in received else None
@@ -173,13 +175,13 @@ class TestRteFlow(TestSuite):
 
         # verify modification
         if expected_ip_dst is not None:
-            self.verify(
+            verify(
                 received_ip_dst == expected_ip_dst,
                 f"IPv4 dst mismatch: expected {expected_ip_dst}, got {received_ip_dst}",
             )
 
         if expected_mac_dst is not None:
-            self.verify(
+            verify(
                 received_mac_dst == expected_mac_dst,
                 f"MAC dst mismatch: expected {expected_mac_dst}, got {received_mac_dst}",
             )
@@ -202,23 +204,23 @@ class TestRteFlow(TestSuite):
         testpmd.set_verbose(level=8)
         for flow in flow_rules:
             is_valid = testpmd.flow_validate(flow_rule=flow, port_id=0)
-            self.verify_else_skip(is_valid, "flow rule failed validation.")
+            verify_else_skip(is_valid, "flow rule failed validation.")
 
             try:
                 testpmd.flow_create(flow_rule=flow, port_id=0)
             except InteractiveCommandExecutionError:
-                self.log("Flow validation passed, but flow creation failed.")
-                self.verify(False, "Failed flow creation")
+                log("Flow validation passed, but flow creation failed.")
+                fail("Failed flow creation")
 
         for packet, test_queue in zip(packets, test_queues):
             testpmd.start()
-            self.send_packet_and_capture(packet=packet)
+            send_packet_and_capture(packet=packet)
             verbose_output = testpmd.extract_verbose_output(testpmd.stop())
             received = False
             for testpmd_packet in verbose_output:
                 if testpmd_packet.queue_id == test_queue:
                     received = True
-            self.verify(received, f"Expected packet was not received on queue {test_queue}")
+            verify(received, f"Expected packet was not received on queue {test_queue}")
 
     @func_test
     def queue_action_ETH(self) -> None:
@@ -439,8 +441,8 @@ class TestRteFlow(TestSuite):
         packet = Ether() / IP() / Raw(load="xxxxx")
         with TestPmd() as testpmd:
             testpmd.start()
-            received = self.send_packet_and_capture(packet)
-            self.verify(received != [], "Test packet was never received.")
+            received = send_packet_and_capture(packet)
+            verify(received != [], "Test packet was never received.")
         self._runner(
             verification_method=self._send_packet_and_verify,
             flows=flow_list,
@@ -494,8 +496,8 @@ class TestRteFlow(TestSuite):
         packet = Ether() / IP() / Raw(load="xxxxx")
         with TestPmd() as testpmd:
             testpmd.start()
-            received = self.send_packet_and_capture(packet)
-            self.verify(received != [], "Test packet was never received.")
+            received = send_packet_and_capture(packet)
+            verify(received != [], "Test packet was never received.")
         self._runner(
             verification_method=self._send_packet_and_verify,
             flows=flow_list,
@@ -545,8 +547,8 @@ class TestRteFlow(TestSuite):
         packet = Ether() / IP() / Raw(load="xxxxx")
         with TestPmd() as testpmd:
             testpmd.start()
-            received = self.send_packet_and_capture(packet)
-            self.verify(received != [], "Test packet was never received.")
+            received = send_packet_and_capture(packet)
+            verify(received != [], "Test packet was never received.")
         self._runner(
             verification_method=self._send_packet_and_verify,
             flows=flow_list,
@@ -584,8 +586,8 @@ class TestRteFlow(TestSuite):
         packet = Ether() / IP() / Raw(load="xxxxx")
         with TestPmd() as testpmd:
             testpmd.start()
-            received = self.send_packet_and_capture(packet)
-            self.verify(received != [], "Test packet was never received.")
+            received = send_packet_and_capture(packet)
+            verify(received != [], "Test packet was never received.")
         self._runner(
             verification_method=self._send_packet_and_verify,
             flows=flow_list,
@@ -674,8 +676,8 @@ class TestRteFlow(TestSuite):
         packet = Ether() / IP() / Raw(load="xxxxx")
         with TestPmd() as testpmd:
             testpmd.start()
-            received = self.send_packet_and_capture(packet)
-            self.verify(received != [], "Test packet was never received.")
+            received = send_packet_and_capture(packet)
+            verify(received != [], "Test packet was never received.")
         self._runner(
             verification_method=self._send_packet_and_verify,
             flows=flow_list,
@@ -779,17 +781,17 @@ class TestRteFlow(TestSuite):
             testpmd.set_verbose(level=8)
             for flow, expected_queue in zip(flow_list, expected_queue_list):
                 is_valid = testpmd.flow_validate(flow_rule=flow, port_id=0)
-                self.verify_else_skip(is_valid, "flow rule failed validation.")
+                verify_else_skip(is_valid, "flow rule failed validation.")
                 try:
                     testpmd.flow_create(flow_rule=flow, port_id=0)
                 except InteractiveCommandExecutionError:
-                    self.log("Flow rule validation passed, but flow creation failed.")
-                    self.verify(False, "Failed flow creation")
+                    log("Flow rule validation passed, but flow creation failed.")
+                    fail("Failed flow creation")
                 testpmd.start()
-                self.send_packet_and_capture(test_packet)
+                send_packet_and_capture(test_packet)
                 verbose_output = testpmd.extract_verbose_output(testpmd.stop())
                 received = False
                 for testpmd_packet in verbose_output:
                     if testpmd_packet.queue_id == expected_queue:
                         received = True
-                self.verify(received, f"Packet was not received on queue {expected_queue}")
+                verify(received, f"Packet was not received on queue {expected_queue}")

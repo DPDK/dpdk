@@ -21,6 +21,8 @@ from api.capabilities import (
     NicCapability,
     requires_nic_capability,
 )
+from api.packet import send_packet_and_capture
+from api.test import verify
 from api.testpmd import TestPmd
 from framework.test_suite import TestSuite, func_test
 
@@ -74,7 +76,7 @@ class TestMtu(TestSuite):
         padding = pkt_size - IP_HEADER_LEN
         # Insert '    ' as placeholder 'CRC' error correction.
         packet = Ether() / Raw(load="    ") / IP(len=pkt_size) / Raw(load="X" * padding)
-        received_packets = self.send_packet_and_capture(packet)
+        received_packets = send_packet_and_capture(packet)
         found = any(
             ("X" * padding) in str(packets.load)
             for packets in received_packets
@@ -82,9 +84,9 @@ class TestMtu(TestSuite):
         )
 
         if should_receive:
-            self.verify(found, "Did not receive packet.")
+            verify(found, "Did not receive packet.")
         else:
-            self.verify(not found, "Received packet.")
+            verify(not found, "Received packet.")
 
     def _assess_mtu_boundary(self, testpmd_shell: TestPmd, mtu: int) -> None:
         """Sets the new MTU and verifies packets at the set boundary.
@@ -118,7 +120,7 @@ class TestMtu(TestSuite):
         self._send_packet_and_verify(pkt_size=equal_frame_size, should_receive=True)
 
         current_mtu = testpmd_shell.show_port_info(0).mtu
-        self.verify(current_mtu is not None, "Error grabbing testpmd MTU value.")
+        verify(current_mtu is not None, "Error grabbing testpmd MTU value.")
         if current_mtu and (
             current_mtu >= STANDARD_MTU + VENDOR_AGNOSTIC_PADDING and mtu == STANDARD_MTU
         ):
