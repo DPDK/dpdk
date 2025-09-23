@@ -89,6 +89,13 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* build: as previously announced in the deprecation notices,
+  the ``enable_kmods`` build option has been removed.
+  Kernel modules will now automatically be built for OS's where out-of-tree kernel modules
+  are required for DPDK operation.
+  Currently, this means that modules will only be built for FreeBSD.
+  No modules are shipped with DPDK for either Linux or Windows.
+
 
 API Changes
 -----------

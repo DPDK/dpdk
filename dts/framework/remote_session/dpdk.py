@@ -262,7 +262,7 @@ class DPDKBuildEnvironment:
         """
         self._session.build_dpdk(
             self._env_vars,
-            MesonArgs(default_library="static", enable_kmods=True, libdir="lib"),
+            MesonArgs(default_library="static", libdir="lib"),
             self.remote_dpdk_tree_path,
             self.remote_dpdk_build_dir,
         )

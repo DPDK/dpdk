@@ -111,7 +111,7 @@ class MesonArgs:
         Example:
             ::
 
-                meson_args = MesonArgs(enable_kmods=True).
+                meson_args = MesonArgs(check_includes=True).
         """
         self._default_library = f"--default-library={default_library}" if default_library else ""
         self._dpdk_args = " ".join(
