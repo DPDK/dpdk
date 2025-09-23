@@ -18,3 +18,5 @@ api - DTS API
    :maxdepth: 1
 
    api.capabilities
+   api.packet
+   api.test
