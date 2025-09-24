@@ -7,8 +7,8 @@
 #include <rte_spinlock.h>
 #include <rte_debug.h>
 
-#include "rte_power_uncore.h"
 #include "power_common.h"
+#include "power_uncore_ops.h"
 
 static enum rte_uncore_power_mgmt_env global_uncore_env = RTE_UNCORE_PM_ENV_NOT_SET;
 static struct rte_power_uncore_ops *global_uncore_ops;

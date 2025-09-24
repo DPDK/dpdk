@@ -13,6 +13,7 @@
 
 #include <rte_compat.h>
 #include <rte_common.h>
+#include <rte_power_uncore.h>
 
 #define RTE_POWER_UNCORE_DRIVER_NAMESZ 24
 

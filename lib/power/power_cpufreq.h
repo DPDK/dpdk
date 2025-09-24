@@ -14,6 +14,7 @@
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_compat.h>
+#include <rte_power_cpufreq.h>
 
 #define RTE_POWER_DRIVER_NAMESZ 24
 
@@ -130,19 +131,6 @@ typedef int (*rte_power_freq_change_t)(unsigned int lcore_id);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-
-/**
- * Power capabilities summary.
- */
-struct rte_power_core_capabilities {
-	union {
-		uint64_t capabilities;
-		struct {
-			uint64_t turbo:1;       /**< Turbo can be enabled. */
-			uint64_t priority:1;    /**< SST-BF high freq core */
-		};
-	};
-};
 
 typedef int (*rte_power_get_capabilities_t)(unsigned int lcore_id,
 			struct rte_power_core_capabilities *caps);

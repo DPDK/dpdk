@@ -6,8 +6,8 @@
 #include <rte_spinlock.h>
 #include <rte_debug.h>
 
-#include "rte_power_cpufreq.h"
 #include "power_common.h"
+#include "power_cpufreq.h"
 
 static enum power_management_env global_default_env = PM_ENV_NOT_SET;
 static struct rte_power_cpufreq_ops *global_cpufreq_ops;

@@ -22,12 +22,15 @@ sources = files(
         'rte_power_uncore.c',
 )
 headers = files(
-        'power_cpufreq.h',
-        'power_uncore_ops.h',
         'rte_power_cpufreq.h',
         'rte_power_pmd_mgmt.h',
         'rte_power_qos.h',
         'rte_power_uncore.h',
+)
+driver_sdk_headers = files(
+        'power_common.h',
+        'power_cpufreq.h',
+        'power_uncore_ops.h',
 )
 
 deps += ['timer', 'ethdev']

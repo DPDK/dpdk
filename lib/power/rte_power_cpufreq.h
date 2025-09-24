@@ -14,8 +14,6 @@
 #include <rte_common.h>
 #include <rte_log.h>
 
-#include "power_cpufreq.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -247,6 +245,19 @@ int rte_power_freq_enable_turbo(unsigned int lcore_id);
  *  - Negative on error.
  */
 int rte_power_freq_disable_turbo(unsigned int lcore_id);
+
+/**
+ * Power capabilities summary.
+ */
+struct rte_power_core_capabilities {
+	union {
+		uint64_t capabilities;
+		struct {
+			uint64_t turbo:1;       /**< Turbo can be enabled. */
+			uint64_t priority:1;    /**< SST-BF high freq core */
+		};
+	};
+};
 
 /**
  * Returns power capabilities for a specific lcore.
