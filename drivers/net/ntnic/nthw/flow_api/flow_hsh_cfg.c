@@ -130,7 +130,7 @@ static __rte_always_inline void unset_bits_and_log(uint64_t *hash_mask, uint64_t
 	char rss_buffer[4096];
 	uint16_t rss_buffer_len = sizeof(rss_buffer);
 
-	if (sprint_nt_rss_mask(rss_buffer, rss_buffer_len, " ", *hash_mask & hash_bits) == 0)
+	if (nthw_sprint_rss_mask(rss_buffer, rss_buffer_len, " ", *hash_mask & hash_bits) == 0)
 		NT_LOG(DBG, FILTER, "Configured RSS types:%s", rss_buffer);
 	unset_bits(hash_mask, hash_bits);
 }
@@ -141,14 +141,14 @@ static __rte_always_inline void unset_bits_if_all_enabled(uint64_t *hash_mask, u
 		unset_bits(hash_mask, hash_bits);
 }
 
-int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_conf)
+int nthw_hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_conf)
 {
 	uint64_t fields = rss_conf.rss_hf;
 
 	char rss_buffer[4096];
 	uint16_t rss_buffer_len = sizeof(rss_buffer);
 
-	if (sprint_nt_rss_mask(rss_buffer, rss_buffer_len, " ", fields) == 0)
+	if (nthw_sprint_rss_mask(rss_buffer, rss_buffer_len, " ", fields) == 0)
 		NT_LOG(DBG, FILTER, "Requested RSS types:%s", rss_buffer);
 
 	/*
@@ -645,7 +645,7 @@ int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_c
 
 	if (fields || res != 0) {
 		nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, hsh_idx, 0, 0);
-		if (sprint_nt_rss_mask(rss_buffer, rss_buffer_len, " ", rss_conf.rss_hf) == 0) {
+		if (nthw_sprint_rss_mask(rss_buffer, rss_buffer_len, " ", rss_conf.rss_hf) == 0) {
 			NT_LOG(ERR, FILTER, "RSS configuration%s is not supported for hash func %s.",
 				rss_buffer, (enum rte_eth_hash_function)toeplitz ?
 					"Toeplitz" : "NTH10");

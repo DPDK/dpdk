@@ -3977,7 +3977,7 @@ int nthw_init_flow_mgmnt_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 			.rss_hf = RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_PORT,
 			.algorithm = 0,
 		};
-		hsh_set(ndev, 0, hsh_5_tuple);
+		nthw_hsh_set(ndev, 0, hsh_5_tuple);
 		nthw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
 
 		flow_nic_mark_resource_used(ndev, RES_HSH_RCP, 0);
