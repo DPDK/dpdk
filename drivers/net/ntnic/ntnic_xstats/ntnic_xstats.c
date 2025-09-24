@@ -822,5 +822,5 @@ static struct ntnic_xstats_ops ops = {
 void ntnic_xstats_ops_init(void)
 {
 	NT_LOG_DBGX(DBG, NTNIC, "xstats module was initialized");
-	register_ntnic_xstats_ops(&ops);
+	nthw_reg_xstats_ops(&ops);
 }

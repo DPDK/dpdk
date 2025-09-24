@@ -37,7 +37,7 @@ static struct link_ops_s link_agx_100g_ops = {
 
 void link_agx_100g_init(void)
 {
-	register_agx_100g_link_ops(&link_agx_100g_ops);
+	nthw_reg_agx_100g_link_ops(&link_agx_100g_ops);
 }
 
 /*

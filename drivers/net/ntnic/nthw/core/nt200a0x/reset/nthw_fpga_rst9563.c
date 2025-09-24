@@ -236,5 +236,5 @@ static struct rst9563_ops rst9563_ops = { .nthw_fpga_rst9563_init = nthw_fpga_rs
 void rst9563_ops_init(void)
 {
 	NT_LOG(DBG, NTHW, "RST9563 OPS INIT");
-	register_rst9563_ops(&rst9563_ops);
+	nthw_reg_rst9563_ops(&rst9563_ops);
 }

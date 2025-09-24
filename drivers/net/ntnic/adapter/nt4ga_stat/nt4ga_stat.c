@@ -596,5 +596,5 @@ static struct nt4ga_stat_ops ops = {
 void nt4ga_stat_ops_init(void)
 {
 	NT_LOG_DBGX(DBG, NTNIC, "Stat module was initialized");
-	register_nt4ga_stat_ops(&ops);
+	nthw_reg_nt4ga_stat_ops(&ops);
 }

@@ -1291,7 +1291,7 @@ static const struct ntnic_filter_ops ntnic_filter_ops = {
 
 void ntnic_filter_init(void)
 {
-	register_ntnic_filter_ops(&ntnic_filter_ops);
+	nthw_reg_filter_ops(&ntnic_filter_ops);
 }
 
 static const struct rte_flow_ops dev_flow_ops = {
@@ -1313,7 +1313,7 @@ static const struct rte_flow_ops dev_flow_ops = {
 
 void nthw_dev_flow_init(void)
 {
-	register_dev_flow_ops(&dev_flow_ops);
+	nthw_reg_dev_flow_ops(&dev_flow_ops);
 }
 
 static struct rte_flow_fp_ops async_dev_flow_ops = {
@@ -1323,5 +1323,5 @@ static struct rte_flow_fp_ops async_dev_flow_ops = {
 
 void nthw_dev_fp_flow_init(void)
 {
-	register_dev_fp_flow_ops(&async_dev_flow_ops);
+	nthw_reg_dev_fp_flow_ops(&async_dev_flow_ops);
 }

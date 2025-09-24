@@ -1283,5 +1283,5 @@ static const struct flow_filter_ops ops = {
 
 void nthw_init_flow_filter(void)
 {
-	register_flow_filter_ops(&ops);
+	nthw_reg_flow_filter_ops(&ops);
 }

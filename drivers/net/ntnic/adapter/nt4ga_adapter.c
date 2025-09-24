@@ -283,5 +283,5 @@ static const struct adapter_ops ops = {
 
 void nthw_adapter_init(void)
 {
-	register_adapter_ops(&ops);
+	nthw_reg_adapter_ops(&ops);
 }

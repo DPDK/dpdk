@@ -1451,5 +1451,5 @@ static struct sg_ops_s sg_ops = {
 void nthw_sg_init(void)
 {
 	NT_LOG(INF, NTNIC, "SG ops initialized");
-	register_sg_ops(&sg_ops);
+	nthw_reg_sg_ops(&sg_ops);
 }

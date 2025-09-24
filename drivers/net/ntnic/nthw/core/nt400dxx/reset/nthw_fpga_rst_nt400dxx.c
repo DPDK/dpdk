@@ -423,5 +423,5 @@ static struct rst_nt400dxx_ops rst_nt400dxx_ops = {
 
 void rst_nt400dxx_ops_init(void)
 {
-	register_rst_nt400dxx_ops(&rst_nt400dxx_ops);
+	nthw_reg_rst_nt400dxx_ops(&rst_nt400dxx_ops);
 }

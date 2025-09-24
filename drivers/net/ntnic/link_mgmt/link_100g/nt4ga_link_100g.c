@@ -747,5 +747,5 @@ static struct link_ops_s link_100g_ops = {
 
 void nthw_link_100g_init(void)
 {
-	register_100g_link_ops(&link_100g_ops);
+	nthw_reg_100g_link_ops(&link_100g_ops);
 }
