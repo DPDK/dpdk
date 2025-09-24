@@ -65,8 +65,8 @@ extern int nt_log_ntnic;
  * to use when one single function call to NT_LOG is not optimal - that is
  * you do not know the number of parameters at programming time or it is variable
  */
-char *ntlog_helper_str_alloc(const char *sinit);
-void ntlog_helper_str_add(char *s, const char *format, ...);
-void ntlog_helper_str_free(char *s);
+char *nthw_log_helper_str_alloc(const char *sinit);
+void nthw_log_helper_str_add(char *s, const char *format, ...);
+void nthw_log_helper_str_free(char *s);
 
 #endif	/* NTOSS_SYSTEM_NTLOG_H */
