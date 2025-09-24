@@ -28,15 +28,15 @@ struct flm_age_event_s {
 
 #define FLM_AGE_ELEM_SIZE sizeof(struct flm_age_event_s)
 
-int flm_age_event_get(uint8_t port);
-void flm_age_event_set(uint8_t port);
-void flm_age_event_clear(uint8_t port);
-void flm_age_queue_free(uint8_t port, uint16_t caller_id);
-void flm_age_queue_free_all(void);
-struct rte_ring *flm_age_queue_create(uint8_t port, uint16_t caller_id, unsigned int count);
-void flm_age_queue_put(uint16_t caller_id, struct flm_age_event_s *obj);
-int flm_age_queue_get(uint16_t caller_id, struct flm_age_event_s *obj);
-unsigned int flm_age_queue_count(uint16_t caller_id);
-unsigned int flm_age_queue_get_size(uint16_t caller_id);
+int nthw_flm_age_event_get(uint8_t port);
+void nthw_flm_age_event_set(uint8_t port);
+void nthw_flm_age_event_clear(uint8_t port);
+void nthw_flm_age_queue_free(uint8_t port, uint16_t caller_id);
+void nthw_flm_age_queue_free_all(void);
+struct rte_ring *nthw_flm_age_queue_create(uint8_t port, uint16_t caller_id, unsigned int count);
+void nthw_flm_age_queue_put(uint16_t caller_id, struct flm_age_event_s *obj);
+int nthw_flm_age_queue_get(uint16_t caller_id, struct flm_age_event_s *obj);
+unsigned int nthw_flm_age_queue_count(uint16_t caller_id);
+unsigned int nthw_flm_age_queue_get_size(uint16_t caller_id);
 
 #endif	/* _FLM_AGE_QUEUE_H_ */

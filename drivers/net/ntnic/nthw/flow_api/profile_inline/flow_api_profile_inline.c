@@ -194,13 +194,13 @@ static int flow_mtr_create_meter(struct flow_eth_dev *dev,
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
-			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
 		nt_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
-				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 	}
 
 	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
@@ -232,7 +232,7 @@ static int flow_mtr_create_meter(struct flow_eth_dev *dev,
 	if (stats_mask)
 		learn_record->vol_idx = 1;
 
-	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+	nthw_flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
 	struct flm_mtr_stat_s *mtr_stat = handle->port_stats[caller_id]->stats;
 	mtr_stat[mtr_id].buckets = buckets;
@@ -252,13 +252,13 @@ static int flow_mtr_probe_meter(struct flow_eth_dev *dev, uint8_t caller_id, uin
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
-			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
 		nt_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
-				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 	}
 
 	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
@@ -277,7 +277,7 @@ static int flow_mtr_probe_meter(struct flow_eth_dev *dev, uint8_t caller_id, uin
 
 	learn_record->id = flm_id;
 
-	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+	nthw_flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
 	rte_spinlock_unlock(&dev->ndev->mtx);
 
@@ -292,13 +292,13 @@ static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, u
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
-			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
 		nt_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
-				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 	}
 
 	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
@@ -329,7 +329,7 @@ static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, u
 
 	ntnic_id_table_free_id(dev->ndev->id_table_handle, flm_id);
 
-	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+	nthw_flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
 	rte_spinlock_unlock(&dev->ndev->mtx);
 
@@ -345,13 +345,13 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
-			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
 		nt_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
-				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 	}
 
 	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
@@ -376,7 +376,7 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 	if (atomic_load(&mtr_stat->stats_mask))
 		learn_record->vol_idx = 1;
 
-	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+	nthw_flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
 	rte_spinlock_unlock(&dev->ndev->mtx);
 
@@ -385,19 +385,19 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 
 static void flm_setup_queues(void)
 {
-	flm_lrn_queue_arr = flm_lrn_queue_create();
+	flm_lrn_queue_arr = nthw_flm_lrn_queue_create();
 	RTE_ASSERT(flm_lrn_queue_arr != NULL);
 }
 
 static void flm_free_queues(void)
 {
-	flm_lrn_queue_free(flm_lrn_queue_arr);
+	nthw_flm_lrn_queue_free(flm_lrn_queue_arr);
 }
 
 static uint32_t flm_lrn_update(struct flow_eth_dev *dev, uint32_t *inf_word_cnt,
 	uint32_t *sta_word_cnt)
 {
-	read_record r = flm_lrn_queue_get_read_buffer(flm_lrn_queue_arr);
+	read_record r = nthw_flm_lrn_queue_get_read_buffer(flm_lrn_queue_arr);
 	uint32_t handled_records = 0;
 
 	if (r.num) {
@@ -405,7 +405,7 @@ static uint32_t flm_lrn_update(struct flow_eth_dev *dev, uint32_t *inf_word_cnt,
 			r.num, &handled_records, inf_word_cnt, sta_word_cnt))
 			NT_LOG(ERR, FILTER, "Flow programming failed");
 	}
-	flm_lrn_queue_release_read_buffer(flm_lrn_queue_arr, handled_records);
+	nthw_flm_lrn_queue_release_read_buffer(flm_lrn_queue_arr, handled_records);
 
 	return r.num;
 }
@@ -481,10 +481,10 @@ static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, u
 
 				is_remote = is_remote_caller(caller_id, &port);
 
-				flm_age_queue_put(caller_id, &age_event);
+				nthw_flm_age_queue_put(caller_id, &age_event);
 				/* age events are supported only for physical ports */
 				if (!is_remote)
-					flm_age_event_set(port);
+					nthw_flm_age_event_set(port);
 			}
 			break;
 
@@ -973,13 +973,13 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
-			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
 		nt_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
-			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 	}
 
 	memset(learn_record, 0x0, sizeof(struct flm_v25_lrn_data_s));
@@ -1034,7 +1034,7 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 	learn_record->eor = 1;
 	learn_record->scrub_prof = fh->flm_scrub_prof;
 
-	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+	nthw_flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 	return 0;
 }
 
@@ -4575,7 +4575,7 @@ int nthw_flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 	(void)dev;
 	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
-	unsigned int queue_size = flm_age_queue_get_size(caller_id);
+	unsigned int queue_size = nthw_flm_age_queue_get_size(caller_id);
 
 	if (queue_size == 0) {
 		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
@@ -4583,7 +4583,7 @@ int nthw_flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	unsigned int queue_count = flm_age_queue_count(caller_id);
+	unsigned int queue_count = nthw_flm_age_queue_count(caller_id);
 
 	if (context == NULL)
 		return queue_count;
@@ -4604,7 +4604,7 @@ int nthw_flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 
 	for (idx = 0; idx < nb_contexts; ++idx) {
 		struct flm_age_event_s obj;
-		int ret = flm_age_queue_get(caller_id, &obj);
+		int ret = nthw_flm_age_queue_get(caller_id, &obj);
 
 		if (ret != 0)
 			break;
@@ -4843,12 +4843,13 @@ int nthw_flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_
 
 	if (port_attr->nb_aging_objects > 0) {
 		if (dev->nb_aging_objects > 0) {
-			flm_age_queue_free(dev->port_id, caller_id);
+			nthw_flm_age_queue_free(dev->port_id, caller_id);
 			dev->nb_aging_objects = 0;
 		}
 
 		struct rte_ring *age_queue =
-			flm_age_queue_create(dev->port_id, caller_id, port_attr->nb_aging_objects);
+			nthw_flm_age_queue_create(dev->port_id, caller_id,
+				port_attr->nb_aging_objects);
 
 		if (age_queue == NULL) {
 			error->message = "Failed to allocate aging objects";
@@ -4898,7 +4899,7 @@ error_out:
 	error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
 
 	if (port_attr->nb_aging_objects > 0) {
-		flm_age_queue_free(dev->port_id, caller_id);
+		nthw_flm_age_queue_free(dev->port_id, caller_id);
 		dev->nb_aging_objects = 0;
 	}
 

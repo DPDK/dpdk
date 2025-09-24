@@ -1547,7 +1547,7 @@ drv_deinit(struct drv_s *p_drv)
 		/* Free all remote flm event queues */
 		nthw_flm_inf_sta_queue_free_all(FLM_INFO_REMOTE);
 		/* Free all aged flow event queues */
-		flm_age_queue_free_all();
+		nthw_flm_age_queue_free_all();
 	}
 
 	/* stop adapter */
@@ -1981,7 +1981,7 @@ static int port_event_service(void *context)
 			/* Note: RTE_FLOW_PORT_FLAG_STRICT_QUEUE flag is not supported so
 			 * event is always generated
 			 */
-			int aged_event_count = flm_age_event_get(port_no);
+			int aged_event_count = nthw_flm_age_event_get(port_no);
 
 			if (aged_event_count > 0 &&
 				eth_dev[port_no] &&
@@ -1990,7 +1990,7 @@ static int port_event_service(void *context)
 				rte_eth_dev_callback_process(eth_dev[port_no],
 					RTE_ETH_EVENT_FLOW_AGED,
 					NULL);
-				flm_age_event_clear(port_no);
+				nthw_flm_age_event_clear(port_no);
 				do_wait = false;
 			}
 
