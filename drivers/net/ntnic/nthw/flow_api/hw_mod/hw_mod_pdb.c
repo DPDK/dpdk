@@ -58,20 +58,6 @@ void hw_mod_pdb_free(struct flow_api_backend_s *be)
 	}
 }
 
-int hw_mod_pdb_reset(struct flow_api_backend_s *be)
-{
-	int err = 0;
-	/* Zero entire cache area */
-	nthw_zero_module_cache((struct common_func_s *)(&be->hsh));
-
-	NT_LOG(DBG, FILTER, "INIT PDB RCP");
-	err |= hw_mod_pdb_rcp_flush(be, 0, ALL_ENTRIES);
-
-	NT_LOG(DBG, FILTER, "INIT PDB CONFIG");
-	err |= hw_mod_pdb_config_flush(be);
-	return err;
-}
-
 int hw_mod_pdb_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
@@ -243,7 +229,21 @@ int hw_mod_pdb_rcp_set(struct flow_api_backend_s *be, enum hw_pdb_e field, uint3
 	return hw_mod_pdb_rcp_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_pdb_config_flush(struct flow_api_backend_s *be)
+static int hw_mod_pdb_config_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->pdb_config_flush(be->be_dev, &be->pdb);
+}
+
+int hw_mod_pdb_reset(struct flow_api_backend_s *be)
+{
+	int err = 0;
+	/* Zero entire cache area */
+	nthw_zero_module_cache((struct common_func_s *)(&be->hsh));
+
+	NT_LOG(DBG, FILTER, "INIT PDB RCP");
+	err |= hw_mod_pdb_rcp_flush(be, 0, ALL_ENTRIES);
+
+	NT_LOG(DBG, FILTER, "INIT PDB CONFIG");
+	err |= hw_mod_pdb_config_flush(be);
+	return err;
 }

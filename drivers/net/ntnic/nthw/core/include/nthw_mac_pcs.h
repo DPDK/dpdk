@@ -198,14 +198,12 @@ typedef struct nthw_mac_pcs nthw_mac_pcs_t;
 
 int nthw_mac_pcs_init(nthw_mac_pcs_t *p, nthw_fpga_t *p_fpga, int n_instance);
 
-void nthw_mac_pcs_tx_path_rst(nthw_mac_pcs_t *p, bool enable);
 void nthw_mac_pcs_rx_path_rst(nthw_mac_pcs_t *p, bool enable);
 bool nthw_mac_pcs_is_rx_path_rst(nthw_mac_pcs_t *p);
 /* wrapper - for ease of use */
 void nthw_mac_pcs_set_rx_enable(nthw_mac_pcs_t *p, bool enable);
 void nthw_mac_pcs_set_tx_enable(nthw_mac_pcs_t *p, bool enable);
 void nthw_mac_pcs_set_tx_sel_host(nthw_mac_pcs_t *p, bool enable);
-void nthw_mac_pcs_set_tx_sel_tfg(nthw_mac_pcs_t *p, bool enable);
 void nthw_mac_pcs_set_ts_eop(nthw_mac_pcs_t *p, bool enable);
 void nthw_mac_pcs_set_host_loopback(nthw_mac_pcs_t *p, bool enable);
 void nthw_mac_pcs_set_line_loopback(nthw_mac_pcs_t *p, bool enable);
@@ -240,11 +238,4 @@ void nthw_mac_pcs_swap_gty_rx_polarity(nthw_mac_pcs_t *p, uint8_t lane, bool swa
 void nthw_mac_pcs_set_receiver_equalization_mode(nthw_mac_pcs_t *p, uint8_t mode);
 void nthw_mac_pcs_set_led_mode(nthw_mac_pcs_t *p, uint8_t mode);
 void nthw_mac_pcs_set_timestamp_comp_rx(nthw_mac_pcs_t *p, uint16_t rx_dly);
-void nthw_mac_pcs_set_port_no(nthw_mac_pcs_t *p, uint8_t port_no);
-
-uint32_t nthw_mac_pcs_get_fld_block_lock_lock(nthw_mac_pcs_t *p);
-uint32_t nthw_mac_pcs_get_fld_block_lock_lock_mask(nthw_mac_pcs_t *p);
-uint32_t nthw_mac_pcs_get_fld_lane_lock_lock(nthw_mac_pcs_t *p);
-uint32_t nthw_mac_pcs_get_fld_lane_lock_lock_mask(nthw_mac_pcs_t *p);
-
 #endif	/* NTHW_MAC_PCS_H_ */

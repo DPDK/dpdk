@@ -217,7 +217,7 @@ int nthw_hif_trigger_sample_time(nthw_hif_t *p)
 	return 0;
 }
 
-int nthw_hif_get_stat(nthw_hif_t *p, uint32_t *p_rx_cnt, uint32_t *p_tx_cnt,
+static int nthw_hif_get_stat(nthw_hif_t *p, uint32_t *p_rx_cnt, uint32_t *p_tx_cnt,
 	uint32_t *p_ref_clk_cnt, uint32_t *p_tg_unit_size, uint32_t *p_tg_ref_freq,
 	uint64_t *p_tags_in_use, uint64_t *p_rd_err, uint64_t *p_wr_err)
 {
@@ -241,7 +241,7 @@ int nthw_hif_get_stat(nthw_hif_t *p, uint32_t *p_rx_cnt, uint32_t *p_tx_cnt,
 	return 0;
 }
 
-int nthw_hif_get_stat_rate(nthw_hif_t *p, uint64_t *p_pci_rx_rate, uint64_t *p_pci_tx_rate,
+static int nthw_hif_get_stat_rate(nthw_hif_t *p, uint64_t *p_pci_rx_rate, uint64_t *p_pci_tx_rate,
 	uint64_t *p_ref_clk_cnt, uint64_t *p_tags_in_use,
 	uint64_t *p_rd_err_cnt, uint64_t *p_wr_err_cnt)
 {
@@ -280,7 +280,7 @@ int nthw_hif_get_stat_rate(nthw_hif_t *p, uint64_t *p_pci_rx_rate, uint64_t *p_p
 	return 0;
 }
 
-int nthw_hif_stat_req_enable(nthw_hif_t *p)
+static int nthw_hif_stat_req_enable(nthw_hif_t *p)
 {
 	nthw_field_set_all(p->mp_fld_stat_ctrl_ena);
 	nthw_field_set_all(p->mp_fld_stat_ctrl_req);
@@ -288,7 +288,7 @@ int nthw_hif_stat_req_enable(nthw_hif_t *p)
 	return 0;
 }
 
-int nthw_hif_stat_req_disable(nthw_hif_t *p)
+static int nthw_hif_stat_req_disable(nthw_hif_t *p)
 {
 	nthw_field_clr_all(p->mp_fld_stat_ctrl_ena);
 	nthw_field_set_all(p->mp_fld_stat_ctrl_req);
@@ -296,7 +296,7 @@ int nthw_hif_stat_req_disable(nthw_hif_t *p)
 	return 0;
 }
 
-int nthw_hif_end_point_counters_sample(nthw_hif_t *p, struct nthw_hif_end_point_counters *epc)
+static int nthw_hif_end_point_cntrs_sample(nthw_hif_t *p, struct nthw_hif_end_point_counters *epc)
 {
 	RTE_ASSERT(epc);
 

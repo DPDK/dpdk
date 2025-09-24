@@ -169,7 +169,7 @@ int nthw_pcie3_trigger_sample_time(nthw_pcie3_t *p)
 	return 0;
 }
 
-int nthw_pcie3_stat_req_enable(nthw_pcie3_t *p)
+static int nthw_pcie3_stat_req_enable(nthw_pcie3_t *p)
 {
 	nthw_field_set_all(p->mp_fld_stat_ctrl_ena);
 	nthw_field_set_all(p->mp_fld_stat_ctrl_req);
@@ -177,7 +177,7 @@ int nthw_pcie3_stat_req_enable(nthw_pcie3_t *p)
 	return 0;
 }
 
-int nthw_pcie3_stat_req_disable(nthw_pcie3_t *p)
+static int nthw_pcie3_stat_req_disable(nthw_pcie3_t *p)
 {
 	nthw_field_clr_all(p->mp_fld_stat_ctrl_ena);
 	nthw_field_set_all(p->mp_fld_stat_ctrl_req);
@@ -185,7 +185,7 @@ int nthw_pcie3_stat_req_disable(nthw_pcie3_t *p)
 	return 0;
 }
 
-int nthw_pcie3_get_stat(nthw_pcie3_t *p, uint32_t *p_rx_cnt, uint32_t *p_tx_cnt,
+static int nthw_pcie3_get_stat(nthw_pcie3_t *p, uint32_t *p_rx_cnt, uint32_t *p_tx_cnt,
 	uint32_t *p_ref_clk_cnt, uint32_t *p_tg_unit_size, uint32_t *p_tg_ref_freq,
 	uint32_t *p_tag_use_cnt, uint32_t *p_rq_rdy_cnt, uint32_t *p_rq_vld_cnt)
 {
@@ -205,7 +205,8 @@ int nthw_pcie3_get_stat(nthw_pcie3_t *p, uint32_t *p_rx_cnt, uint32_t *p_tx_cnt,
 	return 0;
 }
 
-int nthw_pcie3_get_stat_rate(nthw_pcie3_t *p, uint64_t *p_pci_rx_rate, uint64_t *p_pci_tx_rate,
+static int nthw_pcie3_get_stat_rate(nthw_pcie3_t *p, uint64_t *p_pci_rx_rate,
+	uint64_t *p_pci_tx_rate,
 	uint64_t *p_ref_clk_cnt, uint64_t *p_tag_use_cnt,
 	uint64_t *p_pci_nt_bus_util, uint64_t *p_pci_xil_bus_util)
 {
@@ -244,7 +245,7 @@ int nthw_pcie3_get_stat_rate(nthw_pcie3_t *p, uint64_t *p_pci_rx_rate, uint64_t 
 	return 0;
 }
 
-int nthw_pcie3_end_point_counters_sample_post(nthw_pcie3_t *p,
+static int nthw_pcie3_end_point_counters_sample_post(nthw_pcie3_t *p,
 	struct nthw_hif_end_point_counters *epc)
 {
 	NT_LOG_DBGX(DBG, NTHW);

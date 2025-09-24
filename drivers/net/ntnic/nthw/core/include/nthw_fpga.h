@@ -16,8 +16,6 @@
 int nthw_fpga_init(struct fpga_info_s *p_fpga_info);
 int nthw_fpga_shutdown(struct fpga_info_s *p_fpga_info);
 
-int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpga);
-
 int nthw_fpga_avr_probe(nthw_fpga_t *p_fpga, const int n_instance_no);
 
 int nthw_fpga_iic_scan(nthw_fpga_t *p_fpga, const int n_instance_no_begin,

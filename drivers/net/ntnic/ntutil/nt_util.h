@@ -55,8 +55,6 @@ struct port_link_speed {
 };
 
 struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa);
-void nt_dma_free(struct nt_dma_s *vfio_addr);
-
 struct nt_util_vfio_impl {
 	int (*vfio_dma_map)(int vf_num, void *virt_addr, uint64_t *iova_addr, uint64_t size);
 	int (*vfio_dma_unmap)(int vf_num, void *virt_addr, uint64_t iova_addr, uint64_t size);
@@ -66,7 +64,6 @@ void nt_util_vfio_init(struct nt_util_vfio_impl *impl);
 
 int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed);
 uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa);
-nt_link_speed_t nthw_convert_link_speed(int link_speed_mbps);
 int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex);
 
 int nthw_string_to_u32(const char *key_str __rte_unused, const char *value_str, void *extra_args);

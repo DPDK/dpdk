@@ -85,16 +85,7 @@ int nthw_iic_set_retry_params(nthw_iic_t *p, const int n_poll_delay, const int n
 
 int nthw_iic_read_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
 	void *p_void);
-int nthw_iic_readbyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
-	uint8_t *p_byte);
 int nthw_iic_write_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
 	void *p_void);
-int nthw_iic_writebyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
-	uint8_t *p_byte);
-bool nthw_iic_bus_ready(nthw_iic_t *p);
-bool nthw_iic_data_ready(nthw_iic_t *p);
-
 int nthw_iic_scan(nthw_iic_t *p);
-int nthw_iic_scan_dev_addr(nthw_iic_t *p, int n_dev_addr, int n_reg_addr);
-
 #endif	/* __NTHW_IIC_H__ */

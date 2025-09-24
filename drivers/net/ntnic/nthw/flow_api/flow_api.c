@@ -375,68 +375,7 @@ static int nic_remove_eth_port_dev(struct flow_nic_dev *ndev, struct flow_eth_de
 	return -1;
 }
 
-static void flow_ndev_reset(struct flow_nic_dev *ndev)
-{
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
-
-	if (profile_inline_ops == NULL) {
-		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
-		return;
-	}
-
-	/* Delete all eth-port devices created on this NIC device */
-	while (ndev->eth_base) {
-		nthw_flow_delete_eth_dev(ndev->eth_base);
-		ndev->eth_base = NULL;
-	}
-
-	/* Error check */
-	while (ndev->flow_base) {
-		NT_LOG(ERR, FILTER,
-			"ERROR : Flows still defined but all eth-ports deleted. Flow %p",
-			ndev->flow_base);
-
-		profile_inline_ops->flow_destroy_profile_inline(ndev->flow_base->dev,
-			ndev->flow_base, NULL);
-	}
-
-	profile_inline_ops->done_flow_management_of_ndev_profile_inline(ndev);
-
-	km_free_ndev_resource_management(&ndev->km_res_handle);
-	kcc_free_ndev_resource_management(&ndev->kcc_res_handle);
-
-	ndev->flow_unique_id_counter = 0;
-
-	/*
-	 * free all resources default allocated, initially for this NIC DEV
-	 * Is not really needed since the bitmap will be freed in a sec. Therefore
-	 * only in debug mode
-	 */
-
-	/* Check if all resources has been released */
-	NT_LOG(DBG, FILTER, "Delete NIC DEV Adaptor %i", ndev->adapter_no);
-
-	for (unsigned int i = 0; i < RES_COUNT; i++) {
-		int err = 0;
-		NT_LOG(DBG, FILTER, "RES state for: %s", dbg_res_descr[i]);
-
-		for (unsigned int ii = 0; ii < ndev->res[i].resource_count; ii++) {
-			int ref = ndev->res[i].ref[ii];
-			int used = flow_nic_is_resource_used(ndev, i, ii);
-
-			if (ref || used) {
-				NT_LOG(DBG, FILTER, "  [%u]: ref cnt %i, used %i", ii, ref,
-					used);
-				err = 1;
-			}
-		}
-
-		if (err)
-			NT_LOG(DBG, FILTER, "ERROR - some resources not freed");
-	}
-}
-
-int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
+static int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 {
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
@@ -510,6 +449,68 @@ int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 
 	return 0;
 }
+
+static void flow_ndev_reset(struct flow_nic_dev *ndev)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return;
+	}
+
+	/* Delete all eth-port devices created on this NIC device */
+	while (ndev->eth_base) {
+		nthw_flow_delete_eth_dev(ndev->eth_base);
+		ndev->eth_base = NULL;
+	}
+
+	/* Error check */
+	while (ndev->flow_base) {
+		NT_LOG(ERR, FILTER,
+			"ERROR : Flows still defined but all eth-ports deleted. Flow %p",
+			ndev->flow_base);
+
+		profile_inline_ops->flow_destroy_profile_inline(ndev->flow_base->dev,
+			ndev->flow_base, NULL);
+	}
+
+	profile_inline_ops->done_flow_management_of_ndev_profile_inline(ndev);
+
+	km_free_ndev_resource_management(&ndev->km_res_handle);
+	kcc_free_ndev_resource_management(&ndev->kcc_res_handle);
+
+	ndev->flow_unique_id_counter = 0;
+
+	/*
+	 * free all resources default allocated, initially for this NIC DEV
+	 * Is not really needed since the bitmap will be freed in a sec. Therefore
+	 * only in debug mode
+	 */
+
+	/* Check if all resources has been released */
+	NT_LOG(DBG, FILTER, "Delete NIC DEV Adaptor %i", ndev->adapter_no);
+
+	for (unsigned int i = 0; i < RES_COUNT; i++) {
+		int err = 0;
+		NT_LOG(DBG, FILTER, "RES state for: %s", dbg_res_descr[i]);
+
+		for (unsigned int ii = 0; ii < ndev->res[i].resource_count; ii++) {
+			int ref = ndev->res[i].ref[ii];
+			int used = flow_nic_is_resource_used(ndev, i, ii);
+
+			if (ref || used) {
+				NT_LOG(DBG, FILTER, "  [%u]: ref cnt %i, used %i", ii, ref,
+					used);
+				err = 1;
+			}
+		}
+
+		if (err)
+			NT_LOG(DBG, FILTER, "ERROR - some resources not freed");
+	}
+}
+
 
 /*
  * Flow API NIC Setup

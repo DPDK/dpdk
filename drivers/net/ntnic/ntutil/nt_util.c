@@ -85,7 +85,7 @@ struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa)
 	return vfio_addr;
 }
 
-void nt_dma_free(struct nt_dma_s *vfio_addr)
+static void nt_dma_free(struct nt_dma_s *vfio_addr)
 {
 	NT_LOG(DBG, GENERAL, "VFIO DMA free addr=%" PRIX64 ", iova=%" PRIX64 ", size=%" PRIX64,
 		vfio_addr->addr, vfio_addr->iova, vfio_addr->size);
@@ -181,7 +181,7 @@ uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa)
 }
 
 /* Converts link speed provided in Mbps to NT specific definitions.*/
-nt_link_speed_t nthw_convert_link_speed(int link_speed_mbps)
+static nt_link_speed_t nthw_convert_link_speed(int link_speed_mbps)
 {
 	switch (link_speed_mbps) {
 	case 10:

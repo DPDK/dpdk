@@ -171,6 +171,191 @@ int nthw_fpga_extract_rev_id(const uint64_t n_fpga_ident)
 {
 	return (uint16_t)(n_fpga_ident & 0xFF);
 }
+/*
+ * Field
+ */
+nthw_field_t *nthw_field_new(void)
+{
+	nthw_field_t *p = malloc(sizeof(nthw_field_t));
+
+	return p;
+}
+
+static void nthw_field_init(nthw_field_t *p, nthw_register_t *p_reg,
+	const nthw_fpga_field_init_s *p_init)
+{
+	p->mp_owner = p_reg;
+
+	p->mn_debug_mode = p_reg->mn_debug_mode;
+
+	p->mn_id = p_init->id;
+	p->mn_bit_width = p_init->bw;
+	p->mn_bit_pos_low = p_init->low;
+	p->mn_reset_val = (uint32_t)p_init->reset_val;
+	p->mn_first_word = p_init->low / 32;
+	p->mn_first_bit = p_init->low % 32;
+	p->mn_front_mask = 0;
+	p->mn_body_length = 0;
+	p->mn_words = (p_init->bw + 0x1f) / 0x20;
+	p->mn_tail_mask = 0;
+
+	{
+		int bits_remaining = p_init->bw;
+		int front_mask_length = 32 - p->mn_first_bit;
+
+		if (front_mask_length > bits_remaining)
+			front_mask_length = bits_remaining;
+
+		bits_remaining -= front_mask_length;
+
+		p->mn_front_mask =
+			(uint32_t)(((1ULL << front_mask_length) - 1) << p->mn_first_bit);
+
+		p->mn_body_length = bits_remaining / 32;
+		bits_remaining -= p->mn_body_length * 32;
+		p->mn_tail_mask = (1 << bits_remaining) - 1;
+
+		if (p->mn_debug_mode >= 0x100) {
+			NT_LOG_DBGX(DBG, NTHW,
+				"fldid=%08" PRIu32 ": [%08" PRIu16 ":%08" PRIu16 "] %08" PRIu16 "/%08"
+				PRIu16 ": (%08i ,%08" PRIu32 ") (0x%08" PRIx32 ",%08"
+				PRIu32 ",0x%08" PRIx32 ")",
+				p_init->id, p_init->low, (p_init->low + p_init->bw),
+				p_init->bw, ((p_init->bw + 31) / 32), p->mn_first_word,
+				p->mn_first_bit, p->mn_front_mask, p->mn_body_length,
+				p->mn_tail_mask);
+		}
+	}
+}
+
+static void nthw_field_reset(const nthw_field_t *p)
+{
+	nthw_field_set_val32(p, (uint32_t)p->mn_reset_val);
+}
+
+/*
+ * Register
+ */
+nthw_register_t *nthw_register_new(void)
+{
+	nthw_register_t *p = malloc(sizeof(nthw_register_t));
+
+	return p;
+}
+
+static void nthw_register_init(nthw_register_t *p, nthw_module_t *p_module,
+	nthw_fpga_register_init_s *p_init)
+{
+	int i;
+
+	p->mp_owner = p_module;
+
+	p->mn_id = p_init->id;
+	p->mn_bit_width = p_init->bw;
+	p->mn_addr_rel = p_init->addr_rel;
+	p->mn_addr = p_module->mn_addr_base + p_init->addr_rel;
+	p->mn_type = p_init->type;
+	/* Old P200 registers have no bw at register level - default to BW=-1 */
+	p->mn_len = ((p_init->bw != (uint16_t)-1) ? ((p_init->bw + 31) >> 5) : 1);
+	p->mn_debug_mode = p_module->mn_debug_mode;
+
+	p->mn_fields = p_init->nb_fields;
+
+	if (p->mn_fields) {
+		p->mpa_fields = malloc(p->mn_fields * sizeof(nthw_field_t *));
+
+		if (p->mpa_fields) {
+			memset(p->mpa_fields, 0, (p->mn_fields * sizeof(nthw_field_t *)));
+
+			for (i = 0; i < p->mn_fields; i++) {
+				nthw_field_t *p_field = nthw_field_new();
+
+				nthw_field_init(p_field, p, &p_init->fields[i]);
+				p->mpa_fields[i] = p_field;
+			}
+
+			p->mp_shadow = malloc(p->mn_len * sizeof(uint32_t));
+
+			if (p->mp_shadow)
+				memset(p->mp_shadow, 0x00, (p->mn_len * sizeof(uint32_t)));
+
+			p->mp_dirty = malloc(p->mn_len * sizeof(bool));
+
+			if (p->mp_dirty)
+				memset(p->mp_dirty, 0x00, (p->mn_len * sizeof(bool)));
+		}
+	}
+}
+
+/*
+ * Param
+ */
+nthw_param_t *nthw_param_new(void)
+{
+	nthw_param_t *p = malloc(sizeof(nthw_param_t));
+
+	return p;
+}
+
+static void nthw_param_init(nthw_param_t *p, nthw_fpga_t *p_fpga, nthw_fpga_prod_param_s *p_init)
+{
+	p->mp_owner = p_fpga;
+	p->mp_init = p_init;
+
+	p->mn_param_id = p_init->id;
+	p->mn_param_value = p_init->value;
+}
+
+/*
+ * Module
+ */
+nthw_module_t *nthw_module_new(void)
+{
+	nthw_module_t *p = malloc(sizeof(nthw_module_t));
+
+	return p;
+}
+
+static void nthw_module_init(nthw_module_t *p, nthw_fpga_t *p_fpga, nthw_fpga_module_init_s *p_init)
+{
+	int i;
+
+	p->mp_owner = p_fpga;
+	p->mp_init = p_init;
+
+	p->mn_mod_id = p_init->id;
+	p->mn_instance = p_init->instance;
+
+	/* Copy debug mode from owner */
+	if (p->mp_owner)
+		p->mn_debug_mode = p->mp_owner->m_debug_mode;
+
+	else
+		p->mn_debug_mode = 0;
+
+	p->mn_mod_def_id = p_init->def_id;
+	p->mn_major_version = p_init->major_version;
+	p->mn_minor_version = p_init->minor_version;
+	p->mn_bus = p_init->bus_id;
+	p->mn_addr_base = p_init->addr_base;
+
+	p->mn_registers = p_init->nb_registers;
+
+	if (p->mn_registers) {
+		p->mpa_registers = malloc(p->mn_registers * sizeof(nthw_register_t *));
+
+		if (p->mpa_registers) {
+			memset(p->mpa_registers, 0, (p->mn_registers * sizeof(nthw_register_t *)));
+
+			for (i = 0; i < p->mn_registers; i++) {
+				nthw_register_t *p_reg = nthw_register_new();
+
+				nthw_register_init(p_reg, p, &p_init->registers[i]);
+				p->mpa_registers[i] = p_reg;
+			}
+		}
+	}
+}
 
 /*
  * FpgaMgr
@@ -204,47 +389,6 @@ void nthw_fpga_mgr_init(nthw_fpga_mgr_t *p, struct nthw_fpga_prod_init **pa_nthw
 	p->mn_fpgas = (int)i;
 }
 
-static nthw_fpga_t *nthw_fpga_mgr_lookup_fpga(nthw_fpga_mgr_t *p, uint64_t n_fpga_id,
-	struct fpga_info_s *p_fpga_info)
-{
-	const int n_fpga_prod_id = nthw_fpga_extract_prod_id(n_fpga_id);
-	const int n_fpga_ver = nthw_fpga_extract_ver_id(n_fpga_id);
-	const int n_fpga_rev = nthw_fpga_extract_rev_id(n_fpga_id);
-	int i;
-
-	for (i = 0; i < p->mn_fpgas; i++) {
-		nthw_fpga_prod_init_s *p_init = p->mpa_fpga_prod_init[i];
-
-		if (p_init->fpga_product_id == n_fpga_prod_id &&
-			p_init->fpga_version == n_fpga_ver && p_init->fpga_revision == n_fpga_rev) {
-			nthw_fpga_t *p_fpga = nthw_fpga_model_new();
-			nthw_fpga_model_init(p_fpga, p_init, p_fpga_info);
-			return p_fpga;
-		}
-	}
-
-	return NULL;
-}
-
-nthw_fpga_t *nthw_fpga_mgr_query_fpga(nthw_fpga_mgr_t *p_fpga_mgr, uint64_t n_fpga_id,
-	struct fpga_info_s *p_fpga_info)
-{
-	const int n_fpga_prod_id = nthw_fpga_extract_prod_id(n_fpga_id);
-	const int n_fpga_ver = nthw_fpga_extract_ver_id(n_fpga_id);
-	const int n_fpga_rev = nthw_fpga_extract_rev_id(n_fpga_id);
-
-	nthw_fpga_t *p_fpga = nthw_fpga_mgr_lookup_fpga(p_fpga_mgr, n_fpga_id, p_fpga_info);
-
-	if (p_fpga) {
-	} else {
-		NT_LOG(ERR, NTHW, "FPGA Id 0x%" PRIX64 ": %04d: %d.%d: no match found",
-			n_fpga_id, n_fpga_prod_id, n_fpga_ver, n_fpga_rev);
-	}
-
-	return p_fpga;
-}
-
-
 void nthw_fpga_mgr_log_dump(nthw_fpga_mgr_t *p)
 {
 	int i;
@@ -272,7 +416,7 @@ nthw_fpga_t *nthw_fpga_model_new(void)
 	return p;
 }
 
-void nthw_fpga_model_init(nthw_fpga_t *p, nthw_fpga_prod_init_s *p_init,
+static void nthw_fpga_model_init(nthw_fpga_t *p, nthw_fpga_prod_init_s *p_init,
 	struct fpga_info_s *p_fpga_info)
 {
 	int i;
@@ -323,7 +467,7 @@ void nthw_fpga_model_init(nthw_fpga_t *p, nthw_fpga_prod_init_s *p_init,
 	}
 }
 
-void nthw_fpga_set_debug_mode(nthw_fpga_t *p, int debug_mode)
+static void nthw_fpga_set_debug_mode(nthw_fpga_t *p, int debug_mode)
 {
 	int i;
 
@@ -374,76 +518,6 @@ int nthw_fpga_get_product_param(const nthw_fpga_t *p, const nthw_id_t n_param_id
 int nthw_fpga_get_product_id(const nthw_fpga_t *p)
 {
 	return p->mn_product_id;
-}
-
-/*
- * Param
- */
-nthw_param_t *nthw_param_new(void)
-{
-	nthw_param_t *p = malloc(sizeof(nthw_param_t));
-
-	return p;
-}
-
-void nthw_param_init(nthw_param_t *p, nthw_fpga_t *p_fpga, nthw_fpga_prod_param_s *p_init)
-{
-	p->mp_owner = p_fpga;
-	p->mp_init = p_init;
-
-	p->mn_param_id = p_init->id;
-	p->mn_param_value = p_init->value;
-}
-
-/*
- * Module
- */
-nthw_module_t *nthw_module_new(void)
-{
-	nthw_module_t *p = malloc(sizeof(nthw_module_t));
-
-	return p;
-}
-
-void nthw_module_init(nthw_module_t *p, nthw_fpga_t *p_fpga, nthw_fpga_module_init_s *p_init)
-{
-	int i;
-
-	p->mp_owner = p_fpga;
-	p->mp_init = p_init;
-
-	p->mn_mod_id = p_init->id;
-	p->mn_instance = p_init->instance;
-
-	/* Copy debug mode from owner */
-	if (p->mp_owner)
-		p->mn_debug_mode = p->mp_owner->m_debug_mode;
-
-	else
-		p->mn_debug_mode = 0;
-
-	p->mn_mod_def_id = p_init->def_id;
-	p->mn_major_version = p_init->major_version;
-	p->mn_minor_version = p_init->minor_version;
-	p->mn_bus = p_init->bus_id;
-	p->mn_addr_base = p_init->addr_base;
-
-	p->mn_registers = p_init->nb_registers;
-
-	if (p->mn_registers) {
-		p->mpa_registers = malloc(p->mn_registers * sizeof(nthw_register_t *));
-
-		if (p->mpa_registers) {
-			memset(p->mpa_registers, 0, (p->mn_registers * sizeof(nthw_register_t *)));
-
-			for (i = 0; i < p->mn_registers; i++) {
-				nthw_register_t *p_reg = nthw_register_new();
-
-				nthw_register_init(p_reg, p, &p_init->registers[i]);
-				p->mpa_registers[i] = p_reg;
-			}
-		}
-	}
 }
 
 int nthw_module_get_major_version(const nthw_module_t *p)
@@ -528,63 +602,9 @@ void nthw_module_set_debug_mode(nthw_module_t *p, unsigned int debug_mode)
 	}
 }
 
-int nthw_module_get_bus(const nthw_module_t *p)
+static int nthw_module_get_bus(const nthw_module_t *p)
 {
 	return p->mn_bus;
-}
-
-/*
- * Register
- */
-nthw_register_t *nthw_register_new(void)
-{
-	nthw_register_t *p = malloc(sizeof(nthw_register_t));
-
-	return p;
-}
-
-void nthw_register_init(nthw_register_t *p, nthw_module_t *p_module,
-	nthw_fpga_register_init_s *p_init)
-{
-	int i;
-
-	p->mp_owner = p_module;
-
-	p->mn_id = p_init->id;
-	p->mn_bit_width = p_init->bw;
-	p->mn_addr_rel = p_init->addr_rel;
-	p->mn_addr = p_module->mn_addr_base + p_init->addr_rel;
-	p->mn_type = p_init->type;
-	/* Old P200 registers have no bw at register level - default to BW=-1 */
-	p->mn_len = ((p_init->bw != (uint16_t)-1) ? ((p_init->bw + 31) >> 5) : 1);
-	p->mn_debug_mode = p_module->mn_debug_mode;
-
-	p->mn_fields = p_init->nb_fields;
-
-	if (p->mn_fields) {
-		p->mpa_fields = malloc(p->mn_fields * sizeof(nthw_field_t *));
-
-		if (p->mpa_fields) {
-			memset(p->mpa_fields, 0, (p->mn_fields * sizeof(nthw_field_t *)));
-
-			for (i = 0; i < p->mn_fields; i++) {
-				nthw_field_t *p_field = nthw_field_new();
-
-				nthw_field_init(p_field, p, &p_init->fields[i]);
-				p->mpa_fields[i] = p_field;
-			}
-
-			p->mp_shadow = malloc(p->mn_len * sizeof(uint32_t));
-
-			if (p->mp_shadow)
-				memset(p->mp_shadow, 0x00, (p->mn_len * sizeof(uint32_t)));
-
-			p->mp_dirty = malloc(p->mn_len * sizeof(bool));
-
-			if (p->mp_dirty)
-				memset(p->mp_dirty, 0x00, (p->mn_len * sizeof(bool)));
-		}
-	}
 }
 
 uint32_t nthw_register_get_address(const nthw_register_t *p)
@@ -592,7 +612,7 @@ uint32_t nthw_register_get_address(const nthw_register_t *p)
 	return p->mn_addr;
 }
 
-void nthw_register_reset(const nthw_register_t *p)
+static void nthw_register_reset(const nthw_register_t *p)
 {
 	int i;
 	nthw_field_t *p_field = NULL;
@@ -647,12 +667,12 @@ nthw_field_t *nthw_register_get_field(const nthw_register_t *p, nthw_id_t id)
 	return p_field;
 }
 
-int nthw_register_get_bit_width(const nthw_register_t *p)
+static int nthw_register_get_bit_width(const nthw_register_t *p)
 {
 	return p->mn_bit_width;
 }
 
-int nthw_register_get_debug_mode(const nthw_register_t *p)
+static int nthw_register_get_debug_mode(const nthw_register_t *p)
 {
 	return p->mn_debug_mode;
 }
@@ -660,6 +680,11 @@ int nthw_register_get_debug_mode(const nthw_register_t *p)
 /*
  * NOTE: do not set debug on fields - as register operation dumps typically are enough
  */
+static void nthw_field_set_debug_mode(nthw_field_t *p, unsigned int debug_mode)
+{
+	p->mn_debug_mode = debug_mode;
+}
+
 void nthw_register_set_debug_mode(nthw_register_t *p, unsigned int debug_mode)
 {
 	int i;
@@ -725,7 +750,7 @@ static int nthw_register_write_data(const nthw_register_t *p, uint32_t cnt)
 	return rc;
 }
 
-void nthw_register_get_val(const nthw_register_t *p, uint32_t *p_data, uint32_t len)
+static void nthw_register_get_val(const nthw_register_t *p, uint32_t *p_data, uint32_t len)
 {
 	uint32_t i;
 
@@ -739,7 +764,7 @@ void nthw_register_get_val(const nthw_register_t *p, uint32_t *p_data, uint32_t 
 		p_data[i] = p->mp_shadow[i];
 }
 
-uint32_t nthw_register_get_val32(const nthw_register_t *p)
+static uint32_t nthw_register_get_val32(const nthw_register_t *p)
 {
 	uint32_t val = 0;
 
@@ -781,7 +806,7 @@ void nthw_register_update(const nthw_register_t *p)
 	}
 }
 
-uint32_t nthw_register_get_val_updated32(const nthw_register_t *p)
+static uint32_t nthw_register_get_val_updated32(const nthw_register_t *p)
 {
 	uint32_t val = 0;
 
@@ -852,7 +877,7 @@ void nthw_register_flush(const nthw_register_t *p, uint32_t cnt)
 	}
 }
 
-void nthw_register_clr(nthw_register_t *p)
+static void nthw_register_clr(nthw_register_t *p)
 {
 	if (p->mp_shadow) {
 		memset(p->mp_shadow, 0, p->mn_len * sizeof(uint32_t));
@@ -860,70 +885,9 @@ void nthw_register_clr(nthw_register_t *p)
 	}
 }
 
-/*
- * Field
- */
-nthw_field_t *nthw_field_new(void)
-{
-	nthw_field_t *p = malloc(sizeof(nthw_field_t));
-
-	return p;
-}
-
-void nthw_field_init(nthw_field_t *p, nthw_register_t *p_reg, const nthw_fpga_field_init_s *p_init)
-{
-	p->mp_owner = p_reg;
-
-	p->mn_debug_mode = p_reg->mn_debug_mode;
-
-	p->mn_id = p_init->id;
-	p->mn_bit_width = p_init->bw;
-	p->mn_bit_pos_low = p_init->low;
-	p->mn_reset_val = (uint32_t)p_init->reset_val;
-	p->mn_first_word = p_init->low / 32;
-	p->mn_first_bit = p_init->low % 32;
-	p->mn_front_mask = 0;
-	p->mn_body_length = 0;
-	p->mn_words = (p_init->bw + 0x1f) / 0x20;
-	p->mn_tail_mask = 0;
-
-	{
-		int bits_remaining = p_init->bw;
-		int front_mask_length = 32 - p->mn_first_bit;
-
-		if (front_mask_length > bits_remaining)
-			front_mask_length = bits_remaining;
-
-		bits_remaining -= front_mask_length;
-
-		p->mn_front_mask =
-			(uint32_t)(((1ULL << front_mask_length) - 1) << p->mn_first_bit);
-
-		p->mn_body_length = bits_remaining / 32;
-		bits_remaining -= p->mn_body_length * 32;
-		p->mn_tail_mask = (1 << bits_remaining) - 1;
-
-		if (p->mn_debug_mode >= 0x100) {
-			NT_LOG_DBGX(DBG, NTHW,
-				"fldid=%08" PRIu32 ": [%08" PRIu16 ":%08" PRIu16 "] %08" PRIu16 "/%08"
-				PRIu16 ": (%08i ,%08" PRIu32 ") (0x%08" PRIx32 ",%08"
-				PRIu32 ",0x%08" PRIx32 ")",
-				p_init->id, p_init->low, (p_init->low + p_init->bw),
-				p_init->bw, ((p_init->bw + 31) / 32), p->mn_first_word,
-				p->mn_first_bit, p->mn_front_mask, p->mn_body_length,
-				p->mn_tail_mask);
-		}
-	}
-}
-
-int nthw_field_get_debug_mode(const nthw_field_t *p)
+static int nthw_field_get_debug_mode(const nthw_field_t *p)
 {
 	return p->mn_debug_mode;
-}
-
-void nthw_field_set_debug_mode(nthw_field_t *p, unsigned int debug_mode)
-{
-	p->mn_debug_mode = debug_mode;
 }
 
 int nthw_field_get_bit_width(const nthw_field_t *p)
@@ -936,7 +900,7 @@ int nthw_field_get_bit_pos_low(const nthw_field_t *p)
 	return p->mn_bit_pos_low;
 }
 
-int nthw_field_get_bit_pos_high(const nthw_field_t *p)
+static int nthw_field_get_bit_pos_high(const nthw_field_t *p)
 {
 	return p->mn_bit_pos_low + p->mn_bit_width - 1;
 }
@@ -944,11 +908,6 @@ int nthw_field_get_bit_pos_high(const nthw_field_t *p)
 uint32_t nthw_field_get_mask(const nthw_field_t *p)
 {
 	return p->mn_front_mask;
-}
-
-void nthw_field_reset(const nthw_field_t *p)
-{
-	nthw_field_set_val32(p, (uint32_t)p->mn_reset_val);
 }
 
 void nthw_field_get_val(const nthw_field_t *p, uint32_t *p_data, uint32_t len)
@@ -1209,4 +1168,44 @@ int nthw_field_wait_set_any32(const nthw_field_t *p, int n_poll_iterations, int 
 {
 	return nthw_field_wait_cond32(p, NTHW_FIELD_MATCH_SET_ANY, n_poll_iterations,
 			n_poll_interval);
+}
+
+static nthw_fpga_t *nthw_fpga_mgr_lookup_fpga(nthw_fpga_mgr_t *p, uint64_t n_fpga_id,
+	struct fpga_info_s *p_fpga_info)
+{
+	const int n_fpga_prod_id = nthw_fpga_extract_prod_id(n_fpga_id);
+	const int n_fpga_ver = nthw_fpga_extract_ver_id(n_fpga_id);
+	const int n_fpga_rev = nthw_fpga_extract_rev_id(n_fpga_id);
+	int i;
+
+	for (i = 0; i < p->mn_fpgas; i++) {
+		nthw_fpga_prod_init_s *p_init = p->mpa_fpga_prod_init[i];
+
+		if (p_init->fpga_product_id == n_fpga_prod_id &&
+			p_init->fpga_version == n_fpga_ver && p_init->fpga_revision == n_fpga_rev) {
+			nthw_fpga_t *p_fpga = nthw_fpga_model_new();
+			nthw_fpga_model_init(p_fpga, p_init, p_fpga_info);
+			return p_fpga;
+		}
+	}
+
+	return NULL;
+}
+
+nthw_fpga_t *nthw_fpga_mgr_query_fpga(nthw_fpga_mgr_t *p_fpga_mgr, uint64_t n_fpga_id,
+	struct fpga_info_s *p_fpga_info)
+{
+	const int n_fpga_prod_id = nthw_fpga_extract_prod_id(n_fpga_id);
+	const int n_fpga_ver = nthw_fpga_extract_ver_id(n_fpga_id);
+	const int n_fpga_rev = nthw_fpga_extract_rev_id(n_fpga_id);
+
+	nthw_fpga_t *p_fpga = nthw_fpga_mgr_lookup_fpga(p_fpga_mgr, n_fpga_id, p_fpga_info);
+
+	if (p_fpga) {
+	} else {
+		NT_LOG(ERR, NTHW, "FPGA Id 0x%" PRIX64 ": %04d: %d.%d: no match found",
+			n_fpga_id, n_fpga_prod_id, n_fpga_ver, n_fpga_rev);
+	}
+
+	return p_fpga;
 }

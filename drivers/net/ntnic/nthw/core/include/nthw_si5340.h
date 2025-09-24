@@ -25,8 +25,6 @@ nthw_si5340_t *nthw_si5340_new(void);
 int nthw_si5340_init(nthw_si5340_t *p, nthw_iic_t *p_nthw_iic, uint8_t n_iic_addr);
 void nthw_si5340_delete(nthw_si5340_t *p);
 
-int nthw_si5340_config(nthw_si5340_t *p, const void *p_data, int data_cnt,
-	clk_profile_data_fmt_t data_format);
 int nthw_si5340_config_fmt2(nthw_si5340_t *p, const clk_profile_data_fmt2_t *p_data,
 	const int data_cnt);
 

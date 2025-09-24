@@ -114,44 +114,6 @@ void hw_mod_km_free(struct flow_api_backend_s *be)
 	}
 }
 
-int hw_mod_km_reset(struct flow_api_backend_s *be)
-{
-	uint32_t tcam_v_set[3] = { 0x00000000, 0x00000000, 0x00000000 };
-
-	/* Zero entire cache area */
-	nthw_zero_module_cache((struct common_func_s *)(&be->km));
-
-	NT_LOG(DBG, FILTER, "INIT KM RCP");
-	hw_mod_km_rcp_flush(be, 0, ALL_ENTRIES);
-
-	/* init CAM - all zero */
-	NT_LOG(DBG, FILTER, "INIT KM CAM");
-	hw_mod_km_cam_flush(be, 0, 0, ALL_ENTRIES);
-
-	/* init TCAM - all zero */
-	NT_LOG(DBG, FILTER, "INIT KM TCAM");
-
-	for (unsigned int i = 0; i < be->km.nb_tcam_banks; i++) {
-		/* TCAM entries are cache controlled,
-		 * thus need to hard reset initially to sync cache with HW
-		 */
-		hw_mod_km_tcam_set(be, HW_KM_TCAM_BANK_RESET, i, 0, 0, tcam_v_set);
-	}
-
-	hw_mod_km_tcam_flush(be, 0, ALL_ENTRIES);
-
-	/* init TCI - all zero */
-	NT_LOG(DBG, FILTER, "INIT KM TCI");
-	hw_mod_km_tci_flush(be, 0, 0, ALL_ENTRIES);
-
-	NT_LOG(DBG, FILTER, "INIT KM TCQ");
-
-	for (unsigned int i = 0; i < be->km.nb_tcam_bank_width; i++)
-		hw_mod_km_tcq_flush(be, 0, i, be->km.nb_tcam_banks);
-
-	return 0;
-}
-
 int hw_mod_km_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
@@ -668,7 +630,8 @@ int hw_mod_km_tci_set(struct flow_api_backend_s *be, enum hw_km_e field, int ban
 	return hw_mod_km_tci_mod(be, field, bank, record, &value, 0);
 }
 
-int hw_mod_km_tcq_flush(struct flow_api_backend_s *be, int start_bank, int start_record, int count)
+static int hw_mod_km_tcq_flush(struct flow_api_backend_s *be, int start_bank,
+	int start_record, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->km.nb_tcam_banks * be->km.nb_tcam_bank_width;
@@ -681,4 +644,42 @@ int hw_mod_km_tcq_flush(struct flow_api_backend_s *be, int start_bank, int start
 	}
 
 	return be->iface->km_tcq_flush(be->be_dev, &be->km, start_bank, start_record, count);
+}
+
+int hw_mod_km_reset(struct flow_api_backend_s *be)
+{
+	uint32_t tcam_v_set[3] = { 0x00000000, 0x00000000, 0x00000000 };
+
+	/* Zero entire cache area */
+	nthw_zero_module_cache((struct common_func_s *)(&be->km));
+
+	NT_LOG(DBG, FILTER, "INIT KM RCP");
+	hw_mod_km_rcp_flush(be, 0, ALL_ENTRIES);
+
+	/* init CAM - all zero */
+	NT_LOG(DBG, FILTER, "INIT KM CAM");
+	hw_mod_km_cam_flush(be, 0, 0, ALL_ENTRIES);
+
+	/* init TCAM - all zero */
+	NT_LOG(DBG, FILTER, "INIT KM TCAM");
+
+	for (unsigned int i = 0; i < be->km.nb_tcam_banks; i++) {
+		/* TCAM entries are cache controlled,
+		 * thus need to hard reset initially to sync cache with HW
+		 */
+		hw_mod_km_tcam_set(be, HW_KM_TCAM_BANK_RESET, i, 0, 0, tcam_v_set);
+	}
+
+	hw_mod_km_tcam_flush(be, 0, ALL_ENTRIES);
+
+	/* init TCI - all zero */
+	NT_LOG(DBG, FILTER, "INIT KM TCI");
+	hw_mod_km_tci_flush(be, 0, 0, ALL_ENTRIES);
+
+	NT_LOG(DBG, FILTER, "INIT KM TCQ");
+
+	for (unsigned int i = 0; i < be->km.nb_tcam_bank_width; i++)
+		hw_mod_km_tcq_flush(be, 0, i, be->km.nb_tcam_banks);
+
+	return 0;
 }
