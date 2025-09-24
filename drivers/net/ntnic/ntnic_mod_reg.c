@@ -226,7 +226,7 @@ void register_profile_inline_ops(const struct profile_inline_ops *ops)
 const struct profile_inline_ops *get_profile_inline_ops(void)
 {
 	if (profile_inline_ops == NULL)
-		profile_inline_init();
+		nthw_profile_inline_init();
 
 	return profile_inline_ops;
 }

@@ -3898,7 +3898,7 @@ error_out:
  * Public functions
  */
 
-int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
+int nthw_init_flow_mgmnt_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 {
 	if (!ndev->flow_mgnt_prepared) {
 		/* Check static arrays are big enough */
@@ -4086,11 +4086,11 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 	return 0;
 
 err_exit0:
-	done_flow_management_of_ndev_profile_inline(ndev);
+	nthw_done_flow_mgmnt_of_ndev_profile_inline(ndev);
 	return -1;
 }
 
-int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
+int nthw_done_flow_mgmnt_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 {
 #ifdef FLOW_DEBUG
 	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_WRITE);
@@ -4166,7 +4166,7 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 	return 0;
 }
 
-struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_unused,
+struct flow_handle *nthw_flow_create_profile_inline(struct flow_eth_dev *dev __rte_unused,
 	const struct rte_flow_attr *attr __rte_unused,
 	uint16_t forced_vlan_vid __rte_unused,
 	uint16_t caller_id __rte_unused,
@@ -4266,7 +4266,7 @@ err_exit0:
 	return NULL;
 }
 
-int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *fh,
 	struct rte_flow_error *error)
 {
@@ -4332,27 +4332,27 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 	return 0;
 }
 
-int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *flow,
+int nthw_flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *flow,
 	struct rte_flow_error *error)
 {
 	int err = 0;
 
 	if (flow && flow->type == FLOW_HANDLE_TYPE_FLM && flow->flm_async)
-		return flow_async_destroy_profile_inline(dev, 0, NULL, flow, NULL, error);
+		return nthw_flow_async_destroy_profile_inline(dev, 0, NULL, flow, NULL, error);
 
 	nthw_flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (flow) {
 		/* Delete this flow */
 		rte_spinlock_lock(&dev->ndev->mtx);
-		err = flow_destroy_locked_profile_inline(dev, flow, error);
+		err = nthw_flow_destroy_locked_profile_inline(dev, flow, error);
 		rte_spinlock_unlock(&dev->ndev->mtx);
 	}
 
 	return err;
 }
 
-int flow_flush_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_flush_profile_inline(struct flow_eth_dev *dev,
 	uint16_t caller_id,
 	struct rte_flow_error *error)
 {
@@ -4369,7 +4369,7 @@ int flow_flush_profile_inline(struct flow_eth_dev *dev,
 	while (flow && !err) {
 		if (flow->dev == dev && flow->caller_id == caller_id) {
 			struct flow_handle *flow_next = flow->next;
-			err = flow_destroy_profile_inline(dev, flow, error);
+			err = nthw_flow_destroy_profile_inline(dev, flow, error);
 			flow = flow_next;
 
 		} else {
@@ -4383,7 +4383,7 @@ int flow_flush_profile_inline(struct flow_eth_dev *dev,
 	while (flow && !err) {
 		if (flow->dev == dev && flow->caller_id == caller_id) {
 			struct flow_handle *flow_next = flow->next;
-			err = flow_destroy_profile_inline(dev, flow, error);
+			err = nthw_flow_destroy_profile_inline(dev, flow, error);
 			flow = flow_next;
 
 		} else {
@@ -4394,7 +4394,7 @@ int flow_flush_profile_inline(struct flow_eth_dev *dev,
 	return err;
 }
 
-int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *flow,
 	const struct rte_flow_action action[],
 	struct rte_flow_error *error)
@@ -4566,7 +4566,7 @@ static void dump_flm_data(const uint32_t *data, FILE *file)
 	}
 }
 
-int flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 	uint16_t caller_id,
 	void **context,
 	uint32_t nb_contexts,
@@ -4615,7 +4615,7 @@ int flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 	return idx;
 }
 
-int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *flow,
 	uint16_t caller_id,
 	FILE *file,
@@ -4687,7 +4687,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	return 0;
 }
 
-int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
+int nthw_flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
 	const enum hw_flm_e fields[] = {
 		HW_FLM_STAT_FLOWS, HW_FLM_STAT_LRN_DONE, HW_FLM_STAT_LRN_IGNORE,
@@ -4729,7 +4729,7 @@ int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	return 0;
 }
 
-int flow_get_ifr_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
+int nthw_flow_get_ifr_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	uint8_t port_count)
 {
 	/* IFR RCP 0 is reserved, port counters start from record 1 */
@@ -4747,7 +4747,7 @@ int flow_get_ifr_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	return 0;
 }
 
-int flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu)
+int nthw_flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu)
 {
 	if (port >= 255)
 		return -1;
@@ -4808,7 +4808,7 @@ int flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu)
 	return err;
 }
 
-int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
+int nthw_flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	struct rte_flow_port_info *port_info,
 	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error)
 {
@@ -4830,7 +4830,7 @@ int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	return res;
 }
 
-int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
+int nthw_flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
 	const struct rte_flow_queue_attr *queue_attr[],
 	struct rte_flow_error *error)
@@ -4905,7 +4905,8 @@ error_out:
 	return -1;
 }
 
-struct flow_pattern_template *flow_pattern_template_create_profile_inline(struct flow_eth_dev *dev,
+struct flow_pattern_template *
+nthw_flow_pattern_template_create_profile_inline(struct flow_eth_dev *dev,
 	const struct rte_flow_pattern_template_attr *template_attr, uint16_t caller_id,
 	const struct rte_flow_item pattern[], struct rte_flow_error *error)
 {
@@ -4949,7 +4950,7 @@ struct flow_pattern_template *flow_pattern_template_create_profile_inline(struct
 	return template;
 }
 
-int flow_pattern_template_destroy_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_pattern_template_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct flow_pattern_template *pattern_template,
 	struct rte_flow_error *error)
 {
@@ -4963,7 +4964,7 @@ int flow_pattern_template_destroy_profile_inline(struct flow_eth_dev *dev,
 }
 
 struct flow_actions_template *
-flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
+nthw_flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
 	const struct rte_flow_actions_template_attr *template_attr, uint16_t caller_id,
 	const struct rte_flow_action actions[],
 	const struct rte_flow_action masks[],
@@ -5023,7 +5024,7 @@ flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
 	return template;
 }
 
-int flow_actions_template_destroy_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_actions_template_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct flow_actions_template *actions_template,
 	struct rte_flow_error *error)
 {
@@ -5036,7 +5037,7 @@ int flow_actions_template_destroy_profile_inline(struct flow_eth_dev *dev,
 	return 0;
 }
 
-struct flow_template_table *flow_template_table_create_profile_inline(struct flow_eth_dev *dev,
+struct flow_template_table *nthw_flow_template_table_create_profile_inline(struct flow_eth_dev *dev,
 	const struct rte_flow_template_table_attr *table_attr, uint16_t forced_vlan_vid,
 	uint16_t caller_id,
 	struct flow_pattern_template *pattern_templates[], uint8_t nb_pattern_templates,
@@ -5109,7 +5110,7 @@ error_out:
 	return NULL;
 }
 
-int flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
+int nthw_flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct flow_template_table *template_table,
 	struct rte_flow_error *error)
 {
@@ -5136,7 +5137,7 @@ int flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
 	return 0;
 }
 
-struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
+struct flow_handle *nthw_flow_async_create_profile_inline(struct flow_eth_dev *dev,
 	uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr,
 	struct flow_template_table *template_table,
@@ -5346,7 +5347,7 @@ err_exit:
 	return NULL;
 }
 
-int flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t queue_id,
+int nthw_flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
 	void *user_data, struct rte_flow_error *error)
 {
@@ -5355,7 +5356,7 @@ int flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t queue_i
 	(void)user_data;
 
 	if (flow->type == FLOW_HANDLE_TYPE_FLOW)
-		return flow_destroy_profile_inline(dev, flow, error);
+		return nthw_flow_destroy_profile_inline(dev, flow, error);
 
 	if (flm_flow_programming(flow, NT_FLM_OP_UNLEARN)) {
 		NT_LOG(ERR, FILTER, "FAILED to destroy flow: %p", flow);
@@ -5374,36 +5375,40 @@ static const struct profile_inline_ops ops = {
 	/*
 	 * Management
 	 */
-	.done_flow_management_of_ndev_profile_inline = done_flow_management_of_ndev_profile_inline,
-	.initialize_flow_management_of_ndev_profile_inline =
-		initialize_flow_management_of_ndev_profile_inline,
-	.flow_dev_dump_profile_inline = flow_dev_dump_profile_inline,
+	.nthw_done_flow_mgmnt_of_ndev_profile_inline = nthw_done_flow_mgmnt_of_ndev_profile_inline,
+	.nthw_init_flow_mgmnt_of_ndev_profile_inline =
+		nthw_init_flow_mgmnt_of_ndev_profile_inline,
+	.nthw_flow_dev_dump_profile_inline = nthw_flow_dev_dump_profile_inline,
 	/*
 	 * Flow functionality
 	 */
-	.flow_destroy_locked_profile_inline = flow_destroy_locked_profile_inline,
-	.flow_create_profile_inline = flow_create_profile_inline,
-	.flow_destroy_profile_inline = flow_destroy_profile_inline,
-	.flow_flush_profile_inline = flow_flush_profile_inline,
-	.flow_actions_update_profile_inline = flow_actions_update_profile_inline,
-	.flow_get_aged_flows_profile_inline = flow_get_aged_flows_profile_inline,
+	.nthw_flow_destroy_locked_profile_inline = nthw_flow_destroy_locked_profile_inline,
+	.nthw_flow_create_profile_inline = nthw_flow_create_profile_inline,
+	.nthw_flow_destroy_profile_inline = nthw_flow_destroy_profile_inline,
+	.nthw_flow_flush_profile_inline = nthw_flow_flush_profile_inline,
+	.nthw_flow_actions_update_profile_inline = nthw_flow_actions_update_profile_inline,
+	.nthw_flow_get_aged_flows_profile_inline = nthw_flow_get_aged_flows_profile_inline,
 	/*
 	 * Stats
 	 */
-	.flow_get_flm_stats_profile_inline = flow_get_flm_stats_profile_inline,
-	.flow_get_ifr_stats_profile_inline = flow_get_ifr_stats_profile_inline,
-	.flow_info_get_profile_inline = flow_info_get_profile_inline,
-	.flow_configure_profile_inline = flow_configure_profile_inline,
-	.flow_pattern_template_create_profile_inline = flow_pattern_template_create_profile_inline,
-	.flow_pattern_template_destroy_profile_inline =
-		flow_pattern_template_destroy_profile_inline,
-	.flow_actions_template_create_profile_inline = flow_actions_template_create_profile_inline,
-	.flow_actions_template_destroy_profile_inline =
-		flow_actions_template_destroy_profile_inline,
-	.flow_template_table_create_profile_inline = flow_template_table_create_profile_inline,
-	.flow_template_table_destroy_profile_inline = flow_template_table_destroy_profile_inline,
-	.flow_async_create_profile_inline = flow_async_create_profile_inline,
-	.flow_async_destroy_profile_inline = flow_async_destroy_profile_inline,
+	.nthw_flow_get_flm_stats_profile_inline = nthw_flow_get_flm_stats_profile_inline,
+	.nthw_flow_get_ifr_stats_profile_inline = nthw_flow_get_ifr_stats_profile_inline,
+	.nthw_flow_info_get_profile_inline = nthw_flow_info_get_profile_inline,
+	.nthw_flow_configure_profile_inline = nthw_flow_configure_profile_inline,
+	.nthw_flow_pattern_template_create_profile_inline =
+		nthw_flow_pattern_template_create_profile_inline,
+	.nthw_flow_pattern_template_destroy_profile_inline =
+		nthw_flow_pattern_template_destroy_profile_inline,
+	.nthw_flow_actions_template_create_profile_inline =
+		nthw_flow_actions_template_create_profile_inline,
+	.nthw_flow_actions_template_destroy_profile_inline =
+		nthw_flow_actions_template_destroy_profile_inline,
+	.nthw_flow_template_table_create_profile_inline =
+		nthw_flow_template_table_create_profile_inline,
+	.nthw_flow_template_table_destroy_profile_inline =
+		nthw_flow_template_table_destroy_profile_inline,
+	.nthw_flow_async_create_profile_inline = nthw_flow_async_create_profile_inline,
+	.nthw_flow_async_destroy_profile_inline = nthw_flow_async_destroy_profile_inline,
 	/*
 	 * NT Flow FLM Meter API
 	 */
@@ -5424,10 +5429,10 @@ static const struct profile_inline_ops ops = {
 	/*
 	 * Config API
 	 */
-	.flow_set_mtu_inline = flow_set_mtu_inline,
+	.nthw_flow_set_mtu_inline = nthw_flow_set_mtu_inline,
 };
 
-void profile_inline_init(void)
+void nthw_profile_inline_init(void)
 {
 	register_profile_inline_ops(&ops);
 }

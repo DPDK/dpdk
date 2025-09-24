@@ -1972,7 +1972,7 @@ static int free_rx_queue(void *be_dev, int hw_queue)
 	return 0;
 }
 
-const struct flow_api_backend_ops flow_be_iface = {
+const struct flow_api_backend_ops nthw_flow_be_iface = {
 	1,
 
 	set_debug_mode,
@@ -2248,7 +2248,7 @@ const struct flow_api_backend_ops *nthw_bin_flow_backend_init(nthw_fpga_t *p_fpg
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
-	return &flow_be_iface;
+	return &nthw_flow_be_iface;
 }
 
 static void bin_flow_backend_done(void *dev)

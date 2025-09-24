@@ -1192,7 +1192,7 @@ static int dev_set_mtu_inline(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	int ret = -1;
 
 	if (internals->type == PORT_TYPE_PHYSICAL && mtu >= MIN_MTU_INLINE && mtu <= MAX_MTU)
-		ret = profile_inline_ops->flow_set_mtu_inline(flw_dev, internals->port, mtu);
+		ret = profile_inline_ops->nthw_flow_set_mtu_inline(flw_dev, internals->port, mtu);
 
 	return ret ? -EINVAL : 0;
 }

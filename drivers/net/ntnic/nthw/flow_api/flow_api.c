@@ -299,7 +299,7 @@ static struct flow_handle *flow_create(struct flow_eth_dev *dev __rte_unused,
 		return NULL;
 	}
 
-	return profile_inline_ops->flow_create_profile_inline(dev, attr,
+	return profile_inline_ops->nthw_flow_create_profile_inline(dev, attr,
 		forced_vlan_vid, caller_id,  item, action, error);
 }
 
@@ -313,7 +313,7 @@ static int flow_destroy(struct flow_eth_dev *dev __rte_unused,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_destroy_profile_inline(dev, flow, error);
+	return profile_inline_ops->nthw_flow_destroy_profile_inline(dev, flow, error);
 }
 
 static int flow_flush(struct flow_eth_dev *dev, uint16_t caller_id, struct rte_flow_error *error)
@@ -325,7 +325,7 @@ static int flow_flush(struct flow_eth_dev *dev, uint16_t caller_id, struct rte_f
 		return -1;
 	}
 
-	return profile_inline_ops->flow_flush_profile_inline(dev, caller_id, error);
+	return profile_inline_ops->nthw_flow_flush_profile_inline(dev, caller_id, error);
 }
 
 static int flow_actions_update(struct flow_eth_dev *dev,
@@ -340,7 +340,8 @@ static int flow_actions_update(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_actions_update_profile_inline(dev, flow, action, error);
+	return profile_inline_ops->nthw_flow_actions_update_profile_inline(dev,
+		flow, action, error);
 }
 
 /*
@@ -405,7 +406,7 @@ static int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 	while (flow) {
 		if (flow->dev == eth_dev) {
 			struct flow_handle *flow_next = flow->next;
-			profile_inline_ops->flow_destroy_locked_profile_inline(eth_dev, flow,
+			profile_inline_ops->nthw_flow_destroy_locked_profile_inline(eth_dev, flow,
 				NULL);
 			flow = flow_next;
 
@@ -471,11 +472,11 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 			"ERROR : Flows still defined but all eth-ports deleted. Flow %p",
 			ndev->flow_base);
 
-		profile_inline_ops->flow_destroy_profile_inline(ndev->flow_base->dev,
+		profile_inline_ops->nthw_flow_destroy_profile_inline(ndev->flow_base->dev,
 			ndev->flow_base, NULL);
 	}
 
-	profile_inline_ops->done_flow_management_of_ndev_profile_inline(ndev);
+	profile_inline_ops->nthw_done_flow_mgmnt_of_ndev_profile_inline(ndev);
 
 	km_free_ndev_resource_management(&ndev->km_res_handle);
 	kcc_free_ndev_resource_management(&ndev->kcc_res_handle);
@@ -656,7 +657,7 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 
 		/* Initialize modules if needed - recipe 0 is used as no-match and must be setup */
 		if (profile_inline_ops != NULL &&
-			profile_inline_ops->initialize_flow_management_of_ndev_profile_inline(ndev))
+			profile_inline_ops->nthw_init_flow_mgmnt_of_ndev_profile_inline(ndev))
 			goto err_exit0;
 
 	} else {
@@ -1021,7 +1022,8 @@ static int flow_dev_dump(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_dev_dump_profile_inline(dev, flow, caller_id, file, error);
+	return profile_inline_ops->nthw_flow_dev_dump_profile_inline(dev,
+		flow, caller_id, file, error);
 }
 
 static int flow_get_aged_flows(struct flow_eth_dev *dev,
@@ -1043,7 +1045,7 @@ static int flow_get_aged_flows(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_get_aged_flows_profile_inline(dev, caller_id, context,
+	return profile_inline_ops->nthw_flow_get_aged_flows_profile_inline(dev, caller_id, context,
 			nb_contexts, error);
 }
 
@@ -1058,7 +1060,7 @@ static int flow_info_get(struct flow_eth_dev *dev, uint8_t caller_id,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_info_get_profile_inline(dev, caller_id, port_info,
+	return profile_inline_ops->nthw_flow_info_get_profile_inline(dev, caller_id, port_info,
 			queue_info, error);
 }
 
@@ -1073,7 +1075,7 @@ static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_configure_profile_inline(dev, caller_id, port_attr,
+	return profile_inline_ops->nthw_flow_configure_profile_inline(dev, caller_id, port_attr,
 			nb_queue, queue_attr, error);
 }
 
@@ -1093,8 +1095,8 @@ flow_pattern_template_create(struct flow_eth_dev *dev,
 			return NULL;
 	}
 
-	return profile_inline_ops->flow_pattern_template_create_profile_inline(dev, template_attr,
-		caller_id, pattern, error);
+	return profile_inline_ops->nthw_flow_pattern_template_create_profile_inline(dev,
+		template_attr, caller_id, pattern, error);
 }
 
 static int flow_pattern_template_destroy(struct flow_eth_dev *dev,
@@ -1108,7 +1110,7 @@ static int flow_pattern_template_destroy(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_pattern_template_destroy_profile_inline(dev,
+	return profile_inline_ops->nthw_flow_pattern_template_destroy_profile_inline(dev,
 			pattern_template,
 			error);
 }
@@ -1126,8 +1128,8 @@ flow_actions_template_create(struct flow_eth_dev *dev,
 		return NULL;
 	}
 
-	return profile_inline_ops->flow_actions_template_create_profile_inline(dev, template_attr,
-		caller_id, actions, masks, error);
+	return profile_inline_ops->nthw_flow_actions_template_create_profile_inline(dev,
+		template_attr, caller_id, actions, masks, error);
 }
 
 static int flow_actions_template_destroy(struct flow_eth_dev *dev,
@@ -1141,7 +1143,7 @@ static int flow_actions_template_destroy(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_actions_template_destroy_profile_inline(dev,
+	return profile_inline_ops->nthw_flow_actions_template_destroy_profile_inline(dev,
 			actions_template,
 			error);
 }
@@ -1159,7 +1161,7 @@ static struct flow_template_table *flow_template_table_create(struct flow_eth_de
 		return NULL;
 	}
 
-	return profile_inline_ops->flow_template_table_create_profile_inline(dev, table_attr,
+	return profile_inline_ops->nthw_flow_template_table_create_profile_inline(dev, table_attr,
 		forced_vlan_vid, caller_id, pattern_templates, nb_pattern_templates,
 		actions_templates, nb_actions_templates, error);
 }
@@ -1175,8 +1177,8 @@ static int flow_template_table_destroy(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_template_table_destroy_profile_inline(dev, template_table,
-			error);
+	return profile_inline_ops->nthw_flow_template_table_destroy_profile_inline(dev,
+		template_table, error);
 }
 
 static struct flow_handle *
@@ -1193,7 +1195,7 @@ flow_async_create(struct flow_eth_dev *dev, uint32_t queue_id,
 		return NULL;
 	}
 
-	return profile_inline_ops->flow_async_create_profile_inline(dev, queue_id, op_attr,
+	return profile_inline_ops->nthw_flow_async_create_profile_inline(dev, queue_id, op_attr,
 			template_table, pattern, pattern_template_index, actions,
 			actions_template_index, user_data, error);
 }
@@ -1209,8 +1211,8 @@ static int flow_async_destroy(struct flow_eth_dev *dev, uint32_t queue_id,
 		return -1;
 	}
 
-	return profile_inline_ops->flow_async_destroy_profile_inline(dev, queue_id, op_attr, flow,
-			user_data, error);
+	return profile_inline_ops->nthw_flow_async_destroy_profile_inline(dev, queue_id,
+		op_attr, flow, user_data, error);
 }
 int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
@@ -1220,7 +1222,7 @@ int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t 
 		return -1;
 
 	if (ndev->flow_profile == FLOW_ETH_DEV_PROFILE_INLINE)
-		return profile_inline_ops->flow_get_flm_stats_profile_inline(ndev, data, size);
+		return profile_inline_ops->nthw_flow_get_flm_stats_profile_inline(ndev, data, size);
 
 	return -1;
 }
@@ -1233,7 +1235,7 @@ int nthw_flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t p
 		return -1;
 
 	if (ndev->flow_profile == FLOW_ETH_DEV_PROFILE_INLINE) {
-		return profile_inline_ops->flow_get_ifr_stats_profile_inline(ndev, data,
+		return profile_inline_ops->nthw_flow_get_ifr_stats_profile_inline(ndev, data,
 				port_count);
 	}
 
