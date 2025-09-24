@@ -14,7 +14,7 @@
 #define I2C_TRANSMIT_WR (0x00)
 #define I2C_TRANSMIT_RD (0x01)
 
-#define I2C_WAIT_US(x) nt_os_wait_usec(x)
+#define I2C_WAIT_US(x) nthw_os_wait_usec(x)
 
 /*
  * Minimum timing values for I2C for a Marvel 88E11111 Phy.

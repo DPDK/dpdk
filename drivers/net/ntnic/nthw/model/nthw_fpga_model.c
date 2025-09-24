@@ -1060,7 +1060,7 @@ static int nthw_field_wait_cond32(const nthw_field_t *p, enum nthw_field_match e
 		if (n_poll_iterations <= 0)
 			return -1;
 
-		nt_os_wait_usec(n_poll_interval);
+		nthw_os_wait_usec(n_poll_interval);
 	}
 
 	return 0;

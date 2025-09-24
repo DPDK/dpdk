@@ -17,35 +17,35 @@
 static struct nt_util_vfio_impl vfio_cb;
 
 /* uses usleep which schedules out the calling service */
-void nt_os_wait_usec(int val)
+void nthw_os_wait_usec(int val)
 {
 	rte_delay_us_sleep(val);
 }
 
 /* spins in a waiting loop calling pause asm instruction uses RDTSC - precise wait */
-void nt_os_wait_usec_poll(int val)
+void nthw_os_wait_usec_poll(int val)
 {
 	rte_delay_us(val);
 }
 
-uint64_t nt_os_get_time_monotonic_counter(void)
+uint64_t nthw_os_get_time_monotonic_counter(void)
 {
 	return rte_get_timer_cycles();
 }
 
 /* Allocation size matching minimum alignment of specified size */
-uint64_t nt_util_align_size(uint64_t size)
+uint64_t nthw_util_align_size(uint64_t size)
 {
 	uint64_t alignment_size = 1ULL << rte_log2_u64(size);
 	return alignment_size;
 }
 
-void nt_util_vfio_init(struct nt_util_vfio_impl *impl)
+void nthw_util_vfio_init(struct nt_util_vfio_impl *impl)
 {
 	vfio_cb = *impl;
 }
 
-struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa)
+struct nt_dma_s *nthw_dma_alloc(uint64_t size, uint64_t align, int numa)
 {
 	int res;
 	struct nt_dma_s *vfio_addr;
@@ -65,7 +65,7 @@ struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa)
 		return NULL;
 	}
 
-	res = vfio_cb.vfio_dma_map(0, addr, &vfio_addr->iova, nt_util_align_size(size));
+	res = vfio_cb.vfio_dma_map(0, addr, &vfio_addr->iova, nthw_util_align_size(size));
 
 	if (res != 0) {
 		rte_free(addr);
@@ -75,7 +75,7 @@ struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa)
 	}
 
 	vfio_addr->addr = (uint64_t)addr;
-	vfio_addr->size = nt_util_align_size(size);
+	vfio_addr->size = nthw_util_align_size(size);
 
 	NT_LOG(DBG, GENERAL,
 		"VFIO DMA alloc addr=%" PRIX64 ", iova=%" PRIX64
@@ -86,7 +86,7 @@ struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa)
 }
 
 /* NOTE: please note the difference between RTE_ETH_SPEED_NUM_xxx and RTE_ETH_LINK_SPEED_xxx */
-int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed)
+int nthw_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed)
 {
 	int eth_speed_num = RTE_ETH_SPEED_NUM_NONE;
 
@@ -131,7 +131,7 @@ int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed)
 	return eth_speed_num;
 }
 
-uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa)
+uint32_t nthw_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa)
 {
 	uint32_t eth_speed_capa = 0;
 
@@ -162,7 +162,7 @@ uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa)
 	return eth_speed_capa;
 }
 
-int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex)
+int nthw_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex)
 {
 	int eth_link_duplex = 0;
 

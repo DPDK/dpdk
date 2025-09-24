@@ -588,11 +588,11 @@ void nthw_mac_pcs_set_fec(nthw_mac_pcs_t *p, bool enable)
 	/* Both Rx and Tx must be reset for new FEC state to become active */
 	nthw_mac_pcs_rx_path_rst(p, true);
 	nthw_mac_pcs_tx_path_rst(p, true);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 
 	nthw_mac_pcs_rx_path_rst(p, false);
 	nthw_mac_pcs_tx_path_rst(p, false);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 }
 
 bool nthw_mac_pcs_get_fec_bypass(nthw_mac_pcs_t *p)
@@ -740,7 +740,7 @@ void nthw_mac_pcs_set_receiver_equalization_mode(nthw_mac_pcs_t *p, uint8_t mode
 	nthw_field_set_val32(p->mp_field_gty_ctl_rx_equa_rst2, 1);
 	nthw_field_set_val_flush32(p->mp_field_gty_ctl_rx_equa_rst3, 1);
 
-	nt_os_wait_usec(1000);	/* 1ms */
+	nthw_os_wait_usec(1000);	/* 1ms */
 
 	nthw_field_set_val32(p->mp_field_gty_ctl_rx_equa_rst0, 0);
 	nthw_field_set_val32(p->mp_field_gty_ctl_rx_equa_rst1, 0);

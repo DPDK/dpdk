@@ -42,7 +42,7 @@ int nthw_pca9849_set_channel(nthw_pca9849_t *p, uint8_t channel)
 			return res;
 
 		p->m_current_channel = channel;
-		nt_os_wait_usec(10000);
+		nthw_os_wait_usec(10000);
 	}
 
 	return 0;

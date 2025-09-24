@@ -704,7 +704,7 @@ static void qsfp28_wait_for_ready_after_reset(nim_i2c_ctx_p ctx)
 	 * Probably because access to the paged address space is required.
 	 */
 	if (!init_complete_flag_present) {
-		nt_os_wait_usec(500000);
+		nthw_os_wait_usec(500000);
 		return;
 	}
 
@@ -724,7 +724,7 @@ static void qsfp28_wait_for_ready_after_reset(nim_i2c_ctx_p ctx)
 			break;
 		}
 
-		nt_os_wait_usec(100000);/* 100 ms */
+		nthw_os_wait_usec(100000);/* 100 ms */
 		count++;
 	}
 }

@@ -197,7 +197,7 @@ static int nthw_fpga_rst_nt200a0x_wait_sdc_calibrated(nthw_fpga_t *p_fpga,
 		 * reset DDR and perform calibration retry
 		 */
 		nthw_field_set_flush(p->mp_fld_rst_ddr4);	/* Reset DDR PLL */
-		nt_os_wait_usec(100);
+		nthw_os_wait_usec(100);
 		nthw_field_clr_flush(p->mp_fld_rst_ddr4);
 
 		n_retry_cnt++;

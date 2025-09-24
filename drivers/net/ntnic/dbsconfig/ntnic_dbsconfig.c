@@ -485,7 +485,7 @@ static int dbs_wait_hw_queue_shutdown(struct nthw_virt_queue *vq, int rx)
 
 	if (err) {
 		if (err == -ENOTSUP) {
-			nt_os_wait_usec(200000);
+			nthw_os_wait_usec(200000);
 			return 0;
 		}
 

@@ -197,7 +197,7 @@ static int flow_mtr_create_meter(struct flow_eth_dev *dev,
 			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
 				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
@@ -255,7 +255,7 @@ static int flow_mtr_probe_meter(struct flow_eth_dev *dev, uint8_t caller_id, uin
 			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
 				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
@@ -295,7 +295,7 @@ static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, u
 			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
 				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
@@ -348,7 +348,7 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
 				nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
@@ -644,7 +644,7 @@ static int flm_sdram_calibrate(struct flow_nic_dev *ndev)
 		if (fail_value != 0)
 			break;
 
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 	}
 
 	if (!success) {
@@ -685,7 +685,7 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 			break;
 		}
 
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 	}
 
 	if (!success) {
@@ -709,7 +709,7 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 			break;
 		}
 
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 	}
 
 	if (!success) {
@@ -976,7 +976,7 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
 
 	while (learn_record == NULL) {
-		nt_os_wait_usec(1);
+		nthw_os_wait_usec(1);
 		learn_record =
 			(struct flm_v25_lrn_data_s *)
 			nthw_flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
@@ -5274,7 +5274,7 @@ struct flow_handle *nthw_flow_async_create_profile_inline(struct flow_eth_dev *d
 
 		} else {
 			do {
-				nt_os_wait_usec(1);
+				nthw_os_wait_usec(1);
 				status = atomic_load(&pattern_action_pair->status);
 			} while (status == CELL_STATUS_INITIALIZING);
 

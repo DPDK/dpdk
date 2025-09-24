@@ -50,9 +50,9 @@ static int _reset_rx(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
 	(void)drv;
 
 	nthw_mac_pcs_rx_path_rst(mac_pcs, true);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 	nthw_mac_pcs_rx_path_rst(mac_pcs, false);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 
 	return 0;
 }
@@ -110,7 +110,7 @@ static void _set_loopback(struct adapter_info_s *p_adapter_info,
 	/* After changing the loopback the system must be properly reset */
 	_reset_rx(p_adapter_info, mac_pcs);
 
-	nt_os_wait_usec(10000);	/* 10ms - arbitrary choice */
+	nthw_os_wait_usec(10000);	/* 10ms - arbitrary choice */
 
 	if (!nthw_mac_pcs_is_rx_path_rst(mac_pcs)) {
 		nthw_mac_pcs_reset_bip_counters(mac_pcs);
@@ -286,14 +286,14 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
 	 */
 	NT_LOG(DBG, NTNIC, "%s: Performing NIM reset", drv->mp_port_id_str[port]);
 	nthw_gpio_phy_set_reset(gpio_phy, (uint8_t)port, true);
-	nt_os_wait_usec(100000);/* pause 0.1s */
+	nthw_os_wait_usec(100000);/* pause 0.1s */
 	nthw_gpio_phy_set_reset(gpio_phy, (uint8_t)port, false);
 
 	/*
 	 * Wait a little after a module has been inserted before trying to access I2C
 	 * data, otherwise the module will not respond correctly.
 	 */
-	nt_os_wait_usec(1000000);	/* pause 1.0s */
+	nthw_os_wait_usec(1000000);	/* pause 1.0s */
 
 	if (!_nim_is_present(gpio_phy, (uint8_t)port)) {
 		NT_LOG(DBG, NTNIC, "%s: NIM module is no longer absent!",
@@ -650,7 +650,7 @@ static int _common_ptp_nim_state_machine(void *data)
 	}	/* end-for */
 
 	if (rte_service_runstate_get(adapter_mon_srv->id))
-		nt_os_wait_usec(5 * 100000U);	/* 5 x 0.1s = 0.5s */
+		nthw_os_wait_usec(5 * 100000U);	/* 5 x 0.1s = 0.5s */
 
 	return 0;
 }

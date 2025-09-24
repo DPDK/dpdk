@@ -32,16 +32,16 @@
 #define PCIIDENT_PRINT_STR "%04x:%02x:%02x.%x"
 #define BDF_TO_PCIIDENT(dom, bus, dev, fnc) (((dom) << 16) | ((bus) << 8) | ((dev) << 3) | (fnc))
 
-uint64_t nt_os_get_time_monotonic_counter(void);
-void nt_os_wait_usec(int val);
-void nt_os_wait_usec_poll(int val);
+uint64_t nthw_os_get_time_monotonic_counter(void);
+void nthw_os_wait_usec(int val);
+void nthw_os_wait_usec_poll(int val);
 
 static inline int min(int a, int b)
 {
 	return (a < b) ? a : b;
 }
 
-uint64_t nt_util_align_size(uint64_t size);
+uint64_t nthw_util_align_size(uint64_t size);
 
 struct nt_dma_s {
 	uint64_t iova;
@@ -54,17 +54,17 @@ struct port_link_speed {
 	int link_speed;
 };
 
-struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa);
+struct nt_dma_s *nthw_dma_alloc(uint64_t size, uint64_t align, int numa);
 struct nt_util_vfio_impl {
 	int (*vfio_dma_map)(int vf_num, void *virt_addr, uint64_t *iova_addr, uint64_t size);
 	int (*vfio_dma_unmap)(int vf_num, void *virt_addr, uint64_t iova_addr, uint64_t size);
 };
 
-void nt_util_vfio_init(struct nt_util_vfio_impl *impl);
+void nthw_util_vfio_init(struct nt_util_vfio_impl *impl);
 
-int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed);
-uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa);
-int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex);
+int nthw_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed);
+uint32_t nthw_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa);
+int nthw_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex);
 
 int nthw_string_to_u32(const char *key_str __rte_unused, const char *value_str, void *extra_args);
 
