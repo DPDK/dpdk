@@ -12330,8 +12330,7 @@ zxdh_np_dtb_acl_data_clear(uint32_t dev_id, uint32_t queue_id,
 				&element_id);
 	free(data_buff);
 	free(mask_buff);
-	if (eram_buff)
-		free(eram_buff);
+	free(eram_buff);
 
 	free(p_entry_arr);
 	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_acl_dma_insert");
