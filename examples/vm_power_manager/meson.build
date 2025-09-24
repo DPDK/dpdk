@@ -38,7 +38,7 @@ else
 endif
 
 opt_dep = cc.find_library('virt', required : false)
-build = opt_dep.found()
+build = (opt_dep.found() and cc.links(min_c_code, dependencies: opt_dep))
 ext_deps += opt_dep
 
 opt_dep = dependency('jansson', required : false, method: 'pkg-config')

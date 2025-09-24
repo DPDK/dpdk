@@ -27,7 +27,7 @@ foreach libname:libnames
     if not lib.found()
         lib = cc.find_library(libname, required:false)
     endif
-    if lib.found()
+    if lib.found() and cc.links(min_c_code, dependencies: lib)
         libs += lib
         ext_deps += lib
     else

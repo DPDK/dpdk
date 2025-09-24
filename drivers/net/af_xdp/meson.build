@@ -20,6 +20,9 @@ xdp_dep = dependency('libxdp', version : libxdp_ver, required: false, method: 'p
 bpf_dep = dependency('libbpf', required: false, method: 'pkg-config')
 if not bpf_dep.found()
     bpf_dep = cc.find_library('bpf', required: false)
+    if bpf_dep.found() and not cc.links(min_c_code, dependencies: bpf_dep)
+        bpf_dep = disabler()
+    endif
 endif
 
 cflags += no_wvla_cflag

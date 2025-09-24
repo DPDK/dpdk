@@ -51,6 +51,9 @@ testpmd_drivers_sources = []
 testpmd_drivers_deps = []
 abi_version_file = files('ABI_VERSION')
 
+# minimal C code for testing library linking compatibility
+min_c_code = 'int main(void) { return 0; }'
+
 if host_machine.cpu_family().startswith('x86')
     arch_subdir = 'x86'
 elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')

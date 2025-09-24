@@ -7,7 +7,7 @@
 # DPDK instance, use 'make'
 
 pqos = cc.find_library('pqos', required: false)
-build = pqos.found()
+build = (pqos.found() and cc.links(min_c_code, dependencies: pqos))
 if not build
     subdir_done()
 endif

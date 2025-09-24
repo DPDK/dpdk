@@ -9,7 +9,7 @@ endif
 
 ESMI_header = '#include<e_smi/e_smi.h>'
 lib = cc.find_library('e_smi64', required: false)
-if not lib.found()
+if not lib.found() or not cc.links(min_c_code, dependencies: lib)
     build = false
     reason = 'missing dependency, "libe_smi"'
 else

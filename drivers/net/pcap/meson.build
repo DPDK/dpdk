@@ -13,7 +13,11 @@ sources = files(
 
 ext_deps += pcap_dep
 if is_windows
-    ext_deps += cc.find_library('iphlpapi', required: true)
+    iphlpapi_dep = cc.find_library('iphlpapi', required: true)
+    if not cc.links(min_c_code, dependencies: iphlpapi_dep)
+        error('broken dependency, "iphlpapi"')
+    endif
+    ext_deps += iphlpapi_dep
 endif
 
 require_iova_in_mbuf = false

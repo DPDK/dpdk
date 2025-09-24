@@ -31,7 +31,7 @@ foreach libname:libnames
     if not lib.found() and not static_ibverbs
         lib = cc.find_library(libname, required:false)
     endif
-    if lib.found()
+    if lib.found() and cc.links(min_c_code, dependencies: lib)
         libs += lib
         if not static_ibverbs and not dlopen_ibverbs
             ext_deps += lib

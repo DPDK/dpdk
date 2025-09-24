@@ -208,7 +208,8 @@ if not is_windows
 endif
 
 # on some OS, maths functions are in a separate library
-if cc.find_library('m', required : false).found()
+math_dep = cc.find_library('m', required : false)
+if math_dep.found() and cc.links(min_c_code, dependencies: math_dep)
     # some libs depend on maths lib
     add_project_link_arguments('-lm', language: 'c')
     dpdk_extra_ldflags += '-lm'
@@ -235,7 +236,7 @@ if meson.is_cross_build() and not meson.get_external_property('numa', true)
 endif
 if find_libnuma
     numa_dep = cc.find_library('numa', required: false)
-    if numa_dep.found() and cc.has_header('numaif.h')
+    if numa_dep.found() and cc.has_header('numaif.h') and cc.links(min_c_code, dependencies: numa_dep)
         dpdk_conf.set10('RTE_HAS_LIBNUMA', true)
         has_libnuma = true
         add_project_link_arguments('-lnuma', language: 'c')
@@ -245,7 +246,7 @@ endif
 
 has_libfdt = false
 fdt_dep = cc.find_library('fdt', required: false)
-if fdt_dep.found() and cc.has_header('fdt.h')
+if fdt_dep.found() and cc.has_header('fdt.h') and cc.links(min_c_code, dependencies: fdt_dep)
     dpdk_conf.set10('RTE_HAS_LIBFDT', true)
     has_libfdt = true
     add_project_link_arguments('-lfdt', language: 'c')
@@ -253,7 +254,7 @@ if fdt_dep.found() and cc.has_header('fdt.h')
 endif
 
 libexecinfo = cc.find_library('execinfo', required: false)
-if libexecinfo.found()
+if libexecinfo.found() and cc.links(min_c_code, dependencies: libexecinfo)
     add_project_link_arguments('-lexecinfo', language: 'c')
     dpdk_extra_ldflags += '-lexecinfo'
 endif
@@ -288,7 +289,8 @@ if not pcap_dep.found()
     # pcap got a pkg-config file only in 1.9.0
     pcap_dep = cc.find_library(pcap_lib, required: false)
 endif
-if pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
+if (pcap_dep.found() and cc.has_header('pcap.h', dependencies: pcap_dep)
+        and cc.links(min_c_code, dependencies: pcap_dep))
     dpdk_conf.set('RTE_HAS_LIBPCAP', 1)
     dpdk_extra_ldflags += '-l@0@'.format(pcap_lib)
 endif
@@ -296,6 +298,9 @@ endif
 # for clang 32-bit compiles we need libatomic for 64-bit atomic ops
 if cc.get_id() == 'clang' and dpdk_conf.get('RTE_ARCH_64') == false
     atomic_dep = cc.find_library('atomic', required: true)
+    if not cc.links(min_c_code, dependencies: atomic_dep)
+        error('broken dependency, "libatomic"')
+    endif
     add_project_link_arguments('-latomic', language: 'c')
     dpdk_extra_ldflags += '-latomic'
 endif

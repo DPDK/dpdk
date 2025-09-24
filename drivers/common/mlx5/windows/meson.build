@@ -8,7 +8,7 @@ if not cc.has_header('mlx5devx.h')
 endif
 
 devxlib = cc.find_library('mlx5devx', required: false)
-if not devxlib.found()
+if not devxlib.found() or not cc.links(min_c_code, dependencies: devxlib)
     build = false
     reason = 'missing dependency, "mlx5devx"'
     subdir_done()
