@@ -18,17 +18,17 @@ static const struct {
 	int (*reset)(struct flow_api_backend_s *be);
 	bool (*present)(struct flow_api_backend_s *be);
 } module[] = {
-	{ "CAT", hw_mod_cat_alloc, hw_mod_cat_free, hw_mod_cat_reset, hw_mod_cat_present },
-	{ "KM", hw_mod_km_alloc, hw_mod_km_free, hw_mod_km_reset, hw_mod_km_present },
-	{ "FLM", hw_mod_flm_alloc, hw_mod_flm_free, hw_mod_flm_reset, hw_mod_flm_present },
-	{ "HSH", hw_mod_hsh_alloc, hw_mod_hsh_free, hw_mod_hsh_reset, hw_mod_hsh_present },
-	{ "QSL", hw_mod_qsl_alloc, hw_mod_qsl_free, hw_mod_qsl_reset, hw_mod_qsl_present },
+	{ "CAT", nthw_mod_cat_alloc, nthw_mod_cat_free, nthw_mod_cat_reset, nthw_mod_cat_present },
+	{ "KM", nthw_mod_km_alloc, nthw_mod_km_free, nthw_mod_km_reset, nthw_mod_km_present },
+	{ "FLM", nthw_mod_flm_alloc, nthw_mod_flm_free, nthw_mod_flm_reset, nthw_mod_flm_present },
+	{ "HSH", nthw_mod_hsh_alloc, nthw_mod_hsh_free, nthw_mod_hsh_reset, nthw_mod_hsh_present },
+	{ "QSL", nthw_mod_qsl_alloc, nthw_mod_qsl_free, nthw_mod_qsl_reset, nthw_mod_qsl_present },
 	{
-		"SLC LR", hw_mod_slc_lr_alloc, hw_mod_slc_lr_free, hw_mod_slc_lr_reset,
-		hw_mod_slc_lr_present
+		"SLC LR", nthw_mod_slc_lr_alloc, nthw_mod_slc_lr_free, nthw_mod_slc_lr_reset,
+		nthw_mod_slc_lr_present
 	},
-	{ "PDB", hw_mod_pdb_alloc, hw_mod_pdb_free, hw_mod_pdb_reset, hw_mod_pdb_present },
-	{ "TPE", hw_mod_tpe_alloc, hw_mod_tpe_free, hw_mod_tpe_reset, hw_mod_tpe_present },
+	{ "PDB", nthw_mod_pdb_alloc, nthw_mod_pdb_free, nthw_mod_pdb_reset, nthw_mod_pdb_present },
+	{ "TPE", nthw_mod_tpe_alloc, nthw_mod_tpe_free, nthw_mod_tpe_reset, nthw_mod_tpe_present },
 };
 #define MOD_COUNT (ARRAY_SIZE(module))
 

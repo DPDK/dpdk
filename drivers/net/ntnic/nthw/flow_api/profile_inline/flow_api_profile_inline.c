@@ -94,7 +94,7 @@ static void *flm_lrn_queue_arr;
 
 static int flow_mtr_supported(struct flow_eth_dev *dev)
 {
-	return hw_mod_flm_present(&dev->ndev->be) && dev->ndev->be.flm.nb_variant == 2;
+	return nthw_mod_flm_present(&dev->ndev->be) && dev->ndev->be.flm.nb_variant == 2;
 }
 
 static uint64_t flow_mtr_meter_policy_n_max(void)
@@ -401,7 +401,7 @@ static uint32_t flm_lrn_update(struct flow_eth_dev *dev, uint32_t *inf_word_cnt,
 	uint32_t handled_records = 0;
 
 	if (r.num) {
-		if (hw_mod_flm_lrn_data_set_flush(&dev->ndev->be, HW_FLM_FLOW_LRN_DATA, r.p,
+		if (nthw_mod_flm_lrn_data_set_flush(&dev->ndev->be, HW_FLM_FLOW_LRN_DATA, r.p,
 			r.num, &handled_records, inf_word_cnt, sta_word_cnt))
 			NT_LOG(ERR, FILTER, "Flow programming failed");
 	}
@@ -546,7 +546,7 @@ static uint32_t flm_update(struct flow_eth_dev *dev)
 		if (sta_records > MAX_STA_DATA_RECORDS_PER_READ)
 			sta_records = MAX_STA_DATA_RECORDS_PER_READ;
 
-		hw_mod_flm_inf_sta_data_update_get(&dev->ndev->be, HW_FLM_FLOW_INF_STA_DATA,
+		nthw_mod_flm_inf_sta_data_update_get(&dev->ndev->be, HW_FLM_FLOW_INF_STA_DATA,
 			inf_data, inf_records * WORDS_PER_INF_DATA,
 			&inf_word_cnt, sta_data,
 			sta_records * WORDS_PER_STA_DATA,
@@ -564,9 +564,9 @@ static uint32_t flm_update(struct flow_eth_dev *dev)
 	if (flm_lrn_update(dev, &inf_word_cnt, &sta_word_cnt) != 0)
 		return 1;
 
-	hw_mod_flm_buf_ctrl_update(&dev->ndev->be);
-	hw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_INF_AVAIL, &inf_word_cnt);
-	hw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_STA_AVAIL, &sta_word_cnt);
+	nthw_mod_flm_buf_ctrl_update(&dev->ndev->be);
+	nthw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_INF_AVAIL, &inf_word_cnt);
+	nthw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_STA_AVAIL, &sta_word_cnt);
 
 	return inf_word_cnt + sta_word_cnt;
 }
@@ -626,15 +626,15 @@ static int flm_sdram_calibrate(struct flow_nic_dev *ndev)
 	uint32_t fail_value = 0;
 	uint32_t value = 0;
 
-	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_PRESET_ALL, 0x0);
-	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_SPLIT_SDRAM_USAGE, 0x10);
-	hw_mod_flm_control_flush(&ndev->be);
+	nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_PRESET_ALL, 0x0);
+	nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_SPLIT_SDRAM_USAGE, 0x10);
+	nthw_mod_flm_control_flush(&ndev->be);
 
 	/* Wait for ddr4 calibration/init done */
 	for (uint32_t i = 0; i < 1000000; ++i) {
-		hw_mod_flm_status_update(&ndev->be);
-		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_CALIB_SUCCESS, &value);
-		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_CALIB_FAIL, &fail_value);
+		nthw_mod_flm_status_update(&ndev->be);
+		nthw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_CALIB_SUCCESS, &value);
+		nthw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_CALIB_FAIL, &fail_value);
 
 		if (value & 0x80000000) {
 			success = 1;
@@ -666,19 +666,19 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 	 * Make sure no lookup is performed during init, i.e.
 	 * disable every category and disable FLM
 	 */
-	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, 0x0);
-	hw_mod_flm_control_flush(&ndev->be);
+	nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, 0x0);
+	nthw_mod_flm_control_flush(&ndev->be);
 
 	for (uint32_t i = 1; i < ndev->be.flm.nb_categories; ++i)
-		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, i, 0x0);
+		nthw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, i, 0x0);
 
-	hw_mod_flm_rcp_flush(&ndev->be, 1, ndev->be.flm.nb_categories - 1);
+	nthw_mod_flm_rcp_flush(&ndev->be, 1, ndev->be.flm.nb_categories - 1);
 
 	/* Wait for FLM to enter Idle state */
 	for (uint32_t i = 0; i < 1000000; ++i) {
 		uint32_t value = 0;
-		hw_mod_flm_status_update(&ndev->be);
-		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_IDLE, &value);
+		nthw_mod_flm_status_update(&ndev->be);
+		nthw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_IDLE, &value);
 
 		if (value) {
 			success = 1;
@@ -696,13 +696,13 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 	success = 0;
 
 	/* Start SDRAM initialization */
-	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_INIT, 0x1);
-	hw_mod_flm_control_flush(&ndev->be);
+	nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_INIT, 0x1);
+	nthw_mod_flm_control_flush(&ndev->be);
 
 	for (uint32_t i = 0; i < 1000000; ++i) {
 		uint32_t value = 0;
-		hw_mod_flm_status_update(&ndev->be);
-		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_INITDONE, &value);
+		nthw_mod_flm_status_update(&ndev->be);
+		nthw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_INITDONE, &value);
 
 		if (value) {
 			success = 1;
@@ -719,12 +719,12 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 	}
 
 	/* Set the INIT value back to zero to clear the bit in the SW register cache */
-	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_INIT, 0x0);
-	hw_mod_flm_control_flush(&ndev->be);
+	nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_INIT, 0x0);
+	nthw_mod_flm_control_flush(&ndev->be);
 
 	/* Enable FLM */
-	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, enable);
-	hw_mod_flm_control_flush(&ndev->be);
+	nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, enable);
+	nthw_mod_flm_control_flush(&ndev->be);
 
 	int nb_rpp_per_ps = ndev->be.flm.nb_rpp_clock_in_ps;
 	int nb_load_aps_max = ndev->be.flm.nb_load_aps_max;
@@ -735,8 +735,8 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 			(nb_load_aps_max * NTNIC_SCANNER_LOAD);
 	}
 
-	hw_mod_flm_scan_set(&ndev->be, HW_FLM_SCAN_I, scan_i_value);
-	hw_mod_flm_scan_flush(&ndev->be);
+	nthw_mod_flm_scan_set(&ndev->be, HW_FLM_SCAN_I, scan_i_value);
+	nthw_mod_flm_scan_flush(&ndev->be);
 
 	return 0;
 }
@@ -1666,11 +1666,11 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					memcpy_mask_if(&age_tmp, action[aidx].conf,
 					action_mask ? action_mask[aidx].conf : NULL,
 					sizeof(struct rte_flow_action_age));
-				fd->age.timeout = hw_mod_flm_scrub_timeout_encode(age->timeout);
+				fd->age.timeout = nthw_mod_flm_scrub_timeout_encode(age->timeout);
 				fd->age.context = age->context;
 				NT_LOG(DBG, FILTER,
 					"normalized timeout: %u, original timeout: %u, context: %p",
-					hw_mod_flm_scrub_timeout_decode(fd->age.timeout),
+					nthw_mod_flm_scrub_timeout_decode(fd->age.timeout),
 					age->timeout, fd->age.context);
 			}
 
@@ -3271,7 +3271,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		.frag_rcp = empty_pattern ? fd->flm_mtu_fragmentation_recipe : 0,
 	};
 	struct hw_db_cot_idx cot_idx =
-		hw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle, &cot_data);
+		nthw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle, &cot_data);
 	local_idxs[(*local_idx_counter)++] = cot_idx.raw;
 
 	if (cot_idx.error) {
@@ -3282,7 +3282,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	/* Finalize QSL */
 	struct hw_db_qsl_idx qsl_idx =
-		hw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle, qsl_data);
+		nthw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle, qsl_data);
 	local_idxs[(*local_idx_counter)++] = qsl_idx.raw;
 
 	if (qsl_idx.error) {
@@ -3293,7 +3293,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 
 	/* Setup HSH */
 	struct hw_db_hsh_idx hsh_idx =
-		hw_db_inline_hsh_add(dev->ndev, dev->ndev->hw_db_handle, hsh_data);
+		nthw_db_inline_hsh_add(dev->ndev, dev->ndev->hw_db_handle, hsh_data);
 	local_idxs[(*local_idx_counter)++] = hsh_idx.raw;
 
 	if (hsh_idx.error) {
@@ -3312,7 +3312,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 			.head_slice_ofs = fd->header_strip_end_ofs,
 		};
 		slc_lr_idx =
-			hw_db_inline_slc_lr_add(dev->ndev, dev->ndev->hw_db_handle, &slc_lr_data);
+			nthw_db_inline_slc_lr_add(dev->ndev, dev->ndev->hw_db_handle, &slc_lr_data);
 		local_idxs[(*local_idx_counter)++] = slc_lr_idx.raw;
 
 		if (slc_lr_idx.error) {
@@ -3334,7 +3334,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		memcpy(tpe_ext_data.hdr8, fd->tun_hdr.d.hdr8, (fd->tun_hdr.len + 15) & ~15);
 
 		struct hw_db_tpe_ext_idx tpe_ext_idx =
-			hw_db_inline_tpe_ext_add(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_tpe_ext_add(dev->ndev, dev->ndev->hw_db_handle,
 			&tpe_ext_data);
 		local_idxs[(*local_idx_counter)++] = tpe_ext_idx.raw;
 
@@ -3398,7 +3398,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	}
 
 	struct hw_db_tpe_idx tpe_idx =
-		hw_db_inline_tpe_add(dev->ndev, dev->ndev->hw_db_handle, &tpe_data);
+		nthw_db_inline_tpe_add(dev->ndev, dev->ndev->hw_db_handle, &tpe_data);
 
 	local_idxs[(*local_idx_counter)++] = tpe_idx.raw;
 
@@ -3411,7 +3411,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	/* Setup SCRUB profile */
 	struct hw_db_inline_scrub_data scrub_data = { .timeout = fd->age.timeout };
 	struct hw_db_flm_scrub_idx scrub_idx =
-		hw_db_inline_scrub_add(dev->ndev, dev->ndev->hw_db_handle, &scrub_data);
+		nthw_db_inline_scrub_add(dev->ndev, dev->ndev->hw_db_handle, &scrub_data);
 	local_idxs[(*local_idx_counter)++] = scrub_idx.raw;
 
 	if (scrub_idx.error) {
@@ -3434,7 +3434,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		.scrub = scrub_idx,
 	};
 	struct hw_db_action_set_idx action_set_idx =
-		hw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle, &action_set_data);
+		nthw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle, &action_set_data);
 	local_idxs[(*local_idx_counter)++] = action_set_idx.raw;
 
 	if (action_set_idx.error) {
@@ -3450,8 +3450,8 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		.action_set = action_set_idx,
 	};
 	struct hw_db_flm_ft flm_ft_idx = empty_pattern
-		? hw_db_inline_flm_ft_default(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data)
-		: hw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);
+		? nthw_db_inline_flm_ft_default(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data)
+		: nthw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);
 	local_idxs[(*local_idx_counter)++] = flm_ft_idx.raw;
 
 	if (flm_ft_idx.error) {
@@ -3527,7 +3527,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		};
 		memcpy(flm_data.mask, packet_mask, sizeof(uint32_t) * 10);
 		struct hw_db_flm_idx flm_idx =
-			hw_db_inline_flm_add(dev->ndev, dev->ndev->hw_db_handle, &flm_data,
+			nthw_db_inline_flm_add(dev->ndev, dev->ndev->hw_db_handle, &flm_data,
 			attr->group);
 		fh->db_idxs[fh->db_idx_counter++] = flm_idx.raw;
 
@@ -3601,7 +3601,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 				.frag_rcp = fd->flm_mtu_fragmentation_recipe,
 			};
 			struct hw_db_cot_idx cot_idx =
-				hw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle,
+				nthw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle,
 				&cot_data);
 			fh->db_idxs[fh->db_idx_counter++] = cot_idx.raw;
 			action_set_data.cot = cot_idx;
@@ -3614,7 +3614,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			/* Finalize QSL */
 			struct hw_db_qsl_idx qsl_idx =
-				hw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle,
+				nthw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle,
 				&qsl_data);
 			fh->db_idxs[fh->db_idx_counter++] = qsl_idx.raw;
 			action_set_data.qsl = qsl_idx;
@@ -3627,7 +3627,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			/* Setup HSH */
 			struct hw_db_hsh_idx hsh_idx =
-				hw_db_inline_hsh_add(dev->ndev, dev->ndev->hw_db_handle,
+				nthw_db_inline_hsh_add(dev->ndev, dev->ndev->hw_db_handle,
 				&hsh_data);
 			fh->db_idxs[fh->db_idx_counter++] = hsh_idx.raw;
 			action_set_data.hsh = hsh_idx;
@@ -3650,7 +3650,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 					.ttl_ofs = fd->ttl_sub_ipv4 ? 8 : 7,
 				};
 				struct hw_db_tpe_idx tpe_idx =
-					hw_db_inline_tpe_add(dev->ndev, dev->ndev->hw_db_handle,
+					nthw_db_inline_tpe_add(dev->ndev, dev->ndev->hw_db_handle,
 					&tpe_data);
 				fh->db_idxs[fh->db_idx_counter++] = tpe_idx.raw;
 				action_set_data.tpe = tpe_idx;
@@ -3665,7 +3665,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		}
 
 		struct hw_db_action_set_idx action_set_idx =
-			hw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle,
 			&action_set_data);
 
 		fh->db_idxs[fh->db_idx_counter++] = action_set_idx.raw;
@@ -3698,7 +3698,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			.ip_prot_tunnel = fd->tunnel_ip_prot,
 		};
 		struct hw_db_cat_idx cat_idx =
-			hw_db_inline_cat_add(dev->ndev, dev->ndev->hw_db_handle, &cat_data);
+			nthw_db_inline_cat_add(dev->ndev, dev->ndev->hw_db_handle, &cat_data);
 		fh->db_idxs[fh->db_idx_counter++] = cat_idx.raw;
 
 		if (cat_idx.error) {
@@ -3748,7 +3748,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			if (found_flow != NULL) {
 				/* Reuse existing KM RCP */
 				const struct hw_db_inline_km_rcp_data *other_km_rcp_data =
-					hw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
+					nthw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
 					HW_DB_IDX_TYPE_KM_RCP,
 					(struct hw_db_idx *)
 					found_flow->flm_db_idxs,
@@ -3784,7 +3784,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		}
 
 		struct hw_db_km_idx km_idx =
-			hw_db_inline_km_add(dev->ndev, dev->ndev->hw_db_handle, &km_rcp_data);
+			nthw_db_inline_km_add(dev->ndev, dev->ndev->hw_db_handle, &km_rcp_data);
 
 		fh->db_idxs[fh->db_idx_counter++] = km_idx.raw;
 
@@ -3801,7 +3801,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			.action_set = action_set_idx,
 		};
 		struct hw_db_km_ft km_ft_idx =
-			hw_db_inline_km_ft_add(dev->ndev, dev->ndev->hw_db_handle, &km_ft_data);
+			nthw_db_inline_km_ft_add(dev->ndev, dev->ndev->hw_db_handle, &km_ft_data);
 		fh->db_idxs[fh->db_idx_counter++] = km_ft_idx.raw;
 
 		if (km_ft_idx.error) {
@@ -3823,14 +3823,14 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			if (fd->km.target == KM_CAM) {
 				uint32_t ft_a_mask = 0;
-				hw_mod_km_rcp_get(&dev->ndev->be, HW_KM_RCP_FTM_A,
+				nthw_mod_km_rcp_get(&dev->ndev->be, HW_KM_RCP_FTM_A,
 					(int)km_rcp_data.rcp, 0, &ft_a_mask);
-				hw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_FTM_A,
+				nthw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_FTM_A,
 					(int)km_rcp_data.rcp, 0,
 					ft_a_mask | (1 << fd->km.flow_type));
 			}
 
-			hw_mod_km_rcp_flush(&dev->ndev->be, (int)km_rcp_data.rcp, 1);
+			nthw_mod_km_rcp_flush(&dev->ndev->be, (int)km_rcp_data.rcp, 1);
 
 			km_write_data_match_entry(&fd->km, 0);
 		}
@@ -3845,7 +3845,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			.priority = attr->priority & 0xff,
 		};
 		struct hw_db_match_set_idx match_set_idx =
-			hw_db_inline_match_set_add(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_match_set_add(dev->ndev, dev->ndev->hw_db_handle,
 			&match_set_data);
 		fh->db_idxs[fh->db_idx_counter++] = match_set_idx.raw;
 
@@ -3863,7 +3863,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 		};
 		struct hw_db_flm_ft flm_ft_idx =
-			hw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);
+			nthw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);
 		fh->db_idxs[fh->db_idx_counter++] = flm_ft_idx.raw;
 
 		if (flm_ft_idx.error) {
@@ -3880,12 +3880,12 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 error_out:
 
 	if (fh->type == FLOW_HANDLE_TYPE_FLM) {
-		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+		nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)fh->flm_db_idxs,
 			fh->flm_db_idx_counter);
 
 	} else {
-		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+		nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)fh->db_idxs, fh->db_idx_counter);
 	}
 
@@ -3915,25 +3915,25 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		flow_nic_mark_resource_used(ndev, RES_FLM_RCP, 0);
 
 		/* COT is locked to CFN. Don't set color for CFN 0 */
-		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
+		nthw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
 
-		if (hw_mod_cat_cot_flush(&ndev->be, 0, 1) < 0)
+		if (nthw_mod_cat_cot_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
 		/* Initialize QSL with unmatched recipe index 0 - discard */
-		if (hw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_DISCARD, 0, 0x1) < 0)
+		if (nthw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_DISCARD, 0, 0x1) < 0)
 			goto err_exit0;
 
-		if (hw_mod_qsl_rcp_flush(&ndev->be, 0, 1) < 0)
+		if (nthw_mod_qsl_rcp_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
 		flow_nic_mark_resource_used(ndev, RES_QSL_RCP, 0);
 
 		/* Initialize QST with default index 0 */
-		if (hw_mod_qsl_qst_set(&ndev->be, HW_QSL_QST_PRESET_ALL, 0, 0x0) < 0)
+		if (nthw_mod_qsl_qst_set(&ndev->be, HW_QSL_QST_PRESET_ALL, 0, 0x0) < 0)
 			goto err_exit0;
 
-		if (hw_mod_qsl_qst_flush(&ndev->be, 0, 1) < 0)
+		if (nthw_mod_qsl_qst_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
 		flow_nic_mark_resource_used(ndev, RES_QSL_QST, 0);
@@ -3946,13 +3946,13 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		/* PDB setup Direct Virtio Scatter-Gather descriptor of 12 bytes for its recipe 0
 		 */
-		if (hw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_DESCRIPTOR, 0, 7) < 0)
+		if (nthw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_DESCRIPTOR, 0, 7) < 0)
 			goto err_exit0;
 
-		if (hw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_DESC_LEN, 0, 6) < 0)
+		if (nthw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_DESC_LEN, 0, 6) < 0)
 			goto err_exit0;
 
-		if (hw_mod_pdb_rcp_flush(&ndev->be, 0, 1) < 0)
+		if (nthw_mod_pdb_rcp_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
 		flow_nic_mark_resource_used(ndev, RES_PDB_RCP, 0);
@@ -3967,15 +3967,15 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 			.algorithm = 0,
 		};
 		hsh_set(ndev, 0, hsh_5_tuple);
-		hw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
+		nthw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
 
 		flow_nic_mark_resource_used(ndev, RES_HSH_RCP, 0);
 
 		/* Initialize SCRUB with default index 0, i.e. flow will never AGE-out */
-		if (hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0) < 0)
+		if (nthw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0) < 0)
 			goto err_exit0;
 
-		if (hw_mod_flm_scrub_flush(&ndev->be, 0, 1) < 0)
+		if (nthw_mod_flm_scrub_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
 		flow_nic_mark_resource_used(ndev, RES_SCRUB_RCP, 0);
@@ -3984,7 +3984,7 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		flow_nic_mark_resource_used(ndev, RES_CAT_CFN, NT_VIOLATING_MBR_CFN);
 		flow_nic_mark_resource_used(ndev, RES_QSL_RCP, NT_VIOLATING_MBR_QSL);
 
-		if (hw_db_inline_setup_mbr_filter(ndev, NT_VIOLATING_MBR_CFN,
+		if (nthw_db_inline_setup_mbr_filter(ndev, NT_VIOLATING_MBR_CFN,
 			NT_FLM_VIOLATING_MBR_FLOW_TYPE,
 			NT_VIOLATING_MBR_QSL) < 0)
 			goto err_exit0;
@@ -3997,54 +3997,54 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 			goto err_exit0;
 
 		/* Learn done status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LDS, 0);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LDS, 0);
 		/* Learn fail status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LFS, 1);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LFS, 1);
 		/* Learn ignore status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LIS, 1);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LIS, 1);
 		/* Unlearn done status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_UDS, 0);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_UDS, 0);
 		/* Unlearn ignore status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_UIS, 0);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_UIS, 0);
 		/* Relearn done status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RDS, 0);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RDS, 0);
 		/* Relearn ignore status */
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RIS, 0);
-		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RBL, 4);
-		hw_mod_flm_control_flush(&ndev->be);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RIS, 0);
+		nthw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RBL, 4);
+		nthw_mod_flm_control_flush(&ndev->be);
 
 		/* Set the sliding windows size for flm load */
 		uint32_t bin = (uint32_t)(((FLM_LOAD_WINDOWS_SIZE * 1000000000000ULL) /
 			(32ULL * ndev->be.flm.nb_rpp_clock_in_ps)) -
 			1ULL);
-		hw_mod_flm_load_bin_set(&ndev->be, HW_FLM_LOAD_BIN, bin);
-		hw_mod_flm_load_bin_flush(&ndev->be);
+		nthw_mod_flm_load_bin_set(&ndev->be, HW_FLM_LOAD_BIN, bin);
+		nthw_mod_flm_load_bin_flush(&ndev->be);
 
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT0,
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT0,
 			0);	/* Drop at 100% FIFO fill level */
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT0, 1);
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT1,
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT0, 1);
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT1,
 			14);	/* Drop at 87,5% FIFO fill level */
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT1, 1);
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT2,
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT1, 1);
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT2,
 			10);	/* Drop at 62,5% FIFO fill level */
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT2, 1);
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT3,
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT2, 1);
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT3,
 			6);	/* Drop at 37,5% FIFO fill level */
-		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT3, 1);
-		hw_mod_flm_prio_flush(&ndev->be);
+		nthw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT3, 1);
+		nthw_mod_flm_prio_flush(&ndev->be);
 
 		/* TODO How to set and use these limits */
 		for (uint32_t i = 0; i < ndev->be.flm.nb_pst_profiles; ++i) {
-			hw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_BP, i,
+			nthw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_BP, i,
 				NTNIC_FLOW_PERIODIC_STATS_BYTE_LIMIT);
-			hw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_PP, i,
+			nthw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_PP, i,
 				NTNIC_FLOW_PERIODIC_STATS_PKT_LIMIT);
-			hw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_TP, i,
+			nthw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_TP, i,
 				NTNIC_FLOW_PERIODIC_STATS_BYTE_TIMEOUT);
 		}
 
-		hw_mod_flm_pst_flush(&ndev->be, 0, ALL_ENTRIES);
+		nthw_mod_flm_pst_flush(&ndev->be, 0, ALL_ENTRIES);
 
 		ndev->id_table_handle = ntnic_id_table_create();
 
@@ -4077,7 +4077,7 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		if (nthw_flow_group_handle_create(&ndev->group_handle, ndev->be.flm.nb_categories))
 			goto err_exit0;
 
-		if (hw_db_inline_create(ndev, &ndev->hw_db_handle))
+		if (nthw_db_inline_create(ndev, &ndev->hw_db_handle))
 			goto err_exit0;
 
 		ndev->flow_mgnt_prepared = 1;
@@ -4102,8 +4102,8 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		nthw_flow_nic_free_resource(ndev, RES_KM_FLOW_TYPE, 0);
 		nthw_flow_nic_free_resource(ndev, RES_KM_CATEGORY, 0);
 
-		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, 0, 0);
-		hw_mod_flm_rcp_flush(&ndev->be, 0, 1);
+		nthw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, 0, 0);
+		nthw_mod_flm_rcp_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 0);
 		nthw_flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 1);
 		nthw_flow_nic_free_resource(ndev, RES_FLM_RCP, 0);
@@ -4123,38 +4123,38 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		nthw_flow_group_handle_destroy(&ndev->group_handle);
 		ntnic_id_table_destroy(ndev->id_table_handle);
 
-		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PRESET_ALL, 0, 0, 0);
-		hw_mod_cat_cfn_flush(&ndev->be, 0, 1);
-		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
-		hw_mod_cat_cot_flush(&ndev->be, 0, 1);
+		nthw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PRESET_ALL, 0, 0, 0);
+		nthw_mod_cat_cfn_flush(&ndev->be, 0, 1);
+		nthw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
+		nthw_mod_cat_cot_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
 
-		hw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_PRESET_ALL, 0, 0);
-		hw_mod_qsl_rcp_flush(&ndev->be, 0, 1);
+		nthw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_PRESET_ALL, 0, 0);
+		nthw_mod_qsl_rcp_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_QSL_RCP, 0);
 
-		hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_PRESET_ALL, 0, 0);
-		hw_mod_slc_lr_rcp_flush(&ndev->be, 0, 1);
+		nthw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_PRESET_ALL, 0, 0);
+		nthw_mod_slc_lr_rcp_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_SLC_LR_RCP, 0);
 
-		hw_mod_tpe_reset(&ndev->be);
+		nthw_mod_tpe_reset(&ndev->be);
 		nthw_flow_nic_free_resource(ndev, RES_TPE_RCP, 0);
 		nthw_flow_nic_free_resource(ndev, RES_TPE_EXT, 0);
 		nthw_flow_nic_free_resource(ndev, RES_TPE_RPL, 0);
 
-		hw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_PRESET_ALL, 0, 0);
-		hw_mod_pdb_rcp_flush(&ndev->be, 0, 1);
+		nthw_mod_pdb_rcp_set(&ndev->be, HW_PDB_RCP_PRESET_ALL, 0, 0);
+		nthw_mod_pdb_rcp_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_PDB_RCP, 0);
 
-		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, 0, 0, 0);
-		hw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
+		nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, 0, 0, 0);
+		nthw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_HSH_RCP, 0);
 
-		hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0);
-		hw_mod_flm_scrub_flush(&ndev->be, 0, 1);
+		nthw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0);
+		nthw_mod_flm_scrub_flush(&ndev->be, 0, 1);
 		nthw_flow_nic_free_resource(ndev, RES_SCRUB_RCP, 0);
 
-		hw_db_inline_destroy(ndev->hw_db_handle);
+		nthw_db_inline_destroy(ndev->hw_db_handle);
 
 #ifdef FLOW_DEBUG
 		ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
@@ -4288,7 +4288,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 
 	NT_LOG(DBG, FILTER, "removing flow :%p", fh);
 	if (fh->type == FLOW_HANDLE_TYPE_FLM) {
-		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+		nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)fh->flm_db_idxs,
 			fh->flm_db_idx_counter);
 
@@ -4301,7 +4301,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 			km_clear_data_match_entry(&fh->fd->km);
 
 			const struct hw_db_inline_km_rcp_data *other_km_rcp_data =
-				hw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
+				nthw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
 				HW_DB_IDX_TYPE_KM_RCP,
 				(struct hw_db_idx *)fh->flm_db_idxs,
 				fh->flm_db_idx_counter);
@@ -4309,14 +4309,14 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 			if (other_km_rcp_data != NULL &&
 				nthw_flow_nic_deref_resource(dev->ndev, RES_KM_CATEGORY,
 				(int)other_km_rcp_data->rcp) == 0) {
-				hw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_PRESET_ALL,
+				nthw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_PRESET_ALL,
 					(int)other_km_rcp_data->rcp, 0, 0);
-				hw_mod_km_rcp_flush(&dev->ndev->be, (int)other_km_rcp_data->rcp,
+				nthw_mod_km_rcp_flush(&dev->ndev->be, (int)other_km_rcp_data->rcp,
 					1);
 			}
 		}
 
-		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+		nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)fh->db_idxs, fh->db_idx_counter);
 		free(fh->fd);
 		fh->fd = NULL;
@@ -4453,7 +4453,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 
 		/* Setup FLM RCP */
 		const struct hw_db_inline_flm_rcp_data *flm_data =
-			hw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
 				HW_DB_IDX_TYPE_FLM_RCP,
 				(struct hw_db_idx *)flow->flm_db_idxs,
 				flow->flm_db_idx_counter);
@@ -4465,7 +4465,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 		}
 
 		struct hw_db_flm_idx flm_idx =
-			hw_db_inline_flm_add(dev->ndev, dev->ndev->hw_db_handle, flm_data, group);
+			nthw_db_inline_flm_add(dev->ndev, dev->ndev->hw_db_handle, flm_data, group);
 
 		local_idxs[local_idx_counter++] = flm_idx.raw;
 
@@ -4530,7 +4530,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 		/* Program flow */
 		flm_flow_programming(flow, NT_FLM_OP_RELEARN);
 
-		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+		nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)flow->flm_db_idxs,
 			flow->flm_db_idx_counter);
 		memset(flow->flm_db_idxs, 0x0, sizeof(struct hw_db_idx) * RES_COUNT);
@@ -4547,7 +4547,8 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 	return 0;
 
 error_out:
-	hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle, (struct hw_db_idx *)local_idxs,
+	nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+		(struct hw_db_idx *)local_idxs,
 		local_idx_counter);
 
 	rte_spinlock_unlock(&dev->ndev->mtx);
@@ -4630,7 +4631,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 				(int)flow->caller_id);
 			fprintf(file, "  FLM_DATA:\n");
 			dump_flm_data(flow->flm_data, file);
-			hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
 				(struct hw_db_idx *)flow->flm_db_idxs,
 				flow->flm_db_idx_counter, file);
 			fprintf(file, "  Context: %p\n", flow->context);
@@ -4638,7 +4639,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 		} else {
 			fprintf(file, "Port %d, caller %d, flow type FLOW\n", (int)dev->port_id,
 				(int)flow->caller_id);
-			hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
 				(struct hw_db_idx *)flow->db_idxs, flow->db_idx_counter,
 				file);
 		}
@@ -4646,7 +4647,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	} else {
 		int max_flm_count = 1000;
 
-		hw_db_inline_dump_cfn(dev->ndev, dev->ndev->hw_db_handle, file);
+		nthw_db_inline_dump_cfn(dev->ndev, dev->ndev->hw_db_handle, file);
 
 		flow = dev->ndev->flow_base;
 
@@ -4654,7 +4655,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 			if (flow->caller_id == caller_id) {
 				fprintf(file, "Port %d, caller %d, flow type FLOW\n",
 					(int)dev->port_id, (int)flow->caller_id);
-				hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+				nthw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
 					(struct hw_db_idx *)flow->db_idxs,
 					flow->db_idx_counter, file);
 			}
@@ -4670,7 +4671,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 					(int)dev->port_id, (int)flow->caller_id);
 				fprintf(file, "  FLM_DATA:\n");
 				dump_flm_data(flow->flm_data, file);
-				hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+				nthw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
 					(struct hw_db_idx *)flow->flm_db_idxs,
 					flow->flm_db_idx_counter, file);
 				fprintf(file, "  Context: %p\n", flow->context);
@@ -4711,11 +4712,11 @@ int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	if (size < fields_cnt)
 		return -1;
 
-	hw_mod_flm_stat_update(&ndev->be);
+	nthw_mod_flm_stat_update(&ndev->be);
 
 	for (uint64_t i = 0; i < fields_cnt; ++i) {
 		uint32_t value = 0;
-		hw_mod_flm_stat_get(&ndev->be, fields[i], &value);
+		nthw_mod_flm_stat_get(&ndev->be, fields[i], &value);
 		data[i] = (fields[i] == HW_FLM_STAT_FLOWS || fields[i] == HW_FLM_LOAD_LPS ||
 				fields[i] == HW_FLM_LOAD_APS)
 			? value
@@ -4732,13 +4733,13 @@ int flow_get_ifr_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	uint8_t port_count)
 {
 	/* IFR RCP 0 is reserved, port counters start from record 1 */
-	hw_mod_tpe_ifr_counters_update(&ndev->be, 1, port_count);
+	nthw_mod_tpe_ifr_counters_update(&ndev->be, 1, port_count);
 	uint8_t i = 0;
 
 	for (i = 0; i < port_count; ++i) {
 		uint8_t ifr_mtu_recipe = convert_port_to_ifr_mtu_recipe(i);
 		uint32_t drop_cnt = 0;
-		hw_mod_tpe_ifr_counters_get(&ndev->be, HW_TPE_IFR_COUNTERS_DROP, ifr_mtu_recipe,
+		nthw_mod_tpe_ifr_counters_get(&ndev->be, HW_TPE_IFR_COUNTERS_DROP, ifr_mtu_recipe,
 			&drop_cnt);
 		data[i] = data[i] + drop_cnt;
 	}
@@ -4779,29 +4780,29 @@ int flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu)
 	uint8_t ifr_mtu_recipe = convert_port_to_ifr_mtu_recipe(port);
 	struct flow_nic_dev *ndev = dev->ndev;
 
-	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_EN, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_EN, ifr_mtu_recipe,
 			ipv4_en_frag);
-	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_EN, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_EN, ifr_mtu_recipe,
 			ipv6_en_frag);
-	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_MTU, ifr_mtu_recipe, mtu);
-	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_DF_DROP, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_MTU, ifr_mtu_recipe, mtu);
+	err |= nthw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_DF_DROP, ifr_mtu_recipe,
 			ipv4_action);
-	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_DROP, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_DROP, ifr_mtu_recipe,
 			ipv6_action);
 
-	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_EN, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_EN, ifr_mtu_recipe,
 			ipv4_en_frag);
-	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_EN, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_EN, ifr_mtu_recipe,
 			ipv6_en_frag);
-	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_MTU, ifr_mtu_recipe, mtu);
-	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_DF_DROP, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_MTU, ifr_mtu_recipe, mtu);
+	err |= nthw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_DF_DROP, ifr_mtu_recipe,
 			ipv4_action);
-	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_DROP, ifr_mtu_recipe,
+	err |= nthw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_DROP, ifr_mtu_recipe,
 			ipv6_action);
 
 	if (err == 0) {
-		err |= hw_mod_tpe_rpp_ifr_rcp_flush(&ndev->be, ifr_mtu_recipe, 1);
-		err |= hw_mod_tpe_ifr_rcp_flush(&ndev->be, ifr_mtu_recipe, 1);
+		err |= nthw_mod_tpe_rpp_ifr_rcp_flush(&ndev->be, ifr_mtu_recipe, 1);
+		err |= nthw_mod_tpe_ifr_rcp_flush(&ndev->be, ifr_mtu_recipe, 1);
 	}
 
 	return err;
@@ -5121,7 +5122,7 @@ int flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
 		struct flow_template_table_cell *cell = &template_table->pattern_action_pairs[i];
 
 		if (cell->flm_db_idx_counter > 0) {
-			hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+			nthw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 				(struct hw_db_idx *)cell->flm_db_idxs,
 				cell->flm_db_idx_counter);
 		}
@@ -5239,7 +5240,7 @@ struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
 				rte_spinlock_lock(&dev->ndev->mtx);
 
 				struct hw_db_idx *flm_ft_idx =
-					hw_db_inline_find_idx(dev->ndev, dev->ndev->hw_db_handle,
+					nthw_db_inline_find_idx(dev->ndev, dev->ndev->hw_db_handle,
 						HW_DB_IDX_TYPE_FLM_FT,
 						(struct hw_db_idx *)fh->flm_db_idxs,
 						fh->flm_db_idx_counter);

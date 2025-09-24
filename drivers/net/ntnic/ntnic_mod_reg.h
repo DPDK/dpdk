@@ -500,7 +500,7 @@ struct flow_filter_ops {
 	/*
 	 * Other
 	 */
-	int (*hw_mod_hsh_rcp_flush)(struct flow_api_backend_s *be, int start_idx, int count);
+	int (*nthw_mod_hsh_rcp_flush)(struct flow_api_backend_s *be, int start_idx, int count);
 
 	int (*flow_get_aged_flows)(struct flow_eth_dev *dev,
 		uint16_t caller_id,

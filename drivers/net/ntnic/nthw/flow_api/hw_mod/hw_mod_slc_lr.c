@@ -11,12 +11,12 @@
 #define _MOD_ "SLC_LR"
 #define _VER_ be->slc_lr.ver
 
-bool hw_mod_slc_lr_present(struct flow_api_backend_s *be)
+bool nthw_mod_slc_lr_present(struct flow_api_backend_s *be)
 {
 	return be->iface->get_slc_lr_present(be->be_dev);
 }
 
-int hw_mod_slc_lr_alloc(struct flow_api_backend_s *be)
+int nthw_mod_slc_lr_alloc(struct flow_api_backend_s *be)
 {
 	_VER_ = be->iface->get_slc_lr_version(be->be_dev);
 	NT_LOG(DBG, FILTER, "SLC LR MODULE VERSION  %i.%i", VER_MAJOR(_VER_), VER_MINOR(_VER_));
@@ -37,7 +37,7 @@ int hw_mod_slc_lr_alloc(struct flow_api_backend_s *be)
 	return 0;
 }
 
-void hw_mod_slc_lr_free(struct flow_api_backend_s *be)
+void nthw_mod_slc_lr_free(struct flow_api_backend_s *be)
 {
 	if (be->slc_lr.base) {
 		free(be->slc_lr.base);
@@ -45,16 +45,16 @@ void hw_mod_slc_lr_free(struct flow_api_backend_s *be)
 	}
 }
 
-int hw_mod_slc_lr_reset(struct flow_api_backend_s *be)
+int nthw_mod_slc_lr_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
 	nthw_zero_module_cache((struct common_func_s *)(&be->slc_lr));
 
 	NT_LOG(DBG, FILTER, "INIT SLC LR RCP");
-	return hw_mod_slc_lr_rcp_flush(be, 0, be->max_categories);
+	return nthw_mod_slc_lr_rcp_flush(be, 0, be->max_categories);
 }
 
-int hw_mod_slc_lr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_slc_lr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->max_categories;
@@ -161,7 +161,7 @@ static int hw_mod_slc_lr_rcp_mod(struct flow_api_backend_s *be, enum hw_slc_lr_e
 	return 0;
 }
 
-int hw_mod_slc_lr_rcp_set(struct flow_api_backend_s *be, enum hw_slc_lr_e field, uint32_t index,
+int nthw_mod_slc_lr_rcp_set(struct flow_api_backend_s *be, enum hw_slc_lr_e field, uint32_t index,
 	uint32_t value)
 {
 	return hw_mod_slc_lr_rcp_mod(be, field, index, &value, 0);

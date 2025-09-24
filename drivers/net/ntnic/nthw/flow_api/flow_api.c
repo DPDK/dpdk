@@ -418,19 +418,19 @@ static int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 	 * remove unmatched queue if setup in QSL
 	 * remove exception queue setting in QSL UNM
 	 */
-	hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_DEST_QUEUE, eth_dev->port, 0);
-	hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 0);
-	hw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1);
+	nthw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_DEST_QUEUE, eth_dev->port, 0);
+	nthw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 0);
+	nthw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1);
 
 	if (ndev->flow_profile == FLOW_ETH_DEV_PROFILE_INLINE) {
 		for (int i = 0; i < eth_dev->num_queues; ++i) {
 			uint32_t qen_value = 0;
 			uint32_t queue_id = (uint32_t)eth_dev->rx_queue[i].hw_id;
 
-			hw_mod_qsl_qen_get(&ndev->be, HW_QSL_QEN_EN, queue_id / 4, &qen_value);
-			hw_mod_qsl_qen_set(&ndev->be, HW_QSL_QEN_EN, queue_id / 4,
+			nthw_mod_qsl_qen_get(&ndev->be, HW_QSL_QEN_EN, queue_id / 4, &qen_value);
+			nthw_mod_qsl_qen_set(&ndev->be, HW_QSL_QEN_EN, queue_id / 4,
 				qen_value & ~(1U << (queue_id % 4)));
-			hw_mod_qsl_qen_flush(&ndev->be, queue_id / 4, 1);
+			nthw_mod_qsl_qen_flush(&ndev->be, queue_id / 4, 1);
 		}
 	}
 
@@ -678,14 +678,14 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 			 * Init QSL UNM - unmatched - redirects otherwise discarded
 			 * packets in QSL
 			 */
-			if (hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_DEST_QUEUE, eth_dev->port,
+			if (nthw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_DEST_QUEUE, eth_dev->port,
 				eth_dev->rx_queue[0].hw_id) < 0)
 				goto err_exit0;
 
-			if (hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 1) < 0)
+			if (nthw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 1) < 0)
 				goto err_exit0;
 
-			if (hw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1) < 0)
+			if (nthw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1) < 0)
 				goto err_exit0;
 		}
 
@@ -699,10 +699,10 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 			uint32_t qen_value = 0;
 			uint32_t queue_id = (uint32_t)eth_dev->rx_queue[i].hw_id;
 
-			hw_mod_qsl_qen_get(&ndev->be, HW_QSL_QEN_EN, queue_id / 4, &qen_value);
-			hw_mod_qsl_qen_set(&ndev->be, HW_QSL_QEN_EN, queue_id / 4,
+			nthw_mod_qsl_qen_get(&ndev->be, HW_QSL_QEN_EN, queue_id / 4, &qen_value);
+			nthw_mod_qsl_qen_set(&ndev->be, HW_QSL_QEN_EN, queue_id / 4,
 				qen_value | (1 << (queue_id % 4)));
-			hw_mod_qsl_qen_flush(&ndev->be, queue_id / 4, 1);
+			nthw_mod_qsl_qen_flush(&ndev->be, queue_id / 4, 1);
 		}
 	}
 
@@ -1276,7 +1276,7 @@ static const struct flow_filter_ops ops = {
 	/*
 	 * Other
 	 */
-	 .hw_mod_hsh_rcp_flush = hw_mod_hsh_rcp_flush,
+	 .nthw_mod_hsh_rcp_flush = nthw_mod_hsh_rcp_flush,
 };
 
 void nthw_init_flow_filter(void)

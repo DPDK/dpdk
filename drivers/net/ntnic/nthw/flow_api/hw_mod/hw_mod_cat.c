@@ -19,12 +19,12 @@ static int hw_mod_cat_kcs_flush(struct flow_api_backend_s *be, enum km_flm_if_se
 static int hw_mod_cat_fte_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int km_if_id, int start_idx, int count);
 
-bool hw_mod_cat_present(struct flow_api_backend_s *be)
+bool nthw_mod_cat_present(struct flow_api_backend_s *be)
 {
 	return be->iface->get_cat_present(be->be_dev);
 }
 
-int hw_mod_cat_alloc(struct flow_api_backend_s *be)
+int nthw_mod_cat_alloc(struct flow_api_backend_s *be)
 {
 	_VER_ = be->iface->get_cat_version(be->be_dev);
 	NT_LOG(DBG, FILTER, "CAT MODULE VERSION  %i.%i", VER_MAJOR(_VER_), VER_MINOR(_VER_));
@@ -175,7 +175,7 @@ int hw_mod_cat_alloc(struct flow_api_backend_s *be)
 	return 0;
 }
 
-void hw_mod_cat_free(struct flow_api_backend_s *be)
+void nthw_mod_cat_free(struct flow_api_backend_s *be)
 {
 	if (be->cat.base) {
 		free(be->cat.base);
@@ -185,52 +185,52 @@ void hw_mod_cat_free(struct flow_api_backend_s *be)
 
 static int cfn_reset(struct flow_api_backend_s *be, int i)
 {
-	int err = hw_mod_cat_cfn_set(be, HW_CAT_CFN_PRESET_ALL, i, 0, 0);
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_ISL, i, 0,
+	int err = nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PRESET_ALL, i, 0, 0);
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_ISL, i, 0,
 		0xffffffff);	/* accept both ISL or not ISL */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_CFP, i, 0,
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_CFP, i, 0,
 		0xffffffff);	/* accept both CFP or not CFP */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_MAC, i, 0, 0xffffffff);	/* accept all MACs */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_L2, i, 0, 0xffffffff);	/* accept all L2 prot */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_VNTAG, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_VLAN, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_MPLS, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_L3, i, 0, 0xffffffff);	/* accept all L3 prot */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_FRAG, i, 0, 0xffffffff);	/* accept all fragments */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_IP_PROT, i, 0,
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_MAC, i, 0, 0xffffffff);	/* accept all MACs */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_L2, i, 0, 0xffffffff);	/* accept all L2 prot */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_VNTAG, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_VLAN, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_MPLS, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_L3, i, 0, 0xffffffff);	/* accept all L3 prot */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_FRAG, i, 0, 0xffffffff); /* accept all fragments */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_IP_PROT, i, 0,
 		0xffffffff);	/* IP prot check disabled */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_L4, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TUNNEL, i, 0, 0xffffffff);/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_L2, i, 0, 0xffffffff);/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_VLAN, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_MPLS, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_L3, i, 0, 0xffffffff);/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_FRAG, i, 0, 0xffffffff);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_IP_PROT, i, 0,
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_L4, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TUNNEL, i, 0, 0xffffffff);/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_L2, i, 0, 0xffffffff);/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_VLAN, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_MPLS, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_L3, i, 0, 0xffffffff);/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_FRAG, i, 0, 0xffffffff);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_IP_PROT, i, 0,
 		0xffffffff);	/* inner IP prot check disabled */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_L4, i, 0, 0xffffffff);/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_CV, i, 0, 3);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_FCS, i, 0, 3);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TRUNC, i, 0,
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PTC_TNL_L4, i, 0, 0xffffffff);/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_CV, i, 0, 3);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_FCS, i, 0, 3);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TRUNC, i, 0,
 		0xffffffff);	/* accept all truncations */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_L3_CS, i, 0, 3);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_L4_CS, i, 0, 3);	/* accept all */
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_PM_OR_INV, i, 0, 1);
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_LC_INV, i, 0, 1);
-	hw_mod_cat_cfn_set(be, HW_CAT_CFN_KM0_OR, i, 0, 0xffffffff);	/* or all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_L3_CS, i, 0, 3);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_L4_CS, i, 0, 3);	/* accept all */
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_PM_OR_INV, i, 0, 1);
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_LC_INV, i, 0, 1);
+	nthw_mod_cat_cfn_set(be, HW_CAT_CFN_KM0_OR, i, 0, 0xffffffff);	/* or all */
 
 	if (_VER_ >= 21) {
-		hw_mod_cat_cfn_set(be, HW_CAT_CFN_KM1_OR, i, 0, 0xffffffff);	/* or all */
-		hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TNL_L3_CS, i, 0, 0xffffffff);	/* or all */
-		hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TNL_L4_CS, i, 0, 0xffffffff);	/* or all */
-		hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TTL_EXP, i, 0, 0xffffffff);	/* or all */
-		hw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TNL_TTL_EXP, i, 0, 0xffffffff);	/* or all */
+		nthw_mod_cat_cfn_set(be, HW_CAT_CFN_KM1_OR, i, 0, 0xffffffff);	/* or all */
+		nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TNL_L3_CS, i, 0, 0xffffffff);	/* or all */
+		nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TNL_L4_CS, i, 0, 0xffffffff);	/* or all */
+		nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TTL_EXP, i, 0, 0xffffffff);	/* or all */
+		nthw_mod_cat_cfn_set(be, HW_CAT_CFN_ERR_TNL_TTL_EXP, i, 0, 0xffffffff);	/* or all */
 	}
 
 	return err;
 }
 
-int hw_mod_cat_cfn_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_cat_cfn_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	switch (count) {
 	case ALL_ENTRIES:
@@ -734,8 +734,8 @@ static int hw_mod_cat_cfn_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_cfn_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index, int word_off,
-	uint32_t value)
+int nthw_mod_cat_cfn_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	int index, int word_off, uint32_t value)
 {
 	return hw_mod_cat_cfn_mod(be, field, index, word_off, &value, 0);
 }
@@ -794,13 +794,13 @@ static int hw_mod_cat_kce_flush(struct flow_api_backend_s *be, enum km_flm_if_se
 	return be->iface->cat_kce_flush(be->be_dev, &be->cat, km_if_idx, start_idx, count);
 }
 
-int hw_mod_cat_kce_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+int nthw_mod_cat_kce_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int start_idx, int count)
 {
 	return hw_mod_cat_kce_flush(be, if_num, 0, start_idx, count);
 }
 
-int hw_mod_cat_kce_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+int nthw_mod_cat_kce_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int start_idx, int count)
 {
 	return hw_mod_cat_kce_flush(be, if_num, 1, start_idx, count);
@@ -859,25 +859,25 @@ static int hw_mod_cat_kce_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_kce_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kce_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t value)
 {
 	return hw_mod_cat_kce_mod(be, field, if_num, 0, index, &value, 0);
 }
 
-int hw_mod_cat_kce_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kce_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t *value)
 {
 	return hw_mod_cat_kce_mod(be, field, if_num, 0, index, value, 1);
 }
 
-int hw_mod_cat_kce_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kce_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t value)
 {
 	return hw_mod_cat_kce_mod(be, field, if_num, 1, index, &value, 0);
 }
 
-int hw_mod_cat_kce_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kce_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t *value)
 {
 	return hw_mod_cat_kce_mod(be, field, if_num, 1, index, value, 1);
@@ -906,13 +906,13 @@ static int hw_mod_cat_kcs_flush(struct flow_api_backend_s *be, enum km_flm_if_se
 	return be->iface->cat_kcs_flush(be->be_dev, &be->cat, km_if_idx, start_idx, count);
 }
 
-int hw_mod_cat_kcs_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+int nthw_mod_cat_kcs_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int start_idx, int count)
 {
 	return hw_mod_cat_kcs_flush(be, if_num, 0, start_idx, count);
 }
 
-int hw_mod_cat_kcs_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+int nthw_mod_cat_kcs_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int start_idx, int count)
 {
 	return hw_mod_cat_kcs_flush(be, if_num, 1, start_idx, count);
@@ -971,25 +971,25 @@ static int hw_mod_cat_kcs_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_kcs_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kcs_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t value)
 {
 	return hw_mod_cat_kcs_mod(be, field, if_num, 0, index, &value, 0);
 }
 
-int hw_mod_cat_kcs_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kcs_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t *value)
 {
 	return hw_mod_cat_kcs_mod(be, field, if_num, 0, index, value, 1);
 }
 
-int hw_mod_cat_kcs_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kcs_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t value)
 {
 	return hw_mod_cat_kcs_mod(be, field, if_num, 1, index, &value, 0);
 }
 
-int hw_mod_cat_kcs_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_kcs_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t *value)
 {
 	return hw_mod_cat_kcs_mod(be, field, if_num, 1, index, value, 1);
@@ -1021,13 +1021,13 @@ static int hw_mod_cat_fte_flush(struct flow_api_backend_s *be, enum km_flm_if_se
 	return be->iface->cat_fte_flush(be->be_dev, &be->cat, km_if_idx, start_idx, count);
 }
 
-int hw_mod_cat_fte_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+int nthw_mod_cat_fte_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int start_idx, int count)
 {
 	return hw_mod_cat_fte_flush(be, if_num, 0, start_idx, count);
 }
 
-int hw_mod_cat_fte_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+int nthw_mod_cat_fte_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
 	int start_idx, int count)
 {
 	return hw_mod_cat_fte_flush(be, if_num, 1, start_idx, count);
@@ -1088,31 +1088,31 @@ static int hw_mod_cat_fte_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_fte_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_fte_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t value)
 {
 	return hw_mod_cat_fte_mod(be, field, if_num, 0, index, &value, 0);
 }
 
-int hw_mod_cat_fte_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_fte_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t *value)
 {
 	return hw_mod_cat_fte_mod(be, field, if_num, 0, index, value, 1);
 }
 
-int hw_mod_cat_fte_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_fte_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t value)
 {
 	return hw_mod_cat_fte_mod(be, field, if_num, 1, index, &value, 0);
 }
 
-int hw_mod_cat_fte_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+int nthw_mod_cat_fte_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
 	enum km_flm_if_select_e if_num, int index, uint32_t *value)
 {
 	return hw_mod_cat_fte_mod(be, field, if_num, 1, index, value, 1);
 }
 
-int hw_mod_cat_cte_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_cat_cte_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->cat.nb_cat_funcs;
@@ -1158,19 +1158,19 @@ static int hw_mod_cat_cte_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_cte_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+int nthw_mod_cat_cte_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
 	uint32_t value)
 {
 	return hw_mod_cat_cte_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_cat_cte_get(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+int nthw_mod_cat_cte_get(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
 	uint32_t *value)
 {
 	return hw_mod_cat_cte_mod(be, field, index, value, 1);
 }
 
-int hw_mod_cat_cts_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_cat_cts_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	int addr_size = (_VER_ < 15) ? 8 : ((be->cat.cts_num + 1) / 2);
 
@@ -1224,19 +1224,19 @@ static int hw_mod_cat_cts_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_cts_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+int nthw_mod_cat_cts_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
 	uint32_t value)
 {
 	return hw_mod_cat_cts_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_cat_cts_get(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+int nthw_mod_cat_cts_get(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
 	uint32_t *value)
 {
 	return hw_mod_cat_cts_mod(be, field, index, value, 1);
 }
 
-int hw_mod_cat_cot_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_cat_cot_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->max_categories;
@@ -1335,7 +1335,7 @@ static int hw_mod_cat_cot_mod(struct flow_api_backend_s *be, enum hw_cat_e field
 	return 0;
 }
 
-int hw_mod_cat_cot_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+int nthw_mod_cat_cot_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
 	uint32_t value)
 {
 	return hw_mod_cat_cot_mod(be, field, index, &value, 0);
@@ -1406,14 +1406,14 @@ static int hw_mod_cat_len_flush(struct flow_api_backend_s *be, int start_idx, in
 	return be->iface->cat_len_flush(be->be_dev, &be->cat, start_idx, count);
 }
 
-int hw_mod_cat_reset(struct flow_api_backend_s *be)
+int nthw_mod_cat_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
 	nthw_zero_module_cache((struct common_func_s *)(&be->cat));
 
 	NT_LOG(DBG, FILTER, "INIT CAT CFN");
 
-	if (hw_mod_cat_cfn_flush(be, 0, ALL_ENTRIES))
+	if (nthw_mod_cat_cfn_flush(be, 0, ALL_ENTRIES))
 		return -1;
 
 	if (_VER_ <= 18) {
@@ -1471,17 +1471,17 @@ int hw_mod_cat_reset(struct flow_api_backend_s *be)
 
 	NT_LOG(DBG, FILTER, "INIT CAT CTE");
 
-	if (hw_mod_cat_cte_flush(be, 0, ALL_ENTRIES))
+	if (nthw_mod_cat_cte_flush(be, 0, ALL_ENTRIES))
 		return -1;
 
 	NT_LOG(DBG, FILTER, "INIT CAT CTS");
 
-	if (hw_mod_cat_cts_flush(be, 0, ALL_ENTRIES))
+	if (nthw_mod_cat_cts_flush(be, 0, ALL_ENTRIES))
 		return -1;
 
 	NT_LOG(DBG, FILTER, "INIT CAT COT");
 
-	if (hw_mod_cat_cot_flush(be, 0, ALL_ENTRIES))
+	if (nthw_mod_cat_cot_flush(be, 0, ALL_ENTRIES))
 		return -1;
 
 	NT_LOG(DBG, FILTER, "INIT CAT CCT");
