@@ -141,7 +141,7 @@ struct ntnic_filter_ops {
 
 void nthw_reg_filter_ops(const struct ntnic_filter_ops *ops);
 const struct ntnic_filter_ops *nthw_get_filter_ops(void);
-void ntnic_filter_init(void);
+void nthw_filter_ops_init(void);
 
 struct link_ops_s {
 	int (*link_init)(struct adapter_info_s *p_adapter_info, nthw_fpga_t *p_fpga);
@@ -153,7 +153,7 @@ void nthw_link_100g_init(void);
 
 void nthw_reg_agx_100g_link_ops(struct link_ops_s *ops);
 const struct link_ops_s *nthw_get_agx_100g_link_ops(void);
-void link_agx_100g_init(void);
+void nthw_link_agx_100g_ops_init(void);
 
 struct port_ops {
 	bool (*get_nim_present)(struct adapter_info_s *p, int port);
@@ -220,7 +220,7 @@ struct nt4ga_stat_ops {
 
 void nthw_reg_nt4ga_stat_ops(const struct nt4ga_stat_ops *ops);
 const struct nt4ga_stat_ops *nthw_get_nt4ga_stat_ops(void);
-void nt4ga_stat_ops_init(void);
+void nthw_stat_ops_init(void);
 
 struct adapter_ops {
 	int (*init)(struct adapter_info_s *p_adapter_info);
@@ -240,7 +240,7 @@ struct clk9563_ops {
 
 void nthw_reg_clk9563_ops(struct clk9563_ops *ops);
 struct clk9563_ops *nthw_get_clk9563_ops(void);
-void clk9563_ops_init(void);
+void nthw_clk9563_ops_init(void);
 
 struct rst_nt200a0x_ops {
 	int (*nthw_fpga_rst_nt200a0x_init)(struct fpga_info_s *p_fpga_info,
@@ -251,7 +251,7 @@ struct rst_nt200a0x_ops {
 
 void nthw_reg_rst_nt200a0x_ops(struct rst_nt200a0x_ops *ops);
 struct rst_nt200a0x_ops *nthw_get_rst_nt200a0x_ops(void);
-void rst_nt200a0x_ops_init(void);
+void nthw_rst_nt200a0x_ops_init(void);
 
 struct rst9563_ops {
 	int (*nthw_fpga_rst9563_init)(struct fpga_info_s *p_fpga_info,
@@ -260,7 +260,7 @@ struct rst9563_ops {
 
 void nthw_reg_rst9563_ops(struct rst9563_ops *ops);
 struct rst9563_ops *nthw_get_rst9563_ops(void);
-void rst9563_ops_init(void);
+void nthw_rst9563_ops_init(void);
 
 struct rst9574_ops {
 	int (*nthw_fpga_rst9574_init)(struct fpga_info_s *p_fpga_info,
@@ -271,7 +271,7 @@ struct rst9574_ops {
 
 void nthw_reg_rst9574_ops(struct rst9574_ops *ops);
 struct rst9574_ops *nthw_get_rst9574_ops(void);
-void rst9574_ops_init(void);
+void nthw_rst9574_ops_init(void);
 
 struct rst_nt400dxx_ops {
 	int (*nthw_fpga_rst_nt400dxx_init)(struct fpga_info_s *p_fpga_info);
@@ -280,7 +280,7 @@ struct rst_nt400dxx_ops {
 
 void nthw_reg_rst_nt400dxx_ops(struct rst_nt400dxx_ops *ops);
 struct rst_nt400dxx_ops *nthw_get_rst_nt400dxx_ops(void);
-void rst_nt400dxx_ops_init(void);
+void nthw_rst_nt400dxx_ops_init(void);
 
 struct flow_backend_ops {
 	const struct flow_api_backend_ops *(*nthw_bin_flow_backend_init)(nthw_fpga_t *p_fpga,
@@ -593,6 +593,6 @@ struct ntnic_xstats_ops {
 
 void nthw_reg_xstats_ops(struct ntnic_xstats_ops *ops);
 struct ntnic_xstats_ops *nthw_get_xstats_ops(void);
-void ntnic_xstats_ops_init(void);
+void nthw_xstats_ops_init(void);
 
 #endif	/* __NTNIC_MOD_REG_H__ */

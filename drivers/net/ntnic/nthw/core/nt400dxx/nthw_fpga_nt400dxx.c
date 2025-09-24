@@ -213,7 +213,7 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 
 static struct nt400dxx_ops nt400dxx_ops = { .nthw_fpga_nt400dxx_init = nthw_fpga_nt400dxx_init };
 
-void nt400dxx_ops_init(void)
+void nthw_nt400dxx_ops_init(void)
 {
 	nthw_reg_nt400dxx_ops(&nt400dxx_ops);
 }

@@ -35,7 +35,7 @@ static struct link_ops_s link_agx_100g_ops = {
 	.link_init = nt4ga_agx_link_100g_ports_init,
 };
 
-void link_agx_100g_init(void)
+void nthw_link_agx_100g_ops_init(void)
 {
 	nthw_reg_agx_100g_link_ops(&link_agx_100g_ops);
 }

@@ -371,7 +371,7 @@ static struct rst9574_ops rst9574_ops = {
 	.nthw_fpga_rst9574_setup = nthw_fpga_rst9574_setup,
 };
 
-void rst9574_ops_init(void)
+void nthw_rst9574_ops_init(void)
 {
 	nthw_reg_rst9574_ops(&rst9574_ops);
 }

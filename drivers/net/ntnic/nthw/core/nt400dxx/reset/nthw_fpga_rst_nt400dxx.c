@@ -421,7 +421,7 @@ static struct rst_nt400dxx_ops rst_nt400dxx_ops = {
 	.nthw_fpga_rst_nt400dxx_reset = nthw_fpga_rst_nt400dxx_reset
 };
 
-void rst_nt400dxx_ops_init(void)
+void nthw_rst_nt400dxx_ops_init(void)
 {
 	nthw_reg_rst_nt400dxx_ops(&rst_nt400dxx_ops);
 }
