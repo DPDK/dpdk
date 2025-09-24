@@ -12,11 +12,11 @@
 #define RTE_GPUDEV_DRIVER_H
 
 #include <stdint.h>
-#include <sys/queue.h>
 
 #include <dev_driver.h>
 
 #include <rte_compat.h>
+#include <rte_os.h>
 #include "rte_gpudev.h"
 
 #ifdef __cplusplus
@@ -80,7 +80,7 @@ struct rte_gpu {
 	/* Driver functions. */
 	struct rte_gpu_ops ops;
 	/* Event callback list. */
-	TAILQ_HEAD(rte_gpu_callback_list, rte_gpu_callback) callbacks;
+	RTE_TAILQ_HEAD(rte_gpu_callback_list, rte_gpu_callback) callbacks;
 	/* Current state (used or not) in the running process. */
 	enum rte_gpu_state process_state; /* Updated by this library. */
 	/* Driver-specific private data for the running process. */

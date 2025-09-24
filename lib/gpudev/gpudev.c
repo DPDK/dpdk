@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <sys/queue.h>
 
 #include <rte_eal.h>
 #include <rte_tailq.h>
