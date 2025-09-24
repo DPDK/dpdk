@@ -41,7 +41,8 @@ enum rte_ntnic_event_type {
 };
 
 enum rte_ntnic_service_tag {
-	RTE_NTNIC_SERVICE_MAX = 1
+	RTE_NTNIC_SERVICE_FLM_UPDATE = 0,
+	RTE_NTNIC_SERVICE_MAX
 };
 
 /**
