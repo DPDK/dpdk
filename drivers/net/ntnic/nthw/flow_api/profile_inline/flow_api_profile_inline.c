@@ -211,7 +211,7 @@ static int flow_mtr_create_meter(struct flow_eth_dev *dev,
 
 	union flm_handles flm_h;
 	flm_h.idx = mtr_id;
-	uint32_t flm_id = ntnic_id_table_get_id(dev->ndev->id_table_handle, flm_h, caller_id, 2);
+	uint32_t flm_id = nthw_id_table_get_id(dev->ndev->id_table_handle, flm_h, caller_id, 2);
 
 	learn_record->sw9 = flm_id;
 	learn_record->kid = 1;
@@ -327,7 +327,7 @@ static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, u
 	mtr_stat[mtr_id].n_pkt_base = 0;
 	mtr_stat[mtr_id].buckets = NULL;
 
-	ntnic_id_table_free_id(dev->ndev->id_table_handle, flm_id);
+	nthw_id_table_free_id(dev->ndev->id_table_handle, flm_id);
 
 	nthw_flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
@@ -431,7 +431,7 @@ static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, u
 		uint8_t caller_id;
 		uint8_t type;
 		union flm_handles flm_h;
-		ntnic_id_table_find(dev->ndev->id_table_handle, inf_data->id, &flm_h, &caller_id,
+		nthw_id_table_find(dev->ndev->id_table_handle, inf_data->id, &flm_h, &caller_id,
 			&type);
 
 		/* Check that received record hold valid meter statistics */
@@ -507,7 +507,7 @@ static void flm_mtr_read_sta_records(struct flow_eth_dev *dev, uint32_t *data, u
 		uint8_t caller_id;
 		uint8_t type;
 		union flm_handles flm_h;
-		ntnic_id_table_find(dev->ndev->id_table_handle, sta_data->id, &flm_h, &caller_id,
+		nthw_id_table_find(dev->ndev->id_table_handle, sta_data->id, &flm_h, &caller_id,
 			&type);
 
 		if (type == 1) {
@@ -958,14 +958,14 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 	if (flm_op == NT_FLM_OP_LEARN) {
 		union flm_handles flm_h;
 		flm_h.p = fh;
-		fh->flm_id = ntnic_id_table_get_id(fh->dev->ndev->id_table_handle, flm_h,
+		fh->flm_id = nthw_id_table_get_id(fh->dev->ndev->id_table_handle, flm_h,
 			fh->caller_id, 1);
 	}
 
 	uint32_t flm_id = fh->flm_id;
 
 	if (flm_op == NT_FLM_OP_UNLEARN) {
-		ntnic_id_table_free_id(fh->dev->ndev->id_table_handle, flm_id);
+		nthw_id_table_free_id(fh->dev->ndev->id_table_handle, flm_id);
 
 		if (rte_atomic_load_explicit(&fh->learn_ignored, rte_memory_order_seq_cst) == 1)
 			return 0;
@@ -4057,7 +4057,7 @@ int nthw_init_flow_mgmnt_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		nthw_mod_flm_pst_flush(&ndev->be, 0, ALL_ENTRIES);
 
-		ndev->id_table_handle = ntnic_id_table_create();
+		ndev->id_table_handle = nthw_id_table_create();
 
 		if (ndev->id_table_handle == NULL)
 			goto err_exit0;
@@ -4132,7 +4132,7 @@ int nthw_done_flow_mgmnt_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		free(ndev->flm_mtr_handle);
 
 		nthw_flow_group_handle_destroy(&ndev->group_handle);
-		ntnic_id_table_destroy(ndev->id_table_handle);
+		nthw_id_table_destroy(ndev->id_table_handle);
 
 		nthw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PRESET_ALL, 0, 0, 0);
 		nthw_mod_cat_cfn_flush(&ndev->be, 0, 1);
