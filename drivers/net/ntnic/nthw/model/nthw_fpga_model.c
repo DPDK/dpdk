@@ -42,16 +42,16 @@ static const char *get_bus_name(int n_bus_type_id)
 static const struct {
 	const nthw_id_t a;
 	const char *b;
-} *sa_nthw_fpga_mod_str_map;
+} *nthw_sa_fpga_mod_str_map;
 
 static const char *nthw_fpga_mod_id_to_str(nthw_id_t n_fpga_mod_id)
 {
 	int i;
 
-	if (sa_nthw_fpga_mod_str_map) {
-		for (i = 0; sa_nthw_fpga_mod_str_map[i].a && sa_nthw_fpga_mod_str_map[i].b; i++)
-			if ((nthw_id_t)sa_nthw_fpga_mod_str_map[i].a == n_fpga_mod_id)
-				return sa_nthw_fpga_mod_str_map[i].b;
+	if (nthw_sa_fpga_mod_str_map) {
+		for (i = 0; nthw_sa_fpga_mod_str_map[i].a && nthw_sa_fpga_mod_str_map[i].b; i++)
+			if ((nthw_id_t)nthw_sa_fpga_mod_str_map[i].a == n_fpga_mod_id)
+				return nthw_sa_fpga_mod_str_map[i].b;
 	}
 
 	return "unknown";
@@ -372,7 +372,7 @@ void nthw_fpga_mgr_init(nthw_fpga_mgr_t *p, struct nthw_fpga_prod_init **pa_nthw
 	size_t i = 0;
 
 	p->mpa_fpga_prod_init = pa_nthw_fpga_instances;
-	sa_nthw_fpga_mod_str_map = pa_mod_str_map;
+	nthw_sa_fpga_mod_str_map = pa_mod_str_map;
 
 	/* Count fpga instance in array */
 	if (pa_nthw_fpga_instances) {

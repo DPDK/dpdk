@@ -14,40 +14,40 @@ struct hsh_nthw;
 
 typedef struct hsh_nthw hsh_nthw_t;
 
-struct hsh_nthw *hsh_nthw_new(void);
-void hsh_nthw_delete(struct hsh_nthw *p);
-int hsh_nthw_init(struct hsh_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
+struct hsh_nthw *nthw_hsh_new(void);
+void nthw_hsh_delete(struct hsh_nthw *p);
+int nthw_hsh_init(struct hsh_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int hsh_nthw_setup(struct hsh_nthw *p, int n_idx, int n_idx_cnt);
-void hsh_nthw_set_debug_mode(struct hsh_nthw *p, unsigned int n_debug_mode);
+void nthw_hsh_set_debug_mode(struct hsh_nthw *p, unsigned int n_debug_mode);
 
 /* RCP */
-void hsh_nthw_rcp_select(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_cnt(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_load_dist_type(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_mac_port_mask(const struct hsh_nthw *p, uint32_t *val);
-void hsh_nthw_rcp_sort(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_qw0_pe(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_qw0_ofs(const struct hsh_nthw *p, int32_t val);
-void hsh_nthw_rcp_qw4_pe(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_qw4_ofs(const struct hsh_nthw *p, int32_t val);
-void hsh_nthw_rcp_w8_pe(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_w8_ofs(const struct hsh_nthw *p, int32_t val);
-void hsh_nthw_rcp_w8_sort(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_w9_pe(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_w9_ofs(const struct hsh_nthw *p, int32_t val);
-void hsh_nthw_rcp_w9_sort(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_w9_p(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_p_mask(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_word_mask(const struct hsh_nthw *p, uint32_t *val);
-void hsh_nthw_rcp_seed(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_tnl_p(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_hsh_valid(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_hsh_type(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_toeplitz(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_k(const struct hsh_nthw *p, uint32_t *val);
-void hsh_nthw_rcp_auto_ipv4_mask(const struct hsh_nthw *p, uint32_t val);
-void hsh_nthw_rcp_flush(const struct hsh_nthw *p);
+void nthw_hsh_rcp_select(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_cnt(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_load_dist_type(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_mac_port_mask(const struct hsh_nthw *p, uint32_t *val);
+void nthw_hsh_rcp_sort(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_qw0_pe(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_qw0_ofs(const struct hsh_nthw *p, int32_t val);
+void nthw_hsh_rcp_qw4_pe(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_qw4_ofs(const struct hsh_nthw *p, int32_t val);
+void nthw_hsh_rcp_w8_pe(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_w8_ofs(const struct hsh_nthw *p, int32_t val);
+void nthw_hsh_rcp_w8_sort(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_w9_pe(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_w9_ofs(const struct hsh_nthw *p, int32_t val);
+void nthw_hsh_rcp_w9_sort(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_w9_p(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_p_mask(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_word_mask(const struct hsh_nthw *p, uint32_t *val);
+void nthw_hsh_rcp_seed(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_tnl_p(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_hsh_valid(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_hsh_type(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_toeplitz(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_k(const struct hsh_nthw *p, uint32_t *val);
+void nthw_hsh_rcp_auto_ipv4_mask(const struct hsh_nthw *p, uint32_t val);
+void nthw_hsh_rcp_flush(const struct hsh_nthw *p);
 
 struct hsh_nthw {
 	uint8_t m_physical_adapter_no;

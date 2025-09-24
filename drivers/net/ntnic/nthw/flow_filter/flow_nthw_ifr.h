@@ -42,26 +42,26 @@ struct ifr_nthw {
 	nthw_field_t *mp_counters_drop;
 };
 
-struct ifr_nthw *ifr_nthw_new(void);
-int ifr_nthw_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
+struct ifr_nthw *nthw_ifr_new(void);
+int nthw_ifr_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int ifr_nthw_setup(struct ifr_nthw *p, int n_idx, int n_idx_cnt);
-void ifr_nthw_set_debug_mode(struct ifr_nthw *p, unsigned int n_debug_mode);
+void nthw_ifr_set_debug_mode(struct ifr_nthw *p, unsigned int n_debug_mode);
 
 /* IFR RCP */
-void ifr_nthw_rcp_select(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_cnt(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_ipv4_en(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_ipv4_df_drop(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_ipv6_en(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_ipv6_drop(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_mtu(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_rcp_flush(const struct ifr_nthw *p);
+void nthw_ifr_rcp_select(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_cnt(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_ipv4_en(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_ipv4_df_drop(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_ipv6_en(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_ipv6_drop(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_mtu(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_rcp_flush(const struct ifr_nthw *p);
 
 /* IFR Counters */
-void ifr_nthw_counters_select(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_counters_cnt(const struct ifr_nthw *p, uint32_t val);
-void ifr_nthw_counters_drop(const struct ifr_nthw *p, uint32_t *val, int get);
-void ifr_nthw_counters_update(const struct ifr_nthw *p);
+void nthw_ifr_counters_select(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_counters_cnt(const struct ifr_nthw *p, uint32_t val);
+void nthw_ifr_counters_drop(const struct ifr_nthw *p, uint32_t *val, int get);
+void nthw_ifr_counters_update(const struct ifr_nthw *p);
 
 #endif	/* __FLOW_NTHW_IFR_H__ */

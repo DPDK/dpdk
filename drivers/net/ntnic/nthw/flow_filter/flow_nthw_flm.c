@@ -15,7 +15,7 @@
 
 #include "flow_nthw_flm.h"
 
-struct flm_nthw *flm_nthw_new(void)
+struct flm_nthw *nthw_flm_new(void)
 {
 	struct flm_nthw *p = malloc(sizeof(struct flm_nthw));
 
@@ -25,7 +25,7 @@ struct flm_nthw *flm_nthw_new(void)
 	return p;
 }
 
-void flm_nthw_delete(struct flm_nthw *p)
+void nthw_flm_delete(struct flm_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -33,12 +33,12 @@ void flm_nthw_delete(struct flm_nthw *p)
 	}
 }
 
-void flm_nthw_set_debug_mode(struct flm_nthw *p, unsigned int n_debug_mode)
+void nthw_flm_set_debug_mode(struct flm_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_flm, n_debug_mode);
 }
 
-int flm_nthw_init(struct flm_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_flm_init(struct flm_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_FLM, n_instance);
@@ -270,94 +270,94 @@ int flm_nthw_init(struct flm_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
-void flm_nthw_control_enable(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_enable(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_enable, val);
 }
 
-void flm_nthw_control_init(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_init(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_init, val);
 }
 
-void flm_nthw_control_lds(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_lds(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_lds, val);
 }
 
-void flm_nthw_control_lfs(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_lfs(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_lfs, val);
 }
 
-void flm_nthw_control_lis(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_lis(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_lis, val);
 }
 
-void flm_nthw_control_uds(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_uds(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_uds, val);
 }
 
-void flm_nthw_control_uis(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_uis(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_uis, val);
 }
 
-void flm_nthw_control_rds(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_rds(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_rds, val);
 }
 
-void flm_nthw_control_ris(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_ris(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_ris, val);
 }
 
-void flm_nthw_control_pds(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_pds(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_control_pds);
 	nthw_field_set_val32(p->mp_control_pds, val);
 }
 
-void flm_nthw_control_pis(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_pis(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_control_pis);
 	nthw_field_set_val32(p->mp_control_pis, val);
 }
 
-void flm_nthw_control_crcwr(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_crcwr(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_crcwr, val);
 }
 
-void flm_nthw_control_crcrd(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_crcrd(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_crcrd, val);
 }
 
-void flm_nthw_control_rbl(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_rbl(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_rbl, val);
 }
 
-void flm_nthw_control_eab(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_eab(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_eab, val);
 }
 
-void flm_nthw_control_split_sdram_usage(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_control_split_sdram_usage(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_control_split_sdram_usage, val);
 }
 
-void flm_nthw_control_flush(const struct flm_nthw *p)
+void nthw_flm_control_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_control, 1);
 }
 
-void flm_nthw_status_calib_success(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_calib_success(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get) {
 		uint32_t w = nthw_field_get_bit_width(p->mp_status_calib_success);
@@ -371,25 +371,25 @@ void flm_nthw_status_calib_success(const struct flm_nthw *p, uint32_t *val, int 
 	}
 }
 
-void flm_nthw_status_calib_fail(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_calib_fail(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_calib_fail);
 }
 
-void flm_nthw_status_initdone(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_initdone(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_initdone);
 }
 
-void flm_nthw_status_idle(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_idle(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_idle);
 }
 
-void flm_nthw_status_critical(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_critical(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_critical);
@@ -398,7 +398,7 @@ void flm_nthw_status_critical(const struct flm_nthw *p, uint32_t *val, int get)
 		nthw_field_set_val32(p->mp_status_critical, *val);
 }
 
-void flm_nthw_status_panic(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_panic(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_panic);
@@ -407,7 +407,7 @@ void flm_nthw_status_panic(const struct flm_nthw *p, uint32_t *val, int get)
 		nthw_field_set_val32(p->mp_status_panic, *val);
 }
 
-void flm_nthw_status_crcerr(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_crcerr(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_crcerr);
@@ -416,13 +416,13 @@ void flm_nthw_status_crcerr(const struct flm_nthw *p, uint32_t *val, int get)
 		nthw_field_set_val32(p->mp_status_crcerr, *val);
 }
 
-void flm_nthw_status_eft_bp(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_eft_bp(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_eft_bp);
 }
 
-void flm_nthw_status_cache_buf_crit(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_status_cache_buf_crit(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_status_cache_buf_critical);
@@ -431,246 +431,246 @@ void flm_nthw_status_cache_buf_crit(const struct flm_nthw *p, uint32_t *val, int
 		nthw_field_set_val32(p->mp_status_cache_buf_critical, *val);
 }
 
-void flm_nthw_status_flush(const struct flm_nthw *p)
+void nthw_flm_status_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_status, 1);
 }
 
-void flm_nthw_status_update(const struct flm_nthw *p)
+void nthw_flm_status_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_status);
 }
 
-void flm_nthw_scan_i(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scan_i(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_scan_i, val);
 }
 
-void flm_nthw_scan_flush(const struct flm_nthw *p)
+void nthw_flm_scan_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_scan, 1);
 }
 
-void flm_nthw_load_bin(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_load_bin(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_load_bin_bin, val);
 }
 
-void flm_nthw_load_bin_flush(const struct flm_nthw *p)
+void nthw_flm_load_bin_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_load_bin, 1);
 }
 
-void flm_nthw_load_lps_update(const struct flm_nthw *p)
+void nthw_flm_load_lps_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_load_lps);
 }
 
-void flm_nthw_load_lps_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_load_lps_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_load_lps_lps);
 }
 
-void flm_nthw_load_aps_update(const struct flm_nthw *p)
+void nthw_flm_load_aps_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_load_aps);
 }
 
-void flm_nthw_load_aps_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_load_aps_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_load_aps_aps);
 }
 
-void flm_nthw_prio_limit0(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_limit0(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_limit0, val);
 }
 
-void flm_nthw_prio_ft0(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_ft0(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_ft0, val);
 }
 
-void flm_nthw_prio_limit1(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_limit1(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_limit1, val);
 }
 
-void flm_nthw_prio_ft1(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_ft1(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_ft1, val);
 }
 
-void flm_nthw_prio_limit2(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_limit2(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_limit2, val);
 }
 
-void flm_nthw_prio_ft2(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_ft2(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_ft2, val);
 }
 
-void flm_nthw_prio_limit3(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_limit3(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_limit3, val);
 }
 
-void flm_nthw_prio_ft3(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_prio_ft3(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_prio_ft3, val);
 }
 
-void flm_nthw_prio_flush(const struct flm_nthw *p)
+void nthw_flm_prio_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_prio, 1);
 }
 
-void flm_nthw_pst_select(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_pst_select(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_pst_ctrl_adr, val);
 }
 
-void flm_nthw_pst_cnt(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_pst_cnt(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_pst_ctrl_cnt, val);
 }
 
-void flm_nthw_pst_bp(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_pst_bp(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_pst_data_bp, val);
 }
 
-void flm_nthw_pst_pp(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_pst_pp(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_pst_data_pp, val);
 }
 
-void flm_nthw_pst_tp(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_pst_tp(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_pst_data_tp, val);
 }
 
-void flm_nthw_pst_flush(const struct flm_nthw *p)
+void nthw_flm_pst_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_pst_ctrl, 1);
 	nthw_register_flush(p->mp_pst_data, 1);
 }
 
-void flm_nthw_rcp_select(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_select(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_ctrl_adr, val);
 }
 
-void flm_nthw_rcp_cnt(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_cnt(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_ctrl_cnt, val);
 }
 
-void flm_nthw_rcp_lookup(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_lookup(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_lookup, val);
 }
 
-void flm_nthw_rcp_qw0_dyn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_qw0_dyn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_dyn, val);
 }
 
-void flm_nthw_rcp_qw0_ofs(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_qw0_ofs(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_ofs, val);
 }
 
-void flm_nthw_rcp_qw0_sel(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_qw0_sel(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_sel, val);
 }
 
-void flm_nthw_rcp_qw4_dyn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_qw4_dyn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_dyn, val);
 }
 
-void flm_nthw_rcp_qw4_ofs(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_qw4_ofs(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_ofs, val);
 }
 
-void flm_nthw_rcp_sw8_dyn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_sw8_dyn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw8_dyn, val);
 }
 
-void flm_nthw_rcp_sw8_ofs(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_sw8_ofs(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw8_ofs, val);
 }
 
-void flm_nthw_rcp_sw8_sel(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_sw8_sel(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw8_sel, val);
 }
 
-void flm_nthw_rcp_sw9_dyn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_sw9_dyn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw9_dyn, val);
 }
 
-void flm_nthw_rcp_sw9_ofs(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_sw9_ofs(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw9_ofs, val);
 }
 
-void flm_nthw_rcp_mask(const struct flm_nthw *p, const uint32_t *val)
+void nthw_flm_rcp_mask(const struct flm_nthw *p, const uint32_t *val)
 {
 	nthw_field_set_val(p->mp_rcp_data_mask, val, 10);
 }
 
-void flm_nthw_rcp_kid(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_kid(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_kid, val);
 }
 
-void flm_nthw_rcp_opn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_opn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_opn, val);
 }
 
-void flm_nthw_rcp_ipn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_ipn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_ipn, val);
 }
 
-void flm_nthw_rcp_byt_dyn(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_byt_dyn(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_byt_dyn, val);
 }
 
-void flm_nthw_rcp_byt_ofs(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_byt_ofs(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_byt_ofs, val);
 }
 
-void flm_nthw_rcp_txplm(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_txplm(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_txplm, val);
 }
 
-void flm_nthw_rcp_auto_ipv4_mask(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_rcp_auto_ipv4_mask(const struct flm_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_auto_ipv4_mask, val);
 }
 
-void flm_nthw_rcp_flush(const struct flm_nthw *p)
+void nthw_flm_rcp_flush(const struct flm_nthw *p)
 {
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);
 }
 
-int flm_nthw_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint32_t *inf_avail,
+int nthw_flm_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint32_t *inf_avail,
 	uint32_t *sta_avail)
 {
 	int ret = -1;
@@ -708,7 +708,7 @@ int flm_nthw_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint3
 	return ret;
 }
 
-int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint32_t records,
+int nthw_flm_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint32_t records,
 	uint32_t words_per_record, uint32_t *handled_records,
 	uint32_t *lrn_free, uint32_t *inf_avail, uint32_t *sta_avail)
 {
@@ -807,7 +807,7 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 	return 0;
 }
 
-int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
+int nthw_flm_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 	uint32_t inf_word_count, uint32_t *sta_data,
 	uint32_t sta_word_count, uint32_t *lrn_free, uint32_t *inf_avail,
 	uint32_t *sta_avail)
@@ -886,62 +886,62 @@ int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 	return ret;
 }
 
-void flm_nthw_stat_lrn_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_lrn_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_lrn_done_cnt);
 }
 
-void flm_nthw_stat_lrn_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_lrn_done_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_lrn_done);
 }
 
-void flm_nthw_stat_lrn_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_lrn_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_lrn_ignore_cnt);
 }
 
-void flm_nthw_stat_lrn_ignore_update(const struct flm_nthw *p)
+void nthw_flm_stat_lrn_ignore_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_lrn_ignore);
 }
 
-void flm_nthw_stat_lrn_fail_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_lrn_fail_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_lrn_fail_cnt);
 }
 
-void flm_nthw_stat_lrn_fail_update(const struct flm_nthw *p)
+void nthw_flm_stat_lrn_fail_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_lrn_fail);
 }
 
-void flm_nthw_stat_unl_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_unl_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_unl_done_cnt);
 }
 
-void flm_nthw_stat_unl_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_unl_done_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_unl_done);
 }
 
-void flm_nthw_stat_unl_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_unl_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_unl_ignore_cnt);
 }
 
-void flm_nthw_stat_unl_ignore_update(const struct flm_nthw *p)
+void nthw_flm_stat_unl_ignore_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_unl_ignore);
 }
 
-void flm_nthw_stat_prb_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_prb_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_prb_done_cnt);
 
@@ -949,13 +949,13 @@ void flm_nthw_stat_prb_done_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_prb_done_cnt);
 }
 
-void flm_nthw_stat_prb_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_prb_done_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_prb_done);
 	nthw_register_update(p->mp_stat_prb_done);
 }
 
-void flm_nthw_stat_prb_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_prb_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_prb_ignore_cnt);
 
@@ -963,90 +963,90 @@ void flm_nthw_stat_prb_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int g
 		*val = nthw_field_get_val32(p->mp_stat_prb_ignore_cnt);
 }
 
-void flm_nthw_stat_prb_ignore_update(const struct flm_nthw *p)
+void nthw_flm_stat_prb_ignore_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_prb_ignore);
 	nthw_register_update(p->mp_stat_prb_ignore);
 }
 
-void flm_nthw_stat_rel_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_rel_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_rel_done_cnt);
 }
 
-void flm_nthw_stat_rel_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_rel_done_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_rel_done);
 }
 
-void flm_nthw_stat_rel_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_rel_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_rel_ignore_cnt);
 }
 
-void flm_nthw_stat_rel_ignore_update(const struct flm_nthw *p)
+void nthw_flm_stat_rel_ignore_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_rel_ignore);
 }
 
-void flm_nthw_stat_aul_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_aul_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_aul_done_cnt);
 }
 
-void flm_nthw_stat_aul_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_aul_done_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_aul_done);
 }
 
-void flm_nthw_stat_aul_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_aul_ignore_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_aul_ignore_cnt);
 }
 
-void flm_nthw_stat_aul_ignore_update(const struct flm_nthw *p)
+void nthw_flm_stat_aul_ignore_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_aul_ignore);
 }
 
-void flm_nthw_stat_aul_fail_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_aul_fail_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_aul_fail_cnt);
 }
 
-void flm_nthw_stat_aul_fail_update(const struct flm_nthw *p)
+void nthw_flm_stat_aul_fail_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_aul_fail);
 }
 
-void flm_nthw_stat_tul_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_tul_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_tul_done_cnt);
 }
 
-void flm_nthw_stat_tul_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_tul_done_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_tul_done);
 }
 
-void flm_nthw_stat_flows_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_flows_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_stat_flows_cnt);
 }
 
-void flm_nthw_stat_flows_update(const struct flm_nthw *p)
+void nthw_flm_stat_flows_update(const struct flm_nthw *p)
 {
 	nthw_register_update(p->mp_stat_flows);
 }
 
-void flm_nthw_stat_sta_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_sta_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_sta_done_cnt);
 
@@ -1054,13 +1054,13 @@ void flm_nthw_stat_sta_done_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_sta_done_cnt);
 }
 
-void flm_nthw_stat_sta_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_sta_done_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_sta_done);
 	nthw_register_update(p->mp_stat_sta_done);
 }
 
-void flm_nthw_stat_inf_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_inf_done_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_inf_done_cnt);
 
@@ -1068,13 +1068,13 @@ void flm_nthw_stat_inf_done_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_inf_done_cnt);
 }
 
-void flm_nthw_stat_inf_done_update(const struct flm_nthw *p)
+void nthw_flm_stat_inf_done_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_inf_done);
 	nthw_register_update(p->mp_stat_inf_done);
 }
 
-void flm_nthw_stat_inf_skip_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_inf_skip_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_inf_skip_cnt);
 
@@ -1082,13 +1082,13 @@ void flm_nthw_stat_inf_skip_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_inf_skip_cnt);
 }
 
-void flm_nthw_stat_inf_skip_update(const struct flm_nthw *p)
+void nthw_flm_stat_inf_skip_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_inf_skip);
 	nthw_register_update(p->mp_stat_inf_skip);
 }
 
-void flm_nthw_stat_pck_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_pck_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_pck_hit_cnt);
 
@@ -1096,13 +1096,13 @@ void flm_nthw_stat_pck_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_hit_cnt);
 }
 
-void flm_nthw_stat_pck_hit_update(const struct flm_nthw *p)
+void nthw_flm_stat_pck_hit_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_pck_hit);
 	nthw_register_update(p->mp_stat_pck_hit);
 }
 
-void flm_nthw_stat_pck_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_pck_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_pck_miss_cnt);
 
@@ -1110,13 +1110,13 @@ void flm_nthw_stat_pck_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_pck_miss_cnt);
 }
 
-void flm_nthw_stat_pck_miss_update(const struct flm_nthw *p)
+void nthw_flm_stat_pck_miss_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_pck_miss);
 	nthw_register_update(p->mp_stat_pck_miss);
 }
 
-void flm_nthw_stat_pck_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_pck_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_pck_unh_cnt);
 
@@ -1124,13 +1124,13 @@ void flm_nthw_stat_pck_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_unh_cnt);
 }
 
-void flm_nthw_stat_pck_unh_update(const struct flm_nthw *p)
+void nthw_flm_stat_pck_unh_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_pck_unh);
 	nthw_register_update(p->mp_stat_pck_unh);
 }
 
-void flm_nthw_stat_pck_dis_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_pck_dis_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_pck_dis_cnt);
 
@@ -1138,13 +1138,13 @@ void flm_nthw_stat_pck_dis_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 		*val = nthw_field_get_val32(p->mp_stat_pck_dis_cnt);
 }
 
-void flm_nthw_stat_pck_dis_update(const struct flm_nthw *p)
+void nthw_flm_stat_pck_dis_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_pck_dis);
 	nthw_register_update(p->mp_stat_pck_dis);
 }
 
-void flm_nthw_stat_csh_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_csh_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_csh_hit_cnt);
 
@@ -1152,13 +1152,13 @@ void flm_nthw_stat_csh_hit_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 		*val = nthw_field_get_val32(p->mp_stat_csh_hit_cnt);
 }
 
-void flm_nthw_stat_csh_hit_update(const struct flm_nthw *p)
+void nthw_flm_stat_csh_hit_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_csh_hit);
 	nthw_register_update(p->mp_stat_csh_hit);
 }
 
-void flm_nthw_stat_csh_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_csh_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_csh_miss_cnt);
 
@@ -1166,13 +1166,13 @@ void flm_nthw_stat_csh_miss_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_csh_miss_cnt);
 }
 
-void flm_nthw_stat_csh_miss_update(const struct flm_nthw *p)
+void nthw_flm_stat_csh_miss_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_csh_miss);
 	nthw_register_update(p->mp_stat_csh_miss);
 }
 
-void flm_nthw_stat_csh_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_csh_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_csh_unh_cnt);
 
@@ -1180,13 +1180,13 @@ void flm_nthw_stat_csh_unh_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 		*val = nthw_field_get_val32(p->mp_stat_csh_unh_cnt);
 }
 
-void flm_nthw_stat_csh_unh_update(const struct flm_nthw *p)
+void nthw_flm_stat_csh_unh_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_csh_unh);
 	nthw_register_update(p->mp_stat_csh_unh);
 }
 
-void flm_nthw_stat_cuc_start_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_cuc_start_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_cuc_start_cnt);
 
@@ -1194,13 +1194,13 @@ void flm_nthw_stat_cuc_start_cnt(const struct flm_nthw *p, uint32_t *val, int ge
 		*val = nthw_field_get_val32(p->mp_stat_cuc_start_cnt);
 }
 
-void flm_nthw_stat_cuc_start_update(const struct flm_nthw *p)
+void nthw_flm_stat_cuc_start_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_cuc_start);
 	nthw_register_update(p->mp_stat_cuc_start);
 }
 
-void flm_nthw_stat_cuc_move_cnt(const struct flm_nthw *p, uint32_t *val, int get)
+void nthw_flm_stat_cuc_move_cnt(const struct flm_nthw *p, uint32_t *val, int get)
 {
 	RTE_ASSERT(p->mp_stat_cuc_move_cnt);
 
@@ -1208,49 +1208,49 @@ void flm_nthw_stat_cuc_move_cnt(const struct flm_nthw *p, uint32_t *val, int get
 		*val = nthw_field_get_val32(p->mp_stat_cuc_move_cnt);
 }
 
-void flm_nthw_stat_cuc_move_update(const struct flm_nthw *p)
+void nthw_flm_stat_cuc_move_update(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_stat_cuc_move);
 	nthw_register_update(p->mp_stat_cuc_move);
 }
 
-void flm_nthw_scrub_select(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scrub_select(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_scrub_ctrl_adr);
 	nthw_field_set_val32(p->mp_scrub_ctrl_adr, val);
 }
 
-void flm_nthw_scrub_cnt(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scrub_cnt(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_scrub_ctrl_cnt);
 	nthw_field_set_val32(p->mp_scrub_ctrl_cnt, val);
 }
 
-void flm_nthw_scrub_t(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scrub_t(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_scrub_data_t);
 	nthw_field_set_val32(p->mp_scrub_data_t, val);
 }
 
-void flm_nthw_scrub_r(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scrub_r(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_scrub_data_r);
 	nthw_field_set_val32(p->mp_scrub_data_r, val);
 }
 
-void flm_nthw_scrub_del(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scrub_del(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_scrub_data_del);
 	nthw_field_set_val32(p->mp_scrub_data_del, val);
 }
 
-void flm_nthw_scrub_inf(const struct flm_nthw *p, uint32_t val)
+void nthw_flm_scrub_inf(const struct flm_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_scrub_data_inf);
 	nthw_field_set_val32(p->mp_scrub_data_inf, val);
 }
 
-void flm_nthw_scrub_flush(const struct flm_nthw *p)
+void nthw_flm_scrub_flush(const struct flm_nthw *p)
 {
 	RTE_ASSERT(p->mp_scrub_ctrl);
 	RTE_ASSERT(p->mp_scrub_data);

@@ -12,12 +12,12 @@
 
 #include "flow_nthw_csu.h"
 
-void csu_nthw_set_debug_mode(struct csu_nthw *p, unsigned int n_debug_mode)
+void nthw_csu_set_debug_mode(struct csu_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_csu, n_debug_mode);
 }
 
-struct csu_nthw *csu_nthw_new(void)
+struct csu_nthw *nthw_csu_new(void)
 {
 	struct csu_nthw *p = malloc(sizeof(struct csu_nthw));
 
@@ -27,7 +27,7 @@ struct csu_nthw *csu_nthw_new(void)
 	return p;
 }
 
-void csu_nthw_delete(struct csu_nthw *p)
+void nthw_csu_delete(struct csu_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -35,7 +35,7 @@ void csu_nthw_delete(struct csu_nthw *p)
 	}
 }
 
-int csu_nthw_init(struct csu_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_csu_init(struct csu_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_CSU, n_instance);
@@ -66,17 +66,17 @@ int csu_nthw_init(struct csu_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
-void csu_nthw_rcp_select(const struct csu_nthw *p, uint32_t val)
+void nthw_csu_rcp_select(const struct csu_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_ctrl_adr, val);
 }
 
-void csu_nthw_rcp_cnt(const struct csu_nthw *p, uint32_t val)
+void nthw_csu_rcp_cnt(const struct csu_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_ctrl_cnt, val);
 }
 
-void csu_nthw_rcp_outer_l3_cmd(const struct csu_nthw *p, uint32_t val)
+void nthw_csu_rcp_outer_l3_cmd(const struct csu_nthw *p, uint32_t val)
 {
 	/*
 	 * Select L3 calc method for outer layer3.
@@ -88,7 +88,7 @@ void csu_nthw_rcp_outer_l3_cmd(const struct csu_nthw *p, uint32_t val)
 	nthw_field_set_val32(p->mp_rcp_data_ol3_cmd, val);
 }
 
-void csu_nthw_rcp_outer_l4_cmd(const struct csu_nthw *p, uint32_t val)
+void nthw_csu_rcp_outer_l4_cmd(const struct csu_nthw *p, uint32_t val)
 {
 	/*
 	 * Select L4 calc method for outer layer4.
@@ -105,7 +105,7 @@ void csu_nthw_rcp_outer_l4_cmd(const struct csu_nthw *p, uint32_t val)
 	nthw_field_set_val32(p->mp_rcp_data_ol4_cmd, val);
 }
 
-void csu_nthw_rcp_inner_l3_cmd(const struct csu_nthw *p, uint32_t val)
+void nthw_csu_rcp_inner_l3_cmd(const struct csu_nthw *p, uint32_t val)
 {
 	/*
 	 * Select L3 calc method for inner layer3 (tunneled).
@@ -117,7 +117,7 @@ void csu_nthw_rcp_inner_l3_cmd(const struct csu_nthw *p, uint32_t val)
 	nthw_field_set_val32(p->mp_rcp_data_il3_cmd, val);
 }
 
-void csu_nthw_rcp_inner_l4_cmd(const struct csu_nthw *p, uint32_t val)
+void nthw_csu_rcp_inner_l4_cmd(const struct csu_nthw *p, uint32_t val)
 {
 	/*
 	 * Select L4 calc method for inner layer4 (tunneled).
@@ -134,7 +134,7 @@ void csu_nthw_rcp_inner_l4_cmd(const struct csu_nthw *p, uint32_t val)
 	nthw_field_set_val32(p->mp_rcp_data_il4_cmd, val);
 }
 
-void csu_nthw_rcp_flush(const struct csu_nthw *p)
+void nthw_csu_rcp_flush(const struct csu_nthw *p)
 {
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);

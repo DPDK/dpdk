@@ -20,6 +20,6 @@ enum nthw_adapter_id_e {
 
 typedef enum nthw_adapter_id_e nthw_adapter_id_t;
 
-nthw_adapter_id_t nthw_platform_get_nthw_adapter_id(const uint16_t n_pci_device_id);
+nthw_adapter_id_t nthw_platform_get_adapter_id(const uint16_t n_pci_device_id);
 
 #endif	/* __NTHW_PLATFORM_DRV_H__ */

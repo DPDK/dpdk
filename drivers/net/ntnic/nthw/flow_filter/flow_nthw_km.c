@@ -22,12 +22,12 @@
 		}                                                                                 \
 	} while (0)
 
-void km_nthw_set_debug_mode(struct km_nthw *p, unsigned int n_debug_mode)
+void nthw_km_set_debug_mode(struct km_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_km, n_debug_mode);
 }
 
-struct km_nthw *km_nthw_new(void)
+struct km_nthw *nthw_km_new(void)
 {
 	struct km_nthw *p = malloc(sizeof(struct km_nthw));
 
@@ -37,7 +37,7 @@ struct km_nthw *km_nthw_new(void)
 	return p;
 }
 
-void km_nthw_delete(struct km_nthw *p)
+void nthw_km_delete(struct km_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -45,7 +45,7 @@ void km_nthw_delete(struct km_nthw *p)
 	}
 }
 
-int km_nthw_init(struct km_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_km_init(struct km_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_KM, n_instance);
@@ -220,390 +220,390 @@ int km_nthw_init(struct km_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 }
 
 /* RCP */
-void km_nthw_rcp_select(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_select(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_addr, val);
 };
 
-void km_nthw_rcp_cnt(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_cnt(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_cnt, val);
 };
 
-void km_nthw_rcp_qw0_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_qw0_dyn(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_dyn, val);
 };
 
-void km_nthw_rcp_qw0_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_qw0_ofs(const struct km_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_ofs, val);
 };
 
-void km_nthw_rcp_qw0_sel_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_qw0_sel_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_sel_a, val);
 };
 
-void km_nthw_rcp_qw0_sel_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_qw0_sel_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_sel_b, val);
 };
 
-void km_nthw_rcp_qw4_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_qw4_dyn(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_dyn, val);
 };
 
-void km_nthw_rcp_qw4_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_qw4_ofs(const struct km_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_ofs, val);
 };
 
-void km_nthw_rcp_qw4_sel_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_qw4_sel_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_sel_a, val);
 };
 
-void km_nthw_rcp_qw4_sel_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_qw4_sel_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_sel_b, val);
 };
 
-void km_nthw_rcp_dw8_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw8_dyn(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw8_dyn, val);
 };
 
-void km_nthw_rcp_swx_cch(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_swx_cch(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_swx_cch, val);
 };
 
-void km_nthw_rcp_dw8_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_dw8_ofs(const struct km_nthw *p, int32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw8_ofs, val);
 };
 
-void km_nthw_rcp_dw8_sel_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw8_sel_a(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw8_sel_a, val);
 };
 
-void km_nthw_rcp_dw8_sel_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw8_sel_b(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw8_sel_b, val);
 };
 
-void km_nthw_rcp_dw10_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw10_dyn(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw10_dyn, val);
 };
 
-void km_nthw_rcp_dw10_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_dw10_ofs(const struct km_nthw *p, int32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw10_ofs, val);
 };
 
-void km_nthw_rcp_dw10_sel_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw10_sel_a(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw10_sel_a, val);
 };
 
-void km_nthw_rcp_dw10_sel_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw10_sel_b(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_dw10_sel_b, val);
 };
 
-void km_nthw_rcp_swx_sel_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_swx_sel_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_swx_sel_a, val);
 };
 
-void km_nthw_rcp_swx_sel_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_swx_sel_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_swx_sel_b, val);
 };
 
-void km_nthw_rcp_mask_b(const struct km_nthw *p, const uint32_t *val)
+void nthw_km_rcp_mask_b(const struct km_nthw *p, const uint32_t *val)
 {
 	nthw_field_set_val(p->mp_rcp_data_mask_b, val, p->mp_rcp_data_mask_b->mn_words);
 };
 
-void km_nthw_rcp_mask_da(const struct km_nthw *p, const uint32_t *val)
+void nthw_km_rcp_mask_da(const struct km_nthw *p, const uint32_t *val)
 {
 	nthw_field_set_val(p->mp_rcp_data_mask_a, val, p->mp_rcp_data_mask_a->mn_words);
 };	/* for DW8/DW10 from v6+ */
 
-void km_nthw_rcp_dual(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dual(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_dual, val);
 };
 
-void km_nthw_rcp_paired(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_paired(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_paired, val);
 };
 
-void km_nthw_rcp_el_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_el_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_el_a, val);
 };
 
-void km_nthw_rcp_el_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_el_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_el_b, val);
 };
 
-void km_nthw_rcp_info_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_info_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_info_a, val);
 };
 
-void km_nthw_rcp_info_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_info_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_info_b, val);
 };
 
-void km_nthw_rcp_ftm_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_ftm_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_ftm_a, val);
 };
 
-void km_nthw_rcp_ftm_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_ftm_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_ftm_b, val);
 };
 
-void km_nthw_rcp_bank_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_bank_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_bank_a, val);
 };
 
-void km_nthw_rcp_bank_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_bank_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_bank_b, val);
 };
 
-void km_nthw_rcp_kl_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_kl_a(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_kl_a, val);
 };
 
-void km_nthw_rcp_kl_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_kl_b(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_kl_b, val);
 };
 
-void km_nthw_rcp_keyway_a(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_keyway_a(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_keyway_a, val);
 };
 
-void km_nthw_rcp_keyway_b(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_keyway_b(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_rcp_data_keyway_b, val);
 };
 
-void km_nthw_rcp_synergy_mode(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_synergy_mode(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_synergy_mode, val);
 };
 
-void km_nthw_rcp_dw0_b_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw0_b_dyn(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_dw0_b_dyn, val);
 };
 
-void km_nthw_rcp_dw0_b_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_dw0_b_ofs(const struct km_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_dw0_b_ofs, val);
 };
 
-void km_nthw_rcp_dw2_b_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_dw2_b_dyn(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_dw2_b_dyn, val);
 };
 
-void km_nthw_rcp_dw2_b_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_dw2_b_ofs(const struct km_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_dw2_b_ofs, val);
 };
 
-void km_nthw_rcp_sw4_b_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_sw4_b_dyn(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw4_b_dyn, val);
 };
 
-void km_nthw_rcp_sw4_b_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_sw4_b_ofs(const struct km_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw4_b_ofs, val);
 };
 
-void km_nthw_rcp_sw5_b_dyn(const struct km_nthw *p, uint32_t val)
+void nthw_km_rcp_sw5_b_dyn(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw5_b_dyn, val);
 };
 
-void km_nthw_rcp_sw5_b_ofs(const struct km_nthw *p, int32_t val)
+void nthw_km_rcp_sw5_b_ofs(const struct km_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sw5_b_ofs, val);
 };
 
-void km_nthw_rcp_flush(const struct km_nthw *p)
+void nthw_km_rcp_flush(const struct km_nthw *p)
 {
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);
 };
 
 /* CAM */
-void km_nthw_cam_select(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_select(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_addr, val);
 };
 
-void km_nthw_cam_cnt(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_cnt(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_cnt, val);
 };
 
-void km_nthw_cam_w0(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_w0(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_w0, val);
 };
 
-void km_nthw_cam_w1(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_w1(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_w1, val);
 };
 
-void km_nthw_cam_w2(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_w2(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_w2, val);
 };
 
-void km_nthw_cam_w3(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_w3(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_w3, val);
 };
 
-void km_nthw_cam_w4(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_w4(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_w4, val);
 };
 
-void km_nthw_cam_w5(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_w5(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_w5, val);
 };
 
-void km_nthw_cam_ft0(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_ft0(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_ft0, val);
 };
 
-void km_nthw_cam_ft1(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_ft1(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_ft1, val);
 };
 
-void km_nthw_cam_ft2(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_ft2(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_ft2, val);
 };
 
-void km_nthw_cam_ft3(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_ft3(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_ft3, val);
 };
 
-void km_nthw_cam_ft4(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_ft4(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_ft4, val);
 };
 
-void km_nthw_cam_ft5(const struct km_nthw *p, uint32_t val)
+void nthw_km_cam_ft5(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cam_data_ft5, val);
 };
 
-void km_nthw_cam_flush(const struct km_nthw *p)
+void nthw_km_cam_flush(const struct km_nthw *p)
 {
 	nthw_register_flush(p->mp_cam_ctrl, 1);
 	nthw_register_flush(p->mp_cam_data, 1);
 };
 
 /* TCAM */
-void km_nthw_tcam_select(const struct km_nthw *p, uint32_t val)
+void nthw_km_tcam_select(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tcam_addr, val);
 };
 
-void km_nthw_tcam_cnt(const struct km_nthw *p, uint32_t val)
+void nthw_km_tcam_cnt(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tcam_cnt, val);
 };
 
-void km_nthw_tcam_t(const struct km_nthw *p, uint32_t *val)
+void nthw_km_tcam_t(const struct km_nthw *p, uint32_t *val)
 {
 	nthw_field_set_val(p->mp_tcam_data_t, val, 3);
 };
 
-void km_nthw_tcam_flush(const struct km_nthw *p)
+void nthw_km_tcam_flush(const struct km_nthw *p)
 {
 	nthw_register_flush(p->mp_tcam_ctrl, 1);
 	nthw_register_flush(p->mp_tcam_data, 1);
 };
 
 /* TCI */
-void km_nthw_tci_select(const struct km_nthw *p, uint32_t val)
+void nthw_km_tci_select(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tci_addr, val);
 };
 
-void km_nthw_tci_cnt(const struct km_nthw *p, uint32_t val)
+void nthw_km_tci_cnt(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tci_cnt, val);
 };
 
-void km_nthw_tci_color(const struct km_nthw *p, uint32_t val)
+void nthw_km_tci_color(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tci_data_color, val);
 };
 
-void km_nthw_tci_ft(const struct km_nthw *p, uint32_t val)
+void nthw_km_tci_ft(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tci_data_ft, val);
 };
 
-void km_nthw_tci_flush(const struct km_nthw *p)
+void nthw_km_tci_flush(const struct km_nthw *p)
 {
 	nthw_register_flush(p->mp_tci_ctrl, 1);
 	nthw_register_flush(p->mp_tci_data, 1);
 };
 
 /* TCQ */
-void km_nthw_tcq_select(const struct km_nthw *p, uint32_t val)
+void nthw_km_tcq_select(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tcq_addr, val);
 };
 
-void km_nthw_tcq_cnt(const struct km_nthw *p, uint32_t val)
+void nthw_km_tcq_cnt(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tcq_cnt, val);
 };
 
-void km_nthw_tcq_bank_mask(const struct km_nthw *p, uint32_t val)
+void nthw_km_tcq_bank_mask(const struct km_nthw *p, uint32_t val)
 {
 	CHECK_AND_SET_VALUE(p->mp_tcq_data_bank_mask, val);
 };
 
-void km_nthw_tcq_qual(const struct km_nthw *p, uint32_t val)
+void nthw_km_tcq_qual(const struct km_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_tcq_data_qual, val);
 };
 
-void km_nthw_tcq_flush(const struct km_nthw *p)
+void nthw_km_tcq_flush(const struct km_nthw *p)
 {
 	nthw_register_flush(p->mp_tcq_ctrl, 1);
 	nthw_register_flush(p->mp_tcq_data, 1);
