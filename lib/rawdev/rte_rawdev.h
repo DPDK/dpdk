@@ -44,7 +44,7 @@ rte_rawdev_count(void);
  *   Returns raw device identifier on success.
  *   - <0: Failure to find named raw device.
  */
-uint16_t
+int
 rte_rawdev_get_dev_id(const char *name);
 
 /**

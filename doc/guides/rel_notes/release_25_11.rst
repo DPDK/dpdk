@@ -147,6 +147,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* rawdev: Changed the return type of ``rte_rawdev_get_dev_id()``
+  for negative error values.
+
 * pcapng: Changed the API for adding interfaces to include a link type argument.
   The link type was previously hardcoded to the Ethernet link type in the API.
   This argument is added to ``rte_pcapng_add_interface``.

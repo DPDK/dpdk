@@ -39,7 +39,7 @@ rte_rawdev_count(void)
 }
 
 RTE_EXPORT_SYMBOL(rte_rawdev_get_dev_id)
-uint16_t
+int
 rte_rawdev_get_dev_id(const char *name)
 {
 	uint16_t i;
