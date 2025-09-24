@@ -15,7 +15,7 @@ static int nthw_fpga_nt200a0x_init(struct fpga_info_s *p_fpga_info)
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	struct nthw_fpga_rst_nt200a0x rst;
 	int res = -1;
-	const struct rst_nt200a0x_ops *rst_nt200a0x_ops = get_rst_nt200a0x_ops();
+	const struct rst_nt200a0x_ops *rst_nt200a0x_ops = nthw_get_rst_nt200a0x_ops();
 
 	if (rst_nt200a0x_ops == NULL) {
 		NT_LOG(ERR, NTHW, "RST NT200A0X NOT INCLUDED");
@@ -32,7 +32,7 @@ static int nthw_fpga_nt200a0x_init(struct fpga_info_s *p_fpga_info)
 	}
 
 	bool included = true;
-	struct rst9563_ops *rst9563_ops = get_rst9563_ops();
+	struct rst9563_ops *rst9563_ops = nthw_get_rst9563_ops();
 
 	/* reset specific */
 	switch (p_fpga_info->n_fpga_prod_id) {
