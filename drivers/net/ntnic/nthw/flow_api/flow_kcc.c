@@ -8,7 +8,7 @@
 #include "hw_mod_backend.h"
 #include "flow_api_engine.h"
 
-void kcc_free_ndev_resource_management(void **handle)
+void nthw_kcc_free_ndev_resource_mgmnt(void **handle)
 {
 	if (*handle) {
 		free(*handle);

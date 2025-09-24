@@ -73,7 +73,7 @@ struct tcam_distrib_s {
 
 static int tcam_find_mapping(struct km_flow_def_s *km);
 
-void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle)
+void nthw_km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle)
 {
 	/*
 	 * KM entries occupied in CAM - to manage the cuckoo shuffling
@@ -100,7 +100,7 @@ void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle)
 	nthw_init_hasher(km->hsh, km->be->km.nb_cam_banks, km->be->km.nb_cam_records);
 }
 
-void km_free_ndev_resource_management(void **handle)
+void nthw_km_free_ndev_resource_management(void **handle)
 {
 	if (*handle) {
 		free(*handle);
@@ -110,7 +110,7 @@ void km_free_ndev_resource_management(void **handle)
 	*handle = NULL;
 }
 
-int km_add_match_elem(struct km_flow_def_s *km, uint32_t e_word[4], uint32_t e_mask[4],
+int nthw_km_add_match_elem(struct km_flow_def_s *km, uint32_t e_word[4], uint32_t e_mask[4],
 	uint32_t word_len, enum frame_offs_e start_id, int8_t offset)
 {
 	/* valid word_len 1,2,4 */
@@ -173,7 +173,7 @@ static int get_word(struct km_flow_def_s *km, uint32_t size, int marked[])
 	return -1;
 }
 
-int km_key_create(struct km_flow_def_s *km, uint32_t port_id)
+int nthw_km_key_create(struct km_flow_def_s *km, uint32_t port_id)
 {
 	/*
 	 * Create combined extractor mappings
@@ -377,7 +377,7 @@ int km_key_create(struct km_flow_def_s *km, uint32_t port_id)
 	return 0;
 }
 
-int km_key_compare(struct km_flow_def_s *km, struct km_flow_def_s *km1)
+int nthw_km_key_compare(struct km_flow_def_s *km, struct km_flow_def_s *km1)
 {
 	if (km->target != km1->target || km->num_ftype_elem != km1->num_ftype_elem ||
 		km->key_word_size != km1->key_word_size || km->info_set != km1->info_set)
@@ -473,7 +473,7 @@ int km_key_compare(struct km_flow_def_s *km, struct km_flow_def_s *km1)
 	return km1->flow_type;
 }
 
-int km_rcp_set(struct km_flow_def_s *km, int index)
+int nthw_km_rcp_set(struct km_flow_def_s *km, int index)
 {
 	int qw = 0;
 	int sw = 0;
@@ -1101,7 +1101,7 @@ static int tcam_reset_entry(struct km_flow_def_s *km)
 	return err;
 }
 
-int km_write_data_match_entry(struct km_flow_def_s *km, uint32_t color)
+int nthw_km_write_data_match_entry(struct km_flow_def_s *km, uint32_t color)
 {
 	int res = -1;
 
@@ -1125,7 +1125,7 @@ int km_write_data_match_entry(struct km_flow_def_s *km, uint32_t color)
 	return res;
 }
 
-int km_clear_data_match_entry(struct km_flow_def_s *km)
+int nthw_km_clear_data_match_entry(struct km_flow_def_s *km)
 {
 	int res = 0;
 
