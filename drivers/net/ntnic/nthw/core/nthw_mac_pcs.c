@@ -429,17 +429,6 @@ void nthw_mac_pcs_set_tx_sel_host(nthw_mac_pcs_t *p, bool enable)
 		nthw_field_clr_flush(p->mp_fld_phymac_misc_tx_sel_host);
 }
 
-static void nthw_mac_pcs_set_tx_sel_tfg(nthw_mac_pcs_t *p, bool enable)
-{
-	nthw_field_get_updated(p->mp_fld_phymac_misc_tx_sel_tfg);
-
-	if (enable)
-		nthw_field_set_flush(p->mp_fld_phymac_misc_tx_sel_tfg);
-
-	else
-		nthw_field_clr_flush(p->mp_fld_phymac_misc_tx_sel_tfg);
-}
-
 void nthw_mac_pcs_set_ts_eop(nthw_mac_pcs_t *p, bool enable)
 {
 	if (p->mp_fld_phymac_misc_ts_eop) {

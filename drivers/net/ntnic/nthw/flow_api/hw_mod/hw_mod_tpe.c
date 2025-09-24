@@ -402,12 +402,6 @@ static int hw_mod_tpe_ifr_counters_mod(struct flow_api_backend_s *be, enum hw_tp
 	return 0;
 }
 
-static int hw_mod_tpe_ifr_counters_set(struct flow_api_backend_s *be, enum hw_tpe_e field,
-	int index, uint32_t value)
-{
-	return hw_mod_tpe_ifr_counters_mod(be, field, index, &value, 0);
-}
-
 int hw_mod_tpe_ifr_counters_get(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
 	uint32_t *value)
 {

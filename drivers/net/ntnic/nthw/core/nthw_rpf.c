@@ -20,11 +20,6 @@ nthw_rpf_t *nthw_rpf_new(void)
 	return p;
 }
 
-static void nthw_rpf_delete(nthw_rpf_t *p)
-{
-	free(p);
-}
-
 int nthw_rpf_init(nthw_rpf_t *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_RPF, n_instance);
@@ -65,15 +60,6 @@ int nthw_rpf_init(nthw_rpf_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	/* Initialize mutex */
 	rte_spinlock_init(&p->rpf_mutex);
 	return 0;
-}
-
-static void nthw_rpf_administrative_block(nthw_rpf_t *p)
-{
-	/* block all MAC ports */
-	nthw_register_update(p->mp_reg_control);
-	nthw_field_set_val_flush32(p->mp_fld_control_pen, 0);
-
-	p->m_administrative_block = true;
 }
 
 void nthw_rpf_block(nthw_rpf_t *p)

@@ -85,24 +85,6 @@ struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa)
 	return vfio_addr;
 }
 
-static void nt_dma_free(struct nt_dma_s *vfio_addr)
-{
-	NT_LOG(DBG, GENERAL, "VFIO DMA free addr=%" PRIX64 ", iova=%" PRIX64 ", size=%" PRIX64,
-		vfio_addr->addr, vfio_addr->iova, vfio_addr->size);
-
-	int res = vfio_cb.vfio_dma_unmap(0, (void *)vfio_addr->addr, vfio_addr->iova,
-			vfio_addr->size);
-
-	if (res != 0) {
-		NT_LOG(WRN, GENERAL,
-			"VFIO DMA free FAILED addr=%" PRIX64 ", iova=%" PRIX64 ", size=%" PRIX64,
-			vfio_addr->addr, vfio_addr->iova, vfio_addr->size);
-	}
-
-	rte_free((void *)(vfio_addr->addr));
-	rte_free(vfio_addr);
-}
-
 /* NOTE: please note the difference between RTE_ETH_SPEED_NUM_xxx and RTE_ETH_LINK_SPEED_xxx */
 int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed)
 {
@@ -178,39 +160,6 @@ uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa)
 		eth_speed_capa |= RTE_ETH_LINK_SPEED_100G;
 
 	return eth_speed_capa;
-}
-
-/* Converts link speed provided in Mbps to NT specific definitions.*/
-static nt_link_speed_t nthw_convert_link_speed(int link_speed_mbps)
-{
-	switch (link_speed_mbps) {
-	case 10:
-		return NT_LINK_SPEED_10M;
-
-	case 100:
-		return NT_LINK_SPEED_100M;
-
-	case 1000:
-		return NT_LINK_SPEED_1G;
-
-	case 10000:
-		return NT_LINK_SPEED_10G;
-
-	case 40000:
-		return NT_LINK_SPEED_40G;
-
-	case 100000:
-		return NT_LINK_SPEED_100G;
-
-	case 50000:
-		return NT_LINK_SPEED_50G;
-
-	case 25000:
-		return NT_LINK_SPEED_25G;
-
-	default:
-		return NT_LINK_SPEED_UNKNOWN;
-	}
 }
 
 int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex)
