@@ -7,6 +7,7 @@
 
 #define CN20K_SSO_DEFAULT_STASH_OFFSET -1
 #define CN20K_SSO_DEFAULT_STASH_LENGTH 2
+#define CN20K_SSO_WEIGHT_MAX	       (0xff)
 
 struct __rte_cache_aligned cn20k_sso_hws {
 	uint64_t base;
