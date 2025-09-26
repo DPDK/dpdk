@@ -2360,6 +2360,67 @@ hinic3_dev_promiscuous_disable(struct rte_eth_dev *dev)
  * @return
  * 0 on success, non-zero on failure.
  */
+static int
+hinic3_dev_flow_ctrl_get(struct rte_eth_dev *dev,
+			 struct rte_eth_fc_conf *fc_conf)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct nic_pause_config nic_pause;
+	int err;
+
+	memset(&nic_pause, 0, sizeof(nic_pause));
+	err = hinic3_get_pause_info(nic_dev->hwdev, &nic_pause);
+	if (err)
+		return err;
+	if (nic_dev->pause_set || !nic_pause.auto_neg) {
+		nic_pause.rx_pause = nic_dev->nic_pause.rx_pause;
+		nic_pause.tx_pause = nic_dev->nic_pause.tx_pause;
+	}
+
+	fc_conf->autoneg = nic_pause.auto_neg;
+
+	if (nic_pause.tx_pause && nic_pause.rx_pause)
+		fc_conf->mode = RTE_ETH_FC_FULL;
+	else if (nic_pause.tx_pause)
+		fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
+	else if (nic_pause.rx_pause)
+		fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
+	else
+		fc_conf->mode = RTE_ETH_FC_NONE;
+
+	return 0;
+}
+
+static int
+hinic3_dev_flow_ctrl_set(struct rte_eth_dev *dev,
+			 struct rte_eth_fc_conf *fc_conf)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct nic_pause_config nic_pause;
+	int err;
+
+	memset(&nic_pause, 0, sizeof(nic_pause));
+	if ((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL ||
+	    (fc_conf->mode & RTE_ETH_FC_TX_PAUSE))
+		nic_pause.tx_pause = true;
+
+	if ((fc_conf->mode & RTE_ETH_FC_FULL) == RTE_ETH_FC_FULL ||
+	    (fc_conf->mode & RTE_ETH_FC_RX_PAUSE))
+		nic_pause.rx_pause = true;
+
+	err = hinic3_set_pause_info(nic_dev->hwdev, nic_pause);
+	if (err)
+		return err;
+	nic_dev->pause_set = true;
+	nic_dev->nic_pause.rx_pause = nic_pause.rx_pause;
+	nic_dev->nic_pause.tx_pause = nic_pause.tx_pause;
+
+	PMD_DRV_LOG(INFO,
+		    "Just support set tx or rx pause info, tx: %s, rx: %s",
+		    nic_pause.tx_pause ? "on" : "off",
+		    nic_pause.rx_pause ? "on" : "off");
+	return 0;
+}
 
 /**
  * Update the RSS hash key and RSS hash type.
@@ -3163,6 +3224,8 @@ static const struct eth_dev_ops hinic3_pmd_ops = {
 	.allmulticast_disable          = hinic3_dev_allmulticast_disable,
 	.promiscuous_enable            = hinic3_dev_promiscuous_enable,
 	.promiscuous_disable           = hinic3_dev_promiscuous_disable,
+	.flow_ctrl_get                 = hinic3_dev_flow_ctrl_get,
+	.flow_ctrl_set                 = hinic3_dev_flow_ctrl_set,
 	.rss_hash_update               = hinic3_rss_hash_update,
 	.rss_hash_conf_get             = hinic3_rss_conf_get,
 	.reta_update                   = hinic3_rss_reta_update,
@@ -3179,6 +3242,7 @@ static const struct eth_dev_ops hinic3_pmd_ops = {
 	.mac_addr_remove               = hinic3_mac_addr_remove,
 	.mac_addr_add                  = hinic3_mac_addr_add,
 	.set_mc_addr_list              = hinic3_set_mc_addr_list,
+	.flow_ops_get                  = hinic3_dev_filter_ctrl,
 };
 
 static const struct eth_dev_ops hinic3_pmd_vf_ops = {
@@ -3222,6 +3286,7 @@ static const struct eth_dev_ops hinic3_pmd_vf_ops = {
 	.mac_addr_remove               = hinic3_mac_addr_remove,
 	.mac_addr_add                  = hinic3_mac_addr_add,
 	.set_mc_addr_list              = hinic3_set_mc_addr_list,
+	.flow_ops_get                  = hinic3_dev_filter_ctrl,
 };
 
 /**
