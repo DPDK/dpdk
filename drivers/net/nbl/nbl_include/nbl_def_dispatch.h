@@ -37,6 +37,7 @@ struct nbl_dispatch_ops {
 	void (*clear_flow)(void *priv, u16 vsi_id);
 	void (*get_firmware_version)(void *priv, char *firmware_version, u8 max_len);
 	int (*set_promisc_mode)(void *priv, u16 vsi_id, u16 mode);
+	int (*set_mtu)(void *priv, u16 vsi_id, u16 mtu);
 	int (*alloc_txrx_queues)(void *priv, u16 vsi_id, u16 queue_num);
 	void (*free_txrx_queues)(void *priv, u16 vsi_id);
 	u16 (*get_vsi_id)(void *priv);
