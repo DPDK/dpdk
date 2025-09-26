@@ -31,4 +31,4 @@ elif arch_subdir == 'arm'
     sources += files('txgbe_rxtx_vec_neon.c')
 endif
 
-install_headers('rte_pmd_txgbe.h')
+headers = files('rte_pmd_txgbe.h')

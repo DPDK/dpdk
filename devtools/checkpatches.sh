@@ -87,6 +87,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# don't call directly install_headers()
+	awk -v FOLDERS="lib drivers" \
+		-v EXPRESSIONS="\\\<install_headers\\\>" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using install_headers()' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# refrain from using compiler attribute without defining a common macro
 	awk -v FOLDERS="lib drivers app examples" \
 		-v SKIP_FILES='lib/eal/include/rte_common.h' \

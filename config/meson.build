@@ -461,8 +461,7 @@ endif
 # set the install path for the drivers
 dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
 
-install_headers(['rte_config.h'],
-        subdir: get_option('include_subdir_arch'))
+dpdk_arch_headers += files('rte_config.h')
 
 # specify -D_GNU_SOURCE unconditionally
 add_project_arguments('-D_GNU_SOURCE', language: 'c')

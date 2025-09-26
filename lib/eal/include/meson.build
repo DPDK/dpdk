@@ -64,7 +64,7 @@ driver_sdk_headers = files(
 )
 
 # special case install the generic headers, since they go in a subdir
-generic_headers = files(
+dpdk_generic_headers += files(
         'generic/rte_atomic.h',
         'generic/rte_byteorder.h',
         'generic/rte_cpuflags.h',
@@ -78,4 +78,3 @@ generic_headers = files(
         'generic/rte_spinlock.h',
         'generic/rte_vect.h',
 )
-install_headers(generic_headers, subdir: 'generic')

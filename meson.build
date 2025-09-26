@@ -37,7 +37,12 @@ dpdk_libraries = []
 dpdk_static_libraries = []
 dpdk_shared_lib_deps = []
 dpdk_static_lib_deps = []
-dpdk_chkinc_headers = []
+dpdk_arch_headers = []
+dpdk_arch_indirect_headers = []
+dpdk_generic_headers = []
+dpdk_headers = []
+dpdk_indirect_headers = []
+dpdk_drivers_headers = []
 dpdk_driver_classes = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
@@ -107,6 +112,14 @@ subdir('kernel')
 # check header includes if requested
 if get_option('check_includes')
     subdir('buildtools/chkincs')
+endif
+
+install_headers(dpdk_arch_headers + dpdk_arch_indirect_headers,
+        subdir: get_option('include_subdir_arch'))
+install_headers(dpdk_headers + dpdk_indirect_headers)
+install_headers(dpdk_generic_headers, subdir: 'generic')
+if get_option('enable_driver_sdk')
+    install_headers(dpdk_drivers_headers)
 endif
 
 # write the build config

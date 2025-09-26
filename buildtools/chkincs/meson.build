@@ -12,10 +12,13 @@ gen_c_files = generator(gen_c_file_for_header,
         arguments: ['@INPUT@', '@OUTPUT@'])
 
 cflags = machine_args
+if cc.has_argument('-Wno-missing-field-initializers')
+    cflags += '-Wno-missing-field-initializers'
+endif
 cflags += no_wvla_cflag
 
 sources = files('main.c')
-sources += gen_c_files.process(dpdk_chkinc_headers)
+sources += gen_c_files.process(dpdk_arch_headers + dpdk_headers + dpdk_drivers_headers)
 
 # some driver SDK headers depend on these two buses, which are mandatory in build
 # so we always include them in deps list
@@ -56,7 +59,7 @@ gen_cpp_files = generator(gen_c_file_for_header,
         arguments: ['@INPUT@', '@OUTPUT@'])
 
 cpp_sources = files('main.cpp')
-cpp_sources += gen_cpp_files.process(dpdk_chkinc_headers)
+cpp_sources += gen_cpp_files.process(dpdk_arch_headers + dpdk_headers + dpdk_drivers_headers)
 
 executable('chkincs-cpp', cpp_sources,
         cpp_args: ['-include', 'rte_config.h', cflags],
