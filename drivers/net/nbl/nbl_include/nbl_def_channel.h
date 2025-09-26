@@ -389,6 +389,11 @@ struct nbl_chan_param_get_link_state {
 	u8 eth_id;
 };
 
+struct nbl_chan_param_get_private_stat_data {
+	u32 eth_id;
+	u32 data_len;
+};
+
 struct nbl_chan_send_info {
 	uint16_t dstid;
 	uint16_t msg_type;

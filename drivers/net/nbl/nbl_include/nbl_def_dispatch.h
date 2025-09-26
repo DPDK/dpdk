@@ -74,6 +74,16 @@ struct nbl_dispatch_ops {
 	void (*get_board_info)(void *priv, struct nbl_board_port_info *board_info);
 	void (*get_link_state)(void *priv, u8 eth_id, struct nbl_eth_link_info *eth_link_info);
 	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats);
+	int (*reset_stats)(void *priv);
+	int (*get_txrx_xstats_cnt)(void *priv, u16 *xstats_cnt);
+	int (*get_txrx_xstats)(void *priv, struct rte_eth_xstat *xstats,
+			       u16 need_xstats_cnt, u16 *xstats_cnt);
+	int (*get_txrx_xstats_names)(void *priv, struct rte_eth_xstat_name *xstats_names,
+				     u16 need_xstats_cnt, u16 *xstats_cnt);
+	int (*get_hw_xstats_cnt)(void *priv, u16 *xstats_cnt);
+	int (*get_hw_xstats_names)(void *priv, struct rte_eth_xstat_name *xstats_names,
+				   u16 need_xstats_cnt, u16 *xstats_cnt);
+	void (*get_private_stat_data)(void *priv, u32 eth_id, u64 *data, u32 data_len);
 
 	void (*dummy_func)(void *priv);
 };

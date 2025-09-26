@@ -38,6 +38,10 @@ const struct eth_dev_ops nbl_eth_dev_ops = {
 	.dev_infos_get = nbl_dev_infos_get,
 	.link_update = nbl_link_update,
 	.stats_get = nbl_stats_get,
+	.stats_reset = nbl_stats_reset,
+	.xstats_get = nbl_xstats_get,
+	.xstats_get_names = nbl_xstats_get_names,
+	.xstats_reset = nbl_xstats_reset,
 };
 
 static int nbl_eth_dev_init(struct rte_eth_dev *eth_dev)

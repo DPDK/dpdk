@@ -373,6 +373,150 @@ int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
 	return disp_ops->get_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), rte_stats);
 }
 
+int nbl_stats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	return disp_ops->reset_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt));
+}
+
+static int nbl_dev_update_hw_xstats(struct nbl_dev_mgt *dev_mgt, struct rte_eth_xstat *xstats,
+				    u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	struct nbl_dev_net_mgt *net_dev = dev_mgt->net_dev;
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int i;
+	u16 count = *xstats_cnt;
+
+	disp_ops->get_private_stat_data(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					common->eth_id, net_dev->hw_xstats,
+					net_dev->hw_xstats_size);
+	for (i = 0; i < need_xstats_cnt; i++) {
+		xstats[count].value = net_dev->hw_xstats[i] - dev_mgt->net_dev->hw_xstats_offset[i];
+		xstats[count].id = count;
+		count++;
+	}
+
+	*xstats_cnt = count;
+	return 0;
+}
+
+int nbl_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *xstats, unsigned int limit)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int ret = 0;
+	u16 txrx_xstats_cnt = 0, hw_xstats_cnt = 0, xstats_cnt = 0, need_xstats_cnt = 0;
+
+	if (!xstats)
+		return 0;
+
+	ret = disp_ops->get_txrx_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &txrx_xstats_cnt);
+	if (!common->is_vf)
+		ret |= disp_ops->get_hw_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						   &hw_xstats_cnt);
+	if (ret)
+		return -EIO;
+
+	if (txrx_xstats_cnt) {
+		if (limit <= txrx_xstats_cnt) {
+			need_xstats_cnt = limit;
+			ret = disp_ops->get_txrx_xstats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+							xstats, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = 0;
+		} else {
+			need_xstats_cnt = txrx_xstats_cnt;
+			ret = disp_ops->get_txrx_xstats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+							xstats, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = limit - txrx_xstats_cnt;
+		}
+	}
+	if (ret)
+		return -EIO;
+
+	if (hw_xstats_cnt && need_xstats_cnt) {
+		if (need_xstats_cnt > hw_xstats_cnt)
+			return -EINVAL;
+		ret |= nbl_dev_update_hw_xstats(dev_mgt, xstats, need_xstats_cnt, &xstats_cnt);
+	}
+	if (ret)
+		return -EIO;
+
+	return xstats_cnt;
+}
+
+int nbl_xstats_get_names(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_xstat_name *xstats_names,
+			 unsigned int limit)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	u16 txrx_xstats_cnt = 0, hw_xstats_cnt = 0, xstats_cnt = 0, need_xstats_cnt = 0;
+	int ret = 0;
+
+	ret = disp_ops->get_txrx_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &txrx_xstats_cnt);
+	if (!common->is_vf)
+		ret |= disp_ops->get_hw_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+							&hw_xstats_cnt);
+	if (ret)
+		return -EIO;
+
+	if (!xstats_names)
+		return txrx_xstats_cnt + hw_xstats_cnt;
+
+	if (txrx_xstats_cnt) {
+		if (limit <= txrx_xstats_cnt) {
+			need_xstats_cnt = limit;
+			ret = disp_ops->get_txrx_xstats_names(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					xstats_names, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = 0;
+		} else {
+			need_xstats_cnt = txrx_xstats_cnt;
+			ret = disp_ops->get_txrx_xstats_names(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					xstats_names, need_xstats_cnt, &xstats_cnt);
+			need_xstats_cnt = limit - txrx_xstats_cnt;
+		}
+	}
+	if (ret)
+		return -EIO;
+
+	if (hw_xstats_cnt && need_xstats_cnt) {
+		if (need_xstats_cnt > hw_xstats_cnt)
+			return -EINVAL;
+		ret |= disp_ops->get_hw_xstats_names(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						     xstats_names, need_xstats_cnt, &xstats_cnt);
+	}
+	if (ret)
+		return -EIO;
+
+	return xstats_cnt;
+}
+
+int nbl_xstats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = dev_mgt->net_dev;
+
+	if (!common->is_vf) {
+		disp_ops->get_private_stat_data(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						dev_mgt->common->eth_id,
+						net_dev->hw_xstats_offset, net_dev->hw_xstats_size);
+	}
+
+	nbl_stats_reset(eth_dev);
+	return 0;
+}
+
 static int nbl_dev_setup_chan_queue(struct nbl_adapter *adapter)
 {
 	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
@@ -424,6 +568,7 @@ static int nbl_dev_common_start(struct nbl_dev_mgt *dev_mgt)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	u8 *mac;
 	int ret;
+	u16 priv_cnt = 0;
 
 	board_info = &common->board_info;
 	disp_ops->get_board_info(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), board_info);
@@ -466,8 +611,33 @@ static int nbl_dev_common_start(struct nbl_dev_mgt *dev_mgt)
 			goto add_multi_rule_failed;
 	}
 
+	net_dev->hw_xstats_offset = NULL;
+	if (!dev_mgt->common->is_vf)
+		disp_ops->get_hw_xstats_cnt(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &priv_cnt);
+	if (priv_cnt) {
+		net_dev->hw_xstats_offset = rte_zmalloc("nbl_xstats_cnt",
+							priv_cnt * sizeof(u64), 0);
+		net_dev->hw_xstats_size = priv_cnt * sizeof(u64);
+		if (!net_dev->hw_xstats_offset) {
+			ret = -ENOMEM;
+			goto alloc_xstats_offset_failed;
+		}
+		disp_ops->get_private_stat_data(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						dev_mgt->common->eth_id,
+						net_dev->hw_xstats_offset, net_dev->hw_xstats_size);
+
+		net_dev->hw_xstats = calloc(1, net_dev->hw_xstats_size);
+		if (!net_dev->hw_xstats) {
+			ret = -ENOMEM;
+			goto alloc_hw_xstats_failed;
+		}
+	}
+
 	return 0;
 
+alloc_hw_xstats_failed:
+	rte_free(net_dev->hw_xstats_offset);
+alloc_xstats_offset_failed:
 add_multi_rule_failed:
 	if (NBL_IS_NOT_COEXISTENCE(common))
 		disp_ops->del_macvlan(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), mac, 0, net_dev->vsi_id);
@@ -520,6 +690,9 @@ static void nbl_dev_leonis_stop(void *p)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(net_dev->eth_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	u8 *mac;
+
+	free(net_dev->hw_xstats);
+	rte_free(net_dev->hw_xstats_offset);
 
 	mac = net_dev->eth_dev->data->mac_addrs->addr_bytes;
 	if (NBL_IS_NOT_COEXISTENCE(common)) {
@@ -758,6 +931,7 @@ int nbl_dev_init(void *p, struct rte_eth_dev *eth_dev)
 			       eth_dev->data->mac_addrs[0].addr_bytes);
 
 	adapter->state = NBL_ETHDEV_INITIALIZED;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 	disp_ops->get_resource_pt_ops(NBL_DEV_MGT_TO_DISP_PRIV(*dev_mgt),
 				      &(*dev_mgt)->pt_ops, 0);
 
