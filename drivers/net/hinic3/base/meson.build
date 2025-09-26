@@ -11,4 +11,5 @@ base_sources = files(
         'hinic3_mgmt.c',
         'hinic3_nic_cfg.c',
         'hinic3_nic_event.c',
+        'hinic3_wq.c',
 )
