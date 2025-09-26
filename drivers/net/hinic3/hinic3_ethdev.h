@@ -98,12 +98,18 @@ struct hinic3_nic_dev {
 	uint16_t rx_buff_len;
 	uint16_t mtu_size;
 
+	uint16_t rss_state;
+	uint8_t num_rss; /**< Number of RSS queues. */
+	uint8_t rsvd0;   /**< Reserved field 0. */
+
 	uint32_t rx_mode;
 	uint8_t rx_queue_list[HINIC3_MAX_QUEUE_NUM];
 	rte_spinlock_t queue_list_lock;
 
 	uint32_t default_cos;
 	uint32_t rx_csum_en;
+
+	uint8_t rss_key[HINIC3_RSS_KEY_SIZE];
 
 	RTE_ATOMIC(uint64_t)dev_status;
 

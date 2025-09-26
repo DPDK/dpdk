@@ -13,8 +13,10 @@ Features
 
 - Multi arch support: x86_64, ARMv8.
 - Multiple queues for TX and RX
+- Receiver Side Scaling (RSS)
 - Checksum offload
 - TSO offload
+- Promiscuous mode
 - Port hardware statistics
 - Link state information
 - Scattered and gather for TX and RX
