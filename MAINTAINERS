@@ -784,6 +784,7 @@ F: doc/guides/nics/features/hinic.ini
 
 Huawei hinic3
 M: Feifei Wang <wangfeifei40@huawei.com>
+F: drivers/net/hinic3/
 F: doc/guides/nics/hinic3.rst
 
 Intel Network Common Code
