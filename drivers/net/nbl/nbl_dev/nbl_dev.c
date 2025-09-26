@@ -4,10 +4,44 @@
 
 #include "nbl_dev.h"
 
+static int nbl_dev_port_configure(struct nbl_adapter *adapter)
+{
+	adapter->state = NBL_ETHDEV_CONFIGURED;
+
+	return 0;
+}
+
 int nbl_dev_configure(struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(eth_dev);
-	return 0;
+	struct rte_eth_dev_data *dev_data = eth_dev->data;
+	enum rte_eth_rx_mq_mode rx_mq_mode = eth_dev->data->dev_conf.rxmode.mq_mode;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	int ret;
+
+	NBL_LOG(DEBUG, "Begin to configure the device, state: %d", adapter->state);
+
+	if (dev_data == NULL || adapter == NULL)
+		return -EINVAL;
+
+	if (rx_mq_mode != RTE_ETH_MQ_RX_NONE && rx_mq_mode != RTE_ETH_MQ_RX_RSS) {
+		NBL_LOG(ERR, "Rx mq mode %d is not supported", rx_mq_mode);
+		return -ENOTSUP;
+	}
+
+	dev_data->dev_conf.intr_conf.lsc = 0;
+
+	switch (adapter->state) {
+	case NBL_ETHDEV_CONFIGURED:
+	case NBL_ETHDEV_INITIALIZED:
+		ret = nbl_dev_port_configure(adapter);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	NBL_LOG(DEBUG, "configure the device done %d", ret);
+	return ret;
 }
 
 int nbl_dev_port_start(struct rte_eth_dev *eth_dev)
