@@ -12,6 +12,10 @@
 #define NBL_RES_OPS_TBL_TO_PRIV(res_ops_tbl)		((res_ops_tbl)->priv)
 
 struct nbl_resource_ops {
+	int (*configure_msix_map)(void *priv, u16 func_id, u16 num_net_msix, u16 num_others_msix,
+				  bool net_msix_mask_en);
+	int (*destroy_msix_map)(void *priv, u16 func_id);
+	int (*enable_mailbox_irq)(void *priv, u16 func_id, u16 vector_id, bool enable_msix);
 	int (*alloc_rings)(void *priv, u16 tx_num, u16 rx_num, u16 queue_offset);
 	void (*remove_rings)(void *priv);
 	int (*start_tx_ring)(void *priv, struct nbl_start_tx_ring_param *param, u64 *dma_addr);
@@ -25,6 +29,11 @@ struct nbl_resource_ops {
 	int (*reset_stats)(void *priv);
 	void (*update_rx_ring)(void *priv, u16 queue_idx);
 	u16 (*get_tx_ehdr_len)(void *priv);
+	int (*alloc_txrx_queues)(void *priv, u16 vsi_id, u16 queue_num);
+	void (*free_txrx_queues)(void *priv, u16 vsi_id);
+	void (*clear_queues)(void *priv, u16 vsi_id);
+	int (*setup_queue)(void *priv, struct nbl_txrx_queue_param *param, bool is_tx);
+	void (*remove_all_queues)(void *priv, u16 vsi_id);
 	u64 (*restore_abnormal_ring)(void *priv, u16 local_queue_id, int type);
 	int (*restart_abnormal_ring)(void *priv, int ring_index, int type);
 	void (*cfg_txrx_vlan)(void *priv, u16 vlan_tci, u16 vlan_proto);
@@ -37,7 +46,7 @@ struct nbl_resource_ops {
 };
 
 struct nbl_resource_ops_tbl {
-	const struct nbl_resource_ops *ops;
+	struct nbl_resource_ops *ops;
 	void *priv;
 };
 

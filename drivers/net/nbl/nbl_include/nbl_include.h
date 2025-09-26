@@ -81,4 +81,21 @@ struct nbl_start_tx_ring_param {
 	const struct rte_eth_txconf *conf;
 };
 
+struct nbl_txrx_queue_param {
+	u16 vsi_id;
+	u64 dma;
+	u64 avail;
+	u64 used;
+	u16 desc_num;
+	u16 local_queue_id;
+	u16 intr_en;
+	u16 intr_mask;
+	u16 global_vector_id;
+	u16 half_offload_en;
+	u16 split;
+	u16 extend_header;
+	u16 cxt;
+	u16 rxcsum;
+};
+
 #endif

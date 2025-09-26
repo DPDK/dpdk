@@ -12,6 +12,7 @@ includes += include_directories('nbl_hw')
 sources = files(
         'nbl_ethdev.c',
         'nbl_core.c',
+        'nbl_dispatch.c',
         'nbl_common/nbl_common.c',
         'nbl_hw/nbl_channel.c',
         'nbl_hw/nbl_resource.c',
