@@ -22,32 +22,32 @@
 #include "ark_pktchkr.h"
 
 /*  Internal prototypes */
-static int eth_ark_check_args(struct ark_adapter *ark, const char *params);
-static int eth_ark_dev_init(struct rte_eth_dev *dev);
+static int ark_check_args(struct ark_adapter *ark, const char *params);
+static int ark_dev_init(struct rte_eth_dev *dev);
 static int ark_config_device(struct rte_eth_dev *dev);
-static int eth_ark_dev_uninit(struct rte_eth_dev *eth_dev);
-static int eth_ark_dev_configure(struct rte_eth_dev *dev);
-static int eth_ark_dev_start(struct rte_eth_dev *dev);
-static int eth_ark_dev_stop(struct rte_eth_dev *dev);
-static int eth_ark_dev_close(struct rte_eth_dev *dev);
-static int eth_ark_dev_info_get(struct rte_eth_dev *dev,
+static int ark_dev_uninit(struct rte_eth_dev *eth_dev);
+static int ark_dev_configure(struct rte_eth_dev *dev);
+static int ark_dev_start(struct rte_eth_dev *dev);
+static int ark_dev_stop(struct rte_eth_dev *dev);
+static int ark_dev_close(struct rte_eth_dev *dev);
+static int ark_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
-static int eth_ark_dev_link_update(struct rte_eth_dev *dev,
+static int ark_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
-static int eth_ark_dev_set_link_up(struct rte_eth_dev *dev);
-static int eth_ark_dev_set_link_down(struct rte_eth_dev *dev);
-static int eth_ark_dev_stats_get(struct rte_eth_dev *dev,
+static int ark_dev_set_link_up(struct rte_eth_dev *dev);
+static int ark_dev_set_link_down(struct rte_eth_dev *dev);
+static int ark_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
-static int eth_ark_dev_stats_reset(struct rte_eth_dev *dev);
-static int eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
+static int ark_dev_stats_reset(struct rte_eth_dev *dev);
+static int ark_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct rte_ether_addr *mac_addr);
-static int eth_ark_macaddr_add(struct rte_eth_dev *dev,
+static int ark_macaddr_add(struct rte_eth_dev *dev,
 			       struct rte_ether_addr *mac_addr,
 			       uint32_t index,
 			       uint32_t pool);
-static void eth_ark_macaddr_remove(struct rte_eth_dev *dev,
+static void ark_macaddr_remove(struct rte_eth_dev *dev,
 				   uint32_t index);
-static int  eth_ark_set_mtu(struct rte_eth_dev *dev, uint16_t size);
+static int  ark_set_mtu(struct rte_eth_dev *dev, uint16_t size);
 
 /*
  * The packet generator is a functional block used to generate packet
@@ -145,7 +145,7 @@ ark_device_caps[] = {
 };
 
 static int
-eth_ark_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+ark_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	struct rte_eth_dev *eth_dev;
@@ -156,7 +156,7 @@ eth_ark_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
-	ret = eth_ark_dev_init(eth_dev);
+	ret = ark_dev_init(eth_dev);
 	if (ret)
 		rte_eth_dev_release_port(eth_dev);
 
@@ -164,47 +164,47 @@ eth_ark_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 }
 
 static int
-eth_ark_pci_remove(struct rte_pci_device *pci_dev)
+ark_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, eth_ark_dev_uninit);
+	return rte_eth_dev_pci_generic_remove(pci_dev, ark_dev_uninit);
 }
 
 static struct rte_pci_driver rte_ark_pmd = {
 	.id_table = pci_id_ark_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-	.probe = eth_ark_pci_probe,
-	.remove = eth_ark_pci_remove,
+	.probe = ark_pci_probe,
+	.remove = ark_pci_remove,
 };
 
 static const struct eth_dev_ops ark_eth_dev_ops = {
-	.dev_configure = eth_ark_dev_configure,
-	.dev_start = eth_ark_dev_start,
-	.dev_stop = eth_ark_dev_stop,
-	.dev_close = eth_ark_dev_close,
+	.dev_configure = ark_dev_configure,
+	.dev_start = ark_dev_start,
+	.dev_stop = ark_dev_stop,
+	.dev_close = ark_dev_close,
 
-	.dev_infos_get = eth_ark_dev_info_get,
+	.dev_infos_get = ark_dev_info_get,
 
-	.rx_queue_setup = eth_ark_dev_rx_queue_setup,
-	.tx_queue_setup = eth_ark_tx_queue_setup,
+	.rx_queue_setup = ark_dev_rx_queue_setup,
+	.tx_queue_setup = ark_tx_queue_setup,
 
-	.link_update = eth_ark_dev_link_update,
-	.dev_set_link_up = eth_ark_dev_set_link_up,
-	.dev_set_link_down = eth_ark_dev_set_link_down,
+	.link_update = ark_dev_link_update,
+	.dev_set_link_up = ark_dev_set_link_up,
+	.dev_set_link_down = ark_dev_set_link_down,
 
-	.rx_queue_start = eth_ark_rx_start_queue,
-	.rx_queue_stop = eth_ark_rx_stop_queue,
+	.rx_queue_start = ark_rx_start_queue,
+	.rx_queue_stop = ark_rx_stop_queue,
 
-	.tx_queue_start = eth_ark_tx_queue_start,
-	.tx_queue_stop = eth_ark_tx_queue_stop,
+	.tx_queue_start = ark_tx_queue_start,
+	.tx_queue_stop = ark_tx_queue_stop,
 
-	.stats_get = eth_ark_dev_stats_get,
-	.stats_reset = eth_ark_dev_stats_reset,
+	.stats_get = ark_dev_stats_get,
+	.stats_reset = ark_dev_stats_reset,
 
-	.mac_addr_add = eth_ark_macaddr_add,
-	.mac_addr_remove = eth_ark_macaddr_remove,
-	.mac_addr_set = eth_ark_set_default_mac_addr,
+	.mac_addr_add = ark_macaddr_add,
+	.mac_addr_remove = ark_macaddr_remove,
+	.mac_addr_set = ark_set_default_mac_addr,
 
-	.mtu_set = eth_ark_set_mtu,
+	.mtu_set = ark_set_mtu,
 };
 
 static int
@@ -297,7 +297,7 @@ check_for_ext(struct ark_adapter *ark)
 }
 
 static int
-eth_ark_dev_init(struct rte_eth_dev *dev)
+ark_dev_init(struct rte_eth_dev *dev)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 	struct rte_pci_device *pci_dev;
@@ -376,7 +376,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		return -1;
 
 	dev->dev_ops = &ark_eth_dev_ops;
-	dev->rx_queue_count = eth_ark_dev_rx_queue_count;
+	dev->rx_queue_count = ark_dev_rx_queue_count;
 
 	dev->data->mac_addrs = rte_zmalloc("ark", RTE_ETHER_ADDR_LEN, 0);
 	if (!dev->data->mac_addrs) {
@@ -398,7 +398,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	}
 
 	if (pci_dev->device.devargs)
-		ret = eth_ark_check_args(ark, pci_dev->device.devargs->args);
+		ret = ark_check_args(ark, pci_dev->device.devargs->args);
 	else
 		ARK_PMD_LOG(INFO, "No Device args found\n");
 
@@ -539,7 +539,7 @@ ark_config_device(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_uninit(struct rte_eth_dev *dev)
+ark_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 
@@ -559,11 +559,11 @@ eth_ark_dev_uninit(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_configure(struct rte_eth_dev *dev)
+ark_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 
-	eth_ark_dev_set_link_up(dev);
+	ark_dev_set_link_up(dev);
 	if (ark->user_ext.dev_configure)
 		return ark->user_ext.dev_configure(dev,
 			   ark->user_data[dev->data->port_id]);
@@ -571,23 +571,23 @@ eth_ark_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_start(struct rte_eth_dev *dev)
+ark_dev_start(struct rte_eth_dev *dev)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 	int i;
 
 	/* RX Side */
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		eth_ark_rx_start_queue(dev, i);
+		ark_rx_start_queue(dev, i);
 
 	/* TX Side */
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		eth_ark_tx_queue_start(dev, i);
+		ark_tx_queue_start(dev, i);
 
 	ark->started = 1;
 	/* set xmit and receive function */
-	dev->rx_pkt_burst = &eth_ark_recv_pkts;
-	dev->tx_pkt_burst = &eth_ark_xmit_pkts;
+	dev->rx_pkt_burst = &ark_recv_pkts;
+	dev->tx_pkt_burst = &ark_xmit_pkts;
 
 	if (!ark->isvf && ark->start_pg)
 		ark_pktchkr_run(ark->pc);
@@ -618,7 +618,7 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_stop(struct rte_eth_dev *dev)
+ark_dev_stop(struct rte_eth_dev *dev)
 {
 	uint16_t i;
 	int status;
@@ -645,11 +645,11 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 
 	/* Stop RX Side */
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		eth_ark_rx_stop_queue(dev, i);
+		ark_rx_stop_queue(dev, i);
 
 	/* STOP TX Side */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		status = eth_ark_tx_queue_stop(dev, i);
+		status = ark_tx_queue_stop(dev, i);
 		if (status != 0) {
 			uint16_t port = dev->data->port_id;
 			ARK_PMD_LOG(ERR,
@@ -662,7 +662,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	ark_udm_dump_stats(ark->udm.v, "Post stop");
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		eth_ark_rx_dump_queue(dev, i, __func__);
+		ark_rx_dump_queue(dev, i, __func__);
 
 	/* Stop the packet checker if it is running */
 	if (!ark->isvf && ark->start_pg) {
@@ -674,7 +674,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_close(struct rte_eth_dev *dev)
+ark_dev_close(struct rte_eth_dev *dev)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 	uint16_t i;
@@ -686,7 +686,7 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 		ark->user_ext.dev_close(dev,
 		 ark->user_data[dev->data->port_id]);
 
-	eth_ark_dev_stop(dev);
+	ark_dev_stop(dev);
 
 	/*
 	 * This should only be called once for the device during shutdown
@@ -696,12 +696,12 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 		ark_pktdir_setup(ark->pd, ARK_PKT_DIR_INIT_VAL);
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		eth_ark_tx_queue_release(dev->data->tx_queues[i]);
+		ark_tx_queue_release(dev->data->tx_queues[i]);
 		dev->data->tx_queues[i] = 0;
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		eth_ark_dev_rx_queue_release(dev->data->rx_queues[i]);
+		ark_dev_rx_queue_release(dev->data->rx_queues[i]);
 		dev->data->rx_queues[i] = 0;
 	}
 
@@ -709,7 +709,7 @@ eth_ark_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_info_get(struct rte_eth_dev *dev,
+ark_dev_info_get(struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -749,7 +749,7 @@ eth_ark_dev_info_get(struct rte_eth_dev *dev,
 }
 
 static int
-eth_ark_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+ark_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	ARK_PMD_LOG(DEBUG, "link status = %d\n",
 			dev->data->dev_link.link_status);
@@ -764,7 +764,7 @@ eth_ark_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 }
 
 static int
-eth_ark_dev_set_link_up(struct rte_eth_dev *dev)
+ark_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	dev->data->dev_link.link_status = 1;
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -776,7 +776,7 @@ eth_ark_dev_set_link_up(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_set_link_down(struct rte_eth_dev *dev)
+ark_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	dev->data->dev_link.link_status = 0;
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -788,7 +788,7 @@ eth_ark_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	uint16_t i;
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -801,9 +801,9 @@ eth_ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->oerrors = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		eth_tx_queue_stats_get(dev->data->tx_queues[i], stats);
+		ark_tx_queue_stats_get(dev->data->tx_queues[i], stats);
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		eth_rx_queue_stats_get(dev->data->rx_queues[i], stats);
+		ark_rx_queue_stats_get(dev->data->rx_queues[i], stats);
 	if (ark->user_ext.stats_get)
 		return ark->user_ext.stats_get(dev, stats,
 			ark->user_data[dev->data->port_id]);
@@ -811,15 +811,15 @@ eth_ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 }
 
 static int
-eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
+ark_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	uint16_t i;
 	struct ark_adapter *ark = dev->data->dev_private;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		eth_tx_queue_stats_reset(dev->data->tx_queues[i]);
+		ark_tx_queue_stats_reset(dev->data->tx_queues[i]);
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		eth_rx_queue_stats_reset(dev->data->rx_queues[i]);
+		ark_rx_queue_stats_reset(dev->data->rx_queues[i]);
 	if (ark->user_ext.stats_reset)
 		ark->user_ext.stats_reset(dev,
 			  ark->user_data[dev->data->port_id]);
@@ -828,7 +828,7 @@ eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 static int
-eth_ark_macaddr_add(struct rte_eth_dev *dev,
+ark_macaddr_add(struct rte_eth_dev *dev,
 		    struct rte_ether_addr *mac_addr,
 		    uint32_t index,
 		    uint32_t pool)
@@ -847,7 +847,7 @@ eth_ark_macaddr_add(struct rte_eth_dev *dev,
 }
 
 static void
-eth_ark_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
+ark_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 
@@ -857,7 +857,7 @@ eth_ark_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 }
 
 static int
-eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
+ark_set_default_mac_addr(struct rte_eth_dev *dev,
 			     struct rte_ether_addr *mac_addr)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -871,7 +871,7 @@ eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
 }
 
 static int
-eth_ark_set_mtu(struct rte_eth_dev *dev, uint16_t  size)
+ark_set_mtu(struct rte_eth_dev *dev, uint16_t  size)
 {
 	struct ark_adapter *ark = dev->data->dev_private;
 
@@ -936,7 +936,7 @@ process_file_args(const char *key, const char *value, void *extra_args)
 }
 
 static int
-eth_ark_check_args(struct ark_adapter *ark, const char *params)
+ark_check_args(struct ark_adapter *ark, const char *params)
 {
 	struct rte_kvargs *kvlist;
 	unsigned int k_idx;
