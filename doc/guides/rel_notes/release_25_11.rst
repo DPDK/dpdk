@@ -106,6 +106,10 @@ New Features
   By default, it reports ``RTE_ETH_LINK_CONNECTOR_NONE``
   unless driver specifies it.
 
+* **Added Huawei hinic3 ethernet driver.**
+
+  Added network driver for the Huawei SPx series Network Adapters.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Enabled software taildrop for ordered queues.
