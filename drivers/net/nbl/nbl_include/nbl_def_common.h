@@ -11,6 +11,13 @@
 	({ typeof(func) _func = (func);	\
 	 (!_func) ? 0 : _func para; })
 
+#define NBL_ONE_ETHERNET_PORT			(1)
+#define NBL_TWO_ETHERNET_PORT			(2)
+#define NBL_FOUR_ETHERNET_PORT			(4)
+
+#define NBL_TWO_ETHERNET_MAX_MAC_NUM		(512)
+#define NBL_FOUR_ETHERNET_MAX_MAC_NUM		(1024)
+
 struct nbl_dma_mem {
 	void *va;
 	uint64_t pa;

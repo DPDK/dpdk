@@ -314,6 +314,57 @@ struct nbl_chan_param_enable_mailbox_irq {
 	bool enable_msix;
 };
 
+struct nbl_chan_param_register_net_info {
+	u16 pf_bdf;
+	u64 vf_bar_start;
+	u64 vf_bar_size;
+	u16 total_vfs;
+	u16 offset;
+	u16 stride;
+	u64 pf_bar_start;
+};
+
+struct nbl_chan_param_get_vsi_id {
+	u16 vsi_id;
+	u16 type;
+};
+
+struct nbl_chan_param_get_eth_id {
+	u16 vsi_id;
+	u8 eth_mode;
+	u8 eth_id;
+	u8 logic_eth_id;
+};
+
+struct nbl_chan_param_register_vsi2q {
+	u16 vsi_index;
+	u16 vsi_id;
+	u16 queue_offset;
+	u16 queue_num;
+};
+
+struct nbl_chan_param_cfg_q2vsi {
+	u16 vsi_id;
+};
+
+struct nbl_chan_param_cfg_rss {
+	u16 vsi_id;
+};
+
+struct nbl_chan_param_macvlan_cfg {
+	u8 mac[RTE_ETHER_ADDR_LEN];
+	u16 vlan;
+	u16 vsi;
+};
+
+struct nbl_chan_param_add_multi_rule {
+	u16 vsi;
+};
+
+struct nbl_chan_param_del_multi_rule {
+	u16 vsi;
+};
+
 struct nbl_chan_send_info {
 	uint16_t dstid;
 	uint16_t msg_type;
