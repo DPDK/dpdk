@@ -1176,7 +1176,7 @@ retry:
 	}
 
 	if (bytes_read > 0)
-		rte_vmbus_chan_signal_read(get_vmbus_device(hv), rxq->chan, bytes_read);
+		rte_vmbus_chan_signal_read(hn_nvs_get_vmbus_device(hv), rxq->chan, bytes_read);
 
 	rte_spinlock_unlock(&rxq->ring_lock);
 
@@ -1641,7 +1641,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 fail:
 	if (need_sig)
-		rte_vmbus_chan_signal_tx(get_vmbus_device(hv), txq->chan);
+		rte_vmbus_chan_signal_tx(hn_nvs_get_vmbus_device(hv), txq->chan);
 
 	return nb_tx;
 }
