@@ -14,15 +14,18 @@ Features
 - Multi arch support: x86_64, ARMv8.
 - Multiple queues for TX and RX
 - Receiver Side Scaling (RSS)
+- Flow filtering
 - Checksum offload
 - TSO offload
 - Promiscuous mode
 - Port hardware statistics
 - Link state information
+- Link flow control
 - Scattered and gather for TX and RX
 - Allmulticast mode
 - MTU update
 - Multicast MAC filter
+- Flow API
 - Set Link down or up
 - VLAN filter and VLAN offload
 - SR-IOV - Partially supported at this point, VFIO only
