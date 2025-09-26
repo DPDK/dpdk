@@ -3,6 +3,7 @@
  */
 
 #include "nbl_ethdev.h"
+#include "nbl_dev.h"
 
 RTE_LOG_REGISTER_SUFFIX(nbl_logtype_init, init, INFO);
 RTE_LOG_REGISTER_SUFFIX(nbl_logtype_driver, driver, INFO);
@@ -25,7 +26,10 @@ static int nbl_dev_close(struct rte_eth_dev *eth_dev)
 }
 
 const struct eth_dev_ops nbl_eth_dev_ops = {
-	.dev_close = nbl_dev_close,
+	.dev_configure = nbl_dev_configure,
+	.dev_start = nbl_dev_port_start,
+	.dev_stop = nbl_dev_port_stop,
+	.dev_close = nbl_dev_port_close,
 };
 
 static int nbl_eth_dev_init(struct rte_eth_dev *eth_dev)
