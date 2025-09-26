@@ -336,6 +336,11 @@ struct nbl_chan_param_get_eth_id {
 	u8 logic_eth_id;
 };
 
+struct nbl_chan_vsi_qid_info {
+	u16 vsi_id;
+	u16 local_qid;
+};
+
 struct nbl_chan_param_register_vsi2q {
 	u16 vsi_index;
 	u16 vsi_id;
@@ -363,6 +368,21 @@ struct nbl_chan_param_add_multi_rule {
 
 struct nbl_chan_param_del_multi_rule {
 	u16 vsi;
+};
+
+struct nbl_chan_param_cfg_dsch {
+	u16 vsi_id;
+	bool vld;
+};
+
+struct nbl_chan_param_setup_cqs {
+	u16 vsi_id;
+	u16 real_qps;
+	bool rss_indir_set;
+};
+
+struct nbl_chan_param_remove_cqs {
+	u16 vsi_id;
 };
 
 struct nbl_chan_send_info {

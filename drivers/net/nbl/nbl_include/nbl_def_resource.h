@@ -22,6 +22,7 @@ struct nbl_resource_ops {
 	int (*unregister_net)(void *priv);
 	u16 (*get_vsi_id)(void *priv);
 	void (*get_eth_id)(void *priv, u16 vsi_id, u8 *eth_mode, u8 *eth_id);
+	u16 (*get_vsi_global_qid)(void *priv, u16 vsi_id, u16 local_qid);
 	int (*setup_q2vsi)(void *priv, u16 vsi_id);
 	void (*remove_q2vsi)(void *priv, u16 vsi_id);
 	int (*register_vsi2q)(void *priv, u16 vsi_index, u16 vsi_id,
@@ -61,6 +62,9 @@ struct nbl_resource_ops {
 	void (*del_multi_rule)(void *priv, u16 vsi_id);
 	int (*cfg_multi_mcast)(void *priv, u16 vsi_id, u16 enable);
 	void (*clear_flow)(void *priv, u16 vsi_id);
+	int (*cfg_dsch)(void *priv, u16 vsi_id, bool vld);
+	int (*setup_cqs)(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set);
+	void (*remove_cqs)(void *priv, u16 vsi_id);
 };
 
 struct nbl_resource_ops_tbl {

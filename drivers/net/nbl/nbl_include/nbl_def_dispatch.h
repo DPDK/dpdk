@@ -63,7 +63,7 @@ struct nbl_dispatch_ops {
 	int (*setup_rss)(void *priv, u16 vsi_id);
 	void (*remove_rss)(void *priv, u16 vsi_id);
 	int (*cfg_dsch)(void *priv, u16 vsi_id, bool vld);
-	int (*setup_cqs)(void *priv, u16 vsi_id, u16 real_qps);
+	int (*setup_cqs)(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set);
 	void (*remove_cqs)(void *priv, u16 vsi_id);
 	int (*set_rxfh_indir)(void *priv, u16 vsi_id, u32 *indir, u32 indir_size);
 	void (*clear_queues)(void *priv, u16 vsi_id);
