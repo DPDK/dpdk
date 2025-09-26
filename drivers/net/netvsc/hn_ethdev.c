@@ -102,7 +102,7 @@ struct da_cache {
 	char drv_str[];
 };
 
-LIST_HEAD(da_cache_list, da_cache) da_cache_list;
+static LIST_HEAD(da_cache_list, da_cache) da_cache_list;
 static unsigned int da_cache_usage;
 
 static struct rte_eth_dev *
