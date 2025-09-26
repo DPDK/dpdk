@@ -115,4 +115,28 @@ struct hinic3_nic_dev {
 	uint32_t vfta[HINIC3_VFTA_SIZE]; /**< VLAN bitmap. */
 };
 
+/**
+ * Enable interrupt for the specified RX queue.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] queue_id
+ * The ID of the receive queue for which the interrupt is being enabled.
+ * @return
+ * 0 on success, a negative error code on failure.
+ */
+int hinic3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+
+/**
+ * Disable interrupt for the specified RX queue.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] queue_id
+ * The ID of the receive queue for which the interrupt is being disabled.
+ * @return
+ * 0 on success, a negative error code on failure.
+ */
+int hinic3_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
+				     uint16_t queue_id);
 #endif /* _HINIC3_ETHDEV_H_ */

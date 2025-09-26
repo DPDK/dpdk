@@ -12,6 +12,18 @@ Features
 --------
 
 - Multi arch support: x86_64, ARMv8.
+- Checksum offload
+- TSO offload
+- Port hardware statistics
+- Link state information
+- Allmulticast mode
+- MTU update
+- Multicast MAC filter
+- Set Link down or up
+- VLAN filter and VLAN offload
+- SR-IOV - Partially supported at this point, VFIO only
+- FW version
+- LRO
 
 
 Prerequisites
