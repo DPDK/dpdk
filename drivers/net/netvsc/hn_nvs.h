@@ -222,14 +222,14 @@ void	hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
 			      const struct vmbus_chanpkt_hdr *hdr,
 			      const void *data);
 
-struct rte_vmbus_device *get_vmbus_device(struct hn_data *hv);
+struct rte_vmbus_device *hn_nvs_get_vmbus_device(struct hn_data *hv);
 
 static inline int
 hn_nvs_send(struct hn_data *hv, struct vmbus_channel *chan,
 	    uint16_t flags, void *nvs_msg, int nvs_msglen, uintptr_t sndc,
 	    bool *need_sig)
 {
-	return rte_vmbus_chan_send(get_vmbus_device(hv), chan, VMBUS_CHANPKT_TYPE_INBAND,
+	return rte_vmbus_chan_send(hn_nvs_get_vmbus_device(hv), chan, VMBUS_CHANPKT_TYPE_INBAND,
 				   nvs_msg, nvs_msglen, (uint64_t)sndc,
 				   flags, need_sig);
 }
@@ -240,6 +240,6 @@ hn_nvs_send_sglist(struct hn_data *hv, struct vmbus_channel *chan,
 		   void *nvs_msg, int nvs_msglen,
 		   uintptr_t sndc, bool *need_sig)
 {
-	return rte_vmbus_chan_send_sglist(get_vmbus_device(hv), chan, sg, sglen, nvs_msg,
+	return rte_vmbus_chan_send_sglist(hn_nvs_get_vmbus_device(hv), chan, sg, sglen, nvs_msg,
 					  nvs_msglen, (uint64_t)sndc, need_sig);
 }
