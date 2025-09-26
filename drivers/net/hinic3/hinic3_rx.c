@@ -770,3 +770,288 @@ hinic3_start_rq(struct rte_eth_dev *eth_dev, struct hinic3_rxq *rxq)
 
 	return err;
 }
+
+
+static inline uint64_t
+hinic3_rx_vlan(uint32_t offload_type, uint32_t vlan_len, uint16_t *vlan_tci)
+{
+	uint16_t vlan_tag;
+
+	vlan_tag = HINIC3_GET_RX_VLAN_TAG(vlan_len);
+	if (!HINIC3_GET_RX_VLAN_OFFLOAD_EN(offload_type) || vlan_tag == 0) {
+		*vlan_tci = 0;
+		return 0;
+	}
+
+	*vlan_tci = vlan_tag;
+
+	return HINIC3_PKT_RX_VLAN | HINIC3_PKT_RX_VLAN_STRIPPED;
+}
+
+static inline uint64_t
+hinic3_rx_csum(uint32_t status, struct hinic3_rxq *rxq)
+{
+	struct hinic3_nic_dev *nic_dev = rxq->nic_dev;
+	uint32_t csum_err;
+	uint64_t flags;
+
+	if (unlikely(!(nic_dev->rx_csum_en & HINIC3_DEFAULT_RX_CSUM_OFFLOAD)))
+		return HINIC3_PKT_RX_IP_CKSUM_UNKNOWN;
+
+	csum_err = HINIC3_GET_RX_CSUM_ERR(status);
+	if (likely(csum_err == 0))
+		return (HINIC3_PKT_RX_IP_CKSUM_GOOD |
+			HINIC3_PKT_RX_L4_CKSUM_GOOD);
+
+	/*
+	 * If bypass bit is set, all other err status indications should be
+	 * ignored.
+	 */
+	if (unlikely(csum_err & HINIC3_RX_CSUM_HW_CHECK_NONE))
+		return HINIC3_PKT_RX_IP_CKSUM_UNKNOWN;
+
+	flags = 0;
+
+	/* IP checksum error. */
+	if (csum_err & HINIC3_RX_CSUM_IP_CSUM_ERR) {
+		flags |= HINIC3_PKT_RX_IP_CKSUM_BAD;
+		rxq->rxq_stats.csum_errors++;
+	}
+
+	/* L4 checksum error. */
+	if ((csum_err & HINIC3_RX_CSUM_TCP_CSUM_ERR) ||
+	    (csum_err & HINIC3_RX_CSUM_UDP_CSUM_ERR) ||
+	    (csum_err & HINIC3_RX_CSUM_SCTP_CRC_ERR)) {
+		flags |= HINIC3_PKT_RX_L4_CKSUM_BAD;
+		rxq->rxq_stats.csum_errors++;
+	}
+
+	if (unlikely(csum_err == HINIC3_RX_CSUM_IPSU_OTHER_ERR))
+		rxq->rxq_stats.other_errors++;
+
+	return flags;
+}
+
+static inline uint64_t
+hinic3_rx_rss_hash(uint32_t offload_type, uint32_t rss_hash_value, uint32_t *rss_hash)
+{
+	uint32_t rss_type;
+
+	rss_type = HINIC3_GET_RSS_TYPES(offload_type);
+	if (likely(rss_type != 0)) {
+		*rss_hash = rss_hash_value;
+		return HINIC3_PKT_RX_RSS_HASH;
+	}
+
+	return 0;
+}
+
+static void
+hinic3_recv_jumbo_pkt(struct hinic3_rxq *rxq, struct rte_mbuf *head_mbuf,
+		      uint32_t remain_pkt_len)
+{
+	struct rte_mbuf *cur_mbuf = NULL;
+	struct rte_mbuf *rxm = NULL;
+	struct hinic3_rx_info *rx_info = NULL;
+	uint16_t sw_ci, rx_buf_len = rxq->buf_len;
+	uint32_t pkt_len;
+
+	while (remain_pkt_len > 0) {
+		sw_ci = hinic3_get_rq_local_ci(rxq);
+		rx_info = &rxq->rx_info[sw_ci];
+
+		hinic3_update_rq_local_ci(rxq, 1);
+
+		pkt_len = remain_pkt_len > rx_buf_len ? rx_buf_len
+						      : remain_pkt_len;
+		remain_pkt_len -= pkt_len;
+
+		cur_mbuf = rx_info->mbuf;
+		cur_mbuf->data_len = (uint16_t)pkt_len;
+		cur_mbuf->next = NULL;
+
+		head_mbuf->pkt_len += cur_mbuf->data_len;
+		head_mbuf->nb_segs++;
+#ifdef HINIC3_XSTAT_MBUF_USE
+		rxq->rxq_stats.rx_free_mbuf_bytes++;
+#endif
+		if (!rxm)
+			head_mbuf->next = cur_mbuf;
+		else
+			rxm->next = cur_mbuf;
+
+		rxm = cur_mbuf;
+	}
+}
+
+int
+hinic3_start_all_rqs(struct rte_eth_dev *eth_dev)
+{
+	struct hinic3_nic_dev *nic_dev = NULL;
+	struct hinic3_rxq *rxq = NULL;
+	int err = 0;
+	int i;
+
+	nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
+
+	for (i = 0; i < nic_dev->num_rqs; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		hinic3_add_rq_to_rx_queue_list(nic_dev, rxq->q_id);
+		err = hinic3_rearm_rxq_mbuf(rxq);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Fail to alloc mbuf for Rx queue %d, qid = %u, need_mbuf: %d",
+				    i, rxq->q_id, rxq->q_depth);
+			goto out;
+		}
+		hinic3_dev_rx_queue_intr_enable(eth_dev, rxq->q_id);
+		if (rxq->rx_deferred_start)
+			continue;
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	if (nic_dev->rss_state == HINIC3_RSS_ENABLE) {
+		err = hinic3_refill_indir_rqid(rxq);
+		if (err) {
+			PMD_DRV_LOG(ERR,
+				    "Refill rq to indirect table failed, eth_dev:%s, queue_idx:%d, err:%d",
+				    rxq->nic_dev->dev_name, rxq->q_id, err);
+			goto out;
+		}
+	}
+
+	return 0;
+out:
+	for (i = 0; i < nic_dev->num_rqs; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		hinic3_remove_rq_from_rx_queue_list(nic_dev, rxq->q_id);
+		hinic3_free_rxq_mbufs(rxq);
+		hinic3_dev_rx_queue_intr_disable(eth_dev, rxq->q_id);
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+	return err;
+}
+
+#define HINIC3_RX_EMPTY_THRESHOLD 3
+uint16_t
+hinic3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct hinic3_rxq *rxq = rx_queue;
+	struct hinic3_rx_info *rx_info = NULL;
+	volatile struct hinic3_rq_cqe *rx_cqe = NULL;
+	struct rte_mbuf *rxm = NULL;
+	uint16_t sw_ci, rx_buf_len, wqebb_cnt = 0, pkts = 0;
+	uint32_t status, pkt_len, vlan_len, offload_type, lro_num;
+	uint64_t rx_bytes = 0;
+	uint32_t hash_value;
+
+#ifdef HINIC3_XSTAT_PROF_RX
+	uint64_t t1 = rte_get_tsc_cycles();
+	uint64_t t2;
+#endif
+	if (((rte_get_timer_cycles() - rxq->rxq_stats.tsc) < rxq->wait_time_cycle) &&
+	    rxq->rxq_stats.empty >= HINIC3_RX_EMPTY_THRESHOLD)
+		goto out;
+
+	sw_ci = hinic3_get_rq_local_ci(rxq);
+	rx_buf_len = rxq->buf_len;
+
+	while (pkts < nb_pkts) {
+		rx_cqe = &rxq->rx_cqe[sw_ci];
+		status = hinic3_hw_cpu32((uint32_t)(rte_atomic_load_explicit(&rx_cqe->status,
+			rte_memory_order_acquire)));
+		if (!HINIC3_GET_RX_DONE(status)) {
+			rxq->rxq_stats.empty++;
+			break;
+		}
+
+		vlan_len = hinic3_hw_cpu32(rx_cqe->vlan_len);
+
+		pkt_len = HINIC3_GET_RX_PKT_LEN(vlan_len);
+
+		rx_info = &rxq->rx_info[sw_ci];
+		rxm = rx_info->mbuf;
+
+		/* 1. Next ci point and prefetch. */
+		sw_ci++;
+		sw_ci &= rxq->q_mask;
+
+		/* 2. Prefetch next mbuf first 64B. */
+		rte_prefetch0(rxq->rx_info[sw_ci].mbuf);
+
+		/* 3. Jumbo frame process. */
+		if (likely(pkt_len <= rx_buf_len)) {
+			rxm->data_len = (uint16_t)pkt_len;
+			rxm->pkt_len = pkt_len;
+			wqebb_cnt++;
+		} else {
+			rxm->data_len = rx_buf_len;
+			rxm->pkt_len = rx_buf_len;
+
+			/*
+			 * If receive jumbo, updating ci will be done by
+			 * hinic3_recv_jumbo_pkt function.
+			 */
+			hinic3_update_rq_local_ci(rxq, wqebb_cnt + 1);
+			wqebb_cnt = 0;
+			hinic3_recv_jumbo_pkt(rxq, rxm, pkt_len - rx_buf_len);
+			sw_ci = hinic3_get_rq_local_ci(rxq);
+		}
+
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		rxm->port = rxq->port_id;
+
+		/* 4. Rx checksum offload. */
+		rxm->ol_flags |= hinic3_rx_csum(status, rxq);
+
+		/* 5. Vlan offload. */
+		offload_type = hinic3_hw_cpu32(rx_cqe->offload_type);
+
+		rxm->ol_flags |=
+			hinic3_rx_vlan(offload_type, vlan_len, &rxm->vlan_tci);
+
+		/* 6. RSS. */
+		hash_value = hinic3_hw_cpu32(rx_cqe->hash_val);
+		rxm->ol_flags |= hinic3_rx_rss_hash(offload_type, hash_value,
+						    &rxm->hash.rss);
+		/* 8. LRO. */
+		lro_num = HINIC3_GET_RX_NUM_LRO(status);
+		if (unlikely(lro_num != 0)) {
+			rxm->ol_flags |= HINIC3_PKT_RX_LRO;
+			rxm->tso_segsz = pkt_len / lro_num;
+		}
+
+		rx_cqe->status = 0;
+
+		rx_bytes += pkt_len;
+		rx_pkts[pkts++] = rxm;
+	}
+
+	if (pkts) {
+		/* 9. Update local ci. */
+		hinic3_update_rq_local_ci(rxq, wqebb_cnt);
+
+		/* Update packet stats. */
+		rxq->rxq_stats.packets += pkts;
+		rxq->rxq_stats.bytes += rx_bytes;
+		rxq->rxq_stats.empty = 0;
+#ifdef HINIC3_XSTAT_MBUF_USE
+		rxq->rxq_stats.rx_free_mbuf_bytes += pkts;
+#endif
+	}
+	rxq->rxq_stats.burst_pkts = pkts;
+	rxq->rxq_stats.tsc = rte_get_timer_cycles();
+out:
+	/* 10. Rearm mbuf to rxq. */
+	hinic3_rearm_rxq_mbuf(rxq);
+
+#ifdef HINIC3_XSTAT_PROF_RX
+	/* Do profiling stats. */
+	t2 = rte_get_tsc_cycles();
+	rxq->rxq_stats.app_tsc = t1 - rxq->prof_rx_end_tsc;
+	rxq->prof_rx_end_tsc = t2;
+	rxq->rxq_stats.pmd_tsc = t2 - t1;
+#endif
+
+	return pkts;
+}

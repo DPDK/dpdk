@@ -3085,6 +3085,9 @@ hinic3_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_DRV_LOG(DEBUG, "Network Interface pmd driver version: %s",
 		    HINIC3_PMD_DRV_VERSION);
 
+	eth_dev->rx_pkt_burst = hinic3_recv_pkts;
+	eth_dev->tx_pkt_burst = hinic3_xmit_pkts;
+
 	return hinic3_func_init(eth_dev);
 }
 
