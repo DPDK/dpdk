@@ -11,21 +11,21 @@
 #include <rte_mempool.h>
 #include <ethdev_driver.h>
 
-int eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
+int ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			       uint16_t queue_idx,
 			       uint16_t nb_desc,
 			       unsigned int socket_id,
 			       const struct rte_eth_rxconf *rx_conf,
 			       struct rte_mempool *mp);
-int eth_ark_dev_rx_queue_count(void *rx_queue);
-int eth_ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id);
-int eth_ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id);
-uint16_t eth_ark_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+int ark_dev_rx_queue_count(void *rx_queue);
+int ark_rx_stop_queue(struct rte_eth_dev *dev, uint16_t queue_id);
+int ark_rx_start_queue(struct rte_eth_dev *dev, uint16_t queue_id);
+uint16_t ark_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
-void eth_ark_dev_rx_queue_release(void *rx_queue);
-void eth_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats);
-void eth_rx_queue_stats_reset(void *vqueue);
-void eth_ark_rx_dump_queue(struct rte_eth_dev *dev, uint16_t queue_id,
+void ark_dev_rx_queue_release(void *rx_queue);
+void ark_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats);
+void ark_rx_queue_stats_reset(void *vqueue);
+void ark_rx_dump_queue(struct rte_eth_dev *dev, uint16_t queue_id,
 			   const char *msg);
 
 #endif
