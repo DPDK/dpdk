@@ -2283,6 +2283,323 @@ hinic3_dev_allmulticast_disable(struct rte_eth_dev *dev)
 }
 
 /**
+ * Enable promiscuous mode.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	uint32_t rx_mode;
+	int err;
+
+	rx_mode = nic_dev->rx_mode | HINIC3_RX_MODE_PROMISC;
+
+	err = hinic3_set_rx_mode(nic_dev->hwdev, rx_mode);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Enable promiscuous failed");
+		return err;
+	}
+
+	nic_dev->rx_mode = rx_mode;
+
+	PMD_DRV_LOG(DEBUG,
+		    "Enable promiscuous, nic_dev: %s, port_id: %d, promisc: %d",
+		    nic_dev->dev_name, dev->data->port_id,
+		    dev->data->promiscuous);
+	return 0;
+}
+
+/**
+ * Disable promiscuous mode.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	uint32_t rx_mode;
+	int err;
+
+	rx_mode = nic_dev->rx_mode & (~HINIC3_RX_MODE_PROMISC);
+
+	err = hinic3_set_rx_mode(nic_dev->hwdev, rx_mode);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Disable promiscuous failed");
+		return err;
+	}
+
+	nic_dev->rx_mode = rx_mode;
+
+	PMD_DRV_LOG(DEBUG,
+		"Disable promiscuous, nic_dev: %s, port_id: %d, promisc: %d",
+		nic_dev->dev_name, dev->data->port_id, dev->data->promiscuous);
+	return 0;
+}
+
+/**
+ * Get flow control configuration, including auto-negotiation and RX/TX pause
+ * settings.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ *
+ * @param[out] fc_conf
+ * The flow control configuration to be filled.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+
+/**
+ * Update the RSS hash key and RSS hash type.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] rss_conf
+ * RSS configuration data.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_rss_hash_update(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_conf *rss_conf)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic3_rss_type rss_type = {0};
+	uint64_t rss_hf = rss_conf->rss_hf;
+	int err = 0;
+
+	if (nic_dev->rss_state == HINIC3_RSS_DISABLE) {
+		if (rss_hf != 0)
+			return -EINVAL;
+
+		PMD_DRV_LOG(INFO, "RSS is not enabled");
+		return 0;
+	}
+
+	if (rss_conf->rss_key_len > HINIC3_RSS_KEY_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid RSS key, rss_key_len: %d",
+			    rss_conf->rss_key_len);
+		return -EINVAL;
+	}
+
+	if (rss_conf->rss_key) {
+		err = hinic3_rss_set_hash_key(nic_dev->hwdev, rss_conf->rss_key,
+					      HINIC3_RSS_KEY_SIZE);
+		if (err) {
+			PMD_DRV_LOG(ERR, "Set RSS hash key failed");
+			return err;
+		}
+		memcpy((void *)nic_dev->rss_key, (void *)rss_conf->rss_key,
+		       (size_t)rss_conf->rss_key_len);
+	}
+
+	rss_type.ipv4 = (rss_hf & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+				   RTE_ETH_RSS_NONFRAG_IPV4_OTHER))
+				? 1
+				: 0;
+	rss_type.tcp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) ? 1 : 0;
+	rss_type.ipv6 = (rss_hf & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+				   RTE_ETH_RSS_NONFRAG_IPV6_OTHER))
+				? 1
+				: 0;
+	rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+	rss_type.tcp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
+	rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
+	rss_type.udp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
+	rss_type.udp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
+
+	err = hinic3_set_rss_type(nic_dev->hwdev, rss_type);
+	if (err)
+		PMD_DRV_LOG(ERR, "Set RSS type failed");
+
+	return err;
+}
+
+/**
+ * Get the RSS hash configuration.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[out] rss_conf
+ * RSS configuration data.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_rss_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct hinic3_rss_type rss_type = {0};
+	int err;
+
+	if (!rss_conf)
+		return -EINVAL;
+
+	if (nic_dev->rss_state == HINIC3_RSS_DISABLE) {
+		rss_conf->rss_hf = 0;
+		PMD_DRV_LOG(INFO, "RSS is not enabled");
+		return 0;
+	}
+
+	if (rss_conf->rss_key && rss_conf->rss_key_len >= HINIC3_RSS_KEY_SIZE) {
+		/*
+		 * Get RSS key from driver to reduce the frequency of the MPU
+		 * accessing the RSS memory.
+		 */
+		rss_conf->rss_key_len = sizeof(nic_dev->rss_key);
+		memcpy((void *)rss_conf->rss_key, (void *)nic_dev->rss_key,
+		       (size_t)rss_conf->rss_key_len);
+	}
+
+	err = hinic3_get_rss_type(nic_dev->hwdev, &rss_type);
+	if (err)
+		return err;
+
+	rss_conf->rss_hf = 0;
+	rss_conf->rss_hf |=
+		rss_type.ipv4 ? (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4 |
+				 RTE_ETH_RSS_NONFRAG_IPV4_OTHER) : 0;
+	rss_conf->rss_hf |= rss_type.tcp_ipv4 ? RTE_ETH_RSS_NONFRAG_IPV4_TCP : 0;
+	rss_conf->rss_hf |=
+		rss_type.ipv6 ? (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 |
+				 RTE_ETH_RSS_NONFRAG_IPV6_OTHER) : 0;
+	rss_conf->rss_hf |= rss_type.ipv6_ext ? RTE_ETH_RSS_IPV6_EX : 0;
+	rss_conf->rss_hf |= rss_type.tcp_ipv6 ? RTE_ETH_RSS_NONFRAG_IPV6_TCP : 0;
+	rss_conf->rss_hf |= rss_type.tcp_ipv6_ext ? RTE_ETH_RSS_IPV6_TCP_EX : 0;
+	rss_conf->rss_hf |= rss_type.udp_ipv4 ? RTE_ETH_RSS_NONFRAG_IPV4_UDP : 0;
+	rss_conf->rss_hf |= rss_type.udp_ipv6 ? RTE_ETH_RSS_NONFRAG_IPV6_UDP : 0;
+
+	return 0;
+}
+
+/**
+ * Get the RETA indirection table.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[out] reta_conf
+ * Pointer to RETA configuration structure array.
+ * @param[in] reta_size
+ * Size of the RETA table.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_rss_reta_query(struct rte_eth_dev *dev,
+		      struct rte_eth_rss_reta_entry64 *reta_conf,
+		      uint16_t reta_size)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	uint32_t indirtbl[HINIC3_RSS_INDIR_SIZE] = {0};
+	uint16_t idx, shift;
+	uint16_t i;
+	int err;
+
+	if (nic_dev->rss_state == HINIC3_RSS_DISABLE) {
+		PMD_DRV_LOG(INFO, "RSS is not enabled");
+		return 0;
+	}
+
+	if (reta_size != HINIC3_RSS_INDIR_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size: %d", reta_size);
+		return -EINVAL;
+	}
+
+	err = hinic3_rss_get_indir_tbl(nic_dev->hwdev, indirtbl,
+				       HINIC3_RSS_INDIR_SIZE);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Get RSS retas table failed, error: %d", err);
+		return err;
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = (uint16_t)indirtbl[i];
+	}
+
+	return 0;
+}
+
+/**
+ * Update the RETA indirection table.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] reta_conf
+ * Pointer to RETA configuration structure array.
+ * @param[in] reta_size
+ * Size of the RETA table.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_rss_reta_update(struct rte_eth_dev *dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	uint32_t indirtbl[HINIC3_RSS_INDIR_SIZE] = {0};
+	uint16_t idx, shift;
+	uint16_t i;
+	int err;
+
+	if (nic_dev->rss_state == HINIC3_RSS_DISABLE)
+		return 0;
+
+	if (reta_size != HINIC3_RSS_INDIR_SIZE) {
+		PMD_DRV_LOG(ERR, "Invalid reta size, reta_size: %d", reta_size);
+		return -EINVAL;
+	}
+
+	err = hinic3_rss_get_indir_tbl(nic_dev->hwdev, indirtbl,
+				       HINIC3_RSS_INDIR_SIZE);
+	if (err)
+		return err;
+
+	/* Update RSS reta table. */
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		shift = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			indirtbl[i] = reta_conf[idx].reta[shift];
+	}
+
+	for (i = 0; i < reta_size; i++) {
+		if (indirtbl[i] >= nic_dev->num_rqs) {
+			PMD_DRV_LOG(ERR,
+				    "Invalid reta entry, index: %d, num_rqs: %d",
+				    indirtbl[i], nic_dev->num_rqs);
+			return -EFAULT;
+		}
+	}
+
+	err = hinic3_rss_set_indir_tbl(nic_dev->hwdev, indirtbl,
+				       HINIC3_RSS_INDIR_SIZE);
+	if (err)
+		PMD_DRV_LOG(ERR, "Set RSS reta table failed");
+
+	return err;
+}
+
+/**
  * Get device generic statistics.
  *
  * @param[in] dev
@@ -2796,6 +3113,29 @@ hinic3_set_mc_addr_list(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Manage flow director filter operations.
+ *
+ * @param[in] dev
+ * Pointer to ethernet device structure.
+ * @param[in] filter_type
+ * Filter type.
+ * @param[in] filter_op
+ * Operation to perform.
+ * @param[in] arg
+ * Pointer to operation-specific structure.
+ *
+ * @return
+ * 0 on success, non-zero on failure.
+ */
+static int
+hinic3_dev_filter_ctrl(struct rte_eth_dev *dev, const struct rte_flow_ops **arg)
+{
+	RTE_SET_USED(dev);
+	*arg = &hinic3_flow_ops;
+	return 0;
+}
+
 static const struct eth_dev_ops hinic3_pmd_ops = {
 	.dev_configure                 = hinic3_dev_configure,
 	.dev_infos_get                 = hinic3_dev_infos_get,
@@ -2821,6 +3161,13 @@ static const struct eth_dev_ops hinic3_pmd_ops = {
 	.vlan_offload_set              = hinic3_vlan_offload_set,
 	.allmulticast_enable           = hinic3_dev_allmulticast_enable,
 	.allmulticast_disable          = hinic3_dev_allmulticast_disable,
+	.promiscuous_enable            = hinic3_dev_promiscuous_enable,
+	.promiscuous_disable           = hinic3_dev_promiscuous_disable,
+	.rss_hash_update               = hinic3_rss_hash_update,
+	.rss_hash_conf_get             = hinic3_rss_conf_get,
+	.reta_update                   = hinic3_rss_reta_update,
+	.reta_query                    = hinic3_rss_reta_query,
+
 	.stats_get                     = hinic3_dev_stats_get,
 	.stats_reset                   = hinic3_dev_stats_reset,
 	.xstats_get                    = hinic3_dev_xstats_get,
@@ -2859,6 +3206,11 @@ static const struct eth_dev_ops hinic3_pmd_vf_ops = {
 	.vlan_offload_set              = hinic3_vlan_offload_set,
 	.allmulticast_enable           = hinic3_dev_allmulticast_enable,
 	.allmulticast_disable          = hinic3_dev_allmulticast_disable,
+	.rss_hash_update               = hinic3_rss_hash_update,
+	.rss_hash_conf_get             = hinic3_rss_conf_get,
+	.reta_update                   = hinic3_rss_reta_update,
+	.reta_query                    = hinic3_rss_reta_query,
+
 	.stats_get                     = hinic3_dev_stats_get,
 	.stats_reset                   = hinic3_dev_stats_reset,
 	.xstats_get                    = hinic3_dev_xstats_get,
