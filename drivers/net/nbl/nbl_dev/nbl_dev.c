@@ -295,6 +295,61 @@ void nbl_rx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 	disp_ops->release_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), queue_id);
 }
 
+int nbl_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_board_port_info *board_info = &dev_mgt->common->board_info;
+	u8 speed_mode = board_info->speed;
+
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = NBL_MAX_JUMBO_FRAME_SIZE - NBL_ETH_OVERHEAD;
+	dev_info->max_rx_pktlen = NBL_FRAME_SIZE_MAX;
+	dev_info->max_mac_addrs = dev_mgt->net_dev->max_mac_num;
+	dev_info->max_rx_queues = ring_mgt->rx_ring_num;
+	dev_info->max_tx_queues = ring_mgt->tx_ring_num;
+	dev_info->min_rx_bufsize = NBL_DEV_MIN_RX_BUFSIZE;
+	dev_info->flow_type_rss_offloads = NBL_RSS_OFFLOAD_TYPE;
+	dev_info->hash_key_size = NBL_EPRO_RSS_SK_SIZE;
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = 32768,
+		.nb_min = 128,
+		.nb_align = 1,
+		.nb_seg_max = 128,
+		.nb_mtu_seg_max = 128,
+	};
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = 32768,
+		.nb_min = 128,
+		.nb_align = 1,
+		.nb_seg_max = 128,
+		.nb_mtu_seg_max = 128,
+	};
+	dev_info->default_rxportconf.nb_queues = ring_mgt->rx_ring_num;
+	dev_info->default_txportconf.nb_queues = ring_mgt->tx_ring_num;
+	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_SCATTER;
+	switch (speed_mode) {
+	case NBL_FW_PORT_SPEED_100G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;
+		/* FALLTHROUGH */
+	case NBL_FW_PORT_SPEED_50G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_50G;
+		/* FALLTHROUGH */
+	case NBL_FW_PORT_SPEED_25G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_25G;
+		/* FALLTHROUGH */
+	case NBL_FW_PORT_SPEED_10G:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_10G;
+		break;
+	default:
+		dev_info->speed_capa = RTE_ETH_LINK_SPEED_25G;
+	}
+
+	return 0;
+}
+
 int nbl_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 {
 	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);

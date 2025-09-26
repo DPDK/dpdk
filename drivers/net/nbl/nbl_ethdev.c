@@ -35,6 +35,7 @@ const struct eth_dev_ops nbl_eth_dev_ops = {
 	.rx_queue_setup = nbl_rx_queue_setup,
 	.tx_queue_release = nbl_tx_queues_release,
 	.rx_queue_release = nbl_rx_queues_release,
+	.dev_infos_get = nbl_dev_infos_get,
 	.link_update = nbl_link_update,
 	.stats_get = nbl_stats_get,
 };
