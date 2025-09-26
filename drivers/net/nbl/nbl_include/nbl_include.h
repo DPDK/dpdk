@@ -88,6 +88,7 @@ struct nbl_start_tx_ring_param {
 	u32 socket_id;
 	enum nbl_product_type product;
 	const struct rte_eth_txconf *conf;
+	bool (*bond_broadcast_check)(struct rte_mbuf *mbuf);
 };
 
 struct nbl_txrx_queue_param {

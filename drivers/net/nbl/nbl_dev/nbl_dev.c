@@ -62,6 +62,81 @@ int nbl_dev_port_close(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+int nbl_tx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
+		       u16 nb_desc, unsigned int socket_id, const struct rte_eth_txconf *conf)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_dev_ring *tx_ring = &ring_mgt->tx_rings[queue_idx];
+	struct nbl_start_tx_ring_param param = { 0 };
+	int ret;
+
+	param.queue_idx = queue_idx;
+	param.nb_desc = nb_desc;
+	param.socket_id = socket_id;
+	param.conf = conf;
+	param.product = adapter->caps.product_type;
+	param.bond_broadcast_check = NULL;
+	ret =  disp_ops->start_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, &tx_ring->dma);
+	if (ret) {
+		NBL_LOG(ERR, "start_tx_ring failed %d", ret);
+		return ret;
+	}
+
+	tx_ring->desc_num = nb_desc;
+
+	return ret;
+}
+
+int nbl_rx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
+		       u16 nb_desc, unsigned int socket_id,
+		       const struct rte_eth_rxconf *conf, struct rte_mempool *mempool)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_dev_ring *rx_ring = &ring_mgt->rx_rings[queue_idx];
+	struct nbl_start_rx_ring_param param = { 0 };
+	int ret;
+
+	param.queue_idx = queue_idx;
+	param.nb_desc = nb_desc;
+	param.socket_id = socket_id;
+	param.conf = conf;
+	param.mempool = mempool;
+	param.product = adapter->caps.product_type;
+	ret =  disp_ops->start_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, &rx_ring->dma);
+	if (ret) {
+		NBL_LOG(ERR, "start_rx_ring failed %d", ret);
+		return ret;
+	}
+
+	rx_ring->desc_num = nb_desc;
+
+	return ret;
+}
+
+void nbl_tx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	disp_ops->release_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), queue_id);
+}
+
+void nbl_rx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	disp_ops->release_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), queue_id);
+}
+
 static int nbl_dev_setup_chan_queue(struct nbl_adapter *adapter)
 {
 	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);

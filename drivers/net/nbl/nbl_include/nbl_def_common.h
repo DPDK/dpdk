@@ -79,6 +79,11 @@ struct nbl_dev_user_link_stat {
 #define NBL_DEV_USER_SET_PROMISC_MODE	_IO(NBL_DEV_USER_TYPE, 10)
 #define NBL_DEV_USER_SET_MCAST_MODE	_IO(NBL_DEV_USER_TYPE, 11)
 
+#define NBL_DMA_ADDRESS_FULL_TRANSLATE(hw, address)					\
+	({ typeof(hw) _hw = (hw);							\
+	((((u64)((_hw)->dma_set_msb)) << ((u64)((_hw)->dma_limit_msb))) | (address));	\
+	})
+
 struct nbl_dma_mem {
 	void *va;
 	uint64_t pa;

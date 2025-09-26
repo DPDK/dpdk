@@ -56,5 +56,12 @@ int nbl_dev_configure(struct rte_eth_dev *eth_dev);
 int nbl_dev_port_start(struct rte_eth_dev *eth_dev);
 int nbl_dev_port_stop(struct rte_eth_dev *eth_dev);
 int nbl_dev_port_close(struct rte_eth_dev *eth_dev);
+int nbl_tx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
+		       u16 nb_desc, unsigned int socket_id, const struct rte_eth_txconf *conf);
+int nbl_rx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
+		       u16 nb_desc, unsigned int socket_id,
+		       const struct rte_eth_rxconf *conf, struct rte_mempool *mempool);
+void nbl_tx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id);
+void nbl_rx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id);
 
 #endif
