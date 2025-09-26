@@ -788,6 +788,7 @@ enum index {
 	ACTION_NAT64_MODE,
 	ACTION_JUMP_TO_TABLE_INDEX,
 	ACTION_JUMP_TO_TABLE_INDEX_TABLE,
+	ACTION_JUMP_TO_TABLE_INDEX_TABLE_VALUE,
 	ACTION_JUMP_TO_TABLE_INDEX_INDEX,
 };
 
@@ -2862,6 +2863,9 @@ static int parse_template_destroy(struct context *, const struct token *,
 static int parse_table(struct context *, const struct token *,
 		       const char *, unsigned int, void *, unsigned int);
 static int parse_table_destroy(struct context *, const struct token *,
+			       const char *, unsigned int,
+			       void *, unsigned int);
+static int parse_jump_table_id(struct context *, const struct token *,
 			       const char *, unsigned int,
 			       void *, unsigned int);
 static int parse_qo(struct context *, const struct token *,
@@ -7634,10 +7638,18 @@ static const struct token token_list[] = {
 	},
 	[ACTION_JUMP_TO_TABLE_INDEX_TABLE] = {
 		.name = "table",
-		.help = "table to redirect traffic to",
-		.next = NEXT(action_jump_to_table_index, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.help = "table id to redirect traffic to",
+		.next = NEXT(action_jump_to_table_index,
+			NEXT_ENTRY(ACTION_JUMP_TO_TABLE_INDEX_TABLE_VALUE)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_jump_to_table_index, table)),
 		.call = parse_vc_conf,
+	},
+	[ACTION_JUMP_TO_TABLE_INDEX_TABLE_VALUE] = {
+		.name = "{table_id}",
+		.type = "TABLE_ID",
+		.help = "table id for jump action",
+		.call = parse_jump_table_id,
+		.comp = comp_table_id,
 	},
 	[ACTION_JUMP_TO_TABLE_INDEX_INDEX] = {
 		.name = "index",
@@ -11179,6 +11191,49 @@ parse_table_destroy(struct context *ctx, const struct token *token,
 	ctx->objdata = 0;
 	ctx->object = table_id;
 	ctx->objmask = NULL;
+	return len;
+}
+
+/** Parse table id and convert to table pointer for jump_to_table_index action. */
+static int
+parse_jump_table_id(struct context *ctx, const struct token *token,
+		    const char *str, unsigned int len,
+		    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_port *port;
+	struct port_table *pt;
+	uint32_t table_id;
+	const struct arg *arg;
+	void *entry_ptr;
+
+	/* Get the arg before parse_int consumes it */
+	arg = pop_args(ctx);
+	if (!arg)
+		return -1;
+	/* Push it back and do the standard integer parsing */
+	if (push_args(ctx, arg) < 0)
+		return -1;
+	if (parse_int(ctx, token, str, len, buf, size) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer */
+	if (!out || !ctx->object)
+		return len;
+	/* Get the parsed table ID from where parse_int stored it */
+	entry_ptr = (uint8_t *)ctx->object + arg->offset;
+	memcpy(&table_id, entry_ptr, sizeof(uint32_t));
+	/* Look up the table using table ID */
+	port = &ports[ctx->port];
+	for (pt = port->table_list; pt != NULL; pt = pt->next) {
+		if (pt->id == table_id)
+			break;
+	}
+	if (!pt || !pt->table) {
+		printf("Table #%u not found on port %u\n", table_id, ctx->port);
+		return -1;
+	}
+	/* Replace the table ID with the table pointer */
+	memcpy(entry_ptr, &pt->table, sizeof(struct rte_flow_template_table *));
 	return len;
 }
 
