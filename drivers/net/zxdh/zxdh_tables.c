@@ -37,7 +37,7 @@ zxdh_set_port_attr(struct zxdh_hw *hw, uint16_t vport, struct zxdh_port_attr_tab
 	ZXDH_DTB_ERAM_ENTRY_INFO_T entry = {vfid, (uint32_t *)port_attr};
 	ZXDH_DTB_USER_ENTRY_T user_entry_write = {ZXDH_SDT_VPORT_ATT_TABLE, (void *)&entry};
 
-	ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+	ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 				dtb_data->queueid, 1, &user_entry_write);
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "write vport_att failed vfid:%d failed", vfid);
@@ -105,7 +105,7 @@ zxdh_port_attr_uninit(struct rte_eth_dev *dev)
 			.sdt_no = ZXDH_SDT_VPORT_ATT_TABLE,
 			.p_entry_data = (void *)&port_attr_entry
 		};
-		ret = zxdh_np_dtb_table_entry_delete(hw->slot_id, dtb_data->queueid, 1, &entry);
+		ret = zxdh_np_dtb_table_entry_delete(hw->dev_id, dtb_data->queueid, 1, &entry);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "delete port attr table failed");
 			ret = -1;
@@ -147,7 +147,7 @@ int zxdh_panel_table_init(struct rte_eth_dev *dev)
 		.sdt_no = ZXDH_SDT_PANEL_ATT_TABLE,
 		.p_entry_data = (void *)&panel_entry
 	};
-	ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry);
+	ret = zxdh_np_dtb_table_entry_write(hw->dev_id, dtb_data->queueid, 1, &entry);
 
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Insert eram-panel failed, code:%u", ret);
@@ -171,7 +171,7 @@ int zxdh_get_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_
 		.sdt_no = ZXDH_SDT_PANEL_ATT_TABLE,
 		.p_entry_data = (void *)&panel_entry
 	};
-	int ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &entry, 1);
+	int ret = zxdh_np_dtb_table_entry_get(hw->dev_id, dtb_data->queueid, &entry, 1);
 
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "get panel table failed");
@@ -193,7 +193,7 @@ int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_
 		.sdt_no = ZXDH_SDT_PANEL_ATT_TABLE,
 		.p_entry_data = (void *)&panel_entry
 	};
-	int ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry);
+	int ret = zxdh_np_dtb_table_entry_write(hw->dev_id, dtb_data->queueid, 1, &entry);
 
 	if (ret)
 		PMD_DRV_LOG(ERR, "Insert panel table failed");
@@ -211,7 +211,7 @@ zxdh_get_port_attr(struct zxdh_hw *hw, uint16_t vport, struct zxdh_port_attr_tab
 	ZXDH_DTB_USER_ENTRY_T user_entry_get = {ZXDH_SDT_VPORT_ATT_TABLE, &entry};
 	int ret;
 
-	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &user_entry_get, 1);
+	ret = zxdh_np_dtb_table_entry_get(hw->dev_id, dtb_data->queueid, &user_entry_get, 1);
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "get port_attr vfid:%d failed, ret:%d", vfid, ret);
 
@@ -230,7 +230,7 @@ zxdh_delete_port_attr(struct zxdh_hw *hw, uint16_t vport,
 		.sdt_no = ZXDH_SDT_VPORT_ATT_TABLE,
 		.p_entry_data = (void *)&entry
 	};
-	int ret = zxdh_np_dtb_table_entry_delete(hw->slot_id, dtb_data->queueid, 1, &user_entry);
+	int ret = zxdh_np_dtb_table_entry_delete(hw->dev_id, dtb_data->queueid, 1, &user_entry);
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "delete port attr failed, vfid:%u", vport_num.vfid);
 	return ret;
@@ -261,7 +261,7 @@ zxdh_add_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 			.p_entry_data = (void *)&dtb_hash_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+		ret = zxdh_np_dtb_table_entry_get(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 				&entry_get, 1);
 		if (ret == 0) {
 			if (unicast_table.entry.hit_flag != 0 &&
@@ -277,7 +277,7 @@ zxdh_add_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 
 		unicast_table.entry.vfid = rte_cpu_to_be_16(vfid);
 		unicast_table.entry.hit_flag = 1;
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 					hw->dev_sd->dtb_sd.queueid, 1, &entry_get);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Insert mac_table failed");
@@ -298,7 +298,7 @@ zxdh_add_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 				.p_entry_data = (void *)&dtb_hash_entry
 			};
 
-			ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+			ret = zxdh_np_dtb_table_entry_get(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 					&entry_get, 1);
 			uint8_t index = (vport_num.vfid % 64) / 32;
 			uint8_t value = (vport_num.vfid % 64) % 32;
@@ -330,7 +330,7 @@ zxdh_add_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 						multicast_table.entry.mc_pf_enable = false;
 				}
 			}
-			ret = zxdh_np_dtb_table_entry_write(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+			ret = zxdh_np_dtb_table_entry_write(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 						1, &entry_get);
 			if (ret) {
 				PMD_DRV_LOG(ERR, "add mac_table failed, code:%d", ret);
@@ -368,7 +368,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 			.sdt_no = ZXDH_UNICAST_MAC_HASH_INDEX(hash_search_idx),
 			.p_entry_data = (void *)&dtb_hash_entry
 		};
-		ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+		ret = zxdh_np_dtb_table_entry_get(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 				&entry_get, 1);
 		if (ret == 0) {
 			if (unicast_table.entry.hit_flag != 0 &&
@@ -377,7 +377,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 			}
 		}
 
-		ret = zxdh_np_dtb_table_entry_delete(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+		ret = zxdh_np_dtb_table_entry_delete(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 				1, &entry_get);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "delete l2_fwd_hash_table failed, code:%d", ret);
@@ -397,7 +397,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 			.p_entry_data = (void *)&dtb_hash_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+		ret = zxdh_np_dtb_table_entry_get(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 				&entry_get, 1);
 		uint8_t index = (vport_num.vfid % 64) / 32;
 		uint8_t value = (vport_num.vfid % 64) % 32;
@@ -407,7 +407,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 		else
 			multicast_table.entry.mc_pf_enable = 0;
 
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 				1, &entry_get);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "mac_addr_add mc_table failed, code:%d", ret);
@@ -427,7 +427,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 				.p_entry_data = (void *)&dtb_hash_entry
 			};
 
-			ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+			ret = zxdh_np_dtb_table_entry_get(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 					&entry_get, 1);
 			if (multicast_table.entry.mc_bitmap[0] == 0 &&
 				multicast_table.entry.mc_bitmap[1] == 0 &&
@@ -452,7 +452,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 					.p_entry_data = (void *)&dtb_hash_entry
 				};
 
-				ret = zxdh_np_dtb_table_entry_delete(hw->slot_id,
+				ret = zxdh_np_dtb_table_entry_delete(hw->dev_id,
 						hw->dev_sd->dtb_sd.queueid, 1, &entry_get);
 			}
 		}
@@ -484,7 +484,7 @@ zxdh_promisc_table_init(struct rte_eth_dev *dev)
 			.p_entry_data = (void *)&eram_brocast_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 					dtb_data->queueid, 1, &entry_brocast);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write brocast table failed");
@@ -501,7 +501,7 @@ zxdh_promisc_table_init(struct rte_eth_dev *dev)
 			.p_entry_data = (void *)&eram_uc_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 					dtb_data->queueid, 1, &entry_unicast);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write unicast table failed");
@@ -518,7 +518,7 @@ zxdh_promisc_table_init(struct rte_eth_dev *dev)
 			.p_entry_data = (void *)&eram_mc_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id, dtb_data->queueid,
 					1, &entry_multicast);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write multicast table failed");
@@ -553,7 +553,7 @@ zxdh_promisc_table_uninit(struct rte_eth_dev *dev)
 			.p_entry_data = (void *)&eram_brocast_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_delete(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_delete(hw->dev_id,
 				dtb_data->queueid, 1, &entry_brocast);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write brocast table failed");
@@ -570,7 +570,7 @@ zxdh_promisc_table_uninit(struct rte_eth_dev *dev)
 			.p_entry_data = (void *)&eram_uc_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_delete(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_delete(hw->dev_id,
 				dtb_data->queueid, 1, &entry_unicast);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write unicast table failed");
@@ -587,7 +587,7 @@ zxdh_promisc_table_uninit(struct rte_eth_dev *dev)
 			.p_entry_data = (void *)&eram_mc_entry
 		};
 
-		ret = zxdh_np_dtb_table_entry_delete(hw->slot_id, dtb_data->queueid,
+		ret = zxdh_np_dtb_table_entry_delete(hw->dev_id, dtb_data->queueid,
 					1, &entry_multicast);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "write multicast table failed");
@@ -617,7 +617,7 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 		.p_entry_data = (void *)&uc_table_entry
 	};
 
-	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &entry, 1);
+	ret = zxdh_np_dtb_table_entry_get(hw->dev_id, dtb_data->queueid, &entry, 1);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "unicast_table_get_failed:%d", vfid);
 		return -ret;
@@ -634,7 +634,7 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 		uc_table.uc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG + (enable << 6));
 	}
 
-	ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry);
+	ret = zxdh_np_dtb_table_entry_write(hw->dev_id, dtb_data->queueid, 1, &entry);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d", vfid);
 		return -ret;
@@ -673,7 +673,7 @@ zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 		.p_entry_data = (void *)&mc_table_entry
 	};
 
-	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &entry, 1);
+	ret = zxdh_np_dtb_table_entry_get(hw->dev_id, dtb_data->queueid, &entry, 1);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "allmulti_table_get_failed:%d", hw->vfid);
 		return -ret;
@@ -690,7 +690,7 @@ zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 	} else {
 		mc_table.mc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG + (enable << 6));
 	}
-	ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry);
+	ret = zxdh_np_dtb_table_entry_write(hw->dev_id, dtb_data->queueid, 1, &entry);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "allmulti_table_set_failed:%d", hw->vfid);
 		return -ret;
@@ -725,7 +725,7 @@ zxdh_vlan_filter_table_init(struct zxdh_hw *hw, uint16_t vport)
 		};
 		ZXDH_DTB_USER_ENTRY_T user_entry = {ZXDH_SDT_VLAN_ATT_TABLE, &entry_data};
 
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 					dtb_data->queueid, 1, &user_entry);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR,
@@ -761,7 +761,7 @@ zxdh_vlan_filter_table_set(struct zxdh_hw *hw, uint16_t vport, uint16_t vlan_id,
 	ZXDH_DTB_ERAM_ENTRY_INFO_T entry_data = {index, (uint32_t *)&vlan_table};
 	ZXDH_DTB_USER_ENTRY_T user_entry_get = {ZXDH_SDT_VLAN_ATT_TABLE, &entry_data};
 
-	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &user_entry_get, 1);
+	ret = zxdh_np_dtb_table_entry_get(hw->dev_id, dtb_data->queueid, &user_entry_get, 1);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "get vlan table failed");
 		return -1;
@@ -787,7 +787,7 @@ zxdh_vlan_filter_table_set(struct zxdh_hw *hw, uint16_t vport, uint16_t vlan_id,
 		.p_entry_data = &entry_data
 	};
 
-	ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+	ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 				dtb_data->queueid, 1, &user_entry_write);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "write vlan table failed");
@@ -830,7 +830,7 @@ zxdh_rss_table_set(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss
 			.sdt_no = ZXDH_SDT_RSS_ATT_TABLE,
 			.p_entry_data = &entry
 		};
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id,
 					dtb_data->queueid, 1, &user_entry_write);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "write rss base qid failed vfid:%d", vfid);
@@ -853,7 +853,7 @@ zxdh_rss_table_get(struct zxdh_hw *hw, uint16_t vport, struct zxdh_rss_reta *rss
 		ZXDH_DTB_ERAM_ENTRY_INFO_T entry = {vfid * 32 + i, (uint32_t *)&rss_vqid};
 		ZXDH_DTB_USER_ENTRY_T user_entry = {ZXDH_SDT_RSS_ATT_TABLE, &entry};
 
-		ret = zxdh_np_dtb_table_entry_get(hw->slot_id,
+		ret = zxdh_np_dtb_table_entry_get(hw->dev_id,
 					dtb_data->queueid, &user_entry, 1);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "get rss tbl failed, vfid:%d", vfid);
@@ -897,7 +897,7 @@ zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 			.sdt_no = ZXDH_SDT_BROCAST_ATT_TABLE,
 			.p_entry_data = (void *)&eram_entry};
 
-	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, dtb_data->queueid, &entry_get, 1);
+	ret = zxdh_np_dtb_table_entry_get(hw->dev_id, dtb_data->queueid, &entry_get, 1);
 	if (ret == 0) {
 		if (enable)
 			brocast_table.bitmap[(vport_num.vfid % 64) / 32] |=
@@ -906,7 +906,7 @@ zxdh_dev_broadcast_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 			brocast_table.bitmap[(vport_num.vfid % 64) / 32] &=
 					~((UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32)));
 
-		ret = zxdh_np_dtb_table_entry_write(hw->slot_id, dtb_data->queueid, 1, &entry_get);
+		ret = zxdh_np_dtb_table_entry_write(hw->dev_id, dtb_data->queueid, 1, &entry_get);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "brocast_table_write_failed. code:%d", ret);
 			return -ret;
@@ -968,7 +968,7 @@ zxdh_set_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
 		.p_entry_data = (void *)&port_entry
 	};
 
-	ret = zxdh_np_dtb_table_entry_write(hw->slot_id, hw->dev_sd->dtb_sd.queueid, 1, &entry);
+	ret = zxdh_np_dtb_table_entry_write(hw->dev_id, hw->dev_sd->dtb_sd.queueid, 1, &entry);
 	if (ret)
 		PMD_DRV_LOG(ERR, "write port_vlan tbl failed, ret:%d ", ret);
 	return ret;
@@ -991,7 +991,7 @@ zxdh_get_port_vlan_attr(struct zxdh_hw *hw, uint16_t vport,
 		.p_entry_data = (void *)&port_entry
 	};
 
-	ret = zxdh_np_dtb_table_entry_get(hw->slot_id, hw->dev_sd->dtb_sd.queueid,
+	ret = zxdh_np_dtb_table_entry_get(hw->dev_id, hw->dev_sd->dtb_sd.queueid,
 			&entry, 1);
 	if (ret)
 		PMD_DRV_LOG(ERR, "get port vlan tbl failed, ret:%d ", ret);

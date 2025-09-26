@@ -15,9 +15,13 @@
 #define ZXDH_DISABLE                          (0)
 #define ZXDH_ENABLE                           (1)
 #define ZXDH_PORT_NAME_MAX                    (32)
-#define ZXDH_DEV_CHANNEL_MAX                  (2)
+#define ZXDH_DEV_CHANNEL_MAX                  (16)
 #define ZXDH_DEV_SDT_ID_MAX                   (256U)
-
+#define ZXDH_DEV_PF_NUM_MAX                   (8)
+#define ZXDH_DEV_SLOT_ID(DEVICE_ID)           ((DEVICE_ID) & (ZXDH_DEV_CHANNEL_MAX - 1))
+#define ZXDH_DEV_PCIE_ID(DEVICE_ID)           (((DEVICE_ID) >> 16) & 0xFFFF)
+#define ZXDH_DEV_VF_INDEX(DEVICE_ID)          (ZXDH_DEV_PCIE_ID(DEVICE_ID) & 0xFF)
+#define ZXDH_DEV_PF_INDEX(DEVICE_ID)          ((ZXDH_DEV_PCIE_ID(DEVICE_ID) >> 8) & 0x7)
 
 /*DTB*/
 #define ZXDH_DTB_QUEUE_ITEM_NUM_MAX           (32)
@@ -1130,18 +1134,19 @@ typedef struct zxdh_sys_init_ctrl_t {
 } ZXDH_SYS_INIT_CTRL_T;
 
 typedef struct dpp_dev_cfg_t {
-	uint32_t device_id;
+	uint32_t slot_id;
+	uint16_t pcie_id[ZXDH_DEV_PF_NUM_MAX];
 	ZXDH_DEV_TYPE_E dev_type;
 	uint32_t chip_ver;
 	uint32_t access_type;
 	uint32_t agent_flag;
-	uint32_t vport;
+	uint32_t vport[ZXDH_DEV_PF_NUM_MAX];
 	uint32_t fw_bar_msg_num;
-	uint64_t pcie_addr;
+	uint64_t pcie_addr[ZXDH_DEV_PF_NUM_MAX];
 	uint64_t riscv_addr;
 	uint64_t dma_vir_addr;
 	uint64_t dma_phy_addr;
-	uint64_t agent_addr;
+	uint64_t agent_addr[ZXDH_DEV_PF_NUM_MAX];
 	uint32_t init_flags[ZXDH_MODULE_INIT_MAX];
 	ZXDH_DEV_WRITE_FUNC p_pcie_write_fun;
 	ZXDH_DEV_READ_FUNC  p_pcie_read_fun;
@@ -1949,6 +1954,7 @@ int zxdh_np_dtb_stats_get(uint32_t dev_id,
 			ZXDH_STAT_CNT_MODE_E rd_mode,
 			uint32_t index,
 			uint32_t *p_data);
+uint32_t zxdh_np_soft_res_uninstall(uint32_t dev_id);
 uint32_t zxdh_np_stat_ppu_cnt_get_ex(uint32_t dev_id,
 			ZXDH_STAT_CNT_MODE_E rd_mode,
 			uint32_t index,
@@ -1988,5 +1994,4 @@ uint32_t zxdh_np_dtb_acl_table_dump_by_vport(uint32_t dev_id, uint32_t queue_id,
 	uint32_t sdt_no, uint32_t vport, uint32_t *entry_num, uint8_t *p_dump_data);
 uint32_t zxdh_np_dtb_acl_offline_delete(uint32_t dev_id, uint32_t queue_id,
 	uint32_t sdt_no, uint32_t vport, uint32_t counter_id, uint32_t rd_mode);
-
 #endif /* ZXDH_NP_H */

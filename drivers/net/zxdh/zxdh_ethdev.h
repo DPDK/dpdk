@@ -103,6 +103,7 @@ struct zxdh_hw {
 	struct zxdh_virtqueue **vqs;
 	struct zxdh_chnl_context *channel_context;
 	struct zxdh_dev_shared_data *dev_sd;
+	struct zxdh_dev_nic_shared_data *dev_nic_sd;
 	struct vfinfo *vfinfo;
 
 	uint64_t bar_addr[ZXDH_NUM_BARS];
@@ -183,7 +184,6 @@ struct zxdh_shared_data {
 	int32_t init_done;       /* Whether primary has done initialization. */
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
 
-	int32_t np_init_done;
 	uint32_t dev_refcnt;
 	struct zxdh_dtb_shared_data *dtb_data;
 	struct rte_mempool *flow_mp;
@@ -196,8 +196,13 @@ struct zxdh_shared_data {
 };
 
 struct zxdh_dev_shared_data {
-	uint32_t serial_id;
 	struct zxdh_dtb_shared_data dtb_sd;
+};
+
+struct zxdh_dev_nic_shared_data {
+	uint32_t serial_id;
+	uint16_t dtb_used_num;
+	uint16_t init_done;
 };
 
 struct zxdh_dtb_bulk_dump_info {

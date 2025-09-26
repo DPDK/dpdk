@@ -300,8 +300,8 @@ static const ZXDH_DTB_TABLE_T g_dpp_dtb_dump_info[] = {
 };
 
 #define ZXDH_SDT_MGR_PTR_GET()    (&g_sdt_mgr)
-#define ZXDH_SDT_SOFT_TBL_GET(id) (g_sdt_mgr.sdt_tbl_array[id])
-#define ZXDH_DEV_INFO_GET(id) (g_dev_mgr.p_dev_array[id])
+#define ZXDH_SDT_SOFT_TBL_GET(id) (g_sdt_mgr.sdt_tbl_array[ZXDH_DEV_SLOT_ID(id)])
+#define ZXDH_DEV_INFO_GET(id) (g_dev_mgr.p_dev_array[ZXDH_DEV_SLOT_ID(id)])
 
 #define ZXDH_DTB_LEN(cmd_type, int_en, data_len) \
 	(((data_len) & 0x3ff) | \
@@ -384,45 +384,55 @@ zxdh_np_comm_convert32(uint32_t dw_data)
 #define ZXDH_COMM_CONVERT32(w_data) \
 			zxdh_np_comm_convert32(w_data)
 
-#define ZXDH_DTB_TAB_UP_WR_INDEX_GET(DEV_ID, QUEUE_ID)       \
-		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.wr_index)
+#define ZXDH_DTB_TAB_UP_WR_INDEX_GET(DEV_ID, QUEUE_ID) \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->queue_info[(QUEUE_ID)].tab_up.wr_index)
 
-#define ZXDH_DTB_TAB_UP_USER_PHY_ADDR_FLAG_GET(DEV_ID, QUEUE_ID, INDEX)     \
-	(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.user_addr[(INDEX)].user_flag)
+#define ZXDH_DTB_TAB_UP_USER_PHY_ADDR_FLAG_GET(DEV_ID, QUEUE_ID, INDEX)    \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->                       \
+		queue_info[(QUEUE_ID)].tab_up.user_addr[(INDEX)].user_flag)
 
-#define ZXDH_DTB_TAB_UP_USER_PHY_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)     \
-		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.user_addr[(INDEX)].phy_addr)
+#define ZXDH_DTB_TAB_UP_USER_PHY_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)         \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->                       \
+		queue_info[(QUEUE_ID)].tab_up.user_addr[(INDEX)].phy_addr)
 
-#define ZXDH_DTB_TAB_UP_DATA_LEN_GET(DEV_ID, QUEUE_ID, INDEX)       \
-		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.data_len[(INDEX)])
+#define ZXDH_DTB_TAB_UP_DATA_LEN_GET(DEV_ID, QUEUE_ID, INDEX)              \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->                       \
+		queue_info[(QUEUE_ID)].tab_up.data_len[(INDEX)])
 
-#define ZXDH_DTB_TAB_UP_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)     \
-		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.start_vir_addr + \
-		(INDEX) * p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.item_size)
+#define ZXDH_DTB_TAB_UP_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)   \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->            \
+		queue_info[(QUEUE_ID)].tab_up.start_vir_addr +          \
+		(INDEX) * p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->   \
+		queue_info[(QUEUE_ID)].tab_up.item_size)
 
-#define ZXDH_DTB_TAB_DOWN_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)   \
-		(p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_down.start_vir_addr + \
-		INDEX * p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_down.item_size)
+#define ZXDH_DTB_TAB_DOWN_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX) \
+		(p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->              \
+		queue_info[QUEUE_ID].tab_down.start_vir_addr +          \
+		(INDEX) * p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->     \
+		queue_info[QUEUE_ID].tab_down.item_size)
 
-#define ZXDH_DTB_TAB_DOWN_WR_INDEX_GET(DEV_ID, QUEUE_ID)       \
-		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_down.wr_index)
+#define ZXDH_DTB_TAB_DOWN_WR_INDEX_GET(DEV_ID, QUEUE_ID)        \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->            \
+		queue_info[(QUEUE_ID)].tab_down.wr_index)
 
-#define ZXDH_DTB_QUEUE_INIT_FLAG_GET(DEV_ID, QUEUE_ID)       \
-		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].init_flag)
+#define ZXDH_DTB_QUEUE_INIT_FLAG_GET(DEV_ID, QUEUE_ID)          \
+		(p_dpp_dtb_mgr[(ZXDH_DEV_SLOT_ID(DEV_ID))]->            \
+		queue_info[(QUEUE_ID)].init_flag)
 
-#define ZXDH_DTB_TAB_UP_USER_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)     \
-		(p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_up.user_addr[INDEX].vir_addr)
+#define ZXDH_DTB_TAB_UP_USER_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)          \
+		(p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->                          \
+		queue_info[QUEUE_ID].tab_up.user_addr[INDEX].vir_addr)
 
-#define ZXDH_DTB_TAB_UP_USER_ADDR_FLAG_SET(DEV_ID, QUEUE_ID, INDEX, VAL)     \
-		(p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_up.user_addr[INDEX].user_flag = \
-		VAL)
+#define ZXDH_DTB_TAB_UP_USER_ADDR_FLAG_SET(DEV_ID, QUEUE_ID, INDEX, VAL)    \
+		(p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->                          \
+		queue_info[QUEUE_ID].tab_up.user_addr[INDEX].user_flag = VAL)
 
 static inline uint64_t
 zxdh_np_dtb_tab_down_phy_addr_get(uint32_t DEV_ID, uint32_t QUEUE_ID,
 	uint32_t INDEX)
 {
-	return p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_down.start_phy_addr +
-		INDEX * p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_down.item_size;
+	return p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->queue_info[QUEUE_ID].tab_down.start_phy_addr
+	+ INDEX * p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->queue_info[QUEUE_ID].tab_down.item_size;
 }
 
 #define ZXDH_DTB_TAB_DOWN_PHY_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)   \
@@ -432,8 +442,8 @@ static inline uint64_t
 zxdh_np_dtb_tab_up_phy_addr_get(uint32_t DEV_ID, uint32_t QUEUE_ID,
 	uint32_t INDEX)
 {
-	return p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_up.start_phy_addr +
-		INDEX * p_dpp_dtb_mgr[DEV_ID]->queue_info[QUEUE_ID].tab_up.item_size;
+	return p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->queue_info[QUEUE_ID].tab_up.start_phy_addr
+	+ INDEX * p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(DEV_ID)]->queue_info[QUEUE_ID].tab_up.item_size;
 }
 
 #define ZXDH_DTB_TAB_UP_PHY_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)	 \
@@ -517,7 +527,8 @@ zxdh_np_get_tn_color(ZXDH_RB_TN *p_tn)
 
 #define ZXDH_ACL_KEYSIZE_GET(key_mode) (2 * ZXDH_ETCAM_ENTRY_SIZE_GET(key_mode))
 
-#define GET_HASH_TBL_ID_INFO(dev_id, fun_id, tbl_id) (&g_tbl_id_info[dev_id][fun_id][tbl_id])
+#define GET_HASH_TBL_ID_INFO(dev_id, fun_id, tbl_id) \
+	(&g_tbl_id_info[ZXDH_DEV_SLOT_ID(dev_id)][fun_id][tbl_id])
 
 #define ZXDH_GET_HASH_TBL_ID(p_key)    ((p_key)[0] & 0x1F)
 
@@ -1830,25 +1841,34 @@ static void
 zxdh_np_dev_vport_get(uint32_t dev_id, uint32_t *vport)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
-	*vport = p_dev_info->vport;
+	*vport = p_dev_info->vport[ZXDH_DEV_PF_INDEX(dev_id)];
 }
 
 static void
 zxdh_np_dev_agent_addr_get(uint32_t dev_id, uint64_t *agent_addr)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
-	*agent_addr = p_dev_info->agent_addr;
+	*agent_addr = p_dev_info->agent_addr[ZXDH_DEV_PF_INDEX(dev_id)];
+}
+
+static void
+zxdh_np_dev_bar_pcie_id_get(uint32_t dev_id, uint16_t *p_pcie_id)
+{
+	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
+
+	*p_pcie_id = p_dev_info->pcie_id[ZXDH_DEV_PF_INDEX(dev_id)];
 }
 
 static void
 zxdh_np_dev_fw_bar_msg_num_set(uint32_t dev_id, uint32_t bar_msg_num)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	p_dev_info->fw_bar_msg_num = bar_msg_num;
 
@@ -1859,7 +1879,7 @@ static void
 zxdh_np_dev_fw_bar_msg_num_get(uint32_t dev_id, uint32_t *bar_msg_num)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	*bar_msg_num = p_dev_info->fw_bar_msg_num;
 }
@@ -1868,7 +1888,7 @@ static uint32_t
 zxdh_np_dev_opr_spinlock_get(uint32_t dev_id, uint32_t type, ZXDH_SPINLOCK_T **p_spinlock_out)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	if (p_dev_info == NULL) {
 		PMD_DRV_LOG(ERR, "Get dev_info[ %u ] fail!", dev_id);
@@ -1895,7 +1915,7 @@ zxdh_np_dev_dtb_opr_spinlock_get(uint32_t dev_id, uint32_t type,
 			uint32_t index, ZXDH_SPINLOCK_T **p_spinlock_out)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	switch (type) {
 	case ZXDH_DEV_SPINLOCK_T_DTB:
@@ -1914,7 +1934,7 @@ zxdh_np_dev_hash_opr_spinlock_get(uint32_t dev_id,
 	uint32_t fun_id, ZXDH_SPINLOCK_T **p_spinlock_out)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	*p_spinlock_out = &p_dev_info->hash_spinlock[fun_id];
 }
@@ -2000,12 +2020,12 @@ zxdh_np_dev_get_pcie_addr(uint32_t dev_id)
 	ZXDH_DEV_CFG_T *p_dev_info = NULL;
 
 	p_dev_mgr = &g_dev_mgr;
-	p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	if (p_dev_info == NULL)
 		return ZXDH_DEV_TYPE_INVALID;
 
-	return p_dev_info->pcie_addr;
+	return p_dev_info->pcie_addr[ZXDH_DEV_PF_INDEX(dev_id)];
 }
 
 static void
@@ -2322,10 +2342,10 @@ zxdh_np_dev_add(uint32_t  dev_id, ZXDH_DEV_TYPE_E dev_type,
 		return ZXDH_RC_DEV_MGR_NOT_INIT;
 	}
 
-	if (p_dev_mgr->p_dev_array[dev_id] != NULL) {
+	if (p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)] != NULL) {
 		/* device is already exist. */
 		PMD_DRV_LOG(ERR, "Device is added again");
-		p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+		p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 	} else {
 		/* device is new. */
 		p_dev_info = rte_malloc(NULL, sizeof(ZXDH_DEV_CFG_T), 0);
@@ -2333,14 +2353,15 @@ zxdh_np_dev_add(uint32_t  dev_id, ZXDH_DEV_TYPE_E dev_type,
 			PMD_DRV_LOG(ERR, "malloc memory failed");
 			return ZXDH_PAR_CHK_POINT_NULL;
 		}
-		p_dev_mgr->p_dev_array[dev_id] = p_dev_info;
+		p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)] = p_dev_info;
 		p_dev_mgr->device_num++;
 	}
 
-	p_dev_info->device_id   = dev_id;
+	p_dev_info->slot_id   = ZXDH_DEV_SLOT_ID(dev_id);
 	p_dev_info->dev_type    = dev_type;
 	p_dev_info->access_type = access_type;
-	p_dev_info->pcie_addr   = pcie_addr;
+	p_dev_info->pcie_addr[ZXDH_DEV_PF_INDEX(dev_id)] = pcie_addr;
+	p_dev_info->pcie_id[ZXDH_DEV_PF_INDEX(dev_id)] = ZXDH_DEV_PCIE_ID(dev_id);
 	p_dev_info->riscv_addr   = riscv_addr;
 	p_dev_info->dma_vir_addr = dma_vir_addr;
 	p_dev_info->dma_phy_addr = dma_phy_addr;
@@ -2368,7 +2389,7 @@ zxdh_np_dev_agent_status_set(uint32_t dev_id, uint32_t agent_flag)
 	ZXDH_DEV_CFG_T *p_dev_info = NULL;
 
 	p_dev_mgr = &g_dev_mgr;
-	p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	if (p_dev_info == NULL)
 		return ZXDH_DEV_TYPE_INVALID;
@@ -2490,9 +2511,9 @@ zxdh_np_soft_sdt_tbl_set(uint32_t dev_id,
 						uint32_t table_type,
 						ZXDH_SDT_TBL_DATA_T *p_sdt_info)
 {
-	g_table_type[dev_id][sdt_no] = table_type;
-	g_sdt_info[dev_id][sdt_no].data_high32 = p_sdt_info->data_high32;
-	g_sdt_info[dev_id][sdt_no].data_low32  = p_sdt_info->data_low32;
+	g_table_type[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no] = table_type;
+	g_sdt_info[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no].data_high32 = p_sdt_info->data_high32;
+	g_sdt_info[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no].data_low32  = p_sdt_info->data_low32;
 }
 
 static uint32_t
@@ -2666,12 +2687,13 @@ zxdh_np_ppu_parse_cls_bitmap(uint32_t dev_id,
 
 	for (cls_id = 0; cls_id < ZXDH_PPU_CLUSTER_NUM; cls_id++) {
 		cls_use = (bitmap >> cls_id) & 0x1;
-		g_ppu_cls_bit_map[dev_id].cls_use[cls_id] = cls_use;
+		g_ppu_cls_bit_map[ZXDH_DEV_SLOT_ID(dev_id)].cls_use[cls_id] = cls_use;
 	}
 
 	for (mem_id = 0; mem_id < ZXDH_PPU_INSTR_MEM_NUM; mem_id++) {
 		instr_mem = (bitmap >> (mem_id * 2)) & 0x3;
-		g_ppu_cls_bit_map[dev_id].instr_mem[mem_id] = ((instr_mem > 0) ? 1 : 0);
+		g_ppu_cls_bit_map[ZXDH_DEV_SLOT_ID(dev_id)].instr_mem[mem_id] =
+		((instr_mem > 0) ? 1 : 0);
 	}
 }
 
@@ -2731,6 +2753,7 @@ zxdh_np_agent_channel_sync_send(uint32_t dev_id,
 	uint8_t *reply_ptr = NULL;
 	uint16_t reply_msg_len = 0;
 	uint64_t agent_addr = 0;
+	uint16_t bar_pcie_id = 0;
 
 	ret = zxdh_np_agent_bar_msg_check(dev_id, p_msg);
 	if (ret != ZXDH_OK) {
@@ -2740,6 +2763,7 @@ zxdh_np_agent_channel_sync_send(uint32_t dev_id,
 
 	zxdh_np_dev_vport_get(dev_id, &vport);
 	zxdh_np_dev_agent_addr_get(dev_id, &agent_addr);
+	zxdh_np_dev_bar_pcie_id_get(dev_id, &bar_pcie_id);
 
 	if (ZXDH_IS_PF(vport))
 		in.src = ZXDH_MSG_CHAN_END_PF;
@@ -2751,6 +2775,7 @@ zxdh_np_agent_channel_sync_send(uint32_t dev_id,
 	in.payload_len = p_msg->msg_len;
 	in.dst = ZXDH_MSG_CHAN_END_RISC;
 	in.module_id = ZXDH_BAR_MDOULE_NPSDK;
+	in.src_pcieid = bar_pcie_id;
 
 	recv_buffer = rte_zmalloc(NULL, rep_len + ZXDH_CHANNEL_REPS_LEN, 0);
 	if (recv_buffer == NULL) {
@@ -3124,23 +3149,23 @@ zxdh_np_agent_channel_acl_index_release(uint32_t dev_id, uint32_t rel_type,
 static ZXDH_DTB_MGR_T *
 zxdh_np_dtb_mgr_get(uint32_t dev_id)
 {
-	if (dev_id >= ZXDH_DEV_CHANNEL_MAX)
+	if (ZXDH_DEV_SLOT_ID(dev_id) >= ZXDH_DEV_CHANNEL_MAX)
 		return NULL;
 	else
-		return p_dpp_dtb_mgr[dev_id];
+		return p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)];
 }
 
 static uint32_t
 zxdh_np_dtb_mgr_create(uint32_t dev_id)
 {
-	if (p_dpp_dtb_mgr[dev_id] != NULL) {
+	if (p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)] != NULL) {
 		PMD_DRV_LOG(ERR, "ErrorCode[0x%x]: Dma Manager"
 			" is exist!!!", ZXDH_RC_DTB_MGR_EXIST);
 		return ZXDH_RC_DTB_MGR_EXIST;
 	}
 
-	p_dpp_dtb_mgr[dev_id] = rte_zmalloc(NULL, sizeof(ZXDH_DTB_MGR_T), 0);
-	if (p_dpp_dtb_mgr[dev_id] == NULL) {
+	p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)] = rte_zmalloc(NULL, sizeof(ZXDH_DTB_MGR_T), 0);
+	if (p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)] == NULL) {
 		PMD_DRV_LOG(ERR, "malloc memory failed");
 		return ZXDH_PAR_CHK_POINT_NULL;
 	}
@@ -3153,7 +3178,7 @@ zxdh_np_dtb_soft_init(uint32_t dev_id)
 {
 	ZXDH_DTB_MGR_T *p_dtb_mgr = NULL;
 
-	if (dev_id >= ZXDH_DEV_CHANNEL_MAX)
+	if (ZXDH_DEV_SLOT_ID(dev_id) >= ZXDH_DEV_CHANNEL_MAX)
 		return 1;
 
 	p_dtb_mgr = zxdh_np_dtb_mgr_get(dev_id);
@@ -3220,8 +3245,8 @@ zxdh_np_dev_vport_set(uint32_t dev_id, uint32_t vport)
 	ZXDH_DEV_CFG_T *p_dev_info = NULL;
 
 	p_dev_mgr =  &g_dev_mgr;
-	p_dev_info = p_dev_mgr->p_dev_array[dev_id];
-	p_dev_info->vport = vport;
+	p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
+	p_dev_info->vport[ZXDH_DEV_PF_INDEX(dev_id)] = vport;
 }
 
 static void
@@ -3231,8 +3256,8 @@ zxdh_np_dev_agent_addr_set(uint32_t dev_id, uint64_t agent_addr)
 	ZXDH_DEV_CFG_T *p_dev_info = NULL;
 
 	p_dev_mgr =  &g_dev_mgr;
-	p_dev_info = p_dev_mgr->p_dev_array[dev_id];
-	p_dev_info->agent_addr = agent_addr;
+	p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
+	p_dev_info->agent_addr[ZXDH_DEV_PF_INDEX(dev_id)] = agent_addr;
 }
 
 static uint64_t
@@ -3259,13 +3284,13 @@ zxdh_np_pf_fw_compatible_addr_set(uint32_t dev_id, uint64_t pcie_vir_baddr)
 
 	compatible_addr = zxdh_np_fw_compatible_addr_calc(pcie_vir_baddr, compatible_offset);
 
-	g_np_fw_compat_addr[dev_id] = compatible_addr;
+	g_np_fw_compat_addr[ZXDH_DEV_SLOT_ID(dev_id)] = compatible_addr;
 }
 
 static void
 zxdh_np_fw_compatible_addr_get(uint32_t dev_id, uint64_t *p_compatible_addr)
 {
-	*p_compatible_addr = g_np_fw_compat_addr[dev_id];
+	*p_compatible_addr = g_np_fw_compat_addr[ZXDH_DEV_SLOT_ID(dev_id)];
 }
 
 static void
@@ -3684,7 +3709,7 @@ zxdh_np_dtb_queue_id_free(uint32_t dev_id,
 	ZXDH_DTB_MGR_T *p_dtb_mgr = NULL;
 	uint32_t rc;
 
-	p_dtb_mgr = p_dpp_dtb_mgr[dev_id];
+	p_dtb_mgr = p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)];
 	if (p_dtb_mgr == NULL)
 		return 1;
 
@@ -3706,13 +3731,13 @@ zxdh_np_dtb_queue_id_free(uint32_t dev_id,
 static ZXDH_RB_CFG *
 zxdh_np_dtb_dump_addr_rb_get(uint32_t dev_id, uint32_t queue_id)
 {
-	return g_dtb_dump_addr_rb[dev_id][queue_id];
+	return g_dtb_dump_addr_rb[ZXDH_DEV_SLOT_ID(dev_id)][queue_id];
 }
 
 static uint32_t
 zxdh_np_dtb_dump_addr_rb_set(uint32_t dev_id, uint32_t queue_id, ZXDH_RB_CFG *p_dump_addr_rb)
 {
-	g_dtb_dump_addr_rb[dev_id][queue_id] = p_dump_addr_rb;
+	g_dtb_dump_addr_rb[ZXDH_DEV_SLOT_ID(dev_id)][queue_id] = p_dump_addr_rb;
 	return ZXDH_OK;
 }
 
@@ -3880,9 +3905,9 @@ zxdh_np_dtb_queue_release(uint32_t devid,
 static void
 zxdh_np_dtb_mgr_destroy(uint32_t dev_id)
 {
-	if (p_dpp_dtb_mgr[dev_id] != NULL) {
-		rte_free(p_dpp_dtb_mgr[dev_id]);
-		p_dpp_dtb_mgr[dev_id] = NULL;
+	if (p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)] != NULL) {
+		rte_free(p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)]);
+		p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)] = NULL;
 	}
 }
 
@@ -3909,11 +3934,11 @@ zxdh_np_dev_del(uint32_t dev_id)
 	ZXDH_DEV_MGR_T *p_dev_mgr  = NULL;
 
 	p_dev_mgr = &g_dev_mgr;
-	p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	if (p_dev_info != NULL) {
 		rte_free(p_dev_info);
-		p_dev_mgr->p_dev_array[dev_id] = NULL;
+		p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)] = NULL;
 		p_dev_mgr->device_num--;
 	}
 }
@@ -4057,7 +4082,7 @@ zxdh_np_one_hash_soft_uninstall(uint32_t dev_id, uint32_t hash_id)
 	uint32_t i = 0;
 
 	ZXDH_D_NODE *p_node = NULL;
-	ZXDH_SE_CFG *p_se_cfg = dpp_se_cfg[dev_id];
+	ZXDH_SE_CFG *p_se_cfg = dpp_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)];
 	ZXDH_RB_TN *p_rb_tn = NULL;
 	ZXDH_RB_TN *p_rb_tn_rtn = NULL;
 	HASH_DDR_CFG *p_rbkey = NULL;
@@ -4111,7 +4136,7 @@ zxdh_np_one_hash_soft_uninstall(uint32_t dev_id, uint32_t hash_id)
 	rc = zxdh_np_se_fun_deinit(p_se_cfg, (hash_id & 0xff), ZXDH_FUN_HASH);
 	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_se_fun_deinit");
 
-	memset(g_tbl_id_info[dev_id][hash_id], 0,
+	memset(g_tbl_id_info[ZXDH_DEV_SLOT_ID(dev_id)][hash_id], 0,
 		ZXDH_HASH_TBL_ID_NUM * sizeof(ZXDH_HASH_TBL_ID_INFO));
 
 	return rc;
@@ -4134,13 +4159,13 @@ zxdh_np_hash_soft_uninstall(uint32_t dev_id)
 static uint32_t
 zxdh_np_acl_cfg_get(uint32_t dev_id, ZXDH_ACL_CFG_EX_T **p_acl_cfg)
 {
-	if (g_p_acl_ex_cfg[dev_id] == NULL) {
+	if (g_p_acl_ex_cfg[ZXDH_DEV_SLOT_ID(dev_id)] == NULL) {
 		PMD_DRV_LOG(ERR, "etcam_is not init!");
 		RTE_ASSERT(0);
 		return ZXDH_ACL_RC_ETCAMID_NOT_INIT;
 	}
 
-	*p_acl_cfg = g_p_acl_ex_cfg[dev_id];
+	*p_acl_cfg = g_p_acl_ex_cfg[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	return ZXDH_OK;
 }
@@ -4190,6 +4215,16 @@ zxdh_np_acl_res_destroy(uint32_t dev_id)
 	return ZXDH_OK;
 }
 
+static void
+zxdh_np_apt_hash_global_res_uninit(uint32_t dev_id)
+{
+	if (g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] != NULL) {
+		rte_free(g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)]);
+		g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] = NULL;
+		dpp_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] = NULL;
+	}
+}
+
 int
 zxdh_np_online_uninit(uint32_t dev_id,
 			char *port_name,
@@ -4201,22 +4236,35 @@ zxdh_np_online_uninit(uint32_t dev_id,
 	if (rc != 0)
 		PMD_DRV_LOG(ERR, "dtb release port name %s queue id %u", port_name, queue_id);
 
+	rc = zxdh_np_soft_res_uninstall(dev_id);
+	if (rc != 0)
+		PMD_DRV_LOG(ERR, "zxdh_np_soft_res_uninstall failed");
+
+	return 0;
+}
+
+uint32_t
+zxdh_np_soft_res_uninstall(uint32_t dev_id)
+{
+	uint32_t rc;
+
 	rc = zxdh_np_hash_soft_uninstall(dev_id);
 	if (rc != ZXDH_OK)
 		PMD_DRV_LOG(ERR, "zxdh_np_hash_soft_uninstall error! ");
 
+	zxdh_np_apt_hash_global_res_uninit(dev_id);
 	zxdh_np_acl_res_destroy(dev_id);
 	zxdh_np_dtb_mgr_destroy(dev_id);
 	zxdh_np_sdt_mgr_destroy(dev_id);
 	zxdh_np_dev_del(dev_id);
 
-	return 0;
+	return rc;
 }
 
 static uint32_t
 zxdh_np_sdt_tbl_type_get(uint32_t dev_id, uint32_t sdt_no)
 {
-	return g_table_type[dev_id][sdt_no];
+	return g_table_type[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no];
 }
 
 
@@ -4697,8 +4745,8 @@ zxdh_np_eram_dtb_len_get(uint32_t mode)
 static void
 zxdh_np_sdt_tbl_data_get(uint32_t dev_id, uint32_t sdt_no, ZXDH_SDT_TBL_DATA_T *p_sdt_data)
 {
-	p_sdt_data->data_high32 = g_sdt_info[dev_id][sdt_no].data_high32;
-	p_sdt_data->data_low32  = g_sdt_info[dev_id][sdt_no].data_low32;
+	p_sdt_data->data_high32 = g_sdt_info[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no].data_high32;
+	p_sdt_data->data_low32  = g_sdt_info[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no].data_low32;
 }
 
 static uint32_t
@@ -5196,8 +5244,10 @@ zxdh_np_dtb_tab_down_info_set(uint32_t dev_id,
 	item_info.cmd_type = 0;
 	item_info.int_en = int_flag;
 	item_info.data_len = data_len / 4;
-	phy_addr = p_dpp_dtb_mgr[dev_id]->queue_info[queue_id].tab_down.start_phy_addr +
-		item_index * p_dpp_dtb_mgr[dev_id]->queue_info[queue_id].tab_down.item_size;
+	phy_addr = p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)]->queue_info[queue_id].
+		tab_down.start_phy_addr +
+		item_index * p_dpp_dtb_mgr[ZXDH_DEV_SLOT_ID(dev_id)]->queue_info[queue_id].
+		tab_down.item_size;
 	item_info.data_hddr = ((phy_addr >> 4) >> 32) & 0xffffffff;
 	item_info.data_laddr = (phy_addr >> 4) & 0xffffffff;
 
@@ -5368,7 +5418,7 @@ zxdh_np_hash_get_hash_info_from_sdt(uint32_t dev_id,
 	p_hash_entry_cfg->rst_by_size = ZXDH_GET_RST_SIZE(p_hash_entry_cfg->key_type,
 		p_hash_entry_cfg->actu_key_size);
 
-	p_se_cfg = dpp_se_cfg[dev_id];
+	p_se_cfg = dpp_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)];
 	p_hash_entry_cfg->p_se_cfg = p_se_cfg;
 
 	p_func_info = ZXDH_GET_FUN_INFO(p_se_cfg, p_hash_entry_cfg->fun_id);
@@ -6048,7 +6098,7 @@ zxdh_np_apt_get_sdt_partner(uint32_t dev_id, uint32_t sdt_no)
 {
 	SE_APT_CALLBACK_T *p_apt_callback = NULL;
 
-	p_apt_callback = &g_apt_se_callback[dev_id][sdt_no];
+	p_apt_callback = &g_apt_se_callback[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no];
 
 	if (p_apt_callback->table_type == ZXDH_SDT_TBLT_HASH)
 		return  p_apt_callback->se_func_info.hash_func.sdt_partner;
@@ -6639,10 +6689,10 @@ zxdh_np_stat_cfg_soft_get(uint32_t dev_id,
 {
 	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_stat_cfg);
 
-	p_stat_cfg->ddr_base_addr = g_ppu_stat_cfg[dev_id].ddr_base_addr;
-	p_stat_cfg->eram_baddr = g_ppu_stat_cfg[dev_id].eram_baddr;
-	p_stat_cfg->eram_depth = g_ppu_stat_cfg[dev_id].eram_depth;
-	p_stat_cfg->ppu_addr_offset = g_ppu_stat_cfg[dev_id].ppu_addr_offset;
+	p_stat_cfg->ddr_base_addr = g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].ddr_base_addr;
+	p_stat_cfg->eram_baddr = g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].eram_baddr;
+	p_stat_cfg->eram_depth = g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].eram_depth;
+	p_stat_cfg->ppu_addr_offset = g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].ppu_addr_offset;
 }
 
 static uint32_t
@@ -8809,7 +8859,7 @@ static void *
 zxdh_np_dev_get_se_res_ptr(uint32_t dev_id, uint32_t type)
 {
 	ZXDH_DEV_MGR_T *p_dev_mgr = &g_dev_mgr;
-	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[dev_id];
+	ZXDH_DEV_CFG_T *p_dev_info = p_dev_mgr->p_dev_array[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	if (type == ZXDH_SE_STD_NIC_RES_TYPE)
 		return (void *)&p_dev_info->dev_apt_se_tbl_res.std_nic_res;
@@ -8872,7 +8922,7 @@ zxdh_np_se_init_ex(uint32_t dev_id, ZXDH_SE_CFG *p_se_cfg)
 	ZXDH_SE_ZBLK_CFG *p_zblk_cfg = NULL;
 	ZXDH_SE_ZCELL_CFG *p_zcell_cfg = NULL;
 
-	if (dpp_se_cfg[dev_id] != NULL) {
+	if (dpp_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] != NULL) {
 		PMD_DRV_LOG(DEBUG, "SE global config is already initialized.");
 		return ZXDH_OK;
 	}
@@ -8880,7 +8930,7 @@ zxdh_np_se_init_ex(uint32_t dev_id, ZXDH_SE_CFG *p_se_cfg)
 	memset(p_se_cfg, 0, sizeof(ZXDH_SE_CFG));
 
 	p_se_cfg->dev_id = dev_id;
-	dpp_se_cfg[p_se_cfg->dev_id] = p_se_cfg;
+	dpp_se_cfg[ZXDH_DEV_SLOT_ID(p_se_cfg->dev_id)] = p_se_cfg;
 
 	p_se_cfg->p_as_rslt_wrt_fun = NULL;
 	p_se_cfg->p_client = ZXDH_COMM_VAL_TO_PTR(dev_id);
@@ -8913,16 +8963,16 @@ zxdh_np_se_init_ex(uint32_t dev_id, ZXDH_SE_CFG *p_se_cfg)
 static uint32_t
 zxdh_np_apt_hash_global_res_init(uint32_t dev_id)
 {
-	if (g_apt_se_cfg[dev_id] == NULL) {
-		g_apt_se_cfg[dev_id] = rte_zmalloc(NULL, sizeof(ZXDH_SE_CFG), 0);
-		if (g_apt_se_cfg[dev_id] == NULL) {
+	if (g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] == NULL) {
+		g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] = rte_zmalloc(NULL, sizeof(ZXDH_SE_CFG), 0);
+		if (g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)] == NULL) {
 			PMD_DRV_LOG(ERR, "malloc memory failed");
 			return ZXDH_PAR_CHK_POINT_NULL;
 		}
 
-		zxdh_np_se_init_ex(dev_id, g_apt_se_cfg[dev_id]);
+		zxdh_np_se_init_ex(dev_id, g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)]);
 
-		g_apt_se_cfg[dev_id]->p_client = ZXDH_COMM_VAL_TO_PTR(dev_id);
+		g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)]->p_client = ZXDH_COMM_VAL_TO_PTR(dev_id);
 	}
 
 	return ZXDH_OK;
@@ -9204,7 +9254,7 @@ zxdh_np_hash_init(ZXDH_SE_CFG *p_se_cfg,
 	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_comm_rb_init");
 
 	for (i = 0; i < zblk_num; i++)
-		g_hash_zblk_idx[dev_id][fun_id][i] = zblk_idx[i];
+		g_hash_zblk_idx[ZXDH_DEV_SLOT_ID(dev_id)][fun_id][i] = zblk_idx[i];
 
 	return rc;
 }
@@ -9219,7 +9269,7 @@ zxdh_np_apt_hash_func_res_init(uint32_t dev_id, uint32_t func_num,
 	ZXDH_APT_HASH_FUNC_RES_T *p_hash_func_res_temp = NULL;
 	ZXDH_SE_CFG *p_se_cfg = NULL;
 
-	p_se_cfg = g_apt_se_cfg[dev_id];
+	p_se_cfg = g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	for (index = 0; index < func_num; index++) {
 		memset(zblk_idx, 0, sizeof(zblk_idx));
@@ -9474,7 +9524,7 @@ zxdh_np_apt_hash_bulk_res_init(uint32_t dev_id, uint32_t bulk_num,
 	ZXDH_HASH_DDR_RESC_CFG_T ddr_resc_cfg = {0};
 	ZXDH_SE_CFG *p_se_cfg = NULL;
 
-	p_se_cfg = g_apt_se_cfg[dev_id];
+	p_se_cfg = g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	for (index = 0; index < bulk_num; index++) {
 		memset(&ddr_resc_cfg, 0, sizeof(ZXDH_HASH_DDR_RESC_CFG_T));
@@ -9504,7 +9554,7 @@ zxdh_np_apt_set_callback(uint32_t dev_id, uint32_t sdt_no, uint32_t table_type, 
 {
 	SE_APT_CALLBACK_T *apt_func = NULL;
 
-	apt_func = &g_apt_se_callback[dev_id][sdt_no];
+	apt_func = &g_apt_se_callback[ZXDH_DEV_SLOT_ID(dev_id)][sdt_no];
 
 	apt_func->sdt_no = sdt_no;
 	apt_func->table_type = table_type;
@@ -9598,7 +9648,7 @@ zxdh_np_apt_hash_tbl_res_init(uint32_t dev_id, uint32_t tbl_num,
 	ZXDH_APT_HASH_TABLE_T *p_hash_tbl_temp = NULL;
 	ZXDH_SE_CFG *p_se_cfg = NULL;
 
-	p_se_cfg = g_apt_se_cfg[dev_id];
+	p_se_cfg = g_apt_se_cfg[ZXDH_DEV_SLOT_ID(dev_id)];
 
 	for (index = 0; index < tbl_num; index++) {
 		p_hash_tbl_temp = p_hash_tbl + index;
@@ -9688,7 +9738,7 @@ zxdh_np_acl_cfg_init_ex(ZXDH_ACL_CFG_EX_T *p_acl_cfg,
 	p_acl_cfg->dev_id = (uint32_t)(ZXDH_COMM_PTR_TO_VAL(p_acl_cfg->p_client) & 0xFFFFFFFF);
 	p_acl_cfg->flags = flags;
 
-	g_p_acl_ex_cfg[p_acl_cfg->dev_id] = p_acl_cfg;
+	g_p_acl_ex_cfg[ZXDH_DEV_SLOT_ID(p_acl_cfg->dev_id)] = p_acl_cfg;
 
 	if (flags & ZXDH_ACL_FLAG_ETCAM0_EN) {
 		p_acl_cfg->acl_etcamids.is_valid = 1;
@@ -9726,7 +9776,7 @@ zxdh_np_acl_tbl_init_ex(ZXDH_ACL_CFG_EX_T *p_acl_cfg,
 	uint32_t rc = 0;
 	uint32_t i = 0;
 
-	g_p_acl_ex_cfg[p_acl_cfg->dev_id] = p_acl_cfg;
+	g_p_acl_ex_cfg[ZXDH_DEV_SLOT_ID(p_acl_cfg->dev_id)] = p_acl_cfg;
 
 	if (p_acl_cfg->acl_tbls[table_id].is_used) {
 		PMD_DRV_LOG(ERR, "table_id[ %u ] is already used!", table_id);
@@ -9817,7 +9867,7 @@ zxdh_np_apt_acl_res_init(uint32_t dev_id, uint32_t tbl_num, ZXDH_APT_ACL_TABLE_T
 	uint8_t index = 0;
 	ZXDH_APT_ACL_TABLE_T *p_temp_acl_tbl = NULL;
 
-	rc = zxdh_np_acl_cfg_init_ex(&g_apt_acl_cfg[dev_id],
+	rc = zxdh_np_acl_cfg_init_ex(&g_apt_acl_cfg[ZXDH_DEV_SLOT_ID(dev_id)],
 						(void *)ZXDH_COMM_VAL_TO_PTR(dev_id),
 						ZXDH_ACL_FLAG_ETCAM0_EN,
 						NULL);
@@ -9832,7 +9882,7 @@ zxdh_np_apt_acl_res_init(uint32_t dev_id, uint32_t tbl_num, ZXDH_APT_ACL_TABLE_T
 						ZXDH_SDT_OPER_ADD);
 		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_sdt_tbl_write");
 
-		 rc = zxdh_np_acl_tbl_init_ex(&g_apt_acl_cfg[dev_id],
+		 rc = zxdh_np_acl_tbl_init_ex(&g_apt_acl_cfg[ZXDH_DEV_SLOT_ID(dev_id)],
 					p_temp_acl_tbl->acl_sdt.etcam_table_id,
 					p_temp_acl_tbl->acl_sdt.as_en,
 					p_temp_acl_tbl->acl_res.entry_num,
@@ -9857,12 +9907,13 @@ zxdh_np_apt_acl_res_init(uint32_t dev_id, uint32_t tbl_num, ZXDH_APT_ACL_TABLE_T
 static void
 zxdh_np_apt_stat_res_init(uint32_t dev_id, uint32_t type, ZXDH_APT_STAT_RES_INIT_T *stat_res_init)
 {
-	g_ppu_stat_cfg[dev_id].eram_baddr = stat_res_init->eram_baddr;
-	g_ppu_stat_cfg[dev_id].eram_depth = stat_res_init->eram_depth;
+	g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].eram_baddr = stat_res_init->eram_baddr;
+	g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].eram_depth = stat_res_init->eram_depth;
 
 	if (type == ZXDH_SE_NON_STD_NIC_RES_TYPE) {
-		g_ppu_stat_cfg[dev_id].ddr_base_addr = stat_res_init->ddr_baddr;
-		g_ppu_stat_cfg[dev_id].ppu_addr_offset = stat_res_init->ppu_ddr_offset;
+		g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].ddr_base_addr = stat_res_init->ddr_baddr;
+		g_ppu_stat_cfg[ZXDH_DEV_SLOT_ID(dev_id)].ppu_addr_offset =
+			stat_res_init->ppu_ddr_offset;
 	}
 }
 
@@ -12330,7 +12381,8 @@ zxdh_np_dtb_acl_data_clear(uint32_t dev_id, uint32_t queue_id,
 				&element_id);
 	free(data_buff);
 	free(mask_buff);
-	free(eram_buff);
+	if (eram_buff)
+		free(eram_buff);
 
 	free(p_entry_arr);
 	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_np_dtb_acl_dma_insert");

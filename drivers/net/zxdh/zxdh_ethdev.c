@@ -20,7 +20,7 @@
 #include "zxdh_ethdev_ops.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
-struct zxdh_dev_shared_data g_dev_sd[ZXDH_SLOT_MAX];
+struct zxdh_dev_nic_shared_data dev_nic_sd[ZXDH_SLOT_MAX];
 static rte_spinlock_t zxdh_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 struct zxdh_shared_data *zxdh_shared_data;
 struct zxdh_net_hdr_dl g_net_hdr_dl[RTE_MAX_ETHPORTS];
@@ -1141,26 +1141,26 @@ zxdh_np_dtb_data_res_free(struct zxdh_hw *hw)
 	int i;
 
 	if (dtb_data->init_done && dtb_data->bind_device == dev) {
-		ret = zxdh_np_online_uninit(hw->slot_id, dev->data->name, dtb_data->queueid);
+		ret = zxdh_np_online_uninit(hw->dev_id, dev->data->name, dtb_data->queueid);
 		if (ret)
 			PMD_DRV_LOG(ERR, "%s dpp_np_online_uninstall failed", dev->data->name);
 
-		rte_memzone_free(dtb_data->dtb_table_conf_mz);
-		dtb_data->dtb_table_conf_mz = NULL;
-		rte_memzone_free(dtb_data->dtb_table_dump_mz);
-		dtb_data->dtb_table_dump_mz = NULL;
-
-		for (i = 0; i < ZXDH_MAX_BASE_DTB_TABLE_COUNT; i++) {
-			if (dtb_data->dtb_table_bulk_dump_mz[i]) {
-				rte_memzone_free(dtb_data->dtb_table_bulk_dump_mz[i]);
-				dtb_data->dtb_table_bulk_dump_mz[i] = NULL;
-			}
-		}
+		hw->dev_nic_sd->dtb_used_num--;
 		dtb_data->init_done = 0;
 		dtb_data->bind_device = NULL;
 	}
-	if (zxdh_shared_data != NULL)
-		zxdh_shared_data->np_init_done = 0;
+
+	rte_memzone_free(dtb_data->dtb_table_conf_mz);
+	dtb_data->dtb_table_conf_mz = NULL;
+	rte_memzone_free(dtb_data->dtb_table_dump_mz);
+	dtb_data->dtb_table_dump_mz = NULL;
+
+	for (i = 0; i < ZXDH_MAX_BASE_DTB_TABLE_COUNT; i++) {
+		if (dtb_data->dtb_table_bulk_dump_mz[i]) {
+			rte_memzone_free(dtb_data->dtb_table_bulk_dump_mz[i]);
+			dtb_data->dtb_table_bulk_dump_mz[i] = NULL;
+		}
+	}
 }
 
 static int
@@ -1191,17 +1191,19 @@ static void
 zxdh_np_uninit(struct rte_eth_dev *dev)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
-	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
 
 	if (!hw->is_pf)
 		return;
-	if (!dtb_data->init_done && !dtb_data->dev_refcnt)
-		return;
 
 	zxdh_tbl_entry_online_destroy(dev);
+	zxdh_np_dtb_data_res_free(hw);
 
-	if (--dtb_data->dev_refcnt == 0)
-		zxdh_np_dtb_data_res_free(hw);
+	if (hw->dev_nic_sd->init_done && hw->dev_nic_sd->dtb_used_num == 0) {
+		zxdh_np_soft_res_uninstall(hw->dev_id);
+		hw->dev_nic_sd->init_done = 0;
+	}
+	PMD_DRV_LOG(DEBUG, "zxdh_np_destroy: dtb_used_num %d", hw->dev_nic_sd->dtb_used_num);
+
 }
 
 static int
@@ -1254,6 +1256,16 @@ end:
 	return ret;
 }
 
+static void
+zxdh_priv_res_free(struct zxdh_hw *priv)
+{
+	rte_free(priv->vfinfo);
+	priv->vfinfo = NULL;
+
+	rte_free(priv->channel_context);
+	priv->channel_context = NULL;
+}
+
 static int
 zxdh_dev_close(struct rte_eth_dev *dev)
 {
@@ -1285,7 +1297,9 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 	zxdh_free_queues(dev);
 
 	zxdh_bar_msg_chan_exit();
+	zxdh_priv_res_free(hw);
 
+	rte_free(hw->dev_sd);
 	if (dev->data->mac_addrs != NULL) {
 		rte_free(dev->data->mac_addrs);
 		dev->data->mac_addrs = NULL;
@@ -1615,6 +1629,7 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	struct zxdh_bar_offset_res res = {0};
 	char buf[ZXDH_MAX_NAME_LEN] = {0};
 	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	struct zxdh_dev_nic_shared_data *dev_nic_sd = hw->dev_nic_sd;
 	int ret = 0;
 
 	if (dtb_data->init_done) {
@@ -1625,15 +1640,13 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 
 	dtb_data->queueid = ZXDH_INVALID_DTBQUE;
 	dtb_data->bind_device = dev;
-	dtb_data->dev_refcnt++;
-	dtb_data->init_done = 1;
 
 	ZXDH_DEV_INIT_CTRL_T *dpp_ctrl = rte_zmalloc(NULL, sizeof(*dpp_ctrl) +
 			sizeof(ZXDH_DTB_ADDR_INFO_T) * 256, 0);
 	if (dpp_ctrl == NULL) {
 		PMD_DRV_LOG(ERR, "dev %s annot allocate memory for dpp_ctrl", dev->device->name);
 		ret = -ENOMEM;
-		goto free_res;
+		return ret;
 	}
 	dpp_ctrl->queue_id = 0xff;
 	dpp_ctrl->vport = hw->vport.vport;
@@ -1694,7 +1707,7 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 		goto free_res;
 	}
 
-	ret = zxdh_np_host_init(hw->slot_id, dpp_ctrl);
+	ret = zxdh_np_host_init(hw->dev_id, dpp_ctrl);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "dev %s dpp host np init failed", dev->device->name);
 		goto free_res;
@@ -1703,6 +1716,9 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	PMD_DRV_LOG(DEBUG, "dev %s dpp host np init ok.dtb queue %u",
 		dev->device->name, dpp_ctrl->queue_id);
 	dtb_data->queueid = dpp_ctrl->queue_id;
+	dtb_data->dev_refcnt++;
+	dev_nic_sd->dtb_used_num++;
+	dtb_data->init_done = 1;
 	rte_free(dpp_ctrl);
 	return 0;
 
@@ -1717,11 +1733,11 @@ zxdh_get_dev_shared_data_idx(uint32_t dev_serial_id)
 {
 	uint16_t idx = 0;
 	for (; idx < ZXDH_SLOT_MAX; idx++) {
-		if (g_dev_sd[idx].serial_id == dev_serial_id || g_dev_sd[idx].serial_id == 0)
+		if (dev_nic_sd[idx].serial_id == dev_serial_id || dev_nic_sd[idx].serial_id == 0)
 			return idx;
 	}
 
-	PMD_DRV_LOG(ERR, "dev serial_id[%u] can not found in global dev_share_data arrays",
+	PMD_DRV_LOG(ERR, "dev serial_id[%u] can not found in global dev_nic_share_data arrays",
 		dev_serial_id);
 	return ZXDH_INVALID_SLOT_IDX;
 }
@@ -1744,9 +1760,10 @@ static int zxdh_init_dev_share_data(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 
 	hw->slot_id = slot_id;
-	hw->dev_id = (hw->pcie_id << 16) | (hw->slot_id & 0xffff);
-	g_dev_sd[slot_id].serial_id = serial_id;
-	hw->dev_sd = &g_dev_sd[slot_id];
+	hw->dev_id = hw->pcie_id;
+	dev_nic_sd[slot_id].serial_id = serial_id;
+	hw->dev_nic_sd = &dev_nic_sd[slot_id];
+	hw->dev_sd = rte_zmalloc("zxdh_dtb", sizeof(struct zxdh_dev_shared_data), 0);
 
 	return 0;
 }
@@ -1938,41 +1955,39 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 {
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
 	struct zxdh_dtb_shared_data *dtb_data = &hw->dev_sd->dtb_sd;
+	struct zxdh_dev_nic_shared_data *dev_nic_sd = hw->dev_nic_sd;
 	int ret = 0;
 
-	if (hw->is_pf && dtb_data->init_done) {
-		dtb_data->dev_refcnt++;
+	if (!hw->is_pf)
+		return 0;
+
+	hw->dev_id = (hw->pcie_id << 16) | (hw->slot_id & 0xffff);
+
+	ret = zxdh_np_dtb_res_init(eth_dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "np dtb init failed, ret:%d", ret);
+		return ret;
+	}
+
+	if (dev_nic_sd->init_done) {
 		zxdh_tbl_entry_offline_destroy(hw);
-		PMD_DRV_LOG(INFO, "no need to init dtb  dtb chanenl %d devref %d",
-			dtb_data->queueid, dtb_data->dev_refcnt);
+		PMD_DRV_LOG(ERR, "no need to init apt res. slot_id %d dtb chanenl %d dtb_used_num %d",
+			hw->slot_id, dtb_data->queueid, hw->dev_nic_sd->dtb_used_num);
 		return 0;
 	}
-
-	if (hw->is_pf) {
-		ret = zxdh_np_dtb_res_init(eth_dev);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "np dtb init failed, ret:%d", ret);
-			return ret;
-		}
+	ret = zxdh_np_se_res_get_and_init(hw->dev_id, ZXDH_SE_STD_NIC_RES_TYPE);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "dpp apt init failed, code:%d ", ret);
+		return -ret;
 	}
-
-	if (hw->is_pf) {
-		ret = zxdh_np_se_res_get_and_init(hw->dev_id, ZXDH_SE_STD_NIC_RES_TYPE);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "dpp apt init failed, code:%d ", ret);
-			return -ret;
+	if (!hw->switchoffload) {
+		if (hw->hash_search_index >= ZXDH_HASHIDX_MAX) {
+			PMD_DRV_LOG(ERR, "invalid hash idx %d", hw->hash_search_index);
+			return -1;
 		}
-		if (!hw->switchoffload) {
-			if (hw->hash_search_index >= ZXDH_HASHIDX_MAX) {
-				PMD_DRV_LOG(ERR, "invalid hash idx %d", hw->hash_search_index);
-				return -1;
-			}
-			zxdh_tbl_entry_offline_destroy(hw);
-		}
+		zxdh_tbl_entry_offline_destroy(hw);
 	}
-
-	if (zxdh_shared_data != NULL)
-		zxdh_shared_data->np_init_done = 1;
+	dev_nic_sd->init_done = 1;
 
 	PMD_DRV_LOG(DEBUG, "np init ok");
 	return 0;
@@ -2069,16 +2084,6 @@ zxdh_priv_res_init(struct zxdh_hw *hw)
 	return 0;
 }
 
-static void
-zxdh_priv_res_free(struct zxdh_hw *priv)
-{
-	rte_free(priv->vfinfo);
-	priv->vfinfo = NULL;
-	if (priv->channel_context != NULL) {
-		rte_free(priv->channel_context);
-		priv->channel_context = NULL;
-	}
-}
 
 static uint8_t
 is_pf(uint16_t device_id)
