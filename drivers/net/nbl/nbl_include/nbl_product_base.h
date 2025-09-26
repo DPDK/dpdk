@@ -10,7 +10,7 @@
 struct nbl_product_core_ops {
 	int (*hw_init)(void *p);
 	void (*hw_remove)(void *p);
-	int (*res_init)(void *p, struct rte_eth_dev *eth_dev);
+	int (*res_init)(void *p, const struct rte_eth_dev *eth_dev);
 	void (*res_remove)(void *p);
 	int (*chan_init)(void *p);
 	void (*chan_remove)(void *p);
