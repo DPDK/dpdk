@@ -37,6 +37,7 @@ struct nbl_dev_ring_mgt {
 struct nbl_dev_net_mgt {
 	const struct rte_eth_dev *eth_dev;
 	struct nbl_dev_ring_mgt ring_mgt;
+	struct nbl_eth_link_info eth_link_info;
 	u16 vsi_id;
 	u8 eth_mode;
 	u8 eth_id;
@@ -49,6 +50,7 @@ struct nbl_dev_mgt {
 	struct nbl_channel_ops_tbl *chan_ops_tbl;
 	struct nbl_dev_net_mgt *net_dev;
 	struct nbl_common_info *common;
+	struct nbl_resource_pt_ops pt_ops;
 };
 
 const struct nbl_product_dev_ops *nbl_dev_get_product_ops(enum nbl_product_type product_type);
@@ -63,5 +65,7 @@ int nbl_rx_queue_setup(struct rte_eth_dev *eth_dev, u16 queue_idx,
 		       const struct rte_eth_rxconf *conf, struct rte_mempool *mempool);
 void nbl_tx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id);
 void nbl_rx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id);
+int nbl_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused);
+int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats);
 
 #endif

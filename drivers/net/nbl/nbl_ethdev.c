@@ -15,6 +15,7 @@ static int nbl_dev_release_pf(struct rte_eth_dev *eth_dev)
 	if (!adapter)
 		return -EINVAL;
 	NBL_LOG(DEBUG, "start to close device %s", eth_dev->device->name);
+	nbl_dev_port_close(eth_dev);
 	nbl_core_stop(adapter);
 	nbl_core_remove(adapter);
 	return 0;
@@ -34,6 +35,8 @@ const struct eth_dev_ops nbl_eth_dev_ops = {
 	.rx_queue_setup = nbl_rx_queue_setup,
 	.tx_queue_release = nbl_tx_queues_release,
 	.rx_queue_release = nbl_rx_queues_release,
+	.link_update = nbl_link_update,
+	.stats_get = nbl_stats_get,
 };
 
 static int nbl_eth_dev_init(struct rte_eth_dev *eth_dev)

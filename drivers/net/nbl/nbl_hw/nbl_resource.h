@@ -107,8 +107,16 @@ union nbl_rx_extend_head {
 		u32 l4s_dec_ind :1;
 		u32 rsv2 :4;
 		u32 num_buffers :8;
+		/* DW3 */
 		u32 hash_value;
 	} leonis;
+	struct nbl_rx_ehdr_common {
+		u32 dw0;
+		u32 dw1;
+		u32 dw2:24;
+		u32 num_buffers:8;
+		u32 dw3;
+	} common;
 };
 
 struct nbl_packed_desc {
@@ -134,6 +142,7 @@ struct nbl_res_tx_ring {
 	volatile uint8_t *notify;
 	const struct rte_eth_dev *eth_dev;
 	struct nbl_common_info *common;
+	struct nbl_txq_stats txq_stats;
 	u64 default_hdr[2];
 
 	enum nbl_product_type product;
@@ -174,6 +183,7 @@ struct nbl_res_rx_ring {
 	volatile uint8_t *notify;
 	const struct rte_eth_dev *eth_dev;
 	struct nbl_common_info *common;
+	struct nbl_rxq_stats rxq_stats;
 	uint64_t mbuf_initializer; /**< value to init mbufs */
 	struct rte_mbuf fake_mbuf;
 
@@ -219,7 +229,7 @@ struct nbl_res_info {
 };
 
 struct nbl_resource_mgt {
-	const struct rte_eth_dev *eth_dev;
+	struct rte_eth_dev *eth_dev;
 	struct nbl_channel_ops_tbl *chan_ops_tbl;
 	struct nbl_hw_ops_tbl *hw_ops_tbl;
 	struct nbl_txrx_mgt *txrx_mgt;

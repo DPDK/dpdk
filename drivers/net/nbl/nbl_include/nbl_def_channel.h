@@ -385,6 +385,10 @@ struct nbl_chan_param_remove_cqs {
 	u16 vsi_id;
 };
 
+struct nbl_chan_param_get_link_state {
+	u8 eth_id;
+};
+
 struct nbl_chan_send_info {
 	uint16_t dstid;
 	uint16_t msg_type;

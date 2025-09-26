@@ -163,4 +163,28 @@ struct nbl_register_net_result {
 	bool trusted;
 };
 
+struct nbl_eth_link_info {
+	u8 link_status;
+	u32 link_speed;
+};
+
+struct nbl_rxq_stats {
+	uint64_t rx_packets;
+	uint64_t rx_bytes;
+	uint64_t rx_nombuf;
+	uint64_t rx_multi_descs;
+
+	uint64_t rx_ierror;
+	uint64_t rx_drop_noport;
+	uint64_t rx_drop_proto;
+};
+
+struct nbl_txq_stats {
+	uint64_t tx_packets;
+	uint64_t tx_bytes;
+	uint64_t tx_errors;
+	uint64_t tx_descs;
+	uint64_t tx_tso_packets;
+};
+
 #endif

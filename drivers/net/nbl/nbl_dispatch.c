@@ -752,6 +752,55 @@ static void nbl_disp_chan_remove_cqs_req(void *priv, u16 vsi_id)
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
+static void nbl_disp_get_res_pt_ops(void *priv, struct nbl_resource_pt_ops *pt_ops, bool offload)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	NBL_OPS_CALL(res_ops->get_resource_pt_ops,
+		     (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), pt_ops, offload));
+}
+
+static void nbl_disp_get_link_state(void *priv, u8 eth_id, struct nbl_eth_link_info *eth_link_info)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
+	/* if do not have res_ops->get_link_state(), default eth is up */
+	if (res_ops->get_link_state) {
+		res_ops->get_link_state(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt),
+					eth_id, eth_link_info);
+	} else {
+		eth_link_info->link_status = 1;
+		eth_link_info->link_speed = RTE_ETH_LINK_SPEED_25G;
+	}
+}
+
+static void nbl_disp_chan_get_link_state_req(void *priv, u8 eth_id,
+					     struct nbl_eth_link_info *eth_link_info)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_param_get_link_state param = {0};
+	struct nbl_chan_send_info chan_send;
+
+	param.eth_id = eth_id;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_GET_LINK_STATE, &param, sizeof(param),
+		      eth_link_info, sizeof(*eth_link_info), 1);
+	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
+static int nbl_disp_get_stats(void *priv, struct rte_eth_stats *rte_stats)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	return res_ops->get_stats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), rte_stats);
+}
+
 #define NBL_DISP_OPS_TBL						\
 do {									\
 	NBL_DISP_SET_OPS(configure_msix_map, nbl_disp_configure_msix_map,			\
@@ -885,6 +934,17 @@ do {									\
 	NBL_DISP_SET_OPS(remove_cqs, nbl_disp_remove_cqs,		\
 			 NBL_DISP_CTRL_LVL_MGT, NBL_CHAN_MSG_REMOVE_CQS,\
 			 nbl_disp_chan_remove_cqs_req, NULL);		\
+	NBL_DISP_SET_OPS(get_resource_pt_ops,				\
+			 nbl_disp_get_res_pt_ops,			\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_link_state, nbl_disp_get_link_state,	\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_MSG_GET_LINK_STATE,			\
+			 nbl_disp_chan_get_link_state_req, NULL);	\
+	NBL_DISP_SET_OPS(get_stats, nbl_disp_get_stats,			\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */

@@ -88,7 +88,7 @@ struct nbl_adapter {
 	struct nbl_common_info common;
 };
 
-int nbl_core_init(struct nbl_adapter *adapter, const struct rte_eth_dev *eth_dev);
+int nbl_core_init(struct nbl_adapter *adapter, struct rte_eth_dev *eth_dev);
 void nbl_core_remove(struct nbl_adapter *adapter);
 int nbl_core_start(struct nbl_adapter *adapter);
 void nbl_core_stop(struct nbl_adapter *adapter);

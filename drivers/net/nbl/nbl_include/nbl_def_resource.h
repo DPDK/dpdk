@@ -11,11 +11,17 @@
 #define NBL_RES_OPS_TBL_TO_OPS(res_ops_tbl)		((res_ops_tbl)->ops)
 #define NBL_RES_OPS_TBL_TO_PRIV(res_ops_tbl)		((res_ops_tbl)->priv)
 
+struct nbl_resource_pt_ops {
+	eth_rx_burst_t rx_pkt_burst;
+	eth_tx_burst_t tx_pkt_burst;
+};
+
 struct nbl_resource_ops {
 	int (*configure_msix_map)(void *priv, u16 func_id, u16 num_net_msix, u16 num_others_msix,
 				  bool net_msix_mask_en);
 	int (*destroy_msix_map)(void *priv, u16 func_id);
 	int (*enable_mailbox_irq)(void *priv, u16 func_id, u16 vector_id, bool enable_msix);
+	void (*get_resource_pt_ops)(void *priv, struct nbl_resource_pt_ops *pt_ops, bool offload);
 	int (*register_net)(void *priv,
 			    struct nbl_register_net_param *register_param,
 			    struct nbl_register_net_result *register_result);
@@ -65,6 +71,7 @@ struct nbl_resource_ops {
 	int (*cfg_dsch)(void *priv, u16 vsi_id, bool vld);
 	int (*setup_cqs)(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set);
 	void (*remove_cqs)(void *priv, u16 vsi_id);
+	void (*get_link_state)(void *priv, u8 eth_id, struct nbl_eth_link_info *eth_link_info);
 };
 
 struct nbl_resource_ops_tbl {
@@ -72,7 +79,7 @@ struct nbl_resource_ops_tbl {
 	void *priv;
 };
 
-int nbl_res_init_leonis(void *p, const struct rte_eth_dev *eth_dev);
+int nbl_res_init_leonis(void *p, struct rte_eth_dev *eth_dev);
 void nbl_res_remove_leonis(void *p);
 
 #endif
