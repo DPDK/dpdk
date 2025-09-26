@@ -102,6 +102,10 @@ New Features
 
   * Added network driver for the Huawei SPx series Network Adapters.
 
+* **Added Nebulamatrix nbl net driver.**
+
+  * Added the PMD for Nebulamatrix NICs.
+
 
 Removed Items
 -------------

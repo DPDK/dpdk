@@ -51,6 +51,7 @@ Network Interface Controller Drivers
     mvneta
     mvpp2
     netvsc
+    nbl
     nfb
     nfp
     ngbe
