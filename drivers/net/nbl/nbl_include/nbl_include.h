@@ -28,6 +28,7 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <bus_pci_driver.h>
+#include <rte_io.h>
 
 #include "nbl_logs.h"
 
@@ -39,5 +40,16 @@ typedef int64_t s64;
 typedef int32_t s32;
 typedef int16_t s16;
 typedef int8_t s8;
+
+enum nbl_product_type {
+	NBL_LEONIS_TYPE,
+	NBL_PRODUCT_MAX,
+};
+
+struct nbl_func_caps {
+	enum nbl_product_type product_type;
+	u32 is_vf:1;
+	u32 rsv:31;
+};
 
 #endif

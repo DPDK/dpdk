@@ -7,8 +7,10 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 includes += include_directories('nbl_include')
+includes += include_directories('nbl_hw')
 
 sources = files(
         'nbl_ethdev.c',
         'nbl_core.c',
+        'nbl_hw/nbl_hw_leonis/nbl_hw_leonis_snic.c',
 )
