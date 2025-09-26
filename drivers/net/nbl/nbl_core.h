@@ -51,7 +51,6 @@
 #define NBL_IS_NOT_COEXISTENCE(common)		({ typeof(common) _common = (common);	\
 						_common->nl_socket_route < 0 ||		\
 						_common->ifindex < 0; })
-
 struct nbl_core {
 	void *hw_mgt;
 	void *res_mgt;

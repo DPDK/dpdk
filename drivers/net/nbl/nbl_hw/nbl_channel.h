@@ -7,6 +7,10 @@
 
 #include "nbl_ethdev.h"
 
+#define NBL_CHAN_MAX_PAGE_SIZE			(64 * 1024)
+
+#define NBL_CHAN_MGT_TO_COMMON(chan_mgt)	((chan_mgt)->common)
+#define NBL_CHAN_MGT_TO_DEV(chan_mgt)		NBL_COMMON_TO_DEV(NBL_CHAN_MGT_TO_COMMON(chan_mgt))
 #define NBL_CHAN_MGT_TO_HW_OPS_TBL(chan_mgt)	((chan_mgt)->hw_ops_tbl)
 #define NBL_CHAN_MGT_TO_HW_OPS(chan_mgt)	(NBL_CHAN_MGT_TO_HW_OPS_TBL(chan_mgt)->ops)
 #define NBL_CHAN_MGT_TO_HW_PRIV(chan_mgt)	(NBL_CHAN_MGT_TO_HW_OPS_TBL(chan_mgt)->priv)
@@ -95,6 +99,12 @@ union nbl_chan_info {
 		rte_thread_t tid;
 		int fd[2];
 	} mailbox;
+
+	struct {
+		struct rte_intr_handle intr_handle;
+		void *shm_msg_ring;
+		int eventfd;
+	} userdev;
 };
 
 struct nbl_chan_msg_handler {
@@ -104,6 +114,7 @@ struct nbl_chan_msg_handler {
 
 struct nbl_channel_mgt {
 	uint32_t mode;
+	struct nbl_common_info *common;
 	struct nbl_hw_ops_tbl *hw_ops_tbl;
 	union nbl_chan_info *chan_info;
 	struct nbl_chan_msg_handler msg_handler[NBL_CHAN_MSG_MAX];

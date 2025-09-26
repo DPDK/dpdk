@@ -649,6 +649,181 @@ const struct nbl_channel_ops nbl_chan_ops = {
 	.notify_interrupt		= nbl_chan_notify_interrupt,
 };
 
+static int nbl_chan_userdev_send_msg(void *priv, struct nbl_chan_send_info *chan_send)
+{
+	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)priv;
+	struct nbl_common_info *common = NBL_CHAN_MGT_TO_COMMON(chan_mgt);
+	struct nbl_dev_user_channel_msg msg;
+	uint32_t *result;
+	int ret;
+
+	if (chan_mgt->state)
+		return -EIO;
+
+	msg.msg_type = chan_send->msg_type;
+	msg.dst_id = chan_send->dstid;
+	msg.arg_len = chan_send->arg_len;
+	msg.ack = chan_send->ack;
+	msg.ack_length = chan_send->resp_len;
+	memcpy(&msg.data, chan_send->arg, chan_send->arg_len);
+
+	ret = ioctl(common->devfd, NBL_DEV_USER_CHANNEL, &msg);
+	if (ret) {
+		NBL_LOG(ERR, "user mailbox failed, type %u, ret %d", msg.msg_type, ret);
+		return -1;
+	}
+
+	/* 4bytes align */
+	result = (uint32_t *)RTE_PTR_ALIGN(((unsigned char *)msg.data) + chan_send->arg_len, 4);
+	memcpy(chan_send->resp, result, RTE_MIN(chan_send->resp_len, msg.ack_length));
+
+	return msg.ack_err;
+}
+
+static int nbl_chan_userdev_send_ack(void *priv, struct nbl_chan_ack_info *chan_ack)
+{
+	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)priv;
+	struct nbl_chan_send_info chan_send;
+	u32 *tmp;
+	u32 len = 3 * sizeof(u32) + chan_ack->data_len;
+
+	tmp = rte_zmalloc("nbl_chan_send_tmp", len, 0);
+	if (!tmp) {
+		NBL_LOG(ERR, "Chan send ack data malloc failed");
+		return -ENOMEM;
+	}
+
+	tmp[0] = chan_ack->msg_type;
+	tmp[1] = chan_ack->msgid;
+	tmp[2] = (u32)chan_ack->err;
+	if (chan_ack->data && chan_ack->data_len)
+		memcpy(&tmp[3], chan_ack->data, chan_ack->data_len);
+
+	NBL_CHAN_SEND(chan_send, chan_ack->dstid, NBL_CHAN_MSG_ACK, tmp, len, NULL, 0, 0);
+	nbl_chan_userdev_send_msg(chan_mgt, &chan_send);
+	rte_free(tmp);
+
+	return 0;
+}
+
+static void nbl_chan_userdev_eventfd_handler(void *cn_arg)
+{
+	size_t page_size = rte_mem_page_size();
+	char *bak_buf = malloc(page_size);
+	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)cn_arg;
+	union nbl_chan_info *chan_info = NBL_CHAN_MGT_TO_CHAN_INFO(chan_mgt);
+	char *data = (char *)chan_info->userdev.shm_msg_ring + 8;
+	char *payload;
+	u64 buf;
+	int nbytes __rte_unused;
+	u32 total_len;
+	u32 *head = (u32 *)chan_info->userdev.shm_msg_ring;
+	u32 *tail = (u32 *)chan_info->userdev.shm_msg_ring + 1, tmp_tail;
+	u32 shmmsgbuf_size = page_size - 8;
+
+	if (!bak_buf) {
+		NBL_LOG(ERR, "nbl chan handler malloc failed");
+		return;
+	}
+	tmp_tail = *tail;
+	nbytes = read(chan_info->userdev.eventfd, &buf, sizeof(buf));
+
+	while (*head != tmp_tail) {
+		total_len = *(u32 *)(data + tmp_tail);
+		if (tmp_tail + total_len > shmmsgbuf_size) {
+			u32 copy_len;
+
+			copy_len = shmmsgbuf_size - tmp_tail;
+			memcpy(bak_buf, data + tmp_tail, copy_len);
+			memcpy(bak_buf + copy_len, data, total_len - copy_len);
+			payload = bak_buf;
+
+		} else {
+			payload  = (data + tmp_tail);
+		}
+
+		nbl_chan_recv_msg(chan_mgt, payload + 4);
+		tmp_tail += total_len;
+		if (tmp_tail >= shmmsgbuf_size)
+			tmp_tail -= shmmsgbuf_size;
+	}
+
+	free(bak_buf);
+	*tail = tmp_tail;
+}
+
+static int nbl_chan_userdev_setup_queue(void *priv)
+{
+	size_t page_size = rte_mem_page_size();
+	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)priv;
+	union nbl_chan_info *chan_info = NBL_CHAN_MGT_TO_CHAN_INFO(chan_mgt);
+	struct nbl_common_info *common = NBL_CHAN_MGT_TO_COMMON(chan_mgt);
+	int ret;
+
+	if (common->devfd < 0 || common->eventfd < 0)
+		return -EINVAL;
+
+	chan_info->userdev.eventfd = common->eventfd;
+	chan_info->userdev.intr_handle.fd = common->eventfd;
+	chan_info->userdev.intr_handle.type = RTE_INTR_HANDLE_EXT;
+
+	ret = rte_intr_callback_register(&chan_info->userdev.intr_handle,
+					 nbl_chan_userdev_eventfd_handler, chan_mgt);
+
+	if (ret) {
+		NBL_LOG(ERR, "channel userdev event handler register failed, %d", ret);
+		return ret;
+	}
+
+	chan_info->userdev.shm_msg_ring = rte_mem_map(NULL, page_size,
+						      RTE_PROT_READ | RTE_PROT_WRITE,
+						      RTE_MAP_SHARED, common->devfd,
+						      NBL_DEV_USER_INDEX_TO_OFFSET
+						      (NBL_DEV_SHM_MSG_RING_INDEX));
+	if (!chan_info->userdev.shm_msg_ring) {
+		rte_intr_callback_unregister(&chan_info->userdev.intr_handle,
+					     nbl_chan_userdev_eventfd_handler, chan_mgt);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int nbl_chan_userdev_teardown_queue(void *priv)
+{
+	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)priv;
+	union nbl_chan_info *chan_info = NBL_CHAN_MGT_TO_CHAN_INFO(chan_mgt);
+
+	rte_mem_unmap(chan_info->userdev.shm_msg_ring, rte_mem_page_size());
+	rte_intr_callback_unregister(&chan_info->userdev.intr_handle,
+				     nbl_chan_userdev_eventfd_handler, chan_mgt);
+
+	return 0;
+}
+
+static int nbl_chan_userdev_register_msg(void *priv, uint16_t msg_type, nbl_chan_resp func,
+					 void *callback_priv)
+{
+	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)priv;
+	struct nbl_common_info *common = NBL_CHAN_MGT_TO_COMMON(chan_mgt);
+	int ret, type;
+
+	type = msg_type;
+	nbl_chan_register_msg(priv, msg_type, func, callback_priv);
+	ret = ioctl(common->devfd, NBL_DEV_USER_SET_LISTENER, &type);
+
+	return ret;
+}
+
+const struct nbl_channel_ops nbl_userdev_ops = {
+	.send_msg			= nbl_chan_userdev_send_msg,
+	.send_ack			= nbl_chan_userdev_send_ack,
+	.register_msg			= nbl_chan_userdev_register_msg,
+	.setup_queue			= nbl_chan_userdev_setup_queue,
+	.teardown_queue			= nbl_chan_userdev_teardown_queue,
+	.set_state			= nbl_chan_set_state,
+};
+
 static int nbl_chan_init_state_bitmap(void *priv)
 {
 	struct nbl_channel_mgt *chan_mgt = (struct nbl_channel_mgt *)priv;
@@ -711,6 +886,7 @@ static int nbl_chan_setup_chan_mgt(struct nbl_adapter *adapter,
 		goto alloc_mailbox_fail;
 
 	NBL_CHAN_MGT_TO_CHAN_INFO(&(*chan_mgt_leonis)->chan_mgt) = mailbox;
+	NBL_CHAN_MGT_TO_COMMON(&(*chan_mgt_leonis)->chan_mgt) = &adapter->common;
 
 	ret = nbl_chan_init_state_bitmap(*chan_mgt_leonis);
 	if (ret)
@@ -742,11 +918,17 @@ static void nbl_chan_remove_ops(struct nbl_channel_ops_tbl **chan_ops_tbl)
 static int nbl_chan_setup_ops(struct nbl_channel_ops_tbl **chan_ops_tbl,
 			      struct nbl_channel_mgt_leonis *chan_mgt_leonis)
 {
+	struct nbl_common_info *common;
+
 	*chan_ops_tbl = calloc(1, sizeof(struct nbl_channel_ops_tbl));
 	if (!*chan_ops_tbl)
 		return -ENOMEM;
 
-	NBL_CHAN_OPS_TBL_TO_OPS(*chan_ops_tbl) = &nbl_chan_ops;
+	common = NBL_CHAN_MGT_TO_COMMON(&chan_mgt_leonis->chan_mgt);
+	if (NBL_IS_NOT_COEXISTENCE(common))
+		NBL_CHAN_OPS_TBL_TO_OPS(*chan_ops_tbl) = &nbl_chan_ops;
+	else
+		NBL_CHAN_OPS_TBL_TO_OPS(*chan_ops_tbl) = &nbl_userdev_ops;
 	NBL_CHAN_OPS_TBL_TO_PRIV(*chan_ops_tbl) = chan_mgt_leonis;
 
 	chan_mgt_leonis->chan_mgt.msg_handler[NBL_CHAN_MSG_ACK].func = nbl_chan_recv_ack_msg;
