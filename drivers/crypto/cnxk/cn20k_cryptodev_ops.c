@@ -207,7 +207,7 @@ cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 			w7 = sec_sess->inst.w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			sess = (struct cnxk_se_sess *)(sym_op->session);
-			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], true);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], true, true);
 			if (unlikely(ret))
 				return 0;
 			w7 = sess->cpt_inst_w7;
@@ -218,7 +218,7 @@ cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 				return 0;
 			}
 
-			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], true);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], true, true);
 			if (unlikely(ret)) {
 				sym_session_clear(op->sym->session, true);
 				rte_mempool_put(qp->sess_mp, op->sym->session);
@@ -278,6 +278,7 @@ cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 
 	cnxk_cpt_request_data_sgv2_mode_dump((void *)inst[0].dptr, 1, inst[0].w5.s.gather_sz);
 	cnxk_cpt_request_data_sgv2_mode_dump((void *)inst[0].rptr, 0, inst[0].w6.s.scatter_sz);
+
 #endif
 
 	return 1;
@@ -1342,7 +1343,8 @@ cn20k_cpt_raw_fill_inst(struct cnxk_iov *iov, struct cnxk_cpt_qp *qp,
 					 true);
 		break;
 	case CPT_DP_THREAD_AUTH_ONLY:
-		ret = fill_raw_digest_params(iov, sess, &qp->meta_info, infl_req, &inst[0], true);
+		ret = fill_raw_digest_params(iov, sess, &qp->meta_info, infl_req, &inst[0], true,
+					     true);
 		break;
 	default:
 		ret = -EINVAL;
