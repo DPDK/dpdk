@@ -667,7 +667,7 @@ crypto_adapter_qp_setup(const struct rte_cryptodev *cdev, struct cnxk_cpt_qp *qp
 	snprintf(name, RTE_MEMPOOL_NAMESIZE, "cnxk_ca_req_%u:%u", cdev->data->dev_id, qp->lf.lf_id);
 	req_size = sizeof(struct cpt_inflight_req);
 	cache_size = RTE_MIN(RTE_MEMPOOL_CACHE_MAX_SIZE, qp->lf.nb_desc / 1.5);
-	nb_req = RTE_MAX(qp->lf.nb_desc, cache_size * rte_lcore_count());
+	nb_req = qp->lf.nb_desc + (cache_size * rte_lcore_count());
 	qp->ca.req_mp = rte_mempool_create(name, nb_req, req_size, cache_size, 0, NULL, NULL, NULL,
 					   NULL, rte_socket_id(), 0);
 	if (qp->ca.req_mp == NULL)
