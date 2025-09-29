@@ -314,24 +314,6 @@ struct roc_se_iov_ptr {
 #define ROC_SE_PDCP_CHAIN_CTX_KEY_IV 1
 
 struct roc_se_ctx {
-	/* Below fields are accessed by sw */
-	uint64_t enc_cipher : 8;
-	uint64_t hash_type : 8;
-	uint64_t mac_len : 8;
-	uint64_t auth_key_len : 16;
-	uint64_t fc_type : 4;
-	uint64_t hmac : 1;
-	uint64_t zsk_flags : 3;
-	uint64_t k_ecb : 1;
-	uint64_t pdcp_ci_alg : 2;
-	uint64_t pdcp_auth_alg : 2;
-	uint64_t ciph_then_auth : 1;
-	uint64_t auth_then_ciph : 1;
-	uint64_t eia2 : 1;
-	/* auth_iv_offset passed to PDCP_CHAIN opcode based on FVC bit */
-	uint8_t pdcp_iv_offset;
-	union cpt_inst_w4 template_w4;
-	uint8_t *auth_key;
 	/* Below fields are accessed by hardware */
 	struct se_ctx_s {
 		/* Word0 */
@@ -356,6 +338,25 @@ struct roc_se_ctx {
 			struct roc_se_sm_context sm_ctx;
 		};
 	} se_ctx __plt_aligned(ROC_ALIGN);
+
+	/* Below fields are accessed by sw */
+	uint64_t enc_cipher : 8;
+	uint64_t hash_type : 8;
+	uint64_t mac_len : 8;
+	uint64_t auth_key_len : 16;
+	uint64_t fc_type : 4;
+	uint64_t hmac : 1;
+	uint64_t zsk_flags : 3;
+	uint64_t k_ecb : 1;
+	uint64_t pdcp_ci_alg : 2;
+	uint64_t pdcp_auth_alg : 2;
+	uint64_t ciph_then_auth : 1;
+	uint64_t auth_then_ciph : 1;
+	uint64_t eia2 : 1;
+	/* auth_iv_offset passed to PDCP_CHAIN opcode based on FVC bit */
+	uint8_t pdcp_iv_offset;
+	union cpt_inst_w4 template_w4;
+	uint8_t *auth_key;
 } __plt_aligned(ROC_ALIGN);
 
 struct roc_se_fc_params {
