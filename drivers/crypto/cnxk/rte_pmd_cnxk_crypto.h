@@ -215,4 +215,22 @@ __rte_experimental
 int rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
 				     struct rte_pmd_cnxk_crypto_qp_stats *stats);
 
+/**
+ * Retrieves the addresses of the AE FPM (Finite Precision Math) tables.
+ *
+ * This API should be called only after the cryptodev device has been
+ * successfully configured. The returned pointer reference memory that is
+ * valid as long as the device remains configured and is not destroyed or
+ * reconfigured. If the device is reconfigured or destroyed, the memory
+ * referenced by the returned pointer becomes invalid and must not be used.
+ *
+ * @param dev_id
+ *   Device identifier of cryptodev device.
+ * @return
+ *   - On success pointer to the AE FPM table addresses.
+ *   - NULL on error.
+ */
+__rte_experimental
+const uint64_t *rte_pmd_cnxk_ae_fpm_table_get(uint8_t dev_id);
+
 #endif /* _PMD_CNXK_CRYPTO_H_ */

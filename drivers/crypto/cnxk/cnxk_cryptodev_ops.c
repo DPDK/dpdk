@@ -12,6 +12,7 @@
 #endif
 #include <rte_security_driver.h>
 
+#include "roc_ae.h"
 #include "roc_ae_fpm_tables.h"
 #include "roc_cpt.h"
 #include "roc_errata.h"
@@ -993,6 +994,28 @@ rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id)
 	qptr = fp_ops->qp.data[qp_id];
 
 	return qptr;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_cnxk_ae_fpm_table_get, 25.07)
+const uint64_t *
+rte_pmd_cnxk_ae_fpm_table_get(uint8_t dev_id)
+{
+	struct rte_cryptodev *dev;
+	struct cnxk_cpt_vf *vf;
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+	if (dev == NULL) {
+		plt_err("Invalid dev_id %u", dev_id);
+		return NULL;
+	}
+
+	vf = dev->data->dev_private;
+	if (vf == NULL) {
+		plt_err("VF is not initialized");
+		return NULL;
+	}
+
+	return vf->cnxk_fpm_iova;
 }
 
 static inline void
