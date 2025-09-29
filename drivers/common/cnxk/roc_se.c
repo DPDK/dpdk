@@ -268,10 +268,10 @@ int
 roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint8_t *key,
 		    uint16_t key_len, uint16_t mac_len)
 {
+	uint8_t opcode_minor, opcode_major = 0;
 	struct roc_se_kasumi_ctx *k_ctx;
 	struct roc_se_pdcp_ctx *pctx;
 	struct roc_se_context *fctx;
-	uint8_t opcode_minor;
 	bool chained_op;
 
 	if (se_ctx == NULL)
@@ -310,6 +310,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 				se_ctx->fc_type = ROC_SE_PDCP;
 			se_ctx->pdcp_auth_alg = ROC_SE_PDCP_ALG_TYPE_SNOW3G;
 			se_ctx->zsk_flags = 0x1;
+			opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
 			break;
 		case ROC_SE_ZUC_EIA3:
 			if (unlikely(key_len != 16)) {
@@ -339,6 +340,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 				se_ctx->fc_type = ROC_SE_PDCP;
 			se_ctx->pdcp_auth_alg = ROC_SE_PDCP_ALG_TYPE_ZUC;
 			se_ctx->zsk_flags = 0x1;
+			opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
 			break;
 		case ROC_SE_AES_CMAC_EIA2:
 			key_type = cpt_pdcp_chain_key_type_get(key_len);
@@ -356,6 +358,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 			se_ctx->pdcp_auth_alg = ROC_SE_PDCP_ALG_TYPE_AES_CMAC;
 			se_ctx->eia2 = 1;
 			se_ctx->zsk_flags = 0x1;
+			opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
 			break;
 		case ROC_SE_KASUMI_F9_ECB:
 			/* Kasumi ECB mode */
@@ -363,11 +366,13 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 			memcpy(k_ctx->ci_key, key, key_len);
 			se_ctx->fc_type = ROC_SE_KASUMI;
 			se_ctx->zsk_flags = 0x1;
+			opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_DMA_MODE_SG;
 			break;
 		case ROC_SE_KASUMI_F9_CBC:
 			memcpy(k_ctx->ci_key, key, key_len);
 			se_ctx->fc_type = ROC_SE_KASUMI;
 			se_ctx->zsk_flags = 0x1;
+			opcode_major = ROC_SE_MAJOR_OP_KASUMI | ROC_DMA_MODE_SG;
 			break;
 		default:
 			return -1;
@@ -385,6 +390,7 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 		else
 			opcode_minor = ((1 << 4) | 1);
 
+		se_ctx->template_w4.s.opcode_major = opcode_major;
 		se_ctx->template_w4.s.opcode_minor = opcode_minor;
 		return 0;
 	}
@@ -587,6 +593,7 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 success:
 	se_ctx->enc_cipher = type;
 	if (se_ctx->fc_type == ROC_SE_PDCP_CHAIN) {
+		se_ctx->template_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
 		se_ctx->template_w4.s.opcode_minor = se_ctx->ciph_then_auth ? 2 : 3;
 	} else if (se_ctx->fc_type == ROC_SE_PDCP) {
 		if (roc_model_is_cn9k())
@@ -594,6 +601,7 @@ success:
 				((1 << 7) | (se_ctx->pdcp_ci_alg << 5) | (se_ctx->zsk_flags & 0x7));
 		else
 			opcode_minor = ((1 << 4));
+		se_ctx->template_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
 		se_ctx->template_w4.s.opcode_minor = opcode_minor;
 	}
 	return 0;
