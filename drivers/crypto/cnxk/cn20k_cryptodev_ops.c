@@ -196,6 +196,10 @@ cn20k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 	inst[0].w2.u64 = 0;
 	inst[0].w3.u64 = 0;
 
+	inst[0].meta_sz = 0;
+	inst[0].cq_ena = 0;
+	inst[0].res_addr = 0;
+
 	sym_op = op->sym;
 
 	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
