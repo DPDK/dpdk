@@ -4219,6 +4219,37 @@ hns3_tx_fill_hw_ring(struct hns3_tx_queue *txq,
 	}
 }
 
+static bool
+hns3_tx_pktmbuf_append(struct hns3_tx_queue *txq,
+		       struct rte_mbuf *tx_pkt)
+{
+	uint16_t add_len = 0;
+	uint32_t ptype;
+	char *appended;
+
+	if (unlikely(tx_pkt->ol_flags & (RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_QINQ) &&
+		rte_pktmbuf_pkt_len(tx_pkt) < HNS3_MIN_TUN_PKT_LEN)) {
+		ptype = rte_net_get_ptype(tx_pkt, NULL, RTE_PTYPE_L2_MASK |
+				RTE_PTYPE_L3_MASK | RTE_PTYPE_L4_MASK |
+				RTE_PTYPE_TUNNEL_MASK);
+		if (ptype & RTE_PTYPE_TUNNEL_MASK)
+			add_len = HNS3_MIN_TUN_PKT_LEN - rte_pktmbuf_pkt_len(tx_pkt);
+	} else if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) < txq->min_tx_pkt_len)) {
+		add_len = txq->min_tx_pkt_len - rte_pktmbuf_pkt_len(tx_pkt);
+	}
+
+	if (unlikely(add_len > 0)) {
+		appended = rte_pktmbuf_append(tx_pkt, add_len);
+		if (appended == NULL) {
+			txq->dfx_stats.pkt_padding_fail_cnt++;
+			return false;
+		}
+		memset(appended, 0, add_len);
+	}
+
+	return true;
+}
+
 uint16_t
 hns3_xmit_pkts_simple(void *tx_queue,
 		      struct rte_mbuf **tx_pkts,
@@ -4296,21 +4327,8 @@ hns3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * by hardware in Tx direction, driver need to pad it to avoid
 		 * error.
 		 */
-		if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) <
-						txq->min_tx_pkt_len)) {
-			uint16_t add_len;
-			char *appended;
-
-			add_len = txq->min_tx_pkt_len -
-					 rte_pktmbuf_pkt_len(tx_pkt);
-			appended = rte_pktmbuf_append(tx_pkt, add_len);
-			if (appended == NULL) {
-				txq->dfx_stats.pkt_padding_fail_cnt++;
-				break;
-			}
-
-			memset(appended, 0, add_len);
-		}
+		if (!hns3_tx_pktmbuf_append(txq, tx_pkt))
+			break;
 
 		m_seg = tx_pkt;
 
