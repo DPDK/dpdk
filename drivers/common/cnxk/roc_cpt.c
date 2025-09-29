@@ -1173,10 +1173,10 @@ roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline, i
 	lmtline->io_addr = lf->io_addr;
 	lmtline->fc_thresh = lf->nb_desc - CPT_LF_FC_MIN_THRESHOLD;
 
-	if (roc_model_is_cn10k()) {
+	if (roc_model_is_cn10k() || roc_model_is_cn20k()) {
 		if (is_dual) {
 			lmtline->io_addr |= ROC_CN10K_TWO_CPT_INST_DW_M1 << 4;
-			lmtline->fc_thresh = lf->nb_desc -  2 * CPT_LF_FC_MIN_THRESHOLD;
+			lmtline->fc_thresh = lf->nb_desc - 2 * CPT_LF_FC_MIN_THRESHOLD;
 		} else {
 			lmtline->io_addr |= ROC_CN10K_CPT_INST_DW_M1 << 4;
 		}
