@@ -14,6 +14,7 @@
 #define ROC_SG_ENTRY_SIZE    sizeof(struct roc_sglist_comp)
 #define ROC_SG_MAX_COMP	     25
 #define ROC_SG_MAX_DLEN_SIZE (ROC_SG_LIST_HDR_SIZE + (ROC_SG_MAX_COMP * ROC_SG_ENTRY_SIZE))
+
 #define ROC_SG2_MAX_PTRS 48
 #define ROC_SG1_MAX_PTRS 32
 
