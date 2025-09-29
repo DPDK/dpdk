@@ -384,7 +384,7 @@ Such model has the following benefits:
 
 More about the bifurcated driver can be found in
 NVIDIA `bifurcated PMD
-<https://www.dpdk.org/wp-content/uploads/sites/35/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`_ presentation.
+<https://www.dpdk.org/wp-content/uploads/sites/23/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`_ presentation.
 
 .. _uio:
 
