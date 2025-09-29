@@ -600,9 +600,9 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 	bool ciph_then_auth = false;
 
 	if (roc_cpt->hw_caps[CPT_ENG_TYPE_SE].pdcp_chain_zuc256)
-		sess->roc_se_ctx.pdcp_iv_offset = 24;
+		sess->roc_se_ctx->pdcp_iv_offset = 24;
 	else
-		sess->roc_se_ctx.pdcp_iv_offset = 16;
+		sess->roc_se_ctx->pdcp_iv_offset = 16;
 
 	if (xform == NULL)
 		return -EINVAL;
@@ -706,7 +706,7 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 				return -ENOTSUP;
 			}
 		}
-		sess->roc_se_ctx.ciph_then_auth = 1;
+		sess->roc_se_ctx->ciph_then_auth = 1;
 		sess->chained_op = 1;
 		if (fill_sess_cipher(c_xfrm, sess))
 			return -ENOTSUP;
@@ -742,7 +742,7 @@ cnxk_sess_fill(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xform,
 		}
 	}
 
-	sess->roc_se_ctx.auth_then_ciph = 1;
+	sess->roc_se_ctx->auth_then_ciph = 1;
 	sess->chained_op = 1;
 	if (fill_sess_auth(a_xfrm, sess))
 		return -ENOTSUP;
@@ -757,7 +757,12 @@ cnxk_cpt_inst_w7_get(struct cnxk_se_sess *sess, struct roc_cpt *roc_cpt)
 {
 	union cpt_inst_w7 inst_w7;
 
-	inst_w7.s.cptr = (uint64_t)&sess->roc_se_ctx.se_ctx;
+	if (sess->roc_se_ctx == NULL) {
+		plt_err("Invalid se context");
+		return 0;
+	}
+
+	inst_w7.s.cptr = (uint64_t)&sess->roc_se_ctx->se_ctx;
 
 	if (hw_ctx_cache_enable())
 		inst_w7.s.ctx_val = 1;
@@ -787,6 +792,13 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 	if (is_session_less)
 		memset(sess_priv, 0, sizeof(struct cnxk_se_sess));
 
+	sess_priv->roc_se_ctx =
+		rte_zmalloc("roc_se_ctx", sizeof(struct roc_se_ctx), ROC_CPTR_ALIGN);
+	if (sess_priv->roc_se_ctx == NULL) {
+		plt_err("Couldn't allocate memory for se context");
+		return -ENOMEM;
+	}
+
 	ret = cnxk_sess_fill(roc_cpt, xform, sess_priv);
 	if (ret)
 		goto priv_put;
@@ -796,7 +808,7 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 	if (sess_priv->passthrough)
 		thr_type = CPT_DP_THREAD_TYPE_PT;
 	else if (sess_priv->cpt_op & ROC_SE_OP_CIPHER_MASK) {
-		switch (sess_priv->roc_se_ctx.fc_type) {
+		switch (sess_priv->roc_se_ctx->fc_type) {
 		case ROC_SE_FC_GEN:
 			if (sess_priv->aes_gcm || sess_priv->aes_ccm || sess_priv->chacha_poly)
 				thr_type = CPT_DP_THREAD_TYPE_FC_AEAD;
@@ -826,12 +838,12 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 
 	sess_priv->dp_thr_type = thr_type;
 
-	if ((sess_priv->roc_se_ctx.fc_type == ROC_SE_HASH_HMAC) &&
+	if ((sess_priv->roc_se_ctx->fc_type == ROC_SE_HASH_HMAC) &&
 	    cpt_mac_len_verify(&xform->auth)) {
 		plt_dp_err("MAC length is not supported");
-		if (sess_priv->roc_se_ctx.auth_key != NULL) {
-			plt_free(sess_priv->roc_se_ctx.auth_key);
-			sess_priv->roc_se_ctx.auth_key = NULL;
+		if (sess_priv->roc_se_ctx->auth_key != NULL) {
+			plt_free(sess_priv->roc_se_ctx->auth_key);
+			sess_priv->roc_se_ctx->auth_key = NULL;
 		}
 
 		ret = -ENOTSUP;
@@ -841,14 +853,18 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 	sess_priv->cpt_inst_w7 = cnxk_cpt_inst_w7_get(sess_priv, roc_cpt);
 
 	if (hw_ctx_cache_enable())
-		roc_se_ctx_init(&sess_priv->roc_se_ctx);
+		roc_se_ctx_init(sess_priv->roc_se_ctx);
 
-	if (sess_priv->roc_se_ctx.se_ctx.w0.s.ctx_size < roc_cpt->ctx_ilen)
-		sess_priv->roc_se_ctx.se_ctx.w0.s.ctx_size = roc_cpt->ctx_ilen;
+	if (sess_priv->roc_se_ctx->se_ctx.w0.s.ctx_size < roc_cpt->ctx_ilen)
+		sess_priv->roc_se_ctx->se_ctx.w0.s.ctx_size = roc_cpt->ctx_ilen;
 
 	return 0;
 
 priv_put:
+	if (sess_priv->roc_se_ctx != NULL) {
+		rte_free(sess_priv->roc_se_ctx);
+		sess_priv->roc_se_ctx = NULL;
+	}
 	return ret;
 }
 
@@ -868,12 +884,19 @@ sym_session_clear(struct rte_cryptodev_sym_session *sess, bool is_session_less)
 {
 	struct cnxk_se_sess *sess_priv = (struct cnxk_se_sess *)sess;
 
+	if (sess_priv->roc_se_ctx == NULL)
+		return;
+
 	/* Trigger CTX flush + invalidate to remove from CTX_CACHE */
 	if (hw_ctx_cache_enable())
-		roc_cpt_lf_ctx_flush(sess_priv->lf, &sess_priv->roc_se_ctx.se_ctx, true);
+		roc_cpt_lf_ctx_flush(sess_priv->lf, &sess_priv->roc_se_ctx->se_ctx, true);
 
-	if (sess_priv->roc_se_ctx.auth_key != NULL)
-		plt_free(sess_priv->roc_se_ctx.auth_key);
+	if (sess_priv->roc_se_ctx->auth_key != NULL)
+		plt_free(sess_priv->roc_se_ctx->auth_key);
+
+	/* Free the allocated roc_se_ctx memory */
+	rte_free(sess_priv->roc_se_ctx);
+	sess_priv->roc_se_ctx = NULL;
 
 	if (is_session_less)
 		memset(sess_priv, 0, cnxk_cpt_sym_session_get_size(NULL));
@@ -1178,7 +1201,11 @@ rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 
 	if (rte_sess->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		struct cnxk_se_sess *se_sess = PLT_PTR_CAST(rte_sess->crypto_sym_sess);
-		return PLT_PTR_CAST(&se_sess->roc_se_ctx.se_ctx);
+		if (se_sess->roc_se_ctx == NULL) {
+			plt_err("Invalid roc_se_ctx pointer");
+			return NULL;
+		}
+		return PLT_PTR_CAST(&se_sess->roc_se_ctx->se_ctx);
 	}
 
 	if (rte_sess->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
