@@ -373,6 +373,4 @@ cn20k_ipsec_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 
 	return cn20k_ipsec_outb_sa_create(roc_cpt, &qp->lf, &conf->ipsec, conf->crypto_xform,
 					  (struct cn20k_sec_session *)sess);
-
-	return 0;
 }
