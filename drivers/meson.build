@@ -32,12 +32,40 @@ if meson.is_cross_build()
     enable_drivers += ',' + meson.get_external_property('enable_drivers', '')
 endif
 
-# add cmdline disabled drivers and meson disabled drivers together
-disable_drivers += ',' + get_option('disable_drivers')
-disable_drivers = run_command(list_dir_globs, disable_drivers, check: true).stdout().split()
+# map legacy driver names
+driver_map = {
+    'net/cpfl': 'net/intel/cpfl',
+    'net/e1000': 'net/intel/e1000',
+    'net/fm10k': 'net/intel/fm10k',
+    'net/i40e': 'net/intel/i40e',
+    'net/iavf': 'net/intel/iavf',
+    'net/ice': 'net/intel/ice',
+    'net/idpf': 'net/intel/idpf',
+    'net/ipn3ke': 'net/intel/ipn3ke',
+    'net/ixgbe': 'net/intel/ixgbe',
+}
 
-# add cmdline enabled drivers and meson enabled drivers together
-enable_drivers = ',' + get_option('enable_drivers')
+foreach driver_option : ['disable_drivers', 'enable_drivers']
+    # get list of drivers from the option
+    cmdline_drivers = get_option(driver_option)
+    foreach driver : cmdline_drivers.split(',')
+        if driver == ''
+            continue
+        endif
+        # check if driver has a legacy name which maps to a new name
+        if driver_map.has_key(driver)
+            # use new name instead of legacy name
+            driver = driver_map[driver]
+        endif
+        if driver_option == 'disable_drivers'
+            disable_drivers += ',' + driver
+        else
+            enable_drivers += ',' + driver
+        endif
+    endforeach
+endforeach
+
+disable_drivers = run_command(list_dir_globs, disable_drivers, check: true).stdout().split()
 enable_drivers = run_command(list_dir_globs, enable_drivers, check: true).stdout().split()
 require_drivers = true
 if enable_drivers.length() == 0
