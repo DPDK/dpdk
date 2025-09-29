@@ -17,6 +17,9 @@
 #define DST_IOV_SIZE                                                                               \
 	(sizeof(struct roc_se_iov_ptr) + (sizeof(struct roc_se_buf_ptr) * ROC_MAX_SG_CNT))
 
+#define META_PKT_CTL_ENABLE 1
+#define META_SIZE_DIVISOR   32
+
 enum cpt_dp_thread_type {
 	CPT_DP_THREAD_TYPE_FC_CHAIN = 0x1,
 	CPT_DP_THREAD_TYPE_FC_AEAD,
@@ -1526,7 +1529,8 @@ cpt_dec_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 static __rte_always_inline int
 cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 			struct roc_se_fc_params *params, struct cpt_inst_s *inst,
-			const bool is_sg_ver2, const bool use_metadata)
+			struct cpt_inflight_req *infl_req, const bool is_sg_ver2,
+			const bool use_metadata)
 {
 	uint32_t encr_data_len, auth_data_len, aad_len, passthr_len, pad_len, hdr_len;
 	uint32_t encr_offset, auth_offset, iv_offset = 0;
@@ -1611,19 +1615,23 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		dm_vaddr = params->bufs[0].vaddr;
 
 		/* Use Direct mode */
+		if (use_metadata) {
+			inst->w0.cn20k.pkt_ctl = META_PKT_CTL_ENABLE;
+			inst->meta_sz = META_LEN / META_SIZE_DIVISOR;
 
-		offset_vaddr = PLT_PTR_SUB(dm_vaddr, off_ctrl_len + hdr_len);
-		*offset_vaddr = offset_ctrl;
-
-		/* DPTR */
-		inst->dptr = (uint64_t)offset_vaddr;
-		/* RPTR should just exclude offset control word */
-		if (use_metadata)
-			inst->rptr = (uint64_t)dm_vaddr - pad_len;
-		else
+			offset_vaddr = PLT_PTR_CAST(infl_req->meta);
+			inst->dptr = (uint64_t)dm_vaddr - pad_len;
+			inst->rptr = inst->dptr;
+			cpt_inst_w4.s.dlen = inputlen - iv_len;
+		} else {
+			offset_vaddr = PLT_PTR_SUB(dm_vaddr, off_ctrl_len + hdr_len);
+			inst->dptr = (uint64_t)offset_vaddr;
+			/* RPTR should just exclude offset control word */
 			inst->rptr = (uint64_t)PLT_PTR_SUB(dm_vaddr, hdr_len);
+			cpt_inst_w4.s.dlen = inputlen + off_ctrl_len;
+		}
 
-		cpt_inst_w4.s.dlen = inputlen + off_ctrl_len;
+		*offset_vaddr = offset_ctrl;
 
 		iv_d = ((uint8_t *)offset_vaddr + off_ctrl_len);
 		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, false);
@@ -1649,8 +1657,8 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 static __rte_always_inline int
 cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
-		  struct roc_se_fc_params *params, struct cpt_inst_s *inst, const bool is_sg_ver2,
-		  const bool use_metadata)
+		  struct roc_se_fc_params *params, struct cpt_inst_s *inst,
+		  struct cpt_inflight_req *infl_req, const bool is_sg_ver2, const bool use_metadata)
 {
 	/*
 	 * pdcp_iv_offset is auth_iv_offset wrt cipher_iv_offset which is
@@ -1666,9 +1674,11 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	const int flags = se_ctx->zsk_flags;
 	uint32_t encr_offset, auth_offset;
 	union cpt_inst_w4 cpt_inst_w4;
+	uint32_t passthrough_len = 0;
 	int32_t inputlen, outputlen;
 	uint64_t *offset_vaddr;
 	uint8_t pdcp_alg_type;
+	uint32_t pad_len = 0;
 	uint32_t mac_len = 0;
 	uint64_t offset_ctrl;
 	bool pack_iv = false;
@@ -1703,8 +1713,10 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		}
 
 		if (use_metadata) {
-			inputlen = iv_len + auth_offset + auth_data_len;
-			outputlen = mac_len;
+			passthrough_len = RTE_ALIGN_CEIL(auth_offset, 8);
+			pad_len = passthrough_len - auth_offset;
+			inputlen = pad_len + iv_len + auth_offset + auth_data_len;
+			outputlen = pad_len + mac_len;
 		} else {
 			/* consider iv len */
 			auth_offset += iv_len;
@@ -1735,7 +1747,9 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		encr_offset = encr_offset / 8;
 
 		if (use_metadata) {
-			outputlen = encr_offset + (RTE_ALIGN(encr_data_len, 8) / 8);
+			passthrough_len = RTE_ALIGN_CEIL(encr_offset, 8);
+			pad_len = passthrough_len - encr_offset;
+			outputlen = pad_len + encr_offset + (RTE_ALIGN(encr_data_len, 8) / 8);
 			inputlen = iv_len + outputlen;
 		} else {
 			/* consider iv len */
@@ -1767,22 +1781,35 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	 */
 	if (likely((req_flags & ROC_SE_SINGLE_BUF_INPLACE) &&
 		   (req_flags & ROC_SE_SINGLE_BUF_HEADROOM))) {
+
 		void *dm_vaddr = params->bufs[0].vaddr;
 
 		/* Use Direct mode */
-
 		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
-		offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr - off_ctrl_len - iv_len);
 
-		/* DPTR */
-		inst->dptr = (uint64_t)offset_vaddr;
-		/* RPTR should just exclude offset control word */
-		if (use_metadata)
-			inst->rptr = (uint64_t)dm_vaddr;
-		else
+		if (use_metadata) {
+			inst->w0.cn20k.pkt_ctl = META_PKT_CTL_ENABLE;
+			inst->meta_sz = META_LEN / META_SIZE_DIVISOR;
+
+			offset_vaddr = PLT_PTR_CAST(infl_req->meta);
+			offset_ctrl = rte_cpu_to_be_64((uint64_t)(passthrough_len));
+			*offset_vaddr = offset_ctrl;
+
+			inst->dptr = (uint64_t)dm_vaddr - pad_len;
+			inst->rptr = inst->dptr;
+
+			cpt_inst_w4.s.dlen = inputlen - iv_len + pad_len;
+		} else {
+
+			offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr - off_ctrl_len - iv_len);
+
+			/* DPTR */
+			inst->dptr = (uint64_t)offset_vaddr;
+			/* RPTR should just exclude offset control word */
 			inst->rptr = (uint64_t)dm_vaddr - iv_len;
 
-		cpt_inst_w4.s.dlen = inputlen + off_ctrl_len;
+			cpt_inst_w4.s.dlen = inputlen + off_ctrl_len;
+		}
 
 		uint8_t *iv_d = ((uint8_t *)offset_vaddr + off_ctrl_len);
 		pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type, pack_iv);
@@ -1950,7 +1977,8 @@ cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_params *p
 static __rte_always_inline int
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		     struct roc_se_fc_params *fc_params, struct cpt_inst_s *inst,
-		     const bool is_sg_ver2, const bool use_metadata)
+		     struct cpt_inflight_req *infl_req, const bool is_sg_ver2,
+		     const bool use_metadata)
 {
 	struct roc_se_ctx *ctx = fc_params->ctx;
 	uint8_t fc_type;
@@ -1961,8 +1989,8 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	if (likely(fc_type == ROC_SE_FC_GEN)) {
 		ret = cpt_enc_hmac_prep(flags, d_offs, d_lens, fc_params, inst, is_sg_ver2);
 	} else if (fc_type == ROC_SE_PDCP) {
-		ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, fc_params, inst, is_sg_ver2,
-					use_metadata);
+		ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, fc_params, inst, infl_req,
+					is_sg_ver2, use_metadata);
 	} else if (fc_type == ROC_SE_KASUMI) {
 		ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens, fc_params, inst, is_sg_ver2);
 	} else if (fc_type == ROC_SE_HASH_HMAC) {
@@ -3062,7 +3090,8 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		}
 	}
 
-	ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, &fc_params, inst, is_sg_ver2, use_metadata);
+	ret = cpt_pdcp_alg_prep(flags, d_offs, d_lens, &fc_params, inst, infl_req, is_sg_ver2,
+				use_metadata);
 	if (unlikely(ret)) {
 		plt_dp_err("Could not prepare instruction");
 		goto free_mdata_and_exit;
@@ -3195,7 +3224,7 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	}
 
 	/* Finally prepare the instruction */
-	ret = cpt_pdcp_chain_alg_prep(flags, d_offs, d_lens, &fc_params, inst, is_sg_ver2,
+	ret = cpt_pdcp_chain_alg_prep(flags, d_offs, d_lens, &fc_params, inst, infl_req, is_sg_ver2,
 				      use_metadata);
 	if (unlikely(ret)) {
 		plt_dp_err("Could not prepare instruction");
@@ -3406,7 +3435,8 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		goto free_mdata_and_exit;
 	}
 
-	ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &params, inst, is_sg_ver2, use_metadata);
+	ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &params, inst, infl_req, is_sg_ver2,
+				   use_metadata);
 
 	if (ret)
 		goto free_mdata_and_exit;
@@ -3758,7 +3788,7 @@ fill_raw_digest_params(struct cnxk_iov *iov, struct cnxk_se_sess *sess,
 	fc_params.meta_buf.vaddr = (uint8_t *)mdata + space;
 	fc_params.meta_buf.size -= space;
 
-	ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &fc_params, inst, is_sg_ver2,
+	ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &fc_params, inst, infl_req, is_sg_ver2,
 				   use_metadata);
 	if (ret)
 		goto free_mdata_and_exit;

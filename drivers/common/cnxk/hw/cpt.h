@@ -247,7 +247,13 @@ struct cpt_inst_s {
 			uint64_t nixtxl : 3;
 			uint64_t doneint : 1;
 			uint64_t nixtx_addr : 60;
-		} s;
+		} cn10k;
+		struct {
+			uint64_t nixtxl : 3;
+			uint64_t doneint : 1;
+			uint64_t rsvd : 58;
+			uint64_t pkt_ctl : 2;
+		} cn20k;
 		struct {
 			uint64_t nixtxl : 3;
 			uint64_t doneint : 1;
@@ -260,7 +266,11 @@ struct cpt_inst_s {
 		uint64_t u64;
 	} w0;
 
-	uint64_t res_addr;
+	struct {
+		uint64_t res_addr : 59;
+		uint64_t meta_sz : 4;
+		uint64_t cq_ena : 1;
+	};
 
 	union cpt_inst_w2 {
 		struct {
