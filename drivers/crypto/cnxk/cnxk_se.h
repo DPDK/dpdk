@@ -65,7 +65,7 @@ struct __rte_aligned(ROC_ALIGN) cnxk_se_sess {
 	uint64_t cpt_inst_w7;
 	uint64_t cpt_inst_w2;
 	struct cnxk_cpt_qp *qp;
-	struct roc_se_ctx roc_se_ctx;
+	struct roc_se_ctx *roc_se_ctx;
 	struct roc_cpt_lf *lf;
 };
 
@@ -1945,6 +1945,11 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	uint32_t cipher_key_len = 0;
 	aead_form = &xform->aead;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	if (aead_form->op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
 		sess->cpt_op |= ROC_SE_OP_CIPHER_ENCRYPT;
 		sess->cpt_op |= ROC_SE_OP_AUTH_GENERATE;
@@ -2007,34 +2012,39 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		}
 	}
 
-	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, aead_form->key.data,
+	if (unlikely(roc_se_ciph_key_set(sess->roc_se_ctx, enc_type, aead_form->key.data,
 					 aead_form->key.length)))
 		return -1;
 
-	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type, NULL, 0,
+	if (unlikely(roc_se_auth_key_set(sess->roc_se_ctx, auth_type, NULL, 0,
 					 aead_form->digest_length)))
 		return -1;
 
 	if (enc_type == ROC_SE_CHACHA20)
-		sess->roc_se_ctx.template_w4.s.opcode_minor |= BIT(5);
+		sess->roc_se_ctx->template_w4.s.opcode_minor |= BIT(5);
 	return 0;
 }
 
 static __rte_always_inline int
 fill_sm_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 {
-	struct roc_se_sm_context *sm_ctx = &sess->roc_se_ctx.se_ctx.sm_ctx;
+	struct roc_se_sm_context *sm_ctx = &sess->roc_se_ctx->se_ctx.sm_ctx;
 	struct rte_crypto_cipher_xform *c_form;
 	roc_sm_cipher_type enc_type = 0;
+
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
 
 	c_form = &xform->cipher;
 
 	if (c_form->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
 		sess->cpt_op |= ROC_SE_OP_CIPHER_ENCRYPT;
-		sess->roc_se_ctx.template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_ENCRYPT;
+		sess->roc_se_ctx->template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_ENCRYPT;
 	} else if (c_form->op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
 		sess->cpt_op |= ROC_SE_OP_CIPHER_DECRYPT;
-		sess->roc_se_ctx.template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_DECRYPT;
+		sess->roc_se_ctx->template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_DECRYPT;
 	} else {
 		plt_dp_err("Unknown cipher operation");
 		return -1;
@@ -2075,9 +2085,9 @@ fill_sm_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *ses
 	sess->aes_ctr = 0;
 	sess->is_null = 0;
 	sess->is_sm4 = 1;
-	sess->roc_se_ctx.fc_type = ROC_SE_SM;
+	sess->roc_se_ctx->fc_type = ROC_SE_SM;
 
-	sess->roc_se_ctx.template_w4.s.opcode_major = ROC_SE_MAJOR_OP_SM;
+	sess->roc_se_ctx->template_w4.s.opcode_major = ROC_SE_MAJOR_OP_SM;
 
 	memcpy(sm_ctx->encr_key, c_form->key.data, ROC_SE_SM4_KEY_LEN);
 	sm_ctx->enc_cipher = enc_type;
@@ -2092,6 +2102,11 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	struct rte_crypto_cipher_xform *c_form;
 	roc_se_cipher_type enc_type = 0; /* NULL Cipher type */
 	uint32_t cipher_key_len = 0;
+
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
 
 	c_form = &xform->cipher;
 
@@ -2109,7 +2124,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		if (xform->next != NULL &&
 		    xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 			/* Perform decryption followed by auth verify */
-			sess->roc_se_ctx.template_w4.s.opcode_minor =
+			sess->roc_se_ctx->template_w4.s.opcode_minor =
 				ROC_SE_FC_MINOR_OP_HMAC_FIRST;
 		}
 	} else {
@@ -2180,13 +2195,13 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		break;
 	case RTE_CRYPTO_CIPHER_AES_DOCSISBPI:
 		/* Set DOCSIS flag */
-		sess->roc_se_ctx.template_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_DOCSIS;
+		sess->roc_se_ctx->template_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_DOCSIS;
 		enc_type = ROC_SE_AES_DOCSISBPI;
 		cipher_key_len = 16;
 		break;
 	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
 		/* Set DOCSIS flag */
-		sess->roc_se_ctx.template_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_DOCSIS;
+		sess->roc_se_ctx->template_w4.s.opcode_minor |= ROC_SE_FC_MINOR_OP_DOCSIS;
 		enc_type = ROC_SE_DES_DOCSISBPI;
 		cipher_key_len = 8;
 		break;
@@ -2207,7 +2222,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		return -1;
 	}
 
-	if (zsk_flag && sess->roc_se_ctx.ciph_then_auth) {
+	if (zsk_flag && sess->roc_se_ctx->ciph_then_auth) {
 		struct rte_crypto_auth_xform *a_form;
 		a_form = &xform->next->auth;
 		if (c_form->op != RTE_CRYPTO_CIPHER_OP_DECRYPT &&
@@ -2239,7 +2254,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 			return -1;
 		}
 
-	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, c_form->key.data,
+	if (unlikely(roc_se_ciph_key_set(sess->roc_se_ctx, enc_type, c_form->key.data,
 					 c_form->key.length)))
 		return -1;
 
@@ -2254,6 +2269,11 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	roc_se_auth_type auth_type = 0; /* NULL Auth type */
 	uint8_t is_sm3 = 0;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
 		return fill_sess_gmac(xform, sess);
 
@@ -2261,8 +2281,7 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	    xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 	    xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
 		/* Perform auth followed by encryption */
-		sess->roc_se_ctx.template_w4.s.opcode_minor =
-			ROC_SE_FC_MINOR_OP_HMAC_FIRST;
+		sess->roc_se_ctx->template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_HMAC_FIRST;
 	}
 
 	a_form = &xform->auth;
@@ -2377,7 +2396,7 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		return -1;
 	}
 
-	if (zsk_flag && sess->roc_se_ctx.auth_then_ciph) {
+	if (zsk_flag && sess->roc_se_ctx->auth_then_ciph) {
 		struct rte_crypto_cipher_xform *c_form;
 		if (xform->next != NULL) {
 			c_form = &xform->next->cipher;
@@ -2401,7 +2420,7 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		sess->auth_iv_offset = a_form->iv.offset;
 		sess->auth_iv_length = a_form->iv.length;
 	}
-	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type, a_form->key.data,
+	if (unlikely(roc_se_auth_key_set(sess->roc_se_ctx, auth_type, a_form->key.data,
 					 a_form->key.length, a_form->digest_length)))
 		return -1;
 
@@ -2414,6 +2433,11 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 	struct rte_crypto_auth_xform *a_form;
 	roc_se_cipher_type enc_type = 0; /* NULL Cipher type */
 	roc_se_auth_type auth_type = 0;	 /* NULL Auth type */
+
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
 
 	a_form = &xform->auth;
 
@@ -2454,11 +2478,11 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		return -1;
 	}
 
-	if (unlikely(roc_se_ciph_key_set(&sess->roc_se_ctx, enc_type, a_form->key.data,
+	if (unlikely(roc_se_ciph_key_set(sess->roc_se_ctx, enc_type, a_form->key.data,
 					 a_form->key.length)))
 		return -1;
 
-	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type, NULL, 0,
+	if (unlikely(roc_se_auth_key_set(sess->roc_se_ctx, auth_type, NULL, 0,
 					 a_form->digest_length)))
 		return -1;
 
@@ -2586,6 +2610,11 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	uint32_t ci_data_length = sym_op->cipher.data.length;
 	uint32_t ci_data_offset = sym_op->cipher.data.offset;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	fc_params.cipher_iv_len = sess->iv_length;
 	fc_params.auth_iv_len = 0;
 	fc_params.auth_iv_buf = NULL;
@@ -2607,7 +2636,7 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	d_lens = ci_data_length;
 	d_lens = (d_lens << 32);
 
-	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.ctx = sess->roc_se_ctx;
 
 	if (m_dst == NULL) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
@@ -2684,6 +2713,11 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	uint8_t ccm_iv_buf[16];
 	uint32_t iv_buf[4];
 	int ret;
+
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
 
 	fc_params.cipher_iv_len = sess->iv_length;
 	fc_params.auth_iv_len = 0;
@@ -2762,7 +2796,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		uint32_t ci_data_offset = sym_op->cipher.data.offset;
 		uint32_t a_data_length = sym_op->auth.data.length;
 		uint32_t a_data_offset = sym_op->auth.data.offset;
-		struct roc_se_ctx *ctx = &sess->roc_se_ctx;
+		struct roc_se_ctx *ctx = sess->roc_se_ctx;
 
 		const uint8_t op_minor = ctx->template_w4.s.opcode_minor;
 
@@ -2795,7 +2829,7 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			}
 		}
 	}
-	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.ctx = sess->roc_se_ctx;
 
 	if (!(sess->auth_first) && unlikely(sess->is_null || sess->cpt_op == ROC_SE_OP_DECODE))
 		inplace = 0;
@@ -2925,13 +2959,18 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	uint32_t flags = 0;
 	int ret;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	/* Cipher only */
 
 	fc_params.cipher_iv_len = sess->iv_length;
 	fc_params.auth_iv_len = 0;
 	fc_params.iv_buf = NULL;
 	fc_params.auth_iv_buf = NULL;
-	fc_params.pdcp_iv_offset = sess->roc_se_ctx.pdcp_iv_offset;
+	fc_params.pdcp_iv_offset = sess->roc_se_ctx->pdcp_iv_offset;
 
 	if (likely(sess->iv_length))
 		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset);
@@ -2945,7 +2984,7 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	d_offs = (uint64_t)c_data_off << 16;
 	d_lens = (uint64_t)c_data_len << 32;
 
-	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.ctx = sess->roc_se_ctx;
 
 	if (likely(m_dst == NULL || m_src == m_dst)) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
@@ -3016,11 +3055,16 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	void *mdata;
 	int ret;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	fc_params.cipher_iv_len = sess->iv_length;
 	fc_params.auth_iv_len = sess->auth_iv_length;
 	fc_params.iv_buf = NULL;
 	fc_params.auth_iv_buf = NULL;
-	fc_params.pdcp_iv_offset = sess->roc_se_ctx.pdcp_iv_offset;
+	fc_params.pdcp_iv_offset = sess->roc_se_ctx->pdcp_iv_offset;
 
 	m_src = sym_op->m_src;
 	m_dst = sym_op->m_dst;
@@ -3071,7 +3115,7 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 					ci_data_length, true);
 	}
 
-	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.ctx = sess->roc_se_ctx;
 
 	if (likely((m_dst == NULL || m_dst == m_src)) && inplace) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
@@ -3201,6 +3245,11 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	uint8_t iv_buf[16];
 	int ret;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	memset(&params, 0, sizeof(struct roc_se_fc_params));
 
 	m_src = sym_op->m_src;
@@ -3227,7 +3276,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		params.auth_iv_len = sess->auth_iv_length;
 		params.auth_iv_buf =
 			rte_crypto_op_ctod_offset(cop, uint8_t *, sess->auth_iv_offset);
-		params.pdcp_iv_offset = sess->roc_se_ctx.pdcp_iv_offset;
+		params.pdcp_iv_offset = sess->roc_se_ctx->pdcp_iv_offset;
 		if (sess->zsk_flag == ROC_SE_K_F9) {
 			uint32_t length_in_bits, num_bytes;
 			uint8_t *src, direction = 0;
@@ -3257,7 +3306,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	d_lens = sym_op->auth.data.length;
 
-	params.ctx = &sess->roc_se_ctx;
+	params.ctx = sess->roc_se_ctx;
 
 	if (auth_op == ROC_SE_OP_AUTH_GENERATE) {
 		if (sym_op->auth.digest.data) {
@@ -3497,8 +3546,13 @@ fill_raw_fc_params(struct cnxk_iov *iov, struct cnxk_se_sess *sess, struct cpt_q
 	uint32_t iv_buf[4];
 	int ret;
 
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
+
 	fc_params.cipher_iv_len = sess->iv_length;
-	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.ctx = sess->roc_se_ctx;
 	fc_params.auth_iv_buf = NULL;
 	fc_params.auth_iv_len = 0;
 	fc_params.mac_buf.size = 0;
@@ -3618,7 +3672,12 @@ fill_raw_digest_params(struct cnxk_iov *iov, struct cnxk_se_sess *sess,
 
 	memset(&fc_params, 0, sizeof(struct roc_se_fc_params));
 	fc_params.cipher_iv_len = sess->iv_length;
-	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.ctx = sess->roc_se_ctx;
+
+	if (unlikely(sess->roc_se_ctx == NULL)) {
+		plt_dp_err("Session crypto context is NULL");
+		return -EINVAL;
+	}
 
 	mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
 	if (mdata == NULL) {

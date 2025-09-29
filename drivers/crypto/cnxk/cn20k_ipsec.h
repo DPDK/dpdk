@@ -18,13 +18,18 @@
 /* Forward declaration */
 struct cn20k_sec_session;
 
-struct __rte_aligned(ROC_ALIGN) cn20k_ipsec_sa
+struct __rte_aligned(ROC_CPTR_ALIGN) cn20k_ipsec_sa
 {
 	union {
-		/** Inbound SA */
-		struct roc_ow_ipsec_inb_sa in_sa;
-		/** Outbound SA */
-		struct roc_ow_ipsec_outb_sa out_sa;
+		void *sa_ptr;
+		struct {
+			union {
+				/** Inbound SA */
+				struct roc_ow_ipsec_inb_sa *in_sa;
+				/** Outbound SA */
+				struct roc_ow_ipsec_outb_sa *out_sa;
+			};
+		};
 	};
 };
 

@@ -19,9 +19,12 @@
 static inline void
 ipsec_po_sa_iv_set(struct cn20k_sec_session *sess, struct rte_crypto_op *cop)
 {
-	uint64_t *iv = &sess->sa.out_sa.iv.u64[0];
-	uint64_t *tmp_iv;
+	uint64_t *iv, *tmp_iv;
 
+	if (sess->sa.out_sa == NULL)
+		return;
+
+	iv = &sess->sa.out_sa->iv.u64[0];
 	memcpy(iv, rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset), 16);
 	tmp_iv = (uint64_t *)iv;
 	*tmp_iv = rte_be_to_cpu_64(*tmp_iv);
@@ -33,14 +36,18 @@ ipsec_po_sa_iv_set(struct cn20k_sec_session *sess, struct rte_crypto_op *cop)
 static inline void
 ipsec_po_sa_aes_8b_iv_set(struct cn20k_sec_session *sess, struct rte_crypto_op *cop)
 {
-	uint8_t *iv = &sess->sa.out_sa.iv.s.iv_dbg1[0];
+	uint8_t *iv;
 	uint32_t *tmp_iv;
 
+	if (sess->sa.out_sa == NULL)
+		return;
+
+	iv = &sess->sa.out_sa->iv.s.iv_dbg1[0];
 	memcpy(iv, rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset), 4);
 	tmp_iv = (uint32_t *)iv;
 	*tmp_iv = rte_be_to_cpu_32(*tmp_iv);
 
-	iv = &sess->sa.out_sa.iv.s.iv_dbg2[0];
+	iv = &sess->sa.out_sa->iv.s.iv_dbg2[0];
 	memcpy(iv, rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset + 4), 4);
 	tmp_iv = (uint32_t *)iv;
 	*tmp_iv = rte_be_to_cpu_32(*tmp_iv);
@@ -59,19 +66,21 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn20k_s
 	RTE_SET_USED(lf);
 
 #ifdef LA_IPSEC_DEBUG
-	if (sess->sa.out_sa.w2.s.iv_src == ROC_IE_OW_SA_IV_SRC_FROM_SA) {
-		if (sess->sa.out_sa.w2.s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
-		    sess->sa.out_sa.w2.s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
-		    sess->sa.out_sa.w2.s.auth_type == ROC_IE_SA_AUTH_AES_GMAC ||
-		    sess->sa.out_sa.w2.s.enc_type == ROC_IE_SA_ENC_AES_CTR)
-			ipsec_po_sa_aes_8b_iv_set(sess, cop);
-		else
-			ipsec_po_sa_iv_set(sess, cop);
-	}
+	if (sess->sa.out_sa) {
+		if (sess->sa.out_sa->w2.s.iv_src == ROC_IE_OW_SA_IV_SRC_FROM_SA) {
+			if (sess->sa.out_sa->w2.s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+			    sess->sa.out_sa->w2.s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+			    sess->sa.out_sa->w2.s.auth_type == ROC_IE_SA_AUTH_AES_GMAC ||
+			    sess->sa.out_sa->w2.s.enc_type == ROC_IE_SA_ENC_AES_CTR)
+				ipsec_po_sa_aes_8b_iv_set(sess, cop);
+			else
+				ipsec_po_sa_iv_set(sess, cop);
+		}
 
-	/* Trigger CTX reload to fetch new data from DRAM */
-	roc_cpt_lf_ctx_reload(lf, &sess->sa.out_sa);
-	rte_delay_ms(1);
+		/* Trigger CTX reload to fetch new data from DRAM */
+		roc_cpt_lf_ctx_reload(lf, sess->sa.out_sa);
+		rte_delay_ms(1);
+	}
 #endif
 	const uint64_t ol_flags = m_src->ol_flags;
 

@@ -35,20 +35,27 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	int ret = 0;
 
 	sa = &sec_sess->sa;
-	out_sa = &sa->out_sa;
+
+	out_sa = rte_zmalloc("cn20k_cpt", sizeof(struct roc_ow_ipsec_outb_sa), ROC_CPTR_ALIGN);
+	if (out_sa == NULL) {
+		plt_err("Couldn't allocate memory for outbound SA");
+		return -ENOMEM;
+	}
+	sa->out_sa = out_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
 	sa_dptr = plt_zmalloc(sizeof(struct roc_ow_ipsec_outb_sa), 8);
 	if (sa_dptr == NULL) {
 		plt_err("Could not allocate memory for SA dptr");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto sa_cptr_free;
 	}
 
 	/* Translate security parameters to SA */
 	ret = cnxk_ow_ipsec_outb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm, roc_cpt->ctx_ilen);
 	if (ret) {
 		plt_err("Could not fill outbound session parameters");
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 
 	sec_sess->inst.w7 = cnxk_cpt_sec_inst_w7_get(roc_cpt, out_sa);
@@ -72,7 +79,7 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	if (ipsec_xfrm->options.iv_gen_disable != 0) {
 		plt_err("Application provided IV not supported");
 		ret = -ENOTSUP;
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 #endif
 
@@ -81,7 +88,7 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	/* Get Rlen calculation data */
 	ret = cnxk_ipsec_outb_rlens_get(&rlens, ipsec_xfrm, crypto_xfrm);
 	if (ret)
-		goto sa_dptr_free;
+		goto sa_free;
 
 	sec_sess->max_extended_len = rlens.max_extended_len;
 
@@ -128,21 +135,26 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	ret = roc_cpt_ctx_write(lf, sa_dptr, out_sa, sizeof(struct roc_ow_ipsec_outb_sa));
 	if (ret) {
 		plt_err("Could not write outbound session to hardware");
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
 	ret = roc_cpt_lf_ctx_flush(lf, out_sa, false);
 	if (ret == -EFAULT) {
 		plt_err("Could not flush outbound session");
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_IPSEC;
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
-sa_dptr_free:
+sa_free:
 	plt_free(sa_dptr);
+sa_cptr_free:
+	if (ret != 0) {
+		rte_free(out_sa);
+		out_sa = NULL;
+	}
 
 	return ret;
 }
@@ -161,20 +173,27 @@ cn20k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	int ret = 0;
 
 	sa = &sec_sess->sa;
-	in_sa = &sa->in_sa;
+
+	in_sa = rte_zmalloc("cn20k_cpt", sizeof(struct roc_ow_ipsec_inb_sa), ROC_CPTR_ALIGN);
+	if (in_sa == NULL) {
+		plt_err("Couldn't allocate memory for inbound SA");
+		return -ENOMEM;
+	}
+	sa->in_sa = in_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
 	sa_dptr = plt_zmalloc(sizeof(struct roc_ow_ipsec_inb_sa), 8);
 	if (sa_dptr == NULL) {
 		plt_err("Could not allocate memory for SA dptr");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto sa_cptr_free;
 	}
 
 	/* Translate security parameters to SA */
 	ret = cnxk_ow_ipsec_inb_sa_fill(sa_dptr, ipsec_xfrm, crypto_xfrm, roc_cpt->ctx_ilen);
 	if (ret) {
 		plt_err("Could not fill inbound session parameters");
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 
 	sec_sess->ipsec.is_outbound = 0;
@@ -231,21 +250,26 @@ cn20k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	ret = roc_cpt_ctx_write(lf, sa_dptr, in_sa, sizeof(struct roc_ow_ipsec_inb_sa));
 	if (ret) {
 		plt_err("Could not write inbound session to hardware");
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
 	ret = roc_cpt_lf_ctx_flush(lf, in_sa, true);
 	if (ret == -EFAULT) {
 		plt_err("Could not flush inbound session");
-		goto sa_dptr_free;
+		goto sa_free;
 	}
 
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_IPSEC;
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
-sa_dptr_free:
+sa_free:
 	plt_free(sa_dptr);
+sa_cptr_free:
+	if (ret != 0) {
+		rte_free(in_sa);
+		in_sa = NULL;
+	}
 
 	return ret;
 }
@@ -286,8 +310,11 @@ cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session
 
 	sa = &sess->sa;
 
+	if (sa->sa_ptr == NULL)
+		return -EINVAL;
+
 	/* Trigger CTX flush to write dirty data back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, &sa->in_sa, false);
+	roc_cpt_lf_ctx_flush(lf, sa->in_sa, false);
 
 	ret = -1;
 
@@ -296,7 +323,7 @@ cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session
 		if (sa_dptr != NULL) {
 			roc_ow_ipsec_outb_sa_init(sa_dptr);
 
-			ret = roc_cpt_ctx_write(lf, sa_dptr, &sa->out_sa,
+			ret = roc_cpt_ctx_write(lf, sa_dptr, sa->out_sa,
 						sizeof(struct roc_ow_ipsec_outb_sa));
 		}
 	} else {
@@ -304,7 +331,7 @@ cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session
 		if (sa_dptr != NULL) {
 			roc_ow_ipsec_inb_sa_init(sa_dptr);
 
-			ret = roc_cpt_ctx_write(lf, sa_dptr, &sa->in_sa,
+			ret = roc_cpt_ctx_write(lf, sa_dptr, sa->in_sa,
 						sizeof(struct roc_ow_ipsec_inb_sa));
 		}
 	}
@@ -317,14 +344,16 @@ cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session
 		/* Wait for 1 ms so that flush is complete */
 		rte_delay_ms(1);
 
-		w2 = (union roc_ow_ipsec_sa_word2 *)&sa->in_sa.w2;
+		w2 = (union roc_ow_ipsec_sa_word2 *)&sa->in_sa->w2;
 		w2->s.valid = 0;
 
 		rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 		/* Trigger CTX reload to fetch new data from DRAM */
-		roc_cpt_lf_ctx_reload(lf, &sa->in_sa);
+		roc_cpt_lf_ctx_reload(lf, sa->in_sa);
 	}
+
+	rte_free(sa->sa_ptr);
 
 	return 0;
 }
@@ -340,13 +369,16 @@ cn20k_ipsec_stats_get(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *sess,
 	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
 	sa = &sess->sa;
 
+	if (sa->sa_ptr == NULL)
+		return -EINVAL;
+
 	if (sess->ipsec.is_outbound) {
-		out_sa = &sa->out_sa;
+		out_sa = sa->out_sa;
 		roc_cpt_lf_ctx_flush(&qp->lf, out_sa, false);
 		stats->ipsec.opackets = out_sa->ctx.mib_pkts;
 		stats->ipsec.obytes = out_sa->ctx.mib_octs;
 	} else {
-		in_sa = &sa->in_sa;
+		in_sa = sa->in_sa;
 		roc_cpt_lf_ctx_flush(&qp->lf, in_sa, false);
 		stats->ipsec.ipackets = in_sa->ctx.mib_pkts;
 		stats->ipsec.ibytes = in_sa->ctx.mib_octs;
