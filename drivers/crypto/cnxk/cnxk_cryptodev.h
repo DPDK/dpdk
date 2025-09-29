@@ -36,6 +36,7 @@ struct cnxk_cpt_vf {
 	struct roc_ae_ec_group *ec_grp[ROC_AE_EC_ID_PMAX];
 	uint16_t max_qps_limit;
 	uint16_t rx_inject_qp;
+	uint8_t ctx_ilen;
 };
 
 uint64_t cnxk_cpt_default_ff_get(void);

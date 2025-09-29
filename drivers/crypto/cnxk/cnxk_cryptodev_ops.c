@@ -819,6 +819,9 @@ sym_session_configure(struct roc_cpt *roc_cpt, struct rte_crypto_sym_xform *xfor
 	if (hw_ctx_cache_enable())
 		roc_se_ctx_init(&sess_priv->roc_se_ctx);
 
+	if (sess_priv->roc_se_ctx.se_ctx.w0.s.ctx_size < roc_cpt->ctx_ilen)
+		sess_priv->roc_se_ctx.se_ctx.w0.s.ctx_size = roc_cpt->ctx_ilen;
+
 	return 0;
 
 priv_put:
