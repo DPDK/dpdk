@@ -18,6 +18,26 @@
 #include <rte_crypto.h>
 #include <rte_security.h>
 
+#define AE_EC_DATA_MAX 66
+
+/**
+ * Enumerates supported elliptic curves
+ */
+typedef enum {
+	RTE_PMD_CNXK_AE_EC_ID_P192 = 0,
+	RTE_PMD_CNXK_AE_EC_ID_P224 = 1,
+	RTE_PMD_CNXK_AE_EC_ID_P256 = 2,
+	RTE_PMD_CNXK_AE_EC_ID_P384 = 3,
+	RTE_PMD_CNXK_AE_EC_ID_P521 = 4,
+	RTE_PMD_CNXK_AE_EC_ID_P160 = 5,
+	RTE_PMD_CNXK_AE_EC_ID_P320 = 6,
+	RTE_PMD_CNXK_AE_EC_ID_P512 = 7,
+	RTE_PMD_CNXK_AE_EC_ID_SM2 = 8,
+	RTE_PMD_CNXK_AE_EC_ID_ED25519 = 9,
+	RTE_PMD_CNXK_AE_EC_ID_ED448 = 10,
+	RTE_PMD_CNXK_AE_EC_ID_PMAX
+} rte_pmd_cnxk_ae_ec_id;
+
 /* Forward declarations */
 
 /**
@@ -72,6 +92,41 @@ struct rte_pmd_cnxk_crypto_sess {
 		/** Crypto asymmetric session pointer */
 		struct rte_cryptodev_asym_session *crypto_asym_sess;
 	};
+};
+
+/**
+ * @brief AE EC (Elliptic Curve) group parameters structure.
+ *
+ * This structure holds the parameters for an elliptic curve group used in
+ * AE (Asymmetric Encryption) operations. It contains the prime, order,
+ * and curve constants (consta and constb), each represented as a byte array
+ * with an associated length. The maximum length is set to accommodate the
+ * largest supported curve (e.g., P521).
+ */
+struct rte_pmd_cnxk_crypto_ae_ec_group_params {
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} prime;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} order;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} consta;
+
+	struct {
+		/* P521 maximum length */
+		uint8_t data[AE_EC_DATA_MAX];
+		unsigned int length;
+	} constb;
 };
 
 /**
@@ -232,5 +287,28 @@ int rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
  */
 __rte_experimental
 const uint64_t *rte_pmd_cnxk_ae_fpm_table_get(uint8_t dev_id);
+
+/**
+ * Retrieves the addresses of the AE EC group table.
+ *
+ * This API should be called only after the cryptodev device has been
+ * successfully configured. The returned pointer reference memory that is
+ * valid as long as the device remains configured and is not destroyed or
+ * reconfigured. If the device is reconfigured or destroyed, the memory
+ * referenced by the returned pointer becomes invalid and must not be used.
+ *
+ * @param dev_id
+ *   Device identifier of cryptodev device.
+ * @param nb_max_entries
+ *   Pointer to store the maximum number of entries in the EC group table.
+ *   This value is set by the function to indicate how many entries can be
+ *   retrieved from the table.
+ * @return
+ *   - On success, pointer to the AE EC group table structure address.
+ *   - NULL on error.
+ */
+__rte_experimental
+const struct rte_pmd_cnxk_crypto_ae_ec_group_params **
+rte_pmd_cnxk_ae_ec_grp_table_get(uint8_t dev_id, uint16_t *nb_max_entries);
 
 #endif /* _PMD_CNXK_CRYPTO_H_ */
