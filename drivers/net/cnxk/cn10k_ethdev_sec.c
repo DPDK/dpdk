@@ -845,10 +845,9 @@ cn10k_eth_sec_session_create(void *device,
 		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
 		/* Fill inbound sa params */
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto, 0);
 		if (rc) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to init inbound sa, rc=%d", rc);
+			snprintf(tbuf, sizeof(tbuf), "Failed to init inbound sa, rc=%d", rc);
 			goto err;
 		}
 
@@ -936,10 +935,9 @@ cn10k_eth_sec_session_create(void *device,
 		memset(outb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
 		/* Fill outbound sa params */
-		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto, 0);
 		if (rc) {
-			snprintf(tbuf, sizeof(tbuf),
-				 "Failed to init outbound sa, rc=%d", rc);
+			snprintf(tbuf, sizeof(tbuf), "Failed to init outbound sa, rc=%d", rc);
 			rc |= cnxk_eth_outb_sa_idx_put(dev, sa_idx);
 			goto err;
 		}
@@ -1148,7 +1146,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		inb_sa_dptr = (struct roc_ot_ipsec_inb_sa *)dev->inb.sa_dptr;
 		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
-		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ot_ipsec_inb_sa_fill(inb_sa_dptr, ipsec, crypto, 0);
 		if (rc)
 			goto err;
 		/* Use cookie for original data */
@@ -1183,7 +1181,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 		outb_sa_dptr = (struct roc_ot_ipsec_outb_sa *)dev->outb.sa_dptr;
 		memset(outb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
-		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
+		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto, 0);
 		if (rc)
 			goto err;
 

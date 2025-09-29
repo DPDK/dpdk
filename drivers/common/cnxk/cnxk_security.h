@@ -33,19 +33,17 @@ cnxk_ipsec_icvlen_get(enum rte_crypto_cipher_algorithm c_algo,
 		      enum rte_crypto_auth_algorithm a_algo,
 		      enum rte_crypto_aead_algorithm aead_algo);
 
-uint8_t __roc_api
-cnxk_ipsec_outb_roundup_byte(enum rte_crypto_cipher_algorithm c_algo,
-			     enum rte_crypto_aead_algorithm aead_algo);
+uint8_t __roc_api cnxk_ipsec_outb_roundup_byte(enum rte_crypto_cipher_algorithm c_algo,
+					       enum rte_crypto_aead_algorithm aead_algo);
 
 /* [CN10K] */
-int __roc_api
-cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
-			  struct rte_security_ipsec_xform *ipsec_xfrm,
-			  struct rte_crypto_sym_xform *crypto_xfrm);
-int __roc_api
-cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
-			   struct rte_security_ipsec_xform *ipsec_xfrm,
-			   struct rte_crypto_sym_xform *crypto_xfrm);
+int __roc_api cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
+					struct rte_security_ipsec_xform *ipsec_xfrm,
+					struct rte_crypto_sym_xform *crypto_xfrm, uint8_t ctx_ilen);
+int __roc_api cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
+					 struct rte_security_ipsec_xform *ipsec_xfrm,
+					 struct rte_crypto_sym_xform *crypto_xfrm,
+					 uint8_t ctx_ilen);
 bool __roc_api cnxk_ot_ipsec_inb_sa_valid(struct roc_ot_ipsec_inb_sa *sa);
 bool __roc_api cnxk_ot_ipsec_outb_sa_valid(struct roc_ot_ipsec_outb_sa *sa);
 
@@ -60,10 +58,11 @@ int __roc_api cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipse
 /* [CN20K, .) */
 int __roc_api cnxk_ow_ipsec_inb_sa_fill(struct roc_ow_ipsec_inb_sa *sa,
 					struct rte_security_ipsec_xform *ipsec_xfrm,
-					struct rte_crypto_sym_xform *crypto_xfrm);
+					struct rte_crypto_sym_xform *crypto_xfrm, uint8_t ctx_ilen);
 int __roc_api cnxk_ow_ipsec_outb_sa_fill(struct roc_ow_ipsec_outb_sa *sa,
 					 struct rte_security_ipsec_xform *ipsec_xfrm,
-					 struct rte_crypto_sym_xform *crypto_xfrm);
+					 struct rte_crypto_sym_xform *crypto_xfrm,
+					 uint8_t ctx_ilen);
 bool __roc_api cnxk_ow_ipsec_inb_sa_valid(struct roc_ow_ipsec_inb_sa *sa);
 bool __roc_api cnxk_ow_ipsec_outb_sa_valid(struct roc_ow_ipsec_outb_sa *sa);
 #endif /* _CNXK_SECURITY_H__ */
