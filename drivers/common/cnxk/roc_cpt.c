@@ -632,10 +632,16 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf, bool rxc_ena, uint16_t
 		eng_grpmsk = (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_AE]) |
 			     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]);
 
-	if (roc_errata_cpt_has_ctx_fetch_issue()) {
+	if (roc_cpt->ctx_ilen != 0) {
+		ctx_ilen = roc_cpt->ctx_ilen;
+		ctx_ilen_valid = true;
+	} else if (roc_errata_cpt_has_ctx_fetch_issue()) {
 		ctx_ilen_valid = true;
 		/* Inbound SA size is max context size */
 		ctx_ilen = (PLT_ALIGN(ROC_OT_IPSEC_SA_SZ_MAX, ROC_ALIGN) / 128) - 1;
+	} else if (roc_cpt->ctx_ilen != 0) {
+		ctx_ilen = roc_cpt->ctx_ilen;
+		ctx_ilen_valid = true;
 	}
 
 	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr[blknum], false, ctx_ilen_valid, ctx_ilen,

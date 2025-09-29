@@ -169,6 +169,7 @@ struct roc_cpt {
 	uint16_t nb_lf;
 	uint16_t nb_lf_avail;
 	uintptr_t lmt_base;
+	uint8_t ctx_ilen;
 	/**< CPT device capabilities */
 	union cpt_eng_caps hw_caps[CPT_MAX_ENG_TYPES];
 	uint8_t eng_grp[CPT_MAX_ENG_TYPES];
