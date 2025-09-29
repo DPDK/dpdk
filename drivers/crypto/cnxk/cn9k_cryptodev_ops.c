@@ -117,7 +117,7 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 		if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			sym_op = op->sym;
 			sess = (struct cnxk_se_sess *)sym_op->session;
-			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst, false);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst, false, false);
 			inst->w7.u64 = sess->cpt_inst_w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 			ret = cn9k_cpt_sec_inst_fill(qp, op, infl_req, inst);
@@ -128,7 +128,7 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 				return -1;
 			}
 
-			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst, false);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, inst, false, false);
 			if (unlikely(ret)) {
 				sym_session_clear(op->sym->session, true);
 				rte_mempool_put(qp->sess_mp, op->sym->session);

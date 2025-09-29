@@ -206,7 +206,8 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 			w7 = sec_sess->inst.w7;
 		} else if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 			sess = (struct cnxk_se_sess *)(sym_op->session);
-			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], is_sg_ver2);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], is_sg_ver2,
+						false);
 			if (unlikely(ret))
 				return 0;
 			w7 = sess->cpt_inst_w7;
@@ -217,7 +218,8 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 				return 0;
 			}
 
-			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], is_sg_ver2);
+			ret = cpt_sym_inst_fill(qp, op, sess, infl_req, &inst[0], is_sg_ver2,
+						false);
 			if (unlikely(ret)) {
 				sym_session_clear(op->sym->session, true);
 				rte_mempool_put(qp->sess_mp, op->sym->session);
@@ -1557,7 +1559,7 @@ cn10k_cpt_raw_fill_inst(struct cnxk_iov *iov, struct cnxk_cpt_qp *qp,
 		break;
 	case CPT_DP_THREAD_AUTH_ONLY:
 		ret = fill_raw_digest_params(iov, sess, &qp->meta_info, infl_req, &inst[0],
-					     is_sg_ver2);
+					     is_sg_ver2, false);
 		break;
 	default:
 		ret = -EINVAL;
