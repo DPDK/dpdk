@@ -723,12 +723,12 @@ hns3_init_mac_addrs(struct rte_eth_dev *dev)
 	eth_addr = (struct rte_ether_addr *)hw->mac.mac_addr;
 	if (!hns->is_vf) {
 		if (!rte_is_valid_assigned_ether_addr(eth_addr)) {
+			hns3_warn(hw, "MAC address " RTE_ETHER_ADDR_PRT_FMT " from firmware is invalid",
+				  RTE_ETHER_ADDR_BYTES(eth_addr));
 			rte_eth_random_addr(hw->mac.mac_addr);
 			hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				(struct rte_ether_addr *)hw->mac.mac_addr);
-			hns3_warn(hw, "default mac_addr from firmware is an invalid "
-				  "unicast address, using random MAC address %s",
-				  mac_str);
+			hns3_warn(hw, "using random MAC address %s", mac_str);
 		}
 	} else {
 		/*
