@@ -56,6 +56,9 @@ foreach driver_option : ['disable_drivers', 'enable_drivers']
         if driver_map.has_key(driver)
             # use new name instead of legacy name
             driver = driver_map[driver]
+        elif driver.endswith('/*')
+            # make wildcard recursive to include nested drivers
+            driver = driver + '*'
         endif
         if driver_option == 'disable_drivers'
             disable_drivers += ',' + driver
@@ -70,7 +73,7 @@ enable_drivers = run_command(list_dir_globs, enable_drivers, check: true).stdout
 require_drivers = true
 if enable_drivers.length() == 0
     require_drivers = false
-    enable_drivers = run_command(list_dir_globs, '*/*,*/*/*', check: true).stdout().split()
+    enable_drivers = run_command(list_dir_globs, '**', check: true).stdout().split()
 endif
 
 # these drivers must always be enabled, otherwise the build breaks
