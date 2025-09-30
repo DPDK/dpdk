@@ -1854,6 +1854,7 @@ cpfl_handle_virtchnl_msg(struct cpfl_adapter_ext *adapter)
 
 		switch (mbx_op) {
 		case idpf_mbq_opc_send_msg_to_peer_pf:
+		case idpf_mbq_opc_send_msg_to_peer_drv:
 			if (vc_op == VIRTCHNL2_OP_EVENT) {
 				cpfl_handle_vchnl_event_msg(adapter, adapter->base.mbx_resp,
 							    ctlq_msg.data_len);
@@ -2610,6 +2611,11 @@ static const struct rte_pci_id pci_id_cpfl_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static const struct rte_pci_id pci_id_vcpf_map[] = {
+	{ RTE_PCI_DEVICE(IDPF_INTEL_VENDOR_ID, IXD_DEV_ID_VCPF) },
+	{ .vendor_id = 0, /* sentinel */ },
+};
+
 static struct cpfl_adapter_ext *
 cpfl_find_adapter_ext(struct rte_pci_device *pci_dev)
 {
@@ -2866,6 +2872,14 @@ static struct rte_pci_driver rte_cpfl_pmd = {
 	.remove		= cpfl_pci_remove,
 };
 
+static struct rte_pci_driver rte_vcpf_pmd = {
+	.id_table	= pci_id_vcpf_map,
+	.drv_flags	= RTE_PCI_DRV_NEED_MAPPING |
+			  RTE_PCI_DRV_PROBE_AGAIN,
+	.probe		= cpfl_pci_probe,
+	.remove		= cpfl_pci_remove,
+};
+
 /**
  * Driver initialization routine.
  * Invoked once at EAL init time.
@@ -2874,6 +2888,9 @@ static struct rte_pci_driver rte_cpfl_pmd = {
 RTE_PMD_REGISTER_PCI(net_cpfl, rte_cpfl_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_cpfl, pci_id_cpfl_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_cpfl, "* igb_uio | vfio-pci");
+RTE_PMD_REGISTER_PCI(net_vcpf, rte_vcpf_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(net_vcpf, pci_id_vcpf_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_vcpf, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_cpfl,
 	CPFL_TX_SINGLE_Q "=<0|1> "
 	CPFL_RX_SINGLE_Q "=<0|1> "
