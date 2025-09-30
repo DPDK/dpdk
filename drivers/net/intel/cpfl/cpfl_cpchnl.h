@@ -141,6 +141,14 @@ enum cpchnl2_func_type {
 };
 
 /**
+ * @brief function types
+ */
+enum vcpf_cpchnl2_func_type {
+	VCPF_CPCHNL2_FTYPE_LAN_PF = 0,
+	VCPF_CPCHNL2_FTYPE_LAN_VF = 1,
+};
+
+/**
  * @brief containing vport id & type
  */
 struct cpchnl2_vport_id {
