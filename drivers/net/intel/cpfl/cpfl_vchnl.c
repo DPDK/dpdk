@@ -106,6 +106,106 @@ cpfl_vc_create_ctrl_vport(struct cpfl_adapter_ext *adapter)
 	return err;
 }
 
+#define VCPF_CFQ_MB_INDEX                0xFF
+int
+vcpf_add_queues(struct cpfl_adapter_ext *adapter)
+{
+	struct virtchnl2_add_queues add_cfgq;
+	struct idpf_cmd_info args;
+	int err;
+
+	memset(&add_cfgq, 0, sizeof(struct virtchnl2_add_queues));
+	u16 num_cfgq = 1;
+
+	add_cfgq.num_tx_q = rte_cpu_to_le_16(num_cfgq);
+	add_cfgq.num_rx_q = rte_cpu_to_le_16(num_cfgq);
+	add_cfgq.mbx_q_index = VCPF_CFQ_MB_INDEX;
+
+	add_cfgq.vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
+	add_cfgq.num_tx_complq = 0;
+	add_cfgq.num_rx_bufq = 0;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_ADD_QUEUES;
+	args.in_args = (uint8_t *)&add_cfgq;
+	args.in_args_size = sizeof(add_cfgq);
+	args.out_buffer = adapter->base.mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(&adapter->base, &args);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command VIRTCHNL2_OP_ADD_QUEUES");
+		return err;
+	}
+
+	rte_memcpy(adapter->addq_recv_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
+
+	return err;
+}
+
+int
+vcpf_del_queues(struct cpfl_adapter_ext *adapter)
+{
+	struct virtchnl2_del_ena_dis_queues *del_cfgq;
+	u16 num_chunks;
+	struct idpf_cmd_info args;
+	int i, err, size;
+
+	num_chunks = adapter->cfgq_in.cfgq_add->chunks.num_chunks;
+	size = idpf_struct_size(del_cfgq, chunks.chunks, (num_chunks - 1));
+	del_cfgq = rte_zmalloc("del_cfgq", size, 0);
+	if (!del_cfgq) {
+		PMD_DRV_LOG(ERR, "Failed to allocate virtchnl2_del_ena_dis_queues");
+		err = -ENOMEM;
+		return err;
+	}
+
+	del_cfgq->vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
+	del_cfgq->chunks.num_chunks = num_chunks;
+
+	/* fill config queue chunk data */
+	for (i = 0; i < num_chunks; i++) {
+		del_cfgq->chunks.chunks[i].type =
+			adapter->cfgq_in.cfgq_add->chunks.chunks[i].type;
+		del_cfgq->chunks.chunks[i].start_queue_id =
+			adapter->cfgq_in.cfgq_add->chunks.chunks[i].start_queue_id;
+		del_cfgq->chunks.chunks[i].num_queues =
+			adapter->cfgq_in.cfgq_add->chunks.chunks[i].num_queues;
+	}
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL2_OP_DEL_QUEUES;
+	args.in_args = (uint8_t *)del_cfgq;
+	args.in_args_size = idpf_struct_size(del_cfgq, chunks.chunks,
+						(del_cfgq->chunks.num_chunks - 1));
+	args.out_buffer = adapter->base.mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+
+	err = idpf_vc_cmd_execute(&adapter->base, &args);
+	rte_free(del_cfgq);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to execute command VIRTCHNL2_OP_DEL_QUEUES");
+		return err;
+	}
+
+	if (adapter->cfgq_info) {
+		rte_free(adapter->cfgq_info);
+		adapter->cfgq_info = NULL;
+	}
+	adapter->cfgq_in.num_cfgq = 0;
+	if (adapter->cfgq_in.cfgq_add) {
+		rte_free(adapter->cfgq_in.cfgq_add);
+		adapter->cfgq_in.cfgq_add = NULL;
+	}
+	if (adapter->cfgq_in.cfgq) {
+		rte_free(adapter->cfgq_in.cfgq);
+		adapter->cfgq_in.cfgq = NULL;
+	}
+	return err;
+}
+
 int
 cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 {
@@ -116,13 +216,16 @@ cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 	uint16_t num_qs;
 	int size, err, i;
 
-	if (vport->base.rxq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE) {
-		PMD_DRV_LOG(ERR, "This rxq model isn't supported.");
-		err = -EINVAL;
-		return err;
+	if (adapter->base.hw.device_id != IXD_DEV_ID_VCPF) {
+		if (vport->base.rxq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+			PMD_DRV_LOG(ERR, "This rxq model isn't supported.");
+			err = -EINVAL;
+			return err;
+		}
 	}
 
-	num_qs = CPFL_RX_CFGQ_NUM;
+	num_qs = adapter->num_rx_cfgq;
+
 	size = sizeof(*vc_rxqs) + (num_qs - 1) *
 		sizeof(struct virtchnl2_rxq_info);
 	vc_rxqs = rte_zmalloc("cfg_rxqs", size, 0);
@@ -131,7 +234,12 @@ cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 		err = -ENOMEM;
 		return err;
 	}
-	vc_rxqs->vport_id = vport->base.vport_id;
+
+	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+		vc_rxqs->vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
+	else
+		vc_rxqs->vport_id = vport->base.vport_id;
+
 	vc_rxqs->num_qinfo = num_qs;
 
 	for (i = 0; i < num_qs; i++) {
@@ -141,7 +249,8 @@ cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter)
 		rxq_info->queue_id = adapter->cfgq_info[2 * i + 1].id;
 		rxq_info->model = VIRTCHNL2_QUEUE_MODEL_SINGLE;
 		rxq_info->data_buffer_size = adapter->cfgq_info[2 * i + 1].buf_size;
-		rxq_info->max_pkt_size = vport->base.max_pkt_len;
+		if (adapter->base.hw.device_id != IXD_DEV_ID_VCPF)
+			rxq_info->max_pkt_size = vport->base.max_pkt_len;
 		rxq_info->desc_ids = VIRTCHNL2_RXDID_2_FLEX_SQ_NIC_M;
 		rxq_info->qflags |= VIRTCHNL2_RX_DESC_SIZE_32BYTE;
 		rxq_info->ring_len = adapter->cfgq_info[2 * i + 1].len;
@@ -172,13 +281,16 @@ cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter)
 	uint16_t num_qs;
 	int size, err, i;
 
-	if (vport->base.txq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE) {
-		PMD_DRV_LOG(ERR, "This txq model isn't supported.");
-		err = -EINVAL;
-		return err;
+	if (adapter->base.hw.device_id != IXD_DEV_ID_VCPF) {
+		if (vport->base.txq_model != VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+			PMD_DRV_LOG(ERR, "This txq model isn't supported.");
+			err = -EINVAL;
+			return err;
+		}
 	}
 
-	num_qs = CPFL_TX_CFGQ_NUM;
+	num_qs = adapter->num_tx_cfgq;
+
 	size = sizeof(*vc_txqs) + (num_qs - 1) *
 		sizeof(struct virtchnl2_txq_info);
 	vc_txqs = rte_zmalloc("cfg_txqs", size, 0);
@@ -187,7 +299,12 @@ cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter)
 		err = -ENOMEM;
 		return err;
 	}
-	vc_txqs->vport_id = vport->base.vport_id;
+
+	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+		vc_txqs->vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
+	else
+		vc_txqs->vport_id = vport->base.vport_id;
+
 	vc_txqs->num_qinfo = num_qs;
 
 	for (i = 0; i < num_qs; i++) {

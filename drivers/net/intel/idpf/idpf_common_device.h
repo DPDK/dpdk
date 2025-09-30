@@ -45,6 +45,8 @@
 	(sizeof(struct virtchnl2_ptype) +				\
 	 (((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
 
+#define VCPF_CFGQ_VPORT_ID               0xFFFFFFFF
+
 enum idpf_rx_func_type {
 	IDPF_RX_DEFAULT,
 	IDPF_RX_SINGLEQ,
