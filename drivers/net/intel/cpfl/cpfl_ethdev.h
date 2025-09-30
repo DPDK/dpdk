@@ -89,6 +89,9 @@
 #define CPFL_FPCP_CFGQ_TX	0
 #define CPFL_FPCP_CFGQ_RX	1
 #define CPFL_CFGQ_NUM		8
+#define VCPF_RX_CFGQ_NUM	1
+#define VCPF_TX_CFGQ_NUM	1
+#define VCPF_CFGQ_NUM		2
 
 /* bit[15:14] type
  * bit[13] host/accelerator core
@@ -200,6 +203,30 @@ struct cpfl_metadata {
 	struct cpfl_metadata_chunk chunks[CPFL_META_LENGTH];
 };
 
+/**
+ * struct vcpf_cfg_queue - config queue information
+ * @qid: rx/tx queue id
+ * @qtail_reg_start: rx/tx tail queue register start
+ * @qtail_reg_spacing: rx/tx tail queue register spacing
+ */
+struct vcpf_cfg_queue {
+	u32 qid;
+	u64 qtail_reg_start;
+	u32 qtail_reg_spacing;
+};
+
+/**
+ * struct vcpf_cfgq_info - config queue information
+ * @num_cfgq: number of config queues
+ * @cfgq_add: config queue add information
+ * @cfgq: config queue information
+ */
+struct vcpf_cfgq_info {
+	u16 num_cfgq;
+	struct virtchnl2_add_queues *cfgq_add;
+	struct vcpf_cfg_queue *cfgq;
+};
+
 struct cpfl_adapter_ext {
 	TAILQ_ENTRY(cpfl_adapter_ext) next;
 	struct idpf_adapter base;
@@ -229,8 +256,13 @@ struct cpfl_adapter_ext {
 	/* ctrl vport and ctrl queues. */
 	struct cpfl_vport ctrl_vport;
 	uint8_t ctrl_vport_recv_info[IDPF_DFLT_MBX_BUF_SIZE];
-	struct idpf_ctlq_info *ctlqp[CPFL_CFGQ_NUM];
-	struct cpfl_ctlq_create_info cfgq_info[CPFL_CFGQ_NUM];
+	struct idpf_ctlq_info **ctlqp;
+	struct cpfl_ctlq_create_info *cfgq_info;
+	struct vcpf_cfgq_info cfgq_in;
+	uint8_t addq_recv_info[IDPF_DFLT_MBX_BUF_SIZE];
+	uint16_t num_cfgq;
+	uint16_t num_rx_cfgq;
+	uint16_t num_tx_cfgq;
 	uint8_t host_id;
 };
 
@@ -251,6 +283,8 @@ int cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter);
 int cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter);
 int cpfl_alloc_dma_mem_batch(struct idpf_dma_mem *orig_dma, struct idpf_dma_mem *dma,
 			     uint32_t size, int batch_size);
+int vcpf_add_queues(struct cpfl_adapter_ext *adapter);
+int vcpf_del_queues(struct cpfl_adapter_ext *adapter);
 
 #define CPFL_DEV_TO_PCI(eth_dev)		\
 	RTE_DEV_TO_PCI((eth_dev)->device)

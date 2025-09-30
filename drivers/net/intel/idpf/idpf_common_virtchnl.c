@@ -787,6 +787,44 @@ idpf_vc_ena_dis_one_queue(struct idpf_vport *vport, uint16_t qid,
 	return err;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_vc_ena_dis_one_queue_vcpf)
+int
+idpf_vc_ena_dis_one_queue_vcpf(struct idpf_adapter *adapter, uint16_t qid,
+			  uint32_t type, bool on)
+{
+	struct virtchnl2_del_ena_dis_queues *queue_select;
+	struct virtchnl2_queue_chunk *queue_chunk;
+	struct idpf_cmd_info args;
+	int err, len;
+
+	len = sizeof(struct virtchnl2_del_ena_dis_queues);
+	queue_select = rte_zmalloc("queue_select", len, 0);
+	if (queue_select == NULL)
+		return -ENOMEM;
+
+	queue_chunk = queue_select->chunks.chunks;
+	queue_select->chunks.num_chunks = 1;
+	queue_select->vport_id = rte_cpu_to_le_32(VCPF_CFGQ_VPORT_ID);
+
+	queue_chunk->type = type;
+	queue_chunk->start_queue_id = qid;
+	queue_chunk->num_queues = 1;
+
+	args.ops = on ? VIRTCHNL2_OP_ENABLE_QUEUES :
+		VIRTCHNL2_OP_DISABLE_QUEUES;
+	args.in_args = (uint8_t *)queue_select;
+	args.in_args_size = len;
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
+	err = idpf_vc_cmd_execute(adapter, &args);
+	if (err != 0)
+		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_%s_QUEUES",
+			on ? "ENABLE" : "DISABLE");
+
+	rte_free(queue_select);
+	return err;
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(idpf_vc_queue_switch)
 int
 idpf_vc_queue_switch(struct idpf_vport *vport, uint16_t qid,

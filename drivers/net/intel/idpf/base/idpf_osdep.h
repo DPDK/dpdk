@@ -361,6 +361,9 @@ idpf_hweight32(u32 num)
 
 #endif
 
+#define idpf_struct_size(ptr, field, num) \
+	(sizeof(*(ptr)) + sizeof(*(ptr)->field) * (num))
+
 enum idpf_mac_type {
 	IDPF_MAC_UNKNOWN = 0,
 	IDPF_MAC_PF,
