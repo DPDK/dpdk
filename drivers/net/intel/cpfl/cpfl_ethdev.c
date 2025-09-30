@@ -1902,6 +1902,43 @@ cpfl_dev_alarm_handler(void *param)
 	rte_eal_alarm_set(CPFL_ALARM_INTERVAL, cpfl_dev_alarm_handler, adapter);
 }
 
+static
+int vcpf_save_vport_info_response(struct cpfl_vport *cpfl_vport,
+		struct cpchnl2_get_vport_info_response *response)
+{
+	struct cpchnl2_vport_info *info;
+	struct vcpf_vport_info *vport_info;
+	struct cpchnl2_queue_group_info *qgp;
+	struct cpchnl2_queue_chunk *q_chnk;
+	u16 num_queue_groups;
+	u16 num_chunks;
+	u32 q_type;
+
+	info = &response->info;
+	vport_info = &cpfl_vport->vport_info;
+	vport_info->vport_index = info->vport_index;
+	vport_info->vsi_id = info->vsi_id;
+
+	num_queue_groups = response->queue_groups.num_queue_groups;
+	for (u16 i = 0; i < num_queue_groups; i++) {
+		qgp = &response->queue_groups.groups[i];
+		num_chunks = qgp->chunks.num_chunks;
+		/* rx q and tx q are stored in first 2 chunks */
+		for (u16 j = 0; j < (num_chunks - 2); j++) {
+			q_chnk = &qgp->chunks.chunks[j];
+			q_type = q_chnk->type;
+			if (q_type == VIRTCHNL2_QUEUE_TYPE_TX) {
+				vport_info->abs_start_txq_id = q_chnk->start_queue_id;
+				vport_info->num_tx_q = q_chnk->num_queues;
+			} else if (q_type == VIRTCHNL2_QUEUE_TYPE_RX) {
+				vport_info->abs_start_rxq_id = q_chnk->start_queue_id;
+				vport_info->num_rx_q = q_chnk->num_queues;
+			}
+		}
+	}
+	return 0;
+}
+
 static int
 cpfl_stop_cfgqs(struct cpfl_adapter_ext *adapter)
 {
@@ -2722,7 +2759,11 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	/* for sending create vport virtchnl msg prepare */
 	struct virtchnl2_create_vport create_vport_info;
 	struct virtchnl2_add_queue_groups p2p_queue_grps_info;
+	struct cpchnl2_get_vport_info_response response;
 	uint8_t p2p_q_vc_out_info[IDPF_DFLT_MBX_BUF_SIZE] = {0};
+	struct cpfl_vport_id vi;
+	struct cpchnl2_vport_id v_id;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 	int ret = 0;
 
 	dev->dev_ops = &cpfl_eth_dev_ops;
@@ -2790,6 +2831,28 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 			PMD_INIT_LOG(WARNING, "Failed to init p2p queue info.");
 			rte_free(cpfl_vport->p2p_q_chunks_info);
 			cpfl_p2p_queue_grps_del(vport);
+		}
+	}
+	/* get the vport info */
+	if (adapter->base.hw.device_id == IXD_DEV_ID_VCPF) {
+		pci_dev = RTE_DEV_TO_PCI(dev->device);
+		vi.func_type = VCPF_CPCHNL2_FTYPE_LAN_VF;
+		vi.pf_id = CPFL_HOST0_CPF_ID;
+		vi.vf_id = pci_dev->addr.function;
+
+		v_id.vport_id = cpfl_vport->base.vport_info.info.vport_id;
+		v_id.vport_type = cpfl_vport->base.vport_info.info.vport_type;
+
+		ret = cpfl_cc_vport_info_get(adapter, &v_id, &vi, &response);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to send vport info cpchnl message.");
+			return -1;
+		}
+
+		ret = vcpf_save_vport_info_response(cpfl_vport, &response);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to save cpchnl response.");
+			return -1;
 		}
 	}
 

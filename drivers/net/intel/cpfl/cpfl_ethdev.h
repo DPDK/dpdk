@@ -164,10 +164,20 @@ struct cpfl_itf {
 	void *data;
 };
 
+struct vcpf_vport_info {
+	u16 vport_index;
+	u16 vsi_id;
+	u32 abs_start_txq_id;
+	u32 num_tx_q;
+	u32 abs_start_rxq_id;
+	u32 num_rx_q;
+};
+
 struct cpfl_vport {
 	struct cpfl_itf itf;
 	struct idpf_vport base;
 	struct p2p_queue_chunks_info *p2p_q_chunks_info;
+	struct vcpf_vport_info vport_info;
 
 	struct rte_mempool *p2p_mp;
 
@@ -319,6 +329,7 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 	uint32_t vport_id;
 	int ret;
 	struct cpfl_vport_id vport_identity;
+	u16 vsi_id = 0;
 
 	if (!itf)
 		return CPFL_INVALID_HW_ID;
@@ -328,24 +339,30 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 
 		return repr->vport_info->vport.info.vsi_id;
 	} else if (itf->type == CPFL_ITF_TYPE_VPORT) {
-		vport_id = ((struct cpfl_vport *)itf)->base.vport_id;
+		if (itf->adapter->base.hw.device_id == IDPF_DEV_ID_CPF) {
+			vport_id = ((struct cpfl_vport *)itf)->base.vport_id;
 
-		vport_identity.func_type = CPCHNL2_FTYPE_LAN_PF;
-		/* host: CPFL_HOST0_CPF_ID, acc: CPFL_ACC_CPF_ID */
-		vport_identity.pf_id = (itf->adapter->host_id == CPFL_HOST_ID_ACC) ?
-								CPFL_ACC_CPF_ID : CPFL_HOST0_CPF_ID;
-		vport_identity.vf_id = 0;
-		vport_identity.vport_id = vport_id;
-		ret = rte_hash_lookup_data(itf->adapter->vport_map_hash,
-					   &vport_identity,
-					   (void **)&info);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "vport id not exist");
-			goto err;
+			vport_identity.func_type = CPCHNL2_FTYPE_LAN_PF;
+			/* host: CPFL_HOST0_CPF_ID, acc: CPFL_ACC_CPF_ID */
+			vport_identity.pf_id = (itf->adapter->host_id == CPFL_HOST_ID_ACC) ?
+							CPFL_ACC_CPF_ID : CPFL_HOST0_CPF_ID;
+			vport_identity.vf_id = 0;
+			vport_identity.vport_id = vport_id;
+			ret = rte_hash_lookup_data(itf->adapter->vport_map_hash,
+						   &vport_identity,
+						   (void **)&info);
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR, "vport id not exist");
+				goto err;
+			}
+
+			vsi_id = info->vport.info.vsi_id;
+		} else {
+			if (itf->adapter->base.hw.device_id == IXD_DEV_ID_VCPF)
+				vsi_id = (uint16_t)((struct cpfl_vport *)itf)->vport_info.vsi_id;
 		}
-
-		return info->vport.info.vsi_id;
 	}
+	return vsi_id;
 
 err:
 	return CPFL_INVALID_HW_ID;
@@ -373,5 +390,26 @@ cpfl_get_itf_by_port_id(uint16_t port_id)
 	}
 
 	return CPFL_DEV_TO_ITF(dev);
+}
+
+static inline uint32_t
+vcpf_get_abs_qid(uint16_t port_id,  uint32_t queue_type)
+{
+	struct cpfl_itf *itf = cpfl_get_itf_by_port_id(port_id);
+	struct cpfl_vport *vport;
+	if (!itf)
+		return CPFL_INVALID_HW_ID;
+	if (itf->type == CPFL_ITF_TYPE_VPORT) {
+		vport = (void *)itf;
+		if (itf->adapter->base.hw.device_id == IXD_DEV_ID_VCPF) {
+			switch (queue_type) {
+			case VIRTCHNL2_QUEUE_TYPE_TX:
+				return vport->vport_info.abs_start_txq_id;
+			case VIRTCHNL2_QUEUE_TYPE_RX:
+				return vport->vport_info.abs_start_rxq_id;
+			}
+		}
+	}
+	return 0;
 }
 #endif /* _CPFL_ETHDEV_H_ */
