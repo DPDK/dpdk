@@ -114,7 +114,10 @@ ice_acl_setup(struct ice_pf *pf)
 	else
 		params.width = ICE_AQC_ACL_KEY_WIDTH_BYTES * 3;
 
-	params.depth = ICE_AQC_ACL_TCAM_DEPTH;
+	if (pf_num > 4)
+		params.depth = ICE_AQC_ACL_TCAM_DEPTH / 2;
+	else
+		params.depth = ICE_AQC_ACL_TCAM_DEPTH;
 	params.entry_act_pairs = 1;
 	params.concurr = false;
 
