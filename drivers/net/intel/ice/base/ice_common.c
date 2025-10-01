@@ -6594,3 +6594,51 @@ bool ice_is_fw_auto_drop_supported(struct ice_hw *hw)
 		return true;
 	return false;
 }
+
+/**
+ * ice_get_port_max_cgd
+ * @hw: pointer to the hardware structure
+ *
+ * Returns the number of congestion domains (cgds) for a port
+ */
+enum ice_cgd_per_port
+ice_get_port_max_cgd(struct ice_hw *hw)
+{
+#define ICE_8_PORTS_LINK_TOPO	0x2
+	u32 link_topo = LE32_TO_CPU(rd32(hw, GLGEN_MAC_LINK_TOPO)) &
+		GLGEN_MAC_LINK_TOPO_LINK_TOPO_M;
+
+	return (link_topo == ICE_8_PORTS_LINK_TOPO) ? ICE_4_CGD_PER_PORT : ICE_8_CGD_PER_PORT;
+}
+
+/**
+ * ice_get_tc_by_priority
+ * @hw: pointer to the hardware structure
+ * @prio: VLAN PCP
+ *
+ * Returns the index of Traffic Class(TC) associated with the User Priority
+ */
+u8
+ice_get_tc_by_priority(struct ice_hw *hw, u8 prio)
+{
+	struct ice_port_info *port_info = hw->port_info;
+	struct ice_qos_cfg *qos_cfg = &port_info->qos_cfg;
+	struct ice_dcbx_cfg *local_dcb_conf = &qos_cfg->local_dcbx_cfg;
+
+	prio &= (ICE_MAX_TRAFFIC_CLASS - 1);
+
+	return local_dcb_conf->etscfg.prio_table[prio];
+}
+
+/**
+ * ice_get_cgd_idx
+ * @hw: pointer to the hardware structure
+ * @tc: index of Traffic Class
+ *
+ * Returns the absolute index of the congestion domain by its TC
+ */
+int
+ice_get_cgd_idx(struct ice_hw *hw, u8 tc)
+{
+	return hw->port_info->lport * ice_get_port_max_cgd(hw) + tc;
+}
