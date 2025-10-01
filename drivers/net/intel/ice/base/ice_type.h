@@ -29,6 +29,19 @@ static inline bool ice_is_pow2(u64 val)
 }
 
 /**
+ * ice_ctz - count trailing zeroes
+ * @val: unsigned integer to be validated
+ */
+static inline int ice_ctz(u32 val)
+{
+	int i = 0;
+	while (!(val & (1 << i)))
+		i++;
+
+	return i;
+}
+
+/**
  * ice_ilog2 - Calculates integer log base 2 of a number
  * @n: number on which to perform operation
  */
