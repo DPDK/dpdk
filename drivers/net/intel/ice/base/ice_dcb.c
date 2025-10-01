@@ -1129,11 +1129,13 @@ ice_add_ieee_ets_common_tlv(u8 *buf, struct ice_dcb_ets_cfg *ets_cfg)
  * ice_add_ieee_ets_tlv - Prepare ETS TLV in IEEE format
  * @tlv: Fill the ETS config data in IEEE format
  * @dcbcfg: Local store which holds the DCB Config
+ * @pfc_asym_mode: PFC symmetry mode
  *
  * Prepare IEEE 802.1Qaz ETS CFG TLV
  */
 static void
-ice_add_ieee_ets_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
+ice_add_ieee_ets_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg,
+	enum ice_dcb_pfc_asym_mode pfc_asym_mode)
 {
 	struct ice_dcb_ets_cfg *etscfg;
 	u8 *buf = tlv->tlvinfo;
@@ -1145,8 +1147,22 @@ ice_add_ieee_ets_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
 		   ICE_IEEE_ETS_TLV_LEN);
 	tlv->typelen = HTONS(typelen);
 
-	ouisubtype = ((ICE_IEEE_8021QAZ_OUI << ICE_LLDP_TLV_OUI_S) |
+	switch (pfc_asym_mode) {
+	case (ICE_SET_PFC_SYM):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI << ICE_LLDP_TLV_OUI_S) |
 		      ICE_IEEE_SUBTYPE_ETS_CFG);
+		break;
+	case(ICE_SET_PFC_RX):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI_ASYM << ICE_LLDP_TLV_OUI_S) |
+		      ICE_IEEE_SUBTYPE_ETS_CFG_RX);
+		break;
+	case(ICE_SET_PFC_TX):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI_ASYM << ICE_LLDP_TLV_OUI_S) |
+		      ICE_IEEE_SUBTYPE_ETS_CFG_TX);
+		break;
+	default:
+		return;
+	}
 	tlv->ouisubtype = HTONL(ouisubtype);
 
 	/* First Octet post subtype
@@ -1161,6 +1177,9 @@ ice_add_ieee_ets_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
 		maxtcwilling = BIT(ICE_IEEE_ETS_WILLING_S);
 	maxtcwilling |= etscfg->maxtcs & ICE_IEEE_ETS_MAXTC_M;
 	buf[0] = maxtcwilling;
+
+	if (pfc_asym_mode == ICE_SET_PFC_TX)
+		etscfg = &dcbcfg->etsrec;
 
 	/* Begin adding at Priority Assignment Table (offset 1 in buf) */
 	ice_add_ieee_ets_common_tlv(&buf[1], etscfg);
@@ -1201,11 +1220,13 @@ ice_add_ieee_etsrec_tlv(struct ice_lldp_org_tlv *tlv,
  * ice_add_ieee_pfc_tlv - Prepare PFC TLV in IEEE format
  * @tlv: Fill PFC TLV in IEEE format
  * @dcbcfg: Local store which holds the PFC CFG data
+ * @pfc_asym_mode: PFC symmetry mode
  *
  * Prepare IEEE 802.1Qaz PFC CFG TLV
  */
 static void
-ice_add_ieee_pfc_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
+ice_add_ieee_pfc_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg,
+	enum ice_dcb_pfc_asym_mode pfc_asym_mode)
 {
 	u8 *buf = tlv->tlvinfo;
 	u32 ouisubtype;
@@ -1215,8 +1236,22 @@ ice_add_ieee_pfc_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
 		   ICE_IEEE_PFC_TLV_LEN);
 	tlv->typelen = HTONS(typelen);
 
-	ouisubtype = ((ICE_IEEE_8021QAZ_OUI << ICE_LLDP_TLV_OUI_S) |
+	switch (pfc_asym_mode) {
+	case (ICE_SET_PFC_SYM):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI << ICE_LLDP_TLV_OUI_S) |
 		      ICE_IEEE_SUBTYPE_PFC_CFG);
+		break;
+	case(ICE_SET_PFC_RX):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI_ASYM << ICE_LLDP_TLV_OUI_S) |
+		      ICE_IEEE_SUBTYPE_PFC_CFG_RX);
+		break;
+	case(ICE_SET_PFC_TX):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI_ASYM << ICE_LLDP_TLV_OUI_S) |
+		      ICE_IEEE_SUBTYPE_PFC_CFG_TX);
+		break;
+	default:
+		return;
+	}
 	tlv->ouisubtype = HTONL(ouisubtype);
 
 	/* ----------------------------------------
@@ -1233,18 +1268,24 @@ ice_add_ieee_pfc_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
 
 	buf[0] |= dcbcfg->pfc.pfccap & 0xF;
 	buf[1] = dcbcfg->pfc.pfcena;
+	if (pfc_asym_mode == ICE_SET_PFC_RX)
+		buf[1] |= dcbcfg->pfc.pfcena_asym_rx;
+	if (pfc_asym_mode == ICE_SET_PFC_TX)
+		buf[1] |= dcbcfg->pfc.pfcena_asym_tx;
 }
 
 /**
  * ice_add_ieee_app_pri_tlv -  Prepare APP TLV in IEEE format
  * @tlv: Fill APP TLV in IEEE format
  * @dcbcfg: Local store which holds the APP CFG data
+ * @pfc_asym_mode: PFC symmetry mode
  *
  * Prepare IEEE 802.1Qaz APP CFG TLV
  */
 static void
 ice_add_ieee_app_pri_tlv(struct ice_lldp_org_tlv *tlv,
-			 struct ice_dcbx_cfg *dcbcfg)
+			 struct ice_dcbx_cfg *dcbcfg,
+			enum ice_dcb_pfc_asym_mode pfc_asym_mode)
 {
 	u16 typelen, len, offset = 0;
 	u8 priority, selector, i = 0;
@@ -1254,8 +1295,23 @@ ice_add_ieee_app_pri_tlv(struct ice_lldp_org_tlv *tlv,
 	/* No APP TLVs then just return */
 	if (dcbcfg->numapps == 0)
 		return;
-	ouisubtype = ((ICE_IEEE_8021QAZ_OUI << ICE_LLDP_TLV_OUI_S) |
+
+	switch (pfc_asym_mode) {
+	case (ICE_SET_PFC_SYM):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI << ICE_LLDP_TLV_OUI_S) |
 		      ICE_IEEE_SUBTYPE_APP_PRI);
+		break;
+	case(ICE_SET_PFC_RX):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI_ASYM << ICE_LLDP_TLV_OUI_S) |
+		      ICE_IEEE_SUBTYPE_APP_PRI_RX);
+		break;
+	case(ICE_SET_PFC_TX):
+		ouisubtype = ((ICE_IEEE_8021QAZ_OUI_ASYM << ICE_LLDP_TLV_OUI_S) |
+		      ICE_IEEE_SUBTYPE_APP_PRI_TX);
+		break;
+	default:
+		return;
+	}
 	tlv->ouisubtype = HTONL(ouisubtype);
 
 	/* Move offset to App Priority Table */
@@ -1424,26 +1480,27 @@ ice_add_dscp_pfc_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
  * @tlv: Fill TLV data in IEEE format
  * @dcbcfg: Local store which holds the DCB Config
  * @tlvid: Type of IEEE TLV
+ * @pfc_asym_mode: PFC symmetry mode
  *
  * Add tlv information
  */
 static void
 ice_add_dcb_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg,
-		u16 tlvid)
+		u16 tlvid, enum ice_dcb_pfc_asym_mode pfc_asym_mode)
 {
 	if (dcbcfg->pfc_mode == ICE_QOS_MODE_VLAN) {
 		switch (tlvid) {
 		case ICE_IEEE_TLV_ID_ETS_CFG:
-			ice_add_ieee_ets_tlv(tlv, dcbcfg);
+			ice_add_ieee_ets_tlv(tlv, dcbcfg, pfc_asym_mode);
 			break;
 		case ICE_IEEE_TLV_ID_ETS_REC:
 			ice_add_ieee_etsrec_tlv(tlv, dcbcfg);
 			break;
 		case ICE_IEEE_TLV_ID_PFC_CFG:
-			ice_add_ieee_pfc_tlv(tlv, dcbcfg);
+			ice_add_ieee_pfc_tlv(tlv, dcbcfg, pfc_asym_mode);
 			break;
 		case ICE_IEEE_TLV_ID_APP_PRI:
-			ice_add_ieee_app_pri_tlv(tlv, dcbcfg);
+			ice_add_ieee_app_pri_tlv(tlv, dcbcfg, pfc_asym_mode);
 			break;
 		default:
 			break;
@@ -1474,10 +1531,12 @@ ice_add_dcb_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg,
  * @lldpmib: pointer to the HW struct
  * @miblen: length of LLDP MIB
  * @dcbcfg: Local store which holds the DCB Config
+ * @pfc_asym_mode: PFC mode with respect to PAUSE frames direction
  *
  * Convert the DCB configuration to MIB format
  */
-void ice_dcb_cfg_to_lldp(u8 *lldpmib, u16 *miblen, struct ice_dcbx_cfg *dcbcfg)
+void ice_dcb_cfg_to_lldp(u8 *lldpmib, u16 *miblen, struct ice_dcbx_cfg *dcbcfg,
+	enum ice_dcb_pfc_asym_mode pfc_asym_mode)
 {
 	u16 len, offset = 0, tlvid = ICE_TLV_ID_START;
 	struct ice_lldp_org_tlv *tlv;
@@ -1485,7 +1544,12 @@ void ice_dcb_cfg_to_lldp(u8 *lldpmib, u16 *miblen, struct ice_dcbx_cfg *dcbcfg)
 
 	tlv = (struct ice_lldp_org_tlv *)lldpmib;
 	while (1) {
-		ice_add_dcb_tlv(tlv, dcbcfg, tlvid++);
+		/* Asymmetric configuration does not require ETS rec TLV */
+		if (tlvid == ICE_IEEE_TLV_ID_ETS_REC && pfc_asym_mode != ICE_SET_PFC_SYM) {
+			tlvid++;
+			continue;
+		}
+		ice_add_dcb_tlv(tlv, dcbcfg, tlvid++, pfc_asym_mode);
 		typelen = NTOHS(tlv->typelen);
 		len = (typelen & ICE_LLDP_TLV_LEN_M) >> ICE_LLDP_TLV_LEN_S;
 		if (len)
@@ -1532,9 +1596,20 @@ int ice_set_dcb_cfg(struct ice_port_info *pi)
 	if (dcbcfg->app_mode == ICE_DCBX_APPS_NON_WILLING)
 		mib_type |= SET_LOCAL_MIB_TYPE_CEE_NON_WILLING;
 
-	ice_dcb_cfg_to_lldp(lldpmib, &miblen, dcbcfg);
-	ret = ice_aq_set_lldp_mib(hw, mib_type, (void *)lldpmib, miblen,
-				  NULL);
+	if ((dcbcfg->pfc.pfcena_asym_rx ^ dcbcfg->pfc.pfcena_asym_tx) == 0) {
+		ice_dcb_cfg_to_lldp(lldpmib, &miblen, dcbcfg, ICE_SET_PFC_SYM);
+		ret = ice_aq_set_lldp_mib(hw, mib_type, (void *)lldpmib, miblen, NULL);
+	} else {
+		ice_dcb_cfg_to_lldp(lldpmib, &miblen, dcbcfg, ICE_SET_PFC_RX);
+		ret = ice_aq_set_lldp_mib(hw, mib_type, (void *)lldpmib, miblen, NULL);
+		if (ret) {
+			ice_free(hw, lldpmib);
+			return ret;
+		}
+
+		ice_dcb_cfg_to_lldp(lldpmib, &miblen, dcbcfg, ICE_SET_PFC_TX);
+		ret = ice_aq_set_lldp_mib(hw, mib_type, (void *)lldpmib, miblen, NULL);
+	}
 
 	ice_free(hw, lldpmib);
 

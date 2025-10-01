@@ -21,10 +21,17 @@
 #define ICE_TLV_TYPE_ORG		127
 
 #define ICE_IEEE_8021QAZ_OUI		0x0080C2
+#define ICE_IEEE_8021QAZ_OUI_ASYM	0xFFFFFFUL
 #define ICE_IEEE_SUBTYPE_ETS_CFG	9
+#define ICE_IEEE_SUBTYPE_ETS_CFG_RX	0x89
+#define ICE_IEEE_SUBTYPE_ETS_CFG_TX	0x99
 #define ICE_IEEE_SUBTYPE_ETS_REC	10
 #define ICE_IEEE_SUBTYPE_PFC_CFG	11
+#define ICE_IEEE_SUBTYPE_PFC_CFG_RX	0x8B
+#define ICE_IEEE_SUBTYPE_PFC_CFG_TX	0x9B
 #define ICE_IEEE_SUBTYPE_APP_PRI	12
+#define ICE_IEEE_SUBTYPE_APP_PRI_RX	0x8C
+#define ICE_IEEE_SUBTYPE_APP_PRI_TX	0x9C
 
 #define ICE_CEE_DCBX_OUI		0x001B21
 #define ICE_CEE_DCBX_TYPE		2
@@ -188,6 +195,12 @@ struct ice_dcbx_variables {
 	u32 deftsaassignment;
 };
 
+enum ice_dcb_pfc_asym_mode {
+	ICE_SET_PFC_SYM = 0,
+	ICE_SET_PFC_RX,
+	ICE_SET_PFC_TX
+};
+
 int
 ice_aq_get_lldp_mib(struct ice_hw *hw, u8 bridge_type, u8 mib_type, void *buf,
 		    u16 buf_size, u16 *local_len, u16 *remote_len,
@@ -208,7 +221,8 @@ int ice_set_dcb_cfg(struct ice_port_info *pi);
 void ice_get_dcb_cfg_from_mib_change(struct ice_port_info *pi,
 				     struct ice_rq_event_info *event);
 int ice_init_dcb(struct ice_hw *hw, bool enable_mib_change);
-void ice_dcb_cfg_to_lldp(u8 *lldpmib, u16 *miblen, struct ice_dcbx_cfg *dcbcfg);
+void ice_dcb_cfg_to_lldp(u8 *lldpmib, u16 *miblen, struct ice_dcbx_cfg *dcbcfg,
+	enum ice_dcb_pfc_asym_mode pfc_asym_mode);
 int
 ice_query_port_ets(struct ice_port_info *pi,
 		   struct ice_aqc_port_ets_elem *buf, u16 buf_size,

@@ -1196,6 +1196,8 @@ struct ice_dcb_pfc_cfg {
 	u8 mbc;
 	u8 pfccap;
 	u8 pfcena;
+	u8 pfcena_asym_rx;
+	u8 pfcena_asym_tx;
 };
 
 /* CEE or IEEE 802.1Qaz Application Priority data */
