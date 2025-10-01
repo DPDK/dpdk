@@ -97,6 +97,11 @@ struct crypto_adpter_info {
 	/** Maximum number of cops to combine into single vector */
 	struct rte_mempool *vector_mp;
 	/** Pool for allocating rte_event_vector */
+	uint64_t vector_timeout_ns;
+	/*
+	 * Maximum number of nanoseconds to wait for aggregating
+	 * crypto operations.
+	 */
 };
 
 struct cnxk_cpt_qp {
@@ -112,6 +117,7 @@ struct cnxk_cpt_qp {
 	/**< Crypto adapter related info */
 	struct rte_mempool *sess_mp;
 	/**< Session mempool */
+	struct cnxk_sso_evdev *evdev;
 };
 
 int cnxk_cpt_asym_get_mlen(void);

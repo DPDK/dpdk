@@ -170,6 +170,9 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 	if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV) {
 		u64[1] = cn20k_cpt_crypto_adapter_dequeue(u64[1]);
 	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_CRYPTODEV_VECTOR) {
+		__uint128_t vwqe_hdr = *(__uint128_t *)u64[1];
+		vwqe_hdr = ((vwqe_hdr >> 64) & 0xFFF) | BIT_ULL(31) | ((vwqe_hdr & 0xFFFF) << 48);
+		*(uint64_t *)u64[1] = (uint64_t)vwqe_hdr;
 		u64[1] = cn20k_cpt_crypto_adapter_vector_dequeue(u64[1]);
 	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
 		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);

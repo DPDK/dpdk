@@ -17,6 +17,7 @@
 #endif
 
 #include "cnxk_cryptodev.h"
+#include "roc_npa.h"
 
 #define CN20K_PKTS_PER_STEORL	  32
 #define CN20K_LMTLINES_PER_STEORL 16
