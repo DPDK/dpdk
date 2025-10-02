@@ -78,8 +78,6 @@ Then we can create 2 vdpa ports in interactive cmdline.
         vdpa> create /tmp/vdpa-socket0 0000:06:00.3
         vdpa> create /tmp/vdpa-socket1 0000:06:00.4
 
-.. _vdpa_app_run_vm:
-
 Start the VMs
 ~~~~~~~~~~~~~
 

@@ -22,8 +22,6 @@ into each other.
 This application can be used to benchmark performance using the traffic
 generator as shown in the figure below.
 
-.. _figure_dist_perf:
-
 .. figure:: img/dist_perf.*
 
    Performance Benchmarking Setup (Basic Environment)

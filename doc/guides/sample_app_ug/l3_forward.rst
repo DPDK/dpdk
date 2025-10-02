@@ -239,8 +239,6 @@ setup:
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
-.. _l3_fwd_explanation:
-
 Explanation
 -----------
 
@@ -287,8 +285,6 @@ R<destination_ip>/<ip_mask_length><output_port_number>
 R<destination_ip><source_ip><destination_port><source_port><protocol><output_port_number>
 
 *   A typical IPv4 ACL rule line should have a format as shown below:
-
-.. _figure_ipv4_acl_rule:
 
 .. figure:: img/ipv4_acl_rule.*
 

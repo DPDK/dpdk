@@ -365,13 +365,9 @@ This section mentions the created graph for each use case.
 l3fwd
 ~~~~~
 
-.. _figure_l3fwd_graph:
-
 .. figure:: img/graph-usecase-l3fwd.*
 
 l2fwd
 ~~~~~
-
-.. _figure_l2fwd_graph:
 
 .. figure:: img/graph-usecase-l2fwd.*

@@ -54,8 +54,6 @@ directs frequency changes and policies to the host monitor rather than
 the APCI ``cpufreq`` ``sysfs`` interface used on the host in non-virtualised
 environments.
 
-.. _figure_vm_power_mgr_highlevel:
-
 .. figure:: img/vm_power_mgr_highlevel.*
 
    Highlevel Solution
@@ -107,9 +105,6 @@ across environments, with the selection of VM or host implementation
 determined automatically at runtime based on the environment. On
 receiving a request, the host translates the vCPU to a pCPU using the
 libvirt API before forwarding it to the host ``librte_power``.
-
-
-.. _figure_vm_power_mgr_vm_request_seq:
 
 .. figure:: img/vm_power_mgr_vm_request_seq.*
 

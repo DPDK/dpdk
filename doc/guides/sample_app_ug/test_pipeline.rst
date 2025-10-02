@@ -22,8 +22,6 @@ The application uses three CPU cores:
 
 *   Core C ("TX core") receives traffic from core B through software queues and sends it to the NIC ports for transmission.
 
-.. _figure_test_pipeline_app:
-
 .. figure:: img/test_pipeline_app.*
 
    Test Pipeline Application

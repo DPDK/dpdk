@@ -78,9 +78,6 @@ When creating a new pool, the user can specify to use this feature or not.
    As a result, the load is distributed evenly in all cases,
    including the above described, rendering this feature unnecessary.
 
-
-.. _mempool_local_cache:
-
 Local Cache
 -----------
 

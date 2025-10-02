@@ -125,8 +125,6 @@ Once it is downloaded, extract it and follow these steps:
 As a reference, the following table shows a mapping between the past DPDK versions
 and the Multi-Buffer library version supported by them:
 
-.. _table_aesni_mb_versions:
-
 .. table:: DPDK and Multi-Buffer library version compatibility
 
    ==============  ============================

@@ -39,7 +39,6 @@ reduce space requirement and significantly improve the performance of set
 membership queries at the cost of introducing a very small membership test error
 probability.
 
-.. _figure_membership1:
 .. figure:: img/member_i1.*
 
   Example Usages of Membership Library
@@ -109,7 +108,6 @@ Y is a member of the set with certain false positive probability. As shown in
 the next equation, the false positive probability can be made arbitrarily small
 by changing the number of hash functions (``k``) and the vector length (``m``).
 
-.. _figure_membership2:
 .. figure:: img/member_i2.*
 
   Bloom Filter False Positive Probability
@@ -121,7 +119,6 @@ small bit-vector, which can be easily optimized. Hence the lookup throughput
 (set membership test) can be significantly faster than a normal hash table
 lookup with element comparison.
 
-.. _figure_membership3:
 .. figure:: img/member_i3.*
 
   Detecting Routing Loops Using BF
@@ -134,8 +131,6 @@ node will then check this embedded BF in the packet header for its own id, and
 if the BF indicates that the current node is definitely not in the set then a
 loop-free route is guaranteed.
 
-
-.. _figure_membership4:
 .. figure:: img/member_i4.*
 
   Vector Bloom Filter (vBF) Overview
@@ -149,7 +144,6 @@ them. The basic idea of vBF is shown in the above figure where an element is
 used to address multiple bloom filters concurrently and the bloom filter
 index(es) with a hit is returned.
 
-.. _figure_membership5:
 .. figure:: img/member_i5.*
 
   vBF for Flow Scheduling to Worker Thread
@@ -184,7 +178,6 @@ requires testing a series of Bloom Filters each corresponding to one set.
 As a result, generally speaking vBF is more adequate for the case of a small limited number of sets
 while HTSS should be used with a larger number of sets.
 
-.. _figure_membership6:
 .. figure:: img/member_i6.*
 
   Using HTSS for Attack Signature Matching
@@ -237,7 +230,6 @@ set-summary. It is worth noting that the set-summary still has false positive
 probability, which means the application either can tolerate certain false positive
 or it has fall-back path when false positive happens.
 
-.. _figure_membership7:
 .. figure:: img/member_i7.*
 
   Using HTSS with False Negatives for Wild Card Classification

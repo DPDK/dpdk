@@ -65,8 +65,6 @@ The ISA-L library does not support this, therefore compressdev level 0 is not su
 The compressdev API has 10 levels, 0-9. ISA-L has 4 levels of compression, 0-3.
 As a result the level mappings from the API to the PMD are shown below.
 
-.. _table_ISA-L_compression_levels:
-
 .. table:: Level mapping from Compressdev to ISA-L PMD.
 
    +-------------+----------------------------------------------+-----------------------------------------------+

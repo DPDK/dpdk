@@ -145,8 +145,6 @@ References
 Features Table
 ==============
 
-.. _table_vdpa_pmd_features:
-
 .. include:: overview_feature_table.txt
 
 .. Note::

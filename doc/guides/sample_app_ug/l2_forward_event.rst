@@ -123,8 +123,6 @@ Explanation
 
 The following sections provide an explanation of the code.
 
-.. _l2_fwd_event_app_cmd_arguments:
-
 Command Line Arguments
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -174,8 +172,6 @@ The ``rte_pktmbuf_pool_create()`` function uses the default mbuf pool
 and mbuf initializers, respectively ``rte_pktmbuf_pool_init()`` and ``rte_pktmbuf_init()``.
 An advanced application may want to use the mempool API to create the
 mbuf pool with more control.
-
-.. _l2_fwd_event_app_drv_init:
 
 Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~
@@ -230,8 +226,6 @@ structure called struct lcore_queue_conf.
 The values n_rx_port and rx_port_list[] are used in the main packet processing
 loop (see :ref:`l2_fwd_event_app_rx_tx_packets`).
 
-.. _l2_fwd_event_app_tx_init:
-
 TX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -251,8 +245,6 @@ To configure eventdev support, the application sets up following components:
 *   Event Port
 *   Rx/Tx adapters
 *   Ethernet ports
-
-.. _l2_fwd_event_app_event_dev_init:
 
 Event device Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -293,8 +285,6 @@ Ethernet ports.
 
 In case of S/W scheduler, an extra event queue is created which will be used for
 Tx adapter service function for enqueue operation.
-
-.. _l2_fwd_app_event_port_init:
 
 Event port Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~

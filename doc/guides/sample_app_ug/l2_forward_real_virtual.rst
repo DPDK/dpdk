@@ -54,8 +54,6 @@ when MAC addresses updating is disabled.
 
 The L2 Forwarding application can also be used as a starting point for developing a new application based on the DPDK.
 
-.. _l2_fwd_vf_setup:
-
 Virtual Function Setup Instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

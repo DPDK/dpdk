@@ -127,8 +127,6 @@ The symmetric multi process example demonstrates how a set of processes can run 
 with each process performing the same set of packet- processing operations.
 The following diagram shows the data-flow through the application, using two processes.
 
-.. _figure_sym_multi_proc_app:
-
 .. figure:: img/sym_multi_proc_app.*
 
    Example Data Flow in a Symmetric Multi-process Application
@@ -207,8 +205,6 @@ Each client processes packets and does level-2 forwarding
 by sending each packet out on a different network port.
 
 The following diagram shows the data-flow through the application, using two client processes.
-
-.. _figure_client_svr_sym_multi_proc_app:
 
 .. figure:: img/client_svr_sym_multi_proc_app.*
 

@@ -108,8 +108,6 @@ Each input/output port is required to implement an abstract interface that
 defines the initialization and run-time operation of the port.
 The port abstract interface is described in.
 
-.. _table_qos_20:
-
 .. table:: 20 Port Abstract Interface
 
    +---+----------------+-----------------------------------------------------------------------------------------+
@@ -426,8 +424,6 @@ The possible options are:
     the search continues beyond the first group of 4 keys, potentially until all keys in this bucket are examined.
     The extendable bucket logic requires maintaining specific data structures per table and per each bucket.
 
-.. _table_qos_23:
-
 .. table:: Configuration Parameters Specific to Extendable Bucket Hash Table
 
    +---+---------------------------+--------------------------------------------------+
@@ -454,8 +450,6 @@ The possible options for key signature computation are:
 #.  **Key signature computed on lookup ("do-sig" version).**
     The same CPU core reads the key from the packet meta-data, uses it to compute the key signature
     and also performs the bucket search step of the key lookup operation.
-
-.. _table_qos_24:
 
 .. table:: Configuration Parameters Specific to Pre-computed Key Signature Hash Table
 
@@ -885,15 +879,10 @@ and detail the bucket search pipeline used to implement 8-byte and 16-byte key h
 either with pre-computed signature or "do-sig").
 For each pipeline stage, the described operations are applied to each of the two packets handled by that stage.
 
-.. _figure_figure39:
-
 .. figure:: img/figure39.*
 
    Bucket Search Pipeline for Key Lookup Operation (Single Key Size Hash
    Tables)
-
-
-.. _table_qos_32:
 
 .. table:: Description of the Bucket Search Pipeline Stages (8-byte and 16-byte Key Hash Tables)
 

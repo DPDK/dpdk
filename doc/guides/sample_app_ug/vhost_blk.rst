@@ -38,8 +38,6 @@ Start the vhost_blk example
 
         ./dpdk-vhost_blk -m 1024
 
-.. _vhost_blk_app_run_vm:
-
 Start the VM
 ~~~~~~~~~~~~
 

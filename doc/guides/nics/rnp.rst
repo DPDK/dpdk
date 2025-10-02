@@ -32,8 +32,6 @@ Chip Basic Overview
 N10 has two functions, each function support multiple ports (1 to 8),
 which is different of normal PCIe network card (one PF for each port).
 
-.. _figure_mucse_nic:
-
 .. figure:: img/mucse_nic_port.*
 
    rnp Mucse NIC port.

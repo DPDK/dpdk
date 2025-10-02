@@ -11,8 +11,6 @@ Packet Pipeline with QoS Support
 
 An example of a complex packet processing pipeline with QoS support is shown in the following figure.
 
-.. _figure_pkt_proc_pipeline_qos:
-
 .. figure:: ../img/pkt_proc_pipeline_qos.*
 
    Complex Packet Processing Pipeline with QoS Support
@@ -21,8 +19,6 @@ An example of a complex packet processing pipeline with QoS support is shown in 
 This pipeline can be built using reusable DPDK software libraries.
 The main blocks implementing QoS in this pipeline are: the policer, the dropper and the scheduler.
 A functional description of each block is provided in the following table.
-
-.. _table_qos_1:
 
 .. table:: Packet Processing Pipeline Implementing QoS
 
@@ -73,8 +69,6 @@ A functional description of each block is provided in the following table.
 
 The infrastructure blocks used throughout the packet processing pipeline are listed in the following table.
 
-.. _table_qos_2:
-
 .. table:: Infrastructure Blocks Used by the Packet Processing Pipeline
 
    +---+-----------------------+-----------------------------------------------------------------------+
@@ -112,8 +106,6 @@ It typically acts like a buffer that is able to temporarily store a large number
 as the NIC TX is requesting more packets for transmission,
 these packets are later on removed and handed over to the NIC TX with the packet selection logic observing the predefined SLAs (dequeue operation).
 
-.. _figure_hier_sched_blk:
-
 .. figure:: ../img/hier_sched_blk.*
 
    Hierarchical Scheduler Block Internal Diagram
@@ -143,8 +135,6 @@ Each queue hosts packets from one or multiple connections of the same type belon
 
 
 The functionality of each hierarchical level is detailed in the following table.
-
-.. _table_qos_3:
 
 .. table:: Port Scheduling Hierarchy
 
@@ -269,14 +259,9 @@ Internal Data Structures per Port
 
 A schematic of the internal data structures in shown in with details in.
 
-.. _figure_data_struct_per_port:
-
 .. figure:: ../img/data_struct_per_port.*
 
     Internal Data Structures per Port
-
-
-.. _table_qos_4:
 
 .. table:: Scheduler Internal Data Structures per Port
 
@@ -452,8 +437,6 @@ The dequeue pipe state machine exploits the data presence into the processor cac
 therefore it tries to send as many packets from the same pipe TC and pipe as possible (up to the available packets and credits) before
 moving to the next active TC from the same pipe (if any) or to another active pipe.
 
-.. _figure_pipe_prefetch_sm:
-
 .. figure:: ../img/pipe_prefetch_sm.*
 
    Pipe Prefetch State Machine for the Hierarchical Scheduler Dequeue
@@ -556,8 +539,6 @@ Framing Overhead
 As the greatest common divisor for all packet lengths is one byte, the unit of credit is selected as one byte.
 The number of credits required for the transmission of a packet of n bytes is equal to (n+h),
 where h is equal to the number of framing overhead bytes per packet.
-
-.. _table_qos_5:
 
 .. table:: Ethernet Frame Overhead Fields
 
@@ -947,8 +928,6 @@ Solution Space
 
 summarizes some of the possible approaches for handling this problem,
 with the third approach selected for implementation.
-
-.. _table_qos_13:
 
 .. table:: Subport Traffic Class Oversubscription
 

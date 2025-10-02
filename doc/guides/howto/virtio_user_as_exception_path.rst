@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2016 Intel Corporation.
 
-.. _virtio_user_as_exception_path:
-
 Virtio_user as Exception Path
 =============================
 

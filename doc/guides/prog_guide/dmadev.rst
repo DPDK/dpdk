@@ -17,8 +17,6 @@ physical (hardware) and virtual (software) DMA devices, as well as a generic DMA
 API which allows DMA devices to be managed and configured, and supports DMA
 operations to be provisioned on DMA poll mode driver.
 
-.. _figure_dmadev:
-
 .. figure:: img/dmadev.*
 
 The above figure shows the model on which the DMA framework is built on:

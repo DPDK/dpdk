@@ -82,8 +82,6 @@ and the last step causing the dynamic loader `ld.so` to update its cache to take
    distributions, `/usr/local/lib` and `/usr/local/lib64` should be added
    to a file in `/etc/ld.so.conf.d/` before running `ldconfig`.
 
-.. _adjusting_build_options:
-
 Adjusting Build Options
 ~~~~~~~~~~~~~~~~~~~~~~~
 

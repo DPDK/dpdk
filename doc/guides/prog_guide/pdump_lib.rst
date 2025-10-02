@@ -18,8 +18,6 @@ to facilitate communication between the primary and secondary processes.
 This mechanism allows enabling or disabling packet capture
 on specific ports or queues.
 
-.. _figure_pdump_overview:
-
 .. figure:: img/pdump_overview.*
 
    Packet Capture enable and disable sequence

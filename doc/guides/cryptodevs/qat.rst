@@ -227,8 +227,6 @@ Configuring and Building the DPDK QAT PMDs
 Further information on configuring, building and installing DPDK is described
 :doc:`here <../linux_gsg/build_dpdk>`.
 
-.. _building_qat_config:
-
 Build Configuration
 ~~~~~~~~~~~~~~~~~~~
 
@@ -443,9 +441,6 @@ Available kernel drivers
 
 Kernel drivers for each device for each service are listed in the following table. (Scroll right
 to see the full table)
-
-
-.. _table_qat_pmds_drivers:
 
 .. table:: QAT device generations, devices and drivers
 

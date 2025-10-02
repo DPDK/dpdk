@@ -133,8 +133,6 @@ added to by the developer.
 Building the Documentation
 --------------------------
 
-.. _doc_dependencies:
-
 Dependencies
 ~~~~~~~~~~~~
 
@@ -524,6 +522,7 @@ Images
 
   This would be rendered as: *A mempool in memory with its associated ring.*
 
+
 Tables
 ~~~~~~
 
@@ -531,32 +530,7 @@ Tables
   They are hard to format and to edit, and the same information
   can usually be shown just as clearly with a definition or bullet list.
 
-* Tables in the documentation should be formatted as follows:
-
-   * The table should be preceded by a label in the format ``.. _table_XXXX:`` with a leading underscore and where
-     ``XXXX`` is a unique descriptive name.
-
-   * Tables should be included using the ``.. table::`` directive and must have a caption.
-
-* Here is an example of the previous two guidelines::
-
-     .. _table_qos_pipes:
-
-     .. table:: Sample configuration for QOS pipes.
-
-        +----------+----------+----------+
-        | Header 1 | Header 2 | Header 3 |
-        |          |          |          |
-        +==========+==========+==========+
-        | Text     | Text     | Text     |
-        +----------+----------+----------+
-        | ...      | ...      | ...      |
-        +----------+----------+----------+
-
-* Tables can be linked to using the ``:numref:`` and ``:ref:`` directives, as shown in the previous section for images.
-  For example::
-
-     The QOS configuration is shown in :numref:`table_qos_pipes`.
+* Tables should be included using the ``.. table::`` directive and must have a caption.
 
 
 .. _links:

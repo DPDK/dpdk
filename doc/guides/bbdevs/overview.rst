@@ -7,6 +7,4 @@ Baseband Device Supported Functionality Matrices
 Supported Feature Flags
 -----------------------
 
-.. _table_bbdev_pmd_features:
-
 .. include:: overview_feature_table.txt

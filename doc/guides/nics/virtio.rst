@@ -93,8 +93,6 @@ The following prerequisites apply:
 Virtio with qemu virtio Back End
 --------------------------------
 
-.. _figure_host_vm_comms_qemu:
-
 .. figure:: img/host_vm_comms_qemu.*
 
    Host2VM Communication Example Using qemu vhost Back End

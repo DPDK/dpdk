@@ -21,8 +21,6 @@ PDCP would involve the following operations:
 #. Uplink data compression
 #. Ciphering and integrity protection
 
-.. _figure_pdcp_functional_overview:
-
 .. figure:: img/pdcp_functional_overview.*
 
    PDCP functional overview

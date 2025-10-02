@@ -40,8 +40,6 @@ The ip address of host_server_1 is 10.237.212.46
 
 The ip address of host_server_2 is 10.237.212.131
 
-.. _figure_lm_bond_virtio_sriov:
-
 .. figure:: img/lm_bond_virtio_sriov.*
 
 Live Migration steps

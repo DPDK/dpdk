@@ -36,8 +36,6 @@ the kernel driver while a DPDK application can receive specific traffic
 bypassing the Linux kernel by using drivers like VFIO or the DPDK ``igb_uio``
 module.
 
-.. _figure_flow_bifurcation_overview:
-
 .. figure:: img/flow_bifurcation_overview.*
 
    Flow Bifurcation Overview

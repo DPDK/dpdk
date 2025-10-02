@@ -58,8 +58,6 @@ Programming model
 Anatomy of Node:
 ~~~~~~~~~~~~~~~~
 
-.. _figure_anatomy_of_a_node:
-
 .. figure:: img/anatomy_of_a_node.*
 
    Anatomy of a node
@@ -146,7 +144,6 @@ Node creation and registration
 
 Link the Nodes to create the graph topology
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. _figure_link_the_nodes:
 
 .. figure:: img/link_the_nodes.*
 
@@ -387,7 +384,6 @@ Example of intermediate node implementation with home run:
 
 Graph object memory layout
 --------------------------
-.. _figure_graph_mem_layout:
 
 .. figure:: img/graph_mem_layout.*
 
@@ -930,8 +926,6 @@ Inbuilt Nodes
 
 DPDK provides a set of nodes for data processing.
 The following diagram depicts inbuilt nodes data flow.
-
-.. _figure_graph_inbuit_node_flow:
 
 .. figure:: img/graph_inbuilt_node_flow.*
 

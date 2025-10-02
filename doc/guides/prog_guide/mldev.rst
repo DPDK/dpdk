@@ -12,8 +12,6 @@ The ML model creation and training is outside of the scope of this library.
 
 The ML framework is built on the following model:
 
-.. _figure_mldev_work_flow:
-
 .. figure:: img/mldev_flow.*
 
    Work flow of inference on MLDEV

@@ -38,8 +38,6 @@ those devices alone.
 Debugging Options
 -----------------
 
-.. _table_cn9k_regex_debug_options:
-
 .. table:: CN9K regex device debug options
 
    +---+------------+-------------------------------------------------------+

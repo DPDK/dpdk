@@ -345,8 +345,6 @@ Runtime Config Options
 Debugging Options
 -----------------
 
-.. _table_octeon_cnxk_ml_debug_options:
-
 .. table:: OCTEON cnxk ML PMD debug options
 
    +---+------------+-------------------------------------------------------+
@@ -362,8 +360,6 @@ Extended stats
 Marvell cnxk ML PMD supports reporting the device and model extended statistics.
 
 PMD supports the below list of 4 device extended stats.
-
-.. _table_octeon_cnxk_ml_device_xstats_names:
 
 .. table:: OCTEON cnxk ML PMD device xstats names
 
@@ -381,8 +377,6 @@ PMD supports the below list of 4 device extended stats.
 
 
 PMD supports the below list of 6 extended stats types per each model.
-
-.. _table_octeon_cnxk_ml_model_xstats_names:
 
 .. table:: OCTEON cnxk ML PMD model xstats names
 

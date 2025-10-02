@@ -155,7 +155,6 @@ In summary, EFD is a set separation data structure that supports millions of
 keys. It is used to distribute a given key to an intended target. By itself
 EFD is not a FIB data structure with an exact match the input flow key.
 
-.. _Efd_example:
 
 Example of EFD Library Usage
 ----------------------------
@@ -199,7 +198,6 @@ the flows served at each node is used and is
 exact matched with the input key to rule out new never seen before
 flows.
 
-.. _Efd_api:
 
 Library API Overview
 --------------------
@@ -281,7 +279,6 @@ in the prev_value argument.
    This function is not multi-thread safe and should only be called
    from one thread.
 
-.. _Efd_internals:
 
 Library Internals
 -----------------
@@ -413,8 +410,6 @@ the four possible mappings are evaluated and the one that will result in a
 balanced key distribution across these four is selected the mapping result
 is stored in these two bits.
 
-
-.. _Efd_references:
 
 References
 ----------

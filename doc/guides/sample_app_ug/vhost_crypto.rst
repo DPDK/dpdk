@@ -65,8 +65,6 @@ the specified crypto operation are available on application initialization.
 This means that HW crypto device/s must be bound to a DPDK driver or
 a SW crypto device/s (virtual crypto PMD) must be created (using --vdev).
 
-.. _vhost_crypto_app_run_vm:
-
 Start the VM
 ~~~~~~~~~~~~
 

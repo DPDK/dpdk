@@ -30,8 +30,6 @@ In order to keep the application simple the following assumptions are made:
 How the Application Works
 -------------------------
 
-.. _figure_ptpclient_highlevel:
-
 .. figure:: img/ptpclient.*
 
    PTP Synchronization Protocol

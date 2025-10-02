@@ -53,8 +53,6 @@ Therefore, in the case of dynamic linking, it is critical that an ABI is
 preserved, or (when modified), done in such a way that the application is unable
 to behave improperly or in an unexpected fashion.
 
-.. _figure_what_is_an_abi:
-
 .. figure:: img/what_is_an_abi.*
 
 	    Illustration of DPDK API and ABI.
@@ -103,8 +101,6 @@ release, following the declaration of the new major ABI version ``21``.
 An ABI version is supported in all new releases until the next major ABI version
 is declared. When changing the major ABI version, the release notes will detail
 all ABI changes.
-
-.. _figure_abi_stability_policy:
 
 .. figure:: img/abi_stability_policy.*
 

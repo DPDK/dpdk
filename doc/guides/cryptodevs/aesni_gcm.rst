@@ -70,8 +70,6 @@ Once it is downloaded, extract it and follow these steps:
 As a reference, the following table shows a mapping between the past DPDK versions
 and the external crypto libraries supported by them:
 
-.. _table_aesni_gcm_versions:
-
 .. table:: DPDK and external crypto library version compatibility
 
    =============  ================================

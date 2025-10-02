@@ -90,8 +90,6 @@ References
 Features Table
 ==============
 
-.. _table_regex_pmd_features:
-
 .. include:: overview_feature_table.txt
 
 .. Note::

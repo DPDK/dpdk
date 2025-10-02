@@ -84,8 +84,6 @@ Runtime Config Options
 Debugging Options
 ~~~~~~~~~~~~~~~~~
 
-.. _table_cnxk_mempool_debug_options:
-
 .. table:: cnxk mempool debug options
 
    +---+------------+-------------------------------------------------------+

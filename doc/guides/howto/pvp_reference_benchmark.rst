@@ -20,8 +20,6 @@ v16.11 using RHEL7 for both host and guest.
 Setup overview
 --------------
 
-.. _figure_pvp_2nics:
-
 .. figure:: img/pvp_2nics.*
 
    PVP setup using 2 NICs

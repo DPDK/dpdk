@@ -2,8 +2,6 @@
     Copyright(c) 2017 Marvell International Ltd.
     Copyright(c) 2017 Semihalf.
 
-.. _mvpp2_poll_mode_driver:
-
 MVPP2 Poll Mode Driver
 ======================
 

@@ -52,8 +52,6 @@ A check is also performed at initialization time to ensure that the micro archit
 Then, the main() function is called. The core initialization and launch is done in rte_eal_init() (see the API documentation).
 It consist of calls to the pthread library (more specifically, pthread_self(), pthread_create(), and pthread_setaffinity_np()).
 
-.. _figure_linux_launch:
-
 .. figure:: img/linuxapp_launch.*
 
    EAL Initialization in a Linux Application Environment
@@ -1057,8 +1055,6 @@ The key fields of the heap structure and their function are described below
 *   first - this points to the first element in the heap.
 
 *   last - this points to the last element in the heap.
-
-.. _figure_malloc_heap:
 
 .. figure:: img/malloc_heap.*
 

@@ -893,8 +893,6 @@ Additional Options
 
     -a 18:01.0,cap=dcf,acl=off
 
-.. _figure_ice_dcf:
-
 .. figure:: img/ice_dcf.*
 
    DCF Communication flow.

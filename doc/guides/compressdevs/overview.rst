@@ -7,8 +7,6 @@ Compression Device Supported Functionality Matrices
 Supported Feature Flags
 -----------------------
 
-.. _table_compression_pmd_features:
-
 .. include:: overview_feature_table.txt
 
 .. Note::

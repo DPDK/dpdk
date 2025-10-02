@@ -33,8 +33,6 @@ application will configure the feature for the VF. Obviously, the PF
 application can also configure the VF features without a request from the VF
 application.
 
-.. _VF_daemon_overview:
-
 .. figure:: img/vf_daemon_overview.*
 
    VF daemon (VFd) Overview

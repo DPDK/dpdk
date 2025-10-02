@@ -452,8 +452,6 @@ For example::
      since 802.1AS can be supported through the same interfaces.
 
 
-.. _contrib_checkpatch:
-
 Checking the Patches
 --------------------
 

@@ -214,8 +214,6 @@ Runtime Config Options
 Debugging Options
 -----------------
 
-.. _table_octeon_cnxk_crypto_debug_options:
-
 .. table:: OCTEON cnxk crypto PMD debug options
 
     +---+------------+-------------------------------------------------------+

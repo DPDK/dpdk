@@ -67,8 +67,6 @@ Start the vswitch example
 Check the `Parameters`_ section for the explanations on what do those
 parameters mean.
 
-.. _vhost_app_run_dpdk_inside_guest:
-
 Run testpmd inside guest
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -100,9 +98,6 @@ with the right MAC and VLAN tag, you should be able to see following
 log from the dpdk-vhost console. It means you get it work::
 
     VHOST_DATA: (0) mac 52:54:00:00:00:14 and vlan 1000 registered
-
-
-.. _vhost_app_parameters:
 
 Parameters
 ----------

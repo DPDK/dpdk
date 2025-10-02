@@ -248,8 +248,6 @@ compatible board:
 Debugging Options
 -----------------
 
-.. _table_cnxk_common_debug_options:
-
 .. table:: cnxk common debug options
 
    +---+------------+-------------------------------------------------------+

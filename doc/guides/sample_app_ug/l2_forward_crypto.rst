@@ -193,8 +193,6 @@ on a packet received on an RX PORT before forwarding it to a TX PORT.
 The following figure illustrates a sample flow of a packet in the application,
 from reception until transmission.
 
-.. _figure_l2_fwd_encrypt_flow:
-
 .. figure:: img/l2_fwd_encrypt_flow.*
 
    Encryption flow through the L2 Forwarding with Crypto Application

@@ -580,8 +580,6 @@ The output is generated in ``build/doc/api/dts/html``.
 
    Make sure to fix any Sphinx warnings when adding or updating docstrings.
 
-.. _configuration_example:
-
 Configuration Example
 ---------------------
 
@@ -622,8 +620,6 @@ to demonstrate custom test suite configuration:
 .. note::
    You do not need to supply configurations for all test suites,
    and not all test suites will support or need additional configuration.
-
-.. _tests_config_example:
 
 ``dts/configurations/tests_config.example.yaml``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

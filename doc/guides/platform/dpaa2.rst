@@ -94,8 +94,6 @@ separately:
   SDK and related information can be obtained from:  `NXP QorIQ SDK  <http://www.nxp.com/products/software-and-tools/run-time-software/linux-sdk/linux-sdk-for-qoriq-processors:SDKLINUX>`_.
 
 
-.. _extra_scripts:
-
 - **DPDK Extra Scripts**
 
   DPAA2 based resources can be configured easily with the help of ready scripts

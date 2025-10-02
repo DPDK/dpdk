@@ -86,8 +86,6 @@ Core Components
 The *core components* are a set of libraries that provide all the elements needed
 for high-performance packet processing applications.
 
-.. _figure_architecture-overview:
-
 .. figure:: img/architecture-overview.*
 
    Core Components Architecture

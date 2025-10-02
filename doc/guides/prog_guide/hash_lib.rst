@@ -207,8 +207,6 @@ are evicted to their secondary location.
 
 See the tables below showing example entry distribution as table utilization increases.
 
-.. _table_hash_lib_1:
-
 .. table:: Entry distribution measured with an example table with 1024 random entries using jhash algorithm
 
    +--------------+-----------------------+-------------------------+
@@ -230,8 +228,6 @@ See the tables below showing example entry distribution as table utilization inc
    +--------------+-----------------------+-------------------------+
 
 |
-
-.. _table_hash_lib_2:
 
 .. table:: Entry distribution measured with an example table with 1 million random entries using jhash algorithm
 

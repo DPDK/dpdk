@@ -287,8 +287,6 @@ on the first trace emission.
 Trace memory layout
 ~~~~~~~~~~~~~~~~~~~
 
-.. _table_trace_mem_layout:
-
 .. table:: Trace memory layout.
 
   +-------------------+
@@ -312,8 +310,6 @@ Trace memory layout
 packet.header
 ^^^^^^^^^^^^^
 
-.. _table_packet_header:
-
 .. table:: Packet header layout.
 
   +-------------------+
@@ -325,8 +321,6 @@ packet.header
 packet.context
 ^^^^^^^^^^^^^^
 
-.. _table_packet_context:
-
 .. table:: Packet context layout.
 
   +----------------------+
@@ -337,8 +331,6 @@ packet.context
 
 trace.header
 ^^^^^^^^^^^^
-
-.. _table_trace_header:
 
 .. table:: Trace header layout.
 

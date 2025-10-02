@@ -70,8 +70,6 @@ and point to the same objects, in both processes.
     ``--single-file-segments`` switch, secondary processes must be run with the
     same switch specified. Otherwise, memory corruption may occur.
 
-.. _figure_multi_process_memory:
-
 .. figure:: img/multi_process_memory.*
 
    Memory Sharing in the DPDK Multi-process Sample Application

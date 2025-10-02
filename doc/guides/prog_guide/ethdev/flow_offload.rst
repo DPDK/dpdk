@@ -259,8 +259,6 @@ Usage restrictions and expected behavior:
 
 Example of an item specification matching an Ethernet header:
 
-.. _table_rte_flow_pattern_item_example:
-
 .. table:: Ethernet item
 
    +----------+----------+-----------------------+
@@ -300,8 +298,6 @@ Patterns are terminated by END items.
 
 Examples:
 
-.. _table_rte_flow_tcpv4_as_l4:
-
 .. table:: TCPv4 as L4
 
    +-------+----------+
@@ -317,8 +313,6 @@ Examples:
    +-------+----------+
 
 |
-
-.. _table_rte_flow_tcpv6_in_vxlan:
 
 .. table:: TCPv6 in VXLAN
 
@@ -343,8 +337,6 @@ Examples:
    +-------+------------+
 
 |
-
-.. _table_rte_flow_tcpv4_as_l4_meta:
 
 .. table:: TCPv4 as L4 with meta items
 
@@ -372,8 +364,6 @@ The above example shows how meta items do not affect packet data matching
 items, as long as those remain stacked properly. The resulting matching
 pattern is identical to "TCPv4 as L4".
 
-.. _table_rte_flow_udpv6_anywhere:
-
 .. table:: UDPv6 anywhere
 
    +-------+------+
@@ -393,8 +383,6 @@ specification) enables looking up anywhere in packets.
 It is unspecified whether the payload of supported encapsulations
 (e.g. VXLAN payload) is matched by such a pattern, which may apply to inner,
 outer or both packets.
-
-.. _table_rte_flow_invalid_l3:
 
 .. table:: Invalid, missing L3
 
@@ -430,8 +418,6 @@ ending the pattern.
 - PMD support is mandatory.
 - ``spec``, ``last`` and ``mask`` are ignored.
 
-.. _table_rte_flow_item_end:
-
 .. table:: END
 
    +----------+---------+
@@ -453,8 +439,6 @@ PMDs.
 - PMD support is mandatory.
 - ``spec``, ``last`` and ``mask`` are ignored.
 
-.. _table_rte_flow_item_void:
-
 .. table:: VOID
 
    +----------+---------+
@@ -469,8 +453,6 @@ PMDs.
 
 One usage example for this type is generating rules that share a common
 prefix quickly without reallocating memory, only by updating item types:
-
-.. _table_rte_flow_item_void_example:
 
 .. table:: TCP, UDP or ICMP as L4
 
@@ -497,8 +479,6 @@ Inverted matching, i.e. process packets that do not match the pattern.
 
 - ``spec``, ``last`` and ``mask`` are ignored.
 
-.. _table_rte_flow_item_invert:
-
 .. table:: INVERT
 
    +----------+---------+
@@ -512,8 +492,6 @@ Inverted matching, i.e. process packets that do not match the pattern.
    +----------+---------+
 
 Usage example, matching non-TCPv4 packets only:
-
-.. _table_rte_flow_item_invert_example:
 
 .. table:: Anything but TCPv4
 
@@ -546,8 +524,6 @@ underlying PMD and related to the device the flow rule is created against.
 
 - Default ``mask`` matches the specified DPDK port ID.
 
-.. _table_rte_flow_item_port_id:
-
 .. table:: PORT_ID
 
    +----------+----------+-----------------------------+
@@ -576,8 +552,6 @@ the physical device, with virtual groups in the PMD or not at all.
 
 - Default ``mask`` matches any integer value.
 
-.. _table_rte_flow_item_mark:
-
 .. table:: MARK
 
    +----------+----------+---------------------------+
@@ -597,8 +571,6 @@ Matches tag item set by other flows. Multiple tags are supported by specifying
 ``index``.
 
 - Default ``mask`` matches the specified tag value and index.
-
-.. _table_rte_flow_item_tag:
 
 .. table:: TAG
 
@@ -630,8 +602,6 @@ action sets metadata for a packet and the metadata will be reported via
 
 - Default ``mask`` matches the specified Rx metadata value.
 
-.. _table_rte_flow_item_meta:
-
 .. table:: META
 
    +----------+----------+---------------------------------------+
@@ -662,8 +632,6 @@ protocol anywhere in a packet.
 
 - Default ``mask`` stands for any number of layers.
 
-.. _table_rte_flow_item_any:
-
 .. table:: ANY
 
    +----------+----------+--------------------------------------+
@@ -679,8 +647,6 @@ protocol anywhere in a packet.
 Example for VXLAN TCP payload matching regardless of outer L3 (IPv4 or IPv6)
 and L4 (UDP) both matched by the first ANY specification, and inner L3 (IPv4
 or IPv6) matched by the second ANY specification:
-
-.. _table_rte_flow_item_any_example:
 
 .. table:: TCP in VXLAN with wildcards
 
@@ -721,8 +687,6 @@ offset for subsequent items.
 - This type does not support ranges (``last`` field).
 - Default ``mask`` matches all fields exactly.
 
-.. _table_rte_flow_item_raw:
-
 .. table:: RAW
 
    +----------+--------------+-------------------------------------------------+
@@ -749,8 +713,6 @@ offset for subsequent items.
 
 Example pattern looking for several strings at various offsets of a UDP
 payload, using combined RAW items:
-
-.. _table_rte_flow_item_raw_example:
 
 .. table:: UDP payload matching
 
@@ -1026,8 +988,6 @@ range of threshold and map to different accuracy levels that device support.
 Threshold 0 means perfect match (no fuzziness), while threshold 0xffffffff
 means fuzziest match.
 
-.. _table_rte_flow_item_fuzzy:
-
 .. table:: FUZZY
 
    +----------+---------------+--------------------------------------------------+
@@ -1041,8 +1001,6 @@ means fuzziest match.
    +----------+---------------+--------------------------------------------------+
 
 Usage example, fuzzy match a TCPv4 packets:
-
-.. _table_rte_flow_item_fuzzy_example:
 
 .. table:: Fuzzy matching
 
@@ -1421,8 +1379,6 @@ at the opposite end of the "wire" leading to the ethdev.
 - Incompatible with `Attribute: Traffic direction`_.
 - Requires `Attribute: Transfer`_.
 
-.. _table_rte_flow_item_ethdev:
-
 .. table:: ``struct rte_flow_item_ethdev``
 
    +----------+-------------+---------------------------+
@@ -1623,8 +1579,6 @@ Like matching patterns, action lists are terminated by END items.
 
 Example of action that redirects packets to queue index 10:
 
-.. _table_rte_flow_action_example:
-
 .. table:: Queue action
 
    +-----------+-------+
@@ -1634,8 +1588,6 @@ Example of action that redirects packets to queue index 10:
    +-----------+-------+
 
 Actions are performed in list order:
-
-.. _table_rte_flow_count_then_drop:
 
 .. table:: Count then drop
 
@@ -1650,8 +1602,6 @@ Actions are performed in list order:
    +-------+--------+
 
 |
-
-.. _table_rte_flow_mark_count_redirect:
 
 .. table:: Mark, count then redirect
 
@@ -1668,8 +1618,6 @@ Actions are performed in list order:
    +-------+-----------------------------+
 
 |
-
-.. _table_rte_flow_redirect_queue_5:
 
 .. table:: Redirect to queue 5
 
@@ -1688,8 +1636,6 @@ have to happen before reaching END. Only QUEUE has a visible effect.
 
 Note that such a list may be thought as ambiguous and rejected on that
 basis.
-
-.. _table_rte_flow_redirect_queue_5_3:
 
 .. table:: Redirect to queues 5 and 3
 
@@ -1724,8 +1670,6 @@ ending the list.
 - PMD support is mandatory.
 - No configurable properties.
 
-.. _table_rte_flow_action_end:
-
 .. table:: END
 
    +---------------+
@@ -1743,8 +1687,6 @@ PMDs.
 - PMD support is mandatory.
 - No configurable properties.
 
-.. _table_rte_flow_action_void:
-
 .. table:: VOID
 
    +---------------+
@@ -1761,8 +1703,6 @@ a flow rule non-terminating.
 
 - No configurable properties.
 
-.. _table_rte_flow_action_passthru:
-
 .. table:: PASSTHRU
 
    +---------------+
@@ -1773,8 +1713,6 @@ a flow rule non-terminating.
 
 Example to copy a packet to a queue and continue processing by subsequent
 flow rules:
-
-.. _table_rte_flow_action_passthru_example:
 
 .. table:: Copy to queue 8
 
@@ -1810,8 +1748,6 @@ definitions of jump actions, applications should be aware that it may be
 possible to define flow rules which trigger an undefined behavior causing
 flows to loop between groups.
 
-.. _table_rte_flow_action_jump:
-
 .. table:: JUMP
 
    +-----------+------------------------------+
@@ -1833,8 +1769,6 @@ If a matched flow is redirected to a non-existing template table
 or the table which doesn't contain a rule at the specified index,
 then the behavior is undefined and the resulting behavior is up to driver.
 
-.. _table_rte_flow_action_jump_to_table_index:
-
 .. table:: JUMP_TO_TABLE_INDEX
 
    +-----------+-------------------------------------------+
@@ -1855,8 +1789,6 @@ This value is arbitrary and application-defined. Maximum allowed value
 depends on the underlying implementation. It is returned in the
 ``hash.fdir.hi`` mbuf field.
 
-.. _table_rte_flow_action_mark:
-
 .. table:: MARK
 
    +--------+--------------------------------------+
@@ -1873,8 +1805,6 @@ sets the ``RTE_MBUF_F_RX_FDIR`` mbuf flag.
 
 - No configurable properties.
 
-.. _table_rte_flow_action_flag:
-
 .. table:: FLAG
 
    +---------------+
@@ -1887,8 +1817,6 @@ Action: ``QUEUE``
 ^^^^^^^^^^^^^^^^^
 
 Assigns packets to a given queue index.
-
-.. _table_rte_flow_action_queue:
 
 .. table:: QUEUE
 
@@ -1904,8 +1832,6 @@ Action: ``DROP``
 Drop packets.
 
 - No configurable properties.
-
-.. _table_rte_flow_action_drop:
 
 .. table:: DROP
 
@@ -1925,8 +1851,6 @@ Skip congestion management on received packets.
   an application can configure ethdev Rx queue's congestion mechanism.
   Once applied, packets congestion configuration is bypassed
   on that particular ethdev Rx queue for all packets directed to that queue.
-
-.. _table_rte_flow_action_skip_cman:
 
 .. table:: SKIP_CMAN
 
@@ -1951,8 +1875,6 @@ Counters can be retrieved and reset through ``rte_flow_query()``, see
 For ports within the same switch domain then the counter id namespace extends
 to all ports within that switch domain.
 
-.. _table_rte_flow_action_count:
-
 .. table:: COUNT
 
    +------------+---------------------------------+
@@ -1962,8 +1884,6 @@ to all ports within that switch domain.
    +------------+---------------------------------+
 
 Query structure to retrieve and reset flow rule counters:
-
-.. _table_rte_flow_query_count:
 
 .. table:: COUNT query
 
@@ -2032,8 +1952,6 @@ behavior. For predictable results, it is recommended to make the flow rule
 pattern match packet headers up to the requested encapsulation level so that
 only matching traffic goes through.
 
-.. _table_rte_flow_action_rss:
-
 .. table:: RSS
 
    +---------------+-------------------------------------------------+
@@ -2066,8 +1984,6 @@ Directs matching traffic to the physical function (PF) of the current device.
 
 - No configurable properties.
 
-.. _table_rte_flow_action_pf:
-
 .. table:: PF
 
    +---------------+
@@ -2091,8 +2007,6 @@ instead of the specified one. This parameter may not be available and is
 not guaranteed to work properly if the VF part is matched by a prior flow
 rule or if packets are not addressed to a VF in the first place.
 
-.. _table_rte_flow_action_vf:
-
 .. table:: VF
 
    +--------------+--------------------------------+
@@ -2114,8 +2028,6 @@ Directs matching traffic to a given DPDK port ID.
 
 See `Item: PORT_ID`_.
 
-.. _table_rte_flow_action_port_id:
-
 .. table:: PORT_ID
 
    +--------------+---------------------------------------+
@@ -2136,8 +2048,6 @@ rte_mtr_create() API function. The ID of the MTR object is specified as
 action parameter. More than one flow can use the same MTR object through
 the meter action. The MTR object can be further updated or queried using
 the rte_mtr* API.
-
-.. _table_rte_flow_action_meter:
 
 .. table:: METER
 
@@ -2172,8 +2082,6 @@ direction.
 
 Multiple flows can be configured to use the same security session.
 
-.. _table_rte_flow_action_security:
-
 .. table:: SECURITY
 
    +----------------------+--------------------------------------+
@@ -2189,8 +2097,6 @@ The encryption algorithm, keys and salt are part of the opaque
 ``rte_security_session``. The SA is identified according to the IP and ESP
 fields in the pattern items.
 
-.. _table_rte_flow_item_esp_inline_example:
-
 .. table:: IPsec inline crypto flow pattern items.
 
    +-------+----------+
@@ -2204,8 +2110,6 @@ fields in the pattern items.
    +-------+----------+
    | 3     | END      |
    +-------+----------+
-
-.. _table_rte_flow_action_esp_inline_example:
 
 .. table:: IPsec inline flow actions.
 
@@ -2224,8 +2128,6 @@ This is a legacy action. Consider `Action: MODIFY_FIELD`_ as alternative.
 Implements ``OFPAT_DEC_NW_TTL`` ("decrement IP TTL") as defined by the
 `OpenFlow Switch Specification`_.
 
-.. _table_rte_flow_action_of_dec_nw_ttl:
-
 .. table:: OF_DEC_NW_TTL
 
    +---------------+
@@ -2239,8 +2141,6 @@ Action: ``OF_POP_VLAN``
 
 Implements ``OFPAT_POP_VLAN`` ("pop the outer VLAN tag") as defined
 by the `OpenFlow Switch Specification`_.
-
-.. _table_rte_flow_action_of_pop_vlan:
 
 .. table:: OF_POP_VLAN
 
@@ -2256,8 +2156,6 @@ Action: ``OF_PUSH_VLAN``
 Implements ``OFPAT_PUSH_VLAN`` ("push a new VLAN tag") as defined by the
 `OpenFlow Switch Specification`_.
 
-.. _table_rte_flow_action_of_push_vlan:
-
 .. table:: OF_PUSH_VLAN
 
    +---------------+-----------+
@@ -2271,8 +2169,6 @@ Action: ``OF_SET_VLAN_VID``
 
 Implements ``OFPAT_SET_VLAN_VID`` ("set the 802.1q VLAN id") as defined by
 the `OpenFlow Switch Specification`_.
-
-.. _table_rte_flow_action_of_set_vlan_vid:
 
 .. table:: OF_SET_VLAN_VID
 
@@ -2288,8 +2184,6 @@ Action: ``OF_SET_VLAN_PCP``
 Implements ``OFPAT_SET_LAN_PCP`` ("set the 802.1q priority") as defined by
 the `OpenFlow Switch Specification`_.
 
-.. _table_rte_flow_action_of_set_vlan_pcp:
-
 .. table:: OF_SET_VLAN_PCP
 
    +--------------+---------------+
@@ -2304,8 +2198,6 @@ Action: ``OF_POP_MPLS``
 Implements ``OFPAT_POP_MPLS`` ("pop the outer MPLS tag") as defined by the
 `OpenFlow Switch Specification`_.
 
-.. _table_rte_flow_action_of_pop_mpls:
-
 .. table:: OF_POP_MPLS
 
    +---------------+-----------+
@@ -2319,8 +2211,6 @@ Action: ``OF_PUSH_MPLS``
 
 Implements ``OFPAT_PUSH_MPLS`` ("push a new MPLS tag") as defined by the
 `OpenFlow Switch Specification`_.
-
-.. _table_rte_flow_action_of_push_mpls:
 
 .. table:: OF_PUSH_MPLS
 
@@ -2344,8 +2234,6 @@ Area Network (VXLAN): A Framework for Overlaying Virtualized Layer 2 Networks
 over Layer 3 Networks). The pattern must be terminated with the
 RTE_FLOW_ITEM_TYPE_END item type.
 
-.. _table_rte_flow_action_vxlan_encap:
-
 .. table:: VXLAN_ENCAP
 
    +----------------+-------------------------------------+
@@ -2353,8 +2241,6 @@ RTE_FLOW_ITEM_TYPE_END item type.
    +================+=====================================+
    | ``definition`` | Tunnel end-point overlay definition |
    +----------------+-------------------------------------+
-
-.. _table_rte_flow_action_vxlan_encap_example:
 
 .. table:: IPv4 VxLAN flow pattern example.
 
@@ -2398,8 +2284,6 @@ NVGRE network overlay which conforms with RFC 7637 (NVGRE: Network
 Virtualization Using Generic Routing Encapsulation). The pattern must be
 terminated with the RTE_FLOW_ITEM_TYPE_END item type.
 
-.. _table_rte_flow_action_nvgre_encap:
-
 .. table:: NVGRE_ENCAP
 
    +----------------+-------------------------------------+
@@ -2407,8 +2291,6 @@ terminated with the RTE_FLOW_ITEM_TYPE_END item type.
    +================+=====================================+
    | ``definition`` | NVGRE end-point overlay definition  |
    +----------------+-------------------------------------+
-
-.. _table_rte_flow_action_nvgre_encap_example:
 
 .. table:: IPv4 NVGRE flow pattern example.
 
@@ -2449,8 +2331,6 @@ decap layer 3 tunnel (for example MPLSoGRE) or complete tunnel definition
 starting from layer 2 and moving to the tunnel item itself. When applied to
 the original packet the resulting packet must be a valid packet.
 
-.. _table_rte_flow_action_raw_encap:
-
 .. table:: RAW_ENCAP
 
    +----------------+----------------------------------------+
@@ -2476,8 +2356,6 @@ tunnel definition starting from layer 2 and moving to the tunnel item itself.
 When applied to the original packet the resulting packet must be a
 valid packet.
 
-.. _table_rte_flow_action_raw_decap:
-
 .. table:: RAW_DECAP
 
    +----------------+----------------------------------------+
@@ -2497,8 +2375,6 @@ Set a new IPv4 source address in the outermost IPv4 header.
 It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV4 flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
-.. _table_rte_flow_action_set_ipv4_src:
-
 .. table:: SET_IPV4_SRC
 
    +-----------------------------------------+
@@ -2515,8 +2391,6 @@ Set a new IPv4 destination address in the outermost IPv4 header.
 
 It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV4 flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
-
-.. _table_rte_flow_action_set_ipv4_dst:
 
 .. table:: SET_IPV4_DST
 
@@ -2535,8 +2409,6 @@ Set a new IPv6 source address in the outermost IPv6 header.
 It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV6 flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
-.. _table_rte_flow_action_set_ipv6_src:
-
 .. table:: SET_IPV6_SRC
 
    +---------------+-------------------------+
@@ -2553,8 +2425,6 @@ Set a new IPv6 destination address in the outermost IPv6 header.
 
 It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV6 flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
-
-.. _table_rte_flow_action_set_ipv6_dst:
 
 .. table:: SET_IPV6_DST
 
@@ -2595,8 +2465,6 @@ Set a new source port number in the outermost TCP/UDP header.
 It must be used with a valid RTE_FLOW_ITEM_TYPE_TCP or RTE_FLOW_ITEM_TYPE_UDP
 flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
-.. _table_rte_flow_action_set_tp_src:
-
 .. table:: SET_TP_SRC
 
    +----------+-------------------------+
@@ -2613,8 +2481,6 @@ Set a new destination port number in the outermost TCP/UDP header.
 
 It must be used with a valid RTE_FLOW_ITEM_TYPE_TCP or RTE_FLOW_ITEM_TYPE_UDP
 flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
-
-.. _table_rte_flow_action_set_tp_dst:
 
 .. table:: SET_TP_DST
 
@@ -2633,8 +2499,6 @@ header.
 It must be used with a valid RTE_FLOW_ITEM_TYPE_ETH flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
-.. _table_rte_flow_action_mac_swap:
-
 .. table:: MAC_SWAP
 
    +---------------+
@@ -2651,8 +2515,6 @@ Decrease TTL value.
 
 If there is no valid RTE_FLOW_ITEM_TYPE_IPV4 or RTE_FLOW_ITEM_TYPE_IPV6
 in pattern, Some PMDs will reject rule because behavior will be undefined.
-
-.. _table_rte_flow_action_dec_ttl:
 
 .. table:: DEC_TTL
 
@@ -2671,8 +2533,6 @@ Assigns a new TTL value.
 If there is no valid RTE_FLOW_ITEM_TYPE_IPV4 or RTE_FLOW_ITEM_TYPE_IPV6
 in pattern, Some PMDs will reject rule because behavior will be undefined.
 
-.. _table_rte_flow_action_set_ttl:
-
 .. table:: SET_TTL
 
    +---------------+--------------------+
@@ -2690,8 +2550,6 @@ Set source MAC address.
 It must be used with a valid RTE_FLOW_ITEM_TYPE_ETH flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
-.. _table_rte_flow_action_set_mac_src:
-
 .. table:: SET_MAC_SRC
 
    +--------------+---------------+
@@ -2708,8 +2566,6 @@ Set destination MAC address.
 
 It must be used with a valid RTE_FLOW_ITEM_TYPE_ETH flow pattern item.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
-
-.. _table_rte_flow_action_set_mac_dst:
 
 .. table:: SET_MAC_DST
 
@@ -2764,8 +2620,6 @@ Set Tag.
 Tag is a transient data used during flow matching. This is not delivered to
 application. Multiple tags are supported by specifying index.
 
-.. _table_rte_flow_action_set_tag:
-
 .. table:: SET_TAG
 
    +-----------+----------------------------+
@@ -2801,8 +2655,6 @@ the other path depending on HW capability.
 In hairpin case with Tx explicit flow mode, metadata could (not mandatory) be
 used to connect the Rx and Tx flows if it can be propagated from Rx to Tx path.
 
-.. _table_rte_flow_action_set_meta:
-
 .. table:: SET_META
 
    +----------+----------------------------+
@@ -2824,8 +2676,6 @@ Modify DSCP in IPv4 header.
 It must be used with RTE_FLOW_ITEM_TYPE_IPV4 in pattern.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
 
-.. _table_rte_flow_action_set_ipv4_dscp:
-
 .. table:: SET_IPV4_DSCP
 
    +-----------+---------------------------------+
@@ -2844,8 +2694,6 @@ Modify DSCP in IPv6 header.
 
 It must be used with RTE_FLOW_ITEM_TYPE_IPV6 in pattern.
 Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
-
-.. _table_rte_flow_action_set_ipv6_dscp:
 
 .. table:: SET_IPV6_DSCP
 
@@ -2872,8 +2720,6 @@ Set ageing timeout configuration to a flow.
 Event RTE_ETH_EVENT_FLOW_AGED will be reported if
 timeout passed without any matching on the flow.
 
-.. _table_rte_flow_action_age:
-
 .. table:: AGE
 
    +--------------+---------------------------------+
@@ -2889,8 +2735,6 @@ timeout passed without any matching on the flow.
 Query structure to retrieve ageing status information of a
 shared AGE action, or a flow rule using the AGE action:
 
-.. _table_rte_flow_query_age:
-
 .. table:: AGE query
 
    +------------------------------+-----+----------------------------------------+
@@ -2905,8 +2749,6 @@ shared AGE action, or a flow rule using the AGE action:
 
 Update structure to modify the parameters of an indirect AGE action.
 The update structure is used by ``rte_flow_action_handle_update()`` function.
-
-.. _table_rte_flow_update_age:
 
 .. table:: AGE update
 
@@ -2934,8 +2776,6 @@ equals is '1/ratio'. All the packets continue to the target destination.
 When the ``ratio`` is set to 1 then the packets will be 100% mirrored.
 ``actions`` represent the different set of actions for the sampled or mirrored
 packets, and must have a fate action.
-
-.. _table_rte_flow_action_sample:
 
 .. table:: SAMPLE
 
@@ -2994,8 +2834,6 @@ If it succeeds, all indirect actions of the same kind are kept
 when the device is stopped.
 Indirect actions of a kept kind that are created when the device is stopped,
 including the ones created for the test, will be kept after the device start.
-
-.. _table_rte_flow_action_handle:
 
 .. table:: INDIRECT
 
@@ -3083,8 +2921,6 @@ Otherwise it points to an array of n flow mutable configuration pointers.
 
 - Cflow[i] updates handle's Ai flow mutable configuration if
   the Ci was not masked in action template.
-
-.. _table_rte_flow_action_indirect_list:
 
 .. table:: INDIRECT_LIST
 
@@ -3212,8 +3048,6 @@ For example, to replace the third byte of second DW in Geneve option data
 with value ``0x85``, the application should specify destination width as ``8``,
 destination offset as ``48``, and provide immediate value ``0xXXXX85XX``.
 
-.. _table_rte_flow_action_modify_field:
-
 .. table:: MODIFY_FIELD
 
    +---------------+-------------------------+
@@ -3227,8 +3061,6 @@ destination offset as ``48``, and provide immediate value ``0xXXXX85XX``.
    +---------------+-------------------------+
    | ``width``     | number of bits to use   |
    +---------------+-------------------------+
-
-.. _table_rte_flow_field_data:
 
 .. table:: destination/source field definition
 
@@ -3290,8 +3122,6 @@ The ``struct rte_flow_modify_conntrack`` should be used for an updating.
 The current conntrack context information could be queried via the
 ``rte_flow_action_handle_query()`` interface.
 
-.. _table_rte_flow_action_conntrack:
-
 .. table:: CONNTRACK
 
    +--------------------------+-------------------------------------------------------------+
@@ -3332,8 +3162,6 @@ The current conntrack context information could be queried via the
    | ``last_end``             | sum of ack number and length of the last passed packet      |
    +--------------------------+-------------------------------------------------------------+
 
-.. _table_rte_flow_tcp_dir_param:
-
 .. table:: configuration parameters for each direction
 
    +---------------------+---------------------------------------------------------+
@@ -3355,8 +3183,6 @@ The current conntrack context information could be queried via the
    +---------------------+---------------------------------------------------------+
    | ``max_ack``         | max{ack} + seen in sent packets                         |
    +---------------------+---------------------------------------------------------+
-
-.. _table_rte_flow_modify_conntrack:
 
 .. table:: update a conntrack context
 
@@ -3382,8 +3208,6 @@ Meter color action is set to a color to reflect the meter color result.
 Set the meter color in the mbuf to the selected color.
 The meter color action output color is the output color of the packet,
 which is set in the packet meta-data (i.e. struct ``rte_mbuf::sched::color``)
-
-.. _table_rte_flow_action_meter_color:
 
 .. table:: METER_COLOR
 
@@ -3434,8 +3258,6 @@ at the opposite end of the "wire" leading to the ethdev.
 
 
 - Requires `Attribute: Transfer`_.
-
-.. _table_rte_flow_action_ethdev:
 
 .. table:: ``struct rte_flow_action_ethdev``
 
@@ -3507,8 +3329,6 @@ Pointers to these objects are used as action parameters
 and need to be retrieved using the rte_mtr_profile_get() API
 and rte_mtr_policy_get() API respectively.
 
-.. _table_rte_flow_action_meter_mark:
-
 .. table:: METER_MARK
 
    +------------------+----------------------+
@@ -3530,8 +3350,6 @@ Otherwise, the packet quota state is set to ``RTE_FLOW_QUOTA_STATE_BLOCK``.
 
 The ``quota`` value is reduced according to ``mode`` setting.
 
-.. _table_rte_flow_action_quota:
-
 .. table:: QUOTA
 
    +------------------+------------------------+
@@ -3541,8 +3359,6 @@ The ``quota`` value is reduced according to ``mode`` setting.
    +------------------+------------------------+
    | ``quota``        | Quota value            |
    +------------------+------------------------+
-
-.. _rte_flow_quota_mode:
 
 .. table:: Quota update modes
 
@@ -4728,8 +4544,6 @@ specific types.
 
 Consider the following pattern:
 
-.. _table_rte_flow_unsupported_any:
-
 .. table:: Pattern with ANY as L3
 
    +-------+-----------------------+
@@ -4747,8 +4561,6 @@ Consider the following pattern:
 Knowing that TCP does not make sense with something other than IPv4 and IPv6
 as L3, such a pattern may be translated to two flow rules instead:
 
-.. _table_rte_flow_unsupported_any_ipv4:
-
 .. table:: ANY replaced with IPV4
 
    +-------+--------------------+
@@ -4764,8 +4576,6 @@ as L3, such a pattern may be translated to two flow rules instead:
    +-------+--------------------+
 
 |
-
-.. _table_rte_flow_unsupported_any_ipv6:
 
 .. table:: ANY replaced with IPV6
 

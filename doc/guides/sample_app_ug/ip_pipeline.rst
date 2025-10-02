@@ -117,8 +117,6 @@ During this stage, EAL layer is initialised and application specific arguments a
 (i.e. linked lists) for application objects are initialized. In case of any initialization error, an error message
 is displayed and the application is terminated.
 
-.. _ip_pipeline_runtime:
-
 Run-time
 ~~~~~~~~
 
@@ -135,8 +133,6 @@ executes two tasks in time-sharing mode:
 
 Examples
 --------
-
-.. _table_examples:
 
 .. tabularcolumns:: |p{3cm}|p{5cm}|p{4cm}|p{4cm}|
 

@@ -145,8 +145,6 @@ In this command:
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
 
-.. _l3_fwd_graph_explanation:
-
 Explanation
 -----------
 

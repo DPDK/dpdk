@@ -78,8 +78,6 @@ To get the FlexRAN FEC SDK user manual, extract this `doxygen
 
 The following table maps DPDK versions with past FlexRAN SDK releases:
 
-.. _table_flexran_releases:
-
 .. table:: DPDK and FlexRAN FEC SDK releases compliance
 
    =====================  ============================

@@ -79,8 +79,6 @@ The traffic meter parameters are configured in the application source code with 
 Assuming the input traffic is generated at line rate and all packets are 64 bytes Ethernet frames (IPv4 packet size of 46 bytes)
 and green, the expected output traffic should be marked as shown in the following table:
 
-.. _table_qos_metering_1:
-
 .. table:: Output Traffic Marking
 
    +-------------+------------------+-------------------+----------------+

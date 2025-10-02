@@ -110,8 +110,6 @@ The following prerequisites apply:
 *   Before starting a VM, a VMXNET3 interface to a VM through VMware vSphere Client must be assigned.
     This is shown in the figure below.
 
-.. _figure_vmxnet3_int:
-
 .. figure:: img/vmxnet3_int.*
 
    Assigning a VMXNET3 interface to a VM using VMware vSphere Client
@@ -134,8 +132,6 @@ VMXNET3 with a Native NIC Connected to a vSwitch
 ------------------------------------------------
 
 This section describes an example setup for Phy-vSwitch-VM-Phy communication.
-
-.. _figure_vswitch_vm:
 
 .. figure:: img/vswitch_vm.*
 
@@ -161,8 +157,6 @@ VMXNET3 Chaining VMs Connected to a vSwitch
 -------------------------------------------
 
 The following figure shows an example VM-to-VM communication over a Phy-VM-vSwitch-VM-Phy communication channel.
-
-.. _figure_vm_vm_comms:
 
 .. figure:: img/vm_vm_comms.*
 

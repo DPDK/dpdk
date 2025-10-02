@@ -45,8 +45,6 @@ In this mode, events dequeued from the adapter will be treated as new events.
 The application needs to specify event information (response information)
 which is needed to enqueue an event after the crypto operation is completed.
 
-.. _figure_event_crypto_adapter_op_new:
-
 .. figure:: ../img/event_crypto_adapter_op_new.*
 
    Working model of ``RTE_EVENT_CRYPTO_ADAPTER_OP_NEW`` mode
@@ -71,8 +69,6 @@ needs to specify the cryptodev ID and queue pair ID (request information) needed
 to enqueue a crypto operation in addition to the event information (response
 information) needed to enqueue an event after the crypto operation has
 completed.
-
-.. _figure_event_crypto_adapter_op_forward:
 
 .. figure:: ../img/event_crypto_adapter_op_forward.*
 
