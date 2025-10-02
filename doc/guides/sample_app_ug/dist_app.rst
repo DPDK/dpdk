@@ -63,7 +63,7 @@ Explanation
 The distributor application consists of four types of threads: a receive
 thread (``lcore_rx()``), a distributor thread (``lcore_dist()``), a set of
 worker threads (``lcore_worker()``), and a transmit thread(``lcore_tx()``).
-How these threads work together is shown in :numref:`figure_dist_app` below.
+How these threads work together is shown in :numref:`dist_app_figure_overview` below.
 The ``main()`` function launches  threads of these four types.  Each thread
 has a while loop which will be doing processing and which is terminated
 only upon SIGINT or ctrl+C.
@@ -95,7 +95,7 @@ Users who wish to terminate the running of the application have to press ctrl+C
 in the application will terminate all running threads gracefully and print
 final statistics to the user.
 
-.. _figure_dist_app:
+.. _dist_app_figure_overview:
 
 .. figure:: img/dist_app.*
 

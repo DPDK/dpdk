@@ -410,7 +410,7 @@ At startup ACL library determines the highest available classify method for the 
 .. note::
 
      Runtime algorithm selection obeys EAL max SIMD bitwidth parameter.
-     For more details about expected behaviour please see :ref:`max_simd_bitwidth`
+     For more details about expected behaviour please see :ref:`eal_max_simd_bitwidth`
 
 Application Programming Interface (API) Usage
 ---------------------------------------------

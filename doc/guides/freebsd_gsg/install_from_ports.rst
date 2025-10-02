@@ -26,8 +26,8 @@ DPDK can be installed on FreeBSD using the command::
 After the installation of the DPDK package, instructions will be printed on
 how to install the kernel modules required to use the DPDK. A more
 complete version of these instructions can be found in the sections
-:ref:`loading_contigmem` and :ref:`loading_nic_uio`. Normally, lines like
-those below would be added to the file ``/boot/loader.conf``.
+:ref:`freebsd_gsg_loading_contigmem` and :ref:`freebsd_gsg_loading_nic_uio`.
+Normally, lines like those below would be added to the file ``/boot/loader.conf``.
 
 .. code-block:: shell
 
@@ -115,9 +115,9 @@ via the contigmem module, and 4 NIC ports bound to the nic_uio module::
 
    To run a DPDK process as a non-root user, adjust the permissions on
    the ``/dev/contigmem`` and ``/dev/uio device`` nodes as described in section
-   :ref:`running_non_root`
+   :ref:`freebsd_gsg_running_non_root`
 
 .. note::
 
    For an explanation of the command-line parameters that can be passed to an
-   DPDK application, see section :ref:`running_sample_app`.
+   DPDK application, see section :ref:`freebsd_gsg_running_sample_app`.

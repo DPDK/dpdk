@@ -29,19 +29,21 @@ The MAC addresses are affected as follows:
 
 *   The destination MAC address is replaced by ``02:00:00:00:00:TX_PORT_ID``
 
-This application can be used to benchmark performance using a traffic-generator, as shown in the :numref:`figure_l2_fwd_benchmark_setup_jobstats`.
+This application can be used to benchmark performance using a traffic-generator,
+as shown in the :numref:`l2_fwd_job_stats_figure_benchmark_setup`.
 
-The application can also be used in a virtualized environment as shown in :numref:`figure_l2_fwd_virtenv_benchmark_setup_jobstats`.
+The application can also be used in a virtualized environment
+as shown in :numref:`l2_fwd_job_stats_figure_virtenv_benchmark_setup`.
 
 The L2 Forwarding application can also be used as a starting point for developing a new application based on the DPDK.
 
-.. _figure_l2_fwd_benchmark_setup_jobstats:
+.. _l2_fwd_job_stats_figure_benchmark_setup:
 
 .. figure:: img/l2_fwd_benchmark_setup.*
 
    Performance Benchmark Setup (Basic Environment)
 
-.. _figure_l2_fwd_virtenv_benchmark_setup_jobstats:
+.. _l2_fwd_job_stats_figure_virtenv_benchmark_setup:
 
 .. figure:: img/l2_fwd_virtenv_benchmark_setup.*
 

@@ -64,7 +64,7 @@ For aarch32, install ``pkg-config-arm-linux-gnueabihf``::
 GNU toolchain
 -------------
 
-.. _obtain_GNU_toolchain:
+.. _linux_gsg_obtain_gnu_toolchain:
 
 Get the cross toolchain
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,7 +94,7 @@ For aarch32::
    For the host requirements and other info, refer to the release note section:
    https://releases.linaro.org/components/toolchain/binaries/
 
-.. _augment_the_gnu_toolchain_with_numa_support:
+.. _linux_gsg_augment_the_gnu_toolchain_with_numa_support:
 
 Augment the GNU toolchain with NUMA support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,7 +198,7 @@ https://developer.arm.com/tools-and-software/open-source-software/developer-tool
 
 The LLVM/Clang toolchain does not implement the standard c library.
 The GNU toolchain ships an implementation we can use.
-Refer to obtain_GNU_toolchain_ to get the GNU toolchain.
+Refer to linux_gsg_obtain_gnu_toolchain_ to get the GNU toolchain.
 
 Unzip and add into the PATH
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -214,7 +214,7 @@ Cross Compiling DPDK with LLVM/Clang toolchain using Meson
 .. note::
 
    To use the NUMA library follow the same steps as for
-   augment_the_gnu_toolchain_with_numa_support_.
+   linux_gsg_augment_the_gnu_toolchain_with_numa_support_.
 
 The paths to GNU stdlib must be specified in a cross file.
 Augmenting the default cross-file's ``c_args`` and ``c_link_args``

@@ -545,7 +545,7 @@ This is a performance test case that aims at testing the following:
 #. Measure the number of events can be processed in a second.
 #. Measure the latency to forward an event.
 
-.. _table_eventdev_perf_queue_test:
+.. _testeventdev_table_perf_queue_test:
 
 .. table:: Perf queue test eventdev configuration.
 
@@ -572,7 +572,7 @@ This is a performance test case that aims at testing the following:
 
 The perf queue test configures the eventdev with Q queues and P ports, where
 Q and P is a function of the number of workers, the number of producers and
-number of stages as mentioned in :numref:`table_eventdev_perf_queue_test`.
+number of stages as mentioned in :numref:`testeventdev_table_perf_queue_test`.
 
 The user can choose the number of workers, the number of producers and number of
 stages through the ``--wlcores``, ``--plcores`` and the ``--stlist`` application
@@ -681,7 +681,7 @@ This is a performance test case that aims at testing the following with
 #. Measure the number of events can be processed in a second.
 #. Measure the latency to forward an event.
 
-.. _table_eventdev_perf_atq_test:
+.. _testeventdev_table_perf_atq_test:
 
 .. table:: Perf all types queue test eventdev configuration.
 
@@ -709,7 +709,7 @@ This is a performance test case that aims at testing the following with
 
 The ``all types queues(atq)`` perf test configures the eventdev with Q queues
 and P ports, where Q and P is a function of the number of workers and number of
-producers as mentioned in :numref:`table_eventdev_perf_atq_test`.
+producers as mentioned in :numref:`testeventdev_table_perf_atq_test`.
 
 
 The atq queue test functions as same as ``perf_queue`` test. The difference
@@ -784,7 +784,7 @@ This is a pipeline test case that aims at testing the following:
 #. Measure the end-to-end performance of an event dev with a ethernet dev.
 #. Maintain packet ordering from Rx to Tx.
 
-.. _table_eventdev_pipeline_queue_test:
+.. _testeventdev_table_pipeline_queue_test:
 
 .. table:: Pipeline queue test eventdev configuration.
 
@@ -821,7 +821,7 @@ This is a pipeline test case that aims at testing the following:
 
 The pipeline queue test configures the eventdev with Q queues and P ports,
 where Q and P is a function of the number of workers, the number of producers
-and number of stages as mentioned in :numref:`table_eventdev_pipeline_queue_test`.
+and number of stages as mentioned in :numref:`testeventdev_table_pipeline_queue_test`.
 
 The user can choose the number of workers and number of stages through the
 ``--wlcores`` and the ``--stlist`` application command line arguments
@@ -906,7 +906,7 @@ This is a pipeline test case that aims at testing the following with
 #. Measure the end-to-end performance of an event dev with a ethernet dev.
 #. Maintain packet ordering from Rx to Tx.
 
-.. _table_eventdev_pipeline_atq_test:
+.. _testeventdev_table_pipeline_atq_test:
 
 .. table:: Pipeline atq test eventdev configuration.
 
@@ -946,7 +946,7 @@ This is a pipeline test case that aims at testing the following with
 
 The pipeline atq test configures the eventdev with Q queues and P ports,
 where Q and P is a function of the number of workers, the number of producers
-and number of stages as mentioned in :numref:`table_eventdev_pipeline_atq_test`.
+and number of stages as mentioned in :numref:`testeventdev_table_pipeline_atq_test`.
 
 The atq queue test functions as same as ``pipeline_queue`` test. The difference
 is, It uses, ``all type queue scheme`` instead of separate queues for each

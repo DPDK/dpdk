@@ -60,7 +60,7 @@ store it in a shell variable:
 	DEV_UUID=$(basename $(readlink /sys/class/net/eth1/device))
 
 
-.. _`UUID`: https://en.wikipedia.org/wiki/Universally_unique_identifier
+.. _UUID: https://en.wikipedia.org/wiki/Universally_unique_identifier
 
 There are several possible ways to assign the UIO device driver for a device.
 The easiest way (but only on 4.18 or later)
@@ -71,7 +71,7 @@ the normal kernel device.
 
 	driverctl -b vmbus set-override $DEV_UUID uio_hv_generic
 
-.. _`driverctl Device Driver control utility`: https://gitlab.com/driverctl/driverctl
+.. _driverctl Device Driver control utility: https://gitlab.com/driverctl/driverctl
 
 Any settings done with driverctl are by default persistent and will be reapplied
 on reboot.

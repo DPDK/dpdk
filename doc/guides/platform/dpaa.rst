@@ -67,7 +67,7 @@ compatible board:
    This tool can be obtained from `NXP (Freescale) Public Git Repository <https://source.codeaurora.org/external/qoriq/qoriq-components/fmc>`_.
 
    This tool needs configuration files which are available in the
-   :ref:`DPDK Extra Scripts <extra_scripts>`, described below for DPDK usages.
+   :ref:`DPDK Extra Scripts <dpaa_extra_scripts>`, described below for DPDK usages.
 
    Note that DPAA PMD can also be executed using images provided
    as part of SDK from NXP. The SDK includes all the above prerequisites
@@ -96,7 +96,7 @@ separately:
   SDK and related information can be obtained from:  `NXP QorIQ SDK  <http://www.nxp.com/products/software-and-tools/run-time-software/linux-sdk/linux-sdk-for-qoriq-processors:SDKLINUX>`_.
 
 
-.. _extra_scripts:
+.. _dpaa_extra_scripts:
 
 - **DPDK Extra Scripts**
 

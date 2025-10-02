@@ -23,7 +23,8 @@ All traffic is read from a single incoming port (port 0) and output on port 1, w
 With Intel® 82599 NIC, for example, the traffic is split into 128 queues on input, where each thread of the application reads from
 multiple queues. When run with 8 threads, that is, with the -c FF option, each thread receives and forwards packets from 16 queues.
 
-As supplied, the sample application configures the VMDQ feature to have 32 pools with 4 queues each as indicated in :numref:`figure_vmdq_dcb_example`.
+As supplied, the sample application configures the VMDQ feature
+to have 32 pools with 4 queues each as indicated in :numref:`vmdq_dcb_figure_example`.
 The Intel® 82599 10 Gigabit Ethernet Controller NIC also supports the splitting of traffic into 16 pools of 8 queues. While the
 Intel® X710 or XL710 Ethernet Controller NICs support many configurations of VMDQ pools of 4 or 8 queues each. For simplicity, only 16
 or 32 pools is supported in this sample. And queues numbers for each VMDQ pool can be changed by setting RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM
@@ -36,7 +37,7 @@ The nb-pools, nb-tcs and enable-rss parameters can be passed on the command line
 
 where, NP can be 16 or 32, TC can be 4 or 8, rss is disabled by default.
 
-.. _figure_vmdq_dcb_example:
+.. _vmdq_dcb_figure_example:
 
 .. figure:: img/vmdq_dcb_example.*
 

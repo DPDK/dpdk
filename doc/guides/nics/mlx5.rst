@@ -893,7 +893,7 @@ Extended statistics can be queried using ``rte_eth_xstats_get()``.
 The extended statistics expose a wider set of counters counted by the device.
 The extended port statistics counts the number of packets
 received or sent successfully by the port.
-As NVIDIA NICs are using a :ref:`bifurcated Linux driver <bifurcated_driver>`,
+As NVIDIA NICs are using a :ref:`bifurcated Linux driver <linux_gsg_bifurcated_driver>`,
 those counters counts also packet received or sent by the Linux kernel.
 
 Finally per-flow statistics can by queried using ``rte_flow_query()``
@@ -1499,7 +1499,7 @@ Limitations
 Bifurcated Driver
 ~~~~~~~~~~~~~~~~~
 
-The same device is managed by both :ref:`kernel <bifurcated_driver>` and DPDK drivers.
+The same device is managed by both :ref:`kernel <linux_gsg_bifurcated_driver>` and DPDK drivers.
 
 After enabling the :ref:`isolated mode <flow_isolated_mode>`,
 non-matched packets are routed directly from the hardware to the kernel.
@@ -4786,14 +4786,14 @@ Port Attach with Socket Path
 It is possible to allocate a port with ``libibverbs`` from external application.
 For importing the external port with extra device arguments,
 there is a specific testpmd command
-similar to :ref:`port attach command <port_attach>`::
+similar to :ref:`port attach command <testpmd_port_attach>`::
 
    testpmd> mlx5 port attach (identifier) socket=(path)
 
 where:
 
 * ``identifier``: device identifier with optional parameters
-  as same as :ref:`port attach command <port_attach>`.
+  as same as :ref:`port attach command <testpmd_port_attach>`.
 * ``path``: path to IPC server socket created by the external application.
 
 This command performs:

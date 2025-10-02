@@ -55,4 +55,4 @@ Installation
 
 The QAT compression PMD is built by default with a standard DPDK build.
 
-It depends on a QAT kernel driver, see :ref:`building_qat`.
+It depends on a QAT kernel driver, see :ref:`qat_building`.

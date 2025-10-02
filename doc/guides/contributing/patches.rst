@@ -168,7 +168,7 @@ Make your planned changes in the cloned ``dpdk`` repo. Here are some guidelines 
 * When introducing a new device API, at least one driver should implement it.
 
 * Important changes will require an addition to the release notes in ``doc/guides/rel_notes/``.
-  See the :ref:`release notes guidelines <contrib_doc_guidelines_release_notes>`.
+  See the :ref:`release notes guidelines <style_release_notes_guidelines>`.
 
 * Test the compilation works with different targets, compilers and options, see :ref:`contrib_check_compilation`.
 
@@ -501,7 +501,7 @@ the ``dts-check-format.sh`` script in the ``devtools`` directory of the DPDK rep
 To run the script, extra :ref:`Python dependencies <dts_deps>` are needed.
 
 
-.. _ai_assisted_review:
+.. _contrib_ai_assisted_review:
 
 AI-Assisted Patch Review
 ------------------------
@@ -575,7 +575,7 @@ in a single subfolder called "__builds" created in the current directory.
 Setting ``DPDK_BUILD_TEST_DIR`` to an absolute directory path e.g. ``/tmp`` is also supported.
 
 
-.. _integrated_abi_check:
+.. _contrib_integrated_abi_check:
 
 Checking ABI compatibility
 --------------------------

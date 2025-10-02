@@ -241,7 +241,7 @@ Multiple page sizes can be specified by repeating the option::
     can later be mapped into that preallocated VA space (if dynamic memory mode
     is enabled), and can optionally be mapped into it at startup.
 
-.. _hugepage_mapping:
+.. _eal_hugepage_mapping:
 
 Hugepage Mapping
 ^^^^^^^^^^^^^^^^
@@ -277,7 +277,7 @@ that share a hugetlbfs mount point.
 Each backing file by default corresponds to one hugepage,
 it is opened and locked for the entire time the hugepage is used.
 This may exhaust the number of open files limit (``NOFILE``).
-See :ref:`segment-file-descriptors` section
+See :ref:`eal_segment_file_descriptors` section
 on how the number of open backing file descriptors can be reduced.
 
 In dynamic memory mode, EAL removes a backing hugepage file
@@ -291,7 +291,7 @@ if ``--huge-unlink`` is given to avoid polluting hugetlbfs.
 However, since it disables multi-process anyway,
 using anonymous mapping (``--in-memory``) is recommended instead.
 
-:ref:`EAL memory allocator <malloc>` relies on hugepages being zero-filled.
+:ref:`EAL memory allocator <eal_malloc>` relies on hugepages being zero-filled.
 Hugepages are cleared by the kernel when a file in hugetlbfs or its part
 is mapped for the first time system-wide
 to prevent data leaks from previous users of the same hugepage.
@@ -320,10 +320,10 @@ DPDK memory manager can provide file descriptors for memory segments,
 which are required for VirtIO with vhost-user backend.
 This can exhaust the number of open files limit (``NOFILE``)
 despite not creating any visible files.
-See :ref:`segment-file-descriptors` section
+See :ref:`eal_segment_file_descriptors` section
 on how the number of open file descriptors used by EAL can be reduced.
 
-.. _segment-file-descriptors:
+.. _eal_segment_file_descriptors:
 
 Segment File Descriptors
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -663,7 +663,7 @@ the desired addressing mode when virtual devices that are not directly attached 
 To facilitate forcing the IOVA mode to a specific value the EAL command line option ``--iova-mode`` can
 be used to select either physical addressing('pa') or virtual addressing('va').
 
-.. _max_simd_bitwidth:
+.. _eal_max_simd_bitwidth:
 
 
 Max SIMD bitwidth
@@ -782,7 +782,7 @@ There are two kinds of non-EAL pthreads:
 
 For non registered non-EAL pthread (with a LCORE_ID_ANY *_lcore_id*), some libraries will use an alternative unique ID (e.g. TID), some will not be impacted at all, and some will work but with limitations (e.g. timer and mempool libraries).
 
-All these impacts are mentioned in :ref:`known_issue_label` section.
+All these impacts are mentioned in :ref:`eal_known_issue_label` section.
 
 Public Thread API
 ~~~~~~~~~~~~~~~~~
@@ -819,7 +819,7 @@ controlled with tools like taskset (Linux) or cpuset (FreeBSD),
 - with affinity restricted to 2-3, the Control Threads will end up on
   CPU 2 (main lcore, which is the default when no CPU is available).
 
-.. _known_issue_label:
+.. _eal_known_issue_label:
 
 Known Issues
 ~~~~~~~~~~~~
@@ -977,7 +977,7 @@ We expect only 50% of CPU spend on packet IO.
     echo 100000 > pkt_io/cpu.cfs_period_us
     echo  50000 > pkt_io/cpu.cfs_quota_us
 
-.. _malloc:
+.. _eal_malloc:
 
 Malloc
 ------
@@ -1061,7 +1061,7 @@ The key fields of the heap structure and their function are described below
    Example of a malloc heap and malloc elements within the malloc library
 
 
-.. _malloc_elem:
+.. _eal_malloc_elem:
 
 Structure: malloc_elem
 """"""""""""""""""""""
@@ -1142,7 +1142,7 @@ Memory Allocation
 ^^^^^^^^^^^^^^^^^
 
 On EAL initialization, all preallocated memory segments are setup as part of the
-malloc heap. This setup involves placing an :ref:`element header<malloc_elem>`
+malloc heap. This setup involves placing an :ref:`element header <eal_malloc_elem>`
 with ``FREE`` at the start of each virtually contiguous segment of memory.
 The ``FREE`` element is then added to the ``free_list`` for the malloc heap.
 

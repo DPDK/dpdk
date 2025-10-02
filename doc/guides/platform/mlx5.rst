@@ -433,7 +433,7 @@ Run as Non-Root
 ^^^^^^^^^^^^^^^
 
 Hugepage and resource limit setup are documented
-in the :ref:`common Linux guide <Running_Without_Root_Privileges>`.
+in the :ref:`common Linux guide <linux_gsg_running_without_root_privileges>`.
 This PMD can operate without access to physical addresses,
 therefore it does not require ``SYS_ADMIN`` to access ``/proc/self/pagemaps``.
 Note that this requirement may still come from other drivers.

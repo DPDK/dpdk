@@ -47,9 +47,9 @@ When running an application, the EAL command line options provide the ability to
 
 
 Examples of alignment for different DIMM architectures are shown in
-:numref:`figure_memory-management` and :numref:`figure_memory-management2`.
+:numref:`mempool_figure_memory_management` and :numref:`mempool_figure_memory_management2`.
 
-.. _figure_memory-management:
+.. _mempool_figure_memory_management:
 
 .. figure:: img/memory-management.*
 
@@ -61,7 +61,7 @@ In this case, the assumption is that a packet is 16 blocks of 64 bytes, which is
 The Intel® 5520 chipset has three channels, so in most cases,
 no padding is required between objects (except for objects whose size are n x 3 x 64 bytes blocks).
 
-.. _figure_memory-management2:
+.. _mempool_figure_memory_management2:
 
 .. figure:: img/memory-management2.*
 
@@ -98,9 +98,9 @@ This internal cache can be enabled or disabled at creation of the pool.
 
 The maximum size of the cache is static and is defined at compilation time (RTE_MEMPOOL_CACHE_MAX_SIZE).
 
-:numref:`figure_mempool` shows a cache in operation.
+:numref:`mempool_figure_cache` shows a cache in operation.
 
-.. _figure_mempool:
+.. _mempool_figure_cache:
 
 .. figure:: img/mempool.*
 

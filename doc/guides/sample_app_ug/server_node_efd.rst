@@ -18,13 +18,13 @@ Overview
 The architecture of the EFD flow-based load balancer sample application is
 presented in the following figure.
 
-.. _figure_efd_sample_app_overview:
+.. _server_node_efd_figure_overview:
 
 .. figure:: img/server_node_efd.*
 
    Using EFD as a Flow-Level Load Balancer
 
-As shown in :numref:`figure_efd_sample_app_overview`,
+As shown in :numref:`server_node_efd_figure_overview`,
 the sample application consists of a front-end node (server)
 using the EFD library to create a load-balancing table for flows,
 for each flow a target backend worker node is specified. The EFD table does not

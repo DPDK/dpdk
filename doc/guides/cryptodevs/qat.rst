@@ -10,7 +10,7 @@ QAT documentation consists of three parts:
 * Details of the :doc:`compression service </compressdevs/qat_comp>`
   in the compressdev drivers section.
 * Details of building the common QAT infrastructure and the PMDs to support the
-  above services. See :ref:`building_qat` below.
+  above services. See :ref:`qat_building` below.
 
 
 Symmetric Crypto Service on QAT
@@ -203,7 +203,7 @@ Limitations
   in different threads.)
 * RSA-2560, RSA-3584 are not supported
 
-.. _building_qat:
+.. _qat_building:
 
 Building PMDs on QAT
 --------------------

@@ -91,9 +91,9 @@ original packet.
 
 The combination of the 'header' segment and the 'data' segment constitutes a
 single logical output GSO segment of the original packet. This is illustrated
-in :numref:`figure_gso-output-segment-format`.
+in :numref:`gso_figure_output_segment_format`.
 
-.. _figure_gso-output-segment-format:
+.. _gso_figure_output_segment_format:
 
 .. figure:: img/gso-output-segment-format.*
    :align: center
@@ -126,14 +126,14 @@ all of the data 'contained' in the output segment reaches ``segsz``. This
 ensures that the amount of data contained within each output segment is uniform,
 with the possible exception of the last segment, as previously described.
 
-:numref:`figure_gso-three-seg-mbuf` illustrates an example of a three-part
+:numref:`gso_figure_three_seg_mbuf` illustrates an example of a three-part
 output segment. In this example, the output segment needs to include data from
 the end of one input segment, and the beginning of another. To achieve this,
 an additional indirect mbuf is chained to the second part of the output segment,
 and is attached to the next input segment (i.e. it points to the data in the
 next input segment).
 
-.. _figure_gso-three-seg-mbuf:
+.. _gso_figure_three_seg_mbuf:
 
 .. figure:: img/gso-three-seg-mbuf.*
    :align: center

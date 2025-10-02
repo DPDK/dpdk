@@ -6,7 +6,7 @@ ABI Versioning
 
 This document details the mechanics of ABI version management in DPDK.
 
-.. _what_is_soname:
+.. _abi_what_is_soname:
 
 What is a library's soname?
 ---------------------------
@@ -29,7 +29,7 @@ ABI version. The library loaded at runtime therefore, may be a minor revision
 supporting the same major ABI version (e.g. ``librte_eal.21.2``), as the library
 used to link the application (e.g ``librte_eal.21.0``).
 
-.. _major_abi_versions:
+.. _abi_major_versions:
 
 Major ABI versions
 ------------------
@@ -68,7 +68,7 @@ persists over multiple releases.
 
 When an ABI change is made between major ABI versions to a given library, a new
 section is added to that library's version map describing the impending new ABI
-version, as described in the section :ref:`example_abi_macro_usage`. The
+version, as described in the section :ref:`abi_example_macro_usage`. The
 library's soname and filename however do not change, e.g. ``libacl.so.21``, as
 ABI compatibility with the last major ABI version continues to be preserved for
 that library.
@@ -93,7 +93,7 @@ that library.
 
 However when a new ABI version is declared, for example DPDK ``22``, old
 deprecated functions may be safely removed at this point and the entire old
-major ABI version removed, see the section :ref:`deprecating_entire_abi` on
+major ABI version removed, see the section :ref:`abi_deprecating_entire_abi` on
 how this may be done.
 
 .. code-block:: none
@@ -150,7 +150,7 @@ The macros are:
   to become part of the stable ABI, to provide an alias to experimental
   until the next major ABI version.
 
-.. _example_abi_macro_usage:
+.. _abi_example_macro_usage:
 
 Examples of ABI Macro use
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -226,7 +226,7 @@ but now points to the above newly named function ``rte_acl_create_v21``.
 We have now mapped the original rte_acl_create symbol to the original function
 (but with a new name).
 
-Please see the section :ref:`enabling_versioning_macros`
+Please see the section :ref:`abi_enabling_versioning_macros`
 to enable this macro in the Meson/Ninja build.
 
 Next, we need to create the new version of the symbol. We create a new
@@ -256,11 +256,11 @@ used by newly built applications.
 .. note::
 
    **Before you leave**, please take care reviewing the sections on
-   :ref:`enabling_versioning_macros`,
+   :ref:`abi_enabling_versioning_macros`,
    and :ref:`ABI deprecation <abi_deprecation>`.
 
 
-.. _enabling_versioning_macros:
+.. _abi_enabling_versioning_macros:
 
 Enabling versioning macros
 __________________________
@@ -279,7 +279,7 @@ at the start of the head of the file. This will indicate to the tool-chain to
 enable the function version macros when building.
 
 
-.. _aliasing_experimental_symbols:
+.. _abi_aliasing_experimental_symbols:
 
 Aliasing experimental symbols
 _____________________________
@@ -291,7 +291,7 @@ promoting the symbol, the maintainer may choose to provide an alias to the
 This alias is then dropped in the next major ABI version.
 
 The process to provide an alias to ``experimental`` is similar to that, of
-:ref:`symbol versioning <example_abi_macro_usage>` described above.
+:ref:`symbol versioning <abi_example_macro_usage>` described above.
 Assume we have an experimental function ``rte_acl_create`` as follows:
 
 .. code-block:: c
@@ -327,7 +327,7 @@ When we promote the symbol to the stable ABI, we simply strip the
    }
 
 Although there are strictly no guarantees or commitments associated with
-:ref:`experimental symbols <experimental_apis>`, a maintainer may wish to offer
+:ref:`experimental symbols <abi_experimental_apis>`, a maintainer may wish to offer
 an alias to experimental. The process to add an alias to experimental,
 is similar to the symbol versioning process. Assuming we have an experimental
 symbol as before, we now add the symbol to both the ``EXPERIMENTAL``
@@ -372,7 +372,7 @@ Note that the internal function definition must also be removed, but it is used
 in our example by the newer version ``v22``, so we leave it in place and declare
 it as static. This is a coding style choice.
 
-.. _deprecating_entire_abi:
+.. _abi_deprecating_entire_abi:
 
 Deprecating an entire ABI version
 _________________________________
@@ -413,4 +413,4 @@ and <newdir> specifies the DPDK build directory to check the ABI of.
 
 The ABI compatibility is automatically verified when using a build script
 from ``devtools``, if the variable ``DPDK_ABI_REF_VERSION`` is set with a tag,
-as described in :ref:`ABI check recommendations<integrated_abi_check>`.
+as described in :ref:`ABI check recommendations <contrib_integrated_abi_check>`.

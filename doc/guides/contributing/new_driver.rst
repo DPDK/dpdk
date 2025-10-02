@@ -95,7 +95,7 @@ This approach ensures a clear and manageable development process.
 We suggest splitting patches following this approach:
 
 * Each patch should be organized logically as a new feature.
-* Run test tools per patch (See :ref:`tool_list`).
+* Run test tools per patch (See :ref:`contrib_tool_list`).
 * Update relevant documentation and `<driver>.ini` file with each patch.
 
 The following order in the patch series is as suggested below.
@@ -193,7 +193,7 @@ If the required dependency is not yet publicly available,
 then wait to submit the driver until the dependent library is available.
 
 
-.. _tool_list:
+.. _contrib_tool_list:
 
 Test Tools
 ----------
@@ -211,4 +211,4 @@ Be sure to run the following test tools per patch in a patch series:
 * `check-spdx-tag.sh`
 * Build documentation and validate how output looks
 * Optionally run ``review-patch.py`` for AI-assisted review
-  (see :ref:`ai_assisted_review` in the Contributing Guide)
+  (see :ref:`contrib_ai_assisted_review` in the Contributing Guide)

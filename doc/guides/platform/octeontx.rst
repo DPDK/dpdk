@@ -43,7 +43,7 @@ OCTEON TX compatible board:
 
       The PF driver and the required microcode for the crypto offload block will be
       available with OCTEON TX SDK only. So for using crypto offload, follow the steps
-      mentioned in :ref:`setup_platform_using_OCTEON_TX_SDK`.
+      mentioned in :ref:`octeontx_setup_platform_using_octeon_tx_sdk`.
 
 #. **ARM64 Tool Chain**
 
@@ -58,11 +58,12 @@ OCTEON TX compatible board:
 
    As an alternative method, Platform drivers can also be executed using images provided
    as part of SDK from Cavium. The SDK includes all the above prerequisites necessary
-   to bring up a OCTEON TX board. Please refer :ref:`setup_platform_using_OCTEON_TX_SDK`.
+   to bring up a OCTEON TX board.
+   Please refer :ref:`octeontx_setup_platform_using_octeon_tx_sdk`.
 
 #. Follow the DPDK :doc:`/linux_gsg/index` to setup the basic DPDK environment.
 
-.. _setup_platform_using_OCTEON_TX_SDK:
+.. _octeontx_setup_platform_using_octeon_tx_sdk:
 
 Setup Platform Using OCTEON TX SDK
 ----------------------------------

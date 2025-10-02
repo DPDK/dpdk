@@ -15,23 +15,23 @@ General Guidelines
 
 #. Major ABI versions are declared no more frequently than yearly. Compatibility
    with the major ABI version is mandatory in subsequent releases until a
-   :ref:`new major ABI version <new_abi_version>` is declared.
+   :ref:`new major ABI version <abi_new_version>` is declared.
 #. Major ABI versions are usually but not always declared aligned with a
    :doc:`LTS release <stable>`.
 #. The ABI version is managed at a project level in DPDK, and is reflected in
-   all non-experimental :ref:`library's soname <what_is_soname>`.
+   all non-experimental :ref:`library's soname <abi_what_is_soname>`.
 #. The ABI should be preserved and not changed lightly. ABI changes must follow
    the outlined :ref:`deprecation process <abi_changes>`.
 #. The addition of symbols is generally not problematic.
    The modification of symbols is managed with :doc:`abi_versioning`.
 #. The removal of symbols is considered an :ref:`ABI breakage <abi_breakages>`,
    once approved these will form part of the next ABI version.
-#. Libraries or APIs marked as :ref:`experimental <experimental_apis>`
+#. Libraries or APIs marked as :ref:`experimental <abi_experimental_apis>`
    may be changed or removed without prior notice,
    as they are not considered part of an ABI version.
-   The :ref:`experimental <experimental_apis>` status of an API
+   The :ref:`experimental <abi_experimental_apis>` status of an API
    is not an indefinite state.
-#. Updates to the :ref:`minimum hardware requirements <hw_rqmts>`, which drop
+#. Updates to the :ref:`minimum hardware requirements <abi_hw_requirements>`, which drop
    support for hardware which was previously supported, should be treated as an
    ABI change.
 
@@ -65,14 +65,14 @@ An ABI version is an instance of a library's ABI at a specific release. Certain
 releases are considered to be milestone releases, the yearly LTS release for
 example. The ABI of a milestone release may be declared as a 'major ABI
 version', where this ABI version is then supported for some number of subsequent
-releases and is annotated in the library's :ref:`soname<what_is_soname>`.
+releases and is annotated in the library's :ref:`soname <abi_what_is_soname>`.
 
 ABI version support in subsequent releases facilitates application upgrades, by
 enabling applications built against the milestone release to upgrade to
 subsequent releases of a library without a rebuild.
 
 More details on major ABI version can be found in the :ref:`ABI versioning
-<major_abi_versions>` guide.
+<abi_major_versions>` guide.
 
 The DPDK ABI policy
 -------------------
@@ -143,7 +143,7 @@ The requirements for changing the ABI are:
      CPU vendors, end-users, etc.
 
 #. Backward compatibility with the major ABI version must be maintained through
-   :doc:`abi_versioning`, with :ref:`forward-only <forward-only>` compatibility
+   :doc:`abi_versioning`, with :ref:`forward-only <abi_forward_only>` compatibility
    offered for any ABI changes that are indicated to be part of the next ABI
    version.
 
@@ -152,7 +152,7 @@ The requirements for changing the ABI are:
 
    - No backward or forward compatibility is offered for API changes marked as
      ``experimental``, as described in the section on :ref:`Experimental APIs
-     and Libraries <experimental_apis>`.
+     and Libraries <abi_experimental_apis>`.
 
    - In situations in which an ``experimental`` symbol has been stable for some
      time. When promoting the symbol to become part of the next ABI version, the
@@ -164,7 +164,7 @@ The requirements for changing the ABI are:
    ``__rte_deprecated``.
 
     - The deprecated API should follow the notification process to be removed,
-      see  :ref:`deprecation_notices`.
+      see  :ref:`abi_deprecation_notices`.
 
     - At the declaration of the next major ABI version, those ABI changes then
       become a formal part of the new ABI and the requirement to preserve ABI
@@ -174,7 +174,7 @@ The requirements for changing the ABI are:
       with the original contributor of the ABI changes, failing that, then with
       the contributor's company and then finally with the maintainer.
 
-.. _forward-only:
+.. _abi_forward_only:
 
 .. Note::
 
@@ -186,7 +186,7 @@ The requirements for changing the ABI are:
    of these ABI changes can only ensure that its runtime dependencies are met
    through Operating System package versioning.
 
-.. _hw_rqmts:
+.. _abi_hw_requirements:
 
 .. Note::
 
@@ -228,14 +228,14 @@ declarations of major ABI versions.
   preserved through :doc:`abi_versioning`.
 
   - The new function may be marked with the ``__rte_experimental`` tag for a
-    number of releases, as described in the section :ref:`experimental_apis`.
+    number of releases, as described in the section :ref:`abi_experimental_apis`.
 
   - Once ``rte_foo(uint8_t bar)`` becomes non-experimental, ``rte_foo()`` is
     declared as ``__rte_deprecated`` and an deprecation notice is provided.
 
 * DPDK 20.11 is not re-released to include ``rte_foo(uint8_t bar)``, the new
   version of ``rte_foo`` only exists from DPDK 21.02 onwards as described in the
-  :ref:`note on forward-only compatibility<forward-only>`.
+  :ref:`note on forward-only compatibility <abi_forward_only>`.
 
 * DPDK 21.02 release defines the experimental function ``__rte_experimental
   rte_baz()``. This function may or may not exist in the DPDK 21.05 release.
@@ -250,7 +250,7 @@ declarations of major ABI versions.
   formally part of then new major ABI version DPDK ``22`` and ``rte_foo()`` may be
   removed.
 
-.. _deprecation_notices:
+.. _abi_deprecation_notices:
 
 Examples of Deprecation Notices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -281,7 +281,7 @@ added to the Release Notes:
   require updating and recompilation.
 
 
-.. _new_abi_version:
+.. _abi_new_version:
 
 New ABI versions
 ----------------
@@ -299,9 +299,9 @@ and some amended rules apply during this cycle:
    as described in the section :ref:`abi_changes`.
  * Symbol versioning references to the old ABI version are updated
    to reference the new ABI version,
-   as described in the section :ref:`deprecating_entire_abi`.
+   as described in the section :ref:`abi_deprecating_entire_abi`.
  * Contributors of aliases to experimental in previous releases,
-   as described in section :ref:`aliasing_experimental_symbols`,
+   as described in section :ref:`abi_aliasing_experimental_symbols`,
    are now required to remove these aliases.
  * Finally, the *ABI breakage window* is *not* permission to circumvent
    the other aspects of the procedures to make ABI changes
@@ -309,7 +309,7 @@ and some amended rules apply during this cycle:
    to break the ABI and the observance of a deprecation notice
    are still considered mandatory.
 
-.. _experimental_apis:
+.. _abi_experimental_apis:
 
 Experimental
 ------------

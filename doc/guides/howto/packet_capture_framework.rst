@@ -70,10 +70,9 @@ Test Environment
 ----------------
 
 The overview of using the Packet Capture Framework and the ``dpdk-dumpcap`` utility
-for packet capturing on the DPDK port in
-:numref:`figure_packet_capture_framework`.
+for packet capturing on the DPDK port in :numref:`packet_capture_framework_figure_overview`.
 
-.. _figure_packet_capture_framework:
+.. _packet_capture_framework_figure_overview:
 
 .. figure:: img/packet_capture_framework.*
 
@@ -84,7 +83,7 @@ Running the Application
 -----------------------
 
 The following steps demonstrate how to run the ``dpdk-dumpcap`` tool to capture
-Rx side packets on dpdk_port0 in :numref:`figure_packet_capture_framework` and
+Rx side packets on dpdk_port0 in :numref:`packet_capture_framework_figure_overview` and
 inspect them using ``tcpdump``.
 
 #. Launch testpmd as the primary application::

@@ -27,9 +27,9 @@ Next hop IDs are represented by ``uint64_t`` values.
    Everything within this document except for the size of the prefixes is applicable to  the
    ``rte_rib6`` API.
 
-Internally RIB is represented as a binary tree as shown in :numref:`figure_rib_internals`:
+Internally RIB is represented as a binary tree as shown in :numref:`rib_figure_internals`:
 
-.. _figure_rib_internals:
+.. _rib_figure_internals:
 
 .. figure:: img/rib_internals.*
 
@@ -66,7 +66,7 @@ The main methods within the ``rte_rib`` API are:
 
 * ``rte_rib_get_nxt()``: Traverse a subtree within the structure.
 
-Given a RIB structure with the routes depicted in :numref:`figure_rib_internals`,
+Given a RIB structure with the routes depicted in :numref:`rib_figure_internals`,
 here are several usage examples:
 
 * The best route for ``10.0.0.1`` can be found by calling:
@@ -92,7 +92,7 @@ This returns an ``rte_rib_node`` pointing to the ``10.0.0.128/25`` prefix.
 This returns ``NULL`` as no exact match can be found.
 
 * To retrieve a group of routes under the common prefix ``10.0.0.0/24``
-  (yellow triangle in :numref:`figure_rib_internals`):
+  (yellow triangle in :numref:`rib_figure_internals`):
 
 .. code-block:: c
 
@@ -119,10 +119,10 @@ It is possible to implement a prefix independent convergence using the RIB exten
 If the routing daemon can provide a feasible next hop ID along with a best (active) next hop ID,
 it is possible to react to a neighbour failing relatively fast.
 Consider a RIB with a number of routes with different next hops (A and B) as
-shown in :numref:`figure_rib_pic`. Every route can have a feasible next hop
+shown in :numref:`rib_figure_pic`. Every route can have a feasible next hop
 provided by the routing daemon.
 
-.. _figure_rib_pic:
+.. _rib_figure_pic:
 
 .. figure:: img/rib_pic.*
 

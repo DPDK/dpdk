@@ -72,7 +72,7 @@ The processing done for each input packet hitting an MTR object is:
 API walk-through
 ----------------
 
-.. _figure_rte_mtr_chaining:
+.. _mtr_figure_chaining:
 
 .. figure:: ../img/rte_mtr_meter_chaining.*
 
@@ -107,7 +107,7 @@ traffic meter and policing library.
 
    * Adding one (or multiple) actions of the type ``RTE_FLOW_ACTION_TYPE_METER``
      to the list of meter actions (``struct rte_mtr_meter_policy_params::actions``)
-     specified per color as shown in :numref:`figure_rte_mtr_chaining`.
+     specified per color as shown in :numref:`mtr_figure_chaining`.
 
 #. The ``rte_mtr_meter_profile_get()`` and ``rte_mtr_meter_policy_get()``
    API functions are available for getting the object pointers directly.

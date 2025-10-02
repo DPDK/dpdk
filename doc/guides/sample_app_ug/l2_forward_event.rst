@@ -29,9 +29,9 @@ Application receives packets from Rx port using these methods:
 *   Eventdev mode (default)
 
 This application can be used to benchmark performance using a traffic-generator,
-as shown in the :numref:`figure_l2fwd_event_benchmark_setup`.
+as shown in the :numref:`l2_fwd_event_figure_benchmark_setup`.
 
-.. _figure_l2fwd_event_benchmark_setup:
+.. _l2_fwd_event_figure_benchmark_setup:
 
 .. figure:: img/l2_fwd_benchmark_setup.*
 

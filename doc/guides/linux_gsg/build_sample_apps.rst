@@ -10,7 +10,8 @@ It also provides a pointer to where sample applications are stored.
 Compiling a Sample Application
 ------------------------------
 
-Please refer to :ref:`building_app_using_installed_dpdk` for details on compiling sample apps.
+Please refer to :ref:`linux_gsg_building_app_using_installed_dpdk`
+for details on compiling sample apps.
 
 Running a Sample Application
 ----------------------------

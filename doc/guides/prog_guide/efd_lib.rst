@@ -42,26 +42,26 @@ function can be used to direct a certain flow to a target based on
 the flow key (e.g. ``h(key) mod n``) where h(key) is the hash value of the
 flow key and n is the number of possible targets.
 
-.. _figure_efd1:
+.. _efd_figure_1:
 
 .. figure:: img/efd_i1.*
 
   Load Balancing Using Front End Node
 
-In this scheme (:numref:`figure_efd1`), the front end server/distributor/load balancer
+In this scheme (:numref:`efd_figure_1`), the front end server/distributor/load balancer
 extracts the flow key from the input packet and applies a computation to determine where
 this flow should be directed. Intuitively, this scheme is very simple
 and requires no state to be kept at the front end node, and hence,
 storage requirements are minimum.
 
-.. _figure_efd2:
+.. _efd_figure_2:
 
 .. figure:: img/efd_i2.*
 
   Consistent Hashing
 
 A widely used flow distributor that belongs to the same category of
-computation-based schemes is ``consistent hashing``, shown in :numref:`figure_efd2`.
+computation-based schemes is ``consistent hashing``, shown in :numref:`efd_figure_2`.
 Target destinations (shown in red) are hashed into the same space as the flow
 keys (shown in blue), and keys are mapped to the nearest target in a clockwise
 fashion. Dynamically adding and removing targets with consistent hashing
@@ -87,13 +87,13 @@ has the flexibility of assigning a given flow to any given
 target. The flow table (e.g. DPDK RTE Hash Library) will simply store
 both the flow key and the target value.
 
-.. _figure_efd3:
+.. _efd_figure_3:
 
 .. figure:: img/efd_i3.*
 
   Table Based Flow Distribution
 
-As shown in :numref:`figure_efd3`, when doing a lookup, the flow-table
+As shown in :numref:`efd_figure_3`, when doing a lookup, the flow-table
 is indexed with the hash of the flow key and the keys (more than one is possible,
 because of hash collision) stored in this index and corresponding values
 are retrieved. The retrieved key(s) is matched with the input flow key
@@ -114,7 +114,7 @@ schemes. It doesn't require the large storage necessary for
 flow-table based schemes (because EFD doesn't store the key as explained
 below), and it supports any arbitrary value for any given key.
 
-.. _figure_efd4:
+.. _efd_figure_4:
 
 .. figure:: img/efd_i4.*
 
@@ -122,7 +122,7 @@ below), and it supports any arbitrary value for any given key.
 
 The basic idea of EFD is when a given key is to be inserted, a family of
 hash functions is searched until the correct hash function that maps the
-input key to the correct value is found, as shown in :numref:`figure_efd4`.
+input key to the correct value is found, as shown in :numref:`efd_figure_4`.
 However, rather than explicitly storing all keys and their associated values,
 EFD stores only indices of hash functions that map keys to values, and
 thereby consumes much less space than conventional flow-based tables.
@@ -130,7 +130,7 @@ The lookup operation is very simple, similar to a computational-based
 scheme: given an input key the lookup operation is reduced to hashing
 that key with the correct hash function.
 
-.. _figure_efd5:
+.. _efd_figure_5:
 
 .. figure:: img/efd_i5.*
 
@@ -138,7 +138,7 @@ that key with the correct hash function.
 
 Intuitively, finding a hash function that maps each of a large number
 (millions) of input keys to the correct output value is effectively
-impossible, as a result EFD, as shown in :numref:`figure_efd5`,
+impossible, as a result EFD, as shown in :numref:`efd_figure_5`,
 breaks the problem into smaller pieces (divide and conquer).
 EFD divides the entire input key set into many small groups.
 Each group consists of approximately 20-28 keys (a configurable parameter
@@ -162,7 +162,7 @@ Example of EFD Library Usage
 EFD can be used along the data path of many network functions and middleboxes.
 As previously mentioned, it can used as an index table for
 <key,value> pairs, meta-data for objects, a flow-level load balancer, etc.
-:numref:`figure_efd6` shows an example of using EFD as a flow-level load
+:numref:`efd_figure_6` shows an example of using EFD as a flow-level load
 balancer, where flows are received at a front end server before being forwarded
 to the target back end server for processing. The system designer would
 deterministically co-locate flows together in order to minimize cross-server
@@ -170,13 +170,13 @@ interaction.
 (For example, flows requesting certain webpage objects are co-located
 together, to minimize forwarding of common objects across servers).
 
-.. _figure_efd6:
+.. _efd_figure_6:
 
 .. figure:: img/efd_i6.*
 
   EFD as a Flow-Level Load Balancer
 
-As shown in :numref:`figure_efd6`, the front end server will have an EFD table that
+As shown in :numref:`efd_figure_6`, the front end server will have an EFD table that
 stores for each group what is the perfect hash index that satisfies the
 correct output. Because the table size is small and fits in cache (since
 keys are not stored), it sustains a large number of flows (N*X, where N
@@ -307,30 +307,30 @@ stores two version of the <key,value> table:
    the online version, as previously mentioned, the keys are not stored
    but rather only the hash index for each group.
 
-.. _figure_efd7:
+.. _efd_figure_7:
 
 .. figure:: img/efd_i7.*
 
   Group Assignment
 
-:numref:`figure_efd7` depicts the group assignment for 7 flow keys as an example.
+:numref:`efd_figure_7` depicts the group assignment for 7 flow keys as an example.
 Given a flow key, a hash function (in our implementation CRC hash) is
 used to get the group id. As shown in the figure, the groups can be
 unbalanced. (We highlight group rebalancing further below).
 
-.. _figure_efd8:
+.. _efd_figure_8:
 
 .. figure:: img/efd_i8.*
 
   Perfect Hash Search - Assigned Keys & Target Value
 
-Focusing on one group that has four keys, :numref:`figure_efd8` depicts the search
+Focusing on one group that has four keys, :numref:`efd_figure_8` depicts the search
 algorithm to find the perfect hash function. Assuming that the target
 value bit for the keys is as shown in the figure, then the online EFD
 table will store a 16 bit hash index and 16 bit lookup table per group
 per value bit.
 
-.. _figure_efd9:
+.. _efd_figure_9:
 
 .. figure:: img/efd_i9.*
 
@@ -338,11 +338,11 @@ per value bit.
 
 For a given keyX, a hash function ``(h(keyX, seed1) + index * h(keyX, seed2))``
 is used to point to certain bit index in the 16bit lookup_table value,
-as shown in :numref:`figure_efd9`.
+as shown in :numref:`efd_figure_9`.
 The insert function will brute force search for all possible values for the
 hash index until a non conflicting lookup_table is found.
 
-.. _figure_efd10:
+.. _efd_figure_10:
 
 .. figure:: img/efd_i10.*
 
@@ -352,7 +352,7 @@ For example, since both key3 and key7 have a target bit value of 1, it
 is okay if the hash function of both keys point to the same bit in the
 lookup table. A conflict will occur if a hash index is used that maps
 both Key4 and Key7 to the same index in the lookup_table,
-as shown in :numref:`figure_efd10`, since their target value bit are not the same.
+as shown in :numref:`efd_figure_10`, since their target value bit are not the same.
 Once a hash index is found that produces a lookup_table with no
 contradictions, this index is stored for this group. This procedure is
 repeated for each bit of target value.
@@ -365,13 +365,13 @@ inserts, and hence, EFD's design optimizes for the lookups which are
 faster and much simpler than the slower insert procedure (inserts are
 slow, because of perfect hash search as previously discussed).
 
-.. _figure_efd11:
+.. _efd_figure_11:
 
 .. figure:: img/efd_i11.*
 
   EFD Lookup Operation
 
-:numref:`figure_efd11` depicts the lookup operation for EFD. Given an input key,
+:numref:`efd_figure_11` depicts the lookup operation for EFD. Given an input key,
 the group id is computed (using CRC hash) and then the hash index for this
 group is retrieved from the EFD table. Using the retrieved hash index,
 the hash function ``h(key, seed1) + index *h(key, seed2)`` is used which will
@@ -394,17 +394,17 @@ index. In order to achieve this target, groups are rebalanced during
 runtime inserts, and keys are moved around from a busy group to a less
 crowded group as the more keys are inserted.
 
-.. _figure_efd12:
+.. _efd_figure_12:
 
 .. figure:: img/efd_i12.*
 
   Runtime Group Rebalancing
 
-:numref:`figure_efd12` depicts the high level idea of group rebalancing, given an
+:numref:`efd_figure_12` depicts the high level idea of group rebalancing, given an
 input key the hash result is split into two parts a chunk id and 8-bit
 bin id. A chunk contains 64 different groups and 256 bins (i.e. for any
 given bin it can map to 4 distinct groups). When a key is inserted, the
-bin id is computed, for example in :numref:`figure_efd12` bin_id=2,
+bin id is computed, for example in :numref:`efd_figure_12` bin_id=2,
 and since each bin can be mapped to one of four different groups (2 bit storage),
 the four possible mappings are evaluated and the one that will result in a
 balanced key distribution across these four is selected the mapping result

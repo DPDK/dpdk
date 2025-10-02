@@ -8,9 +8,9 @@ Container becomes more and more popular for strengths, like low overhead, fast
 boot-up time, and easy to deploy, etc. How to use DPDK to accelerate container
 networking becomes a common question for users. There are two use models of
 running DPDK inside containers, as shown in
-:numref:`figure_use_models_for_running_dpdk_in_containers`.
+:numref:`virtio_user_container_figure_use_models`.
 
-.. _figure_use_models_for_running_dpdk_in_containers:
+.. _virtio_user_container_figure_use_models:
 
 .. figure:: img/use_models_for_running_dpdk_in_containers.*
 
@@ -26,9 +26,9 @@ for high performance user space container networking or inter-process
 communication (IPC).
 
 The overview of accelerating container networking by virtio-user is shown
-in :numref:`figure_virtio_user_for_container_networking`.
+in :numref:`virtio_user_container_figure_networking`.
 
-.. _figure_virtio_user_for_container_networking:
+.. _virtio_user_container_figure_networking:
 
 .. figure:: img/virtio_user_for_container_networking.*
 

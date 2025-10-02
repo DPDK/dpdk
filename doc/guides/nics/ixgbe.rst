@@ -379,7 +379,7 @@ the VFs which are required.::
 Currently hot-plugging of representor ports is not supported so all required
 representors must be specified on the creation of the PF.
 
-.. _net_ixgbe_testpmd_commands:
+.. _ixgbe_testpmd_commands:
 
 Testpmd driver specific commands
 --------------------------------

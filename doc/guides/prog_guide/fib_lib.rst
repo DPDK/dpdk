@@ -99,9 +99,9 @@ The main elements of the dataplane struct for the DIR-24-8 algorithm are:
 
 * TBL8: An array of ``num_tbl8`` tbl8 groups.
 
-The lookup algorithms logic can be seen in :numref:`figure_dir_24_8_alg`:
+The lookup algorithms logic can be seen in :numref:`fib_figure_dir_24_8_alg`:
 
-.. _figure_dir_24_8_alg:
+.. _fib_figure_dir_24_8_alg:
 
 .. figure:: img/dir_24_8_alg.*
 

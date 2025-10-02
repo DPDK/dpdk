@@ -39,9 +39,9 @@ This solution has a number of advantages over alternatives such as KNI:
     which minimises the impact on the polling DPDK threads.
 
 The overview of an application using virtio-user as exception path is shown
-in :numref:`figure_virtio_user_as_exception_path`.
+in :numref:`virtio_user_exception_path_figure_overview`.
 
-.. _figure_virtio_user_as_exception_path:
+.. _virtio_user_exception_path_figure_overview:
 
 .. figure:: img/virtio_user_as_exception_path.*
 

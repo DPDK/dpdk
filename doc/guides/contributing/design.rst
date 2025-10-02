@@ -76,7 +76,7 @@ It is often desirable to provide information to the end-user
 as to what is happening to the application at runtime.
 DPDK provides a number of built-in mechanisms to provide this introspection:
 
-* :ref:`Logging <dynamic_logging>`
+* :ref:`Logging <style_dynamic_logging>`
 * :doc:`Tracing </prog_guide/trace_lib>`
 * :doc:`Telemetry </prog_guide/telemetry_lib>`
 

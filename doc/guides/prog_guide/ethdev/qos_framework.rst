@@ -118,7 +118,7 @@ See `Worst Case Scenarios for Performance`_ for a more detailed discussion.
 Scheduling Hierarchy
 ~~~~~~~~~~~~~~~~~~~~
 
-The scheduling hierarchy is shown in :numref:`figure_sched_hier_per_port`.
+The scheduling hierarchy is shown in :numref:`qos_figure_sched_hier_per_port`.
 The first level of the hierarchy is the Ethernet TX port 1/10/40 GbE,
 with subsequent hierarchy levels defined as subport, pipe, traffic class and queue.
 
@@ -127,7 +127,7 @@ Each traffic class is the representation of a different traffic type with specif
 delay and jitter requirements, such as voice, video or data transfers.
 Each queue hosts packets from one or multiple connections of the same type belonging to the same user.
 
-.. _figure_sched_hier_per_port:
+.. _qos_figure_sched_hier_per_port:
 
 .. figure:: ../img/sched_hier_per_port.*
 
@@ -394,10 +394,10 @@ the processor should not attempt to access the data structure currently under pr
 The only other work available is to execute different stages of the enqueue sequence of operations on other input packets,
 thus resulting in a pipelined implementation for the enqueue operation.
 
-:numref:`figure_prefetch_pipeline` illustrates a pipelined implementation for the enqueue operation with 4 pipeline stages and each stage executing 2 different input packets.
+:numref:`qos_figure_prefetch_pipeline` illustrates a pipelined implementation for the enqueue operation with 4 pipeline stages and each stage executing 2 different input packets.
 No input packet can be part of more than one pipeline stage at a given time.
 
-.. _figure_prefetch_pipeline:
+.. _qos_figure_prefetch_pipeline:
 
 .. figure:: ../img/prefetch_pipeline.*
 
@@ -570,9 +570,9 @@ Traffic Shaping
 The traffic shaping for subport and pipe is implemented using a token bucket per subport/per pipe.
 Each token bucket is implemented using one saturated counter that keeps track of the number of available credits.
 
-The token bucket generic parameters and operations are presented in :numref:`table_qos_6` and :numref:`table_qos_7`.
+The token bucket generic parameters and operations are presented in :numref:`qos_table_6` and :numref:`qos_table_7`.
 
-.. _table_qos_6:
+.. _qos_table_6:
 
 .. table:: Token Bucket Generic Parameters
 
@@ -587,7 +587,7 @@ The token bucket generic parameters and operations are presented in :numref:`tab
    |   |                        |                    |                                                         |
    +---+------------------------+--------------------+---------------------------------------------------------+
 
-.. _table_qos_7:
+.. _qos_table_7:
 
 .. table:: Token Bucket Generic Operations
 
@@ -612,10 +612,10 @@ The token bucket generic parameters and operations are presented in :numref:`tab
    +---+------------------------+------------------------------------------------------------------------------+
 
 To implement the token bucket generic operations described above,
-the current design uses the persistent data structure presented in :numref:`table_qos_8`,
-while the implementation of the token bucket operations is described in :numref:`table_qos_9`.
+the current design uses the persistent data structure presented in :numref:`qos_table_8`,
+while the implementation of the token bucket operations is described in :numref:`qos_table_9`.
 
-.. _table_qos_8:
+.. _qos_table_8:
 
 .. table:: Token Bucket Persistent Data Structure
 
@@ -651,7 +651,7 @@ The bucket rate (in bytes per second) can be computed with the following formula
 
 where, r = port line rate (in bytes per second).
 
-.. _table_qos_9:
+.. _qos_table_9:
 
 .. table:: Token Bucket Operations
 
@@ -732,9 +732,9 @@ so there is no token bucket maintained in this context.
 The upper limit for the traffic classes at the subport and
 pipe levels is enforced by periodically refilling the subport / pipe traffic class credit counter,
 out of which credits are consumed every time a packet is scheduled for that subport / pipe,
-as described in :numref:`table_qos_10` and :numref:`table_qos_11`.
+as described in :numref:`qos_table_10` and :numref:`qos_table_11`.
 
-.. _table_qos_10:
+.. _qos_table_10:
 
 .. table:: Subport/Pipe Traffic Class Upper Limit Enforcement Persistent Data Structure
 
@@ -764,7 +764,7 @@ as described in :numref:`table_qos_10` and :numref:`table_qos_11`.
    |   |                       |       |                                                                       |
    +---+-----------------------+-------+-----------------------------------------------------------------------+
 
-.. _table_qos_11:
+.. _qos_table_11:
 
 .. table:: Subport/Pipe Traffic Class Upper Limit Enforcement Operations
 
@@ -804,9 +804,9 @@ as described in :numref:`table_qos_10` and :numref:`table_qos_11`.
 Weighted Round Robin (WRR)
 """"""""""""""""""""""""""
 
-The evolution of the WRR design solution for the lowest priority traffic class (best effort TC) from simple to complex is shown in :numref:`table_qos_12`.
+The evolution of the WRR design solution for the lowest priority traffic class (best effort TC) from simple to complex is shown in :numref:`qos_table_12`.
 
-.. _table_qos_12:
+.. _qos_table_12:
 
 .. table:: Weighted Round Robin (WRR)
 
@@ -995,9 +995,9 @@ as a result of demand increase (when the watermark needs to be lowered) or deman
 
 When demand is low, the watermark is set high to prevent it from impeding the subport member pipes from consuming more bandwidth.
 The highest value for the watermark is picked as the highest rate configured for a subport member pipe.
-:numref:`table_qos_14` and :numref:`table_qos_15` illustrates the watermark operation.
+:numref:`qos_table_14` and :numref:`qos_table_15` illustrates the watermark operation.
 
-.. _table_qos_14:
+.. _qos_table_14:
 
 .. table:: Watermark Propagation from Subport Level to Member Pipes at the Beginning of Each Traffic Class Upper Limit Enforcement Period
 
@@ -1048,7 +1048,7 @@ The highest value for the watermark is picked as the highest rate configured for
    |     |                                 |                                                    |
    +-----+---------------------------------+----------------------------------------------------+
 
-.. _table_qos_15:
+.. _qos_table_15:
 
 .. table:: Watermark Calculation
 
@@ -1137,7 +1137,7 @@ If the number of queues is small,
 then the performance of the port scheduler for the same level of active traffic is expected to be worse than
 the performance of a small set of message passing queues.
 
-.. _Droppers:
+.. _qos_droppers:
 
 Droppers
 --------
@@ -1145,11 +1145,11 @@ Droppers
 The purpose of the DPDK dropper is to drop packets arriving at a packet scheduler to avoid congestion.
 The dropper supports the Proportional Integral Controller Enhanced (PIE), Random Early Detection (RED),
 Weighted Random Early Detection (WRED), and tail drop algorithms.
-:numref:`figure_blk_diag_dropper` illustrates how the dropper integrates with the scheduler.
+:numref:`qos_figure_blk_diag_dropper` illustrates how the dropper integrates with the scheduler.
 The DPDK currently does not support congestion management
 so the dropper provides the only method for congestion avoidance.
 
-.. _figure_blk_diag_dropper:
+.. _qos_figure_blk_diag_dropper:
 
 .. figure:: ../img/blk_diag_dropper.*
 
@@ -1177,10 +1177,10 @@ In the case of severe congestion, the dropper resorts to tail drop.
 This occurs when a packet queue has reached maximum capacity and cannot store any more packets.
 In this situation, all arriving packets are dropped.
 
-The flow through the dropper is illustrated in :numref:`figure_flow_tru_dropper`,
+The flow through the dropper is illustrated in :numref:`qos_figure_flow_tru_dropper`,
 The RED/WRED/PIE algorithm is exercised first and tail drop second.
 
-.. _figure_flow_tru_dropper:
+.. _qos_figure_flow_tru_dropper:
 
 .. figure:: ../img/flow_tru_dropper.*
 
@@ -1207,18 +1207,18 @@ The use cases supported by the dropper are:
 
 *   *    Mark empty (record the time at which a packet queue becomes empty)
 
-The configuration use case is explained in :ref:`Configuration`,
-the enqueue operation is explained in :ref:`Enqueue_Operation`
-and the mark empty operation is explained in :ref:`Queue_Empty_Operation`.
+The configuration use case is explained in :ref:`qos_dropper_configuration`,
+the enqueue operation is explained in  :ref:`qos_dropper_enqueue_operation`
+and the mark empty operation is explained in :ref:`qos_dropper_queue_empty_operation`.
 
-.. _Configuration:
+.. _qos_dropper_configuration:
 
 Configuration
 ~~~~~~~~~~~~~
 
-A RED configuration contains the parameters given in :numref:`table_qos_16`.
+A RED configuration contains the parameters given in :numref:`qos_table_16`.
 
-.. _table_qos_16:
+.. _qos_table_16:
 
 .. table:: RED Configuration Parameters
 
@@ -1249,9 +1249,9 @@ to a mark probability of 1/10 (that is, 1 in 10 packets will be dropped).
 The EWMA filter weight parameter is specified as an inverse log value,
 for example, a filter weight parameter value of 9 corresponds to a filter weight of 1/29.
 
-A PIE configuration contains the parameters given in :numref:`table_qos_16a`.
+A PIE configuration contains the parameters given in :numref:`qos_table_16a`.
 
-.. _table_qos_16a:
+.. _qos_table_16a:
 
 .. table:: PIE Configuration Parameters
 
@@ -1279,16 +1279,16 @@ The format of these parameters is specified to the dropper module API
 and can be fine-tuned within applications.
 They could be made self-calculated for fine tuning within the apps.
 
-.. _Enqueue_Operation:
+.. _qos_dropper_enqueue_operation:
 
 Enqueue Operation
 ~~~~~~~~~~~~~~~~~
 
-In the example shown in :numref:`figure_ex_data_flow_tru_dropper`, q (actual queue size) is the input value,
+In the example shown in :numref:`qos_figure_ex_data_flow_tru_dropper`, q (actual queue size) is the input value,
 avg (average queue size) and count (number of packets since the last drop) are run-time values,
 decision is the output value and the remaining values are configuration parameters.
 
-.. _figure_ex_data_flow_tru_dropper:
+.. _qos_figure_ex_data_flow_tru_dropper:
 
 .. figure:: ../img/ex_data_flow_tru_dropper.*
 
@@ -1324,7 +1324,7 @@ Where:
 .. note::
 
    The filter weight, wq = 1/2^n, where n is the filter weight parameter value
-   passed to the dropper module on configuration (see :ref:`Configuration`).
+   passed to the dropper module on configuration (see :ref:`qos_dropper_configuration`).
 
 Average Queue Size Calculation when the Queue is Empty
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1414,10 +1414,10 @@ The method described in the :ref:`implementation section <qos_dropper_implementa
 outperforms all of these approaches
 in terms of run-time performance and memory requirements and
 also achieves accuracy comparable to floating-point evaluation.
-:numref:`table_qos_17` lists the performance of each of these alternative approaches relative to the method that is used in the dropper.
+:numref:`qos_table_17` lists the performance of each of these alternative approaches relative to the method that is used in the dropper.
 As can be seen, the floating-point implementation achieved the worst performance.
 
-.. _table_qos_17:
+.. _qos_table_17:
 
 .. table:: Relative Performance of Alternative Approaches
 
@@ -1425,7 +1425,7 @@ As can be seen, the floating-point implementation achieved the worst performance
    | Method                                                                             | Relative Performance |
    |                                                                                    |                      |
    +====================================================================================+======================+
-   | Current dropper method (see :ref:`Droppers`)                                       | 100%                 |
+   | Current dropper method (see :ref:`qos_droppers`)                                   | 100%                 |
    |                                                                                    |                      |
    +------------------------------------------------------------------------------------+----------------------+
    | Fixed-point method with small (512B) look-up table                                 | 148%                 |
@@ -1481,13 +1481,13 @@ Where:
 
 *   *maxth*  = maximum threshold
 
-The calculation of the packet drop probability using Equation 3 is illustrated in :numref:`figure_pkt_drop_probability`.
+The calculation of the packet drop probability using Equation 3 is illustrated in :numref:`qos_figure_pkt_drop_probability`.
 If the average queue size is below the minimum threshold, an arriving packet is enqueued.
 If the average queue size is at or above the maximum threshold, an arriving packet is dropped.
 If the average queue size is between the minimum and maximum thresholds,
 a drop probability is calculated to determine if the packet should be enqueued or dropped.
 
-.. _figure_pkt_drop_probability:
+.. _qos_figure_pkt_drop_probability:
 
 .. figure:: ../img/pkt_drop_probability.*
 
@@ -1513,7 +1513,7 @@ given in the reference document where a value of 1 is used instead.
 It should be noted that the value pa computed from can be negative or greater than 1.
 If this is the case, then a value of 1 should be used instead.
 
-The initial and actual drop probabilities are shown in :numref:`figure_drop_probability_graph`.
+The initial and actual drop probabilities are shown in :numref:`qos_figure_drop_probability_graph`.
 The actual drop probability is shown for the case where
 the formula given in the reference document1 is used (blue curve)
 and also for the case where the formula implemented in the dropper module,
@@ -1523,7 +1523,7 @@ compared to the mark probability configuration parameter specified by the user.
 The choice to deviate from the reference document is simply a design decision and
 one that has been taken by other RED implementations, for example, FreeBSD* ALTQ RED.
 
-.. _figure_drop_probability_graph:
+.. _qos_figure_drop_probability_graph:
 
 .. figure:: ../img/drop_probability_graph.*
 
@@ -1531,7 +1531,7 @@ one that has been taken by other RED implementations, for example, FreeBSD* ALTQ
    a Factor 1 (Blue Curve) and a Factor 2 (Red Curve)
 
 
-.. _Queue_Empty_Operation:
+.. _qos_dropper_queue_empty_operation:
 
 Queue Empty Operation
 ~~~~~~~~~~~~~~~~~~~~~
@@ -1565,7 +1565,7 @@ Integration with the DPDK QoS Scheduler Sample Application
 
 The DPDK QoS Scheduler Application reads a configuration file on start-up.
 The configuration file includes a section containing RED parameters.
-The format of these parameters is described in :ref:`Configuration`.
+The format of these parameters is described in :ref:`qos_dropper_configuration`.
 A sample RED configuration is shown below. In this example, the queue size is 64 packets.
 
 .. note::
@@ -1645,9 +1645,9 @@ A sample RED configuration is shown below. In this example, the queue size is 64
    tc 12 wred weight = 9 9 9
 
 With this configuration file, the RED configuration that applies to green,
-yellow and red packets in traffic class 0 is shown in :numref:`table_qos_18`.
+yellow and red packets in traffic class 0 is shown in :numref:`qos_table_18`.
 
-.. _table_qos_18:
+.. _qos_table_18:
 
 .. table:: RED Configuration Corresponding to RED Configuration File
 

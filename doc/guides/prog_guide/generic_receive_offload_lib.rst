@@ -109,7 +109,7 @@ In DPDK GRO, we use a key-based algorithm to address the two challenges.
 Key-based Reassembly Algorithm
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:numref:`figure_gro-key-algorithm` illustrates the procedure of the
+:numref:`gro_figure_key_algorithm` illustrates the procedure of the
 key-based algorithm. Packets are classified into "flows" by some header
 fields (we call them as "key"). To process an input packet, the algorithm
 searches for a matched "flow" (i.e., the same value of key) for the
@@ -131,7 +131,7 @@ The key-based algorithm has two characters:
 - storing out-of-order packets makes it possible to merge later (address
   challenge 2).
 
-.. _figure_gro-key-algorithm:
+.. _gro_figure_key_algorithm:
 
 .. figure:: img/gro-key-algorithm.*
    :align: center

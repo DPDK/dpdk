@@ -641,7 +641,7 @@ is 1. Therefore, it requires to get processed in TB-mode.
 The figure below visualizes the encoding of CBs using BBDEV interface in
 TB-mode. CB-mode is a reduced version, where only one CB exists:
 
-.. _figure_turbo_tb_encode:
+.. _bbdev_figure_turbo_tb_encode:
 
 .. figure:: img/turbo_tb_encode.*
 
@@ -733,7 +733,7 @@ with enough room for the output data.
 The figure below visualizes the decoding of CBs using BBDEV interface in
 TB-mode. CB-mode is a reduced version, where only one CB exists:
 
-.. _figure_turbo_tb_decode:
+.. _bbdev_figure_turbo_tb_decode:
 
 .. figure:: img/turbo_tb_decode.*
 
@@ -878,7 +878,7 @@ calculated by BBDEV before signalling to the driver.
 The number of CBs in the group should not be confused with ``c``, the
 total number of CBs in the full TB (``C`` as per 3GPP TS 38.212 section 5.2.2)
 
-Figure :numref:`figure_turbo_tb_encode` above
+Figure :numref:`bbdev_figure_turbo_tb_encode` above
 showing the Turbo encoding of CBs using BBDEV interface in TB-mode
 is also valid for LDPC encode.
 
@@ -1112,7 +1112,7 @@ total number of CBs in the full TB (``C`` as per 3GPP TS 38.212 section 5.2.2)
 The ``length`` is total size of the CBs inclusive of any CRC24A and CRC24B in
 case they were appended by the application.
 
-Figure :numref:`figure_turbo_tb_decode` above
+Figure :numref:`bbdev_figure_turbo_tb_decode` above
 showing the Turbo decoding of CBs using BBDEV interface in TB-mode
 is also valid for LDPC decode.
 

@@ -15,7 +15,7 @@ and has support for the latest Linux operating systems.
 More information can be found at `Chelsio Communications Official Website
 <http://www.chelsio.com>`_.
 
-.. _t5-nics:
+.. _cxgbe_t5_nics:
 
 Supported Chelsio T5 NICs
 -------------------------
@@ -25,7 +25,7 @@ Supported Chelsio T5 NICs
 - 40G NICs: T580-CR, T580-LP-CR, T580-SO-CR
 - Other T5 NICs: T522-CR
 
-.. _t6-nics:
+.. _cxgbe_t6_nics:
 
 Supported Chelsio T6 NICs
 -------------------------
@@ -37,7 +37,7 @@ Supported SR-IOV Chelsio NICs
 -----------------------------
 
 SR-IOV virtual functions are supported on all the Chelsio NICs listed
-in :ref:`t5-nics` and :ref:`t6-nics`.
+in :ref:`cxgbe_t5_nics` and :ref:`cxgbe_t6_nics`.
 
 Features
 --------
@@ -73,7 +73,7 @@ Prerequisites
   repository.
 
   Instructions on how to manually flash the firmware are given in section
-  :ref:`linux-installation` for Linux and section :ref:`freebsd-installation`
+  :ref:`cxgbe_linux_installation` for Linux and section :ref:`cxgbe_freebsd_installation`
   for FreeBSD.
 
 
@@ -319,7 +319,7 @@ CXGBE PF Only Runtime Options
 
      dpdk-testpmd -a 02:00.4,filtermode=0x88,filtermask=0x80 -- -i
 
-.. _driver-compilation:
+.. _cxgbe_driver_compilation:
 
 Driver compilation and testing
 ------------------------------
@@ -330,7 +330,7 @@ for details.
 Linux
 -----
 
-.. _linux-installation:
+.. _cxgbe_linux_installation:
 
 Linux Installation
 ~~~~~~~~~~~~~~~~~~
@@ -468,8 +468,8 @@ devices managed by librte_net_cxgbe in Linux operating system.
 
    .. note::
 
-      Flow control pause TX/RX is disabled by default and can be enabled via
-      testpmd. Refer section :ref:`flow-control` for more details.
+      Flow control pause TX/RX is disabled by default and can be enabled via testpmd.
+      Refer section :ref:`cxgbe_flow_control` for more details.
 
 Configuring SR-IOV Virtual Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -582,7 +582,7 @@ virtual functions.
 FreeBSD
 -------
 
-.. _freebsd-installation:
+.. _cxgbe_freebsd_installation:
 
 FreeBSD Installation
 ~~~~~~~~~~~~~~~~~~~~
@@ -652,7 +652,7 @@ This section demonstrates how to launch **testpmd** with Chelsio
 devices managed by librte_net_cxgbe in FreeBSD operating system.
 
 #. Change to DPDK source directory where the target has been compiled in
-   section :ref:`driver-compilation`:
+   section :ref:`cxgbe_driver_compilation`:
 
    .. code-block:: console
 
@@ -778,13 +778,13 @@ devices managed by librte_net_cxgbe in FreeBSD operating system.
 
 .. note::
 
-   Flow control pause TX/RX is disabled by default and can be enabled via
-   testpmd. Refer section :ref:`flow-control` for more details.
+   Flow control pause TX/RX is disabled by default and can be enabled via testpmd.
+   Refer section :ref:`cxgbe_flow_control` for more details.
 
 Sample Application Notes
 ------------------------
 
-.. _flow-control:
+.. _cxgbe_flow_control:
 
 Enable/Disable Flow Control
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -40,14 +40,14 @@ the application to determine its quiescent state.
 
 Let us consider the following diagram:
 
-.. _figure_quiescent_state:
+.. _rcu_figure_quiescent_state:
 
 .. figure:: img/rcu_general_info.*
 
    Phases in the Quiescent State model.
 
 
-As shown in :numref:`figure_quiescent_state`, reader thread 1 accesses data
+As shown in :numref:`rcu_figure_quiescent_state`, reader thread 1 accesses data
 structures D1 and D2. When it is accessing D1, if the writer has to remove an
 element from D1, the writer cannot free the memory associated with that
 element immediately. The writer can return the memory to the allocator only

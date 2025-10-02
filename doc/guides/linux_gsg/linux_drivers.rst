@@ -21,14 +21,14 @@ Binding and Unbinding Network Ports to/from the Kernel Modules
 
    PMDs which use the bifurcated driver should not be unbound from their kernel drivers.
    This section is for PMDs which use the UIO or VFIO drivers.
-   See :ref:`bifurcated_driver` section for more details.
+   See :ref:`linux_gsg_bifurcated_driver` section for more details.
 
 .. note::
 
    It is recommended that ``vfio-pci`` be used as the kernel module for DPDK-bound ports in all cases.
-   If an IOMMU is unavailable, the ``vfio-pci`` can be used in :ref:`no-iommu<vfio_noiommu>` mode.
+   If an IOMMU is unavailable, the ``vfio-pci`` can be used in :ref:`no-iommu <linux_gsg_vfio_noiommu>` mode.
    If, for some reason, vfio is unavailable, then UIO-based modules, ``igb_uio`` and ``uio_pci_generic`` may be used.
-   See section :ref:`uio` for details.
+   See section :ref:`linux_gsg_uio` for details.
 
 Most devices require that the hardware to be used by DPDK be unbound from the kernel driver it uses,
 and instead be bound to the ``vfio-pci`` kernel module before the application is run.
@@ -130,10 +130,10 @@ to use IO virtualization (such as Intel\ |reg| VT-d).
    configure the Linux kernel to use IOMMU.
 
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
-For more information, please refer to :ref:`Running_Without_Root_Privileges`.
+For more information, please refer to :ref:`linux_gsg_running_without_root_privileges`.
 
 
-.. _vfio_noiommu:
+.. _linux_gsg_vfio_noiommu:
 
 VFIO no-IOMMU mode
 ~~~~~~~~~~~~~~~~~~
@@ -359,7 +359,7 @@ running on these systems.
 Consult your distribution's documentation to make sure that is the case.
 
 
-.. _bifurcated_driver:
+.. _linux_gsg_bifurcated_driver:
 
 Bifurcated Driver
 -----------------
@@ -384,7 +384,7 @@ More about the bifurcated driver can be found in
 NVIDIA `bifurcated PMD
 <https://www.dpdk.org/wp-content/uploads/sites/23/2016/10/Day02-Session04-RonyEfraim-Userspace2016.pdf>`_ presentation.
 
-.. _uio:
+.. _linux_gsg_uio:
 
 UIO
 ---

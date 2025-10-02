@@ -169,40 +169,44 @@ Supported CLI commands
 This section provides details on commands which can be used in ``<usecase>.cli``
 file to express the requested use case configuration.
 
+.. |graph_scope1| replace:: :ref:`1 <graph_command_scopes>`
+.. |graph_scope2| replace:: :ref:`2 <graph_command_scopes>`
+.. |graph_scope3| replace:: :ref:`3 <graph_command_scopes>`
+
 .. table:: Exposed CLIs
    :widths: auto
 
    +--------------------------------------+-----------------------------------+-------------------+----------+
    |               Command                |             Description           |     Scope         | Optional |
    +======================================+===================================+===================+==========+
-   | | graph <usecases> [bsz <size>]      | | Command to express the desired  | :ref:`1 <scopes>` |    No    |
+   | | graph <usecases> [bsz <size>]      | | Command to express the desired  | |graph_scope1|    |    No    |
    | | [tmo <ns>] [coremask <bitmask>]    | | use case. Also enables/disable  |                   |          |
    | | model <rtc/mcd/default> pcap_enable| | pcap capturing.                 |                   |          |
    | | <0/1> num_pcap_pkts <num> pcap_file|                                   |                   |          |
    | | <output_capture_file>              |                                   |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | graph start                          | | Command to start the graph.     | :ref:`1 <scopes>` |    No    |
+   | graph start                          | | Command to start the graph.     | |graph_scope1|    |    No    |
    |                                      | | This command triggers that no   |                   |          |
    |                                      | | more commands are left to be    |                   |          |
    |                                      | | parsed and graph initialization |                   |          |
    |                                      | | can be started now. It must be  |                   |          |
    |                                      | | the last command in usecase.cli |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | graph stats show                     | | Command to dump current graph   | :ref:`2 <scopes>` |    Yes   |
+   | graph stats show                     | | Command to dump current graph   | |graph_scope2|    |    Yes   |
    |                                      | | statistics.                     |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help graph                           | | Command to dump graph help      | :ref:`2 <scopes>` |    Yes   |
+   | help graph                           | | Command to dump graph help      | |graph_scope2|    |    Yes   |
    |                                      | | message.                        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | mempool <mempool_name> size        | | Command to create mempool which | :ref:`1 <scopes>` |    No    |
+   | | mempool <mempool_name> size        | | Command to create mempool which | |graph_scope1|    |    No    |
    | | <mbuf_size> buffers                | | will be further associated to   |                   |          |
    | | <number_of_buffers>                | | RxQ to dequeue the packets.     |                   |          |
    | | cache <cache_size> numa <numa_id>  |                                   |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help mempool                         | | Command to dump mempool help    | :ref:`2 <scopes>` |    Yes   |
+   | help mempool                         | | Command to dump mempool help    | |graph_scope2|    |    Yes   |
    |                                      | | message.                        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ethdev <ethdev_name> rxq <n_queues>| | Command to create DPDK port with| :ref:`1 <scopes>` |    No    |
+   | | ethdev <ethdev_name> rxq <n_queues>| | Command to create DPDK port with| |graph_scope1|    |    No    |
    | | txq <n_queues> <mempool_name>      | | given number of Rx and Tx queues|                   |          |
    |                                      | | . Also attach RxQ with given    |                   |          |
    |                                      | | mempool. Each port can have     |                   |          |
@@ -210,95 +214,95 @@ file to express the requested use case configuration.
    |                                      | | RxQs will share the same mempool|                   |          |
    |                                      | | .                               |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | ethdev <ethdev_name> mtu <mtu_sz>    | | Command to configure MTU of DPDK| :ref:`3 <scopes>` |    Yes   |
+   | ethdev <ethdev_name> mtu <mtu_sz>    | | Command to configure MTU of DPDK| |graph_scope3|    |    Yes   |
    |                                      | | port.                           |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ethdev forward <tx_dev_name>       | | Command to configure port       | :ref:`1 <scopes>` |    Yes   |
+   | | ethdev forward <tx_dev_name>       | | Command to configure port       | |graph_scope1|    |    Yes   |
    | | <rx_dev_name>                      | | forwarding of DPDK              |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ethdev <ethdev_name> promiscuous   | | Command to enable/disable       | :ref:`3 <scopes>` |    Yes   |
+   | | ethdev <ethdev_name> promiscuous   | | Command to enable/disable       | |graph_scope3|    |    Yes   |
    | | <on/off>                           | | promiscuous mode on DPDK port.  |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | ethdev <ethdev_name> show            | | Command to dump current ethdev  | :ref:`2 <scopes>` |    Yes   |
+   | ethdev <ethdev_name> show            | | Command to dump current ethdev  | |graph_scope2|    |    Yes   |
    |                                      | | configuration.                  |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | ethdev <ethdev_name> stats           | | Command to dump current ethdev  | :ref:`2 <scopes>` |    Yes   |
+   | ethdev <ethdev_name> stats           | | Command to dump current ethdev  | |graph_scope2|    |    Yes   |
    |                                      | | statistics.                     |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ethdev <ethdev_name> ip4 addr add  | | Command to configure IPv4       | :ref:`3 <scopes>` |    Yes   |
+   | | ethdev <ethdev_name> ip4 addr add  | | Command to configure IPv4       | |graph_scope3|    |    Yes   |
    | | <ip> netmask <mask>                | | address on given PCI device. It |                   |          |
    |                                      | | is needed if user wishes to use |                   |          |
    |                                      | | ``ipv4_lookup`` node.           |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ethdev <ethdev_name> ip6 addr add  | | Command to configure IPv6       | :ref:`3 <scopes>` |    Yes   |
+   | | ethdev <ethdev_name> ip6 addr add  | | Command to configure IPv6       | |graph_scope3|    |    Yes   |
    | | <ip> netmask <mask>                | | address on given PCI device. It |                   |          |
    |                                      | | is needed if user wishes to use |                   |          |
    |                                      | | ``ipv6_lookup`` node.           |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help ethdev                          | | Command to dump ethdev help     | :ref:`2 <scopes>` |    Yes   |
+   | help ethdev                          | | Command to dump ethdev help     | |graph_scope2|    |    Yes   |
    |                                      | | message.                        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ipv4_lookup route add ipv4 <ip>    | | Command to add a route into     | :ref:`3 <scopes>` |    Yes   |
+   | | ipv4_lookup route add ipv4 <ip>    | | Command to add a route into     | |graph_scope3|    |    Yes   |
    | |  netmask <mask> via <ip>           | | ``ipv4_lookup`` LPM table or    |                   |          |
    |                                      | | FIB. It is needed if user wishes|                   |          |
    |                                      | | to route the packets based on   |                   |          |
    |                                      | | LPM lookup table or FIB.        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ipv4_lookup mode <lpm|fib>         | | Command to set ipv4 lookup mode | :ref:`1 <scopes>` |    Yes   |
+   | | ipv4_lookup mode <lpm|fib>         | | Command to set ipv4 lookup mode | |graph_scope1|    |    Yes   |
    |                                      | | to either LPM or FIB. By default|                   |          |
    |                                      | | the lookup mode is LPM.         |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help ipv4_lookup                     | | Command to dump ``ipv4_lookup`` | :ref:`2 <scopes>` |    Yes   |
+   | help ipv4_lookup                     | | Command to dump ``ipv4_lookup`` | |graph_scope2|    |    Yes   |
    |                                      | | help message.                   |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ipv6_lookup route add ipv6 <ip>    | | Command to add a route into     | :ref:`3 <scopes>` |    Yes   |
+   | | ipv6_lookup route add ipv6 <ip>    | | Command to add a route into     | |graph_scope3|    |    Yes   |
    | |  netmask <mask> via <ip>           | | ``ipv6_lookup`` LPM table or.   |                   |          |
    |                                      | | FIB. It is needed if user wishes|                   |          |
    |                                      | | to route the packets based on   |                   |          |
    |                                      | | LPM6 lookup table or FIB.       |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ipv6_lookup mode <lpm|fib>         | | Command to set ipv6 lookup mode | :ref:`1 <scopes>` |    Yes   |
+   | | ipv6_lookup mode <lpm|fib>         | | Command to set ipv6 lookup mode | |graph_scope1|    |    Yes   |
    |                                      | | to either LPM or FIB. By default|                   |          |
    |                                      | | the lookup mode is LPM.         |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help ipv6_lookup                     | | Command to dump ``ipv6_lookup`` | :ref:`2 <scopes>` |    Yes   |
+   | help ipv6_lookup                     | | Command to dump ``ipv6_lookup`` | |graph_scope2|    |    Yes   |
    |                                      | | help message.                   |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | neigh add ipv4 <ip> <mac>            | | Command to add a neighbour      | :ref:`3 <scopes>` |    Yes   |
+   | neigh add ipv4 <ip> <mac>            | | Command to add a neighbour      | |graph_scope3|    |    Yes   |
    |                                      | | information into                |                   |          |
    |                                      | | ``ipv4_rewrite`` node.          |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | neigh add ipv6 <ip> <mac>            | | Command to add a neighbour      | :ref:`3 <scopes>` |    Yes   |
+   | neigh add ipv6 <ip> <mac>            | | Command to add a neighbour      | |graph_scope3|    |    Yes   |
    |                                      | | information into                |                   |          |
    |                                      | | ``ipv6_rewrite`` node.          |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help neigh                           | | Command to dump neigh help      | :ref:`2 <scopes>` |    Yes   |
+   | help neigh                           | | Command to dump neigh help      | |graph_scope2|    |    Yes   |
    |                                      | | message.                        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | ethdev_rx map port <ethdev_name>   | | Command to add port-queue-core  | :ref:`1 <scopes>` |    No    |
+   | | ethdev_rx map port <ethdev_name>   | | Command to add port-queue-core  | |graph_scope1|    |    No    |
    | | queue <q_num> core <core_id>       | | mapping to ``ethdev_rx`` node.  |                   |          |
    |                                      | | ``ethdev_rx`` node instance will|                   |          |
    |                                      | | be pinned on given core and will|                   |          |
    |                                      | | poll on requested port/queue    |                   |          |
    |                                      | | pair.                           |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help ethdev_rx                       | | Command to dump ethdev_rx help  | :ref:`2 <scopes>` |    Yes   |
+   | help ethdev_rx                       | | Command to dump ethdev_rx help  | |graph_scope2|    |    Yes   |
    |                                      | | message.                        |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | help feature                         | | Command to dump feature arc     | :ref:`2 <scopes>` |    Yes   |
+   | help feature                         | | Command to dump feature arc     | |graph_scope2|    |    Yes   |
    |                                      | | help message.                   |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | feature arcs                         | | Command to dump all created     | :ref:`2 <scopes>` |    Yes   |
+   | feature arcs                         | | Command to dump all created     | |graph_scope2|    |    Yes   |
    |                                      | | feature arcs                    |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | feature enable <arc name>          | | Enable <feature name> of <arc   | :ref:`2 <scopes>` |    Yes   |
+   | | feature enable <arc name>          | | Enable <feature name> of <arc   | |graph_scope2|    |    Yes   |
    | | <feature name> <interface index>   | | name> on an interface.          |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
-   | | feature disable <arc name>         | | Disable <feature name> of <arc  | :ref:`2 <scopes>` |    Yes   |
+   | | feature disable <arc name>         | | Disable <feature name> of <arc  | |graph_scope2|    |    Yes   |
    | | <feature name> <interface index>   | | name> on an interface.          |                   |          |
    +--------------------------------------+-----------------------------------+-------------------+----------+
 
-.. _scopes:
+.. _graph_command_scopes:
 
 1. Script only
 2. Telnet only

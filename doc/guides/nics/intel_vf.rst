@@ -24,9 +24,9 @@ SR-IOV Mode Utilization in a DPDK Environment
 The DPDK uses the SR-IOV feature for hardware-based I/O sharing in IOV mode.
 Therefore, it is possible to partition SR-IOV capability on Ethernet controller NIC resources logically and
 expose them to a virtual machine as a separate PCI function called a "Virtual Function".
-Refer to :numref:`figure_single_port_nic`.
+Refer to :numref:`intel_vf_figure_single_port_nic`.
 
-Therefore, a NIC is logically distributed among multiple virtual machines (as shown in :numref:`figure_single_port_nic`),
+Therefore, a NIC is logically distributed among multiple virtual machines (as shown in :numref:`intel_vf_figure_single_port_nic`),
 while still having global data in common to share with the Physical Function and other Virtual Functions.
 The DPDK fm10kvf, iavf, igbvf or ixgbevf as a Poll Mode Driver (PMD) serves for the Intel® 82576 Gigabit Ethernet Controller,
 Intel® Ethernet Controller I350 family, Intel® 82599 10 Gigabit Ethernet Controller NIC,
@@ -47,7 +47,7 @@ For more detail on SR-IOV, please refer to the following documents:
 
 *   `Scalable I/O Virtualized Servers <http://www.intel.com/content/www/us/en/virtualization/server-virtualization/scalable-i-o-virtualized-servers-paper.html>`_
 
-.. _figure_single_port_nic:
+.. _intel_vf_figure_single_port_nic:
 
 .. figure:: img/single_port_nic.*
 
@@ -585,9 +585,9 @@ The setup procedure is as follows:
         can also be used to bind and unbind devices to a virtual machine in Ubuntu.
         If this option is used, step 6 in the instructions provided will be different.
 
-    *   The Virtual Machine Monitor (see :numref:`figure_perf_benchmark`) is equivalent to a Host OS with KVM installed as described in the instructions.
+    *   The Virtual Machine Monitor (see :numref:`intel_vf_figure_perf_benchmark`) is equivalent to a Host OS with KVM installed as described in the instructions.
 
-.. _figure_perf_benchmark:
+.. _intel_vf_figure_perf_benchmark:
 
 .. figure:: img/perf_benchmark.*
 
@@ -607,10 +607,10 @@ the DPDK VF PMD performs the same throughput result as a non-VT native environme
 With such host instance fast packet processing, lots of services such as filtering, QoS,
 DPI can be offloaded on the host fast path.
 
-:numref:`figure_fast_pkt_proc` shows the scenario where some VMs directly communicate externally via a VFs,
+:numref:`intel_vf_figure_fast_pkt_proc` shows the scenario where some VMs directly communicate externally via a VFs,
 while others connect to a virtual switch and share the same uplink bandwidth.
 
-.. _figure_fast_pkt_proc:
+.. _intel_vf_figure_fast_pkt_proc:
 
 .. figure:: img/fast_pkt_proc.*
 
@@ -626,7 +626,7 @@ So VF-to-VF traffic within the same physical port (VM0<->VM1) have hardware acce
 However, when VF crosses physical ports (VM0<->VM2), there is no such hardware bridge.
 In this case, the DPDK PMD PF driver provides host forwarding between such VMs.
 
-:numref:`figure_inter_vm_comms` shows an example.
+:numref:`intel_vf_figure_inter_vm_comms` shows an example.
 In this case an update of the MAC address lookup tables in both the NIC and host DPDK application is required.
 
 In the NIC, writing the destination of a MAC address belongs to another cross device VM to the PF specific pool.
@@ -637,7 +637,7 @@ that is, the packet is forwarded to the correct PF pool.
 The SR-IOV NIC switch forwards the packet to a specific VM according to the MAC destination address
 which belongs to the destination VF on the VM.
 
-.. _figure_inter_vm_comms:
+.. _intel_vf_figure_inter_vm_comms:
 
 .. figure:: img/inter_vm_comms.*
 

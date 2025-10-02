@@ -42,16 +42,16 @@ Message buffers may be used to carry control information, packets, events,
 and so on between different entities in the system.
 Message buffers may also use their buffer pointers to point to other message buffer data sections or other structures.
 
-:numref:`figure_mbuf1` and :numref:`figure_mbuf2` show some of these scenarios.
+:numref:`mbuf_figure_1` and :numref:`mbuf_figure_2` show some of these scenarios.
 
-.. _figure_mbuf1:
+.. _mbuf_figure_1:
 
 .. figure:: img/mbuf1.*
 
    An mbuf with One Segment
 
 
-.. _figure_mbuf2:
+.. _mbuf_figure_2:
 
 .. figure:: img/mbuf2.*
 

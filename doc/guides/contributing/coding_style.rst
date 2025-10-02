@@ -34,7 +34,7 @@ Usual Comments
 ~~~~~~~~~~~~~~
 
 These comments should be used in normal cases.
-To document a public API, a doxygen-like format must be used: refer to :ref:`doxygen_guidelines`.
+To document a public API, a doxygen-like format must be used: refer to :ref:`style_doxygen_guidelines`.
 
 .. code-block:: c
 
@@ -588,7 +588,9 @@ Prototypes
 * Function prototypes should be listed in a logical order, preferably alphabetical unless there is a compelling reason to use a different ordering.
 * Functions that are used locally in more than one module go into a separate header file, for example, "extern.h".
 * Do not use the ``__P`` macro.
-* Functions that are part of an external API should be documented using Doxygen-like comments above declarations. See :ref:`doxygen_guidelines` for details.
+* Functions that are part of an external API
+  should be documented using Doxygen-like comments above declarations.
+  See :ref:`style_doxygen_guidelines` for details.
 * Functions that are part of the external API must have an ``rte_`` prefix on the function name.
 * Do not use uppercase letters - either in the form of ALL_UPPERCASE, or CamelCase - in function names. Lower-case letters and underscores only.
 * When prototyping functions, associate names with parameter types, for example:
@@ -825,7 +827,7 @@ Control Statements
                  /* NOTREACHED */
          }
 
-.. _dynamic_logging:
+.. _style_dynamic_logging:
 
 Dynamic Logging
 ---------------

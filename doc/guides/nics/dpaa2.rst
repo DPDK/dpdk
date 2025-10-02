@@ -407,7 +407,7 @@ Features of the DPAA2 PMD are:
 - Link flow control
 - Scattered and gather for TX and RX
 - Rx queue interrupts
-- :ref:`dptmapi`
+- :ref:`dpaa2_dptmapi`
 
 
 Supported DPAA2 SoCs
@@ -589,7 +589,7 @@ Other Limitations
 - RSS hash key cannot be modified.
 - RSS RETA cannot be configured.
 
-.. _dptmapi:
+.. _dpaa2_dptmapi:
 
 Traffic Management API
 ----------------------

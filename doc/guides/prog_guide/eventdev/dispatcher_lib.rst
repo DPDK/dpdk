@@ -200,7 +200,7 @@ further decouple sub-modules. However, the dispatcher may impose an
 upper limit of the number of handlers. In addition, installing a large
 number of handlers increase dispatcher overhead, although this does
 not necessarily translate to a system-level performance degradation. See
-the section on :ref:`Event Clustering` for more information.
+the section on :ref:`dispatcher_event_clustering` for more information.
 
 Handler registration and unregistration cannot safely be done while
 the dispatcher's service function is running on any lcore.
@@ -242,7 +242,7 @@ until the destination handler for both events have been determined.
 The events provided in a single process call always belong to the same
 event port dequeue burst.
 
-.. _Event Clustering:
+.. _dispatcher_event_clustering:
 
 Event Clustering
 ^^^^^^^^^^^^^^^^

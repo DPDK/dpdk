@@ -35,13 +35,13 @@ Features of the MVPP2 PMD are:
 - L4 checksum offload
 - Packet type parsing
 - Basic stats
-- :ref:`extstats`
+- :ref:`mvpp2_extstats`
 - RX flow control
 - Scattered TX frames
-- :ref:`QoS <extconf>`
-- :ref:`flowapi`
-- :ref:`mtrapi`
-- :ref:`tmapi`
+- :ref:`QoS <mvpp2_extconf>`
+- :ref:`mvpp2_flowapi`
+- :ref:`mvpp2_mtrapi`
+- :ref:`mvpp2_tmapi`
 
 Limitations
 -----------
@@ -163,7 +163,7 @@ In order to run testpmd example application following command can be used:
      --burst=128 --txd=2048 --rxd=1024 --rxq=2 --txq=2  --nb-cores=2 \
      -i -a --rss-udp
 
-.. _extstats:
+.. _mvpp2_extstats:
 
 Extended stats
 --------------
@@ -185,7 +185,7 @@ MVPP2 PMD supports the following extended statistics:
 	- ``tx_errors``: number of TX MAC errors
 
 
-.. _extconf:
+.. _mvpp2_extconf:
 
 External Configuration
 ----------------------
@@ -390,7 +390,7 @@ Usage example
    ./dpdk-testpmd --vdev=eth_mvpp2,iface=eth0,iface=eth2,cfg=/home/user/mrvl.conf \
      -l 0-2 -- -i -a --disable-hw-vlan-strip --rxq=3 --txq=3
 
-.. _flowapi:
+.. _mvpp2_flowapi:
 
 Flow API
 --------
@@ -562,7 +562,7 @@ Following limitations need to be taken into account while creating flow rules:
 For additional information about classifier please consult
 ``doc/musdk_cls_user_guide.txt``.
 
-.. _mtrapi:
+.. _mvpp2_mtrapi:
 
 Traffic metering and policing
 -----------------------------
@@ -577,7 +577,8 @@ MVPP2 PMD supports DPDK traffic metering and policing that allows the following:
 
 For an additional description please refer to DPDK :doc:`/prog_guide/ethdev/traffic_metering_and_policing`.
 
-The policer objects defined by this feature can work with the default policer defined via config file as described in :ref:`QoS Support <extconf>`.
+The policer objects defined by this feature can work with the default policer
+defined via config file as described in :ref:`QoS Support <mvpp2_extconf>`.
 
 Limitations
 ~~~~~~~~~~~
@@ -618,7 +619,7 @@ Usage example
 For a detailed usage description please refer to :ref:`testpmd_traffic_metering_and_policing`.
 
 
-.. _tmapi:
+.. _mvpp2_tmapi:
 
 Traffic Management API
 ----------------------

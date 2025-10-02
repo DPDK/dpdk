@@ -138,7 +138,7 @@ There are two areas that need to be set up on a System Under Test:
 
 #. **User with administrator privileges**
 
-.. _sut_admin_user:
+.. _dts_sut_admin_user:
 
    DTS needs administrator privileges to run DPDK applications (such as testpmd) on the SUT.
    The SUT user must be able run commands in privileged mode without asking for password.
@@ -264,7 +264,7 @@ These need to be set up on a Traffic Generator Node:
 
    Similarly to the System Under Test, traffic generators need administrator privileges
    to be able to use the devices.
-   Refer to the `System Under Test section <sut_admin_user>` for details.
+   Refer to the `System Under Test section <dts_sut_admin_user>` for details.
 
 
 Running DTS
@@ -286,12 +286,12 @@ and must respect the model definitions
 as documented in the DTS API docs under the ``config`` page.
 The root of the configuration is represented by the ``Configuration`` model.
 By default, DTS will try to use the ``dts/configurations/test_run.example.yaml``
-:ref:`config file <test_run_configuration_example>`,
+:ref:`config file <dts_test_run_configuration_example>`,
 and ``dts/configurations/nodes.example.yaml``
-:ref:`config file <nodes_configuration_example>`
+:ref:`config file <dts_nodes_configuration_example>`
 which are templates that illustrate what can be configured in DTS.
 
-The user must have :ref:`administrator privileges <sut_admin_user>`
+The user must have :ref:`administrator privileges <dts_sut_admin_user>`
 which don't require password authentication.
 
 
@@ -386,12 +386,12 @@ Framework Coding Guidelines
 When contributing code to the DTS framework,
 follow existing conventions to ensure consistency.
 The :ref:`dts_dev_tools` will flag basic issues.
-Also, be sure to :ref:`build the API documentation <building_api_docs>`
+Also, be sure to :ref:`build the API documentation <dts_building_api_docs>`
 to catch any problems during the build.
 
 The API documentation is a helpful reference during development.
 It can be viewed in the code directly
-or generated using the :ref:`API docs build steps <building_api_docs>`.
+or generated using the :ref:`API docs build steps <dts_building_api_docs>`.
 If you add new files or change the directory structure,
 update the corresponding sources in ``doc/api/dts``.
 
@@ -560,7 +560,7 @@ the DTS code check and format script.
 Refer to the script for usage: ``devtools/dts-check-format.sh -h``.
 
 
-.. _building_api_docs:
+.. _dts_building_api_docs:
 
 Building DTS API docs
 ---------------------
@@ -595,7 +595,7 @@ And they both have two network ports which are physically connected to each othe
    This example assumes that you have setup SSH keys in both the system under test
    and traffic generator nodes.
 
-.. _test_run_configuration_example:
+.. _dts_test_run_configuration_example:
 
 ``dts/configurations/test_run.example.yaml``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -604,7 +604,7 @@ And they both have two network ports which are physically connected to each othe
    :language: yaml
    :start-at: # Define
 
-.. _nodes_configuration_example:
+.. _dts_nodes_configuration_example:
 
 
 ``dts/configurations/nodes.example.yaml``

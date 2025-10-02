@@ -42,7 +42,7 @@ the installation of DPDK using `meson install` as described previously::
         ln -sf helloworld-shared build/helloworld
 
 
-.. _running_sample_app:
+.. _freebsd_gsg_running_sample_app:
 
 Running a Sample Application
 ----------------------------
@@ -50,14 +50,14 @@ Running a Sample Application
 #.  The ``contigmem`` and ``nic_uio`` modules must be set up prior to running an application.
 
 #.  Any ports to be used by the application must be already bound to the ``nic_uio`` module,
-    as described in section :ref:`binding_network_ports`, prior to running the application.
+    as described in section :ref:`freebsd_gsg_binding_network_ports`, prior to running the application.
     The application is linked with the DPDK target environment's Environment
     Abstraction Layer (EAL) library, which provides some options that are generic
     to every DPDK application.
 
 You can refer to :doc:`freebsd_eal_parameters` for the list of EAL options.
 
-.. _running_non_root:
+.. _freebsd_gsg_running_non_root:
 
 Running DPDK Applications Without Root Privileges
 -------------------------------------------------

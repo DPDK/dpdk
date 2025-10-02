@@ -1951,7 +1951,7 @@ The following sections show functions for configuring ports.
 
    Port configuration changes only become active when forwarding is started/restarted.
 
-.. _port_attach:
+.. _testpmd_port_attach:
 
 port attach
 ~~~~~~~~~~~
@@ -5750,5 +5750,5 @@ Some drivers provide specific features.
 See:
 
 - :ref:`net/bonding testpmd driver specific commands <bonding_testpmd_commands>`
-- :ref:`net/i40e testpmd driver specific commands <net_i40e_testpmd_commands>`
-- :ref:`net/ixgbe testpmd driver specific commands <net_ixgbe_testpmd_commands>`
+- :ref:`net/i40e testpmd driver specific commands <i40e_testpmd_commands>`
+- :ref:`net/ixgbe testpmd driver specific commands <ixgbe_testpmd_commands>`

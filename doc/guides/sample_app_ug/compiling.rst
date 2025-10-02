@@ -63,7 +63,7 @@ Using Make
 ~~~~~~~~~~
 
 Pkg-config is used when building an example app standalone using make, please
-see :ref:`building_app_using_installed_dpdk` for more information.
+see :ref:`linux_gsg_building_app_using_installed_dpdk` for more information.
 
 Go to the sample application directory. Unless otherwise specified the sample
 applications are located in ``dpdk/examples/``.

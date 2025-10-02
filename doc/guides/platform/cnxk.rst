@@ -23,10 +23,10 @@ Supported OCTEON cnxk SoCs
 Resource Virtualization Unit architecture
 -----------------------------------------
 
-The :numref:`figure_cnxk_resource_virtualization` diagram depicts the
+The :numref:`cnxk_figure_resource_virtualization` diagram depicts the
 RVU architecture and a resource provisioning example.
 
-.. _figure_cnxk_resource_virtualization:
+.. _cnxk_figure_resource_virtualization:
 
 .. figure:: img/cnxk_resource_virtualization.*
 
@@ -41,11 +41,11 @@ Each functional block has multiple local functions (LFs) for
 provisioning to different PCIe devices. RVU supports multiple PCIe SRIOV
 physical functions (PFs) and virtual functions (VFs).
 
-The :numref:`table_cnxk_rvu_dpdk_mapping` shows the various local
+The :numref:`cnxk_table_rvu_dpdk_mapping` shows the various local
 functions (LFs) provided by the RVU and its functional mapping to
 DPDK subsystem.
 
-.. _table_cnxk_rvu_dpdk_mapping:
+.. _cnxk_table_rvu_dpdk_mapping:
 
 .. table:: RVU managed functional blocks and its mapping to DPDK subsystem
 
@@ -94,7 +94,7 @@ handle provisioning/configuration requests sent by any device from any domain.
 The AF driver does not receive or process any data.
 It is only a configuration driver used in control path.
 
-The :numref:`figure_cnxk_resource_virtualization` diagram also shows a
+The :numref:`cnxk_figure_resource_virtualization` diagram also shows a
 resource provisioning example where,
 
 #. PFx and PFx-VF0 bound to Linux netdev driver.
@@ -145,10 +145,10 @@ The primary use case for SDP is to enable the smart NIC use case. Typical usage 
 cnxk packet flow
 ----------------
 
-The :numref:`figure_cnxk_packet_flow_hw_accelerators` diagram depicts
+The :numref:`cnxk_figure_packet_flow_hw_accelerators` diagram depicts
 the packet flow on cnxk SoC in conjunction with use of various HW accelerators.
 
-.. _figure_cnxk_packet_flow_hw_accelerators:
+.. _cnxk_figure_packet_flow_hw_accelerators:
 
 .. figure:: img/cnxk_packet_flow_hw_accelerators.*
 

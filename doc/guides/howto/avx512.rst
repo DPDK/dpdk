@@ -22,7 +22,8 @@ which does not allow for AVX-512.
    rte_vect_set_max_simd_bitwidth(RTE_VECT_SIMD_512);
 
 This API should only be called once at initialization, before EAL init.
-For more information on the possible enum values to use as a parameter, go to :ref:`max_simd_bitwidth`:
+For more information on the possible enum values to use as a parameter,
+go to :ref:`eal_max_simd_bitwidth`:
 
 
 Using the command-line argument
