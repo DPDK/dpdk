@@ -203,7 +203,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
  * tests attempting to use this function on FreeBSD.
  */
 #ifdef RTE_EXEC_ENV_LINUX
-static char *
+static inline char *
 get_current_prefix(char *prefix, int size)
 {
 	char path[PATH_MAX] = {0};
