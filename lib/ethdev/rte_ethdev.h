@@ -3682,7 +3682,7 @@ int rte_eth_dev_vlan_filter(uint16_t port_id, uint16_t vlan_id, int on);
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param rx_queue_id
- *   The index of the receive queue for which a queue stats mapping is required.
+ *   The index of the receive queue on which to enable/disable VLAN stripping.
  *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
  *   to rte_eth_dev_configure().
  * @param on
