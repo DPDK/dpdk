@@ -2629,8 +2629,6 @@ ice_dev_init(struct rte_eth_dev *dev)
 		return 0;
 	}
 
-	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-
 	ice_set_default_ptype_table(dev);
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
 	intr_handle = pci_dev->intr_handle;
