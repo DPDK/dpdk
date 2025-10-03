@@ -1514,7 +1514,8 @@ ice_dcf_update_stats(struct virtchnl_eth_stats *oes,
 
 
 static int
-ice_dcf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ice_dcf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct ice_dcf_adapter *ad = dev->data->dev_private;
 	struct ice_dcf_hw *hw = &ad->real_hw;

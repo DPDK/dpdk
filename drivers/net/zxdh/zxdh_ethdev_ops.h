@@ -130,7 +130,8 @@ int zxdh_dev_rss_reta_query(struct rte_eth_dev *dev,
 int zxdh_rss_hash_update(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf);
 int zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf);
 int zxdh_rss_configure(struct rte_eth_dev *dev);
-int zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats);
 int zxdh_dev_stats_reset(struct rte_eth_dev *dev);
 int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu);
 int zxdh_hw_np_stats_pf_reset(struct rte_eth_dev *dev, uint32_t stats_id);

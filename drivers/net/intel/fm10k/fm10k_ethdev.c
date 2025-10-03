@@ -1313,7 +1313,8 @@ fm10k_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 }
 
 static int
-fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	uint64_t ipackets, opackets, ibytes, obytes, imissed;
 	struct fm10k_hw *hw =
@@ -1328,17 +1329,19 @@ fm10k_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	ipackets = opackets = ibytes = obytes = imissed = 0;
 	for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
-		(i < hw->mac.max_queues); ++i) {
-		stats->q_ipackets[i] = hw_stats->q[i].rx_packets.count;
-		stats->q_opackets[i] = hw_stats->q[i].tx_packets.count;
-		stats->q_ibytes[i]   = hw_stats->q[i].rx_bytes.count;
-		stats->q_obytes[i]   = hw_stats->q[i].tx_bytes.count;
-		stats->q_errors[i]   = hw_stats->q[i].rx_drops.count;
-		ipackets += stats->q_ipackets[i];
-		opackets += stats->q_opackets[i];
-		ibytes   += stats->q_ibytes[i];
-		obytes   += stats->q_obytes[i];
-		imissed  += stats->q_errors[i];
+			(i < hw->mac.max_queues); ++i) {
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = hw_stats->q[i].rx_packets.count;
+			qstats->q_opackets[i] = hw_stats->q[i].tx_packets.count;
+			qstats->q_ibytes[i]   = hw_stats->q[i].rx_bytes.count;
+			qstats->q_obytes[i]   = hw_stats->q[i].tx_bytes.count;
+			qstats->q_errors[i]   = hw_stats->q[i].rx_drops.count;
+		}
+		ipackets += hw_stats->q[i].rx_packets.count;
+		opackets += hw_stats->q[i].tx_packets.count;
+		ibytes   += hw_stats->q[i].rx_bytes.count;
+		obytes   += hw_stats->q[i].tx_bytes.count;
+		imissed  += hw_stats->q[i].rx_drops.count;
 	}
 	stats->ipackets = ipackets;
 	stats->opackets = opackets;

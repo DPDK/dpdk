@@ -275,7 +275,8 @@ static int ena_start(struct rte_eth_dev *dev);
 static int ena_stop(struct rte_eth_dev *dev);
 static int ena_close(struct rte_eth_dev *dev);
 static int ena_dev_reset(struct rte_eth_dev *dev);
-static int ena_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+static int ena_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+			  struct eth_queue_stats *qstats);
 static void ena_rx_queue_release_all(struct rte_eth_dev *dev);
 static void ena_tx_queue_release_all(struct rte_eth_dev *dev);
 static void ena_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
@@ -1255,7 +1256,8 @@ static void ena_stats_restart(struct rte_eth_dev *dev)
 }
 
 static int ena_stats_get(struct rte_eth_dev *dev,
-			  struct rte_eth_stats *stats)
+			  struct rte_eth_stats *stats,
+			  struct eth_queue_stats *qstats)
 {
 	struct ena_admin_basic_stats ena_stats;
 	struct ena_adapter *adapter = dev->data->dev_private;
@@ -1291,26 +1293,29 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 	stats->oerrors = rte_atomic64_read(&adapter->drv_stats->oerrors);
 	stats->rx_nombuf = rte_atomic64_read(&adapter->drv_stats->rx_nombuf);
 
-	max_rings_stats = RTE_MIN(dev->data->nb_rx_queues,
-		RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (i = 0; i < max_rings_stats; ++i) {
-		struct ena_stats_rx *rx_stats = &adapter->rx_ring[i].rx_stats;
+	/* Queue statistics */
+	if (qstats) {
+		max_rings_stats = RTE_MIN(dev->data->nb_rx_queues,
+			RTE_ETHDEV_QUEUE_STAT_CNTRS);
+		for (i = 0; i < max_rings_stats; ++i) {
+			struct ena_stats_rx *rx_stats = &adapter->rx_ring[i].rx_stats;
 
-		stats->q_ibytes[i] = rx_stats->bytes;
-		stats->q_ipackets[i] = rx_stats->cnt;
-		stats->q_errors[i] = rx_stats->bad_desc_num +
-			rx_stats->bad_req_id +
-			rx_stats->bad_desc +
-			rx_stats->unknown_error;
-	}
+			qstats->q_ibytes[i] = rx_stats->bytes;
+			qstats->q_ipackets[i] = rx_stats->cnt;
+			qstats->q_errors[i] = rx_stats->bad_desc_num +
+				rx_stats->bad_req_id +
+				rx_stats->bad_desc +
+				rx_stats->unknown_error;
+		}
 
-	max_rings_stats = RTE_MIN(dev->data->nb_tx_queues,
-		RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (i = 0; i < max_rings_stats; ++i) {
-		struct ena_stats_tx *tx_stats = &adapter->tx_ring[i].tx_stats;
+		max_rings_stats = RTE_MIN(dev->data->nb_tx_queues,
+			RTE_ETHDEV_QUEUE_STAT_CNTRS);
+		for (i = 0; i < max_rings_stats; ++i) {
+			struct ena_stats_tx *tx_stats = &adapter->tx_ring[i].tx_stats;
 
-		stats->q_obytes[i] = tx_stats->bytes;
-		stats->q_opackets[i] = tx_stats->cnt;
+			qstats->q_obytes[i] = tx_stats->bytes;
+			qstats->q_opackets[i] = tx_stats->cnt;
+		}
 	}
 
 	return 0;

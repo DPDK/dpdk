@@ -6,6 +6,8 @@
 #ifndef __NFP_FLOWER_REPRESENTOR_H__
 #define __NFP_FLOWER_REPRESENTOR_H__
 
+#include <ethdev_driver.h>
+
 #include "nfp_flower.h"
 
 struct nfp_flower_representor {
@@ -20,6 +22,7 @@ struct nfp_flower_representor {
 	struct rte_ring **ring;
 	struct rte_eth_link link;
 	struct rte_eth_stats repr_stats;
+	struct eth_queue_stats repr_qstats;
 
 	struct rte_eth_xstat *repr_xstats_base;
 	uint8_t *mac_stats;

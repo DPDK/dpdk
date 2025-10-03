@@ -892,7 +892,8 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct pmd_process_private *process_private = dev->process_private;
@@ -901,20 +902,25 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct pkt_tx_queue *txq;
 	socklen_t optlen;
 	int i, ret, fd;
+	unsigned long ipackets = 0, ibytes = 0, opackets = 0, obytes = 0;
+	unsigned long oerrors = 0, imissed = 0;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		optlen = sizeof(struct xdp_statistics);
 		rxq = &internals->rx_queues[i];
 		txq = rxq->pair;
-		stats->q_ipackets[i] = rxq->stats.rx_pkts;
-		stats->q_ibytes[i] = rxq->stats.rx_bytes;
 
-		stats->q_opackets[i] = txq->stats.tx_pkts;
-		stats->q_obytes[i] = txq->stats.tx_bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = rxq->stats.rx_pkts;
+			qstats->q_ibytes[i] = rxq->stats.rx_bytes;
+			qstats->q_opackets[i] = txq->stats.tx_pkts;
+			qstats->q_obytes[i] = txq->stats.tx_bytes;
+			qstats->q_errors[i] = 0; /* Not used */
+		}
 
-		stats->ipackets += stats->q_ipackets[i];
-		stats->ibytes += stats->q_ibytes[i];
-		stats->oerrors += txq->stats.tx_dropped;
+		ipackets += rxq->stats.rx_pkts;
+		ibytes += rxq->stats.rx_bytes;
+		oerrors += txq->stats.tx_dropped;
 		fd = process_private->rxq_xsk_fds[i];
 		ret = fd >= 0 ? getsockopt(fd, SOL_XDP, XDP_STATISTICS,
 					   &xdp_stats, &optlen) : -1;
@@ -922,11 +928,18 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			AF_XDP_LOG_LINE(ERR, "getsockopt() failed for XDP_STATISTICS.");
 			return -1;
 		}
-		stats->imissed += xdp_stats.rx_dropped - rxq->stats.imissed_offset;
+		imissed += xdp_stats.rx_dropped - rxq->stats.imissed_offset;
 
-		stats->opackets += stats->q_opackets[i];
-		stats->obytes += stats->q_obytes[i];
+		opackets += txq->stats.tx_pkts;
+		obytes += txq->stats.tx_bytes;
 	}
+
+	stats->ipackets = ipackets;
+	stats->ibytes = ibytes;
+	stats->opackets = opackets;
+	stats->obytes = obytes;
+	stats->oerrors = oerrors;
+	stats->imissed = imissed;
 
 	return 0;
 }

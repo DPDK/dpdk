@@ -574,7 +574,8 @@ fail:
 }
 
 int
-cnxk_rep_stats_get(struct rte_eth_dev *ethdev, struct rte_eth_stats *stats)
+cnxk_rep_stats_get(struct rte_eth_dev *ethdev, struct rte_eth_stats *stats,
+		   struct eth_queue_stats *qstats)
 {
 	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(ethdev);
 	struct rte_eth_stats vf_stats;
@@ -612,13 +613,15 @@ cnxk_rep_stats_get(struct rte_eth_dev *ethdev, struct rte_eth_stats *stats)
 		rte_memcpy(&vf_stats, adata.u.data, adata.size);
 	}
 
-	stats->q_ipackets[0] = vf_stats.ipackets;
-	stats->q_ibytes[0] = vf_stats.ibytes;
+	if (qstats != NULL) {
+		qstats->q_ipackets[0] = vf_stats.ipackets;
+		qstats->q_ibytes[0] = vf_stats.ibytes;
+		qstats->q_opackets[0] = vf_stats.opackets;
+		qstats->q_obytes[0] = vf_stats.obytes;
+	}
+
 	stats->ipackets = vf_stats.ipackets;
 	stats->ibytes = vf_stats.ibytes;
-
-	stats->q_opackets[0] = vf_stats.opackets;
-	stats->q_obytes[0] = vf_stats.obytes;
 	stats->opackets = vf_stats.opackets;
 	stats->obytes = vf_stats.obytes;
 

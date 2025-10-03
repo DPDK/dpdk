@@ -904,7 +904,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 
 int
 nfp_net_stats_get(struct rte_eth_dev *dev,
-		struct rte_eth_stats *stats)
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	uint16_t i;
 	struct nfp_net_hw *hw;
@@ -922,15 +922,16 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
 
-		nfp_dev_stats.q_ipackets[i] =
-				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
-		nfp_dev_stats.q_ipackets[i] -=
-				hw->eth_stats_base.q_ipackets[i];
+		uint64_t q_ipackets = nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
+		q_ipackets -= hw->eth_qstats_base.q_ipackets[i];
 
-		nfp_dev_stats.q_ibytes[i] =
-				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
-		nfp_dev_stats.q_ibytes[i] -=
-				hw->eth_stats_base.q_ibytes[i];
+		uint64_t q_ibytes = nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
+		q_ibytes -= hw->eth_qstats_base.q_ibytes[i];
+
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = q_ipackets;
+			qstats->q_ibytes[i] = q_ibytes;
+		}
 	}
 
 	/* Reading per TX ring stats */
@@ -938,13 +939,16 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
 
-		nfp_dev_stats.q_opackets[i] =
-				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
-		nfp_dev_stats.q_opackets[i] -= hw->eth_stats_base.q_opackets[i];
+		uint64_t q_opackets = nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
+		q_opackets -= hw->eth_qstats_base.q_opackets[i];
 
-		nfp_dev_stats.q_obytes[i] =
-				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
-		nfp_dev_stats.q_obytes[i] -= hw->eth_stats_base.q_obytes[i];
+		uint64_t q_obytes = nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
+		q_obytes -= hw->eth_qstats_base.q_obytes[i];
+
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = q_opackets;
+			qstats->q_obytes[i] = q_obytes;
+		}
 	}
 
 	nfp_dev_stats.ipackets = nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_FRAMES);
@@ -982,8 +986,8 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 }
 
 /*
- * hw->eth_stats_base records the per counter starting point.
- * Lets update it now.
+ * hw->eth_stats_base and hw->eth_qstats_base record the per counter starting point.
+ * Let's update them now.
  */
 int
 nfp_net_stats_reset(struct rte_eth_dev *dev)
@@ -998,10 +1002,10 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
 
-		hw->eth_stats_base.q_ipackets[i] =
+		hw->eth_qstats_base.q_ipackets[i] =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
 
-		hw->eth_stats_base.q_ibytes[i] =
+		hw->eth_qstats_base.q_ibytes[i] =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
 	}
 
@@ -1010,10 +1014,10 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
 
-		hw->eth_stats_base.q_opackets[i] =
+		hw->eth_qstats_base.q_opackets[i] =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
 
-		hw->eth_stats_base.q_obytes[i] =
+		hw->eth_qstats_base.q_obytes[i] =
 				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
 	}
 

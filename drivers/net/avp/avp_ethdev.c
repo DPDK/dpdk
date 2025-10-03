@@ -79,7 +79,8 @@ static void avp_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 static void avp_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 
 static int avp_dev_stats_get(struct rte_eth_dev *dev,
-			      struct rte_eth_stats *stats);
+			      struct rte_eth_stats *stats,
+			      struct eth_queue_stats *qstats);
 static int avp_dev_stats_reset(struct rte_eth_dev *dev);
 
 
@@ -2241,7 +2242,8 @@ avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 }
 
 static int
-avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
+avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	unsigned int i;
@@ -2254,9 +2256,11 @@ avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 			stats->ibytes += rxq->bytes;
 			stats->ierrors += rxq->errors;
 
-			stats->q_ipackets[i] += rxq->packets;
-			stats->q_ibytes[i] += rxq->bytes;
-			stats->q_errors[i] += rxq->errors;
+			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+				qstats->q_ipackets[i] += rxq->packets;
+				qstats->q_ibytes[i] += rxq->bytes;
+				qstats->q_errors[i] += rxq->errors;
+			}
 		}
 	}
 
@@ -2268,8 +2272,10 @@ avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 			stats->obytes += txq->bytes;
 			stats->oerrors += txq->errors;
 
-			stats->q_opackets[i] += txq->packets;
-			stats->q_obytes[i] += txq->bytes;
+			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+				qstats->q_opackets[i] += txq->packets;
+				qstats->q_obytes[i] += txq->bytes;
+			}
 		}
 	}
 

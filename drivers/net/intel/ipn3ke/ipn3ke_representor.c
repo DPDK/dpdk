@@ -2119,7 +2119,8 @@ ipn3ke_rpst_stats_reset(struct rte_eth_dev *ethdev)
 
 static int
 ipn3ke_rpst_stats_get
-(struct rte_eth_dev *ethdev, struct rte_eth_stats *stats)
+(struct rte_eth_dev *ethdev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	uint16_t port_id = 0;
 	char *ch;

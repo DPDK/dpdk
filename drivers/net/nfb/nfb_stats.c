@@ -8,8 +8,8 @@
 #include "nfb.h"
 
 int
-nfb_eth_stats_get(struct rte_eth_dev *dev,
-	struct rte_eth_stats *stats)
+nfb_eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats)
 {
 	uint16_t i;
 	uint16_t nb_rx = dev->data->nb_rx_queues;
@@ -26,18 +26,18 @@ nfb_eth_stats_get(struct rte_eth_dev *dev,
 		dev->data->tx_queues);
 
 	for (i = 0; i < nb_rx; i++) {
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] = rx_queue[i].rx_pkts;
-			stats->q_ibytes[i] = rx_queue[i].rx_bytes;
+		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = rx_queue[i].rx_pkts;
+			qstats->q_ibytes[i] = rx_queue[i].rx_bytes;
 		}
 		rx_total += rx_queue[i].rx_pkts;
 		rx_total_bytes += rx_queue[i].rx_bytes;
 	}
 
 	for (i = 0; i < nb_tx; i++) {
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[i] = tx_queue[i].tx_pkts;
-			stats->q_obytes[i] = tx_queue[i].tx_bytes;
+		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = tx_queue[i].tx_pkts;
+			qstats->q_obytes[i] = tx_queue[i].tx_bytes;
 		}
 		tx_total += tx_queue[i].tx_pkts;
 		tx_total_bytes += tx_queue[i].tx_bytes;

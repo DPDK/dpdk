@@ -106,7 +106,7 @@ static int iavf_dev_info_get(struct rte_eth_dev *dev,
 static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev,
 						     size_t *no_of_elements);
 static int iavf_dev_stats_get(struct rte_eth_dev *dev,
-			     struct rte_eth_stats *stats);
+			     struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 static int iavf_dev_stats_reset(struct rte_eth_dev *dev);
 static int iavf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
@@ -1799,7 +1799,8 @@ iavf_update_stats(struct iavf_vsi *vsi, struct virtchnl_eth_stats *nes)
 }
 
 static int
-iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);

@@ -425,7 +425,8 @@ ngbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 }
 
 static int
-ngbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ngbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct ngbevf_hw_stats *hw_stats = (struct ngbevf_hw_stats *)
 			  NGBE_DEV_STATS(dev);
@@ -449,7 +450,7 @@ ngbevf_dev_stats_reset(struct rte_eth_dev *dev)
 			NGBE_DEV_STATS(dev);
 
 	/* Sync HW register to the last stats */
-	ngbevf_dev_stats_get(dev, NULL);
+	ngbevf_dev_stats_get(dev, NULL, NULL);
 
 	/* reset HW current stats*/
 	hw_stats->vfgprc = 0;

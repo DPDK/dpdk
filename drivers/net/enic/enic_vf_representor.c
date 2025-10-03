@@ -419,13 +419,14 @@ static int enic_vf_link_update(struct rte_eth_dev *eth_dev,
 }
 
 static int enic_vf_stats_get(struct rte_eth_dev *eth_dev,
-	struct rte_eth_stats *stats)
+	struct rte_eth_stats *stats, struct eth_queue_stats *qstats __rte_unused)
 {
 	struct enic_vf_representor *vf;
 	struct vnic_stats *vs;
 	int err;
 
 	ENICPMD_FUNC_TRACE();
+
 	vf = eth_dev->data->dev_private;
 	/* Get VF stats via PF */
 	err = vnic_dev_stats_dump(vf->enic.vdev, &vs);

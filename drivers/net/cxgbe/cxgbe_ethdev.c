@@ -701,7 +701,8 @@ void cxgbe_dev_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t qid)
  * Get port statistics.
  */
 static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
-				struct rte_eth_stats *eth_stats)
+				struct rte_eth_stats *eth_stats,
+				struct eth_queue_stats *qstats __rte_unused)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;

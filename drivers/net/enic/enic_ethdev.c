@@ -432,12 +432,12 @@ static int enicpmd_dev_link_update(struct rte_eth_dev *eth_dev,
 }
 
 static int enicpmd_dev_stats_get(struct rte_eth_dev *eth_dev,
-	struct rte_eth_stats *stats)
+	struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	return enic_dev_stats_get(enic, stats);
+	return enic_dev_stats_get(enic, stats, qstats);
 }
 
 static int enicpmd_dev_stats_reset(struct rte_eth_dev *eth_dev)

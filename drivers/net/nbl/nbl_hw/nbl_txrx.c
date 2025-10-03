@@ -675,7 +675,8 @@ static void nbl_res_get_pt_ops(void *priv, struct nbl_resource_pt_ops *pt_ops, b
 	pt_ops->rx_pkt_burst = nbl_res_txrx_recv_pkts;
 }
 
-static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats)
+static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats,
+				  struct eth_queue_stats *qstats)
 {
 	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
 	struct rte_eth_dev *eth_dev = res_mgt->eth_dev;
@@ -694,9 +695,9 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats)
 		rxq_stats = &rxq->rxq_stats;
 		idx = rxq->queue_id;
 
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			rte_stats->q_ipackets[idx] += rxq_stats->rx_packets;
-			rte_stats->q_ibytes[idx] += rxq_stats->rx_bytes;
+		if (qstats && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[idx] += rxq_stats->rx_packets;
+			qstats->q_ibytes[idx] += rxq_stats->rx_bytes;
 		}
 		rte_stats->ipackets += rxq_stats->rx_packets;
 		rte_stats->ibytes += rxq_stats->rx_bytes;
@@ -711,9 +712,9 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats)
 		txq_stats = &txq->txq_stats;
 		idx = txq->queue_id;
 
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			rte_stats->q_opackets[idx] += txq_stats->tx_packets;
-			rte_stats->q_obytes[idx] += txq_stats->tx_bytes;
+		if (qstats && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[idx] += txq_stats->tx_packets;
+			qstats->q_obytes[idx] += txq_stats->tx_bytes;
 		}
 		rte_stats->opackets += txq_stats->tx_packets;
 		rte_stats->obytes += txq_stats->tx_bytes;

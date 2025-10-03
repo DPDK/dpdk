@@ -1498,7 +1498,8 @@ ngbe_read_stats_registers(struct ngbe_hw *hw,
 }
 
 static int
-ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
@@ -1518,29 +1519,31 @@ ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = hw_stats->tx_packets;
 	stats->obytes = hw_stats->tx_bytes;
 
-	memset(&stats->q_ipackets, 0, sizeof(stats->q_ipackets));
-	memset(&stats->q_opackets, 0, sizeof(stats->q_opackets));
-	memset(&stats->q_ibytes, 0, sizeof(stats->q_ibytes));
-	memset(&stats->q_obytes, 0, sizeof(stats->q_obytes));
-	memset(&stats->q_errors, 0, sizeof(stats->q_errors));
-	for (i = 0; i < NGBE_MAX_QP; i++) {
-		uint32_t n = i / NB_QMAP_FIELDS_PER_QSM_REG;
-		uint32_t offset = (i % NB_QMAP_FIELDS_PER_QSM_REG) * 8;
-		uint32_t q_map;
+	if (qstats != NULL) {
+		memset(&qstats->q_ipackets, 0, sizeof(qstats->q_ipackets));
+		memset(&qstats->q_opackets, 0, sizeof(qstats->q_opackets));
+		memset(&qstats->q_ibytes, 0, sizeof(qstats->q_ibytes));
+		memset(&qstats->q_obytes, 0, sizeof(qstats->q_obytes));
+		memset(&qstats->q_errors, 0, sizeof(qstats->q_errors));
+		for (i = 0; i < NGBE_MAX_QP; i++) {
+			uint32_t n = i / NB_QMAP_FIELDS_PER_QSM_REG;
+			uint32_t offset = (i % NB_QMAP_FIELDS_PER_QSM_REG) * 8;
+			uint32_t q_map;
 
-		q_map = (stat_mappings->rqsm[n] >> offset)
-				& QMAP_FIELD_RESERVED_BITS_MASK;
-		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
-		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		stats->q_ipackets[j] += hw_stats->qp[i].rx_qp_packets;
-		stats->q_ibytes[j] += hw_stats->qp[i].rx_qp_bytes;
+			q_map = (stat_mappings->rqsm[n] >> offset)
+					& QMAP_FIELD_RESERVED_BITS_MASK;
+			j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+			     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+			qstats->q_ipackets[j] += hw_stats->qp[i].rx_qp_packets;
+			qstats->q_ibytes[j] += hw_stats->qp[i].rx_qp_bytes;
 
-		q_map = (stat_mappings->tqsm[n] >> offset)
-				& QMAP_FIELD_RESERVED_BITS_MASK;
-		j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
-		     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
-		stats->q_opackets[j] += hw_stats->qp[i].tx_qp_packets;
-		stats->q_obytes[j] += hw_stats->qp[i].tx_qp_bytes;
+			q_map = (stat_mappings->tqsm[n] >> offset)
+					& QMAP_FIELD_RESERVED_BITS_MASK;
+			j = (q_map < RTE_ETHDEV_QUEUE_STAT_CNTRS
+			     ? q_map : q_map % RTE_ETHDEV_QUEUE_STAT_CNTRS);
+			qstats->q_opackets[j] += hw_stats->qp[i].tx_qp_packets;
+			qstats->q_obytes[j] += hw_stats->qp[i].tx_qp_bytes;
+		}
 	}
 
 	/* Rx Errors */
@@ -1580,7 +1583,7 @@ ngbe_dev_stats_reset(struct rte_eth_dev *dev)
 
 	/* HW registers are cleared on read */
 	hw->offset_loaded = 0;
-	ngbe_dev_stats_get(dev, NULL);
+	ngbe_dev_stats_get(dev, NULL, NULL);
 	hw->offset_loaded = 1;
 
 	/* Reset software totals */

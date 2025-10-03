@@ -21,7 +21,8 @@ int ark_tx_queue_setup(struct rte_eth_dev *dev,
 void ark_tx_queue_release(void *vtx_queue);
 int ark_tx_queue_stop(struct rte_eth_dev *dev, uint16_t queue_id);
 int ark_tx_queue_start(struct rte_eth_dev *dev, uint16_t queue_id);
-void ark_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats);
+void ark_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats,
+			    struct eth_queue_stats *qstats);
 void ark_tx_queue_stats_reset(void *vqueue);
 
 #endif

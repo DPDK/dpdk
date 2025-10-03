@@ -846,7 +846,8 @@ sfc_repr_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 }
 
 static int
-sfc_repr_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+sfc_repr_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		    struct eth_queue_stats *qstats __rte_unused)
 {
 	union sfc_pkts_bytes queue_stats;
 	uint16_t i;

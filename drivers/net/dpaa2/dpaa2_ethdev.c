@@ -1752,7 +1752,7 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 
 static int
 dpaa2_dev_stats_get(struct rte_eth_dev *dev,
-	struct rte_eth_stats *stats)
+	struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = dev->process_private;
@@ -1809,18 +1809,20 @@ dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	stats->imissed = value.page_2.ingress_nobuffer_discards;
 
 	/* Fill in per queue stats */
-	for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
-		(i < priv->nb_rx_queues || i < priv->nb_tx_queues); ++i) {
-		dpaa2_rxq = priv->rx_vq[i];
-		dpaa2_txq = priv->tx_vq[i];
-		if (dpaa2_rxq)
-			stats->q_ipackets[i] = dpaa2_rxq->rx_pkts;
-		if (dpaa2_txq)
-			stats->q_opackets[i] = dpaa2_txq->tx_pkts;
+	if (qstats != NULL) {
+		for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
+			(i < priv->nb_rx_queues || i < priv->nb_tx_queues); ++i) {
+			dpaa2_rxq = priv->rx_vq[i];
+			dpaa2_txq = priv->tx_vq[i];
+			if (dpaa2_rxq)
+				qstats->q_ipackets[i] = dpaa2_rxq->rx_pkts;
+			if (dpaa2_txq)
+				qstats->q_opackets[i] = dpaa2_txq->tx_pkts;
 
-		/* Byte counting is not implemented */
-		stats->q_ibytes[i]   = 0;
-		stats->q_obytes[i]   = 0;
+			/* Byte counting is not implemented */
+			qstats->q_ibytes[i]   = 0;
+			qstats->q_obytes[i]   = 0;
+		}
 	}
 
 	return 0;

@@ -68,7 +68,8 @@ static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
 
 static int virtio_dev_stats_get(struct rte_eth_dev *dev,
-				 struct rte_eth_stats *stats);
+				 struct rte_eth_stats *stats,
+				 struct eth_queue_stats *qstats);
 static int virtio_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstat *xstats, unsigned n);
 static int virtio_dev_xstats_get_names(struct rte_eth_dev *dev,
@@ -697,7 +698,8 @@ const struct eth_dev_ops virtio_user_secondary_eth_dev_ops = {
 };
 
 static void
-virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		    struct eth_queue_stats *qstats)
 {
 	unsigned i;
 
@@ -709,9 +711,9 @@ virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->opackets += txvq->stats.packets;
 		stats->obytes += txvq->stats.bytes;
 
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[i] = txvq->stats.packets;
-			stats->q_obytes[i] = txvq->stats.bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = txvq->stats.packets;
+			qstats->q_obytes[i] = txvq->stats.bytes;
 		}
 	}
 
@@ -724,9 +726,9 @@ virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->ibytes += rxvq->stats.bytes;
 		stats->ierrors += rxvq->stats.errors;
 
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] = rxvq->stats.packets;
-			stats->q_ibytes[i] = rxvq->stats.bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = rxvq->stats.packets;
+			qstats->q_ibytes[i] = rxvq->stats.bytes;
 		}
 	}
 
@@ -826,9 +828,10 @@ virtio_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 }
 
 static int
-virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+virtio_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		     struct eth_queue_stats *qstats)
 {
-	virtio_update_stats(dev, stats);
+	virtio_update_stats(dev, stats, qstats);
 
 	return 0;
 }

@@ -794,12 +794,13 @@ static void nbl_disp_chan_get_link_state_req(void *priv, u8 eth_id,
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
-static int nbl_disp_get_stats(void *priv, struct rte_eth_stats *rte_stats)
+static int nbl_disp_get_stats(void *priv, struct rte_eth_stats *rte_stats,
+			      struct eth_queue_stats *qstats)
 {
 	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
 	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
 
-	return res_ops->get_stats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), rte_stats);
+	return res_ops->get_stats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), rte_stats, qstats);
 }
 
 static int nbl_disp_reset_stats(void *priv)

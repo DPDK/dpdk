@@ -9,6 +9,7 @@
 
 #include <rte_ethdev.h>
 #include <rte_ether.h>
+#include <ethdev_driver.h>
 
 #include "ionic.h"
 #include "ionic_dev.h"
@@ -244,7 +245,7 @@ int ionic_lif_rss_config(struct ionic_lif *lif, const uint16_t types,
 int ionic_lif_set_features(struct ionic_lif *lif);
 
 void ionic_lif_get_stats(const struct ionic_lif *lif,
-	struct rte_eth_stats *stats);
+	struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 void ionic_lif_reset_stats(struct ionic_lif *lif);
 
 void ionic_lif_get_hw_stats(struct ionic_lif *lif,

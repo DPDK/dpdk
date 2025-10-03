@@ -166,7 +166,7 @@ static int ice_get_module_info(struct rte_eth_dev *dev,
 static int ice_get_module_eeprom(struct rte_eth_dev *dev,
 				 struct rte_dev_eeprom_info *info);
 static int ice_stats_get(struct rte_eth_dev *dev,
-			 struct rte_eth_stats *stats);
+			 struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 static int ice_stats_reset(struct rte_eth_dev *dev);
 static int ice_xstats_get(struct rte_eth_dev *dev,
 			  struct rte_eth_xstat *xstats, unsigned int n);
@@ -6710,7 +6710,8 @@ ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
 
 /* Get all statistics of a port */
 static int
-ice_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ice_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);

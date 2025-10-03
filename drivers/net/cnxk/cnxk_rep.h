@@ -130,7 +130,8 @@ void cnxk_rep_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 void cnxk_rep_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 int cnxk_rep_dev_stop(struct rte_eth_dev *eth_dev);
 int cnxk_rep_dev_close(struct rte_eth_dev *eth_dev);
-int cnxk_rep_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats);
+int cnxk_rep_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
+		       struct eth_queue_stats *qstats);
 int cnxk_rep_stats_reset(struct rte_eth_dev *eth_dev);
 int cnxk_rep_flow_ops_get(struct rte_eth_dev *ethdev, const struct rte_flow_ops **ops);
 int cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint32_t state, uint16_t *rep_id);

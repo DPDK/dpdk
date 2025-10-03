@@ -1032,7 +1032,8 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
+tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats,
+	      struct eth_queue_stats *qstats)
 {
 	unsigned int i, imax;
 	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
@@ -1044,10 +1045,12 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 	imax = (dev->data->nb_rx_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
 		dev->data->nb_rx_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS;
 	for (i = 0; i < imax; i++) {
-		tap_stats->q_ipackets[i] = pmd->rxq[i].stats.ipackets;
-		tap_stats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
-		rx_total += tap_stats->q_ipackets[i];
-		rx_bytes_total += tap_stats->q_ibytes[i];
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = pmd->rxq[i].stats.ipackets;
+			qstats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
+		}
+		rx_total += pmd->rxq[i].stats.ipackets;
+		rx_bytes_total += pmd->rxq[i].stats.ibytes;
 		rx_nombuf += pmd->rxq[i].stats.rx_nombuf;
 		ierrors += pmd->rxq[i].stats.ierrors;
 	}
@@ -1057,11 +1060,13 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 		dev->data->nb_tx_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS;
 
 	for (i = 0; i < imax; i++) {
-		tap_stats->q_opackets[i] = pmd->txq[i].stats.opackets;
-		tap_stats->q_obytes[i] = pmd->txq[i].stats.obytes;
-		tx_total += tap_stats->q_opackets[i];
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = pmd->txq[i].stats.opackets;
+			qstats->q_obytes[i] = pmd->txq[i].stats.obytes;
+		}
+		tx_total += pmd->txq[i].stats.opackets;
+		tx_bytes_total += pmd->txq[i].stats.obytes;
 		tx_err_total += pmd->txq[i].stats.errs;
-		tx_bytes_total += tap_stats->q_obytes[i];
 	}
 
 	tap_stats->ipackets = rx_total;

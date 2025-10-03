@@ -42,7 +42,7 @@ static int eth_em_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_em_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int eth_em_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *rte_stats);
+				struct rte_eth_stats *rte_stats, struct eth_queue_stats *qstats);
 static int eth_em_stats_reset(struct rte_eth_dev *dev);
 static int eth_em_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
@@ -926,7 +926,8 @@ em_hardware_init(struct e1000_hw *hw)
 
 /* This function is based on em_update_stats_counters() in e1000/if_em.c */
 static int
-eth_em_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+eth_em_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_hw_stats *stats =
@@ -1049,7 +1050,7 @@ eth_em_stats_reset(struct rte_eth_dev *dev)
 			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* HW registers are cleared on read */
-	eth_em_stats_get(dev, NULL);
+	eth_em_stats_get(dev, NULL, NULL);
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));

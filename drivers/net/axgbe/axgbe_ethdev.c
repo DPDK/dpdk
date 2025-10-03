@@ -51,7 +51,8 @@ static int axgbe_dev_link_update(struct rte_eth_dev *dev,
 static int axgbe_dev_get_regs(struct rte_eth_dev *dev,
 			      struct rte_dev_reg_info *regs);
 static int axgbe_dev_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *stats);
+				struct rte_eth_stats *stats,
+				struct eth_queue_stats *qstats);
 static int axgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static int axgbe_dev_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstat *stats,
@@ -1133,7 +1134,7 @@ axgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 
 static int
 axgbe_dev_stats_get(struct rte_eth_dev *dev,
-		    struct rte_eth_stats *stats)
+		    struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct axgbe_rx_queue *rxq;
 	struct axgbe_tx_queue *txq;
@@ -1148,14 +1149,16 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 		if (rxq) {
-			stats->q_ipackets[i] = rxq->pkts;
 			stats->ipackets += rxq->pkts;
-			stats->q_ibytes[i] = rxq->bytes;
 			stats->ibytes += rxq->bytes;
 			stats->rx_nombuf += rxq->rx_mbuf_alloc_failed;
-			stats->q_errors[i] = rxq->errors
-				+ rxq->rx_mbuf_alloc_failed;
 			stats->ierrors += rxq->errors;
+
+			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+				qstats->q_ipackets[i] = rxq->pkts;
+				qstats->q_ibytes[i] = rxq->bytes;
+				qstats->q_errors[i] = rxq->errors + rxq->rx_mbuf_alloc_failed;
+			}
 		} else {
 			PMD_DRV_LOG_LINE(DEBUG, "Rx queue not setup for port %d",
 					dev->data->port_id);
@@ -1165,11 +1168,14 @@ axgbe_dev_stats_get(struct rte_eth_dev *dev,
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		if (txq) {
-			stats->q_opackets[i] = txq->pkts;
 			stats->opackets += txq->pkts;
-			stats->q_obytes[i] = txq->bytes;
 			stats->obytes += txq->bytes;
 			stats->oerrors += txq->errors;
+
+			if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+				qstats->q_opackets[i] = txq->pkts;
+				qstats->q_obytes[i] = txq->bytes;
+			}
 		} else {
 			PMD_DRV_LOG_LINE(DEBUG, "Tx queue not setup for port %d",
 					dev->data->port_id);

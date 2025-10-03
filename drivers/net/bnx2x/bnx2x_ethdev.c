@@ -427,7 +427,8 @@ bnx2xvf_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_comple
 }
 
 static int
-bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		    struct eth_queue_stats *qstats __rte_unused)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	uint32_t brb_truncate_discard;

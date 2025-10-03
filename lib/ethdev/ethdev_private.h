@@ -79,4 +79,10 @@ void eth_dev_txq_release(struct rte_eth_dev *dev, uint16_t qid);
 int eth_dev_rx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues);
 int eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues);
 
+/* Retrieve stats, and optionally queue stats from a device.
+ * Note: qstats parameter can be NULL if only port stats are requested.
+ */
+int eth_stats_qstats_get(uint16_t port_id,
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
+
 #endif /* _ETH_PRIVATE_H_ */

@@ -817,11 +817,12 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int hn_dev_stats_get(struct rte_eth_dev *dev,
-			    struct rte_eth_stats *stats)
+			    struct rte_eth_stats *stats,
+			    struct eth_queue_stats *qstats)
 {
 	unsigned int i;
 
-	hn_vf_stats_get(dev, stats);
+	hn_vf_stats_get(dev, stats, qstats);
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		const struct hn_tx_queue *txq = dev->data->tx_queues[i];
@@ -833,9 +834,9 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 		stats->obytes += txq->stats.bytes;
 		stats->oerrors += txq->stats.errors;
 
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[i] += txq->stats.packets;
-			stats->q_obytes[i] += txq->stats.bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] += txq->stats.packets;
+			qstats->q_obytes[i] += txq->stats.bytes;
 		}
 	}
 
@@ -850,9 +851,9 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 		stats->ierrors += rxq->stats.errors;
 		stats->imissed += rxq->stats.ring_full;
 
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] += rxq->stats.packets;
-			stats->q_ibytes[i] += rxq->stats.bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] += rxq->stats.packets;
+			qstats->q_ibytes[i] += rxq->stats.bytes;
 		}
 	}
 

@@ -208,7 +208,8 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
  *   rte_errno is set.
  */
 int
-mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	       struct eth_queue_stats *qstats)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
@@ -226,14 +227,14 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (rxq == NULL)
 			continue;
 		idx = rxq->idx;
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 #ifdef MLX5_PMD_SOFT_COUNTERS
-			tmp.q_ipackets[idx] += rxq->stats.ipackets -
+			qstats->q_ipackets[idx] += rxq->stats.ipackets -
 				rxq->stats_reset.ipackets;
-			tmp.q_ibytes[idx] += rxq->stats.ibytes -
+			qstats->q_ibytes[idx] += rxq->stats.ibytes -
 				rxq->stats_reset.ibytes;
 #endif
-			tmp.q_errors[idx] += (rxq->stats.idropped +
+			qstats->q_errors[idx] += (rxq->stats.idropped +
 					      rxq->stats.rx_nombuf) -
 					      (rxq->stats_reset.idropped +
 					      rxq->stats_reset.rx_nombuf);
@@ -252,11 +253,11 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (txq == NULL)
 			continue;
 		idx = txq->idx;
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 #ifdef MLX5_PMD_SOFT_COUNTERS
-			tmp.q_opackets[idx] += txq->stats.opackets -
+			qstats->q_opackets[idx] += txq->stats.opackets -
 						txq->stats_reset.opackets;
-			tmp.q_obytes[idx] += txq->stats.obytes -
+			qstats->q_obytes[idx] += txq->stats.obytes -
 						txq->stats_reset.obytes;
 #endif
 		}

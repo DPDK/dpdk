@@ -823,7 +823,8 @@ sfc_update_diff_stat(uint64_t *stat, uint64_t newval)
 }
 
 static int
-sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats __rte_unused)
 {
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	bool have_dp_rx_stats = sap->dp_rx->features & SFC_DP_RX_FEAT_STATS;

@@ -364,13 +364,14 @@ int nbl_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unus
 	return rte_eth_linkstatus_set(eth_dev, &link);
 }
 
-int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
+int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats,
+		  struct eth_queue_stats *qstats)
 {
 	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
 	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
 	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
 
-	return disp_ops->get_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), rte_stats);
+	return disp_ops->get_stats(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), rte_stats, qstats);
 }
 
 int nbl_stats_reset(struct rte_eth_dev *eth_dev)

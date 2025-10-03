@@ -73,16 +73,16 @@ static const struct rte_eth_xstats_name_off eth_dev_stats_strings[] = {
 #define RTE_NB_STATS RTE_DIM(eth_dev_stats_strings)
 
 static const struct rte_eth_xstats_name_off eth_dev_rxq_stats_strings[] = {
-	{"packets", offsetof(struct rte_eth_stats, q_ipackets)},
-	{"bytes", offsetof(struct rte_eth_stats, q_ibytes)},
-	{"errors", offsetof(struct rte_eth_stats, q_errors)},
+	{"packets", offsetof(struct eth_queue_stats, q_ipackets)},
+	{"bytes", offsetof(struct eth_queue_stats, q_ibytes)},
+	{"errors", offsetof(struct eth_queue_stats, q_errors)},
 };
 
 #define RTE_NB_RXQ_STATS RTE_DIM(eth_dev_rxq_stats_strings)
 
 static const struct rte_eth_xstats_name_off eth_dev_txq_stats_strings[] = {
-	{"packets", offsetof(struct rte_eth_stats, q_opackets)},
-	{"bytes", offsetof(struct rte_eth_stats, q_obytes)},
+	{"packets", offsetof(struct eth_queue_stats, q_opackets)},
+	{"bytes", offsetof(struct eth_queue_stats, q_obytes)},
 };
 #define RTE_NB_TXQ_STATS RTE_DIM(eth_dev_txq_stats_strings)
 
@@ -3350,27 +3350,9 @@ RTE_EXPORT_SYMBOL(rte_eth_stats_get)
 int
 rte_eth_stats_get(uint16_t port_id, struct rte_eth_stats *stats)
 {
-	struct rte_eth_dev *dev;
-	int ret;
-
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	dev = &rte_eth_devices[port_id];
-
-	if (stats == NULL) {
-		RTE_ETHDEV_LOG_LINE(ERR, "Cannot get ethdev port %u stats to NULL",
-			port_id);
-		return -EINVAL;
-	}
-
-	memset(stats, 0, sizeof(*stats));
-
-	if (dev->dev_ops->stats_get == NULL)
-		return -ENOTSUP;
-	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
-	ret = eth_err(port_id, dev->dev_ops->stats_get(dev, stats));
+	int ret = eth_stats_qstats_get(port_id, stats, NULL);
 
 	rte_eth_trace_stats_get(port_id, stats, ret);
-
 	return ret;
 }
 
@@ -3713,12 +3695,13 @@ eth_basic_stats_get(uint16_t port_id, struct rte_eth_xstat *xstats)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_stats eth_stats;
+	struct eth_queue_stats queue_stats;
 	unsigned int count = 0, i, q;
 	uint64_t val, *stats_ptr;
 	uint16_t nb_rxqs, nb_txqs;
 	int ret;
 
-	ret = rte_eth_stats_get(port_id, &eth_stats);
+	ret = eth_stats_qstats_get(port_id, &eth_stats, &queue_stats);
 	if (ret < 0)
 		return ret;
 
@@ -3741,7 +3724,7 @@ eth_basic_stats_get(uint16_t port_id, struct rte_eth_xstat *xstats)
 	/* per-rxq stats */
 	for (q = 0; q < nb_rxqs; q++) {
 		for (i = 0; i < RTE_NB_RXQ_STATS; i++) {
-			stats_ptr = RTE_PTR_ADD(&eth_stats,
+			stats_ptr = RTE_PTR_ADD(&queue_stats,
 					eth_dev_rxq_stats_strings[i].offset +
 					q * sizeof(uint64_t));
 			val = *stats_ptr;
@@ -3752,7 +3735,7 @@ eth_basic_stats_get(uint16_t port_id, struct rte_eth_xstat *xstats)
 	/* per-txq stats */
 	for (q = 0; q < nb_txqs; q++) {
 		for (i = 0; i < RTE_NB_TXQ_STATS; i++) {
-			stats_ptr = RTE_PTR_ADD(&eth_stats,
+			stats_ptr = RTE_PTR_ADD(&queue_stats,
 					eth_dev_txq_stats_strings[i].offset +
 					q * sizeof(uint64_t));
 			val = *stats_ptr;

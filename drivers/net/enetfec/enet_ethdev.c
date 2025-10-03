@@ -291,7 +291,8 @@ enetfec_set_mac_address(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 
 static int
 enetfec_stats_get(struct rte_eth_dev *dev,
-	      struct rte_eth_stats *stats)
+	      struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats __rte_unused)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
 	struct rte_eth_stats *eth_stats = &fep->stats;

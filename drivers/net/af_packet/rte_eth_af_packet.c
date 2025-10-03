@@ -426,7 +426,7 @@ packet_drop_count(int sockfd)
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	unsigned int i;
 	unsigned long rx_total = 0, rx_dropped_total = 0, rx_nombuf_total = 0;
@@ -448,11 +448,12 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		tx_err_total += internal->tx_queue[i].err_pkts;
 		tx_bytes_total += internal->tx_queue[i].tx_bytes;
 
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
-			stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
-			stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
-			stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
+			qstats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
+			qstats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
+			qstats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
+			qstats->q_errors[i] = internal->rx_queue[i].rx_nombuf;
 		}
 	}
 

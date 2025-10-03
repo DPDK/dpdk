@@ -226,7 +226,7 @@ static int eth_igc_allmulticast_enable(struct rte_eth_dev *dev);
 static int eth_igc_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_igc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int eth_igc_stats_get(struct rte_eth_dev *dev,
-			struct rte_eth_stats *rte_stats);
+			struct rte_eth_stats *rte_stats, struct eth_queue_stats *qstats);
 static int eth_igc_xstats_get(struct rte_eth_dev *dev,
 			struct rte_eth_xstat *xstats, unsigned int n);
 static int eth_igc_xstats_get_by_id(struct rte_eth_dev *dev,
@@ -2029,7 +2029,8 @@ igc_read_queue_stats_register(struct rte_eth_dev *dev)
 }
 
 static int
-eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
+		struct eth_queue_stats *qstats)
 {
 	struct igc_adapter *igc = IGC_DEV_PRIVATE(dev);
 	struct e1000_hw *hw = IGC_DEV_PRIVATE_HW(dev);
@@ -2068,19 +2069,21 @@ eth_igc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 	rte_stats->obytes   = stats->gotc;
 
 	/* Get per-queue statuses */
-	for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
-		/* GET TX queue statuses */
-		int map_id = igc->txq_stats_map[i];
-		if (map_id >= 0) {
-			rte_stats->q_opackets[map_id] += queue_stats->pqgptc[i];
-			rte_stats->q_obytes[map_id] += queue_stats->pqgotc[i];
-		}
-		/* Get RX queue statuses */
-		map_id = igc->rxq_stats_map[i];
-		if (map_id >= 0) {
-			rte_stats->q_ipackets[map_id] += queue_stats->pqgprc[i];
-			rte_stats->q_ibytes[map_id] += queue_stats->pqgorc[i];
-			rte_stats->q_errors[map_id] += queue_stats->rqdpc[i];
+	if (qstats) {
+		for (i = 0; i < IGC_QUEUE_PAIRS_NUM; i++) {
+			/* GET TX queue statuses */
+			int map_id = igc->txq_stats_map[i];
+			if (map_id >= 0) {
+				qstats->q_opackets[map_id] += queue_stats->pqgptc[i];
+				qstats->q_obytes[map_id] += queue_stats->pqgotc[i];
+			}
+			/* Get RX queue statuses */
+			map_id = igc->rxq_stats_map[i];
+			if (map_id >= 0) {
+				qstats->q_ipackets[map_id] += queue_stats->pqgprc[i];
+				qstats->q_ibytes[map_id] += queue_stats->pqgorc[i];
+				qstats->q_errors[map_id] += queue_stats->rqdpc[i];
+			}
 		}
 	}
 

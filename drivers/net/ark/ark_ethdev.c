@@ -36,8 +36,8 @@ static int ark_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static int ark_dev_set_link_up(struct rte_eth_dev *dev);
 static int ark_dev_set_link_down(struct rte_eth_dev *dev);
-static int ark_dev_stats_get(struct rte_eth_dev *dev,
-				  struct rte_eth_stats *stats);
+static int ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+			     struct eth_queue_stats *qstats);
 static int ark_dev_stats_reset(struct rte_eth_dev *dev);
 static int ark_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct rte_ether_addr *mac_addr);
@@ -788,7 +788,8 @@ ark_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 static int
-ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats)
 {
 	uint16_t i;
 	struct ark_adapter *ark = dev->data->dev_private;
@@ -801,9 +802,9 @@ ark_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->oerrors = 0;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		ark_tx_queue_stats_get(dev->data->tx_queues[i], stats);
+		ark_tx_queue_stats_get(dev->data->tx_queues[i], stats, qstats);
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		ark_rx_queue_stats_get(dev->data->rx_queues[i], stats);
+		ark_rx_queue_stats_get(dev->data->rx_queues[i], stats, qstats);
 	if (ark->user_ext.stats_get)
 		return ark->user_ext.stats_get(dev, stats,
 			ark->user_data[dev->data->port_id]);

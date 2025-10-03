@@ -518,8 +518,8 @@ enetc4_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 }
 
 static
-int enetc4_stats_get(struct rte_eth_dev *dev,
-		    struct rte_eth_stats *stats)
+int enetc4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		     struct eth_queue_stats *qstats __rte_unused)
 {
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);

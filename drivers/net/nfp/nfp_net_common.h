@@ -250,6 +250,7 @@ struct nfp_net_hw {
 
 	/** Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
+	struct eth_queue_stats eth_qstats_base;
 	struct rte_eth_xstat *eth_xstats_base;
 
 	struct nfp_cpp_area *ctrl_area;
@@ -301,7 +302,8 @@ int nfp_net_link_update_common(struct rte_eth_dev *dev,
 		uint32_t link_status);
 int nfp_net_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete);
-int nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats);
 int nfp_net_stats_reset(struct rte_eth_dev *dev);
 uint32_t nfp_net_xstats_size(const struct rte_eth_dev *dev);
 int nfp_net_xstats_get_names(struct rte_eth_dev *dev,

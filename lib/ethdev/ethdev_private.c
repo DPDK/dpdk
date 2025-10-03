@@ -477,3 +477,30 @@ eth_dev_tx_queue_config(struct rte_eth_dev *dev, uint16_t nb_queues)
 	dev->data->nb_tx_queues = nb_queues;
 	return 0;
 }
+
+int
+eth_stats_qstats_get(uint16_t port_id, struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (stats == NULL) {
+		RTE_ETHDEV_LOG_LINE(ERR, "Cannot get ethdev port %u stats to NULL",
+				port_id);
+		return -EINVAL;
+	}
+
+	memset(stats, 0, sizeof(*stats));
+	if (qstats != NULL)
+		memset(qstats, 0, sizeof(*qstats));
+
+	if (dev->dev_ops->stats_get == NULL)
+		return -ENOTSUP;
+	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
+	ret = eth_err(port_id, dev->dev_ops->stats_get(dev, stats, qstats));
+
+	return ret;
+}

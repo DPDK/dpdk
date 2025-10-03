@@ -111,7 +111,8 @@ int enic_dev_stats_clear(struct enic *enic)
 	return 0;
 }
 
-int enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats)
+int enic_dev_stats_get(struct enic *enic, struct rte_eth_stats *r_stats,
+			struct eth_queue_stats *qstats __rte_unused)
 {
 	struct vnic_stats *stats;
 	struct enic_soft_stats *soft_stats = &enic->soft_stats;

@@ -8,6 +8,7 @@
 
 #include <rte_mempool.h>
 #include <rte_lcore.h>
+#include <ethdev_driver.h>
 #include "axgbe_common.h"
 #include "rte_time.h"
 

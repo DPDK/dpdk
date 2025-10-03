@@ -573,13 +573,14 @@ ark_dev_rx_queue_release(void *vqueue)
 }
 
 void
-ark_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats)
+ark_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats,
+		       struct eth_queue_stats *qstats)
 {
 	struct ark_rx_queue *queue;
 	struct ark_udm_t *udm;
 
 	queue = vqueue;
-	if (queue == 0)
+	if (queue == NULL)
 		return;
 	udm = queue->udm;
 
@@ -587,12 +588,15 @@ ark_rx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats)
 	uint64_t ipackets = ark_udm_packets(udm);
 	uint64_t idropped = ark_udm_dropped(queue->udm);
 
-	stats->q_ipackets[queue->queue_index] = ipackets;
-	stats->q_ibytes[queue->queue_index] = ibytes;
-	stats->q_errors[queue->queue_index] = idropped;
 	stats->ipackets += ipackets;
 	stats->ibytes += ibytes;
 	stats->imissed += idropped;
+
+	if (qstats && queue->queue_index < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		qstats->q_ipackets[queue->queue_index] = ipackets;
+		qstats->q_ibytes[queue->queue_index] = ibytes;
+		qstats->q_errors[queue->queue_index] = idropped;
+	}
 }
 
 void

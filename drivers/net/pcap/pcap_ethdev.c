@@ -750,7 +750,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats)
 {
 	unsigned int i;
 	unsigned long rx_packets_total = 0, rx_bytes_total = 0;
@@ -762,21 +763,25 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_rx_queues; i++) {
-		stats->q_ipackets[i] = internal->rx_queue[i].rx_stat.pkts;
-		stats->q_ibytes[i] = internal->rx_queue[i].rx_stat.bytes;
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = internal->rx_queue[i].rx_stat.pkts;
+			qstats->q_ibytes[i] = internal->rx_queue[i].rx_stat.bytes;
+		}
 		rx_nombuf_total += internal->rx_queue[i].rx_stat.rx_nombuf;
 		rx_err_total += internal->rx_queue[i].rx_stat.err_pkts;
-		rx_packets_total += stats->q_ipackets[i];
-		rx_bytes_total += stats->q_ibytes[i];
+		rx_packets_total += internal->rx_queue[i].rx_stat.pkts;
+		rx_bytes_total += internal->rx_queue[i].rx_stat.bytes;
 		rx_missed_total += queue_missed_stat_get(dev, i);
 	}
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_tx_queues; i++) {
-		stats->q_opackets[i] = internal->tx_queue[i].tx_stat.pkts;
-		stats->q_obytes[i] = internal->tx_queue[i].tx_stat.bytes;
-		tx_packets_total += stats->q_opackets[i];
-		tx_bytes_total += stats->q_obytes[i];
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = internal->tx_queue[i].tx_stat.pkts;
+			qstats->q_obytes[i] = internal->tx_queue[i].tx_stat.bytes;
+		}
+		tx_packets_total += internal->tx_queue[i].tx_stat.pkts;
+		tx_bytes_total += internal->tx_queue[i].tx_stat.bytes;
 		tx_packets_err_total += internal->tx_queue[i].tx_stat.err_pkts;
 	}
 

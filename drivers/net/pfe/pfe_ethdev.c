@@ -713,7 +713,8 @@ pfe_dev_set_mac_addr(struct rte_eth_dev *dev,
 
 static int
 pfe_stats_get(struct rte_eth_dev *dev,
-	      struct rte_eth_stats *stats)
+	      struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats __rte_unused)
 {
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
 	struct rte_eth_stats *eth_stats = &priv->stats;

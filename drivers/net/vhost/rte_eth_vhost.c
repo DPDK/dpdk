@@ -1310,7 +1310,8 @@ eth_dev_info(struct rte_eth_dev *dev,
 }
 
 static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	      struct eth_queue_stats *qstats)
 {
 	unsigned i;
 	unsigned long rx_total = 0, tx_total = 0;
@@ -1323,11 +1324,12 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (dev->data->rx_queues[i] == NULL)
 			continue;
 		vq = dev->data->rx_queues[i];
-		stats->q_ipackets[i] = vq->stats.pkts;
-		rx_total += stats->q_ipackets[i];
-
-		stats->q_ibytes[i] = vq->stats.bytes;
-		rx_total_bytes += stats->q_ibytes[i];
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = vq->stats.pkts;
+			qstats->q_ibytes[i] = vq->stats.bytes;
+		}
+		rx_total += vq->stats.pkts;
+		rx_total_bytes += vq->stats.bytes;
 	}
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
@@ -1335,12 +1337,12 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (dev->data->tx_queues[i] == NULL)
 			continue;
 		vq = dev->data->tx_queues[i];
-		stats->q_opackets[i] = vq->stats.pkts;
-		tx_total += stats->q_opackets[i];
-
-		stats->q_obytes[i] = vq->stats.bytes;
-		tx_total_bytes += stats->q_obytes[i];
-
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = vq->stats.pkts;
+			qstats->q_obytes[i] = vq->stats.bytes;
+		}
+		tx_total += vq->stats.pkts;
+		tx_total_bytes += vq->stats.bytes;
 		tx_total_errors += vq->stats.missed_pkts;
 	}
 

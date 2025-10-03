@@ -164,7 +164,7 @@ static int ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int ixgbe_dev_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int ixgbe_dev_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *stats);
+				struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 static int ixgbe_dev_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstat *xstats, unsigned n);
 static int ixgbevf_dev_xstats_get(struct rte_eth_dev *dev,
@@ -265,7 +265,7 @@ static int  ixgbevf_dev_reset(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct rte_eth_dev *dev);
 static void ixgbevf_intr_enable(struct rte_eth_dev *dev);
 static int ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
-		struct rte_eth_stats *stats);
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats);
 static int ixgbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static int ixgbevf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
@@ -3398,7 +3398,8 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
  * This function is based on ixgbe_update_stats_counters() in ixgbe/ixgbe.c
  */
 static int
-ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ixgbe_dev_stats_get(struct rte_eth_dev *dev,
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct ixgbe_hw *hw =
 			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3427,13 +3428,15 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->opackets = hw_stats->gptc;
 	stats->obytes = hw_stats->gotc;
 
-	for (i = 0; i < RTE_MIN_T(IXGBE_QUEUE_STAT_COUNTERS,
-			RTE_ETHDEV_QUEUE_STAT_CNTRS, typeof(i)); i++) {
-		stats->q_ipackets[i] = hw_stats->qprc[i];
-		stats->q_opackets[i] = hw_stats->qptc[i];
-		stats->q_ibytes[i] = hw_stats->qbrc[i];
-		stats->q_obytes[i] = hw_stats->qbtc[i];
-		stats->q_errors[i] = hw_stats->qprdc[i];
+	if (qstats != NULL) {
+		for (i = 0; i < RTE_MIN_T(IXGBE_QUEUE_STAT_COUNTERS,
+				RTE_ETHDEV_QUEUE_STAT_CNTRS, typeof(i)); i++) {
+			qstats->q_ipackets[i] = hw_stats->qprc[i];
+			qstats->q_opackets[i] = hw_stats->qptc[i];
+			qstats->q_ibytes[i] = hw_stats->qbrc[i];
+			qstats->q_obytes[i] = hw_stats->qbtc[i];
+			qstats->q_errors[i] = hw_stats->qprdc[i];
+		}
 	}
 
 	/* Rx Errors */
@@ -3468,7 +3471,7 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* HW registers are cleared on read */
-	ixgbe_dev_stats_get(dev, NULL);
+	ixgbe_dev_stats_get(dev, NULL, NULL);
 
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
@@ -3887,7 +3890,8 @@ ixgbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 }
 
 static int
-ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+ixgbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct ixgbevf_hw_stats *hw_stats = (struct ixgbevf_hw_stats *)
 			  IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
@@ -3911,7 +3915,7 @@ ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* Sync HW register to the last stats */
-	ixgbevf_dev_stats_get(dev, NULL);
+	ixgbevf_dev_stats_get(dev, NULL, NULL);
 
 	/* reset HW current stats*/
 	hw_stats->vfgprc = 0;

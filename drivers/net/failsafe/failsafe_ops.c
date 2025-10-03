@@ -898,7 +898,8 @@ fs_link_update(struct rte_eth_dev *dev,
 
 static int
 fs_stats_get(struct rte_eth_dev *dev,
-	     struct rte_eth_stats *stats)
+	     struct rte_eth_stats *stats,
+	     struct eth_queue_stats *qstats __rte_unused)
 {
 	struct rte_eth_stats backup;
 	struct sub_device *sdev;

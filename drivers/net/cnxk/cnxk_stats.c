@@ -8,7 +8,8 @@
 #define CNXK_NB_TXQ_STATS 4
 
 int
-cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
+cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
+		   struct eth_queue_stats *qstats)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct roc_nix *nix = &dev->nix;
@@ -32,28 +33,30 @@ cnxk_nix_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 	stats->ibytes = nix_stats.rx_octs;
 	stats->ierrors = nix_stats.rx_err;
 
-	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-		struct roc_nix_stats_queue qstats;
-		uint16_t qidx;
+	if (qstats != NULL) {
+		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+			struct roc_nix_stats_queue qstats_data;
+			uint16_t qidx;
 
-		if (dev->txq_stat_map[i] & (1U << 31)) {
-			qidx = dev->txq_stat_map[i] & 0xFFFF;
-			rc = roc_nix_stats_queue_get(nix, qidx, 0, &qstats);
-			if (rc)
-				goto exit;
-			stats->q_opackets[i] = qstats.tx_pkts;
-			stats->q_obytes[i] = qstats.tx_octs;
-			stats->q_errors[i] = qstats.tx_drop_pkts;
-		}
+			if (dev->txq_stat_map[i] & (1U << 31)) {
+				qidx = dev->txq_stat_map[i] & 0xFFFF;
+				rc = roc_nix_stats_queue_get(nix, qidx, 0, &qstats_data);
+				if (rc)
+					goto exit;
+				qstats->q_opackets[i] = qstats_data.tx_pkts;
+				qstats->q_obytes[i] = qstats_data.tx_octs;
+				qstats->q_errors[i] = qstats_data.tx_drop_pkts;
+			}
 
-		if (dev->rxq_stat_map[i] & (1U << 31)) {
-			qidx = dev->rxq_stat_map[i] & 0xFFFF;
-			rc = roc_nix_stats_queue_get(nix, qidx, 1, &qstats);
-			if (rc)
-				goto exit;
-			stats->q_ipackets[i] = qstats.rx_pkts;
-			stats->q_ibytes[i] = qstats.rx_octs;
-			stats->q_errors[i] += qstats.rx_drop_pkts;
+			if (dev->rxq_stat_map[i] & (1U << 31)) {
+				qidx = dev->rxq_stat_map[i] & 0xFFFF;
+				rc = roc_nix_stats_queue_get(nix, qidx, 1, &qstats_data);
+				if (rc)
+					goto exit;
+				qstats->q_ipackets[i] = qstats_data.rx_pkts;
+				qstats->q_ibytes[i] = qstats_data.rx_octs;
+				qstats->q_errors[i] += qstats_data.rx_drop_pkts;
+			}
 		}
 	}
 exit:

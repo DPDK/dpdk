@@ -98,13 +98,6 @@ Deprecation Notices
   - ``rte_flow_item_pppoe``
   - ``rte_flow_item_pppoe_proto_id``
 
-* ethdev: Queue specific stats fields will be removed from ``struct rte_eth_stats``.
-  Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``,
-  ``q_errors``.
-  Instead queue stats will be received via xstats API. Current method support
-  will be limited to maximum 256 queues.
-  Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` will be removed.
-
 * ethdev: Flow actions ``PF`` and ``VF`` have been deprecated since DPDK 21.11
   and are yet to be removed. That still has not happened because there are net
   drivers which support combined use of either action ``PF`` or action ``VF``

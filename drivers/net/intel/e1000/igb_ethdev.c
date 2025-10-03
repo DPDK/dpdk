@@ -86,7 +86,7 @@ static int  eth_igb_allmulticast_disable(struct rte_eth_dev *dev);
 static int  eth_igb_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete);
 static int eth_igb_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *rte_stats);
+				struct rte_eth_stats *rte_stats, struct eth_queue_stats *qstats);
 static int eth_igb_xstats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_xstat *xstats, unsigned n);
 static int eth_igb_xstats_get_by_id(struct rte_eth_dev *dev,
@@ -163,7 +163,7 @@ static int igbvf_allmulticast_enable(struct rte_eth_dev *dev);
 static int igbvf_allmulticast_disable(struct rte_eth_dev *dev);
 static int eth_igbvf_link_update(struct e1000_hw *hw);
 static int eth_igbvf_stats_get(struct rte_eth_dev *dev,
-				struct rte_eth_stats *rte_stats);
+				struct rte_eth_stats *rte_stats, struct eth_queue_stats *qstats);
 static int eth_igbvf_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstat *xstats, unsigned n);
 static int eth_igbvf_xstats_get_names(struct rte_eth_dev *dev,
@@ -1943,7 +1943,8 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 }
 
 static int
-eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+eth_igb_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_hw_stats *stats =
@@ -1976,7 +1977,7 @@ eth_igb_stats_reset(struct rte_eth_dev *dev)
 			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* HW registers are cleared on read */
-	eth_igb_stats_get(dev, NULL);
+	eth_igb_stats_get(dev, NULL, NULL);
 
 	/* Reset software totals */
 	memset(hw_stats, 0, sizeof(*hw_stats));
@@ -2212,7 +2213,8 @@ eth_igbvf_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 }
 
 static int
-eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+eth_igbvf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_vf_stats *hw_stats = (struct e1000_vf_stats *)
@@ -2237,7 +2239,7 @@ eth_igbvf_stats_reset(struct rte_eth_dev *dev)
 			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
 
 	/* Sync HW register to the last stats */
-	eth_igbvf_stats_get(dev, NULL);
+	eth_igbvf_stats_get(dev, NULL, NULL);
 
 	/* reset HW current stats*/
 	memset(&hw_stats->gprc, 0, sizeof(*hw_stats) -

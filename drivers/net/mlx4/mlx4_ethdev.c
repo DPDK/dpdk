@@ -702,7 +702,8 @@ int mlx4_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size)
  *   Stats structure output buffer.
  */
 int
-mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+	       struct eth_queue_stats *qstats)
 {
 	struct rte_eth_stats tmp;
 	unsigned int i;
@@ -716,10 +717,10 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (rxq == NULL)
 			continue;
 		idx = rxq->stats.idx;
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			tmp.q_ipackets[idx] += rxq->stats.ipackets;
-			tmp.q_ibytes[idx] += rxq->stats.ibytes;
-			tmp.q_errors[idx] += (rxq->stats.idropped +
+		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[idx] += rxq->stats.ipackets;
+			qstats->q_ibytes[idx] += rxq->stats.ibytes;
+			qstats->q_errors[idx] += (rxq->stats.idropped +
 					      rxq->stats.rx_nombuf);
 		}
 		tmp.ipackets += rxq->stats.ipackets;
@@ -733,9 +734,9 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (txq == NULL)
 			continue;
 		idx = txq->stats.idx;
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			tmp.q_opackets[idx] += txq->stats.opackets;
-			tmp.q_obytes[idx] += txq->stats.obytes;
+		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[idx] += txq->stats.opackets;
+			qstats->q_obytes[idx] += txq->stats.obytes;
 		}
 		tmp.opackets += txq->stats.opackets;
 		tmp.obytes += txq->stats.obytes;

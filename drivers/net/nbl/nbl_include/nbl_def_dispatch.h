@@ -74,7 +74,8 @@ struct nbl_dispatch_ops {
 	u16 (*get_vsi_global_qid)(void *priv, u16 vsi_id, u16 local_qid);
 	void (*get_board_info)(void *priv, struct nbl_board_port_info *board_info);
 	void (*get_link_state)(void *priv, u8 eth_id, struct nbl_eth_link_info *eth_link_info);
-	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats);
+	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats,
+			 struct eth_queue_stats *qstats);
 	int (*reset_stats)(void *priv);
 	int (*get_txrx_xstats_cnt)(void *priv, u16 *xstats_cnt);
 	int (*get_txrx_xstats)(void *priv, struct rte_eth_xstat *xstats,

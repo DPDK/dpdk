@@ -44,7 +44,8 @@ struct nbl_resource_ops {
 	int (*alloc_rx_bufs)(void *priv, u16 queue_idx);
 	void (*stop_rx_ring)(void *priv, u16 queue_idx);
 	void (*release_rx_ring)(void *priv, u16 queue_idx);
-	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats);
+	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats,
+			 struct eth_queue_stats *qstats);
 	int (*reset_stats)(void *priv);
 	int (*get_txrx_xstats_cnt)(void *priv, u16 *xstats_cnt);
 	int (*get_txrx_xstats)(void *priv, struct rte_eth_xstat *xstats,

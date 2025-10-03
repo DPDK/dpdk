@@ -1022,7 +1022,8 @@ octeontx_dev_xstats_get(struct rte_eth_dev *dev,
 }
 
 static int
-octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		       struct eth_queue_stats *qstats __rte_unused)
 {
 	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
 

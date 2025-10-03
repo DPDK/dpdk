@@ -5,6 +5,7 @@
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
 #include <ethdev_pci.h>
+#include <ethdev_driver.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
@@ -1305,7 +1306,8 @@ static int hinic_set_dev_promiscuous(struct hinic_nic_dev *nic_dev, bool enable)
  *   negative error value otherwise.
  */
 static int
-hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		    struct eth_queue_stats *qstats)
 {
 	int i, err, q_num;
 	u64 rx_discards_pmd = 0;
@@ -1326,29 +1328,45 @@ hinic_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	dev->data->rx_mbuf_alloc_failed = 0;
 
 	/* rx queue stats */
-	q_num = (nic_dev->num_rq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
-			nic_dev->num_rq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
-	for (i = 0; i < q_num; i++) {
-		rxq = nic_dev->rxqs[i];
-		hinic_rxq_get_stats(rxq, &rxq_stats);
-		stats->q_ipackets[i] = rxq_stats.packets;
-		stats->q_ibytes[i] = rxq_stats.bytes;
-		stats->q_errors[i] = rxq_stats.rx_discards;
+	if (qstats) {
+		q_num = (nic_dev->num_rq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
+				nic_dev->num_rq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
+		for (i = 0; i < q_num; i++) {
+			rxq = nic_dev->rxqs[i];
+			hinic_rxq_get_stats(rxq, &rxq_stats);
+			qstats->q_ipackets[i] = rxq_stats.packets;
+			qstats->q_ibytes[i] = rxq_stats.bytes;
+			qstats->q_errors[i] = rxq_stats.rx_discards;
 
-		stats->ierrors += rxq_stats.errors;
-		rx_discards_pmd += rxq_stats.rx_discards;
-		dev->data->rx_mbuf_alloc_failed += rxq_stats.rx_nombuf;
-	}
+			stats->ierrors += rxq_stats.errors;
+			rx_discards_pmd += rxq_stats.rx_discards;
+			dev->data->rx_mbuf_alloc_failed += rxq_stats.rx_nombuf;
+		}
 
-	/* tx queue stats */
-	q_num = (nic_dev->num_sq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
-		nic_dev->num_sq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
-	for (i = 0; i < q_num; i++) {
-		txq = nic_dev->txqs[i];
-		hinic_txq_get_stats(txq, &txq_stats);
-		stats->q_opackets[i] = txq_stats.packets;
-		stats->q_obytes[i] = txq_stats.bytes;
-		stats->oerrors += (txq_stats.tx_busy + txq_stats.off_errs);
+		/* tx queue stats */
+		q_num = (nic_dev->num_sq < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
+			nic_dev->num_sq : RTE_ETHDEV_QUEUE_STAT_CNTRS;
+		for (i = 0; i < q_num; i++) {
+			txq = nic_dev->txqs[i];
+			hinic_txq_get_stats(txq, &txq_stats);
+			qstats->q_opackets[i] = txq_stats.packets;
+			qstats->q_obytes[i] = txq_stats.bytes;
+			stats->oerrors += (txq_stats.tx_busy + txq_stats.off_errs);
+		}
+	} else {
+		/* Still aggregate error stats even without qstats */
+		for (i = 0; i < nic_dev->num_rq; i++) {
+			rxq = nic_dev->rxqs[i];
+			hinic_rxq_get_stats(rxq, &rxq_stats);
+			stats->ierrors += rxq_stats.errors;
+			rx_discards_pmd += rxq_stats.rx_discards;
+			dev->data->rx_mbuf_alloc_failed += rxq_stats.rx_nombuf;
+		}
+		for (i = 0; i < nic_dev->num_sq; i++) {
+			txq = nic_dev->txqs[i];
+			hinic_txq_get_stats(txq, &txq_stats);
+			stats->oerrors += (txq_stats.tx_busy + txq_stats.off_errs);
+		}
 	}
 
 	/* vport stats */

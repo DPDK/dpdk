@@ -163,7 +163,8 @@ get_pdrv_from_pci(struct rte_pci_addr addr)
 	return p_drv;
 }
 
-static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_stats *stats)
+static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	const struct ntnic_filter_ops *ntnic_filter_ops = nthw_get_filter_ops();
 
@@ -197,19 +198,19 @@ static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_st
 	ntnic_filter_ops->poll_statistics(internals);
 
 	for (i = 0; i < internals->nb_rx_queues; i++) {
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] = internals->rxq_scg[i].rx_pkts;
-			stats->q_ibytes[i] = internals->rxq_scg[i].rx_bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = internals->rxq_scg[i].rx_pkts;
+			qstats->q_ibytes[i] = internals->rxq_scg[i].rx_bytes;
 		}
 		rx_total += internals->rxq_scg[i].rx_pkts;
 		rx_total_b += internals->rxq_scg[i].rx_bytes;
 	}
 
 	for (i = 0; i < internals->nb_tx_queues; i++) {
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[i] = internals->txq_scg[i].tx_pkts;
-			stats->q_obytes[i] = internals->txq_scg[i].tx_bytes;
-			stats->q_errors[i] = internals->txq_scg[i].err_pkts;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = internals->txq_scg[i].tx_pkts;
+			qstats->q_obytes[i] = internals->txq_scg[i].tx_bytes;
+			qstats->q_errors[i] = internals->txq_scg[i].err_pkts;
 		}
 		tx_total += internals->txq_scg[i].tx_pkts;
 		tx_total_b += internals->txq_scg[i].tx_bytes;
@@ -300,10 +301,11 @@ eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 	return 0;
 }
 
-static int eth_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
+static int eth_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct pmd_internals *internals = eth_dev->data->dev_private;
-	dpdk_stats_collect(internals, stats);
+	dpdk_stats_collect(internals, stats, qstats);
 	return 0;
 }
 

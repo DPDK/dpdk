@@ -209,7 +209,7 @@ rte_pmd_i40e_get_vf_native_stats(uint16_t port,
 
 static int
 i40e_vf_representor_stats_get(struct rte_eth_dev *ethdev,
-		struct rte_eth_stats *stats)
+		struct rte_eth_stats *stats, struct eth_queue_stats *qstats __rte_unused)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
 	struct i40e_eth_stats native_stats;

@@ -872,7 +872,7 @@ void bnxt_rep_tx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx)
 }
 
 int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
-			     struct rte_eth_stats *stats)
+			     struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct bnxt_representor *rep_bp = eth_dev->data->dev_private;
 	unsigned int i;
@@ -885,11 +885,13 @@ int bnxt_rep_stats_get_op(struct rte_eth_dev *eth_dev,
 		stats->ipackets += rep_bp->rx_pkts[i];
 		stats->imissed += rep_bp->rx_drop_pkts[i];
 
-		stats->q_ipackets[i] = rep_bp->rx_pkts[i];
-		stats->q_ibytes[i] = rep_bp->rx_bytes[i];
-		stats->q_opackets[i] = rep_bp->tx_pkts[i];
-		stats->q_obytes[i] = rep_bp->tx_bytes[i];
-		stats->q_errors[i] = rep_bp->rx_drop_pkts[i];
+		if (qstats) {
+			qstats->q_ipackets[i] = rep_bp->rx_pkts[i];
+			qstats->q_ibytes[i] = rep_bp->rx_bytes[i];
+			qstats->q_opackets[i] = rep_bp->tx_pkts[i];
+			qstats->q_obytes[i] = rep_bp->tx_bytes[i];
+			qstats->q_errors[i] = rep_bp->rx_drop_pkts[i];
+		}
 	}
 
 	return 0;

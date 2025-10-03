@@ -415,23 +415,28 @@ free_completed_tx(struct ark_tx_queue *queue)
 
 /* ************************************************************************* */
 void
-ark_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats)
+ark_tx_queue_stats_get(void *vqueue, struct rte_eth_stats *stats, struct eth_queue_stats *qstats)
 {
 	struct ark_tx_queue *queue;
 	struct ark_ddm_t *ddm;
 	uint64_t bytes, pkts;
 
 	queue = vqueue;
-	ddm = queue->ddm;
+	if (queue == NULL)
+		return;
 
+	ddm = queue->ddm;
 	bytes = ark_ddm_queue_byte_count(ddm);
 	pkts = ark_ddm_queue_pkt_count(ddm);
 
-	stats->q_opackets[queue->queue_index] = pkts;
-	stats->q_obytes[queue->queue_index] = bytes;
 	stats->opackets += pkts;
 	stats->obytes += bytes;
 	stats->oerrors += queue->tx_errors;
+
+	if (qstats && queue->queue_index < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+		qstats->q_opackets[queue->queue_index] = pkts;
+		qstats->q_obytes[queue->queue_index] = bytes;
+	}
 }
 
 void

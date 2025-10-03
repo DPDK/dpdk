@@ -3,6 +3,7 @@
  */
 
 #include <rte_ethdev.h>
+#include <ethdev_driver.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
 
@@ -609,7 +610,8 @@ hns3_rcb_tx_ring_stats_get(struct hns3_tx_queue *txq,
  *   0 on success.
  */
 int
-hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats)
+hns3_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats,
+	       struct eth_queue_stats *qstats __rte_unused)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;

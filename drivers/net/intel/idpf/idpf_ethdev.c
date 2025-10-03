@@ -268,7 +268,8 @@ idpf_get_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 }
 
 static int
-idpf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+idpf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct idpf_vport *vport =
 		(struct idpf_vport *)dev->data->dev_private;

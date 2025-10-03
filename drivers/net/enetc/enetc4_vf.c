@@ -93,8 +93,8 @@ enetc4_vf_dev_start(struct rte_eth_dev *dev __rte_unused)
 }
 
 static int
-enetc4_vf_stats_get(struct rte_eth_dev *dev,
-		    struct rte_eth_stats *stats)
+enetc4_vf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		    struct eth_queue_stats *qstats __rte_unused)
 {
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);

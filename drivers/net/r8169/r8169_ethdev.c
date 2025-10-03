@@ -37,7 +37,8 @@ static int rtl_dev_set_link_down(struct rte_eth_dev *dev);
 static int rtl_dev_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int rtl_dev_stats_get(struct rte_eth_dev *dev,
-			     struct rte_eth_stats *rte_stats);
+			     struct rte_eth_stats *rte_stats,
+			     struct eth_queue_stats *qstats);
 static int rtl_dev_stats_reset(struct rte_eth_dev *dev);
 static int rtl_promiscuous_enable(struct rte_eth_dev *dev);
 static int rtl_promiscuous_disable(struct rte_eth_dev *dev);
@@ -533,7 +534,8 @@ rtl_sw_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
 }
 
 static int
-rtl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+rtl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
 	struct rtl_hw *hw = &adapter->hw;

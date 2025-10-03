@@ -10,6 +10,7 @@
 #include "gve_version.h"
 #include "rte_ether.h"
 #include "gve_rss.h"
+#include <ethdev_driver.h>
 
 static void
 gve_write_version(uint8_t *driver_version_register)
@@ -671,7 +672,8 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-gve_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+gve_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats __rte_unused)
 {
 	uint16_t i;
 	if (gve_is_gqi(dev->data->dev_private))

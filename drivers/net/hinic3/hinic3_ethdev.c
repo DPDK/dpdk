@@ -2672,7 +2672,8 @@ hinic3_rss_reta_update(struct rte_eth_dev *dev,
  * 0 on success, non-zero on failure.
  */
 static int
-hinic3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+hinic3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		     struct eth_queue_stats *qstats)
 {
 	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	struct hinic3_vport_stats vport_stats;
@@ -2696,10 +2697,11 @@ hinic3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 #endif
 		rxq->rxq_stats.errors = rxq->rxq_stats.csum_errors +
 					rxq->rxq_stats.other_errors;
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] = rxq->rxq_stats.packets;
-			stats->q_ibytes[i] = rxq->rxq_stats.bytes;
-			stats->q_errors[i] = rxq->rxq_stats.errors;
+
+		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = rxq->rxq_stats.packets;
+			qstats->q_ibytes[i] = rxq->rxq_stats.bytes;
+			qstats->q_errors[i] = rxq->rxq_stats.errors;
 		}
 		stats->ierrors += rxq->rxq_stats.errors;
 		rx_discards_pmd += rxq->rxq_stats.dropped;
@@ -2710,9 +2712,9 @@ hinic3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	for (uint32_t i = 0; i < nic_dev->num_sqs; i++) {
 		struct hinic3_txq *txq = nic_dev->txqs[i];
 		stats->oerrors += (txq->txq_stats.tx_busy + txq->txq_stats.offload_errors);
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[i] = txq->txq_stats.packets;
-			stats->q_obytes[i] = txq->txq_stats.bytes;
+		if (qstats && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = txq->txq_stats.packets;
+			qstats->q_obytes[i] = txq->txq_stats.bytes;
 		}
 	}
 

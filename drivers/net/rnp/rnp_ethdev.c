@@ -1233,7 +1233,8 @@ static void rnp_get_hw_stats(struct rte_eth_dev *dev)
 
 static int
 rnp_dev_stats_get(struct rte_eth_dev *dev,
-		  struct rte_eth_stats *stats)
+		  struct rte_eth_stats *stats,
+		  struct eth_queue_stats *qstats)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
 	struct rnp_hw_eth_stats *eth_stats = &port->eth_stats;
@@ -1251,9 +1252,9 @@ rnp_dev_stats_get(struct rte_eth_dev *dev,
 			continue;
 		stats->ipackets += rxq->stats.ipackets;
 		stats->ibytes += rxq->stats.ibytes;
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[i] = rxq->stats.ipackets;
-			stats->q_ibytes[i] = rxq->stats.ibytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = rxq->stats.ipackets;
+			qstats->q_ibytes[i] = rxq->stats.ibytes;
 		}
 	}
 
@@ -1265,9 +1266,9 @@ rnp_dev_stats_get(struct rte_eth_dev *dev,
 		stats->opackets += txq->stats.opackets;
 		stats->obytes += txq->stats.obytes;
 		stats->oerrors += txq->stats.errors;
-		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[i] = txq->stats.opackets;
-			stats->q_obytes[i] = txq->stats.obytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = txq->stats.opackets;
+			qstats->q_obytes[i] = txq->stats.obytes;
 		}
 	}
 	stats->imissed = eth_stats->rx_trans_drop + eth_stats->rx_trunc_drop;

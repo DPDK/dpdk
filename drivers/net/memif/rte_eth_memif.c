@@ -1578,7 +1578,8 @@ memif_link_update(struct rte_eth_dev *dev,
 }
 
 static int
-memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct memif_queue *mq;
@@ -1598,8 +1599,10 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* RX stats */
 	for (i = 0; i < nq; i++) {
 		mq = dev->data->rx_queues[i];
-		stats->q_ipackets[i] = mq->n_pkts;
-		stats->q_ibytes[i] = mq->n_bytes;
+		if (qstats != NULL) {
+			qstats->q_ipackets[i] = mq->n_pkts;
+			qstats->q_ibytes[i] = mq->n_bytes;
+		}
 		stats->ipackets += mq->n_pkts;
 		stats->ibytes += mq->n_bytes;
 	}
@@ -1612,8 +1615,10 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* TX stats */
 	for (i = 0; i < nq; i++) {
 		mq = dev->data->tx_queues[i];
-		stats->q_opackets[i] = mq->n_pkts;
-		stats->q_obytes[i] = mq->n_bytes;
+		if (qstats != NULL) {
+			qstats->q_opackets[i] = mq->n_pkts;
+			qstats->q_obytes[i] = mq->n_bytes;
+		}
 		stats->opackets += mq->n_pkts;
 		stats->obytes += mq->n_bytes;
 	}

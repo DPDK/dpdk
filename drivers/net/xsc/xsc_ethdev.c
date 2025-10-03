@@ -577,7 +577,8 @@ xsc_ethdev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
-xsc_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+xsc_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats)
 {
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
 	uint32_t rxqs_n = priv->num_rq;
@@ -592,10 +593,10 @@ xsc_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			continue;
 
 		idx = rxq->idx;
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_ipackets[idx] += rxq->stats.rx_pkts;
-			stats->q_ibytes[idx] += rxq->stats.rx_bytes;
-			stats->q_errors[idx] += rxq->stats.rx_errors +
+		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[idx] += rxq->stats.rx_pkts;
+			qstats->q_ibytes[idx] += rxq->stats.rx_bytes;
+			qstats->q_errors[idx] += rxq->stats.rx_errors +
 						rxq->stats.rx_nombuf;
 		}
 		stats->ipackets += rxq->stats.rx_pkts;
@@ -610,10 +611,10 @@ xsc_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			continue;
 
 		idx = txq->idx;
-		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-			stats->q_opackets[idx] += txq->stats.tx_pkts;
-			stats->q_obytes[idx] += txq->stats.tx_bytes;
-			stats->q_errors[idx] += txq->stats.tx_errors;
+		if (qstats != NULL && idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[idx] += txq->stats.tx_pkts;
+			qstats->q_obytes[idx] += txq->stats.tx_bytes;
+			qstats->q_errors[idx] += txq->stats.tx_errors;
 		}
 		stats->opackets += txq->stats.tx_pkts;
 		stats->obytes += txq->stats.tx_bytes;

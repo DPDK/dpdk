@@ -10,6 +10,7 @@
 
 #include "rte_ethdev.h"
 #include "ethdev_driver.h"
+#include "ethdev_private.h"
 #include "sff_telemetry.h"
 #include "rte_tm.h"
 
@@ -60,20 +61,6 @@ eth_dev_handle_port_list(const char *cmd __rte_unused,
 	return 0;
 }
 
-static void
-eth_dev_add_port_queue_stats(struct rte_tel_data *d, uint64_t *q_stats,
-		const char *stat_name)
-{
-	int q;
-	struct rte_tel_data *q_data = rte_tel_data_alloc();
-	if (q_data == NULL)
-		return;
-	rte_tel_data_start_array(q_data, RTE_TEL_UINT_VAL);
-	for (q = 0; q < RTE_ETHDEV_QUEUE_STAT_CNTRS; q++)
-		rte_tel_data_add_array_uint(q_data, q_stats[q]);
-	rte_tel_data_add_dict_container(d, stat_name, q_data, 0);
-}
-
 static int
 eth_dev_parse_hide_zero(const char *key, const char *value, void *extra_args)
 {
@@ -121,11 +108,6 @@ eth_dev_handle_port_stats(const char *cmd __rte_unused,
 	ADD_DICT_STAT(stats, ierrors);
 	ADD_DICT_STAT(stats, oerrors);
 	ADD_DICT_STAT(stats, rx_nombuf);
-	eth_dev_add_port_queue_stats(d, stats.q_ipackets, "q_ipackets");
-	eth_dev_add_port_queue_stats(d, stats.q_opackets, "q_opackets");
-	eth_dev_add_port_queue_stats(d, stats.q_ibytes, "q_ibytes");
-	eth_dev_add_port_queue_stats(d, stats.q_obytes, "q_obytes");
-	eth_dev_add_port_queue_stats(d, stats.q_errors, "q_errors");
 
 	return 0;
 }

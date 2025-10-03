@@ -75,7 +75,8 @@ void nbl_tx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id);
 void nbl_rx_queues_release(struct rte_eth_dev *eth_dev, uint16_t queue_id);
 int nbl_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info);
 int nbl_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused);
-int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats);
+int nbl_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *rte_stats,
+		  struct eth_queue_stats *qstats);
 int nbl_stats_reset(struct rte_eth_dev *eth_dev);
 int nbl_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *xstats, unsigned int n);
 int nbl_xstats_get_names(struct rte_eth_dev *eth_dev,

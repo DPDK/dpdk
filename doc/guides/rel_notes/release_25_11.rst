@@ -174,6 +174,12 @@ Removed Items
   Currently, this means that modules will only be built for FreeBSD.
   No modules are shipped with DPDK for either Linux or Windows.
 
+* ethdev: As previously announced in deprecation notes,
+  queue specific stats fields are now removed from ``struct rte_eth_stats``.
+  Mentioned fields are: ``q_ipackets``, ``q_opackets``, ``q_ibytes``, ``q_obytes``, ``q_errors``.
+  Instead queue stats will be received via xstats API.
+  Also compile time flag ``RTE_ETHDEV_QUEUE_STAT_CNTRS`` is removed from public headers.
+
 * telemetry: As previously announced in the deprecation notices,
   the functions ``rte_tel_data_add_array_u64`` and ``rte_tel_data_add_dict_u64`` are removed.
   They are replaced by ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.

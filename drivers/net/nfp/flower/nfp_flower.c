@@ -238,8 +238,8 @@ nfp_flower_multiple_pf_recv_pkts(void *rx_queue,
 		for (i = 0; i < recv; i++)
 			data_len += rx_pkts[i]->data_len;
 
-		repr->repr_stats.q_ipackets[rxq->qidx] += recv;
-		repr->repr_stats.q_ibytes[rxq->qidx] += data_len;
+		repr->repr_qstats.q_ipackets[rxq->qidx] += recv;
+		repr->repr_qstats.q_ibytes[rxq->qidx] += data_len;
 	}
 
 	return recv;
@@ -276,8 +276,8 @@ nfp_flower_multiple_pf_xmit_pkts(void *tx_queue,
 		for (i = 0; i < sent; i++)
 			data_len += tx_pkts[i]->data_len;
 
-		repr->repr_stats.q_opackets[txq->qidx] += sent;
-		repr->repr_stats.q_obytes[txq->qidx] += data_len;
+		repr->repr_qstats.q_opackets[txq->qidx] += sent;
+		repr->repr_qstats.q_obytes[txq->qidx] += data_len;
 	}
 
 	return sent;

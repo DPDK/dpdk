@@ -6727,12 +6727,6 @@ set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
 	if (is_rx ? (rx_queue_id_is_invalid(queue_id)) : (tx_queue_id_is_invalid(queue_id)))
 		return;
 
-	if (map_value >= RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-		fprintf(stderr, "map_value not in required range 0..%d\n",
-			RTE_ETHDEV_QUEUE_STAT_CNTRS - 1);
-		return;
-	}
-
 	if (!is_rx) { /* tx */
 		ret = rte_eth_dev_set_tx_queue_stats_mapping(port_id, queue_id,
 							     map_value);

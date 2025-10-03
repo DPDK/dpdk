@@ -256,7 +256,7 @@ static int i40e_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int i40e_dev_set_link_up(struct rte_eth_dev *dev);
 static int i40e_dev_set_link_down(struct rte_eth_dev *dev);
 static int i40e_dev_stats_get(struct rte_eth_dev *dev,
-			       struct rte_eth_stats *stats);
+			       struct rte_eth_stats *stats,	struct eth_queue_stats *qstats);
 static int i40e_dev_xstats_get(struct rte_eth_dev *dev,
 			       struct rte_eth_xstat *xstats, unsigned n);
 static int i40e_dev_xstats_get_names(struct rte_eth_dev *dev,
@@ -3474,7 +3474,8 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 
 /* Get all statistics of a port */
 static int
-i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);

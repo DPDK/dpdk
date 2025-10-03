@@ -314,7 +314,8 @@ cpfl_get_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 }
 
 static int
-cpfl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+cpfl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		struct eth_queue_stats *qstats __rte_unused)
 {
 	struct cpfl_vport *cpfl_vport = dev->data->dev_private;
 	struct idpf_vport *vport = &cpfl_vport->base;

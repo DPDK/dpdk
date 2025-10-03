@@ -682,7 +682,8 @@ int cnxk_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int cnxk_nix_queue_stats_mapping(struct rte_eth_dev *dev, uint16_t queue_id,
 				 uint8_t stat_idx, uint8_t is_rx);
 int cnxk_nix_stats_reset(struct rte_eth_dev *dev);
-int cnxk_nix_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int cnxk_nix_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
+		       struct eth_queue_stats *qstats);
 int cnxk_nix_xstats_get(struct rte_eth_dev *eth_dev,
 			struct rte_eth_xstat *xstats, unsigned int n);
 int cnxk_nix_xstats_get_names(struct rte_eth_dev *eth_dev,

@@ -614,7 +614,8 @@ otx_ep_dev_stats_reset(struct rte_eth_dev *dev)
 
 static int
 otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
-				struct rte_eth_stats *stats)
+				struct rte_eth_stats *stats,
+				struct eth_queue_stats *qstats)
 {
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 	struct otx_ep_iq_stats *ostats;
@@ -625,17 +626,21 @@ otx_ep_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 	for (i = 0; i < otx_epvf->nb_tx_queues; i++) {
 		ostats = &otx_epvf->instr_queue[i]->stats;
-		stats->q_opackets[i] = ostats->tx_pkts;
-		stats->q_obytes[i] = ostats->tx_bytes;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_opackets[i] = ostats->tx_pkts;
+			qstats->q_obytes[i] = ostats->tx_bytes;
+		}
 		stats->opackets += ostats->tx_pkts;
 		stats->obytes += ostats->tx_bytes;
 		stats->oerrors += ostats->instr_dropped;
 	}
 	for (i = 0; i < otx_epvf->nb_rx_queues; i++) {
 		istats = &otx_epvf->droq[i]->stats;
-		stats->q_ipackets[i] = istats->pkts_received;
-		stats->q_ibytes[i] = istats->bytes_received;
-		stats->q_errors[i] = istats->rx_err;
+		if (qstats != NULL && i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			qstats->q_ipackets[i] = istats->pkts_received;
+			qstats->q_ibytes[i] = istats->bytes_received;
+			qstats->q_errors[i] = istats->rx_err;
+		}
 		stats->ipackets += istats->pkts_received;
 		stats->ibytes += istats->bytes_received;
 		stats->imissed += istats->rx_alloc_failure;

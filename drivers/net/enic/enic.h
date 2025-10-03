@@ -419,7 +419,8 @@ int enic_disable(struct enic *enic);
 void enic_remove(struct enic *enic);
 int enic_get_link_status(struct enic *enic);
 int enic_dev_stats_get(struct enic *enic,
-		       struct rte_eth_stats *r_stats);
+		       struct rte_eth_stats *r_stats,
+		       struct eth_queue_stats *qstats __rte_unused);
 int enic_dev_stats_clear(struct enic *enic);
 int enic_add_packet_filter(struct enic *enic);
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr);
