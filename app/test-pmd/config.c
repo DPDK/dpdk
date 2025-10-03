@@ -6717,36 +6717,6 @@ tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on)
 }
 
 void
-set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value)
-{
-	int ret;
-
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
-
-	if (is_rx ? (rx_queue_id_is_invalid(queue_id)) : (tx_queue_id_is_invalid(queue_id)))
-		return;
-
-	if (!is_rx) { /* tx */
-		ret = rte_eth_dev_set_tx_queue_stats_mapping(port_id, queue_id,
-							     map_value);
-		if (ret) {
-			fprintf(stderr,
-				"failed to set tx queue stats mapping.\n");
-			return;
-		}
-	} else { /* rx */
-		ret = rte_eth_dev_set_rx_queue_stats_mapping(port_id, queue_id,
-							     map_value);
-		if (ret) {
-			fprintf(stderr,
-				"failed to set rx queue stats mapping.\n");
-			return;
-		}
-	}
-}
-
-void
 set_xstats_hide_zero(uint8_t on_off)
 {
 	xstats_hide_zero = on_off;

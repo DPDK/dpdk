@@ -3496,6 +3496,7 @@ int rte_eth_xstats_reset(uint16_t port_id);
  * @return
  *   Zero if successful. Non-zero otherwise.
  */
+__rte_deprecated
 int rte_eth_dev_set_tx_queue_stats_mapping(uint16_t port_id,
 		uint16_t tx_queue_id, uint8_t stat_idx);
 
@@ -3517,6 +3518,7 @@ int rte_eth_dev_set_tx_queue_stats_mapping(uint16_t port_id,
  * @return
  *   Zero if successful. Non-zero otherwise.
  */
+__rte_deprecated
 int rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id,
 					   uint16_t rx_queue_id,
 					   uint8_t stat_idx);

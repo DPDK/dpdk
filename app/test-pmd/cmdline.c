@@ -8042,62 +8042,6 @@ static cmdline_parse_inst_t cmd_set_fwd_eth_peer = {
 	},
 };
 
-/* *** CONFIGURE QUEUE STATS COUNTER MAPPINGS *** */
-struct cmd_set_qmap_result {
-	cmdline_fixed_string_t set;
-	cmdline_fixed_string_t qmap;
-	cmdline_fixed_string_t what;
-	portid_t port_id;
-	uint16_t queue_id;
-	uint8_t map_value;
-};
-
-static void
-cmd_set_qmap_parsed(void *parsed_result,
-		       __rte_unused struct cmdline *cl,
-		       __rte_unused void *data)
-{
-	struct cmd_set_qmap_result *res = parsed_result;
-	int is_rx = (strcmp(res->what, "tx") == 0) ? 0 : 1;
-
-	set_qmap(res->port_id, (uint8_t)is_rx, res->queue_id, res->map_value);
-}
-
-static cmdline_parse_token_string_t cmd_setqmap_set =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_qmap_result,
-				 set, "set");
-static cmdline_parse_token_string_t cmd_setqmap_qmap =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_qmap_result,
-				 qmap, "stat_qmap");
-static cmdline_parse_token_string_t cmd_setqmap_what =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_qmap_result,
-				 what, "tx#rx");
-static cmdline_parse_token_num_t cmd_setqmap_portid =
-	TOKEN_NUM_INITIALIZER(struct cmd_set_qmap_result,
-			      port_id, RTE_UINT16);
-static cmdline_parse_token_num_t cmd_setqmap_queueid =
-	TOKEN_NUM_INITIALIZER(struct cmd_set_qmap_result,
-			      queue_id, RTE_UINT16);
-static cmdline_parse_token_num_t cmd_setqmap_mapvalue =
-	TOKEN_NUM_INITIALIZER(struct cmd_set_qmap_result,
-			      map_value, RTE_UINT8);
-
-static cmdline_parse_inst_t cmd_set_qmap = {
-	.f = cmd_set_qmap_parsed,
-	.data = NULL,
-	.help_str = "set stat_qmap rx|tx <port_id> <queue_id> <map_value>: "
-		"Set statistics mapping value on tx|rx queue_id of port_id",
-	.tokens = {
-		(void *)&cmd_setqmap_set,
-		(void *)&cmd_setqmap_qmap,
-		(void *)&cmd_setqmap_what,
-		(void *)&cmd_setqmap_portid,
-		(void *)&cmd_setqmap_queueid,
-		(void *)&cmd_setqmap_mapvalue,
-		NULL,
-	},
-};
-
 /* *** SET OPTION TO HIDE ZERO VALUES FOR XSTATS  DISPLAY *** */
 struct cmd_set_xstats_hide_zero_result {
 	cmdline_fixed_string_t keyword;
@@ -14109,7 +14053,6 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_stop,
 	&cmd_mac_addr,
 	&cmd_set_fwd_eth_peer,
-	&cmd_set_qmap,
 	&cmd_set_xstats_hide_zero,
 	&cmd_set_xstats_show_state,
 	&cmd_set_xstats_hide_disabled,
