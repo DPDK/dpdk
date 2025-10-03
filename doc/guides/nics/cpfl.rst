@@ -218,14 +218,14 @@ low level hardware resources.
       dpdk-testpmd -l 0,1 -a 0000:af:00.6,vport=[0-1],flow_parser="refpkg.json" -- -i
 
 #. Create one flow to forward ETH-IPV4-TCP from I/O port to a local(CPF's) vport. Flow should be created on
-   vport X. Group M should match fxp module. Action port_representor Y means forward packet to local vport Y::
+   vport X. Group M should match fxp module. Action port_representor Y means forward packet to local vport Y:
 
    .. code-block:: console
 
       flow create X ingress group M pattern eth dst is 00:01:00:00:03:14 / ipv4 src is 192.168.0.1 \
-      dst is 192.168.0.2 / tcp / end actions port_representor port_id Y / end
+         dst is 192.168.0.2 / tcp / end actions port_representor port_id Y / end
 
-#. Send a matched packet, and it should be displayed on PMD::
+#. Send a matched packet, and it should be displayed on PMD:
 
    .. code-block:: console
 
