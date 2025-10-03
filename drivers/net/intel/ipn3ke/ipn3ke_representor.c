@@ -2124,7 +2124,6 @@ ipn3ke_rpst_stats_get
 	uint16_t port_id = 0;
 	char *ch;
 	int cnt = 0;
-	int i = 0;
 	struct rte_afu_device *afu_dev = NULL;
 	struct ipn3ke_hw *hw = NULL;
 	struct ipn3ke_rpst_hw_port_stats hw_stats;
@@ -2200,13 +2199,6 @@ ipn3ke_rpst_stats_get
 		stats->oerrors   = hw_stats.eth.tx_discards
 					+ hw_stats.eth.tx_errors;
 		stats->rx_nombuf = 0;
-		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-			stats->q_ipackets[i] = 0;
-			stats->q_opackets[i] = 0;
-			stats->q_ibytes[i] = 0;
-			stats->q_obytes[i] = 0;
-			stats->q_errors[i] = 0;
-		}
 	} else {
 		ipn3ke_rpst_read_10g_lineside_stats_registers(hw,
 							port_id,
@@ -2931,8 +2923,7 @@ ipn3ke_rpst_init(struct rte_eth_dev *ethdev, void *init_params)
 		return -ENODEV;
 	}
 
-	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
-					RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 
 	rte_spinlock_lock(&ipn3ke_link_notify_list_lk);
 	TAILQ_INSERT_TAIL(&ipn3ke_rpst_list, rpst, next);
