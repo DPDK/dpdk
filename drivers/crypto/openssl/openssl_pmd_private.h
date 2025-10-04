@@ -249,6 +249,20 @@ struct __rte_cache_aligned openssl_asym_session {
 			OSSL_PARAM * params;
 #endif
 		} eddsa;
+		struct {
+			uint8_t type;
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+			EVP_PKEY_CTX * pctx;
+#endif
+		} ml_kem;
+		struct {
+			uint8_t type;
+			bool sign_prehash;
+			bool sign_deterministic;
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+			EVP_PKEY_CTX * pctx;
+#endif
+		} ml_dsa;
 	} u;
 };
 /** Set and validate OPENSSL crypto session parameters */
@@ -264,4 +278,7 @@ openssl_reset_session(struct openssl_session *sess);
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_openssl_pmd_ops;
 
+/** ML parameter type names */
+extern const char *ml_kem_type_names[];
+extern const char *ml_dsa_type_names[];
 #endif /* _OPENSSL_PMD_PRIVATE_H_ */
