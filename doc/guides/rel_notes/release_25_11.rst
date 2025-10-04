@@ -76,6 +76,11 @@ New Features
   * Added multi-process per port.
   * Optimized code.
 
+* **Added PQC ML-KEM and ML-DSA support in cryptodev.**
+
+  * Added PQC ML-KEM support with reference to FIPS203.
+  * Added PQC ML-DSA support with reference to FIPS204.
+
 * **Updated the QuickAssist Technology (QAT) crypto PMD.**
 
   * Added SM2 encryption and decryption algorithms.
@@ -145,6 +150,10 @@ ABI Changes
 * cryptodev: The ``rte_crypto_sm2_op_param`` struct member ``cipher`` to hold ciphertext
   is changed to union data type. This change is required to support partial SM2 calculation
   which is driven by ``RTE_CRYPTO_SM2_PARTIAL`` capability flag.
+
+* cryptodev: The enum ``rte_crypto_asym_xform_type``, struct ``rte_crypto_asym_xform``
+  and struct ``rte_crypto_asym_op`` are updated to include new values to support
+  ML-KEM and ML-DSA.
 
 
 Known Issues
