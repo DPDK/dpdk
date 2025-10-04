@@ -167,10 +167,13 @@ struct rte_cryptodev_asymmetric_xform_capability {
 	uint32_t op_types;
 	/**<
 	 * Bitmask for supported rte_crypto_asym_op_type or
+	 * rte_crypto_ml_kem_op_type or rte_crypto_ml_dsa_op_type or
 	 * rte_crypto_asym_ke_type. Which enum is used is determined
 	 * by the rte_crypto_asym_xform_type. For key exchange algorithms
-	 * like Diffie-Hellman it is rte_crypto_asym_ke_type, for others
-	 * it is rte_crypto_asym_op_type.
+	 * like Diffie-Hellman it is rte_crypto_asym_ke_type,
+	 * for ML-KEM algorithms it is rte_crypto_ml_kem_op_type,
+	 * for ML-DSA algorithms it is rte_crypto_ml_dsa_op_type,
+	 * or others it is rte_crypto_asym_op_type.
 	 */
 
 	__extension__
@@ -188,6 +191,12 @@ struct rte_cryptodev_asymmetric_xform_capability {
 
 		uint32_t op_capa[RTE_CRYPTO_ASYM_OP_LIST_END];
 		/**< Operation specific capabilities. */
+
+		uint32_t mlkem_capa[RTE_CRYPTO_ML_KEM_OP_END];
+		/**< Bitmask of supported ML-KEM parameter sets. */
+
+		uint32_t mldsa_capa[RTE_CRYPTO_ML_DSA_OP_END];
+		/**< Bitmask of supported ML-DSA parameter sets. */
 	};
 
 	uint64_t hash_algos;
@@ -577,6 +586,8 @@ rte_cryptodev_asym_get_xform_string(enum rte_crypto_asym_xform_type xform_enum);
 /**< Support inner checksum computation/verification */
 #define RTE_CRYPTODEV_FF_SECURITY_RX_INJECT		(1ULL << 28)
 /**< Support Rx injection after security processing */
+#define RTE_CRYPTODEV_FF_MLDSA_SIGN_PREHASH		(1ULL << 29)
+/**< Support Pre Hash ML-DSA Signature Generation */
 
 /**
  * Get the name of a crypto device feature flag

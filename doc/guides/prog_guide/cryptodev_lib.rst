@@ -928,7 +928,8 @@ Asymmetric Cryptography
 The cryptodev library currently provides support for the following asymmetric
 Crypto operations; RSA, Modular exponentiation and inversion, Diffie-Hellman and
 Elliptic Curve Diffie-Hellman public and/or private key generation and shared
-secret compute, DSA and EdDSA signature generation and verification.
+secret compute, DSA and EdDSA signature generation and verification,
+PQC ML-KEM and ML-DSA algorithms.
 
 Session and Session Management
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
