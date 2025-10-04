@@ -81,6 +81,10 @@ New Features
   * Added PQC ML-KEM support with reference to FIPS203.
   * Added PQC ML-DSA support with reference to FIPS204.
 
+* **Updated openssl crypto driver.**
+
+  * Added support for PQC ML-KEM and ML-DSA algorithms.
+
 * **Updated the QuickAssist Technology (QAT) crypto PMD.**
 
   * Added SM2 encryption and decryption algorithms.

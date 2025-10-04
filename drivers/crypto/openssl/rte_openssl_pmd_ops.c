@@ -639,10 +639,81 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 		}
 		}
 	},
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+	{
+		/* ML-KEM */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_KEM,
+				.op_types =
+				((1 << RTE_CRYPTO_ML_KEM_OP_KEYGEN) |
+				 (1 << RTE_CRYPTO_ML_KEM_OP_ENCAP) |
+				 (1 << RTE_CRYPTO_ML_KEM_OP_DECAP)),
+				.mlkem_capa = {
+					[RTE_CRYPTO_ML_KEM_OP_KEYGEN] =
+						(1 << RTE_CRYPTO_ML_KEM_512) |
+						(1 << RTE_CRYPTO_ML_KEM_768) |
+						(1 << RTE_CRYPTO_ML_KEM_1024),
+					[RTE_CRYPTO_ML_KEM_OP_ENCAP] =
+						(1 << RTE_CRYPTO_ML_KEM_512) |
+						(1 << RTE_CRYPTO_ML_KEM_768) |
+						(1 << RTE_CRYPTO_ML_KEM_1024),
+					[RTE_CRYPTO_ML_KEM_OP_DECAP] =
+						(1 << RTE_CRYPTO_ML_KEM_512) |
+						(1 << RTE_CRYPTO_ML_KEM_768) |
+						(1 << RTE_CRYPTO_ML_KEM_1024)
+				}
+			}
+		}
+	},
+	{
+		/* ML-DSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_DSA,
+				.op_types =
+				((1 << RTE_CRYPTO_ML_DSA_OP_SIGN) |
+#if (OPENSSL_VERSION_NUMBER >= 0x30500010)
+				 (1 << RTE_CRYPTO_ML_DSA_OP_KEYGEN) |
+#endif
+				 (1 << RTE_CRYPTO_ML_DSA_OP_VERIFY)),
+				.mldsa_capa = {
+					[RTE_CRYPTO_ML_DSA_OP_KEYGEN] =
+						(1 << RTE_CRYPTO_ML_DSA_44) |
+						(1 << RTE_CRYPTO_ML_DSA_65) |
+						(1 << RTE_CRYPTO_ML_DSA_87),
+					[RTE_CRYPTO_ML_DSA_OP_SIGN] =
+						(1 << RTE_CRYPTO_ML_DSA_44) |
+						(1 << RTE_CRYPTO_ML_DSA_65) |
+						(1 << RTE_CRYPTO_ML_DSA_87),
+					[RTE_CRYPTO_ML_DSA_OP_VERIFY] =
+						(1 << RTE_CRYPTO_ML_DSA_44) |
+						(1 << RTE_CRYPTO_ML_DSA_65) |
+						(1 << RTE_CRYPTO_ML_DSA_87)
+				}
+			}
+		}
+	},
+#endif
 
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
+const char *ml_kem_type_names[] = {
+	NULL,
+	"ML-KEM-512",
+	"ML-KEM-768",
+	"ML-KEM-1024",
+};
+
+const char *ml_dsa_type_names[] = {
+	NULL,
+	"ML-DSA-44",
+	"ML-DSA-65",
+	"ML-DSA-87",
+};
 
 /** Configure device */
 static int
@@ -1575,6 +1646,58 @@ err_eddsa:
 		return -ENOTSUP;
 #endif
 	}
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+	{
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+		const char *param;
+
+		param = ml_kem_type_names[xform->mlkem.type];
+		if (param == NULL) {
+			OPENSSL_LOG(ERR, "invalid ml_kem type");
+			return -EINVAL;
+		}
+
+		asym_session->u.ml_kem.pctx = EVP_PKEY_CTX_new_from_name(NULL, param, NULL);
+		if (!asym_session->u.ml_kem.pctx) {
+			OPENSSL_LOG(ERR, "failed to allocate resources");
+			return -1;
+		}
+
+		asym_session->u.ml_kem.type = xform->mlkem.type;
+		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_ML_KEM;
+		break;
+#else
+		OPENSSL_LOG(WARNING, "ML-KEM unsupported for OpenSSL Version < 3.5");
+		return -ENOTSUP;
+#endif
+	}
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+	{
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+		const char *param;
+
+		param = ml_dsa_type_names[xform->mldsa.type];
+		if (param == NULL) {
+			OPENSSL_LOG(ERR, "invalid ml_dsa type");
+			return -EINVAL;
+		}
+
+		asym_session->u.ml_dsa.pctx = EVP_PKEY_CTX_new_from_name(NULL, param, NULL);
+		if (!asym_session->u.ml_dsa.pctx) {
+			OPENSSL_LOG(ERR, "failed to allocate resources");
+			return -1;
+		}
+
+		asym_session->u.ml_dsa.type = xform->mldsa.type;
+		asym_session->u.ml_dsa.sign_prehash = xform->mldsa.sign_prehash;
+		asym_session->u.ml_dsa.sign_deterministic = xform->mldsa.sign_deterministic;
+		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_ML_DSA;
+		break;
+#else
+		OPENSSL_LOG(WARNING, "ML-DSA unsupported for OpenSSL Version < 3.5");
+		return -ENOTSUP;
+#endif
+	}
 	default:
 		return ret;
 	}
@@ -1675,6 +1798,16 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
 #if (OPENSSL_VERSION_NUMBER >= 0x30300000L)
 		OSSL_PARAM_free(sess->u.eddsa.params);
+#endif
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+		EVP_PKEY_CTX_free(sess->u.ml_kem.pctx);
+#endif
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+#if (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+		EVP_PKEY_CTX_free(sess->u.ml_dsa.pctx);
 #endif
 		break;
 	default:
