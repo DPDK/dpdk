@@ -2318,6 +2318,18 @@ mlx5_proc_priv_uninit(struct rte_eth_dev *dev)
 	dev->process_private = NULL;
 }
 
+static void
+mlx5_flow_pools_destroy(struct mlx5_priv *priv)
+{
+	int i;
+
+	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
+		if (!priv->flows[i])
+			continue;
+		mlx5_ipool_destroy(priv->flows[i]);
+	}
+}
+
 /**
  * DPDK callback to close the device.
  *
@@ -2507,6 +2519,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		if (!c)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 	}
+	mlx5_flow_pools_destroy(priv);
 	memset(priv, 0, sizeof(*priv));
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 	/*
