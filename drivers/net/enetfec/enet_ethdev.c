@@ -384,6 +384,12 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	/* Tx deferred start is not supported */
+	if (tx_conf->tx_deferred_start) {
+		ENETFEC_PMD_ERR("Tx deferred start not supported");
+		return -EINVAL;
+	}
+
 	/* allocate transmit queue */
 	txq = rte_zmalloc(NULL, sizeof(*txq), RTE_CACHE_LINE_SIZE);
 	if (txq == NULL) {
