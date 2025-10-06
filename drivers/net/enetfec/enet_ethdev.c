@@ -350,7 +350,7 @@ enet_free_queue(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		rte_free(fep->rx_queues[i]);
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		rte_free(fep->rx_queues[i]);
+		rte_free(fep->tx_queues[i]);
 }
 
 static const unsigned short offset_des_active_rxq[] = {
