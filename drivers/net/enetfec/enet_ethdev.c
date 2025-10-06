@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2021,2023 NXP
+ * Copyright 2020-2021,2023-2024 NXP
  */
 
 #include <inttypes.h>
@@ -172,8 +172,10 @@ enet_free_buffers(struct rte_eth_dev *dev)
 		bdp = rxq->bd.base;
 		for (i = 0; i < rxq->bd.ring_size; i++) {
 			mbuf = rxq->rx_mbuf[i];
-			rxq->rx_mbuf[i] = NULL;
-			rte_pktmbuf_free(mbuf);
+			if (mbuf) {
+				rxq->rx_mbuf[i] = NULL;
+				rte_pktmbuf_free(mbuf);
+			}
 			bdp = enet_get_nextdesc(bdp, &rxq->bd);
 		}
 	}
@@ -547,7 +549,7 @@ err_alloc:
 		}
 	}
 	rte_free(rxq);
-	return errno;
+	return -ENOMEM;
 }
 
 static const struct eth_dev_ops enetfec_ops = {
