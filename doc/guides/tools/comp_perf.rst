@@ -98,6 +98,8 @@ Application Options
 
  ``--cc-delay-us N``: delay between enqueue and dequeue operations in microseconds, valid only for the cyclecount test (default: 500 us)
 
+ ``--dictionary NAME``: file containing pre-defined dictionary
+
  ``-h``: prints this help
 
 
