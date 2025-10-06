@@ -121,10 +121,11 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 			(rxq->fep->flag_csum & RX_FLAG_CSUM_EN)) {
 			if ((rte_read32(&ebdp->bd_esc) &
 				rte_cpu_to_le_32(RX_FLAG_CSUM_ERR)) == 0) {
-				/* don't check it */
-				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_BAD;
-			} else {
+				/* No checksum error - checksum is good */
 				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			} else {
+				/* Checksum error detected */
+				mbuf->ol_flags = RTE_MBUF_F_RX_IP_CKSUM_BAD;
 			}
 		}
 
@@ -238,7 +239,8 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (txq->fep->bufdesc_ex) {
 			struct bufdesc_ex *ebdp = (struct bufdesc_ex *)bdp;
 
-			if (mbuf->ol_flags == RTE_MBUF_F_RX_IP_CKSUM_GOOD)
+			if (mbuf->ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM |
+					RTE_MBUF_F_TX_UDP_CKSUM | RTE_MBUF_F_TX_SCTP_CKSUM))
 				estatus |= TX_BD_PINS | TX_BD_IINS;
 
 			rte_write32(0, &ebdp->bd_bdu);
