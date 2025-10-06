@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2021 NXP
+ * Copyright 2021-2024 NXP
  */
 
 #include <rte_mbuf.h>
@@ -230,7 +230,7 @@ enetfec_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		status |= (TX_BD_LAST);
 		data = rte_pktmbuf_mtod(mbuf, void *);
 		for (i = 0; i <= buflen; i += RTE_CACHE_LINE_SIZE)
-			dcbf(data + i);
+			dccivac(data + i);
 
 		rte_write32(rte_cpu_to_le_32(rte_pktmbuf_iova(mbuf)),
 			    &bdp->bd_bufaddr);

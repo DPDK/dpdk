@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2021 NXP
+ * Copyright 2020-2024 NXP
  */
 
 #ifndef __ENETFEC_ETHDEV_H__
@@ -23,17 +23,32 @@
 #define __iomem
 #if defined(RTE_ARCH_ARM)
 #if defined(RTE_ARCH_64)
-#define dcbf(p) { asm volatile("dc cvac, %0" : : "r"(p) : "memory"); }
-#define dcbf_64(p) dcbf(p)
+/* Flush */
+#define dccvac(p) { asm volatile("dc cvac, %0" : : "r"(p) : "memory"); }
+#define dccvac_64(p) dccvac(p)
+/* Invalidate(Not working on A35 core) */
+#define dcivac(p) { asm volatile("dc ivac, %0" : : "r"(p) : "memory"); }
+#define dcivac_64(p) dcivac(p)
+/* Flush and Invalidate */
+#define dccivac(p) { asm volatile("dc civac, %0" : : "r"(p) : "memory"); }
+#define dccivac_64(p) dccivac(p)
 
 #else /* RTE_ARCH_32 */
-#define dcbf(p) RTE_SET_USED(p)
-#define dcbf_64(p) dcbf(p)
+#define dccvac(p) RTE_SET_USED(p)
+#define dccvac_64(p) dccvac(p)
+#define dcivac(p) RTE_SET_USED(p)
+#define dcivac_64(p) dcivac(p)
+#define dccivac(p) RTE_SET_USED(p)
+#define dccivac_64(p) dccivac(p)
 #endif
 
 #else
-#define dcbf(p) RTE_SET_USED(p)
-#define dcbf_64(p) dcbf(p)
+#define dccvac(p) RTE_SET_USED(p)
+#define dccvac_64(p) dccvac(p)
+#define dcivac(p) RTE_SET_USED(p)
+#define dcivac_64(p) dcivac(p)
+#define dccivac(p) RTE_SET_USED(p)
+#define dccivac_64(p) dccivac(p)
 #endif
 
 /*
