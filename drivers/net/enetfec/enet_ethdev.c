@@ -384,7 +384,7 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	if (nb_desc > MAX_TX_BD_RING_SIZE) {
+	if (nb_desc != MAX_TX_BD_RING_SIZE) {
 		nb_desc = MAX_TX_BD_RING_SIZE;
 		ENETFEC_PMD_WARN("modified the nb_desc to MAX_TX_BD_RING_SIZE");
 	}
@@ -462,7 +462,7 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	if (nb_rx_desc > MAX_RX_BD_RING_SIZE) {
+	if (nb_rx_desc != MAX_RX_BD_RING_SIZE) {
 		nb_rx_desc = MAX_RX_BD_RING_SIZE;
 		ENETFEC_PMD_WARN("modified the nb_desc to MAX_RX_BD_RING_SIZE");
 	}
