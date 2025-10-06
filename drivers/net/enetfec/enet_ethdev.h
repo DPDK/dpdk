@@ -20,6 +20,36 @@
 #define OPT_FRAME_SIZE		(PKT_MAX_BUF_SIZE << 16)
 #define ENETFEC_MAX_RX_PKT_LEN	3000
 
+#define ENETFEC_NAME_PMD                net_enetfec
+
+/* eth name size */
+#define ENETFEC_ETH_NAMESIZE            20
+#define ENETFEC_MAC_SHIFT               16
+/* mac addr reset */
+#define ENETFEC_MAC_RESET		0xFFFFFFFF
+
+/* FEC receive acceleration */
+#define ENETFEC_RACC_IPDIS              RTE_BIT32(1)
+#define ENETFEC_RACC_PRODIS             RTE_BIT32(2)
+#define ENETFEC_RACC_SHIFT16            RTE_BIT32(7)
+#define ENETFEC_RACC_OPTIONS            (ENETFEC_RACC_IPDIS | \
+					ENETFEC_RACC_PRODIS)
+
+#define ENETFEC_PAUSE_FLAG_AUTONEG      0x1
+#define ENETFEC_PAUSE_FLAG_ENABLE       0x2
+
+/* Pause frame field and FIFO threshold */
+#define ENETFEC_FCE                     RTE_BIT32(5)
+#define ENETFEC_RSEM_V                  0x84
+#define ENETFEC_RSFL_V                  16
+#define ENETFEC_RAEM_V                  0x8
+#define ENETFEC_RAFL_V                  0x8
+#define ENETFEC_OPD_V                   0xFFF0
+
+/* Extended buffer descriptor */
+#define ENETFEC_EXTENDED_BD             0
+#define NUM_OF_BD_QUEUES                6
+
 #define __iomem
 #if defined(RTE_ARCH_ARM)
 #if defined(RTE_ARCH_64)

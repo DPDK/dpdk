@@ -14,30 +14,6 @@
 #include "enet_regs.h"
 #include "enet_uio.h"
 
-#define ENETFEC_NAME_PMD                net_enetfec
-
-/* FEC receive acceleration */
-#define ENETFEC_RACC_IPDIS		RTE_BIT32(1)
-#define ENETFEC_RACC_PRODIS		RTE_BIT32(2)
-#define ENETFEC_RACC_SHIFT16		RTE_BIT32(7)
-#define ENETFEC_RACC_OPTIONS		(ENETFEC_RACC_IPDIS | \
-						ENETFEC_RACC_PRODIS)
-
-#define ENETFEC_PAUSE_FLAG_AUTONEG	0x1
-#define ENETFEC_PAUSE_FLAG_ENABLE	0x2
-
-/* Pause frame field and FIFO threshold */
-#define ENETFEC_FCE			RTE_BIT32(5)
-#define ENETFEC_RSEM_V			0x84
-#define ENETFEC_RSFL_V			16
-#define ENETFEC_RAEM_V			0x8
-#define ENETFEC_RAFL_V			0x8
-#define ENETFEC_OPD_V			0xFFF0
-
-/* Extended buffer descriptor */
-#define ENETFEC_EXTENDED_BD		0
-#define NUM_OF_BD_QUEUES		6
-
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
 		RTE_ETH_RX_OFFLOAD_CHECKSUM |
@@ -298,8 +274,7 @@ enetfec_multicast_enable(struct rte_eth_dev *dev)
 
 /* Set a MAC change in hardware. */
 static int
-enetfec_set_mac_address(struct rte_eth_dev *dev,
-		    struct rte_ether_addr *addr)
+enetfec_set_mac_address(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
 
@@ -588,15 +563,15 @@ enetfec_eth_init(struct rte_eth_dev *dev)
 static int
 pmd_enetfec_probe(struct rte_vdev_device *vdev)
 {
+	char eth_name[ENETFEC_ETH_NAMESIZE];
 	struct rte_eth_dev *dev = NULL;
 	struct enetfec_private *fep;
-	const char *name;
-	int rc;
-	int i;
+	uint16_t *mac, high_mac = 0;
+	struct rte_ether_addr addr;
+	uint32_t tmac, low_mac = 0;
 	unsigned int bdsize;
-	struct rte_ether_addr macaddr = {
-		.addr_bytes = { 0x1, 0x1, 0x1, 0x1, 0x1, 0x1 }
-	};
+	const char *name;
+	int rc, i;
 
 	name = rte_vdev_device_name(vdev);
 	ENETFEC_PMD_LOG(INFO, "Initializing pmd_fec for %s", name);
@@ -637,8 +612,12 @@ pmd_enetfec_probe(struct rte_vdev_device *vdev)
 		fep->bd_addr_p = fep->bd_addr_p + bdsize;
 	}
 
+	/* Allocate memory for storing MAC addresses */
+	snprintf(eth_name, sizeof(eth_name), "enetfec_eth_mac_%d",
+		 dev->data->port_id);
+
 	/* Copy the station address into the dev structure, */
-	dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
+	dev->data->mac_addrs = rte_zmalloc(eth_name, RTE_ETHER_ADDR_LEN, 0);
 	if (dev->data->mac_addrs == NULL) {
 		ENETFEC_PMD_ERR("Failed to allocate mem %d to store MAC addresses",
 			RTE_ETHER_ADDR_LEN);
@@ -646,10 +625,33 @@ pmd_enetfec_probe(struct rte_vdev_device *vdev)
 		goto err;
 	}
 
-	/*
-	 * Set default mac address
-	 */
-	enetfec_set_mac_address(dev, &macaddr);
+	/* Set mac address */
+	mac = (uint16_t *)addr.addr_bytes;
+	low_mac = (uint32_t)rte_read32((uint8_t *)fep->hw_baseaddr_v + ENETFEC_PALR);
+	*mac = (uint16_t)low_mac;
+	mac++;
+	*mac = (uint16_t)(low_mac >> ENETFEC_MAC_SHIFT);
+	mac++;
+	tmac = (uint32_t)rte_read32((uint8_t *)fep->hw_baseaddr_v + ENETFEC_PAUR);
+	*mac = (uint16_t)(tmac >> ENETFEC_MAC_SHIFT);
+	high_mac = (uint16_t)(*mac);
+
+	if ((high_mac | low_mac) == 0 || (high_mac | low_mac) == ENETFEC_MAC_RESET) {
+		uint8_t *first_byte;
+
+		mac = (uint16_t *)addr.addr_bytes;
+		tmac = (uint32_t)rte_rand();
+		first_byte = (uint8_t *)&tmac;
+		*first_byte &= (uint8_t)~RTE_ETHER_GROUP_ADDR; /* clear multicast bit */
+		*first_byte |= RTE_ETHER_LOCAL_ADMIN_ADDR; /* set local assignment bit (IEEE802) */
+		*mac = (uint16_t)tmac;
+		mac++;
+		*mac = (uint16_t)(tmac >> ENETFEC_MAC_SHIFT);
+		mac++;
+		*mac = (uint16_t)rte_rand();
+	}
+
+	enetfec_set_mac_address(dev, &addr);
 
 	fep->bufdesc_ex = ENETFEC_EXTENDED_BD;
 	rc = enetfec_eth_init(dev);
