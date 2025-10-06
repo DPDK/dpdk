@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2021 NXP
+ * Copyright 2020-2021,2023 NXP
  */
 
 #include <inttypes.h>
@@ -379,6 +379,11 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Tx deferred start is not supported */
 	if (tx_conf->tx_deferred_start) {
 		ENETFEC_PMD_ERR("Tx deferred start not supported");
+		return -EINVAL;
+	}
+
+	if (queue_idx > 0) {
+		ENETFEC_PMD_ERR("Multi queue not supported");
 		return -EINVAL;
 	}
 
