@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2021 NXP
+ * Copyright 2021,2024 NXP
  */
 
 #include <stdbool.h>
@@ -66,13 +66,16 @@ file_read_first_line(const char root[], const char subdir[],
 		"%s/%s/%s", root, subdir, filename);
 
 	fd = open(absolute_file_name, O_RDONLY);
-	if (fd <= 0)
+	if (fd < 0) {
 		ENETFEC_PMD_ERR("Error opening file %s", absolute_file_name);
+		return fd;
+	}
 
 	/* read UIO device name from first line in file */
 	ret = read(fd, line, FEC_UIO_MAX_DEVICE_FILE_NAME_LENGTH);
 	if (ret <= 0) {
 		ENETFEC_PMD_ERR("Error reading file %s", absolute_file_name);
+		close(fd);
 		return ret;
 	}
 	close(fd);
