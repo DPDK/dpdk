@@ -3099,7 +3099,7 @@ main(int argc, char **argv)
 			rte_spinlock_init(&stats[lcore_id].telemetry_lock);
 		}
 		rte_timer_init(&telemetry_timer);
-		rte_telemetry_register_cmd("/l3fwd-power/stats",
+		rte_telemetry_register_cmd("/l3fwd_power/stats",
 				handle_app_stats,
 				"Returns global power stats. Parameters: None");
 		rte_eal_mp_remote_launch(main_telemetry_loop, NULL,
