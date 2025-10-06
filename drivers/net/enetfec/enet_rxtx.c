@@ -17,12 +17,13 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
 	struct rte_mempool *pool;
-	struct bufdesc *bdp;
 	struct rte_mbuf *mbuf, *new_mbuf = NULL;
 	unsigned short status;
 	unsigned short pkt_len;
 	int pkt_received = 0, index = 0;
+	struct rte_ether_hdr *eth;
 	void *data, *mbuf_data;
+	struct bufdesc *bdp;
 	uint16_t vlan_tag;
 	struct  bufdesc_ex *ebdp = NULL;
 	bool    vlan_packet_rcvd = false;
@@ -92,6 +93,16 @@ enetfec_recv_pkts(void *rxq1, struct rte_mbuf **rx_pkts,
 			data = rte_pktmbuf_adj(mbuf, 2);
 
 		rx_pkts[pkt_received] = mbuf;
+
+		/* Assuming Ethernet packets, doing software packet type parsing.
+		 * To be replaced by HW packet parsing
+		 */
+		eth = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
+		mbuf->packet_type = RTE_PTYPE_L2_ETHER;
+		if (rte_be_to_cpu_16(eth->ether_type) == RTE_ETHER_TYPE_IPV4)
+			mbuf->packet_type |= RTE_PTYPE_L3_IPV4;
+		if (rte_be_to_cpu_16(eth->ether_type) == RTE_ETHER_TYPE_IPV6)
+			mbuf->packet_type |= RTE_PTYPE_L3_IPV6;
 		pkt_received++;
 
 		/* Extract the enhanced buffer descriptor */
