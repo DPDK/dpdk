@@ -118,7 +118,7 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	struct vhost_vring_state state;
 	struct vring *vring = &dev->vrings.split[queue_sel];
 	struct vring_packed *pq_vring = &dev->vrings.packed[queue_sel];
-	uint64_t desc_addr, avail_addr, used_addr;
+	uint64_t desc_addr, desc_iova_addr, avail_addr, used_addr;
 	struct vhost_vring_addr addr = {
 		.index = queue_sel,
 		.log_guest_addr = 0,
@@ -138,24 +138,20 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	}
 
 	if (dev->features & (1ULL << VIRTIO_F_RING_PACKED)) {
-		desc_addr = pq_vring->desc_iova;
-		avail_addr = desc_addr + pq_vring->num * sizeof(struct vring_packed_desc);
-		used_addr =  RTE_ALIGN_CEIL(avail_addr + sizeof(struct vring_packed_desc_event),
-					    VIRTIO_VRING_ALIGN);
-
-		addr.desc_user_addr = desc_addr;
-		addr.avail_user_addr = avail_addr;
-		addr.used_user_addr = used_addr;
+		desc_iova_addr = pq_vring->desc_iova;
+		desc_addr = (uint64_t)(uintptr_t)pq_vring->desc;
+		avail_addr = (uint64_t)(uintptr_t)pq_vring->driver;
+		used_addr = (uint64_t)(uintptr_t)pq_vring->device;
 	} else {
-		desc_addr = vring->desc_iova;
-		avail_addr = desc_addr + vring->num * sizeof(struct vring_desc);
-		used_addr = RTE_ALIGN_CEIL((uintptr_t)(&vring->avail->ring[vring->num]),
-					   VIRTIO_VRING_ALIGN);
-
-		addr.desc_user_addr = desc_addr;
-		addr.avail_user_addr = avail_addr;
-		addr.used_user_addr = used_addr;
+		desc_iova_addr = vring->desc_iova;
+		desc_addr = (uint64_t)(uintptr_t)vring->desc;
+		avail_addr = (uint64_t)(uintptr_t)vring->avail;
+		used_addr = (uint64_t)(uintptr_t)vring->used;
 	}
+
+	addr.desc_user_addr = desc_iova_addr;
+	addr.avail_user_addr = (desc_iova_addr - desc_addr) + avail_addr;
+	addr.used_user_addr = (desc_iova_addr - desc_addr) + used_addr;
 
 	state.index = queue_sel;
 	state.num = vring->num;
