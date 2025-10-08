@@ -30,6 +30,17 @@ static struct rte_compressdev_global compressdev_globals = {
 };
 
 RTE_EXPORT_SYMBOL(rte_compressdev_capability_get)
+
+static inline uint8_t
+rte_compressdev_is_valid_device_data(uint8_t dev_id)
+{
+	if (dev_id >= RTE_COMPRESS_MAX_DEVS ||
+			compressdev_globals.devs[dev_id].data == NULL)
+		return 0;
+
+	return 1;
+}
+
 const struct rte_compressdev_capabilities *
 rte_compressdev_capability_get(uint8_t dev_id,
 			enum rte_comp_algorithm algo)
@@ -38,10 +49,11 @@ rte_compressdev_capability_get(uint8_t dev_id,
 	struct rte_compressdev_info dev_info;
 	int i = 0;
 
-	if (dev_id >= compressdev_globals.nb_devs) {
+	if (!rte_compressdev_is_valid_device_data(dev_id)) {
 		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%d", dev_id);
 		return NULL;
 	}
+
 	rte_compressdev_info_get(dev_id, &dev_info);
 
 	while ((capability = &dev_info.capabilities[i++])->algo !=
@@ -109,7 +121,7 @@ rte_compressdev_is_valid_dev(uint8_t dev_id)
 {
 	struct rte_compressdev *dev = NULL;
 
-	if (dev_id >= compressdev_globals.nb_devs)
+	if (!rte_compressdev_is_valid_device_data(dev_id))
 		return 0;
 
 	dev = rte_compressdev_get_dev(dev_id);
@@ -129,10 +141,10 @@ rte_compressdev_get_dev_id(const char *name)
 	if (name == NULL)
 		return -1;
 
-	for (i = 0; i < compressdev_globals.nb_devs; i++)
-		if ((strcmp(compressdev_globals.devs[i].data->name, name)
-				== 0) &&
-				(compressdev_globals.devs[i].attached ==
+	for (i = 0; i < compressdev_globals.max_devs; i++)
+		if (compressdev_globals.devs[i].data != NULL &&
+		    (strcmp(compressdev_globals.devs[i].data->name, name) == 0)
+		    && (compressdev_globals.devs[i].attached ==
 						RTE_COMPRESSDEV_ATTACHED))
 			return i;
 
@@ -663,7 +675,7 @@ rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info)
 {
 	struct rte_compressdev *dev;
 
-	if (dev_id >= compressdev_globals.nb_devs) {
+	if (!rte_compressdev_is_valid_device_data(dev_id)) {
 		COMPRESSDEV_LOG(ERR, "Invalid dev_id=%d", dev_id);
 		return;
 	}
