@@ -55,6 +55,17 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added automatic lcore-id remapping option.**
+
+  Added the EAL option ``--remap-lcore-ids`` or ``-R``
+  to enable automatic remapping of lcore-ids to a contiguous set starting from 0,
+  or from a user-provided value.
+  When this flag is passed, the lcores specified by core mask or core list options
+  are taken as the physical cores on which the application will run,
+  and one thread will be started per core, with sequential lcore-ids.
+  For example: ``dpdk-test -l 140-144 -R``
+  will start 5 threads with lcore-ids 0 to 4 on physical cores 140 to 144.
+
 * **Added speed 800G.**
 
   Added Ethernet link speed for 800 Gb/s as it is well standardized in IEEE,

@@ -1944,9 +1944,32 @@ eal_parse_args(void)
 		}
 		core_parsed = 1;
 	} else if (args.lcores != NULL) {
-		if (eal_parse_lcores(args.lcores) < 0) {
-			EAL_LOG(ERR, "invalid lcore list: '%s'", args.lcores);
-			return -1;
+		if (!remap_lcores) {
+			if (eal_parse_lcores(args.lcores) < 0) {
+				EAL_LOG(ERR, "invalid lcore list: '%s'", args.lcores);
+				return -1;
+			}
+		} else {
+			rte_cpuset_t cpuset;
+
+			if (strchr(args.lcores, '@') != NULL || strchr(args.lcores, '(') != NULL) {
+				EAL_LOG(ERR, "cannot use '@' or core groupings '()' in lcore list when remapping lcores");
+				return -1;
+			}
+			if (rte_argparse_parse_type(args.lcores,
+					RTE_ARGPARSE_VALUE_TYPE_CORELIST, &cpuset) != 0) {
+				EAL_LOG(ERR, "Error parsing lcore list: '%s'", args.lcores);
+				return -1;
+			}
+
+			if (update_lcore_config(&cpuset, remap_lcores, lcore_id_base) < 0) {
+				char *available = available_cores();
+
+				EAL_LOG(ERR, "invalid coremask '%s', please check specified cores are part of %s",
+						args.coremask, available);
+				free(available);
+				return -1;
+			}
 		}
 		core_parsed = 1;
 	}
