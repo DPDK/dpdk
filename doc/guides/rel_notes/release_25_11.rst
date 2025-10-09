@@ -76,6 +76,13 @@ New Features
   * Added multi-process per port.
   * Optimized code.
 
+* **Allow overriding the automatic usage/help generation in argparse library.**
+
+  The argparse library now supports overriding the automatic help text generation,
+  by allowing the user to provide a custom function to generate the output text.
+  The built-in help text function is available as a public function which can be reused by custom functions,
+  if so desired.
+
 
 Removed Items
 -------------
