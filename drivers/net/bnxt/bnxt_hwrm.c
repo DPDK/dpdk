@@ -3328,6 +3328,9 @@ bnxt_free_all_hwrm_stat_ctxs(struct bnxt *bp)
 
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 
+		if (bp->rx_queues[i] == NULL)
+			continue;
+
 		cpr = bp->rx_queues[i]->cp_ring;
 		if (BNXT_HAS_RING_GRPS(bp))
 			bp->grp_info[i].fw_stats_ctx = -1;
