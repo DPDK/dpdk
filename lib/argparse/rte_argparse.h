@@ -69,6 +69,8 @@ enum rte_argparse_value_type {
 	RTE_ARGPARSE_VALUE_TYPE_STR,
 	/** The argument's value is boolean flag type. */
 	RTE_ARGPARSE_VALUE_TYPE_BOOL,
+	/** The argument's value is a corelist. */
+	RTE_ARGPARSE_VALUE_TYPE_CORELIST,
 };
 
 /** Additional flags which may be specified for each argument */

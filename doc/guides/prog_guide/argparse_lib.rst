@@ -229,6 +229,38 @@ Boolean arguments are parsed using ``RTE_ARGPARSE_VALUE_TYPE_BOOL`` and accept t
       },
    };
 
+Corelist Type
+^^^^^^^^^^^^^
+
+The argparse library supports automatic parsing of CPU core lists using the
+``RTE_ARGPARSE_VALUE_TYPE_CORELIST`` value type. This feature allows users to
+specify CPU cores in a flexible format similar to other DPDK applications.
+
+.. code-block:: C
+
+   #include <rte_os.h>  /* for CPU set operations */
+
+   static rte_cpuset_t cores;
+
+   static struct rte_argparse obj = {
+      .args = {
+         { "--cores", "-c", "CPU cores to use", &cores, NULL, RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_CORELIST },
+         ARGPARSE_ARG_END(),
+      },
+   };
+
+The corelist parsing supports the following input formats:
+
+- **Single core**: ``--cores 5`` (sets core 5)
+- **Multiple cores**: ``--cores 1,2,5`` (sets cores 1, 2, and 5)
+- **Core ranges**: ``--cores 1-5`` (sets cores 1, 2, 3, 4, and 5)
+- **Mixed format**: ``--cores 0,2-4,7`` (sets cores 0, 2, 3, 4, and 7)
+- **Reverse ranges**: ``--cores 5-1`` (equivalent to 1-5, sets cores 1, 2, 3, 4, and 5)
+- **Empty corelist**: ``--cores ""`` (sets no cores)
+
+The parsed result is stored in an ``rte_cpuset_t`` structure that can be used
+with standard CPU set operations.
+
 Parsing by callback way
 ~~~~~~~~~~~~~~~~~~~~~~~
 

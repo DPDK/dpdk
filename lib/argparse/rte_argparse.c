@@ -5,9 +5,11 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <eal_export.h>
 #include <rte_log.h>
+#include <rte_os.h>
 
 #include "rte_argparse.h"
 
@@ -53,6 +55,7 @@ is_valid_value_type_field(const struct rte_argparse_arg *arg)
 	case RTE_ARGPARSE_VALUE_TYPE_U64:
 	case RTE_ARGPARSE_VALUE_TYPE_STR:
 	case RTE_ARGPARSE_VALUE_TYPE_BOOL:
+	case RTE_ARGPARSE_VALUE_TYPE_CORELIST:
 		return true;
 	/* omit default case so compiler warns on any missing enum values */
 	}
@@ -555,6 +558,77 @@ parse_arg_bool(const struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
+parse_arg_corelist(const struct rte_argparse_arg *arg, const char *value)
+{
+	rte_cpuset_t *cpuset = arg->val_saver;
+	const char *last = value;
+	int min = -1;
+
+	if (value == NULL) {
+		*cpuset = *(rte_cpuset_t *)arg->val_set;
+		return 0;
+	}
+
+	CPU_ZERO(cpuset);
+	while (*last != '\0') {
+		char *end;
+		int64_t idx;
+		int32_t max;
+
+		while (isblank(*value))
+			value++;
+
+		if (!isdigit(*value)) {
+			ARGPARSE_LOG(ERR, "argument %s has an unexpected non digit character!",
+				arg->name_long);
+			return -EINVAL;
+		}
+
+		errno = 0;
+		idx = strtol(value, &end, 10);
+		last = end;
+		if (errno || idx > UINT16_MAX) {
+			ARGPARSE_LOG(ERR, "argument %s contains a numerical value out of range!",
+				arg->name_long);
+			return -EINVAL;
+		}
+
+		if (*end == '-') {
+			if (min != -1) { /* can't have '-' within a range */
+				ARGPARSE_LOG(ERR, "argument %s has an unexpected - character!",
+					arg->name_long);
+				return -EINVAL;
+			}
+			min = idx; /* start of range, move to next loop stage */
+		} else if (*end == ',' || *end == '\0') {
+			/* single value followed by comma or end (min is set only by '-') */
+			if (min == -1) {
+				min = max = idx;
+			} else if (min > idx) {
+				/* we have range from high to low */
+				max = min;
+				min = idx;
+			} else {
+				/* range from low to high */
+				max = idx;
+			}
+
+			for (; min <= max; min++)
+				CPU_SET(min, cpuset);
+
+			min = -1; /* no longer in a range */
+		} else {
+			/* end is an unexpected character, return error */
+			ARGPARSE_LOG(ERR, "argument %s has an unexpected character!",
+				arg->name_long);
+			return -EINVAL;
+		}
+		value = last + 1;
+	}
+	return 0;
+}
+
+static int
 parse_arg_autosave(const struct rte_argparse_arg *arg, const char *value)
 {
 	switch (arg->value_type) {
@@ -575,6 +649,8 @@ parse_arg_autosave(const struct rte_argparse_arg *arg, const char *value)
 		return parse_arg_str(arg, value);
 	case RTE_ARGPARSE_VALUE_TYPE_BOOL:
 		return parse_arg_bool(arg, value);
+	case RTE_ARGPARSE_VALUE_TYPE_CORELIST:
+		return parse_arg_corelist(arg, value);
 	/* omit default case so compiler warns on missing enum values */
 	}
 	return -EINVAL;
