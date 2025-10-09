@@ -1960,7 +1960,7 @@ rte_eal_memseg_init(void)
 	if (!internal_conf->legacy_mem && rte_socket_count() > 1) {
 		EAL_LOG(WARNING, "DPDK is running on a NUMA system, but is compiled without NUMA support.");
 		EAL_LOG(WARNING, "This will have adverse consequences for performance and usability.");
-		EAL_LOG(WARNING, "Please use --"OPT_LEGACY_MEM" option, or recompile with NUMA support.");
+		EAL_LOG(WARNING, "Please use --legacy-mem option, or recompile with NUMA support.");
 	}
 #endif
 

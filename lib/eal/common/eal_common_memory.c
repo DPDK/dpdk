@@ -258,8 +258,7 @@ eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
 		 * including common code, so don't duplicate the message.
 		 */
 		if (rte_errno == EADDRNOTAVAIL)
-			EAL_LOG(ERR, "Cannot reserve %llu bytes at [%p] - "
-				"please use '--" OPT_BASE_VIRTADDR "' option",
+			EAL_LOG(ERR, "Cannot reserve %llu bytes at [%p] - please use '--base-virtaddr' option",
 				(unsigned long long)mem_sz, msl->base_va);
 #endif
 		return -1;

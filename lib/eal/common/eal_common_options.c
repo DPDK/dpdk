@@ -247,7 +247,6 @@ struct device_option {
 static struct device_option_list devopt_list =
 TAILQ_HEAD_INITIALIZER(devopt_list);
 
-static int main_lcore_parsed;
 static int core_parsed;
 
 /* Returns rte_usage_hook_t */
@@ -765,15 +764,6 @@ eal_parse_service_coremask(const char *coremask)
 		for (j = 0; j < BITS_PER_HEX && idx < RTE_MAX_LCORE;
 				j++, idx++) {
 			if ((1 << j) & val) {
-				/* handle main lcore already parsed */
-				uint32_t lcore = idx;
-				if (main_lcore_parsed &&
-						cfg->main_lcore == lcore) {
-					EAL_LOG(ERR,
-						"lcore %u is main lcore, cannot use as service core",
-						idx);
-					return -1;
-				}
 
 				if (eal_cpu_detected(idx) == 0) {
 					EAL_LOG(ERR,
@@ -996,15 +986,6 @@ eal_parse_service_corelist(const char *corelist)
 				min = idx;
 			for (idx = min; idx <= max; idx++) {
 				if (cfg->lcore_role[idx] != ROLE_SERVICE) {
-					/* handle main lcore already parsed */
-					uint32_t lcore = idx;
-					if (cfg->main_lcore == lcore &&
-							main_lcore_parsed) {
-						EAL_LOG(ERR,
-							"Error: lcore %u is main lcore, cannot use as service core",
-							idx);
-						return -1;
-					}
 					if (cfg->lcore_role[idx] == ROLE_RTE)
 						taken_lcore_count++;
 
@@ -1044,12 +1025,15 @@ eal_parse_main_lcore(const char *arg)
 		return -1;
 	if (cfg->main_lcore >= RTE_MAX_LCORE)
 		return -1;
-	main_lcore_parsed = 1;
 
 	/* ensure main core is not used as service core */
 	if (lcore_config[cfg->main_lcore].core_role == ROLE_SERVICE) {
-		EAL_LOG(ERR,
-			"Error: Main lcore is used as a service core");
+		EAL_LOG(ERR, "Error: Main lcore is used as a service core");
+		return -1;
+	}
+	/* check that we have the core recorded in the core list */
+	if (cfg->lcore_role[cfg->main_lcore] != ROLE_RTE) {
+		EAL_LOG(ERR, "Error: Main lcore is not enabled for DPDK");
 		return -1;
 	}
 
@@ -1344,11 +1328,11 @@ eal_log_usage(void)
 	rte_log_list_types(stdout, "\t");
 	printf("\n");
 	printf("Syntax using globbing pattern:     ");
-	printf("--"OPT_LOG_LEVEL" pattern:level\n");
+	printf("--log-level pattern:level\n");
 	printf("Syntax using regular expression:   ");
-	printf("--"OPT_LOG_LEVEL" regexp,level\n");
+	printf("--log-level regexp,level\n");
 	printf("Syntax for the global level:       ");
-	printf("--"OPT_LOG_LEVEL" level\n");
+	printf("--log-level level\n");
 	printf("Logs are emitted if allowed by both global and specific levels.\n");
 	printf("\n");
 	printf("Log level can be a number or the first letters of its name:\n");
@@ -1628,7 +1612,7 @@ eal_parse_huge_unlink(const char *arg, struct hugepage_file_discipline *out)
 		return 0;
 	}
 	if (strcmp(arg, HUGE_UNLINK_NEVER) == 0) {
-		EAL_LOG(WARNING, "Using --"OPT_HUGE_UNLINK"="
+		EAL_LOG(WARNING, "Using --huge-unlink="
 			HUGE_UNLINK_NEVER" may create data leaks.");
 		out->unlink_existing = false;
 		return 0;
@@ -1808,6 +1792,7 @@ int
 eal_parse_args(void)
 {
 	struct internal_config *int_cfg = eal_get_internal_configuration();
+	struct rte_config *rte_cfg = rte_eal_get_configuration();
 	struct arg_list_elem *arg;
 
 	/* check for conflicting options */
@@ -1837,15 +1822,13 @@ eal_parse_args(void)
 		return -1;
 	}
 
-	/* parse options */
 	/* print version before anything else */
-	if (args.version) {
-		/* since message is explicitly requested by user, we write message
-		 * at highest log level so it can always be seen even if info or
-		 * warning messages are disabled
-		 */
+	/* since message is explicitly requested by user, we write message
+	 * at highest log level so it can always be seen even if info or
+	 * warning messages are disabled
+	 */
+	if (args.version)
 		EAL_LOG(CRIT, "RTE Version: '%s'", rte_version());
-	}
 
 	/* parse the process type */
 	if (args.proc_type != NULL) {
@@ -1871,7 +1854,7 @@ eal_parse_args(void)
 		if (eal_plugin_add(arg->arg) < 0)
 			return -1;
 
-	/* parse the coremask /core-list */
+	/* parse the core list arguments */
 	if (args.coremask != NULL) {
 		int lcore_indexes[RTE_MAX_LCORE];
 
@@ -1895,13 +1878,6 @@ eal_parse_args(void)
 		}
 		core_parsed = 1;
 	}
-	if (args.main_lcore != NULL) {
-		if (eal_parse_main_lcore(args.main_lcore) < 0) {
-			EAL_LOG(ERR, "invalid main-lcore parameter");
-			return -1;
-		}
-	}
-
 	/* service core options */
 	if (args.service_coremask != NULL) {
 		if (eal_parse_service_coremask(args.service_coremask) < 0) {
@@ -1913,6 +1889,17 @@ eal_parse_args(void)
 		if (eal_parse_service_corelist(args.service_corelist) < 0) {
 			EAL_LOG(ERR, "invalid service core list: '%s'",
 					args.service_corelist);
+			return -1;
+		}
+	}
+	if (args.main_lcore != NULL) {
+		if (eal_parse_main_lcore(args.main_lcore) < 0)
+			return -1;
+	} else {
+		/* default main lcore is the first one */
+		rte_cfg->main_lcore = rte_get_next_lcore(-1, 0, 0);
+		if (rte_cfg->main_lcore >= RTE_MAX_LCORE) {
+			EAL_LOG(ERR, "Main lcore is not enabled for DPDK");
 			return -1;
 		}
 	}
@@ -1937,14 +1924,6 @@ eal_parse_args(void)
 			return -1;
 		}
 	}
-	if (args.huge_unlink != NULL) {
-		if (args.huge_unlink == (void *)1)
-			args.huge_unlink = NULL;
-		if (eal_parse_huge_unlink(args.huge_unlink, &int_cfg->hugepage_file) < 0) {
-			EAL_LOG(ERR, "invalid huge-unlink parameter");
-			return -1;
-		}
-	}
 	if (args.no_huge) {
 		int_cfg->no_hugetlbfs = 1;
 		/* no-huge is legacy mem */
@@ -1956,11 +1935,18 @@ eal_parse_args(void)
 		int_cfg->no_shconf = 1;
 		int_cfg->hugepage_file.unlink_before_mapping = true;
 	}
-	if (args.legacy_mem)
+	if (args.legacy_mem) {
 		int_cfg->legacy_mem = 1;
+		if (args.memory_size == NULL && args.numa_mem == NULL)
+			EAL_LOG(NOTICE, "Static memory layout is selected, amount of reserved memory can be adjusted with -m or --socket-mem");
+	}
 	if (args.single_file_segments)
 		int_cfg->single_file_segments = 1;
 	if (args.huge_dir != NULL) {
+		if (strlen(args.huge_dir) < 1) {
+			EAL_LOG(ERR, "Invalid hugepage dir parameter");
+			return -1;
+		}
 		free(int_cfg->hugepage_dir);  /* free old hugepage dir */
 		int_cfg->hugepage_dir = strdup(args.huge_dir);
 		if (int_cfg->hugepage_dir == NULL) {
@@ -1969,10 +1955,26 @@ eal_parse_args(void)
 		}
 	}
 	if (args.file_prefix != NULL) {
+		if (strlen(args.file_prefix) < 1) {
+			EAL_LOG(ERR, "Invalid file prefix parameter");
+			return -1;
+		}
+		if (strchr(args.file_prefix, '%') != NULL) {
+			EAL_LOG(ERR, "Invalid char, '%%', in file_prefix parameter");
+			return -1;
+		}
 		free(int_cfg->hugefile_prefix);  /* free old file prefix */
 		int_cfg->hugefile_prefix = strdup(args.file_prefix);
 		if (int_cfg->hugefile_prefix == NULL) {
 			EAL_LOG(ERR, "failed to allocate memory for file prefix parameter");
+			return -1;
+		}
+	}
+	if (args.huge_unlink != NULL) {
+		if (args.huge_unlink == (void *)1)
+			args.huge_unlink = NULL;
+		if (eal_parse_huge_unlink(args.huge_unlink, &int_cfg->hugepage_file) < 0) {
+			EAL_LOG(ERR, "invalid huge-unlink parameter");
 			return -1;
 		}
 	}
@@ -2092,6 +2094,10 @@ eal_parse_args(void)
 			EAL_LOG(ERR, "failed to allocate memory for mbuf pool ops name parameter");
 			return -1;
 		}
+		if (strlen(int_cfg->user_mbuf_pool_ops_name) < 1) {
+			EAL_LOG(ERR, "Invalid mbuf pool ops name parameter");
+			return -1;
+		}
 	}
 
 #ifndef RTE_EXEC_ENV_WINDOWS
@@ -2107,11 +2113,6 @@ eal_parse_args(void)
 
 	if (eal_adjust_config(int_cfg) != 0) {
 		EAL_LOG(ERR, "Invalid configuration");
-		return -1;
-	}
-
-	if (eal_check_common_options(int_cfg) != 0) {
-		EAL_LOG(ERR, "Checking common options failed");
 		return -1;
 	}
 
@@ -2194,116 +2195,12 @@ eal_adjust_config(struct internal_config *internal_cfg)
 	if (internal_conf->process_type == RTE_PROC_AUTO)
 		internal_conf->process_type = eal_proc_type_detect();
 
-	/* default main lcore is the first one */
-	if (!main_lcore_parsed) {
-		cfg->main_lcore = rte_get_next_lcore(-1, 0, 0);
-		if (cfg->main_lcore >= RTE_MAX_LCORE)
-			return -1;
-		lcore_config[cfg->main_lcore].core_role = ROLE_RTE;
-	}
-
 	compute_ctrl_threads_cpuset(internal_cfg);
 
 	/* if no memory amounts were requested, this will result in 0 and
 	 * will be overridden later, right after eal_hugepage_info_init() */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
 		internal_cfg->memory += internal_cfg->numa_mem[i];
-
-	return 0;
-}
-
-int
-eal_check_common_options(struct internal_config *internal_cfg)
-{
-	struct rte_config *cfg = rte_eal_get_configuration();
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	if (cfg->lcore_role[cfg->main_lcore] != ROLE_RTE) {
-		EAL_LOG(ERR, "Main lcore is not enabled for DPDK");
-		return -1;
-	}
-
-	if (internal_cfg->process_type == RTE_PROC_INVALID) {
-		EAL_LOG(ERR, "Invalid process type specified");
-		return -1;
-	}
-	if (internal_cfg->hugefile_prefix != NULL &&
-			strlen(internal_cfg->hugefile_prefix) < 1) {
-		EAL_LOG(ERR, "Invalid length of --" OPT_FILE_PREFIX " option");
-		return -1;
-	}
-	if (internal_cfg->hugepage_dir != NULL &&
-			strlen(internal_cfg->hugepage_dir) < 1) {
-		EAL_LOG(ERR, "Invalid length of --" OPT_HUGE_DIR" option");
-		return -1;
-	}
-	if (internal_cfg->user_mbuf_pool_ops_name != NULL &&
-			strlen(internal_cfg->user_mbuf_pool_ops_name) < 1) {
-		EAL_LOG(ERR, "Invalid length of --" OPT_MBUF_POOL_OPS_NAME" option");
-		return -1;
-	}
-	if (strchr(eal_get_hugefile_prefix(), '%') != NULL) {
-		EAL_LOG(ERR, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
-			"option");
-		return -1;
-	}
-	if (internal_cfg->no_hugetlbfs && internal_cfg->force_numa == 1) {
-		EAL_LOG(ERR, "Option --"OPT_NUMA_MEM" cannot "
-			"be specified together with --"OPT_NO_HUGE);
-		return -1;
-	}
-	if (internal_cfg->no_hugetlbfs &&
-			internal_cfg->hugepage_file.unlink_before_mapping &&
-			!internal_cfg->in_memory) {
-		EAL_LOG(ERR, "Option --"OPT_HUGE_UNLINK" cannot "
-			"be specified together with --"OPT_NO_HUGE);
-		return -1;
-	}
-	if (internal_cfg->no_hugetlbfs &&
-			internal_cfg->huge_worker_stack_size != 0) {
-		EAL_LOG(ERR, "Option --"OPT_HUGE_WORKER_STACK" cannot "
-			"be specified together with --"OPT_NO_HUGE);
-		return -1;
-	}
-	if (internal_conf->force_numa_limits && internal_conf->legacy_mem) {
-		EAL_LOG(ERR, "Option --"OPT_NUMA_LIMIT
-			" is only supported in non-legacy memory mode");
-	}
-	if (internal_cfg->single_file_segments &&
-			internal_cfg->hugepage_file.unlink_before_mapping &&
-			!internal_cfg->in_memory) {
-		EAL_LOG(ERR, "Option --"OPT_SINGLE_FILE_SEGMENTS" is "
-			"not compatible with --"OPT_HUGE_UNLINK);
-		return -1;
-	}
-	if (!internal_cfg->hugepage_file.unlink_existing &&
-			internal_cfg->in_memory) {
-		EAL_LOG(ERR, "Option --"OPT_IN_MEMORY" is not compatible "
-			"with --"OPT_HUGE_UNLINK"="HUGE_UNLINK_NEVER);
-		return -1;
-	}
-	if (internal_cfg->legacy_mem &&
-			internal_cfg->in_memory) {
-		EAL_LOG(ERR, "Option --"OPT_LEGACY_MEM" is not compatible "
-				"with --"OPT_IN_MEMORY);
-		return -1;
-	}
-	if (internal_cfg->legacy_mem && internal_cfg->match_allocations) {
-		EAL_LOG(ERR, "Option --"OPT_LEGACY_MEM" is not compatible "
-				"with --"OPT_MATCH_ALLOCATIONS);
-		return -1;
-	}
-	if (internal_cfg->no_hugetlbfs && internal_cfg->match_allocations) {
-		EAL_LOG(ERR, "Option --"OPT_NO_HUGE" is not compatible "
-				"with --"OPT_MATCH_ALLOCATIONS);
-		return -1;
-	}
-	if (internal_cfg->legacy_mem && internal_cfg->memory == 0) {
-		EAL_LOG(NOTICE, "Static memory layout is selected, "
-			"amount of reserved memory can be adjusted with "
-			"-m or --"OPT_NUMA_MEM);
-	}
 
 	return 0;
 }

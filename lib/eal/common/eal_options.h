@@ -9,118 +9,11 @@
 
 struct rte_tel_data;
 
-enum {
-	/* long options mapped to a short option */
-#define OPT_HELP              "help"
-	OPT_HELP_NUM            = 'h',
-#define OPT_DEV_ALLOW	      "allow"
-	OPT_DEV_ALLOW_NUM       = 'a',
-#define OPT_DEV_BLOCK         "block"
-	OPT_DEV_BLOCK_NUM      = 'b',
-#define OPT_COREMASK          "coremask"
-	OPT_COREMASK_NUM       = 'c',
-#define OPT_DRIVER_PATH       "driver-path"
-	OPT_DRIVER_PATH_NUM    = 'd',
-#define OPT_LCORES            "lcores"
-	OPT_LCORES_NUM         = 'l',
-#define OPT_MEMORY_SIZE       "memory-size"
-	OPT_MEMORY_SIZE_NUM    = 'm',
-#define OPT_MEMORY_CHANNELS   "memory-channels"
-	OPT_MEMORY_CHANNELS_NUM = 'n',
-#define OPT_MEMORY_RANKS     "memory-ranks"
-	OPT_MEMORY_RANKS_NUM   = 'r',
-#define OPT_SERVICE_COREMASK  "service-coremask"
-	OPT_SERVICE_COREMASK_NUM = 's',
-#define OPT_SERVICE_CORELIST  "service-corelist"
-	OPT_SERVICE_CORELIST_NUM = 'S',
-#define OPT_VERSION           "version"
-	OPT_VERSION_NUM        = 'v',
-
-	/* first long only option value must be >= 256, so that we won't
-	 * conflict with short options */
-	OPT_LONG_MIN_NUM = 256,
-#define OPT_BASE_VIRTADDR     "base-virtaddr"
-	OPT_BASE_VIRTADDR_NUM,
-#define OPT_CREATE_UIO_DEV    "create-uio-dev"
-	OPT_CREATE_UIO_DEV_NUM,
-#define OPT_FILE_PREFIX       "file-prefix"
-	OPT_FILE_PREFIX_NUM,
-#define OPT_HUGE_DIR          "huge-dir"
-	OPT_HUGE_DIR_NUM,
-#define OPT_HUGE_UNLINK       "huge-unlink"
-	OPT_HUGE_UNLINK_NUM,
-#define OPT_LOG_COLOR	      "log-color"
-	OPT_LOG_COLOR_NUM,
-#define OPT_LOG_LEVEL         "log-level"
-	OPT_LOG_LEVEL_NUM,
-#define OPT_LOG_TIMESTAMP     "log-timestamp"
-	OPT_LOG_TIMESTAMP_NUM,
-#define OPT_TRACE             "trace"
-	OPT_TRACE_NUM,
-#define OPT_TRACE_DIR         "trace-dir"
-	OPT_TRACE_DIR_NUM,
-#define OPT_TRACE_BUF_SIZE    "trace-bufsz"
-	OPT_TRACE_BUF_SIZE_NUM,
-#define OPT_TRACE_MODE        "trace-mode"
-	OPT_TRACE_MODE_NUM,
-#define OPT_MAIN_LCORE        "main-lcore"
-	OPT_MAIN_LCORE_NUM,
-#define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"
-	OPT_MBUF_POOL_OPS_NAME_NUM,
-#define OPT_PROC_TYPE         "proc-type"
-	OPT_PROC_TYPE_NUM,
-#define OPT_NO_HPET           "no-hpet"
-	OPT_NO_HPET_NUM,
-#define OPT_NO_HUGE           "no-huge"
-	OPT_NO_HUGE_NUM,
-#define OPT_NO_PCI            "no-pci"
-	OPT_NO_PCI_NUM,
-#define OPT_NO_SHCONF         "no-shconf"
-	OPT_NO_SHCONF_NUM,
-#define OPT_IN_MEMORY         "in-memory"
-	OPT_IN_MEMORY_NUM,
-#define OPT_SOCKET_MEM        "socket-mem"
-#define OPT_NUMA_MEM          "numa-mem"
-	OPT_NUMA_MEM_NUM,
-#define OPT_SOCKET_LIMIT      "socket-limit"
-#define OPT_NUMA_LIMIT        "numa-limit"
-	OPT_NUMA_LIMIT_NUM,
-#define OPT_SYSLOG            "syslog"
-	OPT_SYSLOG_NUM,
-#define OPT_VDEV              "vdev"
-	OPT_VDEV_NUM,
-#define OPT_VFIO_INTR         "vfio-intr"
-	OPT_VFIO_INTR_NUM,
-#define OPT_VFIO_VF_TOKEN     "vfio-vf-token"
-	OPT_VFIO_VF_TOKEN_NUM,
-#define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
-	OPT_VMWARE_TSC_MAP_NUM,
-#define OPT_LEGACY_MEM    "legacy-mem"
-	OPT_LEGACY_MEM_NUM,
-#define OPT_SINGLE_FILE_SEGMENTS    "single-file-segments"
-	OPT_SINGLE_FILE_SEGMENTS_NUM,
-#define OPT_IOVA_MODE          "iova-mode"
-	OPT_IOVA_MODE_NUM,
-#define OPT_MATCH_ALLOCATIONS  "match-allocations"
-	OPT_MATCH_ALLOCATIONS_NUM,
-#define OPT_TELEMETRY         "telemetry"
-	OPT_TELEMETRY_NUM,
-#define OPT_NO_TELEMETRY      "no-telemetry"
-	OPT_NO_TELEMETRY_NUM,
-#define OPT_FORCE_MAX_SIMD_BITWIDTH  "force-max-simd-bitwidth"
-	OPT_FORCE_MAX_SIMD_BITWIDTH_NUM,
-#define OPT_HUGE_WORKER_STACK  "huge-worker-stack"
-	OPT_HUGE_WORKER_STACK_NUM,
-
-	OPT_LONG_MAX_NUM
-};
-
 int eal_parse_log_options(void);
 int eal_parse_args(void);
 int eal_option_device_parse(void);
 int eal_adjust_config(struct internal_config *internal_cfg);
 int eal_cleanup_config(struct internal_config *internal_cfg);
-int eal_check_common_options(struct internal_config *internal_cfg);
 enum rte_proc_type_t eal_proc_type_detect(void);
 int eal_plugins_init(void);
 int eal_save_args(int argc, char **argv);
