@@ -117,16 +117,16 @@ the following mode is supported (take above ``--aaa`` as an example):
 For optional arguments which take required-value,
 the following two modes are supported (take above ``--bbb`` as an example):
 
-- The kv mode: ``--bbb=1234`` or ``-b=1234``.
+- The kv mode: ``--bbb=1234`` or ``-b=1234`` or ``-b1234``.
 
-- The split mode: ``--bbb 1234`` or ``-b 1234``.
+- The split mode: ``--bbb 1234`` or ``-b 1234`` or ``-b1234``.
 
 For optional arguments which take optional-value,
 the following two modes are supported (take above ``--ccc`` as an example):
 
 - The single mode: ``--ccc`` or ``-c``.
 
-- The kv mode: ``--ccc=123`` or ``-c=123``.
+- The kv mode: ``--ccc=123`` or ``-c=123`` or ``-c123```.
 
 For positional arguments which must take required-value,
 their values are parsing in the order defined.

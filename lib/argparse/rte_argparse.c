@@ -704,7 +704,6 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 	char **args_to_move;
 	uint32_t arg_idx;
 	char *curr_argv;
-	char *has_equal;
 	char *value;
 	int ret;
 	int i;
@@ -751,9 +750,11 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 			continue;
 		}
 
-		has_equal = strchr(curr_argv, '=');
+		value = strchr(curr_argv, '=');
+		if (value == NULL && curr_argv[1] != '-' && strlen(curr_argv) > 2)
+			value = &curr_argv[2];
 		arg_name = NULL;
-		arg = find_option_arg(obj, &arg_idx, curr_argv, has_equal, &arg_name);
+		arg = find_option_arg(obj, &arg_idx, curr_argv, value, &arg_name);
 		if (arg == NULL || arg_name == NULL) {
 			ARGPARSE_LOG(ERR, "unknown argument %s!", curr_argv);
 			ret = -EINVAL;
@@ -766,7 +767,8 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 			goto err_out;
 		}
 
-		value = (has_equal != NULL ? has_equal + 1 : NULL);
+		if (value != NULL && value[0] == '=')
+			value++; /* skip '=' */
 		if (arg->value_required == RTE_ARGPARSE_VALUE_NONE) {
 			if (value != NULL) {
 				ARGPARSE_LOG(ERR, "argument %s should not take value!", arg_name);

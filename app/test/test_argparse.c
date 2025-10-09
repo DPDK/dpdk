@@ -1442,6 +1442,136 @@ test_argparse_ignore_non_flag_args_short_and_long(void)
 	return 0;
 }
 
+static int
+test_argparse_short_opt_value_without_equal(void)
+{
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[3];
+	int ret;
+
+	/* Test short option with required value using -a3 syntax (no '=') */
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-t42");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with -t42 expect success, got %d!", ret);
+	TEST_ASSERT(val_saver == 42, "Argparse parse -t42 should set value to 42, got %d!",
+			val_saver);
+
+	/* Test short option with optional value using -t100 syntax (no '=') */
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = (void *)99;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_OPTIONAL;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].name_long = NULL;
+	val_saver = 0;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-t123");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with -t123 expect success, got %d!", ret);
+	TEST_ASSERT(val_saver == 123, "Argparse parse -t123 should set value to 123, got %d!",
+			val_saver);
+
+	/* Test that -t alone with optional value uses default */
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = (void *)99;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_OPTIONAL;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].name_long = NULL;
+	val_saver = 0;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with -t expect success, got %d!", ret);
+	TEST_ASSERT(val_saver == 99, "Argparse parse -t should use default 99, got %d!",
+			val_saver);
+
+	/* Test short option with '=' still works */
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].name_long = NULL;
+	val_saver = 0;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-t=55");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with -t=55 expect success, got %d!", ret);
+	TEST_ASSERT(val_saver == 55, "Argparse parse -t=55 should set value to 55, got %d!",
+			val_saver);
+
+	/* Test that long option with value works with '=' */
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = (void *)88;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_OPTIONAL;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].name_long = NULL;
+	val_saver = 0;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("--test-long=66");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with --test-long=66 expect success, got %d!", ret);
+	TEST_ASSERT(val_saver == 66, "Argparse parse --test-long=66 should set value to 66, got %d!",
+			val_saver);
+
+	/* Test short option with string value without '=' */
+	const char *str_saver = NULL;
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-string";
+	obj->args[0].name_short = "-s";
+	obj->args[0].val_saver = (void *)&str_saver;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_STR;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-shello");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with -shello expect success, got %d!", ret);
+	TEST_ASSERT(str_saver != NULL && strcmp(str_saver, "hello") == 0,
+		"Argparse parse -shello should set string to 'hello', got '%s'!",
+		str_saver ? str_saver : "(null)");
+
+	/* Test short option with negative number without '=' */
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].name_long = NULL;
+	val_saver = 0;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-t-42");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 2, "Argparse parse with -t-42 expect success, got %d!", ret);
+	TEST_ASSERT(val_saver == -42, "Argparse parse -t-42 should set value to -42, got %d!",
+			val_saver);
+
+	return 0;
+}
+
 static struct unit_test_suite argparse_test_suite = {
 	.suite_name = "Argparse Unit Test Suite",
 	.setup = test_argparse_setup,
@@ -1477,6 +1607,7 @@ static struct unit_test_suite argparse_test_suite = {
 		TEST_CASE(test_argparse_ignore_non_flag_args_trailing_non_flags),
 		TEST_CASE(test_argparse_ignore_non_flag_args_with_positional),
 		TEST_CASE(test_argparse_ignore_non_flag_args_short_and_long),
+		TEST_CASE(test_argparse_short_opt_value_without_equal),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
