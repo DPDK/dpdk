@@ -1056,6 +1056,21 @@ eal_parse_service_corelist(const char *corelist)
 			"Please ensure -c or -l includes service cores");
 	}
 
+	/* log the configured service cores for debugging */
+	rte_cpuset_t service_cpuset;
+	CPU_ZERO(&service_cpuset);
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		if (lcore_config[i].core_role == ROLE_SERVICE)
+			CPU_SET(i, &service_cpuset);
+	}
+	if (CPU_COUNT(&service_cpuset) > 0) {
+		char *cpuset_str = eal_cpuset_to_str(&service_cpuset);
+		if (cpuset_str != NULL) {
+			EAL_LOG(DEBUG, "Service cores configured: %s", cpuset_str);
+			free(cpuset_str);
+		}
+	}
+
 	return 0;
 }
 
@@ -2200,6 +2215,13 @@ compute_ctrl_threads_cpuset(struct internal_config *internal_cfg)
 	if (!CPU_COUNT(cpuset)) {
 		memcpy(cpuset, &lcore_config[rte_get_main_lcore()].cpuset,
 			sizeof(*cpuset));
+	}
+
+	/* log the computed control thread cpuset for debugging */
+	char *cpuset_str = eal_cpuset_to_str(cpuset);
+	if (cpuset_str != NULL) {
+		EAL_LOG(DEBUG, "Control threads will use cores: %s", cpuset_str);
+		free(cpuset_str);
 	}
 }
 

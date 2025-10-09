@@ -481,12 +481,11 @@ static int
 lcore_dump_cb(unsigned int lcore_id, void *arg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
-	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
+	char *cpuset;
 	struct rte_lcore_usage usage;
 	rte_lcore_usage_cb usage_cb;
 	char *usage_str = NULL;
 	FILE *f = arg;
-	int ret;
 
 	/* The callback may not set all the fields in the structure, so clear it here. */
 	memset(&usage, 0, sizeof(usage));
@@ -499,12 +498,12 @@ lcore_dump_cb(unsigned int lcore_id, void *arg)
 			return -ENOMEM;
 		}
 	}
-	ret = eal_thread_dump_affinity(&lcore_config[lcore_id].cpuset, cpuset,
-		sizeof(cpuset));
-	fprintf(f, "lcore %u, socket %u, role %s, cpuset %s%s%s\n", lcore_id,
+	cpuset = eal_cpuset_to_str(&lcore_config[lcore_id].cpuset);
+	fprintf(f, "lcore %u, socket %u, role %s, cpuset %s\n", lcore_id,
 		rte_lcore_to_socket_id(lcore_id),
-		lcore_role_str(cfg->lcore_role[lcore_id]), cpuset,
-		ret == 0 ? "" : "...", usage_str != NULL ? usage_str : "");
+		lcore_role_str(cfg->lcore_role[lcore_id]),
+		cpuset != NULL ? cpuset : "<unknown>");
+	free(cpuset);
 	free(usage_str);
 
 	return 0;

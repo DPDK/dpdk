@@ -33,28 +33,19 @@ unsigned eal_cpu_socket_id(unsigned cpu_id);
 #define RTE_CPU_AFFINITY_STR_LEN            256
 
 /**
- * Dump the cpuset as a human readable string.
+ * Dump the current thread cpuset as a human readable string.
  * This function is private to EAL.
  *
  * Note:
  *   If the dump size is greater than the size of given buffer,
  *   the string will be truncated and with '\0' at the end.
  *
- * @param cpuset
- *   The CPU affinity object to dump.
  * @param str
  *   The string buffer the cpuset will dump to.
  * @param size
  *   The string buffer size.
  * @return
- *   0 for success, -1 if truncation happens.
- */
-int
-eal_thread_dump_affinity(rte_cpuset_t *cpuset, char *str, unsigned int size);
-
-/**
- * Dump the current thread cpuset.
- * This is a wrapper on eal_thread_dump_affinity().
+ *   0 for success, -1 if error or truncation happens.
  */
 int
 eal_thread_dump_current_affinity(char *str, unsigned int size);

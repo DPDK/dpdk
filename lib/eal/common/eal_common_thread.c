@@ -109,43 +109,24 @@ rte_thread_get_affinity(rte_cpuset_t *cpusetp)
 }
 
 int
-eal_thread_dump_affinity(rte_cpuset_t *cpuset, char *str, unsigned int size)
-{
-	unsigned cpu;
-	int ret;
-	unsigned int out = 0;
-
-	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-		if (!CPU_ISSET(cpu, cpuset))
-			continue;
-
-		ret = snprintf(str + out,
-			       size - out, "%u,", cpu);
-		if (ret < 0 || (unsigned)ret >= size - out) {
-			/* string will be truncated */
-			ret = -1;
-			goto exit;
-		}
-
-		out += ret;
-	}
-
-	ret = 0;
-exit:
-	/* remove the last separator */
-	if (out > 0)
-		str[out - 1] = '\0';
-
-	return ret;
-}
-
-int
 eal_thread_dump_current_affinity(char *str, unsigned int size)
 {
 	rte_cpuset_t cpuset;
+	char *cpuset_str;
+	int ret;
 
 	rte_thread_get_affinity(&cpuset);
-	return eal_thread_dump_affinity(&cpuset, str, size);
+	cpuset_str = eal_cpuset_to_str(&cpuset);
+	if (cpuset_str == NULL)
+		return -1;
+
+	ret = snprintf(str, size, "%s", cpuset_str);
+	free(cpuset_str);
+
+	if (ret < 0 || (unsigned int)ret >= size)
+		return -1;
+
+	return 0;
 }
 
 void
