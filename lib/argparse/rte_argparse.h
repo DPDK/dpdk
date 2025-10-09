@@ -193,6 +193,20 @@ int rte_argparse_parse(const struct rte_argparse *obj, int argc, char **argv);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Output the help text information for the given argparse object.
+ *
+ * @param stream
+ *   Output file handle, e.g. stdout, stderr, on which to print the help text.
+ * @param obj
+ *   Parser object.
+ */
+__rte_experimental
+void rte_argparse_print_help(FILE *stream, const struct rte_argparse *obj);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Parse the value from the input string based on the value type.
  *
  * @param str
