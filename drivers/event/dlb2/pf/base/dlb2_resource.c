@@ -929,7 +929,7 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 		mask = (const char *)args->producer_coremask;
 	}
 
-	if (mask && rte_eal_parse_coremask(mask, &cpuset)) {
+	if (mask && rte_eal_parse_coremask(mask, &cpuset, true)) {
 		DLB2_HW_ERR(hw, ": Invalid producer coremask=%s\n", mask);
 		return -1;
 	}

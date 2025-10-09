@@ -21,6 +21,6 @@ void eal_clean_saved_args(void);
 int handle_eal_info_request(const char *cmd, const char *params __rte_unused,
 		struct rte_tel_data *d);
 __rte_internal
-int rte_eal_parse_coremask(const char *coremask, rte_cpuset_t *cpuset);
+int rte_eal_parse_coremask(const char *coremask, rte_cpuset_t *cpuset, bool limit_range);
 
 #endif /* EAL_OPTIONS_H */

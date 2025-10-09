@@ -750,7 +750,7 @@ void dlb2_event_build_hcws(struct dlb2_port *qm_port,
 			   uint8_t *queue_id);
 
 /* Extern functions */
-extern int rte_eal_parse_coremask(const char *coremask, rte_cpuset_t *cpuset);
+extern int rte_eal_parse_coremask(const char *coremask, rte_cpuset_t *cpuset, bool limit_range);
 
 /* Extern globals */
 extern struct process_local_port_data dlb2_port[][DLB2_NUM_PORT_TYPES];
