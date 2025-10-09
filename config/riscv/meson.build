@@ -20,6 +20,11 @@ dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
 # common flags to all riscv builds, with lowest priority
 flags_common = [
+    # Accelerate rte_memcpy for copies smaller than 64 bytes. Be sure to run
+    # the unit test (memcpy_perf_autotest) to verify performance improvements.
+    # Refer to notes in source file (lib/eal/riscv/include/rte_memcpy.h)
+    # for more details.
+    ['RTE_ARCH_RISCV_MEMCPY', false],
     ['RTE_ARCH_RISCV', true],
     ['RTE_CACHE_LINE_SIZE', 64],
     # Manually set wall time clock frequency for the target. If 0, then it is
