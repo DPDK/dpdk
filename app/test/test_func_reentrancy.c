@@ -66,10 +66,11 @@ static RTE_ATOMIC(uint32_t) synchro;
  * rte_eal_init only init once
  */
 static int
-test_eal_init_once(void *arg)
+test_eal_init_once(__rte_unused void *arg)
 {
+	char appname[] = __FILE__;
 	unsigned lcore_self =  rte_lcore_id();
-	char *argv[] = { arg, NULL };
+	char *argv[] = { appname, NULL };
 
 	WAIT_SYNCHRO_FOR_WORKERS();
 
