@@ -158,6 +158,12 @@ struct rte_argparse {
 	const char *epilog;
 	/** Whether exit when error. */
 	bool exit_on_error;
+	/** behave like getopt and move non-flag args to the end, ignoring them otherwise.
+	 * If this flag is specified, no positional args are allowed.
+	 */
+	bool ignore_non_flag_args;
+	/* reserved for future flags/other use */
+	bool reserved_flags[6];
 	/** User callback for parsing arguments. */
 	rte_arg_parser_t callback;
 	/** Opaque which used to invoke callback. */

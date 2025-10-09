@@ -289,6 +289,13 @@ verify_argparse(const struct rte_argparse *obj, size_t *nb_args)
 		return -EINVAL;
 	}
 
+	for (idx = 0; idx < RTE_DIM(obj->reserved_flags); idx++) {
+		if (obj->reserved_flags[idx]) {
+			ARGPARSE_LOG(ERR, "reserved flags cannot be set!");
+			return -EINVAL;
+		}
+	}
+
 	for (idx = 0; idx < RTE_DIM(obj->reserved); idx++) {
 		if (obj->reserved[idx] != 0) {
 			ARGPARSE_LOG(ERR, "reserved field must be zero!");
@@ -298,6 +305,10 @@ verify_argparse(const struct rte_argparse *obj, size_t *nb_args)
 
 	idx = 0;
 	while (obj->args[idx].name_long != NULL) {
+		if (is_arg_positional(&obj->args[idx]) && obj->ignore_non_flag_args) {
+			ARGPARSE_LOG(ERR, "Error validating argparse object: positional args are not allowed when ignore_non_flag_args is set!");
+			return -EINVAL;
+		}
 		ret = verify_argparse_arg(obj, idx);
 		if (ret != 0)
 			return ret;
@@ -689,12 +700,21 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 	const struct rte_argparse_arg *arg;
 	uint32_t position_index = 0;
 	const char *arg_name;
+	size_t n_args_to_move;
+	char **args_to_move;
 	uint32_t arg_idx;
 	char *curr_argv;
 	char *has_equal;
 	char *value;
 	int ret;
 	int i;
+
+	n_args_to_move = 0;
+	args_to_move = calloc(argc, sizeof(args_to_move[0]));
+	if (args_to_move == NULL) {
+		ARGPARSE_LOG(ERR, "failed to allocate memory for internal flag processing!");
+		return -ENOMEM;
+	}
 
 	for (i = 1; i < argc; i++) {
 		curr_argv = argv[i];
@@ -705,16 +725,23 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 		}
 
 		if (curr_argv[0] != '-') {
+			if (obj->ignore_non_flag_args) {
+				/* Move non-flag args to args_to_move array. */
+				args_to_move[n_args_to_move++] = curr_argv;
+				argv[i] = NULL;
+				continue;
+			}
 			/* process positional parameters. */
 			position_index++;
 			if (position_index > position_count) {
 				ARGPARSE_LOG(ERR, "too many positional arguments %s!", curr_argv);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto err_out;
 			}
 			arg = find_position_arg(obj, position_index);
 			ret = parse_arg_val(obj, arg->name_long, arg, curr_argv);
 			if (ret != 0)
-				return ret;
+				goto err_out;
 			continue;
 		}
 
@@ -729,26 +756,30 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 		arg = find_option_arg(obj, &arg_idx, curr_argv, has_equal, &arg_name);
 		if (arg == NULL || arg_name == NULL) {
 			ARGPARSE_LOG(ERR, "unknown argument %s!", curr_argv);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_out;
 		}
 
 		if (arg_parsed[arg_idx] && !arg_attr_flag_multi(arg)) {
 			ARGPARSE_LOG(ERR, "argument %s should not occur multiple times!", arg_name);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_out;
 		}
 
 		value = (has_equal != NULL ? has_equal + 1 : NULL);
 		if (arg->value_required == RTE_ARGPARSE_VALUE_NONE) {
 			if (value != NULL) {
 				ARGPARSE_LOG(ERR, "argument %s should not take value!", arg_name);
-				return -EINVAL;
+				ret = -EINVAL;
+				goto err_out;
 			}
 		} else if (arg->value_required == RTE_ARGPARSE_VALUE_REQUIRED) {
 			if (value == NULL) {
 				if (i >= argc - 1) {
 					ARGPARSE_LOG(ERR, "argument %s doesn't have value!",
 							arg_name);
-					return -EINVAL;
+					ret = -EINVAL;
+					goto err_out;
 				}
 				/* Set value and make i move next. */
 				value = argv[++i];
@@ -759,13 +790,28 @@ parse_args(const struct rte_argparse *obj, bool *arg_parsed,
 
 		ret = parse_arg_val(obj, arg_name, arg, value);
 		if (ret != 0)
-			return ret;
+			goto err_out;
 
 		/* This argument parsed success! then mark it parsed. */
 		arg_parsed[arg_idx] = true;
 	}
 
-	return i;
+	ret = i;
+	if (n_args_to_move > 0) {
+		/* Close the gaps in argv array by moving elements down filling in the NULLs. */
+		int j = 1;
+		for (i = 1; i < ret; i++) {
+			if (argv[i] != NULL)
+				argv[j++] = argv[i];
+		}
+		ret = j; /* only return args actually handled */
+		/* Then put contents of the args_to_move array into the argv in the space left. */
+		for (i = 0; i < (int)n_args_to_move; i++)
+			argv[j++] = args_to_move[i];
+	}
+err_out:
+	free(args_to_move);
+	return ret;
 }
 
 static uint32_t

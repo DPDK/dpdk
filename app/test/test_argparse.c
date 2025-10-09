@@ -1077,6 +1077,371 @@ test_argparse_parse_type(void)
 	return 0;
 }
 
+static int
+test_argparse_ignore_non_flag_args_disabled(void)
+{
+	struct rte_argparse *obj;
+	char *argv[6];
+	int ret;
+
+	/* Test that without ignore_non_flag_args, non-flag args cause an error */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = false;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("nonflagvalue");
+	argv[3] = test_strdup("-x");
+	ret = rte_argparse_parse(obj, 4, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse should fail with non-flag arg when flag is disabled!");
+
+	/* Test with non-flag args mixed with flags */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = false;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("nonflagvalue1");
+	argv[2] = test_strdup("-a");
+	argv[3] = test_strdup("-x");
+	argv[4] = test_strdup("nonflagvalue2");
+	ret = rte_argparse_parse(obj, 5, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse should fail with non-flag args when flag is disabled!");
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_basic(void)
+{
+	struct rte_argparse *obj;
+	char *argv[8];
+	int ret;
+
+	/* Test basic reordering: ['app', '-a', 'nonflagvalue', '-x']
+	 * Should process -a and -x, return 2 processed args, move nonflagvalue to end
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("nonflagvalue");
+	argv[3] = test_strdup("-x");
+	ret = rte_argparse_parse(obj, 4, argv);
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (processed all but 1 non-flag), got %d!",
+			ret);
+	TEST_ASSERT(strcmp(argv[3], "nonflagvalue") == 0,
+		"Non-flag arg should be moved to end, but argv[3]='%s'!", argv[3]);
+
+	/* Test with multiple non-flag args:
+	 * ['app', '-a', 'nonflag1', '-x', 'nonflag2']
+	 * Should process -a and -x, return 3, reorder to [..., 'nonflag1', 'nonflag2']
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("nonflag1");
+	argv[3] = test_strdup("-x");
+	argv[4] = test_strdup("nonflag2");
+	ret = rte_argparse_parse(obj, 5, argv);
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (processed all but 2 non-flags), got %d!",
+			ret);
+	TEST_ASSERT(strcmp(argv[3], "nonflag1") == 0,
+		"First non-flag arg should be at position 3, but argv[3]='%s'!", argv[3]);
+	TEST_ASSERT(strcmp(argv[4], "nonflag2") == 0,
+		"Second non-flag arg should be at position 4, but argv[4]='%s'!", argv[4]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_with_values(void)
+{
+	struct rte_argparse *obj;
+	int val_a = 0, val_x = 0;
+	char *argv[10];
+	int ret;
+
+	/* Test with flags that take values:
+	 * ['app', '-a', 'avalue', 'nonflag1', '-x', 'xvalue', 'nonflag2']
+	 * Should process -a avalue and -x xvalue, move non-flags to end
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = (void *)&val_a;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].val_saver = (void *)&val_x;
+	obj->args[1].val_set = NULL;
+	obj->args[1].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[1].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("100");
+	argv[3] = test_strdup("nonflag1");
+	argv[4] = test_strdup("-x");
+	argv[5] = test_strdup("200");
+	argv[6] = test_strdup("nonflag2");
+	ret = rte_argparse_parse(obj, 7, argv);
+	TEST_ASSERT(ret == 5, "Argparse should return 5 (app + 4 flag-related + 0 non-flags), got %d!",
+			ret);
+	TEST_ASSERT(val_a == 100, "Value for -a should be parsed correctly, got %d!", val_a);
+	TEST_ASSERT(val_x == 200, "Value for -x should be parsed correctly, got %d!", val_x);
+	TEST_ASSERT(strcmp(argv[5], "nonflag1") == 0,
+		"First non-flag arg should be at position 5, but argv[5]='%s'!", argv[5]);
+	TEST_ASSERT(strcmp(argv[6], "nonflag2") == 0,
+		"Second non-flag arg should be at position 6, but argv[6]='%s'!", argv[6]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_complex_order(void)
+{
+	struct rte_argparse *obj;
+	int val_a = 0;
+	char *argv[10];
+	int ret;
+
+	/* Test complex reordering matching example from requirements:
+	 * ['app', '-a', 'avalue', 'nonflag1', '-x', 'nonflag2']
+	 * Should become: ['app', '-a', 'avalue', '-x', 'nonflag1', 'nonflag2']
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = (void *)&val_a;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("50");
+	argv[3] = test_strdup("nonflag1");
+	argv[4] = test_strdup("-x");
+	argv[5] = test_strdup("nonflag2");
+	ret = rte_argparse_parse(obj, 6, argv);
+	TEST_ASSERT(ret == 4, "Argparse should return 4 (app + 3 flag-related), got %d!", ret);
+	TEST_ASSERT(val_a == 50, "Value for -a should be parsed correctly, got %d!", val_a);
+	/* Verify reordering */
+	TEST_ASSERT(strcmp(argv[4], "nonflag1") == 0,
+		"First non-flag should be at position 4, but argv[4]='%s'!", argv[4]);
+	TEST_ASSERT(strcmp(argv[5], "nonflag2") == 0,
+		"Second non-flag should be at position 5, but argv[5]='%s'!", argv[5]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_only_non_flags(void)
+{
+	struct rte_argparse *obj;
+	char *argv[5];
+	int ret;
+
+	/* Edge case: only non-flag args
+	 * ['app', 'nonflag1', 'nonflag2', 'nonflag3']
+	 * Should return 1 (only app name processed), argv unchanged
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("nonflag1");
+	argv[2] = test_strdup("nonflag2");
+	argv[3] = test_strdup("nonflag3");
+	ret = rte_argparse_parse(obj, 4, argv);
+	TEST_ASSERT(ret == 1, "Argparse should return 1 (only app name processed), got %d!", ret);
+	TEST_ASSERT(strcmp(argv[1], "nonflag1") == 0,
+		"First non-flag should remain at position 1, but argv[1]='%s'!", argv[1]);
+	TEST_ASSERT(strcmp(argv[2], "nonflag2") == 0,
+		"Second non-flag should remain at position 2, but argv[2]='%s'!", argv[2]);
+	TEST_ASSERT(strcmp(argv[3], "nonflag3") == 0,
+		"Third non-flag should remain at position 3, but argv[3]='%s'!", argv[3]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_no_non_flags(void)
+{
+	struct rte_argparse *obj;
+	char *argv[4];
+	int ret;
+
+	/* Edge case: no non-flag args, only flags
+	 * ['app', '-a', '-x']
+	 * Should process all args normally
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("-x");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (all args processed), got %d!", ret);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_with_double_dash(void)
+{
+	struct rte_argparse *obj;
+	char *argv[8];
+	int ret;
+
+	/* Test with -- separator:
+	 * ['app', '-a', 'nonflag1', '--', 'arg1', 'arg2']
+	 * Should process -a, stop at --, and move nonflag1 after --
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("nonflag1");
+	argv[3] = test_strdup("--");
+	argv[4] = test_strdup("arg1");
+	argv[5] = test_strdup("arg2");
+	ret = rte_argparse_parse(obj, 6, argv);
+	/* Should return position of first flag after -- */
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (app + -a, stopped at --), got %d!", ret);
+	TEST_ASSERT(strcmp(argv[2], "--") == 0,
+		"-- should be moved to position 2, but argv[2]='%s'!", argv[2]);
+	TEST_ASSERT(strcmp(argv[3], "nonflag1") == 0,
+		"Non-flag should be moved after --, but argv[3]='%s'!", argv[3]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_leading_non_flags(void)
+{
+	struct rte_argparse *obj;
+	char *argv[7];
+	int ret;
+
+	/* Test with leading non-flag args:
+	 * ['app', 'nonflag1', 'nonflag2', '-a', '-x']
+	 * Should process -a and -x, move non-flags to end
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("nonflag1");
+	argv[2] = test_strdup("nonflag2");
+	argv[3] = test_strdup("-a");
+	argv[4] = test_strdup("-x");
+	ret = rte_argparse_parse(obj, 5, argv);
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (app + 2 flags), got %d!", ret);
+	TEST_ASSERT(strcmp(argv[3], "nonflag1") == 0,
+		"First non-flag should be at position 3, but argv[3]='%s'!", argv[3]);
+	TEST_ASSERT(strcmp(argv[4], "nonflag2") == 0,
+		"Second non-flag should be at position 4, but argv[4]='%s'!", argv[4]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_trailing_non_flags(void)
+{
+	struct rte_argparse *obj;
+	char *argv[7];
+	int ret;
+
+	/* Test with trailing non-flag args:
+	 * ['app', '-a', '-x', 'nonflag1', 'nonflag2']
+	 * Should process -a and -x, non-flags already at end
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("-a");
+	argv[2] = test_strdup("-x");
+	argv[3] = test_strdup("nonflag1");
+	argv[4] = test_strdup("nonflag2");
+	ret = rte_argparse_parse(obj, 5, argv);
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (app + 2 flags), got %d!", ret);
+	TEST_ASSERT(strcmp(argv[3], "nonflag1") == 0,
+		"First non-flag should remain at position 3, but argv[3]='%s'!", argv[3]);
+	TEST_ASSERT(strcmp(argv[4], "nonflag2") == 0,
+		"Second non-flag should remain at position 4, but argv[4]='%s'!", argv[4]);
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_with_positional(void)
+{
+	struct rte_argparse *obj;
+	char *argv[5];
+	int ret;
+
+	/* Test that ignore_non_flag_args cannot be used with positional args
+	 * This should fail during validation
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].name_long = "positional";
+	obj->args[0].name_short = NULL;
+	obj->args[0].val_saver = (void *)1;
+	obj->args[0].val_set = NULL;
+	obj->args[0].value_required = RTE_ARGPARSE_VALUE_REQUIRED;
+	obj->args[0].value_type = RTE_ARGPARSE_VALUE_TYPE_INT;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("100");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL,
+		"Argparse should fail when ignore_non_flag_args is used with positional args!");
+
+	return 0;
+}
+
+static int
+test_argparse_ignore_non_flag_args_short_and_long(void)
+{
+	struct rte_argparse *obj;
+	char *argv[8];
+	int ret;
+
+	/* Test with both short and long options:
+	 * ['app', '--abc', 'nonflag1', '-x', 'nonflag2']
+	 */
+	obj = test_argparse_init_obj();
+	obj->ignore_non_flag_args = true;
+	obj->args[0].val_saver = NULL;
+	obj->args[1].val_saver = NULL;
+	argv[0] = test_strdup(obj->prog_name);
+	argv[1] = test_strdup("--abc");
+	argv[2] = test_strdup("nonflag1");
+	argv[3] = test_strdup("-x");
+	argv[4] = test_strdup("nonflag2");
+	ret = rte_argparse_parse(obj, 5, argv);
+	TEST_ASSERT(ret == 3, "Argparse should return 3 (app + 2 flags), got %d!", ret);
+	TEST_ASSERT(strcmp(argv[3], "nonflag1") == 0,
+		"First non-flag should be at position 3, but argv[3]='%s'!", argv[3]);
+	TEST_ASSERT(strcmp(argv[4], "nonflag2") == 0,
+		"Second non-flag should be at position 4, but argv[4]='%s'!", argv[4]);
+
+	return 0;
+}
+
 static struct unit_test_suite argparse_test_suite = {
 	.suite_name = "Argparse Unit Test Suite",
 	.setup = test_argparse_setup,
@@ -1101,6 +1466,17 @@ static struct unit_test_suite argparse_test_suite = {
 		TEST_CASE(test_argparse_pos_autosave_parse_int),
 		TEST_CASE(test_argparse_pos_callback_parse_int),
 		TEST_CASE(test_argparse_parse_type),
+		TEST_CASE(test_argparse_ignore_non_flag_args_disabled),
+		TEST_CASE(test_argparse_ignore_non_flag_args_basic),
+		TEST_CASE(test_argparse_ignore_non_flag_args_with_values),
+		TEST_CASE(test_argparse_ignore_non_flag_args_complex_order),
+		TEST_CASE(test_argparse_ignore_non_flag_args_only_non_flags),
+		TEST_CASE(test_argparse_ignore_non_flag_args_no_non_flags),
+		TEST_CASE(test_argparse_ignore_non_flag_args_with_double_dash),
+		TEST_CASE(test_argparse_ignore_non_flag_args_leading_non_flags),
+		TEST_CASE(test_argparse_ignore_non_flag_args_trailing_non_flags),
+		TEST_CASE(test_argparse_ignore_non_flag_args_with_positional),
+		TEST_CASE(test_argparse_ignore_non_flag_args_short_and_long),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}

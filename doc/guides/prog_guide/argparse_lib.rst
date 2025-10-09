@@ -15,6 +15,8 @@ Features and Capabilities
 
 - Support parsing positional argument (which must take with required-value).
 
+- Support getopt-style argument reordering for non-flag arguments as an alternative to positional arguments.
+
 - Support automatic generate usage information.
 
 - Support issue errors when provide with invalid arguments.
@@ -159,6 +161,21 @@ both use this way, the parsing is as follows:
 
 - For argument ``ooo``, it is positional argument,
   the ``ooo_val`` will be set to user input's value.
+
+Support of non-flag/positional arguments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For arguments which are not flags (i.e. don't start with a hyphen '-'),
+there are two ways in which they can be handled by the library:
+
+#. Positional arguments: these are defined in the ``args`` array with a NULL ``short_name`` field,
+   and long_name field that does not start with a hyphen '-'.
+   They are parsed as required-value arguments.
+
+#. As ignored, or unhandled arguments: if the ``ignore_non_flag_args`` field in the ``rte_argparse`` object is set to true,
+   then any non-flag arguments will be ignored by the parser and moved to the end of the argument list.
+   In this mode, no positional arguments are allowed.
+   The return value from ``rte_argparse_parse()`` will indicate the position of the first ignored non-flag argument.
 
 Supported Value Types
 ~~~~~~~~~~~~~~~~~~~~~
