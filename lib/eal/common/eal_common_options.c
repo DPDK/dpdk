@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <getopt.h>
+#include <sys/queue.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <dlfcn.h>
 #include <libgen.h>
@@ -33,6 +34,7 @@
 #endif
 #include <rte_vect.h>
 
+#include <rte_argparse.h>
 #include <eal_export.h>
 #include "eal_internal_cfg.h"
 #include "eal_options.h"
@@ -46,6 +48,147 @@
 #define BITS_PER_HEX 4
 #define LCORE_OPT_LST 1
 #define LCORE_OPT_MSK 2
+
+/* Allow the application to print its usage message too if set */
+static rte_usage_hook_t rte_application_usage_hook;
+
+struct arg_list_elem {
+	TAILQ_ENTRY(arg_list_elem) next;
+	char *arg;
+};
+TAILQ_HEAD(arg_list, arg_list_elem);
+
+struct eal_init_args {
+	/* define a struct member for each EAL option, member name is the same as option name.
+	 * Parameters that take an argument e.g. -l, are char *,
+	 * parameters that take no options e.g. --no-huge, are bool.
+	 * parameters that can be given multiple times e.g. -a, are arg_lists,
+	 * parameters that are optional e.g. --huge-unlink,
+	 *   are char * but are set to (void *)1 if the parameter is not given.
+	 * for aliases, i.e. options under different names, no field needs to be output
+	 */
+#define LIST_ARG(long, short, help_str, fieldname) struct arg_list fieldname;
+#define STR_ARG(long, short, help_str, fieldname) char *fieldname;
+#define OPT_STR_ARG(long, short, help_str, fieldname) char *fieldname;
+#define BOOL_ARG(long, short, help_str, fieldname) bool fieldname;
+#define STR_ALIAS(long, short, help_str, fieldname)
+
+#define INCLUDE_ALL_ARG 1  /* for struct definition, include even unsupported values */
+#include "eal_option_list.h"
+};
+
+/* define the structure itself, with initializers. Only the LIST_ARGS need init */
+#define LIST_ARG(long, short, help_str, fieldname) \
+	.fieldname = TAILQ_HEAD_INITIALIZER(args.fieldname),
+#define STR_ARG(long, short, help_str, fieldname)
+#define OPT_STR_ARG(long, short, help_str, fieldname)
+#define BOOL_ARG(long, short, help_str, fieldname)
+#define STR_ALIAS(long, short, help_str, fieldname)
+
+struct eal_init_args args = {
+	#include "eal_option_list.h"
+};
+#undef INCLUDE_ALL_ARG
+
+/* an rte_argparse callback to append the argument to an arg_list
+ * in args. The index is the offset into the struct of the list.
+ */
+static int
+arg_list_callback(uint32_t index, const char *arg, void *init_args)
+{
+	struct arg_list *list = RTE_PTR_ADD(init_args, index);
+	struct arg_list_elem *elem;
+
+	elem = malloc(sizeof(*elem));
+	if (elem == NULL)
+		return -1;
+
+	elem->arg = strdup(arg);
+	if (elem->arg == NULL) {
+		free(elem);
+		return -1;
+	}
+
+	TAILQ_INSERT_TAIL(list, elem, next);
+	return 0;
+}
+
+static void
+eal_usage(const struct rte_argparse *obj)
+{
+	rte_argparse_print_help(stdout, obj);
+	if (rte_application_usage_hook != NULL)
+		rte_application_usage_hook(obj->prog_name);
+}
+
+/* For arguments which have an arg_list type, they use callback (no val_saver),
+ * require a value, and have the SUPPORT_MULTI flag.
+ */
+#define LIST_ARG(long, short, help_str, fieldname) { \
+	.name_long = long, \
+	.name_short = short, \
+	.help = help_str, \
+	.val_set = (void *)offsetof(struct eal_init_args, fieldname), \
+	.value_required = RTE_ARGPARSE_VALUE_REQUIRED, \
+	.flags = RTE_ARGPARSE_FLAG_SUPPORT_MULTI, \
+},
+/* For arguments which have a string type, they use val_saver (no callback),
+ * and normally REQUIRED_VALUE.
+ */
+#define STR_ARG(long, short, help_str, fieldname) { \
+	.name_long = long, \
+	.name_short = short, \
+	.help = help_str, \
+	.val_saver = &args.fieldname, \
+	.value_required = RTE_ARGPARSE_VALUE_REQUIRED, \
+	.value_type = RTE_ARGPARSE_VALUE_TYPE_STR, \
+},
+/* For flags which have optional arguments, they use both val_saver and val_set,
+ * but still have a string type.
+ */
+#define OPT_STR_ARG(long, short, help_str, fieldname) { \
+	.name_long = long, \
+	.name_short = short, \
+	.help = help_str, \
+	.val_saver = &args.fieldname, \
+	.val_set = (void *)1, \
+	.value_required = RTE_ARGPARSE_VALUE_OPTIONAL, \
+	.value_type = RTE_ARGPARSE_VALUE_TYPE_STR, \
+},
+/* For boolean arguments, they use val_saver and val_set, with NO_VALUE flag.
+ */
+#define BOOL_ARG(long, short, help_str, fieldname) { \
+	.name_long = long, \
+	.name_short = short, \
+	.help = help_str, \
+	.val_saver = &args.fieldname, \
+	.val_set = (void *)1, \
+	.value_required = RTE_ARGPARSE_VALUE_NONE, \
+	.value_type = RTE_ARGPARSE_VALUE_TYPE_BOOL, \
+},
+#define STR_ALIAS STR_ARG
+
+#if RTE_VER_RELEASE == 99
+#define GUIDES_PATH "https://doc.dpdk.org/guides-" RTE_STR(RTE_VER_YEAR) "." RTE_STR(RTE_VER_MONTH)
+#else
+#define GUIDES_PATH "https://doc.dpdk.org/guides"
+#endif
+
+struct rte_argparse eal_argparse  = {
+	.prog_name = "",
+	.usage = "<DPDK EAL options> -- <App options>",
+	.epilog = "For more information on EAL options, see the DPDK documentation at:\n"
+			"\t" GUIDES_PATH "/" RTE_EXEC_ENV_NAME "_gsg/",
+	.exit_on_error = true,
+	.ignore_non_flag_args = true,
+	.callback = arg_list_callback,
+	.print_help = eal_usage,
+	.opaque = &args,
+	.args = {
+		#include "eal_option_list.h"
+		ARGPARSE_ARG_END(),
+	}
+};
 
 const char
 eal_short_options[] =
@@ -163,9 +306,6 @@ TAILQ_HEAD_INITIALIZER(devopt_list);
 static int main_lcore_parsed;
 static int mem_parsed;
 static int core_parsed;
-
-/* Allow the application to print its usage message too if set */
-static rte_usage_hook_t rte_application_usage_hook;
 
 /* Returns rte_usage_hook_t */
 rte_usage_hook_t

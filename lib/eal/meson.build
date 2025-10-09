@@ -14,7 +14,7 @@ subdir(exec_env)
 
 subdir(arch_subdir)
 
-deps += ['log', 'kvargs']
+deps += ['argparse', 'kvargs']
 if not is_windows
     deps += ['telemetry']
 endif

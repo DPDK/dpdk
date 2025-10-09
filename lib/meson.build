@@ -71,6 +71,7 @@ libraries = [
 ]
 
 always_enable = [
+        'argparse',
         'cmdline',
         'eal',
         'ethdev',
