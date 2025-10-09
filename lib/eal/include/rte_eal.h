@@ -491,26 +491,6 @@ rte_eal_mbuf_user_pool_ops(void);
 const char *
 rte_eal_get_runtime_dir(void);
 
-/**
- * Convert a string describing a mask of core ids into an array of core ids.
- *
- * On success, the passed array is filled with the orders of the core ids
- * present in the mask (-1 indicating that a core id is absent).
- * For example, passing a 0xa coremask results in cores[1] = 0, cores[3] = 1,
- * and the rest of the array is set to -1.
- *
- * @param coremask
- *   A string describing a mask of core ids.
- * @param cores
- *   An array where to store the core ids orders.
- *   This array must be at least RTE_MAX_LCORE large.
- * @return
- *   0 on success, -1 if the string content was invalid.
- */
-__rte_internal
-int
-rte_eal_parse_coremask(const char *coremask, int *cores);
-
 #ifdef __cplusplus
 }
 #endif

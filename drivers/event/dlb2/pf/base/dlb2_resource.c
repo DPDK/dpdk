@@ -922,28 +922,29 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 {
 	const struct dlb2_devargs *args = (const struct dlb2_devargs *)probe_args;
 	const char *mask = args ? args->producer_coremask : NULL;
-	int cpu = 0, cnt = 0, cores[RTE_MAX_LCORE], i;
+	int cpu = 0, cnt = 0, i, set_count = 0;
+	rte_cpuset_t cpuset;
 
 	if (args) {
 		mask = (const char *)args->producer_coremask;
 	}
 
-	if (mask && rte_eal_parse_coremask(mask, cores)) {
+	if (mask && rte_eal_parse_coremask(mask, &cpuset)) {
 		DLB2_HW_ERR(hw, ": Invalid producer coremask=%s\n", mask);
 		return -1;
 	}
 
 	hw->num_prod_cores = 0;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		bool is_pcore = (mask && cores[i] != -1);
+		bool is_pcore = (mask && CPU_ISSET(i, &cpuset));
 
 		if (rte_lcore_is_enabled(i)) {
 			if (is_pcore) {
 				/*
 				 * Populate the producer cores from parsed
-				 * coremask
+				 * coremask using the set_count as index.
 				 */
-				hw->prod_core_list[cores[i]] = i;
+				hw->prod_core_list[set_count++] = i;
 				hw->num_prod_cores++;
 
 			} else if ((++cnt == DLB2_EAL_PROBE_CORE ||
