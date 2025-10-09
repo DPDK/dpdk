@@ -696,6 +696,9 @@ static void bnxt_init_all_rings(struct bnxt *bp)
 
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		rxq = bp->rx_queues[i];
+
+		if (rxq == NULL)
+			continue;
 		/* Rx-compl */
 		cp_ring = rxq->cp_ring->cp_ring_struct;
 		cp_ring->fw_ring_id = INVALID_HW_RING_ID;
@@ -738,8 +741,14 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		unsigned int soc_id = bp->eth_dev->device->numa_node;
 		struct bnxt_rx_queue *rxq  = bp->rx_queues[i];
-		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+		struct bnxt_rx_ring_info *rxr;
 		struct bnxt_ring *ring;
+
+
+		if (rxq == NULL)
+			return -EINVAL;
+
+		rxr = rxq->rx_ring;
 
 		if (bnxt_need_agg_ring(bp->eth_dev)) {
 			ring = rxr->ag_ring_struct;
