@@ -84,6 +84,16 @@ struct rte_config *rte_eal_get_configuration(void);
 int eal_collate_args(int argc, char **argv);
 
 /**
+ * Convert an rte_cpuset_t to string form suitable for parsing by argparse.
+ *
+ * @param cpuset
+ *   The cpuset to convert to string form.
+ * @return
+ *   String representation of the cpuset (caller must free), or NULL on error.
+ */
+char *eal_cpuset_to_str(const rte_cpuset_t *cpuset);
+
+/**
  * Initialize the memzone subsystem (private to eal).
  *
  * @return
