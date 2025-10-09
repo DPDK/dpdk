@@ -63,8 +63,8 @@ __mlx5_hws_cnt_svc(struct mlx5_dev_ctx_shared *sh,
 	uint32_t ret __rte_unused;
 
 	reset_cnt_num = rte_ring_count(reset_list);
-	cpool->query_gen++;
 	mlx5_aso_cnt_query(sh, cpool);
+	rte_atomic_fetch_add_explicit(&cpool->query_gen, 1, rte_memory_order_release);
 	zcdr.n1 = 0;
 	zcdu.n1 = 0;
 	ret = rte_ring_enqueue_zc_burst_elem_start(reuse_list,
@@ -134,14 +134,14 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 	uint32_t nb_alloc_cnts = mlx5_hws_cnt_pool_get_size(cpool);
 	uint16_t expected1 = HWS_AGE_CANDIDATE;
 	uint16_t expected2 = HWS_AGE_CANDIDATE_INSIDE_RING;
-	uint32_t i;
+	uint32_t i, age_idx, in_use;
 
 	cpool->time_of_last_age_check = curr_time;
 	for (i = 0; i < nb_alloc_cnts; ++i) {
-		uint32_t age_idx = cpool->pool[i].age_idx;
 		uint64_t hits;
 
-		if (!cpool->pool[i].in_used || age_idx == 0)
+		mlx5_hws_cnt_get_all(&cpool->pool[i], &in_use, NULL, &age_idx);
+		if (!in_use || age_idx == 0)
 			continue;
 		param = mlx5_ipool_get(age_info->ages_ipool, age_idx);
 		if (unlikely(param == NULL)) {
@@ -767,7 +767,7 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	 * because they already have init value no need
 	 * to wait for query.
 	 */
-	cpool->query_gen = 1;
+	rte_atomic_store_explicit(&cpool->query_gen, 1, rte_memory_order_relaxed);
 	ret = mlx5_hws_cnt_pool_action_create(priv, cpool);
 	if (ret != 0) {
 		rte_flow_error_set(error, -ret,
