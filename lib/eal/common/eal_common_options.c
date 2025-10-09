@@ -277,6 +277,12 @@ eal_save_args(__rte_unused int argc, __rte_unused char **argv)
 {
 	return 0;
 }
+
+void
+eal_clean_saved_args(void)
+{
+	/* no-op */
+}
 #else /* RTE_EXEC_ENV_WINDOWS */
 static char **eal_args;
 static char **eal_app_args;
@@ -351,6 +357,18 @@ eal_save_args(int argc, char **argv)
 	return 0;
 
 error:
+	eal_clean_saved_args();
+	return -1;
+}
+
+void
+eal_clean_saved_args(void)
+{
+	int i;
+
+	if (eal_args == NULL)
+		return;
+
 	if (eal_app_args != NULL) {
 		i = 0;
 		while (eal_app_args[i] != NULL)
@@ -363,7 +381,6 @@ error:
 		free(eal_args[i++]);
 	free(eal_args);
 	eal_args = NULL;
-	return -1;
 }
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
