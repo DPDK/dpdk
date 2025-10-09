@@ -82,99 +82,6 @@ rte_mp_disable(void)
 	return true;
 }
 
-/* display usage */
-static void
-eal_usage(const char *prgname)
-{
-	rte_usage_hook_t hook = eal_get_application_usage_hook();
-
-	printf("\nUsage: %s ", prgname);
-	eal_common_usage();
-	/* Allow the application to print its usage message too
-	 * if hook is set
-	 */
-	if (hook) {
-		printf("===== Application Usage =====\n\n");
-		(hook)(prgname);
-	}
-}
-
-/* Parse the argument given in the command line of the application */
-static int
-eal_parse_args(int argc, char **argv)
-{
-	int opt, ret;
-	char **argvopt;
-	int option_index;
-	char *prgname = argv[0];
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	argvopt = argv;
-
-	while ((opt = getopt_long(argc, argvopt, eal_short_options,
-		eal_long_options, &option_index)) != EOF) {
-
-		int ret;
-
-		/* getopt is not happy, stop right now */
-		if (opt == '?') {
-			eal_usage(prgname);
-			return -1;
-		}
-
-		/* eal_parse_log_options() already handled this option */
-		if (eal_option_is_log(opt))
-			continue;
-
-		ret = eal_parse_common_option(opt, optarg, internal_conf);
-		/* common parser is not happy */
-		if (ret < 0) {
-			eal_usage(prgname);
-			return -1;
-		}
-		/* common parser handled this option */
-		if (ret == 0)
-			continue;
-
-		switch (opt) {
-		case OPT_HELP_NUM:
-			eal_usage(prgname);
-			exit(EXIT_SUCCESS);
-		default:
-			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
-				EAL_LOG(ERR, "Option %c is not supported "
-					"on Windows", opt);
-			} else if (opt >= OPT_LONG_MIN_NUM &&
-				opt < OPT_LONG_MAX_NUM) {
-				EAL_LOG(ERR, "Option %s is not supported "
-					"on Windows",
-					eal_long_options[option_index].name);
-			} else {
-				EAL_LOG(ERR, "Option %d is not supported "
-					"on Windows", opt);
-			}
-			eal_usage(prgname);
-			return -1;
-		}
-	}
-
-	if (eal_adjust_config(internal_conf) != 0)
-		return -1;
-
-	/* sanity checks */
-	if (eal_check_common_options(internal_conf) != 0) {
-		eal_usage(prgname);
-		return -1;
-	}
-
-	if (optind >= 0)
-		argv[optind - 1] = prgname;
-	ret = optind - 1;
-	optind = 0; /* reset getopt lib */
-	return ret;
-}
-
 static int
 sync_func(void *arg __rte_unused)
 {
@@ -260,8 +167,18 @@ rte_eal_init(int argc, char **argv)
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_THREAD_NAME_SIZE];
 
+	/* clone argv to report out later in telemetry */
+	eal_save_args(argc, argv);
+
+	fctret = eal_collate_args(argc, argv);
+	if (fctret < 0) {
+		rte_eal_init_alert("Invalid command line arguments.");
+		rte_errno = EINVAL;
+		return -1;
+	}
+
 	/* setup log as early as possible */
-	if (eal_parse_log_options(argc, argv) < 0) {
+	if (eal_parse_log_options() < 0) {
 		rte_eal_init_alert("invalid log arguments.");
 		rte_errno = EINVAL;
 		return -1;
@@ -288,9 +205,11 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	fctret = eal_parse_args(argc, argv);
-	if (fctret < 0)
-		exit(1);
+	if (eal_parse_args() < 0) {
+		rte_eal_init_alert("Invalid command line arguments.");
+		rte_errno = EINVAL;
+		return -1;
+	}
 
 	if (eal_option_device_parse()) {
 		rte_errno = ENODEV;

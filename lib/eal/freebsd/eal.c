@@ -160,7 +160,7 @@ rte_eal_config_create(void)
 			cfg_len_aligned, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_FIXED, mem_cfg_fd, 0);
 	if (mapped_mem_cfg_addr == MAP_FAILED) {
-		EAL_LOG(ERR, "Cannot remap memory for rte_config");
+		EAL_LOG(ERR, "Cannot remap memory for rte_config: %s", strerror(errno));
 		munmap(rte_mem_cfg_addr, cfg_len);
 		close(mem_cfg_fd);
 		mem_cfg_fd = -1;
@@ -245,11 +245,8 @@ rte_eal_config_reattach(void)
 
 	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr) {
 		if (mem_config != MAP_FAILED) {
-			/* errno is stale, don't use */
-			EAL_LOG(ERR, "Cannot mmap memory for rte_config at [%p], got [%p]"
-					  " - please use '--" OPT_BASE_VIRTADDR
-					  "' option",
-				rte_mem_cfg_addr, mem_config);
+			EAL_LOG(ERR, "Cannot mmap memory for rte_config at [%p], got [%p] - please use '--base-virtaddr' option",
+					rte_mem_cfg_addr, mem_config);
 			munmap(mem_config, sizeof(struct rte_mem_config));
 			return -1;
 		}
@@ -332,21 +329,6 @@ rte_config_init(void)
 	return 0;
 }
 
-/* display usage */
-static void
-eal_usage(const char *prgname)
-{
-	rte_usage_hook_t hook = eal_get_application_usage_hook();
-
-	printf("\nUsage: %s ", prgname);
-	eal_common_usage();
-	/* Allow the application to print its usage message too if hook is set */
-	if (hook) {
-		printf("===== Application Usage =====\n\n");
-		(hook)(prgname);
-	}
-}
-
 static inline size_t
 eal_get_hugepage_mem_size(void)
 {
@@ -365,123 +347,6 @@ eal_get_hugepage_mem_size(void)
 	}
 
 	return (size < SIZE_MAX) ? (size_t)(size) : SIZE_MAX;
-}
-
-/* Parse the argument given in the command line of the application */
-static int
-eal_parse_args(int argc, char **argv)
-{
-	int opt, ret;
-	char **argvopt;
-	int option_index;
-	char *prgname = argv[0];
-	const int old_optind = optind;
-	const int old_optopt = optopt;
-	const int old_optreset = optreset;
-	char * const old_optarg = optarg;
-	struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	argvopt = argv;
-	optind = 1;
-	optreset = 1;
-
-	while ((opt = getopt_long(argc, argvopt, eal_short_options,
-				  eal_long_options, &option_index)) != EOF) {
-
-		/* getopt didn't recognise the option */
-		if (opt == '?') {
-			eal_usage(prgname);
-			ret = -1;
-			goto out;
-		}
-
-		/* eal_parse_log_options() already handled this option */
-		if (eal_option_is_log(opt))
-			continue;
-
-		ret = eal_parse_common_option(opt, optarg, internal_conf);
-		/* common parser is not happy */
-		if (ret < 0) {
-			eal_usage(prgname);
-			ret = -1;
-			goto out;
-		}
-		/* common parser handled this option */
-		if (ret == 0)
-			continue;
-
-		switch (opt) {
-		case OPT_MBUF_POOL_OPS_NAME_NUM:
-		{
-			char *ops_name = strdup(optarg);
-			if (ops_name == NULL)
-				EAL_LOG(ERR, "Could not store mbuf pool ops name");
-			else {
-				/* free old ops name */
-				free(internal_conf->user_mbuf_pool_ops_name);
-
-				internal_conf->user_mbuf_pool_ops_name =
-						ops_name;
-			}
-			break;
-		}
-		case OPT_HELP_NUM:
-			eal_usage(prgname);
-			exit(EXIT_SUCCESS);
-		default:
-			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
-				EAL_LOG(ERR, "Option %c is not supported "
-					"on FreeBSD", opt);
-			} else if (opt >= OPT_LONG_MIN_NUM &&
-				   opt < OPT_LONG_MAX_NUM) {
-				EAL_LOG(ERR, "Option %s is not supported "
-					"on FreeBSD",
-					eal_long_options[option_index].name);
-			} else {
-				EAL_LOG(ERR, "Option %d is not supported "
-					"on FreeBSD", opt);
-			}
-			eal_usage(prgname);
-			ret = -1;
-			goto out;
-		}
-	}
-
-	/* create runtime data directory. In no_shconf mode, skip any errors */
-	if (eal_create_runtime_dir() < 0) {
-		if (internal_conf->no_shconf == 0) {
-			EAL_LOG(ERR, "Cannot create runtime directory");
-			ret = -1;
-			goto out;
-		} else
-			EAL_LOG(WARNING, "No DPDK runtime directory created");
-	}
-
-	if (eal_adjust_config(internal_conf) != 0) {
-		ret = -1;
-		goto out;
-	}
-
-	/* sanity checks */
-	if (eal_check_common_options(internal_conf) != 0) {
-		eal_usage(prgname);
-		ret = -1;
-		goto out;
-	}
-
-	if (optind >= 0)
-		argv[optind-1] = prgname;
-	ret = optind-1;
-
-out:
-	/* restore getopt lib */
-	optind = old_optind;
-	optopt = old_optopt;
-	optreset = old_optreset;
-	optarg = old_optarg;
-
-	return ret;
 }
 
 static int
@@ -553,8 +418,18 @@ rte_eal_init(int argc, char **argv)
 	bool has_phys_addr;
 	enum rte_iova_mode iova_mode;
 
+	/* Save and collate args at the top */
+	eal_save_args(argc, argv);
+
+	fctret = eal_collate_args(argc, argv);
+	if (fctret < 0) {
+		rte_eal_init_alert("invalid command-line arguments.");
+		rte_errno = EINVAL;
+		return -1;
+	}
+
 	/* setup log as early as possible */
-	if (eal_parse_log_options(argc, argv) < 0) {
+	if (eal_parse_log_options() < 0) {
 		rte_eal_init_alert("invalid log arguments.");
 		rte_errno = EINVAL;
 		return -1;
@@ -585,18 +460,14 @@ rte_eal_init(int argc, char **argv)
 
 	eal_reset_internal_config(internal_conf);
 
-	/* clone argv to report out later in telemetry */
-	eal_save_args(argc, argv);
-
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
 
-	fctret = eal_parse_args(argc, argv);
-	if (fctret < 0) {
-		rte_eal_init_alert("Invalid 'command line' arguments.");
+	if (eal_parse_args() < 0) {
+		rte_eal_init_alert("Error parsing command-line arguments.");
 		rte_errno = EINVAL;
 		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
@@ -605,8 +476,7 @@ rte_eal_init(int argc, char **argv)
 	/* FreeBSD always uses legacy memory model */
 	internal_conf->legacy_mem = true;
 	if (internal_conf->in_memory) {
-		EAL_LOG(WARNING, "Warning: ignoring unsupported flag, '%s'",
-			OPT_IN_MEMORY);
+		EAL_LOG(WARNING, "Warning: ignoring unsupported flag, '--in-memory'");
 		internal_conf->in_memory = false;
 	}
 

@@ -73,6 +73,17 @@ struct rte_config {
 struct rte_config *rte_eal_get_configuration(void);
 
 /**
+ * Put the argument list into a structure.
+ *
+ * This allows the arguments to then be processed out-of-order.
+ *
+ * @return
+ *  - 0 on success
+ * - Negative on error
+ */
+int eal_collate_args(int argc, char **argv);
+
+/**
  * Initialize the memzone subsystem (private to eal).
  *
  * @return

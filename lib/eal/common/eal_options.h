@@ -115,18 +115,12 @@ enum {
 	OPT_LONG_MAX_NUM
 };
 
-extern const char eal_short_options[];
-extern const struct option eal_long_options[];
-
-bool eal_option_is_log(int opt);
-int eal_parse_log_options(int argc, char * const argv[]);
-int eal_parse_common_option(int opt, const char *argv,
-			    struct internal_config *conf);
+int eal_parse_log_options(void);
+int eal_parse_args(void);
 int eal_option_device_parse(void);
 int eal_adjust_config(struct internal_config *internal_cfg);
 int eal_cleanup_config(struct internal_config *internal_cfg);
 int eal_check_common_options(struct internal_config *internal_cfg);
-void eal_common_usage(void);
 enum rte_proc_type_t eal_proc_type_detect(void);
 int eal_plugins_init(void);
 int eal_save_args(int argc, char **argv);
