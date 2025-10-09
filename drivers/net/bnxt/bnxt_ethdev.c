@@ -1432,6 +1432,9 @@ static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		struct bnxt_rx_queue *rxq = eth_dev->data->rx_queues[i];
 
+		if (rxq == NULL)
+			continue;
+
 		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
 				      RTE_PKTMBUF_HEADROOM);
 		if (eth_dev->data->mtu + overhead > buf_size)
