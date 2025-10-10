@@ -174,7 +174,7 @@ rnp_fw_send_cmd(struct rnp_eth_port *port,
 		if (err)
 			return err;
 		if (respond)
-			memcpy(respond, cookie->priv, sizeof(cookie->priv));
+			memcpy(respond, cookie->priv, RNP_FW_REP_DATA_NUM);
 	} else {
 		rnp_build_fwcmd_req(&req, arg, &req);
 		err = rnp_fw_send_cmd_wait(port, &req, &reply);
