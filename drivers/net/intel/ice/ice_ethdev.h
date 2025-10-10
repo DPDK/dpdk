@@ -379,7 +379,7 @@ struct ice_fdir_filter_conf {
 	uint64_t input_set_i; /* only for tunnel inner fields */
 	uint32_t mark_flag;
 
-	struct ice_parser_profile *prof;
+	struct ice_parser_profile prof;
 	bool parser_ena;
 	u8 *pkt_buf;
 	u8 pkt_len;

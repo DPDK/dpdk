@@ -1314,7 +1314,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 	if (filter->parser_ena) {
 		struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
-		int id = ice_find_first_bit(filter->prof->ptypes, UINT16_MAX);
+		int id = ice_find_first_bit(filter->prof.ptypes, UINT16_MAX);
 		int ptg = hw->blk[ICE_BLK_FD].xlt1.t[id];
 		u16 ctrl_vsi = pf->fdir.fdir_vsi->idx;
 		u16 main_vsi = pf->main_vsi->idx;
@@ -1324,11 +1324,11 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		if (pi->fdir_actived_cnt != 0) {
 			for (i = 0; i < ICE_MAX_FV_WORDS; i++)
 				if (pi->prof.fv[i].proto_id !=
-				    filter->prof->fv[i].proto_id ||
+				    filter->prof.fv[i].proto_id ||
 				    pi->prof.fv[i].offset !=
-				    filter->prof->fv[i].offset ||
+				    filter->prof.fv[i].offset ||
 				    pi->prof.fv[i].msk !=
-				    filter->prof->fv[i].msk)
+				    filter->prof.fv[i].msk)
 					break;
 			if (i == ICE_MAX_FV_WORDS) {
 				fv_found = true;
@@ -1338,7 +1338,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 
 		if (!fv_found) {
 			ret = ice_flow_set_hw_prof(hw, main_vsi, ctrl_vsi,
-						   filter->prof, ICE_BLK_FD);
+						   &filter->prof, ICE_BLK_FD);
 			if (ret)
 				goto error;
 		}
@@ -1348,12 +1348,12 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 			goto error;
 
 		if (!fv_found) {
-			for (i = 0; i < filter->prof->fv_num; i++) {
+			for (i = 0; i < filter->prof.fv_num; i++) {
 				pi->prof.fv[i].proto_id =
-					filter->prof->fv[i].proto_id;
+					filter->prof.fv[i].proto_id;
 				pi->prof.fv[i].offset =
-					filter->prof->fv[i].offset;
-				pi->prof.fv[i].msk = filter->prof->fv[i].msk;
+					filter->prof.fv[i].offset;
+				pi->prof.fv[i].msk = filter->prof.fv[i].msk;
 			}
 			pi->fdir_actived_cnt = 1;
 		}
@@ -1451,7 +1451,6 @@ free_entry:
 	return -rte_errno;
 
 error:
-	rte_free(filter->prof);
 	rte_free(filter->pkt_buf);
 	return -rte_errno;
 }
@@ -1473,7 +1472,7 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 	if (filter->parser_ena) {
 		struct ice_hw *hw = ICE_PF_TO_HW(pf);
 
-		int id = ice_find_first_bit(filter->prof->ptypes, UINT16_MAX);
+		int id = ice_find_first_bit(filter->prof.ptypes, UINT16_MAX);
 		int ptg = hw->blk[ICE_BLK_FD].xlt1.t[id];
 		u16 ctrl_vsi = pf->fdir.fdir_vsi->idx;
 		u16 main_vsi = pf->main_vsi->idx;
@@ -1501,7 +1500,6 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 
 		flow->rule = NULL;
 
-		rte_free(filter->prof);
 		rte_free(filter->pkt_buf);
 		rte_free(filter);
 
@@ -1928,13 +1926,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			if (!tmp_mask)
 				return -rte_errno;
 
-			filter->prof = (struct ice_parser_profile *)
-				ice_malloc(&ad->hw, sizeof(*filter->prof));
-			if (!filter->prof)
-				return -ENOMEM;
-
 			if (ice_parser_profile_init(&rslt, tmp_spec, tmp_mask,
-				pkt_len, ICE_BLK_FD, true, filter->prof))
+				pkt_len, ICE_BLK_FD, true, &filter->prof))
 				return -rte_errno;
 
 			u8 *pkt_buf = (u8 *)ice_malloc(&ad->hw, pkt_len + 1);
@@ -2495,7 +2488,6 @@ ice_fdir_parse(struct ice_adapter *ad,
 	rte_free(item);
 	return ret;
 error:
-	rte_free(filter->prof);
 	rte_free(filter->pkt_buf);
 	rte_free(item);
 	return ret;
