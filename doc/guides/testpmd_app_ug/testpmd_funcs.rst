@@ -569,70 +569,70 @@ dump physmem
 
 Dumps all physical memory segment layouts::
 
-   testpmd> dump_physmem
+   testpmd> dump physmem
 
 dump memzone
 ~~~~~~~~~~~~
 
 Dumps the layout of all memory zones::
 
-   testpmd> dump_memzone
+   testpmd> dump memzone
 
 dump socket memory
 ~~~~~~~~~~~~~~~~~~
 
 Dumps the memory usage of all sockets::
 
-   testpmd> dump_socket_mem
+   testpmd> dump socket_mem
 
 dump struct size
 ~~~~~~~~~~~~~~~~
 
 Dumps the size of all memory structures::
 
-   testpmd> dump_struct_sizes
+   testpmd> dump struct_sizes
 
 dump ring
 ~~~~~~~~~
 
 Dumps the status of all or specific element in DPDK rings::
 
-   testpmd> dump_ring [ring_name]
+   testpmd> dump ring [ring_name]
 
 dump mempool
 ~~~~~~~~~~~~
 
 Dumps the statistics of all or specific memory pool::
 
-   testpmd> dump_mempool [mempool_name]
+   testpmd> dump mempool [mempool_name]
 
 dump devargs
 ~~~~~~~~~~~~
 
 Dumps the user device list::
 
-   testpmd> dump_devargs
+   testpmd> dump devargs
 
 dump lcores
 ~~~~~~~~~~~
 
 Dumps the logical cores list::
 
-   testpmd> dump_lcores
+   testpmd> dump lcores
 
 dump trace
 ~~~~~~~~~~
 
 Dumps the tracing data to the folder according to the current EAL settings::
 
-   testpmd> dump_trace
+   testpmd> dump trace
 
 dump log types
 ~~~~~~~~~~~~~~
 
 Dumps the log level for all the dpdk modules::
 
-   testpmd> dump_log_types
+   testpmd> dump log_types
 
 show (raw_encap|raw_decap)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

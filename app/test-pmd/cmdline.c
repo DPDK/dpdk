@@ -266,34 +266,34 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port (port_id) flow_ctrl"
 			"	Show flow control info of a port.\n\n"
 
-			"dump_physmem\n"
+			"dump physmem\n"
 			"    Dumps all physical memory segment layouts\n\n"
 
-			"dump_socket_mem\n"
+			"dump socket_mem\n"
 			"    Dumps the memory usage of all sockets\n\n"
 
-			"dump_memzone\n"
+			"dump memzone\n"
 			"    Dumps the layout of all memory zones\n\n"
 
-			"dump_struct_sizes\n"
+			"dump struct_sizes\n"
 			"    Dumps the size of all memory structures\n\n"
 
-			"dump_ring\n"
+			"dump ring [name]\n"
 			"    Dumps the status of all or specific element in DPDK rings\n\n"
 
-			"dump_mempool\n"
+			"dump mempool [name]\n"
 			"    Dumps the statistics of all or specific memory pool\n\n"
 
-			"dump_devargs\n"
+			"dump devargs\n"
 			"    Dumps the user device list\n\n"
 
-			"dump_lcores\n"
+			"dump lcores\n"
 			"    Dumps the logical cores list\n\n"
 
-			"dump_trace\n"
+			"dump trace\n"
 			"    Dumps the tracing data to the folder according to the current EAL settings\n\n"
 
-			"dump_log_types\n"
+			"dump log_types\n"
 			"    Dumps the log level for all the dpdk modules\n\n"
 
 			"show port (port_id) speed_lanes capabilities"
@@ -9085,9 +9085,33 @@ static cmdline_parse_inst_t cmd_cfg_tunnel_udp_port = {
 
 /* ******************************************************************************** */
 
-struct cmd_dump_result {
+struct cmd_dump_simple_result {
 	cmdline_fixed_string_t dump;
+	cmdline_fixed_string_t obj;
+	cmdline_fixed_string_t name;
 };
+static cmdline_parse_token_string_t cmd_dump_simple_dump =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_simple_result, dump, "dump");
+static cmdline_parse_token_string_t cmd_dump_simple_obj =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_simple_result, obj,
+		"physmem#"
+		"socket_mem#"
+		"memzone#"
+		"struct_sizes#"
+		"ring#"
+		"mempool#"
+		"devargs#"
+		"lcores#"
+		"trace#"
+		"log_types"
+);
+static cmdline_parse_token_string_t cmd_dump_named_obj =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_simple_result, obj,
+		"ring#"
+		"mempool#"
+);
+static cmdline_parse_token_string_t cmd_dump_named_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_dump_simple_result, name, NULL);
 
 static void
 dump_struct_sizes(void)
@@ -9098,7 +9122,6 @@ dump_struct_sizes(void)
 	DUMP_SIZE(struct rte_ring);
 #undef DUMP_SIZE
 }
-
 
 /* Dump the socket memory statistics on console */
 static void
@@ -9113,7 +9136,6 @@ dump_socket_mem(FILE *f)
 	unsigned int n_free = 0;
 	static size_t last_allocs;
 	static size_t last_total;
-
 
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++) {
 		if (rte_malloc_get_socket_stats(i, &socket_stats) ||
@@ -9149,113 +9171,74 @@ dump_socket_mem(FILE *f)
 	last_total = total;
 }
 
-static void cmd_dump_parsed(void *parsed_result,
-			    __rte_unused struct cmdline *cl,
-			    __rte_unused void *data)
+static void cmd_dump_simple_parsed(void *parsed_result,
+		struct cmdline *cl,
+		__rte_unused void *data)
 {
-	struct cmd_dump_result *res = parsed_result;
+	struct cmd_dump_simple_result *res = parsed_result;
 
-	if (!strcmp(res->dump, "dump_physmem"))
+	if (strcmp(res->obj, "physmem") == 0)
 		rte_dump_physmem_layout(stdout);
-	else if (!strcmp(res->dump, "dump_socket_mem"))
+	else if (strcmp(res->obj, "socket_mem") == 0)
 		dump_socket_mem(stdout);
-	else if (!strcmp(res->dump, "dump_memzone"))
+	else if (strcmp(res->obj, "memzone") == 0)
 		rte_memzone_dump(stdout);
-	else if (!strcmp(res->dump, "dump_struct_sizes"))
+	else if (strcmp(res->obj, "struct_sizes") == 0)
 		dump_struct_sizes();
-	else if (!strcmp(res->dump, "dump_ring"))
-		rte_ring_list_dump(stdout);
-	else if (!strcmp(res->dump, "dump_mempool"))
-		rte_mempool_list_dump(stdout);
-	else if (!strcmp(res->dump, "dump_devargs"))
+	else if (strcmp(res->obj, "ring") == 0) {
+		if (strcmp(res->name, "") == 0) {
+			rte_ring_list_dump(stdout);
+		} else {
+			struct rte_ring *r;
+			r = rte_ring_lookup(res->name);
+			if (r == NULL) {
+				cmdline_printf(cl, "Cannot find ring\n");
+				return;
+			}
+			rte_ring_dump(stdout, r);
+		}
+	} else if (strcmp(res->obj, "mempool") == 0) {
+		if (strcmp(res->name, "") == 0) {
+			rte_mempool_list_dump(stdout);
+		} else {
+			struct rte_mempool *mp;
+			mp = rte_mempool_lookup(res->name);
+			if (mp == NULL) {
+				cmdline_printf(cl, "Cannot find mempool\n");
+				return;
+			}
+			rte_mempool_dump(stdout, mp);
+		}
+	} else if (strcmp(res->obj, "devargs") == 0)
 		rte_devargs_dump(stdout);
-	else if (!strcmp(res->dump, "dump_lcores"))
+	else if (strcmp(res->obj, "lcores") == 0)
 		rte_lcore_dump(stdout);
-#ifndef RTE_EXEC_ENV_WINDOWS
-	else if (!strcmp(res->dump, "dump_trace"))
+	else if (strcmp(res->obj, "trace") == 0)
+#ifdef RTE_EXEC_ENV_WINDOWS
+		cmdline_printf(cl, "trace is not supported on Windows\n");
+#else
 		rte_trace_save();
 #endif
-	else if (!strcmp(res->dump, "dump_log_types"))
+	else if (strcmp(res->obj, "log_types") == 0)
 		rte_log_dump(stdout);
 }
 
-static cmdline_parse_token_string_t cmd_dump_dump =
-	TOKEN_STRING_INITIALIZER(struct cmd_dump_result, dump,
-		"" /* defined at init */);
-
-static void
-cmd_dump_init(void)
-{
-	cmd_dump_dump.string_data.str =
-		"dump_physmem#"
-		"dump_memzone#"
-		"dump_socket_mem#"
-		"dump_struct_sizes#"
-		"dump_ring#"
-		"dump_mempool#"
-		"dump_devargs#"
-		"dump_lcores#"
-#ifndef RTE_EXEC_ENV_WINDOWS
-		"dump_trace#"
-#endif
-		"dump_log_types";
-}
-
-static cmdline_parse_inst_t cmd_dump = {
-	.f = cmd_dump_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "Dump status",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_dump_dump,
+static cmdline_parse_inst_t cmd_dump_simple = {
+	.f = cmd_dump_simple_parsed,
+	.help_str = "Dump objects",
+	.tokens = {
+		(void *)&cmd_dump_simple_dump,
+		(void *)&cmd_dump_simple_obj,
 		NULL,
 	},
 };
-
-/* ******************************************************************************** */
-
-struct cmd_dump_one_result {
-	cmdline_fixed_string_t dump;
-	cmdline_fixed_string_t name;
-};
-
-static void cmd_dump_one_parsed(void *parsed_result, struct cmdline *cl,
-				__rte_unused void *data)
-{
-	struct cmd_dump_one_result *res = parsed_result;
-
-	if (!strcmp(res->dump, "dump_ring")) {
-		struct rte_ring *r;
-		r = rte_ring_lookup(res->name);
-		if (r == NULL) {
-			cmdline_printf(cl, "Cannot find ring\n");
-			return;
-		}
-		rte_ring_dump(stdout, r);
-	} else if (!strcmp(res->dump, "dump_mempool")) {
-		struct rte_mempool *mp;
-		mp = rte_mempool_lookup(res->name);
-		if (mp == NULL) {
-			cmdline_printf(cl, "Cannot find mempool\n");
-			return;
-		}
-		rte_mempool_dump(stdout, mp);
-	}
-}
-
-static cmdline_parse_token_string_t cmd_dump_one_dump =
-	TOKEN_STRING_INITIALIZER(struct cmd_dump_one_result, dump,
-				 "dump_ring#dump_mempool");
-
-static cmdline_parse_token_string_t cmd_dump_one_name =
-	TOKEN_STRING_INITIALIZER(struct cmd_dump_one_result, name, NULL);
-
-static cmdline_parse_inst_t cmd_dump_one = {
-	.f = cmd_dump_one_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "dump_ring|dump_mempool <name>: Dump one ring/mempool",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_dump_one_dump,
-		(void *)&cmd_dump_one_name,
+static cmdline_parse_inst_t cmd_dump_named = {
+	.f = cmd_dump_simple_parsed,
+	.help_str = "dump ring|mempool <name>: Dump one ring/mempool",
+	.tokens = {
+		(void *)&cmd_dump_simple_dump,
+		(void *)&cmd_dump_named_obj,
+		(void *)&cmd_dump_named_name,
 		NULL,
 	},
 };
@@ -14035,8 +14018,8 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_config_rss_hash_key,
 	&cmd_config_rss_hash_algo,
 	&cmd_cleanup_txq_mbufs,
-	&cmd_dump,
-	&cmd_dump_one,
+	&cmd_dump_simple,
+	&cmd_dump_named,
 	&cmd_flow,
 	&cmd_show_port_meter_cap,
 	&cmd_add_port_meter_profile_srtcm,
@@ -14169,7 +14152,6 @@ init_cmdline(void)
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 	cmd_set_fwd_retry_mode_init();
-	cmd_dump_init();
 
 	count = 0;
 	for (i = 0; builtin_ctx[i] != NULL; i++)
