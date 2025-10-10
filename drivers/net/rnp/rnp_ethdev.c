@@ -751,17 +751,17 @@ rnp_get_speed_caps(struct rte_eth_dev *dev)
 {
 	struct rnp_eth_port *port = RNP_DEV_TO_PORT(dev);
 	uint32_t speed_cap = 0;
-	uint32_t i = 0, speed;
 	uint32_t support_link;
-	uint32_t link_types;
+	uint32_t speed = 0;
+	int bit_pos = 0;
 
 	support_link = port->attr.phy_meta.supported_link;
-	link_types = rte_popcount64(support_link);
-	if (!link_types)
+	if (support_link == 0)
 		return 0;
-	for (i = 0; i < link_types; i++) {
-		speed = ffs(support_link) - 1;
-		switch (RTE_BIT32(speed)) {
+	while (support_link) {
+		bit_pos = rte_ffs32(support_link) - 1;
+		speed = RTE_BIT32(bit_pos);
+		switch (speed) {
 		case RNP_SPEED_CAP_10M_FULL:
 			speed_cap |= RTE_ETH_LINK_SPEED_10M;
 			break;
@@ -789,7 +789,7 @@ rnp_get_speed_caps(struct rte_eth_dev *dev)
 		default:
 			speed_cap |= 0;
 		}
-		support_link &= ~RTE_BIT32(speed);
+		support_link &= ~speed;
 	}
 	if (!port->attr.phy_meta.link_autoneg)
 		speed_cap |= RTE_ETH_LINK_SPEED_FIXED;

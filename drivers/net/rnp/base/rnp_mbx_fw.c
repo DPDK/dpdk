@@ -230,6 +230,7 @@ rnp_fw_get_phy_capability(struct rnp_eth_port *port,
 	return 0;
 }
 
+#define RNP_MAX_LANE_MASK	(0xf)
 int rnp_mbx_fw_get_capability(struct rnp_eth_port *port)
 {
 	struct rnp_phy_abilities_rep ability;
@@ -252,17 +253,29 @@ int rnp_mbx_fw_get_capability(struct rnp_eth_port *port)
 		hw->nic_mode = ability.nic_mode;
 		/* get phy<->lane mapping info */
 		lane_cnt = rte_popcount32(hw->lane_mask);
+		if (lane_cnt > RNP_MAX_PORT_OF_PF) {
+			RNP_PMD_LOG(ERR, "firmware invalid lane_mask");
+			return -EINVAL;
+		}
 		temp_mask = hw->lane_mask;
+		if (temp_mask == 0 || temp_mask > RNP_MAX_LANE_MASK) {
+			RNP_PMD_LOG(ERR, "lane_mask is invalid 0x%.2x", temp_mask);
+			return -EINVAL;
+		}
 		if (ability.e.ports_is_sgmii_valid)
 			is_sgmii_bits = ability.e.lane_is_sgmii;
 		for (idx = 0; idx < lane_cnt; idx++) {
 			hw->phy_port_ids[idx] = port_ids[idx];
-			lane_bit = ffs(temp_mask) - 1;
+			if (temp_mask == 0) {
+				RNP_PMD_LOG(ERR, "temp_mask is zero at idx=%d", idx);
+				return -EINVAL;
+			}
+			lane_bit = rte_ffs32(temp_mask) - 1;
 			lane_idx = port_ids[idx] % lane_cnt;
 			hw->lane_of_port[lane_idx] = lane_bit;
 			is_sgmii = lane_bit & is_sgmii_bits ? 1 : 0;
 			hw->lane_is_sgmii[lane_idx] = is_sgmii;
-			temp_mask &= ~RTE_BIT32(lane_bit);
+			temp_mask &= ~(1ULL << lane_bit);
 		}
 		hw->max_port_num = lane_cnt;
 	}
