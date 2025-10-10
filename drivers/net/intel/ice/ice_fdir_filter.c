@@ -1865,7 +1865,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			uint16_t tmp_val = 0;
 			uint16_t pkt_len = 0;
 			uint8_t tmp = 0;
-			int i, j;
+			int i, j, ret_val;
 
 			pkt_len = strlen((char *)(uintptr_t)raw_spec->pattern);
 			if (strlen((char *)(uintptr_t)raw_mask->pattern) !=
@@ -1920,19 +1920,22 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 			pkt_len /= 2;
 
-			if (ice_parser_run(ad->psr, tmp_spec, pkt_len, &rslt))
-				return -rte_errno;
-
-			if (!tmp_mask)
-				return -rte_errno;
+			if (ice_parser_run(ad->psr, tmp_spec, pkt_len, &rslt)) {
+				ret_val = -rte_errno;
+				goto raw_error;
+			}
 
 			if (ice_parser_profile_init(&rslt, tmp_spec, tmp_mask,
-				pkt_len, ICE_BLK_FD, true, &filter->prof))
-				return -rte_errno;
+				pkt_len, ICE_BLK_FD, true, &filter->prof)) {
+				ret_val = -rte_errno;
+				goto raw_error;
+			}
 
 			u8 *pkt_buf = (u8 *)ice_malloc(&ad->hw, pkt_len + 1);
-			if (!pkt_buf)
-				return -ENOMEM;
+			if (!pkt_buf) {
+				ret_val = -ENOMEM;
+				goto raw_error;
+			}
 			rte_memcpy(pkt_buf, tmp_spec, pkt_len);
 			filter->pkt_buf = pkt_buf;
 
@@ -1943,6 +1946,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			rte_free(tmp_spec);
 			rte_free(tmp_mask);
 			break;
+
+raw_error:
+			rte_free(tmp_spec);
+			rte_free(tmp_mask);
+			return ret_val;
 		}
 
 		case RTE_FLOW_ITEM_TYPE_ETH:
