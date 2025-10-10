@@ -1157,6 +1157,21 @@ rnp_need_ctrl_desc(uint64_t flags)
 	return (flags & mask) ? 1 : 0;
 }
 
+#define RNP_MAX_TSO_SEG_LEN	(4096)
+static inline uint16_t
+rnp_calc_pkt_desc(struct rte_mbuf *tx_pkt)
+{
+	struct rte_mbuf *txd = tx_pkt;
+	uint16_t count = 0;
+
+	while (txd != NULL) {
+		count += DIV_ROUND_UP(txd->data_len, RNP_MAX_TSO_SEG_LEN);
+		txd = txd->next;
+	}
+
+	return count;
+}
+
 static void
 rnp_build_tx_control_desc(struct rnp_tx_queue *txq,
 			  volatile struct rnp_tx_desc *txbd,
@@ -1394,6 +1409,10 @@ rnp_multiseg_xmit_pkts(void *_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tx_pkt = tx_pkts[nb_tx];
 		ctx_desc_use = rnp_need_ctrl_desc(tx_pkt->ol_flags);
 		nb_used_bd = tx_pkt->nb_segs + ctx_desc_use;
+		if (tx_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG)
+			nb_used_bd = (uint16_t)(rnp_calc_pkt_desc(tx_pkt) + ctx_desc_use);
+		else
+			nb_used_bd = tx_pkt->nb_segs + ctx_desc_use;
 		tx_last = (uint16_t)(tx_id + nb_used_bd - 1);
 		if (tx_last >= txq->attr.nb_desc)
 			tx_last = (uint16_t)(tx_last - txq->attr.nb_desc);
@@ -1416,8 +1435,11 @@ rnp_multiseg_xmit_pkts(void *_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		m_seg = tx_pkt;
 		first_seg = 1;
 		do {
+			uint16_t remain_len = 0;
+			uint64_t dma_addr = 0;
+
 			txbd = &txq->tx_bdr[tx_id];
-			txbd->d.cmd = 0;
+			*txbd = txq->zero_desc;
 			txn = &txq->sw_ring[txe->next_id];
 			if ((first_seg && m_seg->ol_flags)) {
 				rnp_setup_tx_offload(txq, txbd,
@@ -1430,11 +1452,29 @@ rnp_multiseg_xmit_pkts(void *_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				rte_pktmbuf_free_seg(txe->mbuf);
 				txe->mbuf = NULL;
 			}
+			dma_addr = rnp_get_dma_addr(&txq->attr, m_seg);
+			remain_len = m_seg->data_len;
 			txe->mbuf = m_seg;
+			while ((tx_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
+					unlikely(remain_len > RNP_MAX_TSO_SEG_LEN)) {
+				txbd->d.addr = dma_addr;
+				txbd->d.blen = rte_cpu_to_le_32(RNP_MAX_TSO_SEG_LEN);
+				dma_addr += RNP_MAX_TSO_SEG_LEN;
+				remain_len -= RNP_MAX_TSO_SEG_LEN;
+				txe->last_id = tx_last;
+				tx_id = txe->next_id;
+				txe = txn;
+				if (txe->mbuf) {
+					rte_pktmbuf_free_seg(txe->mbuf);
+					txe->mbuf = NULL;
+				}
+				txbd = &txq->tx_bdr[tx_id];
+				*txbd = txq->zero_desc;
+				txn = &txq->sw_ring[txe->next_id];
+			}
 			txe->last_id = tx_last;
-			txbd->d.addr = rnp_get_dma_addr(&txq->attr, m_seg);
-			txbd->d.blen = rte_cpu_to_le_32(m_seg->data_len);
-			txbd->d.cmd &= ~RNP_CMD_EOP;
+			txbd->d.addr = dma_addr;
+			txbd->d.blen = rte_cpu_to_le_32(remain_len);
 			m_seg = m_seg->next;
 			tx_id = txe->next_id;
 			txe = txn;
