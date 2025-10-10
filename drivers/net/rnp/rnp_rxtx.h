@@ -110,6 +110,7 @@ struct rnp_tx_queue {
 	uint16_t nb_tx_free; /* avail desc to set pkts */
 	uint16_t nb_tx_used; /* multiseg mbuf used num */
 	uint16_t last_desc_cleaned;
+	uint16_t tunnel_len;
 	uint16_t tx_tail;
 
 	uint16_t tx_next_dd; /* next to scan writeback dd bit */

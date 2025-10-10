@@ -1205,6 +1205,7 @@ rnp_build_tx_control_desc(struct rnp_tx_queue *txq,
 	}
 	txbd->c.qword0.tunnel_len = tunnel_len;
 	txbd->c.qword1.cmd |= RNP_CTRL_DESC;
+	txq->tunnel_len = tunnel_len;
 }
 
 static void
@@ -1243,40 +1244,66 @@ rnp_padding_hdr_len(volatile struct rnp_tx_desc *txbd,
 	txbd->d.mac_ip_len |= l3_len;
 }
 
-static void
-rnp_check_inner_eth_hdr(struct rte_mbuf *mbuf,
+#define RNP_MAX_VLAN_HDR_NUM	(4)
+static int
+rnp_check_inner_eth_hdr(struct rnp_tx_queue *txq,
+			struct rte_mbuf *mbuf,
 			volatile struct rnp_tx_desc *txbd)
 {
 	struct rte_ether_hdr *eth_hdr;
 	uint16_t inner_l2_offset = 0;
 	struct rte_vlan_hdr *vlan_hdr;
 	uint16_t ext_l2_len = 0;
-	uint16_t l2_offset = 0;
+	char *vlan_start = NULL;
 	uint16_t l2_type;
 
-	inner_l2_offset = mbuf->outer_l2_len + mbuf->outer_l3_len +
-		sizeof(struct rte_udp_hdr) +
-		sizeof(struct rte_vxlan_hdr);
+	inner_l2_offset = txq->tunnel_len;
+	if (inner_l2_offset + sizeof(struct rte_ether_hdr) > mbuf->data_len) {
+		RNP_PMD_LOG(ERR, "Invalid inner L2 offset");
+		return -EINVAL;
+	}
 	eth_hdr = rte_pktmbuf_mtod_offset(mbuf,
 			struct rte_ether_hdr *, inner_l2_offset);
 	l2_type = eth_hdr->ether_type;
-	l2_offset = txbd->d.mac_ip_len >> RNP_TX_MAC_LEN_S;
-	while (l2_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ||
-			l2_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ)) {
-		vlan_hdr = (struct rte_vlan_hdr *)
-			((char *)eth_hdr + l2_offset);
-		l2_offset += RTE_VLAN_HLEN;
-		ext_l2_len += RTE_VLAN_HLEN;
+	vlan_start = (char *)(eth_hdr + 1);
+	while ((l2_type == RTE_BE16(RTE_ETHER_TYPE_VLAN) ||
+		l2_type == RTE_BE16(RTE_ETHER_TYPE_QINQ)) &&
+		(ext_l2_len < RNP_MAX_VLAN_HDR_NUM * RTE_VLAN_HLEN)) {
+		if (vlan_start + ext_l2_len >
+				rte_pktmbuf_mtod(mbuf, char*) + mbuf->data_len) {
+			RNP_PMD_LOG(ERR, "VLAN header exceeds buffer");
+			break;
+		}
+		vlan_hdr = (struct rte_vlan_hdr *)(vlan_start + ext_l2_len);
 		l2_type = vlan_hdr->eth_proto;
+		ext_l2_len += RTE_VLAN_HLEN;
 	}
-	txbd->d.mac_ip_len += (ext_l2_len << RNP_TX_MAC_LEN_S);
+	if (unlikely(mbuf->l3_len == 0)) {
+		switch (rte_be_to_cpu_16(l2_type)) {
+		case RTE_ETHER_TYPE_IPV4:
+			txbd->d.mac_ip_len = sizeof(struct rte_ipv4_hdr);
+			break;
+		case RTE_ETHER_TYPE_IPV6:
+			txbd->d.mac_ip_len = sizeof(struct rte_ipv6_hdr);
+			break;
+		default:
+			break;
+		}
+	} else {
+		txbd->d.mac_ip_len = mbuf->l3_len;
+	}
+	ext_l2_len += sizeof(*eth_hdr);
+	txbd->d.mac_ip_len |= (ext_l2_len << RNP_TX_MAC_LEN_S);
+
+	return 0;
 }
 
 #define RNP_TX_L4_OFFLOAD_ALL   (RTE_MBUF_F_TX_SCTP_CKSUM | \
 				 RTE_MBUF_F_TX_TCP_CKSUM | \
 				 RTE_MBUF_F_TX_UDP_CKSUM)
 static inline void
-rnp_setup_csum_offload(struct rte_mbuf *mbuf,
+rnp_setup_csum_offload(struct rnp_tx_queue *txq,
+		       struct rte_mbuf *mbuf,
 		       volatile struct rnp_tx_desc *tx_desc)
 {
 	tx_desc->d.cmd |= (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) ?
@@ -1296,8 +1323,6 @@ rnp_setup_csum_offload(struct rte_mbuf *mbuf,
 		tx_desc->d.cmd |= RNP_TX_L4TYPE_SCTP;
 		break;
 	}
-	tx_desc->d.mac_ip_len = mbuf->l2_len << RNP_TX_MAC_LEN_S;
-	tx_desc->d.mac_ip_len |= mbuf->l3_len;
 	if (mbuf->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
 		tx_desc->d.cmd |= RNP_TX_IP_CKSUM_EN;
 		tx_desc->d.cmd |= RNP_TX_L4CKSUM_EN;
@@ -1306,9 +1331,8 @@ rnp_setup_csum_offload(struct rte_mbuf *mbuf,
 	}
 	if (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 		/* need inner l2 l3 lens for inner checksum offload */
-		tx_desc->d.mac_ip_len &= ~RNP_TX_MAC_LEN_MASK;
-		tx_desc->d.mac_ip_len |= RTE_ETHER_HDR_LEN << RNP_TX_MAC_LEN_S;
-		rnp_check_inner_eth_hdr(mbuf, tx_desc);
+		if (rnp_check_inner_eth_hdr(txq, mbuf, tx_desc) < 0)
+			tx_desc->d.cmd &= ~RNP_TX_TSO_EN;
 		switch (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 		case RTE_MBUF_F_TX_TUNNEL_VXLAN:
 			tx_desc->d.cmd |= RNP_TX_VXLAN_TUNNEL;
@@ -1317,6 +1341,9 @@ rnp_setup_csum_offload(struct rte_mbuf *mbuf,
 			tx_desc->d.cmd |= RNP_TX_NVGRE_TUNNEL;
 			break;
 		}
+	} else {
+		tx_desc->d.mac_ip_len = mbuf->l2_len << RNP_TX_MAC_LEN_S;
+		tx_desc->d.mac_ip_len |= mbuf->l3_len;
 	}
 }
 
@@ -1329,7 +1356,7 @@ rnp_setup_tx_offload(struct rnp_tx_queue *txq,
 	if (flags & RTE_MBUF_F_TX_L4_MASK ||
 	    flags & RTE_MBUF_F_TX_TCP_SEG ||
 	    flags & RTE_MBUF_F_TX_IP_CKSUM)
-		rnp_setup_csum_offload(tx_pkt, txbd);
+		rnp_setup_csum_offload(txq, tx_pkt, txbd);
 	if (flags & (RTE_MBUF_F_TX_VLAN |
 		     RTE_MBUF_F_TX_QINQ)) {
 		txbd->d.cmd |= RNP_TX_VLAN_VALID;
@@ -1414,6 +1441,7 @@ rnp_multiseg_xmit_pkts(void *_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		} while (m_seg != NULL);
 		txq->stats.obytes += tx_pkt->pkt_len;
 		txbd->d.cmd |= RNP_CMD_EOP;
+		txq->tunnel_len = 0;
 		txq->nb_tx_used = (uint16_t)txq->nb_tx_used + nb_used_bd;
 		txq->nb_tx_free = (uint16_t)txq->nb_tx_free - nb_used_bd;
 		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
