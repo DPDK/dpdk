@@ -265,6 +265,7 @@ void
 virtio_crypto_queue_release(struct virtqueue *vq)
 {
 	struct virtio_crypto_hw *hw;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -275,6 +276,9 @@ virtio_crypto_queue_release(struct virtqueue *vq)
 
 		rte_memzone_free(vq->mz);
 		rte_mempool_free(vq->mpool);
+		for (i = 0; i < vq->vq_nentries; i++)
+			rte_free(vq->vq_descx[i].cookie);
+
 		rte_free(vq);
 	}
 }
