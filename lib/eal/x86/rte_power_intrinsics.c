@@ -89,14 +89,14 @@ static void amd_monitorx(volatile void *addr)
 
 static void amd_mwaitx(const uint64_t timeout)
 {
-	RTE_SET_USED(timeout);
 #if defined(RTE_TOOLCHAIN_MSVC) || defined(__MWAITX__)
-	_mm_mwaitx(0, 0, 0);
+	_mm_mwaitx(2, 0, (uint32_t)timeout);
 #else
 	asm volatile(".byte 0x0f, 0x01, 0xfb;"
 			: /* ignore rflags */
 			: "a"(0), /* enter C1 */
-			"c"(0)); /* no time-out */
+			"b"((uint32_t)timeout),
+			"c"(2)); /* enable time-out */
 #endif
 }
 
