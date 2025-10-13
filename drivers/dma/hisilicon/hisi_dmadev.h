@@ -141,6 +141,7 @@ enum {
 
 struct hisi_dma_sqe {
 	uint32_t dw0;
+#define SQE_DROP_FLAG	BIT(4)
 #define SQE_FENCE_FLAG	BIT(10)
 #define SQE_OPCODE_M2M	0x4
 	uint32_t dw1;
@@ -211,6 +212,7 @@ struct hisi_dma_dev {
 	 */
 	uint16_t cqs_completed;
 	uint8_t cqe_vld; /**< valid bit for CQE, will change for every round. */
+	volatile uint8_t stop_proc; /**< whether stop processing new requests. */
 
 	uint64_t submitted;
 	uint64_t completed;
