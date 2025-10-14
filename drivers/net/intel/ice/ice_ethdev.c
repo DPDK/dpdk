@@ -6723,13 +6723,12 @@ ice_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->ipackets = pf->main_vsi->eth_stats.rx_unicast +
 			  pf->main_vsi->eth_stats.rx_multicast +
-			  ns->eth.rx_unknown_protocol +
 			  pf->main_vsi->eth_stats.rx_broadcast -
 			  pf->main_vsi->eth_stats.rx_discards;
 	stats->opackets = ns->eth.tx_unicast +
 			  ns->eth.tx_multicast +
 			  ns->eth.tx_broadcast;
-	stats->ibytes   = ns->eth.rx_bytes;
+	stats->ibytes   = pf->main_vsi->eth_stats.rx_bytes;
 	stats->obytes   = ns->eth.tx_bytes;
 	stats->oerrors  = ns->eth.tx_errors +
 			  pf->main_vsi->eth_stats.tx_errors;
