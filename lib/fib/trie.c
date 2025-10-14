@@ -516,7 +516,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	struct rte_rib6_node *tmp = NULL;
 	struct rte_rib6_node *node;
 	struct rte_rib6_node *parent;
-	struct rte_ipv6_addr ip_masked;
+	struct rte_ipv6_addr ip_masked, tmp_ip;
 	int ret = 0;
 	uint64_t par_nh, node_nh;
 	uint8_t tmp_depth, depth_diff = 0, parent_depth = 24;
@@ -535,9 +535,25 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	if (depth > 24) {
 		tmp = rte_rib6_get_nxt(rib, &ip_masked,
 			RTE_ALIGN_FLOOR(depth, 8), NULL,
-			RTE_RIB6_GET_NXT_COVER);
+			RTE_RIB6_GET_NXT_ALL);
+		if (tmp && op == RTE_FIB6_DEL) {
+			/* in case of delete operation, skip the prefix we are going to delete */
+			rte_rib6_get_ip(tmp, &tmp_ip);
+			rte_rib6_get_depth(tmp, &tmp_depth);
+			if (rte_ipv6_addr_eq(&ip_masked, &tmp_ip) && depth == tmp_depth)
+				tmp = rte_rib6_get_nxt(rib, &ip_masked,
+					RTE_ALIGN_FLOOR(depth, 8), tmp, RTE_RIB6_GET_NXT_ALL);
+		}
+
 		if (tmp == NULL) {
 			tmp = rte_rib6_lookup(rib, ip);
+			/**
+			 * in case of delete operation, lookup returns the prefix
+			 * we are going to delete. Find the parent.
+			 */
+			if (tmp && op == RTE_FIB6_DEL)
+				tmp = rte_rib6_lookup_parent(tmp);
+
 			if (tmp != NULL) {
 				rte_rib6_get_depth(tmp, &tmp_depth);
 				parent_depth = RTE_MAX(tmp_depth, 24);
