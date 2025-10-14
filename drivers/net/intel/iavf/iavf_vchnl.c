@@ -83,7 +83,7 @@ iavf_dev_event_handle(void *param __rte_unused)
 			struct iavf_adapter *adapter = pos->dev->data->dev_private;
 			if (pos->event == RTE_ETH_EVENT_INTR_RESET &&
 			    adapter->devargs.auto_reset) {
-				iavf_handle_hw_reset(pos->dev);
+				iavf_handle_hw_reset(pos->dev, false);
 				rte_free(pos);
 				continue;
 			}
