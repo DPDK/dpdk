@@ -576,8 +576,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 			return 0;
 		}
 
-		if ((depth > 24) && (dp->rsvd_tbl8s >=
-				dp->number_tbl8s - depth_diff))
+		if ((depth > 24) && (dp->rsvd_tbl8s + depth_diff > dp->number_tbl8s))
 			return -ENOSPC;
 
 		node = rte_rib6_insert(rib, &ip_masked, depth);
