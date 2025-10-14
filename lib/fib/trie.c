@@ -570,8 +570,7 @@ trie_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 			return 0;
 		}
 
-		if ((depth > 24) && (dp->rsvd_tbl8s >=
-				dp->number_tbl8s - depth_diff))
+		if ((depth > 24) && (dp->rsvd_tbl8s + depth_diff > dp->number_tbl8s))
 			return -ENOSPC;
 
 		node = rte_rib6_insert(rib, ip_masked, depth);
