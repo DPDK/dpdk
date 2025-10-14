@@ -1702,7 +1702,7 @@ cpfl_handle_vchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint
 	}
 
 	/* ignore if it is ctrl vport */
-	if (adapter->base.hw.device_id == IDPF_DEV_ID_CPF &&
+	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV &&
 			adapter->ctrl_vport.base.vport_id == vc_event->vport_id)
 		return;
 
@@ -2288,7 +2288,7 @@ cpfl_ctrl_path_close(struct cpfl_adapter_ext *adapter)
 {
 	cpfl_stop_cfgqs(adapter);
 	cpfl_remove_cfgqs(adapter);
-	if (adapter->base.hw.device_id == IDPF_DEV_ID_CPF)
+	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV)
 		idpf_vc_vport_destroy(&adapter->ctrl_vport.base);
 	else
 		vcpf_del_queues(adapter);
@@ -2299,7 +2299,7 @@ cpfl_ctrl_path_open(struct cpfl_adapter_ext *adapter)
 {
 	int ret;
 
-	if (adapter->base.hw.device_id == IDPF_DEV_ID_CPF) {
+	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV) {
 		ret = cpfl_vc_create_ctrl_vport(adapter);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to create control vport");
@@ -2328,7 +2328,7 @@ cpfl_ctrl_path_open(struct cpfl_adapter_ext *adapter)
 	ret = cpfl_cfgq_setup(adapter);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to setup control queues");
-		if (adapter->base.hw.device_id == IDPF_DEV_ID_CPF)
+		if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV)
 			goto err_cfgq_setup;
 		else
 			goto err_del_cfg;
@@ -2354,7 +2354,7 @@ err_add_cfgq:
 	cpfl_remove_cfgqs(adapter);
 err_cfgq_setup:
 err_init_ctrl_vport:
-	if (adapter->base.hw.device_id == IDPF_DEV_ID_CPF)
+	if (adapter->base.hw.device_id == CPFL_DEV_ID_MEV)
 		idpf_vc_vport_destroy(&adapter->ctrl_vport.base);
 err_del_cfg:
 	vcpf_del_queues(adapter);
@@ -2868,7 +2868,8 @@ err:
 }
 
 static const struct rte_pci_id pci_id_cpfl_map[] = {
-	{ RTE_PCI_DEVICE(IDPF_INTEL_VENDOR_ID, IDPF_DEV_ID_CPF) },
+	{ RTE_PCI_DEVICE(IDPF_INTEL_VENDOR_ID, CPFL_DEV_ID_MEV) },
+	{ RTE_PCI_DEVICE(IDPF_INTEL_VENDOR_ID, CPFL_DEV_ID_MMG) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 

@@ -59,7 +59,8 @@
 #define CPFL_ALARM_INTERVAL	50000 /* us */
 
 /* Device IDs */
-#define IDPF_DEV_ID_CPF			0x1453
+#define CPFL_DEV_ID_MMG			0x11E0
+#define CPFL_DEV_ID_MEV			0x1453
 #define VIRTCHNL2_QUEUE_GROUP_P2P	0x100
 
 #define CPFL_HOST_ID_NUM	2
@@ -339,7 +340,7 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 
 		return repr->vport_info->vport.info.vsi_id;
 	} else if (itf->type == CPFL_ITF_TYPE_VPORT) {
-		if (itf->adapter->base.hw.device_id == IDPF_DEV_ID_CPF) {
+		if (itf->adapter->base.hw.device_id == CPFL_DEV_ID_MEV) {
 			vport_id = ((struct cpfl_vport *)itf)->base.vport_id;
 
 			vport_identity.func_type = CPCHNL2_FTYPE_LAN_PF;
