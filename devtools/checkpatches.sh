@@ -421,8 +421,8 @@ check_release_notes() { # <patch>
 		grep -v $current_rel_notes
 }
 
-number=0
-range='origin/main..'
+number=
+range=
 quiet=false
 verbose=false
 while getopts hn:qr:v ARG ; do
@@ -558,17 +558,20 @@ if [ -n "$1" ] ; then
 	for patch in "$@" ; do
 		check "$patch" ''
 	done
-elif [ ! -t 0 ] ; then # stdin
-	check '' ''
-else
-	if [ $number -eq 0 ] ; then
-		commits=$(git rev-list --reverse $range)
-	else
+elif [ -n "$number" ] || [ -n "$range" ] || [ -t 0 ]; then
+	if [ -n "$number" ] ; then
 		commits=$(git rev-list --reverse --max-count=$number HEAD)
+	else
+		if [ -z "$range" ] ; then
+			range='origin/main..' # default
+		fi
+		commits=$(git rev-list --reverse $range)
 	fi
 	for commit in $commits ; do
 		check '' $commit
 	done
+else # stdin
+	check '' ''
 fi
 pass=$(($total - $status))
 $quiet || printf '\n%d/%d valid patch' $pass $total
