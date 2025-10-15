@@ -3939,7 +3939,7 @@ static void ena_rx_queue_intr_set(struct rte_eth_dev *dev,
 	struct ena_ring *rxq = &adapter->rx_ring[queue_id];
 	struct ena_eth_io_intr_reg intr_reg;
 
-	ena_com_update_intr_reg(&intr_reg, 0, 0, unmask, 1);
+	ena_com_update_intr_reg(&intr_reg, 0, 0, unmask, 1, 0);
 	ena_com_unmask_intr(rxq->ena_com_io_cq, &intr_reg);
 }
 
