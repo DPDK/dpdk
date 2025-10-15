@@ -3688,41 +3688,126 @@ ice_xmit_pkts_simple(void *tx_queue,
 }
 
 static const struct ci_rx_path_info ice_rx_path_infos[] = {
-	[ICE_RX_DEFAULT] = {ice_recv_pkts, "Scalar",
-		{ICE_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_DISABLED}},
-	[ICE_RX_SCATTERED] = {ice_recv_scattered_pkts, "Scalar Scattered",
-		{ICE_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_DISABLED, {.scattered = true}}},
-	[ICE_RX_BULK_ALLOC] = {ice_recv_pkts_bulk_alloc, "Scalar Bulk Alloc",
-		{ICE_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_DISABLED, {.bulk_alloc = true}}},
+	[ICE_RX_DEFAULT] = {
+		.pkt_burst = ice_recv_pkts,
+		.info = "Scalar",
+		.features = {
+			.rx_offloads = ICE_RX_SCALAR_OFFLOADS
+		}
+	},
+	[ICE_RX_SCATTERED] = {
+		.pkt_burst = ice_recv_scattered_pkts,
+		.info = "Scalar Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_SCALAR_OFFLOADS,
+			.extra.scattered = true
+		}
+	},
+	[ICE_RX_BULK_ALLOC] = {
+		.pkt_burst = ice_recv_pkts_bulk_alloc,
+		.info = "Scalar Bulk Alloc",
+		.features = {
+			.rx_offloads = ICE_RX_SCALAR_OFFLOADS,
+			.extra.bulk_alloc = true
+		}
+	},
 #ifdef RTE_ARCH_X86
-	[ICE_RX_SSE] = {ice_recv_pkts_vec, "Vector SSE",
-		{ICE_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_128, {.bulk_alloc = true}}},
-	[ICE_RX_SSE_SCATTERED] = {ice_recv_scattered_pkts_vec, "Vector SSE Scattered",
-		{ICE_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_128,
-			{.scattered = true, .bulk_alloc = true}}},
-	[ICE_RX_AVX2] = {ice_recv_pkts_vec_avx2, "Vector AVX2",
-		{ICE_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_256, {.bulk_alloc = true}}},
-	[ICE_RX_AVX2_SCATTERED] = {ice_recv_scattered_pkts_vec_avx2, "Vector AVX2 Scattered",
-		{ICE_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_256,
-			{.scattered = true, .bulk_alloc = true}}},
-	[ICE_RX_AVX2_OFFLOAD] = {ice_recv_pkts_vec_avx2_offload, "Offload Vector AVX2",
-		{ICE_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_256, {.bulk_alloc = true}}},
+	[ICE_RX_SSE] = {
+		.pkt_burst = ice_recv_pkts_vec,
+		.info = "Vector SSE",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128,
+			.extra.bulk_alloc = true
+		}
+	},
+	[ICE_RX_SSE_SCATTERED] = {
+		.pkt_burst = ice_recv_scattered_pkts_vec,
+		.info = "Vector SSE Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_128,
+			.extra.scattered = true,
+			.extra.bulk_alloc = true
+		}
+	},
+	[ICE_RX_AVX2] = {
+		.pkt_burst = ice_recv_pkts_vec_avx2,
+		.info = "Vector AVX2",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.extra.bulk_alloc = true
+		}
+	},
+	[ICE_RX_AVX2_SCATTERED] = {
+		.pkt_burst = ice_recv_scattered_pkts_vec_avx2,
+		.info = "Vector AVX2 Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.extra.scattered = true,
+			.extra.bulk_alloc = true
+		}
+	},
+	[ICE_RX_AVX2_OFFLOAD] = {
+		.pkt_burst = ice_recv_pkts_vec_avx2_offload,
+		.info = "Offload Vector AVX2",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.extra.bulk_alloc = true
+		}
+	},
 	[ICE_RX_AVX2_SCATTERED_OFFLOAD] = {
-		ice_recv_scattered_pkts_vec_avx2_offload, "Offload Vector AVX2 Scattered",
-		{ICE_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_256,
-			{.scattered = true, .bulk_alloc = true}}},
+		.pkt_burst = ice_recv_scattered_pkts_vec_avx2_offload,
+		.info = "Offload Vector AVX2 Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256,
+			.extra.scattered = true,
+			.extra.bulk_alloc = true
+		}
+	},
 #ifdef CC_AVX512_SUPPORT
-	[ICE_RX_AVX512] = {ice_recv_pkts_vec_avx512, "Vector AVX512",
-		{ICE_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_512, {.bulk_alloc = true}}},
-	[ICE_RX_AVX512_SCATTERED] = {ice_recv_scattered_pkts_vec_avx512, "Vector AVX512 Scattered",
-		{ICE_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_512,
-			{.scattered = true, .bulk_alloc = true}}},
-	[ICE_RX_AVX512_OFFLOAD] = {ice_recv_pkts_vec_avx512_offload, "Offload Vector AVX512",
-		{ICE_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_512, {.bulk_alloc = true}}},
+	[ICE_RX_AVX512] = {
+		.pkt_burst = ice_recv_pkts_vec_avx512,
+		.info = "Vector AVX512",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.extra.bulk_alloc = true
+		}
+	},
+	[ICE_RX_AVX512_SCATTERED] = {
+		.pkt_burst = ice_recv_scattered_pkts_vec_avx512,
+		.info = "Vector AVX512 Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.extra.scattered = true,
+			.extra.bulk_alloc = true
+		}
+	},
+	[ICE_RX_AVX512_OFFLOAD] = {
+		.pkt_burst = ice_recv_pkts_vec_avx512_offload,
+		.info = "Offload Vector AVX512",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.extra.bulk_alloc = true
+		}
+	},
 	[ICE_RX_AVX512_SCATTERED_OFFLOAD] = {
-		ice_recv_scattered_pkts_vec_avx512_offload, "Offload Vector AVX512 Scattered",
-		{ICE_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_512,
-			{.scattered = true, .bulk_alloc = true}}},
+		.pkt_burst = ice_recv_scattered_pkts_vec_avx512_offload,
+		.info = "Offload Vector AVX512 Scattered",
+		.features = {
+			.rx_offloads = ICE_RX_VECTOR_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512,
+			.extra.scattered = true,
+			.extra.bulk_alloc = true
+		}
+	},
 #endif
 #endif
 };
