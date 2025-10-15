@@ -364,9 +364,7 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 			ena_trc_err(ena_dev, "Memory allocation failed\n");
 			return ENA_COM_NO_MEM;
 		}
-	}
-
-	if (io_sq->mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV) {
+	} else {
 		/* Allocate bounce buffers */
 		io_sq->bounce_buf_ctrl.buffer_size =
 			ena_dev->llq_info.desc_list_entry_size;
