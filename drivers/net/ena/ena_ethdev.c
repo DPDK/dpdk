@@ -939,8 +939,8 @@ static int ena_close(struct rte_eth_dev *dev)
 	if (!adapter->control_path_poll_interval) {
 		rte_intr_disable(intr_handle);
 		rc = rte_intr_callback_unregister_sync(intr_handle, ena_control_path_handler, dev);
-		if (unlikely(rc != 0))
-			PMD_INIT_LOG_LINE(ERR, "Failed to unregister interrupt handler");
+		if (unlikely(rc < 0))
+			PMD_INIT_LOG_LINE(ERR, "Failed to unregister interrupt handler (%d)", rc);
 	} else {
 		rte_eal_alarm_cancel(ena_control_path_poll_handler, dev);
 	}
@@ -1020,6 +1020,9 @@ static void ena_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	struct ena_ring *ring = dev->data->rx_queues[qid];
 
+	if (!ring)
+		return;
+
 	/* Free ring resources */
 	rte_free(ring->rx_buffer_info);
 	ring->rx_buffer_info = NULL;
@@ -1039,6 +1042,9 @@ static void ena_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 static void ena_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	struct ena_ring *ring = dev->data->tx_queues[qid];
+
+	if (!ring)
+		return;
 
 	/* Free ring resources */
 	rte_free(ring->push_buf_intermediate_buf);
