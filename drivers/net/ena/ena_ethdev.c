@@ -31,6 +31,8 @@
 #define GET_L4_HDR_LEN(mbuf)					\
 	((rte_pktmbuf_mtod_offset(mbuf,	struct rte_tcp_hdr *,	\
 		mbuf->l3_len + mbuf->l2_len)->data_off) >> 4)
+
+/* return val clamped to the [min, max] range */
 #define CLAMP_VAL(val, min, max)					\
 	(RTE_MIN(RTE_MAX((val), (typeof(val))(min)), (typeof(val))(max)))
 
@@ -918,6 +920,7 @@ static inline void ena_indirect_table_release(struct ena_adapter *adapter)
 		adapter->indirect_table = NULL;
 	}
 }
+
 static int ena_close(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -952,14 +955,10 @@ static int ena_close(struct rte_eth_dev *dev)
 	ena_indirect_table_release(adapter);
 	rte_free(adapter->drv_stats);
 	adapter->drv_stats = NULL;
-
 	ena_com_set_admin_running_state(ena_dev, false);
-
 	ena_com_rss_destroy(ena_dev);
-
 	ena_com_delete_debug_area(ena_dev);
 	ena_com_delete_host_info(ena_dev);
-
 	ena_com_abort_admin_commands(ena_dev);
 	ena_com_wait_for_abort_completion(ena_dev);
 	ena_com_admin_destroy(ena_dev);

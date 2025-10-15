@@ -56,6 +56,7 @@ size_t ena_rss_get_indirection_table_size(struct ena_adapter *adapter)
 	adapter->indirect_table_size = (1UL << ena_dev->rss.tbl_log_size);
 	return adapter->indirect_table_size;
 }
+
 void ena_rss_key_fill(void *key, size_t size)
 {
 	static bool key_generated;
@@ -512,6 +513,7 @@ int ena_rss_configure(struct ena_adapter *adapter)
 	tbl_size = ena_rss_get_indirection_table_size(adapter);
 	if (!tbl_size)
 		return 0;
+
 	/* Restart the indirection table. The number of queues could change
 	 * between start/stop calls, so it must be reinitialized with default
 	 * values.
