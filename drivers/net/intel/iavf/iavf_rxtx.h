@@ -83,7 +83,6 @@
 /* vector paths that use the flex rx desc */
 #define IAVF_RX_VECTOR_FLEX_OFFLOADS (			\
 		IAVF_RX_VECTOR_OFFLOADS |		\
-		RTE_ETH_RX_OFFLOAD_TIMESTAMP |		\
 		RTE_ETH_RX_OFFLOAD_SECURITY)
 /* vector offload paths */
 #define IAVF_RX_VECTOR_OFFLOAD_OFFLOADS (		\

@@ -3768,13 +3768,14 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 			{.scattered = true, .flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_AVX2_FLEX_RXD_OFFLOAD] = {
 		iavf_recv_pkts_vec_avx2_flex_rxd_offload, "Vector AVX2 Flex Offload",
-			{IAVF_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_256,
+			{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS, RTE_VECT_SIMD_256,
 				{.flex_desc = true, .bulk_alloc = true}}},
 	[IAVF_RX_AVX2_SCATTERED_FLEX_RXD_OFFLOAD] = {
 		iavf_recv_scattered_pkts_vec_avx2_flex_rxd_offload,
 		"Vector Scattered AVX2 Flex Offload",
 		{IAVF_RX_VECTOR_OFFLOAD_FLEX_OFFLOADS | RTE_ETH_RX_OFFLOAD_SCATTER,
-			RTE_VECT_SIMD_256, {.flex_desc = true, .bulk_alloc = true}}},
+			RTE_VECT_SIMD_256,
+			{.scattered = true, .flex_desc = true, .bulk_alloc = true}}},
 #ifdef CC_AVX512_SUPPORT
 	[IAVF_RX_AVX512] = {iavf_recv_pkts_vec_avx512, "Vector AVX512",
 		{IAVF_RX_VECTOR_OFFLOADS, RTE_VECT_SIMD_512, {.bulk_alloc = true}}},
