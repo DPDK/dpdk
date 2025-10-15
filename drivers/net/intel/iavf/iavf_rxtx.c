@@ -3734,6 +3734,9 @@ static const struct ci_rx_path_info iavf_rx_path_infos[] = {
 				{.scattered = true, .flex_desc = true}}},
 	[IAVF_RX_BULK_ALLOC] = {iavf_recv_pkts_bulk_alloc, "Scalar Bulk Alloc",
 		{IAVF_RX_SCALAR_OFFLOADS, RTE_VECT_SIMD_DISABLED, {.bulk_alloc = true}}},
+	[IAVF_RX_BULK_ALLOC_FLEX_RXD] = {iavf_recv_pkts_bulk_alloc, "Scalar Bulk Alloc Flex",
+			{IAVF_RX_SCALAR_FLEX_OFFLOADS, RTE_VECT_SIMD_DISABLED,
+			{.flex_desc = true, .bulk_alloc = true}}},
 #ifdef RTE_ARCH_X86
 	[IAVF_RX_SSE] = {iavf_recv_pkts_vec, "Vector SSE",
 		{IAVF_RX_VECTOR_OFFLOAD_OFFLOADS, RTE_VECT_SIMD_128, {.bulk_alloc = true}}},
