@@ -421,11 +421,16 @@ static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
 
 	memset(&io_cq->cdesc_addr, 0x0, sizeof(io_cq->cdesc_addr));
 
-	/* Use the basic completion descriptor for Rx */
-	io_cq->cdesc_entry_size_in_bytes =
-		(io_cq->direction == ENA_COM_IO_QUEUE_DIRECTION_TX) ?
-		sizeof(struct ena_eth_io_tx_cdesc) :
-		sizeof(struct ena_eth_io_rx_cdesc_base);
+	if (ctx->use_extended_cdesc)
+		io_cq->cdesc_entry_size_in_bytes =
+			(io_cq->direction == ENA_COM_IO_QUEUE_DIRECTION_TX) ?
+			sizeof(struct ena_eth_io_tx_cdesc_ext) :
+			sizeof(struct ena_eth_io_rx_cdesc_ext);
+	else
+		io_cq->cdesc_entry_size_in_bytes =
+			(io_cq->direction == ENA_COM_IO_QUEUE_DIRECTION_TX) ?
+			sizeof(struct ena_eth_io_tx_cdesc) :
+			sizeof(struct ena_eth_io_rx_cdesc_base);
 
 	size = io_cq->cdesc_entry_size_in_bytes * io_cq->q_depth;
 	io_cq->bus = ena_dev->bus;
