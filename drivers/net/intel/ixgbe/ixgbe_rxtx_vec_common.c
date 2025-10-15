@@ -131,7 +131,7 @@ ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
 		if (!rxq)
 			continue;
-		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
+		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh))
 			return -1;
 	}
 	return 0;

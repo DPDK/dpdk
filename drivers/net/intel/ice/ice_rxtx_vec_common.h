@@ -78,7 +78,7 @@ ice_rx_vec_queue_default(struct ci_rx_queue *rxq)
 	if (!rxq)
 		return -1;
 
-	if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
+	if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh))
 		return -1;
 
 	if (rxq->proto_xtr != PROTO_XTR_NONE)

@@ -228,16 +228,11 @@ ci_rxq_mbuf_initializer(uint16_t port_id)
  * Individual drivers may have other further tests beyond this.
  */
 static inline bool
-ci_rxq_vec_capable(uint16_t nb_desc, uint16_t rx_free_thresh, uint64_t offloads)
+ci_rxq_vec_capable(uint16_t nb_desc, uint16_t rx_free_thresh)
 {
 	if (!rte_is_power_of_2(nb_desc) ||
 			rx_free_thresh < CI_RX_MAX_BURST ||
 			(nb_desc % rx_free_thresh) != 0)
-		return false;
-
-	/* no driver supports timestamping or buffer split on vector path */
-	if ((offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) ||
-			(offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT))
 		return false;
 
 	return true;
