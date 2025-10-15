@@ -60,6 +60,7 @@ struct ena_com_rx_ctx {
 	u16 descs;
 	u16 max_bufs;
 	u8 pkt_offset;
+	u64 timestamp;
 };
 
 int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
@@ -234,8 +235,9 @@ static inline void ena_com_cq_inc_head(struct ena_com_io_cq *io_cq)
 		io_cq->phase ^= 1;
 }
 
-static inline int ena_com_tx_comp_req_id_get(struct ena_com_io_cq *io_cq,
-					     u16 *req_id)
+static inline int ena_com_tx_comp_metadata_get(struct ena_com_io_cq *io_cq,
+					       u16 *req_id,
+					       u64 *hw_timestamp)
 {
 	struct ena_com_dev *dev = ena_com_io_cq_to_ena_dev(io_cq);
 	struct ena_eth_io_tx_cdesc_ext *cdesc;
@@ -278,6 +280,10 @@ static inline int ena_com_tx_comp_req_id_get(struct ena_com_io_cq *io_cq,
 			    "Invalid req id %d\n", cdesc->base.req_id);
 		return ENA_COM_INVAL;
 	}
+
+	if (unlikely(ena_com_is_extended_tx_cdesc(io_cq)))
+		*hw_timestamp = (u64)cdesc->timestamp_low |
+				(u64)cdesc->timestamp_high << 32;
 
 	ena_com_cq_inc_head(io_cq);
 

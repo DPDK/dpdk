@@ -1154,6 +1154,38 @@ static inline void ena_com_disable_adaptive_moderation(struct ena_com_dev *ena_d
 	ena_dev->adaptive_coalescing = false;
 }
 
+/* ena_com_hw_timestamping_supported - query whether HW timestamping is
+ *                                     supported by the device
+ * @ena_dev: ENA communication layer struct
+ *
+ * @return - true if the feature is supported or false otherwise
+ */
+bool ena_com_hw_timestamping_supported(struct ena_com_dev *ena_dev);
+
+/* ena_com_get_hw_timestamping_support - query HW timestamping support options
+ *                                       in the device
+ * @ena_dev: ENA communication layer struct
+ * @tx_support: Will hold the TX side supported options
+ * @rx_support: Will hold the RX side supported options
+ *
+ * @return - 0 on success, negative value on failure.
+ */
+int ena_com_get_hw_timestamping_support(struct ena_com_dev *ena_dev,
+					u8 *tx_support,
+					u8 *rx_support);
+
+/* ena_com_set_hw_timestamping_configuration - set HW timestamping configuration
+ *
+ * @ena_dev: ENA communication layer struct
+ * @tx_enable: Enable/Disable TX HW timestamping
+ * @rx_enable: Enable/Disable RX HW timestamping
+ *
+ * @return - 0 on success, negative value on failure.
+ */
+int ena_com_set_hw_timestamping_configuration(struct ena_com_dev *ena_dev,
+					      u8 tx_enable,
+					      u8 rx_enable);
+
 bool ena_com_indirection_table_config_supported(struct ena_com_dev *ena_dev);
 /* ena_com_get_cap - query whether device supports a capability.
  * @ena_dev: ENA communication layer struct

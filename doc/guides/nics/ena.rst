@@ -32,6 +32,7 @@ Supported features
 * Watchdog (requires handling of timers in the application)
 * Device reset upon failure
 * Rx interrupts
+* Rx HW packet timestamping
 
 Overview
 --------
@@ -54,6 +55,9 @@ Receive-side scaling (RSS) is supported for multi-core scaling.
 
 Some of the ENA devices support a working mode called Low-latency
 Queue (LLQ), which saves several more microseconds.
+
+Rx hardware timestamping is available in the ENA driver
+on platforms that support this feature.
 
 Management Interface
 --------------------

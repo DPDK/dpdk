@@ -49,6 +49,8 @@
 
 #define MAX_WIDE_LLQ_DEPTH_UNSUPPORTED 0
 
+#define ENA_TS_OFFSET_UNSET -1
+
 /*
  * We should try to keep ENA_CLEANUP_BUF_THRESH lower than
  * RTE_MEMPOOL_CACHE_MAX_SIZE, so we can fit this in mempool local cache.
@@ -719,6 +721,13 @@ static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 	}
 
+	if (rx_ring->ts_mbuf.offset != ENA_TS_OFFSET_UNSET) {
+		*RTE_MBUF_DYNFIELD(mbuf,
+				   rx_ring->ts_mbuf.offset,
+				   rte_mbuf_timestamp_t *) = ena_rx_ctx->timestamp;
+		ol_flags |= rx_ring->ts_mbuf.rx_flag;
+	}
+
 	mbuf->ol_flags = ol_flags;
 	mbuf->packet_type = packet_type;
 }
@@ -1323,6 +1332,54 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return rc;
 }
 
+static int ena_set_hw_timestamp_rx_params(struct ena_adapter *adapter,
+					  bool hw_rx_requested)
+{
+	int i, rc, timestamp_offset;
+	uint64_t timestamp_rx_flag;
+	struct ena_ring *rx_ring;
+
+	if (hw_rx_requested) {
+		rc = rte_mbuf_dyn_rx_timestamp_register(&timestamp_offset,
+							&timestamp_rx_flag);
+		if (rc) {
+			PMD_INIT_LOG_LINE(ERR,
+					  "Failed to register Rx timestamp field/flag");
+			return rc;
+		}
+	} else {
+		timestamp_offset = ENA_TS_OFFSET_UNSET;
+		timestamp_rx_flag = 0;
+	}
+
+	for (i = 0; i < adapter->edev_data->nb_rx_queues; i++) {
+		rx_ring = &adapter->rx_ring[i];
+		rx_ring->ts_mbuf.offset = timestamp_offset;
+		rx_ring->ts_mbuf.rx_flag = timestamp_rx_flag;
+	}
+
+	return 0;
+}
+
+static int ena_configure_hw_timestamping(struct ena_adapter *adapter)
+{
+	bool hw_rx_requested = !!(adapter->edev_data->dev_conf.rxmode.offloads &
+				  RTE_ETH_RX_OFFLOAD_TIMESTAMP);
+	int rc;
+
+	rc = ena_com_set_hw_timestamping_configuration(&adapter->ena_dev, false,
+						       hw_rx_requested);
+	if (rc && rc != ENA_COM_UNSUPPORTED) {
+		PMD_INIT_LOG_LINE(ERR,
+				  "Failed to set Rx timestamp configuration");
+		return rc;
+	}
+
+	adapter->ena_dev.use_extended_rx_cdesc = hw_rx_requested;
+
+	return ena_set_hw_timestamp_rx_params(adapter, hw_rx_requested);
+}
+
 static int ena_start(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
@@ -1455,6 +1512,7 @@ static int ena_create_io_queue(struct rte_eth_dev *dev, struct ena_ring *ring)
 	} else {
 		ena_qid = ENA_IO_RXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_RX;
+		ctx.use_extended_cdesc = ena_dev->use_extended_rx_cdesc;
 		if (rte_intr_dp_is_en(intr_handle))
 			ctx.msix_vector =
 				rte_intr_vec_list_index_get(intr_handle,
@@ -1937,6 +1995,15 @@ static int ena_device_init(struct ena_adapter *adapter,
 	if (rc) {
 		PMD_DRV_LOG_LINE(ERR,
 			"Cannot get attribute for ENA device, rc: %d", rc);
+		goto err_admin_init;
+	}
+
+	rc = ena_com_get_hw_timestamping_support(ena_dev,
+						 &adapter->ts.hw_tx_supported,
+						 &adapter->ts.hw_rx_supported);
+	if (unlikely(rc && rc != ENA_COM_UNSUPPORTED)) {
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot get HW timestamping support, rc: %d", rc);
 		goto err_admin_init;
 	}
 
@@ -2561,6 +2628,10 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 	adapter->tx_cleanup_stall_delay = adapter->missing_tx_completion_to / 2;
 
 	rc = ena_configure_aenq(adapter);
+	if (rc)
+		return rc;
+
+	rc = ena_configure_hw_timestamping(adapter);
 
 	return rc;
 }
@@ -2610,6 +2681,9 @@ static uint64_t ena_get_rx_port_offloads(struct ena_adapter *adapter)
 		port_offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	port_offloads |= RTE_ETH_RX_OFFLOAD_SCATTER;
+
+	if (adapter->ts.hw_rx_supported)
+		port_offloads |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return port_offloads;
 }
@@ -3231,6 +3305,7 @@ static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 	struct ena_ring *tx_ring = (struct ena_ring *)txp;
 	size_t mbuf_cnt = 0;
 	size_t pkt_cnt = 0;
+	uint64_t hw_timestamp = 0;
 	unsigned int total_tx_descs = 0;
 	unsigned int total_tx_pkts = 0;
 	uint16_t cleanup_budget;
@@ -3249,7 +3324,9 @@ static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 		struct ena_tx_buffer *tx_info;
 		uint16_t req_id;
 
-		if (ena_com_tx_comp_req_id_get(tx_ring->ena_com_io_cq, &req_id) != 0)
+		if (ena_com_tx_comp_metadata_get(tx_ring->ena_com_io_cq,
+						 &req_id,
+						 &hw_timestamp) != 0)
 			break;
 
 		if (unlikely(validate_tx_req_id(tx_ring, req_id) != 0))

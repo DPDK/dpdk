@@ -106,6 +106,10 @@ New Features
   By default, it reports ``RTE_ETH_LINK_CONNECTOR_NONE``
   unless driver specifies it.
 
+* **Updated Amazon ENA (Elastic Network Adapter) ethernet driver.**
+
+  * Added support for retrieving HW timestamps for Rx packets with nanosecond resolution.
+
 * **Added Huawei hinic3 ethernet driver.**
 
   Added network driver for the Huawei SPx series Network Adapters.

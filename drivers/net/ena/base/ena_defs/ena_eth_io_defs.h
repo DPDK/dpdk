@@ -166,9 +166,9 @@ struct ena_eth_io_tx_cdesc {
 struct ena_eth_io_tx_cdesc_ext {
 	struct ena_eth_io_tx_cdesc base;
 
-	uint32_t reserved_w2;
+	uint32_t timestamp_low;
 
-	uint32_t reserved_w3;
+	uint32_t timestamp_high;
 };
 
 struct ena_eth_io_rx_desc {
@@ -263,9 +263,9 @@ struct ena_eth_io_rx_cdesc_ext {
 
 	uint16_t reserved16;
 
-	uint32_t reserved_w6;
+	uint32_t timestamp_low;
 
-	uint32_t reserved_w7;
+	uint32_t timestamp_high;
 };
 
 struct ena_eth_io_intr_reg {

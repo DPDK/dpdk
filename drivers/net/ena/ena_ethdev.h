@@ -141,6 +141,18 @@ struct ena_stats_rx {
 	u64 unknown_error;
 };
 
+struct ena_timestamp_config {
+	u8 hw_tx_supported;
+	u8 hw_rx_supported;
+};
+
+struct ena_timestamp_mbuf {
+	/* Dynamic mbuf timestamp flag */
+	uint64_t rx_flag;
+	/* Dynamic mbuf timestamp field offset */
+	int offset;
+};
+
 struct __rte_cache_aligned ena_ring {
 	u16 next_to_use;
 	u16 next_to_clean;
@@ -199,6 +211,9 @@ struct __rte_cache_aligned ena_ring {
 	unsigned int numa_socket_id;
 
 	uint32_t missing_tx_completion_threshold;
+
+	/* Dynamic mbuf params for HW timestamping */
+	struct ena_timestamp_mbuf ts_mbuf;
 };
 
 enum ena_adapter_state {
@@ -350,6 +365,9 @@ struct ena_adapter {
 	uint64_t control_path_poll_interval;
 
 	bool enable_frag_bypass;
+
+	/* HW timestamp support by the device */
+	struct ena_timestamp_config ts;
 	/*
 	 * Helper variables for holding the information about the supported
 	 * metrics.
