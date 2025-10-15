@@ -102,7 +102,6 @@ struct ena_com_io_cq {
 	/* Interrupt unmask register */
 	u32 __iomem *unmask_reg;
 
-
 	/* numa configuration register (for TPH) */
 	u32 __iomem *numa_node_cfg_reg;
 
@@ -209,7 +208,9 @@ struct ena_com_stats_phc {
 	u64 phc_cnt;
 	u64 phc_exp;
 	u64 phc_skp;
-	u64 phc_err;
+	u64 phc_err_dv;
+	u64 phc_err_ts;
+	u64 phc_err_eb;
 };
 
 struct ena_com_admin_queue {
@@ -286,22 +287,21 @@ struct ena_com_phc_info {
 	u32 doorbell_offset;
 
 	/* Shared memory read expire timeout (usec)
-	 * Max time for valid PHC retrieval, passing this threshold will fail the get time request
-	 * and block new PHC requests for block_timeout_usec in order to prevent floods on busy
-	 * device
+	 * Max time for valid PHC retrieval, passing this threshold will fail
+	 * the get time request and block new PHC requests for block_timeout_usec
+	 * in order to prevent floods on busy device
 	 */
 	u32 expire_timeout_usec;
 
 	/* Shared memory read abort timeout (usec)
-	 * PHC requests block period, blocking starts once PHC request expired in order to prevent
-	 * floods on busy device, any PHC requests during block period will be skipped
+	 * PHC requests block period, blocking starts once PHC request expired
+	 * in order to prevent floods on busy device,
+	 * any PHC requests during block period will be skipped
 	 */
 	u32 block_timeout_usec;
 
 	/* PHC shared memory - physical address */
 	dma_addr_t phys_addr;
-
-	/* PHC shared memory handle */
 	ena_mem_handle_t mem_handle;
 
 	/* Cached error bound per timestamp sample */
