@@ -561,7 +561,7 @@ i40e_hash_get_pattern_pctypes(const struct rte_eth_dev *dev,
 }
 
 static uint64_t
-i40e_hash_get_inset(uint64_t rss_types)
+i40e_hash_get_inset(uint64_t rss_types, bool symmetric_enable)
 {
 	uint64_t mask, inset = 0;
 	int i;
@@ -606,6 +606,17 @@ i40e_hash_get_inset(uint64_t rss_types)
 		else if (!l3_mask && l4_mask)
 			inset &= ~(I40E_INSET_IPV4_DST | I40E_INSET_IPV6_DST |
 				 I40E_INSET_IPV4_SRC | I40E_INSET_IPV6_SRC);
+	}
+
+	/* SCTP Verification Tag is not required in hash computation for SYMMETRIC_TOEPLITZ */
+	if (symmetric_enable) {
+		mask = rss_types & RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
+		if (mask == RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+			inset &= ~I40E_INSET_SCTP_VT;
+
+		mask = rss_types & RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
+		if (mask == RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+			inset &= ~I40E_INSET_SCTP_VT;
 	}
 
 	return inset;
@@ -1113,6 +1124,7 @@ i40e_hash_parse_pattern_act(const struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL,
 					  "RSS Queues not supported when pattern specified");
+	rss_conf->symmetric_enable = false;  /* by default, symmetric is disabled */
 
 	switch (rss_act->func) {
 	case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
@@ -1140,7 +1152,7 @@ i40e_hash_parse_pattern_act(const struct rte_eth_dev *dev,
 
 	rss_conf->conf.func = rss_act->func;
 	rss_conf->conf.types = rss_act->types;
-	rss_conf->inset = i40e_hash_get_inset(rss_act->types);
+	rss_conf->inset = i40e_hash_get_inset(rss_act->types, rss_conf->symmetric_enable);
 
 	return i40e_hash_get_pattern_pctypes(dev, pattern, rss_act,
 					     rss_conf, error);
