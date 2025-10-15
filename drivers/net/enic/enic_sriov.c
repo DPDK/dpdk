@@ -13,7 +13,7 @@ static int enic_check_chan_capability(struct enic *enic);
 static int enic_register_vf(struct enic *enic);
 static void enic_unregister_vf(struct enic *enic);
 
-const char *msg_type_str[ENIC_MBOX_MAX] = {
+static const char *msg_type_str[ENIC_MBOX_MAX] = {
 	"VF_CAPABILITY_REQUEST",
 	"VF_CAPABILITY_REPLY",
 	"VF_REGISTER_REQUEST",
