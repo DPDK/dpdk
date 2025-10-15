@@ -234,12 +234,21 @@ static int ena_com_close_bounce_buffer(struct ena_com_io_sq *io_sq)
 	return ENA_COM_OK;
 }
 
-static void *get_sq_desc(struct ena_com_io_sq *io_sq)
+/* There is an assumption in function get_tx_sq_desc() that both descriptors have the same size */
+_Static_assert(sizeof(struct ena_eth_io_tx_meta_desc) == (sizeof(struct ena_eth_io_tx_desc)),
+	       "ena_eth_io_tx_meta_desc should be the same size as ena_eth_io_tx_desc");
+static void *get_tx_sq_desc(struct ena_com_io_sq *io_sq)
 {
+	void *tx_desc;
+
 	if (io_sq->mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV)
 		return get_sq_desc_llq(io_sq);
 
-	return get_sq_desc_regular_queue(io_sq);
+	tx_desc = get_sq_desc_regular_queue(io_sq);
+
+	memset(tx_desc, 0x0, sizeof(struct ena_eth_io_tx_desc));
+
+	return tx_desc;
 }
 
 static int ena_com_sq_update_llq_tail(struct ena_com_io_sq *io_sq)
@@ -372,11 +381,9 @@ static int ena_com_create_meta(struct ena_com_io_sq *io_sq,
 {
 	struct ena_eth_io_tx_meta_desc *meta_desc = NULL;
 
-	meta_desc = get_sq_desc(io_sq);
+	meta_desc = get_tx_sq_desc(io_sq);
 	if (unlikely(!meta_desc))
 		return ENA_COM_FAULT;
-
-	memset(meta_desc, 0x0, sizeof(struct ena_eth_io_tx_meta_desc));
 
 	meta_desc->len_ctrl |= ENA_ETH_IO_TX_META_DESC_META_DESC_MASK;
 
@@ -535,7 +542,7 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 		return rc;
 	}
 
-	desc = get_sq_desc(io_sq);
+	desc = get_tx_sq_desc(io_sq);
 	if (unlikely(!desc))
 		return ENA_COM_FAULT;
 
@@ -597,11 +604,9 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 				return rc;
 			}
 
-			desc = get_sq_desc(io_sq);
+			desc = get_tx_sq_desc(io_sq);
 			if (unlikely(!desc))
 				return ENA_COM_FAULT;
-
-			memset(desc, 0x0, sizeof(struct ena_eth_io_tx_desc));
 
 			desc->len_ctrl |= ENA_FIELD_PREP((u32)io_sq->phase,
 							 ENA_ETH_IO_TX_DESC_PHASE_MASK,
