@@ -9,6 +9,7 @@
 #include <rte_version.h>
 #include <rte_net.h>
 #include <rte_kvargs.h>
+#include <rte_eal_paging.h>
 
 #include "ena_ethdev.h"
 #include "ena_logs.h"
@@ -2364,6 +2365,24 @@ static int ena_init_once(void)
 	return 0;
 }
 
+/*
+ * Returns PCI BAR virtual address.
+ * If the physical address is not page-aligned,
+ * adjusts the virtual address by the page offset.
+ * Assumes page size is a power of 2.
+ */
+static void *pci_bar_addr(struct rte_pci_device *dev, uint32_t bar)
+{
+	const struct rte_mem_resource *res = &dev->mem_resource[bar];
+	size_t offset = res->phys_addr % rte_mem_page_size();
+	void *vaddr = RTE_PTR_ADD(res->addr, offset);
+
+	PMD_INIT_LOG_LINE(INFO, "PCI BAR [%u]: phys_addr=0x%" PRIx64 ", addr=%p, offset=0x%zx, adjusted_addr=%p",
+		bar, res->phys_addr, res->addr, offset, vaddr);
+
+	return vaddr;
+}
+
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct ena_calc_queue_size_ctx calc_queue_ctx = { 0 };
@@ -2409,16 +2428,17 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	intr_handle = pci_dev->intr_handle;
 
-	adapter->regs = pci_dev->mem_resource[ENA_REGS_BAR].addr;
-	adapter->dev_mem_base = pci_dev->mem_resource[ENA_MEM_BAR].addr;
-
+	adapter->regs = pci_bar_addr(pci_dev, ENA_REGS_BAR);
 	if (!adapter->regs) {
 		PMD_INIT_LOG_LINE(CRIT, "Failed to access registers BAR(%d)",
 			     ENA_REGS_BAR);
 		return -ENXIO;
 	}
-
 	ena_dev->reg_bar = adapter->regs;
+
+	/* Memory BAR may be NULL on non LLQ supported devices */
+	adapter->dev_mem_base = pci_bar_addr(pci_dev, ENA_MEM_BAR);
+
 	/* Pass device data as a pointer which can be passed to the IO functions
 	 * by the ena_com (for example - the memory allocation).
 	 */

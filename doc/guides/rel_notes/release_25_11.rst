@@ -109,6 +109,7 @@ New Features
 * **Updated Amazon ENA (Elastic Network Adapter) ethernet driver.**
 
   * Added support for retrieving HW timestamps for Rx packets with nanosecond resolution.
+  * Fixed PCI BAR mapping on 64K page size.
 
 * **Added Huawei hinic3 ethernet driver.**
 
