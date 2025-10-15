@@ -283,8 +283,8 @@ static struct ena_comp_ctx *__ena_com_submit_admin_cmd(struct ena_com_admin_queu
 
 static int ena_com_init_comp_ctxt(struct ena_com_admin_queue *admin_queue)
 {
-	struct ena_com_dev *ena_dev = admin_queue->ena_dev;
 	size_t size = admin_queue->q_depth * sizeof(struct ena_comp_ctx);
+	struct ena_com_dev *ena_dev = admin_queue->ena_dev;
 	struct ena_comp_ctx *comp_ctx;
 	u16 i;
 
@@ -846,12 +846,13 @@ err:
  */
 static u32 ena_com_reg_bar_read32(struct ena_com_dev *ena_dev, u16 offset)
 {
+	volatile struct ena_admin_ena_mmio_req_read_less_resp *read_resp;
 	struct ena_com_mmio_read *mmio_read = &ena_dev->mmio_read;
-	volatile struct ena_admin_ena_mmio_req_read_less_resp *read_resp =
-		mmio_read->read_resp;
+	u32 timeout = mmio_read->reg_read_to;
 	u32 mmio_read_reg, ret, i;
 	unsigned long flags = 0;
-	u32 timeout = mmio_read->reg_read_to;
+
+	read_resp = mmio_read->read_resp;
 
 	ENA_MIGHT_SLEEP();
 
@@ -926,8 +927,8 @@ static int ena_com_destroy_io_sq(struct ena_com_dev *ena_dev,
 				 struct ena_com_io_sq *io_sq)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
-	struct ena_admin_aq_destroy_sq_cmd destroy_cmd;
 	struct ena_admin_acq_destroy_sq_resp_desc destroy_resp;
+	struct ena_admin_aq_destroy_sq_cmd destroy_cmd;
 	u8 direction;
 	int ret;
 
@@ -999,8 +1000,8 @@ static void ena_com_io_queue_free(struct ena_com_dev *ena_dev,
 static int wait_for_reset_state(struct ena_com_dev *ena_dev, u32 timeout,
 				u16 exp_state)
 {
-	u32 val, exp = 0;
 	ena_time_t timeout_stamp;
+	u32 val, exp = 0;
 
 	/* Convert timeout from resolution of 100ms to us resolution. */
 	timeout_stamp = ENA_GET_SYSTEM_TIMEOUT(100 * 1000 * timeout);
@@ -1042,6 +1043,7 @@ bool ena_com_indirection_table_config_supported(struct ena_com_dev *ena_dev)
 	return ena_com_check_supported_feature_id(ena_dev,
 						  ENA_ADMIN_RSS_INDIRECTION_TABLE_CONFIG);
 }
+
 static int ena_com_get_feature_ex(struct ena_com_dev *ena_dev,
 				  struct ena_admin_get_feat_resp *get_resp,
 				  enum ena_admin_aq_feature_id feature_id,
@@ -1324,8 +1326,10 @@ mem_err1:
 static void ena_com_indirect_table_destroy(struct ena_com_dev *ena_dev)
 {
 	struct ena_rss *rss = &ena_dev->rss;
-	size_t tbl_size = (1ULL << rss->tbl_log_size) *
-		sizeof(struct ena_admin_rss_ind_table_entry);
+	size_t tbl_size;
+
+	tbl_size = (1ULL << rss->tbl_log_size) *
+		   sizeof(struct ena_admin_rss_ind_table_entry);
 
 	if (rss->rss_ind_tbl)
 		ENA_MEM_FREE_COHERENT(ena_dev->dmadev,
@@ -1346,8 +1350,8 @@ static int ena_com_create_io_sq(struct ena_com_dev *ena_dev,
 				struct ena_com_io_sq *io_sq, u16 cq_idx)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
-	struct ena_admin_aq_create_sq_cmd create_cmd;
 	struct ena_admin_acq_create_sq_resp_desc cmd_completion;
+	struct ena_admin_aq_create_sq_cmd create_cmd;
 	u8 direction;
 	int ret;
 
@@ -1502,8 +1506,8 @@ int ena_com_create_io_cq(struct ena_com_dev *ena_dev,
 			 struct ena_com_io_cq *io_cq)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
-	struct ena_admin_aq_create_cq_cmd create_cmd;
 	struct ena_admin_acq_create_cq_resp_desc cmd_completion;
+	struct ena_admin_aq_create_cq_cmd create_cmd;
 	int ret;
 
 	memset(&create_cmd, 0x0, sizeof(create_cmd));
@@ -1606,8 +1610,8 @@ int ena_com_destroy_io_cq(struct ena_com_dev *ena_dev,
 			  struct ena_com_io_cq *io_cq)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
-	struct ena_admin_aq_destroy_cq_cmd destroy_cmd;
 	struct ena_admin_acq_destroy_cq_resp_desc destroy_resp;
+	struct ena_admin_aq_destroy_cq_cmd destroy_cmd;
 	int ret;
 
 	memset(&destroy_cmd, 0x0, sizeof(destroy_cmd));
@@ -1657,9 +1661,9 @@ void ena_com_admin_aenq_enable(struct ena_com_dev *ena_dev)
 int ena_com_set_aenq_config(struct ena_com_dev *ena_dev, u32 groups_flag)
 {
 	struct ena_com_admin_queue *admin_queue;
-	struct ena_admin_set_feat_cmd cmd;
-	struct ena_admin_set_feat_resp resp;
 	struct ena_admin_get_feat_resp get_resp;
+	struct ena_admin_set_feat_resp resp;
+	struct ena_admin_set_feat_cmd cmd;
 	int ret;
 
 	ret = ena_com_get_feature(ena_dev, &get_resp, ENA_ADMIN_AENQ_CONFIG, 0);
@@ -1723,9 +1727,9 @@ int ena_com_get_dma_width(struct ena_com_dev *ena_dev)
 
 int ena_com_validate_version(struct ena_com_dev *ena_dev)
 {
-	u32 ver;
-	u32 ctrl_ver;
 	u32 ctrl_ver_masked;
+	u32 ctrl_ver;
+	u32 ver;
 
 	/* Make sure the ENA version and the controller version are at least
 	 * as the driver expects
@@ -2529,11 +2533,11 @@ static ena_aenq_handler ena_com_get_specific_aenq_cb(struct ena_com_dev *ena_dev
  */
 void ena_com_aenq_intr_handler(struct ena_com_dev *ena_dev, void *data)
 {
-	struct ena_admin_aenq_entry *aenq_e;
 	struct ena_admin_aenq_common_desc *aenq_common;
 	struct ena_com_aenq *aenq  = &ena_dev->aenq;
-	ena_aenq_handler handler_cb;
+	struct ena_admin_aenq_entry *aenq_e;
 	u16 masked_head, processed = 0;
+	ena_aenq_handler handler_cb;
 	u8 phase;
 
 	masked_head = aenq->head & (aenq->q_depth - 1);
@@ -2631,7 +2635,6 @@ bool ena_com_aenq_has_keep_alive(struct ena_com_dev *ena_dev)
 
 	return false;
 }
-
 
 int ena_com_dev_reset(struct ena_com_dev *ena_dev,
 		      enum ena_regs_reset_reason_types reset_reason)
@@ -2821,8 +2824,8 @@ int ena_com_get_customer_metrics(struct ena_com_dev *ena_dev, char *buffer, u32 
 int ena_com_set_dev_mtu(struct ena_com_dev *ena_dev, u32 mtu)
 {
 	struct ena_com_admin_queue *admin_queue;
-	struct ena_admin_set_feat_cmd cmd;
 	struct ena_admin_set_feat_resp resp;
+	struct ena_admin_set_feat_cmd cmd;
 	int ret;
 
 	if (!ena_com_check_supported_feature_id(ena_dev, ENA_ADMIN_MTU)) {
@@ -2857,10 +2860,10 @@ int ena_com_set_dev_mtu(struct ena_com_dev *ena_dev, u32 mtu)
 int ena_com_set_hash_function(struct ena_com_dev *ena_dev)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
+	struct ena_admin_get_feat_resp get_resp;
+	struct ena_admin_set_feat_resp resp;
 	struct ena_rss *rss = &ena_dev->rss;
 	struct ena_admin_set_feat_cmd cmd;
-	struct ena_admin_set_feat_resp resp;
-	struct ena_admin_get_feat_resp get_resp;
 	int ret;
 
 	if (!ena_com_check_supported_feature_id(ena_dev,
@@ -2968,8 +2971,8 @@ int ena_com_fill_hash_function(struct ena_com_dev *ena_dev,
 int ena_com_get_hash_function(struct ena_com_dev *ena_dev,
 			      enum ena_admin_hash_functions *func)
 {
-	struct ena_rss *rss = &ena_dev->rss;
 	struct ena_admin_get_feat_resp get_resp;
+	struct ena_rss *rss = &ena_dev->rss;
 	int rc;
 
 	if (unlikely(!func))
@@ -3008,8 +3011,8 @@ int ena_com_get_hash_ctrl(struct ena_com_dev *ena_dev,
 			  enum ena_admin_flow_hash_proto proto,
 			  u16 *fields)
 {
-	struct ena_rss *rss = &ena_dev->rss;
 	struct ena_admin_get_feat_resp get_resp;
+	struct ena_rss *rss = &ena_dev->rss;
 	int rc;
 
 	rc = ena_com_get_feature_ex(ena_dev, &get_resp,
@@ -3028,10 +3031,10 @@ int ena_com_get_hash_ctrl(struct ena_com_dev *ena_dev,
 int ena_com_set_hash_ctrl(struct ena_com_dev *ena_dev)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
+	struct ena_admin_feature_rss_hash_control *hash_ctrl;
 	struct ena_rss *rss = &ena_dev->rss;
-	struct ena_admin_feature_rss_hash_control *hash_ctrl = rss->hash_ctrl;
-	struct ena_admin_set_feat_cmd cmd;
 	struct ena_admin_set_feat_resp resp;
+	struct ena_admin_set_feat_cmd cmd;
 	int ret;
 
 	if (!ena_com_check_supported_feature_id(ena_dev,
@@ -3040,6 +3043,8 @@ int ena_com_set_hash_ctrl(struct ena_com_dev *ena_dev)
 			    ENA_ADMIN_RSS_HASH_INPUT);
 		return ENA_COM_UNSUPPORTED;
 	}
+
+	hash_ctrl = rss->hash_ctrl;
 
 	memset(&cmd, 0x0, sizeof(cmd));
 
@@ -3073,9 +3078,8 @@ int ena_com_set_hash_ctrl(struct ena_com_dev *ena_dev)
 
 int ena_com_set_default_hash_ctrl(struct ena_com_dev *ena_dev)
 {
+	struct ena_admin_feature_rss_hash_control *hash_ctrl;
 	struct ena_rss *rss = &ena_dev->rss;
-	struct ena_admin_feature_rss_hash_control *hash_ctrl =
-		rss->hash_ctrl;
 	u16 available_fields = 0;
 	int rc, i;
 
@@ -3083,6 +3087,8 @@ int ena_com_set_default_hash_ctrl(struct ena_com_dev *ena_dev)
 	rc = ena_com_get_hash_ctrl(ena_dev, 0, NULL);
 	if (unlikely(rc))
 		return rc;
+
+	hash_ctrl = rss->hash_ctrl;
 
 	hash_ctrl->selected_fields[ENA_ADMIN_RSS_TCP4].fields =
 		ENA_ADMIN_RSS_L3_SA | ENA_ADMIN_RSS_L3_DA |
@@ -3136,8 +3142,8 @@ int ena_com_fill_hash_ctrl(struct ena_com_dev *ena_dev,
 			   enum ena_admin_flow_hash_proto proto,
 			   u16 hash_fields)
 {
+	struct ena_admin_feature_rss_hash_control *hash_ctrl;
 	struct ena_rss *rss = &ena_dev->rss;
-	struct ena_admin_feature_rss_hash_control *hash_ctrl = rss->hash_ctrl;
 	u16 supported_fields;
 	int rc;
 
@@ -3150,6 +3156,8 @@ int ena_com_fill_hash_ctrl(struct ena_com_dev *ena_dev,
 	rc = ena_com_get_hash_ctrl(ena_dev, proto, NULL);
 	if (unlikely(rc))
 		return rc;
+
+	hash_ctrl = rss->hash_ctrl;
 
 	/* Make sure all the fields are supported */
 	supported_fields = hash_ctrl->supported_fields[proto].fields;
@@ -3189,8 +3197,8 @@ int ena_com_indirect_table_set(struct ena_com_dev *ena_dev)
 {
 	struct ena_com_admin_queue *admin_queue = &ena_dev->admin_queue;
 	struct ena_rss *rss = &ena_dev->rss;
-	struct ena_admin_set_feat_cmd cmd;
 	struct ena_admin_set_feat_resp resp;
+	struct ena_admin_set_feat_cmd cmd;
 	int ret;
 
 	if (!ena_com_check_supported_feature_id(ena_dev,
@@ -3240,8 +3248,8 @@ int ena_com_indirect_table_set(struct ena_com_dev *ena_dev)
 
 int ena_com_indirect_table_get(struct ena_com_dev *ena_dev, u32 *ind_tbl)
 {
-	struct ena_rss *rss = &ena_dev->rss;
 	struct ena_admin_get_feat_resp get_resp;
+	struct ena_rss *rss = &ena_dev->rss;
 	u32 tbl_size;
 	int i, rc;
 
@@ -3414,9 +3422,8 @@ int ena_com_set_host_attributes(struct ena_com_dev *ena_dev)
 {
 	struct ena_host_attribute *host_attr = &ena_dev->host_attr;
 	struct ena_com_admin_queue *admin_queue;
-	struct ena_admin_set_feat_cmd cmd;
 	struct ena_admin_set_feat_resp resp;
-
+	struct ena_admin_set_feat_cmd cmd;
 	int ret;
 
 	/* Host attribute config is called before ena_com_get_dev_attr_feat
