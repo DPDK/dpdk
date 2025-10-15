@@ -530,14 +530,15 @@ static void ena_com_handle_admin_completion(struct ena_com_admin_queue *admin_qu
 	admin_queue->stats.completed_cmd += comp_num;
 }
 
-static int ena_com_comp_status_to_errno(struct ena_com_admin_queue *admin_queue,
-					u8 comp_status)
+static int ena_com_admin_status_to_errno(struct ena_com_admin_queue *admin_queue,
+					 struct ena_comp_ctx *comp_ctx)
 {
-	if (unlikely(comp_status != 0))
+	if (unlikely(comp_ctx->comp_status != 0))
 		ena_trc_err(admin_queue->ena_dev,
-			    "Admin command failed[%u]\n", comp_status);
+			    "Admin command %u failed (%u)\n",
+			    comp_ctx->cmd_opcode, comp_ctx->comp_status);
 
-	switch (comp_status) {
+	switch (comp_ctx->comp_status) {
 	case ENA_ADMIN_SUCCESS:
 		return ENA_COM_OK;
 	case ENA_ADMIN_RESOURCE_ALLOCATION_FAILURE:
@@ -608,7 +609,7 @@ static int ena_com_wait_and_process_admin_cq_polling(struct ena_comp_ctx *comp_c
 		goto err;
 	}
 
-	ret = ena_com_comp_status_to_errno(admin_queue, comp_ctx->comp_status);
+	ret = ena_com_admin_status_to_errno(admin_queue, comp_ctx);
 err:
 	comp_ctxt_release(admin_queue, comp_ctx);
 	return ret;
@@ -833,8 +834,7 @@ static int ena_com_wait_and_process_admin_cq_interrupts(struct ena_comp_ctx *com
 		ret = ENA_COM_NO_DEVICE;
 		goto err;
 	}
-
-	ret = ena_com_comp_status_to_errno(admin_queue, comp_ctx->comp_status);
+	ret = ena_com_admin_status_to_errno(admin_queue, comp_ctx);
 err:
 	comp_ctxt_release(admin_queue, comp_ctx);
 	return ret;
