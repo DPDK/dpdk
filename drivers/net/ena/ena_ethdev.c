@@ -1948,7 +1948,7 @@ static int ena_device_init(struct ena_adapter *adapter,
 {
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	uint32_t aenq_groups;
-	int rc;
+	int dma_width, rc;
 	bool readless_supported;
 
 	/* Initialize mmio registers */
@@ -1978,7 +1978,12 @@ static int ena_device_init(struct ena_adapter *adapter,
 		goto err_mmio_read_less;
 	}
 
-	ena_dev->dma_addr_bits = ena_com_get_dma_width(ena_dev);
+	dma_width = ena_com_get_dma_width(ena_dev);
+	if (unlikely(dma_width < 0)) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid dma width value %d", dma_width);
+		rc = dma_width;
+		goto err_mmio_read_less;
+	}
 
 	/* ENA device administration layer init */
 	rc = ena_com_admin_init(ena_dev, &aenq_handlers);
