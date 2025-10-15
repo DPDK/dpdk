@@ -74,7 +74,8 @@ int ena_com_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 			       struct ena_com_buf *ena_buf,
 			       u16 req_id);
 
-bool ena_com_cq_empty(struct ena_com_io_cq *io_cq);
+bool ena_com_rx_cq_empty(struct ena_com_io_cq *io_cq);
+bool ena_com_tx_cq_empty(struct ena_com_io_cq *io_cq);
 
 static inline bool ena_com_is_extended_tx_cdesc(struct ena_com_io_cq *io_cq)
 {

@@ -733,13 +733,42 @@ int ena_com_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 	return ena_com_sq_update_reqular_queue_tail(io_sq);
 }
 
-bool ena_com_cq_empty(struct ena_com_io_cq *io_cq)
+bool ena_com_rx_cq_empty(struct ena_com_io_cq *io_cq)
 {
-	struct ena_eth_io_rx_cdesc_ext *cdesc;
+	return (ena_com_get_next_rx_cdesc(io_cq) == NULL);
+}
 
-	cdesc = ena_com_get_next_rx_cdesc(io_cq);
-	if (cdesc)
-		return false;
-	else
-		return true;
+static struct ena_eth_io_tx_cdesc_ext *ena_com_get_next_tx_cdesc(struct ena_com_io_cq *io_cq)
+{
+	struct ena_eth_io_tx_cdesc_ext *cdesc;
+	u8 expected_phase, cdesc_phase;
+	u16 masked_head;
+
+	masked_head = io_cq->head & (io_cq->q_depth - 1);
+	expected_phase = io_cq->phase;
+
+	cdesc = (struct ena_eth_io_tx_cdesc_ext *)
+		((uintptr_t)io_cq->cdesc_addr.virt_addr +
+		(masked_head * io_cq->cdesc_entry_size_in_bytes));
+
+	/* When the current completion descriptor phase isn't the same as the
+	 * expected, it means that the device didn't update this completion yet.
+	 */
+	cdesc_phase = ENA_FIELD_GET(READ_ONCE8(cdesc->base.flags),
+				    ENA_ETH_IO_TX_CDESC_PHASE_MASK,
+				    ENA_ZERO_SHIFT);
+	if (cdesc_phase != expected_phase)
+		return NULL;
+
+	/* Make sure we read the rest of the descriptor after the phase bit
+	 * has been read
+	 */
+	dma_rmb();
+
+	return cdesc;
+}
+
+bool ena_com_tx_cq_empty(struct ena_com_io_cq *io_cq)
+{
+	return (ena_com_get_next_tx_cdesc(io_cq) == NULL);
 }
