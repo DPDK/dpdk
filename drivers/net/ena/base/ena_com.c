@@ -2453,13 +2453,13 @@ int ena_com_get_dev_attr_feat(struct ena_com_dev *ena_dev,
 	} else {
 		rc = ena_com_get_feature(ena_dev, &get_resp,
 					 ENA_ADMIN_MAX_QUEUES_NUM, 0);
+		if (rc)
+			return rc;
+
 		memcpy(&get_feat_ctx->max_queues, &get_resp.u.max_queue,
 		       sizeof(get_resp.u.max_queue));
 		ena_dev->tx_max_header_size =
 			get_resp.u.max_queue.max_header_size;
-
-		if (rc)
-			return rc;
 	}
 
 	rc = ena_com_get_feature(ena_dev, &get_resp,
