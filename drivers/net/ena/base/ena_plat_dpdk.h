@@ -110,7 +110,7 @@ extern int ena_logtype_com;
 	(								       \
 		ENA_TOUCH(dev),						       \
 		rte_log(RTE_LOG_ ## level, ena_logtype_com,		       \
-			"[ENA_COM: %s]" fmt, __func__, ##__VA_ARGS__)	       \
+			"ENA_COM: %s():" fmt, __func__, ##__VA_ARGS__)	       \
 	)
 
 #if (defined RTE_ETHDEV_DEBUG_TX) || (defined RTE_ETHDEV_DEBUG_RX)
