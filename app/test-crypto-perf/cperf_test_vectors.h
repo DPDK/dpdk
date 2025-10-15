@@ -177,8 +177,11 @@ extern uint8_t aad[];
 extern uint8_t digest[2048];
 
 extern struct cperf_modex_test_data modex_perf_data[10];
+extern struct cperf_ecdsa_test_data secp192r1_perf_data;
+extern struct cperf_ecdsa_test_data secp224r1_perf_data;
 extern struct cperf_ecdsa_test_data secp256r1_perf_data;
 extern struct cperf_ecdsa_test_data secp384r1_perf_data;
+extern struct cperf_ecdsa_test_data secp521r1_perf_data;
 extern struct cperf_eddsa_test_data ed25519_perf_data;
 extern struct cperf_sm2_test_data sm2_perf_data;
 extern struct cperf_rsa_test_data rsa_pub_perf_data[4];

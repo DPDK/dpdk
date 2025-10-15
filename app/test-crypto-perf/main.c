@@ -46,8 +46,11 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_IPSEC] = "ipsec",
 	[CPERF_ASYM_MODEX] = "modex",
 	[CPERF_ASYM_RSA] = "rsa",
+	[CPERF_ASYM_SECP192R1] = "ecdsa_p192r1",
+	[CPERF_ASYM_SECP224R1] = "ecdsa_p224r1",
 	[CPERF_ASYM_SECP256R1] = "ecdsa_p256r1",
 	[CPERF_ASYM_SECP384R1] = "ecdsa_p384r1",
+	[CPERF_ASYM_SECP521R1] = "ecdsa_p521r1",
 	[CPERF_ASYM_ED25519] = "eddsa_25519",
 	[CPERF_ASYM_SM2] = "sm2",
 	[CPERF_TLS] = "tls-record"
@@ -234,8 +237,11 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		};
 
 		switch (opts->op_type) {
+		case CPERF_ASYM_SECP192R1:
+		case CPERF_ASYM_SECP224R1:
 		case CPERF_ASYM_SECP256R1:
 		case CPERF_ASYM_SECP384R1:
+		case CPERF_ASYM_SECP521R1:
 		case CPERF_ASYM_ED25519:
 		case CPERF_ASYM_SM2:
 		case CPERF_ASYM_RSA:
@@ -350,6 +356,15 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 	return enabled_cdev_count;
 }
 
+static void
+set_ecdsa_key_null(struct cperf_ecdsa_test_data *curve_data)
+{
+	if (curve_data != NULL) {
+		curve_data->k.data = NULL;
+		curve_data->k.length = 0;
+	}
+}
+
 static int
 cperf_verify_devices_capabilities(struct cperf_options *opts,
 		uint8_t *enabled_cdevs, uint8_t nb_cryptodevs)
@@ -393,8 +408,11 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 
 		}
 
-		if ((opts->op_type == CPERF_ASYM_SECP256R1) ||
-			(opts->op_type == CPERF_ASYM_SECP384R1)) {
+		if ((opts->op_type == CPERF_ASYM_SECP192R1) ||
+			(opts->op_type == CPERF_ASYM_SECP224R1) ||
+			(opts->op_type == CPERF_ASYM_SECP256R1) ||
+			(opts->op_type == CPERF_ASYM_SECP384R1) ||
+			(opts->op_type == CPERF_ASYM_SECP521R1)) {
 			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_ECDSA;
 			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
 			if (asym_capability == NULL)
@@ -405,12 +423,24 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 				return -1;
 
 			if (asym_capability->internal_rng != 0) {
-				if (opts->op_type == CPERF_ASYM_SECP256R1) {
-					opts->secp256r1_data->k.data = NULL;
-					opts->secp256r1_data->k.length = 0;
-				} else {
-					opts->secp384r1_data->k.data = NULL;
-					opts->secp384r1_data->k.length = 0;
+				switch (opts->op_type) {
+				case CPERF_ASYM_SECP192R1:
+					set_ecdsa_key_null(opts->secp192r1_data);
+					break;
+				case CPERF_ASYM_SECP224R1:
+					set_ecdsa_key_null(opts->secp224r1_data);
+					break;
+				case CPERF_ASYM_SECP256R1:
+					set_ecdsa_key_null(opts->secp256r1_data);
+					break;
+				case CPERF_ASYM_SECP384R1:
+					set_ecdsa_key_null(opts->secp384r1_data);
+					break;
+				case CPERF_ASYM_SECP521R1:
+					set_ecdsa_key_null(opts->secp521r1_data);
+					break;
+				default:
+					break;
 				}
 			}
 		}

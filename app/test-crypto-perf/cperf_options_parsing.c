@@ -39,7 +39,9 @@ usage(char *progname)
 		" --devtype TYPE: set crypto device type to use\n"
 		" --low-prio-qp-mask mask: set low priority for queues set in mask(hex)\n"
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
-		"        aead / pdcp / docsis / ipsec / modex / rsa / secp256r1 / secp384r1 / eddsa / sm2 / tls-record : set operation type\n"
+		"        aead / pdcp / docsis / ipsec / modex / rsa / secp192r1 /\n"
+		"        secp224r1 / secp256r1 / secp384r1 / secp521r1 / eddsa / sm2 /\n"
+		"        tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --shared-session: share 1 session across all queue pairs on crypto device\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
@@ -530,12 +532,24 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 			CPERF_ASYM_RSA
 		},
 		{
+			cperf_op_type_strs[CPERF_ASYM_SECP192R1],
+			CPERF_ASYM_SECP192R1
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_SECP224R1],
+			CPERF_ASYM_SECP224R1
+		},
+		{
 			cperf_op_type_strs[CPERF_ASYM_SECP256R1],
 			CPERF_ASYM_SECP256R1
 		},
 		{
 			cperf_op_type_strs[CPERF_ASYM_SECP384R1],
 			CPERF_ASYM_SECP384R1
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_SECP521R1],
+			CPERF_ASYM_SECP521R1
 		},
 		{
 			cperf_op_type_strs[CPERF_ASYM_ED25519],
@@ -1153,8 +1167,11 @@ cperf_options_default(struct cperf_options *opts)
 	opts->rsa_data = &rsa_pub_perf_data[0];
 	opts->rsa_keytype = UINT8_MAX;
 
+	opts->secp192r1_data = &secp192r1_perf_data;
+	opts->secp224r1_data = &secp224r1_perf_data;
 	opts->secp256r1_data = &secp256r1_perf_data;
 	opts->secp384r1_data = &secp384r1_perf_data;
+	opts->secp521r1_data = &secp521r1_perf_data;
 	opts->eddsa_data = &ed25519_perf_data;
 	opts->sm2_data = &sm2_perf_data;
 	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_ENCRYPT;
@@ -1636,6 +1653,19 @@ cperf_options_check(struct cperf_options *options)
 					return -EINVAL;
 				}
 			}
+		}
+	}
+
+	if (options->op_type == CPERF_ASYM_SECP192R1 ||
+		options->op_type == CPERF_ASYM_SECP224R1 ||
+		options->op_type == CPERF_ASYM_SECP256R1 ||
+		options->op_type == CPERF_ASYM_SECP384R1 ||
+		options->op_type == CPERF_ASYM_SECP521R1) {
+
+		if (options->asym_op_type != RTE_CRYPTO_ASYM_OP_SIGN &&
+			options->asym_op_type != RTE_CRYPTO_ASYM_OP_VERIFY) {
+			RTE_LOG(ERR, USER1, "ECDSA operations only support sign and verify\n");
+			return -EINVAL;
 		}
 	}
 
