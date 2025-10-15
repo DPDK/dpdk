@@ -516,26 +516,25 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 	desc = get_sq_desc(io_sq);
 	if (unlikely(!desc))
 		return ENA_COM_FAULT;
-	memset(desc, 0x0, sizeof(struct ena_eth_io_tx_desc));
+
+	desc->len_ctrl = ENA_FIELD_PREP((u32)io_sq->phase,
+					ENA_ETH_IO_TX_DESC_PHASE_MASK,
+					ENA_ETH_IO_TX_DESC_PHASE_SHIFT);
 
 	/* Set first desc when we don't have meta descriptor */
 	if (!have_meta)
 		desc->len_ctrl |= ENA_ETH_IO_TX_DESC_FIRST_MASK;
 
-	desc->buff_addr_hi_hdr_sz |= ENA_FIELD_PREP((u32)header_len,
-						    ENA_ETH_IO_TX_DESC_HEADER_LENGTH_MASK,
-						    ENA_ETH_IO_TX_DESC_HEADER_LENGTH_SHIFT);
-
-	desc->len_ctrl |= ENA_FIELD_PREP((u32)io_sq->phase,
-					 ENA_ETH_IO_TX_DESC_PHASE_MASK,
-					 ENA_ETH_IO_TX_DESC_PHASE_SHIFT);
+	desc->buff_addr_hi_hdr_sz = ENA_FIELD_PREP((u32)header_len,
+						   ENA_ETH_IO_TX_DESC_HEADER_LENGTH_MASK,
+						   ENA_ETH_IO_TX_DESC_HEADER_LENGTH_SHIFT);
 
 	desc->len_ctrl |= ENA_ETH_IO_TX_DESC_COMP_REQ_MASK;
 
 	/* Bits 0-9 */
-	desc->meta_ctrl |= ENA_FIELD_PREP((u32)ena_tx_ctx->req_id,
-					  ENA_ETH_IO_TX_DESC_REQ_ID_LO_MASK,
-					  ENA_ETH_IO_TX_DESC_REQ_ID_LO_SHIFT);
+	desc->meta_ctrl = ENA_FIELD_PREP((u32)ena_tx_ctx->req_id,
+					 ENA_ETH_IO_TX_DESC_REQ_ID_LO_MASK,
+					 ENA_ETH_IO_TX_DESC_REQ_ID_LO_SHIFT);
 
 	desc->meta_ctrl |= ENA_FIELD_PREP(ena_tx_ctx->df,
 					  ENA_ETH_IO_TX_DESC_DF_MASK,
