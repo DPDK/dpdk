@@ -774,10 +774,21 @@ s32 txgbe_identify_sfp_module(struct txgbe_hw *hw)
 	u8 identifier = 0;
 	u8 comp_codes_1g = 0;
 	u8 comp_codes_10g = 0;
+	u8 comp_codes_25g = 0;
+	u8 comp_copper_len = 0;
 	u8 oui_bytes[3] = {0, 0, 0};
 	u8 cable_tech = 0;
 	u8 cable_spec = 0;
 	u16 enforce_sfp = 0;
+	u32 value;
+
+	if (hw->mac.type == txgbe_mac_aml) {
+		value = rd32(hw, TXGBE_GPIOEXT);
+		if (value & TXGBE_SFP1_MOD_ABS_LS) {
+			hw->phy.sfp_type = txgbe_sfp_type_not_present;
+			return TXGBE_ERR_SFP_NOT_PRESENT;
+		}
+	}
 
 	if (hw->phy.media_type != txgbe_media_type_fiber) {
 		hw->phy.sfp_type = txgbe_sfp_type_not_present;
@@ -811,6 +822,16 @@ ERR_I2C:
 	if (err != 0)
 		goto ERR_I2C;
 
+	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_25GBE_COMP_CODES,
+					      &comp_codes_25g);
+	if (err != 0)
+		goto ERR_I2C;
+
+	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_COPPER_LENGTH,
+					      &comp_copper_len);
+	if (err != 0)
+		goto ERR_I2C;
+
 	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_CABLE_TECHNOLOGY,
 					     &cable_tech);
 	if (err != 0)
@@ -832,12 +853,7 @@ ERR_I2C:
 	  * 11  SFP_1g_sx_CORE0 - chip-specific
 	  * 12  SFP_1g_sx_CORE1 - chip-specific
 	  */
-	if (cable_tech & TXGBE_SFF_CABLE_DA_PASSIVE) {
-		if (hw->bus.lan_id == 0)
-			hw->phy.sfp_type = txgbe_sfp_type_da_cu_core0;
-		else
-			hw->phy.sfp_type = txgbe_sfp_type_da_cu_core1;
-	} else if (cable_tech & TXGBE_SFF_CABLE_DA_ACTIVE) {
+	if (cable_tech & TXGBE_SFF_CABLE_DA_ACTIVE) {
 		err = hw->phy.read_i2c_eeprom(hw,
 			TXGBE_SFF_CABLE_SPEC_COMP, &cable_spec);
 		if (err != 0)
@@ -849,6 +865,17 @@ ERR_I2C:
 		} else {
 			hw->phy.sfp_type = txgbe_sfp_type_unknown;
 		}
+	} else if (comp_codes_25g == TXGBE_SFF_25GBASESR_CAPABLE ||
+		   comp_codes_25g == TXGBE_SFF_25GBASEER_CAPABLE) {
+		if (hw->bus.lan_id == 0)
+			hw->phy.sfp_type = txgbe_sfp_type_25g_sr_core0;
+		else
+			hw->phy.sfp_type = txgbe_sfp_type_25g_sr_core1;
+	} else if (comp_codes_25g == TXGBE_SFF_25GBASELR_CAPABLE) {
+		if (hw->bus.lan_id == 0)
+			hw->phy.sfp_type = txgbe_sfp_type_25g_lr_core0;
+		else
+			hw->phy.sfp_type = txgbe_sfp_type_25g_lr_core1;
 	} else if (comp_codes_10g &
 		   (TXGBE_SFF_10GBASESR_CAPABLE |
 		    TXGBE_SFF_10GBASELR_CAPABLE)) {
@@ -876,11 +903,20 @@ ERR_I2C:
 
 	/* Determine if the SFP+ PHY is dual speed or not. */
 	hw->phy.multispeed_fiber = false;
-	if (((comp_codes_1g & TXGBE_SFF_1GBASESX_CAPABLE) &&
-	     (comp_codes_10g & TXGBE_SFF_10GBASESR_CAPABLE)) ||
-	    ((comp_codes_1g & TXGBE_SFF_1GBASELX_CAPABLE) &&
-	     (comp_codes_10g & TXGBE_SFF_10GBASELR_CAPABLE)))
-		hw->phy.multispeed_fiber = true;
+	if (hw->mac.type == txgbe_mac_aml) {
+		if ((comp_codes_25g == TXGBE_SFF_25GBASESR_CAPABLE ||
+		     comp_codes_25g == TXGBE_SFF_25GBASELR_CAPABLE ||
+		     comp_codes_25g == TXGBE_SFF_25GBASEER_CAPABLE) &&
+		   ((comp_codes_10g & TXGBE_SFF_10GBASESR_CAPABLE) ||
+		    (comp_codes_10g & TXGBE_SFF_10GBASELR_CAPABLE)))
+			hw->phy.multispeed_fiber = true;
+	} else {
+		if (((comp_codes_1g & TXGBE_SFF_1GBASESX_CAPABLE) &&
+		     (comp_codes_10g & TXGBE_SFF_10GBASESR_CAPABLE)) ||
+		    ((comp_codes_1g & TXGBE_SFF_1GBASELX_CAPABLE) &&
+		     (comp_codes_10g & TXGBE_SFF_10GBASELR_CAPABLE)))
+			hw->phy.multispeed_fiber = true;
+	}
 
 	/* Determine PHY vendor */
 	if (hw->phy.type != txgbe_phy_nl) {
@@ -938,7 +974,7 @@ ERR_I2C:
 	}
 
 	/* Verify supported 1G SFP modules */
-	if (comp_codes_10g == 0 &&
+	if (comp_codes_10g == 0 && comp_codes_25g == 0 &&
 	    !(hw->phy.sfp_type == txgbe_sfp_type_1g_cu_core1 ||
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_cu_core0 ||
 	      hw->phy.sfp_type == txgbe_sfp_type_1g_lx_core0 ||
@@ -986,11 +1022,22 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 	u8 cable_length = 0;
 	u8 device_tech = 0;
 	bool active_cable = false;
+	u32 value;
 
 	if (hw->phy.media_type != txgbe_media_type_fiber_qsfp) {
 		hw->phy.sfp_type = txgbe_sfp_type_not_present;
 		err = TXGBE_ERR_SFP_NOT_PRESENT;
 		goto out;
+	}
+
+	if (hw->mac.type == txgbe_mac_aml40) {
+		/* config GPIO before read i2c */
+		wr32(hw, TXGBE_GPIODATA, TXGBE_GPIOBIT_1);
+		value = rd32(hw, TXGBE_GPIOEXT);
+		if (value & TXGBE_SFP1_MOD_PRST_LS) {
+			hw->phy.sfp_type = txgbe_sfp_type_not_present;
+			return TXGBE_ERR_SFP_NOT_PRESENT;
+		}
 	}
 
 	err = hw->phy.read_i2c_eeprom(hw, TXGBE_SFF_IDENTIFIER,
@@ -1024,10 +1071,27 @@ ERR_I2C:
 
 	if (comp_codes_10g & TXGBE_SFF_QSFP_DA_PASSIVE_CABLE) {
 		hw->phy.type = txgbe_phy_qsfp_unknown_passive;
+		if (hw->mac.type == txgbe_mac_aml40) {
+			if (hw->bus.lan_id == 0)
+				hw->phy.sfp_type = txgbe_qsfp_type_40g_cu_core0;
+			else
+				hw->phy.sfp_type = txgbe_qsfp_type_40g_cu_core1;
+		} else {
+			if (hw->bus.lan_id == 0)
+				hw->phy.sfp_type = txgbe_sfp_type_da_cu_core0;
+			else
+				hw->phy.sfp_type = txgbe_sfp_type_da_cu_core1;
+		}
+	} else if (comp_codes_10g & TXGBE_SFF_40GBASE_SR4) {
 		if (hw->bus.lan_id == 0)
-			hw->phy.sfp_type = txgbe_sfp_type_da_cu_core0;
+			hw->phy.sfp_type = txgbe_qsfp_type_40g_sr_core0;
 		else
-			hw->phy.sfp_type = txgbe_sfp_type_da_cu_core1;
+			hw->phy.sfp_type = txgbe_qsfp_type_40g_sr_core1;
+	} else if (comp_codes_10g & TXGBE_SFF_40GBASE_LR4) {
+		if (hw->bus.lan_id == 0)
+			hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core0;
+		else
+			hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core1;
 	} else if (comp_codes_10g & (TXGBE_SFF_10GBASESR_CAPABLE |
 				     TXGBE_SFF_10GBASELR_CAPABLE)) {
 		if (hw->bus.lan_id == 0)
