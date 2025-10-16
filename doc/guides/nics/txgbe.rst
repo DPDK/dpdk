@@ -146,6 +146,20 @@ Please note that following ``devargs`` are only set for backplane NICs.
   PHY parameter used for user debugging. Setting other values to
   take effect requires setting the ``ffe_set``.
 
+Please note that following ``devargs`` are only set for Amber-Lite NICs.
+
+- ``tx_headwb`` (default **1**)
+
+  Use to enable the TX Head Write-Back mode.
+  In this mode, the hardware merges and writes back a group of TX descriptors
+  together to reduce memory access times, which helps improve performance.
+
+- ``tx_headwb_size`` (default **16**)
+
+  Tx head write-back length.
+  It is recommended to use the default values.
+  Setting other values to take effect requires setting the ``tx_headwb``.
+
 Driver compilation and testing
 ------------------------------
 

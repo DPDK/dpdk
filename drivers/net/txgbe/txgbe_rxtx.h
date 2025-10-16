@@ -414,6 +414,9 @@ struct txgbe_tx_queue {
 	const struct rte_memzone *mz;
 	uint64_t	    desc_error;
 	bool		    resetting;
+	const struct rte_memzone *headwb;
+	uint64_t             headwb_dma;
+	volatile uint32_t    *headwb_mem;
 };
 
 struct txgbe_txq_ops {

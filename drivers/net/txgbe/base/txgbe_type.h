@@ -716,6 +716,8 @@ struct txgbe_phy_info {
 #define TXGBE_DEVARG_FFE_MAIN		"ffe_main"
 #define TXGBE_DEVARG_FFE_PRE		"ffe_pre"
 #define TXGBE_DEVARG_FFE_POST		"ffe_post"
+#define TXGBE_DEVARG_TX_HEAD_WB		"tx_headwb"
+#define TXGBE_DEVARG_TX_HEAD_WB_SIZE	"tx_headwb_size"
 
 static const char * const txgbe_valid_arguments[] = {
 	TXGBE_DEVARG_BP_AUTO,
@@ -726,6 +728,8 @@ static const char * const txgbe_valid_arguments[] = {
 	TXGBE_DEVARG_FFE_MAIN,
 	TXGBE_DEVARG_FFE_PRE,
 	TXGBE_DEVARG_FFE_POST,
+	TXGBE_DEVARG_TX_HEAD_WB,
+	TXGBE_DEVARG_TX_HEAD_WB_SIZE,
 	NULL
 };
 
@@ -776,6 +780,8 @@ struct txgbe_devargs {
 	u16 poll;
 	u16 present;
 	u16 sgmii;
+	u16 tx_headwb;
+	u16 tx_headwb_size;
 };
 
 struct txgbe_hw {

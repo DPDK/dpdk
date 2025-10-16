@@ -1407,6 +1407,13 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_TXCFG_WTHRESH(v)        LS(v, 16, 0x7F)
 #define   TXGBE_TXCFG_WTHRESH_AML(v)    LS(v, 16, 0x1FF)
 #define   TXGBE_TXCFG_FLUSH             MS(26, 0x1)
+#define TXGBE_PX_TR_CFG_HEAD_WB         MS(27, 0x1) /* amlite head wb */
+#define TXGBE_PX_TR_CFG_HEAD_WB_64BYTE  MS(28, 0x1) /* amlite head wb 64byte */
+#define TXGBE_PX_TR_CFG_HEAD_WB_MASK    MS(27, 0x3)
+
+/* amlite: tx head wb */
+#define TXGBE_PX_TR_HEAD_ADDRL(_i)      (0x03028 + ((_i) * 0x40))
+#define TXGBE_PX_TR_HEAD_ADDRH(_i)      (0x0302C + ((_i) * 0x40))
 
 #define TXGBE_TDM_DESC_CHK(i)		(0x0180B0 + (i) * 4) /*0-3*/
 #define TXGBE_TDM_DESC_NONFATAL(i)	(0x0180C0 + (i) * 4) /*0-3*/
