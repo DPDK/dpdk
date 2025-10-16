@@ -3082,6 +3082,7 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 
 	/* enable mac receiver */
 	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		txgbe_reconfig_mac(hw);
 		wr32m(hw, TXGBE_MACRXCFG, TXGBE_MACRXCFG_ENA, TXGBE_MACRXCFG_ENA);
 	}
 
