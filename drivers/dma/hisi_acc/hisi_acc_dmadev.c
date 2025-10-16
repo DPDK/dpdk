@@ -34,6 +34,190 @@ RTE_LOG_REGISTER_DEFAULT(hacc_dma_logtype, INFO);
 #define HACC_DMA_ERR(hw, ...) \
 	HACC_DMA_DEV_LOG(hw, ERR, __VA_ARGS__)
 
+static int
+hacc_dma_info_get(const struct rte_dma_dev *dev,
+		  struct rte_dma_info *dev_info,
+		  uint32_t info_sz)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+
+	RTE_SET_USED(info_sz);
+
+	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
+			     RTE_DMA_CAPA_SVA |
+			     RTE_DMA_CAPA_OPS_COPY |
+			     RTE_DMA_CAPA_OPS_FILL;
+	dev_info->max_vchans = 1;
+	dev_info->max_desc = hw->sq_depth;
+	dev_info->min_desc = hw->sq_depth;
+
+	return 0;
+}
+
+static int
+hacc_dma_configure(struct rte_dma_dev *dev,
+		   const struct rte_dma_conf *conf,
+		   uint32_t conf_sz)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(conf);
+	RTE_SET_USED(conf_sz);
+	return 0;
+}
+
+static int
+hacc_dma_start(struct rte_dma_dev *dev)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+	int ret;
+
+	if ((*hw->sq_status != 0) || (*hw->cq_status != 0)) {
+		HACC_DMA_ERR(hw, "detect dev is abnormal!");
+		return -EIO;
+	}
+
+	if (hw->started) {
+		hw->ridx = 0;
+		hw->cridx = 0;
+		return 0;
+	}
+
+	memset(hw->sqe, 0, hw->sqe_size * hw->sq_depth);
+	memset(hw->cqe, 0, sizeof(struct hacc_dma_cqe) * hw->cq_depth);
+	memset(hw->status, 0, sizeof(uint16_t) * hw->sq_depth);
+	hw->ridx = 0;
+	hw->cridx = 0;
+	hw->sq_head = 0;
+	hw->sq_tail = 0;
+	hw->cq_sq_head = 0;
+	hw->avail_sqes = hw->sq_depth - HACC_DMA_SQ_GAP_NUM - 1;
+	hw->cq_head = 0;
+	hw->cqs_completed = 0;
+	hw->cqe_vld = 1;
+	hw->submitted = 0;
+	hw->completed = 0;
+	hw->errors = 0;
+	hw->invalid_lens = 0;
+	hw->qfulls = 0;
+
+	ret = rte_uacce_queue_start(&hw->qctx);
+	if (ret == 0)
+		hw->started = true;
+
+	return ret;
+}
+
+static int
+hacc_dma_stop(struct rte_dma_dev *dev)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+
+	if ((*hw->sq_status != 0) || (*hw->cq_status != 0)) {
+		/* This indicates that the dev is abnormal. The correct error handling
+		 * is to close the dev (so that kernel module will perform error handling)
+		 * and apply for a new dev.
+		 * If an error code is returned here, the dev cannot be closed. Therefore,
+		 * zero is returned and an error trace is added.
+		 */
+		HACC_DMA_ERR(hw, "detect dev is abnormal!");
+		return 0;
+	}
+
+	return 0;
+}
+
+static int
+hacc_dma_close(struct rte_dma_dev *dev)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+	/* The dmadev already stopped */
+	rte_free(hw->status);
+	rte_uacce_queue_unmap(&hw->qctx, RTE_UACCE_QFRT_DUS);
+	rte_uacce_queue_unmap(&hw->qctx, RTE_UACCE_QFRT_MMIO);
+	rte_uacce_queue_free(&hw->qctx);
+	return 0;
+}
+
+static int
+hacc_dma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
+		     const struct rte_dma_vchan_conf *conf,
+		     uint32_t conf_sz)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(vchan);
+	RTE_SET_USED(conf);
+	RTE_SET_USED(conf_sz);
+	return 0;
+}
+
+static int
+hacc_dma_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
+		   struct rte_dma_stats *stats,
+		   uint32_t stats_sz)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+
+	RTE_SET_USED(vchan);
+	RTE_SET_USED(stats_sz);
+	stats->submitted = hw->submitted;
+	stats->completed = hw->completed;
+	stats->errors    = hw->errors;
+
+	return 0;
+}
+
+static int
+hacc_dma_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+
+	RTE_SET_USED(vchan);
+	hw->submitted    = 0;
+	hw->completed    = 0;
+	hw->errors       = 0;
+	hw->invalid_lens = 0;
+	hw->io_errors    = 0;
+	hw->qfulls       = 0;
+
+	return 0;
+}
+
+static int
+hacc_dma_dump(const struct rte_dma_dev *dev, FILE *f)
+{
+	struct hacc_dma_dev *hw = dev->data->dev_private;
+
+	fprintf(f, "  sqn: %u sq_status: %s cq_status: %s\n"
+		"  sqe_size: %u sq_depth: %u sq_depth_mask: %u cq_depth: %u\n",
+		hw->sqn, (*hw->sq_status != 0) ? "ERR" : "OK",
+		(*hw->cq_status != 0) ? "ERR" : "OK",
+		hw->sqe_size, hw->sq_depth, hw->sq_depth_mask, hw->cq_depth);
+	fprintf(f, "  ridx: %u cridx: %u\n"
+		"  sq_head: %u sq_tail: %u cq_sq_head: %u avail_sqes: %u\n"
+		"  cq_head: %u cqs_completed: %u cqe_vld: %u\n",
+		hw->ridx, hw->cridx,
+		hw->sq_head, hw->sq_tail, hw->cq_sq_head, hw->avail_sqes,
+		hw->cq_head, hw->cqs_completed, hw->cqe_vld);
+	fprintf(f, "  submitted: %" PRIu64 " completed: %" PRIu64 " errors: %" PRIu64
+		" invalid_lens: %" PRIu64 " io_errors: %" PRIu64 " qfulls: %" PRIu64 "\n",
+		hw->submitted, hw->completed, hw->errors, hw->invalid_lens,
+		hw->io_errors, hw->qfulls);
+
+	return 0;
+}
+
+static const struct rte_dma_dev_ops hacc_dmadev_ops = {
+	.dev_info_get     = hacc_dma_info_get,
+	.dev_configure    = hacc_dma_configure,
+	.dev_start        = hacc_dma_start,
+	.dev_stop         = hacc_dma_stop,
+	.dev_close        = hacc_dma_close,
+	.vchan_setup      = hacc_dma_vchan_setup,
+	.stats_get        = hacc_dma_stats_get,
+	.stats_reset      = hacc_dma_stats_reset,
+	.dev_dump         = hacc_dma_dump,
+};
+
 static void
 hacc_dma_gen_dev_name(const struct rte_uacce_device *uacce_dev,
 		      uint16_t queue_id, char *dev_name, size_t size)
@@ -111,6 +295,7 @@ hacc_dma_create(struct rte_uacce_device *uacce_dev, uint16_t queue_id)
 	}
 
 	dev->device = &uacce_dev->device;
+	dev->dev_ops = &hacc_dmadev_ops;
 	dev->fp_obj->dev_private = dev->data->dev_private;
 
 	hw = dev->data->dev_private;

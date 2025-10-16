@@ -43,3 +43,13 @@ named ``hisi_zip-0-dma0`` and ``hisi_zip-0-dma1``.
    user could query API and algorithms,
    this driver can only match the device whose API is ``hisi_qm_v5``
    and algorithms contain ``udma``.
+
+Device Configuration
+~~~~~~~~~~~~~~~~~~~~~
+
+Configuration requirements:
+
+* ``ring_size`` obtained from UACCE API and is a fixed value.
+* Only one ``vchan`` is supported per ``dmadev``.
+* Silent mode is not supported.
+* The transfer direction must be set to ``RTE_DMA_DIR_MEM_TO_MEM``.
