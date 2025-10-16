@@ -165,6 +165,12 @@ New Features
   Renamed ``dma/hisilicon`` to ``dma/hisi_pciep`` (PCIe internal endpoint)
   to reflect hardware IP.
 
+* **Added HiSilicon Accelerator DMA driver.**
+
+  Kunpeng SoC has an internal accelerator unit which includes zip function,
+  and the zip also supports data copy and fill.
+  This driver exposes this capability to DPDK applications.
+
 * **Allow overriding the automatic usage/help generation in argparse library.**
 
   The argparse library now supports overriding the automatic help text generation,
