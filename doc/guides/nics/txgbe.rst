@@ -160,6 +160,12 @@ Please note that following ``devargs`` are only set for Amber-Lite NICs.
   It is recommended to use the default values.
   Setting other values to take effect requires setting the ``tx_headwb``.
 
+- ``rx_desc_merge`` (default **1**)
+
+  Use to enable the RX descriptor merge mode.
+  In this mode, the hardware merges and writes back a group of RX descriptors
+  together to reduce memory access times, which helps improve performance.
+
 Driver compilation and testing
 ------------------------------
 
