@@ -1238,6 +1238,8 @@ enum txgbe_5tuple_protocol {
 			TXGBE_ICRMISC_LNKUP)
 #define TXGBE_ICSMISC                   0x000104
 #define TXGBE_IENMISC                   0x000108
+#define TXGBE_PX_PF_BME                 0x0004B8
+#define   TXGBE_PX_PF_BME_EN            MS(0, 0x1)
 #define TXGBE_IVARMISC                  0x0004FC
 #define   TXGBE_IVARMISC_VEC(v)         LS(v, 0, 0x7)
 #define   TXGBE_IVARMISC_VLD            MS(7, 0x1)

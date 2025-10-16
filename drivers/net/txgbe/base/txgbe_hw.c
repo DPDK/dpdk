@@ -276,6 +276,8 @@ s32 txgbe_start_hw(struct txgbe_hw *hw)
 	/* Cache bit indicating need for crosstalk fix */
 	switch (hw->mac.type) {
 	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
 		hw->mac.get_device_caps(hw, &device_caps);
 		if (device_caps & TXGBE_DEVICE_CAPS_NO_CROSSTALK_WR)
 			hw->need_crosstalk_fix = false;
@@ -3507,13 +3509,37 @@ txgbe_reset_misc(struct txgbe_hw *hw)
 {
 	int i;
 	u32 value;
+	int err = 0;
+	u32 speed;
 
 	wr32(hw, TXGBE_ISBADDRL, hw->isb_dma & 0x00000000FFFFFFFF);
 	wr32(hw, TXGBE_ISBADDRH, hw->isb_dma >> 32);
 
-	value = rd32_epcs(hw, SR_XS_PCS_CTRL2);
-	if ((value & 0x3) != SR_PCS_CTRL2_TYPE_SEL_X)
-		hw->link_status = TXGBE_LINK_STATUS_NONE;
+	if (hw->mac.type == txgbe_mac_aml) {
+		if ((rd32(hw, TXGBE_EPHY_STAT) & TXGBE_EPHY_STAT_PPL_LOCK)
+						!= TXGBE_EPHY_STAT_PPL_LOCK) {
+			speed = TXGBE_LINK_SPEED_25GB_FULL
+			      | TXGBE_LINK_SPEED_10GB_FULL;
+			err = hw->mac.setup_link(hw, speed, false);
+			if (err) {
+				DEBUGOUT("setup phy failed");
+				return;
+			}
+		}
+	} else if (hw->mac.type == txgbe_mac_aml40) {
+		if (!(rd32(hw, TXGBE_EPHY_STAT) & TXGBE_EPHY_STAT_PPL_LOCK)) {
+			speed = TXGBE_LINK_SPEED_40GB_FULL;
+			err = hw->mac.setup_link(hw, speed, false);
+			if (err) {
+				DEBUGOUT("setup phy failed");
+				return;
+			}
+		}
+	} else {
+		value = rd32_epcs(hw, SR_XS_PCS_CTRL2);
+		if ((value & 0x3) != SR_PCS_CTRL2_TYPE_SEL_X)
+			hw->link_status = TXGBE_LINK_STATUS_NONE;
+	}
 
 	/* receive packets that size > 2048 */
 	wr32m(hw, TXGBE_MACRXCFG,
@@ -3576,7 +3602,7 @@ txgbe_reset_misc(struct txgbe_hw *hw)
 s32 txgbe_reset_hw(struct txgbe_hw *hw)
 {
 	s32 status;
-	u32 autoc;
+	u32 autoc = 0;
 
 	/* Call adapter stop to disable tx/rx and clear interrupts */
 	status = hw->mac.stop_hw(hw);
@@ -3638,16 +3664,28 @@ mac_reset_top:
 		goto mac_reset_top;
 	}
 
-	/*
-	 * Store the original AUTOC/AUTOC2 values if they have not been
-	 * stored off yet.  Otherwise restore the stored original
-	 * values since the reset operation sets back to defaults.
-	 */
-	if (!hw->mac.orig_link_settings_stored) {
-		hw->mac.orig_autoc = hw->mac.autoc_read(hw);
-		hw->mac.orig_link_settings_stored = true;
+	/* amlite TODO*/
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_LINKUP_FILTER, 30);
+		wr32m(hw, TXGBE_MAC_MISC_CTL, TXGBE_MAC_MISC_LINK_STS_MOD,
+			  TXGBE_LINK_BOTH_PCS_MAC);
+		/* amlite: bme */
+		wr32(hw, TXGBE_PX_PF_BME, TXGBE_PX_PF_BME_EN);
+		/* amlite: rdm_rsc_ctl_free_ctl set to 1 */
+		wr32m(hw, TXGBE_RDM_RSC_CTL, TXGBE_RDM_RSC_CTL_FREE_CTL,
+			  TXGBE_RDM_RSC_CTL_FREE_CTL);
 	} else {
-		hw->mac.orig_autoc = autoc;
+		/*
+		 * Store the original AUTOC/AUTOC2 values if they have not been
+		 * stored off yet.  Otherwise restore the stored original
+		 * values since the reset operation sets back to defaults.
+		 */
+		if (!hw->mac.orig_link_settings_stored) {
+			hw->mac.orig_autoc = hw->mac.autoc_read(hw);
+			hw->mac.orig_link_settings_stored = true;
+		} else {
+			hw->mac.orig_autoc = autoc;
+		}
 	}
 
 	if (hw->phy.ffe_set) {
