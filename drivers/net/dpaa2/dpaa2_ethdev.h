@@ -70,6 +70,9 @@
  */
 #define DPAA2_TX_CGR_OFF	RTE_BIT32(0)
 
+/* Drop packets with parsing error in hw */
+#define DPAA2_PARSE_ERR_DROP	RTE_BIT32(1)
+
 /* Disable RX tail drop, default is enable */
 #define DPAA2_RX_TAILDROP_OFF	RTE_BIT32(2)
 

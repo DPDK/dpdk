@@ -482,6 +482,10 @@ for details.
   In this mode tx conf queues need to be polled to free the buffers.
   e.g. ``fslmc:dpni.1,drv_tx_conf=1``
 
+* Use dev arg option ``drv_rx_parse_drop=1`` to configure the system
+  to start dropping the error packets in hardware (parse errors).
+  e.g. ``fslmc:dpni.1,drv_rx_parse_drop=1``
+
 * Use dev arg option  ``drv_error_queue=1`` to enable Packets in Error queue.
   DPAA2 hardware drops the error packet in hardware. This option enables the
   hardware to not drop the error packet and let the driver dump the error
