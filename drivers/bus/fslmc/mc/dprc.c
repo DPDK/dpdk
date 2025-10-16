@@ -8,6 +8,7 @@
 #include <fsl_mc_cmd.h>
 #include <fsl_dprc.h>
 #include <fsl_dprc_cmd.h>
+#include <eal_export.h>
 
 /** @addtogroup dprc
  * @{
@@ -90,6 +91,7 @@ int dprc_close(struct fsl_mc_io *mc_io,
  *
  * Return:     '0' on Success; -ENAVAIL if connection does not exist.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(dprc_get_connection)
 int dprc_get_connection(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

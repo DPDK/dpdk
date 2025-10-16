@@ -82,6 +82,7 @@ enum rte_dpaa2_dev_type {
 	DPAA2_MPORTAL,  /**< DPMCP type device */
 	DPAA2_QDMA,     /**< DPDMAI type device */
 	DPAA2_MUX,	/**< DPDMUX type device */
+	DPAA2_SW,       /**< DPSW type device */
 	DPAA2_DPRTC,	/**< DPRTC type device */
 	DPAA2_DPRC,	/**< DPRC type device */
 	DPAA2_MAC,	/**< DPMAC type device */

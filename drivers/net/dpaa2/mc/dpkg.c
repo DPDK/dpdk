@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
- * Copyright 2017-2021, 2023 NXP
+ * Copyright 2017-2021, 2023-2024 NXP
  *
  */
 #include <fsl_mc_sys.h>
@@ -20,8 +20,7 @@
  *	- dpkg_prepare_key_cfg()
  */
 int
-dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg,
-	void *key_cfg_buf)
+dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg, uint8_t *key_cfg_buf)
 {
 	int i, j;
 	struct dpni_ext_set_rx_tc_dist *dpni_ext;
@@ -30,7 +29,7 @@ dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg,
 	if (cfg->num_extracts > DPKG_MAX_NUM_OF_EXTRACTS)
 		return -EINVAL;
 
-	dpni_ext = key_cfg_buf;
+	dpni_ext = (struct dpni_ext_set_rx_tc_dist *)key_cfg_buf;
 	dpni_ext->num_extracts = cfg->num_extracts;
 
 	for (i = 0; i < cfg->num_extracts; i++) {

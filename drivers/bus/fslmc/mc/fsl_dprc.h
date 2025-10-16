@@ -37,6 +37,7 @@ struct dprc_endpoint {
 	uint16_t if_id;
 };
 
+__rte_internal
 int dprc_get_connection(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

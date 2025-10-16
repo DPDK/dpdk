@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2023 NXP
+ * Copyright 2018-2024 NXP
  *
  */
 #ifndef __FSL_DPDMUX_H
@@ -52,6 +52,9 @@ int dpdmux_close(struct fsl_mc_io *mc_io,
  * IRQ event - Indicates that the link state changed
  */
 #define DPDMUX_IRQ_EVENT_LINK_CHANGED	0x0001
+
+/* DPDMUX_IRQ_EVENT_ENDPOINT_CHANGED - indicates a change in endpoint */
+#define DPDMUX_IRQ_EVENT_ENDPOINT_CHANGED	0x0002
 
 /**
  * enum dpdmux_manip - DPDMUX manipulation operations
@@ -143,15 +146,15 @@ int dpdmux_reset(struct fsl_mc_io *mc_io,
 		 uint16_t token);
 
 /**
- *Setting 1 DPDMUX_RESET will not reset default interface
+ *Setting 1 DPDMUX_RESET will not modify default interface after reset
  */
-#define DPDMUX_SKIP_DEFAULT_INTERFACE	0x01
+#define DPDMUX_SKIP_MODIFY_DEFAULT_INTERFACE	0x01
 /**
- *Setting 1 DPDMUX_RESET will not reset unicast rules
+ *Setting 2 DPDMUX_RESET will not reset unicast rules
  */
 #define DPDMUX_SKIP_UNICAST_RULES	0x02
 /**
- *Setting 1 DPDMUX_RESET will not reset multicast rules
+ *Setting 3 DPDMUX_RESET will not reset multicast rules
  */
 #define DPDMUX_SKIP_MULTICAST_RULES	0x04
 /**
