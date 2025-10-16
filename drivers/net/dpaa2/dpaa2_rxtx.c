@@ -708,6 +708,7 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 		rte_hexdump(stderr, "Error packet", v_addr,
 			DPAA2_GET_FD_OFFSET(fd) + DPAA2_GET_FD_LEN(fd));
 
+		rte_pktmbuf_free(mbuf);
 		dq_storage++;
 		num_rx++;
 	} while (pending);
