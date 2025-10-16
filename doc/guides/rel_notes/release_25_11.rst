@@ -118,6 +118,7 @@ New Features
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Enabled software taildrop for ordered queues.
+  * Added additional MAC counters in xstats.
 
 * **Updated Wangxun txgbe ethernet driver.**
 
