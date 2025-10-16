@@ -366,8 +366,13 @@ s32 txgbe_calc_eeprom_checksum(struct txgbe_hw *hw)
 		err = hw->rom.readw_buffer(hw, i, seg, buffer);
 		if (err)
 			return err;
-		for (j = 0; j < seg; j++)
+		for (j = 0; j < seg; j++) {
+			if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+				if (((i + j) >= (TXGBE_SHOWROM_I2C_PTR / 2)) &&
+				    ((i + j) < (TXGBE_SHOWROM_I2C_END / 2)))
+					buffer[j] = 0xffff;
 			checksum += buffer[j];
+		}
 	}
 
 	checksum = (u16)TXGBE_EEPROM_SUM - checksum + read_checksum;

@@ -263,6 +263,13 @@
 #define   TXGBE_MNGMBXCTL_FWACK    MS(3, 0x1)
 #define TXGBE_MNGMBX               0x01E100
 
+/* amlite: swfw mailbox changes */
+#define TXGBE_AML_MNG_MBOX_CTL_SW2FW    0x01E0A0
+#define TXGBE_AML_MNG_MBOX_SW2FW        0x01E200
+#define TXGBE_AML_MNG_MBOX_CTL_FW2SW    0x01E0A4
+#define TXGBE_AML_MNG_MBOX_FW2SW        0x01E300
+#define   TXGBE_AML_MNG_MBOX_NOTIFY     MS(31, 0x1)
+
 /******************************************************************************
  * Port Registers
  ******************************************************************************/
