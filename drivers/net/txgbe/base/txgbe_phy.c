@@ -173,6 +173,41 @@ s32 txgbe_get_phy_id(struct txgbe_hw *hw)
 	u32 err;
 	u16 phy_id_high = 0;
 	u16 phy_id_low = 0;
+	u32 i = 0;
+	u32 status;
+
+	if (hw->mac.type == txgbe_mac_aml) {
+		hw->phy.addr = 0;
+
+		for (i = 0; i < 32; i++) {
+			hw->phy.addr = i;
+			status = txgbe_read_phy_reg_mdi(hw, TXGBE_MD_PHY_ID_HIGH, 0, &phy_id_high);
+			if (status) {
+				DEBUGOUT("txgbe_read_phy_reg_mdi failed 1");
+				return status;
+			}
+			DEBUGOUT("%d: phy_id_high 0x%x", i, phy_id_high);
+			if ((phy_id_high & 0xFFFF) == 0x0141)
+				break;
+		}
+
+		if (i == 32) {
+			DEBUGOUT("txgbe_read_phy_reg_mdi failed");
+			return TXGBE_ERR_PHY;
+		}
+
+		status = txgbe_read_phy_reg_mdi(hw, TXGBE_MD_PHY_ID_LOW, 0, &phy_id_low);
+		if (status) {
+			DEBUGOUT("txgbe_read_phy_reg_mdi failed 2");
+			return status;
+		}
+		hw->phy.id = (u32)(phy_id_high & 0xFFFF) << 6;
+		hw->phy.id |= (u32)((phy_id_low & 0xFC00) >> 10);
+
+		DEBUGOUT("phy_id 0x%x", hw->phy.id);
+
+		return status;
+	}
 
 	err = hw->phy.read_reg(hw, TXGBE_MD_PHY_ID_HIGH,
 				      TXGBE_MD_DEV_PMA_PMD,
