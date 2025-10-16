@@ -4,8 +4,12 @@
 TXGBE Poll Mode Driver
 ======================
 
-The TXGBE PMD (librte_pmd_txgbe) provides poll mode driver support
-for Wangxun 10 Gigabit Ethernet NICs.
+Supported NICs
+--------------
+
+- Wangxun 10 Gigabit Ethernet NICs
+- Wangxun 25 Gigabit Ethernet NICs
+- Wangxun 40 Gigabit Ethernet NICs
 
 Features
 --------
@@ -36,6 +40,9 @@ Prerequisites
 
 - Learning about Wangxun 10 Gigabit Ethernet NICs using
   `<https://www.net-swift.com/a/383.html>`_.
+
+- Learning about Wangxun 25 Gigabit Ethernet NICs using
+  `<https://www.net-swift.com/a/25GbE-tong-yong-lei-FF5025.html>`_.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 

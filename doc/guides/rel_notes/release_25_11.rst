@@ -114,6 +114,13 @@ New Features
 
   * Enabled software taildrop for ordered queues.
 
+* **Updated Wangxun txgbe ethernet driver.**
+
+  Added support for Wangxun Amber-Lite NIC series,
+  including FF5025 (supporting 10G and 25G) and FF5040 (supporting 40G).
+  As these new models share hardware similarities with the existing 10G Sapphire NICs,
+  many of the existing configurations and practices are expected to apply.
+
 * **Updated Yunsilicon xsc ethernet driver.**
 
   * Added FW version query.
