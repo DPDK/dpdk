@@ -602,3 +602,39 @@ s32 txgbe_hic_set_lldp(struct txgbe_hw *hw, bool on)
 	return txgbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
 					    TXGBE_HI_COMMAND_TIMEOUT, false);
 }
+
+s32 txgbe_hic_ephy_set_link(struct txgbe_hw *hw, u8 speed, u8 autoneg, u8 duplex)
+{
+	struct txgbe_hic_ephy_setlink buffer;
+	s32 status;
+	int i;
+
+	buffer.hdr.cmd = FW_PHY_CONFIG_LINK_CMD;
+	buffer.hdr.buf_len = sizeof(struct txgbe_hic_ephy_setlink) - sizeof(struct txgbe_hic_hdr);
+	buffer.hdr.cmd_or_resp.cmd_resv = FW_CEM_CMD_RESERVED;
+
+	buffer.fec_mode = TXGBE_PHY_FEC_AUTO;
+	buffer.speed = speed;
+	buffer.autoneg = autoneg;
+	buffer.duplex = duplex;
+
+	for (i = 0; i <= FW_CEM_MAX_RETRIES; i++) {
+		status = txgbe_host_interface_command(hw, (u32 *)&buffer,
+						      sizeof(buffer),
+						      TXGBE_HI_COMMAND_TIMEOUT_SHORT, true);
+		if (status != 0) {
+			msleep(1);
+			continue;
+		}
+
+		if (buffer.hdr.cmd_or_resp.ret_status ==
+				FW_CEM_RESP_STATUS_SUCCESS)
+			status = 0;
+		else
+			status = TXGBE_ERR_HOST_INTERFACE_COMMAND;
+
+		break;
+	}
+
+	return status;
+}
