@@ -3849,7 +3849,7 @@ txgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (!txgbe_rss_update_sp(hw->mac.type)) {
+	if (!txgbe_rss_update(hw->mac.type)) {
 		PMD_DRV_LOG(ERR, "RSS reta update is not supported on this "
 			"NIC.");
 		return -ENOTSUP;
@@ -5174,11 +5174,14 @@ txgbe_get_module_eeprom(struct rte_eth_dev *dev,
 }
 
 bool
-txgbe_rss_update_sp(enum txgbe_mac_type mac_type)
+txgbe_rss_update(enum txgbe_mac_type mac_type)
 {
 	switch (mac_type) {
 	case txgbe_mac_sp:
 	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
+	case txgbe_mac_aml_vf:
 		return 1;
 	default:
 		return 0;

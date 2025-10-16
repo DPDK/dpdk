@@ -3111,7 +3111,7 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 	uint64_t rss_hf;
 	uint16_t i;
 
-	if (!txgbe_rss_update_sp(hw->mac.type)) {
+	if (!txgbe_rss_update(hw->mac.type)) {
 		PMD_DRV_LOG(ERR, "RSS hash update is not supported on this "
 			"NIC.");
 		return -ENOTSUP;

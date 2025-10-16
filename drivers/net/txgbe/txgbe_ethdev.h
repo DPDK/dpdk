@@ -517,7 +517,7 @@ int txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 int txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				struct rte_eth_rss_conf *rss_conf);
 
-bool txgbe_rss_update_sp(enum txgbe_mac_type mac_type);
+bool txgbe_rss_update(enum txgbe_mac_type mac_type);
 
 int txgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *filter,
