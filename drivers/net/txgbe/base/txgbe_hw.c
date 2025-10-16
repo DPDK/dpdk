@@ -2220,27 +2220,56 @@ void txgbe_clear_tx_pending(struct txgbe_hw *hw)
  *
  *  Returns the thermal sensor data structure
  **/
+#define PHYINIT_TIMEOUT 1000
 s32 txgbe_get_thermal_sensor_data(struct txgbe_hw *hw)
 {
 	struct txgbe_thermal_sensor_data *data = &hw->mac.thermal_sensor_data;
 	s64 tsv;
 	u32 ts_stat;
+	u32 data_code;
+	int temp_data, temp_fraction;
+	int i = 0;
 
 	/* Only support thermal sensors attached to physical port 0 */
 	if (hw->bus.lan_id != 0)
 		return TXGBE_NOT_IMPLEMENTED;
 
-	ts_stat = rd32(hw, TXGBE_TSSTAT);
-	tsv = (s64)TXGBE_TSSTAT_DATA(ts_stat);
-	tsv = tsv > 1200 ? tsv : 1200;
-	tsv = -(48380 << 8) / 1000
-		+ tsv * (31020 << 8) / 100000
-		- tsv * tsv * (18201 << 8) / 100000000
-		+ tsv * tsv * tsv * (81542 << 8) / 1000000000000
-		- tsv * tsv * tsv * tsv * (16743 << 8) / 1000000000000000;
-	tsv >>= 8;
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_AML_TS_ENA, 0x0001);
 
-	data->sensor[0].temp = (s16)tsv;
+		while (1) {
+			data_code = rd32(hw, TXGBE_AML_TS_STS);
+			if ((data_code & TXGBE_AML_TS_STS_VLD) != 0)
+				break;
+			msleep(1);
+			if (i++ > PHYINIT_TIMEOUT) {
+				PMD_DRV_LOG(ERR, "ERROR: Wait 0x1033c Timeout!!!");
+				return -1;
+			}
+		}
+
+		data_code = data_code & 0xFFF;
+		temp_data = 419400 + 2205 * (data_code * 1000 / 4094 - 500);
+
+		/* Change double Temperature to int */
+		tsv = temp_data / 10000;
+		temp_fraction = temp_data - (tsv * 10000);
+		if (temp_fraction >= 5000)
+			tsv += 1;
+		data->sensor[0].temp = (s16)tsv;
+	} else {
+		ts_stat = rd32(hw, TXGBE_TSSTAT);
+		tsv = (s64)TXGBE_TSSTAT_DATA(ts_stat);
+		tsv = tsv > 1200 ? tsv : 1200;
+		tsv = -(48380 << 8) / 1000
+			+ tsv * (31020 << 8) / 100000
+			- tsv * tsv * (18201 << 8) / 100000000
+			+ tsv * tsv * tsv * (81542 << 8) / 1000000000000
+			- tsv * tsv * tsv * tsv * (16743 << 8) / 1000000000000000;
+		tsv >>= 8;
+
+		data->sensor[0].temp = (s16)tsv;
+	}
 
 	return 0;
 }
@@ -2261,16 +2290,32 @@ s32 txgbe_init_thermal_sensor_thresh(struct txgbe_hw *hw)
 	if (hw->bus.lan_id != 0)
 		return TXGBE_NOT_IMPLEMENTED;
 
-	wr32(hw, TXGBE_TSCTRL, TXGBE_TSCTRL_EVALMD);
-	wr32(hw, TXGBE_TSINTR,
-		TXGBE_TSINTR_AEN | TXGBE_TSINTR_DEN);
-	wr32(hw, TXGBE_TSEN, TXGBE_TSEN_ENA);
-
-
 	data->sensor[0].alarm_thresh = 100;
-	wr32(hw, TXGBE_TSATHRE, 677);
 	data->sensor[0].dalarm_thresh = 90;
-	wr32(hw, TXGBE_TSDTHRE, 614);
+
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_AML_TS_ENA, 0x0);
+		wr32(hw, TXGBE_AML_INTR_RAW_LO, TXGBE_AML_INTR_CL_LO);
+		wr32(hw, TXGBE_AML_INTR_RAW_HI, TXGBE_AML_INTR_CL_HI);
+
+		wr32(hw, TXGBE_AML_INTR_HIGH_EN, TXGBE_AML_INTR_EN_HI);
+		wr32(hw, TXGBE_AML_INTR_LOW_EN, TXGBE_AML_INTR_EN_LO);
+
+		wr32m(hw, TXGBE_AML_TS_CTL1, TXGBE_AML_EVAL_MODE_MASK, 0x10);
+		wr32m(hw, TXGBE_AML_TS_CTL1, TXGBE_AML_ALARM_THRE_MASK, 0x186a0000);
+		wr32m(hw, TXGBE_AML_TS_CTL1, TXGBE_AML_DALARM_THRE_MASK, 0x16f60);
+		wr32(hw, TXGBE_AML_TS_ENA, 0x1);
+	} else {
+		wr32(hw, TXGBE_TSCTRL, TXGBE_TSCTRL_EVALMD);
+		wr32(hw, TXGBE_TSINTR,
+			 TXGBE_TSINTR_AEN | TXGBE_TSINTR_DEN);
+		wr32(hw, TXGBE_TSEN, TXGBE_TSEN_ENA);
+
+		data->sensor[0].alarm_thresh = 100;
+		wr32(hw, TXGBE_TSATHRE, 677);
+		data->sensor[0].dalarm_thresh = 90;
+		wr32(hw, TXGBE_TSDTHRE, 614);
+	}
 
 	return 0;
 }

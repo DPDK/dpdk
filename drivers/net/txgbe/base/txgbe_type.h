@@ -37,6 +37,33 @@
 #include "txgbe_osdep.h"
 #include "txgbe_devids.h"
 
+/* Sensors for AMLITE PVT(Process Voltage Temperature) */
+#define TXGBE_AML_INTR_RAW_HI           0x10300
+#define TXGBE_AML_INTR_RAW_ME           0x10304
+#define TXGBE_AML_INTR_RAW_LO           0x10308
+#define TXGBE_AML_TS_CTL1               0x10330
+#define TXGBE_AML_TS_CTL2               0x10334
+#define TXGBE_AML_TS_ENA                0x10338
+#define TXGBE_AML_TS_STS                0x1033C
+#define TXGBE_AML_INTR_HIGH_EN          0x10318
+#define TXGBE_AML_INTR_MED_EN           0x1031C
+#define TXGBE_AML_INTR_LOW_EN           0x10320
+#define TXGBE_AML_INTR_HIGH_STS         0x1030C
+#define TXGBE_AML_INTR_MED_STS          0x10310
+#define TXGBE_AML_INTR_LOW_STS          0x10314
+
+#define TXGBE_AML_TS_STS_VLD            0x00001000U
+#define TXGBE_AML_INTR_EN_HI            0x00000002U
+#define TXGBE_AML_INTR_EN_ME            0x00000001U
+#define TXGBE_AML_INTR_EN_LO            0x00000001U
+#define TXGBE_AML_INTR_CL_HI            0x00000002U
+#define TXGBE_AML_INTR_CL_ME            0x00000001U
+#define TXGBE_AML_INTR_CL_LO            0x00000001U
+#define TXGBE_AML_EVAL_MODE_MASK        0x00000010U
+#define TXGBE_AML_CAL_MODE_MASK         0x00000008U
+#define TXGBE_AML_ALARM_THRE_MASK       0x1FFE0000U
+#define TXGBE_AML_DALARM_THRE_MASK      0x0001FFE0U
+
 struct txgbe_thermal_diode_data {
 	s16 temp;
 	s16 alarm_thresh;
