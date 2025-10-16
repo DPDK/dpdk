@@ -633,9 +633,11 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
-	uint32_t lcore_id = rte_lcore_id();
+	uint32_t lcore_id = rte_lcore_id(), i = 0;
 	void *v_addr, *hw_annot_addr;
 	struct dpaa2_fas *fas;
+	struct rte_mbuf *mbuf;
+	char title[32];
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -691,13 +693,37 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 		hw_annot_addr = (void *)((size_t)v_addr + DPAA2_FD_PTA_SIZE);
 		fas = hw_annot_addr;
 
-		DPAA2_PMD_ERR("[%d] error packet on port[%d]:"
-			" fd_off: %d, fd_err: %x, fas_status: %x",
-			rte_lcore_id(), eth_data->port_id,
+		if (DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg)
+			mbuf = eth_sg_fd_to_mbuf(fd, eth_data->port_id);
+		else
+			mbuf = eth_fd_to_mbuf(fd, eth_data->port_id);
+
+		if (!dpaa2_print_parser_result) {
+			/** Don't print parse result twice.*/
+			dpaa2_print_parse_result(hw_annot_addr);
+		}
+
+		DPAA2_PMD_ERR("Err pkt on port[%d]:", eth_data->port_id);
+		DPAA2_PMD_ERR("FD offset: %d, FD err: %x, FAS status: %x",
 			DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_ERR(fd),
 			fas->status);
-		rte_hexdump(stderr, "Error packet", v_addr,
-			DPAA2_GET_FD_OFFSET(fd) + DPAA2_GET_FD_LEN(fd));
+
+		if (mbuf)
+			__rte_mbuf_sanity_check(mbuf, 1);
+		if (mbuf->nb_segs > 1) {
+			while (mbuf) {
+				sprintf(title, "Payload seg[%d]", i);
+				rte_hexdump(stderr, title,
+					(char *)mbuf->buf_addr + mbuf->data_off,
+					mbuf->data_len);
+				mbuf = mbuf->next;
+				i++;
+			}
+		} else {
+			rte_hexdump(stderr, "Payload",
+				(char *)mbuf->buf_addr + mbuf->data_off,
+				mbuf->data_len);
+		}
 
 		rte_pktmbuf_free(mbuf);
 		dq_storage++;
