@@ -74,19 +74,6 @@ static const u64 TXGBE_TX_OFFLOAD_MASK = (RTE_MBUF_F_TX_IP_CKSUM |
  */
 #define rte_txgbe_prefetch(p)   rte_prefetch0(p)
 
-static int
-txgbe_is_vf(struct rte_eth_dev *dev)
-{
-	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-
-	switch (hw->mac.type) {
-	case txgbe_mac_sp_vf:
-		return 1;
-	default:
-		return 0;
-	}
-}
-
 /*********************************************************************
  *
  *  TX functions
@@ -2112,7 +2099,7 @@ txgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   RTE_ETH_RX_OFFLOAD_RSS_HASH |
 		   RTE_ETH_RX_OFFLOAD_SCATTER;
 
-	if (!txgbe_is_vf(dev))
+	if (!txgbe_is_vf(hw))
 		offloads |= (RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
 			     RTE_ETH_RX_OFFLOAD_QINQ_STRIP |
 			     RTE_ETH_RX_OFFLOAD_VLAN_EXTEND);
@@ -2121,10 +2108,10 @@ txgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 	 * RSC is only supported by PF devices in a non-SR-IOV
 	 * mode.
 	 */
-	if (hw->mac.type == txgbe_mac_sp && !sriov->active)
+	if (txgbe_is_pf(hw) && !sriov->active)
 		offloads |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
-	if (hw->mac.type == txgbe_mac_sp)
+	if (txgbe_is_pf(hw))
 		offloads |= RTE_ETH_RX_OFFLOAD_MACSEC_STRIP;
 
 	offloads |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
@@ -2363,6 +2350,7 @@ uint64_t
 txgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 {
 	uint64_t tx_offload_capa;
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
 	tx_offload_capa =
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
@@ -2380,7 +2368,7 @@ txgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 		RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO	|
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
-	if (!txgbe_is_vf(dev))
+	if (!txgbe_is_vf(hw))
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 
 	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
@@ -2498,7 +2486,7 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Modification to set tail pointer for virtual function
 	 * if vf is detected.
 	 */
-	if (hw->mac.type == txgbe_mac_sp_vf) {
+	if (txgbe_is_vf(hw)) {
 		txq->tdt_reg_addr = TXGBE_REG_ADDR(hw, TXGBE_TXWP(queue_idx));
 		txq->tdc_reg_addr = TXGBE_REG_ADDR(hw, TXGBE_TXCFG(queue_idx));
 	} else {
@@ -2791,7 +2779,7 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/*
 	 * Modified to setup VFRDT for Virtual Function
 	 */
-	if (hw->mac.type == txgbe_mac_sp_vf) {
+	if (txgbe_is_vf(hw)) {
 		rxq->rdt_reg_addr =
 			TXGBE_REG_ADDR(hw, TXGBE_RXWP(queue_idx));
 		rxq->rdh_reg_addr =
@@ -3037,7 +3025,7 @@ txgbe_rss_disable(struct rte_eth_dev *dev)
 	struct txgbe_hw *hw;
 
 	hw = TXGBE_DEV_HW(dev);
-	if (hw->mac.type == txgbe_mac_sp_vf)
+	if (txgbe_is_vf(hw))
 		wr32m(hw, TXGBE_VFPLCFG, TXGBE_VFPLCFG_RSSENA, 0);
 	else
 		wr32m(hw, TXGBE_RACTL, TXGBE_RACTL_RSSENA, 0);
@@ -3074,7 +3062,7 @@ txgbe_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	/* Set configured hashing protocols */
 	rss_hf = rss_conf->rss_hf & TXGBE_RSS_OFFLOAD_ALL;
-	if (hw->mac.type == txgbe_mac_sp_vf) {
+	if (txgbe_is_vf(hw)) {
 		mrqc = rd32(hw, TXGBE_VFPLCFG);
 		mrqc &= ~TXGBE_VFPLCFG_RSSMASK;
 		if (rss_hf & RTE_ETH_RSS_IPV4)
@@ -3166,7 +3154,7 @@ txgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 
 	rss_hf = 0;
-	if (hw->mac.type == txgbe_mac_sp_vf) {
+	if (txgbe_is_vf(hw)) {
 		mrqc = rd32(hw, TXGBE_VFPLCFG);
 		if (mrqc & TXGBE_VFPLCFG_RSSIPV4)
 			rss_hf |= RTE_ETH_RSS_IPV4;
@@ -3628,6 +3616,8 @@ txgbe_dcb_hw_arbite_tx_config(struct txgbe_hw *hw, uint16_t *refill,
 {
 	switch (hw->mac.type) {
 	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
 		txgbe_dcb_config_tx_desc_arbiter_raptor(hw, refill,
 							max, bwg_id, tsa);
 		txgbe_dcb_config_tx_data_arbiter_raptor(hw, refill,
@@ -4555,7 +4545,7 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * If loopback mode is configured, set LPBK bit.
 	 */
 	hlreg0 = rd32(hw, TXGBE_PSRCTL);
-	if (hw->mac.type == txgbe_mac_sp &&
+	if (txgbe_is_pf(hw) &&
 	    dev->data->dev_conf.lpbk_mode)
 		hlreg0 |= TXGBE_PSRCTL_LBENA;
 	else
@@ -4640,7 +4630,7 @@ txgbe_dev_rx_init(struct rte_eth_dev *dev)
 
 	wr32(hw, TXGBE_PSRCTL, rxcsum);
 
-	if (hw->mac.type == txgbe_mac_sp) {
+	if (txgbe_is_pf(hw)) {
 		rdrxctl = rd32(hw, TXGBE_SECRXCTL);
 		if (rx_conf->offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
 			rdrxctl &= ~TXGBE_SECRXCTL_CRCSTRIP;
@@ -4730,11 +4720,18 @@ txgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		/* Setup Transmit Threshold Registers */
-		wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
-		      TXGBE_TXCFG_HTHRESH_MASK |
-		      TXGBE_TXCFG_WTHRESH_MASK,
-		      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
-		      TXGBE_TXCFG_WTHRESH(txq->wthresh));
+		if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+			wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+			      TXGBE_TXCFG_HTHRESH_MASK |
+			      TXGBE_TXCFG_WTHRESH_MASK_AML,
+			      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
+			      TXGBE_TXCFG_WTHRESH_AML(txq->wthresh));
+		else
+			wr32m(hw, TXGBE_TXCFG(txq->reg_idx),
+			      TXGBE_TXCFG_HTHRESH_MASK |
+			      TXGBE_TXCFG_WTHRESH_MASK,
+			      TXGBE_TXCFG_HTHRESH(txq->hthresh) |
+			      TXGBE_TXCFG_WTHRESH(txq->wthresh));
 	}
 
 	dmatxctl = rd32(hw, TXGBE_DMATXCTRL);
@@ -4759,13 +4756,20 @@ txgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 		}
 	}
 
+	/* enable mac transmitter */
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32(hw, TXGBE_SECTXCTL, 0);
+		wr32m(hw, TXGBE_MACTXCFG,
+			  TXGBE_MACTXCFG_TXE, TXGBE_MACTXCFG_TXE);
+	}
+
 	/* Enable Receive engine */
 	rxctrl = rd32(hw, TXGBE_PBRXCTL);
 	rxctrl |= TXGBE_PBRXCTL_ENA;
 	hw->mac.enable_rx_dma(hw, rxctrl);
 
 	/* If loopback mode is enabled, set up the link accordingly */
-	if (hw->mac.type == txgbe_mac_sp &&
+	if (txgbe_is_pf(hw) &&
 	    dev->data->dev_conf.lpbk_mode)
 		txgbe_setup_loopback_link_raptor(hw);
 

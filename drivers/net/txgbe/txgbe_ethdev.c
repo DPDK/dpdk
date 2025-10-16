@@ -385,7 +385,7 @@ txgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	uint32_t q_map;
 	uint8_t n, offset;
 
-	if (hw->mac.type != txgbe_mac_sp)
+	if (!txgbe_is_pf(hw))
 		return -ENOSYS;
 
 	if (stat_idx & ~QMAP_FIELD_RESERVED_BITS_MASK)
@@ -1806,7 +1806,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Skip link setup if loopback mode is enabled. */
-	if (hw->mac.type == txgbe_mac_sp &&
+	if (txgbe_is_pf(hw) &&
 	    dev->data->dev_conf.lpbk_mode)
 		goto skip_link_setup;
 
@@ -2817,6 +2817,7 @@ txgbe_dev_sfp_event(struct rte_eth_dev *dev)
 
 	wr32(hw, TXGBE_GPIOINTMASK, 0xFF);
 	reg = rd32(hw, TXGBE_GPIORAWINTSTAT);
+
 	if (reg & TXGBE_GPIOBIT_0)
 		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_0);
 	if (reg & TXGBE_GPIOBIT_2) {
@@ -3079,8 +3080,13 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		break;
 	}
 
+	/* enable mac receiver */
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		wr32m(hw, TXGBE_MACRXCFG, TXGBE_MACRXCFG_ENA, TXGBE_MACRXCFG_ENA);
+	}
+
 	/* Re configure MAC RX */
-	if (hw->mac.type == txgbe_mac_sp) {
+	if (txgbe_is_pf(hw)) {
 		reg = rd32(hw, TXGBE_MACRXCFG);
 		wr32(hw, TXGBE_MACRXCFG, reg);
 		wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_PROMISC,

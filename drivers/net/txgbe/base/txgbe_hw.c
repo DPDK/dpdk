@@ -20,6 +20,7 @@
 #define TXGBE_RAPTOR_MC_TBL_SIZE   128
 #define TXGBE_RAPTOR_VFT_TBL_SIZE  128
 #define TXGBE_RAPTOR_RX_PB_SIZE	  512 /*KB*/
+#define TXGBE_AML_RX_PB_SIZE	  768
 
 static s32 txgbe_setup_copper_link_raptor(struct txgbe_hw *hw,
 					 u32 speed,
@@ -2505,6 +2506,19 @@ bool txgbe_is_pf(struct txgbe_hw *hw)
 {
 	switch (hw->mac.type) {
 	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool txgbe_is_vf(struct txgbe_hw *hw)
+{
+	switch (hw->mac.type) {
+	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml_vf:
 		return true;
 	default:
 		return false;
@@ -2919,6 +2933,9 @@ s32 txgbe_init_ops_generic(struct txgbe_hw *hw)
 	mac->rx_pb_size		= TXGBE_RAPTOR_RX_PB_SIZE;
 	mac->max_rx_queues	= TXGBE_RAPTOR_MAX_RX_QUEUES;
 	mac->max_tx_queues	= TXGBE_RAPTOR_MAX_TX_QUEUES;
+
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+		mac->rx_pb_size = TXGBE_AML_RX_PB_SIZE;
 
 	return 0;
 }

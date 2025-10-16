@@ -318,11 +318,17 @@
 #define   TXGBE_LEDCTL_1G		MS(2, 0x1)
 #define   TXGBE_LEDCTL_100M		MS(3, 0x1)
 #define   TXGBE_LEDCTL_ACTIVE		MS(4, 0x1)
+#define TXGBE_LINKUP_FILTER             0x014428
 #define TXGBE_TAGTPID(i)                (0x014430 + (i) * 4) /* 0-3 */
 #define   TXGBE_TAGTPID_LSB_MASK        MS(0, 0xFFFF)
 #define   TXGBE_TAGTPID_LSB(v)          LS(v, 0, 0xFFFF)
 #define   TXGBE_TAGTPID_MSB_MASK        MS(16, 0xFFFF)
 #define   TXGBE_TAGTPID_MSB(v)          LS(v, 16, 0xFFFF)
+
+/*AML LINK STATUS OVERWRITE*/
+#define TXGBE_AML_EPCS_MISC_CTL         0x13240
+#define TXGBE_AML_LINK_STATUS_OVRD_EN   MS(5, 0x1)
+#define TXGBE_AML_LINK_STATUS_OVRD_VAL  MS(4, 0x1)
 
 /**
  * GPIO Control
@@ -1393,7 +1399,9 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_TXCFG_HTHRESH_MASK      MS(8, 0xF)
 #define   TXGBE_TXCFG_HTHRESH(v)        LS(v, 8, 0xF)
 #define   TXGBE_TXCFG_WTHRESH_MASK      MS(16, 0x7F)
+#define   TXGBE_TXCFG_WTHRESH_MASK_AML  MS(16, 0x1FF)
 #define   TXGBE_TXCFG_WTHRESH(v)        LS(v, 16, 0x7F)
+#define   TXGBE_TXCFG_WTHRESH_AML(v)    LS(v, 16, 0x1FF)
 #define   TXGBE_TXCFG_FLUSH             MS(26, 0x1)
 
 #define TXGBE_TDM_DESC_CHK(i)		(0x0180B0 + (i) * 4) /*0-3*/
@@ -1638,6 +1646,16 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_ARBRXCTL_WSP            MS(2, 0x1)
 #define   TXGBE_ARBRXCTL_DIA            MS(6, 0x1)
 
+#define TXGBE_RDM_VF_RE(_i)     (0x12004 + ((_i) * 4))
+#define TXGBE_RDM_VFRE_CLR(_i)  (0x120A0 + ((_i) * 4))
+#define TXGBE_RDM_RSC_CTL       0x1200C
+/* amlite: rdm_rsc_ctl_free_ctl */
+#define TXGBE_RDM_RSC_CTL_FREE_CTL      MS(7, 0x1)
+#define TXGBE_RDM_RSC_CTL_FREE_CNT_DIS  MS(8, 0x1)
+#define TXGBE_RDM_ARB_CFG(_i)   (0x12040 + ((_i) * 4)) /* 8 of these (0-7) */
+#define TXGBE_RDM_PF_QDE(_i)    (0x12080 + ((_i) * 4))
+#define TXGBE_RDM_PF_HIDE(_i)   (0x12090 + ((_i) * 4))
+
 #define TXGBE_RPUP2TC                   0x019008
 #define   TXGBE_RPUP2TC_UP_SHIFT        3
 #define   TXGBE_RPUP2TC_UP_MASK         0x7
@@ -1712,6 +1730,19 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_MACTXCFG_SPEED_10G      LS(0, 29, 0x3)
 #define   TXGBE_MACTXCFG_SPEED_1G       LS(3, 29, 0x3)
 
+#define TXGBE_MAC_TX_CFG_AML_SPEED_MASK     MS(28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_50G      LS(2, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_40G      LS(0, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_25G      LS(1, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_10G      LS(4, 28, 0x7)
+#define TXGBE_MAC_TX_CFG_AML_SPEED_1G       LS(7, 28, 0x7)
+
+#define TXGBE_MAC_MISC_CTL              0x11f00
+#define TXGBE_MAC_MISC_LINK_STS_MOD     MS(0, 0x1)
+#define TXGBE_LINK_BOTH_PCS_MAC         MS(0, 0x1)
+
+#define TXGBE_EPHY_STAT                 0x13404
+#define TXGBE_EPHY_STAT_PPL_LOCK        0x3
 #define TXGBE_ISBADDRL                  0x000160
 #define TXGBE_ISBADDRH                  0x000164
 
