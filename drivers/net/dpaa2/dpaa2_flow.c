@@ -630,42 +630,42 @@ dpaa2_flow_rule_insert_hole(struct dpaa2_dev_flow *flow,
 	int offset, int size,
 	enum dpaa2_flow_dist_type dist_type)
 {
-	int end;
-
 	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
-		end = flow->qos_rule_size;
-		if (end > offset) {
+		if (offset < flow->qos_rule_size) {
 			memmove(flow->qos_key_addr + offset + size,
 					flow->qos_key_addr + offset,
-					end - offset);
+					flow->qos_rule_size - offset);
 			memset(flow->qos_key_addr + offset,
 					0, size);
 
 			memmove(flow->qos_mask_addr + offset + size,
 					flow->qos_mask_addr + offset,
-					end - offset);
+					flow->qos_rule_size - offset);
 			memset(flow->qos_mask_addr + offset,
 					0, size);
+			flow->qos_rule_size += size;
+		} else {
+			flow->qos_rule_size = offset + size;
 		}
-		flow->qos_rule_size += size;
 	}
 
 	if (dist_type & DPAA2_FLOW_FS_TYPE) {
-		end = flow->fs_rule_size;
-		if (end > offset) {
+		if (offset < flow->fs_rule_size) {
 			memmove(flow->fs_key_addr + offset + size,
 					flow->fs_key_addr + offset,
-					end - offset);
+					flow->fs_rule_size - offset);
 			memset(flow->fs_key_addr + offset,
 					0, size);
 
 			memmove(flow->fs_mask_addr + offset + size,
 					flow->fs_mask_addr + offset,
-					end - offset);
+					flow->fs_rule_size - offset);
 			memset(flow->fs_mask_addr + offset,
 					0, size);
+			flow->fs_rule_size += size;
+		} else {
+			flow->fs_rule_size = offset + size;
 		}
-		flow->fs_rule_size += size;
 	}
 
 	return 0;
@@ -1485,8 +1485,9 @@ dpaa2_flow_faf_add_rule(struct dpaa2_dev_priv *priv,
 		mask_addr = flow->qos_mask_addr + offset;
 
 		if (!(*key_addr) &&
-			key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
-			flow->qos_rule_size++;
+			key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT &&
+			offset >= flow->qos_rule_size)
+			flow->qos_rule_size = offset + sizeof(uint8_t);
 
 		*key_addr |=  (1 << faf_bit_in_byte);
 		*mask_addr |=  (1 << faf_bit_in_byte);
@@ -1507,8 +1508,9 @@ dpaa2_flow_faf_add_rule(struct dpaa2_dev_priv *priv,
 		mask_addr = flow->fs_mask_addr + offset;
 
 		if (!(*key_addr) &&
-			key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
-			flow->fs_rule_size++;
+			key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT &&
+			offset >= flow->fs_rule_size)
+			flow->fs_rule_size = offset + sizeof(uint8_t);
 
 		*key_addr |=  (1 << faf_bit_in_byte);
 		*mask_addr |=  (1 << faf_bit_in_byte);
@@ -1526,6 +1528,7 @@ dpaa2_flow_pr_rule_data_set(struct dpaa2_dev_flow *flow,
 {
 	int offset;
 	uint32_t pr_field = pr_offset << 16 | pr_size;
+	char offset_info[64], size_info[64], rule_size_info[64];
 
 	offset = dpaa2_flow_extract_key_offset(key_profile,
 			DPAA2_PR_KEY, NET_PROT_NONE, pr_field);
@@ -1534,19 +1537,43 @@ dpaa2_flow_pr_rule_data_set(struct dpaa2_dev_flow *flow,
 			pr_offset, pr_size);
 		return -EINVAL;
 	}
+	sprintf(offset_info, "offset(%d)", offset);
+	sprintf(size_info, "size(%d)", pr_size);
 
 	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+		sprintf(rule_size_info, "qos rule size(%d)",
+			flow->qos_rule_size);
 		memcpy((flow->qos_key_addr + offset), key, pr_size);
 		memcpy((flow->qos_mask_addr + offset), mask, pr_size);
-		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
-			flow->qos_rule_size = offset + pr_size;
+		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT) {
+			if (offset >= flow->qos_rule_size) {
+				flow->qos_rule_size = offset + pr_size;
+			} else if ((offset + pr_size) > flow->qos_rule_size) {
+				DPAA2_PMD_ERR("%s < %s, but %s + %s > %s",
+					offset_info, rule_size_info,
+					offset_info, size_info,
+					rule_size_info);
+				return -EINVAL;
+			}
+		}
 	}
 
 	if (dist_type & DPAA2_FLOW_FS_TYPE) {
+		sprintf(rule_size_info, "fs rule size(%d)",
+			flow->fs_rule_size);
 		memcpy((flow->fs_key_addr + offset), key, pr_size);
 		memcpy((flow->fs_mask_addr + offset), mask, pr_size);
-		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
-			flow->fs_rule_size = offset + pr_size;
+		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT) {
+			if (offset >= flow->fs_rule_size) {
+				flow->fs_rule_size = offset + pr_size;
+			} else if ((offset + pr_size) > flow->fs_rule_size) {
+				DPAA2_PMD_ERR("%s < %s, but %s + %s > %s",
+					offset_info, rule_size_info,
+					offset_info, size_info,
+					rule_size_info);
+				return -EINVAL;
+			}
+		}
 	}
 
 	return 0;
@@ -1560,6 +1587,7 @@ dpaa2_flow_hdr_rule_data_set(struct dpaa2_dev_flow *flow,
 	enum dpaa2_flow_dist_type dist_type)
 {
 	int offset;
+	char offset_info[64], size_info[64], rule_size_info[64];
 
 	if (dpaa2_flow_ip_address_extract(prot, field)) {
 		DPAA2_PMD_ERR("%s only for none IP address extract",
@@ -1574,19 +1602,41 @@ dpaa2_flow_hdr_rule_data_set(struct dpaa2_dev_flow *flow,
 			prot, field);
 		return -EINVAL;
 	}
+	sprintf(offset_info, "offset(%d)", offset);
+	sprintf(size_info, "size(%d)", size);
 
 	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+		sprintf(rule_size_info, "qos rule size(%d)",
+			flow->qos_rule_size);
 		memcpy((flow->qos_key_addr + offset), key, size);
 		memcpy((flow->qos_mask_addr + offset), mask, size);
-		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
-			flow->qos_rule_size = offset + size;
+		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT) {
+			if (offset >= flow->qos_rule_size) {
+				flow->qos_rule_size = offset + size;
+			} else if ((offset + size) > flow->qos_rule_size) {
+				DPAA2_PMD_ERR("%s: %s < %s, but %s + %s > %s",
+					__func__, offset_info, rule_size_info,
+					offset_info, size_info, rule_size_info);
+				return -EINVAL;
+			}
+		}
 	}
 
 	if (dist_type & DPAA2_FLOW_FS_TYPE) {
+		sprintf(rule_size_info, "fs rule size(%d)",
+			flow->fs_rule_size);
 		memcpy((flow->fs_key_addr + offset), key, size);
 		memcpy((flow->fs_mask_addr + offset), mask, size);
-		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
-			flow->fs_rule_size = offset + size;
+		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT) {
+			if (offset >= flow->fs_rule_size) {
+				flow->fs_rule_size = offset + size;
+			} else if ((offset + size) > flow->fs_rule_size) {
+				DPAA2_PMD_ERR("%s: %s < %s, but %s + %s > %s",
+					__func__, offset_info, rule_size_info,
+					offset_info, size_info, rule_size_info);
+				return -EINVAL;
+			}
+		}
 	}
 
 	return 0;
@@ -1602,6 +1652,7 @@ dpaa2_flow_raw_rule_data_set(struct dpaa2_dev_flow *flow,
 	int extract_size = size > DPAA2_FLOW_MAX_KEY_SIZE ?
 		DPAA2_FLOW_MAX_KEY_SIZE : size;
 	int offset, field;
+	char offset_info[64], size_info[64], rule_size_info[64];
 
 	field = extract_offset << DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT;
 	field |= extract_size;
@@ -1612,17 +1663,37 @@ dpaa2_flow_raw_rule_data_set(struct dpaa2_dev_flow *flow,
 			extract_offset, size);
 		return -EINVAL;
 	}
+	sprintf(offset_info, "offset(%d)", offset);
+	sprintf(size_info, "size(%d)", size);
 
 	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+		sprintf(rule_size_info, "qos rule size(%d)",
+			flow->qos_rule_size);
 		memcpy((flow->qos_key_addr + offset), key, size);
 		memcpy((flow->qos_mask_addr + offset), mask, size);
-		flow->qos_rule_size = offset + size;
+		if (offset >= flow->qos_rule_size) {
+			flow->qos_rule_size = offset + size;
+		} else if ((offset + size) > flow->qos_rule_size) {
+			DPAA2_PMD_ERR("%s: %s < %s, but %s + %s > %s",
+				__func__, offset_info, rule_size_info,
+				offset_info, size_info, rule_size_info);
+			return -EINVAL;
+		}
 	}
 
 	if (dist_type & DPAA2_FLOW_FS_TYPE) {
+		sprintf(rule_size_info, "fs rule size(%d)",
+			flow->fs_rule_size);
 		memcpy((flow->fs_key_addr + offset), key, size);
 		memcpy((flow->fs_mask_addr + offset), mask, size);
-		flow->fs_rule_size = offset + size;
+		if (offset >= flow->fs_rule_size) {
+			flow->fs_rule_size = offset + size;
+		} else if ((offset + size) > flow->fs_rule_size) {
+			DPAA2_PMD_ERR("%s: %s < %s, but %s + %s > %s",
+				__func__, offset_info, rule_size_info,
+				offset_info, size_info, rule_size_info);
+			return -EINVAL;
+		}
 	}
 
 	return 0;
