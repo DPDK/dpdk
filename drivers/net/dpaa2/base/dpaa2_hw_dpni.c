@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2021,2023-2024 NXP
+ *   Copyright 2016-2021,2023-2025 NXP
  *
  */
 
@@ -60,6 +60,7 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 		return -ENOMEM;
 	}
 
+	memset(&kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 	kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_DATA;
 	kg_cfg.extracts[0].extract.from_data.offset = offset;
 	kg_cfg.extracts[0].extract.from_data.size = size;
