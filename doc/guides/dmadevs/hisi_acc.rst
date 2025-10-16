@@ -53,3 +53,16 @@ Configuration requirements:
 * Only one ``vchan`` is supported per ``dmadev``.
 * Silent mode is not supported.
 * The transfer direction must be set to ``RTE_DMA_DIR_MEM_TO_MEM``.
+
+
+Device Datapath Capability and Limitation
+-----------------------------------------
+
+Support memory copy and fill operations.
+
+.. note::
+
+   Currently, the maximum size of the operation data is limited to 16MB-1B in the driver.
+   The device actually supports operations in a larger data size,
+   but the driver requires complex operations in the datapth.
+   If you have such requirement, please contact the maintainers.

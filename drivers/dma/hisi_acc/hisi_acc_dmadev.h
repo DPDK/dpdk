@@ -25,9 +25,80 @@ struct hacc_dma_config {
 };
 
 #define HACC_DMA_DOORBELL_OFFSET		0x1000u
+#define HACC_DMA_DOORBELL_SQN_MASK	0x3FFu
+#define HACC_DMA_DOORBELL_SQ_CMD		0ull
+#define HACC_DMA_DOORBELL_CQ_CMD		1ull
+#define HACC_DMA_DOORBELL_CMD_SHIFT	12
+#define HACC_DMA_DOORBELL_IDX_SHIFT	32
 
-struct hacc_dma_sqe {};
-struct hacc_dma_cqe {};
+#define HACC_DMA_TASK_TYPE		0x3
+#define HACC_DMA_SQE_TYPE		0x1
+#define HACC_DMA_SVA_PREFETCH_EN		RTE_BIT32(15)
+#define HACC_DMA_MAX_OP_SIZE		(RTE_BIT32(24) - 1)
+
+enum {
+	HACC_DMA_DATA_MEMCPY = 0,
+	HACC_DMA_DATA_MEMSET = 7,
+};
+
+enum {
+	HACC_DMA_TASK_DONE = 1,
+	HACC_DMA_TASK_ERROR,
+};
+
+struct hacc_dma_sqe {
+	uint32_t bd_type : 6;
+	uint32_t resv1 : 2;
+	uint32_t task_type : 6;
+	uint32_t resv2 : 2;
+	uint32_t task_type_ext : 6;
+	uint32_t resv3 : 9;
+	uint32_t bd_invlid : 1;
+	uint32_t rsv4[2];
+	uint32_t low_tag;
+	uint32_t hi_tag;
+	/* The number of bytes to be copied or filled for single address. */
+	uint32_t data_size;
+	uint32_t rsv5;
+	/*
+	 * 0 ~ 13 bits: reserved,
+	 * 14 bit: single address or multi addresses,
+	 * 15 bit: sva prefetch en.
+	 */
+	uint16_t dw0;
+	/*
+	 * 0 ~5 bits: reserved,
+	 * 6 ~ 13 bits: address num,
+	 * 14 ~15 bits: reserved.
+	 */
+	uint16_t dw1;
+	uint64_t init_val;
+	uint32_t rsv6[12];
+	/* dst addr for single address task. */
+	uint64_t dst_addr;
+	uint32_t rsv7[2];
+	/* src addr for single address task, addr array for multi addresses. */
+	uint64_t addr_array;
+	union {
+		uint32_t wb_field;
+		struct {
+			uint32_t done_flag : 3;
+			uint32_t rsv8 : 1;
+			uint32_t ext_err_type : 12;
+			uint32_t err_type : 8;
+			uint32_t wtype : 8;
+		};
+	};
+	uint32_t rsv9[3];
+};
+
+#define HACC_DMA_SQ_HEAD_MASK		RTE_GENMASK64(15, 0)
+#define HACC_DMA_CQE_VALID_B		RTE_BIT64(48)
+
+struct hacc_dma_cqe {
+	uint64_t rsv;
+	uint64_t misc;
+};
 
 struct hacc_dma_dev {
 	struct hacc_dma_sqe *sqe;
@@ -73,6 +144,7 @@ struct hacc_dma_dev {
 	uint16_t cq_head;       /**< CQ index for next scans. */
 	uint16_t cqs_completed; /**< accumulated number of completed CQs. */
 	uint8_t  cqe_vld;       /**< valid bit for CQE, will change for every round. */
+	volatile uint8_t stop_proc; /**< whether stop processing new requests. */
 
 	uint64_t submitted;
 	uint64_t completed;
