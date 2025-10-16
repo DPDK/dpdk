@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016,2019 NXP
+ *   Copyright 2016,2019,2022,2024 NXP
  *
  */
 
@@ -304,13 +304,13 @@ struct dpaa2_faead {
 #define DPAA2_ETH_FAS_PHE	       0x00000020
 #define DPAA2_ETH_FAS_BLE	       0x00000010
 /* L3 csum validation performed */
-#define DPAA2_ETH_FAS_L3CV	      0x00000008
+#define DPAA2_ETH_FAS_L3CV	      0x0000000800000000
 /* L3 csum error */
-#define DPAA2_ETH_FAS_L3CE	      0x00000004
+#define DPAA2_ETH_FAS_L3CE	      0x0000000400000000
 /* L4 csum validation performed */
-#define DPAA2_ETH_FAS_L4CV	      0x00000002
+#define DPAA2_ETH_FAS_L4CV	      0x0000000200000000
 /* L4 csum error */
-#define DPAA2_ETH_FAS_L4CE	      0x00000001
+#define DPAA2_ETH_FAS_L4CE	      0x0000000100000000
 
 #ifdef __cplusplus
 }
