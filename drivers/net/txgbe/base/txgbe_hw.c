@@ -3179,12 +3179,28 @@ void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 {
 	u32 esdp_reg = rd32(hw, TXGBE_GPIODATA);
 
-	if (txgbe_close_notify(hw))
-		txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_LEDCTL_10G |
-				TXGBE_LEDCTL_1G | TXGBE_LEDCTL_ACTIVE);
+	if (txgbe_close_notify(hw)) {
+		/* over write led when ifconfig down */
+		if (hw->mac.type == txgbe_mac_aml40) {
+			txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_AMLITE_LED_LINK_40G |
+					TXGBE_AMLITE_LED_LINK_ACTIVE);
+		} else if  (hw->mac.type == txgbe_mac_aml)
+			txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_AMLITE_LED_LINK_25G |
+					TXGBE_AMLITE_LED_LINK_10G | TXGBE_AMLITE_LED_LINK_ACTIVE);
+		else
+			txgbe_led_off(hw, TXGBE_LEDCTL_UP | TXGBE_LEDCTL_10G |
+					TXGBE_LEDCTL_1G | TXGBE_LEDCTL_ACTIVE);
+	}
 
 	/* Disable Tx laser; allow 100us to go dark per spec */
-	esdp_reg |= (TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	if (hw->mac.type == txgbe_mac_aml40) {
+		wr32m(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_1, TXGBE_GPIOBIT_1);
+		esdp_reg &= ~TXGBE_GPIOBIT_1;
+	} else if (hw->mac.type == txgbe_mac_aml) {
+		esdp_reg |= TXGBE_GPIOBIT_1;
+	} else {
+		esdp_reg |= (TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	}
 	wr32(hw, TXGBE_GPIODATA, esdp_reg);
 	txgbe_flush(hw);
 	usec_delay(100);
@@ -3206,7 +3222,12 @@ void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 		wr32(hw, TXGBE_LEDCTL, 0);
 
 	/* Enable Tx laser; allow 100ms to light up */
-	esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	if (hw->mac.type == txgbe_mac_aml40) {
+		wr32m(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_1, TXGBE_GPIOBIT_1);
+		esdp_reg |= TXGBE_GPIOBIT_1;
+	} else {
+		esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
+	}
 	wr32(hw, TXGBE_GPIODATA, esdp_reg);
 	txgbe_flush(hw);
 	msec_delay(100);
