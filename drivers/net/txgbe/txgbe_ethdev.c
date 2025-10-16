@@ -353,11 +353,33 @@ txgbe_enable_intr(struct rte_eth_dev *dev)
 {
 	struct txgbe_interrupt *intr = TXGBE_DEV_INTR(dev);
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	uint32_t gpie;
 
 	wr32(hw, TXGBE_IENMISC, intr->mask_misc);
 	wr32(hw, TXGBE_IMC(0), TXGBE_IMC_MASK);
 	wr32(hw, TXGBE_IMC(1), TXGBE_IMC_MASK);
 	txgbe_flush(hw);
+
+	/* To avoid gpio intr lost, enable pcie intr first. Then enable gpio intr. */
+	if (hw->mac.type == txgbe_mac_aml) {
+		gpie = rd32(hw, TXGBE_GPIOINTEN);
+		gpie |= TXGBE_GPIOBIT_2 | TXGBE_GPIOBIT_3 | TXGBE_GPIOBIT_6;
+		wr32(hw, TXGBE_GPIOINTEN, gpie);
+
+		gpie = rd32(hw, TXGBE_GPIOINTTYPE);
+		gpie |= TXGBE_GPIOBIT_2 | TXGBE_GPIOBIT_3 | TXGBE_GPIOBIT_6;
+		wr32(hw, TXGBE_GPIOINTTYPE, gpie);
+	}
+
+	if (hw->mac.type == txgbe_mac_aml40) {
+		gpie = rd32(hw, TXGBE_GPIOINTEN);
+		gpie |= TXGBE_GPIOBIT_4;
+		wr32(hw, TXGBE_GPIOINTEN, gpie);
+
+		gpie = rd32(hw, TXGBE_GPIOINTTYPE);
+		gpie |= TXGBE_GPIOBIT_4;
+		wr32(hw, TXGBE_GPIOINTTYPE, gpie);
+	}
 }
 
 static void
@@ -1711,6 +1733,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	uint16_t vf, idx;
 	uint32_t *link_speeds;
 	struct txgbe_tm_conf *tm_conf = TXGBE_DEV_TM_CONF(dev);
+	u32 links_reg;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1892,6 +1915,44 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	if (err)
 		goto error;
 
+	if (hw->mac.type == txgbe_mac_aml) {
+		links_reg = rd32(hw, TXGBE_PORT);
+		if (links_reg & TXGBE_PORT_LINKUP) {
+			if (links_reg & TXGBE_CFG_PORT_ST_AML_LINK_25G) {
+				wr32(hw, TXGBE_MACTXCFG,
+					(rd32(hw, TXGBE_MACTXCFG) &
+					~TXGBE_MAC_TX_CFG_AML_SPEED_MASK) |
+					TXGBE_MAC_TX_CFG_AML_SPEED_25G);
+			} else if (links_reg & TXGBE_CFG_PORT_ST_AML_LINK_10G) {
+				wr32(hw, TXGBE_MACTXCFG,
+					(rd32(hw, TXGBE_MACTXCFG) &
+					~TXGBE_MAC_TX_CFG_AML_SPEED_MASK) |
+					TXGBE_MAC_TX_CFG_AML_SPEED_10G);
+			}
+		}
+
+		/* amlite: restart gpio */
+		wr32(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1 |
+					TXGBE_GPIOBIT_4 | TXGBE_GPIOBIT_5);
+		wr32(hw, TXGBE_GPIODATA, TXGBE_GPIOBIT_4 | TXGBE_GPIOBIT_5);
+		msleep(10);
+		wr32(hw, TXGBE_GPIODATA, TXGBE_GPIOBIT_0);
+		wr32m(hw, TXGBE_GPIO_INT_POLARITY, TXGBE_GPIO_INT_POLARITY_3, 0x0);
+	} else if (hw->mac.type == txgbe_mac_aml40) {
+		links_reg = rd32(hw, TXGBE_PORT);
+		if (links_reg & TXGBE_PORT_LINKUP) {
+			if (links_reg & TXGBE_CFG_PORT_ST_AML_LINK_40G) {
+				wr32(hw, TXGBE_MACTXCFG,
+					(rd32(hw, TXGBE_MACTXCFG) &
+					~TXGBE_MAC_TX_CFG_AML_SPEED_MASK) |
+					TXGBE_MAC_TX_CFG_AML_SPEED_40G);
+			}
+		}
+
+		wr32(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1
+							| TXGBE_GPIOBIT_3);
+		wr32(hw, TXGBE_GPIODATA, TXGBE_GPIOBIT_1);
+	}
 skip_link_setup:
 
 	if (rte_intr_allow_others(intr_handle)) {
@@ -1988,6 +2049,10 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	for (vf = 0; vfinfo != NULL && vf < pci_dev->max_vfs; vf++)
 		vfinfo[vf].clear_to_send = false;
+
+	if (hw->mac.type == txgbe_mac_aml)
+		wr32m(hw, TXGBE_AML_EPCS_MISC_CTL,
+			  TXGBE_AML_LINK_STATUS_OVRD_EN, 0x0);
 
 	txgbe_dev_clear_queues(dev);
 
@@ -2868,6 +2933,27 @@ txgbe_dev_sfp_event(struct rte_eth_dev *dev)
 		intr->flags |= TXGBE_FLAG_NEED_LINK_UPDATE;
 	}
 
+	if (hw->mac.type == txgbe_mac_aml40) {
+		if (reg & TXGBE_GPIOBIT_4) {
+			wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_4);
+			rte_eal_alarm_set(1000 * 100, txgbe_dev_detect_sfp, dev);
+		}
+	} else if (hw->mac.type == txgbe_mac_sp || hw->mac.type == txgbe_mac_aml) {
+		if (reg & TXGBE_GPIOBIT_0)
+			wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_0);
+		if (reg & TXGBE_GPIOBIT_2) {
+			wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_2);
+			rte_eal_alarm_set(1000 * 100, txgbe_dev_detect_sfp, dev);
+		}
+		if (reg & TXGBE_GPIOBIT_3) {
+			wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_3);
+			intr->flags |= TXGBE_FLAG_NEED_LINK_UPDATE;
+		}
+		if (reg & TXGBE_GPIOBIT_6) {
+			wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_6);
+			intr->flags |= TXGBE_FLAG_NEED_LINK_UPDATE;
+		}
+	}
 	wr32(hw, TXGBE_GPIOINTMASK, 0);
 }
 
@@ -3045,6 +3131,9 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	}
 
 	if (link_up == 0) {
+		if (hw->mac.type == txgbe_mac_aml)
+			wr32m(hw, TXGBE_GPIO_INT_POLARITY,
+				  TXGBE_GPIO_INT_POLARITY_3, 0x0);
 		if ((hw->subsystem_device_id & 0xFF) ==
 				TXGBE_DEV_ID_KR_KX_KX4) {
 			hw->mac.bp_down_event(hw);
@@ -3129,6 +3218,28 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 			TXGBE_MACRXFLT_PROMISC);
 		reg = rd32(hw, TXGBE_MAC_WDG_TIMEOUT);
 		wr32(hw, TXGBE_MAC_WDG_TIMEOUT, reg);
+	}
+
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40) {
+		reg = rd32(hw, TXGBE_PORT);
+		if (reg & TXGBE_PORT_LINKUP) {
+			if (reg & TXGBE_CFG_PORT_ST_AML_LINK_40G) {
+				wr32(hw, TXGBE_MACTXCFG,
+					(rd32(hw, TXGBE_MACTXCFG) &
+					~TXGBE_MAC_TX_CFG_AML_SPEED_MASK) | TXGBE_MACTXCFG_TXE |
+					TXGBE_MAC_TX_CFG_AML_SPEED_40G);
+			} else if (reg & TXGBE_CFG_PORT_ST_AML_LINK_25G) {
+				wr32(hw, TXGBE_MACTXCFG,
+					(rd32(hw, TXGBE_MACTXCFG) &
+					~TXGBE_MAC_TX_CFG_AML_SPEED_MASK) | TXGBE_MACTXCFG_TXE |
+					TXGBE_MAC_TX_CFG_AML_SPEED_25G);
+			} else if (reg & TXGBE_CFG_PORT_ST_AML_LINK_10G) {
+				wr32(hw, TXGBE_MACTXCFG,
+					(rd32(hw, TXGBE_MACTXCFG) &
+					~TXGBE_MAC_TX_CFG_AML_SPEED_MASK) | TXGBE_MACTXCFG_TXE |
+					TXGBE_MAC_TX_CFG_AML_SPEED_10G);
+			}
+		}
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
