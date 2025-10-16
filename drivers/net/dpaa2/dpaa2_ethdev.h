@@ -68,26 +68,36 @@
 /* Enable TX Congestion control support
  * default is disable
  */
-#define DPAA2_TX_CGR_OFF	0x01
+#define DPAA2_TX_CGR_OFF	RTE_BIT32(0)
 
 /* Disable RX tail drop, default is enable */
-#define DPAA2_RX_TAILDROP_OFF	0x04
+#define DPAA2_RX_TAILDROP_OFF	RTE_BIT32(2)
+
+/* Disable prefetch Rx mode to get exact requested packets */
+#define DPAA2_NO_PREFETCH_RX	RTE_BIT32(3)
+
+/* Driver level loop mode to simply transmit the ingress traffic */
+#define DPAA2_RX_LOOPBACK_MODE	RTE_BIT32(4)
+
+/* HW loopback the egress traffic to self ingress*/
+#define DPAA2_TX_MAC_LOOPBACK_MODE	RTE_BIT32(5)
+
+#define DPAA2_TX_SERDES_LOOPBACK_MODE	RTE_BIT32(6)
+
+#define DPAA2_TX_DPNI_LOOPBACK_MODE	RTE_BIT32(7)
+
 /* Tx confirmation enabled */
-#define DPAA2_TX_CONF_ENABLE	0x08
+#define DPAA2_TX_CONF_ENABLE	RTE_BIT32(8)
 
 /* Tx dynamic confirmation enabled,
  * only valid with Tx confirmation enabled.
  */
-#define DPAA2_TX_DYNAMIC_CONF_ENABLE	0x10
+#define DPAA2_TX_DYNAMIC_CONF_ENABLE	RTE_BIT32(9)
+
+#define DPAAX_RX_ERROR_QUEUE_FLAG	RTE_BIT32(11)
+
 /* DPDMUX index for DPMAC */
 #define DPAA2_DPDMUX_DPMAC_IDX 0
-
-/* HW loopback the egress traffic to self ingress*/
-#define DPAA2_TX_MAC_LOOPBACK_MODE 0x20
-
-#define DPAA2_TX_SERDES_LOOPBACK_MODE 0x40
-
-#define DPAA2_TX_DPNI_LOOPBACK_MODE 0x80
 
 #define DPAA2_TX_LOOPBACK_MODE \
 	(DPAA2_TX_MAC_LOOPBACK_MODE | \
@@ -166,8 +176,6 @@ extern int dpaa2_timestamp_dynfield_offset;
 extern const struct rte_flow_ops dpaa2_flow_ops;
 
 extern const struct rte_tm_ops dpaa2_tm_ops;
-
-extern bool dpaa2_enable_err_queue;
 
 extern bool dpaa2_print_parser_result;
 
@@ -384,7 +392,7 @@ struct dpaa2_dev_priv {
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
 	void *tx_conf_vq[MAX_TX_QUEUES * DPAA2_MAX_CHANNELS];
 	void *rx_err_vq;
-	uint8_t flags; /*dpaa2 config flags */
+	uint32_t flags; /*dpaa2 config flags */
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_rx_tc;
