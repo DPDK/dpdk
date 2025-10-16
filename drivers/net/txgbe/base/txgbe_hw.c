@@ -11,6 +11,8 @@
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
+#include "txgbe_aml.h"
+#include "txgbe_aml40.h"
 
 #define TXGBE_RAPTOR_MAX_TX_QUEUES 128
 #define TXGBE_RAPTOR_MAX_RX_QUEUES 128
@@ -2466,7 +2468,7 @@ out:
  **/
 s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 {
-	s32 status;
+	s32 status = 0;
 
 	/*
 	 * Set the mac type
@@ -2479,9 +2481,13 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 		txgbe_init_ops_sp(hw);
 		break;
 	case txgbe_mac_aml:
+		txgbe_init_ops_aml(hw);
+		break;
 	case txgbe_mac_aml40:
+		txgbe_init_ops_aml40(hw);
 		break;
 	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml_vf:
 		status = txgbe_init_ops_vf(hw);
 		break;
 	default:
@@ -2617,7 +2623,7 @@ s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 		goto init_phy_ops_out;
 
 	/* Setup function pointers based on detected SFP module and speeds */
-	txgbe_init_mac_link_ops_sp(hw);
+	hw->mac.init_mac_link_ops(hw);
 
 	/* If copper media, overwrite with copper function pointers */
 	if (phy->media_type == txgbe_media_type_copper) {
@@ -2652,7 +2658,7 @@ s32 txgbe_setup_sfp_modules(struct txgbe_hw *hw)
 	if (hw->phy.sfp_type == txgbe_sfp_type_unknown)
 		return 0;
 
-	txgbe_init_mac_link_ops_sp(hw);
+	hw->mac.init_mac_link_ops(hw);
 
 	/* PHY config will finish before releasing the semaphore */
 	err = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
@@ -2811,7 +2817,6 @@ s32 txgbe_init_ops_generic(struct txgbe_hw *hw)
 	bus->set_lan_id = txgbe_set_lan_id_multi_port;
 
 	/* PHY */
-	phy->get_media_type = txgbe_get_media_type_raptor;
 	phy->identify = txgbe_identify_phy;
 	phy->init = txgbe_init_phy_raptor;
 	phy->read_reg = txgbe_read_phy_reg;
@@ -2879,8 +2884,6 @@ s32 txgbe_init_ops_generic(struct txgbe_hw *hw)
 	mac->fc_autoneg = txgbe_fc_autoneg;
 
 	/* Link */
-	mac->get_link_capabilities = txgbe_get_link_capabilities_raptor;
-	mac->check_link = txgbe_check_mac_link;
 	mac->setup_pba = txgbe_set_pba;
 
 	/* Manageability interface */
@@ -3886,3 +3889,37 @@ s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw)
 	return err;
 }
 
+s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
+				bool *link_up)
+{
+	u32 rdata = 0;
+	u32 links_reg = 0;
+
+	/* must read it twice because the state may
+	 * not be correct the first time you read it
+	 */
+	rdata = rd32_epcs(hw, 0x30001);
+	rdata = rd32_epcs(hw, 0x30001);
+
+	if (rdata & TXGBE_AML_PHY_LINK_UP)
+		*link_up = true;
+	else
+		*link_up = false;
+
+	links_reg = rd32(hw, TXGBE_PORTSTAT);
+	if (*link_up) {
+		if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_40G) ==
+				TXGBE_CFG_PORT_ST_AML_LINK_40G)
+			*speed = TXGBE_LINK_SPEED_40GB_FULL;
+		else if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_25G) ==
+				TXGBE_CFG_PORT_ST_AML_LINK_25G)
+			*speed = TXGBE_LINK_SPEED_25GB_FULL;
+		else if ((links_reg & TXGBE_CFG_PORT_ST_AML_LINK_10G) ==
+				TXGBE_CFG_PORT_ST_AML_LINK_10G)
+			*speed = TXGBE_LINK_SPEED_10GB_FULL;
+	} else {
+		*speed = TXGBE_LINK_SPEED_UNKNOWN;
+	}
+
+	return 0;
+}

@@ -3069,6 +3069,14 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	case TXGBE_LINK_SPEED_10GB_FULL:
 		link.link_speed = RTE_ETH_SPEED_NUM_10G;
 		break;
+
+	case TXGBE_LINK_SPEED_25GB_FULL:
+		link.link_speed = RTE_ETH_SPEED_NUM_25G;
+		break;
+
+	case TXGBE_LINK_SPEED_40GB_FULL:
+		link.link_speed = RTE_ETH_SPEED_NUM_40G;
+		break;
 	}
 
 	/* Re configure MAC RX */

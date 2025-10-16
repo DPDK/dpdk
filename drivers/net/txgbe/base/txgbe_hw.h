@@ -116,4 +116,6 @@ s32 txgbe_reinit_fdir_tables(struct txgbe_hw *hw);
 bool txgbe_verify_lesm_fw_enabled_raptor(struct txgbe_hw *hw);
 s32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr);
 s32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr, u32 *data);
+s32 txgbe_e56_check_phy_link(struct txgbe_hw *hw, u32 *speed,
+				bool *link_up);
 #endif /* _TXGBE_HW_H_ */

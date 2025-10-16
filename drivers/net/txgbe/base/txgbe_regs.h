@@ -1581,6 +1581,15 @@ enum txgbe_5tuple_protocol {
 #define     TXGBE_PORTSTAT_BW_100M      MS(3, 0x1)
 #define   TXGBE_PORTSTAT_ID(r)          RS(r, 8, 0x1)
 
+/* amlite: diff from sapphire */
+#define TXGBE_CFG_PORT_ST_AML_LINK_MASK     MS(1, 0xF)
+#define TXGBE_CFG_PORT_ST_AML_LINK_10G      MS(4, 0x1)
+#define TXGBE_CFG_PORT_ST_AML_LINK_25G      MS(3, 0x1)
+#define TXGBE_CFG_PORT_ST_AML_LINK_40G      MS(2, 0x1)
+#define TXGBE_CFG_PORT_ST_AML_LINK_50G      MS(1, 0x1)
+
+#define TXGBE_AML_PHY_LINK_UP               MS(2, 0x1)
+
 #define TXGBE_VXLAN                     0x014410
 #define TXGBE_VXLAN_GPE                 0x014414
 #define TXGBE_GENEVE                    0x014418
