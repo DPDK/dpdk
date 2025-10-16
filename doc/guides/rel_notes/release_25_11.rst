@@ -160,6 +160,11 @@ New Features
 
   * Added SM2 encryption and decryption algorithms.
 
+* **Renamed HiSilicon DMA driver.**
+
+  Renamed ``dma/hisilicon`` to ``dma/hisi_pciep`` (PCIe internal endpoint)
+  to reflect hardware IP.
+
 * **Allow overriding the automatic usage/help generation in argparse library.**
 
   The argparse library now supports overriding the automatic help text generation,

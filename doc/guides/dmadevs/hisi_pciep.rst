@@ -1,11 +1,11 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2021 HiSilicon Limited.
 
-HISILICON Kunpeng DMA Driver
-============================
+HISILICON PCIEP DMA Driver
+==========================
 
-Kunpeng SoC has an internal DMA unit which can be used by application
-to accelerate data copies.
+Kunpeng SoC PCIe subsystem has an internal DMA unit
+which can be used by application to accelerate data copies.
 The DMA PF function supports multiple DMA channels.
 
 
@@ -16,10 +16,10 @@ Supported Kunpeng SoCs
 
 
 Device Setup
--------------
+------------
 
-Kunpeng DMA devices will need to be bound to a suitable DPDK-supported
-user-space IO driver such as ``vfio-pci`` in order to be used by DPDK.
+This device needs to be bound to a suitable DPDK-supported user-space IO
+driver such as ``vfio-pci`` in order to be used by DPDK.
 
 Device Probing and Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -33,9 +33,9 @@ the 1st ``dmadev`` name is "0000:7b:00.0-ch0",
 and the 2nd ``dmadev`` name is "0000:7b:00.0-ch1".
 
 Device Configuration
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
-Kunpeng DMA configuration requirements:
+Configuration requirements:
 
 * ``ring_size`` must be a power of two, between 32 and 8192.
 * Only one ``vchan`` is supported per ``dmadev``.

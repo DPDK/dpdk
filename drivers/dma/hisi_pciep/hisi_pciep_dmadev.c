@@ -15,7 +15,7 @@
 #include <rte_pci.h>
 #include <rte_dmadev_pmd.h>
 
-#include "hisi_dmadev.h"
+#include "hisi_pciep_dmadev.h"
 
 RTE_LOG_REGISTER_DEFAULT(hisi_dma_logtype, INFO);
 #define RTE_LOGTYPE_HISI_DMA hisi_dma_logtype
@@ -992,6 +992,6 @@ static struct rte_pci_driver hisi_dma_pmd_drv = {
 	.remove    = hisi_dma_remove,
 };
 
-RTE_PMD_REGISTER_PCI(dma_hisilicon, hisi_dma_pmd_drv);
-RTE_PMD_REGISTER_PCI_TABLE(dma_hisilicon, pci_id_hisi_dma_map);
-RTE_PMD_REGISTER_KMOD_DEP(dma_hisilicon, "vfio-pci");
+RTE_PMD_REGISTER_PCI(dma_hisi_pciep, hisi_dma_pmd_drv);
+RTE_PMD_REGISTER_PCI_TABLE(dma_hisi_pciep, pci_id_hisi_dma_map);
+RTE_PMD_REGISTER_KMOD_DEP(dma_hisi_pciep, "vfio-pci");
