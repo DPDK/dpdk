@@ -1242,7 +1242,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 		err_cfg.errors = DPNI_ERROR_L3CE | DPNI_ERROR_L4CE;
 
 		/* if packet with parse error are not to be dropped */
-		err_cfg.errors |= DPNI_ERROR_PHE;
+		err_cfg.errors |= DPNI_ERROR_PHE | DPNI_ERROR_BLE;
 
 		err_cfg.error_action = DPNI_ERROR_ACTION_CONTINUE;
 	}
