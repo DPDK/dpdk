@@ -483,7 +483,7 @@ soc_n2 = {
     'description': 'Arm Neoverse N2',
     'implementer': '0x41',
     'part_number': '0xd49',
-    'numa': false
+    'numa': true
 }
 
 soc_cn9k = {
