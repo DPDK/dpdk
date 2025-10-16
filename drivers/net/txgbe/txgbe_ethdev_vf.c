@@ -375,7 +375,7 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
-		     pci_dev->id.device_id, "txgbe_mac_raptor_vf");
+		     pci_dev->id.device_id, "txgbe_mac_sp_vf");
 
 	return 0;
 }

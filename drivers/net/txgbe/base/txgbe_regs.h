@@ -1737,11 +1737,11 @@ txgbe_map_reg(struct txgbe_hw *hw, u32 reg)
 {
 	switch (reg) {
 	case TXGBE_REG_RSSTBL:
-		if (hw->mac.type == txgbe_mac_raptor_vf)
+		if (hw->mac.type == txgbe_mac_sp_vf)
 			reg = TXGBE_VFRSSTBL(0);
 		break;
 	case TXGBE_REG_RSSKEY:
-		if (hw->mac.type == txgbe_mac_raptor_vf)
+		if (hw->mac.type == txgbe_mac_sp_vf)
 			reg = TXGBE_VFRSSKEY(0);
 		break;
 	default:
@@ -1917,10 +1917,10 @@ po32m(struct txgbe_hw *hw, u32 reg, u32 mask, u32 expect, u32 *actual,
 static inline void txgbe_flush(struct txgbe_hw *hw)
 {
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
 		rd32(hw, TXGBE_PWR);
 		break;
-	case txgbe_mac_raptor_vf:
+	case txgbe_mac_sp_vf:
 		rd32(hw, TXGBE_VFSTATUS);
 		break;
 	default:

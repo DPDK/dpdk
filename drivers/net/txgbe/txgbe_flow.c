@@ -2854,7 +2854,7 @@ txgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 
 step_next:
 
-	if (hw->mac.type == txgbe_mac_raptor &&
+	if (hw->mac.type == txgbe_mac_sp &&
 		rule->fdirflags == TXGBE_FDIRPICMD_DROP &&
 		(rule->input.src_port != 0 || rule->input.dst_port != 0))
 		return -ENOTSUP;

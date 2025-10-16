@@ -385,7 +385,7 @@ txgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 	uint32_t q_map;
 	uint8_t n, offset;
 
-	if (hw->mac.type != txgbe_mac_raptor)
+	if (hw->mac.type != txgbe_mac_sp)
 		return -ENOSYS;
 
 	if (stat_idx & ~QMAP_FIELD_RESERVED_BITS_MASK)
@@ -1806,7 +1806,7 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Skip link setup if loopback mode is enabled. */
-	if (hw->mac.type == txgbe_mac_raptor &&
+	if (hw->mac.type == txgbe_mac_sp &&
 	    dev->data->dev_conf.lpbk_mode)
 		goto skip_link_setup;
 
@@ -3072,7 +3072,7 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	}
 
 	/* Re configure MAC RX */
-	if (hw->mac.type == txgbe_mac_raptor) {
+	if (hw->mac.type == txgbe_mac_sp) {
 		reg = rd32(hw, TXGBE_MACRXCFG);
 		wr32(hw, TXGBE_MACRXCFG, reg);
 		wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_PROMISC,
@@ -3858,7 +3858,7 @@ txgbe_uc_hash_table_set(struct rte_eth_dev *dev,
 	struct txgbe_uta_info *uta_info = TXGBE_DEV_UTA_INFO(dev);
 
 	/* The UTA table only exists on pf hardware */
-	if (hw->mac.type < txgbe_mac_raptor)
+	if (hw->mac.type < txgbe_mac_sp)
 		return -ENOTSUP;
 
 	vector = txgbe_uta_vector(hw, mac_addr);
@@ -3903,7 +3903,7 @@ txgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	int i;
 
 	/* The UTA table only exists on pf hardware */
-	if (hw->mac.type < txgbe_mac_raptor)
+	if (hw->mac.type < txgbe_mac_sp)
 		return -ENOTSUP;
 
 	if (on) {
@@ -4969,8 +4969,8 @@ bool
 txgbe_rss_update_sp(enum txgbe_mac_type mac_type)
 {
 	switch (mac_type) {
-	case txgbe_mac_raptor:
-	case txgbe_mac_raptor_vf:
+	case txgbe_mac_sp:
+	case txgbe_mac_sp_vf:
 		return 1;
 	default:
 		return 0;

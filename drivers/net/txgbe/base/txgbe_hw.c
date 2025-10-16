@@ -272,7 +272,7 @@ s32 txgbe_start_hw(struct txgbe_hw *hw)
 
 	/* Cache bit indicating need for crosstalk fix */
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
 		hw->mac.get_device_caps(hw, &device_caps);
 		if (device_caps & TXGBE_DEVICE_CAPS_NO_CROSSTALK_WR)
 			hw->need_crosstalk_fix = false;
@@ -1915,7 +1915,7 @@ static bool txgbe_need_crosstalk_fix(struct txgbe_hw *hw)
  *
  *  Reads the links register to determine if link is up and the current speed
  **/
-s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
+s32 txgbe_check_mac_link_sp(struct txgbe_hw *hw, u32 *speed,
 				 bool *link_up, bool link_up_wait_to_complete)
 {
 	u32 links_reg, links_orig;
@@ -1928,7 +1928,7 @@ s32 txgbe_check_mac_link(struct txgbe_hw *hw, u32 *speed,
 		u32 sfp_cage_full;
 
 		switch (hw->mac.type) {
-		case txgbe_mac_raptor:
+		case txgbe_mac_sp:
 			sfp_cage_full = !rd32m(hw, TXGBE_GPIODATA,
 					TXGBE_GPIOBIT_2);
 			break;
@@ -2475,12 +2475,13 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 
 	txgbe_init_ops_dummy(hw);
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
+		txgbe_init_ops_sp(hw);
+		break;
 	case txgbe_mac_aml:
 	case txgbe_mac_aml40:
-		status = txgbe_init_ops_pf(hw);
 		break;
-	case txgbe_mac_raptor_vf:
+	case txgbe_mac_sp_vf:
 		status = txgbe_init_ops_vf(hw);
 		break;
 	default:
@@ -2497,7 +2498,7 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 bool txgbe_is_pf(struct txgbe_hw *hw)
 {
 	switch (hw->mac.type) {
-	case txgbe_mac_raptor:
+	case txgbe_mac_sp:
 		return true;
 	default:
 		return false;
@@ -2523,7 +2524,7 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	switch (hw->device_id) {
 	case TXGBE_DEV_ID_SP1000:
 	case TXGBE_DEV_ID_WX1820:
-		hw->mac.type = txgbe_mac_raptor;
+		hw->mac.type = txgbe_mac_sp;
 		break;
 	case TXGBE_DEV_ID_AML:
 	case TXGBE_DEV_ID_AML5025:
@@ -2537,7 +2538,7 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	case TXGBE_DEV_ID_SP1000_VF:
 	case TXGBE_DEV_ID_WX1820_VF:
 		hw->phy.media_type = txgbe_media_type_virtual;
-		hw->mac.type = txgbe_mac_raptor_vf;
+		hw->mac.type = txgbe_mac_sp_vf;
 		break;
 	case TXGBE_DEV_ID_AML_VF:
 	case TXGBE_DEV_ID_AML5024_VF:
@@ -2556,7 +2557,7 @@ s32 txgbe_set_mac_type(struct txgbe_hw *hw)
 	return err;
 }
 
-void txgbe_init_mac_link_ops(struct txgbe_hw *hw)
+void txgbe_init_mac_link_ops_sp(struct txgbe_hw *hw)
 {
 	struct txgbe_mac_info *mac = &hw->mac;
 
@@ -2616,7 +2617,7 @@ s32 txgbe_init_phy_raptor(struct txgbe_hw *hw)
 		goto init_phy_ops_out;
 
 	/* Setup function pointers based on detected SFP module and speeds */
-	txgbe_init_mac_link_ops(hw);
+	txgbe_init_mac_link_ops_sp(hw);
 
 	/* If copper media, overwrite with copper function pointers */
 	if (phy->media_type == txgbe_media_type_copper) {
@@ -2651,7 +2652,7 @@ s32 txgbe_setup_sfp_modules(struct txgbe_hw *hw)
 	if (hw->phy.sfp_type == txgbe_sfp_type_unknown)
 		return 0;
 
-	txgbe_init_mac_link_ops(hw);
+	txgbe_init_mac_link_ops_sp(hw);
 
 	/* PHY config will finish before releasing the semaphore */
 	err = hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
@@ -2792,13 +2793,13 @@ s32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr, u32 *data)
 }
 
 /**
- *  txgbe_init_ops_pf - Inits func ptrs and MAC type
+ *  txgbe_init_ops_generic - Inits func ptrs and MAC type
  *  @hw: pointer to hardware structure
  *
  *  Initialize the function pointers and assign the MAC type.
  *  Does not touch the hardware.
  **/
-s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
+s32 txgbe_init_ops_generic(struct txgbe_hw *hw)
 {
 	struct txgbe_bus_info *bus = &hw->bus;
 	struct txgbe_mac_info *mac = &hw->mac;
@@ -2918,15 +2919,31 @@ s32 txgbe_init_ops_pf(struct txgbe_hw *hw)
 	return 0;
 }
 
+void txgbe_init_ops_sp(struct txgbe_hw *hw)
+{
+	struct txgbe_mac_info *mac = &hw->mac;
+	struct txgbe_phy_info *phy = &hw->phy;
+
+	txgbe_init_ops_generic(hw);
+
+	/* PHY */
+	phy->get_media_type = txgbe_get_media_type_sp;
+
+	/* LINK */
+	mac->init_mac_link_ops = txgbe_init_mac_link_ops_sp;
+	mac->get_link_capabilities = txgbe_get_link_capabilities_sp;
+	mac->check_link = txgbe_check_mac_link_sp;
+}
+
 /**
- *  txgbe_get_link_capabilities_raptor - Determines link capabilities
+ *  txgbe_get_link_capabilities_sp - Determines link capabilities
  *  @hw: pointer to hardware structure
  *  @speed: pointer to link speed
  *  @autoneg: true when autoneg or autotry is enabled
  *
  *  Determines the link capabilities by reading the AUTOC register.
  **/
-s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
+s32 txgbe_get_link_capabilities_sp(struct txgbe_hw *hw,
 				      u32 *speed,
 				      bool *autoneg)
 {
@@ -3027,12 +3044,12 @@ s32 txgbe_get_link_capabilities_raptor(struct txgbe_hw *hw,
 }
 
 /**
- *  txgbe_get_media_type_raptor - Get media type
+ *  txgbe_get_media_type_sp - Get media type
  *  @hw: pointer to hardware structure
  *
  *  Returns the media type (fiber, copper, backplane)
  **/
-u32 txgbe_get_media_type_raptor(struct txgbe_hw *hw)
+u32 txgbe_get_media_type_sp(struct txgbe_hw *hw)
 {
 	u32 media_type;
 
@@ -3565,8 +3582,10 @@ s32 txgbe_reset_hw(struct txgbe_hw *hw)
 	if (!hw->phy.reset_disable)
 		hw->phy.reset(hw);
 
-	/* remember AUTOC from before we reset */
-	autoc = hw->mac.autoc_read(hw);
+	if (hw->mac.type == txgbe_mac_sp) {
+		/* remember AUTOC from before we reset */
+		autoc = hw->mac.autoc_read(hw);
+	}
 
 mac_reset_top:
 	/* Do LAN reset, the MNG domain will not be reset. */
@@ -3615,7 +3634,8 @@ mac_reset_top:
 		msec_delay(50);
 
 		/* A temporary solution to set phy */
-		txgbe_set_phy_temp(hw);
+		if (hw->mac.type == txgbe_mac_sp)
+			txgbe_set_phy_temp(hw);
 	}
 
 	/* Store the permanent mac address */

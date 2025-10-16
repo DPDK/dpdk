@@ -139,10 +139,10 @@ enum txgbe_eeprom_type {
 
 enum txgbe_mac_type {
 	txgbe_mac_unknown = 0,
-	txgbe_mac_raptor,
+	txgbe_mac_sp,
 	txgbe_mac_aml,
 	txgbe_mac_aml40,
-	txgbe_mac_raptor_vf,
+	txgbe_mac_sp_vf,
 	txgbe_mac_aml_vf,
 	txgbe_num_macs
 };
@@ -544,6 +544,7 @@ struct txgbe_mac_info {
 	s32 (*prot_autoc_read)(struct txgbe_hw *hw, bool *locked, u64 *value);
 	s32 (*prot_autoc_write)(struct txgbe_hw *hw, bool locked, u64 value);
 	s32 (*negotiate_api_version)(struct txgbe_hw *hw, int api);
+	void (*init_mac_link_ops)(struct txgbe_hw *hw);
 
 	/* Link */
 	void (*disable_tx_laser)(struct txgbe_hw *hw);
