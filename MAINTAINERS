@@ -321,7 +321,7 @@ F: examples/*/*_neon.*
 F: examples/common/neon/
 
 LoongArch
-M: Min Zhou <zhoumin@loongson.cn>
+M: Bibo Mao <maobibo@loongson.cn>
 F: config/loongarch/
 F: doc/guides/linux_gsg/cross_build_dpdk_for_loongarch.rst
 F: lib/eal/loongarch/
