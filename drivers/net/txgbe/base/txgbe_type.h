@@ -848,6 +848,8 @@ struct txgbe_hw {
 	/*amlite: new SW-FW mbox */
 	u8 swfw_index;
 	rte_atomic32_t swfw_busy;
+	u32 fec_mode;
+	u32 cur_fec_link;
 };
 
 struct txgbe_backplane_ability {

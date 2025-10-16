@@ -338,6 +338,9 @@ s32 txgbe_init_hw(struct txgbe_hw *hw)
 
 	txgbe_disable_lldp(hw);
 
+	/* Init fec mode to 'AUTO' */
+	hw->fec_mode = TXGBE_PHY_FEC_AUTO;
+
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
 	if (status == 0 || status == TXGBE_ERR_SFP_NOT_PRESENT) {

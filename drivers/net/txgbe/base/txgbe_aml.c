@@ -131,6 +131,26 @@ u32 txgbe_get_media_type_aml(struct txgbe_hw *hw)
 	return media_type;
 }
 
+static int
+txgbe_phy_fec_get(struct txgbe_hw *hw)
+{
+	int value = 0;
+
+	rte_spinlock_lock(&hw->phy_lock);
+	value = rd32_epcs(hw, SR_PMA_RS_FEC_CTRL);
+	rte_spinlock_unlock(&hw->phy_lock);
+	if (value & 0x4)
+		return TXGBE_PHY_FEC_RS;
+
+	rte_spinlock_lock(&hw->phy_lock);
+	value = rd32_epcs(hw, SR_PMA_KR_FEC_CTRL);
+	rte_spinlock_unlock(&hw->phy_lock);
+	if (value & 0x1)
+		return TXGBE_PHY_FEC_BASER;
+
+	return TXGBE_PHY_FEC_OFF;
+}
+
 void txgbe_wait_for_link_up_aml(struct txgbe_hw *hw, u32 speed)
 {
 	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
@@ -184,7 +204,12 @@ s32 txgbe_setup_mac_link_aml(struct txgbe_hw *hw,
 	status = hw->mac.check_link(hw, &link_speed, &link_up,
 				    autoneg_wait_to_complete);
 
-	if (link_speed == speed && link_up)
+	if (link_up && speed == TXGBE_LINK_SPEED_25GB_FULL)
+		hw->cur_fec_link = txgbe_phy_fec_get(hw);
+
+	if (link_speed == speed && link_up &&
+	   !(speed == TXGBE_LINK_SPEED_25GB_FULL &&
+	   !(hw->fec_mode & hw->cur_fec_link)))
 		return status;
 
 	if (speed & TXGBE_LINK_SPEED_25GB_FULL)

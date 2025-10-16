@@ -2806,9 +2806,31 @@ txgbe_dev_detect_sfp(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u32 value = 0;
 	s32 err;
 
+	if (hw->mac.type == txgbe_mac_aml40) {
+		value = rd32(hw, TXGBE_GPIOEXT);
+		if (value & TXGBE_SFP1_MOD_PRST_LS) {
+			err = TXGBE_ERR_SFP_NOT_PRESENT;
+			goto out;
+		}
+	}
+
+	if (hw->mac.type == txgbe_mac_aml) {
+		value = rd32(hw, TXGBE_GPIOEXT);
+		if (value & TXGBE_SFP1_MOD_ABS_LS) {
+			err = TXGBE_ERR_SFP_NOT_PRESENT;
+			goto out;
+		}
+	}
+
+	/* wait for sfp module ready*/
+	if (hw->mac.type == txgbe_mac_aml || hw->mac.type == txgbe_mac_aml40)
+		msec_delay(200);
+
 	err = hw->phy.identify_sfp(hw);
+out:
 	if (err == TXGBE_ERR_SFP_NOT_SUPPORTED) {
 		PMD_DRV_LOG(ERR, "Unsupported SFP+ module type was detected.");
 	} else if (err == TXGBE_ERR_SFP_NOT_PRESENT) {
@@ -5642,6 +5664,102 @@ txgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int txgbe_fec_get_capa_speed_to_fec(struct rte_eth_fec_capa *speed_fec_capa)
+{
+	int num = 2;
+
+	if (speed_fec_capa) {
+		speed_fec_capa[0].speed = RTE_ETH_SPEED_NUM_10G;
+		speed_fec_capa[0].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+		speed_fec_capa[1].speed = RTE_ETH_SPEED_NUM_25G;
+		speed_fec_capa[1].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+					 RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
+					 RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
+					 RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+	}
+
+	return num;
+}
+
+static int txgbe_fec_get_capability(struct rte_eth_dev *dev,
+				    struct rte_eth_fec_capa *speed_fec_capa,
+				    unsigned int num)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u8 num_entries;
+
+	if (hw->mac.type != txgbe_mac_aml)
+		return -EOPNOTSUPP;
+
+	num_entries = txgbe_fec_get_capa_speed_to_fec(NULL);
+	if (!speed_fec_capa || num < num_entries)
+		return num_entries;
+
+	return txgbe_fec_get_capa_speed_to_fec(speed_fec_capa);
+}
+
+static int txgbe_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u32 speed = 0;
+	bool negotiate = false;
+	u32 curr_fec_mode;
+
+	hw->mac.get_link_capabilities(hw, &speed, &negotiate);
+
+	if (hw->mac.type != txgbe_mac_aml ||
+	  !(speed & TXGBE_LINK_SPEED_25GB_FULL))
+		return -EOPNOTSUPP;
+
+	if (hw->fec_mode == TXGBE_PHY_FEC_AUTO)
+		curr_fec_mode = RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+	else if (hw->fec_mode == TXGBE_PHY_FEC_RS)
+		curr_fec_mode = RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+	else if (hw->fec_mode == TXGBE_PHY_FEC_BASER)
+		curr_fec_mode = RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+	else
+		curr_fec_mode = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+
+	*fec_capa = curr_fec_mode;
+	return 0;
+}
+
+static int txgbe_fec_set(struct rte_eth_dev *dev, u32 fec_capa)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u32 orig_fec_mode = hw->fec_mode;
+	bool negotiate = false;
+	u32 speed = 0;
+
+	hw->mac.get_link_capabilities(hw, &speed, &negotiate);
+
+	if (hw->mac.type != txgbe_mac_aml ||
+	  !(speed & TXGBE_LINK_SPEED_25GB_FULL))
+		return -EOPNOTSUPP;
+
+	if (!fec_capa)
+		return -EINVAL;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+		hw->fec_mode = TXGBE_PHY_FEC_AUTO;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC))
+		hw->fec_mode = TXGBE_PHY_FEC_OFF;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(BASER))
+		hw->fec_mode = TXGBE_PHY_FEC_BASER;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(RS))
+		hw->fec_mode = TXGBE_PHY_FEC_RS;
+
+	if (hw->fec_mode != orig_fec_mode) {
+		txgbe_dev_setup_link_alarm_handler(dev);
+		txgbe_dev_link_update(dev, 0);
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.dev_configure              = txgbe_dev_configure,
 	.dev_infos_get              = txgbe_dev_info_get,
@@ -5718,6 +5836,9 @@ static const struct eth_dev_ops txgbe_eth_dev_ops = {
 	.udp_tunnel_port_del        = txgbe_dev_udp_tunnel_port_del,
 	.tm_ops_get                 = txgbe_tm_ops_get,
 	.tx_done_cleanup            = txgbe_dev_tx_done_cleanup,
+	.fec_get_capability         = txgbe_fec_get_capability,
+	.fec_get                    = txgbe_fec_get,
+	.fec_set                    = txgbe_fec_set,
 };
 
 RTE_PMD_REGISTER_PCI(net_txgbe, rte_txgbe_pmd);

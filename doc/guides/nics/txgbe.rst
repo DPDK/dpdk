@@ -34,6 +34,7 @@ Features
 - FW version
 - LRO
 - Generic flow API
+- Forward Error Correction (FEC) (only for 25G NICs)
 
 Prerequisites
 -------------

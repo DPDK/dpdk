@@ -613,7 +613,7 @@ s32 txgbe_hic_ephy_set_link(struct txgbe_hw *hw, u8 speed, u8 autoneg, u8 duplex
 	buffer.hdr.buf_len = sizeof(struct txgbe_hic_ephy_setlink) - sizeof(struct txgbe_hic_hdr);
 	buffer.hdr.cmd_or_resp.cmd_resv = FW_CEM_CMD_RESERVED;
 
-	buffer.fec_mode = TXGBE_PHY_FEC_AUTO;
+	buffer.fec_mode = hw->fec_mode;
 	buffer.speed = speed;
 	buffer.autoneg = autoneg;
 	buffer.duplex = duplex;
