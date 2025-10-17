@@ -16,6 +16,8 @@
 #define ENETC4_DEV_ID_VF	0xef00
 #define PCI_VENDOR_ID_NXP	0x1131
 
+#define ENETC4_TXBD_FLAGS_F		BIT(7)
+
 /***************************ENETC port registers**************************/
 #define ENETC4_PMR		0x10
 #define ENETC4_PMR_EN		(BIT(16) | BIT(17) | BIT(18))

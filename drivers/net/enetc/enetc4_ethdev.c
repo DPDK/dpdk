@@ -606,8 +606,8 @@ enetc4_dev_hw_init(struct rte_eth_dev *eth_dev)
 		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
-	eth_dev->rx_pkt_burst = &enetc_recv_pkts;
-	eth_dev->tx_pkt_burst = &enetc_xmit_pkts;
+	eth_dev->rx_pkt_burst = &enetc_recv_pkts_nc;
+	eth_dev->tx_pkt_burst = &enetc_xmit_pkts_nc;
 
 	/* Retrieving and storing the HW base address of device */
 	hw->hw.reg = (void *)pci_dev->mem_resource[0].addr;

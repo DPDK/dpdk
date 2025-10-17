@@ -86,12 +86,6 @@ enetc_xmit_pkts(void *tx_queue,
 	int i, start, bds_to_use;
 	struct enetc_tx_bd *txbd;
 	struct enetc_bdr *tx_ring = (struct enetc_bdr *)tx_queue;
-	unsigned short buflen;
-	uint8_t *data;
-	int j;
-
-	struct enetc_eth_hw *hw =
-			ENETC_DEV_PRIVATE_TO_HW(tx_ring->ndev->data->dev_private);
 
 	i = tx_ring->next_to_use;
 
@@ -103,17 +97,66 @@ enetc_xmit_pkts(void *tx_queue,
 	while (nb_pkts--) {
 		tx_ring->q_swbd[i].buffer_addr = tx_pkts[start];
 
-		if (hw->device_id == ENETC4_DEV_ID || hw->device_id == ENETC4_DEV_ID_VF) {
-			buflen = rte_pktmbuf_pkt_len(tx_ring->q_swbd[i].buffer_addr);
-			data = rte_pktmbuf_mtod(tx_ring->q_swbd[i].buffer_addr, void *);
-			for (j = 0; j <= buflen; j += RTE_CACHE_LINE_SIZE)
-				dcbf(data + j);
-		}
 		txbd = ENETC_TXBD(*tx_ring, i);
 		tx_swbd = &tx_ring->q_swbd[i];
 		txbd->frm_len = tx_pkts[start]->pkt_len;
 		txbd->buf_len = txbd->frm_len;
 		txbd->flags = rte_cpu_to_le_16(ENETC_TXBD_FLAGS_F);
+		txbd->addr = (uint64_t)(uintptr_t)
+		rte_cpu_to_le_64((size_t)tx_swbd->buffer_addr->buf_iova +
+				 tx_swbd->buffer_addr->data_off);
+		i++;
+		start++;
+		if (unlikely(i == tx_ring->bd_count))
+			i = 0;
+	}
+
+	/* we're only cleaning up the Tx ring here, on the assumption that
+	 * software is slower than hardware and hardware completed sending
+	 * older frames out by now.
+	 * We're also cleaning up the ring before kicking off Tx for the new
+	 * batch to minimize chances of contention on the Tx ring
+	 */
+	enetc_clean_tx_ring(tx_ring);
+
+	tx_ring->next_to_use = i;
+	enetc_wr_reg(tx_ring->tcir, i);
+	return start;
+}
+
+uint16_t
+enetc_xmit_pkts_nc(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	struct enetc_swbd *tx_swbd;
+	int i, start, bds_to_use;
+	struct enetc_tx_bd *txbd;
+	struct enetc_bdr *tx_ring = (struct enetc_bdr *)tx_queue;
+	unsigned int buflen, j;
+	uint8_t *data;
+
+	i = tx_ring->next_to_use;
+
+	bds_to_use = enetc_bd_unused(tx_ring);
+	if (bds_to_use < nb_pkts)
+		nb_pkts = bds_to_use;
+
+	start = 0;
+	while (nb_pkts--) {
+		tx_ring->q_swbd[i].buffer_addr = tx_pkts[start];
+
+		buflen = rte_pktmbuf_pkt_len(tx_ring->q_swbd[i].buffer_addr);
+		data = rte_pktmbuf_mtod(tx_ring->q_swbd[i].buffer_addr, void *);
+		for (j = 0; j <= buflen; j += RTE_CACHE_LINE_SIZE)
+			dcbf(data + j);
+
+		txbd = ENETC_TXBD(*tx_ring, i);
+		txbd->flags = rte_cpu_to_le_16(ENETC4_TXBD_FLAGS_F);
+
+		tx_swbd = &tx_ring->q_swbd[i];
+		txbd->frm_len = buflen;
+		txbd->buf_len = txbd->frm_len;
 		txbd->addr = (uint64_t)(uintptr_t)
 		rte_cpu_to_le_64((size_t)tx_swbd->buffer_addr->buf_iova +
 				 tx_swbd->buffer_addr->data_off);
@@ -171,7 +214,7 @@ enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 		k++;
 		if (unlikely(i == rx_ring->bd_count)) {
 			i = 0;
-			rxbd = ENETC_RXBD(*rx_ring, 0);
+			rxbd = ENETC_RXBD(*rx_ring, i);
 			rx_swbd = &rx_ring->q_swbd[i];
 		}
 	}
@@ -341,11 +384,6 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 	struct enetc_swbd *rx_swbd;
 	union enetc_rx_bd *rxbd;
 	uint32_t bd_status;
-	uint8_t *data;
-	uint32_t j;
-	struct enetc_eth_hw *hw =
-			ENETC_DEV_PRIVATE_TO_HW(rx_ring->ndev->data->dev_private);
-
 
 	/* next descriptor to process */
 	i = rx_ring->next_to_clean;
@@ -386,12 +424,6 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 		enetc_dev_rx_parse(rx_swbd->buffer_addr,
 				   rxbd->r.parse_summary);
 
-		if (hw->device_id == ENETC4_DEV_ID || hw->device_id == ENETC4_DEV_ID_VF) {
-			data = rte_pktmbuf_mtod(rx_swbd->buffer_addr, void *);
-			for (j = 0; j <= rx_swbd->buffer_addr->pkt_len; j += RTE_CACHE_LINE_SIZE)
-				dccivac(data + j);
-		}
-
 		rx_pkts[rx_frm_cnt] = rx_swbd->buffer_addr;
 		cleaned_cnt++;
 		rx_swbd++;
@@ -415,6 +447,73 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 	enetc_refill_rx_ring(rx_ring, cleaned_cnt);
 
 	return rx_frm_cnt;
+}
+
+static int
+enetc_clean_rx_ring_nc(struct enetc_bdr *rx_ring,
+		    struct rte_mbuf **rx_pkts,
+		    int work_limit)
+{
+	int rx_frm_cnt = 0;
+	int cleaned_cnt, i;
+	struct enetc_swbd *rx_swbd;
+	union enetc_rx_bd *rxbd, rxbd_temp;
+	uint32_t bd_status;
+	uint8_t *data;
+	uint32_t j;
+
+	/* next descriptor to process */
+	i = rx_ring->next_to_clean;
+	/* next descriptor to process */
+	rxbd = ENETC_RXBD(*rx_ring, i);
+
+	cleaned_cnt = enetc_bd_unused(rx_ring);
+	rx_swbd = &rx_ring->q_swbd[i];
+
+	while (likely(rx_frm_cnt < work_limit)) {
+		rxbd_temp = *rxbd;
+		bd_status = rte_le_to_cpu_32(rxbd_temp.r.lstatus);
+		if (!bd_status)
+			break;
+		if (rxbd_temp.r.error)
+			rx_ring->ierrors++;
+
+		rx_swbd->buffer_addr->pkt_len = rxbd_temp.r.buf_len -
+						rx_ring->crc_len;
+		rx_swbd->buffer_addr->data_len = rx_swbd->buffer_addr->pkt_len;
+		rx_swbd->buffer_addr->hash.rss = rxbd_temp.r.rss_hash;
+		enetc_dev_rx_parse(rx_swbd->buffer_addr,
+				   rxbd_temp.r.parse_summary);
+
+		data = rte_pktmbuf_mtod(rx_swbd->buffer_addr, void *);
+		for (j = 0; j <= rx_swbd->buffer_addr->pkt_len; j += RTE_CACHE_LINE_SIZE)
+			dccivac(data + j);
+
+		rx_pkts[rx_frm_cnt] = rx_swbd->buffer_addr;
+		cleaned_cnt++;
+		rx_swbd++;
+		i++;
+		if (unlikely(i == rx_ring->bd_count)) {
+			i = 0;
+			rx_swbd = &rx_ring->q_swbd[i];
+		}
+		rxbd = ENETC_RXBD(*rx_ring, i);
+		rx_frm_cnt++;
+	}
+
+	rx_ring->next_to_clean = i;
+	enetc_refill_rx_ring(rx_ring, cleaned_cnt);
+
+	return rx_frm_cnt;
+}
+
+uint16_t
+enetc_recv_pkts_nc(void *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	struct enetc_bdr *rx_ring = (struct enetc_bdr *)rxq;
+
+	return enetc_clean_rx_ring_nc(rx_ring, rx_pkts, nb_pkts);
 }
 
 uint16_t

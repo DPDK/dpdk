@@ -67,6 +67,7 @@ struct enetc_bdr {
 	};
 	struct rte_mempool *mb_pool;   /* mbuf pool to populate RX ring. */
 	struct rte_eth_dev *ndev;
+	uint64_t ierrors;
 };
 
 /*
@@ -121,7 +122,11 @@ int enetc4_vf_dev_stop(struct rte_eth_dev *dev);
  */
 uint16_t enetc_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
+uint16_t enetc_xmit_pkts_nc(void *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 uint16_t enetc_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+uint16_t enetc_recv_pkts_nc(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 
 int enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt);
