@@ -131,10 +131,305 @@ enetc4_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static int
+enetc4_alloc_txbdr(struct enetc_bdr *txr, uint16_t nb_desc)
+{
+	int size;
+
+	size = nb_desc * sizeof(struct enetc_swbd);
+	txr->q_swbd = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
+	if (txr->q_swbd == NULL)
+		return -ENOMEM;
+
+	size = nb_desc * sizeof(struct enetc_bdr);
+	txr->bd_base = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
+	if (txr->bd_base == NULL) {
+		rte_free(txr->q_swbd);
+		txr->q_swbd = NULL;
+		return -ENOMEM;
+	}
+	txr->bd_count = nb_desc;
+	txr->next_to_clean = 0;
+	txr->next_to_use = 0;
+
+	return 0;
+}
+
+static void
+enetc4_free_bdr(struct enetc_bdr *rxr)
+{
+	rte_free(rxr->bd_base);
+	rte_free(rxr->q_swbd);
+	rxr->q_swbd = NULL;
+	rxr->bd_base = NULL;
+}
+
+static void
+enetc4_setup_txbdr(struct enetc_hw *hw, struct enetc_bdr *tx_ring)
+{
+	int idx = tx_ring->index;
+	phys_addr_t bd_address;
+
+	bd_address = (phys_addr_t)
+		     rte_mem_virt2iova((const void *)tx_ring->bd_base);
+	enetc4_txbdr_wr(hw, idx, ENETC_TBBAR0,
+		       lower_32_bits((uint64_t)bd_address));
+	enetc4_txbdr_wr(hw, idx, ENETC_TBBAR1,
+		       upper_32_bits((uint64_t)bd_address));
+	enetc4_txbdr_wr(hw, idx, ENETC_TBLENR,
+		       ENETC_RTBLENR_LEN(tx_ring->bd_count));
+
+	enetc4_txbdr_wr(hw, idx, ENETC_TBCIR, 0);
+	enetc4_txbdr_wr(hw, idx, ENETC_TBCISR, 0);
+	tx_ring->tcir = (void *)((size_t)hw->reg +
+			ENETC_BDR(TX, idx, ENETC_TBCIR));
+	tx_ring->tcisr = (void *)((size_t)hw->reg +
+			 ENETC_BDR(TX, idx, ENETC_TBCISR));
+}
+
+int
+enetc4_tx_queue_setup(struct rte_eth_dev *dev,
+		     uint16_t queue_idx,
+		     uint16_t nb_desc,
+		     unsigned int socket_id __rte_unused,
+		     const struct rte_eth_txconf *tx_conf)
+{
+	int err;
+	struct enetc_bdr *tx_ring;
+	struct rte_eth_dev_data *data = dev->data;
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+	if (nb_desc > MAX_BD_COUNT)
+		return -1;
+
+	tx_ring = rte_zmalloc(NULL, sizeof(struct enetc_bdr), 0);
+	if (tx_ring == NULL) {
+		ENETC_PMD_ERR("Failed to allocate TX ring memory");
+		err = -ENOMEM;
+		return err;
+	}
+
+	tx_ring->index = queue_idx;
+	err = enetc4_alloc_txbdr(tx_ring, nb_desc);
+	if (err)
+		goto fail;
+
+	tx_ring->ndev = dev;
+	enetc4_setup_txbdr(&priv->hw.hw, tx_ring);
+	data->tx_queues[queue_idx] = tx_ring;
+	if (!tx_conf->tx_deferred_start) {
+		/* enable ring */
+		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index,
+			       ENETC_TBMR, ENETC_TBMR_EN);
+		dev->data->tx_queue_state[tx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		dev->data->tx_queue_state[tx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+fail:
+	rte_free(tx_ring);
+
+	return err;
+}
+
+void
+enetc4_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	void *txq = dev->data->tx_queues[qid];
+
+	if (txq == NULL)
+		return;
+
+	struct enetc_bdr *tx_ring = (struct enetc_bdr *)txq;
+	struct enetc_eth_hw *eth_hw =
+		ENETC_DEV_PRIVATE_TO_HW(tx_ring->ndev->data->dev_private);
+	struct enetc_hw *hw;
+	struct enetc_swbd *tx_swbd;
+	int i;
+	uint32_t val;
+
+	/* Disable the ring */
+	hw = &eth_hw->hw;
+	val = enetc4_txbdr_rd(hw, tx_ring->index, ENETC_TBMR);
+	val &= (~ENETC_TBMR_EN);
+	enetc4_txbdr_wr(hw, tx_ring->index, ENETC_TBMR, val);
+
+	/* clean the ring*/
+	i = tx_ring->next_to_clean;
+	tx_swbd = &tx_ring->q_swbd[i];
+	while (tx_swbd->buffer_addr != NULL) {
+		rte_pktmbuf_free(tx_swbd->buffer_addr);
+		tx_swbd->buffer_addr = NULL;
+		tx_swbd++;
+		i++;
+		if (unlikely(i == tx_ring->bd_count)) {
+			i = 0;
+			tx_swbd = &tx_ring->q_swbd[i];
+		}
+	}
+
+	enetc4_free_bdr(tx_ring);
+	rte_free(tx_ring);
+}
+
+static int
+enetc4_alloc_rxbdr(struct enetc_bdr *rxr, uint16_t nb_desc)
+{
+	int size;
+
+	size = nb_desc * sizeof(struct enetc_swbd);
+	rxr->q_swbd = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
+	if (rxr->q_swbd == NULL)
+		return -ENOMEM;
+
+	size = nb_desc * sizeof(struct enetc_bdr);
+	rxr->bd_base = rte_malloc(NULL, size, ENETC_BD_RING_ALIGN);
+	if (rxr->bd_base == NULL) {
+		rte_free(rxr->q_swbd);
+		rxr->q_swbd = NULL;
+		return -ENOMEM;
+	}
+	rxr->bd_count = nb_desc;
+	rxr->next_to_clean = 0;
+	rxr->next_to_use = 0;
+	rxr->next_to_alloc = 0;
+
+	return 0;
+}
+
+static void
+enetc4_setup_rxbdr(struct enetc_hw *hw, struct enetc_bdr *rx_ring,
+		  struct rte_mempool *mb_pool)
+{
+	int idx = rx_ring->index;
+	uint16_t buf_size;
+	phys_addr_t bd_address;
+
+	bd_address = (phys_addr_t)
+		     rte_mem_virt2iova((const void *)rx_ring->bd_base);
+
+	enetc4_rxbdr_wr(hw, idx, ENETC_RBBAR0,
+		       lower_32_bits((uint64_t)bd_address));
+	enetc4_rxbdr_wr(hw, idx, ENETC_RBBAR1,
+		       upper_32_bits((uint64_t)bd_address));
+	enetc4_rxbdr_wr(hw, idx, ENETC_RBLENR,
+		       ENETC_RTBLENR_LEN(rx_ring->bd_count));
+
+	rx_ring->mb_pool = mb_pool;
+	rx_ring->rcir = (void *)((size_t)hw->reg +
+			ENETC_BDR(RX, idx, ENETC_RBCIR));
+	enetc_refill_rx_ring(rx_ring, (enetc_bd_unused(rx_ring)));
+	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rx_ring->mb_pool) -
+		   RTE_PKTMBUF_HEADROOM);
+	enetc4_rxbdr_wr(hw, idx, ENETC_RBBSR, buf_size);
+	enetc4_rxbdr_wr(hw, idx, ENETC_RBPIR, 0);
+}
+
+int
+enetc4_rx_queue_setup(struct rte_eth_dev *dev,
+		     uint16_t rx_queue_id,
+		     uint16_t nb_rx_desc,
+		     unsigned int socket_id __rte_unused,
+		     const struct rte_eth_rxconf *rx_conf,
+		     struct rte_mempool *mb_pool)
+{
+	int err = 0;
+	struct enetc_bdr *rx_ring;
+	struct rte_eth_dev_data *data =  dev->data;
+	struct enetc_eth_adapter *adapter =
+			ENETC_DEV_PRIVATE(data->dev_private);
+	uint64_t rx_offloads = data->dev_conf.rxmode.offloads;
+
+	PMD_INIT_FUNC_TRACE();
+	if (nb_rx_desc > MAX_BD_COUNT)
+		return -1;
+
+	rx_ring = rte_zmalloc(NULL, sizeof(struct enetc_bdr), 0);
+	if (rx_ring == NULL) {
+		ENETC_PMD_ERR("Failed to allocate RX ring memory");
+		err = -ENOMEM;
+		return err;
+	}
+
+	rx_ring->index = rx_queue_id;
+	err = enetc4_alloc_rxbdr(rx_ring, nb_rx_desc);
+	if (err)
+		goto fail;
+
+	rx_ring->ndev = dev;
+	enetc4_setup_rxbdr(&adapter->hw.hw, rx_ring, mb_pool);
+	data->rx_queues[rx_queue_id] = rx_ring;
+
+	if (!rx_conf->rx_deferred_start) {
+		/* enable ring */
+		enetc4_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR,
+			       ENETC_RBMR_EN);
+		dev->data->rx_queue_state[rx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		dev->data->rx_queue_state[rx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	rx_ring->crc_len = (uint8_t)((rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) ?
+				     RTE_ETHER_CRC_LEN : 0);
+	return 0;
+fail:
+	rte_free(rx_ring);
+
+	return err;
+}
+
+void
+enetc4_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
+{
+	void *rxq = dev->data->rx_queues[qid];
+
+	if (rxq == NULL)
+		return;
+
+	struct enetc_bdr *rx_ring = (struct enetc_bdr *)rxq;
+	struct enetc_eth_hw *eth_hw =
+		ENETC_DEV_PRIVATE_TO_HW(rx_ring->ndev->data->dev_private);
+	struct enetc_swbd *q_swbd;
+	struct enetc_hw *hw;
+	uint32_t val;
+	int i;
+
+	/* Disable the ring */
+	hw = &eth_hw->hw;
+	val = enetc4_rxbdr_rd(hw, rx_ring->index, ENETC_RBMR);
+	val &= (~ENETC_RBMR_EN);
+	enetc4_rxbdr_wr(hw, rx_ring->index, ENETC_RBMR, val);
+
+	/* Clean the ring */
+	i = rx_ring->next_to_clean;
+	q_swbd = &rx_ring->q_swbd[i];
+	while (i != rx_ring->next_to_use) {
+		rte_pktmbuf_free(q_swbd->buffer_addr);
+		q_swbd->buffer_addr = NULL;
+		q_swbd++;
+		i++;
+		if (unlikely(i == rx_ring->bd_count)) {
+			i = 0;
+			q_swbd = &rx_ring->q_swbd[i];
+		}
+	}
+
+	enetc4_free_bdr(rx_ring);
+	rte_free(rx_ring);
+}
+
 int
 enetc4_dev_close(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t i;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -145,6 +440,18 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 		ret = enetc4_vf_dev_stop(dev);
 	else
 		ret = enetc4_dev_stop(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		enetc4_rx_queue_release(dev, i);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		enetc4_tx_queue_release(dev, i);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
 
 	if (rte_eal_iova_mode() == RTE_IOVA_PA)
 		dpaax_iova_table_depopulate();
@@ -173,7 +480,93 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+int
+enetc4_rx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *rx_ring;
+	uint32_t rx_data;
 
+	PMD_INIT_FUNC_TRACE();
+	rx_ring = dev->data->rx_queues[qidx];
+	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		rx_data = enetc4_rxbdr_rd(&priv->hw.hw, rx_ring->index,
+					 ENETC_RBMR);
+		rx_data = rx_data | ENETC_RBMR_EN;
+		enetc4_rxbdr_wr(&priv->hw.hw, rx_ring->index, ENETC_RBMR,
+			       rx_data);
+		dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return 0;
+}
+
+int
+enetc4_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *rx_ring;
+	uint32_t rx_data;
+
+	PMD_INIT_FUNC_TRACE();
+	rx_ring = dev->data->rx_queues[qidx];
+	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		rx_data = enetc4_rxbdr_rd(&priv->hw.hw, rx_ring->index,
+					 ENETC_RBMR);
+		rx_data = rx_data & (~ENETC_RBMR_EN);
+		enetc4_rxbdr_wr(&priv->hw.hw, rx_ring->index, ENETC_RBMR,
+			       rx_data);
+		dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+}
+
+int
+enetc4_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *tx_ring;
+	uint32_t tx_data;
+
+	PMD_INIT_FUNC_TRACE();
+	tx_ring = dev->data->tx_queues[qidx];
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		tx_data = enetc4_txbdr_rd(&priv->hw.hw, tx_ring->index,
+					 ENETC_TBMR);
+		tx_data = tx_data | ENETC_TBMR_EN;
+		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index, ENETC_TBMR,
+			       tx_data);
+		dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return 0;
+}
+
+int
+enetc4_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *tx_ring;
+	uint32_t tx_data;
+
+	PMD_INIT_FUNC_TRACE();
+	tx_ring = dev->data->tx_queues[qidx];
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		tx_data = enetc4_txbdr_rd(&priv->hw.hw, tx_ring->index,
+					 ENETC_TBMR);
+		tx_data = tx_data & (~ENETC_TBMR_EN);
+		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index, ENETC_TBMR,
+			       tx_data);
+		dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+}
 
 /*
  * The set of PCI devices this driver supports
@@ -190,6 +583,14 @@ static const struct eth_dev_ops enetc4_ops = {
 	.dev_stop             = enetc4_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.dev_infos_get        = enetc4_dev_infos_get,
+	.rx_queue_setup       = enetc4_rx_queue_setup,
+	.rx_queue_start       = enetc4_rx_queue_start,
+	.rx_queue_stop        = enetc4_rx_queue_stop,
+	.rx_queue_release     = enetc4_rx_queue_release,
+	.tx_queue_setup       = enetc4_tx_queue_setup,
+	.tx_queue_start       = enetc4_tx_queue_start,
+	.tx_queue_stop        = enetc4_tx_queue_stop,
+	.tx_queue_release     = enetc4_tx_queue_release,
 };
 
 /*

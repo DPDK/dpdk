@@ -41,6 +41,14 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.dev_stop             = enetc4_vf_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.dev_infos_get        = enetc4_dev_infos_get,
+	.rx_queue_setup       = enetc4_rx_queue_setup,
+	.rx_queue_start       = enetc4_rx_queue_start,
+	.rx_queue_stop        = enetc4_rx_queue_stop,
+	.rx_queue_release     = enetc4_rx_queue_release,
+	.tx_queue_setup       = enetc4_tx_queue_setup,
+	.tx_queue_start       = enetc4_tx_queue_start,
+	.tx_queue_stop        = enetc4_tx_queue_stop,
+	.tx_queue_release     = enetc4_tx_queue_release,
 };
 
 static int
