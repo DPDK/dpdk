@@ -562,6 +562,18 @@ soc_hip10 = {
     'numa': true
 }
 
+soc_imx = {
+    'description': 'NXP IMX',
+    'implementer': '0x41',
+    'part_number': '0xd05',
+    'flags': [
+        ['RTE_MACHINE', '"armv8a"'],
+        ['RTE_MAX_LCORE', 6],
+        ['RTE_MAX_NUMA_NODES', 1],
+    ],
+    'numa': false,
+}
+
 soc_kunpeng920 = {
     'description': 'HiSilicon Kunpeng 920',
     'implementer': '0x48',
@@ -746,6 +758,7 @@ graviton2:       AWS Graviton2
 graviton3:       AWS Graviton3
 graviton4:       AWS Graviton4
 hip10:           HiSilicon HIP10
+imx:             NXP IMX
 kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
 n1sdp:           Arm Neoverse N1SDP
@@ -788,6 +801,7 @@ socs = {
     'graviton3': soc_graviton3,
     'graviton4': soc_graviton4,
     'hip10': soc_hip10,
+    'imx': soc_imx,
     'kunpeng920': soc_kunpeng920,
     'kunpeng930': soc_kunpeng930,
     'n1sdp': soc_n1sdp,

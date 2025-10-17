@@ -120,6 +120,10 @@ New Features
   * Enabled software taildrop for ordered queues.
   * Added additional MAC counters in xstats.
 
+* **Added NXP ENETC4 ethernet driver.**
+
+  Added ENETC4 PMD for multiple new generation SoCs.
+
 * **Updated Wangxun txgbe ethernet driver.**
 
   Added support for Wangxun Amber-Lite NIC series,

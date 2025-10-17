@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2024 NXP
  */
 
 #include <stdbool.h>
-#include <ethdev_pci.h>
 #include <rte_random.h>
 #include <dpaax_iova_table.h>
 
@@ -145,8 +144,8 @@ enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
-static void
-print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
+void
+enetc_print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 
@@ -209,7 +208,7 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 		mac++;
 		*mac = (uint16_t)rte_rand();
 		enetc_port_wr(enetc_hw, ENETC_PSIPMAR1(0), *mac);
-		print_ethaddr("New address: ",
+		enetc_print_ethaddr("New address: ",
 			      (const struct rte_ether_addr *)hw->mac.addr);
 	}
 

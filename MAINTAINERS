@@ -980,9 +980,12 @@ F: doc/guides/nics/features/dpaa2.ini
 NXP enetc
 M: Gagandeep Singh <g.singh@nxp.com>
 M: Sachin Saxena <sachin.saxena@oss.nxp.com>
+M: Vanshika Shukla <vanshika.shukla@nxp.com>
 F: drivers/net/enetc/
 F: doc/guides/nics/enetc.rst
+F: doc/guides/nics/enetc4.rst
 F: doc/guides/nics/features/enetc.ini
+F: doc/guides/nics/features/enetc4.ini
 
 NXP enetfec - EXPERIMENTAL
 M: Apeksha Gupta <apeksha.gupta@nxp.com>

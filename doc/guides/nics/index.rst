@@ -27,6 +27,7 @@ Network Interface Controller Drivers
     e1000em
     ena
     enetc
+    enetc4
     enetfec
     enic
     fail_safe
