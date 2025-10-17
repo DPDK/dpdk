@@ -16,6 +16,12 @@
 #define ENETC4_DEV_ID_VF	0xef00
 #define PCI_VENDOR_ID_NXP	0x1131
 
+struct enetc_msg_swbd {
+	void *vaddr;
+	uint64_t dma;
+	uint32_t size;
+};
+
 /* enetc4 txbd flags */
 #define ENETC4_TXBD_FLAGS_L4CS		BIT(0)
 #define ENETC4_TXBD_FLAGS_L_TX_CKSUM	BIT(3)
@@ -105,12 +111,28 @@
 #define IFMODE_SGMII			5
 #define PM_IF_MODE_ENA			BIT(15)
 
+#define ENETC4_DEF_VSI_WAIT_TIMEOUT_UPDATE     100
+#define ENETC4_DEF_VSI_WAIT_DELAY_UPDATE       2000 /* us */
+
 /* Station interface statistics */
 #define ENETC4_SIROCT0           0x300
 #define ENETC4_SIRFRM0           0x308
 #define ENETC4_SITOCT0           0x320
 #define ENETC4_SITFRM0           0x328
 #define ENETC4_SITDFCR           0x340
+
+/* VSI MSG Registers */
+#define ENETC4_VSIMSGSR  0x204   /* RO */
+#define ENETC4_VSIMSGSR_MB       BIT(0)
+#define ENETC4_VSIMSGSR_MS       BIT(1)
+#define ENETC4_VSIMSGSNDAR0      0x210
+#define ENETC4_VSIMSGSNDAR1      0x214
+
+#define ENETC4_VSIMSGRR		 0x208
+#define ENETC4_VSIMSGRR_MR       BIT(0)
+
+#define ENETC_SIMSGSR_SET_MC(val) ((val) << 16)
+#define ENETC_SIMSGSR_GET_MC(val) ((val) >> 16)
 
 /* Control BDR regs */
 #define ENETC4_SICBDRMR		0x800
