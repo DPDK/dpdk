@@ -1537,8 +1537,8 @@ bnx2x_set_q_rx_mode(struct bnx2x_softc *sc, uint8_t cl_id,
 
 	ramrod_param.rdata = BNX2X_SP(sc, rx_mode_rdata);
 	ramrod_param.rdata_mapping =
-	    (rte_iova_t)BNX2X_SP_MAPPING(sc, rx_mode_rdata),
-	    rte_bit_relaxed_set32(ECORE_FILTER_RX_MODE_PENDING, &sc->sp_state);
+		(rte_iova_t)BNX2X_SP_MAPPING(sc, rx_mode_rdata);
+	rte_bit_relaxed_set32(ECORE_FILTER_RX_MODE_PENDING, &sc->sp_state);
 
 	ramrod_param.ramrod_flags = ramrod_flags;
 	ramrod_param.rx_mode_flags = rx_mode_flags;
