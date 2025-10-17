@@ -983,7 +983,8 @@ main(int argc, char **argv)
 	int i;
 
 	char mp_flag[] = "--proc-type=secondary";
-	char *argp[argc + 1];
+	char *argp[argc + 2];  /* add proc-type, and final NULL entry */
+	int n_argp = 0;
 
 	/* catch ctrl-c so we can cleanup on exit */
 	sigemptyset(&action.sa_mask);
@@ -994,27 +995,27 @@ main(int argc, char **argv)
 	if (origaction.sa_handler == SIG_DFL)
 		sigaction(SIGHUP, &action, NULL);
 
-	argp[0] = argv[0];
-	argp[1] = mp_flag;
+	argp[n_argp++] = argv[0];
+	argp[n_argp++] = mp_flag;
 
-	for (i = 1; i < argc; i++)
-		argp[i + 1] = argv[i];
+	for (i = 1; i < argc; i++) {
+		argp[n_argp] = argv[i];
+		/* drop any user-provided proc-type to avoid dup flags */
+		if (strncmp(argv[i], mp_flag, strlen("--proc-type")) != 0)
+			n_argp++;
+	}
+	argp[n_argp] = NULL;
 
-	argc += 1;
-
-	diag = rte_eal_init(argc, argp);
+	diag = rte_eal_init(n_argp, argp);
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
 
 	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
-	argc -= diag;
-	argv += (diag - 1);
-
 	/* parse app arguments */
-	if (argc > 1) {
-		ret = launch_args_parse(argc, argv, argp[0]);
+	if (n_argp - diag > 1) {
+		ret = launch_args_parse(n_argp - diag, argp + diag, argp[0]);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Invalid argument\n");
 	}
