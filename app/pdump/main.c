@@ -982,9 +982,8 @@ main(int argc, char **argv)
 	int ret;
 	int i;
 
-	char n_flag[] = "-n4";
 	char mp_flag[] = "--proc-type=secondary";
-	char *argp[argc + 2];
+	char *argp[argc + 1];
 
 	/* catch ctrl-c so we can cleanup on exit */
 	sigemptyset(&action.sa_mask);
@@ -996,13 +995,12 @@ main(int argc, char **argv)
 		sigaction(SIGHUP, &action, NULL);
 
 	argp[0] = argv[0];
-	argp[1] = n_flag;
-	argp[2] = mp_flag;
+	argp[1] = mp_flag;
 
 	for (i = 1; i < argc; i++)
-		argp[i + 2] = argv[i];
+		argp[i + 1] = argv[i];
 
-	argc += 2;
+	argc += 1;
 
 	diag = rte_eal_init(argc, argp);
 	if (diag < 0)
@@ -1012,7 +1010,7 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
 
 	argc -= diag;
-	argv += (diag - 2);
+	argv += (diag - 1);
 
 	/* parse app arguments */
 	if (argc > 1) {
