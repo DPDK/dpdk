@@ -190,7 +190,7 @@ l3fwd_event_queue_setup_generic(uint32_t event_queue_cfg)
 	}
 
 	event_q_conf.event_queue_cfg |= RTE_EVENT_QUEUE_CFG_SINGLE_LINK;
-	event_q_conf.priority = RTE_EVENT_DEV_PRIORITY_HIGHEST,
+	event_q_conf.priority = RTE_EVENT_DEV_PRIORITY_HIGHEST;
 	ret = rte_event_queue_setup(event_d_id, event_q_id, &event_q_conf);
 	if (ret < 0)
 		rte_panic("Error in configuring event queue for Tx adapter\n");
