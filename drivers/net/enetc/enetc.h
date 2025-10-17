@@ -92,6 +92,8 @@ struct enetc_bdr {
 	struct rte_mempool *mb_pool;   /* mbuf pool to populate RX ring. */
 	struct rte_eth_dev *ndev;
 	uint64_t ierrors;
+	uint8_t rx_deferred_start;
+	uint8_t tx_deferred_start;
 };
 
 struct enetc_eth_hw {

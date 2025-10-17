@@ -28,9 +28,31 @@ enetc4_dev_start(struct rte_eth_dev *dev)
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_bdr *txq, *rxq;
 	uint32_t val;
+	int i, ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* Start TX queues that are not deferred */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq && !txq->tx_deferred_start) {
+			ret = enetc4_tx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	/* Start RX queues that are not deferred */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+		if (rxq && !rxq->rx_deferred_start) {
+			ret = enetc4_rx_queue_start(dev, i);
+			if (ret < 0)
+				return ret;
+		}
+	}
 
 	val = enetc4_port_rd(enetc_hw, ENETC4_PM_CMD_CFG(0));
 	enetc4_port_wr(enetc_hw, ENETC4_PM_CMD_CFG(0),
@@ -281,6 +303,7 @@ enetc4_tx_queue_setup(struct rte_eth_dev *dev,
 	tx_ring->ndev = dev;
 	enetc4_setup_txbdr(&priv->hw.hw, tx_ring);
 	data->tx_queues[queue_idx] = tx_ring;
+	tx_ring->tx_deferred_start = tx_conf->tx_deferred_start;
 	if (!tx_conf->tx_deferred_start) {
 		/* enable ring */
 		enetc4_txbdr_wr(&priv->hw.hw, tx_ring->index,
@@ -429,6 +452,7 @@ enetc4_rx_queue_setup(struct rte_eth_dev *dev,
 	rx_ring->ndev = dev;
 	enetc4_setup_rxbdr(&adapter->hw.hw, rx_ring, mb_pool);
 	data->rx_queues[rx_queue_id] = rx_ring;
+	rx_ring->rx_deferred_start = rx_conf->rx_deferred_start;
 
 	if (!rx_conf->rx_deferred_start) {
 		/* enable ring */
