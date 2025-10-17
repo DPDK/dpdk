@@ -9,13 +9,13 @@ import argparse
 
 BUFFER_SIZE = 200000
 
-METRICS_REQ = "{\"action\":0,\"command\":\"ports_all_stat_values\",\"data\":null}"
-API_REG = "{\"action\":1,\"command\":\"clients\",\"data\":{\"client_path\":\""
-API_UNREG = "{\"action\":2,\"command\":\"clients\",\"data\":{\"client_path\":\""
-GLOBAL_METRICS_REQ = "{\"action\":0,\"command\":\"global_stat_values\",\"data\":null}"
+METRICS_REQ = '{"action":0,"command":"ports_all_stat_values","data":null}'
+API_REG = '{"action":1,"command":"clients","data":{"client_path":"'
+API_UNREG = '{"action":2,"command":"clients","data":{"client_path":"'
+GLOBAL_METRICS_REQ = '{"action":0,"command":"global_stat_values","data":null}'
 DEFAULT_FP = "/var/run/dpdk/default_client"
-DEFAULT_PREFIX = 'rte'
-RUNTIME_SOCKET_NAME = 'telemetry'
+DEFAULT_PREFIX = "rte"
+RUNTIME_SOCKET_NAME = "telemetry"
 
 
 class Socket:
@@ -56,8 +56,7 @@ class Client:
         self.file_path = file_path
 
     def setRunpath(self, file_prefix):
-        self.run_path = os.path.join(get_dpdk_runtime_dir(file_prefix),
-                                     RUNTIME_SOCKET_NAME)
+        self.run_path = os.path.join(get_dpdk_runtime_dir(file_prefix), RUNTIME_SOCKET_NAME)
 
     def register(self):
         # Connects a client to DPDK-instance
@@ -69,7 +68,7 @@ class Client:
             print("Error - Socket binding error: " + str(msg) + "\n")
         self.socket.recv_fd.settimeout(2)
         self.socket.send_fd.connect(self.run_path)
-        JSON = (API_REG + self.file_path + "\"}}")
+        JSON = API_REG + self.file_path + '"}}'
         self.socket.send_fd.sendall(JSON.encode())
 
         self.socket.recv_fd.listen(1)
@@ -77,7 +76,7 @@ class Client:
 
     def unregister(self):
         # Unregister a given client
-        self.socket.client_fd.send((API_UNREG + self.file_path + "\"}}").encode())
+        self.socket.client_fd.send((API_UNREG + self.file_path + '"}}').encode())
         self.socket.client_fd.close()
 
     def requestMetrics(self):
@@ -133,25 +132,33 @@ class Client:
 
 
 def get_dpdk_runtime_dir(fp):
-    """ Using the same logic as in DPDK's EAL, get the DPDK runtime directory
-    based on the file-prefix and user """
-    run_dir = os.environ.get('RUNTIME_DIRECTORY')
+    """Using the same logic as in DPDK's EAL, get the DPDK runtime directory
+    based on the file-prefix and user"""
+    run_dir = os.environ.get("RUNTIME_DIRECTORY")
     if not run_dir:
-        if (os.getuid() == 0):
-            run_dir = '/var/run'
+        if os.getuid() == 0:
+            run_dir = "/var/run"
         else:
-            run_dir = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
-    return os.path.join(run_dir, 'dpdk', fp)
+            run_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    return os.path.join(run_dir, "dpdk", fp)
 
 
 if __name__ == "__main__":
 
     sleep_time = 1
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--file-prefix', default=DEFAULT_PREFIX,
-                        help='Provide file-prefix for DPDK runtime directory')
-    parser.add_argument('sock_path', nargs='?', default=DEFAULT_FP,
-                        help='Provide socket file path connected by legacy client')
+    parser.add_argument(
+        "-f",
+        "--file-prefix",
+        default=DEFAULT_PREFIX,
+        help="Provide file-prefix for DPDK runtime directory",
+    )
+    parser.add_argument(
+        "sock_path",
+        nargs="?",
+        default=DEFAULT_FP,
+        help="Provide socket file path connected by legacy client",
+    )
     args = parser.parse_args()
 
     client = Client()
