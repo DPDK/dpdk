@@ -174,3 +174,13 @@ are shown below.
 
 For more information on how to use the Telemetry interface, see
 the :doc:`../howto/telemetry`.
+
+
+Inter-domain DMA Transfers
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The inter-domain DMA feature enables DMA devices to perform data transfers
+across different processes and OS domains.
+This is achieved by configuring virtual channels (vchans)
+using ``src_handler`` and ``dst_handler`` fields,
+which represent the source and destination endpoints for inter-domain DMA operations.

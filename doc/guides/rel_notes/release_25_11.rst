@@ -66,6 +66,11 @@ New Features
   For example: ``dpdk-test -l 140-144 -R``
   will start 5 threads with lcore-ids 0 to 4 on physical cores 140 to 144.
 
+* **Added inter-process and inter-OS DMA device API.**
+
+  * Added parameters in DMA device virtual channel to configure DMA operations
+    that span across different processes or operating system domains.
+
 * **Added speed 800G.**
 
   Added Ethernet link speed for 800 Gb/s as it is well standardized in IEEE,
