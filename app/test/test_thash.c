@@ -908,11 +908,10 @@ test_adjust_tuple_mb(uint32_t reta_sz, uint32_t bofs)
 static int
 test_adjust_tuple_mult_reta(void)
 {
-	uint32_t i, j, np, nt;
+	uint32_t np = 0, nt = 0;
 
-	nt = 0, np = 0;
-	for (i = 0; i < CHAR_BIT; i++) {
-		for (j = 6; j <= RTE_THASH_RETA_SZ_MAX - i; j++) {
+	for (uint32_t i = 0; i < CHAR_BIT; i++) {
+		for (uint32_t j = 6; j <= RTE_THASH_RETA_SZ_MAX - i; j++) {
 			np += (test_adjust_tuple_mb(j, i) == 0);
 			nt++;
 		}
