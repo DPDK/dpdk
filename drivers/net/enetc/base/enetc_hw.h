@@ -21,19 +21,28 @@
 /* SI regs, offset: 0h */
 #define ENETC_SIMR			0x0
 #define ENETC_SIMR_EN			BIT(31)
+#define ENETC_SIMR_RSSE			BIT(0)
 
+/* BDR grouping*/
+#define ENETC_SIRBGCR			0x38
 #define ENETC_SICAR0			0x40
 #define ENETC_SICAR0_COHERENT		0x2B2B6727
 #define ENETC_SIPMAR0			0x80
 #define ENETC_SIPMAR1			0x84
 
 #define ENETC_SICAPR0			0x900
+#define ENETC_SICAPR0_BDR_MASK		0xFF
 #define ENETC_SICAPR1			0x904
 
 #define ENETC_SIMSITRV(n)		(0xB00 + (n) * 0x4)
 #define ENETC_SIMSIRRV(n)		(0xB80 + (n) * 0x4)
 
 #define ENETC_SICCAPR			0x1200
+
+#define ENETC_SIPCAPR0			0x20
+#define ENETC_SIPCAPR0_RSS		BIT(8)
+#define ENETC_SIRSSCAPR			0x1600
+#define ENETC_SIRSSCAPR_GET_NUM_RSS(val) (BIT((val) & 0xf) * 32)
 
 /* enum for BD type */
 enum enetc_bdr_type {TX, RX};
@@ -44,6 +53,7 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_RBMR		0x0 /* RX BDR mode register*/
 #define ENETC_RBMR_EN		BIT(31)
 
+#define ENETC_BMR_RESET		0x0 /* BDR reset*/
 #define ENETC_RBSR		0x4  /* Rx BDR status register*/
 #define ENETC_RBBSR		0x8  /* Rx BDR buffer size register*/
 #define ENETC_RBCIR		0xc  /* Rx BDR consumer index register*/
@@ -196,6 +206,7 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_PKT_TYPE_ETHER            0x0060
 #define ENETC_PKT_TYPE_IPV4             0x0000
 #define ENETC_PKT_TYPE_IPV6             0x0020
+#define ENETC_PKT_TYPE_IPV6_EXT         0x0080
 #define ENETC_PKT_TYPE_IPV4_TCP \
 			(0x0010 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_TCP \
@@ -208,6 +219,10 @@ enum enetc_bdr_type {TX, RX};
 			(0x0013 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_SCTP \
 			(0x0013 | ENETC_PKT_TYPE_IPV6)
+#define ENETC_PKT_TYPE_IPV4_FRAG \
+			(0x0001 | ENETC_PKT_TYPE_IPV4)
+#define ENETC_PKT_TYPE_IPV6_FRAG \
+			(0x0001 | ENETC_PKT_TYPE_IPV6_EXT | ENETC_PKT_TYPE_IPV6)
 #define ENETC_PKT_TYPE_IPV4_ICMP \
 			(0x0003 | ENETC_PKT_TYPE_IPV4)
 #define ENETC_PKT_TYPE_IPV6_ICMP \
@@ -224,15 +239,6 @@ struct enetc_eth_mac_info {
 	uint8_t addr[RTE_ETHER_ADDR_LEN];
 	uint8_t perm_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t get_link_status;
-};
-
-struct enetc_eth_hw {
-	struct rte_eth_dev *ndev;
-	struct enetc_hw hw;
-	uint16_t device_id;
-	uint16_t vendor_id;
-	uint8_t revision_id;
-	struct enetc_eth_mac_info mac;
 };
 
 /* Transmit Descriptor */
@@ -287,5 +293,4 @@ union enetc_rx_bd {
 		};
 	} r;
 };
-
 #endif

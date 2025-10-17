@@ -112,6 +112,17 @@
 #define ENETC4_SITFRM0           0x328
 #define ENETC4_SITDFCR           0x340
 
+/* Control BDR regs */
+#define ENETC4_SICBDRMR		0x800
+#define ENETC4_SICBDRSR		0x804   /* RO */
+#define ENETC4_SICBDRBAR0	0x810
+#define ENETC4_SICBDRBAR1	0x814
+#define ENETC4_SICBDRPIR	0x818
+#define ENETC4_SICBDRCIR	0x81c
+#define ENETC4_SICBDRLENR	0x820
+#define ENETC4_SICTR0		0x18
+#define ENETC4_SICTR1		0x1c
+
 /* general register accessors */
 #define enetc4_rd_reg(reg)	rte_read32((void *)(reg))
 #define enetc4_wr_reg(reg, val)  rte_write32((val), (void *)(reg))

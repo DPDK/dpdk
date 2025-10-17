@@ -122,10 +122,14 @@ enetc4_mac_init(struct enetc_eth_hw *hw, struct rte_eth_dev *eth_dev)
 }
 
 int
-enetc4_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
+enetc4_dev_infos_get(struct rte_eth_dev *dev,
 		    struct rte_eth_dev_info *dev_info)
 {
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	PMD_INIT_FUNC_TRACE();
+
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = MAX_BD_COUNT,
 		.nb_min = MIN_BD_COUNT,
@@ -136,11 +140,12 @@ enetc4_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 		.nb_min = MIN_BD_COUNT,
 		.nb_align = BD_ALIGN,
 	};
-	dev_info->max_rx_queues = MAX_RX_RINGS;
-	dev_info->max_tx_queues = MAX_TX_RINGS;
+	dev_info->max_rx_queues = hw->max_rx_queues;
+	dev_info->max_tx_queues = hw->max_tx_queues;
 	dev_info->max_rx_pktlen = ENETC4_MAC_MAXFRM_SIZE;
 	dev_info->rx_offload_capa = dev_rx_offloads_sup;
 	dev_info->tx_offload_capa = dev_tx_offloads_sup;
+	dev_info->flow_type_rss_offloads = ENETC_RSS_OFFLOAD_ALL;
 
 	return 0;
 }
@@ -255,17 +260,20 @@ void
 enetc4_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	void *txq = dev->data->tx_queues[qid];
-
-	if (txq == NULL)
-		return;
-
-	struct enetc_bdr *tx_ring = (struct enetc_bdr *)txq;
-	struct enetc_eth_hw *eth_hw =
-		ENETC_DEV_PRIVATE_TO_HW(tx_ring->ndev->data->dev_private);
 	struct enetc_hw *hw;
 	struct enetc_swbd *tx_swbd;
 	int i;
 	uint32_t val;
+	struct enetc_bdr *tx_ring;
+	struct enetc_eth_hw *eth_hw;
+
+	PMD_INIT_FUNC_TRACE();
+	if (txq == NULL)
+		return;
+
+	tx_ring = (struct enetc_bdr *)txq;
+	eth_hw =
+		ENETC_DEV_PRIVATE_TO_HW(tx_ring->ndev->data->dev_private);
 
 	/* Disable the ring */
 	hw = &eth_hw->hw;
@@ -403,17 +411,20 @@ void
 enetc4_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
 	void *rxq = dev->data->rx_queues[qid];
-
-	if (rxq == NULL)
-		return;
-
-	struct enetc_bdr *rx_ring = (struct enetc_bdr *)rxq;
-	struct enetc_eth_hw *eth_hw =
-		ENETC_DEV_PRIVATE_TO_HW(rx_ring->ndev->data->dev_private);
 	struct enetc_swbd *q_swbd;
 	struct enetc_hw *hw;
 	uint32_t val;
 	int i;
+	struct enetc_bdr *rx_ring;
+	struct enetc_eth_hw *eth_hw;
+
+	PMD_INIT_FUNC_TRACE();
+	if (rxq == NULL)
+		return;
+
+	rx_ring = (struct enetc_bdr *)rxq;
+	eth_hw =
+		ENETC_DEV_PRIVATE_TO_HW(rx_ring->ndev->data->dev_private);
 
 	/* Disable the ring */
 	hw = &eth_hw->hw;
@@ -479,10 +490,22 @@ enetc4_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+enetc4_rss_configure(struct enetc_hw *hw, int enable)
+{
+	uint32_t reg;
+
+	reg = enetc4_rd(hw, ENETC_SIMR);
+	reg &= ~ENETC_SIMR_RSSE;
+	reg |= (enable) ? ENETC_SIMR_RSSE : 0;
+	enetc4_wr(hw, ENETC_SIMR, reg);
+}
+
 int
 enetc4_dev_close(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
 	uint16_t i;
 	int ret;
 
@@ -494,6 +517,13 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 		ret = enetc4_vf_dev_stop(dev);
 	else
 		ret = enetc4_dev_stop(dev);
+
+	if (dev->data->nb_rx_queues > 1) {
+		/* Disable RSS */
+		enetc4_rss_configure(enetc_hw, false);
+		/* Free CBDR */
+		enetc_free_cbdr(&hw->cbdr);
+	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		enetc4_rx_queue_release(dev, i);
@@ -524,7 +554,9 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 	uint32_t checksum = L3_CKSUM | L4_CKSUM;
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t max_len;
-	uint32_t val;
+	uint32_t val, num_rss;
+	uint32_t ret = 0, i;
+	uint32_t *rss_table;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -556,6 +588,70 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 		checksum &= ~L4_CKSUM;
 
 	enetc4_port_wr(enetc_hw, ENETC4_PARCSCR, checksum);
+
+	/* Disable and reset RX and TX rings */
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		enetc4_rxbdr_wr(enetc_hw, i, ENETC_RBMR, ENETC_BMR_RESET);
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		enetc4_rxbdr_wr(enetc_hw, i, ENETC_TBMR, ENETC_BMR_RESET);
+
+	if (dev->data->nb_rx_queues <= 1)
+		return 0;
+
+	/* Setup RSS */
+	/* Setup control BDR */
+	ret = enetc4_setup_cbdr(dev, enetc_hw, ENETC_CBDR_SIZE, &hw->cbdr);
+	if (ret) {
+		/* Disable RSS */
+		enetc4_rss_configure(enetc_hw, false);
+		return ret;
+	}
+
+	/* Reset CIR again after enable CBDR*/
+	rte_delay_us(ENETC_CBDR_DELAY);
+	ENETC_PMD_DEBUG("CIR %x after CBDR enable", rte_read32(hw->cbdr.regs.cir));
+	rte_write32(0, hw->cbdr.regs.cir);
+	ENETC_PMD_DEBUG("CIR %x after reset", rte_read32(hw->cbdr.regs.cir));
+
+	val = enetc_rd(enetc_hw, ENETC_SIPCAPR0);
+	if (val & ENETC_SIPCAPR0_RSS) {
+		num_rss = enetc_rd(enetc_hw, ENETC_SIRSSCAPR);
+		hw->num_rss = ENETC_SIRSSCAPR_GET_NUM_RSS(num_rss);
+		ENETC_PMD_DEBUG("num_rss = %d", hw->num_rss);
+
+		/* Add number of BDR groups */
+		enetc4_wr(enetc_hw, ENETC_SIRBGCR, dev->data->nb_rx_queues);
+
+
+		/* Configuring indirecton table with default values
+		 * Hash algorithm and RSS secret key to be filled by PF
+		 */
+		rss_table = rte_malloc(NULL, hw->num_rss * sizeof(*rss_table), ENETC_CBDR_ALIGN);
+		if (!rss_table) {
+			enetc4_rss_configure(enetc_hw, false);
+			enetc_free_cbdr(&hw->cbdr);
+			return -ENOMEM;
+		}
+
+		ENETC_PMD_DEBUG("Enabling RSS for port %s with queues = %d", dev->device->name,
+							dev->data->nb_rx_queues);
+		for (i = 0; i < hw->num_rss; i++)
+			rss_table[i] = i % dev->data->nb_rx_queues;
+
+		ret = enetc_ntmp_rsst_query_or_update_entry(&hw->cbdr,
+					rss_table, hw->num_rss, false);
+		if (ret) {
+			ENETC_PMD_WARN("RSS indirection table update fails,"
+					"Scaling behaviour is undefined");
+			enetc4_rss_configure(enetc_hw, false);
+			enetc_free_cbdr(&hw->cbdr);
+		}
+		rte_free(rss_table);
+
+		/* Enable RSS */
+		enetc4_rss_configure(enetc_hw, true);
+	}
 
 	return 0;
 }
@@ -648,6 +744,28 @@ enetc4_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 	return 0;
 }
 
+const uint32_t *
+enetc4_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			    size_t *no_of_elements)
+{
+	PMD_INIT_FUNC_TRACE();
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_TUNNEL_ESP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	*no_of_elements = RTE_DIM(ptypes);
+	return ptypes;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -673,6 +791,7 @@ static const struct eth_dev_ops enetc4_ops = {
 	.tx_queue_start       = enetc4_tx_queue_start,
 	.tx_queue_stop        = enetc4_tx_queue_stop,
 	.tx_queue_release     = enetc4_tx_queue_release,
+	.dev_supported_ptypes_get = enetc4_supported_ptypes_get,
 };
 
 /*
@@ -718,11 +837,19 @@ enetc4_dev_init(struct rte_eth_dev *eth_dev)
 		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	int error = 0;
+	uint32_t si_cap;
+	struct enetc_hw *enetc_hw = &hw->hw;
 
 	PMD_INIT_FUNC_TRACE();
 	eth_dev->dev_ops = &enetc4_ops;
 	enetc4_dev_hw_init(eth_dev);
 
+	si_cap = enetc_rd(enetc_hw, ENETC_SICAPR0);
+	hw->max_tx_queues = si_cap & ENETC_SICAPR0_BDR_MASK;
+	hw->max_rx_queues = (si_cap >> 16) & ENETC_SICAPR0_BDR_MASK;
+
+	ENETC_PMD_DEBUG("Max RX queues = %d Max TX queues = %d",
+			hw->max_rx_queues, hw->max_tx_queues);
 	error = enetc4_mac_init(hw, eth_dev);
 	if (error != 0) {
 		ENETC_PMD_ERR("MAC initialization failed");
