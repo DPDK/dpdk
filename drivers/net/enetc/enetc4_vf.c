@@ -303,6 +303,266 @@ end:
 	return err;
 }
 
+static int
+enetc4_vf_promisc_send_message(struct rte_eth_dev *dev, bool promisc_en)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_cmd_set_promisc *cmd;
+	struct enetc_msg_swbd *msg;
+	uint32_t msg_size;
+	int err = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		err = -ENOMEM;
+		return err;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_set_promisc), ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+
+	cmd = (struct enetc_msg_cmd_set_promisc *)msg->vaddr;
+
+	/* op_type is based on the result of message format
+	 *    7  6      1       0
+	      type   promisc  flush
+	 */
+
+	if (promisc_en)
+		cmd->op_type = ENETC_PROMISC_ENABLE;
+	else
+		cmd->op_type = ENETC_PROMISC_DISABLE;
+
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_MAC_FILTER,
+				ENETC_CMD_ID_SET_MAC_PROMISCUOUS, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(enetc_hw, msg);
+	if (err) {
+		ENETC_PMD_ERR("VSI message send error");
+		goto end;
+	}
+
+end:
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+	return err;
+}
+
+static int
+enetc4_vf_allmulti_send_message(struct rte_eth_dev *dev, bool mc_promisc)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_cmd_set_promisc *cmd;
+	struct enetc_msg_swbd *msg;
+	uint32_t msg_size;
+	int err = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		err = -ENOMEM;
+		return err;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_set_promisc),
+				ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+
+	cmd = (struct enetc_msg_cmd_set_promisc *)msg->vaddr;
+
+	/* op_type is based on the result of message format
+	 *    7  6      1       0
+	      type   promisc  flush
+	 */
+
+	if (mc_promisc)
+		cmd->op_type = ENETC_ALLMULTI_PROMISC_EN;
+	else
+		cmd->op_type = ENETC_ALLMULTI_PROMISC_DIS;
+
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_MAC_FILTER,
+				ENETC_CMD_ID_SET_MAC_PROMISCUOUS, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(enetc_hw, msg);
+	if (err) {
+		ENETC_PMD_ERR("VSI message send error");
+		goto end;
+	}
+
+end:
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+	return err;
+}
+
+
+static int
+enetc4_vf_multicast_enable(struct rte_eth_dev *dev)
+{
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+	err = enetc4_vf_allmulti_send_message(dev, true);
+	if (err) {
+		ENETC_PMD_ERR("Failed to enable multicast promiscuous mode");
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+enetc4_vf_multicast_disable(struct rte_eth_dev *dev)
+{
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+	err = enetc4_vf_allmulti_send_message(dev, false);
+	if (err) {
+		ENETC_PMD_ERR("Failed to disable multicast promiscuous mode");
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+enetc4_vf_promisc_enable(struct rte_eth_dev *dev)
+{
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+	err = enetc4_vf_promisc_send_message(dev, true);
+	if (err) {
+		ENETC_PMD_ERR("Failed to enable promiscuous mode");
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+enetc4_vf_promisc_disable(struct rte_eth_dev *dev)
+{
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+	err = enetc4_vf_promisc_send_message(dev, false);
+	if (err) {
+		ENETC_PMD_ERR("Failed to disable promiscuous mode");
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+enetc4_vf_vlan_promisc(struct rte_eth_dev *dev, bool promisc_en)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_cmd_set_vlan_promisc *cmd;
+	struct enetc_msg_swbd *msg;
+	uint32_t msg_size;
+	int err = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		err = -ENOMEM;
+		return err;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_set_vlan_promisc),
+				ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+
+	cmd = (struct enetc_msg_cmd_set_vlan_promisc *)msg->vaddr;
+	/* op is based on the result of message format
+	 *	   1	  0
+	 *	promisc	flush
+	 */
+
+	if (promisc_en)
+		cmd->op = ENETC_PROMISC_VLAN_ENABLE;
+	else
+		cmd->op = ENETC_PROMISC_VLAN_DISABLE;
+
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_VLAN_FILTER,
+				ENETC_CMD_ID_SET_VLAN_PROMISCUOUS, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(enetc_hw, msg);
+	if (err) {
+		ENETC_PMD_ERR("VSI message send error");
+		goto end;
+	}
+
+end:
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+	return err;
+}
+
+static int enetc4_vf_vlan_offload_set(struct rte_eth_dev *dev, int mask __rte_unused)
+{
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->dev_conf.rxmode.offloads) {
+		ENETC_PMD_DEBUG("VLAN filter table entry inserted:"
+					"Disabling VLAN promisc mode");
+		err = enetc4_vf_vlan_promisc(dev, false);
+		if (err) {
+			ENETC_PMD_ERR("Added VLAN filter table entry:"
+					"Failed to disable promiscuous mode");
+			return err;
+		}
+	} else {
+		ENETC_PMD_DEBUG("Enabling VLAN promisc mode");
+		err = enetc4_vf_vlan_promisc(dev, true);
+		if (err) {
+			ENETC_PMD_ERR("Vlan filter table empty:"
+					"Failed to enable promiscuous mode");
+			return err;
+		}
+	}
+
+	return 0;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -320,6 +580,11 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.dev_infos_get        = enetc4_dev_infos_get,
 	.stats_get            = enetc4_vf_stats_get,
 	.mac_addr_set         = enetc4_vf_set_mac_addr,
+	.promiscuous_enable   = enetc4_vf_promisc_enable,
+	.promiscuous_disable  = enetc4_vf_promisc_disable,
+	.allmulticast_enable  = enetc4_vf_multicast_enable,
+	.allmulticast_disable = enetc4_vf_multicast_disable,
+	.vlan_offload_set     = enetc4_vf_vlan_offload_set,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
 	.rx_queue_start       = enetc4_rx_queue_start,
 	.rx_queue_stop        = enetc4_rx_queue_stop,

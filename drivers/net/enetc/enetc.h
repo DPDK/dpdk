@@ -143,15 +143,20 @@ struct enetc_eth_adapter {
 #define ENETC_ALLMULTI_PROMISC_DIS		0x81
 #define ENETC_ALLMULTI_PROMISC_EN		0x83
 
+#define ENETC_PROMISC_VLAN_DISABLE		0x1
+#define ENETC_PROMISC_VLAN_ENABLE		0x3
 
 /* Enum for class IDs */
 enum enetc_msg_cmd_class_id {
 	ENETC_CLASS_ID_MAC_FILTER = 0x20,
+	ENETC_CLASS_ID_VLAN_FILTER = 0x21,
 };
 
 /* Enum for command IDs */
 enum enetc_msg_cmd_id {
 	ENETC_CMD_ID_SET_PRIMARY_MAC = 0,
+	ENETC_CMD_ID_SET_MAC_PROMISCUOUS = 5,
+	ENETC_CMD_ID_SET_VLAN_PROMISCUOUS = 4,
 };
 
 enum mac_addr_status {

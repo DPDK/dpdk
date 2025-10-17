@@ -543,6 +543,44 @@ enetc4_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static int
+enetc4_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psipmr = 0;
+
+	psipmr = enetc4_port_rd(enetc_hw, ENETC4_PSIPMMR);
+
+	/* Setting to enable promiscuous mode for all ports*/
+	psipmr |= PSIPMMR_SI_MAC_UP | PSIPMMR_SI_MAC_MP;
+
+	enetc4_port_wr(enetc_hw, ENETC4_PSIPMMR, psipmr);
+
+	return 0;
+}
+
+static int
+enetc4_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psipmr = 0;
+
+	/* Setting to disable promiscuous mode for SI0*/
+	psipmr = enetc4_port_rd(enetc_hw, ENETC4_PSIPMMR);
+	psipmr &= (~PSIPMMR_SI_MAC_UP);
+
+	if (dev->data->all_multicast == 0)
+		psipmr &= (~PSIPMMR_SI_MAC_MP);
+
+	enetc4_port_wr(enetc_hw, ENETC4_PSIPMMR, psipmr);
+
+	return 0;
+}
+
 int
 enetc4_dev_configure(struct rte_eth_dev *dev)
 {
@@ -783,6 +821,8 @@ static const struct eth_dev_ops enetc4_ops = {
 	.dev_infos_get        = enetc4_dev_infos_get,
 	.stats_get            = enetc4_stats_get,
 	.stats_reset          = enetc4_stats_reset,
+	.promiscuous_enable   = enetc4_promiscuous_enable,
+	.promiscuous_disable  = enetc4_promiscuous_disable,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
 	.rx_queue_start       = enetc4_rx_queue_start,
 	.rx_queue_stop        = enetc4_rx_queue_stop,
