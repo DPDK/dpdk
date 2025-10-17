@@ -889,8 +889,10 @@ tap_dev_start(struct rte_eth_dev *dev)
 		return err;
 
 	err = tap_link_set_up(dev);
-	if (err)
+	if (err) {
+		tap_intr_handle_set(dev, 0);
 		return err;
+	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
