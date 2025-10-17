@@ -10,6 +10,18 @@
 #include "enetc_logs.h"
 #include "enetc.h"
 
+/* Supported Rx offloads */
+static uint64_t dev_rx_offloads_sup =
+	RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
+	RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
+	RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
+
+/* Supported Tx offloads */
+static uint64_t dev_tx_offloads_sup =
+	RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
+	RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
+	RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
+
 static int
 enetc4_dev_start(struct rte_eth_dev *dev)
 {
@@ -127,6 +139,8 @@ enetc4_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_rx_queues = MAX_RX_RINGS;
 	dev_info->max_tx_queues = MAX_TX_RINGS;
 	dev_info->max_rx_pktlen = ENETC4_MAC_MAXFRM_SIZE;
+	dev_info->rx_offload_capa = dev_rx_offloads_sup;
+	dev_info->tx_offload_capa = dev_tx_offloads_sup;
 
 	return 0;
 }
@@ -464,6 +478,10 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	uint64_t rx_offloads = eth_conf->rxmode.offloads;
+	uint64_t tx_offloads = eth_conf->txmode.offloads;
+	uint32_t checksum = L3_CKSUM | L4_CKSUM;
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t max_len;
 	uint32_t val;
@@ -476,6 +494,28 @@ enetc4_dev_configure(struct rte_eth_dev *dev)
 
 	val = ENETC4_MAC_MAXFRM_SIZE | SDU_TYPE_MPDU;
 	enetc4_port_wr(enetc_hw, ENETC4_PTCTMSDUR(0), val | SDU_TYPE_MPDU);
+
+	/* Rx offloads which are enabled by default */
+	if (dev_rx_offloads_sup & ~rx_offloads) {
+		ENETC_PMD_INFO("Some of rx offloads enabled by default"
+				" - requested 0x%" PRIx64 " fixed are 0x%" PRIx64,
+				rx_offloads, dev_rx_offloads_sup);
+	}
+
+	/* Tx offloads which are enabled by default */
+	if (dev_tx_offloads_sup & ~tx_offloads) {
+		ENETC_PMD_INFO("Some of tx offloads enabled by default"
+			       " - requested 0x%" PRIx64 " fixed are 0x%" PRIx64,
+			       tx_offloads, dev_tx_offloads_sup);
+	}
+
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM)
+		checksum &= ~L3_CKSUM;
+
+	if (rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
+		checksum &= ~L4_CKSUM;
+
+	enetc4_port_wr(enetc_hw, ENETC4_PARCSCR, checksum);
 
 	return 0;
 }

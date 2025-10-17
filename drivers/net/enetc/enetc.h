@@ -45,6 +45,11 @@
 #define ENETC_TXBD(BDR, i) (&(((struct enetc_tx_bd *)((BDR).bd_base))[i]))
 #define ENETC_RXBD(BDR, i) (&(((union enetc_rx_bd *)((BDR).bd_base))[i]))
 
+#define ENETC4_MBUF_F_TX_IP_IPV4 (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4)
+#define ENETC4_TX_CKSUM_OFFLOAD_MASK (RTE_MBUF_F_TX_IP_CKSUM | \
+				    RTE_MBUF_F_TX_TCP_CKSUM | \
+				    RTE_MBUF_F_TX_UDP_CKSUM)
+
 struct enetc_swbd {
 	struct rte_mbuf *buffer_addr;
 };

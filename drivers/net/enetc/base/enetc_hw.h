@@ -248,8 +248,19 @@ struct enetc_tx_bd {
 	uint64_t addr;
 	uint16_t buf_len;
 	uint16_t frm_len;
-	uint16_t err_csum;
-	uint16_t flags;
+	union {
+		struct {
+			uint8_t l3_start:7;
+			uint8_t ipcs:1;
+			uint8_t l3_hdr_size:7;
+			uint8_t l3t:1;
+			uint8_t resv:5;
+			uint8_t l4t:3;
+			uint16_t flags;
+		};/* default layout */
+		uint32_t txstart;
+		uint32_t lstatus;
+	};
 };
 
 /* RX buffer descriptor */
