@@ -816,6 +816,149 @@ rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *
 	return dev->dev_ops->vchan_status(dev, vchan, status);
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_create, 25.11)
+int
+rte_dma_access_pair_group_create(int16_t dev_id, rte_uuid_t domain_id, rte_uuid_t token,
+				 int16_t *group_id, rte_dma_access_pair_group_event_cb_t cb)
+{
+	struct rte_dma_info dev_info;
+	struct rte_dma_dev *dev;
+
+	if (!rte_dma_is_valid(dev_id) || group_id == NULL)
+		return -EINVAL;
+	dev = &rte_dma_devices[dev_id];
+
+	if (rte_dma_info_get(dev_id, &dev_info)) {
+		RTE_DMA_LOG(ERR, "Device %d info query failure", dev_id);
+		return -EINVAL;
+	}
+
+	if (!((dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN) ||
+	    (dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN))) {
+		RTE_DMA_LOG(ERR, "Device %d doesn't support inter-process or inter-os domain",
+			    dev_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->access_pair_group_create == NULL)
+		return -ENOTSUP;
+	return (*dev->dev_ops->access_pair_group_create)(dev, domain_id, token, group_id, cb);
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_destroy, 25.11)
+int
+rte_dma_access_pair_group_destroy(int16_t dev_id, int16_t group_id)
+{
+	struct rte_dma_info dev_info;
+	struct rte_dma_dev *dev;
+
+	if (!rte_dma_is_valid(dev_id))
+		return -EINVAL;
+	dev = &rte_dma_devices[dev_id];
+
+	if (rte_dma_info_get(dev_id, &dev_info)) {
+		RTE_DMA_LOG(ERR, "Device %d info query failure", dev_id);
+		return -EINVAL;
+	}
+
+	if (!((dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN) ||
+	    (dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN))) {
+		RTE_DMA_LOG(ERR, "Device %d doesn't support inter-process or inter-os domain",
+			    dev_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->access_pair_group_destroy == NULL)
+		return -ENOTSUP;
+	return (*dev->dev_ops->access_pair_group_destroy)(dev, group_id);
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_join, 25.11)
+int
+rte_dma_access_pair_group_join(int16_t dev_id, int16_t group_id, rte_uuid_t token,
+			       rte_dma_access_pair_group_event_cb_t cb)
+{
+	struct rte_dma_info dev_info;
+	struct rte_dma_dev *dev;
+
+	if (!rte_dma_is_valid(dev_id))
+		return -EINVAL;
+	dev = &rte_dma_devices[dev_id];
+
+	if (rte_dma_info_get(dev_id, &dev_info)) {
+		RTE_DMA_LOG(ERR, "Device %d info query failure", dev_id);
+		return -EINVAL;
+	}
+
+	if (!((dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN) ||
+	    (dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN))) {
+		RTE_DMA_LOG(ERR, "Device %d doesn't support inter-process or inter-os domain",
+			    dev_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->access_pair_group_join == NULL)
+		return -ENOTSUP;
+	return (*dev->dev_ops->access_pair_group_join)(dev, group_id, token, cb);
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_leave, 25.11)
+int
+rte_dma_access_pair_group_leave(int16_t dev_id, int16_t group_id)
+{
+	struct rte_dma_info dev_info;
+	struct rte_dma_dev *dev;
+
+	if (!rte_dma_is_valid(dev_id))
+		return -EINVAL;
+	dev = &rte_dma_devices[dev_id];
+
+	if (rte_dma_info_get(dev_id, &dev_info)) {
+		RTE_DMA_LOG(ERR, "Device %d info query failure", dev_id);
+		return -EINVAL;
+	}
+
+	if (!((dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN) ||
+	    (dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN))) {
+		RTE_DMA_LOG(ERR, "Device %d doesn't support inter-process or inter-os domain",
+			    dev_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->access_pair_group_leave == NULL)
+		return -ENOTSUP;
+	return (*dev->dev_ops->access_pair_group_leave)(dev, group_id);
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_dma_access_pair_group_handler_get, 25.11)
+int
+rte_dma_access_pair_group_handler_get(int16_t dev_id, int16_t group_id, rte_uuid_t domain_id,
+				      uint16_t *handler)
+{
+	struct rte_dma_info dev_info;
+	struct rte_dma_dev *dev;
+
+	if (!rte_dma_is_valid(dev_id) || handler == NULL)
+		return -EINVAL;
+	dev = &rte_dma_devices[dev_id];
+
+	if (rte_dma_info_get(dev_id, &dev_info)) {
+		RTE_DMA_LOG(ERR, "Device %d info query failure", dev_id);
+		return -EINVAL;
+	}
+
+	if (!((dev_info.dev_capa & RTE_DMA_CAPA_INTER_PROCESS_DOMAIN) ||
+	    (dev_info.dev_capa & RTE_DMA_CAPA_INTER_OS_DOMAIN))) {
+		RTE_DMA_LOG(ERR, "Device %d doesn't support inter-process or inter-os domain",
+			    dev_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->access_pair_group_handler_get == NULL)
+		return -ENOTSUP;
+	return (*dev->dev_ops->access_pair_group_handler_get)(dev, group_id, domain_id, handler);
+}
+
 static const char *
 dma_capability_name(uint64_t capability)
 {

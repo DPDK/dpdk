@@ -70,6 +70,7 @@ New Features
 
   * Added parameters in DMA device virtual channel to configure DMA operations
     that span across different processes or operating system domains.
+  * Added functions to exchange handlers between DMA devices.
 
 * **Added speed 800G.**
 

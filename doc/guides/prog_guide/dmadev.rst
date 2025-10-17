@@ -184,3 +184,49 @@ across different processes and OS domains.
 This is achieved by configuring virtual channels (vchans)
 using ``src_handler`` and ``dst_handler`` fields,
 which represent the source and destination endpoints for inter-domain DMA operations.
+Handler information is exchanged between devices based on their DMA class type.
+
+DMA devices used for inter-domain data transfer can be categorized as follows:
+
+- Class A: Both endpoints require a DMA device for data transfer (e.g., Marvell DMA devices).
+- Class B: Only one endpoint requires a DMA device; the other does not.
+- Class C: Other device types not currently classified.
+
+Currently the necessary API for Class A DMA devices are available
+for exchanging the handler details.
+Devices can create or join access groups using token-based authentication,
+ensuring that only authorized devices within the same group
+can perform DMA transfers across processes or OS domains.
+
+Below is the API usage flow
+for setting up the access pair group for DMA between process#1 and process#2.
+
+Process#1 (Group Creator)
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Calls ``rte_dma_access_pair_group_create`` to establish a new access pair group,
+then shares the ``group_id``, ``token`` and ``domain_id`` with Process#2 via IPC.
+
+Process#2 (Group Joiner)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Receives the ``group_id`` and ``token`` from Process#1
+and calls ``rte_dma_access_pair_group_join`` to join the group.
+
+Both Processes
+^^^^^^^^^^^^^^
+
+Use ``rte_dma_access_pair_group_handler_get`` to obtain ``handler`` information
+for domains in the group.
+
+Perform inter-domain DMA transfers as required.
+
+Process#2 (when finished)
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Calls ``rte_dma_access_pair_group_leave`` to exit the group.
+
+Process#1 (final cleanup)
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Calls ``rte_dma_access_pair_group_destroy`` to destroy the group.
