@@ -73,6 +73,9 @@ struct enetc_msg_swbd {
  */
 #define ENETC4_MAC_MAXFRM_SIZE  2000
 
+/* Number of MAC Address Filter table entries */
+#define ENETC4_MAC_ENTRIES      4
+
 /* Port MAC 0/1 Maximum Frame Length Register */
 #define ENETC4_PM_MAXFRM(mac)		(0x5014 + (mac) * 0x400)
 
