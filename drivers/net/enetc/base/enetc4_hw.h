@@ -111,6 +111,15 @@ struct enetc_msg_swbd {
 #define IFMODE_SGMII			5
 #define PM_IF_MODE_ENA			BIT(15)
 
+/* Port MAC 0 Interface Status Register */
+#define ENETC4_PM_IF_STATUS(mac)	(0x5304 + (mac) * 0x400)
+#define ENETC4_LINK_MODE                 0x0000000000080000ULL
+#define ENETC4_LINK_STATUS               0x0000000000010000ULL
+#define ENETC4_LINK_SPEED_MASK           0x0000000000060000ULL
+#define ENETC4_LINK_SPEED_10M            0x0ULL
+#define ENETC4_LINK_SPEED_100M           0x0000000000020000ULL
+#define ENETC4_LINK_SPEED_1G             0x0000000000040000ULL
+
 #define ENETC4_DEF_VSI_WAIT_TIMEOUT_UPDATE     100
 #define ENETC4_DEF_VSI_WAIT_DELAY_UPDATE       2000 /* us */
 

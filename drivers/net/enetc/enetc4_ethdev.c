@@ -75,6 +75,49 @@ enetc4_dev_stop(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* return 0 means link status changed, -1 means not changed */
+static int
+enetc4_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct rte_eth_link link;
+	uint32_t status;
+
+	PMD_INIT_FUNC_TRACE();
+
+	memset(&link, 0, sizeof(link));
+
+	status = enetc4_port_rd(enetc_hw, ENETC4_PM_IF_STATUS(0));
+
+	if (status & ENETC4_LINK_MODE)
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	else
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+
+	if (status & ENETC4_LINK_STATUS)
+		link.link_status = RTE_ETH_LINK_UP;
+	else
+		link.link_status = RTE_ETH_LINK_DOWN;
+
+	switch (status & ENETC4_LINK_SPEED_MASK) {
+	case ENETC4_LINK_SPEED_1G:
+		link.link_speed = RTE_ETH_SPEED_NUM_1G;
+		break;
+
+	case ENETC4_LINK_SPEED_100M:
+		link.link_speed = RTE_ETH_SPEED_NUM_100M;
+		break;
+
+	default:
+	case ENETC4_LINK_SPEED_10M:
+		link.link_speed = RTE_ETH_SPEED_NUM_10M;
+	}
+
+	return rte_eth_linkstatus_set(dev, &link);
+}
+
 static int
 enetc4_mac_init(struct enetc_eth_hw *hw, struct rte_eth_dev *eth_dev)
 {
@@ -819,6 +862,7 @@ static const struct eth_dev_ops enetc4_ops = {
 	.dev_stop             = enetc4_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.dev_infos_get        = enetc4_dev_infos_get,
+	.link_update          = enetc4_link_update,
 	.stats_get            = enetc4_stats_get,
 	.stats_reset          = enetc4_stats_reset,
 	.promiscuous_enable   = enetc4_promiscuous_enable,

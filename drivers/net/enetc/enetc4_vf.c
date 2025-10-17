@@ -206,6 +206,8 @@ enetc4_msg_vsi_send(struct enetc_hw *enetc_hw, struct enetc_msg_swbd *msg)
 			err = -EINVAL;
 			break;
 		case ENETC_CLASS_ID_MAC_FILTER:
+		case ENETC_CLASS_ID_LINK_STATUS:
+		case ENETC_CLASS_ID_LINK_SPEED:
 			break;
 		default:
 			err = -EIO;
@@ -480,6 +482,216 @@ enetc4_vf_promisc_disable(struct rte_eth_dev *dev)
 }
 
 static int
+enetc4_vf_get_link_status(struct rte_eth_dev *dev, struct enetc_psi_reply_msg *reply_msg)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_swbd *msg;
+	uint32_t msg_size;
+	int err = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		err = -ENOMEM;
+		return err;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_get_link_status),
+			ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_LINK_STATUS,
+			ENETC_CMD_ID_GET_LINK_STATUS, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(enetc_hw, msg);
+	if (err) {
+		ENETC_PMD_ERR("VSI message send error");
+		goto end;
+	}
+
+	enetc4_msg_vsi_reply_msg(enetc_hw, reply_msg);
+end:
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+	return err;
+}
+
+static int
+enetc4_vf_get_link_speed(struct rte_eth_dev *dev, struct enetc_psi_reply_msg *reply_msg)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_swbd *msg;
+	uint32_t msg_size;
+	int err = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		err = -ENOMEM;
+		return err;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_get_link_speed),
+				ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_LINK_SPEED,
+			ENETC_CMD_ID_GET_LINK_SPEED, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(enetc_hw, msg);
+	if (err) {
+		ENETC_PMD_ERR("VSI message send error");
+		goto end;
+	}
+
+	enetc4_msg_vsi_reply_msg(enetc_hw, reply_msg);
+end:
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+	return err;
+}
+
+static int
+enetc4_vf_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
+{
+	struct enetc_psi_reply_msg *reply_msg;
+	struct rte_eth_link link;
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+	reply_msg = rte_zmalloc(NULL, sizeof(*reply_msg), RTE_CACHE_LINE_SIZE);
+	if (!reply_msg) {
+		ENETC_PMD_ERR("Failed to alloc memory for reply_msg");
+		return -ENOMEM;
+	}
+
+	memset(&link, 0, sizeof(struct rte_eth_link));
+
+	err = enetc4_vf_get_link_status(dev, reply_msg);
+	if (err) {
+		ENETC_PMD_ERR("Failed to get link status");
+		rte_free(reply_msg);
+		return err;
+	}
+
+	if (reply_msg->class_id == ENETC_CLASS_ID_LINK_STATUS) {
+		switch (reply_msg->status) {
+		case ENETC_LINK_UP:
+			link.link_status = RTE_ETH_LINK_UP;
+			break;
+		case ENETC_LINK_DOWN:
+			link.link_status = RTE_ETH_LINK_DOWN;
+			break;
+		default:
+			ENETC_PMD_ERR("Unknown link status");
+			break;
+		}
+	} else {
+		ENETC_PMD_ERR("Wrong reply message");
+		return -1;
+	}
+
+	err = enetc4_vf_get_link_speed(dev, reply_msg);
+	if (err) {
+		ENETC_PMD_ERR("Failed to get link speed");
+		rte_free(reply_msg);
+		return err;
+	}
+
+	if (reply_msg->class_id == ENETC_CLASS_ID_LINK_SPEED) {
+		switch (reply_msg->status) {
+		case ENETC_SPEED_UNKNOWN:
+			ENETC_PMD_DEBUG("Speed unknown");
+			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
+			break;
+		case ENETC_SPEED_10_HALF_DUPLEX:
+			link.link_speed = RTE_ETH_SPEED_NUM_10M;
+			link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+			break;
+		case ENETC_SPEED_10_FULL_DUPLEX:
+			link.link_speed = RTE_ETH_SPEED_NUM_10M;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_100_HALF_DUPLEX:
+			link.link_speed = RTE_ETH_SPEED_NUM_100M;
+			link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+			break;
+		case ENETC_SPEED_100_FULL_DUPLEX:
+			link.link_speed = RTE_ETH_SPEED_NUM_100M;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_1000:
+			link.link_speed = RTE_ETH_SPEED_NUM_1G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_2500:
+			link.link_speed = RTE_ETH_SPEED_NUM_2_5G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_5000:
+			link.link_speed = RTE_ETH_SPEED_NUM_5G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_10G:
+			link.link_speed = RTE_ETH_SPEED_NUM_10G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_25G:
+			link.link_speed = RTE_ETH_SPEED_NUM_25G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_50G:
+			link.link_speed = RTE_ETH_SPEED_NUM_50G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_100G:
+			link.link_speed = RTE_ETH_SPEED_NUM_100G;
+			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+			break;
+		case ENETC_SPEED_NOT_SUPPORTED:
+			ENETC_PMD_DEBUG("Speed not supported");
+			link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+			break;
+		default:
+			ENETC_PMD_ERR("Unknown speed status");
+			break;
+		}
+	} else {
+		ENETC_PMD_ERR("Wrong reply message");
+		return -1;
+	}
+
+	link.link_autoneg = 1;
+
+	rte_eth_linkstatus_set(dev, &link);
+
+	rte_free(reply_msg);
+	return 0;
+}
+
+static int
 enetc4_vf_vlan_promisc(struct rte_eth_dev *dev, bool promisc_en)
 {
 	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -584,6 +796,7 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.promiscuous_disable  = enetc4_vf_promisc_disable,
 	.allmulticast_enable  = enetc4_vf_multicast_enable,
 	.allmulticast_disable = enetc4_vf_multicast_disable,
+	.link_update	      = enetc4_vf_link_update,
 	.vlan_offload_set     = enetc4_vf_vlan_offload_set,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
 	.rx_queue_start       = enetc4_rx_queue_start,
@@ -685,6 +898,9 @@ enetc4_vf_dev_init(struct rte_eth_dev *eth_dev)
 	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id);
+	/* update link */
+	enetc4_vf_link_update(eth_dev, 0);
+
 	return 0;
 }
 
