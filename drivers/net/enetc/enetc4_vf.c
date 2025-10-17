@@ -26,6 +26,29 @@ enetc4_vf_dev_start(struct rte_eth_dev *dev __rte_unused)
 	return 0;
 }
 
+static int
+enetc4_vf_stats_get(struct rte_eth_dev *dev,
+		    struct rte_eth_stats *stats)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_bdr *rx_ring;
+	uint8_t i;
+
+	PMD_INIT_FUNC_TRACE();
+	stats->ipackets = enetc4_rd(enetc_hw, ENETC4_SIRFRM0);
+	stats->opackets = enetc4_rd(enetc_hw, ENETC4_SITFRM0);
+	stats->ibytes = enetc4_rd(enetc_hw, ENETC4_SIROCT0);
+	stats->obytes = enetc4_rd(enetc_hw, ENETC4_SITOCT0);
+	stats->oerrors = enetc4_rd(enetc_hw, ENETC4_SITDFCR);
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rx_ring = dev->data->rx_queues[i];
+		stats->ierrors += rx_ring->ierrors;
+	}
+	return 0;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -41,6 +64,7 @@ static const struct eth_dev_ops enetc4_vf_ops = {
 	.dev_stop             = enetc4_vf_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.dev_infos_get        = enetc4_dev_infos_get,
+	.stats_get            = enetc4_vf_stats_get,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
 	.rx_queue_start       = enetc4_rx_queue_start,
 	.rx_queue_stop        = enetc4_rx_queue_stop,

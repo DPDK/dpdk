@@ -105,6 +105,13 @@
 #define IFMODE_SGMII			5
 #define PM_IF_MODE_ENA			BIT(15)
 
+/* Station interface statistics */
+#define ENETC4_SIROCT0           0x300
+#define ENETC4_SIRFRM0           0x308
+#define ENETC4_SITOCT0           0x320
+#define ENETC4_SITFRM0           0x328
+#define ENETC4_SITDFCR           0x340
+
 /* general register accessors */
 #define enetc4_rd_reg(reg)	rte_read32((void *)(reg))
 #define enetc4_wr_reg(reg, val)  rte_write32((val), (void *)(reg))

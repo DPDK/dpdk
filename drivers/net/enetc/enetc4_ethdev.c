@@ -439,6 +439,46 @@ enetc4_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	rte_free(rx_ring);
 }
 
+static
+int enetc4_stats_get(struct rte_eth_dev *dev,
+		    struct rte_eth_stats *stats)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+
+	/*
+	 * Total received packets, bad + good, if we want to get counters
+	 * of only good received packets then use ENETC4_PM_RFRM,
+	 * ENETC4_PM_TFRM registers.
+	 */
+	stats->ipackets = enetc4_port_rd(enetc_hw, ENETC4_PM_RPKT(0));
+	stats->opackets = enetc4_port_rd(enetc_hw, ENETC4_PM_TPKT(0));
+	stats->ibytes =  enetc4_port_rd(enetc_hw, ENETC4_PM_REOCT(0));
+	stats->obytes = enetc4_port_rd(enetc_hw, ENETC4_PM_TEOCT(0));
+	/*
+	 * Dropped + Truncated packets, use ENETC4_PM_RDRNTP(0) for without
+	 * truncated packets
+	 */
+	stats->imissed = enetc4_port_rd(enetc_hw, ENETC4_PM_RDRP(0));
+	stats->ierrors = enetc4_port_rd(enetc_hw, ENETC4_PM_RERR(0));
+	stats->oerrors = enetc4_port_rd(enetc_hw, ENETC4_PM_TERR(0));
+
+	return 0;
+}
+
+static int
+enetc4_stats_reset(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+
+	enetc4_port_wr(enetc_hw, ENETC4_PM0_STAT_CONFIG, ENETC4_CLEAR_STATS);
+
+	return 0;
+}
+
 int
 enetc4_dev_close(struct rte_eth_dev *dev)
 {
@@ -623,6 +663,8 @@ static const struct eth_dev_ops enetc4_ops = {
 	.dev_stop             = enetc4_dev_stop,
 	.dev_close            = enetc4_dev_close,
 	.dev_infos_get        = enetc4_dev_infos_get,
+	.stats_get            = enetc4_stats_get,
+	.stats_reset          = enetc4_stats_reset,
 	.rx_queue_setup       = enetc4_rx_queue_setup,
 	.rx_queue_start       = enetc4_rx_queue_start,
 	.rx_queue_stop        = enetc4_rx_queue_stop,

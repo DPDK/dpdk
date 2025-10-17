@@ -278,7 +278,10 @@ union enetc_rx_bd {
 		union {
 			struct {
 				uint16_t flags;
-				uint16_t error;
+				uint8_t error;
+				uint8_t resv:6;
+				uint8_t r:1;
+				uint8_t f:1;
 			};
 			uint32_t lstatus;
 		};
