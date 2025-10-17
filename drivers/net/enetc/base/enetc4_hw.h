@@ -130,7 +130,14 @@ struct enetc_msg_swbd {
 #define ENETC4_SITFRM0           0x328
 #define ENETC4_SITDFCR           0x340
 
-/* VSI MSG Registers */
+/* Station interface interrupts */
+#define ENETC4_SIMSIVR           0xA30
+#define ENETC4_VSIIER            0xA00
+#define ENETC4_VSIIDR            0xA08
+#define ENETC4_VSIIER_MRIE       BIT(9)
+#define ENETC4_SI_INT_IDX        0
+
+/* VSI Registers */
 #define ENETC4_VSIMSGSR  0x204   /* RO */
 #define ENETC4_VSIMSGSR_MB       BIT(0)
 #define ENETC4_VSIMSGSR_MS       BIT(1)

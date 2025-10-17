@@ -160,6 +160,8 @@ enum enetc_msg_cmd_id {
 	ENETC_CMD_ID_SET_MAC_PROMISCUOUS = 5,
 	ENETC_CMD_ID_SET_VLAN_PROMISCUOUS = 4,
 	ENETC_CMD_ID_GET_LINK_STATUS = 0,
+	ENETC_CMD_ID_REGISTER_LINK_NOTIF = 1,
+	ENETC_CMD_ID_UNREGISTER_LINK_NOTIF = 2,
 	ENETC_CMD_ID_GET_LINK_SPEED = 0
 };
 
@@ -279,6 +281,7 @@ const uint32_t *enetc4_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused
  * enetc4_vf function prototype
  */
 int enetc4_vf_dev_stop(struct rte_eth_dev *dev);
+int enetc4_vf_dev_intr(struct rte_eth_dev *eth_dev, bool enable);
 
 /*
  * RX/TX ENETC function prototypes

@@ -144,6 +144,69 @@ enetc4_msg_vsi_reply_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *
 	reply_msg->status = status;
 }
 
+static void
+enetc4_msg_get_psi_msg(struct enetc_hw *enetc_hw, struct enetc_psi_reply_msg *reply_msg)
+{
+	int vsimsgrr;
+	int8_t class_id = 0;
+	uint8_t status = 0;
+
+	vsimsgrr = enetc_rd(enetc_hw, ENETC4_VSIMSGRR);
+
+	/* Extracting 8 bits of message result in class_id */
+	class_id |= ((ENETC_SIMSGSR_GET_MC(vsimsgrr) >> 8) & 0xff);
+
+	/* Extracting 4 bits of message result in status */
+	status |= ((ENETC_SIMSGSR_GET_MC(vsimsgrr) >> 4) & 0xf);
+
+	reply_msg->class_id = class_id;
+	reply_msg->status = status;
+}
+
+static void
+enetc4_process_psi_msg(struct rte_eth_dev *eth_dev, struct enetc_hw *enetc_hw)
+{
+	struct enetc_psi_reply_msg *msg;
+	struct rte_eth_link link;
+	int ret = 0;
+
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		return;
+	}
+
+	rte_eth_linkstatus_get(eth_dev, &link);
+	enetc4_msg_get_psi_msg(enetc_hw, msg);
+
+	if (msg->class_id == ENETC_CLASS_ID_LINK_STATUS) {
+		switch (msg->status) {
+		case ENETC_LINK_UP:
+			ENETC_PMD_DEBUG("Link is up");
+			link.link_status = RTE_ETH_LINK_UP;
+			break;
+		case ENETC_LINK_DOWN:
+			ENETC_PMD_DEBUG("Link is down");
+			link.link_status = RTE_ETH_LINK_DOWN;
+			break;
+		default:
+			ENETC_PMD_ERR("Unknown link status 0x%x", msg->status);
+			break;
+		}
+		ret = rte_eth_linkstatus_set(eth_dev, &link);
+		if (!ret)
+			ENETC_PMD_DEBUG("Link status has been changed");
+
+		/* Process user registered callback */
+		rte_eth_dev_callback_process(eth_dev,
+			RTE_ETH_EVENT_INTR_LSC, NULL);
+	} else {
+		ENETC_PMD_ERR("Wrong message 0x%x", msg->class_id);
+	}
+
+	rte_free(msg);
+}
+
 static int
 enetc4_msg_vsi_send(struct enetc_hw *enetc_hw, struct enetc_msg_swbd *msg)
 {
@@ -775,6 +838,55 @@ static int enetc4_vf_vlan_offload_set(struct rte_eth_dev *dev, int mask __rte_un
 	return 0;
 }
 
+static int
+enetc4_vf_link_register_notif(struct rte_eth_dev *dev, bool enable)
+{
+	struct enetc_eth_hw *hw = ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct enetc_msg_swbd *msg;
+	struct rte_eth_link link;
+	uint32_t msg_size;
+	int err = 0;
+	uint8_t cmd;
+
+	PMD_INIT_FUNC_TRACE();
+	memset(&link, 0, sizeof(struct rte_eth_link));
+	msg = rte_zmalloc(NULL, sizeof(*msg), RTE_CACHE_LINE_SIZE);
+	if (!msg) {
+		ENETC_PMD_ERR("Failed to alloc msg");
+		err = -ENOMEM;
+		return err;
+	}
+
+	msg_size = RTE_ALIGN(sizeof(struct enetc_msg_cmd_get_link_status), ENETC_VSI_PSI_MSG_SIZE);
+	msg->vaddr = rte_zmalloc(NULL, msg_size, 0);
+	if (!msg->vaddr) {
+		ENETC_PMD_ERR("Failed to alloc memory for msg");
+		rte_free(msg);
+		return -ENOMEM;
+	}
+
+	msg->dma = rte_mem_virt2iova((const void *)msg->vaddr);
+	msg->size = msg_size;
+	if (enable)
+		cmd = ENETC_CMD_ID_REGISTER_LINK_NOTIF;
+	else
+		cmd = ENETC_CMD_ID_UNREGISTER_LINK_NOTIF;
+	enetc_msg_vf_fill_common_hdr(msg, ENETC_CLASS_ID_LINK_STATUS,
+			cmd, 0, 0, 0);
+
+	/* send the command and wait */
+	err = enetc4_msg_vsi_send(enetc_hw, msg);
+	if (err)
+		ENETC_PMD_ERR("VSI msg error for link status notification");
+
+	/* free memory no longer required */
+	rte_free(msg->vaddr);
+	rte_free(msg);
+
+	return err;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -866,6 +978,45 @@ enetc4_vf_mac_init(struct enetc_eth_hw *hw, struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static void
+enetc_vf_enable_mr_int(struct enetc_hw *hw, bool en)
+{
+	uint32_t val;
+
+	val = enetc_rd(hw, ENETC4_VSIIER);
+	val &= ~ENETC4_VSIIER_MRIE;
+	val |= (en) ? ENETC4_VSIIER_MRIE : 0;
+	enetc_wr(hw, ENETC4_VSIIER, val);
+	ENETC_PMD_DEBUG("Interrupt enable status (VSIIER) = 0x%x", val);
+}
+
+static void
+enetc4_dev_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t status;
+
+	/* Disable interrupts before process */
+	enetc_vf_enable_mr_int(enetc_hw, false);
+
+	status = enetc_rd(enetc_hw, ENETC4_VSIIDR);
+	ENETC_PMD_DEBUG("Got INTR VSIIDR status = 0x%0x", status);
+	/* Check for PSI to VSI message interrupt */
+	if (!(status & ENETC4_VSIIER_MRIE)) {
+		ENETC_PMD_ERR("Interrupt is not PSI to VSI");
+		goto intr_clear;
+	}
+
+	enetc4_process_psi_msg(eth_dev, enetc_hw);
+intr_clear:
+	/* Clear Interrupts */
+	enetc_wr(enetc_hw, ENETC4_VSIIDR, 0xffffffff);
+	enetc_vf_enable_mr_int(enetc_hw, true);
+}
+
 static int
 enetc4_vf_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -913,14 +1064,74 @@ enetc4_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 					     enetc4_vf_dev_init);
 }
 
+int
+enetc4_vf_dev_intr(struct rte_eth_dev *eth_dev, bool enable)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	if (!(intr_handle && rte_intr_fd_get(intr_handle))) {
+		ENETC_PMD_ERR("No INTR handle");
+		return -1;
+	}
+	if (enable) {
+		/* if the interrupts were configured on this devices*/
+		ret = rte_intr_callback_register(intr_handle,
+				enetc4_dev_interrupt_handler, eth_dev);
+		if (ret) {
+			ENETC_PMD_ERR("Failed to register INTR callback %d", ret);
+			return ret;
+		}
+		/* set one IRQ entry for PSI-to-VSI messaging */
+		/* Vector index 0 */
+		enetc_wr(enetc_hw, ENETC4_SIMSIVR, ENETC4_SI_INT_IDX);
+
+		/* enable uio/vfio intr/eventfd mapping */
+		ret = rte_intr_enable(intr_handle);
+		if (ret) {
+			ENETC_PMD_ERR("Failed to enable INTR %d", ret);
+			goto intr_enable_fail;
+		}
+
+		/* Enable message received interrupt */
+		enetc_vf_enable_mr_int(enetc_hw, true);
+		ret = enetc4_vf_link_register_notif(eth_dev, true);
+		if (ret) {
+			ENETC_PMD_ERR("Failed to register link notifications %d", ret);
+			goto disable;
+		}
+
+		return ret;
+	}
+
+	ret = enetc4_vf_link_register_notif(eth_dev, false);
+	if (ret)
+		ENETC_PMD_WARN("Failed to un-register link notification %d", ret);
+disable:
+	enetc_vf_enable_mr_int(enetc_hw, false);
+	ret = rte_intr_disable(intr_handle);
+	if (ret)
+		ENETC_PMD_WARN("Failed to disable INTR %d", ret);
+intr_enable_fail:
+	rte_intr_callback_unregister(intr_handle,
+			enetc4_dev_interrupt_handler, eth_dev);
+
+	return ret;
+}
+
 static struct rte_pci_driver rte_enetc4_vf_pmd = {
 	.id_table = pci_vf_id_enetc4_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = enetc4_vf_pci_probe,
 	.remove = enetc4_pci_remove,
 };
 
 RTE_PMD_REGISTER_PCI(net_enetc4_vf, rte_enetc4_vf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enetc4_vf, pci_vf_id_enetc4_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_enetc4_vf, "* uio_pci_generic");
+RTE_PMD_REGISTER_KMOD_DEP(net_enetc4_vf, "* igb_uio | uio_pci_generic");
 RTE_LOG_REGISTER_DEFAULT(enetc4_vf_logtype_pmd, NOTICE);
