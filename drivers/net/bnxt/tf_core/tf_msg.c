@@ -385,7 +385,7 @@ tf_msg_session_qcfg(struct tf *tfp)
 	/* Populate the request */
 	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
 
-	parms.tf_type = HWRM_TF_SESSION_QCFG,
+	parms.tf_type = HWRM_TF_SESSION_QCFG;
 	parms.req_data = (uint32_t *)&req;
 	parms.req_size = sizeof(req);
 	parms.resp_data = (uint32_t *)&resp;
@@ -1862,7 +1862,7 @@ tf_msg_get_version(struct bnxt *bp,
 	struct tfp_send_msg_parms parms = { 0 };
 
 	/* Populate the request */
-	parms.tf_type = HWRM_TF_VERSION_GET,
+	parms.tf_type = HWRM_TF_VERSION_GET;
 	parms.req_data = (uint32_t *)&req;
 	parms.req_size = sizeof(req);
 	parms.resp_data = (uint32_t *)&resp;
