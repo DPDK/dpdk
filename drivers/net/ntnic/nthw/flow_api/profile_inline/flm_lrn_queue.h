@@ -13,13 +13,13 @@ typedef struct read_record {
 	uint32_t num;
 } read_record;
 
-void *flm_lrn_queue_create(void);
-void flm_lrn_queue_free(void *q);
+void *nthw_flm_lrn_queue_create(void);
+void nthw_flm_lrn_queue_free(void *q);
 
-uint32_t *flm_lrn_queue_get_write_buffer(void *q);
-void flm_lrn_queue_release_write_buffer(void *q);
+uint32_t *nthw_flm_lrn_queue_get_write_buffer(void *q);
+void nthw_flm_lrn_queue_release_write_buffer(void *q);
 
-read_record flm_lrn_queue_get_read_buffer(void *q);
-void flm_lrn_queue_release_read_buffer(void *q, uint32_t num);
+read_record nthw_flm_lrn_queue_get_read_buffer(void *q);
+void nthw_flm_lrn_queue_release_read_buffer(void *q, uint32_t num);
 
 #endif	/* _FLM_LRN_QUEUE_H_ */
