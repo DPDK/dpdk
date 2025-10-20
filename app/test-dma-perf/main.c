@@ -191,6 +191,20 @@ parse_lcore(struct test_configure *test_case, const char *value)
 	return 0;
 }
 
+static void
+parse_cpu_config(struct test_configure *test_case, int case_id,
+		     struct rte_cfgfile *cfgfile, char *section_name)
+{
+	const char *lcore;
+
+	lcore = rte_cfgfile_get_entry(cfgfile, section_name, "lcore");
+	int lcore_ret = parse_lcore(test_case, lcore);
+	if (lcore_ret < 0) {
+		printf("parse lcore error in case %d.\n", case_id);
+		test_case->is_valid = false;
+	}
+}
+
 static int
 parse_entry(const char *value, struct test_configure_entry *entry)
 {
@@ -269,6 +283,94 @@ static int populate_dma_dev_config(const char *key, const char *value, void *tes
 	return ret;
 }
 
+static void
+parse_dma_config(struct test_configure *test_case, int case_id,
+		     struct rte_cfgfile *cfgfile, char *section_name, int *nb_vp)
+{
+	const char *ring_size_str, *kick_batch_str, *src_sges_str, *dst_sges_str, *use_dma_ops;
+	char lc_dma[RTE_DEV_NAME_MAX_LEN];
+	struct rte_kvargs *kvlist;
+	const char *lcore_dma;
+	int args_nr;
+	int i;
+
+	use_dma_ops = rte_cfgfile_get_entry(cfgfile, section_name, "use_enq_deq_ops");
+	test_case->use_ops = (use_dma_ops != NULL && (atoi(use_dma_ops) == 1));
+
+	ring_size_str = rte_cfgfile_get_entry(cfgfile, section_name, "dma_ring_size");
+	args_nr = parse_entry(ring_size_str, &test_case->ring_size);
+	if (args_nr < 0) {
+		printf("parse error in case %d.\n", case_id);
+		test_case->is_valid = false;
+		return;
+	} else if (args_nr == 4)
+		*nb_vp += 1;
+
+	src_sges_str = rte_cfgfile_get_entry(cfgfile, section_name, "dma_src_sge");
+	if (src_sges_str != NULL)
+		test_case->nb_src_sges = (int)atoi(rte_cfgfile_get_entry(cfgfile,
+						section_name, "dma_src_sge"));
+
+	dst_sges_str = rte_cfgfile_get_entry(cfgfile, section_name, "dma_dst_sge");
+	if (dst_sges_str != NULL)
+		test_case->nb_dst_sges = (int)atoi(rte_cfgfile_get_entry(cfgfile,
+						section_name, "dma_dst_sge"));
+
+	if ((src_sges_str != NULL && dst_sges_str == NULL) ||
+	    (src_sges_str == NULL && dst_sges_str != NULL)) {
+		printf("parse dma_src_sge, dma_dst_sge error in case %d.\n", case_id);
+		test_case->is_valid = false;
+		return;
+	} else if (src_sges_str != NULL && dst_sges_str != NULL) {
+		if (test_case->nb_src_sges == 0 || test_case->nb_dst_sges == 0) {
+			printf("dma_src_sge and dma_dst_sge can not be 0 in case %d.\n", case_id);
+			test_case->is_valid = false;
+			return;
+		}
+		test_case->is_sg = true;
+	}
+
+	kick_batch_str = rte_cfgfile_get_entry(cfgfile, section_name, "kick_batch");
+	args_nr = parse_entry(kick_batch_str, &test_case->kick_batch);
+	if (args_nr < 0) {
+		printf("parse error in case %d.\n", case_id);
+		test_case->is_valid = false;
+		return;
+	} else if (args_nr == 4)
+		*nb_vp += 1;
+
+	i = 0;
+	while (1) {
+		snprintf(lc_dma, RTE_DEV_NAME_MAX_LEN, "lcore_dma%d", i);
+		lcore_dma = rte_cfgfile_get_entry(cfgfile, section_name, lc_dma);
+		if (lcore_dma == NULL)
+			break;
+
+		kvlist = rte_kvargs_parse(lcore_dma, NULL);
+		if (kvlist == NULL) {
+			printf("rte_kvargs_parse() error");
+			test_case->is_valid = false;
+			break;
+		}
+
+		if (rte_kvargs_process(kvlist, NULL, populate_dma_dev_config,
+				       (void *)&test_case->dma_config[i]) < 0) {
+			printf("rte_kvargs_process() error\n");
+			rte_kvargs_free(kvlist);
+			test_case->is_valid = false;
+			break;
+		}
+		i++;
+		test_case->num_worker++;
+		rte_kvargs_free(kvlist);
+	}
+
+	if (test_case->num_worker == 0) {
+		printf("Error: Parsing %s Failed\n", lc_dma);
+		test_case->is_valid = false;
+	}
+}
+
 static int
 parse_global_config(struct rte_cfgfile *cfgfile)
 {
@@ -322,17 +424,14 @@ parse_global_config(struct rte_cfgfile *cfgfile)
 static uint16_t
 load_configs(const char *path)
 {
-	struct rte_cfgfile *cfgfile;
-	int nb_sections, i;
+	const char *mem_size_str, *buf_size_str;
 	struct test_configure *test_case;
 	char section_name[CFG_NAME_LEN];
+	struct rte_cfgfile *cfgfile;
 	const char *case_type;
-	const char *lcore_dma;
-	const char *mem_size_str, *buf_size_str, *ring_size_str, *kick_batch_str,
-		*src_sges_str, *dst_sges_str, *use_dma_ops;
-	const char *skip;
-	struct rte_kvargs *kvlist;
+	int nb_sections, i;
 	int args_nr, nb_vp;
+	const char *skip;
 
 	printf("config file parsing...\n");
 	cfgfile = rte_cfgfile_load(path, 0);
@@ -360,6 +459,7 @@ load_configs(const char *path)
 			continue;
 		}
 
+		test_case->is_valid = true;
 		case_type = rte_cfgfile_get_entry(cfgfile, section_name, "type");
 		if (case_type == NULL) {
 			printf("Error: No case type in case %d, the test will be finished here.\n",
@@ -376,15 +476,6 @@ load_configs(const char *path)
 			printf("Error: Wrong test case type %s in case%d.\n", case_type, i + 1);
 			test_case->is_valid = false;
 			continue;
-		}
-
-		if (test_case->test_type == TEST_TYPE_DMA_MEM_COPY) {
-			use_dma_ops =
-				rte_cfgfile_get_entry(cfgfile, section_name, "use_enq_deq_ops");
-			if (use_dma_ops != NULL && (atoi(use_dma_ops) == 1))
-				test_case->use_ops = true;
-			else
-				test_case->use_ops = false;
 		}
 
 		test_case->src_numa_node = (int)atoi(rte_cfgfile_get_entry(cfgfile,
@@ -410,108 +501,17 @@ load_configs(const char *path)
 		} else if (args_nr == 4)
 			nb_vp++;
 
-		if (test_case->test_type == TEST_TYPE_DMA_MEM_COPY) {
-			ring_size_str = rte_cfgfile_get_entry(cfgfile, section_name,
-								"dma_ring_size");
-			args_nr = parse_entry(ring_size_str, &test_case->ring_size);
-			if (args_nr < 0) {
-				printf("parse error in case %d.\n", i + 1);
-				test_case->is_valid = false;
-				continue;
-			} else if (args_nr == 4)
-				nb_vp++;
+		if (test_case->test_type == TEST_TYPE_DMA_MEM_COPY)
+			parse_dma_config(test_case, i + 1, cfgfile, section_name, &nb_vp);
+		else
+			parse_cpu_config(test_case, i + 1, cfgfile, section_name);
 
-			src_sges_str = rte_cfgfile_get_entry(cfgfile, section_name,
-								"dma_src_sge");
-			if (src_sges_str != NULL) {
-				test_case->nb_src_sges = (int)atoi(rte_cfgfile_get_entry(cfgfile,
-								section_name, "dma_src_sge"));
-			}
-
-			dst_sges_str = rte_cfgfile_get_entry(cfgfile, section_name,
-								"dma_dst_sge");
-			if (dst_sges_str != NULL) {
-				test_case->nb_dst_sges = (int)atoi(rte_cfgfile_get_entry(cfgfile,
-								section_name, "dma_dst_sge"));
-			}
-
-			if ((src_sges_str != NULL && dst_sges_str == NULL) ||
-			    (src_sges_str == NULL && dst_sges_str != NULL)) {
-				printf("parse dma_src_sge, dma_dst_sge error in case %d.\n",
-					i + 1);
-				test_case->is_valid = false;
-				continue;
-			} else if (src_sges_str != NULL && dst_sges_str != NULL) {
-				test_case->is_sg = true;
-
-				if (test_case->nb_src_sges == 0 || test_case->nb_dst_sges == 0) {
-					printf("dma_src_sge and dma_dst_sge can not be 0 in case %d.\n",
-						i + 1);
-					test_case->is_valid = false;
-					continue;
-				}
-			} else {
-				test_case->is_sg = false;
-			}
-
-			kick_batch_str = rte_cfgfile_get_entry(cfgfile, section_name, "kick_batch");
-			args_nr = parse_entry(kick_batch_str, &test_case->kick_batch);
-			if (args_nr < 0) {
-				printf("parse error in case %d.\n", i + 1);
-				test_case->is_valid = false;
-				continue;
-			} else if (args_nr == 4)
-				nb_vp++;
-
-			char lc_dma[RTE_DEV_NAME_MAX_LEN];
-			int i = 0;
-			while (1) {
-				snprintf(lc_dma, RTE_DEV_NAME_MAX_LEN, "lcore_dma%d", i);
-				lcore_dma = rte_cfgfile_get_entry(cfgfile, section_name, lc_dma);
-				if (lcore_dma == NULL)
-					break;
-
-				kvlist = rte_kvargs_parse(lcore_dma, NULL);
-				if (kvlist == NULL) {
-					printf("rte_kvargs_parse() error");
-					test_case->is_valid = false;
-					break;
-				}
-
-				if (rte_kvargs_process(kvlist, NULL, populate_dma_dev_config,
-						       (void *)&test_case->dma_config[i]) < 0) {
-					printf("rte_kvargs_process() error\n");
-					rte_kvargs_free(kvlist);
-					test_case->is_valid = false;
-					break;
-				}
-				i++;
-				test_case->num_worker++;
-				rte_kvargs_free(kvlist);
-			}
-
-			if (test_case->num_worker == 0) {
-				printf("Error: Parsing %s Failed\n", lc_dma);
-				continue;
-			}
-		} else {
-			lcore_dma = rte_cfgfile_get_entry(cfgfile, section_name, "lcore");
-			int lcore_ret = parse_lcore(test_case, lcore_dma);
-			if (lcore_ret < 0) {
-				printf("parse lcore error in case %d.\n", i + 1);
-				test_case->is_valid = false;
-				continue;
-			}
-		}
-
-		if (nb_vp > 1) {
+		if (test_case->is_valid && nb_vp > 1) {
 			printf("Case %d error, each section can only have a single variable parameter.\n",
 					i + 1);
 			test_case->is_valid = false;
 			continue;
 		}
-
-		test_case->is_valid = true;
 	}
 
 	rte_cfgfile_close(cfgfile);
