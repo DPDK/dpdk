@@ -1285,6 +1285,51 @@ static int poll_statistics(struct pmd_internals *internals)
 	return 0;
 }
 
+static int eth_flow_query(struct rte_eth_dev *eth_dev,
+	struct rte_flow *flow,
+	const struct rte_flow_action *action,
+	void *data,
+	struct rte_flow_error *err)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	err->cause = NULL;
+	err->message = NULL;
+
+	if (is_flow_handle_typecast(flow)) {
+		rte_flow_error_set(err, EFAULT, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL, "Error in flow handle");
+		return -1;
+	}
+
+	poll_statistics(internals);
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_COUNT) {
+		struct rte_flow_query_count *qcnt = (struct rte_flow_query_count *)data;
+		if (qcnt) {
+			if (flow) {
+				qcnt->hits = flow->stat_pkts;
+				qcnt->hits_set = 1;
+				qcnt->bytes = flow->stat_bytes;
+				qcnt->bytes_set = 1;
+
+				if (qcnt->reset) {
+					flow->stat_pkts = 0UL;
+					flow->stat_bytes = 0UL;
+					flow->stat_tcp_flags = 0;
+				}
+			} else {
+				qcnt->hits_set = 0;
+				qcnt->bytes_set = 0;
+			}
+		}
+	} else {
+		rte_flow_error_set(err, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL, "Unsupported query");
+		return -1;
+	}
+
+	rte_flow_error_set(err, 0, RTE_FLOW_ERROR_TYPE_NONE, NULL, "Success");
+	return 0;
+}
+
 static const struct ntnic_filter_ops ntnic_filter_ops = {
 	.poll_statistics = poll_statistics,
 };
@@ -1299,6 +1344,7 @@ static const struct rte_flow_ops dev_flow_ops = {
 	.destroy = eth_flow_destroy,
 	.flush = eth_flow_flush,
 	.actions_update = eth_flow_actions_update,
+	.query = eth_flow_query,
 	.dev_dump = eth_flow_dev_dump,
 	.get_aged_flows = eth_flow_get_aged_flows,
 	.info_get = eth_flow_info_get,
