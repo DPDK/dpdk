@@ -228,11 +228,6 @@ static void nthw_field_init(nthw_field_t *p, nthw_register_t *p_reg,
 	}
 }
 
-static void nthw_field_reset(const nthw_field_t *p)
-{
-	nthw_field_set_val32(p, (uint32_t)p->mn_reset_val);
-}
-
 /*
  * Register
  */
@@ -467,20 +462,6 @@ static void nthw_fpga_model_init(nthw_fpga_t *p, nthw_fpga_prod_init_s *p_init,
 	}
 }
 
-static void nthw_fpga_set_debug_mode(nthw_fpga_t *p, int debug_mode)
-{
-	int i;
-
-	p->m_debug_mode = debug_mode;
-
-	for (i = 0; i < p->mn_modules; i++) {
-		nthw_module_t *p_mod = p->mpa_modules[i];
-
-		if (p_mod)
-			nthw_module_set_debug_mode(p_mod, debug_mode);
-	}
-}
-
 static nthw_module_t *nthw_fpga_lookup_module(const nthw_fpga_t *p, nthw_id_t id, int instance)
 {
 	int i;
@@ -612,19 +593,6 @@ uint32_t nthw_register_get_address(const nthw_register_t *p)
 	return p->mn_addr;
 }
 
-static void nthw_register_reset(const nthw_register_t *p)
-{
-	int i;
-	nthw_field_t *p_field = NULL;
-
-	for (i = 0; i < p->mn_fields; i++) {
-		p_field = p->mpa_fields[i];
-
-		if (p_field)
-			nthw_field_reset(p_field);
-	}
-}
-
 static nthw_field_t *nthw_register_lookup_field(const nthw_register_t *p, nthw_id_t id)
 {
 	int i;
@@ -665,16 +633,6 @@ nthw_field_t *nthw_register_get_field(const nthw_register_t *p, nthw_id_t id)
 	}
 
 	return p_field;
-}
-
-static int nthw_register_get_bit_width(const nthw_register_t *p)
-{
-	return p->mn_bit_width;
-}
-
-static int nthw_register_get_debug_mode(const nthw_register_t *p)
-{
-	return p->mn_debug_mode;
 }
 
 /*
@@ -750,28 +708,6 @@ static int nthw_register_write_data(const nthw_register_t *p, uint32_t cnt)
 	return rc;
 }
 
-static void nthw_register_get_val(const nthw_register_t *p, uint32_t *p_data, uint32_t len)
-{
-	uint32_t i;
-
-	if (len == (uint32_t)-1 || len > p->mn_len)
-		len = p->mn_len;
-
-	RTE_ASSERT(len <= p->mn_len);
-	RTE_ASSERT(p_data);
-
-	for (i = 0; i < len; i++)
-		p_data[i] = p->mp_shadow[i];
-}
-
-static uint32_t nthw_register_get_val32(const nthw_register_t *p)
-{
-	uint32_t val = 0;
-
-	nthw_register_get_val(p, &val, 1);
-	return val;
-}
-
 void nthw_register_update(const nthw_register_t *p)
 {
 	if (p && p->mn_type != NTHW_FPGA_REG_TYPE_WO) {
@@ -804,15 +740,6 @@ void nthw_register_update(const nthw_register_t *p)
 			ntlog_helper_str_free(tmp_string);
 		}
 	}
-}
-
-static uint32_t nthw_register_get_val_updated32(const nthw_register_t *p)
-{
-	uint32_t val = 0;
-
-	nthw_register_update(p);
-	nthw_register_get_val(p, &val, 1);
-	return val;
 }
 
 void nthw_register_make_dirty(nthw_register_t *p)
@@ -875,19 +802,6 @@ void nthw_register_flush(const nthw_register_t *p, uint32_t cnt)
 		for (i = 0; i < cnt; i++)
 			p->mp_dirty[i] = false;
 	}
-}
-
-static void nthw_register_clr(nthw_register_t *p)
-{
-	if (p->mp_shadow) {
-		memset(p->mp_shadow, 0, p->mn_len * sizeof(uint32_t));
-		nthw_register_make_dirty(p);
-	}
-}
-
-static int nthw_field_get_debug_mode(const nthw_field_t *p)
-{
-	return p->mn_debug_mode;
 }
 
 int nthw_field_get_bit_width(const nthw_field_t *p)
