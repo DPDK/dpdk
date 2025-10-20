@@ -23,6 +23,13 @@
 
 #define HW_DB_FT_TYPE_FLM 0
 #define HW_DB_FT_TYPE_KM 1
+
+/******************************************************************************/
+/* MBR Configuration support                                                  */
+/******************************************************************************/
+static int8_t hw_db_pkt_layer_dyn[] = NTNIC_FLOW_MBR_PKT_LAYER_PER_GROUP;
+static int8_t hw_db_pkt_layer_ofs[] = NTNIC_FLOW_MBR_PKT_LAYER_OFFSET_PER_GROUP;
+
 /******************************************************************************/
 /* Handle                                                                     */
 /******************************************************************************/
@@ -533,11 +540,34 @@ void nthw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struc
 					&db->flm[idxs[i].id2].ft[idxs[i].id1].data;
 			fprintf(file, "  FLM_FT %" PRIu32 "\n", idxs[i].id1);
 
-			if (data->is_group_zero)
+			if (data->is_group_zero) {
 				fprintf(file, "    Jump to %d\n", data->jump);
+			} else {
+				uint32_t group_orig = 0;
 
-			else
-				fprintf(file, "    Group %d\n", data->group);
+				if (nthw_flow_group_translate_get_orig_group(ndev->group_handle,
+					data->group,
+					&group_orig) < 0) {
+					fprintf(file, "    Encoded group: %d\n", data->group);
+
+				} else {
+					fprintf(file, "    Group %d, encoded group: %d\n",
+						group_orig, data->group);
+				}
+
+				const int dyn_group_orig =
+					group_orig >= sizeof(hw_db_pkt_layer_dyn) ?
+						hw_db_pkt_layer_dyn[0] :
+						hw_db_pkt_layer_dyn[group_orig];
+
+				const int ofs_group_orig =
+					group_orig >= sizeof(hw_db_pkt_layer_ofs) ?
+						hw_db_pkt_layer_ofs[0] :
+						hw_db_pkt_layer_ofs[group_orig];
+
+				fprintf(file, "    BYT dyn %d, ofs %d\n",
+					dyn_group_orig, ofs_group_orig);
+			}
 
 			fprintf(file, "    ACTION_SET id %d\n", data->action_set.ids);
 			break;

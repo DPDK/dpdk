@@ -94,6 +94,54 @@
 #define NTNIC_FLOW_PERIODIC_STATS_BYTE_TIMEOUT 23
 
 /*
+ * Protocol offset for packet bytes that should be used for calculations.
+ * The number of bytes (N) used for counting bytes in the FLM is determined
+ * as follows:
+ *
+ * N = FrameLength - NTNIC_FLOW_MBR_PKT_LAYER - NTNIC_FLOW_MBR_PKT_LAYER_OFFSET
+ *
+ * The frame length includes the FCS.
+ *
+ * 0: Start of frame; always zero.
+ * 1: Layer 2 header.
+ * 2: First VLAN.
+ * 3: First MPLS.
+ * 4: Layer 3 header.
+ * 5: The Identification field of IPv4 or IPv6.
+ * 6: The final IP destination address.
+ * 7: Layer 4 header.
+ * 8: Layer 4 payload.
+ * 9: Tunnel payload.
+ * 10: Tunneled layer 2 header.
+ * 11: First tunneled VLAN.
+ * 12: First tunneled MPLS.
+ * 13: Tunneled Layer 3 header.
+ * 14: The Identification field of tunneled IPv4 or IPv6.
+ * 15: The final tunneled IP destination address.
+ * 16: Tunneled layer 4 header.
+ * 17: Tunneled layer 4 payload.
+ *
+ * Default value : {0} - to count whole packet for all groups
+ * NOTE: In case that value for given `group` is not defined, then value for group 0 is used.
+ *
+ * Example: {4, 13, 13}
+ *  - count size of packet starting at:
+ *    - OUTER layer 3 for groups 0, 3 and above
+ *    - INNER layer 3 for groups 1 and 2
+ */
+#define NTNIC_FLOW_MBR_PKT_LAYER_PER_GROUP {0}
+
+/*
+ * Offset relative to the NTNIC_FLOW_MBR_PKT_LAYER. This is an 8 bit signed value.
+ *
+ * Default value: {-20} - to account for minimum spacing of 20B between frames for all groups
+ * NOTE: In case that value for given `group` is not defined, then value for group 0 is used.
+ *
+ * Example: {0} - do not apply any offset for any group
+ */
+#define NTNIC_FLOW_MBR_PKT_LAYER_OFFSET_PER_GROUP {-20}
+
+/*
  * This define sets the percentage of the full processing capacity
  * being reserved for scan operations. The scanner is responsible
  * for detecting aged out flows and meters with statistics timeout.
