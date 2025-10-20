@@ -212,12 +212,13 @@ struct hw_db_inline_cat_data {
 	uint32_t ptc_mask_l4 : 5;
 	uint32_t padding0 : 1;
 
+	uint32_t vlan_mask_tunnel : 4;
 	uint32_t ptc_mask_tunnel : 11;
 	uint32_t ptc_mask_l3_tunnel : 3;
 	uint32_t ptc_mask_l4_tunnel : 5;
 	uint32_t err_mask_ttl_tunnel : 2;
 	uint32_t err_mask_ttl : 2;
-	uint32_t padding1 : 9;
+	uint32_t padding1 : 5;
 
 	uint8_t ptc_mask_l2_tunnel;
 	uint8_t ip_prot;

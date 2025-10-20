@@ -207,6 +207,7 @@ struct nic_flow_def {
 	int tunnel_l3_prot;
 	int tunnel_l4_prot;
 	int vlans;
+	int tunnel_vlans;
 	int fragmentation;
 	int ip_prot;
 	int tunnel_ip_prot;

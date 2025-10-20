@@ -907,6 +907,7 @@ static inline struct nic_flow_def *prepare_nic_flow_def(struct nic_flow_def *fd)
 		fd->l3_prot = -1;
 		fd->l4_prot = -1;
 		fd->vlans = 0;
+		fd->tunnel_vlans = 0;
 		fd->tunnel_prot = -1;
 		fd->tunnel_l2_prot = -1;
 		fd->tunnel_l3_prot = -1;
@@ -928,7 +929,8 @@ static inline struct nic_flow_def *allocate_nic_flow_def(void)
 
 static bool fd_has_empty_pattern(const struct nic_flow_def *fd)
 {
-	return fd && fd->vlans == 0 && fd->l2_prot < 0 && fd->l3_prot < 0 && fd->l4_prot < 0 &&
+	return fd && fd->vlans == 0 && fd->tunnel_vlans == 0 && fd->l2_prot < 0 &&
+		fd->l3_prot < 0 && fd->l4_prot < 0 &&
 		fd->tunnel_prot < 0 && fd->tunnel_l2_prot < 0 &&
 		fd->tunnel_l3_prot < 0 && fd->tunnel_l4_prot < 0 &&
 		fd->ip_prot < 0 && fd->tunnel_ip_prot < 0 && fd->non_empty < 0;
@@ -1920,7 +1922,10 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					(const struct rte_vlan_hdr *)elem[eidx].mask;
 
 				if (vlan_spec == NULL || vlan_mask == NULL) {
-					fd->vlans += 1;
+					if (any_count > 0)
+						fd->tunnel_vlans += 1;
+					else
+						fd->vlans += 1;
 					break;
 				}
 
@@ -1947,9 +1952,13 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					sw_data[0] &= sw_mask[0];
 
 					nthw_km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
-						DYN_FIRST_VLAN, 2 + 4 * fd->vlans);
-					set_key_def_sw(key_def, sw_counter, DYN_FIRST_VLAN,
-						2 + 4 * fd->vlans);
+						any_count > 0 ? DYN_TUN_VLAN : DYN_FIRST_VLAN,
+						2 + 4 * (any_count > 0 ? fd->tunnel_vlans :
+							fd->vlans));
+					set_key_def_sw(key_def, sw_counter,
+						any_count > 0 ? DYN_TUN_VLAN : DYN_FIRST_VLAN,
+						2 + 4 * (any_count > 0 ? fd->tunnel_vlans :
+							fd->vlans));
 					sw_counter += 1;
 
 				} else if (qw_counter < 2 && qw_free > 0) {
@@ -1973,10 +1982,13 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					qw_data[2] &= qw_mask[2];
 					qw_data[3] &= qw_mask[3];
 
-					nthw_km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
-						DYN_FIRST_VLAN, 2 + 4 * fd->vlans);
-					set_key_def_qw(key_def, qw_counter, DYN_FIRST_VLAN,
-						2 + 4 * fd->vlans);
+					nthw_km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
+						4, any_count > 0 ? DYN_TUN_VLAN : DYN_FIRST_VLAN,
+						2 + 4 * (any_count > 0 ? fd->tunnel_vlans :
+							fd->vlans));
+					set_key_def_qw(key_def, qw_counter,
+					any_count > 0 ? DYN_TUN_VLAN : DYN_FIRST_VLAN,
+					2 + 4 * (any_count > 0 ? fd->tunnel_vlans : fd->vlans));
 					qw_counter += 1;
 					qw_free -= 1;
 
@@ -3699,6 +3711,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			.ptc_mask_l4 = fd->l4_prot != -1 ? (1 << fd->l4_prot) : -1,
 			.err_mask_ttl = (fd->ttl_sub_enable &&
 				fd->ttl_sub_outer) ? -1 : 0x1,
+			.vlan_mask_tunnel = (0xf << fd->tunnel_vlans) & 0xf,
 			.ptc_mask_tunnel = fd->tunnel_prot !=
 			-1 ? (1 << (fd->tunnel_prot > 10 ? 10 : fd->tunnel_prot)) : -1,
 			.ptc_mask_l2_tunnel =
