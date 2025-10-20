@@ -2608,6 +2608,14 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		}
 	}
 
+	uint32_t cores[RTE_MAX_LCORE] = {0};
+	int32_t lcore_count = rte_service_lcore_list(cores, RTE_MAX_LCORE);
+
+	if (lcore_count <= 0) {
+		NT_LOG(WRN, NTNIC, "No service cores available. "
+			"Please check if all NTNIC services are started");
+	}
+
 	return 0;
 }
 
