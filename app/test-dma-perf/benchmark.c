@@ -458,6 +458,11 @@ setup_memory_env(struct test_configure *cfg,
 		return -1;
 	}
 
+	if (buf_size > UINT16_MAX) {
+		PRINT_ERR("Error: Invalid buf size: %u\n", cur_buf_size);
+		return -1;
+	}
+
 	src_pool = rte_pktmbuf_pool_create("Benchmark_DMA_SRC",
 			nr_buf,
 			0,
