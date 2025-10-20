@@ -440,6 +440,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 			res = nt200a0x_ops->nthw_fpga_nt200a0x_init(p_fpga_info);
 		break;
 
+	case NT_HW_ADAPTER_ID_NT400D11:
 	case NT_HW_ADAPTER_ID_NT400D13:
 		if (nt400dxx_ops != NULL)
 			res = nt400dxx_ops->nthw_fpga_nt400dxx_init(p_fpga_info);

@@ -113,6 +113,7 @@ static int nthw_fpga_nt400dxx_init_sub_systems(struct fpga_info_s *p_fpga_info)
 static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 {
 	RTE_ASSERT(p_fpga_info);
+	struct rst9569_ops *rst9569_ops = NULL;
 	struct rst9574_ops *rst9574_ops = NULL;
 
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
@@ -123,6 +124,29 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	RTE_ASSERT(p_fpga);
 
 	switch (p_fpga_info->n_fpga_prod_id) {
+	case 9569:
+		rst9569_ops = nthw_get_rst9569_ops();
+
+		if (rst9569_ops == NULL) {
+			NT_LOG(ERR, NTHW, "%s: RST 9569 NOT INCLUDED", p_adapter_id_str);
+			return -1;
+		}
+
+		res = rst9569_ops->nthw_fpga_rst9569_setup();
+
+		if (res) {
+			NT_LOG(ERR,
+				NTHW,
+				"%s: %s: FPGA=%04d Failed to create reset module res=%d",
+				p_adapter_id_str,
+				__func__,
+				p_fpga_info->n_fpga_prod_id,
+				res);
+			return res;
+		}
+
+		break;
+
 	case 9574:
 		rst9574_ops = nthw_get_rst9574_ops();
 
@@ -183,6 +207,23 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 
 		/* reset specific */
 	switch (p_fpga_info->n_fpga_prod_id) {
+	case 9569:
+		if (rst9569_ops)
+			res = rst9569_ops->nthw_fpga_rst9569_init();
+
+		if (res) {
+			NT_LOG(ERR,
+				NTHW,
+				"%s: %s: FPGA=%04d - Failed to reset 9569 modules res=%d",
+				p_adapter_id_str,
+				__func__,
+				p_fpga_info->n_fpga_prod_id,
+				res);
+			return res;
+		}
+
+		break;
+
 	case 9574:
 		res = rst9574_ops->nthw_fpga_rst9574_init(p_fpga_info, &rst);
 

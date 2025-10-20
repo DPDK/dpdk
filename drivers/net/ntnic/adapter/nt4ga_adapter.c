@@ -172,10 +172,11 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 
 			res = link_ops->link_init(p_adapter_info, p_fpga);
 			break;
+		case 9569: /* NT400D11 (Intel Agilex FPGA) */
 		case 9574: /* NT400D13 (Intel Agilex FPGA) */
 			link_ops = nthw_get_agx_100g_link_ops();
 			if (link_ops == NULL) {
-				NT_LOG(ERR, NTNIC, "NT400D11 100G link module uninitialized");
+				NT_LOG(ERR, NTNIC, "NT400Dxx 100G link module uninitialized");
 				res = -1;
 				break;
 			}

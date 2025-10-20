@@ -47,6 +47,7 @@ sources = files(
         'nthw/core/nt400dxx/nthw_fpga_nt400dxx.c',
         'nthw/core/nt200a0x/reset/nthw_fpga_rst9563.c',
         'nthw/core/nt400dxx/reset/nthw_fpga_rst9574.c',
+        'nthw/core/nt400dxx/reset/nthw_fpga_rst9569.c',
         'nthw/core/nt200a0x/reset/nthw_fpga_rst_nt200a0x.c',
         'nthw/core/nt400dxx/reset/nthw_fpga_rst_nt400dxx.c',
         'nthw/core/nthw_fpga.c',

@@ -193,6 +193,21 @@ struct rst9574_ops *nthw_get_rst9574_ops(void)
 	return rst9574_ops;
 }
 
+static struct rst9569_ops *rst9569_ops;
+
+void nthw_reg_rst9569_ops(struct rst9569_ops *ops)
+{
+	rst9569_ops = ops;
+}
+
+struct rst9569_ops *nthw_get_rst9569_ops(void)
+{
+	if (rst9569_ops == NULL)
+		nthw_rst9569_ops_init();
+
+	return rst9569_ops;
+}
+
 static struct rst_nt400dxx_ops *rst_nt400dxx_ops;
 
 void nthw_reg_rst_nt400dxx_ops(struct rst_nt400dxx_ops *ops)
