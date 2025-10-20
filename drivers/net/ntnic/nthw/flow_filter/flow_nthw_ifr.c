@@ -12,12 +12,12 @@
 
 #include "flow_nthw_ifr.h"
 
-void ifr_nthw_set_debug_mode(struct ifr_nthw *p, unsigned int n_debug_mode)
+void nthw_ifr_set_debug_mode(struct ifr_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_ifr, n_debug_mode);
 }
 
-struct ifr_nthw *ifr_nthw_new(void)
+struct ifr_nthw *nthw_ifr_new(void)
 {
 	struct ifr_nthw *p = malloc(sizeof(struct ifr_nthw));
 
@@ -27,7 +27,7 @@ struct ifr_nthw *ifr_nthw_new(void)
 	return p;
 }
 
-int ifr_nthw_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_ifr_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_IFR, n_instance);
@@ -79,49 +79,49 @@ int ifr_nthw_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
-void ifr_nthw_rcp_select(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_select(const struct ifr_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_rcp_addr);
 	nthw_field_set_val32(p->mp_rcp_addr, val);
 }
 
-void ifr_nthw_rcp_cnt(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_cnt(const struct ifr_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_rcp_cnt);
 	nthw_field_set_val32(p->mp_rcp_cnt, val);
 }
 
-void ifr_nthw_rcp_ipv4_en(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_ipv4_en(const struct ifr_nthw *p, uint32_t val)
 {
 	if (p->mp_rcp_data_ipv4_en)
 		nthw_field_set_val32(p->mp_rcp_data_ipv4_en, val);
 }
 
-void ifr_nthw_rcp_ipv4_df_drop(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_ipv4_df_drop(const struct ifr_nthw *p, uint32_t val)
 {
 	if (p->mp_rcp_data_ipv4_df_drop)
 		nthw_field_set_val32(p->mp_rcp_data_ipv4_df_drop, val);
 }
 
-void ifr_nthw_rcp_ipv6_en(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_ipv6_en(const struct ifr_nthw *p, uint32_t val)
 {
 	if (p->mp_rcp_data_ipv6_en)
 		nthw_field_set_val32(p->mp_rcp_data_ipv6_en, val);
 }
 
-void ifr_nthw_rcp_ipv6_drop(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_ipv6_drop(const struct ifr_nthw *p, uint32_t val)
 {
 	if (p->mp_rcp_data_ipv6_drop)
 		nthw_field_set_val32(p->mp_rcp_data_ipv6_drop, val);
 }
 
-void ifr_nthw_rcp_mtu(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_rcp_mtu(const struct ifr_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_rcp_data_mtu);
 	nthw_field_set_val32(p->mp_rcp_data_mtu, val);
 }
 
-void ifr_nthw_rcp_flush(const struct ifr_nthw *p)
+void nthw_ifr_rcp_flush(const struct ifr_nthw *p)
 {
 	RTE_ASSERT(p->mp_rcp_ctrl);
 	RTE_ASSERT(p->mp_rcp_data);
@@ -129,25 +129,25 @@ void ifr_nthw_rcp_flush(const struct ifr_nthw *p)
 	nthw_register_flush(p->mp_rcp_data, 1);
 }
 
-void ifr_nthw_counters_select(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_counters_select(const struct ifr_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_counters_addr);
 	nthw_field_set_val32(p->mp_counters_addr, val);
 }
 
-void ifr_nthw_counters_cnt(const struct ifr_nthw *p, uint32_t val)
+void nthw_ifr_counters_cnt(const struct ifr_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_counters_cnt);
 	nthw_field_set_val32(p->mp_counters_cnt, val);
 }
 
-void ifr_nthw_counters_drop(const struct ifr_nthw *p, uint32_t *val, int get)
+void nthw_ifr_counters_drop(const struct ifr_nthw *p, uint32_t *val, int get)
 {
 	if (get)
 		*val = nthw_field_get_val32(p->mp_counters_drop);
 }
 
-void ifr_nthw_counters_update(const struct ifr_nthw *p)
+void nthw_ifr_counters_update(const struct ifr_nthw *p)
 {
 	RTE_ASSERT(p->mp_counters_data);
 	nthw_register_flush(p->mp_counters_ctrl, 1);

@@ -66,48 +66,48 @@ struct qsl_nthw {
 
 typedef struct qsl_nthw qsl_nthw_t;
 
-struct qsl_nthw *qsl_nthw_new(void);
-void qsl_nthw_delete(struct qsl_nthw *p);
-int qsl_nthw_init(struct qsl_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
+struct qsl_nthw *nthw_qsl_new(void);
+void nthw_qsl_delete(struct qsl_nthw *p);
+int nthw_qsl_init(struct qsl_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
-void qsl_nthw_set_debug_mode(struct qsl_nthw *p, unsigned int n_debug_mode);
+void nthw_qsl_set_debug_mode(struct qsl_nthw *p, unsigned int n_debug_mode);
 
 /* RCP */
-void qsl_nthw_rcp_select(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_cnt(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_discard(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_drop(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_tbl_lo(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_tbl_hi(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_tbl_idx(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_tbl_msk(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_lr(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_tsa(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_vli(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_rcp_flush(const struct qsl_nthw *p);
+void nthw_qsl_rcp_select(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_cnt(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_discard(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_drop(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_tbl_lo(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_tbl_hi(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_tbl_idx(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_tbl_msk(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_lr(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_tsa(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_vli(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_rcp_flush(const struct qsl_nthw *p);
 
 /* QST */
-void qsl_nthw_qst_select(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_cnt(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_queue(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_en(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_tx_port(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_lre(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_tci(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_ven(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qst_flush(const struct qsl_nthw *p);
+void nthw_qsl_qst_select(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_cnt(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_queue(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_en(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_tx_port(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_lre(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_tci(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_ven(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qst_flush(const struct qsl_nthw *p);
 
 /* QEN */
-void qsl_nthw_qen_select(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qen_cnt(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qen_en(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_qen_flush(const struct qsl_nthw *p);
+void nthw_qsl_qen_select(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qen_cnt(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qen_en(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_qen_flush(const struct qsl_nthw *p);
 
 /* UNMQ */
-void qsl_nthw_unmq_select(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_unmq_cnt(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_unmq_dest_queue(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_unmq_en(const struct qsl_nthw *p, uint32_t val);
-void qsl_nthw_unmq_flush(const struct qsl_nthw *p);
+void nthw_qsl_unmq_select(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_unmq_cnt(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_unmq_dest_queue(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_unmq_en(const struct qsl_nthw *p, uint32_t val);
+void nthw_qsl_unmq_flush(const struct qsl_nthw *p);
 
 #endif	/* __FLOW_NTHW_QSL_H__ */

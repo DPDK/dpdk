@@ -71,7 +71,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	int res = -1;
 	nthw_fpga_t *p_fpga = NULL;
 
-	p_hw_info->n_nthw_adapter_id = nthw_platform_get_nthw_adapter_id(p_hw_info->pci_device_id);
+	p_hw_info->n_nthw_adapter_id = nthw_platform_get_adapter_id(p_hw_info->pci_device_id);
 
 	fpga_info->n_nthw_adapter_id = p_hw_info->n_nthw_adapter_id;
 	/* ref: DN-0060 section 9 */

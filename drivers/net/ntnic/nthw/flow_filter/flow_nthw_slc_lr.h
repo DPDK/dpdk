@@ -32,23 +32,23 @@ struct slc_lr_nthw {
 
 typedef struct slc_lr_nthw slc_lr_nthw_t;
 
-struct slc_lr_nthw *slc_lr_nthw_new(void);
-void slc_lr_nthw_delete(struct slc_lr_nthw *p);
-int slc_lr_nthw_init(struct slc_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
+struct slc_lr_nthw *nthw_slc_lr_new(void);
+void nthw_slc_lr_delete(struct slc_lr_nthw *p);
+int nthw_slc_lr_init(struct slc_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int slc_lr_nthw_setup(struct slc_lr_nthw *p, int n_idx, int n_idx_cnt);
-void slc_lr_nthw_set_debug_mode(struct slc_lr_nthw *p, unsigned int n_debug_mode);
+void nthw_slc_lr_set_debug_mode(struct slc_lr_nthw *p, unsigned int n_debug_mode);
 
 /* RCP */
-void slc_lr_nthw_rcp_select(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_cnt(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_head_slc_en(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_head_dyn(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_head_ofs(const struct slc_lr_nthw *p, int32_t val);
-void slc_lr_nthw_rcp_tail_slc_en(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_tail_dyn(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_tail_ofs(const struct slc_lr_nthw *p, int32_t val);
-void slc_lr_nthw_rcp_pcap(const struct slc_lr_nthw *p, uint32_t val);
-void slc_lr_nthw_rcp_flush(const struct slc_lr_nthw *p);
+void nthw_slc_lr_rcp_select(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_cnt(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_head_slc_en(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_head_dyn(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_head_ofs(const struct slc_lr_nthw *p, int32_t val);
+void nthw_slc_lr_rcp_tail_slc_en(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_tail_dyn(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_tail_ofs(const struct slc_lr_nthw *p, int32_t val);
+void nthw_slc_lr_rcp_pcap(const struct slc_lr_nthw *p, uint32_t val);
+void nthw_slc_lr_rcp_flush(const struct slc_lr_nthw *p);
 
 #endif	/* __FLOW_NTHW_SLC_LR_H__ */

@@ -26,19 +26,19 @@ struct tx_ins_nthw {
 	nthw_field_t *mp_rcp_data_len;
 };
 
-struct tx_ins_nthw *tx_ins_nthw_new(void);
-void tx_ins_nthw_delete(struct tx_ins_nthw *p);
-int tx_ins_nthw_init(struct tx_ins_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
+struct tx_ins_nthw *nthw_tx_ins_new(void);
+void nthw_tx_ins_delete(struct tx_ins_nthw *p);
+int nthw_tx_ins_init(struct tx_ins_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int tx_ins_nthw_setup(struct tx_ins_nthw *p, int n_idx, int n_idx_cnt);
-void tx_ins_nthw_set_debug_mode(struct tx_ins_nthw *p, unsigned int n_debug_mode);
+void nthw_tx_ins_set_debug_mode(struct tx_ins_nthw *p, unsigned int n_debug_mode);
 
 /* RCP */
-void tx_ins_nthw_rcp_select(const struct tx_ins_nthw *p, uint32_t val);
-void tx_ins_nthw_rcp_cnt(const struct tx_ins_nthw *p, uint32_t val);
-void tx_ins_nthw_rcp_dyn(const struct tx_ins_nthw *p, uint32_t val);
-void tx_ins_nthw_rcp_ofs(const struct tx_ins_nthw *p, uint32_t val);
-void tx_ins_nthw_rcp_len(const struct tx_ins_nthw *p, uint32_t val);
-void tx_ins_nthw_rcp_flush(const struct tx_ins_nthw *p);
+void nthw_tx_ins_rcp_select(const struct tx_ins_nthw *p, uint32_t val);
+void nthw_tx_ins_rcp_cnt(const struct tx_ins_nthw *p, uint32_t val);
+void nthw_tx_ins_rcp_dyn(const struct tx_ins_nthw *p, uint32_t val);
+void nthw_tx_ins_rcp_ofs(const struct tx_ins_nthw *p, uint32_t val);
+void nthw_tx_ins_rcp_len(const struct tx_ins_nthw *p, uint32_t val);
+void nthw_tx_ins_rcp_flush(const struct tx_ins_nthw *p);
 
 #endif	/* __FLOW_NTHW_TX_INS_H__ */

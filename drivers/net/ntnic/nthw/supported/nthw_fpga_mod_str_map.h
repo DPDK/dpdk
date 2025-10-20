@@ -10,4 +10,4 @@ struct nthw_fpga_mod_str_s {
 	const nthw_id_t a;
 	const char *b;
 };
-extern const struct nthw_fpga_mod_str_s sa_nthw_fpga_mod_str_map[];
+extern const struct nthw_fpga_mod_str_s nthw_sa_fpga_mod_str_map[];

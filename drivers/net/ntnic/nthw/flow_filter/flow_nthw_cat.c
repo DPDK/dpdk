@@ -13,7 +13,7 @@
 
 #include "flow_nthw_cat.h"
 
-struct cat_nthw *cat_nthw_new(void)
+struct cat_nthw *nthw_cat_new(void)
 {
 	struct cat_nthw *p = malloc(sizeof(struct cat_nthw));
 
@@ -23,7 +23,7 @@ struct cat_nthw *cat_nthw_new(void)
 	return p;
 }
 
-void cat_nthw_delete(struct cat_nthw *p)
+void nthw_cat_delete(struct cat_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -31,12 +31,12 @@ void cat_nthw_delete(struct cat_nthw *p)
 	}
 }
 
-void cat_nthw_set_debug_mode(struct cat_nthw *p, unsigned int n_debug_mode)
+void nthw_cat_set_debug_mode(struct cat_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_cat, n_debug_mode);
 }
 
-int cat_nthw_init(struct cat_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_cat_init(struct cat_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_CAT, n_instance);
@@ -284,586 +284,586 @@ int cat_nthw_init(struct cat_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 }
 
 /* CFN */
-void cat_nthw_cfn_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_addr, val);
 }
 
-void cat_nthw_cfn_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_cnt, val);
 }
 
-void cat_nthw_cfn_enable(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_enable(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_enable, val);
 }
 
-void cat_nthw_cfn_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_inv, val);
 }
 
-void cat_nthw_cfn_ptc_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_inv, val);
 }
 
-void cat_nthw_cfn_ptc_isl(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_isl(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_isl, val);
 }
 
-void cat_nthw_cfn_ptc_mac(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_mac(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_mac, val);
 }
 
-void cat_nthw_cfn_ptc_l2(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_l2(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_l2, val);
 }
 
-void cat_nthw_cfn_ptc_vn_tag(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_vn_tag(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_vn_tag, val);
 }
 
-void cat_nthw_cfn_ptc_vlan(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_vlan(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_vlan, val);
 }
 
-void cat_nthw_cfn_ptc_mpls(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_mpls(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_mpls, val);
 }
 
-void cat_nthw_cfn_ptc_l3(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_l3(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_l3, val);
 }
 
-void cat_nthw_cfn_ptc_frag(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_frag(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_frag, val);
 }
 
-void cat_nthw_cfn_ptc_ip_prot(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_ip_prot(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_ip_prot, val);
 }
 
-void cat_nthw_cfn_ptc_l4(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_l4(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_l4, val);
 }
 
-void cat_nthw_cfn_ptc_tunnel(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tunnel(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tunnel, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_l2(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_l2(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_l2, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_vlan(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_vlan(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_vlan, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_mpls(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_mpls(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_mpls, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_l3(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_l3(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_l3, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_frag(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_frag(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_frag, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_ip_prot(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_ip_prot(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_ip_prot, val);
 }
 
-void cat_nthw_cfn_ptc_tnl_l4(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_tnl_l4(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_ptc_tnl_l4, val);
 }
 
-void cat_nthw_cfn_ptc_cfp(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_ptc_cfp(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_ptc_cfp);
 	nthw_field_set_val32(p->mp_cfn_data_ptc_cfp, val);
 }
 
-void cat_nthw_cfn_err_l3_cs(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_l3_cs(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_err_l3_cs);
 	nthw_field_set_val32(p->mp_cfn_data_err_l3_cs, val);
 }
 
-void cat_nthw_cfn_err_l4_cs(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_l4_cs(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_err_l4_cs);
 	nthw_field_set_val32(p->mp_cfn_data_err_l4_cs, val);
 }
 
-void cat_nthw_cfn_err_tnl_l3_cs(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_tnl_l3_cs(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_err_tnl_l3_cs);
 	nthw_field_set_val32(p->mp_cfn_data_err_tnl_l3_cs, val);
 }
 
-void cat_nthw_cfn_err_tnl_l4_cs(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_tnl_l4_cs(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_err_tnl_l4_cs);
 	nthw_field_set_val32(p->mp_cfn_data_err_tnl_l4_cs, val);
 }
 
-void cat_nthw_cfn_err_ttl_exp(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_ttl_exp(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_err_ttl_exp);
 	nthw_field_set_val32(p->mp_cfn_data_err_ttl_exp, val);
 }
 
-void cat_nthw_cfn_err_tnl_ttl_exp(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_tnl_ttl_exp(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_err_tnl_ttl_exp);
 	nthw_field_set_val32(p->mp_cfn_data_err_tnl_ttl_exp, val);
 }
 
-void cat_nthw_cfn_err_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_err_inv, val);
 }
 
-void cat_nthw_cfn_err_cv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_cv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_err_cv, val);
 }
 
-void cat_nthw_cfn_err_fcs(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_fcs(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_err_fcs, val);
 }
 
-void cat_nthw_cfn_err_trunc(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_err_trunc(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_err_trunc, val);
 }
 
-void cat_nthw_cfn_mac_port(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_mac_port(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_mac_port, val);
 }
 
-void cat_nthw_cfn_pm_cmp(const struct cat_nthw *p, const uint32_t *val)
+void nthw_cat_cfn_pm_cmp(const struct cat_nthw *p, const uint32_t *val)
 {
 	nthw_field_set_val(p->mp_cfn_data_pm_cmp, val, p->mp_cfn_data_pm_cmp->mn_words);
 }
 
-void cat_nthw_cfn_pm_dct(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_pm_dct(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_pm_dct, val);
 }
 
-void cat_nthw_cfn_pm_ext_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_pm_ext_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_pm_ext_inv, val);
 }
 
-void cat_nthw_cfn_pm_cmb(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_pm_cmb(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_pm_cmb, val);
 }
 
-void cat_nthw_cfn_pm_and_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_pm_and_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_pm_and_inv, val);
 }
 
-void cat_nthw_cfn_pm_or_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_pm_or_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_pm_or_inv, val);
 }
 
-void cat_nthw_cfn_pm_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_pm_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_pm_inv, val);
 }
 
-void cat_nthw_cfn_lc(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_lc(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_lc, val);
 }
 
-void cat_nthw_cfn_lc_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_lc_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_lc_inv, val);
 }
 
-void cat_nthw_cfn_km0_or(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_km0_or(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cfn_data_km0_or, val);
 }
 
-void cat_nthw_cfn_km1_or(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cfn_km1_or(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cfn_data_km1_or);
 	nthw_field_set_val32(p->mp_cfn_data_km1_or, val);
 }
 
-void cat_nthw_cfn_flush(const struct cat_nthw *p)
+void nthw_cat_cfn_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_cfn_ctrl, 1);
 	nthw_register_flush(p->mp_cfn_data, 1);
 }
 
-void cat_nthw_kce_select(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_kce_select(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_kce_addr[index], val);
 }
 
-void cat_nthw_kce_cnt(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_kce_cnt(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_kce_cnt[index], val);
 }
 
-void cat_nthw_kce_enable(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_kce_enable(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_kce_data_enable[index], val);
 }
 
-void cat_nthw_kce_flush(const struct cat_nthw *p, int index)
+void nthw_cat_kce_flush(const struct cat_nthw *p, int index)
 {
 	nthw_register_flush(p->mp_kce_ctrl[index], 1);
 	nthw_register_flush(p->mp_kce_data[index], 1);
 }
 
-void cat_nthw_kcs_select(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_kcs_select(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_kcs_addr[index], val);
 }
 
-void cat_nthw_kcs_cnt(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_kcs_cnt(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_kcs_cnt[index], val);
 }
 
-void cat_nthw_kcs_category(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_kcs_category(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_kcs_data_category[index], val);
 }
 
-void cat_nthw_kcs_flush(const struct cat_nthw *p, int index)
+void nthw_cat_kcs_flush(const struct cat_nthw *p, int index)
 {
 	nthw_register_flush(p->mp_kcs_ctrl[index], 1);
 	nthw_register_flush(p->mp_kcs_data[index], 1);
 }
 
-void cat_nthw_fte_select(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_fte_select(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_fte_addr[index], val);
 }
 
-void cat_nthw_fte_cnt(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_fte_cnt(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_fte_cnt[index], val);
 }
 
-void cat_nthw_fte_enable(const struct cat_nthw *p, int index, uint32_t val)
+void nthw_cat_fte_enable(const struct cat_nthw *p, int index, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_fte_data_enable[index], val);
 }
 
-void cat_nthw_fte_flush(const struct cat_nthw *p, int index)
+void nthw_cat_fte_flush(const struct cat_nthw *p, int index)
 {
 	nthw_register_flush(p->mp_fte_ctrl[index], 1);
 	nthw_register_flush(p->mp_fte_data[index], 1);
 }
 
-void cat_nthw_cte_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_addr, val);
 }
 
-void cat_nthw_cte_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_cnt, val);
 }
 
-void cat_nthw_cte_enable_col(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_col(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_col, val);
 }
 
-void cat_nthw_cte_enable_cor(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_cor(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_cor, val);
 }
 
-void cat_nthw_cte_enable_hsh(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_hsh(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_hsh, val);
 }
 
-void cat_nthw_cte_enable_qsl(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_qsl(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_qsl, val);
 }
 
-void cat_nthw_cte_enable_ipf(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_ipf(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_ipf, val);
 }
 
-void cat_nthw_cte_enable_slc(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_slc(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_slc, val);
 }
 
-void cat_nthw_cte_enable_pdb(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_pdb(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cte_data_pdb, val);
 }
 
-void cat_nthw_cte_enable_msk(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_msk(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cte_data_msk);
 	nthw_field_set_val32(p->mp_cte_data_msk, val);
 }
 
-void cat_nthw_cte_enable_hst(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_hst(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cte_data_hst);
 	nthw_field_set_val32(p->mp_cte_data_hst, val);
 }
 
-void cat_nthw_cte_enable_epp(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_epp(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cte_data_epp);
 	nthw_field_set_val32(p->mp_cte_data_epp, val);
 }
 
-void cat_nthw_cte_enable_tpe(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cte_enable_tpe(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_cte_data_tpe);
 	nthw_field_set_val32(p->mp_cte_data_tpe, val);
 }
 
-void cat_nthw_cte_flush(const struct cat_nthw *p)
+void nthw_cat_cte_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_cte_ctrl, 1);
 	nthw_register_flush(p->mp_cte_data, 1);
 }
 
-void cat_nthw_cts_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cts_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cts_addr, val);
 }
 
-void cat_nthw_cts_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cts_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cts_cnt, val);
 }
 
-void cat_nthw_cts_cat_a(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cts_cat_a(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cts_data_cat_a, val);
 }
 
-void cat_nthw_cts_cat_b(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cts_cat_b(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cts_data_cat_b, val);
 }
 
-void cat_nthw_cts_flush(const struct cat_nthw *p)
+void nthw_cat_cts_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_cts_ctrl, 1);
 	nthw_register_flush(p->mp_cts_data, 1);
 }
 
-void cat_nthw_cot_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cot_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cot_addr, val);
 }
 
-void cat_nthw_cot_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cot_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cot_cnt, val);
 }
 
-void cat_nthw_cot_color(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cot_color(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cot_data_color, val);
 }
 
-void cat_nthw_cot_km(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cot_km(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cot_data_km, val);
 }
 
-void cat_nthw_cot_flush(const struct cat_nthw *p)
+void nthw_cat_cot_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_cot_ctrl, 1);
 	nthw_register_flush(p->mp_cot_data, 1);
 }
 
-void cat_nthw_cct_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cct_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cct_addr, val);
 }
 
-void cat_nthw_cct_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cct_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cct_cnt, val);
 }
 
-void cat_nthw_cct_color(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cct_color(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cct_data_color, val);
 }
 
-void cat_nthw_cct_km(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_cct_km(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_cct_data_km, val);
 }
 
-void cat_nthw_cct_flush(const struct cat_nthw *p)
+void nthw_cat_cct_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_cct_ctrl, 1);
 	nthw_register_flush(p->mp_cct_data, 1);
 }
 
-void cat_nthw_exo_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_exo_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_exo_addr, val);
 }
 
-void cat_nthw_exo_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_exo_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_exo_cnt, val);
 }
 
-void cat_nthw_exo_dyn(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_exo_dyn(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_exo_data_dyn, val);
 }
 
-void cat_nthw_exo_ofs(const struct cat_nthw *p, int32_t val)
+void nthw_cat_exo_ofs(const struct cat_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_exo_data_ofs, val);
 }
 
-void cat_nthw_exo_flush(const struct cat_nthw *p)
+void nthw_cat_exo_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_exo_ctrl, 1);
 	nthw_register_flush(p->mp_exo_data, 1);
 }
 
-void cat_nthw_rck_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_rck_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rck_addr, val);
 }
 
-void cat_nthw_rck_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_rck_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rck_cnt, val);
 }
 
-void cat_nthw_rck_data(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_rck_data(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_register_set_val(p->mp_rck_data, &val, 1);
 	nthw_register_make_dirty(p->mp_rck_data);
 }
 
-void cat_nthw_rck_flush(const struct cat_nthw *p)
+void nthw_cat_rck_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_rck_ctrl, 1);
 	nthw_register_flush(p->mp_rck_data, 1);
 }
 
-void cat_nthw_len_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_select(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_addr, val);
 }
 
-void cat_nthw_len_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_cnt, val);
 }
 
-void cat_nthw_len_lower(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_lower(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_data_lower, val);
 }
 
-void cat_nthw_len_upper(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_upper(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_data_upper, val);
 }
 
-void cat_nthw_len_dyn1(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_dyn1(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_data_dyn1, val);
 }
 
-void cat_nthw_len_dyn2(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_dyn2(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_data_dyn2, val);
 }
 
-void cat_nthw_len_inv(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_len_inv(const struct cat_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_len_data_inv, val);
 }
 
-void cat_nthw_len_flush(const struct cat_nthw *p)
+void nthw_cat_len_flush(const struct cat_nthw *p)
 {
 	nthw_register_flush(p->mp_len_ctrl, 1);
 	nthw_register_flush(p->mp_len_data, 1);
 }
 
-void cat_nthw_kcc_select(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_kcc_select(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_kcc_addr);
 	nthw_field_set_val32(p->mp_kcc_addr, val);
 }
 
-void cat_nthw_kcc_cnt(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_kcc_cnt(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_kcc_cnt);
 	nthw_field_set_val32(p->mp_kcc_cnt, val);
 }
 
-void cat_nthw_kcc_key(const struct cat_nthw *p, uint32_t *val)
+void nthw_cat_kcc_key(const struct cat_nthw *p, uint32_t *val)
 {
 	RTE_ASSERT(p->mp_kcc_data_key);
 	nthw_field_set_val(p->mp_kcc_data_key, val, 2);
 }
 
-void cat_nthw_kcc_category(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_kcc_category(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_kcc_data_category);
 	nthw_field_set_val32(p->mp_kcc_data_category, val);
 }
 
-void cat_nthw_kcc_id(const struct cat_nthw *p, uint32_t val)
+void nthw_cat_kcc_id(const struct cat_nthw *p, uint32_t val)
 {
 	RTE_ASSERT(p->mp_kcc_data_id);
 	nthw_field_set_val32(p->mp_kcc_data_id, val);
 }
 
-void cat_nthw_kcc_flush(const struct cat_nthw *p)
+void nthw_cat_kcc_flush(const struct cat_nthw *p)
 {
 	RTE_ASSERT(p->mp_kcc_ctrl);
 	RTE_ASSERT(p->mp_kcc_data);

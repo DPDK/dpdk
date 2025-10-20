@@ -388,7 +388,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	p_fpga_mgr = nthw_fpga_mgr_new();
 	if (p_fpga_mgr) {
 		nthw_fpga_mgr_init(p_fpga_mgr, nthw_fpga_instances,
-			(const void *)sa_nthw_fpga_mod_str_map);
+			(const void *)nthw_sa_fpga_mod_str_map);
 		nthw_fpga_mgr_log_dump(p_fpga_mgr);
 		p_fpga = nthw_fpga_mgr_query_fpga(p_fpga_mgr, n_fpga_ident, p_fpga_info);
 		p_fpga_info->mp_fpga = p_fpga;

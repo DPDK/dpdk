@@ -18,7 +18,7 @@ static inline unsigned int clamp_one(unsigned int val)
 	return val > 1 ? 1 : val;
 }
 
-struct info_nthw *info_nthw_new(void)
+struct info_nthw *nthw_info_new(void)
 {
 	struct info_nthw *p = malloc(sizeof(struct info_nthw));
 
@@ -28,7 +28,7 @@ struct info_nthw *info_nthw_new(void)
 	return p;
 }
 
-void info_nthw_delete(struct info_nthw *p)
+void nthw_info_delete(struct info_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -36,7 +36,7 @@ void info_nthw_delete(struct info_nthw *p)
 	}
 }
 
-int info_nthw_init(struct info_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_info_init(struct info_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	RTE_ASSERT(n_instance >= 0 && n_instance < 256);
 
@@ -135,207 +135,207 @@ int info_nthw_init(struct info_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
-unsigned int info_nthw_get_nb_phy_ports(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_phy_ports(const struct info_nthw *p)
 {
 	return p->n_phy_ports;
 }
 
-unsigned int info_nthw_get_nb_rx_ports(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_rx_ports(const struct info_nthw *p)
 {
 	return p->n_rx_ports;
 }
 
-unsigned int info_nthw_get_ltx_avail(const struct info_nthw *p)
+unsigned int nthw_info_get_ltx_avail(const struct info_nthw *p)
 {
 	return p->n_ltx_avail;
 }
 
-unsigned int info_nthw_get_nb_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_categories(const struct info_nthw *p)
 {
 	return p->nb_categories;
 }
 
-unsigned int info_nthw_get_kcc_size(const struct info_nthw *p)
+unsigned int nthw_info_get_kcc_size(const struct info_nthw *p)
 {
 	return p->nb_kcc_size;
 }
 
-unsigned int info_nthw_get_kcc_banks(const struct info_nthw *p)
+unsigned int nthw_info_get_kcc_banks(const struct info_nthw *p)
 {
 	return p->nb_kcc_banks;
 }
 
-unsigned int info_nthw_get_nb_queues(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_queues(const struct info_nthw *p)
 {
 	return p->nb_queues;
 }
 
-unsigned int info_nthw_get_nb_cat_funcs(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_cat_funcs(const struct info_nthw *p)
 {
 	return p->nb_cat_func;
 }
 
-unsigned int info_nthw_get_nb_km_flow_types(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_flow_types(const struct info_nthw *p)
 {
 	return p->nb_flow_types;
 }
 
-unsigned int info_nthw_get_nb_pm_ext(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_pm_ext(const struct info_nthw *p)
 {
 	return p->nb_pm_ext;
 }
 
-unsigned int info_nthw_get_nb_len(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_len(const struct info_nthw *p)
 {
 	return p->nb_len;
 }
 
-unsigned int info_nthw_get_nb_km_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_categories(const struct info_nthw *p)
 {
 	return p->nb_km_categories;
 }
 
-unsigned int info_nthw_get_nb_km_cam_banks(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_cam_banks(const struct info_nthw *p)
 {
 	return p->nb_km_cam_banks;
 }
 
-unsigned int info_nthw_get_nb_km_cam_record_words(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_cam_record_words(const struct info_nthw *p)
 {
 	return p->nb_km_cam_record_words;
 }
 
-unsigned int info_nthw_get_nb_km_cam_records(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_cam_records(const struct info_nthw *p)
 {
 	return p->nb_km_cam_records;
 }
 
-unsigned int info_nthw_get_nb_km_tcam_banks(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_tcam_banks(const struct info_nthw *p)
 {
 	return p->nb_km_tcam_banks;
 }
 
-unsigned int info_nthw_get_nb_km_tcam_bank_width(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_km_tcam_bank_width(const struct info_nthw *p)
 {
 	return p->nb_km_tcam_bank_width;
 }
 
-unsigned int info_nthw_get_nb_flm_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_categories(const struct info_nthw *p)
 {
 	return p->nb_flm_categories;
 }
 
-unsigned int info_nthw_get_nb_flm_size_mb(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_size_mb(const struct info_nthw *p)
 {
 	return p->nb_flm_size_mb;
 }
 
-unsigned int info_nthw_get_nb_flm_entry_size(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_entry_size(const struct info_nthw *p)
 {
 	return p->nb_flm_entry_size;
 }
 
-unsigned int info_nthw_get_nb_flm_variant(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_variant(const struct info_nthw *p)
 {
 	return p->nb_flm_variant;
 }
 
-unsigned int info_nthw_get_nb_flm_prios(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_prios(const struct info_nthw *p)
 {
 	return p->nb_flm_prios;
 }
 
-unsigned int info_nthw_get_nb_flm_pst_profiles(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_pst_profiles(const struct info_nthw *p)
 {
 	return p->nb_flm_pst_profiles;
 }
 
-unsigned int info_nthw_get_nb_flm_scrub_profiles(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_scrub_profiles(const struct info_nthw *p)
 {
 	return p->nb_flm_scrub_profiles;
 }
 
-unsigned int info_nthw_get_nb_flm_load_aps_max(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_flm_load_aps_max(const struct info_nthw *p)
 {
 	return p->nb_flm_load_aps_max;
 }
 
-unsigned int info_nthw_get_nb_qsl_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_qsl_categories(const struct info_nthw *p)
 {
 	return p->nb_qsl_categories;
 }
 
-unsigned int info_nthw_get_nb_qsl_qst_entries(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_qsl_qst_entries(const struct info_nthw *p)
 {
 	return p->nb_qsl_qst_entries;
 }
 
-unsigned int info_nthw_get_nb_pdb_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_pdb_categories(const struct info_nthw *p)
 {
 	return p->nb_pdb_categories;
 }
 
-unsigned int info_nthw_get_nb_roa_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_roa_categories(const struct info_nthw *p)
 {
 	return p->nb_roa_categories;
 }
 
-unsigned int info_nthw_get_nb_cat_km_if_cnt(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_cat_km_if_cnt(const struct info_nthw *p)
 {
 	return p->nb_cat_km_if_cnt;
 }
 
-unsigned int info_nthw_get_nb_cat_km_if_m0(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_cat_km_if_m0(const struct info_nthw *p)
 {
 	return p->m_cat_km_if_m0;
 }
 
-unsigned int info_nthw_get_nb_cat_km_if_m1(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_cat_km_if_m1(const struct info_nthw *p)
 {
 	return p->m_cat_km_if_m1;
 }
 
-unsigned int info_nthw_get_nb_tpe_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_tpe_categories(const struct info_nthw *p)
 {
 	return p->nb_tpe_categories;
 }
 
-unsigned int info_nthw_get_nb_tx_cpy_writers(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_tx_cpy_writers(const struct info_nthw *p)
 {
 	return p->nb_tx_cpy_writers;
 }
 
-unsigned int info_nthw_get_nb_tx_cpy_mask_mem(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_tx_cpy_mask_mem(const struct info_nthw *p)
 {
 	return p->nb_tx_cpy_mask_mem;
 }
 
-unsigned int info_nthw_get_nb_tx_rpl_depth(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_tx_rpl_depth(const struct info_nthw *p)
 {
 	return p->nb_tx_rpl_depth;
 }
 
-unsigned int info_nthw_get_nb_tx_rpl_ext_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_tx_rpl_ext_categories(const struct info_nthw *p)
 {
 	return p->nb_tx_rpl_ext_categories;
 }
 
-unsigned int info_nthw_get_nb_tpe_ifr_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_tpe_ifr_categories(const struct info_nthw *p)
 {
 	return p->nb_tpe_ifr_categories;
 }
 
-unsigned int info_nthw_get_nb_rpp_per_ps(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_rpp_per_ps(const struct info_nthw *p)
 {
 	return p->nb_rpp_per_ps;
 }
 
-unsigned int info_nthw_get_nb_hsh_categories(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_hsh_categories(const struct info_nthw *p)
 {
 	return p->nb_hsh_categories;
 }
 
-unsigned int info_nthw_get_nb_hsh_toeplitz(const struct info_nthw *p)
+unsigned int nthw_info_get_nb_hsh_toeplitz(const struct info_nthw *p)
 {
 	return p->nb_hsh_toeplitz;
 }

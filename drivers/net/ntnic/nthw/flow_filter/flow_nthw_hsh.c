@@ -13,12 +13,12 @@
 
 #include "flow_nthw_hsh.h"
 
-void hsh_nthw_set_debug_mode(struct hsh_nthw *p, unsigned int n_debug_mode)
+void nthw_hsh_set_debug_mode(struct hsh_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_hsh, n_debug_mode);
 }
 
-struct hsh_nthw *hsh_nthw_new(void)
+struct hsh_nthw *nthw_hsh_new(void)
 {
 	struct hsh_nthw *p = malloc(sizeof(struct hsh_nthw));
 
@@ -28,7 +28,7 @@ struct hsh_nthw *hsh_nthw_new(void)
 	return p;
 }
 
-void hsh_nthw_delete(struct hsh_nthw *p)
+void nthw_hsh_delete(struct hsh_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -36,7 +36,7 @@ void hsh_nthw_delete(struct hsh_nthw *p)
 	}
 }
 
-int hsh_nthw_init(struct hsh_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_hsh_init(struct hsh_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_HSH, n_instance);
@@ -124,136 +124,136 @@ int hsh_nthw_init(struct hsh_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
-void hsh_nthw_rcp_select(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_select(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_addr, val);
 }
 
-void hsh_nthw_rcp_cnt(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_cnt(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_cnt, val);
 }
 
-void hsh_nthw_rcp_load_dist_type(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_load_dist_type(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_load_dist_type, val);
 }
 
-void hsh_nthw_rcp_mac_port_mask(const struct hsh_nthw *p, uint32_t *val)
+void nthw_hsh_rcp_mac_port_mask(const struct hsh_nthw *p, uint32_t *val)
 {
 	nthw_field_set_val(p->mp_rcp_data_mac_port_mask, val,
 		p->mp_rcp_data_mac_port_mask->mn_words);
 }
 
-void hsh_nthw_rcp_sort(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_sort(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_sort, val);
 }
 
-void hsh_nthw_rcp_qw0_pe(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_qw0_pe(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_pe, val);
 }
 
-void hsh_nthw_rcp_qw0_ofs(const struct hsh_nthw *p, int32_t val)
+void nthw_hsh_rcp_qw0_ofs(const struct hsh_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw0_ofs, val);
 }
 
-void hsh_nthw_rcp_qw4_pe(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_qw4_pe(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_pe, val);
 }
 
-void hsh_nthw_rcp_qw4_ofs(const struct hsh_nthw *p, int32_t val)
+void nthw_hsh_rcp_qw4_ofs(const struct hsh_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_qw4_ofs, val);
 }
 
-void hsh_nthw_rcp_w8_pe(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_w8_pe(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w8_pe, val);
 }
 
-void hsh_nthw_rcp_w8_ofs(const struct hsh_nthw *p, int32_t val)
+void nthw_hsh_rcp_w8_ofs(const struct hsh_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w8_ofs, val);
 }
 
-void hsh_nthw_rcp_w8_sort(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_w8_sort(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w8_sort, val);
 }
 
-void hsh_nthw_rcp_w9_pe(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_w9_pe(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w9_pe, val);
 }
 
-void hsh_nthw_rcp_w9_ofs(const struct hsh_nthw *p, int32_t val)
+void nthw_hsh_rcp_w9_ofs(const struct hsh_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w9_ofs, val);
 }
 
-void hsh_nthw_rcp_w9_sort(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_w9_sort(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w9_sort, val);
 }
 
-void hsh_nthw_rcp_w9_p(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_w9_p(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_w9_p, val);
 }
 
-void hsh_nthw_rcp_p_mask(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_p_mask(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_p_mask, val);
 }
 
-void hsh_nthw_rcp_word_mask(const struct hsh_nthw *p, uint32_t *val)
+void nthw_hsh_rcp_word_mask(const struct hsh_nthw *p, uint32_t *val)
 {
 	nthw_field_set_val(p->mp_rcp_data_word_mask, val, 10);
 }
 
-void hsh_nthw_rcp_seed(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_seed(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_seed, val);
 }
 
-void hsh_nthw_rcp_tnl_p(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_tnl_p(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_tnl_p, val);
 }
 
-void hsh_nthw_rcp_hsh_valid(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_hsh_valid(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_hsh_valid, val);
 }
 
-void hsh_nthw_rcp_hsh_type(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_hsh_type(const struct hsh_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_hsh_type, val);
 }
 
-void hsh_nthw_rcp_toeplitz(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_toeplitz(const struct hsh_nthw *p, uint32_t val)
 {
 	if (p->mp_rcp_data_toeplitz)
 		nthw_field_set_val32(p->mp_rcp_data_toeplitz, val);
 }
 
-void hsh_nthw_rcp_k(const struct hsh_nthw *p, uint32_t *val)
+void nthw_hsh_rcp_k(const struct hsh_nthw *p, uint32_t *val)
 {
 	if (p->mp_rcp_data_k)
 		nthw_field_set_val(p->mp_rcp_data_k, val, 10);
 }
 
-void hsh_nthw_rcp_auto_ipv4_mask(const struct hsh_nthw *p, uint32_t val)
+void nthw_hsh_rcp_auto_ipv4_mask(const struct hsh_nthw *p, uint32_t val)
 {
 	if (p->mp_rcp_data_auto_ipv4_mask)
 		nthw_field_set_val32(p->mp_rcp_data_auto_ipv4_mask, val);
 }
 
-void hsh_nthw_rcp_flush(const struct hsh_nthw *p)
+void nthw_hsh_rcp_flush(const struct hsh_nthw *p)
 {
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);

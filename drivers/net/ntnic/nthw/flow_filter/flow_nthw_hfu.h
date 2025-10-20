@@ -45,40 +45,40 @@ struct hfu_nthw {
 	nthw_field_t *mp_rcp_data_ttl_pos_ofs;
 };
 
-struct hfu_nthw *hfu_nthw_new(void);
-void hfu_nthw_delete(struct hfu_nthw *p);
-int hfu_nthw_init(struct hfu_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
+struct hfu_nthw *nthw_hfu_new(void);
+void nthw_hfu_delete(struct hfu_nthw *p);
+int nthw_hfu_init(struct hfu_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int hfu_nthw_setup(struct hfu_nthw *p, int n_idx, int n_idx_cnt);
-void hfu_nthw_set_debug_mode(struct hfu_nthw *p, unsigned int n_debug_mode);
+void nthw_hfu_set_debug_mode(struct hfu_nthw *p, unsigned int n_debug_mode);
 
 /* RCP */
-void hfu_nthw_rcp_select(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_cnt(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_select(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_cnt(const struct hfu_nthw *p, uint32_t val);
 
-void hfu_nthw_rcp_len_a_wr(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_a_ol4len(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_a_pos_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_a_pos_ofs(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_a_add_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_a_add_ofs(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_a_sub_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_b_wr(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_b_pos_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_b_pos_ofs(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_b_add_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_b_add_ofs(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_b_sub_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_c_wr(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_c_pos_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_c_pos_ofs(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_c_add_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_c_add_ofs(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_len_c_sub_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_ttl_wr(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_ttl_pos_dyn(const struct hfu_nthw *p, uint32_t val);
-void hfu_nthw_rcp_ttl_pos_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_wr(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_ol4len(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_pos_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_pos_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_add_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_add_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_a_sub_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_b_wr(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_b_pos_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_b_pos_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_b_add_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_b_add_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_b_sub_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_c_wr(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_c_pos_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_c_pos_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_c_add_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_c_add_ofs(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_len_c_sub_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_ttl_wr(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_ttl_pos_dyn(const struct hfu_nthw *p, uint32_t val);
+void nthw_hfu_rcp_ttl_pos_ofs(const struct hfu_nthw *p, uint32_t val);
 
-void hfu_nthw_rcp_flush(const struct hfu_nthw *p);
+void nthw_hfu_rcp_flush(const struct hfu_nthw *p);
 
 #endif	/* __FLOW_NTHW_HFU_H__ */

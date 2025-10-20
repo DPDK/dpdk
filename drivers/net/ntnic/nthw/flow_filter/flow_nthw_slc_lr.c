@@ -13,12 +13,12 @@
 
 #include "flow_nthw_slc_lr.h"
 
-void slc_lr_nthw_set_debug_mode(struct slc_lr_nthw *p, unsigned int n_debug_mode)
+void nthw_slc_lr_set_debug_mode(struct slc_lr_nthw *p, unsigned int n_debug_mode)
 {
 	nthw_module_set_debug_mode(p->m_slc_lr, n_debug_mode);
 }
 
-struct slc_lr_nthw *slc_lr_nthw_new(void)
+struct slc_lr_nthw *nthw_slc_lr_new(void)
 {
 	struct slc_lr_nthw *p = malloc(sizeof(struct slc_lr_nthw));
 
@@ -28,7 +28,7 @@ struct slc_lr_nthw *slc_lr_nthw_new(void)
 	return p;
 }
 
-void slc_lr_nthw_delete(struct slc_lr_nthw *p)
+void nthw_slc_lr_delete(struct slc_lr_nthw *p)
 {
 	if (p) {
 		memset(p, 0, sizeof(*p));
@@ -36,7 +36,7 @@ void slc_lr_nthw_delete(struct slc_lr_nthw *p)
 	}
 }
 
-int slc_lr_nthw_init(struct slc_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
+int nthw_slc_lr_init(struct slc_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 {
 	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
 	nthw_module_t *p_mod = nthw_fpga_query_module(p_fpga, MOD_SLC_LR, n_instance);
@@ -74,52 +74,52 @@ int slc_lr_nthw_init(struct slc_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 }
 
 /* RCP */
-void slc_lr_nthw_rcp_select(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_select(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_addr, val);
 }
 
-void slc_lr_nthw_rcp_cnt(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_cnt(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_cnt, val);
 }
 
-void slc_lr_nthw_rcp_head_slc_en(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_head_slc_en(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_head_slc_en, val);
 }
 
-void slc_lr_nthw_rcp_head_dyn(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_head_dyn(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_head_dyn, val);
 }
 
-void slc_lr_nthw_rcp_head_ofs(const struct slc_lr_nthw *p, int32_t val)
+void nthw_slc_lr_rcp_head_ofs(const struct slc_lr_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_head_ofs, val);
 }
 
-void slc_lr_nthw_rcp_tail_slc_en(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_tail_slc_en(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_tail_slc_en, val);
 }
 
-void slc_lr_nthw_rcp_tail_dyn(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_tail_dyn(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_tail_dyn, val);
 }
 
-void slc_lr_nthw_rcp_tail_ofs(const struct slc_lr_nthw *p, int32_t val)
+void nthw_slc_lr_rcp_tail_ofs(const struct slc_lr_nthw *p, int32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_tail_ofs, val);
 }
 
-void slc_lr_nthw_rcp_pcap(const struct slc_lr_nthw *p, uint32_t val)
+void nthw_slc_lr_rcp_pcap(const struct slc_lr_nthw *p, uint32_t val)
 {
 	nthw_field_set_val32(p->mp_rcp_data_pcap, val);
 }
 
-void slc_lr_nthw_rcp_flush(const struct slc_lr_nthw *p)
+void nthw_slc_lr_rcp_flush(const struct slc_lr_nthw *p)
 {
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);
