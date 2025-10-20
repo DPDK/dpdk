@@ -132,7 +132,7 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 			return -1;
 		}
 
-		res = rst9569_ops->nthw_fpga_rst9569_setup();
+		res = rst9569_ops->nthw_fpga_rst9569_setup(p_fpga, &rst);
 
 		if (res) {
 			NT_LOG(ERR,

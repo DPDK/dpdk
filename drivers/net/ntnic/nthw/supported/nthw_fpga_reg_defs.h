@@ -50,6 +50,7 @@
 #include "nthw_fpga_reg_defs_rpl.h"
 #include "nthw_fpga_reg_defs_rpp_lr.h"
 #include "nthw_fpga_reg_defs_rst9563.h"
+#include "nthw_fpga_reg_defs_rst9569.h"
 #include "nthw_fpga_reg_defs_rst9574.h"
 #include "nthw_fpga_reg_defs_sdc.h"
 #include "nthw_fpga_reg_defs_tsm.h"

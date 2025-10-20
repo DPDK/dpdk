@@ -51,6 +51,7 @@
 #define MOD_RPF (0x8d30dcddUL)
 #define MOD_RPP_LR (0xba7f945cUL)
 #define MOD_RST9563 (0x385d6d1dUL)
+#define MOD_RST9569 (0xd8888403UL)
 #define MOD_RST9574 (0xbf22c9ffUL)
 #define MOD_SDC (0xd2369530UL)
 #define MOD_SLC (0x1aef1f38UL)

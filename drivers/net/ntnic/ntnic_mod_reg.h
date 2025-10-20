@@ -271,7 +271,8 @@ struct rst9574_ops {
 
 struct rst9569_ops {
 	int (*nthw_fpga_rst9569_init)(void);
-	int (*nthw_fpga_rst9569_setup)(void);
+	int (*nthw_fpga_rst9569_setup)(nthw_fpga_t *p_fpga,
+		struct nthw_fpga_rst_nt400dxx *const p);
 };
 
 void nthw_reg_rst9569_ops(struct rst9569_ops *ops);
