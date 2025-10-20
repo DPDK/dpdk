@@ -79,9 +79,24 @@ static void nthw_fpga_rst9569_ddr4_rst(struct nthw_fpga_rst_nt400dxx *const p, u
 	nthw_field_set_val_flush32(p->p_fld_rst_ddr4, val);
 }
 
+static bool nthw_fpga_rst9569_get_phy_ftile_rst(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_rst_phy_ftile) != 0;
+}
+
 static bool nthw_fpga_rst9569_get_ddr4_calib_complete_stat(struct nthw_fpga_rst_nt400dxx *const p)
 {
 	return nthw_field_get_updated(p->p_fld_stat_ddr4_calib_complete) != 0;
+}
+
+static bool nthw_fpga_rst9569_get_phy_ftile_rst_done_stat(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_stat_phy_ftile_rst_done) != 0;
+}
+
+static bool nthw_fpga_rst9569_get_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_latch_ddr4_calib_complete) != 0;
 }
 
 static void nthw_fpga_rst9569_set_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p,
@@ -134,9 +149,33 @@ static int nthw_fpga_rst9569_wait_ddr4_calibration_complete(struct fpga_info_s *
 	return 0;
 }
 
-static bool nthw_fpga_rst9569_get_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p)
+static int nthw_fpga_rst9569_wait_phy_ftile_rst_done(struct fpga_info_s *p_fpga_info,
+	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
-	return nthw_field_get_updated(p->p_fld_latch_ddr4_calib_complete) != 0;
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	uint32_t complete;
+	uint32_t timeout;
+
+	/* 5: wait until PHY_FTILE reset done */
+	NT_LOG(DBG, NTHW, "%s: %s: PHY FTILE RESET done", p_adapter_id_str, __func__);
+	timeout = 50000;/* initial timeout must be set to 5 sec. */
+
+	do {
+		complete = nthw_fpga_rst9569_get_phy_ftile_rst_done_stat(p_rst);
+
+		if (!complete)
+			nthw_os_wait_usec(100);
+
+		timeout--;
+
+		if (timeout == 0) {
+			NT_LOG(ERR, NTHW, "%s: %s: Timeout waiting for PHY FTILE RESET to be done",
+				p_adapter_id_str, __func__);
+			return -1;
+		}
+	} while (!complete);
+
+	return 0;
 }
 
 static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
@@ -186,6 +225,25 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 		NT_LOG(ERR, NTHW, "%s: %s: DDR4 calibration complete has toggled",
 			p_adapter_id_str, __func__);
 	}
+
+	bool success = true;
+
+	do {
+		/* Only wait for ftile rst done if ftile is indeed in reset. */
+		if (nthw_fpga_rst9569_get_phy_ftile_rst(p_rst)) {
+			/* (5) Wait until PHY_FTILE reset done */
+			NT_LOG_DBGX(DBG, NTHW, "%s: Wait until PHY_FTILE reset done",
+				p_adapter_id_str);
+			res = nthw_fpga_rst9569_wait_phy_ftile_rst_done(p_fpga_info, p_rst);
+
+			if (res) {
+				NT_LOG(ERR, NTHW, "%s: PHY_FTILE reset done failed",
+					p_adapter_id_str);
+				return res;
+			}
+		}
+
+	} while (!success);
 
 
 	return 0;
