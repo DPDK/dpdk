@@ -240,6 +240,9 @@ config_dmadevs(struct test_configure *cfg)
 	uint8_t nb_sges = 0;
 	char *dma_name;
 
+	if (cfg->test_type != TEST_TYPE_DMA_MEM_COPY)
+		return 0;
+
 	if (cfg->is_sg)
 		nb_sges = RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges);
 
@@ -540,7 +543,7 @@ dummy_free_ext_buf(void *addr, void *opaque)
 
 static int
 setup_memory_env(struct test_configure *cfg, uint32_t nr_buf,
-			 struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
+		 struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
 		 struct rte_dma_sge **src_sges, struct rte_dma_sge **dst_sges,
 		 struct rte_dma_op ***dma_ops)
 {
@@ -679,6 +682,39 @@ setup_memory_env(struct test_configure *cfg, uint32_t nr_buf,
 	}
 
 	return 0;
+}
+
+static void
+teardown_memory_env(uint32_t nr_buf, struct rte_mbuf **srcs, struct rte_mbuf **dsts,
+		    struct rte_dma_sge *src_sges, struct rte_dma_sge *dst_sges,
+		    struct rte_dma_op **dma_ops)
+{
+	/* free mbufs used in the test */
+	if (srcs != NULL)
+		rte_pktmbuf_free_bulk(srcs, nr_buf);
+	if (dsts != NULL)
+		rte_pktmbuf_free_bulk(dsts, nr_buf);
+
+	/* free the points for the mbufs */
+	rte_free(srcs);
+	srcs = NULL;
+	rte_free(dsts);
+	dsts = NULL;
+
+	rte_mempool_free(src_pool);
+	src_pool = NULL;
+
+	rte_mempool_free(dst_pool);
+	dst_pool = NULL;
+
+	/* free sges for mbufs */
+	rte_free(src_sges);
+	src_sges = NULL;
+
+	rte_free(dst_sges);
+	dst_sges = NULL;
+
+	rte_free(dma_ops);
 }
 
 static uint32_t
@@ -883,48 +919,23 @@ verify_data(struct test_configure *cfg, struct rte_mbuf **srcs, struct rte_mbuf 
 	return 0;
 }
 
-int
-mem_copy_benchmark(struct test_configure *cfg)
+static int
+setup_worker(struct test_configure *cfg, uint32_t nr_buf,
+	     struct rte_mbuf **srcs, struct rte_mbuf **dsts,
+	     struct rte_dma_sge *src_sges, struct rte_dma_sge *dst_sges,
+	     struct rte_dma_op **dma_ops,
+	     uint32_t nr_sgsrc, uint32_t nr_sgdst)
 {
-	struct rte_mbuf **srcs = NULL, **dsts = NULL, **m = NULL;
-	struct rte_dma_sge *src_sges = NULL, *dst_sges = NULL;
-	struct vchan_dev_config *vchan_dev = NULL;
 	struct lcore_dma_map_t *lcore_dma_map = NULL;
-	struct rte_dma_op **dma_ops = NULL;
+	struct vchan_dev_config *vchan_dev = NULL;
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
 	uint16_t test_secs = global_cfg.test_secs;
 	uint16_t nb_workers = cfg->num_worker;
-	uint32_t nr_sgsrc = 0, nr_sgdst = 0;
-	float bandwidth, bandwidth_total;
 	unsigned int lcore_id = 0;
-	uint32_t avg_cycles_total;
-	bool dev_stopped = false;
-	uint32_t avg_cycles = 0;
-	float mops, mops_total;
-	float memory = 0;
 	uint32_t i, j, k;
-	uint32_t nr_buf;
 	uint32_t nr_ops;
 	uint32_t offset;
-	int ret = 0;
-
-	nr_buf = align_buffer_count(cfg, &nr_sgsrc, &nr_sgdst);
-
-	if (setup_memory_env(cfg, nr_buf, &srcs, &dsts, &src_sges, &dst_sges, &dma_ops) < 0)
-		goto out;
-
-	if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY)
-		if (config_dmadevs(cfg) < 0)
-			goto out;
-
-	if (global_cfg.cache_flush > 0) {
-		cache_flush_buf(srcs, buf_size, nr_buf);
-		cache_flush_buf(dsts, buf_size, nr_buf);
-		rte_mb();
-	}
-
-	printf("Start testing....\n");
 
 	for (i = 0; i < nb_workers; i++) {
 		lcore_dma_map = &cfg->dma_config[i].lcore_dma_map;
@@ -935,7 +946,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 		lcores[i] = rte_malloc(NULL, sizeof(struct lcore_params), 0);
 		if (lcores[i] == NULL) {
 			printf("lcore parameters malloc failure for lcore %d\n", lcore_id);
-			break;
+			return -1;
 		}
 		if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY) {
 			lcores[i]->dma_name = lcore_dma_map->dma_names;
@@ -963,7 +974,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 		    vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
 			if (attach_ext_buffer(vchan_dev, lcores[i], cfg->is_sg,
 					      (nr_sgsrc/nb_workers), (nr_sgdst/nb_workers)) < 0)
-				goto stop_dmadev;
+				return -1;
 		}
 
 		if (cfg->is_sg && cfg->use_ops) {
@@ -987,6 +998,88 @@ mem_copy_benchmark(struct test_configure *cfg)
 
 		rte_eal_remote_launch(get_work_function(cfg), (void *)(lcores[i]), lcore_id);
 	}
+
+	return 0;
+}
+
+static void
+teardown_worker_res(struct test_configure *cfg, uint32_t nr_buf,
+		    struct rte_mbuf **srcs, struct rte_mbuf **dsts)
+{
+	uint16_t nb_workers = cfg->num_worker;
+	struct vchan_dev_config *vchan_dev;
+	struct rte_mbuf **m;
+	uint32_t offset;
+	uint32_t i, j;
+
+	for (i = 0; i < nb_workers; i++) {
+		struct rte_mbuf **sbuf = NULL, **dbuf = NULL;
+		vchan_dev = &cfg->dma_config[i].vchan_dev;
+		offset = nr_buf / nb_workers * i;
+		m = NULL;
+		if (vchan_dev->tdir == RTE_DMA_DIR_DEV_TO_MEM) {
+			sbuf = srcs + offset;
+			m = sbuf;
+		} else if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
+			dbuf = dsts + offset;
+			m = dbuf;
+		}
+
+		if (m) {
+			for (j = 0; j < (nr_buf / nb_workers); j++)
+				rte_pktmbuf_detach_extbuf(m[j]);
+
+			if (m[0]->shinfo && rte_mbuf_ext_refcnt_read(m[0]->shinfo) == 0)
+				rte_free(m[0]->shinfo);
+		}
+
+		rte_free(lcores[i]);
+		lcores[i] = NULL;
+	}
+}
+
+int
+mem_copy_benchmark(struct test_configure *cfg)
+{
+	struct rte_mbuf **srcs = NULL, **dsts = NULL;
+	struct rte_dma_sge *src_sges = NULL, *dst_sges = NULL;
+	struct vchan_dev_config *vchan_dev = NULL;
+	unsigned int buf_size = cfg->buf_size.cur;
+	uint16_t kick_batch = cfg->kick_batch.cur;
+	uint16_t test_secs = global_cfg.test_secs;
+	uint16_t nb_workers = cfg->num_worker;
+	uint32_t nr_sgsrc = 0, nr_sgdst = 0;
+	struct rte_dma_op **dma_ops = NULL;
+	float bandwidth, bandwidth_total;
+	uint32_t avg_cycles_total;
+	bool dev_stopped = false;
+	uint32_t avg_cycles = 0;
+	float mops, mops_total;
+	float memory = 0;
+	uint32_t nr_buf;
+	int ret = -1;
+	uint32_t i;
+
+	nr_buf = align_buffer_count(cfg, &nr_sgsrc, &nr_sgdst);
+
+	if (setup_memory_env(cfg, nr_buf, &srcs, &dsts, &src_sges, &dst_sges, &dma_ops) < 0)
+		goto out;
+
+	if (config_dmadevs(cfg) < 0)
+		goto out;
+
+	if (global_cfg.cache_flush > 0) {
+		cache_flush_buf(srcs, buf_size, nr_buf);
+		cache_flush_buf(dsts, buf_size, nr_buf);
+		rte_mb();
+	}
+
+	printf("Start testing....\n");
+
+	ret = setup_worker(cfg, nr_buf, srcs, dsts, src_sges, dst_sges, dma_ops,
+			   nr_sgsrc, nr_sgdst);
+	if (ret != 0)
+		goto stop_dmadev;
 
 	while (1) {
 		bool ready = true;
@@ -1048,58 +1141,8 @@ stop_dmadev:
 	stop_dmadev(cfg, &dev_stopped);
 
 out:
-	for (k = 0; k < nb_workers; k++) {
-		struct rte_mbuf **sbuf = NULL, **dbuf = NULL;
-		vchan_dev = &cfg->dma_config[k].vchan_dev;
-		offset = nr_buf / nb_workers * k;
-		m = NULL;
-		if (vchan_dev->tdir == RTE_DMA_DIR_DEV_TO_MEM) {
-			sbuf = srcs + offset;
-			m = sbuf;
-		} else if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
-			dbuf = dsts + offset;
-			m = dbuf;
-		}
-
-		if (m) {
-			for (i = 0; i < (nr_buf / nb_workers); i++)
-				rte_pktmbuf_detach_extbuf(m[i]);
-
-			if (m[0]->shinfo && rte_mbuf_ext_refcnt_read(m[0]->shinfo) == 0)
-				rte_free(m[0]->shinfo);
-		}
-	}
-
-	/* free mbufs used in the test */
-	if (srcs != NULL)
-		rte_pktmbuf_free_bulk(srcs, nr_buf);
-	if (dsts != NULL)
-		rte_pktmbuf_free_bulk(dsts, nr_buf);
-
-	/* free the points for the mbufs */
-	rte_free(srcs);
-	srcs = NULL;
-	rte_free(dsts);
-	dsts = NULL;
-
-	rte_mempool_free(src_pool);
-	src_pool = NULL;
-
-	rte_mempool_free(dst_pool);
-	dst_pool = NULL;
-
-	/* free sges for mbufs */
-	rte_free(src_sges);
-	src_sges = NULL;
-
-	rte_free(dst_sges);
-	dst_sges = NULL;
-
-	/* free the worker parameters */
-	for (i = 0; i < nb_workers; i++) {
-		rte_free(lcores[i]);
-		lcores[i] = NULL;
-	}
+	teardown_worker_res(cfg, nr_buf, srcs, dsts);
+	teardown_memory_env(nr_buf, srcs, dsts, src_sges, dst_sges, dma_ops);
 
 	return ret;
 }
