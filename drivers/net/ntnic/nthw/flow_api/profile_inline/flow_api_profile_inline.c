@@ -908,6 +908,7 @@ static inline struct nic_flow_def *prepare_nic_flow_def(struct nic_flow_def *fd)
 		fd->l4_prot = -1;
 		fd->vlans = 0;
 		fd->tunnel_prot = -1;
+		fd->tunnel_l2_prot = -1;
 		fd->tunnel_l3_prot = -1;
 		fd->tunnel_l4_prot = -1;
 		fd->fragmentation = -1;
@@ -928,7 +929,8 @@ static inline struct nic_flow_def *allocate_nic_flow_def(void)
 static bool fd_has_empty_pattern(const struct nic_flow_def *fd)
 {
 	return fd && fd->vlans == 0 && fd->l2_prot < 0 && fd->l3_prot < 0 && fd->l4_prot < 0 &&
-		fd->tunnel_prot < 0 && fd->tunnel_l3_prot < 0 && fd->tunnel_l4_prot < 0 &&
+		fd->tunnel_prot < 0 && fd->tunnel_l2_prot < 0 &&
+		fd->tunnel_l3_prot < 0 && fd->tunnel_l4_prot < 0 &&
 		fd->ip_prot < 0 && fd->tunnel_ip_prot < 0 && fd->non_empty < 0;
 }
 
@@ -1798,15 +1800,11 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				const struct rte_ether_hdr *eth_mask =
 					(const struct rte_ether_hdr *)elem[eidx].mask;
 
-				if (any_count > 0) {
-					NT_LOG(ERR, FILTER,
-						"Tunneled L2 ethernet not supported");
-					nthw_flow_nic_set_error(ERR_FAILED, error);
-					return -1;
-				}
-
 				if (eth_spec == NULL || eth_mask == NULL) {
-					fd->l2_prot = PROT_L2_ETH2;
+					if (any_count > 0 || fd->l2_prot != -1)
+						fd->tunnel_l2_prot = PROT_L2_ETH2;
+					else
+						fd->l2_prot = PROT_L2_ETH2;
 					break;
 				}
 
@@ -1876,8 +1874,10 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 					nthw_km_add_match_elem(&fd->km,
 						&qw_data[(size_t)(qw_counter * 4)],
-						&qw_mask[(size_t)(qw_counter * 4)], 4, DYN_L2, 0);
-					set_key_def_qw(key_def, qw_counter, DYN_L2, 0);
+						&qw_mask[(size_t)(qw_counter * 4)], 4,
+							any_count > 0 ? DYN_TUN_L2 : DYN_L2, 0);
+					set_key_def_qw(key_def, qw_counter,
+						any_count > 0 ? DYN_TUN_L2 : DYN_L2, 0);
 					qw_counter += 1;
 
 					if (!non_zero)
@@ -1898,8 +1898,10 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					sw_data[0] = ntohs(eth_spec->ether_type) << 16 & sw_mask[0];
 
 					nthw_km_add_match_elem(&fd->km, &sw_data[0],
-						&sw_mask[0], 1, DYN_L2, 12);
-					set_key_def_sw(key_def, sw_counter, DYN_L2, 12);
+						&sw_mask[0], 1,
+						any_count > 0 ? DYN_TUN_L2 : DYN_L2, 12);
+					set_key_def_sw(key_def, sw_counter,
+						any_count > 0 ? DYN_TUN_L2 : DYN_L2, 12);
 					sw_counter += 1;
 				}
 
@@ -3699,6 +3701,8 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 				fd->ttl_sub_outer) ? -1 : 0x1,
 			.ptc_mask_tunnel = fd->tunnel_prot !=
 			-1 ? (1 << (fd->tunnel_prot > 10 ? 10 : fd->tunnel_prot)) : -1,
+			.ptc_mask_l2_tunnel =
+				fd->tunnel_l2_prot != -1 ? (1 << fd->tunnel_l2_prot) : -1,
 			.ptc_mask_l3_tunnel =
 				fd->tunnel_l3_prot != -1 ? (1 << fd->tunnel_l3_prot) : -1,
 			.ptc_mask_l4_tunnel =

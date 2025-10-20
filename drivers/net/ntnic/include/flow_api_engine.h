@@ -203,6 +203,7 @@ struct nic_flow_def {
 	int l3_prot;
 	int l4_prot;
 	int tunnel_prot;
+	int tunnel_l2_prot;
 	int tunnel_l3_prot;
 	int tunnel_l4_prot;
 	int vlans;
