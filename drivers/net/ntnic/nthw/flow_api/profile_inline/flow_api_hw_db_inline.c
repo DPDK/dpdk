@@ -598,7 +598,7 @@ void nthw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struc
 			fprintf(file, "      %016lx\n", data->hash_mask);
 
 			/* convert hash mask to human readable RTE_ETH_RSS_* form if possible */
-			if (sprint_nt_rss_mask(str_buffer, rss_buffer_len, "\n      ",
+			if (nthw_sprint_rss_mask(str_buffer, rss_buffer_len, "\n      ",
 					data->hash_mask) == 0) {
 				fprintf(file, "    Hash mask flags:%s\n", str_buffer);
 			}
@@ -2830,7 +2830,7 @@ struct hw_db_hsh_idx nthw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_
 	tmp_rss_conf.rss_hf = data->hash_mask;
 	memcpy(tmp_rss_conf.rss_key, data->key, MAX_RSS_KEY_LEN);
 	tmp_rss_conf.algorithm = data->func;
-	int res = hsh_set(ndev, idx.ids, tmp_rss_conf);
+	int res = nthw_hsh_set(ndev, idx.ids, tmp_rss_conf);
 
 	if (res != 0) {
 		idx.error = 1;

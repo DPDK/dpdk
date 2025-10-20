@@ -56,7 +56,7 @@ struct nt_eth_rss_conf {
 	enum rte_eth_hash_function algorithm;
 };
 
-int sprint_nt_rss_mask(char *str, uint16_t str_len, const char *prefix, uint64_t hash_mask);
+int nthw_sprint_rss_mask(char *str, uint16_t str_len, const char *prefix, uint64_t hash_mask);
 
 struct flow_eth_dev {
 	/* NIC that owns this port device */
@@ -171,7 +171,7 @@ void nthw_flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error 
  * Resources
  */
 
-extern const char *dbg_res_descr[];
+extern const char *nthw_dbg_res_descr[];
 
 #define flow_nic_set_bit(arr, x)                                                                  \
 	do {                                                                                      \
@@ -199,7 +199,7 @@ extern const char *dbg_res_descr[];
 		typeof(res_type) _temp_res_type = (res_type);                                     \
 		size_t _temp_index = (index);                                                     \
 		NT_LOG(DBG, FILTER, "mark resource used: %s idx %zu",                             \
-		       dbg_res_descr[_temp_res_type], _temp_index);                               \
+		       nthw_dbg_res_descr[_temp_res_type], _temp_index);                          \
 		RTE_ASSERT(flow_nic_is_bit_set(_temp_ndev->res[_temp_res_type].alloc_bm,          \
 					   _temp_index) == 0);                                    \
 		flow_nic_set_bit(_temp_ndev->res[_temp_res_type].alloc_bm, _temp_index);          \
@@ -210,7 +210,7 @@ extern const char *dbg_res_descr[];
 		typeof(res_type) _temp_res_type = (res_type);                                 \
 		size_t _temp_index = (index);                                                     \
 		NT_LOG(DBG, FILTER, "mark resource unused: %s idx %zu",                         \
-		       dbg_res_descr[_temp_res_type], _temp_index);                               \
+		       nthw_dbg_res_descr[_temp_res_type], _temp_index);                          \
 		flow_nic_unset_bit((_ndev)->res[_temp_res_type].alloc_bm, _temp_index);           \
 	} while (0)
 

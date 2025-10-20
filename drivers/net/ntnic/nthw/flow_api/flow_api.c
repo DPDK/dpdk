@@ -18,7 +18,7 @@
 		name, #name   \
 	}
 
-const char *dbg_res_descr[] = {
+const char *nthw_dbg_res_descr[] = {
 	[RES_QUEUE] = "RES_QUEUE",
 	[RES_CAT_CFN] = "RES_CAT_CFN",
 	[RES_CAT_COT] = "RES_CAT_COT",
@@ -41,7 +41,7 @@ const char *dbg_res_descr[] = {
 	[RES_INVALID] = "RES_INVALID",
 };
 
-static_assert(RTE_DIM(dbg_res_descr) == RES_END,
+static_assert(RTE_DIM(nthw_dbg_res_descr) == RES_END,
 	"The list of debug descriptions is not fully completed");
 
 static struct flow_nic_dev *dev_base;
@@ -212,7 +212,7 @@ void nthw_flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_
 int nthw_flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
 {
 	NT_LOG(DBG, FILTER, "Reference resource %s idx %i (before ref cnt %" PRIu32 ")",
-		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
+		nthw_dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
 	RTE_ASSERT(flow_nic_is_resource_used(ndev, res_type, index));
 
 	if (ndev->res[res_type].ref[index] == (uint32_t)-1)
@@ -225,7 +225,7 @@ int nthw_flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_ty
 int nthw_flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
 {
 	NT_LOG(DBG, FILTER, "De-reference resource %s idx %i (before ref cnt %" PRIu32 ")",
-		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
+		nthw_dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
 	RTE_ASSERT(flow_nic_is_resource_used(ndev, res_type, index));
 	RTE_ASSERT(ndev->res[res_type].ref[index]);
 	/* deref */
@@ -494,7 +494,7 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 	for (unsigned int i = 0; i < RES_COUNT; i++) {
 		int err = 0;
-		NT_LOG(DBG, FILTER, "RES state for: %s", dbg_res_descr[i]);
+		NT_LOG(DBG, FILTER, "RES state for: %s", nthw_dbg_res_descr[i]);
 
 		for (unsigned int ii = 0; ii < ndev->res[i].resource_count; ii++) {
 			int ref = ndev->res[i].ref[ii];
@@ -983,7 +983,7 @@ static struct rss_type_info rss_to_string[] = {
 	RSS_TO_STRING(RTE_ETH_RSS_L3_SRC_ONLY),
 };
 
-int sprint_nt_rss_mask(char *str, uint16_t str_len, const char *prefix, uint64_t hash_mask)
+int nthw_sprint_rss_mask(char *str, uint16_t str_len, const char *prefix, uint64_t hash_mask)
 {
 	if (str == NULL || str_len == 0)
 		return -1;
