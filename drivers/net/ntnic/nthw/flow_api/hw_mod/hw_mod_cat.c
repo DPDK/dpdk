@@ -230,114 +230,6 @@ static int cfn_reset(struct flow_api_backend_s *be, int i)
 	return err;
 }
 
-int hw_mod_cat_reset(struct flow_api_backend_s *be)
-{
-	/* Zero entire cache area */
-	nthw_zero_module_cache((struct common_func_s *)(&be->cat));
-
-	NT_LOG(DBG, FILTER, "INIT CAT CFN");
-
-	if (hw_mod_cat_cfn_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	if (_VER_ <= 18) {
-		NT_LOG(DBG, FILTER, "INIT CAT KCE");
-
-		if (hw_mod_cat_kce_flush(be, KM_FLM_IF_FIRST, 0, 0, ALL_ENTRIES))
-			return -1;
-
-		NT_LOG(DBG, FILTER, "INIT CAT KCS");
-
-		if (hw_mod_cat_kcs_flush(be, KM_FLM_IF_FIRST, 0, 0, ALL_ENTRIES))
-			return -1;
-
-		NT_LOG(DBG, FILTER, "INIT CAT FTE");
-
-		if (hw_mod_cat_fte_flush(be, KM_FLM_IF_FIRST, 0, 0, ALL_ENTRIES))
-			return -1;
-
-	} else {
-		NT_LOG(DBG, FILTER, "INIT CAT KCE 0");
-
-		if (hw_mod_cat_kce_flush(be, KM_FLM_IF_FIRST, be->cat.km_if_m0, 0, ALL_ENTRIES))
-			return -1;
-
-		NT_LOG(DBG, FILTER, "INIT CAT KCS 0");
-
-		if (hw_mod_cat_kcs_flush(be, KM_FLM_IF_FIRST, be->cat.km_if_m0, 0, ALL_ENTRIES))
-			return -1;
-
-		NT_LOG(DBG, FILTER, "INIT CAT FTE 0");
-
-		if (hw_mod_cat_fte_flush(be, KM_FLM_IF_FIRST, be->cat.km_if_m0, 0, ALL_ENTRIES))
-			return -1;
-
-		if (be->cat.km_if_count > 1) {
-			NT_LOG(DBG, FILTER, "INIT CAT KCE 1");
-
-			if (hw_mod_cat_kce_flush(be, KM_FLM_IF_SECOND, be->cat.km_if_m1, 0,
-					ALL_ENTRIES))
-				return -1;
-
-			NT_LOG(DBG, FILTER, "INIT CAT KCS 1");
-
-			if (hw_mod_cat_kcs_flush(be, KM_FLM_IF_SECOND, be->cat.km_if_m1, 0,
-					ALL_ENTRIES))
-				return -1;
-
-			NT_LOG(DBG, FILTER, "INIT CAT FTE 1");
-
-			if (hw_mod_cat_fte_flush(be, KM_FLM_IF_SECOND, be->cat.km_if_m1, 0,
-					ALL_ENTRIES))
-				return -1;
-		}
-	}
-
-	NT_LOG(DBG, FILTER, "INIT CAT CTE");
-
-	if (hw_mod_cat_cte_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	NT_LOG(DBG, FILTER, "INIT CAT CTS");
-
-	if (hw_mod_cat_cts_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	NT_LOG(DBG, FILTER, "INIT CAT COT");
-
-	if (hw_mod_cat_cot_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	NT_LOG(DBG, FILTER, "INIT CAT CCT");
-
-	if (hw_mod_cat_cct_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	NT_LOG(DBG, FILTER, "INIT CAT EXO");
-
-	if (hw_mod_cat_exo_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	NT_LOG(DBG, FILTER, "INIT CAT RCK");
-
-	if (hw_mod_cat_rck_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	NT_LOG(DBG, FILTER, "INIT CAT LEN");
-
-	if (hw_mod_cat_len_flush(be, 0, ALL_ENTRIES))
-		return -1;
-
-	if (be->cat.kcc_size) {
-		NT_LOG(DBG, FILTER, "INIT CAT KCC");
-
-		if (hw_mod_cat_kcc_flush(be, 0, ALL_ENTRIES))
-			return -1;
-	}
-
-	return 0;
-}
-
 int hw_mod_cat_cfn_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	switch (count) {
@@ -1449,7 +1341,7 @@ int hw_mod_cat_cot_set(struct flow_api_backend_s *be, enum hw_cat_e field, int i
 	return hw_mod_cat_cot_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_cat_cct_flush(struct flow_api_backend_s *be, int start_idx, int count)
+static int hw_mod_cat_cct_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->cat.nb_cat_funcs * 4;
@@ -1462,7 +1354,7 @@ int hw_mod_cat_cct_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->cat_cct_flush(be->be_dev, &be->cat, start_idx, count);
 }
 
-int hw_mod_cat_kcc_flush(struct flow_api_backend_s *be, int start_idx, int count)
+static int hw_mod_cat_kcc_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->cat.kcc_size;
@@ -1475,7 +1367,7 @@ int hw_mod_cat_kcc_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->cat_kcc_flush(be->be_dev, &be->cat, start_idx, count);
 }
 
-int hw_mod_cat_exo_flush(struct flow_api_backend_s *be, int start_idx, int count)
+static int hw_mod_cat_exo_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->cat.nb_pm_ext;
@@ -1488,7 +1380,7 @@ int hw_mod_cat_exo_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->cat_exo_flush(be->be_dev, &be->cat, start_idx, count);
 }
 
-int hw_mod_cat_rck_flush(struct flow_api_backend_s *be, int start_idx, int count)
+static int hw_mod_cat_rck_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->cat.nb_pm_ext * 64;
@@ -1501,7 +1393,7 @@ int hw_mod_cat_rck_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->cat_rck_flush(be->be_dev, &be->cat, start_idx, count);
 }
 
-int hw_mod_cat_len_flush(struct flow_api_backend_s *be, int start_idx, int count)
+static int hw_mod_cat_len_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->cat.nb_len;
@@ -1512,4 +1404,112 @@ int hw_mod_cat_len_flush(struct flow_api_backend_s *be, int start_idx, int count
 	}
 
 	return be->iface->cat_len_flush(be->be_dev, &be->cat, start_idx, count);
+}
+
+int hw_mod_cat_reset(struct flow_api_backend_s *be)
+{
+	/* Zero entire cache area */
+	nthw_zero_module_cache((struct common_func_s *)(&be->cat));
+
+	NT_LOG(DBG, FILTER, "INIT CAT CFN");
+
+	if (hw_mod_cat_cfn_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	if (_VER_ <= 18) {
+		NT_LOG(DBG, FILTER, "INIT CAT KCE");
+
+		if (hw_mod_cat_kce_flush(be, KM_FLM_IF_FIRST, 0, 0, ALL_ENTRIES))
+			return -1;
+
+		NT_LOG(DBG, FILTER, "INIT CAT KCS");
+
+		if (hw_mod_cat_kcs_flush(be, KM_FLM_IF_FIRST, 0, 0, ALL_ENTRIES))
+			return -1;
+
+		NT_LOG(DBG, FILTER, "INIT CAT FTE");
+
+		if (hw_mod_cat_fte_flush(be, KM_FLM_IF_FIRST, 0, 0, ALL_ENTRIES))
+			return -1;
+
+	} else {
+		NT_LOG(DBG, FILTER, "INIT CAT KCE 0");
+
+		if (hw_mod_cat_kce_flush(be, KM_FLM_IF_FIRST, be->cat.km_if_m0, 0, ALL_ENTRIES))
+			return -1;
+
+		NT_LOG(DBG, FILTER, "INIT CAT KCS 0");
+
+		if (hw_mod_cat_kcs_flush(be, KM_FLM_IF_FIRST, be->cat.km_if_m0, 0, ALL_ENTRIES))
+			return -1;
+
+		NT_LOG(DBG, FILTER, "INIT CAT FTE 0");
+
+		if (hw_mod_cat_fte_flush(be, KM_FLM_IF_FIRST, be->cat.km_if_m0, 0, ALL_ENTRIES))
+			return -1;
+
+		if (be->cat.km_if_count > 1) {
+			NT_LOG(DBG, FILTER, "INIT CAT KCE 1");
+
+			if (hw_mod_cat_kce_flush(be, KM_FLM_IF_SECOND, be->cat.km_if_m1, 0,
+					ALL_ENTRIES))
+				return -1;
+
+			NT_LOG(DBG, FILTER, "INIT CAT KCS 1");
+
+			if (hw_mod_cat_kcs_flush(be, KM_FLM_IF_SECOND, be->cat.km_if_m1, 0,
+					ALL_ENTRIES))
+				return -1;
+
+			NT_LOG(DBG, FILTER, "INIT CAT FTE 1");
+
+			if (hw_mod_cat_fte_flush(be, KM_FLM_IF_SECOND, be->cat.km_if_m1, 0,
+					ALL_ENTRIES))
+				return -1;
+		}
+	}
+
+	NT_LOG(DBG, FILTER, "INIT CAT CTE");
+
+	if (hw_mod_cat_cte_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	NT_LOG(DBG, FILTER, "INIT CAT CTS");
+
+	if (hw_mod_cat_cts_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	NT_LOG(DBG, FILTER, "INIT CAT COT");
+
+	if (hw_mod_cat_cot_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	NT_LOG(DBG, FILTER, "INIT CAT CCT");
+
+	if (hw_mod_cat_cct_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	NT_LOG(DBG, FILTER, "INIT CAT EXO");
+
+	if (hw_mod_cat_exo_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	NT_LOG(DBG, FILTER, "INIT CAT RCK");
+
+	if (hw_mod_cat_rck_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	NT_LOG(DBG, FILTER, "INIT CAT LEN");
+
+	if (hw_mod_cat_len_flush(be, 0, ALL_ENTRIES))
+		return -1;
+
+	if (be->cat.kcc_size) {
+		NT_LOG(DBG, FILTER, "INIT CAT KCC");
+
+		if (hw_mod_cat_kcc_flush(be, 0, ALL_ENTRIES))
+			return -1;
+	}
+
+	return 0;
 }

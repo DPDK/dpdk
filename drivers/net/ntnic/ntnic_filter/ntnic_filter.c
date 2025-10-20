@@ -31,7 +31,8 @@ static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 rte_spinlock_t flow_lock = RTE_SPINLOCK_INITIALIZER;
 static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 
-int nthw_interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_flow_item *out)
+static int nthw_interpret_raw_data(uint8_t *data, uint8_t *preserve, int size,
+	struct rte_flow_item *out)
 {
 	int hdri = 0;
 	int pkti = 0;
@@ -249,7 +250,7 @@ interpret_end:
 	return hdri + 1;
 }
 
-int nthw_create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr)
+static int nthw_create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr)
 {
 	if (!attribute) {
 		NT_LOG(ERR, FILTER, "ERROR no attribute to iterate!");
@@ -266,7 +267,7 @@ int nthw_create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *a
 	return 0;
 }
 
-int nthw_create_match_elements(struct cnv_match_s *match, const struct rte_flow_item items[],
+static int nthw_create_match_elements(struct cnv_match_s *match, const struct rte_flow_item items[],
 	int max_elem)
 {
 	int eidx = 0;
@@ -316,7 +317,7 @@ int nthw_create_match_elements(struct cnv_match_s *match, const struct rte_flow_
 	return (type >= 0) ? 0 : -1;
 }
 
-int nthw_create_action_elements_inline(struct cnv_action_s *action,
+static int nthw_create_action_elements_inline(struct cnv_action_s *action,
 	const struct rte_flow_action actions[],
 	int max_elem,
 	uint32_t queue_offset)

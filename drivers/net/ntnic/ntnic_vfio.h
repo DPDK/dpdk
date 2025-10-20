@@ -24,6 +24,4 @@ int
 nt_vfio_dma_unmap(int vf_num, void *virt_addr, uint64_t iova_addr, uint64_t size);
 
 /* Find device (PF/VF) number from device address */
-int
-nt_vfio_vf_num(const struct rte_pci_device *dev);
 #endif	/* _NTNIC_VFIO_H_ */

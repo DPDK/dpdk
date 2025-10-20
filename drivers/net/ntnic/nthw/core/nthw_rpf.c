@@ -20,7 +20,7 @@ nthw_rpf_t *nthw_rpf_new(void)
 	return p;
 }
 
-void nthw_rpf_delete(nthw_rpf_t *p)
+static void nthw_rpf_delete(nthw_rpf_t *p)
 {
 	free(p);
 }
@@ -67,7 +67,7 @@ int nthw_rpf_init(nthw_rpf_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
-void nthw_rpf_administrative_block(nthw_rpf_t *p)
+static void nthw_rpf_administrative_block(nthw_rpf_t *p)
 {
 	/* block all MAC ports */
 	nthw_register_update(p->mp_reg_control);

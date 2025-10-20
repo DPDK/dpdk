@@ -20,7 +20,7 @@
 #define ONE_G_MASK (ONE_G_SIZE - 1)
 #define START_VF_IOVA 0x220000000000
 
-int
+static int
 nt_vfio_vf_num(const struct rte_pci_device *pdev)
 {
 	return ((pdev->addr.devid & 0x1f) << 3) + ((pdev->addr.function) & 0x7);

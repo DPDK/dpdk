@@ -144,7 +144,7 @@ static int nthw_si5340_cfg(nthw_si5340_t *p, const void *p_data, int data_cnt,
 	return 0;
 }
 
-int nthw_si5340_config(nthw_si5340_t *p, const void *p_data, int data_cnt,
+static int nthw_si5340_config(nthw_si5340_t *p, const void *p_data, int data_cnt,
 	clk_profile_data_fmt_t data_format)
 {
 	const char *const p_adapter_id_str =

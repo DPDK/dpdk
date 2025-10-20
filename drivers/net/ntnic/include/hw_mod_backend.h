@@ -415,14 +415,6 @@ int hw_mod_cat_cot_flush(struct flow_api_backend_s *be, int start_idx, int count
 int hw_mod_cat_cot_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
 	uint32_t value);
 
-int hw_mod_cat_cct_flush(struct flow_api_backend_s *be, int start_idx, int count);
-
-int hw_mod_cat_kcc_flush(struct flow_api_backend_s *be, int start_idx, int count);
-
-int hw_mod_cat_exo_flush(struct flow_api_backend_s *be, int start_idx, int count);
-int hw_mod_cat_rck_flush(struct flow_api_backend_s *be, int start_idx, int count);
-int hw_mod_cat_len_flush(struct flow_api_backend_s *be, int start_idx, int count);
-
 struct km_func_s {
 	COMMON_FUNC_INFO_S;
 	uint32_t nb_categories;
@@ -531,9 +523,6 @@ int hw_mod_km_tci_flush(struct flow_api_backend_s *be, int start_bank, int start
 	int count);
 int hw_mod_km_tci_set(struct flow_api_backend_s *be, enum hw_km_e field, int bank, int record,
 	uint32_t value);
-int hw_mod_km_tcq_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
-	int count);
-
 struct flm_func_s {
 	COMMON_FUNC_INFO_S;
 	uint32_t nb_categories;
@@ -874,8 +863,6 @@ int hw_mod_pdb_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count
 int hw_mod_pdb_rcp_set(struct flow_api_backend_s *be, enum hw_pdb_e field, uint32_t index,
 	uint32_t value);
 
-int hw_mod_pdb_config_flush(struct flow_api_backend_s *be);
-
 struct tpe_func_s {
 	COMMON_FUNC_INFO_S;
 	uint32_t nb_rcp_categories;
@@ -961,8 +948,6 @@ int hw_mod_tpe_ifr_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, i
 	uint32_t value);
 
 int hw_mod_tpe_ifr_counters_update(struct flow_api_backend_s *be, int start_idx, int count);
-int hw_mod_tpe_ifr_counters_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
-	uint32_t value);
 int hw_mod_tpe_ifr_counters_get(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
 	uint32_t *value);
 

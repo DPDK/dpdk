@@ -13,7 +13,7 @@
 #include "qsfp_registers.h"
 #include "nim_defines.h"
 
-int nim_agx_read_id(struct nim_i2c_ctx *ctx);
+static int nim_agx_read_id(struct nim_i2c_ctx *ctx);
 static void nim_agx_read(struct nim_i2c_ctx *ctx, uint8_t dev_addr, uint8_t reg_addr,
 	uint8_t data_len, void *p_data);
 static void nim_agx_write(struct nim_i2c_ctx *ctx, uint8_t dev_addr, uint8_t reg_addr,
@@ -931,7 +931,7 @@ static void nim_agx_write(struct nim_i2c_ctx *ctx,
 	rte_spinlock_unlock(&p_nt_i2cm->i2cmmutex);
 }
 
-int nim_agx_read_id(struct nim_i2c_ctx *ctx)
+static int nim_agx_read_id(struct nim_i2c_ctx *ctx)
 {
 	nim_agx_read(ctx, 0xA0, 0, sizeof(ctx->nim_id), &ctx->nim_id);
 	return 0;

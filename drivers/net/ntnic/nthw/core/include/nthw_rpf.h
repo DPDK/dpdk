@@ -37,9 +37,7 @@ typedef struct nthw_rpf nthw_rpf_t;
 typedef struct nthw_rpf nt_rpf;
 
 nthw_rpf_t *nthw_rpf_new(void);
-void nthw_rpf_delete(nthw_rpf_t *p);
 int nthw_rpf_init(nthw_rpf_t *p, nthw_fpga_t *p_fpga, int n_instance);
-void nthw_rpf_administrative_block(nthw_rpf_t *p);
 void nthw_rpf_block(nthw_rpf_t *p);
 void nthw_rpf_unblock(nthw_rpf_t *p);
 void nthw_rpf_set_maturing_delay(nthw_rpf_t *p, int32_t delay);

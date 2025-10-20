@@ -18,7 +18,7 @@
 
 #include <arpa/inet.h>
 
-int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpga)
+static int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpga)
 {
 	mcu_info_t *p_mcu_info = &p_fpga_info->mcu_info;
 

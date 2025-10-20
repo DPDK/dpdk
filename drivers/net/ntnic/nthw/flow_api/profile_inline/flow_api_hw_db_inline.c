@@ -319,82 +319,6 @@ void hw_db_inline_destroy(void *db_handle)
 	free(db);
 }
 
-void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_idx *idxs,
-	uint32_t size)
-{
-	for (uint32_t i = 0; i < size; ++i) {
-		switch (idxs[i].type) {
-		case HW_DB_IDX_TYPE_NONE:
-			break;
-
-		case HW_DB_IDX_TYPE_MATCH_SET:
-			hw_db_inline_match_set_deref(ndev, db_handle,
-				*(struct hw_db_match_set_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_ACTION_SET:
-			hw_db_inline_action_set_deref(ndev, db_handle,
-				*(struct hw_db_action_set_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_CAT:
-			hw_db_inline_cat_deref(ndev, db_handle, *(struct hw_db_cat_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_COT:
-			hw_db_inline_cot_deref(ndev, db_handle, *(struct hw_db_cot_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_QSL:
-			hw_db_inline_qsl_deref(ndev, db_handle, *(struct hw_db_qsl_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_SLC_LR:
-			hw_db_inline_slc_lr_deref(ndev, db_handle,
-				*(struct hw_db_slc_lr_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_TPE:
-			hw_db_inline_tpe_deref(ndev, db_handle, *(struct hw_db_tpe_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_TPE_EXT:
-			hw_db_inline_tpe_ext_deref(ndev, db_handle,
-				*(struct hw_db_tpe_ext_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_FLM_RCP:
-			hw_db_inline_flm_deref(ndev, db_handle, *(struct hw_db_flm_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_FLM_FT:
-			hw_db_inline_flm_ft_deref(ndev, db_handle,
-				*(struct hw_db_flm_ft *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_KM_RCP:
-			hw_db_inline_km_deref(ndev, db_handle, *(struct hw_db_km_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_KM_FT:
-			hw_db_inline_km_ft_deref(ndev, db_handle, *(struct hw_db_km_ft *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_HSH:
-			hw_db_inline_hsh_deref(ndev, db_handle, *(struct hw_db_hsh_idx *)&idxs[i]);
-			break;
-
-		case HW_DB_IDX_TYPE_FLM_SCRUB:
-			hw_db_inline_scrub_deref(ndev, db_handle,
-				*(struct hw_db_flm_scrub_idx *)&idxs[i]);
-			break;
-
-		default:
-			break;
-		}
-	}
-}
-
 struct hw_db_idx *hw_db_inline_find_idx(struct flow_nic_dev *ndev, void *db_handle,
 	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size)
 {
@@ -1508,6 +1432,16 @@ static int hw_db_inline_match_set_compare(const struct hw_db_inline_match_set_da
 		data1->km_ft.raw == data2->km_ft.raw && data1->jump == data2->jump;
 }
 
+static void hw_db_inline_match_set_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_match_set_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->match_set[idx.ids].ref += 1;
+}
+
 struct hw_db_match_set_idx
 hw_db_inline_match_set_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_match_set_data *data)
@@ -1563,17 +1497,7 @@ hw_db_inline_match_set_add(struct flow_nic_dev *ndev, void *db_handle,
 	return idx;
 }
 
-void hw_db_inline_match_set_ref(struct flow_nic_dev *ndev, void *db_handle,
-	struct hw_db_match_set_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->match_set[idx.ids].ref += 1;
-}
-
-void hw_db_inline_match_set_deref(struct flow_nic_dev *ndev, void *db_handle,
+static void hw_db_inline_match_set_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_match_set_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -1619,6 +1543,16 @@ static int hw_db_inline_action_set_compare(const struct hw_db_inline_action_set_
 		data1->hsh.raw == data2->hsh.raw && data1->scrub.raw == data2->scrub.raw;
 }
 
+static void hw_db_inline_action_set_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_action_set_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->action_set[idx.ids].ref += 1;
+}
+
 struct hw_db_action_set_idx
 hw_db_inline_action_set_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_action_set_data *data)
@@ -1654,17 +1588,7 @@ hw_db_inline_action_set_add(struct flow_nic_dev *ndev, void *db_handle,
 	return idx;
 }
 
-void hw_db_inline_action_set_ref(struct flow_nic_dev *ndev, void *db_handle,
-	struct hw_db_action_set_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->action_set[idx.ids].ref += 1;
-}
-
-void hw_db_inline_action_set_deref(struct flow_nic_dev *ndev, void *db_handle,
+static void hw_db_inline_action_set_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_action_set_idx idx)
 {
 	(void)ndev;
@@ -1691,6 +1615,15 @@ static int hw_db_inline_cot_compare(const struct hw_db_inline_cot_data *data1,
 {
 	return data1->matcher_color_contrib == data2->matcher_color_contrib &&
 		data1->frag_rcp == data2->frag_rcp;
+}
+
+static void hw_db_inline_cot_ref(struct flow_nic_dev *ndev __rte_unused, void *db_handle,
+	struct hw_db_cot_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->cot[idx.ids].ref += 1;
 }
 
 struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -1728,16 +1661,7 @@ struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_ha
 	return idx;
 }
 
-void hw_db_inline_cot_ref(struct flow_nic_dev *ndev __rte_unused, void *db_handle,
-	struct hw_db_cot_idx idx)
-{
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->cot[idx.ids].ref += 1;
-}
-
-void hw_db_inline_cot_deref(struct flow_nic_dev *ndev __rte_unused, void *db_handle,
+static void hw_db_inline_cot_deref(struct flow_nic_dev *ndev __rte_unused, void *db_handle,
 	struct hw_db_cot_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -1789,6 +1713,15 @@ static int hw_db_inline_qsl_compare(const struct hw_db_inline_qsl_data *data1,
 	}
 
 	return 1;
+}
+
+static void hw_db_inline_qsl_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_qsl_idx idx)
+{
+	(void)db_handle;
+
+	if (!idx.error && idx.ids != 0)
+		nthw_flow_nic_ref_resource(ndev, RES_QSL_RCP, idx.ids);
 }
 
 struct hw_db_qsl_idx hw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -1884,15 +1817,8 @@ struct hw_db_qsl_idx hw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_ha
 	return qsl_idx;
 }
 
-void hw_db_inline_qsl_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_qsl_idx idx)
-{
-	(void)db_handle;
-
-	if (!idx.error && idx.ids != 0)
-		nthw_flow_nic_ref_resource(ndev, RES_QSL_RCP, idx.ids);
-}
-
-void hw_db_inline_qsl_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_qsl_idx idx)
+static void hw_db_inline_qsl_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_qsl_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
 
@@ -1937,6 +1863,16 @@ static int hw_db_inline_slc_lr_compare(const struct hw_db_inline_slc_lr_data *da
 		data1->head_slice_ofs == data2->head_slice_ofs;
 }
 
+static void hw_db_inline_slc_lr_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_slc_lr_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->slc_lr[idx.ids].ref += 1;
+}
+
 struct hw_db_slc_lr_idx hw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_slc_lr_data *data)
 {
@@ -1977,17 +1913,7 @@ struct hw_db_slc_lr_idx hw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void 
 	return idx;
 }
 
-void hw_db_inline_slc_lr_ref(struct flow_nic_dev *ndev, void *db_handle,
-	struct hw_db_slc_lr_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->slc_lr[idx.ids].ref += 1;
-}
-
-void hw_db_inline_slc_lr_deref(struct flow_nic_dev *ndev, void *db_handle,
+static void hw_db_inline_slc_lr_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_slc_lr_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -2042,6 +1968,16 @@ static int hw_db_inline_tpe_compare(const struct hw_db_inline_tpe_data *data1,
 		data1->len_c_add_dyn == data2->len_c_add_dyn &&
 		data1->len_c_add_ofs == data2->len_c_add_ofs &&
 		data1->len_c_sub_dyn == data2->len_c_sub_dyn;
+}
+
+static void hw_db_inline_tpe_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_tpe_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->tpe[idx.ids].ref += 1;
 }
 
 struct hw_db_tpe_idx hw_db_inline_tpe_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2173,16 +2109,8 @@ struct hw_db_tpe_idx hw_db_inline_tpe_add(struct flow_nic_dev *ndev, void *db_ha
 	return idx;
 }
 
-void hw_db_inline_tpe_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_tpe_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->tpe[idx.ids].ref += 1;
-}
-
-void hw_db_inline_tpe_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_tpe_idx idx)
+static void hw_db_inline_tpe_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_tpe_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
 
@@ -2227,6 +2155,16 @@ static int hw_db_inline_tpe_ext_compare(const struct hw_db_inline_tpe_ext_data *
 {
 	return data1->size == data2->size &&
 		memcmp(data1->hdr8, data2->hdr8, HW_DB_INLINE_MAX_ENCAP_SIZE) == 0;
+}
+
+static void hw_db_inline_tpe_ext_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_tpe_ext_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->tpe_ext[idx.ids].ref += 1;
 }
 
 struct hw_db_tpe_ext_idx hw_db_inline_tpe_ext_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2291,17 +2229,7 @@ struct hw_db_tpe_ext_idx hw_db_inline_tpe_ext_add(struct flow_nic_dev *ndev, voi
 	return idx;
 }
 
-void hw_db_inline_tpe_ext_ref(struct flow_nic_dev *ndev, void *db_handle,
-	struct hw_db_tpe_ext_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->tpe_ext[idx.ids].ref += 1;
-}
-
-void hw_db_inline_tpe_ext_deref(struct flow_nic_dev *ndev, void *db_handle,
+static void hw_db_inline_tpe_ext_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_tpe_ext_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -2336,6 +2264,16 @@ void hw_db_inline_tpe_ext_deref(struct flow_nic_dev *ndev, void *db_handle,
 /******************************************************************************/
 /* CAT                                                                        */
 /******************************************************************************/
+
+static void hw_db_inline_cat_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_cat_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->cat[idx.ids].ref += 1;
+}
 
 static int hw_db_inline_cat_compare(const struct hw_db_inline_cat_data *data1,
 	const struct hw_db_inline_cat_data *data2)
@@ -2389,16 +2327,8 @@ struct hw_db_cat_idx hw_db_inline_cat_add(struct flow_nic_dev *ndev, void *db_ha
 	return idx;
 }
 
-void hw_db_inline_cat_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cat_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->cat[idx.ids].ref += 1;
-}
-
-void hw_db_inline_cat_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cat_idx idx)
+static void hw_db_inline_cat_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_cat_idx idx)
 {
 	(void)ndev;
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -2422,6 +2352,15 @@ static int hw_db_inline_km_compare(const struct hw_db_inline_km_rcp_data *data1,
 	const struct hw_db_inline_km_rcp_data *data2)
 {
 	return data1->rcp == data2->rcp;
+}
+
+static void hw_db_inline_km_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->km[idx.id1].ref += 1;
 }
 
 struct hw_db_km_idx hw_db_inline_km_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2457,16 +2396,8 @@ struct hw_db_km_idx hw_db_inline_km_add(struct flow_nic_dev *ndev, void *db_hand
 	return idx;
 }
 
-void hw_db_inline_km_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->km[idx.id1].ref += 1;
-}
-
-void hw_db_inline_km_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx)
+static void hw_db_inline_km_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_km_idx idx)
 {
 	(void)ndev;
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -2491,6 +2422,18 @@ static int hw_db_inline_km_ft_compare(const struct hw_db_inline_km_ft_data *data
 {
 	return data1->cat.raw == data2->cat.raw && data1->km.raw == data2->km.raw &&
 		data1->action_set.raw == data2->action_set.raw;
+}
+
+static void hw_db_inline_km_ft_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_km_ft idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error) {
+		uint32_t cat_offset = idx.id3 * db->nb_cat;
+		db->km[idx.id2].ft[cat_offset + idx.id1].ref += 1;
+	}
 }
 
 struct hw_db_km_ft hw_db_inline_km_ft_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2538,18 +2481,8 @@ struct hw_db_km_ft hw_db_inline_km_ft_add(struct flow_nic_dev *ndev, void *db_ha
 	return idx;
 }
 
-void hw_db_inline_km_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error) {
-		uint32_t cat_offset = idx.id3 * db->nb_cat;
-		db->km[idx.id2].ft[cat_offset + idx.id1].ref += 1;
-	}
-}
-
-void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx)
+static void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_km_ft idx)
 {
 	(void)ndev;
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -2588,6 +2521,16 @@ static int hw_db_inline_flm_compare(const struct hw_db_inline_flm_rcp_data *data
 			return 0;
 
 	return 1;
+}
+
+static void hw_db_inline_flm_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->flm[idx.id1].ref += 1;
 }
 
 struct hw_db_flm_idx hw_db_inline_flm_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2653,16 +2596,8 @@ struct hw_db_flm_idx hw_db_inline_flm_add(struct flow_nic_dev *ndev, void *db_ha
 	return idx;
 }
 
-void hw_db_inline_flm_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->flm[idx.id1].ref += 1;
-}
-
-void hw_db_inline_flm_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx)
+static void hw_db_inline_flm_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
 
@@ -2691,6 +2626,16 @@ static int hw_db_inline_flm_ft_compare(const struct hw_db_inline_flm_ft_data *da
 {
 	return data1->is_group_zero == data2->is_group_zero && data1->jump == data2->jump &&
 		data1->action_set.raw == data2->action_set.raw;
+}
+
+static void hw_db_inline_flm_ft_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_ft idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error && idx.id3 == 0)
+		db->flm[idx.id2].ft[idx.id1].ref += 1;
 }
 
 struct hw_db_flm_ft hw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void *db_handle,
@@ -2784,16 +2729,8 @@ struct hw_db_flm_ft hw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_
 	return idx;
 }
 
-void hw_db_inline_flm_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_ft idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error && idx.id3 == 0)
-		db->flm[idx.id2].ft[idx.id1].ref += 1;
-}
-
-void hw_db_inline_flm_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_ft idx)
+static void hw_db_inline_flm_ft_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_ft idx)
 {
 	(void)ndev;
 	(void)db_handle;
@@ -2827,6 +2764,16 @@ static int hw_db_inline_hsh_compare(const struct hw_db_inline_hsh_data *data1,
 			return 0;
 
 	return data1->func == data2->func && data1->hash_mask == data2->hash_mask;
+}
+
+static void hw_db_inline_hsh_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_hsh_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->hsh[idx.ids].ref += 1;
 }
 
 struct hw_db_hsh_idx hw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2890,16 +2837,8 @@ struct hw_db_hsh_idx hw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_ha
 	return idx;
 }
 
-void hw_db_inline_hsh_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_hsh_idx idx)
-{
-	(void)ndev;
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->hsh[idx.ids].ref += 1;
-}
-
-void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_hsh_idx idx)
+static void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_hsh_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
 
@@ -2936,6 +2875,17 @@ static int hw_db_inline_scrub_compare(const struct hw_db_inline_scrub_data *data
 	const struct hw_db_inline_scrub_data *data2)
 {
 	return data1->timeout == data2->timeout;
+}
+
+static void hw_db_inline_scrub_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_scrub_idx idx)
+{
+	(void)ndev;
+
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->scrub[idx.ids].ref += 1;
 }
 
 struct hw_db_flm_scrub_idx hw_db_inline_scrub_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -2994,18 +2944,7 @@ struct hw_db_flm_scrub_idx hw_db_inline_scrub_add(struct flow_nic_dev *ndev, voi
 	return idx;
 }
 
-void hw_db_inline_scrub_ref(struct flow_nic_dev *ndev, void *db_handle,
-	struct hw_db_flm_scrub_idx idx)
-{
-	(void)ndev;
-
-	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
-
-	if (!idx.error)
-		db->scrub[idx.ids].ref += 1;
-}
-
-void hw_db_inline_scrub_deref(struct flow_nic_dev *ndev, void *db_handle,
+static void hw_db_inline_scrub_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_flm_scrub_idx idx)
 {
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
@@ -3028,5 +2967,81 @@ void hw_db_inline_scrub_deref(struct flow_nic_dev *ndev, void *db_handle,
 		}
 
 		db->scrub[idx.ids].ref = 0;
+	}
+}
+
+void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_idx *idxs,
+	uint32_t size)
+{
+	for (uint32_t i = 0; i < size; ++i) {
+		switch (idxs[i].type) {
+		case HW_DB_IDX_TYPE_NONE:
+			break;
+
+		case HW_DB_IDX_TYPE_MATCH_SET:
+			hw_db_inline_match_set_deref(ndev, db_handle,
+				*(struct hw_db_match_set_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_ACTION_SET:
+			hw_db_inline_action_set_deref(ndev, db_handle,
+				*(struct hw_db_action_set_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_CAT:
+			hw_db_inline_cat_deref(ndev, db_handle, *(struct hw_db_cat_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_COT:
+			hw_db_inline_cot_deref(ndev, db_handle, *(struct hw_db_cot_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_QSL:
+			hw_db_inline_qsl_deref(ndev, db_handle, *(struct hw_db_qsl_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_SLC_LR:
+			hw_db_inline_slc_lr_deref(ndev, db_handle,
+				*(struct hw_db_slc_lr_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_TPE:
+			hw_db_inline_tpe_deref(ndev, db_handle, *(struct hw_db_tpe_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_TPE_EXT:
+			hw_db_inline_tpe_ext_deref(ndev, db_handle,
+				*(struct hw_db_tpe_ext_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_FLM_RCP:
+			hw_db_inline_flm_deref(ndev, db_handle, *(struct hw_db_flm_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_FLM_FT:
+			hw_db_inline_flm_ft_deref(ndev, db_handle,
+				*(struct hw_db_flm_ft *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_KM_RCP:
+			hw_db_inline_km_deref(ndev, db_handle, *(struct hw_db_km_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_KM_FT:
+			hw_db_inline_km_ft_deref(ndev, db_handle, *(struct hw_db_km_ft *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_HSH:
+			hw_db_inline_hsh_deref(ndev, db_handle, *(struct hw_db_hsh_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_FLM_SCRUB:
+			hw_db_inline_scrub_deref(ndev, db_handle,
+				*(struct hw_db_flm_scrub_idx *)&idxs[i]);
+			break;
+
+		default:
+			break;
+		}
 	}
 }

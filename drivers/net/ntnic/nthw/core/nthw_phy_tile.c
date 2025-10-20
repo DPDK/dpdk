@@ -954,7 +954,7 @@ uint32_t nthw_phy_tile_get_timestamp_comp_rx(nthw_phy_tile_t *p, uint8_t intf_no
 	return nthw_field_get_val32(p->mp_fld_port_comp_rx_compensation[intf_no]);
 }
 
-uint32_t nthw_phy_tile_read_eth(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t address)
+static uint32_t nthw_phy_tile_read_eth(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t address)
 {
 	nthw_register_update(p->mp_reg_port_eth_base[intf_no]);
 	nthw_field_set_val32(p->mp_fld_port_eth_base_cmd[intf_no], 0);
@@ -966,7 +966,8 @@ uint32_t nthw_phy_tile_read_eth(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t ad
 	return nthw_field_get_updated(p->mp_fld_port_eth_data_data[intf_no]);
 }
 
-void nthw_phy_tile_write_eth(nthw_phy_tile_t *p, uint8_t intf_no, uint32_t address, uint32_t data)
+static void nthw_phy_tile_write_eth(nthw_phy_tile_t *p, uint8_t intf_no,
+	uint32_t address, uint32_t data)
 {
 	nthw_field_set_val_flush32(p->mp_fld_port_eth_data_data[intf_no], data);
 	nthw_register_update(p->mp_reg_port_eth_base[intf_no]);

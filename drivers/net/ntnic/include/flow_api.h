@@ -27,8 +27,6 @@ struct hw_mod_resource_s {
 /*
  * Device Management API
  */
-int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev);
-
 /**
  * A structure used to configure the Receive Side Scaling (RSS) feature
  * of an Ethernet port.

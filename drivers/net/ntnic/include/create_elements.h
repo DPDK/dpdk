@@ -60,13 +60,4 @@ enum nt_rte_flow_item_type {
 
 extern rte_spinlock_t flow_lock;
 
-int nthw_interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_flow_item *out);
-int nthw_create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr);
-int nthw_create_match_elements(struct cnv_match_s *match, const struct rte_flow_item items[],
-	int max_elem);
-int nthw_create_action_elements_inline(struct cnv_action_s *action,
-	const struct rte_flow_action actions[],
-	int max_elem,
-	uint32_t queue_offset);
-
 #endif	/* __CREATE_ELEMENTS_H__ */

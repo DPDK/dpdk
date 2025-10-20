@@ -271,121 +271,65 @@ int nthw_iic_set_retry_params(nthw_iic_t *p, const int n_poll_delay, const int n
 	return 0;
 }
 
-int nthw_iic_read_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
-	void *p_void)
+/*
+ * Support function for read/write functions below. Waits for bus ready.
+ */
+static bool nthw_iic_bus_ready(nthw_iic_t *p)
 {
-	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
-	const int n_debug_mode = nthw_module_get_debug_mode(p->mp_mod_iic);
+	int count = (p->mn_bus_ready_retry >= 0 ? p->mn_bus_ready_retry : 1000);
+	bool b_bus_busy = true;
 
-	uint8_t *pb = (uint8_t *)p_void;
-	int retry = (p->mn_read_data_retry >= 0 ? p->mn_read_data_retry : 10);
+	while (true) {
+		nthw_iic_reg_busbusy(p, &b_bus_busy);
 
-	if (n_debug_mode == 0xff) {
-		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d", p_adapter_id_str, dev_addr,
-			a_reg_addr, data_len);
+		if (!b_bus_busy)
+			break;
+
+		count--;
+
+		if (count <= 0)	/* Test for timeout */
+			break;
+
+		if (p->mn_poll_delay != 0)
+			I2C_WAIT_US(p->mn_poll_delay);
 	}
 
-	while (nthw_iic_readbyte(p, dev_addr, a_reg_addr, data_len, pb) != 0) {
-		retry--;
+	if (count == 0)
+		return false;
 
-		if (retry <= 0) {
-			NT_LOG(ERR, NTHW,
-				"%s: I2C%d: Read retry exhausted (dev_addr=%d a_reg_addr=%d)",
-				p_adapter_id_str, p->mn_iic_instance, dev_addr, a_reg_addr);
-			return -1;
-
-		} else {
-			NT_LOG(DBG, NTHW, "%s: I2C%d: Read retry=%d (dev_addr=%d a_reg_addr=%d)",
-				p_adapter_id_str, p->mn_iic_instance, retry, dev_addr, a_reg_addr);
-		}
-	}
-
-	if (n_debug_mode == 0xff) {
-		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d, retries remaining: %d",
-			p_adapter_id_str, dev_addr, a_reg_addr, data_len, retry);
-	}
-
-	return 0;
+	return true;
 }
 
-int nthw_iic_readbyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
-	uint8_t *p_byte)
+/*
+ * Support function for read function. Waits for data ready.
+ */
+static bool nthw_iic_data_ready(nthw_iic_t *p)
 {
-	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
+	int count = (p->mn_data_ready_retry >= 0 ? p->mn_data_ready_retry : 1000);
+	bool b_rx_fifo_empty = true;
 
-	uint32_t value;
-	uint32_t i;
+	while (true) {
+		nthw_iic_reg_rxfifo_empty(p, &b_rx_fifo_empty);
 
-	if (nthw_iic_bus_ready(p)) {
-		/* Reset TX fifo */
-		nthw_iic_reg_control_txfifo_reset(p);
+		if (!b_rx_fifo_empty)
+			break;
 
-		/* Write device address to TX_FIFO and set start bit!! */
-		value = (dev_addr << 1) | I2C_TRANSMIT_WR;
-		nthw_iic_reg_tx_fifo_write(p, value, 1, 0);
+		count--;
 
-		/* Write a_reg_addr to TX FIFO */
-		nthw_iic_reg_tx_fifo_write(p, a_reg_addr, 0, 1);
+		if (count <= 0)	/* Test for timeout */
+			break;
 
-		if (!nthw_iic_bus_ready(p)) {
-			NT_LOG_DBGX(ERR, NTHW, "%s: error:", p_adapter_id_str);
-			return -1;
-		}
-
-		/* Write device address + RD bit to TX_FIFO and set start bit!! */
-		value = (dev_addr << 1) | I2C_TRANSMIT_RD;
-		nthw_iic_reg_tx_fifo_write(p, value, 1, 0);
-
-		/* Write data_len to TX_FIFO and set stop bit!! */
-		nthw_iic_reg_tx_fifo_write(p, data_len, 0, 1);
-
-		for (i = 0; i < data_len; i++) {
-			/* Wait for RX FIFO not empty */
-			if (!nthw_iic_data_ready(p))
-				return -1;
-
-			/* Read data_len bytes from RX_FIFO */
-			nthw_iic_reg_read_i2c_rx_fifo(p, p_byte);
-			p_byte++;
-		}
-
-		return 0;
-
-	} else {
-		NT_LOG_DBGX(ERR, NTHW, "%s: error", p_adapter_id_str);
-		return -1;
+		if (p->mn_poll_delay != 0)
+			I2C_WAIT_US(p->mn_poll_delay);
 	}
 
-	return 0;
+	if (count == 0)
+		return false;
+
+	return true;
 }
 
-int nthw_iic_write_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
-	void *p_void)
-{
-	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
-	int retry = (p->mn_write_data_retry >= 0 ? p->mn_write_data_retry : 10);
-	uint8_t *pb = (uint8_t *)p_void;
-
-	while (nthw_iic_writebyte(p, dev_addr, a_reg_addr, data_len, pb) != 0) {
-		retry--;
-
-		if (retry <= 0) {
-			NT_LOG(ERR, NTHW,
-				"%s: I2C%d: Write retry exhausted (dev_addr=%d a_reg_addr=%d)",
-				p_adapter_id_str, p->mn_iic_instance, dev_addr, a_reg_addr);
-			return -1;
-
-		} else {
-			NT_LOG(DBG, NTHW,
-				"%s: I2C%d: Write retry=%d (dev_addr=%d a_reg_addr=%d)",
-				p_adapter_id_str, p->mn_iic_instance, retry, dev_addr, a_reg_addr);
-		}
-	}
-
-	return 0;
-}
-
-int nthw_iic_writebyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
+static int nthw_iic_writebyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
 	uint8_t *p_byte)
 {
 	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
@@ -437,65 +381,121 @@ int nthw_iic_writebyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint
 	}
 }
 
-/*
- * Support function for read/write functions below. Waits for bus ready.
- */
-bool nthw_iic_bus_ready(nthw_iic_t *p)
+int nthw_iic_write_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
+	void *p_void)
 {
-	int count = (p->mn_bus_ready_retry >= 0 ? p->mn_bus_ready_retry : 1000);
-	bool b_bus_busy = true;
+	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
+	int retry = (p->mn_write_data_retry >= 0 ? p->mn_write_data_retry : 10);
+	uint8_t *pb = (uint8_t *)p_void;
 
-	while (true) {
-		nthw_iic_reg_busbusy(p, &b_bus_busy);
+	while (nthw_iic_writebyte(p, dev_addr, a_reg_addr, data_len, pb) != 0) {
+		retry--;
 
-		if (!b_bus_busy)
-			break;
+		if (retry <= 0) {
+			NT_LOG(ERR, NTHW,
+				"%s: I2C%d: Write retry exhausted (dev_addr=%d a_reg_addr=%d)",
+				p_adapter_id_str, p->mn_iic_instance, dev_addr, a_reg_addr);
+			return -1;
 
-		count--;
-
-		if (count <= 0)	/* Test for timeout */
-			break;
-
-		if (p->mn_poll_delay != 0)
-			I2C_WAIT_US(p->mn_poll_delay);
+		} else {
+			NT_LOG(DBG, NTHW,
+				"%s: I2C%d: Write retry=%d (dev_addr=%d a_reg_addr=%d)",
+				p_adapter_id_str, p->mn_iic_instance, retry, dev_addr, a_reg_addr);
+		}
 	}
 
-	if (count == 0)
-		return false;
-
-	return true;
+	return 0;
 }
 
-/*
- * Support function for read function. Waits for data ready.
- */
-bool nthw_iic_data_ready(nthw_iic_t *p)
+static int nthw_iic_readbyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
+	uint8_t *p_byte)
 {
-	int count = (p->mn_data_ready_retry >= 0 ? p->mn_data_ready_retry : 1000);
-	bool b_rx_fifo_empty = true;
+	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
 
-	while (true) {
-		nthw_iic_reg_rxfifo_empty(p, &b_rx_fifo_empty);
+	uint32_t value;
+	uint32_t i;
 
-		if (!b_rx_fifo_empty)
-			break;
+	if (nthw_iic_bus_ready(p)) {
+		/* Reset TX fifo */
+		nthw_iic_reg_control_txfifo_reset(p);
 
-		count--;
+		/* Write device address to TX_FIFO and set start bit!! */
+		value = (dev_addr << 1) | I2C_TRANSMIT_WR;
+		nthw_iic_reg_tx_fifo_write(p, value, 1, 0);
 
-		if (count <= 0)	/* Test for timeout */
-			break;
+		/* Write a_reg_addr to TX FIFO */
+		nthw_iic_reg_tx_fifo_write(p, a_reg_addr, 0, 1);
 
-		if (p->mn_poll_delay != 0)
-			I2C_WAIT_US(p->mn_poll_delay);
+		if (!nthw_iic_bus_ready(p)) {
+			NT_LOG_DBGX(ERR, NTHW, "%s: error:", p_adapter_id_str);
+			return -1;
+		}
+
+		/* Write device address + RD bit to TX_FIFO and set start bit!! */
+		value = (dev_addr << 1) | I2C_TRANSMIT_RD;
+		nthw_iic_reg_tx_fifo_write(p, value, 1, 0);
+
+		/* Write data_len to TX_FIFO and set stop bit!! */
+		nthw_iic_reg_tx_fifo_write(p, data_len, 0, 1);
+
+		for (i = 0; i < data_len; i++) {
+			/* Wait for RX FIFO not empty */
+			if (!nthw_iic_data_ready(p))
+				return -1;
+
+			/* Read data_len bytes from RX_FIFO */
+			nthw_iic_reg_read_i2c_rx_fifo(p, p_byte);
+			p_byte++;
+		}
+
+		return 0;
+
+	} else {
+		NT_LOG_DBGX(ERR, NTHW, "%s: error", p_adapter_id_str);
+		return -1;
 	}
 
-	if (count == 0)
-		return false;
-
-	return true;
+	return 0;
 }
 
-int nthw_iic_scan_dev_addr(nthw_iic_t *p, int n_dev_addr, int n_reg_addr)
+int nthw_iic_read_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8_t data_len,
+	void *p_void)
+{
+	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
+	const int n_debug_mode = nthw_module_get_debug_mode(p->mp_mod_iic);
+
+	uint8_t *pb = (uint8_t *)p_void;
+	int retry = (p->mn_read_data_retry >= 0 ? p->mn_read_data_retry : 10);
+
+	if (n_debug_mode == 0xff) {
+		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d", p_adapter_id_str, dev_addr,
+			a_reg_addr, data_len);
+	}
+
+	while (nthw_iic_readbyte(p, dev_addr, a_reg_addr, data_len, pb) != 0) {
+		retry--;
+
+		if (retry <= 0) {
+			NT_LOG(ERR, NTHW,
+				"%s: I2C%d: Read retry exhausted (dev_addr=%d a_reg_addr=%d)",
+				p_adapter_id_str, p->mn_iic_instance, dev_addr, a_reg_addr);
+			return -1;
+
+		} else {
+			NT_LOG(DBG, NTHW, "%s: I2C%d: Read retry=%d (dev_addr=%d a_reg_addr=%d)",
+				p_adapter_id_str, p->mn_iic_instance, retry, dev_addr, a_reg_addr);
+		}
+	}
+
+	if (n_debug_mode == 0xff) {
+		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d, retries remaining: %d",
+			p_adapter_id_str, dev_addr, a_reg_addr, data_len, retry);
+	}
+
+	return 0;
+}
+
+static int nthw_iic_scan_dev_addr(nthw_iic_t *p, int n_dev_addr, int n_reg_addr)
 {
 	const char *const p_adapter_id_str = p->mp_fpga->p_fpga_info->mp_adapter_id_str;
 	(void)p_adapter_id_str;
