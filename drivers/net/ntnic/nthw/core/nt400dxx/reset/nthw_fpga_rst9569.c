@@ -79,6 +79,12 @@ static void nthw_fpga_rst9569_ddr4_rst(struct nthw_fpga_rst_nt400dxx *const p, u
 	nthw_field_set_val_flush32(p->p_fld_rst_ddr4, val);
 }
 
+static void nthw_fpga_rst9569_phy_ftile_rst(struct nthw_fpga_rst_nt400dxx *const p, uint32_t val)
+{
+	nthw_field_update_register(p->p_fld_rst_phy_ftile);
+	nthw_field_set_val_flush32(p->p_fld_rst_phy_ftile, val);
+}
+
 static bool nthw_fpga_rst9569_get_phy_ftile_rst(struct nthw_fpga_rst_nt400dxx *const p)
 {
 	return nthw_field_get_updated(p->p_fld_rst_phy_ftile) != 0;
@@ -242,6 +248,13 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 				return res;
 			}
 		}
+
+		/* (6) De-assert PHY_FTILE reset: */
+		NT_LOG(DBG, NTHW, "%s: %s: De-asserting PHY_FTILE reset", p_adapter_id_str,
+			__func__);
+		nthw_fpga_rst9569_phy_ftile_rst(p_rst, 0);
+
+		nthw_os_wait_usec(10000);
 
 	} while (!success);
 
