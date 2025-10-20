@@ -14,7 +14,6 @@ typedef struct ntdrv_4ga_s {
 	struct adapter_info_s adapter_info;
 	char *p_drv_name;
 
-	volatile bool b_shutdown;
 	rte_spinlock_t stat_lck;
 } ntdrv_4ga_t;
 
