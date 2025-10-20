@@ -5446,5 +5446,5 @@ static const struct profile_inline_ops ops = {
 
 void nthw_profile_inline_init(void)
 {
-	register_profile_inline_ops(&ops);
+	nthw_reg_profile_inline_ops(&ops);
 }

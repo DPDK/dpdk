@@ -373,5 +373,5 @@ static struct rst9574_ops rst9574_ops = {
 
 void rst9574_ops_init(void)
 {
-	register_rst9574_ops(&rst9574_ops);
+	nthw_reg_rst9574_ops(&rst9574_ops);
 }

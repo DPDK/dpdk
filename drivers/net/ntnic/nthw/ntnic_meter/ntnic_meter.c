@@ -485,5 +485,5 @@ static struct meter_ops_s meter_ops = {
 void nthw_meter_init(void)
 {
 	NT_LOG(DBG, NTNIC, "Meter ops initialized");
-	register_meter_ops(&meter_ops);
+	nthw_reg_meter_ops(&meter_ops);
 }

@@ -557,7 +557,7 @@ int nthw_fpga_shutdown(struct fpga_info_s *p_fpga_info)
 
 static struct nt200a0x_ops *nt200a0x_ops;
 
-void register_nt200a0x_ops(struct nt200a0x_ops *ops)
+void nthw_reg_nt200a0x_ops(struct nt200a0x_ops *ops)
 {
 	nt200a0x_ops = ops;
 }
@@ -571,7 +571,7 @@ struct nt200a0x_ops *get_nt200a0x_ops(void)
 
 static struct nt400dxx_ops *nt400dxx_ops;
 
-void register_nt400dxx_ops(struct nt400dxx_ops *ops)
+void nthw_reg_nt400dxx_ops(struct nt400dxx_ops *ops)
 {
 	nt400dxx_ops = ops;
 }

@@ -2277,5 +2277,5 @@ static const struct flow_backend_ops ops = {
 
 void nthw_flow_backend_init(void)
 {
-	register_flow_backend_ops(&ops);
+	nthw_reg_flow_backend_ops(&ops);
 }
