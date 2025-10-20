@@ -200,6 +200,13 @@ and ``res_dma.csv`` will be the generated result file.
 If no result file is specified, the test results are found in a file
 with the same name as the configuration file with the addition of ``_result.csv`` at the end.
 
+Because the names of dmadevs are different, the following command support
+list DMA devices, it could quickly know how to set the lcore_dma parameters.
+
+.. code-block:: console
+
+   dpdk-test-dma-perf --config ./config.ini --list-dma
+
 
 Limitations
 -----------
