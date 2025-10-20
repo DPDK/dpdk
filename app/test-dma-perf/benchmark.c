@@ -783,7 +783,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
 	uint16_t nb_workers = cfg->num_worker;
-	uint16_t test_secs = cfg->test_secs;
+	uint16_t test_secs = global_cfg.test_secs;
 	float memory = 0;
 	uint32_t avg_cycles = 0;
 	uint32_t avg_cycles_total;
@@ -803,7 +803,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 		if (config_dmadevs(cfg) < 0)
 			goto out;
 
-	if (cfg->cache_flush == 1) {
+	if (global_cfg.cache_flush > 0) {
 		cache_flush_buf(srcs, buf_size, nr_buf);
 		cache_flush_buf(dsts, buf_size, nr_buf);
 		rte_mb();

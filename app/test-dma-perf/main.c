@@ -39,7 +39,7 @@ enum {
 static struct test_configure test_cases[MAX_TEST_CASES];
 
 #define GLOBAL_SECTION_NAME	"GLOBAL"
-static struct global_configure global_cfg;
+struct global_configure global_cfg;
 
 static char *config_path;
 static char *result_path;
@@ -307,6 +307,20 @@ parse_global_config(struct rte_cfgfile *cfgfile)
 		global_cfg.eal_argv[i + 1] = tokens[i];
 	global_cfg.eal_argc = i + 1;
 
+	entry = rte_cfgfile_get_entry(cfgfile, GLOBAL_SECTION_NAME, "cache_flush");
+	if (entry == NULL) {
+		printf("Error: GLOBAL section don't has 'cache_flush' entry!\n");
+		return -1;
+	}
+	global_cfg.cache_flush = (uint8_t)atoi(entry);
+
+	entry = rte_cfgfile_get_entry(cfgfile, GLOBAL_SECTION_NAME, "test_seconds");
+	if (entry == NULL) {
+		printf("Error: GLOBAL section don't has 'test_seconds' entry!\n");
+		return -1;
+	}
+	global_cfg.test_secs = (uint16_t)atoi(entry);
+
 	return 0;
 }
 
@@ -507,11 +521,6 @@ load_configs(const char *path)
 			test_case->is_valid = false;
 			continue;
 		}
-
-		test_case->cache_flush =
-			(uint8_t)atoi(rte_cfgfile_get_entry(cfgfile, section_name, "cache_flush"));
-		test_case->test_secs = (uint16_t)atoi(rte_cfgfile_get_entry(cfgfile,
-					section_name, "test_seconds"));
 
 		test_case->is_valid = true;
 	}

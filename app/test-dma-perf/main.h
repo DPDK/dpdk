@@ -64,9 +64,7 @@ struct test_configure {
 	uint16_t num_worker;
 	uint8_t nb_src_sges;
 	uint8_t nb_dst_sges;
-	uint8_t cache_flush;
 	uint32_t nr_buf;
-	uint16_t test_secs;
 	uint8_t scenario_id;
 };
 
@@ -75,7 +73,11 @@ struct test_configure {
 struct global_configure {
 	char *eal_argv[MAX_EAL_ARGV_NB + 1];
 	int   eal_argc;
+	uint8_t cache_flush;
+	uint16_t test_secs;
 };
+
+extern struct global_configure global_cfg;
 
 void output_csv(const char *fmt, ...);
 int mem_copy_benchmark(struct test_configure *cfg);

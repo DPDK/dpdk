@@ -29,6 +29,8 @@ along with the application to demonstrate all the parameters.
 
    [GLOBAL]
    eal_args=--in-memory --file-prefix=test -l 9-12
+   cache_flush=0
+   test_seconds=2
 
    [case1]
    type=DMA_MEM_COPY
@@ -38,8 +40,6 @@ along with the application to demonstrate all the parameters.
    kick_batch=32
    src_numa_node=0
    dst_numa_node=0
-   cache_flush=0
-   test_seconds=2
    lcore_dma0=lcore=10,dev=0000:00:04.2,dir=mem2mem
    lcore_dma0=lcore=11,dev=0000:00:04.3,dir=mem2mem
 
@@ -49,8 +49,6 @@ along with the application to demonstrate all the parameters.
    buf_size=64,8192,2,MUL
    src_numa_node=0
    dst_numa_node=1
-   cache_flush=0
-   test_seconds=2
    lcore = 10, 11
 
    [case3]
@@ -64,8 +62,6 @@ along with the application to demonstrate all the parameters.
    kick_batch=32
    src_numa_node=0
    dst_numa_node=0
-   cache_flush=0
-   test_seconds=2
    lcore_dma0=lcore=10,dev=0000:00:04.1,dir=mem2mem
    lcore_dma1=lcore=11,dev=0000:00:04.2,dir=dev2mem,raddr=0x200000000,coreid=1,pfid=2,vfid=3
    lcore_dma2=lcore=12,dev=0000:00:04.3,dir=mem2dev,raddr=0x200000000,coreid=1,pfid=2,vfid=3
@@ -99,6 +95,13 @@ Global Configuration Parameters
 
 ``eal_args``
   Specifies the EAL arguments for all test cases.
+
+``cache_flush``
+  Determines whether the cache should be flushed.
+  ``1`` indicates to flush and ``0`` to not flush.
+
+``test_seconds``
+  Controls the test time for each scenario.
 
 
 Testcase Configuration Parameters
@@ -134,13 +137,6 @@ Testcase Configuration Parameters
 
 ``dst_numa_node``
   Controls the NUMA node where the destination memory is allocated.
-
-``cache_flush``
-  Determines whether the cache should be flushed.
-  ``1`` indicates to flush and ``0`` to not flush.
-
-``test_seconds``
-  Controls the test time for each scenario.
 
 ``lcore_dma``
   Specifies the lcore/DMA mapping and per device specific config.
