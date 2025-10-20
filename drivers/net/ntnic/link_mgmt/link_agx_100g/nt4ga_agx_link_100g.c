@@ -93,17 +93,17 @@ static void phy_tx_path_rst(adapter_info_t *drv, int port, bool reset)
 static void phy_reset_rx(adapter_info_t *drv, int port)
 {
 	phy_rx_path_rst(drv, port, true);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 	phy_rx_path_rst(drv, port, false);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 }
 
 static void phy_reset_tx(adapter_info_t *drv, int port)
 {
 	phy_tx_path_rst(drv, port, true);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 	phy_tx_path_rst(drv, port, false);
-	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_os_wait_usec(10000);	/* 10ms */
 }
 
 static int phy_set_host_loopback(adapter_info_t *drv, int port, loopback_host_t loopback)
@@ -499,7 +499,7 @@ set_loopback(struct adapter_info_s *p_adapter_info, int port, uint32_t mode, uin
 	/* After changing the loopback the system must be properly reset */
 	phy_reset_rx(p_adapter_info, port);
 	phy_reset_tx(p_adapter_info, port);
-	nt_os_wait_usec(10000);	/* 10ms - arbitrary choice */
+	nthw_os_wait_usec(10000);	/* 10ms - arbitrary choice */
 }
 
 static void port_disable(adapter_info_t *drv, int port)
@@ -547,14 +547,14 @@ static int create_nim(adapter_info_t *drv, int port, bool enable)
 
 	NT_LOG(DBG, NTNIC, "%s: Performing NIM reset", drv->mp_port_id_str[port]);
 	nim_set_reset(nim_ctx, (uint8_t)port, true);
-	nt_os_wait_usec(100000);/*  pause 0.1s */
+	nthw_os_wait_usec(100000);/*  pause 0.1s */
 	nim_set_reset(nim_ctx, (uint8_t)port, false);
 
 	/*
 	 * Wait a little after a module has been inserted before trying to access I2C
 	 * data, otherwise the module will not respond correctly.
 	 */
-	nt_os_wait_usec(1000000);	/* pause 1.0s */
+	nthw_os_wait_usec(1000000);	/* pause 1.0s */
 
 	res = nthw_construct_and_preinit_nim(nim_ctx, NULL);
 
@@ -941,7 +941,7 @@ static int _common_ptp_nim_state_machine(void *data)
 	}
 
 	if (rte_service_runstate_get(adapter_mon_srv->id))
-		nt_os_wait_usec(5 * 100000U);	/*  5 x 0.1s = 0.5s */
+		nthw_os_wait_usec(5 * 100000U);	/*  5 x 0.1s = 0.5s */
 
 	return 0;
 }

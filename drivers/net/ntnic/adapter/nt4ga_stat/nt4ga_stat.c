@@ -128,7 +128,7 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 		int numa_node = p_adapter_info->fpga_info.numa_node;
 
 		/* FPGA needs a 16K alignment on Statistics */
-		p_dma = nt_dma_alloc(n_stat_size, 0x4000, numa_node);
+		p_dma = nthw_dma_alloc(n_stat_size, 0x4000, numa_node);
 
 		if (!p_dma) {
 			NT_LOG_DBGX(ERR, NTNIC, "p_dma alloc failed");

@@ -326,7 +326,7 @@ int nthw_rac_rab_setup(nthw_rac_t *p)
 
 	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
 	uint32_t n_dma_buf_size = 2L * RAB_DMA_BUF_CNT * sizeof(uint32_t);
-	const size_t align_size = nt_util_align_size(n_dma_buf_size);
+	const size_t align_size = nthw_util_align_size(n_dma_buf_size);
 	int numa_node = p_fpga_info->numa_node;
 	uint64_t dma_addr;
 	uint32_t buf;
@@ -334,10 +334,10 @@ int nthw_rac_rab_setup(nthw_rac_t *p)
 	if (!p->m_dma) {
 		struct nt_dma_s *vfio_dma;
 		/* FPGA needs Page alignment (4K) */
-		vfio_dma = nt_dma_alloc(align_size, 0x1000, numa_node);
+		vfio_dma = nthw_dma_alloc(align_size, 0x1000, numa_node);
 
 		if (vfio_dma == NULL) {
-			NT_LOG(ERR, NTNIC, "nt_dma_alloc failed");
+			NT_LOG(ERR, NTNIC, "nthw_dma_alloc failed");
 			return -1;
 		}
 
@@ -418,7 +418,7 @@ static int nthw_rac_rab_dma_wait(nthw_rac_t *p)
 	uint32_t i;
 
 	for (i = 0; i < RAB_DMA_WAIT; i++) {
-		nt_os_wait_usec_poll(1);
+		nthw_os_wait_usec_poll(1);
 
 		if ((p->m_dma_out_buf[p->m_dma_out_ptr_rd] & completion) == completion)
 			break;

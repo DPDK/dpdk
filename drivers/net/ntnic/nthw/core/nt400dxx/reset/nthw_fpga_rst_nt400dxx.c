@@ -58,13 +58,13 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 
 	/* (b1) Reset platform. It is released later */
 	nthw_prm_nt400dxx_platform_rst(p_fpga_info->mp_nthw_agx.p_prm, 1);
-	nt_os_wait_usec(10000);
+	nthw_os_wait_usec(10000);
 
 	/* (C) Reset peripherals and release the reset */
 	nthw_prm_nt400dxx_periph_rst(p_fpga_info->mp_nthw_agx.p_prm, 1);
-	nt_os_wait_usec(10000);
+	nthw_os_wait_usec(10000);
 	nthw_prm_nt400dxx_periph_rst(p_fpga_info->mp_nthw_agx.p_prm, 0);
-	nt_os_wait_usec(10000);
+	nthw_os_wait_usec(10000);
 
 	res = nthw_fpga_avr_probe(p_fpga, 0);
 
@@ -155,7 +155,7 @@ static int nthw_fpga_rst_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 
 	/* Enable power supply to NIMs */
 	nthw_pcal6416a_write(p_fpga_info->mp_nthw_agx.p_io_nim, 8, 1);
-	nt_os_wait_usec(100000);/* 100ms */
+	nthw_os_wait_usec(100000);/* 100ms */
 
 	/* Check that power supply turned on. Warn if it didn't. */
 	uint8_t port_power_ok;
@@ -225,7 +225,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 
 			/* (F) Check that the system PLL is ready. */
 			for (int i = 1000; i >= 0; i--) {
-				nt_os_wait_usec(1000);
+				nthw_os_wait_usec(1000);
 				data = nthw_igam_read(p_igam, 0xffff4);
 
 				if (data == 0x80000000 || data == 0xA0000000) {
@@ -251,7 +251,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 			nthw_igam_set_ctrl_forward_rst(p_igam,
 				0);	/* Ensure that the Avalon bus is not */
 			/* reset at every driver re-load. */
-			nt_os_wait_usec(1000000);
+			nthw_os_wait_usec(1000000);
 			NT_LOG(DBG, NTHW, "%s: IGAM module not used.", p_adapter_id_str);
 		}
 
@@ -267,14 +267,14 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 
 	if (p_fpga_info->mp_nthw_agx.tcxo_present && p_fpga_info->mp_nthw_agx.tcxo_capable) {
 		nthw_pcm_nt400dxx_set_ts_pll_recal(p_pcm, 1);
-		nt_os_wait_usec(1000);
+		nthw_os_wait_usec(1000);
 		nthw_pcm_nt400dxx_set_ts_pll_recal(p_pcm, 0);
-		nt_os_wait_usec(1000);
+		nthw_os_wait_usec(1000);
 	}
 
 	/* (I) Wait for TS PLL locked. */
 	for (int i = 1000; i >= 0; i--) {
-		nt_os_wait_usec(1000);
+		nthw_os_wait_usec(1000);
 
 		if (nthw_pcm_nt400dxx_get_ts_pll_locked_stat(p_pcm))
 			break;
@@ -320,9 +320,9 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 	if (res == 0)
 		NT_LOG(DBG, NTHW, "%s: Hif module found", p_fpga_info->mp_adapter_id_str);
 
-	nt_os_wait_usec(1000);
+	nthw_os_wait_usec(1000);
 	nthw_hif_force_soft_reset(p_nthw_hif);
-	nt_os_wait_usec(1000);
+	nthw_os_wait_usec(1000);
 	nthw_hif_delete(p_nthw_hif);
 
 	/* (L) De-RTE_ASSERT platform reset. */
@@ -354,7 +354,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 
 		/* (F) Check that the system PLL is ready. */
 		for (int i = 1000; i >= 0; i--) {
-			nt_os_wait_usec(1000);
+			nthw_os_wait_usec(1000);
 
 			if (nthw_phy_tile_get_sys_pll_get_rdy(p_phy_tile) &&
 				nthw_phy_tile_get_sys_pll_system_pll_lock(p_phy_tile)) {
@@ -363,7 +363,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 
 			if (i == 500) {
 				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 1);
-				nt_os_wait_usec(1000);
+				nthw_os_wait_usec(1000);
 				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 0);
 				NT_LOG_DBGX(DBG,
 					NTHW,
@@ -380,13 +380,13 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 			}
 		}
 
-		nt_os_wait_usec(100000);/* 100 ms */
+		nthw_os_wait_usec(100000);/* 100 ms */
 
 		uint32_t fgt_enable = 0x0d;	/* FGT 0, 2 & 3 */
 		nthw_phy_tile_set_sys_pll_en_ref_clk_fgt(p_phy_tile, fgt_enable);
 
 		for (int i = 1000; i >= 0; i--) {
-			nt_os_wait_usec(1000);
+			nthw_os_wait_usec(1000);
 
 			if (nthw_phy_tile_get_sys_pll_ref_clk_fgt_enabled(p_phy_tile) ==
 				fgt_enable) {
@@ -395,7 +395,7 @@ static int nthw_fpga_rst_nt400dxx_reset(struct fpga_info_s *p_fpga_info)
 
 			if (i == 500) {
 				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 1);
-				nt_os_wait_usec(1000);
+				nthw_os_wait_usec(1000);
 				nthw_phy_tile_set_sys_pll_force_rst(p_phy_tile, 0);
 				NT_LOG_DBGX(DBG,
 					NTHW,

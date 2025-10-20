@@ -537,7 +537,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 			NT_LOG(DBG, NTHW, "%s: TSM time: %016" PRIX64 " %016" PRIX64 "\n",
 				p_adapter_id_str, n_time, n_ts);
 
-			nt_os_wait_usec(1000);
+			nthw_os_wait_usec(1000);
 		}
 	}
 #endif

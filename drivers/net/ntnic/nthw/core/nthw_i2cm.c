@@ -102,7 +102,7 @@ int nthw_i2cm_init(nthw_i2cm_t *p, nthw_fpga_t *p_fpga, int n_i2c_instance)
 		NT_I2C_CMD_STOP | NT_I2C_CMD_NACK);
 
 	NT_LOG(INF, NTHW, "%s: %s  init done", p_adapter_id_str, __PRETTY_FUNCTION__);
-	nt_os_wait_usec(10000);
+	nthw_os_wait_usec(10000);
 
 	/* Initialize mutex */
 	rte_spinlock_init(&p->i2cmmutex);
@@ -118,7 +118,7 @@ static bool nthw_i2cm_ready(nthw_i2cm_t *p, bool wait_for_ack)
 		uint32_t status = nthw_field_get_updated(p->mp_fld_cmd_status_cmd_status);
 		uint32_t ready = (status & flags) == 0U;
 		/* MUST have a short break to avoid time-outs, even if ready == true */
-		nt_os_wait_usec(SLEEP_USECS);
+		nthw_os_wait_usec(SLEEP_USECS);
 
 		if (ready)
 			return true;

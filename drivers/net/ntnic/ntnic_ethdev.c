@@ -281,11 +281,12 @@ eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 		nt_link_speed_t port_link_speed =
 			port_ops->get_link_speed(p_adapter_info, n_intf_no);
 		eth_dev->data->dev_link.link_speed =
-			nt_link_speed_to_eth_speed_num(port_link_speed);
+			nthw_link_speed_to_eth_speed_num(port_link_speed);
 
 		nt_link_duplex_t nt_link_duplex =
 			port_ops->get_link_duplex(p_adapter_info, n_intf_no);
-		eth_dev->data->dev_link.link_duplex = nt_link_duplex_to_eth_duplex(nt_link_duplex);
+		eth_dev->data->dev_link.link_duplex =
+			nthw_link_duplex_to_eth_duplex(nt_link_duplex);
 
 	} else {
 		eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
@@ -355,7 +356,7 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 
 		const uint32_t nt_port_speed_capa =
 			port_ops->get_link_speed_capabilities(p_adapter_info, n_intf_no);
-		dev_info->speed_capa = nt_link_speed_capa_to_eth_speed_capa(nt_port_speed_capa);
+		dev_info->speed_capa = nthw_link_speed_capa_to_eth_speed_capa(nt_port_speed_capa);
 	}
 
 	return 0;
@@ -785,7 +786,8 @@ static int allocate_hw_virtio_queues(struct rte_eth_dev *eth_dev, int vf_num, st
 	uint64_t tot_alloc_size = 0x100000 + (uint64_t)buf_size * (uint64_t)num_descr;
 
 	void *virt =
-		rte_malloc_socket("VirtQDescr", tot_alloc_size, nt_util_align_size(tot_alloc_size),
+		rte_malloc_socket("VirtQDescr", tot_alloc_size,
+			nthw_util_align_size(tot_alloc_size),
 			eth_dev->data->numa_node);
 
 	if (!virt)
@@ -820,7 +822,7 @@ static int allocate_hw_virtio_queues(struct rte_eth_dev *eth_dev, int vf_num, st
 		if (!virt)
 			return -1;
 
-		res = nt_vfio_dma_map(vf_num, virt, &iova_addr, size);
+		res = nthw_vfio_dma_map(vf_num, virt, &iova_addr, size);
 
 		NT_LOG(DBG, NTNIC, "VFIO MMAP res %i, vf_num %i", res, vf_num);
 
@@ -862,7 +864,7 @@ static int allocate_hw_virtio_queues(struct rte_eth_dev *eth_dev, int vf_num, st
 			return -1;
 		}
 
-		res = nt_vfio_dma_map(vf_num, virt_addr, &iova_addr, size);
+		res = nthw_vfio_dma_map(vf_num, virt_addr, &iova_addr, size);
 
 		NT_LOG(DBG, NTNIC,
 			"VFIO MMAP res %i, virt %p, iova %016"
@@ -887,7 +889,7 @@ static int allocate_hw_virtio_queues(struct rte_eth_dev *eth_dev, int vf_num, st
 		return 0;
 	}	/* End of: no optimal IOMMU mapping available */
 
-	res = nt_vfio_dma_map(vf_num, virt, &iova_addr, ONE_G_SIZE);
+	res = nthw_vfio_dma_map(vf_num, virt, &iova_addr, ONE_G_SIZE);
 
 	if (res != 0) {
 		NT_LOG(ERR, NTNIC, "VFIO MMAP FAILED! res %i, vf_num %i", res, vf_num);
@@ -948,7 +950,7 @@ static int deallocate_hw_virtio_queues(struct hwq_s *hwq)
 
 	void *virt = hwq->virt_queues_ctrl.virt_addr;
 
-	int res = nt_vfio_dma_unmap(vf_num, hwq->virt_queues_ctrl.virt_addr,
+	int res = nthw_vfio_dma_unmap(vf_num, hwq->virt_queues_ctrl.virt_addr,
 			(uint64_t)hwq->virt_queues_ctrl.phys_addr, hwq->virt_queues_ctrl.len);
 
 	if (res != 0) {
@@ -959,7 +961,7 @@ static int deallocate_hw_virtio_queues(struct hwq_s *hwq)
 	if (hwq->pkt_buffers_ctrl.virt_addr != NULL &&
 			hwq->pkt_buffers_ctrl.phys_addr != NULL &&
 			hwq->pkt_buffers_ctrl.len > 0) {
-		int res = nt_vfio_dma_unmap(vf_num,
+		int res = nthw_vfio_dma_unmap(vf_num,
 				hwq->pkt_buffers_ctrl.virt_addr,
 				(uint64_t)hwq->pkt_buffers_ctrl.phys_addr,
 				hwq->pkt_buffers_ctrl.len);
@@ -1414,7 +1416,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 				break;
 			}
 
-			nt_os_wait_usec(100 * 1000);
+			nthw_os_wait_usec(100 * 1000);
 		}
 
 		if (internals->lpbk_mode) {
@@ -1532,7 +1534,7 @@ drv_deinit(struct drv_s *p_drv)
 	 * 1 second to give the services a chance to see the termonation.
 	 */
 	clear_pdrv(p_drv);
-	nt_os_wait_usec(1000000);
+	nthw_os_wait_usec(1000000);
 
 	/* stop statistics service */
 	nthw_service_del(RTE_NTNIC_SERVICE_STAT);
@@ -1995,7 +1997,7 @@ static int port_event_service(void *context)
 			}
 
 			if (do_wait)
-				nt_os_wait_usec(10);
+				nthw_os_wait_usec(10);
 
 			count++;
 			do_wait = true;
@@ -2043,7 +2045,7 @@ static int adapter_flm_update_service(void *context)
 	}
 
 	if (profile_inline_ops->flm_update(dev) == 0)
-		nt_os_wait_usec(10);
+		nthw_os_wait_usec(10);
 
 	return 0;
 }
@@ -2081,7 +2083,7 @@ static int adapter_stat_service(void *context)
 		return 0;
 	}
 
-	nt_os_wait_usec(10 * 1000);
+	nthw_os_wait_usec(10 * 1000);
 
 	nthw_stat_trigger(p_nthw_stat);
 
@@ -2089,7 +2091,7 @@ static int adapter_stat_service(void *context)
 
 	while (rte_service_runstate_get(stat_srv->id) &&
 		(*p_nthw_stat->mp_timestamp == (uint64_t)-1)) {
-		nt_os_wait_usec(1 * 100);
+		nthw_os_wait_usec(1 * 100);
 
 		if ((++loop & 0x3fff) == 0) {
 			if (p_nt4ga_stat->mp_nthw_rpf) {
@@ -2148,7 +2150,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		/* Return statement is not necessary here to allow traffic processing by SW  */
 	}
 
-	nt_vfio_init();
+	nthw_vfio_init();
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
@@ -2271,7 +2273,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Setup VFIO context */
-	int vfio = nt_vfio_setup(pci_dev);
+	int vfio = nthw_vfio_setup(pci_dev);
 
 	if (vfio < 0) {
 		NT_LOG_DBGX(ERR, NTNIC, "%s: vfio_setup error %d",
@@ -2622,7 +2624,7 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 
 	/* let running services end Rx and Tx activity */
 	if (sg_ops != NULL) {
-		nt_os_wait_usec(1 * 1000 * 1000);
+		nthw_os_wait_usec(1 * 1000 * 1000);
 
 		while (internals) {
 			for (i = internals->nb_tx_queues - 1; i >= 0; i--) {
@@ -2647,7 +2649,7 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 		rte_eth_dev_release_port(eth_dev);
 	}
 
-	nt_vfio_remove(EXCEPTION_PATH_HID);
+	nthw_vfio_remove(EXCEPTION_PATH_HID);
 	return 0;
 }
 
@@ -2698,7 +2700,7 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * flooding by OVS from multiple virtual port services - no need to be precise
 	 */
 	uint64_t now_rtc = rte_get_tsc_cycles();
-	nt_os_wait_usec(10 * 1000);
+	nthw_os_wait_usec(10 * 1000);
 	rte_tsc_freq = 100 * (rte_get_tsc_cycles() - now_rtc);
 
 	NT_LOG_DBGX(DBG, NTNIC, "leave: ret=%d", ret);
