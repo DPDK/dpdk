@@ -2751,7 +2751,7 @@ RTE_PMD_REGISTER_PCI(net_ntnic, rte_nthw_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ntnic, nthw_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ntnic, "* vfio-pci");
 
-RTE_LOG_REGISTER_SUFFIX(nt_log_general, general, INFO);
-RTE_LOG_REGISTER_SUFFIX(nt_log_nthw, nthw, INFO);
-RTE_LOG_REGISTER_SUFFIX(nt_log_filter, filter, INFO);
-RTE_LOG_REGISTER_SUFFIX(nt_log_ntnic, ntnic, INFO);
+RTE_LOG_REGISTER_SUFFIX(nthw_logtype_general, general, INFO);
+RTE_LOG_REGISTER_SUFFIX(nthw_logtype_nthw, nthw, INFO);
+RTE_LOG_REGISTER_SUFFIX(nthw_logtype_filter, filter, INFO);
+RTE_LOG_REGISTER_SUFFIX(nthw_logtype_ntnic, ntnic, INFO);

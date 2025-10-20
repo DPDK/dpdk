@@ -10,14 +10,14 @@
 #include <stdint.h>
 #include <rte_log.h>
 
-extern int nt_log_general;
-#define RTE_LOGTYPE_GENERAL nt_log_general
-extern int nt_log_nthw;
-#define RTE_LOGTYPE_NTHW nt_log_nthw
-extern int nt_log_filter;
-#define RTE_LOGTYPE_FILTER nt_log_filter
-extern int nt_log_ntnic;
-#define RTE_LOGTYPE_NTNIC nt_log_ntnic
+extern int nthw_logtype_general;
+#define RTE_LOGTYPE_GENERAL nthw_logtype_general
+extern int nthw_logtype_nthw;
+#define RTE_LOGTYPE_NTHW nthw_logtype_nthw
+extern int nthw_logtype_filter;
+#define RTE_LOGTYPE_FILTER nthw_logtype_filter
+extern int nthw_logtype_ntnic;
+#define RTE_LOGTYPE_NTNIC nthw_logtype_ntnic
 
 #define NT_DRIVER_NAME "ntnic"
 
