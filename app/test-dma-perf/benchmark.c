@@ -19,7 +19,6 @@
 #define MAX_DMA_CPL_NB 255
 
 #define TEST_WAIT_U_SECOND 10000
-#define POLL_MAX 1000
 
 #define CSV_LINE_DMA_FMT "Scenario %u,%u,%s,%u,%u,%u,%u,%.2lf,%" PRIu64 ",%.3lf,%.3lf\n"
 #define CSV_LINE_CPU_FMT "Scenario %u,%u,NA,NA,NA,%u,%u,%.2lf,%" PRIu64 ",%.3lf,%.3lf\n"
@@ -293,6 +292,45 @@ do_dma_submit_and_poll(uint16_t dev_id, uint64_t *async_cnt,
 	worker_info->total_cpl += nr_cpl;
 }
 
+static int
+do_dma_submit_and_wait_cpl(uint16_t dev_id, uint64_t async_cnt, bool use_ops)
+{
+#define MAX_WAIT_MSEC	1000
+#define MAX_POLL	1000
+#define DEQ_SZ		64
+	struct rte_dma_op *op[DEQ_SZ];
+	enum rte_dma_vchan_status st;
+	uint32_t poll_cnt = 0;
+	uint32_t wait_ms = 0;
+	uint16_t nr_cpl;
+
+	if (!use_ops)
+		rte_dma_submit(dev_id, 0);
+
+	if (rte_dma_vchan_status(dev_id, 0, &st) < 0) {
+		rte_delay_ms(MAX_WAIT_MSEC);
+		goto wait_cpl;
+	}
+
+	while (st == RTE_DMA_VCHAN_ACTIVE && wait_ms++ < MAX_WAIT_MSEC) {
+		rte_delay_ms(1);
+		rte_dma_vchan_status(dev_id, 0, &st);
+	}
+
+wait_cpl:
+	while ((async_cnt > 0) && (poll_cnt++ < MAX_POLL)) {
+		if (use_ops)
+			nr_cpl = rte_dma_dequeue_ops(dev_id, 0, op, DEQ_SZ);
+		else
+			nr_cpl = rte_dma_completed(dev_id, 0, MAX_DMA_CPL_NB, NULL, NULL);
+		async_cnt -= nr_cpl;
+	}
+	if (async_cnt > 0)
+		PRINT_ERR("Error: wait DMA %u failed!\n", dev_id);
+
+	return async_cnt == 0 ? 0 : -1;
+}
+
 static inline int
 do_dma_plain_mem_copy(void *p)
 {
@@ -304,10 +342,8 @@ do_dma_plain_mem_copy(void *p)
 	const uint32_t buf_size = para->buf_size;
 	struct rte_mbuf **srcs = para->srcs;
 	struct rte_mbuf **dsts = para->dsts;
-	uint16_t nr_cpl;
 	uint64_t async_cnt = 0;
 	uint32_t i;
-	uint32_t poll_cnt = 0;
 	int ret;
 
 	worker_info->stop_flag = false;
@@ -338,13 +374,7 @@ dma_copy:
 			break;
 	}
 
-	rte_dma_submit(dev_id, 0);
-	while ((async_cnt > 0) && (poll_cnt++ < POLL_MAX)) {
-		nr_cpl = rte_dma_completed(dev_id, 0, MAX_DMA_CPL_NB, NULL, NULL);
-		async_cnt -= nr_cpl;
-	}
-
-	return 0;
+	return do_dma_submit_and_wait_cpl(dev_id, async_cnt, false);
 }
 
 static inline int
@@ -360,8 +390,6 @@ do_dma_sg_mem_copy(void *p)
 	const uint16_t dev_id = para->dev_id;
 	uint32_t nr_buf = para->nr_buf;
 	uint64_t async_cnt = 0;
-	uint32_t poll_cnt = 0;
-	uint16_t nr_cpl;
 	uint32_t i, j;
 	int ret;
 
@@ -397,13 +425,7 @@ dma_copy:
 			break;
 	}
 
-	rte_dma_submit(dev_id, 0);
-	while ((async_cnt > 0) && (poll_cnt++ < POLL_MAX)) {
-		nr_cpl = rte_dma_completed(dev_id, 0, MAX_DMA_CPL_NB, NULL, NULL);
-		async_cnt -= nr_cpl;
-	}
-
-	return 0;
+	return do_dma_submit_and_wait_cpl(dev_id, async_cnt, false);
 }
 
 static inline int
@@ -414,11 +436,11 @@ do_dma_enq_deq_mem_copy(void *p)
 	volatile struct worker_info *worker_info = &(para->worker_info);
 	struct rte_dma_op **dma_ops = para->dma_ops;
 	uint16_t kick_batch = para->kick_batch, sz;
-	uint16_t enq, deq, poll_cnt;
-	uint64_t tenq, tdeq;
 	const uint16_t dev_id = para->dev_id;
 	uint32_t nr_buf = para->nr_buf;
 	struct rte_dma_op *op[DEQ_SZ];
+	uint64_t tenq, tdeq;
+	uint16_t enq, deq;
 	uint32_t i;
 
 	worker_info->stop_flag = false;
@@ -454,11 +476,7 @@ do_dma_enq_deq_mem_copy(void *p)
 			break;
 	}
 
-	poll_cnt = 0;
-	while ((tenq != tdeq) && (poll_cnt++ < POLL_MAX))
-		tdeq += rte_dma_dequeue_ops(dev_id, 0, op, DEQ_SZ);
-
-	return 0;
+	return do_dma_submit_and_wait_cpl(dev_id, tenq - tdeq, true);
 }
 
 static inline int
@@ -614,7 +632,6 @@ setup_memory_env(struct test_configure *cfg, uint32_t nr_buf,
 		}
 
 		if (cfg->use_ops) {
-
 			nr_buf /= RTE_MAX(nb_src_sges, nb_dst_sges);
 			*dma_ops = rte_zmalloc(NULL, nr_buf * (sizeof(struct rte_dma_op *)),
 					       RTE_CACHE_LINE_SIZE);
