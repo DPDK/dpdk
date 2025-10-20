@@ -73,6 +73,12 @@ static void nthw_fpga_rst9569_set_default_rst_values(struct nthw_fpga_rst_nt400d
 	nthw_field_set_val_flush32(p->p_fld_rst_phy_ftile, 1);
 }
 
+static void nthw_fpga_rst9569_sys_rst(struct nthw_fpga_rst_nt400dxx *const p, uint32_t val)
+{
+	nthw_field_update_register(p->p_fld_rst_sys);
+	nthw_field_set_val_flush32(p->p_fld_rst_sys, val);
+}
+
 static void nthw_fpga_rst9569_ddr4_rst(struct nthw_fpga_rst_nt400dxx *const p, uint32_t val)
 {
 	nthw_field_update_register(p->p_fld_rst_ddr4);
@@ -344,6 +350,10 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 			success = true;
 		}
 	} while (!success);
+
+	/* (8) De-assert SYS reset: */
+	NT_LOG(DBG, NTHW, "%s: %s: De-asserting SYS reset", p_adapter_id_str, __func__);
+	nthw_fpga_rst9569_sys_rst(p_rst, 0);
 
 	return 0;
 }
