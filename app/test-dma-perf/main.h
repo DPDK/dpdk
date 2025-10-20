@@ -12,7 +12,11 @@
 
 #define MAX_WORKER_NB 128
 
-#define MAX_DMA_NB 128
+enum {
+	TEST_TYPE_NONE = 0,
+	TEST_TYPE_DMA_MEM_COPY,
+	TEST_TYPE_CPU_MEM_COPY
+};
 
 typedef enum {
 	OP_NONE = 0,
@@ -49,12 +53,8 @@ struct test_configure {
 	bool is_valid;
 	bool is_skip;
 	uint8_t test_type;
-	const char *test_type_str;
 	uint16_t src_numa_node;
 	uint16_t dst_numa_node;
-	uint16_t opcode;
-	bool is_dma;
-	bool is_sg;
 	bool use_ops;
 	struct lcore_dma_config dma_config[MAX_WORKER_NB];
 	struct test_configure_entry mem_size;
@@ -64,7 +64,7 @@ struct test_configure {
 	uint16_t num_worker;
 	uint8_t nb_src_sges;
 	uint8_t nb_dst_sges;
-	uint32_t nr_buf;
+	bool is_sg;
 	uint8_t scenario_id;
 };
 

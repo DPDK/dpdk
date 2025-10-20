@@ -29,12 +29,6 @@
 
 #define MAX_PARAMS_PER_ENTRY 4
 
-enum {
-	TEST_TYPE_NONE = 0,
-	TEST_TYPE_DMA_MEM_COPY,
-	TEST_TYPE_CPU_MEM_COPY
-};
-
 #define MAX_TEST_CASES 16
 static struct test_configure test_cases[MAX_TEST_CASES];
 
@@ -90,7 +84,8 @@ output_env_info(void)
 static void
 output_header(uint32_t case_id, struct test_configure *case_cfg)
 {
-	output_csv(CSV_HDR_FMT, case_id, case_cfg->test_type_str);
+	static const char * const type_str[] = { "NONE", DMA_MEM_COPY, CPU_MEM_COPY };
+	output_csv(CSV_HDR_FMT, case_id, type_str[case_cfg->test_type]);
 }
 
 static int
@@ -104,7 +99,7 @@ run_test_case(struct test_configure *case_cfg)
 		ret = mem_copy_benchmark(case_cfg);
 		break;
 	default:
-		printf("Unknown test type. %s\n", case_cfg->test_type_str);
+		printf("Unknown test type\n");
 		break;
 	}
 
@@ -338,7 +333,6 @@ load_configs(const char *path)
 	const char *skip;
 	struct rte_kvargs *kvlist;
 	int args_nr, nb_vp;
-	bool is_dma;
 
 	printf("config file parsing...\n");
 	cfgfile = rte_cfgfile_load(path, 0);
@@ -376,19 +370,15 @@ load_configs(const char *path)
 
 		if (strcmp(case_type, DMA_MEM_COPY) == 0) {
 			test_case->test_type = TEST_TYPE_DMA_MEM_COPY;
-			test_case->test_type_str = DMA_MEM_COPY;
-			is_dma = true;
 		} else if (strcmp(case_type, CPU_MEM_COPY) == 0) {
 			test_case->test_type = TEST_TYPE_CPU_MEM_COPY;
-			test_case->test_type_str = CPU_MEM_COPY;
-			is_dma = false;
 		} else {
 			printf("Error: Wrong test case type %s in case%d.\n", case_type, i + 1);
 			test_case->is_valid = false;
 			continue;
 		}
 
-		if (is_dma) {
+		if (test_case->test_type == TEST_TYPE_DMA_MEM_COPY) {
 			use_dma_ops =
 				rte_cfgfile_get_entry(cfgfile, section_name, "use_enq_deq_ops");
 			if (use_dma_ops != NULL && (atoi(use_dma_ops) == 1))
@@ -397,7 +387,6 @@ load_configs(const char *path)
 				test_case->use_ops = false;
 		}
 
-		test_case->is_dma = is_dma;
 		test_case->src_numa_node = (int)atoi(rte_cfgfile_get_entry(cfgfile,
 								section_name, "src_numa_node"));
 		test_case->dst_numa_node = (int)atoi(rte_cfgfile_get_entry(cfgfile,
@@ -421,7 +410,7 @@ load_configs(const char *path)
 		} else if (args_nr == 4)
 			nb_vp++;
 
-		if (is_dma) {
+		if (test_case->test_type == TEST_TYPE_DMA_MEM_COPY) {
 			ring_size_str = rte_cfgfile_get_entry(cfgfile, section_name,
 								"dma_ring_size");
 			args_nr = parse_entry(ring_size_str, &test_case->ring_size);

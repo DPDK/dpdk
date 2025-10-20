@@ -104,7 +104,7 @@ output_result(struct test_configure *cfg, struct lcore_params *para,
 	uint32_t lcore_id = para->lcore_id;
 	char *dma_name = para->dma_name;
 
-	if (cfg->is_dma) {
+	if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY) {
 		printf("lcore %u, DMA %s, DMA Ring Size: %u, Kick Batch Size: %u", lcore_id,
 		       dma_name, ring_size, kick_batch);
 		if (cfg->is_sg)
@@ -119,7 +119,7 @@ output_result(struct test_configure *cfg, struct lcore_params *para,
 			ave_cycle, buf_size, nr_buf, memory, rte_get_timer_hz()/1000000000.0);
 	printf("Average Bandwidth: %.3lf Gbps, MOps: %.3lf\n", bandwidth, mops);
 
-	if (cfg->is_dma)
+	if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY)
 		output_csv(CSV_LINE_DMA_FMT,
 			scenario_id, lcore_id, dma_name, ring_size, kick_batch, buf_size,
 			nr_buf, memory, ave_cycle, bandwidth, mops);
@@ -502,14 +502,14 @@ dummy_free_ext_buf(void *addr, void *opaque)
 }
 
 static int
-setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
+setup_memory_env(struct test_configure *cfg, uint32_t nr_buf,
+			 struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
 		 struct rte_dma_sge **src_sges, struct rte_dma_sge **dst_sges,
 		 struct rte_dma_op ***dma_ops)
 {
 	unsigned int cur_buf_size = cfg->buf_size.cur;
 	unsigned int buf_size = cur_buf_size + RTE_PKTMBUF_HEADROOM;
 	bool is_src_numa_incorrect, is_dst_numa_incorrect;
-	uint32_t nr_buf = cfg->nr_buf;
 	unsigned int nr_sockets;
 	uintptr_t ops;
 	uint32_t i;
@@ -674,7 +674,7 @@ get_work_function(struct test_configure *cfg)
 {
 	lcore_function_t *fn;
 
-	if (cfg->is_dma) {
+	if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY) {
 		if (!cfg->is_sg)
 			fn = do_dma_plain_mem_copy;
 		else {
@@ -794,12 +794,11 @@ mem_copy_benchmark(struct test_configure *cfg)
 	int ret = 0;
 
 	nr_buf = align_buffer_count(cfg, &nr_sgsrc, &nr_sgdst);
-	cfg->nr_buf = nr_buf;
 
-	if (setup_memory_env(cfg, &srcs, &dsts, &src_sges, &dst_sges, &dma_ops) < 0)
+	if (setup_memory_env(cfg, nr_buf, &srcs, &dsts, &src_sges, &dst_sges, &dma_ops) < 0)
 		goto out;
 
-	if (cfg->is_dma)
+	if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY)
 		if (config_dmadevs(cfg) < 0)
 			goto out;
 
@@ -822,7 +821,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 			printf("lcore parameters malloc failure for lcore %d\n", lcore_id);
 			break;
 		}
-		if (cfg->is_dma) {
+		if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY) {
 			lcores[i]->dma_name = lcore_dma_map->dma_names;
 			lcores[i]->dev_id = lcore_dma_map->dma_id;
 			lcores[i]->kick_batch = kick_batch;
@@ -1040,7 +1039,7 @@ out:
 		lcores[i] = NULL;
 	}
 
-	if (cfg->is_dma) {
+	if (cfg->test_type == TEST_TYPE_DMA_MEM_COPY) {
 		for (i = 0; i < nb_workers; i++) {
 			lcore_dma_map = &cfg->dma_config[i].lcore_dma_map;
 			printf("Stopping dmadev %d\n", lcore_dma_map->dma_id);
