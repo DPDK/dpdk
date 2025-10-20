@@ -1215,7 +1215,7 @@ static int poll_statistics(struct pmd_internals *internals)
 
 	RTE_ASSERT(rte_tsc_freq > 0);
 
-	rte_spinlock_lock(&hwlock);
+	rte_spinlock_lock(&nthw_lock);
 
 	uint64_t now_rtc = rte_get_tsc_cycles();
 
@@ -1224,7 +1224,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	 * if more than a second since last stat read, do a new one
 	 */
 	if ((now_rtc - internals->last_stat_rtc) < rte_tsc_freq) {
-		rte_spinlock_unlock(&hwlock);
+		rte_spinlock_unlock(&nthw_lock);
 		return 0;
 	}
 
@@ -1270,7 +1270,7 @@ static int poll_statistics(struct pmd_internals *internals)
 
 	/* Globally only once a second */
 	if ((now_rtc - last_stat_rtc) < rte_tsc_freq) {
-		rte_spinlock_unlock(&hwlock);
+		rte_spinlock_unlock(&nthw_lock);
 		rte_spinlock_unlock(&p_nt_drv->stat_lck);
 		return 0;
 	}
@@ -1307,7 +1307,7 @@ static int poll_statistics(struct pmd_internals *internals)
 		}
 	}
 
-	rte_spinlock_unlock(&hwlock);
+	rte_spinlock_unlock(&nthw_lock);
 	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 
 	return 0;

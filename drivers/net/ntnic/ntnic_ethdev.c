@@ -95,7 +95,7 @@ static const struct rte_pci_id nthw_pci_id_map[] = {
 
 static const struct sg_ops_s *sg_ops;
 
-rte_spinlock_t hwlock = RTE_SPINLOCK_INITIALIZER;
+rte_spinlock_t nthw_lock = RTE_SPINLOCK_INITIALIZER;
 
 /*
  * Store and get adapter info
@@ -127,9 +127,9 @@ store_pdrv(struct drv_s *p_drv)
 			PCIIDENT_TO_FUNCNR(p_drv->ntdrv.pciident));
 	}
 
-	rte_spinlock_lock(&hwlock);
+	rte_spinlock_lock(&nthw_lock);
 	_g_p_drv[p_drv->adapter_no] = p_drv;
-	rte_spinlock_unlock(&hwlock);
+	rte_spinlock_unlock(&nthw_lock);
 }
 
 static void clear_pdrv(struct drv_s *p_drv)
@@ -137,9 +137,9 @@ static void clear_pdrv(struct drv_s *p_drv)
 	if (p_drv->adapter_no >= NUM_ADAPTER_MAX)
 		return;
 
-	rte_spinlock_lock(&hwlock);
+	rte_spinlock_lock(&nthw_lock);
 	_g_p_drv[p_drv->adapter_no] = NULL;
-	rte_spinlock_unlock(&hwlock);
+	rte_spinlock_unlock(&nthw_lock);
 }
 
 static struct drv_s *
@@ -147,7 +147,7 @@ get_pdrv_from_pci(struct rte_pci_addr addr)
 {
 	int i;
 	struct drv_s *p_drv = NULL;
-	rte_spinlock_lock(&hwlock);
+	rte_spinlock_lock(&nthw_lock);
 
 	for (i = 0; i < NUM_ADAPTER_MAX; i++) {
 		if (_g_p_drv[i]) {
@@ -159,7 +159,7 @@ get_pdrv_from_pci(struct rte_pci_addr addr)
 		}
 	}
 
-	rte_spinlock_unlock(&hwlock);
+	rte_spinlock_unlock(&nthw_lock);
 	return p_drv;
 }
 

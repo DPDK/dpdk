@@ -47,7 +47,7 @@
 #define RAW_ENCAP_DECAP_ELEMS_MAX 16
 
 extern uint64_t rte_tsc_freq;
-extern rte_spinlock_t hwlock;
+extern rte_spinlock_t nthw_lock;
 
 /*
  * Flow eth dev profile determines how the FPGA module resources are
