@@ -1725,7 +1725,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 		sw_mask[0] = 0x0fff;
 		sw_data[0] = implicit_vlan_vid & sw_mask[0];
 
-		km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1, DYN_FIRST_VLAN, 0);
+		nthw_km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1, DYN_FIRST_VLAN, 0);
 		set_key_def_sw(key_def, sw_counter, DYN_FIRST_VLAN, 0);
 		sw_counter += 1;
 
@@ -1874,7 +1874,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 					qw_mask[3] = ntohs(eth_mask->ether_type) << 16;
 
-					km_add_match_elem(&fd->km,
+					nthw_km_add_match_elem(&fd->km,
 						&qw_data[(size_t)(qw_counter * 4)],
 						&qw_mask[(size_t)(qw_counter * 4)], 4, DYN_L2, 0);
 					set_key_def_qw(key_def, qw_counter, DYN_L2, 0);
@@ -1897,7 +1897,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					sw_mask[0] = ntohs(eth_mask->ether_type) << 16;
 					sw_data[0] = ntohs(eth_spec->ether_type) << 16 & sw_mask[0];
 
-					km_add_match_elem(&fd->km, &sw_data[0],
+					nthw_km_add_match_elem(&fd->km, &sw_data[0],
 						&sw_mask[0], 1, DYN_L2, 12);
 					set_key_def_sw(key_def, sw_counter, DYN_L2, 12);
 					sw_counter += 1;
@@ -1944,7 +1944,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						ntohs(vlan_spec->eth_proto);
 					sw_data[0] &= sw_mask[0];
 
-					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+					nthw_km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
 						DYN_FIRST_VLAN, 2 + 4 * fd->vlans);
 					set_key_def_sw(key_def, sw_counter, DYN_FIRST_VLAN,
 						2 + 4 * fd->vlans);
@@ -1971,7 +1971,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					qw_data[2] &= qw_mask[2];
 					qw_data[3] &= qw_mask[3];
 
-					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+					nthw_km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
 						DYN_FIRST_VLAN, 2 + 4 * fd->vlans);
 					set_key_def_qw(key_def, qw_counter, DYN_FIRST_VLAN,
 						2 + 4 * fd->vlans);
@@ -2066,7 +2066,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					qw_data[2] = ntohl(ipv4_spec->hdr.src_addr) & qw_mask[2];
 					qw_data[3] = ntohl(ipv4_spec->hdr.dst_addr) & qw_mask[3];
 
-					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+					nthw_km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
 						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 4);
 					set_key_def_qw(key_def, qw_counter, any_count > 0
 						? DYN_TUN_L3 : DYN_L3, 4);
@@ -2094,7 +2094,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					sw_mask[0] = ntohl(ipv4_mask->hdr.src_addr);
 					sw_data[0] = ntohl(ipv4_spec->hdr.src_addr) & sw_mask[0];
 
-					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+					nthw_km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
 						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 12);
 					set_key_def_sw(key_def, sw_counter, any_count > 0
 						? DYN_TUN_L3 : DYN_L3, 12);
@@ -2115,7 +2115,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					sw_mask[0] = ntohl(ipv4_mask->hdr.dst_addr);
 					sw_data[0] = ntohl(ipv4_spec->hdr.dst_addr) & sw_mask[0];
 
-					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+					nthw_km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
 						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 16);
 					set_key_def_sw(key_def, sw_counter, any_count > 0
 						? DYN_TUN_L3 : DYN_L3, 16);
@@ -2137,7 +2137,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					sw_data[0] = ipv4_spec->hdr.next_proto_id
 						<< 16 & sw_mask[0];
 
-					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+					nthw_km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
 						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 8);
 					set_key_def_sw(key_def, sw_counter, any_count > 0
 						? DYN_TUN_L3 : DYN_L3, 8);
@@ -2208,7 +2208,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					qw_data[2] &= qw_mask[2];
 					qw_data[3] &= qw_mask[3];
 
-					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+					nthw_km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
 						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 8);
 					set_key_def_qw(key_def, qw_counter, any_count > 0
 						? DYN_TUN_L3 : DYN_L3, 8);
@@ -2244,7 +2244,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 					qw_data[2] &= qw_mask[2];
 					qw_data[3] &= qw_mask[3];
 
-					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+					nthw_km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
 						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 24);
 					set_key_def_qw(key_def, qw_counter, any_count > 0
 						? DYN_TUN_L3 : DYN_L3, 24);
@@ -2259,8 +2259,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						sw_mask[0] = ipv6_mask->hdr.proto << 8;
 						sw_data[0] = ipv6_spec->hdr.proto << 8 & sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
-							1, any_count > 0 ? DYN_TUN_L3 : DYN_L3, 4);
+						nthw_km_add_match_elem(&fd->km,
+							&sw_data[0], &sw_mask[0], 1,
+							any_count > 0 ? DYN_TUN_L3 : DYN_L3, 4);
 						set_key_def_sw(key_def, sw_counter, any_count > 0
 							? DYN_TUN_L3 : DYN_L3, 4);
 						sw_counter += 1;
@@ -2286,8 +2287,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
-							4, any_count > 0 ? DYN_TUN_L3 : DYN_L3, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&qw_data[0], &qw_mask[0], 4,
+							any_count > 0 ? DYN_TUN_L3 : DYN_L3, 0);
 						set_key_def_qw(key_def, qw_counter, any_count > 0
 							? DYN_TUN_L3 : DYN_L3, 0);
 						qw_counter += 1;
@@ -2349,8 +2351,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 							<< 16) | ntohs(udp_spec->hdr.dst_port)) &
 							sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
-							1, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&sw_data[0], &sw_mask[0], 1,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_sw(key_def, sw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						sw_counter += 1;
@@ -2378,8 +2381,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
-							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&qw_data[0], &qw_mask[0], 4,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_qw(key_def, qw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						qw_counter += 1;
@@ -2443,8 +2447,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 							<< 16) | ntohs(sctp_spec->hdr.dst_port)) &
 							sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
-							1, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&sw_data[0], &sw_mask[0], 1,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_sw(key_def, sw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						sw_counter += 1;
@@ -2472,8 +2477,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
-							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&qw_data[0], &qw_mask[0], 4,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_qw(key_def, qw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						qw_counter += 1;
@@ -2541,7 +2547,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 							icmp_spec->hdr.icmp_code << 16;
 						sw_data[0] &= sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0],
+						nthw_km_add_match_elem(&fd->km, &sw_data[0],
 							&sw_mask[0], 1, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_sw(key_def, sw_counter,
@@ -2571,8 +2577,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
-							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&qw_data[0], &qw_mask[0], 4,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_qw(key_def, qw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						qw_counter += 1;
@@ -2640,8 +2647,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 							icmp_spec->code << 16;
 						sw_data[0] &= sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
-							1, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&sw_data[0], &sw_mask[0], 1,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 
 						set_key_def_sw(key_def, sw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
@@ -2670,8 +2678,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
-							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&qw_data[0], &qw_mask[0], 4,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_qw(key_def, qw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						qw_counter += 1;
@@ -2743,8 +2752,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 							((ntohs(tcp_spec->hdr.src_port) << 16) |
 							ntohs(tcp_spec->hdr.dst_port)) & sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
-							1, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&sw_data[0], &sw_mask[0], 1,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_sw(key_def, sw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						sw_counter += 1;
@@ -2772,8 +2782,9 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
-							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						nthw_km_add_match_elem(&fd->km,
+							&qw_data[0], &qw_mask[0], 4,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
 						set_key_def_qw(key_def, qw_counter, any_count > 0
 							? DYN_TUN_L4 : DYN_L4, 0);
 						qw_counter += 1;
@@ -2832,7 +2843,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						sw_data[0] =
 							ntohl(gtp_spec->teid) & sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0],
+						nthw_km_add_match_elem(&fd->km, &sw_data[0],
 							&sw_mask[0], 1,
 							DYN_L4_PAYLOAD, 4);
 						set_key_def_sw(key_def, sw_counter,
@@ -2862,7 +2873,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0],
+						nthw_km_add_match_elem(&fd->km, &qw_data[0],
 							&qw_mask[0], 4,
 							DYN_L4_PAYLOAD, 4);
 						set_key_def_qw(key_def, qw_counter,
@@ -2916,7 +2927,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						sw_data[0] = ntohl(gtp_psc_spec->qfi) &
 							sw_mask[0];
 
-						km_add_match_elem(&fd->km, &sw_data[0],
+						nthw_km_add_match_elem(&fd->km, &sw_data[0],
 							&sw_mask[0], 1,
 							DYN_L4_PAYLOAD, 14);
 						set_key_def_sw(key_def, sw_counter,
@@ -2946,7 +2957,7 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 						qw_data[2] &= qw_mask[2];
 						qw_data[3] &= qw_mask[3];
 
-						km_add_match_elem(&fd->km, &qw_data[0],
+						nthw_km_add_match_elem(&fd->km, &qw_data[0],
 							&qw_mask[0], 4,
 							DYN_L4_PAYLOAD, 14);
 						set_key_def_qw(key_def, qw_counter,
@@ -3713,7 +3724,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		if (fd->km.num_ftype_elem) {
 			struct flow_handle *flow = dev->ndev->flow_base, *found_flow = NULL;
 
-			if (km_key_create(&fd->km, fh->port_id)) {
+			if (nthw_km_key_create(&fd->km, fh->port_id)) {
 				NT_LOG(ERR, FILTER, "KM creation failed");
 				nthw_flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
 				goto error_out;
@@ -3725,7 +3736,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			while (flow) {
 				if (flow->type == FLOW_HANDLE_TYPE_FLOW &&
 					flow->fd->km.flow_type) {
-					int res = km_key_compare(&fd->km, &flow->fd->km);
+					int res = nthw_km_key_compare(&fd->km, &flow->fd->km);
 
 					if (res < 0) {
 						/* Flow rcp and match data is identical */
@@ -3743,7 +3754,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 				flow = flow->next;
 			}
 
-			km_attach_ndev_resource_management(&fd->km, &dev->ndev->km_res_handle);
+			nthw_km_attach_ndev_resource_management(&fd->km, &dev->ndev->km_res_handle);
 
 			if (found_flow != NULL) {
 				/* Reuse existing KM RCP */
@@ -3778,7 +3789,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 					goto error_out;
 				}
 
-				km_rcp_set(&fd->km, rcp);
+				nthw_km_rcp_set(&fd->km, rcp);
 				km_rcp_data.rcp = (uint32_t)rcp;
 			}
 		}
@@ -3832,7 +3843,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			nthw_mod_km_rcp_flush(&dev->ndev->be, (int)km_rcp_data.rcp, 1);
 
-			km_write_data_match_entry(&fd->km, 0);
+			nthw_km_write_data_match_entry(&fd->km, 0);
 		}
 
 		/* Setup Match Set */
@@ -4298,7 +4309,7 @@ int nthw_flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 		NT_LOG(DBG, FILTER, "removing flow :%p", fh);
 
 		if (fh->fd->km.num_ftype_elem) {
-			km_clear_data_match_entry(&fh->fd->km);
+			nthw_km_clear_data_match_entry(&fh->fd->km);
 
 			const struct hw_db_inline_km_rcp_data *other_km_rcp_data =
 				nthw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,

@@ -478,8 +478,8 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 	profile_inline_ops->nthw_done_flow_mgmnt_of_ndev_profile_inline(ndev);
 
-	km_free_ndev_resource_management(&ndev->km_res_handle);
-	kcc_free_ndev_resource_management(&ndev->kcc_res_handle);
+	nthw_km_free_ndev_resource_management(&ndev->km_res_handle);
+	nthw_kcc_free_ndev_resource_mgmnt(&ndev->kcc_res_handle);
 
 	ndev->flow_unique_id_counter = 0;
 
