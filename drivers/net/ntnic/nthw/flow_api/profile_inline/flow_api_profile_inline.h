@@ -123,6 +123,9 @@ int nthw_flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t qu
 	const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
 	void *user_data, struct rte_flow_error *error);
 
+int nthw_flow_pull_profile_inline(struct flow_eth_dev *dev, uint16_t caller_id, uint32_t queue_id,
+	struct rte_flow_op_result res[], uint16_t n_res, struct rte_flow_error *error);
+
 int nthw_flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	struct rte_flow_port_info *port_info,
 	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error);

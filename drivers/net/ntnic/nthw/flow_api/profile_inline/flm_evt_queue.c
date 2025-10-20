@@ -289,3 +289,17 @@ int nthw_flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *o
 
 	return -ENOENT;
 }
+
+int nthw_flm_sta_queue_get(uint8_t port, bool remote, struct flm_status_event_s *obj)
+{
+	struct rte_ring **stat_q = remote ? stat_q_remote : stat_q_local;
+
+	if (port >= (remote ? MAX_STAT_RMT_QUEUES : MAX_STAT_LCL_QUEUES))
+		return -1;
+
+	if (stat_q[port] == NULL)
+		if (flm_evt_queue_create(port, remote ? FLM_STAT_REMOTE : FLM_STAT_LOCAL) == NULL)
+			return -1;
+
+	return rte_ring_sc_dequeue_elem(stat_q[port], obj, FLM_STAT_ELEM_SIZE);
+}

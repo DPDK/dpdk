@@ -1173,6 +1173,34 @@ static int eth_flow_async_destroy(struct rte_eth_dev *dev, uint32_t queue_id,
 	return res;
 }
 
+static int
+eth_flow_pull(struct rte_eth_dev *eth_dev,
+				uint32_t queue_id,
+				struct rte_flow_op_result op_result[],
+				uint16_t n_res,
+				struct rte_flow_error *error)
+
+{
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
+	if (flow_filter_ops == NULL) {
+		NT_LOG(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = eth_dev->data->dev_private;
+
+	error->type = RTE_FLOW_ERROR_TYPE_NONE;
+	error->message = "none";
+
+	/* Main application caller_id is port_id shifted above VDPA ports */
+	uint16_t caller_id = get_caller_id(eth_dev->data->port_id);
+
+	int res = flow_filter_ops->flow_pull(internals->flw_dev, caller_id, queue_id,
+				op_result, n_res, error);
+
+	return res;
+}
+
 static int poll_statistics(struct pmd_internals *internals)
 {
 	int flow;
@@ -1365,6 +1393,7 @@ void nthw_dev_flow_init(void)
 static struct rte_flow_fp_ops async_dev_flow_ops = {
 	.async_create = eth_flow_async_create,
 	.async_destroy = eth_flow_async_destroy,
+	.pull = eth_flow_pull,
 };
 
 void nthw_dev_fp_flow_init(void)

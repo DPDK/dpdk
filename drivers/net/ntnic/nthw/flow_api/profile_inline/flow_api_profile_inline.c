@@ -5400,6 +5400,38 @@ int nthw_flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t qu
 	return 0;
 }
 
+int nthw_flow_pull_profile_inline(struct flow_eth_dev *dev,
+							uint16_t caller_id,
+							uint32_t queue_id,
+							struct rte_flow_op_result res[],
+							uint16_t n_res,
+							struct rte_flow_error *error)
+{
+	(void)dev;
+	(void)queue_id;
+	(void)error;
+	struct flm_status_event_s obj;
+	struct flow_handle *fh;
+	int count = 0;
+	uint8_t port = 0;
+	bool remote_caller = is_remote_caller(caller_id, &port);
+
+	for (int i = 0; i < n_res; i++) {
+		if (nthw_flm_sta_queue_get(port, remote_caller, &obj) != 0)
+			break;
+
+		fh = obj.flow;
+		if (fh->type != FLOW_HANDLE_TYPE_FLM || !fh->flm_async)
+			continue;
+
+		res[i].status = obj.learn_done ? RTE_FLOW_OP_SUCCESS : RTE_FLOW_OP_ERROR;
+		res[i].user_data = fh->user_data;
+		count++;
+	}
+
+	return count;
+}
+
 static const struct profile_inline_ops ops = {
 	/*
 	 * Management
@@ -5438,6 +5470,7 @@ static const struct profile_inline_ops ops = {
 		nthw_flow_template_table_destroy_profile_inline,
 	.nthw_flow_async_create_profile_inline = nthw_flow_async_create_profile_inline,
 	.nthw_flow_async_destroy_profile_inline = nthw_flow_async_destroy_profile_inline,
+	.nthw_flow_pull_profile_inline = nthw_flow_pull_profile_inline,
 	/*
 	 * NT Flow FLM Meter API
 	 */

@@ -1214,6 +1214,20 @@ static int flow_async_destroy(struct flow_eth_dev *dev, uint32_t queue_id,
 	return profile_inline_ops->nthw_flow_async_destroy_profile_inline(dev, queue_id,
 		op_attr, flow, user_data, error);
 }
+
+static int flow_pull(struct flow_eth_dev *dev, uint16_t caller_id, uint32_t queue_id,
+	struct rte_flow_op_result res[], uint16_t n_res, struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return profile_inline_ops->nthw_flow_pull_profile_inline(dev, caller_id,
+		queue_id, res, n_res, error);
+}
+
 int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
 	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
@@ -1274,6 +1288,7 @@ static const struct flow_filter_ops ops = {
 	.flow_template_table_destroy = flow_template_table_destroy,
 	.flow_async_create = flow_async_create,
 	.flow_async_destroy = flow_async_destroy,
+	.flow_pull = flow_pull,
 
 	/*
 	 * Other
