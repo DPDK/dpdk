@@ -11,11 +11,8 @@
 #include <rte_dev.h>
 
 #define MAX_WORKER_NB 128
-#define MAX_OUTPUT_STR_LEN 512
 
 #define MAX_DMA_NB 128
-
-extern char output_str[MAX_WORKER_NB + 1][MAX_OUTPUT_STR_LEN];
 
 typedef enum {
 	OP_NONE = 0,
@@ -80,6 +77,7 @@ struct global_configure {
 	int   eal_argc;
 };
 
+void output_csv(const char *fmt, ...);
 int mem_copy_benchmark(struct test_configure *cfg);
 
 #endif /* MAIN_H */

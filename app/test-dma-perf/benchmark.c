@@ -120,11 +120,11 @@ output_result(struct test_configure *cfg, struct lcore_params *para,
 	printf("Average Bandwidth: %.3lf Gbps, MOps: %.3lf\n", bandwidth, mops);
 
 	if (cfg->is_dma)
-		snprintf(output_str[lcore_id], MAX_OUTPUT_STR_LEN, CSV_LINE_DMA_FMT,
+		output_csv(CSV_LINE_DMA_FMT,
 			scenario_id, lcore_id, dma_name, ring_size, kick_batch, buf_size,
 			nr_buf, memory, ave_cycle, bandwidth, mops);
 	else
-		snprintf(output_str[lcore_id], MAX_OUTPUT_STR_LEN, CSV_LINE_CPU_FMT,
+		output_csv(CSV_LINE_CPU_FMT,
 			scenario_id, lcore_id, buf_size,
 			nr_buf, memory, ave_cycle, bandwidth, mops);
 }
@@ -982,8 +982,7 @@ mem_copy_benchmark(struct test_configure *cfg)
 	}
 	printf("\nAverage Cycles/op per worker: %.1lf, Total Bandwidth: %.3lf Gbps, Total MOps: %.3lf\n",
 		(avg_cycles_total * (float) 1.0) / nb_workers, bandwidth_total, mops_total);
-	snprintf(output_str[MAX_WORKER_NB], MAX_OUTPUT_STR_LEN, CSV_TOTAL_LINE_FMT,
-			cfg->scenario_id, nr_buf, memory * nb_workers,
+	output_csv(CSV_TOTAL_LINE_FMT, cfg->scenario_id, nr_buf, memory * nb_workers,
 			(avg_cycles_total * (float) 1.0) / nb_workers, bandwidth_total, mops_total);
 
 out:

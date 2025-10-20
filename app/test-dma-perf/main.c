@@ -44,60 +44,52 @@ static struct global_configure global_cfg;
 static char *config_path;
 static char *result_path;
 
-char output_str[MAX_WORKER_NB + 1][MAX_OUTPUT_STR_LEN];
-
-static FILE *fd;
-
-static void
-output_csv(bool need_blankline)
+__rte_format_printf(1, 2)
+void
+output_csv(const char *fmt, ...)
 {
-	uint32_t i;
+#define MAX_OUTPUT_STR_LEN 512
+	char str[MAX_OUTPUT_STR_LEN] = {0};
+	va_list ap;
+	FILE *fd;
 
-	if (need_blankline) {
-		fprintf(fd, ",,,,,,,,\n");
-		fprintf(fd, ",,,,,,,,\n");
+	fd = fopen(result_path, "a");
+	if (fd == NULL) {
+		printf("Open output CSV file error.\n");
+		return;
 	}
 
-	for (i = 0; i < RTE_DIM(output_str); i++) {
-		if (output_str[i][0]) {
-			fprintf(fd, "%s", output_str[i]);
-			output_str[i][0] = '\0';
-		}
-	}
+	va_start(ap, fmt);
+	vsnprintf(str, MAX_OUTPUT_STR_LEN, fmt, ap);
+	va_end(ap);
+
+	fprintf(fd, "%s", str);
 
 	fflush(fd);
+	fclose(fd);
+}
+
+static void
+output_blanklines(int lines)
+{
+	int i;
+	for (i = 0; i < lines; i++)
+		output_csv("%s\n", ",,,,,,,,");
 }
 
 static void
 output_env_info(void)
 {
-	snprintf(output_str[0], MAX_OUTPUT_STR_LEN, "Test Environment:\n");
-	snprintf(output_str[1], MAX_OUTPUT_STR_LEN, "CPU frequency,%.3lf Ghz",
-			rte_get_timer_hz() / 1000000000.0);
-
-	output_csv(true);
+	output_blanklines(2);
+	output_csv("Test Environment:\n"
+		   "CPU frequency,%.3lf Ghz\n", rte_get_timer_hz() / 1000000000.0);
+	output_blanklines(1);
 }
 
 static void
 output_header(uint32_t case_id, struct test_configure *case_cfg)
 {
-	snprintf(output_str[0], MAX_OUTPUT_STR_LEN,
-			CSV_HDR_FMT, case_id, case_cfg->test_type_str);
-
-	output_csv(true);
-}
-
-static int
-open_output_csv(const char *rst_path_ptr)
-{
-	fd = fopen(rst_path_ptr, "a");
-	if (!fd) {
-		printf("Open output CSV file error.\n");
-		return 1;
-	}
-	output_csv(true);
-	fclose(fd);
-	return 0;
+	output_csv(CSV_HDR_FMT, case_id, case_cfg->test_type_str);
 }
 
 static int
@@ -121,7 +113,6 @@ run_test_case(struct test_configure *case_cfg)
 static void
 run_test(uint32_t case_id, struct test_configure *case_cfg)
 {
-	uint32_t i;
 	uint32_t nb_lcores = rte_lcore_count();
 	struct test_configure_entry *mem_size = &case_cfg->mem_size;
 	struct test_configure_entry *buf_size = &case_cfg->buf_size;
@@ -129,9 +120,6 @@ run_test(uint32_t case_id, struct test_configure *case_cfg)
 	struct test_configure_entry *kick_batch = &case_cfg->kick_batch;
 	struct test_configure_entry dummy = { 0 };
 	struct test_configure_entry *var_entry = &dummy;
-
-	for (i = 0; i < RTE_DIM(output_str); i++)
-		memset(output_str[i], 0, MAX_OUTPUT_STR_LEN);
 
 	if (nb_lcores <= case_cfg->num_worker) {
 		printf("Case %u: Not enough lcores.\n", case_id);
@@ -162,8 +150,6 @@ run_test(uint32_t case_id, struct test_configure *case_cfg)
 
 		if (run_test_case(case_cfg) < 0)
 			printf("\nTest fails! skipping this scenario.\n");
-		else
-			output_csv(false);
 
 		if (var_entry->op == OP_ADD)
 			var_entry->cur += var_entry->incr;
@@ -556,6 +542,7 @@ parse_args(int argc, char **argv)
 		},
 	};
 	char rst_path[PATH_MAX + 16] = {0};
+	FILE *fd;
 	int ret;
 
 	ret = rte_argparse_parse(&obj, argc, argv);
@@ -608,18 +595,15 @@ main(int argc, char *argv[])
 	for (i = 0; i < case_nb; i++) {
 		if (test_cases[i].is_skip) {
 			printf("Test case %d configured to be skipped.\n\n", i + 1);
-			snprintf(output_str[0], MAX_OUTPUT_STR_LEN, "Skip the test-case %d\n",
-				 i + 1);
-			if (open_output_csv(result_path))
-				return 0;
+			output_blanklines(2);
+			output_csv("Skip the test-case %d\n", i + 1);
 			continue;
 		}
 
 		if (!test_cases[i].is_valid) {
 			printf("Invalid test case %d.\n\n", i + 1);
-			snprintf(output_str[0], MAX_OUTPUT_STR_LEN, "Invalid case %d\n", i + 1);
-			if (open_output_csv(result_path))
-				return 0;
+			output_blanklines(2);
+			output_csv("Invalid case %d\n", i + 1);
 			continue;
 		}
 
@@ -640,20 +624,12 @@ main(int argc, char *argv[])
 				rte_exit(EXIT_FAILURE,
 					"There should be at least 2 worker lcores.\n");
 
-			fd = fopen(result_path, "a");
-			if (!fd) {
-				printf("Open output CSV file error.\n");
-				return 0;
-			}
-
 			output_env_info();
 
 			run_test(i + 1, &test_cases[i]);
 
 			/* clean up the EAL */
 			rte_eal_cleanup();
-
-			fclose(fd);
 
 			printf("\nCase %u completed.\n\n", i + 1);
 
