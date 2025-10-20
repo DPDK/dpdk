@@ -233,8 +233,8 @@ struct nthw_dbs_s {
 typedef struct nthw_dbs_s nthw_dbs_t;
 
 nthw_dbs_t *nthw_dbs_new(void);
-int dbs_init(nthw_dbs_t *p, nthw_fpga_t *p_fpga, int n_instance);
-void dbs_reset(nthw_dbs_t *p);
+int nthw_dbs_init(nthw_dbs_t *p, nthw_fpga_t *p_fpga, int n_instance);
+void nthw_dbs_reset(nthw_dbs_t *p);
 
 int nthw_set_rx_control(nthw_dbs_t *p,
 	uint32_t last_queue,
@@ -253,30 +253,30 @@ int nthw_set_tx_control(nthw_dbs_t *p,
 int nthw_set_rx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
 	uint32_t queue);
 int nthw_get_rx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
-int set_tx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
+int nthw_set_tx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
 	uint32_t queue);
 int nthw_get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
 int nthw_set_rx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue);
 int nthw_get_rx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy);
 int nthw_set_tx_idle(nthw_dbs_t *p, uint32_t idle, uint32_t queue);
 int nthw_get_tx_idle(nthw_dbs_t *p, uint32_t *idle, uint32_t *queue, uint32_t *busy);
-int set_rx_am_data(nthw_dbs_t *p,
+int nthw_set_rx_am_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
 	uint32_t enable,
 	uint32_t host_id,
 	uint32_t packed,
 	uint32_t int_enable);
-int set_rx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable);
-int set_tx_am_data(nthw_dbs_t *p,
+int nthw_set_rx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable);
+int nthw_set_tx_am_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
 	uint32_t enable,
 	uint32_t host_id,
 	uint32_t packed,
 	uint32_t int_enable);
-int set_tx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable);
-int set_rx_uw_data(nthw_dbs_t *p,
+int nthw_set_tx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable);
+int nthw_set_rx_uw_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
 	uint32_t host_id,
@@ -285,7 +285,7 @@ int set_rx_uw_data(nthw_dbs_t *p,
 	uint32_t int_enable,
 	uint32_t vec,
 	uint32_t istk);
-int set_tx_uw_data(nthw_dbs_t *p,
+int nthw_set_tx_uw_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
 	uint32_t host_id,
@@ -295,14 +295,14 @@ int set_tx_uw_data(nthw_dbs_t *p,
 	uint32_t vec,
 	uint32_t istk,
 	uint32_t in_order);
-int set_rx_dr_data(nthw_dbs_t *p,
+int nthw_set_rx_dr_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
 	uint32_t host_id,
 	uint32_t queue_size,
 	uint32_t header,
 	uint32_t packed);
-int set_tx_dr_data(nthw_dbs_t *p,
+int nthw_set_tx_dr_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
 	uint32_t host_id,
