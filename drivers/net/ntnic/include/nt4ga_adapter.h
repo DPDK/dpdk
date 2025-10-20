@@ -47,8 +47,5 @@ typedef struct adapter_info_s {
 	int n_tx_host_buffers;
 } adapter_info_t;
 
-extern rte_thread_t monitor_tasks[NUM_ADAPTER_MAX];
-extern volatile int monitor_task_is_running[NUM_ADAPTER_MAX];
-
 
 #endif	/* _NT4GA_ADAPTER_H_ */
