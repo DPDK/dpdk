@@ -73,6 +73,12 @@ static void nthw_fpga_rst9569_set_default_rst_values(struct nthw_fpga_rst_nt400d
 	nthw_field_set_val_flush32(p->p_fld_rst_phy_ftile, 1);
 }
 
+static void nthw_fpga_rst9569_ddr4_rst(struct nthw_fpga_rst_nt400dxx *const p, uint32_t val)
+{
+	nthw_field_update_register(p->p_fld_rst_ddr4);
+	nthw_field_set_val_flush32(p->p_fld_rst_ddr4, val);
+}
+
 static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
@@ -84,6 +90,15 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 	/* (0) Reset all domains / modules except peripherals: */
 	NT_LOG_DBGX(DBG, NTHW, "%s: RST defaults", p_adapter_id_str);
 	nthw_fpga_rst9569_set_default_rst_values(p_rst);
+
+	/*
+	 * Wait a while before waiting for deasserting ddr4 reset
+	 */
+	nthw_os_wait_usec(2000);
+
+	/* (1) De-assert DDR4 reset: */
+	NT_LOG_DBGX(DBG, NTHW, "%s: De-asserting DDR4 reset", p_adapter_id_str);
+	nthw_fpga_rst9569_ddr4_rst(p_rst, 0);
 
 	return 0;
 }
