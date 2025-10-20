@@ -44,6 +44,8 @@ enum rte_ntnic_service_tag {
 	/* List of service tags 8< */
 	RTE_NTNIC_SERVICE_FLM_UPDATE = 0,
 	RTE_NTNIC_SERVICE_STAT = 1,
+	RTE_NTNIC_SERVICE_PORT_0_EVENT = 2,
+	RTE_NTNIC_SERVICE_PORT_1_EVENT = 3,
 	/* >8 End of service tags */
 	RTE_NTNIC_SERVICE_MAX
 };

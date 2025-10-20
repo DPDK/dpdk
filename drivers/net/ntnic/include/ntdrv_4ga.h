@@ -16,7 +16,6 @@ typedef struct ntdrv_4ga_s {
 
 	volatile bool b_shutdown;
 	rte_spinlock_t stat_lck;
-	rte_thread_t port_event_thread;
 } ntdrv_4ga_t;
 
 #endif	/* __NTDRV_4GA_H__ */
