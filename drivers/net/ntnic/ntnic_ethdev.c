@@ -73,11 +73,13 @@ uint64_t rte_tsc_freq;
 #define ETH_DEV_NTNIC_HELP_ARG "help"
 #define ETH_DEV_NTHW_RXQUEUES_ARG "rxqs"
 #define ETH_DEV_NTHW_TXQUEUES_ARG "txqs"
+#define ETH_DEV_NTHW_EXCEPTION_PATH_ARG "exception_path"
 
 static const char *const valid_arguments[] = {
 	ETH_DEV_NTNIC_HELP_ARG,
 	ETH_DEV_NTHW_RXQUEUES_ARG,
 	ETH_DEV_NTHW_TXQUEUES_ARG,
+	ETH_DEV_NTHW_EXCEPTION_PATH_ARG,
 	NULL,
 };
 
@@ -2260,6 +2262,25 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 			NT_LOG_DBGX(DBG, NTNIC, "devargs: %s=%u",
 				ETH_DEV_NTHW_TXQUEUES_ARG, nb_tx_queues);
 		}
+
+		kvargs_count = rte_kvargs_count(kvlist, ETH_DEV_NTHW_EXCEPTION_PATH_ARG);
+
+		if (kvargs_count != 0) {
+			assert(kvargs_count == 1);
+			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_EXCEPTION_PATH_ARG,
+					&nthw_string_to_u32, &exception_path);
+
+			if (res < 0) {
+				NT_LOG_DBGX(ERR, NTNIC,
+					"problem with command line arguments: res=%d", res);
+				return -1;
+			}
+
+			NT_LOG_DBGX(DBG, NTNIC, "devargs: %s=%u",
+				ETH_DEV_NTHW_EXCEPTION_PATH_ARG, exception_path);
+		}
+
+		rte_kvargs_free(kvlist);
 	}
 
 

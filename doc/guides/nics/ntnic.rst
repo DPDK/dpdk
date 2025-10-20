@@ -136,6 +136,16 @@ Multiple arguments for the same device are separated by ‘,’ comma.
 
    By default, the value is set to 1.
 
+``exception_path`` parameter [int]
+
+   Enable exception path for unmatched packets to go through queue 0.
+
+   To enable exception_path::
+
+      -a <domain>:<bus>:00.0,exception_path=1
+
+   By default, the value is set to 0.
+
 
 Logging and Debugging
 ---------------------
