@@ -43,6 +43,7 @@ enum rte_ntnic_event_type {
 enum rte_ntnic_service_tag {
 	/* List of service tags 8< */
 	RTE_NTNIC_SERVICE_FLM_UPDATE = 0,
+	RTE_NTNIC_SERVICE_STAT = 1,
 	/* >8 End of service tags */
 	RTE_NTNIC_SERVICE_MAX
 };
