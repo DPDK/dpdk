@@ -1213,7 +1213,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	if (!p_nt4ga_stat || n_intf_no < 0 || n_intf_no >= NUM_ADAPTER_PORTS_MAX)
 		return -1;
 
-	RTE_ASSERT(rte_tsc_freq > 0);
+	RTE_ASSERT(nthw_tsc_freq > 0);
 
 	rte_spinlock_lock(&nthw_lock);
 
@@ -1223,7 +1223,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	 * Check per port max once a second
 	 * if more than a second since last stat read, do a new one
 	 */
-	if ((now_rtc - internals->last_stat_rtc) < rte_tsc_freq) {
+	if ((now_rtc - internals->last_stat_rtc) < nthw_tsc_freq) {
 		rte_spinlock_unlock(&nthw_lock);
 		return 0;
 	}
@@ -1269,7 +1269,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	}
 
 	/* Globally only once a second */
-	if ((now_rtc - last_stat_rtc) < rte_tsc_freq) {
+	if ((now_rtc - last_stat_rtc) < nthw_tsc_freq) {
 		rte_spinlock_unlock(&nthw_lock);
 		rte_spinlock_unlock(&p_nt_drv->stat_lck);
 		return 0;

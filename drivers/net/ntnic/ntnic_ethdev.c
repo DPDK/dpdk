@@ -67,7 +67,7 @@
 
 #define MTUINITVAL 1500
 
-uint64_t rte_tsc_freq;
+uint64_t nthw_tsc_freq;
 
 
 #define ETH_DEV_NTNIC_HELP_ARG "help"
@@ -2723,7 +2723,7 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 */
 	uint64_t now_rtc = rte_get_tsc_cycles();
 	nthw_os_wait_usec(10 * 1000);
-	rte_tsc_freq = 100 * (rte_get_tsc_cycles() - now_rtc);
+	nthw_tsc_freq = 100 * (rte_get_tsc_cycles() - now_rtc);
 
 	NT_LOG_DBGX(DBG, NTNIC, "leave: ret=%d", ret);
 	return ret;

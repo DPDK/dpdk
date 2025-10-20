@@ -46,7 +46,7 @@
 
 #define RAW_ENCAP_DECAP_ELEMS_MAX 16
 
-extern uint64_t rte_tsc_freq;
+extern uint64_t nthw_tsc_freq;
 extern rte_spinlock_t nthw_lock;
 
 /*
