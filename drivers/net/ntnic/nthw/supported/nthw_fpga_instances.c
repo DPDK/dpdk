@@ -6,6 +6,7 @@
 
 #include "nthw_fpga_instances.h"
 nthw_fpga_prod_init_s *nthw_fpga_instances[] = {
-	 &nthw_fpga_9563_055_049_0000,
+	&nthw_fpga_9563_055_049_0000,
+	&nthw_fpga_9569_055_049_0000,
 	&nthw_fpga_9574_055_049_0000,
 	NULL  };
