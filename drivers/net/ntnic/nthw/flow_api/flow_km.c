@@ -479,7 +479,7 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 	int sw = 0;
 	int swx = 0;
 
-	hw_mod_km_rcp_set(km->be, HW_KM_RCP_PRESET_ALL, index, 0, 0);
+	nthw_mod_km_rcp_set(km->be, HW_KM_RCP_PRESET_ALL, index, 0, 0);
 
 	/* set extractor words, offs, contrib */
 	for (int i = 0; i < km->num_ftype_elem; i++) {
@@ -490,24 +490,24 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 					/* SWX */
 					if (km->match_map[i]->extr_start_offs_id == SB_VNI) {
 						NT_LOG(DBG, FILTER, "Set KM SWX sel A - VNI");
-						hw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_CCH, index,
-							0, 1);
-						hw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_SEL_A,
+						nthw_mod_km_rcp_set(km->be,
+							HW_KM_RCP_SWX_CCH, index, 0, 1);
+						nthw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_SEL_A,
 							index, 0, SWX_SEL_ALL32);
 
 					} else if (km->match_map[i]->extr_start_offs_id ==
 						SB_MAC_PORT) {
 						NT_LOG(DBG, FILTER,
 							"Set KM SWX sel A - PTC + MAC");
-						hw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_SEL_A,
+						nthw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_SEL_A,
 							index, 0, SWX_SEL_ALL32);
 
 					} else if (km->match_map[i]->extr_start_offs_id ==
 						SB_KCC_ID) {
 						NT_LOG(DBG, FILTER, "Set KM SWX sel A - KCC ID");
-						hw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_CCH, index,
-							0, 1);
-						hw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_SEL_A,
+						nthw_mod_km_rcp_set(km->be,
+							HW_KM_RCP_SWX_CCH, index, 0, 1);
+						nthw_mod_km_rcp_set(km->be, HW_KM_RCP_SWX_SEL_A,
 							index, 0, SWX_SEL_ALL32);
 
 					} else {
@@ -523,11 +523,11 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 			} else {
 				if (sw == 0) {
 					/* DW8 */
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_DW8_DYN, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_DW8_DYN, index, 0,
 						km->match_map[i]->extr_start_offs_id);
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_DW8_OFS, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_DW8_OFS, index, 0,
 						km->match_map[i]->rel_offs);
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_DW8_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_DW8_SEL_A, index, 0,
 						DW8_SEL_FIRST32);
 					NT_LOG(DBG, FILTER,
 						"Set KM DW8 sel A: dyn: %i, offs: %i",
@@ -536,11 +536,11 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 
 				} else if (sw == 1) {
 					/* DW10 */
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_DW10_DYN, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_DW10_DYN, index, 0,
 						km->match_map[i]->extr_start_offs_id);
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_DW10_OFS, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_DW10_OFS, index, 0,
 						km->match_map[i]->rel_offs);
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_DW10_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_DW10_SEL_A, index, 0,
 						DW10_SEL_FIRST32);
 					NT_LOG(DBG, FILTER,
 						"Set KM DW10 sel A: dyn: %i, offs: %i",
@@ -558,24 +558,24 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 
 		case KM_USE_EXTRACTOR_QWORD:
 			if (qw == 0) {
-				hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_DYN, index, 0,
+				nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_DYN, index, 0,
 					km->match_map[i]->extr_start_offs_id);
-				hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_OFS, index, 0,
+				nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_OFS, index, 0,
 					km->match_map[i]->rel_offs);
 
 				switch (km->match_map[i]->word_len) {
 				case 1:
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_SEL_A, index, 0,
 						QW0_SEL_FIRST32);
 					break;
 
 				case 2:
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_SEL_A, index, 0,
 						QW0_SEL_FIRST64);
 					break;
 
 				case 4:
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW0_SEL_A, index, 0,
 						QW0_SEL_ALL128);
 					break;
 
@@ -589,24 +589,24 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 					km->match_map[i]->rel_offs, km->match_map[i]->word_len);
 
 			} else if (qw == 1) {
-				hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_DYN, index, 0,
+				nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_DYN, index, 0,
 					km->match_map[i]->extr_start_offs_id);
-				hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_OFS, index, 0,
+				nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_OFS, index, 0,
 					km->match_map[i]->rel_offs);
 
 				switch (km->match_map[i]->word_len) {
 				case 1:
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_SEL_A, index, 0,
 						QW4_SEL_FIRST32);
 					break;
 
 				case 2:
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_SEL_A, index, 0,
 						QW4_SEL_FIRST64);
 					break;
 
 				case 4:
-					hw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_SEL_A, index, 0,
+					nthw_mod_km_rcp_set(km->be, HW_KM_RCP_QW4_SEL_A, index, 0,
 						QW4_SEL_ALL128);
 					break;
 
@@ -633,7 +633,7 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 
 	/* set mask A */
 	for (int i = 0; i < km->key_word_size; i++) {
-		hw_mod_km_rcp_set(km->be, HW_KM_RCP_MASK_A, index,
+		nthw_mod_km_rcp_set(km->be, HW_KM_RCP_MASK_A, index,
 			(km->be->km.nb_km_rcp_mask_a_word_size - 1) - i,
 			km->entry_mask[i]);
 		NT_LOG(DBG, FILTER, "Set KM mask A: %08x", km->entry_mask[i]);
@@ -642,24 +642,24 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 	if (km->target == KM_CAM) {
 		/* set info - Color */
 		if (km->info_set) {
-			hw_mod_km_rcp_set(km->be, HW_KM_RCP_INFO_A, index, 0, 1);
+			nthw_mod_km_rcp_set(km->be, HW_KM_RCP_INFO_A, index, 0, 1);
 			NT_LOG(DBG, FILTER, "Set KM info A");
 		}
 
 		/* set key length A */
-		hw_mod_km_rcp_set(km->be, HW_KM_RCP_EL_A, index, 0,
+		nthw_mod_km_rcp_set(km->be, HW_KM_RCP_EL_A, index, 0,
 			km->key_word_size + !!km->info_set - 1);	/* select id is -1 */
 		/* set Flow Type for Key A */
 		NT_LOG(DBG, FILTER, "Set KM EL A: %i", km->key_word_size + !!km->info_set - 1);
 
-		hw_mod_km_rcp_set(km->be, HW_KM_RCP_FTM_A, index, 0, 1 << km->flow_type);
+		nthw_mod_km_rcp_set(km->be, HW_KM_RCP_FTM_A, index, 0, 1 << km->flow_type);
 
 		NT_LOG(DBG, FILTER, "Set KM FTM A - ft: %i", km->flow_type);
 
 		/* Set Paired - only on the CAM part though... TODO split CAM and TCAM */
 		if ((uint32_t)(km->key_word_size + !!km->info_set) >
 			km->be->km.nb_cam_record_words) {
-			hw_mod_km_rcp_set(km->be, HW_KM_RCP_PAIRED, index, 0, 1);
+			nthw_mod_km_rcp_set(km->be, HW_KM_RCP_PAIRED, index, 0, 1);
 			NT_LOG(DBG, FILTER, "Set KM CAM Paired");
 			km->cam_paired = 1;
 		}
@@ -682,9 +682,9 @@ int km_rcp_set(struct km_flow_def_s *km, int index)
 		}
 
 		/* Set BANK_A */
-		hw_mod_km_rcp_set(km->be, HW_KM_RCP_BANK_A, index, 0, bank_bm);
+		nthw_mod_km_rcp_set(km->be, HW_KM_RCP_BANK_A, index, 0, bank_bm);
 		/* Set Kl_A */
-		hw_mod_km_rcp_set(km->be, HW_KM_RCP_KL_A, index, 0, km->key_word_size - 1);
+		nthw_mod_km_rcp_set(km->be, HW_KM_RCP_KL_A, index, 0, km->key_word_size - 1);
 
 	} else {
 		return -1;
@@ -699,10 +699,10 @@ static int cam_populate(struct km_flow_def_s *km, int bank)
 	int cnt = km->key_word_size + !!km->info_set;
 
 	for (uint32_t i = 0; i < km->be->km.nb_cam_record_words && cnt; i++, cnt--) {
-		res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank, km->record_indexes[bank],
-			km->entry_word[i]);
-		res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank, km->record_indexes[bank],
-			km->flow_type);
+		res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank,
+				km->record_indexes[bank], km->entry_word[i]);
+		res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank,
+				km->record_indexes[bank], km->flow_type);
 	}
 
 	km->cam_dist[CAM_KM_DIST_IDX(bank)].km_owner = km;
@@ -711,17 +711,18 @@ static int cam_populate(struct km_flow_def_s *km, int bank)
 		RTE_ASSERT(km->cam_paired);
 
 		for (uint32_t i = 0; i < km->be->km.nb_cam_record_words && cnt; i++, cnt--) {
-			res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank,
+			res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank,
 				km->record_indexes[bank] + 1,
 				km->entry_word[km->be->km.nb_cam_record_words + i]);
-			res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank,
+			res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank,
 				km->record_indexes[bank] + 1, km->flow_type);
 		}
 
 		km->cam_dist[CAM_KM_DIST_IDX(bank) + 1].km_owner = km;
 	}
 
-	res |= hw_mod_km_cam_flush(km->be, bank, km->record_indexes[bank], km->cam_paired ? 2 : 1);
+	res |= nthw_mod_km_cam_flush(km->be, bank, km->record_indexes[bank],
+			km->cam_paired ? 2 : 1);
 
 	return res;
 }
@@ -732,10 +733,10 @@ static int cam_reset_entry(struct km_flow_def_s *km, int bank)
 	int cnt = km->key_word_size + !!km->info_set;
 
 	for (uint32_t i = 0; i < km->be->km.nb_cam_record_words && cnt; i++, cnt--) {
-		res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank, km->record_indexes[bank],
-			0);
-		res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank, km->record_indexes[bank],
-			0);
+		res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank,
+				km->record_indexes[bank], 0);
+		res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank,
+				km->record_indexes[bank], 0);
 	}
 
 	km->cam_dist[CAM_KM_DIST_IDX(bank)].km_owner = NULL;
@@ -744,16 +745,17 @@ static int cam_reset_entry(struct km_flow_def_s *km, int bank)
 		RTE_ASSERT(km->cam_paired);
 
 		for (uint32_t i = 0; i < km->be->km.nb_cam_record_words && cnt; i++, cnt--) {
-			res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank,
+			res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_W0 + i, bank,
 				km->record_indexes[bank] + 1, 0);
-			res |= hw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank,
+			res |= nthw_mod_km_cam_set(km->be, HW_KM_CAM_FT0 + i, bank,
 				km->record_indexes[bank] + 1, 0);
 		}
 
 		km->cam_dist[CAM_KM_DIST_IDX(bank) + 1].km_owner = NULL;
 	}
 
-	res |= hw_mod_km_cam_flush(km->be, bank, km->record_indexes[bank], km->cam_paired ? 2 : 1);
+	res |= nthw_mod_km_cam_flush(km->be, bank, km->record_indexes[bank],
+			km->cam_paired ? 2 : 1);
 	return res;
 }
 
@@ -979,14 +981,16 @@ static int tcam_write_word(struct km_flow_def_s *km, int bank, int record, uint3
 		a = a & a_m;
 
 		for (int val = 0; val < 256; val++) {
-			err |= hw_mod_km_tcam_get(km->be, HW_KM_TCAM_T, bank, byte, val, all_recs);
+			err |= nthw_mod_km_tcam_get(km->be, HW_KM_TCAM_T,
+				bank, byte, val, all_recs);
 
 			if ((val & a_m) == a)
 				all_recs[rec_val] |= rec_bit;
 			else
 				all_recs[rec_val] &= ~rec_bit;
 
-			err |= hw_mod_km_tcam_set(km->be, HW_KM_TCAM_T, bank, byte, val, all_recs);
+			err |= nthw_mod_km_tcam_set(km->be, HW_KM_TCAM_T, bank,
+				byte, val, all_recs);
 
 			if (err)
 				break;
@@ -994,7 +998,7 @@ static int tcam_write_word(struct km_flow_def_s *km, int bank, int record, uint3
 	}
 
 	/* flush bank */
-	err |= hw_mod_km_tcam_flush(km->be, bank, ALL_BANK_ENTRIES);
+	err |= nthw_mod_km_tcam_flush(km->be, bank, ALL_BANK_ENTRIES);
 
 	if (err == 0) {
 		RTE_ASSERT(km->tcam_dist[TCAM_DIST_IDX(bank, record)].km_owner == NULL);
@@ -1021,11 +1025,11 @@ static int km_write_data_to_tcam(struct km_flow_def_s *km)
 	}
 
 	/* Write KM_TCI */
-	err |= hw_mod_km_tci_set(km->be, HW_KM_TCI_COLOR, km->tcam_start_bank, km->tcam_record,
+	err |= nthw_mod_km_tci_set(km->be, HW_KM_TCI_COLOR, km->tcam_start_bank, km->tcam_record,
 		km->info);
-	err |= hw_mod_km_tci_set(km->be, HW_KM_TCI_FT, km->tcam_start_bank, km->tcam_record,
+	err |= nthw_mod_km_tci_set(km->be, HW_KM_TCI_FT, km->tcam_start_bank, km->tcam_record,
 		km->flow_type);
-	err |= hw_mod_km_tci_flush(km->be, km->tcam_start_bank, km->tcam_record, 1);
+	err |= nthw_mod_km_tci_flush(km->be, km->tcam_start_bank, km->tcam_record, 1);
 
 	for (int i = 0; i < km->key_word_size && !err; i++) {
 		err = tcam_write_word(km, km->tcam_start_bank + i, km->tcam_record,
@@ -1051,13 +1055,13 @@ static int tcam_reset_bank(struct km_flow_def_s *km, int bank, int record)
 
 	for (int byte = 0; byte < 4; byte++) {
 		for (int val = 0; val < 256; val++) {
-			err = hw_mod_km_tcam_get(km->be, HW_KM_TCAM_T, bank, byte, val, all_recs);
+			err = nthw_mod_km_tcam_get(km->be, HW_KM_TCAM_T, bank, byte, val, all_recs);
 
 			if (err)
 				break;
 
 			all_recs[rec_val] &= ~rec_bit;
-			err = hw_mod_km_tcam_set(km->be, HW_KM_TCAM_T, bank, byte, val, all_recs);
+			err = nthw_mod_km_tcam_set(km->be, HW_KM_TCAM_T, bank, byte, val, all_recs);
 
 			if (err)
 				break;
@@ -1068,7 +1072,7 @@ static int tcam_reset_bank(struct km_flow_def_s *km, int bank, int record)
 		return err;
 
 	/* flush bank */
-	err = hw_mod_km_tcam_flush(km->be, bank, ALL_BANK_ENTRIES);
+	err = nthw_mod_km_tcam_flush(km->be, bank, ALL_BANK_ENTRIES);
 	km->tcam_dist[TCAM_DIST_IDX(bank, record)].km_owner = NULL;
 
 	NT_LOG(DBG, FILTER, "Reset TCAM bank %i, rec_val %i rec bit %08x", bank, rec_val,
@@ -1087,9 +1091,9 @@ static int tcam_reset_entry(struct km_flow_def_s *km)
 	}
 
 	/* Write KM_TCI */
-	hw_mod_km_tci_set(km->be, HW_KM_TCI_COLOR, km->tcam_start_bank, km->tcam_record, 0);
-	hw_mod_km_tci_set(km->be, HW_KM_TCI_FT, km->tcam_start_bank, km->tcam_record, 0);
-	hw_mod_km_tci_flush(km->be, km->tcam_start_bank, km->tcam_record, 1);
+	nthw_mod_km_tci_set(km->be, HW_KM_TCI_COLOR, km->tcam_start_bank, km->tcam_record, 0);
+	nthw_mod_km_tci_set(km->be, HW_KM_TCI_FT, km->tcam_start_bank, km->tcam_record, 0);
+	nthw_mod_km_tci_flush(km->be, km->tcam_start_bank, km->tcam_record, 1);
 
 	for (int i = 0; i < km->key_word_size && !err; i++)
 		err = tcam_reset_bank(km, km->tcam_start_bank + i, km->tcam_record);

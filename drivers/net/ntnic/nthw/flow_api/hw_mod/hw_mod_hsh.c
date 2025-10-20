@@ -12,12 +12,12 @@
 #define _MOD_ "HSH"
 #define _VER_ be->hsh.ver
 
-bool hw_mod_hsh_present(struct flow_api_backend_s *be)
+bool nthw_mod_hsh_present(struct flow_api_backend_s *be)
 {
 	return be->iface->get_hsh_present(be->be_dev);
 }
 
-int hw_mod_hsh_alloc(struct flow_api_backend_s *be)
+int nthw_mod_hsh_alloc(struct flow_api_backend_s *be)
 {
 	int nb;
 	_VER_ = be->iface->get_hsh_version(be->be_dev);
@@ -60,7 +60,7 @@ int hw_mod_hsh_alloc(struct flow_api_backend_s *be)
 	return 0;
 }
 
-void hw_mod_hsh_free(struct flow_api_backend_s *be)
+void nthw_mod_hsh_free(struct flow_api_backend_s *be)
 {
 	if (be->hsh.base) {
 		free(be->hsh.base);
@@ -68,16 +68,16 @@ void hw_mod_hsh_free(struct flow_api_backend_s *be)
 	}
 }
 
-int hw_mod_hsh_reset(struct flow_api_backend_s *be)
+int nthw_mod_hsh_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
 	nthw_zero_module_cache((struct common_func_s *)(&be->hsh));
 
 	NT_LOG(DBG, FILTER, "INIT HSH RCP");
-	return hw_mod_hsh_rcp_flush(be, 0, be->hsh.nb_rcp);
+	return nthw_mod_hsh_rcp_flush(be, 0, be->hsh.nb_rcp);
 }
 
-int hw_mod_hsh_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_hsh_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->hsh.nb_rcp;
@@ -278,7 +278,7 @@ static int hw_mod_hsh_rcp_mod(struct flow_api_backend_s *be, enum hw_hsh_e field
 	return 0;
 }
 
-int hw_mod_hsh_rcp_set(struct flow_api_backend_s *be, enum hw_hsh_e field, uint32_t index,
+int nthw_mod_hsh_rcp_set(struct flow_api_backend_s *be, enum hw_hsh_e field, uint32_t index,
 	uint32_t word_off, uint32_t value)
 {
 	return hw_mod_hsh_rcp_mod(be, field, index, word_off, &value, 0);

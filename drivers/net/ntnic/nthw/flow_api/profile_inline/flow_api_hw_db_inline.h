@@ -280,62 +280,62 @@ struct hw_db_inline_scrub_data {
 
 /**/
 
-int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle);
-void hw_db_inline_destroy(void *db_handle);
+int nthw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle);
+void nthw_db_inline_destroy(void *db_handle);
 
-void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_idx *idxs,
+void nthw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_idx *idxs,
 	uint32_t size);
-const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
+const void *nthw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size);
-struct hw_db_idx *hw_db_inline_find_idx(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_idx *nthw_db_inline_find_idx(struct flow_nic_dev *ndev, void *db_handle,
 	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size);
-void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct hw_db_idx *idxs,
+void nthw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct hw_db_idx *idxs,
 	uint32_t size, FILE *file);
-void hw_db_inline_dump_cfn(struct flow_nic_dev *ndev, void *db_handle, FILE *file);
+void nthw_db_inline_dump_cfn(struct flow_nic_dev *ndev, void *db_handle, FILE *file);
 
 /**/
 
 struct hw_db_match_set_idx
-hw_db_inline_match_set_add(struct flow_nic_dev *ndev, void *db_handle,
+nthw_db_inline_match_set_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_match_set_data *data);
 struct hw_db_action_set_idx
-hw_db_inline_action_set_add(struct flow_nic_dev *ndev, void *db_handle,
+nthw_db_inline_action_set_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_action_set_data *data);
 /**/
 
-struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_cot_idx nthw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_cot_data *data);
-struct hw_db_qsl_idx hw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_qsl_idx nthw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_qsl_data *data);
-struct hw_db_slc_lr_idx hw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_slc_lr_idx nthw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_slc_lr_data *data);
-struct hw_db_tpe_idx hw_db_inline_tpe_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_tpe_idx nthw_db_inline_tpe_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_tpe_data *data);
-struct hw_db_tpe_ext_idx hw_db_inline_tpe_ext_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_tpe_ext_idx nthw_db_inline_tpe_ext_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_tpe_ext_data *data);
-struct hw_db_hsh_idx hw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_hsh_idx nthw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_hsh_data *data);
 /**/
 
-struct hw_db_cat_idx hw_db_inline_cat_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_cat_idx nthw_db_inline_cat_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_cat_data *data);
 /**/
 
-struct hw_db_km_idx hw_db_inline_km_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_km_idx nthw_db_inline_km_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_km_rcp_data *data);
-struct hw_db_km_ft hw_db_inline_km_ft_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_km_ft nthw_db_inline_km_ft_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_km_ft_data *data);
 /**/
 
-struct hw_db_flm_idx hw_db_inline_flm_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_flm_idx nthw_db_inline_flm_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_flm_rcp_data *data, int group);
-struct hw_db_flm_ft hw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_flm_ft nthw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_flm_ft_data *data);
-struct hw_db_flm_ft hw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_flm_ft nthw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_flm_ft_data *data);
-struct hw_db_flm_scrub_idx hw_db_inline_scrub_add(struct flow_nic_dev *ndev, void *db_handle,
+struct hw_db_flm_scrub_idx nthw_db_inline_scrub_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_scrub_data *data);
-int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id, uint32_t ft,
+int nthw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id, uint32_t ft,
 	uint32_t qsl_hw_id);
 
 #endif	/* _FLOW_API_HW_DB_INLINE_H_ */

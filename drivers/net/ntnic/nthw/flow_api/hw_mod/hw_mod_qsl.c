@@ -15,12 +15,12 @@
 #define QSL_QEN_ENTRIES 32
 #define QSL_QNMQ_ENTRIES 256
 
-bool hw_mod_qsl_present(struct flow_api_backend_s *be)
+bool nthw_mod_qsl_present(struct flow_api_backend_s *be)
 {
 	return be->iface->get_qsl_present(be->be_dev);
 }
 
-int hw_mod_qsl_alloc(struct flow_api_backend_s *be)
+int nthw_mod_qsl_alloc(struct flow_api_backend_s *be)
 {
 	int nb;
 	_VER_ = be->iface->get_qsl_version(be->be_dev);
@@ -64,7 +64,7 @@ int hw_mod_qsl_alloc(struct flow_api_backend_s *be)
 	return 0;
 }
 
-void hw_mod_qsl_free(struct flow_api_backend_s *be)
+void nthw_mod_qsl_free(struct flow_api_backend_s *be)
 {
 	if (be->qsl.base) {
 		free(be->qsl.base);
@@ -72,19 +72,19 @@ void hw_mod_qsl_free(struct flow_api_backend_s *be)
 	}
 }
 
-int hw_mod_qsl_reset(struct flow_api_backend_s *be)
+int nthw_mod_qsl_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
 	nthw_zero_module_cache((struct common_func_s *)(&be->qsl));
 
 	NT_LOG(DBG, FILTER, "INIT QSL RCP");
-	hw_mod_qsl_rcp_flush(be, 0, ALL_ENTRIES);
+	nthw_mod_qsl_rcp_flush(be, 0, ALL_ENTRIES);
 
 	NT_LOG(DBG, FILTER, "INIT QSL QST");
-	hw_mod_qsl_qst_flush(be, 0, ALL_ENTRIES);
+	nthw_mod_qsl_qst_flush(be, 0, ALL_ENTRIES);
 
 	NT_LOG(DBG, FILTER, "INIT QSL QEN");
-	hw_mod_qsl_qen_flush(be, 0, ALL_ENTRIES);
+	nthw_mod_qsl_qen_flush(be, 0, ALL_ENTRIES);
 
 	NT_LOG(DBG, FILTER, "INIT QSL UNMQ");
 	be->iface->qsl_unmq_flush(be->be_dev, &be->qsl, 0, 256);
@@ -92,7 +92,7 @@ int hw_mod_qsl_reset(struct flow_api_backend_s *be)
 	return 0;
 }
 
-int hw_mod_qsl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_qsl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->qsl.nb_rcp_categories;
@@ -206,13 +206,13 @@ static int hw_mod_qsl_rcp_mod(struct flow_api_backend_s *be, enum hw_qsl_e field
 	return 0;
 }
 
-int hw_mod_qsl_rcp_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+int nthw_mod_qsl_rcp_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
 	uint32_t value)
 {
 	return hw_mod_qsl_rcp_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_qsl_qst_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_qsl_qst_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->qsl.nb_qst_entries;
@@ -286,13 +286,13 @@ static int hw_mod_qsl_qst_mod(struct flow_api_backend_s *be, enum hw_qsl_e field
 	return 0;
 }
 
-int hw_mod_qsl_qst_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+int nthw_mod_qsl_qst_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
 	uint32_t value)
 {
 	return hw_mod_qsl_qst_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_qsl_qen_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_qsl_qen_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = QSL_QEN_ENTRIES;
@@ -336,19 +336,19 @@ static int hw_mod_qsl_qen_mod(struct flow_api_backend_s *be, enum hw_qsl_e field
 	return 0;
 }
 
-int hw_mod_qsl_qen_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+int nthw_mod_qsl_qen_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
 	uint32_t value)
 {
 	return hw_mod_qsl_qen_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_qsl_qen_get(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+int nthw_mod_qsl_qen_get(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
 	uint32_t *value)
 {
 	return hw_mod_qsl_qen_mod(be, field, index, value, 1);
 }
 
-int hw_mod_qsl_unmq_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_qsl_unmq_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = QSL_QNMQ_ENTRIES;
@@ -396,7 +396,7 @@ static int hw_mod_qsl_unmq_mod(struct flow_api_backend_s *be, enum hw_qsl_e fiel
 	return 0;
 }
 
-int hw_mod_qsl_unmq_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+int nthw_mod_qsl_unmq_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
 	uint32_t value)
 {
 	return hw_mod_qsl_unmq_mod(be, field, index, &value, 0);

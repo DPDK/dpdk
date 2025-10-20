@@ -70,11 +70,11 @@ static int hsh_set_part(struct flow_nic_dev *ndev, int hsh_idx, struct hsh_words
 
 	words[word].free = false;
 
-	res |= hw_mod_hsh_rcp_set(&ndev->be, words[word].pe, hsh_idx, 0, pe);
-	NT_LOG(DBG, FILTER, "hw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %" PRIu32 ")",
+	res |= nthw_mod_hsh_rcp_set(&ndev->be, words[word].pe, hsh_idx, 0, pe);
+	NT_LOG(DBG, FILTER, "nthw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %" PRIu32 ")",
 		(int)words[word].pe, hsh_idx, pe);
-	res |= hw_mod_hsh_rcp_set(&ndev->be, words[word].ofs, hsh_idx, 0, ofs);
-	NT_LOG(DBG, FILTER, "hw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %" PRIu32 ")",
+	res |= nthw_mod_hsh_rcp_set(&ndev->be, words[word].ofs, hsh_idx, 0, ofs);
+	NT_LOG(DBG, FILTER, "nthw_mod_hsh_rcp_set(&ndev->be, %d, %d, 0, %" PRIu32 ")",
 		(int)words[word].ofs, hsh_idx, ofs);
 
 
@@ -95,10 +95,10 @@ static int hsh_set_part(struct flow_nic_dev *ndev, int hsh_idx, struct hsh_words
 			mask = 0x0;
 		}
 		/* reorder QW words mask from little to big endian */
-		res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx,
+		res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx,
 			words[word].index + words_count - mask_off, mask);
 		NT_LOG(DBG, FILTER,
-			"hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, %d, %d, 0x%08" PRIX32 ")",
+			"mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, %d, %d, 0x%08" PRIX32 ")",
 				hsh_idx, words[word].index + words_count - mask_off, mask);
 		toeplitz_mask[words[word].index + mask_off - 1] = mask;
 	}
@@ -166,33 +166,33 @@ int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_c
 	};
 
 	int res = 0;
-	res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, hsh_idx, 0, 0);
+	res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, hsh_idx, 0, 0);
 	/* enable hashing */
-	res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_LOAD_DIST_TYPE, hsh_idx, 0, 2);
+	res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_LOAD_DIST_TYPE, hsh_idx, 0, 2);
 
 	/* configure selected hash function and its key */
 	bool toeplitz = false;
 	switch (rss_conf.algorithm) {
 	case RTE_ETH_HASH_FUNCTION_DEFAULT:
 		/* Use default NTH10 hashing algorithm */
-		res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TOEPLITZ, hsh_idx, 0, 0);
+		res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TOEPLITZ, hsh_idx, 0, 0);
 		/* Use 1st 32-bits from rss_key to configure NTH10 SEED */
-		res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_SEED, hsh_idx, 0,
+		res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_SEED, hsh_idx, 0,
 			rss_conf.rss_key[0] << 24 | rss_conf.rss_key[1] << 16 |
 				rss_conf.rss_key[2] << 8 | rss_conf.rss_key[3]);
 		break;
 	case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
 		toeplitz = true;
-		res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TOEPLITZ, hsh_idx, 0, 1);
+		res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TOEPLITZ, hsh_idx, 0, 1);
 		uint8_t empty_key = 0;
 
 		/* Toeplitz key (always 40B) words have to be programmed in reverse order */
 		for (uint8_t i = 0; i <= (MAX_RSS_KEY_LEN - 4); i += 4) {
-			res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, hsh_idx, 9 - i / 4,
+			res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, hsh_idx, 9 - i / 4,
 				rss_conf.rss_key[i] << 24 | rss_conf.rss_key[i + 1] << 16 |
 				rss_conf.rss_key[i + 2] << 8 | rss_conf.rss_key[i + 3]);
 			NT_LOG(DBG, FILTER,
-				"hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, %d, %d, 0x%" PRIX32 ")",
+				"nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, %d, %d, 0x%" PRIX32 ")",
 				hsh_idx, 9 - i / 4, rss_conf.rss_key[i] << 24 |
 				rss_conf.rss_key[i + 1] << 16 | rss_conf.rss_key[i + 2] << 8 |
 				rss_conf.rss_key[i + 3]);
@@ -432,7 +432,7 @@ int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_c
 						0, 32, toeplitz);
 				}
 			}
-			res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_AUTO_IPV4_MASK,
+			res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_AUTO_IPV4_MASK,
 				hsh_idx, 0, 1);
 		} else {
 			/* IPv4 */
@@ -539,9 +539,9 @@ int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_c
 					res |= hsh_set_part(ndev, hsh_idx, words, DYN_L3, 9, 8,
 						toeplitz);
 			} else {
-				res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_P_MASK,
+				res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_P_MASK,
 					hsh_idx, 0, 1);
-				res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TNL_P,
+				res |= nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TNL_P,
 					hsh_idx, 0, 0);
 			}
 		} else {
@@ -555,9 +555,9 @@ int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_c
 						toeplitz);
 				}
 			} else {
-				res |= hw_mod_hsh_rcp_set(&ndev->be,
+				res |= nthw_mod_hsh_rcp_set(&ndev->be,
 					HW_HSH_RCP_P_MASK, hsh_idx, 0, 1);
-				res |= hw_mod_hsh_rcp_set(&ndev->be,
+				res |= nthw_mod_hsh_rcp_set(&ndev->be,
 					HW_HSH_RCP_TNL_P, hsh_idx, 0, 1);
 			}
 		}
@@ -644,7 +644,7 @@ int hsh_set(struct flow_nic_dev *ndev, int hsh_idx, struct nt_eth_rss_conf rss_c
 	}
 
 	if (fields || res != 0) {
-		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, hsh_idx, 0, 0);
+		nthw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, hsh_idx, 0, 0);
 		if (sprint_nt_rss_mask(rss_buffer, rss_buffer_len, " ", rss_conf.rss_hf) == 0) {
 			NT_LOG(ERR, FILTER, "RSS configuration%s is not supported for hash func %s.",
 				rss_buffer, (enum rte_eth_hash_function)toeplitz ?

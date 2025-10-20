@@ -12,12 +12,12 @@
 #define _MOD_ "FLM"
 #define _VER_ be->flm.ver
 
-bool hw_mod_flm_present(struct flow_api_backend_s *be)
+bool nthw_mod_flm_present(struct flow_api_backend_s *be)
 {
 	return be->iface->get_flm_present(be->be_dev);
 }
 
-int hw_mod_flm_alloc(struct flow_api_backend_s *be)
+int nthw_mod_flm_alloc(struct flow_api_backend_s *be)
 {
 	int nb;
 	_VER_ = be->iface->get_flm_version(be->be_dev);
@@ -165,7 +165,7 @@ int hw_mod_flm_alloc(struct flow_api_backend_s *be)
 	return 0;
 }
 
-void hw_mod_flm_free(struct flow_api_backend_s *be)
+void nthw_mod_flm_free(struct flow_api_backend_s *be)
 {
 	if (be->flm.base) {
 		free(be->flm.base);
@@ -173,23 +173,23 @@ void hw_mod_flm_free(struct flow_api_backend_s *be)
 	}
 }
 
-int hw_mod_flm_reset(struct flow_api_backend_s *be)
+int nthw_mod_flm_reset(struct flow_api_backend_s *be)
 {
 	/* Zero entire cache area */
 	nthw_zero_module_cache((struct common_func_s *)(&be->flm));
 
 	NT_LOG(DBG, FILTER, "INIT FLM");
-	hw_mod_flm_control_set(be, HW_FLM_CONTROL_SPLIT_SDRAM_USAGE, 0x10);
+	nthw_mod_flm_control_set(be, HW_FLM_CONTROL_SPLIT_SDRAM_USAGE, 0x10);
 
-	hw_mod_flm_control_flush(be);
-	hw_mod_flm_scrub_flush(be, 0, ALL_ENTRIES);
-	hw_mod_flm_scan_flush(be);
-	hw_mod_flm_rcp_flush(be, 0, ALL_ENTRIES);
+	nthw_mod_flm_control_flush(be);
+	nthw_mod_flm_scrub_flush(be, 0, ALL_ENTRIES);
+	nthw_mod_flm_scan_flush(be);
+	nthw_mod_flm_rcp_flush(be, 0, ALL_ENTRIES);
 
 	return 0;
 }
 
-int hw_mod_flm_control_flush(struct flow_api_backend_s *be)
+int nthw_mod_flm_control_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_control_flush(be->be_dev, &be->flm);
 }
@@ -289,12 +289,12 @@ static int hw_mod_flm_control_mod(struct flow_api_backend_s *be, enum hw_flm_e f
 	return 0;
 }
 
-int hw_mod_flm_control_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+int nthw_mod_flm_control_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
 {
 	return hw_mod_flm_control_mod(be, field, &value, 0);
 }
 
-int hw_mod_flm_status_update(struct flow_api_backend_s *be)
+int nthw_mod_flm_status_update(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_status_update(be->be_dev, &be->flm);
 }
@@ -356,12 +356,12 @@ static int hw_mod_flm_status_mod(struct flow_api_backend_s *be, enum hw_flm_e fi
 	return 0;
 }
 
-int hw_mod_flm_status_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
+int nthw_mod_flm_status_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
 {
 	return hw_mod_flm_status_mod(be, field, value, 1);
 }
 
-int hw_mod_flm_scan_flush(struct flow_api_backend_s *be)
+int nthw_mod_flm_scan_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_scan_flush(be->be_dev, &be->flm);
 }
@@ -391,12 +391,12 @@ static int hw_mod_flm_scan_mod(struct flow_api_backend_s *be, enum hw_flm_e fiel
 	return 0;
 }
 
-int hw_mod_flm_scan_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+int nthw_mod_flm_scan_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
 {
 	return hw_mod_flm_scan_mod(be, field, &value, 0);
 }
 
-int hw_mod_flm_load_bin_flush(struct flow_api_backend_s *be)
+int nthw_mod_flm_load_bin_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_load_bin_flush(be->be_dev, &be->flm);
 }
@@ -426,12 +426,12 @@ static int hw_mod_flm_load_bin_mod(struct flow_api_backend_s *be, enum hw_flm_e 
 	return 0;
 }
 
-int hw_mod_flm_load_bin_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+int nthw_mod_flm_load_bin_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
 {
 	return hw_mod_flm_load_bin_mod(be, field, &value, 0);
 }
 
-int hw_mod_flm_prio_flush(struct flow_api_backend_s *be)
+int nthw_mod_flm_prio_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_prio_flush(be->be_dev, &be->flm);
 }
@@ -489,12 +489,12 @@ static int hw_mod_flm_prio_mod(struct flow_api_backend_s *be, enum hw_flm_e fiel
 	return 0;
 }
 
-int hw_mod_flm_prio_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+int nthw_mod_flm_prio_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
 {
 	return hw_mod_flm_prio_mod(be, field, &value, 0);
 }
 
-int hw_mod_flm_pst_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_flm_pst_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->flm.nb_pst_profiles;
@@ -550,13 +550,13 @@ static int hw_mod_flm_pst_mod(struct flow_api_backend_s *be, enum hw_flm_e field
 	return 0;
 }
 
-int hw_mod_flm_pst_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+int nthw_mod_flm_pst_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
 	uint32_t value)
 {
 	return hw_mod_flm_pst_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_flm_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_flm_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->flm.nb_categories;
@@ -569,7 +569,7 @@ int hw_mod_flm_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->flm_rcp_flush(be->be_dev, &be->flm, start_idx, count);
 }
 
-int hw_mod_flm_scrub_flush(struct flow_api_backend_s *be, int start_idx, int count)
+int nthw_mod_flm_scrub_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
 		count = be->flm.nb_scrub_profiles;
@@ -696,7 +696,7 @@ static int hw_mod_flm_rcp_mod(struct flow_api_backend_s *be, enum hw_flm_e field
 	return 0;
 }
 
-int hw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+int nthw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
 	uint32_t *value)
 {
 	if (field != HW_FLM_RCP_MASK)
@@ -705,7 +705,7 @@ int hw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, 
 	return hw_mod_flm_rcp_mod(be, field, index, value, 0);
 }
 
-int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+int nthw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
 	uint32_t value)
 {
 	if (field == HW_FLM_RCP_MASK)
@@ -714,7 +714,7 @@ int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int i
 	return hw_mod_flm_rcp_mod(be, field, index, &value, 0);
 }
 
-int hw_mod_flm_buf_ctrl_update(struct flow_api_backend_s *be)
+int nthw_mod_flm_buf_ctrl_update(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_buf_ctrl_update(be->be_dev, &be->flm);
 }
@@ -754,17 +754,17 @@ static int hw_mod_flm_buf_ctrl_mod_get(struct flow_api_backend_s *be, enum hw_fl
 	return 0;
 }
 
-int hw_mod_flm_buf_ctrl_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
+int nthw_mod_flm_buf_ctrl_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
 {
 	return hw_mod_flm_buf_ctrl_mod_get(be, field, value);
 }
 
-int hw_mod_flm_stat_update(struct flow_api_backend_s *be)
+int nthw_mod_flm_stat_update(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_stat_update(be->be_dev, &be->flm);
 }
 
-int hw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
+int nthw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
 {
 	switch (_VER_) {
 	case 25:
@@ -899,7 +899,7 @@ int hw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint
 	return 0;
 }
 
-int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e field,
+int nthw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e field,
 	const uint32_t *value, uint32_t records,
 	uint32_t *handled_records, uint32_t *inf_word_cnt,
 	uint32_t *sta_word_cnt)
@@ -932,7 +932,7 @@ int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e f
 	return ret;
 }
 
-int hw_mod_flm_inf_sta_data_update_get(struct flow_api_backend_s *be, enum hw_flm_e field,
+int nthw_mod_flm_inf_sta_data_update_get(struct flow_api_backend_s *be, enum hw_flm_e field,
 	uint32_t *inf_value, uint32_t inf_size,
 	uint32_t *inf_word_cnt, uint32_t *sta_value,
 	uint32_t sta_size, uint32_t *sta_word_cnt)
@@ -972,7 +972,7 @@ int hw_mod_flm_inf_sta_data_update_get(struct flow_api_backend_s *be, enum hw_fl
  * Note that this represents a lower bound on the timeout, depending on the flow
  * scanner interval and overall load, the timeout can be substantially longer.
  */
-uint32_t hw_mod_flm_scrub_timeout_decode(uint32_t t_enc)
+uint32_t nthw_mod_flm_scrub_timeout_decode(uint32_t t_enc)
 {
 	uint32_t t_bits_2_0 = t_enc & 0x07;
 	uint32_t t_bits_7_3 = (t_enc >> 3) & 0x1F;
@@ -985,7 +985,7 @@ uint32_t hw_mod_flm_scrub_timeout_decode(uint32_t t_enc)
 	return t_sec > UINT32_MAX ? UINT32_MAX : (uint32_t)t_sec;
 }
 
-uint32_t hw_mod_flm_scrub_timeout_encode(uint32_t t)
+uint32_t nthw_mod_flm_scrub_timeout_encode(uint32_t t)
 {
 	uint32_t t_enc = 0;
 
@@ -994,7 +994,7 @@ uint32_t hw_mod_flm_scrub_timeout_encode(uint32_t t)
 
 		do {
 			t_enc++;
-			t_dec = hw_mod_flm_scrub_timeout_decode(t_enc);
+			t_dec = nthw_mod_flm_scrub_timeout_decode(t_enc);
 		} while (t_enc <= 0xEF && t_dec < t);
 	}
 
@@ -1044,7 +1044,7 @@ static int hw_mod_flm_scrub_mod(struct flow_api_backend_s *be, enum hw_flm_e fie
 	return 0;
 }
 
-int hw_mod_flm_scrub_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+int nthw_mod_flm_scrub_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
 	uint32_t value)
 {
 	return hw_mod_flm_scrub_mod(be, field, index, &value, 0);
