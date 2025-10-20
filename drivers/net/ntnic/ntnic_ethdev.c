@@ -2613,7 +2613,7 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 	NT_LOG_DBGX(DBG, NTNIC, "PCI device deinitialization");
 
 	int i;
-	char name[32];
+	char name[RTE_ETH_NAME_MAX_LEN];
 
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 	ntdrv_4ga_t *p_ntdrv = &internals->p_drv->ntdrv;
@@ -2640,7 +2640,7 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 	}
 
 	for (i = 0; i < n_phy_ports; i++) {
-		sprintf(name, "ntnic%d", i);
+		snprintf(name, sizeof(name), "ntnic%d", i);
 		eth_dev = rte_eth_dev_allocated(name);
 		if (eth_dev == NULL)
 			continue; /* port already released */
