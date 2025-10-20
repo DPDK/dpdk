@@ -727,17 +727,17 @@ void nthw_register_update(const nthw_register_t *p)
 			uint32_t i = len;
 			uint32_t *ptr = p_data;
 			(void)ptr;
-			char *tmp_string = ntlog_helper_str_alloc("Register::read");
-			ntlog_helper_str_add(tmp_string,
+			char *tmp_string = nthw_log_helper_str_alloc("Register::read");
+			nthw_log_helper_str_add(tmp_string,
 				"(Dev: %s, Bus: %s, Addr: 0x%08X, Cnt: %d, Data:",
 				p_dev_name, p_bus_name, addr, len);
 
 			while (i--)
-				ntlog_helper_str_add(tmp_string, " 0x%08X", *ptr++);
+				nthw_log_helper_str_add(tmp_string, " 0x%08X", *ptr++);
 
-			ntlog_helper_str_add(tmp_string, ")");
+			nthw_log_helper_str_add(tmp_string, ")");
 			NT_LOG(DBG, NTHW, "%s", tmp_string);
-			ntlog_helper_str_free(tmp_string);
+			nthw_log_helper_str_free(tmp_string);
 		}
 	}
 }
@@ -780,18 +780,18 @@ void nthw_register_flush(const nthw_register_t *p, uint32_t cnt)
 		if (p->mn_debug_mode & NTHW_REG_DEBUG_ON_WRITE) {
 			uint32_t i = len * cnt;
 			uint32_t *ptr = p_data;
-			char *tmp_string = ntlog_helper_str_alloc("Register::write");
+			char *tmp_string = nthw_log_helper_str_alloc("Register::write");
 
-			ntlog_helper_str_add(tmp_string,
+			nthw_log_helper_str_add(tmp_string,
 				"(Dev: %s, Bus: %s, Addr: 0x%08X, Cnt: %d, Data:",
 				p_dev_name, p_bus_name, addr, i);
 
 			while (i--)
-				ntlog_helper_str_add(tmp_string, " 0x%08X", *ptr++);
+				nthw_log_helper_str_add(tmp_string, " 0x%08X", *ptr++);
 
-			ntlog_helper_str_add(tmp_string, ")");
+			nthw_log_helper_str_add(tmp_string, ")");
 			NT_LOG(DBG, NTHW, "%s", tmp_string);
-			ntlog_helper_str_free(tmp_string);
+			nthw_log_helper_str_free(tmp_string);
 		}
 
 		rc = nthw_register_write_data(p, cnt);

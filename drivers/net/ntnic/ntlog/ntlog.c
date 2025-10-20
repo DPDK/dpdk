@@ -16,7 +16,7 @@
 
 #define NTLOG_HELPER_STR_SIZE_MAX (1024)
 
-char *ntlog_helper_str_alloc(const char *sinit)
+char *nthw_log_helper_str_alloc(const char *sinit)
 {
 	char *s = malloc(NTLOG_HELPER_STR_SIZE_MAX);
 
@@ -33,7 +33,7 @@ char *ntlog_helper_str_alloc(const char *sinit)
 }
 
 __rte_format_printf(2, 0)
-void ntlog_helper_str_add(char *s, const char *format, ...)
+void nthw_log_helper_str_add(char *s, const char *format, ...)
 {
 	if (!s)
 		return;
@@ -45,7 +45,7 @@ void ntlog_helper_str_add(char *s, const char *format, ...)
 	va_end(args);
 }
 
-void ntlog_helper_str_free(char *s)
+void nthw_log_helper_str_free(char *s)
 {
 	free(s);
 }

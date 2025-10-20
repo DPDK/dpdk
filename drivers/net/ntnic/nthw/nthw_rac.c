@@ -654,8 +654,8 @@ int nthw_rac_rab_write32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint
 			char *tmp_string;
 
 			if (trc) {
-				tmp_string = ntlog_helper_str_alloc("Register::write");
-				ntlog_helper_str_add(tmp_string,
+				tmp_string = nthw_log_helper_str_alloc("Register::write");
+				nthw_log_helper_str_add(tmp_string,
 					"(Dev: NA, Bus: RAB%u, Addr: 0x%08X, Cnt: %d, Data:",
 					bus_id, address, word_cnt);
 			}
@@ -669,13 +669,13 @@ int nthw_rac_rab_write32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint
 				}
 
 				if (trc)
-					ntlog_helper_str_add(tmp_string, " 0x%08X", data);
+					nthw_log_helper_str_add(tmp_string, " 0x%08X", data);
 			}
 
 			if (trc) {
-				ntlog_helper_str_add(tmp_string, ")");
+				nthw_log_helper_str_add(tmp_string, ")");
 				NT_LOG(DBG, NTHW, "%s", tmp_string);
-				ntlog_helper_str_free(tmp_string);
+				nthw_log_helper_str_free(tmp_string);
 			}
 		}
 
@@ -840,17 +840,17 @@ int nthw_rac_rab_read32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint3
 			}
 
 			if (trc) {
-				char *tmp_string = ntlog_helper_str_alloc("Register::read");
-				ntlog_helper_str_add(tmp_string,
+				char *tmp_string = nthw_log_helper_str_alloc("Register::read");
+				nthw_log_helper_str_add(tmp_string,
 					"(Dev: NA, Bus: RAB%u, Addr: 0x%08X, Cnt: %d, Data:",
 					bus_id, address, word_cnt);
 
 				for (i = 0; i < word_cnt; i++)
-					ntlog_helper_str_add(tmp_string, " 0x%08X", p_data[i]);
+					nthw_log_helper_str_add(tmp_string, " 0x%08X", p_data[i]);
 
-				ntlog_helper_str_add(tmp_string, ")");
+				nthw_log_helper_str_add(tmp_string, ")");
 				NT_LOG(DBG, NTHW, "%s", tmp_string);
-				ntlog_helper_str_free(tmp_string);
+				nthw_log_helper_str_free(tmp_string);
 			}
 		}
 
