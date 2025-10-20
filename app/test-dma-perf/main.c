@@ -489,6 +489,8 @@ load_configs(const char *path)
 					section_name, "test_seconds"));
 
 		test_case->eal_args = rte_cfgfile_get_entry(cfgfile, section_name, "eal_args");
+		if (test_case->eal_args != NULL)
+			test_case->eal_args = strdup(test_case->eal_args);
 		test_case->is_valid = true;
 	}
 
