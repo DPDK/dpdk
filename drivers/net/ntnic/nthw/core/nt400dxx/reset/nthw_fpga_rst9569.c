@@ -6,6 +6,8 @@
 #include "ntnic_mod_reg.h"
 #include "nthw_register.h"
 #include "nthw_drv.h"
+#include "nt_util.h"
+#include "ntlog.h"
 
 
 static int nthw_fpga_rst9569_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt400dxx *const p)
@@ -63,9 +65,38 @@ static int nthw_fpga_rst9569_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt4
 	return 0;
 };
 
-static int nthw_fpga_rst9569_init(void)
+static void nthw_fpga_rst9569_set_default_rst_values(struct nthw_fpga_rst_nt400dxx *const p)
 {
+	nthw_field_update_register(p->p_fld_rst_sys);
+	nthw_field_set_all(p->p_fld_rst_sys);
+	nthw_field_set_val32(p->p_fld_rst_ddr4, 1);
+	nthw_field_set_val_flush32(p->p_fld_rst_phy_ftile, 1);
+}
+
+static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
+	struct nthw_fpga_rst_nt400dxx *p_rst)
+{
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_rst);
+
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+
+	/* (0) Reset all domains / modules except peripherals: */
+	NT_LOG_DBGX(DBG, NTHW, "%s: RST defaults", p_adapter_id_str);
+	nthw_fpga_rst9569_set_default_rst_values(p_rst);
+
 	return 0;
+}
+
+static int nthw_fpga_rst9569_init(struct fpga_info_s *p_fpga_info,
+	struct nthw_fpga_rst_nt400dxx *p_rst)
+{
+	RTE_ASSERT(p_fpga_info);
+	RTE_ASSERT(p_rst);
+
+	int res = nthw_fpga_rst9569_product_reset(p_fpga_info, p_rst);
+
+	return res;
 }
 
 static struct rst9569_ops rst9569_ops = {

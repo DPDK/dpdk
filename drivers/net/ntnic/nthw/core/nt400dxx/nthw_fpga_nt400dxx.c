@@ -209,7 +209,7 @@ static int nthw_fpga_nt400dxx_init(struct fpga_info_s *p_fpga_info)
 	switch (p_fpga_info->n_fpga_prod_id) {
 	case 9569:
 		if (rst9569_ops)
-			res = rst9569_ops->nthw_fpga_rst9569_init();
+			res = rst9569_ops->nthw_fpga_rst9569_init(p_fpga_info, &rst);
 
 		if (res) {
 			NT_LOG(ERR,
