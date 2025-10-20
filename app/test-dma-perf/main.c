@@ -158,15 +158,24 @@ run_test(uint32_t case_id, struct test_configure *case_cfg)
 	}
 }
 
+/* Exit process if the entry couldn't find in the section. */
+static const char *
+get_cfgfile_entry(struct rte_cfgfile *cfgfile, const char *section_name, const char *entry_name)
+{
+	const char *entry = rte_cfgfile_get_entry(cfgfile, section_name, entry_name);
+	if (entry == NULL) {
+		printf("Error: can't get entry '%s' in section '%s'\n", entry_name, section_name);
+		exit(1);
+	}
+	return entry;
+}
+
 static int
 parse_lcore(struct test_configure *test_case, const char *value)
 {
 	uint16_t len;
 	char *input;
 	struct lcore_dma_map_t *lcore_dma_map;
-
-	if (test_case == NULL || value == NULL)
-		return -1;
 
 	len = strlen(value);
 	input = (char *)malloc((len + 1) * sizeof(char));
@@ -195,9 +204,7 @@ static void
 parse_cpu_config(struct test_configure *test_case, int case_id,
 		     struct rte_cfgfile *cfgfile, char *section_name)
 {
-	const char *lcore;
-
-	lcore = rte_cfgfile_get_entry(cfgfile, section_name, "lcore");
+	const char *lcore = get_cfgfile_entry(cfgfile, section_name, "lcore");
 	int lcore_ret = parse_lcore(test_case, lcore);
 	if (lcore_ret < 0) {
 		printf("parse lcore error in case %d.\n", case_id);
@@ -212,9 +219,6 @@ parse_entry(const char *value, struct test_configure_entry *entry)
 	char *args[MAX_PARAMS_PER_ENTRY];
 	int args_nr = -1;
 	int ret;
-
-	if (value == NULL || entry == NULL)
-		goto out;
 
 	strncpy(input, value, 254);
 	if (*input == '\0')
@@ -297,7 +301,7 @@ parse_dma_config(struct test_configure *test_case, int case_id,
 	use_dma_ops = rte_cfgfile_get_entry(cfgfile, section_name, "use_enq_deq_ops");
 	test_case->use_ops = (use_dma_ops != NULL && (atoi(use_dma_ops) == 1));
 
-	ring_size_str = rte_cfgfile_get_entry(cfgfile, section_name, "dma_ring_size");
+	ring_size_str = get_cfgfile_entry(cfgfile, section_name, "dma_ring_size");
 	args_nr = parse_entry(ring_size_str, &test_case->ring_size);
 	if (args_nr < 0) {
 		printf("parse error in case %d.\n", case_id);
@@ -308,13 +312,11 @@ parse_dma_config(struct test_configure *test_case, int case_id,
 
 	src_sges_str = rte_cfgfile_get_entry(cfgfile, section_name, "dma_src_sge");
 	if (src_sges_str != NULL)
-		test_case->nb_src_sges = (int)atoi(rte_cfgfile_get_entry(cfgfile,
-						section_name, "dma_src_sge"));
+		test_case->nb_src_sges = (int)atoi(src_sges_str);
 
 	dst_sges_str = rte_cfgfile_get_entry(cfgfile, section_name, "dma_dst_sge");
 	if (dst_sges_str != NULL)
-		test_case->nb_dst_sges = (int)atoi(rte_cfgfile_get_entry(cfgfile,
-						section_name, "dma_dst_sge"));
+		test_case->nb_dst_sges = (int)atoi(dst_sges_str);
 
 	if ((src_sges_str != NULL && dst_sges_str == NULL) ||
 	    (src_sges_str == NULL && dst_sges_str != NULL)) {
@@ -330,7 +332,7 @@ parse_dma_config(struct test_configure *test_case, int case_id,
 		test_case->is_sg = true;
 	}
 
-	kick_batch_str = rte_cfgfile_get_entry(cfgfile, section_name, "kick_batch");
+	kick_batch_str = get_cfgfile_entry(cfgfile, section_name, "kick_batch");
 	args_nr = parse_entry(kick_batch_str, &test_case->kick_batch);
 	if (args_nr < 0) {
 		printf("parse error in case %d.\n", case_id);
@@ -388,11 +390,7 @@ parse_global_config(struct rte_cfgfile *cfgfile)
 		return -1;
 	}
 
-	entry = rte_cfgfile_get_entry(cfgfile, GLOBAL_SECTION_NAME, "eal_args");
-	if (entry == NULL) {
-		printf("Error: GLOBAL section must have 'eal_args' entry!\n");
-		return -1;
-	}
+	entry = get_cfgfile_entry(cfgfile, GLOBAL_SECTION_NAME, "eal_args");
 	args = strdup(entry);
 	if (args == NULL) {
 		printf("Error: dup GLOBAL 'eal_args' failed!\n");
@@ -404,18 +402,10 @@ parse_global_config(struct rte_cfgfile *cfgfile)
 		global_cfg.eal_argv[i + 1] = tokens[i];
 	global_cfg.eal_argc = i + 1;
 
-	entry = rte_cfgfile_get_entry(cfgfile, GLOBAL_SECTION_NAME, "cache_flush");
-	if (entry == NULL) {
-		printf("Error: GLOBAL section don't has 'cache_flush' entry!\n");
-		return -1;
-	}
+	entry = get_cfgfile_entry(cfgfile, GLOBAL_SECTION_NAME, "cache_flush");
 	global_cfg.cache_flush = (uint8_t)atoi(entry);
 
-	entry = rte_cfgfile_get_entry(cfgfile, GLOBAL_SECTION_NAME, "test_seconds");
-	if (entry == NULL) {
-		printf("Error: GLOBAL section don't has 'test_seconds' entry!\n");
-		return -1;
-	}
+	entry = get_cfgfile_entry(cfgfile, GLOBAL_SECTION_NAME, "test_seconds");
 	global_cfg.test_secs = (uint16_t)atoi(entry);
 
 	return 0;
@@ -460,14 +450,7 @@ load_configs(const char *path)
 		}
 
 		test_case->is_valid = true;
-		case_type = rte_cfgfile_get_entry(cfgfile, section_name, "type");
-		if (case_type == NULL) {
-			printf("Error: No case type in case %d, the test will be finished here.\n",
-				i + 1);
-			test_case->is_valid = false;
-			continue;
-		}
-
+		case_type = get_cfgfile_entry(cfgfile, section_name, "type");
 		if (strcmp(case_type, DMA_MEM_COPY) == 0) {
 			test_case->test_type = TEST_TYPE_DMA_MEM_COPY;
 		} else if (strcmp(case_type, CPU_MEM_COPY) == 0) {
@@ -478,12 +461,12 @@ load_configs(const char *path)
 			continue;
 		}
 
-		test_case->src_numa_node = (int)atoi(rte_cfgfile_get_entry(cfgfile,
+		test_case->src_numa_node = (int)atoi(get_cfgfile_entry(cfgfile,
 								section_name, "src_numa_node"));
-		test_case->dst_numa_node = (int)atoi(rte_cfgfile_get_entry(cfgfile,
+		test_case->dst_numa_node = (int)atoi(get_cfgfile_entry(cfgfile,
 								section_name, "dst_numa_node"));
 		nb_vp = 0;
-		mem_size_str = rte_cfgfile_get_entry(cfgfile, section_name, "mem_size");
+		mem_size_str = get_cfgfile_entry(cfgfile, section_name, "mem_size");
 		args_nr = parse_entry(mem_size_str, &test_case->mem_size);
 		if (args_nr < 0) {
 			printf("parse error in case %d.\n", i + 1);
@@ -492,7 +475,7 @@ load_configs(const char *path)
 		} else if (args_nr == 4)
 			nb_vp++;
 
-		buf_size_str = rte_cfgfile_get_entry(cfgfile, section_name, "buf_size");
+		buf_size_str = get_cfgfile_entry(cfgfile, section_name, "buf_size");
 		args_nr = parse_entry(buf_size_str, &test_case->buf_size);
 		if (args_nr < 0) {
 			printf("parse error in case %d.\n", i + 1);
