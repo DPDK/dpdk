@@ -103,13 +103,17 @@ load_env () # <target compiler>
 	command -v $targetcc >/dev/null 2>&1 || return 1
 }
 
-config () # <dir> <builddir> <meson options>
+config () # <source dir> <build dir> <ABI check> <Meson options>
 {
 	dir=$1
 	shift
 	builddir=$1
 	shift
+	abicheck=$1
+	shift
+
 	if [ -f "$builddir/build.ninja" ] ; then
+		[ "$abicheck" = ABI ] || return 0
 		# for existing environments, switch to debugoptimized if unset
 		# so that ABI checks can run
 		if ! $MESON configure $builddir |
@@ -117,7 +121,7 @@ config () # <dir> <builddir> <meson options>
 				grep -qw debugoptimized; then
 			$MESON configure --buildtype=debugoptimized $builddir
 		fi
-		return
+		return 0
 	fi
 	options=
 	# deprecated libs are disabled by default, so for complete builds
@@ -130,7 +134,9 @@ config () # <dir> <builddir> <meson options>
 	else
 		options="$options -Dexamples=l3fwd" # save disk space
 	fi
-	options="$options --buildtype=debugoptimized"
+	if [ "$abicheck" = ABI ] ; then
+		options="$options --buildtype=debugoptimized"
+	fi
 	for option in $DPDK_MESON_OPTIONS ; do
 		options="$options -D$option"
 	done
@@ -181,7 +187,7 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 		cross=
 	fi
 	load_env $targetcc || return 0
-	config $srcdir $builds_dir/$targetdir $cross --werror $*
+	config $srcdir $builds_dir/$targetdir $abicheck $cross --werror $*
 	compile $builds_dir/$targetdir
 	if [ -n "$DPDK_ABI_REF_VERSION" -a "$abicheck" = ABI ] ; then
 		abirefdir=${DPDK_ABI_REF_DIR:-reference}/$DPDK_ABI_REF_VERSION
@@ -200,7 +206,7 @@ build () # <directory> <target cc | cross file> <ABI check> [meson options]
 			fi
 
 			rm -rf $abirefdir/build
-			config $abirefdir/src $abirefdir/build $cross \
+			config $abirefdir/src $abirefdir/build ABI $cross \
 				-Dexamples= $*
 			compile $abirefdir/build
 			install_target $abirefdir/build $abirefdir/$targetdir
@@ -255,14 +261,11 @@ build build-x86-generic cc skipABI -Dcheck_includes=true \
 if check_cc_flags '-m32' ; then
 	target_override='i386-pc-linux-gnu'
 	if [ -d '/usr/lib/i386-linux-gnu' ] ; then
-		# 32-bit pkgconfig on Debian/Ubuntu, use cross file
-		build build-32b $srcdir/config/x86/cross-32bit-debian.ini ABI
+		build build-32b $srcdir/config/x86/cross-32bit-debian.ini ABI $use_shared
 	elif [ -d '/usr/lib32' ] ; then
-		# 32-bit pkgconfig on Arch
-		build build-32b $srcdir/config/x86/cross-32bit-arch.ini ABI
+		build build-32b $srcdir/config/x86/cross-32bit-arch.ini ABI $use_shared
 	else
-		# 32-bit pkgconfig on RHEL/Fedora (lib vs lib64)
-		build build-32b $srcdir/config/x86/cross-32bit-fedora.ini ABI
+		build build-32b $srcdir/config/x86/cross-32bit-fedora.ini ABI $use_shared
 	fi
 	target_override=
 fi
