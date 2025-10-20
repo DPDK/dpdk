@@ -28,7 +28,7 @@
 
 static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 
-rte_spinlock_t flow_lock = RTE_SPINLOCK_INITIALIZER;
+static rte_spinlock_t flow_lock = RTE_SPINLOCK_INITIALIZER;
 static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 
 static int nthw_interpret_raw_data(uint8_t *data, uint8_t *preserve, int size,

@@ -58,6 +58,4 @@ enum nt_rte_flow_item_type {
 	NT_RTE_FLOW_ITEM_TYPE_TUNNEL,
 };
 
-extern rte_spinlock_t flow_lock;
-
 #endif	/* __CREATE_ELEMENTS_H__ */
