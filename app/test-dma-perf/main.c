@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <libgen.h>
 
+#include <rte_argparse.h>
 #include <rte_eal.h>
 #include <rte_cfgfile.h>
 #include <rte_string_fns.h>
@@ -26,12 +27,7 @@
 #define DMA_MEM_COPY "DMA_MEM_COPY"
 #define CPU_MEM_COPY "CPU_MEM_COPY"
 
-#define CMDLINE_CONFIG_ARG "--config"
-#define CMDLINE_RESULT_ARG "--result"
-
 #define MAX_PARAMS_PER_ENTRY 4
-
-#define MAX_LONG_OPT_SZ 64
 
 enum {
 	TEST_TYPE_NONE = 0,
@@ -44,6 +40,9 @@ static struct test_configure test_cases[MAX_TEST_CASES];
 
 #define GLOBAL_SECTION_NAME	"GLOBAL"
 static struct global_configure global_cfg;
+
+static char *config_path;
+static char *result_path;
 
 char output_str[MAX_WORKER_NB + 1][MAX_OUTPUT_STR_LEN];
 
@@ -535,46 +534,75 @@ load_configs(const char *path)
 	return i;
 }
 
-int
-main(int argc, char *argv[])
+static int
+parse_args(int argc, char **argv)
 {
+	static struct rte_argparse obj = {
+		.prog_name = "test-dma-perf",
+		.usage = "[optional parameters]",
+		.descriptor = NULL,
+		.epilog = NULL,
+		.exit_on_error = true,
+		.args = {
+			{ "--config", NULL, "Specify a configuration file",
+			  (void *)&config_path, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_STR,
+			},
+			{ "--result", NULL, "Optional, specify a result file name",
+			  (void *)&result_path, NULL,
+			  RTE_ARGPARSE_VALUE_REQUIRED, RTE_ARGPARSE_VALUE_TYPE_STR,
+			},
+			ARGPARSE_ARG_END(),
+		},
+	};
+	char rst_path[PATH_MAX + 16] = {0};
 	int ret;
-	uint16_t case_nb;
-	uint32_t i, nb_lcores;
-	pid_t cpid, wpid;
-	int wstatus;
-	char *cfg_path_ptr = NULL;
-	char *rst_path_ptr = NULL;
-	char rst_path[PATH_MAX];
 
-	for (i = 0; i < (uint32_t)argc; i++) {
-		if (strncmp(argv[i], CMDLINE_CONFIG_ARG, MAX_LONG_OPT_SZ) == 0)
-			cfg_path_ptr = argv[i + 1];
-		if (strncmp(argv[i], CMDLINE_RESULT_ARG, MAX_LONG_OPT_SZ) == 0)
-			rst_path_ptr = argv[i + 1];
-	}
-	if (cfg_path_ptr == NULL) {
+	ret = rte_argparse_parse(&obj, argc, argv);
+	if (ret < 0)
+		exit(1);
+
+	if (config_path == NULL) {
 		printf("Config file not assigned.\n");
-		return -1;
+		exit(1);
 	}
-	if (rst_path_ptr == NULL) {
-		rte_basename(cfg_path_ptr, rst_path, sizeof(rst_path));
+
+	if (result_path == NULL) {
+		rte_basename(config_path, rst_path, sizeof(rst_path));
 		char *token = strtok(rst_path, ".");
 		if (token == NULL) {
 			printf("Config file error.\n");
 			return -1;
 		}
 		strlcat(token, "_result.csv", sizeof(rst_path));
-		rst_path_ptr = rst_path;
+		result_path = strdup(rst_path);
+		if (result_path == NULL) {
+			printf("Generate result file path error.\n");
+			exit(1);
+		}
 	}
-
-	case_nb = load_configs(cfg_path_ptr);
-	fd = fopen(rst_path_ptr, "w");
+	fd = fopen(result_path, "w");
 	if (fd == NULL) {
 		printf("Open output CSV file error.\n");
-		return -1;
+		exit(1);
 	}
 	fclose(fd);
+
+	return 0;
+}
+
+int
+main(int argc, char *argv[])
+{
+	uint32_t i, nb_lcores;
+	pid_t cpid, wpid;
+	uint16_t case_nb;
+	int wstatus;
+	int ret;
+
+	parse_args(argc, argv);
+
+	case_nb = load_configs(config_path);
 
 	printf("Running cases...\n");
 	for (i = 0; i < case_nb; i++) {
@@ -582,7 +610,7 @@ main(int argc, char *argv[])
 			printf("Test case %d configured to be skipped.\n\n", i + 1);
 			snprintf(output_str[0], MAX_OUTPUT_STR_LEN, "Skip the test-case %d\n",
 				 i + 1);
-			if (open_output_csv(rst_path_ptr))
+			if (open_output_csv(result_path))
 				return 0;
 			continue;
 		}
@@ -590,7 +618,7 @@ main(int argc, char *argv[])
 		if (!test_cases[i].is_valid) {
 			printf("Invalid test case %d.\n\n", i + 1);
 			snprintf(output_str[0], MAX_OUTPUT_STR_LEN, "Invalid case %d\n", i + 1);
-			if (open_output_csv(rst_path_ptr))
+			if (open_output_csv(result_path))
 				return 0;
 			continue;
 		}
@@ -612,7 +640,7 @@ main(int argc, char *argv[])
 				rte_exit(EXIT_FAILURE,
 					"There should be at least 2 worker lcores.\n");
 
-			fd = fopen(rst_path_ptr, "a");
+			fd = fopen(result_path, "a");
 			if (!fd) {
 				printf("Open output CSV file error.\n");
 				return 0;

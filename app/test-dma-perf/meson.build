@@ -7,7 +7,7 @@ if is_windows
     subdir_done()
 endif
 
-deps += ['dmadev', 'mbuf', 'cfgfile']
+deps += ['dmadev', 'mbuf', 'cfgfile', 'argparse']
 
 sources = files(
         'main.c',
