@@ -70,8 +70,14 @@ struct test_configure {
 	uint8_t cache_flush;
 	uint32_t nr_buf;
 	uint16_t test_secs;
-	const char *eal_args;
 	uint8_t scenario_id;
+};
+
+#define MAX_EAL_ARGV_NB 100
+
+struct global_configure {
+	char *eal_argv[MAX_EAL_ARGV_NB + 1];
+	int   eal_argc;
 };
 
 int mem_copy_benchmark(struct test_configure *cfg);

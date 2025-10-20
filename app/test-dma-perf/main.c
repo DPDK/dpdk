@@ -23,9 +23,6 @@
 
 #define CSV_HDR_FMT "Case %u : %s,lcore,DMA,DMA ring size,kick batch size,buffer size(B),number of buffers,memory(MB),average cycle,bandwidth(Gbps),MOps\n"
 
-#define MAX_EAL_PARAM_NB 100
-#define MAX_EAL_PARAM_LEN 1024
-
 #define DMA_MEM_COPY "DMA_MEM_COPY"
 #define CPU_MEM_COPY "CPU_MEM_COPY"
 
@@ -44,6 +41,9 @@ enum {
 
 #define MAX_TEST_CASES 16
 static struct test_configure test_cases[MAX_TEST_CASES];
+
+#define GLOBAL_SECTION_NAME	"GLOBAL"
+static struct global_configure global_cfg;
 
 char output_str[MAX_WORKER_NB + 1][MAX_OUTPUT_STR_LEN];
 
@@ -288,6 +288,42 @@ static int populate_dma_dev_config(const char *key, const char *value, void *tes
 	return ret;
 }
 
+static int
+parse_global_config(struct rte_cfgfile *cfgfile)
+{
+	static char prog_name[] = "test-dma-perf";
+	char *tokens[MAX_EAL_ARGV_NB];
+	const char *entry;
+	int token_nb;
+	char *args;
+	int ret;
+	int i;
+
+	ret = rte_cfgfile_num_sections(cfgfile, GLOBAL_SECTION_NAME, strlen(GLOBAL_SECTION_NAME));
+	if (ret != 1) {
+		printf("Error: GLOBAL section not exist or has multiple!\n");
+		return -1;
+	}
+
+	entry = rte_cfgfile_get_entry(cfgfile, GLOBAL_SECTION_NAME, "eal_args");
+	if (entry == NULL) {
+		printf("Error: GLOBAL section must have 'eal_args' entry!\n");
+		return -1;
+	}
+	args = strdup(entry);
+	if (args == NULL) {
+		printf("Error: dup GLOBAL 'eal_args' failed!\n");
+		return -1;
+	}
+	token_nb = rte_strsplit(args, strlen(args), tokens, MAX_EAL_ARGV_NB, ' ');
+	global_cfg.eal_argv[0] = prog_name;
+	for (i = 0; i < token_nb; i++)
+		global_cfg.eal_argv[i + 1] = tokens[i];
+	global_cfg.eal_argc = i + 1;
+
+	return 0;
+}
+
 static uint16_t
 load_configs(const char *path)
 {
@@ -297,8 +333,8 @@ load_configs(const char *path)
 	char section_name[CFG_NAME_LEN];
 	const char *case_type;
 	const char *lcore_dma;
-	const char *mem_size_str, *buf_size_str, *ring_size_str, *kick_batch_str, *src_sges_str,
-		*dst_sges_str, *use_dma_ops;
+	const char *mem_size_str, *buf_size_str, *ring_size_str, *kick_batch_str,
+		*src_sges_str, *dst_sges_str, *use_dma_ops;
 	const char *skip;
 	struct rte_kvargs *kvlist;
 	int args_nr, nb_vp;
@@ -311,7 +347,10 @@ load_configs(const char *path)
 		exit(1);
 	}
 
-	nb_sections = rte_cfgfile_num_sections(cfgfile, NULL, 0);
+	if (parse_global_config(cfgfile) != 0)
+		exit(1);
+
+	nb_sections = rte_cfgfile_num_sections(cfgfile, NULL, 0) - 1;
 	if (nb_sections > MAX_TEST_CASES) {
 		printf("Error: The maximum number of cases is %d.\n", MAX_TEST_CASES);
 		exit(1);
@@ -488,45 +527,12 @@ load_configs(const char *path)
 		test_case->test_secs = (uint16_t)atoi(rte_cfgfile_get_entry(cfgfile,
 					section_name, "test_seconds"));
 
-		test_case->eal_args = rte_cfgfile_get_entry(cfgfile, section_name, "eal_args");
-		if (test_case->eal_args != NULL)
-			test_case->eal_args = strdup(test_case->eal_args);
 		test_case->is_valid = true;
 	}
 
 	rte_cfgfile_close(cfgfile);
 	printf("config file parsing complete.\n\n");
 	return i;
-}
-
-/* Parse the argument given in the command line of the application */
-static int
-append_eal_args(int argc, char **argv, const char *eal_args, char **new_argv)
-{
-	int i;
-	char *tokens[MAX_EAL_PARAM_NB];
-	char args[MAX_EAL_PARAM_LEN] = {0};
-	int token_nb, new_argc = 0;
-
-	for (i = 0; i < argc; i++) {
-		if ((strcmp(argv[i], CMDLINE_CONFIG_ARG) == 0) ||
-				(strcmp(argv[i], CMDLINE_RESULT_ARG) == 0)) {
-			i++;
-			continue;
-		}
-		strlcpy(new_argv[new_argc], argv[i], MAX_EAL_PARAM_LEN);
-		new_argc++;
-	}
-
-	if (eal_args) {
-		strlcpy(args, eal_args, MAX_EAL_PARAM_LEN);
-		token_nb = rte_strsplit(args, strlen(args),
-					tokens, MAX_EAL_PARAM_NB, ' ');
-		for (i = 0; i < token_nb; i++)
-			strlcpy(new_argv[new_argc++], tokens[i], MAX_EAL_PARAM_LEN);
-	}
-
-	return new_argc;
 }
 
 int
@@ -537,17 +543,9 @@ main(int argc, char *argv[])
 	uint32_t i, nb_lcores;
 	pid_t cpid, wpid;
 	int wstatus;
-	char args[MAX_EAL_PARAM_NB][MAX_EAL_PARAM_LEN];
-	char *pargs[MAX_EAL_PARAM_NB];
 	char *cfg_path_ptr = NULL;
 	char *rst_path_ptr = NULL;
 	char rst_path[PATH_MAX];
-	int new_argc;
-
-	memset(args, 0, sizeof(args));
-
-	for (i = 0; i < RTE_DIM(pargs); i++)
-		pargs[i] = args[i];
 
 	for (i = 0; i < (uint32_t)argc; i++) {
 		if (strncmp(argv[i], CMDLINE_CONFIG_ARG, MAX_LONG_OPT_SZ) == 0)
@@ -604,8 +602,7 @@ main(int argc, char *argv[])
 		} else if (cpid == 0) {
 			printf("\nRunning case %u\n\n", i + 1);
 
-			new_argc = append_eal_args(argc, argv, test_cases[i].eal_args, pargs);
-			ret = rte_eal_init(new_argc, pargs);
+			ret = rte_eal_init(global_cfg.eal_argc, global_cfg.eal_argv);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
 

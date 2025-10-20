@@ -27,6 +27,9 @@ along with the application to demonstrate all the parameters.
 
 .. code-block:: ini
 
+   [GLOBAL]
+   eal_args=--in-memory --file-prefix=test -l 9-12
+
    [case1]
    type=DMA_MEM_COPY
    mem_size=10
@@ -39,7 +42,6 @@ along with the application to demonstrate all the parameters.
    test_seconds=2
    lcore_dma0=lcore=10,dev=0000:00:04.2,dir=mem2mem
    lcore_dma0=lcore=11,dev=0000:00:04.3,dir=mem2mem
-   eal_args=--in-memory --file-prefix=test
 
    [case2]
    type=CPU_MEM_COPY
@@ -49,8 +51,7 @@ along with the application to demonstrate all the parameters.
    dst_numa_node=1
    cache_flush=0
    test_seconds=2
-   lcore = 3, 4
-   eal_args=--in-memory --no-pci
+   lcore = 10, 11
 
    [case3]
    skip=1
@@ -68,10 +69,12 @@ along with the application to demonstrate all the parameters.
    lcore_dma0=lcore=10,dev=0000:00:04.1,dir=mem2mem
    lcore_dma1=lcore=11,dev=0000:00:04.2,dir=dev2mem,raddr=0x200000000,coreid=1,pfid=2,vfid=3
    lcore_dma2=lcore=12,dev=0000:00:04.3,dir=mem2dev,raddr=0x200000000,coreid=1,pfid=2,vfid=3
-   eal_args=--in-memory --file-prefix=test
    use_enq_deq_ops=0
 
-The configuration file is divided into multiple sections, each section represents a test case.
+The configuration file is divided into two type sections,
+the first is global configuration section;
+the second is test case configuration sections
+which contain multiple sections, each section represents a test case.
 The four mandatory variables ``mem_size``, ``buf_size``, ``dma_ring_size``, and ``kick_batch``
 can vary in each test case.
 The format for this is ``variable=first,last,increment,ADD|MUL``.
@@ -91,8 +94,15 @@ Each case can only have one variable change,
 and each change will generate a scenario, so each case can have multiple scenarios.
 
 
-Configuration Parameters
-~~~~~~~~~~~~~~~~~~~~~~~~
+Global Configuration Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``eal_args``
+  Specifies the EAL arguments for all test cases.
+
+
+Testcase Configuration Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``skip``
   To skip a test-case, must be configured as ``1``
@@ -169,9 +179,6 @@ Configuration Parameters
 
 ``lcore``
   Specifies the lcore for CPU testing.
-
-``eal_args``
-  Specifies the EAL arguments.
 
 ``use_enq_deq_ops``
   Specifies whether to use enqueue/dequeue operations.
