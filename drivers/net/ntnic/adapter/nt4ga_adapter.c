@@ -52,7 +52,7 @@ static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *
 
 static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL)
 		NT_LOG(ERR, NTNIC, "%s: flow_filter module uninitialized", __func__);
@@ -162,7 +162,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		switch (fpga_info->n_fpga_prod_id) {
 		/* NT200A01: 2x100G (Xilinx) */
 		case 9563:	/* NT200A02 (Cap) */
-			link_ops = get_100g_link_ops();
+			link_ops = nthw_get_100g_link_ops();
 
 			if (link_ops == NULL) {
 				NT_LOG(ERR, NTNIC, "NT200A02 100G link module uninitialized");
@@ -173,7 +173,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 			res = link_ops->link_init(p_adapter_info, p_fpga);
 			break;
 		case 9574: /* NT400D13 (Intel Agilex FPGA) */
-			link_ops = get_agx_100g_link_ops();
+			link_ops = nthw_get_agx_100g_link_ops();
 			if (link_ops == NULL) {
 				NT_LOG(ERR, NTNIC, "NT400D11 100G link module uninitialized");
 				res = -1;
@@ -197,7 +197,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		}
 	}
 
-	const struct nt4ga_stat_ops *nt4ga_stat_ops = get_nt4ga_stat_ops();
+	const struct nt4ga_stat_ops *nt4ga_stat_ops = nthw_get_nt4ga_stat_ops();
 
 	if (nt4ga_stat_ops != NULL) {
 		/* Nt4ga Stat init/setup */
@@ -223,7 +223,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 
 static int nt4ga_adapter_deinit(struct adapter_info_s *p_adapter_info)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL)
 		NT_LOG(ERR, NTNIC, "%s: flow_filter module uninitialized", __func__);

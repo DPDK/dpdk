@@ -191,7 +191,7 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 		return -1;
 	}
 
-	if (get_flow_filter_ops() != NULL) {
+	if (nthw_get_flow_filter_ops() != NULL) {
 		struct flow_nic_dev *ndev = p_adapter_info->nt4ga_filter.mp_flow_device;
 		p_nt4ga_stat->flm_stat_ver = ndev->be.flm.ver;
 		p_nt4ga_stat->mp_stat_structs_flm = calloc(1, sizeof(struct flm_counters_v1));
@@ -244,7 +244,7 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 	uint32_t *p_stat_dma_virtual)
 {
 	(void)p_adapter_info;
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL || p_nt4ga_stat == NULL)
 		return -1;

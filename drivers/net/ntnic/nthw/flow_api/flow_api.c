@@ -292,7 +292,7 @@ static struct flow_handle *flow_create(struct flow_eth_dev *dev __rte_unused,
 	const struct rte_flow_action action[] __rte_unused,
 	struct rte_flow_error *error __rte_unused)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
@@ -306,7 +306,7 @@ static struct flow_handle *flow_create(struct flow_eth_dev *dev __rte_unused,
 static int flow_destroy(struct flow_eth_dev *dev __rte_unused,
 	struct flow_handle *flow __rte_unused,	struct rte_flow_error *error __rte_unused)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
@@ -318,7 +318,7 @@ static int flow_destroy(struct flow_eth_dev *dev __rte_unused,
 
 static int flow_flush(struct flow_eth_dev *dev, uint16_t caller_id, struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -333,7 +333,7 @@ static int flow_actions_update(struct flow_eth_dev *dev,
 	const struct rte_flow_action action[],
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -378,7 +378,7 @@ static int nic_remove_eth_port_dev(struct flow_nic_dev *ndev, struct flow_eth_de
 
 static int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
@@ -453,7 +453,7 @@ static int nthw_flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 
 static void flow_ndev_reset(struct flow_nic_dev *ndev)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
@@ -586,7 +586,7 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 	int *rss_target_id, enum flow_eth_dev_profile flow_profile,
 	uint32_t exception_path)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL)
 		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
@@ -1015,7 +1015,7 @@ static int flow_dev_dump(struct flow_eth_dev *dev,
 	FILE *file,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
@@ -1032,7 +1032,7 @@ static int flow_get_aged_flows(struct flow_eth_dev *dev,
 	uint32_t nb_contexts,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline_ops uninitialized");
@@ -1053,7 +1053,7 @@ static int flow_info_get(struct flow_eth_dev *dev, uint8_t caller_id,
 	struct rte_flow_port_info *port_info, struct rte_flow_queue_info *queue_info,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1068,7 +1068,7 @@ static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
 	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
 	const struct rte_flow_queue_attr *queue_attr[], struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1088,7 +1088,7 @@ flow_pattern_template_create(struct flow_eth_dev *dev,
 	const struct rte_flow_pattern_template_attr *template_attr, uint16_t caller_id,
 	const struct rte_flow_item pattern[], struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1103,7 +1103,7 @@ static int flow_pattern_template_destroy(struct flow_eth_dev *dev,
 	struct flow_pattern_template *pattern_template,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1121,7 +1121,7 @@ flow_actions_template_create(struct flow_eth_dev *dev,
 	const struct rte_flow_action actions[], const struct rte_flow_action masks[],
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1136,7 +1136,7 @@ static int flow_actions_template_destroy(struct flow_eth_dev *dev,
 	struct flow_actions_template *actions_template,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1154,7 +1154,7 @@ static struct flow_template_table *flow_template_table_create(struct flow_eth_de
 	uint8_t nb_pattern_templates, struct flow_actions_template *actions_templates[],
 	uint8_t nb_actions_templates, struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1170,7 +1170,7 @@ static int flow_template_table_destroy(struct flow_eth_dev *dev,
 	struct flow_template_table *template_table,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1188,7 +1188,7 @@ flow_async_create(struct flow_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_action actions[], uint8_t actions_template_index, void *user_data,
 	struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1204,7 +1204,7 @@ static int flow_async_destroy(struct flow_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
 	void *user_data, struct rte_flow_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
@@ -1216,7 +1216,7 @@ static int flow_async_destroy(struct flow_eth_dev *dev, uint32_t queue_id,
 }
 int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL)
 		return -1;
@@ -1229,7 +1229,7 @@ int nthw_flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t 
 
 int nthw_flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL)
 		return -1;

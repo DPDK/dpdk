@@ -540,7 +540,7 @@ static int convert_flow(struct rte_eth_dev *eth_dev,
 static int
 eth_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *flow, struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -584,7 +584,7 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 	const struct rte_flow_action actions[],
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -667,7 +667,7 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 
 static int eth_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -708,7 +708,7 @@ static int eth_flow_actions_update(struct rte_eth_dev *eth_dev,
 	const struct rte_flow_action actions[],
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG(ERR, FILTER, "flow_filter module uninitialized");
@@ -770,7 +770,7 @@ static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 	FILE *file,
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "%s: flow_filter module uninitialized", __func__);
@@ -797,7 +797,7 @@ static int eth_flow_get_aged_flows(struct rte_eth_dev *eth_dev,
 	uint32_t nb_contexts,
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
@@ -824,7 +824,7 @@ static int eth_flow_get_aged_flows(struct rte_eth_dev *eth_dev,
 static int eth_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
 	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -849,7 +849,7 @@ static int eth_flow_configure(struct rte_eth_dev *dev, const struct rte_flow_por
 	uint16_t nb_queue, const struct rte_flow_queue_attr *queue_attr[],
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -875,7 +875,7 @@ static struct rte_flow_pattern_template *eth_flow_pattern_template_create(struct
 	const struct rte_flow_pattern_template_attr *template_attr,
 	const struct rte_flow_item pattern[], struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -914,7 +914,7 @@ static int eth_flow_pattern_template_destroy(struct rte_eth_dev *dev,
 	struct rte_flow_pattern_template *pattern_template,
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -939,7 +939,7 @@ static struct rte_flow_actions_template *eth_flow_actions_template_create(struct
 	const struct rte_flow_action actions[], const struct rte_flow_action masks[],
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -1000,7 +1000,7 @@ static int eth_flow_actions_template_destroy(struct rte_eth_dev *dev,
 	struct rte_flow_actions_template *actions_template,
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
@@ -1026,7 +1026,7 @@ static struct rte_flow_template_table *eth_flow_template_table_create(struct rte
 	struct rte_flow_actions_template *actions_templates[], uint8_t nb_actions_templates,
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -1065,7 +1065,7 @@ static int eth_flow_template_table_destroy(struct rte_eth_dev *dev,
 	struct rte_flow_template_table *template_table,
 	struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -1091,7 +1091,7 @@ static struct rte_flow *eth_flow_async_create(struct rte_eth_dev *dev, uint32_t 
 	uint8_t pattern_template_index, const struct rte_flow_action actions[],
 	uint8_t actions_template_index, void *user_data, struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
@@ -1151,7 +1151,7 @@ static int eth_flow_async_destroy(struct rte_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr, struct rte_flow *flow,
 	void *user_data, struct rte_flow_error *error)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");

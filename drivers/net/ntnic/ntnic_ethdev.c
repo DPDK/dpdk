@@ -162,7 +162,7 @@ get_pdrv_from_pci(struct rte_pci_addr addr)
 
 static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_stats *stats)
 {
-	const struct ntnic_filter_ops *ntnic_filter_ops = get_ntnic_filter_ops();
+	const struct ntnic_filter_ops *ntnic_filter_ops = nthw_get_filter_ops();
 
 	if (ntnic_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "ntnic_filter_ops uninitialized");
@@ -261,7 +261,7 @@ static int dpdk_stats_reset(struct pmd_internals *internals, struct ntdrv_4ga_s 
 static int
 eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 {
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
@@ -317,7 +317,7 @@ static int eth_stats_reset(struct rte_eth_dev *eth_dev)
 static int
 eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info)
 {
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
@@ -1081,7 +1081,7 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 	unsigned int socket_id __rte_unused,
 	const struct rte_eth_txconf *tx_conf)
 {
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "Link management module uninitialized");
@@ -1181,7 +1181,7 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 
 static int dev_set_mtu_inline(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "profile_inline module uninitialized");
@@ -1367,14 +1367,14 @@ eth_dev_configure(struct rte_eth_dev *eth_dev)
 static int
 eth_dev_start(struct rte_eth_dev *eth_dev)
 {
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
-	eth_dev->flow_fp_ops = get_dev_fp_flow_ops();
+	eth_dev->flow_fp_ops = nthw_get_dev_fp_flow_ops();
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	const int n_intf_no = internals->n_intf_no;
@@ -1459,7 +1459,7 @@ eth_dev_stop(struct rte_eth_dev *eth_dev)
 static int
 eth_dev_set_link_up(struct rte_eth_dev *eth_dev)
 {
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
@@ -1484,7 +1484,7 @@ eth_dev_set_link_up(struct rte_eth_dev *eth_dev)
 static int
 eth_dev_set_link_down(struct rte_eth_dev *eth_dev)
 {
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
@@ -1509,14 +1509,14 @@ eth_dev_set_link_down(struct rte_eth_dev *eth_dev)
 static void
 drv_deinit(struct drv_s *p_drv)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "profile_inline module uninitialized");
 		return;
 	}
 
-	const struct adapter_ops *adapter_ops = get_adapter_ops();
+	const struct adapter_ops *adapter_ops = nthw_get_adapter_ops();
 
 	if (adapter_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Adapter module uninitialized");
@@ -1623,7 +1623,7 @@ eth_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version, size_t fw_size
 
 static int dev_flow_ops_get(struct rte_eth_dev *dev __rte_unused, const struct rte_flow_ops **ops)
 {
-	*ops = get_dev_flow_ops();
+	*ops = nthw_get_dev_flow_ops();
 	return 0;
 }
 
@@ -1636,7 +1636,7 @@ static int eth_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *sta
 	int n_intf_no = internals->n_intf_no;
 	int nb_xstats;
 
-	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = nthw_get_xstats_ops();
 
 	if (ntnic_xstats_ops == NULL) {
 		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
@@ -1661,7 +1661,7 @@ static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 	int n_intf_no = internals->n_intf_no;
 	int nb_xstats;
 
-	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = nthw_get_xstats_ops();
 
 	if (ntnic_xstats_ops == NULL) {
 		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
@@ -1683,7 +1683,7 @@ static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
 	int n_intf_no = internals->n_intf_no;
 
-	struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+	struct ntnic_xstats_ops *ntnic_xstats_ops = nthw_get_xstats_ops();
 
 	if (ntnic_xstats_ops == NULL) {
 		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
@@ -1704,7 +1704,7 @@ static int eth_xstats_get_names(struct rte_eth_dev *eth_dev,
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
 
-	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = nthw_get_xstats_ops();
 
 	if (ntnic_xstats_ops == NULL) {
 		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
@@ -1723,7 +1723,7 @@ static int eth_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
-	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = nthw_get_xstats_ops();
 
 	if (ntnic_xstats_ops == NULL) {
 		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
@@ -1743,7 +1743,7 @@ promiscuous_enable(struct rte_eth_dev __rte_unused(*dev))
 
 static int eth_dev_rss_hash_update(struct rte_eth_dev *eth_dev, struct rte_eth_rss_conf *rss_conf)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
@@ -2035,7 +2035,7 @@ static int adapter_flm_update_service(void *context)
 
 		dev = p_flow_nic_dev->eth_base;
 
-		profile_inline_ops = get_profile_inline_ops();
+		profile_inline_ops = nthw_get_profile_inline_ops();
 		RTE_ASSERT(profile_inline_ops != NULL);
 
 		NT_LOG(INF, NTNIC, "flm update service started on lcore %i",  rte_lcore_id());
@@ -2067,7 +2067,7 @@ static int adapter_stat_service(void *context)
 		struct drv_s *p_drv = context;
 		RTE_ASSERT(p_drv != NULL);
 
-		nt4ga_stat_ops = get_nt4ga_stat_ops();
+		nt4ga_stat_ops = nthw_get_nt4ga_stat_ops();
 		RTE_ASSERT(nt4ga_stat_ops != NULL);
 
 		p_nt_drv = &p_drv->ntdrv;
@@ -2136,14 +2136,14 @@ static int adapter_stat_service(void *context)
 static int
 nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 {
-	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+	const struct flow_filter_ops *flow_filter_ops = nthw_get_flow_filter_ops();
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
 		/* Return statement is not necessary here to allow traffic processing by SW  */
 	}
 
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "profile_inline module uninitialized");
@@ -2151,14 +2151,14 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	}
 
 	nthw_vfio_init();
-	const struct port_ops *port_ops = get_port_ops();
+	const struct port_ops *port_ops = nthw_get_port_ops();
 
 	if (port_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
-	const struct adapter_ops *adapter_ops = get_adapter_ops();
+	const struct adapter_ops *adapter_ops = nthw_get_adapter_ops();
 
 	if (adapter_ops == NULL) {
 		NT_LOG(ERR, NTNIC, "Adapter module uninitialized");
@@ -2328,7 +2328,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		return -1;
 	}
 
-	const struct meter_ops_s *meter_ops = get_meter_ops();
+	const struct meter_ops_s *meter_ops = nthw_get_meter_ops();
 
 	if (meter_ops != NULL)
 		nthw_eth_dev_ops.mtr_ops_get = meter_ops->eth_mtr_ops_get;
@@ -2337,7 +2337,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		NT_LOG(DBG, NTNIC, "Meter module is not initialized");
 
 	/* Initialize the queue system */
-	sg_ops = get_sg_ops();
+	sg_ops = nthw_get_sg_ops();
 
 	if (sg_ops != NULL) {
 		err = sg_ops->nthw_virt_queue_init(fpga_info);
@@ -2556,7 +2556,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		/* increase initialized ethernet devices - PF */
 		p_drv->n_eth_dev_init_count++;
 
-		if (get_flow_filter_ops() != NULL) {
+		if (nthw_get_flow_filter_ops() != NULL) {
 			if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE &&
 				internals->flw_dev->ndev->be.tpe.ver >= 2) {
 				RTE_ASSERT(nthw_eth_dev_ops.mtu_set == dev_set_mtu_inline ||

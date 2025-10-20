@@ -35,7 +35,7 @@ static int eth_mtr_capabilities_get_inline(struct rte_eth_dev *eth_dev,
 	struct rte_mtr_capabilities *cap,
 	struct rte_mtr_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -106,7 +106,7 @@ static int eth_mtr_meter_profile_add_inline(struct rte_eth_dev *eth_dev,
 	struct rte_mtr_meter_profile *profile,
 	struct rte_mtr_error *error __rte_unused)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -157,7 +157,7 @@ static int eth_mtr_meter_profile_delete_inline(struct rte_eth_dev *eth_dev,
 	uint32_t meter_profile_id,
 	struct rte_mtr_error *error __rte_unused)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -180,7 +180,7 @@ static int eth_mtr_meter_policy_add_inline(struct rte_eth_dev *eth_dev,
 	struct rte_mtr_meter_policy_params *policy,
 	struct rte_mtr_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -226,7 +226,7 @@ static int eth_mtr_meter_policy_delete_inline(struct rte_eth_dev *eth_dev __rte_
 	uint32_t policy_id,
 	struct rte_mtr_error *error __rte_unused)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -246,7 +246,7 @@ static int eth_mtr_create_inline(struct rte_eth_dev *eth_dev,
 	int shared,
 	struct rte_mtr_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -312,7 +312,7 @@ static int eth_mtr_destroy_inline(struct rte_eth_dev *eth_dev,
 	uint32_t mtr_id,
 	struct rte_mtr_error *error __rte_unused)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -342,7 +342,7 @@ static int eth_mtr_stats_adjust_inline(struct rte_eth_dev *eth_dev,
 	uint64_t adjust_value,
 	struct rte_mtr_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
@@ -405,7 +405,7 @@ static int eth_mtr_stats_read_inline(struct rte_eth_dev *eth_dev,
 	int clear,
 	struct rte_mtr_error *error)
 {
-	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+	const struct profile_inline_ops *profile_inline_ops = nthw_get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
 		NT_LOG(ERR, NTHW, "profile_inline module uninitialized");
