@@ -769,12 +769,82 @@ attach_ext_buffer(struct vchan_dev_config *vchan_dev, struct lcore_params *lcore
 	return 0;
 }
 
+static int
+verify_data(struct test_configure *cfg, struct rte_mbuf **srcs, struct rte_mbuf **dsts,
+	    uint32_t nr_buf)
+{
+	struct rte_mbuf **src_buf = NULL, **dst_buf = NULL;
+	uint32_t nr_buf_pt = nr_buf / cfg->num_worker;
+	struct vchan_dev_config *vchan_dev = NULL;
+	unsigned int buf_size = cfg->buf_size.cur;
+	uint32_t offset, work_idx, i, j;
+
+	for (work_idx = 0; work_idx < cfg->num_worker; work_idx++)  {
+		vchan_dev = &cfg->dma_config[work_idx].vchan_dev;
+		offset = nr_buf / cfg->num_worker * work_idx;
+		src_buf = srcs + offset;
+		dst_buf = dsts + offset;
+
+		if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_MEM && !cfg->is_sg) {
+			for (i = 0; i < nr_buf_pt; i++) {
+				if (memcmp(rte_pktmbuf_mtod(src_buf[i], void *),
+							    rte_pktmbuf_mtod(dst_buf[i], void *),
+							    cfg->buf_size.cur) != 0) {
+					printf("Copy validation fails for buffer number %d\n", i);
+					return -1;
+				}
+			}
+			continue;
+		}
+
+		if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_MEM && cfg->is_sg) {
+			size_t src_remsz = buf_size % cfg->nb_src_sges;
+			size_t dst_remsz = buf_size % cfg->nb_dst_sges;
+			size_t src_sz = buf_size / cfg->nb_src_sges;
+			size_t dst_sz = buf_size / cfg->nb_dst_sges;
+			uint8_t src[buf_size], dst[buf_size];
+			uint8_t *sbuf, *dbuf, *ptr;
+
+			for (i = 0; i < (nr_buf_pt / RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges));
+				i++) {
+				sbuf = src;
+				dbuf = dst;
+				ptr = NULL;
+
+				for (j = 0; j < cfg->nb_src_sges; j++) {
+					ptr = rte_pktmbuf_mtod(src_buf[i * cfg->nb_src_sges + j],
+						uint8_t *);
+					memcpy(sbuf, ptr, src_sz);
+					sbuf += src_sz;
+				}
+				if (src_remsz)
+					memcpy(sbuf, ptr + src_sz, src_remsz);
+
+				for (j = 0; j < cfg->nb_dst_sges; j++) {
+					ptr = rte_pktmbuf_mtod(dst_buf[i * cfg->nb_dst_sges + j],
+						uint8_t *);
+					memcpy(dbuf, ptr, dst_sz);
+					dbuf += dst_sz;
+				}
+				if (dst_remsz)
+					memcpy(dbuf, ptr + dst_sz, dst_remsz);
+
+				if (memcmp(src, dst, buf_size) != 0) {
+					printf("SG Copy validation fails for buffer number %d\n",
+						i * cfg->nb_src_sges);
+					return -1;
+				}
+			}
+			continue;
+		}
+	}
+
+	return 0;
+}
+
 int
 mem_copy_benchmark(struct test_configure *cfg)
 {
-	uint32_t i, j, k;
-	uint32_t offset;
-	unsigned int lcore_id = 0;
 	struct rte_mbuf **srcs = NULL, **dsts = NULL, **m = NULL;
 	struct rte_dma_sge *src_sges = NULL, *dst_sges = NULL;
 	struct vchan_dev_config *vchan_dev = NULL;
@@ -782,15 +852,19 @@ mem_copy_benchmark(struct test_configure *cfg)
 	struct rte_dma_op **dma_ops = NULL;
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
-	uint16_t nb_workers = cfg->num_worker;
 	uint16_t test_secs = global_cfg.test_secs;
-	float memory = 0;
-	uint32_t avg_cycles = 0;
-	uint32_t avg_cycles_total;
-	float mops, mops_total;
-	float bandwidth, bandwidth_total;
+	uint16_t nb_workers = cfg->num_worker;
 	uint32_t nr_sgsrc = 0, nr_sgdst = 0;
-	uint32_t nr_buf, nr_ops;
+	float bandwidth, bandwidth_total;
+	unsigned int lcore_id = 0;
+	uint32_t avg_cycles_total;
+	uint32_t avg_cycles = 0;
+	float mops, mops_total;
+	float memory = 0;
+	uint32_t i, j, k;
+	uint32_t nr_buf;
+	uint32_t nr_ops;
+	uint32_t offset;
 	int ret = 0;
 
 	nr_buf = align_buffer_count(cfg, &nr_sgsrc, &nr_sgdst);
@@ -901,67 +975,9 @@ mem_copy_benchmark(struct test_configure *cfg)
 
 	rte_eal_mp_wait_lcore();
 
-	for (k = 0; k < nb_workers; k++) {
-		struct rte_mbuf **src_buf = NULL, **dst_buf = NULL;
-		uint32_t nr_buf_pt = nr_buf / nb_workers;
-		vchan_dev = &cfg->dma_config[k].vchan_dev;
-		offset = nr_buf / nb_workers * k;
-		src_buf = srcs + offset;
-		dst_buf = dsts + offset;
-
-		if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_MEM && !cfg->is_sg) {
-			for (i = 0; i < nr_buf_pt; i++) {
-				if (memcmp(rte_pktmbuf_mtod(src_buf[i], void *),
-							    rte_pktmbuf_mtod(dst_buf[i], void *),
-							    cfg->buf_size.cur) != 0) {
-					printf("Copy validation fails for buffer number %d\n", i);
-					ret = -1;
-					goto out;
-				}
-			}
-		} else if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_MEM && cfg->is_sg) {
-			size_t src_remsz = buf_size % cfg->nb_src_sges;
-			size_t dst_remsz = buf_size % cfg->nb_dst_sges;
-			size_t src_sz = buf_size / cfg->nb_src_sges;
-			size_t dst_sz = buf_size / cfg->nb_dst_sges;
-			uint8_t src[buf_size], dst[buf_size];
-			uint8_t *sbuf, *dbuf, *ptr;
-
-			for (i = 0; i < (nr_buf_pt / RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges));
-			     i++) {
-				sbuf = src;
-				dbuf = dst;
-				ptr = NULL;
-
-				for (j = 0; j < cfg->nb_src_sges; j++) {
-					ptr = rte_pktmbuf_mtod(src_buf[i * cfg->nb_src_sges + j],
-							       uint8_t *);
-					memcpy(sbuf, ptr, src_sz);
-					sbuf += src_sz;
-				}
-
-				if (src_remsz)
-					memcpy(sbuf, ptr + src_sz, src_remsz);
-
-				for (j = 0; j < cfg->nb_dst_sges; j++) {
-					ptr = rte_pktmbuf_mtod(dst_buf[i * cfg->nb_dst_sges + j],
-							       uint8_t *);
-					memcpy(dbuf, ptr, dst_sz);
-					dbuf += dst_sz;
-				}
-
-				if (dst_remsz)
-					memcpy(dbuf, ptr + dst_sz, dst_remsz);
-
-				if (memcmp(src, dst, buf_size) != 0) {
-					printf("SG Copy validation fails for buffer number %d\n",
-							i * cfg->nb_src_sges);
-					ret = -1;
-					goto out;
-				}
-			}
-		}
-	}
+	ret = verify_data(cfg, srcs, dsts, nr_buf);
+	if (ret != 0)
+		goto out;
 
 	mops_total = 0;
 	bandwidth_total = 0;
