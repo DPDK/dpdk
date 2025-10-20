@@ -69,7 +69,7 @@ static int nthw_fpga_nt200a0x_init(struct fpga_info_s *p_fpga_info)
 
 static struct nt200a0x_ops nt200a0x_ops = { .nthw_fpga_nt200a0x_init = nthw_fpga_nt200a0x_init };
 
-void nt200a0x_ops_init(void)
+void nthw_nt200a0x_ops_init(void)
 {
 	NT_LOG(DBG, NTHW, "NT200A0X OPS INIT");
 	nthw_reg_nt200a0x_ops(&nt200a0x_ops);

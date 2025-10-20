@@ -1289,7 +1289,7 @@ static const struct ntnic_filter_ops ntnic_filter_ops = {
 	.poll_statistics = poll_statistics,
 };
 
-void ntnic_filter_init(void)
+void nthw_filter_ops_init(void)
 {
 	nthw_reg_filter_ops(&ntnic_filter_ops);
 }

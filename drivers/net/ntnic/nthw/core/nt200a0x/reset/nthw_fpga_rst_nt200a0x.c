@@ -575,7 +575,7 @@ static struct rst_nt200a0x_ops rst_nt200a0x_ops = { .nthw_fpga_rst_nt200a0x_init
 			nthw_fpga_rst_nt200a0x_reset
 };
 
-void rst_nt200a0x_ops_init(void)
+void nthw_rst_nt200a0x_ops_init(void)
 {
 	NT_LOG(DBG, NTHW, "RST NT200A0X OPS INIT");
 	nthw_reg_rst_nt200a0x_ops(&rst_nt200a0x_ops);

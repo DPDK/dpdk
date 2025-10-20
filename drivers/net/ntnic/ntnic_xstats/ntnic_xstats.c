@@ -819,7 +819,7 @@ static struct ntnic_xstats_ops ops = {
 	.nthw_xstats_get_by_id = nthw_xstats_get_by_id
 };
 
-void ntnic_xstats_ops_init(void)
+void nthw_xstats_ops_init(void)
 {
 	NT_LOG_DBGX(DBG, NTNIC, "xstats module was initialized");
 	nthw_reg_xstats_ops(&ops);

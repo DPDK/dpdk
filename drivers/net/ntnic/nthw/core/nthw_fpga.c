@@ -565,7 +565,7 @@ void nthw_reg_nt200a0x_ops(struct nt200a0x_ops *ops)
 struct nt200a0x_ops *nthw_get_nt200a0x_ops(void)
 {
 	if (nt200a0x_ops == NULL)
-		nt200a0x_ops_init();
+		nthw_nt200a0x_ops_init();
 	return nt200a0x_ops;
 }
 
@@ -579,6 +579,6 @@ void nthw_reg_nt400dxx_ops(struct nt400dxx_ops *ops)
 struct nt400dxx_ops *nthw_get_nt400dxx_ops(void)
 {
 	if (nt400dxx_ops == NULL)
-		nt400dxx_ops_init();
+		nthw_nt400dxx_ops_init();
 	return nt400dxx_ops;
 }
