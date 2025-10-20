@@ -100,6 +100,11 @@ static bool nthw_fpga_rst9569_get_phy_ftile_rst_done_stat(struct nthw_fpga_rst_n
 	return nthw_field_get_updated(p->p_fld_stat_phy_ftile_rst_done) != 0;
 }
 
+static bool nthw_fpga_rst9569_get_phy_ftile_rdy_stat(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_stat_phy_ftile_rdy) != 0;
+}
+
 static bool nthw_fpga_rst9569_get_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p)
 {
 	return nthw_field_get_updated(p->p_fld_latch_ddr4_calib_complete) != 0;
@@ -149,6 +154,40 @@ static int nthw_fpga_rst9569_wait_ddr4_calibration_complete(struct fpga_info_s *
 			nthw_fpga_rst9569_ddr4_rst(p_rst, 0);
 			retrycount--;
 			timeout = 90000;/* Increase timeout for second attempt to 8 sec. */
+		}
+	} while (!complete);
+
+	return 0;
+}
+
+static int nthw_fpga_rst9569_wait_phy_ftile_rdy(struct fpga_info_s *p_fpga_info,
+	struct nthw_fpga_rst_nt400dxx *p_rst)
+{
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	uint32_t complete;
+	uint32_t timeout;
+
+	/* 5: wait until PHY_FTILE reset done */
+	NT_LOG(DBG, NTHW, "%s: %s: PHY FTILE ready", p_adapter_id_str, __func__);
+	timeout = 50000;/* initial timeout must be set to 5 sec. */
+
+	do {
+		complete = nthw_fpga_rst9569_get_phy_ftile_rdy_stat(p_rst);
+
+		if (!complete) {
+			nthw_os_wait_usec(100);
+
+		} else {
+			NT_LOG(DBG, NTHW, "%s: PHY FTILE ready, margin to timeout %u",
+				p_adapter_id_str, timeout);
+		}
+
+		timeout--;
+
+		if (timeout == 0) {
+			NT_LOG_DBGX(ERR, NTHW, "%s: Timeout waiting for PHY FTILE ready",
+				p_adapter_id_str);
+			return -1;
 		}
 	} while (!complete);
 
@@ -232,7 +271,8 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 			p_adapter_id_str, __func__);
 	}
 
-	bool success = true;
+	int tries = 0;
+	bool success = false;
 
 	do {
 		/* Only wait for ftile rst done if ftile is indeed in reset. */
@@ -256,8 +296,54 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 
 		nthw_os_wait_usec(10000);
 
-	} while (!success);
+		/* (7) Wait until PHY_FTILE ready */
+		if (nthw_fpga_rst9569_wait_phy_ftile_rdy(p_fpga_info, p_rst) == -1) {
+			if (++tries >= 5) {
+				/* Give up */
+				NT_LOG_DBGX(ERR, NTHW, "%s: PHY_TILE not ready after %u attempts",
+					p_adapter_id_str, tries);
+				return res;
+			}
 
+			/* Try to recover with as little effort as possible */
+			nthw_phy_tile_t *p_phy_tile = p_fpga_info->mp_nthw_agx.p_phy_tile;
+
+			for (uint8_t i = 0; i < nthw_phy_tile_get_no_intfs(p_phy_tile); i++) {
+				/* Also consider TX_PLL_LOCKED == 0 */
+				if (!nthw_phy_tile_get_port_status_tx_lanes_stable(p_phy_tile,
+					i)) {
+					success = false;
+					NT_LOG_DBGX(WRN, NTHW,
+						"%s: PHY_TILE Intf %u TX_LANES_STABLE == FALSE",
+						p_adapter_id_str, i);
+
+					/* Active low */
+					nthw_phy_tile_set_port_config_rst(p_phy_tile, i, 0);
+					int32_t count = 1000;
+
+					do {
+						nthw_os_wait_usec(1000);
+					} while
+					(!nthw_phy_tile_get_port_status_reset_ack(p_phy_tile, i) &&
+						(--count > 0));
+
+					if (count <= 0) {
+						NT_LOG(ERR, NTHW,
+							"%s: IntfNo %u: Time-out waiting for PortStatusResetAck",
+							p_adapter_id_str, i);
+					}
+
+					/* Active low */
+					nthw_phy_tile_set_port_config_rst(p_phy_tile, i, 1);
+					nthw_os_wait_usec(20000);
+				}
+			}
+
+		} else {
+			NT_LOG_DBGX(DBG, NTHW, "%s: PHY_TILE ready", p_adapter_id_str);
+			success = true;
+		}
+	} while (!success);
 
 	return 0;
 }
