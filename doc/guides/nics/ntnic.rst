@@ -185,3 +185,96 @@ There are list of characteristics that age timeout action has:
 - after flow is aged-out it's not automatically deleted;
 - aged-out flow can be updated with ``flow update`` command,
   and its aged-out status will be reverted;
+
+
+Service API
+-----------
+
+The NTNIC PMD provides a service API that allows applications to configure services:
+
+- ``nthw_service_add``
+- ``nthw_service_del``
+- ``nthw_service_get_info``
+
+The services are responsible for handling the vital functionality of the NTNIC PMD:
+
+FLM Update
+   is responsible for creating and destroying flows;
+Statistics
+   is responsible for collecting statistics;
+Port event
+   is responsible for handling port events: aging, port load, and flow load;
+Adapter monitor
+   is responsible for link control;
+
+.. note::
+
+   Use next EAL options to configure set service cores:
+
+   * -s SERVICE COREMASK Hexadecimal bitmask of cores to be used as service cores;
+   * -S SERVICE CORELIST List of cores to run services on;
+
+   At least 5 lcores must be reserved for the ntnic services by EAL options.
+
+For example,
+
+.. code-block:: console
+
+   dpdk-testpmd -S 8,9,10,11,12
+
+The PMD registers each service during initialization by function ``nthw_service_add``
+and unregistered by the PMD during deinitialization by the function ``nthw_service_del``.
+
+The service info may be retrieved by function ``nthw_service_get_info``.
+The service info includes the service ID, assigned lcore, and initialization state.
+
+Service API for user applications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The exported service API is available for applications to configure the services:
+
+- ``rte_pmd_ntnic_service_set_lcore``
+- ``rte_pmd_ntnic_service_get_id``
+
+For example to assign lcores 8,9,10,11,12 to the services, the application can use:
+
+.. code-block:: c
+
+   rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_STAT, 8);
+   rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_ADAPTER_MON, 9);
+   rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_PORT_0_EVENT, 10);
+   rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_PORT_1_EVENT,11);
+   rte_pmd_ntnic_service_set_lcore(RTE_NTNIC_SERVICE_FLM_UPDATE, 12);
+
+The API will automatically lcore to service core list and map the service to the lcore.
+
+.. note::
+
+   Use ``rte_service_lcore_start`` to start the lcore after mapping it to the service.
+
+Each service has its own tag to identify it:
+
+.. literalinclude:: ../../../drivers/net/ntnic/rte_pmd_ntnic.h
+   :language: c
+   :start-after: List of service tags 8<
+   :end-before: >8 End of service tags
+
+The application may use ``rte_pmd_ntnic_service_get_id`` to retrieve the service ID.
+
+For example, to enable statistics for flm_update service, the application can use:
+
+.. code-block:: c
+
+   int flm_update_id = rte_pmd_ntnic_service_get_id(RTE_NTNIC_SERVICE_FLM_UPDATE);
+   rte_service_set_stats_enable(flm_update_id, 1);
+
+All other manipulations with the service can be done with the service ID and rte_service API.
+
+To use the service API, an application must have included the header file:
+
+.. code-block:: c
+
+   #include <rte_pmd_ntnic.h>
+
+And linked with the library: `librte_net_ntnic.so`
+or `librte_net_ntnic.a` for static linking.

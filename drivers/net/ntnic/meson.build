@@ -120,7 +120,9 @@ sources = files(
         'ntlog/ntlog.c',
         'ntnic_filter/ntnic_filter.c',
         'ntutil/nt_util.c',
+        'ntutil/nt_service.c',
         'ntnic_mod_reg.c',
         'ntnic_vfio.c',
         'ntnic_ethdev.c',
+        'rte_pmd_ntnic.c',
 )
