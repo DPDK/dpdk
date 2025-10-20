@@ -84,6 +84,13 @@ static bool nthw_fpga_rst9569_get_ddr4_calib_complete_stat(struct nthw_fpga_rst_
 	return nthw_field_get_updated(p->p_fld_stat_ddr4_calib_complete) != 0;
 }
 
+static void nthw_fpga_rst9569_set_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p,
+	uint32_t val)
+{
+	nthw_field_update_register(p->p_fld_latch_ddr4_calib_complete);
+	nthw_field_set_val_flush32(p->p_fld_latch_ddr4_calib_complete, val);
+}
+
 static int nthw_fpga_rst9569_wait_ddr4_calibration_complete(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
@@ -127,6 +134,11 @@ static int nthw_fpga_rst9569_wait_ddr4_calibration_complete(struct fpga_info_s *
 	return 0;
 }
 
+static bool nthw_fpga_rst9569_get_ddr4_calib_complete_latch(struct nthw_fpga_rst_nt400dxx *const p)
+{
+	return nthw_field_get_updated(p->p_fld_latch_ddr4_calib_complete) != 0;
+}
+
 static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt400dxx *p_rst)
 {
@@ -161,6 +173,18 @@ static int nthw_fpga_rst9569_product_reset(struct fpga_info_s *p_fpga_info,
 	if (res) {
 		NT_LOG(ERR, NTHW, "%s: DDR4 calibration failed", p_adapter_id_str);
 		return res;
+	}
+
+	/* (3) Set DDR4 calib complete latched bits: */
+	nthw_fpga_rst9569_set_ddr4_calib_complete_latch(p_rst, 1);
+
+	/* Wait for phy to settle. */
+	nthw_os_wait_usec(20000);
+
+	/* (4) Ensure all latched status bits are still set: */
+	if (!nthw_fpga_rst9569_get_ddr4_calib_complete_latch(p_rst)) {
+		NT_LOG(ERR, NTHW, "%s: %s: DDR4 calibration complete has toggled",
+			p_adapter_id_str, __func__);
 	}
 
 
