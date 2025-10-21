@@ -164,6 +164,11 @@ int32_t
 ulp_rte_ecpri_hdr_handler(const struct rte_flow_item *item,
 			  struct ulp_rte_parser_params *params);
 
+/* Function to handle the parsing of RTE Flow item MPLS Header. */
+int32_t
+ulp_rte_mpls_hdr_handler(const struct rte_flow_item *item,
+			 struct ulp_rte_parser_params *params);
+
 /* Function to handle the parsing of RTE Flow item void Header. */
 int32_t
 ulp_rte_void_hdr_handler(const struct rte_flow_item *item,
