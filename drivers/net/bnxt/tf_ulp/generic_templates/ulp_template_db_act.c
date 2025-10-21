@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2014-2024 Broadcom
+ * Copyright(c) 2014-2025 Broadcom
  * All rights reserved.
  */
 
@@ -31,6 +31,8 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_ACT_BIT_GENEVE_DECAP |
 		BNXT_ULP_ACT_BIT_METER |
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
+		BNXT_ULP_ACT_BIT_IP_DECAP |
+		BNXT_ULP_ACT_BIT_L2_ENCAP |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 1
 	},
@@ -170,6 +172,8 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_ACT_BIT_SET_VLAN_VID |
 		BNXT_ULP_ACT_BIT_VXLAN_ENCAP |
 		BNXT_ULP_ACT_BIT_GENEVE_ENCAP |
+		BNXT_ULP_ACT_BIT_L2_DECAP |
+		BNXT_ULP_ACT_BIT_IP_ENCAP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 7
 	},
