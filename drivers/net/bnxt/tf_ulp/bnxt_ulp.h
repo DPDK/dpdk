@@ -327,4 +327,7 @@ bnxt_ulp_grp_miss_act_set(struct rte_eth_dev *dev,
 			  const struct rte_flow_action actions[],
 			  uint32_t *flow_id);
 
+int32_t
+bnxt_ulp_hot_upgrade_process(struct bnxt *bp);
+
 #endif /* _BNXT_ULP_H_ */

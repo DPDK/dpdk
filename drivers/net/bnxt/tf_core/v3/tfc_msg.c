@@ -1184,6 +1184,38 @@ tfc_msg_tcam_free(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 }
 
 int
+tfc_msg_tcam_prioriry_update(struct tfc *tfcp, uint16_t fid, uint16_t sid,
+			     enum cfa_dir dir, enum cfa_track_type tt,
+			     enum cfa_resource_subtype_tcam subtype,
+			     uint16_t tcam_id, uint16_t priority)
+{
+	int rc = 0;
+	struct bnxt *bp = tfcp->bp;
+	struct hwrm_tfc_tcam_pri_update_input req = { 0 };
+	struct hwrm_tfc_tcam_pri_update_output resp = { 0 };
+
+	req.flags = (dir == CFA_DIR_TX ?
+		     HWRM_TFC_TCAM_SET_INPUT_FLAGS_DIR_TX :
+		     HWRM_TFC_TCAM_SET_INPUT_FLAGS_DIR_RX);
+
+	rc = tfc_msg_set_fid(bp, fid, &req.fid);
+	if (rc)
+		return rc;
+	req.sid = rte_le_to_cpu_16(sid);
+	req.tcam_id = rte_le_to_cpu_16(tcam_id);
+	req.subtype = (uint8_t)subtype;
+	req.priority = rte_le_to_cpu_16(priority);
+	req.track_type = (tt == CFA_TRACK_TYPE_FID ?
+			  HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_TRACK_TYPE_FID :
+			  HWRM_TFC_TCAM_PRI_UPDATE_INPUT_TRACK_TYPE_TRACK_TYPE_SID);
+
+	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_TCAM_PRI_UPDATE,
+					 &req, sizeof(req), &resp,
+					 sizeof(resp));
+	return rc;
+}
+
+int
 tfc_msg_if_tbl_set(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		   enum cfa_dir dir, enum cfa_resource_subtype_if_tbl subtype,
 		   uint16_t index, uint8_t data_size, const uint8_t *data)

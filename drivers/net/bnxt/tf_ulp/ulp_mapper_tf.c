@@ -1368,6 +1368,7 @@ ulp_mapper_tf_mpc_batch_started(struct tfc_mpc_batch_info_t *batch_info __rte_un
 const struct ulp_mapper_core_ops ulp_mapper_tf_core_ops = {
 	.ulp_mapper_core_tcam_tbl_process = ulp_mapper_tf_tcam_tbl_process,
 	.ulp_mapper_core_tcam_entry_free = ulp_mapper_tf_tcam_entry_free,
+	.ulp_mapper_core_tcam_prio_update = NULL,
 	.ulp_mapper_core_em_tbl_process = ulp_mapper_tf_em_tbl_process,
 	.ulp_mapper_core_em_entry_free = ulp_mapper_tf_em_entry_free,
 	.ulp_mapper_core_index_tbl_process = ulp_mapper_tf_index_tbl_process,

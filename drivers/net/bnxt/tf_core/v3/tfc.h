@@ -682,6 +682,33 @@ int tfc_tcam_free(struct tfc *tfcp, uint16_t fid,
 		  const struct tfc_tcam_info *tcam_info);
 
 /**
+ * Update the TFC TCAM entry priority
+ *
+ * @param[in] tfcp
+ *   Pointer to TFC handle
+ *
+ * @param[in] fid
+ *   FID - Function ID to be used
+ *
+ * @param[in] tt
+ *   Track type - either track by session or by function
+ *
+ * @param[in] tcam_info
+ *   All the information related to the requested index table entry (subtype/dir)
+ *   including the id.
+ *
+ * @param[in] priority
+ *  The priority of the tcam entry to be updated with.
+ *
+ * @returns
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int tfc_tcam_priority_update(struct tfc *tfcp, uint16_t fid,
+			     enum cfa_track_type tt,
+			     const struct tfc_tcam_info *tcam_info,
+			     uint16_t priority);
+
+/**
  * @page TBM Table Scope
  *
  * @ref tfc_tbl_scope_qcaps

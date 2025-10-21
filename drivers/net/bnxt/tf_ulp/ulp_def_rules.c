@@ -993,3 +993,32 @@ release_lock:
 flow_error:
 	return ret;
 }
+
+int32_t
+bnxt_ulp_hot_upgrade_process(struct bnxt *bp)
+{
+	uint32_t flow_type = BNXT_ULP_TEMPLATE_HOT_UPGRADE;
+	uint16_t port_id = bp->eth_dev->data->port_id;
+	struct ulp_tlv_param param_list[] = {
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_DEV_PORT_ID,
+			.length = 2,
+			.value = {(port_id >> 8) & 0xff, port_id & 0xff}
+		},
+		{
+			.type = BNXT_ULP_DF_PARAM_TYPE_LAST,
+			.length = 0,
+			.value = {0}
+		}
+	};
+
+	if (!BNXT_CHIP_P7(bp))
+		return -EPERM;
+
+	if (ulp_flow_template_process(bp, param_list, flow_type,
+				      port_id, 0))
+		return -EIO;
+
+	BNXT_DRV_DBG(DEBUG, "Hot upgrade operation performed\n");
+	return 0;
+}

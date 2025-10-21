@@ -2619,6 +2619,7 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint32_t i, num_kflds = 0, key_index = 0, num_par_kflds = 0, pad = 0;
 	uint32_t gen_tbl_miss = 1, fdb_write = 0;
 	uint8_t *byte_data;
+	uint64_t regval = 0;
 	int32_t rc = 0;
 
 	/* Get the key fields list and build the key. */
@@ -2725,7 +2726,9 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 							  &gen_tbl_ent)))
 			return -EINVAL;
 	} else if (gen_tbl_list->tbl_type ==
-		   BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST) {
+		   BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST &&
+		   tbl->tbl_opcode !=
+		   BNXT_ULP_GENERIC_TBL_OPC_ITERATE) {
 		list_srch = ulp_gen_tbl_simple_list_search(gen_tbl_list,
 							   cache_key,
 							   &key_index);
@@ -2825,6 +2828,53 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 		fdb_write = 1;
 		parms->shared_hndl = (uint64_t)tbl_idx << 32 | key_index;
+		break;
+	case BNXT_ULP_GENERIC_TBL_OPC_ITERATE:
+		if (gen_tbl_list->tbl_type !=
+		    BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST) {
+			BNXT_DRV_DBG(ERR, "%s: Invalid table opcode\n",
+				     gen_tbl_list->gen_tbl_name);
+			return -EINVAL;
+		}
+		/* read the gen table index */
+		if (unlikely(ulp_regfile_read(parms->regfile,
+					      tbl->tbl_operand,
+					      &regval))) {
+			BNXT_DRV_DBG(ERR,
+				     "Fail to get tbl idx from regfile[%d].\n",
+				     BNXT_ULP_RF_IDX_GENERIC_TBL_INDEX);
+			return -EINVAL;
+		}
+		key_index = (uint32_t)rte_be_to_cpu_64(regval);
+		/* get the next index from the simple list table */
+		rc = ulp_gen_tbl_simple_list_get_next(gen_tbl_list, &key_index);
+		if (rc == ULP_GEN_LIST_SEARCH_FOUND) {
+			gen_tbl_miss = 0; /* entry exits */
+			regval = key_index;
+			(void)ulp_regfile_write(parms->regfile,
+						tbl->tbl_operand,
+						tfp_cpu_to_be_64(regval));
+			g = &gen_tbl_ent;
+			rc = ulp_mapper_gen_tbl_entry_get(gen_tbl_list,
+							  key_index,
+							  &gen_tbl_ent);
+			if (rc)
+				return rc;
+
+			/* scan the result list and update the regfile values */
+			rc = ulp_mapper_tbl_ident_scan_ext(parms, tbl,
+							   g->byte_data,
+							   g->byte_data_size,
+							   g->byte_order);
+			if (unlikely(rc)) {
+				BNXT_DRV_DBG(ERR, "Fail to scan ident list\n");
+				return rc;
+			}
+
+		} else {
+			gen_tbl_miss = 1; /* no more entries */
+		}
+		fdb_write = 0;
 		break;
 	default:
 		BNXT_DRV_DBG(ERR, "Invalid table opcode %x\n", tbl->tbl_opcode);
@@ -3726,12 +3776,15 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_FUNC_OPC_HANDLE_TO_OFFSET:
 	case BNXT_ULP_FUNC_OPC_VFR_MARK_SET:
 	case BNXT_ULP_FUNC_OPC_BD_ACT_SET:
+	case BNXT_ULP_FUNC_OPC_MTR_ID_TO_STATS_HANDLE:
+	case BNXT_ULP_FUNC_OPC_TCAM_SET_PRIORITY:
 		process_src1 = 1;
 		process_src2 = 1;
 		break;
 	case BNXT_ULP_FUNC_OPC_NOT_NOT:
 		process_src1 = 1;
 	case BNXT_ULP_FUNC_OPC_COND_LIST:
+	case BNXT_ULP_FUNC_OPC_APP_PRIORITY:
 		break;
 	case BNXT_ULP_FUNC_OPC_PORT_TABLE:
 		process_src1 = 1;
@@ -3854,6 +3907,19 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 						    (uint8_t *)&res2,
 						    func_info->func_oper_size);
 		return rc;
+	case BNXT_ULP_FUNC_OPC_MTR_ID_TO_STATS_HANDLE:
+		/* res1 is mtr_id, res2 is stats_id */
+		return op->ulp_mapper_mtr_stats_hndl_set(parms, res1, res2);
+	case BNXT_ULP_FUNC_OPC_APP_PRIORITY:
+		res = parms->app_priority;
+		break;
+	case BNXT_ULP_FUNC_OPC_TCAM_SET_PRIORITY:
+		return op->ulp_mapper_core_tcam_prio_update(parms,
+							    tbl->direction,
+							    tbl->track_type,
+							    CFA_RSUBTYPE_TCAM_WC,
+							    (uint32_t)res1,
+							    (uint16_t)res2);
 	default:
 		BNXT_DRV_DBG(ERR, "invalid func code %u\n",
 			     func_info->func_opc);

@@ -626,3 +626,27 @@ ulp_gen_tbl_simple_list_search(struct ulp_mapper_gen_tbl_list *tbl_list,
 	}
 	return rc;
 }
+
+uint32_t
+ulp_gen_tbl_simple_list_get_next(struct ulp_mapper_gen_tbl_list *tbl_list,
+				 uint32_t *key_idx)
+{
+	struct ulp_mapper_gen_tbl_cont *cont = &tbl_list->container;
+	enum ulp_gen_list_search_flag rc = ULP_GEN_LIST_SEARCH_FULL;
+	struct ulp_mapper_gen_tbl_entry ent = { 0 };
+	uint32_t idx = *key_idx;
+
+	/* Check the given idx is a valid entry, if not get next one */
+	while (idx < cont->num_elem) {
+		ent.ref_count = &cont->ref_count[idx];
+		/* check ref count not zero and exact key matches */
+		if (ULP_GEN_TBL_REF_CNT(&ent)) {
+			/* found the entry return */
+			rc = ULP_GEN_LIST_SEARCH_FOUND;
+			*key_idx = idx;
+			break;
+		}
+		idx++;
+	}
+	return rc;
+}
