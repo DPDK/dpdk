@@ -667,6 +667,9 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (!rxq->rx_started)
 			continue;
 
+		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
+			continue;
+
 		rc = bnxt_hwrm_ring_stats_ext(bp, cpr->hw_stats_ctx_id, i,
 					      &ring_stats, true);
 		if (unlikely(rc))
@@ -727,6 +730,8 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		struct bnxt_ring_stats ring_stats = {0};
 
 		if (!rxq->rx_started)
+			continue;
+		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
 			continue;
 
 		rc = bnxt_hwrm_ring_stats(bp, cpr->hw_stats_ctx_id, i,
