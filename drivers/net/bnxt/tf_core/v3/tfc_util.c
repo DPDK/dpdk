@@ -92,6 +92,8 @@ tfc_idx_tbl_2_str(enum cfa_resource_subtype_idx_tbl tbl_stype)
 		return "idx_tbl_range_prof";
 	case CFA_RSUBTYPE_IDX_TBL_RANGE_ENTRY:
 		return "idx_tbl_range_entry";
+	case CFA_RSUBTYPE_IDX_TBL_DYN_UPAR:
+		return "idx_tbl_dyn_upar";
 	default:
 		return "Invalid idx tbl subtype";
 	}

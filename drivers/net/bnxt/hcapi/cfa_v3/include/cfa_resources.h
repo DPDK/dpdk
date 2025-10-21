@@ -94,7 +94,18 @@ enum cfa_resource_subtype_idx_tbl {
 	CFA_RSUBTYPE_IDX_TBL_EM_FKB,       /**< EM FKB table        */
 	CFA_RSUBTYPE_IDX_TBL_WC_FKB,       /**< WC TCAM FKB table   */
 	CFA_RSUBTYPE_IDX_TBL_EM_FKB_MASK,  /**< EM FKB Mask table   */
-	CFA_RSUBTYPE_IDX_TBL_MAX
+	CFA_RSUBTYPE_IDX_TBL_MAX,
+	/*
+	 * Resource subtypes that come after this point are handled "specially"
+	 * by code in the TFC core and firmware layers. This #define loses
+	 * significance after the Mapper TFC layer.
+	 */
+	CFA_RSUBTYPE_IDX_TBL_DYN_UPAR,     /**< Dynamic UPAR table  */
+	/*
+	 * MAX value for custom index tables, i.e. tables that are handled
+	 * specially by firmware or layers below mapper.
+	 */
+	CFA_RSUBTYPE_CUSTOM_IDX_TBL_MAX
 };
 
 /**
@@ -130,6 +141,18 @@ enum cfa_resource_subtype_if_tbl {
 	CFA_RSUBTYPE_IF_TBL_EPOCH1, /**< Epoch1 mask table   */
 	CFA_RSUBTYPE_IF_TBL_LAG,    /**< LAG Table           */
 	CFA_RSUBTYPE_IF_TBL_MAX
+};
+
+/**
+ * Resource sub-types for CFA_BLKTYPE_IDX_TBL
+ */
+enum cfa_resource_blktype_idx_tbl {
+	CFA_IDX_TBL_BLKTYPE_CFA = 0,
+	CFA_IDX_TBL_BLKTYPE_RXP,
+	CFA_IDX_TBL_BLKTYPE_RE_GPARSE,
+	CFA_IDX_TBL_BLKTYPE_TE_GPARSE,
+	CFA_IDX_TBL_BLKTYPE_LAST = CFA_IDX_TBL_BLKTYPE_TE_GPARSE,
+	CFA_IDX_TBL_BLKTYPE_MAX
 };
 
 /**

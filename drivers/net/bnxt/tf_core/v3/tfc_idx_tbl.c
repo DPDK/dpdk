@@ -15,6 +15,9 @@
 #include "tfc_msg.h"
 #include "tfc_util.h"
 
+#define BLKTYPE_IS_CFA(blktype) \
+		(CFA_IDX_TBL_BLKTYPE_CFA == (blktype))
+
 int tfc_idx_tbl_alloc(struct tfc *tfcp, uint16_t fid,
 		      enum cfa_track_type tt,
 		      struct tfc_idx_tbl_info *tbl_info)
@@ -48,9 +51,10 @@ int tfc_idx_tbl_alloc(struct tfc *tfcp, uint16_t fid,
 		return -EINVAL;
 	}
 
-	if (tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid idx tbl subtype: %d",
-				 tbl_info->rsubtype);
+	if (BLKTYPE_IS_CFA(tbl_info->blktype) &&
+	    tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid idx tbl subtype: %d",
+				 __func__, tbl_info->rsubtype);
 		return -EINVAL;
 	}
 
@@ -68,7 +72,8 @@ int tfc_idx_tbl_alloc(struct tfc *tfcp, uint16_t fid,
 	}
 
 	rc = tfc_msg_idx_tbl_alloc(tfcp, fid, sid, tt, tbl_info->dir,
-				   tbl_info->rsubtype, &tbl_info->id);
+				   tbl_info->rsubtype, &tbl_info->id,
+				   tbl_info->blktype);
 	if (rc)
 		PMD_DRV_LOG_LINE(ERR, "hwrm failed: %s:%s %s",
 				 tfc_dir_2_str(tbl_info->dir),
@@ -118,9 +123,10 @@ int tfc_idx_tbl_alloc_set(struct tfc *tfcp, uint16_t fid,
 		return -EINVAL;
 	}
 
-	if (tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid idx tbl subtype: %d",
-				 tbl_info->rsubtype);
+	if (BLKTYPE_IS_CFA(tbl_info->blktype) &&
+	    tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid idx tbl subtype: %d",
+				 __func__, tbl_info->rsubtype);
 		return -EINVAL;
 	}
 
@@ -143,7 +149,8 @@ int tfc_idx_tbl_alloc_set(struct tfc *tfcp, uint16_t fid,
 
 	rc = tfc_msg_idx_tbl_alloc_set(tfcp, fid, sid, tt, tbl_info->dir,
 				       tbl_info->rsubtype, data,
-				       data_sz_in_bytes, &tbl_info->id);
+				       data_sz_in_bytes, &tbl_info->id,
+				       tbl_info->blktype);
 	if (rc)
 		PMD_DRV_LOG_LINE(ERR, "hwrm failed: %s:%s %s",
 				 tfc_dir_2_str(tbl_info->dir),
@@ -181,8 +188,9 @@ int tfc_idx_tbl_set(struct tfc *tfcp, uint16_t fid,
 		return -EINVAL;
 	}
 
-	if (tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid idx tbl subtype: %d",
+	if (BLKTYPE_IS_CFA(tbl_info->blktype) &&
+	    tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid idx tbl subtype: %d", __func__,
 				 tbl_info->rsubtype);
 		return -EINVAL;
 	}
@@ -202,7 +210,8 @@ int tfc_idx_tbl_set(struct tfc *tfcp, uint16_t fid,
 
 	rc = tfc_msg_idx_tbl_set(tfcp, fid, sid, tbl_info->dir,
 				 tbl_info->rsubtype, tbl_info->id,
-				 data, data_sz_in_bytes);
+				 data, data_sz_in_bytes,
+				 tbl_info->blktype);
 	if (rc)
 		PMD_DRV_LOG_LINE(ERR, "hwrm failed: %s:%s %d %s",
 				 tfc_dir_2_str(tbl_info->dir),
@@ -240,9 +249,10 @@ int tfc_idx_tbl_get(struct tfc *tfcp, uint16_t fid,
 		return -EINVAL;
 	}
 
-	if (tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid idx tbl subtype: %d",
-				 tbl_info->rsubtype);
+	if (BLKTYPE_IS_CFA(tbl_info->blktype) &&
+	    tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid idx tbl subtype: %d",
+				 __func__, tbl_info->rsubtype);
 		return -EINVAL;
 	}
 
@@ -261,7 +271,8 @@ int tfc_idx_tbl_get(struct tfc *tfcp, uint16_t fid,
 
 	rc = tfc_msg_idx_tbl_get(tfcp, fid, sid, tbl_info->dir,
 				 tbl_info->rsubtype, tbl_info->id,
-				 data, data_sz_in_bytes);
+				 data, data_sz_in_bytes,
+				 tbl_info->blktype);
 	if (rc)
 		PMD_DRV_LOG_LINE(ERR, "hwrm failed: %s:%s %d %s",
 				 tfc_dir_2_str(tbl_info->dir),
@@ -297,9 +308,10 @@ int tfc_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 		return -EINVAL;
 	}
 
-	if (tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid idx tbl subtype: %d",
-				 tbl_info->rsubtype);
+	if (BLKTYPE_IS_CFA(tbl_info->blktype) &&
+	    tbl_info->rsubtype >= CFA_RSUBTYPE_IDX_TBL_MAX) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid idx tbl subtype: %d",
+				 __func__, tbl_info->rsubtype);
 		return -EINVAL;
 	}
 
@@ -317,7 +329,8 @@ int tfc_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 	}
 
 	rc = tfc_msg_idx_tbl_free(tfcp, fid, sid, tbl_info->dir,
-				  tbl_info->rsubtype, tbl_info->id);
+				  tbl_info->rsubtype, tbl_info->id,
+				  tbl_info->blktype);
 	if (rc)
 		PMD_DRV_LOG_LINE(ERR, "hwrm failed: %s:%s %d %s",
 				 tfc_dir_2_str(tbl_info->dir),

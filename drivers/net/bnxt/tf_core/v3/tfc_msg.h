@@ -46,31 +46,34 @@ int
 tfc_msg_idx_tbl_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		      enum cfa_track_type tt, enum cfa_dir dir,
 		      enum cfa_resource_subtype_idx_tbl rsubtype,
-		      uint16_t *id);
+		      uint16_t *id, enum cfa_resource_blktype_idx_tbl blktype);
 
 int
 tfc_msg_idx_tbl_alloc_set(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 			  enum cfa_track_type tt, enum cfa_dir dir,
 			  enum cfa_resource_subtype_idx_tbl subtype,
 			  const uint32_t *dev_data, uint8_t data_size,
-			  uint16_t *id);
+			  uint16_t *id, enum cfa_resource_blktype_idx_tbl blktype);
 
 int
 tfc_msg_idx_tbl_set(struct tfc *tfcp, uint16_t fid,
 		    uint16_t sid, enum cfa_dir dir,
 		    enum cfa_resource_subtype_idx_tbl subtype,
-		    uint16_t id, const uint32_t *dev_data, uint8_t data_size);
+		    uint16_t id, const uint32_t *dev_data,
+		    uint8_t data_size, enum cfa_resource_blktype_idx_tbl blktype);
 
 int
 tfc_msg_idx_tbl_get(struct tfc *tfcp, uint16_t fid,
 		    uint16_t sid, enum cfa_dir dir,
 		    enum cfa_resource_subtype_idx_tbl subtype,
-		    uint16_t id, uint32_t *dev_data, uint8_t *data_size);
+		    uint16_t id, uint32_t *dev_data,
+		    uint8_t *data_size, enum cfa_resource_blktype_idx_tbl blktype);
 
 int
 tfc_msg_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 		     uint16_t sid, enum cfa_dir dir,
-		     enum cfa_resource_subtype_idx_tbl subtype, uint16_t id);
+		     enum cfa_resource_subtype_idx_tbl subtype,
+		     uint16_t id, enum cfa_resource_blktype_idx_tbl blktype);
 
 int tfc_msg_global_id_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 			    enum tfc_domain_id domain_id, uint16_t req_cnt,

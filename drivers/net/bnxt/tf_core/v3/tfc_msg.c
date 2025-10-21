@@ -61,6 +61,79 @@ static int tfc_msg_set_fid(struct bnxt *bp, uint16_t req_fid, uint16_t *msg_fid)
 	return 0;
 }
 
+/*
+ * Lookup table to map TFC local blocktype values to HWRM equivalents. Does
+ * this on a per HWRM command basis.
+ */
+enum tfc_hwrm_idx_tbl_cmds {
+	IDX_TBL_ALLOC,
+	IDX_TBL_ALLOC_SET,
+	IDX_TBL_SET,
+	IDX_TBL_GET,
+	IDX_TBL_FREE,
+	IDX_TBL_LAST = IDX_TBL_FREE,
+	IDX_TBL_MAX
+};
+
+#define CMD_TO_HWRM_BLKT(tfc_cmd, blktype)	\
+		HWRM_TFC_##tfc_cmd##_INPUT_BLKTYPE_BLKTYPE_##blktype
+
+uint8_t cfa_res_to_hwrm_blkt_lkup_tbl[IDX_TBL_MAX][CFA_IDX_TBL_BLKTYPE_MAX] = {
+	[IDX_TBL_ALLOC] = {
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC, CFA),
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC, RXP),
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC, RE_GPARSE),
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC, TE_GPARSE),
+	},
+	[IDX_TBL_ALLOC_SET] = {
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC_SET, CFA),
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC_SET, RXP),
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC_SET, RE_GPARSE),
+		CMD_TO_HWRM_BLKT(IDX_TBL_ALLOC_SET, TE_GPARSE),
+	},
+	[IDX_TBL_SET] = {
+		CMD_TO_HWRM_BLKT(IDX_TBL_SET, CFA),
+		CMD_TO_HWRM_BLKT(IDX_TBL_SET, RXP),
+		CMD_TO_HWRM_BLKT(IDX_TBL_SET, RE_GPARSE),
+		CMD_TO_HWRM_BLKT(IDX_TBL_SET, TE_GPARSE),
+	},
+	[IDX_TBL_GET] = {
+		CMD_TO_HWRM_BLKT(IDX_TBL_GET, CFA),
+		CMD_TO_HWRM_BLKT(IDX_TBL_GET, RXP),
+		CMD_TO_HWRM_BLKT(IDX_TBL_GET, RE_GPARSE),
+		CMD_TO_HWRM_BLKT(IDX_TBL_GET, TE_GPARSE),
+	},
+	[IDX_TBL_FREE] = {
+		CMD_TO_HWRM_BLKT(IDX_TBL_FREE, CFA),
+		CMD_TO_HWRM_BLKT(IDX_TBL_FREE, RXP),
+		CMD_TO_HWRM_BLKT(IDX_TBL_FREE, RE_GPARSE),
+		CMD_TO_HWRM_BLKT(IDX_TBL_FREE, TE_GPARSE),
+	},
+};
+
+/*
+ * Maps TFC local blocktype values to HWRM equivalents. This function is
+ * required as each HWRM idx_tbl msg (alloc, alloc_set, get_set, free) has
+ * their own #defines, even though the values are the same across messages.
+ * Using this macro maps the appropriate TFC block type correctly to its HWRM
+ * msg relative equivalent. Returns an ERROR value if either idxtbl cmd OR
+ * blocktype is invalid.
+ */
+#define HWRM_BLKTYPE_ERR	0xff
+static uint8_t
+cfa_res_to_hwrm_blkt_lkup(enum cfa_resource_blktype_idx_tbl blktype,
+			  enum tfc_hwrm_idx_tbl_cmds idxtbl_cmd)
+{
+	if ((idxtbl_cmd) > IDX_TBL_LAST ||
+	    (blktype) > CFA_IDX_TBL_BLKTYPE_LAST) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid blocktype [%u]",
+				 __func__, (blktype));
+		return -EINVAL;
+	}
+
+	return cfa_res_to_hwrm_blkt_lkup_tbl[idxtbl_cmd][blktype];
+}
+
 /**
  * Allocates a DMA buffer that can be used for message transfer.
  *
@@ -406,7 +479,7 @@ int
 tfc_msg_idx_tbl_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		      enum cfa_track_type tt, enum cfa_dir dir,
 		      enum cfa_resource_subtype_idx_tbl subtype,
-		      uint16_t *id)
+		      uint16_t *id, enum cfa_resource_blktype_idx_tbl blktype)
 
 {
 	int rc = 0;
@@ -430,7 +503,13 @@ tfc_msg_idx_tbl_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 	if (rc)
 		return rc;
 	req.sid = rte_le_to_cpu_16(sid);
-	req.subtype = rte_le_to_cpu_16(subtype);
+	req.subtype = (uint8_t)subtype;
+	req.blktype = cfa_res_to_hwrm_blkt_lkup(blktype, IDX_TBL_ALLOC);
+	if (req.blktype == HWRM_BLKTYPE_ERR) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid blocktype [%u]",
+				 __func__, blktype);
+		return -EINVAL;
+	}
 
 	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_IDX_TBL_ALLOC,
 					 &req, sizeof(req), &resp, sizeof(resp));
@@ -446,7 +525,7 @@ tfc_msg_idx_tbl_alloc_set(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 			  enum cfa_track_type tt, enum cfa_dir dir,
 			  enum cfa_resource_subtype_idx_tbl subtype,
 			  const uint32_t *dev_data, uint8_t data_size,
-			  uint16_t *id)
+			  uint16_t *id, enum cfa_resource_blktype_idx_tbl blktype)
 
 {
 	int rc = 0;
@@ -473,6 +552,13 @@ tfc_msg_idx_tbl_alloc_set(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		return rc;
 	req.sid = rte_le_to_cpu_16(sid);
 	req.subtype = rte_le_to_cpu_16(subtype);
+	req.blktype = cfa_res_to_hwrm_blkt_lkup(blktype, IDX_TBL_ALLOC_SET);
+	if (req.blktype == HWRM_BLKTYPE_ERR) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid blocktype [%u]",
+				 __func__, blktype);
+		return -EINVAL;
+	}
+
 	req.data_size = rte_le_to_cpu_16(data_size);
 
 	if (req.data_size >= sizeof(req.dev_data)) {
@@ -504,7 +590,8 @@ int
 tfc_msg_idx_tbl_set(struct tfc *tfcp, uint16_t fid,
 		    uint16_t sid, enum cfa_dir dir,
 		    enum cfa_resource_subtype_idx_tbl subtype, uint16_t id,
-		    const uint32_t *dev_data, uint8_t data_size)
+		    const uint32_t *dev_data, uint8_t data_size,
+		    enum cfa_resource_blktype_idx_tbl blktype)
 {
 	int rc = 0;
 	struct bnxt *bp = tfcp->bp;
@@ -526,6 +613,13 @@ tfc_msg_idx_tbl_set(struct tfc *tfcp, uint16_t fid,
 	req.sid = rte_le_to_cpu_16(sid);
 	req.idx_tbl_id = rte_le_to_cpu_16(id);
 	req.subtype = rte_le_to_cpu_16(subtype);
+	req.blktype = cfa_res_to_hwrm_blkt_lkup(blktype, IDX_TBL_SET);
+	if (req.blktype == HWRM_BLKTYPE_ERR) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid blocktype [%u]",
+				 __func__, blktype);
+		return -EINVAL;
+	}
+
 	req.data_size = rte_le_to_cpu_16(data_size);
 	rc = tfc_msg_alloc_dma_buf(&buf, data_size);
 	if (rc)
@@ -555,7 +649,8 @@ int
 tfc_msg_idx_tbl_get(struct tfc *tfcp, uint16_t fid,
 		    uint16_t sid, enum cfa_dir dir,
 		    enum cfa_resource_subtype_idx_tbl subtype, uint16_t id,
-		    uint32_t *dev_data, uint8_t *data_size)
+		    uint32_t *dev_data, uint8_t *data_size,
+		    enum cfa_resource_blktype_idx_tbl blktype)
 {
 	int rc = 0;
 	struct bnxt *bp = tfcp->bp;
@@ -576,6 +671,13 @@ tfc_msg_idx_tbl_get(struct tfc *tfcp, uint16_t fid,
 	req.sid = rte_cpu_to_le_16(sid);
 	req.idx_tbl_id = rte_cpu_to_le_16(id);
 	req.subtype = rte_cpu_to_le_16(subtype);
+	req.blktype = cfa_res_to_hwrm_blkt_lkup(blktype, IDX_TBL_GET);
+	if (req.blktype == HWRM_BLKTYPE_ERR) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid blocktype [%u]",
+				 __func__, blktype);
+		return -EINVAL;
+	}
+
 	req.buffer_size = rte_cpu_to_le_16(*data_size);
 
 	rc = tfc_msg_alloc_dma_buf(&buf, *data_size);
@@ -600,7 +702,8 @@ cleanup:
 int
 tfc_msg_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 		     uint16_t sid, enum cfa_dir dir,
-		     enum cfa_resource_subtype_idx_tbl subtype, uint16_t id)
+		     enum cfa_resource_subtype_idx_tbl subtype, uint16_t id,
+		     enum cfa_resource_blktype_idx_tbl blktype)
 {
 	struct bnxt *bp = tfcp->bp;
 	struct hwrm_tfc_idx_tbl_free_input req = { 0 };
@@ -620,6 +723,12 @@ tfc_msg_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 	req.sid = rte_cpu_to_le_16(sid);
 	req.idx_tbl_id = rte_cpu_to_le_16(id);
 	req.subtype = rte_cpu_to_le_16(subtype);
+	req.blktype = cfa_res_to_hwrm_blkt_lkup(blktype, IDX_TBL_FREE);
+	if (req.blktype == HWRM_BLKTYPE_ERR) {
+		PMD_DRV_LOG_LINE(ERR, "%s: Invalid blocktype [%u]",
+				 __func__, blktype);
+		return -EINVAL;
+	}
 
 	return bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_IDX_TBL_FREE,
 					   &req, sizeof(req), &resp, sizeof(resp));

@@ -18,6 +18,15 @@
 #include "tfc_debug.h"
 #endif
 
+#define BNXT_METER_MAX_NUM 1024
+static struct bnxt_mtr_stats_id_map mtr_stats[BNXT_METER_MAX_NUM];
+
+static uint32_t CFA_RESTYPE_TO_BLKT(uint8_t idx_tbl_restype)
+{
+	return (idx_tbl_restype > CFA_RSUBTYPE_IDX_TBL_MAX) ?
+			CFA_IDX_TBL_BLKTYPE_RXP : CFA_IDX_TBL_BLKTYPE_CFA;
+}
+
 /* Internal function to write the tcam entry */
 static int32_t
 ulp_mapper_tfc_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
@@ -857,6 +866,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		index = rte_be_to_cpu_64(regval);
 		tbl_info.dir = tbl->direction;
 		tbl_info.rsubtype = tbl->resource_type;
+		tbl_info.blktype = CFA_RESTYPE_TO_BLKT(tbl->resource_type);
 		tbl_info.id = index;
 		/* Nothing has been pushed to blob, so push bit_size */
 		tmplen = ulp_blob_pad_push(&data, bit_size);
@@ -910,6 +920,22 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	if (alloc) {
 		tbl_info.dir = tbl->direction;
 		tbl_info.rsubtype = tbl->resource_type;
+		tbl_info.blktype = CFA_RESTYPE_TO_BLKT(tbl->resource_type);
+		/*
+		 * Read back the operand and pass it into the
+		 * alloc command if its a Dyn UPAR table.
+		 */
+		if (tbl_info.blktype == CFA_IDX_TBL_BLKTYPE_RXP) {
+			if (ulp_regfile_read(parms->regfile,
+					     tbl->tbl_operand, &regval)) {
+				BNXT_DRV_DBG(ERR,
+					     "Failed to get tbl idx from regfile[%d]\n",
+					     tbl->tbl_operand);
+				return -EINVAL;
+			}
+			tbl_info.rsubtype = rte_be_to_cpu_64(regval);
+		}
+
 		rc =  tfc_idx_tbl_alloc(tfcp, fw_fid, tt, &tbl_info);
 		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Alloc table[%s][%s] failed rc=%d\n",
@@ -971,6 +997,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		data_p = ulp_blob_data_get(&data, &tmplen);
 		tbl_info.dir = tbl->direction;
 		tbl_info.rsubtype = tbl->resource_type;
+		tbl_info.blktype = CFA_RESTYPE_TO_BLKT(tbl->resource_type);
 		tbl_info.id = index;
 		wordlen = ULP_BITS_2_BYTE(tmplen);
 		rc = tfc_idx_tbl_set(tfcp, fw_fid, &tbl_info,
@@ -1021,6 +1048,7 @@ error:
 	 * write to the entry or link the flow
 	 */
 
+	tbl_info.blktype = CFA_RESTYPE_TO_BLKT(tbl->resource_type);
 	if (tfc_idx_tbl_free(tfcp, fw_fid, &tbl_info))
 		BNXT_DRV_DBG(ERR, "Failed to free index entry on failure\n");
 	return rc;
@@ -1050,6 +1078,7 @@ ulp_mapper_tfc_index_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	tbl_info.dir = (enum cfa_dir)res->direction;
 	tbl_info.rsubtype = res->resource_type;
 	tbl_info.id = (uint16_t)res->resource_hndl;
+	tbl_info.blktype = CFA_RESTYPE_TO_BLKT(res->resource_type);
 
 	/* TBD: check to see if the memory needs to be cleaned as well*/
 	rc = tfc_idx_tbl_free(tfcp, fw_fid, &tbl_info);
