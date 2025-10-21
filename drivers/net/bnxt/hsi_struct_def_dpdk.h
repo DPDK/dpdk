@@ -61178,32 +61178,6 @@ struct __rte_packed_begin hwrm_tfc_idx_tbl_free_output {
 	uint8_t	valid;
 } __rte_packed_end;
 
-/* TruFlow resources request for a global id. */
-/* tfc_global_id_hwrm_req (size:64b/8B) */
-struct __rte_packed_begin tfc_global_id_hwrm_req {
-	/* Type of the resource, defined in enum cfa_resource_type HCAPI RM. */
-	uint16_t	rtype;
-	/* Indicates the flow direction in type of cfa_dir. */
-	uint16_t	dir;
-	/* Subtype of the resource type. */
-	uint16_t	subtype;
-	/* Number of the type of resources. */
-	uint16_t	cnt;
-} __rte_packed_end;
-
-/* The reserved resources for the global id. */
-/* tfc_global_id_hwrm_rsp (size:64b/8B) */
-struct __rte_packed_begin tfc_global_id_hwrm_rsp {
-	/* Type of the resource, defined in enum cfa_resource_type HCAPI RM. */
-	uint16_t	rtype;
-	/* Indicates the flow direction in type of cfa_dir. */
-	uint16_t	dir;
-	/* Subtype of the resource type. */
-	uint16_t	subtype;
-	/* The global id that the resources reserved for. */
-	uint16_t	id;
-} __rte_packed_end;
-
 /****************************
  * hwrm_tfc_global_id_alloc *
  ****************************/
@@ -61248,30 +61222,36 @@ struct __rte_packed_begin hwrm_tfc_global_id_alloc_input {
 	 * field.
 	 */
 	uint16_t	fid;
-	/* Firmware session id returned when HWRM_TF_SESSION_OPEN is sent. */
+	/*
+	 * Session associated with function requesting the global identifier
+	 * resource.
+	 */
 	uint16_t	sid;
-	/* Global domain id. */
-	uint16_t	global_id;
 	/*
-	 * Defines the array size of the provided req_addr and
-	 * resv_addr array buffers. Should be set to the number of
-	 * request entries.
+	 * Firmware CFA Resource Type, for definitions see
+	 * cfa_v3/include/cfa_resources.h.
 	 */
-	uint16_t	req_cnt;
+	uint16_t	rtype;
 	/*
-	 * This is the DMA address for the request input data array
-	 * buffer. Array is of tfc_global_id_hwrm_req type. Size of the
-	 * array buffer is provided by the 'req_cnt' field in this
-	 * message.
+	 * Firmware CFA Resource Subtype, for definitions see
+	 * cfa_v3/include/cfa_resources.h
 	 */
-	uint64_t	req_addr;
+	uint8_t	subtype;
+	/* Control flags. */
+	uint8_t	flags;
+	/* Indicates the flow direction. */
+	#define HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR     UINT32_C(0x1)
+	/* If this bit set to 0, then it indicates rx flow. */
+	#define HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR_RX    UINT32_C(0x0)
+	/* If this bit is set to 1, then it indicates tx flow. */
+	#define HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR_TX    UINT32_C(0x1)
+	#define HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR_LAST \
+		HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR_TX
 	/*
-	 * This is the DMA address for the resc output data array
-	 * buffer. Array is of tfc_global_id_hwrm_rsp type. Size of the array
-	 * buffer is provided by the 'req_cnt' field in this
-	 * message.
+	 * Context id of the resource. This is opaque to FW and used to
+	 * uniquely map the identifier.
 	 */
-	uint64_t	resc_addr;
+	uint8_t	context_id[16];
 } __rte_packed_end;
 
 /* hwrm_tfc_global_id_alloc_output (size:128b/16B) */
@@ -61285,16 +61265,104 @@ struct __rte_packed_begin hwrm_tfc_global_id_alloc_output {
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
 	/*
-	 * Size of the returned hwrm_tfc_global_id_req data array. The value
-	 * cannot exceed the req_cnt defined by the input msg. The data
-	 * array is returned using the resv_addr specified DMA
-	 * address also provided by the input msg.
+	 * returns the allocated global id, it could be identifier
+	 * based on the request.
 	 */
-	uint16_t	rsp_cnt;
+	uint16_t	global_id;
 	/* Non-zero if this is the first allocation for the global ID. */
 	uint8_t	first;
 	/* unused. */
 	uint8_t	unused0[4];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM. This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal
+	 * processor, the order of writes has to be such that this field
+	 * is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed_end;
+
+/***************************
+ * hwrm_tfc_global_id_free *
+ ***************************/
+
+
+/* hwrm_tfc_global_id_free_input (size:256b/32B) */
+struct __rte_packed_begin hwrm_tfc_global_id_free_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/*
+	 * Function ID.
+	 * If running on a trusted VF or PF, the fid field can be used to
+	 * specify that the function is a non-trusted VF of the parent PF.
+	 * If this command is used for the target_id itself, this field is
+	 * set to 0xffff. A non-trusted VF cannot specify a valid FID in this
+	 * field.
+	 */
+	uint16_t	fid;
+	/*
+	 * Session associated with function requesting the global identifier
+	 * resource.
+	 */
+	uint16_t	sid;
+	/*
+	 * Firmware CFA Resource Type, for definitions see
+	 * cfa_v3/include/cfa_resources.h.
+	 */
+	uint16_t	rtype;
+	/*
+	 * Firmware CFA Resource Subtype, for definitions see
+	 * cfa_v3/include/cfa_resources.h
+	 */
+	uint8_t	subtype;
+	/* Indicates the flow direction. */
+	uint8_t	dir;
+	/* Global id of the resource. */
+	uint16_t	global_id;
+	/* unused. */
+	uint8_t	unused0[6];
+} __rte_packed_end;
+
+/* hwrm_tfc_global_id_free_output (size:128b/16B) */
+struct __rte_packed_begin hwrm_tfc_global_id_free_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/* unused. */
+	uint8_t	unused0[7];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
