@@ -21,6 +21,8 @@ struct tfc_mpc_comp_info_t {
 	struct bnxt_mpc_mbuf out_msg;
 	int type;
 	uint16_t read_words;
+	uint16_t opaque;
+	bool valid;
 };
 
 struct tfc_mpc_batch_info_t {
@@ -249,7 +251,7 @@ int tfc_act_get_clear_response(struct cfa_bld_mpcinfo *mpc_info,
 int tfc_mpc_send(struct bnxt *bp,
 		 struct bnxt_mpc_mbuf *in_msg,
 		 struct bnxt_mpc_mbuf *out_msg,
-		 uint32_t *opaque,
+		 uint16_t *opaque,
 		 int type,
 		 struct tfc_mpc_batch_info_t *batch_info);
 

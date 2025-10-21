@@ -225,7 +225,7 @@ int tfc_act_set(struct tfc *tfcp,
 	int rc = 0;
 	uint8_t tx_msg[TFC_MPC_MAX_TX_BYTES];
 	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES];
-	uint32_t msg_count = BNXT_MPC_COMP_MSG_COUNT;
+	uint16_t opaque;
 	uint32_t i;
 	uint32_t buff_len;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_WRITE_CMD_MAX_FLD];
@@ -311,7 +311,7 @@ int tfc_act_set(struct tfc *tfcp,
 	rc = tfc_mpc_send(tfcp->bp,
 			  &mpc_msg_in,
 			  &mpc_msg_out,
-			  &msg_count,
+			  &opaque,
 			  TFC_MPC_TABLE_WRITE,
 			  batch_info);
 
@@ -377,7 +377,7 @@ static int tfc_act_get_only(struct tfc *tfcp,
 	int rc = 0;
 	uint8_t tx_msg[TFC_MPC_MAX_TX_BYTES] = { 0 };
 	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES] = { 0 };
-	uint32_t msg_count = BNXT_MPC_COMP_MSG_COUNT;
+	uint16_t opaque;
 	int i;
 	uint32_t buff_len;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_READ_CMD_MAX_FLD] = { {0} };
@@ -477,7 +477,7 @@ static int tfc_act_get_only(struct tfc *tfcp,
 	rc = tfc_mpc_send(tfcp->bp,
 			  &mpc_msg_in,
 			  &mpc_msg_out,
-			  &msg_count,
+			  &opaque,
 			  TFC_MPC_TABLE_READ,
 			  batch_info);
 
@@ -556,7 +556,7 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 	int rc = 0;
 	uint8_t tx_msg[TFC_MPC_MAX_TX_BYTES] = { 0 };
 	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES] = { 0 };
-	uint32_t msg_count = BNXT_MPC_COMP_MSG_COUNT;
+	uint16_t opaque;
 	int i;
 	uint32_t buff_len;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_READ_CLR_CMD_MAX_FLD] = { {0} };
@@ -665,7 +665,7 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 	rc = tfc_mpc_send(tfcp->bp,
 			  &mpc_msg_in,
 			  &mpc_msg_out,
-			  &msg_count,
+			  &opaque,
 			  TFC_MPC_TABLE_READ_CLEAR,
 			  batch_info);
 

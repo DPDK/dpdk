@@ -93,6 +93,7 @@ struct bnxt_mpc_txq {
 	struct bnxt_cp_ring_info	*cp_ring;
 	const struct rte_memzone *mz;
 	struct bnxt_mpc_mbuf **free;
+	uint16_t	seq_num;
 
 	void (*cmpl_handler_cb)(struct bnxt_mpc_txq *mpc_queue,
 				uint32_t nb_mpc_cmds);
@@ -109,9 +110,11 @@ int bnxt_mpc_close(struct bnxt *bp);
 int bnxt_mpc_send(struct bnxt *bp,
 		  struct bnxt_mpc_mbuf *in_msg,
 		  struct bnxt_mpc_mbuf *out_msg,
-		  uint32_t *opaque,
+		  uint16_t *opaque,
 		  bool batch);
-int bnxt_mpc_cmd_cmpl(struct bnxt_mpc_txq *mpc_queue, struct bnxt_mpc_mbuf *out_msg);
+int bnxt_mpc_cmd_cmpl(struct bnxt_mpc_txq *mpc_queue,
+		      struct bnxt_mpc_mbuf *out_msg,
+		      uint16_t *opaque);
 int bnxt_mpc_poll_cmd_cmpls(struct bnxt_mpc_txq *mpc_queue);
 
 #endif

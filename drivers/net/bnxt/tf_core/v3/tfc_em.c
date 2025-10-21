@@ -129,7 +129,7 @@ int tfc_em_insert(struct tfc *tfcp, uint8_t tsid,
 	uint32_t buff_len;
 	uint8_t tx_msg[TFC_MPC_MAX_TX_BYTES];
 	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES];
-	uint32_t msg_count = BNXT_MPC_COMP_MSG_COUNT;
+	uint16_t opaque;
 	uint32_t i;
 	uint32_t hash = 0;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_EM_INSERT_CMD_MAX_FLD];
@@ -354,7 +354,7 @@ int tfc_em_insert(struct tfc *tfcp, uint8_t tsid,
 	rc = tfc_mpc_send(tfcp->bp,
 			  &mpc_msg_in,
 			  &mpc_msg_out,
-			  &msg_count,
+			  &opaque,
 			  TFC_MPC_EM_INSERT,
 			  parms->batch_info);
 
@@ -500,7 +500,7 @@ int tfc_em_delete_raw(struct tfc *tfcp,
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	uint8_t tx_msg[TFC_MPC_MAX_TX_BYTES];
 	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES];
-	uint32_t msg_count = BNXT_MPC_COMP_MSG_COUNT;
+	uint16_t opaque = 0;
 	int i;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_EM_DELETE_CMD_MAX_FLD];
 	struct cfa_bld_mpcinfo *mpc_info;
@@ -565,7 +565,7 @@ int tfc_em_delete_raw(struct tfc *tfcp,
 	rc = tfc_mpc_send(tfcp->bp,
 			  &mpc_msg_in,
 			  &mpc_msg_out,
-			  &msg_count,
+			  &opaque,
 			  TFC_MPC_EM_DELETE,
 			  batch_info);
 	if (rc) {
@@ -834,7 +834,7 @@ int tfc_em_delete_entries_by_pool_id(struct tfc *tfcp,
 int tfc_mpc_send(struct bnxt *bp,
 		 struct bnxt_mpc_mbuf *in_msg,
 		 struct bnxt_mpc_mbuf *out_msg,
-		 uint32_t *opaque,
+		 uint16_t *opaque,
 		 int type,
 		 struct tfc_mpc_batch_info_t *batch_info)
 {
@@ -856,6 +856,8 @@ int tfc_mpc_send(struct bnxt *bp,
 		batch_info->comp_info[batch_info->count].mpc_queue =
 			bp->mpc->mpc_txq[in_msg->chnl_id];
 		batch_info->comp_info[batch_info->count].type = type;
+		batch_info->comp_info[batch_info->count].opaque = *opaque;
+		batch_info->comp_info[batch_info->count].valid = true;
 		batch_info->count++;
 	}
 
@@ -863,7 +865,8 @@ int tfc_mpc_send(struct bnxt *bp,
 }
 
 static int tfc_mpc_process_completions(uint8_t *rx_msg,
-				       struct tfc_mpc_comp_info_t *comp_info)
+				       struct tfc_mpc_comp_info_t *comp_info,
+				       uint16_t *opaque)
 {
 	int rc;
 	int retry = BNXT_MPC_RX_RETRY;
@@ -872,7 +875,8 @@ static int tfc_mpc_process_completions(uint8_t *rx_msg,
 
 	do {
 		rc =  bnxt_mpc_cmd_cmpl(comp_info->mpc_queue,
-					&comp_info->out_msg);
+					&comp_info->out_msg,
+					opaque);
 
 		if (likely(rc == 1)) {
 #ifdef MPC_DEBUG
@@ -913,14 +917,41 @@ bool tfc_mpc_batch_started(struct tfc_mpc_batch_info_t *batch_info)
 	return (batch_info->enabled && batch_info->count > 0);
 }
 
+/* Test out of order handling */
+/*#define MPC_OOO_DEBUG */
+
+#ifdef MPC_OOO_DEBUG
+static void swap_entries(struct tfc_mpc_batch_info_t *batch_info, int count)
+{
+	struct tfc_mpc_comp_info_t tmp;
+	int i1;
+	int i2;
+
+	i1 = rand() % (count - 1);
+	i2 = rand() % (count - 1);
+
+	PMD_DRV_LOG(ERR, "%s: Swapping index %d and %d",
+		    __func__,
+		    i1,
+		    i2);
+
+	memcpy(&tmp, &batch_info->comp_info[i1], sizeof(tmp));
+	memcpy(&batch_info->comp_info[i1], &batch_info->comp_info[i2], sizeof(tmp));
+	memcpy(&batch_info->comp_info[i2], &tmp, sizeof(tmp));
+}
+#endif
+
 int tfc_mpc_batch_end(struct tfc *tfcp,
 		      struct tfc_mpc_batch_info_t *batch_info)
 {
-	uint32_t i;
+	uint32_t j;
+	uint32_t start_index = 0;
 	int rc;
 	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES];
 	struct cfa_bld_mpcinfo *mpc_info;
 	uint32_t hash = 0;
+	uint16_t opaque = 0;
+	uint32_t count;
 #if TFC_EM_DYNAMIC_BUCKET_EN
 	bool *db_unused;
 	uint32_t *db_offset;
@@ -945,17 +976,65 @@ int tfc_mpc_batch_end(struct tfc *tfcp,
 	if (batch_info->count < (BNXT_MPC_COMP_MAX_COUNT / 4))
 		rte_delay_us_block(BNXT_MPC_RX_US_DELAY * 4);
 
-	for (i = 0; i < batch_info->count; i++) {
+#ifdef MPC_OOO_DEBUG
+	/* force out of order in large batches */
+	if (batch_info->count > 10)
+		swap_entries(batch_info, batch_info->count);
+#endif
+
+	count = batch_info->count;
+
+	while (count) {
 		rc = tfc_mpc_process_completions(&rx_msg[TFC_MPC_HEADER_SIZE_BYTES],
-						 &batch_info->comp_info[i]);
+						 &batch_info->comp_info[start_index],
+						 &opaque);
 		if (unlikely(rc))
 			return -1;
 
+#ifdef MPC_DEBUG
+		PMD_DRV_LOG(ERR, "%s: count:%d start_index:%d bo:%d op:%d ci:%p type:%d",
+			    __func__,
+			    count,
+			    start_index,
+			    batch_info->comp_info[start_index].opaque,
+			    opaque,
+			    batch_info->comp_info[start_index].mpc_queue,
+			    batch_info->comp_info[start_index].type);
+#endif
 
-		switch (batch_info->comp_info[i].type) {
+		/* Find batch entry that has a matching opaque value */
+		for (j = start_index; j < batch_info->count; j++) {
+			if (!batch_info->comp_info[j].valid ||
+			    opaque != batch_info->comp_info[j].opaque ||
+			    batch_info->comp_info[start_index].mpc_queue !=
+			    batch_info->comp_info[j].mpc_queue)
+				continue;
+
+			count--;
+
+			if (j != start_index) {
+				PMD_DRV_LOG_LINE(INFO,
+						 "%s: OOO comp. Opq Exp:%d Got:%d j:%d",
+						 __func__,
+						 batch_info->comp_info[j].opaque,
+						 opaque, j);
+			} else {
+				start_index++;
+
+				while (count &&
+				       start_index < batch_info->count &&
+				       !batch_info->comp_info[start_index].valid)
+					start_index++;
+			}
+
+			batch_info->comp_info[j].out_msg.msg_data = rx_msg;
+			break;
+		}
+
+		switch (batch_info->comp_info[j].type) {
 		case TFC_MPC_EM_INSERT:
 			rc = tfc_em_insert_response(mpc_info,
-						    &batch_info->comp_info[i].out_msg,
+						    &batch_info->comp_info[j].out_msg,
 						    rx_msg,
 						    &hash);
 			/*
@@ -963,14 +1042,14 @@ int tfc_mpc_batch_end(struct tfc *tfcp,
 			 * flow DB entry that requires the flow_handle
 			 * contained within to be updated.
 			 */
-			batch_info->em_hdl[i] =
-				tfc_create_flow_handle2(batch_info->em_hdl[i],
+			batch_info->em_hdl[j] =
+				tfc_create_flow_handle2(batch_info->em_hdl[j],
 							hash);
 			batch_info->em_error = rc;
 			break;
 		case TFC_MPC_EM_DELETE:
 			rc = tfc_em_delete_response(mpc_info,
-						    &batch_info->comp_info[i].out_msg,
+						    &batch_info->comp_info[j].out_msg,
 						    rx_msg
 #if TFC_EM_DYNAMIC_BUCKET_EN
 						    , bool *db_unused,
@@ -980,30 +1059,31 @@ int tfc_mpc_batch_end(struct tfc *tfcp,
 			break;
 		case TFC_MPC_TABLE_WRITE:
 			rc = tfc_act_set_response(mpc_info,
-						  &batch_info->comp_info[i].out_msg,
+						  &batch_info->comp_info[j].out_msg,
 						  rx_msg);
 			break;
 		case TFC_MPC_TABLE_READ:
 			rc = tfc_act_get_only_response(mpc_info,
-						       &batch_info->comp_info[i].out_msg,
+						       &batch_info->comp_info[j].out_msg,
 						       rx_msg,
-						       &batch_info->comp_info[i].read_words);
+						       &batch_info->comp_info[j].read_words);
 			break;
 
 		case TFC_MPC_TABLE_READ_CLEAR:
 			rc = tfc_act_get_clear_response(mpc_info,
-							&batch_info->comp_info[i].out_msg,
+							&batch_info->comp_info[j].out_msg,
 							rx_msg,
-							&batch_info->comp_info[i].read_words);
+							&batch_info->comp_info[j].read_words);
 			break;
 
 		default:
-			PMD_DRV_LOG_LINE(ERR, "MPC Batch not supported for type: %d",
-					 batch_info->comp_info[i].type);
+			PMD_DRV_LOG_LINE(ERR, "%s: MPC Batch not supported for type: %d",
+				    __func__, batch_info->comp_info[j].type);
 			return -1;
 		}
 
-		batch_info->result[i] = rc;
+		batch_info->comp_info[j].valid = false;
+		batch_info->result[j] = rc;
 		if (rc)
 			batch_info->error = true;
 	}
