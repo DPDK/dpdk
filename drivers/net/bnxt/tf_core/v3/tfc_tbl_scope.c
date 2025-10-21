@@ -926,7 +926,8 @@ int tfc_tbl_scope_size_query(struct tfc *tfcp,
 		return -EINVAL;
 	}
 
-	if (parms->max_pools != next_pow2(parms->max_pools)) {
+	if (parms->max_pools != 1 && parms->max_pools !=
+	    (uint32_t)(1 << next_pow2(parms->max_pools))) {
 		PMD_DRV_LOG(ERR, "%s: Invalid max_pools %u not pow2\n",
 			    __func__, parms->max_pools);
 		return -EINVAL;
@@ -1042,9 +1043,11 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 		PMD_DRV_LOG_LINE(ERR, "tsid(%d) not allocated", tsid);
 		return -EINVAL;
 	}
-	if (parms->max_pools != next_pow2(parms->max_pools)) {
-		PMD_DRV_LOG(ERR, "%s: Invalid max_pools %u not pow2\n", __func__,
-			    parms->max_pools);
+
+	if (parms->max_pools != 1 && parms->max_pools !=
+	    (1 << next_pow2(parms->max_pools))) {
+		PMD_DRV_LOG(ERR, "%s: Invalid max_pools %u not pow2\n",
+			    __func__, parms->max_pools);
 		return -EINVAL;
 	}
 
@@ -1388,6 +1391,8 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid)
 			/* continue cleanup regardless */
 		}
 		PMD_DRV_LOG_LINE(DEBUG, "tsid: %d, status %d", resp.tsid, resp.status);
+		if (shared)
+			return rc;
 	}
 
 	if (shared && is_pf) {

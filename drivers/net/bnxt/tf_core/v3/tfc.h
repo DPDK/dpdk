@@ -240,7 +240,9 @@ struct tfc_global_id_req {
 	enum cfa_resource_type rtype; /**< Resource type */
 	uint8_t rsubtype; /**< Resource subtype */
 	enum cfa_dir dir; /**< Direction */
-	uint16_t cnt; /**< Number of resources to allocate of this type */
+	uint8_t *context_id;
+	uint16_t context_len;
+	uint16_t resource_id;
 };
 
 /** Global id resource definition
@@ -268,17 +270,8 @@ struct tfc_global_id {
  * @param[in] fid
  *   FID - Function ID to be used
  *
- * @param[in] domain_id
- *   The domain id to associate.
- *
- * @param[in] req_cnt
- *   The number of total resource requests
- *
  * @param[in] glb_id_req
  *   The list of global id requests
- *
- * @param[in,out] rsp_cnt
- *   The number of items in the response buffer
  *
  * @param[out] glb_id_rsp
  *   The number of items in the response buffer
@@ -289,10 +282,36 @@ struct tfc_global_id {
  * @returns
  *   0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfc_global_id_alloc(struct tfc *tfcp, uint16_t fid, enum tfc_domain_id domain_id,
-			uint16_t req_cnt, const struct tfc_global_id_req *glb_id_req,
-			struct tfc_global_id *glb_id_rsp, uint16_t *rsp_cnt,
+int tfc_global_id_alloc(struct tfc *tfcp, uint16_t fid,
+			const struct tfc_global_id_req *glb_id_req,
+			struct tfc_global_id *glb_id_rsp,
 			bool *first);
+
+/**
+ * Free global Identifier TFC resources
+ *
+ * Some resources are not owned by a single session.  They are "global" in that
+ * they will be in use as long as any associated session exists.  Once all
+ * sessions/functions have been removed, all associated global ids are freed.
+ * There are currently up to 4 global id domain sets.
+ *
+ * TODO: REDUCE PARAMETERS WHEN IMPLEMENTING API
+ *
+ * @param[in] tfcp
+ *   Pointer to TFC handle
+ *
+ * @param[in] fid
+ *   FID - Function ID to be used
+ *
+ * @param[in] glb_id_req
+ *   The list of global id requests
+ *
+ * @returns
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int tfc_global_id_free(struct tfc *tfcp, uint16_t fid,
+		       const struct tfc_global_id_req *glb_id_req);
+
 /**
  * @page Identifiers
  *

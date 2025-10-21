@@ -787,7 +787,8 @@ int tfc_act_free(struct tfc *tfcp,
 		return -EINVAL;
 	}
 
-	fparms.record_offset = record_offset;
+	fparms.record_offset = REMOVE_POOL_FROM_OFFSET(pi.act_pool_sz_exp,
+						       record_offset);
 	fparms.num_contig_records = 1 << next_pow2(record_size);
 	rc = cfa_mm_free(cmm, &fparms);
 	if (unlikely(rc)) {

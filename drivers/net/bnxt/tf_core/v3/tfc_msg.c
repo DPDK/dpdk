@@ -735,56 +735,35 @@ tfc_msg_idx_tbl_free(struct tfc *tfcp, uint16_t fid,
 }
 
 int tfc_msg_global_id_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
-			    enum tfc_domain_id domain_id, uint16_t req_cnt,
 			    const struct tfc_global_id_req *glb_id_req,
-			    struct tfc_global_id *rsp, uint16_t *rsp_cnt,
+			    struct tfc_global_id *rsp,
 			    bool *first)
 {
 	int rc = 0;
-	int i = 0;
 	struct bnxt *bp = tfcp->bp;
 	struct hwrm_tfc_global_id_alloc_input hwrm_req;
 	struct hwrm_tfc_global_id_alloc_output hwrm_resp;
-	struct tfc_global_id_hwrm_req *req_data;
-	struct tfc_global_id_hwrm_rsp *rsp_data;
-	struct tfc_msg_dma_buf req_buf = { 0 };
-	struct tfc_msg_dma_buf rsp_buf = { 0 };
-	int dma_size;
-	int resp_cnt = 0;
-
-	/* Prepare DMA buffers */
-	dma_size = req_cnt * sizeof(struct tfc_global_id_req);
-	rc = tfc_msg_alloc_dma_buf(&req_buf, dma_size);
-	if (rc)
-		return rc;
-
-	for (i = 0; i < req_cnt; i++)
-		resp_cnt += glb_id_req->cnt;
-	dma_size = resp_cnt * sizeof(struct tfc_global_id);
-	*rsp_cnt = resp_cnt;
-	rc = tfc_msg_alloc_dma_buf(&rsp_buf, dma_size);
-	if (rc) {
-		tfc_msg_free_dma_buf(&req_buf);
-		return rc;
-	}
 
 	/* Populate the request */
 	rc = tfc_msg_set_fid(bp, fid, &hwrm_req.fid);
 	if (rc)
-		goto cleanup;
+		return rc;
 
 	hwrm_req.sid = rte_cpu_to_le_16(sid);
-	hwrm_req.global_id = rte_cpu_to_le_16(domain_id);
-	hwrm_req.req_cnt = req_cnt;
-	hwrm_req.req_addr = rte_cpu_to_le_64(req_buf.pa_addr);
-	hwrm_req.resc_addr = rte_cpu_to_le_64(rsp_buf.pa_addr);
-	req_data = (struct tfc_global_id_hwrm_req *)req_buf.va_addr;
-	for (i = 0; i < req_cnt; i++) {
-		req_data[i].rtype = rte_cpu_to_le_16(glb_id_req[i].rtype);
-		req_data[i].dir = rte_cpu_to_le_16(glb_id_req[i].dir);
-		req_data[i].subtype = rte_cpu_to_le_16(glb_id_req[i].rsubtype);
-		req_data[i].cnt = rte_cpu_to_le_16(glb_id_req[i].cnt);
-	}
+	hwrm_req.rtype = rte_cpu_to_le_16(glb_id_req->rtype);
+	hwrm_req.subtype = glb_id_req->rsubtype;
+
+	if (glb_id_req->dir == CFA_DIR_RX)
+		hwrm_req.flags = HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR_RX;
+	else
+		hwrm_req.flags = HWRM_TFC_GLOBAL_ID_ALLOC_INPUT_FLAGS_DIR_TX;
+
+	/* check the destination length before copy */
+	if (glb_id_req->context_len > sizeof(hwrm_req.context_id))
+		return -EINVAL;
+
+	memcpy(hwrm_req.context_id, glb_id_req->context_id,
+	       glb_id_req->context_len);
 
 	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_GLOBAL_ID_ALLOC,
 					 &hwrm_req, sizeof(hwrm_req), &hwrm_resp,
@@ -796,29 +775,33 @@ int tfc_msg_global_id_alloc(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 			else
 				*first = false;
 		}
+		rsp->id = hwrm_resp.global_id;
 	}
+	return rc;
+}
+int tfc_msg_global_id_free(struct tfc *tfcp, uint16_t fid, uint16_t sid,
+			   const struct tfc_global_id_req *glb_id_req)
+{
+	int rc = 0;
+	struct bnxt *bp = tfcp->bp;
 
-	/* Process the response
-	 * Should always get expected number of entries
-	 */
-	if (rte_le_to_cpu_32(hwrm_resp.rsp_cnt) != *rsp_cnt) {
-		PMD_DRV_LOG_LINE(ERR, "Alloc message size error, rc:%s",
-				 strerror(-EINVAL));
-		rc = -EINVAL;
-		goto cleanup;
-	}
+	struct hwrm_tfc_global_id_free_input hwrm_req;
+	struct hwrm_tfc_global_id_free_output hwrm_resp;
 
-	rsp_data = (struct tfc_global_id_hwrm_rsp *)rsp_buf.va_addr;
-	for (i = 0; i < *rsp_cnt; i++) {
-		rsp[i].rtype = rte_le_to_cpu_32(rsp_data[i].rtype);
-		rsp[i].dir = rte_le_to_cpu_32(rsp_data[i].dir);
-		rsp[i].rsubtype = rte_le_to_cpu_32(rsp_data[i].subtype);
-		rsp[i].id = rte_le_to_cpu_32(rsp_data[i].id);
-	}
+	/* Populate the request */
+	rc = tfc_msg_set_fid(bp, fid, &hwrm_req.fid);
+	if (rc)
+		return rc;
 
-cleanup:
-	tfc_msg_free_dma_buf(&req_buf);
-	tfc_msg_free_dma_buf(&rsp_buf);
+	hwrm_req.sid = rte_cpu_to_le_16(sid);
+	hwrm_req.rtype = rte_cpu_to_le_16(glb_id_req->rtype);
+	hwrm_req.subtype = glb_id_req->rsubtype;
+	hwrm_req.dir = glb_id_req->dir;
+	hwrm_req.global_id = rte_cpu_to_le_16(glb_id_req->resource_id);
+
+	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_GLOBAL_ID_FREE,
+					 &hwrm_req, sizeof(hwrm_req), &hwrm_resp,
+					 sizeof(hwrm_resp));
 	return rc;
 }
 

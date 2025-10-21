@@ -729,7 +729,7 @@ ulp_mapper_tbl_ident_scan_ext(struct bnxt_ulp_mapper_parms *parms,
 static int32_t
 ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 			 struct bnxt_ulp_mapper_tbl_info *tbl,
-			 struct ulp_blob *key __rte_unused,
+			 struct ulp_blob *key,
 			 struct bnxt_ulp_mapper_ident_info *ident,
 			 uint16_t *val)
 {
@@ -737,6 +737,8 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_flow_db_res_params fid_parms = { 0 };
 	bool global = false;
 	uint64_t id = 0;
+	uint8_t *context;
+	uint16_t tmplen = 0;
 	int32_t idx;
 	int rc;
 
@@ -757,10 +759,15 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 							     tbl->track_type,
 							     &id);
 	} else {
+		context = ulp_blob_data_get(key, &tmplen);
+		tmplen = ULP_BITS_2_BYTE(tmplen);
 		rc = op->ulp_mapper_core_global_ident_alloc(parms->ulp_ctx,
 							    ident->ident_type,
 							    tbl->direction,
+							    context,
+							    tmplen,
 							    &id);
+		fid_parms.resource_func = tbl->resource_func;
 	}
 
 	if (unlikely(rc)) {

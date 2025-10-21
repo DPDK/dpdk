@@ -662,6 +662,8 @@ int tfc_em_delete(struct tfc *tfcp, struct tfc_em_delete_parms *parms)
 #endif
 			       );
 
+	record_offset = REMOVE_POOL_FROM_OFFSET(pi.lkup_pool_sz_exp,
+						record_offset);
 #if TFC_EM_DYNAMIC_BUCKET_EN
 	/* If the dynamic bucket is unused then free it */
 	if (db_unused) {

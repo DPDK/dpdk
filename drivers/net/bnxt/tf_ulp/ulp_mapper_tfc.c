@@ -1640,13 +1640,14 @@ static int32_t
 ulp_mapper_tfc_global_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 				  uint16_t ident_type,
 				  uint8_t direction,
+				  uint8_t *context_id,
+				  uint16_t context_len,
 				  uint64_t *identifier_id)
 {
 	struct tfc *tfcp = NULL;
 	struct tfc_global_id_req glb_req = { 0 };
 	struct tfc_global_id glb_rsp = { 0 };
 	uint16_t fw_fid = 0;
-	uint16_t rsp_cnt;
 	int32_t rc = 0;
 	bool first = false;
 
@@ -1663,10 +1664,11 @@ ulp_mapper_tfc_global_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 
 	glb_req.rtype = CFA_RTYPE_IDENT;
 	glb_req.dir = direction;
-	glb_req.cnt = 1;
 	glb_req.rsubtype = ident_type;
+	glb_req.context_len = context_len;
+	glb_req.context_id = context_id;
 
-	rc = tfc_global_id_alloc(tfcp, fw_fid, 1, 1, &glb_req, &glb_rsp, &rsp_cnt, &first);
+	rc = tfc_global_id_alloc(tfcp, fw_fid, &glb_req, &glb_rsp, &first);
 	if (unlikely(rc != 0)) {
 		BNXT_DRV_DBG(ERR, "alloc failed %d\n", rc);
 		return rc;
@@ -1680,6 +1682,7 @@ static int32_t
 ulp_mapper_tfc_global_ident_free(struct bnxt_ulp_context *ulp_ctx,
 				 struct ulp_flow_db_res_params *res)
 {
+	struct tfc_global_id_req glb_req = { 0 };
 	struct tfc *tfcp = NULL;
 	int32_t rc = 0;
 	uint16_t fw_fid = 0;
@@ -1693,6 +1696,17 @@ ulp_mapper_tfc_global_ident_free(struct bnxt_ulp_context *ulp_ctx,
 	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
+	}
+
+	glb_req.rtype = CFA_RTYPE_IDENT;
+	glb_req.dir = (enum cfa_dir)res->direction;
+	glb_req.rsubtype = res->resource_type;
+	glb_req.resource_id = (uint16_t)res->resource_hndl;
+
+	rc = tfc_global_id_free(tfcp, fw_fid, &glb_req);
+	if (unlikely(rc != 0)) {
+		BNXT_DRV_DBG(ERR, "free failed %d\n", rc);
+		return rc;
 	}
 
 	return rc;
