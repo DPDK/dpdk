@@ -145,6 +145,21 @@ tfc_ts_region_2_str(enum cfa_region_type region, enum cfa_dir dir)
 	}
 }
 
+const char *
+tfc_scope_type_2_str(enum cfa_scope_type scope_type)
+{
+	switch (scope_type) {
+	case CFA_SCOPE_TYPE_NON_SHARED:
+		return "non_shared";
+	case CFA_SCOPE_TYPE_SHARED_APP:
+		return "shared_app";
+	case CFA_SCOPE_TYPE_GLOBAL:
+		return "global";
+	default:
+		return "Invalid scope type";
+	}
+}
+
 uint32_t
 tfc_getbits(uint32_t *data, int offset, int blen)
 {

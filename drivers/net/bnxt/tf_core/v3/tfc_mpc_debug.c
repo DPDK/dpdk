@@ -43,7 +43,7 @@ int tfc_mpc_table_read(struct tfc *tfcp,
 	struct cfa_mpc_data_obj fields_cmp[CFA_BLD_MPC_READ_CMP_MAX_FLD];
 	struct bnxt_mpc_mbuf mpc_msg_in;
 	struct bnxt_mpc_mbuf mpc_msg_out;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	struct cfa_bld_mpcinfo *mpc_info;
 	uint64_t host_address;
 	uint8_t discard_data[128];
@@ -53,7 +53,7 @@ int tfc_mpc_table_read(struct tfc *tfcp,
 
 	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (rc != 0) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -212,12 +212,12 @@ int tfc_mpc_table_write_zero(struct tfc *tfcp,
 	struct bnxt_mpc_mbuf mpc_msg_in;
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	struct cfa_bld_mpcinfo *mpc_info;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	bool valid;
 
 	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (rc != 0) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -340,12 +340,12 @@ int tfc_mpc_table_invalidate(struct tfc *tfcp,
 	struct bnxt_mpc_mbuf mpc_msg_in;
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	struct cfa_bld_mpcinfo *mpc_info;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	bool valid;
 
 	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (rc != 0) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -1288,7 +1288,7 @@ static void bucket_show(FILE *fd, struct bucket_info_t *bucket_info, uint32_t of
 int tfc_em_show(FILE *fd, struct tfc *tfcp, uint8_t tsid, enum cfa_dir dir)
 {
 	int rc = 0;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	bool is_bs_owner;
 	struct tfc_ts_mem_cfg *lkup_mem_cfg;
 	struct tfc_ts_mem_cfg *act_mem_cfg;
@@ -1299,7 +1299,7 @@ int tfc_em_show(FILE *fd, struct tfc *tfcp, uint8_t tsid, enum cfa_dir dir)
 	uint32_t bucket_offset = 0;
 	bool valid;
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (rc != 0) {
 		fprintf(fd, "%s: failed to get tsid: %d\n",
 			   __func__, rc);

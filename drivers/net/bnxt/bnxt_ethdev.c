@@ -6143,37 +6143,6 @@ bnxt_parse_devarg_app_id(__rte_unused const char *key,
 }
 
 static int
-bnxt_parse_devarg_mpc(__rte_unused const char *key,
-		      const char *value, __rte_unused void *opaque_arg)
-{
-	char *end = NULL;
-
-	if (!value || !opaque_arg) {
-		PMD_DRV_LOG_LINE(ERR,
-				 "Invalid parameter passed to app-id "
-				 "devargs");
-		return -EINVAL;
-	}
-
-	mpc = strtoul(value, &end, 10);
-	if (end == NULL || *end != '\0' ||
-	    (mpc == ULONG_MAX && errno == ERANGE)) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid parameter passed to mpc "
-				 "devargs");
-		return -EINVAL;
-	}
-
-	if (BNXT_DEVARG_MPC_INVALID(mpc)) {
-		PMD_DRV_LOG_LINE(ERR, "Invalid mpc(%d) devargs",
-				 (uint16_t)mpc);
-		return -EINVAL;
-	}
-
-	PMD_DRV_LOG_LINE(INFO, "MPC%d feature enabled", (uint16_t)mpc);
-	return 0;
-}
-
-static int
 bnxt_parse_devarg_ieee_1588(__rte_unused const char *key,
 			    const char *value, void *opaque_arg)
 {
@@ -6206,6 +6175,14 @@ bnxt_parse_devarg_ieee_1588(__rte_unused const char *key,
 	bp->ieee_1588 = ieee_1588;
 	PMD_DRV_LOG_LINE(INFO, "ieee-1588=%d feature enabled.", (uint16_t)ieee_1588);
 
+	return 0;
+}
+
+static int
+bnxt_parse_devarg_mpc(__rte_unused const char *key,
+		      __rte_unused const char *value, __rte_unused void *opaque_arg)
+{
+	PMD_DRV_LOG_LINE(INFO, "mpc=1 arg not required.");
 	return 0;
 }
 
@@ -6523,6 +6500,13 @@ bnxt_parse_dev_args(struct bnxt *bp, struct rte_devargs *devargs)
 
 err:
 	/*
+	 * Handler for "mpc" devarg.
+	 * Invoked as for ex: "-a 000:00:0d.0,mpc=1"
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_MPC,
+			   bnxt_parse_devarg_mpc, bp);
+
+	/*
 	 * Handler for "app-id" devarg.
 	 * Invoked as for ex: "-a 000:00:0d.0,app-id=1"
 	 */
@@ -6535,13 +6519,6 @@ err:
 	 */
 	rte_kvargs_process(kvlist, BNXT_DEVARG_IEEE_1588,
 			   bnxt_parse_devarg_ieee_1588, bp);
-
-	/*
-	 * Handler for "mpc" devarg.
-	 * Invoked as for ex: "-a 000:00:0d.0,mpc=1"
-	 */
-	rte_kvargs_process(kvlist, BNXT_DEVARG_MPC,
-			   bnxt_parse_devarg_mpc, bp);
 
 	/*
 	 * Handler for "cqe-mode" devarg.

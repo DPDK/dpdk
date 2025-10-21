@@ -133,19 +133,18 @@ int tfc_em_insert(struct tfc *tfcp, uint8_t tsid,
 	uint32_t i;
 	uint32_t hash = 0;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_EM_INSERT_CMD_MAX_FLD];
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	struct cfa_bld_mpcinfo *mpc_info;
 	bool valid;
 	uint16_t max_pools;
 #if TFC_EM_DYNAMIC_BUCKET_EN
 	struct cfa_mm_alloc_parms bucket_aparms;
-	bool shared = false;
 	uint32_t bucket_offset;
 #endif
 
 	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, &max_pools);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, &max_pools);
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
 		return -EINVAL;
@@ -202,8 +201,9 @@ int tfc_em_insert(struct tfc *tfcp, uint8_t tsid,
 		/* There is only 1 pool for a non-shared table scope and
 		 * it is full.
 		 */
-		if (!is_shared) {
-			PMD_DRV_LOG_LINE(ERR, "no records remain");
+		if (scope_type == CFA_SCOPE_TYPE_NON_SHARED) {
+			PMD_DRV_LOG_LINE(ERR, "%s: no records remain",
+					 __func__);
 			return -ENOMEM;
 		}
 
@@ -278,7 +278,7 @@ int tfc_em_insert(struct tfc *tfcp, uint8_t tsid,
 	}
 
 #if TFC_EM_DYNAMIC_BUCKET_EN
-	if (!shared) {
+	if (scope_type == CFA_SCOPE_TYPE_NON_SHARED) {
 		/* Allocate dynamic bucket */
 		bucket_aparms.num_contig_records = TFC_EM_DYNAMIC_BUCKET_RECORD_SIZE;
 		rc = cfa_mm_alloc(cmm, &bucket_aparms);
@@ -598,7 +598,7 @@ int tfc_em_delete(struct tfc *tfcp, struct tfc_em_delete_parms *parms)
 	uint32_t record_size;
 	struct cfa_mm_free_parms fparms;
 	uint8_t tsid;
-	bool is_shared;
+	enum cfa_scope_type scope_type;
 	struct tfc_ts_pool_info pi;
 	bool is_bs_owner;
 	struct tfc_ts_mem_cfg mem_cfg;
@@ -615,7 +615,7 @@ int tfc_em_delete(struct tfc *tfcp, struct tfc_em_delete_parms *parms)
 					&record_offset,
 					&static_bucket);
 
-	rc = tfo_ts_get(tfcp->tfo, tsid, &is_shared, NULL, &valid, NULL);
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
 	if (rc != 0) {
 		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s",
 				 strerror(-rc));

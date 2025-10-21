@@ -93,6 +93,16 @@ enum cfa_app_type {
 };
 
 /**
+ * CFA table scope types
+ */
+enum cfa_scope_type {
+	CFA_SCOPE_TYPE_NON_SHARED = 0,
+	CFA_SCOPE_TYPE_SHARED_APP = 1,
+	CFA_SCOPE_TYPE_GLOBAL = 2,
+	CFA_SCOPE_TYPE_INVALID = 3
+};
+
+/**
  * CFA FID types
  */
 enum cfa_fid_type {

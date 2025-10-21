@@ -293,6 +293,10 @@ int tfc_cpm_set_cmm_inst(struct tfc_cpm *cpm, uint16_t pool_id, struct tfc_cmm *
 		return -EINVAL;
 	}
 
+	if (pool_id >= cpm->max_pools) {
+		PMD_DRV_LOG_LINE(ERR, "Pool ID:0x%x > max 0x%x", pool_id, cpm->max_pools);
+		return -EINVAL;
+	}
 	pool = &cpm->pools[pool_id];
 
 	if (pool->valid && cmm != NULL) {
@@ -321,6 +325,11 @@ int tfc_cpm_get_cmm_inst(struct tfc_cpm *cpm, uint16_t pool_id, struct tfc_cmm *
 
 	if (cpm == NULL) {
 		PMD_DRV_LOG_LINE(ERR, "CPM is NULL");
+		return -EINVAL;
+	}
+
+	if (pool_id >= cpm->max_pools) {
+		PMD_DRV_LOG_LINE(ERR, "Pool ID:0x%x > max 0x%x", pool_id, cpm->max_pools);
 		return -EINVAL;
 	}
 
@@ -359,6 +368,10 @@ int tfc_cpm_set_usage(struct tfc_cpm *cpm, uint16_t pool_id, uint32_t used_count
 		return -EINVAL;
 	}
 
+	if (pool_id >= cpm->max_pools) {
+		PMD_DRV_LOG_LINE(ERR, "Pool ID:0x%x > max 0x%x", pool_id, cpm->max_pools);
+		return -EINVAL;
+	}
 	pool = &cpm->pools[pool_id];
 
 	if (!pool->valid) {

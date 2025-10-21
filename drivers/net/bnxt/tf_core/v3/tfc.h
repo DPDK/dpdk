@@ -762,14 +762,12 @@ enum tfc_tbl_scope_bucket_factor {
  * tfc_tbl_scope_size_query API.
  */
 struct tfc_tbl_scope_size_query_parms {
-	/**
-	 * [in] If a shared table scope, dynamic buckets are disabled. This
-	 * affects the calculation for static buckets in this function.
-	 * Initially, if not shared, the size of the static bucket table should
-	 * be double the number of flows supported. Numbers are validated
-	 * against static_cnt and dynamic_cnt
+	/** Scope is one of non-shared, shared-app or global.
+	 * If a shared-app or global table scope, dynamic buckets are disabled.
+	 * this combined with the multiplier affects the calculation for static
+	 * buckets in this function.
 	 */
-	bool shared;
+	enum cfa_scope_type scope_type;
 	/**
 	 * [in] Direction indexed array indicating the number of flows.  Must be
 	 * at least as large as the number entries that the buckets can point
@@ -852,6 +850,12 @@ struct tfc_tbl_scope_size_query_parms {
  * to be used by a table scope.
  */
 struct tfc_tbl_scope_mem_alloc_parms {
+	/** Scope is one of non-shared, shared-app or global.
+	 * If a shared-app or global table scope, dynamic buckets are disabled.
+	 * this combined with the multiplier affects the calculation for static
+	 * buckets in this function.
+	 */
+	enum cfa_scope_type scope_type;
 	/**
 	 * [in] If a shared table scope, indicate whether this is the first
 	 * if, the first, the table scope memory will be allocated.  Otherwise
@@ -920,32 +924,51 @@ struct tfc_tbl_scope_mem_alloc_parms {
 	uint32_t lkup_rec_start_offset[CFA_DIR_MAX];
 };
 
+
+/**
+ * tfc_tbl_scope_qcaps_parms contains the parameters for determining
+ * the table scope capabilities
+ */
+struct tfc_tbl_scope_qcaps_parms {
+	/**
+	 * [out] if true, the device supports a table scope.
+	 */
+	bool tbl_scope_cap;
+	/**
+	 * [out] if true, the device supports a global table scope.
+	 */
+	bool global_cap;
+	/**
+	 * [out] if true, the device supports locked regions.
+	 */
+	bool locked_cap;
+	/**
+	 * [out] the maximum number of static buckets supported.
+	 */
+	uint8_t max_lkup_static_bucket_exp;
+	/**
+	 * [out] The maximum number of minimum sized lkup records supported.
+	 */
+	uint32_t max_lkup_rec_cnt;
+	/**
+	 * [out] The maximum number of  minimum sized action records supported.
+	 */
+	uint32_t max_act_rec_cnt;
+};
+
 /**
  * Determine whether table scopes are supported in the hardware.
  *
  * @param[in] tfcp
  *   Pointer to TFC handle
  *
- * @param[out] tbl_scope_capable
- *   True if table scopes are supported in the firmware.
- *
- * @param[out] max_lkup_rec_cnt
- *   The maximum number of lookup records in a table scope (optional)
- *
- * @param[out] max_act_rec_cnt
- *   The maximum number of action records in a table scope (optional)
- *
- * @param[out] max_lkup_static_buckets_exp
- *   The log2 of the maximum number of lookup static buckets in a table scope
- *   (optional)
+ * @param[in,out] parms
  *
  * @returns
  *   0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfc_tbl_scope_qcaps(struct tfc *tfcp, bool *tbl_scope_capable,
-			uint32_t *max_lkup_rec_cnt,
-			uint32_t *max_act_rec_cnt,
-			uint8_t	*max_lkup_static_buckets_exp);
+int tfc_tbl_scope_qcaps(struct tfc *tfcp,
+			struct tfc_tbl_scope_qcaps_parms *parms);
 
 /**
  * Determine table scope sizing
@@ -968,8 +991,8 @@ int tfc_tbl_scope_size_query(struct tfc *tfcp,
  * @param[in] tfcp
  *   Pointer to TFC handle
  *
- * @param[in] shared
- *   Create a shared table scope.
+ * @param[in] scope_type
+ *   non-shared, shared-app or global
  *
  * @param[in] app_type
  *   The application type, TF or AFM
@@ -984,7 +1007,7 @@ int tfc_tbl_scope_size_query(struct tfc *tfcp,
  * @returns
  *	 0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfc_tbl_scope_id_alloc(struct tfc *tfcp, bool shared,
+int tfc_tbl_scope_id_alloc(struct tfc *tfcp, enum cfa_scope_type scope_type,
 			   enum cfa_app_type app_type, uint8_t *tsid,
 			   bool *first);
 
@@ -1023,10 +1046,14 @@ int tfc_tbl_scope_mem_alloc(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
  * @param[in] tsid
  *   Table scope identifier
  *
+ * @param[in] fid_cnt
+ *   Used for global scope cleanup.  If a fid remains, do not delete scope
+ *
  * @returns
  *   0 for SUCCESS, negative error value for FAILURE (errno.h)
  */
-int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid);
+int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
+			   uint16_t fid_cnt);
 
 /**
  * tfc_tbl_scope_cpm_alloc_parms contains the parameters for allocating a

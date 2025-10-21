@@ -73,6 +73,8 @@ struct tfc_vf2pf_tbl_scope_mem_alloc_cfg_cmd {
 	uint8_t act_pool_sz_exp[CFA_DIR_MAX];
 	/** start offset in 32B records of the lkup recs (after buckets) */
 	uint32_t lkup_rec_start_offset[CFA_DIR_MAX];
+	/** scope type non-shared, shared-app or global */
+	enum cfa_scope_type scope_type;
 };
 /**
  * Truflow VF2PF Table Scope Memory allocate/config response
@@ -103,7 +105,7 @@ struct tfc_vf2pf_tbl_scope_mem_free_resp {
 	struct tfc_vf2pf_hdr hdr;
 	/** status of request */
 	enum tfc_vf2pf_status status;
-	/** tsid memory freed */
+	/** table scope identifier */
 	uint8_t tsid;
 };
 

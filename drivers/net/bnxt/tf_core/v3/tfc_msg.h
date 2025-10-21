@@ -16,11 +16,14 @@
 int
 tfc_msg_tbl_scope_qcaps(struct tfc *tfcp,
 			bool *tbl_scope_capable,
+			bool *global_scope_capable,
+			bool *locked_scope_capable,
 			uint32_t *max_lkup_rec_cnt,
 			uint32_t *max_act_rec_cnt,
 			uint8_t	*max_lkup_static_buckets_exp);
 
-int tfc_msg_tbl_scope_id_alloc(struct tfc *tfcp, uint16_t fid, bool shared,
+int tfc_msg_tbl_scope_id_alloc(struct tfc *tfcp, uint16_t fid,
+			       enum cfa_scope_type scope_type,
 			       enum cfa_app_type app_type, uint8_t *tsid,
 			       bool *first);
 
@@ -30,9 +33,6 @@ tfc_msg_backing_store_cfg_v2(struct tfc *tfcp, uint8_t tsid, enum cfa_dir dir,
 			     uint8_t pbl_level, uint32_t pbl_page_sz,
 			     uint32_t rec_cnt, uint8_t static_bkt_cnt_exp,
 			     bool cfg_done);
-
-int
-tfc_msg_tbl_scope_deconfig(struct tfc *tfcp, uint8_t tsid);
 
 int
 tfc_msg_tbl_scope_fid_add(struct tfc *tfcp, uint16_t fid,
