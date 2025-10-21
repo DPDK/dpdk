@@ -628,6 +628,52 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 }
 
 /*
+ * Fill the rte_mtr_stats 'mtr_count' argument passed
+ * in the rte_mtr_stats_read() with the values obtained
+ * through CFA table get.
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * mtr_id [in] The SW meter ID
+ *
+ * count [out] The rte_mtr_stats 'mtr_count' that is set
+ *
+ */
+int ulp_mtr_query_count_get(struct bnxt_ulp_context *ctxt,
+			    uint32_t mtr_id,
+			    int clear,
+			    struct rte_mtr_stats *mtr_count)
+{
+	int rc = 0;
+	struct bnxt_ulp_fc_info *ulp_fc_info;
+	const struct bnxt_ulp_fc_core_ops *fc_ops;
+	struct ulp_flow_db_res_params params;
+	uint32_t session_type = 0;
+	uint8_t dir = 0;
+	const struct ulp_mapper_core_ops *oper;
+
+	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
+	if (!ulp_fc_info)
+		return -ENODEV;
+
+	oper = ulp_mapper_data_oper_get(ctxt);
+	if (!oper)
+		return -ENODEV;
+	rc = oper->ulp_mapper_mtr_stats_hndl_get(mtr_id, &params.resource_hndl);
+	if (rc)
+		return rc;
+
+	fc_ops = ulp_fc_info->fc_ops;
+	if (!fc_ops || !fc_ops->ulp_mtr_stat_get)
+		return -ENODEV;
+
+	rc = fc_ops->ulp_mtr_stat_get(ctxt, dir, session_type,
+				      params.resource_hndl, clear, mtr_count);
+
+	return rc;
+}
+
+/*
  * Set the parent flow if it is SW accumulation counter entry.
  *
  * ctxt [in] The ulp context for the flow counter manager

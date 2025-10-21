@@ -71,15 +71,6 @@ bnxt_ulp_mapper_ops_get(struct bnxt *bp)
 	return func_ops;
 }
 
-static const struct ulp_mapper_core_ops *
-ulp_mapper_data_oper_get(struct bnxt_ulp_context *ulp_ctx)
-{
-	struct bnxt_ulp_mapper_data *m_data;
-
-	m_data = (struct bnxt_ulp_mapper_data *)ulp_ctx->cfg_data->mapper_data;
-	return m_data->mapper_oper;
-}
-
 static const char *
 ulp_mapper_tmpl_name_str(enum bnxt_ulp_template_type tmpl_type)
 {

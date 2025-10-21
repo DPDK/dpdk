@@ -170,7 +170,25 @@ struct ulp_mapper_core_ops {
 	int
 	(*ulp_mapper_mpc_batch_end)(struct tfc *tfcp,
 				    struct tfc_mpc_batch_info_t *batch_info);
+
+	int32_t
+	(*ulp_mapper_mtr_stats_hndl_set)(struct bnxt_ulp_mapper_parms *parms,
+					 uint32_t mtr_id,
+					 uint64_t stats_hndl);
+	int32_t
+	(*ulp_mapper_mtr_stats_hndl_get)(uint32_t mtr_id, uint64_t *stats_hndl);
+
+	int
+	(*ulp_mapper_mtr_stats_hndl_del)(uint32_t mtr_id);
 };
+
+static inline const struct ulp_mapper_core_ops *
+ulp_mapper_data_oper_get(struct bnxt_ulp_context *ulp_ctx) {
+	struct bnxt_ulp_mapper_data *m_data;
+
+	m_data = (struct bnxt_ulp_mapper_data *)ulp_ctx->cfg_data->mapper_data;
+	return m_data->mapper_oper;
+}
 
 extern const struct ulp_mapper_core_ops ulp_mapper_tf_core_ops;
 extern const struct ulp_mapper_core_ops ulp_mapper_tfc_core_ops;
@@ -301,6 +319,12 @@ ulp_mapper_init(struct bnxt_ulp_context	*ulp_ctx);
 
 void
 ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx);
+
+int
+ulp_mapper_get_mtr_stats_hndl(uint32_t mtr_id, uint64_t *stats_ptr);
+
+int
+ulp_mapper_del_mtr_stats_hndl(uint32_t mtr_id);
 
 #ifdef TF_FLOW_SCALE_QUERY
 int32_t

@@ -1385,5 +1385,8 @@ const struct ulp_mapper_core_ops ulp_mapper_tf_core_ops = {
 	.ulp_mapper_core_handle_to_offset = ulp_mapper_tf_handle_to_offset,
 	.ulp_mapper_mpc_batch_started = ulp_mapper_tf_mpc_batch_started,
 	.ulp_mapper_mpc_batch_start = ulp_mapper_tf_mpc_batch_start,
-	.ulp_mapper_mpc_batch_end = ulp_mapper_tf_mpc_batch_end
+	.ulp_mapper_mpc_batch_end = ulp_mapper_tf_mpc_batch_end,
+	.ulp_mapper_mtr_stats_hndl_set = NULL,
+	.ulp_mapper_mtr_stats_hndl_get = NULL,
+	.ulp_mapper_mtr_stats_hndl_del = NULL
 };
