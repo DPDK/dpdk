@@ -3785,6 +3785,7 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 		process_src1 = 1;
 	case BNXT_ULP_FUNC_OPC_COND_LIST:
 	case BNXT_ULP_FUNC_OPC_APP_PRIORITY:
+	case BNXT_ULP_FUNC_OPC_GET_HA_PRIORITY:
 		break;
 	case BNXT_ULP_FUNC_OPC_PORT_TABLE:
 		process_src1 = 1;
@@ -3920,6 +3921,9 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 							    CFA_RSUBTYPE_TCAM_WC,
 							    (uint32_t)res1,
 							    (uint16_t)res2);
+	case BNXT_ULP_FUNC_OPC_GET_HA_PRIORITY:
+		res = bnxt_ulp_ha_priority_id_get(parms->ulp_ctx);
+		break;
 	default:
 		BNXT_DRV_DBG(ERR, "invalid func code %u\n",
 			     func_info->func_opc);

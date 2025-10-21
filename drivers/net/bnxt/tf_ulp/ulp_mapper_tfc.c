@@ -316,7 +316,7 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		/* allocate the tcam entry, only need the length */
 		(void)ulp_blob_data_get(key, &key_sz_in_bits);
 		key_sz_in_words = ULP_BITS_2_BYTE(key_sz_in_bits);
-		tfc_inf.dir = tbl->direction; /* PKB.need an api */
+		tfc_inf.dir = tbl->direction;
 		tfc_inf.rsubtype = tbl->resource_type;
 
 		rc = tfc_tcam_alloc(tfcp, fw_fid, tt, priority,

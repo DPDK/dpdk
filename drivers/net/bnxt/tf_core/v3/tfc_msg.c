@@ -1319,3 +1319,55 @@ int tfc_msg_resc_usage_query(struct tfc *tfcp, uint16_t sid, enum cfa_dir dir,
 	return rc;
 }
 #endif /* TF_FLOW_SCALE_QUERY */
+
+int
+tfc_msg_hot_upgrade_process(struct tfc *tfcp, uint16_t fid, uint16_t sid,
+			    uint8_t app_inst_id,
+			    enum cfa_hot_upgrade_cmd_op cmd_op,
+			    uint8_t cur_cnt,
+			    uint8_t *app_inst_cnt)
+{
+	struct hwrm_tfc_hot_upgrade_process_input req = { 0 };
+	struct hwrm_tfc_hot_upgrade_process_output resp = { 0 };
+	struct bnxt *bp = tfcp->bp;
+	int rc = 0;
+
+	rc = tfc_msg_set_fid(bp, fid, &req.fid);
+	if (rc)
+		return rc;
+	req.sid = rte_le_to_cpu_16(sid);
+	req.app_id = app_inst_id;
+	req.cur_session_cnt = cur_cnt;
+
+	switch (cmd_op) {
+	case CFA_HOT_UPGRADE_CMD_ALLOC:
+		req.cmd = HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_ALLOC;
+		break;
+	case CFA_HOT_UPGRADE_CMD_FREE:
+		req.cmd = HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_FREE;
+		break;
+	case CFA_HOT_UPGRADE_CMD_GET:
+		req.cmd = HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_GET;
+		break;
+	case CFA_HOT_UPGRADE_CMD_SET:
+		req.cmd = HWRM_TFC_HOT_UPGRADE_PROCESS_INPUT_CMD_SET;
+		break;
+	default:
+		PMD_DRV_LOG_LINE(ERR, "invalid command opcode %u",
+				 cmd_op);
+		return -EINVAL;
+	}
+	rc = bnxt_hwrm_tf_message_direct(bp, false,
+					 HWRM_TFC_HOT_UPGRADE_PROCESS,
+					 &req, sizeof(req), &resp,
+					 sizeof(resp));
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "sid[%u]:instance[%u]:cmd_op[%u] failed",
+				 sid, app_inst_id, cmd_op);
+		return rc;
+	}
+
+	*app_inst_cnt = resp.session_cnt;
+	return rc;
+}

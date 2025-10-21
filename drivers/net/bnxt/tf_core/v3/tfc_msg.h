@@ -174,3 +174,10 @@ tfc_msg_if_tbl_get(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 int tfc_msg_resc_usage_query(struct tfc *tfcp, uint16_t sid, enum cfa_dir dir,
 			     uint16_t *data_size, void *data);
 #endif /* TF_FLOW_SCALE_QUERY  */
+
+int
+tfc_msg_hot_upgrade_process(struct tfc *tfcp, uint16_t fid, uint16_t sid,
+			    uint8_t app_inst_id,
+			    enum cfa_hot_upgrade_cmd_op cmd_op,
+			    uint8_t cur_cnt,
+			    uint8_t *app_inst_cnt);

@@ -33,6 +33,60 @@ sources += files(
         'ulp_fc_mgr_tf.c',
         'ulp_alloc_tbl.c',
         'ulp_sc_mgr.c',
-        'ulp_sc_mgr_tfc.c')
+        'ulp_sc_mgr_tfc.c',
+        'ulp_tfc_ha_mgr.c')
+
+#include the templates for compile
+
+if get_option('bnxt_tf_template').contains('app19')
+includes += include_directories('app_19_templates')
+subdir('app_19_templates')
+cflags += '-DBNXT_TF_APP_ID=19'
+
+elif get_option('bnxt_tf_template').contains('app17')
+includes += include_directories('app_16_17_templates')
+subdir('app_16_17_templates')
+cflags += '-DBNXT_TF_APP_ID=17'
+
+elif get_option('bnxt_tf_template').contains('app16')
+includes += include_directories('app_16_17_templates')
+subdir('app_16_17_templates')
+cflags += '-DBNXT_TF_APP_ID=16'
+
+elif get_option('bnxt_tf_template').contains('app14')
+includes += include_directories('app_14_templates')
+subdir('app_14_templates')
+cflags += '-DBNXT_TF_APP_ID=14'
+
+elif get_option('bnxt_tf_template').contains('app13')
+includes += include_directories('app_13_templates')
+subdir('app_13_templates')
+cflags += '-DBNXT_TF_APP_ID=13'
+
+elif get_option('bnxt_tf_template').contains('app10')
+includes += include_directories('app_10_templates')
+subdir('app_10_templates')
+cflags += '-DBNXT_TF_APP_ID=10'
+
+elif get_option('bnxt_tf_template').contains('app11')
+includes += include_directories('app_11_templates')
+subdir('app_11_templates')
+cflags += '-DBNXT_TF_APP_ID=11'
+
+elif get_option('bnxt_tf_template').contains('app12')
+includes += include_directories('app_12_templates')
+subdir('app_12_templates')
+cflags += '-DBNXT_TF_APP_ID=12'
+
+elif get_option('bnxt_tf_template').contains('app15')
+includes += include_directories('app_15_templates')
+subdir('app_15_templates')
+cflags += '-DBNXT_TF_APP_ID=15'
+
+elif get_option('bnxt_tf_template').contains('app1')
+includes += include_directories('app_1_2_templates')
+subdir('app_1_2_templates')
+cflags += '-DBNXT_TF_APP_ID=1'
+endif
 
 subdir('generic_templates')
