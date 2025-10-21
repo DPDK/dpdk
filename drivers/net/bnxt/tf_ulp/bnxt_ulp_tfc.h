@@ -76,4 +76,9 @@ bnxt_ulp_cntxt_page_sz_get(struct bnxt_ulp_context *ulp_ctxt);
 int32_t
 bnxt_ulp_cntxt_page_sz_set(struct bnxt_ulp_context *ulp_ctxt,
 			   uint32_t page_sz);
+
+int32_t
+ulp_flow_db_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
+			   enum bnxt_ulp_fdb_type flow_type,
+			   uint32_t *fid);
 #endif

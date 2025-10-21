@@ -426,4 +426,18 @@ int tfo_tim_set(void *tfo, void *tim);
  */
 int tfo_tim_get(void *tfo, void **tim);
 
+/**
+ * Get the table scope
+ *
+ * @param[in] tfo
+ *   Pointer to TFC object
+ *
+ * @param[out] tsid
+ *   Pointer to the returned table scope
+ *
+ * @return
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int tfo_tsid_get(void *tfo, uint8_t *tsid);
+
 #endif /* _TFO_H_ */

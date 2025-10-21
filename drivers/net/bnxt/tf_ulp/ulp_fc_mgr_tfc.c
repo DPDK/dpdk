@@ -18,7 +18,6 @@
 #include "ulp_template_db_enum.h"
 #include "ulp_template_struct.h"
 #include "tfc.h"
-#include "tfc_debug.h"
 #include "tfc_action_handle.h"
 
 /* Need to create device parms for these values and handle

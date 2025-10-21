@@ -9,6 +9,8 @@
 #include "bnxt.h"
 #include "bnxt_tf_common.h"
 #include "bnxt_ulp_utils.h"
+#include "bnxt_ulp_tfc.h"
+#include "ulp_utils.h"
 #include "ulp_template_struct.h"
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"
@@ -883,7 +885,7 @@ ulp_flow_db_resource_get(struct bnxt_ulp_context *ulp_ctxt,
  *
  * returns 0 on success and negative on failure.
  */
-static int32_t
+int32_t
 ulp_flow_db_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
 			   enum bnxt_ulp_fdb_type flow_type,
 			   uint32_t *fid)
