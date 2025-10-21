@@ -351,7 +351,7 @@ compact_user_maps(struct user_mem_maps *user_mem_maps)
 }
 
 static int
-vfio_open_group_fd(int iommu_group_num)
+vfio_open_group_fd(int iommu_group_num, bool mp_request)
 {
 	int vfio_group_fd;
 	char filename[PATH_MAX];
@@ -359,11 +359,9 @@ vfio_open_group_fd(int iommu_group_num)
 	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
-	/* if primary, try to open the group */
-	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
+	/* if not requesting via mp, open the group locally */
+	if (!mp_request) {
 		/* try regular group format */
 		snprintf(filename, sizeof(filename), RTE_VFIO_GROUP_FMT, iommu_group_num);
 		vfio_group_fd = open(filename, O_RDWR);
@@ -471,7 +469,24 @@ vfio_get_group_fd(struct vfio_config *vfio_cfg,
 		return -1;
 	}
 
-	vfio_group_fd = vfio_open_group_fd(iommu_group_num);
+	/*
+	 * When opening a group fd, we need to decide whether to open it locally
+	 * or request it from the primary process via mp_sync.
+	 *
+	 * For the default container, secondary processes use mp_sync so that
+	 * the primary process tracks the group fd and maintains VFIO state
+	 * across all processes.
+	 *
+	 * For custom containers, we open the group fd locally in each process
+	 * since custom containers are process-local and the primary has no
+	 * knowledge of them. Requesting a group fd from the primary for a
+	 * container it doesn't know about would be incorrect.
+	 */
+	const struct internal_config *internal_conf = eal_get_internal_configuration();
+	bool mp_request = (internal_conf->process_type == RTE_PROC_SECONDARY) &&
+			(vfio_cfg == default_vfio_cfg);
+
+	vfio_group_fd = vfio_open_group_fd(iommu_group_num, mp_request);
 	if (vfio_group_fd < 0) {
 		EAL_LOG(ERR, "Failed to open VFIO group %d",
 			iommu_group_num);
@@ -1140,13 +1155,13 @@ rte_vfio_enable(const char *modname)
 		if (vfio_mp_sync_setup() == -1) {
 			default_vfio_cfg->vfio_container_fd = -1;
 		} else {
-			/* open a new container */
-			default_vfio_cfg->vfio_container_fd = rte_vfio_get_container_fd();
+			/* open a default container */
+			default_vfio_cfg->vfio_container_fd = vfio_open_container_fd(false);
 		}
 	} else {
 		/* get the default container from the primary process */
 		default_vfio_cfg->vfio_container_fd =
-				vfio_get_default_container_fd();
+			vfio_open_container_fd(true);
 	}
 
 	/* check if we have VFIO driver enabled */
@@ -1166,49 +1181,6 @@ rte_vfio_is_enabled(const char *modname)
 {
 	const int mod_available = rte_eal_check_module(modname) > 0;
 	return default_vfio_cfg->vfio_enabled && mod_available;
-}
-
-int
-vfio_get_default_container_fd(void)
-{
-	struct rte_mp_msg mp_req, *mp_rep;
-	struct rte_mp_reply mp_reply = {0};
-	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
-	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
-	int container_fd;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
-	if (default_vfio_cfg->vfio_enabled)
-		return default_vfio_cfg->vfio_container_fd;
-
-	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
-		/* if we were secondary process we would try requesting
-		 * container fd from the primary, but we're the primary
-		 * process so just exit here
-		 */
-		return -1;
-	}
-
-	p->req = SOCKET_REQ_DEFAULT_CONTAINER;
-	strcpy(mp_req.name, EAL_VFIO_MP);
-	mp_req.len_param = sizeof(*p);
-	mp_req.num_fds = 0;
-
-	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
-	    mp_reply.nb_received == 1) {
-		mp_rep = &mp_reply.msgs[0];
-		p = (struct vfio_mp_param *)mp_rep->param;
-		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
-			container_fd = mp_rep->fds[0];
-			free(mp_reply.msgs);
-			return container_fd;
-		}
-	}
-
-	free(mp_reply.msgs);
-	EAL_LOG(ERR, "Cannot request default VFIO container fd");
-	return -1;
 }
 
 int
@@ -1303,20 +1275,25 @@ vfio_has_supported_extensions(int vfio_container_fd)
 	return 0;
 }
 
-RTE_EXPORT_SYMBOL(rte_vfio_get_container_fd)
+/*
+ * Open a new VFIO container fd.
+ *
+ * If mp_request is true, requests a new container fd from the primary process
+ * via mp channel (for secondary processes that need to open the default container).
+ *
+ * Otherwise, opens a new container fd locally by opening /dev/vfio/vfio.
+ */
 int
-rte_vfio_get_container_fd(void)
+vfio_open_container_fd(bool mp_request)
 {
 	int ret, vfio_container_fd;
 	struct rte_mp_msg mp_req, *mp_rep;
 	struct rte_mp_reply mp_reply = {0};
 	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
 	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
-	/* if we're in a primary process, try to open the container */
-	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
+	/* if not requesting via mp, open a new container locally */
+	if (!mp_request) {
 		vfio_container_fd = open(RTE_VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
 			EAL_LOG(ERR, "Cannot open VFIO container %s, error %i (%s)",
@@ -1370,6 +1347,20 @@ rte_vfio_get_container_fd(void)
 	free(mp_reply.msgs);
 	EAL_LOG(ERR, "Cannot request VFIO container fd");
 	return -1;
+}
+
+RTE_EXPORT_SYMBOL(rte_vfio_get_container_fd)
+int
+rte_vfio_get_container_fd(void)
+{
+	/* Return the default container fd if VFIO is enabled.
+	 * The default container is set up during rte_vfio_enable().
+	 * This function does not create a new container.
+	 */
+	if (!default_vfio_cfg->vfio_enabled)
+		return -1;
+
+	return default_vfio_cfg->vfio_container_fd;
 }
 
 RTE_EXPORT_SYMBOL(rte_vfio_get_group_num)
@@ -2093,7 +2084,8 @@ rte_vfio_container_create(void)
 		return -1;
 	}
 
-	vfio_cfgs[i].vfio_container_fd = rte_vfio_get_container_fd();
+	/* Create a new container fd */
+	vfio_cfgs[i].vfio_container_fd = vfio_open_container_fd(false);
 	if (vfio_cfgs[i].vfio_container_fd < 0) {
 		EAL_LOG(NOTICE, "Fail to create a new VFIO container");
 		return -1;

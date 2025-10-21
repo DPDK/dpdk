@@ -192,14 +192,14 @@ rte_vfio_get_device_info(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info);
 
 /**
- * Open a new VFIO container fd
+ * Get the default VFIO container fd
  *
  * This function is only relevant to linux and will return
  * an error on BSD.
  *
  * @return
- *  > 0 container fd
- *  < 0 for errors
+ *  > 0 default container fd
+ *  < 0 if VFIO is not enabled or not supported
  */
 int
 rte_vfio_get_container_fd(void);
