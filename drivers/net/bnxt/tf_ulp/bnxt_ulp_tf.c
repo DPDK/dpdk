@@ -948,11 +948,6 @@ ulp_tf_eem_tbl_scope_init(struct bnxt *bp)
 		return rc;
 	}
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-	BNXT_DRV_DBG(DEBUG, "TableScope=0x%0x %d\n",
-		     params.tbl_scope_id,
-		     params.tbl_scope_id);
-#endif
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_set(bp->ulp_ctx, params.tbl_scope_id);
 	if (rc) {

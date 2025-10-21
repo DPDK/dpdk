@@ -10,10 +10,6 @@
 #include "ulp_alloc_tbl.h"
 #include "bnxt_ulp_utils.h"
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#include "ulp_template_debug_proto.h"
-#include "ulp_tf_debug.h"
-#endif
 
 /* Retrieve the allocator table  initialization parameters for the tbl_idx */
 static const struct bnxt_ulp_allocator_tbl_params*

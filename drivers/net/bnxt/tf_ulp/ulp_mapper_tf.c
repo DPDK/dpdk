@@ -11,10 +11,6 @@
 #include "bnxt_ulp_utils.h"
 #include "bnxt_ulp_tf.h"
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#include "ulp_template_debug_proto.h"
-#include "ulp_tf_debug.h"
-#endif
 
 /* Internal function to write the tcam entry */
 static int32_t
@@ -50,9 +46,6 @@ ulp_mapper_tf_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 			     tf_dir_2_str(sparms.dir), sparms.idx);
 		return -EIO;
 	}
-	BNXT_DRV_INF("tcam[%s][%s][%x] write success.\n",
-		     tf_tcam_tbl_2_str(sparms.tcam_tbl_type),
-		     tf_dir_2_str(sparms.dir), sparms.idx);
 
 	/* Mark action */
 	rc = ulp_mapper_mark_act_ptr_process(parms, tbl);
@@ -61,11 +54,6 @@ ulp_mapper_tf_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 		return rc;
 	}
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	ulp_mapper_tcam_entry_dump("TCAM", idx, tbl, key, mask, data);
-#endif
-#endif
 	return rc;
 }
 
@@ -353,11 +341,6 @@ ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		BNXT_DRV_DBG(ERR, "Failed to build the result blob\n");
 		return rc;
 	}
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	ulp_mapper_result_dump("EM Result", tbl, &data);
-#endif
-#endif
 	if (dparms->em_dynamic_pad_en) {
 		uint32_t abits = dparms->em_blk_align_bits;
 
@@ -372,11 +355,6 @@ ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		ulp_blob_pad_align(&data, abits);
 
 		ulp_blob_perform_byte_reverse(&data, ULP_BITS_2_BYTE(abits));
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	ulp_mapper_result_dump("EM Merged Result", tbl, &data);
-#endif
-#endif
 	}
 
 	/* do the transpose for the internal EM keys */
@@ -389,11 +367,6 @@ ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		tmplen = ulp_blob_data_len_get(&key);
 		ulp_blob_perform_byte_reverse(&key, ULP_BITS_2_BYTE(tmplen));
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	ulp_mapper_result_dump("EM Key Transpose", tbl, &key);
-#endif
-#endif
 	}
 
 	rc = bnxt_ulp_cntxt_tbl_scope_id_get(parms->ulp_ctx,
@@ -444,12 +417,6 @@ ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return rc;
 	}
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	ulp_mapper_em_dump("EM", &key, &data, &iparms);
-	/* tf_dump_tables(tfp, iparms.tbl_scope_id); */
-#endif
-#endif
 	/* Mark action process */
 	if (mtype == BNXT_ULP_FLOW_MEM_TYPE_EXT &&
 	    tbl->resource_type == TF_MEM_EXTERNAL)
@@ -852,9 +819,6 @@ ulp_mapper_tf_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				     sparms.idx, rc);
 			goto error;
 		}
-		BNXT_DRV_INF("Index table[%s][%s][%x] write successful.\n",
-			     tf_tbl_type_2_str(sparms.type),
-			     tf_dir_2_str(sparms.dir), sparms.idx);
 
 		/* Calculate action record size */
 		if (tbl->resource_type == TF_TBL_TYPE_EXT) {
@@ -1032,10 +996,6 @@ ulp_mapper_tf_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			     iftbl_params.idx, rc);
 		return rc;
 	}
-	BNXT_DRV_INF("Set table[%s][%s][%x] success.\n",
-		     tf_if_tbl_2_str(iftbl_params.type),
-		     tf_dir_2_str(iftbl_params.dir),
-		     iftbl_params.idx);
 
 	/*
 	 * TBD: Need to look at the need to store idx in flow db for restore
@@ -1073,13 +1033,6 @@ ulp_mapper_tf_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 		return rc;
 	}
 	*identifier_id = iparms.id;
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_INF("Allocated Identifier [%s]:[%s] = 0x%X\n",
-		     tf_dir_2_str(iparms.dir),
-		     tf_ident_2_str(iparms.ident_type), iparms.id);
-#endif
-#endif
 	return rc;
 }
 
@@ -1104,14 +1057,6 @@ ulp_mapper_tf_ident_free(struct bnxt_ulp_context *ulp_ctx,
 	free_parms.id = res->resource_hndl;
 
 	(void)tf_free_identifier(tfp, &free_parms);
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_INF("Freed Identifier [%s]:[%s] = 0x%X\n",
-		     tf_dir_2_str(free_parms.dir),
-		     tf_ident_2_str(free_parms.ident_type),
-		     (uint32_t)free_parms.id);
-#endif
-#endif
 	return rc;
 }
 
@@ -1219,14 +1164,6 @@ ulp_mapper_tf_index_entry_free(struct bnxt_ulp_context *ulp,
 	if (fparms.type == TF_TBL_TYPE_FULL_ACT_RECORD)
 		(void)ulp_mapper_clear_full_action_record(tfp, ulp, &fparms);
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_INF("Free index table [%s]:[%s] = 0x%X\n",
-		     tf_dir_2_str(fparms.dir),
-		     tf_tbl_type_2_str(fparms.type),
-		     (uint32_t)fparms.idx);
-#endif
-#endif
 	return tf_free_tbl_entry(tfp, &fparms);
 }
 
@@ -1267,14 +1204,6 @@ ulp_mapper_tf_index_tbl_alloc_process(struct bnxt_ulp_context *ulp,
 
 	*index = aparms.idx;
 
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-		BNXT_DRV_DBG(DEBUG, "Allocated Table Index [%s][%s] = 0x%04x\n",
-			     tf_tbl_type_2_str(aparms.type),
-			     tf_dir_2_str(aparms.dir),
-			     aparms.idx);
-#endif
-#endif
 	return rc;
 }
 
