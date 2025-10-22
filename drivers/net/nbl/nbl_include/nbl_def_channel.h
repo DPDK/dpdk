@@ -285,6 +285,35 @@ enum nbl_chan_msg_type {
 	NBL_CHAN_MSG_MAX,
 };
 
+struct nbl_chan_param_alloc_txrx_queues {
+	u16 vsi_id;
+	u16 queue_num;
+};
+
+struct nbl_chan_param_free_txrx_queues {
+	u16 vsi_id;
+};
+
+struct nbl_chan_param_setup_queue {
+	struct nbl_txrx_queue_param queue_param;
+	bool is_tx;
+};
+
+struct nbl_chan_param_remove_all_queues {
+	u16 vsi_id;
+};
+
+struct nbl_chan_param_cfg_msix_map {
+	u16 num_net_msix;
+	u16 num_others_msix;
+	u16 msix_mask_en;
+};
+
+struct nbl_chan_param_enable_mailbox_irq {
+	u16 vector_id;
+	bool enable_msix;
+};
+
 struct nbl_chan_send_info {
 	uint16_t dstid;
 	uint16_t msg_type;
