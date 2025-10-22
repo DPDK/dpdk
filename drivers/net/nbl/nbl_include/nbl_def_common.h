@@ -30,6 +30,8 @@
 #define NBL_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + NBL_VLAN_TAG_SIZE * 2)
 
+#define NBL_EPRO_RSS_SK_SIZE			(40)
+
 struct nbl_dev_user_channel_msg {
 	u16 msg_type;
 	u16 dst_id;

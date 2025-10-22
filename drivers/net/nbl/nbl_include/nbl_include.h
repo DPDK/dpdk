@@ -114,6 +114,13 @@ struct nbl_board_port_info {
 	u8 rsv[6];
 };
 
+enum nbl_fw_port_speed {
+	NBL_FW_PORT_SPEED_10G,
+	NBL_FW_PORT_SPEED_25G,
+	NBL_FW_PORT_SPEED_50G,
+	NBL_FW_PORT_SPEED_100G,
+};
+
 struct nbl_common_info {
 	const struct rte_eth_dev *eth_dev;
 	u16 vsi_id;
