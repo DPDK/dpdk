@@ -23,6 +23,7 @@ struct nbl_dispatch_ops {
 				  bool net_msix_mask_en);
 	int (*destroy_msix_map)(void *priv);
 	int (*enable_mailbox_irq)(void *p, u16 vector_id, bool enable_msix);
+	void (*get_resource_pt_ops)(void *priv, struct nbl_resource_pt_ops *pt_ops, bool offload);
 	int (*register_net)(void *priv,
 			    struct nbl_register_net_param *register_param,
 			    struct nbl_register_net_result *register_result);
@@ -71,6 +72,8 @@ struct nbl_dispatch_ops {
 	u16 (*recv_pkts)(void *priv, void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts);
 	u16 (*get_vsi_global_qid)(void *priv, u16 vsi_id, u16 local_qid);
 	void (*get_board_info)(void *priv, struct nbl_board_port_info *board_info);
+	void (*get_link_state)(void *priv, u8 eth_id, struct nbl_eth_link_info *eth_link_info);
+	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats);
 
 	void (*dummy_func)(void *priv);
 };

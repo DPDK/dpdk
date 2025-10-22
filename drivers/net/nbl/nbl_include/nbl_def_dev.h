@@ -18,7 +18,7 @@ struct nbl_dev_ops_tbl {
 	void *priv;
 };
 
-int nbl_dev_init(void *p, const struct rte_eth_dev *eth_dev);
+int nbl_dev_init(void *p, struct rte_eth_dev *eth_dev);
 void nbl_dev_remove(void *p);
 int nbl_dev_start(void *p);
 void nbl_dev_stop(void *p);

@@ -4,6 +4,7 @@
 
 #include "nbl_txrx.h"
 #include "nbl_include.h"
+#include "nbl_txrx_ops.h"
 
 static int nbl_res_txrx_alloc_rings(void *priv, u16 tx_num, u16 rx_num, u16 queue_offset)
 {
@@ -397,6 +398,323 @@ static void nbl_res_txrx_update_rx_ring(void *priv, u16 index)
 				 rx_ring->next_to_use));
 }
 
+static inline void nbl_fill_rx_ring(struct nbl_res_rx_ring *rxq,
+				    struct rte_mbuf **cookie, uint16_t fill_num)
+{
+	volatile struct nbl_packed_desc *rx_desc;
+	struct nbl_rx_entry *rx_entry;
+	uint64_t dma_addr;
+	uint16_t desc_index, i, flags;
+
+	desc_index = rxq->next_to_use;
+	for (i = 0; i < fill_num; i++) {
+		rx_desc = &rxq->desc[desc_index];
+		rx_entry = &rxq->rx_entry[desc_index];
+		rx_entry->mbuf = cookie[i];
+
+		flags = rxq->avail_used_flags;
+		desc_index++;
+		if (desc_index >= rxq->nb_desc) {
+			desc_index = 0;
+			rxq->avail_used_flags ^= NBL_PACKED_DESC_F_AVAIL_USED;
+		}
+		if ((desc_index & 0x3) == 0) {
+			rte_prefetch0(&rxq->rx_entry[desc_index]);
+			rte_prefetch0(&rxq->desc[desc_index]);
+		}
+
+		cookie[i]->data_off = RTE_PKTMBUF_HEADROOM;
+		rx_desc->len = rte_cpu_to_le_32(cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM);
+		dma_addr = NBL_DMA_ADDRESS_FULL_TRANSLATE(rxq,
+							  rte_mbuf_data_iova_default(cookie[i]));
+		rx_desc->addr = rte_cpu_to_le_64(dma_addr);
+
+		rte_io_wmb();
+		rx_desc->flags = flags;
+	}
+
+	rxq->vq_free_cnt -= fill_num;
+	rxq->next_to_use = desc_index;
+}
+
+static u16
+nbl_res_txrx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts, u16 extend_set)
+{
+	struct nbl_res_tx_ring *txq;
+	union nbl_tx_extend_head *tx_region;
+	volatile struct nbl_packed_desc *tx_ring;
+	struct nbl_tx_entry *sw_ring;
+	volatile struct nbl_packed_desc *tx_desc, *head_desc;
+	struct nbl_tx_entry *txe;
+	struct rte_mbuf *tx_pkt;
+	union nbl_tx_extend_head *u;
+	rte_iova_t net_hdr_mem;
+	uint64_t dma_addr;
+	u16 nb_xmit_pkts;
+	u16 desc_index, head_index, head_flags;
+	u16 data_len, header_len = 0;
+	u16 nb_descs;
+	u16 can_push;
+	u16 required_headroom;
+	u16 tx_extend_len;
+	u16 addr_offset;
+
+	txq = tx_queue;
+	tx_ring = txq->desc;
+	sw_ring = txq->tx_entry;
+	desc_index = txq->next_to_use;
+	txe = &sw_ring[txq->next_to_use];
+	tx_region = txq->net_hdr_mz->addr;
+	net_hdr_mem = NBL_DMA_ADDRESS_FULL_TRANSLATE(txq, txq->net_hdr_mz->iova);
+
+	if (txq->vq_free_cnt < NBL_TX_FREE_THRESH)
+		nbl_tx_free_bufs(txq);
+
+	for (nb_xmit_pkts = 0; nb_xmit_pkts < nb_pkts; nb_xmit_pkts++) {
+		required_headroom = txq->exthdr_len;
+		tx_extend_len = txq->exthdr_len;
+		addr_offset = 0;
+
+		tx_pkt = *tx_pkts++;
+
+		if (rte_pktmbuf_headroom(tx_pkt) >= required_headroom) {
+			can_push = 1;
+			u = rte_pktmbuf_mtod_offset(tx_pkt, union nbl_tx_extend_head *,
+						    -required_headroom);
+		} else {
+			can_push = 0;
+			u = (union nbl_tx_extend_head *)(&tx_region[desc_index]);
+		}
+		nb_descs = !can_push + tx_pkt->nb_segs;
+
+		if (nb_descs > txq->vq_free_cnt) {
+			/* need retry */
+			nbl_tx_free_bufs(txq);
+			if (nb_descs > txq->vq_free_cnt)
+				goto exit;
+		}
+
+		head_index = desc_index;
+		head_desc = &tx_ring[desc_index];
+		txe = &sw_ring[desc_index];
+
+		if (!extend_set)
+			memcpy(u, &txq->default_hdr, txq->exthdr_len);
+
+		if (txq->offloads)
+			header_len = txq->prep_tx_ehdr(u, tx_pkt);
+
+		head_flags = txq->avail_used_flags;
+		head_desc->id = 0;
+
+		/* add next tx desc to tx list */
+		if (!can_push) {
+			head_flags |= NBL_VRING_DESC_F_NEXT;
+			txe->mbuf = NULL;
+			/* padding */
+			head_desc->addr = net_hdr_mem +
+					RTE_PTR_DIFF(&tx_region[desc_index], tx_region);
+			head_desc->len = tx_extend_len;
+			txe->first_id = head_index;
+			desc_index++;
+			txq->vq_free_cnt--;
+			if (desc_index >= txq->nb_desc) {
+				desc_index = 0;
+				txq->avail_used_flags ^= NBL_PACKED_DESC_F_AVAIL_USED;
+			}
+		}
+
+		do {
+			tx_desc = &tx_ring[desc_index];
+			txe = &sw_ring[desc_index];
+			txe->mbuf = tx_pkt;
+
+			data_len = tx_pkt->data_len;
+			dma_addr = rte_mbuf_data_iova(tx_pkt);
+			tx_desc->addr = NBL_DMA_ADDRESS_FULL_TRANSLATE(txq, dma_addr) + addr_offset;
+			tx_desc->len = data_len - addr_offset;
+			addr_offset = 0;
+
+			if (desc_index == head_index) {
+				tx_desc->addr -= txq->exthdr_len;
+				tx_desc->len += txq->exthdr_len;
+			} else {
+				tx_desc->flags = txq->avail_used_flags | NBL_VRING_DESC_F_NEXT;
+				head_flags |= NBL_VRING_DESC_F_NEXT;
+			}
+
+			tx_pkt = tx_pkt->next;
+			txe->first_id = head_index;
+			desc_index++;
+			txq->vq_free_cnt--;
+			if (desc_index >= txq->nb_desc) {
+				desc_index = 0;
+				txq->avail_used_flags ^= NBL_PACKED_DESC_F_AVAIL_USED;
+			}
+		} while (tx_pkt);
+		tx_desc->flags &= ~(u16)NBL_VRING_DESC_F_NEXT;
+		head_desc->len += (header_len << NBL_TX_TOTAL_HEADERLEN_SHIFT);
+		rte_io_wmb();
+		head_desc->flags = head_flags;
+		txq->next_to_use = desc_index;
+	}
+
+exit:
+	/* kick hw_notify_addr */
+	rte_write32(txq->notify_qid, txq->notify);
+	txq->txq_stats.tx_packets += nb_xmit_pkts;
+	return nb_xmit_pkts;
+}
+
+static u16
+nbl_res_txrx_pf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts)
+{
+	return nbl_res_txrx_xmit_pkts(tx_queue, tx_pkts, nb_pkts, 0);
+}
+
+static u16
+nbl_res_txrx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
+{
+	struct nbl_res_rx_ring *rxq;
+	volatile struct nbl_packed_desc *rx_ring;
+	volatile struct nbl_packed_desc *rx_desc;
+	struct nbl_rx_entry *sw_ring;
+	struct nbl_rx_entry *rx_entry;
+	struct rte_mbuf *rx_mbuf, *last_mbuf;
+	uint32_t num_sg = 0;
+	uint16_t nb_recv_pkts = 0;
+	uint16_t desc_index;
+	uint16_t fill_num;
+	volatile union nbl_rx_extend_head *rx_ext_hdr;
+	int drop;
+	struct rte_mbuf *new_pkts[NBL_RXQ_REARM_THRESH];
+
+	rxq = rx_queue;
+	rx_ring = rxq->desc;
+	sw_ring = rxq->rx_entry;
+	desc_index = rxq->next_to_clean;
+	while (nb_recv_pkts < nb_pkts) {
+		rx_desc = &rx_ring[desc_index];
+		rx_entry = &sw_ring[desc_index];
+		drop = 0;
+
+		if (!desc_is_used(rx_desc, rxq->used_wrap_counter))
+			break;
+
+		rte_io_rmb();
+		if (!num_sg) {
+			rx_mbuf = rx_entry->mbuf;
+			last_mbuf = rx_mbuf;
+
+			rx_ext_hdr = (union nbl_rx_extend_head *)((char *)rx_mbuf->buf_addr +
+								  RTE_PKTMBUF_HEADROOM);
+			num_sg = rx_ext_hdr->common.num_buffers;
+
+			rx_mbuf->nb_segs = num_sg;
+			rx_mbuf->data_len = rx_desc->len - rxq->exthdr_len;
+			rx_mbuf->pkt_len = rx_desc->len - rxq->exthdr_len;
+			rx_mbuf->port = rxq->port_id;
+			rx_mbuf->data_off = RTE_PKTMBUF_HEADROOM + rxq->exthdr_len;
+		} else {
+			last_mbuf->next = rx_entry->mbuf;
+			last_mbuf = rx_entry->mbuf;
+
+			last_mbuf->data_len = rx_desc->len;
+			last_mbuf->pkt_len = rx_desc->len;
+			last_mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+			rx_mbuf->pkt_len += rx_desc->len;
+		}
+
+		rxq->vq_free_cnt++;
+		desc_index++;
+
+		if (desc_index >= rxq->nb_desc) {
+			desc_index = 0;
+			rxq->used_wrap_counter ^= 1;
+		}
+
+		if (--num_sg)
+			continue;
+		if (drop) {
+			rte_pktmbuf_free(rx_mbuf);
+			continue;
+		}
+		rx_pkts[nb_recv_pkts++] = rx_mbuf;
+	}
+
+	/* BUG on duplicate pkt free */
+	if (unlikely(num_sg))
+		rte_pktmbuf_free(rx_mbuf);
+	/* clean memory */
+	rxq->next_to_clean = desc_index;
+	fill_num = rxq->vq_free_cnt;
+	/* to be continue: rx free thresh */
+	if (fill_num > NBL_RXQ_REARM_THRESH) {
+		if (likely(!rte_pktmbuf_alloc_bulk(rxq->mempool, new_pkts, NBL_RXQ_REARM_THRESH)))
+			nbl_fill_rx_ring(rxq, new_pkts, NBL_RXQ_REARM_THRESH);
+	}
+
+	rxq->rxq_stats.rx_packets += nb_recv_pkts;
+
+	return nb_recv_pkts;
+}
+
+static void nbl_res_get_pt_ops(void *priv, struct nbl_resource_pt_ops *pt_ops, bool offload)
+{
+	RTE_SET_USED(priv);
+	RTE_SET_USED(offload);
+	pt_ops->tx_pkt_burst = nbl_res_txrx_pf_xmit_pkts;
+	pt_ops->rx_pkt_burst = nbl_res_txrx_recv_pkts;
+}
+
+static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats)
+{
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct rte_eth_dev *eth_dev = res_mgt->eth_dev;
+	struct nbl_res_rx_ring *rxq;
+	struct nbl_rxq_stats *rxq_stats;
+	struct nbl_res_tx_ring  *txq;
+	struct nbl_txq_stats *txq_stats;
+	uint32_t i;
+	uint16_t idx;
+
+	/* Add software counters. */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		if (unlikely(rxq  == NULL))
+			return -EINVAL;
+		rxq_stats = &rxq->rxq_stats;
+		idx = rxq->queue_id;
+
+		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			rte_stats->q_ipackets[idx] += rxq_stats->rx_packets;
+			rte_stats->q_ibytes[idx] += rxq_stats->rx_bytes;
+		}
+		rte_stats->ipackets += rxq_stats->rx_packets;
+		rte_stats->ibytes += rxq_stats->rx_bytes;
+		rte_stats->rx_nombuf += rxq_stats->rx_nombuf;
+		rte_stats->ierrors += rxq_stats->rx_ierror;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (unlikely(txq  == NULL))
+			return -EINVAL;
+		txq_stats = &txq->txq_stats;
+		idx = txq->queue_id;
+
+		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			rte_stats->q_opackets[idx] += txq_stats->tx_packets;
+			rte_stats->q_obytes[idx] += txq_stats->tx_bytes;
+		}
+		rte_stats->opackets += txq_stats->tx_packets;
+		rte_stats->obytes += txq_stats->tx_bytes;
+		rte_stats->oerrors += txq_stats->tx_errors;
+	}
+
+	return 0;
+}
+
 /* NBL_TXRX_SET_OPS(ops_name, func)
  *
  * Use X Macros to reduce setup and remove codes.
@@ -413,6 +731,8 @@ do {										\
 	NBL_TXRX_SET_OPS(stop_rx_ring, nbl_res_txrx_stop_rx_ring);		\
 	NBL_TXRX_SET_OPS(release_rx_ring, nbl_res_txrx_release_rx_ring);	\
 	NBL_TXRX_SET_OPS(update_rx_ring, nbl_res_txrx_update_rx_ring);		\
+	NBL_TXRX_SET_OPS(get_resource_pt_ops, nbl_res_get_pt_ops);		\
+	NBL_TXRX_SET_OPS(get_stats, nbl_res_txrx_get_stats);			\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */

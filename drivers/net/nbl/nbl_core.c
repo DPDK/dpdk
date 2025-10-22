@@ -30,7 +30,7 @@ static void nbl_init_func_caps(const struct rte_pci_device *pci_dev, struct nbl_
 		caps->product_type = NBL_LEONIS_TYPE;
 }
 
-int nbl_core_init(struct nbl_adapter *adapter, const struct rte_eth_dev *eth_dev)
+int nbl_core_init(struct nbl_adapter *adapter, struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	const struct nbl_product_core_ops *product_base_ops = NULL;

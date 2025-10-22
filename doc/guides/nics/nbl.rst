@@ -13,6 +13,11 @@ Features
 
 Features of the NBL PMD are:
 
+- Multiple queues for Tx and Rx
+- Receiver Side Scaling (RSS).
+  Currently does not support user-configured RSS
+  and only supports packet spraying via RSS.
+
 
 Supported NICs
 --------------

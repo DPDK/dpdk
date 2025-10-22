@@ -84,7 +84,7 @@ nbl_res_setup_res_mgt(struct nbl_resource_mgt_leonis **res_mgt_leonis)
 	return 0;
 }
 
-int nbl_res_init_leonis(void *p, const struct rte_eth_dev *eth_dev)
+int nbl_res_init_leonis(void *p, struct rte_eth_dev *eth_dev)
 {
 	struct nbl_resource_mgt_leonis **res_mgt_leonis;
 	struct nbl_resource_ops_tbl **res_ops_tbl;
@@ -105,6 +105,7 @@ int nbl_res_init_leonis(void *p, const struct rte_eth_dev *eth_dev)
 	NBL_RES_MGT_TO_CHAN_OPS_TBL(&(*res_mgt_leonis)->res_mgt) = chan_ops_tbl;
 	NBL_RES_MGT_TO_HW_OPS_TBL(&(*res_mgt_leonis)->res_mgt) = hw_ops_tbl;
 	NBL_RES_MGT_TO_ETH_DEV(&(*res_mgt_leonis)->res_mgt) = eth_dev;
+	NBL_RES_MGT_TO_COMMON(&(*res_mgt_leonis)->res_mgt) = &adapter->common;
 
 	ret = nbl_res_start(*res_mgt_leonis);
 	if (ret)
