@@ -56,7 +56,7 @@ static void nbl_res_txrx_stop_tx_ring(void *priv, u16 queue_idx)
 		tx_ring->desc[i].flags = 0;
 	}
 
-	tx_ring->avail_used_flags = BIT(NBL_PACKED_DESC_F_AVAIL);
+	tx_ring->avail_used_flags = NBL_PACKED_DESC_F_AVAIL_BIT;
 	tx_ring->used_wrap_counter = 1;
 	tx_ring->next_to_clean = NBL_TX_RS_THRESH - 1;
 	tx_ring->next_to_use = 0;
@@ -166,7 +166,7 @@ static int nbl_res_txrx_start_tx_ring(void *priv,
 	tx_ring->notify_qid =
 		(res_mgt->res_info.base_qid + txrx_mgt->queue_offset + param->queue_idx) * 2 + 1;
 	tx_ring->ring_phys_addr = (u64)NBL_DMA_ADDRESS_FULL_TRANSLATE(common, memzone->iova);
-	tx_ring->avail_used_flags = BIT(NBL_PACKED_DESC_F_AVAIL);
+	tx_ring->avail_used_flags = NBL_PACKED_DESC_F_AVAIL_BIT;
 	tx_ring->used_wrap_counter = 1;
 	tx_ring->next_to_clean = NBL_TX_RS_THRESH - 1;
 	tx_ring->next_to_use = 0;
@@ -312,8 +312,62 @@ alloc_rx_entry_failed:
 
 static int nbl_res_alloc_rx_bufs(void *priv, u16 queue_idx)
 {
-	RTE_SET_USED(priv);
-	RTE_SET_USED(queue_idx);
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct nbl_res_rx_ring *rxq = NBL_RES_MGT_TO_RX_RING(res_mgt, queue_idx);
+	struct nbl_rx_entry *rx_entry = rxq->rx_entry;
+	volatile struct nbl_packed_desc *rx_desc;
+	struct nbl_rx_entry *rxe;
+	struct rte_mbuf *mbuf;
+	u64 dma_addr;
+	int i;
+	u32 frame_size = rxq->eth_dev->data->mtu + NBL_ETH_OVERHEAD + rxq->exthdr_len;
+	u16 buf_length;
+
+	rxq->avail_used_flags = NBL_PACKED_DESC_F_AVAIL_BIT | NBL_PACKED_DESC_F_WRITE_BIT;
+	rxq->used_wrap_counter = 1;
+
+	for (i = 0; i < rxq->nb_desc; i++) {
+		mbuf = rte_mbuf_raw_alloc(rxq->mempool);
+		if (mbuf == NULL) {
+			NBL_LOG(ERR, "RX mbuf alloc failed for queue %u", rxq->queue_id);
+			return -ENOMEM;
+		}
+		dma_addr = NBL_DMA_ADDRESS_FULL_TRANSLATE(rxq, rte_mbuf_data_iova_default(mbuf));
+		rx_desc = &rxq->desc[i];
+		rxe = &rx_entry[i];
+		rx_desc->addr = dma_addr;
+		rx_desc->len = mbuf->buf_len - RTE_PKTMBUF_HEADROOM;
+		rx_desc->flags = rxq->avail_used_flags;
+		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		rxe->mbuf = mbuf;
+	}
+
+	rxq->next_to_clean = 0;
+	rxq->next_to_use = 0;
+	rxq->vq_free_cnt = 0;
+	rxq->avail_used_flags ^= NBL_PACKED_DESC_F_AVAIL_USED;
+
+	buf_length = rte_pktmbuf_data_room_size(rxq->mempool) - RTE_PKTMBUF_HEADROOM;
+	if (buf_length >= NBL_BUF_LEN_16K) {
+		rxq->buf_length = NBL_BUF_LEN_16K;
+	} else if (buf_length >= NBL_BUF_LEN_8K) {
+		rxq->buf_length = NBL_BUF_LEN_8K;
+	} else if (buf_length >= NBL_BUF_LEN_4K) {
+		rxq->buf_length = NBL_BUF_LEN_4K;
+	} else if (buf_length >= NBL_BUF_LEN_2K) {
+		rxq->buf_length = NBL_BUF_LEN_2K;
+	} else {
+		NBL_LOG(ERR, "mempool mbuf length should be at least 2kB, but current value is %u",
+			buf_length);
+		nbl_res_txrx_stop_rx_ring(res_mgt, queue_idx);
+		return -EINVAL;
+	}
+
+	if (frame_size > rxq->buf_length)
+		rxq->eth_dev->data->scattered_rx = 1;
+
+	rxq->buf_length = rxq->buf_length - RTE_PKTMBUF_HEADROOM;
+
 	return 0;
 }
 
@@ -333,8 +387,14 @@ static void nbl_res_txrx_release_rx_ring(void *priv, u16 queue_idx)
 
 static void nbl_res_txrx_update_rx_ring(void *priv, u16 index)
 {
-	RTE_SET_USED(priv);
-	RTE_SET_USED(index);
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	const struct nbl_hw_ops *hw_ops = NBL_RES_MGT_TO_HW_OPS(res_mgt);
+	struct nbl_res_rx_ring *rx_ring = NBL_RES_MGT_TO_RX_RING(res_mgt, index);
+
+	hw_ops->update_tail_ptr(NBL_RES_MGT_TO_HW_PRIV(res_mgt),
+				 rx_ring->notify_qid,
+				 ((!!(rx_ring->avail_used_flags & NBL_PACKED_DESC_F_AVAIL_BIT)) |
+				 rx_ring->next_to_use));
 }
 
 /* NBL_TXRX_SET_OPS(ops_name, func)

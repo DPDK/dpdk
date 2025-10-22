@@ -51,7 +51,9 @@ typedef int16_t s16;
 typedef int8_t s8;
 
 /* Used for macros to pass checkpatch */
-#define NBL_NAME(x)					x
+#define NBL_NAME(x)				x
+#define BIT(a)					(1 << (a))
+#define NBL_SAFE_THREADS_WAIT_TIME		(20)
 
 enum {
 	NBL_VSI_DATA = 0,	/* default vsi in kernel or independent dpdk */
@@ -70,8 +72,6 @@ struct nbl_func_caps {
 	u32 is_vf:1;
 	u32 rsv:31;
 };
-
-#define BIT(a)			(1 << (a))
 
 struct nbl_start_rx_ring_param {
 	u16 queue_idx;
@@ -130,9 +130,10 @@ struct nbl_common_info {
 	/* curr_network 0 means kernel network, 1 means user network */
 	u8 curr_network:1;
 	u8 is_vf:1;
+	u8 pf_start:1;
 	u8 specific_dma:1;
 	u8 dma_set_msb:1;
-	u8 rsv:3;
+	u8 rsv:2;
 	struct nbl_board_port_info board_info;
 };
 

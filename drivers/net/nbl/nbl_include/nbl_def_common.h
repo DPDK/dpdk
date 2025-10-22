@@ -21,10 +21,14 @@
 #define NBL_DEV_USER_TYPE	('n')
 #define NBL_DEV_USER_DATA_LEN	(2044)
 
-#define NBL_DEV_USER_PCI_OFFSET_SHIFT		40
+#define NBL_DEV_USER_PCI_OFFSET_SHIFT		(40)
 #define NBL_DEV_USER_OFFSET_TO_INDEX(off)	((off) >> NBL_DEV_USER_PCI_OFFSET_SHIFT)
 #define NBL_DEV_USER_INDEX_TO_OFFSET(index)	((u64)(index) << NBL_DEV_USER_PCI_OFFSET_SHIFT)
 #define NBL_DEV_SHM_MSG_RING_INDEX		(6)
+
+#define NBL_VLAN_TAG_SIZE			(4)
+#define NBL_ETH_OVERHEAD \
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + NBL_VLAN_TAG_SIZE * 2)
 
 struct nbl_dev_user_channel_msg {
 	u16 msg_type;

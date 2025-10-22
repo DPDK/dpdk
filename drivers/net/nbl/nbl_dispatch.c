@@ -411,6 +411,31 @@ static void nbl_disp_chan_get_eth_id_req(void *priv, u16 vsi_id, u8 *eth_mode, u
 	*eth_id = result.eth_id;
 }
 
+static u16 nbl_disp_get_vsi_global_qid(void *priv, u16 vsi_id, u16 local_qid)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
+	return NBL_OPS_CALL(res_ops->get_vsi_global_qid,
+			    (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi_id, local_qid));
+}
+
+static u16
+nbl_disp_chan_get_vsi_global_qid_req(void *priv, u16 vsi_id, u16 local_qid)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_vsi_qid_info param = {0};
+	struct nbl_chan_send_info chan_send;
+
+	param.vsi_id = vsi_id;
+	param.local_qid = local_qid;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_GET_VSI_GLOBAL_QUEUE_ID,
+		      &param, sizeof(param), NULL, 0, 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
 static int nbl_disp_chan_setup_q2vsi(void *priv, u16 vsi_id)
 {
 	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
@@ -564,8 +589,7 @@ static void nbl_disp_chan_clear_flow_req(void *priv, u16 vsi_id)
 	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
 	struct nbl_chan_send_info chan_send = {0};
 
-	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_CLEAR_FLOW, &vsi_id, sizeof(vsi_id),
-		      NULL, 0, 1);
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_CLEAR_FLOW, &vsi_id, sizeof(vsi_id), NULL, 0, 1);
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
@@ -590,8 +614,7 @@ nbl_disp_chan_add_macvlan_req(void *priv, u8 *mac, u16 vlan_id, u16 vsi_id)
 	param.vlan = vlan_id;
 	param.vsi = vsi_id;
 
-	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_ADD_MACVLAN,
-		      &param, sizeof(param), NULL, 0, 1);
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_ADD_MACVLAN, &param, sizeof(param), NULL, 0, 1);
 	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
@@ -616,8 +639,7 @@ nbl_disp_chan_del_macvlan_req(void *priv, u8 *mac, u16 vlan_id, u16 vsi_id)
 	param.vlan = vlan_id;
 	param.vsi = vsi_id;
 
-	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_DEL_MACVLAN,
-		      &param, sizeof(param), NULL, 0, 1);
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_DEL_MACVLAN, &param, sizeof(param), NULL, 0, 1);
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
@@ -638,8 +660,7 @@ static int nbl_disp_chan_add_multi_rule_req(void *priv, u16 vsi_id)
 
 	param.vsi = vsi_id;
 
-	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_ADD_MULTI_RULE,
-		      &param, sizeof(param), NULL, 0, 1);
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_ADD_MULTI_RULE, &param, sizeof(param), NULL, 0, 1);
 	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
@@ -660,8 +681,74 @@ static void nbl_disp_chan_del_multi_rule_req(void *priv, u16 vsi)
 
 	param.vsi = vsi;
 
-	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_DEL_MULTI_RULE,
-		      &param, sizeof(param), NULL, 0, 1);
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_DEL_MULTI_RULE, &param, sizeof(param), NULL, 0, 1);
+	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
+static int nbl_disp_cfg_dsch(void *priv, u16 vsi_id, bool vld)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
+	return NBL_OPS_CALL(res_ops->cfg_dsch, (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi_id, vld));
+}
+
+static int nbl_disp_chan_cfg_dsch_req(void *priv, u16 vsi_id, bool vld)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_param_cfg_dsch param = {0};
+	struct nbl_chan_send_info chan_send;
+
+	param.vsi_id = vsi_id;
+	param.vld = vld;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_CFG_DSCH, &param, sizeof(param), NULL, 0, 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
+static int nbl_disp_setup_cqs(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
+	return NBL_OPS_CALL(res_ops->setup_cqs,
+			    (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi_id, real_qps, rss_indir_set));
+}
+
+static int nbl_disp_chan_setup_cqs_req(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_param_setup_cqs param = {0};
+	struct nbl_chan_send_info chan_send;
+
+	param.vsi_id = vsi_id;
+	param.real_qps = real_qps;
+	param.rss_indir_set = rss_indir_set;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_SETUP_CQS, &param, sizeof(param), NULL, 0, 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
+}
+
+static void nbl_disp_remove_cqs(void *priv, u16 vsi_id)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
+	NBL_OPS_CALL(res_ops->remove_cqs, (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi_id));
+}
+
+static void nbl_disp_chan_remove_cqs_req(void *priv, u16 vsi_id)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_param_remove_cqs param = {0};
+	struct nbl_chan_send_info chan_send;
+
+	param.vsi_id = vsi_id;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_REMOVE_CQS, &param, sizeof(param), NULL, 0, 1);
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
@@ -742,6 +829,11 @@ do {									\
 	NBL_DISP_SET_OPS(get_eth_id, nbl_disp_get_eth_id,		\
 			 NBL_DISP_CTRL_LVL_MGT, NBL_CHAN_MSG_GET_ETH_ID,\
 			 nbl_disp_chan_get_eth_id_req, NULL);		\
+	NBL_DISP_SET_OPS(get_vsi_global_qid,				\
+			 nbl_disp_get_vsi_global_qid,			\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_MSG_GET_VSI_GLOBAL_QUEUE_ID,		\
+			 nbl_disp_chan_get_vsi_global_qid_req, NULL);	\
 	NBL_DISP_SET_OPS(setup_q2vsi, nbl_disp_chan_setup_q2vsi,	\
 			 NBL_DISP_CTRL_LVL_MGT,				\
 			 NBL_CHAN_MSG_SETUP_Q2VSI,			\
@@ -784,6 +876,15 @@ do {									\
 			 NBL_DISP_CTRL_LVL_MGT,				\
 			 NBL_CHAN_MSG_DEL_MULTI_RULE,			\
 			 nbl_disp_chan_del_multi_rule_req, NULL);	\
+	NBL_DISP_SET_OPS(cfg_dsch, nbl_disp_cfg_dsch,			\
+			 NBL_DISP_CTRL_LVL_MGT, NBL_CHAN_MSG_CFG_DSCH,	\
+			 nbl_disp_chan_cfg_dsch_req, NULL);		\
+	NBL_DISP_SET_OPS(setup_cqs, nbl_disp_setup_cqs,			\
+			 NBL_DISP_CTRL_LVL_MGT, NBL_CHAN_MSG_SETUP_CQS,	\
+			 nbl_disp_chan_setup_cqs_req, NULL);		\
+	NBL_DISP_SET_OPS(remove_cqs, nbl_disp_remove_cqs,		\
+			 NBL_DISP_CTRL_LVL_MGT, NBL_CHAN_MSG_REMOVE_CQS,\
+			 nbl_disp_chan_remove_cqs_req, NULL);		\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */

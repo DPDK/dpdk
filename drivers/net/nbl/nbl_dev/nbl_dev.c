@@ -44,21 +44,179 @@ int nbl_dev_configure(struct rte_eth_dev *eth_dev)
 	return ret;
 }
 
+static int nbl_dev_txrx_start(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dev_ring_mgt *ring_mgt = &dev_mgt->net_dev->ring_mgt;
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_txrx_queue_param param = {0};
+	struct nbl_dev_ring *ring;
+	int ret = 0;
+	int i;
+
+	eth_dev->data->scattered_rx = 0;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		ring = &ring_mgt->tx_rings[i];
+		param.desc_num = ring->desc_num;
+		param.vsi_id = dev_mgt->net_dev->vsi_id;
+		param.dma = ring->dma;
+		param.local_queue_id = i + ring_mgt->queue_offset;
+		param.intr_en = 0;
+		param.intr_mask = 0;
+		param.extend_header = 1;
+		param.split = 0;
+
+		ret = disp_ops->setup_queue(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, true);
+		if (ret) {
+			NBL_LOG(ERR, "setup_tx_queue failed %d", ret);
+			return ret;
+		}
+
+		ring->global_queue_id =
+			disp_ops->get_vsi_global_qid(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						     param.vsi_id, param.local_queue_id);
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		ring = &ring_mgt->rx_rings[i];
+		param.desc_num = ring->desc_num;
+		param.vsi_id = dev_mgt->net_dev->vsi_id;
+		param.dma = ring->dma;
+		param.local_queue_id = i + ring_mgt->queue_offset;
+		param.intr_en = 0;
+		param.intr_mask = 0;
+		param.half_offload_en = 1;
+		param.extend_header = 1;
+		param.split = 0;
+		param.rxcsum = 1;
+
+		ret = disp_ops->setup_queue(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), &param, false);
+		if (ret) {
+			NBL_LOG(ERR, "setup_rx_queue failed %d", ret);
+			return ret;
+		}
+
+		ret = disp_ops->alloc_rx_bufs(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+		if (ret) {
+			NBL_LOG(ERR, "alloc_rx_bufs failed %d", ret);
+			return ret;
+		}
+
+		ring->global_queue_id =
+			disp_ops->get_vsi_global_qid(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+						     param.vsi_id, param.local_queue_id);
+		disp_ops->update_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	ret = disp_ops->cfg_dsch(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, true);
+	if (ret) {
+		NBL_LOG(ERR, "cfg_dsch failed %d", ret);
+		goto cfg_dsch_fail;
+	}
+	ret = disp_ops->setup_cqs(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				  dev_mgt->net_dev->vsi_id, eth_dev->data->nb_rx_queues, true);
+	if (ret)
+		goto setup_cqs_fail;
+
+	return ret;
+
+setup_cqs_fail:
+	disp_ops->cfg_dsch(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, false);
+cfg_dsch_fail:
+	disp_ops->remove_all_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+				    dev_mgt->net_dev->vsi_id);
+
+	return ret;
+}
+
 int nbl_dev_port_start(struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(eth_dev);
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+	int ret;
+
+	if (adapter == NULL)
+		return -EINVAL;
+
+	ret = nbl_userdev_port_config(adapter, NBL_USER_NETWORK);
+	if (ret)
+		return ret;
+
+	ret = nbl_dev_txrx_start(eth_dev);
+	if (ret) {
+		NBL_LOG(ERR, "dev_txrx_start failed %d", ret);
+		nbl_userdev_port_config(adapter, NBL_KERNEL_NETWORK);
+		return ret;
+	}
+
+	common->pf_start = 1;
 	return 0;
+}
+
+static void nbl_clear_queues(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int i;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		disp_ops->stop_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		disp_ops->stop_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+}
+
+static void nbl_dev_txrx_stop(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+
+	disp_ops->cfg_dsch(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, false);
+	disp_ops->remove_cqs(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id);
+	disp_ops->remove_all_queues(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id);
 }
 
 int nbl_dev_port_stop(struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(eth_dev);
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+	common->pf_start = 0;
+	rte_delay_ms(NBL_SAFE_THREADS_WAIT_TIME);
+
+	nbl_clear_queues(eth_dev);
+	nbl_dev_txrx_stop(eth_dev);
+	nbl_userdev_port_config(adapter, NBL_KERNEL_NETWORK);
 	return 0;
+}
+
+static void nbl_release_queues(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	int i;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		disp_ops->release_tx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		disp_ops->release_rx_ring(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), i);
 }
 
 int nbl_dev_port_close(struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(eth_dev);
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
+
+	/* pf may not start, so no queue need release */
+	if (common->pf_start)
+		nbl_release_queues(eth_dev);
+
 	return 0;
 }
 
@@ -189,7 +347,7 @@ static int nbl_dev_common_start(struct nbl_dev_mgt *dev_mgt)
 	u8 *mac;
 	int ret;
 
-	board_info = &dev_mgt->common->board_info;
+	board_info = &common->board_info;
 	disp_ops->get_board_info(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), board_info);
 	mac = net_dev->eth_dev->data->mac_addrs->addr_bytes;
 
@@ -272,9 +430,9 @@ static void nbl_dev_leonis_stop(void *p)
 {
 	struct nbl_adapter *adapter = (struct nbl_adapter *)p;
 	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
-	struct nbl_dev_net_mgt *net_dev = dev_mgt->net_dev;
-	struct nbl_common_info *common = dev_mgt->common;
-	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_dev_net_mgt *net_dev = NBL_DEV_MGT_TO_NET_DEV(dev_mgt);
+	const struct nbl_common_info *common = NBL_DEV_MGT_TO_COMMON(dev_mgt);
+	const struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
 	const struct nbl_channel_ops *chan_ops = NBL_DEV_MGT_TO_CHAN_OPS(dev_mgt);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(net_dev->eth_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
