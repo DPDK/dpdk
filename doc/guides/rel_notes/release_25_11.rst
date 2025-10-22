@@ -115,6 +115,10 @@ New Features
 
   Added network driver for the Huawei SPx series Network Adapters.
 
+* **Added Nebulamatrix nbl ethernet driver.**
+
+  Added the PMD for Nebulamatrix NICs.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Enabled software taildrop for ordered queues.

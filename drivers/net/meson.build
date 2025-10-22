@@ -41,6 +41,7 @@ drivers = [
         'mlx5',
         'mvneta',
         'mvpp2',
+        'nbl',
         'netvsc',
         'nfb',
         'nfp',
