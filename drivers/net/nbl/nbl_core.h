@@ -6,7 +6,9 @@
 #define _NBL_CORE_H_
 
 #include "nbl_product_base.h"
+#include "nbl_def_common.h"
 #include "nbl_def_hw.h"
+#include "nbl_def_channel.h"
 
 #define NBL_VENDOR_ID				(0x1F0F)
 #define NBL_DEVICE_ID_M18110			(0x3403)
@@ -30,7 +32,10 @@
 #define NBL_MAX_INSTANCE_CNT 516
 
 #define NBL_ADAPTER_TO_HW_MGT(adapter)		((adapter)->core.hw_mgt)
+#define NBL_ADAPTER_TO_CHAN_MGT(adapter)	((adapter)->core.chan_mgt)
+
 #define NBL_ADAPTER_TO_HW_OPS_TBL(adapter)	((adapter)->intf.hw_ops_tbl)
+#define NBL_ADAPTER_TO_CHAN_OPS_TBL(adapter)	((adapter)->intf.channel_ops_tbl)
 
 struct nbl_core {
 	void *hw_mgt;
@@ -42,6 +47,7 @@ struct nbl_core {
 
 struct nbl_interface {
 	struct nbl_hw_ops_tbl *hw_ops_tbl;
+	struct nbl_channel_ops_tbl *channel_ops_tbl;
 };
 
 struct nbl_adapter {

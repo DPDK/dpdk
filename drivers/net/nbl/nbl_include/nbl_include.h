@@ -29,6 +29,13 @@
 #include <ethdev_pci.h>
 #include <bus_pci_driver.h>
 #include <rte_io.h>
+#include <rte_tailq.h>
+#include <rte_lcore.h>
+#include <rte_common.h>
+#include <rte_thread.h>
+#include <rte_spinlock.h>
+#include <rte_stdatomic.h>
+#include <rte_bitmap.h>
 
 #include "nbl_logs.h"
 
@@ -51,5 +58,7 @@ struct nbl_func_caps {
 	u32 is_vf:1;
 	u32 rsv:31;
 };
+
+#define BIT(a)			(1 << (a))
 
 #endif
