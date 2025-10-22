@@ -517,6 +517,29 @@ int nbl_xstats_reset(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+int nbl_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct rte_eth_dev_data *dev_data = eth_dev->data;
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	uint32_t frame_size = mtu + NBL_ETH_OVERHEAD;
+	int ret;
+
+	/* mtu setting is forbidden if port is start */
+	if (dev_data->dev_started) {
+		NBL_LOG(ERR, "port %d must be stopped before configuration", dev_data->port_id);
+		return -EBUSY;
+	}
+
+	dev_data->dev_conf.rxmode.mtu = frame_size;
+	ret = disp_ops->set_mtu(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt), dev_mgt->net_dev->vsi_id, mtu);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);

@@ -82,6 +82,7 @@ int nbl_xstats_get_names(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_xstat_name *xstats_names,
 			 __rte_unused unsigned int limit);
 int nbl_xstats_reset(struct rte_eth_dev *eth_dev);
+int nbl_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
 int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev);
 int nbl_promiscuous_disable(struct rte_eth_dev *eth_dev);
 

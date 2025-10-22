@@ -432,6 +432,11 @@ struct nbl_chan_param_set_promisc_mode {
 	u16 mode;
 };
 
+struct nbl_chan_param_set_mtu {
+	u16 vsi_id;
+	u16 mtu;
+};
+
 struct nbl_channel_ops {
 	int (*send_msg)(void *priv, struct nbl_chan_send_info *chan_send);
 	int (*send_ack)(void *priv, struct nbl_chan_ack_info *chan_ack);

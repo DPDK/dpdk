@@ -17,6 +17,7 @@ Features of the NBL PMD are:
 - Receiver Side Scaling (RSS).
   Currently does not support user-configured RSS
   and only supports packet spraying via RSS.
+- Jumbo frames
 
 
 Supported NICs

@@ -886,6 +886,33 @@ static void nbl_disp_get_private_stat_data_req(void *priv, u32 eth_id, u64 *data
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
+static int nbl_disp_set_mtu(void *priv, u16 vsi_id, u16 mtu)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+	int ret = 0;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	ret = NBL_OPS_CALL(res_ops->set_mtu, (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi_id, mtu));
+	return ret;
+}
+
+static int nbl_disp_chan_set_mtu_req(void *priv, u16 vsi_id, u16 mtu)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_send_info chan_send = {0};
+	struct nbl_chan_param_set_mtu param = {0};
+
+	param.mtu = mtu;
+	param.vsi_id = vsi_id;
+
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_MTU_SET,
+		      &param, sizeof(param), NULL, 0, 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt),
+				  &chan_send);
+}
+
 static int nbl_disp_set_promisc_mode(void *priv, u16 vsi_id, u16 mode)
 {
 	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
@@ -1100,6 +1127,10 @@ do {									\
 			 NBL_DISP_CTRL_LVL_MGT,				\
 			 NBL_CHAN_MSG_SET_PROSISC_MODE,			\
 			 nbl_disp_chan_set_promisc_mode_req, NULL);	\
+	NBL_DISP_SET_OPS(set_mtu, nbl_disp_set_mtu,			\
+			 NBL_DISP_CTRL_LVL_MGT,	NBL_CHAN_MSG_MTU_SET,	\
+			 nbl_disp_chan_set_mtu_req,			\
+			 NULL);						\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */

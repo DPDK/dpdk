@@ -42,6 +42,7 @@ const struct eth_dev_ops nbl_eth_dev_ops = {
 	.xstats_get = nbl_xstats_get,
 	.xstats_get_names = nbl_xstats_get_names,
 	.xstats_reset = nbl_xstats_reset,
+	.mtu_set = nbl_mtu_set,
 	.promiscuous_enable = nbl_promiscuous_enable,
 	.promiscuous_disable = nbl_promiscuous_disable,
 };
