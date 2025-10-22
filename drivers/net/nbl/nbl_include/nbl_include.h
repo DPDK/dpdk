@@ -36,6 +36,8 @@
 #include <rte_spinlock.h>
 #include <rte_stdatomic.h>
 #include <rte_bitmap.h>
+#include <rte_eal_paging.h>
+#include <eal_interrupts.h>
 
 #include "nbl_logs.h"
 

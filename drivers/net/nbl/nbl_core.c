@@ -32,11 +32,12 @@ static void nbl_init_func_caps(const struct rte_pci_device *pci_dev, struct nbl_
 
 int nbl_core_init(struct nbl_adapter *adapter, const struct rte_eth_dev *eth_dev)
 {
-	const struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	const struct nbl_product_core_ops *product_base_ops = NULL;
 	struct nbl_common_info *common = NBL_ADAPTER_TO_COMMON(adapter);
 	int ret = 0;
 
+	adapter->pci_dev = pci_dev;
 	common->eth_dev = eth_dev;
 	nbl_init_func_caps(pci_dev, &adapter->caps);
 
