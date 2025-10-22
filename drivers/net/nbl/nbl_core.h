@@ -11,6 +11,7 @@
 #include "nbl_def_channel.h"
 #include "nbl_def_resource.h"
 #include "nbl_def_dispatch.h"
+#include "nbl_def_dev.h"
 
 #define NBL_VENDOR_ID				(0x1F0F)
 #define NBL_DEVICE_ID_M18110			(0x3403)
@@ -37,11 +38,13 @@
 #define NBL_ADAPTER_TO_CHAN_MGT(adapter)	((adapter)->core.chan_mgt)
 #define NBL_ADAPTER_TO_RES_MGT(adapter)		((adapter)->core.res_mgt)
 #define NBL_ADAPTER_TO_DISP_MGT(adapter)	((adapter)->core.disp_mgt)
+#define NBL_ADAPTER_TO_DEV_MGT(adapter)		((adapter)->core.dev_mgt)
 
 #define NBL_ADAPTER_TO_HW_OPS_TBL(adapter)	((adapter)->intf.hw_ops_tbl)
 #define NBL_ADAPTER_TO_CHAN_OPS_TBL(adapter)	((adapter)->intf.channel_ops_tbl)
 #define NBL_ADAPTER_TO_RES_OPS_TBL(adapter)	((adapter)->intf.resource_ops_tbl)
 #define NBL_ADAPTER_TO_DISP_OPS_TBL(adapter)	((adapter)->intf.dispatch_ops_tbl)
+#define NBL_ADAPTER_TO_DEV_OPS_TBL(adapter)	((adapter)->intf.dev_ops_tbl)
 
 struct nbl_core {
 	void *hw_mgt;
@@ -51,11 +54,23 @@ struct nbl_core {
 	void *dev_mgt;
 };
 
+enum nbl_ethdev_state {
+	NBL_ETHDEV_UNINITIALIZED = 0,
+	NBL_ETHDEV_INITIALIZED,
+	NBL_ETHDEV_CONFIGURING,
+	NBL_ETHDEV_CONFIGURED,
+	NBL_ETHDEV_CLOSING,
+	NBL_ETHDEV_STARTING,
+	NBL_ETHDEV_STARTED,
+	NBL_ETHDEV_STOPPING,
+};
+
 struct nbl_interface {
 	struct nbl_hw_ops_tbl *hw_ops_tbl;
 	struct nbl_channel_ops_tbl *channel_ops_tbl;
 	struct nbl_resource_ops_tbl *resource_ops_tbl;
 	struct nbl_dispatch_ops_tbl *dispatch_ops_tbl;
+	struct nbl_dev_ops_tbl *dev_ops_tbl;
 };
 
 struct nbl_adapter {
@@ -64,6 +79,7 @@ struct nbl_adapter {
 	struct nbl_core core;
 	struct nbl_interface intf;
 	struct nbl_func_caps caps;
+	enum nbl_ethdev_state state;
 };
 
 int nbl_core_init(struct nbl_adapter *adapter, const struct rte_eth_dev *eth_dev);
