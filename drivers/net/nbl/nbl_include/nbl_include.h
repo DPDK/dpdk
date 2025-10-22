@@ -48,6 +48,9 @@ typedef int32_t s32;
 typedef int16_t s16;
 typedef int8_t s8;
 
+/* Used for macros to pass checkpatch */
+#define NBL_NAME(x)					x
+
 enum nbl_product_type {
 	NBL_LEONIS_TYPE,
 	NBL_PRODUCT_MAX,
@@ -60,5 +63,22 @@ struct nbl_func_caps {
 };
 
 #define BIT(a)			(1 << (a))
+
+struct nbl_start_rx_ring_param {
+	u16 queue_idx;
+	u16 nb_desc;
+	u32 socket_id;
+	enum nbl_product_type product;
+	const struct rte_eth_rxconf *conf;
+	struct rte_mempool *mempool;
+};
+
+struct nbl_start_tx_ring_param {
+	u16 queue_idx;
+	u16 nb_desc;
+	u32 socket_id;
+	enum nbl_product_type product;
+	const struct rte_eth_txconf *conf;
+};
 
 #endif

@@ -8,8 +8,8 @@ const struct nbl_product_core_ops nbl_product_core_ops[NBL_PRODUCT_MAX] = {
 	[NBL_LEONIS_TYPE] = {
 		.hw_init	= nbl_hw_init_leonis_snic,
 		.hw_remove	= nbl_hw_remove_leonis_snic,
-		.res_init	= NULL,
-		.res_remove	= NULL,
+		.res_init	= nbl_res_init_leonis,
+		.res_remove	= nbl_res_remove_leonis,
 		.chan_init	= nbl_chan_init_leonis,
 		.chan_remove	= nbl_chan_remove_leonis,
 	},
@@ -49,8 +49,14 @@ int nbl_core_init(struct nbl_adapter *adapter, const struct rte_eth_dev *eth_dev
 	if (ret)
 		goto chan_init_fail;
 
+	ret = product_base_ops->res_init(adapter, eth_dev);
+	if (ret)
+		goto res_init_fail;
+
 	return 0;
 
+res_init_fail:
+	product_base_ops->chan_remove(adapter);
 chan_init_fail:
 	product_base_ops->hw_remove(adapter);
 hw_init_fail:
@@ -63,6 +69,7 @@ void nbl_core_remove(struct nbl_adapter *adapter)
 
 	product_base_ops = nbl_core_get_product_ops(adapter->caps.product_type);
 
+	product_base_ops->res_remove(adapter);
 	product_base_ops->chan_remove(adapter);
 	product_base_ops->hw_remove(adapter);
 }
