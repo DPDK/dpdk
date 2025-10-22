@@ -28,6 +28,7 @@ struct nbl_txrx_mgt {
 	rte_spinlock_t tx_lock;
 	struct nbl_res_tx_ring **tx_rings;
 	struct nbl_res_rx_ring **rx_rings;
+	u16 queue_offset;
 	u8 tx_ring_num;
 	u8 rx_ring_num;
 };

@@ -29,7 +29,7 @@ const struct eth_dev_ops nbl_eth_dev_ops = {
 	.dev_configure = nbl_dev_configure,
 	.dev_start = nbl_dev_port_start,
 	.dev_stop = nbl_dev_port_stop,
-	.dev_close = nbl_dev_port_close,
+	.dev_close = nbl_dev_close,
 };
 
 static int nbl_eth_dev_init(struct rte_eth_dev *eth_dev)

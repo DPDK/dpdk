@@ -7,16 +7,36 @@
 
 static int nbl_res_txrx_alloc_rings(void *priv, u16 tx_num, u16 rx_num, u16 queue_offset)
 {
-	RTE_SET_USED(priv);
-	RTE_SET_USED(tx_num);
-	RTE_SET_USED(rx_num);
-	RTE_SET_USED(queue_offset);
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct nbl_txrx_mgt *txrx_mgt = res_mgt->txrx_mgt;
+
+	txrx_mgt->tx_rings = rte_calloc("nbl_txrings", tx_num,
+					sizeof(struct nbl_res_tx_ring *), 0);
+	if (!txrx_mgt->tx_rings) {
+		NBL_LOG(ERR, "Allocate the tx rings array failed");
+		return -ENOMEM;
+	}
+
+	txrx_mgt->rx_rings = rte_calloc("nbl_rxrings", rx_num,
+					sizeof(struct nbl_res_rx_ring *), 0);
+	if (!txrx_mgt->tx_rings) {
+		NBL_LOG(ERR, "Allocate the rx rings array failed");
+		rte_free(txrx_mgt->tx_rings);
+		return -ENOMEM;
+	}
+
+	txrx_mgt->queue_offset = queue_offset;
+
 	return 0;
 }
 
 static void nbl_res_txrx_remove_rings(void *priv)
 {
-	RTE_SET_USED(priv);
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct nbl_txrx_mgt *txrx_mgt = res_mgt->txrx_mgt;
+
+	rte_free(txrx_mgt->tx_rings);
+	rte_free(txrx_mgt->rx_rings);
 }
 
 static int nbl_res_txrx_start_tx_ring(void *priv,

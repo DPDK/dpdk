@@ -46,6 +46,12 @@
 #define NBL_ADAPTER_TO_DISP_OPS_TBL(adapter)	((adapter)->intf.dispatch_ops_tbl)
 #define NBL_ADAPTER_TO_DEV_OPS_TBL(adapter)	((adapter)->intf.dev_ops_tbl)
 
+#define NBL_ADAPTER_TO_COMMON(adapter)		(&((adapter)->common))
+
+#define NBL_IS_NOT_COEXISTENCE(common)		({ typeof(common) _common = (common);	\
+						_common->nl_socket_route < 0 ||		\
+						_common->ifindex < 0; })
+
 struct nbl_core {
 	void *hw_mgt;
 	void *res_mgt;
@@ -80,6 +86,7 @@ struct nbl_adapter {
 	struct nbl_interface intf;
 	struct nbl_func_caps caps;
 	enum nbl_ethdev_state state;
+	struct nbl_common_info common;
 };
 
 int nbl_core_init(struct nbl_adapter *adapter, const struct rte_eth_dev *eth_dev);

@@ -51,6 +51,13 @@ typedef int8_t s8;
 /* Used for macros to pass checkpatch */
 #define NBL_NAME(x)					x
 
+enum {
+	NBL_VSI_DATA = 0,	/* default vsi in kernel or independent dpdk */
+	NBL_VSI_CTRL,
+	NBL_VSI_USER,		/* dpdk used vsi in coexist dpdk */
+	NBL_VSI_MAX,
+};
+
 enum nbl_product_type {
 	NBL_LEONIS_TYPE,
 	NBL_PRODUCT_MAX,
@@ -96,6 +103,60 @@ struct nbl_txrx_queue_param {
 	u16 extend_header;
 	u16 cxt;
 	u16 rxcsum;
+};
+
+struct nbl_board_port_info {
+	u8 eth_num;
+	u8 speed;
+	u8 rsv[6];
+};
+
+struct nbl_common_info {
+	const struct rte_eth_dev *eth_dev;
+	u16 vsi_id;
+	u16 instance_id;
+	int devfd;
+	int eventfd;
+	int ifindex;
+	int iommu_group_num;
+	int nl_socket_route;
+	int dma_limit_msb;
+	u8 eth_id;
+	/* isolate 1 means kernel network, 0 means user network */
+	u8 isolate:1;
+	/* curr_network 0 means kernel network, 1 means user network */
+	u8 curr_network:1;
+	u8 is_vf:1;
+	u8 specific_dma:1;
+	u8 dma_set_msb:1;
+	u8 rsv:3;
+	struct nbl_board_port_info board_info;
+};
+
+struct nbl_register_net_param {
+	u16 pf_bdf;
+	u64 vf_bar_start;
+	u64 vf_bar_size;
+	u16 total_vfs;
+	u16 offset;
+	u16 stride;
+	u64 pf_bar_start;
+};
+
+struct nbl_register_net_result {
+	u16 tx_queue_num;
+	u16 rx_queue_num;
+	u16 queue_size;
+	u16 rdma_enable;
+	u64 hw_features;
+	u64 features;
+	u16 max_mtu;
+	u16 queue_offset;
+	u8 mac[RTE_ETHER_ADDR_LEN];
+	u16 vlan_proto;
+	u16 vlan_tci;
+	u32 rate;
+	bool trusted;
 };
 
 #endif

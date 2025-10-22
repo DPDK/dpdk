@@ -16,6 +16,18 @@ struct nbl_resource_ops {
 				  bool net_msix_mask_en);
 	int (*destroy_msix_map)(void *priv, u16 func_id);
 	int (*enable_mailbox_irq)(void *priv, u16 func_id, u16 vector_id, bool enable_msix);
+	int (*register_net)(void *priv,
+			    struct nbl_register_net_param *register_param,
+			    struct nbl_register_net_result *register_result);
+	int (*unregister_net)(void *priv);
+	u16 (*get_vsi_id)(void *priv);
+	void (*get_eth_id)(void *priv, u16 vsi_id, u8 *eth_mode, u8 *eth_id);
+	int (*setup_q2vsi)(void *priv, u16 vsi_id);
+	void (*remove_q2vsi)(void *priv, u16 vsi_id);
+	int (*register_vsi2q)(void *priv, u16 vsi_index, u16 vsi_id,
+			      u16 queue_offset, u16 queue_num);
+	int (*setup_rss)(void *priv, u16 vsi_id);
+	void (*remove_rss)(void *priv, u16 vsi_id);
 	int (*alloc_rings)(void *priv, u16 tx_num, u16 rx_num, u16 queue_offset);
 	void (*remove_rings)(void *priv);
 	int (*start_tx_ring)(void *priv, struct nbl_start_tx_ring_param *param, u64 *dma_addr);
@@ -43,6 +55,12 @@ struct nbl_resource_ops {
 	int (*get_txrx_xstats)(void *priv, struct rte_eth_xstat *xstats, u16 *xstats_cnt);
 	int (*get_txrx_xstats_names)(void *priv, struct rte_eth_xstat_name *xstats_names,
 				     u16 *xstats_cnt);
+	int (*add_macvlan)(void *priv, u8 *mac, u16 vlan_id, u16 vsi_id);
+	void (*del_macvlan)(void *priv, u8 *mac, u16 vlan_id, u16 vsi_id);
+	int (*add_multi_rule)(void *priv, u16 vsi_id);
+	void (*del_multi_rule)(void *priv, u16 vsi_id);
+	int (*cfg_multi_mcast)(void *priv, u16 vsi_id, u16 enable);
+	void (*clear_flow)(void *priv, u16 vsi_id);
 };
 
 struct nbl_resource_ops_tbl {
