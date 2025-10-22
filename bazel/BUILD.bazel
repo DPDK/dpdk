@@ -1,0 +1,14 @@
+load("@python_versions//3.12:defs.bzl", "compile_pip_requirements")
+
+exports_files(["pytest.ini"])
+
+# This stanza calls a rule that generates targets for managing pip dependencies
+# with pip-compile.
+compile_pip_requirements(
+    name = "requirements",
+    timeout = "moderate",  # prevent flaky requirements_test
+    src = "requirements.in",
+    extra_args = ["--allow-unsafe"],
+    requirements_txt = "requirements.txt",
+    #    requirements_windows = "requirements_windows.txt", # uncomment if windows support is needed
+)

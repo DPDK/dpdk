@@ -231,6 +231,7 @@ endif
 # check for libraries used in multiple places in DPDK
 has_libnuma = false
 find_libnuma = true
+ext_libnuma = false
 if meson.is_cross_build() and not meson.get_external_property('numa', true)
     # don't look for libnuma if explicitly disabled in cross build
     find_libnuma = false
@@ -242,6 +243,13 @@ if find_libnuma
         has_libnuma = true
         add_project_link_arguments('-lnuma', language: 'c')
         dpdk_extra_ldflags += '-lnuma'
+    else
+        numa_dep = dependency('numa', required: false, method: 'pkg-config')
+        if numa_dep.found() and cc.has_header('numaif.h', dependencies: numa_dep) and cc.links(min_c_code, dependencies: numa_dep)
+            dpdk_conf.set10('RTE_HAS_LIBNUMA', true)
+            has_libnuma = true
+            ext_libnuma = true
+        endif
     endif
 endif
 
