@@ -530,6 +530,7 @@ nbl_res_txrx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, u16 nb_pkts, u
 			txe->mbuf = tx_pkt;
 
 			data_len = tx_pkt->data_len;
+			txq->txq_stats.tx_bytes += tx_pkt->data_len;
 			dma_addr = rte_mbuf_data_iova(tx_pkt);
 			tx_desc->addr = NBL_DMA_ADDRESS_FULL_TRANSLATE(txq, dma_addr) + addr_offset;
 			tx_desc->len = data_len - addr_offset;
@@ -609,6 +610,8 @@ nbl_res_txrx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 			rx_ext_hdr = (union nbl_rx_extend_head *)((char *)rx_mbuf->buf_addr +
 								  RTE_PKTMBUF_HEADROOM);
 			num_sg = rx_ext_hdr->common.num_buffers;
+			if (num_sg > 1)
+				rxq->rxq_stats.rx_multi_descs++;
 
 			rx_mbuf->nb_segs = num_sg;
 			rx_mbuf->data_len = rx_desc->len - rxq->exthdr_len;
@@ -636,15 +639,20 @@ nbl_res_txrx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 		if (--num_sg)
 			continue;
 		if (drop) {
+			rxq->rxq_stats.rx_drop_proto++;
 			rte_pktmbuf_free(rx_mbuf);
 			continue;
 		}
 		rx_pkts[nb_recv_pkts++] = rx_mbuf;
+		rxq->rxq_stats.rx_bytes += rx_mbuf->pkt_len;
 	}
 
 	/* BUG on duplicate pkt free */
-	if (unlikely(num_sg))
+	if (unlikely(num_sg)) {
+		rxq->rxq_stats.rx_ierror++;
 		rte_pktmbuf_free(rx_mbuf);
+	}
+
 	/* clean memory */
 	rxq->next_to_clean = desc_index;
 	fill_num = rxq->vq_free_cnt;
@@ -715,6 +723,109 @@ static int nbl_res_txrx_get_stats(void *priv, struct rte_eth_stats *rte_stats)
 	return 0;
 }
 
+static int
+nbl_res_txrx_reset_stats(void *priv)
+{
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct rte_eth_dev *eth_dev = res_mgt->eth_dev;
+	struct nbl_res_rx_ring *rxq;
+	struct nbl_rxq_stats *rxq_stats;
+	struct nbl_res_tx_ring  *txq;
+	struct nbl_txq_stats *txq_stats;
+	uint32_t i;
+
+	/* Add software counters. */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		if (unlikely(rxq == NULL))
+			continue;
+
+		rxq_stats = &rxq->rxq_stats;
+		memset(rxq_stats, 0, sizeof(struct nbl_rxq_stats));
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (unlikely(txq == NULL))
+			continue;
+
+		txq_stats = &txq->txq_stats;
+		memset(txq_stats, 0, sizeof(struct nbl_txq_stats));
+	}
+
+	return 0;
+}
+
+/* store statistics names */
+struct nbl_txrx_xstats_name {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+};
+
+static const struct nbl_txrx_xstats_name nbl_stats_strings[] = {
+	{"rx_multidescs_packets"},
+	{"rx_drop_noport_packets"},
+	{"rx_drop_proto_packets"},
+};
+
+static int nbl_res_txrx_get_xstats_cnt(__rte_unused void *priv, u16 *xstats_cnt)
+{
+	*xstats_cnt = ARRAY_SIZE(nbl_stats_strings);
+	return 0;
+}
+
+static int nbl_res_txrx_get_xstats(void *priv, struct rte_eth_xstat *xstats,
+				   u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	struct nbl_resource_mgt *res_mgt = (struct nbl_resource_mgt *)priv;
+	struct nbl_txrx_mgt *txrx_mgt = NBL_RES_MGT_TO_TXRX_MGT(res_mgt);
+	struct nbl_res_rx_ring *rxq;
+	uint64_t rx_multi_descs = 0, rx_drop_noport = 0, rx_drop_proto = 0;
+	u64 txrx_xstats[3];
+	unsigned int i = 0;
+	u16 count = *xstats_cnt;
+
+	/* todo: get eth stats from emp */
+	for (i = 0; i < txrx_mgt->rx_ring_num; i++) {
+		rxq = NBL_RES_MGT_TO_RX_RING(res_mgt, i);
+
+		if (unlikely(rxq == NULL))
+			return -EINVAL;
+
+		rx_multi_descs += rxq->rxq_stats.rx_multi_descs;
+		rx_drop_noport += rxq->rxq_stats.rx_drop_noport;
+		rx_drop_proto += rxq->rxq_stats.rx_drop_proto;
+	}
+	txrx_xstats[0] = rx_multi_descs;
+	txrx_xstats[1] = rx_drop_noport;
+	txrx_xstats[2] = rx_drop_proto;
+
+	for (i = 0; i < need_xstats_cnt; i++) {
+		xstats[count].value = txrx_xstats[i];
+		xstats[count].id = count;
+		count++;
+	}
+
+	*xstats_cnt = count;
+
+	return 0;
+}
+
+static int nbl_res_txrx_get_xstats_names(__rte_unused void *priv,
+					 struct rte_eth_xstat_name *xstats_names,
+					 u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	unsigned int i = 0;
+	u16 count = *xstats_cnt;
+
+	for (i = 0; i < need_xstats_cnt; i++) {
+		strlcpy(xstats_names[count].name, nbl_stats_strings[i].name,
+			sizeof(nbl_stats_strings[count].name));
+		count++;
+	}
+	*xstats_cnt = count;
+	return 0;
+}
+
 /* NBL_TXRX_SET_OPS(ops_name, func)
  *
  * Use X Macros to reduce setup and remove codes.
@@ -733,6 +844,10 @@ do {										\
 	NBL_TXRX_SET_OPS(update_rx_ring, nbl_res_txrx_update_rx_ring);		\
 	NBL_TXRX_SET_OPS(get_resource_pt_ops, nbl_res_get_pt_ops);		\
 	NBL_TXRX_SET_OPS(get_stats, nbl_res_txrx_get_stats);			\
+	NBL_TXRX_SET_OPS(reset_stats, nbl_res_txrx_reset_stats);		\
+	NBL_TXRX_SET_OPS(get_txrx_xstats_cnt, nbl_res_txrx_get_xstats_cnt);	\
+	NBL_TXRX_SET_OPS(get_txrx_xstats_names, nbl_res_txrx_get_xstats_names);	\
+	NBL_TXRX_SET_OPS(get_txrx_xstats, nbl_res_txrx_get_xstats);		\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */

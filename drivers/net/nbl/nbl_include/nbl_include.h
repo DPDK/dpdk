@@ -50,6 +50,10 @@ typedef int32_t s32;
 typedef int16_t s16;
 typedef int8_t s8;
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
+#endif
+
 /* Used for macros to pass checkpatch */
 #define NBL_NAME(x)				x
 #define BIT(a)					(1 << (a))

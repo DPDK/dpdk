@@ -798,7 +798,92 @@ static int nbl_disp_get_stats(void *priv, struct rte_eth_stats *rte_stats)
 {
 	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
 	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
 	return res_ops->get_stats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), rte_stats);
+}
+
+static int nbl_disp_reset_stats(void *priv)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+
+	return res_ops->reset_stats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt));
+}
+
+static int nbl_disp_get_txrx_xstats_cnt(void *priv, u16 *xstats_cnt)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	return res_ops->get_txrx_xstats_cnt(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), xstats_cnt);
+}
+
+static int nbl_disp_get_txrx_xstats(void *priv, struct rte_eth_xstat *xstats,
+				    u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	return res_ops->get_txrx_xstats(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), xstats,
+					need_xstats_cnt, xstats_cnt);
+}
+
+static int nbl_disp_get_txrx_xstats_names(void *priv, struct rte_eth_xstat_name *xstats_names,
+					  u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	return res_ops->get_txrx_xstats_names(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt),
+					 xstats_names, need_xstats_cnt, xstats_cnt);
+}
+
+static int nbl_disp_get_hw_xstats_cnt(void *priv, u16 *xstats_cnt)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	return res_ops->get_hw_xstats_cnt(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), xstats_cnt);
+}
+
+static int nbl_disp_get_hw_xstats_names(void *priv, struct rte_eth_xstat_name *xstats_names,
+					u16 need_xstats_cnt, u16 *xstats_cnt)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	return res_ops->get_hw_xstats_names(NBL_DISP_MGT_TO_RES_PRIV(disp_mgt),
+					    xstats_names, need_xstats_cnt, xstats_cnt);
+}
+
+static void nbl_disp_get_private_stat_data(void *priv, u32 eth_id, u64 *data,
+					   __rte_unused u32 data_len)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	NBL_OPS_CALL(res_ops->get_private_stat_data,
+		     (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), eth_id, data));
+}
+
+static void nbl_disp_get_private_stat_data_req(void *priv, u32 eth_id, u64 *data, u32 data_len)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_send_info chan_send = {0};
+	struct nbl_chan_param_get_private_stat_data param = {0};
+
+	param.eth_id = eth_id;
+	param.data_len = data_len;
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_GET_ETH_STATS, &param,
+		      sizeof(param), data, data_len, 1);
+	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
 #define NBL_DISP_OPS_TBL						\
@@ -945,6 +1030,32 @@ do {									\
 	NBL_DISP_SET_OPS(get_stats, nbl_disp_get_stats,			\
 			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
 			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(reset_stats, nbl_disp_reset_stats,		\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_txrx_xstats_cnt,				\
+			 nbl_disp_get_txrx_xstats_cnt,			\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_txrx_xstats, nbl_disp_get_txrx_xstats,	\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_txrx_xstats_names,				\
+			 nbl_disp_get_txrx_xstats_names,		\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_hw_xstats_cnt, nbl_disp_get_hw_xstats_cnt,	\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_hw_xstats_names,				\
+			 nbl_disp_get_hw_xstats_names,			\
+			 NBL_DISP_CTRL_LVL_ALWAYS, -1,			\
+			 NULL, NULL);					\
+	NBL_DISP_SET_OPS(get_private_stat_data,				\
+			 nbl_disp_get_private_stat_data,		\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_MSG_GET_ETH_STATS,			\
+			 nbl_disp_get_private_stat_data_req, NULL);	\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */

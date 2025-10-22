@@ -46,6 +46,15 @@ struct nbl_resource_ops {
 	void (*release_rx_ring)(void *priv, u16 queue_idx);
 	int (*get_stats)(void *priv, struct rte_eth_stats *rte_stats);
 	int (*reset_stats)(void *priv);
+	int (*get_txrx_xstats_cnt)(void *priv, u16 *xstats_cnt);
+	int (*get_txrx_xstats)(void *priv, struct rte_eth_xstat *xstats,
+			       u16 need_xstats_cnt, u16 *xstats_cnt);
+	int (*get_txrx_xstats_names)(void *priv, struct rte_eth_xstat_name *xstats_names,
+				     u16 need_xstats_cnt, u16 *xstats_cnt);
+	int (*get_hw_xstats_cnt)(void *priv, u16 *xstats_cnt);
+	int (*get_hw_xstats_names)(void *priv, struct rte_eth_xstat_name *xstats_names,
+				   u16 need_xstats_cnt, u16 *xstats_cnt);
+	void (*get_private_stat_data)(void *priv, u32 eth_id, u64 *data);
 	void (*update_rx_ring)(void *priv, u16 queue_idx);
 	u16 (*get_tx_ehdr_len)(void *priv);
 	int (*alloc_txrx_queues)(void *priv, u16 vsi_id, u16 queue_num);
@@ -58,10 +67,6 @@ struct nbl_resource_ops {
 	void (*cfg_txrx_vlan)(void *priv, u16 vlan_tci, u16 vlan_proto);
 	int (*txrx_burst_mode_get)(void *priv, struct rte_eth_dev *dev,
 				   struct rte_eth_burst_mode *mode, bool is_tx);
-	int (*get_txrx_xstats_cnt)(void *priv, u16 *xstats_cnt);
-	int (*get_txrx_xstats)(void *priv, struct rte_eth_xstat *xstats, u16 *xstats_cnt);
-	int (*get_txrx_xstats_names)(void *priv, struct rte_eth_xstat_name *xstats_names,
-				     u16 *xstats_cnt);
 	int (*add_macvlan)(void *priv, u8 *mac, u16 vlan_id, u16 vsi_id);
 	void (*del_macvlan)(void *priv, u8 *mac, u16 vlan_id, u16 vsi_id);
 	int (*add_multi_rule)(void *priv, u16 vsi_id);
