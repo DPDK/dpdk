@@ -6,6 +6,9 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     reason = 'only supported on 64-bit Linux'
 endif
 
+includes += include_directories('nbl_include')
+
 sources = files(
         'nbl_ethdev.c',
+        'nbl_core.c',
 )
