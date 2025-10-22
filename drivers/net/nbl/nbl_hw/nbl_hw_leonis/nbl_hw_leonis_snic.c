@@ -182,6 +182,11 @@ int nbl_hw_init_leonis_snic(void *p)
 	hw_mgt_leonis_snic = (struct nbl_hw_mgt_leonis_snic **)&NBL_ADAPTER_TO_HW_MGT(adapter);
 	hw_ops_tbl = &NBL_ADAPTER_TO_HW_OPS_TBL(adapter);
 
+	/* map device */
+	ret = nbl_pci_map_device(adapter);
+	if (ret)
+		return ret;
+
 	*hw_mgt_leonis_snic = rte_zmalloc("nbl_hw_mgt", sizeof(**hw_mgt_leonis_snic), 0);
 	if (!*hw_mgt_leonis_snic) {
 		ret = -ENOMEM;
@@ -203,6 +208,7 @@ int nbl_hw_init_leonis_snic(void *p)
 setup_ops_failed:
 	rte_free(*hw_mgt_leonis_snic);
 alloc_hw_mgt_failed:
+	nbl_pci_unmap_device(adapter);
 	return ret;
 }
 
@@ -218,4 +224,5 @@ void nbl_hw_remove_leonis_snic(void *p)
 	rte_free(*hw_mgt_leonis_snic);
 
 	nbl_hw_remove_ops(hw_ops_tbl);
+	nbl_pci_unmap_device(adapter);
 }

@@ -39,4 +39,8 @@ struct nbl_work {
 void *nbl_alloc_dma_mem(struct nbl_dma_mem *mem, uint32_t size);
 void nbl_free_dma_mem(struct nbl_dma_mem *mem);
 
+struct nbl_adapter;
+int nbl_pci_map_device(struct nbl_adapter *adapter);
+void nbl_pci_unmap_device(struct nbl_adapter *adapter);
+
 #endif
