@@ -53,6 +53,8 @@ static int nbl_res_start(struct nbl_resource_mgt_leonis *res_mgt_leonis)
 	struct nbl_resource_mgt *res_mgt = &res_mgt_leonis->res_mgt;
 	int ret;
 
+	res_mgt->res_info.base_qid = 0;
+
 	ret = nbl_txrx_mgt_start(res_mgt);
 	if (ret)
 		goto txrx_failed;
