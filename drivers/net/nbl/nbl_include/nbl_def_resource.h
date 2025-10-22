@@ -77,6 +77,7 @@ struct nbl_resource_ops {
 	int (*setup_cqs)(void *priv, u16 vsi_id, u16 real_qps, bool rss_indir_set);
 	void (*remove_cqs)(void *priv, u16 vsi_id);
 	void (*get_link_state)(void *priv, u8 eth_id, struct nbl_eth_link_info *eth_link_info);
+	int (*set_promisc_mode)(void *priv, u16 vsi_id, u16 mode);
 };
 
 struct nbl_resource_ops_tbl {

@@ -886,6 +886,46 @@ static void nbl_disp_get_private_stat_data_req(void *priv, u32 eth_id, u64 *data
 	chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt), &chan_send);
 }
 
+static int nbl_disp_set_promisc_mode(void *priv, u16 vsi_id, u16 mode)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_resource_ops *res_ops;
+	int ret = 0;
+
+	res_ops = NBL_DISP_MGT_TO_RES_OPS(disp_mgt);
+	ret = NBL_OPS_CALL(res_ops->set_promisc_mode,
+			   (NBL_DISP_MGT_TO_RES_PRIV(disp_mgt), vsi_id, mode));
+	return ret;
+}
+
+static int nbl_disp_chan_set_promisc_mode_req(void *priv, u16 vsi_id, u16 mode)
+{
+	struct nbl_dispatch_mgt *disp_mgt = (struct nbl_dispatch_mgt *)priv;
+	struct nbl_common_info *common;
+	const struct nbl_channel_ops *chan_ops = NBL_DISP_MGT_TO_CHAN_OPS(disp_mgt);
+	struct nbl_chan_param_set_promisc_mode param = {0};
+	struct nbl_chan_send_info chan_send = {0};
+	int ret = 0;
+
+	common = NBL_DISP_MGT_TO_COMMON(disp_mgt);
+	if (NBL_IS_COEXISTENCE(common)) {
+		ret = ioctl(common->devfd, NBL_DEV_USER_SET_PROMISC_MODE, &mode);
+		if (ret) {
+			NBL_LOG(ERR, "userspace send set_promisc_mode ioctl msg failed ret %d",
+				ret);
+			return ret;
+		}
+		return 0;
+	}
+
+	param.vsi_id = vsi_id;
+	param.mode = mode;
+	NBL_CHAN_SEND(chan_send, 0, NBL_CHAN_MSG_SET_PROSISC_MODE,
+		      &param, sizeof(param), NULL, 0, 1);
+	return chan_ops->send_msg(NBL_DISP_MGT_TO_CHAN_PRIV(disp_mgt),
+				  &chan_send);
+}
+
 #define NBL_DISP_OPS_TBL						\
 do {									\
 	NBL_DISP_SET_OPS(configure_msix_map, nbl_disp_configure_msix_map,			\
@@ -1056,6 +1096,10 @@ do {									\
 			 NBL_DISP_CTRL_LVL_MGT,				\
 			 NBL_CHAN_MSG_GET_ETH_STATS,			\
 			 nbl_disp_get_private_stat_data_req, NULL);	\
+	NBL_DISP_SET_OPS(set_promisc_mode, nbl_disp_set_promisc_mode,	\
+			 NBL_DISP_CTRL_LVL_MGT,				\
+			 NBL_CHAN_MSG_SET_PROSISC_MODE,			\
+			 nbl_disp_chan_set_promisc_mode_req, NULL);	\
 } while (0)
 
 /* Structure starts here, adding an op should not modify anything below */
@@ -1177,6 +1221,7 @@ int nbl_disp_init(void *p)
 	NBL_DISP_MGT_TO_RES_OPS_TBL(*disp_mgt) = res_ops_tbl;
 	NBL_DISP_MGT_TO_CHAN_OPS_TBL(*disp_mgt) = chan_ops_tbl;
 	NBL_DISP_MGT_TO_DISP_OPS_TBL(*disp_mgt) = *disp_ops_tbl;
+	NBL_DISP_MGT_TO_COMMON(*disp_mgt) = NBL_ADAPTER_TO_COMMON(adapter);
 
 	if (disp_product_ops->dispatch_init) {
 		ret = disp_product_ops->dispatch_init(*disp_mgt);

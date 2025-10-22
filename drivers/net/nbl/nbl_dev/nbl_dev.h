@@ -48,7 +48,9 @@ struct nbl_dev_net_mgt {
 	u8 eth_mode;
 	u8 eth_id;
 	u16 max_mac_num;
-	bool trust;
+	u8 trust:1;
+	u8 promisc:1;
+	u8 rsv:6;
 };
 
 struct nbl_dev_mgt {
@@ -80,5 +82,7 @@ int nbl_xstats_get_names(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_xstat_name *xstats_names,
 			 __rte_unused unsigned int limit);
 int nbl_xstats_reset(struct rte_eth_dev *eth_dev);
+int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev);
+int nbl_promiscuous_disable(struct rte_eth_dev *eth_dev);
 
 #endif

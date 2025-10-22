@@ -517,6 +517,42 @@ int nbl_xstats_reset(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+int nbl_promiscuous_enable(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = &adapter->common;
+
+	if (!common->is_vf) {
+		disp_ops->set_promisc_mode(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					   dev_mgt->net_dev->vsi_id, 1);
+		dev_mgt->net_dev->promisc = 1;
+	} else {
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+int nbl_promiscuous_disable(struct rte_eth_dev *eth_dev)
+{
+	struct nbl_adapter *adapter = ETH_DEV_TO_NBL_DEV_PF_PRIV(eth_dev);
+	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
+	struct nbl_dispatch_ops *disp_ops = NBL_DEV_MGT_TO_DISP_OPS(dev_mgt);
+	struct nbl_common_info *common = &adapter->common;
+
+	if (!common->is_vf) {
+		disp_ops->set_promisc_mode(NBL_DEV_MGT_TO_DISP_PRIV(dev_mgt),
+					   dev_mgt->net_dev->vsi_id, 0);
+		dev_mgt->net_dev->promisc = 0;
+	} else {
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 static int nbl_dev_setup_chan_queue(struct nbl_adapter *adapter)
 {
 	struct nbl_dev_mgt *dev_mgt = NBL_ADAPTER_TO_DEV_MGT(adapter);
