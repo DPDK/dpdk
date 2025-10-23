@@ -1997,9 +1997,12 @@ static inline void txgbe_flush(struct txgbe_hw *hw)
 {
 	switch (hw->mac.type) {
 	case txgbe_mac_sp:
+	case txgbe_mac_aml:
+	case txgbe_mac_aml40:
 		rd32(hw, TXGBE_PWR);
 		break;
 	case txgbe_mac_sp_vf:
+	case txgbe_mac_aml_vf:
 		rd32(hw, TXGBE_VFSTATUS);
 		break;
 	default:
