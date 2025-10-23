@@ -1305,6 +1305,11 @@ enum txgbe_5tuple_protocol {
 #define     TXGBE_VFSTATUS_BW_10G       LS(0x1, 1, 0x7)
 #define     TXGBE_VFSTATUS_BW_1G        LS(0x2, 1, 0x7)
 #define     TXGBE_VFSTATUS_BW_100M      LS(0x4, 1, 0x7)
+#define   TXGBE_VFSTATUS_BW_MASK_AML    MS(1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_50G   LS(0x1, 1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_40G   LS(0x2, 1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_25G   LS(0x4, 1, 0xF)
+#define     TXGBE_VFSTATUS_BW_AML_10G   LS(0x8, 1, 0xF)
 #define   TXGBE_VFSTATUS_BUSY           MS(4, 0x1)
 #define   TXGBE_VFSTATUS_LANID          MS(8, 0x1)
 #define TXGBE_VFRST                     0x000008
