@@ -1366,6 +1366,75 @@ txgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
+/**
+ *  txgbevf_get_pf_link_status - Get pf link/speed status
+ *  @hw: pointer to hardware structure
+ *
+ *  - PF notifies status via mailbox on change
+ *  - VF sets its link state synchronously upon mailbox interrupt,
+ *    skipping hardware link detection.
+ **/
+static s32 txgbevf_get_pf_link_status(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_mbx_info *mbx = &hw->mbx;
+	struct rte_eth_link link;
+	u32 link_speed = TXGBE_LINK_SPEED_UNKNOWN;
+	bool link_up = false;
+	u32 msgbuf[2];
+	s32 retval;
+
+	retval = mbx->read(hw, msgbuf, 2, 0);
+
+	/*
+	 *if the read failed it could just be a mailbox collision, best wait
+	 * until we are called again and don't report an error
+	 */
+	if (retval)
+		return 0;
+
+	rte_eth_linkstatus_get(dev, &link);
+
+	link_up = msgbuf[1] & TXGBE_VFSTATUS_UP;
+	link_speed = (msgbuf[1] & 0xFFF0) >> 1;
+
+	if (link_up == link.link_status && link_speed == link.link_speed)
+		return 0;
+
+	link.link_speed = link_speed;
+	link.link_status = link_up;
+
+	if (link_up)
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	else
+		link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+	/*
+	 * Invoke the LSC interrupt callback to notify the upper app of a link
+	 * status change, even though the change is detected via a mailbox interrupt
+	 * instead of an LSC interrupt. This is because VF link status changes do
+	 * not trigger LSC interrupts — they rely on PF notifications.
+	 */
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+				     NULL);
+	return rte_eth_linkstatus_set(dev, &link);
+}
+
+static void txgbevf_check_link_for_intr(struct rte_eth_dev *dev)
+{
+	struct rte_eth_link orig_link, new_link;
+
+	rte_eth_linkstatus_get(dev, &orig_link);
+	txgbevf_dev_link_update(dev, 0);
+	rte_eth_linkstatus_get(dev, &new_link);
+
+	PMD_DRV_LOG(INFO, "orig_link: %d, new_link: %d",
+		    orig_link.link_status, new_link.link_status);
+
+	if (new_link.link_status != orig_link.link_status)
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+					     NULL);
+}
+
 static void txgbevf_mbx_process(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
@@ -1375,12 +1444,15 @@ static void txgbevf_mbx_process(struct rte_eth_dev *dev)
 	in_msg = rd32(hw, TXGBE_VFMBX);
 
 	/* PF reset VF event */
-	if (in_msg == TXGBE_PF_CONTROL_MSG) {
-		/* dummy mbx read to ack pf */
-		if (txgbe_read_mbx(hw, &in_msg, 1, 0))
-			return;
-		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
-					      NULL);
+	if (in_msg & TXGBE_PF_CONTROL_MSG) {
+		if (in_msg & TXGBE_NOFITY_VF_LINK_STATUS) {
+			txgbevf_get_pf_link_status(dev);
+		} else {
+			/* dummy mbx read to ack pf */
+			txgbe_read_mbx(hw, &in_msg, 1, 0);
+			/* check link status if pf ping vf */
+			txgbevf_check_link_for_intr(dev);
+		}
 	}
 }
 
