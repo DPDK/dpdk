@@ -133,6 +133,10 @@ s32 txgbe_reset_hw_vf(struct txgbe_hw *hw)
 		usec_delay(5);
 	}
 
+	/* amlite: bme */
+	if (hw->mac.type == txgbe_mac_aml_vf)
+		wr32(hw, TXGBE_BME_AML, 0x1);
+
 	if (!timeout)
 		return TXGBE_ERR_RESET_FAILED;
 
