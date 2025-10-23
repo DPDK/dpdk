@@ -182,6 +182,7 @@ s32 ngbe_get_phy_type_from_id(struct ngbe_hw *hw)
 		break;
 	case NGBE_PHYID_YT8521:
 	case NGBE_PHYID_YT8531:
+	case NGBE_PHYID_SK21101:
 		if (hw->phy.media_type == ngbe_media_type_fiber)
 			hw->phy.type = ngbe_phy_yt8521s_sfi;
 		else
