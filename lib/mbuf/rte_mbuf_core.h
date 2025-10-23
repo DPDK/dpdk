@@ -711,9 +711,49 @@ struct rte_mbuf_ext_shared_info {
  *
  * If a mbuf embeds its own data after the rte_mbuf structure, this mbuf
  * can be defined as a direct mbuf.
+ *
+ * Note: Macro optimized for code size.
+ *
+ * The plain macro would be:
+ * \code{.c}
+ *      #define RTE_MBUF_DIRECT(mb) \
+ *          (!((mb)->ol_flags & (RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL)))
+ * \endcode
+ *
+ * The flags RTE_MBUF_F_INDIRECT and RTE_MBUF_F_EXTERNAL are both in the MSB
+ * (most significant byte) of the 64-bit ol_flags field,
+ * so we only compare this one byte instead of all 64 bits.
+ *
+ * E.g., GCC version 16.0.0 20251019 (experimental) generates the following code for x86-64.
+ *
+ * With the plain macro, 17 bytes of instructions:
+ * \code
+ *      movabs rax,0x6000000000000000       // 10 bytes
+ *      and    rax,QWORD PTR [rdi+0x18]     // 4 bytes
+ *      sete   al                           // 3 bytes
+ * \endcode
+ * With this optimized macro, only 7 bytes of instructions:
+ * \code
+ *      test   BYTE PTR [rdi+0x1f],0x60     // 4 bytes
+ *      sete   al                           // 3 bytes
+ * \endcode
  */
+#ifdef __DOXYGEN__
 #define RTE_MBUF_DIRECT(mb) \
-	(!((mb)->ol_flags & (RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL)))
+	!(((const char *)(&(mb)->ol_flags))[MSB_OFFSET /* 7 or 0, depending on endianness */] & \
+	(char)((RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL) >> (7 * CHAR_BIT)) /* 0x60 */)
+#else /* !__DOXYGEN__ */
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+/* On little endian architecture, the MSB of a 64-bit integer is at byte offset 7. */
+#define RTE_MBUF_DIRECT(mb) !(((const char *)(&(mb)->ol_flags))[7] & 0x60)
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+/* On big endian architecture, the MSB of a 64-bit integer is at byte offset 0. */
+#define RTE_MBUF_DIRECT(mb) !(((const char *)(&(mb)->ol_flags))[0] & 0x60)
+#endif /* RTE_BYTE_ORDER */
+#endif /* !__DOXYGEN__ */
+/* Verify the optimization above. */
+static_assert((RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL) == UINT64_C(0x60) << (7 * CHAR_BIT),
+		"(RTE_MBUF_F_INDIRECT | RTE_MBUF_F_EXTERNAL) is not 0x60 at MSB");
 
 /** Uninitialized or unspecified port. */
 #define RTE_MBUF_PORT_INVALID UINT16_MAX
