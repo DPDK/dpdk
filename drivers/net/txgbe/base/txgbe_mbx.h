@@ -49,6 +49,8 @@ enum txgbe_pfvf_api_rev {
 #define TXGBE_VF_SET_MULTICAST	0x03 /* VF requests PF to set MC addr */
 #define TXGBE_VF_SET_VLAN	0x04 /* VF requests PF to set VLAN */
 
+#define TXGBE_NOFITY_VF_LINK_STATUS 0x01 /* PF notify VF link status */
+
 /* mailbox API, version 1.0 VF requests */
 #define TXGBE_VF_SET_LPE	0x05 /* VF requests PF to set VMOLR.LPE */
 #define TXGBE_VF_SET_MACVLAN	0x06 /* VF requests PF for unicast filter */
