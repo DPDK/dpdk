@@ -1816,11 +1816,13 @@ txgbe_map_reg(struct txgbe_hw *hw, u32 reg)
 {
 	switch (reg) {
 	case TXGBE_REG_RSSTBL:
-		if (hw->mac.type == txgbe_mac_sp_vf)
+		if (hw->mac.type == txgbe_mac_sp_vf ||
+		    hw->mac.type == txgbe_mac_aml_vf)
 			reg = TXGBE_VFRSSTBL(0);
 		break;
 	case TXGBE_REG_RSSKEY:
-		if (hw->mac.type == txgbe_mac_sp_vf)
+		if (hw->mac.type == txgbe_mac_sp_vf ||
+		    hw->mac.type == txgbe_mac_aml_vf)
 			reg = TXGBE_VFRSSKEY(0);
 		break;
 	default:
