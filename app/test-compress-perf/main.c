@@ -355,16 +355,22 @@ comp_perf_dump_dictionary_data(struct comp_test_data *test_data)
 		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
 		goto end;
 	}
-	size_t actual_file_sz = ftell(f);
+	long file_sz = ftell(f);
 	/* If extended input data size has not been set,
 	 * input data size = file size
 	 */
 
+	if (file_sz < 0) {
+		RTE_LOG(ERR, USER1, "Actual file size could not be determined\n");
+		goto end;
+	}
+
+	size_t actual_file_sz = (size_t)file_sz;
+
 	if (test_data->dictionary_data_sz == 0)
 		test_data->dictionary_data_sz = actual_file_sz;
 
-	if (test_data->dictionary_data_sz <= 0 || actual_file_sz <= 0 ||
-			fseek(f, 0, SEEK_SET) != 0) {
+	if (fseek(f, 0, SEEK_SET) != 0) {
 		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
 		goto end;
 	}
@@ -386,11 +392,15 @@ comp_perf_dump_dictionary_data(struct comp_test_data *test_data)
 
 		if (fread(data, data_to_read, 1, f) != 1) {
 			RTE_LOG(ERR, USER1, "Input file could not be read\n");
+			if (test_data->dictionary_data)
+				rte_free(test_data->dictionary_data);
 			goto end;
 		}
 		if (fseek(f, 0, SEEK_SET) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Size of input could not be calculated\n");
+			if (test_data->dictionary_data)
+				rte_free(test_data->dictionary_data);
 			goto end;
 		}
 		remaining_data -= data_to_read;
@@ -413,9 +423,6 @@ comp_perf_dump_dictionary_data(struct comp_test_data *test_data)
 end:
 	if (f)
 		fclose(f);
-
-	if (test_data->dictionary_data)
-		rte_free(test_data->dictionary_data);
 
 	return ret;
 }
