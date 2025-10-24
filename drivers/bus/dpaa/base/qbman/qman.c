@@ -10,7 +10,8 @@
 #include <bus_dpaa_driver.h>
 #include <rte_eventdev.h>
 #include <rte_byteorder.h>
-
+#include <rte_dpaa_logs.h>
+#include <eal_export.h>
 #include <dpaa_bits.h>
 
 /* Compilation constants */
@@ -532,6 +533,41 @@ qman_init_portal(struct qman_portal *portal,
 	 * config, everything that follows depends on it and "config" is more
 	 * for (de)reference
 	 */
+	p->addr.ce = c->addr_virt[DPAA_PORTAL_CE];
+	p->addr.ci = c->addr_virt[DPAA_PORTAL_CI];
+	/*
+	 * If CI-stashing is used, the current defaults use a threshold of 3,
+	 * and stash with high-than-DQRR priority.
+	 */
+	if (qm_eqcr_init(p, qm_eqcr_pvb,
+			 portal->use_eqcr_ci_stashing, 1)) {
+		DPAA_BUS_ERR("Qman EQCR initialisation failed");
+		goto fail_eqcr;
+	}
+	if (qm_dqrr_init(p, c, qm_dqrr_dpush, qm_dqrr_pvb,
+			 qm_dqrr_cdc, DQRR_MAXFILL)) {
+		DPAA_BUS_ERR("Qman DQRR initialisation failed");
+		goto fail_dqrr;
+	}
+	if (qm_mr_init(p, qm_mr_pvb, qm_mr_cci)) {
+		DPAA_BUS_ERR("Qman MR initialisation failed");
+		goto fail_mr;
+	}
+	if (qm_mc_init(p)) {
+		DPAA_BUS_ERR("Qman MC initialisation failed");
+		goto fail_mc;
+	}
+
+	/* Reset portal before use */
+	DPAA_BUS_DEBUG("Reset portal = %p", p);
+	qm_dqrr_sdqcr_set(p, 0);
+	qm_eqcr_cce_update(p);
+	qm_eqcr_cce_update(p);
+	qm_mc_finish(p);
+	qm_mr_finish(p);
+	qm_dqrr_finish(p);
+	qm_eqcr_finish(p);
+
 	p->addr.ce = c->addr_virt[DPAA_PORTAL_CE];
 	p->addr.ci = c->addr_virt[DPAA_PORTAL_CI];
 	/*
@@ -2660,39 +2696,128 @@ put_portal:
 	return ret;
 }
 
-int qman_shutdown_fq(u32 fqid)
+#define GENMASK(h, l) \
+	(((~0U) >> (sizeof(unsigned int) * 8 - ((h) - (l) + 1))) << (l))
+
+/* 'fqid' is a 24-bit field in every h/w descriptor */
+#define QM_FQID_MASK    GENMASK(23, 0)
+#define qm_fqid_set(p, v) ((p)->fqid = cpu_to_be32((v) & QM_FQID_MASK))
+#define qm_fqid_get(p)    (be32_to_cpu((p)->fqid) & QM_FQID_MASK)
+
+static int
+_qm_mr_consume_and_match_verb(struct qm_portal *p, int v)
+{
+	const struct qm_mr_entry *msg;
+	int found = 0;
+
+	qm_mr_pvb_update(p);
+	msg = qm_mr_current(p);
+	while (msg) {
+		if ((msg->ern.verb & QM_MR_VERB_TYPE_MASK) == v)
+			found = 1;
+		qm_mr_next(p);
+		qm_mr_cci_consume_to_current(p);
+		qm_mr_pvb_update(p);
+		msg = qm_mr_current(p);
+	}
+	return found;
+}
+
+static int
+_qm_dqrr_consume_and_match(struct qm_portal *p, u32 fqid, int s,
+		bool wait)
+{
+	const struct qm_dqrr_entry *dqrr;
+	int found = 0;
+
+	do {
+		qm_dqrr_pvb_update(p);
+		dqrr = qm_dqrr_current(p);
+		if (!dqrr)
+			cpu_relax();
+	} while (wait && !dqrr);
+
+	while (dqrr) {
+		if (qm_fqid_get(dqrr) == fqid && (dqrr->stat & s))
+			found = 1;
+
+		qm_dqrr_cdc_consume_1ptr(p, dqrr, 0);
+		qm_dqrr_pvb_update(p);
+		qm_dqrr_next(p);
+		dqrr = qm_dqrr_current(p);
+	}
+	return found;
+}
+
+#define QM_MCR_TIMEOUT                  10000   /* us */
+
+static inline int
+qm_mc_result_timeout(struct qm_portal *portal,
+		     struct qm_mc_result **mcr)
+{
+	int timeout = QM_MCR_TIMEOUT;
+
+	do {
+		*mcr = qm_mc_result(portal);
+		if (*mcr)
+			break;
+		usleep(1);
+	} while (--timeout);
+
+	return timeout;
+}
+
+#define qm_mr_drain(p, V) \
+	_qm_mr_consume_and_match_verb(p, QM_MR_VERB_##V)
+
+#define qm_dqrr_drain(p, f, S) \
+	_qm_dqrr_consume_and_match(p, f, QM_DQRR_STAT_##S, false)
+
+#define qm_dqrr_drain_wait(p, f, S) \
+	_qm_dqrr_consume_and_match(p, f, QM_DQRR_STAT_##S, true)
+
+#define qm_dqrr_drain_nomatch(p) \
+	_qm_dqrr_consume_and_match(p, 0, 0, false)
+
+RTE_EXPORT_INTERNAL_SYMBOL(qman_shutdown_fq)
+int
+qman_shutdown_fq(u32 fqid)
 {
 	struct qman_portal *p;
-	struct qm_portal *low_p;
 	struct qm_mc_command *mcc;
 	struct qm_mc_result *mcr;
+	int orl_empty, drain = 0, ret = 0;
+	u32 res;
 	u8 state;
-	int orl_empty, fq_empty, drain = 0;
-	u32 result;
 	u32 channel, wq;
 	u16 dest_wq;
 
+	DPAA_BUS_DEBUG("In shutdown for queue = %x", fqid);
 	p = get_affine_portal();
-	low_p = &p->p;
-
 	/* Determine the state of the FQID */
-	mcc = qm_mc_start(low_p);
+	mcc = qm_mc_start(&p->p);
 	mcc->queryfq_np.fqid = cpu_to_be32(fqid);
-	qm_mc_commit(low_p, QM_MCC_VERB_QUERYFQ_NP);
-	while (!(mcr = qm_mc_result(low_p)))
-		cpu_relax();
-	DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCR_VERB_QUERYFQ_NP);
+	qm_mc_commit(&p->p, QM_MCC_VERB_QUERYFQ_NP);
+	if (!qm_mc_result_timeout(&p->p, &mcr)) {
+		DPAA_BUS_ERR("QUERYFQ_NP timeout");
+		ret = -ETIMEDOUT;
+		goto out;
+	}
 	state = mcr->queryfq_np.state & QM_MCR_NP_STATE_MASK;
-	if (state == QM_MCR_NP_STATE_OOS)
-		return 0; /* Already OOS, no need to do anymore checks */
+	if (state == QM_MCR_NP_STATE_OOS) {
+		DPAA_BUS_ERR("Already in OOS");
+		goto out; /* Already OOS, no need to do anymore checks */
+	}
 
 	/* Query which channel the FQ is using */
-	mcc = qm_mc_start(low_p);
+	mcc = qm_mc_start(&p->p);
 	mcc->queryfq.fqid = cpu_to_be32(fqid);
-	qm_mc_commit(low_p, QM_MCC_VERB_QUERYFQ);
-	while (!(mcr = qm_mc_result(low_p)))
-		cpu_relax();
-	DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCR_VERB_QUERYFQ);
+	qm_mc_commit(&p->p, QM_MCC_VERB_QUERYFQ);
+	if (!qm_mc_result_timeout(&p->p, &mcr)) {
+		DPAA_BUS_ERR("QUERYFQ timeout");
+		ret = -ETIMEDOUT;
+		goto out;
+	}
 
 	/* Need to store these since the MCR gets reused */
 	dest_wq = be16_to_cpu(mcr->queryfq.fqd.dest_wq);
@@ -2704,177 +2829,149 @@ int qman_shutdown_fq(u32 fqid)
 	case QM_MCR_NP_STATE_TRU_SCHED:
 	case QM_MCR_NP_STATE_ACTIVE:
 	case QM_MCR_NP_STATE_PARKED:
+		DPAA_BUS_DEBUG("In shutdown state is %d", state);
 		orl_empty = 0;
-		mcc = qm_mc_start(low_p);
+		mcc = qm_mc_start(&p->p);
 		mcc->alterfq.fqid = cpu_to_be32(fqid);
-		qm_mc_commit(low_p, QM_MCC_VERB_ALTER_RETIRE);
-		while (!(mcr = qm_mc_result(low_p)))
-			cpu_relax();
-		DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) ==
-			   QM_MCR_VERB_ALTER_RETIRE);
-		result = mcr->result; /* Make a copy as we reuse MCR below */
+		qm_mc_commit(&p->p, QM_MCC_VERB_ALTER_RETIRE);
+		if (!qm_mc_result_timeout(&p->p, &mcr)) {
+			DPAA_BUS_ERR("ALTER_RETIRE timeout");
+			ret = -ETIMEDOUT;
+			goto out;
+		}
+		res = mcr->result; /* Make a copy as we reuse MCR below */
 
-		if (result == QM_MCR_RESULT_PENDING) {
-			/* Need to wait for the FQRN in the message ring, which
+		if (res == QM_MCR_RESULT_OK)
+			drain_mr_fqrni(&p->p);
+
+		if (res == QM_MCR_RESULT_PENDING) {
+			/*
+			 * Need to wait for the FQRN in the message ring, which
 			 * will only occur once the FQ has been drained.  In
 			 * order for the FQ to drain the portal needs to be set
 			 * to dequeue from the channel the FQ is scheduled on
 			 */
-			const struct qm_mr_entry *msg;
-			const struct qm_dqrr_entry *dqrr = NULL;
 			int found_fqrn = 0;
-			__maybe_unused u16 dequeue_wq = 0;
 
 			/* Flag that we need to drain FQ */
 			drain = 1;
 
+			__maybe_unused u16 dequeue_wq = 0;
 			if (channel >= qm_channel_pool1 &&
-			    channel < (u16)(qm_channel_pool1 + 15)) {
+				channel < (u16)(qm_channel_pool1 + 15)) {
 				/* Pool channel, enable the bit in the portal */
 				dequeue_wq = (channel -
-					      qm_channel_pool1 + 1) << 4 | wq;
+						qm_channel_pool1 + 1) << 4 | wq;
 			} else if (channel < qm_channel_pool1) {
 				/* Dedicated channel */
 				dequeue_wq = wq;
 			} else {
-				pr_info("Cannot recover FQ 0x%x,"
-					" it is scheduled on channel 0x%x",
+				DPAA_BUS_ERR("Can't recover FQ 0x%x, ch: 0x%x",
 					fqid, channel);
-				return -EBUSY;
+				ret = -EBUSY;
+				goto out;
 			}
 			/* Set the sdqcr to drain this channel */
 			if (channel < qm_channel_pool1)
-				qm_dqrr_sdqcr_set(low_p,
+				qm_dqrr_sdqcr_set(&p->p,
 						  QM_SDQCR_TYPE_ACTIVE |
-					  QM_SDQCR_CHANNELS_DEDICATED);
+						  QM_SDQCR_CHANNELS_DEDICATED);
 			else
-				qm_dqrr_sdqcr_set(low_p,
+				qm_dqrr_sdqcr_set(&p->p,
 						  QM_SDQCR_TYPE_ACTIVE |
 						  QM_SDQCR_CHANNELS_POOL_CONV
 						  (channel));
-			while (!found_fqrn) {
+			do {
 				/* Keep draining DQRR while checking the MR*/
-				qm_dqrr_pvb_update(low_p);
-				dqrr = qm_dqrr_current(low_p);
-				while (dqrr) {
-					qm_dqrr_cdc_consume_1ptr(
-						low_p, dqrr, 0);
-					qm_dqrr_pvb_update(low_p);
-					qm_dqrr_next(low_p);
-					dqrr = qm_dqrr_current(low_p);
-				}
+				qm_dqrr_drain_nomatch(&p->p);
 				/* Process message ring too */
-				qm_mr_pvb_update(low_p);
-				msg = qm_mr_current(low_p);
-				while (msg) {
-					if ((msg->ern.verb &
-					     QM_MR_VERB_TYPE_MASK)
-					    == QM_MR_VERB_FQRN)
-						found_fqrn = 1;
-					qm_mr_next(low_p);
-					qm_mr_cci_consume_to_current(low_p);
-					qm_mr_pvb_update(low_p);
-					msg = qm_mr_current(low_p);
-				}
+				found_fqrn = qm_mr_drain(&p->p,
+							FQRN);
 				cpu_relax();
-			}
+			} while (!found_fqrn);
+			/* Restore SDQCR */
+			qm_dqrr_sdqcr_set(&p->p,
+					p->sdqcr);
 		}
-		if (result != QM_MCR_RESULT_OK &&
-		    result !=  QM_MCR_RESULT_PENDING) {
-			/* error */
-			pr_err("qman_retire_fq failed on FQ 0x%x,"
-			       " result=0x%x\n", fqid, result);
-			return -1;
+		if (res != QM_MCR_RESULT_OK &&
+		    res != QM_MCR_RESULT_PENDING) {
+			DPAA_BUS_ERR("retire_fq failed: FQ 0x%x, res=0x%x",
+				      fqid, res);
+			ret = -EIO;
+			goto out;
 		}
 		if (!(mcr->alterfq.fqs & QM_MCR_FQS_ORLPRESENT)) {
-			/* ORL had no entries, no need to wait until the
-			 * ERNs come in.
+			/*
+			 * ORL had no entries, no need to wait until the
+			 * ERNs come in
 			 */
 			orl_empty = 1;
 		}
-		/* Retirement succeeded, check to see if FQ needs
-		 * to be drained.
+		/*
+		 * Retirement succeeded, check to see if FQ needs
+		 * to be drained
 		 */
 		if (drain || mcr->alterfq.fqs & QM_MCR_FQS_NOTEMPTY) {
 			/* FQ is Not Empty, drain using volatile DQ commands */
-			fq_empty = 0;
 			do {
-				const struct qm_dqrr_entry *dqrr = NULL;
 				u32 vdqcr = fqid | QM_VDQCR_NUMFRAMES_SET(3);
 
-				qm_dqrr_vdqcr_set(low_p, vdqcr);
-
-				/* Wait for a dequeue to occur */
-				while (dqrr == NULL) {
-					qm_dqrr_pvb_update(low_p);
-					dqrr = qm_dqrr_current(low_p);
-					if (!dqrr)
-						cpu_relax();
-				}
-				/* Process the dequeues, making sure to
-				 * empty the ring completely.
+				qm_dqrr_vdqcr_set(&p->p, vdqcr);
+				/*
+				 * Wait for a dequeue and process the dequeues,
+				 * making sure to empty the ring completely
 				 */
-				while (dqrr) {
-					if (dqrr->fqid == fqid &&
-					    dqrr->stat & QM_DQRR_STAT_FQ_EMPTY)
-						fq_empty = 1;
-					qm_dqrr_cdc_consume_1ptr(low_p,
-								 dqrr, 0);
-					qm_dqrr_pvb_update(low_p);
-					qm_dqrr_next(low_p);
-					dqrr = qm_dqrr_current(low_p);
-				}
-			} while (fq_empty == 0);
+			} while (!qm_dqrr_drain_wait(&p->p, fqid, FQ_EMPTY));
 		}
-		qm_dqrr_sdqcr_set(low_p, 0);
-
-		/* Wait for the ORL to have been completely drained */
-		while (orl_empty == 0) {
-			const struct qm_mr_entry *msg;
-
-			qm_mr_pvb_update(low_p);
-			msg = qm_mr_current(low_p);
-			while (msg) {
-				if ((msg->ern.verb & QM_MR_VERB_TYPE_MASK) ==
-				    QM_MR_VERB_FQRL)
-					orl_empty = 1;
-				qm_mr_next(low_p);
-				qm_mr_cci_consume_to_current(low_p);
-				qm_mr_pvb_update(low_p);
-				msg = qm_mr_current(low_p);
-			}
+		while (!orl_empty) {
+			/* Wait for the ORL to have been completely drained */
+			orl_empty = qm_mr_drain(&p->p, FQRL);
 			cpu_relax();
 		}
-		mcc = qm_mc_start(low_p);
+		mcc = qm_mc_start(&p->p);
 		mcc->alterfq.fqid = cpu_to_be32(fqid);
-		qm_mc_commit(low_p, QM_MCC_VERB_ALTER_OOS);
-		while (!(mcr = qm_mc_result(low_p)))
-			cpu_relax();
-		DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) ==
-			   QM_MCR_VERB_ALTER_OOS);
-		if (mcr->result != QM_MCR_RESULT_OK) {
-			pr_err(
-			"OOS after drain Failed on FQID 0x%x, result 0x%x\n",
-			       fqid, mcr->result);
-			return -1;
+		qm_mc_commit(&p->p, QM_MCC_VERB_ALTER_OOS);
+		if (!qm_mc_result_timeout(&p->p, &mcr)) {
+			DPAA_BUS_ERR("OOS Timeout");
+			ret = -ETIMEDOUT;
+			goto out;
 		}
-		return 0;
+
+		if (mcr->result != QM_MCR_RESULT_OK) {
+			DPAA_BUS_ERR("OOS after drain fail: FQ 0x%x (0x%x)",
+				      fqid, mcr->result);
+			ret = -EIO;
+			goto out;
+		}
+		break;
 
 	case QM_MCR_NP_STATE_RETIRED:
 		/* Send OOS Command */
-		mcc = qm_mc_start(low_p);
+		mcc = qm_mc_start(&p->p);
 		mcc->alterfq.fqid = cpu_to_be32(fqid);
-		qm_mc_commit(low_p, QM_MCC_VERB_ALTER_OOS);
-		while (!(mcr = qm_mc_result(low_p)))
-			cpu_relax();
-		DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) ==
-			   QM_MCR_VERB_ALTER_OOS);
-		if (mcr->result) {
-			pr_err("OOS Failed on FQID 0x%x\n", fqid);
-			return -1;
+		qm_mc_commit(&p->p, QM_MCC_VERB_ALTER_OOS);
+		if (!qm_mc_result_timeout(&p->p, &mcr)) {
+			DPAA_BUS_ERR("In RTEIRED to OOS timeout");
+			ret = -ETIMEDOUT;
+			goto out;
 		}
-		return 0;
 
+		if (mcr->result != QM_MCR_RESULT_OK) {
+			DPAA_BUS_ERR("OOS fail: FQ 0x%x (0x%x)",
+				      fqid, mcr->result);
+			ret = -EIO;
+			goto out;
+		}
+		break;
+
+	case QM_MCR_NP_STATE_OOS:
+		/*  Done */
+		break;
+
+	default:
+		ret = -EIO;
 	}
-	return -1;
+
+out:
+	return ret;
 }
