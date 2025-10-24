@@ -216,7 +216,7 @@ void rte_mbuf_history_init(void)
 
 	rte_mbuf_history_field_offset = rte_mbuf_dynfield_register(&mbuf_dynfield_history);
 	if (rte_mbuf_history_field_offset < 0) {
-		MBUF_LOG(ERR, "Failed to register mbuf history dynamic field: %s\n",
+		MBUF_LOG(ERR, "Failed to register mbuf history dynamic field: %s",
 			rte_strerror(rte_errno));
 	}
 #endif
