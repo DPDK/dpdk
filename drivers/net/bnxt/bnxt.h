@@ -427,8 +427,10 @@ struct bnxt_coal {
 #define DBR_TYPE_SQ				(0x0ULL << 60)
 #define DBR_TYPE_SRQ				(0x2ULL << 60)
 #define DBR_TYPE_CQ				(0x4ULL << 60)
+#define DBR_TYPE_CQ_ARMALL			(0x6ULL << 60)
 #define DBR_TYPE_NQ				(0xaULL << 60)
 #define DBR_TYPE_NQ_ARM				(0xbULL << 60)
+#define DBR_TYPE_NQ_MASK			(0xeULL << 60)
 
 #define DB_PF_OFFSET			0x10000
 #define DB_VF_OFFSET			0x4000

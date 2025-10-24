@@ -461,7 +461,14 @@ bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 			return -EINVAL;
 
 		cpr = rxq->cp_ring;
-		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+		if (BNXT_CHIP_P5_P7(bp)) {
+			struct bnxt_cp_ring_info *nqr = bp->rxtx_nq_ring;
+
+			bnxt_arm_nq_p5p(nqr, 1);
+			bnxt_arm_rx_cq_p5p(rxq->cp_ring, 1);
+		} else {
+			B_CP_DB_ARM(cpr);
+		}
 	}
 	return rc;
 }
@@ -484,7 +491,43 @@ bnxt_rx_queue_intr_disable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 			return -EINVAL;
 
 		cpr = rxq->cp_ring;
-		B_CP_DB_DISARM(cpr);
+		if (BNXT_CHIP_P5_P7(bp)) {
+			struct bnxt_cp_ring_info *nqr = bp->rxtx_nq_ring;
+			struct bnxt_cp_ring_info *rx_cpr;
+
+			bnxt_arm_nq_p5p(nqr, 0);
+			/* Loops through all RXQs and finds the one that
+			 * received a packet if any
+			 */
+			uint32_t cons = RING_CMPL(nqr->cp_ring_struct->ring_mask,
+					nqr->cp_raw_cons);
+			struct cmpl_base *cmpl = &((nqr->cp_desc_ring)[cons]);
+
+			if (CMPL_VALID(cmpl, nqr->valid)) {
+				unsigned int rxid = 0;
+
+				rx_cpr = rxq->cp_ring;
+				for (; rxid < bp->rx_nr_rings; rxid++) {
+					rxq = bp->rx_queues[rxid];
+					rx_cpr = rxq->cp_ring;
+					cons = RING_CMPL(rx_cpr->cp_ring_struct->ring_mask,
+							 rx_cpr->cp_raw_cons);
+					cmpl = &((rx_cpr->cp_desc_ring)[cons]);
+					/* Because the valid bit in the rx
+					 * completion queue is not updated the
+					 * cmp valid using raw cons is used
+					 */
+					if (bnxt_cpr_cmp_valid(cmpl,
+							       rx_cpr->cp_raw_cons,
+							       rx_cpr->cp_ring_struct->ring_size)) {
+						break;
+					}
+				}
+				bnxt_process_nq(bp, nqr, rx_cpr);
+			}
+		} else {
+			B_CP_DB_DISARM(cpr);
+		}
 	}
 	return rc;
 }
