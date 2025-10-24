@@ -31,6 +31,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_compat.h>
+#include <rte_debug.h>
 #include <rte_lcore.h>
 
 #define RTE_PMU_SUPPORTED
@@ -181,12 +182,6 @@ __rte_experimental
 int
 rte_pmu_add_event(const char *name);
 
-/* quiesce warnings produced by chkincs caused by calling internal functions directly */
-#ifndef ALLOW_EXPERIMENTAL_API
-#define __rte_pmu_enable_group(group) ({ RTE_SET_USED(group); 0; })
-#define __rte_pmu_read_userpage(pc) ({ RTE_SET_USED(pc); 0; })
-#endif
-
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -211,6 +206,7 @@ __rte_experimental
 static __rte_always_inline uint64_t
 rte_pmu_read(unsigned int index)
 {
+#ifdef ALLOW_EXPERIMENTAL_API
 	unsigned int lcore_id = rte_lcore_id();
 	struct rte_pmu_event_group *group;
 
@@ -231,6 +227,10 @@ rte_pmu_read(unsigned int index)
 	}
 
 	return __rte_pmu_read_userpage(group->mmap_pages[index]);
+#else
+	RTE_SET_USED(index);
+	RTE_VERIFY(false);
+#endif
 }
 
 #ifdef __cplusplus
