@@ -389,7 +389,6 @@ static int
 cdx_vfio_map_resource_primary(struct rte_cdx_device *dev)
 {
 	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
-	char cdx_addr[PATH_MAX] = {0};
 	static void *cdx_map_addr;
 	struct mapped_cdx_resource *vfio_res = NULL;
 	struct mapped_cdx_res_list *vfio_res_list =
@@ -455,7 +454,7 @@ cdx_vfio_map_resource_primary(struct rte_cdx_device *dev)
 		ret = cdx_vfio_mmap_resource(vfio_dev_fd, vfio_res, i, 0);
 		if (ret < 0) {
 			CDX_BUS_ERR("%s mapping region %i failed: %s",
-				cdx_addr, i, strerror(errno));
+				dev_name, i, strerror(errno));
 			free(reg);
 			goto err_vfio_res;
 		}
