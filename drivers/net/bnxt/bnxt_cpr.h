@@ -30,6 +30,14 @@ struct bnxt_db_info;
 #define RING_CMPL(ring_mask, idx)	((idx) & (ring_mask))
 #define NEXT_CMP(idx)		RING_CMP(ADV_RAW_CMP(idx, 1))
 
+#define DBR_TOGGLE_SFT			25
+#define DB_TOGGLE(tgl)			((tgl) << DBR_TOGGLE_SFT)
+
+#define NQ_CN_TOGGLE_MASK              0xc0UL
+#define NQ_CN_TOGGLE_SFT               6
+#define NQE_CN_TOGGLE(type)            (((type) & NQ_CN_TOGGLE_MASK) >>        \
+					NQ_CN_TOGGLE_SFT)
+
 #define DB_CP_REARM_FLAGS	(DB_KEY_CP | DB_IDX_VALID)
 #define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
 
@@ -73,6 +81,21 @@ struct bnxt_db_info {
 #define DB_RING_IDX(db, idx)	(((idx) & (db)->db_ring_mask) |		\
 				 DB_EPOCH(db, idx))
 
+struct nqe_cn {
+	rte_le16_t      type;
+	#define NQ_CN_TYPE_MASK                 0x3fUL
+	#define NQ_CN_TYPE_SFT                  0
+	#define NQ_CN_TYPE_CQ_NOTIFICATION      0x30UL
+	#define NQ_CN_TYPE_LAST                 NQ_CN_TYPE_CQ_NOTIFICATION
+	#define NQ_CN_TOGGLE_MASK               0xc0UL
+	#define NQ_CN_TOGGLE_SFT                6
+	rte_le16_t      reserved16;
+	rte_le32_t      cq_handle_low;
+	rte_le32_t      v;
+	#define NQ_CN_V                         0x1UL
+	rte_le32_t      cq_handle_high;
+};
+
 struct bnxt_ring;
 struct bnxt_cp_ring_info {
 	uint32_t		cp_raw_cons;
@@ -89,7 +112,9 @@ struct bnxt_cp_ring_info {
 	struct bnxt_ring	*cp_ring_struct;
 	bool			valid;
 	uint32_t                epoch;
-	uint8_t			dpi;
+	uint32_t		toggle;
+	uint8_t			dpi;  /* Doorbell page index for multi-doorbell support */
+
 };
 
 #define RX_CMP_L2_ERRORS						\
@@ -101,6 +126,11 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmp);
 int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp);
 void bnxt_dev_reset_and_resume(void *arg);
 void bnxt_wait_for_device_shutdown(struct bnxt *bp);
+void bnxt_arm_nq_p5p(struct bnxt_cp_ring_info *nqr, bool enable_irq);
+void bnxt_arm_rx_cq_p5p(struct bnxt_cp_ring_info *cpr, bool enable_irq);
+void bnxt_process_async_msg(struct bnxt *bp, struct tx_cmpl *cmpl);
+void bnxt_process_nq(struct bnxt *bp, struct bnxt_cp_ring_info *nqr,
+		     struct bnxt_cp_ring_info *rx_cpr);
 
 #define EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL     \
 	HWRM_ASYNC_EVENT_CMPL_RESET_NOTIFY_EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL
@@ -152,4 +182,6 @@ bnxt_cpr_cmp_valid(const void *cmpl, uint32_t raw_cons, uint32_t ring_size)
 	}
 	return false;
 }
+
 #endif
+

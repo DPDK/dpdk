@@ -13,6 +13,106 @@
 #include "hsi_struct_def_dpdk.h"
 #include "tfc_vf2pf_msg.h"
 
+void bnxt_process_async_msg(struct bnxt *bp, struct tx_cmpl *cmpl)
+{
+	uint16_t type = cmpl->flags_type & TX_CMPL_TYPE_MASK;
+
+	switch (type) {
+	case HWRM_CMPL_TYPE_HWRM_DONE:
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_TYPE_HWRM_ASYNC_EVENT:
+		bnxt_handle_async_event(bp, (struct cmpl_base *)cmpl);
+		break;
+	default:
+		PMD_DRV_LOG_LINE(ERR, "Port: %d Unhandled async message %x",
+				 bp->eth_dev->data->port_id, type);
+		break;
+	}
+}
+
+void bnxt_process_nq(struct bnxt *bp, struct bnxt_cp_ring_info *nqr,
+		     struct bnxt_cp_ring_info *rx_cpr)
+{
+	struct nqe_cn *nqcmps = (struct nqe_cn *)nqr->cp_desc_ring;
+	uint32_t ring_mask = nqr->cp_ring_struct->ring_mask;
+	uint32_t raw_cons = nqr->cp_raw_cons;
+	uint16_t nq_type, nqe_cnt = 0;
+	bool v_bit = nqr->valid;
+	uint32_t cons = RING_CMPL(ring_mask, raw_cons);
+
+	while (1) {
+		if (!CMPL_VALID(&nqcmps[cons], v_bit)) {
+			if (nqe_cnt) {
+				nqr->cp_raw_cons = raw_cons;
+				nqr->valid = v_bit;
+			}
+			return;
+		}
+
+		nq_type = NQ_CN_TYPE_MASK & nqcmps[cons].type;
+
+		if (CMP_TYPE((struct cmpl_base *)&nqcmps[cons]) != NQ_CN_TYPE_CQ_NOTIFICATION)
+			bnxt_process_async_msg(bp, (struct tx_cmpl *)&nqcmps[cons]);
+		else
+			rx_cpr->toggle = NQE_CN_TOGGLE((uint64_t)nqcmps[cons].type);
+
+		NEXT_CMPL(nqr, cons, v_bit, 1);
+		raw_cons++;
+		if (nq_type)
+			nqe_cnt++;
+	}
+}
+
+/* Arms/disarms the given NQ for Thor/Thor2, with P5+ represening the ASIC family  */
+void bnxt_arm_nq_p5p(struct bnxt_cp_ring_info *nqr, bool enable_irq)
+{
+	uint32_t raw_cons = nqr->cp_raw_cons;
+	uint64_t db_msg = 0;
+	uint32_t toggle = 0;
+
+	if (enable_irq == 1)
+		toggle = nqr->toggle;
+
+	db_msg = nqr->cp_db.db_key64 | (raw_cons & nqr->cp_db.db_ring_mask)
+		| DB_EPOCH(&nqr->cp_db, raw_cons) | DB_TOGGLE(toggle);
+
+	if (enable_irq)
+		db_msg |= DBR_TYPE_NQ_ARM;
+	else
+		db_msg |= DBR_TYPE_NQ_MASK;
+
+	rte_compiler_barrier();
+	rte_write64(db_msg, nqr->cp_db.doorbell);
+	rte_compiler_barrier();
+}
+
+/* Arms/disarms the given CQ for Thor/Thor2, with P5+ represening the ASIC family  */
+void bnxt_arm_rx_cq_p5p(struct bnxt_cp_ring_info *cpr, bool enable_irq)
+{
+	uint32_t raw_cons = cpr->cp_raw_cons;
+	uint64_t db_msg = 0;
+	uint32_t toggle = 0;
+
+	if (raw_cons == UINT32_MAX)
+		raw_cons = 0;
+
+	if (enable_irq == 1)
+		toggle = cpr->toggle;
+
+	db_msg = cpr->cp_db.db_key64 | (raw_cons & cpr->cp_db.db_ring_mask)
+		| DB_EPOCH(&cpr->cp_db, raw_cons) | DB_TOGGLE(toggle);
+
+	if (enable_irq)
+		db_msg |= DBR_TYPE_CQ_ARMALL;
+	else
+		db_msg |= DBR_TYPE_CQ;
+
+	rte_compiler_barrier();
+	rte_write64(db_msg, cpr->cp_db.doorbell);
+	rte_compiler_barrier();
+}
+
+
 void bnxt_wait_for_device_shutdown(struct bnxt *bp)
 {
 	uint32_t val, timeout;
