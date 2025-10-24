@@ -485,7 +485,6 @@ static int
 cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 {
 	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
-	char cdx_addr[PATH_MAX] = {0};
 	int vfio_dev_fd;
 	int i, ret;
 	struct mapped_cdx_resource *vfio_res = NULL;
@@ -536,7 +535,7 @@ cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 
 	return 0;
 err_vfio_dev_fd:
-	rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, cdx_addr, vfio_dev_fd);
+	rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev_name, vfio_dev_fd);
 	return -1;
 }
 
