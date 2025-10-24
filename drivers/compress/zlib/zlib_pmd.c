@@ -126,6 +126,7 @@ process_zlib_inflate_chksum(struct rte_comp_op *op,
 		free(dictionary);
 		return;
 	}
+	free(dictionary);
 }
 
 static void
