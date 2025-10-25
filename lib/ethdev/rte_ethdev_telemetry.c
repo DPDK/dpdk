@@ -726,6 +726,10 @@ eth_dev_add_rss_info(struct rte_eth_rss_conf *rss_conf, struct rte_tel_data *d)
 		strlcat(rss_key, key, key_len);
 	}
 	ret = rte_tel_data_add_dict_string(d, "rss_key", rss_key);
+	if (ret < 0)
+		goto free_rss_key;
+	ret = rte_tel_data_add_dict_string(d, "algorithm",
+			rte_eth_dev_rss_algo_name(rss_conf->algorithm));
 
 free_rss_key:
 	free(rss_key);
