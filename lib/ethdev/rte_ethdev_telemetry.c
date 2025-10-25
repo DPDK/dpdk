@@ -1383,18 +1383,21 @@ out:
 
 static void
 eth_dev_add_reg_data(struct rte_tel_data *d, struct rte_dev_reg_info *reg_info,
-		     uint32_t idx)
+		     uint32_t idx, bool hide_zero)
 {
+	uint64_t val;
+
 	if (reg_info->width == sizeof(uint32_t))
-		rte_tel_data_add_dict_uint_hex(d, reg_info->names[idx].name,
-			*((uint32_t *)reg_info->data + idx), 0);
+		val = *((uint32_t *)reg_info->data + idx);
 	else
-		rte_tel_data_add_dict_uint_hex(d, reg_info->names[idx].name,
-			*((uint64_t *)reg_info->data + idx), 0);
+		val = *((uint64_t *)reg_info->data + idx);
+
+	if (!hide_zero || val > 0)
+		rte_tel_data_add_dict_uint_hex(d, reg_info->names[idx].name, val, 0);
 }
 
 static int
-eth_dev_store_regs(struct rte_tel_data *d, struct rte_dev_reg_info *reg_info)
+eth_dev_store_regs(struct rte_tel_data *d, struct rte_dev_reg_info *reg_info, bool hide_zero)
 {
 	struct rte_tel_data *groups[RTE_TEL_MAX_DICT_ENTRIES];
 	char group_name[RTE_TEL_MAX_STRING_LEN] = {0};
@@ -1419,7 +1422,7 @@ eth_dev_store_regs(struct rte_tel_data *d, struct rte_dev_reg_info *reg_info)
 
 	for (i = 0; i < reg_info->length; i++) {
 		if (i % RTE_TEL_MAX_DICT_ENTRIES != 0) {
-			eth_dev_add_reg_data(group, reg_info, i);
+			eth_dev_add_reg_data(group, reg_info, i, hide_zero);
 			continue;
 		}
 
@@ -1431,7 +1434,7 @@ eth_dev_store_regs(struct rte_tel_data *d, struct rte_dev_reg_info *reg_info)
 		}
 		groups[grp_num++] = group;
 		rte_tel_data_start_dict(group);
-		eth_dev_add_reg_data(group, reg_info, i);
+		eth_dev_add_reg_data(group, reg_info, i, hide_zero);
 	}
 
 	for (i = 0; i < grp_num; i++) {
@@ -1447,7 +1450,7 @@ out:
 }
 
 static int
-eth_dev_get_port_regs(int port_id, struct rte_tel_data *d, char *filter)
+eth_dev_get_port_regs(int port_id, struct rte_tel_data *d, char *filter, bool hide_zero)
 {
 	struct rte_dev_reg_info reg_info;
 	int ret;
@@ -1481,7 +1484,7 @@ eth_dev_get_port_regs(int port_id, struct rte_tel_data *d, char *filter)
 		goto out;
 	}
 
-	ret = eth_dev_store_regs(d, &reg_info);
+	ret = eth_dev_store_regs(d, &reg_info, hide_zero);
 out:
 	free(reg_info.data);
 	free(reg_info.names);
@@ -1494,7 +1497,11 @@ eth_dev_handle_port_regs(const char *cmd __rte_unused,
 		const char *params,
 		struct rte_tel_data *d)
 {
-	char *filter, *end_param;
+	const char *const valid_keys[] = { "filter", "hide_zero", NULL };
+	struct rte_kvargs *kvlist = NULL;
+	char *filter = NULL, *end_param;
+	const char *filter_val;
+	bool hide_zero = false;
 	uint16_t port_id;
 	int ret;
 
@@ -1502,11 +1509,24 @@ eth_dev_handle_port_regs(const char *cmd __rte_unused,
 	if (ret != 0)
 		return ret;
 
-	filter = strtok(end_param, ",");
-	if (filter != NULL && strlen(filter) == 0)
-		filter = NULL;
+	if (*end_param != '\0') {
+		kvlist = rte_kvargs_parse(end_param, valid_keys);
+		filter_val = rte_kvargs_get(kvlist, "filter");
+		ret = rte_kvargs_process(kvlist, "hide_zero", eth_dev_parse_hide_zero, &hide_zero);
+		if (kvlist == NULL || (filter_val != NULL && strlen(filter_val) == 0) || ret != 0) {
+			RTE_ETHDEV_LOG_LINE(NOTICE,
+				"Unknown extra parameters passed to ethdev telemetry command, ignoring");
+		} else {
+			filter = (filter_val != NULL) ? strdup(filter_val) : NULL;
+			hide_zero = false;
+		}
+		rte_kvargs_free(kvlist);
+	}
 
-	return eth_dev_get_port_regs(port_id, d, filter);
+	ret = eth_dev_get_port_regs(port_id, d, filter, hide_zero);
+	free(filter);
+
+	return ret;
 }
 
 static int eth_dev_telemetry_do(const char *cmd, const char *params, void *arg,
@@ -1582,5 +1602,5 @@ RTE_INIT(ethdev_init_telemetry)
 			eth_dev_telemetry_do, eth_dev_handle_port_tm_node_caps,
 			"Returns TM Node Capabilities info for a port. Parameters: int port_id, int node_id (see tm_capability for the max)");
 	rte_telemetry_register_cmd("/ethdev/regs", eth_dev_handle_port_regs,
-			"Returns all or filtered registers info for a port. Parameters: int port_id, string module_name (Optional if show all)");
+			"Returns registers info for a port. Parameters: int port_id,filter=xxx(Optional if show all),hide_zero=true|false(Optional)");
 }
