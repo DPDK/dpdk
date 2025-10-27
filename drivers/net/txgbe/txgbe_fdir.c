@@ -965,6 +965,7 @@ txgbe_fdir_filter_restore(struct rte_eth_dev *dev)
 int
 txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 {
+	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
 	struct txgbe_fdir_filter *fdir_filter;
 	struct txgbe_fdir_filter *filter_flag;
@@ -973,7 +974,8 @@ txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 	/* flush flow director */
 	rte_hash_reset(fdir_info->hash_handle);
 	memset(fdir_info->hash_map, 0,
-	       sizeof(struct txgbe_fdir_filter *) * TXGBE_MAX_FDIR_FILTER_NUM);
+	       sizeof(struct txgbe_fdir_filter *) *
+	       ((1024 << (fdir_conf->pballoc + 1)) - 2));
 	filter_flag = TAILQ_FIRST(&fdir_info->fdir_list);
 	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
 		TAILQ_REMOVE(&fdir_info->fdir_list,
