@@ -283,7 +283,7 @@ _recv_raw_pkts_vec(struct txgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 #ifdef RTE_LIB_SECURITY
 	uint8_t use_ipsec = rxq->using_ipsec;
 #endif
-	int pos;
+	int pos, i;
 	uint64_t var;
 	__m128i shuf_msk;
 	__m128i crc_adjust = _mm_set_epi16(0, 0, 0, /* ignore non-length fields */
@@ -450,6 +450,13 @@ _recv_raw_pkts_vec(struct txgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		/* set ol_flags with vlan packet type */
 		desc_to_olflags_v(descs, mbuf_init, vlan_flags, &rx_pkts[pos]);
+
+		for (i = 0; i < RTE_TXGBE_DESCS_PER_LOOP; i++) {
+			if (rx_pkts[pos + i]->ol_flags &
+			    (RTE_MBUF_F_RX_IP_CKSUM_BAD |
+			     RTE_MBUF_F_RX_L4_CKSUM_BAD))
+				rxq->csum_err++;
+		}
 
 #ifdef RTE_LIB_SECURITY
 		if (unlikely(use_ipsec))

@@ -222,7 +222,7 @@ _recv_raw_pkts_vec(struct txgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	volatile struct txgbe_rx_desc *rxdp;
 	struct txgbe_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
-	int pos;
+	int pos, i;
 	uint8x16_t shuf_msk = {
 		0xFF, 0xFF,
 		0xFF, 0xFF,  /* skip 32 bits pkt_type */
@@ -330,6 +330,13 @@ _recv_raw_pkts_vec(struct txgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* set ol_flags with vlan packet type */
 		desc_to_olflags_v(sterr_tmp1, sterr_tmp2, staterr, vlan_flags,
 				  &rx_pkts[pos]);
+
+		for (i = 0; i < RTE_TXGBE_DESCS_PER_LOOP; i++) {
+			if (rx_pkts[pos + i]->ol_flags &
+			    (RTE_MBUF_F_RX_IP_CKSUM_BAD |
+			     RTE_MBUF_F_RX_L4_CKSUM_BAD))
+				rxq->csum_err++;
+		}
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
