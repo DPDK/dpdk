@@ -2207,6 +2207,8 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_udp *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec;
 	const struct rte_flow_item_sctp *sctp_mask;
+	const struct rte_flow_item_raw *raw_mask;
+	const struct rte_flow_item_raw *raw_spec;
 	u8 ptid = 0;
 	uint32_t j;
 
@@ -2533,7 +2535,8 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
-		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+		    item->type != RTE_FLOW_ITEM_TYPE_END &&
+		    item->type != RTE_FLOW_ITEM_TYPE_RAW) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2622,7 +2625,8 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
-		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+		    item->type != RTE_FLOW_ITEM_TYPE_END &&
+		    item->type != RTE_FLOW_ITEM_TYPE_RAW) {
 			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2684,6 +2688,16 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			rule->input.dst_port =
 				tcp_spec->hdr.dst_port;
 		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
 	}
 
 	/* Get the UDP info */
@@ -2732,6 +2746,16 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 				udp_spec->hdr.src_port;
 			rule->input.dst_port =
 				udp_spec->hdr.dst_port;
+		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
 		}
 	}
 
@@ -2783,6 +2807,103 @@ txgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			rule->input.dst_port =
 				sctp_spec->hdr.dst_port;
 		}
+
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Get the flex byte info */
+	if (item->type == RTE_FLOW_ITEM_TYPE_RAW) {
+		uint16_t pattern = 0;
+
+		/* Not supported last point for range*/
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   item, "Not supported last point for range");
+			return -rte_errno;
+		}
+		/* mask should not be null */
+		if (!item->mask || !item->spec) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		rule->b_mask = TRUE;
+		raw_mask = item->mask;
+
+		/* check mask */
+		if (raw_mask->relative != 0x1 ||
+		    raw_mask->search != 0x1 ||
+		    raw_mask->reserved != 0x0 ||
+		    (uint32_t)raw_mask->offset != 0xffffffff ||
+		    raw_mask->limit != 0xffff ||
+		    raw_mask->length != 0xffff) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		rule->b_spec = TRUE;
+		raw_spec = item->spec;
+
+		/* check spec */
+		if (raw_spec->search != 0 ||
+		    raw_spec->reserved != 0 ||
+		    raw_spec->offset > TXGBE_MAX_FLX_SOURCE_OFF ||
+		    raw_spec->offset % 2 ||
+		    raw_spec->limit != 0 ||
+		    raw_spec->length != 4 ||
+		    /* pattern can't be 0xffff */
+		    (raw_spec->pattern[0] == 0xff &&
+		     raw_spec->pattern[1] == 0xff &&
+		     raw_spec->pattern[2] == 0xff &&
+		     raw_spec->pattern[3] == 0xff)) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		/* check pattern mask */
+		if (raw_mask->pattern[0] != 0xff ||
+		    raw_mask->pattern[1] != 0xff ||
+		    raw_mask->pattern[2] != 0xff ||
+		    raw_mask->pattern[3] != 0xff) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		rule->mask.flex_bytes_mask = 0xffff;
+		/* Convert pattern string to hex bytes */
+		if (sscanf((const char *)raw_spec->pattern, "%hx", &pattern) != 1) {
+			memset(rule, 0, sizeof(struct txgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Failed to parse raw pattern");
+			return -rte_errno;
+		}
+		rule->input.flex_bytes = (pattern & 0x00FF) << 8;
+		rule->input.flex_bytes |= (pattern & 0xFF00) >> 8;
+
+		rule->flex_bytes_offset = raw_spec->offset;
+		rule->flex_relative = raw_spec->relative;
 	}
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
